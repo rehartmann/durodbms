@@ -301,6 +301,11 @@ array_foreach_cmd(TclState *statep, Tcl_Interp *interp, int objc,
         if (ret != TCL_OK)
             return ret;
     }
+    if (ret != RDB_NOT_FOUND) {
+        Duro_dberror(interp, ret);
+        return TCL_ERROR;
+    }
+        
     return TCL_OK;
 }
 

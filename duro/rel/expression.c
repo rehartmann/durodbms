@@ -881,6 +881,27 @@ evaluate_order(RDB_expression *exp, const RDB_object *tup, RDB_transaction *txp,
             default: /* should never happen */
                 return RDB_INVALID_ARGUMENT;
         }
+    } else if (typ == &RDB_STRING) {
+        switch (kind) {
+            case RDB_OP_LT:
+                valp->var.bool_val = (RDB_bool)
+                        (strcmp(val1.var.bin.datap, val2.var.bin.datap) < 0);
+                break;
+            case RDB_OP_GT:
+                valp->var.bool_val = (RDB_bool)
+                        (strcmp(val1.var.bin.datap, val2.var.bin.datap) > 0);
+                break;
+            case RDB_OP_LET:
+                valp->var.bool_val = (RDB_bool)
+                        (strcmp(val1.var.bin.datap, val2.var.bin.datap) <= 0);
+                break;
+            case RDB_OP_GET:
+                valp->var.bool_val = (RDB_bool)
+                        (strcmp(val1.var.bin.datap, val2.var.bin.datap) >= 0);
+                break;
+            default: /* should never happen */
+                return RDB_INVALID_ARGUMENT;
+        }    
     } else {
         RDB_destroy_obj(&val1);
         RDB_destroy_obj(&val2);
