@@ -169,13 +169,13 @@ See the release notes for details.
 <li><a href="#regmatch">RDB_regmatch</a>
 <li><a href="#expr_table">RDB_expr_table</a>
 <li><a href="#expr_is_empty">RDB_expr_is_empty</a>
-<li><a href="#expr_cardinality">RDB_expr_aggregate</a>
-<li><a href="#expr_sum">RDB_expr_sum</a>
+<li><a href="#expr_any">RDB_expr_any</a>
+<li><a href="#expr_all">RDB_expr_all</a>
 <li><a href="#expr_avg">RDB_expr_avg</a>
+<li><a href="#expr_cardinality">RDB_expr_cardinality</a>
+<li><a href="#expr_sum">RDB_expr_sum</a>
 <li><a href="#expr_max">RDB_expr_max</a>
 <li><a href="#expr_min">RDB_expr_min</a>
-<li><a href="#expr_all">RDB_expr_all</a>
-<li><a href="#expr_any">RDB_expr_any</a>
 <li><a href="#expr_comp">RDB_expr_comp</a>
 <li><a href="#selector">RDB_selector</a>
 <li><a href="#user_op">RDB_user_op</a>
@@ -551,36 +551,23 @@ in which case the transaction is implicitly rolled back.
 
 <hr>
 
-<h2 id="aggregate">RDB_aggregate</h2>
+<h2 id="all">RDB_all</h2>
 
 <pre>
 #include &lt;rel/rdb.h&gt;
 
 int
-RDB_aggregate(RDB_table *, <a href="#aggregate_op">RDB_aggregate_op</a> op, const char *attrname,
-              RDB_transaction *, RDB_object *resultp);
+RDB_all(RDB_table *tbp, const char *attrname, RDB_transaction *txp,
+        RDB_bool *resultp);
 </pre>
 
 <h3>Description</h3>
 
-<p>RDB_aggregate computes an aggregation function over the attribute
-<var>attrname</var> of a table and stores the result at the location
-pointed to by <var>resultp</var>. Valid vakues for <var>op</var> are
-RDB_COUNT, RDB_SUM, RDB_AVG, RDB_MAX, RDB_MIN, RDB_ALL, and RDB_ANY.
+<p>RDB_all computes a logical AND over the attribute
+<var>attrname</var> of the table specified by <var>tbp</var>
+and stores the result at the location pointed to by <var>resultp</var>.
 
-<p>If <var>op</var> is RDB_COUNT, the attribute <var>attrname</var> is ignored.
-
-<p>If <var>op</var> is RDB_SUM, RDB_MIN, or RDB_MAX,
-the attribute <var>attrname</var> must be numeric
-and the result is of the same type as the attribute.
-
-<p>If <var>op</var> is RDB_AVG,
-the attribute <var>attrname</var> must be numeric
-and the result is of type RATIONAL.
-
-<p>If <var>op</var> is RDB_ALL or RDB_ANY, 
-the attribute <var>attrname</var> must be of
-type BOOLEAN anf the result is of type BOOLEAN.
+<p>The attribute <var>attrname</var> must be of type BOOLEAN.
 
 <h3>Return value</h3>
 
@@ -592,14 +579,238 @@ type BOOLEAN anf the result is of type BOOLEAN.
 <dt>RDB_INVALID_TRANSACTION
 <dd><var>txp</var> does not point to a running transaction.
 <dt>RDB_INVALID_ARGUMENT
-<dd><var>op</var> contains an invalid value.
-<dd><var>attrname</var> is NULL and op is not RDB_COUNT.
 <dd>The table does not have an attribute <var>attrname</var>.
 <dt>RDB_TYPE_MISMATCH
-<dd>The type of a the attribute does not match the aggregate operation
-specified by <var>op</var>.
+<dd>The type of a the attribute is not BOOLEAN.
+</dl>
+
+<p>The call may also fail for a <a href="#syserr">system error</a>,
+in which case the transaction is implicitly rolled back.
+
+<hr>
+
+<h2 id="any">RDB_any</h2>
+
+<pre>
+#include &lt;rel/rdb.h&gt;
+
+int
+RDB_any(RDB_table *tbp, const char *attrname, RDB_transaction *txp,
+        RDB_bool *resultp);
+</pre>
+
+<h3>Description</h3>
+
+<p>RDB_any computes a logical OR over the attribute
+<var>attrname</var> of the table specified by <var>tbp</var>
+and stores the result at the location
+pointed to by <var>resultp</var>.
+
+<p>The attribute <var>attrname</var> must be of
+type BOOLEAN.
+
+<h3>Return value</h3>
+
+<p>On success, RDB_OK is returned. On failure, an error code is returned.
+
+<h3>Errors</h3>
+
+<dl>
+<dt>RDB_INVALID_TRANSACTION
+<dd><var>txp</var> does not point to a running transaction.
+<dt>RDB_INVALID_ARGUMENT
+<dd>The table does not have an attribute <var>attrname</var>.
+<dt>RDB_TYPE_MISMATCH
+<dd>The type of a the attribute is not BOOLEAN.
+</dl>
+
+<p>The call may also fail for a <a href="#syserr">system error</a>,
+in which case the transaction is implicitly rolled back.
+
+<hr>
+
+<h2 id="avg">RDB_avg</h2>
+
+<pre>
+#include &lt;rel/rdb.h&gt;
+
+int
+RDB_avg(RDB_table *tbp, const char *attrname, RDB_transaction *txp,
+        RDB_rational *resultp);
+</pre>
+
+<h3>Description</h3>
+
+<p>RDB_avg computes the average over the attribute
+<var>attrname</var> of the table specified by <var>tbp</var>
+and stores the result at the location
+pointed to by <var>resultp</var>.
+
+<p>The attribute <var>attrname</var> must be numeric.
+
+<h3>Return value</h3>
+
+<p>On success, RDB_OK is returned. On failure, an error code is returned.
+
+<h3>Errors</h3>
+
+<dl>
+<dt>RDB_INVALID_TRANSACTION
+<dd><var>txp</var> does not point to a running transaction.
+<dt>RDB_INVALID_ARGUMENT
+<dd>The table does not have an attribute <var>attrname</var>.
+<dt>RDB_TYPE_MISMATCH
+<dd>The type of a the attribute is not numeric.
 <dt>RDB_AGGREGATE_UNDEFINED
-<dd><var>op</var> is RDB_AVG and the table is empty.
+<dd>The table is empty.
+</dl>
+
+<p>The call may also fail for a <a href="#syserr">system error</a>,
+in which case the transaction is implicitly rolled back.
+
+<hr>
+
+<h2 id="cardinality">RDB_cardinality</h2>
+
+<pre>
+#include &lt;rel/rdb.h&gt;
+
+int
+RDB_cardinality(RDB_table *tbp, RDB_transaction *txp);
+</pre>
+
+<h3>Description</h3>
+
+<p>RDB_cardinality returns the number of tuples in
+the table pointed to by <var>tbp</var>.
+
+<h3>Return value</h3>
+
+<p>On success, the number of tuples is returned.
+On failure, an error code lower than zero is returned.
+
+<h3>Errors</h3>
+
+<dl>
+<dt>RDB_INVALID_TRANSACTION
+<dd><var>txp</var> does not point to a running transaction.
+</dl>
+
+<p>The call may also fail for a <a href="#syserr">system error</a>,
+in which case the transaction is implicitly rolled back.
+
+<hr>
+
+<h2 id="max">RDB_max</h2>
+
+<pre>
+#include &lt;rel/rdb.h&gt;
+
+int
+RDB_max(RDB_table *tbp, const char *attrname, RDB_transaction *txp,
+        RDB_object *resultp);
+</pre>
+
+<h3>Description</h3>
+
+<p>RDB_max computes the maximum over the attribute
+<var>attrname</var> of the table specified by <var>tbp</var>
+and stores the result at the location pointed to by <var>resultp</var>.
+
+<p>The attribute <var>attrname</var> must be numeric
+and the result is of the same type as the attribute.
+
+<h3>Return value</h3>
+
+<p>On success, RDB_OK is returned. On failure, an error code is returned.
+
+<h3>Errors</h3>
+
+<dl>
+<dt>RDB_INVALID_TRANSACTION
+<dd><var>txp</var> does not point to a running transaction.
+<dt>RDB_INVALID_ARGUMENT
+<dd>The table does not have an attribute <var>attrname</var>.
+<dt>RDB_TYPE_MISMATCH
+<dd>The type of a the attribute is not numeric.
+</dl>
+
+<p>The call may also fail for a <a href="#syserr">system error</a>,
+in which case the transaction is implicitly rolled back.
+
+<hr>
+
+<h2 id="min">RDB_min</h2>
+
+<pre>
+#include &lt;rel/rdb.h&gt;
+
+int
+RDB_min(RDB_table *tbp, const char *attrname, RDB_transaction *txp,
+        RDB_object *resultp);
+</pre>
+
+<h3>Description</h3>
+
+<p>RDB_max computes the minimum over the attribute
+<var>attrname</var> of the table specified by <var>tbp</var>
+and stores the result at the location pointed to by <var>resultp</var>.
+
+<p>The attribute <var>attrname</var> must be numeric
+and the result is of the same type as the attribute.
+
+<h3>Return value</h3>
+
+<p>On success, RDB_OK is returned. On failure, an error code is returned.
+
+<h3>Errors</h3>
+
+<dl>
+<dt>RDB_INVALID_TRANSACTION
+<dd><var>txp</var> does not point to a running transaction.
+<dt>RDB_INVALID_ARGUMENT
+<dd>The table does not have an attribute <var>attrname</var>.
+<dt>RDB_TYPE_MISMATCH
+<dd>The type of a the attribute is not numeric.
+</dl>
+
+<p>The call may also fail for a <a href="#syserr">system error</a>,
+in which case the transaction is implicitly rolled back.
+
+<hr>
+
+<h2 id="sum">RDB_sum</h2>
+
+<pre>
+#include &lt;rel/rdb.h&gt;
+
+int
+RDB_sum(RDB_table *tbp, const char *attrname, RDB_transaction *txp,
+        RDB_object *resultp);
+</pre>
+
+<h3>Description</h3>
+
+<p>RDB_sum computes the sum over the attribute
+<var>attrname</var> of the table pointed to by <var>tbp</var>
+and stores the result at the location pointed to by <var>resultp</var>.
+
+<p>The attribute <var>attrname</var> must be numeric
+and the result is of the same type as the attribute.
+
+<h3>Return value</h3>
+
+<p>On success, RDB_OK is returned. On failure, an error code is returned.
+
+<h3>Errors</h3>
+
+<dl>
+<dt>RDB_INVALID_TRANSACTION
+<dd><var>txp</var> does not point to a running transaction.
+<dt>RDB_INVALID_ARGUMENT
+<dd>The table does not have an attribute <var>attrname</var>.
+<dt>RDB_TYPE_MISMATCH
+<dd>The type of a the attribute is not numeric.
 </dl>
 
 <p>The call may also fail for a <a href="#syserr">system error</a>,
@@ -866,7 +1077,7 @@ RDB_rename(RDB_table *tbp, int renc, <a href="#renaming">RDB_renaming</a> renv[]
 <h3>Description</h3>
 
 <p>RDB_rename creates a virtual table which is the result of a relational
-RENAME operation on the table specified by <var>tbp</var>.
+RENAME operator on the table specified by <var>tbp</var>.
 A pointer to the result table is stored at the location pointed to by
 <var>resultpp</var>.
 
@@ -923,7 +1134,7 @@ RDB_extend(RDB_table *, int attrc, <a href="#virtual_attr">RDB_virtual_attr</a> 
 <h3>Description</h3>
 
 <p>RDB_rename creates a transient virtual table which is the result of a relational
-EXTEND operation on the table specified by <var>tbp</var>.
+EXTEND operator on the table specified by <var>tbp</var>.
 
 <p>The new table will have <var>attrc</var> additional attributes.
 The values of these attributes are obtained by evaluating the
@@ -1200,7 +1411,7 @@ RDB_wrap(RDB_table *tbp, int wrapc, <a href="#wrapping">RDB_wrapping</a> wrapv[]
 <h3>Description</h3>
 
 <p>RDB_wrap creates a transient virtual table which is the result of a
-relational WRAP operation.
+relational WRAP operator.
 
 <h3>Return value</h3>
 
@@ -1220,7 +1431,7 @@ RDB_unwrap(RDB_table *, int attrc, char *attrv[], RDB_table **);
 <h3>Description</h3>
 
 <p>RDB_wrap creates a transient virtual table which is the result of a
-relational UNWRAP operation.
+relational UNWRAP operator.
 
 <h3>Return value</h3>
 
@@ -1241,7 +1452,7 @@ RDB_group(RDB_table *, int attrc, char *attrv[], const char *,
 <h3>Description</h3>
 
 <p>RDB_group creates a transient virtual table which is the result of a
-relational GROUP operation.
+relational GROUP operator.
 
 <h3>Return value</h3>
 
@@ -1261,7 +1472,7 @@ RDB_ungroup(RDB_table *, const char *, RDB_table **resultpp);
 <h3>Description</h3>
 
 <p>RDB_wrap creates a transient virtual table which is the result of a
-relational UNGROUP operation.
+relational UNGROUP operator.
 
 <h3>Return value</h3>
 
@@ -1674,7 +1885,7 @@ RDB_wrap_tuple(const RDB_object *tplp, int wrapc, <a href="#wrapping">RDB_wrappi
 
 <h3>Description</h3>
 
-<p>RDB_wrap_tuple performs a tuple WRAP operation on the tuple pointed to by
+<p>RDB_wrap_tuple performs a tuple WRAP operator on the tuple pointed to by
 <var>tplp</var> and stores the result in the variable pointed to by
 <var>restplp</var>.
 
@@ -1696,7 +1907,7 @@ RDB_unwrap_tuple(const RDB_object *tplp, int attrc, const char *attrv[],
 
 <h3>Description</h3>
 
-<p>RDB_unwrap_tuple performs a tuple UNWRAP operation on the tuple pointed to by
+<p>RDB_unwrap_tuple performs a tuple UNWRAP operator on the tuple pointed to by
 <var>tplp</var> and stores the result in the variable pointed to by
 <var>restplp</var>.
 
@@ -2945,7 +3156,7 @@ RDB_strlen(RDB_expression *arg);
 <h3>Description</h3>
 
 <p>RDB_subtract creates an expression that represents a string length
-operation. If the argument is NULL, NULL is returned.
+operator. If the argument is NULL, NULL is returned.
 
 
 <h3>Return value</h3>
@@ -3015,17 +3226,131 @@ failed.
 
 <hr>
 
-<h2 id="expr_aggregate">RDB_expr_aggregate</h2>
+<h2 id="expr_any">RDB_expr_any</h2>
 
 <pre>
 RDB_expression *
-RDB_expr_aggregate(RDB_expression *, RDB_aggregate_op op, const char *attrname);
+RDB_expr_any(RDB_expression *, const char *attrname);
 </pre>
 
 <h3>Description</h3>
 
-<p>RDB_expr_aggregate creates an expression which represents an aggregation
-operation (See <a href="#aggregate">RDB_aggregate</a>).
+<p>RDB_expr_ creates an expression which represents the <a
+href="#any">RDB_any</a> operator.
+
+<h3>Return value</h3>
+
+<p>A pointer to the newly created expression, of NULL if the creation
+failed.
+
+<hr>
+
+<h2 id="expr_all">RDB_expr_all</h2>
+
+<pre>
+RDB_expression *
+RDB_expr_all(RDB_expression *, const char *attrname);
+</pre>
+
+<h3>Description</h3>
+
+<p>RDB_expr_ creates an expression which represents the <a
+href="#all">RDB_all</a> operator.
+
+<h3>Return value</h3>
+
+<p>A pointer to the newly created expression, of NULL if the creation
+failed.
+
+<hr>
+
+<h2 id="expr_avg">RDB_expr_avg</h2>
+
+<pre>
+RDB_expression *
+RDB_expr_avg(RDB_expression *, const char *attrname);
+</pre>
+
+<h3>Description</h3>
+
+<p>RDB_expr_avg creates an expression which represents the <a
+href="#avg">RDB_avg</a> operator.
+
+<h3>Return value</h3>
+
+<p>A pointer to the newly created expression, of NULL if the creation
+failed.
+
+<hr>
+
+<h2 id="expr_cardinality">RDB_expr_cardinality</h2>
+
+<pre>
+RDB_expression *
+RDB_expr_cardinality(RDB_expression *arg1);
+</pre>
+
+<h3>Description</h3>
+
+<p>RDB_expr_cardinality creates an expression which represents the <a
+href="#cardinality">RDB_cardinality</a> operator.
+
+<h3>Return value</h3>
+
+<p>A pointer to the newly created expression, of NULL if the creation
+failed.
+
+<hr>
+
+<h2 id="expr_max">RDB_expr_max</h2>
+
+<pre>
+RDB_expression *
+RDB_expr_max(RDB_expression *, const char *attrname);
+</pre>
+
+<h3>Description</h3>
+
+<p>RDB_expr_ creates an expression which represents the <a
+href="#max">RDB_max</a> operator.
+
+<h3>Return value</h3>
+
+<p>A pointer to the newly created expression, of NULL if the creation
+failed.
+
+<hr>
+
+<h2 id="expr_min">RDB_expr_min</h2>
+
+<pre>
+RDB_expression *
+RDB_expr_min(RDB_expression *, const char *attrname);
+</pre>
+
+<h3>Description</h3>
+
+<p>RDB_expr_min creates an expression which represents the <a
+href="#min">RDB_min</a> operator.
+
+<h3>Return value</h3>
+
+<p>A pointer to the newly created expression, of NULL if the creation
+failed.
+
+<hr>
+
+<h2 id="expr_sum">RDB_expr_sum</h2>
+
+<pre>
+RDB_expression *
+RDB_expr_sum(RDB_expression *, const char *attrname);
+</pre>
+
+<h3>Description</h3>
+
+<p>RDB_expr_sum creates an expression which represents the <a
+href="#sum">RDB_sum</a> operator.
 
 <h3>Return value</h3>
 
@@ -3094,7 +3419,7 @@ at the location pointed to by <var>expp</var>.
 
 <dl>
 <dt>RDB_NOT_FOUND
-<dd>The user-defined operation was not found.
+<dd>The user-defined operator was not found.
 </dl>
 
 <p>The call may also fail for a <a href="#syserr">system error</a>,
