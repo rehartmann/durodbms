@@ -58,9 +58,9 @@ of a MINUS, SUMMARIZE, RENAME, WRAP, UNWRAP, or DIVIDEBY PER.
 <p>RDB_delete is not supported for virtual tables which are the result of
 a select, JOIN, EXTEND, SUMMARIZE, RENAME, WRAP, UNWRAP, or DIVIDEBY PER.
 
-<h3>RDB_sdivide<h3>
+<h3>RDB_sdivide</h3>
 
-<p>...
+<p>Table #3 must be of the same type as the join of table #1 and table #2.
 
 <h3>RDB_summarize</h3>
 
@@ -91,6 +91,12 @@ component.
 <p>Only scalar argument types are supported.
 
 <h2>Implementation-specific details</h2>
+
+<h3>Nested transactions</h3>
+
+<p>The execution of a parent transaction is suspended while a child
+transaction executes. It is illegal to perform an operation under
+the control of a transaction which has a running child transaction.
 
 <h3>Creating libraries</h3>
 

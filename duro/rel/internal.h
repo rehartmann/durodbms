@@ -179,7 +179,7 @@ _RDB_provide_table(const char *name, RDB_bool persistent,
            RDB_table **tbpp);
 
 int
-_RDB_assign_table_db(RDB_table *tbp, RDB_database *dbp);
+_RDB_assoc_table_db(RDB_table *tbp, RDB_database *dbp);
 
 int
 _RDB_drop_rtable(RDB_table *tbp, RDB_transaction *txp);

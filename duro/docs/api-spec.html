@@ -1286,7 +1286,7 @@ RDB_join(RDB_table *tb1p, RDB_table *tb2p, RDB_table **resultpp);
 
 <h3>Description</h3>
 
-<p>RDB_join creates a transient (local) virtual table which is a natural join
+<p>RDB_join creates a local (transient) virtual table which is a natural join
 of the two tables specified by <var>tb1p</var> and <var>tb2p</var>.
 
 <p>If the two tables have no common attribute, the result becomes
@@ -1319,7 +1319,7 @@ RDB_union(RDB_table *, RDB_table *, RDB_table **resultpp);
 
 <h3>Description</h3>
 
-<p>RDB_union creates a transient (local) virtual table which is the
+<p>RDB_union creates a local (transient) virtual table which is the
 result of a relational UNION of the two tables, that is,
 it contains the tuples from both tables. A pointer to the
 new RDB_table is stored in <var>resultpp</var>.
@@ -1350,7 +1350,7 @@ RDB_intersect(RDB_table *, RDB_table *, RDB_table **resultpp);
 
 <h3>Description</h3>
 
-<p>RDB_intersect creates a transient (local) virtual table which is the
+<p>RDB_intersect creates a local (transient) virtual table which is the
 result of a relational INTERSECT of the two tables, that is,
 it contains the tuples which both tables contain.
 
@@ -1380,7 +1380,7 @@ RDB_minus(RDB_table *, RDB_table *, RDB_table **resultpp);
 
 <h3>Description</h3>
 
-<p>RDB_intersect creates a transient (local) virtual table which is the
+<p>RDB_intersect creates a local (transient) virtual table which is the
 result of a relational MINUS of the two tables, that is,
 it contains the tuples which the first table contains,
 except those which the second table contains.
@@ -1411,7 +1411,7 @@ RDB_sdivide(RDB_table *, RDB_table *, RDB_table *, RDB_table **resultpp);
 
 <h3>Description</h3>
 
-<p>RDB_creates a transient (local) virtual table which is the
+<p>RDB_creates a local (transient) virtual table which is the
 result of a small divide of the three tables.
 
 <h3>Return value</h3>
@@ -1432,7 +1432,7 @@ RDB_gdivide(RDB_table *, RDB_table *, RDB_table *, RDB_table *,
 
 <h3>Description</h3>
 
-<p>RDB_creates a transient (local) virtual table which is the
+<p>RDB_creates a local (transient) virtual table which is the
 result of a great divide of the four tables.
 
 <h3>Return value</h3>
@@ -1459,7 +1459,7 @@ RDB_summarize(RDB_table *tb1p, RDB_table *tb2p, int addc, RDB_summarize_add addv
 
 <h3>Description</h3>
 
-<p>RDB_summarize creates a transient (local) virtual table which is the result
+<p>RDB_summarize creates a local (transient) virtual table which is the result
 of a SUMMARIZE T1 PER T2 (ADD1, ...), where T1 is the table specified by
 <var>tb1p</var>, T2 is the table specified by <var>tb2p</var>, and ADD1 ...
 is specified by <var>addc</var> and <var>addv</var>.
@@ -1495,7 +1495,7 @@ RDB_wrap(RDB_table *tbp, int wrapc, <a href="#wrapping">RDB_wrapping</a> wrapv[]
 
 <h3>Description</h3>
 
-<p>RDB_wrap creates a transient (local) virtual table which is the result of a
+<p>RDB_wrap creates a local (transient) virtual table which is the result of a
 relational WRAP operator.
 
 <h3>Return value</h3>
@@ -1515,7 +1515,7 @@ RDB_unwrap(RDB_table *, int attrc, char *attrv[], RDB_table **);
 
 <h3>Description</h3>
 
-<p>RDB_wrap creates a transient (local) virtual table which is the result of a
+<p>RDB_wrap creates a local (transient) virtual table which is the result of a
 relational UNWRAP operator.
 
 <h3>Return value</h3>
@@ -1536,7 +1536,7 @@ RDB_group(RDB_table *, int attrc, char *attrv[], const char *,
 
 <h3>Description</h3>
 
-<p>RDB_group creates a transient (local) virtual table which is the result of a
+<p>RDB_group creates a local (transient) virtual table which is the result of a
 relational GROUP operator.
 
 <h3>Return value</h3>
@@ -1556,7 +1556,7 @@ RDB_ungroup(RDB_table *, const char *, RDB_table **resultpp);
 
 <h3>Description</h3>
 
-<p>RDB_wrap creates a transient (local) virtual table which is the result of a
+<p>RDB_wrap creates a local (transient) virtual table which is the result of a
 relational UNGROUP operator.
 
 <h3>Return value</h3>

@@ -2,23 +2,27 @@
 
 $Id$
 
-This directory contains release 0.6 of Duro, a relational database library
-written in C.
+This directory contains release 0.7 of Duro, a relational database library.
 
-Compiling and running Duro requires the Berkeley DB database library,
-release 4.2. Berkeley DB can be obtained for free from
-http://www.sleepycat.com. Also required are POSIX.2 regular expressions
-and GNU Libtool.
+The following software is required for compiling and running Duro:
 
-Berkeley DB is assumed to be located in /usr/local/BerkeleyDB.4.2.
+- Berkeley DB, release 4.2. Berkeley DB can be obtained for free from
+http://www.sleepycat.com. (Berkeley DB 4.1 will most probably also work,
+but this is no longer tested)
 
-Duro has been tested on a GNU/Linux PC.
+- POSIX.2 regular expressions
+
+- GNU Libtool
+
+- Tcl 8.1 or later
+
+Duro 0.7 has been tested on a GNU/Linux PC.
 
 To learn about how to use Duro, see the API specification
 and release notes in the 'docs' directory. Example code
 can be found in the 'tests' directory.
 
-By default, Duro is installed in the directory /usr/local/duro.0.6.
+By default, Duro is installed in the directory /usr/local/duro.0.7.
 
 Duro is still under development. Report bugs to
 rhartmann@users.sourceforge.net.
