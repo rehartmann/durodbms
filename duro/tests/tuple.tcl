@@ -2,7 +2,7 @@
 
 # $Id$
 #
-# Test create, insert on table with tuple attribute
+# Test create, insert, UNWRAP on table with tuple attribute
 #
 
 load .libs/libdurotcl.so duro
@@ -59,21 +59,25 @@ set dbenv [duro::env open tests/dbenv]
 set tx [duro::begin $dbenv TEST]
 
 set a [duro::array create T1 $tx]
-
 checkarray $a { {SCATTR Bla TPATTR {A 1 B Blubb}} }
-
 duro::array drop $a
 
 # Create UNWRAP table
 duro::table expr T2 {T1 UNWRAP (TPATTR)} $tx
 
 set a [duro::array create T2 $tx]
-
 checkarray $a { {SCATTR Bla A 1 B Blubb} }
+duro::array drop $a
 
+duro::table expr T3 {T1 WHERE TPATTR.A = 1} $tx
+
+set a [duro::array create T3 $tx]
+checkarray $a { {SCATTR Bla TPATTR {A 1 B Blubb}} }
 duro::array drop $a
 
 # Drop tables
+
+duro::table drop T3 $tx
 
 duro::table drop T2 $tx
 

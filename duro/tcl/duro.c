@@ -87,9 +87,21 @@ Duro_Init(Tcl_Interp *interp)
 
     Tcl_CreateExitHandler(duro_cleanup, (ClientData)statep);
 
-    /* yydebug = 1; */
+    yydebug = 1;
     
     Tcl_PkgProvide(interp, "duro", "0.7");
 
     return TCL_OK;
+}
+
+RDB_table *
+Duro_get_ltable(const char *name, void *arg)
+{
+    TclState *statep = (TclState *)arg;
+    Tcl_HashEntry *entryp = Tcl_FindHashEntry(&statep->ltables, name);
+
+    if (entryp == NULL)
+        return NULL;
+
+    return ((table_entry *)Tcl_GetHashValue(entryp))->tablep;
 }

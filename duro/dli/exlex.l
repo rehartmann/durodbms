@@ -173,7 +173,7 @@ ANY {
     return TOK_DECIMAL;
 }
 
-[=><+\-*/{},()] return yytext[0];
+[=><+\-*/{},().] return yytext[0];
 
 [[:space:]]
 

@@ -11,6 +11,8 @@ void yy_scan_string(const char *txt);
 RDB_transaction *expr_txp;
 RDB_expression *resultp;
 int expr_ret;
+RDB_ltablefunc *expr_ltfp;
+void *expr_arg;
 
 int yywrap(void) {
     return 1;
@@ -20,10 +22,14 @@ void yyerror(char *errtxt) {
     RDB_errmsg(expr_txp->dbp->dbrootp->envp, "%s", errtxt);
 }
 
-int RDB_parse_expr(const char *txt, RDB_transaction *txp, RDB_expression **exp)
+int
+RDB_parse_expr(const char *txt, RDB_ltablefunc *lt_fp, void *lt_arg,
+        RDB_transaction *txp, RDB_expression **exp)
 {
     expr_txp = txp;
     expr_ret = RDB_OK;
+    expr_ltfp = lt_fp;
+    expr_arg = lt_arg;
 
     yy_scan_string(txt);
     if (yyparse() > 0) {
@@ -38,12 +44,14 @@ int RDB_parse_expr(const char *txt, RDB_transaction *txp, RDB_expression **exp)
     return RDB_OK;
 }
 
-int RDB_parse_table(const char *txt, RDB_transaction *txp, RDB_table **tbpp)
+int
+RDB_parse_table(const char *txt, RDB_ltablefunc *lt_fp, void *lt_arg,
+        RDB_transaction *txp, RDB_table **tbpp)
 {
     int ret;
     RDB_expression *exp;
 
-    ret = RDB_parse_expr(txt, txp, &exp);
+    ret = RDB_parse_expr(txt, lt_fp, lt_arg, txp, &exp);
     if (ret != RDB_OK)
         return ret;
 

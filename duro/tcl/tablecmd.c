@@ -445,7 +445,8 @@ table_expr_cmd(TclState *statep, Tcl_Interp *interp, int objc,
     }
     txp = Tcl_GetHashValue(entryp);
 
-    ret = RDB_parse_table(Tcl_GetStringFromObj(objv[objc - 2], NULL), txp, &tbp);
+    ret = RDB_parse_table(Tcl_GetStringFromObj(objv[objc - 2], NULL),
+            &Duro_get_ltable, statep, txp, &tbp);
     if (ret != RDB_OK) {
         Duro_dberror(interp, ret);
         return TCL_ERROR;
@@ -563,7 +564,7 @@ table_update_cmd(TclState *statep, Tcl_Interp *interp, int objc,
     if (objc % 2 == 1) {
         /* Read where conditon */
         ret = RDB_parse_expr(Tcl_GetStringFromObj(objv[3], NULL),
-                txp, &wherep);
+                Duro_get_ltable, statep, txp, &wherep);
         if (ret != RDB_OK) {
             Duro_dberror(interp, ret);
             return TCL_ERROR;
@@ -582,7 +583,7 @@ table_update_cmd(TclState *statep, Tcl_Interp *interp, int objc,
         updv[i].name = Tcl_GetStringFromObj(objv[upd_arg_idx + i * 2], NULL);
         ret = RDB_parse_expr(
                 Tcl_GetStringFromObj(objv[upd_arg_idx + i * 2 + 1], NULL),
-                txp, &updv[i].exp);
+                &Duro_get_ltable, statep, txp, &updv[i].exp);
         if (ret != RDB_OK) {
             Duro_dberror(interp, ret);
             ret = TCL_ERROR;
@@ -642,7 +643,7 @@ table_delete_cmd(TclState *statep, Tcl_Interp *interp, int objc,
     if (objc == 5) {
         /* Read where conditon */
         ret = RDB_parse_expr(Tcl_GetStringFromObj(objv[3], NULL),
-                txp, &wherep);
+                &Duro_get_ltable, statep, txp, &wherep);
         if (ret != RDB_OK) {
             Duro_dberror(interp, ret);
             return TCL_ERROR;

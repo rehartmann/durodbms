@@ -2,6 +2,8 @@
 
 %{
 #define YYDEBUG 1
+
+#include <dli/parse.h>
 #include <rel/rdb.h>
 #include <gen/strfns.h>
 #include <string.h>
@@ -9,6 +11,8 @@
 extern RDB_transaction *expr_txp;
 extern RDB_expression *resultp;
 extern int expr_ret;
+extern RDB_ltablefunc *expr_ltfp;
+extern void *expr_arg;
 
 static RDB_table *
 expr_to_table (const RDB_expression *exp);
@@ -115,7 +119,6 @@ enum {
 %%
 
 expression: or_expression { resultp = $1; }
-/*    | extractor { resultp = $1; } */
     | relation { resultp = $1; }
     | project { resultp = $1; }
     | select { resultp = $1; }
@@ -125,14 +128,6 @@ expression: or_expression { resultp = $1; }
     | wrap { resultp = $1; }
     | unwrap { resultp = $1; }
     ;
-
-/*
-extractor: TOK_ID FROM expression {
-    }
-    | TUPLE FROM expression {
-    }
-    ;
-*/
 
 project: primary_expression '{' attribute_name_list '}' {
         RDB_table *tbp, *restbp;
@@ -675,19 +670,29 @@ mul_expression: primary_expression
         ;
 
 primary_expression: TOK_ID
-        | literal
-        | count_invocation
-        | sum_invocation
-        | avg_invocation
-        | max_invocation
-        | min_invocation
-        | all_invocation
-        | any_invocation
-        | operator_invocation
-        | '(' expression ')' {
-            $$ = $2;
-        }
-        ;
+    | primary_expression '.' TOK_ID {
+        $$ = RDB_tuple_attr($1, $3->var.attr.name);
+        RDB_drop_expr($3);
+    }
+    | literal
+    | count_invocation
+    | sum_invocation
+    | avg_invocation
+    | max_invocation
+    | min_invocation
+    | all_invocation
+    | any_invocation
+    | operator_invocation
+    | '(' expression ')' {
+        $$ = $2;
+    }
+    ;
+
+/*
+extractor:      | TUPLE FROM expression {
+    }
+    ;
+*/
 
 count_invocation: TOK_COUNT '(' expression ')' {
             RDB_table *tbp = expr_to_table($3);
@@ -905,12 +910,12 @@ literal: /* "RELATION" '{' expression_list '}' {
         | "RELATION" '{' '}'
           '{' opt_expression_list '}' {
         }
-        | TUPLE '{' opt_tuple_item_list '}' {
-        }
         | "TABLE_DEE" {
         }
         | "TABLE_DUM" {
         }
+        | TUPLE '{' opt_tuple_item_list '}' {
+        } 
         | */ TOK_STRING
         | TOK_INTEGER
         | TOK_DECIMAL
@@ -955,6 +960,9 @@ expression_list: expression
 */
 %%
 
+RDB_table *
+RDB_get_ltable(void *arg);
+
 static RDB_table *
 expr_to_table(const RDB_expression *exp)
 {
@@ -963,6 +971,12 @@ expr_to_table(const RDB_expression *exp)
     if (exp->kind == RDB_ATTR) {
         RDB_table *tbp;
 
+        /* Try to find local table first */
+        tbp = (*expr_ltfp)(exp->var.attr.name, expr_arg);
+        if (tbp != NULL)
+            return tbp;
+
+        /* Local table not found, try to find global table */
         expr_ret = RDB_get_table(exp->var.attr.name, expr_txp, &tbp);
         if (expr_ret != RDB_OK)
             return NULL;

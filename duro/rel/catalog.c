@@ -207,8 +207,8 @@ new_nstypekey(const char *tbname, const char *attrname)
 }
 
 /* Insert the table pointed to by tbp into the catalog. */
-int
-_RDB_catalog_insert(RDB_table *tbp, RDB_transaction *txp)
+static int
+insert_rtable(RDB_table *tbp, RDB_transaction *txp)
 {
     RDB_object tpl;
     RDB_type *tuptyp = tbp->typ->var.basetyp;
@@ -387,6 +387,60 @@ _RDB_catalog_insert(RDB_table *tbp, RDB_transaction *txp)
     RDB_destroy_obj(&tpl);
 
     return RDB_OK;
+}
+
+static int
+insert_vtable(RDB_table *tbp, RDB_transaction *txp)
+{
+    int ret;
+    RDB_object tpl;
+    RDB_object defval;
+
+    RDB_init_obj(&tpl);
+    RDB_init_obj(&defval);
+
+    ret = RDB_tuple_set_string(&tpl, "TABLENAME", tbp->name);
+    if (ret != RDB_OK)
+        goto cleanup;
+
+    ret = RDB_tuple_set_bool(&tpl, "IS_USER", RDB_TRUE);
+    if (ret != RDB_OK)
+        goto cleanup;
+
+    ret = _RDB_table_to_obj(tbp, &defval);
+    if (ret != RDB_OK)
+        goto cleanup;
+    ret = RDB_tuple_set(&tpl, "I_DEF", &defval);
+    if (ret != RDB_OK)
+        goto cleanup;
+
+    ret = RDB_insert(txp->dbp->dbrootp->vtables_tbp, &tpl, txp);
+    if (ret != RDB_OK) {
+        if (ret == RDB_KEY_VIOLATION)
+            ret = RDB_ELEMENT_EXISTS;
+        goto cleanup;
+    }
+
+    ret = _RDB_dbtables_insert(tbp, txp);
+    if (ret != RDB_OK)
+        goto cleanup;
+
+    ret = RDB_OK;
+
+cleanup:
+    RDB_destroy_obj(&tpl);
+    RDB_destroy_obj(&defval);
+
+    return ret;
+}
+
+int
+_RDB_catalog_insert(RDB_table *tbp, RDB_transaction *txp)
+{
+    if (tbp->kind == RDB_TB_STORED)
+        return insert_rtable(tbp, txp);
+    else
+        return insert_vtable(tbp, txp);
 }
 
 /* Delete a real table from the catalog */
@@ -995,7 +1049,7 @@ _RDB_get_cat_vtable(const char *name, RDB_transaction *txp, RDB_table **tbpp)
     RDB_bool usr;
     int ret;
 
-    /* read real table data from the catalog */
+    /* read virtual table data from the catalog */
 
     RDB_init_array(&arr);
 

@@ -142,6 +142,7 @@ enum _RDB_expr_kind {
 
     RDB_OP_IS_EMPTY,
     RDB_OP_AGGREGATE,
+    RDB_OP_TUPLE_ATTR,
     RDB_OP_GET_COMP,
     RDB_SELECTOR,
     RDB_USER_OP
@@ -159,7 +160,8 @@ typedef struct RDB_expression {
         struct {
             struct RDB_expression *arg1;
             struct RDB_expression *arg2;
-            char *name;	/* only for RDB_OP_GET_COMP and RDB_OP_AGGREGATE */
+            char *name;	/* only for RDB_OP_GET_COMP, RDB_OP_AGGREGATE,
+                           and RDB_OP_TUPLE_ATTR */
             RDB_aggregate_op op; /* only for RDB_OP_AGGREGATE */
         } op;
         struct {
@@ -699,11 +701,11 @@ RDB_tuple_set_rational(RDB_object *, const char *name, RDB_rational val);
 int
 RDB_tuple_set_string(RDB_object *, const char *name, const char *valp);
 
-/**
+/*
  * Return a pointer to the tuple's value corresponding to name name.
  * The pointer returned will become invalid if RDB_destroy_tuple()
  * is called if the attribute is overwritten
- * by calling RDB_set_tuple_attr() with the same name argument.
+ * by calling RDB_tuple_set() with the same name argument.
  * If an attribute of name name does not exist, NULL is returned.
  */
 RDB_object *
@@ -1027,6 +1029,9 @@ RDB_expr_all(RDB_expression *, const char *attrname);
 
 RDB_expression *
 RDB_expr_any(RDB_expression *, const char *attrname);
+
+RDB_expression *
+RDB_tuple_attr(RDB_expression *, const char *attrname);
 
 RDB_expression *
 RDB_expr_comp(RDB_expression *, const char *);

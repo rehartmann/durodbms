@@ -1281,10 +1281,6 @@ RDB_set_table_name(RDB_table *tbp, const char *name, RDB_transaction *txp)
 int
 RDB_make_persistent(RDB_table *tbp, RDB_transaction *txp)
 {
-    RDB_object tpl;
-    RDB_object defval;
-    int ret;
-
     if (tbp->is_persistent)
         return RDB_OK;
 
@@ -1298,43 +1294,7 @@ RDB_make_persistent(RDB_table *tbp, RDB_transaction *txp)
     if (!RDB_tx_is_running(txp))
         return RDB_INVALID_TRANSACTION;
 
-    RDB_init_obj(&tpl);
-    RDB_init_obj(&defval);
-
-    ret = RDB_tuple_set_string(&tpl, "TABLENAME", tbp->name);
-    if (ret != RDB_OK)
-        goto error;
-
-    ret = RDB_tuple_set_bool(&tpl, "IS_USER", RDB_TRUE);
-    if (ret != RDB_OK)
-        goto error;
-
-    ret = _RDB_table_to_obj(tbp, &defval);
-    if (ret != RDB_OK)
-        goto error;
-    ret = RDB_tuple_set(&tpl, "I_DEF", &defval);
-    if (ret != RDB_OK)
-        goto error;
-
-    ret = RDB_insert(txp->dbp->dbrootp->vtables_tbp, &tpl, txp);
-    if (ret != RDB_OK) {
-        if (ret == RDB_KEY_VIOLATION)
-            ret = RDB_ELEMENT_EXISTS;
-        goto error;
-    }
-
-    ret = _RDB_dbtables_insert(tbp, txp);
-    if (ret != RDB_OK)
-        goto error;
-
-    RDB_destroy_obj(&tpl);
-    RDB_destroy_obj(&defval);
-
-    return RDB_OK;
-error:
-    RDB_destroy_obj(&tpl);
-    RDB_destroy_obj(&defval);
-    return ret;
+    return _RDB_catalog_insert(tbp, txp);
 }
 
 int

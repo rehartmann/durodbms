@@ -165,6 +165,32 @@ duro_to_tcl(Tcl_Interp *interp, const RDB_object *objp)
     if (typ == &RDB_BOOLEAN) {
         return Tcl_NewBooleanObj((int) RDB_obj_bool(objp));
     }
+    if (typ == &RDB_BINARY) {
+        Tcl_Obj *tobjp;
+        void *datap;
+        int ret;
+        size_t len = RDB_binary_length(objp);
+
+        if (len < 0) {
+            Duro_dberror(interp, ret);
+            return NULL;
+        }
+
+        datap = malloc(len);
+        if (datap == NULL)
+            return NULL;
+
+        ret = RDB_binary_get(objp, 0, datap, len);
+        if (ret != RDB_OK) {
+            free(datap);
+            Duro_dberror(interp, ret);
+            return NULL;
+        }
+
+        tobjp = Tcl_NewByteArrayObj(datap, len);
+        free(datap);
+        return tobjp;
+    }
     Tcl_SetResult(interp, "Unsupported type", TCL_STATIC);
     return NULL;
 }

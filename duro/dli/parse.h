@@ -5,10 +5,14 @@
 
 #include <rel/rdb.h>
 
-int
-RDB_parse_expr(const char *, RDB_transaction *, RDB_expression **);
+typedef RDB_table *RDB_ltablefunc(const char *, void *);
 
 int
-RDB_parse_table(const char *txt, RDB_transaction *, RDB_table **tbpp);
+RDB_parse_expr(const char *, RDB_ltablefunc *, void *, RDB_transaction *,
+        RDB_expression **);
+
+int
+RDB_parse_table(const char *txt, RDB_ltablefunc *, void *, RDB_transaction *,
+        RDB_table **);
 
 #endif
