@@ -32,6 +32,7 @@ new_recmap(RDB_recmap **rmpp, const char *namp, const char *filenamp,
     if (rmp == NULL)
         return RDB_NO_MEMORY;
 
+    rmp->envp = envp;
     rmp->filenamp = NULL;
     rmp->fieldlens = NULL;
     if (namp != NULL) {
@@ -625,27 +626,32 @@ _RDB_update_rec(RDB_recmap *rmp, DBT *keyp, DBT *datap,
 }
 
 int
-RDB_update_rec(RDB_recmap *recmapp, RDB_field keyv[],
+RDB_update_rec(RDB_recmap *rmp, RDB_field keyv[],
                int fieldc, const RDB_field fieldv[], DB_TXN *txid)
 {
     DBT key, data;
     int ret;
 
-    ret = key_to_DBT(recmapp, keyv, &key);
+    ret = key_to_DBT(rmp, keyv, &key);
     if (ret != RDB_OK)
         return RDB_convert_err(ret);
     memset(&data, 0, sizeof (data));
     data.flags = DB_DBT_REALLOC;
 
-    ret = recmapp->dbp->get(recmapp->dbp, txid, &key, &data, 0);
+    ret = rmp->dbp->get(rmp->dbp, txid, &key, &data, 0);
     if (ret != 0)
         goto cleanup;
 
-    ret = _RDB_update_rec(recmapp, &key, &data, fieldc, fieldv, txid);
+    ret = _RDB_update_rec(rmp, &key, &data, fieldc, fieldv, txid);
 
 cleanup:
     free(key.data);
     free(data.data);
+
+    if (ret != RDB_OK && rmp->envp != NULL
+            && ret != RDB_ELEMENT_EXISTS && ret != RDB_KEY_VIOLATION) {
+        RDB_errmsg(rmp->envp, "cannot update record: %s", RDB_strerror(ret));
+    }
     
     return RDB_convert_err(ret);
 }

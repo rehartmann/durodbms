@@ -81,6 +81,8 @@ Durotcl_Init(Tcl_Interp *interp)
             (ClientData)statep, NULL);
     Tcl_CreateCommand(interp, "duro::rollback", Duro_rollback_cmd,
             (ClientData)statep, NULL);
+    Tcl_CreateCommand(interp, "duro::txdb", Duro_txdb_cmd,
+            (ClientData)statep, NULL);
     Tcl_CreateCommand(interp, "duro::db", Duro_db_cmd,
             (ClientData)statep, NULL);
     Tcl_CreateObjCommand(interp, "duro::table", Duro_table_cmd,

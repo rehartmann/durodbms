@@ -33,6 +33,10 @@ Duro_tcl_close_env(TclState *statep, RDB_environment *envp, Tcl_HashEntry *entry
     return RDB_close_env(envp);
 }
 
+/*
+ * Invoke command "dberror" with the error message as argument.
+ * If this fails, write the message to standard error.
+ */
 static void
 dberror(const char *msg, void *arg)
 {
@@ -43,9 +47,22 @@ dberror(const char *msg, void *arg)
     objv[0] = Tcl_NewStringObj("dberror", strlen("dberror"));
     objv[1] = Tcl_NewStringObj(msg, strlen(msg));
 
+    /* 
+     * Required, otherwise the program crashes when the "dberror" command
+     * does not exist
+     */
+    Tcl_IncrRefCount(objv[0]);
+    Tcl_IncrRefCount(objv[1]);
+
     ret = Tcl_EvalObjv(interp, 2, objv, 0);
-    if (ret != TCL_OK)
-        fputs(msg, stderr);
+    if (ret == TCL_ERROR)
+        fprintf(stderr, "%s\n", msg);
+
+    Tcl_DecrRefCount(objv[0]);
+    Tcl_DecrRefCount(objv[1]);
+
+    /* Ignore result of Tcl command evaluation */
+    Tcl_ResetResult(interp);
 }
 
 int

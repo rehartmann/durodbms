@@ -21,7 +21,8 @@ proc ptable {tbl tx} {
 }
 
 # Return a list of all tables of a database
-proc tables {db sys tx} {
+proc tables {sys tx} {
+    set db [duro::txdb $tx]
     set tables ""
     set cond ""
     if {!$sys} {

@@ -59,7 +59,8 @@ delete_stored(RDB_table *tbp, RDB_expression *condp, RDB_transaction *txp)
     RDB_bool b;
     RDB_type *tpltyp = tbp->typ->var.basetyp;
 
-    ret = RDB_recmap_cursor(&curp, tbp->var.stored.recmapp, 0, txp->txid);
+    ret = RDB_recmap_cursor(&curp, tbp->var.stored.recmapp, 0,
+            tbp->is_persistent ? txp->txid : NULL);
     if (ret != RDB_OK)
         return ret;
     ret = RDB_cursor_first(curp);

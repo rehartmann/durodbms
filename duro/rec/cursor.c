@@ -41,7 +41,11 @@ RDB_recmap_cursor(RDB_cursor **curpp, RDB_recmap *rmp, RDB_bool wr,
         flags |= DB_WRITECURSOR;
     ret = rmp->dbp->cursor(rmp->dbp, txid, &curp->cursorp, flags);
     if (ret != 0) {
-        free(curp);        
+        free(curp);
+        if (rmp->envp != NULL) {
+            RDB_errmsg(rmp->envp, "cannot create cursor: %s",
+                    db_strerror(ret));
+        }
         return RDB_convert_err(ret);
     }
     *curpp = curp;
@@ -63,6 +67,10 @@ RDB_index_cursor(RDB_cursor **curpp, RDB_index *idxp, RDB_bool wr,
     ret = idxp->dbp->cursor(idxp->dbp, txid, &curp->cursorp, flags);
     if (ret != 0) {
         free(curp);        
+        if (curp->recmapp->envp != NULL) {
+            RDB_errmsg(curp->recmapp->envp, "cannot create index cursor: %s",
+                    db_strerror(ret));
+        }
         return RDB_convert_err(ret);
     }
     *curpp = curp;
@@ -151,6 +159,10 @@ RDB_cursor_update(RDB_cursor *curp, int fieldc, const RDB_field fieldv[])
 
     ret = _RDB_update_rec(curp->recmapp, &pkey, &data, fieldc, fieldv,
             curp->txid);
+    if (ret != RDB_OK && curp->recmapp->envp != NULL
+            && ret != RDB_ELEMENT_EXISTS && ret != RDB_KEY_VIOLATION) {
+        RDB_errmsg(curp->recmapp->envp, "cannot update record: %s", RDB_strerror(ret));
+    }
 
 cleanup:
     return RDB_convert_err(ret);

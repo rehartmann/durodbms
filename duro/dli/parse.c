@@ -35,7 +35,7 @@ RDB_parse_expr(const char *txt, RDB_ltablefn *lt_fp, void *lt_arg,
     if (yyparse() > 0) {
         if (expr_ret == RDB_OK) {
             /* syntax error */
-            return RDB_INVALID_ARGUMENT;
+            return RDB_SYNTAX;
         }
         return expr_ret;
     }

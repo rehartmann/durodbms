@@ -17,14 +17,21 @@ package require Tktable
 # tableattrs	list of table attributes
 # tablekey      table key
 # tabletypes    array which maps table attributes to their types
-# 
+# ltables	local tables
+#
 
+#
+# Write log msg into error log window
+#
 proc dberror {msg} {
     .errlog.msgs configure -state normal
     .errlog.msgs insert end $msg\n
     .errlog.msgs configure -state disabled
 }
 
+#
+# Make error log window visible
+#
 proc show_errlog {} {
     wm state .errlog normal
 }
@@ -36,14 +43,18 @@ proc show_tables {} {
 
     .tables delete 0 end
 
+    # Read global tables
     if {[catch {
         set tx [duro::begin $::dbenv $::db]
-        set tables [duro::tables $::db $::showsys $tx]
+        set tables [duro::tables $::showsys $tx]
         duro::commit $tx
     } msg]} {
         catch {duro::rollback $tx}
         tk_messageBox -type ok -title "Error" -message $msg -icon error
     }
+
+    # Add local tables
+    set tables [concat $tables $::ltables]
 
     foreach tb $tables {
         .tables insert end $tb
@@ -186,15 +197,6 @@ proc add_tuples {arr tx rowcount} {
     }
 }
 
-# unused
-proc get_sortspec {} {
-    set sortspec {}
-    foreach i $::tablekey {
-        lappend sortspec $i asc
-    }
-    return $sortspec
-}
-
 proc show_table {} {
     set table [.tables get anchor]
     if {$table == ""} {
@@ -296,7 +298,7 @@ proc create_db {} {
         }
         if {$::newdbname == ""} {
             tk_messageBox -type ok -title "Error" \
-                    -message "Please enter a table name." -icon warning
+                    -message "Please enter a database name." -icon warning
             continue
         }
 
@@ -311,13 +313,17 @@ proc create_db {} {
     show_tables
 }
 
+proc get_types {} {
+    return {STRING INTEGER RATIONAL BINARY}
+}
+
 proc set_attr_row {i} {
+    set menucmd [concat "tk_optionMenu .dialog.tabledef.type$i ::type($i)" \
+            [get_types]]
     if {$i == 0} {
-        set ::mw [tk_optionMenu .dialog.tabledef.type$i ::type($i) \
-                STRING INTEGER RATIONAL BINARY]
+        set ::mw [eval $menucmd]
     } else {
-        tk_optionMenu .dialog.tabledef.type$i ::type($i) \
-                STRING INTEGER RATIONAL BINARY
+        eval $menucmd
     }
     .dialog.tabledef window configure [expr $i + 1],1 \
             -window .dialog.tabledef.type$i
@@ -340,7 +346,7 @@ proc add_attr_row {} {
 
 proc create_rtable {} {
     toplevel .dialog
-    wm title .dialog "Create table"
+    wm title .dialog "Create real table"
     wm geometry .dialog "+300+300"
 
     set ::newtablename ""
@@ -351,15 +357,17 @@ proc create_rtable {} {
     checkbutton .dialog.global -text "Global" -variable tableflag \
             -onvalue -global -offvalue -local
 
-    set ::action ok
-    frame .dialog.buttons
-    button .dialog.buttons.ok -text OK -command {set action ok}
-    button .dialog.buttons.cancel -text Cancel -command {set action cancel}
-
     set attrcount 4
 
     table .dialog.tabledef -titlerows 1 -rows [expr {$attrcount +1}] \
             -cols 3 -variable tabledef -anchor w
+
+    button .dialog.addattr -text "Add attribute" -command add_attr_row
+
+    set ::action ok
+    frame .dialog.buttons
+    button .dialog.buttons.ok -text OK -command {set action ok}
+    button .dialog.buttons.cancel -text Cancel -command {set action cancel}
 
     set ::tabledef(0,0) "Attribute name"
     set ::tabledef(0,1) Type
@@ -380,8 +388,6 @@ proc create_rtable {} {
     $::mw invoke 0
 
     .dialog.tabledef.key0,0 select
-
-    button .dialog.addattr -text "Add attribute" -command add_attr_row
 
     pack .dialog.buttons -side bottom
     pack .dialog.buttons.ok .dialog.buttons.cancel -side left
@@ -436,6 +442,9 @@ proc create_rtable {} {
      }
 
     .tables insert end $::newtablename
+    if {$::tableflag == "-local"} {
+        lappend ::ltables $::newtablename
+    }
 
     destroy .dialog
 }
@@ -452,14 +461,14 @@ proc create_vtable {} {
     set ::tableflag -global
     checkbutton .dialog.global -text "Global" -variable tableflag \
             -onvalue -global -offvalue -local
+    label .dialog.defl -text "Table definition:"
+    text .dialog.tabledef
 
     set ::action ok
     frame .dialog.buttons
     button .dialog.buttons.ok -text OK -command {set action ok}
     button .dialog.buttons.cancel -text Cancel -command {set action cancel}
 
-    label .dialog.defl -text "Table definition:"
-    text .dialog.tabledef
 
     pack .dialog.buttons -side bottom
     pack .dialog.buttons.ok .dialog.buttons.cancel -side left
@@ -495,6 +504,9 @@ proc create_vtable {} {
     }
 
     .tables insert end $::newtablename
+    if {$::tableflag == "-local"} {
+        lappend ::ltables $::newtablename
+    }
 
     destroy .dialog
 }
@@ -533,6 +545,12 @@ proc drop_table {} {
 
         .tables delete active
         .mbar.db.drop entryconfigure 2 -state disabled
+
+        # If the table is local, delete it from the list of local tables
+        set ti [lsearch $::ltables $table]
+        if {$ti != -1} {
+            lreplace ::ltables $ti $ti
+        }
     } msg]} {
         catch {duro::rollback $tx}
         tk_messageBox -type ok -title "Error" -message $msg -icon error
@@ -713,6 +731,7 @@ proc browse {old new} {
 
 set duroadmin(initrows) 20
 set dbenv ""
+set ltables {}
 
 wm title . Duroadmin
 menu .mbar

@@ -38,6 +38,7 @@ typedef struct {
 
 typedef struct {
     /* internal */
+    RDB_environment *envp;
     DB *dbp;
     char *namp;
     char *filenamp;

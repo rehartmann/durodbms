@@ -79,7 +79,8 @@ update_stored_complex(RDB_table *tbp, RDB_expression *condp,
     if (ret != RDB_OK)
         goto cleanup;
 
-    ret = RDB_recmap_cursor(&curp, tbp->var.stored.recmapp, 0, txp->txid);
+    ret = RDB_recmap_cursor(&curp, tbp->var.stored.recmapp, 0,
+            tbp->is_persistent ? txp->txid : NULL);
     if (ret != RDB_OK)        
         goto cleanup;
     ret = RDB_cursor_first(curp);
@@ -247,7 +248,7 @@ update_stored_simple(RDB_table *tbp, RDB_expression *condp,
      * evaluates to true.
      */
     ret = RDB_recmap_cursor(&curp, tbp->var.stored.recmapp,
-            0, txp->txid);
+            0, tbp->is_persistent ? txp->txid : NULL);
     if (ret != RDB_OK)        
         return ret;
 
@@ -423,14 +424,7 @@ update_select_pindex(RDB_table *tbp, RDB_expression *condp,
     }
         
     ret = RDB_update_rec(tbp->var.select.tbp->var.stored.recmapp, fvv, updc,
-            fieldv, txp->txid);
-    if (ret != RDB_OK) {
-        if (RDB_is_syserr(ret))
-            RDB_errmsg(txp->dbp->dbrootp->envp, "cannot update record: %s",
-                   RDB_strerror(ret));
-        goto cleanup;
-    }
-    ret = RDB_OK;
+            fieldv, tbp->var.select.tbp->is_persistent ? txp->txid : NULL);
 
 cleanup:
     for (i = 0; i < updc; i++)
@@ -475,10 +469,6 @@ update_select_index_simple(RDB_table *tbp, RDB_expression *condp,
     ret = RDB_index_cursor(&curp, tbp->var.select.indexp->idxp,
             0, tbp->var.select.tbp->is_persistent ? txp->txid : NULL);
     if (ret != RDB_OK) {
-        if (txp != NULL) {
-            RDB_errmsg(txp->dbp->dbrootp->envp, "cannot create cursor: %s",
-                    RDB_strerror(ret));
-        }
         return ret;
     }
 
@@ -542,12 +532,8 @@ update_select_index_simple(RDB_table *tbp, RDB_expression *condp,
             }
                 
             ret = RDB_cursor_update(curp, updc, fieldv);
-            if (ret != RDB_OK) {
-                if (RDB_is_syserr(ret))
-                    RDB_errmsg(txp->dbp->dbrootp->envp, "cannot update record: %s",
-                           RDB_strerror(ret));
+            if (ret != RDB_OK)
                 goto cleanup;
-            }
         }
         ret = RDB_cursor_next_dup(curp);
     } while (ret == RDB_OK);

@@ -137,3 +137,26 @@ Duro_rollback_cmd(ClientData data, Tcl_Interp *interp, int argc, CONST char *arg
     }
     return RDB_OK;
 }
+
+int
+Duro_txdb_cmd(ClientData data, Tcl_Interp *interp, int argc, CONST char *argv[])
+{
+    RDB_transaction *txp;
+    Tcl_HashEntry *entryp;
+    TclState *statep = (TclState *) data;
+
+    if (argc != 2) {
+        Tcl_SetResult(interp, "wrong # args: should be \"txdb tx\"",
+                TCL_STATIC);
+        return TCL_ERROR;
+    }
+
+    entryp = Tcl_FindHashEntry(&statep->txs, argv[1]);
+    if (entryp == NULL) {
+        Tcl_AppendResult(interp, "Unknown transaction: ", argv[1], NULL);
+        return TCL_ERROR;
+    }
+    txp = Tcl_GetHashValue(entryp);
+    Tcl_SetResult(interp, RDB_db_name(RDB_tx_db(txp)), TCL_VOLATILE);
+    return RDB_OK;
+}

@@ -46,6 +46,8 @@ RDB_strerror(int err)
             return "result of aggregate operation is undefined";
         case RDB_TYPE_CONSTRAINT_VIOLATION:
             return "type constraint violation";
+        case RDB_SYNTAX:
+            return "syntax error";
 
         case RDB_NOT_SUPPORTED:
             return "operation or option not supported";

@@ -43,6 +43,9 @@ int
 Duro_commit_cmd(ClientData data, Tcl_Interp *interp, int argc, CONST char *argv[]);
 
 int
+Duro_txdb_cmd(ClientData data, Tcl_Interp *interp, int argc, CONST char *argv[]);
+
+int
 Duro_rollback_cmd(ClientData data, Tcl_Interp *interp, int argc, CONST char *argv[]);
 
 int
