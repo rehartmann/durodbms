@@ -3,7 +3,6 @@
 <html lang="en">
 <head>
 <title>Duro 0.6 Release Notes</title>
-<!-- $Id$ -->
 <body>
 <h1>Release Notes for Duro 0.6</h1>
 
@@ -55,16 +54,16 @@ of another.
 <h3>RDB_insert</h3>
 
 <p>RDB_insert is not supported for virtual tables which are the result
-of a MINUS, project, SUMMARIZE, or RENAME.
+of a MINUS, SUMMARIZE, or RENAME.
 
 <h3>RDB_update</h3>
 
-<p>RDB_update is not supported for virtual tables.
+<p>RDB_update is not supported for virtual tables except project.
 
 <h3>RDB_delete</h3>
 
 <p>RDB_delete is not supported for virtual tables which are the result of
-a select, JOIN, EXTEND, project, SUMMARIZE, or RENAME .
+a select, JOIN, EXTEND, project, SUMMARIZE, or RENAME.
 
 <h3>RDB_summarize</h3>
 
@@ -111,5 +110,7 @@ environment directory. The directory must exist and should be empty.
 
 <p>The path passed to RDB_open_env is a Berkeley DB database
 environment directory.
+
+<p>$Id$
 
 </html>

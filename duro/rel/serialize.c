@@ -115,7 +115,7 @@ serialize_expr(RDB_object *valp, int *posp, const RDB_expression *exp)
             return serialize_str(valp, posp, exp->var.attr.name);
         case RDB_OP_NOT:
         case RDB_OP_NEGATE:
-        case RDB_OP_REL_IS_EMPTY:
+        case RDB_OP_IS_EMPTY:
         case RDB_OP_STRLEN:
             return serialize_expr(valp, posp, exp->var.op.arg1);
         case RDB_OP_EQ:
@@ -564,7 +564,7 @@ deserialize_expr(RDB_object *valp, int *posp, RDB_transaction *txp,
             if (*expp == NULL)
                 return RDB_NO_MEMORY;
             break;
-        case RDB_OP_REL_IS_EMPTY:
+        case RDB_OP_IS_EMPTY:
             /* not implemented */
             abort();
 /*

@@ -4,6 +4,7 @@
 #define YYDEBUG 1
 #include <rel/rdb.h>
 #include <gen/strfns.h>
+#include <string.h>
 
 extern RDB_transaction *expr_txp;
 extern RDB_expression *resultp;
@@ -42,6 +43,10 @@ enum {
         int renc;
         RDB_renaming renv[DURO_MAX_LLEN];
     } renlist;
+    struct {
+        int argc;
+        RDB_expression *argv[DURO_MAX_LLEN];
+    } arglist;
 }
 
 %token <exp> ID
@@ -92,6 +97,8 @@ enum {
 %type <addlist> summarize_add summarize_add_list summary summary_type
 
 %type <renlist> renaming renaming_list
+
+%type <arglist> opt_argument_list argument_list
 
 %%
 
@@ -561,15 +568,40 @@ primary_expression: ID
         }
         ;
 
-operator_invocation: ID '(' opt_argument_list ')'
+operator_invocation: ID '(' opt_argument_list ')' {
+            if (strcmp ($1->var.attr.name, "CARDINALITY") == 0) {
+                if ($3.argc != 1) {
+                    YYERROR;
+                } else {
+                    $$ = RDB_expr_cardinality($3.argv[0]);
+                    if ($$ == NULL)
+                        YYERROR;
+                }
+             } else {
+                 /* .... */
+             }
+        }
         ;
 
-opt_argument_list:
+opt_argument_list: {
+            $$.argc = 0;
+        }
         | argument_list
         ;
 
-argument_list: expression
-        | argument_list ',' expression
+argument_list: expression {
+            $$.argc = 1;
+            $$.argv[0] = $1;
+        }
+        | argument_list ',' expression {
+            int i;
+
+            for (i = 0; i < $1.argc; i++) {
+                $$.argv[i] = $1.argv[i];
+            }
+            $$.argv[$1.argc] = $3;
+            $$.argc = $1.argc + 1;
+        }
         ;
 
 literal: /* "RELATION" '{' expression_list '}' {

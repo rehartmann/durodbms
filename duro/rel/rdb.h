@@ -139,7 +139,7 @@ enum _RDB_expr_kind {
     RDB_OP_REGMATCH,
     RDB_OP_CONCAT,
 
-    RDB_OP_REL_IS_EMPTY,
+    RDB_OP_IS_EMPTY,
     RDB_OP_AGGREGATE,
     RDB_OP_GET_COMP,
     RDB_SELECTOR,
@@ -587,6 +587,9 @@ RDB_extract_tuple(RDB_table *, RDB_tuple *, RDB_transaction *);
 int
 RDB_table_is_empty(RDB_table *, RDB_transaction *, RDB_bool *resultp);
 
+int
+RDB_cardinality(RDB_table *tbp, RDB_transaction *txp);
+
 /*
  * The following functions create virtual relvars.
  * The created relvar will have no name and be transient.
@@ -951,6 +954,12 @@ RDB_concat(RDB_expression *, RDB_expression *);
  */
 RDB_expression *
 RDB_expr_table(RDB_table *);
+
+RDB_expression *
+RDB_expr_is_empty(RDB_expression *arg1);
+
+RDB_expression *
+RDB_expr_cardinality(RDB_expression *arg1);
 
 RDB_expression *
 RDB_expr_aggregate(RDB_expression *, RDB_aggregate_op op, const char *attrname);

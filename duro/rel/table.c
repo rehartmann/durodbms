@@ -201,7 +201,7 @@ RDB_delete(RDB_table *tbp, RDB_expression *condp, RDB_transaction *txp)
         case RDB_TB_EXTEND:
             return RDB_NOT_SUPPORTED;
         case RDB_TB_PROJECT:
-            return RDB_delete(tbp->var.project.tbp, condp, txp);;
+            return RDB_delete(tbp->var.project.tbp, condp, txp);
         case RDB_TB_SUMMARIZE:
             return RDB_NOT_SUPPORTED;
         case RDB_TB_RENAME:
@@ -290,8 +290,17 @@ RDB_aggregate(RDB_table *tbp, RDB_aggregate_op op, const char *attrname,
     int ret;
     int count; /* only needed for AVG */
 
+    if (op == RDB_COUNT) {
+        resultp->typ = &RDB_INTEGER;
+        ret = RDB_cardinality(tbp, txp);
+        if (ret < 0)
+            return ret;
+        resultp->var.int_val = ret;
+        return RDB_OK;
+    }
+
     /* attrname may only be NULL if op == RDB_AVG or table is unary */
-    if (attrname == NULL && op != RDB_COUNT) {
+    if (attrname == NULL) {
         if (tbp->typ->var.basetyp->var.tuple.attrc != 1)
             return RDB_INVALID_ARGUMENT;
         attrname = tbp->typ->var.basetyp->var.tuple.attrv[0].name;
@@ -309,9 +318,6 @@ RDB_aggregate(RDB_table *tbp, RDB_aggregate_op op, const char *attrname,
 
     /* initialize result */
     switch (op) {
-        case RDB_COUNT:
-            resultp->var.int_val = 0;
-            break;
         case RDB_AVG:
             if (!RDB_type_is_numeric(attrtyp))
                 return RDB_TYPE_MISMATCH;
@@ -356,7 +362,9 @@ RDB_aggregate(RDB_table *tbp, RDB_aggregate_op op, const char *attrname,
         break;
     }
 
-    /* perform aggregation */
+    /*
+     * Perform aggregation
+     */
 
     RDB_init_tuple(&tpl);
 
@@ -371,9 +379,6 @@ RDB_aggregate(RDB_table *tbp, RDB_aggregate_op op, const char *attrname,
 
     while ((ret = _RDB_next_tuple(qrp, &tpl, txp)) == RDB_OK) {
         switch (op) {
-            case RDB_COUNT:
-                resultp->var.int_val++;
-                break;
             case RDB_SUM:
                 if (attrtyp == &RDB_INTEGER)
                     resultp->var.int_val += RDB_tuple_get_int(&tpl, attrname);
@@ -724,6 +729,40 @@ RDB_table_is_empty(RDB_table *tbp, RDB_transaction *txp, RDB_bool *resultp)
     RDB_destroy_tuple(&tpl);
     return _RDB_drop_qresult(qrp, txp);
 }
+
+int
+RDB_cardinality(RDB_table *tbp, RDB_transaction *txp)
+{
+    int ret;
+    int count;
+    RDB_qresult *qrp;
+    RDB_tuple tpl;
+
+    if (!RDB_tx_is_running(txp))
+        return RDB_INVALID_TRANSACTION;
+
+    ret = _RDB_table_qresult(tbp, txp, &qrp);
+    if (ret != RDB_OK)
+        return ret;
+
+    RDB_init_tuple(&tpl);
+
+    count = 0;
+    while ((ret = _RDB_next_tuple(qrp, &tpl, txp)) == RDB_OK) {
+        count++;
+    }
+    RDB_destroy_tuple(&tpl);
+    if (ret != RDB_NOT_FOUND) {
+        _RDB_drop_qresult(qrp, txp);
+        return ret;
+    }
+
+    ret = _RDB_drop_qresult(qrp, txp);
+    if (ret != RDB_OK)
+        return ret;
+    return count;
+}
+
 
 static RDB_string_vec *
 dup_keys(int keyc, RDB_string_vec *keyv) {

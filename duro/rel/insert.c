@@ -193,19 +193,27 @@ RDB_insert(RDB_table *tbp, const RDB_tuple *tup, RDB_transaction *txp)
             for (i = 0; i < tbp->var.extend.attrc; i++) {
                 RDB_virtual_attr *vattrp = &tbp->var.extend.attrv[i];
                 RDB_object val;
+                RDB_object *valp;
                 RDB_bool iseq;
                 
+                valp = RDB_tuple_get(tup, vattrp->name);
+                if (valp == NULL) {
+                    return RDB_INVALID_ARGUMENT;
+                }
+                RDB_init_obj(&val);
                 ret = RDB_evaluate(vattrp->exp, tup, txp, &val);
-                if (ret != RDB_OK)
+                if (ret != RDB_OK) {
+                    RDB_destroy_obj(&val);
                     return ret;
-                iseq = RDB_obj_equals(&val, (RDB_object *)RDB_tuple_get(
-                        tup, vattrp->name));
+                }
+                iseq = RDB_obj_equals(&val, valp);
                 RDB_destroy_obj(&val);
                 if (!iseq)
                     return RDB_PREDICATE_VIOLATION;
             }
         
-            /* Insert the tuple (the additional attribute(s) don't do any harm)
+            /*
+             * Insert the tuple (the additional attribute(s) don't do any harm)
              */
              return RDB_insert(tbp->var.extend.tbp, tup, txp);
         }

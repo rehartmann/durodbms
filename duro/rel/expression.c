@@ -34,7 +34,7 @@ RDB_expr_type(const RDB_expression *exp, const RDB_type *tuptyp)
         case RDB_OP_AND:
         case RDB_OP_OR:
         case RDB_OP_REGMATCH:
-        case RDB_OP_REL_IS_EMPTY:
+        case RDB_OP_IS_EMPTY:
             return &RDB_BOOLEAN;
         case RDB_OP_ADD:
         case RDB_OP_SUBTRACT:
@@ -336,25 +336,34 @@ RDB_expr_table(RDB_table *tbp)
 RDB_expression *
 RDB_expr_is_empty(RDB_expression *arg1)
 {
-    return _RDB_create_unexpr(arg1, RDB_OP_REL_IS_EMPTY);
+    return _RDB_create_unexpr(arg1, RDB_OP_IS_EMPTY);
 }
 
 RDB_expression *
-RDB_expr_aggregate(RDB_expression *arg1, RDB_aggregate_op op,
+RDB_expr_aggregate(RDB_expression *arg, RDB_aggregate_op op,
         const char *attrname)
 {
-    RDB_expression *exp = _RDB_create_unexpr(arg1, RDB_OP_AGGREGATE);
+    RDB_expression *exp = _RDB_create_unexpr(arg, RDB_OP_AGGREGATE);
 
     if (exp == NULL)
         return NULL;
-    exp->var.op.name = RDB_dup_str(attrname);
-    if (exp->var.op.name == NULL) {
-        free(exp);
-        return NULL;
+    if (attrname != NULL) {
+        exp->var.op.name = RDB_dup_str(attrname);
+        if (exp->var.op.name == NULL) {
+            free(exp);
+            return NULL;
+        }
+    } else {
+        exp->var.op.name = NULL;
     }
     exp->var.op.op = op;
 
     return exp;
+}
+
+RDB_expression *
+RDB_expr_cardinality(RDB_expression *arg) {
+    return RDB_expr_aggregate(arg, RDB_COUNT, NULL);
 }
 
 RDB_expression *
@@ -467,7 +476,7 @@ RDB_drop_expr(RDB_expression *exp)
             RDB_drop_expr(exp->var.op.arg2);
         case RDB_OP_NOT:
         case RDB_OP_NEGATE:
-        case RDB_OP_REL_IS_EMPTY:
+        case RDB_OP_IS_EMPTY:
         case RDB_OP_STRLEN:
             RDB_drop_expr(exp->var.op.arg1);
             break;
@@ -1068,7 +1077,7 @@ RDB_evaluate(RDB_expression *exp, const RDB_tuple *tup, RDB_transaction *txp,
 
             return RDB_OK;
         }           
-        case RDB_OP_REL_IS_EMPTY:
+        case RDB_OP_IS_EMPTY:
         case RDB_TABLE:
             return RDB_NOT_SUPPORTED;
     }
@@ -1124,7 +1133,7 @@ _RDB_expr_refers(RDB_expression *exp, RDB_table *tbp)
                     || _RDB_expr_refers(exp->var.op.arg2, tbp));
         case RDB_OP_NOT:
         case RDB_OP_NEGATE:
-        case RDB_OP_REL_IS_EMPTY:
+        case RDB_OP_IS_EMPTY:
         case RDB_OP_STRLEN:
         case RDB_OP_GET_COMP:
             return _RDB_expr_refers(exp->var.op.arg1, tbp);
