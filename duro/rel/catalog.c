@@ -517,6 +517,14 @@ delete_rtable(RDB_table *tbp, RDB_transaction *txp)
     if (ret != RDB_OK)
         goto cleanup;
 
+    ret = RDB_delete(txp->dbp->dbrootp->indexes_tbp, exprp, txp);
+    if (ret != RDB_OK)
+        goto cleanup;
+
+    ret = RDB_delete(txp->dbp->dbrootp->dbtables_tbp, exprp, txp);
+    if (ret != RDB_OK)
+        goto cleanup;
+
 cleanup:
     RDB_drop_expr(exprp);
     return ret;

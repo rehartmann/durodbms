@@ -114,3 +114,15 @@ duro::delete T2 $tx
 duro::table drop T2 $tx
 
 duro::commit $tx
+
+set tx [duro::begin $dbenv TEST]
+
+# Recreate table
+duro::table create T2 {
+   {STRATTR1 STRING}
+   {INTATTR INTEGER}
+   {STRATTR2 STRING}
+   {STRATTR3 STRING}
+} {{STRATTR1} {INTATTR STRATTR2}} $tx
+
+duro::commit $tx
