@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2004 René Hartmann.
+ * Copyright (C) 2004, 2005 René Hartmann.
  * See the file COPYING for redistribution information.
  */
 
@@ -110,6 +110,53 @@ error:
     return ret;
 }
 
+static int
+append_quoted_string(RDB_object *objp, const RDB_object *strp)
+{
+    int ret;
+    int i;
+    size_t qlen;
+    char *qstr = malloc((strp->var.bin.len + 2) * 2);
+
+    if (qstr == NULL)
+        return RDB_NO_MEMORY;
+
+    qstr[0] = '\"';
+    qlen = 1;
+    for (i = 0; i < strp->var.bin.len - 1; i++) {
+        switch (((char *)strp->var.bin.datap)[i]) {
+            case '\"':
+                qstr[qlen++] = '\\';
+                qstr[qlen++] = '\"';
+                break;
+            case '\\':
+                qstr[qlen++] = '\\';
+                qstr[qlen++] = '\\';
+                break;
+            case '\n':
+                qstr[qlen++] = '\\';
+                qstr[qlen++] = 'n';
+                break;
+            case '\r':
+                qstr[qlen++] = '\\';
+                qstr[qlen++] = 'r';
+                break;
+            case '\t':
+                qstr[qlen++] = '\\';
+                qstr[qlen++] = 't';
+                break;
+            default:
+                qstr[qlen++] = ((char *)strp->var.bin.datap)[i];
+        }
+    }
+    qstr[qlen++] = '\"';
+    qstr[qlen] = '\0';
+    fprintf(stderr, "%s\n", qstr);
+
+    ret = RDB_string_to_obj(objp, qstr);
+    free(qstr);
+    return ret;
+}
 
 static int
 append_obj(RDB_object *objp, const RDB_object *srcp)
@@ -121,13 +168,11 @@ append_obj(RDB_object *objp, const RDB_object *srcp)
     if (typ != NULL && RDB_type_is_scalar(typ)) {
          if (!RDB_type_is_builtin(srcp->typ))
              return RDB_NOT_SUPPORTED; /* !! */
-         if (srcp->typ == &RDB_STRING) {
-             ret = append_str(objp, "\"");
-             if (ret != RDB_OK)
-                 return ret;
-         }
          RDB_init_obj(&dst);
-         ret = RDB_obj_to_string(&dst, srcp);
+         if (srcp->typ == &RDB_STRING)
+             ret = append_quoted_string(&dst, srcp);
+         else 
+             ret = RDB_obj_to_string(&dst, srcp);
          if (ret != RDB_OK) {
              RDB_destroy_obj(&dst);
              return ret;
@@ -136,11 +181,6 @@ append_obj(RDB_object *objp, const RDB_object *srcp)
          RDB_destroy_obj(&dst);
          if (ret != RDB_OK)
              return ret;
-         if (srcp->typ == &RDB_STRING) {
-             ret = append_str(objp, "\"");
-             if (ret != RDB_OK)
-                 return ret;
-         }
     } else {
         switch (srcp->kind) {
             case RDB_OB_TUPLE:

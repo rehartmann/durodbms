@@ -2,7 +2,7 @@
 # Execute wish from the user's PATH \
 exec wish "$0" ${1+"$@"}
 
-# Copyright (C) 2004 René Hartmann.
+# Copyright (C) 2004, 2005 René Hartmann.
 # See the file COPYING for redistribution information.
 
 # $Id$
@@ -723,6 +723,20 @@ proc insert_tuple {} {
     }
 }
 
+proc quote_str {str} {
+    set res "\""
+    for {set i 0} {$i < [string length $str]} {incr i} {
+        set c [string index $str $i]
+        if {$c == "\"" || $c == "\\" } {
+            append res \\$c
+        } else {
+            append res $c
+        }
+    }
+    append res "\""
+    return $res
+}
+
 proc eq_exp {row} {
     # Build condition
     set exp ""
@@ -732,7 +746,7 @@ proc eq_exp {row} {
             append exp " AND "
         }
         if {[must_quote $::tabletypes($a)]} {
-            append exp "$a=\"$::keyvals([expr {$row - 1}],$a)\""
+            append exp "$a=[quote_str $::keyvals([expr {$row - 1}],$a)]"
         } else {
             append exp "$a=$::keyvals([expr {$row - 1}],$a)"
         }
@@ -774,7 +788,7 @@ proc update_tuple {row} {
         set a [lindex $::tableattrs $i]
         lappend updattrs $a
         if {[must_quote $::tabletypes($a)]} {
-            lappend updattrs \"[.tableframe.table get [expr {$row}],$i]\"
+            lappend updattrs [quote_str [.tableframe.table get [expr {$row}],$i]]
         } else {
             lappend updattrs [.tableframe.table get [expr {$row}],$i]
         }
@@ -788,7 +802,9 @@ proc update_tuple {row} {
     # Update tuple
     if {[catch {
         set tx [duro::begin $::dbenv $::db]
-        eval duro::update $table [eq_exp $row] $updattrs $tx
+        set uexp \{[eq_exp $row]\}
+        # Must use eval, because updattrs is a list of arguments
+        eval duro::update $table $uexp $updattrs $tx        
         duro::commit $tx
     } msg]} {
         catch {duro::rollback $tx}
@@ -838,8 +854,6 @@ proc del_row {} {
     # Delete row from table widget
     .tableframe.table delete rows $row
 
-    puts $row
-    puts $rowcount
     if {$row >= [expr {$rowcount - 2}]} {
         .mbar.db entryconfigure 3 -state disabled
     }
