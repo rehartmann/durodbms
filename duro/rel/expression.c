@@ -328,7 +328,7 @@ RDB_concat(RDB_expression *arg1, RDB_expression *arg2)
 }
 
 RDB_expression *
-RDB_expr_table(RDB_table *tbp)
+RDB_table_to_expr(RDB_table *tbp)
 {
     RDB_expression *exp;
 

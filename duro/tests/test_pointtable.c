@@ -80,8 +80,8 @@ test_insert(RDB_database *dbp)
     RDB_init_obj(&lenval);
     RDB_init_obj(&thval);
 
-    RDB_obj_set_rational(&xval, 1.0);
-    RDB_obj_set_rational(&yval, 2.0);
+    RDB_rational_to_obj(&xval, 1.0);
+    RDB_rational_to_obj(&yval, 2.0);
 
     printf("Invoking selector POINT(1,2)\n");
 
@@ -115,7 +115,7 @@ test_insert(RDB_database *dbp)
 
     printf("Doubling LENGTH\n");
 
-    RDB_obj_set_rational(&lenval, RDB_obj_rational(&lenval) * 2.0);
+    RDB_rational_to_obj(&lenval, RDB_obj_rational(&lenval) * 2.0);
 
     RDB_obj_set_comp(&pval, "LENGTH", &lenval);
 

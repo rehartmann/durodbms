@@ -309,7 +309,7 @@ RDB_destroy_obj(RDB_object *objp)
 }
 
 void
-RDB_obj_set_bool(RDB_object *valp, RDB_bool v)
+RDB_bool_to_obj(RDB_object *valp, RDB_bool v)
 {
     RDB_destroy_obj(valp);
     valp->typ = &RDB_BOOLEAN;
@@ -318,7 +318,7 @@ RDB_obj_set_bool(RDB_object *valp, RDB_bool v)
 }
 
 void
-RDB_obj_set_int(RDB_object *valp, RDB_int v)
+RDB_int_to_obj(RDB_object *valp, RDB_int v)
 {
     RDB_destroy_obj(valp);
     valp->typ = &RDB_INTEGER;
@@ -327,7 +327,7 @@ RDB_obj_set_int(RDB_object *valp, RDB_int v)
 }
 
 void
-RDB_obj_set_rational(RDB_object *valp, RDB_rational v)
+RDB_rational_to_obj(RDB_object *valp, RDB_rational v)
 {
     RDB_destroy_obj(valp);
     valp->typ = &RDB_RATIONAL;
@@ -336,7 +336,7 @@ RDB_obj_set_rational(RDB_object *valp, RDB_rational v)
 }
 
 int
-RDB_obj_set_string(RDB_object *valp, const char *str)
+RDB_string_to_obj(RDB_object *valp, const char *str)
 {
     RDB_destroy_obj(valp);
     valp->typ = &RDB_STRING;
@@ -388,6 +388,21 @@ RDB_obj_set_comp(RDB_object *valp, const char *compname,
 
         return copy_obj(valp, compvalp);
     }
+}
+
+void
+RDB_table_to_obj(RDB_object *objp, RDB_table *tbp)
+{
+    RDB_destroy_obj(objp);
+    objp->typ = tbp->typ;
+    objp->kind = RDB_OB_TABLE;
+    objp->var.tbp = tbp;
+}
+
+RDB_table *
+RDB_obj_table(const RDB_object *objp)
+{
+    return objp->var.tbp;
 }
 
 static int
@@ -495,7 +510,7 @@ RDB_obj_rational(const RDB_object *valp)
 }
 
 char *
-RDB_obj_string(RDB_object *valp)
+RDB_obj_string(const RDB_object *valp)
 {
     return valp->var.bin.datap;
 }

@@ -4,6 +4,11 @@ Summary of Changes for Duro
 
 Changes for Duro 0.7
 
+- Renamed RDB_obj_set_XXX() to RDB_XXX_to_obj() and RDB_expr_table() to
+  RDB_table_to_expr().
+
+- Added RDB_table_to_obj() and RDB_obj_table().
+
 - Implemented RDB_sdivide().
 
 - Dropped RDB_tuple and RDB_array, using RDB_object instead.
@@ -12,7 +17,7 @@ Changes for Duro 0.7
 
 - Implemented RDB_remove().
 
-- Implemented insert into and update of projections.
+- Implemented insert into projections.
 
 - Added support for multiplication, division, unary minus, and string
   concatenation in expressions.

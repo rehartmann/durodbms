@@ -2,13 +2,13 @@
 "http://www.w3.org/TR/html4/strict.dtd">
 <html lang="en">
 <head>
-<title>Duro 0.6 Release Notes</title>
+<title>Duro 0.7 Release Notes</title>
 <body>
-<h1>Release Notes for Duro 0.6</h1>
+<h1>Release Notes for Duro 0.7</h1>
 
 <h2>Functions not implemented</h2>
 
-<p>The following functions are not implemented in Duro 0.6:
+<p>The following functions are not implemented in Duro 0.7:
 
 <ul>
 <li>RDB_gdivide
@@ -38,7 +38,7 @@ of another.
 
 <h3>RDB_set_table_name</h3>
 
-<p>RDB_set_table_name is not supported for persistent tables.
+<p>RDB_set_table_name is not supported for global (persistent) tables.
 
 <h3>RDB_add_table</h3>
 
@@ -57,6 +57,10 @@ of a MINUS, SUMMARIZE, RENAME, WRAP, UNWRAP, or DIVIDEBY PER.
 
 <p>RDB_delete is not supported for virtual tables which are the result of
 a select, JOIN, EXTEND, SUMMARIZE, RENAME, WRAP, UNWRAP, or DIVIDEBY PER.
+
+<h3>RDB_sdivide<h3>
+
+<p>...
 
 <h3>RDB_summarize</h3>
 

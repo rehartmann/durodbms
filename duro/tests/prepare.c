@@ -52,7 +52,7 @@ create_tables(RDB_database *dbp)
     
     /* Set default value for SALARY */
     RDB_init_obj(&defval);
-    RDB_obj_set_rational(&defval, 4000.0);
+    RDB_rational_to_obj(&defval, 4000.0);
     emp_attrs[2].defaultp = &defval;
 
     ret = RDB_create_table("EMPS2", RDB_TRUE, 4, emp_attrs, 2, emp_keyattrs,

@@ -865,24 +865,30 @@ RDB_select_obj(RDB_object *valp, RDB_type *, const char *repname,
               RDB_object **compv);
 
 void
-RDB_obj_set_bool(RDB_object *valp, RDB_bool v);
+RDB_bool_to_obj(RDB_object *valp, RDB_bool v);
 
 void
-RDB_obj_set_int(RDB_object *valp, RDB_int v);
+RDB_int_to_obj(RDB_object *valp, RDB_int v);
 
 void
-RDB_obj_set_rational(RDB_object *valp, RDB_rational v);
+RDB_rational_to_obj(RDB_object *valp, RDB_rational v);
 
 int
-RDB_obj_set_string(RDB_object *valp, const char *str);
+RDB_string_to_obj(RDB_object *valp, const char *str);
 
 int
 RDB_obj_comp(const RDB_object *valp, const char *compname,
                    RDB_object *comp);
 
+void
+RDB_table_to_obj(RDB_object *valp, RDB_table *tbp);
+
 int
 RDB_obj_set_comp(RDB_object *valp, const char *compname,
                    const RDB_object *comp);
+
+RDB_table *
+RDB_obj_table(const RDB_object *objp);
 
 RDB_bool
 RDB_obj_bool(const RDB_object *valp);
@@ -894,7 +900,7 @@ RDB_rational
 RDB_obj_rational(const RDB_object *valp);
 
 char *
-RDB_obj_string(RDB_object *valp);
+RDB_obj_string(const RDB_object *valp);
 
 /*
  * Copy len bytes from srcp into the RDB_object at position pos.
@@ -996,7 +1002,7 @@ RDB_concat(RDB_expression *, RDB_expression *);
  * Create table-valued expression
  */
 RDB_expression *
-RDB_expr_table(RDB_table *);
+RDB_table_to_expr(RDB_table *);
 
 RDB_expression *
 RDB_expr_is_empty(RDB_expression *arg1);

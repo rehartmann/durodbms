@@ -23,8 +23,8 @@ test_callop(RDB_database *dbp)
     RDB_init_obj(&arg2);
     RDB_init_obj(&retval);
 
-    RDB_obj_set_int(&arg1, 2);
-    RDB_obj_set_int(&arg2, 2);
+    RDB_int_to_obj(&arg1, 2);
+    RDB_int_to_obj(&arg2, 2);
     argv[0] = &arg1;
     argv[1] = &arg2;
 

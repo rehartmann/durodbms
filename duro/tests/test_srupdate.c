@@ -120,7 +120,7 @@ test_update2(RDB_database *dbp)
 
     printf("Updating table\n");
 
-    exp = RDB_expr_sum(RDB_expr_table(tbp), "COUNT");
+    exp = RDB_expr_sum(RDB_table_to_expr(tbp), "COUNT");
     exp = RDB_add(exp, RDB_int_const(1));
 
     upd.name = "COUNT";

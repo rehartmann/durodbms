@@ -59,7 +59,7 @@ RDB_tuple_set_bool(RDB_object *tp, const char *namp, RDB_bool val)
         init_tuple(tp);
 
     RDB_init_obj(&value);
-    RDB_obj_set_bool(&value, val);
+    RDB_bool_to_obj(&value, val);
 
     return RDB_hashmap_put(&tp->var.tpl_map, namp, &value, sizeof(value));
 } 
@@ -73,7 +73,7 @@ RDB_tuple_set_int(RDB_object *tp, const char *namp, RDB_int val)
         init_tuple(tp);
 
     RDB_init_obj(&value);
-    RDB_obj_set_int(&value, val);
+    RDB_int_to_obj(&value, val);
 
     return RDB_hashmap_put(&tp->var.tpl_map, namp, &value, sizeof(value));
 }
@@ -87,7 +87,7 @@ RDB_tuple_set_rational(RDB_object *tp, const char *namp, RDB_rational val)
         init_tuple(tp);
 
     RDB_init_obj(&value);
-    RDB_obj_set_rational(&value, val);
+    RDB_rational_to_obj(&value, val);
 
     return RDB_hashmap_put(&tp->var.tpl_map, namp, &value, sizeof(value));
 }
@@ -102,7 +102,7 @@ RDB_tuple_set_string(RDB_object *tp, const char *namp, const char *str)
         init_tuple(tp);
 
     RDB_init_obj(&value);
-    res = RDB_obj_set_string(&value, str);
+    res = RDB_string_to_obj(&value, str);
     if (res != RDB_OK) {
         RDB_destroy_obj(&value);
         return res;

@@ -92,7 +92,7 @@ test_table(RDB_database *dbp)
 
     printf("Trying to create TINYINT fromt INTEGER=200\n");
 
-    RDB_obj_set_int(&ival, (RDB_int)200);
+    RDB_int_to_obj(&ival, (RDB_int)200);
     ivalp = &ival;
 
     ret = RDB_select_obj(&tival, tinyintp, "TINYINT", &ivalp);
@@ -104,7 +104,7 @@ test_table(RDB_database *dbp)
 
     printf("Creating TINYINT from INTEGER=99\n");
 
-    RDB_obj_set_int(&ival, (RDB_int)99);
+    RDB_int_to_obj(&ival, (RDB_int)99);
     ivalp = &ival;
 
     ret = RDB_select_obj(&tival, tinyintp, "TINYINT", &ivalp);

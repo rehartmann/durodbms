@@ -113,7 +113,7 @@ Duro_tcl_to_duro(Tcl_Interp *interp, Tcl_Obj *tobjp, RDB_type *typ,
     int ret;
 
     if (typ == &RDB_STRING) {
-        RDB_obj_set_string(objp, Tcl_GetStringFromObj(tobjp, NULL));
+        RDB_string_to_obj(objp, Tcl_GetStringFromObj(tobjp, NULL));
         return TCL_OK;
     }
     if (typ == &RDB_INTEGER) {
@@ -122,7 +122,7 @@ Duro_tcl_to_duro(Tcl_Interp *interp, Tcl_Obj *tobjp, RDB_type *typ,
         ret = Tcl_GetIntFromObj(interp, tobjp, &val);
         if (ret != TCL_OK)
             return ret;
-        RDB_obj_set_int(objp, (RDB_int) val);
+        RDB_int_to_obj(objp, (RDB_int) val);
         return TCL_OK;
     }
     if (typ == &RDB_RATIONAL) {
@@ -131,7 +131,7 @@ Duro_tcl_to_duro(Tcl_Interp *interp, Tcl_Obj *tobjp, RDB_type *typ,
         ret = Tcl_GetDoubleFromObj(interp, tobjp, &val);
         if (ret != TCL_OK)
             return ret;
-        RDB_obj_set_rational(objp, (RDB_rational) val);
+        RDB_rational_to_obj(objp, (RDB_rational) val);
         return TCL_OK;
     }
     if (typ == &RDB_BOOLEAN) {
@@ -140,7 +140,7 @@ Duro_tcl_to_duro(Tcl_Interp *interp, Tcl_Obj *tobjp, RDB_type *typ,
         ret = Tcl_GetBooleanFromObj(interp, tobjp, &val);
         if (ret != TCL_OK)
             return ret;
-        RDB_obj_set_bool(objp, (RDB_bool) val);
+        RDB_bool_to_obj(objp, (RDB_bool) val);
         return TCL_OK;
     }
     if (typ->kind == RDB_TP_TUPLE) {

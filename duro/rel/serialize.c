@@ -801,7 +801,7 @@ deserialize_expr(RDB_object *valp, int *posp, RDB_transaction *txp,
             ret = deserialize_table(valp, posp, txp, &tbp);
             if (ret != RDB_OK)
                 return ret;
-            *expp = RDB_expr_table(tbp);
+            *expp = RDB_table_to_expr(tbp);
             if (expp == NULL)
                 return RDB_NO_MEMORY;
             break;

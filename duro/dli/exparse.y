@@ -148,7 +148,7 @@ project: primary_expression '{' attribute_name_list '}' {
         if (expr_ret != RDB_OK) {
             YYERROR;
         }
-        $$ = RDB_expr_table(restbp);
+        $$ = RDB_table_to_expr(restbp);
     }
     | primary_expression '{' TOK_ALL TOK_BUT attribute_name_list '}' {
         RDB_table *tbp, *restbp;
@@ -165,7 +165,7 @@ project: primary_expression '{' attribute_name_list '}' {
         if (expr_ret != RDB_OK) {
             YYERROR;
         }
-        $$ = RDB_expr_table(restbp);
+        $$ = RDB_table_to_expr(restbp);
     }
     ;
 
@@ -200,7 +200,7 @@ select: primary_expression TOK_WHERE or_expression {
         if (expr_ret != RDB_OK) {
             YYERROR;
         }
-        $$ = RDB_expr_table(restbp);
+        $$ = RDB_table_to_expr(restbp);
     }
     ;
 
@@ -221,7 +221,7 @@ rename: primary_expression TOK_RENAME '(' renaming_list ')' {
         if (expr_ret != RDB_OK) {
             YYERROR;
         }
-        $$ = RDB_expr_table(restbp);
+        $$ = RDB_table_to_expr(restbp);
     }
     ;
 
@@ -273,7 +273,7 @@ relation: primary_expression TOK_UNION primary_expression {
         if (expr_ret != RDB_OK) {
             YYERROR;
         }
-        $$ = RDB_expr_table(restbp);
+        $$ = RDB_table_to_expr(restbp);
         RDB_drop_expr($1);
         RDB_drop_expr($3);
     }
@@ -293,7 +293,7 @@ relation: primary_expression TOK_UNION primary_expression {
         if (expr_ret != RDB_OK) {
             YYERROR;
         }
-        $$ = RDB_expr_table(restbp);
+        $$ = RDB_table_to_expr(restbp);
         RDB_drop_expr($1);
         RDB_drop_expr($3);
     }
@@ -313,7 +313,7 @@ relation: primary_expression TOK_UNION primary_expression {
         if (expr_ret != RDB_OK) {
             YYERROR;
         }
-        $$ = RDB_expr_table(restbp);
+        $$ = RDB_table_to_expr(restbp);
         RDB_drop_expr($1);
         RDB_drop_expr($3);
     }
@@ -333,7 +333,7 @@ relation: primary_expression TOK_UNION primary_expression {
         if (expr_ret != RDB_OK) {
             YYERROR;
         }
-        $$ = RDB_expr_table(restbp);
+        $$ = RDB_table_to_expr(restbp);
         RDB_drop_expr($1);
         RDB_drop_expr($3);
     }
@@ -358,7 +358,7 @@ extend: TOK_EXTEND primary_expression TOK_ADD '(' extend_add_list ')' {
         if (expr_ret != RDB_OK) {
             YYERROR;
         }
-        $$ = RDB_expr_table(restbp);
+        $$ = RDB_table_to_expr(restbp);
     }
     ;
 
@@ -420,7 +420,7 @@ summarize: TOK_SUMMARIZE primary_expression TOK_PER expression
             }
             YYERROR;
         }
-        $$ = RDB_expr_table(restbp);
+        $$ = RDB_table_to_expr(restbp);
     }
     ;
 
@@ -450,7 +450,7 @@ sdivideby: primary_expression TOK_DIVIDEBY primary_expression
         if (expr_ret != RDB_OK) {
             YYERROR;
         }
-        $$ = RDB_expr_table(restbp);
+        $$ = RDB_table_to_expr(restbp);
     }
     ;    
 
@@ -547,7 +547,7 @@ wrap:   primary_expression TOK_WRAP
         if (expr_ret != RDB_OK) {
             YYERROR;
         }
-        $$ = RDB_expr_table(restbp);
+        $$ = RDB_table_to_expr(restbp);
     }
     ;
 
@@ -605,7 +605,7 @@ unwrap: primary_expression TOK_UNWRAP '(' attribute_name_list ')' {
         if (expr_ret != RDB_OK) {
             YYERROR;
         }
-        $$ = RDB_expr_table(restbp);
+        $$ = RDB_table_to_expr(restbp);
     }
     ;    
 
@@ -755,7 +755,7 @@ count_invocation: TOK_COUNT '(' expression ')' {
         if (tbp == NULL)
             YYERROR;
 
-        $$ = RDB_expr_cardinality(RDB_expr_table(tbp));
+        $$ = RDB_expr_cardinality(RDB_table_to_expr(tbp));
         if ($$ == NULL)
             YYERROR;
     }
@@ -777,7 +777,7 @@ sum_invocation: TOK_SUM '(' argument_list ')' {
                 attrname = $3.argv[1]->var.attr.name;
             }
 
-            $$ = RDB_expr_sum(RDB_expr_table(tbp), attrname);
+            $$ = RDB_expr_sum(RDB_table_to_expr(tbp), attrname);
             if ($$ == NULL)
                 YYERROR;
         }
@@ -800,7 +800,7 @@ avg_invocation: TOK_AVG '(' argument_list ')' {
                 attrname = $3.argv[1]->var.attr.name;
             }
 
-            $$ = RDB_expr_avg(RDB_expr_table(tbp), attrname);
+            $$ = RDB_expr_avg(RDB_table_to_expr(tbp), attrname);
             if ($$ == NULL)
                 YYERROR;
         }
@@ -823,7 +823,7 @@ max_invocation: TOK_MAX '(' argument_list ')' {
                 attrname = $3.argv[1]->var.attr.name;
             }
 
-            $$ = RDB_expr_max(RDB_expr_table(tbp), attrname);
+            $$ = RDB_expr_max(RDB_table_to_expr(tbp), attrname);
             if ($$ == NULL)
                 YYERROR;
         }
@@ -846,7 +846,7 @@ min_invocation: TOK_MIN '(' argument_list ')' {
                 attrname = $3.argv[1]->var.attr.name;
             }
 
-            $$ = RDB_expr_min(RDB_expr_table(tbp), attrname);
+            $$ = RDB_expr_min(RDB_table_to_expr(tbp), attrname);
             if ($$ == NULL)
                 YYERROR;
         }
@@ -869,7 +869,7 @@ all_invocation: TOK_ALL '(' argument_list ')' {
                 attrname = $3.argv[1]->var.attr.name;
             }
 
-            $$ = RDB_expr_all(RDB_expr_table(tbp), attrname);
+            $$ = RDB_expr_all(RDB_table_to_expr(tbp), attrname);
             if ($$ == NULL)
                 YYERROR;
         }
@@ -892,7 +892,7 @@ any_invocation: TOK_ANY '(' argument_list ')' {
                 attrname = $3.argv[1]->var.attr.name;
             }
 
-            $$ = RDB_expr_any(RDB_expr_table(tbp), attrname);
+            $$ = RDB_expr_any(RDB_table_to_expr(tbp), attrname);
             if ($$ == NULL)
                 YYERROR;
         }
@@ -905,7 +905,7 @@ is_empty_invocation: TOK_IS_EMPTY '(' expression ')' {
         if (tbp == NULL)
             YYERROR;
 
-        $$ = RDB_expr_is_empty(RDB_expr_table(tbp));
+        $$ = RDB_expr_is_empty(RDB_table_to_expr(tbp));
         if ($$ == NULL)
             YYERROR;
     }

@@ -83,7 +83,7 @@ See the release notes for details.
 <li><a href="#wrap_tuple">RDB_wrap_tuple</a>
 </ul>
 
-<h3>Scalar functions</h3>
+<h3>Scalar and generic functions</h3>
 
 <ul>
 <li><a href="#binary_get">RDB_binary_get</a>
@@ -97,15 +97,16 @@ See the release notes for details.
 <li><a href="#obj_equals">RDB_obj_equals</a>
 <li><a href="#obj_int">RDB_obj_int</a>
 <li><a href="#obj_rational">RDB_obj_rational</a>
-<li><a href="#obj_set_array">RDB_obj_set_array</a>
-<li><a href="#obj_set_bool">RDB_obj_set_bool</a>
-<li><a href="#obj_set_int">RDB_obj_set_int</a>
-<li><a href="#obj_set_rational">RDB_obj_set_rational</a>
-<li><a href="#obj_set_string">RDB_obj_set_string</a>
-<li><a href="#obj_set_tuple">RDB_obj_set_tuple</a>
+<li><a href="#bool_to_obj">RDB_bool_to_obj</a>
+<li><a href="#int_to_obj">RDB_int_to_obj</a>
+<li><a href="#rational_to_obj">RDB_rational_to_obj</a>
+<li><a href="#string_to_obj">RDB_string_to_obj</a>
 <li><a href="#obj_set_comp">RDB_obj_set_comp</a>
 <li><a href="#obj_string">RDB_obj_string</a>
+<li><a href="#obj_table">RDB_obj_table</a>
 <li><a href="#select_obj">RDB_select_obj</a>
+<li><a href="#table_to_obj">RDB_table_to_obj</a>
+
 </ul>
 
 <h3>Database functions</h3>
@@ -165,7 +166,6 @@ See the release notes for details.
 <li><a href="#concat">RDB_concat</a>
 <li><a href="#strlen">RDB_strlen</a>
 <li><a href="#regmatch">RDB_regmatch</a>
-<li><a href="#expr_table">RDB_expr_table</a>
 <li><a href="#expr_is_empty">RDB_expr_is_empty</a>
 <li><a href="#expr_any">RDB_expr_any</a>
 <li><a href="#expr_all">RDB_expr_all</a>
@@ -176,6 +176,7 @@ See the release notes for details.
 <li><a href="#expr_min">RDB_expr_min</a>
 <li><a href="#expr_comp">RDB_expr_comp</a>
 <li><a href="#selector">RDB_selector</a>
+<li><a href="#table_to_expr">RDB_table_to_expr</a>
 <li><a href="#user_op">RDB_user_op</a>
 <li><a href="#drop_expr">RDB_drop_expr</a>
 </ul>
@@ -2040,18 +2041,18 @@ the type specified by <var>typ</var>.
 
 <hr>
 
-<h2 id="obj_set_bool">RDB_obj_set_bool</h2>
+<h2 id="bool_to_obj">RDB_bool_to_obj</h2>
 
 <pre>
 #include &lt;rel/rdb.h&gt;
 
 void
-RDB_obj_set_bool(RDB_object *valp, RDB_bool v);
+RDB_bool_to_obj(RDB_object *valp, RDB_bool v);
 </pre>
 
 <h3>Description</h3>
 
-<p>RDB_obj_set_bool sets the RDB_object pointed to by <var>valp</var>
+<p>RDB_bool_to_obj sets the RDB_object pointed to by <var>valp</var>
 to the boolean value specified by <var>v</var>.
 
 <h3>Return value</h3>
@@ -2060,18 +2061,18 @@ to the boolean value specified by <var>v</var>.
 
 <hr>
 
-<h2 id="obj_set_int">RDB_obj_set_int</h2>
+<h2 id="int_to_obj">RDB_int_to_obj</h2>
 
 <pre>
 #include &lt;rel/rdb.h&gt;
 
 void
-RDB_obj_set_int(RDB_object *valp, RDB_int v);
+RDB_int_to_obj(RDB_object *valp, RDB_int v);
 </pre>
 
 <h3>Description</h3>
 
-<p>RDB_obj_set_bool sets the RDB_object pointed to by <var>valp</var>
+<p>RDB_bool_to_obj sets the RDB_object pointed to by <var>valp</var>
 to the integer value specified by <var>v</var>.
 
 <h3>Return value</h3>
@@ -2080,18 +2081,18 @@ to the integer value specified by <var>v</var>.
 
 <hr>
 
-<h2 id="obj_set_rational">RDB_obj_set_rational</h2>
+<h2 id="rational_to_obj">RDB_rational_to_obj</h2>
 
 <pre>
 #include &lt;rel/rdb.h&gt;
 
 void
-RDB_obj_set_rational(RDB_object *valp, RDB_rational v);
+RDB_rational_to_obj(RDB_object *valp, RDB_rational v);
 </pre>
 
 <h3>Description</h3>
 
-<p>RDB_obj_set_bool sets the RDB_object pointed to by <var>valp</var>
+<p>RDB_obj_set_rational sets the RDB_object pointed to by <var>valp</var>
 to the rational value specified by <var>v</var>.
 
 <h3>Return value</h3>
@@ -2100,39 +2101,19 @@ to the rational value specified by <var>v</var>.
 
 <hr>
 
-<h2 id="obj_set_string">RDB_obj_set_string</h2>
+<h2 id="string_to_obj">RDB_string_to_obj</h2>
 
 <pre>
 #include &lt;rel/rdb.h&gt;
 
 int
-RDB_obj_set_string(RDB_object *valp, const char *str);
+RDB_string_to_obj(RDB_object *valp, const char *str);
 </pre>
 
 <h3>Description</h3>
 
-<p>RDB_obj_set_string sets the RDB_object pointed to by <var>valp</var>
+<p>RDB_string_to_obj sets the RDB_object pointed to by <var>valp</var>
 to the string value specified by <var>str</var>.
-
-<h3>Return value</h3>
-
-<p>On success, RDB_OK is returned. On failure, an error code is returned.
-
-<hr>
-
-<h2 id="obj_set_tuple">RDB_obj_set_tuple</h2>
-
-<pre>
-#include &lt;rel/rdb.h&gt;
-
-int
-RDB_obj_set_tuple(RDB_object *valp, const RDB_object *tplp);
-</pre>
-
-<h3>Description</h3>
-
-<p>RDB_obj_set_tuple sets the RDB_object pointed to by <var>valp</var>
-to the tuple value specified by <var>tplp</var>.
 
 <h3>Return value</h3>
 
@@ -2209,7 +2190,7 @@ RATIONAL.
 #include &lt;rel/rdb.h&gt;
 
 char *
-RDB_obj_string(RDB_object *valp);
+RDB_obj_string(const RDB_object *valp);
 </pre>
 
 <h3>Description</h3>
@@ -2220,6 +2201,41 @@ RDB_obj_string(RDB_object *valp);
 <h3>Return value</h3>
 
 <p>The string value of the RDB_object.
+
+<hr>
+
+<h2 id="obj_table">RDB_obj_table</h2>
+
+<pre>
+#include &lt;rel/rdb.h&gt;
+
+RDB_table *
+RDB_obj_table(const RDB_object *valp);
+</pre>
+
+<h3>Description</h3>
+
+<p>RDB_obj_table returns a pointer to the table wrapped by the RDB_object pointed to by
+<var>valp</var>. The RDB_object must be of a relation type.
+
+<h3>Return value</h3>
+
+<p>The table wrapped by the RDB_object.
+
+<h2 id="table_to_obj">RDB_table_to_obj</h2>
+
+<pre>
+#include &lt;rel/rdb.h&gt;
+
+void
+RDB_table_to_obj(RDB_object *objp, RDB_table *tbp);
+
+</pre>
+
+<h3>Description</h3>
+
+<p>RDB_table_to_obj wraps the table specified by <var>tbp</var> into
+the RDB_object pointed to by <var>objp</var>.
 
 <hr>
 
@@ -3150,16 +3166,16 @@ failed.
 
 <hr>
 
-<h2 id="expr_table">RDB_expr_table</h2>
+<h2 id="table_to_expr">RDB_table_to_expr</h2>
 
 <pre>
 RDB_expression *
-RDB_expr_table(RDB_table *);
+RDB_table_to_expr(RDB_table *);
 </pre>
 
 <h3>Description</h3>
 
-<p>RDB_expr_table creates an expression that represents a table.
+<p>RDB_table_to_expr creates an expression that represents a table.
 
 <h3>Return value</h3>
 

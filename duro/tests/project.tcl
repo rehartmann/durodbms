@@ -70,7 +70,7 @@ set tx [duro::begin $dbenv TEST]
 # Insert tuple into virtual table
 duro::insert P1 {INTATTR 4} $tx
 
-# Update virtual table
+# Update table
 duro::update R {INTATTR=4} INTATTR 5 $tx
 
 set a [duro::array create R {INTATTR asc} $tx]
