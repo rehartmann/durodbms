@@ -48,11 +48,65 @@ duro_cleanup(ClientData data)
     Tcl_Free((char *) statep);
 }
 
+static const char *
+errcode_str(int err)
+{
+    switch (err) {
+        case RDB_OK:
+            return "RDB_OK";
+
+        case RDB_NO_SPACE:
+            return "RDB_NO_SPACE";
+        case RDB_NO_MEMORY:
+            return "RDB_NO_MEMORY";
+        case RDB_SYSTEM_ERROR:
+            return "RDB_SYSTEM_ERROR";
+        case RDB_DEADLOCK:
+            return "RDB_DEADLOCK";
+        case RDB_INTERNAL:
+            return "RDB_INTERNAL";
+        case RDB_RESOURCE_NOT_FOUND:
+            return "RDB_RESOURCE_NOT_FOUND";
+
+        case RDB_INVALID_ARGUMENT:
+            return "RDB_INVALID_ARGUMENT";
+        case RDB_NOT_FOUND:
+            return "RDB_NOT_FOUND";
+        case RDB_INVALID_TRANSACTION:
+            return "RDB_INVALID_TRANSACTION";
+        case RDB_ELEMENT_EXISTS:
+            return "RDB_ELEMENT_EXISTS";
+        case RDB_TYPE_MISMATCH:
+            return "RDB_TYPE_MISMATCH";
+        case RDB_KEY_VIOLATION:
+            return "RDB_KEY_VIOLATION";
+        case RDB_PREDICATE_VIOLATION:
+            return "RDB_PREDICATE_VIOLATION";
+        case RDB_AGGREGATE_UNDEFINED:
+            return "RDB_AGGREGATE_UNDEFINED";
+        case RDB_TYPE_CONSTRAINT_VIOLATION:
+            return "RDB_TYPE_CONSTRAINT_VIOLATION";
+        case RDB_ATTRIBUTE_NOT_FOUND:
+            return "RDB_ATTRIBUTE_NOT_FOUND";
+        case RDB_SYNTAX:
+            return "RDB_SYNTAX";
+
+        case RDB_NOT_SUPPORTED:
+            return "RDB_NOT_SUPPORTED";
+    }
+    return NULL;
+}
+
 void
 Duro_dberror(Tcl_Interp *interp, int err)
 {
+    const char *errcode = errcode_str(err);
+
     Tcl_AppendResult(interp, "Database error: ", (char *) RDB_strerror(err),
             TCL_STATIC);
+    if (errcode != NULL)
+        Tcl_SetErrorCode(interp, "Duro", errcode, (char *) RDB_strerror(err),
+                NULL);
 }    
 
 int

@@ -1,8 +1,13 @@
+/*
+ * Copyright (C) 2003, 2004 René Hartmann.
+ * See the file COPYING for redistribution information.
+ */
+
+/* $Id$ */
+
 #include "errors.h"
 #include <db.h>
 #include <errno.h>
-
-/* $Id$ */
 
 const char *
 RDB_strerror(int err)
@@ -46,6 +51,8 @@ RDB_strerror(int err)
             return "result of aggregate operation is undefined";
         case RDB_TYPE_CONSTRAINT_VIOLATION:
             return "type constraint violation";
+        case RDB_ATTRIBUTE_NOT_FOUND:
+            return "attribute not found";
         case RDB_SYNTAX:
             return "syntax error";
 

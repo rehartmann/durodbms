@@ -638,7 +638,7 @@ and stores the result at the location pointed to by <var>resultp</var>.
 <dl>
 <dt>RDB_INVALID_TRANSACTION
 <dd><var>txp</var> does not point to a running transaction.
-<dt>RDB_INVALID_ARGUMENT
+<dt>RDB_ATTRIBUTE_NOT_FOUND
 <dd>The table does not have an attribute <var>attrname</var>.
 <dt>RDB_TYPE_MISMATCH
 <dd>The type of the attribute is not BOOLEAN.
@@ -678,7 +678,7 @@ type BOOLEAN.
 <dl>
 <dt>RDB_INVALID_TRANSACTION
 <dd><var>txp</var> does not point to a running transaction.
-<dt>RDB_INVALID_ARGUMENT
+<dt>RDB_ATTRIBUTE_NOT_FOUND
 <dd>The table does not have an attribute <var>attrname</var>.
 <dt>RDB_TYPE_MISMATCH
 <dd>The type of the attribute is not BOOLEAN.
@@ -717,7 +717,7 @@ pointed to by <var>resultp</var>.
 <dl>
 <dt>RDB_INVALID_TRANSACTION
 <dd><var>txp</var> does not point to a running transaction.
-<dt>RDB_INVALID_ARGUMENT
+<dt>RDB_ATTRIBUTE_NOT_FOUND
 <dd>The table does not have an attribute <var>attrname</var>.
 <dt>RDB_TYPE_MISMATCH
 <dd>The type of the attribute is not numeric.
@@ -789,7 +789,7 @@ and the result is of the same type as the attribute.
 <dl>
 <dt>RDB_INVALID_TRANSACTION
 <dd><var>txp</var> does not point to a running transaction.
-<dt>RDB_INVALID_ARGUMENT
+<dt>RDB_ATTRIBUTE_NOT_FOUND
 <dd>The table does not have an attribute <var>attrname</var>.
 <dt>RDB_TYPE_MISMATCH
 <dd>The type of the attribute is not numeric.
@@ -828,7 +828,7 @@ and the result is of the same type as the attribute.
 <dl>
 <dt>RDB_INVALID_TRANSACTION
 <dd><var>txp</var> does not point to a running transaction.
-<dt>RDB_INVALID_ARGUMENT
+<dt>RDB_ATTRIBUTE_NOT_FOUND
 <dd>The table does not have an attribute <var>attrname</var>.
 <dt>RDB_TYPE_MISMATCH
 <dd>The type of the attribute is not numeric.
@@ -867,7 +867,7 @@ and the result is of the same type as the attribute.
 <dl>
 <dt>RDB_INVALID_TRANSACTION
 <dd><var>txp</var> does not point to a running transaction.
-<dt>RDB_INVALID_ARGUMENT
+<dt>RDB_ATTRIBUTE_NOT_FOUND
 <dd>The table does not have an attribute <var>attrname</var>.
 <dt>RDB_TYPE_MISMATCH
 <dd>The type of the attribute is not numeric.
@@ -1249,7 +1249,7 @@ and <var>attrv</var>.
 <h3>Errors</h3>
 
 <dl>
-<dt>RDB_INVALID_ARGUMENT
+<dt>RDB_ATTRIBUTE_NOT_FOUND
 <dd>One of the attributes specified by <var>attrv</var> is not an attribute
 of the original table.
 </dl>
@@ -1282,7 +1282,7 @@ specified by <var>attrc</var> and <var>attrv</var>.
 <h3>Errors</h3>
 
 <dl>
-<dt>RDB_INVALID_ARGUMENT
+<dt>RDB_ATTRIBUTE_NOT_FOUND
 <dd>One of the attributes specified by <var>attrv</var> is not an attribute
 of the original table.
 </dl>
@@ -1637,7 +1637,7 @@ specified by <var>attrc</var> and <var>attrv</var>.
 <h3>Errors</h3>
 
 <dl>
-<dt>RDB_INVALID_ARGUMENT
+<dt>RDB_ATTRIBUTE_NOT_FOUND
 <dd>One of the attributes specified by <var>attrv</var> is not an attribute
 of the original tuple.
 </dl>

@@ -744,7 +744,7 @@ RDB_get_table(const char *name, RDB_transaction *txp, RDB_table **tbpp)
     dbp = txp->dbp->dbrootp->firstdbp;
     while (dbp != NULL) {
         foundtbpp = (RDB_table **)RDB_hashmap_get(&dbp->tbmap, name, NULL);
-        if (foundtbpp != NULL) {
+        if (foundtbpp != NULL && *foundtbpp != NULL) {
             /* Found */
             *tbpp = *foundtbpp;
             return RDB_OK;

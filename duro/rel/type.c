@@ -937,7 +937,7 @@ RDB_project_tuple_type(const RDB_type *typ, int attrc, char *attrv[],
 
         attrp = _RDB_tuple_type_attr(typ, attrname);
         if (attrp == NULL) {
-            ret = RDB_INVALID_ARGUMENT;
+            ret = RDB_ATTRIBUTE_NOT_FOUND;
             goto error;
         }
         tuptyp->var.tuple.attrv[i].typ = _RDB_dup_nonscalar_type(attrp->typ);
@@ -1166,7 +1166,7 @@ RDB_wrap_tuple_type(const RDB_type *typ, int wrapc, const RDB_wrapping wrapv[],
         for (j = 0; j < wrapv[i].attrc; j++) {
             attrp = _RDB_tuple_type_attr(typ, wrapv[i].attrv[j]);
             if (attrp == NULL) {
-                ret = RDB_INVALID_ARGUMENT;
+                ret = RDB_ATTRIBUTE_NOT_FOUND;
                 free(tuptyp->var.tuple.attrv);
                 free(tuptyp);
                 goto error;
@@ -1376,7 +1376,7 @@ RDB_group_type(RDB_type *typ, int attrc, char *attrv[], const char *gattr,
         attrp = _RDB_tuple_type_attr(typ->var.basetyp, attrv[i]);
         if (attrp == NULL) {
             free(rtattrv);
-            return RDB_INVALID_ARGUMENT;
+            return RDB_ATTRIBUTE_NOT_FOUND;
         }
         rtattrv[i].typ = attrp->typ;
         rtattrv[i].name = attrp->name;
@@ -1417,7 +1417,7 @@ RDB_group_type(RDB_type *typ, int attrc, char *attrv[], const char *gattr,
         if (_RDB_tuple_type_attr(gattrtyp->var.basetyp, attrname) == NULL) {
             if (strcmp(attrname, gattr) == 0) {
                 RDB_drop_type(gattrtyp, NULL);
-                ret = RDB_INVALID_ARGUMENT;
+                ret = RDB_ATTRIBUTE_NOT_FOUND;
                 goto error;
             }
             ret = copy_attr(&tuptyp->var.tuple.attrv[j],
@@ -1477,7 +1477,7 @@ RDB_ungroup_type(RDB_type *typ, const char *attr, RDB_type **newtypp)
     RDB_attr *relattrp = _RDB_tuple_type_attr(typ->var.basetyp, attr);
 
     if (relattrp == NULL || relattrp->typ->kind != RDB_TP_RELATION)
-        return RDB_INVALID_ARGUMENT;
+        return RDB_ATTRIBUTE_NOT_FOUND;
 
     tuptyp = malloc(sizeof (RDB_type));
     if (tuptyp == NULL)

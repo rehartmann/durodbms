@@ -952,7 +952,7 @@ RDB_all(RDB_table *tbp, const char *attrname, RDB_transaction *txp,
     if (attrname != NULL) {
         attrtyp = _RDB_tuple_type_attr(tbp->typ->var.basetyp, attrname)->typ;
         if (attrtyp == NULL)
-            return RDB_INVALID_ARGUMENT;
+            return RDB_ATTRIBUTE_NOT_FOUND;
     }
 
     /* initialize result */

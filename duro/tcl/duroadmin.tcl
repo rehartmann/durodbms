@@ -181,7 +181,8 @@ proc add_tuples {arr tx rowcount} {
     .tableframe.table configure -rows [expr {$rowcount + 2}]
     for {set i 0} {$i < $rowcount} {incr i} {
         if {[catch {set tpl [duro::array index $arr $i $tx]} errmsg]} {
-            if {![regexp {not found$} $errmsg]} {
+            if {[llength $::errorCode] != 3
+                    || [lindex $::errorCode 1] != "RDB_NOT_FOUND"} {
                 error $errmsg
             }
             break
@@ -533,7 +534,7 @@ proc drop_db {} {
 }
 
 proc drop_table {} {
-    set table [.tables get active]
+    set table [.tables get anchor]
 
     if {[tk_messageBox -type okcancel -title "Drop table" \
             -message "Drop table \"$table\"?" -icon question] != "ok"} {
@@ -546,7 +547,7 @@ proc drop_table {} {
         duro::table drop $table $tx
         duro::commit $tx
 
-        .tables delete active
+        .tables delete anchor
         .mbar.db.drop entryconfigure 2 -state disabled
 
         # If the table is local, delete it from the list of local tables

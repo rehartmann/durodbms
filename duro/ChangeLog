@@ -4,6 +4,8 @@ Summary of Changes for Duro
 
 Changes for Duro 0.8
 
+- Introduced error code RDB_ATTRIUTE_NOT_FOUND.
+
 - duro::insert now raises an error if the tuple is already an element of the
   table.
 
@@ -44,6 +46,8 @@ Changes for Duro 0.8
 
 - Durotcl: duro::array index and duro:array foreach now take a
   transaction argument.
+
+- Durotcl functions now set errorCode.
 
 - Implemented support for system-implemented user-defined types with
   more than one possrep component.

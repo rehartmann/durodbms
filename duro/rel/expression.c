@@ -37,7 +37,7 @@ RDB_expr_type(const RDB_expression *exp, const RDB_type *tuptyp,
             attrp = _RDB_tuple_type_attr(
                     tuptyp, exp->var.attr.name);
             if (attrp == NULL)
-                return RDB_NOT_FOUND;
+                return RDB_ATTRIBUTE_NOT_FOUND;
             *typp = attrp->typ;
             break;
         case RDB_EX_NOT:
@@ -238,7 +238,7 @@ RDB_expr_type(const RDB_expression *exp, const RDB_type *tuptyp,
                             exp->var.op.arg1->var.obj.var.tbp->typ->var.basetyp,
                             exp->var.op.name);
                     if (attrp == NULL)
-                        return RDB_NOT_FOUND;
+                        return RDB_ATTRIBUTE_NOT_FOUND;
                     *typp = attrp->typ;
             }
             break;

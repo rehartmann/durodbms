@@ -175,7 +175,7 @@ RDB_project_tuple(const RDB_object *tplp, int attrc, char *attrv[],
     for (i = 0; i < attrc; i++) {
         attrp = RDB_tuple_get(tplp, attrv[i]);
         if (attrp == NULL)
-            return RDB_INVALID_ARGUMENT;
+            return RDB_ATTRIBUTE_NOT_FOUND;
 
         RDB_tuple_set(restplp, attrv[i], attrp);
     }

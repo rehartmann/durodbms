@@ -161,6 +161,11 @@ duro::table drop TU $tx
 
 duro::table drop TX $tx
 
+# Try to drop TX a second time
+if {![catch {duro::table drop TX $tx}]} {
+    error "Dropping TX should fail, but succeeded"
+}
+
 # Recreate TU
 
 duro::table expr -global TU {T1 UNION T2} $tx
