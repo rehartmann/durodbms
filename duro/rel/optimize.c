@@ -14,7 +14,7 @@
 #include <dli/tabletostr.h>
 
 static RDB_bool is_and(RDB_expression *exp) {
-    return (RDB_bool) exp->kind == RDB_EX_USER_OP
+    return (RDB_bool) exp->kind == RDB_EX_RO_OP
         && strcmp (exp->var.op.name, "AND") == 0;
 }
 
@@ -55,7 +55,7 @@ unbalance_and(RDB_expression *exp)
 static RDB_bool
 expr_attr(RDB_expression *exp, const char *attrname, char *opname)
 {
-    if (exp->kind == RDB_EX_USER_OP && strcmp(exp->var.op.name, opname) == 0) {
+    if (exp->kind == RDB_EX_RO_OP && strcmp(exp->var.op.name, opname) == 0) {
         if (exp->var.op.argv[0]->kind == RDB_EX_ATTR
                 && strcmp(exp->var.op.argv[0]->var.attrname, attrname) == 0
                 && exp->var.op.argv[1]->kind == RDB_EX_OBJ)
@@ -67,7 +67,7 @@ expr_attr(RDB_expression *exp, const char *attrname, char *opname)
 static RDB_bool
 expr_cmp_attr(RDB_expression *exp, const char *attrname)
 {
-    return (RDB_bool) (exp->kind == RDB_EX_USER_OP &&
+    return (RDB_bool) (exp->kind == RDB_EX_RO_OP &&
             (strcmp(exp->var.op.name, "=") == 0
             || strcmp(exp->var.op.name, ">") == 0
             || strcmp(exp->var.op.name, "<") == 0
@@ -292,7 +292,7 @@ split_by_index(RDB_table *tbp, _RDB_tbindex *indexp, RDB_transaction *txp)
         /*
          * Split table into two
          */
-        ret = RDB_select(tbp->var.select.tbp, ixexp, &sitbp);
+        ret = RDB_select(tbp->var.select.tbp, ixexp, txp, &sitbp);
         if (ret != RDB_OK)
             return ret;
 

@@ -148,7 +148,7 @@ test_summarize(RDB_database *dbp)
     addv[2].exp = RDB_expr_attr("SALARY");
     addv[2].name = "AVG_SALARY";
 
-    ret = RDB_summarize(untbp, projtbp, 3, addv, &vtbp);
+    ret = RDB_summarize(untbp, projtbp, 3, addv, &tx, &vtbp);
     if (ret != RDB_OK) {
         RDB_rollback(&tx);
         return ret;

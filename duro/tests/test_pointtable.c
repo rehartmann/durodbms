@@ -207,7 +207,7 @@ test_query(RDB_database *dbp)
     wherep = RDB_expr_comp(wherep, "X");
     wherep = RDB_eq(wherep, RDB_rational_to_expr(1.0));
 
-    ret = RDB_select(tbp, wherep, &tmptbp);
+    ret = RDB_select(tbp, wherep, &tx, &tmptbp);
 
     printf("Converting selection table to array\n");
     ret = RDB_table_to_array(&array, tmptbp, 0, NULL, &tx);
@@ -247,7 +247,7 @@ test_query(RDB_database *dbp)
     } 
     wherep = RDB_eq(wherep, RDB_expr_attr("POINT"));
 
-    ret = RDB_select(tbp, wherep, &tmptbp);
+    ret = RDB_select(tbp, wherep, &tx, &tmptbp);
     if (ret != RDB_OK) {
         goto error;
     } 

@@ -43,9 +43,6 @@ int
 _RDB_get_cat_type(const char *name, RDB_transaction *, RDB_type **typp);
 
 int
-_RDB_get_cat_rtype(const char *opname, RDB_transaction *, RDB_type **typp);
-
-int
 _RDB_make_typesobj(int argc, RDB_type *argtv[], RDB_object *objp);
 
 int

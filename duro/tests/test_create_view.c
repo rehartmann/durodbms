@@ -90,7 +90,7 @@ create_view2(RDB_database *dbp)
     if (ret != RDB_OK)
         return ret;
 
-    ret = RDB_select(tbp, exprp, &vtbp);
+    ret = RDB_select(tbp, exprp, &tx, &vtbp);
     if (ret != RDB_OK) {
         RDB_drop_expr(exprp);
         RDB_rollback(&tx);
@@ -145,7 +145,7 @@ create_view3(RDB_database *dbp)
 
     vattr.name = "HIGHSAL";
     vattr.exp = exprp;
-    ret = RDB_extend(tbp, 1, &vattr, &vtbp);
+    ret = RDB_extend(tbp, 1, &vattr, &tx, &vtbp);
     if (ret != RDB_OK) {
         RDB_drop_expr(exprp);
         RDB_rollback(&tx);
@@ -204,7 +204,7 @@ create_view4(RDB_database *dbp)
     add.exp = RDB_expr_attr("SALARY");
     add.name = "MAX_SALARY";
 
-    ret = RDB_summarize(tbp, projtbp, 1, &add, &vtbp);
+    ret = RDB_summarize(tbp, projtbp, 1, &add, &tx, &vtbp);
     if (ret != RDB_OK) {
         RDB_rollback(&tx);
         return ret;

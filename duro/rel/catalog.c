@@ -106,19 +106,12 @@ static RDB_attr ro_ops_attrv[] = {
     { "ARGTYPES", NULL, NULL, 0 }, /* type is set to array of BINARY later */
     { "LIB", &RDB_STRING, NULL, 0 },
     { "SYMBOL", &RDB_STRING, NULL, 0 },
-    { "IARG", &RDB_BINARY, NULL, 0 }
+    { "IARG", &RDB_BINARY, NULL, 0 },
+    { "RTYPE", &RDB_BINARY, NULL, 0 }
 };
 
 static char *ro_ops_keyattrv[] = { "NAME", "ARGTYPES" };
 static RDB_string_vec ro_ops_keyv[] = { { 2, ro_ops_keyattrv } };
-
-static RDB_attr ro_op_rtypes_attrv[] = {
-    { "NAME", &RDB_STRING, NULL, 0 },
-    { "RTYPE", &RDB_BINARY, NULL, 0 }
-};
-
-static char *ro_op_rtypes_keyattrv[] = { "NAME" };
-static RDB_string_vec ro_op_rtypes_keyv[] = { { 1, ro_op_rtypes_keyattrv } };
 
 static RDB_attr upd_ops_attrv[] = {
     { "NAME", &RDB_STRING, NULL, 0 },
@@ -486,7 +479,7 @@ _RDB_cat_index_tablename(const char *name, char **tbnamep,
     if (wherep == NULL)
         return RDB_NO_MEMORY;
 
-    ret = RDB_select(txp->dbp->dbrootp->indexes_tbp, wherep, &vtbp);
+    ret = RDB_select(txp->dbp->dbrootp->indexes_tbp, wherep, txp, &vtbp);
     if (ret != RDB_OK) {
         RDB_drop_expr(wherep);
         return ret;
@@ -656,7 +649,7 @@ _RDB_get_indexes(RDB_table *tbp, RDB_dbroot *dbrootp, RDB_transaction *txp)
     if (wherep == NULL)
         return RDB_NO_MEMORY;
 
-    ret = RDB_select(dbrootp->indexes_tbp, wherep, &vtbp);
+    ret = RDB_select(dbrootp->indexes_tbp, wherep, txp, &vtbp);
     if (ret != RDB_OK) {
         RDB_drop_expr(wherep);
         return ret;
@@ -871,16 +864,9 @@ _RDB_open_systables(RDB_dbroot *dbrootp, RDB_transaction *txp)
     if (ro_ops_attrv[1].typ == NULL)
         return RDB_NO_MEMORY;
 
-    ret = provide_systable("SYS_RO_OPS", 5, ro_ops_attrv,
+    ret = provide_systable("SYS_RO_OPS", 6, ro_ops_attrv,
             1, ro_ops_keyv, create, txp, dbrootp->envp,
             &dbrootp->ro_ops_tbp);
-    if (ret != RDB_OK) {
-        return ret;
-    }
-
-    ret = provide_systable("SYS_RO_OP_RTYPES", 2, ro_op_rtypes_attrv,
-            1, ro_op_rtypes_keyv, create, txp, dbrootp->envp,
-            &dbrootp->ro_op_rtypes_tbp);
     if (ret != RDB_OK) {
         return ret;
     }
@@ -960,10 +946,6 @@ _RDB_open_systables(RDB_dbroot *dbrootp, RDB_transaction *txp)
         if (ret != RDB_OK)
             return ret;
 
-        ret = _RDB_get_indexes(dbrootp->ro_op_rtypes_tbp, dbrootp, txp);
-        if (ret != RDB_OK)
-            return ret;
-
         ret = _RDB_get_indexes(dbrootp->upd_ops_tbp, dbrootp, txp);
         if (ret != RDB_OK)
             return ret;
@@ -1020,9 +1002,6 @@ _RDB_create_db_in_cat(RDB_transaction *txp)
             ret = dbtables_insert(txp->dbp->dbrootp->ro_ops_tbp, txp);
             if (ret != RDB_OK) 
                 return ret;
-            ret = dbtables_insert(txp->dbp->dbrootp->ro_op_rtypes_tbp, txp);
-            if (ret != RDB_OK) 
-                return ret;
             ret = dbtables_insert(txp->dbp->dbrootp->upd_ops_tbp, txp);
             if (ret != RDB_OK) 
                 return ret;
@@ -1077,11 +1056,6 @@ _RDB_create_db_in_cat(RDB_transaction *txp)
     }
 
     ret = _RDB_cat_insert(txp->dbp->dbrootp->ro_ops_tbp, txp);
-    if (ret != RDB_OK) {
-        return ret;
-    }
-
-    ret = _RDB_cat_insert(txp->dbp->dbrootp->ro_op_rtypes_tbp, txp);
     if (ret != RDB_OK) {
         return ret;
     }
@@ -1171,7 +1145,7 @@ get_keys(const char *name, RDB_transaction *txp,
     if (wherep == NULL)
         return RDB_NO_MEMORY;
 
-    ret = RDB_select(txp->dbp->dbrootp->keys_tbp, wherep, &vtbp);
+    ret = RDB_select(txp->dbp->dbrootp->keys_tbp, wherep, txp, &vtbp);
     if (ret != RDB_OK) {
         RDB_drop_expr(wherep);
         return ret;
@@ -1262,7 +1236,7 @@ _RDB_get_cat_rtable(const char *name, RDB_transaction *txp, RDB_table **tbpp)
         ret = RDB_NO_MEMORY;
         goto error;
     }
-    ret = RDB_select(txp->dbp->dbrootp->rtables_tbp, exprp, &tmptb1p);
+    ret = RDB_select(txp->dbp->dbrootp->rtables_tbp, exprp, txp, &tmptb1p);
     if (ret != RDB_OK) {
         RDB_drop_expr(exprp);
         goto error;
@@ -1286,7 +1260,7 @@ _RDB_get_cat_rtable(const char *name, RDB_transaction *txp, RDB_table **tbpp)
      * Read attribute names and types
      */
 
-    ret = RDB_select(txp->dbp->dbrootp->table_attr_tbp, exprp, &tmptb2p);
+    ret = RDB_select(txp->dbp->dbrootp->table_attr_tbp, exprp, txp, &tmptb2p);
     if (ret != RDB_OK)
         goto error;
     ret = RDB_table_to_array(&arr, tmptb2p, 0, NULL, txp);
@@ -1332,7 +1306,8 @@ _RDB_get_cat_rtable(const char *name, RDB_transaction *txp, RDB_table **tbpp)
         goto error;
     }
 
-    ret = RDB_select(txp->dbp->dbrootp->table_attr_defvals_tbp, exprp, &tmptb3p);
+    ret = RDB_select(txp->dbp->dbrootp->table_attr_defvals_tbp, exprp, txp,
+            &tmptb3p);
     if (ret != RDB_OK)
         goto error;
     ret = RDB_table_to_array(&arr, tmptb3p, 0, NULL, txp);
@@ -1380,7 +1355,7 @@ _RDB_get_cat_rtable(const char *name, RDB_transaction *txp, RDB_table **tbpp)
             ret = RDB_NO_MEMORY;
             goto error;
         }
-        ret = RDB_select(txp->dbp->dbrootp->table_recmap_tbp, exprp, &tmptb4p);
+        ret = RDB_select(txp->dbp->dbrootp->table_recmap_tbp, exprp, txp, &tmptb4p);
         if (ret != RDB_OK) {
             RDB_drop_expr(exprp);
             goto error;
@@ -1498,7 +1473,7 @@ _RDB_get_cat_vtable(const char *name, RDB_transaction *txp, RDB_table **tbpp)
         ret = RDB_NO_MEMORY;
         goto error;
     }
-    ret = RDB_select(txp->dbp->dbrootp->vtables_tbp, exprp, &tmptbp);
+    ret = RDB_select(txp->dbp->dbrootp->vtables_tbp, exprp, txp, &tmptbp);
     if (ret != RDB_OK) {
         RDB_drop_expr(exprp);
         goto error;
@@ -1605,7 +1580,7 @@ types_query(const char *name, RDB_transaction *txp, RDB_table **tbpp)
         return RDB_NO_MEMORY;
     }
 
-    ret = RDB_select(txp->dbp->dbrootp->types_tbp, wherep, tbpp);
+    ret = RDB_select(txp->dbp->dbrootp->types_tbp, wherep, txp, tbpp);
     if (ret != RDB_OK) {
          RDB_drop_expr(wherep);
          return ret;
@@ -1630,7 +1605,7 @@ _RDB_possreps_query(const char *name, RDB_transaction *txp, RDB_table **tbpp)
         return RDB_NO_MEMORY;
     }
 
-    ret = RDB_select(txp->dbp->dbrootp->possreps_tbp, wherep, tbpp);
+    ret = RDB_select(txp->dbp->dbrootp->possreps_tbp, wherep, txp, tbpp);
     if (ret != RDB_OK) {
         RDB_drop_expr(wherep);
         return ret;
@@ -1677,7 +1652,7 @@ _RDB_possrepcomps_query(const char *name, const char *possrepname,
         RDB_drop_expr(ex2p);
         return ret;
     }
-    ret = RDB_select(txp->dbp->dbrootp->possrepcomps_tbp, wherep, tbpp);
+    ret = RDB_select(txp->dbp->dbrootp->possrepcomps_tbp, wherep, txp, tbpp);
     if (ret != RDB_OK) {
         RDB_drop_expr(wherep);
         return ret;
@@ -1871,60 +1846,6 @@ error:
 }
 
 int
-_RDB_get_cat_rtype(const char *opname, RDB_transaction *txp, RDB_type **typp)
-{
-    int ret;
-    RDB_expression *wherep;
-    RDB_table *vtbp;
-    RDB_object tpl;
-
-    /*
-     * Build query
-     */
-
-    wherep = RDB_eq(RDB_expr_attr("NAME"), RDB_string_to_expr(opname));
-    if (wherep == NULL) {
-        RDB_rollback_all(txp);
-        return RDB_NO_MEMORY;
-    }
-
-    ret = RDB_select(txp->dbp->dbrootp->ro_op_rtypes_tbp, wherep, &vtbp);
-    if (ret != RDB_OK) {
-        RDB_drop_expr(wherep);
-        RDB_rollback_all(txp);
-        return ret;
-    }
-
-    /*
-     * Read tuple
-     */
-
-    RDB_init_obj(&tpl);
-    ret = RDB_extract_tuple(vtbp, txp, &tpl);
-    RDB_drop_table(vtbp, txp);
-    if (ret != RDB_OK) {
-        if (RDB_is_syserr(ret))
-            RDB_rollback_all(txp);
-        RDB_destroy_obj(&tpl);
-        return ret;
-    }
-
-    /*
-     * Get type
-     */
-
-    ret = _RDB_deserialize_type(RDB_tuple_get(&tpl, "RTYPE"), txp, typp);
-    RDB_destroy_obj(&tpl);
-    if (ret != RDB_OK) {
-        if (RDB_is_syserr(ret))
-            RDB_rollback_all(txp);
-        return ret;
-    }
-
-    return RDB_OK;
-}
-
-int
 _RDB_make_typesobj(int argc, RDB_type *argtv[], RDB_object *objp)
 {
     int i;
@@ -1981,7 +1902,7 @@ _RDB_get_cat_ro_op(const char *name, int argc, RDB_type *argtv[],
         RDB_rollback_all(txp);
         return ret;
     }
-    ret = RDB_select(txp->dbp->dbrootp->ro_ops_tbp, exp, &vtbp);
+    ret = RDB_select(txp->dbp->dbrootp->ro_ops_tbp, exp, txp, &vtbp);
     if (ret != RDB_OK) {
         RDB_drop_expr(exp);
         return ret;
@@ -2037,10 +1958,6 @@ _RDB_get_cat_ro_op(const char *name, int argc, RDB_type *argtv[],
         }
     }
 
-    ret = _RDB_get_cat_rtype(name, txp, &op->rtyp);
-    if (ret != RDB_OK)
-        goto error;
-
     ret = RDB_copy_obj(&op->iarg, RDB_tuple_get(&tpl, "IARG"));
     if (ret != RDB_OK)
         goto error;
@@ -2058,6 +1975,11 @@ _RDB_get_cat_ro_op(const char *name, int argc, RDB_type *argtv[],
         RDB_errmsg(txp->dbp->dbrootp->envp, "Symbol \"%s\" not found",
                 symname);
         ret = RDB_RESOURCE_NOT_FOUND;
+        goto error;
+    }
+
+    ret = _RDB_deserialize_type(RDB_tuple_get(&tpl, "RTYPE"), txp, &op->rtyp);
+    if (ret != RDB_OK) {
         goto error;
     }
 
@@ -2111,7 +2033,7 @@ _RDB_get_cat_upd_op(const char *name, int argc, RDB_type *argtv[],
         RDB_rollback_all(txp);
         return ret;
     }
-    ret = RDB_select(txp->dbp->dbrootp->upd_ops_tbp, exp, &vtbp);
+    ret = RDB_select(txp->dbp->dbrootp->upd_ops_tbp, exp, txp, &vtbp);
     if (ret != RDB_OK) {
         if (RDB_is_syserr(ret))
             RDB_rollback_all(txp);

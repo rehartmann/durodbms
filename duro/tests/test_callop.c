@@ -96,7 +96,7 @@ test_useop(RDB_database *dbp)
         goto error;
     }
 
-    ret = RDB_extend(tbp, 1, &extend, &vtbp);
+    ret = RDB_extend(tbp, 1, &extend, &tx, &vtbp);
     if (ret != RDB_OK) {
         goto error;
     }

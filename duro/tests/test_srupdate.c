@@ -83,7 +83,11 @@ test_update1(RDB_database *dbp)
     printf("Updating table\n");
 
     exp = RDB_int_to_expr(2);
-    exp = RDB_subtract(exp, RDB_expr_attr("NO"));
+    ret = RDB_ro_op_2("-", exp, RDB_expr_attr("NO"), &tx, &exp);
+    if (ret != RDB_OK) {
+        RDB_rollback(&tx);
+        return ret;
+    }
 
     upd.name = "NO";
     upd.exp = exp;
@@ -121,7 +125,11 @@ test_update2(RDB_database *dbp)
     printf("Updating table\n");
 
     exp = RDB_expr_sum(RDB_table_to_expr(tbp), "COUNT");
-    exp = RDB_add(exp, RDB_int_to_expr(1));
+    ret = RDB_ro_op_2("+", exp, RDB_int_to_expr(1), &tx, &exp);
+    if (ret != RDB_OK) {
+        RDB_rollback(&tx);
+        return ret;
+    }
 
     upd.name = "COUNT";
     upd.exp = exp;

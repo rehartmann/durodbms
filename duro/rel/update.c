@@ -757,7 +757,7 @@ RDB_update(RDB_table *tbp, RDB_expression *condp, int updc,
         if (attrp == NULL)
             return RDB_INVALID_ARGUMENT;
         if (RDB_type_is_scalar(attrp->typ)) {
-            ret = RDB_expr_type(updv[i].exp, tbp->typ->var.basetyp, &typ);
+            ret = RDB_expr_type(updv[i].exp, tbp->typ->var.basetyp, txp, &typ);
             if (ret != RDB_OK)
                 return ret;
             if (!RDB_type_equals(typ, attrp->typ))
@@ -766,7 +766,7 @@ RDB_update(RDB_table *tbp, RDB_expression *condp, int updc,
     }
 
     if (condp != NULL) {
-        ret = RDB_select(tbp, condp, &tbp);
+        ret = RDB_select(tbp, condp, txp, &tbp);
         if (ret != RDB_OK)
             return ret;
     }

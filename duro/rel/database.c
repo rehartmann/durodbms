@@ -178,7 +178,6 @@ close_systables(RDB_dbroot *dbrootp)
     close_table(dbrootp->possreps_tbp, dbrootp->envp);
     close_table(dbrootp->possrepcomps_tbp, dbrootp->envp);
     close_table(dbrootp->ro_ops_tbp, dbrootp->envp);
-    close_table(dbrootp->ro_op_rtypes_tbp, dbrootp->envp);
     close_table(dbrootp->upd_ops_tbp, dbrootp->envp);
     close_table(dbrootp->indexes_tbp, dbrootp->envp);
 }
@@ -292,8 +291,6 @@ assoc_systables(RDB_dbroot *dbrootp, RDB_database *dbp)
     _RDB_assoc_table_db(dbrootp->possrepcomps_tbp, dbp);
 
     _RDB_assoc_table_db(dbrootp->ro_ops_tbp, dbp);
-
-    _RDB_assoc_table_db(dbrootp->ro_op_rtypes_tbp, dbp);
 
     _RDB_assoc_table_db(dbrootp->upd_ops_tbp, dbp);
 
@@ -525,14 +522,14 @@ RDB_drop_db(RDB_database *dbp)
 
     /* Check if the database contains user tables */
     exprp = RDB_expr_attr("IS_USER");
-    ret = RDB_select(dbp->dbrootp->rtables_tbp, exprp, &vtbp);
+    ret = RDB_select(dbp->dbrootp->rtables_tbp, exprp, &tx, &vtbp);
     if (ret != RDB_OK) {
         RDB_drop_expr(exprp);
         goto error;
     }
     exprp = RDB_eq(RDB_expr_attr("DBNAME"),
                    RDB_string_to_expr(dbp->name));
-    ret = RDB_select(dbp->dbrootp->dbtables_tbp, exprp, &vtb2p);
+    ret = RDB_select(dbp->dbrootp->dbtables_tbp, exprp, &tx, &vtb2p);
     if (ret != RDB_OK) {
         RDB_drop_expr(exprp);
         RDB_drop_table(vtbp, &tx);
@@ -565,7 +562,7 @@ RDB_drop_db(RDB_database *dbp)
         goto error;
     }
 
-    ret = RDB_select(dbp->dbrootp->dbtables_tbp, exprp, &vtbp);
+    ret = RDB_select(dbp->dbrootp->dbtables_tbp, exprp, &tx, &vtbp);
     if (ret != RDB_OK) {
         goto error;
     }

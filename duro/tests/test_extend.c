@@ -132,8 +132,11 @@ test_extend(RDB_database *dbp)
         return ret;
     }
 
-    extend[0].exp = RDB_subtract(RDB_expr_attr("SALARY"),
-                         RDB_rational_to_expr(4100));
+    ret = RDB_ro_op_2("-", RDB_expr_attr("SALARY"), RDB_rational_to_expr(4100),
+            &tx, &extend[0].exp);
+    if (ret != RDB_OK)
+        return ret;
+
     exp = RDB_expr_attr("NAME");
     if (exp == NULL) {
         ret = RDB_NO_MEMORY;
@@ -150,7 +153,7 @@ test_extend(RDB_database *dbp)
 
     printf("Extending EMPS1 (SALARY_AFTER_TAX,NAME_LEN)\n");
 
-    ret = RDB_extend(tbp, 2, extend, &vtbp);
+    ret = RDB_extend(tbp, 2, extend, &tx, &vtbp);
     if (ret != RDB_OK) {
         goto error;
     }

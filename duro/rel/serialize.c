@@ -202,20 +202,10 @@ serialize_expr(RDB_object *valp, int *posp, const RDB_expression *exp)
             return serialize_obj(valp, posp, &exp->var.obj);
         case RDB_EX_ATTR:
             return serialize_str(valp, posp, exp->var.attrname);
-        case RDB_EX_NEGATE:
-        case RDB_EX_IS_EMPTY:
         case RDB_EX_TO_INTEGER:
         case RDB_EX_TO_RATIONAL:
         case RDB_EX_TO_STRING:
             return serialize_expr(valp, posp, exp->var.op.argv[0]);
-        case RDB_EX_ADD:
-        case RDB_EX_SUBTRACT:
-        case RDB_EX_MULTIPLY:
-        case RDB_EX_DIVIDE:
-            ret = serialize_expr(valp, posp, exp->var.op.argv[0]);
-            if (ret != RDB_OK)
-                return ret;
-            return serialize_expr(valp, posp, exp->var.op.argv[1]);
         case RDB_EX_GET_COMP:
             ret = serialize_expr(valp, posp, exp->var.op.argv[0]);
             if (ret != RDB_OK)
@@ -229,7 +219,7 @@ serialize_expr(RDB_object *valp, int *posp, const RDB_expression *exp)
             if (ret != RDB_OK)
                 return ret;
             return serialize_str(valp, posp, exp->var.op.name);
-        case RDB_EX_USER_OP:
+        case RDB_EX_RO_OP:
         {
             int i;
             int argc = exp->var.op.argc;
@@ -850,7 +840,7 @@ static int
 deserialize_expr(RDB_object *valp, int *posp, RDB_transaction *txp,
                  RDB_expression **expp)
 {
-    RDB_expression *ex1p, *ex2p;
+    RDB_expression *ex1p;
     enum _RDB_expr_kind ekind;
     int ret;
 
@@ -894,7 +884,6 @@ deserialize_expr(RDB_object *valp, int *posp, RDB_transaction *txp,
                     return RDB_NO_MEMORY;
             }
             break;
-        case RDB_EX_NEGATE:
         case RDB_EX_TO_INTEGER:
         case RDB_EX_TO_RATIONAL:
         case RDB_EX_TO_STRING:
@@ -902,28 +891,6 @@ deserialize_expr(RDB_object *valp, int *posp, RDB_transaction *txp,
             if (ret != RDB_OK)
                 return ret;
             *expp = _RDB_create_unexpr(ex1p, ekind);
-            if (*expp == NULL)
-                return RDB_NO_MEMORY;
-            break;
-        case RDB_EX_IS_EMPTY:
-            ret = deserialize_expr(valp, posp, txp, &ex1p);
-            if (ret != RDB_OK)
-                return ret;
-            *expp = RDB_expr_is_empty(ex1p);
-            if (*expp == NULL)
-                return RDB_NO_MEMORY;
-            break;
-        case RDB_EX_ADD:
-        case RDB_EX_SUBTRACT:
-        case RDB_EX_MULTIPLY:
-        case RDB_EX_DIVIDE:
-            ret = deserialize_expr(valp, posp, txp, &ex1p);
-            if (ret != RDB_OK)
-                return ret;
-            ret = deserialize_expr(valp, posp, txp, &ex2p);
-            if (ret != RDB_OK)
-                return ret;
-            *expp = _RDB_create_binexpr(ex1p, ex2p, ekind);
             if (*expp == NULL)
                 return RDB_NO_MEMORY;
             break;
@@ -949,7 +916,7 @@ deserialize_expr(RDB_object *valp, int *posp, RDB_transaction *txp,
             }
             break;
         }
-        case RDB_EX_USER_OP:
+        case RDB_EX_RO_OP:
         {
             char *name;
             int argc;
@@ -1107,7 +1074,7 @@ deserialize_extend(RDB_object *valp, int *posp, RDB_transaction *txp,
         if (ret != RDB_OK)
             goto error;
     }
-    ret = RDB_extend(tbp, ac, av, tbpp);
+    ret = RDB_extend(tbp, ac, av, txp, tbpp);
     if (ret != RDB_OK)
         goto error;
     for (i = 0; i < ac; i++) {
@@ -1168,7 +1135,7 @@ deserialize_summarize(RDB_object *valp, int *posp, RDB_transaction *txp,
             goto error;
     }
 
-    ret = RDB_summarize(tb1p, tb2p, addc, addv, tbpp);
+    ret = RDB_summarize(tb1p, tb2p, addc, addv, txp, tbpp);
     if (ret != RDB_OK) {
         goto error;
     }
@@ -1505,7 +1472,7 @@ deserialize_table(RDB_object *valp, int *posp, RDB_transaction *txp,
             ret = deserialize_expr(valp, posp, txp, &exprp);
             if (ret != RDB_OK)
                 goto error;
-            return RDB_select(tb1p, exprp, tbpp);
+            return RDB_select(tb1p, exprp, txp, tbpp);
             break;
         case RDB_TB_UNION:
             ret = deserialize_table(valp, posp, txp, &tb1p);

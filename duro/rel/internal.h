@@ -36,7 +36,6 @@ typedef struct RDB_dbroot {
     RDB_table *possreps_tbp;
     RDB_table *possrepcomps_tbp;
     RDB_table *ro_ops_tbp;
-    RDB_table *ro_op_rtypes_tbp;
     RDB_table *upd_ops_tbp;
     RDB_table *indexes_tbp;
 } RDB_dbroot;
@@ -350,6 +349,9 @@ RDB_table *
 _RDB_dup_vtable(RDB_table *);
 
 int
+_RDB_select(RDB_table *, RDB_expression *, RDB_table **);
+
+int
 _RDB_sdivide_preserves(RDB_table *, const RDB_object *tplp, RDB_qresult *qr3p,
         RDB_transaction *);
 
@@ -388,7 +390,8 @@ _RDB_obj_to_field(RDB_field *, RDB_object *);
 #define _RDB_pkey_len(tbp) ((tbp)->keyv[0].strc)
 
 int
-RDB_expr_type(const RDB_expression *exp, const RDB_type *, RDB_type **);
+RDB_expr_type(const RDB_expression *exp, const RDB_type *, RDB_transaction *,
+        RDB_type **);
 
 RDB_type *
 _RDB_tuple_type(const RDB_object *tplp);
@@ -416,8 +419,7 @@ int
 _RDB_add_builtin_ops(RDB_dbroot *);
 
 RDB_expression *
-_RDB_ro_op(const char *opname, int argc, RDB_expression *argv[],
-           RDB_type *rtyp);
+_RDB_ro_op(const char *opname, int argc, RDB_expression *argv[]);
 
 int
 _RDB_duprem(RDB_qresult *qrp);

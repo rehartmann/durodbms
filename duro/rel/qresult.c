@@ -70,7 +70,7 @@ init_summ_table(RDB_qresult *qresp, RDB_transaction *txp)
                 case RDB_SUMD:
                     ret = RDB_expr_type(qresp->tbp->var.summarize.addv[i].exp,
                             qresp->tbp->var.summarize.tb1p->typ->var.basetyp,
-                            &typ);
+                            txp, &typ);
                     if (ret != RDB_OK)
                         goto error;
                     if (typ == &RDB_INTEGER)
@@ -81,7 +81,7 @@ init_summ_table(RDB_qresult *qresp, RDB_transaction *txp)
                 case RDB_MAX:
                     ret = RDB_expr_type(qresp->tbp->var.summarize.addv[i].exp,
                             qresp->tbp->var.summarize.tb1p->typ->var.basetyp,
-                            &typ);
+                            txp, &typ);
                     if (ret != RDB_OK)
                         goto error;
                     if (typ == &RDB_INTEGER)
@@ -92,7 +92,7 @@ init_summ_table(RDB_qresult *qresp, RDB_transaction *txp)
                 case RDB_MIN:
                     ret = RDB_expr_type(qresp->tbp->var.summarize.addv[i].exp,
                             qresp->tbp->var.summarize.tb1p->typ->var.basetyp,
-                            &typ);
+                            txp, &typ);
                     if (ret != RDB_OK)
                         goto error;
                     if (typ == &RDB_INTEGER)
@@ -283,7 +283,7 @@ do_summarize(RDB_qresult *qresp, RDB_transaction *txp)
                     } else {
                         ret = RDB_expr_type(summp->exp,
                                 qresp->tbp->var.summarize.tb1p->typ->var.basetyp,
-                                &typ);
+                                txp, &typ);
                         if (ret != RDB_OK)
                             goto cleanup;
                         ret = RDB_irep_to_obj(&svalv[i].val, typ,

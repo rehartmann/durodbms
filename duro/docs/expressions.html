@@ -84,15 +84,13 @@ mul_expression = primary_expression | mul_expression '*' primary_expression
 
 primary_expression = id | primary_expression '.' id
         | literal | count_invocation | aggregate_invocation
-        | is_empty_invocation | operator_invocation | '(' expression ')'.
+        | operator_invocation | '(' expression ')'.
 
 extractor = TUPLE FROM expression.
 
 count_invocation = COUNT '(' expression ')'.
 
 aggregate_invocation = summary_type '(' expression_list ')'.
-
-is_empty_invocation = IS_EMPTY '(' expression ')'.
 
 operator_invocation = id '(' [expression_list] ')'.
 

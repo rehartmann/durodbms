@@ -1,6 +1,13 @@
 #ifndef RDB_TABLESTOSTR_H
 #define RDB_TABLESTOSTR_H
 
+/*
+ * Copyright (C) 2004 René Hartmann.
+ * See the file COPYING for redistribution information.
+ */
+
+/* $Id$ */
+
 #include <rel/rdb.h>
 
 int

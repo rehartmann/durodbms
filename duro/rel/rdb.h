@@ -139,20 +139,14 @@ enum _RDB_expr_kind {
 
     RDB_EX_ATTR,
 
-    RDB_EX_ADD,
-    RDB_EX_SUBTRACT,
-    RDB_EX_NEGATE,
-    RDB_EX_MULTIPLY,
-    RDB_EX_DIVIDE,
     RDB_EX_TO_INTEGER,
     RDB_EX_TO_RATIONAL,
     RDB_EX_TO_STRING,
 
-    RDB_EX_IS_EMPTY,
     RDB_EX_AGGREGATE,
     RDB_EX_TUPLE_ATTR,
     RDB_EX_GET_COMP,
-    RDB_EX_USER_OP
+    RDB_EX_RO_OP
 };
 
 typedef enum {
@@ -170,7 +164,6 @@ typedef struct RDB_expression {
             int argc;
             struct RDB_expression **argv;
             char *name;
-            RDB_type *rtyp;
             RDB_aggregate_op op; /* only for RDB_EX_AGGREGATE */
         } op;
     } var;
@@ -663,7 +656,8 @@ RDB_cardinality(RDB_table *tbp, RDB_transaction *txp);
  * reponsibility for the expression.
  */
 int
-RDB_select(RDB_table *, RDB_expression *, RDB_table **resultpp);
+RDB_select(RDB_table *, RDB_expression *, RDB_transaction *,
+        RDB_table **resultpp);
 
 int
 RDB_union(RDB_table *, RDB_table *, RDB_table **resultpp);
@@ -683,7 +677,7 @@ RDB_join(RDB_table *, RDB_table *, RDB_table **resultpp);
  *  passed through attrv.
  */
 int
-RDB_extend(RDB_table *, int attrc, RDB_virtual_attr attrv[],
+RDB_extend(RDB_table *, int attrc, RDB_virtual_attr attrv[], RDB_transaction *,
         RDB_table **resultpp);
 
 int
@@ -698,7 +692,8 @@ RDB_remove(RDB_table *, int attrc, char *attrv[], RDB_table **resultpp);
  */
 int
 RDB_summarize(RDB_table *, RDB_table *, int addc,
-        const RDB_summarize_add addv[], RDB_table **resultpp);
+        const RDB_summarize_add addv[], RDB_transaction *,
+        RDB_table **resultpp);
 
 int
 RDB_rename(RDB_table *tbp, int renc, const RDB_renaming renv[],
@@ -1012,33 +1007,11 @@ RDB_expr_attr(const char *attrname);
 RDB_expression *
 RDB_eq(RDB_expression *, RDB_expression *);
 
-RDB_expression *
-RDB_neq(RDB_expression *, RDB_expression *);
-
-RDB_expression *
-RDB_add(RDB_expression *, RDB_expression *);
-
-RDB_expression *
-RDB_subtract(RDB_expression *, RDB_expression *);
-
-/* unary minus */
-RDB_expression *
-RDB_negate(RDB_expression *);
-
-RDB_expression *
-RDB_multiply(RDB_expression *, RDB_expression *);
-
-RDB_expression *
-RDB_divide(RDB_expression *, RDB_expression *);
-
 /*
  * Create table-valued expression
  */
 RDB_expression *
 RDB_table_to_expr(RDB_table *);
-
-RDB_expression *
-RDB_expr_is_empty(RDB_expression *arg1);
 
 RDB_expression *
 RDB_expr_cardinality(RDB_expression *arg1);

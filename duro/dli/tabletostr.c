@@ -1,3 +1,10 @@
+/*
+ * Copyright (C) 2004 René Hartmann.
+ * See the file COPYING for redistribution information.
+ */
+
+/* $Id$ */
+
 #include "tabletostr.h"
 #include <string.h>
 
@@ -68,59 +75,6 @@ append_ex(RDB_object *objp, RDB_expression *exp)
              if (ret != RDB_OK)
                  return ret;
             break;
-        case RDB_EX_ADD:
-        case RDB_EX_SUBTRACT:
-        case RDB_EX_MULTIPLY:
-        case RDB_EX_DIVIDE:
-            ret = append_str(objp, "(");
-            if (ret != RDB_OK)
-                return ret;
-            ret = append_ex(objp, exp->var.op.argv[0]);
-            if (ret != RDB_OK)
-                return ret;
-            switch (objp->kind) {
-                case RDB_EX_ADD:
-                    ret = append_str(objp, ") + (");
-                    break;
-                case RDB_EX_SUBTRACT:
-                    ret = append_str(objp, ") - (");
-                    break;
-                case RDB_EX_MULTIPLY:
-                    ret = append_str(objp, ") * (");
-                    break;
-                case RDB_EX_DIVIDE:
-                    ret = append_str(objp, ") / (");
-                    break;
-                default: ; /* never reached */
-            }
-            ret = append_ex(objp, exp->var.op.argv[1]);
-            if (ret != RDB_OK)
-                return ret;
-            ret = append_str(objp, ")");
-            if (ret != RDB_OK)
-                return ret;
-            break;
-        case RDB_EX_IS_EMPTY:
-            ret = append_str(objp, "IS_EMPTY(");
-            if (ret != RDB_OK)
-                return ret;
-            ret = append_ex(objp, exp->var.op.argv[0]);
-            if (ret != RDB_OK)
-                return ret;
-            ret = append_str(objp, ")");
-            if (ret != RDB_OK)
-                return ret;
-        case RDB_EX_NEGATE:
-            ret = append_str(objp, "-(");
-            if (ret != RDB_OK)
-                return ret;
-            ret = append_ex(objp, exp->var.op.argv[0]);
-            if (ret != RDB_OK)
-                return ret;
-            ret = append_str(objp, ")");
-            if (ret != RDB_OK)
-                return ret;
-            break;
         case RDB_EX_TO_INTEGER:
             ret = append_str(objp, "INTEGER(");
             if (ret != RDB_OK)
@@ -188,13 +142,15 @@ append_ex(RDB_object *objp, RDB_expression *exp)
             if (ret != RDB_OK)
                 return ret;
             break;
-        case RDB_EX_USER_OP:
+        case RDB_EX_RO_OP:
             if (strcmp(exp->var.op.name, "=") == 0
                     || strcmp(exp->var.op.name, "<>") == 0
                     || strcmp(exp->var.op.name, "<") == 0
                     || strcmp(exp->var.op.name, ">") == 0
                     || strcmp(exp->var.op.name, "<=") == 0
                     || strcmp(exp->var.op.name, ">=") == 0
+                    || strcmp(exp->var.op.name, "+") == 0
+                    || strcmp(exp->var.op.name, "-") == 0
                     || strcmp(exp->var.op.name, "||") == 0
                     || strcmp(exp->var.op.name, "MATCHES") == 0
                     || strcmp(exp->var.op.name, "AND") == 0

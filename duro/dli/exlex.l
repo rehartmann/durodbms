@@ -145,10 +145,6 @@ STRING {
     return TOK_STRING;
 }
 
-IS_EMPTY {
-    return TOK_IS_EMPTY;
-}
-
 COUNT {
     return TOK_COUNT;
 }

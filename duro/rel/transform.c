@@ -92,12 +92,11 @@ eliminate_not(RDB_expression *exp)
     int ret;
     RDB_expression *hexp;
 
-    if (exp->var.op.argv[0]->kind != RDB_EX_USER_OP)
+    if (exp->var.op.argv[0]->kind != RDB_EX_RO_OP)
         return RDB_OK;
 
     if (strcmp(exp->var.op.argv[0]->var.op.name, "AND") == 0) {
-        hexp = _RDB_ro_op("NOT", 1, &exp->var.op.argv[0]->var.op.argv[1],
-                &RDB_BOOLEAN);
+        hexp = _RDB_ro_op("NOT", 1, &exp->var.op.argv[0]->var.op.argv[1]);
         if (hexp == NULL)
             return RDB_NO_MEMORY;
         ret = alter_op(exp, "OR", 2);
@@ -115,8 +114,7 @@ eliminate_not(RDB_expression *exp)
         return eliminate_not(exp->var.op.argv[1]);
     }
     if (strcmp(exp->var.op.argv[0]->var.op.name, "OR") == 0) {
-        hexp = _RDB_ro_op("NOT", 1, &exp->var.op.argv[0]->var.op.argv[1],
-                &RDB_BOOLEAN);
+        hexp = _RDB_ro_op("NOT", 1, &exp->var.op.argv[0]->var.op.argv[1]);
         if (hexp == NULL)
             return RDB_NO_MEMORY;
         ret = alter_op(exp, "AND", 2);
@@ -166,7 +164,7 @@ transform_exp(RDB_expression *exp)
     int ret;
     int i;
 
-    if (exp->kind != RDB_EX_USER_OP)
+    if (exp->kind != RDB_EX_RO_OP)
         return RDB_OK;
 
     if (strcmp(exp->var.op.name, "NOT") == 0)
@@ -200,7 +198,7 @@ transform_select(RDB_table *tbp)
                  */
                 argv[0] = tbp->var.select.exp;
                 argv[1] = chtbp->var.select.exp;
-                exp = _RDB_ro_op("AND", 2, argv, &RDB_BOOLEAN);
+                exp = _RDB_ro_op("AND", 2, argv);
                 if (exp == NULL)
                     return RDB_NO_MEMORY;
 
@@ -254,7 +252,7 @@ transform_select(RDB_table *tbp)
                 if (ex2p == NULL)
                     return RDB_NO_MEMORY;
 
-                ret = RDB_select(chtbp->var._union.tb2p, ex2p, &newtbp);
+                ret = _RDB_select(chtbp->var._union.tb2p, ex2p, &newtbp);
                 if (ret != RDB_OK) {
                     RDB_drop_expr(ex2p);
                     return ret;
@@ -294,7 +292,7 @@ transform_select(RDB_table *tbp)
                 if (ex2p == NULL)
                     return RDB_NO_MEMORY;
 
-                ret = RDB_select(chtbp->var._union.tb2p, ex2p, &newtbp);
+                ret = _RDB_select(chtbp->var._union.tb2p, ex2p, &newtbp);
                 if (ret != RDB_OK) {
                     RDB_drop_expr(ex2p);
                     return ret;

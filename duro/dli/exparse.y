@@ -115,7 +115,6 @@ enum {
 %token TOK_INTEGER
 %token TOK_RATIONAL
 %token TOK_STRING
-%token TOK_IS_EMPTY
 %token TOK_COUNT
 %token TOK_SUM
 %token TOK_AVG
@@ -130,7 +129,7 @@ enum {
 %type <exp> relation project select rename extend summarize wrap unwrap
         group ungroup sdivideby expression or_expression and_expression
         not_expression primary_expression rel_expression add_expression
-        mul_expression literal operator_invocation is_empty_invocation
+        mul_expression literal operator_invocation
         integer_invocation rational_invocation string_invocation
         count_invocation sum_invocation avg_invocation min_invocation
         max_invocation all_invocation any_invocation extractor tuple_item_list
@@ -267,7 +266,7 @@ select: expression TOK_WHERE or_expression {
         {
             YYERROR;
         }
-        _RDB_parse_ret = RDB_select(tbp, $3, &restbp);
+        _RDB_parse_ret = RDB_select(tbp, $3, _RDB_parse_txp, &restbp);
         if (_RDB_parse_ret != RDB_OK) {
             YYERROR;
         }
@@ -489,7 +488,8 @@ extend: TOK_EXTEND expression TOK_ADD '(' extend_add_list ')' {
             if (_RDB_parse_ret != RDB_OK)
                 YYERROR;
         } else {
-            _RDB_parse_ret = RDB_extend(tbp, $5.extc, $5.extv, &restbp);
+            _RDB_parse_ret = RDB_extend(tbp, $5.extc, $5.extv, _RDB_parse_txp,
+                    &restbp);
             if (_RDB_parse_ret != RDB_OK) {
                 YYERROR;
             }
@@ -553,7 +553,8 @@ summarize: TOK_SUMMARIZE expression TOK_PER expression
             YYERROR;
         }
 
-        _RDB_parse_ret = RDB_summarize(tb1p, tb2p, $7.addc, $7.addv, &restbp);
+        _RDB_parse_ret = RDB_summarize(tb1p, tb2p, $7.addc, $7.addv, _RDB_parse_txp,
+                &restbp);
         for (i = 0; i < $7.addc; i++) {
             _RDB_parse_remove_exp($7.addv[i].exp);
         }
@@ -982,15 +983,17 @@ add_expression: mul_expression
             YYERROR;
     }
     | '-' mul_expression {
-        $$ = RDB_negate($2);
+        _RDB_parse_ret = RDB_ro_op_1("-", $2, _RDB_parse_txp, &$$);
+        if (_RDB_parse_ret != RDB_OK)
+            YYERROR;
         _RDB_parse_remove_exp($2);
         _RDB_parse_ret = _RDB_parse_add_exp($$);
         if (_RDB_parse_ret != RDB_OK)
             YYERROR;
     }
     | add_expression '+' mul_expression {
-        $$ = RDB_add($1, $3);
-        if ($$ == NULL)
+        _RDB_parse_ret = RDB_ro_op_2("+", $1, $3, _RDB_parse_txp, &$$);
+        if (_RDB_parse_ret != RDB_OK)
             YYERROR;
         _RDB_parse_remove_exp($1);
         _RDB_parse_remove_exp($3);
@@ -999,8 +1002,8 @@ add_expression: mul_expression
             YYERROR;
     }
     | add_expression '-' mul_expression {
-        $$ = RDB_subtract($1, $3);
-        if ($$ == NULL)
+        _RDB_parse_ret = RDB_ro_op_2("-", $1, $3, _RDB_parse_txp, &$$);
+        if (_RDB_parse_ret != RDB_OK)
             YYERROR;
         _RDB_parse_remove_exp($1);
         _RDB_parse_remove_exp($3);
@@ -1022,8 +1025,8 @@ add_expression: mul_expression
 
 mul_expression: primary_expression
     | mul_expression '*' primary_expression {
-        $$ = RDB_multiply($1, $3);
-        if ($$ == NULL)
+        _RDB_parse_ret = RDB_ro_op_2("*", $1, $3, _RDB_parse_txp, &$$);
+        if (_RDB_parse_ret != RDB_OK)
             YYERROR;
         _RDB_parse_remove_exp($1);
         _RDB_parse_remove_exp($3);
@@ -1032,8 +1035,8 @@ mul_expression: primary_expression
             YYERROR;
     }
     | mul_expression '/' primary_expression {
-        $$ = RDB_divide($1, $3);
-        if ($$ == NULL)
+        _RDB_parse_ret = RDB_ro_op_2("/", $1, $3, _RDB_parse_txp, &$$);
+        if (_RDB_parse_ret != RDB_OK)
             YYERROR;
         _RDB_parse_remove_exp($1);
         _RDB_parse_remove_exp($3);
@@ -1059,7 +1062,6 @@ primary_expression: TOK_ID
     | min_invocation
     | all_invocation
     | any_invocation
-    | is_empty_invocation
     | integer_invocation
     | rational_invocation
     | string_invocation
@@ -1293,19 +1295,6 @@ string_invocation: TOK_STRING  '(' expression ')' {
     }
     ;
 
-is_empty_invocation: TOK_IS_EMPTY '(' expression ')' {
-        RDB_table *tbp = _RDB_parse_expr_to_table($3);
-
-        $$ = RDB_expr_is_empty(tbp != NULL ? RDB_table_to_expr(tbp) : $3);
-        if ($$ == NULL)
-            YYERROR;
-        _RDB_parse_remove_exp($3);
-        _RDB_parse_ret = _RDB_parse_add_exp($$);
-        if (_RDB_parse_ret != RDB_OK)
-            YYERROR;
-    }
-    ;
-
 operator_invocation: TOK_ID '(' ')' {
         _RDB_parse_ret = RDB_ro_op($1->var.attrname, 0, NULL, _RDB_parse_txp, &$$);
         if (_RDB_parse_ret != RDB_OK)
@@ -1331,6 +1320,18 @@ operator_invocation: TOK_ID '(' ')' {
                 YYERROR;
         } else {
             int i;
+            RDB_table *tbp;
+
+            for (i = 0; i < $3.expc; i++) {
+                tbp = _RDB_parse_expr_to_table($3.expv[i]);
+                if (tbp != NULL) {
+                   $3.expv[i] = RDB_table_to_expr(tbp);
+
+                   _RDB_parse_ret = _RDB_parse_add_exp($3.expv[i]);
+                   if (_RDB_parse_ret != RDB_OK)
+                       YYERROR;
+                }
+            }
 
             _RDB_parse_ret = RDB_ro_op($1->var.attrname, $3.expc, $3.expv,
                     _RDB_parse_txp, &$$);

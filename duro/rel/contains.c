@@ -49,7 +49,7 @@ project_contains(RDB_table *tbp, const RDB_object *tplp, RDB_transaction *txp)
             return RDB_NO_MEMORY;
 
         /* create selection table */
-        ret = RDB_select(tbp, condp, &seltbp);
+        ret = RDB_select(tbp, condp, txp, &seltbp);
         if (ret != RDB_OK) {
             RDB_drop_expr(condp);
             return ret;
@@ -138,7 +138,7 @@ ungroup_contains(RDB_table *tbp, const RDB_object *tplp, RDB_transaction *txp)
         }
 
         /* create selection table */
-        ret = RDB_select(tbp->var.ungroup.tbp, condp, &seltbp);
+        ret = RDB_select(tbp->var.ungroup.tbp, condp, txp, &seltbp);
         if (ret != RDB_OK) {
             RDB_drop_expr(condp);
             return ret;

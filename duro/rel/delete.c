@@ -384,7 +384,7 @@ RDB_delete(RDB_table *tbp, RDB_expression *condp, RDB_transaction *txp)
         return RDB_INVALID_TRANSACTION;
 
     if (condp != NULL) {
-        ret = RDB_select(tbp, condp, &tbp);
+        ret = RDB_select(tbp, condp, txp, &tbp);
         if (ret != RDB_OK)
             return ret;
     }

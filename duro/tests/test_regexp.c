@@ -36,7 +36,7 @@ test_regexp(RDB_database *dbp)
     if (ret != RDB_OK)
         goto error;
     
-    ret = RDB_select(tbp, exprp, &vtbp);
+    ret = RDB_select(tbp, exprp, &tx, &vtbp);
     if (ret != RDB_OK) {
         goto error;
     }
