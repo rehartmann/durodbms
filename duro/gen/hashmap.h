@@ -88,6 +88,8 @@ RDB_hashmap_keys(const RDB_hashmap *, char **keyv);
 
 /* Call the function fp points to for all keys. */
 void
-RDB_hashmap_apply(RDB_hashmap *, void (*fp)(RDB_hashmap *, const char *key));
+RDB_hashmap_apply(RDB_hashmap *hp,
+                  void (*fp)(RDB_hashmap *, const char *, void *),
+                  void *arg);
 
 #endif

@@ -29,7 +29,7 @@ type.o : type.c rdb.h
 value.o : value.c rdb.h
 	$(CC) $(CFLAGS) -c value.c
 
-tuple.o : tuple.c rdb.h
+tuple.o : tuple.c rdb.h internal.h
 	$(CC) $(CFLAGS) -c tuple.c
 
 expression.o : expression.c rdb.h

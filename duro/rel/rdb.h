@@ -56,6 +56,7 @@ typedef struct RDB_type {
     } complex;
 } RDB_type;
 
+/* built-in types */
 extern RDB_type RDB_BOOLEAN;
 extern RDB_type RDB_INTEGER;
 extern RDB_type RDB_RATIONAL;
@@ -609,6 +610,10 @@ int
 RDB_tuple_extend(RDB_tuple *, int attrc, RDB_virtual_attr attrv[],
                  RDB_transaction *);
 
+int
+RDB_tuple_rename(const RDB_tuple *, int renc, RDB_renaming renv[],
+                 RDB_tuple *restup);
+
 void
 RDB_init_array(RDB_array *);
 
@@ -712,6 +717,17 @@ RDB_join_tuple_types(const RDB_type *typ1, const RDB_type *typ2,
                      RDB_type **newtypp);
 
 /*
+ * Join the relation types pointed to by typ1 and typ2 and store a pointer to
+ * The new type in the location pointed to by newtypp.
+ * The new type has the attributes from both types.
+ * If both types have an attribute with the same name but a different type,
+ * RDB_TYPE_MISMATCH is returned.
+ */
+int
+RDB_join_relation_types(const RDB_type *typ1, const RDB_type *typ2,
+                     RDB_type **newtypp);
+
+/*
  * Create a type that is a projection of the relation type pointed to by typ
  * over the attributes given by attrc and attrv.
  * The new type in the location pointed to by newtypp.
@@ -721,6 +737,22 @@ RDB_join_tuple_types(const RDB_type *typ1, const RDB_type *typ2,
 int
 RDB_project_relation_type(const RDB_type *typ, int attrc, char *attrv[],
                           RDB_type **newtypp);
+
+/*
+ * Rename the attributes of the tuple type pointed to by typ according to renc
+ * and renv return the new tuple type.
+ */
+int
+RDB_rename_tuple_type(const RDB_type *typ, int renc, RDB_renaming renv[],
+        RDB_type **);
+
+/*
+ * Rename the attributes of the relation type pointed to by typ according to renc
+ * and renv return the new tuple type.
+ */
+int
+RDB_rename_relation_type(const RDB_type *typ, int renc, RDB_renaming renv[],
+        RDB_type **);
 
 /*
  * Return RDB_TRUE if the two types are equal

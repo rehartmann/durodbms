@@ -12,7 +12,7 @@ OBJS =
 EXECS = maptest tupletest prepare test_select test_minus test_union test_intersect \
        test_extend test_ra test_project test_join test_update test_delete \
        test_null test_keys test_aggregate test_create_view test_print_view \
-       test_binary test_summarize
+       test_binary test_summarize test_rename
 
 all :	$(EXECS)
 
@@ -66,6 +66,9 @@ test_keys : test_keys.c
 
 test_aggregate : test_aggregate.c
 	$(CC) -o test_aggregate $(CFLAGS) $(LDFLAGS) test_aggregate.c $(LDLIBS)
+
+test_rename : test_rename.c
+	$(CC) -o test_rename $(CFLAGS) $(LDFLAGS) test_rename.c $(LDLIBS)
 
 test_summarize : test_summarize.c
 	$(CC) -o test_summarize $(CFLAGS) $(LDFLAGS) test_summarize.c $(LDLIBS)

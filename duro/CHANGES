@@ -4,9 +4,13 @@ Summary of Changes for Duro
 
 Changes for (planned) Duro 0.5
 
-- Renamed RDB_deinit_XXX functions as RDB_destroy_XXX.
-
 - Adding support for SUMMARIZE PER and RENAME.
+
+- Changed error handling: Implicit rollback also by other system errors
+  than deadlock; added function RDB_is_syserr() for checking for system
+  errors.
+
+- Renamed RDB_deinit_XXX functions as RDB_destroy_XXX.
 
 - Removed an obsolete attribute from the catalog.
 

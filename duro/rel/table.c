@@ -879,6 +879,52 @@ project_contains(RDB_table *tbp, const RDB_tuple *tup, RDB_transaction *txp)
         return result ? RDB_NOT_FOUND : RDB_OK;
     }
 }
+
+int
+_RDB_find_rename_to(int renc, RDB_renaming renv[], const char *name)
+{
+    int i;
+
+    for (i = 0; i < renc && strcmp(renv[i].to, name) != 0; i++);
+    if (i >= renc)
+        return -1; /* not found */
+    /* found */
+    return i;
+}
+
+int    
+RDB_rename_contains(RDB_table *tbp, const RDB_tuple *tup, RDB_transaction *txp)
+{
+    RDB_tuple tpl;
+    int i;
+    int res;
+    RDB_type *tuptyp = tbp->typ->complex.basetyp;
+
+    RDB_init_tuple(&tpl);
+    for (i = 0; i < tuptyp->complex.tuple.attrc; i++) {
+        /* has the attribute been renamed? */
+        char *attrname = tuptyp->complex.tuple.attrv[i].name;
+        int ai = _RDB_find_rename_to(tbp->var.rename.renc, tbp->var.rename.renv,
+                attrname);
+
+        if (ai >= 0) { /* Yes, entry found */
+            res = RDB_tuple_set(&tpl, tbp->var.rename.renv[ai].from,
+                        RDB_tuple_get(tup, tbp->var.rename.renv[ai].to));
+        } else {
+            res = RDB_tuple_set(&tpl, attrname, RDB_tuple_get(tup, attrname));
+        }
+        if (res != RDB_OK) {
+            if (RDB_is_syserr(res))
+                RDB_rollback(txp);
+            goto error;
+        }
+    }
+    res = RDB_table_contains(tbp->var.rename.tbp, &tpl, txp);
+
+error:
+    RDB_destroy_tuple(&tpl);
+    return res;
+}
     
 int
 RDB_table_contains(RDB_table *tbp, const RDB_tuple *tup, RDB_transaction *txp)
@@ -964,9 +1010,8 @@ RDB_table_contains(RDB_table *tbp, const RDB_tuple *tup, RDB_transaction *txp)
                 return res;
             }
         case RDB_TB_RENAME:
-            /* !! */
-            return RDB_NOT_SUPPORTED;
-   }
+            return RDB_rename_contains(tbp, tup, txp);
+    }
     /* should never be reached */
     abort();
 }
@@ -1026,6 +1071,45 @@ error:
     return NULL;
 }
 
+static RDB_key_attrs *
+dup_rename_keys(int keyc, RDB_key_attrs *keyv, int renc, RDB_renaming renv[]) {
+    RDB_key_attrs *newkeyv;
+    int i, j;
+
+    newkeyv = malloc(keyc * sizeof(RDB_key_attrs));
+    if (newkeyv == NULL) {
+        return NULL;
+    }
+    for (i = 0; i < keyc; i++)
+        newkeyv[i].attrv = NULL;
+    for (i = 0; i < keyc; i++) {
+        newkeyv[i].attrc = keyv[i].attrc;
+        newkeyv[i].attrv = malloc(sizeof (RDB_attr) * keyv[i].attrc);
+        if (newkeyv[i].attrv == NULL) {
+            goto error;
+        }
+        for (j = 0; j < keyv[i].attrc; j++)
+            newkeyv[i].attrv[j] = NULL;
+        for (j = 0; j < keyv[i].attrc; j++) {
+            /* Has the attribute been renamed */
+            int ai = _RDB_find_rename_from(renc, renv, keyv[i].attrv[j]);
+            if (ai >= 0) /* Yes */
+                newkeyv[i].attrv[j] = RDB_dup_str(renv[ai].to);
+            else
+                newkeyv[i].attrv[j] = RDB_dup_str(keyv[i].attrv[j]);
+            if (newkeyv[i].attrv[j] == NULL)
+                goto error;
+        }
+    }
+    return newkeyv;
+error:
+    /* free keys */
+    for (i = 0; i < keyc; i++) {
+        if (newkeyv[i].attrv != NULL)
+            RDB_free_strvec(newkeyv[i].attrc, newkeyv[i].attrv);
+    }
+    return NULL;
+}
 int
 RDB_select(RDB_table *tbp, RDB_expression *condp, RDB_table **resultpp)
 {
@@ -1216,20 +1300,13 @@ RDB_join(RDB_table *tbp1, RDB_table *tbp2, RDB_table **resultpp)
     newtbp->is_persistent = RDB_FALSE;
     newtbp->var.join.tbp1 = tbp1;
     newtbp->var.join.tbp2 = tbp2;
-
-    newtbp->typ = malloc(sizeof (RDB_type));
-    if (newtbp->typ == NULL) {
-        res = RDB_NO_MEMORY;
-        goto error;
-    }
-    newtbp->typ->name = NULL;
-    newtbp->typ->kind = RDB_TP_RELATION;
-
-    res = RDB_join_tuple_types(tbp1->typ->complex.basetyp,
-            tbp2->typ->complex.basetyp, &newtbp->typ->complex.basetyp);
-    if (res != RDB_OK)
-        goto error;
     newtbp->name = NULL;
+    
+    res = RDB_join_relation_types(tbp1->typ, tbp2->typ, &newtbp->typ);
+    if (res != RDB_OK) {
+        free(newtbp);
+        return res;
+    }
     
     newtbp->var.join.common_attrv = malloc(sizeof(char *) * attrc1);
     cattrc = 0;
@@ -1628,10 +1705,54 @@ RDB_rename(RDB_table *tbp, int renc, RDB_renaming renv[],
     newtbp->name = NULL;
     newtbp->is_user = RDB_TRUE;
     newtbp->is_persistent = RDB_FALSE;
-    newtbp->kind = RDB_TB_SUMMARIZE;
+    newtbp->kind = RDB_TB_RENAME;
     newtbp->keyc = tbp->keyc;
 
-    /* !! ... */
-    
+    res = RDB_rename_relation_type(tbp->typ, renc, renv, &newtbp->typ);
+    if (res != RDB_OK) {
+        free(newtbp);
+        return res;
+    }
+
+    newtbp->var.rename.renc = renc;
+    newtbp->var.rename.renv = malloc(sizeof (RDB_renaming) * renc);
+    if (newtbp->var.rename.renv == NULL) {
+        RDB_drop_type(newtbp->typ);
+        free(newtbp);
+        return RDB_NO_MEMORY;
+    }
+    for (i = 0; i < renc; i++) {
+        newtbp->var.rename.renv[i].to = newtbp->var.rename.renv[i].from = NULL;
+    }
+    for (i = 0; i < renc; i++) {
+        newtbp->var.rename.renv[i].to = RDB_dup_str(renv[i].to);
+        if (newtbp->var.rename.renv[i].to == NULL) {
+            res = RDB_NO_MEMORY;
+            goto error;
+        }
+        newtbp->var.rename.renv[i].from = RDB_dup_str(renv[i].from);
+        if (newtbp->var.rename.renv[i].from == NULL) {
+            res = RDB_NO_MEMORY;
+            goto error;
+        }
+    }
+    newtbp->var.rename.tbp = tbp;
+
+    newtbp->keyc = tbp->keyc;
+    newtbp->keyv = dup_rename_keys(tbp->keyc, tbp->keyv, renc, renv);
+    if (newtbp->keyv == NULL) {
+        res = RDB_NO_MEMORY;
+        goto error;
+    }
+
+    *resultpp = newtbp;
     return RDB_OK; 
+error:
+    for (i = 0; i < renc; i++) {
+        free(newtbp->var.rename.renv[i].to);
+        free(newtbp->var.rename.renv[i].from);
+    }
+    free(newtbp->var.rename.renv);
+    free(newtbp);
+    return res;
 }

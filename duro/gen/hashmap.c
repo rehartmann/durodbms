@@ -185,7 +185,9 @@ RDB_hashmap_keys(const RDB_hashmap *hp, char **keys)
 }
 
 void
-RDB_hashmap_apply(RDB_hashmap *hp, void (*fp)(RDB_hashmap *, const char *key))
+RDB_hashmap_apply(RDB_hashmap *hp,
+                  void (*fp)(RDB_hashmap *, const char *, void *),
+                  void *arg)
 {
     int i;
 
@@ -194,6 +196,6 @@ RDB_hashmap_apply(RDB_hashmap *hp, void (*fp)(RDB_hashmap *, const char *key))
     
     for (i = 0; i < hp->capacity; i++) {
         if (hp->kv_tab[i].keyp != NULL)
-            (*fp)(hp, hp->kv_tab[i].keyp);
+            (*fp)(hp, hp->kv_tab[i].keyp, arg);
     }
 }

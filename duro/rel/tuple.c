@@ -19,14 +19,14 @@ RDB_init_tuple(RDB_tuple *tp)
 }
 
 static void
-destroy_value(RDB_hashmap *hp, const char *key) {
+destroy_value(RDB_hashmap *hp, const char *key, void *arg) {
     RDB_destroy_value((RDB_value *) RDB_hashmap_get(hp, key, NULL));
 }
 
 void
 RDB_destroy_tuple(RDB_tuple *tp)
 {
-    RDB_hashmap_apply(&tp->map, destroy_value);
+    RDB_hashmap_apply(&tp->map, destroy_value, NULL);
 
     RDB_destroy_hashmap(&tp->map);
 }
@@ -148,5 +148,44 @@ RDB_tuple_extend(RDB_tuple *tup, int attrc, RDB_virtual_attr attrv[],
         RDB_tuple_set(tup, attrv[i].name, &val);
         RDB_destroy_value(&val);
     }
+    return RDB_OK;
+}
+
+struct _RDB_rename_attr_info {
+    int renc;
+    RDB_renaming *renv;
+    const RDB_tuple *srctup;
+    RDB_tuple *dsttup;
+};
+
+static void
+rename_attr(RDB_hashmap *hp, const char *attrname, void *arg)
+{
+    struct _RDB_rename_attr_info *infop = (struct _RDB_rename_attr_info *)arg;
+    int ai = _RDB_find_rename_from(infop->renc, infop->renv, attrname);
+
+    if (ai >= 0) {
+        RDB_tuple_set(infop->dsttup, infop->renv[ai].to,
+                      RDB_tuple_get(infop->srctup, infop->renv[ai].from));
+    } else {
+        RDB_tuple_set(infop->dsttup, attrname,
+                          RDB_tuple_get(infop->srctup, attrname));
+    }
+}    
+
+int
+RDB_tuple_rename(const RDB_tuple *tup, int renc, RDB_renaming renv[],
+                 RDB_tuple *restup)
+{
+    struct _RDB_rename_attr_info info;
+
+    info.renc = renc;
+    info.renv = renv;
+    info.srctup = tup;
+    info.dsttup = restup;
+
+    /* Copy attributes to tup */
+    RDB_hashmap_apply((RDB_hashmap *)&tup->map, &rename_attr, &info);
+
     return RDB_OK;
 }

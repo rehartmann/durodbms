@@ -455,6 +455,10 @@ _RDB_table_qresult(RDB_table *tbp, RDB_qresult **qrespp, RDB_transaction *txp)
         case RDB_TB_SUMMARIZE:
             res = summarize_qresult(qresp, txp);
             break;
+        case RDB_TB_RENAME:
+            res = _RDB_table_qresult(tbp->var.rename.tbp,
+                    &qresp->var.virtual.qrp, txp);
+            break;
     }
     if (res != RDB_OK)
         free(qresp);
@@ -690,6 +694,24 @@ next_project_tuple(RDB_qresult *qrp, RDB_tuple *tup, RDB_transaction *txp)
     return RDB_OK;
 }
 
+static int
+next_rename_tuple(RDB_qresult *qrp, RDB_tuple *tup, RDB_transaction *txp)
+{
+    RDB_tuple tpl;
+    int res;
+
+    RDB_init_tuple(&tpl);
+    res = _RDB_next_tuple(qrp->var.virtual.qrp, &tpl, txp);
+    if (res != RDB_OK) {
+        RDB_destroy_tuple(&tpl);
+        return res;
+    }
+    res = RDB_tuple_rename(&tpl, qrp->tbp->var.rename.renc,
+                           qrp->tbp->var.rename.renv, tup);
+    RDB_destroy_tuple(&tpl);
+    return res;
+}
+
 int
 _RDB_next_tuple(RDB_qresult *qrp, RDB_tuple *tup, RDB_transaction *txp)
 {
@@ -808,6 +830,8 @@ _RDB_next_tuple(RDB_qresult *qrp, RDB_tuple *tup, RDB_transaction *txp)
                 }
             }
             break;
+        case RDB_TB_RENAME:
+            return next_rename_tuple(qrp, tup, txp);            
     }
     return RDB_OK;
 }

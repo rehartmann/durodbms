@@ -54,6 +54,7 @@ calltest test_print_view
 calltest test_keys
 calltest test_project
 calltest test_summarize
+calltest test_rename
 calltest test_aggregate
 calltest test_update
 calltest test_delete

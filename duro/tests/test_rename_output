@@ -1,0 +1,14 @@
+Opening environment
+Creating EMPS1 RENAME (SALARY AS SAL, EMPNO AS EMP#)
+Starting transaction
+Printing renaming table
+EMP#: 2
+NAME: Jones
+SAL: 4100.000000
+EMP#: 1
+NAME: Smith
+SAL: 4000.000000
+Result of RDB_table_contains(): 0 OK
+Dropping rename
+End of transaction
+Closing environment

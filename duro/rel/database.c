@@ -1212,6 +1212,10 @@ get_cat_rtable(RDB_database *dbp, const char *name, RDB_table **tbpp)
     if (res != RDB_OK)
         goto error;
 
+    for (i = 0; i < attrc; i++)
+        free(attrv[i].name);
+    free(attrv);
+
     assign_table_db(*tbpp, dbp);
 
     RDB_destroy_array(&arr);
