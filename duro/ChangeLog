@@ -17,6 +17,8 @@ Changes for Duro 0.7
 - Added support for multiplication, division, unary minus, and string concatenation
   in expressions.
 
+- Fixed bug in RDN_extract_tuple().
+
 - Fixed bug with updating key attributes of tables with more than one
   candidate key.
 

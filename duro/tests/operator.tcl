@@ -19,15 +19,22 @@ duro::db create TEST $dbenv
 
 set tx [duro::begin $dbenv TEST]
 
-# Create update operator
-duro::operator append -updates {a} $tx {{a STRING} {b STRING}} {
-    set a "$a$b"
-}
+# Create update operators
+duro::operator strmul -updates {a} {a STRING b STRING} {
+    append a $b
+} $tx
+
+duro::operator strmul -updates {a} {a STRING b INTEGER} {
+    set h $a
+    for {set i 1} {$i < $b} {incr i} {
+        append a $h
+    }
+} $tx
 
 # Create read-only operator
-duro::operator concat -returns STRING $tx {{a STRING} {b STRING}} {
+duro::operator concat -returns STRING {a STRING b STRING} {
     return $a$b
-}
+} $tx
 
 duro::commit $tx
 
@@ -41,10 +48,18 @@ set tx [duro::begin $dbenv TEST]
 
 # Invoke update operator
 set v foo
-duro::call append $tx v STRING bar STRING
+duro::call strmul v STRING bar STRING $tx
 
 if {![string equal $v foobar]} {
     puts [format "result is %s, should be %s" $v foobar]
+    exit 1
+}
+
+set v foo
+duro::call strmul v STRING 3 INTEGER $tx
+
+if {![string equal $v foofoofoo]} {
+    puts [format "result is %s, should be %s" $v foofoofoo]
     exit 1
 }
 

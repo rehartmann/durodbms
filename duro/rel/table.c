@@ -995,6 +995,7 @@ RDB_extract_tuple(RDB_table *tbp, RDB_object *tup, RDB_transaction *txp)
 {
     int ret, ret2;
     RDB_qresult *qrp;
+    RDB_object tpl;
 
     ret = _RDB_table_qresult(tbp, txp, &qrp);
     if (ret != RDB_OK) {
@@ -1011,7 +1012,9 @@ RDB_extract_tuple(RDB_table *tbp, RDB_object *tup, RDB_transaction *txp)
         goto error;
 
     /* Check if there are more tuples */
-    ret = _RDB_next_tuple(qrp, NULL, txp);
+    RDB_init_obj(&tpl);
+    ret = _RDB_next_tuple(qrp, &tpl, txp);
+    RDB_destroy_obj(&tpl);
     if (ret != RDB_NOT_FOUND) {
         if (ret == RDB_OK)
             ret = RDB_INVALID_ARGUMENT;

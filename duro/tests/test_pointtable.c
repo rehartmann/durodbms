@@ -302,21 +302,23 @@ error:
 int
 main(void)
 {
-    RDB_environment *dsp;
+    RDB_environment *envp;
     RDB_database *dbp;
     int ret;
     
     printf("Opening environment\n");
-    ret = RDB_open_env("dbenv", &dsp);
+    ret = RDB_open_env("dbenv", &envp);
     if (ret != 0) {
         fprintf(stderr, "Error: %s\n", RDB_strerror(ret));
         return 1;
     }
-    ret = RDB_get_db_from_env("TEST", dsp, &dbp);
+    ret = RDB_get_db_from_env("TEST", envp, &dbp);
     if (ret != 0) {
         fprintf(stderr, "Error: %s\n", RDB_strerror(ret));
         return 1;
     }
+
+    RDB_set_errfile(envp, stderr);
 
     ret = create_table(dbp);
     if (ret != RDB_OK) {
@@ -337,7 +339,7 @@ main(void)
     }
 
     printf ("Closing environment\n");
-    ret = RDB_close_env(dsp);
+    ret = RDB_close_env(envp);
     if (ret != RDB_OK) {
         fprintf(stderr, "Error: %s\n", RDB_strerror(ret));
         return 2;
