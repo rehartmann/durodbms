@@ -92,5 +92,3 @@ echo Dropping DB
 if ../util/dropdb -e dbenv -d TEST TEST2; then true; else
     failure
 fi
-
-echo Test completed successfully.

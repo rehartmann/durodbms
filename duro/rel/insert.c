@@ -27,13 +27,13 @@ insert_intersect(RDB_table *tbp, const RDB_object *tup, RDB_transaction *txp)
     if (ret != RDB_OK)
         return ret;
             
-    ret = RDB_insert(tbp->var.intersect.tbp1, tup, txp);
+    ret = RDB_insert(tbp->var.intersect.tbp1, tup, &tx);
     if (ret != RDB_OK && ret != RDB_ELEMENT_EXISTS) {
         RDB_rollback(&tx);
         return ret;
     }
 
-    ret2 = RDB_insert(tbp->var.intersect.tbp2, tup, txp);
+    ret2 = RDB_insert(tbp->var.intersect.tbp2, tup, &tx);
     if (ret2 != RDB_OK && ret2 != RDB_ELEMENT_EXISTS) {
         RDB_rollback(&tx);
         return ret2;
@@ -67,13 +67,13 @@ insert_join(RDB_table *tbp, const RDB_object *tup, RDB_transaction *txp)
     if (ret != RDB_OK)
         return ret;
             
-    ret = RDB_insert(tbp->var.join.tbp1, tup, txp);
+    ret = RDB_insert(tbp->var.join.tbp1, tup, &tx);
     if (ret != RDB_OK && ret != RDB_ELEMENT_EXISTS) {
         RDB_rollback(&tx);
         return ret;
     }
 
-    ret2 = RDB_insert(tbp->var.join.tbp2, tup, txp);
+    ret2 = RDB_insert(tbp->var.join.tbp2, tup, &tx);
     if (ret2 != RDB_OK && ret2 != RDB_ELEMENT_EXISTS) {
         RDB_rollback(&tx);
         return ret2;

@@ -1,4 +1,6 @@
-#!/usr/bin/tclsh
+#!/bin/sh
+# Execute tclsh from the user's PATH \
+exec tclsh "$0"
 
 # $Id$
 #

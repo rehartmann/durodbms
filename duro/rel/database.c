@@ -1038,7 +1038,7 @@ RDB_create_table(const char *name, RDB_bool persistent,
     int i;
     RDB_transaction tx;
 
-    /* Create subtrabsaction */
+    /* Create subtransaction */
     ret = RDB_begin_tx(&tx, txp->dbp, txp);
     if (ret != RDB_OK)
         return ret;

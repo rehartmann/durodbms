@@ -996,6 +996,7 @@ _RDB_get_cat_rtable(const char *name, RDB_transaction *txp, RDB_table **tbpp)
     int defvalc;
     int keyc;
     RDB_string_vec *keyv;
+    RDB_transaction tx;
 
     /* Read real table data from the catalog */
 
@@ -1119,14 +1120,25 @@ _RDB_get_cat_rtable(const char *name, RDB_transaction *txp, RDB_table **tbpp)
     if (ret != RDB_OK)
         goto error;
 
+    /* Open table in a subtransaction (required by Berkeley DB) */
+    ret = RDB_begin_tx(&tx, txp->dbp, txp);
+    if (ret != RDB_OK)
+        goto error;
+    
     ret = _RDB_provide_table(name, RDB_TRUE, attrc, attrv, keyc, keyv, usr,
-            RDB_FALSE, txp, tbpp);
+            RDB_FALSE, &tx, tbpp);
     for (i = 0; i < keyc; i++) {
         for (j = 0; j < keyv[i].strc; j++)
             free(keyv[i].strv[j]);
     }
     free(keyv);
 
+    if (ret != RDB_OK) {
+        RDB_rollback(&tx);
+        goto error;
+    }
+    
+    ret = RDB_commit(&tx);
     if (ret != RDB_OK)
         goto error;
 
@@ -1167,7 +1179,9 @@ error:
         RDB_drop_table(tmptb3p, txp);
 
     RDB_destroy_obj(&tpl);
-    
+
+    if (RDB_is_syserr(ret))
+        RDB_rollback_all(txp);    
     return ret;
 }
 

@@ -34,7 +34,8 @@ tests_libpoint_la_SOURCES = tests/point.c tests/point.h
 tests_libplus_la_SOURCES = tests/plus.c
 
 TESTS = tests/ctests tests/rtables.tcl tests/project.tcl tests/tuple.tcl \
-        tests/sdivide.tcl tests/invtable.tcl tests/operator.tcl
+        tests/sdivide.tcl tests/invtable.tcl tests/operator.tcl \
+        tests/vtables.tcl
 
 TESTS_ENVIRONMENT = BDB_HOME=$(BDB_HOME)
 
