@@ -200,7 +200,7 @@ cleanup:
     free(valv);
 
     if (tmptbp != NULL)
-        _RDB_drop_rtable(tmptbp, txp);
+        RDB_drop_table(tmptbp, txp);
     if (curp != NULL) {
         ret2 = RDB_destroy_cursor(curp);
         if (ret == RDB_OK)
@@ -560,13 +560,13 @@ RDB_update(RDB_table *tbp, RDB_expression *condp, int updc,
     if (!tbp->optimized) {
         ret = _RDB_optimize(tbp, txp);
         if (ret != RDB_OK) {
-            _RDB_free_table(tbp, NULL);
+            _RDB_free_table(tbp);
             return ret;
         }
     }
 
     ret = update(tbp, updc, updv, txp);
     if (condp != NULL)
-        _RDB_free_table(tbp, NULL);
+        _RDB_free_table(tbp);
     return ret;
 }

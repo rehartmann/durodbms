@@ -69,6 +69,8 @@ close_table(RDB_table *tbp, RDB_environment *envp)
 {
     int i;
     int ret;
+    RDB_dbroot *dbrootp;
+    RDB_database *dbp;
 
     if (tbp->kind == RDB_TB_STORED) {
         if (tbp->var.stored.indexc > 0) {
@@ -81,8 +83,23 @@ close_table(RDB_table *tbp, RDB_environment *envp)
 
         /* close recmap */
         ret = RDB_close_recmap(tbp->var.stored.recmapp);
-        _RDB_free_table(tbp, envp);
-        return ret;
+        if (ret != RDB_OK)
+            return ret;
+
+        /*
+         * Remove table from all RDB_databases in list
+         */
+        dbrootp = (RDB_dbroot *)RDB_env_private(envp);
+        for (dbp = dbrootp->firstdbp; dbp != NULL; dbp = dbp->nextdbp) {
+            RDB_table **foundtbpp = (RDB_table **)RDB_hashmap_get(
+                    &dbp->tbmap, tbp->name, NULL);
+            if (foundtbpp != NULL) {
+                void *nullp = NULL;
+                RDB_hashmap_put(&dbp->tbmap, tbp->name, &nullp, sizeof nullp);
+            }
+        }
+
+        return _RDB_drop_table(tbp, RDB_TRUE);
     }
     if (tbp->name == NULL) {
         return RDB_drop_table(tbp, NULL);
@@ -134,6 +151,7 @@ release_db(RDB_database *dbp)
             ret = close_table(*tbpp, dbp->dbrootp->envp);
             if (ret != RDB_OK)
                 return ret;
+
         }
     }
 
@@ -481,52 +499,6 @@ error:
     return ret;
 }
 
-void
-_RDB_free_table(RDB_table *tbp, RDB_environment *envp)
-{
-    int i;
-
-    if (envp != NULL && tbp->is_persistent) {
-        RDB_database *dbp;
-        RDB_dbroot *dbrootp = (RDB_dbroot *)RDB_env_private(envp);
-    
-        /* Remove table from all RDB_databases in list */
-        for (dbp = dbrootp->firstdbp; dbp != NULL; dbp = dbp->nextdbp) {
-            RDB_table **foundtbpp = (RDB_table **)RDB_hashmap_get(
-                    &dbp->tbmap, tbp->name, NULL);
-            if (foundtbpp != NULL) {
-                void *nullp = NULL;
-                RDB_hashmap_put(&dbp->tbmap, tbp->name, &nullp, sizeof nullp);
-            }
-        }
-    }
-
-    if (tbp->kind == RDB_TB_STORED) {
-        int j;
-
-        RDB_drop_type(tbp->typ, NULL);
-        RDB_destroy_hashmap(&tbp->var.stored.attrmap);
-
-        if (tbp->var.stored.indexc > 0) {
-            for (i = 0; i < tbp->var.stored.indexc; i++) {
-                for (j = 0; j < tbp->var.stored.indexv[i].attrc; j++)
-                    free(tbp->var.stored.indexv[i].attrv[j].attrname);
-                free(tbp->var.stored.indexv[i].attrv);
-            }
-            free(tbp->var.stored.indexv);
-        }
-    }
-
-    /* Delete candidate keys */
-    for (i = 0; i < tbp->keyc; i++) {
-        RDB_free_strvec(tbp->keyv[i].strc, tbp->keyv[i].strv);
-    }
-    free(tbp->keyv);
-
-    free(tbp->name);
-    free(tbp);
-}
-
 int
 RDB_drop_db(RDB_database *dbp)
 {
@@ -619,6 +591,18 @@ error:
     return ret;
 }
 
+RDB_bool
+strvec_is_subset(const RDB_string_vec *v1p, const RDB_string_vec *v2p)
+{
+    int i;
+
+    for (i = 0; i < v1p->strc; i++) {
+        if (RDB_find_str(v2p->strc, v2p->strv, v1p->strv[i]) == -1)
+            return RDB_FALSE;
+    }
+    return RDB_TRUE;
+}
+
 int
 _RDB_create_table(const char *name, RDB_bool persistent,
                 int attrc, RDB_attr heading[],
@@ -627,11 +611,8 @@ _RDB_create_table(const char *name, RDB_bool persistent,
 {
     int ret;
     int i;
+    RDB_transaction tx;
     RDB_string_vec allkey; /* Used if keyv is NULL */
-
-    /* name may only be NULL if table is transient */
-    if ((name == NULL) && persistent)
-        return RDB_INVALID_ARGUMENT;
 
     if (keyv == NULL) {
         /* Create key for all-key table */
@@ -646,6 +627,13 @@ _RDB_create_table(const char *name, RDB_bool persistent,
             allkey.strv[i] = heading[i].name;
     }
 
+    if (txp != NULL) {
+        /* Create subtransaction */
+        ret = RDB_begin_tx(&tx, txp->dbp, txp);
+        if (ret != RDB_OK)
+            return ret;
+    }
+
     ret = _RDB_new_stored_table_a(name, persistent, attrc, heading,
                 keyv != NULL ? keyc : 1, keyv != NULL ? keyv : &allkey,
                 RDB_TRUE, tbpp);
@@ -654,25 +642,28 @@ _RDB_create_table(const char *name, RDB_bool persistent,
     if (ret != RDB_OK)
         return ret;
 
+    if (persistent) {
+        /* Insert table into catalog */
+        ret = _RDB_cat_insert(*tbpp, &tx);
+        if (ret != RDB_OK) {
+            RDB_rollback(&tx);
+            _RDB_free_table(*tbpp);
+            if (RDB_is_syserr(ret))
+                RDB_rollback_all(txp);
+            return ret;
+        }
+
+        _RDB_assoc_table_db(*tbpp, txp->dbp);
+    }
+
     ret = _RDB_create_table_storage(*tbpp, txp != NULL ? txp->envp : NULL,
-            NULL, txp);
+            NULL, &tx);
     if (ret != RDB_OK) {
-        _RDB_free_table(*tbpp, NULL);
+        RDB_drop_table(*tbpp, &tx);
         return ret;
     }
-    return RDB_OK;
-}
 
-RDB_bool
-strvec_is_subset(const RDB_string_vec *v1p, const RDB_string_vec *v2p)
-{
-    int i;
-
-    for (i = 0; i < v1p->strc; i++) {
-        if (RDB_find_str(v2p->strc, v2p->strv, v1p->strv[i]) == -1)
-            return RDB_FALSE;
-    }
-    return RDB_TRUE;
+    return txp != NULL ? RDB_commit(&tx) : RDB_OK;
 }
 
 int
@@ -681,9 +672,7 @@ RDB_create_table(const char *name, RDB_bool persistent,
                 int keyc, RDB_string_vec keyv[],
                 RDB_transaction *txp, RDB_table **tbpp)
 {
-    int ret;
     int i;
-    RDB_transaction tx;
 
     if (name != NULL && !_RDB_legal_name(name))
         return RDB_INVALID_ARGUMENT;
@@ -736,36 +725,12 @@ RDB_create_table(const char *name, RDB_bool persistent,
         }
     }
 
-    if (txp != NULL) {
-        /* Create subtransaction */
-        ret = RDB_begin_tx(&tx, txp->dbp, txp);
-        if (ret != RDB_OK)
-            return ret;
-    }
+    /* name may only be NULL if table is transient */
+    if ((name == NULL) && persistent)
+        return RDB_INVALID_ARGUMENT;
 
-    ret = _RDB_create_table(name, persistent, attrc, heading,
-            keyc, keyv, txp != NULL ? &tx : NULL, tbpp);
-    if (ret != RDB_OK) {
-        if (txp != NULL)
-            RDB_rollback(&tx);
-        return ret;
-    }
-
-    if (persistent) {
-        /* Insert table into catalog */
-        ret = _RDB_cat_insert(*tbpp, &tx);
-        if (ret != RDB_OK) {
-            RDB_rollback(&tx);
-            _RDB_drop_rtable(*tbpp, txp);
-            if (RDB_is_syserr(ret))
-                RDB_rollback_all(txp);
-            return ret;
-        }
-
-        _RDB_assoc_table_db(*tbpp, txp->dbp);
-    }
-
-    return txp != NULL ? RDB_commit(&tx) : RDB_OK;
+    return _RDB_create_table(name, persistent, attrc, heading,
+                keyc, keyv, txp, tbpp);
 }
 
 int
@@ -796,218 +761,63 @@ RDB_get_table(const char *name, RDB_transaction *txp, RDB_table **tbpp)
     return _RDB_get_cat_vtable(name, txp, tbpp);
 }
 
-/*
- * Delete a real table, but not from the catalog
- */
-int
-_RDB_drop_rtable(RDB_table *tbp, RDB_transaction *txp)
-{
-    int i;
-
-    /* Schedule secondary indexes for deletion */
-    for (i = 0; i < tbp->var.stored.indexc; i++) {
-        if (tbp->var.stored.indexv[i].idxp != NULL)
-            _RDB_del_index(txp, tbp->var.stored.indexv[i].idxp);
-    }
-
-    if (txp != NULL) {
-        /* Schedule recmap for deletion */
-        return _RDB_del_recmap(txp, tbp->var.stored.recmapp);
-    } else {
-        return RDB_delete_recmap(tbp->var.stored.recmapp, NULL, NULL);
-    }
-}
-
-static int
-drop_anon_table(RDB_table *tbp, RDB_transaction *txp)
-{
-    if (tbp->name == NULL)
-        return _RDB_drop_table(tbp, txp, RDB_TRUE);
-    return RDB_OK;
-}
-
-int
-_RDB_drop_table(RDB_table *tbp, RDB_transaction *txp, RDB_bool rec)
-{
-    int ret;
-    int i;
-
-    /* !! should check if there is some table which depends on this table
-       ... */
-
-    ret = RDB_OK;
-    switch (tbp->kind) {
-        case RDB_TB_STORED:
-        {
-
-            ret = _RDB_drop_rtable(tbp, txp);
-            break;
-        }
-        case RDB_TB_SELECT_INDEX:
-        case RDB_TB_SELECT:
-            RDB_drop_expr(tbp->var.select.exp);
-            if (rec) {
-                ret = drop_anon_table(tbp->var.select.tbp, txp);
-                if (ret != RDB_OK)
-                    return ret;
-            }
-            break;
-        case RDB_TB_UNION:
-            if (rec) {
-                ret = drop_anon_table(tbp->var._union.tb1p, txp);
-                if (ret != RDB_OK)
-                    return ret;
-                ret = drop_anon_table(tbp->var._union.tb2p, txp);
-                if (ret != RDB_OK)
-                    return ret;
-            }
-            break;
-        case RDB_TB_MINUS:
-            if (rec) {
-                ret = drop_anon_table(tbp->var.minus.tb1p, txp);
-                if (ret != RDB_OK)
-                    return ret;
-                ret = drop_anon_table(tbp->var.minus.tb2p, txp);
-                if (ret != RDB_OK)
-                    return ret;
-            }
-            break;
-        case RDB_TB_INTERSECT:
-            if (rec) {
-                ret = drop_anon_table(tbp->var.intersect.tb1p, txp);
-                if (ret != RDB_OK)
-                    return ret;
-                ret = drop_anon_table(tbp->var.intersect.tb2p, txp);
-                if (ret != RDB_OK)
-                    return ret;
-            }
-            break;
-        case RDB_TB_JOIN:
-            if (rec) {
-                ret = drop_anon_table(tbp->var.join.tb1p, txp);
-                if (ret != RDB_OK)
-                    return ret;
-                ret = drop_anon_table(tbp->var.join.tb2p, txp);
-                if (ret != RDB_OK)
-                    return ret;
-            }
-            RDB_drop_type(tbp->typ, NULL);
-            free(tbp->var.join.common_attrv);
-            break;
-        case RDB_TB_EXTEND:
-            if (rec) {
-                ret = drop_anon_table(tbp->var.extend.tbp, txp);
-                if (ret != RDB_OK)
-                    return ret;
-            }
-            for (i = 0; i < tbp->var.extend.attrc; i++)
-                free(tbp->var.extend.attrv[i].name);
-            RDB_drop_type(tbp->typ, NULL);
-            break;
-        case RDB_TB_PROJECT:
-            if (rec) {
-                ret = drop_anon_table(tbp->var.project.tbp, txp);
-                if (ret != RDB_OK)
-                    return ret;
-            }
-            RDB_drop_type(tbp->typ, NULL);
-            break;
-        case RDB_TB_RENAME:
-            if (rec) {
-                ret = drop_anon_table(tbp->var.rename.tbp, txp);
-                if (ret != RDB_OK)
-                    return ret;
-            }
-            for (i = 0; i < tbp->var.rename.renc; i++) {
-                free(tbp->var.rename.renv[i].from);
-                free(tbp->var.rename.renv[i].to);
-            }
-            break;
-        case RDB_TB_SUMMARIZE:
-            if (rec) {
-                ret = drop_anon_table(tbp->var.summarize.tb1p, txp);
-                if (ret != RDB_OK)
-                    return ret;
-                ret = drop_anon_table(tbp->var.summarize.tb2p, txp);
-                if (ret != RDB_OK)
-                    return ret;
-            }
-            for (i = 0; i < tbp->var.summarize.addc; i++) {
-                if (tbp->var.summarize.addv[i].op != RDB_COUNT
-                        && tbp->var.summarize.addv[i].op != RDB_COUNTD)
-                    RDB_drop_expr(tbp->var.summarize.addv[i].exp);
-                free(tbp->var.summarize.addv[i].name);
-            }
-            break;
-        case RDB_TB_WRAP:
-            if (rec) {
-                ret = drop_anon_table(tbp->var.wrap.tbp, txp);
-                if (ret != RDB_OK)
-                    return ret;
-            }
-            for (i = 0; i < tbp->var.wrap.wrapc; i++) {
-                free(tbp->var.wrap.wrapv[i].attrname);
-                RDB_free_strvec(tbp->var.wrap.wrapv[i].attrc,
-                        tbp->var.wrap.wrapv[i].attrv);
-            }
-            break;
-        case RDB_TB_UNWRAP:
-            if (rec) {
-                ret = drop_anon_table(tbp->var.unwrap.tbp, txp);
-                if (ret != RDB_OK)
-                    return ret;
-            }
-            RDB_free_strvec(tbp->var.unwrap.attrc, tbp->var.unwrap.attrv);
-            break;
-        case RDB_TB_SDIVIDE:
-            if (rec) {
-                ret = drop_anon_table(tbp->var.sdivide.tb1p, txp);
-                if (ret != RDB_OK)
-                    return ret;
-                ret = drop_anon_table(tbp->var.sdivide.tb2p, txp);
-                if (ret != RDB_OK)
-                    return ret;
-                ret = drop_anon_table(tbp->var.sdivide.tb3p, txp);
-                if (ret != RDB_OK)
-                    return ret;
-            }
-            break;
-        case RDB_TB_GROUP:
-            if (rec) {
-                ret = drop_anon_table(tbp->var.group.tbp, txp);
-                if (ret != RDB_OK)
-                    return ret;
-            }
-            for (i = 0; i < tbp->var.group.attrc; i++) {
-                free(tbp->var.group.attrv[i]);
-            }
-            free(tbp->var.group.gattr);
-            break;
-        case RDB_TB_UNGROUP:
-            if (rec) {
-                ret = drop_anon_table(tbp->var.ungroup.tbp, txp);
-                if (ret != RDB_OK)
-                    return ret;
-            }
-            free(tbp->var.ungroup.attr);
-            break;
-    }
-
-    if (tbp->is_persistent) {
-        /* Delete table from catalog */
-        ret = _RDB_cat_delete(tbp, txp);
-    }
-
-    _RDB_free_table(tbp, txp != NULL ? txp->envp : NULL);
-    return ret;
-}
-
 int
 RDB_drop_table(RDB_table *tbp, RDB_transaction *txp)
 {
-    if (tbp->is_persistent && !RDB_tx_is_running(txp))
-        return RDB_INVALID_TRANSACTION;
-    return _RDB_drop_table(tbp, txp, RDB_TRUE);
+    int ret;
+
+    if (tbp->is_persistent) {
+        RDB_database *dbp;
+        RDB_dbroot *dbrootp;
+
+        if (!RDB_tx_is_running(txp))
+            return RDB_INVALID_TRANSACTION;
+    
+        /*
+         * Remove table from all RDB_databases in list
+         */
+        dbrootp = (RDB_dbroot *)RDB_env_private(txp->envp);
+        for (dbp = dbrootp->firstdbp; dbp != NULL; dbp = dbp->nextdbp) {
+            RDB_table **foundtbpp = (RDB_table **)RDB_hashmap_get(
+                    &dbp->tbmap, tbp->name, NULL);
+            if (foundtbpp != NULL) {
+                void *nullp = NULL;
+                RDB_hashmap_put(&dbp->tbmap, tbp->name, &nullp, sizeof nullp);
+            }
+        }
+
+        /*
+         * Remove table from catalog
+         */
+        ret = _RDB_cat_delete(tbp, txp);
+        if (ret != RDB_OK)
+            return ret;
+    }
+
+    /*
+     * Delete recmap
+     */
+    if (tbp->kind == RDB_TB_STORED && tbp->var.stored.recmapp != NULL) {
+        int i;
+        int ret;
+
+        /* Schedule secondary indexes for deletion */
+        for (i = 0; i < tbp->var.stored.indexc; i++) {
+            if (tbp->var.stored.indexv[i].idxp != NULL)
+                _RDB_del_index(txp, tbp->var.stored.indexv[i].idxp);
+        }
+
+        if (txp != NULL) {
+            /* Schedule recmap for deletion */
+            ret = _RDB_del_recmap(txp, tbp->var.stored.recmapp);
+        } else {
+            ret = RDB_delete_recmap(tbp->var.stored.recmapp, NULL, NULL);
+        }
+        if (ret != RDB_OK)
+            return ret;
+    }
+
+    return _RDB_drop_table(tbp, RDB_TRUE);
 }
 
 int

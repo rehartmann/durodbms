@@ -56,7 +56,7 @@ rel/array.c rel/internal.h rel/database.c rel/operator.c \
 rel/expression.c rel/getargs.c rel/qresult.c rel/serialize.c rel/serialize.h \
 rel/table.c rel/vtable.c rel/update.c rel/insert.c rel/contains.c \
 rel/transaction.c rel/delete.c rel/tuple.c rel/type.c rel/object.c \
-rel/catalog.c rel/optimize.c \
+rel/catalog.c rel/optimize.c rel/transform.c \
 rel/catalog.h \
 dli/exparse.y dli/exlex.l dli/parse.c
 

@@ -455,44 +455,56 @@ RDB_expr_comp(RDB_expression *arg, const char *compname)
     return exp;
 }
 
-int
-RDB_user_op(const char *opname, int argc, RDB_expression *argv[],
-       RDB_transaction *txp, RDB_expression **expp)
+static RDB_expression *
+user_op(const char *opname, int argc, RDB_expression *argv[],
+       RDB_type *rtyp)
 {
     RDB_expression *exp;
     int i;
-    int ret;
 
     exp = malloc(sizeof (RDB_expression));
     if (exp == NULL)
-        return RDB_NO_MEMORY;
+        return NULL;
 
     exp->kind = RDB_EX_USER_OP;
     
     exp->var.user_op.name = RDB_dup_str(opname);
     if (exp->var.user_op.name == NULL) {
         free(exp);
-        return RDB_NO_MEMORY;
+        return NULL;
     }
 
-    ret = _RDB_get_cat_rtype(opname, txp, &exp->var.user_op.rtyp);
-    if (ret != RDB_OK) {
-        free(exp);
-        return ret;
-    }
+    exp->var.user_op.rtyp = rtyp;
 
     exp->var.user_op.argc = argc;
     exp->var.user_op.argv = malloc(argc * sizeof(RDB_expression *));
     if (exp->var.user_op.argv == NULL) {
         free(exp->var.user_op.name);
         free(exp);
-        return RDB_NO_MEMORY;
+        return NULL;
     }
 
     for (i = 0; i < argc; i++)
         exp->var.user_op.argv[i] = argv[i];
 
-    *expp = exp;
+    return exp;
+}
+
+int
+RDB_user_op(const char *opname, int argc, RDB_expression *argv[],
+       RDB_transaction *txp, RDB_expression **expp)
+{
+    RDB_type *rtyp;
+    int ret;
+
+    ret = _RDB_get_cat_rtype(opname, txp, &rtyp);
+    if (ret != RDB_OK) {
+        return ret;
+    }
+
+    *expp = user_op(opname, argc, argv, rtyp);
+    if (*expp == NULL)
+        return RDB_NO_MEMORY;
     return RDB_OK;
 }
 
@@ -1156,7 +1168,8 @@ RDB_evaluate(RDB_expression *exp, const RDB_object *tup, RDB_transaction *txp,
             RDB_destroy_obj(valp);
             RDB_init_obj(valp);
             _RDB_set_obj_type(valp, &RDB_BOOLEAN);
-            ret = RDB_subset(val1.var.tbp, val2.var.tbp, txp, &valp->var.bool_val);
+            ret = RDB_subset(val1.var.tbp, val2.var.tbp, txp,
+                    &valp->var.bool_val);
             if (ret != RDB_OK && ret != RDB_NOT_FOUND) {
                 RDB_destroy_obj(&val1);
                 RDB_destroy_obj(&val2);
@@ -1305,6 +1318,103 @@ RDB_evaluate_bool(RDB_expression *exp, const RDB_object *tup, RDB_transaction *t
     *resp = val.var.bool_val;
     RDB_destroy_obj(&val);
     return RDB_OK;
+}
+
+RDB_expression *
+RDB_dup_expr(const RDB_expression *exp)
+{
+    switch (exp->kind) {
+        case RDB_EX_EQ:
+            return RDB_eq(RDB_dup_expr(exp->var.op.arg1),
+                    RDB_dup_expr(exp->var.op.arg2));
+        case RDB_EX_NEQ:
+            return RDB_neq(RDB_dup_expr(exp->var.op.arg1),
+                    RDB_dup_expr(exp->var.op.arg2));
+        case RDB_EX_LT:
+            return RDB_lt(RDB_dup_expr(exp->var.op.arg1),
+                    RDB_dup_expr(exp->var.op.arg2));
+        case RDB_EX_GT:
+            return RDB_gt(RDB_dup_expr(exp->var.op.arg1),
+                    RDB_dup_expr(exp->var.op.arg2));
+        case RDB_EX_LET:
+            return RDB_let(RDB_dup_expr(exp->var.op.arg1),
+                    RDB_dup_expr(exp->var.op.arg2));
+        case RDB_EX_GET:
+            return RDB_get(RDB_dup_expr(exp->var.op.arg1),
+                    RDB_dup_expr(exp->var.op.arg2));
+        case RDB_EX_AND:
+            return RDB_and(RDB_dup_expr(exp->var.op.arg1),
+                    RDB_dup_expr(exp->var.op.arg2));
+        case RDB_EX_OR:
+            return RDB_or(RDB_dup_expr(exp->var.op.arg1),
+                    RDB_dup_expr(exp->var.op.arg2));
+        case RDB_EX_ADD:
+            return RDB_add(RDB_dup_expr(exp->var.op.arg1),
+                    RDB_dup_expr(exp->var.op.arg2));
+        case RDB_EX_SUBTRACT:
+            return RDB_subtract(RDB_dup_expr(exp->var.op.arg1),
+                    RDB_dup_expr(exp->var.op.arg2));
+        case RDB_EX_MULTIPLY:
+            return RDB_multiply(RDB_dup_expr(exp->var.op.arg1),
+                    RDB_dup_expr(exp->var.op.arg2));
+        case RDB_EX_DIVIDE:
+            return RDB_divide(RDB_dup_expr(exp->var.op.arg1),
+                    RDB_dup_expr(exp->var.op.arg2));
+        case RDB_EX_REGMATCH:
+            return RDB_regmatch(RDB_dup_expr(exp->var.op.arg1),
+                    RDB_dup_expr(exp->var.op.arg2));
+        case RDB_EX_CONTAINS:
+            return RDB_expr_contains(RDB_dup_expr(exp->var.op.arg1),
+                    RDB_dup_expr(exp->var.op.arg2));
+        case RDB_EX_CONCAT:
+            return RDB_concat(RDB_dup_expr(exp->var.op.arg1),
+                    RDB_dup_expr(exp->var.op.arg2));
+        case RDB_EX_SUBSET:
+            return RDB_expr_subset(RDB_dup_expr(exp->var.op.arg1),
+                    RDB_dup_expr(exp->var.op.arg2));
+        case RDB_EX_NOT:
+            return RDB_not(RDB_dup_expr(exp->var.op.arg1));
+        case RDB_EX_NEGATE:
+            return RDB_negate(RDB_dup_expr(exp->var.op.arg1));
+        case RDB_EX_IS_EMPTY:
+            return RDB_expr_is_empty(RDB_dup_expr(exp->var.op.arg1));
+        case RDB_EX_STRLEN:
+            return RDB_strlen(RDB_dup_expr(exp->var.op.arg1));
+        case RDB_EX_TUPLE_ATTR:
+            return RDB_tuple_attr(RDB_dup_expr(exp->var.op.arg1),
+                    exp->var.op.name);
+        case RDB_EX_GET_COMP:
+            return RDB_expr_comp(RDB_dup_expr(exp->var.op.arg1),
+                    exp->var.op.name);
+        case RDB_EX_USER_OP:
+        {
+            int i;
+            RDB_expression *newexp;
+            RDB_expression **argexpv = (RDB_expression **)
+                    malloc(sizeof (RDB_expression *) * exp->var.user_op.argc);
+
+            if (argexpv == NULL)
+                return NULL;
+
+            for (i = 0; i < exp->var.user_op.argc; i++) {
+                argexpv[i] = RDB_dup_expr(exp->var.user_op.argv[i]);
+                if (argexpv[i] == NULL)
+                    return NULL;
+            }
+            newexp = user_op(exp->var.user_op.name, exp->var.user_op.argc,
+                    argexpv, exp->var.user_op.rtyp);
+            free(argexpv);
+            return newexp;
+        }
+        case RDB_EX_AGGREGATE:
+            return RDB_expr_aggregate(RDB_dup_expr(exp->var.op.arg1), exp->var.op.op,
+                    exp->var.op.name);
+        case RDB_EX_OBJ:
+            return RDB_obj_to_expr(&exp->var.obj);
+        case RDB_EX_ATTR:
+            return RDB_expr_attr(exp->var.attr.name);
+    }
+    abort();
 }
 
 RDB_bool

@@ -52,13 +52,13 @@ project_contains(RDB_table *tbp, const RDB_object *tplp, RDB_transaction *txp)
         }
         ret = _RDB_optimize(seltbp, txp);
         if (ret != RDB_OK) {
-            _RDB_drop_table(seltbp, txp, RDB_FALSE);
+            _RDB_free_table(seltbp);
             return ret;
         }
 
         /* check if selection is empty */
         ret = RDB_table_is_empty(seltbp, txp, &result);
-        _RDB_drop_table(seltbp, txp, RDB_FALSE);
+        _RDB_free_table(seltbp);
         if (ret != RDB_OK)
             return ret;
         return result ? RDB_NOT_FOUND : RDB_OK;

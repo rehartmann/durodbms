@@ -667,9 +667,10 @@ provide_table(const char *name, RDB_bool persistent,
            RDB_bool create, RDB_transaction *txp, RDB_environment *envp,
            RDB_table **tbpp)
 {
-    int ret = _RDB_new_stored_table_a(name, persistent, attrc, heading,
-                keyc, keyv, usr, tbpp);
+    int ret;
 
+    ret = _RDB_new_stored_table_a(name, persistent, attrc, heading,
+                keyc, keyv, usr, tbpp);
     if (ret != RDB_OK)
         return ret;
 
@@ -681,7 +682,7 @@ provide_table(const char *name, RDB_bool persistent,
                 txp);
     }
     if (ret != RDB_OK) {
-        _RDB_free_table(*tbpp, NULL);
+        _RDB_drop_table(*tbpp, RDB_FALSE);
         return ret;
     }
     return RDB_OK;

@@ -1071,3 +1071,181 @@ RDB_ungroup(RDB_table *tbp, const char *attr, RDB_table **resultpp)
     *resultpp = newtbp;
     return RDB_OK;
 }
+
+RDB_table *
+_RDB_dup_vtable(RDB_table *tbp)
+{
+    int ret;
+    RDB_table *tb1p;
+    RDB_table *tb2p;
+    RDB_table *tb3p;
+    RDB_expression *exp;
+
+    switch (tbp->kind) {
+        case RDB_TB_STORED:
+            return tbp;
+        case RDB_TB_SELECT:
+        case RDB_TB_SELECT_INDEX:
+            tb1p = _RDB_dup_vtable(tbp->var.select.tbp);
+            if (tb1p == NULL)
+                return NULL;
+            exp = RDB_dup_expr(tbp->var.select.exp);
+            if (exp == NULL)
+                return NULL;
+            ret = RDB_select(tb1p, exp, &tbp);
+            if (ret != RDB_OK)
+                return NULL;
+            return tbp;
+        case RDB_TB_UNION:
+            tb1p = _RDB_dup_vtable(tbp->var._union.tb1p);
+            if (tb1p == NULL)
+                return NULL;
+            tb2p = _RDB_dup_vtable(tbp->var._union.tb2p);
+            if (tb2p == NULL)
+                return NULL;
+            ret = RDB_union(tb1p, tb2p, &tbp);
+            if (ret != RDB_OK)
+                return NULL;
+            return tbp;
+        case RDB_TB_MINUS:
+            tb1p = _RDB_dup_vtable(tbp->var.minus.tb1p);
+            if (tb1p == NULL)
+                return NULL;
+            tb2p = _RDB_dup_vtable(tbp->var.minus.tb2p);
+            if (tb2p == NULL)
+                return NULL;
+            ret = RDB_minus(tb1p, tb2p, &tbp);
+            if (ret != RDB_OK)
+                return NULL;
+            return tbp;
+        case RDB_TB_INTERSECT:
+            tb1p = _RDB_dup_vtable(tbp->var.intersect.tb1p);
+            if (tb1p == NULL)
+                return NULL;
+            tb2p = _RDB_dup_vtable(tbp->var.intersect.tb2p);
+            if (tb2p == NULL)
+                return NULL;
+            ret = RDB_intersect(tb1p, tb2p, &tbp);
+            if (ret != RDB_OK)
+                return NULL;
+            return tbp;
+        case RDB_TB_JOIN:
+            tb1p = _RDB_dup_vtable(tbp->var.join.tb1p);
+            if (tb1p == NULL)
+                return NULL;
+            tb2p = _RDB_dup_vtable(tbp->var.join.tb2p);
+            if (tb2p == NULL)
+                return NULL;
+            ret = RDB_join(tb1p, tb2p, &tbp);
+            if (ret != RDB_OK)
+                return NULL;
+            return tbp;
+        case RDB_TB_EXTEND:
+        {
+            RDB_virtual_attr *vattrv;
+            int i;
+
+            tb1p = _RDB_dup_vtable(tbp->var.extend.tbp);
+            if (tb1p == NULL)
+                return NULL;
+            vattrv = malloc(tbp->var.extend.attrc * sizeof(RDB_virtual_attr));
+            if (vattrv == NULL)
+                return NULL;
+            for (i = 0; i < tbp->var.extend.attrc; i++) {
+                vattrv[i].name = tbp->var.extend.attrv[i].name;
+                vattrv[i].exp = RDB_dup_expr(tbp->var.extend.attrv[i].exp);
+                if (vattrv[i].exp == NULL)
+                    return NULL;
+            }
+            ret = RDB_extend(tb1p, tbp->var.extend.attrc, vattrv, &tbp);
+            free(vattrv);
+            if (ret != RDB_OK)
+                return NULL;
+            return tbp;
+        }
+        case RDB_TB_PROJECT:
+        {
+            int i;
+            char **attrnamev;
+            int attrc = tbp->typ->var.basetyp->var.tuple.attrc;
+
+            tb1p = _RDB_dup_vtable(tbp->var.project.tbp);
+            if (tb1p == NULL)
+                return NULL;
+            attrnamev = malloc(attrc * sizeof(char *));
+            if (attrnamev == NULL)
+                return NULL;
+            for (i = 0; i < attrc; i++) {
+                attrnamev[i] = tbp->typ->var.basetyp->var.tuple.attrv[i].name;
+            }
+            ret = RDB_project(tb1p, attrc, attrnamev, &tbp);
+            free(attrnamev);
+            if (ret != RDB_OK)
+                return NULL;
+            return tbp;
+        }
+        case RDB_TB_SUMMARIZE:
+            /* !! */
+            break;
+        case RDB_TB_RENAME:
+            tb1p = _RDB_dup_vtable(tbp->var.rename.tbp);
+            if (tb1p == NULL)
+                return NULL;
+            ret = RDB_rename(tb1p, tbp->var.rename.renc, tbp->var.rename.renv,
+                    &tbp);
+            if (ret != RDB_OK)
+                return NULL;
+            return tbp;
+        case RDB_TB_WRAP:
+            tb1p = _RDB_dup_vtable(tbp->var.wrap.tbp);
+            if (tb1p == NULL)
+                return NULL;
+            ret = RDB_wrap(tb1p, tbp->var.wrap.wrapc, tbp->var.wrap.wrapv,
+                    &tbp);
+            if (ret != RDB_OK)
+                return NULL;
+            return tbp;
+        case RDB_TB_UNWRAP:
+            tb1p = _RDB_dup_vtable(tbp->var.unwrap.tbp);
+            if (tb1p == NULL)
+                return NULL;
+            ret = RDB_unwrap(tb1p, tbp->var.unwrap.attrc, tbp->var.unwrap.attrv,
+                    &tbp);
+            if (ret != RDB_OK)
+                return NULL;
+            return tbp;
+        case RDB_TB_GROUP:
+            tb1p = _RDB_dup_vtable(tbp->var.group.tbp);
+            if (tb1p == NULL)
+                return NULL;
+            ret = RDB_group(tb1p, tbp->var.group.attrc, tbp->var.group.attrv,
+                    tbp->var.group.gattr, &tbp);
+            if (ret != RDB_OK)
+                return NULL;
+            return tbp;
+        case RDB_TB_UNGROUP:
+            tb1p = _RDB_dup_vtable(tbp->var.ungroup.tbp);
+            if (tb1p == NULL)
+                return NULL;
+            ret = RDB_ungroup(tb1p, tbp->var.ungroup.attr, &tbp);
+            if (ret != RDB_OK)
+                return NULL;
+            return tbp;
+        case RDB_TB_SDIVIDE:
+            tb1p = _RDB_dup_vtable(tbp->var.sdivide.tb1p);
+            if (tb1p == NULL)
+                return NULL;
+            tb2p = _RDB_dup_vtable(tbp->var.sdivide.tb2p);
+            if (tb1p == NULL)
+                return NULL;
+            tb3p = _RDB_dup_vtable(tbp->var.sdivide.tb3p);
+            if (tb1p == NULL)
+                return NULL;
+            ret = RDB_sdivide(tb1p, tb2p, tb3p, &tbp);
+            if (ret != RDB_OK)
+                return NULL;
+            return tbp;
+    }
+    /* Must never be reached */
+    abort();
+}

@@ -39,7 +39,8 @@ _RDB_new_stored_table(const char *name, RDB_bool persistent,
                 int keyc, RDB_string_vec keyv[], RDB_bool usr,
                 RDB_table **tbpp)
 {
-    int ret, i;
+    int ret;
+    int i, j;
     RDB_table *tbp = _RDB_new_table();
 
     if (tbp == NULL)
@@ -59,6 +60,7 @@ _RDB_new_stored_table(const char *name, RDB_bool persistent,
             goto error;
         }
     }
+    tbp->var.stored.recmapp = NULL;
 
     /* copy candidate keys */
     tbp->keyc = keyc;
@@ -72,7 +74,43 @@ _RDB_new_stored_table(const char *name, RDB_bool persistent,
         if (tbp->keyv[i].strv == NULL)
             goto error;
     }
-    tbp->var.stored.indexc = 0;
+
+    tbp->var.stored.indexc = tbp->keyc;
+    tbp->var.stored.indexv = malloc(sizeof (_RDB_tbindex)
+            * tbp->var.stored.indexc);
+    if (tbp->var.stored.indexv == NULL)
+        return RDB_NO_MEMORY;
+
+    for (i = 0; i < tbp->var.stored.indexc; i++) {
+        tbp->var.stored.indexv[i].attrc = tbp->keyv[i].strc;
+        tbp->var.stored.indexv[i].attrv = malloc (sizeof(RDB_seq_item)
+                * tbp->keyv[i].strc);
+        if (tbp->var.stored.indexv[i].attrv == NULL)
+            return RDB_NO_MEMORY;
+        for (j = 0; j < tbp->keyv[i].strc; j++) {
+            tbp->var.stored.indexv[i].attrv[j].asc = RDB_TRUE;
+            tbp->var.stored.indexv[i].attrv[j].attrname =
+                    RDB_dup_str(tbp->keyv[i].strv[j]);
+            if (tbp->var.stored.indexv[i].attrv[j].attrname == NULL)
+                return RDB_NO_MEMORY;
+        }
+
+        /* A primary index has no name */
+        if (tbp->is_persistent) {
+            tbp->var.stored.indexv[i].name =
+                    malloc(strlen(RDB_table_name(tbp)) + 4);
+            if (tbp->var.stored.indexv[i].name == NULL) {
+                return RDB_NO_MEMORY;
+            }
+            /* build index name */            
+            sprintf(tbp->var.stored.indexv[i].name, "%s$%d", tbp->name, i);
+        } else {
+            tbp->var.stored.indexv[i].name = NULL;
+        }
+
+        tbp->var.stored.indexv[i].unique = RDB_TRUE;
+        tbp->var.stored.indexv[i].idxp = NULL;
+    }
 
     tbp->typ = reltyp;
 
@@ -128,6 +166,202 @@ _RDB_new_stored_table_a(const char *name, RDB_bool persistent,
     if (ret != RDB_OK)
         RDB_drop_type(reltyp, NULL);
     return ret;
+}
+
+static int
+drop_anon_table(RDB_table *tbp)
+{
+    if (RDB_table_name(tbp) == NULL)
+        return RDB_drop_table(tbp, NULL);
+    return RDB_OK;
+}
+
+void
+_RDB_free_table(RDB_table *tbp)
+{
+    int i;
+
+    /* Delete candidate keys */
+    for (i = 0; i < tbp->keyc; i++) {
+        RDB_free_strvec(tbp->keyv[i].strc, tbp->keyv[i].strv);
+    }
+    free(tbp->keyv);
+
+    free(tbp->name);
+    free(tbp);
+}
+
+int
+_RDB_drop_table(RDB_table *tbp, RDB_bool rec)
+{
+    int i, j;
+    int ret;
+
+    switch (tbp->kind) {
+        case RDB_TB_STORED:
+        {
+            RDB_destroy_hashmap(&tbp->var.stored.attrmap);
+            if (tbp->var.stored.indexc > 0) {
+                for (i = 0; i < tbp->var.stored.indexc; i++) {
+                    for (j = 0; j < tbp->var.stored.indexv[i].attrc; j++)
+                        free(tbp->var.stored.indexv[i].attrv[j].attrname);
+                    free(tbp->var.stored.indexv[i].attrv);
+                }
+                free(tbp->var.stored.indexv);
+            }
+            break;
+        }
+        case RDB_TB_SELECT_INDEX:
+        case RDB_TB_SELECT:
+            RDB_drop_expr(tbp->var.select.exp);
+            if (rec) {
+                ret = drop_anon_table(tbp->var.select.tbp);
+                if (ret != RDB_OK)
+                    return ret;
+            }
+            break;
+        case RDB_TB_UNION:
+            if (rec) {
+                ret = drop_anon_table(tbp->var._union.tb1p);
+                if (ret != RDB_OK)
+                    return ret;
+                ret = drop_anon_table(tbp->var._union.tb2p);
+                if (ret != RDB_OK)
+                    return ret;
+            }
+            break;
+        case RDB_TB_MINUS:
+            if (rec) {
+                ret = drop_anon_table(tbp->var.minus.tb1p);
+                if (ret != RDB_OK)
+                    return ret;
+                ret = drop_anon_table(tbp->var.minus.tb2p);
+                if (ret != RDB_OK)
+                    return ret;
+            }
+            break;
+        case RDB_TB_INTERSECT:
+            if (rec) {
+                ret = drop_anon_table(tbp->var.intersect.tb1p);
+                if (ret != RDB_OK)
+                    return ret;
+                ret = drop_anon_table(tbp->var.intersect.tb2p);
+                if (ret != RDB_OK)
+                    return ret;
+            }
+            break;
+        case RDB_TB_JOIN:
+            if (rec) {
+                ret = drop_anon_table(tbp->var.join.tb1p);
+                if (ret != RDB_OK)
+                    return ret;
+                ret = drop_anon_table(tbp->var.join.tb2p);
+                if (ret != RDB_OK)
+                    return ret;
+            }
+            RDB_drop_type(tbp->typ, NULL);
+            free(tbp->var.join.common_attrv);
+            break;
+        case RDB_TB_EXTEND:
+            if (rec) {
+                ret = drop_anon_table(tbp->var.extend.tbp);
+                if (ret != RDB_OK)
+                    return ret;
+            }
+            for (i = 0; i < tbp->var.extend.attrc; i++)
+                free(tbp->var.extend.attrv[i].name);
+            RDB_drop_type(tbp->typ, NULL);
+            break;
+        case RDB_TB_PROJECT:
+            if (rec) {
+                ret = drop_anon_table(tbp->var.project.tbp);
+                if (ret != RDB_OK)
+                    return ret;
+            }
+            RDB_drop_type(tbp->typ, NULL);
+            break;
+        case RDB_TB_RENAME:
+            if (rec) {
+                ret = drop_anon_table(tbp->var.rename.tbp);
+                if (ret != RDB_OK)
+                    return ret;
+            }
+            for (i = 0; i < tbp->var.rename.renc; i++) {
+                free(tbp->var.rename.renv[i].from);
+                free(tbp->var.rename.renv[i].to);
+            }
+            break;
+        case RDB_TB_SUMMARIZE:
+            if (rec) {
+                ret = drop_anon_table(tbp->var.summarize.tb1p);
+                if (ret != RDB_OK)
+                    return ret;
+                ret = drop_anon_table(tbp->var.summarize.tb2p);
+                if (ret != RDB_OK)
+                    return ret;
+            }
+            for (i = 0; i < tbp->var.summarize.addc; i++) {
+                if (tbp->var.summarize.addv[i].op != RDB_COUNT
+                        && tbp->var.summarize.addv[i].op != RDB_COUNTD)
+                    RDB_drop_expr(tbp->var.summarize.addv[i].exp);
+                free(tbp->var.summarize.addv[i].name);
+            }
+            break;
+        case RDB_TB_WRAP:
+            if (rec) {
+                ret = drop_anon_table(tbp->var.wrap.tbp);
+                if (ret != RDB_OK)
+                    return ret;
+            }
+            for (i = 0; i < tbp->var.wrap.wrapc; i++) {
+                free(tbp->var.wrap.wrapv[i].attrname);
+                RDB_free_strvec(tbp->var.wrap.wrapv[i].attrc,
+                        tbp->var.wrap.wrapv[i].attrv);
+            }
+            break;
+        case RDB_TB_UNWRAP:
+            if (rec) {
+                ret = drop_anon_table(tbp->var.unwrap.tbp);
+                if (ret != RDB_OK)
+                    return ret;
+            }
+            RDB_free_strvec(tbp->var.unwrap.attrc, tbp->var.unwrap.attrv);
+            break;
+        case RDB_TB_SDIVIDE:
+            if (rec) {
+                ret = drop_anon_table(tbp->var.sdivide.tb1p);
+                if (ret != RDB_OK)
+                    return ret;
+                ret = drop_anon_table(tbp->var.sdivide.tb2p);
+                if (ret != RDB_OK)
+                    return ret;
+                ret = drop_anon_table(tbp->var.sdivide.tb3p);
+                if (ret != RDB_OK)
+                    return ret;
+            }
+            break;
+        case RDB_TB_GROUP:
+            if (rec) {
+                ret = drop_anon_table(tbp->var.group.tbp);
+                if (ret != RDB_OK)
+                    return ret;
+            }
+            for (i = 0; i < tbp->var.group.attrc; i++) {
+                free(tbp->var.group.attrv[i]);
+            }
+            free(tbp->var.group.gattr);
+            break;
+        case RDB_TB_UNGROUP:
+            if (rec) {
+                ret = drop_anon_table(tbp->var.ungroup.tbp);
+                if (ret != RDB_OK)
+                    return ret;
+            }
+            free(tbp->var.ungroup.attr);
+            break;
+    }
+    _RDB_free_table(tbp);
+    return RDB_OK;
 }
 
 static int
@@ -193,51 +427,13 @@ static int
 create_key_indexes(RDB_table *tbp, RDB_environment *envp, RDB_transaction *txp)
 {
     int i;
-    int j;
     int ret;
-    tbp->var.stored.indexc = tbp->keyc;
-    tbp->var.stored.indexv = malloc(sizeof (_RDB_tbindex)
-            * tbp->var.stored.indexc);
-    if (tbp->var.stored.indexv == NULL)
-        return RDB_NO_MEMORY;
 
-    for (i = 0; i < tbp->var.stored.indexc; i++) {
-        tbp->var.stored.indexv[i].attrc = tbp->keyv[i].strc;
-        tbp->var.stored.indexv[i].attrv = malloc (sizeof(RDB_seq_item)
-                * tbp->keyv[i].strc);
-        if (tbp->var.stored.indexv[i].attrv == NULL)
-            return RDB_NO_MEMORY;
-        for (j = 0; j < tbp->keyv[i].strc; j++) {
-            tbp->var.stored.indexv[i].attrv[j].asc = RDB_TRUE;
-            tbp->var.stored.indexv[i].attrv[j].attrname =
-                    RDB_dup_str(tbp->keyv[i].strv[j]);
-            if (tbp->var.stored.indexv[i].attrv[j].attrname == NULL)
-                return RDB_NO_MEMORY;
-        }
-
-        /* A primary index has no name */
-        if (tbp->is_persistent) {
-            tbp->var.stored.indexv[i].name =
-                    malloc(strlen(RDB_table_name(tbp)) + 4);
-            if (tbp->var.stored.indexv[i].name == NULL) {
-                return RDB_NO_MEMORY;
-            }
-            /* build index name */            
-            sprintf(tbp->var.stored.indexv[i].name, "%s$%d", tbp->name, i);
-        } else {
-            tbp->var.stored.indexv[i].name = NULL;
-        }
-
-        tbp->var.stored.indexv[i].unique = RDB_TRUE;
-
-        if (i > 0) {
-            /* Create index, if it's not the primary index */
-            ret = create_index(tbp, envp, txp, &tbp->var.stored.indexv[i]);
-            if (ret != RDB_OK)
-                return ret;
-        } else {
-            tbp->var.stored.indexv[i].idxp = NULL;
-        }
+    /* Create secondary indexes */
+    for (i = 1; i < tbp->var.stored.indexc; i++) {
+        ret = create_index(tbp, envp, txp, &tbp->var.stored.indexv[i]);
+        if (ret != RDB_OK)
+            return ret;
     }
     return RDB_OK;
 }

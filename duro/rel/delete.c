@@ -242,13 +242,13 @@ RDB_delete(RDB_table *tbp, RDB_expression *condp, RDB_transaction *txp)
     if (!tbp->optimized) {
         ret = _RDB_optimize(tbp, txp);
         if (ret != RDB_OK) {
-            _RDB_free_table(tbp, NULL);
+            _RDB_free_table(tbp);
             return ret;
         }
     }
 
     ret = delete(tbp, txp);
     if (condp != NULL)
-        _RDB_free_table(tbp, NULL);
+        _RDB_free_table(tbp);
     return ret;
 }

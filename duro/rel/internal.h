@@ -151,8 +151,11 @@ _RDB_new_stored_table_a(const char *name, RDB_bool persistent,
                 int keyc, RDB_string_vec keyv[], RDB_bool usr,
                 RDB_table **tbpp);
 
+int
+_RDB_drop_table(RDB_table *, RDB_bool);
+
 void
-_RDB_free_table(RDB_table *tbp, RDB_environment *envp);
+_RDB_free_table(RDB_table *);
 
 int
 _RDB_create_table_storage(RDB_table *tbp, RDB_environment *envp,
@@ -171,12 +174,6 @@ _RDB_create_table(const char *name, RDB_bool persistent,
 
 int
 _RDB_assoc_table_db(RDB_table *tbp, RDB_database *dbp);
-
-int
-_RDB_drop_rtable(RDB_table *tbp, RDB_transaction *txp);
-
-int
-_RDB_drop_table(RDB_table *tbp, RDB_transaction *txp, RDB_bool rec);
 
 /*
  * Extend the tuple type pointed to by typ by the attributes given by
@@ -296,6 +293,9 @@ RDB_expr_aggregate(RDB_expression *arg, RDB_aggregate_op op,
 RDB_bool
 _RDB_expr_refers(RDB_expression *, RDB_table *);
 
+RDB_expression *
+RDB_dup_expr(const RDB_expression *);
+
 /*
  * Internal tuple functions
  */
@@ -327,6 +327,9 @@ _RDB_invunwrap_tuple(const RDB_object *, int attrc, char *attrv[],
 
 RDB_table *
 _RDB_new_table(void);
+
+RDB_table *
+_RDB_dup_vtable(RDB_table *);
 
 int
 _RDB_sdivide_preserves(RDB_table *, const RDB_object *tplp, RDB_qresult *qr3p,
@@ -381,5 +384,11 @@ _RDB_open_table_index(RDB_table *tbp, _RDB_tbindex *indexp,
 
 int
 _RDB_optimize(RDB_table *tbp, RDB_transaction *);
+
+int
+_RDB_transform(RDB_table *tbp);
+
+RDB_expression *
+_RDB_attr_node(RDB_expression *exp, const char *attrname);
 
 #endif

@@ -52,33 +52,24 @@ expr_eq_attr(RDB_expression *exp, const char *attrname)
         return RDB_TRUE;
     if (exp->kind == RDB_EX_EQ) {
         if (exp->var.op.arg1->kind == RDB_EX_ATTR
-                && strcmp(exp->var.op.arg1->var.attr.name, attrname) == 0)
+                && strcmp(exp->var.op.arg1->var.attr.name, attrname) == 0
+                && exp->var.op.arg2->kind == RDB_EX_OBJ)
             return RDB_TRUE;
     }
     return RDB_FALSE;
 }
 
-static RDB_expression *
-attr_exp(RDB_expression *exp, const char *attrname)
+RDB_expression *
+_RDB_attr_node(RDB_expression *exp, const char *attrname)
 {
-    if (exp->kind != RDB_EX_AND) {
-        if (expr_eq_attr(exp, attrname))
-           return exp;
-        else
-           return NULL;
-    }
-
-    for (;;) {    
+    while (exp->kind == RDB_EX_AND) {
         if (expr_eq_attr(exp->var.op.arg2, attrname))
             return exp;
-        if (exp->var.op.arg1->kind != RDB_EX_AND) {
-            if (expr_eq_attr(exp->var.op.arg1, attrname))
-                return exp;
-            else
-                return NULL;
-        }
-        exp = exp->var.op.arg1;        
+        exp = exp->var.op.arg1;
     }
+    if (expr_eq_attr(exp, attrname))
+        return exp;
+    return NULL;
 }
 
 /* 
@@ -93,7 +84,7 @@ eval_index(RDB_table *tbp, _RDB_tbindex *indexp)
     RDB_expression *exp;
 
     for (i = 0; i < indexp->attrc; i++) {
-        if (attr_exp(exp = tbp->var.select.exp,
+        if (_RDB_attr_node(exp = tbp->var.select.exp,
                 indexp->attrv[i].attrname) == NULL)
             return INT_MAX;
     }
@@ -104,48 +95,61 @@ static int
 split_by_index(RDB_table *tbp, _RDB_tbindex *indexp)
 {
     int ret;
-    RDB_expression *exp;
-    RDB_expression *ixexp;
-    RDB_bool dosplit;
+    int i;
+    RDB_expression *prevp;
+    RDB_expression *nodep;
+    RDB_expression *ixexp = NULL;
 
-    exp = attr_exp(tbp->var.select.exp, indexp->attrv[0].attrname);
-    if (exp->kind != RDB_EX_AND) {        
-        dosplit = RDB_FALSE;
-        ixexp = exp;
-    } else {
-        RDB_expression *prevp;
+    for (i = 0; i < indexp->attrc; i++) {
+        nodep = _RDB_attr_node(tbp->var.select.exp, indexp->attrv[i].attrname);
 
-        dosplit = RDB_TRUE;
-        if (exp == tbp->var.select.exp) {
+        /* Get previous node */
+        if (nodep == tbp->var.select.exp) {
             prevp = NULL;
         } else {
             prevp = tbp->var.select.exp;
-            while (prevp->var.op.arg1 != exp)
+            while (prevp->var.op.arg1 != nodep)
                 prevp = prevp->var.op.arg1;
         }
 
-        if (expr_eq_attr(exp->var.op.arg1, indexp->attrv[0].attrname)) {
-            ixexp = exp->var.op.arg1;
-            if (prevp != NULL) {
-                prevp->var.op.arg1 = exp->var.op.arg2;
+        if (nodep->kind != RDB_EX_AND) {
+            if (ixexp == NULL)
+                ixexp = nodep;
+            else
+                ixexp = RDB_and(ixexp, nodep);
+            if (prevp == NULL) {
+                tbp->var.select.exp = NULL;
             } else {
-                tbp->var.select.exp = exp->var.op.arg2;
+                if (prevp == tbp->var.select.exp) {
+                    tbp->var.select.exp = prevp->var.op.arg2;
+                } else {
+                    RDB_expression *pprevp = tbp->var.select.exp;
+
+                    while (pprevp->var.op.arg1 != prevp)
+                        pprevp = pprevp->var.op.arg1;
+                    pprevp->var.op.arg1 = prevp->var.op.arg2;
+                }
+                free(prevp);
             }
-            free(exp);            
         } else {
-            ixexp = exp->var.op.arg2;
-            if (prevp != NULL) {
-                prevp->var.op.arg1 = exp->var.op.arg1;
-            } else {
-                tbp->var.select.exp = exp->var.op.arg1;
-            }
-            free(exp);
+            if (ixexp == NULL)
+                ixexp = nodep->var.op.arg2;
+            else
+                ixexp = RDB_and(ixexp, nodep->var.op.arg2);
+            if (prevp == NULL)
+                tbp->var.select.exp = nodep->var.op.arg1;
+            else
+                prevp->var.op.arg1 = nodep->var.op.arg1;
+            free(nodep);
         }
     }
 
-    if (dosplit) {
+    if (tbp->var.select.exp != NULL) {
         RDB_table *sitbp;
 
+        /*
+         * Split table into two
+         */
         ret = RDB_select(tbp->var.select.tbp, ixexp, &sitbp);
         if (ret != RDB_OK)
             return ret;
@@ -155,6 +159,9 @@ split_by_index(RDB_table *tbp, _RDB_tbindex *indexp)
         sitbp->optimized = RDB_TRUE;
         tbp->var.select.tbp = sitbp;
     } else {
+        /*
+         * Convert table to RDB_SELECT_INDEX
+         */
         tbp->kind = RDB_TB_SELECT_INDEX;
         tbp->var.select.indexp = indexp;
         tbp->var.select.exp = ixexp;
@@ -184,8 +191,7 @@ optimize_select(RDB_table *tbp, RDB_transaction *txp)
      * Try to find best index
      */
     for (i = 0; i < stbp->var.stored.indexc; i++) {
-        if (stbp->var.stored.indexv[i].attrc > 1
-                || !stbp->var.stored.indexv[i].unique)
+        if (!stbp->var.stored.indexv[i].unique)
             continue;
 
         int cost = eval_index(tbp, &stbp->var.stored.indexv[i]);
@@ -203,8 +209,29 @@ optimize_select(RDB_table *tbp, RDB_transaction *txp)
     return split_by_index(tbp, &stbp->var.stored.indexv[idx]);
 }
 
-int
-_RDB_optimize(RDB_table *tbp, RDB_transaction *txp)
+static int
+resolve_views(RDB_table *tbp);
+
+static int
+dup_named(RDB_table **tbpp)
+{
+    RDB_table *newtbp;
+
+    /*
+     * Duplicate table, if it has a name, otherwise call resolve_views().
+     */
+    if (RDB_table_name(*tbpp) != NULL) {
+        newtbp = _RDB_dup_vtable(*tbpp);
+        if (newtbp == NULL)
+            return RDB_NO_MEMORY;
+        *tbpp = newtbp;
+        return RDB_OK;
+    }
+    return resolve_views(*tbpp);
+}
+
+static int
+resolve_views(RDB_table *tbp)
 {
     int ret;
 
@@ -212,26 +239,134 @@ _RDB_optimize(RDB_table *tbp, RDB_transaction *txp)
         case RDB_TB_STORED:
             break;
         case RDB_TB_MINUS:
-            ret = _RDB_optimize(tbp->var.minus.tb1p, txp);
+            ret = dup_named(&tbp->var.minus.tb1p);
             if (ret != RDB_OK)
                 return ret;
-            ret = _RDB_optimize(tbp->var.minus.tb2p, txp);
+            ret = dup_named(&tbp->var.minus.tb2p);
             if (ret != RDB_OK)
                 return ret;
             break;
         case RDB_TB_UNION:
-            ret = _RDB_optimize(tbp->var._union.tb1p, txp);
+            ret = dup_named(&tbp->var._union.tb1p);
             if (ret != RDB_OK)
                 return ret;
-            ret = _RDB_optimize(tbp->var._union.tb2p, txp);
+            ret = dup_named(&tbp->var._union.tb2p);
             if (ret != RDB_OK)
                 return ret;
             break;
         case RDB_TB_INTERSECT:
-            ret = _RDB_optimize(tbp->var.intersect.tb1p, txp);
+            ret = dup_named(&tbp->var.intersect.tb1p);
             if (ret != RDB_OK)
                 return ret;
-            ret = _RDB_optimize(tbp->var.intersect.tb2p, txp);
+            ret = dup_named(&tbp->var.intersect.tb2p);
+            if (ret != RDB_OK)
+                return ret;
+            break;
+        case RDB_TB_SELECT:
+        case RDB_TB_SELECT_INDEX:
+            ret = dup_named(&tbp->var.select.tbp);
+            if (ret != RDB_OK)
+                return ret;
+            break;
+        case RDB_TB_JOIN:
+            ret = dup_named(&tbp->var.join.tb1p);
+            if (ret != RDB_OK)
+                return ret;
+            ret = dup_named(&tbp->var.join.tb2p);
+            if (ret != RDB_OK)
+                return ret;
+            break;
+        case RDB_TB_EXTEND:
+            ret = dup_named(&tbp->var.extend.tbp);
+            if (ret != RDB_OK)
+                return ret;
+            break;
+        case RDB_TB_PROJECT:
+            ret = dup_named(&tbp->var.project.tbp);
+            if (ret != RDB_OK)
+                return ret;
+            break;
+        case RDB_TB_SUMMARIZE:
+            ret = dup_named(&tbp->var.summarize.tb1p);
+            if (ret != RDB_OK)
+                return ret;
+            break;
+            ret = dup_named(&tbp->var.summarize.tb2p);
+            if (ret != RDB_OK)
+                return ret;
+            break;
+        case RDB_TB_RENAME:
+            ret = dup_named(&tbp->var.rename.tbp);
+            if (ret != RDB_OK)
+                return ret;
+            break;
+        case RDB_TB_WRAP:
+            ret = dup_named(&tbp->var.wrap.tbp);
+            if (ret != RDB_OK)
+                return ret;
+            break;
+        case RDB_TB_UNWRAP:
+            ret = dup_named(&tbp->var.unwrap.tbp);
+            if (ret != RDB_OK)
+                return ret;
+            break;
+        case RDB_TB_GROUP:
+            ret = dup_named(&tbp->var.group.tbp);
+            if (ret != RDB_OK)
+                return ret;
+            break;
+        case RDB_TB_UNGROUP:
+            ret = dup_named(&tbp->var.ungroup.tbp);
+            if (ret != RDB_OK)
+                return ret;
+            break;
+        case RDB_TB_SDIVIDE:
+            ret = dup_named(&tbp->var.sdivide.tb1p);
+            if (ret != RDB_OK)
+                return ret;
+            ret = dup_named(&tbp->var.sdivide.tb2p);
+            if (ret != RDB_OK)
+                return ret;
+            ret = dup_named(&tbp->var.sdivide.tb3p);
+            if (ret != RDB_OK)
+                return ret;
+            break;
+    }
+    return RDB_OK;
+}
+
+static int
+optimize(RDB_table *tbp, RDB_transaction *txp)
+{
+    int ret;
+/*
+    if (tbp->kind == RDB_TB_MINUS)
+        raise(2);
+*/
+    switch (tbp->kind) {
+        case RDB_TB_STORED:
+            break;
+        case RDB_TB_MINUS:
+            ret = optimize(tbp->var.minus.tb1p, txp);
+            if (ret != RDB_OK)
+                return ret;
+            ret = optimize(tbp->var.minus.tb2p, txp);
+            if (ret != RDB_OK)
+                return ret;
+            break;
+        case RDB_TB_UNION:
+            ret = optimize(tbp->var._union.tb1p, txp);
+            if (ret != RDB_OK)
+                return ret;
+            ret = optimize(tbp->var._union.tb2p, txp);
+            if (ret != RDB_OK)
+                return ret;
+            break;
+        case RDB_TB_INTERSECT:
+            ret = optimize(tbp->var.intersect.tb1p, txp);
+            if (ret != RDB_OK)
+                return ret;
+            ret = optimize(tbp->var.intersect.tb2p, txp);
             if (ret != RDB_OK)
                 return ret;
             break;
@@ -242,68 +377,85 @@ _RDB_optimize(RDB_table *tbp, RDB_transaction *txp)
                 return ret;
             break;
         case RDB_TB_JOIN:
-            ret = _RDB_optimize(tbp->var.join.tb1p, txp);
+            ret = optimize(tbp->var.join.tb1p, txp);
             if (ret != RDB_OK)
                 return ret;
-            ret = _RDB_optimize(tbp->var.join.tb2p, txp);
+            ret = optimize(tbp->var.join.tb2p, txp);
             if (ret != RDB_OK)
                 return ret;
             break;
         case RDB_TB_EXTEND:
-            ret = _RDB_optimize(tbp->var.extend.tbp, txp);
+            ret = optimize(tbp->var.extend.tbp, txp);
             if (ret != RDB_OK)
                 return ret;
             break;
         case RDB_TB_PROJECT:
-            ret = _RDB_optimize(tbp->var.project.tbp, txp);
+            ret = optimize(tbp->var.project.tbp, txp);
             if (ret != RDB_OK)
                 return ret;
             break;
         case RDB_TB_SUMMARIZE:
-            ret = _RDB_optimize(tbp->var.summarize.tb1p, txp);
+            ret = optimize(tbp->var.summarize.tb1p, txp);
             if (ret != RDB_OK)
                 return ret;
-            ret = _RDB_optimize(tbp->var.summarize.tb2p, txp);
+            ret = optimize(tbp->var.summarize.tb2p, txp);
             if (ret != RDB_OK)
                 return ret;
             break;
         case RDB_TB_RENAME:
-            ret = _RDB_optimize(tbp->var.rename.tbp, txp);
+            ret = optimize(tbp->var.rename.tbp, txp);
             if (ret != RDB_OK)
                 return ret;
             break;
         case RDB_TB_WRAP:
-            ret = _RDB_optimize(tbp->var.wrap.tbp, txp);
+            ret = optimize(tbp->var.wrap.tbp, txp);
             if (ret != RDB_OK)
                 return ret;
             break;
         case RDB_TB_UNWRAP:
-            ret = _RDB_optimize(tbp->var.unwrap.tbp, txp);
+            ret = optimize(tbp->var.unwrap.tbp, txp);
             if (ret != RDB_OK)
                 return ret;
             break;
         case RDB_TB_GROUP:
-            ret = _RDB_optimize(tbp->var.group.tbp, txp);
+            ret = optimize(tbp->var.group.tbp, txp);
             if (ret != RDB_OK)
                 return ret;
             break;
         case RDB_TB_UNGROUP:
-            ret = _RDB_optimize(tbp->var.ungroup.tbp, txp);
+            ret = optimize(tbp->var.ungroup.tbp, txp);
             if (ret != RDB_OK)
                 return ret;
             break;
         case RDB_TB_SDIVIDE:
-            ret = _RDB_optimize(tbp->var.sdivide.tb1p, txp);
+            ret = optimize(tbp->var.sdivide.tb1p, txp);
             if (ret != RDB_OK)
                 return ret;
-            ret = _RDB_optimize(tbp->var.sdivide.tb2p, txp);
+            ret = optimize(tbp->var.sdivide.tb2p, txp);
             if (ret != RDB_OK)
                 return ret;
-            ret = _RDB_optimize(tbp->var.sdivide.tb3p, txp);
+            ret = optimize(tbp->var.sdivide.tb3p, txp);
             if (ret != RDB_OK)
                 return ret;
             break;
     }
     tbp->optimized = RDB_TRUE;
+
     return RDB_OK;
+}
+
+int
+_RDB_optimize(RDB_table *tbp, RDB_transaction *txp)
+{
+    int ret;
+
+    ret = resolve_views(tbp);
+    if (ret != RDB_OK)
+        return ret;
+
+    ret = _RDB_transform(tbp);
+    if (ret != RDB_OK)
+        return ret;
+
+    return optimize(tbp, txp);
 }

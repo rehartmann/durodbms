@@ -48,9 +48,7 @@ summary = COUNT | summary_type '(' expression ')'.
 
 summary_type = SUM | AVG | MAX | MIN | ALL | ANY.
 
-wrap   = primary_expression WRAP '(' wrapping_list ')'.
-
-wrapping_list = wrapping {',' wrapping}.
+wrap   = primary_expression WRAP '(' wrapping {',' wrapping} ')'.
 
 wrapping = '{' id {',' id} '}' AS id.
 
