@@ -120,7 +120,7 @@ _RDB_dup_nonscalar_type(RDB_type *typ)
 }
 
 int
-RDB_create_tuple_type(int attrc, RDB_attr attrv[], RDB_type **typp)
+RDB_create_tuple_type(int attrc, const RDB_attr attrv[], RDB_type **typp)
 {
     RDB_type *tuptyp;
     int i, j;
@@ -184,7 +184,7 @@ error:
 }
 
 int
-RDB_create_relation_type(int attrc, RDB_attr attrv[], RDB_type **typp)
+RDB_create_relation_type(int attrc, const RDB_attr attrv[], RDB_type **typp)
 {
     int ret;
     RDB_type *typ = malloc(sizeof (RDB_type));
@@ -318,7 +318,7 @@ RDB_get_type(const char *name, RDB_transaction *txp, RDB_type **typp)
         return RDB_OK;
     }
     
-    ret = _RDB_get_cat_type(name, txp, typp);
+    ret = _RDB_cat_get_type(name, txp, typp);
     if (ret != RDB_OK)
         return ret;
 
@@ -327,7 +327,7 @@ RDB_get_type(const char *name, RDB_transaction *txp, RDB_type **typp)
 }
 
 int
-RDB_define_type(const char *name, int repc, RDB_possrep repv[],
+RDB_define_type(const char *name, int repc, const RDB_possrep repv[],
                 RDB_transaction *txp)
 {
     RDB_object tpl;

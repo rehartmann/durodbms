@@ -404,8 +404,8 @@ typedef struct RDB_attr {
  */
 int
 RDB_create_table(const char *name, RDB_bool persistent,
-        int attrc, RDB_attr heading[],
-        int keyc, RDB_string_vec keyv[],
+        int attrc, const RDB_attr attrv[],
+        int keyc, const RDB_string_vec keyv[],
         RDB_transaction *txp, RDB_table **tbpp);
 
 /*
@@ -440,13 +440,13 @@ RDB_add_table(RDB_table *, RDB_transaction *);
 
 int
 RDB_create_table_index(const char *name, RDB_table *tbp, int idxcompc,
-        RDB_seq_item idxcompv[], int flags, RDB_transaction *);
+        const RDB_seq_item idxcompv[], int flags, RDB_transaction *);
 
 int
 RDB_drop_table_index(const char *name, RDB_transaction *);
 
 int
-RDB_define_type(const char *name, int repc, RDB_possrep repv[],
+RDB_define_type(const char *name, int repc, const RDB_possrep repv[],
                 RDB_transaction *txp);
 
 /*
@@ -778,7 +778,7 @@ RDB_remove_tuple(const RDB_object *, int attrc, char *attrv[],
                  RDB_object *restplp);
 
 int
-RDB_extend_tuple(RDB_object *, int attrc, RDB_virtual_attr attrv[],
+RDB_extend_tuple(RDB_object *, int attrc, const RDB_virtual_attr attrv[],
                  RDB_transaction *);
 
 int
@@ -836,13 +836,13 @@ RDB_type_is_numeric(const RDB_type *);
  * Create an anonymous tuple type from the attributes given by attrv.
  */
 int
-RDB_create_tuple_type(int attrc, RDB_attr attrv[], RDB_type **typp);
+RDB_create_tuple_type(int attrc, const RDB_attr attrv[], RDB_type **typp);
 
 /*
  * Create an anonymous relation type from the attributes given by attrv.
  */
 int
-RDB_create_relation_type(int attrc, RDB_attr attrv[], RDB_type **typp);
+RDB_create_relation_type(int attrc, const RDB_attr attrv[], RDB_type **typp);
 
 RDB_type *
 RDB_create_array_type(RDB_type *);
@@ -1090,6 +1090,10 @@ RDB_drop_op(const char *name, RDB_transaction *txp);
 
 int
 RDB_get_dbs(RDB_environment *, RDB_object *);
+
+int
+RDB_create_constraint(const char *name, RDB_expression *exp,
+                      RDB_transaction *txp);
 
 /* Extract the "-e <environment> -d <database>" arguments from the command line */
 int

@@ -493,7 +493,7 @@ _RDB_get_ro_op(const char *name, int argc, RDB_type *argtv[],
 
     if (ret == RDB_NOT_FOUND || ret == RDB_TYPE_MISMATCH) {
         /* Not found in map, so read from catalog */
-        ret2 = _RDB_get_cat_ro_op(name, argc, argtv, txp, opp);
+        ret2 = _RDB_cat_get_ro_op(name, argc, argtv, txp, opp);
         if (ret2 != RDB_OK)
             return ret;
         
@@ -780,7 +780,7 @@ _RDB_get_upd_op(const char *name, int argc, RDB_type *argtv[],
 
     *opp = get_upd_op(txp->dbp->dbrootp, name, argc, argtv);
     if (*opp == NULL) {
-        ret = _RDB_get_cat_upd_op(name, argc, argtv, txp, opp);
+        ret = _RDB_cat_get_upd_op(name, argc, argtv, txp, opp);
         if (ret != RDB_OK)
             return ret;
         ret = put_upd_op(txp->dbp->dbrootp, *opp);
@@ -809,7 +809,7 @@ RDB_call_update_op(const char *name, int argc, RDB_object *argv[],
         RDB_rollback_all(txp);
         return RDB_NO_MEMORY;
     }
-    ret = _RDB_get_upd_op(name, argc, argtv, txp, &op);
+    ret = _RDB_cat_get_upd_op(name, argc, argtv, txp, &op);
     for (i = 0; i < argc; i++) {
         if (argv[i]->kind == RDB_OB_TUPLE)
             RDB_drop_type(argtv[i], NULL);

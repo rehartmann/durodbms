@@ -17,12 +17,19 @@ enum {
     RDB_DFL_MAP_CAPACITY = 37
 };
 
+typedef struct RDB_constraint {
+    char *name;
+    RDB_expression *exp;
+    struct RDB_constraint *nextp;
+} RDB_constraint;
+
 typedef struct RDB_dbroot {
     RDB_environment *envp;
     RDB_hashmap typemap;
     RDB_hashmap ro_opmap;
     RDB_hashmap upd_opmap;
     RDB_database *firstdbp;
+    RDB_constraint *firstconstrp;
 
     /* catalog tables */
     RDB_table *rtables_tbp;
@@ -38,6 +45,7 @@ typedef struct RDB_dbroot {
     RDB_table *ro_ops_tbp;
     RDB_table *upd_ops_tbp;
     RDB_table *indexes_tbp;
+    RDB_table *constraints_tbp;
 } RDB_dbroot;
 
 typedef struct RDB_qresult {
@@ -156,8 +164,8 @@ _RDB_drop_qresult(RDB_qresult *, RDB_transaction *);
 
 int
 _RDB_new_stored_table(const char *name, RDB_bool persistent,
-                int attrc, RDB_attr heading[],
-                int keyc, RDB_string_vec keyv[], RDB_bool usr,
+                int attrc, const RDB_attr heading[],
+                int keyc, const RDB_string_vec keyv[], RDB_bool usr,
                 RDB_table **tbpp);
 
 int
@@ -168,7 +176,7 @@ _RDB_free_table(RDB_table *);
 
 int
 _RDB_create_table_storage(RDB_table *tbp, RDB_environment *envp,
-        RDB_bool ascv[], RDB_transaction *txp);
+        const RDB_bool ascv[], RDB_transaction *txp);
 
 int
 _RDB_open_table_storage(RDB_table *tbp, RDB_environment *envp, const char *,
@@ -176,8 +184,8 @@ _RDB_open_table_storage(RDB_table *tbp, RDB_environment *envp, const char *,
 
 int
 _RDB_create_table(const char *name, RDB_bool persistent,
-                int attrc, RDB_attr heading[],
-                int keyc, RDB_string_vec keyv[],
+                int attrc, const RDB_attr heading[],
+                int keyc, const RDB_string_vec keyv[],
                 RDB_transaction *txp,
                 RDB_table **tbpp);
 

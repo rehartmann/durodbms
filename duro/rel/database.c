@@ -36,6 +36,7 @@ free_dbroot(RDB_dbroot *dbrootp)
     RDB_hashmap_iter it;
     char *keyp;
     void *datap;
+    RDB_constraint *constrp, *nextconstrp;
 
     RDB_destroy_hashmap(&dbrootp->typemap);
 
@@ -50,6 +51,18 @@ free_dbroot(RDB_dbroot *dbrootp)
             _RDB_free_ro_ops(op);
     }
     RDB_destroy_hashmap_iter(&it);
+
+    /*
+     * Destroy constraints
+     */
+    constrp = dbrootp->firstconstrp;
+    while (constrp != NULL) {
+        nextconstrp = constrp->nextp;
+        free(constrp->name);
+        RDB_drop_expr(constrp->exp);
+        free(constrp);
+        constrp = nextconstrp;
+    }
 
     RDB_init_hashmap_iter(&it, &dbrootp->upd_opmap);
     while ((datap = RDB_hashmap_next(&it, &keyp, NULL)) != NULL) {
@@ -180,6 +193,7 @@ close_systables(RDB_dbroot *dbrootp)
     close_table(dbrootp->ro_ops_tbp, dbrootp->envp);
     close_table(dbrootp->upd_ops_tbp, dbrootp->envp);
     close_table(dbrootp->indexes_tbp, dbrootp->envp);
+    close_table(dbrootp->constraints_tbp, dbrootp->envp);
 }
 
 /* cleanup function to close all DBs and tables */
@@ -224,6 +238,7 @@ new_dbroot(RDB_environment *envp)
         return NULL;
 
     dbrootp->firstdbp = NULL;
+    dbrootp->firstconstrp = NULL;
 
     return dbrootp;
 }
@@ -295,6 +310,8 @@ assoc_systables(RDB_dbroot *dbrootp, RDB_database *dbp)
     _RDB_assoc_table_db(dbrootp->upd_ops_tbp, dbp);
 
     _RDB_assoc_table_db(dbrootp->indexes_tbp, dbp);
+
+    _RDB_assoc_table_db(dbrootp->constraints_tbp, dbp);
 }
 
 /*
@@ -384,7 +401,7 @@ RDB_create_db_from_env(const char *name, RDB_environment *envp,
         goto error;
     }
 
-    ret = _RDB_create_db_in_cat(&tx);
+    ret = _RDB_cat_create_db(&tx);
     if (ret != RDB_OK) {
         RDB_rollback(&tx);
         goto error;
@@ -613,8 +630,8 @@ strvec_is_subset(const RDB_string_vec *v1p, const RDB_string_vec *v2p)
 
 int
 _RDB_create_table(const char *name, RDB_bool persistent,
-                int attrc, RDB_attr heading[],
-                int keyc, RDB_string_vec keyv[],
+                int attrc, const RDB_attr attrv[],
+                int keyc, const RDB_string_vec keyv[],
                 RDB_transaction *txp, RDB_table **tbpp)
 {
     int ret;
@@ -632,7 +649,7 @@ _RDB_create_table(const char *name, RDB_bool persistent,
             return RDB_NO_MEMORY;
         }
         for (i = 0; i < attrc; i++)
-            allkey.strv[i] = heading[i].name;
+            allkey.strv[i] = attrv[i].name;
     }
 
     if (txp != NULL) {
@@ -642,7 +659,7 @@ _RDB_create_table(const char *name, RDB_bool persistent,
             return ret;
     }
 
-    ret = _RDB_new_stored_table(name, persistent, attrc, heading,
+    ret = _RDB_new_stored_table(name, persistent, attrc, attrv,
                 keyv != NULL ? keyc : 1, keyv != NULL ? keyv : &allkey,
                 RDB_TRUE, tbpp);
     if (keyv == NULL)
@@ -676,8 +693,8 @@ _RDB_create_table(const char *name, RDB_bool persistent,
 
 int
 RDB_create_table(const char *name, RDB_bool persistent,
-                int attrc, RDB_attr heading[],
-                int keyc, RDB_string_vec keyv[],
+                int attrc, const RDB_attr attrv[],
+                int keyc, const RDB_string_vec keyv[],
                 RDB_transaction *txp, RDB_table **tbpp)
 {
     int i;
@@ -686,7 +703,7 @@ RDB_create_table(const char *name, RDB_bool persistent,
         return RDB_INVALID_ARGUMENT;
 
     for (i = 0; i < attrc; i++) {
-        if (!_RDB_legal_name(heading[i].name))
+        if (!_RDB_legal_name(attrv[i].name))
             return RDB_INVALID_ARGUMENT;
     }
 
@@ -701,10 +718,10 @@ RDB_create_table(const char *name, RDB_bool persistent,
          * Check all keys
          */
         for (i = 0; i < keyc; i++) {
-            /* Check if all the key attributes appear in the heading */
+            /* Check if all the key attributes appear in the attrv */
             for (j = 0; j < keyv[i].strc; j++) {
                 for (k = 0; k < attrc
-                        && strcmp(keyv[i].strv[j], heading[k].name) != 0;
+                        && strcmp(keyv[i].strv[j], attrv[k].name) != 0;
                         k++);
                 if (k >= attrc)
                     return RDB_INVALID_ARGUMENT;
@@ -737,7 +754,7 @@ RDB_create_table(const char *name, RDB_bool persistent,
     if ((name == NULL) && persistent)
         return RDB_INVALID_ARGUMENT;
 
-    return _RDB_create_table(name, persistent, attrc, heading,
+    return _RDB_create_table(name, persistent, attrc, attrv,
                 keyc, keyv, txp, tbpp);
 }
 
@@ -760,13 +777,13 @@ RDB_get_table(const char *name, RDB_transaction *txp, RDB_table **tbpp)
         dbp = dbp->nextdbp;
     }
 
-    ret = _RDB_get_cat_rtable(name, txp, tbpp);
+    ret = _RDB_cat_get_rtable(name, txp, tbpp);
     if (ret == RDB_OK)
         return RDB_OK;
     if (ret != RDB_NOT_FOUND)
         return ret;
 
-    return _RDB_get_cat_vtable(name, txp, tbpp);
+    return _RDB_cat_get_vtable(name, txp, tbpp);
 }
 
 int

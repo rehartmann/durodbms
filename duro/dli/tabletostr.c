@@ -60,6 +60,7 @@ append_ex(RDB_object *objp, RDB_expression *exp)
 
     switch (exp->kind) {
         case RDB_EX_OBJ:
+             /* !! Handle tuple/table */
              if (exp->var.obj.typ == &RDB_STRING) {
                  ret = append_str(objp, "\"");
                  if (ret != RDB_OK)

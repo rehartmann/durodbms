@@ -13,7 +13,7 @@ SALARY: 4100.000000
 SALARY_AFTER_TAX: 0.000000
 NAME_LEN: 5
 Inserting tuple #1
-Return code: table predicate violation - OK
+Return code: predicate violation - OK
 Inserting tuple #2
 Dropping extension
 End of transaction

@@ -6,6 +6,7 @@
 /* $Id$ */
 
 #include "duro.h"
+#include <rel/internal.h>
 #include <dli/parse.h>
 #include <dli/tabletostr.h>
 #include <gen/strfns.h>
@@ -371,7 +372,7 @@ table_expr_cmd(TclState *statep, Tcl_Interp *interp, int objc,
         return TCL_ERROR;
     }
 
-    return ret;
+    return TCL_OK;
 }
 
 static int
@@ -752,6 +753,56 @@ table_def_cmd(TclState *statep, Tcl_Interp *interp, int objc,
 }
 
 static int
+table_showplan_cmd(TclState *statep, Tcl_Interp *interp, int objc,
+        Tcl_Obj *CONST objv[])
+{
+    int ret;
+    char *name;
+    char *txstr;
+    Tcl_HashEntry *entryp;
+    RDB_transaction *txp;
+    RDB_table *tbp, *ntbp;
+    RDB_object defobj;
+    Tcl_Obj *deftobjp;
+
+    if (objc != 4) {
+        Tcl_WrongNumArgs(interp, 2, objv, "tablename tx");
+        return TCL_ERROR;
+    }
+
+    name = Tcl_GetString(objv[2]);
+    txstr = Tcl_GetString(objv[3]);
+    entryp = Tcl_FindHashEntry(&statep->txs, txstr);
+    if (entryp == NULL) {
+        Tcl_AppendResult(interp, "Unknown transaction: ", txstr, NULL);
+        return TCL_ERROR;
+    }
+    txp = Tcl_GetHashValue(entryp);
+
+    ret = Duro_get_table(statep, interp, name, txp, &tbp);
+    if (ret != TCL_OK) {
+        return TCL_ERROR;
+    }
+
+    _RDB_optimize(tbp, 0, NULL, txp, &ntbp);
+    RDB_init_obj(&defobj);
+    ret = _RDB_table_to_str(&defobj, ntbp, RDB_SHOW_INDEX);
+    RDB_drop_table(ntbp, txp);
+    if (ret != RDB_OK) {
+        RDB_destroy_obj(&defobj);
+        Duro_dberror(interp, ret);
+        return TCL_ERROR;
+    }
+    deftobjp = Duro_to_tcl(interp, &defobj, txp);
+    RDB_destroy_obj(&defobj);
+    if (deftobjp == NULL)
+        return TCL_ERROR;
+
+    Tcl_SetObjResult(interp, deftobjp);
+    return TCL_OK;
+}
+
+static int
 table_keys_cmd(TclState *statep, Tcl_Interp *interp, int objc,
         Tcl_Obj *CONST objv[])
 {
@@ -893,11 +944,11 @@ Duro_table_cmd(ClientData data, Tcl_Interp *interp, int objc, Tcl_Obj *CONST obj
 
     const char *sub_cmds[] = {
         "create", "drop", "expr", "contains", "add", "attrs", "keys", "rename",
-        "def", NULL
+        "def", "showplan", NULL
     };
     enum table_ix {
         create_ix, drop_ix, expr_ix, contains_ix, add_ix, attrs_ix, keys_ix,
-        rename_ix, def_ix
+        rename_ix, def_ix, showplan_ix
     };
     int index;
 
@@ -930,6 +981,8 @@ Duro_table_cmd(ClientData data, Tcl_Interp *interp, int objc, Tcl_Obj *CONST obj
             return table_rename_cmd(statep, interp, objc, objv);
         case def_ix:
             return table_def_cmd(statep, interp, objc, objv);
+        case showplan_ix:
+            return table_showplan_cmd(statep, interp, objc, objv);
     }
     return TCL_ERROR;
 }

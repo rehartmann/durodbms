@@ -84,6 +84,9 @@ Duro_index_cmd(ClientData data, Tcl_Interp *interp,
         int objc, Tcl_Obj *CONST objv[]);
 
 int
+Duro_constraint_cmd(ClientData data, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[]);
+
+int
 Duro_tcl_close_env(TclState *statep, RDB_environment *, Tcl_HashEntry *entryp);
 
 int

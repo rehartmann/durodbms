@@ -266,8 +266,8 @@ typedef struct {
 
 int
 RDB_create_table(const char *name, RDB_bool global,
-                 int attrc, <a href="#attr">RDB_attr</a> attrv[],
-                 int keyc, RDB_string_vec keyv[],
+                 int attrc, const <a href="#attr">RDB_attr</a> attrv[],
+                 int keyc, const RDB_string_vec keyv[],
                  RDB_transaction *txp, RDB_table **tbpp);
 </pre>
 
@@ -1098,6 +1098,9 @@ a JOIN, SUMMARIZE, WRAP, UNWRAP, GROUP, UNGROUP, or DIVIDEBY PER.
 <dd><var>txp</var> does not point to a running transaction.
 <dt>RDB_INVALID_ARGUMENT
 <dd><var>exp</var> refers to an attribute which does not exist in the table.
+<dt>RDB_PREDICATE_VIOLATION
+<dd>Deleting the tuples would result in a table which violates its
+predicate.
 <dt>RDB_NOT_SUPPORTED
 <dd>RDB_delete is not supported for this type of table.
 </dl>
@@ -2032,7 +2035,7 @@ type STRING.
 #include &lt;rel/rdb.h&gt;
 
 int
-RDB_extend_tuple(RDB_object *tplp, int attrc, <a href="#virtual_attr">RDB_virtual_attr</a> attrv[],
+RDB_extend_tuple(RDB_object *tplp, int attrc, const <a href="#virtual_attr">RDB_virtual_attr</a> attrv[],
                  RDB_transaction *txp);
 </pre>
 
@@ -3434,7 +3437,7 @@ RDB_drop_expr on all subexpressions.
 #include &lt;rel/rdb.h&gt;
 
 int
-RDB_define_type(const char *name, int repc, <a href="#possrep">RDB_possrep</a> repv[],
+RDB_define_type(const char *name, int repc, const <a href="#possrep">RDB_possrep</a> repv[],
                 RDB_transaction *txp);
 </pre>
 
@@ -3481,13 +3484,13 @@ this type may be used for local variables and table attributes.
 
 <p>If <var>arep</var> is not NULL, it must point to a type which is used
 as the actual representation. The getter, setter, and selector operators
-must be provided by the user.
+must be provided by the caller.
 
 <p>If <var>arep</var> is NULL and <var>areplen</var> is not -1,
 <var>areplen</var> specifies the length, in bytes,
 of the actual representation, which then is a fixed-length array of bytes.
 The getter, setter, and selector operators
-must be provided by the user.
+must be provided by the caller.
 
 <p>If <var>arep</var> is NULL and <var>areplen</var> is -1,
 the getter and setter operators and the selector operator are provided by Duro.
@@ -3542,7 +3545,7 @@ in which case the transaction is implicitly rolled back.
 #include &lt;rel/rdb.h&gt;
 
 int
-RDB_create_tuple_type(int attrc, <a href="#attr">RDB_attr</a> attrv[], RDB_type **typp);
+RDB_create_tuple_type(int attrc, const <a href="#attr">RDB_attr</a> attrv[], RDB_type **typp);
 </pre>
 
 <h3>Description</h3>
@@ -3593,7 +3596,7 @@ The base type is specified by <var>typ</var>.
 #include &lt;rel/rdb.h&gt;
 
 int
-RDB_create_relation_type(int attrc, <a href="#attr">RDB_attr</a> attrv[], RDB_type **typp);
+RDB_create_relation_type(int attrc, const <a href="#attr">RDB_attr</a> attrv[], RDB_type **typp);
 </pre>
 
 <h3>Description</h3>
@@ -4026,6 +4029,8 @@ on the database the transaction specified by <var>txp</var> interacts with.
 <dd><var>txp</var> does not point to a running transaction.
 <dt>RDB_TYPE_MISMATCH
 <dd>The expression specified by <var>constrp</var> is not of type BOOLEAN.
+<dt>RDB_PREDICATE_VIOLATION
+<dd>The expression specified by <var>constrp</var> is not satisfied.
 </dl>
 
 <p>The call may also fail for a <a href="#syserr">system error</a>,
@@ -4240,7 +4245,7 @@ RDB_set_errfn(RDB_environment *envp, void (*errfn)(const char *msg, void *arg), 
 
 int
 RDB_create_table_index(const char *name, RDB_table *tbp, int idxcompc,
-                       RDB_seq_item idxcompv[], int flags, RDB_transaction *txp);
+                       const RDB_seq_item idxcompv[], int flags, RDB_transaction *txp);
 </pre>
 
 <h3>Description</h3>

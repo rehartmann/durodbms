@@ -46,7 +46,7 @@ RDB_strerror(int err)
         case RDB_KEY_VIOLATION:
             return "key constraint violation";
         case RDB_PREDICATE_VIOLATION:
-            return "table predicate violation";
+            return "predicate violation";
         case RDB_AGGREGATE_UNDEFINED:
             return "result of aggregate operation is undefined";
         case RDB_TYPE_CONSTRAINT_VIOLATION:

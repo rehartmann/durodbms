@@ -162,6 +162,8 @@ Duro_init_tcl(Tcl_Interp *interp, TclState **statepp)
             (ClientData)*statepp, NULL);
     Tcl_CreateObjCommand(interp, "duro::index", Duro_index_cmd,
             (ClientData)*statepp, NULL);
+    Tcl_CreateObjCommand(interp, "duro::constraint", Duro_constraint_cmd,
+            (ClientData)*statepp, NULL);
 
     Tcl_CreateExitHandler(duro_cleanup, (ClientData)*statepp);
 

@@ -38,7 +38,7 @@ _RDB_new_table(void)
 static int
 new_stored_table(const char *name, RDB_bool persistent,
                 RDB_type *reltyp,
-                int keyc, RDB_string_vec keyv[], RDB_bool usr,
+                int keyc, const RDB_string_vec keyv[], RDB_bool usr,
                 RDB_table **tbpp)
 {
     int ret;
@@ -103,8 +103,8 @@ error:
  */
 int
 _RDB_new_stored_table(const char *name, RDB_bool persistent,
-                int attrc, RDB_attr heading[],
-                int keyc, RDB_string_vec keyv[], RDB_bool usr,
+                int attrc, const RDB_attr heading[],
+                int keyc, const RDB_string_vec keyv[], RDB_bool usr,
                 RDB_table **tbpp)
 {
     RDB_type *reltyp;
@@ -540,7 +540,8 @@ static int replen(const RDB_type *typ) {
 }
 
 int
-key_fnos(RDB_table *tbp, int **flenvp, RDB_bool ascv[], RDB_compare_field *cmpv)
+key_fnos(RDB_table *tbp, int **flenvp, const RDB_bool ascv[],
+         RDB_compare_field *cmpv)
 {
     int ret;
     int i, di;
@@ -605,7 +606,7 @@ key_fnos(RDB_table *tbp, int **flenvp, RDB_bool ascv[], RDB_compare_field *cmpv)
  */
 int
 _RDB_create_table_storage(RDB_table *tbp, RDB_environment *envp,
-        RDB_bool ascv[], RDB_transaction *txp)
+        const RDB_bool ascv[], RDB_transaction *txp)
 {
     int ret;
     int *flenv;
@@ -785,7 +786,7 @@ cleanup:
 
 int
 RDB_create_table_index(const char *name, RDB_table *tbp, int idxcompc,
-        RDB_seq_item idxcompv[], int flags, RDB_transaction *txp)
+        const RDB_seq_item idxcompv[], int flags, RDB_transaction *txp)
 {
     int i;
     int ret;
@@ -887,7 +888,7 @@ RDB_drop_table_index(const char *name, RDB_transaction *txp)
         /* Index not found, so reread indexes */
         for (i = 0; i < tbp->var.real.indexc; i++)
             destroy_tbindex(&tbp->var.real.indexv[i]);
-        ret = _RDB_get_indexes(tbp, txp->dbp->dbrootp, txp);
+        ret = _RDB_cat_get_indexes(tbp, txp->dbp->dbrootp, txp);
         if (ret != RDB_OK)
             return ret;
 

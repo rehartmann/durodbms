@@ -273,7 +273,7 @@ RDB_join_tuples(const RDB_object *tpl1p, const RDB_object *tpl2p,
 }
 
 int
-RDB_extend_tuple(RDB_object *tplp, int attrc, RDB_virtual_attr attrv[],
+RDB_extend_tuple(RDB_object *tplp, int attrc, const RDB_virtual_attr attrv[],
                 RDB_transaction *txp)
 {
     int i;
