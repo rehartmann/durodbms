@@ -914,7 +914,6 @@ RDB_evaluate_bool(RDB_expression *exp, const RDB_tuple *tup,
         }
         case RDB_OP_REL_IS_EMPTY:
         {
-            /* !! */
             return RDB_NOT_SUPPORTED;
         }
         case RDB_OP_GET_COMP:

@@ -685,9 +685,6 @@ _RDB_get_cat_rtable(const char *name, RDB_transaction *txp, RDB_table **tbpp)
 
     defvalc = RDB_array_length(&arr);
 
-/*!!
-    RDB_init_tuple(&tpl);
-*/
     for (i = 0; i < defvalc; i++) {
         char *name;
         RDB_object *binvalp;

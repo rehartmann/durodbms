@@ -5,7 +5,7 @@
 <title>Duro 0.6 Release Notes</title>
 <!-- $Id$ -->
 <body>
-<h1>Duro 0.6 Release Notes</h1>
+<h1>Release Notes for Duro 0.6</h1>
 
 <h2>Functions not implemented</h2>
 
@@ -64,17 +64,38 @@ of a MINUS, project, SUMMARIZE, or RENAME.
 <p>RDB_delete is not supported for virtual tables which are the result of
 a select, JOIN, EXTEND, project, SUMMARIZE, or RENAME .
 
+<h3>RDB_drop_table</h3>
+
+<p>Dropping tables is not completely transaction protected, so tables should be
+dropped in an own transaction.
+
 <h3>RDB_summarize</h3>
 
 <p>COUNTD, SUMD, and AVGD are not supported.
 
-<h3>RDB_create_ro_op and RDB_create_update_op</h3>
+<h3>RDB_table_to_array</h3>
+
+<p>An RDB_array created by RDB_table_to_array becomes invalid after the
+end of the transaction in which it was created.
+
+<p>The table from which a RDB_array was created must not be dropped before
+the array is destroyed.
+
+<h3>RDB_implement_type</h3>
+
+<p>Nonscalar types are not supported as actual representations.
+
+<p>System-provided providing getter, setter, and selector functions
+are not supported if the possible representation has more than one
+component.
+
+<h3>RDB_create_ro_op</h3>
 
 <p>Only scalar argument and return types are supported.
 
-<h3>RDB_create_ro_op and RDB_create_update_op</h3>
+<h3>RDB_create_update_op</h3>
 
-<p>Only scalar argument and return types are supported.
+<p>Only scalar argument types are supported.
 
 <h2>Implementation-specific details</h2>
 

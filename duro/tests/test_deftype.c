@@ -34,7 +34,7 @@ test_type(RDB_database *dbp)
     }
 
     printf("Implementing type\n");
-    ret = RDB_implement_type("TINYINT", NULL, NULL, 0, 0, &tx);
+    ret = RDB_implement_type("TINYINT", NULL, NULL, 0, &tx);
     if (ret != RDB_OK) {
         RDB_rollback(&tx);
         return ret;

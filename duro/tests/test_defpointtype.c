@@ -41,18 +41,13 @@ test_type(RDB_database *dbp)
     }
 
     printf("Implementing type\n");
-    ret = RDB_implement_type("POINT", "libpoint", NULL, RDB_FIXED_BINARY,
-            sizeof(i_point), &tx);
+    ret = RDB_implement_type("POINT", "libpoint", NULL, sizeof(i_point), &tx);
     if (ret != RDB_OK) {
         RDB_rollback(&tx);
         return ret;
     }
 
-    ret = RDB_commit(&tx);
-    if (ret != RDB_OK) {
-        return ret;
-    }
-    return RDB_OK;
+    return RDB_commit(&tx);
 }
 
 int

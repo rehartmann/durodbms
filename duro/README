@@ -1,4 +1,5 @@
-	README for Duro 0.5
+	README for Duro 0.6
+
 $Id$
 
 This directory contains release 0.6 of Duro, a relational database library
@@ -13,22 +14,14 @@ Berkeley DB is assumed to be located in /usr/local/BerkeleyDB.4.1.
 
 Duro has been tested on a GNU/Linux PC.
 
-To learn about how to use the Duro, see the API specification
-and Release Notes in the 'docs' directory.
+To learn about how to use Duro, see the API specification
+and release notes in the 'docs' directory. Example code
+can be found in the 'tests' directory.
 
-This software is still under development. Report bugs to
+By default, Duro is installed in the directory /usr/local/duro.0.6.
+
+Duro is still under development. Report bugs to
 rhartmann@users.sourceforge.net.
-
-Known bugs:
-
-- An RDB_array becomes invalid after the end of the transaction in which
-  it was created.
-
-- A table from which a RDB_array was created must not be dropped before
-  the array is destroyed.
-
-- Dropping tables is not properly transaction protected, so tables should be
-  dropped in an own transaction.
 
 -----
 

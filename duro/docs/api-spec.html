@@ -9,6 +9,9 @@
 
 <p>- DRAFT -
 
+<p>Not all the functions described in this document are already implemented.
+See the release notes for details.
+
 <h2>Contents</h2>
 
 <h3>Built-in types</h3>
@@ -1151,7 +1154,7 @@ RDB_wrap(RDB_table *tbp, int wrapc, <a href="#wrapping">RDB_wrapping</a> wrapv[]
 
 <h3>Description</h3>
 
-<p>RDB_wrap creates a transient virtual tabel which is the result of a
+<p>RDB_wrap creates a transient virtual table which is the result of a
 relational WRAP operation.
 
 <h3>Return value</h3>
@@ -1212,7 +1215,7 @@ RDB_ungroup(RDB_table *, const char *, RDB_table **resultpp);
 
 <h3>Description</h3>
 
-<p>RDB_wrap creates a transient virtual tabel which is the result of a
+<p>RDB_wrap creates a transient virtual table which is the result of a
 relational UNGROUP operation.
 
 <h3>Return value</h3>
@@ -3071,8 +3074,11 @@ in which case the transaction is implicitly rolled back.
 #include &lt;rel/typeimpl.h&gt;
 
 RDB_implement_type(const char *name, const char *libname, RDB_type *arep,
-                   int options, size_t areplen, RDB_transaction *txp);
+                   size_t areplen, RDB_transaction *txp);
 </pre>
+
+<p>Note: The specification of RDB_implement_type is not stable yet;
+it will probably change in future versions of Duro.
 
 <h3>Description</h3>
 
@@ -3086,8 +3092,8 @@ The actual representation is specified by the <var>arep</var> argument.
 <p>If <var>arep</var> is not NULL, it must point to a type which is used
 as the actual representation.
 
-<p>If <var>arep</var> is NULL, <var>options</var> must be RDB_FIXED_BINARY
-and <var>areplen</var> specifies the length, in bytes, of the actual representation,
+<p>If <var>arep</var> is NULL, <var>areplen</var> specifies the length,
+in bytes, of the actual representation,
 which is a fixed-length array of bytes.
 
 <p>In either case, <var>libname</var> it is taken as a name of a library
@@ -3346,8 +3352,8 @@ RDB_type_equals(const RDB_type *, const RDB_type *);
 
 int
 RDB_create_ro_op(const char *name, int argc, RDB_type *argtv[], RDB_type *rtyp,
-                 const char *libname, const char *symname,
-                 const void *iargp, size_t iarglen, 
+                 const char *libname, const char *sym,
+                 const void *iargp, size_t iarglen,
                  RDB_transaction *txp);
 </pre>
 
@@ -3357,13 +3363,13 @@ RDB_create_ro_op(const char *name, int argc, RDB_type *argtv[], RDB_type *rtyp,
 The argument types are specified by <var>argc</var> and <var>argtv</var>.
 
 <p>To execute the operator, Duro will execute the function specified by
-<var>symname</var> from the library specified by <var>libname</var>.
+<var>sym</var> from the library specified by <var>libname</var>.
 
 <p>This function must have the following signature:
 
 <pre>
 int
-&lt;symname&gt;(const char *name, int argc, RDB_object *argv[],
+&lt;sym&gt;(const char *name, int argc, RDB_object *argv[],
           const void *iargp, size_t iarglen, RDB_transaction *txp,
           RDB_object *retvalp)
 </pre>
@@ -3371,13 +3377,13 @@ int
 <p>When the function is executed, the name of the operator is passed through <var>name</var>
 and the arguments are passed through <var>argc</var> and <var>argv</var>.
 
-<p>The function specified by <var>symname</var> must store the result at the
+<p>The function specified by <var>sym</var> must store the result at the
 location specified by <var>retvalp</var> and return RDB_OK.
 It can indicate an error condition by passing an error code.
 
 <p>If <var>iargp</var> is not NULL, <var>iargp</var> and <var>iarglen</var>
 must point to a byte block which is passed to the function specified by
-<var>symname</var>. This can be used to pass code to an interpreter function.
+<var>sym</var>. This can be used to pass code to an interpreter function.
 
 <p>Overloading functions is possible.
 
@@ -3406,7 +3412,7 @@ in which case the transaction is implicitly rolled back.
 
 int
 RDB_create_update_op(const char *name, int argc, RDB_type *argtv[],
-                  RDB_bool upd[], const char *libname, const char *symname,
+                  RDB_bool upd[], const char *libname, const char *sym,
                   const void *iargp, size_t iarglen,
                   RDB_transaction *txp);
 </pre>
@@ -3420,13 +3426,13 @@ The argument types are specified by <var>argc</var> and <var>argtv</var>.
 If upd[<em>i</em>] is RDB_TRUE, the <em>i</em>th argument is updated.
 
 <p>To execute the operator, Duro will execute the function specified by
-<var>symname</var> from the library specified by <var>libname</var>.
+<var>sym</var> from the library specified by <var>libname</var>.
 
 <p>This function must have the following signature:
 
 <pre>
 int
-&lt;symname&gt;(const char *name, int argc, RDB_object *argv[],
+&lt;sym&gt;(const char *name, int argc, RDB_object *argv[],
         RDB_bool updv[], const void *iargp, size_t iarglen, RDB_transaction *txp)
 
 </pre>
@@ -3434,12 +3440,12 @@ int
 <p>When the function is executed, the name of the operator is passed through <var>name</var>
 and the arguments are passed through <var>argc</var> and <var>argv</var>.
 
-<p>On success, the function specified by <var>symname</var> must return RDB_OK.
+<p>On success, the function specified by <var>sym</var> must return RDB_OK.
 It can indicate an error condition by passing an error code.
 
 <p>If <var>iargp</var> is not NULL, <var>iargp</var> and <var>iarglen</var>
 must point to a byte block which is passed to the function specified by
-<var>symname</var>. This can be used to pass code to an interpreter function.
+<var>sym</var>. This can be used to pass code to an interpreter function.
 
 <p>Overloading functions is possible.
 

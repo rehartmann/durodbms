@@ -334,7 +334,7 @@ error:
 
 int
 RDB_implement_type(const char *name, const char *libname, RDB_type *arep,
-                   int options, size_t areplen, RDB_transaction *txp)
+                   size_t areplen, RDB_transaction *txp)
 {
     RDB_expression *exp, *wherep;
     RDB_attr_update upd[3];
@@ -344,12 +344,8 @@ RDB_implement_type(const char *name, const char *libname, RDB_type *arep,
         return RDB_INVALID_TRANSACTION;
 
     if (libname != NULL) {
-        if (arep == NULL) {
-            if (!(RDB_FIXED_BINARY & options))
-                return RDB_INVALID_ARGUMENT;
-        } else {
-            if (!RDB_type_is_builtin(arep))
-                return RDB_NOT_SUPPORTED;
+        if (arep != NULL && !RDB_type_is_builtin(arep)) {
+            return RDB_NOT_SUPPORTED;
         }
     } else {
         /*
@@ -417,7 +413,7 @@ RDB_implement_type(const char *name, const char *libname, RDB_type *arep,
         goto cleanup;
     }
     upd[1].name = "I_AREP_LEN";
-    upd[1].exp = RDB_int_const(options & RDB_FIXED_BINARY ? areplen : arep->ireplen);
+    upd[1].exp = RDB_int_const(arep == NULL ? areplen : arep->ireplen);
     if (upd[1].exp == NULL) {
         ret = RDB_NO_MEMORY;
         goto cleanup;

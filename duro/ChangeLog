@@ -20,7 +20,7 @@ Changes for Duro 0.6
 
 - Replaced structure RDB_key_attrs by the more general RDB_string_vec.
 
-- Implemented user-defined operations.
+- Implemented user-defined operators.
 
 - Added support for default table attributes.
 
