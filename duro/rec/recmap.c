@@ -136,7 +136,7 @@ compare_key(DB *dbp, const DBT *dbt1p, const DBT *dbt2p)
             /* Compare memory */
             res = memcmp(data1p, data2p, len1 < len2 ? len1 : len2);
             if (res == 0)
-                res = len2 - len1;
+                res = len1 - len2;
         }
 
         /* If the fields are different, we're done */
