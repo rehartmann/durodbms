@@ -13,10 +13,11 @@
 <ul>
 <li>RDB_gdivide
 <li>RDB_group
+<li>RDB_remove_table
 <li>RDB_ungroup
 <li>RDB_project_tuple
 <li>RDB_join_tuples
-<li>RDB_array_set_tuple
+<li>RDB_array_set
 <li>RDB_set_array_length
 <li>RDB_create_constraint
 <li>RDB_drop_constraint
@@ -28,7 +29,7 @@
 
 <h3>RDB_create_table</h3>
 
-<p>Only scalar attribute types are supported.
+<p>Relation-typed attributes are not supported.
 
 <p>It is not enforced that a candidate key may not be a true subset
 of another.
@@ -41,21 +42,21 @@ of another.
 
 <h3>RDB_add_table</h3>
 
-<p>RDB_add_table is not supported for real tables. !!
+<p>RDB_add_table is not supported for local real tables.
 
 <h3>RDB_insert</h3>
 
 <p>RDB_insert is not supported for virtual tables which are the result
-of a MINUS, SUMMARIZE, or RENAME.
+of a MINUS, SUMMARIZE, RENAME, WRAP, UNWRAP, or DIVIDEBY PER.
 
 <h3>RDB_update</h3>
 
-<p>RDB_update is not supported for virtual tables except project.
+<p>RDB_update is not supported for virtual tables.
 
 <h3>RDB_delete</h3>
 
 <p>RDB_delete is not supported for virtual tables which are the result of
-a select, JOIN, EXTEND, project, SUMMARIZE, or RENAME.
+a select, JOIN, EXTEND, SUMMARIZE, RENAME, WRAP, UNWRAP, or DIVIDEBY PER.
 
 <h3>RDB_summarize</h3>
 

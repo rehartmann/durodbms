@@ -4,7 +4,7 @@ exec tclsh "$0"
 
 # $Id$
 #
-# Test create, insert, UNWRAP on table with tuple attribute
+# Test creating, invoking, deleting operators
 #
 
 load .libs/libdurotcl.so
@@ -17,15 +17,16 @@ set dbenv [duro::env create tests/dbenv]
 # Create Database
 duro::db create TEST $dbenv
 
+# Start transaction
 set tx [duro::begin $dbenv TEST]
 
 # Create overloaded update operator
 
-duro::operator strmul -updates {a} {a STRING b STRING} {
+duro::operator create strmul -updates {a} {a STRING b STRING} {
     append a $b
 } $tx
 
-duro::operator strmul -updates {a} {a STRING b INTEGER} {
+duro::operator create strmul -updates {a} {a STRING b INTEGER} {
     set h $a
     for {set i 1} {$i < $b} {incr i} {
         append a $h
@@ -33,7 +34,7 @@ duro::operator strmul -updates {a} {a STRING b INTEGER} {
 } $tx
 
 # Create read-only operator
-duro::operator concat -returns STRING {a STRING b STRING} {
+duro::operator create concat -returns STRING {a STRING b STRING} {
     return $a$b
 } $tx
 
@@ -66,7 +67,7 @@ if {![string equal $v foofoofoo]} {
 }
 
 if {$i != "X"} {
-    puts "variable was modified by operator"
+    puts "global variable was modified by operator"
     exit 1
 }
 
@@ -76,6 +77,18 @@ set v [duro::expr {concat("X", "Y")} $tx]
 if {![string equal $v XY]} {
    puts "result is %s, should be %s" $v XY
    exit 1
+}
+
+# Destroy operator
+duro::operator drop strmul $tx
+
+# try to invoke deleted operator
+
+if {![catch {
+    duro::call strmul v STRING bar STRING $tx
+}]} {
+    puts "Operator invocation should fail, but succeded"
+    exit 1
 }
 
 duro::commit $tx

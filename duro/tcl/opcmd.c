@@ -9,8 +9,8 @@
 #include <rel/internal.h>
 #include <string.h>
 
-int
-Duro_operator_cmd(ClientData data, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[])
+static int
+operator_create_cmd(ClientData data, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[])
 {
     RDB_bool update;
     int ret;
@@ -25,21 +25,21 @@ Duro_operator_cmd(ClientData data, Tcl_Interp *interp, int objc, Tcl_Obj *CONST 
     Tcl_Obj *namelistp, *opdatap;
     TclState *statep = (TclState *) data;
 
-    if (objc != 7) {
-        Tcl_WrongNumArgs(interp, 1, objv,
+    if (objc != 8) {
+        Tcl_WrongNumArgs(interp, 2, objv,
                 "name [-returns rtype | -updates updlist] "
-                "{ argname argtype ?argname argtype? } body tx");
+                "arglist body tx");
         return TCL_ERROR;
     }
-    if (strcmp (Tcl_GetStringFromObj(objv[2], NULL), "-updates") == 0)
+    if (strcmp (Tcl_GetStringFromObj(objv[3], NULL), "-updates") == 0)
         update = RDB_TRUE;
-    if (strcmp (Tcl_GetStringFromObj(objv[2], NULL), "-returns") == 0)
+    if (strcmp (Tcl_GetStringFromObj(objv[3], NULL), "-returns") == 0)
         update = RDB_FALSE;
     else
         Tcl_SetResult(interp, "invalid option, must be -updates or -returns",
                 TCL_STATIC);
 
-    txstr = Tcl_GetStringFromObj(objv[6], NULL);
+    txstr = Tcl_GetStringFromObj(objv[7], NULL);
     entryp = Tcl_FindHashEntry(&statep->txs, txstr);
     if (entryp == NULL) {
         Tcl_AppendResult(interp, "Unknown transaction: ", txstr, NULL);
@@ -49,7 +49,7 @@ Duro_operator_cmd(ClientData data, Tcl_Interp *interp, int objc, Tcl_Obj *CONST 
 
     namelistp = Tcl_NewListObj(0, NULL);
 
-    Tcl_ListObjLength(interp, objv[4], &argc);
+    Tcl_ListObjLength(interp, objv[5], &argc);
     if (argc % 2 > 0) {
         Tcl_SetResult(interp, "invalid argument list", TCL_STATIC);
         return TCL_ERROR;
@@ -65,7 +65,7 @@ Duro_operator_cmd(ClientData data, Tcl_Interp *interp, int objc, Tcl_Obj *CONST 
         /*
          * Get argument and append it to list
          */
-        ret = Tcl_ListObjIndex(interp, objv[4], i * 2, &nameobjp);
+        ret = Tcl_ListObjIndex(interp, objv[5], i * 2, &nameobjp);
         if (ret != TCL_OK) {
             goto cleanup;
         }
@@ -73,7 +73,7 @@ Duro_operator_cmd(ClientData data, Tcl_Interp *interp, int objc, Tcl_Obj *CONST 
         if (ret != TCL_OK)
             goto cleanup;
 
-        ret = Tcl_ListObjIndex(interp, objv[4], i * 2 + 1, &typeobjp);
+        ret = Tcl_ListObjIndex(interp, objv[5], i * 2 + 1, &typeobjp);
         if (ret != TCL_OK) {
             goto cleanup;
         }
@@ -97,7 +97,7 @@ Duro_operator_cmd(ClientData data, Tcl_Interp *interp, int objc, Tcl_Obj *CONST 
      * in the catalog.
      */
     opdatap = Tcl_NewListObj(1, &namelistp);
-    ret = Tcl_ListObjAppendElement(interp, opdatap, objv[5]);
+    ret = Tcl_ListObjAppendElement(interp, opdatap, objv[6]);
     if (ret != TCL_OK)
             goto cleanup;
 
@@ -111,7 +111,7 @@ Duro_operator_cmd(ClientData data, Tcl_Interp *interp, int objc, Tcl_Obj *CONST 
         for (i = 0; i < argc; i++)
             updv[i] = RDB_FALSE;
 
-        ret = Tcl_ListObjLength(interp, objv[3], &updlen);
+        ret = Tcl_ListObjLength(interp, objv[4], &updlen);
         if (ret != TCL_OK) {
             Tcl_Free(updv);
             goto cleanup;
@@ -121,7 +121,7 @@ Duro_operator_cmd(ClientData data, Tcl_Interp *interp, int objc, Tcl_Obj *CONST 
             int j;
             char *argp;
 
-            ret = Tcl_ListObjIndex(interp, objv[3], i, &argobjp);
+            ret = Tcl_ListObjIndex(interp, objv[4], i, &argobjp);
             if (ret != TCL_OK) {
                 Tcl_Free(updv);
                 goto cleanup;
@@ -152,21 +152,21 @@ Duro_operator_cmd(ClientData data, Tcl_Interp *interp, int objc, Tcl_Obj *CONST 
             }
         }
 
-        ret = RDB_create_update_op(Tcl_GetStringFromObj(objv[1], NULL),
+        ret = RDB_create_update_op(Tcl_GetStringFromObj(objv[2], NULL),
                 argc, argtv, updv, "libdurotcl", "Duro_invoke_update_op",
                 txtp, (size_t) len, txp);
         Tcl_Free(updv);
     } else {
         RDB_type *rtyp;
 
-        ret = RDB_get_type(Tcl_GetStringFromObj(objv[3], NULL), txp, &rtyp);
+        ret = RDB_get_type(Tcl_GetStringFromObj(objv[4], NULL), txp, &rtyp);
         if (ret != RDB_OK) {
             Duro_dberror(interp, ret);
             ret = TCL_ERROR;
             goto cleanup;
         }
 
-        ret = RDB_create_ro_op(Tcl_GetStringFromObj(objv[1], NULL),
+        ret = RDB_create_ro_op(Tcl_GetStringFromObj(objv[2], NULL),
                  argc, argtv, rtyp, "libdurotcl", "Duro_invoke_ro_op",
                  txtp, (size_t) len, txp);
     }
@@ -182,6 +182,69 @@ Duro_operator_cmd(ClientData data, Tcl_Interp *interp, int objc, Tcl_Obj *CONST 
 cleanup:
     Tcl_Free((char *) argtv);
     return ret;
+}
+
+static int
+operator_drop_cmd(ClientData data, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[])
+{
+    int ret;
+    char *txstr;
+    RDB_transaction *txp;
+    Tcl_HashEntry *entryp;
+    TclState *statep = (TclState *) data;
+
+    if (objc != 4) {
+        Tcl_WrongNumArgs(interp, 2, objv, "name tx");
+        return TCL_ERROR;
+    }
+
+    txstr = Tcl_GetString(objv[3]);
+    entryp = Tcl_FindHashEntry(&statep->txs, txstr);
+    if (entryp == NULL) {
+        Tcl_AppendResult(interp, "Unknown transaction: ", txstr, NULL);
+        return TCL_ERROR;
+    }
+    txp = Tcl_GetHashValue(entryp);
+
+    ret = RDB_drop_op(Tcl_GetString(objv[2]), txp);
+    if (ret != RDB_OK) {
+        Duro_dberror(interp, ret);
+        return TCL_ERROR;
+    }
+
+    return TCL_OK;
+}
+
+int
+Duro_operator_cmd(ClientData data, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[])
+{
+    TclState *statep = (TclState *) data;
+
+    const char *sub_cmds[] = {
+        "create", "drop", NULL
+    };
+    enum table_ix {
+        create_ix, drop_ix
+    };
+    int index;
+
+    if (objc < 2) {
+        Tcl_WrongNumArgs(interp, 1, objv, "arg ?arg ...?");
+        return TCL_ERROR;
+    }
+
+    if (Tcl_GetIndexFromObj(interp, objv[1], sub_cmds, "option", 0, &index)
+            != RDB_OK) {
+        return TCL_ERROR;
+    }
+
+    switch (index) {
+        case create_ix:
+            return operator_create_cmd(statep, interp, objc, objv);
+        case drop_ix:
+            return operator_drop_cmd(statep, interp, objc, objv);
+    }
+    return TCL_ERROR;
 }
 
 int

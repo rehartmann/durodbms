@@ -65,12 +65,6 @@ main(int argc, char *argv[])
         }
     }
 
-    err = RDB_release_db(dbp);
-    if (err != RDB_OK) {
-        fprintf(stderr, "droptable: %s\n", RDB_strerror(err));
-        return 1;
-    }
-
     err = RDB_close_env(envp);
     if (err != RDB_OK) {
         fprintf(stderr, "droptable: %s\n", RDB_strerror(err));

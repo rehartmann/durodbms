@@ -315,7 +315,6 @@ typedef struct RDB_table {
             struct RDB_table *tb3p;
         } sdivide;
     } var;
-    int refcount;
 } RDB_table;
 
 typedef struct RDB_database {
@@ -328,9 +327,6 @@ typedef struct RDB_database {
     struct RDB_database *nextdbp;
 
     struct RDB_dbroot *dbrootp;
-    
-    /* reference count */
-    int refcount;
 } RDB_database;
 
 typedef struct RDB_transaction {
@@ -367,13 +363,6 @@ RDB_create_db_from_env(const char *name, RDB_environment *envp, RDB_database **d
  */
 int
 RDB_get_db_from_env(const char *name, RDB_environment *, RDB_database **dbpp);
-
-/*
- * Release the RDB_database structure pointed to by dbp.
- * Return RDB_OK on success. A return other than RDB_OK indicates an error.
- */
-int
-RDB_release_db(RDB_database *dbp);
 
 /*
  * Drop the database with name dbname.

@@ -291,7 +291,7 @@ table_create_cmd(TclState *statep, Tcl_Interp *interp, int objc,
             return TCL_ERROR;
         }
     } else if (objc != 6) {
-        Tcl_WrongNumArgs(interp, 2, objv, "?flag? name attrs keys tx");
+        Tcl_WrongNumArgs(interp, 2, objv, "?flag? tablename attrs keys tx");
         return TCL_ERROR;
     }
 
@@ -436,7 +436,7 @@ table_expr_cmd(TclState *statep, Tcl_Interp *interp, int objc,
             return TCL_ERROR;
         }
     } else if (objc != 5) {
-        Tcl_WrongNumArgs(interp, 2, objv, "?flag? name expression tx");
+        Tcl_WrongNumArgs(interp, 2, objv, "?flag? tablename expression tx");
         return TCL_ERROR;
     }
 
@@ -487,7 +487,7 @@ table_drop_cmd(TclState *statep, Tcl_Interp *interp, int objc,
     RDB_table *tbp;
 
     if (objc != 4) {
-        Tcl_WrongNumArgs(interp, 2, objv, "name tx");
+        Tcl_WrongNumArgs(interp, 2, objv, "tablename tx");
         return TCL_ERROR;
     }
 
@@ -546,7 +546,7 @@ Duro_update_cmd(ClientData data, Tcl_Interp *interp, int objc,
     TclState *statep = (TclState *) data;
 
     if (objc < 5) {
-        Tcl_WrongNumArgs(interp, 1, objv, "name ?where? ?attribute val? ... tx");
+        Tcl_WrongNumArgs(interp, 1, objv, "tablename ?where? ?attrname expression ...? tx");
         return TCL_ERROR;
     }
 
@@ -682,7 +682,7 @@ Duro_insert_cmd(ClientData data, Tcl_Interp *interp, int objc,
     TclState *statep = (TclState *) data;
 
     if (objc != 4) {
-        Tcl_WrongNumArgs(interp, 1, objv, "name tuple tx");
+        Tcl_WrongNumArgs(interp, 1, objv, "table tuple tx");
         return TCL_ERROR;
     }
 
@@ -772,7 +772,7 @@ table_contains_cmd(TclState *statep, Tcl_Interp *interp, int objc,
     RDB_type *typ;
 
     if (objc != 5) {
-        Tcl_WrongNumArgs(interp, 2, objv, "name tuple tx");
+        Tcl_WrongNumArgs(interp, 2, objv, "tablename tuple tx");
         return TCL_ERROR;
     }
 
@@ -846,21 +846,61 @@ cleanup:
     return ret;
 }
 
+static int
+table_add_cmd(TclState *statep, Tcl_Interp *interp, int objc,
+        Tcl_Obj *CONST objv[])
+{
+    int ret;
+    char *name;
+    char *txstr;
+    Tcl_HashEntry *entryp;
+    RDB_transaction *txp;
+    RDB_table *tbp;
+
+    if (objc != 4) {
+        Tcl_WrongNumArgs(interp, 2, objv, "tablename tx");
+        return TCL_ERROR;
+    }
+
+    name = Tcl_GetString(objv[2]);
+
+    txstr = Tcl_GetStringFromObj(objv[3], NULL);
+    entryp = Tcl_FindHashEntry(&statep->txs, txstr);
+    if (entryp == NULL) {
+        Tcl_AppendResult(interp, "Unknown transaction: ", txstr, NULL);
+        return TCL_ERROR;
+    }
+    txp = Tcl_GetHashValue(entryp);
+
+    ret = Duro_get_table(statep, interp, name, txp, &tbp);
+    if (ret != TCL_OK) {
+        return TCL_ERROR;
+    }
+
+    ret = RDB_add_table(tbp, txp);
+    if (ret != RDB_OK) {
+        Duro_dberror(interp, ret);
+        return TCL_ERROR;
+    }
+
+    return TCL_OK;
+}
+
 int
 Duro_table_cmd(ClientData data, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[])
 {
     TclState *statep = (TclState *) data;
 
     const char *sub_cmds[] = {
-        "create", "expr", "drop", "contains", NULL
+        "create", "expr", "drop", "contains", "add", NULL
     };
     enum table_ix {
-        create_ix, expr_ix, drop_ix, contains_ix
+        create_ix, expr_ix, drop_ix, contains_ix, add_ix
     };
     int index;
 
     if (objc < 2) {
-        Tcl_WrongNumArgs(interp, 1, objv, "option ?arg ...?");
+        Tcl_WrongNumArgs(interp, 1, objv, "arg ?arg ...?");
         return TCL_ERROR;
     }
 
@@ -878,6 +918,8 @@ Duro_table_cmd(ClientData data, Tcl_Interp *interp, int objc, Tcl_Obj *CONST obj
             return table_drop_cmd(statep, interp, objc, objv);
         case contains_ix:
             return table_contains_cmd(statep, interp, objc, objv);
+        case add_ix:
+            return table_add_cmd(statep, interp, objc, objv);
     }
     return TCL_ERROR;
 }

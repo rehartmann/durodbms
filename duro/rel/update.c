@@ -234,7 +234,7 @@ update_stored_simple(RDB_table *tbp, RDB_expression *condp,
     RDB_init_obj(&tpl);
 
     /*
-     * Walk through the records and update them if the expression pointed to
+     * Iterator over the records and update them if the expression pointed to
      * by condp evaluates to true.
      */
     ret = RDB_recmap_cursor(&curp, tbp->var.stored.recmapp, 0, txp->txid);

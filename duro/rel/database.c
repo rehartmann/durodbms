@@ -59,7 +59,8 @@ static int replen(const RDB_type *typ) {
 
 static int
 open_key_index(RDB_table *tbp, int keyno, const RDB_string_vec *keyattrsp,
-                 RDB_bool create, RDB_transaction *txp, RDB_index **idxp)
+                 RDB_bool create, RDB_transaction *txp, RDB_environment *envp,
+                 RDB_index **idxp)
 {
     int ret;
     int i;
@@ -93,12 +94,12 @@ open_key_index(RDB_table *tbp, int keyno, const RDB_string_vec *keyattrsp,
         ret = RDB_create_index(tbp->var.stored.recmapp,
                   tbp->is_persistent ? idx_name : NULL,
                   tbp->is_persistent ? RDB_DATAFILE : NULL,
-                  txp->dbp->dbrootp->envp, keyattrsp->strc, fieldv, RDB_TRUE,
+                  envp, keyattrsp->strc, fieldv, RDB_TRUE,
                   txp->txid, idxp);
     } else {
         /* open index */
         ret = RDB_open_index(tbp->var.stored.recmapp, idx_name, RDB_DATAFILE,
-                  txp->dbp->dbrootp->envp, keyattrsp->strc, fieldv, RDB_TRUE,
+                  envp, keyattrsp->strc, fieldv, RDB_TRUE,
                   txp->txid, idxp);
     }
 
@@ -146,7 +147,6 @@ _RDB_new_stored_table(const char *name, RDB_bool persistent,
     tbp->is_user = usr;
     tbp->is_persistent = persistent;
     tbp->keyv = NULL;
-    tbp->refcount = 1;
 
     RDB_init_hashmap(&tbp->var.stored.attrmap, RDB_DFL_MAP_CAPACITY);
 
@@ -232,7 +232,7 @@ compare_field(const void *data1p, size_t len1,
 int
 _RDB_open_table(RDB_table *tbp,
            int piattrc, char *piattrv[], RDB_bool create,
-           RDB_transaction *txp, RDB_bool ascv[])
+           RDB_transaction *txp, RDB_environment *envp, RDB_bool ascv[])
 {
     int ret, i, di;
     int *flenv = NULL;
@@ -297,13 +297,12 @@ _RDB_open_table(RDB_table *tbp,
         if (ascv == NULL)
             ret = RDB_create_recmap(tbp->is_persistent ? tbp->name : NULL,
                     tbp->is_persistent ? RDB_DATAFILE : NULL,
-                    txp->dbp->dbrootp->envp,
-                    attrc, flenv, piattrc, txp->txid,
+                    envp, attrc, flenv, piattrc, txp->txid,
                     &tbp->var.stored.recmapp);
         else {
             ret = RDB_create_sorted_recmap(tbp->is_persistent ? tbp->name : NULL,
                     tbp->is_persistent ? RDB_DATAFILE : NULL,
-                    txp->dbp->dbrootp->envp, attrc, flenv,
+                    envp, attrc, flenv,
                     piattrc, cmpv, RDB_TRUE, txp->txid,
                     &tbp->var.stored.recmapp);
         }
@@ -312,7 +311,7 @@ _RDB_open_table(RDB_table *tbp,
             ret = RDB_INVALID_ARGUMENT;
             goto error;
         }
-        ret = RDB_open_recmap(tbp->name, RDB_DATAFILE, txp->dbp->dbrootp->envp,
+        ret = RDB_open_recmap(tbp->name, RDB_DATAFILE, envp,
                 attrc, flenv, piattrc, txp->txid,
                 &tbp->var.stored.recmapp);
     }
@@ -325,11 +324,11 @@ _RDB_open_table(RDB_table *tbp,
         tbp->var.stored.keyidxv = malloc(sizeof(RDB_index *) * (tbp->keyc - 1));
         if (tbp->var.stored.keyidxv == NULL) {
             ret = RDB_NO_MEMORY;
-            RDB_errmsg(txp->dbp->dbrootp->envp, RDB_strerror(ret));
+            RDB_errmsg(envp, RDB_strerror(ret));
             goto error;
         }
         for (i = 1; i < tbp->keyc; i++) {
-            ret = open_key_index(tbp, i, &tbp->keyv[i], create, txp,
+            ret = open_key_index(tbp, i, &tbp->keyv[i], create, txp, envp,
                           &tbp->var.stored.keyidxv[i - 1]);
             if (ret != RDB_OK)
                 goto error;
@@ -436,7 +435,7 @@ free_dbroot(RDB_dbroot *dbrootp)
 
     RDB_init_hashmap_iter(&it, &dbrootp->upd_opmap);
     while ((datap = RDB_hashmap_next(&it, &keyp, NULL)) != NULL) {
-        RDB_upd_op *op = *(RDB_upd_op **)datap;
+        RDB_upd_op *op = *(RDB_upd_op **) datap;
 
         if (op != NULL)
             free_upd_ops(op);
@@ -448,11 +447,105 @@ free_dbroot(RDB_dbroot *dbrootp)
     free(dbrootp);
 }
 
+static int close_table(RDB_table *tbp, RDB_environment *envp)
+{
+    int i;
+    int ret;
+
+    if (tbp->kind == RDB_TB_STORED) {
+        /* close secondary indexes */
+        for (i = 0; i < tbp->keyc - 1; i++) {
+            RDB_close_index(tbp->var.stored.keyidxv[i]);
+        }
+   
+        /* close recmap */
+        ret = RDB_close_recmap(tbp->var.stored.recmapp);
+        _RDB_free_table(tbp, envp);
+        return ret;
+    }
+    if (tbp->name == NULL) {
+        return RDB_drop_table(tbp, NULL);
+    }
+    return RDB_OK;
+}
+
+static int
+rm_db(RDB_database *dbp)
+{
+    /* Remove database from list */
+    if (dbp->dbrootp->firstdbp == dbp) {
+        dbp->dbrootp->firstdbp = dbp->nextdbp;
+    } else {
+        RDB_database *hdbp = dbp->dbrootp->firstdbp;
+        while (hdbp != NULL && hdbp->nextdbp != dbp) {
+            hdbp = hdbp->nextdbp;
+        }
+        if (hdbp == NULL)
+            return RDB_INVALID_ARGUMENT;
+        hdbp->nextdbp = dbp->nextdbp;
+    }
+    return RDB_OK;
+}
+
+static void
+free_db(RDB_database *dbp) {
+    RDB_destroy_hashmap(&dbp->tbmap);
+    free(dbp->name);
+    free(dbp);
+}
+
+static int
+release_db(RDB_database *dbp) 
+{
+    int ret;
+    int i;
+    RDB_table **tbpp;
+    int tbcount;
+    char **tbnames;
+
+    /* Close all user tables */
+    tbcount = RDB_hashmap_size(&dbp->tbmap);
+    tbnames = malloc(sizeof(char *) * tbcount);
+    RDB_hashmap_keys(&dbp->tbmap, tbnames);
+    for (i = 0; i < tbcount; i++) {
+        tbpp = (RDB_table **)RDB_hashmap_get(&dbp->tbmap, tbnames[i], NULL);
+        if (*tbpp != NULL && (*tbpp)->is_user) {
+            ret = close_table(*tbpp, dbp->dbrootp->envp);
+            if (ret != RDB_OK)
+                return ret;
+        }
+    }
+
+    ret = rm_db(dbp);
+    if (ret != RDB_OK)
+        return ret;
+    
+    free_db(dbp);
+    return ret;
+}
+
+static void
+close_systables(RDB_dbroot *dbrootp)
+{
+    close_table(dbrootp->rtables_tbp, dbrootp->envp);
+    close_table(dbrootp->table_attr_tbp, dbrootp->envp);
+    close_table(dbrootp->table_attr_defvals_tbp, dbrootp->envp);
+    close_table(dbrootp->vtables_tbp, dbrootp->envp);
+    close_table(dbrootp->dbtables_tbp, dbrootp->envp);
+    close_table(dbrootp->keys_tbp, dbrootp->envp);
+    close_table(dbrootp->types_tbp, dbrootp->envp);
+    close_table(dbrootp->possreps_tbp, dbrootp->envp);
+    close_table(dbrootp->possrepcomps_tbp, dbrootp->envp);
+    close_table(dbrootp->ro_ops_tbp, dbrootp->envp);
+    close_table(dbrootp->upd_ops_tbp, dbrootp->envp);
+    close_table(dbrootp->tuple_attrs_tbp, dbrootp->envp);
+}
+
 /* cleanup function to close all DBs and tables */
 static void
 cleanup_env(RDB_environment *envp)
 {
-    RDB_dbroot *dbrootp = (RDB_dbroot *)RDB_env_private(envp);
+    RDB_dbroot *dbrootp = (RDB_dbroot *) RDB_env_private(envp);
     RDB_database *dbp;
     RDB_database *nextdbp;
 
@@ -463,9 +556,10 @@ cleanup_env(RDB_environment *envp)
 
     while (dbp != NULL) {
         nextdbp = dbp->nextdbp;
-        RDB_release_db(dbp);
+        release_db(dbp);
         dbp = nextdbp;
     }
+    close_systables(dbrootp);
     free_dbroot(dbrootp);
     lt_dlexit();
 }
@@ -505,8 +599,6 @@ new_db(const char *name)
 
     /* Initialize structure */
 
-    dbp->refcount = 1;
-
     RDB_init_hashmap(&dbp->tbmap, RDB_DFL_MAP_CAPACITY);
 
     return dbp;
@@ -515,13 +607,6 @@ error:
     free(dbp->name);
     free(dbp);
     return NULL;
-}
-
-static void
-free_db(RDB_database *dbp) {
-    RDB_destroy_hashmap(&dbp->tbmap);
-    free(dbp->name);
-    free(dbp);
 }
 
 /* check if the name is legal */
@@ -537,13 +622,41 @@ _RDB_legal_name(const char *name)
     return RDB_TRUE;
 }
 
+static void
+assign_systables(RDB_dbroot *dbrootp, RDB_database *dbp)
+{
+    _RDB_assign_table_db(dbrootp->table_attr_tbp, dbp);
+
+    _RDB_assign_table_db(dbrootp->table_attr_defvals_tbp, dbp);
+
+    _RDB_assign_table_db(dbrootp->rtables_tbp, dbp);
+
+    _RDB_assign_table_db(dbrootp->vtables_tbp, dbp);
+
+    _RDB_assign_table_db(dbrootp->dbtables_tbp, dbp);
+
+    _RDB_assign_table_db(dbrootp->keys_tbp, dbp);
+
+    _RDB_assign_table_db(dbrootp->types_tbp, dbp);
+
+    _RDB_assign_table_db(dbrootp->possreps_tbp, dbp);
+
+    _RDB_assign_table_db(dbrootp->possrepcomps_tbp, dbp);
+
+    _RDB_assign_table_db(dbrootp->ro_ops_tbp, dbp);
+
+    _RDB_assign_table_db(dbrootp->upd_ops_tbp, dbp);
+
+    _RDB_assign_table_db(dbrootp->tuple_attrs_tbp, dbp);
+}
+
 /*
  * Create and initialize RDB_dbroot structure. Use dbp to create the transaction.
  * If newdb is true, create the database in the catalog.
  */
 static int
 create_dbroot(const char *dbname, RDB_environment *envp, RDB_bool newdb,
-              RDB_database *dbp, RDB_dbroot **dbrootpp)
+              RDB_dbroot **dbrootpp)
 {
     RDB_transaction tx;
     RDB_dbroot *dbrootp;
@@ -556,25 +669,15 @@ create_dbroot(const char *dbname, RDB_environment *envp, RDB_bool newdb,
     if (dbrootp == NULL)
         return RDB_NO_MEMORY;
 
-    dbp->dbrootp = dbrootp;
-
-    ret = RDB_begin_tx(&tx, dbp, NULL);
+    ret = _RDB_begin_tx(&tx, envp, NULL);
     if (ret != RDB_OK) {
         goto error;
     }
 
-    ret = _RDB_open_systables(&tx);
+    ret = _RDB_open_systables(dbrootp, &tx);
     if (ret != RDB_OK) {
         RDB_rollback(&tx);
         goto error;
-    }
-
-    if (newdb) {
-        ret = _RDB_create_db_in_cat(&tx);
-        if (ret != RDB_OK) {
-            RDB_rollback(&tx);
-            goto error;
-        }
     }
 
     ret = RDB_commit(&tx);
@@ -597,6 +700,7 @@ RDB_create_db_from_env(const char *name, RDB_environment *envp,
     int ret;
     RDB_database *dbp;
     RDB_dbroot *dbrootp;
+    RDB_transaction tx;
 
     if (!_RDB_legal_name(name))
         return RDB_INVALID_ARGUMENT;
@@ -606,42 +710,42 @@ RDB_create_db_from_env(const char *name, RDB_environment *envp,
     if (dbp == NULL)
         return RDB_NO_MEMORY;
 
-    if (dbrootp != NULL) {
-        /*
-         * dbroot found, so create DB in catalog
-         */
-        RDB_transaction tx;
-
-        dbp->dbrootp = dbrootp;
-
-        ret = RDB_begin_tx(&tx, dbp, NULL);
-        if (ret != RDB_OK) {
-            goto error;
-        }
-
-        ret = _RDB_create_db_in_cat(&tx);
-        if (ret != RDB_OK) {
-            RDB_rollback(&tx);
-            goto error;
-        }
-
-        ret = RDB_commit(&tx);
-        if (ret != RDB_OK) {
-            goto error;
-        }
-    } else {
+    if (dbrootp == NULL) {
         /*
          * No dbroot found, initialize builtin types and libltdl
-         * and create RDB_dbroot structure, which also creates
-         * the DB in the catalog (and ceates the catalog if necessary).
+         * and create RDB_dbroot structure
          */
         _RDB_init_builtin_types();
-        ret = create_dbroot(name, envp, RDB_TRUE, dbp, &dbrootp);
+        ret = create_dbroot(name, envp, RDB_TRUE, &dbrootp);
         if (ret != RDB_OK) {
             goto error;
         }
         lt_dlinit();
     }
+
+    /*
+     * Create DB in catalog
+     */
+
+    dbp->dbrootp = dbrootp;
+
+    ret = RDB_begin_tx(&tx, dbp, NULL);
+    if (ret != RDB_OK) {
+        goto error;
+    }
+
+    ret = _RDB_create_db_in_cat(&tx);
+    if (ret != RDB_OK) {
+        RDB_rollback(&tx);
+        goto error;
+    }
+
+    ret = RDB_commit(&tx);
+    if (ret != RDB_OK) {
+        goto error;
+    }
+
+    assign_systables(dbrootp, dbp);
 
     /* Insert database into list */
     dbp->nextdbp = dbrootp->firstdbp;
@@ -660,7 +764,7 @@ RDB_get_db_from_env(const char *name, RDB_environment *envp,
                     RDB_database **dbpp)
 {
     int ret;
-    RDB_database *dbp, *idbp;
+    RDB_database *dbp;
     RDB_transaction tx;
     RDB_object tpl;
     RDB_dbroot *dbrootp = (RDB_dbroot *)RDB_env_private(envp);
@@ -672,33 +776,19 @@ RDB_get_db_from_env(const char *name, RDB_environment *envp,
          * and create RDB_dbroot structure
          */
 
-        /* Create db structure */
-        dbp = new_db(name);
-        if (dbp == NULL)
-            return RDB_NO_MEMORY;
-
         crdbroot = RDB_TRUE;
         _RDB_init_builtin_types();
         lt_dlinit();
-        ret = create_dbroot(name, envp, RDB_FALSE, dbp, &dbrootp);
+        ret = create_dbroot(name, envp, RDB_FALSE, &dbrootp);
         if (ret != RDB_OK) {
             goto error;
         }
-    } else {
-        /* Get first db in list */
-        dbp = dbrootp->firstdbp;
     }
 
     /* search the DB list for the database */
-    for (idbp = dbrootp->firstdbp; idbp != NULL; idbp = idbp->nextdbp) {
+    for (dbp = dbrootp->firstdbp; dbp != NULL; dbp = dbp->nextdbp) {
         if (strcmp(dbp->name, name) == 0) {
-            if (crdbroot) {
-                /* dbp is not used */
-                free_db(dbp);
-            }
-
-            *dbpp = idbp;
-            idbp->refcount++;
+            *dbpp = dbp;
             return RDB_OK;
         }
     }
@@ -707,7 +797,7 @@ RDB_get_db_from_env(const char *name, RDB_environment *envp,
      * Not found, read database from catalog
      */
 
-    ret = RDB_begin_tx(&tx, dbp, NULL);
+    ret = _RDB_begin_tx(&tx, envp, NULL);
     if (ret != RDB_OK) {
         goto error;
     }
@@ -727,7 +817,13 @@ RDB_get_db_from_env(const char *name, RDB_environment *envp,
         goto error;
     }
 
-    ret = RDB_table_contains(dbp->dbrootp->dbtables_tbp, &tpl, &tx);
+    dbp = new_db(name);
+    if (dbp == NULL) {
+        ret = RDB_NO_MEMORY;
+        goto error;
+    }
+
+    ret = RDB_table_contains(dbrootp->dbtables_tbp, &tpl, &tx);
     if (ret != RDB_OK) {
         RDB_destroy_obj(&tpl);
         RDB_rollback(&tx);
@@ -738,6 +834,9 @@ RDB_get_db_from_env(const char *name, RDB_environment *envp,
     ret = RDB_commit(&tx);
     if (ret != RDB_OK)
         return ret;
+    
+    assign_systables(dbrootp, dbp);
+    dbp->dbrootp = dbrootp;
     
     /* Insert database into list */
     dbp->nextdbp = dbrootp->firstdbp;
@@ -791,79 +890,6 @@ _RDB_free_table(RDB_table *tbp, RDB_environment *envp)
 
     free(tbp->name);
     free(tbp);
-}
-
-static int close_table(RDB_table *tbp, RDB_environment *envp)
-{
-    int i;
-    int ret;
-
-    if (tbp->kind == RDB_TB_STORED) {
-        /* close secondary indexes */
-        for (i = 0; i < tbp->keyc - 1; i++) {
-            RDB_close_index(tbp->var.stored.keyidxv[i]);
-        }
-   
-        /* close recmap */
-        ret = RDB_close_recmap(tbp->var.stored.recmapp);
-        _RDB_free_table(tbp, envp);
-        return ret;
-    }
-    if (tbp->name == NULL) {
-        return RDB_drop_table(tbp, NULL);
-    }
-    return RDB_OK;
-}
-
-static int
-rm_db(RDB_database *dbp)
-{
-    /* Remove database from list */
-    if (dbp->dbrootp->firstdbp == dbp) {
-        dbp->dbrootp->firstdbp = dbp->nextdbp;
-    } else {
-        RDB_database *hdbp = dbp->dbrootp->firstdbp;
-        while (hdbp != NULL && hdbp->nextdbp != dbp) {
-            hdbp = hdbp->nextdbp;
-        }
-        if (hdbp == NULL)
-            return RDB_INVALID_ARGUMENT;
-        hdbp->nextdbp = dbp->nextdbp;
-    }
-    return RDB_OK;
-}
-
-int
-RDB_release_db(RDB_database *dbp) 
-{
-    int ret;
-    int i;
-    RDB_table **tbpp;
-    int tbcount;
-    char **tbnames;
-
-    /* Close all tables which belong to only this database */
-    tbcount = RDB_hashmap_size(&dbp->tbmap);
-    tbnames = malloc(sizeof(char *) * tbcount);
-    RDB_hashmap_keys(&dbp->tbmap, tbnames);
-    for (i = 0; i < tbcount; i++) {
-        tbpp = (RDB_table **)RDB_hashmap_get(&dbp->tbmap, tbnames[i], NULL);
-        if (*tbpp != NULL) {
-            if (--(*tbpp)->refcount == 0) {
-                ret = close_table(*tbpp, dbp->dbrootp->envp);
-                if (ret != RDB_OK)
-                    return ret;
-            }
-        }
-    }
-
-    ret = rm_db(dbp);
-    if (ret != RDB_OK)
-        return ret;
-    
-    if (--dbp->refcount == 0)
-        free_db(dbp);
-    return ret;
 }
 
 int
@@ -951,12 +977,7 @@ RDB_drop_db(RDB_database *dbp)
     if (ret != RDB_OK)
         return ret;
 
-    /* Set refcount to 1 so RDB_release_db will remove it */
-    dbp->refcount = 1;
-
-    ret = RDB_release_db(dbp);
-
-    return RDB_OK;
+    return release_db(dbp);
 
 error:
     RDB_rollback(&tx);
@@ -973,7 +994,8 @@ int
 _RDB_provide_table(const char *name, RDB_bool persistent,
            int attrc, RDB_attr heading[],
            int keyc, RDB_string_vec keyv[], RDB_bool usr,
-           RDB_bool create, RDB_transaction *txp, RDB_table **tbpp)
+           RDB_bool create, RDB_transaction *txp, RDB_environment *envp,
+           RDB_table **tbpp)
 {
     RDB_type *reltyp;
     int ret;
@@ -1009,7 +1031,8 @@ _RDB_provide_table(const char *name, RDB_bool persistent,
         return ret;
     }
 
-    ret = _RDB_open_table(*tbpp, keyv[0].strc, keyv[0].strv, create, txp, NULL);
+    ret = _RDB_open_table(*tbpp, keyv[0].strc, keyv[0].strv, create, txp,
+            envp, NULL);
     if (ret != RDB_OK) {
         _RDB_free_table(*tbpp, NULL);
         return ret;
@@ -1025,7 +1048,7 @@ _RDB_create_table(const char *name, RDB_bool persistent,
 {
     return _RDB_provide_table(name, persistent,
            attrc, heading, keyc, keyv, RDB_TRUE,
-           RDB_TRUE, txp, tbpp);
+           RDB_TRUE, txp, txp->dbp->dbrootp->envp, tbpp);
 }
 
 int
@@ -1080,11 +1103,18 @@ RDB_get_table(const char *name, RDB_transaction *txp, RDB_table **tbpp)
 {
     int ret;
     RDB_table **foundtbpp;
+    RDB_database *dbp;
 
-    foundtbpp = (RDB_table **)RDB_hashmap_get(&txp->dbp->tbmap, name, NULL);
-    if (foundtbpp != NULL) {
-        *tbpp = *foundtbpp;
-        return RDB_OK;
+    /* Search table in all databases */
+    dbp = txp->dbp->dbrootp->firstdbp;
+    while (dbp != NULL) {
+        foundtbpp = (RDB_table **)RDB_hashmap_get(&dbp->tbmap, name, NULL);
+        if (foundtbpp != NULL) {
+            /* Found */
+            *tbpp = *foundtbpp;
+            return RDB_OK;
+        }
+        dbp = dbp->nextdbp;
     }
 
     ret = _RDB_get_cat_rtable(name, txp, tbpp);
@@ -1315,7 +1345,7 @@ RDB_add_table(RDB_table *tbp, RDB_transaction *txp)
     if (tbp->name == NULL)
         return RDB_INVALID_ARGUMENT;
 
-    /* Turning a transient real table into a persistent table is not supported */
+    /* Turning a local real table into a persistent table is not supported */
     if (!tbp->is_persistent && tbp->kind == RDB_TB_STORED)
         return RDB_NOT_SUPPORTED;
 
@@ -1609,7 +1639,7 @@ get_upd_op(const RDB_dbroot *dbrootp, const char *name,
     op = *opp;
     
     /* Find a operation with same signature */
-    do {
+    while (op != NULL) {
         if (op->argc == argc) {
             int i;
 
@@ -1622,7 +1652,7 @@ get_upd_op(const RDB_dbroot *dbrootp, const char *name,
             }
         }
         op = op->nextp;
-    } while (op != NULL);
+    }
 
     return NULL;
 }

@@ -196,16 +196,17 @@ error:
 }
 
 int
-RDB_open_recmap(const char *namp, const char *filenamp,
+RDB_open_recmap(const char *name, const char *filename,
        RDB_environment *dsp, int fieldc, const int fieldlenv[], int keyfieldc,
        DB_TXN *txid, RDB_recmap **rmpp)
 {
-    int ret = new_recmap(rmpp, namp, filenamp, dsp,
+    int ret = new_recmap(rmpp, name, filename, dsp,
             fieldc, fieldlenv, keyfieldc, RDB_FALSE);
     if (ret != RDB_OK)
        return ret;
 
-    ret = (*rmpp)->dbp->open((*rmpp)->dbp, txid, filenamp, namp, DB_UNKNOWN, 0, 0664);
+    ret = (*rmpp)->dbp->open((*rmpp)->dbp, txid, filename, name, DB_UNKNOWN,
+            0, 0664);
     if (ret != 0) {
         if (ret == ENOENT)
             ret = RDB_NOT_FOUND;

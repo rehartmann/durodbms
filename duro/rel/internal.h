@@ -119,6 +119,10 @@ _RDB_init_builtin_types(void);
 int
 RDB_rollback_all(RDB_transaction *txp);
 
+int
+_RDB_begin_tx(RDB_transaction *, RDB_environment *,
+        RDB_transaction *);
+
 /*
  * Iterator over the tuples of a RDB_table. Used internally.
  * Using it from an application is possible, but violates RM proscription 7.
@@ -158,19 +162,21 @@ _RDB_free_table(RDB_table *tbp, RDB_environment *envp);
 int
 _RDB_open_table(RDB_table *tbp,
            int piattrc, char *piattrv[], RDB_bool create,
-           RDB_transaction *txp, RDB_bool ascv[]);
+           RDB_transaction *txp, RDB_environment *envp, RDB_bool ascv[]);
 
 int
 _RDB_create_table(const char *name, RDB_bool persistent,
                 int attrc, RDB_attr heading[],
                 int keyc, RDB_string_vec keyv[],
-                RDB_transaction *txp, RDB_table **tbpp);
+                RDB_transaction *txp,
+                RDB_table **tbpp);
 
 int
 _RDB_provide_table(const char *name, RDB_bool persistent,
            int attrc, RDB_attr heading[],
            int keyc, RDB_string_vec keyv[], RDB_bool usr,
-           RDB_bool create, RDB_transaction *txp, RDB_table **tbpp);
+           RDB_bool create, RDB_transaction *txp, RDB_environment *envp,
+           RDB_table **tbpp);
 
 int
 _RDB_assign_table_db(RDB_table *tbp, RDB_database *dbp);

@@ -349,8 +349,9 @@ RDB_get_table(const char *name, RDB_transaction *txp, RDB_table **tbpp);
 <h3>Description</h3>
 
 <p>RDB_get_table looks up a table with name <var>name</var>
-in the database asociated with the transaction specified by <var>txp</var>
-and stores a pointer to a RDB_table structure in <var>tbpp</var>.
+in the environment of the database associated with the transaction
+specified by <var>txp</var> and stores a pointer to a
+RDB_table structure in <var>tbpp</var>.
 
 <h3>Return value</h3>
 
@@ -2403,10 +2404,24 @@ RDB_drop_db(RDB_database *dbp);
 <h3>Description</h3>
 
 <p>RDB_drop_db deletes the database specified by <var>dbp</var>.
+If deleting non-empty databases is supported, all tables
+which belong only to this database are also deleted.
+Wheter or not deleting non-empty databases is supported
+is implementation-dependent.
 
 <h3>Return value</h3>
 
 <p>On success, RDB_OK is returned. On failure, an error code is returned.
+
+<h3>Errors</h3>
+
+<dl>
+<dt>RDB_NOT_FOUND
+<dd>The database was not found.
+<dt>RDB_ELEMENT_EXISTS
+<dd>The database is not empty and dropping non-empty databases is not
+supported.
+</dl>
 
 <hr>
 

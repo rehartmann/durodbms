@@ -12,9 +12,14 @@ bin_PROGRAMS = util/lstables util/droptable util/dropdb
 lib_LTLIBRARIES = libduro.la libdurotcl.la \
         tests/libpoint.la tests/libplus.la
 
-htmldir = $(prefix)/docs
-html_DATA = docs/api-spec.html docs/relnotes.html
-dist_html_DATA = docs/api-spec.html docs/relnotes.html
+htmldir = $(prefix)
+
+nobase_dist_html_DATA = docs/api-spec.html docs/relnotes.html docs/tcl/index.html \
+docs/tcl/array.html docs/tcl/begin.html docs/tcl/call.html \
+docs/tcl/commit.html docs/tcl/db.html docs/tcl/delete.html \
+docs/tcl/env.html docs/tcl/expr.html docs/tcl/insert.html \
+docs/tcl/operator.html docs/tcl/ptable.html docs/tcl/rollback.html \
+docs/tcl/table.html docs/tcl/update.html
 
 check_PROGRAMS = tests/prepare tests/test_aggregate tests/test_binary \
 tests/test_create_view tests/test_defpointtype tests/test_deftype \
@@ -35,7 +40,7 @@ tests_libplus_la_SOURCES = tests/plus.c
 
 TESTS = tests/ctests tests/rtables.tcl tests/project.tcl tests/tuple.tcl \
         tests/sdivide.tcl tests/invtable.tcl tests/operator.tcl \
-        tests/vtables.tcl
+        tests/vtables.tcl tests/db2.tcl
 
 TESTS_ENVIRONMENT = BDB_HOME=$(BDB_HOME)
 

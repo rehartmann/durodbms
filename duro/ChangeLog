@@ -14,10 +14,10 @@ Changes for Duro 0.7
 
 - Implemented insert into and update of projections.
 
-- Added support for multiplication, division, unary minus, and string concatenation
-  in expressions.
+- Added support for multiplication, division, unary minus, and string
+  concatenation in expressions.
 
-- Fixed bug in RDN_extract_tuple().
+- Fixed bug in RDB_extract_tuple().
 
 - Fixed bug with updating key attributes of tables with more than one
   candidate key.
@@ -29,7 +29,8 @@ Changes for Duro 0.7
 
 - Replaced RDB_make_persistent() by RDB_add_table().
 
-- Now using to BerkeleyDB 4.2 (no modifications were required)
+- Now using to BerkeleyDB 4.2 (no modifications were required, but
+  Duro is no longer tested with BerkeleyDB 4.1)
 
 Changes for Duro 0.6
 

@@ -32,7 +32,7 @@ array_create_cmd(TclState *statep, Tcl_Interp *interp, int objc,
     int seqitc = 0;
 
     if (objc < 4 || objc > 5) {
-        Tcl_WrongNumArgs(interp, 2, objv, "table ?{ ?attr dir? ... }? tx");
+        Tcl_WrongNumArgs(interp, 2, objv, "table ?{ ?attr dir ...? }? tx");
         return TCL_ERROR;
     }
 
@@ -275,7 +275,7 @@ array_foreach_cmd(TclState *statep, Tcl_Interp *interp, int objc,
     Tcl_Obj *listobjp;
 
     if (objc != 5) {
-        Tcl_WrongNumArgs(interp, 2, objv, "varname arrayname command");
+        Tcl_WrongNumArgs(interp, 2, objv, "varname arrayname body");
         return TCL_ERROR;
     }
 

@@ -20,15 +20,21 @@ typedef struct RDB_ixlink {
 
 int
 RDB_begin_tx(RDB_transaction *txp, RDB_database *dbp,
-        RDB_transaction *parent)
+        RDB_transaction *parentp)
 {
-    DB_TXN *partxid = parent != NULL ? parent->txid : NULL;
+    txp->dbp = dbp;
+    return _RDB_begin_tx(txp, txp->dbp->dbrootp->envp, parentp);
+}
+
+int
+_RDB_begin_tx(RDB_transaction *txp, RDB_environment *envp,
+        RDB_transaction *parentp)
+{
+    DB_TXN *partxid = parentp != NULL ? parentp->txid : NULL;
     int ret;
 
-    txp->dbp = dbp;
-    txp->parentp = parent;
-    ret = dbp->dbrootp->envp->envp->txn_begin(dbp->dbrootp->envp->envp,
-            partxid, &txp->txid, 0);
+    txp->parentp = parentp;
+    ret = envp->envp->txn_begin(envp->envp, partxid, &txp->txid, 0);
     if (ret != 0) {
         return ret;
     }

@@ -1,3 +1,8 @@
+/*
+ * Copyright (C) 2003 René Hartmann.
+ * See the file COPYING for redistribution information.
+ */
+
 /* $Id$ */
 
 #include "duro.h"
@@ -11,7 +16,7 @@ Duro_tcl_close_env(TclState *statep, RDB_environment *envp, Tcl_HashEntry *entry
 
     Tcl_DeleteHashEntry(entryp);
 
-    /* Delete local tables which belong the the environment */
+    /* Delete local tables which belong to the environment */
 
     entryp = Tcl_FirstHashEntry(&statep->ltables, &search);
     while (entryp != NULL) {
@@ -100,7 +105,7 @@ Duro_env_cmd(ClientData data, Tcl_Interp *interp, int argc, CONST char *argv[])
         return RDB_OK;
     } else if (strcmp(argv[1], "close") == 0) {
         if (argc != 3) {
-            Tcl_SetResult(interp, "wrong # args: should be \"env close handle\"",
+            Tcl_SetResult(interp, "wrong # args: should be \"env close envname\"",
                     TCL_STATIC);
             return TCL_ERROR;
         }

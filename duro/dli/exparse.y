@@ -178,6 +178,8 @@ attribute_name_list: TOK_ID {
         int i;
 
         /* Copy old attributes */
+        if ($1.attrc >= DURO_MAX_LLEN)
+            YYERROR;
         for (i = 0; i < $1.attrc; i++)
             $$.attrv[i] = $1.attrv[i];
         $$.attrv[$1.attrc] = RDB_dup_str($3->var.attr.name);
@@ -231,6 +233,8 @@ renaming_list: renaming {
         | renaming_list ',' renaming {
             int i;
 
+            if ($1.renc >= DURO_MAX_LLEN)
+                YYERROR;
             for (i = 0; i < $1.renc; i++) {
                 $$.renv[i].from = $1.renv[i].from;
                 $$.renv[i].to = $1.renv[i].to;
@@ -366,11 +370,15 @@ extend_add_list: extend_add {
     | extend_add_list ',' extend_add {
         int i;
 
+        if ($$.extc >= DURO_MAX_LLEN)
+            YYERROR;
+
         /* Copy old attributes */
         for (i = 0; i < $1.extc; i++) {
             $$.extv[i].name = $1.extv[i].name;
             $$.extv[i].exp = $1.extv[i].exp;
         }
+
         /* Add new attribute */
         $$.extv[$1.extc].name = $3.extv[0].name;
         $$.extv[$1.extc].exp = $3.extv[0].exp;
@@ -455,6 +463,9 @@ summarize_add_list: summarize_add {
     | summarize_add_list ',' summarize_add {
         int i;
 
+        if ($1.addc >= DURO_MAX_LLEN)
+            YYERROR;
+
         /* Copy old elements */
         for (i = 0; i < $1.addc; i++) {
             $$.addv[i].op = $1.addv[i].op;
@@ -520,7 +531,7 @@ summary_type: TOK_SUM {
 wrap:   primary_expression TOK_WRAP
         '(' wrapping_list ')' {
         RDB_table *tbp, *restbp;
-        int i;
+        int i, j;
 
         tbp = expr_to_table($1);
         if (tbp == NULL)
@@ -529,7 +540,9 @@ wrap:   primary_expression TOK_WRAP
         }
         expr_ret = RDB_wrap(tbp, $4.wrapc, $4.wrapv, &restbp);
         for (i = 0; i < $4.wrapc; i++) {
-            /* !! */
+            free($4.wrapv[i].attrname);
+            for (j = 0; j < $4.wrapv[i].attrc; i++)
+                free($4.wrapv[i].attrv[j]);
         }
         if (expr_ret != RDB_OK) {
             YYERROR;
@@ -546,6 +559,9 @@ wrapping_list: wrapping {
     }
     | wrapping_list ',' wrapping {
         int i;
+
+        if ($1.wrapc >= DURO_MAX_LLEN)
+            YYERROR;
 
         /* Copy old elements */
         for (i = 0; i < $1.wrapc; i++) {
@@ -584,7 +600,7 @@ unwrap: primary_expression TOK_UNWRAP '(' attribute_name_list ')' {
         }
         expr_ret = RDB_unwrap(tbp, $4.attrc, $4.attrv, &restbp);
         for (i = 0; i < $4.attrc; i++) {
-            /* !! */
+            free($4.attrv[i]);
         }
         if (expr_ret != RDB_OK) {
             YYERROR;
@@ -915,6 +931,9 @@ argument_list: expression {
     }
     | argument_list ',' expression {
         int i;
+
+        if ($1.argc >= DURO_MAX_LLEN)
+            YYERROR;
 
         for (i = 0; i < $1.argc; i++) {
             $$.argv[i] = $1.argv[i];
