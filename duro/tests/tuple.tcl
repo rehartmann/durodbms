@@ -213,7 +213,7 @@ if {[duro::expr {TUPLE FROM WH} $tx] != "SCATTR Bla"} {
 duro::table drop S $tx
 duro::table drop UW $tx
 duro::table drop WR $tx
-# duro::table drop WH $tx
+duro::table drop WH $tx
 duro::table drop T1 $tx
 duro::table drop T2 $tx
 

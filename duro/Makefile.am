@@ -5,7 +5,7 @@ BDB_HOME = /usr/local/BerkeleyDB.4.2
 
 AM_YFLAGS = -d
 
-bin_PROGRAMS = util/lstables util/droptable util/dropdb
+bin_PROGRAMS = util/lstables
 
 # Shared libs for testing are listed here too, because check_LTLIBRARIES does
 # not work

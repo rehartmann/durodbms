@@ -81,14 +81,3 @@ calltest test_print_opview
 calltest test_dropop
 
 rm /tmp/duro$$
-
-echo Dropping tables
-if ../util/droptable -e dbenv -d TEST SALARIES EMPS1H EMPS1 EMPS2 DEPTS DEEDUM \
-        SRTEST POINTTEST; then true; else
-    failure
-fi
-
-echo Dropping DB
-if ../util/dropdb -e dbenv -d TEST TEST2; then true; else
-    failure
-fi
