@@ -11,6 +11,7 @@
 #include <gen/hashmapit.h>
 #include <gen/errors.h>
 #include <string.h>
+#include <assert.h>
 
 void *
 RDB_obj_irep(RDB_object *valp, size_t *lenp)
@@ -516,7 +517,8 @@ RDB_obj_equals(const RDB_object *val1p, const RDB_object *val2p, RDB_bool *resp)
     return RDB_OK;
 } 
 
-/* Copy data only, not the type information */
+/* Copy data only, not the type information. Assume non-initialized
+   destination. */
 int
 _RDB_copy_obj(RDB_object *dstvalp, const RDB_object *srcvalp)
 {
@@ -584,6 +586,11 @@ int
 RDB_destroy_obj(RDB_object *objp)
 {
     switch (objp->kind) {
+        case RDB_OB_INITIAL:
+        case RDB_OB_BOOL:
+        case RDB_OB_INT:
+        case RDB_OB_RATIONAL:
+            break;
         case RDB_OB_BIN:
             if (objp->var.bin.len > 0)
                 free(objp->var.bin.datap);
@@ -641,7 +648,6 @@ RDB_destroy_obj(RDB_object *objp)
                 return RDB_drop_table(objp->var.tbp, NULL);
             }
             break;
-        default: ;
     }
     return RDB_OK;
 }
@@ -649,7 +655,8 @@ RDB_destroy_obj(RDB_object *objp)
 void
 RDB_bool_to_obj(RDB_object *valp, RDB_bool v)
 {
-    RDB_destroy_obj(valp);
+    assert(valp->kind == RDB_OB_INITIAL || valp->typ == &RDB_BOOLEAN);
+
     valp->typ = &RDB_BOOLEAN;
     valp->kind = RDB_OB_BOOL;
     valp->var.bool_val = v;
@@ -658,7 +665,8 @@ RDB_bool_to_obj(RDB_object *valp, RDB_bool v)
 void
 RDB_int_to_obj(RDB_object *valp, RDB_int v)
 {
-    RDB_destroy_obj(valp);
+    assert(valp->kind == RDB_OB_INITIAL || valp->typ == &RDB_INTEGER);
+
     valp->typ = &RDB_INTEGER;
     valp->kind = RDB_OB_INT;
     valp->var.int_val = v;
@@ -667,7 +675,8 @@ RDB_int_to_obj(RDB_object *valp, RDB_int v)
 void
 RDB_rational_to_obj(RDB_object *valp, RDB_rational v)
 {
-    RDB_destroy_obj(valp);
+    assert(valp->kind == RDB_OB_INITIAL || valp->typ == &RDB_RATIONAL);
+
     valp->typ = &RDB_RATIONAL;
     valp->kind = RDB_OB_RATIONAL;
     valp->var.rational_val = v;
@@ -676,13 +685,26 @@ RDB_rational_to_obj(RDB_object *valp, RDB_rational v)
 int
 RDB_string_to_obj(RDB_object *valp, const char *str)
 {
-    RDB_destroy_obj(valp);
-    valp->typ = &RDB_STRING;
-    valp->kind = RDB_OB_BIN;
-    valp->var.bin.len = strlen(str) + 1;
-    valp->var.bin.datap = malloc(valp->var.bin.len);
-    if (valp->var.bin.datap == NULL)
-        return RDB_NO_MEMORY;
+    void *datap;
+    int len = strlen(str) + 1;
+
+    if(valp->kind != RDB_OB_INITIAL && valp->typ != &RDB_STRING)
+        return RDB_TYPE_MISMATCH;
+
+    if (valp->kind == RDB_OB_INITIAL) {
+        datap = malloc(len);
+        if (datap == NULL)
+            return RDB_NO_MEMORY;
+        valp->typ = &RDB_STRING;
+        valp->kind = RDB_OB_BIN;
+    } else {
+        datap = realloc(valp->var.bin.datap, len);
+        if (datap == NULL)
+            return RDB_NO_MEMORY;
+    }
+    valp->var.bin.len = len;
+    valp->var.bin.datap = datap;
+
     strcpy(valp->var.bin.datap, str);
     return RDB_OK;
 }

@@ -11,25 +11,29 @@
 #include <string.h>
 #include <stdlib.h>
 
+static RDB_bool is_and(RDB_expression *exp) {
+    return (RDB_bool) (exp->kind == RDB_EX_AND);
+}
+
 static void
 unbalance_and(RDB_expression *exp)
 {
     RDB_expression *axp;
 
-    if (exp->kind != RDB_EX_AND)
+    if (!is_and(exp))
         return;
 
-    if (exp->var.op.arg1->kind == RDB_EX_AND)
+    if (is_and(exp->var.op.arg1))
         unbalance_and(exp->var.op.arg1);
         
-    if (exp->var.op.arg2->kind == RDB_EX_AND) {
+    if (is_and(exp->var.op.arg2)) {
         unbalance_and(exp->var.op.arg2);
-        if (exp->var.op.arg1->kind == RDB_EX_AND) {
+        if (is_and(exp->var.op.arg1)) {
             RDB_expression *ax2p;
 
             /* find leftmost factor */
             axp = exp->var.op.arg1;
-            while (axp->var.op.arg1->kind == RDB_EX_AND)
+            while (is_and(axp->var.op.arg1))
                 axp = axp->var.op.arg1;
 
             /* switch leftmost factor and right child */
@@ -78,7 +82,7 @@ expr_cmp_attr(RDB_expression *exp, const char *attrname)
 RDB_expression *
 attr_node(RDB_expression *exp, const char *attrname, enum _RDB_expr_kind kind)
 {
-    while (exp->kind == RDB_EX_AND) {
+    while (is_and(exp)) {
         if (expr_attr(exp->var.op.arg2, attrname, kind))
             return exp;
         exp = exp->var.op.arg1;
@@ -108,7 +112,7 @@ eval_index_exp(RDB_expression *exp, _RDB_tbindex *indexp)
         if (expr_cmp_attr(iexp, indexp->attrv[0].attrname))
             return 4;
         iexp = exp;
-        while (iexp != NULL && iexp->kind == RDB_EX_AND) {
+        while (iexp != NULL && is_and(iexp)) {
             if (expr_cmp_attr(iexp->var.op.arg2, indexp->attrv[0].attrname))
                 return 4;
             iexp = iexp->var.op.arg1;
@@ -162,7 +166,7 @@ move_node(RDB_table *tbp, RDB_expression **dstpp, RDB_expression *nodep)
             prevp = prevp->var.op.arg1;
     }
 
-    if (nodep->kind != RDB_EX_AND) {
+    if (!is_and(nodep)) {
         if (*dstpp == NULL)
             *dstpp = nodep;
         else
@@ -242,7 +246,7 @@ split_by_index(RDB_table *tbp, _RDB_tbindex *indexp)
                     }
                     if (stopexp != NULL) {
                         attrexp = stopexp;
-                        if (attrexp->kind == RDB_EX_AND)
+                        if (is_and(attrexp))
                             attrexp = attrexp->var.op.arg2;
                         move_node(tbp, &ixexp, stopexp);
                         stopexp = attrexp;
@@ -255,7 +259,7 @@ split_by_index(RDB_table *tbp, _RDB_tbindex *indexp)
                     RDB_EX_EQ);
         }
         attrexp = nodep;
-        if (attrexp->kind == RDB_EX_AND)
+        if (is_and(attrexp))
             attrexp = attrexp->var.op.arg2;
         if (attrexp->var.op.arg2->var.obj.typ == NULL
                 && (attrexp->var.op.arg2->var.obj.kind == RDB_OB_TUPLE
