@@ -21,9 +21,9 @@ print_table(RDB_table *tbp, RDB_transaction *txp)
     
     RDB_init_tuple(&tpl);    
     for (i = 0; (ret = RDB_array_get_tuple(&array, i, &tpl)) == RDB_OK; i++) {
-        printf("EMPNO: %d\n", RDB_tuple_get_int(&tpl, "EMPNO"));
+        printf("EMPNO: %d\n", (int) RDB_tuple_get_int(&tpl, "EMPNO"));
         printf("NAME: %s\n", RDB_tuple_get_string(&tpl, "NAME"));
-        printf("SALARY: %f\n", (double)RDB_tuple_get_rational(&tpl, "SALARY"));
+        printf("SALARY: %f\n", (double) RDB_tuple_get_rational(&tpl, "SALARY"));
     }
     RDB_destroy_tuple(&tpl);
     if (ret != RDB_NOT_FOUND) {
@@ -54,7 +54,10 @@ test_update(RDB_database *dbp)
         return ret;
     }
 
-    RDB_get_table(dbp, "EMPS1", &tbp);
+    ret = RDB_get_table("EMPS1", &tx, &tbp);
+    if (ret != RDB_OK) {
+        goto error;
+    }
 
     printf("Updating table, setting SALARY to 4500\n");
     attrs[0].name = "SALARY";

@@ -1,6 +1,6 @@
-#include "recmap.h"
-
 /* $Id$ */
+
+#include "recmap.h"
 
 #include <gen/errors.h>
 #include <gen/strfns.h>
@@ -19,7 +19,7 @@ static int
 create_recmap(RDB_recmap **rmpp, const char *namp, const char *filenamp,
         RDB_environment *dsp, int fieldc, const int fieldlenv[], int keyfieldc)
 {
-    int i, res;
+    int i, ret;
     RDB_recmap *rmp = malloc(sizeof(RDB_recmap));
 
     if (rmp == NULL)
@@ -30,7 +30,7 @@ create_recmap(RDB_recmap **rmpp, const char *namp, const char *filenamp,
     if (namp != NULL) {
         rmp->namp = RDB_dup_str(namp);
         if (rmp->namp == NULL) {
-            res = RDB_NO_MEMORY;
+            ret = RDB_NO_MEMORY;
             goto error;
         }
     } else {
@@ -40,7 +40,7 @@ create_recmap(RDB_recmap **rmpp, const char *namp, const char *filenamp,
     if (filenamp != NULL) {
         rmp->filenamp = RDB_dup_str(filenamp);
         if (rmp->filenamp == NULL) {
-            res = RDB_NO_MEMORY;
+            ret = RDB_NO_MEMORY;
             goto error;
         }
     } else {
@@ -49,7 +49,7 @@ create_recmap(RDB_recmap **rmpp, const char *namp, const char *filenamp,
 
     rmp->fieldlens = malloc(sizeof(int) * fieldc);
     if (rmp->fieldlens == NULL) {
-        res = RDB_NO_MEMORY;
+        ret = RDB_NO_MEMORY;
         goto error;
     }
     
@@ -70,8 +70,8 @@ create_recmap(RDB_recmap **rmpp, const char *namp, const char *filenamp,
             }
         }
     }
-    res = db_create(&rmp->dbp, dsp->envp, 0);
-    if (res != 0) {
+    ret = db_create(&rmp->dbp, dsp->envp, 0);
+    if (ret != 0) {
         goto error;
     }
     return RDB_OK;
@@ -80,7 +80,7 @@ error:
     free(rmp->filenamp);
     free(rmp->fieldlens);
     free(rmp);
-    return RDB_convert_err(res);
+    return RDB_convert_err(ret);
 }
 
 int
@@ -88,19 +88,19 @@ RDB_create_recmap(const char *namp, const char *filenamp,
         RDB_environment *dsp, int fieldc, const int fieldlenv[], int keyfieldc,
         DB_TXN *txid, RDB_recmap **rmpp)
 {
-    int res = create_recmap(rmpp, namp, filenamp, dsp,
+    int ret = create_recmap(rmpp, namp, filenamp, dsp,
             fieldc, fieldlenv, keyfieldc); 
-    if (res != RDB_OK)
-        return res;
+    if (ret != RDB_OK)
+        return ret;
        
-    if ((res = (*rmpp)->dbp->open((*rmpp)->dbp, txid, filenamp, namp, DB_HASH,
+    if ((ret = (*rmpp)->dbp->open((*rmpp)->dbp, txid, filenamp, namp, DB_HASH,
             DB_CREATE, 0664)) != 0)
         goto error; 
    return RDB_OK;
 
 error:
     RDB_close_recmap(*rmpp);
-    return RDB_convert_err(res);
+    return RDB_convert_err(ret);
 }
 
 int
@@ -108,43 +108,43 @@ RDB_open_recmap(const char *namp, const char *filenamp,
        RDB_environment *dsp, int fieldc, const int fieldlenv[], int keyfieldc,
        DB_TXN *txid, RDB_recmap **rmpp)
 {
-    int res = create_recmap(rmpp, namp, filenamp, dsp,
+    int ret = create_recmap(rmpp, namp, filenamp, dsp,
             fieldc, fieldlenv, keyfieldc);   
-    if (res != RDB_OK)
-       return res;
+    if (ret != RDB_OK)
+       return ret;
 
-    res = (*rmpp)->dbp->open((*rmpp)->dbp, txid, filenamp, namp, DB_UNKNOWN, 0, 0664);
-    if (res != 0)
+    ret = (*rmpp)->dbp->open((*rmpp)->dbp, txid, filenamp, namp, DB_UNKNOWN, 0, 0664);
+    if (ret != 0)
         goto error;
     return RDB_OK;
 
 error:
     RDB_close_recmap(*rmpp);
-    return RDB_convert_err(res);
+    return RDB_convert_err(ret);
 }
 
 int
 RDB_close_recmap(RDB_recmap *rmp)
 {
-    int res = rmp->dbp->close(rmp->dbp, 0);
+    int ret = rmp->dbp->close(rmp->dbp, 0);
     free(rmp->namp);
     free(rmp->filenamp);
     free(rmp->fieldlens);
     free(rmp);
-    return RDB_convert_err(res);
+    return RDB_convert_err(ret);
 }
 
 int
 RDB_delete_recmap(RDB_recmap *rmp, RDB_environment *envp, DB_TXN *txid)
 {
-    int res;
+    int ret;
 
-    res = rmp->dbp->close(rmp->dbp, DB_NOSYNC);
-    if (res != 0)
+    ret = rmp->dbp->close(rmp->dbp, DB_NOSYNC);
+    if (ret != 0)
         goto error;
 
     if (rmp->namp != NULL) {
-        res = envp->envp->dbremove(envp->envp, txid, rmp->filenamp, rmp->namp, 0);
+        ret = envp->envp->dbremove(envp->envp, txid, rmp->filenamp, rmp->namp, 0);
     }
 
 error:
@@ -152,7 +152,7 @@ error:
     free(rmp->filenamp);
     free(rmp->fieldlens);
     free(rmp);
-    return res;
+    return ret;
 }
 
 static size_t
@@ -291,7 +291,7 @@ _RDB_fields_to_DBT(RDB_recmap *rmp, int fldc, const RDB_field fldv[],
     int vfi;
     int offs;
     int i;
-    int res;
+    int ret;
     int *fno;	/* fixed field no in DBT -> field no */
     int *vfno;	/* var field no in DBT -> field no */
 
@@ -315,7 +315,7 @@ _RDB_fields_to_DBT(RDB_recmap *rmp, int fldc, const RDB_field fldv[],
     vfno = malloc(vfldc *  sizeof(int));
 
     if (fno == NULL || vfno == NULL || dbtp->data == NULL) {
-        res = RDB_NO_MEMORY;
+        ret = RDB_NO_MEMORY;
         goto error;
     }
 
@@ -361,7 +361,7 @@ error:
     free(fno);
     free(vfno);
 
-    return res;
+    return ret;
 }
 
 static int
@@ -396,14 +396,14 @@ int
 RDB_insert_rec(RDB_recmap *rmp, RDB_field flds[], DB_TXN *txid)
 {
     DBT key, data;
-    int res;
+    int ret;
 
-    res = key_to_DBT(rmp, flds, &key);
-    if (res != RDB_OK)
-        return res;
-    res = data_to_DBT(rmp, flds, &data);
-    if (res != RDB_OK)
-        return res;
+    ret = key_to_DBT(rmp, flds, &key);
+    if (ret != RDB_OK)
+        return ret;
+    ret = data_to_DBT(rmp, flds, &data);
+    if (ret != RDB_OK)
+        return ret;
 
 #ifdef DEBUG
     printf("storing key:\n");
@@ -412,14 +412,14 @@ RDB_insert_rec(RDB_recmap *rmp, RDB_field flds[], DB_TXN *txid)
     _RDB_dump(data.data, data.size);
 #endif
 
-    res = rmp->dbp->put(rmp->dbp, txid, &key, &data, DB_NOOVERWRITE);
-    if (res == EINVAL)
+    ret = rmp->dbp->put(rmp->dbp, txid, &key, &data, DB_NOOVERWRITE);
+    if (ret == EINVAL)
         /* Assume duplicate secondary index */
-        res = RDB_KEY_VIOLATION;
+        ret = RDB_KEY_VIOLATION;
     free(key.data);
     free(data.data);
 
-    return RDB_convert_err(res);
+    return RDB_convert_err(ret);
 }
 
 void
@@ -455,17 +455,17 @@ RDB_update_rec(RDB_recmap *recmapp, RDB_field keyv[],
                int fieldc, const RDB_field fieldv[], DB_TXN *txid)
 {
     DBT key, data;
-    int res;
+    int ret;
     int i;
 
-    res = key_to_DBT(recmapp, keyv, &key);
-    if (res != RDB_OK)
-        return RDB_convert_err(res);
+    ret = key_to_DBT(recmapp, keyv, &key);
+    if (ret != RDB_OK)
+        return RDB_convert_err(ret);
     memset(&data, 0, sizeof (data));
     data.flags = DB_DBT_REALLOC;
 
-    res = recmapp->dbp->get(recmapp->dbp, txid, &key, &data, 0);
-    if (res != 0) {
+    ret = recmapp->dbp->get(recmapp->dbp, txid, &key, &data, 0);
+    if (ret != 0) {
         goto error;
     }
 
@@ -473,8 +473,8 @@ RDB_update_rec(RDB_recmap *recmapp, RDB_field keyv[],
     for (i = 0; i < fieldc; i++) {
         if (fieldv[i].no < recmapp->keyfieldcount) {
             /* Key is to be modified, so delete record first */
-            res = recmapp->dbp->del(recmapp->dbp, txid, &key, 0);
-            if (res != 0) {
+            ret = recmapp->dbp->del(recmapp->dbp, txid, &key, 0);
+            if (ret != 0) {
                 goto error;
             }
             break;
@@ -492,28 +492,28 @@ RDB_update_rec(RDB_recmap *recmapp, RDB_field keyv[],
     }
 
     /* Write record back */
-    res = recmapp->dbp->put(recmapp->dbp, txid, &key, &data, 0);
+    ret = recmapp->dbp->put(recmapp->dbp, txid, &key, &data, 0);
 
 error:
     free(key.data);
     free(data.data);
     
-    return RDB_convert_err(res);
+    return RDB_convert_err(ret);
 }
 
 int
 RDB_delete_rec(RDB_recmap *rmp, RDB_field keyv[], DB_TXN *txid)
 {
     DBT key;
-    int res;
+    int ret;
 
-    res = key_to_DBT(rmp, keyv, &key);
-    if (res != RDB_OK)
-        return res;
+    ret = key_to_DBT(rmp, keyv, &key);
+    if (ret != RDB_OK)
+        return ret;
 
-    res = rmp->dbp->del(rmp->dbp, txid, &key, 0);
-    if (res != 0) {
-        return RDB_convert_err(res);
+    ret = rmp->dbp->del(rmp->dbp, txid, &key, 0);
+    if (ret != 0) {
+        return RDB_convert_err(ret);
     }
     return RDB_OK;
 }
@@ -526,14 +526,14 @@ RDB_field_is_pindex(RDB_recmap *rmp, int fieldno)
 
 int
 _RDB_get_fields(RDB_recmap *rmp, const DBT *keyp, const DBT *datap, int fieldc,
-           RDB_field resfieldv[])
+           RDB_field retfieldv[])
 {
     int i;
 
     for (i = 0; i < fieldc; i++) {
-        int offs = _RDB_get_field(rmp, resfieldv[i].no,
-                                 datap->data, datap->size, &resfieldv[i].len, NULL);
-        resfieldv[i].datap = ((RDB_byte *)datap->data) + offs;
+        int offs = _RDB_get_field(rmp, retfieldv[i].no,
+                                 datap->data, datap->size, &retfieldv[i].len, NULL);
+        retfieldv[i].datap = ((RDB_byte *)datap->data) + offs;
     }
 
     return RDB_OK;
@@ -541,37 +541,37 @@ _RDB_get_fields(RDB_recmap *rmp, const DBT *keyp, const DBT *datap, int fieldc,
 
 int
 RDB_get_fields(RDB_recmap *rmp, RDB_field keyv[], int fieldc, DB_TXN *txid,
-           RDB_field resfieldv[])
+           RDB_field retfieldv[])
 {
     DBT key, data;
-    int res;
+    int ret;
 
-    res = key_to_DBT(rmp, keyv, &key);
-    if (res != RDB_OK)
-        return res;
+    ret = key_to_DBT(rmp, keyv, &key);
+    if (ret != RDB_OK)
+        return ret;
 
     memset(&data, 0, sizeof (data));
 
-    res = rmp->dbp->get(rmp->dbp, txid, &key, &data, 0);
-    if (res != 0) {
-        return RDB_convert_err(res);
+    ret = rmp->dbp->get(rmp->dbp, txid, &key, &data, 0);
+    if (ret != 0) {
+        return RDB_convert_err(ret);
     }
 
-    return _RDB_get_fields(rmp, &key, &data, fieldc, resfieldv);
+    return _RDB_get_fields(rmp, &key, &data, fieldc, retfieldv);
 }
 
 int
 RDB_contains_rec(RDB_recmap *rmp, RDB_field flds[], DB_TXN *txid)
 {
     DBT key, data;
-    int res;
+    int ret;
 
-    res = key_to_DBT(rmp, flds, &key);
-    if (res != RDB_OK)
-        return res;
-    res = data_to_DBT(rmp, flds, &data);
-    if (res != RDB_OK)
-        return res;
+    ret = key_to_DBT(rmp, flds, &key);
+    if (ret != RDB_OK)
+        return ret;
+    ret = data_to_DBT(rmp, flds, &data);
+    if (ret != RDB_OK)
+        return ret;
 
     return RDB_convert_err(rmp->dbp->get(rmp->dbp, txid, &key, &data, DB_GET_BOTH));
 }

@@ -9,26 +9,26 @@ print_extend(RDB_table *vtbp, RDB_transaction *txp)
 {
     RDB_array array;
     RDB_tuple tpl;
-    int err;
+    int ret;
     int i;
 
     RDB_init_array(&array);
 
-    err = RDB_table_to_array(vtbp, &array, 0, NULL, txp);
-    if (err != RDB_OK) {
+    ret = RDB_table_to_array(vtbp, &array, 0, NULL, txp);
+    if (ret != RDB_OK) {
         goto error;
     }
     
     RDB_init_tuple(&tpl);    
-    for (i = 0; (err = RDB_array_get_tuple(&array, i, &tpl)) == RDB_OK; i++) {
-        printf("EMPNO: %d\n", RDB_tuple_get_int(&tpl, "EMPNO"));
+    for (i = 0; (ret = RDB_array_get_tuple(&array, i, &tpl)) == RDB_OK; i++) {
+        printf("EMPNO: %d\n", (int)RDB_tuple_get_int(&tpl, "EMPNO"));
         printf("NAME: %s\n", RDB_tuple_get_string(&tpl, "NAME"));
         printf("SALARY: %f\n", (float)RDB_tuple_get_rational(&tpl, "SALARY"));
         printf("SALARY_W_BONUS: %f\n",
                 (float)RDB_tuple_get_rational(&tpl, "SALARY_W_BONUS"));
     }
     RDB_destroy_tuple(&tpl);
-    if (err != RDB_NOT_FOUND) {
+    if (ret != RDB_NOT_FOUND) {
         RDB_rollback(txp);
         goto error;
     }
@@ -37,62 +37,62 @@ print_extend(RDB_table *vtbp, RDB_transaction *txp)
     return RDB_OK;
 error:
     RDB_destroy_array(&array);
-    return err;
+    return ret;
 }
 
 int
 insert_extend(RDB_table *vtbp, RDB_transaction *txp)
 {
     RDB_tuple tpl;
-    int err;
+    int ret;
 
     RDB_init_tuple(&tpl);    
 
     printf("Inserting tuple #1\n");
 
-    err = RDB_tuple_set_int(&tpl, "EMPNO", 3);
-    if (err != RDB_OK)
+    ret = RDB_tuple_set_int(&tpl, "EMPNO", 3);
+    if (ret != RDB_OK)
         goto error;
-    err = RDB_tuple_set_string(&tpl, "NAME", "Johnson");
-    if (err != RDB_OK)
+    ret = RDB_tuple_set_string(&tpl, "NAME", "Johnson");
+    if (ret != RDB_OK)
         goto error;
-    err = RDB_tuple_set_rational(&tpl, "SALARY", (RDB_rational)4000.0);
-    if (err != RDB_OK)
+    ret = RDB_tuple_set_rational(&tpl, "SALARY", (RDB_rational)4000.0);
+    if (ret != RDB_OK)
         goto error;
-    err = RDB_tuple_set_int(&tpl, "DEPTNO", 1);
-    if (err != RDB_OK)
+    ret = RDB_tuple_set_int(&tpl, "DEPTNO", 1);
+    if (ret != RDB_OK)
         goto error;
-    err = RDB_tuple_set_rational(&tpl, "SALARY_W_BONUS", (RDB_rational)4200.0);
-    if (err != RDB_OK)
+    ret = RDB_tuple_set_rational(&tpl, "SALARY_W_BONUS", (RDB_rational)4200.0);
+    if (ret != RDB_OK)
         goto error;
 
-    err = RDB_insert(vtbp, &tpl, txp);
-    if (err == RDB_PREDICATE_VIOLATION) {
+    ret = RDB_insert(vtbp, &tpl, txp);
+    if (ret == RDB_PREDICATE_VIOLATION) {
         printf("predicate violation - OK\n");
     } else {
-        printf("Error: %s\n", RDB_strerror(err));
+        printf("Error: %s\n", RDB_strerror(ret));
     }
 
     printf("Inserting tuple #2\n");
 
-    err = RDB_tuple_set_int(&tpl, "EMPNO", 3);
-    if (err != RDB_OK)
+    ret = RDB_tuple_set_int(&tpl, "EMPNO", 3);
+    if (ret != RDB_OK)
         goto error;
-    err = RDB_tuple_set_string(&tpl, "NAME", "Johnson");
-    if (err != RDB_OK)
+    ret = RDB_tuple_set_string(&tpl, "NAME", "Johnson");
+    if (ret != RDB_OK)
         goto error;
-    err = RDB_tuple_set_rational(&tpl, "SALARY", (RDB_rational)4000.0);
-    if (err != RDB_OK)
+    ret = RDB_tuple_set_rational(&tpl, "SALARY", (RDB_rational)4000.0);
+    if (ret != RDB_OK)
         goto error;
-    err = RDB_tuple_set_int(&tpl, "DEPTNO", 1);
-    if (err != RDB_OK)
+    ret = RDB_tuple_set_int(&tpl, "DEPTNO", 1);
+    if (ret != RDB_OK)
         goto error;
-    err = RDB_tuple_set_rational(&tpl, "SALARY_W_BONUS", (RDB_rational)4100.0);
-    if (err != RDB_OK)
+    ret = RDB_tuple_set_rational(&tpl, "SALARY_W_BONUS", (RDB_rational)4100.0);
+    if (ret != RDB_OK)
         goto error;
 
-    err = RDB_insert(vtbp, &tpl, txp);
-    if (err != RDB_OK)
+    ret = RDB_insert(vtbp, &tpl, txp);
+    if (ret != RDB_OK)
         goto error;
     
     RDB_destroy_tuple(&tpl);
@@ -100,7 +100,7 @@ insert_extend(RDB_table *vtbp, RDB_transaction *txp)
 
 error:
     RDB_destroy_tuple(&tpl);
-    return err;
+    return ret;
 }
 
 int
@@ -108,7 +108,7 @@ test_extend(RDB_database *dbp)
 {
     RDB_transaction tx;
     RDB_table *tbp, *vtbp;
-    int err;
+    int ret;
     RDB_virtual_attr extend = {
         "SALARY_W_BONUS",
         NULL
@@ -117,29 +117,32 @@ test_extend(RDB_database *dbp)
     extend.exp = RDB_add(RDB_expr_attr("SALARY", &RDB_RATIONAL),
                          RDB_rational_const(100));
 
-    RDB_get_table(dbp, "EMPS1", &tbp);
-
     printf("Starting transaction\n");
-    err = RDB_begin_tx(&tx, dbp, NULL);
-    if (err != RDB_OK) {
-        return err;
+    ret = RDB_begin_tx(&tx, dbp, NULL);
+    if (ret != RDB_OK) {
+        return ret;
+    }
+
+    ret = RDB_get_table("EMPS1", &tx, &tbp);
+    if (ret != RDB_OK) {
+        goto error;
     }
 
     printf("Extending EMPS1 (SALARY_W_BONUS)\n");
 
-    err = RDB_extend(tbp, 1, &extend, &vtbp);
-    if (err != RDB_OK) {
+    ret = RDB_extend(tbp, 1, &extend, &vtbp);
+    if (ret != RDB_OK) {
         goto error;
     }
     
     printf("converting extended table to array\n");
-    err = print_extend(vtbp, &tx);
-    if (err != RDB_OK) {
+    ret = print_extend(vtbp, &tx);
+    if (ret != RDB_OK) {
         goto error;
     }
 
-    err = insert_extend(vtbp, &tx);
-    if (err != RDB_OK) {
+    ret = insert_extend(vtbp, &tx);
+    if (ret != RDB_OK) {
         goto error;
     }
 
@@ -152,7 +155,7 @@ test_extend(RDB_database *dbp)
 
 error:
     RDB_rollback(&tx);
-    return err;
+    return ret;
 }
 
 int
@@ -160,30 +163,30 @@ main()
 {
     RDB_environment *dsp;
     RDB_database *dbp;
-    int err;
+    int ret;
     
     printf("Opening environment\n");
-    err = RDB_open_env("db", &dsp);
-    if (err != 0) {
-        fprintf(stderr, "Error: %s\n", RDB_strerror(err));
+    ret = RDB_open_env("db", &dsp);
+    if (ret != 0) {
+        fprintf(stderr, "Error: %s\n", RDB_strerror(ret));
         return 1;
     }
-    err = RDB_get_db_from_env("TEST", dsp, &dbp);
-    if (err != 0) {
-        fprintf(stderr, "Error: %s\n", RDB_strerror(err));
+    ret = RDB_get_db_from_env("TEST", dsp, &dbp);
+    if (ret != 0) {
+        fprintf(stderr, "Error: %s\n", RDB_strerror(ret));
         return 1;
     }
 
-    err = test_extend(dbp);
-    if (err != RDB_OK) {
-        fprintf(stderr, "Error: %s\n", RDB_strerror(err));
+    ret = test_extend(dbp);
+    if (ret != RDB_OK) {
+        fprintf(stderr, "Error: %s\n", RDB_strerror(ret));
         return 2;
     }
     
     printf ("Closing environment\n");
-    err = RDB_close_env(dsp);
-    if (err != RDB_OK) {
-        fprintf(stderr, "Error: %s\n", RDB_strerror(err));
+    ret = RDB_close_env(dsp);
+    if (ret != RDB_OK) {
+        fprintf(stderr, "Error: %s\n", RDB_strerror(ret));
         return 2;
     }
 

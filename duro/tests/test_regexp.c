@@ -15,19 +15,19 @@ test_regexp(RDB_database *dbp)
     int ret;
     RDB_int i;
 
-    ret = RDB_get_table(dbp, "EMPS1", &tbp);
+    printf("Starting transaction\n");
+    ret = RDB_begin_tx(&tx, dbp, NULL);
     if (ret != RDB_OK) {
+        return ret;
+    }
+
+    ret = RDB_get_table("EMPS1", &tx, &tbp);
+    if (ret != RDB_OK) {
+        RDB_rollback(&tx);
         return ret;
     }
 
     RDB_init_array(&array);
-
-    printf("Starting transaction\n");
-    ret = RDB_begin_tx(&tx, dbp, NULL);
-    if (ret != RDB_OK) {
-        RDB_destroy_array(&array);
-        return ret;
-    }
 
     printf("Creating selection (NAME regmatch \"o\")\n");
 
@@ -48,9 +48,9 @@ test_regexp(RDB_database *dbp)
     RDB_init_tuple(&tpl);
 
     for (i = 0; (ret = RDB_array_get_tuple(&array, i, &tpl)) == RDB_OK; i++) {
-        printf("EMPNO: %d\n", RDB_tuple_get_int(&tpl, "EMPNO"));
+        printf("EMPNO: %d\n", (int) RDB_tuple_get_int(&tpl, "EMPNO"));
         printf("NAME: %s\n", RDB_tuple_get_string(&tpl, "NAME"));
-        printf("SALARY: %f\n", (double)RDB_tuple_get_rational(&tpl, "SALARY"));
+        printf("SALARY: %f\n", (double) RDB_tuple_get_rational(&tpl, "SALARY"));
     }
     RDB_destroy_tuple(&tpl);
     if (ret != RDB_NOT_FOUND) {

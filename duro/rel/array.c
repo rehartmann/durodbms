@@ -43,7 +43,7 @@ RDB_table_to_array(RDB_table *tbp, RDB_array *arrp,
 }    
 
 int
-RDB_array_get_tuple(RDB_array *arrp, int idx, RDB_tuple *tup)
+RDB_array_get_tuple(RDB_array *arrp, RDB_int idx, RDB_tuple *tup)
 {
     int ret;
 

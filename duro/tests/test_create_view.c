@@ -11,42 +11,50 @@ create_view1(RDB_database *dbp)
 {
     RDB_transaction tx;
     RDB_table *tbp, *tbp2, *vtbp;
-    int err;
-
-    RDB_get_table(dbp, "EMPS1", &tbp);
-    RDB_get_table(dbp, "EMPS2", &tbp2);
+    int ret;
 
     printf("Starting transaction\n");
-    err = RDB_begin_tx(&tx, dbp, NULL);
-    if (err != RDB_OK) {
-        return err;
+    ret = RDB_begin_tx(&tx, dbp, NULL);
+    if (ret != RDB_OK) {
+        return ret;
+    }
+
+    ret = RDB_get_table("EMPS1", &tx, &tbp);
+    if (ret != RDB_OK) {
+        RDB_rollback(&tx);
+        return ret;
+    }
+    ret = RDB_get_table("EMPS2", &tx, &tbp2);
+    if (ret != RDB_OK) {
+        RDB_rollback(&tx);
+        return ret;
     }
 
     printf("Creating (EMPS1 union EMPS2) { SALARY }\n");
 
-    err = RDB_union(tbp2, tbp, &vtbp);
-    if (err != RDB_OK) {
+    ret = RDB_union(tbp2, tbp, &vtbp);
+    if (ret != RDB_OK) {
         RDB_rollback(&tx);
-        return err;
+        return ret;
     }
 
-    err = RDB_project(vtbp, 1, projattrs, &vtbp);
-    if (err != RDB_OK) {
+    ret = RDB_project(vtbp, 1, projattrs, &vtbp);
+    if (ret != RDB_OK) {
         RDB_drop_table(vtbp, &tx);
         RDB_rollback(&tx);
-        return err;
+        return ret;
     }
     
     printf("Making virtual table persistent as SALARIES\n");
-    err = RDB_set_table_name(vtbp, "SALARIES", &tx);
-    if (err != RDB_OK) {
+    ret = RDB_set_table_name(vtbp, "SALARIES", &tx);
+    if (ret != RDB_OK) {
         RDB_rollback(&tx);
-        return err;
+        return ret;
     } 
-    err = RDB_make_persistent(vtbp, &tx);
-    if (err != RDB_OK) {
+    ret = RDB_make_persistent(vtbp, &tx);
+    if (ret != RDB_OK) {
         RDB_rollback(&tx);
-        return err;
+        return ret;
     } 
 
     printf("End of transaction\n");
@@ -59,14 +67,18 @@ create_view2(RDB_database *dbp)
     RDB_transaction tx;
     RDB_table *tbp, *vtbp;
     RDB_expression *exprp;
-    int err;
-
-    RDB_get_table(dbp, "EMPS1", &tbp);
+    int ret;
 
     printf("Starting transaction\n");
-    err = RDB_begin_tx(&tx, dbp, NULL);
-    if (err != RDB_OK) {
-        return err;
+    ret = RDB_begin_tx(&tx, dbp, NULL);
+    if (ret != RDB_OK) {
+        return ret;
+    }
+
+    ret = RDB_get_table("EMPS1", &tx, &tbp);
+    if (ret != RDB_OK) {
+        RDB_rollback(&tx);
+        return ret;
     }
 
     printf("Creating EMPS1 select (SALARY > 4000)\n");
@@ -78,23 +90,23 @@ create_view2(RDB_database *dbp)
     if (exprp == NULL)
         return RDB_NO_MEMORY;
 
-    err = RDB_select(tbp, exprp, &vtbp);
-    if (err != RDB_OK) {
+    ret = RDB_select(tbp, exprp, &vtbp);
+    if (ret != RDB_OK) {
         RDB_drop_expr(exprp);
         RDB_rollback(&tx);
-        return err;
+        return ret;
     }
     
     printf("Making virtual table persistent as EMPS1H\n");
-    err = RDB_set_table_name(vtbp, "EMPS1H", &tx);
-    if (err != RDB_OK) {
+    ret = RDB_set_table_name(vtbp, "EMPS1H", &tx);
+    if (ret != RDB_OK) {
         RDB_rollback(&tx);
-        return err;
+        return ret;
     } 
-    err = RDB_make_persistent(vtbp, &tx);
-    if (err != RDB_OK) {
+    ret = RDB_make_persistent(vtbp, &tx);
+    if (ret != RDB_OK) {
         RDB_rollback(&tx);
-        return err;
+        return ret;
     } 
 
     printf("End of transaction\n");
@@ -108,14 +120,18 @@ create_view3(RDB_database *dbp)
     RDB_table *tbp, *vtbp;
     RDB_expression *exprp;
     RDB_virtual_attr vattr;
-    int err;
-
-    RDB_get_table(dbp, "EMPS1", &tbp);
+    int ret;
 
     printf("Starting transaction\n");
-    err = RDB_begin_tx(&tx, dbp, NULL);
-    if (err != RDB_OK) {
-        return err;
+    ret = RDB_begin_tx(&tx, dbp, NULL);
+    if (ret != RDB_OK) {
+        return ret;
+    }
+
+    RDB_get_table("EMPS1", &tx, &tbp);
+    if (ret != RDB_OK) {
+        RDB_rollback(&tx);
+        return ret;
     }
 
     printf("Creating extend EMPS1 add (SALARY > 4000 AS HIGHSAL)\n");
@@ -129,23 +145,23 @@ create_view3(RDB_database *dbp)
 
     vattr.name = "HIGHSAL";
     vattr.exp = exprp;
-    err = RDB_extend(tbp, 1, &vattr, &vtbp);
-    if (err != RDB_OK) {
+    ret = RDB_extend(tbp, 1, &vattr, &vtbp);
+    if (ret != RDB_OK) {
         RDB_drop_expr(exprp);
         RDB_rollback(&tx);
-        return err;
+        return ret;
     }
     
     printf("Making virtual table persistent as EMPS1SQ\n");
-    err = RDB_set_table_name(vtbp, "EMPS1SQ", &tx);
-    if (err != RDB_OK) {
+    ret = RDB_set_table_name(vtbp, "EMPS1SQ", &tx);
+    if (ret != RDB_OK) {
         RDB_rollback(&tx);
-        return err;
+        return ret;
     } 
-    err = RDB_make_persistent(vtbp, &tx);
-    if (err != RDB_OK) {
+    ret = RDB_make_persistent(vtbp, &tx);
+    if (ret != RDB_OK) {
         RDB_rollback(&tx);
-        return err;
+        return ret;
     } 
 
     printf("End of transaction\n");
@@ -157,40 +173,40 @@ main()
 {
     RDB_environment *dsp;
     RDB_database *dbp;
-    int err;
+    int ret;
     
-    err = RDB_open_env("db", &dsp);
-    if (err != 0) {
-        fprintf(stderr, "Error: %s\n", RDB_strerror(err));
+    ret = RDB_open_env("db", &dsp);
+    if (ret != 0) {
+        fprintf(stderr, "Error: %s\n", RDB_strerror(ret));
         return 1;
     }
-    err = RDB_get_db_from_env("TEST", dsp, &dbp);
-    if (err != 0) {
-        fprintf(stderr, "Error: %s\n", RDB_strerror(err));
+    ret = RDB_get_db_from_env("TEST", dsp, &dbp);
+    if (ret != 0) {
+        fprintf(stderr, "Error: %s\n", RDB_strerror(ret));
         return 1;
     }
 
-    err = create_view1(dbp);
-    if (err != RDB_OK) {
-        fprintf(stderr, "Error: %s\n", RDB_strerror(err));
+    ret = create_view1(dbp);
+    if (ret != RDB_OK) {
+        fprintf(stderr, "Error: %s\n", RDB_strerror(ret));
         return 2;
     }
 
-    err = create_view2(dbp);
-    if (err != RDB_OK) {
-        fprintf(stderr, "Error: %s\n", RDB_strerror(err));
+    ret = create_view2(dbp);
+    if (ret != RDB_OK) {
+        fprintf(stderr, "Error: %s\n", RDB_strerror(ret));
         return 2;
     }
 
-    err = create_view3(dbp);
-    if (err != RDB_OK) {
-        fprintf(stderr, "Error: %s\n", RDB_strerror(err));
+    ret = create_view3(dbp);
+    if (ret != RDB_OK) {
+        fprintf(stderr, "Error: %s\n", RDB_strerror(ret));
         return 2;
     }
 
-    err = RDB_close_env(dsp);
-    if (err != RDB_OK) {
-        fprintf(stderr, "Error: %s\n", RDB_strerror(err));
+    ret = RDB_close_env(dsp);
+    if (ret != RDB_OK) {
+        fprintf(stderr, "Error: %s\n", RDB_strerror(ret));
         return 2;
     }
 

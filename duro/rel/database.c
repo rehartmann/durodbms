@@ -1222,12 +1222,11 @@ error:
 }
 
 static int
-get_cat_rtable(RDB_database *dbp, const char *name, RDB_table **tbpp)
+get_cat_rtable(const char *name, RDB_transaction *txp, RDB_table **tbpp)
 {
     RDB_expression *exprp;
     RDB_table *tmptb1p = NULL;
     RDB_table *tmptb2p = NULL;
-    RDB_transaction tx;
     RDB_array arr;
     RDB_tuple tpl;
     RDB_bool usr;
@@ -1243,24 +1242,19 @@ get_cat_rtable(RDB_database *dbp, const char *name, RDB_table **tbpp)
     RDB_init_array(&arr);
     RDB_init_tuple(&tpl);
 
-    ret = RDB_begin_tx(&tx, dbp, NULL);
-    if (ret != RDB_OK) {
-        goto error;
-    }
-
     exprp = RDB_eq(RDB_expr_attr("TABLENAME", &RDB_STRING),
             RDB_string_const(name));
     if (exprp == NULL) {
         ret = RDB_NO_MEMORY;
         goto error;
     }
-    ret = RDB_select(dbp->rtables_tbp, exprp, &tmptb1p);
+    ret = RDB_select(txp->dbp->rtables_tbp, exprp, &tmptb1p);
     if (ret != RDB_OK) {
         RDB_drop_expr(exprp);
         goto error;
     }
     
-    ret = RDB_extract_tuple(tmptb1p, &tpl, &tx);
+    ret = RDB_extract_tuple(tmptb1p, &tpl, txp);
 
     if (ret != RDB_OK) {
         goto error;
@@ -1275,10 +1269,10 @@ get_cat_rtable(RDB_database *dbp, const char *name, RDB_table **tbpp)
         goto error;
     }
 
-    ret = RDB_select(dbp->table_attr_tbp, exprp, &tmptb2p);
+    ret = RDB_select(txp->dbp->table_attr_tbp, exprp, &tmptb2p);
     if (ret != RDB_OK)
         goto error;
-    ret = RDB_table_to_array(tmptb2p, &arr, 0, NULL, &tx);
+    ret = RDB_table_to_array(tmptb2p, &arr, 0, NULL, txp);
     if (ret != RDB_OK) {
         goto error;
     }
@@ -1296,7 +1290,7 @@ get_cat_rtable(RDB_database *dbp, const char *name, RDB_table **tbpp)
         RDB_array_get_tuple(&arr, i, &tpl);
         fno = RDB_tuple_get_int(&tpl, "I_FNO");
         attrv[fno].name = RDB_dup_str(RDB_tuple_get_string(&tpl, "ATTRNAME"));
-        ret = RDB_get_type(dbp, RDB_tuple_get_string(&tpl, "TYPE"),
+        ret = RDB_get_type(RDB_tuple_get_string(&tpl, "TYPE"), txp,
                            &attrtyp);
         if (ret != RDB_OK)
             goto error;
@@ -1305,12 +1299,12 @@ get_cat_rtable(RDB_database *dbp, const char *name, RDB_table **tbpp)
 
     /* Open the table */
 
-    ret = get_keys(name, &tx, &keyc, &keyv);
+    ret = get_keys(name, txp, &keyc, &keyv);
     if (ret != RDB_OK)
         goto error;
 
     ret = open_table(name, RDB_TRUE, attrc, attrv, keyc, keyv, usr, RDB_FALSE,
-                     &tx, tbpp);
+                     txp, tbpp);
     for (i = 0; i < keyc; i++) {
         for (j = 0; j < keyv[i].attrc; j++)
             free(keyv[i].attrv[j]);
@@ -1325,16 +1319,16 @@ get_cat_rtable(RDB_database *dbp, const char *name, RDB_table **tbpp)
     if (attrc > 0)
         free(attrv);
 
-    assign_table_db(*tbpp, dbp);
+    assign_table_db(*tbpp, txp->dbp);
 
     RDB_destroy_array(&arr);
 
-    RDB_drop_table(tmptb1p, &tx);
-    RDB_drop_table(tmptb2p, &tx);
+    RDB_drop_table(tmptb1p, txp);
+    RDB_drop_table(tmptb2p, txp);
 
     RDB_destroy_tuple(&tpl);
 
-    return RDB_commit(&tx);
+    return RDB_OK;
 error:
     if (attrv != NULL) {
         for (i = 0; i < attrc; i++)
@@ -1345,23 +1339,21 @@ error:
     RDB_destroy_array(&arr);
 
     if (tmptb1p != NULL)
-        RDB_drop_table(tmptb1p, &tx);
+        RDB_drop_table(tmptb1p, txp);
     if (tmptb2p != NULL)
-        RDB_drop_table(tmptb2p, &tx);
+        RDB_drop_table(tmptb2p, txp);
 
     RDB_destroy_tuple(&tpl);
     
-    RDB_rollback(&tx);
     return ret;
 }
 
 static int
-get_cat_vtable(RDB_database *dbp, const char *name, RDB_table **tbpp)
+get_cat_vtable(const char *name, RDB_transaction *txp, RDB_table **tbpp)
 {
     RDB_expression *exprp;
     RDB_table *tmptbp = NULL;
     RDB_tuple tpl;
-    RDB_transaction tx;
     RDB_array arr;
     RDB_value *valp;
     RDB_bool usr;
@@ -1372,28 +1364,22 @@ get_cat_vtable(RDB_database *dbp, const char *name, RDB_table **tbpp)
 
     RDB_init_array(&arr);
 
-    ret = RDB_begin_tx(&tx, dbp, NULL);
-    if (ret != RDB_OK) {
-        RDB_destroy_array(&arr);
-        return ret;
-    }
-
     exprp = RDB_eq(RDB_expr_attr("TABLENAME", &RDB_STRING),
             RDB_string_const(name));
     if (exprp == NULL) {
         ret = RDB_NO_MEMORY;
         goto error;
     }
-    ret = RDB_select(dbp->vtables_tbp, exprp, &tmptbp);
+    ret = RDB_select(txp->dbp->vtables_tbp, exprp, &tmptbp);
     if (ret != RDB_OK) {
         RDB_drop_expr(exprp);
         goto error;
     }
     
     RDB_init_tuple(&tpl);
-    ret = RDB_extract_tuple(tmptbp, &tpl, &tx);
+    ret = RDB_extract_tuple(tmptbp, &tpl, txp);
 
-    RDB_drop_table(tmptbp, &tx);
+    RDB_drop_table(tmptbp, txp);
     if (ret != RDB_OK) {
         goto error;
     }
@@ -1402,7 +1388,7 @@ get_cat_vtable(RDB_database *dbp, const char *name, RDB_table **tbpp)
 
     valp = RDB_tuple_get(&tpl, "I_DEF");
     pos = 0;
-    ret = _RDB_deserialize_table(valp, &pos, dbp, tbpp);
+    ret = _RDB_deserialize_table(valp, &pos, txp, tbpp);
     if (ret != RDB_OK)
         goto error;
     
@@ -1411,36 +1397,34 @@ get_cat_vtable(RDB_database *dbp, const char *name, RDB_table **tbpp)
     (*tbpp)->is_persistent = RDB_TRUE;
     (*tbpp)->name = RDB_dup_str(name);
 
-    assign_table_db(*tbpp, dbp);
+    assign_table_db(*tbpp, txp->dbp);
     
-    RDB_commit(&tx);
     return RDB_OK;
 error:
     RDB_destroy_array(&arr);
     
-    RDB_rollback(&tx);
     return ret;
 }
 
 int
-RDB_get_table(RDB_database *dbp, const char *name, RDB_table **tbpp)
+RDB_get_table(const char *name, RDB_transaction *txp, RDB_table **tbpp)
 {
     int ret;
     RDB_table **foundtbpp;
 
-    foundtbpp = (RDB_table **)RDB_hashmap_get(&dbp->tbmap, name, NULL);
+    foundtbpp = (RDB_table **)RDB_hashmap_get(&txp->dbp->tbmap, name, NULL);
     if (foundtbpp != NULL) {
         *tbpp = *foundtbpp;
         return RDB_OK;
     }
 
-    ret = get_cat_rtable(dbp, name, tbpp);
+    ret = get_cat_rtable(name, txp, tbpp);
     if (ret == RDB_OK)
         return RDB_OK;
     if (ret != RDB_NOT_FOUND)
         return ret;
 
-    return get_cat_vtable(dbp, name, tbpp);
+    return get_cat_vtable(name, txp, tbpp);
 }
 
 /*
@@ -1649,9 +1633,8 @@ error:
 }
 
 static int
-get_cat_type(RDB_database *dbp, const char *name, RDB_type **typp)
+get_cat_type(const char *name, RDB_transaction *txp, RDB_type **typp)
 {
-    RDB_transaction tx;
     RDB_expression *exp;
     RDB_expression *wherep;
     RDB_table *tmptbp;
@@ -1669,20 +1652,14 @@ get_cat_type(RDB_database *dbp, const char *name, RDB_type **typp)
         return RDB_NO_MEMORY;
     }
     
-    ret = RDB_select(dbp->types_tbp, wherep, &tmptbp);
+    ret = RDB_select(txp->dbp->types_tbp, wherep, &tmptbp);
     if (ret != RDB_OK) {
          RDB_drop_expr(wherep);
          return ret;
     }
 
-    ret = RDB_begin_tx(&tx, dbp, NULL);
-    if (ret != RDB_OK) {
-        RDB_drop_table(tmptbp, NULL);
-        return ret;
-    }
-
     RDB_init_tuple(&tpl);
-    ret = RDB_extract_tuple(tmptbp, &tpl, &tx);
+    ret = RDB_extract_tuple(tmptbp, &tpl, txp);
     if (ret != RDB_OK)
         goto error;
 
@@ -1701,21 +1678,17 @@ get_cat_type(RDB_database *dbp, const char *name, RDB_type **typp)
     (*typp)->kind = RDB_TP_USER;
     /* !! */
     
-    ret = RDB_drop_table(tmptbp, &tx);
+    ret = RDB_drop_table(tmptbp, txp);
     tmptbp = NULL;
     if (ret != RDB_OK) {
         goto error;
     }
-    ret = RDB_commit(&tx);
-    if (ret != RDB_OK)
-        goto error;
     RDB_destroy_tuple(&tpl);
     return RDB_OK;
     
 error:
     if (tmptbp == NULL)
-        RDB_drop_table(tmptbp, &tx);
-    RDB_rollback(&tx);
+        RDB_drop_table(tmptbp, txp);
     RDB_destroy_tuple(&tpl);
     if (*typp != NULL) {
         free((*typp)->name);
@@ -1725,7 +1698,7 @@ error:
 }
 
 int
-RDB_get_type(RDB_database *dbp, const char *name, RDB_type **typp)
+RDB_get_type(const char *name, RDB_transaction *txp, RDB_type **typp)
 {
     RDB_type **foundtypp;
 
@@ -1751,13 +1724,13 @@ RDB_get_type(RDB_database *dbp, const char *name, RDB_type **typp)
     }
     /* search for user defined type */
 
-    foundtypp = (RDB_type **)RDB_hashmap_get(&dbp->typemap, name, NULL);
+    foundtypp = (RDB_type **)RDB_hashmap_get(&txp->dbp->typemap, name, NULL);
     if (foundtypp != NULL) {
         *typp = *foundtypp;
         return RDB_OK;
     }
     
-    return get_cat_type(dbp, name, typp);
+    return get_cat_type(name, txp, typp);
 }
 
 int

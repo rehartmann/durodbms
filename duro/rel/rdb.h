@@ -43,16 +43,27 @@ enum RDB_tp_kind {
     RDB_TP_RELATION
 };
 
+typedef struct {
+    char *name;
+    int compc;
+    struct RDB_attr *compv;
+    struct RDB_expression *constraintp;
+} RDB_possrep;
+
 typedef struct RDB_type {
     /* internal */
     char *name;
     enum RDB_tp_kind kind;
     union {
-        struct RDB_type *basetyp;
+        struct RDB_type *basetyp; /* relation type */
         struct {
             struct RDB_attr *attrv;
             int attrc;
         } tuple;
+        struct {
+            int repc;
+            RDB_possrep *repv;
+        } scalar;
     } complex;
 } RDB_type;
 
@@ -352,7 +363,7 @@ RDB_create_table(const char *name, RDB_bool persistent,
  * Return RDB_OK on success, RDB_NOT_FOUND if the table could not be found.
  */
 int
-RDB_get_table(RDB_database *dbp, const char *name, RDB_table **tbpp);
+RDB_get_table(const char *name, RDB_transaction *txp, RDB_table **tbpp);
 
 /*
  * Drop the table pointed to by tbp. If it's a persistent table,
@@ -373,13 +384,6 @@ RDB_set_table_name(RDB_table *tbp, const char *name, RDB_transaction *);
 int
 RDB_make_persistent(RDB_table *, RDB_transaction *);
 
-typedef struct {
-    char *name;
-    int compc;
-    RDB_attr *compv;
-    RDB_expression *constraintp;
-} RDB_possrep;
-
 int
 RDB_define_type(const char *name, int repc, RDB_possrep repv[],
                 RDB_transaction *txp, RDB_type **resultpp);
@@ -390,7 +394,7 @@ RDB_define_type(const char *name, int repc, RDB_possrep repv[],
  * Return RDB_OK on success, RDB_NOT_FOUND if the table could not be found.
  */
 int
-RDB_get_type(RDB_database *dbp, const char *name, RDB_type **typp);
+RDB_get_type(const char *name, RDB_transaction *, RDB_type **typp);
 
 /*
  * Return the database assoctiated with the transaction.

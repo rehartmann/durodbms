@@ -85,9 +85,9 @@ fill_tables(RDB_database *dbp)
         goto error;
     }
 
-    RDB_get_table(dbp, "EMPS1", &tbp);
-    RDB_get_table(dbp, "EMPS2", &tbp2);
-    RDB_get_table(dbp, "DEPTS", &tbp3);
+    RDB_get_table("EMPS1", &tx, &tbp);
+    RDB_get_table("EMPS2", &tx, &tbp2);
+    RDB_get_table("DEPTS", &tx, &tbp3);
 
     printf("Filling EMPS1\n");
 

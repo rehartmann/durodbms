@@ -58,7 +58,7 @@ print_table2(RDB_table *tbp, RDB_transaction *txp)
     
     RDB_init_tuple(&tpl);    
     for (i = 0; (ret = RDB_array_get_tuple(&array, i, &tpl)) == RDB_OK; i++) {
-        printf("EMPNO: %d\n", RDB_tuple_get_int(&tpl, "EMPNO"));
+        printf("EMPNO: %d\n", (int) RDB_tuple_get_int(&tpl, "EMPNO"));
         printf("NAME: %s\n", RDB_tuple_get_string(&tpl, "NAME"));
     }
     RDB_destroy_tuple(&tpl);
@@ -83,11 +83,15 @@ test_project(RDB_database *dbp)
     RDB_tuple tpl;
     int ret;
 
-    RDB_get_table(dbp, "EMPS2", &tbp);
-
     printf("Starting transaction\n");
     ret = RDB_begin_tx(&tx, dbp, NULL);
     if (ret != RDB_OK) {
+        return ret;
+    }
+
+    ret = RDB_get_table("EMPS2", &tx, &tbp);
+    if (ret != RDB_OK) {
+        RDB_rollback(&tx);
         return ret;
     }
 

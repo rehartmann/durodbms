@@ -14,6 +14,7 @@ void _RDB_init_builtin_types(void)
 {
     RDB_BOOLEAN.kind = RDB_TP_BOOLEAN;
     RDB_BOOLEAN.name = "BOOLEAN";
+    RDB_BOOLEAN.complex.scalar.repc = 0;
     RDB_STRING.kind = RDB_TP_STRING;
     RDB_STRING.name = "STRING";
     RDB_INTEGER.kind = RDB_TP_INTEGER;

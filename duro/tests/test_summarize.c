@@ -7,30 +7,30 @@
 static int
 print_table(RDB_table *tbp, RDB_transaction *txp)
 {
-    int err;
+    int ret;
     RDB_tuple tpl;
     RDB_array array;
     RDB_int i;
 
     RDB_init_array(&array);
 
-    err = RDB_table_to_array(tbp, &array, 0, NULL, txp);
-    if (err != RDB_OK) {
+    ret = RDB_table_to_array(tbp, &array, 0, NULL, txp);
+    if (ret != RDB_OK) {
         goto error;
     }
     
     RDB_init_tuple(&tpl);    
-    for (i = 0; (err = RDB_array_get_tuple(&array, i, &tpl)) == RDB_OK; i++) {
-        printf("DEPTNO: %d\n", RDB_tuple_get_int(&tpl, "DEPTNO"));
+    for (i = 0; (ret = RDB_array_get_tuple(&array, i, &tpl)) == RDB_OK; i++) {
+        printf("DEPTNO: %d\n", (int) RDB_tuple_get_int(&tpl, "DEPTNO"));
         printf("COUNT_EMPS: %d\n",
-               RDB_tuple_get_int(&tpl, "COUNT_EMPS"));
+               (int) RDB_tuple_get_int(&tpl, "COUNT_EMPS"));
         printf("SUM_SALARY: %f\n",
                (double)RDB_tuple_get_rational(&tpl, "SUM_SALARY"));
         printf("AVG_SALARY: %f\n",
                (double)RDB_tuple_get_rational(&tpl, "AVG_SALARY"));
     }
     RDB_destroy_tuple(&tpl);
-    if (err != RDB_NOT_FOUND) {
+    if (ret != RDB_NOT_FOUND) {
         goto error;
     }
 
@@ -40,13 +40,13 @@ print_table(RDB_table *tbp, RDB_transaction *txp)
 error:
     RDB_destroy_array(&array);
     
-    return err;
+    return ret;
 }
 
 static int
 check_contains(RDB_table *tbp, RDB_transaction *txp)
 {
-    int err;
+    int ret;
     RDB_tuple tpl;
 
     RDB_init_tuple(&tpl);
@@ -57,28 +57,28 @@ check_contains(RDB_table *tbp, RDB_transaction *txp)
     RDB_tuple_set_rational(&tpl, "AVG_SALARY", 4050);
 
     printf("Calling RDB_table_contains()...");
-    err = RDB_table_contains(tbp, &tpl, txp);
+    ret = RDB_table_contains(tbp, &tpl, txp);
     
-    if (err == RDB_OK) {
+    if (ret == RDB_OK) {
         puts("Yes - OK");
-    } else if (err == RDB_NOT_FOUND) {
+    } else if (ret == RDB_NOT_FOUND) {
         puts("Not found");
     } else {
-        puts(RDB_strerror(err));
-        return err;
+        puts(RDB_strerror(ret));
+        return ret;
     }
 
     RDB_tuple_set_rational(&tpl, "SUM_SALARY", 4100);
     printf("Calling RDB_table_contains()...");
-    err = RDB_table_contains(tbp, &tpl, txp);
+    ret = RDB_table_contains(tbp, &tpl, txp);
     
-    if (err == RDB_OK) {
+    if (ret == RDB_OK) {
         puts("Yes");
-    } else if (err == RDB_NOT_FOUND) {
+    } else if (ret == RDB_NOT_FOUND) {
         puts("Not found - OK");
     } else {
-        puts(RDB_strerror(err));
-        return err;
+        puts(RDB_strerror(ret));
+        return ret;
     }
 
     return RDB_OK;
@@ -91,33 +91,41 @@ test_summarize(RDB_database *dbp)
 {
     RDB_transaction tx;
     RDB_table *tbp, *tbp2, *vtbp, *projtbp;
-    int err;
+    int ret;
     RDB_summarize_add addv[3];
 
-    RDB_get_table(dbp, "EMPS1", &tbp);
-    RDB_get_table(dbp, "EMPS2", &tbp2);
-
     printf("Starting transaction\n");
-    err = RDB_begin_tx(&tx, dbp, NULL);
-    if (err != RDB_OK) {
-        return err;
+    ret = RDB_begin_tx(&tx, dbp, NULL);
+    if (ret != RDB_OK) {
+        return ret;
+    }
+
+    ret = RDB_get_table("EMPS1", &tx, &tbp);
+    if (ret != RDB_OK) {
+        RDB_rollback(&tx);
+        return ret;
+    }
+    ret = RDB_get_table("EMPS2", &tx, &tbp2);
+    if (ret != RDB_OK) {
+        RDB_rollback(&tx);
+        return ret;
     }
 
     printf("Creating EMPS1 union EMPS2\n");
 
-    err = RDB_union(tbp2, tbp, &vtbp);
-    if (err != RDB_OK) {
+    ret = RDB_union(tbp2, tbp, &vtbp);
+    if (ret != RDB_OK) {
         RDB_rollback(&tx);
-        return err;
+        return ret;
     }
 
     printf("Summarizing union PER { DEPTNO } ADD COUNT AS COUNT_EMPS,\n");
     printf("    SUM(SALARY) AS SUM_SALARY, AVG(SALARY) AS AVG_SALARY\n");
 
-    err = RDB_project(vtbp, 1, &projattr, &projtbp);
-    if (err != RDB_OK) {
+    ret = RDB_project(vtbp, 1, &projattr, &projtbp);
+    if (ret != RDB_OK) {
         RDB_rollback(&tx);
-        return err;
+        return ret;
     }
 
     addv[0].op = RDB_COUNT;
@@ -131,24 +139,24 @@ test_summarize(RDB_database *dbp)
     addv[2].exp = RDB_expr_attr("SALARY", &RDB_RATIONAL);
     addv[2].name = "AVG_SALARY";
 
-    err = RDB_summarize(vtbp, projtbp, 3, addv, &vtbp);
-    if (err != RDB_OK) {
+    ret = RDB_summarize(vtbp, projtbp, 3, addv, &vtbp);
+    if (ret != RDB_OK) {
         RDB_rollback(&tx);
-        return err;
+        return ret;
     }
 
     printf("Printing table\n");
     
-    err = print_table(vtbp, &tx);
-    if (err != RDB_OK) {
+    ret = print_table(vtbp, &tx);
+    if (ret != RDB_OK) {
         RDB_rollback(&tx);
-        return err;
+        return ret;
     } 
 
-    err = check_contains(vtbp, &tx);
-    if (err != RDB_OK) {
+    ret = check_contains(vtbp, &tx);
+    if (ret != RDB_OK) {
         RDB_rollback(&tx);
-        return err;
+        return ret;
     } 
 
     printf("Dropping summarize\n");
@@ -163,30 +171,30 @@ main()
 {
     RDB_environment *dsp;
     RDB_database *dbp;
-    int err;
+    int ret;
     
     printf("Opening environment\n");
-    err = RDB_open_env("db", &dsp);
-    if (err != 0) {
-        fprintf(stderr, "Error: %s\n", RDB_strerror(err));
+    ret = RDB_open_env("db", &dsp);
+    if (ret != 0) {
+        fprintf(stderr, "Error: %s\n", RDB_strerror(ret));
         return 1;
     }
-    err = RDB_get_db_from_env("TEST", dsp, &dbp);
-    if (err != 0) {
-        fprintf(stderr, "Error: %s\n", RDB_strerror(err));
+    ret = RDB_get_db_from_env("TEST", dsp, &dbp);
+    if (ret != 0) {
+        fprintf(stderr, "Error: %s\n", RDB_strerror(ret));
         return 1;
     }
 
-    err = test_summarize(dbp);
-    if (err != RDB_OK) {
-        fprintf(stderr, "Error: %s\n", RDB_strerror(err));
+    ret = test_summarize(dbp);
+    if (ret != RDB_OK) {
+        fprintf(stderr, "Error: %s\n", RDB_strerror(ret));
         return 2;
     }
     
     printf ("Closing environment\n");
-    err = RDB_close_env(dsp);
-    if (err != RDB_OK) {
-        fprintf(stderr, "Error: %s\n", RDB_strerror(err));
+    ret = RDB_close_env(dsp);
+    if (ret != RDB_OK) {
+        fprintf(stderr, "Error: %s\n", RDB_strerror(ret));
         return 2;
     }
 

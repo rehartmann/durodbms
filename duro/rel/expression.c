@@ -434,7 +434,7 @@ RDB_evaluate_bool(RDB_expression *exprp, const RDB_tuple *tup,
         case RDB_OP_EQ:
             typ = RDB_expr_type(exprp->var.op.arg1);
             if (typ == &RDB_INTEGER) {
-                int v1, v2;
+                RDB_int v1, v2;
                 
                 err = evaluate_int(exprp->var.op.arg1, tup, txp, &v1);
                 if (err != RDB_OK)
@@ -491,7 +491,7 @@ RDB_evaluate_bool(RDB_expression *exprp, const RDB_tuple *tup,
         case RDB_OP_LT:
             typ = RDB_expr_type(exprp->var.op.arg1);
             if (typ == &RDB_INTEGER) {
-                int v1, v2;
+                RDB_int v1, v2;
                 
                 err = evaluate_int(exprp->var.op.arg1, tup, txp, &v1);
                 if (err != RDB_OK)
@@ -521,7 +521,7 @@ RDB_evaluate_bool(RDB_expression *exprp, const RDB_tuple *tup,
         case RDB_OP_GT:
             typ = RDB_expr_type(exprp->var.op.arg1);
             if (typ == &RDB_INTEGER) {
-                int v1, v2;
+                RDB_int v1, v2;
                 
                 err = evaluate_int(exprp->var.op.arg1, tup, txp, &v1);
                 if (err != RDB_OK)
@@ -551,7 +551,7 @@ RDB_evaluate_bool(RDB_expression *exprp, const RDB_tuple *tup,
         case RDB_OP_LET:
             typ = RDB_expr_type(exprp->var.op.arg1);
             if (typ == &RDB_INTEGER) {
-                int v1, v2;
+                RDB_int v1, v2;
                 
                 err = evaluate_int(exprp->var.op.arg1, tup, txp, &v1);
                 if (err != RDB_OK)
@@ -581,7 +581,7 @@ RDB_evaluate_bool(RDB_expression *exprp, const RDB_tuple *tup,
         case RDB_OP_GET:
             typ = RDB_expr_type(exprp->var.op.arg1);
             if (typ == &RDB_INTEGER) {
-                int v1, v2;
+                RDB_int v1, v2;
                 
                 err = evaluate_int(exprp->var.op.arg1, tup, txp, &v1);
                 if (err != RDB_OK)

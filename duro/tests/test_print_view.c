@@ -5,32 +5,41 @@
 #include <stdio.h>
 
 int
-print_salary_view(RDB_database *dbp, RDB_table *vtbp)
+print_salary_view(RDB_database *dbp)
 {
     RDB_transaction tx;
+    RDB_table *tmpvtbp;
     RDB_tuple tpl;
     RDB_array array;
-    int err;
+    int ret;
     int i;
 
-    err = RDB_begin_tx(&tx, dbp, NULL);
-    if (err != RDB_OK) {
-        return err;
+    ret = RDB_begin_tx(&tx, dbp, NULL);
+    if (ret != RDB_OK) {
+        return ret;
+    }
+
+    printf("Table SALARIES\n");
+    ret = RDB_get_table("SALARIES", &tx, &tmpvtbp);
+    if (ret != RDB_OK) {
+        RDB_rollback(&tx);
+        fprintf(stderr, "Error: %s\n", RDB_strerror(ret));
+        return ret;
     }
 
     RDB_init_array(&array);
 
-    err = RDB_table_to_array(vtbp, &array, 0, NULL, &tx);
-    if (err != RDB_OK) {
+    ret = RDB_table_to_array(tmpvtbp, &array, 0, NULL, &tx);
+    if (ret != RDB_OK) {
         goto error;
     }
     
     RDB_init_tuple(&tpl);    
-    for (i = 0; (err = RDB_array_get_tuple(&array, i, &tpl)) == RDB_OK; i++) {
+    for (i = 0; (ret = RDB_array_get_tuple(&array, i, &tpl)) == RDB_OK; i++) {
         printf("SALARY: %f\n", (float)RDB_tuple_get_rational(&tpl, "SALARY"));
     }
     RDB_destroy_tuple(&tpl);
-    if (err != RDB_NOT_FOUND) {
+    if (ret != RDB_NOT_FOUND) {
         goto error;
     }
 
@@ -39,38 +48,47 @@ print_salary_view(RDB_database *dbp, RDB_table *vtbp)
     return RDB_OK;
 error:
     RDB_rollback(&tx);
-    return err;
+    return ret;
 }
 
 int
-print_emp_view(RDB_database *dbp, RDB_table *vtbp)
+print_emp_view(RDB_database *dbp)
 {
     RDB_transaction tx;
+    RDB_table *tmpvtbp;
     RDB_tuple tpl;
     RDB_array array;
-    int err;
+    int ret;
     int i;
 
-    err = RDB_begin_tx(&tx, dbp, NULL);
-    if (err != RDB_OK) {
-        return err;
+    ret = RDB_begin_tx(&tx, dbp, NULL);
+    if (ret != RDB_OK) {
+        return ret;
+    }
+
+    printf("Table EMPS1H\n");
+    ret = RDB_get_table("EMPS1H", &tx, &tmpvtbp);
+    if (ret != RDB_OK) {
+        RDB_rollback(&tx);
+        fprintf(stderr, "Error: %s\n", RDB_strerror(ret));
+        return ret;
     }
 
     RDB_init_array(&array);
 
-    err = RDB_table_to_array(vtbp, &array, 0, NULL, &tx);
-    if (err != RDB_OK) {
+    ret = RDB_table_to_array(tmpvtbp, &array, 0, NULL, &tx);
+    if (ret != RDB_OK) {
         goto error;
     }
     
     RDB_init_tuple(&tpl);    
-    for (i = 0; (err = RDB_array_get_tuple(&array, i, &tpl)) == RDB_OK; i++) {
-        printf("EMPNO: %d\n", RDB_tuple_get_int(&tpl, "EMPNO"));
+    for (i = 0; (ret = RDB_array_get_tuple(&array, i, &tpl)) == RDB_OK; i++) {
+        printf("EMPNO: %d\n", (int) RDB_tuple_get_int(&tpl, "EMPNO"));
         printf("NAME: %s\n", RDB_tuple_get_string(&tpl, "NAME"));
         printf("SALARY: %f\n", (float)RDB_tuple_get_rational(&tpl, "SALARY"));
     }
     RDB_destroy_tuple(&tpl);
-    if (err != RDB_NOT_FOUND) {
+    if (ret != RDB_NOT_FOUND) {
         goto error;
     }
 
@@ -79,42 +97,50 @@ print_emp_view(RDB_database *dbp, RDB_table *vtbp)
     return RDB_OK;
 error:
     RDB_rollback(&tx);
-    return err;
+    return ret;
 }
 
 int
-print_empsq_view(RDB_database *dbp, RDB_table *vtbp)
+print_empsq_view(RDB_database *dbp)
 {
     RDB_transaction tx;
+    RDB_table *tmpvtbp;
     RDB_tuple tpl;
     RDB_array array;
-    int err;
+    int ret;
     int i;
 
-    err = RDB_begin_tx(&tx, dbp, NULL);
-    if (err != RDB_OK) {
-        return err;
+    ret = RDB_begin_tx(&tx, dbp, NULL);
+    if (ret != RDB_OK) {
+        return ret;
+    }
+
+    printf("Table EMPS1SQ\n");
+    ret = RDB_get_table("EMPS1SQ", &tx, &tmpvtbp);
+    if (ret != RDB_OK) {
+        fprintf(stderr, "Error: %s\n", RDB_strerror(ret));
+        return 2;
     }
 
     RDB_init_array(&array);
 
-    err = RDB_table_to_array(vtbp, &array, 0, NULL, &tx);
-    if (err != RDB_OK) {
+    ret = RDB_table_to_array(tmpvtbp, &array, 0, NULL, &tx);
+    if (ret != RDB_OK) {
         goto error;
     }
     
     RDB_init_tuple(&tpl);    
-    for (i = 0; (err = RDB_array_get_tuple(&array, i, &tpl)) == RDB_OK; i++) {
+    for (i = 0; (ret = RDB_array_get_tuple(&array, i, &tpl)) == RDB_OK; i++) {
         RDB_bool b;
     
-        printf("EMPNO: %d\n", RDB_tuple_get_int(&tpl, "EMPNO"));
+        printf("EMPNO: %d\n", (int) RDB_tuple_get_int(&tpl, "EMPNO"));
         printf("NAME: %s\n", RDB_tuple_get_string(&tpl, "NAME"));
-        printf("SALARY: %f\n", (float)RDB_tuple_get_rational(&tpl, "SALARY"));
+        printf("SALARY: %f\n", (float) RDB_tuple_get_rational(&tpl, "SALARY"));
         b = RDB_tuple_get_bool(&tpl, "HIGHSAL");
         printf("HIGHSAL: %s\n", b ? "TRUE" : "FALSE");
     }
     RDB_destroy_tuple(&tpl);
-    if (err != RDB_NOT_FOUND) {
+    if (ret != RDB_NOT_FOUND) {
         goto error;
     }
 
@@ -123,7 +149,7 @@ print_empsq_view(RDB_database *dbp, RDB_table *vtbp)
     return RDB_OK;
 error:
     RDB_rollback(&tx);
-    return err;
+    return ret;
 }
 
 int
@@ -131,63 +157,41 @@ main()
 {
     RDB_environment *dsp;
     RDB_database *dbp;
-    RDB_table *viewp;
-    int err;
+    int ret;
     
     printf("Opening environment\n");
-    err = RDB_open_env("db", &dsp);
-    if (err != RDB_OK) {
-        fprintf(stderr, "Error: %s\n", RDB_strerror(err));
+    ret = RDB_open_env("db", &dsp);
+    if (ret != RDB_OK) {
+        fprintf(stderr, "Error: %s\n", RDB_strerror(ret));
         return 1;
     }
-    err = RDB_get_db_from_env("TEST", dsp, &dbp);
-    if (err != RDB_OK) {
-        fprintf(stderr, "Error: %s\n", RDB_strerror(err));
+    ret = RDB_get_db_from_env("TEST", dsp, &dbp);
+    if (ret != RDB_OK) {
+        fprintf(stderr, "Error: %s\n", RDB_strerror(ret));
         return 1;
     }
 
-    printf("Table SALARIES\n");
-    err = RDB_get_table(dbp, "SALARIES", &viewp);
-    if (err != RDB_OK) {
-        fprintf(stderr, "Error: %s\n", RDB_strerror(err));
+    ret = print_salary_view(dbp);
+    if (ret != RDB_OK) {
+        fprintf(stderr, "Error: %s\n", RDB_strerror(ret));
         return 2;
     }
 
-    err = print_salary_view(dbp, viewp);
-    if (err != RDB_OK) {
-        fprintf(stderr, "Error: %s\n", RDB_strerror(err));
+    ret = print_emp_view(dbp);
+    if (ret != RDB_OK) {
+        fprintf(stderr, "Error: %s\n", RDB_strerror(ret));
         return 2;
     }
 
-    printf("Table EMPS1H\n");
-    err = RDB_get_table(dbp, "EMPS1H", &viewp);
-    if (err != RDB_OK) {
-        fprintf(stderr, "Error: %s\n", RDB_strerror(err));
+    ret = print_empsq_view(dbp);
+    if (ret != RDB_OK) {
+        fprintf(stderr, "Error: %s\n", RDB_strerror(ret));
         return 2;
     }
 
-    err = print_emp_view(dbp, viewp);
-    if (err != RDB_OK) {
-        fprintf(stderr, "Error: %s\n", RDB_strerror(err));
-        return 2;
-    }
-
-    printf("Table EMPS1SQ\n");
-    err = RDB_get_table(dbp, "EMPS1SQ", &viewp);
-    if (err != RDB_OK) {
-        fprintf(stderr, "Error: %s\n", RDB_strerror(err));
-        return 2;
-    }
-
-    err = print_empsq_view(dbp, viewp);
-    if (err != RDB_OK) {
-        fprintf(stderr, "Error: %s\n", RDB_strerror(err));
-        return 2;
-    }
-
-    err = RDB_close_env(dsp);
-    if (err != RDB_OK) {
-        fprintf(stderr, "Error: %s\n", RDB_strerror(err));
+    ret = RDB_close_env(dsp);
+    if (ret != RDB_OK) {
+        fprintf(stderr, "Error: %s\n", RDB_strerror(ret));
         return 2;
     }
 

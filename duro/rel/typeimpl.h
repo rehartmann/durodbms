@@ -1,6 +1,8 @@
 #ifndef RDB_TYPEIMPL_H
 #define RDB_TYPEIMPL_H
 
+#include <rel/rdb.h>
+
 /* $Id$ */
 
 int
@@ -22,6 +24,5 @@ RDB_value_irep(RDB_value *valp, size_t *lenp);
  */
 int
 RDB_irep_to_value(RDB_value *valp, RDB_type *, void *datap, size_t len);
-
 
 #endif

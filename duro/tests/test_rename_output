@@ -1,6 +1,6 @@
 Opening environment
-Creating EMPS1 RENAME (SALARY AS SAL, EMPNO AS EMP#)
 Starting transaction
+Creating EMPS1 RENAME (SALARY AS SAL, EMPNO AS EMP#)
 Printing renaming table
 EMP#: 2
 NAME: Jones

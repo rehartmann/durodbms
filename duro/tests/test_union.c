@@ -21,10 +21,10 @@ print_table(RDB_table *tbp, RDB_transaction *txp)
     
     RDB_init_tuple(&tpl);    
     for (i = 0; (ret = RDB_array_get_tuple(&array, i, &tpl)) == RDB_OK; i++) {
-        printf("EMPNO: %d\n", RDB_tuple_get_int(&tpl, "EMPNO"));
+        printf("EMPNO: %d\n", (int) RDB_tuple_get_int(&tpl, "EMPNO"));
         printf("NAME: %s\n", RDB_tuple_get_string(&tpl, "NAME"));
-        printf("DEPTNO: %d\n", RDB_tuple_get_int(&tpl, "DEPTNO"));
-        printf("SALARY: %f\n", (float)RDB_tuple_get_rational(&tpl, "SALARY"));
+        printf("DEPTNO: %d\n", (int) RDB_tuple_get_int(&tpl, "DEPTNO"));
+        printf("SALARY: %f\n", (float) RDB_tuple_get_rational(&tpl, "SALARY"));
     }
     RDB_destroy_tuple(&tpl);
     if (ret != RDB_NOT_FOUND) {
@@ -47,12 +47,20 @@ test_union(RDB_database *dbp)
     RDB_table *tbp, *tbp2, *vtbp;
     int ret;
 
-    RDB_get_table(dbp, "EMPS1", &tbp);
-    RDB_get_table(dbp, "EMPS2", &tbp2);
-
     printf("Starting transaction\n");
     ret = RDB_begin_tx(&tx, dbp, NULL);
     if (ret != RDB_OK) {
+        return ret;
+    }
+
+    ret = RDB_get_table("EMPS1", &tx, &tbp);
+    if (ret != RDB_OK) {
+        RDB_rollback(&tx);
+        return ret;
+    }
+    ret = RDB_get_table("EMPS2", &tx, &tbp2);
+    if (ret != RDB_OK) {
+        RDB_rollback(&tx);
         return ret;
     }
 

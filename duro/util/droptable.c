@@ -10,7 +10,17 @@ delete_table(RDB_database *dbp, const char *tbnamp)
     RDB_table *tbp;
     RDB_transaction tx;
 
-    err = RDB_get_table(dbp, tbnamp, &tbp);
+    err = RDB_begin_tx(&tx, dbp, NULL);
+    if (err != RDB_OK) {
+        return err;
+    } 
+
+    err = RDB_get_table(tbnamp, &tx, &tbp);
+    if (err != RDB_OK) {
+        goto error;
+    } 
+
+    err = RDB_commit(&tx);
     if (err != RDB_OK) {
         return err;
     } 
@@ -50,6 +60,8 @@ main(int argc, char *argv[])
         return 1;
     }
 
+    RDB_internal_env(envp)->set_errfile(RDB_internal_env(envp), stderr);
+
     if (argc == 0) {
         fputs("droptable: missing argument(s)\n", stderr);
         return 1;
@@ -65,13 +77,13 @@ main(int argc, char *argv[])
 
     err = RDB_release_db(dbp);
     if (err != RDB_OK) {
-        fprintf(stderr, "lstables: %s\n", RDB_strerror(err));
+        fprintf(stderr, "droptable: %s\n", RDB_strerror(err));
         return 1;
     }
 
     err = RDB_close_env(envp);
     if (err != RDB_OK) {
-        fprintf(stderr, "lstables: %s\n", RDB_strerror(err));
+        fprintf(stderr, "droptable: %s\n", RDB_strerror(err));
         return 1;
     }
     
