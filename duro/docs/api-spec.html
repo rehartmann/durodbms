@@ -187,8 +187,9 @@ See the release notes for details.
 <ul>
 <li><a href="#define_type">RDB_define_type</a>
 <li><a href="#implement_type">RDB_implement_type</a>
-<li><a href="#create_tuple_type">RDB_create_tuple_type</a>
+<li><a href="#create_array_type">RDB_create_array_type</a>
 <li><a href="#create_relation_type">RDB_create_relation_type</a>
+<li><a href="#create_tuple_type">RDB_create_tuple_type</a>
 <li><a href="#get_type">RDB_get_type</a>
 <li><a href="#drop_type">RDB_drop_type</a>
 <li><a href="#type_name">RDB_type_name</a>
@@ -2732,7 +2733,7 @@ indicates an error.
 #include &lt;rel/rdb.h&gt;
 
 int
-RDB_set_array_length(RDB_object *arrp, int len);
+RDB_set_array_length(RDB_object *arrp, RDB_int len);
 </pre>
 
 <h3>Description</h3>
@@ -3566,7 +3567,7 @@ The fields defaultp and options of RDB_attr are ignored.
 #include &lt;rel/rdb.h&gt;
 
 RDB_type *
-RDB_create_relation_type(int attrc, RDB_attr attrv[]);
+RDB_create_relation_type(int attrc, <a href="#attr">RDB_attr</a> attrv[]);
 </pre>
 
 <h3>Description</h3>

@@ -103,6 +103,7 @@ serialize_type(RDB_object *valp, int *posp, const RDB_type *typ)
             return RDB_OK;
         }
         case RDB_TP_RELATION:
+        case RDB_TP_ARRAY:
             return serialize_type(valp, posp, typ->var.basetyp);
     }
     abort();
@@ -592,14 +593,14 @@ deserialize_type(RDB_object *valp, int *posp, RDB_transaction *txp,
 {
     char *namp;
     int ret;
-    RDB_byte b;
+    enum _RDB_tp_kind kind;
 
     ret = deserialize_byte(valp, posp);
     if (ret < 0)
         return ret;
-    b = (RDB_byte) ret;
+    kind = (enum _RDB_tp_kind ) ret;
 
-    switch (b) {
+    switch (kind) {
         case RDB_TP_SCALAR:
             ret = deserialize_str(valp, posp, &namp);
             if (ret != RDB_OK)
@@ -643,11 +644,12 @@ deserialize_type(RDB_object *valp, int *posp, RDB_transaction *txp,
             return RDB_OK;
         }
         case RDB_TP_RELATION:
+        case RDB_TP_ARRAY:
             *typp = (RDB_type *) malloc(sizeof (RDB_type));
             if (*typp == NULL)
                 return RDB_NO_MEMORY;
             (*typp)->name = NULL;
-            (*typp)->kind = RDB_TP_RELATION;
+            (*typp)->kind = kind;
             ret = deserialize_type(valp, posp, txp,
                         &(*typp)->var.basetyp);
             if (ret != RDB_OK)

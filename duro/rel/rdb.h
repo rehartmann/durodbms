@@ -31,14 +31,6 @@ along with Duro; if not, write to the Free Software Foundation, Inc.,
 #include <gen/types.h>
 #include <stdlib.h>
 
-
-/* internal */
-enum _RDB_tp_kind {
-    RDB_TP_SCALAR,
-    RDB_TP_TUPLE,
-    RDB_TP_RELATION
-};
-
 typedef struct {
     char *name;
     int compc;
@@ -80,13 +72,25 @@ typedef struct RDB_object {
             struct RDB_transaction *txp;
             struct RDB_qresult *qrp;
             RDB_int pos;
+
             RDB_int length; /* length of array; -1 means unknown */
             struct RDB_object *tplp;
+            struct RDB_object *elemv;
+            int elemc; /* # of managed elements */
+            int capacity; /* # of elements allocated for elemv */
         } arr;
      } var;
 } RDB_object;
 
 typedef int RDB_compare_func(const RDB_object *, const RDB_object *);
+
+/* internal */
+enum _RDB_tp_kind {
+    RDB_TP_SCALAR,
+    RDB_TP_TUPLE,
+    RDB_TP_RELATION,
+    RDB_TP_ARRAY
+};
 
 typedef struct RDB_type {
     /* internal */
@@ -99,7 +103,7 @@ typedef struct RDB_type {
     RDB_int ireplen;
 
     union {
-        struct RDB_type *basetyp; /* relation type */
+        struct RDB_type *basetyp; /* relation or array type */
         struct {
             int attrc;
             struct RDB_attr *attrv;
@@ -236,6 +240,18 @@ typedef struct {
     char *attrname;
 } RDB_wrapping;
 
+typedef struct {
+    char *attrname;
+    RDB_bool asc;
+} RDB_seq_item;
+
+struct _RDB_tbindex {
+    char *name;
+    int attrc;
+    RDB_seq_item *attrv;
+    RDB_index *idxp;
+};
+
 typedef struct RDB_table {
     /* internal */
     RDB_type *typ;
@@ -250,7 +266,10 @@ typedef struct RDB_table {
         struct {
             RDB_recmap *recmapp;
             RDB_hashmap attrmap;   /* Maps attr names to field numbers */
-            RDB_index **keyidxv;   /* Secondary key indexes */
+
+            /* Table indexes */
+            int indexc;
+            struct _RDB_tbindex *indexv;
         } stored;
         struct {
             struct RDB_table *tbp;
@@ -761,11 +780,6 @@ int
 RDB_unwrap_tuple(const RDB_object *tplp, int attrc, char *attrv[],
         RDB_object *restplp);
 
-typedef struct {
-    char *attrname;
-    RDB_bool asc;
-} RDB_seq_item;
-
 /*
  * Convert a RDB_table to a RDB_object and store the array in
  * the location pointed to by arrpp.
@@ -785,12 +799,18 @@ RDB_table_to_array(RDB_object *arrp, RDB_table *,
 int
 RDB_array_get(RDB_object *, RDB_int idx, RDB_object **);
 
+int
+RDB_array_set(RDB_object *, RDB_int idx, const RDB_object *tplp);
+
 /*
  * Return the length of the array.
  * A return value < 0 indicates an error.
  */
 RDB_int
 RDB_array_length(RDB_object *);
+
+int
+RDB_set_array_length(RDB_object *arrp, RDB_int len);
 
 RDB_bool
 RDB_type_is_numeric(const RDB_type *);
@@ -806,6 +826,9 @@ RDB_create_tuple_type(int attrc, RDB_attr attrv[]);
  */
 RDB_type *
 RDB_create_relation_type(int attrc, RDB_attr attrv[]);
+
+RDB_type *
+RDB_create_array_type(RDB_type *);
 
 /*
  * Drop a type.

@@ -50,57 +50,6 @@ char **RDB_dup_strvec(int cnt, char **srcv) {
 }
 
 int
-RDB_split_str(const char *str, char *(*substrvp[]))
-{
-    int i;
-    int slen = strlen(str);
-    int attrc;
-
-    if (str[0] == '\0') {
-        attrc = 0;
-    } else {
-        const char *sp;
-        const char *ep;
-    
-        attrc = 1;
-        for (i = 0; i < slen; i++) {
-            if (str[i] == ' ')
-                attrc++;
-        }
-        *substrvp = malloc(sizeof(char *) * attrc);
-        if (*substrvp == NULL)
-            return -1;
-
-        for (i = 0; i < attrc; i++)
-            (*substrvp)[i] = NULL;
-
-        sp = str;
-        for (i = 0; sp != NULL; i++) {
-            ep = strchr(sp, ' ');
-            if (ep != NULL) {
-                (*substrvp)[i] = malloc(ep - sp + 1);
-                if ((*substrvp)[i] == NULL)
-                    goto error;
-                strncpy((*substrvp)[i], sp, ep - sp);
-                (*substrvp)[i][ep - sp] = '\0';
-                ep++;
-            } else {
-                (*substrvp)[i] = RDB_dup_str(sp);
-                if ((*substrvp)[i] == NULL)
-                    goto error;
-            }
-            sp = ep;
-        }
-    }
-    return attrc;
-error:
-    for (i = 0; i < attrc; i++)
-        free((*substrvp)[i]);
-    free(*substrvp);
-    return -1;
-}
-
-int
 RDB_find_str(int strc, char *strv[], const char *str)
 {
     int i;

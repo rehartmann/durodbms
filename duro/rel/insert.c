@@ -50,8 +50,10 @@ insert_stored(RDB_table *tbp, const RDB_object *tplp, RDB_transaction *txp)
 
         /* Set type - needed for non-scalar attributes */
         if (valp->typ == NULL
-                && (valp->kind == RDB_OB_TUPLE || valp->kind == RDB_OB_TABLE))
+                && (valp->kind == RDB_OB_TUPLE || valp->kind == RDB_OB_TABLE
+                 || valp->kind == RDB_OB_ARRAY))
             _RDB_set_nonsc_type(valp, tuptyp->var.tuple.attrv[i].typ);
+            /* !! check object kind against type? */
 
         _RDB_obj_to_field(&fvp[*fnop], valp);
     }

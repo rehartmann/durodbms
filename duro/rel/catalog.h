@@ -2,7 +2,7 @@
 #define RDB_CATALOG_H
 
 /*
- * Copyright (C) 2003 René Hartmann.
+ * Copyright (C) 2003, 2004 René Hartmann.
  * See the file COPYING for redistribution information.
  */
 

@@ -27,14 +27,6 @@ void
 RDB_free_strvec(int cnt, char **strv);
 
 /*
- * Split string into substrings separated by blanks.
- * Return the number of substrings.
- * If the operation fails because of insufficient memory, -1 is returned.
- */
-int
-RDB_split_str(const char *str, char *(*substrvp[]));
-
-/*
  * Return the index of string name in attrv, or -1
  * if not found.
  */

@@ -2,7 +2,7 @@
 #define RDB_INTERNAL_H
 
 /*
- * Copyright (C) 2003 René Hartmann.
+ * Copyright (C) 2003, 2004 René Hartmann.
  * See the file COPYING for redistribution information.
  */
 
@@ -36,6 +36,7 @@ typedef struct RDB_dbroot {
     RDB_table *possrepcomps_tbp;
     RDB_table *ro_ops_tbp;
     RDB_table *upd_ops_tbp;
+    RDB_table *indexes_tbp;
 } RDB_dbroot;
 
 typedef struct RDB_qresult {
@@ -290,6 +291,9 @@ _RDB_expr_refers(RDB_expression *, RDB_table *);
 int
 _RDB_copy_tuple(RDB_object *dstp, const RDB_object *srcp);
 
+int
+_RDB_copy_array(RDB_object *dstp, const RDB_object *srcp);
+
 RDB_bool
 _RDB_tuple_equals(const RDB_object *, const RDB_object *);
 
@@ -352,5 +356,9 @@ RDB_expr_type(const RDB_expression *exp, const RDB_type *);
 
 int
 _RDB_copy_obj(RDB_object *dstvalp, const RDB_object *srcvalp);
+
+int
+_RDB_open_table_index(RDB_table *tbp, struct _RDB_tbindex *indexp,
+        RDB_environment *, RDB_transaction *txp);
 
 #endif

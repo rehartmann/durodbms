@@ -87,11 +87,12 @@ dup_nonscalar_type(RDB_type *typ)
 
     switch (typ->kind) {
         case RDB_TP_RELATION:
+        case RDB_TP_ARRAY:
             restyp = malloc(sizeof (RDB_type));
             if (restyp == NULL)
                 return NULL;
             restyp->name = NULL;
-            restyp->kind = RDB_TP_RELATION;
+            restyp->kind = typ->kind;
             restyp->var.basetyp = dup_nonscalar_type(typ->var.basetyp);
             if (restyp->var.basetyp == NULL) {
                 free(restyp);
@@ -119,9 +120,10 @@ dup_nonscalar_type(RDB_type *typ)
                  restyp->var.tuple.attrv[i].defaultp = NULL;
             }
             return restyp;
-        default:
+        case RDB_TP_SCALAR:
             return typ;
     }
+    abort();
 }
 
 RDB_type *
@@ -178,6 +180,22 @@ RDB_create_relation_type(int attrc, RDB_attr attrv[])
     return typ;
 }
 
+RDB_type *
+RDB_create_array_type(RDB_type *basetyp)
+{
+    RDB_type *typ = malloc(sizeof (RDB_type));
+    
+    if (typ == NULL)
+        return NULL;
+    
+    typ->name = NULL;
+    typ->kind = RDB_TP_ARRAY;
+    typ->ireplen = RDB_VARIABLE_LEN;
+    typ->var.basetyp = basetyp;
+
+    return typ;
+}
+
 RDB_bool
 RDB_type_is_builtin(const RDB_type *typ)
 {
@@ -215,6 +233,7 @@ free_type(RDB_type *typ)
             free(typ->var.tuple.attrv);
             break;
         case RDB_TP_RELATION:
+        case RDB_TP_ARRAY:
             RDB_drop_type(typ->var.basetyp, NULL);
             break;
         case RDB_TP_SCALAR:
@@ -628,6 +647,7 @@ RDB_type_equals(const RDB_type *typ1, const RDB_type *typ2)
     
     switch (typ1->kind) {
         case RDB_TP_RELATION:
+        case RDB_TP_ARRAY:
             return RDB_type_equals(typ1->var.basetyp, typ2->var.basetyp);
         case RDB_TP_TUPLE:
             {
@@ -677,7 +697,8 @@ RDB_type_attr_type(const RDB_type *typ, const char *name)
         case RDB_TP_TUPLE:
             attrp = _RDB_tuple_type_attr(typ, name);
             break;
-        default:
+        case RDB_TP_ARRAY:
+        case RDB_TP_SCALAR:
             return NULL;
     }
     if (attrp == NULL)

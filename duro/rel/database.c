@@ -29,9 +29,6 @@ RDB_db_env(RDB_database *dbp) {
  * of the type pointed to by typ.
  */
 static int replen(const RDB_type *typ) {
-    if (RDB_type_is_scalar(typ))
-        return typ->ireplen;
-
     switch(typ->kind) {
         case RDB_TP_TUPLE:
         {
@@ -52,36 +49,68 @@ static int replen(const RDB_type *typ) {
             return tlen;
         }
         case RDB_TP_RELATION:
+        case RDB_TP_ARRAY:
             return RDB_VARIABLE_LEN;
-        default: ;
+        case RDB_TP_SCALAR:
+            return typ->ireplen;
     }
     abort();
 }
 
-static int
-open_key_index(RDB_table *tbp, int keyno, const RDB_string_vec *keyattrsp,
-                 RDB_bool create, RDB_transaction *txp, RDB_environment *envp,
-                 RDB_index **idxp)
+int
+_RDB_open_table_index(RDB_table *tbp, struct _RDB_tbindex *indexp,
+        RDB_environment *envp, RDB_transaction *txp)
 {
     int ret;
     int i;
-    char *idx_name = NULL;
+    int *fieldv = malloc(sizeof(int *) * indexp->attrc);
+
+    if (fieldv == NULL) {
+        ret = RDB_NO_MEMORY;
+        goto cleanup;
+    }
+
+    /* get index numbers */
+    for (i = 0; i < indexp->attrc; i++) {
+        fieldv[i] = *(int *) RDB_hashmap_get(&tbp->var.stored.attrmap,
+                        indexp->attrv[i].attrname, NULL);
+    }
+
+    /* create index */
+    ret = RDB_create_index(tbp->var.stored.recmapp,
+                  tbp->is_persistent ? indexp->name : NULL,
+                  tbp->is_persistent ? RDB_DATAFILE : NULL,
+                  envp, indexp->attrc, fieldv, RDB_TRUE,
+                  txp != NULL ? txp->txid : NULL, &indexp->idxp);
+
+cleanup:
+    free(fieldv);
+    return ret;
+}
+
+static int
+create_key_index(RDB_table *tbp, int keyno, const RDB_string_vec *keyattrsp,
+                 RDB_environment *envp, RDB_transaction *txp,
+                 struct _RDB_tbindex *indexp)
+{
+    int ret;
+    int i;
     int *fieldv = malloc(sizeof(int *) * keyattrsp->strc);
 
     if (fieldv == NULL) {
         ret = RDB_NO_MEMORY;
-        goto error;
+        goto cleanup;
     }
 
     if (tbp->is_persistent) {
-        idx_name = malloc(strlen(RDB_table_name(tbp)) + 4);
-        if (idx_name == NULL) {
+        indexp->name = malloc(strlen(RDB_table_name(tbp)) + 4);
+        if (indexp->name == NULL) {
             ret = RDB_NO_MEMORY;
-            goto error;
+            goto cleanup;
         }
 
         /* build index name */            
-        sprintf(idx_name, "%s$%d", tbp->name, keyno);
+        sprintf(indexp->name, "%s$%d", tbp->name, keyno);
     }
 
     /* get index numbers */
@@ -90,26 +119,14 @@ open_key_index(RDB_table *tbp, int keyno, const RDB_string_vec *keyattrsp,
                         keyattrsp->strv[i], NULL);
     }
 
-    if (create) {
-        /* create index */
-        ret = RDB_create_index(tbp->var.stored.recmapp,
-                  tbp->is_persistent ? idx_name : NULL,
+    /* create index */
+    ret = RDB_create_index(tbp->var.stored.recmapp,
+                  tbp->is_persistent ? indexp->name : NULL,
                   tbp->is_persistent ? RDB_DATAFILE : NULL,
                   envp, keyattrsp->strc, fieldv, RDB_TRUE,
-                  txp != NULL ? txp->txid : NULL, idxp);
-    } else {
-        /* open index */
-        ret = RDB_open_index(tbp->var.stored.recmapp, idx_name, RDB_DATAFILE,
-                  envp, keyattrsp->strc, fieldv, RDB_TRUE,
-                  txp != NULL ? txp->txid : NULL, idxp);
-    }
+                  txp != NULL ? txp->txid : NULL, &indexp->idxp);
 
-    if (ret != RDB_OK)
-        goto error;
-
-    ret = RDB_OK;
-error:
-    free(idx_name);
+cleanup:
     free(fieldv);
     return ret;
 }
@@ -134,6 +151,45 @@ compare_field(const void *data1p, size_t len1,
     RDB_destroy_obj(&val2);
 
     return res;
+}
+
+/*
+ * Create secondary indexes
+ */
+static int
+create_key_indexes(RDB_table *tbp, RDB_environment *envp, RDB_transaction *txp)
+{
+    int i;
+    int j;
+    int ret;
+
+    tbp->var.stored.indexc = tbp->keyc - 1;
+    tbp->var.stored.indexv = malloc(sizeof (struct _RDB_tbindex)
+            * tbp->var.stored.indexc);
+    if (tbp->var.stored.indexv == NULL)
+        return RDB_NO_MEMORY;
+
+    for (i = 0; i < tbp->var.stored.indexc; i++) {
+        tbp->var.stored.indexv[i].attrc = tbp->keyv[i + 1].strc;
+        tbp->var.stored.indexv[i].attrv = malloc (sizeof(RDB_seq_item)
+                * tbp->keyv[i + 1].strc);
+        if (tbp->var.stored.indexv[i].attrv == NULL)
+            return RDB_NO_MEMORY;
+        for (j = 0; j < tbp->keyv[i + 1].strc; j++) {
+            tbp->var.stored.indexv[i].attrv[j].asc = RDB_TRUE;
+            tbp->var.stored.indexv[i].attrv[j].attrname =
+                    RDB_dup_str(tbp->keyv[i + 1].strv[j]);
+            if (tbp->var.stored.indexv[i].attrv[j].attrname == NULL)
+                return RDB_NO_MEMORY;
+        }
+
+        /* Create index */
+        ret = create_key_index(tbp, i + 1, &tbp->keyv[i + 1],
+                 envp, txp, &tbp->var.stored.indexv[i]);
+        if (ret != RDB_OK)
+            return ret;
+    }
+    return RDB_OK;
 }
 
 /*
@@ -243,19 +299,19 @@ _RDB_open_table(RDB_table *tbp,
         goto error;
 
     /* Open/create indexes if there is more than one key */
-    if (tbp->keyc > 1) {
-        tbp->var.stored.keyidxv = malloc(sizeof(RDB_index *) * (tbp->keyc - 1));
-        if (tbp->var.stored.keyidxv == NULL) {
-            ret = RDB_NO_MEMORY;
-            RDB_errmsg(envp, RDB_strerror(ret));
-            goto error;
-        }
-        for (i = 1; i < tbp->keyc; i++) {
-            ret = open_key_index(tbp, i, &tbp->keyv[i], create, txp, envp,
-                          &tbp->var.stored.keyidxv[i - 1]);
-            if (ret != RDB_OK)
+    if (create) {
+        if (tbp->keyc > 1) {
+            ret = create_key_indexes(tbp, envp, txp);
+            if (ret != RDB_OK) {
+                RDB_errmsg(envp, RDB_strerror(ret));
                 goto error;
+            }
+        } else {
+            tbp->var.stored.indexc = 0;
         }
+    } else {
+        /* Flag that the indexes have not been opened */
+        tbp->var.stored.indexc = -1;
     }
 
     free(flenv);
@@ -317,17 +373,19 @@ free_dbroot(RDB_dbroot *dbrootp)
     free(dbrootp);
 }
 
-static int close_table(RDB_table *tbp, RDB_environment *envp)
+static int
+close_table(RDB_table *tbp, RDB_environment *envp)
 {
     int i;
     int ret;
 
     if (tbp->kind == RDB_TB_STORED) {
-        /* close secondary indexes */
-        for (i = 0; i < tbp->keyc - 1; i++) {
-            RDB_close_index(tbp->var.stored.keyidxv[i]);
+        if (tbp->var.stored.indexc > 0) {
+            /* close secondary indexes */
+            for (i = 0; i < tbp->var.stored.indexc; i++)
+                RDB_close_index(tbp->var.stored.indexv[i].idxp);
         }
-   
+
         /* close recmap */
         ret = RDB_close_recmap(tbp->var.stored.recmapp);
         _RDB_free_table(tbp, envp);
@@ -408,6 +466,7 @@ close_systables(RDB_dbroot *dbrootp)
     close_table(dbrootp->possrepcomps_tbp, dbrootp->envp);
     close_table(dbrootp->ro_ops_tbp, dbrootp->envp);
     close_table(dbrootp->upd_ops_tbp, dbrootp->envp);
+    close_table(dbrootp->indexes_tbp, dbrootp->envp);
 }
 
 /* cleanup function to close all DBs and tables */
@@ -515,6 +574,8 @@ assoc_systables(RDB_dbroot *dbrootp, RDB_database *dbp)
     _RDB_assoc_table_db(dbrootp->ro_ops_tbp, dbp);
 
     _RDB_assoc_table_db(dbrootp->upd_ops_tbp, dbp);
+
+    _RDB_assoc_table_db(dbrootp->indexes_tbp, dbp);
 }
 
 /*
@@ -745,8 +806,19 @@ _RDB_free_table(RDB_table *tbp, RDB_environment *envp)
     }
 
     if (tbp->kind == RDB_TB_STORED) {
+        int j;
+
         RDB_drop_type(tbp->typ, NULL);
         RDB_destroy_hashmap(&tbp->var.stored.attrmap);
+
+        if (tbp->var.stored.indexc > 0) {
+            for (i = 0; i < tbp->var.stored.indexc; i++) {
+                for (j = 0; j < tbp->var.stored.indexv[i].attrc; j++)
+                    free(tbp->var.stored.indexv[i].attrv[j].attrname);
+                free(tbp->var.stored.indexv[i].attrv);
+            }
+            free(tbp->var.stored.indexv);
+        }
     }
 
     /* Delete candidate keys */
@@ -1023,8 +1095,8 @@ _RDB_drop_rtable(RDB_table *tbp, RDB_transaction *txp)
     int i;
 
     /* Schedule secondary indexes for deletion */
-    for (i = 0; i < tbp->keyc - 1; i++) {
-        _RDB_del_index(txp, tbp->var.stored.keyidxv[i]);
+    for (i = 0; i < tbp->var.stored.indexc; i++) {
+        _RDB_del_index(txp, tbp->var.stored.indexv[i].idxp);
     }
 
     if (txp != NULL) {
