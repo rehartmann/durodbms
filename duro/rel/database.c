@@ -294,6 +294,7 @@ _RDB_open_table(RDB_table *tbp,
 
         flenv[fno] = replen(heading[i].typ);
     }
+
     if (create) {
         if (ascv == NULL)
             ret = RDB_create_recmap(tbp->is_persistent ? tbp->name : NULL,
@@ -329,7 +330,7 @@ _RDB_open_table(RDB_table *tbp,
             RDB_errmsg(txp->dbp->dbrootp->envp, RDB_strerror(ret));
             goto error;
         }
-        for (i = 1; i < tbp->keyc; i++) {    
+        for (i = 1; i < tbp->keyc; i++) {
             ret = open_key_index(tbp, i, &tbp->keyv[i], create, txp,
                           &tbp->var.stored.keyidxv[i - 1]);
             if (ret != RDB_OK)
@@ -1036,6 +1037,12 @@ RDB_create_table(const char *name, RDB_bool persistent,
 {
     int ret;
     int i;
+    RDB_transaction tx;
+
+    /* Create subtrabsaction */
+    ret = RDB_begin_tx(&tx, txp->dbp, txp);
+    if (ret != RDB_OK)
+        return ret;
 
     if (!_RDB_legal_name(name))
         return RDB_INVALID_ARGUMENT;
@@ -1046,23 +1053,27 @@ RDB_create_table(const char *name, RDB_bool persistent,
     }
 
     ret = _RDB_create_table(name, persistent, strc, heading, keyc, keyv,
-                            txp, tbpp);
-    if (ret != RDB_OK)
+                            &tx, tbpp);
+    if (ret != RDB_OK) {
+        RDB_rollback(&tx);
         return ret;
+    }
 
     if (persistent) {
-        _RDB_assign_table_db(*tbpp, txp->dbp);
-
         /* Insert table into catalog */
-        ret = _RDB_catalog_insert(*tbpp, txp);
+        ret = _RDB_cat_insert(*tbpp, &tx);
         if (ret != RDB_OK) {
+            RDB_rollback(&tx);
+            _RDB_drop_rtable(*tbpp, txp);
             if (RDB_is_syserr(ret))
                 RDB_rollback(txp);
             return ret;
         }
+
+        _RDB_assign_table_db(*tbpp, txp->dbp);
     }
 
-    return RDB_OK;
+    return RDB_commit(&tx);
 }
 
 int
@@ -1262,7 +1273,7 @@ _RDB_drop_table(RDB_table *tbp, RDB_transaction *txp, RDB_bool rec)
 
     if (tbp->is_persistent) {
         /* Delete table from catalog */
-        ret = _RDB_catalog_delete(tbp, txp);
+        ret = _RDB_cat_delete(tbp, txp);
     }
 
     _RDB_free_table(tbp, txp != NULL ? txp->dbp->dbrootp->envp : NULL);
@@ -1298,22 +1309,27 @@ RDB_set_table_name(RDB_table *tbp, const char *name, RDB_transaction *txp)
 }
 
 int
-RDB_make_persistent(RDB_table *tbp, RDB_transaction *txp)
+RDB_add_table(RDB_table *tbp, RDB_transaction *txp)
 {
-    if (tbp->is_persistent)
-        return RDB_OK;
+    int ret;
 
     if (tbp->name == NULL)
         return RDB_INVALID_ARGUMENT;
 
     /* Turning a transient real table into a persistent table is not supported */
-    if (tbp->kind == RDB_TB_STORED)
+    if (!tbp->is_persistent && tbp->kind == RDB_TB_STORED)
         return RDB_NOT_SUPPORTED;
 
     if (!RDB_tx_is_running(txp))
         return RDB_INVALID_TRANSACTION;
 
-    return _RDB_catalog_insert(tbp, txp);
+    ret = _RDB_assign_table_db(tbp, txp->dbp);
+    if (ret != RDB_OK)
+        return ret;
+
+    tbp->is_persistent = RDB_TRUE;
+
+    return _RDB_cat_insert(tbp, txp);
 }
 
 int

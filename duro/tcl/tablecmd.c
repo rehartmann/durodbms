@@ -467,7 +467,7 @@ table_expr_cmd(TclState *statep, Tcl_Interp *interp, int objc,
     }
 
     if (persistent) {
-        ret = RDB_make_persistent(tbp, txp);
+        ret = RDB_add_table(tbp, txp);
         if (ret != RDB_OK) {
             Duro_dberror(interp, ret);
             return TCL_ERROR;

@@ -1,19 +1,21 @@
 #ifndef RDB_CATALOG_H
 #define RDB_CATALOG_H
 
+/*
+ * Copyright (C) 2003 René Hartmann.
+ * See the file COPYING for redistribution information.
+ */
+
 /* $Id$ */
 
 #include "rdb.h"
 #include "internal.h"
 
 int
-_RDB_dbtables_insert(RDB_table *, RDB_transaction *);
+_RDB_cat_insert(RDB_table *, RDB_transaction *);
 
 int
-_RDB_catalog_insert(RDB_table *, RDB_transaction *);
-
-int
-_RDB_catalog_delete(RDB_table *, RDB_transaction *);
+_RDB_cat_delete(RDB_table *, RDB_transaction *);
 
 int
 _RDB_open_systables(RDB_transaction *);

@@ -108,7 +108,7 @@ int test_useop(RDB_database *dbp) {
         goto error;
     }
 
-    ret = RDB_make_persistent(vtbp, &tx);
+    ret = RDB_add_table(vtbp, &tx);
     if (ret != RDB_OK) {
         goto error;
     }

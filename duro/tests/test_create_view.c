@@ -51,7 +51,7 @@ create_view1(RDB_database *dbp)
         RDB_rollback(&tx);
         return ret;
     } 
-    ret = RDB_make_persistent(vtbp, &tx);
+    ret = RDB_add_table(vtbp, &tx);
     if (ret != RDB_OK) {
         RDB_rollback(&tx);
         return ret;
@@ -103,7 +103,7 @@ create_view2(RDB_database *dbp)
         RDB_rollback(&tx);
         return ret;
     } 
-    ret = RDB_make_persistent(vtbp, &tx);
+    ret = RDB_add_table(vtbp, &tx);
     if (ret != RDB_OK) {
         RDB_rollback(&tx);
         return ret;
@@ -158,7 +158,7 @@ create_view3(RDB_database *dbp)
         RDB_rollback(&tx);
         return ret;
     } 
-    ret = RDB_make_persistent(vtbp, &tx);
+    ret = RDB_add_table(vtbp, &tx);
     if (ret != RDB_OK) {
         RDB_rollback(&tx);
         return ret;
@@ -226,7 +226,7 @@ create_view4(RDB_database *dbp)
         RDB_rollback(&tx);
         return ret;
     } 
-    ret = RDB_make_persistent(vtbp, &tx);
+    ret = RDB_add_table(vtbp, &tx);
     if (ret != RDB_OK) {
         RDB_rollback(&tx);
         return ret;

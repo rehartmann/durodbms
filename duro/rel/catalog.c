@@ -126,8 +126,8 @@ static RDB_attr tuple_attrs_attrv[] = {
 static char *tuple_attrs_keyattrv[] = { "TYPEKEY", "ATTRNAME" };
 static RDB_string_vec tuple_attrs_keyv[] = { { 2, tuple_attrs_keyattrv } };
 
-int
-_RDB_dbtables_insert(RDB_table *tbp, RDB_transaction *txp)
+static int
+dbtables_insert(RDB_table *tbp, RDB_transaction *txp)
 {
     RDB_object tpl;
     int ret;
@@ -297,10 +297,6 @@ insert_rtable(RDB_table *tbp, RDB_transaction *txp)
         return ret;
     }
 
-    ret = _RDB_dbtables_insert(tbp, txp);
-    if (ret != RDB_OK)
-        return ret;
-
     /* insert entries into table SYS_TABLEATTRS */
     RDB_init_obj(&tpl);
     ret = RDB_tuple_set_string(&tpl, "TABLENAME", tbp->name);
@@ -419,7 +415,7 @@ insert_rtable(RDB_table *tbp, RDB_transaction *txp)
         return ret;
     for (i = 0; i < tbp->keyc; i++) {
         RDB_string_vec *kap = &tbp->keyv[i];
-        char buf[1024];
+        char buf[1024]; /* !! */
 
         ret = RDB_tuple_set_int(&tpl, "KEYNO", i);
         if (ret != RDB_OK)
@@ -458,6 +454,8 @@ insert_vtable(RDB_table *tbp, RDB_transaction *txp)
     RDB_init_obj(&tpl);
     RDB_init_obj(&defval);
 
+    /* Insert entry into SYS_VTABLES */
+
     ret = RDB_tuple_set_string(&tpl, "TABLENAME", tbp->name);
     if (ret != RDB_OK)
         goto cleanup;
@@ -480,10 +478,6 @@ insert_vtable(RDB_table *tbp, RDB_transaction *txp)
         goto cleanup;
     }
 
-    ret = _RDB_dbtables_insert(tbp, txp);
-    if (ret != RDB_OK)
-        goto cleanup;
-
     ret = RDB_OK;
 
 cleanup:
@@ -494,12 +488,28 @@ cleanup:
 }
 
 int
-_RDB_catalog_insert(RDB_table *tbp, RDB_transaction *txp)
+_RDB_cat_insert(RDB_table *tbp, RDB_transaction *txp)
 {
+    int ret;
+
+    /*
+     * Create table in the catalog.
+     */
     if (tbp->kind == RDB_TB_STORED)
-        return insert_rtable(tbp, txp);
+        ret = insert_rtable(tbp, txp);
     else
-        return insert_vtable(tbp, txp);
+        ret = insert_vtable(tbp, txp);
+
+    /* If the table already exists in the catalog, proceed */
+    if (ret != RDB_OK && ret != RDB_ELEMENT_EXISTS) {
+        return ret;
+    }
+
+    /*
+     * Add the table into the database by inserting the table/DB pair
+     * into SYS_DBTABLES.
+     */
+    return dbtables_insert(tbp, txp);
 }
 
 /* Delete a real table from the catalog */
@@ -564,7 +574,7 @@ delete_vtable(RDB_table *tbp, RDB_transaction *txp)
 }
 
 int
-_RDB_catalog_delete(RDB_table *tbp, RDB_transaction *txp)
+_RDB_cat_delete(RDB_table *tbp, RDB_transaction *txp)
 {
     if (tbp->kind == RDB_TB_STORED)
         return delete_rtable(tbp, txp);
@@ -692,102 +702,102 @@ _RDB_create_db_in_cat(RDB_transaction *txp)
 {
     int ret;
 
-    ret = _RDB_catalog_insert(txp->dbp->dbrootp->table_attr_tbp, txp);
+    ret = _RDB_cat_insert(txp->dbp->dbrootp->table_attr_tbp, txp);
     if (ret != RDB_OK) {
         if (ret == RDB_ELEMENT_EXISTS) {
             /*
              * The catalog table already exists, but not in this database,
              * so assign it to this database too
              */
-            ret = _RDB_dbtables_insert(txp->dbp->dbrootp->table_attr_tbp, txp);
+            ret = dbtables_insert(txp->dbp->dbrootp->table_attr_tbp, txp);
             if (ret != RDB_OK) 
                 return ret;
-            ret = _RDB_dbtables_insert(txp->dbp->dbrootp->table_attr_defvals_tbp, txp);
+            ret = dbtables_insert(txp->dbp->dbrootp->table_attr_defvals_tbp, txp);
             if (ret != RDB_OK) 
                 return ret;
-            ret = _RDB_dbtables_insert(txp->dbp->dbrootp->rtables_tbp, txp);
+            ret = dbtables_insert(txp->dbp->dbrootp->rtables_tbp, txp);
             if (ret != RDB_OK) 
                 return ret;
-            ret = _RDB_dbtables_insert(txp->dbp->dbrootp->vtables_tbp, txp);
+            ret = dbtables_insert(txp->dbp->dbrootp->vtables_tbp, txp);
             if (ret != RDB_OK) 
                 return ret;
-            ret = _RDB_dbtables_insert(txp->dbp->dbrootp->dbtables_tbp, txp);
+            ret = dbtables_insert(txp->dbp->dbrootp->dbtables_tbp, txp);
             if (ret != RDB_OK) 
                 return ret;
-            ret = _RDB_dbtables_insert(txp->dbp->dbrootp->keys_tbp, txp);
+            ret = dbtables_insert(txp->dbp->dbrootp->keys_tbp, txp);
             if (ret != RDB_OK) 
                 return ret;
-            ret = _RDB_dbtables_insert(txp->dbp->dbrootp->types_tbp, txp);
+            ret = dbtables_insert(txp->dbp->dbrootp->types_tbp, txp);
             if (ret != RDB_OK) 
                 return ret;
-            ret = _RDB_dbtables_insert(txp->dbp->dbrootp->possreps_tbp, txp);
+            ret = dbtables_insert(txp->dbp->dbrootp->possreps_tbp, txp);
             if (ret != RDB_OK) 
                 return ret;
-            ret = _RDB_dbtables_insert(txp->dbp->dbrootp->possrepcomps_tbp, txp);
+            ret = dbtables_insert(txp->dbp->dbrootp->possrepcomps_tbp, txp);
             if (ret != RDB_OK) 
                 return ret;
-            ret = _RDB_dbtables_insert(txp->dbp->dbrootp->ro_ops_tbp, txp);
+            ret = dbtables_insert(txp->dbp->dbrootp->ro_ops_tbp, txp);
             if (ret != RDB_OK) 
                 return ret;
-            ret = _RDB_dbtables_insert(txp->dbp->dbrootp->upd_ops_tbp, txp);
+            ret = dbtables_insert(txp->dbp->dbrootp->upd_ops_tbp, txp);
             if (ret != RDB_OK) 
                 return ret;
-            ret = _RDB_dbtables_insert(txp->dbp->dbrootp->tuple_attrs_tbp, txp);
+            ret = dbtables_insert(txp->dbp->dbrootp->tuple_attrs_tbp, txp);
         }
         return ret;
     }
 
-    ret = _RDB_catalog_insert(txp->dbp->dbrootp->table_attr_defvals_tbp, txp);
+    ret = _RDB_cat_insert(txp->dbp->dbrootp->table_attr_defvals_tbp, txp);
     if (ret != RDB_OK) {
         return ret;
     }
 
-    ret = _RDB_catalog_insert(txp->dbp->dbrootp->rtables_tbp, txp);
+    ret = _RDB_cat_insert(txp->dbp->dbrootp->rtables_tbp, txp);
     if (ret != RDB_OK) {
         return ret;
     }
 
-    ret = _RDB_catalog_insert(txp->dbp->dbrootp->vtables_tbp, txp);
+    ret = _RDB_cat_insert(txp->dbp->dbrootp->vtables_tbp, txp);
     if (ret != RDB_OK) {
         return ret;
     }
 
-    ret = _RDB_catalog_insert(txp->dbp->dbrootp->dbtables_tbp, txp);
+    ret = _RDB_cat_insert(txp->dbp->dbrootp->dbtables_tbp, txp);
     if (ret != RDB_OK) {
         return ret;
     }
 
-    ret = _RDB_catalog_insert(txp->dbp->dbrootp->keys_tbp, txp);
+    ret = _RDB_cat_insert(txp->dbp->dbrootp->keys_tbp, txp);
     if (ret != RDB_OK) {
         return ret;
     }
 
-    ret = _RDB_catalog_insert(txp->dbp->dbrootp->types_tbp, txp);
+    ret = _RDB_cat_insert(txp->dbp->dbrootp->types_tbp, txp);
     if (ret != RDB_OK) {
         return ret;
     }
 
-    ret = _RDB_catalog_insert(txp->dbp->dbrootp->possreps_tbp, txp);
+    ret = _RDB_cat_insert(txp->dbp->dbrootp->possreps_tbp, txp);
     if (ret != RDB_OK) {
         return ret;
     }
 
-    ret = _RDB_catalog_insert(txp->dbp->dbrootp->possrepcomps_tbp, txp);
+    ret = _RDB_cat_insert(txp->dbp->dbrootp->possrepcomps_tbp, txp);
     if (ret != RDB_OK) {
         return ret;
     }
 
-    ret = _RDB_catalog_insert(txp->dbp->dbrootp->ro_ops_tbp, txp);
+    ret = _RDB_cat_insert(txp->dbp->dbrootp->ro_ops_tbp, txp);
     if (ret != RDB_OK) {
         return ret;
     }
 
-    ret = _RDB_catalog_insert(txp->dbp->dbrootp->upd_ops_tbp, txp);
+    ret = _RDB_cat_insert(txp->dbp->dbrootp->upd_ops_tbp, txp);
     if (ret != RDB_OK) {
         return ret;
     }
 
-    ret = _RDB_catalog_insert(txp->dbp->dbrootp->tuple_attrs_tbp, txp);
+    ret = _RDB_cat_insert(txp->dbp->dbrootp->tuple_attrs_tbp, txp);
 
     return ret;
 }
@@ -1184,7 +1194,10 @@ _RDB_get_cat_vtable(const char *name, RDB_transaction *txp, RDB_table **tbpp)
     ret = RDB_destroy_array(&arr);
 
     (*tbpp)->is_persistent = RDB_TRUE;
+
     (*tbpp)->name = RDB_dup_str(name);
+    if ((*tbpp)->name == NULL)
+        return RDB_NO_MEMORY;
 
     _RDB_assign_table_db(*tbpp, txp->dbp);
     

@@ -20,6 +20,7 @@ See the release notes for details.
 <h3>Table functions</h3>
 
 <ul>
+<li><a href="#add_table">RDB_add_table</a>
 <li><a href="#all">RDB_all</a>
 <li><a href="#any">RDB_any</a>
 <li><a href="#avg">RDB_avg</a>
@@ -36,13 +37,13 @@ See the release notes for details.
 <li><a href="#insert">RDB_insert</a>
 <li><a href="#intersect">RDB_intersect</a>
 <li><a href="#join">RDB_join</a>
-<li><a href="#make_persistent">RDB_make_persistent</a>
 <li><a href="#max">RDB_max</a>
 <li><a href="#min">RDB_min</a>
 <li><a href="#minus">RDB_minus</a>
 <li><a href="#project">RDB_project</a>
 <li><a href="#remove">RDB_remove</a>
 <li><a href="#rename">RDB_rename</a>
+<li><a href="#remove_table">RDB_remove_table</a>
 <li><a href="#sdivide">RDB_sdivide</a>
 <li><a href="#select">RDB_select</a>
 <li><a href="#set_table_name">RDB_set_table_name</a>
@@ -281,7 +282,7 @@ the transaction pointed to by <var>txp</var>.
 A pointer to the newly created RDB_table structure
 will be stored at the location pointed to by <var>tbpp</var>.
 
-<p>If <var>persistent</var> is RDB_FALSE, a transient (local) table will be created.
+<p>If <var>persistent</var> is RDB_FALSE, a local (transient) table will be created.
 In this case, <var>name</var> may be NULL.
 
 <p>If <var>persistent</var> is RDB_TRUE, a persistent (global) table in the database associated
@@ -479,19 +480,24 @@ in which case the transaction is implicitly rolled back.
 
 <hr>
 
-<h2 id="make_persistent">RDB_make_persistent</h2>
+<h2 id="add_table">RDB_add_table</h2>
 
 <pre>
 #include &lt;rel/rdb.h&gt;
 
 int
-RDB_make_persistent(RDB_table *, RDB_transaction *);
+RDB_add_table(RDB_table *tbp, RDB_transaction *txp);
 </pre>
 
 <h3>Description</h3>
 
-<p>RDB_make_persistent makes a table persistent.
-The table must have a name.
+<p>RDB_add_table adds the table specified by <var>tbp</var> to the
+database associated with the transaction specified by <var>txp</var>.
+
+<p>If the table is a local (transient) table, it is made global
+(persistent).
+
+<p>The table must have a name.
 
 <h3>Return value</h3>
 
@@ -504,6 +510,8 @@ The table must have a name.
 <dd><var>txp</var> does not point to a running transaction.
 <dt>RDB_INVALID_ARGUMENT
 <dd>The table does not have a name.
+<dt>RDB_ELEMENT_EXISTS
+<dd>The table is already associated with the database.
 <dt>RDB_NOT_SUPPORTED
 <dd>The combination of arguments is not supported by the version
 of Duro used. Consult the release notes of that version for details.
@@ -1008,8 +1016,7 @@ RDB_extract_tuple(RDB_table *, RDB_object *tplp, RDB_transaction *txp);
 <h3>Description</h3>
 
 <p>RDB_extract_tuple extracts a single tuple from a table which contains
-only one tuple and stores its value at the location pointed to by
-<var>tplp</var>.
+only one tuple and stores its value in the variable pointed to by <var>tplp</var>.
 
 <h3>Return value</h3>
 
@@ -1105,7 +1112,7 @@ RDB_select(RDB_table *tbp, RDB_expression *exp, RDB_table **resultpp);
 
 <h3>Description</h3>
 
-<p>RDB_select creates a transient virtual table which contains those
+<p>RDB_select creates a local (transient) virtual table which contains those
 tuples from the table specified by <var>tbp</var> for which the
 condition specified by <var>exp</var> evaluates to true.
 A pointer to the result table is stored at the location pointed to by
@@ -1133,7 +1140,7 @@ RDB_extend(RDB_table *, int attrc, <a href="#virtual_attr">RDB_virtual_attr</a> 
 
 <h3>Description</h3>
 
-<p>RDB_rename creates a transient virtual table which is the result of a relational
+<p>RDB_rename creates a local (transient) virtual table which is the result of a relational
 EXTEND operator on the table specified by <var>tbp</var>.
 
 <p>The new table will have <var>attrc</var> additional attributes.
@@ -1201,7 +1208,7 @@ RDB_join(RDB_table *tb1p, RDB_table *tb2p, RDB_table **resultpp);
 
 <h3>Description</h3>
 
-<p>RDB_join creates a transient virtual table which is a natural join
+<p>RDB_join creates a transient (local) virtual table which is a natural join
 of the two tables specified by <var>tb1p</var> and <var>tb2p</var>.
 
 <p>If the two tables have no common attribute, the result becomes
@@ -1234,7 +1241,7 @@ RDB_union(RDB_table *, RDB_table *, RDB_table **resultpp);
 
 <h3>Description</h3>
 
-<p>RDB_union creates a transient virtual table which is the
+<p>RDB_union creates a transient (local) virtual table which is the
 result of a relational UNION of the two tables, that is,
 it contains the tuples from both tables. A pointer to the
 new RDB_table is stored in <var>resultpp</var>.
@@ -1265,7 +1272,7 @@ RDB_intersect(RDB_table *, RDB_table *, RDB_table **resultpp);
 
 <h3>Description</h3>
 
-<p>RDB_intersect creates a transient virtual table which is the
+<p>RDB_intersect creates a transient (local) virtual table which is the
 result of a relational INTERSECT of the two tables, that is,
 it contains the tuples which both tables contain.
 
@@ -1295,10 +1302,10 @@ RDB_minus(RDB_table *, RDB_table *, RDB_table **resultpp);
 
 <h3>Description</h3>
 
-<p>RDB_intersect creates a transient virtual table which is the
+<p>RDB_intersect creates a transient (local) virtual table which is the
 result of a relational MINUS of the two tables, that is,
 it contains the tuples which the first table contains,
-but the second table does not contain.
+except those which the second table contains.
 
 <h3>Return value</h3>
 
@@ -1326,7 +1333,7 @@ RDB_sdivide(RDB_table *, RDB_table *, RDB_table *, RDB_table **resultpp);
 
 <h3>Description</h3>
 
-<p>RDB_creates a transient virtual table which is the
+<p>RDB_creates a transient (local) virtual table which is the
 result of a small divide of the three tables.
 
 <h3>Return value</h3>
@@ -1347,7 +1354,7 @@ RDB_gdivide(RDB_table *, RDB_table *, RDB_table *, RDB_table *,
 
 <h3>Description</h3>
 
-<p>RDB_creates a transient virtual table which is the
+<p>RDB_creates a transient (local) virtual table which is the
 result of a great divide of the four tables.
 
 <h3>Return value</h3>
@@ -1374,7 +1381,7 @@ RDB_summarize(RDB_table *tb1p, RDB_table *tb2p, int addc, RDB_summarize_add addv
 
 <h3>Description</h3>
 
-<p>RDB_summarize creates a transient virtual table which is the result
+<p>RDB_summarize creates a transient (local) virtual table which is the result
 of a SUMMARIZE T1 PER T2 (ADD1, ...), where T1 is the table specified by
 <var>tb1p</var>, T2 is the table specified by <var>tb2p</var>, and ADD1 ...
 is specified by <var>addc</var> and <var>addv</var>.
@@ -1410,7 +1417,7 @@ RDB_wrap(RDB_table *tbp, int wrapc, <a href="#wrapping">RDB_wrapping</a> wrapv[]
 
 <h3>Description</h3>
 
-<p>RDB_wrap creates a transient virtual table which is the result of a
+<p>RDB_wrap creates a transient (local) virtual table which is the result of a
 relational WRAP operator.
 
 <h3>Return value</h3>
@@ -1430,7 +1437,7 @@ RDB_unwrap(RDB_table *, int attrc, char *attrv[], RDB_table **);
 
 <h3>Description</h3>
 
-<p>RDB_wrap creates a transient virtual table which is the result of a
+<p>RDB_wrap creates a transient (local) virtual table which is the result of a
 relational UNWRAP operator.
 
 <h3>Return value</h3>
@@ -1451,7 +1458,7 @@ RDB_group(RDB_table *, int attrc, char *attrv[], const char *,
 
 <h3>Description</h3>
 
-<p>RDB_group creates a transient virtual table which is the result of a
+<p>RDB_group creates a transient (local) virtual table which is the result of a
 relational GROUP operator.
 
 <h3>Return value</h3>
@@ -1471,7 +1478,7 @@ RDB_ungroup(RDB_table *, const char *, RDB_table **resultpp);
 
 <h3>Description</h3>
 
-<p>RDB_wrap creates a transient virtual table which is the result of a
+<p>RDB_wrap creates a transient (local) virtual table which is the result of a
 relational UNGROUP operator.
 
 <h3>Return value</h3>

@@ -25,6 +25,8 @@ Changes for Duro 0.7
 - Tcl interface, including evaluation of relational expressions in
   Tutorial D syntax.
 
+- Replaced RDB_make_persistent() by RDB_add_table().
+
 Changes for Duro 0.6
 
 - For the sake of uniformity, changed argument order of RDB_table_to_array()

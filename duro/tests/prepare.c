@@ -84,14 +84,13 @@ fill_tables(RDB_database *dbp)
     RDB_transaction tx;
     RDB_table *tbp, *tbp2, *tbp3;
 
-    RDB_init_obj(&emptpl);
-
-    RDB_init_obj(&deptpl);
-
     ret = RDB_begin_tx(&tx, dbp, NULL);
     if (ret != RDB_OK) {
-        goto error;
+        return ret;
     }
+
+    RDB_init_obj(&emptpl);
+    RDB_init_obj(&deptpl);
 
     RDB_get_table("EMPS1", &tx, &tbp);
     RDB_get_table("EMPS2", &tx, &tbp2);
@@ -152,7 +151,6 @@ fill_tables(RDB_database *dbp)
 
     ret = RDB_insert(tbp2, &emptpl, &tx);
     if (ret != RDB_OK) {
-        RDB_rollback(&tx);
         return ret;
     }
 
@@ -167,10 +165,8 @@ fill_tables(RDB_database *dbp)
         goto error;
 
     ret = RDB_insert(tbp2, &emptpl, &tx);
-    if (ret != RDB_OK) {
-        RDB_rollback(&tx);
-        return ret;
-    }
+    if (ret != RDB_OK)
+        goto error;
 
     printf("Filling DEPTS\n");
 
@@ -183,8 +179,7 @@ fill_tables(RDB_database *dbp)
 
     ret = RDB_insert(tbp3, &deptpl, &tx);
     if (ret != RDB_OK) {
-        RDB_rollback(&tx);
-        return ret;
+        goto error;
     }
 
     ret = RDB_tuple_set_int(&deptpl, "DEPTNO", 2);
@@ -195,10 +190,8 @@ fill_tables(RDB_database *dbp)
         goto error;
 
     ret = RDB_insert(tbp3, &deptpl, &tx);
-    if (ret != RDB_OK) {
-        RDB_rollback(&tx);
-        return ret;
-    }
+    if (ret != RDB_OK)
+        goto error;
 
     RDB_destroy_obj(&emptpl);
     RDB_destroy_obj(&deptpl);
@@ -209,6 +202,8 @@ error:
     RDB_destroy_obj(&emptpl);
     RDB_destroy_obj(&deptpl);
     
+    RDB_rollback(&tx);
+
     return ret;
 }
 
