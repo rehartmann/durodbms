@@ -42,7 +42,7 @@ TESTS = tests/ctests tests/rtables.tcl tests/project.tcl tests/tuple.tcl \
         tests/sdivide.tcl tests/invtable.tcl tests/operator.tcl \
         tests/vtables.tcl tests/db2.tcl
 
-TESTS_ENVIRONMENT = BDB_HOME=$(BDB_HOME)
+TESTS_ENVIRONMENT = LD_LIBRARY_PATH=$(LD_LIBRARY_PATH):$(BDB_HOME)/lib
 
 LDADD = -L$(BDB_HOME)/lib libduro.la -ldb @LIBS@
 
@@ -73,15 +73,19 @@ INCLUDES = -I$(top_srcdir) -I$(BDB_HOME)/include
 
 EXTRA_DIST = tests/ctests tests/lstables_output tests/test_2db_output \
 tests/test_aggregate_output tests/test_binary_output tests/test_callop_output \
-tests/test_create_view_output tests/test_defop_output tests/test_defpointtype_output \
-tests/test_deftype_output tests/test_delete_output tests/test_dropop_output \
-tests/test_extend_output tests/test_insert_output tests/test_intersect_output \
-tests/test_join_output tests/test_keys_output tests/test_minus_output \
-tests/test_null_output tests/test_pointtable_output tests/test_print_opview_output \
+tests/test_create_view_output tests/test_defop_output \
+tests/test_defpointtype_output tests/test_deftype_output \
+tests/test_delete_output tests/test_dropop_output tests/test_extend_output \
+tests/test_insert_output tests/test_intersect_output tests/test_join_output \
+tests/test_keys_output tests/test_minus_output tests/test_null_output \
+tests/test_pointtable_output tests/test_print_opview_output \
 tests/test_print_view_output tests/test_project_output tests/test_ra_output \
 tests/test_regexp_output tests/test_rename_output tests/test_select_output \
 tests/test_srupdate_output tests/test_summarize_output tests/test_union_output \
-tests/test_update_output tests/test_utypetable_output tests/tupletest_output
+tests/test_update_output tests/test_utypetable_output tests/tupletest_output \
+tests/rtables.tcl tests/project.tcl tests/tuple.tcl \
+tests/sdivide.tcl tests/invtable.tcl tests/operator.tcl \
+tests/vtables.tcl tests/db2.tcl
 
 # Delete test libs
 install-exec-hook:

@@ -26,6 +26,8 @@ following code can be used:
     lappend auto_path "/usr/local/duro.0.7/lib"
     package require duro
 
+The Berkeley DB library directory must be added to LD_LIBRARY_PATH.
+
 Duro is still under development. Report bugs to
 rhartmann@users.sourceforge.net.
 

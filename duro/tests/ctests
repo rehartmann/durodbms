@@ -31,7 +31,7 @@ calltest () {
     if diff /tmp/duro$$ $1_output; then true; else failure; fi
 }
 
-LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$PWD/.libs:$BDB_HOME/lib
+LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$PWD/.libs
 export LD_LIBRARY_PATH
 
 cd `dirname $0`
