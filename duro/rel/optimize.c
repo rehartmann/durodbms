@@ -48,9 +48,6 @@ unbalance_and(RDB_expression *exp)
 static RDB_bool
 expr_attr(RDB_expression *exp, const char *attrname, enum _RDB_expr_kind kind)
 {
-    if (exp->kind == RDB_EX_ATTR
-            && strcmp(exp->var.attrname, attrname) == 0)
-        return RDB_TRUE;
     if (exp->kind == kind) {
         if (exp->var.op.arg1->kind == RDB_EX_ATTR
                 && strcmp(exp->var.op.arg1->var.attrname, attrname) == 0
@@ -63,9 +60,6 @@ expr_attr(RDB_expression *exp, const char *attrname, enum _RDB_expr_kind kind)
 static RDB_bool
 expr_cmp_attr(RDB_expression *exp, const char *attrname)
 {
-    if (exp->kind == RDB_EX_ATTR
-            && strcmp(exp->var.attrname, attrname) == 0)
-        return RDB_TRUE;
     switch(exp->kind) {
         case RDB_EX_EQ:
         case RDB_EX_GT:
@@ -94,7 +88,7 @@ attr_node(RDB_expression *exp, const char *attrname, enum _RDB_expr_kind kind)
     return NULL;
 }
 
-/* 
+/*
  * Check if the index specified by indexp can be used for the selection
  * specified by tbp. If yes, return the estimated cost.
  * If no, return INT_MAX.
