@@ -7,6 +7,8 @@ AC_CONFIG_SRCDIR([util/dropdb.c])
 
 AM_INIT_AUTOMAKE
 
+AC_PREFIX_DEFAULT(/usr/local/duro.0.6)
+
 # Checks for programs.
 AC_PROG_CXX
 AC_PROG_CC
@@ -20,7 +22,6 @@ AC_PROG_LIBTOOL
 # Checks for libraries.
 AC_CHECK_LIB([db], [db_env_create])
 AC_CHECK_LIB([ltdl], [lt_dlinit])
-AC_CHECK_LIB([m], [atan])
 
 # Checks for header files.
 AC_HEADER_STDC

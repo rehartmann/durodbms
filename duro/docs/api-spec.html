@@ -122,7 +122,6 @@
 <li><a href="#array_set">RDB_array_set</a>
 <li><a href="#array_length">RDB_array_length</a>
 <li><a href="#resize_array">RDB_resize_array</a>
-<li><a href="#detach_array">RDB_detach_array</a>
 </ul>
 
 <h3>Expression functions</h3>
@@ -196,6 +195,8 @@
 <ul>
 <li><a href="#create_constraint">RDB_create_constraint</a>
 <li><a href="#drop_constraint">RDB_drop_constraint</a>
+<li><a href="#begin_uoi">RDB_begin_uio</a>
+<li><a href="#end_uoi">RDB_end_uio</a>
 </ul>
 
 <h3>Database Environment functions</h3>
@@ -1172,17 +1173,6 @@ RDB_array_length(RDB_array *);
 
 int
 RDB_resize_array(RDB_array *);
-</pre>
-
-<hr>
-
-<h2 id="detach_array">RDB_detach_array</h2>
-
-<pre>
-#include &lt;rel/rdb.h&gt;
-
-int
-RDB_detach_array(RDB_array *);
 </pre>
 
 <hr>

@@ -571,7 +571,8 @@ RDB_table_is_empty(RDB_table *, RDB_transaction *, RDB_bool *resultp);
  * The created relvar will have no name and be transient.
  */
  
-/* Create a selection table. The resulting table will take
+/*
+ * Create a selection table. The resulting table will take
  * reponsibility for the condition.
  */
 int
@@ -601,9 +602,9 @@ RDB_extend(RDB_table *, int attrc, RDB_virtual_attr attrv[],
 int
 RDB_project(RDB_table *, int attrc, char *attrv[], RDB_table **resultpp);
 
-/* Create a table which is the result of a SUMMARIZE ADD operation.
+/* Create a table which is the result of a SUMMARIZE PER operation.
  * The table created takes resposibility for the RDB_expressions
- *  passed through addvv.
+ *  passed through addv.
  */
 int
 RDB_summarize(RDB_table *, RDB_table *, int addc, RDB_summarize_add addv[],
