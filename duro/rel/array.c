@@ -4,7 +4,8 @@
 #include "internal.h"
 
 void
-RDB_init_array(RDB_array *arrp) {
+RDB_init_array(RDB_array *arrp)
+{
     arrp->tbp = NULL;
 }
 
@@ -31,9 +32,6 @@ RDB_table_to_array(RDB_table *tbp, RDB_array *arrp,
 {
     int ret;
 
-    if (seqitc > 0)
-        return RDB_NOT_SUPPORTED;
-
     ret = RDB_destroy_array(arrp);
     if (ret != RDB_OK)
         return ret;
@@ -42,6 +40,14 @@ RDB_table_to_array(RDB_table *tbp, RDB_array *arrp,
     arrp->txp = txp;
     arrp->qrp = NULL;
     arrp->length = -1;
+
+    if (seqitc > 0) {
+        /* Create sorter */
+        ret = _RDB_sorter(tbp, &arrp->qrp, txp, seqitc, seqitv);
+        if (ret != RDB_OK)
+            return ret;
+        arrp->pos = 0;
+    }
     
     return RDB_OK;
 }    
@@ -51,19 +57,23 @@ RDB_array_get_tuple(RDB_array *arrp, RDB_int idx, RDB_tuple *tup)
 {
     int ret;
 
+    /* Reset qresult to start */
     if (arrp->pos > idx && arrp->qrp != NULL) {
-        ret = _RDB_drop_qresult(arrp->qrp, arrp->txp);
-        arrp->qrp = NULL;
+        ret = _RDB_reset_qresult(arrp->qrp, arrp->txp);
+        arrp->pos = 0;
         if (ret != RDB_OK)
             return ret;
     }
 
+    /* If there is no qresult, create it */
     if (arrp->qrp == NULL) {
-        ret = _RDB_table_qresult(arrp->tbp, &arrp->qrp, arrp->txp);
+        ret = _RDB_table_qresult(arrp->tbp, arrp->txp, &arrp->qrp);
         if (ret != RDB_OK)
             return ret;
         arrp->pos = 0;
     }
+
+    /* Move forward until the right position is reached */
     while (arrp->pos < idx) {
         ret = _RDB_next_tuple(arrp->qrp, tup, arrp->txp);
         if (ret != RDB_OK)
@@ -85,7 +95,7 @@ RDB_array_length(RDB_array *arrp)
 
         RDB_init_tuple(&tpl);
         if (arrp->qrp == NULL) {
-            ret = _RDB_table_qresult(arrp->tbp, &arrp->qrp, arrp->txp);
+            ret = _RDB_table_qresult(arrp->tbp, arrp->txp, &arrp->qrp);
             if (ret != RDB_OK) {
                 RDB_destroy_tuple(&tpl);            
                 return ret;
@@ -100,10 +110,6 @@ RDB_array_length(RDB_array *arrp)
             }
         } while (ret == RDB_OK);
         RDB_destroy_tuple(&tpl);
-        _RDB_drop_qresult(arrp->qrp, arrp->txp);
-        arrp->qrp = NULL;
-        if (ret != RDB_NOT_FOUND)
-            return ret;
         arrp->length = arrp->pos;
     }
     return arrp->length;

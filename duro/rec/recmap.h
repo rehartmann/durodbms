@@ -21,6 +21,15 @@ typedef struct {
     size_t len;
 } RDB_field;
 
+typedef int RDB_field_compare_func(const void *data1p, size_t len1,
+                const void *data2p, size_t len2, void *arg);
+
+typedef struct {
+    RDB_field_compare_func *comparep;
+    void *arg;
+    RDB_bool asc;
+} RDB_compare_field;
+
 typedef struct {
     /* internal */
     DB *dbp;
@@ -29,16 +38,24 @@ typedef struct {
     int fieldcount;	/* # of fields total */
     int keyfieldcount;	/* # of primary index fields */
 
-    /* the length for each field, if it's fixed-length field,
+    /*
+     * The length of each field, if it's fixed-length field,
      * RDB_VARIABLE_LEN if it's a variable-length field
      */
     RDB_int *fieldlens;
 
     int varkeyfieldcount; /* # of variable-length key fields */
     int vardatafieldcount; /* # of variable-length nonkey fields */ 
+
+    /* For sorted recmaps */
+    RDB_compare_field *cmpv;
+
+    /* RDB_TRUE if duplicate keys are allowed */
+    RDB_bool dup_keys;
 } RDB_recmap;
 
-/* Create a recmap with the name specified by name in the DB environment
+/*
+ * Create a recmap with the name specified by name in the DB environment
  * pointed to by envp in the file specified by filename.
  * If filename is NULL, a transient recmap is created.
  * The recmap will have fieldc fields, the length of field i
@@ -49,6 +66,15 @@ int
 RDB_create_recmap(const char *name, const char *filename,
         RDB_environment *dsp, int fieldc, const int fieldlenv[], int keyfieldc,
         DB_TXN *, RDB_recmap **);
+
+/*
+ * Create a sorted recmap.
+ * cmpv specifies the sort order for each field.
+ */
+int
+RDB_create_sorted_recmap(const char *name, const char *filename,
+        RDB_environment *dsp, int fieldc, const int fieldlenv[], int keyfieldc,
+        const RDB_compare_field cmpv[], RDB_bool  dup, DB_TXN *, RDB_recmap **);
 
 /* Open a recmap. For a description of the arguments, see RDB_create_recmap(). */
 int

@@ -34,8 +34,8 @@ delete_table(RDB_database *dbp, const char *tbnamp)
     if (err != RDB_OK)
         goto error;
 
-    RDB_commit(&tx);   
-    return RDB_OK;
+    return RDB_commit(&tx);   
+
 error:
     RDB_rollback(&tx);
     return err;

@@ -14,6 +14,22 @@ RDB_type RDB_RATIONAL;
 RDB_type RDB_STRING;
 RDB_type RDB_BINARY;
 
+static int
+compare_int(const RDB_object *val1p, const RDB_object *val2p)
+{
+    return val1p->var.int_val - val2p->var.int_val;
+}
+
+static int
+compare_rational(const RDB_object *val1p, const RDB_object *val2p)
+{
+    if (val1p->var.rational_val < val2p->var.rational_val)
+        return -1;
+    if (val1p->var.rational_val > val2p->var.rational_val)
+        return 1;
+    return 0;
+}
+
 void _RDB_init_builtin_types(void)
 {
     RDB_BOOLEAN.kind = RDB_TP_SCALAR;
@@ -21,30 +37,35 @@ void _RDB_init_builtin_types(void)
     RDB_BOOLEAN.ireplen = 1;
     RDB_BOOLEAN.name = "BOOLEAN";
     RDB_BOOLEAN.var.scalar.repc = 0;
+    RDB_BOOLEAN.comparep = NULL;
 
     RDB_STRING.kind = RDB_TP_SCALAR;
     RDB_STRING.arep = NULL;
     RDB_STRING.ireplen = RDB_VARIABLE_LEN;
     RDB_STRING.name = "STRING";
     RDB_STRING.var.scalar.repc = 0;
+    RDB_STRING.comparep = NULL;
 
     RDB_INTEGER.kind = RDB_TP_SCALAR;
     RDB_INTEGER.arep = NULL;
     RDB_INTEGER.ireplen = sizeof (RDB_int);
     RDB_INTEGER.name = "INTEGER";
     RDB_INTEGER.var.scalar.repc = 0;
+    RDB_INTEGER.comparep = &compare_int;
 
     RDB_RATIONAL.kind = RDB_TP_SCALAR;
     RDB_RATIONAL.arep = NULL;
     RDB_RATIONAL.ireplen = sizeof (RDB_rational);
     RDB_RATIONAL.name = "RATIONAL";
     RDB_RATIONAL.var.scalar.repc = 0;
+    RDB_RATIONAL.comparep = &compare_rational;
 
     RDB_BINARY.kind = RDB_TP_SCALAR;
     RDB_BINARY.arep = NULL;
     RDB_BINARY.ireplen = RDB_VARIABLE_LEN;
     RDB_BINARY.name = "BINARY";
     RDB_BINARY.var.scalar.repc = 0;
+    RDB_BINARY.comparep = NULL;
 }
 
 RDB_bool

@@ -44,6 +44,6 @@ RDB_obj_irep(RDB_object *valp, size_t *lenp);
  * Return RDB_OK on success, RDB_NO_MEMORY if allocating memory failed.
  */
 int
-RDB_irep_to_obj(RDB_object *valp, RDB_type *, void *datap, size_t len);
+RDB_irep_to_obj(RDB_object *valp, RDB_type *, const void *datap, size_t len);
 
 #endif

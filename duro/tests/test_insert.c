@@ -58,6 +58,10 @@ print_table(RDB_database *dbp)
     RDB_array array;
     RDB_int i;
     int ret;
+    RDB_seq_item sqv[2] = {
+        { "DEPTNO", RDB_TRUE },
+        { "NAME", RDB_FALSE }
+    };
 
     ret = RDB_begin_tx(&tx, dbp, NULL);
     if (ret != RDB_OK) {
@@ -72,7 +76,7 @@ print_table(RDB_database *dbp)
 
     RDB_init_array(&array);
 
-    ret = RDB_table_to_array(tbp, &array, 0, NULL, &tx);
+    ret = RDB_table_to_array(tbp, &array, 2, sqv, &tx);
     if (ret != RDB_OK) {
         goto error;
     }

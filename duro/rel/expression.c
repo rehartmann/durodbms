@@ -379,9 +379,9 @@ error:
     return NULL;    
 }
 
-RDB_expression *
+int
 RDB_user_op(const char *opname, int argc, RDB_expression *argv[],
-        RDB_transaction *txp)
+       RDB_transaction *txp, RDB_expression **expp)
 {
     RDB_expression *exp;
     int ret;
@@ -390,7 +390,7 @@ RDB_user_op(const char *opname, int argc, RDB_expression *argv[],
 
     exp = malloc(sizeof (RDB_expression));
     if (exp == NULL)
-        return NULL;   
+        return RDB_NO_MEMORY;
 
     exp->kind = RDB_USER_OP;
     
@@ -398,7 +398,7 @@ RDB_user_op(const char *opname, int argc, RDB_expression *argv[],
     if (argtv == NULL) {
         free(argtv);
         free(exp);
-        return NULL;
+        return RDB_NO_MEMORY;
     }
     for (i = 0; i < argc; i++)
         argtv[i] = RDB_expr_type(argv[i]);
@@ -406,18 +406,19 @@ RDB_user_op(const char *opname, int argc, RDB_expression *argv[],
     free(argtv);
     if (ret != RDB_OK) {
         free(exp);
-        return NULL;
+        return ret;
     }
     exp->var.user_op.argv = malloc(argc * sizeof(RDB_expression *));
     if (exp->var.user_op.argv == NULL) {
         free(exp);
-        return NULL;
+        return RDB_NO_MEMORY;
     }
 
     for (i = 0; i < argc; i++)
         exp->var.user_op.argv[i] = argv[i];
 
-    return exp;
+    *expp = exp;
+    return RDB_OK;
 }
 
 /* Destroy the expression and all subexpressions */
@@ -434,6 +435,7 @@ RDB_drop_expr(RDB_expression *exp)
         case RDB_OP_AND:
         case RDB_OP_OR:
         case RDB_OP_ADD:
+        case RDB_OP_SUBTRACT:
         case RDB_OP_REGMATCH:
             RDB_drop_expr(exp->var.op.arg2);
         case RDB_OP_NOT:
@@ -619,6 +621,22 @@ evaluate_rational(RDB_expression *exp, const RDB_tuple *tup,
                 return err;
 
             *resp = v1 + v2;
+            break;
+        }
+        case RDB_OP_SUBTRACT:
+        {
+            int err;
+            RDB_rational v1, v2;
+
+            err = evaluate_rational(exp->var.op.arg1, tup, txp, &v1);
+            if (err != RDB_OK)
+                return err;
+
+            err = evaluate_rational(exp->var.op.arg2, tup, txp, &v2);
+            if (err != RDB_OK)
+                return err;
+
+            *resp = v1 - v2;
             break;
         }
         case RDB_OP_GET_COMP:

@@ -29,7 +29,7 @@ typedef struct RDB_dbroot {
 } RDB_dbroot;
 
 typedef struct RDB_qresult {
-    RDB_table *tbp;
+    RDB_table *tbp; /* NULL for sorter */
     union {
         RDB_cursor *curp;
         struct {
@@ -43,7 +43,10 @@ typedef struct RDB_qresult {
     } var;
     int endreached;
  
-    /* needed for duplicate elimination */
+    /*
+     * 'materialized' table, needed for PROJECT with duplicate elimination,
+     *  SUMMARIZE PER, and sorting.
+     */
     RDB_table *matp;
 } RDB_qresult;
 
@@ -105,17 +108,25 @@ typedef struct RDB_upd_op {
 void
 _RDB_init_builtin_types(void);
 
-/* Iterator over the tuples of a RDB_table. Used internally.
+/*
+ * Iterator over the tuples of a RDB_table. Used internally.
  * Using it from an application is possible, but violates RM proscription 7.
  */
 int
-_RDB_table_qresult(RDB_table *, RDB_qresult **, RDB_transaction *);
+_RDB_table_qresult(RDB_table *, RDB_transaction *, RDB_qresult **);
+
+int
+_RDB_sorter(RDB_table *tbp, RDB_qresult **qrespp, RDB_transaction *txp,
+            int seqitc, RDB_seq_item seqitv[]);
 
 int
 _RDB_next_tuple(RDB_qresult *, RDB_tuple *, RDB_transaction *);
 
 int
 _RDB_qresult_contains(RDB_qresult *, const RDB_tuple *, RDB_transaction *);
+
+int
+_RDB_reset_qresult(RDB_qresult *, RDB_transaction *);
 
 int
 _RDB_get_by_pindex(RDB_table *, RDB_object[], RDB_tuple *,
@@ -125,13 +136,27 @@ int
 _RDB_drop_qresult(RDB_qresult *, RDB_transaction *);
 
 int
+_RDB_new_stored_table(const char *name, RDB_bool persistent,
+                RDB_type *reltyp,
+                int keyc, RDB_string_vec keyv[], RDB_bool usr,
+                RDB_table **tbpp);
+
+void
+_RDB_free_table(RDB_table *tbp, RDB_environment *envp);
+
+int
+_RDB_open_table(RDB_table *tbp,
+           int piattrc, char *piattrv[], RDB_bool create,
+           RDB_transaction *txp, RDB_bool ascv[]);
+
+int
 _RDB_create_table(const char *name, RDB_bool persistent,
                 int attrc, RDB_attr heading[],
                 int keyc, RDB_string_vec keyv[],
                 RDB_transaction *txp, RDB_table **tbpp);
 
 int
-_RDB_open_table(const char *name, RDB_bool persistent,
+_RDB_provide_table(const char *name, RDB_bool persistent,
            int attrc, RDB_attr heading[],
            int keyc, RDB_string_vec keyv[], RDB_bool usr,
            RDB_bool create, RDB_transaction *txp, RDB_table **tbpp);
@@ -150,6 +175,9 @@ _RDB_tuple_type_attr(const RDB_type *tuptyp, const char *attrname);
 
 RDB_bool
 _RDB_legal_name(const char *name);
+
+int
+_RDB_del_recmap(RDB_transaction *txp, RDB_recmap *rmp);
 
 int
 RDB_evaluate_bool(RDB_expression *, const RDB_tuple *tup, RDB_transaction *,

@@ -4,6 +4,9 @@ Summary of Changes for Duro
 
 Changes for Duro 0.6
 
+- Added sorting (through the seqitc/seqitv arguments of
+  RDB_table_to_array())
+
 - Renamed RDB_value as RDB_object. Renamed RDB_init_value() as
   RDB_init_obj(), etc.
 

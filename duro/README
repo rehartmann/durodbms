@@ -27,6 +27,9 @@ Known bugs:
 - A table from which a RDB_array was created must not be dropped before
   the array is destroyed.
 
+- Dropping tables is not properly transaction protected, so tables should be
+  dropped in an own transaction.
+
 -----
 
 This file is part of Duro, a relational database library.

@@ -46,7 +46,7 @@ val_kind(const RDB_type *typ)
 }
 
 int
-RDB_irep_to_obj(RDB_object *valp, RDB_type *typ, void *datap, size_t len)
+RDB_irep_to_obj(RDB_object *valp, RDB_type *typ, const void *datap, size_t len)
 {
     int ret;
 

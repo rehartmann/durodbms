@@ -11,16 +11,31 @@ print_table(RDB_table *tbp, RDB_transaction *txp)
     RDB_tuple tpl;
     RDB_array array;
     RDB_int i;
+    int len;
+    RDB_seq_item sq;
 
     RDB_init_array(&array);
 
-    ret = RDB_table_to_array(tbp, &array, 0, NULL, txp);
+    /* Test sorting too */
+    sq.attrname = "NAME";
+    sq.asc = RDB_TRUE;
+
+    ret = RDB_table_to_array(tbp, &array, 1, &sq, txp);
     if (ret != RDB_OK) {
         goto error;
     }
-    
+
+    ret = RDB_array_length(&array);
+    if (ret < 0)
+        goto error;
+
+    len = ret;
     RDB_init_tuple(&tpl);    
-    for (i = 0; (ret = RDB_array_get_tuple(&array, i, &tpl)) == RDB_OK; i++) {
+    for (i = len - 1; i >= 0; i--) {
+        ret = RDB_array_get_tuple(&array, i, &tpl);
+        if (ret != RDB_OK) {
+            goto error;
+        }
         printf("EMPNO: %d\n", (int) RDB_tuple_get_int(&tpl, "EMPNO"));
         printf("NAME: %s\n", RDB_tuple_get_string(&tpl, "NAME"));
         printf("DEPTNO: %d\n", (int) RDB_tuple_get_int(&tpl, "DEPTNO"));
@@ -89,17 +104,20 @@ test_union(RDB_database *dbp)
 int
 main(void)
 {
-    RDB_environment *dsp;
+    RDB_environment *envp;
     RDB_database *dbp;
     int ret;
     
     printf("Opening environment\n");
-    ret = RDB_open_env("dbenv", &dsp);
+    ret = RDB_open_env("dbenv", &envp);
     if (ret != 0) {
         fprintf(stderr, "Error: %s\n", RDB_strerror(ret));
         return 1;
     }
-    ret = RDB_get_db_from_env("TEST", dsp, &dbp);
+
+    RDB_set_errfile(envp, stderr);
+
+    ret = RDB_get_db_from_env("TEST", envp, &dbp);
     if (ret != 0) {
         fprintf(stderr, "Error: %s\n", RDB_strerror(ret));
         return 1;
@@ -112,7 +130,7 @@ main(void)
     }
     
     printf ("Closing environment\n");
-    ret = RDB_close_env(dsp);
+    ret = RDB_close_env(envp);
     if (ret != RDB_OK) {
         fprintf(stderr, "Error: %s\n", RDB_strerror(ret));
         return 2;

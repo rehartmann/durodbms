@@ -147,7 +147,9 @@ test_project(RDB_database *dbp)
     RDB_drop_table(vtbp, &tx);
 
     printf("End of transaction\n");
-    return RDB_commit(&tx);
+
+    /* Test if rollback works after projection with keyloss */
+    return RDB_rollback(&tx);
 }
 
 int

@@ -674,10 +674,10 @@ deserialize_expr(RDB_object *valp, int *posp, RDB_transaction *txp,
                     return ret;
                 }
             }
-            *expp = RDB_user_op(name, argc, argv, txp);
+            ret = RDB_user_op(name, argc, argv, txp, expp);
             free(argv);
-            if (*expp == NULL)
-                return RDB_SYSTEM_ERROR;
+            if (ret != RDB_OK)
+                return ret;
             break;
         }
         case RDB_OP_AGGREGATE:

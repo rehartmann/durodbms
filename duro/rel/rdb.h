@@ -47,6 +47,38 @@ typedef struct {
     struct RDB_expression *constraintp;
 } RDB_possrep;
 
+enum _RDB_obj_kind {
+    _RDB_BOOL,
+    _RDB_INT,
+    _RDB_RATIONAL,
+    _RDB_BIN,
+    _RDB_TABLE,
+    _RDB_TUPLE
+};
+
+/*
+ * A RDB_object structure carries a value of an arbitrary type,
+ * together with the type information.
+ */
+typedef struct {
+    /* internal */
+    struct RDB_type *typ;	/* Type */
+    enum _RDB_obj_kind kind;
+    union {
+        RDB_bool bool_val;
+        RDB_int int_val;
+        RDB_rational rational_val;
+        struct {
+            void *datap;
+            size_t len;
+        } bin;
+        struct RDB_table *tbp;
+        struct RDB_tuple *tplp;
+     } var;
+} RDB_object;
+
+typedef int RDB_compare_func(const RDB_object *, const RDB_object *);
+
 typedef struct RDB_type {
     /* internal */
     char *name;
@@ -54,6 +86,9 @@ typedef struct RDB_type {
 
     /* actual representation, NULL for built-in and nonscalar types */
     struct RDB_type *arep; 
+
+    /* comparison function */
+    RDB_compare_func *comparep;
 
     RDB_int ireplen;
 
@@ -77,36 +112,6 @@ extern RDB_type RDB_INTEGER;
 extern RDB_type RDB_RATIONAL;
 extern RDB_type RDB_STRING;
 extern RDB_type RDB_BINARY;
-
-enum _RDB_obj_kind {
-    _RDB_BOOL,
-    _RDB_INT,
-    _RDB_RATIONAL,
-    _RDB_BIN,
-    _RDB_TABLE,
-    _RDB_TUPLE
-};
-
-/*
- * A RDB_object structure carries a value of an arbitrary type,
- * together with the type information.
- */
-typedef struct {
-    /* internal */
-    RDB_type *typ;	/* Type */
-    enum _RDB_obj_kind kind;
-    union {
-        RDB_bool bool_val;
-        RDB_int int_val;
-        RDB_rational rational_val;
-        struct {
-            void *datap;
-            size_t len;
-        } bin;
-        struct RDB_table *tbp;
-        struct RDB_tuple *tplp;
-     } var;
-} RDB_object;
 
 enum _RDB_expr_kind {
     RDB_CONST,
@@ -296,6 +301,7 @@ typedef struct RDB_transaction {
     RDB_database *dbp;
     DB_TXN *txid;
     struct RDB_transaction *parentp;
+    struct RDB_rmlink *delrmp;
 } RDB_transaction;
 
 /*
@@ -1000,9 +1006,9 @@ RDB_get_comp(RDB_expression *, const char *);
 RDB_expression *
 RDB_selector(RDB_type *, const char *repname, RDB_expression *[]);
 
-RDB_expression *
+int
 RDB_user_op(const char *opname, int argc, RDB_expression *argv[],
-        RDB_transaction *txp);
+       RDB_transaction *txp, RDB_expression **expp);
 
 /*
  * Destroy the expression and all its subexpressions

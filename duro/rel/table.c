@@ -297,7 +297,7 @@ move_tuples(RDB_table *dstp, RDB_table *srcp, RDB_transaction *txp)
 
     /* copy all tuples from source table to destination table */
 
-    ret = _RDB_table_qresult(srcp, &qrp, txp);
+    ret = _RDB_table_qresult(srcp, txp, &qrp);
     if (ret != RDB_OK)
         return ret;
 
@@ -1037,7 +1037,7 @@ RDB_aggregate(RDB_table *tbp, RDB_aggregate_op op, const char *attrname,
 
     RDB_init_tuple(&tpl);
 
-    ret = _RDB_table_qresult(tbp, &qrp, txp);
+    ret = _RDB_table_qresult(tbp, txp, &qrp);
     if (ret != RDB_OK) {
         if (RDB_is_syserr(ret)) {
             RDB_errmsg(txp->dbp->dbrootp->envp, RDB_strerror(ret));
@@ -1299,7 +1299,7 @@ RDB_table_contains(RDB_table *tbp, const RDB_tuple *tup, RDB_transaction *txp)
                 int ret2;
             
                 RDB_qresult *qrp;
-                ret = _RDB_table_qresult(tbp, &qrp, txp);
+                ret = _RDB_table_qresult(tbp, txp, &qrp);
                 if (ret != RDB_OK)
                     return ret;
                 ret = _RDB_qresult_contains(qrp, tup, txp);
@@ -1325,7 +1325,7 @@ RDB_extract_tuple(RDB_table *tbp, RDB_tuple *tup, RDB_transaction *txp)
     int ret, ret2;
     RDB_qresult *qrp;
 
-    ret = _RDB_table_qresult(tbp, &qrp, txp);
+    ret = _RDB_table_qresult(tbp, txp, &qrp);
     if (ret != RDB_OK) {
         if (RDB_is_syserr(ret)) {
             RDB_errmsg(txp->dbp->dbrootp->envp, RDB_strerror(ret));
@@ -1367,7 +1367,7 @@ RDB_table_is_empty(RDB_table *tbp, RDB_transaction *txp, RDB_bool *resultp)
     RDB_qresult *qrp;
     RDB_tuple tpl;
 
-    ret = _RDB_table_qresult(tbp, &qrp, txp);
+    ret = _RDB_table_qresult(tbp, txp, &qrp);
     if (ret != RDB_OK)
         return ret;
 

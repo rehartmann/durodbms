@@ -91,7 +91,10 @@ int test_useop(RDB_database *dbp) {
     expv[1] = RDB_int_const(100);
 
     extend.name = "XDEPTNO";
-    extend.exp = RDB_user_op("PLUS", 2, expv, &tx);
+    ret = RDB_user_op("PLUS", 2, expv, &tx, &extend.exp);
+    if (ret != RDB_OK) {
+        goto error;
+    }
 
     ret = RDB_extend(tbp, 1, &extend, &vtbp);
     if (ret != RDB_OK) {
