@@ -6,23 +6,25 @@ This directory contains release 0.7 of Duro, a relational database library.
 
 The following software is required for compiling and running Duro:
 
-- Berkeley DB, release 4.2. Berkeley DB can be obtained for free from
-http://www.sleepycat.com. (Berkeley DB 4.1 will most probably also work,
-but this is no longer tested)
-
+- Berkeley DB, release 4.1 or later
 - POSIX.2 regular expressions
-
 - GNU Libtool
-
 - Tcl 8.1 or later
 
-Duro 0.7 has been tested on a GNU/Linux PC.
+Duro 0.7 has been tested on a GNU/Linux PC with BerkeleyDB 4.2 and Tcl 8.4.
 
-To learn about how to use Duro, see the API specification
-and release notes in the 'docs' directory. Example code
-can be found in the 'tests' directory.
+To learn about how to use Duro, see the documentation in the 'docs'
+subdirectory. Example code can be found in the 'tests' subdirectory
+of the build directory.
 
 By default, Duro is installed in the directory /usr/local/duro.0.7.
+
+When Duro is installed, the Tcl interface is installed as a package in
+the 'lib' subdirectory. To use it from aplication scripts, the
+following code can be used:
+
+    lappend auto_path "/usr/local/duro.0.7/lib"
+    package require duro
 
 Duro is still under development. Report bugs to
 rhartmann@users.sourceforge.net.
@@ -30,7 +32,7 @@ rhartmann@users.sourceforge.net.
 -----
 
 This file is part of Duro, a relational database library.
-Copyright (C) 2003 René Hartmann.
+Copyright (C) 2003, 2004 René Hartmann.
 
 Duro is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by

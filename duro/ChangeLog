@@ -4,14 +4,10 @@ Summary of Changes for Duro
 
 Changes for Duro 0.7
 
-- Renamed RDB_obj_set_XXX() to RDB_XXX_to_obj() and RDB_expr_table() to
-  RDB_table_to_expr().
-
-- Added RDB_table_to_obj() and RDB_obj_table().
+- Tcl interface, including evaluation of relational expressions in
+  Tutorial D syntax. A C interface for expression parsing is provided.
 
 - Implemented RDB_sdivide().
-
-- Dropped RDB_tuple and RDB_array, using RDB_object instead.
 
 - Implemented tuple-valued table attributes, RDB_wrap(), and RDB_unwrap().
 
@@ -22,6 +18,16 @@ Changes for Duro 0.7
 - Added support for multiplication, division, unary minus, and string
   concatenation in expressions.
 
+- Added RDB_table_to_obj() and RDB_obj_table().
+
+- Renamed RDB_obj_set_XXX() to RDB_XXX_to_obj() and RDB_expr_table() to
+  RDB_table_to_expr().
+
+- Dropped RDB_tuple and RDB_array, using RDB_object instead. Renamed
+  RDB_array_get_tuple() as RDB_array_get().
+
+- Replaced RDB_make_persistent() by RDB_add_table().
+
 - Fixed bug in RDB_extract_tuple().
 
 - Fixed bug with updating key attributes of tables with more than one
@@ -29,13 +35,7 @@ Changes for Duro 0.7
 
 - Fixed problem with commit/rollback after dropping tables.
 
-- Tcl interface, including evaluation of relational expressions in
-  Tutorial D syntax.
-
-- Replaced RDB_make_persistent() by RDB_add_table().
-
-- Now using to BerkeleyDB 4.2 (no modifications were required, but
-  Duro is no longer tested with BerkeleyDB 4.1)
+- Now using to BerkeleyDB 4.2 (no modifications were required)
 
 Changes for Duro 0.6
 

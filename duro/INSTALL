@@ -8,8 +8,9 @@ make
 make check    (optional)
 make install
 
-To compile Duro, you need GNU Libtool, Berkeley DB, and Tcl 8.1 or later.
+To compile Duro, you need GNU Libtool, Berkeley DB 4.1 or later,
+and Tcl 8.1 or later.
 
 Berkeley DB is assumed to be located in /usr/local/BerkeleyDB.4.2.
-If Berkeley DB is located in another directory, set the BDB_HOME
+If Berkeley DB is located in a different directory, set the BDB_HOME
 environment variable and use the -e option of make.
