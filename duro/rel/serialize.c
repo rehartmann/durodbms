@@ -150,23 +150,46 @@ serialize_expr(RDB_object *valp, int *posp, const RDB_expression *exp)
             return serialize_str(valp, posp, exp->var.aggr.attrname);
         case RDB_SELECTOR:
         {
+            int i;
             int compc = _RDB_get_possrep(exp->var.selector.typ,
                         exp->var.selector.name)->compc;
-            int i;
+
+            ret = serialize_type (valp, posp, exp->var.selector.typ);
+            if (ret != RDB_OK)
+                return ret;
+            ret = serialize_str(valp, posp, exp->var.selector.name);
+            if (ret != RDB_OK)
+                return ret;
 
             for (i = 0; i < compc; i++) {
                 ret = serialize_expr(valp, posp, exp->var.selector.argv[i]);
                 if (ret != RDB_OK)
                     return ret;
             }
-            ret = serialize_type (valp, posp, exp->var.selector.typ);
+            return RDB_OK;
+        }
+        case RDB_USER_OP:
+        {
+            int i;
+            int argc = exp->var.user_op.op->argc;
+
+            ret = serialize_str(valp, posp, exp->var.user_op.op->name);
             if (ret != RDB_OK)
                 return ret;
-            return serialize_str(valp, posp, exp->var.selector.name);
+            ret = serialize_int (valp, posp, argc);
+            if (ret != RDB_OK)
+                return ret;
+            for (i = 0; i < argc; i++) {
+                ret = serialize_expr(valp, posp, exp->var.user_op.argv[i]);
+                if (ret != RDB_OK)
+                    return ret;
+            }
+            return RDB_OK;
         }
         case RDB_TABLE:
             return _RDB_serialize_table(valp, posp, exp->var.tbp);
     }
+    /* should never be reached */
     abort();
 }
 
@@ -623,7 +646,38 @@ deserialize_expr(RDB_object *valp, int *posp, RDB_transaction *txp,
             *expp = RDB_selector(typ, name, argv);
             free(argv);
             if (*expp == NULL)
+                return RDB_SYSTEM_ERROR;
+            break;
+        }
+        case RDB_USER_OP:
+        {
+            char *name;
+            int argc;
+            int i;
+            RDB_expression **argv;
+        
+            ret = deserialize_str(valp, posp, &name);
+            if (ret != RDB_OK) {
                 return ret;
+            }
+            ret = deserialize_int(valp, posp, &argc);
+            if (ret != RDB_OK)
+                return ret;
+
+            argv = malloc(argc * sizeof (RDB_expression *));
+            if (argv == NULL)
+                return RDB_NO_MEMORY;
+
+            for (i = 0; i < argc; i++) {
+                ret = deserialize_expr(valp, posp, txp, &argv[i]);
+                if (ret != RDB_OK) {
+                    return ret;
+                }
+            }
+            *expp = RDB_user_op(name, argc, argv, txp);
+            free(argv);
+            if (*expp == NULL)
+                return RDB_SYSTEM_ERROR;
             break;
         }
         case RDB_OP_AGGREGATE:
@@ -690,6 +744,8 @@ deserialize_project(RDB_object *valp, int *posp, RDB_transaction *txp,
     if (ret != RDB_OK)
         return ret;
     ret = deserialize_int(valp, posp, &ac);
+    if (ret != RDB_OK)
+        return ret;
     av = malloc(ac * sizeof(char *));
     if (av == NULL)
         return RDB_NO_MEMORY;

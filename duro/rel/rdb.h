@@ -133,7 +133,8 @@ enum _RDB_expr_kind {
     RDB_OP_REL_IS_EMPTY,
     RDB_OP_AGGREGATE,
     RDB_OP_GET_COMP,
-    RDB_SELECTOR
+    RDB_SELECTOR,
+    RDB_USER_OP,
 };
 
 typedef enum {
@@ -166,6 +167,10 @@ typedef struct RDB_expression {
             RDB_type *typ;
             char *name;
         } selector;
+        struct {
+            struct RDB_expression **argv;
+            struct RDB_ro_op *op;
+        } user_op;
     } var;
 } RDB_expression;
 
@@ -996,7 +1001,8 @@ RDB_expression *
 RDB_selector(RDB_type *, const char *repname, RDB_expression *[]);
 
 RDB_expression *
-RDB_user_op(const char *opname, RDB_attr *argv[]);
+RDB_user_op(const char *opname, int argc, RDB_expression *argv[],
+        RDB_transaction *txp);
 
 /*
  * Destroy the expression and all its subexpressions

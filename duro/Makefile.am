@@ -17,7 +17,7 @@ tests/test_rename tests/test_select tests/test_summarize \
 tests/test_union tests/test_update tests/test_utypetable \
 tests/test_defpointtype tests/test_pointtable \
 tests/test_srupdate tests/test_insert tests/test_2db \
-tests/test_defop tests/test_callop
+tests/test_defop tests/test_callop tests/test_print_opview tests/test_dropop
 
 tests_libpoint_la_SOURCES = tests/point.c
 

@@ -1256,7 +1256,7 @@ cleanup:
 
 static RDB_ro_op *
 get_ro_op(const RDB_dbroot *dbrootp, const char *name,
-        int argc, RDB_object *argv[])
+        int argc, RDB_type *argtv[])
 {
     RDB_ro_op **opp = RDB_hashmap_get(&dbrootp->ro_opmap, name, NULL);
     RDB_ro_op *op;
@@ -1272,7 +1272,7 @@ get_ro_op(const RDB_dbroot *dbrootp, const char *name,
             int i;
 
             for (i = 0; (i < argc)
-                    && !RDB_type_equals(op->argtv[i], argv[i]->typ);
+                    && !RDB_type_equals(op->argtv[i], argtv[i]);
                  i++);
             if (i >= argc) {
                 /* Found */
@@ -1303,27 +1303,62 @@ put_ro_op(RDB_dbroot *dbrootp, RDB_ro_op *op)
     return RDB_OK;
 }
 
+static RDB_type **
+valv_to_typev(int valc, RDB_object **valv) {
+    int i;
+    RDB_type **typv = malloc(sizeof (RDB_type *) * valc);
+
+    if (typv == NULL)
+        return NULL;
+    for (i = 0; i < valc; i++) {
+        typv[i] = RDB_obj_type(valv[i]);
+    }
+    return typv;
+}
+
+int
+_RDB_get_ro_op(const char *name, int argc, RDB_type *argtv[],
+               RDB_transaction *txp, RDB_ro_op **opp)
+{
+    int ret;
+
+    /* Lookup operator in map */
+    *opp = get_ro_op(txp->dbp->dbrootp, name, argc, argtv);
+
+    if (*opp == NULL) {
+        /* Not found in map, so read from catalog */
+        ret = _RDB_get_cat_ro_op(name, argc, argtv, txp, opp);
+        if (ret != RDB_OK)
+            return ret;
+        
+        /* Insert operator into map */
+        ret = put_ro_op(txp->dbp->dbrootp, *opp);
+        if (ret != RDB_OK) {
+            free_ro_op(*opp);
+            return ret;
+        }
+    }
+    return RDB_OK;
+}
+
 int
 RDB_call_ro_op(const char *name, int argc, RDB_object *argv[],
                RDB_object *retvalp, RDB_transaction *txp)
 {
     RDB_ro_op *op;
     int ret;
+    RDB_type **argtv;
 
     if (!RDB_tx_is_running(txp))
         return RDB_INVALID_TRANSACTION;
 
-    op = get_ro_op(txp->dbp->dbrootp, name, argc, argv);
-    if (op == NULL) {
-        ret = _RDB_get_cat_ro_op(name, argc, argv, txp, &op);
-        if (ret != RDB_OK)
-            return ret;
-        ret = put_ro_op(txp->dbp->dbrootp, op);
-        if (ret != RDB_OK) {
-            free_ro_op(op);
-            return ret;
-        }
-    }
+    argtv = valv_to_typev(argc, argv);
+    if (argtv == NULL)
+        return RDB_NO_MEMORY;
+    ret = _RDB_get_ro_op(name, argc, argtv, txp, &op);
+    free(argtv);
+    if (ret != RDB_OK)
+        return ret;
 
     return (*op->funcp) (name, argc, argv, retvalp, op->iargp, txp);
 }

@@ -76,6 +76,8 @@ calltest test_pointtable
 calltest test_2db
 calltest test_defop
 calltest test_callop
+calltest test_print_opview
+calltest test_dropop
 
 rm /tmp/duro$$
 

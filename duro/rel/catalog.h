@@ -38,7 +38,7 @@ char *
 _RDB_make_typestr(int argc, RDB_type *argtv[]);
 
 int
-_RDB_get_cat_ro_op(const char *name, int argc, RDB_object *argv[],
+_RDB_get_cat_ro_op(const char *name, int argc, RDB_type *argtv[],
         RDB_transaction *txp, RDB_ro_op **opp);
 
 int

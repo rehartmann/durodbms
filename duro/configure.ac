@@ -19,22 +19,7 @@ AC_PROG_MAKE_SET
 AC_PROG_LIBTOOL
 
 # Checks for libraries.
-AC_CHECK_LIB([db], [db_env_create])
 AC_CHECK_LIB([ltdl], [lt_dlinit])
-
-# Checks for header files.
-AC_HEADER_STDC
-AC_CHECK_HEADERS([float.h limits.h malloc.h stdlib.h string.h regex.h])
-
-# Checks for typedefs, structures, and compiler characteristics.
-AC_C_CONST
-AC_TYPE_SIZE_T
-
-# Checks for library functions.
-AC_FUNC_MALLOC
-AC_FUNC_MEMCMP
-AC_FUNC_REALLOC
-AC_CHECK_FUNCS([memmove memset regcomp sqrt strchr])
 
 AC_CONFIG_FILES([Makefile])
 AC_OUTPUT

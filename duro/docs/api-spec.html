@@ -1437,7 +1437,8 @@ RDB_selector(RDB_type *, const char *repname, RDB_expression *argv[]);
 
 <pre>
 RDB_expression *
-RDB_user_op(const char *opname, RDB_attr *argv[]);
+RDB_user_op(const char *opname, int argc, RDB_expression *argv[],
+        RDB_transaction *txp);
 </pre>
 
 <hr>

@@ -45,9 +45,6 @@ typedef struct RDB_qresult {
  
     /* needed for duplicate elimination */
     RDB_table *matp;
-    
-    /* needed to attach the qresults to the transaction */
-    struct RDB_qresult *nextp;
 } RDB_qresult;
 
 typedef int RDB_selector_func(RDB_object *, RDB_object *[],
@@ -182,6 +179,10 @@ _RDB_get_icomp(RDB_type *, const char *compname);
 
 void
 _RDB_set_obj_type(RDB_object *, RDB_type *);
+
+int
+_RDB_get_ro_op(const char *name, int argc, RDB_type *argtv[],
+               RDB_transaction *txp, RDB_ro_op **opp);
 
 #define _RDB_pkey_len(tbp) ((tbp)->keyv[0].strc)
 

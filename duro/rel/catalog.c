@@ -1239,7 +1239,7 @@ make_typestr_from_valv(int argc, RDB_object *argpv[]) {
 
 /* Read update operator from database */
 int
-_RDB_get_cat_ro_op(const char *name, int argc, RDB_object *argv[],
+_RDB_get_cat_ro_op(const char *name, int argc, RDB_type *argtv[],
         RDB_transaction *txp, RDB_ro_op **opp)
 {
     RDB_expression *exp;
@@ -1249,7 +1249,7 @@ _RDB_get_cat_ro_op(const char *name, int argc, RDB_object *argv[],
     int ret;
     char *libname, *symname;
     RDB_ro_op *op = NULL;
-    char *typestr = make_typestr_from_valv(argc, argv);
+    char *typestr = _RDB_make_typestr(argc, argtv);
 
     if (typestr == NULL) {
         RDB_rollback(txp);
@@ -1299,7 +1299,7 @@ _RDB_get_cat_ro_op(const char *name, int argc, RDB_object *argv[],
     }
 
     for (i = 0; i < op->argc; i++) {
-        op->argtv[i] = RDB_obj_type(argv[i]);
+        op->argtv[i] = argtv[i];
     }
 
     ret = RDB_get_type(RDB_tuple_get_string(&tpl, "RTYPE"), txp, &op->rtyp);

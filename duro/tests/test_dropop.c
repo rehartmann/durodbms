@@ -4,18 +4,6 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-RDB_type *plusargtv[] = {
-    &RDB_INTEGER,
-    &RDB_INTEGER
-};
-
-RDB_type *addargtv[] = {
-    &RDB_INTEGER,
-    &RDB_INTEGER
-};
-
-int updv[] = { 0 };
-
 int
 test_callop(RDB_database *dbp)
 {
@@ -69,11 +57,10 @@ error:
     return ret;
 }
 
-int test_useop(RDB_database *dbp) {
+int
+test_dropop(RDB_database *dbp)
+{
     RDB_transaction tx;
-    RDB_table *tbp, *vtbp;
-    RDB_virtual_attr extend;
-    RDB_expression *expv[2];
     int ret;
 
     printf("Starting transaction\n");
@@ -82,38 +69,20 @@ int test_useop(RDB_database *dbp) {
         return ret;
     }
 
-    ret = RDB_get_table("DEPTS", &tx, &tbp);
+    printf("Dropping PLUS\n");
+    ret = RDB_drop_op("PLUS", &tx);
     if (ret != RDB_OK) {
-        goto error;
+        RDB_rollback(&tx);
+        return ret;
     }
 
-    expv[0] = RDB_expr_attr("DEPTNO", &RDB_INTEGER);
-    expv[1] = RDB_int_const(100);
-
-    extend.name = "XDEPTNO";
-    extend.exp = RDB_user_op("PLUS", 2, expv, &tx);
-
-    ret = RDB_extend(tbp, 1, &extend, &vtbp);
+    printf("Dropping ADD\n");
+    ret = RDB_drop_op("ADD", &tx);
     if (ret != RDB_OK) {
-        goto error;
+        RDB_rollback(&tx);
+        return ret;
     }
-
-    printf("Making vtable persistent\n");
-
-    ret = RDB_set_table_name(vtbp, "DEPTSX", &tx);
-    if (ret != RDB_OK) {
-        goto error;
-    }
-
-    ret = RDB_make_persistent(vtbp, &tx);
-    if (ret != RDB_OK) {
-        goto error;
-    }
-
     return RDB_commit(&tx);
-error:
-    RDB_rollback(&tx);
-    return ret;
 }
 
 int
@@ -138,16 +107,17 @@ main(void)
         return 1;
     }
 
-    ret = test_callop(dbp);
+    ret = test_dropop(dbp);
     if (ret != RDB_OK) {
         fprintf(stderr, "Error: %s\n", RDB_strerror(ret));
         return 2;
     }
 
-    ret = test_useop(dbp);
-    if (ret != RDB_OK) {
-        fprintf(stderr, "Error: %s\n", RDB_strerror(ret));
-        return 2;
+    ret = test_callop(dbp);
+    if (ret == RDB_NOT_FOUND) {
+        printf("Return code: not found - OK\n");
+    } else {
+        fprintf(stderr, "Wrong return code: %s\n", RDB_strerror(ret));
     }
 
     printf ("Closing environment\n");

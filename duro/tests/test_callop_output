@@ -5,9 +5,5 @@ Result value is 4
 Calling ADD
 Value of arg #1 is 4
 Starting transaction
-Dropping PLUS
-Dropping ADD
-Starting transaction
-Calling PLUS
-Return code: not found - OK
+Making vtable persistent
 Closing environment
