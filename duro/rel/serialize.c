@@ -99,6 +99,9 @@ serialize_value(RDB_value *valp, int *posp, const RDB_value *argvalp)
 }
 
 static int
+_RDB_serialize_table(RDB_value *valp, int *posp, RDB_table *tbp);
+
+static int
 serialize_expr(RDB_value *valp, int *posp, const RDB_expression *exprp)
 {
     int ret = serialize_byte(valp, posp, (RDB_byte)exprp->kind);
@@ -244,7 +247,7 @@ serialize_rename(RDB_value *valp, int *posp, RDB_table *tbp)
     return RDB_OK;
 }
 
-int
+static int
 _RDB_serialize_table(RDB_value *valp, int *posp, RDB_table *tbp)
 {
     int ret = serialize_byte(valp, posp, (RDB_byte)tbp->kind);
@@ -305,6 +308,54 @@ _RDB_serialize_table(RDB_value *valp, int *posp, RDB_table *tbp)
             return serialize_rename(valp, posp, tbp);
     }
     abort();
+}
+
+enum {
+    RDB_BUF_INITLEN = 256
+};
+
+int
+_RDB_vtable_to_value(RDB_table *tbp, RDB_value *valp)
+{
+    int pos;
+    int ret;
+
+    RDB_destroy_value(valp);
+    valp->typ = &RDB_BINARY;
+    valp->var.bin.len = RDB_BUF_INITLEN;
+    valp->var.bin.datap = malloc(RDB_BUF_INITLEN);
+    if (valp->var.bin.datap == NULL) {
+        return RDB_NO_MEMORY;
+    }
+    pos = 0;
+    ret = _RDB_serialize_table(valp, &pos, tbp);
+    if (ret != RDB_OK)
+        return ret;
+
+    valp->var.bin.len = pos; /* Only store actual length */
+    return RDB_OK;
+}
+
+int
+_RDB_expr_to_value(const RDB_expression *exp, RDB_value *valp)
+{
+    int pos;
+    int ret;
+
+    RDB_destroy_value(valp);
+    valp->typ = &RDB_BINARY;
+    valp->var.bin.len = RDB_BUF_INITLEN;
+    valp->var.bin.datap = malloc(RDB_BUF_INITLEN);
+    if (valp->var.bin.datap == NULL) {
+        return RDB_NO_MEMORY;
+    }
+    pos = 0;
+    ret = serialize_expr(valp, &pos, exp);
+    if (ret != RDB_OK)
+        return ret;
+
+    valp->var.bin.len = pos; /* Only store actual length */
+    return RDB_OK;
 }
 
 static int

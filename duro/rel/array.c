@@ -8,18 +8,20 @@ RDB_init_array(RDB_array *arrp) {
     arrp->tbp = NULL;
 }
 
-void
+int
 RDB_destroy_array(RDB_array *arrp)
 {
     if (arrp->tbp == NULL)
-        return;
+        return RDB_OK;
     
     if (arrp->qrp != NULL) {
         int ret = _RDB_drop_qresult(arrp->qrp, arrp->txp);
 
         if (RDB_is_syserr(ret))
             RDB_rollback(arrp->txp);
+        return ret;
     }
+    return RDB_OK;
 }
 
 int

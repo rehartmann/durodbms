@@ -12,7 +12,7 @@ OBJS =
 EXECS = maptest tupletest prepare test_select test_minus test_union test_intersect \
        test_extend test_ra test_project test_join test_update test_delete \
        test_null test_keys test_aggregate test_create_view test_print_view \
-       test_binary test_summarize test_rename test_regexp
+       test_binary test_summarize test_rename test_regexp test_deftype
 
 all :	$(EXECS)
 
@@ -26,13 +26,13 @@ test : clean all
         ./testall
 
 prepare : prepare.c
-	$(CC) -o prepare $(CFLAGS) $(LDFLAGS) prepare.c $(LDLIBS)
+	$(CC) $(CFLAGS) $(LDFLAGS) -o prepare prepare.c $(LDLIBS)
 
 test_select : test_select.c
-	$(CC) -o test_select $(CFLAGS) $(LDFLAGS) test_select.c $(LDLIBS)
+	$(CC) $(CFLAGS) $(LDFLAGS) -o test_select test_select.c $(LDLIBS)
 
 test_minus : test_minus.c
-	$(CC) -o test_minus $(CFLAGS) $(LDFLAGS) test_minus.c $(LDLIBS)
+	$(CC) $(CFLAGS) $(LDFLAGS) -o test_minus test_minus.c $(LDLIBS)
 
 test_union : test_union.c
 	$(CC) -o test_union $(CFLAGS) $(LDFLAGS) test_union.c $(LDLIBS)
@@ -80,10 +80,13 @@ test_print_view : test_print_view.c
 	$(CC) -o test_print_view $(CFLAGS) $(LDFLAGS) test_print_view.c $(LDLIBS)
 
 tupletest: tupletest.c
-	$(CC) $(CFLAGS) -o tupletest tupletest.c $(LDFLAGS) $(LDLIBS)
+	$(CC) $(CFLAGS) $(LDFLAGS) -o tupletest tupletest.c $(LDLIBS)
 
 test_binary: test_binary.c
-	$(CC) $(CFLAGS) -o test_binary test_binary.c $(LDFLAGS) $(LDLIBS)
+	$(CC) $(CFLAGS) $(LDFLAGS) -o test_binary test_binary.c $(LDLIBS)
+
+test_deftype: test_deftype.c
+	$(CC) $(CFLAGS) $(LDFLAGS) -o test_deftype test_deftype.c $(LDLIBS)
 
 test_regexp : test_regexp.c
 	$(CC) -o test_regexp $(CFLAGS) $(LDFLAGS) test_regexp.c $(LDLIBS)

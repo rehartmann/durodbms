@@ -11,12 +11,34 @@
 
 <h2>Contents</h2>
 
+<h3>Tuple functions</h3>
+
+<ul>
+<li>RDB_init_tuple
+<li>RDB_destroy_tuple
+<li>RDB_tuple_set
+<li>RDB_tuple_set_bool
+<li>RDB_tuple_set_int
+<li>RDB_tuple_set_rational
+<li>RDB_tuple_set_string
+<li>RDB_tuple_get
+<li>RDB_tuple_get_bool
+<li>RDB_tuple_get_int
+<li>RDB_tuple_get_rational
+<li>RDB_tuple_get_string
+<li>RDB_tuple_extend
+<li>RDB_tuple_rename
+</ul>
+
 <h3>Table functions</h3>
 
 <ul>
 <li><a href="#create_table">RDB_create_table</a>
+<li>RDB_get_table
 <li>RDB_drop_table
 <li>RDB_table_name
+<li>RDB_set_table_name
+<li>RDB_make_persistent
 <li>RDB_insert
 <li>RDB_update
 <li>RDB_delete
@@ -25,6 +47,7 @@
 <li>RDB_table_is_empty
 <li>RDB_set_table_name
 <li>RDB_make_persistent
+<li>RDB_copy_table
 <li>RDB_rename
 <li>RDB_select
 <li>RDB_extend
@@ -33,6 +56,88 @@
 <li>RDB_intersect
 <li>RDB_minus
 <li>RDB_summarize
+</ul>
+
+<h3>Array functions</h3>
+
+<ul>
+<li>RDB_table_to_array
+<li>RDB_array_get_tuple
+<li>RDB_array_get
+<li>RDB_array_set_tuple
+<li>RDB_array_set
+<li>RDB_array_length
+<li>RDB_resize_array
+</ul>
+
+<h3>Database functions</h3>
+
+<ul>
+<li>RDB_create_db_from_env
+<li>RDB_get_db_from_env
+<li>RDB_release_db
+<li>RDB_drop_db
+<li>RDB_db_name
+</ul>
+
+<h3>Constraint functions</h3>
+
+<ul>
+<li>RDB_create_constraint
+<li>RDB_drop_contraint
+</ul>
+
+<h3>Transaction functions</h3>
+
+<ul>
+<li>RDB_begin_tx
+<li>RDB_commit
+<li>RDB_rollback
+<li>RDB_tx_is_running
+</ul>
+
+<h3>Type functions</h3>
+
+<ul>
+<li>RDB_define_type
+<li>RDB_implement_type
+<li>RDB_create_tuple_type
+<li>RDB_create_relation_type
+<li>RDB_get_type
+<li>RDB_drop_type
+<li>RDB_type_name
+<li>RDB_type_is_numeric
+<li>RDB_type_equals
+<li>RDB_extend_tuple_type
+<li>RDB_extend_relation_type
+<li>RDB_join_tuple_types
+<li>RDB_join_relation_types
+<li>RDB_project_tuple_type
+<li>RDB_project_relation_type
+<li>RDB_rename_tuple_type
+<li>RDB_rename_relation_type
+</ul>
+
+<h3>RDB_value functions</h3>
+
+<ul>
+<li>RDB_init_value
+<li>RDB_destroy_value
+<li>RDB_value_equals
+<li>RDB_copy_value
+<li>RDB_value_set
+<li>RDB_value_get_bool
+<li>RDB_value_get_int
+<li>RDB_value_get_rational
+<li>RDB_value_get_string
+<li>RDB_value_bool
+<li>RDB_value_set_int
+<li>RDB_value_set_rational
+<li>RDB_value_set_string
+<li>RDB_value_get_comp
+<li>RDB_value_get_comp
+<li>RDB_binary_get
+<li>RDB_binary_set
 </ul>
 
 <h2 id="create_table">RDB_create_table</h2>
@@ -105,8 +210,7 @@ typedef struct {
 
 int
 RDB_define_type(const char *name, int repc, RDB_possrep repv[],
-                RDB_transaction *txp,
-                RDB_type **resultpp);
+                RDB_transaction *txp, RDB_type **resultpp);
 
 </pre>
 
@@ -271,6 +375,9 @@ RDB_tuple_unwrap(const RDB_tuple *, int attrc, const char *attrv[]);
 <pre>
 
 void
+RDB_value_set_bool(RDB_value *valp, RDB_bool v);
+
+void
 RDB_value_set_int(RDB_value *valp, RDB_int v);
 
 void
@@ -278,6 +385,9 @@ RDB_value_set_rational(RDB_value *valp, RDB_rational v);
 
 int
 RDB_value_set_string(RDB_value *valp, const char *str);
+
+RDB_bool
+RDB_value_bool(const RDB_value *valp);
 
 RDB_int
 RDB_value_int(const RDB_value *valp);
@@ -298,8 +408,6 @@ size_t
 RDB_binary_get_length(const RDB_value *);
 
 </pre>
-
-</h2>
 
 <h2>Table functions</h2>
 
@@ -592,7 +700,7 @@ RDB_create_db_from_env(const char *name, RDB_environment *envp, RDB_database **d
 
 <pre>
 int
-RDB_implement_type(RDB_type *, const char *modname, int options);
+RDB_implement_type(RDB_transaction *, const char *name, const char *modname, int options);
 </pre>
 
 <h3>Dropping a database</h3>

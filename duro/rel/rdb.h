@@ -124,7 +124,7 @@ typedef struct RDB_expression {
     } var;
 } RDB_expression;
 
-typedef struct RDB_virtual_attr {
+typedef struct {
     char *name;
     RDB_expression *exp;
 } RDB_virtual_attr;
@@ -237,6 +237,7 @@ typedef struct RDB_database {
     char *name;
     RDB_environment *envp;
     RDB_hashmap tbmap;
+    RDB_hashmap typemap;
     
     /* catalog tables */
     RDB_table *table_attr_tbp;
@@ -244,7 +245,10 @@ typedef struct RDB_database {
     RDB_table *vtables_tbp;
     RDB_table *dbtables_tbp;
     RDB_table *keys_tbp;
-    
+    RDB_table *types_tbp;    
+    RDB_table *possreps_tbp;
+    RDB_table *possrepcomps_tbp;
+
     /* pointer to next DB in environment */
     struct RDB_database *nextdbp;
     
@@ -263,7 +267,7 @@ typedef struct RDB_transaction {
  * The RDB_tuple structure represents a tuple.
  * It does not carry type information for the tuple itself,
  * but the type information can be extracted from the values
- * the tuple contains.
+ * which the tuple contains.
  */
 typedef struct {
     /* internal */
@@ -278,13 +282,6 @@ typedef struct {
     RDB_int pos;
     int length;	/* length of array; -1 means unknown */
 } RDB_array;
-
-typedef struct RDB_attr {
-    char *name;
-    RDB_type *type;
-    RDB_value *defaultp;
-    int options;
-} RDB_attr;
 
 /*
  * Return the name of the database.
@@ -323,6 +320,13 @@ RDB_release_db(RDB_database *dbp);
  */
 int
 RDB_drop_db(RDB_database *dbp);
+
+typedef struct RDB_attr {
+    char *name;
+    RDB_type *type;
+    RDB_value *defaultp;
+    int options;
+} RDB_attr;
 
 /*
  * Create a table with name name in the database associated with the transaction
@@ -368,6 +372,17 @@ RDB_set_table_name(RDB_table *tbp, const char *name, RDB_transaction *);
  */
 int
 RDB_make_persistent(RDB_table *, RDB_transaction *);
+
+typedef struct {
+    char *name;
+    int compc;
+    RDB_attr *compv;
+    RDB_expression *constraintp;
+} RDB_possrep;
+
+int
+RDB_define_type(const char *name, int repc, RDB_possrep repv[],
+                RDB_transaction *txp, RDB_type **resultpp);
 
 /*
  * Lookup the type with name name from the database pointed to by dbp.
@@ -421,7 +436,7 @@ RDB_rollback(RDB_transaction *);
 
 typedef struct {
     char *name;
-    RDB_expression *valuep; /* !! */
+    RDB_expression *exp;
 } RDB_attr_update;
 
 #define RDB_table_name(tbp) ((tbp)->name)
@@ -430,6 +445,8 @@ typedef struct {
  * Insert the tuple pointed to by tplp into the table pointed to by tbp.
  * Insertion into virtual relvars is currently only supported for
  * SELECT, UNION, INTERSECT, JOIN, and EXTEND.
+ * All attributes of the table for which a default attribute is not provided
+ * must be set. Other tuple attributes are ignored.
  *
  * Return value:
  * RDB_OK	if the insertion was successful
@@ -633,7 +650,7 @@ RDB_tuple_rename(const RDB_tuple *, int renc, RDB_renaming renv[],
 void
 RDB_init_array(RDB_array *);
 
-void
+int
 RDB_destroy_array(RDB_array *);
 
 typedef struct {
@@ -743,6 +760,10 @@ int
 RDB_join_relation_types(const RDB_type *typ1, const RDB_type *typ2,
                      RDB_type **newtypp);
 
+int
+RDB_project_tuple_type(const RDB_type *typ, int attrc, char *attrv[],
+                          RDB_type **newtypp);
+
 /*
  * Create a type that is a projection of the relation type pointed to by typ
  * over the attributes given by attrc and attrv.
@@ -797,6 +818,12 @@ RDB_init_value(RDB_value *valp);
 void
 RDB_destroy_value(RDB_value *valp);
 
+int
+RDB_value_set(RDB_value *valp, const RDB_value **compv);
+
+void
+RDB_value_set_bool(RDB_value *valp, RDB_bool v);
+
 void
 RDB_value_set_int(RDB_value *valp, RDB_int v);
 
@@ -805,6 +832,9 @@ RDB_value_set_rational(RDB_value *valp, RDB_rational v);
 
 int
 RDB_value_set_string(RDB_value *valp, const char *str);
+
+RDB_bool
+RDB_value_bool(const RDB_value *valp);
 
 RDB_int
 RDB_value_int(const RDB_value *valp);

@@ -4,8 +4,7 @@
 
 include make.vars
 
-CC = gcc
-CFLAGS = -g -Wall
+CFLAGS = $(COPTS)
 
 RM = rm -f
 

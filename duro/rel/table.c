@@ -247,7 +247,7 @@ upd_to_vals(RDB_table *tbp, int attrc, const RDB_attr_update attrv[],
     int i, ret;
 
     for (i = 0; i < attrc; i++) {
-        ret = RDB_evaluate(attrv[i].valuep, tplp, txp, &valv[i]);
+        ret = RDB_evaluate(attrv[i].exp, tplp, txp, &valv[i]);
         if (ret != RDB_OK) {
             int j;
             

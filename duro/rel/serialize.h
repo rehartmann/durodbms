@@ -6,7 +6,10 @@
 #include "rdb.h"
 
 int
-_RDB_serialize_table(RDB_value *valp, int *posp, RDB_table *tbp);
+_RDB_vtable_to_value(RDB_table *, RDB_value *);
+
+int
+_RDB_expr_to_value(const RDB_expression *, RDB_value *);
 
 int
 _RDB_deserialize_table(RDB_value *valp, int *posp, RDB_database *dbp,

@@ -14,8 +14,7 @@
 /* initial capacities of attribute map and table map */
 enum {
     RDB_ATTRMAP_CAPACITY = 37,
-    RDB_TABLEMAP_CAPACITY = 37,
-    RDB_BUF_INITLEN = 256
+    RDB_TABLEMAP_CAPACITY = 37
 };
 
 /* Return the length (in bytes) of the internal representation
@@ -403,44 +402,74 @@ catalog_insert(RDB_table *tbp, RDB_transaction *txp)
  * Definitions of the catalog tables.
  */
 
-static RDB_attr table_attr_attrs[] = {
+static RDB_attr table_attr_attrv[] = {
             { "ATTRNAME", &RDB_STRING, NULL, 0 },
             { "TABLENAME", &RDB_STRING, NULL, 0 },
             { "TYPE", &RDB_STRING, NULL, 0 },
             { "I_FNO", &RDB_INTEGER, NULL, 0 } };
-static char *table_attr_keyattrs[] = { "ATTRNAME", "TABLENAME" };
-static RDB_key_attrs table_attr_key[] = { { table_attr_keyattrs, 2 } };
+static char *table_attr_keyattrv[] = { "ATTRNAME", "TABLENAME" };
+static RDB_key_attrs table_attr_keyv[] = { { table_attr_keyattrv, 2 } };
 
-static RDB_attr rtables_attrs[] = {
+static RDB_attr rtables_attrv[] = {
     { "TABLENAME", &RDB_STRING, NULL, 0 },
     { "IS_USER", &RDB_BOOLEAN, NULL, 0 },
     { "I_RECMAP", &RDB_STRING, NULL, 0 }
 };
-static char *rtables_keyattrs[] = { "TABLENAME" };
-static RDB_key_attrs rtables_key[] = { { rtables_keyattrs, 1 } };
+static char *rtables_keyattrv[] = { "TABLENAME" };
+static RDB_key_attrs rtables_keyv[] = { { rtables_keyattrv, 1 } };
 
-static RDB_attr vtables_attrs[] = {
+static RDB_attr vtables_attrv[] = {
     { "TABLENAME", &RDB_STRING, NULL, 0 },
     { "IS_USER", &RDB_BOOLEAN, NULL, 0 },
     { "I_DEF", &RDB_BINARY, NULL, 0 }
 };
-static char *vtables_keyattrs[] = { "TABLENAME" };
-static RDB_key_attrs vtables_key[] = { { vtables_keyattrs, 1 } };
+static char *vtables_keyattrv[] = { "TABLENAME" };
+static RDB_key_attrs vtables_keyv[] = { { vtables_keyattrv, 1 } };
 
-static RDB_attr dbtables_attrs[] = {
+static RDB_attr dbtables_attrv[] = {
     { "TABLENAME", &RDB_STRING },
     { "DBNAME", &RDB_STRING }
 };
-static char *dbtables_keyattrs[] = { "TABLENAME", "DBNAME" };
-static RDB_key_attrs dbtables_key[] = { { dbtables_keyattrs, 2 } };
+static char *dbtables_keyattrv[] = { "TABLENAME", "DBNAME" };
+static RDB_key_attrs dbtables_keyv[] = { { dbtables_keyattrv, 2 } };
 
-static RDB_attr keys_attrs[] = {
+static RDB_attr keys_attrv[] = {
     { "TABLENAME", &RDB_STRING, NULL, 0 },
     { "KEYNO", &RDB_INTEGER, NULL, 0 },
     { "ATTRS", &RDB_STRING, NULL, 0 }
 };
-static char *keys_keyattrs[] = { "TABLENAME", "KEYNO" };
-static RDB_key_attrs keys_key[] = { { keys_keyattrs, 2 } };
+static char *keys_keyattrv[] = { "TABLENAME", "KEYNO" };
+static RDB_key_attrs keys_keyv[] = { { keys_keyattrv, 2 } };
+
+static RDB_attr types_attrv[] = {
+    { "TYPENAME", &RDB_STRING, NULL, 0 },
+    { "I_MODNAME", &RDB_STRING, NULL, 0 },
+    { "I_IMPLINFO", &RDB_INTEGER, NULL, 0 }
+};
+static char *types_keyattrv[] = { "TYPENAME" };
+static RDB_key_attrs types_keyv[] = { { types_keyattrv, 1 } };
+
+static RDB_attr possreps_attrv[] = {
+    { "TYPENAME", &RDB_STRING, NULL, 0 },
+    { "POSSREPNAME", &RDB_STRING, NULL, 0 },
+    { "I_CONSTRAINT", &RDB_BINARY, NULL, 0 }
+};
+static char *possreps_keyattrv[] = { "TYPENAME", "POSSREPNAME" };
+static RDB_key_attrs possreps_keyv[] = { { possreps_keyattrv, 2 } };
+
+static RDB_attr possrepcomps_attrv[] = {
+    { "TYPENAME", &RDB_STRING, NULL, 0 },
+    { "POSSREPNAME", &RDB_STRING, NULL, 0 },
+    { "COMPNO", &RDB_INTEGER, NULL, 0 },
+    { "COMPNAME", &RDB_STRING, NULL, 0 },
+    { "COMPTYPENAME", &RDB_STRING, NULL, 0 }
+};
+static char *possrepcomps_keyattrv1[] = { "TYPENAME", "POSSREPNAME", "COMPNO" };
+static char *possrepcomps_keyattrv2[] = { "TYPENAME", "POSSREPNAME", "COMPNAME" };
+static RDB_key_attrs possrepcomps_keyv[] = {
+    { possrepcomps_keyattrv1, 2 },
+    { possrepcomps_keyattrv2, 2 }
+};
 
 /* Create system tables if they do not already exist.
  * Associate system tables with the database pointed to by txp->dbp.
@@ -452,41 +481,63 @@ provide_systables(RDB_transaction *txp)
 
     /* create or open catalog tables */
 
-    ret = open_table("SYSTABLEATTRS", RDB_TRUE, 4, table_attr_attrs,
-            1, table_attr_key, RDB_FALSE, RDB_TRUE, txp,
+    ret = open_table("SYSTABLEATTRS", RDB_TRUE, 4, table_attr_attrv,
+            1, table_attr_keyv, RDB_FALSE, RDB_TRUE, txp,
             &txp->dbp->table_attr_tbp);
     if (ret != RDB_OK) {
         return ret;
     }
     assign_table_db(txp->dbp->table_attr_tbp, txp->dbp);
 
-    ret = open_table("SYSRTABLES", RDB_TRUE, 3, rtables_attrs, 1, rtables_key,
+    ret = open_table("SYSRTABLES", RDB_TRUE, 3, rtables_attrv, 1, rtables_keyv,
             RDB_FALSE, RDB_TRUE, txp, &txp->dbp->rtables_tbp);
     if (ret != RDB_OK) {
         return ret;
     }
     assign_table_db(txp->dbp->rtables_tbp, txp->dbp);
 
-    ret = open_table("SYSVTABLES", RDB_TRUE, 3, vtables_attrs, 1, vtables_key,
+    ret = open_table("SYSVTABLES", RDB_TRUE, 3, vtables_attrv, 1, vtables_keyv,
             RDB_FALSE, RDB_TRUE, txp, &txp->dbp->vtables_tbp);
     if (ret != RDB_OK) {
         return ret;
     }
     assign_table_db(txp->dbp->vtables_tbp, txp->dbp);
 
-    ret = open_table("SYSDBTABLES", RDB_TRUE, 2, dbtables_attrs, 1, dbtables_key,
+    ret = open_table("SYSDBTABLES", RDB_TRUE, 2, dbtables_attrv, 1, dbtables_keyv,
             RDB_FALSE, RDB_TRUE, txp, &txp->dbp->dbtables_tbp);
     if (ret != RDB_OK) {
         return ret;
     }
     assign_table_db(txp->dbp->dbtables_tbp, txp->dbp);
 
-    ret = open_table("SYSKEYS", RDB_TRUE, 3, keys_attrs, 1, keys_key,
+    ret = open_table("SYSKEYS", RDB_TRUE, 3, keys_attrv, 1, keys_keyv,
             RDB_FALSE, RDB_TRUE, txp, &txp->dbp->keys_tbp);
     if (ret != RDB_OK) {
         return ret;
     }
     assign_table_db(txp->dbp->keys_tbp, txp->dbp);
+
+    ret = open_table("SYSTYPES", RDB_TRUE, 3, types_attrv, 1, types_keyv,
+            RDB_FALSE, RDB_TRUE, txp, &txp->dbp->types_tbp);
+    if (ret != RDB_OK) {
+        return ret;
+    }
+    assign_table_db(txp->dbp->types_tbp, txp->dbp);
+
+    ret = open_table("SYSPOSSREPS", RDB_TRUE, 3, possreps_attrv,
+            1, possreps_keyv, RDB_FALSE, RDB_TRUE, txp, &txp->dbp->possreps_tbp);
+    if (ret != RDB_OK) {
+        return ret;
+    }
+    assign_table_db(txp->dbp->possreps_tbp, txp->dbp);
+
+    ret = open_table("SYSPOSSREPCOMPS", RDB_TRUE, 5, possrepcomps_attrv,
+            2, possrepcomps_keyv, RDB_FALSE, RDB_TRUE, txp,
+            &txp->dbp->possrepcomps_tbp);
+    if (ret != RDB_OK) {
+        return ret;
+    }
+    assign_table_db(txp->dbp->possrepcomps_tbp, txp->dbp);
 
     /* insert catalog tables into catalog. catalog_insert() may return
        RDB_ELEMENT_EXISTS if the catalog table already existed, but not
@@ -501,12 +552,32 @@ provide_systables(RDB_transaction *txp)
         return ret;
     }
 
+    ret = catalog_insert(txp->dbp->vtables_tbp, txp);
+    if (ret != RDB_OK && ret != RDB_ELEMENT_EXISTS) {
+        return ret;
+    }
+
     ret = catalog_insert(txp->dbp->dbtables_tbp, txp);
     if (ret != RDB_OK && ret != RDB_ELEMENT_EXISTS) {
         return ret;
     }
 
     ret = catalog_insert(txp->dbp->keys_tbp, txp);
+    if (ret != RDB_OK && ret != RDB_ELEMENT_EXISTS) {
+        return ret;
+    }
+
+    ret = catalog_insert(txp->dbp->types_tbp, txp);
+    if (ret != RDB_OK && ret != RDB_ELEMENT_EXISTS) {
+        return ret;
+    }
+
+    ret = catalog_insert(txp->dbp->possreps_tbp, txp);
+    if (ret != RDB_OK && ret != RDB_ELEMENT_EXISTS) {
+        return ret;
+    }
+
+    ret = catalog_insert(txp->dbp->possrepcomps_tbp, txp);
     if (ret != RDB_OK && ret != RDB_ELEMENT_EXISTS) {
         return ret;
     }
@@ -555,6 +626,7 @@ alloc_db(const char *name, RDB_environment *envp, RDB_database **dbpp)
     dbp->refcount = 1;
 
     RDB_init_hashmap(&dbp->tbmap, RDB_TABLEMAP_CAPACITY);
+    RDB_init_hashmap(&dbp->typemap, RDB_TABLEMAP_CAPACITY);
 
     *dbpp = dbp;
     
@@ -568,6 +640,7 @@ error:
 static void
 free_db(RDB_database *dbp) {
     RDB_destroy_hashmap(&dbp->tbmap);
+    RDB_destroy_hashmap(&dbp->typemap);
     free(dbp->name);
     free(dbp);
 }
@@ -664,38 +737,63 @@ RDB_get_db_from_env(const char *name, RDB_environment *envp,
 
     /* open catalog tables */
 
-    ret = open_table("SYSRTABLES", RDB_TRUE, 3, rtables_attrs, 1, rtables_key,
+    ret = open_table("SYSRTABLES", RDB_TRUE, 3, rtables_attrv, 1, rtables_keyv,
             RDB_FALSE, RDB_FALSE, &tx, &dbp->rtables_tbp);
     if (ret != RDB_OK) {
         goto error;
     }
     assign_table_db(dbp->rtables_tbp, dbp);
 
-    ret = open_table("SYSVTABLES", RDB_TRUE, 3, vtables_attrs, 1, vtables_key,
+    ret = open_table("SYSVTABLES", RDB_TRUE, 3, vtables_attrv, 1, vtables_keyv,
             RDB_FALSE, RDB_FALSE, &tx, &dbp->vtables_tbp);
     if (ret != RDB_OK) {
         goto error;
     }
     assign_table_db(dbp->vtables_tbp, dbp);
 
-    ret = open_table("SYSTABLEATTRS", RDB_TRUE, 4, table_attr_attrs,
-            1, table_attr_key, RDB_FALSE, RDB_FALSE, &tx,
+    ret = open_table("SYSTABLEATTRS", RDB_TRUE, 4, table_attr_attrv,
+            1, table_attr_keyv, RDB_FALSE, RDB_FALSE, &tx,
             &dbp->table_attr_tbp);
     if (ret != RDB_OK) {
         goto error;
     }
     assign_table_db(dbp->table_attr_tbp, dbp);
 
-    ret = open_table("SYSDBTABLES", RDB_TRUE, 2, dbtables_attrs, 1, dbtables_key,
+    ret = open_table("SYSDBTABLES", RDB_TRUE, 2, dbtables_attrv, 1, dbtables_keyv,
             RDB_FALSE, RDB_FALSE, &tx, &dbp->dbtables_tbp);
     if (ret != RDB_OK) {
         goto error;
     }
     assign_table_db(dbp->dbtables_tbp, dbp);
 
-    ret = open_table("SYSKEYS", RDB_TRUE, 3, keys_attrs, 1, keys_key,
+    ret = open_table("SYSKEYS", RDB_TRUE, 3, keys_attrv, 1, keys_keyv,
             RDB_FALSE, RDB_FALSE, &tx, &dbp->keys_tbp);
+    if (ret != RDB_OK) {
+        goto error;
+    }
     assign_table_db(dbp->keys_tbp, dbp);
+
+    ret = open_table("SYSTYPES", RDB_TRUE, 3, types_attrv, 1, types_keyv,
+            RDB_FALSE, RDB_FALSE, &tx, &dbp->types_tbp);
+    if (ret != RDB_OK) {
+        goto error;
+    }
+    assign_table_db(dbp->types_tbp, dbp);
+
+    ret = open_table("SYSPOSSREPS", RDB_TRUE, 3, possreps_attrv,
+            1, possreps_keyv, RDB_FALSE, RDB_FALSE, &tx, &dbp->possreps_tbp);
+    if (ret != RDB_OK) {
+        return ret;
+    }
+    assign_table_db(dbp->possreps_tbp, dbp);
+
+    ret = open_table("SYSPOSSREPCOMPS", RDB_TRUE, 5, possrepcomps_attrv,
+            2, possrepcomps_keyv, RDB_FALSE, RDB_FALSE, &tx,
+            &dbp->possrepcomps_tbp);
+    if (ret != RDB_OK) {
+        return ret;
+    }
+    assign_table_db(dbp->possrepcomps_tbp, dbp);
 
     /* Check if the database exists by checking if the DBTABLES contains
      * SYSRTABLES for this database.
@@ -1312,6 +1410,8 @@ get_cat_vtable(RDB_database *dbp, const char *name, RDB_table **tbpp)
 
     (*tbpp)->is_persistent = RDB_TRUE;
     (*tbpp)->name = RDB_dup_str(name);
+
+    assign_table_db(*tbpp, dbp);
     
     RDB_commit(&tx);
     return RDB_OK;
@@ -1496,7 +1596,6 @@ RDB_make_persistent(RDB_table *tbp, RDB_transaction *txp)
     RDB_tuple tpl;
     RDB_value defval;
     int ret;
-    int pos;
 
     if (tbp->is_persistent)
         return RDB_OK;
@@ -1511,6 +1610,7 @@ RDB_make_persistent(RDB_table *tbp, RDB_transaction *txp)
         return RDB_INVALID_TRANSACTION;
 
     RDB_init_tuple(&tpl);
+    RDB_init_value(&defval);
 
     ret = RDB_tuple_set_string(&tpl, "TABLENAME", tbp->name);
     if (ret != RDB_OK)
@@ -1520,21 +1620,10 @@ RDB_make_persistent(RDB_table *tbp, RDB_transaction *txp)
     if (ret != RDB_OK)
         goto error;
 
-    defval.typ = &RDB_BINARY;
-    defval.var.bin.len = RDB_BUF_INITLEN;
-    defval.var.bin.datap = malloc(RDB_BUF_INITLEN);
-    if (defval.var.bin.datap == NULL) {
-        ret = RDB_NO_MEMORY;
-        goto error;
-    }
-    pos = 0;
-    ret = _RDB_serialize_table(&defval, &pos, tbp);
+    ret = _RDB_vtable_to_value(tbp, &defval);
     if (ret != RDB_OK)
         goto error;
-
-    defval.var.bin.len = pos; /* Only store actual length */
     ret = RDB_tuple_set(&tpl, "I_DEF", &defval);
-    free(defval.var.bin.datap);
     if (ret != RDB_OK)
         goto error;
 
@@ -1550,16 +1639,96 @@ RDB_make_persistent(RDB_table *tbp, RDB_transaction *txp)
         goto error;
 
     RDB_destroy_tuple(&tpl);
+    RDB_destroy_value(&defval);
 
     return RDB_OK;
 error:
     RDB_destroy_tuple(&tpl);
+    RDB_destroy_value(&defval);
+    return ret;
+}
+
+static int
+get_cat_type(RDB_database *dbp, const char *name, RDB_type **typp)
+{
+    RDB_transaction tx;
+    RDB_expression *exp;
+    RDB_expression *wherep;
+    RDB_table *tmptbp;
+    RDB_tuple tpl;
+    int ret;
+
+    *typp = NULL;
+
+    exp = RDB_expr_attr("TYPENAME", &RDB_STRING);
+    if (exp == NULL)
+        return RDB_NO_MEMORY;
+    wherep = RDB_eq(exp, RDB_string_const(name));
+    if (wherep == NULL) {
+        RDB_drop_expr(exp);
+        return RDB_NO_MEMORY;
+    }
+    
+    ret = RDB_select(dbp->types_tbp, wherep, &tmptbp);
+    if (ret != RDB_OK) {
+         RDB_drop_expr(wherep);
+         return ret;
+    }
+
+    ret = RDB_begin_tx(&tx, dbp, NULL);
+    if (ret != RDB_OK) {
+        RDB_drop_table(tmptbp, NULL);
+        return ret;
+    }
+
+    RDB_init_tuple(&tpl);
+    ret = RDB_extract_tuple(tmptbp, &tpl, &tx);
+    if (ret != RDB_OK)
+        goto error;
+
+    *typp = malloc(sizeof (RDB_type));
+    if (*typp == NULL) {
+        ret = RDB_NO_MEMORY;
+        goto error;
+    }
+
+    (*typp)->name = RDB_dup_str(name);
+    if ((*typp)->name == NULL) {
+        free(*typp);
+        ret = RDB_NO_MEMORY;
+        goto error;
+    }
+    (*typp)->kind = RDB_TP_USER;
+    /* !! */
+    
+    ret = RDB_drop_table(tmptbp, &tx);
+    tmptbp = NULL;
+    if (ret != RDB_OK) {
+        goto error;
+    }
+    ret = RDB_commit(&tx);
+    if (ret != RDB_OK)
+        goto error;
+    RDB_destroy_tuple(&tpl);
+    return RDB_OK;
+    
+error:
+    if (tmptbp == NULL)
+        RDB_drop_table(tmptbp, &tx);
+    RDB_rollback(&tx);
+    RDB_destroy_tuple(&tpl);
+    if (*typp != NULL) {
+        free((*typp)->name);
+        free(*typp);
+    }
     return ret;
 }
 
 int
 RDB_get_type(RDB_database *dbp, const char *name, RDB_type **typp)
 {
+    RDB_type **foundtypp;
+
     if (strcmp(name, "BOOLEAN") == 0) {
         *typp = &RDB_BOOLEAN;
         return RDB_OK;
@@ -1580,7 +1749,150 @@ RDB_get_type(RDB_database *dbp, const char *name, RDB_type **typp)
         *typp = &RDB_BINARY;
         return RDB_OK;
     }
-    /* search for user defined type 
-     * ... */
-    return RDB_NOT_FOUND;
+    /* search for user defined type */
+
+    foundtypp = (RDB_type **)RDB_hashmap_get(&dbp->typemap, name, NULL);
+    if (foundtypp != NULL) {
+        *typp = *foundtypp;
+        return RDB_OK;
+    }
+    
+    return get_cat_type(dbp, name, typp);
+}
+
+int
+RDB_define_type(const char *name, int repc, RDB_possrep repv[],
+                RDB_transaction *txp, RDB_type **resultpp)
+{
+    RDB_transaction tx;
+    RDB_tuple tpl;
+    RDB_value conval;
+    int ret;
+    int i, j;
+
+    ret = RDB_begin_tx(&tx, RDB_tx_db(txp), txp);
+    if (ret != RDB_OK)
+        return ret;
+
+    RDB_init_tuple(&tpl);
+    RDB_init_value(&conval);
+
+    /* Insert tuple into SYSTYPES */
+
+    ret = RDB_tuple_set_string(&tpl, "TYPENAME", name);
+    if (ret != RDB_OK)
+        goto error;
+    ret = RDB_tuple_set_string(&tpl, "I_MODNAME", "");
+    if (ret != RDB_OK)
+        goto error;
+    ret = RDB_tuple_set_int(&tpl, "I_IMPLINFO", -1);
+    if (ret != RDB_OK)
+        goto error;
+
+    ret = RDB_insert(txp->dbp->types_tbp, &tpl, &tx);
+    if (ret != RDB_OK)
+        goto error;
+
+    /* Insert tuple into SYSPOSSREPS */
+    
+    for (i = 0; i < repc; i++) {
+        char *prname = repv[i].name;
+        RDB_expression *exp = repv[i].constraintp;
+
+        if (prname == NULL) {
+            if (repc > 1) {
+                ret = RDB_ILLEGAL_ARG;
+                goto error;
+            }
+            prname = "";
+        }
+        ret = RDB_tuple_set_string(&tpl, "POSSREPNAME", prname);
+        if (ret != RDB_OK)
+            goto error;
+        if (exp == NULL)
+            exp = RDB_bool_const(RDB_TRUE);
+        ret = _RDB_expr_to_value(exp, &conval);
+        if (ret != RDB_OK)
+            goto error;
+        ret = RDB_tuple_set(&tpl, "I_CONSTRAINT", &conval);
+        if (ret != RDB_OK)
+            goto error;
+
+        ret = RDB_insert(txp->dbp->possreps_tbp, &tpl, &tx);
+        if (ret != RDB_OK)
+            goto error;
+
+        for (j = 0; j < repv[i].compc; j++) {
+            char *cname = repv[i].compv[j].name;
+
+            if (cname == NULL) {
+                if (repv[i].compc > 1) {
+                    ret = RDB_ILLEGAL_ARG;
+                    goto error;
+                }
+                cname = "";
+            }
+            ret = RDB_tuple_set_int(&tpl, "COMPNO", (RDB_int)j);
+            if (ret != RDB_OK)
+                goto error;
+            ret = RDB_tuple_set_string(&tpl, "COMPNAME", cname);
+            if (ret != RDB_OK)
+                goto error;
+            ret = RDB_tuple_set_string(&tpl, "COMPTYPENAME",
+                    repv[i].compv[j].type->name);
+            if (ret != RDB_OK)
+                goto error;
+
+            ret = RDB_insert(txp->dbp->possrepcomps_tbp, &tpl, &tx);
+            if (ret != RDB_OK)
+                goto error;
+        }
+    }
+
+    RDB_destroy_value(&conval);    
+    RDB_destroy_tuple(&tpl);
+    
+    return RDB_commit(&tx);
+    
+error:
+    RDB_destroy_value(&conval);    
+    RDB_destroy_tuple(&tpl);
+    RDB_rollback(&tx);
+
+    return ret;
+}
+
+int
+RDB_implement_type(const char *name, const char *module, int options,
+                   RDB_transaction *txp)
+{
+    RDB_expression *exp, *wherep;
+    RDB_attr_update upd;
+    int ret;
+
+    exp = RDB_expr_attr("TYPENAME", &RDB_STRING);
+    if (exp == NULL) {
+        return RDB_NO_MEMORY;
+    }
+    wherep = RDB_eq(exp, RDB_string_const(name));
+    if (exp == NULL) {
+        RDB_drop_expr(exp);
+        return RDB_NO_MEMORY;
+    }    
+
+    upd.name = "I_IMPLINFO";
+    upd.exp = RDB_int_const(0);
+    if (upd.exp == NULL) {
+        ret = RDB_NO_MEMORY;
+        goto error;
+    }
+
+    ret = RDB_update(txp->dbp->types_tbp, wherep, 1, &upd, txp);
+
+error:
+    if (upd.exp != NULL)
+        RDB_drop_expr(upd.exp);  
+    RDB_drop_expr(wherep);
+
+    return ret;
 }

@@ -121,6 +121,14 @@ RDB_destroy_value(RDB_value *valp)
 }
 
 void
+RDB_value_set_bool(RDB_value *valp, RDB_bool v)
+{
+    RDB_destroy_value(valp);
+    valp->typ = &RDB_BOOLEAN;
+    valp->var.bool_val = v;
+}
+
+void
 RDB_value_set_int(RDB_value *valp, RDB_int v)
 {
     RDB_destroy_value(valp);
@@ -147,6 +155,12 @@ RDB_value_set_string(RDB_value *valp, const char *str)
         return RDB_NO_MEMORY;
     strcpy(valp->var.bin.datap, str);
     return RDB_OK;
+}
+
+RDB_bool
+RDB_value_bool(const RDB_value *valp)
+{
+    return valp->var.bool_val;
 }
 
 RDB_int

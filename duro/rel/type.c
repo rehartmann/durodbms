@@ -350,29 +350,25 @@ RDB_type *_RDB_tuple_attr_type(const RDB_type *tuptyp, const char *attrname)
 }
 
 int
-RDB_project_relation_type(const RDB_type *typ, int attrc, char *attrv[],
+RDB_project_tuple_type(const RDB_type *typ, int attrc, char *attrv[],
                           RDB_type **newtypp)
 {
-    RDB_type *reltyp;
-    RDB_type *tuptyp = NULL;
-    int ret;
+    RDB_type *tuptyp;
     int i;
+    int ret;
 
-    reltyp = malloc(sizeof (RDB_type));
-    if (reltyp == NULL) {
-        return RDB_NO_MEMORY;
-    }
-
-    /* Create tuple type */
     tuptyp = malloc(sizeof (RDB_type));
     if (tuptyp == NULL) {
-        ret = RDB_NO_MEMORY;
-        goto error;
+        return RDB_NO_MEMORY;
     }
     tuptyp->name = NULL;
     tuptyp->kind = RDB_TP_TUPLE;
     tuptyp->complex.tuple.attrc = attrc;
     tuptyp->complex.tuple.attrv = malloc(attrc * sizeof (RDB_attr));
+    if (tuptyp->complex.tuple.attrv == NULL) {
+        free(tuptyp);
+        return RDB_NO_MEMORY;
+    }
     for (i = 0; i < attrc; i++)
         tuptyp->complex.tuple.attrv[i].name = NULL;
 
@@ -387,7 +383,7 @@ RDB_project_relation_type(const RDB_type *typ, int attrc, char *attrv[],
         }
         tuptyp->complex.tuple.attrv[i].name = attrname;
 
-        attrtyp = _RDB_tuple_attr_type(typ->complex.basetyp, attrname);
+        attrtyp = _RDB_tuple_attr_type(typ, attrname);
         if (attrtyp == NULL) {
             ret = RDB_ILLEGAL_ARG;
             goto error;
@@ -396,23 +392,41 @@ RDB_project_relation_type(const RDB_type *typ, int attrc, char *attrv[],
         tuptyp->complex.tuple.attrv[i].defaultp = NULL;
         tuptyp->complex.tuple.attrv[i].options = 0;
     }
+    
+    *newtypp = tuptyp;
+    
+    return RDB_OK;
+error:
+    for (i = 0; i < attrc; i++)
+        free(tuptyp->complex.tuple.attrv[i].name);
+    free(tuptyp->complex.tuple.attrv);
+    free(tuptyp);
+    return ret;
+}
 
+int
+RDB_project_relation_type(const RDB_type *typ, int attrc, char *attrv[],
+                          RDB_type **newtypp)
+{
+    RDB_type *reltyp;
+    int ret;
+
+    reltyp = malloc(sizeof (RDB_type));
+    if (reltyp == NULL) {
+        return RDB_NO_MEMORY;
+    }
+
+    ret = RDB_project_tuple_type(typ->complex.basetyp, attrc, attrv,
+            &reltyp->complex.basetyp);
+    if (ret != RDB_OK) {
+        free(reltyp);
+        return ret;
+    }
     reltyp->name = NULL;
     reltyp->kind = RDB_TP_RELATION;
-    reltyp->complex.basetyp = tuptyp;
 
     *newtypp = reltyp;
     return RDB_OK;
-
-error:
-    if (tuptyp != NULL) {
-        for (i = 0; i < attrc; i++)
-            free(tuptyp->complex.tuple.attrv[i].name);
-    }
-        
-    free(reltyp);
-
-    return ret;
 }
 
 int
