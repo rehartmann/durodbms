@@ -55,11 +55,11 @@ RDB_parse_table(const char *txt, RDB_ltablefn *lt_fp, void *lt_arg,
     if (ret != RDB_OK)
         return ret;
 
-    if (exp->kind != RDB_TABLE) {
+    if (exp->kind != RDB_EX_OBJ || exp->var.obj.kind != RDB_OB_TABLE) {
         RDB_drop_expr(exp);
         return RDB_TYPE_MISMATCH;
     }
 
-    *tbpp = exp->var.tbp;
+    *tbpp = exp->var.obj.var.tbp;
     return RDB_OK;
 }

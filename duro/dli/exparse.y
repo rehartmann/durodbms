@@ -759,7 +759,7 @@ sum_invocation: TOK_SUM '(' argument_list ')' {
                 YYERROR;
 
             if ($3.argc == 2) {
-                if ($3.argv[1]->kind != RDB_ATTR)
+                if ($3.argv[1]->kind != RDB_EX_ATTR)
                     YYERROR;
                 attrname = $3.argv[1]->var.attr.name;
             }
@@ -782,7 +782,7 @@ avg_invocation: TOK_AVG '(' argument_list ')' {
                 YYERROR;
 
             if ($3.argc == 2) {
-                if ($3.argv[1]->kind != RDB_ATTR)
+                if ($3.argv[1]->kind != RDB_EX_ATTR)
                     YYERROR;
                 attrname = $3.argv[1]->var.attr.name;
             }
@@ -805,7 +805,7 @@ max_invocation: TOK_MAX '(' argument_list ')' {
                 YYERROR;
 
             if ($3.argc == 2) {
-                if ($3.argv[1]->kind != RDB_ATTR)
+                if ($3.argv[1]->kind != RDB_EX_ATTR)
                     YYERROR;
                 attrname = $3.argv[1]->var.attr.name;
             }
@@ -828,7 +828,7 @@ min_invocation: TOK_MIN '(' argument_list ')' {
                 YYERROR;
 
             if ($3.argc == 2) {
-                if ($3.argv[1]->kind != RDB_ATTR)
+                if ($3.argv[1]->kind != RDB_EX_ATTR)
                     YYERROR;
                 attrname = $3.argv[1]->var.attr.name;
             }
@@ -851,7 +851,7 @@ all_invocation: TOK_ALL '(' argument_list ')' {
                 YYERROR;
 
             if ($3.argc == 2) {
-                if ($3.argv[1]->kind != RDB_ATTR)
+                if ($3.argv[1]->kind != RDB_EX_ATTR)
                     YYERROR;
                 attrname = $3.argv[1]->var.attr.name;
             }
@@ -874,7 +874,7 @@ any_invocation: TOK_ANY '(' argument_list ')' {
                 YYERROR;
 
             if ($3.argc == 2) {
-                if ($3.argv[1]->kind != RDB_ATTR)
+                if ($3.argv[1]->kind != RDB_EX_ATTR)
                     YYERROR;
                 attrname = $3.argv[1]->var.attr.name;
             }
@@ -974,8 +974,8 @@ type: TOK_ID
         | "SAME_TYPE_AS" '(' expression ')'
         | "RELATION" '{' attribute_name_type_list '}'
         | "RELATION" '{' '}'
-        | TUPLE '{' attribute_name_type_list '}'
-        | TUPLE '{' '}'
+        | TOK_TUPLE '{' attribute_name_type_list '}'
+        | TOK_TUPLE '{' '}'
         ;
 
 opt_expression_list:
@@ -994,9 +994,9 @@ RDB_get_ltable(void *arg);
 static RDB_table *
 expr_to_table(const RDB_expression *exp)
 {
-    if (exp->kind == RDB_TABLE)
-        return exp->var.tbp;
-    if (exp->kind == RDB_ATTR) {
+    if (exp->kind == RDB_EX_OBJ && exp->var.obj.kind == RDB_OB_TABLE)
+        return exp->var.obj.var.tbp;
+    if (exp->kind == RDB_EX_ATTR) {
         RDB_table *tbp;
 
         /* Try to find local table first */

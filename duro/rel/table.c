@@ -33,14 +33,14 @@ RDB_expression *
 _RDB_pindex_expr(RDB_table *tbp, RDB_expression *exprp)
 {
     if (tbp->kind != RDB_TB_STORED || _RDB_pkey_len(tbp) != 1
-            || exprp->kind != RDB_OP_EQ)
+            || exprp->kind != RDB_EX_EQ)
         return NULL;
-    if (exprp->var.op.arg1->kind == RDB_ATTR
+    if (exprp->var.op.arg1->kind == RDB_EX_ATTR
             && RDB_expr_is_const(exprp->var.op.arg2)
             && attr_is_pindex(tbp, exprp->var.op.arg1->var.attr.name)) {
         return exprp->var.op.arg2;
     }
-    if (exprp->var.op.arg2->kind == RDB_ATTR
+    if (exprp->var.op.arg2->kind == RDB_EX_ATTR
             && RDB_expr_is_const(exprp->var.op.arg1)
             && attr_is_pindex(tbp, exprp->var.op.arg2->var.attr.name)) {
         return exprp->var.op.arg1;
@@ -875,7 +875,7 @@ RDB_select(RDB_table *tbp, RDB_expression *condp, RDB_table **resultpp)
 
     newtbp->is_user = RDB_TRUE;
     newtbp->is_persistent = RDB_FALSE;
-    if (condp->kind == RDB_OP_EQ) {
+    if (condp->kind == RDB_EX_EQ) {
         RDB_expression *exprp = _RDB_pindex_expr(tbp, condp);
 
         if (exprp != NULL) {

@@ -124,37 +124,35 @@ extern RDB_type RDB_STRING;
 extern RDB_type RDB_BINARY;
 
 enum _RDB_expr_kind {
-    RDB_CONST,
+    RDB_EX_OBJ,
 
-    RDB_ATTR,
+    RDB_EX_ATTR,
 
-    RDB_TABLE,
+    RDB_EX_EQ,
+    RDB_EX_NEQ,
+    RDB_EX_GT,
+    RDB_EX_LT,
+    RDB_EX_GET,
+    RDB_EX_LET,
+    RDB_EX_AND,
+    RDB_EX_OR,
+    RDB_EX_NOT,
+    RDB_EX_ADD,
+    RDB_EX_SUBTRACT,
+    RDB_EX_NEGATE,
+    RDB_EX_MULTIPLY,
+    RDB_EX_DIVIDE,
 
-    RDB_OP_EQ,
-    RDB_OP_NEQ,
-    RDB_OP_GT,
-    RDB_OP_LT,
-    RDB_OP_GET,
-    RDB_OP_LET,
-    RDB_OP_AND,
-    RDB_OP_OR,
-    RDB_OP_NOT,
-    RDB_OP_ADD,
-    RDB_OP_SUBTRACT,
-    RDB_OP_NEGATE,
-    RDB_OP_MULTIPLY,
-    RDB_OP_DIVIDE,
+    RDB_EX_STRLEN,
+    RDB_EX_REGMATCH,
+    RDB_EX_CONCAT,
 
-    RDB_OP_STRLEN,
-    RDB_OP_REGMATCH,
-    RDB_OP_CONCAT,
-
-    RDB_OP_IS_EMPTY,
-    RDB_OP_AGGREGATE,
-    RDB_OP_TUPLE_ATTR,
-    RDB_OP_GET_COMP,
+    RDB_EX_IS_EMPTY,
+    RDB_EX_AGGREGATE,
+    RDB_EX_TUPLE_ATTR,
+    RDB_EX_GET_COMP,
     RDB_SELECTOR,
-    RDB_USER_OP
+    RDB_EX_USER_OP
 };
 
 typedef enum {
@@ -169,15 +167,14 @@ typedef struct RDB_expression {
         struct {
             struct RDB_expression *arg1;
             struct RDB_expression *arg2;
-            char *name;	/* only for RDB_OP_GET_COMP, RDB_OP_AGGREGATE,
-                           and RDB_OP_TUPLE_ATTR */
-            RDB_aggregate_op op; /* only for RDB_OP_AGGREGATE */
+            char *name;	/* only for RDB_EX_GET_COMP, RDB_EX_AGGREGATE,
+                           and RDB_EX_TUPLE_ATTR */
+            RDB_aggregate_op op; /* only for RDB_EX_AGGREGATE */
         } op;
         struct {
             char *name;
         } attr;
-        struct RDB_table *tbp;
-        RDB_object const_val;
+        RDB_object obj;
         struct {
             struct RDB_expression **argv;
             RDB_type *typ;
