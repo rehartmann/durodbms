@@ -7,7 +7,7 @@
 #include <string.h>
 
 void *
-RDB_value_irep(RDB_value *valp, size_t *lenp)
+RDB_obj_irep(RDB_object *valp, size_t *lenp)
 {
     if (lenp != NULL) {
         *lenp = valp->typ->ireplen;
@@ -27,7 +27,7 @@ RDB_value_irep(RDB_value *valp, size_t *lenp)
     }
 } 
 
-static enum _RDB_value_kind
+static enum _RDB_obj_kind
 val_kind(const RDB_type *typ)
 {
     if (typ == &RDB_BOOLEAN)
@@ -46,12 +46,12 @@ val_kind(const RDB_type *typ)
 }
 
 int
-RDB_irep_to_value(RDB_value *valp, RDB_type *typ, void *datap, size_t len)
+RDB_irep_to_obj(RDB_object *valp, RDB_type *typ, void *datap, size_t len)
 {
     int ret;
 
     if (valp->typ != NULL) {
-        ret = RDB_destroy_value(valp);
+        ret = RDB_destroy_obj(valp);
         if (ret != RDB_OK)
             return ret;
     }
@@ -80,7 +80,7 @@ RDB_irep_to_value(RDB_value *valp, RDB_type *typ, void *datap, size_t len)
 } 
 
 RDB_bool
-RDB_value_equals(const RDB_value *val1p, const RDB_value *val2p)
+RDB_obj_equals(const RDB_object *val1p, const RDB_object *val2p)
 {
     switch(val1p->kind) {
         case _RDB_BOOL:
@@ -98,7 +98,7 @@ RDB_value_equals(const RDB_value *val1p, const RDB_value *val2p)
 } 
 
 static int
-copy_value(RDB_value *dstvalp, const RDB_value *srcvalp)
+copy_obj(RDB_object *dstvalp, const RDB_object *srcvalp)
 {
     switch(srcvalp->kind) {
         case _RDB_BOOL:
@@ -122,29 +122,29 @@ copy_value(RDB_value *dstvalp, const RDB_value *srcvalp)
 }
 
 int
-RDB_copy_value(RDB_value *dstvalp, const RDB_value *srcvalp)
+RDB_copy_obj(RDB_object *dstvalp, const RDB_object *srcvalp)
 {
     int ret;
 
     if (dstvalp->typ != NULL) {
-        ret = RDB_destroy_value(dstvalp);
+        ret = RDB_destroy_obj(dstvalp);
         if (ret != RDB_OK)
             return ret;
     }
 
     dstvalp->typ = srcvalp->typ;
     dstvalp->kind = srcvalp->kind;
-    return copy_value(dstvalp, srcvalp);
+    return copy_obj(dstvalp, srcvalp);
 } 
 
 void
-RDB_init_value(RDB_value *valp)
+RDB_init_obj(RDB_object *valp)
 {
     valp->typ = NULL;
 }
 
 int
-RDB_destroy_value(RDB_value *valp)
+RDB_destroy_obj(RDB_object *valp)
 {
     if (valp->typ == NULL)
         return RDB_OK;
@@ -156,36 +156,36 @@ RDB_destroy_value(RDB_value *valp)
 }
 
 void
-RDB_value_set_bool(RDB_value *valp, RDB_bool v)
+RDB_obj_set_bool(RDB_object *valp, RDB_bool v)
 {
-    RDB_destroy_value(valp);
+    RDB_destroy_obj(valp);
     valp->typ = &RDB_BOOLEAN;
     valp->kind = _RDB_BOOL;
     valp->var.bool_val = v;
 }
 
 void
-RDB_value_set_int(RDB_value *valp, RDB_int v)
+RDB_obj_set_int(RDB_object *valp, RDB_int v)
 {
-    RDB_destroy_value(valp);
+    RDB_destroy_obj(valp);
     valp->typ = &RDB_INTEGER;
     valp->kind = _RDB_INT;
     valp->var.int_val = v;
 }
 
 void
-RDB_value_set_rational(RDB_value *valp, RDB_rational v)
+RDB_obj_set_rational(RDB_object *valp, RDB_rational v)
 {
-    RDB_destroy_value(valp);
+    RDB_destroy_obj(valp);
     valp->typ = &RDB_RATIONAL;
     valp->kind = _RDB_RATIONAL;
     valp->var.rational_val = v;
 }
 
 int
-RDB_value_set_string(RDB_value *valp, const char *str)
+RDB_obj_set_string(RDB_object *valp, const char *str)
 {
-    RDB_destroy_value(valp);
+    RDB_destroy_obj(valp);
     valp->typ = &RDB_STRING;
     valp->kind = _RDB_BIN;
     valp->var.bin.len = strlen(str) + 1;
@@ -197,8 +197,8 @@ RDB_value_set_string(RDB_value *valp, const char *str)
 }
 
 int
-RDB_value_get_comp(const RDB_value *valp, const char *compname,
-                   RDB_value *compvalp)
+RDB_obj_comp(const RDB_object *valp, const char *compname,
+                   RDB_object *compvalp)
 {
     int ret;
     RDB_icomp *comp = _RDB_get_icomp(valp->typ, compname);
@@ -206,18 +206,18 @@ RDB_value_get_comp(const RDB_value *valp, const char *compname,
     if (comp->setterp != NULL) {
         return (*(comp->getterp))(valp, compvalp, valp->typ, compname);
     } else {
-        ret = RDB_destroy_value(compvalp);
+        ret = RDB_destroy_obj(compvalp);
         if (ret != RDB_OK)
             return ret;
 
-        _RDB_set_value_type(compvalp, valp->typ->var.scalar.repv[0].compv[0].typ);
-        return copy_value(compvalp, valp);   
+        _RDB_set_obj_type(compvalp, valp->typ->var.scalar.repv[0].compv[0].typ);
+        return copy_obj(compvalp, valp);   
     }
 }
 
 int
-RDB_value_set_comp(RDB_value *valp, const char *compname,
-                   const RDB_value *compvalp)
+RDB_obj_set_comp(RDB_object *valp, const char *compname,
+                   const RDB_object *compvalp)
 {
     RDB_icomp *comp = _RDB_get_icomp(valp->typ, compname);
     int ret;
@@ -225,16 +225,16 @@ RDB_value_set_comp(RDB_value *valp, const char *compname,
     if (comp->setterp != NULL) {
         return (*(comp->setterp))(valp, compvalp, valp->typ, compname);
     } else {
-        ret = RDB_destroy_value(valp);
+        ret = RDB_destroy_obj(valp);
         if (ret != RDB_OK)
             return ret;
 
-        return copy_value(valp, compvalp);
+        return copy_obj(valp, compvalp);
     }
 }
 
 static int
-check_constraint(RDB_value *valp, RDB_bool *resultp)
+check_constraint(RDB_object *valp, RDB_bool *resultp)
 {
     int i, j;
     int ret;
@@ -249,18 +249,18 @@ check_constraint(RDB_value *valp, RDB_bool *resultp)
             RDB_init_tuple(&tpl);
             /* Set tuple attributes */
             for (j = 0; j < valp->typ->var.scalar.repv[i].compc; j++) {
-                RDB_value comp;
+                RDB_object comp;
                 char *compname = valp->typ->var.scalar.repv[i].compv[j].name;
 
-                RDB_init_value(&comp);
-                ret = RDB_value_get_comp(valp, compname, &comp);
+                RDB_init_obj(&comp);
+                ret = RDB_obj_comp(valp, compname, &comp);
                 if (ret != RDB_OK) {
-                    RDB_destroy_value(&comp);
+                    RDB_destroy_obj(&comp);
                     RDB_destroy_tuple(&tpl);
                     return ret;
                 }
                 ret = RDB_tuple_set(&tpl, compname, &comp);
-                RDB_destroy_value(&comp);
+                RDB_destroy_obj(&comp);
                 if (ret != RDB_OK) {
                     RDB_destroy_tuple(&tpl);
                     return ret;
@@ -278,8 +278,8 @@ check_constraint(RDB_value *valp, RDB_bool *resultp)
 }
 
 int
-RDB_select_value(RDB_value *valp, RDB_type *typ, const char *repname,
-              RDB_value **compv)
+RDB_select_obj(RDB_object *valp, RDB_type *typ, const char *repname,
+              RDB_object **compv)
 {
     RDB_ipossrep *prp;
     int ret;
@@ -305,9 +305,9 @@ RDB_select_value(RDB_value *valp, RDB_type *typ, const char *repname,
     if (prp->selectorp != NULL)
         ret = (prp->selectorp)(valp, compv, typ, repname);
     else {
-        RDB_destroy_value(valp);
-        _RDB_set_value_type(valp, typ);
-        ret = copy_value(valp, *compv);
+        RDB_destroy_obj(valp);
+        _RDB_set_obj_type(valp, typ);
+        ret = copy_obj(valp, *compv);
     }
     if (ret != RDB_OK)
         return ret;
@@ -320,31 +320,31 @@ RDB_select_value(RDB_value *valp, RDB_type *typ, const char *repname,
 }
 
 RDB_bool
-RDB_value_bool(const RDB_value *valp)
+RDB_obj_bool(const RDB_object *valp)
 {
     return valp->var.bool_val;
 }
 
 RDB_int
-RDB_value_int(const RDB_value *valp)
+RDB_obj_int(const RDB_object *valp)
 {
     return valp->var.int_val;
 }
 
 RDB_rational
-RDB_value_rational(const RDB_value *valp)
+RDB_obj_rational(const RDB_object *valp)
 {
     return valp->var.rational_val;
 }
 
 char *
-RDB_value_string(RDB_value *valp)
+RDB_obj_string(RDB_object *valp)
 {
     return valp->var.bin.datap;
 }
 
 int
-RDB_binary_set(RDB_value *valp, size_t pos, void *srcp, size_t len)
+RDB_binary_set(RDB_object *valp, size_t pos, void *srcp, size_t len)
 {
     /* If the value is newly initialized, allocate memory */
     if (valp->typ == NULL) {
@@ -373,7 +373,7 @@ RDB_binary_set(RDB_value *valp, size_t pos, void *srcp, size_t len)
 }
 
 int
-RDB_binary_get(const RDB_value *valp, size_t pos, void *dstp, size_t len)
+RDB_binary_get(const RDB_object *valp, size_t pos, void *dstp, size_t len)
 {
     if (pos + len > valp->var.bin.len)
         return RDB_NOT_FOUND;
@@ -382,13 +382,13 @@ RDB_binary_get(const RDB_value *valp, size_t pos, void *dstp, size_t len)
 }
 
 size_t
-RDB_binary_length(const RDB_value *valp)
+RDB_binary_length(const RDB_object *valp)
 {
     return valp->var.bin.len;
 }
 
 void
-_RDB_set_value_type(RDB_value *valp, RDB_type *typ)
+_RDB_set_obj_type(RDB_object *valp, RDB_type *typ)
 {
     valp->typ = typ;
     valp->kind = val_kind(typ);

@@ -50,19 +50,19 @@ typedef struct RDB_qresult {
     struct RDB_qresult *nextp;
 } RDB_qresult;
 
-typedef int RDB_selector_func(RDB_value *, RDB_value *[],
+typedef int RDB_selector_func(RDB_object *, RDB_object *[],
         RDB_type *, const char *);
 
-typedef int RDB_setter_func(RDB_value *, const RDB_value *,
+typedef int RDB_setter_func(RDB_object *, const RDB_object *,
         RDB_type *, const char *);
 
-typedef int RDB_getter_func(const RDB_value *, RDB_value *,
+typedef int RDB_getter_func(const RDB_object *, RDB_object *,
         RDB_type *, const char *);
 
 typedef struct {
     char *name;
     RDB_type *typ;
-    RDB_value *defaultp;
+    RDB_object *defaultp;
     int options;
     RDB_getter_func *getterp;
     RDB_setter_func *setterp;
@@ -76,8 +76,8 @@ typedef struct RDB_ipossrep {
     RDB_selector_func *selectorp;
 } RDB_ipossrep;
 
-typedef int RDB_ro_op_func(const char *name, int argc, RDB_value *argv[],
-        RDB_value *retvalp, const char *iargp, RDB_transaction *txp);
+typedef int RDB_ro_op_func(const char *name, int argc, RDB_object *argv[],
+        RDB_object *retvalp, const char *iargp, RDB_transaction *txp);
 
 typedef struct RDB_ro_op {
     char *name;
@@ -90,7 +90,7 @@ typedef struct RDB_ro_op {
     struct RDB_ro_op *nextp;
 } RDB_ro_op;
 
-typedef int RDB_upd_op_func(const char *name, int argc, RDB_value *argv[],
+typedef int RDB_upd_op_func(const char *name, int argc, RDB_object *argv[],
         RDB_bool updv[], const char *iargp, RDB_transaction *txp);
 
 typedef struct RDB_upd_op {
@@ -121,7 +121,7 @@ int
 _RDB_qresult_contains(RDB_qresult *, const RDB_tuple *, RDB_transaction *);
 
 int
-_RDB_get_by_pindex(RDB_table *, RDB_value[], RDB_tuple *,
+_RDB_get_by_pindex(RDB_table *, RDB_object[], RDB_tuple *,
         RDB_transaction *);
 
 int
@@ -159,7 +159,7 @@ RDB_evaluate_bool(RDB_expression *, const RDB_tuple *tup, RDB_transaction *,
                   RDB_bool *);
 
 int
-RDB_evaluate(RDB_expression *, const RDB_tuple *, RDB_transaction *, RDB_value *);
+RDB_evaluate(RDB_expression *, const RDB_tuple *, RDB_transaction *, RDB_object *);
 
 int
 _RDB_find_rename_from(int renc, RDB_renaming renv[], const char *name);
@@ -181,7 +181,7 @@ RDB_icomp *
 _RDB_get_icomp(RDB_type *, const char *compname);
 
 void
-_RDB_set_value_type(RDB_value *, RDB_type *);
+_RDB_set_obj_type(RDB_object *, RDB_type *);
 
 #define _RDB_pkey_len(tbp) ((tbp)->keyv[0].strc)
 

@@ -69,9 +69,9 @@ RDB_create_tuple_type(int attrc, RDB_attr attrv[])
         tbtyp->var.tuple.attrv[i].typ = attrv[i].typ;
         tbtyp->var.tuple.attrv[i].name = RDB_dup_str(attrv[i].name);
         if (attrv[i].defaultp != NULL) {
-            tbtyp->var.tuple.attrv[i].defaultp = malloc(sizeof (RDB_value));
-            RDB_init_value(tbtyp->var.tuple.attrv[i].defaultp);
-            RDB_copy_value(tbtyp->var.tuple.attrv[i].defaultp,
+            tbtyp->var.tuple.attrv[i].defaultp = malloc(sizeof (RDB_object));
+            RDB_init_obj(tbtyp->var.tuple.attrv[i].defaultp);
+            RDB_copy_obj(tbtyp->var.tuple.attrv[i].defaultp,
                     attrv[i].defaultp);
         } else {
             tbtyp->var.tuple.attrv[i].defaultp = NULL;
@@ -128,16 +128,16 @@ free_type(RDB_type *typ)
             
                 free(typ->var.tuple.attrv[i].name);
                 if (attrtyp->name == NULL)
-                    RDB_drop_type(attrtyp);
+                    RDB_drop_type(attrtyp, NULL);
                 if (typ->var.tuple.attrv[i].defaultp != NULL) {
-                    RDB_destroy_value(typ->var.tuple.attrv[i].defaultp);
+                    RDB_destroy_obj(typ->var.tuple.attrv[i].defaultp);
                     free(typ->var.tuple.attrv[i].defaultp);
                 }
             }
             free(typ->var.tuple.attrv);
             break;
         case RDB_TP_RELATION:
-            RDB_drop_type(typ->var.basetyp);
+            RDB_drop_type(typ->var.basetyp, NULL);
             break;
         default:
             if (typ->var.scalar.repc > 0) {
@@ -156,13 +156,18 @@ free_type(RDB_type *typ)
 }    
 
 int
-RDB_drop_type(RDB_type *typ)
+RDB_drop_type(RDB_type *typ, RDB_transaction *txp)
 {
     if (RDB_type_is_builtin(typ))
         return RDB_INVALID_ARGUMENT;
 
     if (typ->name != NULL) {
-        /* delete type from database */
+        /*
+         * delete type from database
+         */
+        if (!RDB_tx_is_running(txp))
+            return RDB_INVALID_TRANSACTION;
+
         /* !! ... */
     }
 

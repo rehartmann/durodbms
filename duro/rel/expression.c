@@ -125,7 +125,7 @@ RDB_string_const(const char *v)
 }
 
 RDB_expression *
-RDB_value_const(const RDB_value *valp)
+RDB_obj_const(const RDB_object *valp)
 {
     int ret;
     RDB_expression *exp = malloc(sizeof (RDB_expression));
@@ -134,8 +134,8 @@ RDB_value_const(const RDB_value *valp)
         return NULL;
         
     exp->kind = RDB_CONST;
-    RDB_init_value(&exp->var.const_val);
-    ret = RDB_copy_value(&exp->var.const_val, valp);
+    RDB_init_obj(&exp->var.const_val);
+    ret = RDB_copy_obj(&exp->var.const_val, valp);
     if (ret != RDB_OK) {
         free(exp);
         return NULL;
@@ -377,6 +377,13 @@ error:
     return NULL;    
 }
 
+RDB_expression *
+RDB_user_op(const char *opname, RDB_attr *argv[])
+{
+   /* !! */
+   return NULL;
+}
+
 /* Destroy the expression and all subexpressions */
 void 
 RDB_drop_expr(RDB_expression *exp)
@@ -418,7 +425,7 @@ RDB_drop_expr(RDB_expression *exp)
             free(exp->var.aggr.attrname);
             break;
         case RDB_CONST:
-            RDB_destroy_value(&exp->var.const_val);
+            RDB_destroy_obj(&exp->var.const_val);
             break;
         case RDB_ATTR:
             free(exp->var.attr.name);
@@ -433,7 +440,7 @@ static int
 evaluate_string(RDB_expression *exp, const RDB_tuple *tup,
                     RDB_transaction *txp, char **resp)
 {
-    RDB_value val;
+    RDB_object val;
     char *strp = NULL;
 
     switch (exp->kind) {
@@ -447,10 +454,10 @@ evaluate_string(RDB_expression *exp, const RDB_tuple *tup,
         {
             int ret;
 
-            RDB_init_value(&val);
+            RDB_init_obj(&val);
             ret = RDB_evaluate(exp, tup, txp, &val);
             if (ret != RDB_OK) {
-                RDB_destroy_value(&val);
+                RDB_destroy_obj(&val);
                 return ret;
             }
             strp = val.var.bin.datap;
@@ -461,7 +468,7 @@ evaluate_string(RDB_expression *exp, const RDB_tuple *tup,
     if (resp == NULL)
         return RDB_NO_MEMORY;
     if (exp->kind == RDB_OP_GET_COMP)
-        RDB_destroy_value(&val);
+        RDB_destroy_obj(&val);
     return RDB_OK;
 }
 
@@ -523,17 +530,17 @@ evaluate_int(RDB_expression *exp, const RDB_tuple *tup,
         case RDB_OP_GET_COMP:
         case RDB_OP_AGGREGATE:
         {
-            RDB_value val;
+            RDB_object val;
             int ret;
 
-            RDB_init_value(&val);
+            RDB_init_obj(&val);
             ret = RDB_evaluate(exp, tup, txp, &val);
             if (ret != RDB_OK) {
-                RDB_destroy_value(&val);
+                RDB_destroy_obj(&val);
                 return ret;
             }
             *resp = val.var.int_val;
-            RDB_destroy_value(&val);
+            RDB_destroy_obj(&val);
             return RDB_OK;
         }
         default:
@@ -572,17 +579,17 @@ evaluate_rational(RDB_expression *exp, const RDB_tuple *tup,
         case RDB_OP_GET_COMP:
         case RDB_OP_AGGREGATE:
         {
-            RDB_value val;
+            RDB_object val;
             int ret;
 
-            RDB_init_value(&val);
+            RDB_init_obj(&val);
             ret = RDB_evaluate(exp, tup, txp, &val);
             if (ret != RDB_OK) {
-                RDB_destroy_value(&val);
+                RDB_destroy_obj(&val);
                 return ret;
             }
             *resp = val.var.rational_val;
-            RDB_destroy_value(&val);
+            RDB_destroy_obj(&val);
             return RDB_OK;
         }
         default: ;
@@ -595,10 +602,10 @@ evaluate_eq(RDB_expression *exp, const RDB_tuple *tup,
                   RDB_transaction *txp, RDB_bool *resp)
 {
     int ret;
-    RDB_value val1, val2;
+    RDB_object val1, val2;
 
-    RDB_init_value(&val1);
-    RDB_init_value(&val2);
+    RDB_init_obj(&val1);
+    RDB_init_obj(&val2);
 
     /*
      * Evaluate arguments
@@ -616,13 +623,13 @@ evaluate_eq(RDB_expression *exp, const RDB_tuple *tup,
      * Compare values
      */
 
-    *resp = RDB_value_equals(&val1, &val2);
+    *resp = RDB_obj_equals(&val1, &val2);
 
     ret = RDB_OK;
 
 cleanup:
-    RDB_destroy_value(&val1);
-    RDB_destroy_value(&val2);
+    RDB_destroy_obj(&val1);
+    RDB_destroy_obj(&val2);
 
     return ret;
 }
@@ -849,17 +856,17 @@ RDB_evaluate_bool(RDB_expression *exp, const RDB_tuple *tup,
         case RDB_OP_GET_COMP:
         case RDB_OP_AGGREGATE:
         {
-            RDB_value val;
+            RDB_object val;
             int ret;
 
-            RDB_init_value(&val);
+            RDB_init_obj(&val);
             ret = RDB_evaluate(exp, tup, txp, &val);
             if (ret != RDB_OK) {
-                RDB_destroy_value(&val);
+                RDB_destroy_obj(&val);
                 return ret;
             }
             *resp = val.var.bool_val;
-            RDB_destroy_value(&val);
+            RDB_destroy_obj(&val);
             return RDB_OK;
         }
         default: ;
@@ -868,29 +875,29 @@ RDB_evaluate_bool(RDB_expression *exp, const RDB_tuple *tup,
 }
 
 static int evaluate_selector(RDB_expression *exp, const RDB_tuple *tup, RDB_transaction *txp,
-            RDB_value *valp)
+            RDB_object *valp)
 {
     int ret;
     int i;
     int compc = _RDB_get_possrep(exp->var.selector.typ, exp->var.selector.name)->compc;
-    RDB_value **valpv;
-    RDB_value *valv;
+    RDB_object **valpv;
+    RDB_object *valv;
 
-    valpv = malloc(compc * sizeof (RDB_value *));
+    valpv = malloc(compc * sizeof (RDB_object *));
     if (valpv == NULL)
         goto error;
-    valv = malloc(compc * sizeof (RDB_value));
+    valv = malloc(compc * sizeof (RDB_object));
     if (valv == NULL)
         goto error;
     for (i = 0; i < compc; i++) {
         valpv[i] = &valv[i];
-        RDB_init_value(&valv[i]);
+        RDB_init_obj(&valv[i]);
         ret = RDB_evaluate(exp->var.selector.argv[i], tup, txp, &valv[i]);
         /* !! */
     }
-    ret = RDB_select_value(valp, exp->var.selector.typ, exp->var.selector.name, valpv);
+    ret = RDB_select_obj(valp, exp->var.selector.typ, exp->var.selector.name, valpv);
     for (i = 0; i < compc; i++) {
-        RDB_destroy_value(&valv[i]);
+        RDB_destroy_obj(&valv[i]);
     }
     free(valv);
     free(valpv);
@@ -902,7 +909,7 @@ error:
 
 int
 RDB_evaluate(RDB_expression *exp, const RDB_tuple *tup, RDB_transaction *txp,
-            RDB_value *valp)
+            RDB_object *valp)
 {
     RDB_type *typ = RDB_expr_type(exp);
 
@@ -911,16 +918,16 @@ RDB_evaluate(RDB_expression *exp, const RDB_tuple *tup, RDB_transaction *txp,
             case RDB_OP_GET_COMP:
                 {
                     int ret;
-                    RDB_value val;
+                    RDB_object val;
 
-                    RDB_init_value(&val);
+                    RDB_init_obj(&val);
                     ret = RDB_evaluate(exp->var.op.arg1, tup, txp, &val);
                     if (ret != RDB_OK) {
-                         RDB_destroy_value(&val);
+                         RDB_destroy_obj(&val);
                          return ret;
                     }
-                    ret = RDB_value_get_comp(&val, exp->var.op.name, valp);
-                    RDB_destroy_value(&val);
+                    ret = RDB_obj_comp(&val, exp->var.op.name, valp);
+                    RDB_destroy_obj(&val);
                     return ret;
                 }
             case RDB_SELECTOR:
@@ -929,10 +936,10 @@ RDB_evaluate(RDB_expression *exp, const RDB_tuple *tup, RDB_transaction *txp,
                 return RDB_aggregate(exp->var.aggr.tbp, exp->var.aggr.op,
                         exp->var.aggr.attrname, txp, valp);
             case RDB_ATTR:
-                return RDB_copy_value(valp, RDB_tuple_get(tup, exp->var.attr.name));
+                return RDB_copy_obj(valp, RDB_tuple_get(tup, exp->var.attr.name));
             default: ;
         }
-        _RDB_set_value_type(valp, typ);
+        _RDB_set_obj_type(valp, typ);
         if (typ == &RDB_BOOLEAN)
             return RDB_evaluate_bool(exp, tup, txp, &valp->var.bool_val);
         if (typ == &RDB_INTEGER)

@@ -9,7 +9,7 @@ test_aggregate(RDB_database *dbp)
 {
     RDB_transaction tx;
     RDB_table *tbp;
-    RDB_value val;
+    RDB_object val;
     int ret;
 
     printf("Starting transaction\n");
@@ -49,7 +49,7 @@ test_aggregate(RDB_database *dbp)
 }
 
 int
-main()
+main(void)
 {
     RDB_environment *dsp;
     RDB_database *dbp;

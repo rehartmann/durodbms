@@ -21,9 +21,9 @@ test_callop(RDB_database *dbp)
 {
     RDB_transaction tx;
     int ret;
-    RDB_value arg1, arg2;
-    RDB_value retval;
-    RDB_value *argv[2];
+    RDB_object arg1, arg2;
+    RDB_object retval;
+    RDB_object *argv[2];
 
     printf("Starting transaction\n");
     ret = RDB_begin_tx(&tx, dbp, NULL);
@@ -31,12 +31,12 @@ test_callop(RDB_database *dbp)
         return ret;
     }
 
-    RDB_init_value(&arg1);
-    RDB_init_value(&arg2);
-    RDB_init_value(&retval);
+    RDB_init_obj(&arg1);
+    RDB_init_obj(&arg2);
+    RDB_init_obj(&retval);
 
-    RDB_value_set_int(&arg1, 2);
-    RDB_value_set_int(&arg2, 2);
+    RDB_obj_set_int(&arg1, 2);
+    RDB_obj_set_int(&arg2, 2);
     argv[0] = &arg1;
     argv[1] = &arg2;
 
@@ -47,7 +47,7 @@ test_callop(RDB_database *dbp)
         goto error;
     }
 
-    printf("Result value is %d\n", RDB_value_int(&retval));
+    printf("Result value is %d\n", RDB_obj_int(&retval));
 
     printf("Calling ADD\n");
     ret = RDB_call_update_op("ADD", 2, argv, &tx);
@@ -56,13 +56,13 @@ test_callop(RDB_database *dbp)
         goto error;
     }
 
-    printf("Value of arg #1 is %d\n", RDB_value_int(&arg1));
+    printf("Value of arg #1 is %d\n", RDB_obj_int(&arg1));
 
     return RDB_commit(&tx);
 error:
-    RDB_destroy_value(&arg1);
-    RDB_destroy_value(&arg2);
-    RDB_destroy_value(&retval);
+    RDB_destroy_obj(&arg1);
+    RDB_destroy_obj(&arg2);
+    RDB_destroy_obj(&retval);
 
     RDB_rollback(&tx);
     return ret;

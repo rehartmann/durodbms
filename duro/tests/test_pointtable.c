@@ -55,10 +55,10 @@ test_insert(RDB_database *dbp)
     RDB_tuple tpl;
     RDB_transaction tx;
     RDB_table *tbp;
-    RDB_value xval, yval;
-    RDB_value pval;
-    RDB_value lenval, thval;
-    RDB_value *compv[2];
+    RDB_object xval, yval;
+    RDB_object pval;
+    RDB_object lenval, thval;
+    RDB_object *compv[2];
 
     printf("Starting transaction\n");
     ret = RDB_begin_tx(&tx, dbp, NULL);
@@ -74,20 +74,20 @@ test_insert(RDB_database *dbp)
 
     RDB_init_tuple(&tpl);
 
-    RDB_init_value(&xval);
-    RDB_init_value(&yval);
-    RDB_init_value(&pval);
-    RDB_init_value(&lenval);
-    RDB_init_value(&thval);
+    RDB_init_obj(&xval);
+    RDB_init_obj(&yval);
+    RDB_init_obj(&pval);
+    RDB_init_obj(&lenval);
+    RDB_init_obj(&thval);
 
-    RDB_value_set_rational(&xval, 1.0);
-    RDB_value_set_rational(&yval, 2.0);
+    RDB_obj_set_rational(&xval, 1.0);
+    RDB_obj_set_rational(&yval, 2.0);
 
     printf("Invoking selector POINT(1,2)\n");
 
     compv[0] = &xval;
     compv[1] = &yval;
-    ret = RDB_select_value(&pval, pointtyp, "POINT", compv);
+    ret = RDB_select_obj(&pval, pointtyp, "POINT", compv);
     if (ret != RDB_OK)
         goto error;
 
@@ -103,21 +103,21 @@ test_insert(RDB_database *dbp)
         goto error;
     }
 
-    ret = RDB_value_get_comp(&pval, "THETA", &thval);
+    ret = RDB_obj_comp(&pval, "THETA", &thval);
     if (ret != RDB_OK) {
         goto error;
     }
 
-    ret = RDB_value_get_comp(&pval, "LENGTH", &lenval);
+    ret = RDB_obj_comp(&pval, "LENGTH", &lenval);
     if (ret != RDB_OK) {
         goto error;
     }
 
     printf("Doubling LENGTH\n");
 
-    RDB_value_set_rational(&lenval, RDB_value_rational(&lenval) * 2.0);
+    RDB_obj_set_rational(&lenval, RDB_obj_rational(&lenval) * 2.0);
 
-    RDB_value_set_comp(&pval, "LENGTH", &lenval);
+    RDB_obj_set_comp(&pval, "LENGTH", &lenval);
 
     printf("Inserting Tuple\n");
 
@@ -132,21 +132,21 @@ test_insert(RDB_database *dbp)
     }
 
     RDB_destroy_tuple(&tpl);
-    RDB_destroy_value(&xval);
-    RDB_destroy_value(&yval);
-    RDB_destroy_value(&pval);
-    RDB_destroy_value(&lenval);
-    RDB_destroy_value(&thval);
+    RDB_destroy_obj(&xval);
+    RDB_destroy_obj(&yval);
+    RDB_destroy_obj(&pval);
+    RDB_destroy_obj(&lenval);
+    RDB_destroy_obj(&thval);
 
     printf("End of transaction\n");
     return RDB_commit(&tx);
 error:
     RDB_destroy_tuple(&tpl);
-    RDB_destroy_value(&xval);
-    RDB_destroy_value(&yval);
-    RDB_destroy_value(&pval);
-    RDB_destroy_value(&lenval);
-    RDB_destroy_value(&thval);
+    RDB_destroy_obj(&xval);
+    RDB_destroy_obj(&yval);
+    RDB_destroy_obj(&pval);
+    RDB_destroy_obj(&lenval);
+    RDB_destroy_obj(&thval);
 
     RDB_rollback(&tx);
     return ret;
@@ -162,8 +162,8 @@ test_query(RDB_database *dbp)
     RDB_expression *wherep;
     RDB_expression *compv[2];
     RDB_array array;
-    RDB_value xval;
-    RDB_value yval;
+    RDB_object xval;
+    RDB_object yval;
     int ret;
     int i;
 
@@ -175,8 +175,8 @@ test_query(RDB_database *dbp)
 
     RDB_init_array(&array);
     RDB_init_tuple(&tpl);
-    RDB_init_value(&xval);
-    RDB_init_value(&yval);
+    RDB_init_obj(&xval);
+    RDB_init_obj(&yval);
 
     ret = RDB_get_table("POINTTEST", &tx, &tbp);
     if (ret != RDB_OK) {
@@ -190,13 +190,13 @@ test_query(RDB_database *dbp)
     } 
 
     for (i = 0; (ret = RDB_array_get_tuple(&array, i, &tpl)) == RDB_OK; i++) {
-        RDB_value *pvalp = RDB_tuple_get(&tpl, "POINT");
+        RDB_object *pvalp = RDB_tuple_get(&tpl, "POINT");
 
-        ret = RDB_value_get_comp(pvalp, "X", &xval);
-        ret = RDB_value_get_comp(pvalp, "Y", &yval);
+        ret = RDB_obj_comp(pvalp, "X", &xval);
+        ret = RDB_obj_comp(pvalp, "Y", &yval);
 
-        printf("X=%f, Y=%f\n", (float)RDB_value_rational(&xval),
-                (float)RDB_value_rational(&yval));
+        printf("X=%f, Y=%f\n", (float)RDB_obj_rational(&xval),
+                (float)RDB_obj_rational(&yval));
     }
     if (ret != RDB_NOT_FOUND)
         goto error;
@@ -216,19 +216,19 @@ test_query(RDB_database *dbp)
     } 
 
     for (i = 0; (ret = RDB_array_get_tuple(&array, i, &tpl)) == RDB_OK; i++) {
-        RDB_value *pvalp = RDB_tuple_get(&tpl, "POINT");
+        RDB_object *pvalp = RDB_tuple_get(&tpl, "POINT");
 
-        ret = RDB_value_get_comp(pvalp, "X", &xval);
+        ret = RDB_obj_comp(pvalp, "X", &xval);
         if (ret != RDB_OK) {
             goto error;
         } 
-        ret = RDB_value_get_comp(pvalp, "Y", &yval);
+        ret = RDB_obj_comp(pvalp, "Y", &yval);
         if (ret != RDB_OK) {
             goto error;
         } 
 
-        printf("X=%f, Y=%f\n", (float)RDB_value_rational(&xval),
-                (float)RDB_value_rational(&yval));
+        printf("X=%f, Y=%f\n", (float)RDB_obj_rational(&xval),
+                (float)RDB_obj_rational(&yval));
     }
     if (ret != RDB_NOT_FOUND)
         goto error;
@@ -254,25 +254,25 @@ test_query(RDB_database *dbp)
     } 
 
     for (i = 0; (ret = RDB_array_get_tuple(&array, i, &tpl)) == RDB_OK; i++) {
-        RDB_value *pvalp = RDB_tuple_get(&tpl, "POINT");
+        RDB_object *pvalp = RDB_tuple_get(&tpl, "POINT");
 
-        ret = RDB_value_get_comp(pvalp, "X", &xval);
+        ret = RDB_obj_comp(pvalp, "X", &xval);
         if (ret != RDB_OK) {
             goto error;
         } 
-        ret = RDB_value_get_comp(pvalp, "Y", &yval);
+        ret = RDB_obj_comp(pvalp, "Y", &yval);
         if (ret != RDB_OK) {
             goto error;
         } 
 
-        printf("X=%f, Y=%f\n", (float)RDB_value_rational(&xval),
-                (float)RDB_value_rational(&yval));
+        printf("X=%f, Y=%f\n", (float)RDB_obj_rational(&xval),
+                (float)RDB_obj_rational(&yval));
     }
     if (ret != RDB_NOT_FOUND)
         goto error;
 
-    RDB_destroy_value(&xval);
-    RDB_destroy_value(&yval);
+    RDB_destroy_obj(&xval);
+    RDB_destroy_obj(&yval);
     
     RDB_destroy_tuple(&tpl);
 
@@ -287,8 +287,8 @@ test_query(RDB_database *dbp)
     return RDB_commit(&tx);
 
 error:
-    RDB_destroy_value(&xval);
-    RDB_destroy_value(&yval);
+    RDB_destroy_obj(&xval);
+    RDB_destroy_obj(&yval);
 
     RDB_destroy_tuple(&tpl);
 

@@ -78,7 +78,7 @@ extern RDB_type RDB_RATIONAL;
 extern RDB_type RDB_STRING;
 extern RDB_type RDB_BINARY;
 
-enum _RDB_value_kind {
+enum _RDB_obj_kind {
     _RDB_BOOL,
     _RDB_INT,
     _RDB_RATIONAL,
@@ -87,15 +87,14 @@ enum _RDB_value_kind {
     _RDB_TUPLE
 };
 
-/* A RDB_value struct carries a value of an arbitrary type,
+/*
+ * A RDB_object structure carries a value of an arbitrary type,
  * together with the type information.
- * (Note that a variable of type RDB_value represents a
- * variable, not a value)
  */
 typedef struct {
     /* internal */
     RDB_type *typ;	/* Type */
-    enum _RDB_value_kind kind;
+    enum _RDB_obj_kind kind;
     union {
         RDB_bool bool_val;
         RDB_int int_val;
@@ -107,7 +106,7 @@ typedef struct {
         struct RDB_table *tbp;
         struct RDB_tuple *tplp;
      } var;
-} RDB_value;
+} RDB_object;
 
 enum _RDB_expr_kind {
     RDB_CONST,
@@ -156,7 +155,7 @@ typedef struct RDB_expression {
             RDB_type *typ;
         } attr;
         struct RDB_table *tbp;
-        RDB_value const_val;
+        RDB_object const_val;
         struct {
             struct RDB_table *tbp;
             RDB_aggregate_op op;
@@ -225,7 +224,7 @@ typedef struct RDB_table {
             struct RDB_table *tbp;
             RDB_expression *exprp;
             /* for RDB_TB_SELECT_PINDEX */
-            RDB_value val;
+            RDB_object val;
         } select;
         struct {
             struct RDB_table *tbp;
@@ -355,7 +354,7 @@ RDB_drop_db(RDB_database *dbp);
 typedef struct RDB_attr {
     char *name;
     RDB_type *typ;
-    RDB_value *defaultp;
+    RDB_object *defaultp;
     int options;
 } RDB_attr;
 
@@ -535,7 +534,7 @@ RDB_copy_table(RDB_table *dstp, RDB_table *srcp, RDB_transaction *);
  */
 int
 RDB_aggregate(RDB_table *, RDB_aggregate_op op, const char *attrname,
-              RDB_transaction *, RDB_value *resultp);
+              RDB_transaction *, RDB_object *resultp);
 
 /*
  * Check if the table pointed to by tbp contains the tuple
@@ -628,7 +627,7 @@ int
 RDB_destroy_tuple(RDB_tuple *);
 
 int
-RDB_tuple_set(RDB_tuple *, const char *name, const RDB_value *);
+RDB_tuple_set(RDB_tuple *, const char *name, const RDB_object *);
 
 int
 RDB_tuple_set_bool(RDB_tuple *, const char *name, RDB_bool val);
@@ -649,7 +648,7 @@ RDB_tuple_set_string(RDB_tuple *, const char *name, const char *valp);
  * by calling RDB_set_tuple_attr() with the same name argument.
  * If an attribute of name name does not exist, NULL is returned.
  */
-RDB_value *
+RDB_object *
 RDB_tuple_get(const RDB_tuple *, const char *name);
 
 RDB_bool
@@ -724,8 +723,12 @@ RDB_create_tuple_type(int attrc, RDB_attr attrv[]);
 RDB_type *
 RDB_create_relation_type(int attrc, RDB_attr attrv[]);
 
+/*
+ * Drop a type.
+ * The transaction argument may be NULL if the type has no name.
+ */
 int
-RDB_drop_type(RDB_type *);
+RDB_drop_type(RDB_type *, RDB_transaction *);
 
 /*
  * Return the name of the type pointed to by typ.
@@ -823,14 +826,14 @@ int
 RDB_rename_relation_type(const RDB_type *typ, int renc, RDB_renaming renv[],
         RDB_type **);
 
-#define RDB_value_type(valp) ((valp)->typ)
+#define RDB_obj_type(valp) ((valp)->typ)
 
 /*
  * Return RDB_TRUE if the two types are equal
  * or RDB_FALSE if they are not.
  */
 RDB_bool
-RDB_value_equals(const RDB_value *, const RDB_value *);
+RDB_obj_equals(const RDB_object *, const RDB_object *);
 
 /*
  * Initialize the value pointed to by dstvalp with the value
@@ -838,71 +841,71 @@ RDB_value_equals(const RDB_value *, const RDB_value *);
  * Return RDB_OK on success, RDB_NO_MEMORY if allocating memory failed.
  */
 int
-RDB_copy_value(RDB_value *dstvalp, const RDB_value *srcvalp);
+RDB_copy_obj(RDB_object *dstvalp, const RDB_object *srcvalp);
 
 /*
- * This function must be called before copying a value into a RDB_value.
+ * This function must be called before copying a value into a RDB_obj.
  */
 void
-RDB_init_value(RDB_value *valp);
+RDB_init_obj(RDB_object *valp);
 
 /*
  * Release the resources associated with the value pointed to by valp.
  */
 int
-RDB_destroy_value(RDB_value *valp);
+RDB_destroy_obj(RDB_object *valp);
 
 int
-RDB_select_value(RDB_value *valp, RDB_type *, const char *repname,
-              RDB_value **compv);
+RDB_select_obj(RDB_object *valp, RDB_type *, const char *repname,
+              RDB_object **compv);
 
 void
-RDB_value_set_bool(RDB_value *valp, RDB_bool v);
+RDB_obj_set_bool(RDB_object *valp, RDB_bool v);
 
 void
-RDB_value_set_int(RDB_value *valp, RDB_int v);
+RDB_obj_set_int(RDB_object *valp, RDB_int v);
 
 void
-RDB_value_set_rational(RDB_value *valp, RDB_rational v);
+RDB_obj_set_rational(RDB_object *valp, RDB_rational v);
 
 int
-RDB_value_set_string(RDB_value *valp, const char *str);
+RDB_obj_set_string(RDB_object *valp, const char *str);
 
 int
-RDB_value_get_comp(const RDB_value *valp, const char *compname,
-                   RDB_value *comp);
+RDB_obj_comp(const RDB_object *valp, const char *compname,
+                   RDB_object *comp);
 
 int
-RDB_value_set_comp(RDB_value *valp, const char *compname,
-                   const RDB_value *comp);
+RDB_obj_set_comp(RDB_object *valp, const char *compname,
+                   const RDB_object *comp);
 
 RDB_bool
-RDB_value_bool(const RDB_value *valp);
+RDB_obj_bool(const RDB_object *valp);
 
 RDB_int
-RDB_value_int(const RDB_value *valp);
+RDB_obj_int(const RDB_object *valp);
 
 RDB_rational
-RDB_value_rational(const RDB_value *valp);
+RDB_obj_rational(const RDB_object *valp);
 
 char *
-RDB_value_string(RDB_value *valp);
+RDB_obj_string(RDB_object *valp);
 
 /*
- * Copy len bytes from srcp into the RDB_value at position pos.
- * The RDB_value must be of type BINARY or newly initialized.
+ * Copy len bytes from srcp into the RDB_object at position pos.
+ * The RDB_object must be of type BINARY or newly initialized.
  */
 int
-RDB_binary_set(RDB_value *, size_t pos, void *srcp, size_t len);
+RDB_binary_set(RDB_object *, size_t pos, void *srcp, size_t len);
 
 /*
- * Copy len bytes from the RDB_value at position pos to dstp.
+ * Copy len bytes from the RDB_object at position pos to dstp.
  */
 int
-RDB_binary_get(const RDB_value *, size_t pos, void *dstp, size_t len);
+RDB_binary_get(const RDB_object *, size_t pos, void *dstp, size_t len);
 
 size_t
-RDB_binary_length(const RDB_value *);
+RDB_binary_length(const RDB_object *);
 
 /*
  * Return the type of a RDB_expression.
@@ -930,7 +933,7 @@ RDB_expression *
 RDB_string_const(const char *);
 
 RDB_expression *
-RDB_value_const(const RDB_value *valp);
+RDB_obj_const(const RDB_object *valp);
 
 RDB_expression *
 RDB_expr_attr(const char *attrname, RDB_type *);
@@ -1012,11 +1015,11 @@ RDB_define_update_op(const char *name, int argc, RDB_type *argtv[],
                   const char *arg, RDB_transaction *txp);
 
 int
-RDB_call_ro_op(const char *name, int argc, RDB_value *argv[],
-               RDB_value *retvalp, RDB_transaction *txp);
+RDB_call_ro_op(const char *name, int argc, RDB_object *argv[],
+               RDB_object *retvalp, RDB_transaction *txp);
 
 int
-RDB_call_update_op(const char *name, int argc, RDB_value *argv[],
+RDB_call_update_op(const char *name, int argc, RDB_object *argv[],
                 RDB_transaction *txp);
 
 int

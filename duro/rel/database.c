@@ -245,7 +245,7 @@ error:
         }
         free(tbp->keyv);
         if (tbp->typ != NULL) {
-            RDB_drop_type(tbp->typ);
+            RDB_drop_type(tbp->typ, NULL);
         }
         RDB_destroy_hashmap(&tbp->var.stored.attrmap);
         free(tbp);
@@ -270,11 +270,11 @@ free_ro_op(RDB_ro_op *op) {
     free(op->name);
     for (i = 0; i < op->argc; i++) {
         if (RDB_type_name(op->argtv[i]) == NULL)
-            RDB_drop_type(op->argtv[i]);
+            RDB_drop_type(op->argtv[i], NULL);
     }
     free(op->argtv);
     if (RDB_type_name(op->rtyp) == NULL)
-        RDB_drop_type(op->rtyp);
+        RDB_drop_type(op->rtyp, NULL);
     lt_dlclose(op->modhdl);
     free(op);
 }
@@ -304,7 +304,7 @@ free_upd_op(RDB_upd_op *op) {
     free(op->name);
     for (i = 0; i < op->argc; i++) {
         if (RDB_type_name(op->argtv[i]) == NULL)
-            RDB_drop_type(op->argtv[i]);
+            RDB_drop_type(op->argtv[i], NULL);
     }
     free(op->argtv);
     lt_dlclose(op->modhdl);
@@ -657,7 +657,7 @@ free_table(RDB_table *tbp, RDB_environment *envp)
     }
 
     if (tbp->kind == RDB_TB_STORED) {
-        RDB_drop_type(tbp->typ);
+        RDB_drop_type(tbp->typ, NULL);
         RDB_destroy_hashmap(&tbp->var.stored.attrmap);
     }
 
@@ -989,7 +989,7 @@ _RDB_drop_table(RDB_table *tbp, RDB_transaction *txp, RDB_bool rec)
             break;
         }
         case RDB_TB_SELECT_PINDEX:
-            RDB_destroy_value(&tbp->var.select.val);
+            RDB_destroy_obj(&tbp->var.select.val);
         case RDB_TB_SELECT:
             RDB_drop_expr(tbp->var.select.exprp);
             if (rec) {
@@ -1007,7 +1007,7 @@ _RDB_drop_table(RDB_table *tbp, RDB_transaction *txp, RDB_bool rec)
                 if (ret != RDB_OK)
                     return ret;
             }
-            RDB_drop_type(tbp->typ);
+            RDB_drop_type(tbp->typ, NULL);
             free(tbp->var.join.common_attrv);
             break;
         case RDB_TB_EXTEND:
@@ -1018,7 +1018,7 @@ _RDB_drop_table(RDB_table *tbp, RDB_transaction *txp, RDB_bool rec)
             }
             for (i = 0; i < tbp->var.extend.attrc; i++)
                 free(tbp->var.extend.attrv[i].name);
-            RDB_drop_type(tbp->typ);
+            RDB_drop_type(tbp->typ, NULL);
             break;
         case RDB_TB_PROJECT:
             if (rec) {
@@ -1026,7 +1026,7 @@ _RDB_drop_table(RDB_table *tbp, RDB_transaction *txp, RDB_bool rec)
                 if (ret != RDB_OK)
                     return ret;
             }
-            RDB_drop_type(tbp->typ);
+            RDB_drop_type(tbp->typ, NULL);
             break;
         default: ;
     }
@@ -1065,7 +1065,7 @@ int
 RDB_make_persistent(RDB_table *tbp, RDB_transaction *txp)
 {
     RDB_tuple tpl;
-    RDB_value defval;
+    RDB_object defval;
     int ret;
 
     if (tbp->is_persistent)
@@ -1081,7 +1081,7 @@ RDB_make_persistent(RDB_table *tbp, RDB_transaction *txp)
         return RDB_INVALID_TRANSACTION;
 
     RDB_init_tuple(&tpl);
-    RDB_init_value(&defval);
+    RDB_init_obj(&defval);
 
     ret = RDB_tuple_set_string(&tpl, "TABLENAME", tbp->name);
     if (ret != RDB_OK)
@@ -1091,7 +1091,7 @@ RDB_make_persistent(RDB_table *tbp, RDB_transaction *txp)
     if (ret != RDB_OK)
         goto error;
 
-    ret = _RDB_table_to_value(tbp, &defval);
+    ret = _RDB_table_to_obj(tbp, &defval);
     if (ret != RDB_OK)
         goto error;
     ret = RDB_tuple_set(&tpl, "I_DEF", &defval);
@@ -1110,12 +1110,12 @@ RDB_make_persistent(RDB_table *tbp, RDB_transaction *txp)
         goto error;
 
     RDB_destroy_tuple(&tpl);
-    RDB_destroy_value(&defval);
+    RDB_destroy_obj(&defval);
 
     return RDB_OK;
 error:
     RDB_destroy_tuple(&tpl);
-    RDB_destroy_value(&defval);
+    RDB_destroy_obj(&defval);
     return ret;
 }
 
@@ -1162,7 +1162,7 @@ RDB_define_type(const char *name, int repc, RDB_possrep repv[],
                 RDB_transaction *txp)
 {
     RDB_tuple tpl;
-    RDB_value conval;
+    RDB_object conval;
     int ret;
     int i, j;
 
@@ -1170,7 +1170,7 @@ RDB_define_type(const char *name, int repc, RDB_possrep repv[],
         return RDB_INVALID_TRANSACTION;
 
     RDB_init_tuple(&tpl);
-    RDB_init_value(&conval);
+    RDB_init_obj(&conval);
 
     /*
      * Insert tuple into SYS_TYPES
@@ -1220,7 +1220,7 @@ RDB_define_type(const char *name, int repc, RDB_possrep repv[],
         }
 
         /* Store constraint in tuple */
-        ret = _RDB_expr_to_value(exp, &conval);
+        ret = _RDB_expr_to_obj(exp, &conval);
         if (ret != RDB_OK)
             goto error;
         ret = RDB_tuple_set(&tpl, "I_CONSTRAINT", &conval);
@@ -1259,13 +1259,13 @@ RDB_define_type(const char *name, int repc, RDB_possrep repv[],
         }
     }
 
-    RDB_destroy_value(&conval);    
+    RDB_destroy_obj(&conval);    
     RDB_destroy_tuple(&tpl);
     
     return RDB_OK;
     
 error:
-    RDB_destroy_value(&conval);    
+    RDB_destroy_obj(&conval);    
     RDB_destroy_tuple(&tpl);
 
     return ret;
@@ -1485,7 +1485,7 @@ cleanup:
 
 static RDB_ro_op *
 get_ro_op(const RDB_dbroot *dbrootp, const char *name,
-        int argc, RDB_value *argv[])
+        int argc, RDB_object *argv[])
 {
     RDB_ro_op **opp = RDB_hashmap_get(&dbrootp->ro_opmap, name, NULL);
     RDB_ro_op *op;
@@ -1533,8 +1533,8 @@ put_ro_op(RDB_dbroot *dbrootp, RDB_ro_op *op)
 }
 
 int
-RDB_call_ro_op(const char *name, int argc, RDB_value *argv[],
-               RDB_value *retvalp, RDB_transaction *txp)
+RDB_call_ro_op(const char *name, int argc, RDB_object *argv[],
+               RDB_object *retvalp, RDB_transaction *txp)
 {
     RDB_ro_op *op;
     int ret;
@@ -1556,7 +1556,7 @@ RDB_call_ro_op(const char *name, int argc, RDB_value *argv[],
 
 static RDB_upd_op *
 get_upd_op(const RDB_dbroot *dbrootp, const char *name,
-        int argc, RDB_value *argv[])
+        int argc, RDB_object *argv[])
 {
     RDB_upd_op *op;
     RDB_upd_op **opp = RDB_hashmap_get(&dbrootp->upd_opmap, name, NULL);    
@@ -1603,7 +1603,7 @@ put_upd_op(RDB_dbroot *dbrootp, RDB_upd_op *op)
 }
 
 int
-RDB_call_update_op(const char *name, int argc, RDB_value *argv[],
+RDB_call_update_op(const char *name, int argc, RDB_object *argv[],
                 RDB_transaction *txp)
 {
     RDB_upd_op *op;

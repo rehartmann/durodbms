@@ -220,7 +220,7 @@ _RDB_catalog_insert(RDB_table *tbp, RDB_transaction *txp)
     for (i = 0; i < tuptyp->var.tuple.attrc; i++) {
         if (tuptyp->var.tuple.attrv[i].defaultp != NULL) {
             char *attrname = tuptyp->var.tuple.attrv[i].name;
-            RDB_value binval;
+            RDB_object binval;
             void *datap;
             size_t len;
 
@@ -234,17 +234,17 @@ _RDB_catalog_insert(RDB_table *tbp, RDB_transaction *txp)
                 return ret;
             }
 
-            RDB_init_value(&binval);
-            datap = RDB_value_irep(tuptyp->var.tuple.attrv[i].defaultp, &len);
+            RDB_init_obj(&binval);
+            datap = RDB_obj_irep(tuptyp->var.tuple.attrv[i].defaultp, &len);
             ret = RDB_binary_set(&binval, 0, datap, len);
             if (ret != RDB_OK) {
                 RDB_destroy_tuple(&tpl);
-                RDB_destroy_value(&binval);
+                RDB_destroy_obj(&binval);
                 return ret;
             }
 
             ret = RDB_tuple_set(&tpl, "DEFAULT_VALUE", &binval);
-            RDB_destroy_value(&binval);
+            RDB_destroy_obj(&binval);
             if (ret != RDB_OK) {
                 RDB_destroy_tuple(&tpl);
                 return ret;
@@ -691,7 +691,7 @@ _RDB_get_cat_rtable(const char *name, RDB_transaction *txp, RDB_table **tbpp)
 
     for (i = 0; i < defvalc; i++) {
         char *name;
-        RDB_value *binvalp;
+        RDB_object *binvalp;
 
         RDB_array_get_tuple(&arr, i, &tpl);
         name = RDB_tuple_get_string(&tpl, "ATTRNAME");
@@ -704,9 +704,9 @@ _RDB_get_cat_rtable(const char *name, RDB_transaction *txp, RDB_table **tbpp)
             ret = RDB_INTERNAL;
             goto error;
         }
-        attrv[i].defaultp = malloc(sizeof (RDB_value));
-        RDB_init_value(attrv[i].defaultp);
-        ret = RDB_irep_to_value(attrv[i].defaultp, attrv[i].typ,
+        attrv[i].defaultp = malloc(sizeof (RDB_object));
+        RDB_init_obj(attrv[i].defaultp);
+        ret = RDB_irep_to_obj(attrv[i].defaultp, attrv[i].typ,
                 binvalp->var.bin.datap, binvalp->var.bin.len);
         if (ret != RDB_OK)
             goto error;            
@@ -732,7 +732,7 @@ _RDB_get_cat_rtable(const char *name, RDB_transaction *txp, RDB_table **tbpp)
     for (i = 0; i < attrc; i++) {
         free(attrv[i].name);
         if (attrv[i].defaultp != NULL) {
-            RDB_destroy_value(attrv[i].defaultp);
+            RDB_destroy_obj(attrv[i].defaultp);
             free(attrv[i].defaultp);
         }
     }
@@ -777,7 +777,7 @@ _RDB_get_cat_vtable(const char *name, RDB_transaction *txp, RDB_table **tbpp)
     RDB_table *tmptbp = NULL;
     RDB_tuple tpl;
     RDB_array arr;
-    RDB_value *valp;
+    RDB_object *valp;
     RDB_bool usr;
     int ret;
 
@@ -1218,7 +1218,7 @@ _RDB_make_typestr(int argc, RDB_type *argtv[])
 }
 
 static char *
-make_typestr_from_valv(int argc, RDB_value *argpv[]) {
+make_typestr_from_valv(int argc, RDB_object *argpv[]) {
     RDB_type **typp;
     int i;
     char *typestr;    
@@ -1239,7 +1239,7 @@ make_typestr_from_valv(int argc, RDB_value *argpv[]) {
 
 /* Read update operator from database */
 int
-_RDB_get_cat_ro_op(const char *name, int argc, RDB_value *argv[],
+_RDB_get_cat_ro_op(const char *name, int argc, RDB_object *argv[],
         RDB_transaction *txp, RDB_ro_op **opp)
 {
     RDB_expression *exp;
@@ -1301,7 +1301,7 @@ _RDB_get_cat_ro_op(const char *name, int argc, RDB_value *argv[],
     }
 
     for (i = 0; i < op->argc; i++) {
-        op->argtv[i] = RDB_value_type(argv[i]);
+        op->argtv[i] = RDB_obj_type(argv[i]);
     }
 
     ret = RDB_get_type(RDB_tuple_get_string(&tpl, "RTYPE"), txp, &op->rtyp);
@@ -1345,7 +1345,7 @@ error:
 
 /* Read update operator from database */
 int
-_RDB_get_cat_upd_op(const char *name, int argc, RDB_value *argv[],
+_RDB_get_cat_upd_op(const char *name, int argc, RDB_object *argv[],
         RDB_transaction *txp, RDB_upd_op **opp)
 {
     RDB_expression *exp;
@@ -1407,7 +1407,7 @@ _RDB_get_cat_upd_op(const char *name, int argc, RDB_value *argv[],
     }
 
     for (i = 0; i < op->argc; i++) {
-        op->argtv[i] = RDB_value_type(argv[i]);
+        op->argtv[i] = RDB_obj_type(argv[i]);
     }
     op->iargp = RDB_dup_str(RDB_tuple_get_string(&tpl, "IARG"));
     libname = RDB_tuple_get_string(&tpl, "LIB");

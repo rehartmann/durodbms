@@ -4,10 +4,10 @@
 #include <stdio.h>
 
 int main(void) {
-    RDB_value val;
+    RDB_object val;
     char buf[9];
 
-    RDB_init_value(&val);
+    RDB_init_obj(&val);
 
     RDB_binary_set(&val, 0, "ABCD", 4);
     RDB_binary_set(&val, 4, "EFGH", 5);
@@ -16,7 +16,7 @@ int main(void) {
 
     printf("%s\n%d\n", buf, RDB_binary_length(&val));
 
-    RDB_destroy_value(&val);
+    RDB_destroy_obj(&val);
 
     return 0;
 }

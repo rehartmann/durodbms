@@ -56,9 +56,9 @@ test_table(RDB_database *dbp)
     RDB_tuple tpl;
     RDB_transaction tx;
     RDB_table *tbp;
-    RDB_value ival;
-    RDB_value tival;
-    RDB_value *ivalp;
+    RDB_object ival;
+    RDB_object tival;
+    RDB_object *ivalp;
 
     printf("Starting transaction\n");
     ret = RDB_begin_tx(&tx, dbp, NULL);
@@ -73,8 +73,8 @@ test_table(RDB_database *dbp)
     }
 
     RDB_init_tuple(&tpl);
-    RDB_init_value(&ival);
-    RDB_init_value(&tival);
+    RDB_init_obj(&ival);
+    RDB_init_obj(&tival);
 
     printf("Trying to insert tuple with INTEGER\n");
 
@@ -92,10 +92,10 @@ test_table(RDB_database *dbp)
 
     printf("Trying to create TINYINT fromt INTEGER=200\n");
 
-    RDB_value_set_int(&ival, (RDB_int)200);
+    RDB_obj_set_int(&ival, (RDB_int)200);
     ivalp = &ival;
 
-    ret = RDB_select_value(&tival, tinyintp, "TINYINT", &ivalp);
+    ret = RDB_select_obj(&tival, tinyintp, "TINYINT", &ivalp);
     if (ret != RDB_TYPE_CONSTRAINT_VIOLATION) {
         fprintf(stderr, "Wrong return code: %s\n", RDB_strerror(ret));
         goto error;
@@ -104,10 +104,10 @@ test_table(RDB_database *dbp)
 
     printf("Creating TINYINT from INTEGER=99\n");
 
-    RDB_value_set_int(&ival, (RDB_int)99);
+    RDB_obj_set_int(&ival, (RDB_int)99);
     ivalp = &ival;
 
-    ret = RDB_select_value(&tival, tinyintp, "TINYINT", &ivalp);
+    ret = RDB_select_obj(&tival, tinyintp, "TINYINT", &ivalp);
     if (ret != RDB_OK) {
         goto error;
     }
@@ -126,15 +126,15 @@ test_table(RDB_database *dbp)
     }
 
     RDB_destroy_tuple(&tpl);
-    RDB_destroy_value(&ival);
-    RDB_destroy_value(&tival);
+    RDB_destroy_obj(&ival);
+    RDB_destroy_obj(&tival);
 
     printf("End of transaction\n");
     return RDB_commit(&tx);
 error:
     RDB_destroy_tuple(&tpl);
-    RDB_destroy_value(&ival);
-    RDB_destroy_value(&tival);
+    RDB_destroy_obj(&ival);
+    RDB_destroy_obj(&tival);
 
     RDB_rollback(&tx);
     return ret;

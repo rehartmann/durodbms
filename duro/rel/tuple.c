@@ -19,14 +19,14 @@ RDB_init_tuple(RDB_tuple *tp)
 }
 
 static void
-destroy_value(RDB_hashmap *hp, const char *key, void *arg) {
-    RDB_destroy_value((RDB_value *) RDB_hashmap_get(hp, key, NULL));
+destroy_obj(RDB_hashmap *hp, const char *key, void *arg) {
+    RDB_destroy_obj((RDB_object *) RDB_hashmap_get(hp, key, NULL));
 }
 
 int
 RDB_destroy_tuple(RDB_tuple *tp)
 {
-    RDB_hashmap_apply(&tp->map, destroy_value, NULL);
+    RDB_hashmap_apply(&tp->map, destroy_obj, NULL);
 
     RDB_destroy_hashmap(&tp->map);
 
@@ -34,33 +34,33 @@ RDB_destroy_tuple(RDB_tuple *tp)
 }
 
 int
-RDB_tuple_set(RDB_tuple *tp, const char *namp, const RDB_value *valp)
+RDB_tuple_set(RDB_tuple *tp, const char *namp, const RDB_object *valp)
 {
-    RDB_value newval;
-    RDB_value *oldvalp;
+    RDB_object newval;
+    RDB_object *oldvalp;
     int res;
 
     /* delete old value */
-    oldvalp = (RDB_value *) RDB_hashmap_get(&tp->map, namp, NULL);
+    oldvalp = (RDB_object *) RDB_hashmap_get(&tp->map, namp, NULL);
     if (oldvalp != NULL) {
-        RDB_destroy_value(oldvalp);
+        RDB_destroy_obj(oldvalp);
     }
 
     /* insert new value */
-    RDB_init_value(&newval);
-    res = RDB_copy_value(&newval, valp);
+    RDB_init_obj(&newval);
+    res = RDB_copy_obj(&newval, valp);
     if (res != RDB_OK)
         return res;
-    return RDB_hashmap_put(&tp->map, namp, &newval, sizeof (RDB_value));
+    return RDB_hashmap_put(&tp->map, namp, &newval, sizeof (RDB_object));
 }
 
 int
 RDB_tuple_set_bool(RDB_tuple *tp, const char *namp, RDB_bool val)
 {
-    RDB_value value;
+    RDB_object value;
 
-    RDB_init_value(&value);
-    RDB_value_set_bool(&value, val);
+    RDB_init_obj(&value);
+    RDB_obj_set_bool(&value, val);
 
     return RDB_hashmap_put(&tp->map, namp, &value, sizeof(value));
 } 
@@ -68,10 +68,10 @@ RDB_tuple_set_bool(RDB_tuple *tp, const char *namp, RDB_bool val)
 int
 RDB_tuple_set_int(RDB_tuple *tp, const char *namp, RDB_int val)
 {
-    RDB_value value;
+    RDB_object value;
 
-    RDB_init_value(&value);
-    RDB_value_set_int(&value, val);
+    RDB_init_obj(&value);
+    RDB_obj_set_int(&value, val);
 
     return RDB_hashmap_put(&tp->map, namp, &value, sizeof(value));
 }
@@ -79,10 +79,10 @@ RDB_tuple_set_int(RDB_tuple *tp, const char *namp, RDB_int val)
 int
 RDB_tuple_set_rational(RDB_tuple *tp, const char *namp, RDB_rational val)
 {
-    RDB_value value;
+    RDB_object value;
 
-    RDB_init_value(&value);
-    RDB_value_set_rational(&value, val);
+    RDB_init_obj(&value);
+    RDB_obj_set_rational(&value, val);
 
     return RDB_hashmap_put(&tp->map, namp, &value, sizeof(value));
 }
@@ -90,13 +90,13 @@ RDB_tuple_set_rational(RDB_tuple *tp, const char *namp, RDB_rational val)
 int
 RDB_tuple_set_string(RDB_tuple *tp, const char *namp, const char *str)
 {
-    RDB_value value;
+    RDB_object value;
     int res;
 
-    RDB_init_value(&value);
-    res = RDB_value_set_string(&value, str);
+    RDB_init_obj(&value);
+    res = RDB_obj_set_string(&value, str);
     if (res != RDB_OK) {
-        RDB_destroy_value(&value);
+        RDB_destroy_obj(&value);
         return res;
     }
     res = RDB_hashmap_put(&tp->map, namp, &value, sizeof(value));
@@ -104,34 +104,34 @@ RDB_tuple_set_string(RDB_tuple *tp, const char *namp, const char *str)
     return res;
 }
 
-RDB_value *
+RDB_object *
 RDB_tuple_get(const RDB_tuple *tp, const char *namp)
 {
-    return (RDB_value *) RDB_hashmap_get(&tp->map, namp, NULL);
+    return (RDB_object *) RDB_hashmap_get(&tp->map, namp, NULL);
 }
 
 RDB_bool
 RDB_tuple_get_bool(const RDB_tuple *tp, const char *namp)
 {
-    return ((RDB_value *) RDB_hashmap_get(&tp->map, namp, NULL))->var.bool_val;
+    return ((RDB_object *) RDB_hashmap_get(&tp->map, namp, NULL))->var.bool_val;
 }
 
 RDB_int
 RDB_tuple_get_int(const RDB_tuple *tp, const char *namp)
 {
-    return ((RDB_value *) RDB_hashmap_get(&tp->map, namp, NULL))->var.int_val;
+    return ((RDB_object *) RDB_hashmap_get(&tp->map, namp, NULL))->var.int_val;
 }
 
 RDB_rational
 RDB_tuple_get_rational(const RDB_tuple *tp, const char *namp)
 {
-    return ((RDB_value *) RDB_hashmap_get(&tp->map, namp, NULL))->var.rational_val;
+    return ((RDB_object *) RDB_hashmap_get(&tp->map, namp, NULL))->var.rational_val;
 }
 
 char *
 RDB_tuple_get_string(const RDB_tuple *tp, const char *namp)
 {
-    return ((RDB_value *) RDB_hashmap_get(&tp->map, namp, NULL))
+    return ((RDB_object *) RDB_hashmap_get(&tp->map, namp, NULL))
             ->var.bin.datap;
 }
 
@@ -141,14 +141,14 @@ RDB_tuple_extend(RDB_tuple *tup, int attrc, RDB_virtual_attr attrv[],
 {
     int i;
     int res;
-    RDB_value val;
+    RDB_object val;
     
     for (i = 0; i < attrc; i++) {
         res = RDB_evaluate(attrv[i].exp, tup, txp, &val);
         if (res != RDB_OK)
             return res;
         RDB_tuple_set(tup, attrv[i].name, &val);
-        RDB_destroy_value(&val);
+        RDB_destroy_obj(&val);
     }
     return RDB_OK;
 }
