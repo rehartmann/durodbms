@@ -413,9 +413,10 @@ RDB_insert_rec(RDB_recmap *rmp, RDB_field flds[], DB_TXN *txid)
 #endif
 
     ret = rmp->dbp->put(rmp->dbp, txid, &key, &data, DB_NOOVERWRITE);
-    if (ret == EINVAL)
+    if (ret == EINVAL) {
         /* Assume duplicate secondary index */
         ret = RDB_KEY_VIOLATION;
+    }
     free(key.data);
     free(data.data);
 

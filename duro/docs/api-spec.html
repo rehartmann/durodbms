@@ -184,6 +184,15 @@
 <li><a href="#drop_constraint">RDB_drop_constraint</a>
 </ul>
 
+<h3>Database Environment functions</h3>
+
+<ul>
+<li><a href="#create_env">RDB_create_env</a>
+<li><a href="#open_env">RDB_open_env<a>
+<li><a href="#close_env">RDB_close_env</a>
+<li><a href="#set_errfile">RDB_set_errfile</a>
+</ul>
+
 <h3>Miscellaneous</h3>
 
 <ul>
@@ -263,7 +272,7 @@ back.
 #include &lt;rel/rdb.h&gt;
 
 int
-RDB_get_table(RDB_database *dbp, const char *name, RDB_table **tbpp);
+RDB_get_table(const char *name, RDB_transaction *txp, RDB_table **tbpp);
 </pre>
 
 <hr>
@@ -752,7 +761,7 @@ RDB_init_value(RDB_value *valp);
 <pre>
 #include &lt;rel/rdb.h&gt;
 
-void
+int
 RDB_destroy_value(RDB_value *valp);
 </pre>
 
@@ -1608,6 +1617,8 @@ RDB_join_relation_types(const RDB_type *typ1, const RDB_type *typ2,
 <h2 id="create_constraint">RDB_create_constraint</h2>
 
 <pre>
+#include &lt;rel/rdb.h&gt;
+
 int
 RDB_create_constraint(const char *name, RDB_expression *constr,
                       RDB_transaction *txp);
@@ -1618,41 +1629,71 @@ RDB_create_constraint(const char *name, RDB_expression *constr,
 <h2 id="drop_constraint">RDB_drop_constraint</h2>
 
 <pre>
+#include &lt;rel/rdb.h&gt;
+
 int
 RDB_drop_constraint(const char *name, RDB_transaction *txp);
 </pre>
 
-<h3>Creating an environment</h3>
+<hr>
+
+<h2 id="create_env">Creating an environment</h2>
 
 <pre>
+#include &lt;rel/rdb.h&gt;
+
 int
 RDB_create_env(const char *path, RDB_environment **);
 </pre>
 
-<h3>Opening an environment</h3>
+<hr>
+
+<h2 id="open_env">Opening an environment</h2>
 
 <pre>
+#include &lt;rel/rdb.h&gt;
+
 int
 RDB_open_env(const char *path, RDB_environment **envp);
 </pre>
 
-<h3>Closing an environment</h3>
+<hr>
+
+<h2 id="close_env">Closing an environment</h2>
 
 <pre>
+#include &lt;rel/rdb.h&gt;
+
 int
-RDB_close_env(RDB_environment *dsp);
+RDB_close_env(RDB_environment *);
 </pre>
+
+<hr>
+
+<h2 id="set_errfile">Setting the error file</h2>
+
+<pre>
+#include &lt;rel/rdb.h&gt;
+#include &lt;stdio.h&gt;
+
+void
+RDB_set_errfile(RDB_environment *, FILE *errfile);
+</pre>
+
+<hr>
 
 <h2 id="attr">RDB_attr</h2>
 
 <pre>
-typedef struct RDB_attr {
+typedef struct {
     char *name;
     RDB_type *typ;
     RDB_value *defaultp;
     int options;
 } RDB_attr;
 </pre>
+
+<hr>
 
 <h2 id="possrep">RDB_possrep</h2>
 

@@ -56,6 +56,7 @@ open_key_index(RDB_table *tbp, int keyno, const RDB_key_attrs *keyattrsp,
 
     if (idx_name == NULL || fieldv == NULL) {
         ret = RDB_NO_MEMORY;
+        ERRMSG(txp->dbp->envp, RDB_strerror(ret));
         goto error;
     }
 
@@ -139,6 +140,7 @@ open_table(const char *name, RDB_bool persistent,
         tbp->name = RDB_dup_str(name);
         if (tbp->name == NULL) {
             ret = RDB_NO_MEMORY;
+            ERRMSG(txp->dbp->envp, RDB_strerror(ret));
             goto error;
         }
     } else {
@@ -161,6 +163,7 @@ open_table(const char *name, RDB_bool persistent,
     tbp->typ = RDB_create_relation_type(attrc, heading);
     if (tbp->typ == NULL) {
         ret = RDB_NO_MEMORY;
+        ERRMSG(txp->dbp->envp, RDB_strerror(ret));
         goto error;
     }
 
@@ -203,10 +206,6 @@ open_table(const char *name, RDB_bool persistent,
         }
 
         flens[fno] = replen(heading[i].typ);
-        if (flens[fno] == 0) {
-            ret = RDB_INVALID_ARGUMENT;
-            goto error;
-        }
     }
     if (create) {
         ret = RDB_create_recmap(persistent ? name : NULL,
@@ -226,6 +225,7 @@ open_table(const char *name, RDB_bool persistent,
         tbp->var.stored.keyidxv = malloc(sizeof(RDB_index *) * (keyc - 1));
         if (tbp->var.stored.keyidxv == NULL) {
             ret = RDB_NO_MEMORY;
+            ERRMSG(txp->dbp->envp, RDB_strerror(ret));
             goto error;
         }
         for (i = 1; i < keyc; i++) {    
@@ -623,6 +623,7 @@ alloc_db(const char *name, RDB_environment *envp, RDB_database **dbpp)
     dbp->name = RDB_dup_str(name);
     if (dbp->name == NULL) {
         ret = RDB_NO_MEMORY;
+        ERRMSG(envp, RDB_strerror(ret));
         goto error;
     }
 

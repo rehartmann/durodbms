@@ -29,10 +29,14 @@ RDB_table_to_array(RDB_table *tbp, RDB_array *arrp,
                    int seqitc, RDB_seq_item seqitv[],
                    RDB_transaction *txp)
 {
+    int ret;
+
     if (seqitc > 0)
         return RDB_NOT_SUPPORTED;
 
-    RDB_destroy_array(arrp);
+    ret = RDB_destroy_array(arrp);
+    if (ret != RDB_OK)
+        return ret;
 
     arrp->tbp = tbp;
     arrp->txp = txp;

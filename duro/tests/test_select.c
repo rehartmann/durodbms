@@ -120,7 +120,7 @@ main()
         return 1;
     }
 
-    RDB_internal_env(envp)->set_errfile(RDB_internal_env(envp), stderr);
+    RDB_set_errfile(envp, stderr);
 
     ret = RDB_get_db_from_env("TEST", envp, &dbp);
     if (ret != 0) {

@@ -85,3 +85,18 @@ RDB_set_env_closefn(RDB_environment *envp, void (*fn)(struct RDB_environment *))
 {
     envp->closefn = fn;
 }
+
+void
+RDB_set_errfile(RDB_environment *envp, FILE *errfile)
+{
+    envp->errfilep = errfile;
+    envp->envp->set_errfile(envp->envp, errfile);
+}
+
+void
+RDB_errmsg(RDB_environment *envp, const char *msg)
+{
+    if (envp->errfilep != NULL) {
+        fprintf(envp->errfilep, "%s\n", msg);
+    }
+}

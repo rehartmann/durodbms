@@ -22,7 +22,7 @@ OBJS = rel/getargs.o rel/database.o rel/tuple.o rel/table.o rel/array.o \
        rec/env.o rec/recmap.o rec/cursor.o rec/index.o \
        gen/hashmap.o gen/errors.o gen/strfns.o
 
-all: util tests
+all: util
 
 clean:
 	$(RM) $(LIBS) core
@@ -32,7 +32,7 @@ clean:
 	cd util; $(MAKE) clean
 	cd tests; $(MAKE) clean
 
-test:
+check:
 	cd tests; $(MAKE) test
 
 util: $(LIBS)

@@ -102,8 +102,10 @@ RDB_insert(RDB_table *tbp, const RDB_tuple *tup, RDB_transaction *txp)
             RDB_field *fvp;
 
             fvp = malloc(sizeof(RDB_field) * attrcount);
-            if (fvp == NULL)
+            if (fvp == NULL) {
+                ERRMSG(txp->dbp->envp, RDB_strerror(ret));
                 return RDB_NO_MEMORY;
+            }
             for (i = 0; i < attrcount; i++) {
                 int *fnop;
                 RDB_value *valp;
@@ -122,11 +124,12 @@ RDB_insert(RDB_table *tbp, const RDB_tuple *tup, RDB_transaction *txp)
             ret = RDB_insert_rec(tbp->var.stored.recmapp, fvp, txp->txid);
             free(fvp);
             if (RDB_is_syserr(ret)) {
+                ERRMSG(txp->dbp->envp, RDB_strerror(ret));
                 RDB_rollback(txp);
             } else if (ret == RDB_KEY_VIOLATION) {
                 if (RDB_table_contains(tbp, tup, txp) == RDB_OK)
                     ret = RDB_ELEMENT_EXISTS;
-            }
+            }            
             return ret;
         }
         case RDB_TB_SELECT:
@@ -320,6 +323,7 @@ update_stored(RDB_table *tbp, RDB_expression *condp,
         ret = RDB_update_rec(tbp->var.stored.recmapp, &fv, attrc, fieldv,
                 txp->txid);
         if (RDB_is_syserr(ret)) {
+            ERRMSG(txp->dbp->envp, RDB_strerror(ret));
             return ret;
         }
         free(valv);
@@ -431,8 +435,10 @@ RDB_update(RDB_table *tbp, RDB_expression *condp, int attrc,
         case RDB_TB_STORED:
             {
                 int ret = update_stored(tbp, condp, attrc, attrv, txp);
-                if (RDB_is_syserr(ret))
+                if (RDB_is_syserr(ret)) {
+                    ERRMSG(txp->dbp->envp, RDB_strerror(ret));
                     RDB_rollback(txp);
+                }
                 return ret;
             }
         case RDB_TB_UNION:
@@ -559,8 +565,10 @@ RDB_delete(RDB_table *tbp, RDB_expression *condp, RDB_transaction *txp)
     switch (tbp->kind) {
         case RDB_TB_STORED:
             ret = delete_stored(tbp, condp, txp);
-            if (RDB_is_syserr(ret))
+            if (RDB_is_syserr(ret)) {
+                ERRMSG(txp->dbp->envp, RDB_strerror(ret));
                 RDB_rollback(txp);
+            }
             return ret;
         case RDB_TB_MINUS:
             return RDB_delete(tbp->var.minus.tbp1, condp, txp);
@@ -763,8 +771,10 @@ RDB_aggregate(RDB_table *tbp, RDB_aggregate_op op, const char *attrname,
 
     ret = _RDB_table_qresult(tbp, &qrp, txp);
     if (ret != RDB_OK) {
-        if (RDB_is_syserr(ret))
+        if (RDB_is_syserr(ret)) {
+            ERRMSG(txp->dbp->envp, RDB_strerror(ret));
             RDB_rollback(txp);
+        }
         return ret;
     }
 
@@ -829,8 +839,10 @@ RDB_aggregate(RDB_table *tbp, RDB_aggregate_op op, const char *attrname,
     RDB_destroy_tuple(&tpl);
     if (ret != RDB_NOT_FOUND) {
         _RDB_drop_qresult(qrp, txp);
-        if (RDB_is_syserr(ret))
+        if (RDB_is_syserr(ret)) {
+            ERRMSG(txp->dbp->envp, RDB_strerror(ret));
             RDB_rollback(txp);
+        }
         return ret;
     }
 
@@ -930,8 +942,10 @@ RDB_rename_contains(RDB_table *tbp, const RDB_tuple *tup, RDB_transaction *txp)
             ret = RDB_tuple_set(&tpl, attrname, RDB_tuple_get(tup, attrname));
         }
         if (ret != RDB_OK) {
-            if (RDB_is_syserr(ret))
+            if (RDB_is_syserr(ret)) {
+                ERRMSG(txp->dbp->envp, RDB_strerror(ret));
                 RDB_rollback(txp);
+            }
             goto error;
         }
     }
@@ -970,6 +984,7 @@ RDB_table_contains(RDB_table *tbp, const RDB_tuple *tup, RDB_transaction *txp)
                 ret = RDB_contains_rec(tbp->var.stored.recmapp, fvp, txp->txid);
                 free(fvp);
                 if (RDB_is_syserr(ret)) {
+                    ERRMSG(txp->dbp->envp, RDB_strerror(ret));
                     RDB_rollback(txp);
                 }
                 return ret;
@@ -1023,8 +1038,10 @@ RDB_table_contains(RDB_table *tbp, const RDB_tuple *tup, RDB_transaction *txp)
                 ret2 = _RDB_drop_qresult(qrp, txp);
                 if (ret == RDB_OK)
                     ret =  ret2;
-                if (RDB_is_syserr(ret))
+                if (RDB_is_syserr(ret)) {
+                    ERRMSG(txp->dbp->envp, RDB_strerror(ret));
                     RDB_rollback(txp);
+                }
                 return ret;
             }
         case RDB_TB_RENAME:
@@ -1042,8 +1059,10 @@ RDB_extract_tuple(RDB_table *tbp, RDB_tuple *tup, RDB_transaction *txp)
 
     ret = _RDB_table_qresult(tbp, &qrp, txp);
     if (ret != RDB_OK) {
-        if (RDB_is_syserr(ret))
+        if (RDB_is_syserr(ret)) {
+            ERRMSG(txp->dbp->envp, RDB_strerror(ret));
             RDB_rollback(txp);
+        }
         return ret;
     }
 
@@ -1066,8 +1085,10 @@ error:
     ret2 = _RDB_drop_qresult(qrp, txp);
     if (ret == RDB_OK)
         ret = ret2;
-    if (RDB_is_syserr(ret))
+    if (RDB_is_syserr(ret)) {
+        ERRMSG(txp->dbp->envp, RDB_strerror(ret));
         RDB_rollback(txp);
+    }
     return ret;
 }
 

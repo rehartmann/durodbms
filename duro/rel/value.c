@@ -34,13 +34,17 @@ RDB_value_irep(RDB_value *valp, size_t *lenp)
 int
 RDB_irep_to_value(RDB_value *valp, RDB_type *typ, void *datap, size_t len)
 {
+    int ret;
     const RDB_type *rep = typ;
 
     if (!RDB_type_is_builtin(typ))
         rep = typ->arep;
 
-    if (valp->typ != NULL)
-        RDB_destroy_value(valp);
+    if (valp->typ != NULL) {
+        ret = RDB_destroy_value(valp);
+        if (ret != RDB_OK)
+            return ret;
+    }
 
     valp->typ = typ;
     if (typ == &RDB_BOOLEAN) {
@@ -109,8 +113,13 @@ copy_value(RDB_value *dstvalp, const RDB_value *srcvalp)
 int
 RDB_copy_value(RDB_value *dstvalp, const RDB_value *srcvalp)
 {
-    if (dstvalp->typ != NULL)
-        RDB_destroy_value(dstvalp);
+    int ret;
+
+    if (dstvalp->typ != NULL) {
+        ret = RDB_destroy_value(dstvalp);
+        if (ret != RDB_OK)
+            return ret;
+    }
 
     dstvalp->typ = srcvalp->typ;
     return copy_value(dstvalp, srcvalp);
@@ -122,13 +131,13 @@ RDB_init_value(RDB_value *valp)
     valp->typ = NULL;
 }
 
-void
+int
 RDB_destroy_value(RDB_value *valp)
 {
     RDB_type *rep = valp->typ;
 
     if (rep == NULL)
-        return;
+        return RDB_OK;
 
     if (!RDB_type_is_builtin(rep))
         rep = rep->arep;
@@ -136,6 +145,7 @@ RDB_destroy_value(RDB_value *valp)
     if (rep->ireplen == RDB_VARIABLE_LEN) {
          free(valp->var.bin.datap);
     }
+    return RDB_OK;
 }
 
 void
@@ -179,12 +189,15 @@ int
 RDB_value_get_comp(const RDB_value *valp, const char *compname,
                    RDB_value *compvalp)
 {
+    int ret;
     RDB_icomp *comp = _RDB_get_icomp(valp->typ, compname);
 
     if (comp->setterp != NULL) {
         return (*(comp->getterp))(valp, compvalp, valp->typ, compname);
     } else {
-        RDB_destroy_value(compvalp);
+        ret = RDB_destroy_value(compvalp);
+        if (ret != RDB_OK)
+            return ret;
 
         compvalp->typ = valp->typ->var.scalar.repv[0].compv[0].typ;
         return copy_value(compvalp, valp);   
@@ -196,11 +209,14 @@ RDB_value_set_comp(RDB_value *valp, const char *compname,
                    const RDB_value *compvalp)
 {
     RDB_icomp *comp = _RDB_get_icomp(valp->typ, compname);
+    int ret;
 
     if (comp->setterp != NULL) {
         return (*(comp->setterp))(valp, compvalp, valp->typ, compname);
     } else {
-        RDB_destroy_value(valp);
+        ret = RDB_destroy_value(valp);
+        if (ret != RDB_OK)
+            return ret;
 
         return copy_value(valp, compvalp);
     }

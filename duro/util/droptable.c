@@ -60,7 +60,7 @@ main(int argc, char *argv[])
         return 1;
     }
 
-    RDB_internal_env(envp)->set_errfile(RDB_internal_env(envp), stderr);
+    RDB_set_errfile(envp, stderr);
 
     if (argc == 0) {
         fputs("droptable: missing argument(s)\n", stderr);

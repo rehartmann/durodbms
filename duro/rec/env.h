@@ -1,13 +1,15 @@
-#ifndef RDB_DATASTORE_H
-#define RDB_DATASTORE_H
+#ifndef RDB_ENV_H
+#define RDB_ENV_H
 
 /* $Id$ */
 
 #include <db.h>
+#include <stdio.h>
 
 typedef struct RDB_environment {
     DB_ENV *envp;
     void (*closefn)(struct RDB_environment *);
+    FILE *errfilep;
 } RDB_environment;
 
 #define RDB_internal_env(renvp) (renvp->envp)
@@ -46,5 +48,13 @@ RDB_close_env(RDB_environment *dsp);
 
 void
 RDB_set_env_closefn(RDB_environment *, void (*)(struct RDB_environment *));
+
+void
+RDB_set_errfile(RDB_environment *, FILE *errfile);
+
+void
+RDB_errmsg(RDB_environment *envp, const char *msg);
+
+#define ERRMSG(envp,msg) RDB_errmsg(envp, msg)
 
 #endif

@@ -219,6 +219,9 @@ main(void) {
         fprintf(stderr, "Error: %s\n", RDB_strerror(ret));
         return 1;
     }
+
+    RDB_set_errfile(envp, stderr);
+
     printf("Creating DB\n");
     ret = RDB_create_db_from_env("TEST", envp, &dbp);
     if (ret != RDB_OK) {

@@ -835,7 +835,7 @@ RDB_init_value(RDB_value *valp);
 /*
  * Release the resources associated with the value pointed to by valp.
  */
-void
+int
 RDB_destroy_value(RDB_value *valp);
 
 int

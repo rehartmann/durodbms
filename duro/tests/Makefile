@@ -6,7 +6,8 @@ CFLAGS = -I$(BDB_INCLUDE) -I.. $(COPTS)
 LDFLAGS = -L$(BDB_LIB) -L../lib -g
 LDLIBS = -lduro -ldb -lltdl -lm
 RM = rm -f
-LIBTOOL = libtool
+MKLIB = libtool --mode=link
+CCLT = libtool --mode=compile $(CC)
 
 OBJS =
 
@@ -105,8 +106,8 @@ test_pointtable: test_pointtable.c
 	$(CC) $(CFLAGS) $(LDFLAGS) -o test_pointtable test_pointtable.c $(LDLIBS)
 
 point.lo : point.c
-	$(LIBTOOL) --mode=compile $(CC) $(CFLAGS) -c point.c
+	$(CCLT) $(CFLAGS) -c point.c
 
 libpoint.lo : point.lo
-	$(LIBTOOL) --mode=link $(CC) -g -module -o libpoint.la point.lo \
+	$(MKLIB) $(CC) -g -module -o libpoint.la point.lo \
         -rpath $$PATH
