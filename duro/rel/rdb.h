@@ -36,8 +36,7 @@ enum RDB_tp_kind {
     RDB_TP_BOOLEAN,
     RDB_TP_INTEGER,
     RDB_TP_RATIONAL,
-    RDB_TP_STRING,
-    RDB_TP_BINARY,
+    RDB_TP_BINARY, /* binary, variable-length */
     RDB_TP_TUPLE,
     RDB_TP_RELATION
 };
@@ -52,7 +51,7 @@ typedef struct {
 typedef struct RDB_type {
     /* internal */
     char *name;
-    enum RDB_tp_kind kind;
+    enum RDB_tp_kind kind; /* internal representation */
     union {
         struct RDB_type *basetyp; /* relation type */
         struct {
@@ -959,6 +958,12 @@ RDB_rel_table(RDB_table *);
 
 RDB_expression *
 RDB_rel_is_empty(RDB_expression *);
+
+RDB_expression *
+RDB_get_comp(RDB_expression *, const char *);
+
+RDB_expression *
+RDB_selector(RDB_expression *, char *, RDB_expression **);
 
 /* Destroy the expression and all its subexpressions */
 void

@@ -28,8 +28,6 @@ static int replen(const RDB_type *typ) {
             return sizeof(RDB_int);
         case RDB_TP_RATIONAL:
             return sizeof(RDB_rational);
-        case RDB_TP_STRING:
-            return RDB_VARIABLE_LEN;
         default:
             return RDB_VARIABLE_LEN;
     }

@@ -697,32 +697,28 @@ RDB_evaluate(RDB_expression *exprp, const RDB_tuple *tup, RDB_transaction *txp,
 
     if (typ != NULL) {
         valp->typ = typ;
-        switch (typ->kind) {   
-            case RDB_TP_BOOLEAN:
-                return RDB_evaluate_bool(exprp, tup, txp, &valp->var.bool_val);
-            case RDB_TP_INTEGER:
-                return evaluate_int(exprp, tup, txp, &valp->var.int_val);
-            case RDB_TP_RATIONAL:
-                return evaluate_rational(exprp, tup, txp, &valp->var.rational_val);
-            case RDB_TP_STRING:
-                {
-                    char *str;
-                    int err;
+        if (typ == &RDB_BOOLEAN)
+            return RDB_evaluate_bool(exprp, tup, txp, &valp->var.bool_val);
+        if (typ == &RDB_INTEGER)
+            return evaluate_int(exprp, tup, txp, &valp->var.int_val);
+        if (typ == &RDB_RATIONAL)
+            return evaluate_rational(exprp, tup, txp, &valp->var.rational_val);
+        if (typ == &RDB_STRING) {
+            char *str;
+            int err;
                 
-                    err = evaluate_string(exprp, tup, txp, &str);
-                    if (err != RDB_OK)
-                        return err;
+            err = evaluate_string(exprp, tup, txp, &str);
+            if (err != RDB_OK)
+                return err;
 
-                    valp->var.bin.datap = str;
-                    valp->var.bin.len = strlen(valp->var.bin.datap) + 1;
+            valp->var.bin.datap = str;
+            valp->var.bin.len = strlen(valp->var.bin.datap) + 1;
 
-                    return RDB_OK;
-                }
-            case RDB_TP_RELATION:
-                valp->var.tbp = exprp->var.tbp;
-                return RDB_OK;
-            default:
-                ;
+            return RDB_OK;
+        }
+        if (typ->kind == RDB_TP_RELATION) {
+            valp->var.tbp = exprp->var.tbp;
+            return RDB_OK;
         }
     }
     abort();
