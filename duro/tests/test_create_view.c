@@ -66,7 +66,7 @@ create_view2(RDB_database *dbp)
 {
     RDB_transaction tx;
     RDB_table *tbp, *vtbp;
-    RDB_expression *exprp;
+    RDB_expression *exprp, *hexprp;
     int ret;
 
     printf("Starting transaction\n");
@@ -83,12 +83,12 @@ create_view2(RDB_database *dbp)
 
     printf("Creating EMPS1 WHERE (SALARY > 4000)\n");
 
-    exprp = RDB_expr_attr("SALARY");
-    if (exprp == NULL)
+    hexprp = RDB_expr_attr("SALARY");
+    if (hexprp == NULL)
         return RDB_NO_MEMORY;
-    exprp = RDB_gt(exprp, RDB_rational_to_expr(4000.0));
-    if (exprp == NULL)
-        return RDB_NO_MEMORY;
+    ret = RDB_ro_op_2(">", hexprp, RDB_rational_to_expr(4000.0), &tx, &exprp);
+    if (ret != RDB_OK)
+        return ret;
 
     ret = RDB_select(tbp, exprp, &vtbp);
     if (ret != RDB_OK) {
@@ -139,9 +139,9 @@ create_view3(RDB_database *dbp)
     exprp = RDB_expr_attr("SALARY");
     if (exprp == NULL)
         return RDB_NO_MEMORY;
-    exprp = RDB_gt(exprp, RDB_rational_to_expr(4000.0));
-    if (exprp == NULL)
-        return RDB_NO_MEMORY;
+    ret = RDB_ro_op_2(">", exprp, RDB_rational_to_expr(4000.0), &tx, &exprp);
+    if (ret != RDB_OK)
+        return ret;
 
     vattr.name = "HIGHSAL";
     vattr.exp = exprp;

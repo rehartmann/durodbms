@@ -66,12 +66,23 @@ RDB_set_errfile(RDB_environment *envp, FILE *errfile)
     envp->envp->set_errfile(envp->envp, errfile);
 }
 
+static void
+dberrfn(const DB_ENV *dbenv, const char *errpfx, const char *msg)
+{
+    RDB_environment *envp = dbenv->app_private;
+
+    (*envp->errfn)(msg, envp->errfn_arg);
+}
+
 void
 RDB_set_errfn(RDB_environment *envp,
         void (*errfn)(const char *msg, void *arg), void *arg)
 {
     envp->errfn = errfn;
     envp->errfn_arg = arg;
+
+    envp->envp->app_private = envp;
+    envp->envp->set_errcall(envp->envp, &dberrfn);
 }
 
 void

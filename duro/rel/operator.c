@@ -707,6 +707,46 @@ not(const char *name, int argc, RDB_object *argv[],
     return RDB_OK;
 }
 
+static int
+lt(const char *name, int argc, RDB_object *argv[],
+        const void *iargp, size_t iarglen, RDB_transaction *txp,
+        RDB_object *retvalp)
+{
+    RDB_bool_to_obj(retvalp, (RDB_bool)
+            ((*argv[0]->typ->comparep)(argv[0], argv[1]) < 0));
+    return RDB_OK;
+}
+
+static int
+let(const char *name, int argc, RDB_object *argv[],
+        const void *iargp, size_t iarglen, RDB_transaction *txp,
+        RDB_object *retvalp)
+{
+    RDB_bool_to_obj(retvalp, (RDB_bool)
+            ((*argv[0]->typ->comparep)(argv[0], argv[1]) <= 0));
+    return RDB_OK;
+}
+
+static int
+gt(const char *name, int argc, RDB_object *argv[],
+        const void *iargp, size_t iarglen, RDB_transaction *txp,
+        RDB_object *retvalp)
+{
+    RDB_bool_to_obj(retvalp, (RDB_bool)
+            ((*argv[0]->typ->comparep)(argv[0], argv[1]) > 0));
+    return RDB_OK;
+}
+
+static int
+get(const char *name, int argc, RDB_object *argv[],
+        const void *iargp, size_t iarglen, RDB_transaction *txp,
+        RDB_object *retvalp)
+{
+    RDB_bool_to_obj(retvalp, (RDB_bool)
+            ((*argv[0]->typ->comparep)(argv[0], argv[1]) >= 0));
+    return RDB_OK;
+}
+
 int
 _RDB_add_builtin_ops(RDB_dbroot *dbrootp)
 {
@@ -838,6 +878,246 @@ _RDB_add_builtin_ops(RDB_dbroot *dbrootp)
     op->argtv[0] = &RDB_BOOLEAN;
     op->rtyp = &RDB_BOOLEAN;
     op->funcp = &not;
+    op->modhdl = NULL;
+
+    ret = put_ro_op(dbrootp, op);
+    if (ret != RDB_OK)
+        return ret;
+
+    op = malloc(sizeof(RDB_dbroot));
+    if (op == NULL)
+        return RDB_NO_MEMORY;
+    op->name = RDB_dup_str("<");
+    if (op->name == NULL)
+        return RDB_NO_MEMORY;
+    op->argc = 2;
+    op->argtv = malloc(sizeof (RDB_type *) * 2);
+    if (op->argtv == NULL)
+        return RDB_NO_MEMORY;
+    op->argtv[0] = &RDB_INTEGER;
+    op->argtv[1] = &RDB_INTEGER;
+    op->rtyp = &RDB_BOOLEAN;
+    op->funcp = &lt;
+    op->modhdl = NULL;
+
+    ret = put_ro_op(dbrootp, op);
+    if (ret != RDB_OK)
+        return ret;
+
+    op = malloc(sizeof(RDB_dbroot));
+    if (op == NULL)
+        return RDB_NO_MEMORY;
+    op->name = RDB_dup_str("<");
+    if (op->name == NULL)
+        return RDB_NO_MEMORY;
+    op->argc = 2;
+    op->argtv = malloc(sizeof (RDB_type *) * 2);
+    if (op->argtv == NULL)
+        return RDB_NO_MEMORY;
+    op->argtv[0] = &RDB_RATIONAL;
+    op->argtv[1] = &RDB_RATIONAL;
+    op->rtyp = &RDB_BOOLEAN;
+    op->funcp = &lt;
+    op->modhdl = NULL;
+
+    ret = put_ro_op(dbrootp, op);
+    if (ret != RDB_OK)
+        return ret;
+
+    op = malloc(sizeof(RDB_dbroot));
+    if (op == NULL)
+        return RDB_NO_MEMORY;
+    op->name = RDB_dup_str("<");
+    if (op->name == NULL)
+        return RDB_NO_MEMORY;
+    op->argc = 2;
+    op->argtv = malloc(sizeof (RDB_type *) * 2);
+    if (op->argtv == NULL)
+        return RDB_NO_MEMORY;
+    op->argtv[0] = &RDB_STRING;
+    op->argtv[1] = &RDB_STRING;
+    op->rtyp = &RDB_BOOLEAN;
+    op->funcp = &lt;
+    op->modhdl = NULL;
+
+    ret = put_ro_op(dbrootp, op);
+    if (ret != RDB_OK)
+        return ret;
+
+    op = malloc(sizeof(RDB_dbroot));
+    if (op == NULL)
+        return RDB_NO_MEMORY;
+    op->name = RDB_dup_str("<=");
+    if (op->name == NULL)
+        return RDB_NO_MEMORY;
+    op->argc = 2;
+    op->argtv = malloc(sizeof (RDB_type *) * 2);
+    if (op->argtv == NULL)
+        return RDB_NO_MEMORY;
+    op->argtv[0] = &RDB_INTEGER;
+    op->argtv[1] = &RDB_INTEGER;
+    op->rtyp = &RDB_BOOLEAN;
+    op->funcp = &let;
+    op->modhdl = NULL;
+
+    ret = put_ro_op(dbrootp, op);
+    if (ret != RDB_OK)
+        return ret;
+
+    op = malloc(sizeof(RDB_dbroot));
+    if (op == NULL)
+        return RDB_NO_MEMORY;
+    op->name = RDB_dup_str("<=");
+    if (op->name == NULL)
+        return RDB_NO_MEMORY;
+    op->argc = 2;
+    op->argtv = malloc(sizeof (RDB_type *) * 2);
+    if (op->argtv == NULL)
+        return RDB_NO_MEMORY;
+    op->argtv[0] = &RDB_RATIONAL;
+    op->argtv[1] = &RDB_RATIONAL;
+    op->rtyp = &RDB_BOOLEAN;
+    op->funcp = &let;
+    op->modhdl = NULL;
+
+    ret = put_ro_op(dbrootp, op);
+    if (ret != RDB_OK)
+        return ret;
+
+    op = malloc(sizeof(RDB_dbroot));
+    if (op == NULL)
+        return RDB_NO_MEMORY;
+    op->name = RDB_dup_str("<=");
+    if (op->name == NULL)
+        return RDB_NO_MEMORY;
+    op->argc = 2;
+    op->argtv = malloc(sizeof (RDB_type *) * 2);
+    if (op->argtv == NULL)
+        return RDB_NO_MEMORY;
+    op->argtv[0] = &RDB_STRING;
+    op->argtv[1] = &RDB_STRING;
+    op->rtyp = &RDB_BOOLEAN;
+    op->funcp = &let;
+    op->modhdl = NULL;
+
+    ret = put_ro_op(dbrootp, op);
+    if (ret != RDB_OK)
+        return ret;
+
+    op = malloc(sizeof(RDB_dbroot));
+    if (op == NULL)
+        return RDB_NO_MEMORY;
+    op->name = RDB_dup_str(">");
+    if (op->name == NULL)
+        return RDB_NO_MEMORY;
+    op->argc = 2;
+    op->argtv = malloc(sizeof (RDB_type *) * 2);
+    if (op->argtv == NULL)
+        return RDB_NO_MEMORY;
+    op->argtv[0] = &RDB_INTEGER;
+    op->argtv[1] = &RDB_INTEGER;
+    op->rtyp = &RDB_BOOLEAN;
+    op->funcp = &gt;
+    op->modhdl = NULL;
+
+    ret = put_ro_op(dbrootp, op);
+    if (ret != RDB_OK)
+        return ret;
+
+    op = malloc(sizeof(RDB_dbroot));
+    if (op == NULL)
+        return RDB_NO_MEMORY;
+    op->name = RDB_dup_str(">");
+    if (op->name == NULL)
+        return RDB_NO_MEMORY;
+    op->argc = 2;
+    op->argtv = malloc(sizeof (RDB_type *) * 2);
+    if (op->argtv == NULL)
+        return RDB_NO_MEMORY;
+    op->argtv[0] = &RDB_RATIONAL;
+    op->argtv[1] = &RDB_RATIONAL;
+    op->rtyp = &RDB_BOOLEAN;
+    op->funcp = &gt;
+    op->modhdl = NULL;
+
+    ret = put_ro_op(dbrootp, op);
+    if (ret != RDB_OK)
+        return ret;
+
+    op = malloc(sizeof(RDB_dbroot));
+    if (op == NULL)
+        return RDB_NO_MEMORY;
+    op->name = RDB_dup_str(">");
+    if (op->name == NULL)
+        return RDB_NO_MEMORY;
+    op->argc = 2;
+    op->argtv = malloc(sizeof (RDB_type *) * 2);
+    if (op->argtv == NULL)
+        return RDB_NO_MEMORY;
+    op->argtv[0] = &RDB_STRING;
+    op->argtv[1] = &RDB_STRING;
+    op->rtyp = &RDB_BOOLEAN;
+    op->funcp = &gt;
+    op->modhdl = NULL;
+
+    ret = put_ro_op(dbrootp, op);
+    if (ret != RDB_OK)
+        return ret;
+
+    op = malloc(sizeof(RDB_dbroot));
+    if (op == NULL)
+        return RDB_NO_MEMORY;
+    op->name = RDB_dup_str(">=");
+    if (op->name == NULL)
+        return RDB_NO_MEMORY;
+    op->argc = 2;
+    op->argtv = malloc(sizeof (RDB_type *) * 2);
+    if (op->argtv == NULL)
+        return RDB_NO_MEMORY;
+    op->argtv[0] = &RDB_INTEGER;
+    op->argtv[1] = &RDB_INTEGER;
+    op->rtyp = &RDB_BOOLEAN;
+    op->funcp = &get;
+    op->modhdl = NULL;
+
+    ret = put_ro_op(dbrootp, op);
+    if (ret != RDB_OK)
+        return ret;
+
+    op = malloc(sizeof(RDB_dbroot));
+    if (op == NULL)
+        return RDB_NO_MEMORY;
+    op->name = RDB_dup_str(">=");
+    if (op->name == NULL)
+        return RDB_NO_MEMORY;
+    op->argc = 2;
+    op->argtv = malloc(sizeof (RDB_type *) * 2);
+    if (op->argtv == NULL)
+        return RDB_NO_MEMORY;
+    op->argtv[0] = &RDB_RATIONAL;
+    op->argtv[1] = &RDB_RATIONAL;
+    op->rtyp = &RDB_BOOLEAN;
+    op->funcp = &get;
+    op->modhdl = NULL;
+
+    ret = put_ro_op(dbrootp, op);
+    if (ret != RDB_OK)
+        return ret;
+
+    op = malloc(sizeof(RDB_dbroot));
+    if (op == NULL)
+        return RDB_NO_MEMORY;
+    op->name = RDB_dup_str(">=");
+    if (op->name == NULL)
+        return RDB_NO_MEMORY;
+    op->argc = 2;
+    op->argtv = malloc(sizeof (RDB_type *) * 2);
+    if (op->argtv == NULL)
+        return RDB_NO_MEMORY;
+    op->argtv[0] = &RDB_STRING;
+    op->argtv[1] = &RDB_STRING;
+    op->rtyp = &RDB_BOOLEAN;
+    op->funcp = &get;
     op->modhdl = NULL;
 
     ret = put_ro_op(dbrootp, op);

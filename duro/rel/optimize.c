@@ -11,6 +11,8 @@
 #include <string.h>
 #include <stdlib.h>
 
+#ifdef NIXDA
+
 static RDB_bool is_and(RDB_expression *exp) {
     return (RDB_bool) exp->kind == RDB_EX_USER_OP
         && strcmp (exp->var.op.name, "AND") == 0;
@@ -680,19 +682,23 @@ optimize(RDB_table *tbp, RDB_transaction *txp)
 
     return RDB_OK;
 }
+#endif
 
 int
 _RDB_optimize(RDB_table *tbp, RDB_transaction *txp)
 {
+/*
     int ret;
 
     ret = resolve_views(tbp);
     if (ret != RDB_OK)
         return ret;
-/*
+
     ret = _RDB_transform(tbp);
     if (ret != RDB_OK)
         return ret;
-*/
+
     return optimize(tbp, txp);
+*/
+    return RDB_OK;
 }

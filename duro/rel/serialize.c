@@ -210,10 +210,6 @@ serialize_expr(RDB_object *valp, int *posp, const RDB_expression *exp)
             return serialize_expr(valp, posp, exp->var.op.argv[0]);
         case RDB_EX_EQ:
         case RDB_EX_NEQ:
-        case RDB_EX_LT:
-        case RDB_EX_GT:
-        case RDB_EX_LET:
-        case RDB_EX_GET:
         case RDB_EX_ADD:
         case RDB_EX_SUBTRACT:
         case RDB_EX_MULTIPLY:
@@ -923,10 +919,6 @@ deserialize_expr(RDB_object *valp, int *posp, RDB_transaction *txp,
             break;
         case RDB_EX_EQ:
         case RDB_EX_NEQ:
-        case RDB_EX_LT:
-        case RDB_EX_GT:
-        case RDB_EX_LET:
-        case RDB_EX_GET:
         case RDB_EX_ADD:
         case RDB_EX_SUBTRACT:
         case RDB_EX_MULTIPLY:

@@ -22,7 +22,7 @@ typedef struct RDB_environment {
 
 #define RDB_internal_env(renvp) (renvp->envp)
 
-#define RDB_env_private(renvp) (renvp->envp->app_private)
+#define RDB_env_private(renvp) (renvp->user_data)
 
 /*
  * Open a database environment.

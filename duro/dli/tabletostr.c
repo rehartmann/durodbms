@@ -69,10 +69,6 @@ append_ex(RDB_object *objp, RDB_expression *exp)
             break;
         case RDB_EX_EQ:
         case RDB_EX_NEQ:
-        case RDB_EX_LT:
-        case RDB_EX_GT:
-        case RDB_EX_LET:
-        case RDB_EX_GET:
         case RDB_EX_ADD:
         case RDB_EX_SUBTRACT:
         case RDB_EX_MULTIPLY:
@@ -91,7 +87,7 @@ append_ex(RDB_object *objp, RDB_expression *exp)
                 case RDB_EX_NEQ:
                     ret = append_str(objp, ") <> (");
                     break;
-                case RDB_EX_LT:
+/* !!           case RDB_EX_LT:
                     ret = append_str(objp, ") < (");
                     break;
                 case RDB_EX_GT:
@@ -103,8 +99,7 @@ append_ex(RDB_object *objp, RDB_expression *exp)
                 case RDB_EX_GET:
                     ret = append_str(objp, ") >= (");
                     break;
-/* !!
-                case RDB_EX_REGMATCH: AND OR NOT
+                case RDB_EX_REGMATCH AND OR NOT
                     ret = append_str(objp, ") MATCHES (");
                     break;
 */

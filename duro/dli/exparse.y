@@ -880,8 +880,8 @@ rel_expression: add_expression
             YYERROR;
     }
     | add_expression TOK_GE add_expression {
-        $$ = RDB_get($1, $3);
-        if ($$ == NULL)
+        _RDB_parse_ret = RDB_ro_op_2(">=", $1, $3, _RDB_parse_txp, &$$);
+        if (_RDB_parse_ret != RDB_OK)
             YYERROR;
         _RDB_parse_remove_exp($1);
         _RDB_parse_remove_exp($3);
@@ -890,8 +890,8 @@ rel_expression: add_expression
             YYERROR;
     }
     | add_expression TOK_LE add_expression {
-        $$ = RDB_let($1, $3);
-        if ($$ == NULL)
+        _RDB_parse_ret = RDB_ro_op_2("<=", $1, $3, _RDB_parse_txp, &$$);
+        if (_RDB_parse_ret != RDB_OK)
             YYERROR;
         _RDB_parse_remove_exp($1);
         _RDB_parse_remove_exp($3);
@@ -900,8 +900,8 @@ rel_expression: add_expression
             YYERROR;
     }
     | add_expression '>' add_expression {
-        $$ = RDB_gt($1, $3);
-        if ($$ == NULL)
+        _RDB_parse_ret = RDB_ro_op_2(">", $1, $3, _RDB_parse_txp, &$$);
+        if (_RDB_parse_ret != RDB_OK)
             YYERROR;
         _RDB_parse_remove_exp($1);
         _RDB_parse_remove_exp($3);
@@ -910,8 +910,8 @@ rel_expression: add_expression
             YYERROR;
     }
     | add_expression '<' add_expression {
-        $$ = RDB_lt($1, $3);
-        if ($$ == NULL)
+        _RDB_parse_ret = RDB_ro_op_2("<", $1, $3, _RDB_parse_txp, &$$);
+        if (_RDB_parse_ret != RDB_OK)
             YYERROR;
         _RDB_parse_remove_exp($1);
         _RDB_parse_remove_exp($3);

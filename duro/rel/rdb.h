@@ -141,10 +141,6 @@ enum _RDB_expr_kind {
 
     RDB_EX_EQ,
     RDB_EX_NEQ,
-    RDB_EX_GT,
-    RDB_EX_LT,
-    RDB_EX_GET,
-    RDB_EX_LET,
     RDB_EX_ADD,
     RDB_EX_SUBTRACT,
     RDB_EX_NEGATE,
@@ -1020,18 +1016,6 @@ RDB_eq(RDB_expression *, RDB_expression *);
 
 RDB_expression *
 RDB_neq(RDB_expression *, RDB_expression *);
-
-RDB_expression *
-RDB_lt(RDB_expression *, RDB_expression *);
-
-RDB_expression *
-RDB_gt(RDB_expression *, RDB_expression *);
-
-RDB_expression *
-RDB_let(RDB_expression *, RDB_expression *);
-
-RDB_expression *
-RDB_get(RDB_expression *, RDB_expression *);
 
 RDB_expression *
 RDB_add(RDB_expression *, RDB_expression *);

@@ -25,8 +25,11 @@ test_type(RDB_database *dbp)
     pr.name = NULL;
     pr.compc = 1;
     pr.compv = &comp;
-    pr.constraintp = RDB_lt(RDB_expr_attr("TINYINT"),
-            RDB_int_to_expr(100));
+    ret = RDB_ro_op_2("<", RDB_expr_attr("TINYINT"),
+            RDB_int_to_expr(100), &tx, &pr.constraintp);
+    if (ret != RDB_OK) {
+        return ret;
+    }
     ret = RDB_define_type("TINYINT", 1, &pr, &tx);
     if (ret != RDB_OK) {
         RDB_rollback(&tx);

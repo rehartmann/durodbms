@@ -149,10 +149,6 @@
 <li><a href="#expr_attr">RDB_expr_attr</a>
 <li><a href="#eq">RDB_eq</a>
 <li><a href="#neq">RDB_neq</a>
-<li><a href="#lt">RDB_lt</a>
-<li><a href="#gt">RDB_gt</a>
-<li><a href="#let">RDB_let</a>
-<li><a href="#get">RDB_get</a>
 <li><a href="#add">RDB_add</a>
 <li><a href="#subtract">RDB_subtract</a>
 <li><a href="#negate">RDB_negate</a>
@@ -3156,90 +3152,6 @@ RDB_neq(RDB_expression *, RDB_expression *);
 <h3>Description</h3>
 
 <p>RDB_neq creates an expression that represents an "is not equal" operator.
-If one of the arguments is NULL, NULL is returned.
-
-<h3>Return value</h3>
-
-<p>A pointer to the newly created expression, of NULL if the creation
-failed.
-
-<hr>
-
-<h2 id="lt">RDB_lt</h2>
-
-<pre>
-#include &lt;rel/rdb.h&gt;
-
-RDB_expression *
-RDB_lt(RDB_expression *, RDB_expression *);
-</pre>
-
-<h3>Description</h3>
-
-<p>RDB_lt creates an expression that represents a "lower than" operator.
-If one of the arguments is NULL, NULL is returned.
-
-<h3>Return value</h3>
-
-<p>A pointer to the newly created expression, of NULL if the creation
-failed.
-
-<hr>
-
-<h2 id="gt">RDB_gt</h2>
-
-<pre>
-#include &lt;rel/rdb.h&gt;
-
-RDB_expression *
-RDB_gt(RDB_expression *, RDB_expression *);
-</pre>
-
-<h3>Description</h3>
-
-<p>RDB_gt creates an expression that represents a "greater than" operator.
-If one of the arguments is NULL, NULL is returned.
-
-<h3>Return value</h3>
-
-<p>A pointer to the newly created expression, of NULL if the creation
-failed.
-
-<hr>
-
-<h2 id="let">RDB_let</h2>
-
-<pre>
-#include &lt;rel/rdb.h&gt;
-
-RDB_expression *
-RDB_let(RDB_expression *, RDB_expression *);
-</pre>
-
-<h3>Description</h3>
-
-<p>RDB_let creates an expression that represents a "lower or equal than" operator.
-If one of the arguments is NULL, NULL is returned.
-
-<h3>Return value</h3>
-
-<p>A pointer to the newly created expression, of NULL if the creation
-failed.
-
-<hr>
-
-<h2 id="get">RDB_get</h2>
-
-<pre>
-#include &lt;rel/rdb.h&gt;
-
-RDB_expression *
-RDB_get(RDB_expression *, RDB_expression *);
-</pre>
-
-<h3>Description</h3>
-
-<p>RDB_get creates an expression that represents a "greater or equal than" operator.
 If one of the arguments is NULL, NULL is returned.
 
 <h3>Return value</h3>
