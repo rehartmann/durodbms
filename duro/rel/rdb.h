@@ -634,7 +634,7 @@ RDB_rename(RDB_table *tbp, int renc, RDB_renaming renv[],
 void
 RDB_init_tuple(RDB_tuple *);
 
-void
+int
 RDB_destroy_tuple(RDB_tuple *);
 
 int
@@ -914,7 +914,6 @@ RDB_binary_get_length(const RDB_value *);
 
 /*
  * Return the type of a RDB_expression.
- * Return NULL if type informaton is not available.
  */
 RDB_type *
 RDB_expr_type(const RDB_expression *);
@@ -943,12 +942,6 @@ RDB_value_const(const RDB_value *valp);
 
 RDB_expression *
 RDB_expr_attr(const char *attrname, RDB_type *);
-
-/* Create a copy of the expression pointed to by exprp.
- * Works only for scalar expressions.
- */
-RDB_expression *
-RDB_dup_expr(const RDB_expression *exprp);
 
 RDB_expression *
 RDB_eq(RDB_expression *, RDB_expression *);
@@ -979,6 +972,9 @@ RDB_not(RDB_expression *);
 
 RDB_expression *
 RDB_add(RDB_expression *, RDB_expression *);
+
+RDB_expression *
+RDB_subtract(RDB_expression *arg1, RDB_expression *arg2);
 
 RDB_expression *
 RDB_strlen(RDB_expression *arg);

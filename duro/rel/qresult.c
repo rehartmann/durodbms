@@ -583,8 +583,8 @@ next_join_tuple(RDB_qresult *qrp, RDB_tuple *tup, RDB_transaction *txp)
     return RDB_OK;
 }
 
-static int
-get_by_pindex(RDB_table *tbp, RDB_value valv[], RDB_tuple *tup, RDB_transaction *txp)
+int
+_RDB_get_by_pindex(RDB_table *tbp, RDB_value valv[], RDB_tuple *tup, RDB_transaction *txp)
 {
     RDB_field *fv;
     RDB_field *resfv;
@@ -655,7 +655,7 @@ error:
 static int
 next_select_pindex(RDB_qresult *qrp, RDB_tuple *tup, RDB_transaction *txp)
 {
-    return get_by_pindex(qrp->tbp->var.select.tbp, &qrp->tbp->var.select.val,
+    return _RDB_get_by_pindex(qrp->tbp->var.select.tbp, &qrp->tbp->var.select.val,
                          tup, txp);
 }
 
@@ -878,7 +878,7 @@ _RDB_qresult_contains(RDB_qresult *qrp, const RDB_tuple *tup,
             goto error;
     }
         
-    ret = get_by_pindex(qrp->matp, valv, &tpl, txp);
+    ret = _RDB_get_by_pindex(qrp->matp, valv, &tpl, txp);
     if (ret != RDB_OK) /* handles RDB_NOT_FOUND too */
         goto error;
 

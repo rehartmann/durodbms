@@ -137,7 +137,6 @@
 <li><a href="#string_const">RDB_string_const</a>
 <li><a href="#value_const">RDB_value_const</a>
 <li><a href="#expr_attr">RDB_expr_attr</a>
-<li><a href="#dup_expr">RDB_dup_expr</a>
 <li><a href="#eq">RDB_eq</a>
 <li><a href="#neq">RDB_neq</a>
 <li><a href="#lt">RDB_lt</a>
@@ -396,13 +395,38 @@ RDB_insert(RDB_table *tbp, const RDB_tuple *tplp, RDB_transaction *);
 
 typedef struct {
     char *name;
-    RDB_expression *valuep;
+    RDB_expression *exp;
 } RDB_attr_update;
 
 int
 RDB_update(RDB_table *, RDB_expression *, int attrc,
-        const RDB_attr_update attrv[], RDB_transaction *);
+        const RDB_attr_update attrv[], RDB_transaction *txp);
 </pre>
+
+<h3>Return value</h3>
+
+<p>On success, RDB_OK is returned. Any other return value indicates an error.
+
+<h3>Errors</h3>
+
+<dl>
+<dt>RDB_INVALID_TRANSACTION
+<dd><var>txp</var> does not point to a running transaction.
+
+<dt>RDB_INVALID_ARGUMENT
+<dd>One of the attributes in <var>attrv</var> does not exist in the table.
+
+<dt>RDB_TYPE_MISMATCH
+<dd>The type of one the expressions in <var>attrv</var> is not the same
+as the type of the corresponding table attribute.
+
+<dt>RDB_NOT_SUPPORTED
+<dd>RDB_update is not supported for this type of table in this version of
+the library.
+
+<dt>Other
+<dd>A system error occured.
+</dl>
 
 <hr>
 
@@ -1278,15 +1302,6 @@ RDB_value_const(const RDB_value *valp);
 <pre>
 RDB_expression *
 RDB_expr_attr(const char *attrname, RDB_type *);
-</pre>
-
-<hr>
-
-<h2 id="dup_expr">RDB_dup_expr</h2>
-
-<pre>
-RDB_expression *
-RDB_dup_expr(const RDB_expression *exprp);
 </pre>
 
 <hr>

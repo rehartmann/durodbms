@@ -15,6 +15,7 @@ RDB_create_env(const char *path, int options, RDB_environment **envpp)
        return RDB_NO_MEMORY;
 
     envp->closefn = NULL;
+    envp->errfilep = NULL;
 
     /* create environment handle */
     *envpp = envp;
@@ -48,6 +49,7 @@ RDB_open_env(const char *path, RDB_environment **envpp)
        return RDB_NO_MEMORY;
 
     envp->closefn = NULL;
+    envp->errfilep = NULL;
 
     /* create environment handle */
     *envpp = envp;

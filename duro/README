@@ -21,16 +21,11 @@ rhartmann@users.sourceforge.net.
 
 Known bugs:
 
-- RDB_update() does not work always correctly if a key is updated.
-  See the comments in the code for details.
-
 - An RDB_array becomes invalid after the end of the transaction in which
   it was created.
 
 - A table from which a RDB_array was created must not be dropped before
   the array is destroyed.
-
-Copyright 2003 René Hartmann.
 
 -----
 

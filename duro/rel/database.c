@@ -628,7 +628,7 @@ RDB_drop_db(RDB_database *dbp)
         goto error;
     }
 
-    ret = RDB_select(dbp->dbtables_tbp, RDB_dup_expr(exprp), &vtbp);
+    ret = RDB_select(dbp->dbtables_tbp, exprp, &vtbp);
     if (ret != RDB_OK) {
         goto error;
     }
@@ -641,6 +641,13 @@ RDB_drop_db(RDB_database *dbp)
     }
 
     /* Disassociate all tables from database */
+
+    exprp = RDB_eq(RDB_expr_attr("DBNAME", &RDB_STRING),
+                  RDB_string_const(dbp->name));
+    if (exprp == NULL) {
+        ret = RDB_NO_MEMORY;
+        goto error;
+    }
 
     ret = RDB_delete(dbp->dbtables_tbp, exprp, &tx);
     if (ret != RDB_OK) {

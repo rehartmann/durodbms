@@ -282,7 +282,6 @@ RDB_select_value(RDB_value *valp, RDB_type *typ, const char *repname,
               RDB_value **compv)
 {
     RDB_ipossrep *prp;
-    int i;
     int ret;
     RDB_bool b;
 

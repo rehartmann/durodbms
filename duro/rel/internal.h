@@ -73,6 +73,10 @@ int
 _RDB_qresult_contains(RDB_qresult *, const RDB_tuple *, RDB_transaction *);
 
 int
+_RDB_get_by_pindex(RDB_table *, RDB_value[], RDB_tuple *,
+        RDB_transaction *);
+
+int
 _RDB_drop_qresult(RDB_qresult *, RDB_transaction *);
 
 int
@@ -118,6 +122,9 @@ _RDB_create_unexpr(RDB_expression *arg, enum _RDB_expr_kind kind);
 RDB_expression *
 _RDB_create_binexpr(RDB_expression *arg1, RDB_expression *arg2,
                     enum _RDB_expr_kind kind);
+
+RDB_bool
+_RDB_expr_refers(RDB_expression *, RDB_table *);
 
 RDB_ipossrep *
 _RDB_get_possrep(RDB_type *typ, const char *repname);

@@ -64,6 +64,7 @@ calltest test_rename
 calltest test_regexp
 calltest test_aggregate
 calltest test_update
+calltest test_srupdate
 calltest test_delete
 calltest test_null
 calltest test_binary
@@ -76,7 +77,7 @@ rm /tmp/duro$$
 
 echo Dropping tables
 if ../util/droptable -e db -d TEST SALARIES EMPS1H EMPS1 EMPS2 DEPTS DEEDUM \
-        UTYPETEST POINTTEST; then :; else
+        SRTEST UTYPETEST POINTTEST; then :; else
     failure
 fi
 

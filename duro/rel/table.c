@@ -222,8 +222,8 @@ attr_is_pindex(RDB_table *tbp, const char *attrname) {
 
 /*
  * Checks if the expression pointed to by exprp is of the form
- * <primary key attribute>=<constant expression> and returns the expression
- * if yes, or NULL if no.
+ * <primary key attribute>=<constant expression> and returns the
+ * constant expression if yes, or NULL if no.
  */
 static RDB_expression *
 pindex_expr(RDB_table *tbp, RDB_expression *exprp) {
@@ -262,136 +262,292 @@ upd_to_vals(RDB_table *tbp, int attrc, const RDB_attr_update attrv[],
     return RDB_OK;
 }
 
+static RDB_bool
+is_keyattr(const char *attrname, RDB_table *tbp)
+{
+    int i, j;
+
+    for (i = 0; i < tbp->keyc; i++)
+        for (j = 0; j < tbp->keyv[i].attrc; j++)
+            if (strcmp(attrname, tbp->keyv[i].attrv[j]) == 0)
+                return RDB_TRUE;
+    return RDB_FALSE;
+}
+
 static int
-update_stored(RDB_table *tbp, RDB_expression *condp,
+move_tuples(RDB_table *dstp, RDB_table *srcp, RDB_transaction *txp)
+{
+    RDB_qresult *qrp = NULL;
+    RDB_tuple tpl;
+    int ret;
+
+    /* delete all tuples from destination table */
+    ret = RDB_delete(dstp, NULL, txp);
+    if (ret != RDB_OK)
+        return ret;
+
+    /* copy all tuples from source table to destination table */
+
+    ret = _RDB_table_qresult(srcp, &qrp, txp);
+    if (ret != RDB_OK)
+        return ret;
+
+    RDB_init_tuple(&tpl);
+
+    while ((ret = _RDB_next_tuple(qrp, &tpl, txp)) == RDB_OK) {
+        ret = RDB_insert(dstp, &tpl, txp);
+        if (ret != RDB_OK) {
+            goto cleanup;
+        }
+    }
+    if (ret == RDB_NOT_FOUND)
+        ret = RDB_OK;
+cleanup:
+    _RDB_drop_qresult(qrp, txp);
+    RDB_destroy_tuple(&tpl);
+    return ret;
+}
+
+static int
+update_stored_complex(RDB_table *tbp, RDB_expression *condp,
         int attrc, const RDB_attr_update attrv[],
         RDB_transaction *txp)
 {
-    int ret;
-    int i;
-    RDB_cursor *curp;
+    RDB_table *tmptbp = NULL;
     RDB_tuple tpl;
+    int ret, ret2;
+    int i;
     void *datap;
     size_t len;
-    RDB_type *tpltyp = tbp->typ->var.basetyp;
-    RDB_expression *exprp;
-    RDB_value *valv = malloc(sizeof(RDB_value) * attrc);
-    RDB_field *fieldv = malloc(sizeof(RDB_field) * attrc);
     RDB_bool b;
+    RDB_type *tpltyp = tbp->typ->var.basetyp;
+    RDB_cursor *curp = NULL;
+    RDB_value *valv = malloc(sizeof(RDB_value) * attrc);
 
     if (valv == NULL) {
-        ret = RDB_NO_MEMORY;
-        goto error;
-    }
-
-    if (fieldv == NULL) {
-        ret = RDB_NO_MEMORY;
-        goto error;
-    }
-
-    /* Check if the primary index can be used */
-    exprp = condp != NULL ? pindex_expr(tbp, condp) : NULL;
-    if (exprp != NULL) {
-        RDB_field fv;
-        RDB_value val;
-
-        /* Read tuple (only needed if the expression refers to
-           attributes of the updates table, so there is room
-           for optimization) */
-        /* ... */
-
-        /* Evaluate condition */
-        ret = RDB_evaluate(exprp, NULL, txp, &val);
-        if (ret != RDB_OK) {
-            goto error;
-        }
-
-        /* Convert to a field value */
-        fv.datap = RDB_value_irep(&val, &fv.len);
-
-        ret = upd_to_vals(tbp, attrc, attrv, &tpl, valv, txp);
-        if (ret != RDB_OK) {
-            goto error;
-        }
-
-        for (i = 0; i < attrc; i++) {
-            fieldv[i].no = *(int*) RDB_hashmap_get(&tbp->var.stored.attrmap,
-                    attrv[i].name, NULL);
-            fieldv[i].datap = RDB_value_irep(&valv[i], &fieldv[i].len);
-        }
-        
-        ret = RDB_update_rec(tbp->var.stored.recmapp, &fv, attrc, fieldv,
-                txp->txid);
-        if (RDB_is_syserr(ret)) {
-            ERRMSG(txp->dbp->envp, RDB_strerror(ret));
-            return ret;
-        }
         free(valv);
-        free(fieldv);
-        return ret;
+        return RDB_NO_MEMORY;
     }
+
+    for (i = 0; i < attrc; i++)
+        RDB_init_value(&valv[i]);
+    RDB_init_tuple(&tpl);
 
     /*
-     * Walk through the records and update them if the expression pointed to
-     * by condp evaluates to true.
-     * This may not work correctly if a primary key attribute is updated
-     * or if the expression refers to the table itself.
-     * A possible solution in this case is to perform the update in three steps:
-     * 1. Iterate over the records and insert the updated records into
+     * Iterate over the records and insert the updated records into
      * a temporary table.
-     * 2. Delete the updated records from the original table.
-     * 3. Insert the records from the temporary table into the original table.
-     * This is currently not implemented.
      */
+    ret = _RDB_create_table(NULL, RDB_FALSE,
+            tpltyp->var.tuple.attrc, tpltyp->var.tuple.attrv,
+            tbp->keyc, tbp->keyv, txp, &tmptbp);
+    if (ret != RDB_OK)
+        goto cleanup;
+
     ret = RDB_recmap_cursor(&curp, tbp->var.stored.recmapp, 0, txp->txid);
     if (ret != RDB_OK)        
-        return ret;
+        goto cleanup;
     ret = RDB_cursor_first(curp);
-    if (ret == RDB_NOT_FOUND) {
-        RDB_destroy_cursor(curp);
-        return RDB_OK;
-    }
     
-    do {
-        RDB_init_tuple(&tpl);
+    while (ret == RDB_OK) {
         for (i = 0; i < tpltyp->var.tuple.attrc; i++) {
             RDB_value val;
 
             ret = RDB_cursor_get(curp, i, &datap, &len);
-            if (ret != 0) {
-               goto error;
+            if (ret != RDB_OK) {
+                goto cleanup;
             }
             RDB_init_value(&val);
             ret = RDB_irep_to_value(&val, tpltyp->var.tuple.attrv[i].typ,
                               datap, len);
             if (ret != RDB_OK) {
-               goto error;
+                RDB_destroy_value(&val);
+                goto cleanup;
             }
             ret = RDB_tuple_set(&tpl, tpltyp->var.tuple.attrv[i].name, &val);
+            RDB_destroy_value(&val);
             if (ret != RDB_OK) {
-               goto error;
+                goto cleanup;
             }
         }
+
+        /* Evaluate condition */
         if (condp == NULL)
             b = RDB_TRUE;
         else {
             ret = RDB_evaluate_bool(condp, &tpl, txp, &b);
-            if (ret != RDB_OK)
+            if (ret != RDB_OK) {
                 return ret;
+            }
         }
         if (b) {
             ret = upd_to_vals(tbp, attrc, attrv, &tpl, valv, txp);
             if (ret != RDB_OK) {
-                goto error;
+                goto cleanup;
             }
             for (i = 0; i < attrc; i++) {
-                /* Typecheck */
-                if (!RDB_type_equals(valv[i].typ,
-                        _RDB_tuple_type_attr(tbp->typ->var.basetyp, attrv[i].name)->typ)) {
-                    ret = RDB_TYPE_MISMATCH;
-                    goto error;
-                }
+                /* Update tuple */
+                ret = RDB_tuple_set(&tpl, attrv[i].name, &valv[i]);
+                if (ret != RDB_OK)
+                    goto cleanup;
+            }
+            
+            /* Insert tuple into temporary table */
+            ret = RDB_insert(tmptbp, &tpl, txp);
+            if (ret != RDB_OK) {
+                goto cleanup;
+            }
+        }
+        ret = RDB_cursor_next(curp);
+    };
 
+    if (ret != RDB_NOT_FOUND)
+        goto cleanup;
+    /*
+     * Delete the updated records from the original table.
+     */
+
+    /* Reset cursor */
+    ret = RDB_cursor_first(curp);
+    
+    while (ret == RDB_OK) {
+        for (i = 0; i < tpltyp->var.tuple.attrc; i++) {
+            RDB_value val;
+
+            ret = RDB_cursor_get(curp, i, &datap, &len);
+            if (ret != RDB_OK) {
+                goto cleanup;
+            }
+            RDB_init_value(&val);
+            ret = RDB_irep_to_value(&val, tpltyp->var.tuple.attrv[i].typ,
+                              datap, len);
+            if (ret != RDB_OK) {
+                RDB_destroy_value(&val);
+                goto cleanup;
+            }
+            ret = RDB_tuple_set(&tpl, tpltyp->var.tuple.attrv[i].name, &val);
+            RDB_destroy_value(&val);
+            if (ret != RDB_OK) {
+                goto cleanup;
+            }
+        }
+
+        /* Evaluate condition */
+        if (condp == NULL)
+            b = RDB_TRUE;
+        else {
+            ret = RDB_evaluate_bool(condp, &tpl, txp, &b);
+            if (ret != RDB_OK) {
+                return ret;
+            }
+        }
+        if (b) {
+            /* Delete tuple */
+            RDB_cursor_delete(curp);
+        }
+        ret = RDB_cursor_next(curp);
+    }
+    ret = RDB_destroy_cursor(curp);
+    curp = NULL;
+    if (ret != RDB_OK)
+        goto cleanup;
+
+    /*
+     * Insert the records from the temporary table into the original table.
+     */
+     ret = move_tuples(tbp, tmptbp, txp);
+
+cleanup:
+    free(valv);
+
+    if (tmptbp != NULL)
+        _RDB_drop_rtable(tmptbp, txp);
+    if (curp != NULL) {
+        ret2 = RDB_destroy_cursor(curp);
+        if (ret == RDB_OK)
+            ret = ret2;
+    }
+    for (i = 0; i < attrc; i++)
+        RDB_destroy_value(&valv[i]);
+    ret2 = RDB_destroy_tuple(&tpl);
+    if (ret == RDB_OK)
+        ret = ret2;
+    return ret;
+}
+
+static int
+update_stored_simple(RDB_table *tbp, RDB_expression *condp,
+        int attrc, const RDB_attr_update attrv[],
+        RDB_transaction *txp)
+{
+    RDB_tuple tpl;
+    int ret, ret2;
+    int i;
+    void *datap;
+    size_t len;
+    RDB_bool b;
+    RDB_type *tpltyp = tbp->typ->var.basetyp;
+    RDB_cursor *curp = NULL;
+    RDB_value *valv = malloc(sizeof(RDB_value) * attrc);
+    RDB_field *fieldv = malloc(sizeof(RDB_field) * attrc);
+
+    if (valv == NULL || fieldv == NULL) {
+        free(valv);
+        free(fieldv);
+        return RDB_NO_MEMORY;
+    }
+
+    for (i = 0; i < attrc; i++)
+        RDB_init_value(&valv[i]);
+    RDB_init_tuple(&tpl);
+
+    /*
+     * Walk through the records and update them if the expression pointed to
+     * by condp evaluates to true.
+     */
+    ret = RDB_recmap_cursor(&curp, tbp->var.stored.recmapp, 0, txp->txid);
+    if (ret != RDB_OK)        
+        return ret;
+
+    ret = RDB_cursor_first(curp);
+    while (ret == RDB_OK) {
+        /* Read tuple */
+        for (i = 0; i < tpltyp->var.tuple.attrc; i++) {
+            RDB_value val;
+
+            ret = RDB_cursor_get(curp, i, &datap, &len);
+            if (ret != RDB_OK) {
+                goto cleanup;
+            }
+            RDB_init_value(&val);
+            ret = RDB_irep_to_value(&val, tpltyp->var.tuple.attrv[i].typ,
+                              datap, len);
+            if (ret != RDB_OK) {
+                RDB_destroy_value(&val);
+                goto cleanup;
+            }
+            ret = RDB_tuple_set(&tpl, tpltyp->var.tuple.attrv[i].name, &val);
+            RDB_destroy_value(&val);
+            if (ret != RDB_OK) {
+                goto cleanup;
+            }
+        }
+        
+        /* Evaluate condition */
+        if (condp == NULL)
+            b = RDB_TRUE;
+        else {
+            ret = RDB_evaluate_bool(condp, &tpl, txp, &b);
+            if (ret != RDB_OK) {
+                return ret;
+            }
+        }
+        if (b) {
+            /* Perform update */
+            ret = upd_to_vals(tbp, attrc, attrv, &tpl, valv, txp);
+            if (ret != RDB_OK) {
+                goto cleanup;
+            }
+            for (i = 0; i < attrc; i++) {
                 /* Get field number from map */
                 fieldv[i].no = *(int*) RDB_hashmap_get(&tbp->var.stored.attrmap,
                         attrv[i].name, NULL);
@@ -400,47 +556,175 @@ update_stored(RDB_table *tbp, RDB_expression *condp,
                 fieldv[i].datap = RDB_value_irep(&valv[i], &fieldv[i].len);
             }
             ret = RDB_cursor_set(curp, attrc, fieldv);
-            for (i = 0; i < attrc; i++)
-                RDB_destroy_value(&valv[i]);
             if (ret != RDB_OK) {
-                goto error;
+                goto cleanup;
             }
         }
-        RDB_destroy_tuple(&tpl);
         ret = RDB_cursor_next(curp);
-    } while (ret == RDB_OK);
-    if (ret != RDB_NOT_FOUND)
-        goto error;
-    free(valv);
-    free(fieldv);
-    RDB_destroy_cursor(curp);
-    return RDB_OK;
-error:
+    };
+
+    if (ret == RDB_NOT_FOUND)
+        ret = RDB_OK;
+cleanup:
     free(valv);
     free(fieldv);
 
-    RDB_destroy_cursor(curp);
-    RDB_destroy_tuple(&tpl);
+    if (curp != NULL) {
+        ret2 = RDB_destroy_cursor(curp);
+        if (ret == RDB_OK)
+            ret = ret2;
+    }
+    for (i = 0; i < attrc; i++)
+        RDB_destroy_value(&valv[i]);
+    ret2 = RDB_destroy_tuple(&tpl);
+    if (ret == RDB_OK)
+        ret = ret2;
     return ret;
+}
+
+static int
+update_stored_by_key(RDB_table *tbp, RDB_expression *exp,
+        int attrc, const RDB_attr_update attrv[],
+        RDB_transaction *txp)
+{
+    RDB_field fv;
+    RDB_value val;
+    RDB_tuple tpl;
+    int ret;
+    int i;
+    RDB_value *valv = malloc(sizeof(RDB_value) * attrc);
+    RDB_field *fieldv = malloc(sizeof(RDB_field) * attrc);
+
+    if (valv == NULL || fieldv == NULL) {
+        free(valv);
+        free(fieldv);
+        ret = RDB_NO_MEMORY;
+        goto cleanup;
+    }
+
+    RDB_init_value(&val);
+    for (i = 0; i < attrc; i++)
+        RDB_init_value(&valv[i]);
+
+    /* Evaluate key */
+    ret = RDB_evaluate(exp, NULL, txp, &val);
+    if (ret != RDB_OK) {
+        goto cleanup;
+    }
+
+    /* Convert to a field value */
+    fv.datap = RDB_value_irep(&val, &fv.len);
+
+    /* Read tuple */
+    RDB_init_tuple(&tpl);
+    ret = _RDB_get_by_pindex(tbp, &val, &tpl, txp);
+    if (ret != RDB_OK) {
+        RDB_destroy_tuple(&tpl);
+        goto cleanup;
+    }
+
+    ret = upd_to_vals(tbp, attrc, attrv, &tpl, valv, txp);
+    RDB_destroy_tuple(&tpl);
+    if (ret != RDB_OK) {
+        goto cleanup;
+    }
+
+    for (i = 0; i < attrc; i++) {
+         fieldv[i].no = *(int*) RDB_hashmap_get(&tbp->var.stored.attrmap,
+                 attrv[i].name, NULL);
+         fieldv[i].datap = RDB_value_irep(&valv[i], &fieldv[i].len);
+    }
+        
+    ret = RDB_update_rec(tbp->var.stored.recmapp, &fv, attrc, fieldv,
+            txp->txid);
+    if (RDB_is_syserr(ret)) {
+        ERRMSG(txp->dbp->envp, RDB_strerror(ret));
+        return ret;
+    }
+    ret = RDB_OK;
+cleanup:
+    RDB_destroy_value(&val);
+    for (i = 0; i < attrc; i++)
+        RDB_destroy_value(&valv[i]);
+    free(valv);
+    free(fieldv);
+
+    return ret;
+}
+
+static int
+update_stored(RDB_table *tbp, RDB_expression *condp,
+        int attrc, const RDB_attr_update attrv[],
+        RDB_transaction *txp)
+{
+    int i;
+    RDB_expression *exprp;
+    RDB_bool keyupd = RDB_FALSE;
+    RDB_bool sref = RDB_FALSE;
+
+    /* Check if the primary index can be used */
+    exprp = condp != NULL ? pindex_expr(tbp, condp) : NULL;
+    if (exprp != NULL) {
+        return update_stored_by_key(tbp, exprp, attrc, attrv, txp);
+    }
+
+    /* Check if a key attribute is updated */
+    for (i = 0; i < attrc; i++) {
+        if (is_keyattr(attrv[i].name, tbp)) {
+            keyupd = RDB_TRUE;
+            break;
+        }
+    }
+
+    if (!keyupd) {
+        /* Check if one of the expressions refers to the table itself */
+        if (condp != NULL)
+            sref = _RDB_expr_refers(condp, tbp);
+        if (!sref) {
+             int i;
+        
+             for (i = 0; i < attrc; i++)
+                 sref |= _RDB_expr_refers(attrv[i].exp, tbp);
+        }
+    }
+
+    /* If a key is updated or condp refers to the table, the simple update method cannot be used */
+    if (keyupd || sref)
+        return update_stored_complex(tbp, exprp, attrc, attrv, txp);
+
+    return update_stored_simple(tbp, exprp, attrc, attrv, txp);
 }  
 
 int
 RDB_update(RDB_table *tbp, RDB_expression *condp, int attrc,
                 const RDB_attr_update attrv[], RDB_transaction *txp)
 {
+    int i;
+
     if (!RDB_tx_is_running(txp))
         return RDB_INVALID_TRANSACTION;
 
+    /* Typecheck */
+    for (i = 0; i < attrc; i++) {
+        RDB_attr *attrp = _RDB_tuple_type_attr(tbp->typ->var.basetyp,
+                attrv[i].name);
+
+        if (attrp == NULL)
+            return RDB_INVALID_ARGUMENT;
+        if (!RDB_type_equals(RDB_expr_type(attrv[i].exp), attrp->typ))
+            return RDB_TYPE_MISMATCH;
+    }
+
     switch (tbp->kind) {
         case RDB_TB_STORED:
-            {
-                int ret = update_stored(tbp, condp, attrc, attrv, txp);
-                if (RDB_is_syserr(ret)) {
-                    ERRMSG(txp->dbp->envp, RDB_strerror(ret));
-                    RDB_rollback(txp);
-                }
-                return ret;
+        {
+            int ret = update_stored(tbp, condp, attrc, attrv, txp);
+            if (RDB_is_syserr(ret)) {
+                ERRMSG(txp->dbp->envp, RDB_strerror(ret));
+                RDB_rollback(txp);
             }
+            return ret;
+        }
         case RDB_TB_UNION:
             return RDB_NOT_SUPPORTED;
         case RDB_TB_MINUS:
@@ -600,11 +884,10 @@ RDB_delete(RDB_table *tbp, RDB_expression *condp, RDB_transaction *txp)
     abort();
 }
 
+
 int
 RDB_copy_table(RDB_table *dstp, RDB_table *srcp, RDB_transaction *txp)
 {
-    RDB_qresult *qrp = NULL;
-    RDB_tuple tpl;
     RDB_transaction tx;
     int ret;
 
@@ -620,36 +903,13 @@ RDB_copy_table(RDB_table *dstp, RDB_table *srcp, RDB_transaction *txp)
     if (ret != RDB_OK)
         return ret;
 
-    /* delete all tuples from destination table */
-    ret = RDB_delete(dstp, NULL, &tx);
+    ret = move_tuples(dstp, srcp, &tx);
     if (ret != RDB_OK)
         goto error;
-
-    /* copy all tuples from source table to destination table */
-
-    ret = _RDB_table_qresult(srcp, &qrp, &tx);
-    if (ret != RDB_OK)
-        goto error;
-
-    RDB_init_tuple(&tpl);
-
-    while ((ret = _RDB_next_tuple(qrp, &tpl, txp)) == RDB_OK) {
-        ret = RDB_insert(dstp, &tpl, &tx);
-        RDB_destroy_tuple(&tpl);
-        if (ret != RDB_OK) {
-            goto error;
-        }
-    }
-    if (ret != RDB_NOT_FOUND)
-        goto error;
-
-    _RDB_drop_qresult(qrp, &tx);
 
     return RDB_commit(&tx);
 
 error:
-    if (qrp != NULL)
-        _RDB_drop_qresult(qrp, &tx);
     RDB_rollback(&tx);
     return ret;
 }

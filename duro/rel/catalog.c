@@ -916,7 +916,7 @@ _RDB_get_cat_type(const char *name, RDB_transaction *txp, RDB_type **typp)
     if (libname[0] != '\0') {
         typ->var.scalar.modhdl = lt_dlopenext(libname);
         if (typ->var.scalar.modhdl == NULL) {
-            fprintf(stderr, "Error: %s\n", lt_dlerror());
+            ERRMSG(txp->dbp->envp, lt_dlerror());
             ret = RDB_RESOURCE_NOT_FOUND;
             RDB_rollback(txp);
             goto error;

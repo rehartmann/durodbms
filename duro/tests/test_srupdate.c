@@ -6,6 +6,7 @@
 
 RDB_attr srtest_attrs[] = {
     { "NO", &RDB_INTEGER, NULL, 0 },
+    { "O_NO", &RDB_INTEGER, NULL, 0 },
     { "COUNT", &RDB_INTEGER, NULL, 0 }
 };
 
@@ -31,7 +32,7 @@ create_table(RDB_database *dbp)
     }
 
     printf("Creating table SRTEST\n");
-    ret = RDB_create_table("SRTEST", RDB_TRUE, 2, srtest_attrs,
+    ret = RDB_create_table("SRTEST", RDB_TRUE, 3, srtest_attrs,
             1, srtest_keyattrs, &tx, &tbp);
     if (ret != RDB_OK) {
         RDB_rollback(&tx);
@@ -43,6 +44,7 @@ create_table(RDB_database *dbp)
 
     for (i = 0; i < 3; i++) {
         RDB_tuple_set_int(&tpl, "NO", (RDB_int) i);
+        RDB_tuple_set_int(&tpl, "O_NO", (RDB_int) i);
         RDB_tuple_set_int(&tpl, "COUNT", (RDB_int) 0);
 
         ret = RDB_insert(tbp, &tpl, &tx);
@@ -58,7 +60,45 @@ create_table(RDB_database *dbp)
 }
 
 int
-test_update(RDB_database *dbp)
+test_update1(RDB_database *dbp)
+{
+    int ret;
+    RDB_transaction tx;
+    RDB_table *tbp;
+    RDB_expression *exp;
+    RDB_attr_update upd;
+
+    printf("Starting transaction\n");
+    ret = RDB_begin_tx(&tx, dbp, NULL);
+    if (ret != RDB_OK) {
+        return ret;
+    }
+
+    ret = RDB_get_table("SRTEST", &tx, &tbp);
+    if (ret != RDB_OK) {
+        RDB_rollback(&tx);
+        return ret;
+    }
+
+    printf("Updating table\n");
+
+    exp = RDB_int_const(2);
+    exp = RDB_subtract(exp, RDB_expr_attr("NO", &RDB_INTEGER));
+
+    upd.name = "NO";
+    upd.exp = exp;
+
+    ret = RDB_update(tbp, NULL, 1, &upd, &tx);
+    if (ret != RDB_OK) {
+        RDB_rollback(&tx);
+        return ret;
+    }
+
+    return RDB_commit(&tx);
+}
+
+int
+test_update2(RDB_database *dbp)
 {
     int ret;
     RDB_transaction tx;
@@ -129,7 +169,8 @@ test_print(RDB_database *dbp)
     RDB_init_tuple(&tpl);
 
     for (i = 0; (ret = RDB_array_get_tuple(&array, i, &tpl)) == RDB_OK; i++) {
-        printf("NO=%d, COUNT=%d\n", (int)RDB_tuple_get_int(&tpl, "NO"),
+        printf("NO=%d, O_NO=%d, COUNT=%d\n", (int)RDB_tuple_get_int(&tpl, "NO"),
+                (int)RDB_tuple_get_int(&tpl, "O_NO"),
                 (int)RDB_tuple_get_int(&tpl, "COUNT"));
     }
     RDB_destroy_tuple(&tpl);
@@ -167,7 +208,13 @@ main(void)
         return 2;
     }
 
-    ret = test_update(dbp);
+    ret = test_update1(dbp);
+    if (ret != RDB_OK) {
+        fprintf(stderr, "Error: %s\n", RDB_strerror(ret));
+        return 2;
+    }
+
+    ret = test_update2(dbp);
     if (ret != RDB_OK) {
         fprintf(stderr, "Error: %s\n", RDB_strerror(ret));
         return 2;

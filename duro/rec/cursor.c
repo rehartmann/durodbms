@@ -79,20 +79,14 @@ RDB_cursor_set(RDB_cursor *curp, int fieldc, RDB_field fields[])
     
     /* Write record back */
 
-    if (keymodfd) {
-        /* Key was modified, so delete record first */
-        res = curp->cursorp->c_del(curp->cursorp, 0);
-        if (res != 0) {
-            return RDB_convert_err(res);
-        }
-        /* Write both key and data */
-        res = curp->recmapp->dbp->put(curp->recmapp->dbp, curp->txid,
-                &curp->current_key, &curp->current_data, 0);
-    } else {
-        /* Key not modified, so write data only */
-        res = curp->cursorp->c_put(curp->cursorp,
+    if (keymodfd)
+        /* Key modification is not supported */
+        return RDB_INVALID_ARGUMENT;
+        
+    /* Key not modified, so write data only */
+    res = curp->cursorp->c_put(curp->cursorp,
                 &curp->current_key, &curp->current_data, DB_CURRENT);
-    }
+
     return RDB_convert_err(res);
 }
 

@@ -23,12 +23,14 @@ destroy_value(RDB_hashmap *hp, const char *key, void *arg) {
     RDB_destroy_value((RDB_value *) RDB_hashmap_get(hp, key, NULL));
 }
 
-void
+int
 RDB_destroy_tuple(RDB_tuple *tp)
 {
     RDB_hashmap_apply(&tp->map, destroy_value, NULL);
 
     RDB_destroy_hashmap(&tp->map);
+
+    return RDB_OK;
 }
 
 int

@@ -91,9 +91,10 @@ test_update(RDB_database *dbp)
 
     RDB_drop_expr(exprp);
 
-    printf("Updating table, setting NAME of no 3 to Johnson\n");
-    attrs[0].name = "NAME";
-    attrs[0].exp = RDB_string_const("Johnson");
+    printf("Updating table, setting SALARY of no 3 to SALARY + 100\n");
+    attrs[0].name = "SALARY";
+    attrs[0].exp = RDB_add(RDB_rational_const(100),
+            RDB_expr_attr("SALARY", &RDB_RATIONAL));
     exprp = RDB_eq(RDB_expr_attr("EMPNO", &RDB_INTEGER),
             RDB_int_const(3));
     ret = RDB_update(tbp, exprp, 1, attrs, &tx);

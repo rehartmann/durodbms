@@ -4,6 +4,8 @@ Summary of Changes for Duro
 
 Changes for Duro 0.6
 
+- Fixed issue with RDB_update().
+
 - Added error logging.
 
 - RDB_get_table now takes a RDB_transaction * argument.

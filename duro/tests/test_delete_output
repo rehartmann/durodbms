@@ -3,8 +3,8 @@ Starting transaction
 Deleting #1 from EMPS1
 converting table to array
 EMPNO: 3
-NAME: Johnson
-SALARY: 4500.000000
+NAME: Jones
+SALARY: 4600.000000
 Deleting all tuples from EMPS1
 converting table to array
 End of transaction

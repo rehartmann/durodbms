@@ -196,63 +196,6 @@ _RDB_create_binexpr(RDB_expression *arg1, RDB_expression *arg2, enum _RDB_expr_k
 }
 
 RDB_expression *
-RDB_dup_expr(const RDB_expression *exp)
-{
-    int ret;
-    RDB_expression *newexp = malloc(sizeof (RDB_expression));
-    
-    if (newexp == NULL)
-        return NULL;   
-    newexp->kind = exp->kind;
-
-    switch (exp->kind) {
-        case RDB_CONST:
-            RDB_init_value(&newexp->var.const_val);
-            ret = RDB_copy_value(&newexp->var.const_val, &exp->var.const_val);
-            if (ret != RDB_OK) {
-                free(newexp);
-                return NULL;
-            }
-            return newexp;
-        case RDB_ATTR:
-            return RDB_expr_attr(exp->var.attr.name, RDB_expr_type(exp));
-        case RDB_OP_NOT:
-        case RDB_OP_STRLEN:
-        case RDB_OP_REL_IS_EMPTY:
-            return _RDB_create_unexpr(RDB_dup_expr(exp->var.op.arg1), exp->kind);
-        case RDB_OP_EQ:
-        case RDB_OP_NEQ:
-        case RDB_OP_LT:
-        case RDB_OP_GT:
-        case RDB_OP_LET:
-        case RDB_OP_GET:
-        case RDB_OP_AND:
-        case RDB_OP_OR:
-        case RDB_OP_ADD:
-        case RDB_OP_SUBTRACT:
-        case RDB_OP_REGMATCH:
-            {
-                RDB_expression *ex1p, *ex2p;
-                
-                ex1p = RDB_dup_expr(exp->var.op.arg1);
-                if (ex1p == NULL)
-                    return NULL;
-                ex2p = RDB_dup_expr(exp->var.op.arg2);
-                if (ex2p == NULL) {
-                    RDB_drop_expr(ex1p);
-                    return NULL;
-                }
-                return _RDB_create_binexpr(ex1p, ex2p, exp->kind);
-            }
-        case RDB_TABLE:
-            return RDB_rel_table(exp->var.tbp);
-        case RDB_OP_GET_COMP:
-            return RDB_get_comp(exp->var.op.arg1, exp->var.op.name);
-    }
-    abort();
-}
-
-RDB_expression *
 RDB_eq(RDB_expression *arg1, RDB_expression *arg2)
 {
     return _RDB_create_binexpr(arg1, arg2, RDB_OP_EQ);
@@ -547,6 +490,22 @@ evaluate_int(RDB_expression *exp, const RDB_tuple *tup,
                     return err;
 
                 *resp = v1 + v2;
+            }
+            break;
+        case RDB_OP_SUBTRACT:
+            {
+                int err;
+                RDB_int v1, v2;
+
+                err = evaluate_int(exp->var.op.arg1, tup, txp, &v1);
+                if (err != RDB_OK)
+                    return err;
+
+                err = evaluate_int(exp->var.op.arg2, tup, txp, &v2);
+                if (err != RDB_OK)
+                    return err;
+
+                *resp = v1 - v2;
             }
             break;
         case RDB_OP_STRLEN:
@@ -997,6 +956,51 @@ RDB_evaluate(RDB_expression *exp, const RDB_tuple *tup, RDB_transaction *txp,
             valp->var.tbp = exp->var.tbp;
             return RDB_OK;
         }
+    }
+    abort();
+}
+
+RDB_bool
+_RDB_expr_refers(RDB_expression *exp, RDB_table *tbp)
+{
+    switch (exp->kind) {
+        case RDB_CONST:
+        case RDB_ATTR:
+            return RDB_FALSE;
+        case RDB_OP_EQ:
+        case RDB_OP_NEQ:
+        case RDB_OP_LT:
+        case RDB_OP_GT:
+        case RDB_OP_LET:
+        case RDB_OP_GET:
+        case RDB_OP_AND:
+        case RDB_OP_OR:
+        case RDB_OP_ADD:
+        case RDB_OP_SUBTRACT:
+        case RDB_OP_REGMATCH:
+            return (RDB_bool) (_RDB_expr_refers(exp->var.op.arg1, tbp)
+                    || _RDB_expr_refers(exp->var.op.arg2, tbp));
+        case RDB_OP_NOT:
+        case RDB_OP_REL_IS_EMPTY:
+        case RDB_OP_STRLEN:
+        case RDB_OP_GET_COMP:
+            return _RDB_expr_refers(exp->var.op.arg1, tbp);
+        case RDB_TABLE:
+            return (RDB_bool) (tbp == exp->var.tbp);
+        case RDB_SELECTOR:
+        {
+            int i;
+            RDB_bool res = RDB_FALSE;
+            int compc = _RDB_get_possrep(exp->var.selector.typ,
+                    exp->var.selector.name)->compc;
+
+            for (i = 0; i < compc; i++)
+                res |= _RDB_expr_refers(exp->var.selector.argv[i], tbp);
+            
+            return res;
+        }
+        case RDB_OP_AGGREGATE:
+            return (RDB_bool) (exp->var.aggr.tbp == tbp);
     }
     abort();
 }
