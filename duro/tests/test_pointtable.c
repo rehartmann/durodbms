@@ -87,7 +87,7 @@ test_insert(RDB_database *dbp)
 
     compv[0] = &xval;
     compv[1] = &yval;
-    ret = RDB_select_obj(&pval, pointtyp, "POINT", compv);
+    ret = RDB_select_obj(&pval, pointtyp, "POINT", compv, &tx);
     if (ret != RDB_OK)
         goto error;
 
@@ -103,12 +103,12 @@ test_insert(RDB_database *dbp)
         goto error;
     }
 
-    ret = RDB_obj_comp(&pval, "THETA", &thval);
+    ret = RDB_obj_comp(&pval, "THETA", &thval, &tx);
     if (ret != RDB_OK) {
         goto error;
     }
 
-    ret = RDB_obj_comp(&pval, "LENGTH", &lenval);
+    ret = RDB_obj_comp(&pval, "LENGTH", &lenval, &tx);
     if (ret != RDB_OK) {
         goto error;
     }
@@ -117,7 +117,7 @@ test_insert(RDB_database *dbp)
 
     RDB_rational_to_obj(&lenval, RDB_obj_rational(&lenval) * 2.0);
 
-    RDB_obj_set_comp(&pval, "LENGTH", &lenval);
+    RDB_obj_set_comp(&pval, "LENGTH", &lenval, &tx);
 
     printf("Inserting Tuple\n");
 
@@ -191,8 +191,8 @@ test_query(RDB_database *dbp)
     for (i = 0; (ret = RDB_array_get(&array, i, &tplp)) == RDB_OK; i++) {
         RDB_object *pvalp = RDB_tuple_get(tplp, "POINT");
 
-        ret = RDB_obj_comp(pvalp, "X", &xval);
-        ret = RDB_obj_comp(pvalp, "Y", &yval);
+        ret = RDB_obj_comp(pvalp, "X", &xval, &tx);
+        ret = RDB_obj_comp(pvalp, "Y", &yval, &tx);
 
         printf("X=%f, Y=%f\n", (float)RDB_obj_rational(&xval),
                 (float)RDB_obj_rational(&yval));
@@ -217,11 +217,11 @@ test_query(RDB_database *dbp)
     for (i = 0; (ret = RDB_array_get(&array, i, &tplp)) == RDB_OK; i++) {
         RDB_object *pvalp = RDB_tuple_get(tplp, "POINT");
 
-        ret = RDB_obj_comp(pvalp, "X", &xval);
+        ret = RDB_obj_comp(pvalp, "X", &xval, &tx);
         if (ret != RDB_OK) {
             goto error;
         } 
-        ret = RDB_obj_comp(pvalp, "Y", &yval);
+        ret = RDB_obj_comp(pvalp, "Y", &yval, &tx);
         if (ret != RDB_OK) {
             goto error;
         } 
@@ -259,11 +259,11 @@ test_query(RDB_database *dbp)
     for (i = 0; (ret = RDB_array_get(&array, i, &tplp)) == RDB_OK; i++) {
         RDB_object *pvalp = RDB_tuple_get(tplp, "POINT");
 
-        ret = RDB_obj_comp(pvalp, "X", &xval);
+        ret = RDB_obj_comp(pvalp, "X", &xval, &tx);
         if (ret != RDB_OK) {
             goto error;
         } 
-        ret = RDB_obj_comp(pvalp, "Y", &yval);
+        ret = RDB_obj_comp(pvalp, "Y", &yval, &tx);
         if (ret != RDB_OK) {
             goto error;
         } 

@@ -64,9 +64,9 @@ static RDB_string_vec keys_keyv[] = { { 2, keys_keyattrv } };
 
 static RDB_attr types_attrv[] = {
     { "TYPENAME", &RDB_STRING, NULL, 0 },
-    { "I_LIBNAME", &RDB_STRING, NULL, 0 },
     { "I_AREP_LEN", &RDB_INTEGER, NULL, 0 },
-    { "I_AREP_TYPE", &RDB_STRING, NULL, 0 }
+    { "I_AREP_TYPE", &RDB_STRING, NULL, 0 },
+    { "I_SYSIMPL", &RDB_BOOLEAN, NULL, 0}
 };
 static char *types_keyattrv[] = { "TYPENAME" };
 static RDB_string_vec types_keyv[] = { { 1, types_keyattrv } };
@@ -1263,51 +1263,6 @@ error:
     return ret;
 }
 
-static RDB_selector_func *
-get_selector(lt_dlhandle lhdl, const char *possrepname) {
-    RDB_selector_func *fnp;
-    char *fname = malloc(13 + strlen(possrepname));
-
-    if (fname == NULL)
-        return NULL;
-    strcpy(fname, "RDBU_select_");
-    strcat(fname, possrepname);
-
-    fnp = (RDB_selector_func *) lt_dlsym(lhdl, fname);
-    free(fname);
-    return fnp;
-}
-
-static RDB_setter_func *
-get_setter(lt_dlhandle lhdl, const char *compname) {
-    RDB_setter_func *fnp;
-    char *fname = malloc(10 + strlen(compname));
-
-    if (fname == NULL)
-        return NULL;
-    strcpy(fname, "RDBU_set_");
-    strcat(fname, compname);
-
-    fnp = (RDB_setter_func *) lt_dlsym(lhdl, fname);
-    free(fname);
-    return fnp;
-}
-
-static RDB_getter_func *
-get_getter(lt_dlhandle lhdl, const char *compname) {
-    RDB_getter_func *fnp;
-    char *fname = malloc(10 + strlen(compname));
-
-    if (fname == NULL)
-        return NULL;
-    strcpy(fname, "RDBU_get_");
-    strcat(fname, compname);
-
-    fnp = (RDB_getter_func *) lt_dlsym(lhdl, fname);
-    free(fname);
-    return fnp;
-}
-
 static int
 types_query(const char *name, RDB_transaction *txp, RDB_table **tbpp)
 {
@@ -1416,7 +1371,6 @@ _RDB_get_cat_type(const char *name, RDB_transaction *txp, RDB_type **typp)
     RDB_object possreps;
     RDB_object comps;
     RDB_type *typ = NULL;
-    char *libname;
     char *typename;
     int ret, tret;
     int i;
@@ -1461,21 +1415,8 @@ _RDB_get_cat_type(const char *name, RDB_transaction *txp, RDB_type **typp)
     }
 
     typ->ireplen = RDB_tuple_get_int(&tpl, "I_AREP_LEN");
-
+    typ->var.scalar.sysimpl = RDB_tuple_get_bool(&tpl, "I_SYSIMPL");
     typ->var.scalar.repc = 0;
-
-    libname = RDB_tuple_get_string(&tpl, "I_LIBNAME");
-    if (libname[0] != '\0') {
-        typ->var.scalar.modhdl = lt_dlopenext(libname);
-        if (typ->var.scalar.modhdl == NULL) {
-            RDB_errmsg(txp->dbp->dbrootp->envp, lt_dlerror());
-            ret = RDB_RESOURCE_NOT_FOUND;
-            RDB_rollback_all(txp);
-            goto error;
-        }
-    } else {
-        typ->var.scalar.modhdl = NULL;
-    }
 
     /*
      * Get possrep info from SYS_POSSREPS
@@ -1498,7 +1439,7 @@ _RDB_get_cat_type(const char *name, RDB_transaction *txp, RDB_type **typp)
     for (i = 0; i < typ->var.scalar.repc; i++)
         typ->var.scalar.repv[i].compv = NULL;
     /*
-     * Read possrep data from array and store it in typ->var.scalar.repv.
+     * Read possrep data from array and store it in typ->var.scalar.repv
      */
     for (i = 0; i < typ->var.scalar.repc; i++) {
         int j;
@@ -1559,36 +1500,6 @@ _RDB_get_cat_type(const char *name, RDB_transaction *txp, RDB_type **typp)
                     txp, &typ->var.scalar.repv[i].compv[idx].typ);
             if (ret != RDB_OK)
                 goto error;
-            
-            if (typ->var.scalar.modhdl == NULL) {
-                typ->var.scalar.repv[i].compv[idx].getterp = NULL;
-                typ->var.scalar.repv[i].compv[idx].setterp = NULL;
-            } else {
-                typ->var.scalar.repv[i].compv[idx].getterp = get_getter(
-                        typ->var.scalar.modhdl,
-                        typ->var.scalar.repv[i].compv[idx].name);
-                typ->var.scalar.repv[i].compv[idx].setterp = get_setter(
-                        typ->var.scalar.modhdl,
-                        typ->var.scalar.repv[i].compv[idx].name);
-                if (typ->var.scalar.repv[i].compv[idx].getterp == NULL
-                        || typ->var.scalar.repv[i].compv[idx].setterp == NULL) {
-                    ret = RDB_RESOURCE_NOT_FOUND;
-                    RDB_rollback_all(txp);
-                    goto error;
-                }
-            }
-        }
-        if (typ->var.scalar.modhdl == NULL) {
-            typ->var.scalar.repv[i].selectorp = NULL;
-        } else {
-            typ->var.scalar.repv[i].selectorp = get_selector(
-                        typ->var.scalar.modhdl,
-                        typ->var.scalar.repv[i].name);
-            if (typ->var.scalar.repv[i].selectorp == NULL) {
-                ret = RDB_RESOURCE_NOT_FOUND;
-                RDB_rollback_all(txp);
-                goto error;
-            }
         }
     }
 

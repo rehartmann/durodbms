@@ -2097,7 +2097,7 @@ by <var>srcp</var> to the RDB_object pointed to by <var>dstp</var>.
 
 int
 RDB_select_obj(RDB_object *valp, RDB_type *typ, const char *repname,
-              RDB_object *compv[]);
+              RDB_object *compv[], RDB_transaction *);
 </pre>
 
 <h3>Description</h3>
@@ -2322,7 +2322,7 @@ the RDB_object pointed to by <var>objp</var>.
 
 int
 RDB_obj_comp(const RDB_object *valp, const char *compname,
-             RDB_object *comp);
+             RDB_object *comp, RDB_transaction *);
 </pre>
 
 <h3>Description</h3>
@@ -2357,7 +2357,7 @@ user-provided getter function.
 
 int
 RDB_obj_set_comp(RDB_object *valp, const char *compname,
-                 const RDB_object *comp);
+                 const RDB_object *comp, RDB_transaction *);
 </pre>
 
 <h3>Description</h3>
@@ -3538,7 +3538,7 @@ in which case the transaction is implicitly rolled back.
 <pre>
 #include &lt;rel/typeimpl.h&gt;
 
-RDB_implement_type(const char *name, const char *libname, RDB_type *arep,
+RDB_implement_type(const char *name, RDB_type *arep,
                    size_t areplen, RDB_transaction *txp);
 </pre>
 
@@ -3550,54 +3550,23 @@ it will probably change in future versions of Duro.
 <p>RDB_implement_type implements the user-defined type with name
 <var>name</var>. After RDB_implement_type was inkoved successfully,
 this type may be used for local variables and table attributes.
-The actual representation is specified by the <var>arep</var> argument.
-
-<p>If <var>libname</var> is not NULL, then:
 
 <p>If <var>arep</var> is not NULL, it must point to a type which is used
 as the actual representation.
 
-<p>If <var>arep</var> is NULL, <var>areplen</var> specifies the length,
-in bytes, of the actual representation,
+<p>If <var>arep</var> is NULL and <var>areplen</var> is not -1,
+<var>areplen</var> specifies the length, in bytes,
+of the actual representation,
 which is a fixed-length array of bytes.
 
-<p>In either case, <var>libname</var> it is taken as a name of a library
-which contains the getter functions, setter functions, and selector
-functions for the type. See the release notes for details on how
-to create such a library.
-
-<p>If <var>libname</var> is NULL, the getter functions, setter functions, and selector
-functions for the type are provided by Duro. In this case,
-<var>arep</var> must be NULL, the type may only have one possible representation,
+<p>If <var>arep</var> is NULL and <var>areplen</var> is not -1,
+the getter functions, setter functions, and selector
+must be provided by the user.
+Otherwise, these functions are provided by Duro,
+the type may only have one possible representation,
 and this representation becomes the actual representation.
 
-<h4>Conventions for user-supplied selector, setter, and getter
-functions</h4>
-
-<p>The functions provided in a user-supplied library must obey the following
-conventions:
-
-<pre>
-int
-RDBU_select_&lt;possrep&gt;(RDB_object *valp, RDB_object *compv[],
-        RDB_type *, const char *possrepname);
-</pre>
-
-<p>where &lt;possrep&gt; is the name of the possible representation in question.
-
-<pre>
-int
-RDBU_set_&lt;component&gt;(RDB_object *valp, const RDB_object *comp,
-        RDB_type *, const char *compname);
-</pre>
-
-<pre>
-int
-RDBU_get_&lt;component&gt;(const RDB_object *src, RDB_object *comp,
-        RDB_type *, const char *compname);
-</pre>
-
-<p>where &lt;component&gt; is the name of the component in question.
+<p>...
 
 <h3>Return value</h3>
 
@@ -3846,9 +3815,10 @@ and the arguments are passed through <var>argc</var> and <var>argv</var>.
 location specified by <var>retvalp</var> and return RDB_OK.
 It can indicate an error condition by returning an error code.
 
-<p>If <var>iargp</var> is not NULL, <var>iargp</var> and <var>iarglen</var>
-must point to a byte block which is passed to the function specified by
-<var>sym</var>. This can be used to pass code to an interpreter function.
+<p>If <var>iargp</var> is not NULL, it must point to a byte block
+of length <var>iarglen</var> which will be passed to the function
+specified by <var>sym</var>.
+This can be used to pass code to an interpreter function.
 
 <p>Overloading operators is possible.
 
@@ -3888,7 +3858,8 @@ RDB_create_update_op(const char *name, int argc, RDB_type *argtv[],
 The argument types are specified by <var>argc</var> and <var>argtv</var>.
 
 <p>The argument <var>upd</var> specifies which of the arguments are updated.
-If upd[<em>i</em>] is RDB_TRUE, the <em>i</em>th argument is updated.
+If upd[<em>i</em>] is RDB_TRUE, this indicates that the <em>i</em>th argument
+is updated by the operator.
 
 <p>To execute the operator, Duro will execute the function specified by
 <var>sym</var> from the library specified by <var>libname</var>.
@@ -3908,9 +3879,10 @@ and the arguments are passed through <var>argc</var> and <var>argv</var>.
 <p>On success, the function specified by <var>sym</var> must return RDB_OK.
 It can indicate an error condition by returning an error code.
 
-<p>If <var>iargp</var> is not NULL, <var>iargp</var> and <var>iarglen</var>
-must point to a byte block which is passed to the function specified by
-<var>sym</var>. This can be used to pass code to an interpreter function.
+<p>If <var>iargp</var> is not NULL, it must point to a byte block
+of length <var>iarglen</var> which will be passed to the function
+specified by <var>sym</var>.
+This can be used to pass code to an interpreter function.
 
 <p>Overloading functions is possible.
 

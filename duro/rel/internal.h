@@ -61,22 +61,11 @@ typedef struct RDB_qresult {
     RDB_table *matp;
 } RDB_qresult;
 
-typedef int RDB_selector_func(RDB_object *, RDB_object *[],
-        RDB_type *, const char *);
-
-typedef int RDB_setter_func(RDB_object *, const RDB_object *,
-        RDB_type *, const char *);
-
-typedef int RDB_getter_func(const RDB_object *, RDB_object *,
-        RDB_type *, const char *);
-
 typedef struct {
     char *name;
     RDB_type *typ;
     RDB_object *defaultp;
     int options;
-    RDB_getter_func *getterp;
-    RDB_setter_func *setterp;
 } RDB_icomp;
 
 typedef struct RDB_ipossrep {
@@ -84,7 +73,6 @@ typedef struct RDB_ipossrep {
     int compc;
     RDB_icomp *compv;
     struct RDB_expression *constraintp;
-    RDB_selector_func *selectorp;
 } RDB_ipossrep;
 
 typedef int RDB_ro_op_func(const char *name, int argc, RDB_object *argv[],

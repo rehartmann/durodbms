@@ -10,10 +10,15 @@
  */
 
 int
-RDBU_select_POINT(RDB_object *valp, RDB_object *compv[],
-        RDB_type *typ, const char *possrepname)
+POINT(const char *name, int argc, RDB_object *compv[],
+        const void *iargp, size_t iarglen, RDB_transaction *txp,
+        RDB_object *valp)
 {
     i_point ipt;
+    RDB_type *typ;
+    int ret = RDB_get_type("POINT", txp, &typ);
+    if (ret != RDB_OK)
+        return ret;
 
     ipt.x = RDB_obj_rational(compv[0]);
     ipt.y = RDB_obj_rational(compv[1]);
@@ -22,45 +27,47 @@ RDBU_select_POINT(RDB_object *valp, RDB_object *compv[],
 }
 
 int
-RDBU_set_X(RDB_object *valp, const RDB_object *comp,
-        RDB_type *typ, const char *compname)
+POINT_set_X(const char *name, int argc, RDB_object *argv[], RDB_bool updv[],
+        const void *iargp, size_t iarglen, RDB_transaction *txp)
 {
-    i_point *iptp = RDB_obj_irep(valp, NULL);
+    i_point *iptp = RDB_obj_irep(argv[0], NULL);
 
-    iptp->x = RDB_obj_rational(comp);
+    iptp->x = RDB_obj_rational(argv[1]);
 
     return RDB_OK;
 }
 
 int
-RDBU_get_X(const RDB_object *valp, RDB_object *comp,
-        RDB_type *typ, const char *compname)
+POINT_get_X(const char *name, int argc, RDB_object *argv[],
+        const void *iargp, size_t iarglen, RDB_transaction *txp,
+        RDB_object *valp)
 {
-    i_point *iptp = RDB_obj_irep((RDB_object *)valp, NULL);
+    i_point *iptp = RDB_obj_irep((RDB_object *) argv[0], NULL);
 
-    RDB_rational_to_obj(comp, iptp->x);
+    RDB_rational_to_obj(valp, iptp->x);
 
     return RDB_OK;
 }
 
 int
-RDBU_set_Y(RDB_object *valp, const RDB_object *comp,
-        RDB_type *typ, const char *compname)
+POINT_set_Y(const char *name, int argc, RDB_object *argv[], RDB_bool updv[],
+        const void *iargp, size_t iarglen, RDB_transaction *txp)
 {
-    i_point *iptp = RDB_obj_irep(valp, NULL);
+    i_point *iptp = RDB_obj_irep(argv[0], NULL);
 
-    iptp->y = RDB_obj_rational(comp);
+    iptp->y = RDB_obj_rational(argv[1]);
 
     return RDB_OK;
 }
 
 int
-RDBU_get_Y(const RDB_object *valp, RDB_object *comp,
-        RDB_type *typ, const char *compname)
+POINT_get_Y(const char *name, int argc, RDB_object *argv[],
+        const void *iargp, size_t iarglen, RDB_transaction *txp,
+        RDB_object *valp)
 {
-    i_point *iptp = RDB_obj_irep((RDB_object *)valp, NULL);
+    i_point *iptp = RDB_obj_irep((RDB_object *) argv[0], NULL);
 
-    RDB_rational_to_obj(comp, iptp->y);
+    RDB_rational_to_obj(valp, iptp->y);
 
     return RDB_OK;
 }
@@ -70,12 +77,16 @@ RDBU_get_Y(const RDB_object *valp, RDB_object *comp,
  */
 
 int
-RDBU_select_POLAR(RDB_object *valp, RDB_object *compv[],
-        RDB_type *typ, const char *possrepname)
+POLAR(const char *name, int argc, RDB_object *compv[], const void *iargp,
+        size_t iarglen, RDB_transaction *txp, RDB_object *valp)
 {
     i_point ipt;
+    RDB_type *typ;
     double th = (double) RDB_obj_rational(compv[0]);
     double len = (double) RDB_obj_rational(compv[1]);
+    int ret = RDB_get_type("POINT", txp, &typ);
+    if (ret != RDB_OK)
+        return ret;
 
     ipt.x = cos(th) * len;
     ipt.y = sin(th) * len;
@@ -84,12 +95,12 @@ RDBU_select_POLAR(RDB_object *valp, RDB_object *compv[],
 }
 
 int
-RDBU_set_THETA(RDB_object *valp, const RDB_object *comp,
-        RDB_type *typ, const char *compname)
+POINT_set_THETA(const char *name, int argc, RDB_object *argv[], RDB_bool updv[],
+        const void *iargp, size_t iarglen, RDB_transaction *txp)
 {
-    i_point *iptp = RDB_obj_irep((RDB_object *) valp, NULL);
+    i_point *iptp = RDB_obj_irep((RDB_object *) argv[0], NULL);
     double len = sqrt(iptp->x * iptp->x + iptp->y * iptp->y);
-    double theta = RDB_obj_rational(comp);
+    double theta = RDB_obj_rational(argv[1]);
 
     iptp->x = cos(theta) * len;
     iptp->y = sin(theta) * len;
@@ -98,23 +109,23 @@ RDBU_set_THETA(RDB_object *valp, const RDB_object *comp,
 }
 
 int
-RDBU_get_THETA(const RDB_object *valp, RDB_object *comp,
-        RDB_type *typ, const char *compname)
+POINT_get_THETA(const char *name, int argc, RDB_object *argv[],
+        const void *iargp, size_t iarglen, RDB_transaction *txp, RDB_object *valp)
 {
-    i_point *iptp = RDB_obj_irep((RDB_object *) valp, NULL);
+    i_point *iptp = RDB_obj_irep((RDB_object *) argv[0], NULL);
 
-    RDB_rational_to_obj(comp, iptp->x != 0.0 ?
+    RDB_rational_to_obj(valp, iptp->x != 0.0 ?
             atan(iptp->y / iptp->x) : M_PI_2);
 
     return RDB_OK;
 }
 
 int
-RDBU_set_LENGTH(RDB_object *valp, const RDB_object *comp,
-        RDB_type *typ, const char *compname)
+POINT_set_LENGTH(const char *name, int argc, RDB_object *argv[], RDB_bool updv[],
+        const void *iargp, size_t iarglen, RDB_transaction *txp)
 {
-    i_point *iptp = RDB_obj_irep(valp, NULL);
-    double len = (double) RDB_obj_rational(comp);
+    i_point *iptp = RDB_obj_irep(argv[0], NULL);
+    double len = (double) RDB_obj_rational(argv[1]);
     double theta = iptp->x != 0.0 ? atan(iptp->y / iptp->x) : M_PI_2;
 
     iptp->x = cos(theta) * len;
@@ -124,12 +135,12 @@ RDBU_set_LENGTH(RDB_object *valp, const RDB_object *comp,
 }
 
 int
-RDBU_get_LENGTH(const RDB_object *valp, RDB_object *comp,
-        RDB_type *typ, const char *compname)
+POINT_get_LENGTH(const char *name, int argc, RDB_object *argv[],
+        const void *iargp, size_t iarglen, RDB_transaction *txp, RDB_object *valp)
 {
-    i_point *iptp = RDB_obj_irep((RDB_object *) valp, NULL);
+    i_point *iptp = RDB_obj_irep((RDB_object *) argv[0], NULL);
 
-    RDB_rational_to_obj(comp, sqrt(iptp->x * iptp->x + iptp->y * iptp->y));
+    RDB_rational_to_obj(valp, sqrt(iptp->x * iptp->x + iptp->y * iptp->y));
 
     return RDB_OK;
 }

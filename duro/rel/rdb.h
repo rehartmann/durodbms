@@ -5,7 +5,7 @@
 
 /*
 This file is part of Duro, a relational database library.
-Copyright (C) 2003 René Hartmann.
+Copyright (C) 2003, 2004 René Hartmann.
 
 Duro is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -111,7 +111,9 @@ typedef struct RDB_type {
         struct {
             int repc;
             struct RDB_ipossrep *repv;
-            lt_dlhandle modhdl;	/* library handle for module */
+
+            /* RDB_TRUE if selector/getters/settersthe are privided by the system */
+            RDB_bool sysimpl; 
         } scalar;
     } var;
 } RDB_type;
@@ -872,7 +874,7 @@ RDB_destroy_obj(RDB_object *valp);
 
 int
 RDB_select_obj(RDB_object *valp, RDB_type *, const char *repname,
-              RDB_object **compv);
+              RDB_object **compv, RDB_transaction *);
 
 void
 RDB_bool_to_obj(RDB_object *valp, RDB_bool v);
@@ -888,14 +890,14 @@ RDB_string_to_obj(RDB_object *valp, const char *str);
 
 int
 RDB_obj_comp(const RDB_object *valp, const char *compname,
-                   RDB_object *comp);
+                   RDB_object *comp, RDB_transaction *);
 
 void
 RDB_table_to_obj(RDB_object *valp, RDB_table *tbp);
 
 int
 RDB_obj_set_comp(RDB_object *valp, const char *compname,
-                   const RDB_object *comp);
+                   const RDB_object *comp, RDB_transaction *);
 
 RDB_table *
 RDB_obj_table(const RDB_object *objp);

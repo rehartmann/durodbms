@@ -1,3 +1,8 @@
+/*
+ * Copyright (C) 2003, 2004 René Hartmann.
+ * See the file COPYING for redistribution information.
+ */
+
 /* $Id$ */
 
 #include "serialize.h"
@@ -71,9 +76,35 @@ serialize_byte(RDB_object *valp, int *posp, RDB_byte b)
 static int
 serialize_type(RDB_object *valp, int *posp, const RDB_type *typ)
 {
-    if (typ->name == NULL)
-        return RDB_NOT_SUPPORTED;
-    return serialize_str(valp, posp, typ->name);
+    int ret = serialize_byte(valp, posp, (RDB_byte) typ->kind);
+    if (ret != RDB_OK)
+        return ret;
+
+    switch (typ->kind) {
+        case RDB_TP_SCALAR:
+            return serialize_str(valp, posp, typ->name);
+        case RDB_TP_TUPLE:
+        {
+            int i;
+
+            ret = serialize_int(valp, posp, typ->var.tuple.attrc);
+            if (ret != RDB_OK)
+                return ret;
+
+            for (i = 0; i < typ->var.tuple.attrc; i++) {
+                ret = serialize_str(valp, posp, typ->var.tuple.attrv[i].name);
+                if (ret != RDB_OK)
+                    return ret;
+
+                ret = serialize_type(valp, posp, typ->var.tuple.attrv[i].typ);
+                if (ret != RDB_OK)
+                    return ret;
+            }
+        }
+        case RDB_TP_RELATION:
+            return serialize_type(valp, posp, typ->var.basetyp);
+    }
+    abort();
 }
 
 static int
@@ -553,13 +584,28 @@ deserialize_type(RDB_object *valp, int *posp, RDB_transaction *txp,
 {
     char *namp;
     int ret;
+    RDB_byte b;
 
-    ret = deserialize_str(valp, posp, &namp);
-    if (ret != RDB_OK)
+    ret = deserialize_byte(valp, posp);
+    if (ret < 0)
         return ret;
-    ret = RDB_get_type(namp, txp, typp);
-    free(namp);
-    return ret;
+    b = (RDB_byte) ret;
+
+    switch (b) {
+        case RDB_TP_SCALAR:
+            ret = deserialize_str(valp, posp, &namp);
+            if (ret != RDB_OK)
+                return ret;
+            ret = RDB_get_type(namp, txp, typp);
+            free(namp);
+            return ret;
+        case RDB_TP_TUPLE:
+            /* !! */
+        case RDB_TP_RELATION:
+            /* !! */
+            ;
+    }
+    return RDB_INTERNAL;
 }
 
 static int

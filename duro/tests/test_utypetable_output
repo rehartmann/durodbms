@@ -6,7 +6,7 @@ End of transaction
 Starting transaction
 Trying to insert tuple with INTEGER
 Return code: type mismatch - OK
-Trying to create TINYINT fromt INTEGER=200
+Trying to create TINYINT from INTEGER=200
 Return code: type constraint violation - OK
 Creating TINYINT from INTEGER=99
 Inserting Tuple

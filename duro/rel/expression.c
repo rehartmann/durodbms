@@ -767,7 +767,9 @@ static int evaluate_selector(RDB_expression *exp, const RDB_object *tup,
         if (ret != RDB_OK)
             goto cleanup;
     }
-    ret = RDB_select_obj(valp, exp->var.selector.typ, exp->var.selector.name, valpv);
+    ret = RDB_select_obj(valp, exp->var.selector.typ, exp->var.selector.name,
+            valpv, txp);
+
 cleanup:
     if (valv != NULL) {
         for (i = 0; i < compc; i++) {
@@ -1058,7 +1060,7 @@ RDB_evaluate(RDB_expression *exp, const RDB_object *tup, RDB_transaction *txp,
                  RDB_destroy_obj(&obj);
                  return ret;
             }
-            ret = RDB_obj_comp(&obj, exp->var.op.name, valp);
+            ret = RDB_obj_comp(&obj, exp->var.op.name, valp, txp);
             RDB_destroy_obj(&obj);
             return ret;
         }

@@ -479,8 +479,8 @@ RDB_string_to_obj(RDB_object *valp, const char *str)
 }
 
 int
-RDB_obj_comp(const RDB_object *valp, const char *compname,
-                   RDB_object *compvalp)
+RDB_obj_comp(const RDB_object *valp, const char *compname, RDB_object *compvalp,
+        RDB_transaction *txp)
 {
     int ret;
     RDB_icomp *comp;
@@ -489,34 +489,67 @@ RDB_obj_comp(const RDB_object *valp, const char *compname,
         return RDB_INVALID_ARGUMENT;
 
     comp = _RDB_get_icomp(valp->typ, compname);
-    if (comp->setterp != NULL) {
-        return (*(comp->getterp))(valp, compvalp, valp->typ, compname);
-    } else {
+
+    if (valp->typ->var.scalar.sysimpl) {
         ret = RDB_destroy_obj(compvalp);
         if (ret != RDB_OK)
             return ret;
 
         _RDB_set_obj_type(compvalp, valp->typ->var.scalar.repv[0].compv[0].typ);
-        return copy_obj(compvalp, valp);   
+        ret = copy_obj(compvalp, valp);   
+    } else {
+        /* Getter is implemented by user */
+        char *opname;
+        RDB_object *argv[1];
+
+        opname = malloc(strlen(valp->typ->name) + strlen(comp->name) + 6);
+        if (opname == NULL)
+            return RDB_NO_MEMORY;
+
+        strcpy(opname, valp->typ->name);
+        strcat(opname, "_get_");
+        strcat(opname, comp->name);
+        argv[0] = (RDB_object *) valp;
+
+        ret = RDB_call_ro_op(opname, 1, argv, compvalp, txp);
+        free(opname);
     }
+    return ret;
 }
 
 int
 RDB_obj_set_comp(RDB_object *valp, const char *compname,
-                   const RDB_object *compvalp)
+        const RDB_object *compvalp, RDB_transaction *txp)
 {
     RDB_icomp *comp = _RDB_get_icomp(valp->typ, compname);
     int ret;
 
-    if (comp->setterp != NULL) {
-        return (*(comp->setterp))(valp, compvalp, valp->typ, compname);
-    } else {
+    if (valp->typ->var.scalar.sysimpl) {
+        /* Setter is implemented by the system */
         ret = RDB_destroy_obj(valp);
         if (ret != RDB_OK)
             return ret;
 
-        return copy_obj(valp, compvalp);
+        ret = copy_obj(valp, compvalp);
+    } else {
+        /* Setter is implemented by user */
+        char *opname;
+        RDB_object *argv[2];
+
+        opname = malloc(strlen(valp->typ->name) + strlen(comp->name) + 6);
+        if (opname == NULL)
+            return RDB_NO_MEMORY;
+
+        strcpy(opname, valp->typ->name);
+        strcat(opname, "_set_");
+        strcat(opname, comp->name);
+        argv[0] = valp;
+        argv[1] = (RDB_object *) compvalp;
+        
+        ret = RDB_call_update_op(opname, 2, argv, txp);
+        free(opname);        
     }
+    return ret;
 }
 
 void
@@ -536,7 +569,7 @@ RDB_obj_table(const RDB_object *objp)
 }
 
 static int
-check_constraint(RDB_object *valp, RDB_bool *resultp)
+check_constraint(RDB_object *valp, RDB_bool *resultp, RDB_transaction *txp)
 {
     int i, j;
     int ret;
@@ -555,7 +588,7 @@ check_constraint(RDB_object *valp, RDB_bool *resultp)
                 char *compname = valp->typ->var.scalar.repv[i].compv[j].name;
 
                 RDB_init_obj(&comp);
-                ret = RDB_obj_comp(valp, compname, &comp);
+                ret = RDB_obj_comp(valp, compname, &comp, txp);
                 if (ret != RDB_OK) {
                     RDB_destroy_obj(&comp);
                     RDB_destroy_obj(&tpl);
@@ -581,7 +614,7 @@ check_constraint(RDB_object *valp, RDB_bool *resultp)
 
 int
 RDB_select_obj(RDB_object *valp, RDB_type *typ, const char *repname,
-              RDB_object **compv)
+              RDB_object **compv, RDB_transaction *txp)
 {
     RDB_ipossrep *prp;
     int ret;
@@ -593,28 +626,29 @@ RDB_select_obj(RDB_object *valp, RDB_type *typ, const char *repname,
     if (repname == NULL) {
         if (typ->var.scalar.repc == 1) {
             repname = typ->name;
-            prp = &typ->var.scalar.repv[0];
         } else {
             return RDB_INVALID_ARGUMENT;
         }
     }
 
     /* Find possrep */
-    prp  = _RDB_get_possrep(typ, repname);
+    prp = _RDB_get_possrep(typ, repname);
     if (prp == NULL)
         return RDB_INVALID_ARGUMENT;
 
-    if (prp->selectorp != NULL)
-        ret = (prp->selectorp)(valp, compv, typ, repname);
-    else {
+    if (typ->var.scalar.sysimpl) {
+        /* Selector is implemented by the system */
         RDB_destroy_obj(valp);
         _RDB_set_obj_type(valp, typ);
         ret = copy_obj(valp, *compv);
+    } else {
+        /* Selector is implemented by user */
+        ret = RDB_call_ro_op(repname, typ->var.scalar.repc, compv, valp, txp);
     }
     if (ret != RDB_OK)
         return ret;
 
-    ret = check_constraint(valp, &b);
+    ret = check_constraint(valp, &b, txp);
     if (ret != RDB_OK)
         return ret;
 

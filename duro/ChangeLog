@@ -4,7 +4,15 @@ Summary of Changes for Duro
 
 Changes for Duro 0.8
 
-- Implemented insert into RENAME, WRAP, UNWRAP tables
+- Removed the libname argument from RDB_implement_type(). Selectors,
+  getters, and setters are now created using RDB_create_ro_op() and
+  RDB_create_update_op().
+
+- Implemented relation-valued table attributes.
+
+- Added RDB_expr_contains().
+
+- Implemented insert into RENAME, WRAP, UNWRAP tables.
 
 - Implemented RDB_project_tuple() and RDB_join_tuples().
 

@@ -25,8 +25,8 @@ along with Duro; if not, write to the Free Software Foundation, Inc.,
 #include <rel/rdb.h>
 
 int
-RDB_implement_type(const char *name, const char *libname, RDB_type *,
-        size_t ireplen, RDB_transaction *);
+RDB_implement_type(const char *name, RDB_type *, size_t ireplen,
+        RDB_transaction *);
 
 /*
  * Return a pointer to the internal representaion of the value

@@ -280,13 +280,13 @@ RDB_define_type(const char *name, int repc, RDB_possrep repv[],
     ret = RDB_tuple_set_string(&tpl, "TYPENAME", name);
     if (ret != RDB_OK)
         goto error;
-    ret = RDB_tuple_set_string(&tpl, "I_LIBNAME", "");
-    if (ret != RDB_OK)
-        goto error;
     ret = RDB_tuple_set_string(&tpl, "I_AREP_TYPE", "");
     if (ret != RDB_OK)
         goto error;
     ret = RDB_tuple_set_int(&tpl, "I_AREP_LEN", -2);
+    if (ret != RDB_OK)
+        goto error;
+    ret = RDB_tuple_set_bool(&tpl, "I_SYSIMPL", RDB_FALSE);
     if (ret != RDB_OK)
         goto error;
 
@@ -370,23 +370,20 @@ error:
 }
 
 int
-RDB_implement_type(const char *name, const char *libname, RDB_type *arep,
+RDB_implement_type(const char *name, RDB_type *arep,
                    size_t areplen, RDB_transaction *txp)
 {
     RDB_expression *exp, *wherep;
     RDB_attr_update upd[3];
     int ret;
+    RDB_bool sysimpl = (arep == NULL) && (areplen == -1);
 
     if (!RDB_tx_is_running(txp))
         return RDB_INVALID_TRANSACTION;
 
-    if (libname != NULL) {
-        if (arep != NULL && !RDB_type_is_builtin(arep)) {
-            return RDB_NOT_SUPPORTED;
-        }
-    } else {
+    if (sysimpl) {
         /*
-         * No libname given, so selector and getters/setters must be provided
+         * No actual rep given, so selector and getters/setters must be provided
          * by the system
          */
         RDB_table *tmptb1p;
@@ -424,11 +421,12 @@ RDB_implement_type(const char *name, const char *libname, RDB_type *arep,
         }
         ret = RDB_get_type(RDB_tuple_get_string(&tpl, "COMPTYPENAME"), txp, &arep);
         RDB_destroy_obj(&tpl);
-        if (ret != RDB_OK) {
+        if (ret != RDB_OK)
             return ret;
+    } else {
+        if (arep != NULL && !RDB_type_is_builtin(arep)) {
+            return RDB_NOT_SUPPORTED;
         }
-        /* Empty string indicates that there is no library */
-        libname = "";
     }
 
     exp = RDB_expr_attr("TYPENAME");
@@ -455,8 +453,8 @@ RDB_implement_type(const char *name, const char *libname, RDB_type *arep,
         ret = RDB_NO_MEMORY;
         goto cleanup;
     }
-    upd[2].name = "I_LIBNAME";
-    upd[2].exp = RDB_string_const(libname);
+    upd[2].name = "I_SYSIMPL";
+    upd[2].exp = RDB_bool_const(sysimpl);
     if (upd[2].exp == NULL) {
         ret = RDB_NO_MEMORY;
         goto cleanup;
