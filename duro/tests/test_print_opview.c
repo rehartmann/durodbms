@@ -61,7 +61,7 @@ main(void)
     int ret;
     
     printf("Opening environment\n");
-    ret = RDB_open_env("db", &dsp);
+    ret = RDB_open_env("dbenv", &dsp);
     if (ret != RDB_OK) {
         fprintf(stderr, "Error: %s\n", RDB_strerror(ret));
         return 1;

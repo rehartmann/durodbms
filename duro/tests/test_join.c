@@ -88,14 +88,14 @@ test_join(RDB_database *dbp)
 }
 
 int
-main()
+main(void)
 {
     RDB_environment *dsp;
     RDB_database *dbp;
     int ret;
     
     printf("Opening environment\n");
-    ret = RDB_open_env("db", &dsp);
+    ret = RDB_open_env("dbenv", &dsp);
     if (ret != 0) {
         fprintf(stderr, "Error: %s\n", RDB_strerror(ret));
         return 1;

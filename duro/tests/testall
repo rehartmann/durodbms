@@ -39,13 +39,13 @@ echo $LD_LIBRARY_PATH
 
 calltest tupletest
 
-rm -rf db
-mkdir db
+rm -rf dbenv
+mkdir dbenv
 
 if ! ./prepare; then failure; fi
 
 echo lstables
-if ! ../util/lstables -e db -d TEST | sort > /tmp/duro$$; then echo $?; failure; fi
+if ! ../util/lstables -e dbenv -d TEST | sort > /tmp/duro$$; then echo $?; failure; fi
 if ! diff /tmp/duro$$ lstables_output; then failure; fi
 
 calltest test_select
@@ -82,13 +82,13 @@ calltest test_dropop
 rm /tmp/duro$$
 
 echo Dropping tables
-if ! ../util/droptable -e db -d TEST SALARIES EMPS1H EMPS1 EMPS2 DEPTS DEEDUM \
+if ! ../util/droptable -e dbenv -d TEST SALARIES EMPS1H EMPS1 EMPS2 DEPTS DEEDUM \
         SRTEST POINTTEST; then
     failure
 fi
 
 echo Dropping DB
-if ! ../util/dropdb -e db -d TEST TEST2; then
+if ! ../util/dropdb -e dbenv -d TEST TEST2; then
     failure
 fi
 
