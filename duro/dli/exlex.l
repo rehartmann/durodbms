@@ -112,24 +112,12 @@ COUNT {
     return TOK_COUNT;
 }
 
-COUNTD {
-    return TOK_COUNTD;
-}
-
 SUM {
     return TOK_SUM;
 }
 
-SUMD {
-    return TOK_SUMD;
-}
-
 AVG {
     return TOK_AVG;
-}
-
-AVGD {
-    return TOK_AVGD;
 }
 
 MAX {

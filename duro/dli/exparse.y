@@ -11,7 +11,7 @@
 extern RDB_transaction *expr_txp;
 extern RDB_expression *resultp;
 extern int expr_ret;
-extern RDB_ltablefunc *expr_ltfp;
+extern RDB_ltablefn *expr_ltfp;
 extern void *expr_arg;
 
 static RDB_table *
@@ -88,11 +88,8 @@ enum {
 %token TOK_CONCAT
 %token TOK_IS_EMPTY
 %token TOK_COUNT
-%token TOK_COUNTD
 %token TOK_SUM
-%token TOK_SUMD
 %token TOK_AVG
-%token TOK_AVGD
 %token TOK_MAX
 %token TOK_MIN
 %token TOK_ALL
@@ -493,9 +490,6 @@ summarize_add: summary TOK_AS TOK_ID {
 summary: TOK_COUNT {
         $$.addv[0].op = RDB_COUNT;
     }
-    | TOK_COUNTD {
-        $$.addv[0].op = RDB_COUNT;
-    }
     | summary_type '(' expression ')' {
         $$.addv[0].op = $1.addv[0].op;
         $$.addv[0].exp = $3;
@@ -505,14 +499,8 @@ summary: TOK_COUNT {
 summary_type: TOK_SUM {
         $$.addv[0].op = RDB_SUM;
     }
-    | TOK_SUMD {
-        $$.addv[0].op = RDB_SUMD;
-    }
     | TOK_AVG {
         $$.addv[0].op = RDB_AVG;
-    }
-    | TOK_AVGD {
-        $$.addv[0].op = RDB_AVGD;
     }
     | TOK_MAX {
         $$.addv[0].op = RDB_MAX;
@@ -528,8 +516,7 @@ summary_type: TOK_SUM {
     }
     ;
 
-wrap:   primary_expression TOK_WRAP
-        '(' wrapping_list ')' {
+wrap:   primary_expression TOK_WRAP '(' wrapping_list ')' {
         RDB_table *tbp, *restbp;
         int i, j;
 

@@ -1,0 +1,125 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN"
+"http://www.w3.org/TR/html4/strict.dtd">
+<html lang="en">
+<head>
+<title>Durotcl commands - table</title>
+<body>
+
+<h2>Name</h2>
+
+<p>duro::table - create, delete, and manipulate duro tables
+
+<h2>Synopsis</h2>
+
+<p><b>duro::table</b> <var>arg ?arg ...?</var>
+
+<h2>Description</h2>
+
+<dl>
+<dt><b>duro::table add</b> <var>tablename txId</var>
+<dd>
+<p>This subcommand adds the table <var>tablename</var> to the database
+on which the transaction identified by <var>txId</var> interacts.
+
+<dt><b>duro::table contains</b> <var>tablename tuple txId</var>
+<dd>
+<p>Returns 1 if the table <var>tablename</var> contains the tuple
+<var>tuple</var>, 0 if the table does not contain the tuple.
+
+<p>A tuple is represented by a list containing pairs
+of elements. The first element in each pair contains the attribute name
+and the second element of each pair is the attribute value.
+
+<dt><b>duro::table create</b> <var>?flag? tablename attrs keys txId</var>
+<dd>
+<p>This subcommand creates a real table with the name <var>tablename</var>
+under the control of the transaction specified by <var>txId</var>.
+
+<p>The attributes are specified by the argument <var>attrs</var>.
+<var>attrs</var> must be a list of lists, with one sublist for each
+attribute. The sublist must contain two or three elements.
+The first element of the sublist is the attribute name.
+The second element is the attribute name. The third element, if given,
+specifies the default value for the attribute.
+
+<p>The <var>keys</var> argument specifies the candidate keys and, like
+<var>attrs</var>, must be a list of lists. Each sublist defines a key.
+The sublist elements specify the attribute names of a key.
+
+<p>If <var>flag</var> is given, it must be either <strong>-global</strong>
+or <strong>-local</strong>. If <strong>-global</strong> is specified,
+the table will become a global (persistent) table in the database
+the transaction specified by <var>txId</var> interacts with.
+If <strong>-local</strong> is specified,
+the table will become a local (transient) table.
+Default is <strong>-global</strong>.
+
+<dt><b>duro::table drop</b> <var>tablename txId</var>
+<dd>
+<p>This subcommand deletes the table <var>tablename</var>
+under the control of the transaction specified by <var>txId</var>.
+
+<dt><b>duro::table expr</b> <var>?flag? tablename expression txId</var>
+<dd>
+<p>This subcommand creates a virtual table under the control of the transaction
+specified by <var>txId</var>.
+
+<p>The <var>expression</var> argument specifies the relational expression
+which defines the virtual table.
+
+<p>If <var>flag</var> is specified, it must be either <strong>-global</strong>
+or <strong>-local</strong>. If <strong>-global</strong> is specified,
+the table will become a global (persistent) table in the database
+the transaction specified by <var>txId</var> interacts with.
+If <strong>-local</strong> is specified,
+the table will become a local (transient) table.
+Default is <strong>-local</strong>.
+
+</dl>
+
+<h2>Examples</h2>
+
+<h3>Creating a real table</h3>
+
+<pre>
+duro::table create P {
+        {P# P#}
+        {PNAME NAME}
+        {COLOR COLOR}
+        {WEIGHT WEIGHT}
+        {CITY STRING}
+} {{P#}} $tx
+</pre>
+
+<p>(where tx contains the name of the currently
+active transaction)
+is equivalent to the following Tutorial D statement:
+
+<pre>
+VAR P REAL RELATION { P# P#,
+                      PNAME NAME,
+                      COLOR COLOR,
+                      WEIGHT WEIGHT,
+                      CITY CHAR }
+                    KEY { P# };
+</pre>
+
+<h3>Creating a virtual table</h3>
+
+<pre>
+duro::table expr -global PART_CITIES {P { P#, CITY }} $tx
+</pre>
+
+<p>is equivalent to the following Tutorial D statement:
+
+<pre>
+VAR PART_CITIES VIRTUAL P { P#, CITY };
+</pre>
+
+<p>(Examples taken taken from <cite>TTM</cite>, chapter 6, with a minor modification)
+
+<h2>See Also</h2>
+
+<p><a href="../expressions.html">Expressions</a>
+
+</html>

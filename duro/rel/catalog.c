@@ -719,7 +719,7 @@ _RDB_create_db_in_cat(RDB_transaction *txp)
         if (ret == RDB_ELEMENT_EXISTS) {
             /*
              * The catalog table already exists, but not in this database,
-             * so assign it to this database too
+             * so associate it with this database too
              */
             ret = dbtables_insert(txp->dbp->dbrootp->table_attr_tbp, txp);
             if (ret != RDB_OK) 
@@ -1143,7 +1143,7 @@ _RDB_get_cat_rtable(const char *name, RDB_transaction *txp, RDB_table **tbpp)
     if (attrc > 0)
         free(attrv);
 
-    _RDB_assign_table_db(*tbpp, txp->dbp);
+    _RDB_assoc_table_db(*tbpp, txp->dbp);
 
     ret = RDB_destroy_obj(&arr);
 
@@ -1225,7 +1225,7 @@ _RDB_get_cat_vtable(const char *name, RDB_transaction *txp, RDB_table **tbpp)
     if ((*tbpp)->name == NULL)
         return RDB_NO_MEMORY;
 
-    _RDB_assign_table_db(*tbpp, txp->dbp);
+    _RDB_assoc_table_db(*tbpp, txp->dbp);
     
     return ret;
 error:

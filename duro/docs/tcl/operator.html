@@ -1,0 +1,47 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN"
+"http://www.w3.org/TR/html4/strict.dtd">
+<html lang="en">
+<head>
+<title>Durotcl commands - operator</title>
+<body>
+
+<h2>Name</h2>
+
+<p>duro::operator - create and destroy user-defined operators
+
+<h2>Synopsis</h2>
+
+<p><b>duro::operator</b> arg ?arg ...?
+
+<h2>Description</h2>
+
+<dl>
+<dt><b>duro::operator create</b> <var>opname</var> <b>-returns</b>
+<var>returnType argList body txId</var>
+<dd>
+<p>Creates a read-only operator <var>opname</var> with the return type
+<var>returnType</var>.
+
+<p>The argument <var>argList</var> defines the arguments of the operator.
+<var>argList</var> is a list of element pairs. The first element of each
+pair is a argument name and the second element is the type of the argument.
+
+<p>The argument <var>body</var> contains the Tcl code which implements the
+operator.
+
+<dt><b>duro::operator create</b> <var>opname</var> <b>-updates</b>
+<var>updList argList body txId</var>
+<dd>
+<p>Creates an update operator <var>opname</var>. <var>updList</var> is a
+list of the arguments which are updated by the operator.
+
+<p>For <var>argList</var> and <var>body</var> the same applies as for
+read-only operators.
+
+<dt><b>duro::operator drop</b> <var>opname</var> <var>txId</var>
+<dd>
+<p>Deletes the operator <var>opname</var>.
+
+</dl>
+
+</html>

@@ -1,0 +1,35 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN"
+"http://www.w3.org/TR/html4/strict.dtd">
+<html lang="en">
+<head>
+<title>Durotcl commands - begin</title>
+<body>
+
+<h2>Name</h2>
+
+<p>duro::begin - start a transaction
+
+<h2>Synopsis</h2>
+
+<p><b>duro::begin</b> <var>arg ?arg?</var>
+
+<h2>Description</h2>
+
+<p>Starts a transaction and returns an identifier for the transaction.
+
+<dl>
+<dt><b>duro::begin</b> env dbname
+<dd>
+<p>If invoked with two arguments, <b>duro::begin</b> starts a
+toplevel transaction in the database environment
+specified by <var>env</var> which interacts with the database
+<var>dbname</var>.
+
+<dt><b>duro::begin</b> txId
+<dd>
+<p>If invoked with one argument, <b>duro::begin</b> starts a
+child transaction of the transaction specified by <var>txId</var>.
+
+</dl>
+
+</html>

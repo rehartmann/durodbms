@@ -28,7 +28,7 @@ operator_create_cmd(ClientData data, Tcl_Interp *interp, int objc, Tcl_Obj *CONS
     if (objc != 8) {
         Tcl_WrongNumArgs(interp, 2, objv,
                 "name [-returns rtype | -updates updlist] "
-                "arglist body tx");
+                "arglist body txId");
         return TCL_ERROR;
     }
     if (strcmp (Tcl_GetStringFromObj(objv[3], NULL), "-updates") == 0)
@@ -194,7 +194,7 @@ operator_drop_cmd(ClientData data, Tcl_Interp *interp, int objc, Tcl_Obj *CONST 
     TclState *statep = (TclState *) data;
 
     if (objc != 4) {
-        Tcl_WrongNumArgs(interp, 2, objv, "name tx");
+        Tcl_WrongNumArgs(interp, 2, objv, "name txId");
         return TCL_ERROR;
     }
 
@@ -262,8 +262,7 @@ Duro_call_cmd(ClientData data, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv
     TclState *statep = (TclState *) data;
 
     if (objc < 3) {
-        Tcl_WrongNumArgs(interp, 1, objv,
-                "name arg argtype ?arg argtype ...? tx");
+        Tcl_WrongNumArgs(interp, 1, objv, "name ?arg argtype ...? txId");
         return TCL_ERROR;
     }
 

@@ -11,7 +11,7 @@ void yy_scan_string(const char *txt);
 RDB_transaction *expr_txp;
 RDB_expression *resultp;
 int expr_ret;
-RDB_ltablefunc *expr_ltfp;
+RDB_ltablefn *expr_ltfp;
 void *expr_arg;
 
 int yywrap(void) {
@@ -23,7 +23,7 @@ void yyerror(char *errtxt) {
 }
 
 int
-RDB_parse_expr(const char *txt, RDB_ltablefunc *lt_fp, void *lt_arg,
+RDB_parse_expr(const char *txt, RDB_ltablefn *lt_fp, void *lt_arg,
         RDB_transaction *txp, RDB_expression **exp)
 {
     expr_txp = txp;
@@ -45,7 +45,7 @@ RDB_parse_expr(const char *txt, RDB_ltablefunc *lt_fp, void *lt_arg,
 }
 
 int
-RDB_parse_table(const char *txt, RDB_ltablefunc *lt_fp, void *lt_arg,
+RDB_parse_table(const char *txt, RDB_ltablefn *lt_fp, void *lt_arg,
         RDB_transaction *txp, RDB_table **tbpp)
 {
     int ret;

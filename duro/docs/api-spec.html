@@ -231,6 +231,13 @@ See the release notes for details.
 <li><a href="#is_syserr">RDB_is_syserr</a>
 </ul>
 
+<h3>Expression parsing functions</h3>
+
+<ul>
+<li><a href="#parse_expr">RDB_parse_expr</a>
+<li><a href="#parse_expr">RDB_parse_table</a>
+</ul>
+
 <h3>C structures and definitions</h3>
 
 <ul>
@@ -245,7 +252,7 @@ See the release notes for details.
 
 <h2 id="built-in-types">Built-in types</h2>
 
-<table border="1">
+<table border="1" summary="Built-in types">
 <tr><th>Name<th>RDB_type variable<th>C type
 <tr><td>BOOLEAN<td>RDB_BOOLEAN<td>RDB_bool
 <tr><td>INTEGER<td>RDB_INTEGER<td>RDB_int
@@ -267,7 +274,7 @@ typedef struct {
 } RDB_string_vec;
 
 int
-RDB_create_table(const char *name, RDB_bool persistent,
+RDB_create_table(const char *name, RDB_bool global,
                  int attrc, <a href="#attr">RDB_attr</a> attrv[],
                  int keyc, RDB_string_vec keyv[],
                  RDB_transaction *txp, RDB_table **tbpp);
@@ -280,11 +287,11 @@ the transaction pointed to by <var>txp</var>.
 A pointer to the newly created RDB_table structure
 will be stored at the location pointed to by <var>tbpp</var>.
 
-<p>If <var>persistent</var> is RDB_FALSE, a local (transient) table will be created.
+<p>If <var>global</var> is RDB_FALSE, a local (transient) table will be created.
 In this case, <var>name</var> may be NULL.
 
-<p>If <var>persistent</var> is RDB_TRUE, a persistent (global) table in the database associated
-with the transaction pointed to by <var>txp</var> will be created.
+<p>If <var>persistent</var> is RDB_TRUE, a global (persistent) table in the database
+the transaction pointed to by <var>txp</var> interacts with will be created.
 
 <p>The table will have <var>attrc</var> attributes. The individual
 attributes are specified by the elements of <var>attrv</var>.
@@ -312,7 +319,7 @@ the number of fields in a key, while the elements of the strv field specify
 the names of the key attributes.
 
 <p>At least one candidate key must be specified.
-A candidate key may not be a true subset of another.
+A candidate key may not be a subset of another.
 If a single candidate key is specified, that key
 may be empty (not contain any attribute).
 
@@ -326,7 +333,8 @@ may be empty (not contain any attribute).
 <dt>RDB_INVALID_TRANSACTION
 <dd><var>txp</var> does not point to a running transaction.
 <dt>RDB_TYPE_MISMATCH
-<dd>The type of a default value does not match the type of the attribute.
+<dd>The type of a default value does not match the type of the corresponding
+attribute.
 <dt>RDB_INVALID_ARGUMENT
 <dd>One or more of the arguments are incorrect. For example, a key attribute
 does not appear in <var>attrv</var>, etc.
@@ -349,9 +357,9 @@ RDB_get_table(const char *name, RDB_transaction *txp, RDB_table **tbpp);
 
 <h3>Description</h3>
 
-<p>RDB_get_table looks up a table with name <var>name</var>
-in the environment of the database associated with the transaction
-specified by <var>txp</var> and stores a pointer to a
+<p>RDB_get_table looks up the global table with name <var>name</var>
+in the environment of the database the transaction
+specified by <var>txp</var> interacts with and stores a pointer to a
 RDB_table structure in <var>tbpp</var>.
 
 <h3>Return value</h3>
@@ -491,7 +499,7 @@ RDB_add_table(RDB_table *tbp, RDB_transaction *txp);
 <h3>Description</h3>
 
 <p>RDB_add_table adds the table specified by <var>tbp</var> to the
-database associated with the transaction specified by <var>txp</var>.
+database the transaction specified by <var>txp</var> interacts with.
 
 <p>If the table is a local (transient) table, it is made global
 (persistent).
@@ -511,6 +519,44 @@ database associated with the transaction specified by <var>txp</var>.
 <dd>The table does not have a name.
 <dt>RDB_ELEMENT_EXISTS
 <dd>The table is already associated with the database.
+<dt>RDB_NOT_SUPPORTED
+<dd>The combination of arguments is not supported by the version
+of Duro used. Consult the release notes of that version for details.
+</dl>
+
+<p>The call may also fail for a <a href="#syserr">system error</a>,
+in which case the transaction is implicitly rolled back.
+
+<hr>
+
+<h2 id="remove_table">RDB_remove_table</h2>
+
+<pre>
+#include &lt;rel/rdb.h&gt;
+
+int
+RDB_remove_table(RDB_table *tbp, RDB_transaction *txp);
+</pre>
+
+<h3>Description</h3>
+
+<p>RDB_remove_table removes the table specified by <var>tbp</var> from the
+database the transaction specified by <var>txp</var> interacts with.
+
+<p>If the table is a global table, it is made local.
+
+<h3>Return value</h3>
+
+<p>On success, RDB_OK is returned. On failure, an error code is returned.
+
+<h3>Errors</h3>
+
+<dl>
+<dt>RDB_INVALID_TRANSACTION
+<dd><var>txp</var> does not point to a running transaction.
+<dt>RDB_INVALID_ARGUMENT
+<dd>The table does not belong the database which the transaction interacts
+with.
 <dt>RDB_NOT_SUPPORTED
 <dd>The combination of arguments is not supported by the version
 of Duro used. Consult the release notes of that version for details.
@@ -588,7 +634,7 @@ and stores the result at the location pointed to by <var>resultp</var>.
 <dt>RDB_INVALID_ARGUMENT
 <dd>The table does not have an attribute <var>attrname</var>.
 <dt>RDB_TYPE_MISMATCH
-<dd>The type of a the attribute is not BOOLEAN.
+<dd>The type of the attribute is not BOOLEAN.
 </dl>
 
 <p>The call may also fail for a <a href="#syserr">system error</a>,
@@ -628,7 +674,7 @@ type BOOLEAN.
 <dt>RDB_INVALID_ARGUMENT
 <dd>The table does not have an attribute <var>attrname</var>.
 <dt>RDB_TYPE_MISMATCH
-<dd>The type of a the attribute is not BOOLEAN.
+<dd>The type of the attribute is not BOOLEAN.
 </dl>
 
 <p>The call may also fail for a <a href="#syserr">system error</a>,
@@ -667,7 +713,7 @@ pointed to by <var>resultp</var>.
 <dt>RDB_INVALID_ARGUMENT
 <dd>The table does not have an attribute <var>attrname</var>.
 <dt>RDB_TYPE_MISMATCH
-<dd>The type of a the attribute is not numeric.
+<dd>The type of the attribute is not numeric.
 <dt>RDB_AGGREGATE_UNDEFINED
 <dd>The table is empty.
 </dl>
@@ -739,7 +785,7 @@ and the result is of the same type as the attribute.
 <dt>RDB_INVALID_ARGUMENT
 <dd>The table does not have an attribute <var>attrname</var>.
 <dt>RDB_TYPE_MISMATCH
-<dd>The type of a the attribute is not numeric.
+<dd>The type of the attribute is not numeric.
 </dl>
 
 <p>The call may also fail for a <a href="#syserr">system error</a>,
@@ -759,7 +805,7 @@ RDB_min(RDB_table *tbp, const char *attrname, RDB_transaction *txp,
 
 <h3>Description</h3>
 
-<p>RDB_max computes the minimum over the attribute
+<p>RDB_min computes the minimum over the attribute
 <var>attrname</var> of the table specified by <var>tbp</var>
 and stores the result at the location pointed to by <var>resultp</var>.
 
@@ -778,7 +824,7 @@ and the result is of the same type as the attribute.
 <dt>RDB_INVALID_ARGUMENT
 <dd>The table does not have an attribute <var>attrname</var>.
 <dt>RDB_TYPE_MISMATCH
-<dd>The type of a the attribute is not numeric.
+<dd>The type of the attribute is not numeric.
 </dl>
 
 <p>The call may also fail for a <a href="#syserr">system error</a>,
@@ -817,7 +863,7 @@ and the result is of the same type as the attribute.
 <dt>RDB_INVALID_ARGUMENT
 <dd>The table does not have an attribute <var>attrname</var>.
 <dt>RDB_TYPE_MISMATCH
-<dd>The type of a the attribute is not numeric.
+<dd>The type of the attribute is not numeric.
 </dl>
 
 <p>The call may also fail for a <a href="#syserr">system error</a>,
@@ -1179,6 +1225,39 @@ by <var>tbp</var>.
 
 <p>The attributes of the new table are specified by <var>attrc</var>
 and <var>attrv</var>.
+
+<h3>Return value</h3>
+
+<p>On success, RDB_OK is returned. On failure, an error code is returned.
+
+<h3>Errors</h3>
+
+<dl>
+<dt>RDB_INVALID_ARGUMENT
+<dd>One of the attributes specified by <var>attrv</var> is not an attribute
+of the original table.
+</dl>
+
+<p>The call may also fail for a <a href="#syserr">system error</a>.
+
+<hr>
+
+<h2 id="remove">RDB_remove</h2>
+
+<pre>
+#include &lt;rel/rdb.h&gt;
+
+int
+RDB_remove(RDB_table *, int attrc, char *attrv[], RDB_table **resultpp);
+</pre>
+
+<h3>Description</h3>
+
+<p>RDB_remove creates a relational projection over the table specified
+by <var>tbp</var>.
+
+<p>The new table has the attributes of the original table except those
+specified by <var>attrc</var> and <var>attrv</var>.
 
 <h3>Return value</h3>
 
@@ -3978,7 +4057,7 @@ RDB_create_constraint(const char *name, RDB_expression *constrp,
 <h3>Description</h3>
 
 <p>RDB_create_constraint creates a constraint with the name <var>name</var>
-on the database associated with the transaction specified by <var>txp</var>.
+on the database the transaction specified by <var>txp</var> interacts with.
 
 <h3>Return value</h3>
 
@@ -4189,6 +4268,78 @@ RDB_set_errfile(RDB_environment *, FILE *errfile);
 <h3>Description</h3>
 
 <p>RDB_set_errfile sets a C library FILE * to be used for error messages.
+
+<hr>
+
+<h2 id="strerror">RDB_strerror</h2>
+
+<pre>
+#include &lt;rel/rdb.h&gt;
+
+const char *
+RDB_strerror(int err);
+</pre>
+
+<h3>Description</h3>
+
+<p>Returns a string describing the Duro error code passed in the
+argument <var>err</var>.
+
+<h3>Return value</h3>
+
+<p>Returns the appropriate description string, or an unkown
+error message if the error code is unkown.
+
+<hr>
+
+<h2 id="is_syserr">RDB_is_syserr</h2>
+
+<pre>
+#include &lt;rel/rdb.h&gt;
+
+int
+RDB_is_syserr(int err);
+</pre>
+
+<h3>Description</h3>
+
+<p>Checks whether <var>err</var> represents a system error.
+
+<h3>Return value</h3>
+
+<p>The value returned is nonzero if <var>err</var> represents a system error,
+and zero if it is not.
+
+<hr>
+
+<h2 id="parse_expr">RDB_parse_expr</h2>
+
+<pre>
+#include &lt;dli/parse.h&gt;
+
+typedef RDB_table *RDB_ltablefn(const char *, void *);
+
+int
+RDB_parse_expr(const char *exprtxt, RDB_ltablefn *ltfnp, void *arg, RDB_transaction *,
+        RDB_expression **);
+
+int
+RDB_parse_table(const char *txt, RDB_ltablefn *ltfnp, void *arg, RDB_transaction *,
+        RDB_table **);
+</pre>
+
+<h3>Description</h3>
+
+<p>These function parse the <a href="expressions.html">expression</a>
+specified by <var>exprtxt</var>. If <var>ltfnp</var> is not NULL,
+it must point to a function which is used to look up local tables.
+The function is invoked with the table name and <var>argp</var> as
+arguments. It must return a pointer to the table or NULL if the table was
+not found.
+
+<p>RDB_parse_expr converts an expression into a RDB_expression.
+
+<p>RDB_parse_table converts an expression into a virtual table.
 
 <hr>
 

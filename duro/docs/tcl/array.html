@@ -1,0 +1,53 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN"
+"http://www.w3.org/TR/html4/strict.dtd">
+<html lang="en">
+<head>
+<title>Durotcl commands - array</title>
+<body>
+
+<h2>Name</h2>
+
+<p>duro::array - manipulate Duro arrays
+
+<h2>Synopsis</h2>
+
+<p>duro::array option arg ?arg ...?
+
+<h2>Description</h2>
+
+<dl>
+<dt><b>duro::array create</b> table ?order? txId
+<dd>
+<p>This subcommand creates an array which contains the tuples from table
+<var>tablename</var> and returns an identifier for the array.
+
+<p>If given, <var>order</var> defines the order of the tuples in the array.
+<var>order</var> is a list containg pairs of elements.
+The first element of each pair is an attribute name.
+The second element must be "asc" or "desc".
+
+<dt><b>duro::array drop</b> <var>arrayId</var>
+<dd>
+<p>This subcommand destroys the array <var>arrayId</var>.
+
+<dt><b>duro::array foreach</b> <var>varname arrayId body</var>
+<dd>
+<p>This subcommand implements a loop where the loop variable <var>varname</var>
+takes on values from a the Duro array <var>arrayId</var>.
+The <var>body</var> argument is a Tcl script.
+For each element of the array <var>arrayId</var> (in order from first to
+last), <b>duro::array foreach</b> assigns the element to <var>varname</var>,
+then calls the Tcl interpreter to execute <var>body</var>.
+
+<dt><b>duro::array length</b> <var>arrayId</var>
+<dd>
+<p>This subcommand returns the number of elements in the array <var>arrayId</var>.
+
+<dt><b>duro::array index</b> <var>arrayId index</var>
+<dd>
+<p>This subcommand returns the <var>index</var>'th element of the array
+<var>arrayId</var>.
+
+</dl>
+
+</html>

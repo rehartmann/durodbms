@@ -247,12 +247,19 @@ get_type(Tcl_Obj *objp, Tcl_Interp *interp, RDB_transaction *txp,
             *typp = RDB_create_relation_type(attrc, attrv);
         }
         free(attrv);
-        return RDB_OK;
+        if (*typp == NULL)
+            return TCL_ERROR;
+        return TCL_OK;
     }
 
-    ret = RDB_get_type(Tcl_GetStringFromObj(objp, NULL), txp, typp);
+    ret = RDB_get_type(Tcl_GetString(objp), txp, typp);
     if (ret != RDB_OK) {
-        Duro_dberror(interp, ret);
+        if (ret == RDB_NOT_FOUND) {
+            Tcl_AppendResult(interp, "Invalid type \"", Tcl_GetString(objp),
+                             "\"", NULL);
+        } else {
+            Duro_dberror(interp, ret);
+        }
         return TCL_ERROR;
     }
     return TCL_OK;
@@ -278,16 +285,13 @@ table_create_cmd(TclState *statep, Tcl_Interp *interp, int objc,
         /*
          * Read flag
          */
-        flagstr = Tcl_GetStringFromObj(objv[2], NULL);
-        if ((strcmp(flagstr, "-persistent") == 0)
-                || (strcmp(flagstr, "-global") == 0)) {
-        } else if ((strcmp(flagstr, "-transient") == 0)
-                || (strcmp(flagstr, "-local") == 0)) {
+        flagstr = Tcl_GetString(objv[2]);
+        if (strcmp(flagstr, "-global") == 0) {
+        } else if (strcmp(flagstr, "-local") == 0) {
             persistent = RDB_FALSE;
         } else {
             Tcl_SetResult(interp,
-                    "Wrong flag: must be -global, -persistent,"
-                    " -local, or -transient", TCL_STATIC);
+                    "Wrong flag: must be -global or -local", TCL_STATIC);
             return TCL_ERROR;
         }
     } else if (objc != 6) {
@@ -423,16 +427,13 @@ table_expr_cmd(TclState *statep, Tcl_Interp *interp, int objc,
     RDB_bool persistent = RDB_FALSE;
 
     if (objc == 6) {
-        flagstr = Tcl_GetStringFromObj(objv[2], NULL);
-        if ((strcmp(flagstr, "-persistent") == 0)
-                || (strcmp(flagstr, "-global") == 0)) {
+        flagstr = Tcl_GetString(objv[2]);
+        if (strcmp(flagstr, "-global") == 0) {
             persistent = RDB_TRUE;
-        } else if ((strcmp(flagstr, "-transient") == 0)
-                || (strcmp(flagstr, "-local") == 0)) {
+        } else if (strcmp(flagstr, "-local") == 0) {
         } else {
             Tcl_SetResult(interp,
-                    "Wrong flag: must be -global, -persistent,"
-                    " -local, or -transient", TCL_STATIC);
+                    "Wrong flag: must be -global or -local", TCL_STATIC);
             return TCL_ERROR;
         }
     } else if (objc != 5) {

@@ -353,7 +353,7 @@ error:
 
 /* Associate a RDB_table structure with a RDB_database structure. */
 int
-_RDB_assign_table_db(RDB_table *tbp, RDB_database *dbp)
+_RDB_assoc_table_db(RDB_table *tbp, RDB_database *dbp)
 {
     /* Insert table into table map */
     return RDB_hashmap_put(&dbp->tbmap, tbp->name, &tbp, sizeof (RDB_table *));
@@ -623,31 +623,31 @@ _RDB_legal_name(const char *name)
 }
 
 static void
-assign_systables(RDB_dbroot *dbrootp, RDB_database *dbp)
+assoc_systables(RDB_dbroot *dbrootp, RDB_database *dbp)
 {
-    _RDB_assign_table_db(dbrootp->table_attr_tbp, dbp);
+    _RDB_assoc_table_db(dbrootp->table_attr_tbp, dbp);
 
-    _RDB_assign_table_db(dbrootp->table_attr_defvals_tbp, dbp);
+    _RDB_assoc_table_db(dbrootp->table_attr_defvals_tbp, dbp);
 
-    _RDB_assign_table_db(dbrootp->rtables_tbp, dbp);
+    _RDB_assoc_table_db(dbrootp->rtables_tbp, dbp);
 
-    _RDB_assign_table_db(dbrootp->vtables_tbp, dbp);
+    _RDB_assoc_table_db(dbrootp->vtables_tbp, dbp);
 
-    _RDB_assign_table_db(dbrootp->dbtables_tbp, dbp);
+    _RDB_assoc_table_db(dbrootp->dbtables_tbp, dbp);
 
-    _RDB_assign_table_db(dbrootp->keys_tbp, dbp);
+    _RDB_assoc_table_db(dbrootp->keys_tbp, dbp);
 
-    _RDB_assign_table_db(dbrootp->types_tbp, dbp);
+    _RDB_assoc_table_db(dbrootp->types_tbp, dbp);
 
-    _RDB_assign_table_db(dbrootp->possreps_tbp, dbp);
+    _RDB_assoc_table_db(dbrootp->possreps_tbp, dbp);
 
-    _RDB_assign_table_db(dbrootp->possrepcomps_tbp, dbp);
+    _RDB_assoc_table_db(dbrootp->possrepcomps_tbp, dbp);
 
-    _RDB_assign_table_db(dbrootp->ro_ops_tbp, dbp);
+    _RDB_assoc_table_db(dbrootp->ro_ops_tbp, dbp);
 
-    _RDB_assign_table_db(dbrootp->upd_ops_tbp, dbp);
+    _RDB_assoc_table_db(dbrootp->upd_ops_tbp, dbp);
 
-    _RDB_assign_table_db(dbrootp->tuple_attrs_tbp, dbp);
+    _RDB_assoc_table_db(dbrootp->tuple_attrs_tbp, dbp);
 }
 
 /*
@@ -745,7 +745,7 @@ RDB_create_db_from_env(const char *name, RDB_environment *envp,
         goto error;
     }
 
-    assign_systables(dbrootp, dbp);
+    assoc_systables(dbrootp, dbp);
 
     /* Insert database into list */
     dbp->nextdbp = dbrootp->firstdbp;
@@ -835,7 +835,7 @@ RDB_get_db_from_env(const char *name, RDB_environment *envp,
     if (ret != RDB_OK)
         return ret;
     
-    assign_systables(dbrootp, dbp);
+    assoc_systables(dbrootp, dbp);
     dbp->dbrootp = dbrootp;
     
     /* Insert database into list */
@@ -1092,7 +1092,7 @@ RDB_create_table(const char *name, RDB_bool persistent,
             return ret;
         }
 
-        _RDB_assign_table_db(*tbpp, txp->dbp);
+        _RDB_assoc_table_db(*tbpp, txp->dbp);
     }
 
     return RDB_commit(&tx);
@@ -1352,7 +1352,7 @@ RDB_add_table(RDB_table *tbp, RDB_transaction *txp)
     if (!RDB_tx_is_running(txp))
         return RDB_INVALID_TRANSACTION;
 
-    ret = _RDB_assign_table_db(tbp, txp->dbp);
+    ret = _RDB_assoc_table_db(tbp, txp->dbp);
     if (ret != RDB_OK)
         return ret;
 

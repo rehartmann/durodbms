@@ -1,6 +1,11 @@
 #ifndef RDB_RECMAP_H
 #define RDB_RECMAP_H
 
+/*
+ * Copyright (C) 2003 René Hartmann.
+ * See the file COPYING for redistribution information.
+ */
+
 /* $Id$ */
 
 #include "env.h"
@@ -9,7 +14,7 @@
 #include <stdlib.h>
 
 /*
- * Functions for managing record maps. A recmap map contains
+ * Functions for managing record maps. A record map contains
  * records which consist of a key and a data part.
  */
 

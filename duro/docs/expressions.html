@@ -1,0 +1,113 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN"
+"http://www.w3.org/TR/html4/strict.dtd">
+<html lang="en">
+<head>
+<title>Duro expression syntax</title>
+<body>
+<h2>Duro 0.7 expression syntax</h2>
+
+<p>The language for Duro expressions is a subset of Tutorial D, as defined
+in <cite>TTM</cite>, with a few differences:
+
+<ol>
+<li>Parentheses in RENAME, EXTEND, SUMMARIZE PER, WRAP, and UNWRAP are mandatory.
+<li>Duro uses a dot ('.') operator for tuple attribute extraction, instead of FROM.
+<li>Duro supports a MATCHES operator which performs regular expression matching.
+For example, the expression <code>S MATCHES "A.*Z"</code>
+evaluates to true if and only if S starts with the character "A" and ends with
+the character "Z".
+</ol>
+
+<h3>Duro expression syntax (EBNF notation)</h3>
+
+<pre>
+expression = or_expression | extractor | relation | project | select | rename
+        | extend | summarize | wrap | unwrap | divideby.
+
+project = primary_expression '{' [ALL BUT] id {',' id} '}'.
+
+select = primary_expression WHERE or_expression.
+
+rename = primary_expression RENAME '(' id AS id {',' id AS id} ')'.
+
+relation = primary_expression UNION primary_expression
+        | primary_expression INTERSECT primary_expression
+        | primary_expression MINUS primary_expression
+        | primary_expression JOIN primary_expression.
+
+extend = EXTEND primary_expression ADD '(' expression AS id
+        {',' expression AS id} ')'.
+
+summarize = SUMMARIZE primary_expression PER expression
+           ADD '(' summary AS id {',' summary AS id} ')'.
+
+divideby = primary_expression DIVIDEBY primary_expression
+           PER primary_expression.
+
+summary = COUNT | summary_type '(' expression ')'.
+
+summary_type = SUM | AVG | MAX | MIN | ALL | ANY.
+
+wrap =   primary_expression WRAP '(' wrapping_list ')'.
+
+wrapping_list = '(' id {',' id} ')' AS id
+        {',' '(' id {',' id} ')' AS id ')'}.
+
+unwrap = primary_expression UNWRAP '(' id {',' id} ')'.
+
+or_expression = and_expression | or_expression OR and_expression.
+
+and_expression = not_expression | and_expression AND not_expression.
+
+not_expression = rel_expression | NOT rel_expression.
+
+rel_expression = add_expression | add_expression '=' add_expression
+        | add_expression '<>' add_expression
+        | add_expression '>=' add_expression
+        | add_expression '<=' add_expression
+        | add_expression '>' add_expression
+        | add_expression '<' add_expression
+        | add_expression IN add_expression
+        | add_expression MATCHES add_expression.
+
+add_expression = mul_expression | '+' mul_expression | '-' mul_expression
+        | add_expression '+' mul_expression
+        | add_expression '-' mul_expression
+        | add_expression '||' mul_expression.
+
+mul_expression = primary_expression | mul_expression '*' primary_expression
+        | mul_expression '/' primary_expression.
+
+primary_expression = id | primary_expression '.' id
+        | literal | count_invocation | aggregate_invocation
+        | is_empty_invocation | operator_invocation | '(' expression ')'.
+
+extractor = TUPLE FROM expression.
+
+count_invocation = COUNT '(' expression ')'.
+
+aggregate_invocation = summary_type '(' argument_list ')'.
+
+is_empty_invocation = IS_EMPTY '(' expression ')'.
+
+operator_invocation = id '(' [argument_list] ')'.
+
+argument_list = expression {',' expression}.
+
+literal = string | integer | decimal | float | TRUE | FALSE.
+
+string = '"' {char} '"'.
+
+integer = digit {digit}.
+
+decimal = digit {digit} '.' digit {digit}.
+
+float = digit {digit} '.' digit {digit} ('E' | 'e') digit {digit}.
+
+id = letter {letter | digit | '_' | '#'}.
+
+</pre>
+
+<p>$Id$
+
+</html>
