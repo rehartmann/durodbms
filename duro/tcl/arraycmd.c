@@ -166,8 +166,8 @@ duro_to_tcl(Tcl_Interp *interp, const RDB_object *objp)
     return NULL;
 }
 
-static Tcl_Obj *
-tuple_to_list(Tcl_Interp *interp, RDB_tuple *tplp)
+Tcl_Obj *
+Duro_tuple_to_list(Tcl_Interp *interp, RDB_tuple *tplp)
 {
     int i;
     Tcl_Obj *listobjp = Tcl_NewListObj(0, NULL);
@@ -226,7 +226,7 @@ array_index_cmd(TclState *statep, Tcl_Interp *interp, int objc,
         return TCL_ERROR;
     }
 
-    listobjp = tuple_to_list(interp, tplp);
+    listobjp = Duro_tuple_to_list(interp, tplp);
     if (listobjp == NULL)
         return TCL_ERROR;
 
@@ -262,7 +262,7 @@ array_foreach_cmd(TclState *statep, Tcl_Interp *interp, int objc,
 
     for (i = 0; (ret = RDB_array_get_tuple(arrayp, i, &tplp)) == RDB_OK; i++) {
         /* Set variable */
-        listobjp = tuple_to_list(interp, tplp);
+        listobjp = Duro_tuple_to_list(interp, tplp);
         if (listobjp == NULL)
             return TCL_ERROR;
         

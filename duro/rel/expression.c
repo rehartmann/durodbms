@@ -1000,7 +1000,6 @@ RDB_evaluate(RDB_expression *exp, const RDB_tuple *tup, RDB_transaction *txp,
                 RDB_destroy_obj(&val1);
                 return RDB_TYPE_MISMATCH;
             }
-            printf("s2 = %s\n", (char *) val2.var.bin.datap);
 
             RDB_destroy_obj(valp);
             RDB_init_obj(valp);

@@ -1309,7 +1309,7 @@ _RDB_get_cat_ro_op(const char *name, int argc, RDB_type *argtv[],
     libname = RDB_tuple_get_string(&tpl, "LIB");
     op->modhdl = lt_dlopenext(libname);
     if (op->modhdl == NULL) {
-        RDB_errmsg(txp->dbp->dbrootp->envp, "Cannot open library \"%s\"\n",
+        RDB_errmsg(txp->dbp->dbrootp->envp, "Cannot open library \"%s\"",
                 libname);
         ret = RDB_RESOURCE_NOT_FOUND;
         goto error;
@@ -1317,7 +1317,7 @@ _RDB_get_cat_ro_op(const char *name, int argc, RDB_type *argtv[],
     symname = RDB_tuple_get_string(&tpl, "SYMBOL");
     op->funcp = (RDB_ro_op_func *) lt_dlsym(op->modhdl, symname);
     if (op->funcp == NULL) {
-        RDB_errmsg(txp->dbp->dbrootp->envp, "Symbol \"%s\" not found\n",
+        RDB_errmsg(txp->dbp->dbrootp->envp, "Symbol \"%s\" not found",
                 symname);
         ret = RDB_RESOURCE_NOT_FOUND;
         goto error;
@@ -1413,7 +1413,7 @@ _RDB_get_cat_upd_op(const char *name, int argc, RDB_object *argv[],
     libname = RDB_tuple_get_string(&tpl, "LIB");
     op->modhdl = lt_dlopenext(libname);
     if (op->modhdl == NULL) {
-        RDB_errmsg(txp->dbp->dbrootp->envp, "Cannot open library \"%s\"\n",
+        RDB_errmsg(txp->dbp->dbrootp->envp, "Cannot open library \"%s\"",
                 libname);
         ret = RDB_RESOURCE_NOT_FOUND;
         goto error;
@@ -1421,7 +1421,7 @@ _RDB_get_cat_upd_op(const char *name, int argc, RDB_object *argv[],
     symname = RDB_tuple_get_string(&tpl, "SYMBOL");
     op->funcp = (RDB_upd_op_func *) lt_dlsym(op->modhdl, symname);
     if (op->funcp == NULL) {
-        RDB_errmsg(txp->dbp->dbrootp->envp, "Symbol \"%s\" not found\n",
+        RDB_errmsg(txp->dbp->dbrootp->envp, "Symbol \"%s\" not found",
                 symname);
         ret = RDB_RESOURCE_NOT_FOUND;
         goto error;

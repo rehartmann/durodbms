@@ -43,7 +43,8 @@ duro_cleanup(ClientData data)
     Tcl_Free((char *)statep);
 }
 
-void Duro_dberror(Tcl_Interp *interp, int err)
+void
+Duro_dberror(Tcl_Interp *interp, int err)
 {
     Tcl_AppendResult(interp, "Database error: ", (char *) RDB_strerror(err),
             TCL_STATIC);
@@ -74,6 +75,8 @@ Duro_Init(Tcl_Interp *interp)
     Tcl_CreateCommand(interp, "duro::commit", Duro_commit_cmd,
             (ClientData)statep, NULL);
     Tcl_CreateCommand(interp, "duro::rollback", Duro_rollback_cmd,
+            (ClientData)statep, NULL);
+    Tcl_CreateCommand(interp, "duro::db", Duro_db_cmd,
             (ClientData)statep, NULL);
     Tcl_CreateObjCommand(interp, "duro::table", Duro_table_cmd,
             (ClientData)statep, NULL);

@@ -67,6 +67,8 @@ Duro_env_cmd(ClientData data, Tcl_Interp *interp, int argc, const char *argv[])
         sprintf(handle, "env%d", statep->env_uid);
         entryp = Tcl_CreateHashEntry(&statep->envs, handle, &new);
         Tcl_SetHashValue(entryp, (ClientData)envp);
+
+        RDB_set_errfile(envp, stderr);
         
         Tcl_SetStringObj(Tcl_GetObjResult(interp), handle, -1);
         return RDB_OK;

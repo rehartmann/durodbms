@@ -350,11 +350,11 @@ update_stored_complex(RDB_table *tbp, RDB_expression *condp,
 
     /*
      * Iterate over the records and insert the updated records into
-     * a temporary table.
+     * a temporary table. For the temporary table, only one key is needed.
      */
     ret = _RDB_create_table(NULL, RDB_FALSE,
             tpltyp->var.tuple.attrc, tpltyp->var.tuple.attrv,
-            tbp->keyc, tbp->keyv, txp, &tmptbp);
+            1, tbp->keyv, txp, &tmptbp);
     if (ret != RDB_OK)
         goto cleanup;
 
@@ -1575,8 +1575,7 @@ RDB_union(RDB_table *tbp1, RDB_table *tbp2, RDB_table **resultpp)
     newtbp->typ = tbp1->typ;
     newtbp->name = NULL;
 
-    /* Set keys (The result table becomes all-key.
-     * Yes, it can be done better...)
+    /* Set keys. The result table becomes all-key.
      */
     newtbp->keyc = 1;
     newtbp->keyv = all_key(tbp1);

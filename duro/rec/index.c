@@ -19,12 +19,21 @@ create_index(RDB_recmap *rmp, const char *name, const char *filename,
     }
     ixp->fieldv = NULL;
     ixp->rmp = rmp;
-    
-    ixp->namp = RDB_dup_str(name);
-    ixp->filenamp = RDB_dup_str(filename);
-    if (ixp->namp == NULL || ixp->filenamp == NULL) {
-        ret = RDB_NO_MEMORY;
-        goto error;
+
+    ixp->namp = ixp->filenamp = NULL;
+    if (name != NULL) {  
+        ixp->namp = RDB_dup_str(name);
+        if (ixp->namp == NULL) {
+            ret = RDB_NO_MEMORY;
+            goto error;
+        }
+    }
+    if (filename != NULL) {
+        ixp->filenamp = RDB_dup_str(filename);
+        if (ixp->filenamp == NULL) {
+            ret = RDB_NO_MEMORY;
+            goto error;
+        }
     }
 
     ixp->fieldc = fieldc;
@@ -171,12 +180,15 @@ RDB_delete_index(RDB_index *ixp, RDB_environment *envp, DB_TXN *txid)
     if (ret != 0)
         goto cleanup;
 
-    ret = envp->envp->dbremove(envp->envp, txid, ixp->filenamp, ixp->namp, 0);
+    if (ixp->namp != NULL)
+        ret = envp->envp->dbremove(envp->envp, txid, ixp->filenamp, ixp->namp, 0);
 
 cleanup:
     free(ixp->namp);
     free(ixp->filenamp);
     free(ixp->fieldv);
     free(ixp);
+    if (ret != 0)
+        RDB_errmsg(envp, "Error deleting index: %s", RDB_strerror(ret));
     return RDB_convert_err(ret);
 }

@@ -48,17 +48,24 @@ open_key_index(RDB_table *tbp, int keyno, const RDB_string_vec *keyattrsp,
 {
     int ret;
     int i;
-    char *idx_name = malloc(strlen(tbp->name) + 4);
+    char *idx_name = NULL;
     int *fieldv = malloc(sizeof(int *) * keyattrsp->strc);
 
-    if (idx_name == NULL || fieldv == NULL) {
+    if (fieldv == NULL) {
         ret = RDB_NO_MEMORY;
-        RDB_errmsg(txp->dbp->dbrootp->envp, RDB_strerror(ret));
         goto error;
     }
 
-    /* build index name */            
-    sprintf(idx_name, "%s$%d", tbp->name, keyno);
+    if (tbp->is_persistent) {
+        idx_name = malloc(strlen(RDB_table_name(tbp)) + 4);
+        if (idx_name == NULL) {
+            ret = RDB_NO_MEMORY;
+            goto error;
+        }
+
+        /* build index name */            
+        sprintf(idx_name, "%s$%d", tbp->name, keyno);
+    }
 
     /* get index numbers */
     for (i = 0; i < keyattrsp->strc; i++) {
@@ -205,7 +212,7 @@ compare_field(const void *data1p, size_t len1,
  * create     if RDB_TRUE, create a new table, if RDB_FALSE, open an
  *            existing table
  * ascv       the sort order of the primary index, or NULL if unordered
- * txp        the transaction und which the operation is done
+ * txp        the transaction under which the operation is performed
  */
 int
 _RDB_open_table(RDB_table *tbp,
@@ -1128,6 +1135,36 @@ _RDB_drop_table(RDB_table *tbp, RDB_transaction *txp, RDB_bool rec)
                     return ret;
             }
             break;
+        case RDB_TB_UNION:
+            if (rec) {
+                ret = drop_anon_table(tbp->var._union.tbp1, txp);
+                if (ret != RDB_OK)
+                    return ret;
+                ret = drop_anon_table(tbp->var._union.tbp2, txp);
+                if (ret != RDB_OK)
+                    return ret;
+            }
+            break;
+        case RDB_TB_MINUS:
+            if (rec) {
+                ret = drop_anon_table(tbp->var.minus.tbp1, txp);
+                if (ret != RDB_OK)
+                    return ret;
+                ret = drop_anon_table(tbp->var.minus.tbp2, txp);
+                if (ret != RDB_OK)
+                    return ret;
+            }
+            break;
+        case RDB_TB_INTERSECT:
+            if (rec) {
+                ret = drop_anon_table(tbp->var.intersect.tbp1, txp);
+                if (ret != RDB_OK)
+                    return ret;
+                ret = drop_anon_table(tbp->var.intersect.tbp2, txp);
+                if (ret != RDB_OK)
+                    return ret;
+            }
+            break;
         case RDB_TB_JOIN:
             if (rec) {
                 ret = drop_anon_table(tbp->var.join.tbp1, txp);
@@ -1158,7 +1195,33 @@ _RDB_drop_table(RDB_table *tbp, RDB_transaction *txp, RDB_bool rec)
             }
             RDB_drop_type(tbp->typ, NULL);
             break;
-        default: ;
+        case RDB_TB_RENAME:
+            if (rec) {
+                ret = drop_anon_table(tbp->var.rename.tbp, txp);
+                if (ret != RDB_OK)
+                    return ret;
+            }
+            for (i = 0; i < tbp->var.rename.renc; i++) {
+                free(tbp->var.rename.renv[i].from);
+                free(tbp->var.rename.renv[i].to);
+            }
+            break;
+        case RDB_TB_SUMMARIZE:
+            if (rec) {
+                ret = drop_anon_table(tbp->var.summarize.tb1p, txp);
+                if (ret != RDB_OK)
+                    return ret;
+                ret = drop_anon_table(tbp->var.summarize.tb2p, txp);
+                if (ret != RDB_OK)
+                    return ret;
+            }
+            for (i = 0; i < tbp->var.summarize.addc; i++) {
+                if (tbp->var.summarize.addv[i].op != RDB_COUNT
+                        && tbp->var.summarize.addv[i].op != RDB_COUNTD)
+                    RDB_drop_expr(tbp->var.summarize.addv[i].exp);
+                free(tbp->var.summarize.addv[i].name);
+            }
+            break;
     }
 
     _RDB_free_table(tbp, txp->dbp->dbrootp->envp);

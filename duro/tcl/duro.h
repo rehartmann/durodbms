@@ -40,6 +40,9 @@ int
 Duro_table_cmd(ClientData data, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[]);
 
 int
+Duro_db_cmd(ClientData data, Tcl_Interp *interp, int argc, char *argv[]);
+
+int
 Duro_array_cmd(ClientData data, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[]);
 
 int
@@ -60,5 +63,8 @@ Duro_dberror(Tcl_Interp *interp, int err);
 int
 Duro_get_table(TclState *, Tcl_Interp *, const char *name, RDB_transaction *,
         RDB_table **);
+
+Tcl_Obj *
+Duro_tuple_to_list(Tcl_Interp *, RDB_tuple *);
 
 #endif

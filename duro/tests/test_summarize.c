@@ -88,7 +88,7 @@ int
 test_summarize(RDB_database *dbp)
 {
     RDB_transaction tx;
-    RDB_table *tbp, *tbp2, *vtbp, *projtbp;
+    RDB_table *tbp, *tbp2, *vtbp, *untbp, *projtbp;
     int ret;
     RDB_summarize_add addv[3];
 
@@ -111,7 +111,16 @@ test_summarize(RDB_database *dbp)
 
     printf("Creating EMPS1 union EMPS2\n");
 
-    ret = RDB_union(tbp2, tbp, &vtbp);
+    ret = RDB_union(tbp2, tbp, &untbp);
+    if (ret != RDB_OK) {
+        RDB_rollback(&tx);
+        return ret;
+    }
+
+    /* Give the table a name, because both arguments of SUMMARIZE
+     * must not share an unnamed table.
+     */
+    ret = RDB_set_table_name(untbp, "UTABLE", &tx);
     if (ret != RDB_OK) {
         RDB_rollback(&tx);
         return ret;
@@ -120,7 +129,7 @@ test_summarize(RDB_database *dbp)
     printf("Summarizing union PER { DEPTNO } ADD COUNT AS COUNT_EMPS,\n");
     printf("    SUM(SALARY) AS SUM_SALARY, AVG(SALARY) AS AVG_SALARY\n");
 
-    ret = RDB_project(vtbp, 1, &projattr, &projtbp);
+    ret = RDB_project(untbp, 1, &projattr, &projtbp);
     if (ret != RDB_OK) {
         RDB_rollback(&tx);
         return ret;
@@ -137,7 +146,7 @@ test_summarize(RDB_database *dbp)
     addv[2].exp = RDB_expr_attr("SALARY");
     addv[2].name = "AVG_SALARY";
 
-    ret = RDB_summarize(vtbp, projtbp, 3, addv, &vtbp);
+    ret = RDB_summarize(untbp, projtbp, 3, addv, &vtbp);
     if (ret != RDB_OK) {
         RDB_rollback(&tx);
         return ret;
@@ -159,6 +168,8 @@ test_summarize(RDB_database *dbp)
 
     printf("Dropping summarize\n");
     RDB_drop_table(vtbp, &tx);
+
+    RDB_drop_table(untbp, &tx);
 
     printf("End of transaction\n");
     return RDB_commit(&tx);

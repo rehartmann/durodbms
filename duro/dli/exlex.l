@@ -58,6 +58,10 @@ AS      {
         return AS;
         }
 
+EXTEND  {
+        return EXTEND;
+}
+
 RENAME  {
         return RENAME;
         }
@@ -86,6 +90,10 @@ AND     {
         return AND;
 }
 
+NOT     {
+        return NOT;
+}
+
 TRUE    {
         yylval = RDB_bool_const(RDB_TRUE);
 }
@@ -94,12 +102,43 @@ FALSE   {
         yylval = RDB_bool_const(RDB_FALSE);
 }
 
+COUNT    {
+         return TOK_COUNT;
+}
+
+COUNTD   {
+         return TOK_COUNTD;
+}
+
+SUM      {
+         return TOK_SUM;
+}
+
+SUMD     {
+         return TOK_SUMD;
+}
+
+AVG     {
+         return TOK_AVG;
+}
+
+AVGD     {
+         return TOK_AVGD;
+}
+
+MAX     {
+         return TOK_MAX;
+}
+
+MIN     {
+         return TOK_MIN;
+}
+
 \|\|    {
         return CONCAT;
 }
 
-[a-zA-Z][a-zA-Z0-9]* {
-        printf("ID: %s\n", yytext);
+[a-zA-Z][a-zA-Z0-9_#]* {
 	yylval = RDB_expr_attr(yytext);
         return ID;
         }
@@ -129,7 +168,7 @@ FALSE   {
         return DECIMAL;
         }
 
-[=><+\-*/]   return yytext[0];
+[=><+\-*/{},()]   return yytext[0];
 
 %%
 

@@ -1,4 +1,4 @@
-
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN"
 "http://www.w3.org/TR/html4/strict.dtd">
 <html lang="en">
 <head>
@@ -370,6 +370,7 @@ RDB_drop_table(RDB_table *tbp, RDB_transaction *);
 
 <p>RDB_drop_table deletes the table specified by <var>tbp</var>
 and frees all resources associated with that table.
+If the table is virtual, its unnamed child tables are also deleted.
 
 <h3>Return value</h3>
 
@@ -1149,6 +1150,8 @@ of a SUMMARIZE T1 PER T2 (ADD1, ...), where T1 is the table specified by
 <var>tb1p</var>, T2 is the table specified by <var>tb2p</var>, and ADD1 ...
 is specified by <var>addc</var> and <var>addv</var>.
 A pointer to the result table is stored in resultpp.
+
+<p>The two argument tables must not share an unnamed child table.
 
 <h3>Return value</h3>
 

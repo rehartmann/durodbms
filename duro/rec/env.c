@@ -105,5 +105,6 @@ RDB_errmsg(RDB_environment *envp, const char *format, ...)
         va_start(ap,format);
         vfprintf(envp->errfilep, format, ap);
         va_end(ap);
+        fputs("\n", envp->errfilep);
     }
 }

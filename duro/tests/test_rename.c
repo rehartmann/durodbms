@@ -105,9 +105,6 @@ test_rename(RDB_database *dbp)
 error:
     RDB_destroy_tuple(&tpl);
 
-    printf("Dropping renaming\n");
-    RDB_drop_table(vtbp, &tx);
-
     printf("Dropping rename\n");
     RDB_drop_table(vtbp, &tx);
 

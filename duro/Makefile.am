@@ -31,7 +31,7 @@ tests_libpoint_la_SOURCES = tests/point.c tests/point.h
 
 tests_libplus_la_SOURCES = tests/plus.c
 
-TESTS = tests/testall
+TESTS = tests/testall tests/test_tables.tcl
 
 TESTS_ENVIRONMENT = BDB_HOME=$(BDB_HOME)
 
@@ -50,7 +50,7 @@ rec/cursor.h rec/env.h rec/index.h rec/recmap.h \
 rel/rdb.h rel/typeimpl.h dli/parse.h
 
 libdurotcl_la_SOURCES = tcl/duro.c tcl/duro.h tcl/envcmd.c tcl/txcmd.c \
-        tcl/tablecmd.c tcl/arraycmd.c tcl/opcmd.c
+        tcl/tablecmd.c tcl/dbcmd.c tcl/arraycmd.c tcl/opcmd.c
 
 libdurotcl_la_LIBADD = -L$(BDB_HOME)/lib libduro.la -ldb
 

@@ -2,6 +2,7 @@
 
 #include "rdb.h"
 #include "internal.h"
+#include <signal.h>
 
 typedef struct RDB_rmlink {
     RDB_recmap *rmp;
@@ -32,7 +33,8 @@ RDB_begin_tx(RDB_transaction *txp, RDB_database *dbp,
     return RDB_OK;
 }
 
-static void cleanup_storage(RDB_transaction *txp)
+static void
+cleanup_storage(RDB_transaction *txp)
 {
     RDB_rmlink *rmlinkp, *hrmlinkp;
     RDB_ixlink *ixlinkp, *hixlinkp;
@@ -57,7 +59,8 @@ static void cleanup_storage(RDB_transaction *txp)
     txp->delixp = NULL;
 }
 
-static int del_storage(RDB_transaction *txp)
+static int
+del_storage(RDB_transaction *txp)
 {
     RDB_rmlink *rmlinkp;
     RDB_ixlink *ixlinkp;
@@ -80,7 +83,8 @@ static int del_storage(RDB_transaction *txp)
     return ret;
 }
 
-static int close_storage(RDB_transaction *txp)
+static int
+close_storage(RDB_transaction *txp)
 {
     RDB_rmlink *rmlinkp;
     RDB_ixlink *ixlinkp;
@@ -112,8 +116,10 @@ RDB_commit(RDB_transaction *txp)
         return RDB_INVALID_TRANSACTION;
 
     ret = txp->txid->commit(txp->txid, 0);
-    if (ret != 0)
+    if (ret != 0) {
+        RDB_errmsg(txp->dbp->dbrootp->envp, RDB_strerror(ret));
         return RDB_convert_err(ret);
+    }
 
     if (txp->parentp != NULL) {
         /* Move recmaps and indexes to parent tx */
@@ -144,8 +150,9 @@ RDB_commit(RDB_transaction *txp)
     } else {
         /* Delete recmaps and indexes scheduled for deletion */
         ret = del_storage(txp);
-        if (ret != RDB_OK)
+        if (ret != RDB_OK) {
             return ret;
+        }
     }
 
     txp->txid = NULL;
@@ -162,8 +169,10 @@ RDB_rollback(RDB_transaction *txp)
         return RDB_INVALID_TRANSACTION;
 
     ret = txp->txid->abort(txp->txid);
-    if (ret != 0)
+    if (ret != 0) {
+        RDB_errmsg(txp->dbp->dbrootp->envp, RDB_strerror(ret));        
         return RDB_convert_err(ret);
+    }
 
     /*
      * Delete recmap list
