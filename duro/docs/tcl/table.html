@@ -19,7 +19,7 @@
 <dt><b>duro::table add</b> <var>tablename txId</var>
 <dd>
 <p>This subcommand adds the table <var>tablename</var> to the database
-on which the transaction identified by <var>txId</var> interacts.
+which the transaction identified by <var>txId</var> interacts with.
 
 <dt><b>duro::table contains</b> <var>tablename tuple txId</var>
 <dd>
@@ -39,7 +39,7 @@ under the control of the transaction specified by <var>txId</var>.
 <var>attrs</var> must be a list of lists, with one sublist for each
 attribute. The sublist must contain two or three elements.
 The first element of the sublist is the attribute name.
-The second element is the attribute name. The third element, if given,
+The second element is the attribute type. The third element, if given,
 specifies the default value for the attribute.
 
 <p>The <var>keys</var> argument specifies the candidate keys and, like
@@ -121,5 +121,7 @@ VAR PART_CITIES VIRTUAL P { P#, CITY };
 <h2>See Also</h2>
 
 <p><a href="../expressions.html">Expressions</a>
+
+<p>$Id$
 
 </html>

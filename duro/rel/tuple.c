@@ -292,10 +292,10 @@ RDB_rename_tuple(const RDB_object *tup, int renc, RDB_renaming renv[],
     RDB_hashmap_iter it;
     void *datap;
     char *keyp;
-/*
+
     if (tup->kind != RDB_OB_TUPLE)
         return RDB_INVALID_ARGUMENT;
-*/
+
     /* Copy attributes to tup */
     RDB_init_hashmap_iter(&it, (RDB_hashmap *)&tup->var.tpl_map);
     while ((datap = RDB_hashmap_next(&it, &keyp, NULL)) != NULL) {
@@ -317,6 +317,114 @@ RDB_rename_tuple(const RDB_object *tup, int renc, RDB_renaming renv[],
     RDB_destroy_hashmap_iter(&it);
 
     return RDB_OK;
+}
+
+static int
+find_rename_to(int renc, RDB_renaming renv[], const char *name)
+{
+    int i;
+
+    for (i = 0; i < renc && strcmp(renv[i].to, name) != 0; i++);
+    if (i >= renc)
+        return -1; /* not found */
+    /* found */
+    return i;
+}
+
+int
+_RDB_invrename_tuple(const RDB_object *tup, int renc, RDB_renaming renv[],
+                 RDB_object *restup)
+{
+    RDB_hashmap_iter it;
+    void *datap;
+    char *keyp;
+
+    if (tup->kind != RDB_OB_TUPLE)
+        return RDB_INVALID_ARGUMENT;
+
+    /* Copy attributes to tup */
+    RDB_init_hashmap_iter(&it, (RDB_hashmap *)&tup->var.tpl_map);
+    while ((datap = RDB_hashmap_next(&it, &keyp, NULL)) != NULL) {
+        int ret;
+        int ai = find_rename_to(renc, renv, keyp);
+
+        if (ai >= 0) {
+            ret = RDB_tuple_set(restup, renv[ai].from, (RDB_object *)datap);
+        } else {
+            ret = RDB_tuple_set(restup, keyp, (RDB_object *)datap);
+        }
+
+        if (ret != RDB_OK) {
+            RDB_destroy_hashmap_iter(&it);
+            return ret;
+        }
+    }
+
+    RDB_destroy_hashmap_iter(&it);
+
+    return RDB_OK;
+}
+
+/*
+ * Invert wrap operation on tuple
+ */
+int
+_RDB_invwrap_tuple(const RDB_object *tplp, int wrapc, RDB_wrapping wrapv[],
+        RDB_object *restplp)
+{
+    int i;
+    int ret;
+    char **attrv = malloc(sizeof(char *) * wrapc);
+
+    if (attrv == NULL)
+        return RDB_NO_MEMORY;
+
+    /*
+     * Create unwrapped tuple
+     */
+
+    for (i = 0; i < wrapc; i++)
+        attrv[i] = wrapv[i].attrname;
+
+    ret = RDB_unwrap_tuple(tplp, wrapc, attrv, restplp);
+    free(attrv);
+    return ret;
+}
+
+int
+_RDB_invunwrap_tuple(const RDB_object *tplp, int attrc, char *attrv[],
+        RDB_type *srctuptyp, RDB_object *restplp)
+{
+    int ret;
+    int i, j;
+    RDB_wrapping *wrapv = malloc(sizeof(RDB_wrapping) * attrc);
+    
+    if (wrapv == NULL)
+        return RDB_NO_MEMORY;
+
+    /*
+     * Create wrapped tuple
+     */
+
+    for (i = 0; i < attrc; i++) {
+        RDB_type *tuptyp = _RDB_tuple_type_attr(srctuptyp, attrv[i])->typ;
+
+        wrapv[i].attrc = tuptyp->var.tuple.attrc;
+        wrapv[i].attrv = malloc(sizeof(char *) * tuptyp->var.tuple.attrc);
+        if (wrapv[i].attrv == NULL)
+            return RDB_NO_MEMORY;
+        for (j = 0; j < wrapv[i].attrc; j++)
+            wrapv[i].attrv[j] = tuptyp->var.tuple.attrv[j].name;
+
+        wrapv[i].attrname = attrv[i];        
+    }
+
+    ret = RDB_wrap_tuple(tplp, attrc, wrapv, restplp);
+
+    for (i = 0; i < attrc; i++)
+        free(wrapv[i].attrv);
+    free(wrapv);
+    return ret;
 }
 
 /* Copy all attributes from one tuple to another. */

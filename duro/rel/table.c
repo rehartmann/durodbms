@@ -826,7 +826,8 @@ error:
 }
 
 static RDB_string_vec *
-dup_rename_keys(int keyc, RDB_string_vec *keyv, int renc, RDB_renaming renv[]) {
+dup_rename_keys(int keyc, RDB_string_vec *keyv, int renc, RDB_renaming renv[])
+{
     RDB_string_vec *newkeyv;
     int i, j;
 

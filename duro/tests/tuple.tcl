@@ -5,7 +5,7 @@ exec tclsh "$0"
 # $Id$
 #
 # Test create, insert, UNWRAP on table with tuple attribute
-#
+# Test tuple project, EXTEND, JOIN, WRAP, and UNWRAP
 
 load .libs/libdurotcl.so
 
@@ -42,6 +42,10 @@ duro::db create TEST $dbenv
 
 set tx [duro::begin $dbenv TEST]
 
+#
+# Test table UNWRAP
+#
+
 # Create table with tuple attribute
 duro::table create T1 {
     {SCATTR STRING}
@@ -57,7 +61,7 @@ duro::table create T1 {
 duro::insert T1 {SCATTR Bla TPATTR {A 1 B Blubb T {C Blip}}} $tx
 
 # Create UNWRAP table
-duro::table expr -global T2 {T1 UNWRAP (TPATTR)} $tx
+duro::table expr -global UW {T1 UNWRAP (TPATTR)} $tx
 
 duro::commit $tx
 
@@ -73,31 +77,61 @@ set a [duro::array create T1 $tx]
 checkarray $a { {SCATTR Bla TPATTR {T {C Blip} A 1 B Blubb}} }
 duro::array drop $a
 
-set a [duro::array create T2 $tx]
+set a [duro::array create UW $tx]
 checkarray $a { {T {C Blip} SCATTR Bla A 1 B Blubb} }
 duro::array drop $a
 
 set tpl {T {C Blip} SCATTR Bla A 1 B Blubb}
 
-if {![duro::table contains T2 $tpl $tx]} {
-    puts "T2 should contain $tpl, but does not"
+if {![duro::table contains UW $tpl $tx]} {
+    puts "UW should contain $tpl, but does not"
     exit 1
 }
 
 set tpl {T {C Blop} SCATTR Bla A 1 B Blubb}
 
-if {[duro::table contains T2 $tpl $tx]} {
-    puts "T2 should not contain $tpl, but does"
+if {[duro::table contains UW $tpl $tx]} {
+    puts "UW should not contain $tpl, but does"
     exit 1
 }
 
-duro::table expr T3 {T1 WHERE TPATTR.A = 1} $tx
+duro::table expr S {T1 WHERE TPATTR.A = 1} $tx
 
-set a [duro::array create T3 $tx]
+set a [duro::array create S $tx]
 checkarray $a { {SCATTR Bla TPATTR {T {C Blip} A 1 B Blubb}} }
 duro::array drop $a
 
-# Check tuple operations
+# Test insert into UNWRAP table
+
+set tpl {T {C Bleb} SCATTR Ble A 1 B Blubb}
+duro::insert UW $tpl $tx
+if {![duro::table contains UW $tpl $tx]} {
+    puts "UW should contain $tpl, but does not"
+    exit 1
+}
+
+#
+# Test WRAP table
+#
+
+duro::table create T2 {
+    {SATTR STRING}
+    {IATTR INTEGER}
+} {{SATTR}} $tx
+
+duro::table expr -global W {T2 WRAP ((SATTR, IATTR) AS A)} $tx
+
+set tpl {A {SATTR a IATTR 1}}
+duro::insert T2 {SATTR a IATTR 1} $tx
+duro::insert W $tpl $tx
+if {![duro::table contains W $tpl $tx]} {
+    puts "W should contain $tpl, but does not"
+    exit 1
+}
+
+#
+# Test tuple operations
+#
 
 set tpl [duro::expr {TUPLE {A 1, B "Bee"} {B}} $tx]
 set stpl {B Bee}
@@ -150,8 +184,9 @@ if {![tequal $tpl $stpl]} {
 
 # Drop tables
 
-duro::table drop T3 $tx
-duro::table drop T2 $tx
+duro::table drop S $tx
+duro::table drop UW $tx
 duro::table drop T1 $tx
+duro::table drop T2 $tx
 
 duro::commit $tx

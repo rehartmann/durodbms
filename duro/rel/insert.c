@@ -90,6 +90,63 @@ insert_join(RDB_table *tbp, const RDB_object *tup, RDB_transaction *txp)
     return RDB_commit(&tx);
 }
 
+static int
+insert_rename(RDB_table *tbp, const RDB_object *tup, RDB_transaction *txp)
+{
+    RDB_object tpl;
+    int ret;
+
+    RDB_init_obj(&tpl);
+    ret = _RDB_invrename_tuple(tup, tbp->var.rename.renc, tbp->var.rename.renv,
+            &tpl);
+    if (ret != RDB_OK)
+        goto cleanup;
+
+    ret = RDB_insert(tbp->var.rename.tbp, &tpl, txp);
+
+cleanup:
+    RDB_destroy_obj(&tpl);
+    return ret;
+}
+
+static int
+insert_wrap(RDB_table *tbp, const RDB_object *tup, RDB_transaction *txp)
+{
+    RDB_object tpl;
+    int ret;
+
+    RDB_init_obj(&tpl);
+    ret = _RDB_invwrap_tuple(tup, tbp->var.wrap.wrapc, tbp->var.wrap.wrapv,
+            &tpl);
+    if (ret != RDB_OK)
+        goto cleanup;
+
+    ret = RDB_insert(tbp->var.wrap.tbp, &tpl, txp);
+
+cleanup:
+    RDB_destroy_obj(&tpl);
+    return ret;
+}
+
+static int
+insert_unwrap(RDB_table *tbp, const RDB_object *tup, RDB_transaction *txp)
+{
+    RDB_object tpl;
+    int ret;
+
+    RDB_init_obj(&tpl);
+    ret = _RDB_invunwrap_tuple(tup, tbp->var.unwrap.attrc, tbp->var.unwrap.attrv,
+            tbp->var.unwrap.tbp->typ->var.basetyp, &tpl);
+    if (ret != RDB_OK)
+        goto cleanup;
+
+    ret = RDB_insert(tbp->var.unwrap.tbp, &tpl, txp);
+
+cleanup:
+    RDB_destroy_obj(&tpl);
+    return ret;
+}
+
 void
 _RDB_set_tuple_type(RDB_object *objp, RDB_type *typ)
 {
@@ -110,7 +167,7 @@ _RDB_set_tuple_type(RDB_object *objp, RDB_type *typ)
 }
 
 int
-RDB_insert(RDB_table *tbp, const RDB_object *tup, RDB_transaction *txp)
+RDB_insert(RDB_table *tbp, const RDB_object *tplp, RDB_transaction *txp)
 {
     int ret;
     RDB_bool b;
@@ -137,7 +194,7 @@ RDB_insert(RDB_table *tbp, const RDB_object *tup, RDB_transaction *txp)
                 
                 fnop = RDB_hashmap_get(&tbp->var.stored.attrmap,
                         tuptyp->var.tuple.attrv[i].name, NULL);
-                valp = RDB_tuple_get(tup, tuptyp->var.tuple.attrv[i].name);
+                valp = RDB_tuple_get(tplp, tuptyp->var.tuple.attrv[i].name);
 
                 /* If there is no value, check if there is a default */
                 if (valp == NULL) {
@@ -174,12 +231,12 @@ RDB_insert(RDB_table *tbp, const RDB_object *tup, RDB_transaction *txp)
         }
         case RDB_TB_SELECT:
         case RDB_TB_SELECT_PINDEX:
-            ret = RDB_evaluate_bool(tbp->var.select.exprp, tup, txp, &b);
+            ret = RDB_evaluate_bool(tbp->var.select.exprp, tplp, txp, &b);
             if (ret != RDB_OK)
                 return ret;
             if (!b)
                 return RDB_PREDICATE_VIOLATION;
-            return RDB_insert(tbp->var.select.tbp, tup, txp);
+            return RDB_insert(tbp->var.select.tbp, tplp, txp);
         case RDB_TB_MINUS:
             return RDB_NOT_SUPPORTED;
         case RDB_TB_UNION:
@@ -187,21 +244,21 @@ RDB_insert(RDB_table *tbp, const RDB_object *tup, RDB_transaction *txp)
             int ret2;
 
             /* !! may be very inefficient */        
-            if (RDB_table_contains(tbp->var._union.tbp1, tup, txp) == RDB_OK
-                    || RDB_table_contains(tbp->var._union.tbp2, tup, txp) == RDB_OK)
+            if (RDB_table_contains(tbp->var._union.tbp1, tplp, txp) == RDB_OK
+                    || RDB_table_contains(tbp->var._union.tbp2, tplp, txp) == RDB_OK)
                 return RDB_ELEMENT_EXISTS;
              
-            /* Try to insert tup into both tables. The insertion into the union
+            /* Try to insert the tuple into both tables. The insertion into the union
              * fails if (1) one of the inserts fails for a reason other than
              * a predicate violation or (2) if both inserts fail because of
              * a predicate violation.
              */
-            ret = RDB_insert(tbp->var._union.tbp1, tup, txp);
+            ret = RDB_insert(tbp->var._union.tbp1, tplp, txp);
             if (ret != RDB_OK) {
                 if (ret != RDB_KEY_VIOLATION && ret != RDB_PREDICATE_VIOLATION)
                     return ret;
             }
-            ret2 = RDB_insert(tbp->var._union.tbp2, tup, txp);
+            ret2 = RDB_insert(tbp->var._union.tbp2, tplp, txp);
             if (ret2 != RDB_OK) {
                 if (ret2 != RDB_KEY_VIOLATION && ret2 != RDB_PREDICATE_VIOLATION)
                     return ret2;
@@ -214,9 +271,9 @@ RDB_insert(RDB_table *tbp, const RDB_object *tup, RDB_transaction *txp)
             }
         }
         case RDB_TB_INTERSECT:
-             return insert_intersect(tbp, tup, txp);
+             return insert_intersect(tbp, tplp, txp);
         case RDB_TB_JOIN:
-             return insert_join(tbp, tup, txp);
+             return insert_join(tbp, tplp, txp);
         case RDB_TB_EXTEND:
         {
             int i;
@@ -228,12 +285,12 @@ RDB_insert(RDB_table *tbp, const RDB_object *tup, RDB_transaction *txp)
                 RDB_object *valp;
                 RDB_bool iseq;
                 
-                valp = RDB_tuple_get(tup, vattrp->name);
+                valp = RDB_tuple_get(tplp, vattrp->name);
                 if (valp == NULL) {
                     return RDB_INVALID_ARGUMENT;
                 }
                 RDB_init_obj(&val);
-                ret = RDB_evaluate(vattrp->exp, tup, txp, &val);
+                ret = RDB_evaluate(vattrp->exp, tplp, txp, &val);
                 if (ret != RDB_OK) {
                     RDB_destroy_obj(&val);
                     return ret;
@@ -245,20 +302,20 @@ RDB_insert(RDB_table *tbp, const RDB_object *tup, RDB_transaction *txp)
             }
         
             /*
-             * Insert the tuple (the additional attribute(s) don't do any harm)
+             * Insert the tplple (the additional attribute(s) don't do any harm)
              */
-             return RDB_insert(tbp->var.extend.tbp, tup, txp);
+             return RDB_insert(tbp->var.extend.tbp, tplp, txp);
         }
         case RDB_TB_PROJECT:
-             return RDB_insert(tbp->var.project.tbp, tup, txp);
+             return RDB_insert(tbp->var.project.tbp, tplp, txp);
         case RDB_TB_SUMMARIZE:
              return RDB_NOT_SUPPORTED;
         case RDB_TB_RENAME:
-             return RDB_NOT_SUPPORTED;
+             return insert_rename(tbp, tplp, txp);
         case RDB_TB_WRAP:
-             return RDB_NOT_SUPPORTED;
+             return insert_wrap(tbp, tplp, txp);
         case RDB_TB_UNWRAP:
-             return RDB_NOT_SUPPORTED;
+             return insert_unwrap(tbp, tplp, txp);
         case RDB_TB_SDIVIDE:
              return RDB_NOT_SUPPORTED;
     }

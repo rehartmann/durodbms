@@ -4,7 +4,7 @@ exec tclsh "$0"
 
 # $Id$
 #
-# Test create, insert with UNION, INTERSECT, and JOIN
+# Test create, insert with UNION, INTERSECT, JOIN, RENAME
 #
 
 load .libs/libdurotcl.so
@@ -64,6 +64,7 @@ duro::table expr -global TU {T1 UNION T2} $tx
 duro::table expr -global TM {T1 MINUS T2} $tx
 duro::table expr -global TI {T1 INTERSECT T2} $tx
 duro::table expr -global TJ {TU JOIN T3} $tx
+duro::table expr -global TR {T1 RENAME (K AS KN, S1 AS SN)} $tx
 
 duro::commit $tx
 
@@ -99,6 +100,15 @@ duro::insert TU $tpl $tx
 
 if {![duro::table contains TU $tpl $tx]} {
     puts "Insert into TU was not successful."
+    exit 1
+}
+
+set tpl {KN 5 SN Ballermann}
+
+duro::insert TR $tpl $tx
+
+if {![duro::table contains TR $tpl $tx]} {
+    puts "Insert into TR was not successful."
     exit 1
 }
 

@@ -62,50 +62,21 @@ project_contains(RDB_table *tbp, const RDB_object *tup, RDB_transaction *txp)
     }
 }
 
-int
-_RDB_find_rename_to(int renc, RDB_renaming renv[], const char *name)
-{
-    int i;
-
-    for (i = 0; i < renc && strcmp(renv[i].to, name) != 0; i++);
-    if (i >= renc)
-        return -1; /* not found */
-    /* found */
-    return i;
-}
-
 static int    
 rename_contains(RDB_table *tbp, const RDB_object *tup, RDB_transaction *txp)
 {
     RDB_object tpl;
-    int i;
     int ret;
-    RDB_type *tuptyp = tbp->typ->var.basetyp;
 
     RDB_init_obj(&tpl);
-    for (i = 0; i < tuptyp->var.tuple.attrc; i++) {
-        /* has the attribute been renamed? */
-        char *attrname = tuptyp->var.tuple.attrv[i].name;
-        int ai = _RDB_find_rename_to(tbp->var.rename.renc, tbp->var.rename.renv,
-                attrname);
+    ret = _RDB_invrename_tuple(tup, tbp->var.rename.renc, tbp->var.rename.renv,
+            &tpl);
+    if (ret != RDB_OK)
+        goto cleanup;
 
-        if (ai >= 0) { /* Yes, entry found */
-            ret = RDB_tuple_set(&tpl, tbp->var.rename.renv[ai].from,
-                        RDB_tuple_get(tup, tbp->var.rename.renv[ai].to));
-        } else {
-            ret = RDB_tuple_set(&tpl, attrname, RDB_tuple_get(tup, attrname));
-        }
-        if (ret != RDB_OK) {
-            if (RDB_is_syserr(ret)) {
-                RDB_errmsg(txp->dbp->dbrootp->envp, RDB_strerror(ret));
-                RDB_rollback_all(txp);
-            }
-            goto error;
-        }
-    }
     ret = RDB_table_contains(tbp->var.rename.tbp, &tpl, txp);
 
-error:
+cleanup:
     RDB_destroy_obj(&tpl);
     return ret;
 }
@@ -114,31 +85,20 @@ static int
 wrap_contains(RDB_table *tbp, const RDB_object *tup, RDB_transaction *txp)
 {
     int ret;
-    int i;
     RDB_object tpl;
-    char **attrv = malloc(sizeof(char *) * tbp->var.wrap.wrapc);
-
-    if (attrv == NULL)
-        return RDB_NO_MEMORY;
-
-    /*
-     * Create unwrapped tuple
-     */
-
-    for (i = 0; i < tbp->var.wrap.wrapc; i++)
-        attrv[i] = tbp->var.wrap.wrapv[i].attrname;
-
-    RDB_init_obj(&tpl);
-    ret = RDB_unwrap_tuple(tup, tbp->var.wrap.wrapc, attrv, &tpl);
-    free(attrv);
-    if (ret != RDB_OK) {
-        RDB_destroy_obj(&tpl);
-        return ret;
-    }
 
     /*
      * Check if unwrapped tuple is in base table
      */
+
+    RDB_init_obj(&tpl);
+
+    ret = _RDB_invwrap_tuple(tup, tbp->var.wrap.wrapc, tbp->var.wrap.wrapv,
+            &tpl);
+    if (ret != RDB_OK) {
+        RDB_destroy_obj(&tpl);
+        return ret;
+    }
 
     ret = RDB_table_contains(tbp->var.wrap.tbp, &tpl, txp);
     RDB_destroy_obj(&tpl);
@@ -149,47 +109,21 @@ static int
 unwrap_contains(RDB_table *tbp, const RDB_object *tup, RDB_transaction *txp)
 {
     int ret;
-    int i, j;
     RDB_object tpl;
-    RDB_wrapping *wrapv = malloc(sizeof(RDB_wrapping) * tbp->var.unwrap.attrc);
-    
-    if (wrapv == NULL)
-        return RDB_NO_MEMORY;
-
-    /*
-     * Create wrapped tuple
-     */
-
-    for (i = 0; i < tbp->var.unwrap.attrc; i++) {
-        RDB_type *tuptyp = _RDB_tuple_type_attr(tbp->var.unwrap.tbp->typ->var.basetyp,
-                tbp->var.unwrap.attrv[i])->typ;
-        wrapv[i].attrc = tuptyp->var.tuple.attrc;
-        wrapv[i].attrv = malloc(sizeof(char *) * tuptyp->var.tuple.attrc);
-        if (wrapv[i].attrv == NULL)
-            return RDB_NO_MEMORY;
-        for (j = 0; j < wrapv[i].attrc; j++)
-            wrapv[i].attrv[j] = tuptyp->var.tuple.attrv[j].name;
-
-        wrapv[i].attrname = tbp->var.unwrap.attrv[i];
-        
-    }
-
-    RDB_init_obj(&tpl);
-    ret = RDB_wrap_tuple(tup, tbp->var.unwrap.attrc, wrapv, &tpl);
-    if (ret != RDB_OK)
-        goto cleanup;
 
     /*
      * Check if wrapped tuple is in base table
      */
 
+    RDB_init_obj(&tpl);
+    ret = _RDB_invunwrap_tuple(tup, tbp->var.unwrap.attrc,
+            tbp->var.unwrap.attrv, tbp->var.unwrap.tbp->typ->var.basetyp, &tpl);
+    if (ret != RDB_OK) {
+        RDB_destroy_obj(&tpl);
+        return ret;
+    }
+
     ret = RDB_table_contains(tbp->var.unwrap.tbp, &tpl, txp);
-
-cleanup:
-    for (i = 0; i < tbp->var.unwrap.attrc; i++)
-        free(wrapv[i].attrv);
-    free(wrapv);
-
     RDB_destroy_obj(&tpl);
     return ret;
 }    

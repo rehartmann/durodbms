@@ -4,6 +4,8 @@ Summary of Changes for Duro
 
 Changes for Duro 0.8
 
+- Implemented insert into RENAME table
+
 - Implemented RDB_project_tuple() and RDB_join_tuples().
 
 - Added tuple operations to the expression parser.

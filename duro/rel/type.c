@@ -943,7 +943,7 @@ RDB_rename_relation_type(const RDB_type *typ, int renc, RDB_renaming renv[],
         return RDB_NO_MEMORY;
 
     (*newtypp)->name = NULL;
-    (*newtypp)->kind = RDB_TP_TUPLE;
+    (*newtypp)->kind = RDB_TP_RELATION;
 
     ret = RDB_rename_tuple_type(typ->var.basetyp, renc, renv,
             &(*newtypp)->var.basetyp);
@@ -1037,6 +1037,7 @@ RDB_wrap_tuple_type(const RDB_type *typ, int wrapc, RDB_wrapping wrapv[],
         }
         tuptyp->name = NULL;
         tuptyp->kind = RDB_TP_TUPLE;
+        tuptyp->var.tuple.attrc = wrapv[i].attrc;
         tuptyp->var.tuple.attrv = malloc(sizeof(RDB_attr) * wrapv[i].attrc);
         if (tuptyp->var.tuple.attrv == NULL) {
             ret = RDB_NO_MEMORY;
@@ -1052,7 +1053,7 @@ RDB_wrap_tuple_type(const RDB_type *typ, int wrapc, RDB_wrapping wrapv[],
                 free(tuptyp);
                 goto error;
             }
-            
+
             ret = copy_attr(&tuptyp->var.tuple.attrv[j], attrp);
             if (ret != RDB_OK) {
                 free(tuptyp->var.tuple.attrv);
