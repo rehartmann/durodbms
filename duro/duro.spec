@@ -39,8 +39,8 @@ make install
 %{_libdir}/*.so.*
 %{_libdir}/pkgIndex.tcl
 %{_libdir}/util.tcl
-%{_bindir}/lstables
 %{_bindir}/duroadmin.tcl
+%{_bindir}/durodump.tcl
 %doc docs
 
 %files devel
@@ -58,3 +58,5 @@ make install
 %changelog
 * Mon Mar 15 2004 Dan Hanks <hanksdc@plug.org>
 - New spec file
+* So Feb 20 2005 René Hartmann
+- Changes for Duro 0.9

@@ -10,10 +10,6 @@
 
 <h2>Contents</h2>
 
-<h3>Built-in types</h3>
-
-<p><a href="#built-in-types">Table of built-in types</a>
-
 <h3>Table functions</h3>
 
 <ul>
@@ -239,18 +235,9 @@
 <li><a href="#syserr">System errors</a>
 </ul>
 
-<h2 id="built-in-types">Built-in types</h2>
+<h3><a href="#built-in-types">Built-in types</a></h3>
 
-<table border="1" summary="Built-in types">
-<tr><th>Name<th>RDB_type variable<th>C type
-<tr><td>BOOLEAN<td>RDB_BOOLEAN<td>RDB_bool
-<tr><td>INTEGER<td>RDB_INTEGER<td>RDB_int
-<tr><td>RATIONAL<td>RDB_RATIONAL<td>RDB_rational
-<tr><td>STRING<td>RDB_STRING<td>char *
-<tr><td>BINARY<td>RDB_BINARY<td>&nbsp;-
-</table>
-
-<h3>Built-in read-only operators</h3>
+<h3><a href="#builtin-ops">Built-in operators</a></h3>
 
 <ul>
 <li><a href="#op_eq">=</a>
@@ -274,6 +261,10 @@
 <li><a href="#op_integer">INTEGER</a>
 <li><a href="#op_rational">RATIONAL</a>
 <li><a href="#op_string">STRING</a>
+<li><a href="#op_is_empty">IS_EMPTY</a>
+<li><a href="#op_count">COUNT</a>
+<li><a href="#op_in">IN</a>
+<li><a href="#op_subset_of">SUBSET_OF</a>
 </ul>
 
 <hr>
@@ -4568,125 +4559,407 @@ typedef enum {
 
 <hr>
 
-<h2 id="op_eq">OPERATOR =</h2>
+<h2 id="built-in-types">Built-in types</h2>
 
-<p>OPERATOR = (<em>ANY</em>, <em>ANY</em>): BOOLEAN;
+<table border="1" summary="Built-in types">
+<tr><th>Name<th>RDB_type variable<th>C type
+<tr><td>BOOLEAN<td>RDB_BOOLEAN<td>RDB_bool
+<tr><td>INTEGER<td>RDB_INTEGER<td>RDB_int
+<tr><td>RATIONAL<td>RDB_RATIONAL<td>RDB_rational
+<tr><td>STRING<td>RDB_STRING<td>char *
+<tr><td>BINARY<td>RDB_BINARY<td>&nbsp;-
+</table>
 
-<h3>Description</h3>
+<h2 id="builtin-ops">Built-in operators</h2>
+
+<p>The built-in operators, shown in Tutorial D notation.
+
+<h3 id="op_eq">OPERATOR =</h3>
+
+<p>OPERATOR = (<em>ANY</em>, <em>ANY</em>) RETURNS BOOLEAN;
+
+<h4>Description</h4>
 
 <p>The equality operator. Defined for every type.
 The arguments must be of the same type.
 
-<h3>Return value</h3>
+<h4>Return value</h4>
 
 <p>TRUE if the two arguments are equal, FALSE otherwise.
 
 <hr>
 
-<h2 id="op_neq">OPERATOR <></h2>
+<h3 id="op_neq">OPERATOR <></h3>
 
-<p>OPERATOR <> (<em>ANY</em>, <em>ANY</em>): BOOLEAN;
+<p>OPERATOR <> (<em>ANY</em>, <em>ANY</em>) RETURNS BOOLEAN;
 
-<h3>Description</h3>
+<h4>Description</h4>
 
 <p>The inequality operator. Defined for every type.
 The arguments must be of the same type.
 
-<h3>Return value</h3>
+<h4>Return value</h4>
 
 <p>TRUE if the two arguments are not equal, FALSE otherwise.
 
 <hr>
 
-<h2 id="op_lt">OPERATOR &lt;</h2>
+<h3 id="op_lt">OPERATOR &lt;</h3>
 
-<p>OPERATOR &lt; (INTEGER, INTEGER): BOOLEAN;
+<p>OPERATOR &lt; (INTEGER, INTEGER) RETURNS BOOLEAN;
 
-<p>OPERATOR &lt; (RATIONAL, RATIONAL): BOOLEAN;
+<p>OPERATOR &lt; (RATIONAL, RATIONAL) RETURNS BOOLEAN;
 
-<p>OPERATOR &lt; (STRING, STRING): BOOLEAN;
+<p>OPERATOR &lt; (STRING, STRING) RETURNS BOOLEAN;
 
-<h3>Description</h3>
+<h4>Description</h4>
 
 <p>The lower-than operator.
 
-<h3>Return value</h3>
+<h4>Return value</h4>
 
 <p>TRUE if the first argument is lower than the first.
 If the operands are strings, the strings will be compared using strcoll().
 
 <hr>
 
-<h2 id="op_lte">OPERATOR &lt;=</h2>
+<h3 id="op_lte">OPERATOR &lt;=</h3>
 
-<p>OPERATOR &lt;= (INTEGER, INTEGER): BOOLEAN;
+<p>OPERATOR &lt;= (INTEGER, INTEGER) RETURNS BOOLEAN;
 
-<p>OPERATOR &lt;= (RATIONAL, RATIONAL): BOOLEAN;
+<p>OPERATOR &lt;= (RATIONAL, RATIONAL) RETURNS BOOLEAN;
 
-<p>OPERATOR &lt;= (STRING, STRING): BOOLEAN;
+<p>OPERATOR &lt;= (STRING, STRING) RETURNS BOOLEAN;
 
-<h3>Description</h3>
+<h4>Description</h4>
 
 <p>The lower-than-or-equal operator.
 
-<h3>Return value</h3>
+<h4>Return value</h4>
 
 <p>TRUE if the first argument is lower than or equal to the second.
 If the operands are strings, the strings will be compared using strcoll().
 
 <hr>
 
-<h2 id="op_gt">OPERATOR &gt;</h2>
+<h3 id="op_gt">OPERATOR &gt;</h3>
 
-<p>OPERATOR &gt; (INTEGER, INTEGER): BOOLEAN;
+<p>OPERATOR &gt; (INTEGER, INTEGER) RETURNS BOOLEAN;
 
-<p>OPERATOR &gt; (RATIONAL, RATIONAL): BOOLEAN;
+<p>OPERATOR &gt; (RATIONAL, RATIONAL) RETURNS BOOLEAN;
 
-<p>OPERATOR &gt; (STRING, STRING): BOOLEAN;
+<p>OPERATOR &gt; (STRING, STRING) RETURNS BOOLEAN;
 
-<h3>Description</h3>
+<h4>Description</h4>
 
 <p>The greater-than operator.
 
-<h3>Return value</h3>
+<h4>Return value</h4>
 
 <p>TRUE if the first argument is greater than the first.
 If the operands are strings, the strings will be compared using strcoll().
 
 <hr>
 
-<h2 id="op_gte">OPERATOR &gt;=</h2>
+<h3 id="op_gte">OPERATOR &gt;=</h3>
 
-<p>OPERATOR &gt;= (INTEGER, INTEGER): BOOLEAN;
+<p>OPERATOR &gt;= (INTEGER, INTEGER) RETURNS BOOLEAN;
 
-<p>OPERATOR &gt;= (RATIONAL, RATIONAL): BOOLEAN;
+<p>OPERATOR &gt;= (RATIONAL, RATIONAL) RETURNS BOOLEAN;
 
-<p>OPERATOR &gt;= (STRING, STRING): BOOLEAN;
+<p>OPERATOR &gt;= (STRING, STRING) RETURNS BOOLEAN;
 
-<h3>Description</h3>
+<h4>Description</h4>
 
 <p>The greater-than-or-equal operator.
 
-<h3>Return value</h3>
+<h4>Return value</h4>
 
 <p>TRUE if the first argument is greater than or equal to the second.
 If the operands are strings, the strings will be compared using strcoll().
 
 <hr>
 
-<h2 id="op_plus">OPERATOR +</h2>
+<h3 id="op_plus">OPERATOR +</h3>
 
-<p>OPERATOR + (INTEGER, INTEGER): INTEGER;
+<p>OPERATOR + (INTEGER, INTEGER) RETURNS INTEGER;
 
-<p>OPERATOR + (RATIONAL, RATIONAL): RATIONAL;
+<p>OPERATOR + (RATIONAL, RATIONAL) RETURNS RATIONAL;
 
-<h3>Description</h3>
+<h4>Description</h4>
 
 <p>The addition operator.
 
-<h3>Return value</h3>
+<h4>Return value</h4>
 
 <p>The sum of the two operands.
+
+<hr>
+
+<h3 id="op_uminus">OPERATOR - (unary)</h3>
+
+<p>OPERATOR - (INTEGER) RETURNS INTEGER;
+
+<p>OPERATOR - (RATIONAL) RETURNS RATIONAL;
+
+<h4>Description</h4>
+
+<p>The unary minus operator.
+
+<h4>Return value</h4>
+
+<p>The operand, sign inverted.
+
+<h3 id="op_bminus">OPERATOR - (binary)</h3>
+
+<p>OPERATOR - (INTEGER, INTEGER) RETURNS INTEGER;
+
+<p>OPERATOR - (RATIONAL, RATIONAL) RETURNS RATIONAL;
+
+<h4>Description</h4>
+
+<p>The subtraction operator.
+
+<h4>Return value</h4>
+
+<p>The difference of the two operands.
+
+<hr>
+
+<h3 id="op_times">OPERATOR *</h3>
+
+<p>OPERATOR * (INTEGER, INTEGER) RETURNS INTEGER;;
+
+<p>OPERATOR * (RATIONAL, RATIONAL) RETURNS RATIONAL;
+
+<h4>Description</h4>
+
+<p>The multiplication operator.
+
+<h4>Return value</h4>
+
+<p>The product of the two operands.
+
+<hr>
+
+<h3 id="op_div">OPERATOR /</h3>
+
+<p>OPERATOR / (INTEGER, INTEGER) RETURNS INTEGER;
+
+<p>OPERATOR / (RATIONAL, RATIONAL) RETURNS RATIONAL;
+
+<h4>Description</h4>
+
+<p>The division operator.
+
+<h4>Return value</h4>
+
+<p>The quotient of the operators.
+
+<h4>Errors</h4>
+
+<dl>
+<dt>INVALID_ARGUMENT
+<dd>The divisor is zero.
+</dl>
+
+<h3 id="op_and">OPERATOR AND</h3>
+
+<p>OPERATOR AND (BOOLEAN, BOOLEAN) RETURNS BOOLEAN;
+
+<h4>Description</h4>
+
+<p>The boolean AND operator.
+
+<hr>
+
+<h3 id="op_or">OPERATOR OR</h3>
+
+<p>OPERATOR OR (BOOLEAN, BOOLEAN) RETURNS BOOLEAN;
+
+<h4>Description</h4>
+
+<p>The boolean OR operator.
+
+<hr>
+
+<h3 id="op_not">OPERATOR NOT</h3>
+
+<p>OPERATOR NOT (BOOLEAN) RETURNS BOOLEAN;
+
+<h4>Description</h4>
+
+<p>The boolean NOT operator.
+
+<hr>
+
+<h3 id="op_concat">OPERATOR ||</h3>
+
+<p>OPERATOR || (STRING, STRING) RETURNS STRING;
+
+<h4>Description</h4>
+
+<p>The string concatenation operator
+
+<h4>Return value</h4>
+
+<p>The result of the concatenation of the operands.
+
+<hr>
+
+<h3 id="op_length">OPERATOR LENGTH</h3>
+
+<p>OPERATOR LENGTH (STRING) RETURNS INTEGER;
+
+<h4>Description</h4>
+
+<p>The string length operator.
+
+<h4>Return value</h4>
+
+<p>The length of the operand.
+
+<hr>
+
+<h3 id="op_substring">OPERATOR SUBSTRING</h3>
+
+<p>OPERATOR SUBSTRING(S STRING, START INTEGER, LENGTH INTEGER) RETURNS
+STRING;
+
+<h4>Description</h4>
+
+<p>The substring operator.
+
+<h4>Return value</h4>
+
+<p>The substring of S with length LENGTH starting at position
+START.
+
+<h4>Errors</h4>
+
+<dl>
+<dt>INVALID_ARGUMENT
+<dd>START is negative, or START + LENGTH is greater than LENGTH(S).
+</dl>
+
+<hr>
+
+<h3 id="op_matches">OPERATOR MATCHES</h3>
+
+<p>OPERATOR MATCHES (S STRING, PATTERN STRING) RETURNS BOOLEAN;
+
+<h4>Description</h4>
+
+<p>The regular expression matching operator.
+
+<h4>Return value</h4>
+
+<p>RDB_TRUE if S matches PATTERN, RDB_FALSE otherwise.
+
+<hr>
+
+<h3 id="op_integer">OPERATOR INTEGER</h3>
+
+<p>OPERATOR INTEGER (RATIONAL) RETURNS INTEGER;
+
+<p>OPERATOR INTEGER (STRING) RETURNS INTEGER;
+
+<h4>Description</h4>
+
+<p>Converts the operand to INTEGER.
+
+<h4>Return value</h4>
+
+<p>The operand, converted to INTEGER.
+
+<hr>
+
+<h3 id="op_rational">OPERATOR RATIONAL</h3>
+
+<p>OPERATOR RATIONAL (INTEGER) RETURNS RATIONAL;
+
+<p>OPERATOR RATIONAL (STRING) RETURNS INTEGER;
+
+<h4>Description</h4>
+
+<p>Converts the operand to RATIONAL.
+
+<h4>Return value</h4>
+
+<p>The operand, converted to RATIONAL.
+
+<hr>
+
+<h3 id="op_string">OPERATOR STRING</h3>
+
+<p>OPERATOR STRING (INTEGER) RETURNS STRING;
+
+<p>OPERATOR STRING (RATIONAL) RETURNS STRING;
+
+<h4>Description</h4>
+
+<p>Converts the operand to a string.
+
+<h4>Return value</h4>
+
+<p>The operand, converted to STRING.
+
+<hr>
+
+<h3 id="op_is_empty">OPERATOR IS_EMPTY</h3>
+
+<p>OPERATOR IS_EMPTY (<em>RELATION</em>) RETURNS BOOLEAN;
+
+<h4>Description</h4>
+
+<p>Checks if a table is empty.
+
+<h4>Return value</h4>
+
+<p>RDB_TRUE if the relation-valued operand is empty, RDB_FALSE
+otherwise.
+
+<hr>
+
+<h3 id="op_count">OPERATOR COUNT</h3>
+
+<p>OPERATOR COUNT (<em>RELATION</em>) RETURNS INTEGER;
+
+<h4>Description</h4>
+
+<p>Counts the tuples in a table.
+
+<h4>Return value</h4>
+
+<p>The cardinality of the relation-valued operand.
+
+<hr>
+
+<h3 id="op_in">OPERATOR IN</h3>
+
+<p>OPERATOR IN (T <em>TUPLE</em>, R <em>RELATION</em>) RETURNS BOOLEAN;
+
+<h4>Description</h4>
+
+<p>Checks if a table contains a certain tuple.
+
+<h4>Return value</h4>
+
+<p>RDB_TRUE if <var>R</var> contains <var>T</var>, RDB_FALSE otherwise.
+
+<hr>
+
+<h3 id="op_subset_of">OPERATOR SUBSET_OF</h3>
+
+<p>OPERATOR SUBSET_OF (R1 <em>RELATION</em>, R2 <em>RELATION</em>) RETURNS BOOLEAN;
+
+<h4>Description</h4>
+
+<p>Checks if a table is a subset of another table.
+
+<h4>Return value</h4>
+
+<p>RDB_TRUE if the <var>R1</var> is a subset of <var>R2</var>, RDB_FALSE otherwise.
 
 <hr>
 

@@ -4,9 +4,13 @@ Summary of Changes for Duro
 
 Changes for Duro 0.9
 
+- Documented utilities.
+
 - Switched to Berkeley DB 4.3.
 
-- Added dump utility durodump.tcl.
+- Added dump utility Durodump.
+
+- Added help menu and version information to Duroadmin.
 
 - Added B-tree indexes.
 
@@ -38,6 +42,10 @@ Changes for Duro 0.9
 - Minor change to RDB_expression struct.
 
 - Removed RDB_begin_uoi() and RDB_end_uoi() from the API specification.
+
+- Fixed bugs in the library and Duroadmin.
+
+- lstables is no longer installed.
 
 Changes for Duro 0.8
 

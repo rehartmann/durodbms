@@ -6,7 +6,7 @@ This directory contains release 0.9 of Duro, a relational database library.
 
 The following software is required for compiling and running Duro:
 
-- Berkeley DB, release 4.3 or later
+- Berkeley DB, release 4.3
 - POSIX.2 regular expressions
 - GNU Libtool
 - Tcl 8.1 or later
@@ -39,7 +39,7 @@ rhartmann@users.sourceforge.net.
 -----
 
 This file is part of Duro, a relational database library.
-Copyright (C) 2003, 2004 René Hartmann.
+Copyright (C) 2003-2005 René Hartmann.
 
 Duro is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by

@@ -5,8 +5,6 @@ BDB_HOME = /usr/local/BerkeleyDB.4.3
 
 AM_YFLAGS = -d
 
-bin_PROGRAMS = util/lstables
-
 dist_bin_SCRIPTS = tcl/duroadmin.tcl tcl/durodump.tcl
 
 # Shared libs for testing are listed here too, because check_LTLIBRARIES does
@@ -17,7 +15,7 @@ lib_LTLIBRARIES = libduro.la libdurotcl.la \
 htmldir = $(prefix)
 
 nobase_dist_html_DATA = docs/api-spec.html docs/relnotes.html \
-docs/expressions.html docs/tcl/index.html \
+docs/expressions.html docs/utils.html docs/tcl/index.html \
 docs/tcl/array.html docs/tcl/begin.html docs/tcl/call.html \
 docs/tcl/commit.html docs/tcl/db.html docs/tcl/delete.html \
 docs/tcl/env.html docs/tcl/expr.html docs/tcl/insert.html \
@@ -36,7 +34,7 @@ tests/test_union tests/test_update tests/test_utypetable \
 tests/test_defpointtype tests/test_pointtable \
 tests/test_srupdate tests/test_insert tests/test_2db \
 tests/test_defop tests/test_callop tests/test_print_opview \
-tests/test_dropop tests/tupletest
+tests/test_dropop tests/tupletest util/lstables
 
 tests_libpoint_la_SOURCES = tests/point.c tests/point.h
 
