@@ -1,7 +1,7 @@
 	README for Duro 0.1
 $Id$
 
-This directory contains release 0.3 of Duro, a relational
+This directory contains release 0.4 of Duro, a relational
 database library written in C.
 
 To compile Duro, simply run make in this directory.

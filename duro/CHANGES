@@ -2,12 +2,12 @@ $Id$
 
 Summary of Changes for Duro
 
-Changes for (planned) Duro 0.4
+Changes for Duro 0.4
 
 - Persistent virtual tables now supported through RDB_set_table_name()
-  and RDB_make_persistent().
+  and RDB_make_persistent()
 
-- Releasing databases no longer required before closing environment
+- Releasing databases no longer required before closing the environment
 
 - Added operators < > <= >=
 
