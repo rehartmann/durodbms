@@ -162,13 +162,15 @@ project: primary_expression '{' attribute_name_list '}' {
             }
             RDB_drop_expr($1);
         } else {
-           expr_ret = RDB_project(tbp, $3.attrc, $3.attrv, &restbp);
-           for (i = 0; i < $3.attrc; i++)
-               free($3.attrv[i]);
-           if (expr_ret != RDB_OK) {
-               YYERROR;
-           }
-           $$ = RDB_table_to_expr(restbp);
+            expr_ret = RDB_project(tbp, $3.attrc, $3.attrv, &restbp);
+            for (i = 0; i < $3.attrc; i++)
+                free($3.attrv[i]);
+            if (expr_ret != RDB_OK) {
+                YYERROR;
+            }
+            $$ = RDB_table_to_expr(restbp);
+            tbp->refcount++;
+            RDB_drop_expr($1);
         }
     }
     | primary_expression '{' TOK_ALL TOK_BUT attribute_name_list '}' {
@@ -203,6 +205,8 @@ project: primary_expression '{' attribute_name_list '}' {
                 YYERROR;
             }
             $$ = RDB_table_to_expr(restbp);
+            tbp->refcount++;
+            RDB_drop_expr($1);
         }
     }
     ;
@@ -239,6 +243,8 @@ select: primary_expression TOK_WHERE or_expression {
             YYERROR;
         }
         $$ = RDB_table_to_expr(restbp);
+        tbp->refcount++;
+        RDB_drop_expr($1);
     }
     ;
 
@@ -275,6 +281,7 @@ rename: primary_expression TOK_RENAME '(' renaming_list ')' {
                 YYERROR;
             }
             $$ = RDB_table_to_expr(restbp);
+            tbp->refcount++;
         }
         RDB_drop_expr($1);
     }
@@ -329,6 +336,8 @@ relation: primary_expression TOK_UNION primary_expression {
             YYERROR;
         }
         $$ = RDB_table_to_expr(restbp);
+        tb1p->refcount++;
+        tb2p->refcount++;
         RDB_drop_expr($1);
         RDB_drop_expr($3);
     }
@@ -349,6 +358,8 @@ relation: primary_expression TOK_UNION primary_expression {
             YYERROR;
         }
         $$ = RDB_table_to_expr(restbp);
+        tb1p->refcount++;
+        tb2p->refcount++;
         RDB_drop_expr($1);
         RDB_drop_expr($3);
     }
@@ -369,6 +380,8 @@ relation: primary_expression TOK_UNION primary_expression {
             YYERROR;
         }
         $$ = RDB_table_to_expr(restbp);
+        tb1p->refcount++;
+        tb2p->refcount++;
         RDB_drop_expr($1);
         RDB_drop_expr($3);
     }
@@ -404,6 +417,8 @@ relation: primary_expression TOK_UNION primary_expression {
                YYERROR;
            }
            $$ = RDB_table_to_expr(restbp);
+           tb1p->refcount++;
+           tb2p->refcount++;
        }
        RDB_drop_expr($1);
        RDB_drop_expr($3);
@@ -440,6 +455,7 @@ extend: TOK_EXTEND primary_expression TOK_ADD '(' extend_add_list ')' {
                 YYERROR;
             }
             $$ = RDB_table_to_expr(restbp);
+            tbp->refcount++;
         }
         RDB_drop_expr($2);
     }
@@ -504,6 +520,10 @@ summarize: TOK_SUMMARIZE primary_expression TOK_PER expression
             YYERROR;
         }
         $$ = RDB_table_to_expr(restbp);
+        tb1p->refcount++;
+        tb2p->refcount++;
+        RDB_drop_expr($2);
+        RDB_drop_expr($4);
     }
     ;
 
@@ -534,6 +554,12 @@ sdivideby: primary_expression TOK_DIVIDEBY primary_expression
             YYERROR;
         }
         $$ = RDB_table_to_expr(restbp);
+        tb1p->refcount++;
+        tb2p->refcount++;
+        tb3p->refcount++;
+        RDB_drop_expr($1);
+        RDB_drop_expr($3);
+        RDB_drop_expr($5);
     }
     ;    
 
@@ -635,7 +661,9 @@ wrap: primary_expression TOK_WRAP '(' wrapping_list ')' {
                YYERROR;
            }
            $$ = RDB_table_to_expr(restbp);
+           tbp->refcount++;
         }
+        RDB_drop_expr($1);
     }
     ;
 
@@ -706,7 +734,9 @@ unwrap: primary_expression TOK_UNWRAP '(' attribute_name_list ')' {
             if (expr_ret != RDB_OK)
                 YYERROR;
             $$ = RDB_table_to_expr(restbp);
+            tbp->refcount++;
         }
+        RDB_drop_expr($1);
     }
     ;    
 
@@ -773,6 +803,10 @@ rel_expression: add_expression
             $$ = RDB_expr_contains($3, exp);
             if ($$ == NULL)
                 YYERROR;
+            if (tbp != NULL) {
+                tbp->refcount++;
+                RDB_drop_expr($1);
+            }
         }
         | add_expression TOK_MATCHES add_expression {
             $$ = RDB_regmatch($1, $3);
@@ -873,7 +907,9 @@ extractor: TOK_TUPLE TOK_FROM expression {
             YYERROR;
         }
         $$ = RDB_obj_to_expr(&tpl);
+        tbp->refcount++;
         RDB_destroy_obj(&tpl);
+        RDB_drop_expr($3);
     }
     ;
 

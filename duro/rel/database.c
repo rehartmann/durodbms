@@ -178,6 +178,12 @@ RDB_create_table_index(const char *name, RDB_table *tbp, int idxcompc,
     return RDB_OK;
 }
 
+int
+RDB_drop_table_index(const char *name, RDB_table *tbp, RDB_transaction *txp)
+{
+    return RDB_NOT_SUPPORTED;
+}
+
 static int
 compare_field(const void *data1p, size_t len1,
               const void *data2p, size_t len2, void *arg)

@@ -185,6 +185,10 @@ optimize_select(RDB_table *tbp, RDB_transaction *txp)
      * Try to find best index
      */
     for (i = 0; i < stbp->var.stored.indexc; i++) {
+        if (stbp->var.stored.indexv[i].attrc > 1
+                || !stbp->var.stored.indexv[i].unique)
+            continue;
+
         int cost = eval_index(tbp, &stbp->var.stored.indexv[i]);
 
         if (cost < bestcost) {
@@ -194,10 +198,6 @@ optimize_select(RDB_table *tbp, RDB_transaction *txp)
     }
 
     if (bestcost == INT_MAX) {
-        return RDB_OK;
-    }
-
-    if (stbp->var.stored.indexv[idx].attrc > 1) {
         return RDB_OK;
     }
 

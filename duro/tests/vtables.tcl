@@ -66,6 +66,17 @@ duro::table expr -global TI {T1 INTERSECT T2} $tx
 duro::table expr -global TJ {TU JOIN T3} $tx
 duro::table expr -global TR {T1 RENAME (K AS KN, S1 AS SN)} $tx
 
+duro::table expr -global TP {(T1 WHERE K = 1) {K}} $tx
+duro::table expr -global TM2 {(T1 WHERE K = 1) MINUS (T2 WHERE K = 1)} $tx
+duro::table expr -global TI2 {(T1 WHERE K = 1) INTERSECT (T2 WHERE K = 1)} $tx
+duro::table expr -global TU2 {(T1 WHERE K = 1) UNION (T2 WHERE K = 1)} $tx
+duro::table expr -global TJ2 {(T1 WHERE K = 2) JOIN (T3 WHERE K = 2)} $tx
+
+if {[duro::expr {TUPLE FROM TP} $tx] != {K 1}} {
+    puts "Tuple value shoud be {K 1}, but is not"
+    exit 1
+}
+
 duro::commit $tx
 
 # Close DB environment
