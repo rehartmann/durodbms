@@ -92,7 +92,8 @@ count_invocation = COUNT '(' expression ')'.
 
 aggregate_invocation = summary_type '(' expression_list ')'.
 
-operator_invocation = id '(' [expression_list] ')'.
+operator_invocation = 'THE_'id '(' expression ')'
+        | id '(' [expression_list] ')'.
 
 literal = string | integer | decimal | float | TRUE | FALSE
         | TUPLE '{' [tuple_item_list] '}'
@@ -102,17 +103,17 @@ expression_list = expression {',' expression}.
 
 tuple_item_list = id expression {',' id expression}.
 
-string = '"' {char_lit} '"'.
+string = '"'{char_lit}'"'.
 
 char_lit = char | '\"' | '\\' | '\n' | '\r' | '\t'.
 
-integer = ['-'] digit {digit}.
+integer = ['-']digit{digit}.
 
-decimal = ['-'] digit {digit} '.' digit {digit}.
+decimal = ['-']digit{digit}'.'digit{digit}.
 
-float = ['-'] digit {digit} '.' digit {digit} ('E' | 'e') digit {digit}.
+float = ['-']digit{digit}'.'digit{digit}('E' | 'e')digit{digit}.
 
-id = letter {letter | digit | '_' | '#'}.
+id = letter{letter | digit | '_' | '#'}.
 
 </pre>
 

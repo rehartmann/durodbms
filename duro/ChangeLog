@@ -16,6 +16,9 @@ Changes for Duro 0.9
 
 - Dropped RDB_neq() etc., replaced by RDB_ro_op() and RDB_ro_op_va().
 
+- Added transaction argument to RDB_select(), RDB_extend(), and
+  RDB_summarize().
+
 - Added built-in operators LENGTH, SUBSTRING, IS_EMPTY, COUNT, and SUBSET_OF.
 
 - Added conversion operators, arithmetical operators, etc., as built-in operators.
@@ -32,6 +35,8 @@ Changes for Duro 0.9
   are now possible.
 
 - Small change to RDB_expression struct.
+
+- Removed RDB_begin_uoi() and RDB_end_uoi() from the API specification.
 
 Changes for Duro 0.8
 

@@ -595,9 +595,6 @@ table_to_list(Tcl_Interp *interp, RDB_table *tbp, RDB_transaction *txp)
     RDB_init_obj(&arr);
     ret = RDB_table_to_array(&arr, tbp, 0, NULL, txp);
     if (ret != RDB_OK) {
-        if (RDB_is_syserr(ret)) {
-            RDB_rollback_all(txp);
-        }
         Duro_dberror(interp, ret);
         RDB_destroy_obj(&arr);
         return NULL;

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2004 René Hartmann.
+ * Copyright (C) 2004, 2005 René Hartmann.
  * See the file COPYING for redistribution information.
  */
 
@@ -112,6 +112,14 @@ RDB_create_update_op(const char *name, int argc, RDB_type *argtv[],
 
     if (!RDB_tx_is_running(txp))
         return RDB_INVALID_TRANSACTION;
+
+    /*
+     * Array types are not supported as argument types
+     */
+    for (i = 0; i < argc; i++) {
+        if (argtv[i]->kind == RDB_TP_ARRAY)
+            return RDB_NOT_SUPPORTED;
+    }
 
     RDB_init_obj(&tpl);
     ret = RDB_tuple_set_string(&tpl, "NAME", name);
@@ -988,9 +996,6 @@ length_string(const char *name, int argc, RDB_object *argv[],
         const void *iargp, size_t iarglen, RDB_transaction *txp,
         RDB_object *retvalp)
 {
-/*
-    RDB_int_to_obj(retvalp, argv[0]->var.bin.len - 1);
-*/
     size_t len = mbstowcs(NULL, argv[0]->var.bin.datap, 0);
     if (len == -1)
         return RDB_INVALID_ARGUMENT;
@@ -1081,11 +1086,8 @@ matches(const char *name, int argc, RDB_object *argv[],
     if (ret != 0) {
         return RDB_INVALID_ARGUMENT;
     }
-    RDB_destroy_obj(retvalp);
-    RDB_init_obj(retvalp);
-    _RDB_set_obj_type(retvalp, &RDB_BOOLEAN);
-    retvalp->var.bool_val = (RDB_bool)
-            (regexec(&reg, argv[0]->var.bin.datap, 0, NULL, 0) == 0);
+    RDB_bool_to_obj(retvalp, (RDB_bool)
+            (regexec(&reg, argv[0]->var.bin.datap, 0, NULL, 0) == 0));
     regfree(&reg);
 
     return RDB_OK;

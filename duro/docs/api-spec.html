@@ -193,8 +193,6 @@
 <ul>
 <li><a href="#create_constraint">RDB_create_constraint</a>
 <li><a href="#drop_constraint">RDB_drop_constraint</a>
-<li><a href="#begin_uoi">RDB_begin_uoi</a>
-<li><a href="#end_uoi">RDB_end_uoi</a>
 </ul>
 
 <h3>Database environment functions</h3>
@@ -202,6 +200,8 @@
 <ul>
 <li><a href="#open_env">RDB_open_env</a>
 <li><a href="#close_env">RDB_close_env</a>
+<li><a href="#get_errfile">RDB_get_errfile</a>
+<li><a href="#get_errfn">RDB_get_errfn</a>
 <li><a href="#set_errfile">RDB_set_errfile</a>
 <li><a href="#set_errfn">RDB_set_errfn</a>
 </ul>
@@ -249,6 +249,32 @@
 <tr><td>STRING<td>RDB_STRING<td>char *
 <tr><td>BINARY<td>RDB_BINARY<td>&nbsp;-
 </table>
+
+<h3>Built-in read-only operators</h3>
+
+<ul>
+<li><a href="#op_eq">=</a>
+<li><a href="#op_neq">&lt;&gt;</a>
+<li><a href="#op_lt">&lt;</a>
+<li><a href="#op_lte">&lt;=</a>
+<li><a href="#op_gt">&gt;</a>
+<li><a href="#op_gte">&gt;=</a>
+<li><a href="#op_plus">+</a>
+<li><a href="#op_uminus">- (unary)</a>
+<li><a href="#op_bminus">- (binary)</a>
+<li><a href="#op_times">*</a>
+<li><a href="#op_div">/</a>
+<li><a href="#op_and">AND</a>
+<li><a href="#op_or">OR</a>
+<li><a href="#op_not">NOT</a>
+<li><a href="#op_concat">||</a>
+<li><a href="#op_length">LENGTH</a>
+<li><a href="#op_substring">SUBSTRING</a>
+<li><a href="#op_matches">MATCHES</a>
+<li><a href="#op_integer">INTEGER</a>
+<li><a href="#op_rational">RATIONAL</a>
+<li><a href="#op_string">STRING</a>
+</ul>
 
 <hr>
 
@@ -1188,8 +1214,9 @@ RDB_copy_table(RDB_table *dstp, RDB_table *srcp, RDB_transaction *txp);
 
 <h3>Description</h3>
 
-<p>RDB_copy_table copies all tuples from the table specified
-by <var>srcp</var> to the table specified by <var>dstp</var>.
+<p>RDB_copy_table assigns the table specified
+by <var>srcp</var> to the value of the table specified by <var>dstp</var>.
+The two tables must be of the same type.
 
 <h3>Return value</h3>
 
@@ -1267,6 +1294,8 @@ A pointer to the result table is stored at the location pointed to by
 <h3>Errors</h3>
 
 <dl>
+<dt>RDB_INVALID_TRANSACTION
+<dd><var>txp</var> does not point to a running transaction.
 <dt>RDB_TYPE_MISMATCH
 <dd>The condition is not of type BOOLEAN.
 <dt>RDB_ATTRIBUTE_NOT_FOUND
@@ -1307,6 +1336,8 @@ automatically dropped when the table is dropped.
 <h3>Errors</h3>
 
 <dl>
+<dt>RDB_INVALID_TRANSACTION
+<dd><var>txp</var> does not point to a running transaction.
 <dt>RDB_INVALID_ARGUMENT
 <dd>An invalid attribute name has been specified.
 </dl>
@@ -1597,6 +1628,8 @@ A pointer to the result table is stored in resultpp.
 <h3>Errors</h3>
 
 <dl>
+<dt>RDB_INVALID_TRANSACTION
+<dd><var>txp</var> does not point to a running transaction.
 <dt>RDB_NOT_SUPPORTED
 <dd>The field op of one of the elements of <var>addv</var>
 is COUNTD, SUMD, or AVGD.
@@ -2693,10 +2726,7 @@ RDB_drop_db(RDB_database *dbp);
 <h3>Description</h3>
 
 <p>RDB_drop_db deletes the database specified by <var>dbp</var>.
-If deleting non-empty databases is supported, all tables
-which belong only to this database are also deleted.
-Wheter or not deleting non-empty databases is supported
-is implementation-dependent.
+The database must be empty.
 
 <h3>Return value</h3>
 
@@ -2708,9 +2738,10 @@ is implementation-dependent.
 <dt>RDB_NOT_FOUND
 <dd>The database was not found.
 <dt>RDB_ELEMENT_EXISTS
-<dd>The database is not empty and dropping non-empty databases is not
-supported.
+<dd>The database is not empty.
 </dl>
+
+<p>The call may also fail for a <a href="#syserr">system error</a>.
 
 <hr>
 
@@ -3543,8 +3574,8 @@ representation. It takes one argument for each component.
 <dt>Getters
 <dd>A getter is a read-only operator whose name consists of the
 type and a component name, separated by "_get_".
-It takes one argument. The type of the argument must be the type of
-the component.
+It takes one argument. The argument must be of the user-defined type in question.
+The return type must be the component type.
 <dt>Setters
 <dd>A setter is an update operator whose name consists of the
 type and a component name, separated by "_set_".
@@ -3848,6 +3879,8 @@ This can be used to pass code to an interpreter function.
 
 <p>Overloading operators is possible.
 
+<p>Array-valued argument and return types are not supported.
+
 <h3>Return value</h3>
 
 <p>On success, RDB_OK is returned. On failure, an error code is returned.
@@ -3859,6 +3892,8 @@ This can be used to pass code to an interpreter function.
 <dd><var>txp</var> does not point to a running transaction.
 <dt>RDB_ELEMENT_EXISTS
 <dd>A read-only operator with this name and signature does already exist.
+<dt>RDB_NOT_SUPPORTED
+<dd>One of the argument types or the return type is an array type.
 </dl>
 
 <p>The call may also fail for a <a href="#syserr">system error</a>,
@@ -3912,6 +3947,8 @@ This can be used to pass code to an interpreter function.
 
 <p>Overloading operators is possible.
 
+<p>Array-valued argument types are not supported.
+
 <h3>Return value</h3>
 
 <p>On success, RDB_OK is returned. On failure, an error code is returned.
@@ -3923,6 +3960,8 @@ This can be used to pass code to an interpreter function.
 <dd><var>txp</var> does not point to a running transaction.
 <dt>RDB_ELEMENT_EXISTS
 <dd>An update operator with this name and signature does already exist.
+<dt>RDB_NOT_SUPPORTED
+<dd>One of the argument types is an array type.
 </dl>
 
 <p>The call may also fail for a <a href="#syserr">system error</a>,
@@ -4116,74 +4155,6 @@ in which case the transaction is implicitly rolled back.
 
 <hr>
 
-<h2 id="begin_uoi">RDB_begin_uoi</h2>
-
-<pre>
-#include &lt;rel/rdb.h&gt;
-
-int
-RDB_begin_uoi(RDB_transaction *txp);
-</pre>
-
-<h3>Description</h3>
-
-<p>RDB_begin_uoi starts a unit of integrity (UOI), which means that
-integrity checking is delayed until the of the UOI.
-UOIs cannot be nested.
-
-<h3>Return value</h3>
-
-<p>On success, RDB_OK is returned. On failure, an error code is returned.
-
-<h3>Errors</h3>
-
-<dl>
-<dt>RDB_INVALID_TRANSACTION
-<dd><var>txp</var> does not point to a running transaction.
-<dt>RDB_INVALID_ARGUMENT
-<dd>A unit of integrity has already been started.
-</dl>
-
-<h3>Notes</h3>
-
-<p><strong>This function is not implemented.</strong>
-
-<hr>
-
-<h2 id="end_uoi">RDB_end_uoi</h2>
-
-<pre>
-#include &lt;rel/rdb.h&gt;
-
-int
-RDB_end_uoi(RDB_transaction *txp);
-</pre>
-
-<h3>Description</h3>
-
-<p>RDB_end_uoi ends a unit of integrity.
-
-<h3>Return value</h3>
-
-<p>On success, RDB_OK is returned. On failure, an error code is returned.
-
-<h3>Errors</h3>
-
-<dl>
-<dt>RDB_INVALID_TRANSACTION
-<dd><var>txp</var> does not point to a running transaction.
-<dt>RDB_INVALID_ARGUMENT
-<dd>A unit of integrity has not been started.
-<dt>RDB_PREDICATE_VIOLATION
-<dd>A violation of an integrity constraint has been detected.
-</dl>
-
-<h3>Notes</h3>
-
-<p><strong>This function is not implemented.</strong>
-
-<hr>
-
 <h2 id="open_env">RDB_open_env</h2>
 
 <pre>
@@ -4247,6 +4218,49 @@ RDB_close_env(RDB_environment *envp);
 
 <hr>
 
+<h2 id="get_errfile">RDB_get_errfile</h2>
+
+<pre>
+#include &lt;rel/rdb.h&gt;
+
+FILE *
+RDB_get_errfile(RDB_environment *);
+</pre>
+
+<h3>Description</h3>
+
+<p>RDB_get_errfile returns the FILE * which has been set using
+<a href="#set_errfile">RDB_set_errfile</a>.
+
+<h3>Return value</h3>
+
+<p>The FILE * or NULL if no FILE * has been set.
+
+<hr>
+
+<h2 id="get_errfn">RDB_get_errfn</h2>
+
+<pre>
+#include &lt;rel/rdb.h&gt;
+
+RDB_errfn *
+RDB_get_errfn(RDB_environment *, void **argp);
+
+</pre>
+
+<h3>Description</h3>
+
+<p>RDB_get_errfn returns the error reporting function which has been set using
+<a href="#set_errfn">RDB_set_errfn</a> and stores the argument
+passed to RDB_set_errfn at the location pointed to by <var>argp</var>.
+
+<h3>Return value</h3>
+
+<p>A pointer to the error reporting function or NULL if no error reporting
+function has been set.
+
+<hr>
+
 <h2 id="set_errfile">RDB_set_errfile</h2>
 
 <pre>
@@ -4273,7 +4287,8 @@ RDB_set_errfn(RDB_environment *envp, void (*errfn)(const char *msg, void *arg), 
 
 <h3>Description</h3>
 
-<p>RDB_set_errfile sets an error reporting function.
+<p>RDB_set_errfn sets an error reporting function, together with an argument which is
+passed to the function.
 
 <hr>
 
@@ -4514,6 +4529,128 @@ typedef enum {
 <dt>RDB_SYSTEM_ERROR
 <dd>Unspecified system error.
 </dl>
+
+<hr>
+
+<h2 id="op_eq">OPERATOR =</h2>
+
+<p>OPERATOR = (<em>ANY</em>, <em>ANY</em>): BOOLEAN;
+
+<h3>Description</h3>
+
+<p>The equality operator. Defined for every type.
+The arguments must be of the same type.
+
+<h3>Return value</h3>
+
+<p>TRUE if the two arguments are equal, FALSE otherwise.
+
+<hr>
+
+<h2 id="op_neq">OPERATOR <></h2>
+
+<p>OPERATOR <> (<em>ANY</em>, <em>ANY</em>): BOOLEAN;
+
+<h3>Description</h3>
+
+<p>The inequality operator. Defined for every type.
+The arguments must be of the same type.
+
+<h3>Return value</h3>
+
+<p>TRUE if the two arguments are not equal, FALSE otherwise.
+
+<hr>
+
+<h2 id="op_lt">OPERATOR &lt;</h2>
+
+<p>OPERATOR &lt; (INTEGER, INTEGER): BOOLEAN;
+
+<p>OPERATOR &lt; (RATIONAL, RATIONAL): BOOLEAN;
+
+<p>OPERATOR &lt; (STRING, STRING): BOOLEAN;
+
+<h3>Description</h3>
+
+<p>The lower-than operator.
+
+<h3>Return value</h3>
+
+<p>TRUE if the first argument is lower than the first.
+If the operands are strings, the strings will be compared using strcoll().
+
+<hr>
+
+<h2 id="op_lte">OPERATOR &lt;=</h2>
+
+<p>OPERATOR &lt;= (INTEGER, INTEGER): BOOLEAN;
+
+<p>OPERATOR &lt;= (RATIONAL, RATIONAL): BOOLEAN;
+
+<p>OPERATOR &lt;= (STRING, STRING): BOOLEAN;
+
+<h3>Description</h3>
+
+<p>The lower-than-or-equal operator.
+
+<h3>Return value</h3>
+
+<p>TRUE if the first argument is lower than or equal to the second.
+If the operands are strings, the strings will be compared using strcoll().
+
+<hr>
+
+<h2 id="op_gt">OPERATOR &gt;</h2>
+
+<p>OPERATOR &gt; (INTEGER, INTEGER): BOOLEAN;
+
+<p>OPERATOR &gt; (RATIONAL, RATIONAL): BOOLEAN;
+
+<p>OPERATOR &gt; (STRING, STRING): BOOLEAN;
+
+<h3>Description</h3>
+
+<p>The greater-than operator.
+
+<h3>Return value</h3>
+
+<p>TRUE if the first argument is greater than the first.
+If the operands are strings, the strings will be compared using strcoll().
+
+<hr>
+
+<h2 id="op_gte">OPERATOR &gt;=</h2>
+
+<p>OPERATOR &gt;= (INTEGER, INTEGER): BOOLEAN;
+
+<p>OPERATOR &gt;= (RATIONAL, RATIONAL): BOOLEAN;
+
+<p>OPERATOR &gt;= (STRING, STRING): BOOLEAN;
+
+<h3>Description</h3>
+
+<p>The greater-than-or-equal operator.
+
+<h3>Return value</h3>
+
+<p>TRUE if the first argument is greater than or equal to the second.
+If the operands are strings, the strings will be compared using strcoll().
+
+<hr>
+
+<h2 id="op_plus">OPERATOR +</h2>
+
+<p>OPERATOR + (INTEGER, INTEGER): INTEGER;
+
+<p>OPERATOR + (RATIONAL, RATIONAL): RATIONAL;
+
+<h3>Description</h3>
+
+<p>The addition operator.
+
+<h3>Return value</h3>
+
+<p>The sum of the two operands.
 
 <hr>
 

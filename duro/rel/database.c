@@ -536,8 +536,14 @@ RDB_drop_db(RDB_database *dbp)
     if (ret != RDB_OK)
         return ret;
 
-    /* Check if the database contains user tables */
+    /*
+     * Check if the database contains user tables
+     */
     exprp = RDB_expr_attr("IS_USER");
+    if (exprp == NULL) {
+        ret = RDB_NO_MEMORY;
+        goto error;
+    }
     ret = RDB_select(dbp->dbrootp->rtables_tbp, exprp, &tx, &vtbp);
     if (ret != RDB_OK) {
         RDB_drop_expr(exprp);
@@ -545,6 +551,10 @@ RDB_drop_db(RDB_database *dbp)
     }
     exprp = RDB_eq(RDB_expr_attr("DBNAME"),
                    RDB_string_to_expr(dbp->name));
+    if (exprp == NULL) {
+        ret = RDB_NO_MEMORY;
+        goto error;
+    }
     ret = RDB_select(dbp->dbrootp->dbtables_tbp, exprp, &tx, &vtb2p);
     if (ret != RDB_OK) {
         RDB_drop_expr(exprp);
@@ -569,7 +579,9 @@ RDB_drop_db(RDB_database *dbp)
         goto error;
     }
 
-    /* Check if the database exists */
+    /*
+     * Check if the database exists
+     */
 
     exprp = RDB_eq(RDB_expr_attr("DBNAME"),
                   RDB_string_to_expr(dbp->name));
