@@ -493,6 +493,7 @@ table_expr_cmd(TclState *statep, Tcl_Interp *interp, int objc,
         }
     } else if (objc != 5) {
         Tcl_WrongNumArgs(interp, 2, objv, "?flag? tablename expression tx");
+        abort();
         return TCL_ERROR;
     }
 
@@ -950,10 +951,10 @@ Duro_table_cmd(ClientData data, Tcl_Interp *interp, int objc, Tcl_Obj *CONST obj
     TclState *statep = (TclState *) data;
 
     const char *sub_cmds[] = {
-        "create", "expr", "drop", "contains", "add", NULL
+        "create", "drop", "expr", "contains", "add", NULL
     };
     enum table_ix {
-        create_ix, expr_ix, drop_ix, contains_ix, add_ix
+        create_ix, drop_ix, expr_ix, contains_ix, add_ix
     };
     int index;
 
@@ -963,17 +964,17 @@ Duro_table_cmd(ClientData data, Tcl_Interp *interp, int objc, Tcl_Obj *CONST obj
     }
 
     if (Tcl_GetIndexFromObj(interp, objv[1], sub_cmds, "option", 0, &index)
-            != RDB_OK) {
+            != TCL_OK) {
         return TCL_ERROR;
     }
 
     switch (index) {
         case create_ix:
             return table_create_cmd(statep, interp, objc, objv);
-        case expr_ix:
-            return table_expr_cmd(statep, interp, objc, objv);
         case drop_ix:
             return table_drop_cmd(statep, interp, objc, objv);
+        case expr_ix:
+            return table_expr_cmd(statep, interp, objc, objv);
         case contains_ix:
             return table_contains_cmd(statep, interp, objc, objv);
         case add_ix:

@@ -7,7 +7,7 @@ AC_CONFIG_SRCDIR([util/dropdb.c])
 
 AM_INIT_AUTOMAKE
 
-AC_PREFIX_DEFAULT(/usr/local/duro.0.7)
+AC_PREFIX_DEFAULT(/usr/local/duro.0.8)
 
 # Checks for programs.
 AC_PROG_CXX

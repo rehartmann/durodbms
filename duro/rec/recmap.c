@@ -299,7 +299,7 @@ _RDB_get_field(RDB_recmap *rmp, int fno, void *datap, size_t len, size_t *lenp,
                 }
             }
 
-            *lenp = rmp->fieldlens[fno];
+            *lenp = (size_t) rmp->fieldlens[fno];
         } else {
             /* offset is sum of lengths of fixed-length fields
              * plus lengths of previous variable-length fields 
@@ -341,7 +341,7 @@ _RDB_get_field(RDB_recmap *rmp, int fno, void *datap, size_t len, size_t *lenp,
                 }
             }
 
-            *lenp = rmp->fieldlens[fno];
+            *lenp = (size_t) rmp->fieldlens[fno];
         } else {
             /* offset is sum of lengths of fixed-length fields
              * plus lengths of previous variable-length fields 

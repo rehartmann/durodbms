@@ -4,6 +4,8 @@ Summary of Changes for Duro
 
 Changes for Duro 0.8
 
+- Added SUBSET operator.
+
 - Removed the libname argument from RDB_implement_type(). Selectors,
   getters, and setters are now created using RDB_create_ro_op() and
   RDB_create_update_op().

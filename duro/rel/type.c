@@ -264,6 +264,7 @@ RDB_define_type(const char *name, int repc, RDB_possrep repv[],
 {
     RDB_object tpl;
     RDB_object conval;
+    RDB_object typedata;
     int ret;
     int i, j;
 
@@ -272,6 +273,9 @@ RDB_define_type(const char *name, int repc, RDB_possrep repv[],
 
     RDB_init_obj(&tpl);
     RDB_init_obj(&conval);
+    RDB_init_obj(&typedata);
+
+    RDB_binary_set(&typedata, 0, NULL, 0);
 
     /*
      * Insert tuple into SYS_TYPES
@@ -280,7 +284,7 @@ RDB_define_type(const char *name, int repc, RDB_possrep repv[],
     ret = RDB_tuple_set_string(&tpl, "TYPENAME", name);
     if (ret != RDB_OK)
         goto error;
-    ret = RDB_tuple_set_string(&tpl, "I_AREP_TYPE", "");
+    ret = RDB_tuple_set(&tpl, "I_AREP_TYPE", &typedata);
     if (ret != RDB_OK)
         goto error;
     ret = RDB_tuple_set_int(&tpl, "I_AREP_LEN", -2);
@@ -315,7 +319,7 @@ RDB_define_type(const char *name, int repc, RDB_possrep repv[],
             goto error;
         
         /* Store constraint in tuple */
-        ret = _RDB_expr_to_obj(exp, &conval);
+        ret = _RDB_expr_to_obj(&conval, exp);
         if (ret != RDB_OK)
             goto error;
         ret = RDB_tuple_set(&tpl, "I_CONSTRAINT", &conval);
@@ -354,12 +358,14 @@ RDB_define_type(const char *name, int repc, RDB_possrep repv[],
         }
     }
 
+    RDB_destroy_obj(&typedata);
     RDB_destroy_obj(&conval);    
     RDB_destroy_obj(&tpl);
     
     return RDB_OK;
     
 error:
+    RDB_destroy_obj(&typedata);
     RDB_destroy_obj(&conval);    
     RDB_destroy_obj(&tpl);
 
@@ -375,6 +381,7 @@ RDB_implement_type(const char *name, RDB_type *arep,
 {
     RDB_expression *exp, *wherep;
     RDB_attr_update upd[3];
+    RDB_object typedata;
     int ret;
     RDB_bool sysimpl = (arep == NULL) && (areplen == -1);
 
@@ -441,26 +448,36 @@ RDB_implement_type(const char *name, RDB_type *arep,
 
     upd[0].exp = upd[1].exp = upd[2].exp = NULL;
 
-    upd[0].name = "I_AREP_TYPE";
-    upd[0].exp = RDB_string_const(arep != NULL ? arep->name : "");
+    upd[0].name = "I_AREP_LEN";
+    upd[0].exp = RDB_int_const(arep == NULL ? areplen : arep->ireplen);
     if (upd[0].exp == NULL) {
         ret = RDB_NO_MEMORY;
         goto cleanup;
     }
-    upd[1].name = "I_AREP_LEN";
-    upd[1].exp = RDB_int_const(arep == NULL ? areplen : arep->ireplen);
+    upd[1].name = "I_SYSIMPL";
+    upd[1].exp = RDB_bool_const(sysimpl);
     if (upd[1].exp == NULL) {
         ret = RDB_NO_MEMORY;
         goto cleanup;
     }
-    upd[2].name = "I_SYSIMPL";
-    upd[2].exp = RDB_bool_const(sysimpl);
-    if (upd[2].exp == NULL) {
-        ret = RDB_NO_MEMORY;
-        goto cleanup;
+    if (arep != NULL) {
+        RDB_init_obj(&typedata);
+        ret = _RDB_type_to_obj(&typedata, arep);
+        if (ret != RDB_OK) {
+            RDB_destroy_obj(&typedata);
+            goto cleanup;
+        }
+
+        upd[2].name = "I_AREP_TYPE";
+        upd[2].exp = RDB_obj_const(&typedata);
+        if (upd[2].exp == NULL) {
+            ret = RDB_NO_MEMORY;
+            RDB_destroy_obj(&typedata);
+            goto cleanup;
+        }
     }
 
-    ret = RDB_update(txp->dbp->dbrootp->types_tbp, wherep, 3, upd, txp);
+    ret = RDB_update(txp->dbp->dbrootp->types_tbp, wherep, arep != NULL ? 3 : 2, upd, txp);
 
 cleanup:    
     if (upd[0].exp != NULL)

@@ -171,6 +171,7 @@ serialize_expr(RDB_object *valp, int *posp, const RDB_expression *exp)
         case RDB_EX_REGMATCH:
         case RDB_EX_CONTAINS:
         case RDB_EX_CONCAT:
+        case RDB_EX_SUBSET:
             ret = serialize_expr(valp, posp, exp->var.op.arg1);
             if (ret != RDB_OK)
                 return ret;
@@ -491,7 +492,7 @@ enum {
 };
 
 int
-_RDB_table_to_obj(RDB_table *tbp, RDB_object *valp)
+_RDB_table_to_obj(RDB_object *valp, RDB_table *tbp)
 {
     int pos;
     int ret;
@@ -514,7 +515,30 @@ _RDB_table_to_obj(RDB_table *tbp, RDB_object *valp)
 }
 
 int
-_RDB_expr_to_obj(const RDB_expression *exp, RDB_object *valp)
+_RDB_type_to_obj(RDB_object *valp, const RDB_type *typ)
+{
+    int pos;
+    int ret;
+
+    RDB_destroy_obj(valp);
+    valp->typ = &RDB_BINARY;
+    valp->kind = RDB_OB_BIN;
+    valp->var.bin.len = RDB_BUF_INITLEN;
+    valp->var.bin.datap = malloc(RDB_BUF_INITLEN);
+    if (valp->var.bin.datap == NULL) {
+        return RDB_NO_MEMORY;
+    }
+    pos = 0;
+    ret = serialize_type(valp, &pos, typ);
+    if (ret != RDB_OK)
+        return ret;
+
+    valp->var.bin.len = pos; /* Only store actual length */
+    return RDB_OK;
+}
+
+int
+_RDB_expr_to_obj(RDB_object *valp, const RDB_expression *exp)
 {
     int pos = 0;
     int ret;
@@ -578,6 +602,7 @@ deserialize_byte(RDB_object *valp, int *posp)
     return ((RDB_byte *)valp->var.bin.datap)[(*posp)++];
 }
 
+
 static int
 deserialize_type(RDB_object *valp, int *posp, RDB_transaction *txp,
                  RDB_type **typp)
@@ -606,6 +631,15 @@ deserialize_type(RDB_object *valp, int *posp, RDB_transaction *txp,
             ;
     }
     return RDB_INTERNAL;
+}
+
+int
+_RDB_deserialize_type(RDB_object *valp, RDB_transaction *txp,
+                 RDB_type **typp)
+{
+    int pos = 0;
+
+    return deserialize_type(valp, &pos, txp, typp);
 }
 
 static int
@@ -731,6 +765,7 @@ deserialize_expr(RDB_object *valp, int *posp, RDB_transaction *txp,
         case RDB_EX_REGMATCH:
         case RDB_EX_CONTAINS:
         case RDB_EX_CONCAT:
+        case RDB_EX_SUBSET:
             ret = deserialize_expr(valp, posp, txp, &ex1p);
             if (ret != RDB_OK)
                 return ret;

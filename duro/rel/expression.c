@@ -42,6 +42,7 @@ RDB_expr_type(const RDB_expression *exp, const RDB_type *tuptyp)
         case RDB_EX_REGMATCH:
         case RDB_EX_CONTAINS:
         case RDB_EX_IS_EMPTY:
+        case RDB_EX_SUBSET:
             return &RDB_BOOLEAN;
         case RDB_EX_ADD:
         case RDB_EX_SUBTRACT:
@@ -327,6 +328,12 @@ RDB_expr_contains(RDB_expression *arg1, RDB_expression *arg2)
 }
 
 RDB_expression *
+RDB_expr_subset(RDB_expression *arg1, RDB_expression *arg2)
+{
+    return _RDB_create_binexpr(arg1, arg2, RDB_EX_SUBSET);
+}
+
+RDB_expression *
 RDB_concat(RDB_expression *arg1, RDB_expression *arg2)
 {
     return _RDB_create_binexpr(arg1, arg2, RDB_EX_CONCAT);
@@ -548,6 +555,7 @@ RDB_drop_expr(RDB_expression *exp)
         case RDB_EX_REGMATCH:
         case RDB_EX_CONTAINS:
         case RDB_EX_CONCAT:
+        case RDB_EX_SUBSET:
             RDB_drop_expr(exp->var.op.arg2);
         case RDB_EX_NOT:
         case RDB_EX_NEGATE:
@@ -1070,15 +1078,15 @@ RDB_evaluate(RDB_expression *exp, const RDB_object *tup, RDB_transaction *txp,
             return evaluate_user_op(exp, tup, txp, valp);
         case RDB_EX_ATTR:
         {
-            if (tup == NULL)
-                return RDB_INVALID_ARGUMENT;
-        
-            RDB_object *srcp = RDB_tuple_get(tup, exp->var.attr.name);
+            if (tup != NULL) {
+                RDB_object *srcp = RDB_tuple_get(tup, exp->var.attr.name);
+                if (srcp != NULL)
+                    return RDB_copy_obj(valp, srcp);
+            }
 
-            if (srcp == NULL)
-                return RDB_NOT_FOUND;
-
-            return RDB_copy_obj(valp, srcp);
+            RDB_errmsg(RDB_db_env(RDB_tx_db(txp)), "attribute %s not found",
+                    exp->var.attr.name);
+            return RDB_INVALID_ARGUMENT;
         }
         case RDB_EX_OBJ:
             return RDB_copy_obj(valp, &exp->var.obj);
@@ -1206,6 +1214,46 @@ RDB_evaluate(RDB_expression *exp, const RDB_object *tup, RDB_transaction *txp,
             RDB_init_obj(valp);
             _RDB_set_obj_type(valp, &RDB_BOOLEAN);
             valp->var.bool_val = ret == RDB_OK ? RDB_TRUE : RDB_FALSE;
+            RDB_destroy_obj(&val1);
+            return RDB_destroy_obj(&val2);
+        }
+        case RDB_EX_SUBSET:
+        {
+            RDB_object val1, val2;
+
+            RDB_init_obj(&val1);
+            RDB_init_obj(&val2);
+            ret = RDB_evaluate(exp->var.op.arg1, tup, txp, &val1);
+            if (ret != RDB_OK) {
+                RDB_destroy_obj(&val1);
+                RDB_destroy_obj(&val2);
+                return ret;
+            }
+            if (val1.kind != RDB_OB_TABLE) {
+                RDB_destroy_obj(&val1);
+                RDB_destroy_obj(&val2);
+                return RDB_TYPE_MISMATCH;
+            }
+            ret = RDB_evaluate(exp->var.op.arg2, tup, txp, &val2);
+            if (ret != RDB_OK) {
+                RDB_destroy_obj(&val1);
+                RDB_destroy_obj(&val2);
+                return ret;
+            }
+            if (val2.kind != RDB_OB_TABLE) {
+                RDB_destroy_obj(&val2);
+                RDB_destroy_obj(&val2);
+                return RDB_TYPE_MISMATCH;
+            }
+            RDB_destroy_obj(valp);
+            RDB_init_obj(valp);
+            _RDB_set_obj_type(valp, &RDB_BOOLEAN);
+            ret = RDB_subset(val1.var.tbp, val2.var.tbp, txp, &valp->var.bool_val);
+            if (ret != RDB_OK && ret != RDB_NOT_FOUND) {
+                RDB_destroy_obj(&val1);
+                RDB_destroy_obj(&val2);
+                return ret;
+            }
             RDB_destroy_obj(&val1);
             return RDB_destroy_obj(&val2);
         }
@@ -1376,6 +1424,7 @@ _RDB_expr_refers(RDB_expression *exp, RDB_table *tbp)
         case RDB_EX_REGMATCH:
         case RDB_EX_CONTAINS:
         case RDB_EX_CONCAT:
+        case RDB_EX_SUBSET:
             return (RDB_bool) (_RDB_expr_refers(exp->var.op.arg1, tbp)
                     || _RDB_expr_refers(exp->var.op.arg2, tbp));
         case RDB_EX_NOT:

@@ -88,6 +88,10 @@ IN {
     return TOK_IN;
 }
 
+SUBSET {
+    return TOK_SUBSET;
+}
+
 OR  {
     return TOK_OR;
 }

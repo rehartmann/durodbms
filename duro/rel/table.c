@@ -1821,3 +1821,52 @@ RDB_sdivide(RDB_table *tb1p, RDB_table *tb2p, RDB_table *tb3p,
 
     return RDB_OK;
 }
+
+int
+RDB_subset(RDB_table *tb1p, RDB_table *tb2p, RDB_transaction *txp,
+           RDB_bool *resultp)
+{
+    RDB_qresult *qrp;
+    RDB_object tpl;
+    int ret;
+
+    if (!RDB_type_equals(tb1p->typ, tb2p->typ))
+        return RDB_TYPE_MISMATCH;
+
+    ret = _RDB_table_qresult(tb1p, txp, &qrp);
+    if (ret != RDB_OK) {
+        if (RDB_is_syserr(ret)) {
+            RDB_rollback_all(txp);
+        }
+        return ret;
+    }
+
+    RDB_init_obj(&tpl);
+
+    *resultp = RDB_TRUE;
+    while ((ret = _RDB_next_tuple(qrp, &tpl, txp)) == RDB_OK) {
+        ret = RDB_table_contains(tb2p, &tpl, txp);
+        if (ret == RDB_NOT_FOUND) {
+            *resultp = RDB_FALSE;
+            break;
+        }
+        if (ret != RDB_OK) {
+            if (RDB_is_syserr(ret)) {
+                RDB_rollback_all(txp);
+            }
+            RDB_destroy_obj(&tpl);
+            _RDB_drop_qresult(qrp, txp);
+            return ret;
+        }
+    }
+
+    RDB_destroy_obj(&tpl);
+    if (ret != RDB_NOT_FOUND && ret != RDB_OK) {
+        _RDB_drop_qresult(qrp, txp);
+        if (RDB_is_syserr(ret)) {
+            RDB_rollback_all(txp);
+        }
+        return ret;
+    }
+    return _RDB_drop_qresult(qrp, txp);
+}

@@ -104,7 +104,7 @@ Durotcl_Init(Tcl_Interp *interp)
 
     /* yydebug = 1; */
     
-    return Tcl_PkgProvide(interp, "duro", "0.7");
+    return Tcl_PkgProvide(interp, "duro", "0.8");
 }
 
 RDB_table *

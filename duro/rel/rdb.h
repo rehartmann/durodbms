@@ -30,7 +30,6 @@ along with Duro; if not, write to the Free Software Foundation, Inc.,
 #include <gen/hashmap.h>
 #include <gen/types.h>
 #include <stdlib.h>
-#include <ltdl.h>
 
 
 /* internal */
@@ -144,13 +143,13 @@ enum _RDB_expr_kind {
     RDB_EX_NEGATE,
     RDB_EX_MULTIPLY,
     RDB_EX_DIVIDE,
-
     RDB_EX_STRLEN,
     RDB_EX_REGMATCH,
     RDB_EX_CONCAT,
     RDB_EX_CONTAINS,
 
     RDB_EX_IS_EMPTY,
+    RDB_EX_SUBSET,
     RDB_EX_AGGREGATE,
     RDB_EX_TUPLE_ATTR,
     RDB_EX_GET_COMP,
@@ -596,6 +595,10 @@ RDB_avg(RDB_table *tbp, const char *attrname, RDB_transaction *txp,
 int
 RDB_table_contains(RDB_table *, const RDB_object *, RDB_transaction *);
 
+int
+RDB_subset(RDB_table *tb1p, RDB_table *tb2p, RDB_transaction *txp,
+              RDB_bool *resultp);
+
 /*
  * Extract a tuple from the table. The table must contain
  * exactly one tuple.
@@ -1009,6 +1012,9 @@ RDB_regmatch(RDB_expression *, RDB_expression *);
 
 RDB_expression *
 RDB_concat(RDB_expression *, RDB_expression *);
+
+RDB_expression *
+RDB_expr_subset(RDB_expression *, RDB_expression *);
 
 /*
  * Create table-valued expression

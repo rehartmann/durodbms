@@ -65,7 +65,7 @@ static RDB_string_vec keys_keyv[] = { { 2, keys_keyattrv } };
 static RDB_attr types_attrv[] = {
     { "TYPENAME", &RDB_STRING, NULL, 0 },
     { "I_AREP_LEN", &RDB_INTEGER, NULL, 0 },
-    { "I_AREP_TYPE", &RDB_STRING, NULL, 0 },
+    { "I_AREP_TYPE", &RDB_BINARY, NULL, 0 },
     { "I_SYSIMPL", &RDB_BOOLEAN, NULL, 0}
 };
 static char *types_keyattrv[] = { "TYPENAME" };
@@ -496,7 +496,7 @@ insert_vtable(RDB_table *tbp, RDB_dbroot *dbrootp, RDB_transaction *txp)
     if (ret != RDB_OK)
         goto cleanup;
 
-    ret = _RDB_table_to_obj(tbp, &defval);
+    ret = _RDB_table_to_obj(&defval, tbp);
     if (ret != RDB_OK)
         goto cleanup;
     ret = RDB_tuple_set(&tpl, "I_DEF", &defval);
@@ -1371,7 +1371,7 @@ _RDB_get_cat_type(const char *name, RDB_transaction *txp, RDB_type **typp)
     RDB_object possreps;
     RDB_object comps;
     RDB_type *typ = NULL;
-    char *typename;
+    RDB_object *typedatap;
     int ret, tret;
     int i;
 
@@ -1399,9 +1399,10 @@ _RDB_get_cat_type(const char *name, RDB_transaction *txp, RDB_type **typp)
     typ->kind = RDB_TP_SCALAR;
     typ->comparep = NULL;
 
-    typename = RDB_tuple_get_string(&tpl, "I_AREP_TYPE");
-    if (typename[0] != '\0') {
-        ret = RDB_get_type(typename, txp, &typ->arep);
+    typedatap = RDB_tuple_get(&tpl, "I_AREP_TYPE");
+    if (RDB_binary_length(typedatap) != 0) {
+    
+        ret = _RDB_deserialize_type(typedatap, txp, &typ->arep);
         if (ret != RDB_OK)
             goto error;
     } else {

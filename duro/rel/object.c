@@ -310,14 +310,22 @@ RDB_obj_equals(const RDB_object *val1p, const RDB_object *val2p)
             return (RDB_bool) (val1p->var.int_val == val2p->var.int_val);
         case RDB_OB_RATIONAL:
             return (RDB_bool) (val1p->var.rational_val == val2p->var.rational_val);
-        default:
+        case RDB_OB_INITIAL:
+            return RDB_FALSE;
+        case RDB_OB_BIN:
             if (val1p->var.bin.len != val2p->var.bin.len)
                 return RDB_FALSE;
             if (val1p->var.bin.len == 0)
                 return RDB_TRUE;
             return (RDB_bool) (memcmp(val1p->var.bin.datap, val2p->var.bin.datap,
                     val1p->var.bin.len) == 0);
+        case RDB_OB_TABLE:
+        case RDB_OB_TUPLE:
+        case RDB_OB_ARRAY:
+            /* !! */
+            return RDB_FALSE;
     }
+    return RDB_FALSE;
 } 
 
 static int

@@ -83,6 +83,7 @@ enum {
 %token TOK_ADD
 %token TOK_MATCHES
 %token TOK_IN
+%token TOK_SUBSET
 %token TOK_OR
 %token TOK_AND
 %token TOK_NOT
@@ -760,12 +761,36 @@ rel_expression: add_expression
                 YYERROR;
         }
         | add_expression TOK_IN add_expression {
-            $$ = RDB_expr_contains($3, $1);
+            /* If $3 is a name, try to find a table with that name */
+            RDB_table *tbp = expr_to_table($1);
+            RDB_expression *exp = tbp != NULL ? RDB_table_to_expr(tbp) : $1;
+
+            $$ = RDB_expr_contains($3, exp);
             if ($$ == NULL)
                 YYERROR;
         }
         | add_expression TOK_MATCHES add_expression {
             $$ = RDB_regmatch($1, $3);
+            if ($$ == NULL)
+                YYERROR;
+        }
+        | add_expression TOK_SUBSET add_expression {
+            RDB_table *tbp;
+            RDB_expression *ex1p, *ex2p;
+
+            tbp = expr_to_table($1);
+            if (tbp != NULL)
+               ex1p = RDB_table_to_expr(tbp);
+            else
+               ex1p = $1;
+
+            tbp = expr_to_table($3);
+            if (tbp != NULL)
+               ex2p = RDB_table_to_expr(tbp);
+            else
+               ex2p = $3;
+
+            $$ = RDB_expr_subset(ex1p, ex2p);
             if ($$ == NULL)
                 YYERROR;
         }

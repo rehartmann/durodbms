@@ -51,7 +51,7 @@ RDB_destroy_hashmap(RDB_hashmap *hp)
 static unsigned
 hash_str(const char *str)
 {
-    int len = strlen(str);
+    int len = (int) strlen(str);
     int i;
     unsigned res = 0;
     

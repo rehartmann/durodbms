@@ -7,7 +7,7 @@ AM_YFLAGS = -d
 
 bin_PROGRAMS = util/lstables util/droptable util/dropdb
 
-# Shared libs for testing are listed here, because check_LTLIBRARIES does
+# Shared libs for testing are listed here too, because check_LTLIBRARIES does
 # not work
 lib_LTLIBRARIES = libduro.la libdurotcl.la \
         tests/libpoint.la tests/libplus.la
@@ -41,7 +41,7 @@ tests_libplus_la_SOURCES = tests/plus.c
 
 TESTS = tests/ctests tests/rtables.tcl tests/project.tcl tests/tuple.tcl \
         tests/sdivide.tcl tests/invtable.tcl tests/operator.tcl \
-        tests/vtables.tcl tests/db2.tcl tests/rel.tcl
+        tests/vtables.tcl tests/db2.tcl tests/rel.tcl tests/subset.tcl
 
 TESTS_ENVIRONMENT = LD_LIBRARY_PATH=$(LD_LIBRARY_PATH):$(BDB_HOME)/lib
 
@@ -97,4 +97,4 @@ install-exec-hook:
 install-data-hook:
 	LD_LIBRARY_PATH=$(BDB_HOME)/lib;export LD_LIBRARY_PATH; \
                 echo pkg_mkIndex $(DESTDIR)$(prefix)/lib \
-                libdurotcl.so util.tcl | tclsh
+                libdurotcl.* util.tcl | tclsh
