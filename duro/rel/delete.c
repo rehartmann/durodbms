@@ -123,7 +123,7 @@ error:
 }  
 
 static int
-delete_select_index(RDB_table *tbp, RDB_expression *condp,
+delete_select_uindex(RDB_table *tbp, RDB_expression *condp,
         RDB_transaction *txp)
 {
     int ret;
@@ -174,8 +174,108 @@ cleanup:
     for (i = 0; i < objc; i++) {
         int ret2 = RDB_destroy_obj(&objv[i]);
         if (ret2 != RDB_OK && ret == RDB_OK)
-            return ret2;
+            ret = ret2;
     }
+    free(objv);
+    return ret;
+}
+
+static int
+delete_select_index(RDB_table *tbp, RDB_expression *condp,
+        RDB_transaction *txp)
+{
+    int ret, ret2;
+    int i;
+    RDB_cursor *curp = NULL;
+    RDB_field *fv = NULL;
+    int keylen = tbp->var.select.indexp->attrc;
+    int objc = tbp->var.select.indexp->attrc;
+    RDB_object *objv = malloc(sizeof(RDB_object) * objc);
+    if (objv == NULL)
+        return RDB_NO_MEMORY;
+
+    for (i = 0; i < objc; i++)
+        RDB_init_obj(&objv[i]);
+
+    ret = RDB_index_cursor(&curp, tbp->var.select.indexp->idxp,
+            0, tbp->var.select.tbp->is_persistent ? txp->txid : NULL);
+    if (ret != RDB_OK) {
+        if (txp != NULL) {
+            RDB_errmsg(txp->dbp->dbrootp->envp, "cannot create cursor: %s",
+                    RDB_strerror(ret));
+        }
+        return ret;
+    }
+
+    ret = _RDB_index_expr_to_objv(tbp->var.select.indexp,
+          tbp->var.select.exp, tbp->typ, objv);
+    if (ret != RDB_OK)
+        goto cleanup;
+
+    fv = malloc(sizeof (RDB_field) * keylen);
+    if (fv == NULL) {
+        ret = RDB_NO_MEMORY;
+        goto cleanup;
+    }
+
+    for (i = 0; i < keylen; i++) {
+        ret =_RDB_obj_to_field(&fv[i], &objv[i]);
+        if (ret != RDB_OK)
+            goto cleanup;
+    }
+
+    ret = RDB_cursor_seek(curp, fv);
+    if (ret == RDB_NOT_FOUND) {
+        ret = RDB_OK;
+        goto cleanup;
+    }
+
+    do {
+        RDB_bool b = RDB_TRUE;
+
+        if (condp != NULL) {
+            RDB_object tpl;
+
+            RDB_init_obj(&tpl);
+
+            /*
+             * Read tuple and check condition
+             */
+            ret = _RDB_get_by_cursor(tbp->var.select.tbp, curp, &tpl);
+            if (ret != RDB_OK) {
+                RDB_destroy_obj(&tpl);
+                goto cleanup;
+            }
+            ret = RDB_evaluate_bool(condp, &tpl, txp, &b);
+            RDB_destroy_obj(&tpl);
+            if (ret != RDB_OK)
+                goto cleanup;
+        }
+
+        if (b) {
+            ret = RDB_cursor_delete(curp);
+            if (ret != RDB_OK)
+                goto cleanup;
+        }
+
+        ret = RDB_cursor_next_dup(curp);
+    } while (ret == RDB_OK);
+
+    if (ret == RDB_NOT_FOUND)
+        ret = RDB_OK;
+
+cleanup:
+    if (curp != NULL) {
+        ret2 = RDB_destroy_cursor(curp);
+        if (ret2 != RDB_OK && ret == RDB_OK)
+            ret = ret2;
+    }
+    for (i = 0; i < objc; i++) {
+        ret2 = RDB_destroy_obj(&objv[i]);
+        if (ret2 != RDB_OK && ret == RDB_OK)
+            ret = ret2;
+    }
+    free(fv);
     free(objv);
     return ret;
 }
@@ -242,6 +342,8 @@ delete(RDB_table *tbp, RDB_expression *condp, RDB_transaction *txp)
             return ret;
         }
         case RDB_TB_SELECT_INDEX:
+            if (tbp->var.select.indexp->unique)
+                return delete_select_uindex(tbp, condp, txp);
             return delete_select_index(tbp, condp, txp);
         case RDB_TB_JOIN:
             return RDB_NOT_SUPPORTED;

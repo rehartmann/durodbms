@@ -15,10 +15,13 @@ static RDB_bool
 is_keyattr(const char *attrname, RDB_table *tbp)
 {
     int i, j;
-
-    for (i = 0; i < tbp->keyc; i++)
-        for (j = 0; j < tbp->keyv[i].strc; j++)
-            if (strcmp(attrname, tbp->keyv[i].strv[j]) == 0)
+    int keyc;
+    RDB_string_vec *keyv;
+    
+    keyc = RDB_table_keys(tbp, &keyv);
+    for (i = 0; i < keyc; i++)
+        for (j = 0; j < keyv[i].strc; j++)
+            if (strcmp(attrname, keyv[i].strv[j]) == 0)
                 return RDB_TRUE;
     return RDB_FALSE;
 }
@@ -336,7 +339,7 @@ cleanup:
 }
 
 static int
-update_select_index(RDB_table *tbp, RDB_expression *condp,
+update_select_pindex(RDB_table *tbp, RDB_expression *condp,
         int updc, const RDB_attr_update updv[], RDB_transaction *txp)
 {
     RDB_object tpl;
@@ -393,8 +396,10 @@ update_select_index(RDB_table *tbp, RDB_expression *condp,
             goto cleanup;
         }
 
-        if (!b)
+        if (!b) {
+            RDB_destroy_obj(&tpl);
             goto cleanup;
+        }
     }
 
     ret = upd_to_vals(tbp->var.select.tbp, updc, updv, &tpl, valv, txp);
@@ -417,12 +422,13 @@ update_select_index(RDB_table *tbp, RDB_expression *condp,
         _RDB_obj_to_field(&fieldv[i], &valv[i]);
     }
         
-    ret = RDB_update_rec(tbp->var.select.tbp->var.stored.recmapp, fvv, updc, fieldv,
-            txp->txid);
-    if (RDB_is_syserr(ret)) {
-        RDB_errmsg(txp->dbp->dbrootp->envp, "cannot update record: %s",
-               RDB_strerror(ret));
-        return ret;
+    ret = RDB_update_rec(tbp->var.select.tbp->var.stored.recmapp, fvv, updc,
+            fieldv, txp->txid);
+    if (ret != RDB_OK) {
+        if (RDB_is_syserr(ret))
+            RDB_errmsg(txp->dbp->dbrootp->envp, "cannot update record: %s",
+                   RDB_strerror(ret));
+        goto cleanup;
     }
     ret = RDB_OK;
 
@@ -437,15 +443,153 @@ cleanup:
     return ret;
 }
 
+static int
+update_select_index_simple(RDB_table *tbp, RDB_expression *condp,
+        int updc, const RDB_attr_update updv[], RDB_transaction *txp)
+{
+    RDB_object tpl;
+    int ret, ret2;
+    int i;
+    RDB_cursor *curp = NULL;
+    int objc = tbp->var.select.indexp->attrc;
+    RDB_field *fv = malloc(sizeof(RDB_field) * objc);
+    RDB_object *objv = malloc(sizeof(RDB_object) * objc);
+    RDB_object *valv = malloc(sizeof(RDB_object) * updc);
+    RDB_field *fieldv = malloc(sizeof(RDB_field) * updc);
+
+    if (fv == NULL || objv == NULL || valv == NULL || fieldv == NULL) {
+        free(fv);
+        free(objv);
+        free(valv);
+        free(fieldv);
+        ret = RDB_NO_MEMORY;
+        goto cleanup;
+    }
+
+    for (i = 0; i < objc; i++)
+        RDB_init_obj(&objv[i]);
+
+    for (i = 0; i < updc; i++)
+        RDB_init_obj(&valv[i]);
+
+    ret = RDB_index_cursor(&curp, tbp->var.select.indexp->idxp,
+            0, tbp->var.select.tbp->is_persistent ? txp->txid : NULL);
+    if (ret != RDB_OK) {
+        if (txp != NULL) {
+            RDB_errmsg(txp->dbp->dbrootp->envp, "cannot create cursor: %s",
+                    RDB_strerror(ret));
+        }
+        return ret;
+    }
+
+    /* Evaluate key */
+    ret = _RDB_index_expr_to_objv(tbp->var.select.indexp,
+          tbp->var.select.exp, tbp->typ, objv);
+    if (ret != RDB_OK)
+        goto cleanup;
+
+    /* Convert to a field value */
+    for (i = 0; i < objc; i++)
+        _RDB_obj_to_field(&fv[i], &objv[i]);
+
+    ret = RDB_cursor_seek(curp, fv);
+    if (ret == RDB_NOT_FOUND) {
+        ret = RDB_OK;
+        goto cleanup;
+    }
+
+    do {
+        RDB_bool b = RDB_TRUE;
+
+        /* Read tuple */
+        RDB_init_obj(&tpl);
+        ret = _RDB_get_by_cursor(tbp->var.select.tbp, curp, &tpl);
+        if (ret != RDB_OK) {
+            RDB_destroy_obj(&tpl);
+            goto cleanup;
+        }
+
+        if (condp != NULL) {
+            /*
+             * Check condition
+             */
+            ret = RDB_evaluate_bool(condp, &tpl, txp, &b);
+            if (ret != RDB_OK) {
+                RDB_destroy_obj(&tpl);
+                goto cleanup;
+            }
+        }
+
+        if (b) {
+            ret = upd_to_vals(tbp->var.select.tbp, updc, updv, &tpl, valv, txp);
+            RDB_destroy_obj(&tpl);
+            if (ret != RDB_OK)
+                goto cleanup;
+
+            for (i = 0; i < updc; i++) {
+                fieldv[i].no = *(int*) RDB_hashmap_get(
+                         &tbp->var.select.tbp->var.stored.attrmap,
+                         updv[i].name, NULL);
+                 
+                /* Set type - needed for tuple and array attributes */
+                if (valv[i].typ == NULL
+                        && (valv[i].kind == RDB_OB_TUPLE
+                         || valv[i].kind == RDB_OB_ARRAY)) {
+                    _RDB_set_nonsc_type(&valv[i], RDB_type_attr_type(
+                            RDB_table_type(tbp->var.select.tbp), updv[i].name));
+                }
+                _RDB_obj_to_field(&fieldv[i], &valv[i]);
+            }
+                
+            ret = RDB_cursor_update(curp, updc, fieldv);
+            if (ret != RDB_OK) {
+                if (RDB_is_syserr(ret))
+                    RDB_errmsg(txp->dbp->dbrootp->envp, "cannot update record: %s",
+                           RDB_strerror(ret));
+                goto cleanup;
+            }
+        }
+        ret = RDB_cursor_next_dup(curp);
+    } while (ret == RDB_OK);
+
+    if (ret == RDB_NOT_FOUND)
+        ret = RDB_OK;
+
+cleanup:
+    if (curp != NULL) {
+        ret2 = RDB_destroy_cursor(curp);
+        if (ret2 != RDB_OK && ret == RDB_OK)
+            ret = ret2;
+    }
+
+    for (i = 0; i < updc; i++) {
+        ret2 = RDB_destroy_obj(&valv[i]);
+        if (ret2 != RDB_OK && ret == RDB_OK)
+            ret = ret2;
+    }
+    free(valv);
+    free(fieldv);
+    free(objv);
+    free(fv);
+
+    return ret;
+}
+
+/*
 static RDB_bool
-needs_complex_update(RDB_table *tbp, RDB_expression *exprp,
-        int updc, const RDB_attr_update updv[])
+exp_req_complex(RDB_expression
+    if (exprp != NULL) {
+        return _RDB_expr_refers(exprp, tbp);
+    }
+*/
+
+static RDB_bool
+upd_complex(RDB_table *tbp, int updc, const RDB_attr_update updv[])
 {
     int i;
 
     /*
-     * If a key is updated or exprp refers to the table,
-     * the simple update method cannot be used
+     * If a key is updated, the simple update method cannot be used
      */
 
     /* Check if a key attribute is updated */
@@ -456,10 +600,6 @@ needs_complex_update(RDB_table *tbp, RDB_expression *exprp,
     }
 
     /* Check if one of the expressions refers to the table itself */
-
-    if (exprp != NULL) {
-        return _RDB_expr_refers(exprp, tbp);
-    }
 
     for (i = 0; i < updc; i++) {
         if (_RDB_expr_refers(updv[i].exp, tbp))
@@ -473,7 +613,8 @@ static int
 update_stored(RDB_table *tbp, RDB_expression *condp, int updc,
         const RDB_attr_update updv[], RDB_transaction *txp)
 {
-    if (needs_complex_update(tbp, condp, updc, updv))
+    if (upd_complex(tbp, updc, updv)
+        || (condp != NULL && _RDB_expr_refers(condp, tbp)))
         return update_stored_complex(tbp, condp, updc, updv, txp);
     return update_stored_simple(tbp, condp, updc, updv, txp);
 }
@@ -501,6 +642,20 @@ update_select(RDB_table *tbp, RDB_expression *condp,
 }
 
 static int
+update_select_index(RDB_table *tbp, RDB_expression *condp,
+        int updc, const RDB_attr_update updv[], RDB_transaction *txp)
+{
+    if (upd_complex(tbp, updc, updv)
+        || _RDB_expr_refers(tbp->var.select.exp, tbp->var.select.tbp)
+        || (condp != NULL && _RDB_expr_refers(condp, tbp->var.select.tbp))) {
+
+        /* Should do a complex update by index, but this is not implelemnted */
+        return update_select(tbp, condp, updc, updv, txp);
+    }
+    return update_select_index_simple(tbp, condp, updc, updv, txp);
+}
+
+static int
 update(RDB_table *tbp, RDB_expression *condp, int updc,
         const RDB_attr_update updv[], RDB_transaction *txp)
 {
@@ -516,7 +671,9 @@ update(RDB_table *tbp, RDB_expression *condp, int updc,
         case RDB_TB_SELECT:
             return update_select(tbp, condp, updc, updv, txp);
         case RDB_TB_SELECT_INDEX:
-            return update_select_index(tbp, condp, updc, updv, txp);
+            if (tbp->var.select.indexp->idxp == NULL)
+                return update_select_pindex(tbp, condp, updc, updv, txp);
+            return update_select_index(tbp, condp, updc, updv, txp);;
         case RDB_TB_JOIN:
             return RDB_NOT_SUPPORTED;
         case RDB_TB_EXTEND:

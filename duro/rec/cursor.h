@@ -44,6 +44,9 @@ RDB_cursor_set(RDB_cursor *, int fieldc, RDB_field[]);
 int
 RDB_cursor_delete(RDB_cursor *);
 
+int
+RDB_cursor_update(RDB_cursor *, int fieldc, const RDB_field fieldv[]);
+
 /*
  * Move the cursor to the first record.
  * If there is no first record, RDB_NOT_FOUND is returned.

@@ -859,40 +859,52 @@ error:
     return ret;
 }
 
-static int
-next_stored_tuple(RDB_qresult *qrp, RDB_table *tbp, RDB_object *tplp,
-        RDB_bool dup)
+int
+_RDB_get_by_cursor(RDB_table *tbp, RDB_cursor *curp, RDB_object *tplp)
 {
     int i;
     int ret;
+    RDB_object val;
+    RDB_int fno;
+    RDB_attr *attrp;
     void *datap;
     size_t len;
     RDB_type *tuptyp = tbp->typ->var.basetyp;
 
-    if (tplp != NULL) {
-        for (i = 0; i < tuptyp->var.tuple.attrc; i++) {
-            RDB_object val;
-            RDB_int fno;
-            RDB_attr *attrp = &tuptyp->var.tuple.attrv[i];
+    for (i = 0; i < tuptyp->var.tuple.attrc; i++) {
+        attrp = &tuptyp->var.tuple.attrv[i];
 
-            fno = *(RDB_int *)RDB_hashmap_get(&tbp->var.stored.attrmap,
-                                          attrp->name, NULL);
-            ret = RDB_cursor_get(qrp->var.curp, fno, &datap, &len);
-            if (ret != RDB_OK) {
-                return ret;
-            }
-            RDB_init_obj(&val);
-            ret = RDB_irep_to_obj(&val, attrp->typ, datap, len);
-            if (ret != RDB_OK) {
-                RDB_destroy_obj(&val);
-                return ret;
-            }
-            ret = RDB_tuple_set(tplp, attrp->name, &val);
-            RDB_destroy_obj(&val);
-            if (ret != RDB_OK) {
-                return ret;
-            }
+        fno = *(RDB_int *)RDB_hashmap_get(&tbp->var.stored.attrmap,
+                                      attrp->name, NULL);
+        ret = RDB_cursor_get(curp, fno, &datap, &len);
+        if (ret != RDB_OK) {
+            return ret;
         }
+        RDB_init_obj(&val);
+        ret = RDB_irep_to_obj(&val, attrp->typ, datap, len);
+        if (ret != RDB_OK) {
+            RDB_destroy_obj(&val);
+            return ret;
+        }
+        ret = RDB_tuple_set(tplp, attrp->name, &val);
+        RDB_destroy_obj(&val);
+        if (ret != RDB_OK) {
+            return ret;
+        }
+    }
+    return RDB_OK;
+}
+
+static int
+next_stored_tuple(RDB_qresult *qrp, RDB_table *tbp, RDB_object *tplp,
+        RDB_bool dup)
+{
+    int ret;
+
+    if (tplp != NULL) {
+        ret = _RDB_get_by_cursor(tbp, qrp->var.curp, tplp);
+        if (ret != RDB_OK)
+            return ret;
     }
     if (dup) {
         ret = RDB_cursor_next_dup(qrp->var.curp);

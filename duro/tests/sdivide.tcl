@@ -13,22 +13,6 @@ load .libs/libdurotcl.so
 
 source tests/testutil.tcl
 
-proc checkarray {a l tx} {
-    set alen [duro::array length $a]
-    if {$alen != [llength $l]} {
-        puts "# of tuples is $alen, expected [llength $l]"
-        exit 1
-    }
-    for {set i 0} {$i < $alen} {incr i} {
-        set t [duro::array index $a $i $tx]
-        set xt [lindex $l $i]
-        if {![tequal $t $xt]} {
-            puts "Tuple value is $t, expected $xt"
-            exit 1
-        }
-    }
-}   
-
 # Create DB environment
 file delete -force tests/dbenv
 file mkdir tests/dbenv

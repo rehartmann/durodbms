@@ -21,3 +21,17 @@ proc tequal {t1 t2} {
     }
     return 1
 }
+
+proc checkarray {a l tx} {
+    set alen [duro::array length $a]
+    if {$alen != [llength $l]} {
+        error "# of tuples is $alen, expected [llength $l]"
+    }
+    for {set i 0} {$i < $alen} {incr i} {
+        set t [duro::array index $a $i $tx]
+        set xt [lindex $l $i]
+        if {![tequal $t $xt]} {
+            error "Tuple value is $t, expected $xt"
+        }
+    }
+}   

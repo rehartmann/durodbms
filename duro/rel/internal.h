@@ -149,6 +149,9 @@ _RDB_get_by_uindex(RDB_table *tbp, RDB_object valv[], _RDB_tbindex *indexp,
         RDB_transaction *txp, RDB_object *tplp);
 
 int
+_RDB_get_by_cursor(RDB_table *, RDB_cursor *, RDB_object *);
+
+int
 _RDB_drop_qresult(RDB_qresult *, RDB_transaction *);
 
 int

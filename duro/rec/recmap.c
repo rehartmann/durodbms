@@ -573,6 +573,44 @@ _RDB_set_field(RDB_recmap *recmapp, DBT *recpartp, const RDB_field *fieldp,
 }
 
 int
+_RDB_update_rec(RDB_recmap *recmapp, DBT *keyp, DBT *datap,
+        int fieldc, const RDB_field fieldv[], DB_TXN *txid)
+{
+    int i;
+    int ret;
+
+    /* Check if the key is to be modified */
+    for (i = 0; i < fieldc; i++) {
+        if (fieldv[i].no < recmapp->keyfieldcount) {
+            /* Key is to be modified, so delete record first */
+            ret = recmapp->dbp->del(recmapp->dbp, txid, keyp, 0);
+            if (ret != 0) {
+                return ret;
+            }
+            break;
+        }
+    }
+
+    for (i = 0; i < fieldc; i++) {
+        if (fieldv[i].no < recmapp->keyfieldcount) {
+            _RDB_set_field(recmapp, keyp, &fieldv[i],
+                           recmapp->varkeyfieldcount);
+        } else {
+            _RDB_set_field(recmapp, datap, &fieldv[i],
+                           recmapp->vardatafieldcount);
+        }
+    }
+
+    /* Write record back */
+    ret = recmapp->dbp->put(recmapp->dbp, txid, keyp, datap, 0);
+    if (ret == EINVAL) {
+        /* Assume duplicate secondary index */
+        ret = RDB_KEY_VIOLATION;
+    }
+    return 0;
+}
+
+int
 RDB_update_rec(RDB_recmap *recmapp, RDB_field keyv[],
                int fieldc, const RDB_field fieldv[], DB_TXN *txid)
 {
@@ -587,38 +625,10 @@ RDB_update_rec(RDB_recmap *recmapp, RDB_field keyv[],
     data.flags = DB_DBT_REALLOC;
 
     ret = recmapp->dbp->get(recmapp->dbp, txid, &key, &data, 0);
-    if (ret != 0) {
+    if (ret != 0)
         goto error;
-    }
 
-    /* Check if the key is to be modified */
-    for (i = 0; i < fieldc; i++) {
-        if (fieldv[i].no < recmapp->keyfieldcount) {
-            /* Key is to be modified, so delete record first */
-            ret = recmapp->dbp->del(recmapp->dbp, txid, &key, 0);
-            if (ret != 0) {
-                goto error;
-            }
-            break;
-        }
-    }
-
-    for (i = 0; i < fieldc; i++) {
-        if (fieldv[i].no < recmapp->keyfieldcount) {
-            _RDB_set_field(recmapp, &key, &fieldv[i],
-                           recmapp->varkeyfieldcount);
-        } else {
-            _RDB_set_field(recmapp, &data, &fieldv[i],
-                           recmapp->vardatafieldcount);
-        }
-    }
-
-    /* Write record back */
-    ret = recmapp->dbp->put(recmapp->dbp, txid, &key, &data, 0);
-    if (ret == EINVAL) {
-        /* Assume duplicate secondary index */
-        ret = RDB_KEY_VIOLATION;
-    }
+    ret = _RDB_update_rec(recmapp, &key, &data, fieldc, fieldv, txid);
 
 error:
     free(key.data);

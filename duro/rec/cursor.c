@@ -134,6 +134,30 @@ RDB_cursor_delete(RDB_cursor *curp)
 }
 
 int
+RDB_cursor_update(RDB_cursor *curp, int fieldc, const RDB_field fieldv[])
+{
+    DBT key, pkey, data;
+    int ret;
+    int i;
+
+    memset(&key, 0, sizeof (key));
+    memset(&pkey, 0, sizeof (pkey));
+    memset(&data, 0, sizeof (data));
+    data.flags = DB_DBT_REALLOC;
+
+    ret = curp->cursorp->c_pget(curp->cursorp, &key, &pkey, &data, DB_CURRENT);
+    if (ret != 0) {
+        goto cleanup;
+    }
+
+    ret = _RDB_update_rec(curp->recmapp, &pkey, &data, fieldc, fieldv,
+            curp->txid);
+
+cleanup:
+    return RDB_convert_err(ret);
+}
+
+int
 RDB_cursor_first(RDB_cursor *curp)
 {
     return RDB_convert_err(curp->cursorp->c_get(curp->cursorp, &curp->current_key,
@@ -163,6 +187,7 @@ RDB_cursor_next_dup(RDB_cursor *curp)
         return RDB_convert_err(curp->cursorp->c_get(curp->cursorp,
                 &curp->current_key, &curp->current_data, DB_NEXT_DUP));
     } else {
+        memset(&key, 0, sizeof key);
         return RDB_convert_err(curp->cursorp->c_pget(curp->cursorp,
                 &key, &curp->current_key, &curp->current_data, DB_NEXT_DUP));
     }
@@ -190,8 +215,13 @@ RDB_cursor_seek(RDB_cursor *curp, RDB_field keyv[])
             keyv[i].no = curp->idxp->fieldv[i];
     }
 
-    ret = _RDB_fields_to_DBT(curp->recmapp, curp->recmapp->keyfieldcount,
-            keyv, curp->idxp == NULL ? &curp->current_key : &key);
+    if (curp->idxp == NULL) {
+        ret = _RDB_fields_to_DBT(curp->recmapp, curp->recmapp->keyfieldcount,
+                keyv, &curp->current_key);
+    } else {
+        ret = _RDB_fields_to_DBT(curp->recmapp, curp->idxp->fieldc,
+                keyv, &key);
+    }
     if (ret != RDB_OK)
         return ret;
 
