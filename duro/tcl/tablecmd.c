@@ -629,13 +629,70 @@ table_add_cmd(TclState *statep, Tcl_Interp *interp, int objc,
 }
 
 static Tcl_Obj *
-type_to_tobj(const RDB_type *typ)
+type_to_tobj(Tcl_Interp *interp, const RDB_type *typ)
 {
-    char *name = RDB_type_name(typ);
+    Tcl_Obj *listobjp;
+    int i;
+    RDB_type *tpltyp;
+    Tcl_Obj *typobjp;
 
-    if (name != NULL)
-        return Tcl_NewStringObj(name, strlen(name));
-    return Tcl_NewStringObj("", 0);
+    if (RDB_type_is_scalar(typ))
+        return Tcl_NewStringObj(RDB_type_name(typ), strlen(RDB_type_name(typ)));
+    switch (typ->kind) {
+        case RDB_TP_TUPLE:
+            listobjp = Tcl_NewListObj(0, NULL);
+            if (listobjp == NULL)
+                return NULL;
+            Tcl_ListObjAppendElement(interp, listobjp,
+                    Tcl_NewStringObj("tuple", 5));
+            for (i = 0; i < typ->var.tuple.attrc; i++) {
+                Tcl_Obj *attrobjp = Tcl_NewListObj(0, NULL);
+
+                Tcl_ListObjAppendElement(interp, attrobjp,
+                        Tcl_NewStringObj(typ->var.tuple.attrv[i].name,
+                                strlen(typ->var.tuple.attrv[i].name)));
+                typobjp = type_to_tobj(interp, typ->var.tuple.attrv[i].typ);
+                if (typobjp == NULL)
+                    return NULL;
+                Tcl_ListObjAppendElement(interp, attrobjp, typobjp);
+                Tcl_ListObjAppendElement(interp, listobjp, attrobjp);
+            }
+            break;
+        case RDB_TP_RELATION:
+            tpltyp = typ->var.basetyp;
+            listobjp = Tcl_NewListObj(0, NULL);
+            if (listobjp == NULL)
+                return NULL;
+            Tcl_ListObjAppendElement(interp, listobjp,
+                    Tcl_NewStringObj("relation", 8));
+            for (i = 0; i < tpltyp->var.tuple.attrc; i++) {
+                Tcl_Obj *attrobjp = Tcl_NewListObj(0, NULL);
+
+                Tcl_ListObjAppendElement(interp, attrobjp,
+                        Tcl_NewStringObj(tpltyp->var.tuple.attrv[i].name,
+                                strlen(tpltyp->var.tuple.attrv[i].name)));
+                typobjp = type_to_tobj(interp, tpltyp->var.tuple.attrv[i].typ);
+                if (typobjp == NULL)
+                    return NULL;
+                Tcl_ListObjAppendElement(interp, attrobjp, typobjp);
+                Tcl_ListObjAppendElement(interp, listobjp, attrobjp);
+            }
+            break;
+        case RDB_TP_ARRAY:
+            listobjp = Tcl_NewListObj(0, NULL);
+            if (listobjp == NULL)
+                return NULL;
+            Tcl_ListObjAppendElement(interp, listobjp,
+                    Tcl_NewStringObj("array", 5));
+            typobjp = type_to_tobj(interp, typ->var.basetyp);
+            if (typobjp == NULL)
+                return NULL;
+            Tcl_ListObjAppendElement(interp, listobjp, typobjp);
+            break;
+        default:
+            return NULL;
+    }
+    return listobjp;
 }
 
 static int
@@ -674,6 +731,7 @@ table_attrs_cmd(TclState *statep, Tcl_Interp *interp, int objc,
 
     listobjp = Tcl_NewListObj(0, NULL);
     for (i = 0; i < tuptyp->var.tuple.attrc; i++) {
+        Tcl_Obj *typobjp;
         Tcl_Obj *sublistobjp = Tcl_NewListObj(0, NULL);
         char *name = tuptyp->var.tuple.attrv[i].name;
 
@@ -681,8 +739,10 @@ table_attrs_cmd(TclState *statep, Tcl_Interp *interp, int objc,
                 Tcl_NewStringObj(name, strlen(name)));
         if (ret != TCL_OK)
             return ret;
-        ret = Tcl_ListObjAppendElement(interp, sublistobjp,
-                type_to_tobj(tuptyp->var.tuple.attrv[i].typ));
+        typobjp = type_to_tobj(interp, tuptyp->var.tuple.attrv[i].typ);
+        if (typobjp == NULL)
+            return TCL_ERROR;
+        ret = Tcl_ListObjAppendElement(interp, sublistobjp, typobjp);
         if (ret != TCL_OK)
             return ret;
 

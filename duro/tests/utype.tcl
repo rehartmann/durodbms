@@ -113,6 +113,8 @@ duro::table create T2 {
 set tpl {NO 1 NAME {PNAME "Peter" "Potter"}}
 duro::insert T2 $tpl $tx
 
+duro::table expr -global V1 {T2 WHERE NAME=PNAME("Peter", "Potter")} $tx
+
 if {![duro::table contains T2 $tpl $tx]} {
     error "T2 should contain $tpl, but does not."
 }
@@ -121,6 +123,12 @@ array set a [duro::expr {TUPLE FROM (T2 WHERE THE_LASTNAME(NAME) = "Potter")} $t
 
 if {($a(NO) != 1) || ($a(NAME) != {PNAME Peter Potter})} {
     error "T2 has wrong value"
+}
+
+array set a [duro::expr {TUPLE FROM V1} $tx]
+
+if {($a(NO) != 1) || ($a(NAME) != {PNAME Peter Potter})} {
+    error "V1 has wrong value"
 }
 
 #

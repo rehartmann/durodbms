@@ -15,8 +15,22 @@
 RDB_bool
 RDB_expr_is_const(const RDB_expression *exp)
 {
-    /* !! Check for constant subexpressions missing */
-    return (RDB_bool) exp->kind == RDB_EX_OBJ;
+    int i;
+
+    switch (exp->kind) {
+        case RDB_EX_OBJ:
+            return RDB_TRUE;
+        case RDB_EX_RO_OP:
+            for (i = 0; i < exp->var.op.argc; i++) {
+                if (!RDB_expr_is_const(exp->var.op.argv[i]))
+                    return RDB_FALSE;
+            }
+            return RDB_TRUE;
+        case RDB_EX_GET_COMP:
+            return RDB_expr_is_const(exp->var.op.argv[0]);
+        default: ;
+    }
+    return RDB_FALSE;
 }
 
 static int

@@ -105,7 +105,7 @@ Duro_dberror(Tcl_Interp *interp, int err)
 {
     const char *errcode = errcode_str(err);
 
-    Tcl_AppendResult(interp, "Database error: ", (char *) RDB_strerror(err),
+    Tcl_AppendResult(interp, "database error: ", (char *) RDB_strerror(err),
             TCL_STATIC);
     if (errcode != NULL)
         Tcl_SetErrorCode(interp, "Duro", errcode, (char *) RDB_strerror(err),
@@ -233,11 +233,11 @@ Duro_tobj_to_seq_items(Tcl_Interp *interp, Tcl_Obj *tobjp, int *seqitcp,
                 *orderedp = RDB_TRUE;
             } else {
                 if (needdir) {
-                    Tcl_AppendResult(interp, "Invalid direction: \"", dir,                            
+                    Tcl_AppendResult(interp, "invalid direction: \"", dir,                            
                             "\", must be \"asc\" or \"desc\"", NULL);
                     return NULL;
                 } else if (strcmp(dir, "-") != 0) {
-                    Tcl_AppendResult(interp, "Invalid direction: \"", dir,                            
+                    Tcl_AppendResult(interp, "invalid direction: \"", dir,                            
                             "\", must be \"asc\", \"desc\", or \"-\"", NULL);
                     return NULL;
                 }
@@ -258,7 +258,7 @@ Duro_add_table(Tcl_Interp *interp, TclState *statep, RDB_table *tbp,
     statep->ltable_uid++;
     entryp = Tcl_CreateHashEntry(&statep->ltables, name, &new);
     if (!new) {
-        Tcl_AppendResult(interp, "Local table \"", name, " \"already exists");
+        Tcl_AppendResult(interp, "local table \"", name, " \"already exists");
         return TCL_ERROR;
     }
 
@@ -313,6 +313,50 @@ list_to_tuple(Tcl_Interp *interp, Tcl_Obj *tobjp, RDB_type *typ,
             return ret;
         }
         ret = RDB_tuple_set(tplp, attrname, &obj);
+
+        RDB_destroy_obj(&obj);
+        if (ret != RDB_OK) {
+            Duro_dberror(interp, ret);
+            return TCL_ERROR;
+        }
+    }
+
+    return TCL_OK;
+}
+
+static int
+list_to_array(Tcl_Interp *interp, Tcl_Obj *tobjp, RDB_type *typ,
+        RDB_object *arrp, RDB_transaction *txp)
+{
+    int ret;
+    int llen;
+    int i;
+
+    ret = Tcl_ListObjLength(interp, tobjp, &llen);
+    if (ret != TCL_OK)
+        return ret;
+
+    ret = RDB_set_array_length(arrp, (RDB_int) llen);
+    if (ret != RDB_OK) {
+        Duro_dberror(interp, ret);
+        return TCL_OK;
+    }
+
+    for (i = 0; i < llen; i++) {
+        Tcl_Obj *valuep;
+        RDB_object obj;
+
+        /* Get attribute value */
+        Tcl_ListObjIndex(interp, tobjp, i, &valuep);
+
+        /* Convert value to RDB_object and set tuple attribute */
+        RDB_init_obj(&obj);
+        ret = Duro_tcl_to_duro(interp, valuep, typ->var.basetyp, &obj, txp);
+        if (ret != TCL_OK) {
+            RDB_destroy_obj(&obj);
+            return ret;
+        }
+        ret = RDB_array_set(arrp, (RDB_int) i, &obj);
 
         RDB_destroy_obj(&obj);
         if (ret != RDB_OK) {
@@ -426,6 +470,7 @@ call_selector(Tcl_Interp *interp, Tcl_Obj *tobjp, RDB_type *typ,
         argpv[i] = &argv[i];
     }
 
+    txp->user_data = interp;
     ret = RDB_call_ro_op(Tcl_GetString(nametobjp), llen - 1, argpv, txp, objp);
     if (ret != RDB_OK) {
         Duro_dberror(interp, ret);
@@ -448,6 +493,7 @@ Duro_tcl_to_duro(Tcl_Interp *interp, Tcl_Obj *tobjp, RDB_type *typ,
         RDB_object *objp, RDB_transaction *txp)
 {
     int ret;
+    RDB_table *tbp;
 
     if (typ == &RDB_STRING) {
         RDB_string_to_obj(objp, Tcl_GetString(tobjp));
@@ -480,22 +526,35 @@ Duro_tcl_to_duro(Tcl_Interp *interp, Tcl_Obj *tobjp, RDB_type *typ,
         RDB_bool_to_obj(objp, (RDB_bool) val);
         return TCL_OK;
     }
-    if (typ->kind == RDB_TP_TUPLE) {
-        return list_to_tuple(interp, tobjp, typ, objp, txp);
-    }
-    if (typ->kind == RDB_TP_RELATION) {
-        RDB_table *tbp;
-
-        ret = list_to_table(interp, tobjp, typ, &tbp, txp);
-        if (ret != TCL_OK)
-            return ret;
-        RDB_table_to_obj(objp, tbp);
+    if (typ == &RDB_BINARY) {
+        int len;
+        unsigned char *bp = Tcl_GetByteArrayFromObj(tobjp, &len);
+        if (bp == NULL)
+            return TCL_ERROR;
+        ret = RDB_binary_set(objp, 0, bp, (size_t) len);
+        if (ret != RDB_OK) {
+            Duro_dberror(interp, ret);
+            return TCL_ERROR;
+        }
         return TCL_OK;
     }
     if (RDB_type_is_scalar(typ)) {
         return call_selector(interp, tobjp, typ, objp, txp);
     }
-    Tcl_AppendResult(interp, "Unsupported type: ", Tcl_GetString(tobjp),
+    switch (typ->kind) {
+        case RDB_TP_TUPLE:
+            return list_to_tuple(interp, tobjp, typ, objp, txp);
+        case RDB_TP_RELATION:
+            ret = list_to_table(interp, tobjp, typ, &tbp, txp);
+            if (ret != TCL_OK)
+                return ret;
+            RDB_table_to_obj(objp, tbp);
+            return TCL_OK;
+        case RDB_TP_ARRAY:
+            return list_to_array(interp, tobjp, typ, objp, txp);
+        default: ;
+    }
+    Tcl_AppendResult(interp, "unsupported type: ", Tcl_GetString(tobjp),
             NULL);
     return TCL_ERROR;
 }

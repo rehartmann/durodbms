@@ -9,10 +9,12 @@ exec tclsh "$0" ${1+"$@"}
 
 package require duro
 
-proc dump_rtable {out t tx} {
-    set alist [duro::table attrs $t $tx]
-    puts -nonewline $out "duro::table create $t \{$alist\}"
-    puts $out " \{[duro::table keys $t $tx]\} \$tx"
+proc dump_rtable {out t tx cr} {
+    if {$cr} {
+        set alist [duro::table attrs $t $tx]
+        puts -nonewline $out "duro::table create $t \{$alist\}"
+        puts $out " \{[duro::table keys $t $tx]\} \$tx"
+    }
 
     set a [duro::array create $t $tx]
     duro::array foreach tpl $a {
@@ -49,6 +51,7 @@ puts $out "set dbenv \[duro::env open $dbenvpath\]"
 set dbenv [duro::env open $dbenvpath]
 set dbs [duro::env dbs $dbenv]
 set tables {}
+set types_ops_dumped 0
 
 foreach db $dbs {
     puts $out "duro::db create $db \$dbenv"
@@ -56,9 +59,16 @@ foreach db $dbs {
     set tx [duro::begin $dbenv $db]
 
     puts $out "set tx \[duro::begin \$dbenv $db\]"
+    if {!$types_ops_dumped} {
+        foreach t {SYS_TYPES SYS_POSSREPS SYS_POSSREPCOMPS
+                SYS_RO_OPS SYS_UPD_OPS} {
+            dump_rtable $out $t $tx 0
+        }
+        set types_ops_dumped 1
+    }
     foreach t [duro::tables -real $tx] {
         if {[lsearch -exact $tables $t] == -1} {
-            dump_rtable $out $t $tx
+            dump_rtable $out $t $tx 1
             lappend tables $t
         }
     }

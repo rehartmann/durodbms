@@ -2488,7 +2488,8 @@ RDB_binary_set(RDB_object *, size_t pos, const void *srcp, size_t len);
 
 <p>RDB_binary_set copies <var>len</var> bytes from srcp to
 the position <var>pos</var> in the RDB_object pointed to by <var>valp</var>.
-<var>valp</var> must point to a RDB_object of type BINARY.
+<var>valp</var> must point to a new initialized RDB_object
+or to a RDB_object of type BINARY.
 
 <h3>Return value</h3>
 
