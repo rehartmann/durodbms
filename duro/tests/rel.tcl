@@ -53,6 +53,9 @@ if {![catch {
 
 duro::table expr -global G1 {T3 GROUP {B, C} AS BC} $tx
 
+duro::table expr -global S1 {T1 WHERE RLATTR = RELATION {
+        TUPLE {A 1, B "x"}, TUPLE {A 2, B "y"}}} $tx
+
 duro::commit $tx
 
 # Close DB environment
@@ -78,8 +81,7 @@ if {![duro::table contains T1 $tpl $tx]} {
 
 duro::insert T1 {SCATTR 3 RLATTR {}} $tx
 
-set v [duro::expr {(TUPLE FROM (T1 WHERE RLATTR = RELATION {
-        TUPLE {A 1, B "x"}, TUPLE {A 2, B "y"}})).SCATTR} $tx]
+set v [duro::expr {(TUPLE FROM S1).SCATTR} $tx]
 
 if {$v != 2} {
     error "SCATTR value should be 2, but is $v"

@@ -357,6 +357,7 @@ table_expr_cmd(TclState *statep, Tcl_Interp *interp, int objc,
     ret = RDB_set_table_name(tbp, Tcl_GetStringFromObj(objv[objc - 3], NULL),
             txp);
     if (ret != RDB_OK) {
+        RDB_drop_table(tbp, txp);
         Duro_dberror(interp, ret);
         return TCL_ERROR;
     }
@@ -368,6 +369,7 @@ table_expr_cmd(TclState *statep, Tcl_Interp *interp, int objc,
                 RDB_db_env(RDB_tx_db(txp)));
     }
     if (ret != RDB_OK) {
+        RDB_drop_table(tbp, txp);
         Duro_dberror(interp, ret);
         return TCL_ERROR;
     }

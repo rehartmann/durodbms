@@ -191,7 +191,7 @@ if {![catch {duro::table drop TX $tx}]} {
 duro::table expr -global TU {T1 UNION T2} $tx
 
 #
-# Check if persistent virtual tables can depend on transient tables
+# Check if persistent virtual tables can depend on named transient tables
 #
 
 duro::table create -local LT {

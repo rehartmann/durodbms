@@ -912,6 +912,10 @@ RDB_obj_to_string(RDB_object *dstp, const RDB_object *srcp)
         ret = RDB_string_to_obj(dstp, buf);
         if (ret != RDB_OK)
             return ret;
+    } else if (srcp->typ == &RDB_BOOLEAN) {
+        ret = RDB_string_to_obj(dstp, RDB_obj_bool(srcp) ? "TRUE" : "FALSE");
+        if (ret != RDB_OK)
+            return ret;
     } else if (srcp->typ == &RDB_RATIONAL) {
         sprintf(buf, "%g", RDB_obj_rational(srcp));
         ret = RDB_string_to_obj(dstp, buf);

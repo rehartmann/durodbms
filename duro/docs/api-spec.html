@@ -3422,8 +3422,8 @@ RDB_drop_expr(RDB_expression *exp);
 
 <h3>Description</h3>
 
-<p>RDB_drop_expr frees the memory pointed to by <var>exprp</var> and calls
-RDB_drop_expr on all subexpressions.
+<p>RDB_drop_expr destroys the expression specified to by <var>exp</var>
+(including all subexpressions) and frees all resources associated with it.
 
 <h3>Return value</h3>
 

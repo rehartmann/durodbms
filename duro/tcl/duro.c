@@ -162,8 +162,6 @@ Duro_init_tcl(Tcl_Interp *interp, TclState **statepp)
             (ClientData)*statepp, NULL);
     Tcl_CreateObjCommand(interp, "duro::index", Duro_index_cmd,
             (ClientData)*statepp, NULL);
-    Tcl_CreateObjCommand(interp, "duro::constraint", Duro_constraint_cmd,
-            (ClientData)*statepp, NULL);
 
     Tcl_CreateExitHandler(duro_cleanup, (ClientData)*statepp);
 
@@ -669,6 +667,7 @@ uobj_to_list(Tcl_Interp *interp, const RDB_object *objp, RDB_transaction *txp)
 
     RDB_init_obj(&comp);
 
+    txp->user_data = interp;
     for (i = 0; i < rep->compc; i++) {
         ret = RDB_obj_comp(objp, rep->compv[i].name, &comp, txp);
         if (ret != RDB_OK) {

@@ -99,26 +99,22 @@ close_table(RDB_table *tbp, RDB_environment *envp)
         ret = RDB_close_recmap(tbp->var.real.recmapp);
         if (ret != RDB_OK)
             return ret;
+     }
 
-        /*
-         * Remove table from all RDB_databases in list
-         */
-        dbrootp = (RDB_dbroot *)RDB_env_private(envp);
-        for (dbp = dbrootp->firstdbp; dbp != NULL; dbp = dbp->nextdbp) {
-            RDB_table **foundtbpp = (RDB_table **)RDB_hashmap_get(
-                    &dbp->tbmap, tbp->name, NULL);
-            if (foundtbpp != NULL && *foundtbpp != NULL) {
-                void *nullp = NULL;
-                RDB_hashmap_put(&dbp->tbmap, tbp->name, &nullp, sizeof nullp);
-            }
+    /*
+     * Remove table from all RDB_databases in list
+     */
+    dbrootp = (RDB_dbroot *)RDB_env_private(envp);
+    for (dbp = dbrootp->firstdbp; dbp != NULL; dbp = dbp->nextdbp) {
+        RDB_table **foundtbpp = (RDB_table **)RDB_hashmap_get(
+                &dbp->tbmap, tbp->name, NULL);
+        if (foundtbpp != NULL && *foundtbpp != NULL) {
+            void *nullp = NULL;
+            RDB_hashmap_put(&dbp->tbmap, tbp->name, &nullp, sizeof nullp);
         }
+    }
 
-        return _RDB_drop_table(tbp, RDB_TRUE);
-    }
-    if (tbp->name == NULL) {
-        return RDB_drop_table(tbp, NULL);
-    }
-    return RDB_OK;
+    return _RDB_drop_table(tbp, RDB_TRUE);
 }
 
 static int
@@ -276,6 +272,9 @@ RDB_bool
 _RDB_legal_name(const char *name)
 {
     int i;
+
+    if (*name == '\0')
+        return RDB_FALSE;
 
     for (i = 0; name[i] != '\0'; i++) {
         if (!isprint(name[i]) || isspace(name[i]) || (name[i] == '$'))
