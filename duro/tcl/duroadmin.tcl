@@ -593,7 +593,6 @@ proc create_vtable {} {
     button .dialog.buttons.ok -text OK -command {set action ok}
     button .dialog.buttons.cancel -text Cancel -command {set action cancel}
 
-
     pack .dialog.buttons -side bottom
     pack .dialog.buttons.ok .dialog.buttons.cancel -side left
     pack .dialog.tabledef -side bottom

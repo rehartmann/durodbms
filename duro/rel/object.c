@@ -521,7 +521,11 @@ _RDB_copy_obj(RDB_object *dstvalp, const RDB_object *srcvalp)
         case RDB_OB_ARRAY:
             return _RDB_copy_array(dstvalp, srcvalp);
         case RDB_OB_TABLE:
-            /* The table itself is not copied, only the pointer */
+            /*
+             * The table itself is not copied, only the pointer.
+             * Otherwise, the table would have to be copied each time
+             * a table-valued object is inserted to a tuple.
+             */
             dstvalp->kind = srcvalp->kind;
             dstvalp->var.tbp = srcvalp->var.tbp;
             srcvalp->var.tbp->refcount++;
@@ -831,6 +835,8 @@ RDB_obj_string(const RDB_object *valp)
 int
 RDB_binary_set(RDB_object *valp, size_t pos, const void *srcp, size_t len)
 {
+    assert(valp->kind == RDB_OB_INITIAL || valp->typ == &RDB_BINARY);
+
     /* If the value is newly initialized, allocate memory */
     if (valp->kind == RDB_OB_INITIAL) {
         valp->var.bin.len = pos + len;
@@ -847,14 +853,17 @@ RDB_binary_set(RDB_object *valp, size_t pos, const void *srcp, size_t len)
     if (valp->var.bin.len < pos + len) {
         void *datap;
 
-        datap = realloc(valp->var.bin.datap, pos + len);
+        if (valp->var.bin.len > 0)
+            datap = realloc(valp->var.bin.datap, pos + len);
+        else
+            datap = malloc(pos + len);
         if (datap == NULL)
             return RDB_NO_MEMORY;
         valp->var.bin.datap = datap;
         valp->var.bin.len = pos + len;
     }
     
-    /* copy data */
+    /* Copy data */
     if (len > 0)
         memcpy(((RDB_byte *)valp->var.bin.datap) + pos, srcp, len);
     return RDB_OK;

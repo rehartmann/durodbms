@@ -111,10 +111,10 @@ RDB_expr_type(const RDB_expression *exp, const RDB_type *tuptyp,
 
     switch (exp->kind) {
         case RDB_EX_OBJ:
-             *typp = RDB_obj_type(&exp->var.obj);
-             if (*typp == NULL)
-                 return RDB_NOT_FOUND;
-             break;
+            *typp = RDB_obj_type(&exp->var.obj);
+            if (*typp == NULL)
+                return RDB_NOT_FOUND;
+            break;
         case RDB_EX_ATTR:
             attrp = _RDB_tuple_type_attr(
                     tuptyp, exp->var.attrname);

@@ -499,6 +499,9 @@ location pointed to by <var>resultp</var>.
 <dd><var>txp</var> does not point to a running transaction.
 <dt>RDB_TYPE_MISMATCH
 <dd>The types of the two tables differ.
+<dt>RDB_OPERATOR_NOT_FOUND
+<dd>The definition of one of the tables
+refers to a non-existing operator.
 </dl>
 
 <p>The call may also fail for a <a href="#syserr">system error</a>,
@@ -618,6 +621,9 @@ On failure, an error code different from RDB_NOT_FOUND returned.
 <dt>RDB_TYPE_MISMATCH
 <dd>The type of a tuple attribute does not match the type of the
 corresponding table attribute.
+<dt>RDB_OPERATOR_NOT_FOUND
+<dd>The definition of the table specified by <var>tbp</var>
+refers to a non-existing operator.
 </dl>
 
 <p>The call may also fail for a <a href="#syserr">system error</a>,
@@ -631,7 +637,7 @@ in which case the transaction is implicitly rolled back.
 #include &lt;rel/rdb.h&gt;
 
 int
-RDB_table_equals(RDB_table *tb1p, RDB_table *tb2p, RDB_transaction *, RDB_bool *resultp);
+RDB_table_equals(RDB_table *tb1p, RDB_table *tb2p, RDB_transaction *txp, RDB_bool *resultp);
 </pre>
 
 <p>RDB_table_equals checks two tables for equality and stores the result at the
@@ -648,6 +654,9 @@ location pointed to by <var>resultp</var>.
 <dd><var>txp</var> does not point to a running transaction.
 <dt>RDB_TYPE_MISMATCH
 <dd>The types of the two tables differ.
+<dt>RDB_OPERATOR_NOT_FOUND
+<dd>The definition of one of the tables
+refers to a non-existing operator.
 </dl>
 
 <hr>
@@ -795,6 +804,9 @@ On failure, an error code lower than zero is returned.
 <dl>
 <dt>RDB_INVALID_TRANSACTION
 <dd><var>txp</var> does not point to a running transaction.
+<dt>RDB_OPERATOR_NOT_FOUND
+<dd>The definition of the table specified by <var>tbp</var>
+refers to a non-existing operator.
 </dl>
 
 <p>The call may also fail for a <a href="#syserr">system error</a>,
@@ -943,6 +955,9 @@ the check at the location pointed to by <var>resultp</var>.
 <dl>
 <dt>RDB_INVALID_TRANSACTION
 <dd><var>txp</var> does not point to a running transaction.
+<dt>RDB_OPERATOR_NOT_FOUND
+<dd>The definition of the table specified by <var>tbp</var>
+refers to a non-existing operator.
 </dl>
 
 <p>The call may also fail for a <a href="#syserr">system error</a>,
@@ -991,6 +1006,9 @@ predicate.
 <dt>RDB_TYPE_MISMATCH
 <dd>The type of a tuple attribute does not match the type of the
 corresponding table attribute.
+<dt>RDB_OPERATOR_NOT_FOUND
+<dd>The definition of the table specified by <var>tbp</var>
+refers to a non-existing operator.
 <dt>RDB_NOT_SUPPORTED
 <dd>RDB_insert is not supported for this type of table.
 </dl>
@@ -1058,6 +1076,14 @@ predicate.
 <dd>The type of one of the expressions in <var>updv</var> is not the same
 as the type of the corresponding table attribute.
 
+<dt>RDB_OPERATOR_NOT_FOUND
+<dd>The definition of the table specified by <var>tbp</var>
+refers to a non-existing operator.
+<dd>The expression specified by <var>exp</var>
+refers to a non-existing operator.
+<dd>One of the expressions specified in <var>updv</var>
+refers to a non-existing operator.
+
 <dt>RDB_NOT_SUPPORTED
 <dd>RDB_update is not supported for this type of table.
 </dl>
@@ -1099,6 +1125,11 @@ a JOIN, SUMMARIZE, WRAP, UNWRAP, GROUP, UNGROUP, or DIVIDEBY PER.
 <dt>RDB_PREDICATE_VIOLATION
 <dd>Deleting the tuples would result in a table which violates its
 predicate.
+<dt>RDB_OPERATOR_NOT_FOUND
+<dd>The definition of the table specified by <var>tbp</var>
+refers to a non-existing operator.
+<dd>The expression specified by <var>exp</var>
+refers to a non-existing operator.
 <dt>RDB_NOT_SUPPORTED
 <dd>RDB_delete is not supported for this type of table.
 </dl>
@@ -1114,7 +1145,7 @@ in which case the transaction is implicitly rolled back.
 #include &lt;rel/rdb.h&gt;
 
 int
-RDB_extract_tuple(RDB_table *, RDB_transaction *txp, RDB_object *tplp);
+RDB_extract_tuple(RDB_table *tbp, RDB_transaction *txp, RDB_object *tplp);
 </pre>
 
 <h3>Description</h3>
@@ -1136,6 +1167,9 @@ and the tuple value of the variable pointed to by <var>tplp</var> is undefined.
 <dd>The table is empty.
 <dt>RDB_INVALID_ARGUMENT
 <dd>The table contains more than one tuple.
+<dt>RDB_OPERATOR_NOT_FOUND
+<dd>The definition of the table specified by <var>tbp</var>
+refers to a non-existing operator.
 </dl>
 
 <p>The call may also fail for a <a href="#syserr">system error</a>,
@@ -1168,6 +1202,9 @@ by <var>srcp</var> to the table specified by <var>dstp</var>.
 <dd><var>txp</var> does not point to a running transaction.
 <dt>RDB_TYPE_MISMATCH
 <dd>The types of the two tables differ.
+<dt>RDB_OPERATOR_NOT_FOUND
+<dd>The definition of the table specified by <var>srcp</var>
+refers to a non-existing operator.
 </dl>
 
 <p>The call may also fail for a <a href="#syserr">system error</a>,
@@ -2052,6 +2089,9 @@ by the attributes specified by <var>attrc</var> and <var>attrv</var>.
 <dt>RDB_INVALID_ARGUMENT
 <dd>One of the expressions specified in <var>updv</var> refers to an attribute
 which does not exist in the tuple.
+<dt>RDB_OPERATOR_NOT_FOUND
+<dd>One of the expressions specified in <var>updv</var> refers to an
+operator which does not exist.
 </dl>
 
 <p>The call may also fail for a <a href="#syserr">system error</a>.
@@ -2225,6 +2265,12 @@ by <var>srcp</var> to the RDB_object pointed to by <var>dstp</var>.
 
 <p>The call may fail for a <a href="#syserr">system error</a>.
 
+<h3>Notes</h3>
+
+<p>If the object specified by <var>srcvalp</var> is table-valued,
+the table is not copied. After RDB_obj_copy was invoked, the two
+RDB_objects will share the same RDB_table.
+
 <hr>
 
 <h2 id="bool_to_obj">RDB_bool_to_obj</h2>
@@ -2241,6 +2287,9 @@ RDB_bool_to_obj(RDB_object *valp, RDB_bool v);
 <p>RDB_bool_to_obj sets the RDB_object pointed to by <var>valp</var>
 to the boolean value specified by <var>v</var>.
 
+<p>The RDB_object must either be newly initialized or of type
+BOOLEAN.
+
 <hr>
 
 <h2 id="int_to_obj">RDB_int_to_obj</h2>
@@ -2254,8 +2303,11 @@ RDB_int_to_obj(RDB_object *valp, RDB_int v);
 
 <h3>Description</h3>
 
-<p>RDB_bool_to_obj sets the RDB_object pointed to by <var>valp</var>
+<p>RDB_int_to_obj sets the RDB_object pointed to by <var>valp</var>
 to the integer value specified by <var>v</var>.
+
+<p>The RDB_object must either be newly initialized or of type
+INTEGER.
 
 <hr>
 
@@ -2270,8 +2322,11 @@ RDB_rational_to_obj(RDB_object *valp, RDB_rational v);
 
 <h3>Description</h3>
 
-<p>RDB_obj_set_rational sets the RDB_object pointed to by <var>valp</var>
+<p>RDB_rational_to_obj sets the RDB_object pointed to by <var>valp</var>
 to the rational value specified by <var>v</var>.
+
+<p>The RDB_object must either be newly initialized or of type
+RATIONAL.
 
 <hr>
 
@@ -2288,6 +2343,9 @@ RDB_string_to_obj(RDB_object *valp, const char *str);
 
 <p>RDB_string_to_obj sets the RDB_object pointed to by <var>valp</var>
 to the string value specified by <var>str</var>.
+
+<p>The RDB_object must either be newly initialized or of type
+STRING.
 
 <h3>Return value</h3>
 
@@ -2442,6 +2500,8 @@ to the variable pointed to by <var>comp</var>.
 <dt>RDB_INVALID_ARGUMENT
 <dd>The type of the variable pointed to by <var>valp</var> ist not
 a scalar user-defined type.
+<dt>RDB_OPERATOR_NOT_FOUND
+<dd>The getter method for component <var>compname</var> has not been created.
 </dl>
 
 <p>RDB_obj_comp may also return an error code returned by a
@@ -2464,8 +2524,11 @@ RDB_obj_set_comp(RDB_object *valp, const char *compname,
 <h3>Description</h3>
 
 <p>RDB_obj_set_comp sets the the value of component <var>compname</var>
-of a possible representation of the variable pointed to by <var>valp</var>
+of a possible representation of the RDB_object specified to by <var>valp</var>
 to the value of the variable pointed to by <var>comp</var>.
+
+<p>The RDB_object must be of a type which has a component
+<var>compname</var>.
 
 <h3>Return value</h3>
 
@@ -2486,7 +2549,7 @@ RDB_binary_set(RDB_object *, size_t pos, const void *srcp, size_t len);
 
 <p>RDB_binary_set copies <var>len</var> bytes from srcp to
 the position <var>pos</var> in the RDB_object pointed to by <var>valp</var>.
-<var>valp</var> must point to a new initialized RDB_object
+<var>valp</var> must point either to a new initialized RDB_object
 or to a RDB_object of type BINARY.
 
 <h3>Return value</h3>
@@ -2843,6 +2906,9 @@ is specified by <var>seqitv</var>.
 <dl>
 <dt>RDB_INVALID_TRANSACTION
 <dd><var>txp</var> does not point to a running transaction.
+<dt>RDB_OPERATOR_NOT_FOUND
+<dd>The definition of the table specified by <var>tbp</var>
+refers to a non-existing operator.
 </dl>
 
 <p>The call may also fail for a <a href="#syserr">system error</a>,
@@ -2883,6 +2949,9 @@ The pointer will become invalid when the array is destroyed.
 <dl>
 <dt>RDB_NOT_FOUND
 <dd><var>idx</var> exceeds the array length.
+<dt>RDB_OPERATOR_NOT_FOUND
+<dd>The array was created from a table which refers to a non-existing
+operator.
 </dl>
 
 <p>The call may also fail for a <a href="#syserr">system error</a>.
@@ -2941,6 +3010,16 @@ RDB_array_length(RDB_object *);
 <p>The length of the array. A return code lower than zero
 indicates an error.
 
+<h3>Errors</h3>
+
+<dl>
+<dt>RDB_OPERATOR_NOT_FOUND
+<dd>The array was created from a table which refers to a non-existing
+operator.
+</dl>
+
+<p>The call may also fail for a <a href="#syserr">system error</a>.
+
 <hr>
 
 <h2 id="set_array_length">RDB_set_array_length</h2>
@@ -2968,7 +3047,7 @@ using RDB_table_to_array.
 
 <dl>
 <dt>RDB_NOT_SUPPORTED
-<dd>The table has been created using RDB_table_to_array.
+<dd>The array has been created using RDB_table_to_array.
 </dl>
 
 <hr>
@@ -3878,9 +3957,12 @@ passing the arguments in <var>argc</var> and <var>argv</var>.
 <dl>
 <dt>RDB_INVALID_TRANSACTION
 <dd><var>txp</var> does not point to a running transaction.
-<dt>RDB_NOT_FOUND
-<dd>A read-only operator that matches the name and arguments could not be
+<dt>RDB_OPERATOR_NOT_FOUND
+<dd>A read-only operator that matches the name and argument types could not be
 found.
+<dt>RDB_TYPE_MISMATCH
+<dd>A read-only operator that matches <var>name</var> could be found,
+but it does not match the argument types.
 </dl>
 
 <p>If the user-supplied function which implements the function returns an
@@ -3915,7 +3997,7 @@ passing the arguments in <var>argc</var> and <var>argv</var>.
 <dl>
 <dt>RDB_INVALID_TRANSACTION
 <dd><var>txp</var> does not point to a running transaction.
-<dt>RDB_NOT_FOUND
+<dt>RDB_OPERATOR_NOT_FOUND
 <dd>An update operator that matches the name and arguments could not be
 found.
 </dl>

@@ -53,6 +53,8 @@ RDB_strerror(int err)
             return "type constraint violation";
         case RDB_ATTRIBUTE_NOT_FOUND:
             return "attribute not found";
+        case RDB_OPERATOR_NOT_FOUND:
+            return "operator not found";
         case RDB_SYNTAX:
             return "syntax error";
 

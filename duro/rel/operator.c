@@ -408,7 +408,7 @@ get_ro_op(RDB_dbroot *dbrootp, const char *name,
     RDB_bool pm = RDB_FALSE;
 
     if (opp == NULL || *opp == NULL)
-        return RDB_NOT_FOUND;
+        return RDB_OPERATOR_NOT_FOUND;
 
     *ropp = *opp;
 
@@ -462,7 +462,7 @@ get_ro_op(RDB_dbroot *dbrootp, const char *name,
         }
     }
 
-    return pm ? RDB_TYPE_MISMATCH : RDB_NOT_FOUND;
+    return pm ? RDB_TYPE_MISMATCH : RDB_OPERATOR_NOT_FOUND;
 }
 
 static RDB_type **
@@ -491,11 +491,11 @@ _RDB_get_ro_op(const char *name, int argc, RDB_type *argtv[],
     /* Lookup operator in map */
     ret = get_ro_op(txp->dbp->dbrootp, name, argc, argtv, opp);
 
-    if (ret == RDB_NOT_FOUND || ret == RDB_TYPE_MISMATCH) {
+    if (ret == RDB_OPERATOR_NOT_FOUND || ret == RDB_TYPE_MISMATCH) {
         /* Not found in map, so read from catalog */
         ret2 = _RDB_cat_get_ro_op(name, argc, argtv, txp, opp);
         if (ret2 != RDB_OK)
-            return ret;
+            return ret2 == RDB_NOT_FOUND ? ret : ret2;
         
         /* Insert operator into map */
         ret = put_ro_op(txp->dbp->dbrootp, *opp);
@@ -789,7 +789,7 @@ _RDB_get_upd_op(const char *name, int argc, RDB_type *argtv[],
     if (*opp == NULL) {
         ret = _RDB_cat_get_upd_op(name, argc, argtv, txp, opp);
         if (ret != RDB_OK)
-            return ret;
+            return ret == RDB_NOT_FOUND ? RDB_OPERATOR_NOT_FOUND : ret;
         ret = put_upd_op(txp->dbp->dbrootp, *opp);
         if (ret != RDB_OK) {
             free_upd_op(*opp);
@@ -823,7 +823,7 @@ RDB_call_update_op(const char *name, int argc, RDB_object *argv[],
     }
     free(argtv);
     if (ret != RDB_OK)
-        return ret;
+        return ret == RDB_NOT_FOUND ? RDB_OPERATOR_NOT_FOUND : ret;
 
     return (*op->funcp)(name, argc, argv, op->updv, op->iarg.var.bin.datap,
             op->iarg.var.bin.len, txp);

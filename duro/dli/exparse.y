@@ -189,6 +189,10 @@ project: expression '{' attribute_name_list '}' {
             if (_RDB_parse_ret != RDB_OK) {
                 YYERROR;
             }
+            /*
+             * Increase refcount of base table, so it is not deleted
+             * if the expression containing it is destroyed
+             */
             tbp->refcount++;
             $$ = RDB_table_to_expr(restbp);
             _RDB_parse_ret = _RDB_parse_add_exp($$);
@@ -226,7 +230,7 @@ project: expression '{' attribute_name_list '}' {
             if (_RDB_parse_ret != RDB_OK) {
                 YYERROR;
             }
-            tbp->refcount++;
+            /* tbp->refcount++; */
             $$ = RDB_table_to_expr(restbp);
             if ($$ == NULL)
                 YYERROR;

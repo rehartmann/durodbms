@@ -372,9 +372,8 @@ table_expr_cmd(TclState *statep, Tcl_Interp *interp, int objc,
 
     ret = parse_table_utf(interp, Tcl_GetString(objv[objc - 2]), statep,
             txp, &tbp);
-    if (ret != RDB_OK) {
-        Duro_dberror(interp, ret);
-        return TCL_ERROR;
+    if (ret != TCL_OK) {
+        return ret;
     }
 
     ret = RDB_set_table_name(tbp, Tcl_GetStringFromObj(objv[objc - 3], NULL),

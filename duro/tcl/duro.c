@@ -92,6 +92,8 @@ errcode_str(int err)
             return "RDB_TYPE_CONSTRAINT_VIOLATION";
         case RDB_ATTRIBUTE_NOT_FOUND:
             return "RDB_ATTRIBUTE_NOT_FOUND";
+        case RDB_OPERATOR_NOT_FOUND:
+            return "RDB_OPERATOR_NOT_FOUND";
         case RDB_SYNTAX:
             return "RDB_SYNTAX";
 

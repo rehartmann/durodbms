@@ -127,8 +127,12 @@ duro::operator drop concat $tx
 
 if {![catch {
     duro::call strmul v STRING bar STRING $tx
-}]} {
+} err]} {
     error "Operator invocation should fail, but succeded"
+}
+set errcode [lindex $::errorCode 1]
+if {$errcode != "RDB_OPERATOR_NOT_FOUND"} {
+    error "Wrong error code: $errcode"
 }
 
 set r [duro::expr {relop1(RELATION {TUPLE {A "a"}})} $tx]
