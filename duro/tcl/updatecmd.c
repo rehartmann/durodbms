@@ -1,12 +1,11 @@
 /*
- * Copyright (C) 2004 René Hartmann.
+ * Copyright (C) 2004-2005 René Hartmann.
  * See the file COPYING for redistribution information.
  */
 
 /* $Id$ */
 
 #include "duro.h"
-#include <dli/parse.h>
 
 int
 Duro_update_cmd(ClientData data, Tcl_Interp *interp, int objc,
@@ -48,11 +47,10 @@ Duro_update_cmd(ClientData data, Tcl_Interp *interp, int objc,
 
     if (objc % 2 == 0) {
         /* Read where conditon */
-        ret = RDB_parse_expr(Tcl_GetStringFromObj(objv[2], NULL),
-                Duro_get_ltable, statep, txp, &wherep);
-        if (ret != RDB_OK) {
-            Duro_dberror(interp, ret);
-            return TCL_ERROR;
+        ret = Duro_parse_expr_utf(interp, Tcl_GetString(objv[2]),
+                    statep, txp, &wherep);
+        if (ret != TCL_OK) {
+            return ret;
         }
         upd_arg_idx = 3;
     } else {
@@ -66,9 +64,9 @@ Duro_update_cmd(ClientData data, Tcl_Interp *interp, int objc,
         updv[i].exp = NULL;
     for (i = 0; i < updc; i++) {
         updv[i].name = Tcl_GetStringFromObj(objv[upd_arg_idx + i * 2], NULL);
-        ret = RDB_parse_expr(
-                Tcl_GetStringFromObj(objv[upd_arg_idx + i * 2 + 1], NULL),
-                &Duro_get_ltable, statep, txp, &updv[i].exp);
+        ret = Duro_parse_expr_utf(interp,
+                Tcl_GetString(objv[upd_arg_idx + i * 2 + 1]), statep,
+                txp, &updv[i].exp);
         if (ret != RDB_OK) {
             Duro_dberror(interp, ret);
             ret = TCL_ERROR;

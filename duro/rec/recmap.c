@@ -95,6 +95,10 @@ error:
     return RDB_convert_err(ret);
 }
 
+/*
+ * Comparison function for b-trees.
+ * Compares records by comparing the fields.
+ */
 static int
 compare_key(DB *dbp, const DBT *dbt1p, const DBT *dbt2p)
 {
@@ -112,7 +116,7 @@ compare_key(DB *dbp, const DBT *dbt1p, const DBT *dbt2p)
         data1p = ((RDB_byte *) dbt1p->data) + offs1;
         data2p = ((RDB_byte *) dbt2p->data) + offs2;
 
-        /* Compare fields */
+        /* Compare field */
         if (rmp->cmpv[i].comparep != NULL) {
             /* Comparison function is available, so call it */
             res = (*rmp->cmpv[i].comparep)(data1p, len1, data2p, len2,

@@ -136,4 +136,8 @@ int
 Duro_add_table(Tcl_Interp *interp, TclState *statep, RDB_table *tbp,
         const char *name, RDB_environment *envp);
 
+int
+Duro_parse_expr_utf(Tcl_Interp *, const char *, void *,
+        RDB_transaction *, RDB_expression **expp);
+
 #endif

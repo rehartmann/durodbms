@@ -6,7 +6,6 @@
 /* $Id$ */
 
 #include "duro.h"
-#include <dli/parse.h>
 #include <gen/strfns.h>
 #include <string.h>
 #include <rel/typeimpl.h>
@@ -128,11 +127,9 @@ type_define_cmd(TclState *statep, Tcl_Interp *interp, int objc,
             ret = Tcl_ListObjIndex(interp, repobjp, 2, &repconstrobjp);
             if (ret != TCL_OK)
                 goto cleanup;
-            ret = RDB_parse_expr(Tcl_GetString(repconstrobjp),
-                    Duro_get_ltable, statep, txp, &repv[i].constraintp);
-            if (ret != RDB_OK) {
-                Duro_dberror(interp, ret);
-                ret = TCL_ERROR;
+            ret = Duro_parse_expr_utf(interp, Tcl_GetString(repconstrobjp),
+                    statep, txp, &repv[i].constraintp);
+            if (ret != TCL_OK) {
                 goto cleanup;
             }            
         } else {

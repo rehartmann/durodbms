@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2003, 2004 René Hartmann.
+ * Copyright (C) 2003-2005 René Hartmann.
  * See the file COPYING for redistribution information.
  */
 
@@ -12,6 +12,29 @@
 #include <gen/strfns.h>
 #include <string.h>
 #include <ctype.h>
+
+static int
+parse_table_utf(Tcl_Interp *interp, const char *s, void *arg,
+        RDB_transaction *txp, RDB_table **tbpp)
+{
+    int ret;
+    int srclen = strlen(s);
+    int dstlen = (srclen + 1) * 2;
+    char *dst = Tcl_Alloc(dstlen);
+
+    ret = Tcl_UtfToExternal(interp, NULL, s, strlen(s), 0, NULL, dst, dstlen,
+            NULL, NULL, NULL);
+    if (ret != TCL_OK)
+        return ret;
+
+    ret = RDB_parse_table(dst, Duro_get_ltable, arg, txp, tbpp);
+    Tcl_Free(dst);
+    if (ret != RDB_OK) {
+        Duro_dberror(interp, ret);
+        return TCL_ERROR;
+    }
+    return TCL_OK;
+}
 
 int
 Duro_tcl_drop_ltable(table_entry *tbep, Tcl_HashEntry *entryp)
@@ -347,8 +370,8 @@ table_expr_cmd(TclState *statep, Tcl_Interp *interp, int objc,
     }
     txp = Tcl_GetHashValue(entryp);
 
-    ret = RDB_parse_table(Tcl_GetStringFromObj(objv[objc - 2], NULL),
-            &Duro_get_ltable, statep, txp, &tbp);
+    ret = parse_table_utf(interp, Tcl_GetString(objv[objc - 2]), statep,
+            txp, &tbp);
     if (ret != RDB_OK) {
         Duro_dberror(interp, ret);
         return TCL_ERROR;
@@ -477,11 +500,10 @@ Duro_delete_cmd(ClientData data, Tcl_Interp *interp, int objc, Tcl_Obj *CONST ob
 
     if (objc == 4) {
         /* Read where-conditon */
-        ret = RDB_parse_expr(Tcl_GetStringFromObj(objv[2], NULL),
-                &Duro_get_ltable, statep, txp, &wherep);
-        if (ret != RDB_OK) {
-            Duro_dberror(interp, ret);
-            return TCL_ERROR;
+        ret = Duro_parse_expr_utf(interp, Tcl_GetString(objv[2]), statep,
+                txp, &wherep);
+        if (ret != TCL_OK) {
+            return ret;
         }
     } else {
         wherep = NULL;

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2003 René Hartmann.
+ * Copyright (C) 2003-2005 René Hartmann.
  * See the file COPYING for redistribution information.
  */
 
@@ -7,7 +7,6 @@
 
 #include "duro.h"
 #include <rel/internal.h>
-#include <dli/parse.h>
 #include <string.h>
 
 int
@@ -35,11 +34,10 @@ Duro_expr_cmd(ClientData data, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv
     }
     txp = Tcl_GetHashValue(entryp);
 
-    ret = RDB_parse_expr(Tcl_GetStringFromObj(objv[1], NULL),
-            Duro_get_ltable, statep, txp, &exprp);
-    if (ret != RDB_OK) {
-        Duro_dberror(interp, ret);
-        return TCL_ERROR;
+    ret = Duro_parse_expr_utf(interp, Tcl_GetString(objv[1]), statep, txp,
+            &exprp);
+    if (ret != TCL_OK) {
+        return ret;
     }
 
     RDB_init_obj(&val);

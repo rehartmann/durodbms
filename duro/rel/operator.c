@@ -981,7 +981,14 @@ length_string(const char *name, int argc, RDB_object *argv[],
         const void *iargp, size_t iarglen, RDB_transaction *txp,
         RDB_object *retvalp)
 {
+/*
     RDB_int_to_obj(retvalp, argv[0]->var.bin.len - 1);
+*/
+    size_t len = mbstowcs(NULL, argv[0]->var.bin.datap, 0);
+    if (len == -1)
+        return RDB_INVALID_ARGUMENT;
+
+    RDB_int_to_obj(retvalp, (RDB_int) len);
     return RDB_OK;
 }
 
@@ -992,25 +999,46 @@ substring(const char *name, int argc, RDB_object *argv[],
 {
     int start = argv[1]->var.int_val;
     int len = argv[2]->var.int_val;
+    int i;
+    int cl;
+    int bstart, blen;
 
     /* Operands must not be negative */
     if (len < 0 || start < 0)
         return RDB_INVALID_ARGUMENT;
 
-    /* Check if substring exceeds source string */
-    if (start + len + 1 > argv[0]->var.bin.len)
+    /* Find start of substring */
+    bstart = 0;
+    for (i = 0; i < start && bstart < argv[0]->var.bin.len - 1; i++) {
+        cl = mblen(((char *) argv[0]->var.bin.datap) + bstart, 4);
+        if (cl == -1)
+            return RDB_INVALID_ARGUMENT;
+        bstart += cl;
+    }
+    if (bstart >= argv[0]->var.bin.len - 1)
+        return RDB_INVALID_ARGUMENT;
+
+    /* Find end of substring */
+    blen = 0;
+    for (i = 0; i < len && bstart + blen < argv[0]->var.bin.len; i++) {
+        cl = mblen(((char *) argv[0]->var.bin.datap) + bstart + blen, 4);
+        if (cl == -1)
+            return RDB_INVALID_ARGUMENT;
+        blen += cl > 0 ? cl : 1;
+    }
+    if (bstart + blen >= argv[0]->var.bin.len)
         return RDB_INVALID_ARGUMENT;
 
     RDB_destroy_obj(retvalp);
     retvalp->typ = &RDB_STRING;
     retvalp->kind = RDB_OB_BIN;
-    retvalp->var.bin.len = len + 1;
+    retvalp->var.bin.len = blen;
     retvalp->var.bin.datap = malloc(retvalp->var.bin.len);
     if (retvalp->var.bin.datap == NULL)
         return RDB_NO_MEMORY;
     strncpy(retvalp->var.bin.datap, (char *) argv[0]->var.bin.datap
-            + start, len);
-    ((char *) retvalp->var.bin.datap)[len] = '\0';
+            + bstart, blen);
+    ((char *) retvalp->var.bin.datap)[blen] = '\0';
     return RDB_OK;
 }
 

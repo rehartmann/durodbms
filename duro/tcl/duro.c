@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2003 René Hartmann.
+ * Copyright (C) 2003-2005 René Hartmann.
  * See the file COPYING for redistribution information.
  */
 
@@ -8,6 +8,7 @@
 #include "duro.h"
 #include <rel/rdb.h>
 #include <rel/internal.h>
+#include <dli/parse.h>
 #include <string.h>
 #include <stdio.h>
 #include <locale.h>
@@ -660,12 +661,23 @@ Tcl_Obj *
 Duro_irep_to_tcl(Tcl_Interp *interp, const RDB_object *objp,
         RDB_transaction *txp)
 {
+    int ret;
     RDB_type *typ = RDB_obj_type(objp);
 
     if (typ == &RDB_STRING) {
+        Tcl_Obj *robjp;
         char *str = RDB_obj_string((RDB_object *)objp);
+        int srclen = strlen(str);
+        int dstlen = (srclen + 1) * 2;
+        char *dst = Tcl_Alloc(dstlen);
 
-        return Tcl_NewStringObj(str, strlen(str));
+        ret = Tcl_ExternalToUtf(interp, NULL, str, srclen, 0, NULL,
+                dst, dstlen, NULL, NULL, NULL);
+        if (ret != TCL_OK)
+            return NULL;
+        robjp = Tcl_NewStringObj(dst, strlen(dst));
+        Tcl_Free(dst);
+        return robjp;
     }
     if (typ == &RDB_INTEGER) {
         return Tcl_NewIntObj((int) RDB_obj_int(objp));
@@ -757,4 +769,27 @@ Duro_to_tcl(Tcl_Interp *interp, const RDB_object *objp,
     }
 
     return Duro_irep_to_tcl(interp, objp, txp);
+}
+
+int
+Duro_parse_expr_utf(Tcl_Interp *interp, const char *s, void *arg,
+        RDB_transaction *txp, RDB_expression **expp)
+{
+    int ret;
+    int srclen = strlen(s);
+    int dstlen = (srclen + 1) * 2;
+    char *dst = Tcl_Alloc(dstlen);
+
+    ret = Tcl_UtfToExternal(interp, NULL, s, strlen(s), 0, NULL, dst, dstlen,
+            NULL, NULL, NULL);
+    if (ret != TCL_OK)
+        return ret;
+
+    ret = RDB_parse_expr(dst, Duro_get_ltable, arg, txp, expp);
+    Tcl_Free(dst);
+    if (ret != RDB_OK) {
+        Duro_dberror(interp, ret);
+        return TCL_ERROR;
+    }
+    return TCL_OK;
 }

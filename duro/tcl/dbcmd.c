@@ -6,7 +6,6 @@
 /* $Id$ */
 
 #include "duro.h"
-#include <dli/parse.h>
 #include <gen/strfns.h>
 #include <string.h>
 
