@@ -4,7 +4,7 @@ exec tclsh "$0"
 
 # $Id$
 #
-# Test create, insert with UNION, INTERSECT, JOIN, RENAME
+# Test create, insert with UNION, MINUS, INTERSECT, JOIN, RENAME, EXTEND
 #
 
 load .libs/libdurotcl.so
@@ -23,10 +23,12 @@ duro::db create TEST $dbenv
 set tx [duro::begin $dbenv TEST]
 
 # Create real tables
-duro::table create T1 {
+duro::table create T {
    {K INTEGER}
    {S1 STRING}
 } {{K}} $tx
+
+duro::table rename T T1 $tx
 
 duro::table create T2 {
    {K INTEGER}

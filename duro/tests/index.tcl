@@ -151,13 +151,15 @@ duro::array drop $a
 
 duro::commit $tx
 
-
 set tx [duro::begin $dbenv TEST]
 
 duro::index drop IX1 $tx
 
 duro::rollback $tx
 
+duro::env close $dbenv
+
+set dbenv [duro::env open tests/dbenv]
 
 set tx [duro::begin $dbenv TEST]
 
@@ -175,3 +177,5 @@ if {![tequal $tpl $stpl]} {
 }
 
 duro::commit $tx
+
+duro::env close $dbenv

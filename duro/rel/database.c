@@ -94,7 +94,7 @@ close_table(RDB_table *tbp, RDB_environment *envp)
         for (dbp = dbrootp->firstdbp; dbp != NULL; dbp = dbp->nextdbp) {
             RDB_table **foundtbpp = (RDB_table **)RDB_hashmap_get(
                     &dbp->tbmap, tbp->name, NULL);
-            if (foundtbpp != NULL) {
+            if (foundtbpp != NULL && *foundtbpp != NULL) {
                 void *nullp = NULL;
                 RDB_hashmap_put(&dbp->tbmap, tbp->name, &nullp, sizeof nullp);
             }
@@ -820,6 +820,58 @@ RDB_drop_table(RDB_table *tbp, RDB_transaction *txp)
     }
 
     return _RDB_drop_table(tbp, RDB_TRUE);
+}
+
+int
+RDB_set_table_name(RDB_table *tbp, const char *name, RDB_transaction *txp)
+{
+    int ret;
+
+    if (!_RDB_legal_name(name))
+        return RDB_INVALID_ARGUMENT;
+
+    /* !! should check if virtual tables depend on this table */
+
+    if (tbp->is_persistent) {
+        RDB_database *dbp;
+
+        /* Delete and reinsert tables from/to table maps */
+        for (dbp = txp->dbp->dbrootp->firstdbp; dbp != NULL;
+                dbp = dbp->nextdbp) {
+            RDB_table **foundtbpp = (RDB_table **)RDB_hashmap_get(
+                    &dbp->tbmap, tbp->name, NULL);
+            if (foundtbpp != NULL && *foundtbpp != NULL) {
+                void *nullp = NULL;
+                RDB_hashmap_put(&dbp->tbmap, tbp->name, &nullp, sizeof nullp);
+                RDB_hashmap_put(&dbp->tbmap, name, &tbp, sizeof tbp);
+            }
+        }
+
+        /* Update catalog */
+        ret = _RDB_cat_rename_table(tbp, name, txp);
+        if (ret != RDB_OK) {
+            RDB_errmsg(RDB_db_env(RDB_tx_db(txp)),
+                    "cannot rename table in catalog: %s", RDB_strerror(ret));
+            if (!RDB_is_syserr(ret)) {
+                /* Should not happen */
+                ret = RDB_INTERNAL;
+            }
+            RDB_rollback_all(txp);            
+            return ret;
+        }
+
+
+    }
+    
+    if (tbp->name != NULL)
+        free(tbp->name);
+    tbp->name = RDB_dup_str(name);
+    if (tbp->name == NULL) {
+        RDB_rollback_all(txp);
+        return RDB_NO_MEMORY;
+    }
+
+    return RDB_OK;
 }
 
 int

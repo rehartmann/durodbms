@@ -27,13 +27,13 @@ duro::db create TEST $dbenv
 set tx [duro::begin $dbenv TEST]
 
 # Create table
-duro::table create T1 {
+duro::table create T {
    {STRATTR STRING}
    {INTATTR INTEGER}
 } {{INTATTR}} $tx
 
 # Rename table
-# duro::table rename T T1 $tx
+duro::table rename T T1 $tx
 
 # Insert tuple
 duro::insert T1 {INTATTR 1 STRATTR Bla} $tx
@@ -114,14 +114,14 @@ duro::table drop T1 $tx
 #
 
 # Create table
-duro::table create T {
+duro::table create T2 {
    {STRATTR1 STRING}
    {INTATTR INTEGER}
    {STRATTR2 STRING}
    {STRATTR3 STRING}
 } {{STRATTR1} {INTATTR STRATTR2}} $tx
 
-duro::table rename T T2 $tx
+# duro::table rename T T2 $tx
 
 duro::commit $tx
 
@@ -315,5 +315,8 @@ if {![catch {
 set a [duro::array create T3 {A asc} $tx]
 checkarray $a {{A 1 B 1.0} {A 2 B 2.0} {A 3 B 3.0} {A 4 B 4.0}
         {A 5 B 5.0}} $tx
+duro::array drop $a
 
 duro::commit $tx
+
+duro::env close $dbenv

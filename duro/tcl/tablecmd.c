@@ -281,8 +281,10 @@ table_create_cmd(TclState *statep, Tcl_Interp *interp, int objc,
     if (!persistent) {
         ret = Duro_add_table(interp, statep, tbp, RDB_table_name(tbp),
                 RDB_db_env(RDB_tx_db(txp)));
-        if (ret != TCL_OK)
+        if (ret != TCL_OK) {
+            RDB_drop_table(tbp, txp);
             goto cleanup;
+        }
     }
 
 cleanup:

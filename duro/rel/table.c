@@ -160,41 +160,6 @@ _RDB_free_table(RDB_table *tbp)
 }
 
 int
-RDB_set_table_name(RDB_table *tbp, const char *name, RDB_transaction *txp)
-{
-    int ret;
-
-    if (!_RDB_legal_name(name))
-        return RDB_INVALID_ARGUMENT;
-
-    /* !! should check if virtual tables depend on this table */
-
-    if (tbp->is_persistent) {
-        ret = _RDB_cat_rename_table(tbp, name, txp);
-        if (ret != RDB_OK) {
-            RDB_errmsg(RDB_db_env(RDB_tx_db(txp)),
-                    "cannot rename table in catalog: %s", RDB_strerror(ret));
-            if (!RDB_is_syserr(ret)) {
-                /* Should not happen */
-                ret = RDB_INTERNAL;
-            }
-            RDB_rollback_all(txp);            
-            return ret;
-        }
-    }
-    
-    if (tbp->name != NULL)
-        free(tbp->name);
-    tbp->name = RDB_dup_str(name);
-    if (tbp->name == NULL) {
-        RDB_rollback_all(txp);
-        return RDB_NO_MEMORY;
-    }
-
-    return RDB_OK;
-}
-
-int
 RDB_table_keys(RDB_table *tbp, RDB_string_vec **keyvp)
 {
     int ret;

@@ -1077,7 +1077,6 @@ extractor: TOK_TUPLE TOK_FROM expression {
             RDB_destroy_obj(&tpl);
             YYERROR;
         }
-        _RDB_parse_remove_exp($3);
         $$ = RDB_obj_to_expr(&tpl);
         RDB_destroy_obj(&tpl);
         _RDB_parse_ret = _RDB_parse_add_exp($$);

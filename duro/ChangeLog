@@ -4,6 +4,10 @@ Summary of Changes for Duro
 
 Changes for Duro 0.9
 
+- RDB_set_table_name() now works for global tables.
+
+- Implemented duro::table rename.
+
 - Added conversion operators (RDB_to_int() etc.), added conversion operators
   to expression parser.
 
