@@ -9,7 +9,7 @@ package provide duro 0.8
 namespace eval duro {
 
 namespace export ptable env begin commit rollback db table insert \
-        update delete array operator call expr
+        update delete array operator call expr type
 
 # Print all tuples in a table
 proc ptable {tbl tx} {

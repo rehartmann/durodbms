@@ -81,6 +81,7 @@ _RDB_new_stored_table(const char *name, RDB_bool persistent,
         if (tbp->keyv[i].strv == NULL)
             goto error;
     }
+    tbp->var.stored.indexc = 0;
 
     tbp->typ = reltyp;
 

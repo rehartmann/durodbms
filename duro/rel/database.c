@@ -963,8 +963,8 @@ _RDB_provide_table(const char *name, RDB_bool persistent,
         }
     }
 
-    ret = _RDB_new_stored_table(name, persistent, reltyp,
-                keyc, keyv, usr, tbpp);
+    ret = _RDB_new_stored_table(name, persistent, reltyp, keyc, keyv, usr,
+            tbpp);
     if (ret != RDB_OK) {
         RDB_drop_type(reltyp, NULL);
         return ret;

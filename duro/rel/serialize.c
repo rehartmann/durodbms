@@ -10,6 +10,7 @@
 #include "internal.h"
 #include <gen/strfns.h>
 #include <string.h>
+#include <gen/hashmapit.h>
 
 /*
  * Functions for serializing/deserializing - needed for
@@ -76,7 +77,9 @@ serialize_byte(RDB_object *valp, int *posp, RDB_byte b)
 static int
 serialize_type(RDB_object *valp, int *posp, const RDB_type *typ)
 {
-    int ret = serialize_byte(valp, posp, (RDB_byte) typ->kind);
+    int ret;
+    
+    ret = serialize_byte(valp, posp, (RDB_byte) typ->kind);
     if (ret != RDB_OK)
         return ret;
 
@@ -123,23 +126,68 @@ serialize_obj(RDB_object *valp, int *posp, const RDB_object *argvalp)
     if (ret != RDB_OK)
         return ret;
 
-    if (argvalp->kind == RDB_OB_TABLE)
-        return serialize_table(valp, posp, argvalp->var.tbp);
-    
-    ret = serialize_type(valp, posp, argvalp->typ);
-    if (ret != RDB_OK)
-        return ret;
+    switch (argvalp->kind) {
+        case RDB_OB_TABLE:
+            return serialize_table(valp, posp, argvalp->var.tbp);
+        case RDB_OB_TUPLE:
+        {
+            RDB_object *attrp;
+            char *key;
+            RDB_hashmap_iter hiter;
+        
+            ret = serialize_int(valp, posp, RDB_tuple_size(argvalp));
+            if (ret != RDB_OK)
+                return ret;
 
-    datap = RDB_obj_irep((RDB_object *)argvalp, &len);
-    ret = reserve_space(valp, *posp, len + sizeof len);
-    if (ret != RDB_OK)
-        return ret;
-    memcpy(((RDB_byte *) valp->var.bin.datap) + *posp, &len, sizeof len);
-    *posp += sizeof len;
-    memcpy(((RDB_byte *) valp->var.bin.datap) + *posp, datap, len);
-    *posp += len;
+            RDB_init_hashmap_iter(&hiter, (RDB_hashmap *) &argvalp->var.tpl_map);
+            while ((attrp = (RDB_object *) RDB_hashmap_next(&hiter, &key, NULL))
+                    != NULL)
+            {
+                /* Write attribute name */
+                ret = serialize_str(valp, posp, key);
+                if (ret != RDB_OK)
+                    return ret;
 
-    return RDB_OK;
+                /* Write attribute value */
+                ret = serialize_obj(valp, posp, attrp);
+                if (ret != RDB_OK)
+                    return ret;
+            }
+            RDB_destroy_hashmap_iter(&hiter);
+            return RDB_OK;
+        }
+        case RDB_OB_ARRAY:
+            return RDB_NOT_SUPPORTED;
+        case RDB_OB_INITIAL:
+            return RDB_OK;
+        case RDB_OB_BOOL:
+        case RDB_OB_INT:
+        case RDB_OB_RATIONAL:
+        case RDB_OB_BIN:
+            ret = serialize_type(valp, posp, argvalp->typ);
+            if (ret != RDB_OK)
+                return ret;
+
+            len = argvalp->typ->ireplen;
+            if (len == RDB_VARIABLE_LEN) {
+                len = argvalp->var.bin.len;
+                ret = reserve_space(valp, *posp, len + sizeof len);
+                if (ret != RDB_OK)
+                    return ret;
+                memcpy(((RDB_byte *) valp->var.bin.datap) + *posp, &len, sizeof len);
+                *posp += sizeof len;
+            } else {
+                ret = reserve_space(valp, *posp, len);
+                if (ret != RDB_OK)
+                    return ret;
+            }
+            datap = RDB_obj_irep((RDB_object *) argvalp, NULL);
+            memcpy(((RDB_byte *) valp->var.bin.datap) + *posp, datap, len);
+            *posp += len;
+
+            return RDB_OK;
+    }
+    abort();
 }
 
 static int
@@ -583,9 +631,8 @@ deserialize_byte(RDB_object *valp, int *posp)
     if (*posp + 1 > valp->var.bin.len)
         return RDB_INTERNAL;
 
-    return ((RDB_byte *)valp->var.bin.datap)[(*posp)++];
+    return ((RDB_byte *) valp->var.bin.datap)[(*posp)++];
 }
-
 
 static int
 deserialize_type(RDB_object *valp, int *posp, RDB_transaction *txp,
@@ -682,34 +729,87 @@ deserialize_obj(RDB_object *valp, int *posp, RDB_transaction *txp,
     RDB_type *typ;
     size_t len;
     int ret;
-    int kind;
     RDB_table *tbp;
+    enum _RDB_obj_kind kind;
 
-    kind = deserialize_byte(valp, posp);
-    if (kind == RDB_OB_TABLE) {
-        ret = deserialize_table(valp, posp, txp, &tbp);
-        if (ret != RDB_OK)
-            return ret;
-        RDB_table_to_obj(valp, tbp);
-        return RDB_OK;
-    }
-
-    ret = deserialize_type(valp, posp, txp, &typ);
-    if (ret != RDB_OK)
+    ret = deserialize_byte(valp, posp);
+    if (ret < 0)
         return ret;
 
-    if (*posp + sizeof len > valp->var.bin.len)
-        return RDB_INTERNAL;
-    memcpy (&len, ((RDB_byte *)valp->var.bin.datap) + *posp, sizeof len);
-    *posp += sizeof len;
+    kind = (enum _RDB_obj_kind) ret;
+    switch (kind) {
+        case RDB_OB_TABLE:
+            ret = deserialize_table(valp, posp, txp, &tbp);
+            if (ret != RDB_OK)
+                return ret;
+            RDB_table_to_obj(valp, tbp);
+            return RDB_OK;
+        case RDB_OB_INITIAL:
+            return RDB_OK;
+        case RDB_OB_TUPLE:
+        {
+            RDB_int size;
+            int i;
+            char *attrname;
+            RDB_object attrobj;
 
-    if (*posp + len > valp->var.bin.len)
-        return RDB_INTERNAL;
-    ret = RDB_irep_to_obj(argvalp, typ,
-            ((RDB_byte *)valp->var.bin.datap) + *posp, len);
-    *posp += len;
+            ret = deserialize_int(valp, posp, &size);
+            if (ret != RDB_OK)
+                return ret;
 
-    return RDB_OK;
+            RDB_init_obj(&attrobj);
+            for (i = 0; i < size; i++) {
+                ret = deserialize_str(valp, posp, &attrname);
+                if (ret != RDB_OK) {
+                    RDB_destroy_obj(&attrobj);
+                    return ret;
+                }
+                ret = deserialize_obj(valp, posp, txp, &attrobj);
+                if (ret != RDB_OK) {
+                    free(attrname);
+                    RDB_destroy_obj(&attrobj);
+                    return ret;
+                }
+                ret = RDB_tuple_set(argvalp, attrname, &attrobj);
+                free(attrname);
+                if (ret != RDB_OK) {
+                    RDB_destroy_obj(&attrobj);
+                    return ret;
+                }
+            }
+            RDB_destroy_obj(&attrobj);
+            return RDB_OK;
+        }
+        case RDB_OB_ARRAY:
+            /* !! */
+            return RDB_NOT_SUPPORTED;
+        case RDB_OB_BOOL:
+        case RDB_OB_INT:
+        case RDB_OB_RATIONAL:
+        case RDB_OB_BIN:
+            ret = deserialize_type(valp, posp, txp, &typ);
+            if (ret != RDB_OK)
+                return ret;
+
+            len = typ->ireplen;
+            if (len == RDB_VARIABLE_LEN) {
+                if (*posp + sizeof len > valp->var.bin.len)
+                    return RDB_INTERNAL;
+                memcpy (&len, ((RDB_byte *)valp->var.bin.datap) + *posp, sizeof len);
+                *posp += sizeof len;
+            }
+
+            if (*posp + len > valp->var.bin.len)
+                return RDB_INTERNAL;
+            ret = RDB_irep_to_obj(argvalp, typ,
+                    ((RDB_byte *)valp->var.bin.datap) + *posp, len);
+            if (ret != RDB_OK)
+                return ret;
+            *posp += len;
+
+            return RDB_OK;
+    }
+    abort();
 }
 
 static int

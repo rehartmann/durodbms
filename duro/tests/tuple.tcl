@@ -61,8 +61,18 @@ duro::table create T1 {
 
 duro::insert T1 {SCATTR Bla TPATTR {A 1 B Blubb T {C Blip}}} $tx
 
+#
 # Create UNWRAP table
+#
 duro::table expr -global UW {T1 UNWRAP (TPATTR)} $tx
+
+#
+# Test tuple comparison
+#
+
+duro::table expr -global WH \
+    {(T1 WHERE TPATTR = TUPLE {T TUPLE {C "Blip"}, A 1, B "Blubb" }) \
+    { SCATTR } } $tx
 
 duro::commit $tx
 
@@ -120,12 +130,12 @@ duro::table create T2 {
     {IATTR INTEGER}
 } {{SATTR}} $tx
 
-duro::table expr -global W {T2 WRAP ((SATTR, IATTR) AS A)} $tx
+duro::table expr -global WR {T2 WRAP ((SATTR, IATTR) AS A)} $tx
 
 set tpl {A {SATTR a IATTR 1}}
 duro::insert T2 {SATTR a IATTR 1} $tx
-duro::insert W $tpl $tx
-if {![duro::table contains W $tpl $tx]} {
+duro::insert WR $tpl $tx
+if {![duro::table contains WR $tpl $tx]} {
     puts "W should contain $tpl, but does not"
     exit 1
 }
@@ -183,24 +193,18 @@ if {![tequal $tpl $stpl]} {
     exit 1
 }
 
-#
-# Test tuple equality
-#
 
-duro::table expr t \
-    {(T1 WHERE TPATTR = TUPLE {T TUPLE {C "Blip"}, A 1, B "Blubb" }) \
-    { SCATTR } } $tx
-
-if {[duro::expr {TUPLE FROM t} $tx] != "SCATTR Bla"} {
+if {[duro::expr {TUPLE FROM WH} $tx] != "SCATTR Bla"} {
     puts "SCATTR should be \"Bla\", but is not"
     exit 1
 }
 
-duro::table drop t $tx
 
 # Drop tables
 duro::table drop S $tx
 duro::table drop UW $tx
+duro::table drop WR $tx
+# duro::table drop WH $tx
 duro::table drop T1 $tx
 duro::table drop T2 $tx
 
