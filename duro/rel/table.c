@@ -11,6 +11,87 @@
 #include <gen/strfns.h>
 #include <string.h>
 
+/*
+ * Creates a stored table, but not the recmap and the indexes
+ * and does not insert the table into the catalog.
+ * reltyp is consumed on success (must not be freed by caller).
+ */
+int
+_RDB_new_stored_table(const char *name, RDB_bool persistent,
+                RDB_type *reltyp,
+                int keyc, RDB_string_vec keyv[], RDB_bool usr,
+                RDB_table **tbpp)
+{
+    RDB_table *tbp = NULL;
+    int ret, i;
+
+    for (i = 0; i < keyc; i++) {
+        int j;
+
+        /* check if all the key attributes appear in the heading */
+        for (j = 0; j < keyv[i].strc; j++) {
+            if (_RDB_tuple_type_attr(reltyp->var.basetyp, keyv[i].strv[j])
+                    == NULL) {
+                ret = RDB_INVALID_ARGUMENT;
+                goto error;
+            }
+        }
+    }
+
+    tbp = *tbpp = malloc(sizeof (RDB_table));
+    if (tbp == NULL) {
+        return RDB_NO_MEMORY;
+    }
+    tbp->is_user = usr;
+    tbp->is_persistent = persistent;
+    tbp->keyv = NULL;
+
+    RDB_init_hashmap(&tbp->var.stored.attrmap, RDB_DFL_MAP_CAPACITY);
+
+    tbp->kind = RDB_TB_STORED;
+    if (name != NULL) {
+        tbp->name = RDB_dup_str(name);
+        if (tbp->name == NULL) {
+            ret = RDB_NO_MEMORY;
+            goto error;
+        }
+    } else {
+        tbp->name = NULL;
+    }
+
+    /* copy candidate keys */
+    tbp->keyc = keyc;
+    tbp->keyv = malloc(sizeof(RDB_attr) * keyc);
+    for (i = 0; i < keyc; i++) {
+        tbp->keyv[i].strv = NULL;
+    }
+    for (i = 0; i < keyc; i++) {
+        tbp->keyv[i].strc = keyv[i].strc;
+        tbp->keyv[i].strv = RDB_dup_strvec(keyv[i].strc, keyv[i].strv);
+        if (tbp->keyv[i].strv == NULL)
+            goto error;
+    }
+
+    tbp->typ = reltyp;
+
+    return RDB_OK;
+
+error:
+    /* clean up */
+    if (tbp != NULL) {
+        free(tbp->name);
+        for (i = 0; i < tbp->keyc; i++) {
+            if (tbp->keyv[i].strv != NULL) {
+                RDB_free_strvec(tbp->keyv[i].strc, tbp->keyv[i].strv);
+            }
+        }
+        free(tbp->keyv);
+        RDB_destroy_hashmap(&tbp->var.stored.attrmap);
+        free(tbp);
+    }
+    return ret;
+}
+
 RDB_type *
 RDB_table_type(const RDB_table *tbp)
 {

@@ -11,6 +11,131 @@
 #include <string.h>
 
 static int
+insert_stored(RDB_table *tbp, const RDB_object *tplp, RDB_transaction *txp)
+{
+    int i;
+    int ret;
+    RDB_type *tuptyp = tbp->typ->var.basetyp;
+    int attrcount = tuptyp->var.tuple.attrc;
+    RDB_field *fvp;
+
+    fvp = malloc(sizeof(RDB_field) * attrcount);
+    if (fvp == NULL) {
+        RDB_errmsg(txp->dbp->dbrootp->envp, RDB_strerror(RDB_NO_MEMORY));
+        return RDB_NO_MEMORY;
+    }
+    for (i = 0; i < attrcount; i++) {
+        int *fnop;
+        RDB_object *valp;
+        
+        fnop = RDB_hashmap_get(&tbp->var.stored.attrmap,
+                tuptyp->var.tuple.attrv[i].name, NULL);
+        valp = RDB_tuple_get(tplp, tuptyp->var.tuple.attrv[i].name);
+
+        /* If there is no value, check if there is a default */
+        if (valp == NULL) {
+            valp = tuptyp->var.tuple.attrv[i].defaultp;
+            if (valp == NULL) {
+                return RDB_INVALID_ARGUMENT;
+            }
+        }
+        
+        /* Typecheck */
+        if (valp->typ != NULL && !RDB_type_equals(valp->typ,
+                             tuptyp->var.tuple.attrv[i].typ)) {
+             return RDB_TYPE_MISMATCH;
+        }
+
+        /* Set type - needed for tuples */
+        if (valp->typ == NULL && valp->kind == RDB_OB_TUPLE)
+            _RDB_set_tuple_type(valp, tuptyp->var.tuple.attrv[i].typ);
+
+        _RDB_obj_to_field(&fvp[*fnop], valp);
+    }
+
+    ret = RDB_insert_rec(tbp->var.stored.recmapp, fvp, txp->txid);
+    if (RDB_is_syserr(ret)) {
+        RDB_errmsg(txp->dbp->dbrootp->envp, RDB_strerror(ret));
+        RDB_rollback_all(txp);
+    } else if (ret == RDB_KEY_VIOLATION) {
+        /* check if the tuple is an element of the table */
+        if (RDB_contains_rec(tbp->var.stored.recmapp, fvp, txp->txid)
+                == RDB_OK)
+            ret = RDB_ELEMENT_EXISTS;
+    }            
+    free(fvp);
+    return ret;
+}
+
+static int
+insert_union(RDB_table *tbp, const RDB_object *tplp, RDB_transaction *txp)
+{
+    int ret, ret2;
+
+    /* !! may be very inefficient */        
+    if (RDB_table_contains(tbp->var._union.tbp1, tplp, txp) == RDB_OK
+            || RDB_table_contains(tbp->var._union.tbp2, tplp, txp) == RDB_OK)
+        return RDB_ELEMENT_EXISTS;
+     
+    /* Try to insert the tuple into both tables. The insertion into the union
+     * fails if (1) one of the inserts fails for a reason other than
+     * a predicate violation or (2) if both inserts fail because of
+     * a predicate violation.
+     */
+    ret = RDB_insert(tbp->var._union.tbp1, tplp, txp);
+    if (ret != RDB_OK) {
+        if (ret != RDB_KEY_VIOLATION && ret != RDB_PREDICATE_VIOLATION)
+            return ret;
+    }
+    ret2 = RDB_insert(tbp->var._union.tbp2, tplp, txp);
+    if (ret2 != RDB_OK) {
+        if (ret2 != RDB_KEY_VIOLATION && ret2 != RDB_PREDICATE_VIOLATION)
+            return ret2;
+        /* 2nd insert failed because of a predicate violation, so
+         * it depends on the result of the 1st insert.
+         */
+        return ret;
+    } else {
+        return RDB_OK;
+    }
+}
+
+static int
+insert_extend(RDB_table *tbp, const RDB_object *tplp, RDB_transaction *txp)
+{
+    int ret;
+    int i;
+
+    /* Check the additional attributes */
+    for (i = 0; i < tbp->var.extend.attrc; i++) {
+        RDB_virtual_attr *vattrp = &tbp->var.extend.attrv[i];
+        RDB_object val;
+        RDB_object *valp;
+        RDB_bool iseq;
+        
+        valp = RDB_tuple_get(tplp, vattrp->name);
+        if (valp == NULL) {
+            return RDB_INVALID_ARGUMENT;
+        }
+        RDB_init_obj(&val);
+        ret = RDB_evaluate(vattrp->exp, tplp, txp, &val);
+        if (ret != RDB_OK) {
+            RDB_destroy_obj(&val);
+            return ret;
+        }
+        iseq = RDB_obj_equals(&val, valp);
+        RDB_destroy_obj(&val);
+        if (!iseq)
+            return RDB_PREDICATE_VIOLATION;
+    }
+
+    /*
+     * Insert the tuple (the additional attribute(s) don't do any harm)
+     */
+     return RDB_insert(tbp->var.extend.tbp, tplp, txp);
+}
+
+static int
 insert_intersect(RDB_table *tbp, const RDB_object *tup, RDB_transaction *txp)
 {
     RDB_transaction tx;
@@ -177,58 +302,7 @@ RDB_insert(RDB_table *tbp, const RDB_object *tplp, RDB_transaction *txp)
 
     switch (tbp->kind) {
         case RDB_TB_STORED:
-        {
-            int i;
-            RDB_type *tuptyp = tbp->typ->var.basetyp;
-            int attrcount = tuptyp->var.tuple.attrc;
-            RDB_field *fvp;
-
-            fvp = malloc(sizeof(RDB_field) * attrcount);
-            if (fvp == NULL) {
-                RDB_errmsg(txp->dbp->dbrootp->envp, RDB_strerror(ret));
-                return RDB_NO_MEMORY;
-            }
-            for (i = 0; i < attrcount; i++) {
-                int *fnop;
-                RDB_object *valp;
-                
-                fnop = RDB_hashmap_get(&tbp->var.stored.attrmap,
-                        tuptyp->var.tuple.attrv[i].name, NULL);
-                valp = RDB_tuple_get(tplp, tuptyp->var.tuple.attrv[i].name);
-
-                /* If there is no value, check if there is a default */
-                if (valp == NULL) {
-                    valp = tuptyp->var.tuple.attrv[i].defaultp;
-                    if (valp == NULL) {
-                        return RDB_INVALID_ARGUMENT;
-                    }
-                }
-                
-                /* Typecheck */
-                if (valp->typ != NULL && !RDB_type_equals(valp->typ,
-                                     tuptyp->var.tuple.attrv[i].typ)) {
-                     return RDB_TYPE_MISMATCH;
-                }
-
-                /* Set type - needed for tuples */
-                if (valp->typ == NULL && valp->kind == RDB_OB_TUPLE)
-                    _RDB_set_tuple_type(valp, tuptyp->var.tuple.attrv[i].typ);
-
-                _RDB_obj_to_field(&fvp[*fnop], valp);
-            }
-            ret = RDB_insert_rec(tbp->var.stored.recmapp, fvp, txp->txid);
-            if (RDB_is_syserr(ret)) {
-                RDB_errmsg(txp->dbp->dbrootp->envp, RDB_strerror(ret));
-                RDB_rollback_all(txp);
-            } else if (ret == RDB_KEY_VIOLATION) {
-                /* check if the tuple is an element of the table */
-                if (RDB_contains_rec(tbp->var.stored.recmapp, fvp, txp->txid)
-                        == RDB_OK)
-                    ret = RDB_ELEMENT_EXISTS;
-            }            
-            free(fvp);
-            return ret;
-        }
+            return insert_stored(tbp, tplp, txp);
         case RDB_TB_SELECT:
         case RDB_TB_SELECT_PINDEX:
             ret = RDB_evaluate_bool(tbp->var.select.exprp, tplp, txp, &b);
@@ -240,72 +314,13 @@ RDB_insert(RDB_table *tbp, const RDB_object *tplp, RDB_transaction *txp)
         case RDB_TB_MINUS:
             return RDB_NOT_SUPPORTED;
         case RDB_TB_UNION:
-        {
-            int ret2;
-
-            /* !! may be very inefficient */        
-            if (RDB_table_contains(tbp->var._union.tbp1, tplp, txp) == RDB_OK
-                    || RDB_table_contains(tbp->var._union.tbp2, tplp, txp) == RDB_OK)
-                return RDB_ELEMENT_EXISTS;
-             
-            /* Try to insert the tuple into both tables. The insertion into the union
-             * fails if (1) one of the inserts fails for a reason other than
-             * a predicate violation or (2) if both inserts fail because of
-             * a predicate violation.
-             */
-            ret = RDB_insert(tbp->var._union.tbp1, tplp, txp);
-            if (ret != RDB_OK) {
-                if (ret != RDB_KEY_VIOLATION && ret != RDB_PREDICATE_VIOLATION)
-                    return ret;
-            }
-            ret2 = RDB_insert(tbp->var._union.tbp2, tplp, txp);
-            if (ret2 != RDB_OK) {
-                if (ret2 != RDB_KEY_VIOLATION && ret2 != RDB_PREDICATE_VIOLATION)
-                    return ret2;
-                /* 2nd insert failed because of a predicate violation, so
-                 * it depends on the result of the 1st insert.
-                 */
-                return ret;
-            } else {
-                return RDB_OK;
-            }
-        }
+            return insert_union(tbp, tplp, txp);
         case RDB_TB_INTERSECT:
-             return insert_intersect(tbp, tplp, txp);
+            return insert_intersect(tbp, tplp, txp);
         case RDB_TB_JOIN:
-             return insert_join(tbp, tplp, txp);
+            return insert_join(tbp, tplp, txp);
         case RDB_TB_EXTEND:
-        {
-            int i;
-        
-            /* Check the additional attributes */
-            for (i = 0; i < tbp->var.extend.attrc; i++) {
-                RDB_virtual_attr *vattrp = &tbp->var.extend.attrv[i];
-                RDB_object val;
-                RDB_object *valp;
-                RDB_bool iseq;
-                
-                valp = RDB_tuple_get(tplp, vattrp->name);
-                if (valp == NULL) {
-                    return RDB_INVALID_ARGUMENT;
-                }
-                RDB_init_obj(&val);
-                ret = RDB_evaluate(vattrp->exp, tplp, txp, &val);
-                if (ret != RDB_OK) {
-                    RDB_destroy_obj(&val);
-                    return ret;
-                }
-                iseq = RDB_obj_equals(&val, valp);
-                RDB_destroy_obj(&val);
-                if (!iseq)
-                    return RDB_PREDICATE_VIOLATION;
-            }
-        
-            /*
-             * Insert the tplple (the additional attribute(s) don't do any harm)
-             */
-             return RDB_insert(tbp->var.extend.tbp, tplp, txp);
-        }
+            return insert_extend(tbp, tplp, txp);
         case RDB_TB_PROJECT:
              return RDB_insert(tbp->var.project.tbp, tplp, txp);
         case RDB_TB_SUMMARIZE:

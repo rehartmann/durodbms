@@ -12,6 +12,11 @@
 
 #define AVG_COUNT_SUFFIX "$C"
 
+/* initial capacities of attribute map and table map */
+enum {
+    RDB_DFL_MAP_CAPACITY = 37
+};
+
 typedef struct RDB_dbroot {
     RDB_environment *envp;
     RDB_hashmap typemap;
