@@ -1295,6 +1295,32 @@ next_sdivide_tuple(RDB_qresult *qrp, RDB_object *tplp, RDB_transaction *txp)
     return RDB_OK;
 }
 
+static int
+next_select_tuple(RDB_qresult *qrp, RDB_object *tplp, RDB_transaction *txp)
+{
+    int ret;
+    RDB_object tpl;
+    RDB_bool expres;
+
+    if (tplp == NULL)
+        RDB_init_obj(&tpl);
+
+    do {
+        ret = _RDB_next_tuple(qrp->var.virtual.qrp, tplp != NULL ? tplp : &tpl,
+                txp);
+        if (ret != RDB_OK)
+            break;
+        ret = RDB_evaluate_bool(qrp->tbp->var.select.exp, tplp != NULL ? tplp : &tpl,
+                txp, &expres);
+        if (ret != RDB_OK)
+            break;
+    } while (!expres);
+
+    if (tplp == NULL)
+        RDB_destroy_obj(&tpl);
+    return ret;
+}
+
 int
 _RDB_next_tuple(RDB_qresult *qrp, RDB_object *tplp, RDB_transaction *txp)
 {
@@ -1310,25 +1336,10 @@ _RDB_next_tuple(RDB_qresult *qrp, RDB_object *tplp, RDB_transaction *txp)
     }
 
     switch (tbp->kind) {
-        RDB_bool expres;
-
         case RDB_TB_STORED:
             return next_stored_tuple(qrp, qrp->tbp, tplp);
         case RDB_TB_SELECT:
-            do {
-                ret = _RDB_next_tuple(qrp->var.virtual.qrp, tplp, txp);
-                if (ret != RDB_OK)
-                    break;
-                ret = RDB_evaluate_bool(tbp->var.select.exp, tplp, txp, &expres);
-                if (ret != RDB_OK)
-                    break;
-            } while (!expres);
-            if (ret == RDB_NOT_FOUND) {
-                return RDB_NOT_FOUND;
-            } else if (ret != RDB_OK) {
-                return ret;
-            }
-            break;
+            return next_select_tuple(qrp, tplp, txp);
         case RDB_TB_SELECT_INDEX:
             ret = next_select_index(qrp, tplp, txp);
             qrp->endreached = 1;

@@ -81,7 +81,7 @@ typedef struct RDB_object {
             int elemc;
             struct RDB_object *elemv;
 
-            /* Buffers elements beyonc elemc */
+            /* Buffers elements beyond elemc */
             struct RDB_object *tplp;
         } arr;
      } var;

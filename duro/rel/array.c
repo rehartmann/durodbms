@@ -43,17 +43,25 @@ RDB_table_to_array(RDB_object *arrp, RDB_table *tbp,
  */
 
 static int
-fetch_next(RDB_object *arrp)
+next_tuple(RDB_object *arrp, RDB_bool mustread)
 {
-    if (arrp->var.arr.pos < arrp->var.arr.elemc)
-        return _RDB_next_tuple(arrp->var.arr.qrp,
-                &arrp->var.arr.elemv[arrp->var.arr.pos],
-                arrp->var.arr.txp);
+    RDB_object *tplp;
 
-    return _RDB_next_tuple(arrp->var.arr.qrp, arrp->var.arr.tplp,
+    if (arrp->var.arr.pos < arrp->var.arr.elemc) {
+        tplp = &arrp->var.arr.elemv[arrp->var.arr.pos];
+        if (tplp->kind == RDB_OB_TUPLE) {
+            /* Don't read same tuple again */
+            tplp = NULL;
+        }
+    } else {
+        tplp = mustread ? arrp->var.arr.tplp : NULL;
+    }
+
+    return _RDB_next_tuple(arrp->var.arr.qrp, tplp,
                 arrp->var.arr.txp);
 }
 
+/* !! should be made configurable */
 enum {
     ARRAY_BUFLEN_MIN = 256,
     ARRAY_BUFLEN_MAX = 32768
@@ -148,7 +156,7 @@ RDB_array_get(RDB_object *arrp, RDB_int idx, RDB_object **tplpp)
      * Move forward until the right position is reached
      */
     while (arrp->var.arr.pos < idx) {
-        ret = fetch_next(arrp);
+        ret = next_tuple(arrp, RDB_FALSE);
         if (ret != RDB_OK) {
             if (RDB_is_syserr(ret)) {
                 _RDB_drop_qresult(arrp->var.arr.qrp, arrp->var.arr.txp);
@@ -161,7 +169,7 @@ RDB_array_get(RDB_object *arrp, RDB_int idx, RDB_object **tplpp)
     }
 
     /* Read next element */
-    ret = fetch_next(arrp);
+    ret = next_tuple(arrp, RDB_TRUE);
     if (ret != RDB_OK) {
         if (ret == RDB_NOT_FOUND) {
             arrp->var.arr.length = arrp->var.arr.pos;

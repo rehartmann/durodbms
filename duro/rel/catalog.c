@@ -1194,6 +1194,8 @@ _RDB_get_cat_rtable(const char *name, RDB_transaction *txp, RDB_table **tbpp)
     attrc = RDB_array_length(&arr);
     if (attrc > 0)
         attrv = malloc(sizeof(RDB_attr) * attrc);
+    for (i = 0; i < attrc; i++)
+        attrv[i].name = NULL;
 
     for (i = 0; i < attrc; i++) {
         RDB_object *typedatap;
@@ -1204,6 +1206,10 @@ _RDB_get_cat_rtable(const char *name, RDB_transaction *txp, RDB_table **tbpp)
             goto error;
         fno = RDB_tuple_get_int(tplp, "I_FNO");
         attrv[fno].name = RDB_dup_str(RDB_tuple_get_string(tplp, "ATTRNAME"));
+        if (attrv[fno].name == NULL) {
+            ret = RDB_NO_MEMORY;
+            goto error;
+        }
         typedatap = RDB_tuple_get(tplp, "TYPE");
 
         ret = _RDB_deserialize_type(typedatap, txp, &attrv[fno].typ);
