@@ -831,7 +831,7 @@ RDB_select(RDB_table *tbp, RDB_expression *condp, RDB_table **resultpp)
     newtbp->is_persistent = RDB_FALSE;
     newtbp->kind = RDB_TB_SELECT;
     newtbp->var.select.tbp = tbp;
-    newtbp->var.select.exprp = condp;
+    newtbp->var.select.exp = condp;
     newtbp->typ = tbp->typ;
 
     newtbp->keyc = tbp->keyc;

@@ -283,7 +283,7 @@ typedef struct RDB_table {
         } stored;
         struct {
             struct RDB_table *tbp;
-            RDB_expression *exprp;
+            RDB_expression *exp;
             _RDB_tbindex *indexp; /* RDB_TB_SELECT_INDEX */
         } select;
         struct {
@@ -541,7 +541,7 @@ RDB_update(RDB_table *, RDB_expression *, int attrc,
         const RDB_attr_update updv[], RDB_transaction *);
 
 /*
- * Delete the tuple for which the expression pointedto by exprp
+ * Delete the tuple for which the expression pointedto by condp
  * evaluates to true from the table pointed to by tbp.
  * 
  * If condp is NULL, all tuples will be deleted.
@@ -550,7 +550,7 @@ RDB_update(RDB_table *, RDB_expression *, int attrc,
  * MINUS, UNION, and INTERSECT.
  */
 int
-RDB_delete(RDB_table *tbp, RDB_expression *exprp, RDB_transaction *);
+RDB_delete(RDB_table *tbp, RDB_expression *condp, RDB_transaction *);
 
 /*
  * Assign table srcp to table dstp.

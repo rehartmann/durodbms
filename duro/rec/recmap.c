@@ -641,12 +641,6 @@ RDB_delete_rec(RDB_recmap *rmp, RDB_field keyv[], DB_TXN *txid)
     return RDB_OK;
 }
 
-RDB_bool
-RDB_field_is_pindex(RDB_recmap *rmp, int fieldno)
-{
-   return (RDB_bool) (fieldno < rmp->keyfieldcount);
-}
-
 int
 _RDB_get_fields(RDB_recmap *rmp, const DBT *keyp, const DBT *datap, int fieldc,
            RDB_field retfieldv[])

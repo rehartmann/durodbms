@@ -1200,7 +1200,7 @@ _RDB_drop_table(RDB_table *tbp, RDB_transaction *txp, RDB_bool rec)
         }
         case RDB_TB_SELECT_INDEX:
         case RDB_TB_SELECT:
-            RDB_drop_expr(tbp->var.select.exprp);
+            RDB_drop_expr(tbp->var.select.exp);
             if (rec) {
                 ret = drop_anon_table(tbp->var.select.tbp, txp);
                 if (ret != RDB_OK)

@@ -127,7 +127,7 @@ delete_select(RDB_table *tbp, RDB_transaction *txp)
             }
         }
 
-        ret = RDB_evaluate_bool(tbp->var.select.exprp, &tpl, txp, &b);
+        ret = RDB_evaluate_bool(tbp->var.select.exp, &tpl, txp, &b);
         if (ret != RDB_OK)
              goto error;
 
@@ -159,7 +159,7 @@ delete_select_index(RDB_table *tbp, RDB_transaction *txp)
 
     RDB_init_obj(&val);
     /* !! */
-    ret = RDB_evaluate(tbp->var.select.exprp->var.op.arg2, NULL, txp, &val);
+    ret = RDB_evaluate(tbp->var.select.exp->var.op.arg2, NULL, txp, &val);
     if (ret != RDB_OK)
         return ret;
 

@@ -203,7 +203,7 @@ RDB_table_contains(RDB_table *tbp, const RDB_object *tup, RDB_transaction *txp)
             return stored_contains(tbp, tup, txp);
         case RDB_TB_SELECT:
         case RDB_TB_SELECT_INDEX:
-            ret = RDB_evaluate_bool(tbp->var.select.exprp, tup, txp, &b);
+            ret = RDB_evaluate_bool(tbp->var.select.exp, tup, txp, &b);
             if (ret != RDB_OK)
                 return ret;
             if (!b)

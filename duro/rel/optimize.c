@@ -10,13 +10,6 @@
 #include <string.h>
 #include <stdlib.h>
 
-static RDB_bool
-attr_is_pindex(RDB_table *tbp, const char *attrname) {
-    int *fnop = RDB_hashmap_get(&tbp->var.stored.attrmap,
-                        attrname, NULL);
-    return (fnop != NULL) && RDB_field_is_pindex(tbp->var.stored.recmapp, *fnop);
-}
-
 static void
 unbalance_and(RDB_expression *exp)
 {
@@ -100,7 +93,7 @@ eval_index(RDB_table *tbp, _RDB_tbindex *indexp)
     RDB_expression *exp;
 
     for (i = 0; i < indexp->attrc; i++) {
-        if (attr_exp(exp = tbp->var.select.exprp,
+        if (attr_exp(exp = tbp->var.select.exp,
                 indexp->attrv[i].attrname) == NULL)
             return INT_MAX;
     }
@@ -114,7 +107,7 @@ split_by_index(RDB_table *tbp, _RDB_tbindex *indexp)
     RDB_expression *ixexp;
     RDB_bool dosplit;
 
-    exp = attr_exp(tbp->var.select.exprp, indexp->attrv[0].attrname);
+    exp = attr_exp(tbp->var.select.exp, indexp->attrv[0].attrname);
     if (exp->kind != RDB_EX_AND) {
         
         dosplit = RDB_FALSE;
@@ -123,10 +116,10 @@ split_by_index(RDB_table *tbp, _RDB_tbindex *indexp)
         RDB_expression *prevp;
 
         dosplit = RDB_TRUE;
-        if (exp == tbp->var.select.exprp) {
+        if (exp == tbp->var.select.exp) {
             prevp = NULL;
         } else {
-            prevp = tbp->var.select.exprp;
+            prevp = tbp->var.select.exp;
             while (prevp->var.op.arg1 != exp)
                 prevp = prevp->var.op.arg1;
         }
@@ -136,7 +129,7 @@ split_by_index(RDB_table *tbp, _RDB_tbindex *indexp)
             if (prevp != NULL) {
                 prevp->var.op.arg1 = exp->var.op.arg2;
             } else {
-                tbp->var.select.exprp = exp->var.op.arg2;
+                tbp->var.select.exp = exp->var.op.arg2;
             }
             free(exp);            
         } else {
@@ -144,7 +137,7 @@ split_by_index(RDB_table *tbp, _RDB_tbindex *indexp)
             if (prevp != NULL) {
                 prevp->var.op.arg1 = exp->var.op.arg1;
             } else {
-                tbp->var.select.exprp = exp->var.op.arg1;
+                tbp->var.select.exp = exp->var.op.arg1;
             }
             free(exp);
         }
@@ -158,14 +151,14 @@ split_by_index(RDB_table *tbp, _RDB_tbindex *indexp)
 
         sitbp->kind = RDB_TB_SELECT_INDEX;
         sitbp->var.select.indexp = indexp;
-        sitbp->var.select.exprp = ixexp;
+        sitbp->var.select.exp = ixexp;
         sitbp->var.select.tbp = tbp->var.select.tbp;
         sitbp->optimized = RDB_TRUE;
         tbp->var.select.tbp = sitbp;
     } else {
         tbp->kind = RDB_TB_SELECT_INDEX;
         tbp->var.select.indexp = indexp;
-        tbp->var.select.exprp = ixexp;
+        tbp->var.select.exp = ixexp;
     }
     return RDB_OK;
 }
@@ -186,7 +179,7 @@ optimize_select(RDB_table *tbp, RDB_transaction *txp)
     /*
      * Convert condition into 'unbalanced' form
      */
-    unbalance_and(tbp->var.select.exprp);
+    unbalance_and(tbp->var.select.exp);
 
     /*
      * Try to find best index

@@ -132,12 +132,6 @@ RDB_get_fields(RDB_recmap *rmp, RDB_field keyv[],
            int fieldc, DB_TXN *txid,
            RDB_field resfieldv[]);
 
-/*
- * Return RDB_TRUE if the field fieldno is part of the primary index.
- */
-RDB_bool
-RDB_field_is_pindex(RDB_recmap *rmp, int fieldno);
-
 /* Check if the recmap contains the record whose values are given by valv.
  * Return RDB_OK if yes, RDB_NOT_FOUND if no.
  * valv[..].no is ignored.

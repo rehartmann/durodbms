@@ -467,7 +467,7 @@ serialize_table(RDB_object *valp, int *posp, RDB_table *tbp)
             ret = serialize_table(valp, posp, tbp->var.select.tbp);
             if (ret != RDB_OK)
                 return ret;
-            return serialize_expr(valp, posp, tbp->var.select.exprp);
+            return serialize_expr(valp, posp, tbp->var.select.exp);
         case RDB_TB_UNION:
             ret = serialize_table(valp, posp, tbp->var._union.tb1p);
             if (ret != RDB_OK)

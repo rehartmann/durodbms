@@ -833,7 +833,7 @@ static int
 next_select_index(RDB_qresult *qrp, RDB_object *tplp, RDB_transaction *txp)
 {
     return _RDB_get_by_uindex(qrp->tbp->var.select.tbp,
-                &qrp->tbp->var.select.exprp->var.op.arg2->var.obj,
+                &qrp->tbp->var.select.exp->var.op.arg2->var.obj,
                 qrp->tbp->var.select.indexp, txp, tplp);
 }
 
@@ -1083,7 +1083,7 @@ _RDB_next_tuple(RDB_qresult *qrp, RDB_object *tup, RDB_transaction *txp)
                 ret = _RDB_next_tuple(qrp->var.virtual.qrp, tup, txp);
                 if (ret != RDB_OK)
                     break;
-                ret = RDB_evaluate_bool(tbp->var.select.exprp, tup, txp, &expres);
+                ret = RDB_evaluate_bool(tbp->var.select.exp, tup, txp, &expres);
                 if (ret != RDB_OK)
                     break;
             } while (!expres);

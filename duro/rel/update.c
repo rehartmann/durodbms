@@ -277,7 +277,7 @@ update_select_simple(RDB_table *tbp, int updc, const RDB_attr_update updv[],
         }
         
         /* Evaluate condition */
-        ret = RDB_evaluate_bool(tbp->var.select.exprp, &tpl, txp, &b);
+        ret = RDB_evaluate_bool(tbp->var.select.exp, &tpl, txp, &b);
         if (ret != RDB_OK)
             return ret;
 
@@ -348,7 +348,7 @@ update_select_index(RDB_table *tbp, int updc, const RDB_attr_update updv[],
 
     /* Evaluate key */
     /* !! */
-    ret = RDB_evaluate(tbp->var.select.exprp->var.op.arg2, NULL, txp, &val);
+    ret = RDB_evaluate(tbp->var.select.exp->var.op.arg2, NULL, txp, &val);
     if (ret != RDB_OK) {
         goto cleanup;
     }
@@ -436,14 +436,13 @@ update_select(RDB_table *tbp, int updc, const RDB_attr_update updv[],
     if (tbp->var.select.tbp->kind != RDB_TB_STORED)
         return RDB_INVALID_ARGUMENT;
 
-    if (needs_complex_update(tbp->var.select.tbp, tbp->var.select.exprp,
+    if (needs_complex_update(tbp->var.select.tbp, tbp->var.select.exp,
             updc, updv))
         return update_stored_complex(tbp->var.select.tbp,
-                tbp->var.select.exprp, updc, updv, txp);
+                tbp->var.select.exp, updc, updv, txp);
 
     return update_select_simple(tbp, updc, updv, txp);
 }
-
 
 static int
 update_stored(RDB_table *tbp, int updc, const RDB_attr_update updv[],
