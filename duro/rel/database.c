@@ -21,15 +21,13 @@
 
 /* initial capacities of attribute map and table map */
 enum {
-    RDB_DFL_MAP_CAPACITY = 37,
+    RDB_DFL_MAP_CAPACITY = 37
 };
 
 RDB_environment *
 RDB_db_env(RDB_database *dbp) {
     return dbp->dbrootp->envp;
 }
-
-#define RDB_db_env(dbp) ((dbp)->dbrootp->envp)
 
 /*
  * Return the length (in bytes) of the internal representation
@@ -350,7 +348,7 @@ error:
         RDB_destroy_hashmap(&tbp->var.stored.attrmap);
     }
     if (RDB_is_syserr(ret))
-        RDB_rollback(txp);
+        RDB_rollback_all(txp);
     return ret;
 }
 
@@ -399,6 +397,7 @@ free_upd_op(RDB_upd_op *op) {
             RDB_drop_type(op->argtv[i], NULL);
     }
     free(op->argtv);
+    free(op->updv);
     lt_dlclose(op->modhdl);
     RDB_destroy_obj(&op->iarg);
     free(op);
@@ -1066,7 +1065,7 @@ RDB_create_table(const char *name, RDB_bool persistent,
             RDB_rollback(&tx);
             _RDB_drop_rtable(*tbpp, txp);
             if (RDB_is_syserr(ret))
-                RDB_rollback(txp);
+                RDB_rollback_all(txp);
             return ret;
         }
 
@@ -1301,7 +1300,7 @@ RDB_set_table_name(RDB_table *tbp, const char *name, RDB_transaction *txp)
         free(tbp->name);
     tbp->name = RDB_dup_str(name);
     if (tbp->name == NULL) {
-        RDB_rollback(txp);
+        RDB_rollback_all(txp);
         return RDB_NO_MEMORY;
     }
 
@@ -1404,12 +1403,13 @@ cleanup:
 
 int
 RDB_create_update_op(const char *name, int argc, RDB_type *argtv[],
-                  RDB_bool upd[], const char *libname, const char *symname,
+                  RDB_bool updv[], const char *libname, const char *symname,
                   const void *iargp, size_t iarglen,
                   RDB_transaction *txp)
 {
     RDB_object tpl;
     RDB_object iarg;
+    RDB_object updvobj;
     char *typesbuf;
     int i;
     int ret;
@@ -1444,6 +1444,17 @@ RDB_create_update_op(const char *name, int argc, RDB_type *argtv[],
     }
     ret = RDB_tuple_set(&tpl, "IARG", &iarg);
     RDB_destroy_obj(&iarg);
+    if (ret != RDB_OK)
+        goto cleanup;
+
+    RDB_init_obj(&updvobj);
+    ret = RDB_binary_set(&updvobj, 0, updv, argc);
+    if (ret != RDB_OK) {
+        RDB_destroy_obj(&updvobj);
+        goto cleanup;
+    }
+    ret = RDB_tuple_set(&tpl, "UPDV", &updvobj);
+    RDB_destroy_obj(&updvobj);
     if (ret != RDB_OK)
         goto cleanup;
 
@@ -1566,7 +1577,7 @@ RDB_call_ro_op(const char *name, int argc, RDB_object *argv[],
 
     argtv = valv_to_typev(argc, argv);
     if (argtv == NULL) {
-        RDB_rollback(txp);
+        RDB_rollback_all(txp);
         return RDB_NO_MEMORY;
     }
     ret = _RDB_get_ro_op(name, argc, argtv, txp, &op);
@@ -1574,6 +1585,7 @@ RDB_call_ro_op(const char *name, int argc, RDB_object *argv[],
     if (ret != RDB_OK)
         goto error;
 
+    retvalp->typ = op->rtyp;
     ret = (*op->funcp)(name, argc, argv, op->iarg.var.bin.datap,
             op->iarg.var.bin.len, txp, retvalp);
     if (ret != RDB_OK)
@@ -1581,13 +1593,13 @@ RDB_call_ro_op(const char *name, int argc, RDB_object *argv[],
     return RDB_OK;
 error:
     if (RDB_is_syserr(ret))
-        RDB_rollback(txp);
+        RDB_rollback_all(txp);
     return ret;
 }
 
 static RDB_upd_op *
 get_upd_op(const RDB_dbroot *dbrootp, const char *name,
-        int argc, RDB_object *argv[])
+        int argc, RDB_type *argtv[])
 {
     RDB_upd_op *op;
     RDB_upd_op **opp = RDB_hashmap_get(&dbrootp->upd_opmap, name, NULL);    
@@ -1602,7 +1614,7 @@ get_upd_op(const RDB_dbroot *dbrootp, const char *name,
             int i;
 
             for (i = 0; (i < argc)
-                    && !RDB_type_equals(op->argtv[i], argv[i]->typ);
+                    && !RDB_type_equals(op->argtv[i], argtv[i]);
                  i++);
             if (i >= argc) {
                 /* Found */
@@ -1634,37 +1646,48 @@ put_upd_op(RDB_dbroot *dbrootp, RDB_upd_op *op)
 }
 
 int
+_RDB_get_upd_op(const char *name, int argc, RDB_type *argtv[],
+               RDB_transaction *txp, RDB_upd_op **opp)
+{
+    int ret;
+
+    *opp = get_upd_op(txp->dbp->dbrootp, name, argc, argtv);
+    if (*opp == NULL) {
+        ret = _RDB_get_cat_upd_op(name, argc, argtv, txp, opp);
+        if (ret != RDB_OK)
+            return ret;
+        ret = put_upd_op(txp->dbp->dbrootp, *opp);
+        if (ret != RDB_OK) {
+            free_upd_op(*opp);
+            return ret;
+        }
+    }
+    return RDB_OK;
+}
+
+int
 RDB_call_update_op(const char *name, int argc, RDB_object *argv[],
                 RDB_transaction *txp)
 {
     RDB_upd_op *op;
-    RDB_bool *updv;
-    int i;
+    RDB_type **argtv;
     int ret;
 
     if (!RDB_tx_is_running(txp))
         return RDB_INVALID_TRANSACTION;
 
-    op = get_upd_op(txp->dbp->dbrootp, name, argc, argv);
-    if (op == NULL) {
-        ret = _RDB_get_cat_upd_op(name, argc, argv, txp, &op);
-        if (ret != RDB_OK)
-            return ret;
-        ret = put_upd_op(txp->dbp->dbrootp, op);
-        if (ret != RDB_OK) {
-            free_upd_op(op);
-            return ret;
-        }
-    }
-
-    updv = malloc(sizeof(RDB_bool) * argc);
-    if (updv == NULL)
+    argtv = valv_to_typev(argc, argv);
+    if (argtv == NULL) {
+        RDB_rollback_all(txp);
         return RDB_NO_MEMORY;
-    for (i = 0; i < argc; i++)
-        updv[i] = RDB_FALSE;
-    ret = (*op->funcp)(name, argc, argv, updv, op->iarg.var.bin.datap,
+    }
+    ret = _RDB_get_upd_op(name, argc, argtv, txp, &op);
+    free(argtv);
+    if (ret != RDB_OK)
+        return ret;
+
+    ret = (*op->funcp)(name, argc, argv, op->updv, op->iarg.var.bin.datap,
             op->iarg.var.bin.len, txp);
-    free(updv);
     return ret;
 }
 
@@ -1684,7 +1707,7 @@ RDB_drop_op(const char *name, RDB_transaction *txp)
      */
     exp = RDB_eq(RDB_expr_attr("NAME"), RDB_string_const(name));
     if (exp == NULL) {
-        RDB_rollback(txp);
+        RDB_rollback_all(txp);
         return RDB_NO_MEMORY;
     }
     ret = RDB_select(txp->dbp->dbrootp->ro_ops_tbp, exp, &vtbp);
@@ -1714,14 +1737,14 @@ RDB_drop_op(const char *name, RDB_transaction *txp)
         ret = RDB_hashmap_put(&txp->dbp->dbrootp->upd_opmap, name,
                 &op, sizeof (op));
         if (ret != RDB_OK) {
-            RDB_rollback(txp);
+            RDB_rollback_all(txp);
             return ret;
         }
         
         /* Delete all versions of update operator from the database */
         exp = RDB_eq(RDB_expr_attr("NAME"), RDB_string_const(name));
         if (exp == NULL) {
-            RDB_rollback(txp);
+            RDB_rollback_all(txp);
             return RDB_NO_MEMORY;
         }
         ret = RDB_delete(txp->dbp->dbrootp->upd_ops_tbp, exp, txp);
@@ -1742,14 +1765,14 @@ RDB_drop_op(const char *name, RDB_transaction *txp)
         ret = RDB_hashmap_put(&txp->dbp->dbrootp->ro_opmap, name,
                 &op, sizeof (op));
         if (ret != RDB_OK) {
-            RDB_rollback(txp);
+            RDB_rollback_all(txp);
             return ret;
         }
 
         /* Delete all versions of update operator from the database */
         exp = RDB_eq(RDB_expr_attr("NAME"), RDB_string_const(name));
         if (exp == NULL) {
-            RDB_rollback(txp);
+            RDB_rollback_all(txp);
             return RDB_NO_MEMORY;
         }
         ret = RDB_delete(txp->dbp->dbrootp->ro_ops_tbp, exp, txp);

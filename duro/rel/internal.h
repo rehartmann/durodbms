@@ -106,6 +106,7 @@ typedef struct RDB_upd_op {
     RDB_object iarg;
     lt_dlhandle modhdl;
     RDB_upd_op_func *funcp;
+    RDB_bool *updv;
     struct RDB_upd_op *nextp;
 } RDB_upd_op;
 
@@ -113,6 +114,10 @@ typedef struct RDB_upd_op {
 
 void
 _RDB_init_builtin_types(void);
+
+/* Abort transaction and all parent transactions */
+int
+RDB_rollback_all(RDB_transaction *txp);
 
 /*
  * Iterator over the tuples of a RDB_table. Used internally.
@@ -305,6 +310,10 @@ _RDB_set_tuple_type(RDB_object *objp, RDB_type *typ);
 int
 _RDB_get_ro_op(const char *name, int argc, RDB_type *argtv[],
                RDB_transaction *txp, RDB_ro_op **opp);
+
+int
+_RDB_get_upd_op(const char *name, int argc, RDB_type *argtv[],
+               RDB_transaction *txp, RDB_upd_op **opp);
 
 int
 _RDB_move_tuples(RDB_table *dstp, RDB_table *srcp, RDB_transaction *);

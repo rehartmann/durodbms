@@ -55,7 +55,7 @@ print_table(RDB_database *dbp)
     RDB_transaction tx;
     RDB_table *tbp;
     RDB_object *tplp;
-    RDB_array array;
+    RDB_object array;
     RDB_int i;
     int ret;
     RDB_seq_item sqv[2] = {
@@ -74,7 +74,7 @@ print_table(RDB_database *dbp)
         return ret;
     }
 
-    RDB_init_array(&array);
+    RDB_init_obj(&array);
 
     ret = RDB_table_to_array(&array, tbp, 2, sqv, &tx);
     if (ret != RDB_OK) {
@@ -91,11 +91,11 @@ print_table(RDB_database *dbp)
         goto error;
     }
 
-    RDB_destroy_array(&array);
+    RDB_destroy_obj(&array);
     
     return RDB_commit(&tx);
 error:
-    RDB_destroy_array(&array);
+    RDB_destroy_obj(&array);
     RDB_rollback(&tx);
     
     return ret;

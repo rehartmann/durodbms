@@ -154,7 +154,7 @@ RDB_insert(RDB_table *tbp, const RDB_object *tup, RDB_transaction *txp)
                 }
 
                 /* Set type - needed for tuples */
-                if (valp->typ == NULL && valp->kind == _RDB_TUPLE)
+                if (valp->typ == NULL && valp->kind == RDB_OB_TUPLE)
                     _RDB_set_tuple_type(valp, tuptyp->var.tuple.attrv[i].typ);
 
                 _RDB_obj_to_field(&fvp[*fnop], valp);
@@ -162,7 +162,7 @@ RDB_insert(RDB_table *tbp, const RDB_object *tup, RDB_transaction *txp)
             ret = RDB_insert_rec(tbp->var.stored.recmapp, fvp, txp->txid);
             if (RDB_is_syserr(ret)) {
                 RDB_errmsg(txp->dbp->dbrootp->envp, RDB_strerror(ret));
-                RDB_rollback(txp);
+                RDB_rollback_all(txp);
             } else if (ret == RDB_KEY_VIOLATION) {
                 /* check if the tuple is an element of the table */
                 if (RDB_contains_rec(tbp->var.stored.recmapp, fvp, txp->txid)

@@ -105,7 +105,6 @@ See the release notes for details.
 <li><a href="#obj_set_tuple">RDB_obj_set_tuple</a>
 <li><a href="#obj_set_comp">RDB_obj_set_comp</a>
 <li><a href="#obj_string">RDB_obj_string</a>
-<li><a href="#obj_tuple">RDB_obj_tuple</a>
 <li><a href="#select_obj">RDB_select_obj</a>
 </ul>
 
@@ -135,8 +134,6 @@ See the release notes for details.
 <li><a href="#array_get">RDB_array_get</a>
 <li><a href="#array_length">RDB_array_length</a>
 <li><a href="#array_set">RDB_array_set</a>
-<li><a href="#destroy_array">RDB_destroy_array</a>
-<li><a href="#init_array">RDB_init_array</a>
 <li><a href="#table_to_array">RDB_table_to_array</a>
 <li><a href="#set_array_length">RDB_set_array_length</a>
 </ul>
@@ -213,8 +210,8 @@ See the release notes for details.
 <ul>
 <li><a href="#create_constraint">RDB_create_constraint</a>
 <li><a href="#drop_constraint">RDB_drop_constraint</a>
-<li><a href="#begin_uoi">RDB_begin_uio</a>
-<li><a href="#end_uoi">RDB_end_uio</a>
+<li><a href="#begin_uoi">RDB_begin_uoi</a>
+<li><a href="#end_uoi">RDB_end_uoi</a>
 </ul>
 
 <h3>Database Environment functions</h3>
@@ -1149,7 +1146,7 @@ exp fields of the elements of <var>attrv</var>.
 
 <p>If the operation is successful, the new table takes responsibility
 for the expressions in <var>attrv</var>. These expressions are
-automatically dropped if the table is dropped.
+automatically dropped when the table is dropped.
 
 <h3>Return value</h3>
 
@@ -2225,27 +2222,6 @@ RDB_obj_string(RDB_object *valp);
 
 <hr>
 
-<h2 id="obj_tuple">RDB_obj_tuple</h2>
-
-<pre>
-#include &lt;rel/rdb.h&gt;
-
-RDB_object *
-RDB_obj_tuple(RDB_object *valp);
-</pre>
-
-<h3>Description</h3>
-
-<p>RDB_obj_tuple returns a pointer to RDB_object variable
-represented by the RDB_object pointed to by <var>valp</var>.
-The RDB_object must be of a tuple type.
-
-<h3>Return value</h3>
-
-<p>A pointer to the RDB_tuple.
-
-<hr>
-
 <h2 id="obj_comp">RDB_obj_comp</h2>
 
 <pre>
@@ -2575,43 +2551,6 @@ transaction.
 
 <hr>
 
-<h2 id="init_array">RDB_init_array</h2>
-
-<pre>
-#include &lt;rel/rdb.h&gt;
-
-void
-RDB_init_array(RDB_array *);
-</pre>
-
-<h3>Description</h3>
-
-<p>RDB_init_array initializes en array variable.
-RDB_init_array must be called before any other
-operation can be performed on a RDB_array variable.
-
-<hr>
-
-<h2 id="destroy_array">RDB_destroy_array</h2>
-
-<pre>
-#include &lt;rel/rdb.h&gt;
-
-int
-RDB_destroy_array(RDB_array *);
-</pre>
-
-<h3>Description</h3>
-
-<p>RDB_destroy_array frees all resources associated with a RDB_array
-variable.
-
-<h3>Return value</h3>
-
-<p>On success, RDB_OK is returned. On failure, an error code is returned.
-
-<hr>
-
 <h2 id="table_to_array">RDB_table_to_array</h2>
 
 <pre>
@@ -2623,7 +2562,7 @@ typedef struct {
 } RDB_seq_item;
 
 int
-RDB_table_to_array(RDB_array *arrp, RDB_table *tbp,
+RDB_table_to_array(RDB_object *arrp, RDB_table *tbp,
                    int seqitc, RDB_seq_item seqitv[],
                    RDB_transaction *);
 </pre>
@@ -2656,7 +2595,7 @@ in which case the transaction is implicitly rolled back.
 #include &lt;rel/rdb.h&gt;
 
 int
-RDB_array_get(RDB_array *, RDB_int idx, RDB_object **tplpp);
+RDB_array_get(RDB_object *, RDB_int idx, RDB_object **tplpp);
 </pre>
 
 <h3>Description</h3>
@@ -2678,13 +2617,13 @@ The pointer will become invalid when the array is destroyed.
 #include &lt;rel/rdb.h&gt;
 
 int
-RDB_array_set(RDB_array *, RDB_int idx, const RDB_object *tplp);
+RDB_array_set(RDB_object *, RDB_int idx, const RDB_object *tplp);
 </pre>
 
 <h3>Description</h3>
 
 <p>RDB_array_set copies the tuple pointed to by tplp
-into the RDB_array at index <var>idx</var>.
+into the RDB_object at index <var>idx</var>.
 
 <h3>Return value</h3>
 
@@ -2698,7 +2637,7 @@ into the RDB_array at index <var>idx</var>.
 #include &lt;rel/rdb.h&gt;
 
 RDB_int
-RDB_array_length(RDB_array *);
+RDB_array_length(RDB_object *);
 </pre>
 
 <h3>Description</h3>
@@ -2718,7 +2657,7 @@ indicates an error.
 #include &lt;rel/rdb.h&gt;
 
 int
-RDB_set_array_length(RDB_array *arrp, int len);
+RDB_set_array_length(RDB_object *arrp, int len);
 </pre>
 
 <h3>Description</h3>
@@ -3798,13 +3737,13 @@ and the arguments are passed through <var>argc</var> and <var>argv</var>.
 
 <p>The function specified by <var>sym</var> must store the result at the
 location specified by <var>retvalp</var> and return RDB_OK.
-It can indicate an error condition by passing an error code.
+It can indicate an error condition by returning an error code.
 
 <p>If <var>iargp</var> is not NULL, <var>iargp</var> and <var>iarglen</var>
 must point to a byte block which is passed to the function specified by
 <var>sym</var>. This can be used to pass code to an interpreter function.
 
-<p>Overloading functions is possible.
+<p>Overloading operators is possible.
 
 <h3>Return value</h3>
 
@@ -3816,7 +3755,7 @@ must point to a byte block which is passed to the function specified by
 <dt>RDB_INVALID_TRANSACTION
 <dd><var>txp</var> does not point to a running transaction.
 <dt>RDB_ELEMENT_EXISTS
-<dd>A read-only operator with this name and signature does already exist.
+<dd>A read-only operator with this name and signature does already exists.
 </dl>
 
 <p>The call may also fail for a <a href="#syserr">system error</a>,
@@ -3860,7 +3799,7 @@ int
 and the arguments are passed through <var>argc</var> and <var>argv</var>.
 
 <p>On success, the function specified by <var>sym</var> must return RDB_OK.
-It can indicate an error condition by passing an error code.
+It can indicate an error condition by returning an error code.
 
 <p>If <var>iargp</var> is not NULL, <var>iargp</var> and <var>iarglen</var>
 must point to a byte block which is passed to the function specified by
@@ -3878,7 +3817,7 @@ must point to a byte block which is passed to the function specified by
 <dt>RDB_INVALID_TRANSACTION
 <dd><var>txp</var> does not point to a running transaction.
 <dt>RDB_ELEMENT_EXISTS
-<dd>An update operator with this name and signature does already exist.
+<dd>An update operator with this name and signature does already exists.
 </dl>
 
 <p>The call may also fail for a <a href="#syserr">system error</a>,
@@ -4065,12 +4004,12 @@ in which case the transaction is implicitly rolled back.
 #include &lt;rel/rdb.h&gt;
 
 int
-RDB_begin_uio(RDB_transaction *txp);
+RDB_begin_uoi(RDB_transaction *txp);
 </pre>
 
 <h3>Description</h3>
 
-<p>RDB_begin_uio starts a unit of integrity (UOI), which means that
+<p>RDB_begin_uoi starts a unit of integrity (UOI), which means that
 integrity checking is delayed until the of the UOI.
 UOIs cannot be nested.
 
@@ -4095,12 +4034,12 @@ UOIs cannot be nested.
 #include &lt;rel/rdb.h&gt;
 
 int
-RDB_end_uio(RDB_transaction *txp);
+RDB_end_uoi(RDB_transaction *txp);
 </pre>
 
 <h3>Description</h3>
 
-<p>RDB_end_uio ends a unit of integrity.
+<p>RDB_end_uoi ends a unit of integrity.
 
 <h3>Return value</h3>
 

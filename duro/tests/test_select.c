@@ -9,7 +9,7 @@ test_select(RDB_database *dbp)
 {
     RDB_transaction tx;
     RDB_table *tbp, *vtbp;
-    RDB_array array;
+    RDB_object array;
     RDB_object *tplp;
     RDB_expression *exprp;
     int ret;
@@ -27,7 +27,7 @@ test_select(RDB_database *dbp)
         return ret;
     }
 
-    RDB_init_array(&array);
+    RDB_init_obj(&array);
 
     printf("Creating selection (name=\"Smith\")\n");
 
@@ -53,12 +53,12 @@ test_select(RDB_database *dbp)
         goto error;
     }
 
-    RDB_destroy_array(&array);
+    RDB_destroy_obj(&array);
 
     printf("Dropping selection\n");
     RDB_drop_table(vtbp, &tx);
 
-    RDB_init_array(&array);
+    RDB_init_obj(&array);
 
     printf("Creating selection (EMPNO=1)\n");
 
@@ -85,15 +85,16 @@ test_select(RDB_database *dbp)
         goto error;
     }
 
-    RDB_destroy_array(&array);
+    RDB_destroy_obj(&array);
 
     printf("Dropping selection\n");
     RDB_drop_table(vtbp, &tx);
 
     printf("End of transaction\n");
     return RDB_commit(&tx);
+
 error:
-    RDB_destroy_array(&array);
+    RDB_destroy_obj(&array);
     RDB_rollback(&tx);
     return ret;
 }

@@ -183,7 +183,7 @@ RDB_delete(RDB_table *tbp, RDB_expression *condp, RDB_transaction *txp)
             ret = delete_stored(tbp, condp, txp);
             if (RDB_is_syserr(ret)) {
                 RDB_errmsg(txp->dbp->dbrootp->envp, RDB_strerror(ret));
-                RDB_rollback(txp);
+                RDB_rollback_all(txp);
             }
             return ret;
         case RDB_TB_MINUS:
@@ -326,7 +326,7 @@ RDB_all(RDB_table *tbp, const char *attrname, RDB_transaction *txp,
     if (ret != RDB_OK) {
         if (RDB_is_syserr(ret)) {
             RDB_errmsg(txp->dbp->dbrootp->envp, RDB_strerror(ret));
-            RDB_rollback(txp);
+            RDB_rollback_all(txp);
         }
         return ret;
     }
@@ -341,7 +341,7 @@ RDB_all(RDB_table *tbp, const char *attrname, RDB_transaction *txp,
         _RDB_drop_qresult(qrp, txp);
         if (RDB_is_syserr(ret)) {
             RDB_errmsg(txp->dbp->dbrootp->envp, RDB_strerror(ret));
-            RDB_rollback(txp);
+            RDB_rollback_all(txp);
         }
         return ret;
     }
@@ -385,7 +385,7 @@ RDB_any(RDB_table *tbp, const char *attrname, RDB_transaction *txp,
     if (ret != RDB_OK) {
         if (RDB_is_syserr(ret)) {
             RDB_errmsg(txp->dbp->dbrootp->envp, RDB_strerror(ret));
-            RDB_rollback(txp);
+            RDB_rollback_all(txp);
         }
         return ret;
     }
@@ -400,7 +400,7 @@ RDB_any(RDB_table *tbp, const char *attrname, RDB_transaction *txp,
         _RDB_drop_qresult(qrp, txp);
         if (RDB_is_syserr(ret)) {
             RDB_errmsg(txp->dbp->dbrootp->envp, RDB_strerror(ret));
-            RDB_rollback(txp);
+            RDB_rollback_all(txp);
         }
         return ret;
     }
@@ -450,7 +450,7 @@ RDB_max(RDB_table *tbp, const char *attrname, RDB_transaction *txp,
     if (ret != RDB_OK) {
         if (RDB_is_syserr(ret)) {
             RDB_errmsg(txp->dbp->dbrootp->envp, RDB_strerror(ret));
-            RDB_rollback(txp);
+            RDB_rollback_all(txp);
         }
         return ret;
     }
@@ -473,7 +473,7 @@ RDB_max(RDB_table *tbp, const char *attrname, RDB_transaction *txp,
         _RDB_drop_qresult(qrp, txp);
         if (RDB_is_syserr(ret)) {
             RDB_errmsg(txp->dbp->dbrootp->envp, RDB_strerror(ret));
-            RDB_rollback(txp);
+            RDB_rollback_all(txp);
         }
         return ret;
     }
@@ -523,7 +523,7 @@ RDB_min(RDB_table *tbp, const char *attrname, RDB_transaction *txp,
     if (ret != RDB_OK) {
         if (RDB_is_syserr(ret)) {
             RDB_errmsg(txp->dbp->dbrootp->envp, RDB_strerror(ret));
-            RDB_rollback(txp);
+            RDB_rollback_all(txp);
         }
         return ret;
     }
@@ -546,7 +546,7 @@ RDB_min(RDB_table *tbp, const char *attrname, RDB_transaction *txp,
         _RDB_drop_qresult(qrp, txp);
         if (RDB_is_syserr(ret)) {
             RDB_errmsg(txp->dbp->dbrootp->envp, RDB_strerror(ret));
-            RDB_rollback(txp);
+            RDB_rollback_all(txp);
         }
         return ret;
     }
@@ -596,7 +596,7 @@ RDB_sum(RDB_table *tbp, const char *attrname, RDB_transaction *txp,
     if (ret != RDB_OK) {
         if (RDB_is_syserr(ret)) {
             RDB_errmsg(txp->dbp->dbrootp->envp, RDB_strerror(ret));
-            RDB_rollback(txp);
+            RDB_rollback_all(txp);
         }
         return ret;
     }
@@ -613,7 +613,7 @@ RDB_sum(RDB_table *tbp, const char *attrname, RDB_transaction *txp,
         _RDB_drop_qresult(qrp, txp);
         if (RDB_is_syserr(ret)) {
             RDB_errmsg(txp->dbp->dbrootp->envp, RDB_strerror(ret));
-            RDB_rollback(txp);
+            RDB_rollback_all(txp);
         }
         return ret;
     }
@@ -659,7 +659,7 @@ RDB_avg(RDB_table *tbp, const char *attrname, RDB_transaction *txp,
     if (ret != RDB_OK) {
         if (RDB_is_syserr(ret)) {
             RDB_errmsg(txp->dbp->dbrootp->envp, RDB_strerror(ret));
-            RDB_rollback(txp);
+            RDB_rollback_all(txp);
         }
         return ret;
     }
@@ -676,7 +676,7 @@ RDB_avg(RDB_table *tbp, const char *attrname, RDB_transaction *txp,
         _RDB_drop_qresult(qrp, txp);
         if (RDB_is_syserr(ret)) {
             RDB_errmsg(txp->dbp->dbrootp->envp, RDB_strerror(ret));
-            RDB_rollback(txp);
+            RDB_rollback_all(txp);
         }
         return ret;
     }
@@ -777,7 +777,7 @@ rename_contains(RDB_table *tbp, const RDB_object *tup, RDB_transaction *txp)
         if (ret != RDB_OK) {
             if (RDB_is_syserr(ret)) {
                 RDB_errmsg(txp->dbp->dbrootp->envp, RDB_strerror(ret));
-                RDB_rollback(txp);
+                RDB_rollback_all(txp);
             }
             goto error;
         }
@@ -910,7 +910,7 @@ RDB_table_contains(RDB_table *tbp, const RDB_object *tup, RDB_transaction *txp)
                     }
 
                     /* Set type - needed for tuples */
-                    if (valp->typ == NULL && valp->kind == _RDB_TUPLE)
+                    if (valp->typ == NULL && valp->kind == RDB_OB_TUPLE)
                         _RDB_set_tuple_type(valp, tuptyp->var.tuple.attrv[i].typ);
                     _RDB_obj_to_field(&fvp[fno], valp);
                 }
@@ -918,7 +918,7 @@ RDB_table_contains(RDB_table *tbp, const RDB_object *tup, RDB_transaction *txp)
                 free(fvp);
                 if (RDB_is_syserr(ret)) {
                     RDB_errmsg(txp->dbp->dbrootp->envp, RDB_strerror(ret));
-                    RDB_rollback(txp);
+                    RDB_rollback_all(txp);
                 }
                 return ret;
             }
@@ -973,7 +973,7 @@ RDB_table_contains(RDB_table *tbp, const RDB_object *tup, RDB_transaction *txp)
                     ret =  ret2;
                 if (RDB_is_syserr(ret)) {
                     RDB_errmsg(txp->dbp->dbrootp->envp, RDB_strerror(ret));
-                    RDB_rollback(txp);
+                    RDB_rollback_all(txp);
                 }
                 return ret;
             }
@@ -1000,7 +1000,7 @@ RDB_extract_tuple(RDB_table *tbp, RDB_object *tup, RDB_transaction *txp)
     if (ret != RDB_OK) {
         if (RDB_is_syserr(ret)) {
             RDB_errmsg(txp->dbp->dbrootp->envp, RDB_strerror(ret));
-            RDB_rollback(txp);
+            RDB_rollback_all(txp);
         }
         return ret;
     }
@@ -1026,7 +1026,7 @@ error:
         ret = ret2;
     if (RDB_is_syserr(ret)) {
         RDB_errmsg(txp->dbp->dbrootp->envp, RDB_strerror(ret));
-        RDB_rollback(txp);
+        RDB_rollback_all(txp);
     }
     return ret;
 }

@@ -48,22 +48,23 @@ typedef struct {
 } RDB_possrep;
 
 enum _RDB_obj_kind {
-    _RDB_INITIAL,
-    _RDB_BOOL,
-    _RDB_INT,
-    _RDB_RATIONAL,
-    _RDB_BIN,
-    _RDB_TABLE,
-    _RDB_TUPLE
+    RDB_OB_INITIAL,
+    RDB_OB_BOOL,
+    RDB_OB_INT,
+    RDB_OB_RATIONAL,
+    RDB_OB_BIN,
+    RDB_OB_TABLE,
+    RDB_OB_TUPLE,
+    RDB_OB_ARRAY
 };
 
 /*
  * A RDB_object structure carries a value of an arbitrary type,
  * together with the type information.
  */
-typedef struct {
+typedef struct RDB_object {
     /* internal */
-    struct RDB_type *typ;	/* Type */
+    struct RDB_type *typ;	/* Type, NULL for non-scalar types */
     enum _RDB_obj_kind kind;
     union {
         RDB_bool bool_val;
@@ -75,6 +76,14 @@ typedef struct {
         } bin;
         struct RDB_table *tbp;
         RDB_hashmap tpl_map;
+        struct {
+            struct RDB_table *tbp;
+            struct RDB_transaction *txp;
+            struct RDB_qresult *qrp;
+            RDB_int pos;
+            RDB_int length; /* length of array; -1 means unknown */
+            struct RDB_object *tplp;
+        } arr;
      } var;
 } RDB_object;
 
@@ -333,16 +342,6 @@ typedef struct RDB_transaction {
     struct RDB_ixlink *delixp;
 } RDB_transaction;
 
-typedef struct {
-    /* internal */
-    RDB_table *tbp;
-    RDB_transaction *txp;
-    struct RDB_qresult *qrp;
-    RDB_int pos;
-    RDB_int length;	/* length of array; -1 means unknown */
-    RDB_object tpl;
-} RDB_array;
-
 /*
  * Return the name of the database.
  */
@@ -430,11 +429,11 @@ int
 RDB_set_table_name(RDB_table *tbp, const char *name, RDB_transaction *);
 
 /*
- * Make the table persistent. If it is already persistent, do nothing.
+ * Associate a table with a database.
  * The table must be named.
  */
 int
-RDB_make_persistent(RDB_table *, RDB_transaction *);
+RDB_add_table(RDB_table *, RDB_transaction *);
 
 int
 RDB_define_type(const char *name, int repc, RDB_possrep repv[],
@@ -758,19 +757,13 @@ int
 RDB_unwrap_tuple(const RDB_object *tplp, int attrc, char *attrv[],
         RDB_object *restplp);
 
-void
-RDB_init_array(RDB_array *);
-
-int
-RDB_destroy_array(RDB_array *);
-
 typedef struct {
     char *attrname;
     RDB_bool asc;
 } RDB_seq_item;
 
 /*
- * Convert a RDB_table to a RDB_array and store the array in
+ * Convert a RDB_table to a RDB_object and store the array in
  * the location pointed to by arrpp.
  * Specifying the order of the elements by seqitc and seqitv
  * is currently not supported - the only permissible
@@ -778,7 +771,7 @@ typedef struct {
  * The array becomes invalid when the transaction ends.
  */
 int
-RDB_table_to_array(RDB_array *arrp, RDB_table *, 
+RDB_table_to_array(RDB_object *arrp, RDB_table *, 
                    int seqitc, RDB_seq_item seqitv[],
                    RDB_transaction *);
 
@@ -786,14 +779,14 @@ RDB_table_to_array(RDB_array *arrp, RDB_table *,
  * Get a pointer to the tuple with index idx.
  */
 int
-RDB_array_get(RDB_array *, RDB_int idx, RDB_object **);
+RDB_array_get(RDB_object *, RDB_int idx, RDB_object **);
 
 /*
  * Return the length of the array.
  * A return value < 0 indicates an error.
  */
 RDB_int
-RDB_array_length(RDB_array *);
+RDB_array_length(RDB_object *);
 
 RDB_bool
 RDB_type_is_numeric(const RDB_type *);

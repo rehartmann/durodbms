@@ -23,7 +23,7 @@ static void
 init_tuple(RDB_object *tp)
 {
     RDB_init_hashmap(&tp->var.tpl_map, RDB_TUPLE_CAPACITY);
-    tp->kind = _RDB_TUPLE;
+    tp->kind = RDB_OB_TUPLE;
 }
 
 int
@@ -33,7 +33,7 @@ RDB_tuple_set(RDB_object *tp, const char *namp, const RDB_object *valp)
     RDB_object *oldvalp;
     int res;
 
-    if (tp->kind == _RDB_INITIAL)
+    if (tp->kind == RDB_OB_INITIAL)
         init_tuple(tp);
 
     /* delete old value */
@@ -55,7 +55,7 @@ RDB_tuple_set_bool(RDB_object *tp, const char *namp, RDB_bool val)
 {
     RDB_object value;
 
-    if (tp->kind == _RDB_INITIAL)
+    if (tp->kind == RDB_OB_INITIAL)
         init_tuple(tp);
 
     RDB_init_obj(&value);
@@ -69,7 +69,7 @@ RDB_tuple_set_int(RDB_object *tp, const char *namp, RDB_int val)
 {
     RDB_object value;
 
-    if (tp->kind == _RDB_INITIAL)
+    if (tp->kind == RDB_OB_INITIAL)
         init_tuple(tp);
 
     RDB_init_obj(&value);
@@ -83,7 +83,7 @@ RDB_tuple_set_rational(RDB_object *tp, const char *namp, RDB_rational val)
 {
     RDB_object value;
 
-    if (tp->kind == _RDB_INITIAL)
+    if (tp->kind == RDB_OB_INITIAL)
         init_tuple(tp);
 
     RDB_init_obj(&value);
@@ -98,7 +98,7 @@ RDB_tuple_set_string(RDB_object *tp, const char *namp, const char *str)
     RDB_object value;
     int res;
 
-    if (tp->kind == _RDB_INITIAL)
+    if (tp->kind == RDB_OB_INITIAL)
         init_tuple(tp);
 
     RDB_init_obj(&value);
@@ -115,7 +115,7 @@ RDB_tuple_set_string(RDB_object *tp, const char *namp, const char *str)
 RDB_object *
 RDB_tuple_get(const RDB_object *tp, const char *namp)
 {
-    if (tp->kind == _RDB_INITIAL)
+    if (tp->kind == RDB_OB_INITIAL)
         return NULL;
     return (RDB_object *) RDB_hashmap_get(&tp->var.tpl_map, namp, NULL);
 }

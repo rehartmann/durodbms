@@ -82,7 +82,7 @@ int
 Duro_tcl_drop_ltable(table_entry *, Tcl_HashEntry *entryp);
 
 int
-Duro_tcl_drop_array(RDB_array *arrayp, Tcl_HashEntry *entryp);
+Duro_tcl_drop_array(RDB_object *arrayp, Tcl_HashEntry *entryp);
 
 void
 Duro_dberror(Tcl_Interp *interp, int err);
@@ -99,5 +99,9 @@ Duro_get_ltable(const char *name, void *arg);
 
 Tcl_Obj *
 Duro_to_tcl(Tcl_Interp *interp, const RDB_object *objp);
+
+int
+Duro_tcl_to_duro(Tcl_Interp *interp, Tcl_Obj *tobjp, RDB_type *typ,
+        RDB_object *objp);
 
 #endif

@@ -34,11 +34,11 @@ tests_libpoint_la_SOURCES = tests/point.c tests/point.h
 tests_libplus_la_SOURCES = tests/plus.c
 
 TESTS = tests/ctests tests/rtables.tcl tests/project.tcl tests/tuple.tcl \
-        tests/sdivide.tcl tests/invtable.tcl
+        tests/sdivide.tcl tests/invtable.tcl tests/operator.tcl
 
 TESTS_ENVIRONMENT = BDB_HOME=$(BDB_HOME)
 
-LDADD = -L$(BDB_HOME)/lib libduro.la -ldb @LIBS@
+LDADD = -L$(BDB_HOME)/lib libduro.la -ldb @LIBS@ -lmcheck
 
 tests_test_pointtable_LDADD = $(LDADD) -lm
 
@@ -72,7 +72,8 @@ tests/test_null_output tests/test_pointtable_output tests/test_print_opview_outp
 tests/test_print_view_output tests/test_project_output tests/test_ra_output \
 tests/test_regexp_output tests/test_rename_output tests/test_select_output \
 tests/test_srupdate_output tests/test_summarize_output tests/test_union_output \
-tests/test_update_output tests/test_utypetable_output tests/tupletest_output
+tests/test_update_output tests/test_utypetable_output tests/tupletest_output \
+tcl/util.tcl
 
 # Delete test libs
 install-exec-local:

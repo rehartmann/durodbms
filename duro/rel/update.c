@@ -459,7 +459,7 @@ RDB_update(RDB_table *tbp, RDB_expression *condp, int updc,
             int ret = update_stored(tbp, condp, updc, updv, txp);
             if (RDB_is_syserr(ret)) {
                 RDB_errmsg(txp->dbp->dbrootp->envp, RDB_strerror(ret));
-                RDB_rollback(txp);
+                RDB_rollback_all(txp);
             }
             return ret;
         }

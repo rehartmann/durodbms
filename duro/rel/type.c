@@ -364,7 +364,7 @@ error:
     RDB_destroy_obj(&tpl);
 
     if (RDB_is_syserr(ret))
-        RDB_rollback(txp);
+        RDB_rollback_all(txp);
 
     return ret;
 }
@@ -474,7 +474,7 @@ cleanup:
     RDB_drop_expr(wherep);
 
     if (RDB_is_syserr(ret))
-        RDB_rollback(txp);
+        RDB_rollback_all(txp);
 
     return ret;
 }
@@ -501,14 +501,14 @@ RDB_drop_type(RDB_type *typ, RDB_transaction *txp)
                 sizeof (ntp));
         if (ret != RDB_OK) {
             if (RDB_is_syserr(ret))
-                RDB_rollback(txp);
+                RDB_rollback_all(txp);
             return ret;
         }
 
         /* Delete type from database */
         wherep = RDB_eq(RDB_expr_attr("TYPENAME"), RDB_string_const(typ->name));
         if (wherep == NULL) {
-            RDB_rollback(txp);
+            RDB_rollback_all(txp);
             return RDB_NO_MEMORY;
         }
         ret = RDB_delete(txp->dbp->dbrootp->types_tbp, wherep, txp);

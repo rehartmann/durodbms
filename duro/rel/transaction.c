@@ -1,3 +1,8 @@
+/*
+ * Copyright (C) 2003 René Hartmann.
+ * See the file COPYING for redistribution information.
+ */
+
 /* $Id$ */
 
 #include "rdb.h"
@@ -181,6 +186,21 @@ RDB_rollback(RDB_transaction *txp)
     txp->txid = NULL;
 
     return ret;
+}
+
+int
+RDB_rollback_all(RDB_transaction *txp)
+{
+    int ret;
+
+    do {
+        ret = RDB_rollback(txp);
+        if (ret != RDB_OK)
+            return ret;
+        txp = txp->parentp;
+    } while (txp != NULL);
+
+    return RDB_OK;
 }
 
 RDB_bool

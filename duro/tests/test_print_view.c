@@ -10,7 +10,7 @@ print_salary_view(RDB_database *dbp)
     RDB_transaction tx;
     RDB_table *tmpvtbp;
     RDB_object *tplp;
-    RDB_array array;
+    RDB_object array;
     int ret;
     int i;
 
@@ -27,7 +27,7 @@ print_salary_view(RDB_database *dbp)
         return ret;
     }
 
-    RDB_init_array(&array);
+    RDB_init_obj(&array);
 
     ret = RDB_table_to_array(&array, tmpvtbp, 0, NULL, &tx);
     if (ret != RDB_OK) {
@@ -41,7 +41,7 @@ print_salary_view(RDB_database *dbp)
         goto error;
     }
 
-    RDB_destroy_array(&array);
+    RDB_destroy_obj(&array);
     RDB_commit(&tx);
     return RDB_OK;
 error:
@@ -55,7 +55,7 @@ print_emp_view(RDB_database *dbp)
     RDB_transaction tx;
     RDB_table *tmpvtbp;
     RDB_object *tplp;
-    RDB_array array;
+    RDB_object array;
     int ret;
     int i;
 
@@ -72,7 +72,7 @@ print_emp_view(RDB_database *dbp)
         return ret;
     }
 
-    RDB_init_array(&array);
+    RDB_init_obj(&array);
 
     ret = RDB_table_to_array(&array, tmpvtbp, 0, NULL, &tx);
     if (ret != RDB_OK) {
@@ -88,7 +88,7 @@ print_emp_view(RDB_database *dbp)
         goto error;
     }
 
-    RDB_destroy_array(&array);
+    RDB_destroy_obj(&array);
     RDB_commit(&tx);
     return RDB_OK;
 error:
@@ -102,7 +102,7 @@ print_emps_view(RDB_database *dbp)
     RDB_transaction tx;
     RDB_table *tmpvtbp;
     RDB_object *tplp;
-    RDB_array array;
+    RDB_object array;
     int ret;
     int i;
 
@@ -118,7 +118,7 @@ print_emps_view(RDB_database *dbp)
         return 2;
     }
 
-    RDB_init_array(&array);
+    RDB_init_obj(&array);
 
     ret = RDB_table_to_array(&array, tmpvtbp, 0, NULL, &tx);
     if (ret != RDB_OK) {
@@ -138,7 +138,7 @@ print_emps_view(RDB_database *dbp)
         goto error;
     }
 
-    RDB_destroy_array(&array);
+    RDB_destroy_obj(&array);
     RDB_commit(&tx);
     return RDB_OK;
 error:
@@ -152,7 +152,7 @@ print_emps2_view(RDB_database *dbp)
     RDB_transaction tx;
     RDB_table *tmpvtbp;
     RDB_object *tplp;
-    RDB_array array;
+    RDB_object array;
     int ret;
     int i;
 
@@ -168,7 +168,7 @@ print_emps2_view(RDB_database *dbp)
         return 2;
     }
 
-    RDB_init_array(&array);
+    RDB_init_obj(&array);
 
     ret = RDB_table_to_array(&array, tmpvtbp, 0, NULL, &tx);
     if (ret != RDB_OK) {
@@ -183,7 +183,7 @@ print_emps2_view(RDB_database *dbp)
         goto error;
     }
 
-    RDB_destroy_array(&array);
+    RDB_destroy_obj(&array);
     RDB_commit(&tx);
     return RDB_OK;
 error:

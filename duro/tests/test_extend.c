@@ -7,13 +7,13 @@
 int
 print_extend(RDB_table *vtbp, RDB_transaction *txp)
 {
-    RDB_array array;
+    RDB_object array;
     RDB_object *tplp;
     int ret;
     int i;
     RDB_seq_item sq;
 
-    RDB_init_array(&array);
+    RDB_init_obj(&array);
 
     sq.attrname = "SALARY_AFTER_TAX";
     sq.asc = RDB_TRUE;
@@ -36,10 +36,11 @@ print_extend(RDB_table *vtbp, RDB_transaction *txp)
         goto error;
     }
 
-    RDB_destroy_array(&array);
+    RDB_destroy_obj(&array);
     return RDB_OK;
+
 error:
-    RDB_destroy_array(&array);
+    RDB_destroy_obj(&array);
     return ret;
 }
 

@@ -5,12 +5,12 @@
 #include <string.h>
 
 int
-Duro_tcl_drop_array(RDB_array *arrayp, Tcl_HashEntry *entryp)
+Duro_tcl_drop_array(RDB_object *arrayp, Tcl_HashEntry *entryp)
 {
     int ret;
 
     Tcl_DeleteHashEntry(entryp);
-    ret = RDB_destroy_array(arrayp);
+    ret = RDB_destroy_obj(arrayp);
     Tcl_Free((char *) arrayp);
     return ret;
 }
@@ -25,7 +25,7 @@ array_create_cmd(TclState *statep, Tcl_Interp *interp, int objc,
     RDB_transaction *txp;
     Tcl_HashEntry *entryp;
     RDB_table *tbp;
-    RDB_array *arrayp;
+    RDB_object *arrayp;
     int new;
     char handle[20];
     RDB_seq_item *seqitv;
@@ -93,8 +93,8 @@ array_create_cmd(TclState *statep, Tcl_Interp *interp, int objc,
         }
     }
 
-    arrayp = (RDB_array *) Tcl_Alloc(sizeof (RDB_array));
-    RDB_init_array(arrayp);
+    arrayp = (RDB_object *) Tcl_Alloc(sizeof (RDB_object));
+    RDB_init_obj(arrayp);
 
     ret = RDB_table_to_array(arrayp, tbp, seqitc, seqitv, txp);
     if (seqitc > 0)
@@ -120,7 +120,7 @@ array_drop_cmd(TclState *statep, Tcl_Interp *interp, int objc,
     int ret;
     char *arraystr;
     Tcl_HashEntry *entryp;
-    RDB_array *arrayp;
+    RDB_object *arrayp;
 
     if (objc != 3) {
         Tcl_WrongNumArgs(interp, 2, objv, "arrayname");
@@ -148,7 +148,7 @@ Duro_to_tcl(Tcl_Interp *interp, const RDB_object *objp)
 {
     RDB_type *typ = RDB_obj_type(objp);
 
-    if (objp->kind == _RDB_TUPLE) {
+    if (objp->kind == RDB_OB_TUPLE) {
         return Duro_tuple_to_list(interp, objp);
     }
     if (typ == &RDB_STRING) {
@@ -227,7 +227,7 @@ array_index_cmd(TclState *statep, Tcl_Interp *interp, int objc,
     int ret;
     char *arraystr;
     Tcl_HashEntry *entryp;
-    RDB_array *arrayp;
+    RDB_object *arrayp;
     RDB_object *tplp;
     int idx;
     Tcl_Obj *listobjp;
@@ -269,7 +269,7 @@ array_foreach_cmd(TclState *statep, Tcl_Interp *interp, int objc,
     int ret;
     char *arraystr;
     Tcl_HashEntry *entryp;
-    RDB_array *arrayp;
+    RDB_object *arrayp;
     RDB_object *tplp;
     int i;
     Tcl_Obj *listobjp;
@@ -314,7 +314,7 @@ array_length_cmd(TclState *statep, Tcl_Interp *interp, int objc,
         Tcl_Obj *CONST objv[])
 {
     char *arraystr;
-    RDB_array *arrayp;
+    RDB_object *arrayp;
     RDB_int len;
     Tcl_HashEntry *entryp;
     Tcl_Obj *robjp;

@@ -88,7 +88,7 @@ RDB_bool_const(RDB_bool v)
         
     exp->kind = RDB_CONST;
     exp->var.const_val.typ = &RDB_BOOLEAN;
-    exp->var.const_val.kind = _RDB_BOOL;
+    exp->var.const_val.kind = RDB_OB_BOOL;
     exp->var.const_val.var.bool_val = v;
 
     return exp;
@@ -104,7 +104,7 @@ RDB_int_const(RDB_int v)
         
     exp->kind = RDB_CONST;
     exp->var.const_val.typ = &RDB_INTEGER;
-    exp->var.const_val.kind = _RDB_INT;
+    exp->var.const_val.kind = RDB_OB_INT;
     exp->var.const_val.var.int_val = v;
 
     return exp;
@@ -120,7 +120,7 @@ RDB_rational_const(RDB_rational v)
         
     exp->kind = RDB_CONST;
     exp->var.const_val.typ = &RDB_RATIONAL;
-    exp->var.const_val.kind = _RDB_RATIONAL;
+    exp->var.const_val.kind = RDB_OB_RATIONAL;
     exp->var.const_val.var.rational_val = v;
 
     return exp;
@@ -136,7 +136,7 @@ RDB_string_const(const char *v)
         
     exp->kind = RDB_CONST;
     exp->var.const_val.typ = &RDB_STRING;
-    exp->var.const_val.kind = _RDB_BIN;
+    exp->var.const_val.kind = RDB_OB_BIN;
     exp->var.const_val.var.bin.datap = RDB_dup_str(v);
     exp->var.const_val.var.bin.len = strlen(v)+1;
 
@@ -563,7 +563,7 @@ RDB_drop_expr(RDB_expression *exp)
 
             for (i = 0; i < exp->var.user_op.argc; i++)
                 RDB_drop_expr(exp->var.user_op.argv[i]);
-            free(exp->var.selector.argv);
+            free(exp->var.user_op.argv);
             break;
         }
         case RDB_OP_AGGREGATE:
@@ -1019,7 +1019,7 @@ RDB_evaluate(RDB_expression *exp, const RDB_object *tup, RDB_transaction *txp,
                 RDB_destroy_obj(&tpl);
                 return ret;
             }
-            if (tpl.kind != _RDB_TUPLE) {
+            if (tpl.kind != RDB_OB_TUPLE) {
                 RDB_destroy_obj(&tpl);
                 return RDB_TYPE_MISMATCH;
             }

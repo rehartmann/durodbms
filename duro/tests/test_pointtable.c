@@ -161,7 +161,7 @@ test_query(RDB_database *dbp)
     RDB_table *tmptbp = NULL;
     RDB_expression *wherep;
     RDB_expression *compv[2];
-    RDB_array array;
+    RDB_object array;
     RDB_object xval;
     RDB_object yval;
     int ret;
@@ -173,7 +173,7 @@ test_query(RDB_database *dbp)
         return ret;
     }
 
-    RDB_init_array(&array);
+    RDB_init_obj(&array);
     RDB_init_obj(&xval);
     RDB_init_obj(&yval);
 
@@ -232,7 +232,7 @@ test_query(RDB_database *dbp)
     if (ret != RDB_NOT_FOUND)
         goto error;
 
-    RDB_destroy_array(&array);
+    RDB_destroy_obj(&array);
 
     RDB_drop_table(tmptbp, &tx);
 
@@ -248,7 +248,7 @@ test_query(RDB_database *dbp)
         goto error;
     } 
 
-    RDB_init_array(&array);
+    RDB_init_obj(&array);
 
     printf("Converting selection table to array\n");
     ret = RDB_table_to_array(&array, tmptbp, 0, NULL, &tx);
@@ -277,7 +277,7 @@ test_query(RDB_database *dbp)
     RDB_destroy_obj(&xval);
     RDB_destroy_obj(&yval);
     
-    RDB_destroy_array(&array);
+    RDB_destroy_obj(&array);
 
     ret = RDB_drop_table(tmptbp, &tx);
     if (ret != RDB_OK) {
@@ -291,7 +291,7 @@ error:
     RDB_destroy_obj(&xval);
     RDB_destroy_obj(&yval);
 
-    RDB_destroy_array(&array);
+    RDB_destroy_obj(&array);
 
     if (tmptbp != NULL)
         RDB_drop_table(tmptbp, &tx);

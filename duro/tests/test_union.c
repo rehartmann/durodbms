@@ -9,12 +9,12 @@ print_table(RDB_table *tbp, RDB_transaction *txp)
 {
     int ret;
     RDB_object *tplp;
-    RDB_array array;
+    RDB_object array;
     RDB_int i;
     int len;
     RDB_seq_item sq;
 
-    RDB_init_array(&array);
+    RDB_init_obj(&array);
 
     /* Test sorting too */
     sq.attrname = "NAME";
@@ -44,11 +44,12 @@ print_table(RDB_table *tbp, RDB_transaction *txp)
         goto error;
     }
 
-    RDB_destroy_array(&array);
+    RDB_destroy_obj(&array);
     
     return RDB_OK;
+
 error:
-    RDB_destroy_array(&array);
+    RDB_destroy_obj(&array);
     
     return ret;
 }

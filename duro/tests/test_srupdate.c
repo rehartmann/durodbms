@@ -140,7 +140,7 @@ test_print(RDB_database *dbp)
 {
     RDB_transaction tx;
     RDB_table *tbp;
-    RDB_array array;
+    RDB_object array;
     RDB_object *tplp;
     int ret;
     int i;
@@ -157,7 +157,7 @@ test_print(RDB_database *dbp)
         return ret;
     }
 
-    RDB_init_array(&array);
+    RDB_init_obj(&array);
 
     printf("Converting table to array\n");
     ret = RDB_table_to_array(&array, tbp, 0, NULL, &tx);
@@ -171,7 +171,7 @@ test_print(RDB_database *dbp)
                 (int)RDB_tuple_get_int(tplp, "O_NO"),
                 (int)RDB_tuple_get_int(tplp, "COUNT"));
     }
-    RDB_destroy_array(&array);
+    RDB_destroy_obj(&array);
     if (ret != RDB_NOT_FOUND) {
         RDB_rollback(&tx);
         return ret;

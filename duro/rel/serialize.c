@@ -464,7 +464,7 @@ _RDB_table_to_obj(RDB_table *tbp, RDB_object *valp)
 
     RDB_destroy_obj(valp);
     valp->typ = &RDB_BINARY;
-    valp->kind = _RDB_BIN;
+    valp->kind = RDB_OB_BIN;
     valp->var.bin.len = RDB_BUF_INITLEN;
     valp->var.bin.datap = malloc(RDB_BUF_INITLEN);
     if (valp->var.bin.datap == NULL) {
@@ -487,7 +487,7 @@ _RDB_expr_to_obj(const RDB_expression *exp, RDB_object *valp)
 
     RDB_destroy_obj(valp);
     valp->typ = &RDB_BINARY;
-    valp->kind = _RDB_BIN;
+    valp->kind = RDB_OB_BIN;
     if (exp != NULL) {
         valp->var.bin.len = RDB_BUF_INITLEN;
         valp->var.bin.datap = malloc(RDB_BUF_INITLEN);

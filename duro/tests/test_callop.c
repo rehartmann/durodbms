@@ -14,8 +14,6 @@ RDB_type *addargtv[] = {
     &RDB_INTEGER
 };
 
-int updv[] = { 0 };
-
 int
 test_callop(RDB_database *dbp)
 {
@@ -69,7 +67,9 @@ error:
     return ret;
 }
 
-int test_useop(RDB_database *dbp) {
+int
+test_useop(RDB_database *dbp)
+{
     RDB_transaction tx;
     RDB_table *tbp, *vtbp;
     RDB_virtual_attr extend;

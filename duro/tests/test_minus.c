@@ -9,10 +9,10 @@ print_table(RDB_table *tbp, RDB_transaction *txp)
 {
     int ret;
     RDB_object *tplp;
-    RDB_array array;
+    RDB_object array;
     RDB_int i;
 
-    RDB_init_array(&array);
+    RDB_init_obj(&array);
 
     ret = RDB_table_to_array(&array, tbp, 0, NULL, txp);
     if (ret != RDB_OK) {
@@ -27,11 +27,12 @@ print_table(RDB_table *tbp, RDB_transaction *txp)
         goto error;
     }
 
-    RDB_destroy_array(&array);
+    RDB_destroy_obj(&array);
     
     return RDB_OK;
+
 error:
-    RDB_destroy_array(&array);
+    RDB_destroy_obj(&array);
     
     return ret;
 }

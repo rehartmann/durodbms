@@ -55,10 +55,6 @@ Duro_get_table(TclState *statep, Tcl_Interp *interp, const char *name,
 }
 
 static int
-tcl_to_duro(Tcl_Interp *interp, Tcl_Obj *tobjp, RDB_type *typ,
-        RDB_object *objp);
-
-static int
 list_to_tuple(Tcl_Interp *interp, Tcl_Obj *tobjp, RDB_type *typ,
         RDB_object *tplp)
 {
@@ -94,7 +90,7 @@ list_to_tuple(Tcl_Interp *interp, Tcl_Obj *tobjp, RDB_type *typ,
 
         /* Convert value to RDB_object and set tuple attribute */
         RDB_init_obj(&obj);
-        ret = tcl_to_duro(interp, valuep, attrtyp, &obj);
+        ret = Duro_tcl_to_duro(interp, valuep, attrtyp, &obj);
         if (ret != TCL_OK) {
             RDB_destroy_obj(&obj);
             return ret;
@@ -110,8 +106,8 @@ list_to_tuple(Tcl_Interp *interp, Tcl_Obj *tobjp, RDB_type *typ,
     return TCL_OK;
 }
 
-static int
-tcl_to_duro(Tcl_Interp *interp, Tcl_Obj *tobjp, RDB_type *typ,
+int
+Duro_tcl_to_duro(Tcl_Interp *interp, Tcl_Obj *tobjp, RDB_type *typ,
         RDB_object *objp)
 {
     int ret;
@@ -351,7 +347,7 @@ table_create_cmd(TclState *statep, Tcl_Interp *interp, int objc,
             attrv[i].defaultp = (RDB_object *) Tcl_Alloc(sizeof (RDB_object));
             RDB_init_obj(attrv[i].defaultp);
             Tcl_ListObjIndex(interp, attrobjp, 2, &defvalobjp);
-            ret = tcl_to_duro(interp, defvalobjp, attrv[i].typ,
+            ret = Duro_tcl_to_duro(interp, defvalobjp, attrv[i].typ,
                     attrv[i].defaultp);
             if (ret != RDB_OK) {
                 goto cleanup;
@@ -732,7 +728,7 @@ Duro_insert_cmd(ClientData data, Tcl_Interp *interp, int objc,
         }
 
         Tcl_ListObjIndex(interp, objv[2], i + 1, &valobjp);
-        ret = tcl_to_duro(interp, valobjp, attrtyp, &obj);
+        ret = Duro_tcl_to_duro(interp, valobjp, attrtyp, &obj);
         if (ret != TCL_OK) {
             RDB_destroy_obj(&obj);
             goto cleanup;
@@ -818,7 +814,7 @@ table_contains_cmd(TclState *statep, Tcl_Interp *interp, int objc,
         }
 
         Tcl_ListObjIndex(interp, objv[3], i + 1, &valobjp);
-        ret = tcl_to_duro(interp, valobjp, attrtyp, &obj);
+        ret = Duro_tcl_to_duro(interp, valobjp, attrtyp, &obj);
         if (ret != TCL_OK) {
             RDB_destroy_obj(&obj);
             goto cleanup;

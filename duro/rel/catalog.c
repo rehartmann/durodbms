@@ -110,7 +110,8 @@ static RDB_attr upd_ops_attrv[] = {
     { "ARGTYPES", &RDB_STRING, NULL, 0 },
     { "LIB", &RDB_STRING, NULL, 0 },
     { "SYMBOL", &RDB_STRING, NULL, 0 },
-    { "IARG", &RDB_BINARY, NULL, 0 }
+    { "IARG", &RDB_BINARY, NULL, 0 },
+    { "UPDV", &RDB_BINARY, NULL, 0 }
 };
 
 static char *upd_ops_keyattrv[] = { "NAME", "ARGTYPES" };
@@ -678,7 +679,7 @@ _RDB_open_systables(RDB_transaction *txp)
     }
     _RDB_assign_table_db(txp->dbp->dbrootp->ro_ops_tbp, txp->dbp);
 
-    ret = _RDB_provide_table("SYS_UPD_OPS", RDB_TRUE, 5, upd_ops_attrv,
+    ret = _RDB_provide_table("SYS_UPD_OPS", RDB_TRUE, 6, upd_ops_attrv,
             1, upd_ops_keyv, RDB_FALSE, create, txp,
             &txp->dbp->dbrootp->upd_ops_tbp);
     if (ret != RDB_OK) {
@@ -808,14 +809,14 @@ get_keys(const char *name, RDB_transaction *txp,
 {
     RDB_expression *wherep;
     RDB_table *vtbp;
-    RDB_array arr;
+    RDB_object arr;
     RDB_object *tplp;
     int ret;
     int i;
 
     *keyvp = NULL;
 
-    RDB_init_array(&arr);
+    RDB_init_obj(&arr);
     
     wherep = RDB_eq(RDB_string_const(name),
             RDB_expr_attr("TABLENAME"));
@@ -863,12 +864,12 @@ get_keys(const char *name, RDB_transaction *txp,
         }
         (*keyvp)[kno].strc = attrc;
     }
-    ret = RDB_destroy_array(&arr);
+    ret = RDB_destroy_obj(&arr);
     RDB_drop_table(vtbp, txp);
 
     return ret;
 error:
-    RDB_destroy_array(&arr);
+    RDB_destroy_obj(&arr);
     RDB_drop_table(vtbp, txp);
     if (*keyvp != NULL) {
         int i, j;
@@ -889,7 +890,7 @@ get_tuple_type(const char *typekey, RDB_transaction *txp, RDB_type **typp)
 {
     int ret;
     int i;
-    RDB_array arr;
+    RDB_object arr;
     RDB_expression *wherep = RDB_eq(RDB_expr_attr("TYPEKEY"),
             RDB_string_const(typekey));
     RDB_table *vtbp;
@@ -905,7 +906,7 @@ get_tuple_type(const char *typekey, RDB_transaction *txp, RDB_type **typp)
     }
 
     attrv = NULL;
-    RDB_init_array(&arr);
+    RDB_init_obj(&arr);
     ret = RDB_table_to_array(&arr, vtbp, 0, NULL, txp);
     if (ret != RDB_OK)
         goto cleanup;
@@ -953,7 +954,7 @@ cleanup:
         }
         free(attrv);
     }
-    RDB_destroy_array(&arr);
+    RDB_destroy_obj(&arr);
     return ret;
 }
 
@@ -964,7 +965,7 @@ _RDB_get_cat_rtable(const char *name, RDB_transaction *txp, RDB_table **tbpp)
     RDB_table *tmptb1p = NULL;
     RDB_table *tmptb2p = NULL;
     RDB_table *tmptb3p = NULL;
-    RDB_array arr;
+    RDB_object arr;
     RDB_object tpl;
     RDB_object *tplp;
     RDB_bool usr;
@@ -978,7 +979,7 @@ _RDB_get_cat_rtable(const char *name, RDB_transaction *txp, RDB_table **tbpp)
 
     /* Read real table data from the catalog */
 
-    RDB_init_array(&arr);
+    RDB_init_obj(&arr);
     RDB_init_obj(&tpl);
 
     exprp = RDB_eq(RDB_expr_attr("TABLENAME"),
@@ -1121,7 +1122,7 @@ _RDB_get_cat_rtable(const char *name, RDB_transaction *txp, RDB_table **tbpp)
 
     _RDB_assign_table_db(*tbpp, txp->dbp);
 
-    ret = RDB_destroy_array(&arr);
+    ret = RDB_destroy_obj(&arr);
 
     RDB_drop_table(tmptb1p, txp);
     RDB_drop_table(tmptb2p, txp);
@@ -1136,7 +1137,7 @@ error:
         free(attrv);
     }
 
-    RDB_destroy_array(&arr);
+    RDB_destroy_obj(&arr);
 
     if (tmptb1p != NULL)
         RDB_drop_table(tmptb1p, txp);
@@ -1156,14 +1157,14 @@ _RDB_get_cat_vtable(const char *name, RDB_transaction *txp, RDB_table **tbpp)
     RDB_expression *exprp;
     RDB_table *tmptbp = NULL;
     RDB_object tpl;
-    RDB_array arr;
+    RDB_object arr;
     RDB_object *valp;
     RDB_bool usr;
     int ret;
 
     /* read virtual table data from the catalog */
 
-    RDB_init_array(&arr);
+    RDB_init_obj(&arr);
 
     exprp = RDB_eq(RDB_expr_attr("TABLENAME"), RDB_string_const(name));
     if (exprp == NULL) {
@@ -1191,7 +1192,7 @@ _RDB_get_cat_vtable(const char *name, RDB_transaction *txp, RDB_table **tbpp)
     if (ret != RDB_OK)
         goto error;
     
-    ret = RDB_destroy_array(&arr);
+    ret = RDB_destroy_obj(&arr);
 
     (*tbpp)->is_persistent = RDB_TRUE;
 
@@ -1203,7 +1204,7 @@ _RDB_get_cat_vtable(const char *name, RDB_transaction *txp, RDB_table **tbpp)
     
     return ret;
 error:
-    RDB_destroy_array(&arr);
+    RDB_destroy_obj(&arr);
     
     return ret;
 }
@@ -1357,8 +1358,8 @@ _RDB_get_cat_type(const char *name, RDB_transaction *txp, RDB_type **typp)
     RDB_table *tmptb3p = NULL;
     RDB_object tpl;
     RDB_object *tplp;
-    RDB_array possreps;
-    RDB_array comps;
+    RDB_object possreps;
+    RDB_object comps;
     RDB_type *typ = NULL;
     char *libname;
     char *typename;
@@ -1366,8 +1367,8 @@ _RDB_get_cat_type(const char *name, RDB_transaction *txp, RDB_type **typp)
     int i;
 
     RDB_init_obj(&tpl);
-    RDB_init_array(&possreps);
-    RDB_init_array(&comps);
+    RDB_init_obj(&possreps);
+    RDB_init_obj(&comps);
 
     /*
      * Get type info from SYS_TYPES
@@ -1414,7 +1415,7 @@ _RDB_get_cat_type(const char *name, RDB_transaction *txp, RDB_type **typp)
         if (typ->var.scalar.modhdl == NULL) {
             RDB_errmsg(txp->dbp->dbrootp->envp, lt_dlerror());
             ret = RDB_RESOURCE_NOT_FOUND;
-            RDB_rollback(txp);
+            RDB_rollback_all(txp);
             goto error;
         }
     } else {
@@ -1517,7 +1518,7 @@ _RDB_get_cat_type(const char *name, RDB_transaction *txp, RDB_type **typp)
                 if (typ->var.scalar.repv[i].compv[idx].getterp == NULL
                         || typ->var.scalar.repv[i].compv[idx].setterp == NULL) {
                     ret = RDB_RESOURCE_NOT_FOUND;
-                    RDB_rollback(txp);
+                    RDB_rollback_all(txp);
                     goto error;
                 }
             }
@@ -1530,7 +1531,7 @@ _RDB_get_cat_type(const char *name, RDB_transaction *txp, RDB_type **typp)
                         typ->var.scalar.repv[i].name);
             if (typ->var.scalar.repv[i].selectorp == NULL) {
                 ret = RDB_RESOURCE_NOT_FOUND;
-                RDB_rollback(txp);
+                RDB_rollback_all(txp);
                 goto error;
             }
         }
@@ -1547,10 +1548,10 @@ _RDB_get_cat_type(const char *name, RDB_transaction *txp, RDB_type **typp)
         ret = tret;
 
     RDB_destroy_obj(&tpl);
-    tret = RDB_destroy_array(&possreps);
+    tret = RDB_destroy_obj(&possreps);
     if (ret == RDB_OK)
         ret = tret;
-    tret = RDB_destroy_array(&comps);
+    tret = RDB_destroy_obj(&comps);
     if (ret == RDB_OK)
         ret = tret;
 
@@ -1563,8 +1564,8 @@ error:
     if (tmptb3p != NULL)
         RDB_drop_table(tmptb3p, txp);
     RDB_destroy_obj(&tpl);
-    RDB_destroy_array(&possreps);
-    RDB_destroy_array(&comps);
+    RDB_destroy_obj(&possreps);
+    RDB_destroy_obj(&comps);
     if (typ != NULL) {
         if (typ->var.scalar.repc != 0) {
             for (i = 0; i < typ->var.scalar.repc; i++)
@@ -1601,27 +1602,6 @@ _RDB_make_typestr(int argc, RDB_type *argtv[])
     return typesbuf;
 }
 
-static char *
-make_typestr_from_valv(int argc, RDB_object *argpv[]) {
-    RDB_type **typp;
-    int i;
-    char *typestr;    
-
-    if (argc > 0) {    
-        typp = malloc(sizeof(RDB_type *) * argc);
-        if (typp == NULL)
-            return NULL;
-    }
-
-    for (i = 0; i < argc; i++)
-        typp[i] = argpv[i]->typ;
-
-    typestr = _RDB_make_typestr(argc, typp);
-    if (argc > 0)
-        free(typp);
-    return typestr;
-}
-
 /* Read update operator from database */
 int
 _RDB_get_cat_ro_op(const char *name, int argc, RDB_type *argtv[],
@@ -1637,7 +1617,7 @@ _RDB_get_cat_ro_op(const char *name, int argc, RDB_type *argtv[],
     char *typestr = _RDB_make_typestr(argc, argtv);
 
     if (typestr == NULL) {
-        RDB_rollback(txp);
+        RDB_rollback_all(txp);
         return RDB_NO_MEMORY;
     }
         
@@ -1648,7 +1628,7 @@ _RDB_get_cat_ro_op(const char *name, int argc, RDB_type *argtv[],
                    RDB_string_const(typestr)));
     free(typestr);
     if (exp == NULL) {
-        RDB_rollback(txp);
+        RDB_rollback_all(txp);
         return RDB_NO_MEMORY;
     }
     ret = RDB_select(txp->dbp->dbrootp->ro_ops_tbp, exp, &vtbp);
@@ -1731,7 +1711,7 @@ error:
 
 /* Read update operator from database */
 int
-_RDB_get_cat_upd_op(const char *name, int argc, RDB_object *argv[],
+_RDB_get_cat_upd_op(const char *name, int argc, RDB_type *argtv[],
         RDB_transaction *txp, RDB_upd_op **opp)
 {
     RDB_expression *exp;
@@ -1741,10 +1721,10 @@ _RDB_get_cat_upd_op(const char *name, int argc, RDB_object *argv[],
     int ret;
     char *libname, *symname;
     RDB_upd_op *op = NULL;
-    char *typestr = make_typestr_from_valv(argc, argv);
+    char *typestr = _RDB_make_typestr(argc, argtv);
 
     if (typestr == NULL) {
-        RDB_rollback(txp);
+        RDB_rollback_all(txp);
         return RDB_NO_MEMORY;
     }
         
@@ -1755,13 +1735,13 @@ _RDB_get_cat_upd_op(const char *name, int argc, RDB_object *argv[],
                    RDB_string_const(typestr)));
     free(typestr);
     if (exp == NULL) {
-        RDB_rollback(txp);
+        RDB_rollback_all(txp);
         return RDB_NO_MEMORY;
     }
     ret = RDB_select(txp->dbp->dbrootp->upd_ops_tbp, exp, &vtbp);
     if (ret != RDB_OK) {
         if (RDB_is_syserr(ret))
-            RDB_rollback(txp);
+            RDB_rollback_all(txp);
         RDB_drop_expr(exp);
         return ret;
     }
@@ -1780,6 +1760,7 @@ _RDB_get_cat_upd_op(const char *name, int argc, RDB_object *argv[],
     RDB_init_obj(&op->iarg);
 
     op->argtv = NULL;
+    op->updv = NULL;
     op->name = RDB_dup_str(RDB_tuple_get_string(&tpl, "NAME"));
     if (op->name == NULL) {
         ret = RDB_NO_MEMORY;
@@ -1794,11 +1775,23 @@ _RDB_get_cat_upd_op(const char *name, int argc, RDB_object *argv[],
     }
 
     for (i = 0; i < op->argc; i++) {
-        op->argtv[i] = RDB_obj_type(argv[i]);
+        op->argtv[i] = argtv[i];
     }
+
     ret = RDB_copy_obj(&op->iarg, RDB_tuple_get(&tpl, "IARG"));
     if (ret != RDB_OK)
         goto error;
+
+    op->updv = malloc(op->argc);
+    if (op->updv == NULL) {
+        ret = RDB_NO_MEMORY;
+        goto error;
+    }
+
+    ret = RDB_binary_get(RDB_tuple_get(&tpl, "UPDV"), 0, op->updv, op->argc);
+    if (ret != RDB_OK)
+        goto error;
+
     libname = RDB_tuple_get_string(&tpl, "LIB");
     op->modhdl = lt_dlopenext(libname);
     if (op->modhdl == NULL) {
@@ -1826,6 +1819,7 @@ error:
         RDB_destroy_obj(&op->iarg);
         free(op->name);
         free(op->argtv);
+        free(op->updv);
         free(op);
     }
 

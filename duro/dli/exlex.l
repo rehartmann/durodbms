@@ -157,7 +157,7 @@ ANY {
     return TOK_ID;
 }
 
-\".*\" {
+\"[^"]*\" {
     /*
      * Remove trailing "s
      */

@@ -16,7 +16,7 @@ duro_cleanup(ClientData data)
 {
     RDB_environment *envp;
     RDB_transaction *txp;
-    RDB_array *arrayp;
+    RDB_object *arrayp;
     Tcl_HashEntry *entryp;
     Tcl_HashSearch search;
     TclState *statep = (TclState *) data;

@@ -21,7 +21,7 @@ print_tables(RDB_transaction *txp, RDB_bool all, RDB_bool real)
     RDB_table *rt_tbp, *db_tbp;
     RDB_table *vtb1p = NULL;
     RDB_table *vtb2p = NULL;
-    RDB_array array;
+    RDB_object array;
     RDB_object *tplp;
     RDB_expression *condp = NULL;
     RDB_int i;
@@ -36,7 +36,7 @@ print_tables(RDB_transaction *txp, RDB_bool all, RDB_bool real)
         return ret;
     } 
 
-    RDB_init_array(&array);
+    RDB_init_obj(&array);
 
     if (all) {
         condp = RDB_bool_const(RDB_TRUE);
@@ -75,14 +75,14 @@ print_tables(RDB_transaction *txp, RDB_bool all, RDB_bool real)
         goto error;
     }
 
-    RDB_destroy_array(&array);
+    RDB_destroy_obj(&array);
 
     RDB_drop_table(vtb1p, txp);
 
     return RDB_OK;
 
 error:
-    RDB_destroy_array(&array);
+    RDB_destroy_obj(&array);
     if (vtb1p != NULL)
         RDB_drop_table(vtb1p, txp);
     if (vtb2p != NULL)

@@ -114,7 +114,7 @@ enum {
 
 %type <renlist> renaming renaming_list
 
-%type <arglist> opt_argument_list argument_list
+%type <arglist> argument_list
 
 %type <wraplist> wrapping wrapping_list
 
@@ -895,19 +895,20 @@ is_empty_invocation: TOK_IS_EMPTY '(' expression ')' {
     }
     ;
 
-operator_invocation: TOK_ID '(' opt_argument_list ')' {
+operator_invocation: TOK_ID '(' ')' {
         expr_ret = RDB_user_op($1->var.attr.name,
-                NULL /* !! RDB_type *rtyp */, $3.argc, $3.argv,
+                &RDB_STRING /* !! RDB_type *rtyp */, 0, NULL,
                 expr_txp, &$$);
         if (expr_ret != RDB_OK)
             YYERROR;
     }
-    ;
-
-opt_argument_list: {
-        $$.argc = 0;
+    | TOK_ID '(' argument_list ')' {
+        expr_ret = RDB_user_op($1->var.attr.name,
+                &RDB_STRING /* !! RDB_type *rtyp */, $3.argc, $3.argv,
+                expr_txp, &$$);
+        if (expr_ret != RDB_OK)
+            YYERROR;
     }
-    | argument_list
     ;
 
 argument_list: expression {
