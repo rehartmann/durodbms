@@ -521,6 +521,8 @@ int
 _RDB_copy_obj(RDB_object *dstvalp, const RDB_object *srcvalp)
 {
     switch (srcvalp->kind) {
+        case RDB_OB_INITIAL:
+            break;
         case RDB_OB_BOOL:
             dstvalp->kind = srcvalp->kind;
             dstvalp->var.bool_val = srcvalp->var.bool_val;
@@ -543,7 +545,7 @@ _RDB_copy_obj(RDB_object *dstvalp, const RDB_object *srcvalp)
             dstvalp->var.tbp = srcvalp->var.tbp;
             srcvalp->var.tbp->refcount++;
             break;
-        default:
+        case RDB_OB_BIN:
             dstvalp->kind = srcvalp->kind;
             dstvalp->var.bin.len = srcvalp->var.bin.len;
             dstvalp->var.bin.datap = malloc(srcvalp->var.bin.len);
