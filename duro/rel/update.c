@@ -85,7 +85,7 @@ update_stored_complex(RDB_table *tbp, RDB_expression *condp,
     if (ret != RDB_OK)
         goto cleanup;
 
-    ret = RDB_recmap_cursor(&curp, tbp->var.real.recmapp, RDB_TRUE,
+    ret = RDB_recmap_cursor(&curp, tbp->stp->recmapp, RDB_TRUE,
             tbp->is_persistent ? tx.txid : NULL);
     if (ret != RDB_OK)        
         goto cleanup;
@@ -96,7 +96,7 @@ update_stored_complex(RDB_table *tbp, RDB_expression *condp,
             RDB_object val;
 
             ret = RDB_cursor_get(curp,
-                    *(int*) RDB_hashmap_get(&tbp->var.real.attrmap,
+                    *(int*) RDB_hashmap_get(&tbp->stp->attrmap,
                             tpltyp->var.tuple.attrv[i].name, NULL),
                     &datap, &len);
             if (ret != RDB_OK) {
@@ -161,7 +161,7 @@ update_stored_complex(RDB_table *tbp, RDB_expression *condp,
             RDB_object val;
 
             ret = RDB_cursor_get(curp,
-                    *(int*) RDB_hashmap_get(&tbp->var.real.attrmap,
+                    *(int*) RDB_hashmap_get(&tbp->stp->attrmap,
                             tpltyp->var.tuple.attrv[i].name, NULL),
                     &datap, &len);
             if (ret != RDB_OK) {
@@ -264,7 +264,7 @@ update_stored_simple(RDB_table *tbp, RDB_expression *condp,
      * Iterator over the records and update them if the select expression
      * evaluates to true.
      */
-    ret = RDB_recmap_cursor(&curp, tbp->var.real.recmapp, RDB_TRUE,
+    ret = RDB_recmap_cursor(&curp, tbp->stp->recmapp, RDB_TRUE,
             tbp->is_persistent ? tx.txid : NULL);
     if (ret != RDB_OK)        
         return ret;
@@ -277,7 +277,7 @@ update_stored_simple(RDB_table *tbp, RDB_expression *condp,
 
             ret = RDB_cursor_get(curp,
                     *(int*) RDB_hashmap_get(
-                            &tbp->var.real.attrmap,
+                            &tbp->stp->attrmap,
                             tpltyp->var.tuple.attrv[i].name, NULL),
                     &datap, &len);
             if (ret != RDB_OK) {
@@ -315,7 +315,7 @@ update_stored_simple(RDB_table *tbp, RDB_expression *condp,
             for (i = 0; i < updc; i++) {
                 /* Get field number from map */
                 fieldv[i].no = *(int*) RDB_hashmap_get(
-                        &tbp->var.real.attrmap,
+                        &tbp->stp->attrmap,
                         updv[i].name, NULL);
 
                 /* Set type - needed for tuple and array attributes */
@@ -430,7 +430,7 @@ update_select_pindex(RDB_table *tbp, RDB_expression *condp,
 
     for (i = 0; i < updc; i++) {
         fieldv[i].no = *(int*) RDB_hashmap_get(
-                 &tbp->var.select.tbp->var.project.tbp->var.real.attrmap,
+                 &tbp->var.select.tbp->var.project.tbp->stp->attrmap,
                  updv[i].name, NULL);
          
         /* Set type - needed for tuple and array attributes */
@@ -445,7 +445,7 @@ update_select_pindex(RDB_table *tbp, RDB_expression *condp,
             goto cleanup;
     }
         
-    ret = RDB_update_rec(tbp->var.select.tbp->var.project.tbp->var.real.recmapp,
+    ret = RDB_update_rec(tbp->var.select.tbp->var.project.tbp->stp->recmapp,
             fvv, updc, fieldv, tbp->var.select.tbp->var.project.tbp->is_persistent ?
             txp->txid : NULL);
 
@@ -572,7 +572,7 @@ update_select_index_simple(RDB_table *tbp, RDB_expression *condp,
 
             for (i = 0; i < updc; i++) {
                 fieldv[i].no = *(int*) RDB_hashmap_get(
-                         &tbp->var.select.tbp->var.project.tbp->var.real.attrmap,
+                         &tbp->var.select.tbp->var.project.tbp->stp->attrmap,
                          updv[i].name, NULL);
                  
                 /* Set type - needed for tuple and array attributes */

@@ -259,9 +259,12 @@ table_cost(RDB_table *tbp)
 {
     _RDB_tbindex *indexp;
 
+    if (tbp->stp != NULL)
+        return tbp->stp->est_cardinality;
+
     switch (tbp->kind) {
         case RDB_TB_REAL:
-            return tbp->var.real.est_cardinality;
+            return 0;
         case RDB_TB_MINUS:
             return table_cost(tbp->var.minus.tb1p); /* !! */
         case RDB_TB_UNION:
@@ -617,10 +620,10 @@ mutate_project(RDB_table *tbp, RDB_table **tbpv, int cap, RDB_transaction *txp)
     char **namev;
 
     if (tbp->var.project.tbp->kind == RDB_TB_REAL
-            && tbp->var.project.tbp->var.real.indexc > 0) {
-        tbc = tbp->var.project.tbp->var.real.indexc;
+            && tbp->var.project.tbp->stp->indexc > 0) {
+        tbc = tbp->var.project.tbp->stp->indexc;
         for (i = 0; i < tbc; i++) {
-            _RDB_tbindex *indexp = &tbp->var.project.tbp->var.real.indexv[i];
+            _RDB_tbindex *indexp = &tbp->var.project.tbp->stp->indexv[i];
             RDB_table *ptbp = _RDB_dup_vtable(tbp);
             if (ptbp == NULL)
                 return RDB_NO_MEMORY;
@@ -1210,16 +1213,16 @@ _RDB_optimize(RDB_table *tbp, int seqitc, const RDB_seq_item seqitv[],
              * Check if an index can be used for sorting
              */
 
-            for (i = 0; i < tbp->var.real.indexc
-                    && !_RDB_index_sorts(&tbp->var.real.indexv[i],
+            for (i = 0; i < tbp->stp->indexc
+                    && !_RDB_index_sorts(&tbp->stp->indexv[i],
                             seqitc, seqitv);
                     i++);
             /* If yes, create projection */
-            if (i < tbp->var.real.indexc) {
+            if (i < tbp->stp->indexc) {
                 RDB_table *ptbp = null_project(tbp);
                 if (ptbp == NULL)
                     return RDB_NO_MEMORY;
-                ptbp->var.project.indexp = &tbp->var.real.indexv[i];
+                ptbp->var.project.indexp = &tbp->stp->indexv[i];
                 tbp = ptbp;
             }
         }

@@ -288,7 +288,7 @@ stored_contains(RDB_table *tbp, const RDB_object *tplp, RDB_transaction *txp)
         return RDB_NO_MEMORY;
     for (i = 0; i < attrcount; i++) {
         RDB_object *objp;
-        int fno = *(int*)RDB_hashmap_get(&tbp->var.real.attrmap,
+        int fno = *(int*)RDB_hashmap_get(&tbp->stp->attrmap,
                 tpltyp->var.tuple.attrv[i].name, NULL);
 
         objp = RDB_tuple_get(tplp, tpltyp->var.tuple.attrv[i].name);
@@ -316,7 +316,7 @@ stored_contains(RDB_table *tbp, const RDB_object *tplp, RDB_transaction *txp)
     }
 
     /* Don't use tx if table is local */
-    ret = RDB_contains_rec(tbp->var.real.recmapp, fvp,
+    ret = RDB_contains_rec(tbp->stp->recmapp, fvp,
             tbp->is_persistent ? txp->txid : NULL);
     free(fvp);
     if (RDB_is_syserr(ret)) {

@@ -187,7 +187,7 @@ RDB_array_get(RDB_object *arrp, RDB_int idx, RDB_object **tplpp)
         if (ret == RDB_NOT_FOUND) {
             arrp->var.arr.length = arrp->var.arr.pos;
             if (arrp->var.arr.tbp->kind == RDB_TB_REAL) {
-                arrp->var.arr.tbp->var.real.est_cardinality =
+                arrp->var.arr.tbp->stp->est_cardinality =
                         arrp->var.arr.length;
             }
         } else if (RDB_is_syserr(ret)) {

@@ -24,9 +24,7 @@ along with Duro; if not, write to the Free Software Foundation, Inc.,
 
 #include <gen/errors.h>
 #include <rec/env.h>
-#include <rec/cursor.h>
 #include <rec/recmap.h>
-#include <rec/index.h>
 #include <gen/hashmap.h>
 #include <gen/types.h>
 #include <stdlib.h>
@@ -238,15 +236,6 @@ typedef struct RDB_table {
 
     union {
         struct {
-            RDB_recmap *recmapp;
-            RDB_hashmap attrmap;   /* Maps attr names to field numbers */
-
-            /* Table indexes */
-            int indexc;
-            struct _RDB_tbindex *indexv;
-            int est_cardinality; /* estimated cardinality (from statistics) */
-        } real;
-        struct {
             /*
              * If indexp != NULL, tbp must point to a projection, which in
              * turn must point to a real table.
@@ -324,6 +313,7 @@ typedef struct RDB_table {
             char *attr;
         } ungroup;
     } var;
+    struct RDB_stored_table *stp;
 } RDB_table;
 
 typedef struct RDB_database {

@@ -81,25 +81,15 @@ free_dbroot(RDB_dbroot *dbrootp)
 static int
 close_table(RDB_table *tbp, RDB_environment *envp)
 {
-    int i;
     int ret;
     RDB_dbroot *dbrootp;
     RDB_database *dbp;
 
-    if (tbp->kind == RDB_TB_REAL) {
-        if (tbp->var.real.indexc > 0) {
-            /* close secondary indexes */
-            for (i = 0; i < tbp->var.real.indexc; i++) {
-                if (tbp->var.real.indexv[i].idxp != NULL)
-                    RDB_close_index(tbp->var.real.indexv[i].idxp);
-            }
-        }
-
-        /* close recmap */
-        ret = RDB_close_recmap(tbp->var.real.recmapp);
+    if (tbp->stp != NULL) {
+        ret = _RDB_close_stored_table(tbp->stp);
         if (ret != RDB_OK)
             return ret;
-     }
+    }
 
     /*
      * Remove table from all RDB_databases in list
@@ -664,7 +654,7 @@ _RDB_create_table(const char *name, RDB_bool persistent,
             return ret;
     }
 
-    ret = _RDB_new_stored_table(name, persistent, attrc, attrv,
+    ret = _RDB_new_rtable(name, persistent, attrc, attrv,
                 keyv != NULL ? keyc : 1, keyv != NULL ? keyv : &allkey,
                 RDB_TRUE, tbpp);
     if (keyv == NULL)
@@ -686,7 +676,7 @@ _RDB_create_table(const char *name, RDB_bool persistent,
         _RDB_assoc_table_db(*tbpp, txp->dbp);
     }
 
-    ret = _RDB_create_table_storage(*tbpp, txp != NULL ? txp->envp : NULL,
+    ret = _RDB_create_stored_table(*tbpp, txp != NULL ? txp->envp : NULL,
             NULL, &tx);
     if (ret != RDB_OK) {
         RDB_drop_table(*tbpp, &tx);
@@ -827,22 +817,8 @@ RDB_drop_table(RDB_table *tbp, RDB_transaction *txp)
     /*
      * Delete recmap
      */
-    if (tbp->kind == RDB_TB_REAL && tbp->var.real.recmapp != NULL) {
-        int i;
-        int ret;
-
-        /* Schedule secondary indexes for deletion */
-        for (i = 0; i < tbp->var.real.indexc; i++) {
-            if (tbp->var.real.indexv[i].idxp != NULL)
-                _RDB_del_index(txp, tbp->var.real.indexv[i].idxp);
-        }
-
-        if (txp != NULL) {
-            /* Schedule recmap for deletion */
-            ret = _RDB_del_recmap(txp, tbp->var.real.recmapp);
-        } else {
-            ret = RDB_delete_recmap(tbp->var.real.recmapp, NULL);
-        }
+    if (tbp->stp != NULL) {
+        ret = _RDB_delete_stored_table(tbp->stp, txp);
         if (ret != RDB_OK)
             return ret;
     }

@@ -32,7 +32,7 @@ delete_by_uindex(RDB_table *tbp, RDB_object *objpv[], _RDB_tbindex *indexp,
     }
 
     if (indexp->idxp == NULL) {
-        ret = RDB_delete_rec(tbp->var.real.recmapp, fv,
+        ret = RDB_delete_rec(tbp->stp->recmapp, fv,
                 tbp->is_persistent ? txp->txid : NULL);
     } else {
         ret = RDB_index_delete_rec(indexp->idxp, fv,
@@ -61,7 +61,7 @@ delete_stored(RDB_table *tbp, RDB_expression *condp, RDB_transaction *txp)
     RDB_bool b;
     RDB_type *tpltyp = tbp->typ->var.basetyp;
 
-    ret = RDB_recmap_cursor(&curp, tbp->var.real.recmapp, RDB_TRUE,
+    ret = RDB_recmap_cursor(&curp, tbp->stp->recmapp, RDB_TRUE,
             tbp->is_persistent ? txp->txid : NULL);
     if (ret != RDB_OK)
         return ret;
@@ -79,7 +79,7 @@ delete_stored(RDB_table *tbp, RDB_expression *condp, RDB_transaction *txp)
 
                 ret = RDB_cursor_get(curp,
                         *(int*) RDB_hashmap_get(
-                                &tbp->var.real.attrmap,
+                                &tbp->stp->attrmap,
                                 tpltyp->var.tuple.attrv[i].name, NULL),
                         &datap, &len);
                 if (ret != 0) {

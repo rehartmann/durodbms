@@ -57,10 +57,10 @@ libduro_la_SOURCES = gen/errors.c gen/hashmap.c gen/hashmapit.c gen/strfns.c \
         rec/cursor.c rec/env.c rec/index.c rec/recmap.c \
         rel/array.c rel/internal.h rel/database.c rel/operator.c \
         rel/expression.c rel/getargs.c rel/qresult.c rel/serialize.c \
-        rel/serialize.h rel/table.c rel/vtable.c rel/update.c rel/insert.c \
-        rel/contains.c rel/transaction.c rel/delete.c rel/tuple.c rel/type.c \
-        rel/object.c rel/catalog.c rel/optimize.c rel/transform.c \
-        rel/constraint.c \
+        rel/serialize.h rel/table.c rel/stable.c rel/vtable.c rel/update.c \
+        rel/insert.c rel/contains.c rel/transaction.c rel/delete.c \
+        rel/tuple.c rel/type.c rel/object.c rel/catalog.c rel/optimize.c \
+        rel/transform.c rel/constraint.c \
         rel/catalog.h \
         dli/exparse.y dli/exlex.l dli/parse.c dli/tabletostr.c \
         dli/tabletostr.h 

@@ -8,6 +8,8 @@
 
 /* $Id$ */
 
+#include <rec/index.h>
+#include <rec/cursor.h>
 #include <ltdl.h>
 
 #define AVG_COUNT_SUFFIX "$C"
@@ -50,6 +52,16 @@ typedef struct RDB_dbroot {
     RDB_table *constraints_tbp;
     RDB_table *version_info_tbp;
 } RDB_dbroot;
+
+typedef struct RDB_stored_table {
+    RDB_recmap *recmapp;
+    RDB_hashmap attrmap;   /* Maps attr names to field numbers */
+
+    /* Table indexes */
+    int indexc;
+    struct _RDB_tbindex *indexv;
+    int est_cardinality; /* estimated cardinality (from statistics) */
+} RDB_stored_table;
 
 typedef struct RDB_qresult {
     RDB_table *tbp; /* NULL for sorter */
@@ -166,7 +178,7 @@ int
 _RDB_drop_qresult(RDB_qresult *, RDB_transaction *);
 
 int
-_RDB_new_stored_table(const char *name, RDB_bool persistent,
+_RDB_new_rtable(const char *name, RDB_bool persistent,
                 int attrc, const RDB_attr heading[],
                 int keyc, const RDB_string_vec keyv[], RDB_bool usr,
                 RDB_table **tbpp);
@@ -177,13 +189,22 @@ _RDB_drop_table(RDB_table *, RDB_bool);
 void
 _RDB_free_table(RDB_table *);
 
+void
+_RDB_free_tbindex(_RDB_tbindex *);
+
 int
-_RDB_create_table_storage(RDB_table *tbp, RDB_environment *envp,
+_RDB_create_stored_table(RDB_table *tbp, RDB_environment *envp,
         const RDB_bool ascv[], RDB_transaction *txp);
 
 int
-_RDB_open_table_storage(RDB_table *tbp, RDB_environment *envp, const char *,
+_RDB_open_stored_table(RDB_table *tbp, RDB_environment *envp, const char *,
            RDB_transaction *txp);
+
+int
+_RDB_delete_stored_table(RDB_stored_table *, RDB_transaction *);
+
+int
+_RDB_close_stored_table(RDB_stored_table *);
 
 int
 _RDB_create_table(const char *name, RDB_bool persistent,

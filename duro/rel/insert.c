@@ -32,7 +32,7 @@ _RDB_insert_stored(RDB_table *tbp, const RDB_object *tplp,
         int *fnop;
         RDB_object *valp;
         
-        fnop = RDB_hashmap_get(&tbp->var.real.attrmap,
+        fnop = RDB_hashmap_get(&tbp->stp->attrmap,
                 tuptyp->var.tuple.attrv[i].name, NULL);
         valp = RDB_tuple_get(tplp, tuptyp->var.tuple.attrv[i].name);
 
@@ -98,7 +98,7 @@ _RDB_insert_stored(RDB_table *tbp, const RDB_object *tplp,
             goto cleanup;
     }
 
-    ret = RDB_insert_rec(tbp->var.real.recmapp, fvp,
+    ret = RDB_insert_rec(tbp->stp->recmapp, fvp,
             tbp->is_persistent ? txp->txid : NULL);
     if (RDB_is_syserr(ret)) {
         if (txp != NULL) {
@@ -108,7 +108,7 @@ _RDB_insert_stored(RDB_table *tbp, const RDB_object *tplp,
         }
     } else if (ret == RDB_KEY_VIOLATION) {
         /* check if the tuple is an element of the table */
-        if (RDB_contains_rec(tbp->var.real.recmapp, fvp,
+        if (RDB_contains_rec(tbp->stp->recmapp, fvp,
                 tbp->is_persistent ? txp->txid : NULL) == RDB_OK)
             ret = RDB_ELEMENT_EXISTS;
     }            

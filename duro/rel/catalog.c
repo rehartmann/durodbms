@@ -556,8 +556,8 @@ _RDB_cat_insert(RDB_table *tbp, RDB_transaction *txp)
             if (!tbp->is_user) {
                 int i;
 
-                for (i = 0; i < tbp->var.real.indexc; i++) {
-                    ret = _RDB_cat_insert_index(&tbp->var.real.indexv[i],
+                for (i = 0; i < tbp->stp->indexc; i++) {
+                    ret = _RDB_cat_insert_index(&tbp->stp->indexv[i],
                             tbp->name, txp);
                     if (ret != RDB_OK)
                         return ret;
@@ -679,20 +679,20 @@ _RDB_cat_get_indexes(RDB_table *tbp, RDB_dbroot *dbrootp, RDB_transaction *txp)
     if (ret != RDB_OK)
         goto cleanup;
 
-    tbp->var.real.indexc = RDB_array_length(&arr);
-    if (tbp->var.real.indexc > 0) {
-        tbp->var.real.indexv = malloc(sizeof(_RDB_tbindex)
-                * tbp->var.real.indexc);
-        if (tbp->var.real.indexv == NULL) {
+    tbp->stp->indexc = RDB_array_length(&arr);
+    if (tbp->stp->indexc > 0) {
+        tbp->stp->indexv = malloc(sizeof(_RDB_tbindex)
+                * tbp->stp->indexc);
+        if (tbp->stp->indexv == NULL) {
             ret = RDB_NO_MEMORY;
             goto cleanup;
         }
-        for (i = 0; i < tbp->var.real.indexc; i++) {
+        for (i = 0; i < tbp->stp->indexc; i++) {
             RDB_object *tplp;
             RDB_object *attrarrp;
             char *idxname;
             char *p;
-            _RDB_tbindex *indexp = &tbp->var.real.indexv[i];
+            _RDB_tbindex *indexp = &tbp->stp->indexv[i];
 
             ret = RDB_array_get(&arr, (RDB_int) i, &tplp);
             if (ret != RDB_OK)
@@ -764,16 +764,16 @@ provide_systable(const char *name, int attrc, RDB_attr heading[],
 {
     int ret;
 
-    ret = _RDB_new_stored_table(name, RDB_TRUE, attrc, heading,
+    ret = _RDB_new_rtable(name, RDB_TRUE, attrc, heading,
                 keyc, keyv, RDB_FALSE, tbpp);
     if (ret != RDB_OK)
         return ret;
 
     if (create) {
-        ret = _RDB_create_table_storage(*tbpp, txp != NULL ? txp->envp : NULL,
+        ret = _RDB_create_stored_table(*tbpp, txp != NULL ? txp->envp : NULL,
                 NULL, txp);
     } else {
-        ret = _RDB_open_table_storage(*tbpp, txp != NULL ? txp->envp : NULL,
+        ret = _RDB_open_stored_table(*tbpp, txp != NULL ? txp->envp : NULL,
                 name, txp);
     }
     if (ret != RDB_OK) {
@@ -993,7 +993,7 @@ _RDB_open_systables(RDB_dbroot *dbrootp, RDB_transaction *txp)
         return ret;
     }
 
-    if (!create && (dbrootp->rtables_tbp->var.real.indexc == -1)) {
+    if (!create && (dbrootp->rtables_tbp->stp->indexc == -1)) {
         /*
          * Read indexes from the catalog 
          */
@@ -1496,7 +1496,7 @@ _RDB_cat_get_rtable(const char *name, RDB_transaction *txp, RDB_table **tbpp)
     if (ret != RDB_OK)
         goto error;
 
-    ret = _RDB_new_stored_table(name, RDB_TRUE, attrc, attrv, keyc, keyv, usr, tbpp);
+    ret = _RDB_new_rtable(name, RDB_TRUE, attrc, attrv, keyc, keyv, usr, tbpp);
     for (i = 0; i < keyc; i++) {
         for (j = 0; j < keyv[i].strc; j++)
             free(keyv[i].strv[j]);
@@ -1506,7 +1506,7 @@ _RDB_cat_get_rtable(const char *name, RDB_transaction *txp, RDB_table **tbpp)
         *tbpp = NULL;
         goto error;
     }
-    ret = _RDB_open_table_storage(*tbpp, txp->envp,
+    ret = _RDB_open_stored_table(*tbpp, txp->envp,
             usr ? RDB_tuple_get_string(&tpl, "RECMAP") : (*tbpp)->name, &tx);
     if (ret != RDB_OK) {
         RDB_rollback(&tx);
