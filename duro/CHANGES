@@ -4,7 +4,7 @@ Summary of Changes for Duro
 
 Changes for (planned) Duro 0.5
 
-- Adding support for SUMMARIZE PER and RENAME.
+- Added support for SUMMARIZE PER and RENAME.
 
 - Changed error handling: Implicit rollback also by other system errors
   than deadlock; added function RDB_is_syserr() for checking for system

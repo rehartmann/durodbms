@@ -415,6 +415,8 @@ error:
     return res;
 }
 
+int
+_RDB_find_rename_from(int renc, RDB_renaming renv[], const char *name)
 {
     int i;
 
