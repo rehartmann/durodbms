@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2003 René Hartmann.
+ * Copyright (C) 2003, 2004 René Hartmann.
  * See the file COPYING for redistribution information.
  */
 
@@ -724,7 +724,8 @@ static int evaluate_user_op(RDB_expression *exp, const RDB_object *tup,
         if (ret != RDB_OK)
             goto cleanup;
     }
-    ret = RDB_call_ro_op(exp->var.user_op.name, argc, valpv, valp, txp);
+    ret = RDB_call_ro_op(exp->var.user_op.name, argc, valpv, txp, valp);
+
 cleanup:
     if (valv != NULL) {
         for (i = 0; i < argc; i++) {

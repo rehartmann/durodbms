@@ -318,6 +318,7 @@ Duro_call_cmd(ClientData data, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv
         }
     }
 
+    txp->user_data = interp;
     ret = RDB_call_update_op(Tcl_GetStringFromObj(objv[1], NULL),
             argc, argv, txp);
     if (ret != RDB_OK) {
@@ -367,7 +368,7 @@ Duro_invoke_update_op(const char *name, int argc, RDB_object *argv[],
     Tcl_Obj *bodyp;
     Tcl_Interp *slinterp;
     RDB_environment *envp = RDB_db_env(RDB_tx_db(txp));
-    Tcl_Interp *interp = (Tcl_Interp *) envp->user_data;
+    Tcl_Interp *interp = txp->user_data;
 
     /* Get operator data (arg names + body) */
     opdatap = Tcl_NewStringObj((CONST char *) iargp, iarglen);
@@ -473,7 +474,7 @@ Duro_invoke_ro_op(const char *name, int argc, RDB_object *argv[],
     Tcl_Obj *bodyp;
     Tcl_Interp *slinterp;
     RDB_environment *envp = RDB_db_env(RDB_tx_db(txp));
-    Tcl_Interp *interp = (Tcl_Interp *) envp->user_data;
+    Tcl_Interp *interp = txp->user_data;
 
     /* Get operator data (arg names + body) */
     opdatap = Tcl_NewStringObj((CONST char *) iargp, iarglen);

@@ -209,8 +209,7 @@ call_selector(Tcl_Interp *interp, Tcl_Obj *tobjp, RDB_type *typ,
         argpv[i] = &argv[i];
     }
 
-    ret = RDB_call_ro_op(Tcl_GetString(nametobjp), llen - 1, argpv,
-            objp, txp);
+    ret = RDB_call_ro_op(Tcl_GetString(nametobjp), llen - 1, argpv, txp, objp);
     if (ret != RDB_OK) {
         Duro_dberror(interp, ret);
         ret = TCL_ERROR;

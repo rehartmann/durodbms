@@ -87,7 +87,7 @@ test_insert(RDB_database *dbp)
 
     compv[0] = &xval;
     compv[1] = &yval;
-    ret = RDB_call_ro_op("POINT", 2, compv, &pval, &tx);
+    ret = RDB_call_ro_op("POINT", 2, compv, &tx, &pval);
 
     if (ret != RDB_OK)
         goto error;

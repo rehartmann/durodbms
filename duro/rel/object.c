@@ -676,7 +676,7 @@ RDB_obj_comp(const RDB_object *valp, const char *compname, RDB_object *compvalp,
         strcat(opname, compname);
         argv[0] = (RDB_object *) valp;
 
-        ret = RDB_call_ro_op(opname, 1, argv, compvalp, txp);
+        ret = RDB_call_ro_op(opname, 1, argv, txp, compvalp);
         free(opname);
     }
     return ret;

@@ -219,7 +219,7 @@ RDB_set_array_length(RDB_object *arrp, RDB_int len)
 }
 
 int
-RDB_array_set(RDB_object *arrp, RDB_int idx, const RDB_object *tplp)
+RDB_array_set(RDB_object *arrp, RDB_int idx, const RDB_object *objp)
 {
     if (arrp->var.arr.tbp != NULL)
         return RDB_NOT_SUPPORTED;
@@ -227,7 +227,7 @@ RDB_array_set(RDB_object *arrp, RDB_int idx, const RDB_object *tplp)
     if (idx >= arrp->var.arr.length)
         return RDB_NOT_FOUND;
 
-    return RDB_copy_obj(&arrp->var.arr.elemv[idx], tplp);
+    return RDB_copy_obj(&arrp->var.arr.elemv[idx], objp);
 }
 
 int

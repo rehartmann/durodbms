@@ -4,6 +4,12 @@ Summary of Changes for Duro
 
 Changes for Duro 0.8
 
+- Changed argument order of RDB_call_ro_op().
+
+- Implemented RDB_get_dbs() and duro::env dbs.
+
+- Implemented array-valued attributes and RDB_create_array_type().
+
 - Implemented support for system-implemented user-defined types with
   more than one possrep component.
 

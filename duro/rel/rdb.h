@@ -351,7 +351,9 @@ typedef struct RDB_database {
 typedef struct RDB_transaction {
     /* internal */
     RDB_database *dbp;
+    RDB_environment *envp;
     DB_TXN *txid;
+    void *user_data;
     struct RDB_transaction *parentp;
     struct RDB_rmlink *delrmp;
     struct RDB_ixlink *delixp;
@@ -1102,7 +1104,7 @@ RDB_create_update_op(const char *name, int argc, RDB_type *argtv[],
 
 int
 RDB_call_ro_op(const char *name, int argc, RDB_object *argv[],
-               RDB_object *retvalp, RDB_transaction *txp);
+               RDB_transaction *txp, RDB_object *retvalp);
 
 int
 RDB_call_update_op(const char *name, int argc, RDB_object *argv[],
@@ -1110,6 +1112,9 @@ RDB_call_update_op(const char *name, int argc, RDB_object *argv[],
 
 int
 RDB_drop_op(const char *name, RDB_transaction *txp);
+
+int
+RDB_get_dbs(RDB_environment *, RDB_object *);
 
 /* Extract the "-e <environment> -d <database>" arguments from the command line */
 int

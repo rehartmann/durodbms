@@ -69,7 +69,8 @@ typedef struct RDB_ipossrep {
 } RDB_ipossrep;
 
 typedef int RDB_ro_op_func(const char *name, int argc, RDB_object *argv[],
-        const void *iargp, size_t iarglen, RDB_transaction *txp, RDB_object *retvalp);
+        const void *iargp, size_t iarglen, RDB_transaction *txp,
+        RDB_object *retvalp);
 
 typedef struct RDB_ro_op {
     char *name;
@@ -83,7 +84,8 @@ typedef struct RDB_ro_op {
 } RDB_ro_op;
 
 typedef int RDB_upd_op_func(const char *name, int argc, RDB_object *argv[],
-        RDB_bool updv[], const void *iargp, size_t iarglen, RDB_transaction *txp);
+        RDB_bool updv[], const void *iargp, size_t iarglen,
+        RDB_transaction *txp);
 
 typedef struct RDB_upd_op {
     char *name;

@@ -11,12 +11,12 @@
 
 <h2>Synopsis</h2>
 
-<p>duro::array option arg ?arg ...?
+<p>duro::array <var>option arg ?arg ...?</var>
 
 <h2>Description</h2>
 
 <dl>
-<dt><b>duro::array create</b> table ?order? txId
+<dt><b>duro::array create</b> <var>table ?order? txId</var>
 <dd>
 <p>This subcommand creates an array which contains the tuples from table
 <var>tablename</var> and returns an identifier for the array.
@@ -30,7 +30,7 @@ The second element must be "asc" or "desc".
 <dd>
 <p>This subcommand destroys the array <var>arrayId</var>.
 
-<dt><b>duro::array foreach</b> <var>varname arrayId body</var>
+<dt><b>duro::array foreach</b> <var>varname arrayId body txId</var>
 <dd>
 <p>This subcommand implements a loop where the loop variable <var>varname</var>
 takes on values from a the Duro array <var>arrayId</var>.
@@ -43,11 +43,13 @@ then calls the Tcl interpreter to execute <var>body</var>.
 <dd>
 <p>This subcommand returns the number of elements in the array <var>arrayId</var>.
 
-<dt><b>duro::array index</b> <var>arrayId index</var>
+<dt><b>duro::array index</b> <var>arrayId index txId</var>
 <dd>
 <p>This subcommand returns the <var>index</var>'th element of the array
 <var>arrayId</var>.
 
 </dl>
+
+<p>$Id$
 
 </html>

@@ -34,6 +34,7 @@ _RDB_begin_tx(RDB_transaction *txp, RDB_environment *envp,
     int ret;
 
     txp->parentp = parentp;
+    txp->envp = envp;
     ret = envp->envp->txn_begin(envp->envp, partxid, &txp->txid, 0);
     if (ret != 0) {
         return ret;
@@ -79,13 +80,13 @@ del_storage(RDB_transaction *txp)
     for (ixlinkp = txp->delixp;
          (ixlinkp != NULL) && (ret == RDB_OK);
          ixlinkp = ixlinkp->nextp) {
-        ret = RDB_delete_index(ixlinkp->ixp, txp->dbp->dbrootp->envp, NULL);
+        ret = RDB_delete_index(ixlinkp->ixp, txp->envp, NULL);
     }
 
     for (rmlinkp = txp->delrmp;
          (rmlinkp != NULL) && (ret == RDB_OK);
          rmlinkp = rmlinkp->nextp) {
-        ret = RDB_delete_recmap(rmlinkp->rmp, txp->dbp->dbrootp->envp, NULL);
+        ret = RDB_delete_recmap(rmlinkp->rmp, txp->envp, NULL);
     }
 
     cleanup_storage(txp);
@@ -127,7 +128,7 @@ RDB_commit(RDB_transaction *txp)
 
     ret = txp->txid->commit(txp->txid, 0);
     if (ret != 0) {
-        RDB_errmsg(txp->dbp->dbrootp->envp, RDB_strerror(ret));
+        RDB_errmsg(txp->envp, RDB_strerror(ret));
         return RDB_convert_err(ret);
     }
 
@@ -180,7 +181,7 @@ RDB_rollback(RDB_transaction *txp)
 
     ret = txp->txid->abort(txp->txid);
     if (ret != 0) {
-        RDB_errmsg(txp->dbp->dbrootp->envp, RDB_strerror(ret));        
+        RDB_errmsg(txp->envp, RDB_strerror(ret));        
         return RDB_convert_err(ret);
     }
 

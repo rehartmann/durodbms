@@ -194,7 +194,7 @@ check_type_constraint(RDB_object *valp, RDB_transaction *txp)
 
 int
 RDB_call_ro_op(const char *name, int argc, RDB_object *argv[],
-               RDB_object *retvalp, RDB_transaction *txp)
+               RDB_transaction *txp, RDB_object *retvalp)
 {
     RDB_ro_op *op;
     int ret;
@@ -303,7 +303,7 @@ _RDB_get_upd_op(const char *name, int argc, RDB_type *argtv[],
 
 int
 RDB_call_update_op(const char *name, int argc, RDB_object *argv[],
-                RDB_transaction *txp)
+                   RDB_transaction *txp)
 {
     RDB_upd_op *op;
     RDB_type **argtv;
@@ -322,9 +322,8 @@ RDB_call_update_op(const char *name, int argc, RDB_object *argv[],
     if (ret != RDB_OK)
         return ret;
 
-    ret = (*op->funcp)(name, argc, argv, op->updv, op->iarg.var.bin.datap,
+    return (*op->funcp)(name, argc, argv, op->updv, op->iarg.var.bin.datap,
             op->iarg.var.bin.len, txp);
-    return ret;
 }
 
 int

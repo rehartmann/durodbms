@@ -39,7 +39,7 @@ test_callop(RDB_database *dbp)
     argv[1] = &arg2;
 
     printf("Calling PLUS\n");
-    ret = RDB_call_ro_op("PLUS", 2, argv, &retval, &tx);
+    ret = RDB_call_ro_op("PLUS", 2, argv, &tx, &retval);
     if (ret != RDB_OK) {
         RDB_rollback(&tx);
         goto error;

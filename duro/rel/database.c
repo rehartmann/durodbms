@@ -50,7 +50,6 @@ static int replen(const RDB_type *typ) {
         }
         case RDB_TP_RELATION:
         case RDB_TP_ARRAY:
-            return RDB_VARIABLE_LEN;
         case RDB_TP_SCALAR:
             return typ->ireplen;
     }
@@ -583,7 +582,7 @@ assoc_systables(RDB_dbroot *dbrootp, RDB_database *dbp)
  * If newdb is true, create the database in the catalog.
  */
 static int
-create_dbroot(const char *dbname, RDB_environment *envp, RDB_bool newdb,
+create_dbroot(RDB_environment *envp, RDB_bool newdb,
               RDB_dbroot **dbrootpp)
 {
     RDB_transaction tx;
@@ -644,7 +643,7 @@ RDB_create_db_from_env(const char *name, RDB_environment *envp,
          * and create RDB_dbroot structure
          */
         _RDB_init_builtin_types();
-        ret = create_dbroot(name, envp, RDB_TRUE, &dbrootp);
+        ret = create_dbroot(envp, RDB_TRUE, &dbrootp);
         if (ret != RDB_OK) {
             goto error;
         }
@@ -707,7 +706,7 @@ RDB_get_db_from_env(const char *name, RDB_environment *envp,
         crdbroot = RDB_TRUE;
         _RDB_init_builtin_types();
         lt_dlinit();
-        ret = create_dbroot(name, envp, RDB_FALSE, &dbrootp);
+        ret = create_dbroot(envp, RDB_FALSE, &dbrootp);
         if (ret != RDB_OK) {
             goto error;
         }
@@ -988,7 +987,7 @@ _RDB_create_table(const char *name, RDB_bool persistent,
 {
     return _RDB_provide_table(name, persistent,
            attrc, heading, keyc, keyv, RDB_TRUE, RDB_TRUE,
-           txp, txp != NULL ? txp->dbp->dbrootp->envp : NULL, tbpp);
+           txp, txp != NULL ? txp->envp : NULL, tbpp);
 }
 
 int
@@ -1269,7 +1268,7 @@ _RDB_drop_table(RDB_table *tbp, RDB_transaction *txp, RDB_bool rec)
         ret = _RDB_cat_delete(tbp, txp);
     }
 
-    _RDB_free_table(tbp, txp != NULL ? txp->dbp->dbrootp->envp : NULL);
+    _RDB_free_table(tbp, txp != NULL ? txp->envp : NULL);
     return ret;
 }
 
@@ -1468,5 +1467,80 @@ RDB_create_update_op(const char *name, int argc, RDB_type *argtv[],
 
 cleanup:
     RDB_destroy_obj(&tpl);
+    return ret;
+}
+
+int
+RDB_get_dbs(RDB_environment *envp, RDB_object *arrp)
+{
+    static char *attrname[] = { "DBNAME" };
+    int ret;
+    int i;
+    RDB_int len;
+    RDB_table *vtbp;
+    RDB_object resarr;
+    RDB_transaction tx;
+    RDB_dbroot *dbrootp = (RDB_dbroot *) RDB_env_private(envp);
+
+    if (dbrootp == NULL) {
+        /*
+         * No dbroot found, initialize builtin types and libltdl
+         * and create RDB_dbroot structure
+         */
+        _RDB_init_builtin_types();
+        ret = create_dbroot(envp, RDB_TRUE, &dbrootp);
+        if (ret != RDB_OK) {
+            return ret;
+        }
+        lt_dlinit();
+    }
+
+    ret = _RDB_begin_tx(&tx, envp, NULL);
+    if (ret != RDB_OK) {
+        return ret;
+    }
+
+    ret = RDB_project(dbrootp->dbtables_tbp, 1, attrname, &vtbp);
+    if (ret != RDB_OK) {
+        RDB_rollback(&tx);
+        return ret;
+    }
+
+    RDB_init_obj(&resarr);
+
+    ret = RDB_table_to_array(&resarr, vtbp, 0, NULL, &tx);
+    if (ret != RDB_OK)
+        goto cleanup;
+
+    len = RDB_array_length(&resarr);
+    if (len < 0) {
+        ret = len;
+        goto cleanup;
+    }
+
+    ret = RDB_set_array_length(arrp, len);
+    if (ret != RDB_OK)
+        goto cleanup;
+
+    for (i = 0; i < len; i++) {
+        RDB_object *tplp;
+
+        ret = RDB_array_get(&resarr, (RDB_int) i, &tplp);
+        if (ret != RDB_OK)
+            goto cleanup;
+
+        ret = RDB_array_set(arrp, (RDB_int) i, RDB_tuple_get(tplp, "DBNAME"));
+        if (ret != RDB_OK)
+            goto cleanup;
+    }
+
+cleanup:
+    RDB_drop_table(vtbp, &tx);
+    RDB_destroy_obj(&resarr);
+
+    if (ret == RDB_OK)
+        return RDB_commit(&tx);
+
+    RDB_rollback(&tx);
     return ret;
 }

@@ -44,6 +44,7 @@ Duro_expr_cmd(ClientData data, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv
     }
 
     RDB_init_obj(&val);
+    txp->user_data = interp;
     ret = RDB_evaluate(exprp, NULL, txp, &val);
     if (ret != RDB_OK) {
         RDB_destroy_obj(&val);

@@ -14,9 +14,9 @@ namespace export ptable env begin commit rollback db table insert \
 # Print all tuples in a table
 proc ptable {tbl tx} {
     set arr [duro::array create $tbl $tx]
-    duro::array foreach i $arr $tx {
+    duro::array foreach i $arr {
         puts $i
-    }
+    } $tx
     duro::array drop $arr
 }
 

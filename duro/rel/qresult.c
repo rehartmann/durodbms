@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2003 René Hartmann.
+ * Copyright (C) 2003, 2004 René Hartmann.
  * See the file COPYING for redistribution information.
  */
 
@@ -349,7 +349,7 @@ summarize_qresult(RDB_qresult *qresp, RDB_transaction *txp)
                         tuptyp->var.tuple.attrc,
                         tuptyp->var.tuple.attrv,
                         qresp->tbp->keyc, qresp->tbp->keyv,
-                        txp, &qresp->matp);
+                        NULL, &qresp->matp);
     if (ret != RDB_OK)
         return ret;
 
@@ -450,7 +450,7 @@ init_qresult(RDB_qresult *qrp, RDB_table *tbp, RDB_transaction *txp)
                 ret = RDB_create_table(NULL, RDB_FALSE,
                         tuptyp->var.tuple.attrc,
                         tuptyp->var.tuple.attrv,
-                        1, &keyattrs, txp, &qrp->matp);
+                        1, &keyattrs, NULL, &qrp->matp);
                 free(keyattrs.strv);
                 if (ret != RDB_OK)
                     break;                    

@@ -372,11 +372,11 @@ array_foreach_cmd(TclState *statep, Tcl_Interp *interp, int objc,
     Tcl_Obj *listobjp;
 
     if (objc != 6) {
-        Tcl_WrongNumArgs(interp, 2, objv, "varname arrayname tx body");
+        Tcl_WrongNumArgs(interp, 2, objv, "varname arrayname body tx");
         return TCL_ERROR;
     }
 
-    txstr = Tcl_GetStringFromObj(objv[4], NULL);
+    txstr = Tcl_GetStringFromObj(objv[5], NULL);
     entryp = Tcl_FindHashEntry(&statep->txs, txstr);
     if (entryp == NULL) {
         Tcl_AppendResult(interp, "Unknown transaction: ", txstr, NULL);
@@ -402,7 +402,7 @@ array_foreach_cmd(TclState *statep, Tcl_Interp *interp, int objc,
         Tcl_ObjSetVar2(interp, objv[2], NULL, listobjp, 0);
 
         /* Invoke script */
-        ret = Tcl_EvalObjEx(interp, objv[5], 0);
+        ret = Tcl_EvalObjEx(interp, objv[4], 0);
         if (ret != TCL_OK)
             return ret;
     }

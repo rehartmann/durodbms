@@ -17,6 +17,7 @@ RDB_create_env(const char *path, RDB_environment **envpp)
 
     envp->closefn = NULL;
     envp->errfilep = NULL;
+    envp->user_data = NULL;
 
     /* create environment handle */
     *envpp = envp;
@@ -51,6 +52,7 @@ RDB_open_env(const char *path, RDB_environment **envpp)
 
     envp->closefn = NULL;
     envp->errfilep = NULL;
+    envp->user_data = NULL;
 
     /* create environment handle */
     *envpp = envp;

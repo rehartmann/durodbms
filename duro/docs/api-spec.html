@@ -3861,7 +3861,7 @@ in which case the transaction is implicitly rolled back.
 
 int
 RDB_call_ro_op(const char *name, int argc, RDB_object *argv[],
-               RDB_object *retvalp, RDB_transaction *txp);
+               RDB_transaction *txp, RDB_object *retvalp);
 </pre>
 
 <h3>Description</h3>
