@@ -1,9 +1,9 @@
 /*
+ * $Id$
+ *
  * Copyright (C) 2005 René Hartmann.
  * See the file COPYING for redistribution information.
  */
-
-/* $Id$ */
 
 /*
  * Functions for declarative integrity constraints
@@ -15,6 +15,24 @@
 #include "serialize.h"
 #include <gen/strfns.h>
 #include <string.h>
+
+/*
+ * If the constraint is of the form IS_EMPTY(table), set empty_tbp
+ */ 
+static void
+set_empty_tbp(RDB_constraint *constrp)
+{
+    RDB_expression *argp;
+
+    constrp->empty_tbp = NULL;
+    if (constrp->exp->kind == RDB_EX_RO_OP
+            && constrp->exp->var.op.argc == 1
+            && strcmp(constrp->exp->var.op.name, "IS_EMPTY") == 0) {
+        argp = constrp->exp->var.op.argv[0];
+        if (argp->kind == RDB_EX_OBJ && argp->var.obj.kind == RDB_OB_TABLE)    
+            constrp->empty_tbp = argp->var.obj.var.tbp;
+    }
+}
 
 /*
  * Read constraints from catalog
@@ -55,7 +73,7 @@ _RDB_read_constraints(RDB_transaction *txp)
             free(constrp);
             goto cleanup;
         }
-        constrp->empty_tbp = constrp->exp->var.op.argv[0]->var.obj.var.tbp;
+        set_empty_tbp(constrp);
         constrp->nextp = dbrootp->first_constrp;
         dbrootp->first_constrp = constrp;
     }
@@ -75,16 +93,6 @@ RDB_create_constraint(const char *name, RDB_expression *exp,
     RDB_dbroot *dbrootp;
     RDB_bool res;
     RDB_constraint *constrp;
-    RDB_expression *argp;
-
-    /* Only IS_EMPTY(table) is possible */
-    if (exp->kind != RDB_EX_RO_OP
-            || exp->var.op.argc != 1
-            || strcmp(exp->var.op.name, "IS_EMPTY") != 0)
-        return RDB_NOT_SUPPORTED;
-    argp = exp->var.op.argv[0];
-    if (argp->kind != RDB_EX_OBJ || argp->var.obj.kind != RDB_OB_TABLE)
-        return RDB_NOT_SUPPORTED;
 
     /* Check constraint */
     ret = RDB_evaluate_bool(exp, NULL, txp, &res);
@@ -106,7 +114,8 @@ RDB_create_constraint(const char *name, RDB_expression *exp,
         return RDB_NO_MEMORY;
 
     constrp->exp = exp;
-    constrp->empty_tbp = argp->var.obj.var.tbp;
+    set_empty_tbp(constrp);
+
     constrp->name = RDB_dup_str(name);
     if (constrp->name == NULL) {
         ret = RDB_NO_MEMORY;
@@ -179,4 +188,17 @@ RDB_drop_constraint(const char *name, RDB_transaction *txp)
     if (RDB_is_syserr(ret))
         RDB_rollback_all(txp);
     return ret;
+}
+
+int
+_RDB_constraint_count(RDB_dbroot *dbrootp)
+{
+    int count = 0;
+    RDB_constraint *constrp = dbrootp->first_constrp;
+
+    while (constrp != NULL) {
+        count++;
+        constrp = constrp->nextp;
+    }
+    return count;
 }

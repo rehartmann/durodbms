@@ -2,6 +2,12 @@ $Id$
 
 Summary of Changes for Duro
 
+Changes for Duro 0.10
+
+- Fixed problem with error dialogs in Durotcl.
+
+- Implemented RDB_create_constraint() and RDB_drop_constraint().
+
 Changes for Duro 0.9
 
 - Documented utilities in utils.html.

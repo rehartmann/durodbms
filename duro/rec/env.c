@@ -1,4 +1,9 @@
-/* $Id$ */
+/*
+ * $Id$
+ *
+ * Copyright (C) 2003-2005 René Hartmann.
+ * See the file COPYING for redistribution information.
+ */
 
 #include "env.h"
 #include <gen/errors.h>
@@ -27,11 +32,18 @@ RDB_open_env(const char *path, RDB_environment **envpp)
         free(envp);
         return RDB_convert_err(ret);
     }
-    
+
     /* open DB environment */
     ret = envp->envp->open(envp->envp, path,
             DB_INIT_LOCK | DB_INIT_LOG | DB_INIT_MPOOL | DB_INIT_TXN | DB_CREATE,
             0);
+    if (ret != 0) {
+        envp->envp->close(envp->envp, 0);
+        free(envp);
+        return RDB_convert_err(ret);
+    }
+
+    ret = envp->envp->set_flags(envp->envp, DB_TIME_NOTGRANTED, 1);
     if (ret != 0) {
         envp->envp->close(envp->envp, 0);
         free(envp);
@@ -120,4 +132,10 @@ RDB_errmsg(RDB_environment *envp, const char *format, ...)
         va_end(ap);
         (*envp->errfn)(buf, envp->errfn_arg);
     }
+}
+
+DB_ENV *
+RDB_bdb_env(RDB_environment *envp)
+{
+    return envp->envp;
 }

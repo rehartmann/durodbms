@@ -801,7 +801,7 @@ insert_version_info(RDB_dbroot *dbrootp, RDB_transaction *txp)
         goto cleanup;
 
     /* bypass checks */
-    ret = _RDB_insert_stored(dbrootp->version_info_tbp, &tpl, txp);
+    ret = _RDB_insert_real(dbrootp->version_info_tbp, &tpl, txp);
 
 cleanup:
     RDB_destroy_obj(&tpl);

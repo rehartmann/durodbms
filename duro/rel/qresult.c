@@ -2087,7 +2087,7 @@ _RDB_next_tuple(RDB_qresult *qrp, RDB_object *tplp, RDB_transaction *txp)
         /* Check for duplicate, if necessary */
         if (qrp->matp != NULL && tbp->kind != RDB_TB_SUMMARIZE
                 && tbp->kind != RDB_TB_GROUP) {
-            ret = _RDB_insert_stored(qrp->matp, tplp, txp);
+            ret = _RDB_insert_real(qrp->matp, tplp, txp);
             if (ret != RDB_OK && ret != RDB_ELEMENT_EXISTS)
                 return ret;
         } else {

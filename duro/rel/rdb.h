@@ -705,9 +705,6 @@ RDB_group(RDB_table *, int attrc, char *attrv[], const char *gattr,
 int
 RDB_ungroup(RDB_table *, const char *, RDB_table **);
 
-RDB_bool
-RDB_table_refers(RDB_table *tbp, RDB_table *rtbp);
-
 /*
  * Functions for creation/destruction of tuples and reading/modifying attributes.
  * RDB_object represents a tuple variable.
@@ -755,9 +752,6 @@ RDB_tuple_attr_names(const RDB_object *, char **namev);
 
 char *
 RDB_tuple_get_string(const RDB_object *, const char *name);
-
-int
-RDB_copy_tuple(RDB_object *dstp, const RDB_object *srcp);
 
 int
 RDB_project_tuple(const RDB_object *, int attrc, char *attrv[],

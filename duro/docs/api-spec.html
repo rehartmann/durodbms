@@ -2,11 +2,11 @@
 "http://www.w3.org/TR/html4/strict.dtd">
 <html lang="en">
 <head>
-<title>Duro 0.9 API specification</title>
+<title>Duro 0.10 API specification</title>
 <body>
 <h1>Duro API specification</h1>
 
-<p>Version 0.9
+<p>Version 0.10
 
 <h2>Contents</h2>
 
@@ -2974,10 +2974,10 @@ in which case the transaction is implicitly rolled back.
 
 <h3>Notes</h3>
 
-<p>An RDB_array created by RDB_table_to_array becomes invalid after the
+<p>An array created by RDB_table_to_array becomes invalid after the
 end of the transaction in which it was created.
 
-<p>The table from which a RDB_array was created must not be dropped before
+<p>The table from which an array was created must not be dropped before
 the array is destroyed.
 
 <hr>
@@ -4141,10 +4141,6 @@ on the database the transaction specified by <var>txp</var> interacts with.
 <p>The call may also fail for a <a href="#syserr">system error</a>,
 in which case the transaction is implicitly rolled back.
 
-<h3>Notes</h3>
-
-<p><strong>This function is not implemented.</strong>
-
 <hr>
 
 <h2 id="drop_constraint">RDB_drop_constraint</h2>
@@ -4175,10 +4171,6 @@ RDB_drop_constraint(const char *name, RDB_transaction *txp);
 
 <p>The call may also fail for a <a href="#syserr">system error</a>,
 in which case the transaction is implicitly rolled back.
-
-<h3>Notes</h3>
-
-<p><strong>This function is not implemented.</strong>
 
 <hr>
 

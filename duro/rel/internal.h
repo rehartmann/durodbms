@@ -26,6 +26,11 @@ typedef struct RDB_constraint {
     struct RDB_table *empty_tbp;
 } RDB_constraint;
 
+enum {
+    RDB_MAYBE = 1,
+    RDB_TUPLE_INSERTED = 2
+};
+
 typedef struct RDB_dbroot {
     RDB_environment *envp;
     RDB_hashmap typemap;
@@ -215,6 +220,9 @@ _RDB_create_table(const char *name, RDB_bool persistent,
 
 int
 _RDB_assoc_table_db(RDB_table *tbp, RDB_database *dbp);
+
+RDB_bool
+RDB_table_refers(RDB_table *tbp, RDB_table *rtbp);
 
 /*
  * Extend the tuple type pointed to by typ by the attributes given by
@@ -433,6 +441,9 @@ int
 _RDB_check_type_constraint(RDB_object *valp, RDB_transaction *txp);
 
 int
+_RDB_constraint_count(RDB_dbroot *dbrootp);
+
+int
 _RDB_copy_obj(RDB_object *dstvalp, const RDB_object *srcvalp);
 
 int
@@ -473,6 +484,6 @@ int
 _RDB_read_constraints(RDB_transaction *);
 
 int
-_RDB_insert_stored(RDB_table *tbp, const RDB_object *tplp, RDB_transaction *);
+_RDB_insert_real(RDB_table *tbp, const RDB_object *tplp, RDB_transaction *);
 
 #endif

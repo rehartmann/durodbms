@@ -2,11 +2,11 @@
 #define RDB_ENV_H
 
 /*
- * Copyright (C) 2003 René Hartmann.
+ * $Id$
+ *
+ * Copyright (C) 2003-2005 René Hartmann.
  * See the file COPYING for redistribution information.
  */
-
-/* $Id$ */
 
 #include <db.h>
 #include <stdio.h>
@@ -61,6 +61,9 @@ RDB_errfn *
 RDB_get_errfn(RDB_environment *, void **argp);
 
 void
-RDB_errmsg(RDB_environment *envp, const char *format, ...);
+RDB_errmsg(RDB_environment *, const char *format, ...);
+
+DB_ENV *
+RDB_bdb_env(RDB_environment *);
 
 #endif
