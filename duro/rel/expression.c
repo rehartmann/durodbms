@@ -560,32 +560,42 @@ static int
 aggregate(RDB_table *tbp, RDB_aggregate_op op, const char *attrname,
           RDB_transaction *txp, RDB_object *resultp)
 {
+    int ret;
+    RDB_rational avg;
+    RDB_bool b;
+
     switch(op) {
         case RDB_COUNT:
-        {
-            int ret = RDB_cardinality(tbp, txp);
+            ret = RDB_cardinality(tbp, txp);
 
             if (ret < 0)
                 return ret;
-            _RDB_set_obj_type(resultp, &RDB_INTEGER);
-            ret = resultp->var.int_val = ret;
+            RDB_int_to_obj(resultp, ret);
             return RDB_OK;
-        }
         case RDB_SUM:
             return RDB_sum(tbp, attrname, txp, resultp);
         case RDB_AVG:
-            _RDB_set_obj_type(resultp, &RDB_RATIONAL);
-            return RDB_avg(tbp, attrname, txp, &resultp->var.rational_val);
+            ret = RDB_avg(tbp, attrname, txp, &avg);
+            if (ret != RDB_OK)
+                return ret;
+            RDB_rational_to_obj(resultp, avg);
+            return RDB_OK;
         case RDB_MAX:
             return RDB_max(tbp, attrname, txp, resultp);
         case RDB_MIN:
             return RDB_min(tbp, attrname, txp, resultp);
         case RDB_ALL:
-            _RDB_set_obj_type(resultp, &RDB_BOOLEAN);
-            return RDB_all(tbp, attrname, txp, &resultp->var.bool_val);
+            ret = RDB_all(tbp, attrname, txp, &b);
+            if (ret != RDB_OK)
+                return ret;
+            RDB_bool_to_obj(resultp, b);
+            return RDB_OK;
         case RDB_ANY:
-            _RDB_set_obj_type(resultp, &RDB_BOOLEAN);
-            return RDB_any(tbp, attrname, txp, &resultp->var.bool_val);
+            ret = RDB_any(tbp, attrname, txp, &b);
+            if (ret != RDB_OK)
+                return ret;
+            RDB_bool_to_obj(resultp, b);
+            return RDB_OK;
         default: ;
     }
     abort();

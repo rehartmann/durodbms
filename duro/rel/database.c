@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2003, 2004 René Hartmann.
+ * Copyright (C) 2003-2005 René Hartmann.
  * See the file COPYING for redistribution information.
  */
 
@@ -15,6 +15,11 @@
 #include <string.h>
 #include <stdio.h>
 #include <ctype.h>
+
+enum {
+    MAJOR_VERSION = 0,
+    MINOR_VERSION = 9
+};
 
 RDB_environment *
 RDB_db_env(RDB_database *dbp)
@@ -468,9 +473,11 @@ RDB_get_db_from_env(const char *name, RDB_environment *envp,
         goto error;
     }
 
-    /* Check if the database exists by checking if the DBTABLES contains
+    /*
+     *Check if the database exists by checking if the DBTABLES contains
      * SYS_RTABLES for this database.
      */
+
     RDB_init_obj(&tpl);
     ret = RDB_tuple_set_string(&tpl, "TABLENAME", "SYS_RTABLES");
     if (ret != RDB_OK) {

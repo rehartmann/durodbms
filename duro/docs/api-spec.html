@@ -1678,7 +1678,7 @@ RDB_unwrap(RDB_table *, int attrc, char *attrv[], RDB_table **);
 
 <h3>Description</h3>
 
-<p>RDB_wrap creates a local (transient) virtual table which is the result of a
+<p>RDB_unwrap creates a local (transient) virtual table which is the result of a
 relational UNWRAP operator.
 
 <h3>Return value</h3>
@@ -1740,19 +1740,21 @@ RDB_ungroup(RDB_table *, const char *attr, RDB_table **resultpp);
 
 <h3>Description</h3>
 
-<p>RDB_wrap creates a local (transient) virtual table which is the result of a
+<p>RDB_ungroup creates a local (transient) virtual table which is the result of a
 relational UNGROUP operator.
 
 <h3>Return value</h3>
 
 <p>On success, RDB_OK is returned. On failure, an error code is returned.
 
+<h3>Errors</h3>
+
 <dl>
 <dt>RDB_ATTRIBUTE_NOT_FOUND
 <dd>The attribute <var>attr</var> does not exist.
 <dt>RDB_INVALID_ARGUMENT
 <dd>The attribute <var>attr</var> is not relation-typed.
-<dd>A sub-attribute of <var>attr</var> clashes wth a table attribute.
+<dd>A sub-attribute of <var>attr</var> clashes with a table attribute.
 </dl>
 
 <hr>
@@ -1769,7 +1771,7 @@ RDB_join_tuples(const RDB_object *tpl1p, const RDB_object *tpl2p,
 
 <h3>Description</h3>
 
-<p>RDB_join creates a tuple which contains the attributes
+<p>RDB_join_tuples creates a tuple which contains the attributes
 of the two tuples specified by <var>tpl1p</var> and <var>tpl2p</var>.
 
 <h3>Return value</h3>
@@ -2288,7 +2290,10 @@ RDB_copy_obj(RDB_object *dstvalp, const RDB_object *srcvalp);
 <h3>Description</h3>
 
 <p>RDB_copy_obj copies the value of the RDB_object pointed to
-by <var>srcp</var> to the RDB_object pointed to by <var>dstp</var>.
+by <var>srcvalp</var> to the RDB_object pointed to by <var>dstvalp</var>.
+
+<p>The source RDB_object must either be newly initialized or of the same type
+as the destination.
 
 <h3>Return value</h3>
 
@@ -2296,7 +2301,14 @@ by <var>srcp</var> to the RDB_object pointed to by <var>dstp</var>.
 
 <h3>Errors</h3>
 
-<p>The call may fail for a <a href="#syserr">system error</a>.
+<dl>
+<dt>RDB_TYPE_MISMATCH
+<dd>The RDB_object specified by <var>dstvalp</var> is not newly initialized
+and its type does not match the type of the RDB_object specified by
+<var>srcvalp</var>.
+</dl>
+
+<p>The call may also fail for a <a href="#syserr">system error</a>.
 
 <h3>Notes</h3>
 
@@ -2651,7 +2663,7 @@ must be of type BINARY.
 <h2 id="obj_irep">RDB_obj_irep</h2>
 
 <pre>
-#include &lt;rel/rdb.h&gt;
+#include &lt;rel/typeimpl.h&gt;
 
 void *
 RDB_obj_irep(RDB_object *valp, size_t *lenp);

@@ -464,17 +464,23 @@ _RDB_sys_select(const char *name, int argc, RDB_object *argv[],
     if (prp == NULL)
         return RDB_INVALID_ARGUMENT;
 
-    RDB_destroy_obj(retvalp);
+    /* If *retvalp carries a value, it must match the type */
+    if (retvalp->kind != RDB_OB_INITIAL
+            && (retvalp->typ == NULL
+                || !RDB_type_equals(retvalp->typ, typ)))
+        return RDB_TYPE_MISMATCH;
+
     if (argc == 1) {
-        _RDB_set_obj_type(retvalp, typ);
+        /* Copy value */
         ret = _RDB_copy_obj(retvalp, argv[0]);
         if (ret != RDB_OK)
             return ret;
     } else {
+        /* Copy tuple attributes */
         int i;
 
+        RDB_destroy_obj(retvalp);
         RDB_init_obj(retvalp);
-        retvalp->typ = typ;
         for (i = 0; i < argc; i++) {
             ret = RDB_tuple_set(retvalp, typ->var.scalar.repv[0].compv[i].name,
                     argv[i]);
@@ -482,6 +488,7 @@ _RDB_sys_select(const char *name, int argc, RDB_object *argv[],
                 return ret;
         }
     }
+    retvalp->typ = typ;
     return RDB_OK;
 }
 

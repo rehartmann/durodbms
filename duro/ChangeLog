@@ -21,7 +21,8 @@ Changes for Duro 0.9
 
 - Added built-in operators LENGTH, SUBSTRING, IS_EMPTY, COUNT, and SUBSET_OF.
 
-- Added conversion operators, arithmetical operators, etc., as built-in operators.
+- Added conversion operators, arithmetical operators, etc., as built-in
+  operators.
 
 - Durotcl now supports creating tables with user-defined types.
 
@@ -34,7 +35,7 @@ Changes for Duro 0.9
 - Changed expression grammar so that expressions like A UNION B UNION C
   are now possible.
 
-- Small change to RDB_expression struct.
+- Minor change to RDB_expression struct.
 
 - Removed RDB_begin_uoi() and RDB_end_uoi() from the API specification.
 

@@ -441,6 +441,9 @@ _RDB_copy_tuple(RDB_object *dstp, const RDB_object *srcp)
     void *datap;
     char *keyp;
 
+    if (srcp->kind == RDB_OB_INITIAL)
+        return RDB_OK;
+
     if (srcp->kind != RDB_OB_TUPLE)
         return RDB_INVALID_ARGUMENT;
 
