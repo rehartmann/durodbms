@@ -1,0 +1,97 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN"
+"http://www.w3.org/TR/html4/strict.dtd">
+<html lang="en">
+<head>
+<title>Duro 0.6 Release Notes</title>
+<!-- $Id$ -->
+<body>
+<h1>Duro 0.6 Release Notes</h1>
+
+<h2>Functions not implemented</h2>
+
+<p>The following functions are not implemented in Duro 0.6:
+
+<ul>
+<li>RDB_gdivide
+<li>RDB_group
+<li>RDB_ungroup
+<li>RDB_unwrap
+<li>RDB_wrap
+<li>RDB_sdivide
+<li>RDB_project_tuple
+<li>RDB_join_tuples
+<li>RDB_unwrap_tuple
+<li>RDB_wrap_tuple
+<li>RDB_obj_tuple
+<li>RDB_set_obj_tuple
+<li>RDB_array_set_tuple
+<li>RDB_set_array_length
+<li>RDB_is_empty
+<li>RDB_create_constraint
+<li>RDB_drop_constraint
+<li>RDB_begin_uio
+<li>RDB_end_uio
+</ul>
+
+<h2>Functions only partially implemented</h2>
+
+<h3>RDB_create_table</h3>
+
+<p>Only scalar attribute types are supported.
+
+<p>It is not enforced that a candidate key may not be a true subset
+of another.
+
+<h3>RDB_set_table_name</h3>
+
+<p>RDB_set_table_name is not supported for persistent tables.
+
+<h3>RDB_make_persistent</h3>
+
+<p>RDB_make_persistent is not supported for real tables.
+
+<h3>RDB_insert</h3>
+
+<p>RDB_insert is not supported for virtual tables which are the result
+of a MINUS, project, SUMMARIZE, or RENAME.
+
+<h3>RDB_update</h3>
+
+<p>RDB_update is not supported for virtual tables.
+
+<h3>RDB_delete</h3>
+
+<p>RDB_delete is not supported for virtual tables which are the result of
+a select, JOIN, EXTEND, project, SUMMARIZE, or RENAME .
+
+<h3>RDB_summarize</h3>
+
+<p>COUNTD, SUMD, and AVGD are not supported.
+
+<h3>RDB_create_ro_op and RDB_create_update_op</h3>
+
+<p>Only scalar argument and return types are supported.
+
+<h3>RDB_create_ro_op and RDB_create_update_op</h3>
+
+<p>Only scalar argument and return types are supported.
+
+<h2>Implementation-specific details</h2>
+
+<h3>Creating libraries</h3>
+
+<p>Libraries for user-defined types and operators must be created
+using GNU libtool. The name of the library is passed without
+the file extension.
+
+<h3>RDB_create_env</h3>
+
+<p>The path passed to RDB_create_env is a Berkeley DB database
+environment directory. The directory must exist and should be empty.
+
+<h3>RDB_open_env</h3>
+
+<p>The path passed to RDB_open_env is a Berkeley DB database
+environment directory.
+
+</html>
