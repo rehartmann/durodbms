@@ -4,6 +4,9 @@ Summary of Changes for Duro
 
 Changes for Duro 0.8
 
+- duro::insert now raises an error if the tuple is already an element of the
+  table.
+
 - Removed RDB_create_env().
 
 - Implemented GUI admin tool duroadmin.tcl.

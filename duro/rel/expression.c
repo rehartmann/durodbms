@@ -19,7 +19,8 @@ RDB_expr_is_const(const RDB_expression *exp)
 }
 
 int
-RDB_expr_type(const RDB_expression *exp, const RDB_type *tuptyp, RDB_type **typp)
+RDB_expr_type(const RDB_expression *exp, const RDB_type *tuptyp,
+        RDB_type **typp)
 {
     int ret;
     RDB_attr *attrp;

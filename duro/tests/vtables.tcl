@@ -39,11 +39,7 @@ duro::table create T3 {
 } {{K}} $tx
 
 # Insert tuples
-set r [duro::insert T1 {K 1 S1 Bla} $tx]
-if {$r != 0} {
-    puts "Insert returned $r, should be 0"
-    exit 1
-}
+duro::insert T1 {K 1 S1 Bla} $tx
 
 duro::insert T1 {K 2 S1 Blubb} $tx
 
@@ -71,8 +67,7 @@ duro::table expr -global TU2 {(T1 WHERE K = 1) UNION (T2 WHERE K = 1)} $tx
 duro::table expr -global TJ2 {(T1 WHERE K = 2) JOIN (T3 WHERE K = 2)} $tx
 
 if {[duro::expr {TUPLE FROM TP} $tx] != {K 1}} {
-    puts "Tuple value shoud be {K 1}, but is not"
-    exit 1
+    error "Tuple value shoud be {K 1}, but is not"
 }
 
 duro::commit $tx
@@ -90,8 +85,7 @@ set tpl {K 0 S1 Bold S2 Z}
 duro::insert TJ $tpl $tx
 
 if {![duro::table contains TJ $tpl $tx]} {
-    puts "Insert into TJ was not successful."
-    exit 1
+    error "Insert into TJ was not successful."
 }
 
 set tpl {K 3 S1 Blu}
@@ -99,8 +93,7 @@ set tpl {K 3 S1 Blu}
 duro::insert TI $tpl $tx
 
 if {![duro::table contains TI $tpl $tx]} {
-    puts "Insert into TI was not successful."
-    exit 1
+    error "Insert into TI was not successful."
 }
 
 set tpl {K 4 S1 Buchara}
@@ -108,8 +101,7 @@ set tpl {K 4 S1 Buchara}
 duro::insert TU $tpl $tx
 
 if {![duro::table contains TU $tpl $tx]} {
-    puts "Insert into TU was not successful."
-    exit 1
+    error "Insert into TU was not successful."
 }
 
 set tpl {KN 5 SN Ballermann}
@@ -117,8 +109,7 @@ set tpl {KN 5 SN Ballermann}
 duro::insert TR $tpl $tx
 
 if {![duro::table contains TR $tpl $tx]} {
-    puts "Insert into TR was not successful."
-    exit 1
+    error "Insert into TR was not successful."
 }
 
 set l {}
@@ -130,8 +121,7 @@ duro::array foreach i $da {
 duro::array drop $da
 
 if {$l != {0 1 2 3 4 5}} {
-    puts "l is $l, should be {0 1 2 3 4 5}"
-    exit 1
+    error "l is $l, should be {0 1 2 3 4 5}"
 }
 
 duro::delete TR {KN = 1} $tx
@@ -145,8 +135,7 @@ duro::array foreach i $da {
 duro::array drop $da
 
 if {$l != {0 2 3 4 5}} {
-    puts "l is $l, should be {0 2 3 4 5}"
-    exit 1
+    error "l is $l, should be {0 2 3 4 5}"
 }
 
 duro::delete TM {K = 5} $tx
@@ -154,8 +143,7 @@ duro::delete TM {K = 5} $tx
 set tpl [duro::expr {TUPLE FROM TM} $tx]
 set stpl {K 2 S1 Blubb}
 if {![tequal $tpl $stpl]} {
-    puts "TUPLE FROM TM should be $stpl, but is $tpl"
-    exit 1
+    error "TUPLE FROM TM should be $stpl, but is $tpl"
 }
 
 duro::delete TX {K0 = 40} $tx
@@ -163,8 +151,7 @@ duro::delete TX {K0 = 40} $tx
 set tpl [duro::expr {TUPLE FROM (TX WHERE K0 >= 30)} $tx]
 set stpl {K 3 S1 Blu K0 30}
 if {![tequal $tpl $stpl]} {
-    puts "Tuple should be $stpl, but is $tpl"
-    exit 1
+    error "Tuple should be $stpl, but is $tpl"
 }
 
 duro::table drop TU $tx

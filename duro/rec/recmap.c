@@ -616,9 +616,10 @@ _RDB_update_rec(RDB_recmap *rmp, DBT *keyp, DBT *datap,
     if (ret == DB_KEYEXIST) {
         /* Possible key violation - check if the record already exists */
         ret = rmp->dbp->get(rmp->dbp, txid, keyp, datap, DB_GET_BOTH);
-        if (ret == DB_NOTFOUND) {
+        if (ret == 0)
+            return RDB_ELEMENT_EXISTS;
+        if (ret == DB_NOTFOUND)
             return RDB_KEY_VIOLATION;
-        }
     }
     return ret;
 }

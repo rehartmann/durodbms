@@ -33,15 +33,13 @@ duro::table create T1 {
 } {{INTATTR}} $tx
 
 # Insert tuple
-set r [duro::insert T1 {INTATTR 1 STRATTR Bla} $tx]
-if {$r != 0} {
-    error "Insert returned $r, should return 0"
-}
+duro::insert T1 {INTATTR 1 STRATTR Bla} $tx
 
 # Insert tuple a second time
-set r [duro::insert T1 {INTATTR 1 STRATTR Bla} $tx]
-if {$r != 1} {
-    error "Insert returned $r, should return 1"
+if {![catch {
+    duro::insert T1 {INTATTR 1 STRATTR Bla} $tx
+}]} {
+    error "Insert should fail, but succeeded"
 }
 
 # Update nonkey attribute
@@ -86,16 +84,14 @@ duro::rollback $tx
 
 set tx [duro::begin $dbenv TEST]
 
-# Must succeed
-duro::update T1 {INTATTR = 3} INTATTR 2 STRATTR {"Blax"} $tx
-
-set stpl {INTATTR 2 STRATTR Blax}
-set tpl [duro::expr {TUPLE FROM T1} $tx]
-if {![tequal $tpl $stpl]} {
-     error "Tuple is $tpl, should be $stpl"
+# Must fail
+if {![catch {
+    duro::update T1 {INTATTR = 3} INTATTR 2 STRATTR {"Blax"} $tx
+}]} {
+    error "update should fail, but succeeded"
 }
 
-duro::commit $tx
+duro::rollback $tx
 
 set tx [duro::begin $dbenv TEST]
 

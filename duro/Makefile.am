@@ -69,7 +69,7 @@ nobase_include_HEADERS = gen/errors.h gen/hashmap.h gen/hashmapit.h \
 
 libdurotcl_la_SOURCES = tcl/duro.c tcl/duro.h tcl/envcmd.c tcl/txcmd.c \
         tcl/tablecmd.c tcl/dbcmd.c tcl/arraycmd.c tcl/opcmd.c tcl/exprcmd.c \
-        tcl/typecmd.c tcl/indexcmd.c
+        tcl/typecmd.c tcl/indexcmd.c tcl/insertcmd.c
 
 libdurotcl_la_LIBADD = -L$(BDB_HOME)/lib libduro.la -ldb
 

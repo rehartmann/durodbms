@@ -175,7 +175,7 @@ proc add_tuples {arr tx rowcount} {
         set_row [expr {$i + 1}] $tpl
         array set ta $tpl
         foreach j $::tablekey {
-            set ::keyvals([expr {$i}],$j) $ta($j)
+            set ::keyvals($i,$j) $ta($j)
         }
     }
     if {$i < $rowcount} {
@@ -201,9 +201,13 @@ proc show_table {} {
         return
     }
 
+    catch {unset ::keyvals}
+    catch {unset ::modified}
+
     if {[catch {
         set tx [duro::begin $::dbenv $::db]
 
+        array unset ::tabletypes
         array set ::tabletypes [duro::table attrs $table $tx]
         set ::tableattrs [array names ::tabletypes]
         set ::tablekey [lindex [duro::table keys $table $tx]]
@@ -343,6 +347,9 @@ proc create_rtable {} {
 
     label .dialog.l -text "Table name:"
     entry .dialog.tablename -textvariable newtablename
+    set ::tableflag -global
+    checkbutton .dialog.global -text "Global" -variable tableflag \
+            -onvalue -global -offvalue -local
 
     set ::action ok
     frame .dialog.buttons
@@ -380,7 +387,7 @@ proc create_rtable {} {
     pack .dialog.buttons.ok .dialog.buttons.cancel -side left
     pack .dialog.addattr -side bottom -anchor e
     pack .dialog.tabledef -side bottom
-    pack .dialog.l .dialog.tablename -side left
+    pack .dialog.l .dialog.tablename .dialog.global -side left
 
     set done 0
     grab .dialog
@@ -419,7 +426,7 @@ proc create_rtable {} {
         if {[catch {
             # Create table
             set tx [duro::begin $::dbenv $::db]
-            duro::table create $::newtablename $attrs $keys $tx
+            duro::table create $::tableflag $::newtablename $attrs $keys $tx
             duro::commit $tx
             set done 1
         } msg]} {
@@ -442,6 +449,9 @@ proc create_vtable {} {
 
     label .dialog.l -text "Table name:"
     entry .dialog.tablename -textvariable newtablename
+    set ::tableflag -global
+    checkbutton .dialog.global -text "Global" -variable tableflag \
+            -onvalue -global -offvalue -local
 
     set ::action ok
     frame .dialog.buttons
@@ -455,7 +465,7 @@ proc create_vtable {} {
     pack .dialog.buttons.ok .dialog.buttons.cancel -side left
     pack .dialog.tabledef -side bottom
     pack .dialog.defl -side bottom -anchor w
-    pack .dialog.l .dialog.tablename -side left
+    pack .dialog.l .dialog.tablename .dialog.global -side left
 
     set done 0
     grab .dialog
@@ -474,7 +484,8 @@ proc create_vtable {} {
         if {[catch {
             # Create virtual table
             set tx [duro::begin $::dbenv $::db]
-            duro::table expr -global $::newtablename [.dialog.tabledef get 1.0 end] $tx
+            duro::table expr $::tableflag $::newtablename \
+                    [.dialog.tabledef get 1.0 end] $tx
             duro::commit $tx
             set done 1
         } msg]} {
@@ -534,6 +545,7 @@ proc insert_tuple {} {
 
     .tableframe.table configure -rows [expr $rowcount + 1]
     clear_bottom_row
+    catch {unset ::modified([expr $rowcount - 2])}
     .tableframe.table activate $rowcount,0
 
     # Build tuple
@@ -553,6 +565,11 @@ proc insert_tuple {} {
         catch {duro::rollback $tx}
         .tableframe.table configure -rows $rowcount
         tk_messageBox -type ok -title "Error" -message $msg -icon error
+        return
+    }
+    array set ta $tpl
+    foreach i $::tablekey {
+        set ::keyvals([expr {$rowcount - 2}],$i) $ta($i)
     }
 }
 
@@ -595,6 +612,8 @@ proc update_tuple {row} {
     if {$table == ""} {
         return
     }
+
+    catch {unset ::modified([expr {$row -1}])}
 
     # Move active cell to next row
     .tableframe.table activate [expr {$row + 1}],0
@@ -665,10 +684,31 @@ proc del_row {} {
     .tableframe.table delete rows $row
 }
 
-# Don't allow control characters as trailing characters in cell values
-# (prevents the return from being written into the cell)
 proc valcell {s} {
+    scan [.tableframe.table index active] %d,%d row col
+
+    # Mark row as modified
+    set ::modified([expr {$row - 1}]) 1
+
+    # Don't allow control characters as trailing characters in cell values
+    # (prevents the return from being written into the cell)
     return [expr {![string is control -strict [string index $s end]]}]
+}
+
+proc browse {old new} {
+    if {$old == ""} {
+        return
+    }
+    scan $old %d,%d orow ocol
+    scan $new %d,%d nrow ncol
+    set rowcount [.tableframe.table cget -rows]
+
+    set i [expr $orow - 1]
+    if {$nrow != $orow && $orow < [expr {$rowcount - 1}]
+            && [info exists ::modified($i)]} {
+        get_row $orow
+        unset ::modified($i)
+    }
 }
 
 set duroadmin(initrows) 20
@@ -728,7 +768,8 @@ table .tableframe.table -titlerows 1 -rows [expr {$duroadmin(initrows) + 2}] \
         -xscrollcommand ".tableframe.xbar set" \
         -yscrollcommand ".tableframe.ybar set" \
         -variable tbcontent -state disabled -anchor w \
-        -validatecommand {valcell %S} -validate 1
+        -validatecommand {valcell %S} -validate 1 \
+        -browsecommand {browse %s %S}
 scrollbar .tableframe.xbar -orient horizontal -command ".tableframe.table xview"
 scrollbar .tableframe.ybar -orient vertical -command ".tableframe.table yview"
 

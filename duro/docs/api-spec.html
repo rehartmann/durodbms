@@ -926,11 +926,9 @@ into the table specified by <var>tbp</var>.
  
 <h3>Return value</h3>
 
-<p>If the insert was successful and the tuple was not already
-an element of the table, RDB_OK is returned.
-If the tuple was already an element of the table,
+<p>If the insert was successful, RDB_OK is returned.
 RDB_ELEMENT_EXISTS is returned.
-On failure, an error code different from RDB_ELEMENT_EXISTS is returned.
+On failure, an error code is returned.
 
 <h3>Errors</h3>
 
@@ -940,6 +938,8 @@ On failure, an error code different from RDB_ELEMENT_EXISTS is returned.
 <dt>RDB_INVALID_ARGUMENT
 <dd>A table attribute is missing in the tuple and no default value
 was specified for that attribute.
+<dt>RDB_ELEMENT_EXISTS
+<dd>The tuple was already an element of the table.
 <dt>RDB_KEY_VIOLATION
 <dd>Inserting the tuple would result in a table which contains
 a key value twice.
@@ -998,6 +998,10 @@ obtained by evaluating the expression specified by the field exp.
 <dd>One of the attributes in <var>updv</var> does not exist in the table.
 <dd>One of the expressions specified in <var>updv</var> refers to an attribute
 which does not exist in the table.
+
+<dt>RDB_ELEMENT_EXISTS
+<dd>The update operation would update a tuple so that it would be equal
+to a tuple which is already an element of the table.
 
 <dt>RDB_KEY_VIOLATION
 <dd>The update operation would result in a table which contains
