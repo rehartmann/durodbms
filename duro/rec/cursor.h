@@ -77,7 +77,7 @@ RDB_cursor_next(RDB_cursor *, int flags);
  * Move the cursor to the position specified by keyv.
  */
 int
-RDB_cursor_seek(RDB_cursor *curp, RDB_field keyv[], int flags);
+RDB_cursor_seek(RDB_cursor *curp, int fieldc, RDB_field keyv[], int flags);
 
 /* Detroy the cursor, releasing the resources associated with it
  * and freeing its memory.

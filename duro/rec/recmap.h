@@ -20,6 +20,11 @@
 
 #define RDB_VARIABLE_LEN (-1) /* indicates a variable field length */
 
+enum {
+    RDB_UNIQUE = 1,
+    RDB_ORDERED = 2
+};
+
 typedef struct {
     int no;
     void *datap;
@@ -74,16 +79,7 @@ typedef struct {
 int
 RDB_create_recmap(const char *name, const char *filename,
         RDB_environment *, int fieldc, const int fieldlenv[], int keyfieldc,
-        DB_TXN *, RDB_recmap **);
-
-/*
- * Create a sorted recmap.
- * cmpv specifies the sort order for each field.
- */
-int
-RDB_create_sorted_recmap(const char *name, const char *filename,
-        RDB_environment *, int fieldc, const int fieldlenv[], int keyfieldc,
-        const RDB_compare_field cmpv[], RDB_bool dup, DB_TXN *, RDB_recmap **);
+        const RDB_compare_field cmpv[], int flags, DB_TXN *, RDB_recmap **);
 
 /* Open a recmap. For a description of the arguments, see RDB_create_recmap(). */
 int
@@ -146,6 +142,9 @@ RDB_contains_rec(RDB_recmap *, RDB_field valv[], DB_TXN *);
 /*
  * Internal functions
  */
+
+size_t
+_RDB_get_vflen(RDB_byte *databp, size_t len, int vfcnt, int vpos);
 
 int
 _RDB_get_field(RDB_recmap *rfp, int fno, void *datap, size_t len,

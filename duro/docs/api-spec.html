@@ -2791,13 +2791,13 @@ and rolls back all changes made by this transaction and its subtrabsactions.
 #include &lt;rel/rdb.h&gt;
 
 RDB_database *
-RDB_tx_db(RDB_transaction *txp)
+RDB_tx_db(RDB_transaction *txp);
 </pre>
 
 <h3>Description</h3>
 
-<p>RDB_tx_db determines the database with which the transaction pointed
-to by <var>txp</var> interacts.
+<p>RDB_tx_db determines the database the transaction pointed
+to by <var>txp</var> interacts with.
 
 <h3>Return value</h3>
 
@@ -4652,7 +4652,9 @@ RDB_create_table_index(const char *name, RDB_table *tbp, int idxcompc,
 <p>RDB_create_table_index creates and index with name <var>name</var>
 for the table specified by <var>tbp</var> over the attributes
 specified by <var>idxcompc</var> and <var>idxcompv</var>.
-The <var>flags</var> argument and the field asc of <var>idxcompv</var> is currently ignored.
+The <var>flags</var> argument must be either 0 or RDB_ORDERED.
+If <var>flags</var> is 0, a hash index is created.
+If <var>flags</var> is RDB_ORDERED, a B-tree index is created.
 
 <h3>Return value</h3>
 

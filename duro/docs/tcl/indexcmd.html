@@ -11,7 +11,7 @@
 
 <h2>Synopsis</h2>
 
-<p><b>duro::index</b> <var>arg ?arg ...?</var>
+<p><b>duro::index</b> <var>subcmd indexname arg ?arg ...?</var>
 
 <h2>Description</h2>
 
@@ -25,8 +25,9 @@ by <var>txId</var>.
 <p>The <var>attrs</var> argument specifies the index attributes.
 <var>attrs</var> is a list containg pairs of elements.
 The first element of each pair is an attribute name.
-The second element must be "asc", "desc", or "-" and currently
-has no meaning, since only hash indexes are supported.
+The second element must be "asc", "desc", or "-".
+If one of those elements is "asc" or "desc", an ordered
+(B-tree) index is created.
 
 <dt><b>duro::index drop</b> <var>indexname txId</var>
 <dd>

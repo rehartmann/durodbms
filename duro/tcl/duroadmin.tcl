@@ -47,7 +47,7 @@ proc show_tables {} {
     # Read global tables
     if {[catch {
         set tx [duro::begin $::dbenv $::db]
-        set tables [duro::tables $::showsys $tx]
+        set tables [duro::tables [expr {$::showsys ? "-all" : "-user"}] $tx]
         duro::commit $tx
     } msg]} {
         catch {duro::rollback $tx}

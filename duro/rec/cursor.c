@@ -199,7 +199,7 @@ RDB_cursor_prev(RDB_cursor *curp)
 }    
 
 int
-RDB_cursor_seek(RDB_cursor *curp, RDB_field keyv[], int flags)
+RDB_cursor_seek(RDB_cursor *curp, int fieldc, RDB_field keyv[], int flags)
 {
     int ret;
     int i;
@@ -209,7 +209,7 @@ RDB_cursor_seek(RDB_cursor *curp, RDB_field keyv[], int flags)
         for (i = 0; i < curp->recmapp->keyfieldcount; i++)
             keyv[i].no = i;
     } else {
-        for (i = 0; i < curp->idxp->fieldc; i++)
+        for (i = 0; i < fieldc; i++)
             keyv[i].no = curp->idxp->fieldv[i];
     }
 
@@ -217,8 +217,7 @@ RDB_cursor_seek(RDB_cursor *curp, RDB_field keyv[], int flags)
         ret = _RDB_fields_to_DBT(curp->recmapp, curp->recmapp->keyfieldcount,
                 keyv, &curp->current_key);
     } else {
-        ret = _RDB_fields_to_DBT(curp->recmapp, curp->idxp->fieldc,
-                keyv, &key);
+        ret = _RDB_fields_to_DBT(curp->recmapp, fieldc, keyv, &key);
         key.flags = DB_DBT_REALLOC;
     }
     if (ret != RDB_OK)

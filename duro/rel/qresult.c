@@ -519,7 +519,7 @@ select_index_qresult(RDB_qresult *qrp, RDB_transaction *txp)
             || !qrp->tbp->var.select.all_eq)
         flags = RDB_REC_RANGE;
 
-    ret = RDB_cursor_seek(qrp->var.curp, fv, flags);
+    ret = RDB_cursor_seek(qrp->var.curp, qrp->tbp->var.select.objpc, fv, flags);
     if (ret == RDB_NOT_FOUND) {
         qrp->endreached = RDB_TRUE;
         ret = RDB_OK;
@@ -1131,7 +1131,7 @@ seek_index_qresult(RDB_qresult *qrp, _RDB_tbindex *indexp,
             goto cleanup;
     }
 
-    ret = RDB_cursor_seek(qrp->var.curp, fv, 0);
+    ret = RDB_cursor_seek(qrp->var.curp, indexp->attrc, fv, 0);
     if (ret == RDB_OK) {
         qrp->endreached = RDB_FALSE;
     } else {

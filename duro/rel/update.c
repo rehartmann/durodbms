@@ -509,7 +509,7 @@ update_select_index_simple(RDB_table *tbp, RDB_expression *condp,
     else
         flags = 0;
 
-    ret = RDB_cursor_seek(curp, fv, flags);
+    ret = RDB_cursor_seek(curp, tbp->var.select.objpc, fv, flags);
     if (ret == RDB_NOT_FOUND) {
         ret = RDB_OK;
         goto cleanup;

@@ -15,6 +15,7 @@
 RDB_bool
 RDB_expr_is_const(const RDB_expression *exp)
 {
+    /* Check for constant subexpressions */
     return (RDB_bool) exp->kind == RDB_EX_OBJ;
 }
 

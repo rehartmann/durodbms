@@ -205,19 +205,19 @@ TABLE_DUM {
     return TOK_LIT_STRING;
 }
 
-[0-9]+ {
+-?[0-9]+ {
     yylval = RDB_int_to_expr((RDB_int) atoi(yytext));
     _RDB_parse_add_exp(yylval);
     return TOK_LIT_INTEGER;
 }
 
-[0-9]+"."[0-9]+[Ee][0-9]+ {
+-?[0-9]+"."[0-9]+[Ee][0-9]+ {
     yylval = RDB_rational_to_expr((RDB_rational) atof(yytext));
     _RDB_parse_add_exp(yylval);
     return TOK_LIT_FLOAT;
 }
 
-[0-9]+"."[0-9]+	{
+-?[0-9]+"."[0-9]+	{
     yylval = RDB_rational_to_expr((RDB_rational) atof(yytext));
     _RDB_parse_add_exp(yylval);
     return TOK_LIT_FLOAT;

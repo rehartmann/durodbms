@@ -379,15 +379,36 @@ compare_field(const void *data1p, size_t len1,
 
 static int
 create_index(RDB_table *tbp, RDB_environment *envp, RDB_transaction *txp,
-             _RDB_tbindex *indexp, int flags)
+             _RDB_tbindex *indexp, RDB_seq_item idxcompv[], int flags)
 {
     int ret;
     int i;
+    RDB_compare_field *cmpv = 0;
     int *fieldv = malloc(sizeof(int *) * indexp->attrc);
 
     if (fieldv == NULL) {
         ret = RDB_NO_MEMORY;
         goto cleanup;
+    }
+
+    if ((RDB_ORDERED & flags) && (idxcompv != NULL)) {
+        cmpv = malloc(sizeof (RDB_compare_field) * indexp->attrc);
+        if (cmpv == NULL) {
+            ret = RDB_NO_MEMORY;
+            goto cleanup;
+        }
+        for (i = 0; i < indexp->attrc; i++) {
+            RDB_type *attrtyp = RDB_type_attr_type(tbp->typ,
+                    idxcompv[i].attrname);
+
+            if (attrtyp->comparep != NULL) {
+                cmpv[i].comparep = &compare_field;
+                cmpv[i].arg = attrtyp;
+            } else {
+                cmpv[i].comparep = NULL;
+            }
+            cmpv[i].asc = idxcompv[i].asc;
+        }
     }
 
     /* Get index numbers */
@@ -403,11 +424,12 @@ create_index(RDB_table *tbp, RDB_environment *envp, RDB_transaction *txp,
     ret = RDB_create_index(tbp->var.stored.recmapp,
                   tbp->is_persistent ? indexp->name : NULL,
                   tbp->is_persistent ? RDB_DATAFILE : NULL,
-                  envp, indexp->attrc, fieldv, flags,
+                  envp, indexp->attrc, fieldv, cmpv, flags,
                   txp != NULL ? txp->txid : NULL, &indexp->idxp);
 
 cleanup:
     free(fieldv);
+    free(cmpv);
     return ret;
 }
 
@@ -475,7 +497,8 @@ create_key_indexes(RDB_table *tbp, RDB_environment *envp, RDB_transaction *txp)
     }
 
     for (i = 1; i < tbp->var.stored.indexc; i++) {
-        ret = create_index(tbp, envp, txp, &tbp->var.stored.indexv[i], RDB_UNIQUE);
+        ret = create_index(tbp, envp, txp, &tbp->var.stored.indexv[i], NULL,
+                    RDB_UNIQUE);
         if (ret != RDB_OK)
             return ret;
     }
@@ -576,7 +599,7 @@ key_fnos(RDB_table *tbp, int **flenvp, RDB_bool ascv[], RDB_compare_field *cmpv)
  * tbp        the table
  * envp       the database environment
  * txp        the transaction under which the operation is performed
- * ascv       the sort order of the primary index, or NULL if unordered
+ * ascv       the sorting order if it's a sorter, or NULL
  */
 int
 _RDB_create_table_storage(RDB_table *tbp, RDB_environment *envp,
@@ -584,6 +607,7 @@ _RDB_create_table_storage(RDB_table *tbp, RDB_environment *envp,
 {
     int ret;
     int *flenv;
+    int flags;
     char *rmname = NULL;
     RDB_compare_field *cmpv = NULL;
     int attrc = tbp->typ->var.basetyp->var.tuple.attrc;
@@ -634,20 +658,18 @@ _RDB_create_table_storage(RDB_table *tbp, RDB_environment *envp,
      * Use a sorted recmap for local tables, so the order of the tuples
      * is always the same if the table is stored as an attribute in a table.
      */
+    flags = 0;
     if (ascv != NULL || !tbp->is_persistent)
-        ret = RDB_create_sorted_recmap(tbp->is_persistent ?
-                (rmname == NULL ? tbp->name : rmname) : NULL,
-                tbp->is_persistent ? RDB_DATAFILE : NULL,
-                envp, attrc, flenv, piattrc, ascv != NULL ? cmpv : NULL,
-                (RDB_bool) (ascv != NULL), txp != NULL ? txp->txid : NULL,
-                &tbp->var.stored.recmapp);
-    else {
-        ret = RDB_create_recmap(tbp->is_persistent ?
-                (rmname == NULL ? tbp->name : rmname) : NULL,
-                tbp->is_persistent ? RDB_DATAFILE : NULL,
-                envp, attrc, flenv, piattrc, txp != NULL ? txp->txid : NULL,
-                &tbp->var.stored.recmapp);
-    }
+        flags |= RDB_ORDERED;
+    if (ascv == NULL)
+        flags |= RDB_UNIQUE;
+
+    ret = RDB_create_recmap(tbp->is_persistent ?
+            (rmname == NULL ? tbp->name : rmname) : NULL,
+            tbp->is_persistent ? RDB_DATAFILE : NULL,
+            envp, attrc, flenv, piattrc, cmpv, flags,
+            txp != NULL ? txp->txid : NULL,
+            &tbp->var.stored.recmapp);
     if (ret != RDB_OK)
         goto error;
 
@@ -818,7 +840,8 @@ RDB_create_table_index(const char *name, RDB_table *tbp, int idxcompc,
     }
 
     /* Create index */
-    ret = create_index(tbp, RDB_db_env(RDB_tx_db(txp)), &tx, indexp, flags);
+    ret = create_index(tbp, RDB_db_env(RDB_tx_db(txp)), &tx, indexp,
+            idxcompv, flags);
     if (ret != RDB_OK) {
         goto error;
     }

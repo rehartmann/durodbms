@@ -24,7 +24,7 @@ enum {
 static int
 new_recmap(RDB_recmap **rmpp, const char *namp, const char *filenamp,
         RDB_environment *envp, int fieldc, const int fieldlenv[], int keyfieldc,
-        RDB_bool dup)
+        int flags)
 {
     int i, ret;
     RDB_recmap *rmp = malloc(sizeof(RDB_recmap));
@@ -64,7 +64,7 @@ new_recmap(RDB_recmap **rmpp, const char *namp, const char *filenamp,
     rmp->fieldcount = fieldc;
     rmp->keyfieldcount = keyfieldc;
     rmp->cmpv = NULL;    
-    rmp->dup_keys = dup;
+    rmp->dup_keys = (RDB_bool) !(RDB_UNIQUE & flags);
 
     rmp->varkeyfieldcount = rmp->vardatafieldcount = 0;
     for (i = 0; i < fieldc; i++) {
@@ -95,33 +95,6 @@ error:
     return RDB_convert_err(ret);
 }
 
-int
-RDB_create_recmap(const char *name, const char *filename,
-        RDB_environment *envp, int fieldc, const int fieldlenv[], int keyfieldc,
-        DB_TXN *txid, RDB_recmap **rmpp)
-{
-    /* Allocate and initialize RDB_recmap structure */
-    int ret = new_recmap(rmpp, name, filename, envp,
-            fieldc, fieldlenv, keyfieldc, RDB_FALSE); 
-    if (ret != RDB_OK)
-        return ret;
-       
-    /* Create BDB database */
-    if ((ret = (*rmpp)->dbp->open((*rmpp)->dbp, txid, filename, name, DB_HASH,
-            DB_CREATE, 0664)) != 0) {
-        if (envp != NULL) {
-            RDB_errmsg(envp, "cannot create recmap: %s", RDB_strerror(ret));
-        }
-        goto error;
-    }
-
-    return RDB_OK;
-
-error:
-    RDB_close_recmap(*rmpp);
-    return RDB_convert_err(ret);
-}
-
 static int
 compare_key(DB *dbp, const DBT *dbt1p, const DBT *dbt2p)
 {
@@ -137,7 +110,7 @@ compare_key(DB *dbp, const DBT *dbt1p, const DBT *dbt2p)
         offs1 = _RDB_get_field(rmp, i, dbt1p->data, dbt1p->size, &len1, NULL);
         offs2 = _RDB_get_field(rmp, i, dbt2p->data, dbt2p->size, &len2, NULL);
         data1p = ((RDB_byte *) dbt1p->data) + offs1;
-        data2p = ((RDB_byte *) dbt2p->data) + offs2;    
+        data2p = ((RDB_byte *) dbt2p->data) + offs2;
 
         /* Compare fields */
         if (rmp->cmpv[i].comparep != NULL) {
@@ -164,16 +137,15 @@ compare_key(DB *dbp, const DBT *dbt1p, const DBT *dbt2p)
 }
 
 int
-RDB_create_sorted_recmap(const char *name, const char *filename,
+RDB_create_recmap(const char *name, const char *filename,
         RDB_environment *envp, int fieldc, const int fieldlenv[], int keyfieldc,
-        const RDB_compare_field cmpv[],
-        RDB_bool dup, DB_TXN *txid, RDB_recmap **rmpp)
+        const RDB_compare_field cmpv[], int flags,
+        DB_TXN *txid, RDB_recmap **rmpp)
 {
     int i;
     /* Allocate and initialize RDB_recmap structure */
     int ret = new_recmap(rmpp, name, filename, envp,
-            fieldc, fieldlenv, keyfieldc, dup); 
-
+            fieldc, fieldlenv, keyfieldc, flags);
     if (ret != RDB_OK)
         return ret;
 
@@ -192,17 +164,21 @@ RDB_create_sorted_recmap(const char *name, const char *filename,
         (*rmpp)->dbp->set_bt_compare((*rmpp)->dbp, &compare_key);
     }
 
-    if (dup) {
+    if (!(RDB_UNIQUE & flags)) {
         /* Allow duplicate keys */
-        (*rmpp)->dbp->set_flags((*rmpp)->dbp, DB_DUP);
-    }    
-   
+        (*rmpp)->dbp->set_flags((*rmpp)->dbp, DB_DUPSORT);
+    }
+       
     /* Create BDB database */
-    if ((ret = (*rmpp)->dbp->open((*rmpp)->dbp, txid, filename, name, DB_BTREE,
-            DB_CREATE, 0664)) != 0)
+    if ((ret = (*rmpp)->dbp->open((*rmpp)->dbp, txid, filename, name,
+            RDB_ORDERED & flags ? DB_BTREE : DB_HASH, DB_CREATE, 0664)) != 0) {
+        if (envp != NULL) {
+            RDB_errmsg(envp, "cannot create recmap: %s", RDB_strerror(ret));
+        }
         goto error;
-   
-   return RDB_OK;
+    }
+
+    return RDB_OK;
 
 error:
     RDB_close_recmap(*rmpp);
@@ -215,7 +191,7 @@ RDB_open_recmap(const char *name, const char *filename,
        DB_TXN *txid, RDB_recmap **rmpp)
 {
     int ret = new_recmap(rmpp, name, filename, envp,
-            fieldc, fieldlenv, keyfieldc, RDB_FALSE);
+            fieldc, fieldlenv, keyfieldc, RDB_UNIQUE);
     if (ret != RDB_OK)
        return ret;
 
@@ -281,6 +257,12 @@ get_len(const RDB_byte *databp)
     return len;
 }
 
+size_t
+_RDB_get_vflen(RDB_byte *databp, size_t len, int vfcnt, int vpos)
+{
+    return get_len(&databp[len - vfcnt * RECLEN_SIZE + vpos * RECLEN_SIZE]);
+}
+
 /*
  *
  * 
@@ -330,12 +312,10 @@ _RDB_get_field(RDB_recmap *rmp, int fno, void *datap, size_t len, size_t *lenp,
 
             /* add previous variable-length fields */
             for (i = 0; i < vpos; i++) {
-                offs += get_len(&databp[len - rmp->varkeyfieldcount * RECLEN_SIZE
-                                        + i * RECLEN_SIZE]);
+                offs += _RDB_get_vflen(databp, len, rmp->varkeyfieldcount, i);
             }
             
-            *lenp = get_len(&databp[len - rmp->varkeyfieldcount * RECLEN_SIZE
-                                    + vpos * RECLEN_SIZE]);
+            *lenp = _RDB_get_vflen(databp, len, rmp->varkeyfieldcount, vpos);
         }
     } else {
         /*
@@ -372,12 +352,10 @@ _RDB_get_field(RDB_recmap *rmp, int fno, void *datap, size_t len, size_t *lenp,
 
             /* add previous variable-length fields */
             for (i = 0; i < vpos; i++) {
-                offs += get_len(&databp[len - rmp->vardatafieldcount * RECLEN_SIZE
-                                        + i * RECLEN_SIZE]);
+                offs += _RDB_get_vflen(databp, len, rmp->vardatafieldcount, i);
             }
             
-            *lenp = get_len(&databp[len - rmp->vardatafieldcount * RECLEN_SIZE
-                                    + vpos * RECLEN_SIZE]);
+            *lenp = _RDB_get_vflen(databp, len, rmp->vardatafieldcount, vpos);
         }
     }
     if (vposp != NULL)
