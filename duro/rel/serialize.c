@@ -827,7 +827,6 @@ deserialize_obj(RDB_object *valp, int *posp, RDB_transaction *txp,
             return RDB_OK;
         }
         case RDB_OB_ARRAY:
-            /* !! */
             return RDB_NOT_SUPPORTED;
         case RDB_OB_BOOL:
         case RDB_OB_INT:

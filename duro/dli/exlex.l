@@ -10,6 +10,9 @@
 #include <string.h>
 #include <math.h>
 
+int
+_RDB_parse_add_exp(RDB_expression *exp);
+
 %}
 
 %%
@@ -174,6 +177,7 @@ TABLE_DUM {
 
 [a-zA-Z][a-zA-Z0-9_#]* {
     yylval = RDB_expr_attr(yytext);
+    _RDB_parse_add_exp(yylval);
     return TOK_ID;
 }
 
@@ -183,21 +187,25 @@ TABLE_DUM {
      */
     yytext[(strlen(yytext) - 1)] = '\0';
     yylval = RDB_string_to_expr(yytext + 1);
+    _RDB_parse_add_exp(yylval);
     return TOK_STRING;
 }
 
 [0-9]+ {
     yylval = RDB_int_to_expr((RDB_int) atoi(yytext));
+    _RDB_parse_add_exp(yylval);
     return TOK_INTEGER;
 }
 
 [0-9]+"."[0-9]+[Ee][0-9]+ {
     yylval = RDB_rational_to_expr((RDB_rational) atof(yytext));
+    _RDB_parse_add_exp(yylval);
     return TOK_FLOAT;
 }
 
 [0-9]+"."[0-9]+	{
     yylval = RDB_rational_to_expr((RDB_rational) atof(yytext));
+    _RDB_parse_add_exp(yylval);
     return TOK_FLOAT;
 }
 
