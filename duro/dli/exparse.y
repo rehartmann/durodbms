@@ -1026,16 +1026,24 @@ is_empty_invocation: TOK_IS_EMPTY '(' expression ')' {
     ;
 
 operator_invocation: TOK_ID '(' ')' {
-        expr_ret = RDB_user_op($1->var.attr.name, 0, NULL,
-                expr_txp, &$$);
+        expr_ret = RDB_user_op($1->var.attr.name, 0, NULL, expr_txp, &$$);
         if (expr_ret != RDB_OK)
             YYERROR;
     }
     | TOK_ID '(' argument_list ')' {
-        expr_ret = RDB_user_op($1->var.attr.name, $3.argc, $3.argv,
-                expr_txp, &$$);
-        if (expr_ret != RDB_OK)
-            YYERROR;
+        if ($3.argc == 1
+                && strlen($1->var.attr.name) > 4
+                && strncmp($1->var.attr.name, "THE_", 4) == 0) {
+            /* THE_ operator - requires special treatment */
+            $$ = RDB_expr_comp($3.argv[0], $1->var.attr.name + 4);
+            if ($$ == NULL)
+                YYERROR;
+        } else {
+            expr_ret = RDB_user_op($1->var.attr.name, $3.argc, $3.argv,
+                    expr_txp, &$$);
+            if (expr_ret != RDB_OK)
+                YYERROR;
+        }
     }
     ;
 

@@ -43,7 +43,7 @@ obj_ilen(const RDB_object *objp)
         RDB_type *tpltyp = objp->typ;
 
         if (RDB_type_is_scalar(tpltyp))
-            tpltyp = tpltyp->arep;
+            tpltyp = tpltyp->var.scalar.arep;
 
         for (i = 0; i < tpltyp->var.tuple.attrc; i++) {
             RDB_type *attrtyp = tpltyp->var.tuple.attrv[i].typ;
@@ -94,24 +94,24 @@ obj_ilen(const RDB_object *objp)
 static enum _RDB_obj_kind
 val_kind(const RDB_type *typ)
 {
-    if (typ == &RDB_BOOLEAN)
-        return RDB_OB_BOOL;
-    if (typ == &RDB_INTEGER)
-        return RDB_OB_INT;
-    if (typ == &RDB_RATIONAL)
-        return RDB_OB_RATIONAL;
-    if (typ->arep == &RDB_BOOLEAN)
-        return RDB_OB_BOOL;
-    if (typ->arep == &RDB_INTEGER)
-        return RDB_OB_INT;
-    if (typ->arep == &RDB_RATIONAL)
-        return RDB_OB_RATIONAL;
-    if (typ->kind == RDB_TP_TUPLE ||
-        (typ->arep != NULL && typ->arep->kind == RDB_TP_TUPLE))
-        return RDB_OB_TUPLE;
-    if (typ->kind == RDB_TP_RELATION)
-        return RDB_OB_TABLE;
-    return RDB_OB_BIN;
+    switch (typ->kind) {
+        case RDB_TP_SCALAR:
+            if (typ == &RDB_BOOLEAN)
+                return RDB_OB_BOOL;
+            if (typ == &RDB_INTEGER)
+                return RDB_OB_INT;
+            if (typ == &RDB_RATIONAL)
+                return RDB_OB_RATIONAL;
+            if (typ->var.scalar.arep != NULL)
+                return val_kind(typ->var.scalar.arep);
+            return RDB_OB_BIN;
+        case RDB_TP_TUPLE:
+            return RDB_OB_TUPLE;
+        case RDB_TP_RELATION:
+            return RDB_OB_TABLE;
+    }
+    /* Should never be reached */
+    abort();
 }
 
 static int
@@ -123,7 +123,7 @@ irep_to_tuple(RDB_object *tplp, RDB_type *typ, const void *datap)
     const RDB_byte *bp = (RDB_byte *) datap;
 
     if (RDB_type_is_scalar(typ))
-        typ = typ->arep;
+        typ = typ->var.scalar.arep;
 
     for (i = 0; i < typ->var.tuple.attrc; i++) {
         RDB_object obj;
@@ -264,7 +264,7 @@ obj_to_irep(void *dstp, const void *srcp, size_t len)
 
             /* If the type is scalar, use internal rep */
             if (tpltyp->kind == RDB_TP_SCALAR)
-                tpltyp = tpltyp->arep;
+                tpltyp = tpltyp->var.scalar.arep;
 
             for (i = 0; i < tpltyp->var.tuple.attrc; i++) {
                 RDB_object *attrp;

@@ -1124,11 +1124,11 @@ _RDB_get_cat_type(const char *name, RDB_transaction *txp, RDB_type **typp)
 
     typedatap = RDB_tuple_get(&tpl, "I_AREP_TYPE");
     if (RDB_binary_length(typedatap) != 0) {   
-        ret = _RDB_deserialize_type(typedatap, txp, &typ->arep);
+        ret = _RDB_deserialize_type(typedatap, txp, &typ->var.scalar.arep);
         if (ret != RDB_OK)
             goto error;
     } else {
-        typ->arep = NULL;
+        typ->var.scalar.arep = NULL;
     }
 
     typ->name = RDB_dup_str(name);

@@ -93,8 +93,6 @@ typedef struct RDB_type {
     char *name;
     enum _RDB_tp_kind kind;
 
-    /* actual representation, NULL for built-in and nonscalar types */
-    struct RDB_type *arep; 
 
     /* comparison function */
     RDB_compare_func *comparep;
@@ -113,6 +111,10 @@ typedef struct RDB_type {
 
             /* RDB_TRUE if selector/getters/setters are provided by the system */
             RDB_bool sysimpl; 
+
+            /* Actual representation, if the type is represented by another type.
+               Otherwise NULL. */
+            struct RDB_type *arep; 
         } scalar;
     } var;
 } RDB_type;

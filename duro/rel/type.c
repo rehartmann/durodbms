@@ -38,38 +38,38 @@ compare_rational(const RDB_object *val1p, const RDB_object *val2p)
 void _RDB_init_builtin_types(void)
 {
     RDB_BOOLEAN.kind = RDB_TP_SCALAR;
-    RDB_BOOLEAN.arep = NULL;
     RDB_BOOLEAN.ireplen = 1;
     RDB_BOOLEAN.name = "BOOLEAN";
     RDB_BOOLEAN.var.scalar.repc = 0;
+    RDB_BOOLEAN.var.scalar.arep = NULL;
     RDB_BOOLEAN.comparep = NULL;
 
     RDB_STRING.kind = RDB_TP_SCALAR;
-    RDB_STRING.arep = NULL;
     RDB_STRING.ireplen = RDB_VARIABLE_LEN;
     RDB_STRING.name = "STRING";
     RDB_STRING.var.scalar.repc = 0;
+    RDB_STRING.var.scalar.arep = NULL;
     RDB_STRING.comparep = NULL;
 
     RDB_INTEGER.kind = RDB_TP_SCALAR;
-    RDB_INTEGER.arep = NULL;
     RDB_INTEGER.ireplen = sizeof (RDB_int);
     RDB_INTEGER.name = "INTEGER";
     RDB_INTEGER.var.scalar.repc = 0;
+    RDB_INTEGER.var.scalar.arep = NULL;
     RDB_INTEGER.comparep = &compare_int;
 
     RDB_RATIONAL.kind = RDB_TP_SCALAR;
-    RDB_RATIONAL.arep = NULL;
     RDB_RATIONAL.ireplen = sizeof (RDB_rational);
     RDB_RATIONAL.name = "RATIONAL";
     RDB_RATIONAL.var.scalar.repc = 0;
+    RDB_RATIONAL.var.scalar.arep = NULL;
     RDB_RATIONAL.comparep = &compare_rational;
 
     RDB_BINARY.kind = RDB_TP_SCALAR;
-    RDB_BINARY.arep = NULL;
     RDB_BINARY.ireplen = RDB_VARIABLE_LEN;
     RDB_BINARY.name = "BINARY";
     RDB_BINARY.var.scalar.repc = 0;
+    RDB_BINARY.var.scalar.arep = NULL;
     RDB_BINARY.comparep = NULL;
 }
 
@@ -92,7 +92,6 @@ dup_nonscalar_type(RDB_type *typ)
                 return NULL;
             restyp->name = NULL;
             restyp->kind = RDB_TP_RELATION;
-            restyp->arep = NULL;
             restyp->var.basetyp = dup_nonscalar_type(typ->var.basetyp);
             if (restyp->var.basetyp == NULL) {
                 free(restyp);
@@ -105,7 +104,6 @@ dup_nonscalar_type(RDB_type *typ)
                 return NULL;
             restyp->name = NULL;
             restyp->kind = RDB_TP_TUPLE;
-            restyp->arep = NULL;
             restyp->var.tuple.attrc = typ->var.tuple.attrc;
             restyp->var.tuple.attrv = malloc(sizeof (RDB_type)
                     * typ->var.tuple.attrc);
@@ -137,7 +135,6 @@ RDB_create_tuple_type(int attrc, RDB_attr attrv[])
     tbtyp->name = NULL;
     tbtyp->kind = RDB_TP_TUPLE;
     tbtyp->ireplen = RDB_VARIABLE_LEN;
-    tbtyp->arep = NULL;
     if ((tbtyp->var.tuple.attrv = malloc(sizeof(RDB_attr) * attrc)) == NULL) {
         free(tbtyp);
         return NULL;
@@ -173,7 +170,6 @@ RDB_create_relation_type(int attrc, RDB_attr attrv[])
     typ->name = NULL;
     typ->kind = RDB_TP_RELATION;
     typ->ireplen = RDB_VARIABLE_LEN;
-    typ->arep = NULL;
     if ((typ->var.basetyp = RDB_create_tuple_type(attrc, attrv))
             == NULL) {
         free(typ);
@@ -193,7 +189,7 @@ RDB_type_is_builtin(const RDB_type *typ)
 RDB_bool
 RDB_type_is_scalar(const RDB_type *typ)
 {
-    return (typ->kind != RDB_TP_TUPLE) && (typ->kind != RDB_TP_RELATION);
+    return (typ->kind == RDB_TP_SCALAR);
 }
 
 static void
@@ -221,7 +217,7 @@ free_type(RDB_type *typ)
         case RDB_TP_RELATION:
             RDB_drop_type(typ->var.basetyp, NULL);
             break;
-        default:
+        case RDB_TP_SCALAR:
             if (typ->var.scalar.repc > 0) {
                 int i, j;
                 
@@ -233,8 +229,9 @@ free_type(RDB_type *typ)
                 }
                 free(typ->var.scalar.repv);
             }
-            if (typ->arep != NULL && typ->arep->name == NULL)
-                RDB_drop_type(typ->arep, NULL);
+            if (typ->var.scalar.arep != NULL
+                    && typ->var.scalar.arep->name == NULL)
+                RDB_drop_type(typ->var.scalar.arep, NULL);
     }
     free(typ);
 }    
@@ -482,8 +479,9 @@ RDB_implement_type(const char *name, RDB_type *arep,
                     typ->var.scalar.repv[0].compv);
         }
 
-        typ->arep = arep;
+        typ->var.scalar.arep = arep;
         typ->var.scalar.sysimpl = sysimpl;
+        typ->ireplen = arep->ireplen;
 
         /* Create selector */
         argtv = malloc(sizeof(RDB_type *) * compc);
@@ -497,8 +495,6 @@ RDB_implement_type(const char *name, RDB_type *arep,
         free(argtv);
         if (ret != RDB_OK)
             return ret;
-
-        typ->ireplen = RDB_VARIABLE_LEN;
     } else {
         if (arep != NULL && !RDB_type_is_builtin(arep)) {
             return RDB_NOT_SUPPORTED;
@@ -746,7 +742,6 @@ RDB_extend_relation_type(const RDB_type *typ, int attrc, RDB_attr attrv[])
     }
     restyp->name = NULL;
     restyp->kind = RDB_TP_RELATION;
-    restyp->arep = NULL;
     restyp->var.basetyp = RDB_extend_tuple_type(
             typ->var.basetyp, attrc, attrv);
     return restyp;

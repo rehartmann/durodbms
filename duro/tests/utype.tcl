@@ -82,7 +82,7 @@ if {![duro::table contains T2 $tpl $tx]} {
     exit 2
 }
 
-array set a [duro::expr {TUPLE FROM T2} $tx]
+array set a [duro::expr {TUPLE FROM (T2 WHERE THE_LASTNAME(NAME) = "Potter")} $tx]
 
 if {($a(NO) != 1) || ($a(NAME) != {PNAME Peter Potter})} {
     puts "T2 has wrong value"

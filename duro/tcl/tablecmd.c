@@ -571,7 +571,6 @@ table_expr_cmd(TclState *statep, Tcl_Interp *interp, int objc,
         }
     } else if (objc != 5) {
         Tcl_WrongNumArgs(interp, 2, objv, "?flag? tablename expression tx");
-        abort();
         return TCL_ERROR;
     }
 
