@@ -13,6 +13,7 @@ extern RDB_expression *yylval;
 RDB_transaction *expr_txp;
 const char *expr_in;
 RDB_expression *resultp;
+int expr_ret;
 
 int yywrap(void) {
     return 1;
@@ -24,15 +25,18 @@ void yyerror(char *errtxt) {
 
 int RDB_parse_expr(const char *txt, RDB_transaction *txp, RDB_expression **exp)
 {
-    int ret;
-
     expr_txp = txp;
     expr_in = txt;
+    expr_ret = RDB_OK;
 
     _RDB_flush_buf();
-    ret = yyparse();
-    if (ret > 0)
-        return RDB_INVALID_ARGUMENT;
+    if (yyparse() > 0) {
+        if (expr_ret == RDB_OK) {
+            /* syntax error */
+            return RDB_INVALID_ARGUMENT;
+        }
+        return expr_ret;
+    }
 
     *exp = resultp;
     return RDB_OK;

@@ -332,6 +332,9 @@ typedef struct {
  */
 #define RDB_db_name(dbp) ((dbp)->name)
 
+RDB_environment *
+RDB_db_env(RDB_database *);
+
 /*
  * Create a database with name name in the environment pointed to
  * by envp. Store a pointer to the newly created RDB_database structure

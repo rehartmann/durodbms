@@ -18,6 +18,13 @@ enum {
     RDB_DFL_MAP_CAPACITY = 37,
 };
 
+RDB_environment *
+RDB_db_env(RDB_database *dbp) {
+    return dbp->dbrootp->envp;
+}
+
+#define RDB_db_env(dbp) ((dbp)->dbrootp->envp)
+
 /*
  * Return the length (in bytes) of the internal representation
  * of the type pointed to by typ.
@@ -1224,14 +1231,14 @@ _RDB_drop_table(RDB_table *tbp, RDB_transaction *txp, RDB_bool rec)
             break;
     }
 
-    _RDB_free_table(tbp, txp->dbp->dbrootp->envp);
+    _RDB_free_table(tbp, txp != NULL ? txp->dbp->dbrootp->envp : NULL);
     return ret;
 }
 
 int
 RDB_drop_table(RDB_table *tbp, RDB_transaction *txp)
 {
-    if (!RDB_tx_is_running(txp))
+    if (tbp->is_persistent && !RDB_tx_is_running(txp))
         return RDB_INVALID_TRANSACTION;
     return _RDB_drop_table(tbp, txp, RDB_TRUE);
 }

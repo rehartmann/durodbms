@@ -6,6 +6,18 @@
 #include <string.h>
 
 int
+Duro_tcl_drop_ltable(table_entry *tbep, Tcl_HashEntry *entryp)
+{
+    int ret;
+
+    Tcl_DeleteHashEntry(entryp);
+    ret = RDB_drop_table(tbep->tablep, NULL);
+    Tcl_Free((char *) tbep);
+    return ret;
+}
+
+
+int
 Duro_get_table(TclState *statep, Tcl_Interp *interp, const char *name,
           RDB_transaction *txp, RDB_table **tbpp)
 {
@@ -38,6 +50,63 @@ Duro_get_table(TclState *statep, Tcl_Interp *interp, const char *name,
 }
 
 static int
+tcl_to_duro(Tcl_Interp *interp, Tcl_Obj *tobjp, const RDB_type *typ,
+        RDB_object *objp)
+{
+    int ret;
+
+    if (typ == &RDB_STRING) {
+        RDB_obj_set_string(objp, Tcl_GetStringFromObj(tobjp, NULL));
+        return TCL_OK;
+    }
+    if (typ == &RDB_INTEGER) {
+        int val;
+
+        ret = Tcl_GetIntFromObj(interp, tobjp, &val);
+        if (ret != TCL_OK)
+            return ret;
+        RDB_obj_set_int(objp, (RDB_int) val);
+        return TCL_OK;
+    }
+    if (typ == &RDB_RATIONAL) {
+        double val;
+
+        ret = Tcl_GetDoubleFromObj(interp, tobjp, &val);
+        if (ret != TCL_OK)
+            return ret;
+        RDB_obj_set_rational(objp, (RDB_rational) val);
+        return TCL_OK;
+    }
+    if (typ == &RDB_BOOLEAN) {
+        int val;
+
+        ret = Tcl_GetBooleanFromObj(interp, tobjp, &val);
+        if (ret != TCL_OK)
+            return ret;
+        RDB_obj_set_bool(objp, (RDB_bool) val);
+        return TCL_OK;
+    }    
+    Tcl_SetResult(interp, "Unsupported type", TCL_STATIC);
+    return TCL_ERROR;
+}
+
+static void
+add_table(TclState *statep, RDB_table *tbp, RDB_environment *envp)
+{
+    int new;
+    Tcl_HashEntry *entryp;
+    table_entry *tbep = (table_entry *) Tcl_Alloc(sizeof (table_entry));
+
+    statep->ltable_uid++;
+    entryp = Tcl_CreateHashEntry(&statep->ltables, RDB_table_name(tbp), &new);
+
+    tbep->tablep = tbp;
+    tbep->envp = envp;
+    
+    Tcl_SetHashValue(entryp, (ClientData)tbep);
+}
+
+static int
 table_create_cmd(TclState *statep, Tcl_Interp *interp, int objc,
         Tcl_Obj *CONST objv[])
 {
@@ -54,6 +123,9 @@ table_create_cmd(TclState *statep, Tcl_Interp *interp, int objc,
     RDB_bool persistent = RDB_TRUE;
 
     if (objc == 7) {
+        /*
+         * Read flag
+         */
         flagstr = Tcl_GetStringFromObj(objv[2], NULL);
         if ((strcmp(flagstr, "-persistent") == 0)
                 || (strcmp(flagstr, "-global") == 0)) {
@@ -84,7 +156,10 @@ table_create_cmd(TclState *statep, Tcl_Interp *interp, int objc,
         goto cleanup;
     attrv = (RDB_attr *) Tcl_Alloc(sizeof (RDB_attr) * attrc);
     for (i = 0; i < attrc; i++)
-        attrv[i].name = NULL;    
+        attrv[i].name = NULL;
+    /*
+     * Read attribute defs
+     */
     for (i = 0; i < attrc; i++) {
         Tcl_Obj *attrobjp, *nameobjp, *typeobjp;
         int llen;
@@ -112,7 +187,23 @@ table_create_cmd(TclState *statep, Tcl_Interp *interp, int objc,
             ret = TCL_ERROR;
             goto cleanup;
         }
-        attrv[i].defaultp = NULL;
+        if (llen >= 3) {
+            /*
+             * Read default value
+             */
+            Tcl_Obj *defvalobjp;
+
+            attrv[i].defaultp = (RDB_object *) Tcl_Alloc(sizeof (RDB_object));
+            RDB_init_obj(attrv[i].defaultp);
+            Tcl_ListObjIndex(interp, attrobjp, 2, &defvalobjp);
+            ret = tcl_to_duro(interp, defvalobjp, attrv[i].typ,
+                    attrv[i].defaultp);
+            if (ret != RDB_OK) {
+                goto cleanup;
+            }
+        } else {
+            attrv[i].defaultp = NULL;
+        }
         attrv[i].options = 0;
     }
 
@@ -142,17 +233,18 @@ table_create_cmd(TclState *statep, Tcl_Interp *interp, int objc,
     }
 
     if (!persistent) {
-        int new;
-
-        statep->ltable_uid++;
-        entryp = Tcl_CreateHashEntry(&statep->ltables, RDB_table_name(tbp), &new);
-        Tcl_SetHashValue(entryp, (ClientData)tbp);
+        add_table(statep, tbp, RDB_db_env(RDB_tx_db(txp)));
     }
 
 cleanup:
     if (attrv != NULL) {
-        for (i = 0; i < attrc; i++)
+        for (i = 0; i < attrc; i++) {
             free(attrv[i].name);
+            if (attrv[i].defaultp != NULL) {
+                RDB_destroy_obj(attrv[i].defaultp);
+                Tcl_Free((char *) attrv[i].defaultp);
+            }
+        }
         Tcl_Free((char *) attrv);
     }
     if (keyv != NULL) {
@@ -183,9 +275,9 @@ table_expr_cmd(TclState *statep, Tcl_Interp *interp, int objc,
         flagstr = Tcl_GetStringFromObj(objv[2], NULL);
         if ((strcmp(flagstr, "-persistent") == 0)
                 || (strcmp(flagstr, "-global") == 0)) {
+            persistent = RDB_TRUE;
         } else if ((strcmp(flagstr, "-transient") == 0)
                 || (strcmp(flagstr, "-local") == 0)) {
-            persistent = RDB_FALSE;
         } else {
             Tcl_SetResult(interp,
                     "Wrong flag: must be -global, -persistent,"
@@ -225,11 +317,7 @@ table_expr_cmd(TclState *statep, Tcl_Interp *interp, int objc,
             return TCL_ERROR;
         }
     } else {
-        int new;
-
-        statep->ltable_uid++;
-        entryp = Tcl_CreateHashEntry(&statep->ltables, RDB_table_name(tbp), &new);
-        Tcl_SetHashValue(entryp, (ClientData)tbp);
+        add_table(statep, tbp, RDB_db_env(RDB_tx_db(txp)));
     }
 
     return ret;
@@ -273,47 +361,6 @@ table_drop_cmd(TclState *statep, Tcl_Interp *interp, int objc,
     }
 
     return RDB_OK;
-}
-
-static int
-tcl_to_duro(Tcl_Interp *interp, Tcl_Obj *tobjp, const RDB_type *typ,
-        RDB_object *objp)
-{
-    int ret;
-
-    if (typ == &RDB_STRING) {
-        RDB_obj_set_string(objp, Tcl_GetStringFromObj(tobjp, NULL));
-        return TCL_OK;
-    }
-    if (typ == &RDB_INTEGER) {
-        int val;
-
-        ret = Tcl_GetIntFromObj(interp, tobjp, &val);
-        if (ret != TCL_OK)
-            return ret;
-        RDB_obj_set_int(objp, (RDB_int) val);
-        return TCL_OK;
-    }
-    if (typ == &RDB_RATIONAL) {
-        double val;
-
-        ret = Tcl_GetDoubleFromObj(interp, tobjp, &val);
-        if (ret != TCL_OK)
-            return ret;
-        RDB_obj_set_rational(objp, (RDB_rational) val);
-        return TCL_OK;
-    }
-    if (typ == &RDB_BOOLEAN) {
-        int val;
-
-        ret = Tcl_GetBooleanFromObj(interp, tobjp, &val);
-        if (ret != TCL_OK)
-            return ret;
-        RDB_obj_set_bool(objp, (RDB_bool) val);
-        return TCL_OK;
-    }    
-    Tcl_SetResult(interp, "Unsupported type", TCL_STATIC);
-    return TCL_ERROR;
 }
 
 static int
@@ -579,6 +626,7 @@ table_insert_cmd(TclState *statep, Tcl_Interp *interp, int objc,
 
 cleanup:
     RDB_destroy_tuple(&tpl);
+    RDB_destroy_obj(&obj);
 
     return ret;
 }

@@ -4,6 +4,8 @@ Summary of Changes for Duro
 
 Changes for Duro 0.7
 
+- Implemented insert into and update of projections.
+
 - Added support for multiplication, division, unary minus, and string concatenation
   in expressions.
 

@@ -36,11 +36,11 @@ duro_cleanup(ClientData data)
     entryp = Tcl_FirstHashEntry(&statep->envs, &search);
     while (entryp != NULL) {
         envp = Tcl_GetHashValue(entryp);
-        Duro_tcl_close_env(envp, entryp);
+        Duro_tcl_close_env(statep, envp, entryp);
         entryp = Tcl_FirstHashEntry(&statep->envs, &search);
     }
 
-    Tcl_Free((char *)statep);
+    Tcl_Free((char *) statep);
 }
 
 void
@@ -87,7 +87,7 @@ Duro_Init(Tcl_Interp *interp)
 
     Tcl_CreateExitHandler(duro_cleanup, (ClientData)statep);
 
-    yydebug = 1;
+    /* yydebug = 1; */
     
     Tcl_PkgProvide(interp, "duro", "0.7");
     return TCL_OK;

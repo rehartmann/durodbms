@@ -24,6 +24,15 @@ typedef struct {
     int ltable_uid;
 } TclState;
 
+/*
+ * Stores a table pointer together with the environment
+ * so the tables belonging to an environment can be identified
+ */ 
+typedef struct {
+    RDB_table *tablep;
+    RDB_environment *envp;
+} table_entry;
+
 int
 Duro_env_cmd(ClientData data, Tcl_Interp *interp, int argc, CONST char *argv[]);
 
@@ -49,10 +58,13 @@ int
 Duro_operator_cmd(ClientData data, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[]);
 
 int
-Duro_tcl_close_env(RDB_environment *, Tcl_HashEntry *entryp);
+Duro_tcl_close_env(TclState *statep, RDB_environment *, Tcl_HashEntry *entryp);
 
 int
 Duro_tcl_rollback(RDB_transaction *, Tcl_HashEntry *entryp);
+
+int
+Duro_tcl_drop_ltable(table_entry *, Tcl_HashEntry *entryp);
 
 int
 Duro_tcl_drop_array(RDB_array *arrayp, Tcl_HashEntry *entryp);

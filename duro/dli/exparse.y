@@ -7,6 +7,7 @@
 
 extern RDB_transaction *expr_txp;
 extern RDB_expression *resultp;
+extern int expr_ret;
 
 static RDB_table *
 expr_to_table (const RDB_expression *exp);
@@ -77,6 +78,7 @@ enum {
 %token TOK_AVGD
 %token TOK_MAX
 %token TOK_MIN
+%token INVALID
 
 %type <exp> relation project select rename extend summarize
         expression or_expression and_expression not_expression
@@ -113,20 +115,17 @@ extractor: ID FROM expression {
 
 project: primary_expression '{' attribute_name_list '}' {
             RDB_table *tbp, *restbp;
-            int ret;
             int i;
 
             tbp = expr_to_table($1);
             if (tbp == NULL)
             {
-                yyerror("project: table expected\n");
                 YYERROR;
             }
-            ret = RDB_project(tbp, $3.attrc, $3.attrv, &restbp);
+            expr_ret = RDB_project(tbp, $3.attrc, $3.attrv, &restbp);
             for (i = 0; i < $3.attrc; i++)
                 free($3.attrv[i]);
-            if (ret != RDB_OK) {
-                yyerror(RDB_strerror(ret));
+            if (expr_ret != RDB_OK) {
                 YYERROR;
             }
             $$ = RDB_expr_table(restbp);
@@ -153,17 +152,15 @@ attribute_name_list: ID {
 
 select: primary_expression WHERE or_expression {
             RDB_table *tbp, *restbp;
-            int ret;
 
             tbp = expr_to_table($1);
             if (tbp == NULL)
             {
-                yyerror("select: table expected\n");
                 YYERROR;
             }
-            ret = RDB_select(tbp, $3, &restbp);
-            if (ret != RDB_OK) {
-                yyerror(RDB_strerror(ret));
+            expr_ret = RDB_select(tbp, $3, &restbp);
+            if (expr_ret != RDB_OK) {
+                yyerror(RDB_strerror(expr_ret));
                 YYERROR;
             }
             $$ = RDB_expr_table(restbp);
@@ -172,22 +169,20 @@ select: primary_expression WHERE or_expression {
 
 rename: primary_expression RENAME '(' renaming_list ')' {
             RDB_table *tbp, *restbp;
-            int ret;
             int i;
 
             tbp = expr_to_table($1);
             if (tbp == NULL)
             {
-                yyerror("rename: table expected\n");
                 YYERROR;
             }
-            ret = RDB_rename(tbp, $4.renc, $4.renv, &restbp);
+            expr_ret = RDB_rename(tbp, $4.renc, $4.renv, &restbp);
             for (i = 0; i < $4.renc; i++) {
                 free($4.renv[i].to);
                 free($4.renv[i].from);
             }
-            if (ret != RDB_OK) {
-                yyerror(RDB_strerror(ret));
+            if (expr_ret != RDB_OK) {
+                yyerror(RDB_strerror(expr_ret));
                 YYERROR;
             }
             $$ = RDB_expr_table(restbp);
@@ -225,7 +220,6 @@ renaming: ID AS ID {
         ;
 
 relation: primary_expression UNION primary_expression {
-            int ret;
             RDB_table *restbp, *tb1p, *tb2p;
 
             tb1p = expr_to_table($1);
@@ -237,9 +231,9 @@ relation: primary_expression UNION primary_expression {
                 YYERROR;
             }
 
-            ret = RDB_union(tb1p, tb2p, &restbp);
-            if (ret != RDB_OK) {
-                yyerror(RDB_strerror(ret));
+            expr_ret = RDB_union(tb1p, tb2p, &restbp);
+            if (expr_ret != RDB_OK) {
+                yyerror(RDB_strerror(expr_ret));
                 YYERROR;
             }
             $$ = RDB_expr_table(restbp);
@@ -247,7 +241,6 @@ relation: primary_expression UNION primary_expression {
             RDB_drop_expr($3);
         }
         | primary_expression INTERSECT primary_expression {
-            int ret;
             RDB_table *restbp, *tb1p, *tb2p;
 
             tb1p = expr_to_table($1);
@@ -259,9 +252,9 @@ relation: primary_expression UNION primary_expression {
                 YYERROR;
             }
 
-            ret = RDB_intersect(tb1p, tb2p, &restbp);
-            if (ret != RDB_OK) {
-                yyerror(RDB_strerror(ret));
+            expr_ret = RDB_intersect(tb1p, tb2p, &restbp);
+            if (expr_ret != RDB_OK) {
+                yyerror(RDB_strerror(expr_ret));
                 YYERROR;
             }
             $$ = RDB_expr_table(restbp);
@@ -269,7 +262,6 @@ relation: primary_expression UNION primary_expression {
             RDB_drop_expr($3);
         }
         | primary_expression MINUS primary_expression {
-            int ret;
             RDB_table *restbp, *tb1p, *tb2p;
 
             tb1p = expr_to_table($1);
@@ -281,9 +273,9 @@ relation: primary_expression UNION primary_expression {
                 YYERROR;
             }
 
-            ret = RDB_minus(tb1p, tb2p, &restbp);
-            if (ret != RDB_OK) {
-                yyerror(RDB_strerror(ret));
+            expr_ret = RDB_minus(tb1p, tb2p, &restbp);
+            if (expr_ret != RDB_OK) {
+                yyerror(RDB_strerror(expr_ret));
                 YYERROR;
             }
             $$ = RDB_expr_table(restbp);
@@ -291,7 +283,6 @@ relation: primary_expression UNION primary_expression {
             RDB_drop_expr($3);
         }
         | primary_expression JOIN primary_expression {
-            int ret;
             RDB_table *restbp, *tb1p, *tb2p;
 
             tb1p = expr_to_table($1);
@@ -303,9 +294,9 @@ relation: primary_expression UNION primary_expression {
                 YYERROR;
             }
 
-            ret = RDB_join(tb1p, tb2p, &restbp);
-            if (ret != RDB_OK) {
-                yyerror(RDB_strerror(ret));
+            expr_ret = RDB_join(tb1p, tb2p, &restbp);
+            if (expr_ret != RDB_OK) {
+                yyerror(RDB_strerror(expr_ret));
                 YYERROR;
             }
             $$ = RDB_expr_table(restbp);
@@ -316,24 +307,22 @@ relation: primary_expression UNION primary_expression {
 
 extend: EXTEND primary_expression ADD '(' extend_add_list ')' {
             RDB_table *tbp, *restbp;
-            int ret;
             int i;
 
             tbp = expr_to_table($2);
             if (tbp == NULL)
             {
-                yyerror("select: table expected\n");
                 YYERROR;
             }
-            ret = RDB_extend(tbp, $5.extc, $5.extv, &restbp);
+            expr_ret = RDB_extend(tbp, $5.extc, $5.extv, &restbp);
             for (i = 0; i < $5.extc; i++) {
                 free($5.extv[i].name);
                 /* Expressions are not dropped since they are now owned
                  * by the new table.
                  */
             }
-            if (ret != RDB_OK) {
-                yyerror(RDB_strerror(ret));
+            if (expr_ret != RDB_OK) {
+                yyerror(RDB_strerror(expr_ret));
                 YYERROR;
             }
             $$ = RDB_expr_table(restbp);
@@ -370,32 +359,29 @@ extend_add: expression AS ID {
 summarize: SUMMARIZE primary_expression PER expression
            ADD '(' summarize_add_list ')' {
             RDB_table *tb1p, *tb2p, *restbp;
-            int ret;
             int i;
 
             tb1p = expr_to_table($2);
             if (tb1p == NULL)
             {
-                yyerror("summarize: table expected\n");
                 YYERROR;
             }
 
             tb2p = expr_to_table($4);
             if (tb2p == NULL)
             {
-                yyerror("summarize: table expected\n");
                 YYERROR;
             }
 
-            ret = RDB_summarize(tb1p, tb2p, $7.addc, $7.addv, &restbp);
+            expr_ret = RDB_summarize(tb1p, tb2p, $7.addc, $7.addv, &restbp);
             for (i = 0; i < $7.addc; i++) {
                 free($7.addv[i].name);
             }
-            if (ret != RDB_OK) {
+            if (expr_ret != RDB_OK) {
                 for (i = 0; i < $7.addc; i++) {
                     RDB_drop_expr($7.addv[i].exp);
                 }
-                yyerror(RDB_strerror(ret));
+                yyerror(RDB_strerror(expr_ret));
                 YYERROR;
             }
             $$ = RDB_expr_table(restbp);
@@ -645,19 +631,18 @@ expression_list: expression
 %%
 
 static RDB_table *
-expr_to_table (const RDB_expression *exp)
+expr_to_table(const RDB_expression *exp)
 {
-    int ret;
-
     if (exp->kind == RDB_TABLE)
         return exp->var.tbp;
     if (exp->kind == RDB_ATTR) {
         RDB_table *tbp;
 
-        ret = RDB_get_table(exp->var.attr.name, expr_txp, &tbp);
-        if (ret != RDB_OK)
+        expr_ret = RDB_get_table(exp->var.attr.name, expr_txp, &tbp);
+        if (expr_ret != RDB_OK)
             return NULL;
         return tbp;
     }
+    expr_ret = RDB_INVALID_ARGUMENT;
     return NULL;
 }

@@ -1,4 +1,4 @@
-/* $Id */
+/* $Id$ */
 
 %{
 #define YYSTYPE RDB_expression *
@@ -147,7 +147,6 @@ MIN     {
         /*
          * Remove trailing "s
          */
-        printf("STRING: %s\n", yytext);
         yytext[(strlen(yytext) - 1)] = '\0';
         yylval = RDB_string_const(yytext + 1);
         return STRING;
@@ -171,6 +170,10 @@ MIN     {
 [=><+\-*/{},()]   return yytext[0];
 
 [[:space:]]
+
+.       {
+        return INVALID;
+        }
 
 %%
 

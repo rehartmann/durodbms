@@ -3,7 +3,6 @@
 <html lang="en">
 <head>
 <title>Duro API specification</title>
-<!-- $Id$ -->
 <body>
 <h1>Duro API specification</h1>
 
@@ -367,7 +366,7 @@ in which case the transaction is implicitly rolled back.
 #include &lt;rel/rdb.h&gt;
 
 int
-RDB_drop_table(RDB_table *tbp, RDB_transaction *);
+RDB_drop_table(RDB_table *tbp, RDB_transaction *txp);
 </pre>
 
 <h3>Description</h3>
@@ -375,6 +374,8 @@ RDB_drop_table(RDB_table *tbp, RDB_transaction *);
 <p>RDB_drop_table deletes the table specified by <var>tbp</var>
 and frees all resources associated with that table.
 If the table is virtual, its unnamed child tables are also deleted.
+
+<p>If the table is local, <var>txp</var> may be NULL.
 
 <h3>Return value</h3>
 
@@ -384,7 +385,8 @@ If the table is virtual, its unnamed child tables are also deleted.
 
 <dl>
 <dt>RDB_INVALID_TRANSACTION
-<dd><var>txp</var> does not point to a running transaction.
+<dd>The table is global (persistent) and <var>txp</var>
+does not point to a running transaction.
 </dl>
 
 <p>The call may also fail for a <a href="#syserr">system error</a>,
@@ -4002,5 +4004,7 @@ typedef enum {
 <dt>RDB_SYSTEM_ERROR
 <dd>Unspecified system error.
 </dl>
+
+<p>$Id$
 
 </html>

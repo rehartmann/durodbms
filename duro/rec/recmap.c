@@ -247,6 +247,9 @@ cleanup:
     free(rmp->filenamp);
     free(rmp->fieldlens);
     free(rmp);
+    if (ret != 0)
+        RDB_errmsg(envp, "Error deleting recmap: %s", RDB_strerror(ret));
+
     return RDB_convert_err(ret);
 }
 

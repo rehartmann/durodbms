@@ -4,9 +4,29 @@
 #include <string.h>
 
 int
-Duro_tcl_close_env(RDB_environment *envp, Tcl_HashEntry *entryp)
+Duro_tcl_close_env(TclState *statep, RDB_environment *envp, Tcl_HashEntry *entryp)
 {
+    Tcl_HashSearch search;
+    table_entry *tbep;
+
     Tcl_DeleteHashEntry(entryp);
+
+    /* Delete local tables which belong the the environment */
+
+    entryp = Tcl_FirstHashEntry(&statep->ltables, &search);
+    while (entryp != NULL) {
+        tbep = Tcl_GetHashValue(entryp);
+        printf("yo\n");
+        if (tbep->envp == envp) {
+            /* Drop table, delete entry and start from the beginning */
+            printf("Dropping table %s\n", RDB_table_name(tbep->tablep));
+            Duro_tcl_drop_ltable(tbep, entryp);
+            entryp = Tcl_FirstHashEntry(&statep->ltables, &search);
+        } else {
+            entryp = Tcl_NextHashEntry(&search);
+        }
+    }
+
     return RDB_close_env(envp);
 }
 
@@ -85,7 +105,7 @@ Duro_env_cmd(ClientData data, Tcl_Interp *interp, int argc, CONST char *argv[])
             return TCL_ERROR;
         }
         envp = Tcl_GetHashValue(entryp);
-        ret = Duro_tcl_close_env(envp, entryp);
+        ret = Duro_tcl_close_env(statep, envp, entryp);
         if (ret != RDB_OK) {
             Duro_dberror(interp, ret);
             return TCL_ERROR;
