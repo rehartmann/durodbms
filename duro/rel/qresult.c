@@ -628,6 +628,7 @@ join_qresult(RDB_qresult *qrp, RDB_transaction *txp)
     if (ret != RDB_OK)
         return ret;
 
+    qrp->var.virtual.tpl_valid = RDB_FALSE;
     if (qrp->tbp->var.join.indexp == NULL) {
         /* Create qresult for 2nd table */
         ret = _RDB_table_qresult(qrp->tbp->var.join.tb2p,
@@ -636,7 +637,6 @@ join_qresult(RDB_qresult *qrp, RDB_transaction *txp)
             _RDB_drop_qresult(qrp->var.virtual.qr2p, txp);
             return ret;
         }
-        qrp->var.virtual.tpl_valid = RDB_FALSE;
     } else if (!qrp->tbp->var.join.indexp->unique) {
         /* Create index qresult for 2nd table */
         qrp->var.virtual.qr2p = malloc(sizeof (RDB_qresult));
@@ -645,7 +645,6 @@ join_qresult(RDB_qresult *qrp, RDB_transaction *txp)
         qrp->var.virtual.qr2p->tbp = qrp->tbp->var.join.tb2p;
         qrp->var.virtual.qr2p->endreached = RDB_FALSE;
         qrp->var.virtual.qr2p->matp = NULL;
-        qrp->var.virtual.tpl_valid = RDB_FALSE;
 
         ret = RDB_index_cursor(&qrp->var.virtual.qr2p->var.curp,
                 qrp->tbp->var.join.indexp->idxp, 0,
@@ -1263,14 +1262,14 @@ next_join_tuple_uix(RDB_qresult *qrp, RDB_object *tplp, RDB_transaction *txp)
     RDB_bool match;
     RDB_object tpl;
     RDB_type *tpltyp;
-    RDB_object *objv = NULL;
-
-    RDB_init_obj(&tpl);
+    RDB_object *objv;
 
     objv = malloc(sizeof(RDB_object)
             * qrp->tbp->var.join.indexp->attrc);
     if (objv == NULL)
-        goto cleanup;
+        return RDB_NO_MEMORY;
+
+    RDB_init_obj(&tpl);
 
     for (i = 0; i < qrp->tbp->var.join.indexp->attrc; i++)
         RDB_init_obj(&objv[i]);
@@ -1290,6 +1289,8 @@ next_join_tuple_uix(RDB_qresult *qrp, RDB_object *tplp, RDB_transaction *txp)
         }
         ret = _RDB_get_by_uindex(qrp->tbp->var.join.tb2p, objv,
                 qrp->tbp->var.join.indexp, txp, &tpl);
+        if (ret == RDB_NOT_FOUND)
+            continue;
         if (ret != RDB_OK)
             goto cleanup;
 
@@ -1331,11 +1332,9 @@ next_join_tuple_uix(RDB_qresult *qrp, RDB_object *tplp, RDB_transaction *txp)
     ret = RDB_OK;
 
 cleanup:
-    if (objv != NULL) {
-        for (i = 0; i < qrp->tbp->var.join.indexp->attrc; i++)
-            RDB_destroy_obj(&objv[i]);
-        free(objv);
-    }
+    for (i = 0; i < qrp->tbp->var.join.indexp->attrc; i++)
+        RDB_destroy_obj(&objv[i]);
+    free(objv);
 
     RDB_destroy_obj(&tpl);
 
