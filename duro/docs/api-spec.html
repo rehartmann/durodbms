@@ -2566,6 +2566,32 @@ must be of type BINARY.
 
 <hr>
 
+<h2 id="obj_irep">RDB_obj_irep</h2>
+
+<pre>
+#include &lt;rel/rdb.h&gt;
+
+void *
+RDB_obj_irep(RDB_object *valp, size_t *lenp);
+</pre>
+
+<h3>Description</h3>
+
+<p>RDB_obj_irep returns a pointer to the binary internal representation of
+the variable specified by <var>valp</var>.
+If lenp is not NULL, the size of the internal representation
+is stored at the location pointed to by <var>lenp</var>.
+
+<p>RDB_obj_irep only works types with a binary internal representation.
+These are built-in types and user-defined types
+which use a built-in type or a byte array as actual representation.
+
+<h3>Return value</h3>
+
+<p>A pointer to the internal representation.
+
+<hr>
+
 <h2 id="create_db_from_env">RDB_create_db_from_env</h2>
 
 <pre>
@@ -3798,6 +3824,26 @@ The fields defaultp and options of RDB_attr are ignored.
 
 <hr>
 
+<h2 id="create_array_type">RDB_create_array_type</h2>
+
+<pre>
+#include &lt;rel/rdb.h&gt;
+
+RDB_type *
+RDB_create_array_type(RDB_type *typ);
+</pre>
+
+<h3>Description</h3>
+
+<p>RDB_create_array_type creates an array type.
+The base type is specified by <var>typ</var>.
+
+<h3>Return value</h3>
+
+<p>The new array type, or NULL if the creation failed.
+
+<hr>
+
 <h2 id="create_relation_type">RDB_create_relation_type</h2>
 
 <pre>
@@ -3809,7 +3855,7 @@ RDB_create_relation_type(int attrc, <a href="#attr">RDB_attr</a> attrv[], RDB_ty
 
 <h3>Description</h3>
 
-<p>RDB_create_tuple_type creates a relation type and stores
+<p>RDB_create_relation_type creates a relation type and stores
 a pointer to the type at the location pointed to by <var>typp</var>.
 The attributes are specified by <var>attrc</var> and <var>attrv</var>.
 The fields defaultp and options of RDB_attr are ignored.
