@@ -1,5 +1,3 @@
-CFLAGS = -g
-
 bin_PROGRAMS = util/lstables util/droptable util/dropdb
 
 # Muss geändert werden, sonst wird libpoint installiert
@@ -26,11 +24,12 @@ LDADD = -L/usr/local/BerkeleyDB.4.1/lib libduro.la -ldb @LIBS@
 
 libduro_la_SOURCES = gen/errors.c gen/hashmap.c gen/strfns.c rec/cursor.c \
 rec/env.c rec/index.c rec/recmap.c rel/array.c rel/internal.h rel/database.c \
-rel/expression.c rel/getargs.c rel/qresult.c rel/serialize.c \
-rel/table.c rel/transaction.c rel/tuple.c rel/type.c rel/value.c 
+rel/expression.c rel/getargs.c rel/qresult.c rel/serialize.c rel/serialize.h \
+rel/table.c rel/transaction.c rel/tuple.c rel/type.c rel/value.c \
+rel/catalog.c rel/catalog.h
 
 include_HEADERS = gen/errors.h gen/hashmap.h gen/strfns.h gen/types.h \
 rec/cursor.h rec/env.h rec/index.h rec/recmap.h \
-rel/rdb.h rel/serialize.h rel/typeimpl.h
+rel/rdb.h rel/typeimpl.h
 
 INCLUDES = -I$(top_srcdir) -I/usr/local/BerkeleyDB.4.1/include

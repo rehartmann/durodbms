@@ -82,6 +82,15 @@ _RDB_create_table(const char *name, RDB_bool persistent,
                 RDB_transaction *txp, RDB_table **tbpp);
 
 int
+_RDB_open_table(const char *name, RDB_bool persistent,
+           int attrc, RDB_attr heading[],
+           int keyc, RDB_key_attrs keyv[], RDB_bool usr,
+           RDB_bool create, RDB_transaction *txp, RDB_table **tbpp);
+
+int
+_RDB_assign_table_db(RDB_table *tbp, RDB_database *dbp);
+
+int
 _RDB_drop_rtable(RDB_table *tbp, RDB_transaction *txp);
 
 int
