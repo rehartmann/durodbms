@@ -316,7 +316,7 @@ stored_qresult(RDB_qresult *qresp, RDB_table *tbp, RDB_transaction *txp)
 {
     int ret;
 
-    /* !! delay after first call to _RDB_qresult_next() */
+    /* !! delay after first call to _RDB_qresult_next()? */
     ret = RDB_recmap_cursor(&qresp->var.curp, tbp->var.stored.recmapp,
                     0, txp->txid);
     if (ret != RDB_OK) {

@@ -9,8 +9,6 @@ exec tclsh "$0"
 
 load .libs/libdurotcl.so
 
-source tcl/util.tcl
-
 # Create DB environment
 file delete -force tests/dbenv
 file mkdir tests/dbenv
@@ -21,7 +19,8 @@ duro::db create TEST $dbenv
 
 set tx [duro::begin $dbenv TEST]
 
-# Create update operators
+# Create overloaded update operator
+
 duro::operator strmul -updates {a} {a STRING b STRING} {
     append a $b
 } $tx
@@ -57,6 +56,7 @@ if {![string equal $v foobar]} {
     exit 1
 }
 
+set i X
 set v foo
 duro::call strmul v STRING 3 INTEGER $tx
 
@@ -65,12 +65,17 @@ if {![string equal $v foofoofoo]} {
     exit 1
 }
 
+if {$i != "X"} {
+    puts "variable was modified by operator"
+    exit 1
+}
+
 # Invoke read-only operator
 set v [duro::expr {concat("X", "Y")} $tx]
 
 if {![string equal $v XY]} {
-    puts "result is %s, should be %s" $v XY
-    exit 1
+   puts "result is %s, should be %s" $v XY
+   exit 1
 }
 
 duro::commit $tx

@@ -1700,7 +1700,7 @@ _RDB_make_typestr(int argc, RDB_type *argtv[])
     return typesbuf;
 }
 
-/* Read update operator from database */
+/* Read read-only operator from database */
 int
 _RDB_get_cat_ro_op(const char *name, int argc, RDB_type *argtv[],
         RDB_transaction *txp, RDB_ro_op **opp)

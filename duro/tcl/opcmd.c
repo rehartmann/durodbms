@@ -303,48 +303,72 @@ Duro_invoke_update_op(const char *name, int argc, RDB_object *argv[],
     Tcl_Obj *opdatap;
     Tcl_Obj *namelistp;
     Tcl_Obj *bodyp;
+    Tcl_Interp *slinterp;
     RDB_environment *envp = RDB_db_env(RDB_tx_db(txp));
     Tcl_Interp *interp = (Tcl_Interp *) envp->user_data;
 
     /* Get operator data (arg names + body) */
     opdatap = Tcl_NewStringObj((CONST char *) iargp, iarglen);
 
-    /* Get argument names and set arguments */
+    /*
+     * Evaluate operator script in a slave interpreter,
+     * so it runs within its own scope
+     */
 
-    ret = Tcl_ListObjIndex(interp, opdatap, 0, &namelistp);
-    if (ret != TCL_OK)
+    slinterp = Tcl_CreateSlave(interp, "duro::slinterp", 0);
+
+    /*
+     * Get argument names and set arguments
+     */
+
+    ret = Tcl_ListObjIndex(slinterp, opdatap, 0, &namelistp);
+    if (ret != TCL_OK) {
+        Tcl_DeleteInterp(slinterp);
         return RDB_INTERNAL;
+    }
 
     for (i = 0; i < argc; i++) {
         Tcl_Obj *argnamep;
 
-        ret = Tcl_ListObjIndex(interp, namelistp, i, &argnamep);
-        if (ret != TCL_OK)
+        ret = Tcl_ListObjIndex(slinterp, namelistp, i, &argnamep);
+        if (ret != TCL_OK) {
+            Tcl_DeleteInterp(slinterp);
             return RDB_INTERNAL;
+        }
 
-        if (Tcl_ObjSetVar2(interp, argnamep, NULL,
-                Duro_to_tcl(interp, argv[i]), 0) == NULL)
+        if (Tcl_ObjSetVar2(slinterp, argnamep, NULL,
+                Duro_to_tcl(slinterp, argv[i]), 0) == NULL) {
+            Tcl_DeleteInterp(slinterp);
             return RDB_INTERNAL;
-        if (ret != TCL_OK)
+        }
+        if (ret != TCL_OK) {
+            Tcl_DeleteInterp(slinterp);
             return RDB_INTERNAL;
+        }
     }
 
     /* Get body */
-    ret = Tcl_ListObjIndex(interp, opdatap, 1, &bodyp);
-    if (ret != TCL_OK)
+    ret = Tcl_ListObjIndex(slinterp, opdatap, 1, &bodyp);
+    if (ret != TCL_OK) {
+        Tcl_DeleteInterp(slinterp);
         return RDB_INTERNAL;
+    }
 
     /* Execute operator */
-    ret = Tcl_EvalObjEx(interp, bodyp, 0);
+    ret = Tcl_EvalObjEx(slinterp, bodyp, 0);
+    
     switch (ret) {
         case TCL_ERROR:
-            RDB_errmsg(envp, "%s", Tcl_GetStringResult(interp));
+            RDB_errmsg(envp, "%s", Tcl_GetStringResult(slinterp));
+            Tcl_DeleteInterp(slinterp);
             return RDB_INVALID_ARGUMENT;
         case TCL_BREAK:
             RDB_errmsg(envp, "invoked \"break\" outside of a loop");
+            Tcl_DeleteInterp(slinterp);
             return RDB_INVALID_ARGUMENT;
         case TCL_CONTINUE:
             RDB_errmsg(envp, "invoked \"continue\" outside of a loop");
+            Tcl_DeleteInterp(slinterp);
             return RDB_INVALID_ARGUMENT;
     }
 
@@ -354,19 +378,24 @@ Duro_invoke_update_op(const char *name, int argc, RDB_object *argv[],
             Tcl_Obj *argnamep;
             Tcl_Obj *valobjp;
 
-            ret = Tcl_ListObjIndex(interp, namelistp, i, &argnamep);
-            if (ret != TCL_OK)
+            ret = Tcl_ListObjIndex(slinterp, namelistp, i, &argnamep);
+            if (ret != TCL_OK) {
+                Tcl_DeleteInterp(slinterp);
                 return RDB_INTERNAL;
+            }
 
-            valobjp = Tcl_ObjGetVar2(interp, argnamep, NULL, 0);
+            valobjp = Tcl_ObjGetVar2(slinterp, argnamep, NULL, 0);
 
-            ret = Duro_tcl_to_duro(interp, valobjp, RDB_obj_type(argv[i]),
+            ret = Duro_tcl_to_duro(slinterp, valobjp, RDB_obj_type(argv[i]),
                     argv[i]);
-            if (ret != TCL_OK)
+            if (ret != TCL_OK) {
+                Tcl_DeleteInterp(slinterp);
                 return RDB_INTERNAL;
+            }
         }
     }
 
+    Tcl_DeleteInterp(slinterp);
     return RDB_OK;
 }
 
@@ -380,6 +409,7 @@ Duro_invoke_ro_op(const char *name, int argc, RDB_object *argv[],
     Tcl_Obj *opdatap;
     Tcl_Obj *namelistp;
     Tcl_Obj *bodyp;
+    Tcl_Interp *slinterp;
     RDB_environment *envp = RDB_db_env(RDB_tx_db(txp));
     Tcl_Interp *interp = (Tcl_Interp *) envp->user_data;
 
@@ -387,61 +417,74 @@ Duro_invoke_ro_op(const char *name, int argc, RDB_object *argv[],
     opdatap = Tcl_NewStringObj((CONST char *) iargp, iarglen);
 
     /*
+     * Evaluate operator script in a slave interpreter,
+     * so it runs within its own scope
+     */
+
+    slinterp = Tcl_CreateSlave(interp, "duro::slinterp", 0);
+
+    /*
      * Get argument names and set arguments
      */
 
-    ret = Tcl_ListObjIndex(interp, opdatap, 0, &namelistp);
+    ret = Tcl_ListObjIndex(slinterp, opdatap, 0, &namelistp);
     if (ret != TCL_OK) {
-        RDB_errmsg(envp, "%s", Tcl_GetStringResult(interp));
+        RDB_errmsg(envp, "%s", Tcl_GetStringResult(slinterp));
+        Tcl_DeleteInterp(slinterp);
         return RDB_INTERNAL;
     }
 
     for (i = 0; i < argc; i++) {
         Tcl_Obj *argnamep;
 
-        ret = Tcl_ListObjIndex(interp, namelistp, i, &argnamep);
+        ret = Tcl_ListObjIndex(slinterp, namelistp, i, &argnamep);
         if (ret != TCL_OK) {
-            RDB_errmsg(envp, "%s", Tcl_GetStringResult(interp));
+            RDB_errmsg(envp, "%s", Tcl_GetStringResult(slinterp));
+            Tcl_DeleteInterp(slinterp);
             return RDB_INTERNAL;
         }
 
-        if (Tcl_ObjSetVar2(interp, argnamep, NULL,
-                Duro_to_tcl(interp, argv[i]), 0) == NULL) {
-            RDB_errmsg(envp, "%s", Tcl_GetStringResult(interp));
+        if (Tcl_ObjSetVar2(slinterp, argnamep, NULL,
+                Duro_to_tcl(slinterp, argv[i]), 0) == NULL) {
+            RDB_errmsg(envp, "%s", Tcl_GetStringResult(slinterp));
+            Tcl_DeleteInterp(slinterp);
             return RDB_INTERNAL;
         }
         if (ret != TCL_OK) {
-            RDB_errmsg(envp, "%s", Tcl_GetStringResult(interp));
+            RDB_errmsg(envp, "%s", Tcl_GetStringResult(slinterp));
+            Tcl_DeleteInterp(slinterp);
             return RDB_INTERNAL;
         }
     }
 
     /* Get body */
-    ret = Tcl_ListObjIndex(interp, opdatap, 1, &bodyp);
+    ret = Tcl_ListObjIndex(slinterp, opdatap, 1, &bodyp);
     if (ret != TCL_OK) {
-        RDB_errmsg(envp, "%s", Tcl_GetStringResult(interp));
+        RDB_errmsg(envp, "%s", Tcl_GetStringResult(slinterp));
+        Tcl_DeleteInterp(slinterp);
         return RDB_INTERNAL;
     }
 
     /* Execute operator */
-    ret = Tcl_EvalObjEx(interp, bodyp, 0);
+    ret = Tcl_EvalObjEx(slinterp, bodyp, 0);
     switch (ret) {
         case TCL_ERROR:
-            RDB_errmsg(envp, "%s", Tcl_GetStringResult(interp));
+            RDB_errmsg(envp, "%s", Tcl_GetStringResult(slinterp));
+            Tcl_DeleteInterp(slinterp);
             return RDB_INVALID_ARGUMENT;
         case TCL_BREAK:
             RDB_errmsg(envp, "invoked \"break\" outside of a loop");
+            Tcl_DeleteInterp(slinterp);
             return RDB_INVALID_ARGUMENT;
         case TCL_CONTINUE:
             RDB_errmsg(envp, "invoked \"continue\" outside of a loop");
+            Tcl_DeleteInterp(slinterp);
             return RDB_INVALID_ARGUMENT;
     }
 
     /* Convert result */
-    ret = Duro_tcl_to_duro(interp, Tcl_GetObjResult(interp),
+    ret = Duro_tcl_to_duro(slinterp, Tcl_GetObjResult(slinterp),
             RDB_obj_type(retvalp), retvalp);
-    if (ret != RDB_OK)
-        return ret;
-
-    return RDB_OK;
+    Tcl_DeleteInterp(slinterp);
+    return ret;
 }

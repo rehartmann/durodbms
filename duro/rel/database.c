@@ -1631,16 +1631,16 @@ static int
 put_upd_op(RDB_dbroot *dbrootp, RDB_upd_op *op)
 {
     int ret;
-    RDB_upd_op *fop = RDB_hashmap_get(&dbrootp->upd_opmap, op->name, NULL);
+    RDB_upd_op **fopp = RDB_hashmap_get(&dbrootp->upd_opmap, op->name, NULL);
 
-    if (fop == NULL) {
+    if (fopp == NULL || *fopp == NULL) {
         op->nextp = NULL;
         ret = RDB_hashmap_put(&dbrootp->upd_opmap, op->name, &op, sizeof (op));
         if (ret != RDB_OK)
             return ret;
     } else {
-        op->nextp = fop->nextp;
-        fop->nextp = op;
+        op->nextp = (*fopp)->nextp;
+        (*fopp)->nextp = op;
     }
     return RDB_OK;
 }
