@@ -49,6 +49,7 @@ void _RDB_init_builtin_types(void)
     RDB_BOOLEAN.name = "BOOLEAN";
     RDB_BOOLEAN.var.scalar.repc = 0;
     RDB_BOOLEAN.var.scalar.arep = NULL;
+    RDB_BOOLEAN.var.scalar.constraintp = NULL;
     RDB_BOOLEAN.comparep = NULL;
 
     RDB_STRING.kind = RDB_TP_SCALAR;
@@ -56,6 +57,7 @@ void _RDB_init_builtin_types(void)
     RDB_STRING.name = "STRING";
     RDB_STRING.var.scalar.repc = 0;
     RDB_STRING.var.scalar.arep = NULL;
+    RDB_STRING.var.scalar.constraintp = NULL;
     RDB_STRING.comparep = &compare_string;
 
     RDB_INTEGER.kind = RDB_TP_SCALAR;
@@ -63,6 +65,7 @@ void _RDB_init_builtin_types(void)
     RDB_INTEGER.name = "INTEGER";
     RDB_INTEGER.var.scalar.repc = 0;
     RDB_INTEGER.var.scalar.arep = NULL;
+    RDB_INTEGER.var.scalar.constraintp = NULL;
     RDB_INTEGER.comparep = &compare_int;
 
     RDB_RATIONAL.kind = RDB_TP_SCALAR;
@@ -70,6 +73,7 @@ void _RDB_init_builtin_types(void)
     RDB_RATIONAL.name = "RATIONAL";
     RDB_RATIONAL.var.scalar.repc = 0;
     RDB_RATIONAL.var.scalar.arep = NULL;
+    RDB_RATIONAL.var.scalar.constraintp = NULL;
     RDB_RATIONAL.comparep = &compare_rational;
 
     RDB_BINARY.kind = RDB_TP_SCALAR;
@@ -77,6 +81,7 @@ void _RDB_init_builtin_types(void)
     RDB_BINARY.name = "BINARY";
     RDB_BINARY.var.scalar.repc = 0;
     RDB_BINARY.var.scalar.arep = NULL;
+    RDB_BINARY.var.scalar.constraintp = NULL;
     RDB_BINARY.comparep = NULL;
 }
 
@@ -328,7 +333,7 @@ RDB_get_type(const char *name, RDB_transaction *txp, RDB_type **typp)
 
 int
 RDB_define_type(const char *name, int repc, const RDB_possrep repv[],
-                RDB_transaction *txp)
+                RDB_expression *constraintp, RDB_transaction *txp)
 {
     RDB_object tpl;
     RDB_object conval;
@@ -364,6 +369,14 @@ RDB_define_type(const char *name, int repc, const RDB_possrep repv[],
     if (ret != RDB_OK)
         goto error;
 
+    /* Store constraint in tuple */
+    ret = _RDB_expr_to_obj(&conval, constraintp);
+    if (ret != RDB_OK)
+        goto error;
+    ret = RDB_tuple_set(&tpl, "I_CONSTRAINT", &conval);
+    if (ret != RDB_OK)
+        goto error;
+
     ret = RDB_insert(txp->dbp->dbrootp->types_tbp, &tpl, txp);
     if (ret != RDB_OK)
         goto error;
@@ -374,7 +387,6 @@ RDB_define_type(const char *name, int repc, const RDB_possrep repv[],
 
     for (i = 0; i < repc; i++) {
         char *prname = repv[i].name;
-        RDB_expression *exp = repv[i].constraintp;
 
         if (prname == NULL) {
             /* possrep name may be NULL if there's only 1 possrep */
@@ -385,14 +397,6 @@ RDB_define_type(const char *name, int repc, const RDB_possrep repv[],
             prname = (char *)name;
         }
         ret = RDB_tuple_set_string(&tpl, "POSSREPNAME", prname);
-        if (ret != RDB_OK)
-            goto error;
-        
-        /* Store constraint in tuple */
-        ret = _RDB_expr_to_obj(&conval, exp);
-        if (ret != RDB_OK)
-            goto error;
-        ret = RDB_tuple_set(&tpl, "I_CONSTRAINT", &conval);
         if (ret != RDB_OK)
             goto error;
 
@@ -431,6 +435,9 @@ RDB_define_type(const char *name, int repc, const RDB_possrep repv[],
     RDB_destroy_obj(&typedata);
     RDB_destroy_obj(&conval);    
     RDB_destroy_obj(&tpl);
+
+    if (constraintp != NULL)
+        RDB_drop_expr(constraintp);
     
     return RDB_OK;
     

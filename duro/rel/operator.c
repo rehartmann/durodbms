@@ -518,41 +518,28 @@ _RDB_get_ro_op(const char *name, int argc, RDB_type *argtv[],
 int
 _RDB_check_type_constraint(RDB_object *valp, RDB_transaction *txp)
 {
-    int i, j;
     int ret;
-    RDB_bool result;
 
-    /* Check constraint for each possrep */
-    for (i = 0; i < valp->typ->var.scalar.repc; i++) {
+    if (valp->typ->var.scalar.constraintp != NULL) {
+        RDB_bool result;
         RDB_object tpl;
 
-        if (valp->typ->var.scalar.repv[i].constraintp != NULL) {
-            RDB_init_obj(&tpl);
-            /* Set tuple attributes */
-            for (j = 0; j < valp->typ->var.scalar.repv[i].compc; j++) {
-                RDB_object comp;
-                char *compname = valp->typ->var.scalar.repv[i].compv[j].name;
+        RDB_init_obj(&tpl);
 
-                RDB_init_obj(&comp);
-                ret = RDB_obj_comp(valp, compname, &comp, txp);
-                if (ret != RDB_OK) {
-                    RDB_destroy_obj(&comp);
-                    RDB_destroy_obj(&tpl);
-                    return ret;
-                }
-                ret = RDB_tuple_set(&tpl, compname, &comp);
-                RDB_destroy_obj(&comp);
-                if (ret != RDB_OK) {
-                    RDB_destroy_obj(&tpl);
-                    return ret;
-                }
-            }
-            RDB_evaluate_bool(valp->typ->var.scalar.repv[i].constraintp,
-                    &tpl, txp, &result);
+        /* Set tuple attribute */
+        ret = RDB_tuple_set(&tpl, valp->typ->name, valp);
+        if (ret != RDB_OK) {
             RDB_destroy_obj(&tpl);
-            if (!result) {
-                return RDB_TYPE_CONSTRAINT_VIOLATION;
-            }
+            return ret;
+        }
+        ret = RDB_evaluate_bool(valp->typ->var.scalar.constraintp, &tpl, txp,
+                &result);
+        RDB_destroy_obj(&tpl);
+        if (ret != RDB_OK) {
+            return ret;
+        }
+        if (!result) {
+            return RDB_TYPE_CONSTRAINT_VIOLATION;
         }
     }
     return RDB_OK;

@@ -94,7 +94,6 @@ typedef struct RDB_ipossrep {
     char *name;
     int compc;
     RDB_attr *compv;
-    struct RDB_expression *constraintp;
 } RDB_ipossrep;
 
 typedef int RDB_ro_op_func(const char *name, int argc, RDB_object *argv[],

@@ -25,10 +25,10 @@ set tx [duro::begin $dbenv TEST]
 #
 # Define type NAME. Only rep is a string without leading or trailing blanks
 #
-duro::type define NAME {
-    {NAME {{NAME STRING}} {NOT ((NAME MATCHES "^ .*") \
-            OR (NAME MATCHES ".* $"))}}
-} $tx
+duro::type define NAME { {NAME { {NAME STRING} } } } \
+        {NOT ((THE_NAME(NAME) MATCHES "^ .*") \
+                OR (THE_NAME(NAME) MATCHES ".* $"))} \
+        $tx
 
 duro::type implement NAME $tx
 

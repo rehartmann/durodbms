@@ -3532,7 +3532,7 @@ RDB_drop_expr(RDB_expression *exp);
 
 int
 RDB_define_type(const char *name, int repc, const <a href="#possrep">RDB_possrep</a> repv[],
-                RDB_transaction *txp);
+                RDB_expression *constraintp, RDB_transaction *txp);
 </pre>
 
 <h3>Description</h3>
@@ -3541,6 +3541,10 @@ RDB_define_type(const char *name, int repc, const <a href="#possrep">RDB_possrep
 <var>repc</var> possible representations.
 The individual possible representations are
 described by the elements of <var>repv</var>.
+
+<p>If <var>constraintp</var> is not NULL, it specifies the type constraint.
+When the constraint is evaluated, the value to check is made available
+as an attribute with the same name as the type.
 
 <h3>Return value</h3>
 
@@ -4515,7 +4519,6 @@ typedef struct {
     char *name;
     int compc;
     RDB_attr *compv;
-    RDB_expression *constraintp;
 } RDB_possrep;
 </pre>
 

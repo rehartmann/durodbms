@@ -79,7 +79,8 @@ static RDB_attr types_attrv[] = {
     { "TYPENAME", &RDB_STRING, NULL, 0 },
     { "I_AREP_LEN", &RDB_INTEGER, NULL, 0 },
     { "I_AREP_TYPE", &RDB_BINARY, NULL, 0 },
-    { "I_SYSIMPL", &RDB_BOOLEAN, NULL, 0}
+    { "I_SYSIMPL", &RDB_BOOLEAN, NULL, 0},
+    { "I_CONSTRAINT", &RDB_BINARY, NULL, 0 }
 };
 static char *types_keyattrv[] = { "TYPENAME" };
 static RDB_string_vec types_keyv[] = { { 1, types_keyattrv } };
@@ -87,7 +88,6 @@ static RDB_string_vec types_keyv[] = { { 1, types_keyattrv } };
 static RDB_attr possreps_attrv[] = {
     { "TYPENAME", &RDB_STRING, NULL, 0 },
     { "POSSREPNAME", &RDB_STRING, NULL, 0 },
-    { "I_CONSTRAINT", &RDB_BINARY, NULL, 0 }
 };
 static char *possreps_keyattrv[] = { "TYPENAME", "POSSREPNAME" };
 static RDB_string_vec possreps_keyv[] = { { 2, possreps_keyattrv } };
@@ -910,13 +910,13 @@ _RDB_open_systables(RDB_dbroot *dbrootp, RDB_transaction *txp)
         return ret;
     }
 
-    ret = provide_systable("SYS_TYPES", 4, types_attrv, 1, types_keyv,
+    ret = provide_systable("SYS_TYPES", 5, types_attrv, 1, types_keyv,
             create, txp, dbrootp->envp, &dbrootp->types_tbp);
     if (ret != RDB_OK) {
         return ret;
     }
 
-    ret = provide_systable("SYS_POSSREPS", 3, possreps_attrv,
+    ret = provide_systable("SYS_POSSREPS", 2, possreps_attrv,
             1, possreps_keyv, create, txp, dbrootp->envp,
             &dbrootp->possreps_tbp);
     if (ret != RDB_OK) {
@@ -1841,6 +1841,12 @@ _RDB_cat_get_type(const char *name, RDB_transaction *txp, RDB_type **typp)
         goto error;
     }
 
+    ret = _RDB_deserialize_expr(RDB_tuple_get(&tpl, "I_CONSTRAINT"), txp,
+            &typ->var.scalar.constraintp);
+    if (ret != RDB_OK) {
+        goto error;
+    }
+
     typ->ireplen = RDB_tuple_get_int(&tpl, "I_AREP_LEN");
     typ->var.scalar.sysimpl = RDB_tuple_get_bool(&tpl, "I_SYSIMPL");
     typ->var.scalar.repc = 0;
@@ -1878,12 +1884,6 @@ _RDB_cat_get_type(const char *name, RDB_transaction *txp, RDB_type **typp)
                 RDB_tuple_get_string(tplp, "POSSREPNAME"));
         if (typ->var.scalar.repv[i].name == NULL) {
             ret = RDB_NO_MEMORY;
-            goto error;
-        }
-
-        ret = _RDB_deserialize_expr(RDB_tuple_get(tplp, "I_CONSTRAINT"), txp,
-                &typ->var.scalar.repv[i].constraintp);
-        if (ret != RDB_OK) {
             goto error;
         }
 

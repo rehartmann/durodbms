@@ -21,13 +21,14 @@ type_define_cmd(TclState *statep, Tcl_Interp *interp, int objc,
     RDB_transaction *txp;
     int repc;
     RDB_possrep *repv = NULL;
+    RDB_expression *constraintp = NULL;
 
-    if (objc != 5) {
-        Tcl_WrongNumArgs(interp, 2, objv, "typename possreps tx");
+    if ((objc < 5) || (objc > 6)) {
+        Tcl_WrongNumArgs(interp, 2, objv, "typename possreps ?constraint? tx");
         return TCL_ERROR;
     }
 
-    txstr = Tcl_GetString(objv[4]);
+    txstr = Tcl_GetString(objv[objc - 1]);
     entryp = Tcl_FindHashEntry(&statep->txs, txstr);
     if (entryp == NULL) {
         Tcl_AppendResult(interp, "Unknown transaction: ", txstr, NULL);
@@ -42,7 +43,6 @@ type_define_cmd(TclState *statep, Tcl_Interp *interp, int objc,
     repv = (RDB_possrep *) Tcl_Alloc(sizeof(RDB_possrep) * repc);
     for (i = 0; i < repc; i++) {
         repv[i].compv = NULL;
-        repv[i].constraintp = NULL;
     }
 
     /*
@@ -51,7 +51,7 @@ type_define_cmd(TclState *statep, Tcl_Interp *interp, int objc,
     for (i = 0; i < repc; i++) {
         Tcl_Obj *repobjp;
         int repobjlen;
-        Tcl_Obj *repnameobjp, *repcompsobjp, *repconstrobjp;
+        Tcl_Obj *repnameobjp, *repcompsobjp;
         int j;
 
         ret = Tcl_ListObjIndex(interp, objv[3], i, &repobjp);
@@ -62,7 +62,7 @@ type_define_cmd(TclState *statep, Tcl_Interp *interp, int objc,
         if (ret != TCL_OK)
             goto cleanup;
 
-        if ((repobjlen < 2) || (repobjlen > 3)) {
+        if (repobjlen != 2) {
             Tcl_SetResult(interp, "Invalid possible representation", TCL_STATIC);
             ret = TCL_ERROR;
             goto cleanup;
@@ -121,24 +121,20 @@ type_define_cmd(TclState *statep, Tcl_Interp *interp, int objc,
                 goto cleanup;
             }
         }
-
-        if (repobjlen == 3) {
-            /* Type constraint */
-            ret = Tcl_ListObjIndex(interp, repobjp, 2, &repconstrobjp);
-            if (ret != TCL_OK)
-                goto cleanup;
-            ret = Duro_parse_expr_utf(interp, Tcl_GetString(repconstrobjp),
-                    statep, txp, &repv[i].constraintp);
-            if (ret != TCL_OK) {
-                goto cleanup;
-            }            
-        } else {
-            repv[i].constraintp = NULL;
-        }
     }
 
-    ret = RDB_define_type(Tcl_GetString(objv[2]), repc, repv, txp);
+    if (objc == 6) {
+        /* Type constraint */
+        ret = Duro_parse_expr_utf(interp, Tcl_GetString(objv[4]),
+                statep, txp, &constraintp);
+        if (ret != TCL_OK) {
+            goto cleanup;
+        }            
+    }
+
+    ret = RDB_define_type(Tcl_GetString(objv[2]), repc, repv, constraintp, txp);
     if (ret != RDB_OK) {
+        RDB_drop_expr(constraintp);
         Duro_dberror(interp, ret);
         ret = TCL_ERROR;
         goto cleanup;
@@ -149,8 +145,6 @@ cleanup:
     if (repv != NULL) {
         for (i = 0; i < repc; i++) {
             Tcl_Free((char *) repv[i].compv);
-            if ((ret != RDB_OK) && (repv[i].constraintp != NULL))
-                RDB_drop_expr(repv[i].constraintp);
         }
         Tcl_Free((char *) repv);
     }

@@ -16,13 +16,15 @@
 <h2>Description</h2>
 
 <dl>
-<dt><b>duro::type define</b> <var>typename possreps txId</var>
+<dt><b>duro::type define</b> <var>typename possreps ?constraint? txId</var>
 <dd>
 <p>This subcommand defines the user-defined type <var>typename</var>
 under the control of the transaction specified by <var>txId</var>.
+The type constraint is specified by the optional argument
+<var>constraint</var>.
 
 <p><var>possreps</var> is a list of possible representations.
-Each possible representation is itself a list of two or three elements.
+Each possible representation is itself a list of two elements.
 
 <p>The first element is the name of the possible representation.
 
@@ -31,8 +33,6 @@ by a list consisting of two elements. The first element is the component
 name, and the second element is the component type.
 Types are specified as in <a href="table.html#create">duro::table
 create</a>.
-
-<p>The third, optional element is a type constraint.
 
 <dt><b>duro::type implement</b> <var>typename ?arep? txId</var>
 <dd>

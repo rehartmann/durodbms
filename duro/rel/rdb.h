@@ -33,7 +33,6 @@ typedef struct {
     char *name;
     int compc;
     struct RDB_attr *compv;
-    struct RDB_expression *constraintp;
 } RDB_possrep;
 
 enum _RDB_obj_kind {
@@ -121,6 +120,8 @@ typedef struct RDB_type {
             /* Actual representation, if the type is represented by another type.
                Otherwise NULL. */
             struct RDB_type *arep; 
+
+            struct RDB_expression *constraintp;
         } scalar;
     } var;
 } RDB_type;
@@ -437,7 +438,7 @@ RDB_drop_table_index(const char *name, RDB_transaction *);
 
 int
 RDB_define_type(const char *name, int repc, const RDB_possrep repv[],
-                RDB_transaction *txp);
+                RDB_expression *constraintp, RDB_transaction *txp);
 
 /*
  * Lookup the type with name name from the database pointed to by dbp.

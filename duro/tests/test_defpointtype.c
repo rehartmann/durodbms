@@ -17,8 +17,8 @@ RDB_attr polarcompv[] = {
 };
 
 RDB_possrep prv[] = {
-    { "POINT", 2, pointcompv, NULL },
-    { "POLAR", 2, polarcompv, NULL }
+    { "POINT", 2, pointcompv },
+    { "POLAR", 2, polarcompv }
 };
 
 RDB_type *argtv[] = { &RDB_RATIONAL, &RDB_RATIONAL };
@@ -40,7 +40,7 @@ test_type(RDB_database *dbp)
     }
 
     printf("Defining type\n");
-    ret = RDB_define_type("POINT", 2, prv, &tx);
+    ret = RDB_define_type("POINT", 2, prv, NULL, &tx);
     if (ret != RDB_OK) {
         RDB_rollback(&tx);
         return ret;

@@ -10,6 +10,7 @@ test_type(RDB_database *dbp)
 {
     RDB_transaction tx;
     RDB_possrep pr;
+    RDB_expression *constraintp;
     RDB_attr comp;
     int ret;
 
@@ -25,13 +26,15 @@ test_type(RDB_database *dbp)
     pr.name = NULL;
     pr.compc = 1;
     pr.compv = &comp;
-    pr.constraintp = RDB_ro_op_va("<", RDB_expr_attr("TINYINT"),
+    constraintp = RDB_ro_op_va("<",
+            RDB_expr_comp(RDB_expr_attr("TINYINT"), "TINYINT"),
             RDB_int_to_expr(100), (RDB_expression *) NULL);
-    if (pr.constraintp == NULL) {
+    if (constraintp == NULL) {
         return RDB_NO_MEMORY;
     }
-    ret = RDB_define_type("TINYINT", 1, &pr, &tx);
+    ret = RDB_define_type("TINYINT", 1, &pr, constraintp, &tx);
     if (ret != RDB_OK) {
+        RDB_drop_expr(constraintp);
         RDB_rollback(&tx);
         return ret;
     }
