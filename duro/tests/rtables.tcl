@@ -104,6 +104,24 @@ if {![tequal $t $s] } {
     exit 1
 }
 
+# Should have no effect
+duro::update T2 {STRATTR1 = "Bla" AND INTATTR = 3} STRATTR3 {"Blubb"} $tx
+
+set v [duro::expr {(TUPLE FROM T2).STRATTR3} $tx]
+if {$v != "Blubbx"} {
+    puts "Value should be Blubbx, but is $v"
+    exit 1
+}
+
+# Should update tuple
+duro::update T2 {STRATTR1 = "Bla" AND INTATTR = 2} STRATTR3 {"Blubby"} $tx
+
+set v [duro::expr {(TUPLE FROM T2).STRATTR3} $tx]
+if {$v != "Blubby"} {
+    puts "Value should be Blubby, but is $v"
+    exit 1
+}
+
 # Tuple must not be deleted
 duro::delete T2 {INTATTR = 2 AND STRATTR2 = "Blo"} $tx
 
@@ -122,7 +140,7 @@ if {[duro::expr {IS_EMPTY (T2)} $tx]} {
 }
 
 # Tuple must be deleted
-duro::delete T2 {INTATTR = 2 AND STRATTR2 = "Bli" AND STRATTR3 = "Blubbx"} $tx
+duro::delete T2 {INTATTR = 2 AND STRATTR2 = "Bli" AND STRATTR3 = "Blubby"} $tx
 
 if {![duro::expr {IS_EMPTY (T2)} $tx]} {
     puts "T2 should be empty, but is not"

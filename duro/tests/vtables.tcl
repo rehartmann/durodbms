@@ -62,6 +62,7 @@ duro::table expr -global TM {T1 MINUS T2} $tx
 duro::table expr -global TI {T1 INTERSECT T2} $tx
 duro::table expr -global TJ {TU JOIN T3} $tx
 duro::table expr -global TR {T1 RENAME (K AS KN, S1 AS SN)} $tx
+duro::table expr -global TX {EXTEND T1 ADD (K*10 AS K0)} $tx
 
 duro::table expr -global TP {(T1 WHERE K = 1) {K}} $tx
 duro::table expr -global TM2 {(T1 WHERE K = 1) MINUS (T2 WHERE K = 1)} $tx
@@ -147,6 +148,26 @@ if {$l != {0 2 3 4 5}} {
     puts "l is $l, should be {0 2 3 4 5}"
     exit 1
 }
+
+duro::delete TM {K = 5} $tx
+
+set tpl [duro::expr {TUPLE FROM TM} $tx]
+set stpl {K 2 S1 Blubb}
+if {![tequal $tpl $stpl]} {
+    puts "TUPLE FROM TM should be $stpl, but is $tpl"
+    exit 1
+}
+
+duro::delete TX {K0 = 40} $tx
+
+set tpl [duro::expr {TUPLE FROM (TX WHERE K0 >= 30)} $tx]
+set stpl {K 3 S1 Blu K0 30}
+if {![tequal $tpl $stpl]} {
+    puts "Tuple should be $stpl, but is $tpl"
+    exit 1
+}
+
+duro::table drop TX $tx
 
 duro::commit $tx
 

@@ -181,19 +181,42 @@ cleanup:
 }
 
 static int
+delete(RDB_table *, RDB_expression *, RDB_transaction *);
+
+static int
+delete_extend(RDB_table *tbp, RDB_expression *condp, RDB_transaction *txp)
+{
+    int ret;
+    RDB_expression *newexp = NULL;
+
+    if (condp != NULL) {    
+        newexp = RDB_dup_expr(condp);
+        if (newexp == NULL)
+            return RDB_NO_MEMORY;
+
+        ret = _RDB_resolve_extend_expr(&newexp, tbp->var.extend.attrc,
+                tbp->var.extend.attrv);
+        if (ret != RDB_OK) {
+            RDB_drop_expr(newexp);
+            return ret;
+        }
+    }
+    ret = delete(tbp->var.extend.tbp, newexp, txp);
+    if (newexp != NULL)
+        RDB_drop_expr(newexp);
+    return ret;
+}
+
+static int
 delete(RDB_table *tbp, RDB_expression *condp, RDB_transaction *txp)
 {
     int ret;
 
     switch (tbp->kind) {
         case RDB_TB_STORED:
-            ret = delete_stored(tbp, condp, txp);
-            if (RDB_is_syserr(ret)) {
-                RDB_rollback_all(txp);
-            }
-            return ret;
+            return delete_stored(tbp, condp, txp);
         case RDB_TB_MINUS:
-            return delete(tbp->var.minus.tb1p, condp, txp); /* !! */
+            return delete(tbp->var.minus.tb1p, condp, txp);
         case RDB_TB_UNION:
             ret = delete(tbp->var._union.tb1p, condp, txp);
             if (ret != RDB_OK)
@@ -223,7 +246,7 @@ delete(RDB_table *tbp, RDB_expression *condp, RDB_transaction *txp)
         case RDB_TB_JOIN:
             return RDB_NOT_SUPPORTED;
         case RDB_TB_EXTEND:
-            return RDB_NOT_SUPPORTED;
+            return delete_extend(tbp, condp, txp);
         case RDB_TB_PROJECT:
             return delete(tbp->var.project.tbp, condp, txp); /* !! */
         case RDB_TB_SUMMARIZE:
@@ -276,5 +299,7 @@ RDB_delete(RDB_table *tbp, RDB_expression *condp, RDB_transaction *txp)
     ret = delete(tbp, NULL, txp);
     if (condp != NULL)
         _RDB_free_table(tbp);
+    if (RDB_is_syserr(ret))
+        RDB_rollback_all(txp);
     return ret;
 }

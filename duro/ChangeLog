@@ -4,6 +4,10 @@ Summary of Changes for Duro
 
 Changes for Duro 0.8
 
+- Implemented RDB_update() for selection tables.
+
+- Implemented RDB_delete() for EXTEND tables.
+
 - Implemented RDB_create_table_index().
 
 - Implemented RDB_table_equals().
