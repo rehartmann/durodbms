@@ -5,6 +5,7 @@
 
 #include <dli/parse.h>
 #include <rel/rdb.h>
+#include <rel/internal.h>
 #include <gen/strfns.h>
 #include <gen/hashmapit.h>
 #include <string.h>
@@ -940,7 +941,6 @@ extractor: TOK_TUPLE TOK_FROM expression {
             YYERROR;
         }
         $$ = RDB_obj_to_expr(&tpl);
-        tbp->refcount++;
         RDB_destroy_obj(&tpl);
         RDB_drop_expr($3);
     }
@@ -1324,7 +1324,8 @@ RDB_get_ltable(void *arg);
 static RDB_table *
 expr_to_table(const RDB_expression *exp)
 {
-    RDB_object *valp;
+    RDB_object val;
+    RDB_table *tbp;
 
     if (exp->kind == RDB_EX_ATTR) {
         RDB_table *tbp;
@@ -1341,16 +1342,21 @@ expr_to_table(const RDB_expression *exp)
         return tbp;
     }
 
-    valp = RDB_expr_obj((RDB_expression *) exp);
-    if (valp == NULL) {
-        expr_ret = RDB_INVALID_ARGUMENT;
+    RDB_init_obj(&val);
+    expr_ret = RDB_evaluate((RDB_expression *) exp, NULL, expr_txp, &val);
+    if (expr_ret != RDB_OK) {
+        RDB_destroy_obj(&val);
         return NULL;
     }
-    if (exp->var.obj.kind == RDB_OB_TABLE)
-        return exp->var.obj.var.tbp;
 
-    expr_ret = RDB_INVALID_ARGUMENT;
-    return NULL;
+    if (val.kind != RDB_OB_TABLE) {
+        expr_ret = RDB_INVALID_ARGUMENT;
+        RDB_destroy_obj(&val);
+        return NULL;
+    }
+    tbp = val.var.tbp;
+    RDB_destroy_obj(&val);
+    return tbp;
 }
 
 static RDB_expression *

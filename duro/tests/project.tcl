@@ -44,18 +44,19 @@ set tx [duro::begin $dbenv TEST]
 
 # Create real table
 duro::table create R {
-   {INTATTR INTEGER}
-   {STRATTR STRING yo}
-} {{INTATTR}} $tx
+   {A INTEGER}
+   {B STRING yo}
+   {C STRING}
+} {{A}} $tx
 
 # Create project tables
-duro::table expr -global P1 {R {ALL BUT STRATTR}} $tx
-duro::table expr -global P2 {R {STRATTR}} $tx
+duro::table expr -global P1 {R {ALL BUT B}} $tx
+duro::table expr -global P2 {R {B}} $tx
 
 # Insert tuple into real table
-duro::insert R {INTATTR 1 STRATTR Bla} $tx
-duro::insert R {INTATTR 2 STRATTR Blubb} $tx
-duro::insert R {INTATTR 3 STRATTR Blubb} $tx
+duro::insert R {A 1 B Bla C c} $tx
+duro::insert R {A 2 B Blubb C d} $tx
+duro::insert R {A 3 B Blubb C e} $tx
 
 duro::commit $tx
 
@@ -67,28 +68,47 @@ set dbenv [duro::env open tests/dbenv]
 
 set tx [duro::begin $dbenv TEST]
 
+if {![catch {
+    duro::table contains P1 {} $tx
+}]} {
+    puts "P1 contains empty tuple, but should not"
+    exit 1
+}
+
+set tpl {A 1 C c}
+if {![duro::table contains P1 $tpl $tx]} {
+    puts "P1 does not contain $tpl, but should"
+    exit 1
+}
+
+set tpl {A 1 C d}
+if {[duro::table contains P1 $tpl $tx]} {
+    puts "P1 contains $tpl, but should not"
+    exit 1
+}
+
 # Insert tuple into virtual table
-duro::insert P1 {INTATTR 4} $tx
+duro::insert P1 {A 4 C f} $tx
 
 # Update table
-duro::update R {INTATTR=4} INTATTR 5 $tx
+duro::update R {A = 4} A 5 $tx
 
-set a [duro::array create R {INTATTR asc} $tx]
+set a [duro::array create R {A asc} $tx]
 
-checkarray $a { {INTATTR 1 STRATTR Bla} {INTATTR 2 STRATTR Blubb}
-       {INTATTR 3 STRATTR Blubb} {INTATTR 5 STRATTR yo} } $tx
-
-duro::array drop $a
-
-set a [duro::array create P1 {INTATTR asc} $tx]
-
-checkarray $a { {INTATTR 1} {INTATTR 2} {INTATTR 3} {INTATTR 5} } $tx
+checkarray $a { {A 1 B Bla C c} {A 2 B Blubb C d}
+       {A 3 B Blubb C e} {A 5 B yo C f} } $tx
 
 duro::array drop $a
 
-set a [duro::array create P2 {STRATTR desc} $tx]
+set a [duro::array create P1 {A asc} $tx]
 
-checkarray $a { {STRATTR yo} {STRATTR Blubb} {STRATTR Bla} } $tx
+checkarray $a { {A 1 C c} {A 2 C d} {A 3 C e} {A 5 C f} } $tx
+
+duro::array drop $a
+
+set a [duro::array create P2 {B desc} $tx]
+
+checkarray $a { {B yo} {B Blubb} {B Bla} } $tx
 
 duro::array drop $a
 

@@ -74,6 +74,14 @@ if {![duro::table contains T1 $tpl $tx]} {
 
 duro::insert T1 {SCATTR 3 RLATTR {}} $tx
 
+set v [duro::expr {(TUPLE FROM (T1 WHERE RLATTR = RELATION {
+        TUPLE {A 1, B "x"}, TUPLE {A 2, B "y"}})).SCATTR} $tx]
+
+if {$v != 2} {
+    puts "SCATTR value should be 2, but is $v"
+    exit 1
+}
+
 duro::table expr X {EXTEND T1 ADD (COUNT(RLATTR) AS RCNT,
         IS_EMPTY(RLATTR) AS REMPTY)} $tx
 
@@ -147,9 +155,37 @@ if {$alen != 2} {
     exit 1
 }
 
+duro::array drop $da
+
+set tpl {B y A 1 SCATTR 2}
+if {![duro::table contains U1 $tpl $tx]} {
+    puts "U1 should contain $tpl, but does not"
+    exit 1
+}
+
+set tpl {B x A 1 SCATTR 2}
+if {[duro::table contains U1 $tpl $tx]} {
+    puts "U1 should not contain $tpl, but does"
+    exit 1
+}
+
 duro::insert T3 {A a B 2 C c} $tx
 duro::insert T3 {A a B 3 C c} $tx
 duro::insert T3 {A b B 2 C d} $tx
+
+set tpl {A a BC {{B 2 C c} {B 3 C c}}}
+
+if {![duro::table contains G1 $tpl $tx]} {
+    puts "G1 should contain $tpl, but does not"
+    exit 1
+}
+
+set tpl {A a BC {{B 2 C c}}}
+
+if {[duro::table contains G1 $tpl $tx]} {
+    puts "G1 should not contain $tpl, but does"
+    exit 1
+}
 
 set cnt [duro::expr {COUNT(G1)} $tx]
 if {$cnt != 2} {
@@ -157,8 +193,7 @@ if {$cnt != 2} {
     exit 1
 }
 
-set tpl [lindex [duro::expr {(TUPLE FROM ((G1 WHERE A = "b") {BC})).BC} \
-        $tx] 0]
+set tpl [duro::expr {TUPLE FROM ((TUPLE FROM (G1 WHERE A = "b")).BC)} $tx]
 array unset ta
 array set ta $tpl
 if {$ta(B) != 2 || $ta(C) != "d"} {
@@ -170,8 +205,6 @@ set cnt [duro::expr {COUNT((TUPLE FROM ((G1 WHERE A = "a") {BC})).BC)} $tx]
 if {$cnt != 2} {
 puts "Incorrect cardinality of BC: $cnt"
     exit 1
-}   
-
-duro::array drop $da
+}
 
 duro::commit $tx

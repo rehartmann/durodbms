@@ -51,6 +51,7 @@ See the release notes for details.
 <li><a href="#sum">RDB_sum</a>
 <li><a href="#summarize">RDB_summarize</a>
 <li><a href="#table_contains">RDB_table_contains</a>
+<li><a href="#table_equals">RDB_table_equals</a>
 <li><a href="#table_is_empty">RDB_table_is_empty</a>
 <li><a href="#table_name">RDB_table_name</a>
 <li><a href="#table_type">RDB_table_type</a>
@@ -1196,7 +1197,7 @@ RDB_extend(RDB_table *, int attrc, <a href="#virtual_attr">RDB_virtual_attr</a> 
 
 <h3>Description</h3>
 
-<p>RDB_rename creates a local (transient) virtual table which is the result of a relational
+<p>RDB_extend creates a local (transient) virtual table which is the result of a relational
 EXTEND operator on the table specified by <var>tbp</var>.
 
 <p>The new table will have <var>attrc</var> additional attributes.
@@ -4233,8 +4234,8 @@ argument <var>err</var>.
 
 <h3>Return value</h3>
 
-<p>Returns the appropriate description string, or an unkown
-error message if the error code is unkown.
+<p>Returns the appropriate description string, or a message
+"unkown error" if the error code is unkown.
 
 <hr>
 

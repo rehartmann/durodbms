@@ -485,8 +485,17 @@ RDB_obj_equals(const RDB_object *val1p, const RDB_object *val2p)
         case RDB_OB_TUPLE:
             return _RDB_tuple_equals(val1p, val2p);
         case RDB_OB_TABLE:
-            /* !! */
-            return RDB_FALSE;
+        {
+            int ret;
+            RDB_bool res;
+
+            ret = RDB_table_equals(val1p->var.tbp, val2p->var.tbp, NULL, &res);
+            if (ret != RDB_OK) {
+                /* !! */
+                return RDB_FALSE;
+            }
+            return res;
+        }
         case RDB_OB_ARRAY:
             return _RDB_array_equals((RDB_object *)val1p, (RDB_object *)val2p);
     }

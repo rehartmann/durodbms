@@ -109,8 +109,7 @@ split_by_index(RDB_table *tbp, _RDB_tbindex *indexp)
     RDB_bool dosplit;
 
     exp = attr_exp(tbp->var.select.exp, indexp->attrv[0].attrname);
-    if (exp->kind != RDB_EX_AND) {
-        
+    if (exp->kind != RDB_EX_AND) {        
         dosplit = RDB_FALSE;
         ixexp = exp;
     } else {

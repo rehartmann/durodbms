@@ -728,3 +728,56 @@ error:
         RDB_rollback_all(txp);
     return ret;
 }
+
+int
+RDB_table_equals(RDB_table *tb1p, RDB_table *tb2p, RDB_transaction *txp,
+        RDB_bool *resp)
+{
+    int ret;
+    RDB_qresult *qrp;
+    RDB_object tpl;
+    int cnt = RDB_cardinality(tb1p, txp);
+
+    /*
+     * Check if both tables have same cardinality
+     */
+    if (cnt < 0)
+        return cnt;
+    ret =  RDB_cardinality(tb2p, txp);
+    if (ret < 0)
+        return ret;
+    if (ret != cnt) {
+        *resp = RDB_FALSE;
+        return RDB_OK;
+    }
+
+    /*
+     * Check if all tuples from table #1 are in table #2
+     * (The implementation is quite inefficient if table #2
+     * is a SUMMARIZE PER or GROUP table)
+     */
+    ret = _RDB_table_qresult(tb1p, txp, &qrp);
+    if (ret != RDB_OK)
+        return ret;
+
+    RDB_init_obj(&tpl);
+    while ((ret = _RDB_next_tuple(qrp, &tpl, txp)) == RDB_OK) {
+        ret = RDB_table_contains(tb2p, &tpl, txp);
+        if (ret == RDB_NOT_FOUND) {
+            *resp = RDB_FALSE;
+            RDB_destroy_obj(&tpl);
+            return _RDB_drop_qresult(qrp, txp);
+        } else if (ret != RDB_OK) {
+            goto error;
+        }
+    }
+
+    *resp = RDB_TRUE;
+    RDB_destroy_obj(&tpl);
+    return _RDB_drop_qresult(qrp, txp);
+
+error:
+    RDB_destroy_obj(&tpl);
+    _RDB_drop_qresult(qrp, txp);
+    return ret;
+}

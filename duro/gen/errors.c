@@ -50,7 +50,7 @@ RDB_strerror(int err)
         case RDB_NOT_SUPPORTED:
             return "operation or option not supported";
     }
-    return "unknown error code";
+    return "unknown error";
 }
 
 int

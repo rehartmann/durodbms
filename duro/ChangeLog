@@ -4,11 +4,11 @@ Summary of Changes for Duro
 
 Changes for Duro 0.8
 
-- Implemented GROUP and UNGROUP.
+- Implemented RDB_table_equals().
 
 - RDB_create_table() does now more complete argument checking.
 
-- Added (albeit icomplete) query optimizer.
+- Added query optimizer.
 
 - Fixed WRAP syntax.
 
@@ -43,6 +43,8 @@ Changes for Duro 0.8
   RDB_create_update_op().
 
 - Implemented relation-valued table attributes.
+
+- Implemented GROUP and UNGROUP.
 
 - Added RDB_expr_contains().
 

@@ -5,6 +5,10 @@
 
 /* $Id$ */
 
+/*
+ * Functions for virtual tables
+ */
+
 #include "rdb.h"
 #include "typeimpl.h"
 #include "internal.h"
@@ -90,8 +94,8 @@ RDB_select(RDB_table *tbp, RDB_expression *condp, RDB_table **resultpp)
     if (RDB_expr_type(condp, tbp->typ->var.basetyp) != &RDB_BOOLEAN)
         return RDB_TYPE_MISMATCH;
 
-    /* Allocate RDB_table structure */    
-    newtbp = _RDB_new_table();    
+    /* Allocate RDB_table structure */
+    newtbp = _RDB_new_table();
     if (newtbp == NULL)
         return RDB_NO_MEMORY;
 
@@ -120,10 +124,10 @@ all_key(RDB_table *tbp)
     int attrc;
     int i;
     RDB_string_vec *keyv = malloc(sizeof (RDB_string_vec));
-    
+
     if (keyv == NULL)
         return NULL;
-    
+
     attrc = keyv[0].strc =
             tbp->typ->var.basetyp->var.tuple.attrc;
     keyv[0].strv = malloc(sizeof(char *) * attrc);
@@ -264,7 +268,7 @@ RDB_join(RDB_table *tb1p, RDB_table *tb2p, RDB_table **resultpp)
     newtbp->is_persistent = RDB_FALSE;
     newtbp->var.join.tb1p = tb1p;
     newtbp->var.join.tb2p = tb2p;
-    
+
     ret = RDB_join_relation_types(tb1p->typ, tb2p->typ, &newtbp->typ);
     if (ret != RDB_OK) {
         free(newtbp);
@@ -293,7 +297,7 @@ RDB_join(RDB_table *tb1p, RDB_table *tb2p, RDB_table **resultpp)
     for (i = 0; i < tb1p->keyc; i++) {
         for (j = 0; j < tb2p->keyc; j++) {
             RDB_string_vec *attrsp = &newtbp->keyv[i * tb2p->keyc + j];
-           
+
             attrsp->strc = tb1p->keyv[i].strc + tb2p->keyv[j].strc;
             attrsp->strv = malloc(sizeof(char *) * attrsp->strc);
             if (attrsp->strv == NULL)
@@ -382,14 +386,14 @@ RDB_extend(RDB_table *tbp, int attrc, RDB_virtual_attr attrv[],
     newtbp->typ = RDB_extend_relation_type(tbp->typ, attrc, attrdefv);
 
     for (i = 0; i < attrc; i++)
-        free(attrdefv[i].name);       
+        free(attrdefv[i].name);
     free(attrdefv);
     return RDB_OK;
 error:
     free(newtbp);
     if (attrdefv != NULL) {
         for (i = 0; i < attrc; i++)
-            free(attrdefv[i].name);       
+            free(attrdefv[i].name);
         free(attrdefv);
     }
     for (i = 0; i < newtbp->keyc; i++) {
@@ -465,7 +469,7 @@ RDB_project(RDB_table *tbp, int attrc, char *attrv[], RDB_table **resultpp)
         }
     } else {
         int j;
-    
+
         /* Pick the keys which survived the projection */
 
         newtbp->keyc = keyc;
@@ -497,7 +501,7 @@ error:
     free(presv);
 
     /* free keys */
-    if (newtbp->keyv != NULL) {       
+    if (newtbp->keyv != NULL) {
         for (i = 0; i < keyc; i++) {
             if (newtbp->keyv[i].strv != NULL)
                 RDB_free_strvec(newtbp->keyv[i].strc, newtbp->keyv[i].strv);
@@ -534,7 +538,7 @@ RDB_remove(RDB_table *tbp, int attrc, char *attrv[], RDB_table **resultpp)
                 /* Not-existing attribute in attrv */
                 ret = RDB_INVALID_ARGUMENT;
                 goto cleanup;
-            }                
+            }
             resattrv[j++] = tuptyp->var.tuple.attrv[i].name;
         }
     }
@@ -544,7 +548,7 @@ RDB_remove(RDB_table *tbp, int attrc, char *attrv[], RDB_table **resultpp)
 cleanup:
     free(resattrv);
     return ret;
-}    
+}
 
 static int
 aggr_type(RDB_type *tuptyp, RDB_type *attrtyp, RDB_aggregate_op op,
@@ -554,7 +558,7 @@ aggr_type(RDB_type *tuptyp, RDB_type *attrtyp, RDB_aggregate_op op,
         *resultpp = &RDB_INTEGER;
         return RDB_OK;
     }
-    
+
     switch (op) {
         /* only to avoid compiler warnings */
         case RDB_COUNTD:
@@ -593,7 +597,7 @@ RDB_summarize(RDB_table *tb1p, RDB_table *tb2p, int addc, RDB_summarize_add addv
     int i, ai;
     int ret;
     int attrc;
-    
+
     /* Additional attribute for each AVG */
     int avgc;
     char **avgv;
@@ -706,7 +710,7 @@ RDB_summarize(RDB_table *tb1p, RDB_table *tb2p, int addc, RDB_summarize_add addv
         tuptyp->var.tuple.attrv[attrc - avgc + i].defaultp = NULL;
         tuptyp->var.tuple.attrv[attrc - avgc + i].options = 0;
     }
-        
+
     newtbp->typ = malloc(sizeof (RDB_type));
     if (newtbp->typ == NULL) {
         ret = RDB_NO_MEMORY;
@@ -907,7 +911,7 @@ RDB_unwrap(RDB_table *tbp, int attrc, char *attrv[],
 
     newtbp->var.unwrap.attrc = attrc;
     newtbp->var.unwrap.attrv = RDB_dup_strvec(attrc, attrv);
-    if (newtbp->var.unwrap.attrv == NULL) {    
+    if (newtbp->var.unwrap.attrv == NULL) {
         RDB_drop_type(newtbp->typ, NULL);
         free(newtbp);
         ret = RDB_NO_MEMORY;
@@ -949,8 +953,8 @@ RDB_sdivide(RDB_table *tb1p, RDB_table *tb2p, RDB_table *tb3p,
         return RDB_INVALID_ARGUMENT;
     }
     RDB_drop_type(typ, NULL);
-    
-    newtbp = _RDB_new_table();    
+
+    newtbp = _RDB_new_table();
     if (newtbp == NULL)
         return RDB_NO_MEMORY;
 

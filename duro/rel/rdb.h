@@ -635,6 +635,9 @@ int
 RDB_table_contains(RDB_table *, const RDB_object *, RDB_transaction *);
 
 int
+RDB_table_equals(RDB_table *, RDB_table *, RDB_transaction *, RDB_bool *);
+
+int
 RDB_subset(RDB_table *tb1p, RDB_table *tb2p, RDB_transaction *txp,
               RDB_bool *resultp);
 
