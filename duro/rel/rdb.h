@@ -153,8 +153,6 @@ enum _RDB_expr_kind {
     RDB_EX_NEGATE,
     RDB_EX_MULTIPLY,
     RDB_EX_DIVIDE,
-    RDB_EX_REGMATCH,
-    RDB_EX_CONCAT,
     RDB_EX_CONTAINS,
     RDB_EX_TO_INTEGER,
     RDB_EX_TO_RATIONAL,
@@ -1075,12 +1073,6 @@ RDB_expression *
 RDB_divide(RDB_expression *, RDB_expression *);
 
 RDB_expression *
-RDB_regmatch(RDB_expression *, RDB_expression *);
-
-RDB_expression *
-RDB_concat(RDB_expression *, RDB_expression *);
-
-RDB_expression *
 RDB_expr_subset(RDB_expression *, RDB_expression *);
 
 /*
@@ -1132,8 +1124,16 @@ RDB_expression *
 RDB_to_string(RDB_expression *);
 
 int
-RDB_user_op(const char *opname, int argc, RDB_expression *argv[],
+RDB_ro_op(const char *opname, int argc, RDB_expression *argv[],
        RDB_transaction *txp, RDB_expression **expp);
+
+int
+RDB_ro_op_1(const char *opname, RDB_expression *arg1,
+        RDB_transaction *txp, RDB_expression **expp);
+
+int
+RDB_ro_op_2(const char *opname, RDB_expression *arg1, RDB_expression *arg2,
+        RDB_transaction *txp, RDB_expression **expp);
 
 /* Return address of encapsulated object, or NULL if not a value */
 RDB_object *

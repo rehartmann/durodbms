@@ -933,8 +933,8 @@ rel_expression: add_expression
             YYERROR;
     }
     | add_expression TOK_MATCHES add_expression {
-        $$ = RDB_regmatch($1, $3);
-        if ($$ == NULL)
+        _RDB_parse_ret = RDB_ro_op_2("MATCHES", $1, $3, _RDB_parse_txp, &$$);
+        if (_RDB_parse_ret != RDB_OK)
             YYERROR;
         _RDB_parse_remove_exp($1);
         _RDB_parse_remove_exp($3);
@@ -1005,8 +1005,8 @@ add_expression: mul_expression
             YYERROR;
     }
     | add_expression TOK_CONCAT mul_expression {
-        $$ = RDB_concat($1, $3);
-        if ($$ == NULL)
+        _RDB_parse_ret = RDB_ro_op_2("||", $1, $3, _RDB_parse_txp, &$$);
+        if (_RDB_parse_ret != RDB_OK)
             YYERROR;
         _RDB_parse_remove_exp($1);
         _RDB_parse_remove_exp($3);
@@ -1303,7 +1303,7 @@ is_empty_invocation: TOK_IS_EMPTY '(' expression ')' {
     ;
 
 operator_invocation: TOK_ID '(' ')' {
-        _RDB_parse_ret = RDB_user_op($1->var.attrname, 0, NULL, _RDB_parse_txp, &$$);
+        _RDB_parse_ret = RDB_ro_op($1->var.attrname, 0, NULL, _RDB_parse_txp, &$$);
         if (_RDB_parse_ret != RDB_OK)
             YYERROR;
         _RDB_parse_ret = _RDB_parse_add_exp($$);
@@ -1328,7 +1328,7 @@ operator_invocation: TOK_ID '(' ')' {
         } else {
             int i;
 
-            _RDB_parse_ret = RDB_user_op($1->var.attrname, $3.expc, $3.expv,
+            _RDB_parse_ret = RDB_ro_op($1->var.attrname, $3.expc, $3.expv,
                     _RDB_parse_txp, &$$);
             if (_RDB_parse_ret != RDB_OK)
                 YYERROR;

@@ -74,7 +74,7 @@ typedef int RDB_ro_op_func(const char *name, int argc, RDB_object *argv[],
         const void *iargp, size_t iarglen, RDB_transaction *txp,
         RDB_object *retvalp);
 
-typedef struct RDB_ro_op {
+typedef struct RDB_ro_op_desc {
     char *name;
     int argc;
     RDB_type **argtv;
@@ -82,8 +82,8 @@ typedef struct RDB_ro_op {
     RDB_object iarg;
     lt_dlhandle modhdl;
     RDB_ro_op_func *funcp;
-    struct RDB_ro_op *nextp;
-} RDB_ro_op;
+    struct RDB_ro_op_desc *nextp;
+} RDB_ro_op_desc;
 
 typedef int RDB_upd_op_func(const char *name, int argc, RDB_object *argv[],
         RDB_bool updv[], const void *iargp, size_t iarglen,
@@ -365,14 +365,14 @@ _RDB_set_nonsc_type(RDB_object *objp, RDB_type *typ);
 
 int
 _RDB_get_ro_op(const char *name, int argc, RDB_type *argtv[],
-               RDB_transaction *txp, RDB_ro_op **opp);
+               RDB_transaction *txp, RDB_ro_op_desc **opp);
 
 int
 _RDB_get_upd_op(const char *name, int argc, RDB_type *argtv[],
                RDB_transaction *txp, RDB_upd_op **opp);
 
 void
-_RDB_free_ro_ops(RDB_ro_op *op);
+_RDB_free_ro_ops(RDB_ro_op_desc *op);
 
 void
 _RDB_free_upd_ops(RDB_upd_op *op);

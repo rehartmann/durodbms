@@ -1953,7 +1953,7 @@ _RDB_make_typesobj(int argc, RDB_type *argtv[], RDB_object *objp)
 /* Read read-only operator from database */
 int
 _RDB_get_cat_ro_op(const char *name, int argc, RDB_type *argtv[],
-        RDB_transaction *txp, RDB_ro_op **opp)
+        RDB_transaction *txp, RDB_ro_op_desc **opp)
 {
     RDB_expression *exp;
     RDB_table *vtbp;
@@ -1962,7 +1962,7 @@ _RDB_get_cat_ro_op(const char *name, int argc, RDB_type *argtv[],
     int i;
     int ret;
     char *libname, *symname;
-    RDB_ro_op *op = NULL;
+    RDB_ro_op_desc *op = NULL;
 
     RDB_init_obj(&typesobj);
     ret = _RDB_make_typesobj(argc, argtv, &typesobj);
@@ -1994,7 +1994,7 @@ _RDB_get_cat_ro_op(const char *name, int argc, RDB_type *argtv[],
     if (ret != RDB_OK)
         goto error;
 
-    op = malloc(sizeof (RDB_ro_op));
+    op = malloc(sizeof (RDB_ro_op_desc));
     if (op == NULL) {
         ret = RDB_NO_MEMORY;
         goto error;
@@ -2127,7 +2127,7 @@ _RDB_get_cat_upd_op(const char *name, int argc, RDB_type *argtv[],
     if (ret != RDB_OK)
         goto error;
 
-    op = malloc(sizeof (RDB_ro_op));
+    op = malloc(sizeof (RDB_ro_op_desc));
     if (op == NULL) {
         ret = RDB_NO_MEMORY;
         goto error;

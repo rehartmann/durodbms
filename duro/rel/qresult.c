@@ -737,7 +737,6 @@ init_qresult(RDB_qresult *qrp, RDB_table *tbp, RDB_transaction *txp)
                 if (ret != RDB_OK)
                     break;
             }
-
             ret = _RDB_table_qresult(tbp->var.project.tbp,
                     txp, &qrp->var.virtual.qrp);
             break;
@@ -862,7 +861,7 @@ _RDB_sorter(RDB_table *tbp, RDB_qresult **qrespp, RDB_transaction *txp,
     RDB_init_obj(&tpl);
     while ((ret = _RDB_next_tuple(tmpqrp, &tpl, txp)) == RDB_OK) {
         int ret2 = RDB_insert(qresp->matp, &tpl, txp);
-        if (ret2 != RDB_OK) {
+        if (ret2 != RDB_OK && ret2 != RDB_ELEMENT_EXISTS) {
             RDB_destroy_obj(&tpl);
             ret = ret2;
             goto error;
@@ -1530,10 +1529,11 @@ next_project_tuple(RDB_qresult *qrp, RDB_object *tplp, RDB_transaction *txp)
                 RDB_tuple_set(tplp, attrnamp, valp);
             }
         }
-
         /* eliminate duplicates, if necessary */
         if (qrp->tbp->var.project.keyloss) {
             ret = RDB_insert(qrp->matp, &tpl, txp);
+            if (ret != RDB_OK && ret != RDB_ELEMENT_EXISTS)
+                return ret;
         } else {
             ret = RDB_OK;
         }

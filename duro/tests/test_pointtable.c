@@ -241,7 +241,7 @@ test_query(RDB_database *dbp)
 
     compv[0] = RDB_rational_to_expr(1.0);
     compv[1] = RDB_rational_to_expr(2.0);
-    ret = RDB_user_op("POINT", 2, compv, &tx, &wherep);
+    ret = RDB_ro_op("POINT", 2, compv, &tx, &wherep);
     if (ret != RDB_OK) {
         goto error;
     } 

@@ -31,7 +31,10 @@ test_regexp(RDB_database *dbp)
 
     printf("Creating selection (NAME regmatch \"o\")\n");
 
-    exprp = RDB_regmatch(RDB_expr_attr("NAME"), RDB_string_to_expr("o"));
+    ret = RDB_ro_op_2("MATCHES", RDB_expr_attr("NAME"), RDB_string_to_expr("o"),
+            &tx, &exprp);
+    if (ret != RDB_OK)
+        goto error;
     
     ret = RDB_select(tbp, exprp, &vtbp);
     if (ret != RDB_OK) {

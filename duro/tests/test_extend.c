@@ -136,7 +136,7 @@ test_extend(RDB_database *dbp)
         ret = RDB_NO_MEMORY;
         goto error;
     }
-    ret = RDB_user_op("LENGTH", 1, &exp, &tx, &extend[1].exp);
+    ret = RDB_ro_op("LENGTH", 1, &exp, &tx, &extend[1].exp);
     if (ret != RDB_OK)
         goto error;
 

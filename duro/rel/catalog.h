@@ -50,7 +50,7 @@ _RDB_make_typesobj(int argc, RDB_type *argtv[], RDB_object *objp);
 
 int
 _RDB_get_cat_ro_op(const char *name, int argc, RDB_type *argtv[],
-        RDB_transaction *txp, RDB_ro_op **opp);
+        RDB_transaction *txp, RDB_ro_op_desc **opp);
 
 int
 _RDB_get_cat_upd_op(const char *name, int argc, RDB_type *argtv[],

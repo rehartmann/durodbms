@@ -221,9 +221,7 @@ serialize_expr(RDB_object *valp, int *posp, const RDB_expression *exp)
         case RDB_EX_SUBTRACT:
         case RDB_EX_MULTIPLY:
         case RDB_EX_DIVIDE:
-        case RDB_EX_REGMATCH:
         case RDB_EX_CONTAINS:
-        case RDB_EX_CONCAT:
         case RDB_EX_SUBSET:
             ret = serialize_expr(valp, posp, exp->var.op.arg1);
             if (ret != RDB_OK)
@@ -939,9 +937,7 @@ deserialize_expr(RDB_object *valp, int *posp, RDB_transaction *txp,
         case RDB_EX_SUBTRACT:
         case RDB_EX_MULTIPLY:
         case RDB_EX_DIVIDE:
-        case RDB_EX_REGMATCH:
         case RDB_EX_CONTAINS:
-        case RDB_EX_CONCAT:
         case RDB_EX_SUBSET:
             ret = deserialize_expr(valp, posp, txp, &ex1p);
             if (ret != RDB_OK)
@@ -1001,7 +997,7 @@ deserialize_expr(RDB_object *valp, int *posp, RDB_transaction *txp,
                     return ret;
                 }
             }
-            ret = RDB_user_op(name, argc, argv, txp, expp);
+            ret = RDB_ro_op(name, argc, argv, txp, expp);
             free(argv);
             if (ret != RDB_OK)
                 return ret;

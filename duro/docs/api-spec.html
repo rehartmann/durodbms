@@ -161,8 +161,6 @@
 <li><a href="#negate">RDB_negate</a>
 <li><a href="#multiply">RDB_multiply</a>
 <li><a href="#divide">RDB_divide</a>
-<li><a href="#concat">RDB_concat</a>
-<li><a href="#regmatch">RDB_regmatch</a>
 <li><a href="#to_int">RDB_to_int</a>
 <li><a href="#to_rational">RDB_to_rational</a>
 <li><a href="#to_string">RDB_to_string</a>
@@ -179,7 +177,9 @@
 <li><a href="#expr_subset">RDB_expr_subset</a>
 <li><a href="#table_to_expr">RDB_table_to_expr</a>
 <li><a href="#tuple_attr">RDB_tuple_attr</a>
-<li><a href="#user_op">RDB_user_op</a>
+<li><a href="#ro_op">RDB_ro_op</a>
+<li><a href="#ro_op_1">RDB_ro_op_1</a>
+<li><a href="#ro_op_2">RDB_ro_op_2</a>
 <li><a href="#drop_expr">RDB_drop_expr</a>
 </ul>
 
@@ -3426,53 +3426,6 @@ failed.
 
 <hr>
 
-<h2 id="concat">RDB_concat</h2>
-
-<pre>
-#include &lt;rel/rdb.h&gt;
-
-RDB_expression *
-RDB_concat(RDB_expression *, RDB_expression *);
-</pre>
-
-<h3>Description</h3>
-
-<p>RDB_concat creates an expression that represents a string
-concatenation. Both arguments must be of type STRING.
-If one of the arguments is NULL, NULL is returned.
-
-<h3>Return value</h3>
-
-<p>A pointer to the newly created expression, of NULL if the creation
-failed.
-
-<hr>
-
-<h2 id="regmatch">RDB_regmatch</h2>
-
-<pre>
-#include &lt;rel/rdb.h&gt;
-
-RDB_expression *
-RDB_regmatch(RDB_expression *arg1p, RDB_expression *arg2p);
-</pre>
-
-<h3>Description</h3>
-
-<p>RDB_regmatch creates an expression that represents a regular
-expression match. Both subexpressions must be of type STRING.
-The expression evaluates to RDB_TRUE if the expression represented by
-<var>arg1p</var> evaluates to a string that matches the regular expression
-to which the expression represented by <var>arg2p</var> evaluates.
-If one of the arguments is NULL, NULL is returned.
-
-<h3>Return value</h3>
-
-<p>A pointer to the newly created expression, of NULL if the creation
-failed.
-
-<hr>
-
 <h2 id="to_int">RDB_to_int</h2>
 
 <pre>
@@ -3757,19 +3710,19 @@ failed.
 
 <hr>
 
-<h2 id="user_op">RDB_user_op</h2>
+<h2 id="ro_op">RDB_ro_op</h2>
 
 <pre>
 #include &lt;rel/rdb.h&gt;
 
 int
-RDB_user_op(const char *opname, int argc, RDB_expression *argv[],
+RDB_ro_op(const char *opname, int argc, RDB_expression *argv[],
        RDB_transaction *txp, RDB_expression **expp);
 </pre>
 
 <h3>Description</h3>
 
-<p>RDB_user_op creates an expression which represents the invocation
+<p>RDB_ro_op creates an expression which represents the invocation
 of a user-defined operator and stores a pointer to the expression
 at the location pointed to by <var>expp</var>.
 
@@ -3782,6 +3735,70 @@ at the location pointed to by <var>expp</var>.
 <dl>
 <dt>RDB_NOT_FOUND
 <dd>The user-defined operator was not found.
+</dl>
+
+<p>The call may also fail for a <a href="#syserr">system error</a>,
+in which case the transaction is implicitly rolled back.
+
+<hr>
+
+<h2 id="ro_op_1">RDB_ro_op_1</h2>
+
+<pre>
+#include &lt;rel/rdb.h&gt;
+
+int
+RDB_ro_op_1(const char *opname, RDB_expression *arg,
+        RDB_transaction *txp, RDB_expression **expp);
+</pre>
+
+<h3>Description</h3>
+
+<p>RDB_ro_op_1 creates an expression which represents the invocation
+of a read-only operator which takes one argument and stores a pointer
+to the expression at the location pointed to by <var>expp</var>.
+
+<h3>Return value</h3>
+
+<p>On success, RDB_OK is returned. On failure, an error code is returned.
+
+<h3>Errors</h3>
+
+<dl>
+<dt>RDB_NOT_FOUND
+<dd>The operator was not found.
+</dl>
+
+<p>The call may also fail for a <a href="#syserr">system error</a>,
+in which case the transaction is implicitly rolled back.
+
+<hr>
+
+<h2 id="ro_op_2">RDB_ro_op_2</h2>
+
+<pre>
+#include &lt;rel/rdb.h&gt;
+
+int
+RDB_ro_op_2(const char *opname, RDB_expression *arg1, RDB_expression *arg2,
+        RDB_transaction *txp, RDB_expression **expp);
+</pre>
+
+<h3>Description</h3>
+
+<p>RDB_ro_op_2 creates an expression which represents the invocation
+of a read-only operator with two arguments and stores a pointer to the expression
+at the location pointed to by <var>expp</var>.
+
+<h3>Return value</h3>
+
+<p>On success, RDB_OK is returned. On failure, an error code is returned.
+
+<h3>Errors</h3>
+
+<dl>
+<dt>RDB_NOT_FOUND
+<dd>The operator was not found.
 </dl>
 
 <p>The call may also fail for a <a href="#syserr">system error</a>,

@@ -44,7 +44,7 @@ free_dbroot(RDB_dbroot *dbrootp)
      */
     RDB_init_hashmap_iter(&it, &dbrootp->ro_opmap);
     while ((datap = RDB_hashmap_next(&it, &keyp, NULL)) != NULL) {
-        RDB_ro_op *op = *(RDB_ro_op **)datap;
+        RDB_ro_op_desc *op = *(RDB_ro_op_desc **)datap;
 
         if (op != NULL)
             _RDB_free_ro_ops(op);

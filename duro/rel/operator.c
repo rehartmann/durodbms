@@ -11,6 +11,7 @@
 #include "serialize.h"
 #include <gen/strfns.h>
 #include <string.h>
+#include <regex.h>
 
 int
 RDB_create_ro_op(const char *name, int argc, RDB_type *argtv[], RDB_type *rtyp,
@@ -171,7 +172,7 @@ cleanup:
 }
 
 static void
-free_ro_op(RDB_ro_op *op) {
+free_ro_op(RDB_ro_op_desc *op) {
     int i;
 
     free(op->name);
@@ -191,10 +192,10 @@ free_ro_op(RDB_ro_op *op) {
 }
 
 void
-_RDB_free_ro_ops(RDB_ro_op *op)
+_RDB_free_ro_ops(RDB_ro_op_desc *op)
 {
     do {
-        RDB_ro_op *nextop = op->nextp;
+        RDB_ro_op_desc *nextop = op->nextp;
         free_ro_op(op);
         op = nextop;
     } while (op != NULL);
@@ -226,12 +227,12 @@ _RDB_free_upd_ops(RDB_upd_op *op)
     } while (op != NULL);
 }
 
-static RDB_ro_op *
+static RDB_ro_op_desc *
 get_ro_op(const RDB_dbroot *dbrootp, const char *name,
         int argc, RDB_type *argtv[])
 {
-    RDB_ro_op **opp = RDB_hashmap_get(&dbrootp->ro_opmap, name, NULL);
-    RDB_ro_op *op;
+    RDB_ro_op_desc **opp = RDB_hashmap_get(&dbrootp->ro_opmap, name, NULL);
+    RDB_ro_op_desc *op;
 
     if (opp == NULL || *opp == NULL)
         return NULL;
@@ -258,10 +259,10 @@ get_ro_op(const RDB_dbroot *dbrootp, const char *name,
 }
 
 static int
-put_ro_op(RDB_dbroot *dbrootp, RDB_ro_op *op)
+put_ro_op(RDB_dbroot *dbrootp, RDB_ro_op_desc *op)
 {
     int ret;
-    RDB_ro_op **fopp = RDB_hashmap_get(&dbrootp->ro_opmap, op->name, NULL);
+    RDB_ro_op_desc **fopp = RDB_hashmap_get(&dbrootp->ro_opmap, op->name, NULL);
 
     if (fopp == NULL || *fopp == NULL) {
         op->nextp = NULL;
@@ -290,7 +291,7 @@ valv_to_typev(int valc, RDB_object **valv) {
 
 int
 _RDB_get_ro_op(const char *name, int argc, RDB_type *argtv[],
-               RDB_transaction *txp, RDB_ro_op **opp)
+               RDB_transaction *txp, RDB_ro_op_desc **opp)
 {
     int ret;
 
@@ -346,7 +347,7 @@ _RDB_check_type_constraint(RDB_object *valp, RDB_transaction *txp)
                 }
             }
             RDB_evaluate_bool(valp->typ->var.scalar.repv[i].constraintp,
-                    &tpl, NULL, &result);
+                    &tpl, txp, &result);
             RDB_destroy_obj(&tpl);
             if (!result) {
                 return RDB_TYPE_CONSTRAINT_VIOLATION;
@@ -360,7 +361,7 @@ int
 RDB_call_ro_op(const char *name, int argc, RDB_object *argv[],
                RDB_transaction *txp, RDB_object *retvalp)
 {
-    RDB_ro_op *op;
+    RDB_ro_op_desc *op;
     int ret;
     RDB_type **argtv;
 
@@ -557,11 +558,11 @@ RDB_drop_op(const char *name, RDB_transaction *txp)
         }        
     } else {
         /* It's a read-only operator */
-        RDB_ro_op **oldopp;
-        RDB_ro_op *op = NULL;
+        RDB_ro_op_desc **oldopp;
+        RDB_ro_op_desc *op = NULL;
 
         /* Delete all versions of readonly operator from hashmap */
-        oldopp = (RDB_ro_op **)RDB_hashmap_get(&txp->dbp->dbrootp->ro_opmap,
+        oldopp = (RDB_ro_op_desc **)RDB_hashmap_get(&txp->dbp->dbrootp->ro_opmap,
                 name, NULL);
         if (oldopp != NULL && *oldopp != NULL)
             _RDB_free_ro_ops(*oldopp);
@@ -635,10 +636,52 @@ substring(const char *name, int argc, RDB_object *argv[],
     return RDB_OK;
 }
 
+static int
+concat(const char *name, int argc, RDB_object *argv[],
+        const void *iargp, size_t iarglen, RDB_transaction *txp,
+        RDB_object *retvalp)
+{
+    size_t s1len = strlen(argv[0]->var.bin.datap);
+
+    RDB_destroy_obj(retvalp);
+    RDB_init_obj(retvalp);
+    _RDB_set_obj_type(retvalp, &RDB_STRING);
+    retvalp->var.bin.len = s1len + strlen(argv[1]->var.bin.datap) + 1;
+    retvalp->var.bin.datap = malloc(retvalp->var.bin.len);
+    if (retvalp->var.bin.datap == NULL) {
+        return RDB_NO_MEMORY;
+    }
+    strcpy(retvalp->var.bin.datap, argv[0]->var.bin.datap);
+    strcpy(((char *)retvalp->var.bin.datap) + s1len, argv[1]->var.bin.datap);
+    return RDB_OK;
+}
+
+static int
+matches(const char *name, int argc, RDB_object *argv[],
+        const void *iargp, size_t iarglen, RDB_transaction *txp,
+        RDB_object *retvalp)
+{
+    regex_t reg;
+    int ret;
+
+    ret = regcomp(&reg, argv[1]->var.bin.datap, REG_NOSUB);
+    if (ret != 0) {
+        return RDB_INVALID_ARGUMENT;
+    }
+    RDB_destroy_obj(retvalp);
+    RDB_init_obj(retvalp);
+    _RDB_set_obj_type(retvalp, &RDB_BOOLEAN);
+    retvalp->var.bool_val = (RDB_bool)
+            (regexec(&reg, argv[0]->var.bin.datap, 0, NULL, 0) == 0);
+    regfree(&reg);
+
+    return RDB_OK;
+}
+
 int
 _RDB_add_builtin_ops(RDB_dbroot *dbrootp)
 {
-    RDB_ro_op *op;
+    RDB_ro_op_desc *op;
     int ret;
 
     op = malloc(sizeof(RDB_dbroot));
@@ -671,6 +714,42 @@ _RDB_add_builtin_ops(RDB_dbroot *dbrootp)
     op->argtv[2] = &RDB_INTEGER;
     op->rtyp = &RDB_STRING;
     op->funcp = &substring;
+    op->modhdl = NULL;
+
+    ret = put_ro_op(dbrootp, op);
+    if (ret != RDB_OK)
+        return ret;
+
+    op = malloc(sizeof(RDB_dbroot));
+    if (op == NULL)
+        return RDB_NO_MEMORY;
+    op->name = RDB_dup_str("||");
+    op->argc = 2;
+    op->argtv = malloc(sizeof (RDB_type *) * 2);
+    if (op->argtv == NULL)
+        return RDB_NO_MEMORY;
+    op->argtv[0] = &RDB_STRING;
+    op->argtv[1] = &RDB_STRING;
+    op->rtyp = &RDB_STRING;
+    op->funcp = &concat;
+    op->modhdl = NULL;
+
+    ret = put_ro_op(dbrootp, op);
+    if (ret != RDB_OK)
+        return ret;
+
+    op = malloc(sizeof(RDB_dbroot));
+    if (op == NULL)
+        return RDB_NO_MEMORY;
+    op->name = RDB_dup_str("MATCHES");
+    op->argc = 2;
+    op->argtv = malloc(sizeof (RDB_type *) * 2);
+    if (op->argtv == NULL)
+        return RDB_NO_MEMORY;
+    op->argtv[0] = &RDB_STRING;
+    op->argtv[1] = &RDB_STRING;
+    op->rtyp = &RDB_BOOLEAN;
+    op->funcp = &matches;
     op->modhdl = NULL;
 
     ret = put_ro_op(dbrootp, op);
