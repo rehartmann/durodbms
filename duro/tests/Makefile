@@ -9,11 +9,12 @@ LDFLAGS = -L$(BDB_LIB) -L../lib -g
 LDLIBS = -lduro -ldb
 RM = rm -f
 
-OBJS = tupletest.o
+OBJS =
 
 EXECS = maptest tupletest prepare test_select test_minus test_union test_intersect \
        test_extend test_ra test_project test_join test_update test_delete \
-       test_null test_keys test_aggregate test_create_view test_print_view
+       test_null test_keys test_aggregate test_create_view test_print_view \
+       test_binary
 
 all :	$(EXECS)
 
@@ -74,8 +75,9 @@ test_create_view : test_create_view.c
 test_print_view : test_print_view.c
 	$(CC) -o test_print_view $(CFLAGS) $(LDFLAGS) test_print_view.c $(LDLIBS)
 
-tupletest.o : tupletest.c
-	$(CC) $(CFLAGS) -c tupletest.c
+tupletest: tupletest.c
+	$(CC) $(CFLAGS) -o tupletest tupletest.c $(LDFLAGS) $(LDLIBS)
 
-tupletest: tupletest.o
-	$(CC) $(CFLAGS) -o tupletest tupletest.o $(LDFLAGS) $(LDLIBS)
+test_binary: test_binary.c
+	$(CC) $(CFLAGS) -o test_binary test_binary.c $(LDFLAGS) $(LDLIBS)
+

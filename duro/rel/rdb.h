@@ -729,6 +729,22 @@ void
 RDB_deinit_value(RDB_value *valp);
 
 /*
+ * Copy len bytes from srcp into the RDB_value at position pos.
+ * The RDB_value must be of type BINARY or newly initialized.
+ */
+int
+RDB_binary_set(RDB_value *, size_t pos, void *srcp, size_t len);
+
+/*
+ * Copy len bytes from the RDB_value at position pos to dstp.
+ */
+int
+RDB_binary_get(const RDB_value *, size_t pos, void *dstp, size_t len);
+
+size_t
+RDB_binary_get_length(const RDB_value *);
+
+/*
  * Return the type of a RDB_expression.
  * Return NULL if type informaton is not available.
  */

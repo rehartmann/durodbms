@@ -57,6 +57,7 @@ calltest test_aggregate
 calltest test_update
 calltest test_delete
 calltest test_null
+calltest test_binary
 
 rm /tmp/duro$$
 

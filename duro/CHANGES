@@ -14,7 +14,7 @@ Changes for (planned) Duro 0.4
 - RDB_init_value(), RDB_init_array(), and RDB_init_tuple() do no longer
   return an error code (the error checking, if necessary, is delayed
   to first use of the variable). This makes initialization/deinitialization
-  code much easier.
+  code much simpler.
 
 - Fixed alignment bug
 

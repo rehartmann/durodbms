@@ -119,3 +119,47 @@ RDB_deinit_value(RDB_value *valp)
             free(valp->var.bin.datap);
     }
 }
+
+int
+RDB_binary_set(RDB_value *valp, size_t pos, void *srcp, size_t len)
+{
+    /* If the value is newly initialized, allocate memory */
+    if (valp->typ == NULL) {
+        valp->var.bin.len = pos + len;
+        valp->var.bin.datap = malloc(valp->var.bin.len);
+        if (valp->var.bin.datap == NULL)
+            return RDB_NO_MEMORY;
+        valp->typ = &RDB_BINARY;
+    }
+
+    /* If the memory block is to small, reallocate */
+    if (valp->var.bin.len < pos + len) {
+        void *datap;
+
+        datap = realloc(valp->var.bin.datap, pos + len);
+        if (datap == NULL)
+            return RDB_NO_MEMORY;
+        valp->var.bin.datap = datap;
+        valp->var.bin.len = pos + len;
+    }
+    
+    /* copy data */
+    memcpy(((RDB_byte *)valp->var.bin.datap) + pos, srcp, len);
+    return RDB_OK;
+}
+
+int
+RDB_binary_get(const RDB_value *valp, size_t pos, void *dstp, size_t len)
+{
+    if (pos + len > valp->var.bin.len)
+        return RDB_NOT_FOUND;
+    memcpy(dstp, ((RDB_byte *)valp->var.bin.datap) + pos, len);
+    return RDB_OK;
+}
+
+size_t
+RDB_binary_get_length(const RDB_value *valp)
+{
+    return valp->var.bin.len;
+}
+        
