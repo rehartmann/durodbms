@@ -118,6 +118,7 @@ serialize_expr(RDB_value *valp, int *posp, const RDB_expression *exprp)
             return serialize_str(valp, posp, exprp->var.attr.name);
         case RDB_OP_NOT:
         case RDB_OP_REL_IS_EMPTY:
+        case RDB_OP_STRLEN:
             return serialize_expr(valp, posp, exprp->var.op.arg1);
         case RDB_OP_EQ:
         case RDB_OP_NEQ:
@@ -128,6 +129,7 @@ serialize_expr(RDB_value *valp, int *posp, const RDB_expression *exprp)
         case RDB_OP_AND:
         case RDB_OP_OR:
         case RDB_OP_ADD:
+        case RDB_OP_SUBTRACT:
         case RDB_OP_REGMATCH:
             ret = serialize_expr(valp, posp, exprp->var.op.arg1);
             if (ret != RDB_OK)
@@ -492,10 +494,11 @@ deserialize_expr(RDB_value *valp, int *posp, RDB_transaction *txp,
             }
             break;
         case RDB_OP_NOT:
+        case RDB_OP_STRLEN:
             ret = deserialize_expr(valp, posp, txp, &expr1p);
             if (ret != RDB_OK)
                 return ret;
-            *exprpp = RDB_not(expr1p);
+            *exprpp = _RDB_create_unexpr(expr1p, ekind);
             if (*exprpp == NULL)
                 return RDB_NO_MEMORY;
             break;
@@ -516,6 +519,7 @@ deserialize_expr(RDB_value *valp, int *posp, RDB_transaction *txp,
         case RDB_OP_AND:
         case RDB_OP_OR:
         case RDB_OP_ADD:
+        case RDB_OP_SUBTRACT:
         case RDB_OP_REGMATCH:
             ret = deserialize_expr(valp, posp, txp, &expr1p);
             if (ret != RDB_OK)

@@ -145,6 +145,7 @@
 <li><a href="#not">RDB_not</a>
 <li><a href="#add">RDB_add</a>
 <li><a href="#subtract">RDB_subtract</a>
+<li><a href="#strlen">RDB_strlen</a>
 <li><a href="#regmatch">RDB_regmatch</a>
 <li><a href="#rel_table">RDB_rel_table</a>
 <li><a href="#rel_is_empty">RDB_rel_is_empty</a>
@@ -1301,6 +1302,24 @@ RDB_add(RDB_expression *, RDB_expression *);
 <pre>
 RDB_expression *
 RDB_subtract(RDB_expression *, RDB_expression *);
+</pre>
+
+<hr>
+
+<h2 id="strlen">RDB_strlen</h2>
+
+<pre>
+RDB_expression *
+RDB_strlen(RDB_expression *arg);
+</pre>
+
+<hr>
+
+<h2 id="regmatch">RDB_regmatch</h2>
+
+<pre>
+RDB_expression *
+RDB_regmatch(RDB_expression *arg1, RDB_expression *arg2);
 </pre>
 
 <hr>

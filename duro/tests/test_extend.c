@@ -26,6 +26,7 @@ print_extend(RDB_table *vtbp, RDB_transaction *txp)
         printf("SALARY: %f\n", (float)RDB_tuple_get_rational(&tpl, "SALARY"));
         printf("SALARY_W_BONUS: %f\n",
                 (float)RDB_tuple_get_rational(&tpl, "SALARY_W_BONUS"));
+        printf("NAME_LEN: %d\n", (int)RDB_tuple_get_int(&tpl, "NAME_LEN"));
     }
     RDB_destroy_tuple(&tpl);
     if (ret != RDB_NOT_FOUND) {
@@ -68,7 +69,7 @@ insert_extend(RDB_table *vtbp, RDB_transaction *txp)
 
     ret = RDB_insert(vtbp, &tpl, txp);
     if (ret == RDB_PREDICATE_VIOLATION) {
-        printf("predicate violation - OK\n");
+        printf("Return code: %s - OK\n", RDB_strerror(ret));
     } else {
         printf("Error: %s\n", RDB_strerror(ret));
     }
@@ -90,6 +91,9 @@ insert_extend(RDB_table *vtbp, RDB_transaction *txp)
     ret = RDB_tuple_set_rational(&tpl, "SALARY_W_BONUS", (RDB_rational)4100.0);
     if (ret != RDB_OK)
         goto error;
+    ret = RDB_tuple_set_int(&tpl, "NAME_LEN", (RDB_int)7);
+    if (ret != RDB_OK)
+        goto error;
 
     ret = RDB_insert(vtbp, &tpl, txp);
     if (ret != RDB_OK)
@@ -109,13 +113,14 @@ test_extend(RDB_database *dbp)
     RDB_transaction tx;
     RDB_table *tbp, *vtbp;
     int ret;
-    RDB_virtual_attr extend = {
-        "SALARY_W_BONUS",
-        NULL
+    RDB_virtual_attr extend[] = {
+        { "SALARY_W_BONUS", NULL },
+        { "NAME_LEN", NULL }
     };
 
-    extend.exp = RDB_add(RDB_expr_attr("SALARY", &RDB_RATIONAL),
+    extend[0].exp = RDB_add(RDB_expr_attr("SALARY", &RDB_RATIONAL),
                          RDB_rational_const(100));
+    extend[1].exp = RDB_strlen(RDB_expr_attr("NAME", &RDB_STRING));
 
     printf("Starting transaction\n");
     ret = RDB_begin_tx(&tx, dbp, NULL);
@@ -130,7 +135,7 @@ test_extend(RDB_database *dbp)
 
     printf("Extending EMPS1 (SALARY_W_BONUS)\n");
 
-    ret = RDB_extend(tbp, 1, &extend, &vtbp);
+    ret = RDB_extend(tbp, 2, extend, &vtbp);
     if (ret != RDB_OK) {
         goto error;
     }

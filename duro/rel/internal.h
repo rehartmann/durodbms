@@ -76,6 +76,9 @@ int
 _RDB_find_rename_from(int renc, RDB_renaming renv[], const char *name);
 
 RDB_expression *
+_RDB_create_unexpr(RDB_expression *arg, enum _RDB_expr_kind kind);
+
+RDB_expression *
 _RDB_create_binexpr(RDB_expression *arg1, RDB_expression *arg2,
                     enum _RDB_expr_kind kind);
 
