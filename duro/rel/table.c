@@ -36,22 +36,8 @@ _RDB_new_stored_table(const char *name, RDB_bool persistent,
                 RDB_table **tbpp)
 {
     int ret, i;
-    RDB_table *tbp = NULL;
+    RDB_table *tbp = new_table();
 
-    for (i = 0; i < keyc; i++) {
-        int j;
-
-        /* check if all the key attributes appear in the heading */
-        for (j = 0; j < keyv[i].strc; j++) {
-            if (_RDB_tuple_type_attr(reltyp->var.basetyp, keyv[i].strv[j])
-                    == NULL) {
-                ret = RDB_INVALID_ARGUMENT;
-                goto error;
-            }
-        }
-    }
-
-    tbp = new_table();
     if (tbp == NULL)
         return RDB_NO_MEMORY;
     *tbpp = tbp;

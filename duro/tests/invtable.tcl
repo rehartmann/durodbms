@@ -9,8 +9,6 @@ exec tclsh "$0"
 
 load .libs/libdurotcl.so
 
-source tcl/util.tcl
-
 # Create DB environment
 file delete -force tests/dbenv
 file mkdir tests/dbenv
@@ -22,22 +20,74 @@ duro::db create TEST $dbenv
 
 set tx [duro::begin $dbenv TEST]
 
-# Try to create table
+#
+# Try to create table with invalid definitions
+#
 
 if {![catch {
-   duro::table create T {
+   duro::table create "T 1" {
        {A INTEGER}
-       {A STRING}
    } {{A}} $tx
 }]} {
-    puts "Creation of table should fail, but succeeded"
+   puts "Creation of table \"T 1\" should fail, but succeeded"
+   exit 1
+}
+
+if {![catch {
+    duro::table drop "T 1" $tx
+}]} {
+    puts "Table \"T 1\" should not exist, but does"
     exit 1
 }
 
 if {![catch {
-    duro::ptable T tx1
+   duro::table create T1 {
+       {A INTEGER}
+       {A STRING}
+   } {{A}} $tx
 }]} {
-    puts "Table T should not exist, but does"
+    puts "Creation of table T1 should fail, but succeeded"
+    exit 1
+}
+
+if {![catch {
+    duro::table drop T1 $tx
+}]} {
+    puts "Table T1 should not exist, but does"
+    exit 1
+}
+
+if {![catch {
+    duro::table create T2 {
+       {A1 STRING}
+       {A2 STRING}
+    } {{A1 A1}} $tx
+}]} {
+    puts "Creation of table T2 should fail, but succeeded"
+    exit 1
+}
+
+if {![catch {
+    duro::table drop T2 $tx
+}]} {
+    puts "Table T2 should not exist, but does"
+    exit 1
+}
+
+if {![catch {
+    duro::table create T3 {
+       {A1 STRING}
+       {A2 STRING}
+    } {{A1} {A1 A2}} $tx
+}]} {
+    puts "Creation of table T3 should fail, but succeeded"
+    exit 1
+}
+
+if {![catch {
+    duro::table drop T3 $tx
+}]} {
+    puts "Table T3 should not exist, but does"
     exit 1
 }
 

@@ -4,9 +4,11 @@ Summary of Changes for Duro
 
 Changes for Duro 0.8
 
+- RDB_create_table() does now more complete argument checking.
+
 - Changed argument order of RDB_extract_tuple().
 
-- Added query optimizer
+- Added (albeit icomplete) query optimizer.
 
 - Fixed WRAP syntax.
 
@@ -135,7 +137,7 @@ Changes for Duro 0.5
 - Renamed RDB_deinit_XXX functions as RDB_destroy_XXX.
 
 - Now checking table and attribute names: nonprintable characters, whitespace,
-and '$' are not permitted.
+  and '$' are not permitted.
 
 - Renamed field 'value' in RDB_virtual_attr as 'exp'.
 

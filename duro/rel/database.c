@@ -1011,10 +1011,6 @@ _RDB_provide_table(const char *name, RDB_bool persistent,
     int ret;
     int i;
 
-    /* At least one key is required */
-    if (keyc < 1)
-        return RDB_INVALID_ARGUMENT;
-
     /* name may only be NULL if table is transient */
     if ((name == NULL) && persistent)
         return RDB_INVALID_ARGUMENT;
@@ -1063,6 +1059,18 @@ _RDB_create_table(const char *name, RDB_bool persistent,
            txp, txp != NULL ? txp->envp : NULL, tbpp);
 }
 
+RDB_bool
+strvec_is_subset(const RDB_string_vec *v1p, const RDB_string_vec *v2p)
+{
+    int i;
+
+    for (i = 0; i < v1p->strc; i++) {
+        if (RDB_find_str(v2p->strc, v2p->strv, v1p->strv[i]) == -1)
+            return RDB_FALSE;
+    }
+    return RDB_TRUE;
+}
+
 int
 RDB_create_table(const char *name, RDB_bool persistent,
                 int attrc, RDB_attr heading[],
@@ -1074,13 +1082,6 @@ RDB_create_table(const char *name, RDB_bool persistent,
     RDB_transaction tx;
     RDB_string_vec allkey; /* Used if keyv is NULL */
 
-    if (txp != NULL) {
-        /* Create subtransaction */
-        ret = RDB_begin_tx(&tx, txp->dbp, txp);
-        if (ret != RDB_OK)
-            return ret;
-    }
-
     if (name != NULL && !_RDB_legal_name(name))
         return RDB_INVALID_ARGUMENT;
 
@@ -1089,18 +1090,69 @@ RDB_create_table(const char *name, RDB_bool persistent,
             return RDB_INVALID_ARGUMENT;
     }
 
+    if (keyv != NULL) {
+        int j, k;
+
+        /* At least one key is required */
+        if (keyc < 1)
+            return RDB_INVALID_ARGUMENT;
+
+        /*
+         * Check all keys
+         */
+        for (i = 0; i < keyc; i++) {
+            /* Check if all the key attributes appear in the heading */
+            for (j = 0; j < keyv[i].strc; j++) {
+                for (k = 0; k < attrc
+                        && strcmp(keyv[i].strv[j], heading[k].name) != 0;
+                        k++);
+                if (k >= attrc)
+                    return RDB_INVALID_ARGUMENT;
+            }
+
+            /* Check if an attribute appears twice in a key */
+            for (j = 0; j < keyv[i].strc - 1; j++) {
+                /* Search attribute name in the remaining key */
+                if (RDB_find_str(keyv[i].strc - j - 1, keyv[i].strv + j + 1,
+                        keyv[i].strv[j]) != -1)
+                    return RDB_INVALID_ARGUMENT;
+            }
+        }
+
+        /* Check if a key is a subset of another */
+        for (i = 0; i < keyc - 1; i++) {
+            for (j = i + 1; j < keyc; j++) {
+                if (keyv[i].strc <= keyv[j].strc) {
+                    if (strvec_is_subset(&keyv[i], &keyv[j]))
+                        return RDB_INVALID_ARGUMENT;
+                } else {
+                    if (strvec_is_subset(&keyv[j], &keyv[i]))
+                        return RDB_INVALID_ARGUMENT;
+                }
+            }
+        }
+    }
+
+    if (txp != NULL) {
+        /* Create subtransaction */
+        ret = RDB_begin_tx(&tx, txp->dbp, txp);
+        if (ret != RDB_OK)
+            return ret;
+    }
+
     if (keyv == NULL) {
         /* Create key for all-key table */
         allkey.strc = attrc;
         allkey.strv = malloc(sizeof (char *) * attrc);
         if (allkey.strv == NULL) {
             if (txp != NULL)
-                RDB_rollback_all(txp);            
+                RDB_rollback_all(&tx);
             return RDB_NO_MEMORY;
         }
         for (i = 0; i < attrc; i++)
             allkey.strv[i] = heading[i].name;
     }
+                
 
     ret = _RDB_create_table(name, persistent, attrc, heading,
             keyv != NULL ? keyc : 1, keyv != NULL ? keyv : &allkey,
