@@ -133,3 +133,50 @@ error:
         RDB_rollback_all(txp);
     return ret;
 }
+
+int
+RDB_drop_constraint(const char *name, RDB_transaction *txp)
+{
+    int ret;
+    RDB_expression *condp;
+    RDB_dbroot *dbrootp = RDB_tx_db(txp)->dbrootp;
+
+    if (dbrootp->constraints_read) {
+        /* Delete constraint from list */
+        RDB_constraint *constrp = dbrootp->first_constrp;
+        if (constrp == NULL)
+            return RDB_NOT_FOUND;
+
+        if (strcmp(constrp->name, name) == 0) {
+            dbrootp->first_constrp = constrp->nextp;
+            RDB_drop_expr(constrp->exp);
+            free(constrp->name);
+            free(constrp);
+        } else {
+            RDB_constraint *hconstrp;
+
+            while (constrp->nextp != NULL
+                    && strcmp(constrp->nextp->name, name) !=0) {
+                constrp = constrp->nextp;
+            }
+            if (constrp->nextp == NULL)
+                return RDB_NOT_FOUND;
+            hconstrp = constrp->nextp;
+            constrp->nextp = constrp->nextp->nextp;
+            RDB_drop_expr(hconstrp->exp);
+            free(hconstrp->name);
+            free(hconstrp);
+        }
+    }
+
+    /* Delete constraint from catalog */
+    condp = RDB_eq(RDB_expr_attr("CONSTRAINTNAME"), RDB_string_to_expr(name));
+    if (condp == NULL)
+        return RDB_NO_MEMORY;
+    ret = RDB_delete(dbrootp->constraints_tbp, condp, txp);
+    RDB_drop_expr(condp);
+
+    if (RDB_is_syserr(ret))
+        RDB_rollback_all(txp);
+    return ret;
+}

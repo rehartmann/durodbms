@@ -325,7 +325,19 @@ cleanup:
     return ret;
 }
 
-int
+static int
+check_insert_empty_real(RDB_table *chtbp, RDB_table *tbp, const RDB_object *tplp,
+        RDB_transaction *txp)
+{
+    switch (tbp->kind) {
+        case RDB_TB_REAL:
+            return RDB_OK;
+        default: /* !! */ ;
+    }
+    return RDB_OK;
+}
+
+static int
 check_insert_empty(RDB_table *chtbp, RDB_table *tbp, const RDB_object *tplp,
         RDB_transaction *txp)
 {
@@ -333,7 +345,7 @@ check_insert_empty(RDB_table *chtbp, RDB_table *tbp, const RDB_object *tplp,
         return RDB_PREDICATE_VIOLATION;
     switch (chtbp->kind) {
         case RDB_TB_REAL:
-            return RDB_OK;
+            return check_insert_empty_real(chtbp, tbp, tplp, txp);
         default: /* !! */ ;
     }
     return RDB_OK;

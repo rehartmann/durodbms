@@ -323,14 +323,19 @@ proc create_db {} {
             return
         }
         if {$::newdbname == ""} {
-            tk_messageBox -type ok -title "Error" \
+            tk_messageBox -type ok -title "Error" -parent .dialog \
                     -message "Please enter a database name." -icon warning
             continue
         }
 
         # Create database
-        duro::db create $::dbenv $::newdbname
-        set done 1
+        if {[catch {
+            duro::db create $::dbenv $::newdbname
+            set done 1
+        } msg]} {
+            tk_messageBox -type ok -title "Error" -message $msg -icon error \
+                    -parent .dialog
+        }
     }
     destroy .dialog
     add_db $::newdbname
@@ -371,7 +376,7 @@ proc rename_table {} {
             return
         }
         if {$::newtablename == ""} {
-            tk_messageBox -type ok -title "Error" \
+            tk_messageBox -type ok -title "Error" -parent .dialog
                     -message "Please enter a table name." -icon warning
             continue
         }
@@ -383,7 +388,8 @@ proc rename_table {} {
             duro::commit $tx
         } msg]} {
             catch {duro::rollback $tx}
-            tk_messageBox -type ok -title "Error" -message $msg -icon error
+            tk_messageBox -type ok -title "Error" -message $msg -icon error \
+                    -parent .dialog
             continue
         }
         set done 1
@@ -529,7 +535,7 @@ proc create_rtable {} {
             return
         }
         if {$::newtablename == ""} {
-            tk_messageBox -type ok -title "Error" \
+            tk_messageBox -type ok -title "Error" -parent .dialog \
                     -message "Please enter a table name." -icon warning
             continue
         }
@@ -575,7 +581,8 @@ proc create_rtable {} {
             set done 1
         } msg]} {
             catch {duro::rollback $tx}
-            tk_messageBox -type ok -title "Error" -message $msg -icon error
+            tk_messageBox -type ok -title "Error" -message $msg -icon error \
+                    -parent .dialog
         }
      }
 
@@ -624,7 +631,7 @@ proc create_vtable {} {
             return
         }
         if {$::newtablename == ""} {
-            tk_messageBox -type ok -title "Error" \
+            tk_messageBox -type ok -title "Error" -parent .dialog \
                     -message "Please enter a table name." -icon warning
             continue
         }
@@ -638,7 +645,8 @@ proc create_vtable {} {
             set done 1
         } msg]} {
             catch {duro::rollback $tx}
-            tk_messageBox -type ok -title "Error" -message $msg -icon error
+            tk_messageBox -type ok -title "Error" -message $msg -icon error \
+                    -parent .dialog
         }
     }
 
@@ -965,7 +973,8 @@ proc exec_script {} {
                 duro::commit $tx
             } msg]} {
                 catch {duro::rollback $tx}
-                tk_messageBox -type ok -title "Error" -message $msg -icon error
+                tk_messageBox -type ok -title "Error" -message $msg \
+                        -icon error -parent .dialog \
             } else {
                 .dialog.output configure -state normal
                 .dialog.output insert end $res\n

@@ -1081,7 +1081,10 @@ RDB_get_dbs(RDB_environment *, RDB_object *);
 
 int
 RDB_create_constraint(const char *name, RDB_expression *exp,
-                      RDB_transaction *txp);
+                      RDB_transaction *);
+
+int
+RDB_drop_constraint(const char *name, RDB_transaction *);
 
 /* Extract the "-e <environment> -d <database>" arguments from the command line */
 int
