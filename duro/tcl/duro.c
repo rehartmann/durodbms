@@ -1,3 +1,8 @@
+/*
+ * Copyright (C) 2003 René Hartmann.
+ * See the file COPYING for redistribution information.
+ */
+
 /* $Id$ */
 
 #include "duro.h"

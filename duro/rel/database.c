@@ -1,3 +1,8 @@
+/*
+ * Copyright (C) 2003 René Hartmann.
+ * See the file COPYING for redistribution information.
+ */
+
 /* $Id$ */
 
 #include "rdb.h"
@@ -1231,7 +1236,7 @@ _RDB_drop_table(RDB_table *tbp, RDB_transaction *txp, RDB_bool rec)
                 RDB_free_strvec(tbp->var.wrap.wrapv[i].attrc,
                         tbp->var.wrap.wrapv[i].attrv);
             }
-            break;        
+            break;
         case RDB_TB_UNWRAP:
             if (rec) {
                 ret = drop_anon_table(tbp->var.unwrap.tbp, txp);
@@ -1239,7 +1244,20 @@ _RDB_drop_table(RDB_table *tbp, RDB_transaction *txp, RDB_bool rec)
                     return ret;
             }
             RDB_free_strvec(tbp->var.unwrap.attrc, tbp->var.unwrap.attrv);
-            break;        
+            break;
+        case RDB_TB_SDIVIDE:
+            if (rec) {
+                ret = drop_anon_table(tbp->var.sdivide.tb1p, txp);
+                if (ret != RDB_OK)
+                    return ret;
+                ret = drop_anon_table(tbp->var.sdivide.tb2p, txp);
+                if (ret != RDB_OK)
+                    return ret;
+                ret = drop_anon_table(tbp->var.sdivide.tb3p, txp);
+                if (ret != RDB_OK)
+                    return ret;
+            }
+            break;
     }
 
     if (tbp->is_persistent) {

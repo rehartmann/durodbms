@@ -1,3 +1,8 @@
+/*
+ * Copyright (C) 2003 René Hartmann.
+ * See the file COPYING for redistribution information.
+ */
+
 /* $Id$ */
 
 #include "catalog.h"
@@ -797,7 +802,7 @@ get_keys(const char *name, RDB_transaction *txp,
     RDB_object *tplp;
     int ret;
     int i;
-    
+
     *keyvp = NULL;
 
     RDB_init_array(&arr);
@@ -843,6 +848,7 @@ get_keys(const char *name, RDB_transaction *txp,
                 &(*keyvp)[kno].strv);
         if (attrc == -1) {
             (*keyvp)[kno].strv = NULL;
+            ret = RDB_INTERNAL;
             goto error;
         }
         (*keyvp)[kno].strc = attrc;

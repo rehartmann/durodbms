@@ -7,10 +7,10 @@
 #include <string.h>
 #include <malloc.h>
 
-#define RDB_TUPLE_CAPACITY 37
+#define RDB_TUPLE_CAPACITY 7
 
 /*
- * A tuple is implemented using a static hash table, taking advantage of
+ * A tuple is implemented using a hash table, taking advantage of
  * the fact that removing attributes is not supported.
  */
 

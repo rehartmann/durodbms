@@ -76,6 +76,7 @@ enum {
 %token TOK_RENAME
 %token TOK_EXTEND
 %token TOK_SUMMARIZE
+%token TOK_DIVIDEBY
 %token TOK_WRAP
 %token TOK_UNWRAP
 %token TOK_PER
@@ -98,7 +99,7 @@ enum {
 %token INVALID
 
 %type <exp> relation project select rename extend summarize wrap unwrap
-        expression or_expression and_expression not_expression
+        sdivideby expression or_expression and_expression not_expression
         primary_expression rel_expression add_expression mul_expression
         literal operator_invocation count_invocation sum_invocation
         avg_invocation min_invocation max_invocation all_invocation
@@ -127,6 +128,7 @@ expression: or_expression { resultp = $1; }
     | summarize { resultp = $1; }
     | wrap { resultp = $1; }
     | unwrap { resultp = $1; }
+    | sdivideby { resultp = $1; }
     ;
 
 project: primary_expression '{' attribute_name_list '}' {
@@ -419,6 +421,37 @@ summarize: TOK_SUMMARIZE primary_expression TOK_PER expression
         $$ = RDB_expr_table(restbp);
     }
     ;
+
+sdivideby: primary_expression TOK_DIVIDEBY primary_expression
+           TOK_PER primary_expression {
+        RDB_table *tb1p, *tb2p, *tb3p, *restbp;
+
+        tb1p = expr_to_table($1);
+        if (tb1p == NULL)
+        {
+            YYERROR;
+        }
+
+        tb2p = expr_to_table($3);
+        if (tb2p == NULL)
+        {
+            YYERROR;
+        }
+
+        tb3p = expr_to_table($5);
+        if (tb3p == NULL)
+        {
+            YYERROR;
+        }
+
+        expr_ret = RDB_sdivide(tb1p, tb2p, tb3p, &restbp);
+        if (expr_ret != RDB_OK) {
+            yyerror(RDB_strerror(expr_ret));
+            YYERROR;
+        }
+        $$ = RDB_expr_table(restbp);
+    }
+    ;    
 
 summarize_add_list: summarize_add {
         $$.addv[0].op = $1.addv[0].op;

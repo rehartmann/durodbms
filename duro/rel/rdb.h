@@ -218,7 +218,8 @@ enum _RDB_tb_kind {
     RDB_TB_SUMMARIZE,
     RDB_TB_RENAME,
     RDB_TB_WRAP,
-    RDB_TB_UNWRAP
+    RDB_TB_UNWRAP,
+    RDB_TB_SDIVIDE
 };
 
 typedef struct {
@@ -299,6 +300,11 @@ typedef struct RDB_table {
             int attrc;
             char **attrv;            
         } unwrap;
+        struct {
+            struct RDB_table *tb1p;
+            struct RDB_table *tb2p;
+            struct RDB_table *tb3p;
+        } sdivide;
     } var;
     int refcount;
 } RDB_table;
@@ -670,6 +676,7 @@ int
 RDB_summarize(RDB_table *, RDB_table *, int addc, RDB_summarize_add addv[],
               RDB_table **resultpp);
 
+
 int
 RDB_rename(RDB_table *tbp, int renc, RDB_renaming renv[],
            RDB_table **resultpp);
@@ -680,6 +687,9 @@ RDB_wrap(RDB_table *tbp, int wrapc, RDB_wrapping wrapv[],
 
 int
 RDB_unwrap(RDB_table *tbp, int attrc, char *attrv[], RDB_table **resultpp);
+
+int
+RDB_sdivide(RDB_table *, RDB_table *, RDB_table *, RDB_table **resultpp);
 
 /*
  * Functions for creation/destruction of tuples and reading/modifying attributes.

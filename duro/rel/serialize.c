@@ -366,6 +366,24 @@ serialize_unwrap(RDB_object *valp, int *posp, RDB_table *tbp)
 }
 
 static int
+serialize_sdivide(RDB_object *valp, int *posp, RDB_table *tbp)
+{
+    int ret;
+
+    ret = _RDB_serialize_table(valp, posp, tbp->var.sdivide.tb1p);
+    if (ret != RDB_OK)
+        return ret;
+    ret = _RDB_serialize_table(valp, posp, tbp->var.sdivide.tb2p);
+    if (ret != RDB_OK)
+        return ret;
+    ret = _RDB_serialize_table(valp, posp, tbp->var.sdivide.tb3p);
+    if (ret != RDB_OK)
+        return ret;
+
+    return RDB_OK;
+}
+
+static int
 _RDB_serialize_table(RDB_object *valp, int *posp, RDB_table *tbp)
 {
     int ret = serialize_byte(valp, posp, (RDB_byte)tbp->kind);
@@ -428,6 +446,8 @@ _RDB_serialize_table(RDB_object *valp, int *posp, RDB_table *tbp)
             return serialize_wrap(valp, posp, tbp);
         case RDB_TB_UNWRAP:
             return serialize_unwrap(valp, posp, tbp);
+        case RDB_TB_SDIVIDE:
+            return serialize_sdivide(valp, posp, tbp);
     }
     abort();
 }
@@ -1143,6 +1163,40 @@ cleanup:
 }
 
 int
+deserialize_sdivide(RDB_object *valp, int *posp, RDB_transaction *txp,
+                   RDB_table **tbpp)
+{
+    RDB_table *tb1p, *tb2p, *tb3p;
+    int ret;
+
+    ret = deserialize_table(valp, posp, txp, &tb1p);
+    if (ret != RDB_OK)
+        return ret;
+
+    ret = deserialize_table(valp, posp, txp, &tb2p);
+    if (ret != RDB_OK)
+        goto cleanup;
+
+    ret = deserialize_table(valp, posp, txp, &tb3p);
+    if (ret != RDB_OK)
+        goto cleanup;
+
+    ret = RDB_sdivide(tb1p, tb2p, tb3p, tbpp);
+
+cleanup:
+    if (ret != RDB_OK) {
+        if (RDB_table_name(tb1p) == NULL)
+            RDB_drop_table(tb1p, NULL);
+        if (RDB_table_name(tb2p) == NULL)
+            RDB_drop_table(tb2p, NULL);
+        if (RDB_table_name(tb3p) == NULL)
+            RDB_drop_table(tb3p, NULL);
+    }
+
+    return ret;
+}
+
+int
 _RDB_deserialize_table(RDB_object *valp, RDB_transaction *txp, RDB_table **tbpp)
 {
     int pos = 0;
@@ -1224,6 +1278,8 @@ deserialize_table(RDB_object *valp, int *posp, RDB_transaction *txp,
             return deserialize_wrap(valp, posp, txp, tbpp);
         case RDB_TB_UNWRAP:
             return deserialize_unwrap(valp, posp, txp, tbpp);
+        case RDB_TB_SDIVIDE:
+            return deserialize_sdivide(valp, posp, txp, tbpp);
     }
     abort();
 error:

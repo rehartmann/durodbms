@@ -68,6 +68,10 @@ SUMMARIZE {
     return TOK_SUMMARIZE;
 }
 
+DIVIDEBY {
+    return TOK_DIVIDEBY;
+}
+
 PER {
     return TOK_PER;
 }

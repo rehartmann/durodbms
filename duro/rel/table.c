@@ -1,3 +1,8 @@
+/*
+ * Copyright (C) 2003 René Hartmann.
+ * See the file COPYING for redistribution information.
+ */
+
 /* $Id$ */
 
 #include "rdb.h"
@@ -210,6 +215,8 @@ RDB_delete(RDB_table *tbp, RDB_expression *condp, RDB_transaction *txp)
         case RDB_TB_WRAP:
             return RDB_NOT_SUPPORTED;
         case RDB_TB_UNWRAP:
+            return RDB_NOT_SUPPORTED;
+        case RDB_TB_SDIVIDE:
             return RDB_NOT_SUPPORTED;
     }
     /* should never be reached */
@@ -913,7 +920,9 @@ RDB_table_contains(RDB_table *tbp, const RDB_object *tup, RDB_transaction *txp)
         case RDB_TB_WRAP:
             return wrap_contains(tbp, tup, txp);
         case RDB_TB_UNWRAP:
-            return RDB_NOT_SUPPORTED;
+            return /* !! required */ RDB_NOT_SUPPORTED;
+        case RDB_TB_SDIVIDE:
+            return /* !! required */ RDB_NOT_SUPPORTED;
     }
     /* should never be reached */
     abort();
@@ -1290,7 +1299,7 @@ RDB_join(RDB_table *tbp1, RDB_table *tbp2, RDB_table **resultpp)
         free(newtbp);
         return ret;
     }
-    
+
     newtbp->var.join.common_attrv = malloc(sizeof(char *) * attrc1);
     cattrc = 0;
     for (i = 0; i < attrc1; i++) {
@@ -1913,4 +1922,51 @@ error:
         RDB_drop_type(newtbp->typ, NULL);
     free(newtbp);
     return ret;
+}
+
+int
+RDB_sdivide(RDB_table *tb1p, RDB_table *tb2p, RDB_table *tb3p,
+        RDB_table **resultpp)
+{
+    int ret;
+    RDB_type *typ;
+    RDB_table *newtbp;
+
+    /*
+     * Table 1 JOIN table 2 must be of same type as table 3
+     */
+    ret = RDB_join_relation_types(tb1p->typ, tb2p->typ, &typ);
+    if (ret != RDB_OK) {
+        return ret;
+    }
+
+    if (!RDB_type_equals(typ, tb3p->typ)) {
+        RDB_drop_type(typ, NULL);
+        return RDB_INVALID_ARGUMENT;
+    }
+    RDB_drop_type(typ, NULL);
+    
+    newtbp = malloc(sizeof (RDB_table));    
+    if (newtbp == NULL)
+        return RDB_NO_MEMORY;
+
+    newtbp->is_user = RDB_TRUE;
+    newtbp->is_persistent = RDB_FALSE;
+    newtbp->var.sdivide.tb1p = tb1p;
+    newtbp->var.sdivide.tb2p = tb2p;
+    newtbp->var.sdivide.tb3p = tb3p;
+    newtbp->typ = tb1p->typ;
+    newtbp->name = NULL;
+    newtbp->kind = RDB_TB_SDIVIDE;
+
+    newtbp->keyc = tb1p->keyc;
+    newtbp->keyv = dup_keys(tb1p->keyc, tb1p->keyv);
+    if (newtbp->keyv == NULL) {
+        free(newtbp);
+        return RDB_NO_MEMORY;
+    }
+
+    *resultpp = newtbp;
+
+    return RDB_OK;
 }

@@ -55,20 +55,27 @@ duro::table delete T1 $tx
 # Drop table
 duro::table drop T1 $tx
 
-duro::commit $tx
-
 #
 # Perform test with table with two keys, one 'atomic' and one compound
 #
 
 # Create table
-set tx [duro::begin $dbenv TEST]
 duro::table create T2 {
    {STRATTR1 STRING}
    {INTATTR INTEGER}
    {STRATTR2 STRING}
    {STRATTR3 STRING}
 } {{STRATTR1} {INTATTR STRATTR2}} $tx
+
+duro::commit $tx
+
+# Close DB environment
+duro::env close $dbenv
+
+# Reopen DB environment
+set dbenv [duro::env open tests/dbenv]
+
+set tx [duro::begin $dbenv TEST]
 
 # Insert tuple
 duro::table insert T2 {INTATTR 1 STRATTR1 Bla STRATTR2 Bli STRATTR3 Blubb} $tx

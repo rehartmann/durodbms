@@ -256,6 +256,8 @@ RDB_insert(RDB_table *tbp, const RDB_object *tup, RDB_transaction *txp)
         case RDB_TB_UNWRAP:
              /* !! ... */
              return RDB_NOT_SUPPORTED;
+        case RDB_TB_SDIVIDE:
+             return RDB_NOT_SUPPORTED;
     }
     /* should never be reached */
     abort();

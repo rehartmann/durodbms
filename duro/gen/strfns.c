@@ -1,3 +1,8 @@
+/*
+ * Copyright (C) 2003 René Hartmann.
+ * See the file COPYING for redistribution information.
+ */
+
 /*$Id$*/
 
 #include "strfns.h"
@@ -73,12 +78,12 @@ RDB_split_str(const char *str, char *(*substrvp[]))
         for (i = 0; sp != NULL; i++) {
             ep = strchr(sp, ' ');
             if (ep != NULL) {
-                ep++;
                 (*substrvp)[i] = malloc(ep - sp + 1);
                 if ((*substrvp)[i] == NULL)
                     goto error;
                 strncpy((*substrvp)[i], sp, ep - sp);
                 (*substrvp)[i][ep - sp] = '\0';
+                ep++;
             } else {
                 (*substrvp)[i] = RDB_dup_str(sp);
                 if ((*substrvp)[i] == NULL)
