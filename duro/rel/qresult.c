@@ -935,7 +935,7 @@ _RDB_get_by_cursor(RDB_table *tbp, RDB_cursor *curp, RDB_object *tplp)
 
 static int
 next_stored_tuple(RDB_qresult *qrp, RDB_table *tbp, RDB_object *tplp,
-        RDB_bool dup)
+        RDB_bool asc, RDB_bool dup)
 {
     int ret;
 
@@ -947,7 +947,13 @@ next_stored_tuple(RDB_qresult *qrp, RDB_table *tbp, RDB_object *tplp,
         if (ret != RDB_OK)
             return ret;
     }
-    ret = RDB_cursor_next(qrp->var.curp, dup ? RDB_REC_DUP : 0);
+    if (asc) {
+        ret = RDB_cursor_next(qrp->var.curp, dup ? RDB_REC_DUP : 0);
+    } else {
+        if (dup)
+            return RDB_INVALID_ARGUMENT;
+        ret = RDB_cursor_prev(qrp->var.curp);
+    }
     if (ret == RDB_NOT_FOUND) {
         qrp->endreached = RDB_TRUE;
         return RDB_OK;
@@ -1171,7 +1177,7 @@ next_join_tuple_nuix(RDB_qresult *qrp, RDB_object *tplp, RDB_transaction *txp)
     for (;;) {
         /* read next 'inner' tuple */
         ret = next_stored_tuple(qrp->var.virtual.qr2p,
-                qrp->var.virtual.qr2p->tbp, tplp, RDB_TRUE);
+                qrp->var.virtual.qr2p->tbp, tplp, RDB_TRUE, RDB_TRUE);
         if (ret != RDB_NOT_FOUND && ret != RDB_OK) {
             return ret;
         }
@@ -1466,7 +1472,8 @@ next_select_index(RDB_qresult *qrp, RDB_object *tplp, RDB_transaction *txp)
             dup = RDB_TRUE;
 
         do {
-            ret = next_stored_tuple(qrp, qrp->tbp->var.select.tbp, tplp, dup);
+            ret = next_stored_tuple(qrp, qrp->tbp->var.select.tbp, tplp,
+                    qrp->tbp->var.select.asc, dup);
             if (ret != RDB_OK)
                 return ret;
             if (qrp->tbp->var.select.all_eq)
@@ -1756,12 +1763,12 @@ _RDB_next_tuple(RDB_qresult *qrp, RDB_object *tplp, RDB_transaction *txp)
 
     if (tbp == NULL) {
         /* It's a sorter */
-        return next_stored_tuple(qrp, qrp->matp, tplp, RDB_FALSE);
+        return next_stored_tuple(qrp, qrp->matp, tplp, RDB_TRUE, RDB_FALSE);
     }
 
     switch (tbp->kind) {
         case RDB_TB_STORED:
-            return next_stored_tuple(qrp, qrp->tbp, tplp, RDB_FALSE);
+            return next_stored_tuple(qrp, qrp->tbp, tplp, RDB_TRUE, RDB_FALSE);
         case RDB_TB_SELECT:
             return next_select_tuple(qrp, tplp, txp);
         case RDB_TB_SELECT_INDEX:
@@ -1836,7 +1843,7 @@ _RDB_next_tuple(RDB_qresult *qrp, RDB_object *tplp, RDB_transaction *txp)
                 char *cname;
                 RDB_int count;
             
-                ret = next_stored_tuple(qrp, qrp->matp, tplp, RDB_FALSE);
+                ret = next_stored_tuple(qrp, qrp->matp, tplp, RDB_TRUE, RDB_FALSE);
                 if (ret != RDB_OK)
                     return ret;
                 /* check AVG counts */
@@ -1861,7 +1868,7 @@ _RDB_next_tuple(RDB_qresult *qrp, RDB_object *tplp, RDB_transaction *txp)
         case RDB_TB_UNWRAP:
             return next_unwrap_tuple(qrp, tplp, txp);
         case RDB_TB_GROUP:
-            return next_stored_tuple(qrp, qrp->matp, tplp, RDB_FALSE);
+            return next_stored_tuple(qrp, qrp->matp, tplp, RDB_TRUE, RDB_FALSE);
         case RDB_TB_UNGROUP:
             return next_ungroup_tuple(qrp, tplp, txp);
         case RDB_TB_SDIVIDE:

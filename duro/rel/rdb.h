@@ -290,6 +290,7 @@ typedef struct RDB_table {
             struct _RDB_tbindex *indexp;
             RDB_object **objpv;
             int objpc;
+            RDB_bool asc;
             RDB_bool all_eq;
         } select;
         struct {

@@ -194,9 +194,17 @@ RDB_cursor_next(RDB_cursor *curp, int flags)
 int
 RDB_cursor_prev(RDB_cursor *curp)
 {
-    return RDB_convert_err(curp->cursorp->c_get(curp->cursorp, &curp->current_key,
-            &curp->current_data, DB_PREV));
-}    
+    DBT key;
+
+    if (curp->idxp == NULL) {
+        return RDB_convert_err(curp->cursorp->c_get(curp->cursorp,
+                &curp->current_key, &curp->current_data, DB_PREV));
+    } else {
+        memset(&key, 0, sizeof key);
+        return RDB_convert_err(curp->cursorp->c_pget(curp->cursorp,
+                &key, &curp->current_key, &curp->current_data, DB_PREV));
+    }
+}
 
 int
 RDB_cursor_seek(RDB_cursor *curp, int fieldc, RDB_field keyv[], int flags)

@@ -379,7 +379,7 @@ compare_field(const void *data1p, size_t len1,
 
 static int
 create_index(RDB_table *tbp, RDB_environment *envp, RDB_transaction *txp,
-             _RDB_tbindex *indexp, RDB_seq_item idxcompv[], int flags)
+             _RDB_tbindex *indexp, int flags)
 {
     int ret;
     int i;
@@ -391,7 +391,7 @@ create_index(RDB_table *tbp, RDB_environment *envp, RDB_transaction *txp,
         goto cleanup;
     }
 
-    if ((RDB_ORDERED & flags) && (idxcompv != NULL)) {
+    if (RDB_ORDERED & flags) {
         cmpv = malloc(sizeof (RDB_compare_field) * indexp->attrc);
         if (cmpv == NULL) {
             ret = RDB_NO_MEMORY;
@@ -399,7 +399,7 @@ create_index(RDB_table *tbp, RDB_environment *envp, RDB_transaction *txp,
         }
         for (i = 0; i < indexp->attrc; i++) {
             RDB_type *attrtyp = RDB_type_attr_type(tbp->typ,
-                    idxcompv[i].attrname);
+                    indexp->attrv[i].attrname);
 
             if (attrtyp->comparep != NULL) {
                 cmpv[i].comparep = &compare_field;
@@ -407,7 +407,7 @@ create_index(RDB_table *tbp, RDB_environment *envp, RDB_transaction *txp,
             } else {
                 cmpv[i].comparep = NULL;
             }
-            cmpv[i].asc = idxcompv[i].asc;
+            cmpv[i].asc = indexp->attrv[i].asc;
         }
     }
 
@@ -497,8 +497,7 @@ create_key_indexes(RDB_table *tbp, RDB_environment *envp, RDB_transaction *txp)
     }
 
     for (i = 1; i < tbp->var.stored.indexc; i++) {
-        ret = create_index(tbp, envp, txp, &tbp->var.stored.indexv[i], NULL,
-                    RDB_UNIQUE);
+        ret = create_index(tbp, envp, txp, &tbp->var.stored.indexv[i], RDB_UNIQUE);
         if (ret != RDB_OK)
             return ret;
     }
@@ -822,6 +821,7 @@ RDB_create_table_index(const char *name, RDB_table *tbp, int idxcompc,
             RDB_rollback_all(txp);
             return RDB_NO_MEMORY;
         }
+        indexp->attrv[i].asc = idxcompv[i].asc;
     }
     indexp->unique = (RDB_bool) (RDB_UNIQUE & flags);
 
@@ -840,8 +840,7 @@ RDB_create_table_index(const char *name, RDB_table *tbp, int idxcompc,
     }
 
     /* Create index */
-    ret = create_index(tbp, RDB_db_env(RDB_tx_db(txp)), &tx, indexp,
-            idxcompv, flags);
+    ret = create_index(tbp, RDB_db_env(RDB_tx_db(txp)), &tx, indexp, flags);
     if (ret != RDB_OK) {
         goto error;
     }

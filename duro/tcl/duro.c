@@ -10,6 +10,7 @@
 #include <rel/internal.h>
 #include <string.h>
 #include <stdio.h>
+#include <locale.h>
 
 extern int yydebug;
 
@@ -117,6 +118,8 @@ Duro_init_tcl(Tcl_Interp *interp, TclState **statepp)
     if (Tcl_InitStubs(interp, "8.1", 0) == NULL) {
         return TCL_ERROR;
     }
+
+    setlocale(LC_COLLATE, "");
 
     *statepp = (TclState *) Tcl_Alloc(sizeof (TclState));
     Tcl_InitHashTable(&(*statepp)->envs, TCL_STRING_KEYS);

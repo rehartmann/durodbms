@@ -73,6 +73,9 @@ RDB_cursor_first(RDB_cursor *);
 int
 RDB_cursor_next(RDB_cursor *, int flags);
 
+int
+RDB_cursor_prev(RDB_cursor *);
+
 /*
  * Move the cursor to the position specified by keyv.
  */

@@ -12,6 +12,7 @@
 #include "serialize.h"
 #include <gen/strfns.h>
 #include <string.h>
+#include <locale.h>
 
 RDB_type RDB_BOOLEAN;
 RDB_type RDB_INTEGER;
@@ -35,6 +36,12 @@ compare_rational(const RDB_object *val1p, const RDB_object *val2p)
     return 0;
 }
 
+static int
+compare_string(const RDB_object *val1p, const RDB_object *val2p)
+{
+    return strcoll(val1p->var.bin.datap, val2p->var.bin.datap);
+}
+
 void _RDB_init_builtin_types(void)
 {
     RDB_BOOLEAN.kind = RDB_TP_SCALAR;
@@ -49,7 +56,7 @@ void _RDB_init_builtin_types(void)
     RDB_STRING.name = "STRING";
     RDB_STRING.var.scalar.repc = 0;
     RDB_STRING.var.scalar.arep = NULL;
-    RDB_STRING.comparep = NULL;
+    RDB_STRING.comparep = &compare_string;
 
     RDB_INTEGER.kind = RDB_TP_SCALAR;
     RDB_INTEGER.ireplen = sizeof (RDB_int);

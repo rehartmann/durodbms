@@ -158,6 +158,7 @@ split_by_index(RDB_table *tbp, _RDB_tbindex *indexp)
     RDB_expression *prevp;
     RDB_expression *nodep;
     RDB_expression *ixexp = NULL;
+    RDB_bool asc = RDB_TRUE;
     RDB_bool all_eq = RDB_TRUE;
     int objpc = 0;
     RDB_object **objpv = malloc(sizeof (RDB_object *) * indexp->attrc);
@@ -202,10 +203,16 @@ split_by_index(RDB_table *tbp, _RDB_tbindex *indexp)
                 || attrexp->var.op.arg2->var.obj.kind == RDB_OB_ARRAY))
             _RDB_set_nonsc_type(&attrexp->var.op.arg2->var.obj,
                     RDB_type_attr_type(tbp->typ, indexp->attrv[i].attrname));
-        if (attrexp->kind == RDB_EX_EQ || attrexp->kind == RDB_EX_GET
-                || attrexp->kind == RDB_EX_GT)
-            objpv[objpc++] = &attrexp->var.op.arg2->var.obj;
 
+        objpv[objpc++] = &attrexp->var.op.arg2->var.obj;
+
+        if (indexp->idxp != NULL && RDB_index_is_ordered(indexp->idxp)) {
+            if (attrexp->kind == RDB_EX_EQ || attrexp->kind == RDB_EX_GET
+                    || attrexp->kind == RDB_EX_GT)
+                asc = indexp->attrv[i].asc;
+            else
+                asc = (RDB_bool) !indexp->attrv[i].asc;
+        }
         /*
          * Delete node
          */
@@ -265,6 +272,7 @@ split_by_index(RDB_table *tbp, _RDB_tbindex *indexp)
         sitbp->var.select.indexp = indexp;
         sitbp->var.select.objpv = objpv;
         sitbp->var.select.objpc = objpc;
+        sitbp->var.select.asc = asc;
         sitbp->var.select.all_eq = all_eq;
         sitbp->optimized = RDB_TRUE;
         tbp->var.select.tbp = sitbp;
@@ -276,6 +284,7 @@ split_by_index(RDB_table *tbp, _RDB_tbindex *indexp)
         tbp->var.select.indexp = indexp;
         tbp->var.select.objpv = objpv;
         tbp->var.select.objpc = objpc;
+        tbp->var.select.asc = asc;
         tbp->var.select.all_eq = all_eq;
         tbp->var.select.exp = ixexp;
     }
