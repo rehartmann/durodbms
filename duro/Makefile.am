@@ -24,6 +24,8 @@ TESTS_ENVIRONMENT = BDB_HOME=$(BDB_HOME)
 
 LDADD = -L$(BDB_HOME)/lib libduro.la -ldb @LIBS@
 
+tests_test_pointtable_LDADD = $(LDADD) -lm
+
 libduro_la_SOURCES = gen/errors.c gen/hashmap.c gen/strfns.c rec/cursor.c \
 rec/env.c rec/index.c rec/recmap.c rel/array.c rel/internal.h rel/database.c \
 rel/expression.c rel/getargs.c rel/qresult.c rel/serialize.c rel/serialize.h \

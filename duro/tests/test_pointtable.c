@@ -100,15 +100,52 @@ test_insert(RDB_database *dbp)
         goto error;
     }
 
-    printf("THETA = %f, LENGTH = %f\n", (float) RDB_value_rational(&thval),
-            (float) RDB_value_rational(&lenval));
+    printf("Inserting Tuple\n");
 
     ret = RDB_tuple_set(&tpl, "POINT", &pval);
     if (ret != RDB_OK) {
         goto error;
     }
 
+    ret = RDB_insert(tbp, &tpl, &tx);
+    if (ret != RDB_OK) {
+        goto error;
+    }
+
+    printf("Invoking selector POLAR(%f,%f)\n", (float) RDB_value_rational(&thval),
+            (float) RDB_value_rational(&lenval));
+
+    compv[0] = &thval;
+    compv[1] = &lenval;
+/*    ret = RDB_select_value(&pval, pointtyp, "POLAR", compv); */
+    ret = RDB_select_value(&pval, pointtyp, "POINT", compv);
+    if (ret != RDB_OK)
+        goto error;   
+
     printf("Inserting Tuple\n");
+
+    ret = RDB_tuple_set(&tpl, "POINT", &pval);
+    if (ret != RDB_OK) {
+        goto error;
+    }
+
+    ret = RDB_insert(tbp, &tpl, &tx);
+    if (ret != RDB_OK) {
+        goto error;
+    }
+
+    printf("Doubling LENGTH\n");
+
+    RDB_value_set_rational(&lenval, RDB_value_rational(&lenval) * 2.0);
+
+    RDB_value_set_comp(&pval, "LENGTH", &lenval);
+
+    printf("Inserting Tuple\n");
+
+    ret = RDB_tuple_set(&tpl, "POINT", &pval);
+    if (ret != RDB_OK) {
+        goto error;
+    }
 
     ret = RDB_insert(tbp, &tpl, &tx);
     if (ret != RDB_OK) {
@@ -145,6 +182,7 @@ test_query(RDB_database *dbp)
     RDB_value yval;
     int ret;
     int i;
+    void *dp;
 
     printf("Starting transaction\n");
     ret = RDB_begin_tx(&tx, dbp, NULL);

@@ -41,6 +41,10 @@
 <li><a href="#divide">RDB_divide</a>
 <li><a href="#gdivide">RDB_gdivide</a>
 <li><a href="#summarize">RDB_summarize</a>
+<li><a href="#wrap">RDB_wrap</a>
+<li><a href="#unwrap">RDB_unwrap</a>
+<li><a href="#group">RDB_group</a>
+<li><a href="#ungroup">RDB_ungroup</a>
 </ul>
 
 <h3>Tuple functions</h3>
@@ -584,6 +588,58 @@ typedef struct {
 int
 RDB_summarize(RDB_table *, RDB_table *, int addc, RDB_summarize_add addv[],
               RDB_table **resultpp);
+</pre>
+
+<hr>
+
+<h2 id="wrap">RDB_wrap</h2>
+
+<pre>
+#include &lt;rel/rdb.h&gt;
+
+typedef struct {
+    int attrc;
+    char **attrv;
+    int gattrc;
+} RDB_wrapping;
+
+int
+RDB_wrap(RDB_table *tbp, int wrapc, RDB_wrapping wrapv[],
+         RDB_table **resultpp);
+</pre>
+
+<hr>
+
+<h2 id="unwrap">RDB_unwrap</h2>
+
+<pre>
+#include &lt;rel/rdb.h&gt;
+
+int
+RDB_unwrap(RDB_table *, int attrc, const char *attrv[], RDB_table **);
+</pre>
+
+<hr>
+
+<h2 id="group">RDB_group</h2>
+
+<pre>
+#include &lt;rel/rdb.h&gt;
+
+int
+RDB_group(RDB_table *, int attrc, char *attrv[], const char *,
+         RDB_table **resultpp);
+</pre>
+
+<hr>
+
+<h2 id="ungroup">RDB_ungroup</h2>
+
+<pre>
+#include &lt;rel/rdb.h&gt;
+
+int
+RDB_ungroup(RDB_table *, const char *, RDB_table **resultpp);
 </pre>
 
 <hr>

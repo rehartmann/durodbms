@@ -233,15 +233,17 @@ RDB_value_set_comp(RDB_value *valp, const char *compname,
     }
 }
 
-static RDB_bool
-check_constraint(RDB_value *valp) {
+static int
+check_constraint(RDB_value *valp, RDB_bool *resultp)
+{
     int i, j;
     int ret;
+
+    *resultp = RDB_TRUE;
 
     /* Check constraint for each possrep */
     for (i = 0; i < valp->typ->var.scalar.repc; i++) {
         RDB_tuple tpl;
-        RDB_bool result;
 
         if (valp->typ->var.scalar.repv[i].constraintp != NULL) {
             RDB_init_tuple(&tpl);
@@ -255,23 +257,24 @@ check_constraint(RDB_value *valp) {
                 if (ret != RDB_OK) {
                     RDB_destroy_value(&comp);
                     RDB_destroy_tuple(&tpl);
-                    return RDB_FALSE; /* !! */
+                    return ret;
                 }
                 ret = RDB_tuple_set(&tpl, compname, &comp);
                 RDB_destroy_value(&comp);
                 if (ret != RDB_OK) {
                     RDB_destroy_tuple(&tpl);
-                    return RDB_FALSE; /* !! */
+                    return ret;
                 }
             }
             RDB_evaluate_bool(valp->typ->var.scalar.repv[i].constraintp,
-                    &tpl, NULL, &result);
+                    &tpl, NULL, &*resultp);
             RDB_destroy_tuple(&tpl);
-            if (!result)
-                return RDB_FALSE;
+            if (!*resultp) {
+                return RDB_OK;
+            }
         }
     }
-    return RDB_TRUE;
+    return RDB_OK;
 }
 
 int
@@ -281,6 +284,7 @@ RDB_select_value(RDB_value *valp, RDB_type *typ, const char *repname,
     RDB_ipossrep *prp;
     int i;
     int ret;
+    RDB_bool b;
 
     RDB_destroy_value(valp);
 
@@ -313,10 +317,11 @@ RDB_select_value(RDB_value *valp, RDB_type *typ, const char *repname,
     if (ret != RDB_OK)
         return ret;
 
-    if (!check_constraint(valp))
-        return RDB_TYPE_CONSTRAINT_VIOLATION;
+    ret = check_constraint(valp, &b);
+    if (ret != RDB_OK)
+        return ret;
 
-    return RDB_OK;
+    return b ? RDB_OK : RDB_TYPE_CONSTRAINT_VIOLATION;
 }
 
 RDB_bool
