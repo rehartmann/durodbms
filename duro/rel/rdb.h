@@ -728,8 +728,19 @@ int
 RDB_copy_tuple(RDB_object *dstp, const RDB_object *srcp);
 
 int
+RDB_project_tuple(const RDB_object *, int attrc, char *attrv[],
+                 RDB_object *restplp);
+
+int
+RDB_remove_tuple(const RDB_object *, int attrc, char *attrv[],
+                 RDB_object *restplp);
+
+int
 RDB_extend_tuple(RDB_object *, int attrc, RDB_virtual_attr attrv[],
                  RDB_transaction *);
+
+int
+RDB_join_tuples(const RDB_object *, const RDB_object *, RDB_object *);
 
 int
 RDB_rename_tuple(const RDB_object *, int renc, RDB_renaming renv[],
@@ -1037,6 +1048,10 @@ RDB_selector(RDB_type *, const char *repname, RDB_expression *[]);
 int
 RDB_user_op(const char *opname, int argc, RDB_expression *argv[],
        RDB_transaction *txp, RDB_expression **expp);
+
+/* Return address of encapsulated object, or NULL if not a value */
+RDB_object *
+RDB_expr_obj(RDB_expression *exp);
 
 /*
  * Destroy the expression and all its subexpressions

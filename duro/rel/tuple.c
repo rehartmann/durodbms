@@ -158,13 +158,123 @@ RDB_tuple_attr_names(const RDB_object *tplp, char **namev)
 }
 
 int
+RDB_project_tuple(const RDB_object *tplp, int attrc, char *attrv[],
+                 RDB_object *restplp)
+{
+    RDB_object *attrp;
+    int i;
+
+    if (tplp->kind != RDB_OB_TUPLE)
+        return RDB_INVALID_ARGUMENT;
+
+    RDB_destroy_obj(restplp);
+    RDB_init_obj(restplp);
+
+    for (i = 0; i < attrc; i++) {
+        attrp = RDB_tuple_get(tplp, attrv[i]);
+        if (attrp == NULL)
+            return RDB_INVALID_ARGUMENT;
+
+        RDB_tuple_set(restplp, attrv[i], attrp);
+    }
+
+    return RDB_OK;
+}
+
+int
+RDB_remove_tuple(const RDB_object *tplp, int attrc, char *attrv[],
+                 RDB_object *restplp)
+{
+    RDB_hashmap_iter hiter;
+    RDB_object *attrp;
+    char *key;
+    int i;
+
+    if (tplp->kind != RDB_OB_TUPLE)
+        return RDB_INVALID_ARGUMENT;
+
+    RDB_destroy_obj(restplp);
+    RDB_init_obj(restplp);
+
+    RDB_init_hashmap_iter(&hiter, (RDB_hashmap *) &tplp->var.tpl_map);
+    for (;;) {
+        /* Get next attribute */
+        attrp = (RDB_object *) RDB_hashmap_next(&hiter, &key, NULL);
+        if (attrp == NULL)
+            break;
+
+        /* Check if attribute is in attribute list */
+        for (i = 0; i < attrc && strcmp(key, attrv[i]) != 0; i++);
+        if (i >= attrc) {
+            /* Not found, so copy attribute */
+            RDB_tuple_set(restplp, key, attrp);
+        }
+    }
+    RDB_destroy_hashmap_iter(&hiter);
+
+    return RDB_OK;
+}
+
+int
+RDB_join_tuples(const RDB_object *tpl1p, const RDB_object *tpl2p,
+        RDB_object *restplp)
+{
+    RDB_hashmap_iter hiter;
+    char *key;
+    int ret = RDB_copy_obj(restplp, tpl1p);
+
+    if (ret != RDB_OK)
+        return ret;
+
+    RDB_init_hashmap_iter(&hiter, (RDB_hashmap *) &tpl2p->var.tpl_map);
+    for (;;) {
+        /* Get next attribute */
+        RDB_object *dstattrp;
+        RDB_object *srcattrp = (RDB_object *) RDB_hashmap_next(&hiter, &key,
+                NULL);
+        if (srcattrp == NULL)
+            break;
+
+        /* Get corresponding attribute from tuple #1 */
+        dstattrp = RDB_tuple_get(restplp, key);
+        if (dstattrp != NULL) {
+             RDB_type *typ = RDB_obj_type(dstattrp);
+             
+             /* Check attribute types for equality */
+             if (typ != NULL && !RDB_type_equals(typ, RDB_obj_type(srcattrp))) {
+                 RDB_destroy_hashmap_iter(&hiter);
+                 return RDB_TYPE_MISMATCH;
+             }
+             
+             /* Check attribute values for equality */
+             if (!RDB_obj_equals(dstattrp, srcattrp)) {
+                 RDB_destroy_hashmap_iter(&hiter);
+                 return RDB_INVALID_ARGUMENT;
+             }
+        } else {
+             ret = RDB_tuple_set(restplp, key, srcattrp);
+             if (ret != RDB_OK)
+             {
+                 RDB_destroy_hashmap_iter(&hiter);
+                 return RDB_INVALID_ARGUMENT;
+             }
+        }
+    }
+    RDB_destroy_hashmap_iter(&hiter);
+    return RDB_OK;
+}
+
+int
 RDB_extend_tuple(RDB_object *tup, int attrc, RDB_virtual_attr attrv[],
                 RDB_transaction *txp)
 {
     int i;
     int res;
     RDB_object val;
-    
+/*
+    if (tup->kind != RDB_OB_TUPLE)
+        return RDB_INVALID_ARGUMENT;
+*/
     for (i = 0; i < attrc; i++) {
         res = RDB_evaluate(attrv[i].exp, tup, txp, &val);
         if (res != RDB_OK)
@@ -182,7 +292,10 @@ RDB_rename_tuple(const RDB_object *tup, int renc, RDB_renaming renv[],
     RDB_hashmap_iter it;
     void *datap;
     char *keyp;
-
+/*
+    if (tup->kind != RDB_OB_TUPLE)
+        return RDB_INVALID_ARGUMENT;
+*/
     /* Copy attributes to tup */
     RDB_init_hashmap_iter(&it, (RDB_hashmap *)&tup->var.tpl_map);
     while ((datap = RDB_hashmap_next(&it, &keyp, NULL)) != NULL) {
@@ -213,6 +326,9 @@ _RDB_copy_tuple(RDB_object *dstp, const RDB_object *srcp)
     RDB_hashmap_iter it;
     void *datap;
     char *keyp;
+
+    if (srcp->kind != RDB_OB_TUPLE)
+        return RDB_INVALID_ARGUMENT;
 
     /* Copy attributes to tup */
     RDB_init_hashmap_iter(&it, (RDB_hashmap *)&srcp->var.tpl_map);

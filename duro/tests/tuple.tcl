@@ -97,6 +97,57 @@ set a [duro::array create T3 $tx]
 checkarray $a { {SCATTR Bla TPATTR {T {C Blip} A 1 B Blubb}} }
 duro::array drop $a
 
+# Check tuple operations
+
+set tpl [duro::expr {TUPLE {A 1, B "Bee"} {B}} $tx]
+set stpl {B Bee}
+if {![tequal $tpl $stpl]} {
+    puts "Tuple is $tpl, should be $stpl"
+    exit 1
+}
+
+set tpl [duro::expr {TUPLE {A 1, B "Bee"} {ALL BUT B}} $tx]
+set stpl {A 1}
+if {![tequal $tpl $stpl]} {
+    puts "Tuple is $tpl, should be $stpl"
+    exit 1
+}
+
+set tpl [duro::expr {TUPLE {A 1} RENAME (A AS B)} $tx]
+set stpl {B 1}
+if {![tequal $tpl $stpl]} {
+    puts "Tuple is $tpl, should be $stpl"
+    exit 1
+}
+
+set tpl [duro::expr {TUPLE {A 1} JOIN TUPLE {B "Bee"}} $tx]
+set stpl {A 1 B Bee}
+if {![tequal $tpl $stpl]} {
+    puts "Tuple is $tpl, should be $stpl"
+    exit 1
+}
+
+set tpl [duro::expr {EXTEND TUPLE {A 1} ADD (A*2 AS B)} $tx]
+set stpl {A 1 B 2}
+if {![tequal $tpl $stpl]} {
+    puts "Tuple is $tpl, should be $stpl"
+    exit 1
+}
+
+set tpl [duro::expr {TUPLE {A 1, B "Bee"} WRAP ((A, B) AS T)} $tx]
+set stpl {T {A 1 B Bee}}
+if {![tequal $tpl $stpl]} {
+    puts "Tuple is $tpl, should be $stpl"
+    exit 1
+}
+
+set tpl [duro::expr {TUPLE {T TUPLE {A 1, B "Bee"}} UNWRAP (T)} $tx]
+set stpl {A 1 B Bee}
+if {![tequal $tpl $stpl]} {
+    puts "Tuple is $tpl, should be $stpl"
+    exit 1
+}
+
 # Drop tables
 
 duro::table drop T3 $tx

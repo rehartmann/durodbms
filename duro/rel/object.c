@@ -303,6 +303,10 @@ RDB_destroy_obj(RDB_object *objp)
                 return ret;
             }
             break;
+        case RDB_OB_TABLE:
+            if (objp->var.tbp->name == NULL)
+                RDB_drop_table(objp->var.tbp, NULL);
+            break;
         default: ;
     }
     return RDB_OK;

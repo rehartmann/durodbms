@@ -2,7 +2,7 @@
 # Process this file with autoconf to produce a configure script.
 
 AC_PREREQ(2.57)
-AC_INIT(duro, 0.7, rhartmann@users.sourceforge.net)
+AC_INIT(duro, 0.8, rhartmann@users.sourceforge.net)
 AC_CONFIG_SRCDIR([util/dropdb.c])
 
 AM_INIT_AUTOMAKE

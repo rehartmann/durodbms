@@ -1571,7 +1571,8 @@ relational UNGROUP operator.
 #include &lt;rel/rdb.h&gt;
 
 int
-RDB_join_tuples(const RDB_object *tpl1p, const RDB_object *tpl2p, RDB_object **resultpp);
+RDB_join_tuples(const RDB_object *tpl1p, const RDB_object *tpl2p,
+                RDB_object *restplp);
 </pre>
 
 <h3>Description</h3>
@@ -1604,7 +1605,8 @@ different values.
 #include &lt;rel/rdb.h&gt;
 
 int
-RDB_project_tuple(const RDB_object *, int attrc, char *attrv[], RDB_object **resultpp);
+RDB_project_tuple(const RDB_object *, int attrc, char *attrv[],
+                  RDB_object *restplp);
 </pre>
 
 <h3>Description</h3>

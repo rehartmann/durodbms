@@ -45,7 +45,7 @@ TESTS = tests/ctests tests/rtables.tcl tests/project.tcl tests/tuple.tcl \
 
 TESTS_ENVIRONMENT = LD_LIBRARY_PATH=$(LD_LIBRARY_PATH):$(BDB_HOME)/lib
 
-LDADD = -L$(BDB_HOME)/lib libduro.la -ldb @LIBS@
+LDADD = -L$(BDB_HOME)/lib libduro.la -ldb @LIBS@ -lmcheck
 
 tests_test_pointtable_LDADD = $(LDADD) -lm
 

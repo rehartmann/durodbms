@@ -577,9 +577,6 @@ RDB_drop_expr(RDB_expression *exp)
             free(exp->var.op.name);
             break;
         case RDB_EX_OBJ:
-            if (exp->var.obj.kind == RDB_OB_TABLE
-                    && exp->var.obj.var.tbp->name == NULL)
-                RDB_drop_table(exp->var.obj.var.tbp, NULL);
             RDB_destroy_obj(&exp->var.obj);
             break;
         case RDB_EX_ATTR:
@@ -1331,4 +1328,12 @@ _RDB_expr_refers(RDB_expression *exp, RDB_table *tbp)
     }
     /* Should never be reached */
     abort();
+}
+
+RDB_object *
+RDB_expr_obj(RDB_expression *exp)
+{
+    if (exp->kind != RDB_EX_OBJ)
+        return NULL;
+    return &exp->var.obj;
 }
