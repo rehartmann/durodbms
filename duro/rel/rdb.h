@@ -154,7 +154,8 @@ typedef struct RDB_expression {
         struct {
             struct RDB_expression *arg1;
             struct RDB_expression *arg2;
-            char *name;	/* only for RDB_OP_GET_COMP */
+            char *name;	/* only for RDB_OP_GET_COMP and RDB_OP_AGGREGATE */
+            RDB_aggregate_op op; /* only for RDB_OP_AGGREGATE */
         } op;
         struct {
             char *name;
@@ -162,11 +163,6 @@ typedef struct RDB_expression {
         } attr;
         struct RDB_table *tbp;
         RDB_object const_val;
-        struct {
-            struct RDB_table *tbp;
-            RDB_aggregate_op op;
-            char *attrname;
-        } aggr;
         struct {
             struct RDB_expression **argv;
             RDB_type *typ;
@@ -992,16 +988,13 @@ RDB_regmatch(RDB_expression *, RDB_expression *);
  * Create table-valued expression
  */
 RDB_expression *
-RDB_rel_table(RDB_table *);
+RDB_expr_table(RDB_table *);
 
 RDB_expression *
-RDB_rel_is_empty(RDB_expression *);
+RDB_expr_aggregate(RDB_expression *, RDB_aggregate_op op, const char *attrname);
 
 RDB_expression *
-RDB_aggregate_expr(RDB_table *, RDB_aggregate_op op, const char *attrname);
-
-RDB_expression *
-RDB_get_comp(RDB_expression *, const char *);
+RDB_expr_comp(RDB_expression *, const char *);
 
 RDB_expression *
 RDB_selector(RDB_type *, const char *repname, RDB_expression *[]);

@@ -47,15 +47,15 @@ RDB_expr_type(const RDB_expression *exp)
         case RDB_USER_OP:
             return exp->var.user_op.op->rtyp;
         case RDB_OP_AGGREGATE:
-            switch (exp->var.aggr.op) {
+            switch (exp->var.op.op) {
                 case RDB_COUNT:
                     return &RDB_INTEGER;
                 case RDB_AVG:
                     return &RDB_RATIONAL;
                 default:
                     return _RDB_tuple_type_attr(
-                            exp->var.aggr.tbp->typ->var.basetyp,
-                            exp->var.aggr.attrname)->typ;
+                            exp->var.op.arg1->var.tbp->typ->var.basetyp,
+                            exp->var.op.name)->typ;
             }
     }
     abort();
@@ -283,7 +283,8 @@ RDB_regmatch(RDB_expression *arg1, RDB_expression *arg2)
 }
 
 RDB_expression *
-RDB_rel_table(RDB_table *tbp) {
+RDB_expr_table(RDB_table *tbp)
+{
     RDB_expression *exp;
 
     exp = malloc(sizeof (RDB_expression));  
@@ -297,32 +298,31 @@ RDB_rel_table(RDB_table *tbp) {
 }
 
 RDB_expression *
-RDB_rel_is_empty(RDB_expression *arg1)
+RDB_expr_is_empty(RDB_expression *arg1)
 {
     return _RDB_create_unexpr(arg1, RDB_OP_REL_IS_EMPTY);
 }
 
 RDB_expression *
-RDB_aggregate_expr(RDB_table *tbp, RDB_aggregate_op op, const char *attrname)
+RDB_expr_aggregate(RDB_expression *arg1, RDB_aggregate_op op,
+        const char *attrname)
 {
-    RDB_expression *exp = malloc(sizeof (RDB_expression));
+    RDB_expression *exp = _RDB_create_unexpr(arg1, RDB_OP_AGGREGATE);
 
     if (exp == NULL)
         return NULL;
-    exp->kind = RDB_OP_AGGREGATE;
-    exp->var.aggr.attrname = RDB_dup_str(attrname);
-    if (exp->var.aggr.attrname == NULL) {
+    exp->var.op.name = RDB_dup_str(attrname);
+    if (exp->var.op.name == NULL) {
         free(exp);
         return NULL;
     }
-    exp->var.aggr.tbp = tbp;
-    exp->var.aggr.op = op;
+    exp->var.op.op = op;
 
     return exp;
 }
 
 RDB_expression *
-RDB_get_comp(RDB_expression *arg, const char *compname)
+RDB_expr_comp(RDB_expression *arg, const char *compname)
 {
     RDB_expression *exp;
 
@@ -469,7 +469,7 @@ RDB_drop_expr(RDB_expression *exp)
             break;
         }
         case RDB_OP_AGGREGATE:
-            free(exp->var.aggr.attrname);
+            free(exp->var.op.name);
             break;
         case RDB_CONST:
             RDB_destroy_obj(&exp->var.const_val);
@@ -914,11 +914,8 @@ RDB_evaluate_bool(RDB_expression *exp, const RDB_tuple *tup,
         }
         case RDB_OP_REL_IS_EMPTY:
         {
-            RDB_table *tbp = exp->var.tbp;
-        
-            *resp = RDB_table_is_empty(tbp, txp, resp);
-            return RDB_table_name(tbp) == NULL ?
-                    RDB_drop_table(tbp, txp) : RDB_OK;
+            /* !! */
+            return RDB_NOT_SUPPORTED;
         }
         case RDB_OP_GET_COMP:
         case RDB_OP_AGGREGATE:
@@ -1046,8 +1043,8 @@ RDB_evaluate(RDB_expression *exp, const RDB_tuple *tup, RDB_transaction *txp,
             case RDB_USER_OP:
                 return evaluate_user_op(exp, tup, txp, valp);
             case RDB_OP_AGGREGATE:
-                return RDB_aggregate(exp->var.aggr.tbp, exp->var.aggr.op,
-                        exp->var.aggr.attrname, txp, valp);
+                return RDB_aggregate(exp->var.op.arg1->var.tbp, exp->var.op.op,
+                        exp->var.op.name, txp, valp);
             case RDB_ATTR:
             {
                 RDB_object *srcp = RDB_tuple_get(tup, exp->var.attr.name);
@@ -1137,7 +1134,7 @@ _RDB_expr_refers(RDB_expression *exp, RDB_table *tbp)
             return RDB_FALSE;
         }
         case RDB_OP_AGGREGATE:
-            return (RDB_bool) (exp->var.aggr.tbp == tbp);
+            return (RDB_bool) (exp->var.op.arg1->var.tbp == tbp);
     }
     /* Should never be reached */
     abort();

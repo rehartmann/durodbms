@@ -141,13 +141,13 @@ serialize_expr(RDB_object *valp, int *posp, const RDB_expression *exp)
                 return ret;
             return serialize_str(valp, posp, exp->var.op.name);
         case RDB_OP_AGGREGATE:
-            ret = _RDB_serialize_table(valp, posp, exp->var.aggr.tbp);
+            ret = serialize_expr(valp, posp, exp->var.op.arg1);
             if (ret != RDB_OK)
                 return ret;
-            ret = serialize_byte(valp, posp, (RDB_byte) exp->var.aggr.op);
+            ret = serialize_byte(valp, posp, (RDB_byte) exp->var.op.op);
             if (ret != RDB_OK)
                 return ret;
-            return serialize_str(valp, posp, exp->var.aggr.attrname);
+            return serialize_str(valp, posp, exp->var.op.name);
         case RDB_SELECTOR:
         {
             int i;
@@ -564,6 +564,7 @@ deserialize_expr(RDB_object *valp, int *posp, RDB_transaction *txp,
             if (*expp == NULL)
                 return RDB_NO_MEMORY;
             break;
+/*
         case RDB_OP_REL_IS_EMPTY:
             ret = deserialize_expr(valp, posp, txp, &ex1p);
             if (ret != RDB_OK)
@@ -572,6 +573,7 @@ deserialize_expr(RDB_object *valp, int *posp, RDB_transaction *txp,
             if (*expp == NULL)
                 return RDB_NO_MEMORY;
             break;
+*/
         case RDB_OP_EQ:
         case RDB_OP_NEQ:
         case RDB_OP_LT:
@@ -682,11 +684,11 @@ deserialize_expr(RDB_object *valp, int *posp, RDB_transaction *txp,
         }
         case RDB_OP_AGGREGATE:
         {
-            RDB_table *tbp;
+            RDB_expression *exp;
             RDB_aggregate_op op;
             char *name;
 
-            ret = deserialize_table(valp, posp, txp, &tbp);
+            ret = deserialize_expr(valp, posp, txp, &exp);
             if (ret != RDB_OK)
                 return ret;
 
@@ -700,7 +702,7 @@ deserialize_expr(RDB_object *valp, int *posp, RDB_transaction *txp,
                 return ret;
             }
 
-            *expp = RDB_aggregate_expr(tbp, op, name);
+            *expp = RDB_expr_aggregate(exp, op, name);
             if (*expp == NULL)
                 return ret;
             break;
@@ -712,7 +714,7 @@ deserialize_expr(RDB_object *valp, int *posp, RDB_transaction *txp,
             ret = deserialize_table(valp, posp, txp, &tbp);
             if (ret != RDB_OK)
                 return ret;
-            *expp = RDB_rel_table(tbp);
+            *expp = RDB_expr_table(tbp);
             if (expp == NULL)
                 return RDB_NO_MEMORY;
             break;

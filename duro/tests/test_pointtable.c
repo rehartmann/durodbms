@@ -204,7 +204,7 @@ test_query(RDB_database *dbp)
     printf("Creating POINTTEST WHERE POINT.THE_X=1\n");
 
     wherep = RDB_expr_attr("POINT", pointtyp);
-    wherep = RDB_get_comp(wherep, "X");
+    wherep = RDB_expr_comp(wherep, "X");
     wherep = RDB_eq(wherep, RDB_rational_const(1.0));
 
     ret = RDB_select(tbp, wherep, &tmptbp);

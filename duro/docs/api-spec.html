@@ -150,10 +150,10 @@
 <li><a href="#subtract">RDB_subtract</a>
 <li><a href="#strlen">RDB_strlen</a>
 <li><a href="#regmatch">RDB_regmatch</a>
-<li><a href="#rel_table">RDB_rel_table</a>
+<li><a href="#expr_table">RDB_expr_table</a>
 <li><a href="#rel_is_empty">RDB_rel_is_empty</a>
-<li><a href="#aggregate_expr">RDB_aggregate_expr</a>
-<li><a href="#get_comp">RDB_get_comp</a>
+<li><a href="#expr_aggregate">RDB_expr_aggregate</a>
+<li><a href="#expr_comp">RDB_expr_comp</a>
 <li><a href="#selector">RDB_selector</a>
 <li><a href="#user_op">RDB_user_op</a>
 <li><a href="#drop_expr">RDB_drop_expr</a>
@@ -323,8 +323,6 @@ of Duro used. Consult the release notes of that version for details.
 
 <p>The call may also fail for a <a href="#syserr">system error</a>,
 in which case the transaction is implicitly rolled back.
-
-
 
 <h2 id="get_table">RDB_get_table</h2>
 
@@ -2571,7 +2569,7 @@ RDB_eq(RDB_expression *, RDB_expression *);
 
 <h3>Description</h3>
 
-<p>RDB_eq creates an expression that represents an equality check.
+<p>RDB_eq creates an expression that represents an "is equal" operator.
 
 <h3>Return value</h3>
 
@@ -2589,9 +2587,12 @@ RDB_neq(RDB_expression *, RDB_expression *);
 
 <h3>Description</h3>
 
+<p>RDB_neq creates an expression that represents an "is not equal" operator.
+
 <h3>Return value</h3>
 
-<h3>Errors</h3>
+<p>A pointer to the newly created expression, of NULL if the creation
+failed.
 
 <hr>
 
@@ -2604,9 +2605,12 @@ RDB_and(RDB_expression *, RDB_expression *);
 
 <h3>Description</h3>
 
+<p>RDB_and creates an expression that represents a logical AND.
+
 <h3>Return value</h3>
 
-<h3>Errors</h3>
+<p>A pointer to the newly created expression, of NULL if the creation
+failed.
 
 <hr>
 
@@ -2619,9 +2623,12 @@ RDB_or(RDB_expression *, RDB_expression *);
 
 <h3>Description</h3>
 
+<p>RDB_or creates an expression that represents a logical OR.
+
 <h3>Return value</h3>
 
-<h3>Errors</h3>
+<p>A pointer to the newly created expression, of NULL if the creation
+failed.
 
 <hr>
 
@@ -2634,9 +2641,12 @@ RDB_not(RDB_expression *);
 
 <h3>Description</h3>
 
+<p>RDB_or creates an expression that represents a logical NOT.
+
 <h3>Return value</h3>
 
-<h3>Errors</h3>
+<p>A pointer to the newly created expression, of NULL if the creation
+failed.
 
 <hr>
 
@@ -2649,9 +2659,13 @@ RDB_add(RDB_expression *, RDB_expression *);
 
 <h3>Description</h3>
 
+<p>RDB_add creates an expression that represents an arithmetical addition.
+Both arguments must be numeric and of the same type.
+
 <h3>Return value</h3>
 
-<h3>Errors</h3>
+<p>A pointer to the newly created expression, of NULL if the creation
+failed.
 
 <hr>
 
@@ -2664,9 +2678,13 @@ RDB_subtract(RDB_expression *, RDB_expression *);
 
 <h3>Description</h3>
 
+<p>RDB_subtract creates an expression that represents an arithmetical
+subtraction. Both arguments must be numeric and of the same type.
+
 <h3>Return value</h3>
 
-<h3>Errors</h3>
+<p>A pointer to the newly created expression, of NULL if the creation
+failed.
 
 <hr>
 
@@ -2679,9 +2697,13 @@ RDB_strlen(RDB_expression *arg);
 
 <h3>Description</h3>
 
+<p>RDB_subtract creates an expression that represents a string length
+operation.
+
 <h3>Return value</h3>
 
-<h3>Errors</h3>
+<p>A pointer to the newly created expression, of NULL if the creation
+failed.
 
 <hr>
 
@@ -2694,24 +2716,32 @@ RDB_regmatch(RDB_expression *arg1, RDB_expression *arg2);
 
 <h3>Description</h3>
 
+<p>RDB_subtract creates an expression that represents a regular
+expression match. The expression evaluates to RDB_TRUE if
+if arg1 matches the regular expression arg2.
+
 <h3>Return value</h3>
 
-<h3>Errors</h3>
+<p>A pointer to the newly created expression, of NULL if the creation
+failed.
 
 <hr>
 
-<h2 id="rel_table">RDB_rel_table</h2>
+<h2 id="expr_table">RDB_expr_table</h2>
 
 <pre>
 RDB_expression *
-RDB_rel_table(RDB_table *);
+RDB_expr_table(RDB_table *);
 </pre>
 
 <h3>Description</h3>
 
+<p>RDB_expr_table creates an expression that represents a table.
+
 <h3>Return value</h3>
 
-<h3>Errors</h3>
+<p>A pointer to the newly created expression, of NULL if the creation
+failed.
 
 <hr>
 
@@ -2719,44 +2749,56 @@ RDB_rel_table(RDB_table *);
 
 <pre>
 RDB_expression *
-RDB_rel_is_empty(RDB_expression *);
+RDB_expr_is_empty(RDB_expression *);
 </pre>
 
 <h3>Description</h3>
 
+<p>RDB_expr_is_empty creates an expression which evaluates to RDB_TRUE
+if the subexpression evaluates to an empty table.
+
 <h3>Return value</h3>
 
-<h3>Errors</h3>
+<p>A pointer to the newly created expression, of NULL if the creation
+failed.
 
 <hr>
 
-<h2 id="aggregate_expr">RDB_aggregate_expr</h2>
+<h2 id="expr_aggregate">RDB_expr_aggregate</h2>
 
 <pre>
 RDB_expression *
-RDB_aggregate_expr(RDB_table *, RDB_aggregate_op op, const char *attrname);
+RDB_expr_aggregate(RDB_expression *, RDB_aggregate_op op, const char *attrname);
 </pre>
 
 <h3>Description</h3>
 
+<p>RDB_expr_aggregate creates an expression which represents an aggregation
+operation (See <a href="#aggregate">RDB_aggregate</a>).
+
 <h3>Return value</h3>
 
-<h3>Errors</h3>
+<p>A pointer to the newly created expression, of NULL if the creation
+failed.
 
 <hr>
 
-<h2 id="get_comp">RDB_get_comp</h2>
+<h2 id="expr_comp">RDB_expr_comp</h2>
 
 <pre>
 RDB_expression *
-RDB_get_comp(RDB_expression *arg, const char *compname);
+RDB_expr_comp(RDB_expression *arg, const char *compname);
 </pre>
 
 <h3>Description</h3>
 
+<p>RDB_expr_comp creates an expression which evaluates to a
+possible representation component.
+
 <h3>Return value</h3>
 
-<h3>Errors</h3>
+<p>A pointer to the newly created expression, of NULL if the creation
+failed.
 
 <hr>
 
@@ -2769,9 +2811,13 @@ RDB_selector(RDB_type *, const char *repname, RDB_expression *argv[]);
 
 <h3>Description</h3>
 
+<p>RDB_selector creates an expression which represents a selector
+invocation.
+
 <h3>Return value</h3>
 
-<h3>Errors</h3>
+<p>A pointer to the newly created expression, of NULL if the creation
+failed.
 
 <hr>
 
@@ -2785,9 +2831,23 @@ RDB_user_op(const char *opname, int argc, RDB_expression *argv[],
 
 <h3>Description</h3>
 
+<p>RDB_user_op creates an expression which represents a the invocation
+of user-defined operator and stores a pointer to the expression
+at the location pointed to by <var>expp</var>.
+
 <h3>Return value</h3>
 
+<p>On success, RDB_OK is returned. On failure, an error code is returned.
+
 <h3>Errors</h3>
+
+<dl>
+<dt>RDB_NOT_FOUND
+<dd>The user-defined operation was not found.
+</dl>
+
+<p>The call may also fail for a <a href="#syserr">system error</a>,
+in which case the transaction is implicitly rolled back.
 
 <hr>
 
