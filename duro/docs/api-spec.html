@@ -225,6 +225,13 @@
 <li><a href="#set_errfn">RDB_set_errfn</a>
 </ul>
 
+<h3>Index functions</h3>
+
+<ul>
+<li><a href="#create_table_index">RDB_create_table_index</a>
+<li><a href="#drop_table_index">RDB_drop_table_index</a>
+</ul>
+
 <h3>Error handling functions</h3>
 
 <ul>
@@ -4419,6 +4426,88 @@ RDB_set_errfile(RDB_environment *, FILE *errfile);
 <h3>Description</h3>
 
 <p>RDB_set_errfile sets a C library FILE * to be used for error messages.
+
+<hr>
+
+<h2 id="set_errfn">RDB_set_errfn</h2>
+
+<pre>
+#include &lt;rel/rdb.h&gt;
+
+void
+RDB_set_errfn(RDB_environment *envp, void (*errfn)(const char *msg, void *arg), void *arg);
+</pre>
+
+<h3>Description</h3>
+
+<p>RDB_set_errfile sets an error reporting function.
+
+<hr>
+
+<h2 id="create_table_index">RDB_create_table_index</h2>
+
+<pre>
+#include &lt;rel/rdb.h&gt;
+
+int
+RDB_create_table_index(const char *name, RDB_table *tbp, int idxcompc,
+                       RDB_seq_item idxcompv[], int flags, RDB_transaction *);
+</pre>
+
+<h3>Description</h3>
+
+<p>RDB_create_table_index creates and index with name <var>name</var>
+for the table specified by <var>tbp</var> over the attributes
+specified by <var>idxcompc</var> and <var>idxcompv</var>.
+The <var>flags</var> argument and the field asc of <var>idxcompv</var> is currently ignored.
+
+<h3>Return value</h3>
+
+<p>On success, RDB_OK is returned. On failure, an error code is returned.
+
+<h3>Errors</h3>
+
+<dl>
+<dt>RDB_INVALID_ARGUMENT
+<dd><var>name</var> is not a valid index name.
+<dt>RDB_ELEMENT_EXISTS
+<dd>An index with name <var>name</var> already exists.
+<dt>RDB_ATTRIBUTE_NOT_FOUND
+<dd>An attribute specified by <var>idxcompv</var> does not appear in the
+table.
+</dl>
+
+<p>The call may also fail for a <a href="#syserr">system error</a>,
+in which case the transaction is implicitly rolled back.
+
+<hr>
+
+<h2 id="drop_table_index">RDB_drop_table_index</h2>
+
+<pre>
+#include &lt;rel/rdb.h&gt;
+
+int
+RDB_drop_table_index(const char *name, RDB_transaction *);
+</pre>
+
+<h3>Description</h3>
+
+<p>RDB_drop_table_index drops the index specified by <var>name</var>.
+
+<h3>Return value</h3>
+
+<p>On success, RDB_OK is returned. On failure, an error code is returned.
+
+<h3>Errors</h3>
+
+<dl>
+<dt>RDB_NOT_FOUND
+<dd>An index with name <var>name</var> does not exist.
+</dl>
+
+<p>The call may also fail for a <a href="#syserr">system error</a>,
+in which case the transaction is implicitly rolled back.
 
 <hr>
 

@@ -429,7 +429,7 @@ create_index(RDB_table *tbp, RDB_environment *envp, RDB_transaction *txp,
         void *np = RDB_hashmap_get(&tbp->var.stored.attrmap,
                 indexp->attrv[i].attrname, NULL);
         if (np == NULL)
-            return RDB_INVALID_ARGUMENT;
+            return RDB_ATTRIBUTE_NOT_FOUND;
         fieldv[i] = *(int *) np;
     }
 
