@@ -46,12 +46,12 @@ unbalance_and(RDB_expression *exp)
 }
 
 static RDB_bool
-expr_eq_attr(RDB_expression *exp, const char *attrname)
+expr_attr(RDB_expression *exp, const char *attrname, enum _RDB_expr_kind kind)
 {
     if (exp->kind == RDB_EX_ATTR
             && strcmp(exp->var.attrname, attrname) == 0)
         return RDB_TRUE;
-    if (exp->kind == RDB_EX_EQ) {
+    if (exp->kind == kind) {
         if (exp->var.op.arg1->kind == RDB_EX_ATTR
                 && strcmp(exp->var.op.arg1->var.attrname, attrname) == 0
                 && exp->var.op.arg2->kind == RDB_EX_OBJ)
@@ -60,15 +60,36 @@ expr_eq_attr(RDB_expression *exp, const char *attrname)
     return RDB_FALSE;
 }
 
+static RDB_bool
+expr_cmp_attr(RDB_expression *exp, const char *attrname)
+{
+    if (exp->kind == RDB_EX_ATTR
+            && strcmp(exp->var.attrname, attrname) == 0)
+        return RDB_TRUE;
+    switch(exp->kind) {
+        case RDB_EX_EQ:
+        case RDB_EX_GT:
+        case RDB_EX_LT:
+        case RDB_EX_GET:
+        case RDB_EX_LET:
+            if (exp->var.op.arg1->kind == RDB_EX_ATTR
+                    && strcmp(exp->var.op.arg1->var.attrname, attrname) == 0
+                    && exp->var.op.arg2->kind == RDB_EX_OBJ)
+                return RDB_TRUE;
+        default: ;
+    }
+    return RDB_FALSE;
+}
+
 RDB_expression *
-_RDB_attr_node(RDB_expression *exp, const char *attrname)
+attr_node(RDB_expression *exp, const char *attrname, enum _RDB_expr_kind kind)
 {
     while (exp->kind == RDB_EX_AND) {
-        if (expr_eq_attr(exp->var.op.arg2, attrname))
+        if (expr_attr(exp->var.op.arg2, attrname, kind))
             return exp;
         exp = exp->var.op.arg1;
     }
-    if (expr_eq_attr(exp, attrname))
+    if (expr_attr(exp, attrname, kind))
         return exp;
     return NULL;
 }
@@ -83,8 +104,30 @@ eval_index_exp(RDB_expression *exp, _RDB_tbindex *indexp)
 {
     int i;
 
+    if (indexp->idxp != NULL && RDB_index_is_ordered(indexp->idxp)) {
+        RDB_expression *iexp = exp;
+
+        /*
+         * The index is ordered, so the expression must refer at least to the
+         * first attribute
+         */
+        if (expr_cmp_attr(iexp, indexp->attrv[0].attrname))
+            return 4;
+        iexp = exp;
+        while (iexp != NULL && iexp->kind == RDB_EX_AND) {
+            if (expr_cmp_attr(iexp->var.op.arg2, indexp->attrv[0].attrname))
+                return 4;
+            iexp = iexp->var.op.arg1;
+        }
+        return INT_MAX;
+    }
+
+    /*
+     * The index is not ordered, so the expression must cover
+     * all index attributes
+     */
     for (i = 0; i < indexp->attrc; i++) {
-        if (_RDB_attr_node(exp, indexp->attrv[i].attrname) == NULL)
+        if (attr_node(exp, indexp->attrv[i].attrname, RDB_EX_EQ) == NULL)
             return INT_MAX;
     }
     if (indexp->idxp == NULL)
@@ -115,9 +158,57 @@ split_by_index(RDB_table *tbp, _RDB_tbindex *indexp)
     RDB_expression *prevp;
     RDB_expression *nodep;
     RDB_expression *ixexp = NULL;
+    RDB_bool all_eq = RDB_TRUE;
+    int objpc = 0;
+    RDB_object **objpv = malloc(sizeof (RDB_object *) * indexp->attrc);
 
-    for (i = 0; i < indexp->attrc; i++) {
-        nodep = _RDB_attr_node(tbp->var.select.exp, indexp->attrv[i].attrname);
+    if (objpv == NULL)
+        return RDB_NO_MEMORY;
+    
+    for (i = 0; i < indexp->attrc && all_eq; i++) {
+        RDB_expression *attrexp;
+
+        if (indexp->idxp != NULL && RDB_index_is_ordered(indexp->idxp)) {
+            nodep = attr_node(tbp->var.select.exp, indexp->attrv[i].attrname,
+                    RDB_EX_EQ);
+            if (nodep == NULL) {
+                nodep = attr_node(tbp->var.select.exp, indexp->attrv[i].attrname,
+                    RDB_EX_GET);
+                if (nodep == NULL) {
+                    nodep = attr_node(tbp->var.select.exp, indexp->attrv[i].attrname,
+                            RDB_EX_GT);
+                    if (nodep == NULL) {
+                        nodep = attr_node(tbp->var.select.exp,
+                                indexp->attrv[i].attrname, RDB_EX_LET);
+                        if (nodep == NULL) {
+                            nodep = attr_node(tbp->var.select.exp,
+                                    indexp->attrv[i].attrname, RDB_EX_LT);
+                            if (nodep == NULL)
+                                break;
+                        }
+                    }
+                }
+                all_eq = RDB_FALSE;
+            }
+        } else {
+            nodep = attr_node(tbp->var.select.exp, indexp->attrv[i].attrname,
+                    RDB_EX_EQ);
+        }
+        attrexp = nodep;
+        if (attrexp->kind == RDB_EX_AND)
+            attrexp = attrexp->var.op.arg2;
+        if (attrexp->var.op.arg2->var.obj.typ == NULL
+                && (attrexp->var.op.arg2->var.obj.kind == RDB_OB_TUPLE
+                || attrexp->var.op.arg2->var.obj.kind == RDB_OB_ARRAY))
+            _RDB_set_nonsc_type(&attrexp->var.op.arg2->var.obj,
+                    RDB_type_attr_type(tbp->typ, indexp->attrv[i].attrname));
+        if (attrexp->kind == RDB_EX_EQ || attrexp->kind == RDB_EX_GET
+                || attrexp->kind == RDB_EX_GT)
+            objpv[objpc++] = &attrexp->var.op.arg2->var.obj;
+
+        /*
+         * Delete node
+         */
 
         /* Get previous node */
         if (nodep == tbp->var.select.exp) {
@@ -172,6 +263,9 @@ split_by_index(RDB_table *tbp, _RDB_tbindex *indexp)
 
         sitbp->kind = RDB_TB_SELECT_INDEX;
         sitbp->var.select.indexp = indexp;
+        sitbp->var.select.objpv = objpv;
+        sitbp->var.select.objpc = objpc;
+        sitbp->var.select.all_eq = all_eq;
         sitbp->optimized = RDB_TRUE;
         tbp->var.select.tbp = sitbp;
     } else {
@@ -180,6 +274,9 @@ split_by_index(RDB_table *tbp, _RDB_tbindex *indexp)
          */
         tbp->kind = RDB_TB_SELECT_INDEX;
         tbp->var.select.indexp = indexp;
+        tbp->var.select.objpv = objpv;
+        tbp->var.select.objpc = objpc;
+        tbp->var.select.all_eq = all_eq;
         tbp->var.select.exp = ixexp;
     }
     return RDB_OK;

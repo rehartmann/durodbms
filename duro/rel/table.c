@@ -206,6 +206,7 @@ _RDB_drop_table(RDB_table *tbp, RDB_bool rec)
             break;
         }
         case RDB_TB_SELECT_INDEX:
+            free(tbp->var.select.objpv);
         case RDB_TB_SELECT:
             RDB_drop_expr(tbp->var.select.exp);
             if (rec) {
@@ -378,7 +379,7 @@ compare_field(const void *data1p, size_t len1,
 
 static int
 create_index(RDB_table *tbp, RDB_environment *envp, RDB_transaction *txp,
-             _RDB_tbindex *indexp)
+             _RDB_tbindex *indexp, int flags)
 {
     int ret;
     int i;
@@ -402,7 +403,7 @@ create_index(RDB_table *tbp, RDB_environment *envp, RDB_transaction *txp,
     ret = RDB_create_index(tbp->var.stored.recmapp,
                   tbp->is_persistent ? indexp->name : NULL,
                   tbp->is_persistent ? RDB_DATAFILE : NULL,
-                  envp, indexp->attrc, fieldv, indexp->unique,
+                  envp, indexp->attrc, fieldv, flags,
                   txp != NULL ? txp->txid : NULL, &indexp->idxp);
 
 cleanup:
@@ -474,7 +475,7 @@ create_key_indexes(RDB_table *tbp, RDB_environment *envp, RDB_transaction *txp)
     }
 
     for (i = 1; i < tbp->var.stored.indexc; i++) {
-        ret = create_index(tbp, envp, txp, &tbp->var.stored.indexv[i]);
+        ret = create_index(tbp, envp, txp, &tbp->var.stored.indexv[i], RDB_UNIQUE);
         if (ret != RDB_OK)
             return ret;
     }
@@ -750,7 +751,7 @@ _RDB_open_table_index(RDB_table *tbp, _RDB_tbindex *indexp,
     ret = RDB_open_index(tbp->var.stored.recmapp,
                   tbp->is_persistent ? indexp->name : NULL,
                   tbp->is_persistent ? RDB_DATAFILE : NULL,
-                  envp, indexp->attrc, fieldv, indexp->unique,
+                  envp, indexp->attrc, fieldv, indexp->unique ? RDB_UNIQUE : 0,
                   txp != NULL ? txp->txid : NULL, &indexp->idxp);
 
 cleanup:
@@ -793,8 +794,6 @@ RDB_create_table_index(const char *name, RDB_table *tbp, int idxcompc,
         return RDB_NO_MEMORY;
     }
 
-    indexp->unique = RDB_FALSE;
-
     for (i = 0; i < idxcompc; i++) {
         indexp->attrv[i].attrname = RDB_dup_str(idxcompv[i].attrname);
         if (indexp->attrv[i].attrname == NULL) {
@@ -802,6 +801,7 @@ RDB_create_table_index(const char *name, RDB_table *tbp, int idxcompc,
             return RDB_NO_MEMORY;
         }
     }
+    indexp->unique = (RDB_bool) (RDB_UNIQUE & flags);
 
     ret = RDB_begin_tx(&tx, RDB_tx_db(txp), txp);
     if (ret != RDB_OK) {
@@ -818,7 +818,7 @@ RDB_create_table_index(const char *name, RDB_table *tbp, int idxcompc,
     }
 
     /* Create index */
-    ret = create_index(tbp, RDB_db_env(RDB_tx_db(txp)), &tx, indexp);
+    ret = create_index(tbp, RDB_db_env(RDB_tx_db(txp)), &tx, indexp, flags);
     if (ret != RDB_OK) {
         goto error;
     }

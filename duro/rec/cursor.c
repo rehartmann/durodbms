@@ -175,31 +175,19 @@ RDB_cursor_first(RDB_cursor *curp)
 }
 
 int
-RDB_cursor_next(RDB_cursor *curp)
+RDB_cursor_next(RDB_cursor *curp, int flags)
 {
     DBT key;
 
     if (curp->idxp == NULL) {
         return RDB_convert_err(curp->cursorp->c_get(curp->cursorp,
-                &curp->current_key, &curp->current_data, DB_NEXT));
-    } else {
-        return RDB_convert_err(curp->cursorp->c_pget(curp->cursorp,
-                &key, &curp->current_key, &curp->current_data, DB_NEXT));
-    }
-}
-
-int
-RDB_cursor_next_dup(RDB_cursor *curp)
-{
-    DBT key;
-
-    if (curp->idxp == NULL) {
-        return RDB_convert_err(curp->cursorp->c_get(curp->cursorp,
-                &curp->current_key, &curp->current_data, DB_NEXT_DUP));
+                &curp->current_key, &curp->current_data,
+                flags == RDB_REC_DUP ? DB_NEXT_DUP : DB_NEXT));
     } else {
         memset(&key, 0, sizeof key);
         return RDB_convert_err(curp->cursorp->c_pget(curp->cursorp,
-                &key, &curp->current_key, &curp->current_data, DB_NEXT_DUP));
+                &key, &curp->current_key, &curp->current_data,
+                flags == RDB_REC_DUP ? DB_NEXT_DUP : DB_NEXT));
     }
 }
 
@@ -211,7 +199,7 @@ RDB_cursor_prev(RDB_cursor *curp)
 }    
 
 int
-RDB_cursor_seek(RDB_cursor *curp, RDB_field keyv[])
+RDB_cursor_seek(RDB_cursor *curp, RDB_field keyv[], int flags)
 {
     int ret;
     int i;
@@ -231,16 +219,19 @@ RDB_cursor_seek(RDB_cursor *curp, RDB_field keyv[])
     } else {
         ret = _RDB_fields_to_DBT(curp->recmapp, curp->idxp->fieldc,
                 keyv, &key);
+        key.flags = DB_DBT_REALLOC;
     }
     if (ret != RDB_OK)
         return ret;
 
     if (curp->idxp == NULL) {
         ret = RDB_convert_err(curp->cursorp->c_get(curp->cursorp,
-                &curp->current_key, &curp->current_data, DB_SET));
+                &curp->current_key, &curp->current_data,
+                flags == RDB_REC_RANGE ? DB_SET_RANGE : DB_SET));
     } else {
         ret = RDB_convert_err(curp->cursorp->c_pget(curp->cursorp,
-                &key, &curp->current_key, &curp->current_data, DB_SET));
+                &key, &curp->current_key, &curp->current_data,
+                flags == RDB_REC_RANGE ? DB_SET_RANGE : DB_SET));
     }
     if (curp->idxp != NULL)
         free(key.data);

@@ -478,15 +478,19 @@ select_index_qresult(RDB_qresult *qrp, RDB_transaction *txp)
 {
     int ret;
     int i;
-    RDB_object *objv;
-    RDB_field *fv = NULL;
-    int keylen = qrp->tbp->var.select.indexp->attrc;
+    RDB_field *fv;
+    int flags = 0;
 
     /*
      * If the index is unique, there is nothing to do
      */
     if (qrp->tbp->var.select.indexp->unique)
         return RDB_OK;
+
+    fv  = malloc(sizeof (RDB_field) * qrp->tbp->var.select.indexp->attrc);
+
+    if (fv == NULL)
+        return RDB_NO_MEMORY;
 
     ret = RDB_index_cursor(&qrp->var.curp, qrp->tbp->var.select.indexp->idxp,
             RDB_FALSE, qrp->tbp->var.select.tbp->is_persistent ? txp->txid : NULL);
@@ -495,43 +499,32 @@ select_index_qresult(RDB_qresult *qrp, RDB_transaction *txp)
             RDB_errmsg(txp->dbp->dbrootp->envp, "cannot create cursor: %s",
                     RDB_strerror(ret));
         }
+        free(fv);
         return ret;
     }
 
-    objv = malloc(sizeof (RDB_object) * keylen);
-    if (objv == NULL)
-        return RDB_NO_MEMORY;
-
-    for (i = 0; i < keylen; i++)
-        RDB_init_obj(&objv[i]);
-
-    ret = _RDB_index_expr_to_objv(qrp->tbp->var.select.indexp,
-          qrp->tbp->var.select.exp, qrp->tbp->typ, objv);
-    if (ret != RDB_OK)
-        goto cleanup;
-
-    fv = malloc(sizeof (RDB_field) * keylen);
-    if (fv == NULL) {
-        ret = RDB_NO_MEMORY;
-        goto cleanup;
+    for (i = 0; i < qrp->tbp->var.select.objpc; i++) {
+        ret = _RDB_obj_to_field(&fv[i], qrp->tbp->var.select.objpv[i]);
+        if (ret != RDB_OK) {
+            free(fv);
+            return ret;
+        }
+    }
+    for (i = qrp->tbp->var.select.objpc; i < qrp->tbp->var.select.indexp->attrc;
+            i++) {
+        fv[i].len = 0;
     }
 
-    for (i = 0; i < keylen; i++) {
-        ret =_RDB_obj_to_field(&fv[i], &objv[i]);
-        if (ret != RDB_OK)
-            goto cleanup;
-    }
+    if (qrp->tbp->var.select.objpc != qrp->tbp->var.select.indexp->attrc
+            || !qrp->tbp->var.select.all_eq)
+        flags = RDB_REC_RANGE;
 
-    ret = RDB_cursor_seek(qrp->var.curp, fv);
+    ret = RDB_cursor_seek(qrp->var.curp, fv, flags);
     if (ret == RDB_NOT_FOUND) {
         qrp->endreached = RDB_TRUE;
         ret = RDB_OK;
     }
 
-cleanup:
-    for (i = 0; i < qrp->tbp->var.select.indexp->attrc; i++)
-        RDB_destroy_obj(&objv[i]);
-    free(objv);
     free(fv);
     return ret;
 }
@@ -954,11 +947,7 @@ next_stored_tuple(RDB_qresult *qrp, RDB_table *tbp, RDB_object *tplp,
         if (ret != RDB_OK)
             return ret;
     }
-    if (dup) {
-        ret = RDB_cursor_next_dup(qrp->var.curp);
-    } else {
-        ret = RDB_cursor_next(qrp->var.curp);
-    }
+    ret = RDB_cursor_next(qrp->var.curp, dup ? RDB_REC_DUP : 0);
     if (ret == RDB_NOT_FOUND) {
         qrp->endreached = RDB_TRUE;
         return RDB_OK;
@@ -1142,7 +1131,7 @@ seek_index_qresult(RDB_qresult *qrp, _RDB_tbindex *indexp,
             goto cleanup;
     }
 
-    ret = RDB_cursor_seek(qrp->var.curp, fv);
+    ret = RDB_cursor_seek(qrp->var.curp, fv, 0);
     if (ret == RDB_OK) {
         qrp->endreached = RDB_FALSE;
     } else {
@@ -1253,7 +1242,7 @@ next_join_tuple_nuix(RDB_qresult *qrp, RDB_object *tplp, RDB_transaction *txp)
 
     return RDB_OK;
 }
-#include <signal.h>
+
 static int
 next_join_tuple_uix(RDB_qresult *qrp, RDB_object *tplp, RDB_transaction *txp)
 {
@@ -1262,17 +1251,14 @@ next_join_tuple_uix(RDB_qresult *qrp, RDB_object *tplp, RDB_transaction *txp)
     RDB_bool match;
     RDB_object tpl;
     RDB_type *tpltyp;
-    RDB_object *objv;
+    RDB_object **objpv;
 
-    objv = malloc(sizeof(RDB_object)
+    objpv = malloc(sizeof(RDB_object *)
             * qrp->tbp->var.join.indexp->attrc);
-    if (objv == NULL)
+    if (objpv == NULL)
         return RDB_NO_MEMORY;
 
     RDB_init_obj(&tpl);
-
-    for (i = 0; i < qrp->tbp->var.join.indexp->attrc; i++)
-        RDB_init_obj(&objv[i]);
 
     do {
         match = RDB_TRUE;
@@ -1282,12 +1268,10 @@ next_join_tuple_uix(RDB_qresult *qrp, RDB_object *tplp, RDB_transaction *txp)
             goto cleanup;
 
         for (i = 0; i < qrp->tbp->var.join.indexp->attrc; i++) {
-            ret = RDB_copy_obj(&objv[i], RDB_tuple_get(tplp,
-                    qrp->tbp->var.join.indexp->attrv[i].attrname));
-            if (ret != RDB_OK)
-                goto cleanup;
+            objpv[i] = RDB_tuple_get(tplp,
+                    qrp->tbp->var.join.indexp->attrv[i].attrname);
         }
-        ret = _RDB_get_by_uindex(qrp->tbp->var.join.tb2p, objv,
+        ret = _RDB_get_by_uindex(qrp->tbp->var.join.tb2p, objpv,
                 qrp->tbp->var.join.indexp, txp, &tpl);
         if (ret == RDB_NOT_FOUND) {
             match = RDB_FALSE;
@@ -1334,9 +1318,7 @@ next_join_tuple_uix(RDB_qresult *qrp, RDB_object *tplp, RDB_transaction *txp)
     ret = RDB_OK;
 
 cleanup:
-    for (i = 0; i < qrp->tbp->var.join.indexp->attrc; i++)
-        RDB_destroy_obj(&objv[i]);
-    free(objv);
+    free(objpv);
 
     RDB_destroy_obj(&tpl);
 
@@ -1344,8 +1326,9 @@ cleanup:
 }
 
 int
-_RDB_get_by_uindex(RDB_table *tbp, RDB_object valv[], _RDB_tbindex *indexp,
+_RDB_get_by_uindex(RDB_table *tbp, RDB_object *objpv[], _RDB_tbindex *indexp,
         RDB_transaction *txp, RDB_object *tplp)
+
 {
     RDB_field *fv;
     RDB_field *resfv;
@@ -1366,7 +1349,7 @@ _RDB_get_by_uindex(RDB_table *tbp, RDB_object valv[], _RDB_tbindex *indexp,
      * Convert data to fields
      */    
     for (i = 0; i < keylen; i++) {
-        ret = _RDB_obj_to_field(&fv[i], &valv[i]);
+        ret = _RDB_obj_to_field(&fv[i], objpv[i]);
         if (ret != RDB_OK)
             goto cleanup;
     }
@@ -1407,7 +1390,7 @@ _RDB_get_by_uindex(RDB_table *tbp, RDB_object valv[], _RDB_tbindex *indexp,
      * Set key attributes
      */
     for (i = 0; i < indexp->attrc; i++) {
-        ret = RDB_tuple_set(tplp, indexp->attrv[i].attrname, &valv[i]);
+        ret = RDB_tuple_set(tplp, indexp->attrv[i].attrname, objpv[i]);
         if (ret != RDB_OK)
             return ret;
     }
@@ -1461,73 +1444,43 @@ cleanup:
     return ret;
 }
 
-/*
- * Get constants from an 'unbalanced' expression an store them in objv.
- */
-int
-_RDB_index_expr_to_objv(const _RDB_tbindex *indexp, RDB_expression *exp,
-        const RDB_type *tbtyp, RDB_object *objv)
-{
-    int i;
-    int ret;
-    RDB_expression *attrexp;
-
-    for (i = 0; i < indexp->attrc; i++) {
-        char *attrname = indexp->attrv[i].attrname;
-
-        attrexp = _RDB_attr_node(exp, attrname);
-        if (attrexp->kind == RDB_EX_AND)
-            attrexp = attrexp->var.op.arg2;
-        ret = RDB_copy_obj(&objv[i], &attrexp->var.op.arg2->var.obj);
-        if (ret != RDB_OK)
-            return ret;
-        if (objv[i].typ == NULL
-                && (objv[i].kind == RDB_OB_TUPLE
-                 || objv[i].kind == RDB_OB_ARRAY))
-            _RDB_set_nonsc_type(&objv[i],
-                    RDB_type_attr_type(tbtyp, attrname));
-    }
-    return RDB_OK;
-}
-
 static int
 next_select_index(RDB_qresult *qrp, RDB_object *tplp, RDB_transaction *txp)
 {
-    int i;
     int ret;
-    RDB_object *objv = NULL;
 
     if (qrp->tbp->var.select.indexp->unique) {
-        objv = malloc(sizeof(RDB_object)
-                * qrp->tbp->var.select.indexp->attrc);
-        if (objv == NULL)
-            return RDB_NO_MEMORY;
-
-        for (i = 0; i < qrp->tbp->var.select.indexp->attrc; i++)
-            RDB_init_obj(&objv[i]);
-
-        ret = _RDB_index_expr_to_objv(qrp->tbp->var.select.indexp,
-              qrp->tbp->var.select.exp, qrp->tbp->typ, objv);
-        if (ret != RDB_OK)
-            goto cleanup;
-
-        ret = _RDB_get_by_uindex(qrp->tbp->var.select.tbp, objv,
+        ret = _RDB_get_by_uindex(qrp->tbp->var.select.tbp,
+                qrp->tbp->var.select.objpv,
                 qrp->tbp->var.select.indexp, txp, tplp);
         if (ret != RDB_OK)
-            goto cleanup;
+            return ret;
 
         qrp->endreached = RDB_TRUE;
     } else {
-        ret = next_stored_tuple(qrp, qrp->tbp->var.select.tbp, tplp, RDB_TRUE);
+        RDB_bool rtup;
+        RDB_bool dup = RDB_FALSE;
+
+        if (qrp->tbp->var.select.objpc == qrp->tbp->var.select.indexp->attrc
+                && qrp->tbp->var.select.all_eq)
+            dup = RDB_TRUE;
+
+        do {
+            ret = next_stored_tuple(qrp, qrp->tbp->var.select.tbp, tplp, dup);
+            if (ret != RDB_OK)
+                return ret;
+            if (qrp->tbp->var.select.all_eq)
+                rtup = RDB_TRUE;
+            else {
+                ret = RDB_evaluate_bool(qrp->tbp->var.select.exp, tplp, txp,
+                        &rtup);
+                if (ret != RDB_OK)
+                    return ret;
+            }
+        } while (!rtup);
     }
 
-cleanup:
-    if (objv != NULL) {
-        for (i = 0; i < qrp->tbp->var.select.indexp->attrc; i++)
-            RDB_destroy_obj(&objv[i]);
-        free(objv);
-    }
-    return ret;
+    return RDB_OK;
 }
 
 static int
@@ -1948,7 +1901,7 @@ _RDB_qresult_contains(RDB_qresult *qrp, const RDB_object *tplp,
     int i;
     int ret;
     RDB_bool b;
-    RDB_object *valv;
+    RDB_object **objpv;
     int kattrc;
     RDB_object tpl;
 
@@ -1963,15 +1916,11 @@ _RDB_qresult_contains(RDB_qresult *qrp, const RDB_object *tplp,
      */
 
     kattrc = _RDB_pkey_len(qrp->tbp);
-    valv = malloc(sizeof (RDB_object) * kattrc);
-    if (valv == NULL)
+    objpv = malloc(sizeof (RDB_object *) * kattrc);
+    if (objpv == NULL)
         return RDB_NO_MEMORY;
 
     RDB_init_obj(&tpl);
-
-    for (i = 0; i < kattrc; i++) {
-        RDB_init_obj(&valv[i]);
-    }
 
     for (i = 0; i < kattrc; i++) {
         RDB_object *attrobjp = RDB_tuple_get(tplp, qrp->matp->keyv[0].strv[i]);
@@ -1980,12 +1929,10 @@ _RDB_qresult_contains(RDB_qresult *qrp, const RDB_object *tplp,
             ret = RDB_INVALID_ARGUMENT;
             goto error;
         }
-        ret = RDB_copy_obj(&valv[i], attrobjp);
-        if (ret != RDB_OK)
-            goto error;
+        objpv[i] = attrobjp;
     }
         
-    ret = _RDB_get_by_uindex(qrp->matp, valv, &qrp->matp->var.stored.indexv[0],
+    ret = _RDB_get_by_uindex(qrp->matp, objpv, &qrp->matp->var.stored.indexv[0],
             txp, &tpl);
     if (ret != RDB_OK) /* handles RDB_NOT_FOUND too */
         goto error;
@@ -2021,9 +1968,7 @@ _RDB_qresult_contains(RDB_qresult *qrp, const RDB_object *tplp,
 
 error:
     RDB_destroy_obj(&tpl);
-    for (i = 0; i < kattrc; i++)
-        RDB_destroy_obj(&valv[i]);
-    free(valv);
+    free(objpv);
     
     return ret;
 }

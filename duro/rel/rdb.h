@@ -285,7 +285,12 @@ typedef struct RDB_table {
         struct {
             struct RDB_table *tbp;
             RDB_expression *exp;
-            struct _RDB_tbindex *indexp; /* RDB_TB_SELECT_INDEX */
+
+            /* RDB_TB_SELECT_INDEX */
+            struct _RDB_tbindex *indexp;
+            RDB_object **objpv;
+            int objpc;
+            RDB_bool all_eq;
         } select;
         struct {
             struct RDB_table *tb1p;

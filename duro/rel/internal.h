@@ -142,11 +142,7 @@ int
 _RDB_reset_qresult(RDB_qresult *, RDB_transaction *);
 
 int
-_RDB_index_expr_to_objv(const _RDB_tbindex *idxp, RDB_expression *exp,
-        const RDB_type *tbtyp, RDB_object *objv);
-
-int
-_RDB_get_by_uindex(RDB_table *tbp, RDB_object valv[], _RDB_tbindex *indexp,
+_RDB_get_by_uindex(RDB_table *tbp, RDB_object *objpv[], _RDB_tbindex *indexp,
         RDB_transaction *txp, RDB_object *tplp);
 
 int
@@ -407,9 +403,6 @@ _RDB_optimize(RDB_table *tbp, RDB_transaction *);
 
 int
 _RDB_transform(RDB_table *tbp);
-
-RDB_expression *
-_RDB_attr_node(RDB_expression *exp, const char *attrname);
 
 int
 _RDB_infer_keys(RDB_table *tbp);

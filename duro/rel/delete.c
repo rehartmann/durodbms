@@ -11,7 +11,7 @@
 #include <string.h>
 
 static int
-delete_by_uindex(RDB_table *tbp, RDB_object valv[], _RDB_tbindex *indexp,
+delete_by_uindex(RDB_table *tbp, RDB_object *objpv[], _RDB_tbindex *indexp,
         RDB_transaction *txp)
 {
     RDB_field *fv;
@@ -26,7 +26,7 @@ delete_by_uindex(RDB_table *tbp, RDB_object valv[], _RDB_tbindex *indexp,
     }
     
     for (i = 0; i < keylen; i++) {
-        ret = _RDB_obj_to_field(&fv[i], &valv[i]);
+        ret = _RDB_obj_to_field(&fv[i], objpv[i]);
         if (ret != RDB_OK)
             goto cleanup;
     }
@@ -114,7 +114,7 @@ delete_stored(RDB_table *tbp, RDB_expression *condp, RDB_transaction *txp)
             }
         }
         RDB_destroy_obj(&tpl);
-        ret = RDB_cursor_next(curp);
+        ret = RDB_cursor_next(curp, 0);
     } while (ret == RDB_OK);
     if (ret != RDB_NOT_FOUND)
         goto error;
@@ -130,19 +130,6 @@ delete_select_uindex(RDB_table *tbp, RDB_expression *condp,
         RDB_transaction *txp)
 {
     int ret;
-    int i;
-    int objc = tbp->var.select.indexp->attrc;
-    RDB_object *objv = malloc(sizeof(RDB_object) * objc);
-    if (objv == NULL)
-        return RDB_NO_MEMORY;
-
-    for (i = 0; i < objc; i++)
-        RDB_init_obj(&objv[i]);
-
-    ret = _RDB_index_expr_to_objv(tbp->var.select.indexp,
-          tbp->var.select.exp, tbp->typ, objv);
-    if (ret != RDB_OK)
-        goto cleanup;
 
     if (condp != NULL) {
         RDB_object tpl;
@@ -153,7 +140,7 @@ delete_select_uindex(RDB_table *tbp, RDB_expression *condp,
         /*
          * Read tuple and check condition
          */
-        ret = _RDB_get_by_uindex(tbp->var.select.tbp, objv,
+        ret = _RDB_get_by_uindex(tbp->var.select.tbp, tbp->var.select.objpv,
                 tbp->var.select.indexp, txp, &tpl);
         if (ret != RDB_OK) {
             RDB_destroy_obj(&tpl);
@@ -168,18 +155,12 @@ delete_select_uindex(RDB_table *tbp, RDB_expression *condp,
             return RDB_OK;
     }
 
-    ret = delete_by_uindex(tbp->var.select.tbp, objv, tbp->var.select.indexp,
-            txp);
+    ret = delete_by_uindex(tbp->var.select.tbp, tbp->var.select.objpv,
+            tbp->var.select.indexp, txp);
     if (ret == RDB_NOT_FOUND)
         ret = RDB_OK;
 
 cleanup:
-    for (i = 0; i < objc; i++) {
-        int ret2 = RDB_destroy_obj(&objv[i]);
-        if (ret2 != RDB_OK && ret == RDB_OK)
-            ret = ret2;
-    }
-    free(objv);
     return ret;
 }
 
@@ -189,16 +170,10 @@ delete_select_index(RDB_table *tbp, RDB_expression *condp,
 {
     int ret, ret2;
     int i;
+    int flags;
     RDB_cursor *curp = NULL;
     RDB_field *fv = NULL;
     int keylen = tbp->var.select.indexp->attrc;
-    int objc = tbp->var.select.indexp->attrc;
-    RDB_object *objv = malloc(sizeof(RDB_object) * objc);
-    if (objv == NULL)
-        return RDB_NO_MEMORY;
-
-    for (i = 0; i < objc; i++)
-        RDB_init_obj(&objv[i]);
 
     ret = RDB_index_cursor(&curp, tbp->var.select.indexp->idxp,
             RDB_TRUE, tbp->var.select.tbp->is_persistent ? txp->txid : NULL);
@@ -210,11 +185,6 @@ delete_select_index(RDB_table *tbp, RDB_expression *condp,
         return ret;
     }
 
-    ret = _RDB_index_expr_to_objv(tbp->var.select.indexp,
-          tbp->var.select.exp, tbp->typ, objv);
-    if (ret != RDB_OK)
-        goto cleanup;
-
     fv = malloc(sizeof (RDB_field) * keylen);
     if (fv == NULL) {
         ret = RDB_NO_MEMORY;
@@ -222,12 +192,18 @@ delete_select_index(RDB_table *tbp, RDB_expression *condp,
     }
 
     for (i = 0; i < keylen; i++) {
-        ret =_RDB_obj_to_field(&fv[i], &objv[i]);
+        ret =_RDB_obj_to_field(&fv[i], tbp->var.select.objpv[i]);
         if (ret != RDB_OK)
             goto cleanup;
     }
 
-    ret = RDB_cursor_seek(curp, fv);
+    if (tbp->var.select.objpc != tbp->var.select.indexp->attrc
+            || !tbp->var.select.all_eq)
+        flags = RDB_REC_RANGE;
+    else
+        flags = 0;
+
+    ret = RDB_cursor_seek(curp, fv, flags);
     if (ret == RDB_NOT_FOUND) {
         ret = RDB_OK;
         goto cleanup;
@@ -261,7 +237,12 @@ delete_select_index(RDB_table *tbp, RDB_expression *condp,
                 goto cleanup;
         }
 
-        ret = RDB_cursor_next_dup(curp);
+        if (tbp->var.select.objpc == tbp->var.select.indexp->attrc
+                && tbp->var.select.all_eq)
+            flags = RDB_REC_DUP;
+        else
+            flags = 0;
+        ret = RDB_cursor_next(curp, flags);
     } while (ret == RDB_OK);
 
     if (ret == RDB_NOT_FOUND)
@@ -273,13 +254,7 @@ cleanup:
         if (ret2 != RDB_OK && ret == RDB_OK)
             ret = ret2;
     }
-    for (i = 0; i < objc; i++) {
-        ret2 = RDB_destroy_obj(&objv[i]);
-        if (ret2 != RDB_OK && ret == RDB_OK)
-            ret = ret2;
-    }
     free(fv);
-    free(objv);
     return ret;
 }
 

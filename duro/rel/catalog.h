@@ -61,8 +61,7 @@ _RDB_cat_insert_table_recmap(RDB_table *tbp, const char *rmname,
         RDB_transaction *txp);
 
 int
-_RDB_cat_insert_index(_RDB_tbindex *, const char *tbname,
-        RDB_transaction *);
+_RDB_cat_insert_index(_RDB_tbindex *, const char *tbname, RDB_transaction *);
 
 int
 _RDB_cat_index_tablename(const char *, char **tbnamep, RDB_transaction *);

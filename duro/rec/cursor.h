@@ -1,6 +1,11 @@
 #ifndef RDB_CURSOR_H
 #define RDB_CURSOR_H
 
+/*
+ * Copyright (C) 2003, 2004 René Hartmann.
+ * See the file COPYING for redistribution information.
+ */
+
 /* $Id$ */
 
 #include "recmap.h"
@@ -17,6 +22,11 @@ typedef struct {
     RDB_index *idxp;
     DB_TXN *txid;
 } RDB_cursor;
+
+enum {
+    RDB_REC_DUP = 1,
+    RDB_REC_RANGE = 2
+};
 
 /*
  * Create a cursor for a recmap. The initial position of the cursor is
@@ -57,22 +67,17 @@ RDB_cursor_first(RDB_cursor *);
 /*
  * Move the cursor to the next record.
  * If the cursor is at the end, RDB_NOT_FOUND is returned.
+ * If flags is RDB_REC_DUP, return RDB_NOT_FOUND if the next
+  * record has a different key.
  */
 int
-RDB_cursor_next(RDB_cursor *);
-
-/*
- * Move the cursor to the next record. Return RDB_NOT_FOUND
- * if the cursor is at the end or the next record has a different key.
- */
-int
-RDB_cursor_next_dup(RDB_cursor *);
+RDB_cursor_next(RDB_cursor *, int flags);
 
 /*
  * Move the cursor to the position specified by keyv.
  */
 int
-RDB_cursor_seek(RDB_cursor *curp, RDB_field keyv[]);
+RDB_cursor_seek(RDB_cursor *curp, RDB_field keyv[], int flags);
 
 /* Detroy the cursor, releasing the resources associated with it
  * and freeing its memory.

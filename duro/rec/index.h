@@ -1,9 +1,19 @@
 #ifndef RDB_INDEX_H
 #define RDB_INDEX_H
 
+/*
+ * Copyright (C) 2004 René Hartmann.
+ * See the file COPYING for redistribution information.
+ */
+
 /* $Id$ */
 
 #include "recmap.h"
+
+enum {
+    RDB_UNIQUE = 1,
+    RDB_ORDERED = 2
+};
 
 /*
  * Secondary index.
@@ -16,22 +26,24 @@ typedef struct RDB_index {
     char *filenamp;
     int fieldc;
     int *fieldv;
-    RDB_bool unique;  
 } RDB_index;
 
 int
 RDB_create_index(RDB_recmap *, const char *namp, const char *filenamp,
         RDB_environment *dsp, int fieldc, const int fieldv[],
-        RDB_bool unique, DB_TXN *, RDB_index **);
+        int flags, DB_TXN *, RDB_index **);
 
 int
 RDB_open_index(RDB_recmap *, const char *namp, const char *filenamp,
         RDB_environment *dsp, int fieldc, const int fieldv[],
-        RDB_bool unique, DB_TXN *, RDB_index **);
+        int flags, DB_TXN *, RDB_index **);
 
 /* Close an index. */
 int
 RDB_close_index(RDB_index *);
+
+RDB_bool
+RDB_index_is_ordered(RDB_index *);
 
 /* Delete an index. */
 int

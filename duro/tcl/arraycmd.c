@@ -32,6 +32,7 @@ array_create_cmd(TclState *statep, Tcl_Interp *interp, int objc,
     RDB_object *arrayp;
     int new;
     char handle[20];
+    RDB_bool ordered;
     RDB_seq_item *seqitv = NULL;
     int seqitc = 0;
 
@@ -55,7 +56,7 @@ array_create_cmd(TclState *statep, Tcl_Interp *interp, int objc,
     }
 
     if (objc == 5) {
-        seqitv = Duro_tobj_to_seq_items(interp, objv[3], &seqitc, RDB_TRUE);
+        seqitv = Duro_tobj_to_seq_items(interp, objv[3], &seqitc, RDB_TRUE, &ordered);
         if (seqitv == NULL)
             return TCL_ERROR;
     }

@@ -143,7 +143,7 @@ update_stored_complex(RDB_table *tbp, RDB_expression *condp,
                 goto cleanup;
             }
         }
-        ret = RDB_cursor_next(curp);
+        ret = RDB_cursor_next(curp, 0);
     };
 
     if (ret != RDB_NOT_FOUND)
@@ -194,7 +194,7 @@ update_stored_complex(RDB_table *tbp, RDB_expression *condp,
             /* Delete tuple */
             RDB_cursor_delete(curp);
         }
-        ret = RDB_cursor_next(curp);
+        ret = RDB_cursor_next(curp, 0);
     }
     ret = RDB_destroy_cursor(curp);
     curp = NULL;
@@ -336,7 +336,7 @@ update_stored_simple(RDB_table *tbp, RDB_expression *condp,
                 goto cleanup;
             }
         }
-        ret = RDB_cursor_next(curp);
+        ret = RDB_cursor_next(curp, 0);
     };
 
     if (ret == RDB_NOT_FOUND)
@@ -373,41 +373,30 @@ update_select_pindex(RDB_table *tbp, RDB_expression *condp,
     RDB_bool b;
     int objc = tbp->var.select.indexp->attrc;
     RDB_field *fvv = malloc(sizeof(RDB_field) * objc);
-    RDB_object *objv = malloc(sizeof(RDB_object) * objc);
     RDB_object *valv = malloc(sizeof(RDB_object) * updc);
     RDB_field *fieldv = malloc(sizeof(RDB_field) * updc);
 
-    if (fvv == NULL || objv == NULL || valv == NULL || fieldv == NULL) {
+    if (fvv == NULL || valv == NULL || fieldv == NULL) {
         free(fvv);
-        free(objv);
         free(valv);
         free(fieldv);
         ret = RDB_NO_MEMORY;
         goto cleanup;
     }
 
-    for (i = 0; i < objc; i++)
-        RDB_init_obj(&objv[i]);
-
     for (i = 0; i < updc; i++)
         RDB_init_obj(&valv[i]);
 
-    /* Evaluate key */
-    ret = _RDB_index_expr_to_objv(tbp->var.select.indexp,
-          tbp->var.select.exp, tbp->typ, objv);
-    if (ret != RDB_OK)
-        goto cleanup;
-
     /* Convert to a field value */
     for (i = 0; i < objc; i++) {
-        ret = _RDB_obj_to_field(&fvv[i], &objv[i]);
+        ret = _RDB_obj_to_field(&fvv[i], tbp->var.select.objpv[i]);
         if (ret != RDB_OK)
             goto cleanup;
     }
 
     /* Read tuple */
     RDB_init_obj(&tpl);
-    ret = _RDB_get_by_uindex(tbp->var.select.tbp, objv,
+    ret = _RDB_get_by_uindex(tbp->var.select.tbp, tbp->var.select.objpv,
             tbp->var.select.indexp, txp, &tpl);
     if (ret != RDB_OK) {
         RDB_destroy_obj(&tpl);
@@ -462,7 +451,6 @@ cleanup:
         RDB_destroy_obj(&valv[i]);
     free(valv);
     free(fieldv);
-    free(objv);
     free(fvv);
 
     return ret;
@@ -476,16 +464,15 @@ update_select_index_simple(RDB_table *tbp, RDB_expression *condp,
     RDB_transaction tx;
     int ret, ret2;
     int i;
+    int flags;
     int objc = tbp->var.select.indexp->attrc;
     RDB_cursor *curp = NULL;
     RDB_field *fv = malloc(sizeof(RDB_field) * objc);
-    RDB_object *objv = malloc(sizeof(RDB_object) * objc);
     RDB_object *valv = malloc(sizeof(RDB_object) * updc);
     RDB_field *fieldv = malloc(sizeof(RDB_field) * updc);
 
-    if (fv == NULL || objv == NULL || valv == NULL || fieldv == NULL) {
+    if (fv == NULL || valv == NULL || fieldv == NULL) {
         free(fv);
-        free(objv);
         free(valv);
         free(fieldv);
         return RDB_NO_MEMORY;
@@ -495,14 +482,10 @@ update_select_index_simple(RDB_table *tbp, RDB_expression *condp,
     ret = RDB_begin_tx(&tx, RDB_tx_db(txp), txp);
     if (ret != RDB_OK) {
         free(fv);
-        free(objv);
         free(valv);
         free(fieldv);
         return ret;
     }
-
-    for (i = 0; i < objc; i++)
-        RDB_init_obj(&objv[i]);
 
     for (i = 0; i < updc; i++)
         RDB_init_obj(&valv[i]);
@@ -513,20 +496,20 @@ update_select_index_simple(RDB_table *tbp, RDB_expression *condp,
         return ret;
     }
 
-    /* Evaluate key */
-    ret = _RDB_index_expr_to_objv(tbp->var.select.indexp,
-          tbp->var.select.exp, tbp->typ, objv);
-    if (ret != RDB_OK)
-        goto cleanup;
-
     /* Convert to a field value */
     for (i = 0; i < objc; i++) {
-        ret = _RDB_obj_to_field(&fv[i], &objv[i]);
+        ret = _RDB_obj_to_field(&fv[i], tbp->var.select.objpv[i]);
         if (ret != RDB_OK)
             goto cleanup;
     }
 
-    ret = RDB_cursor_seek(curp, fv);
+    if (tbp->var.select.objpc != tbp->var.select.indexp->attrc
+            || !tbp->var.select.all_eq)
+        flags = RDB_REC_RANGE;
+    else
+        flags = 0;
+
+    ret = RDB_cursor_seek(curp, fv, flags);
     if (ret == RDB_NOT_FOUND) {
         ret = RDB_OK;
         goto cleanup;
@@ -581,7 +564,13 @@ update_select_index_simple(RDB_table *tbp, RDB_expression *condp,
             if (ret != RDB_OK)
                 goto cleanup;
         }
-        ret = RDB_cursor_next_dup(curp);
+        if (tbp->var.select.objpc == tbp->var.select.indexp->attrc
+                && tbp->var.select.all_eq)
+            flags = RDB_REC_DUP;
+        else
+            flags = 0;
+
+        ret = RDB_cursor_next(curp, flags);
     } while (ret == RDB_OK);
 
     if (ret == RDB_NOT_FOUND)
@@ -601,7 +590,6 @@ cleanup:
     }
     free(valv);
     free(fieldv);
-    free(objv);
     free(fv);
 
     if (ret == RDB_OK) {

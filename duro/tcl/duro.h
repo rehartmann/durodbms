@@ -124,7 +124,7 @@ Duro_get_type(Tcl_Obj *objp, Tcl_Interp *, RDB_transaction *,
 
 RDB_seq_item *
 Duro_tobj_to_seq_items(Tcl_Interp *interp, Tcl_Obj *tobjp, int *seqitcp,
-        RDB_bool);
+        RDB_bool, RDB_bool *);
 
 int
 Duro_init_tcl(Tcl_Interp *, TclState **);

@@ -458,12 +458,12 @@ obj_to_irep(void *dstp, const void *srcp, size_t len)
             memcpy(bp, objp->var.bin.datap, objp->var.bin.len);
     }
     return dstp;
-} 
+}
 
 int
 _RDB_obj_to_field(RDB_field *fvp, RDB_object *objp)
 {
-    /* Persistent tables cannot be converted to field values */
+    /* Global tables cannot be converted to field values */
     if (objp->kind == RDB_OB_TABLE && objp->var.tbp->is_persistent)
         return RDB_INVALID_ARGUMENT;
 

@@ -868,6 +868,50 @@ proc browse {old new} {
     }
 }
 
+proc exec_script {} {
+    toplevel .dialog
+    wm title .dialog "Execute script"
+    wm geometry .dialog "+300+300"
+
+    set ::script ""
+
+    label .dialog.defl -text "Commands:"
+    text .dialog.script
+
+    set ::action ok
+    frame .dialog.buttons
+    button .dialog.buttons.ok -text OK -command {set action ok}
+    button .dialog.buttons.cancel -text Cancel -command {set action cancel}
+
+    pack .dialog.buttons -side bottom
+    pack .dialog.buttons.ok .dialog.buttons.cancel -side left
+    pack .dialog.script -side bottom
+    pack .dialog.defl -side bottom -anchor w
+
+    set done 0
+    grab .dialog
+    while {!$done} {
+        tkwait variable action
+        if {$::action != "ok"} {
+            destroy .dialog
+            return
+        }
+
+        if {[catch {
+            # Execute command
+            set tx [duro::begin $::dbenv $::db]
+            eval [.dialog.script get 1.0 end]
+            duro::commit $tx
+            set done 1
+        } msg]} {
+            catch {duro::rollback $tx}
+            tk_messageBox -type ok -title "Error" -message $msg -icon error
+        }
+    }
+    destroy .dialog
+}
+
+
 set duroadmin(initrows) 20
 set dbenv ""
 set ltables {}
@@ -903,6 +947,7 @@ menu .mbar.db.drop
 .mbar.db add command -label "Delete row" -command del_row -state disabled
 .mbar.db add command -label "Rename table" -command rename_table \
         -state disabled
+.mbar.db add command -label "Execute script..." -command exec_script
 
 .mbar.db.create add command -label "Database" -state disabled \
         -command create_db

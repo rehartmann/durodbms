@@ -467,8 +467,10 @@ _RDB_fields_to_DBT(RDB_recmap *rmp, int fldc, const RDB_field fldv[],
     /* variable-length fields */
     for (i = 0; i < vfldc; i++) {
         int fn = vfno[i];
-        (*fldv[fn].copyfp)(databp + offs, fldv[fn].datap, fldv[fn].len);
-        offs += fldv[fn].len;
+        if (fldv[fn].len > 0) {
+            (*fldv[fn].copyfp)(databp + offs, fldv[fn].datap, fldv[fn].len);
+            offs += fldv[fn].len;
+        }
         
         /* field length */
         set_len(&databp[dbtp->size - vfldc * RECLEN_SIZE + i * RECLEN_SIZE],

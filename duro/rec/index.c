@@ -1,3 +1,8 @@
+/*
+ * Copyright (C) 2004 René Hartmann.
+ * See the file COPYING for redistribution information.
+ */
+
 /* $Id$ */
 
 #include "index.h"
@@ -8,7 +13,7 @@
 static int
 create_index(RDB_recmap *rmp, const char *name, const char *filename,
         RDB_environment *envp, int fieldc, const int fieldv[],
-        RDB_bool unique, RDB_index **ixpp)
+        RDB_index **ixpp)
 {
     int ret;
     int i;
@@ -50,7 +55,6 @@ create_index(RDB_recmap *rmp, const char *name, const char *filename,
         ret = RDB_convert_err(ret);
         goto error;
     }
-    ixp->unique = unique;
 
     *ixpp = ixp;
     return RDB_OK;
@@ -95,19 +99,21 @@ make_skey(DB *dbp, const DBT *pkeyp, const DBT *pdatap, DBT *skeyp)
 int
 RDB_create_index(RDB_recmap *rmp, const char *namp, const char *filenamp,
         RDB_environment *envp, int fieldc, const int fieldv[],
-        RDB_bool unique, DB_TXN *txid, RDB_index **ixpp)
+        int flags, DB_TXN *txid, RDB_index **ixpp)
 {
     RDB_index *ixp;
     int ret;
    
-    ret = create_index(rmp, namp, filenamp, envp, fieldc, fieldv, unique, &ixp);
+    ret = create_index(rmp, namp, filenamp, envp, fieldc, fieldv, &ixp);
     if (ret != RDB_OK)
         return ret;
 
-    if (!unique)
+    /* Allow duplicates, if requested by the caller */
+    if (!(RDB_UNIQUE & flags))
         ixp->dbp->set_flags(ixp->dbp, DB_DUPSORT);
 
-    ret = ixp->dbp->open(ixp->dbp, txid, filenamp, namp, DB_HASH, DB_CREATE, 0664);
+    ret = ixp->dbp->open(ixp->dbp, txid, filenamp, namp,
+            RDB_ORDERED & flags ? DB_BTREE : DB_HASH, DB_CREATE, 0664);
     if (ret != 0) {
         ret = RDB_convert_err(ret);
         RDB_errmsg(envp, "cannot open index: %s", RDB_strerror(ret));
@@ -134,17 +140,17 @@ error:
 
 int
 RDB_open_index(RDB_recmap *rmp, const char *namp, const char *filenamp,
-        RDB_environment *envp, int fieldc, const int fieldv[], RDB_bool unique,
+        RDB_environment *envp, int fieldc, const int fieldv[], int flags,
         DB_TXN *txid, RDB_index **ixpp)
 {
     RDB_index *ixp;
     int ret;
 
-    ret = create_index(rmp, namp, filenamp, envp, fieldc, fieldv, unique, &ixp);
+    ret = create_index(rmp, namp, filenamp, envp, fieldc, fieldv, &ixp);
     if (ret != RDB_OK)
         return RDB_convert_err(ret);
 
-    if (!unique)
+    if (!(RDB_UNIQUE & flags))
         ixp->dbp->set_flags(ixp->dbp, DB_DUPSORT);
 
     ret = ixp->dbp->open(ixp->dbp, txid, filenamp, namp, DB_UNKNOWN, 0, 0664);
@@ -164,6 +170,8 @@ RDB_open_index(RDB_recmap *rmp, const char *namp, const char *filenamp,
     }
 
     *ixpp = ixp;
+
+
     return RDB_OK;
 error:
     RDB_close_index(ixp);
@@ -179,6 +187,15 @@ RDB_close_index(RDB_index *ixp)
     free(ixp->fieldv);
     free(ixp);
     return RDB_convert_err(ret);
+}
+
+RDB_bool
+RDB_index_is_ordered(RDB_index *ixp)
+{
+    DBTYPE t;
+
+    ixp->dbp->get_type(ixp->dbp, &t);
+    return (RDB_bool) (t == DB_BTREE);
 }
 
 /* Delete an index. */

@@ -18,13 +18,14 @@ index_create_cmd(TclState *statep, Tcl_Interp *interp, int objc,
     RDB_table *tbp;
     RDB_seq_item *idxattrv;
     int attrc;
+    RDB_bool ordered;
 
     if (objc != 6) {
         Tcl_WrongNumArgs(interp, 2, objv, "indexname tablename attrs txId");
         return TCL_ERROR;
     }
 
-    txstr = Tcl_GetStringFromObj(objv[5], NULL);
+    txstr = Tcl_GetString(objv[5]);
     entryp = Tcl_FindHashEntry(&statep->txs, txstr);
     if (entryp == NULL) {
         Tcl_AppendResult(interp, "Unknown transaction: ", txstr, NULL);
@@ -37,13 +38,13 @@ index_create_cmd(TclState *statep, Tcl_Interp *interp, int objc,
         return TCL_ERROR;
     }
 
-    idxattrv = Duro_tobj_to_seq_items(interp, objv[4], &attrc, RDB_FALSE);
+    idxattrv = Duro_tobj_to_seq_items(interp, objv[4], &attrc, RDB_FALSE, &ordered);
     if (idxattrv == NULL) {
         return TCL_ERROR;
     }
-    
+
     ret = RDB_create_table_index(Tcl_GetString(objv[2]), tbp, attrc,
-        idxattrv, 0, txp);
+        idxattrv, ordered ? RDB_ORDERED : 0, txp);
     free(idxattrv);
     if (ret != RDB_OK) {
         Duro_dberror(interp, ret);
@@ -66,7 +67,7 @@ index_drop_cmd(TclState *statep, Tcl_Interp *interp, int objc,
         return TCL_ERROR;
     }
 
-    txstr = Tcl_GetStringFromObj(objv[3], NULL);
+    txstr = Tcl_GetString(objv[3]);
     entryp = Tcl_FindHashEntry(&statep->txs, txstr);
     if (entryp == NULL) {
         Tcl_AppendResult(interp, "Unknown transaction: ", txstr, NULL);
