@@ -169,6 +169,19 @@ open_table(const char *name, RDB_bool persistent,
         goto error;
     }
 
+    for (i = 0; i < keyc; i++) {
+        int j;
+
+        /* check if all the key attributes appear in the heading */
+        for (j = 0; j < keyv[i].attrc; j++) {
+            if (_RDB_tuple_type_attr(tbp->typ->var.basetyp, keyv[i].attrv[j])
+                    == NULL) {
+                ret = RDB_INVALID_ARGUMENT;
+                goto error;
+            }
+        }
+    }
+
     RDB_init_hashmap(&tbp->var.stored.attrmap, RDB_ATTRMAP_CAPACITY);
 
     flens = malloc(sizeof(int) * attrc);
@@ -189,12 +202,12 @@ open_table(const char *name, RDB_bool persistent,
             goto error;
 
         /* Only scalar types supported by this version */
-        if (!RDB_type_is_scalar(heading[i].type)) {
+        if (!RDB_type_is_scalar(heading[i].typ)) {
             ret = RDB_NOT_SUPPORTED;
             goto error;
         }
 
-        flens[fno] = replen(heading[i].type);
+        flens[fno] = replen(heading[i].typ);
         if (flens[fno] == 0) {
             ret = RDB_INVALID_ARGUMENT;
             goto error;
@@ -338,7 +351,7 @@ catalog_insert(RDB_table *tbp, RDB_transaction *txp)
 
     for (i = 0; i < tuptyp->var.tuple.attrc; i++) {
         char *attrname = tuptyp->var.tuple.attrv[i].name;
-        char *typename = RDB_type_name(tuptyp->var.tuple.attrv[i].type);
+        char *typename = RDB_type_name(tuptyp->var.tuple.attrv[i].typ);
 
         ret = RDB_tuple_set_string(&tpl, "ATTRNAME", attrname);
         if (ret != RDB_OK) {
@@ -1297,7 +1310,7 @@ get_cat_rtable(const char *name, RDB_transaction *txp, RDB_table **tbpp)
                            &attrtyp);
         if (ret != RDB_OK)
             goto error;
-        attrv[fno].type = attrtyp;
+        attrv[fno].typ = attrtyp;
     }
 
     /* Open the table */
@@ -2123,7 +2136,7 @@ RDB_define_type(const char *name, int repc, RDB_possrep repv[],
             if (ret != RDB_OK)
                 goto error;
             ret = RDB_tuple_set_string(&tpl, "COMPTYPENAME",
-                    repv[i].compv[j].type->name);
+                    repv[i].compv[j].typ->name);
             if (ret != RDB_OK)
                 goto error;
 

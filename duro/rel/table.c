@@ -114,7 +114,7 @@ RDB_insert(RDB_table *tbp, const RDB_tuple *tup, RDB_transaction *txp)
                 
                 /* Typecheck */
                 if (!RDB_type_equals(valp->typ,
-                                     tuptyp->var.tuple.attrv[i].type)) {
+                                     tuptyp->var.tuple.attrv[i].typ)) {
                      return RDB_TYPE_MISMATCH;
                 }
                 fvp[*fnop].datap = RDB_value_irep(valp, &fvp[*fnop].len);
@@ -358,7 +358,7 @@ update_stored(RDB_table *tbp, RDB_expression *condp,
                goto error;
             }
             RDB_init_value(&val);
-            ret = RDB_irep_to_value(&val, tpltyp->var.tuple.attrv[i].type,
+            ret = RDB_irep_to_value(&val, tpltyp->var.tuple.attrv[i].typ,
                               datap, len);
             if (ret != RDB_OK) {
                goto error;
@@ -383,7 +383,7 @@ update_stored(RDB_table *tbp, RDB_expression *condp,
             for (i = 0; i < attrc; i++) {
                 /* Typecheck */
                 if (!RDB_type_equals(valv[i].typ,
-                        _RDB_tuple_attr_type(tbp->typ->var.basetyp, attrv[i].name))) {
+                        _RDB_tuple_type_attr(tbp->typ->var.basetyp, attrv[i].name)->typ)) {
                     ret = RDB_TYPE_MISMATCH;
                     goto error;
                 }
@@ -510,7 +510,7 @@ delete_stored(RDB_table *tbp, RDB_expression *condp,
                goto error;
             }
             RDB_init_value(&val);
-            ret = RDB_irep_to_value(&val, tpltyp->var.tuple.attrv[i].type,
+            ret = RDB_irep_to_value(&val, tpltyp->var.tuple.attrv[i].typ,
                              datap, len);
             if (ret != RDB_OK) {
                RDB_destroy_tuple(&tpl);
@@ -701,7 +701,7 @@ RDB_aggregate(RDB_table *tbp, RDB_aggregate_op op, const char *attrname,
     }
 
     if (attrname != NULL) {
-        attrtyp = _RDB_tuple_attr_type(tbp->typ->var.basetyp, attrname);
+        attrtyp = _RDB_tuple_type_attr(tbp->typ->var.basetyp, attrname)->typ;
         if (attrtyp == NULL)
             return RDB_INVALID_ARGUMENT;
     }
@@ -847,7 +847,7 @@ RDB_aggregate(RDB_table *tbp, RDB_aggregate_op op, const char *attrname,
 static RDB_expression *
 attr_eq(RDB_attr *attrp, const RDB_tuple *tup)
 {
-    return RDB_eq(RDB_expr_attr(attrp->name, attrp->type),
+    return RDB_eq(RDB_expr_attr(attrp->name, attrp->typ),
                   RDB_value_const(RDB_tuple_get(tup, attrp->name)));
 }
 
@@ -1472,7 +1472,7 @@ RDB_extend(RDB_table *tbp, int attrc, RDB_virtual_attr attrv[],
             ret = RDB_NO_MEMORY;
             goto error;
         }
-        attrdefv[i].type = RDB_expr_type(attrv[i].exp);
+        attrdefv[i].typ = RDB_expr_type(attrv[i].exp);
     }
     newtbp->typ = RDB_extend_relation_type(tbp->typ, attrc, attrdefv);
 
@@ -1698,10 +1698,10 @@ RDB_summarize(RDB_table *tb1p, RDB_table *tb2p, int addc, RDB_summarize_add addv
             goto error;
         }
         if (addv[i].op == RDB_COUNT) {
-            tuptyp->var.tuple.attrv[i].type = &RDB_INTEGER;
+            tuptyp->var.tuple.attrv[i].typ = &RDB_INTEGER;
         } else {
             ret = aggr_type(tb1p->typ->var.basetyp, typ,
-                        addv[i].op, &tuptyp->var.tuple.attrv[i].type);
+                        addv[i].op, &tuptyp->var.tuple.attrv[i].typ);
             if (ret != RDB_OK)
                 goto error;
         }
@@ -1711,14 +1711,14 @@ RDB_summarize(RDB_table *tb1p, RDB_table *tb2p, int addc, RDB_summarize_add addv
     for (i = 0; i < tb2p->typ->var.basetyp->var.tuple.attrc; i++) {
         tuptyp->var.tuple.attrv[addc + i].name =
                 tb2p->typ->var.basetyp->var.tuple.attrv[i].name;
-        tuptyp->var.tuple.attrv[addc + i].type =
-                tb2p->typ->var.basetyp->var.tuple.attrv[i].type;
+        tuptyp->var.tuple.attrv[addc + i].typ =
+                tb2p->typ->var.basetyp->var.tuple.attrv[i].typ;
         tuptyp->var.tuple.attrv[addc + i].defaultp = NULL;
         tuptyp->var.tuple.attrv[addc + i].options = 0;
     }
     for (i = 0; i < avgc; i++) {
         tuptyp->var.tuple.attrv[attrc - avgc + i].name = avgv[i];
-        tuptyp->var.tuple.attrv[attrc - avgc + i].type = &RDB_INTEGER;
+        tuptyp->var.tuple.attrv[attrc - avgc + i].typ = &RDB_INTEGER;
         tuptyp->var.tuple.attrv[attrc - avgc + i].defaultp = NULL;
         tuptyp->var.tuple.attrv[attrc - avgc + i].options = 0;
     }

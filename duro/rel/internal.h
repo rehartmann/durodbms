@@ -87,8 +87,8 @@ _RDB_drop_rtable(RDB_table *tbp, RDB_transaction *txp);
 int
 _RDB_drop_table(RDB_table *tbp, RDB_transaction *txp, RDB_bool rec);
 
-RDB_type *
-_RDB_tuple_attr_type(const RDB_type *tuptyp, const char *attrname);
+RDB_attr *
+_RDB_tuple_type_attr(const RDB_type *tuptyp, const char *attrname);
 
 RDB_bool
 _RDB_legal_name(const char *name);

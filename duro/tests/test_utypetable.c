@@ -23,15 +23,13 @@ create_table(RDB_database *dbp)
     printf("Starting transaction\n");
     ret = RDB_begin_tx(&tx, dbp, NULL);
     if (ret != RDB_OK) {
-        fprintf(stderr, "Error: %s\n", RDB_strerror(ret));
         return ret;
     }
 
     utype_attrs[0].name = "NUMBER";
     ret = RDB_get_type("TINYINT", &tx, &tinyintp);
-    utype_attrs[0].type = tinyintp;
+    utype_attrs[0].typ = tinyintp;
     if (ret != RDB_OK) {
-        fprintf(stderr, "Error: %s\n", RDB_strerror(ret));
         RDB_rollback(&tx);
         return ret;
     }
@@ -41,7 +39,6 @@ create_table(RDB_database *dbp)
     ret = RDB_create_table("UTYPETEST", RDB_TRUE, 1, utype_attrs,
             1, utype_keyattrs, &tx, &tbp);
     if (ret != RDB_OK) {
-        fprintf(stderr, "Error: %s\n", RDB_strerror(ret));
         RDB_rollback(&tx);
         return ret;
     }

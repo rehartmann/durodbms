@@ -487,7 +487,7 @@ next_stored_tuple(RDB_qresult *qrp, RDB_table *tbp, RDB_tuple *tup)
                 return res;
             }
             RDB_init_value(&val);
-            res = RDB_irep_to_value(&val, attrp->type, datap, len);
+            res = RDB_irep_to_value(&val, attrp->typ, datap, len);
             if (res != RDB_OK) {
                 return res;
             }
@@ -633,7 +633,7 @@ get_by_pindex(RDB_table *tbp, RDB_value valv[], RDB_tuple *tup, RDB_transaction 
             RDB_value val;
 
             RDB_init_value(&val);
-            res = RDB_irep_to_value(&val, tpltyp->var.tuple.attrv[i].type,
+            res = RDB_irep_to_value(&val, tpltyp->var.tuple.attrv[i].typ,
                     resfv[fno - pkeylen].datap, resfv[fno - pkeylen].len);
             if (res != RDB_OK) {
                 RDB_destroy_value(&val);

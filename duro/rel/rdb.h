@@ -55,8 +55,8 @@ typedef struct RDB_type {
     union {
         struct RDB_type *basetyp; /* relation type */
         struct {
-            struct RDB_attr *attrv;
             int attrc;
+            struct RDB_attr *attrv;
         } tuple;
         struct {
             int repc;
@@ -335,7 +335,7 @@ RDB_drop_db(RDB_database *dbp);
 
 typedef struct RDB_attr {
     char *name;
-    RDB_type *type;
+    RDB_type *typ;
     RDB_value *defaultp;
     int options;
 } RDB_attr;

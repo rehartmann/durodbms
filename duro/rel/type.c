@@ -61,7 +61,7 @@ RDB_create_tuple_type(int attrc, RDB_attr attrv[])
         return NULL;
     }
     for (i = 0; i < attrc; i++) {
-        tbtyp->var.tuple.attrv[i].type = attrv[i].type;
+        tbtyp->var.tuple.attrv[i].typ = attrv[i].typ;
         tbtyp->var.tuple.attrv[i].name = RDB_dup_str(attrv[i].name);
     }   
     tbtyp->var.tuple.attrc = attrc;
@@ -111,7 +111,7 @@ free_type(RDB_type *typ)
     switch (typ->kind) {
         case RDB_TP_TUPLE:
             for (i = 0; i < typ->var.tuple.attrc; i++) {
-                RDB_type *attrtyp = typ->var.tuple.attrv[i].type;
+                RDB_type *attrtyp = typ->var.tuple.attrv[i].typ;
             
                 free(typ->var.tuple.attrv[i].name);
                 if (attrtyp->name == NULL)
@@ -180,8 +180,8 @@ RDB_type_equals(const RDB_type *typ1, const RDB_type *typ2)
                 /* check if all attributes of typ1 also appear in typ2 */
                 for (i = 0; i < attrcnt; i++) {
                     for (j = 0; j < attrcnt; j++) {
-                        if (RDB_type_equals(typ1->var.tuple.attrv[i].type,
-                                typ2->var.tuple.attrv[j].type)
+                        if (RDB_type_equals(typ1->var.tuple.attrv[i].typ,
+                                typ2->var.tuple.attrv[j].typ)
                                 && (strcmp(typ1->var.tuple.attrv[i].name,
                                 typ2->var.tuple.attrv[j].name) == 0))
                             break;
@@ -230,13 +230,13 @@ RDB_extend_tuple_type(const RDB_type *typ, int attrc, RDB_attr attrv[])
                 RDB_dup_str(typ->var.tuple.attrv[i].name);
         if (newtyp->var.tuple.attrv[i].name == NULL)
             goto error;
-        newtyp->var.tuple.attrv[i].type = typ->var.tuple.attrv[i].type;
+        newtyp->var.tuple.attrv[i].typ = typ->var.tuple.attrv[i].typ;
     }
     for (i = 0; i < attrc; i++) {
         newtyp->var.tuple.attrv[typ->var.tuple.attrc + i].name =
                 RDB_dup_str(attrv[i].name);
-        newtyp->var.tuple.attrv[typ->var.tuple.attrc + i].type =
-                attrv[i].type;
+        newtyp->var.tuple.attrv[typ->var.tuple.attrc + i].typ =
+                attrv[i].typ;
     }
     return newtyp;    
 
@@ -297,8 +297,8 @@ RDB_join_tuple_types(const RDB_type *typ1, const RDB_type *typ2, RDB_type **newt
     for (i = 0; i < typ1->var.tuple.attrc; i++) {
         newtyp->var.tuple.attrv[i].name = RDB_dup_str(
                 typ1->var.tuple.attrv[i].name);
-        newtyp->var.tuple.attrv[i].type = 
-                typ1->var.tuple.attrv[i].type;
+        newtyp->var.tuple.attrv[i].typ = 
+                typ1->var.tuple.attrv[i].typ;
     }
     attrc = typ1->var.tuple.attrc;
 
@@ -309,8 +309,8 @@ RDB_join_tuple_types(const RDB_type *typ1, const RDB_type *typ2, RDB_type **newt
                     typ1->var.tuple.attrv[j].name) == 0) {
                 /* If two attributes match by name, they must be of
                    the same type */
-                if (!RDB_type_equals(typ2->var.tuple.attrv[i].type,
-                        typ1->var.tuple.attrv[j].type)) {
+                if (!RDB_type_equals(typ2->var.tuple.attrv[i].typ,
+                        typ1->var.tuple.attrv[j].typ)) {
                     ret = RDB_TYPE_MISMATCH;
                     goto error;
                 }
@@ -321,8 +321,8 @@ RDB_join_tuple_types(const RDB_type *typ1, const RDB_type *typ2, RDB_type **newt
             /* attribute not found, so add it to result type */
             newtyp->var.tuple.attrv[attrc].name = RDB_dup_str(
                     typ2->var.tuple.attrv[i].name);
-            newtyp->var.tuple.attrv[attrc++].type =
-                    typ2->var.tuple.attrv[i].type;
+            newtyp->var.tuple.attrv[attrc++].typ =
+                    typ2->var.tuple.attrv[i].typ;
         }
     }
 
@@ -368,13 +368,13 @@ RDB_join_relation_types(const RDB_type *typ1, const RDB_type *typ2,
 
 /* Return the type of the attribute with name attrname in the tuple
    type pointed to by tutyp. */
-RDB_type *_RDB_tuple_attr_type(const RDB_type *tuptyp, const char *attrname)
+RDB_attr *_RDB_tuple_type_attr(const RDB_type *tuptyp, const char *attrname)
 {
     int i;
     
     for (i = 0; i < tuptyp->var.tuple.attrc; i++) {
         if (strcmp(tuptyp->var.tuple.attrv[i].name, attrname) == 0)
-            return tuptyp->var.tuple.attrv[i].type;
+            return &tuptyp->var.tuple.attrv[i];
     }
     /* not found */
     return NULL;
@@ -414,12 +414,12 @@ RDB_project_tuple_type(const RDB_type *typ, int attrc, char *attrv[],
         }
         tuptyp->var.tuple.attrv[i].name = attrname;
 
-        attrtyp = _RDB_tuple_attr_type(typ, attrname);
+        attrtyp = _RDB_tuple_type_attr(typ, attrname)->typ;
         if (attrtyp == NULL) {
             ret = RDB_INVALID_ARGUMENT;
             goto error;
         }
-        tuptyp->var.tuple.attrv[i].type = attrtyp;
+        tuptyp->var.tuple.attrv[i].typ = attrtyp;
         tuptyp->var.tuple.attrv[i].defaultp = NULL;
         tuptyp->var.tuple.attrv[i].options = 0;
     }

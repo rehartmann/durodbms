@@ -21,7 +21,7 @@ test_type(RDB_database *dbp)
 
     printf("Defining type\n");
     comp.name = NULL;
-    comp.type = &RDB_INTEGER;
+    comp.typ = &RDB_INTEGER;
     pr.name = NULL;
     pr.compc = 1;
     pr.compv = &comp;
