@@ -880,41 +880,45 @@ proc browse {old new} {
 proc exec_script {} {
     toplevel .dialog
     wm title .dialog "Execute script"
-    wm geometry .dialog "+300+300"
 
     set ::script ""
 
-    label .dialog.defl -text "Commands:"
-    text .dialog.script
+    label .dialog.scriptl -text "Script: (Transaction is available as \$tx)"
+    text .dialog.script -height 10
 
-    set ::action ok
+    set ::action ""
     frame .dialog.buttons
-    button .dialog.buttons.ok -text OK -command {set action ok}
-    button .dialog.buttons.cancel -text Cancel -command {set action cancel}
+    button .dialog.buttons.execute -text Execute \
+        -command {set action execute}
+    button .dialog.buttons.close -text Close -command {set action close}
 
+    label .dialog.outputl -text "Output:"
+    text .dialog.output -height 10 -state disabled
+
+    pack .dialog.output -side bottom
+    pack .dialog.outputl -side bottom -anchor w
     pack .dialog.buttons -side bottom
-    pack .dialog.buttons.ok .dialog.buttons.cancel -side left
+    pack .dialog.buttons.execute .dialog.buttons.close -side left
     pack .dialog.script -side bottom
-    pack .dialog.defl -side bottom -anchor w
+    pack .dialog.scriptl -side bottom -anchor w
 
-    set done 0
     grab .dialog
-    while {!$done} {
+    while {$::action != "close"} {
         tkwait variable action
-        if {$::action != "ok"} {
-            destroy .dialog
-            return
-        }
-
-        if {[catch {
-            # Execute command
-            set tx [duro::begin $::dbenv $::db]
-            eval [.dialog.script get 1.0 end]
-            duro::commit $tx
-            set done 1
-        } msg]} {
-            catch {duro::rollback $tx}
-            tk_messageBox -type ok -title "Error" -message $msg -icon error
+        if {$::action == "execute"} {
+            if {[catch {
+                # Execute command
+                set tx [duro::begin $::dbenv $::db]
+                set res [eval [.dialog.script get 1.0 end]]
+                duro::commit $tx
+            } msg]} {
+                catch {duro::rollback $tx}
+                tk_messageBox -type ok -title "Error" -message $msg -icon error
+            }
+            .dialog.output configure -state normal
+            .dialog.output insert end $res\n
+            .dialog.output configure -state disabled
+            .dialog.output see end
         }
     }
     destroy .dialog
