@@ -461,7 +461,6 @@ create_key_indexes(RDB_table *tbp, RDB_environment *envp, RDB_transaction *txp)
                 return RDB_NO_MEMORY;
         }
 
-        /* A primary index has no name */
         if (tbp->is_persistent) {
             tbp->var.real.indexv[i].name =
                     malloc(strlen(RDB_recmap_name(tbp->var.real.recmapp)) + 4);
@@ -496,6 +495,7 @@ create_key_indexes(RDB_table *tbp, RDB_environment *envp, RDB_transaction *txp)
         }
     }
 
+    /* Create a BDB secondary index for the indexes except the first */
     for (i = 1; i < tbp->var.real.indexc; i++) {
         ret = create_index(tbp, envp, txp, &tbp->var.real.indexv[i], RDB_UNIQUE);
         if (ret != RDB_OK)

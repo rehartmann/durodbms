@@ -133,18 +133,6 @@ FALSE {
     return TOK_LIT_BOOLEAN;
 }
 
-INTEGER {
-    return TOK_INTEGER;
-}
-
-RATIONAL {
-    return TOK_RATIONAL;
-}
-
-STRING {
-    return TOK_STRING;
-}
-
 COUNT {
     return TOK_COUNT;
 }

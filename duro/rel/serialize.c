@@ -202,10 +202,6 @@ serialize_expr(RDB_object *valp, int *posp, const RDB_expression *exp)
             return serialize_obj(valp, posp, &exp->var.obj);
         case RDB_EX_ATTR:
             return serialize_str(valp, posp, exp->var.attrname);
-        case RDB_EX_TO_INTEGER:
-        case RDB_EX_TO_RATIONAL:
-        case RDB_EX_TO_STRING:
-            return serialize_expr(valp, posp, exp->var.op.argv[0]);
         case RDB_EX_GET_COMP:
             ret = serialize_expr(valp, posp, exp->var.op.argv[0]);
             if (ret != RDB_OK)
@@ -883,16 +879,6 @@ deserialize_expr(RDB_object *valp, int *posp, RDB_transaction *txp,
                 if (*expp == NULL)
                     return RDB_NO_MEMORY;
             }
-            break;
-        case RDB_EX_TO_INTEGER:
-        case RDB_EX_TO_RATIONAL:
-        case RDB_EX_TO_STRING:
-            ret = deserialize_expr(valp, posp, txp, &ex1p);
-            if (ret != RDB_OK)
-                return ret;
-            *expp = _RDB_create_unexpr(ex1p, ekind);
-            if (*expp == NULL)
-                return RDB_NO_MEMORY;
             break;
         case RDB_EX_GET_COMP:
         {

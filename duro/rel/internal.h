@@ -56,8 +56,7 @@ typedef struct RDB_qresult {
     RDB_bool endreached;
  
     /*
-     * 'materialized' table, needed for PROJECT with duplicate elimination,
-     *  SUMMARIZE PER, and sorting.
+     * 'materialized' table, needed for SUMMARIZE PER and sorting.
      */
     RDB_table *matp;
 } RDB_qresult;

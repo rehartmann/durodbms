@@ -139,10 +139,6 @@ enum _RDB_expr_kind {
 
     RDB_EX_ATTR,
 
-    RDB_EX_TO_INTEGER,
-    RDB_EX_TO_RATIONAL,
-    RDB_EX_TO_STRING,
-
     RDB_EX_AGGREGATE,
     RDB_EX_TUPLE_ATTR,
     RDB_EX_GET_COMP,

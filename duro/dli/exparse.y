@@ -112,9 +112,6 @@ enum {
 %token TOK_NE
 %token TOK_LE
 %token TOK_GE
-%token TOK_INTEGER
-%token TOK_RATIONAL
-%token TOK_STRING
 %token TOK_COUNT
 %token TOK_SUM
 %token TOK_AVG
@@ -130,7 +127,6 @@ enum {
         group ungroup sdivideby expression or_expression and_expression
         not_expression primary_expression rel_expression add_expression
         mul_expression literal operator_invocation
-        integer_invocation rational_invocation string_invocation
         count_invocation sum_invocation avg_invocation min_invocation
         max_invocation all_invocation any_invocation extractor tuple_item_list
 
@@ -1062,9 +1058,6 @@ primary_expression: TOK_ID
     | min_invocation
     | all_invocation
     | any_invocation
-    | integer_invocation
-    | rational_invocation
-    | string_invocation
     | operator_invocation
     | '(' expression ')' {
         $$ = $2;
@@ -1259,39 +1252,6 @@ any_invocation: TOK_ANY '(' expression_list ')' {
             if (_RDB_parse_ret != RDB_OK)
                 YYERROR;
         }
-    }
-    ;
-
-integer_invocation: TOK_INTEGER  '(' expression ')' {
-        $$ = RDB_to_int($3);
-        if ($$ == NULL)
-            YYERROR;
-        _RDB_parse_remove_exp($3);
-        _RDB_parse_ret = _RDB_parse_add_exp($$);
-        if (_RDB_parse_ret != RDB_OK)
-            YYERROR;
-    }
-    ;
-
-rational_invocation: TOK_RATIONAL  '(' expression ')' {
-        $$ = RDB_to_rational($3);
-        if ($$ == NULL)
-            YYERROR;
-        _RDB_parse_remove_exp($3);
-        _RDB_parse_ret = _RDB_parse_add_exp($$);
-        if (_RDB_parse_ret != RDB_OK)
-            YYERROR;
-    }
-    ;
-
-string_invocation: TOK_STRING  '(' expression ')' {
-        $$ = RDB_to_string($3);
-        if ($$ == NULL)
-            YYERROR;
-        _RDB_parse_remove_exp($3);
-        _RDB_parse_ret = _RDB_parse_add_exp($$);
-        if (_RDB_parse_ret != RDB_OK)
-            YYERROR;
     }
     ;
 

@@ -121,6 +121,9 @@ RDB_select(RDB_table *tbp, RDB_expression *condp, RDB_transaction *txp,
     int ret;
     RDB_type *typ;
 
+    if (!RDB_tx_is_running(txp))
+        return RDB_INVALID_TRANSACTION;
+
     /*
      * Check if condition is of type BOOLEAN
      */
@@ -291,6 +294,9 @@ RDB_extend(RDB_table *tbp, int attrc, RDB_virtual_attr attrv[],
     int ret;
     RDB_table *newtbp = NULL;
     RDB_attr *attrdefv = NULL;
+
+    if (!RDB_tx_is_running(txp))
+        return RDB_INVALID_TRANSACTION;
 
     newtbp = _RDB_new_table();
     if (newtbp == NULL)
@@ -480,6 +486,9 @@ RDB_summarize(RDB_table *tb1p, RDB_table *tb2p, int addc,
     int i, ai;
     int ret;
     int attrc;
+
+    if (!RDB_tx_is_running(txp))
+        return RDB_INVALID_TRANSACTION;
 
     /* Additional attribute for each AVG */
     int avgc;

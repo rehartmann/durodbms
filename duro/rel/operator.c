@@ -11,6 +11,7 @@
 #include "serialize.h"
 #include <gen/strfns.h>
 #include <string.h>
+#include <stdlib.h>
 #include <regex.h>
 
 int
@@ -77,8 +78,6 @@ RDB_create_ro_op(const char *name, int argc, RDB_type *argtv[], RDB_type *rtyp,
         goto cleanup;
 
     ret = RDB_insert(txp->dbp->dbrootp->ro_ops_tbp, &tpl, txp);
-    if (ret != RDB_OK)
-        goto cleanup;
 
 cleanup:
     RDB_destroy_obj(&tpl);
@@ -222,35 +221,36 @@ _RDB_free_upd_ops(RDB_upd_op *op)
     } while (op != NULL);
 }
 
-static RDB_ro_op_desc *
+static int
 get_ro_op(const RDB_dbroot *dbrootp, const char *name,
-        int argc, RDB_type *argtv[])
+        int argc, RDB_type *argtv[], RDB_ro_op_desc **ropp)
 {
     RDB_ro_op_desc **opp = RDB_hashmap_get(&dbrootp->ro_opmap, name, NULL);
-    RDB_ro_op_desc *op;
+    RDB_bool pm = RDB_FALSE;
 
     if (opp == NULL || *opp == NULL)
-        return NULL;
+        return RDB_NOT_FOUND;
 
-    op = *opp;
+    *ropp = *opp;
 
     /* Find a operation with same signature */
     do {
-        if (op->argc == argc) {
+        if ((*ropp)->argc == argc) {
             int i;
 
+            pm = RDB_TRUE;
             for (i = 0; (i < argc)
-                    && RDB_type_equals(op->argtv[i], argtv[i]);
+                    && RDB_type_equals((*ropp)->argtv[i], argtv[i]);
                  i++);
             if (i == argc) {
                 /* Found */
-                return op;
+                return RDB_OK;
             }
         }
-        op = op->nextp;
-    } while (op != NULL);
+        *ropp = (*ropp)->nextp;
+    } while ((*ropp) != NULL);
 
-    return NULL;
+    return pm ? RDB_TYPE_MISMATCH : RDB_NOT_FOUND;
 }
 
 static int
@@ -292,15 +292,15 @@ int
 _RDB_get_ro_op(const char *name, int argc, RDB_type *argtv[],
                RDB_transaction *txp, RDB_ro_op_desc **opp)
 {
-    int ret;
+    int ret, ret2;
 
     /* Lookup operator in map */
-    *opp = get_ro_op(txp->dbp->dbrootp, name, argc, argtv);
+    ret = get_ro_op(txp->dbp->dbrootp, name, argc, argtv, opp);
 
-    if (*opp == NULL) {
+    if (ret == RDB_NOT_FOUND || ret == RDB_TYPE_MISMATCH) {
         /* Not found in map, so read from catalog */
-        ret = _RDB_get_cat_ro_op(name, argc, argtv, txp, opp);
-        if (ret != RDB_OK)
+        ret2 = _RDB_get_cat_ro_op(name, argc, argtv, txp, opp);
+        if (ret2 != RDB_OK)
             return ret;
         
         /* Insert operator into map */
@@ -573,7 +573,8 @@ RDB_call_ro_op(const char *name, int argc, RDB_object *argv[],
     }
     free(argtv);
     if (ret != RDB_OK) {
-        if (ret == RDB_NOT_FOUND && argc == 2) {
+        if ((ret == RDB_NOT_FOUND || ret == RDB_TYPE_MISMATCH)
+                && argc == 2) {
             if (strcmp(name, "=") == 0) {
                 /* Call default equality */
                 return obj_equals(argv, txp, retvalp);
@@ -810,6 +811,60 @@ RDB_drop_op(const char *name, RDB_transaction *txp)
 /*
  * Built-in operators
  */
+
+static int
+integer_rational(const char *name, int argc, RDB_object *argv[],
+        const void *iargp, size_t iarglen, RDB_transaction *txp,
+        RDB_object *retvalp)
+{
+    RDB_int_to_obj(retvalp, (int) argv[0]->var.rational_val);
+    return RDB_OK;
+}
+
+static int
+integer_string(const char *name, int argc, RDB_object *argv[],
+        const void *iargp, size_t iarglen, RDB_transaction *txp,
+        RDB_object *retvalp)
+{
+    char *endp;
+
+    RDB_int_to_obj(retvalp, (RDB_int)
+            strtol(argv[0]->var.bin.datap, &endp, 10));
+    if (*endp != '\0')
+        return RDB_INVALID_ARGUMENT;
+    return RDB_OK;
+}
+
+static int
+rational_int(const char *name, int argc, RDB_object *argv[],
+        const void *iargp, size_t iarglen, RDB_transaction *txp,
+        RDB_object *retvalp)
+{
+    RDB_rational_to_obj(retvalp, (RDB_rational) argv[0]->var.int_val);
+    return RDB_OK;
+}
+
+static int
+rational_string(const char *name, int argc, RDB_object *argv[],
+        const void *iargp, size_t iarglen, RDB_transaction *txp,
+        RDB_object *retvalp)
+{
+    char *endp;
+
+    RDB_rational_to_obj(retvalp, (RDB_rational)
+            strtod(argv[0]->var.bin.datap, &endp));
+    if (*endp != '\0')
+        return RDB_INVALID_ARGUMENT;
+    return RDB_OK;
+}
+
+static int
+string_obj(const char *name, int argc, RDB_object *argv[],
+        const void *iargp, size_t iarglen, RDB_transaction *txp,
+        RDB_object *retvalp)
+{
+    return RDB_obj_to_string(retvalp, argv[0]);
+}
 
 static int
 length_string(const char *name, int argc, RDB_object *argv[],
@@ -1096,6 +1151,60 @@ _RDB_add_builtin_ops(RDB_dbroot *dbrootp)
     if (op == NULL)
         return RDB_NO_MEMORY;
     op->argtv[0] = &RDB_STRING;
+
+    ret = put_ro_op(dbrootp, op);
+    if (ret != RDB_OK)
+        return ret;
+
+    op = new_ro_op("INTEGER", 1, &RDB_INTEGER, &integer_rational);
+    if (op == NULL)
+        return RDB_NO_MEMORY;
+    op->argtv[0] = &RDB_RATIONAL;
+
+    ret = put_ro_op(dbrootp, op);
+    if (ret != RDB_OK)
+        return ret;
+
+    op = new_ro_op("INTEGER", 1, &RDB_INTEGER, &integer_string);
+    if (op == NULL)
+        return RDB_NO_MEMORY;
+    op->argtv[0] = &RDB_STRING;
+
+    ret = put_ro_op(dbrootp, op);
+    if (ret != RDB_OK)
+        return ret;
+
+    op = new_ro_op("RATIONAL", 1, &RDB_RATIONAL, &rational_int);
+    if (op == NULL)
+        return RDB_NO_MEMORY;
+    op->argtv[0] = &RDB_INTEGER;
+
+    ret = put_ro_op(dbrootp, op);
+    if (ret != RDB_OK)
+        return ret;
+
+    op = new_ro_op("RATIONAL", 1, &RDB_RATIONAL, &rational_string);
+    if (op == NULL)
+        return RDB_NO_MEMORY;
+    op->argtv[0] = &RDB_STRING;
+
+    ret = put_ro_op(dbrootp, op);
+    if (ret != RDB_OK)
+        return ret;
+
+    op = new_ro_op("STRING", 1, &RDB_STRING, &string_obj);
+    if (op == NULL)
+        return RDB_NO_MEMORY;
+    op->argtv[0] = &RDB_INTEGER;
+
+    ret = put_ro_op(dbrootp, op);
+    if (ret != RDB_OK)
+        return ret;
+
+    op = new_ro_op("STRING", 1, &RDB_STRING, &string_obj);
+    if (op == NULL)
+        return RDB_NO_MEMORY;
+    op->argtv[0] = &RDB_RATIONAL;
 
     ret = put_ro_op(dbrootp, op);
     if (ret != RDB_OK)

@@ -75,39 +75,6 @@ append_ex(RDB_object *objp, RDB_expression *exp)
              if (ret != RDB_OK)
                  return ret;
             break;
-        case RDB_EX_TO_INTEGER:
-            ret = append_str(objp, "INTEGER(");
-            if (ret != RDB_OK)
-                return ret;
-            ret = append_ex(objp, exp->var.op.argv[0]);
-            if (ret != RDB_OK)
-                return ret;
-            ret = append_str(objp, ")");
-            if (ret != RDB_OK)
-                return ret;
-            break;
-        case RDB_EX_TO_RATIONAL:
-            ret = append_str(objp, "RATIONAL(");
-            if (ret != RDB_OK)
-                return ret;
-            ret = append_ex(objp, exp->var.op.argv[0]);
-            if (ret != RDB_OK)
-                return ret;
-            ret = append_str(objp, ")");
-            if (ret != RDB_OK)
-                return ret;
-            break;
-        case RDB_EX_TO_STRING:
-            ret = append_str(objp, "STRING(");
-            if (ret != RDB_OK)
-                return ret;
-            ret = append_ex(objp, exp->var.op.argv[0]);
-            if (ret != RDB_OK)
-                return ret;
-            ret = append_str(objp, ")");
-            if (ret != RDB_OK)
-                return ret;
-            break;
         case RDB_EX_TUPLE_ATTR:
             ret = append_str(objp, "(");
             if (ret != RDB_OK)
