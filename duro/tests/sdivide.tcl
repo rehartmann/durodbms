@@ -7,7 +7,7 @@
 # 7th edition)
 #
 
-load .libs/libdurotcl.so duro
+load .libs/libdurotcl.so
 
 source tcl/util.tcl
 

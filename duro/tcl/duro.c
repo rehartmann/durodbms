@@ -56,7 +56,7 @@ Duro_dberror(Tcl_Interp *interp, int err)
 }    
 
 int
-Duro_Init(Tcl_Interp *interp)
+Durotcl_Init(Tcl_Interp *interp)
 {
     TclState *statep;
 
@@ -104,9 +104,7 @@ Duro_Init(Tcl_Interp *interp)
 
     /* yydebug = 1; */
     
-    Tcl_PkgProvide(interp, "duro", "0.7");
-
-    return TCL_OK;
+    return Tcl_PkgProvide(interp, "duro", "0.7");
 }
 
 RDB_table *

@@ -6,11 +6,11 @@ This directory contains release 0.6 of Duro, a relational database library
 written in C.
 
 Compiling and running Duro requires the Berkeley DB database library,
-release 4.1. Berkeley DB can be obtained for free from
+release 4.2. Berkeley DB can be obtained for free from
 http://www.sleepycat.com. Also required are POSIX.2 regular expressions
 and GNU Libtool.
 
-Berkeley DB is assumed to be located in /usr/local/BerkeleyDB.4.1.
+Berkeley DB is assumed to be located in /usr/local/BerkeleyDB.4.2.
 
 Duro has been tested on a GNU/Linux PC.
 

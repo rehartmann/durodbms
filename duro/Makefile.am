@@ -1,7 +1,7 @@
 # $Id$
 
 # Default directory where Berkeley DB is installed
-BDB_HOME = /usr/local/BerkeleyDB.4.1
+BDB_HOME = /usr/local/BerkeleyDB.4.2
 
 AM_YFLAGS = -d
 
@@ -60,6 +60,9 @@ libdurotcl_la_SOURCES = tcl/duro.c tcl/duro.h tcl/envcmd.c tcl/txcmd.c \
 
 libdurotcl_la_LIBADD = -L$(BDB_HOME)/lib libduro.la -ldb
 
+pkglibdir = $(prefix)/lib
+pkglib_DATA = tcl/util.tcl
+
 INCLUDES = -I$(top_srcdir) -I$(BDB_HOME)/include
 
 EXTRA_DIST = tests/ctests tests/lstables_output tests/test_2db_output \
@@ -72,10 +75,15 @@ tests/test_null_output tests/test_pointtable_output tests/test_print_opview_outp
 tests/test_print_view_output tests/test_project_output tests/test_ra_output \
 tests/test_regexp_output tests/test_rename_output tests/test_select_output \
 tests/test_srupdate_output tests/test_summarize_output tests/test_union_output \
-tests/test_update_output tests/test_utypetable_output tests/tupletest_output \
-tcl/util.tcl
+tests/test_update_output tests/test_utypetable_output tests/tupletest_output
 
 # Delete test libs
-install-exec-local:
+install-exec-hook:
 	rm $(DESTDIR)$(prefix)/lib/libpoint.*
 	rm $(DESTDIR)$(prefix)/lib/libplus.*
+
+# Install Tcl package
+install-data-hook:
+	LD_LIBRARY_PATH=$(BDB_HOME)/lib;export LD_LIBRARY_PATH; \
+                echo pkg_mkIndex $(DESTDIR)$(prefix)/lib \
+                libdurotcl.so util.tcl | tclsh

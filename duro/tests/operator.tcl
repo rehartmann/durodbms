@@ -5,7 +5,7 @@
 # Test create, insert, UNWRAP on table with tuple attribute
 #
 
-load .libs/libdurotcl.so duro
+load .libs/libdurotcl.so
 
 source tcl/util.tcl
 

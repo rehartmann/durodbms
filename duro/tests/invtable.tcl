@@ -5,7 +5,7 @@
 # Test creation of table with invalid definition
 #
 
-load .libs/libdurotcl.so duro
+load .libs/libdurotcl.so
 
 source tcl/util.tcl
 

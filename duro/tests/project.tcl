@@ -5,7 +5,7 @@
 # Test create, insert, update with projection tables
 #
 
-load .libs/libdurotcl.so duro
+load .libs/libdurotcl.so
 
 source tcl/util.tcl
 

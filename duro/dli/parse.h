@@ -1,6 +1,11 @@
 #ifndef RDB_PARSE_H
 #define RDB_PARSE_H
 
+/*
+ * Copyright (C) 2003 René Hartmann.
+ * See the file COPYING for redistribution information.
+ */
+
 /* $Id$ */
 
 #include <rel/rdb.h>
