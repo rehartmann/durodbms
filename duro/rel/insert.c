@@ -327,11 +327,12 @@ cleanup:
 void
 _RDB_set_nonsc_type(RDB_object *objp, RDB_type *typ)
 {
-    int i;
+/*    int i; */
 
     objp->typ = typ;
 
     /* Set tuple/table attribute types */
+/* !! check if needed
     if (typ->kind == RDB_TP_TUPLE) {
         for (i = 0; i < typ->var.tuple.attrc; i++) {
             RDB_type *attrtyp = typ->var.tuple.attrv[i].typ;
@@ -354,6 +355,7 @@ _RDB_set_nonsc_type(RDB_object *objp, RDB_type *typ)
             }
         }
     }
+*/
 }
 
 int

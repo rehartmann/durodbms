@@ -524,36 +524,38 @@ array_to_list(Tcl_Interp *interp, RDB_object *arrayp,
 static Tcl_Obj *
 table_to_list(Tcl_Interp *interp, RDB_table *tbp, RDB_transaction *txp)
 {
-    RDB_qresult *qrp;
-    RDB_object tpl;
+    RDB_object arr;
+    RDB_object *tplp;
     int ret;
+    int i;
     Tcl_Obj *listobjp = Tcl_NewListObj(0, NULL);
 
-    ret = _RDB_table_qresult(tbp, txp, &qrp);
+    RDB_init_obj(&arr);
+    ret = RDB_table_to_array(&arr, tbp, 0, NULL, txp);
     if (ret != RDB_OK) {
         if (RDB_is_syserr(ret)) {
             RDB_rollback_all(txp);
         }
         Duro_dberror(interp, ret);
+        RDB_destroy_obj(&arr);
         return NULL;
     }
 
-    RDB_init_obj(&tpl);
-
-    while ((ret = _RDB_next_tuple(qrp, &tpl, NULL)) == RDB_OK) {
+    for (i = 0;
+         (ret = RDB_array_get(&arr, i, &tplp)) == RDB_OK;
+         i++) {
         Tcl_ListObjAppendElement(interp, listobjp,
-                Duro_to_tcl(interp, &tpl, txp));
+                Duro_to_tcl(interp, tplp, txp));
     }
-    RDB_destroy_obj(&tpl);
     if (ret != RDB_NOT_FOUND) {
-        _RDB_drop_qresult(qrp, NULL);
+        RDB_destroy_obj(&arr);
         if (RDB_is_syserr(ret))
             RDB_rollback_all(txp);
         Duro_dberror(interp, ret);
         return NULL;
     }
 
-    ret = _RDB_drop_qresult(qrp, NULL);
+    ret = RDB_destroy_obj(&arr);
     if (ret != RDB_OK) {
         if (RDB_is_syserr(ret))
             RDB_rollback_all(txp);

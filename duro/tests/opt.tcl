@@ -82,28 +82,29 @@ duro::table expr t2 {t1 WHERE A=1} $tx
 duro::table expr t3 {t2 WHERE B=2} $tx
 
 set tpl [duro::expr {TUPLE FROM t3} $tx]
-array set ta $tpl
-if {$ta(A) != 1 || $ta(B) != 2 || $ta(C) != 3} {
+if {![tequal $tpl {A 1 B 2 C 3}]} {
     error "Invalid value for TUPLE FROM t3: $tpl"
+}
+
+set tpl [duro::expr {TUPLE FROM (T2 {A, B}) WHERE A=1 AND B=2} $tx]
+if {![tequal $tpl {A 1 B 2}]} {
+    error "Invalid tuple value: $tpl"
 }
 
 set tpl [duro::expr {TUPLE FROM ((((T2 WHERE A=1) INTERSECT T4) UNION T3)
         WHERE B=2)} $tx]
-array set ta $tpl
-if {$ta(A) != 2 || $ta(B) != 2 || $ta(C) != 3} {
+if {![tequal $tpl {A 2 B 2 C 3}]} {
     error "Invalid tuple value: $tpl"
 }
 
 set tpl [duro::expr {TUPLE FROM (T2 RENAME (A AS AA)) WHERE B=2 AND AA=1} $tx]
-array set ta $tpl
-if {$ta(AA) != 1 || $ta(B) != 2 || $ta(C) != 3} {
+if {![tequal $tpl {AA 1 B 2 C 3}]} {
     error "Invalid tuple value: $tpl"
 }
 
 set tpl [duro::expr {TUPLE FROM (EXTEND T2 ADD (A AS AA)) WHERE B=2 AND AA=1} \
         $tx]
-array set ta $tpl
-if {$ta(A) != 1 || $ta(B) != 2 || $ta(C) != 3 || $ta(AA) != 1} {
+if {![tequal $tpl {A 1 AA 1 B 2 C 3}]} {
     error "Invalid tuple value: $tpl"
 }
 

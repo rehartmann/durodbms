@@ -140,8 +140,9 @@ delete_select_uindex(RDB_table *tbp, RDB_expression *condp,
         /*
          * Read tuple and check condition
          */
-        ret = _RDB_get_by_uindex(tbp->var.select.tbp, tbp->var.select.objpv,
-                tbp->var.select.indexp, txp, &tpl);
+        ret = _RDB_get_by_uindex(tbp->var.select.tbp->var.project.tbp,
+                tbp->var.select.objpv, tbp->var.select.indexp,
+                tbp->typ->var.basetyp, txp, &tpl);
         if (ret != RDB_OK) {
             RDB_destroy_obj(&tpl);
             goto cleanup;
@@ -155,8 +156,8 @@ delete_select_uindex(RDB_table *tbp, RDB_expression *condp,
             return RDB_OK;
     }
 
-    ret = delete_by_uindex(tbp->var.select.tbp, tbp->var.select.objpv,
-            tbp->var.select.indexp, txp);
+    ret = delete_by_uindex(tbp->var.select.tbp->var.project.tbp,
+            tbp->var.select.objpv, tbp->var.select.indexp, txp);
     if (ret == RDB_NOT_FOUND)
         ret = RDB_OK;
 
@@ -176,7 +177,8 @@ delete_select_index(RDB_table *tbp, RDB_expression *condp,
     int keylen = tbp->var.select.indexp->attrc;
 
     ret = RDB_index_cursor(&curp, tbp->var.select.indexp->idxp,
-            RDB_TRUE, tbp->var.select.tbp->is_persistent ? txp->txid : NULL);
+            RDB_TRUE, tbp->var.select.tbp->var.project.tbp->is_persistent ?
+            txp->txid : NULL);
     if (ret != RDB_OK) {
         if (txp != NULL) {
             RDB_errmsg(txp->dbp->dbrootp->envp, "cannot create cursor: %s",
@@ -220,7 +222,8 @@ delete_select_index(RDB_table *tbp, RDB_expression *condp,
         /*
          * Read tuple and check condition
          */
-        ret = _RDB_get_by_cursor(tbp->var.select.tbp, curp, &tpl);
+        ret = _RDB_get_by_cursor(tbp->var.select.tbp->var.project.tbp,
+                curp, &tpl);
         if (ret != RDB_OK) {
             RDB_destroy_obj(&tpl);
             goto cleanup;
@@ -350,6 +353,7 @@ delete(RDB_table *tbp, RDB_expression *condp, RDB_transaction *txp)
         case RDB_TB_EXTEND:
             return delete_extend(tbp, condp, txp);
         case RDB_TB_PROJECT:
+            /* !! check if condp refers to attributes "projected away" */
             return delete(tbp->var.project.tbp, condp, txp);
         case RDB_TB_SUMMARIZE:
             return RDB_NOT_SUPPORTED;

@@ -27,7 +27,7 @@ is_keyattr(const char *attrname, RDB_table *tbp)
 }
 
 static int
-upd_to_vals(RDB_table *tbp, int updc, const RDB_attr_update updv[],
+upd_to_vals(int updc, const RDB_attr_update updv[],
                RDB_object *tplp, RDB_object *valv, RDB_transaction *txp)
 {
     int i, ret;
@@ -126,7 +126,7 @@ update_stored_complex(RDB_table *tbp, RDB_expression *condp,
             }
         }
         if (b) {
-            ret = upd_to_vals(tbp, updc, updv, &tpl, valv, &tx);
+            ret = upd_to_vals(updc, updv, &tpl, valv, &tx);
             if (ret != RDB_OK) {
                 goto cleanup;
             }
@@ -308,7 +308,7 @@ update_stored_simple(RDB_table *tbp, RDB_expression *condp,
 
         if (b) {
             /* Perform update */
-            ret = upd_to_vals(tbp, updc, updv, &tpl, valv, &tx);
+            ret = upd_to_vals(updc, updv, &tpl, valv, &tx);
             if (ret != RDB_OK) {
                 goto cleanup;
             }
@@ -396,8 +396,9 @@ update_select_pindex(RDB_table *tbp, RDB_expression *condp,
 
     /* Read tuple */
     RDB_init_obj(&tpl);
-    ret = _RDB_get_by_uindex(tbp->var.select.tbp, tbp->var.select.objpv,
-            tbp->var.select.indexp, txp, &tpl);
+    ret = _RDB_get_by_uindex(tbp->var.select.tbp->var.project.tbp,
+            tbp->var.select.objpv, tbp->var.select.indexp,
+            tbp->typ->var.basetyp, txp, &tpl);
     if (ret != RDB_OK) {
         RDB_destroy_obj(&tpl);
         if (ret == RDB_NOT_FOUND)
@@ -421,14 +422,14 @@ update_select_pindex(RDB_table *tbp, RDB_expression *condp,
         }
     }
 
-    ret = upd_to_vals(tbp->var.select.tbp, updc, updv, &tpl, valv, txp);
+    ret = upd_to_vals(updc, updv, &tpl, valv, txp);
     RDB_destroy_obj(&tpl);
     if (ret != RDB_OK)
         goto cleanup;
 
     for (i = 0; i < updc; i++) {
         fieldv[i].no = *(int*) RDB_hashmap_get(
-                 &tbp->var.select.tbp->var.real.attrmap,
+                 &tbp->var.select.tbp->var.project.tbp->var.real.attrmap,
                  updv[i].name, NULL);
          
         /* Set type - needed for tuple and array attributes */
@@ -443,8 +444,9 @@ update_select_pindex(RDB_table *tbp, RDB_expression *condp,
             goto cleanup;
     }
         
-    ret = RDB_update_rec(tbp->var.select.tbp->var.real.recmapp, fvv, updc,
-            fieldv, tbp->var.select.tbp->is_persistent ? txp->txid : NULL);
+    ret = RDB_update_rec(tbp->var.select.tbp->var.project.tbp->var.real.recmapp,
+            fvv, updc, fieldv, tbp->var.select.tbp->var.project.tbp->is_persistent ?
+            txp->txid : NULL);
 
 cleanup:
     for (i = 0; i < updc; i++)
@@ -491,7 +493,7 @@ update_select_index_simple(RDB_table *tbp, RDB_expression *condp,
         RDB_init_obj(&valv[i]);
 
     ret = RDB_index_cursor(&curp, tbp->var.select.indexp->idxp, RDB_TRUE,
-            tbp->var.select.tbp->is_persistent ? tx.txid : NULL);
+            tbp->var.select.tbp->var.project.tbp->is_persistent ? tx.txid : NULL);
     if (ret != RDB_OK) {
         return ret;
     }
@@ -521,7 +523,8 @@ update_select_index_simple(RDB_table *tbp, RDB_expression *condp,
 
         /* Read tuple */
         RDB_init_obj(&tpl);
-        ret = _RDB_get_by_cursor(tbp->var.select.tbp, curp, &tpl);
+        ret = _RDB_get_by_cursor(tbp->var.select.tbp->var.project.tbp, curp,
+                &tpl);
         if (ret != RDB_OK) {
             RDB_destroy_obj(&tpl);
             goto cleanup;
@@ -560,14 +563,14 @@ update_select_index_simple(RDB_table *tbp, RDB_expression *condp,
         upd = (RDB_bool) (upd && b);
 
         if (upd) {
-            ret = upd_to_vals(tbp->var.select.tbp, updc, updv, &tpl, valv, &tx);
+            ret = upd_to_vals(updc, updv, &tpl, valv, &tx);
             RDB_destroy_obj(&tpl);
             if (ret != RDB_OK)
                 goto cleanup;
 
             for (i = 0; i < updc; i++) {
                 fieldv[i].no = *(int*) RDB_hashmap_get(
-                         &tbp->var.select.tbp->var.real.attrmap,
+                         &tbp->var.select.tbp->var.project.tbp->var.real.attrmap,
                          updv[i].name, NULL);
                  
                 /* Set type - needed for tuple and array attributes */
@@ -717,7 +720,8 @@ update(RDB_table *tbp, RDB_expression *condp, int updc,
         case RDB_TB_EXTEND:
             return RDB_NOT_SUPPORTED;
         case RDB_TB_PROJECT:
-            return RDB_NOT_SUPPORTED;
+            /* !! check if condp or updv refer to attributes "projected away" */
+            return update(tbp->var.project.tbp, condp, updc, updv, txp);
         case RDB_TB_SUMMARIZE:
             return RDB_NOT_SUPPORTED;
         case RDB_TB_RENAME:

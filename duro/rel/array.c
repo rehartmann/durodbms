@@ -14,6 +14,7 @@ RDB_table_to_array(RDB_object *arrp, RDB_table *tbp,
                    RDB_transaction *txp)
 {
     int ret;
+    _RDB_tbindex *indexp = NULL;
 
     ret = RDB_destroy_obj(arrp);
     if (ret != RDB_OK)
@@ -33,9 +34,26 @@ RDB_table_to_array(RDB_object *arrp, RDB_table *tbp,
     arrp->var.arr.pos = 0;
 
     if (seqitc > 0) {
-        /* Create sorter */
-        ret = _RDB_sorter(arrp->var.arr.tbp, &arrp->var.arr.qrp, txp,
+        indexp = _RDB_sortindex(arrp->var.arr.tbp, seqitc, seqitv);
+        if (indexp == NULL) {
+            /* Create sorter */
+            ret = _RDB_sorter(arrp->var.arr.tbp, &arrp->var.arr.qrp, txp,
                 seqitc, seqitv);
+            if (ret != RDB_OK)
+                return ret;
+        }
+    }
+    if (arrp->var.arr.qrp == NULL) {
+        ret = _RDB_table_qresult(arrp->var.arr.tbp, indexp, arrp->var.arr.txp,
+                &arrp->var.arr.qrp);
+        if (ret != RDB_OK) {
+            arrp->var.arr.qrp = NULL;
+            if (RDB_is_syserr(ret))
+                RDB_rollback_all(arrp->var.arr.txp);
+            return ret;
+        }
+        /* Add duplicate remover, if necessary */
+        ret = _RDB_duprem(arrp->var.arr.qrp);
         if (ret != RDB_OK)
             return ret;
     }
@@ -89,24 +107,6 @@ RDB_array_get(RDB_object *arrp, RDB_int idx, RDB_object **tplpp)
     if (idx < arrp->var.arr.elemc && idx < arrp->var.arr.pos) {
         *tplpp = &arrp->var.arr.elemv[idx];
         return RDB_OK;
-    }
-
-    /* If there is no qresult, create it */
-    if (arrp->var.arr.qrp == NULL) {
-        ret = _RDB_table_qresult(arrp->var.arr.tbp, arrp->var.arr.txp,
-                &arrp->var.arr.qrp);
-        if (ret != RDB_OK) {
-            arrp->var.arr.qrp = NULL;
-            if (RDB_is_syserr(ret))
-                RDB_rollback_all(arrp->var.arr.txp);
-            return ret;
-        }
-        /* Add duplicate remover, if necessary */
-        ret = _RDB_duprem(arrp->var.arr.qrp);
-        if (ret != RDB_OK)
-            return ret;
-
-        arrp->var.arr.pos = 0;
     }
 
     /* Reset qresult to start, if necessary */

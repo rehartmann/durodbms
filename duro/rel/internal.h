@@ -124,7 +124,12 @@ _RDB_begin_tx(RDB_transaction *, RDB_environment *,
  * Using it from an application is possible, but violates RM proscription 7.
  */
 int
-_RDB_table_qresult(RDB_table *, RDB_transaction *, RDB_qresult **);
+_RDB_table_qresult(RDB_table *, _RDB_tbindex *, RDB_transaction *,
+        RDB_qresult **);
+
+int
+_RDB_index_qresult(RDB_table *, _RDB_tbindex *, RDB_transaction *,
+        RDB_qresult **);
 
 int
 _RDB_sorter(RDB_table *tbp, RDB_qresult **qrespp, RDB_transaction *txp,
@@ -141,7 +146,7 @@ _RDB_reset_qresult(RDB_qresult *, RDB_transaction *);
 
 int
 _RDB_get_by_uindex(RDB_table *tbp, RDB_object *objpv[], _RDB_tbindex *indexp,
-        RDB_transaction *txp, RDB_object *tplp);
+        RDB_type *, RDB_transaction *txp, RDB_object *tplp);
 
 int
 _RDB_get_by_cursor(RDB_table *, RDB_cursor *, RDB_object *);
@@ -427,6 +432,9 @@ _RDB_duprem(RDB_qresult *qrp);
 RDB_object **
 _RDB_index_objpv(_RDB_tbindex *indexp, RDB_expression *exp, RDB_type *tbtyp,
         int objpc, RDB_bool all_eq, RDB_bool asc);
+
+_RDB_tbindex *
+_RDB_sortindex (RDB_table *tbp, int seqitc, const RDB_seq_item seqitv[]);
 
 RDB_expression *
 _RDB_attr_node(RDB_expression *exp, const char *attrname, char *opname);

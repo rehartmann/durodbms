@@ -170,8 +170,16 @@ cleanup:
 int
 RDB_cursor_first(RDB_cursor *curp)
 {
-    return RDB_convert_err(curp->cursorp->c_get(curp->cursorp, &curp->current_key,
-                &curp->current_data, DB_FIRST));
+    if (curp->idxp == NULL) {
+        return RDB_convert_err(curp->cursorp->c_get(curp->cursorp,
+                &curp->current_key, &curp->current_data, DB_FIRST));
+    } else {
+        DBT key;
+
+        memset(&key, 0, sizeof key);
+        return RDB_convert_err(curp->cursorp->c_pget(curp->cursorp,
+                &key, &curp->current_key, &curp->current_data, DB_FIRST));
+    }
 }
 
 int

@@ -99,6 +99,19 @@ checkarray $a {{A 1 B Blb C Y D u} {A 2 B Blb C Y D u}
 
 duro::array drop $a
 
+#
+# Test sorting by index
+#
+
+duro::update T1 {A = 2} B {"Ble"} $tx
+
+set a [duro::array create T1 {B asc} $tx]
+
+checkarray $a {{A 3 B Bla C X D x} {A 1 B Blb C Y D u} {A 2 B Ble C Y D u}
+        {A 5 B Blubb C Y D x}} $tx
+
+duro::array drop $a
+
 duro::commit $tx
 
 duro::env close $dbenv

@@ -73,7 +73,7 @@ obj_ilen(const RDB_object *objp, size_t *lenp)
             RDB_object tpl;
             RDB_qresult *qrp;
 
-            ret = _RDB_table_qresult(objp->var.tbp, NULL, &qrp);
+            ret = _RDB_table_qresult(objp->var.tbp, NULL, NULL, &qrp);
             if (ret != RDB_OK)
                 return ret;
 
@@ -415,7 +415,7 @@ obj_to_irep(void *dstp, const void *srcp, size_t len)
             int ret;
             size_t l;
 
-            ret = _RDB_table_qresult(objp->var.tbp, NULL, &qrp);
+            ret = _RDB_table_qresult(objp->var.tbp, NULL, NULL, &qrp);
             if (ret != RDB_OK)
                 return NULL;
 

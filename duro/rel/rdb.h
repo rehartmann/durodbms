@@ -246,6 +246,10 @@ typedef struct RDB_table {
             int est_cardinality; /* estimated cardinality (from statistics) */
         } real;
         struct {
+            /*
+             * If indexp != NULL, tbp must point to a projection, which in
+             * turn must point to a real table.
+             */
             struct RDB_table *tbp;
             RDB_expression *exp;
 

@@ -538,7 +538,7 @@ transform_project(RDB_table *tbp)
             case RDB_TB_REAL:
                 return RDB_OK;
             case RDB_TB_PROJECT:
-                /* Merge projects */
+                /* Merge projects by eliminating the child */
                 tbp->var.project.tbp = chtbp->var.project.tbp;
                 tbp->var.project.keyloss = (RDB_bool) (tbp->var.project.keyloss
                         || chtbp->var.project.keyloss);

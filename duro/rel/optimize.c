@@ -10,10 +10,9 @@
 #include <gen/strfns.h>
 #include <string.h>
 #include <stdlib.h>
+#include <math.h>
 
-/* !!
 #include <dli/tabletostr.h>
-*/
 
 static RDB_bool is_and(RDB_expression *exp) {
     return (RDB_bool) exp->kind == RDB_EX_RO_OP
@@ -227,6 +226,11 @@ split_by_index(RDB_table *tbp, _RDB_tbindex *indexp, RDB_transaction *txp)
         /*
          * Split table into two
          */
+        if (ixexp == NULL) {
+            ixexp = RDB_bool_to_expr(RDB_TRUE);
+            if (ixexp == NULL)
+                return RDB_NO_MEMORY;
+        }
         ret = RDB_select(tbp->var.select.tbp, ixexp, txp, &sitbp);
         if (ret != RDB_OK)
             return ret;
@@ -321,7 +325,12 @@ mutate_select(RDB_table *tbp, RDB_table **tbpv, int cap, RDB_transaction *txp)
     int ret;
     RDB_table *ctbp = tbp->var.select.tbp;
 
-    if (ctbp->kind == RDB_TB_REAL) {
+    if ((ctbp->kind == RDB_TB_PROJECT
+            && ctbp->var.project.tbp->kind == RDB_TB_REAL)
+            || ctbp->kind == RDB_TB_REAL) {
+        RDB_table *rtbp = ctbp->kind == RDB_TB_REAL ? ctbp
+                : ctbp->var.project.tbp;
+        RDB_table *ptbp;
         int tbc = 0;
 
         /*
@@ -329,20 +338,54 @@ mutate_select(RDB_table *tbp, RDB_table **tbpv, int cap, RDB_transaction *txp)
          */
         unbalance_and(tbp->var.select.exp);
 
-        for (i = 0; i < ctbp->var.real.indexc && tbc < cap; i++) {
-            if ((ctbp->var.real.indexv[i].idxp != NULL
-                    && RDB_index_is_ordered(ctbp->var.real.indexv[i].idxp))
+        for (i = 0; i < rtbp->var.real.indexc && tbc < cap; i++) {
+            if ((rtbp->var.real.indexv[i].idxp != NULL
+                    && RDB_index_is_ordered(rtbp->var.real.indexv[i].idxp))
                     || expr_covers_index(tbp->var.select.exp, 
-                            &ctbp->var.real.indexv[i])) {
+                            &rtbp->var.real.indexv[i])) {
                 tbpv[tbc] = _RDB_dup_vtable(tbp);
                 if (tbpv[tbc] == NULL)
                     return RDB_NO_MEMORY;
-                ret = split_by_index(tbpv[tbc++], &ctbp->var.real.indexv[i],
+                ret = split_by_index(tbpv[tbc], &rtbp->var.real.indexv[i],
                         txp);
                 if (ret != RDB_OK)
                     return ret;
+
+                if (ctbp->kind == RDB_TB_REAL /*
+                        && (tbpv[tbc]->var.select.indexp != NULL
+                           || tbpv[tbc]->var.select.tbp->kind == RDB_TB_SELECT) */) {
+                    /* Create projection for uniformity */
+                    ptbp = _RDB_new_table();
+                    if (tbp == NULL)
+                        return RDB_NO_MEMORY;
+                    ptbp->is_user = RDB_TRUE;
+                    ptbp->is_persistent = RDB_FALSE;
+                    ptbp->kind = RDB_TB_PROJECT;
+                    ptbp->keyv = NULL;
+
+                    /* Create type */
+                    ret = RDB_create_relation_type(
+                            tbp->typ->var.basetyp->var.tuple.attrc,
+                            tbp->typ->var.basetyp->var.tuple.attrv, &ptbp->typ);
+                    if (ret != RDB_OK) {
+                        free(ptbp);
+                        return ret;
+                    }
+
+                    if (tbpv[tbc]->var.select.indexp != NULL) {
+                        ptbp->var.project.tbp = tbpv[tbc]->var.select.tbp;
+                        tbpv[tbc]->var.select.tbp = ptbp;
+                    } else {
+                        ptbp->var.project.tbp = tbpv[tbc]->var.select.tbp
+                                ->var.select.tbp;
+                        tbpv[tbc]->var.select.tbp->var.select.tbp = ptbp;
+                    }
+                }
+
+                tbc++;
             }
         }
+
         return tbc;
     } else {
        int tbc = mutate(ctbp, tbpv, cap, txp);
@@ -899,9 +942,8 @@ _RDB_optimize(RDB_table *tbp, int seqitc, const RDB_seq_item seqitv[],
     int tbc;
     unsigned bestcost, obestcost;
     RDB_table *tbpv[tbpv_cap];
-/* !!
-    RDB_object strobj;
-*/    
+/*    RDB_object strobj; */
+
     if (tbp->kind == RDB_TB_REAL) {
         *ntbpp = tbp;
         return RDB_OK;
@@ -934,6 +976,10 @@ _RDB_optimize(RDB_table *tbp, int seqitc, const RDB_seq_item seqitv[],
 
         for (i = 0; i < tbc; i++) {
             int cost = table_cost(tbpv[i]);
+            /* Check if the index must be sorted */
+            _RDB_tbindex *indexp = _RDB_sortindex(tbpv[i], seqitc, seqitv);
+            if (indexp == NULL)
+                cost = cost + (((double) cost) /* !! * log10(cost) */ / 7);
 
 /* !!
             RDB_init_obj(&strobj);
@@ -959,8 +1005,7 @@ _RDB_optimize(RDB_table *tbp, int seqitc, const RDB_seq_item seqitv[],
                     RDB_drop_table(tbpv[i], txp);
             }
         }
-
-/* !!
+/*
         RDB_init_obj(&strobj);
         _RDB_table_to_str(&strobj, ntbp, RDB_SHOW_INDEX);
         fprintf(stderr, "best: %s, cost: %u\n", (char *) strobj.var.bin.datap,

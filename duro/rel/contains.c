@@ -143,7 +143,7 @@ ungroup_contains(RDB_table *tbp, const RDB_object *tplp, RDB_transaction *txp)
             RDB_drop_expr(condp);
             return ret;
         }
-        ret = _RDB_table_qresult(seltbp, txp, &qrp);
+        ret = _RDB_table_qresult(seltbp, NULL, txp, &qrp);
         if (ret != RDB_OK) {
             RDB_drop_table(seltbp, txp);
             if (RDB_is_syserr(ret))
@@ -154,7 +154,7 @@ ungroup_contains(RDB_table *tbp, const RDB_object *tplp, RDB_transaction *txp)
         /*
          * Only one attribute (the UNGROUPed attribute)
          */
-        ret = _RDB_table_qresult(tbp->var.ungroup.tbp, txp, &qrp);
+        ret = _RDB_table_qresult(tbp->var.ungroup.tbp, NULL, txp, &qrp);
         if (ret != RDB_OK) {
             if (RDB_is_syserr(ret))
                 RDB_rollback_all(txp);
@@ -376,7 +376,7 @@ RDB_table_contains(RDB_table *tbp, const RDB_object *tplp, RDB_transaction *txp)
                 int ret2;
 
                 RDB_qresult *qrp;
-                ret = _RDB_table_qresult(tbp, txp, &qrp);
+                ret = _RDB_table_qresult(tbp, NULL, txp, &qrp);
                 if (ret != RDB_OK) {
                     RDB_errmsg(txp->dbp->dbrootp->envp,
                             "Unable to create qresult: %s", RDB_strerror(ret));

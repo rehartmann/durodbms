@@ -482,7 +482,7 @@ RDB_drop_expr(RDB_expression *exp)
 }
 
 static int
-evaluate_ro_op(RDB_expression *exp, const RDB_object *tup,
+evaluate_ro_op(RDB_expression *exp, const RDB_object *tplp,
         RDB_transaction *txp, RDB_object *valp)
 {
     int ret;
@@ -504,7 +504,7 @@ evaluate_ro_op(RDB_expression *exp, const RDB_object *tup,
     for (i = 0; i < argc; i++) {
         valpv[i] = &valv[i];
         RDB_init_obj(&valv[i]);
-        ret = RDB_evaluate(exp->var.op.argv[i], tup, txp, &valv[i]);
+        ret = RDB_evaluate(exp->var.op.argv[i], tplp, txp, &valv[i]);
         if (ret != RDB_OK)
             goto cleanup;
     }
@@ -557,7 +557,7 @@ aggregate(RDB_table *tbp, RDB_aggregate_op op, const char *attrname,
 }
 
 int
-RDB_evaluate(RDB_expression *exp, const RDB_object *tup, RDB_transaction *txp,
+RDB_evaluate(RDB_expression *exp, const RDB_object *tplp, RDB_transaction *txp,
             RDB_object *valp)
 {
     int ret;
@@ -570,7 +570,7 @@ RDB_evaluate(RDB_expression *exp, const RDB_object *tup, RDB_transaction *txp,
             RDB_object *attrp;
 
             RDB_init_obj(&tpl);
-            ret = RDB_evaluate(exp->var.op.argv[0], tup, txp, &tpl);
+            ret = RDB_evaluate(exp->var.op.argv[0], tplp, txp, &tpl);
             if (ret != RDB_OK) {
                 RDB_destroy_obj(&tpl);
                 return ret;
@@ -598,7 +598,7 @@ RDB_evaluate(RDB_expression *exp, const RDB_object *tup, RDB_transaction *txp,
             RDB_object obj;
 
             RDB_init_obj(&obj);
-            ret = RDB_evaluate(exp->var.op.argv[0], tup, txp, &obj);
+            ret = RDB_evaluate(exp->var.op.argv[0], tplp, txp, &obj);
             if (ret != RDB_OK) {
                  RDB_destroy_obj(&obj);
                  return ret;
@@ -608,19 +608,16 @@ RDB_evaluate(RDB_expression *exp, const RDB_object *tup, RDB_transaction *txp,
             return ret;
         }
         case RDB_EX_RO_OP:
-            return evaluate_ro_op(exp, tup, txp, valp);
+            return evaluate_ro_op(exp, tplp, txp, valp);
         case RDB_EX_ATTR:
-        {
-            if (tup != NULL) {
-                RDB_object *srcp = RDB_tuple_get(tup, exp->var.attrname);
+            if (tplp != NULL) {
+                RDB_object *srcp = RDB_tuple_get(tplp, exp->var.attrname);
                 if (srcp != NULL)
                     return RDB_copy_obj(valp, srcp);
             }
-
             RDB_errmsg(RDB_db_env(RDB_tx_db(txp)), "attribute %s not found",
                     exp->var.attrname);
             return RDB_INVALID_ARGUMENT;
-        }
         case RDB_EX_OBJ:
             return RDB_copy_obj(valp, &exp->var.obj);
         case RDB_EX_AGGREGATE:
@@ -628,7 +625,7 @@ RDB_evaluate(RDB_expression *exp, const RDB_object *tup, RDB_transaction *txp,
             RDB_object val;
 
             RDB_init_obj(&val);
-            ret = RDB_evaluate(exp->var.op.argv[0], tup, txp, &val);
+            ret = RDB_evaluate(exp->var.op.argv[0], tplp, txp, &val);
             if (ret != RDB_OK) {
                 RDB_destroy_obj(&val);
                 return ret;
@@ -651,14 +648,14 @@ RDB_evaluate(RDB_expression *exp, const RDB_object *tup, RDB_transaction *txp,
 }
 
 int
-RDB_evaluate_bool(RDB_expression *exp, const RDB_object *tup, RDB_transaction *txp,
+RDB_evaluate_bool(RDB_expression *exp, const RDB_object *tplp, RDB_transaction *txp,
                   RDB_bool *resp)
 {
     int ret;
     RDB_object val;
 
     RDB_init_obj(&val);
-    ret = RDB_evaluate(exp, tup, txp, &val);
+    ret = RDB_evaluate(exp, tplp, txp, &val);
     if (ret != RDB_OK) {
         RDB_destroy_obj(&val);
         return ret;
