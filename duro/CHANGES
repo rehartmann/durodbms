@@ -4,6 +4,15 @@ Summary of Changes for Duro
 
 Changes for (planned) Duro 0.5
 
+- Adding support for SUMMARIZE PER and RENAME
+
+- Removed superfluous attribute from the catalog
+
+- Checking table and attribute names: nonprintable characters, whitespace,
+and '$' are not permitted.
+
+- Renamed field 'value' in RDB_virtual_attr as 'exp'.
+
 - Made RDB_rel_table() the only way to create a relational expression.
 
 Changes for Duro 0.4
@@ -51,7 +60,7 @@ Changes for Duro 0.2
 
 - Switched to Berkeley DB 4.1
 
-- Added support for projection (through RDB_project())
+- Added support for PROJECT (through RDB_project())
 
 - RDB_create_table() now allows for more than one candidate key
 

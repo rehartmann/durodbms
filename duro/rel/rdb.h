@@ -123,13 +123,29 @@ typedef struct RDB_expression {
 
 typedef struct RDB_virtual_attr {
     char *name;
-    RDB_expression *value;
+    RDB_expression *exp;
 } RDB_virtual_attr;
 
 typedef struct {
     char **attrv;
     int attrc;
 } RDB_key_attrs;
+
+typedef enum {
+    RDB_COUNT, RDB_SUM, RDB_AVG, RDB_MAX, RDB_MIN, RDB_ALL, RDB_ANY,
+    RDB_COUNTD, RDB_SUMD, RDB_AVGD
+} RDB_aggregate_op;
+
+typedef struct {
+    RDB_aggregate_op op;
+    RDB_expression *exp;
+    char *name;
+} RDB_summarize_add;
+
+typedef struct {
+    char *from;
+    char *to;
+} RDB_renaming;
 
 /* internal */
 enum _RDB_tb_kind {
@@ -141,7 +157,9 @@ enum _RDB_tb_kind {
     RDB_TB_INTERSECT,
     RDB_TB_JOIN,
     RDB_TB_EXTEND,
-    RDB_TB_PROJECT
+    RDB_TB_PROJECT,
+    RDB_TB_SUMMARIZE,
+    RDB_TB_RENAME
 };
 
 typedef struct RDB_table {
@@ -195,6 +213,17 @@ typedef struct RDB_table {
             struct RDB_table *tbp;
             RDB_bool keyloss;
         } project;
+        struct {
+            struct RDB_table *tb1p;
+            struct RDB_table *tb2p;
+            int addc;
+            RDB_summarize_add *addv;
+        } summarize;
+        struct {
+            struct RDB_table *tbp;
+            int renc;
+            RDB_renaming *renv;
+        } rename;
     } var;
     int refcount;
 } RDB_table;
@@ -432,11 +461,6 @@ RDB_delete(RDB_table *tbp, RDB_expression *exprp, RDB_transaction *);
 int
 RDB_copy_table(RDB_table *dstp, RDB_table *srcp, RDB_transaction *);
 
-typedef enum {
-    RDB_COUNT, RDB_SUM, RDB_AVG, RDB_MAX, RDB_MIN, RDB_ALL, RDB_ANY,
-    RDB_COUNTD, RDB_SUMD, RDB_AVGD
-} RDB_aggregate_op;
-
 /*
  * Aggregate operation.
  * op may be RDB_COUNT, RDB_SUM, RDB_AVG, RDB_MAX, RDB_MIN, RDB_ALL, or RDB_ANY.
@@ -505,10 +529,14 @@ RDB_minus(RDB_table *, RDB_table *, RDB_table **resultpp);
 int
 RDB_intersect(RDB_table *, RDB_table *, RDB_table **resultpp);
 
-/* Perform a natural join of the two tables. */
+/* Create a table which is a natural join of the two tables. */
 int
 RDB_join(RDB_table *, RDB_table *, RDB_table **resultpp);
 
+/* Create a table which is the result of a EXTEND operation.
+ * The table created takes resposibility for the RDB_expressions
+ *  passed through attrv.
+ */
 int
 RDB_extend(RDB_table *, int attrc, RDB_virtual_attr attrv[],
         RDB_table **resultpp);
@@ -516,15 +544,17 @@ RDB_extend(RDB_table *, int attrc, RDB_virtual_attr attrv[],
 int
 RDB_project(RDB_table *, int attrc, char *attrv[], RDB_table **resultpp);
 
-typedef struct {
-    RDB_aggregate_op op;
-    RDB_expression *exp;
-    char *name;
-} RDB_summarize_add;
+/* Create a table which is the result of a SUMMARIZE ADD operation.
+ * The table created takes resposibility for the RDB_expressions
+ *  passed through addvv.
+ */
+int
+RDB_summarize(RDB_table *, RDB_table *, int addc, RDB_summarize_add addv[],
+              RDB_table **resultpp);
 
 int
-RDB_summarize(RDB_table *, int addc, RDB_summarize_add addv[],
-              RDB_table **resultpp);
+RDB_rename(RDB_table *tbp, int renc, RDB_renaming renv[],
+           RDB_table **resultpp);
 
 /*
  * Functions for creation/destruction of tuples and reading/modifying attributes.
@@ -630,7 +660,7 @@ RDB_create_tuple_type(int attrc, RDB_attr attrv[]);
 RDB_type *
 RDB_create_relation_type(int attrc, RDB_attr attrv[]);
 
-void
+int
 RDB_drop_type(RDB_type *);
 
 /*

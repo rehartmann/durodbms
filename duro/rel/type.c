@@ -87,7 +87,7 @@ RDB_is_builtin_type(const RDB_type *typ)
     return RDB_FALSE;
 }
 
-void
+int
 RDB_drop_type(RDB_type *typ)
 {
     int i;
@@ -97,7 +97,7 @@ RDB_drop_type(RDB_type *typ)
 
     if (typ->name != NULL) {
         /* delete type from database */
-        /* persistent type are not yet implemented */
+        /* persistent user-defined types are not yet implemented ... */
         free(typ->name);
     }
     switch(typ->kind) {
@@ -106,7 +106,7 @@ RDB_drop_type(RDB_type *typ)
                 RDB_type *attrtyp = typ->complex.tuple.attrv[i].type;
             
                 free(typ->complex.tuple.attrv[i].name);
-                if (!RDB_is_builtin_type(attrtyp))
+                if (attrtyp->name == NULL)
                     RDB_drop_type(attrtyp);
             }
             free(typ->complex.tuple.attrv);

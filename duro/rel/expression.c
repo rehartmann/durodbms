@@ -31,9 +31,12 @@ RDB_expr_type(const RDB_expression *exprp)
             return &RDB_BOOLEAN;
         case RDB_OP_ADD:
             return RDB_expr_type(exprp->var.op.arg1);
-        default:
-            return NULL;
+        case RDB_OP_REL_IS_EMPTY:
+            return &RDB_BOOLEAN;
+        case RDB_TABLE:
+            return exprp->var.tbp->typ;
     }
+    abort();
 }
 
 RDB_expression *
@@ -386,11 +389,12 @@ int
 RDB_evaluate_bool(RDB_expression *exprp, const RDB_tuple *tup,
                   RDB_transaction *txp, RDB_bool *resp)
 {
-    RDB_type *typ = RDB_expr_type(exprp->var.op.arg1);
+    RDB_type *typ;
     int err;
 
     switch (exprp->kind) {
         case RDB_OP_EQ:
+            typ = RDB_expr_type(exprp->var.op.arg1);
             if (typ == &RDB_INTEGER) {
                 int v1, v2;
                 
@@ -444,6 +448,7 @@ RDB_evaluate_bool(RDB_expression *exprp, const RDB_tuple *tup,
             return RDB_OK;
             break;
         case RDB_OP_LT:
+            typ = RDB_expr_type(exprp->var.op.arg1);
             if (typ == &RDB_INTEGER) {
                 int v1, v2;
                 
@@ -473,6 +478,7 @@ RDB_evaluate_bool(RDB_expression *exprp, const RDB_tuple *tup,
                 return RDB_OK;
             }
         case RDB_OP_GT:
+            typ = RDB_expr_type(exprp->var.op.arg1);
             if (typ == &RDB_INTEGER) {
                 int v1, v2;
                 
@@ -502,6 +508,7 @@ RDB_evaluate_bool(RDB_expression *exprp, const RDB_tuple *tup,
                 return RDB_OK;
             }
         case RDB_OP_LET:
+            typ = RDB_expr_type(exprp->var.op.arg1);
             if (typ == &RDB_INTEGER) {
                 int v1, v2;
                 
@@ -531,6 +538,7 @@ RDB_evaluate_bool(RDB_expression *exprp, const RDB_tuple *tup,
                 return RDB_OK;
             }
         case RDB_OP_GET:
+            typ = RDB_expr_type(exprp->var.op.arg1);
             if (typ == &RDB_INTEGER) {
                 int v1, v2;
                 

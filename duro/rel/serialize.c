@@ -173,7 +173,7 @@ serialize_extend(RDB_value *valp, int *posp, RDB_table *tbp)
         res = serialize_str(valp, posp, tbp->var.extend.attrv[i].name);
         if (res != RDB_OK)
             return res;
-        res = serialize_expr(valp, posp, tbp->var.extend.attrv[i].value);
+        res = serialize_expr(valp, posp, tbp->var.extend.attrv[i].exp);
         if (res != RDB_OK)
             return res;
     }
@@ -554,13 +554,12 @@ deserialize_extend(RDB_value *valp, int *posp, RDB_database *dbp,
 
     for (i = 0; i < ac; i++) {
         av[i].name = NULL;
-        av[i].value = NULL;
     }
     for (i = 0; i < ac; i++) {
         res = deserialize_str(valp, posp, &av[i].name);
         if (res != RDB_OK)
             goto error;
-        res = deserialize_expr(valp, posp, dbp, &av[i].value);
+        res = deserialize_expr(valp, posp, dbp, &av[i].exp);
         if (res != RDB_OK)
             goto error;
     }
@@ -569,16 +568,12 @@ deserialize_extend(RDB_value *valp, int *posp, RDB_database *dbp,
         goto error;
     for (i = 0; i < ac; i++) {
         free(av[i].name);
-        if (av[i].value != NULL)
-            RDB_drop_expr(av[i].value);
     }
     free(av);
     return RDB_OK;
 error:
     for (i = 0; i < ac; i++) {
         free(av[i].name);
-        if (av[i].value != NULL)
-            RDB_drop_expr(av[i].value);
     }
     free(av);
     return res;

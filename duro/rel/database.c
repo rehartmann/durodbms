@@ -6,6 +6,7 @@
 #include <gen/strfns.h>
 #include <string.h>
 #include <stdio.h>
+#include <ctype.h>
 
 /* name of the file in which the tables are physically stored */
 #define RDB_DATAFILE "rdata"
@@ -315,11 +316,6 @@ catalog_insert(RDB_table *tbp, RDB_transaction *txp)
         RDB_deinit_tuple(&tpl);
         return res;
     }
-    res = RDB_tuple_set_int(&tpl, "I_PXLEN", tbp->var.stored.recmapp->keyfieldcount);
-    if (res != RDB_OK) {
-        RDB_deinit_tuple(&tpl);
-        return res;
-    }
     res = RDB_insert(txp->dbp->rtables_tbp, &tpl, txp);
     RDB_deinit_tuple(&tpl);
     if (res != RDB_OK)
@@ -411,8 +407,7 @@ static RDB_key_attrs table_attr_key[] = { { table_attr_keyattrs, 2 } };
 static RDB_attr rtables_attrs[] = {
     { "TABLENAME", &RDB_STRING },
     { "IS_USER", &RDB_BOOLEAN },
-    { "I_RECMAP", &RDB_STRING },
-    { "I_PXLEN", &RDB_INTEGER }
+    { "I_RECMAP", &RDB_STRING }
 };
 static char *rtables_keyattrs[] = { "TABLENAME" };
 static RDB_key_attrs rtables_key[] = { { rtables_keyattrs, 1 } };
@@ -458,7 +453,7 @@ provide_systables(RDB_transaction *txp)
     }
     assign_table_db(txp->dbp->table_attr_tbp, txp->dbp);
 
-    res = open_table("SYSRTABLES", RDB_TRUE, 4, rtables_attrs, 1, rtables_key,
+    res = open_table("SYSRTABLES", RDB_TRUE, 3, rtables_attrs, 1, rtables_key,
             RDB_FALSE, RDB_TRUE, txp, &txp->dbp->rtables_tbp);
     if (res != RDB_OK) {
         return res;
@@ -570,12 +565,28 @@ free_db(RDB_database *dbp) {
     free(dbp);
 }
 
+/* check if the name is legal */
+RDB_bool
+_RDB_legal_name(const char *name)
+{
+    int i;
+
+    for (i = 0; name[i] != '\0'; i++) {
+        if (!isprint(name[i]) || isspace(name[i]) || (name[i] == '$'))
+            return RDB_FALSE;
+    }
+    return RDB_TRUE;
+}
+
 int
 RDB_create_db(const char *name, RDB_environment *envp, RDB_database **dbpp)
 {
     RDB_transaction tx;
     int res;
     RDB_database *dbp;
+
+    if (!_RDB_legal_name(name))
+        return RDB_ILLEGAL_ARG;
 
     res = alloc_db(name, envp, &dbp);
     if (res != RDB_OK)
@@ -644,7 +655,7 @@ RDB_get_db(const char *name, RDB_environment *envp, RDB_database **dbpp)
 
     /* open catalog tables */
 
-    res = open_table("SYSRTABLES", RDB_TRUE, 4, rtables_attrs, 1, rtables_key,
+    res = open_table("SYSRTABLES", RDB_TRUE, 3, rtables_attrs, 1, rtables_key,
             RDB_FALSE, RDB_FALSE, &tx, &dbp->rtables_tbp);
     if (res != RDB_OK) {
         goto error;
@@ -940,6 +951,15 @@ RDB_create_table(const char *name, RDB_bool persistent,
                 RDB_transaction *txp, RDB_table **tbpp)
 {
     int res;
+    int i;
+
+    if (!_RDB_legal_name(name))
+        return RDB_ILLEGAL_ARG;
+
+    for (i = 0; i < attrc; i++) {
+        if (!_RDB_legal_name(heading[i].name))
+            return RDB_ILLEGAL_ARG;
+    }
 
     res = _RDB_create_table(name, persistent, attrc, heading, keyc, keyv,
                             txp, tbpp);
@@ -1105,7 +1125,7 @@ get_cat_rtable(RDB_database *dbp, const char *name, RDB_table **tbpp)
     int keyc;
     RDB_key_attrs *keyv;
 
-    /* read real table data from the catalog */
+    /* Read real table data from the catalog */
 
     RDB_init_array(&arr);
 
@@ -1358,8 +1378,9 @@ int
 _RDB_drop_table(RDB_table *tbp, RDB_transaction *txp, RDB_bool rec)
 {
     int res;
+    int i;
 
-    /* !! must check if there is some table which depends on this table
+    /* !! should check if there is some table which depends on this table
        ... */
 
     /* Drop the qresults created from this table */
@@ -1434,6 +1455,8 @@ _RDB_drop_table(RDB_table *tbp, RDB_transaction *txp, RDB_bool rec)
                 if (res != RDB_OK)
                     return res;
             }
+            for (i = 0; i < tbp->var.extend.attrc; i++)
+                free(tbp->var.extend.attrv[i].name);
             RDB_drop_type(tbp->typ);
             break;
         case RDB_TB_PROJECT:
@@ -1460,6 +1483,9 @@ RDB_drop_table(RDB_table *tbp, RDB_transaction *txp)
 int
 RDB_set_table_name(RDB_table *tbp, const char *name, RDB_transaction *txp)
 {
+    if (!_RDB_legal_name(name))
+        return RDB_ILLEGAL_ARG;
+
     if (tbp->is_persistent)
         return RDB_NOT_SUPPORTED;
     

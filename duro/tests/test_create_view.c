@@ -128,7 +128,7 @@ create_view3(RDB_database *dbp)
         return RDB_NO_MEMORY;
 
     vattr.name = "HIGHSAL";
-    vattr.value = exprp;
+    vattr.exp = exprp;
     err = RDB_extend(tbp, 1, &vattr, &vtbp);
     if (err != RDB_OK) {
         RDB_drop_expr(exprp);

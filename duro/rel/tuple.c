@@ -139,7 +139,7 @@ RDB_tuple_extend(RDB_tuple *tup, int attrc, RDB_virtual_attr attrv[],
     RDB_value val;
     
     for (i = 0; i < attrc; i++) {
-        res = RDB_evaluate(attrv[i].value, tup, txp, &val);
+        res = RDB_evaluate(attrv[i].exp, tup, txp, &val);
         if (res != RDB_OK)
             return res;
         RDB_tuple_set(tup, attrv[i].name, &val);

@@ -42,7 +42,7 @@ RDB_define_type(const char *name, int repc, RDB_possrep repv[],
                 RDB_type **resultpp);
 
 int
-RDB_implement_type(const char *modname);
+RDB_implement_type(RDB_type *, const char *modname, int option);
 
 </pre>
 
@@ -281,6 +281,8 @@ RDB_make_persistent(RDB_table *, RDB_transaction *);
 
 <h3>Database functions</h3>
 
+<pre>
+
 int
 RDB_create_db(const char *name, RDB_environment *envp, RDB_database **dbpp);
 
@@ -297,6 +299,8 @@ RDB_drop_db(const char *name, RDB_environment *);
 
 int
 RDB_get_table(RDB_database *dbp, const char *name, RDB_table **tbpp);
+
+</pre>
 
 <h2>Transaction functions</h2>
 
@@ -355,7 +359,7 @@ typedef struct {
 } RDB_summarize_add;
 
 int
-RDB_summarize(RDB_table *, int addc, RDB_summarize_add addv[],
+RDB_summarize(RDB_table *, RDB_table *, int addc, RDB_summarize_add addv[],
               RDB_table **resultpp);
 
 </pre>

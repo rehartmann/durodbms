@@ -174,7 +174,7 @@ RDB_insert(RDB_table *tbp, const RDB_tuple *tup, RDB_transaction *txp)
                 RDB_value val;
                 RDB_bool iseq;
                 
-                res = RDB_evaluate(vattrp->value, tup, txp, &val);
+                res = RDB_evaluate(vattrp->exp, tup, txp, &val);
                 if (res != RDB_OK)
                     return res;
                 iseq = RDB_value_equals(&val, (RDB_value *)RDB_tuple_get(
@@ -189,6 +189,11 @@ RDB_insert(RDB_table *tbp, const RDB_tuple *tup, RDB_transaction *txp)
              return RDB_insert(tbp->var.extend.tbp, tup, txp);
         }
         case RDB_TB_PROJECT:
+             return RDB_NOT_SUPPORTED;
+        case RDB_TB_SUMMARIZE:
+             return RDB_NOT_SUPPORTED;
+        case RDB_TB_RENAME:
+             /* ... */
              return RDB_NOT_SUPPORTED;
     }
     /* should never be reached */
@@ -422,6 +427,10 @@ RDB_update(RDB_table *tbp, RDB_expression *condp, int attrc,
             return RDB_NOT_SUPPORTED;
         case RDB_TB_PROJECT:
             return RDB_NOT_SUPPORTED;
+        case RDB_TB_SUMMARIZE:
+            return RDB_NOT_SUPPORTED;
+        case RDB_TB_RENAME:
+            return RDB_NOT_SUPPORTED;
     }
 
     /* should never be reached */
@@ -550,6 +559,10 @@ RDB_delete(RDB_table *tbp, RDB_expression *condp, RDB_transaction *txp)
             return RDB_NOT_SUPPORTED;
         case RDB_TB_PROJECT:
             return RDB_delete(tbp->var.project.tbp, condp, txp);;
+        case RDB_TB_SUMMARIZE:
+            return RDB_NOT_SUPPORTED;
+        case RDB_TB_RENAME:
+            return RDB_NOT_SUPPORTED;
     }
     /* should never be reached */
     abort();
@@ -606,6 +619,44 @@ error:
     return res;
 }
 
+static int
+aggr_type(RDB_type *tuptyp, RDB_type *attrtyp, RDB_aggregate_op op,
+                    RDB_type **resultpp)
+{
+    if (op == RDB_COUNT || RDB_COUNTD) {
+        *resultpp = &RDB_INTEGER;
+        return RDB_OK;
+    }
+    
+    switch (op) {
+        case RDB_COUNT:
+        case RDB_COUNTD:
+            /* only to avoid compiler warnings */
+        case RDB_AVG:
+        case RDB_AVGD:
+            if (!RDB_type_is_numeric(attrtyp))
+                *resultpp = NULL;
+            *resultpp = &RDB_RATIONAL;
+            break;
+        case RDB_SUM:
+        case RDB_SUMD:
+        case RDB_MAX:
+        case RDB_MIN:
+            if (!RDB_type_is_numeric(attrtyp))
+                *resultpp = NULL;
+            *resultpp = attrtyp;
+            break;
+        case RDB_ALL:
+        case RDB_ANY:
+            if (attrtyp != &RDB_BOOLEAN)
+                *resultpp = NULL;
+            *resultpp = &RDB_BOOLEAN;
+            break;
+     }
+     return RDB_OK;
+}
+
+
 int
 RDB_aggregate(RDB_table *tbp, RDB_aggregate_op op, const char *attrname,
               RDB_transaction *txp, RDB_value *resultp)
@@ -621,26 +672,25 @@ RDB_aggregate(RDB_table *tbp, RDB_aggregate_op op, const char *attrname,
         if (tbp->typ->complex.basetyp->complex.tuple.attrc != 1)
             return RDB_ILLEGAL_ARG;
         attrname = tbp->typ->complex.basetyp->complex.tuple.attrv[0].name;
-    }       
+    }
 
-    /* check if op and attribute type fit */
-    if (op != RDB_COUNT) {
+    if (attrname != NULL) {
         attrtyp = _RDB_tuple_attr_type(tbp->typ->complex.basetyp, attrname);
         if (attrtyp == NULL)
             return RDB_ILLEGAL_ARG;
     }
 
+    res = aggr_type(tbp->typ->complex.basetyp, attrtyp, op, &resultp->typ);
+    if (res != RDB_OK)
+        return res;
+
     /* initialize result */
     switch(op) {
         case RDB_COUNT:
-            resultp->typ = &RDB_INTEGER;
             resultp->var.int_val = 0;
             break;
         case RDB_AVG:
-            if (!RDB_type_is_numeric(attrtyp))
-                return RDB_TYPE_MISMATCH;
             count = 0;
-            resultp->typ = &RDB_RATIONAL;
             resultp->var.rational_val = 0.0;
             break;
         case RDB_SUM:
@@ -650,15 +700,14 @@ RDB_aggregate(RDB_table *tbp, RDB_aggregate_op op, const char *attrname,
                 resultp->var.rational_val = 0.0;
             else
                 return RDB_TYPE_MISMATCH;
-            resultp->typ = attrtyp;
             break;
         case RDB_MAX:
             if (attrtyp == &RDB_INTEGER)
                 resultp->var.int_val = RDB_INT_MIN;
             else if (attrtyp == &RDB_RATIONAL)
                 resultp->var.rational_val = RDB_RATIONAL_MIN;
+            else
                 return RDB_TYPE_MISMATCH;
-            resultp->typ = attrtyp;
             break;
         case RDB_MIN:
             if (attrtyp == &RDB_INTEGER)
@@ -666,18 +715,15 @@ RDB_aggregate(RDB_table *tbp, RDB_aggregate_op op, const char *attrname,
             else if (attrtyp == &RDB_RATIONAL)
                 resultp->var.rational_val = RDB_RATIONAL_MAX;
                 return RDB_TYPE_MISMATCH;
-            resultp->typ = attrtyp;
             break;
         case RDB_ALL:
             if (attrtyp != &RDB_BOOLEAN)
                 return RDB_TYPE_MISMATCH;
-            resultp->typ = attrtyp;
             resultp->var.bool_val = RDB_TRUE;
             break;
         case RDB_ANY:
             if (attrtyp != &RDB_BOOLEAN)
                 return RDB_TYPE_MISMATCH;
-            resultp->typ = attrtyp;
             resultp->var.bool_val = RDB_FALSE;
             break;
         default:
@@ -828,7 +874,7 @@ RDB_table_contains(RDB_table *tbp, const RDB_tuple *tup, RDB_transaction *txp)
     switch (tbp->kind) {
         case RDB_TB_STORED:
             {
-                int i, res;
+                int i;
                 RDB_type *tuptyp = tbp->typ->complex.basetyp;
                 int attrcount = tuptyp->complex.tuple.attrc;
                 RDB_field *fvp;
@@ -888,6 +934,12 @@ RDB_table_contains(RDB_table *tbp, const RDB_tuple *tup, RDB_transaction *txp)
             return RDB_table_contains(tbp->var.extend.tbp, tup, txp);
         case RDB_TB_PROJECT:
             return project_contains(tbp, tup, txp);
+        case RDB_TB_SUMMARIZE:
+            /* !! */
+            return RDB_NOT_SUPPORTED;
+        case RDB_TB_RENAME:
+            /* !! */
+            return RDB_NOT_SUPPORTED;
    }
     /* should never be reached */
     abort();
@@ -1249,10 +1301,18 @@ RDB_extend(RDB_table *tbp, int attrc, RDB_virtual_attr attrv[],
         goto error;
     }
     for (i = 0; i < attrc; i++) {
+        if (!_RDB_legal_name(attrv[i].name)) {
+            res = RDB_ILLEGAL_ARG;
+            goto error;
+        }
         newtbp->var.extend.attrv[i].name = RDB_dup_str(attrv[i].name);
-        newtbp->var.extend.attrv[i].value = RDB_dup_expr(attrv[i].value);
+        newtbp->var.extend.attrv[i].exp = attrv[i].exp;
         attrdefv[i].name = RDB_dup_str(attrv[i].name);
-        attrdefv[i].type = RDB_expr_type(attrv[i].value);
+        if (attrdefv[i].name == NULL) {
+            res = RDB_NO_MEMORY;
+            goto error;
+        }
+        attrdefv[i].type = RDB_expr_type(attrv[i].exp);
     }
     newtbp->typ = RDB_extend_relation_type(tbp->typ, attrc, attrdefv);
 
@@ -1315,6 +1375,7 @@ RDB_project(RDB_table *tbp, int attrc, char *attrv[], RDB_table **resultpp)
     newtbp->is_persistent = RDB_FALSE;
     newtbp->kind = RDB_TB_PROJECT;
     newtbp->var.project.tbp = tbp;
+    newtbp->keyv = NULL;
 
     /* Create type */
     res = RDB_project_relation_type(tbp->typ, attrc, attrv, &newtbp->typ);
@@ -1377,4 +1438,114 @@ error:
     free(newtbp);
 
     return RDB_NO_MEMORY;
+}
+
+int
+RDB_summarize(RDB_table *tb1p, RDB_table *tb2p, int addc, RDB_summarize_add addv[],
+              RDB_table **resultpp)
+{
+    RDB_table *newtbp;
+    RDB_type *tuptyp = NULL;
+    int i;
+    int res;
+    int attrc;
+
+    newtbp = malloc(sizeof (RDB_table));
+    if (newtbp == NULL)
+        return RDB_NO_MEMORY;
+
+    newtbp->name = NULL;
+    newtbp->is_user = RDB_TRUE;
+    newtbp->is_persistent = RDB_FALSE;
+    newtbp->kind = RDB_TB_SUMMARIZE;
+    newtbp->keyc = tb2p->keyc;
+    newtbp->keyv = dup_keys(tb2p->keyc, tb2p->keyv);
+    if (newtbp->keyv == NULL) {
+        free(newtbp);
+        return RDB_NO_MEMORY;
+    }
+    newtbp->var.summarize.tb1p = tb1p;
+    newtbp->var.summarize.tb2p = tb2p;
+    newtbp->typ = NULL;
+
+    newtbp->var.summarize.addv = malloc(sizeof(RDB_summarize_add) * addc);
+    if (newtbp->var.summarize.addv == NULL) {
+        free(newtbp->keyv);
+        free(newtbp);
+        return RDB_NO_MEMORY;
+    }
+    for (i = 0; i < addc; i++) {
+        newtbp->var.summarize.addv[i].name = NULL;
+    }
+    for (i = 0; i < addc; i++) {
+        newtbp->var.summarize.addv[i].name = RDB_dup_str(addv[i].name);
+        if (newtbp->var.summarize.addv[i].name == NULL) {
+            res = RDB_NO_MEMORY;
+            goto error;
+        }
+        newtbp->var.summarize.addv[i].exp = addv[i].exp;
+    }
+
+    /* Create type */
+
+    attrc = tb2p->typ->complex.basetyp->complex.tuple.attrc + addc;
+    tuptyp = malloc(sizeof (RDB_type));
+    tuptyp->kind = RDB_TP_TUPLE;
+    tuptyp->complex.tuple.attrv = malloc(attrc * sizeof(RDB_attr));
+    for (i = 0; i < addc; i++) {
+        tuptyp->complex.tuple.attrv[i].name = addv[i].name;
+        res = aggr_type(tb1p->typ->complex.basetyp, RDB_expr_type(addv[i].exp),
+                        addv[i].op, &tuptyp->complex.tuple.attrv[i].type);
+        if (res != RDB_OK)
+            goto error;
+        tuptyp->complex.tuple.attrv[i].default_value = NULL;
+    }
+    for (i = 0; i < tb2p->typ->complex.basetyp->complex.tuple.attrc; i++) {
+        tuptyp->complex.tuple.attrv[addc + i].name =
+                tb2p->typ->complex.basetyp->complex.tuple.attrv[i].name;
+        tuptyp->complex.tuple.attrv[addc + i].type =
+                tb2p->typ->complex.basetyp->complex.tuple.attrv[i].type;
+        tuptyp->complex.tuple.attrv[addc + i].default_value = NULL;
+    }
+    newtbp->typ = malloc(sizeof (RDB_type));
+    newtbp->typ->kind = RDB_TP_RELATION;
+    newtbp->typ->complex.basetyp = tuptyp;
+
+    return RDB_OK;
+error:
+    if (tuptyp != NULL) {
+        free(tuptyp->complex.tuple.attrv);
+        free(tuptyp);
+    }
+    if (newtbp->typ != NULL)
+        free(newtbp->typ);
+    for (i = 0; i < addc; i++) {
+        free(newtbp->var.summarize.addv[i].name);
+    }
+    free(newtbp->keyv);
+    free(newtbp);
+    return res;
+}
+
+int
+RDB_rename(RDB_table *tbp, int renc, RDB_renaming renv[],
+           RDB_table **resultpp)
+{
+    RDB_table *newtbp;
+    int i;
+    int res;
+
+    newtbp = malloc(sizeof (RDB_table));
+    if (newtbp == NULL)
+        return RDB_NO_MEMORY;
+
+    newtbp->name = NULL;
+    newtbp->is_user = RDB_TRUE;
+    newtbp->is_persistent = RDB_FALSE;
+    newtbp->kind = RDB_TB_SUMMARIZE;
+    newtbp->keyc = tbp->keyc;
+
+    /* !! ... */
+    
+    return RDB_OK; 
 }
