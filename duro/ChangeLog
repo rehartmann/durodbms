@@ -31,6 +31,8 @@ Changes for Duro 0.8
 
 - Now allowing nonscalar types as operator argument and return types.
 
+- Now allowing nonscalar types as actual representations.
+
 - Changed RDB_create_tuple_type() and RDB_create_relation_type(), which now
   return an error code.
 

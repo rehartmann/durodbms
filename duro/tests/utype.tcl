@@ -43,8 +43,7 @@ set tpl {NO 2 NAME {NAME " Johnson"}}
 if {![catch {
     duro::insert T1 $tpl $tx
 }]} {
-    puts "Insertion of tuple $tpl should fail, but succeeded"
-    exit 1
+    error "Insertion of tuple $tpl should fail, but succeeded"
 }
 
 duro::table drop T1 $tx
@@ -67,24 +66,33 @@ duro::type define INTSET {
     {INTLIST {{INTLIST STRING}}}
 } $tx
 
+# Actual rep is relation
 duro::type implement INTSET {relation {N INTEGER}} $tx
 
 # Selector
-duro::operator create INTLIST -returns INTSET { l STRING } {
+duro::operator create INTLIST -returns INTSET {il STRING} {
     set r {}
-    foreach i $l {
+    foreach i $il {
         lappend r [list N $i]
     }
     return $r
 } $tx
 
 # Getter
-duro::operator create INTSET_get_INTLIST -returns STRING { is INTSET } {
+duro::operator create INTSET_get_INTLIST -returns STRING {is INTSET} {
     set r {}
-    foreach i j $is {
-        lappend r $i
+    foreach i $is {
+        lappend r [lindex $i 1]
     }
-    return $r
+    return [lsort -integer $r]
+} $tx
+
+# Setter
+duro::operator create INTSET_set_INTLIST -updates {is} {is INTSET il STRING} {
+    set is {}
+    foreach i $il {
+        lappend is [list N $i]
+    }
 } $tx
 
 duro::commit $tx
@@ -106,29 +114,52 @@ set tpl {NO 1 NAME {PNAME "Peter" "Potter"}}
 duro::insert T2 $tpl $tx
 
 if {![duro::table contains T2 $tpl $tx]} {
-    puts "T2 should contain $tpl, but does not."
-    exit 2
+    error "T2 should contain $tpl, but does not."
 }
 
 array set a [duro::expr {TUPLE FROM (T2 WHERE THE_LASTNAME(NAME) = "Potter")} $tx]
 
 if {($a(NO) != 1) || ($a(NAME) != {PNAME Peter Potter})} {
-    puts "T2 has wrong value"
-    exit 2
+    error "T2 has wrong value"
 }
+
+#
+# Test type INTSET
+#
 
 duro::table create T3 {
     {IS INTSET}
 } {{IS}} $tx
 
-# duro::insert T3 {IS {INTLIST {1 2}}} $tx
+set sil {1 2}
+set stpl [list IS [list INTLIST $sil]]
+duro::insert T3 $stpl $tx
 
-# puts [duro::expr {TUPLE FROM T3} $tx]
+set tpl [duro::expr {TUPLE FROM T3} $tx]
+if {![string equal $tpl $stpl]} {
+    error "TUPLE FROM T3 should be $stpl, but is $tpl"
+}
 
-# source tcl/util.tcl
-# duro::ptable T3 $tx
+set il [duro::expr {THE_INTLIST((TUPLE FROM T3).IS)} $tx]
+if {![string equal $il $sil]} {
+    error "THE_INTLIST should be $sil, but is $il"
+}
+
+#
+# Test setter
+#
+
+set is {INTLIST {1 3 4}}
+duro::call INTSET_set_INTLIST is INTSET {1 2 3} STRING $tx
+
+set sis {INTLIST {1 2 3}}
+if {![string equal $is $sis]} {
+    error "INTSET value should be $sis, but is $is"
+}
 
 duro::commit $tx
+
+# Test setter
 
 # Close DB environment
 duro::env close $dbenv

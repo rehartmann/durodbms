@@ -109,6 +109,9 @@ RDB_table *
 Duro_get_ltable(const char *name, void *arg);
 
 Tcl_Obj *
+Duro_irep_to_tcl(Tcl_Interp *interp, const RDB_object *objp, RDB_transaction *);
+
+Tcl_Obj *
 Duro_to_tcl(Tcl_Interp *interp, const RDB_object *objp, RDB_transaction *);
 
 int

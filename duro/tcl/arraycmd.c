@@ -204,42 +204,6 @@ Duro_table_to_list(Tcl_Interp *interp, RDB_table *tbp, RDB_transaction *txp)
 }
 
 static Tcl_Obj *
-uobj_to_list(Tcl_Interp *interp, const RDB_object *objp, RDB_transaction *txp)
-{
-    int i;
-    int ret;
-    RDB_object comp;
-    Tcl_Obj *tcomp;
-    Tcl_Obj *listobjp = Tcl_NewListObj(0, NULL);
-    RDB_ipossrep *rep = &objp->typ->var.scalar.repv[0];
-
-    /* Convert object to its first possible representation */
-
-    Tcl_ListObjAppendElement(interp, listobjp,
-            Tcl_NewStringObj(rep->name, strlen(rep->name)));
-
-    RDB_init_obj(&comp);
-
-    for (i = 0; i < rep->compc; i++) {
-        ret = RDB_obj_comp(objp, rep->compv[i].name, &comp, txp);
-        if (ret != RDB_OK) {
-            Duro_dberror(interp, ret);
-            RDB_destroy_obj(&comp);
-            return NULL;
-        }
-        tcomp = Duro_to_tcl(interp, &comp, txp);
-        if (tcomp == NULL) {
-            RDB_destroy_obj(&comp);
-            return NULL;
-        }
-        Tcl_ListObjAppendElement(interp, listobjp, tcomp);
-    }
-
-    RDB_destroy_obj(&comp);
-    return listobjp;
-}
-
-static Tcl_Obj *
 array_to_list(Tcl_Interp *interp, RDB_object *arrayp,
         RDB_transaction *txp)
 {
@@ -261,7 +225,8 @@ array_to_list(Tcl_Interp *interp, RDB_object *arrayp,
 }
 
 Tcl_Obj *
-Duro_to_tcl(Tcl_Interp *interp, const RDB_object *objp, RDB_transaction *txp)
+Duro_irep_to_tcl(Tcl_Interp *interp, const RDB_object *objp,
+        RDB_transaction *txp)
 {
     RDB_type *typ = RDB_obj_type(objp);
 
@@ -299,9 +264,6 @@ Duro_to_tcl(Tcl_Interp *interp, const RDB_object *objp, RDB_transaction *txp)
         tobjp = Tcl_NewByteArrayObj(datap, len);
         return tobjp;
     }
-    if (typ != NULL && RDB_type_is_scalar(typ)) {
-        return uobj_to_list(interp, objp, txp);
-    }
     if (objp->kind == RDB_OB_TUPLE || objp->kind == RDB_OB_INITIAL) {
         return Duro_tuple_to_list(interp, objp, txp);
     }
@@ -313,6 +275,55 @@ Duro_to_tcl(Tcl_Interp *interp, const RDB_object *objp, RDB_transaction *txp)
     }
     Tcl_SetResult(interp, "Unsupported type", TCL_STATIC);
     return NULL;
+}
+
+static Tcl_Obj *
+uobj_to_list(Tcl_Interp *interp, const RDB_object *objp, RDB_transaction *txp)
+{
+    int i;
+    int ret;
+    RDB_object comp;
+    Tcl_Obj *tcomp;
+    Tcl_Obj *listobjp = Tcl_NewListObj(0, NULL);
+    RDB_ipossrep *rep = &objp->typ->var.scalar.repv[0];
+
+    /* Convert object to its first possible representation */
+
+    Tcl_ListObjAppendElement(interp, listobjp,
+            Tcl_NewStringObj(rep->name, strlen(rep->name)));
+
+    RDB_init_obj(&comp);
+
+    for (i = 0; i < rep->compc; i++) {
+        ret = RDB_obj_comp(objp, rep->compv[i].name, &comp, txp);
+        if (ret != RDB_OK) {
+            Duro_dberror(interp, ret);
+            RDB_destroy_obj(&comp);
+            return NULL;
+        }
+        tcomp = Duro_to_tcl(interp, &comp, txp);
+        if (tcomp == NULL) {
+            RDB_destroy_obj(&comp);
+            return NULL;
+        }
+        Tcl_ListObjAppendElement(interp, listobjp, tcomp);
+    }
+
+    RDB_destroy_obj(&comp);
+    return listobjp;
+}
+
+Tcl_Obj *
+Duro_to_tcl(Tcl_Interp *interp, const RDB_object *objp,
+        RDB_transaction *txp)
+{
+    RDB_type *typ = RDB_obj_type(objp);
+
+    if (typ != NULL && !RDB_type_is_builtin(typ) && RDB_type_is_scalar(typ)) {
+        return uobj_to_list(interp, objp, txp);
+    }
+
+    return Duro_irep_to_tcl(interp, objp, txp);
 }
 
 Tcl_Obj *
