@@ -135,6 +135,11 @@ if {![duro::table contains WR $tpl $tx]} {
     error "W should contain $tpl, but does not"
 }
 
+set tpl [duro::expr {(TUPLE FROM WR).A} $tx]
+if {![tequal $tpl {IATTR 1 SATTR a}]} {
+    error "Invalid value of (TUPLE FROM WR).A: $tpl"
+}
+
 #
 # Test tuple operations
 #

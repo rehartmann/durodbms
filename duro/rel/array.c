@@ -20,7 +20,11 @@ RDB_table_to_array(RDB_object *arrp, RDB_table *tbp,
         return ret;
 
     arrp->kind = RDB_OB_ARRAY;
-    arrp->var.arr.tbp = tbp;
+
+    ret = _RDB_optimize(tbp, seqitc, seqitv, txp, &arrp->var.arr.tbp);
+    if (ret != RDB_OK)
+        return ret;
+
     arrp->var.arr.txp = txp;
     arrp->var.arr.qrp = NULL;
     arrp->var.arr.length = -1;
@@ -30,13 +34,14 @@ RDB_table_to_array(RDB_object *arrp, RDB_table *tbp,
 
     if (seqitc > 0) {
         /* Create sorter */
-        ret = _RDB_sorter(tbp, &arrp->var.arr.qrp, txp, seqitc, seqitv);
+        ret = _RDB_sorter(arrp->var.arr.tbp, &arrp->var.arr.qrp, txp,
+                seqitc, seqitv);
         if (ret != RDB_OK)
             return ret;
     }
     
     return RDB_OK;
-}    
+}
 
 /*
  * Get next element from qresult

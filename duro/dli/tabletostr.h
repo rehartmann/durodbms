@@ -10,7 +10,11 @@
 
 #include <rel/rdb.h>
 
+enum {
+    RDB_SHOW_INDEX = 1
+};
+
 int
-_RDB_table_to_str(RDB_object *objp, RDB_table *tbp);
+_RDB_table_to_str(RDB_object *objp, RDB_table *tbp, int options);
 
 #endif

@@ -109,6 +109,7 @@ _RDB_select(RDB_table *tbp, RDB_expression *condp, RDB_table **resultpp)
     newtbp->kind = RDB_TB_SELECT;
     newtbp->var.select.tbp = tbp;
     newtbp->var.select.exp = condp;
+    newtbp->var.select.indexp = NULL;
     *resultpp = newtbp;
 
     return RDB_OK;
@@ -561,6 +562,10 @@ RDB_summarize(RDB_table *tb1p, RDB_table *tb2p, int addc,
     tuptyp->kind = RDB_TP_TUPLE;
     tuptyp->var.tuple.attrc = attrc;
     tuptyp->var.tuple.attrv = malloc(attrc * sizeof(RDB_attr));
+    if (tuptyp->var.tuple.attrv == NULL) {
+        ret = RDB_NO_MEMORY;
+        goto error;
+    }
     for (i = 0; i < addc; i++) {
         RDB_type *typ;
 
@@ -1009,6 +1014,8 @@ dup_summarize(RDB_table *tbp)
     }
     ai = 0;
     for (i = 0; i < addc; i++) {
+        RDB_expression *exp;
+
         switch (tbp->var.summarize.addv[i].op) {
             case RDB_COUNTD:
             case RDB_SUMD:
@@ -1031,10 +1038,14 @@ dup_summarize(RDB_table *tbp)
         if (newtbp->var.summarize.addv[i].name == NULL) {
             goto error;
         }
-        newtbp->var.summarize.addv[i].exp = RDB_dup_expr(
-                tbp->var.summarize.addv[i].exp);
-        if (newtbp->var.summarize.addv[i].exp == NULL)
-            return NULL;
+        exp = tbp->var.summarize.addv[i].exp;
+        if (exp != NULL) {
+            newtbp->var.summarize.addv[i].exp = RDB_dup_expr(exp);
+            if (newtbp->var.summarize.addv[i].exp == NULL)
+                goto error;
+        } else {
+            newtbp->var.summarize.addv[i].exp = NULL;
+        }
     }
 
     return newtbp;
@@ -1051,11 +1062,44 @@ error:
     free(avgv);
     for (i = 0; i < addc; i++) {
         free(newtbp->var.summarize.addv[i].name);
+        if (newtbp->var.summarize.addv[i].exp != NULL)
+            RDB_drop_expr(newtbp->var.summarize.addv[i].exp);
     }
     free(newtbp);
     return NULL;
 }
 
+static RDB_table *
+dup_select(RDB_table *tbp)
+{
+    int ret;
+    RDB_expression *exp;
+    RDB_table *ntbp;
+    RDB_table *ctbp = _RDB_dup_vtable(tbp->var.select.tbp);
+    if (ctbp == NULL)
+        return NULL;
+
+    exp = RDB_dup_expr(tbp->var.select.exp);
+    if (exp == NULL)
+        return NULL;
+    ret = _RDB_select(ctbp, exp, &ntbp);
+    if (ret != RDB_OK)
+        return NULL;
+
+    if (tbp->var.select.indexp != NULL) {
+         ntbp->var.select.objpv = _RDB_index_objpv(tbp->var.select.indexp,
+                exp, ntbp->typ, tbp->var.select.objpc, tbp->var.select.all_eq,
+                tbp->var.select.asc);
+        if (ntbp->var.select.objpv == NULL)
+            return NULL;
+        ntbp->var.select.indexp = tbp->var.select.indexp;
+        ntbp->var.select.objpc = tbp->var.select.objpc;
+        ntbp->var.select.all_eq = tbp->var.select.all_eq;
+        ntbp->var.select.asc = tbp->var.select.asc;
+    }
+
+    return ntbp;
+}
 
 RDB_table *
 _RDB_dup_vtable(RDB_table *tbp)
@@ -1065,23 +1109,13 @@ _RDB_dup_vtable(RDB_table *tbp)
     RDB_table *tb1p;
     RDB_table *tb2p;
     RDB_table *tb3p;
-    RDB_expression *exp;
+    RDB_table *ntbp;
 
     switch (tbp->kind) {
         case RDB_TB_REAL:
             return tbp;
         case RDB_TB_SELECT:
-        case RDB_TB_SELECT_INDEX:
-            tb1p = _RDB_dup_vtable(tbp->var.select.tbp);
-            if (tb1p == NULL)
-                return NULL;
-            exp = RDB_dup_expr(tbp->var.select.exp);
-            if (exp == NULL)
-                return NULL;
-            ret = _RDB_select(tb1p, exp, &tbp);
-            if (ret != RDB_OK)
-                return NULL;
-            return tbp;
+            return dup_select(tbp);
         case RDB_TB_UNION:
             tb1p = _RDB_dup_vtable(tbp->var._union.tb1p);
             if (tb1p == NULL)
@@ -1122,10 +1156,11 @@ _RDB_dup_vtable(RDB_table *tbp)
             tb2p = _RDB_dup_vtable(tbp->var.join.tb2p);
             if (tb2p == NULL)
                 return NULL;
-            ret = RDB_join(tb1p, tb2p, &tbp);
+            ret = RDB_join(tb1p, tb2p, &ntbp);
             if (ret != RDB_OK)
                 return NULL;
-            return tbp;
+            ntbp->var.join.indexp = tbp->var.join.indexp;
+            return ntbp;
         case RDB_TB_EXTEND:
             return dup_extend(tbp);
         case RDB_TB_PROJECT:
@@ -1235,7 +1270,7 @@ infer_join_keys(RDB_table *tbp)
         goto error;
     for (i = 0; i < keyc1; i++) {
         for (j = 0; j < keyc2; j++) {
-            RDB_string_vec *attrsp = &tbp->keyv[i * keyc2 + j];
+            RDB_string_vec *attrsp = &newkeyv[i * keyc2 + j];
 
             attrsp->strc = keyv1[i].strc + keyv2[j].strc;
             attrsp->strv = malloc(sizeof(char *) * attrsp->strc);
@@ -1375,7 +1410,6 @@ _RDB_infer_keys(RDB_table *tbp)
         case RDB_TB_REAL:
             return RDB_INVALID_ARGUMENT;
         case RDB_TB_SELECT:
-        case RDB_TB_SELECT_INDEX:
             /* Copy keys */
             keyc = RDB_table_keys(tbp->var.select.tbp, &keyv);
             if (keyc < 0)
@@ -1486,7 +1520,6 @@ RDB_table_refers(RDB_table *tbp, RDB_table *rtbp)
         case RDB_TB_REAL:
             return (RDB_bool) (tbp == rtbp);
         case RDB_TB_SELECT:
-        case RDB_TB_SELECT_INDEX:
             if (_RDB_expr_refers(tbp->var.select.exp, rtbp))
                 return RDB_TRUE;
             return RDB_table_refers(tbp->var.select.tbp, rtbp);
@@ -1541,4 +1574,45 @@ RDB_table_refers(RDB_table *tbp, RDB_table *rtbp)
     }
     /* Must never be reached */
     abort();
+}
+
+RDB_object **
+_RDB_index_objpv(_RDB_tbindex *indexp, RDB_expression *exp, RDB_type *tbtyp,
+        int objpc, RDB_bool all_eq, RDB_bool asc)
+{
+    int i;
+    RDB_expression *nodep;
+    RDB_expression *attrexp;
+
+    RDB_object **objpv = malloc(sizeof (RDB_object *) * objpc);
+    if (objpv == NULL)
+        return NULL;
+    for (i = 0; i < objpc; i++) {
+        nodep = _RDB_attr_node(exp, indexp->attrv[i].attrname, "=");
+        if (nodep == NULL && !all_eq) {
+            if (asc) {
+                nodep = _RDB_attr_node(exp,
+                        indexp->attrv[i].attrname, ">=");
+                if (nodep == NULL)
+                    nodep = _RDB_attr_node(exp, indexp->attrv[i].attrname, ">");
+            } else {
+                nodep = _RDB_attr_node(exp,
+                        indexp->attrv[i].attrname, "<=");
+                if (nodep == NULL)
+                    nodep = _RDB_attr_node(exp, indexp->attrv[i].attrname, "<");
+            }
+        }
+        attrexp = nodep;
+        if (attrexp->kind == RDB_EX_RO_OP
+                && strcmp (attrexp->var.op.name, "AND") == 0)
+            attrexp = attrexp->var.op.argv[1];
+        if (attrexp->var.op.argv[1]->var.obj.typ == NULL
+                && (attrexp->var.op.argv[1]->var.obj.kind == RDB_OB_TUPLE
+                || attrexp->var.op.argv[1]->var.obj.kind == RDB_OB_ARRAY))
+            _RDB_set_nonsc_type(&attrexp->var.op.argv[1]->var.obj,
+                    RDB_type_attr_type(tbtyp, indexp->attrv[i].attrname));
+
+        objpv[i] = &attrexp->var.op.argv[1]->var.obj;       
+    }
+    return objpv;
 }

@@ -70,7 +70,12 @@ duro::table expr -global TU2 {(T1 WHERE K = 1) UNION (T2 WHERE K = 1)} $tx
 duro::table expr -global TJ2 {(T1 WHERE K = 2) JOIN (T3 WHERE K = 2)} $tx
 
 if {[duro::expr {TUPLE FROM TP} $tx] != {K 1}} {
-    error "Tuple value shoud be {K 1}, but is not"
+    error "Tuple value should be {K 1}, but is not"
+}
+
+set tpl [duro::expr {TUPLE FROM TJ2} $tx]
+if {![tequal $tpl {K 2 S1 Blubb S2 B}]} {
+    error "Invalid value of TUPLE FROM TJ2"
 }
 
 duro::commit $tx

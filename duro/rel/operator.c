@@ -566,10 +566,14 @@ RDB_call_ro_op(const char *name, int argc, RDB_object *argv[],
         RDB_rollback_all(txp);
         return RDB_NO_MEMORY;
     }
-    ret = _RDB_get_ro_op(name, argc, argtv, txp, &op);
-    for (i = 0; i < argc; i++) {
-        if (argv[i]->kind == RDB_OB_TUPLE)
-            RDB_drop_type(argtv[i], NULL);
+    if (argtv[0] != NULL) { /* !! Hack for array arguments */
+        ret = _RDB_get_ro_op(name, argc, argtv, txp, &op);
+        for (i = 0; i < argc; i++) {
+            if (argv[i]->kind == RDB_OB_TUPLE)
+                RDB_drop_type(argtv[i], NULL);
+        }
+    } else {
+        ret = RDB_NOT_FOUND;
     }
     free(argtv);
     if (ret != RDB_OK) {
@@ -1147,15 +1151,6 @@ _RDB_add_builtin_ops(RDB_dbroot *dbrootp)
     RDB_ro_op_desc *op;
     int ret;
 
-    op = new_ro_op("LENGTH", 1, &RDB_INTEGER, &length_string);
-    if (op == NULL)
-        return RDB_NO_MEMORY;
-    op->argtv[0] = &RDB_STRING;
-
-    ret = put_ro_op(dbrootp, op);
-    if (ret != RDB_OK)
-        return ret;
-
     op = new_ro_op("INTEGER", 1, &RDB_INTEGER, &integer_rational);
     if (op == NULL)
         return RDB_NO_MEMORY;
@@ -1205,6 +1200,15 @@ _RDB_add_builtin_ops(RDB_dbroot *dbrootp)
     if (op == NULL)
         return RDB_NO_MEMORY;
     op->argtv[0] = &RDB_RATIONAL;
+
+    ret = put_ro_op(dbrootp, op);
+    if (ret != RDB_OK)
+        return ret;
+
+    op = new_ro_op("LENGTH", 1, &RDB_INTEGER, &length_string);
+    if (op == NULL)
+        return RDB_NO_MEMORY;
+    op->argtv[0] = &RDB_STRING;
 
     ret = put_ro_op(dbrootp, op);
     if (ret != RDB_OK)

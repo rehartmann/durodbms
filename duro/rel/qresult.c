@@ -675,24 +675,16 @@ init_qresult(RDB_qresult *qrp, RDB_table *tbp, RDB_transaction *txp)
     qrp->matp = NULL;
     qrp->var.virtual.qr2p = NULL;
 
-    if (tbp->kind != RDB_TB_REAL) {
-        if (!tbp->optimized) {
-            ret = _RDB_optimize(tbp, txp);
-            if (ret != RDB_OK)
-                return ret;
-        }
-    }
-
     switch (tbp->kind) {
         case RDB_TB_REAL:
             ret = stored_qresult(qrp, tbp, txp);
             break;
         case RDB_TB_SELECT:
-            ret = _RDB_table_qresult(tbp->var.select.tbp,
-                    txp, &qrp->var.virtual.qrp);
-            break;
-        case RDB_TB_SELECT_INDEX:
-            ret = select_index_qresult(qrp, txp);
+            if (tbp->var.select.indexp == NULL)
+                ret = _RDB_table_qresult(tbp->var.select.tbp,
+                        txp, &qrp->var.virtual.qrp);
+            else
+                ret = select_index_qresult(qrp, txp);
             break;
         case RDB_TB_UNION:
             ret = _RDB_table_qresult(tbp->var._union.tb1p,
@@ -771,7 +763,6 @@ qr_dups(RDB_table *tbp)
         case RDB_TB_REAL:
             return RDB_FALSE;
         case RDB_TB_SELECT:
-        case RDB_TB_SELECT_INDEX:
             return qr_dups(tbp->var.select.tbp);
         case RDB_TB_UNION:
             return RDB_TRUE;
@@ -813,6 +804,9 @@ _RDB_duprem(RDB_qresult *qrp)
 {
     int ret;
 
+    /*
+     * Add duplicate remover only if the qresult may return duplicates
+     */
     if (qr_dups(qrp->tbp)) {
         RDB_string_vec keyattrs;
         int i;
@@ -1669,11 +1663,13 @@ destroy_qresult(RDB_qresult *qrp, RDB_transaction *txp)
     if (qrp->tbp == NULL || qrp->tbp->kind == RDB_TB_REAL
             || qrp->tbp->kind == RDB_TB_SUMMARIZE
             || qrp->tbp->kind == RDB_TB_GROUP
-            || (qrp->tbp->kind == RDB_TB_SELECT_INDEX
+            || (qrp->tbp->kind == RDB_TB_SELECT
+                && qrp->tbp->var.select.indexp != NULL
                 && !qrp->tbp->var.select.indexp->unique)) {
         /* Sorter, stored table, SUMMARIZE PER, or GROUP */
         ret = RDB_destroy_cursor(qrp->var.curp);
-    } else if (qrp->tbp->kind != RDB_TB_SELECT_INDEX) {
+    } else if (qrp->tbp->kind != RDB_TB_SELECT
+            || qrp->tbp->var.select.indexp == NULL) {
         ret = _RDB_drop_qresult(qrp->var.virtual.qrp, txp);
         if (qrp->var.virtual.qr2p != NULL)
             _RDB_drop_qresult(qrp->var.virtual.qr2p, txp);
@@ -1709,7 +1705,7 @@ _RDB_sdivide_preserves(RDB_table *tbp, const RDB_object *tplp,
 
     /*
      * Join this tuple with all tuples from table 2 and set matchall to RDB_FALSE
-     * if not all the result tuples are found in table 3
+     * if not all the result tuples are an element of table 3
      */
 
     ret = init_qresult(&qr, tbp->var.sdivide.tb2p, txp);
@@ -1848,14 +1844,12 @@ _RDB_next_tuple(RDB_qresult *qrp, RDB_object *tplp, RDB_transaction *txp)
             case RDB_TB_REAL:
                 return next_stored_tuple(qrp, qrp->tbp, tplp, RDB_TRUE, RDB_FALSE);
             case RDB_TB_SELECT:
-                ret = next_select_tuple(qrp, tplp, txp);
+                if (qrp->tbp->var.select.indexp == NULL)
+                    ret = next_select_tuple(qrp, tplp, txp);
+                else
+                    ret = next_select_index(qrp, tplp, txp);
                 if (ret != RDB_OK)
-                    return ret;
-                break;
-            case RDB_TB_SELECT_INDEX:
-                ret = next_select_index(qrp, tplp, txp);
-                if (ret != RDB_OK)
-                    return ret;
+                    return ret;                
                 break;
             case RDB_TB_UNION:
                 if (qrp->var.virtual.qr2p == NULL) {

@@ -3543,7 +3543,7 @@ must be provided by the user.
 
 <p>If <var>arep</var> is NULL and <var>areplen</var> is -1,
 the getter and setter operators and the selector operator are provided by Duro.
-In this case, the type may only have one possible representation,
+In this case, the type must have exactly one possible representation,
 and this representation becomes the actual representation.
 
 <p>For user-provided setters, getters, and selectors,
@@ -3923,7 +3923,7 @@ of length <var>iarglen</var> which will be passed to the function
 specified by <var>sym</var>.
 This can be used to pass code to an interpreter function.
 
-<p>Overloading functions is possible.
+<p>Overloading operators is possible.
 
 <h3>Return value</h3>
 

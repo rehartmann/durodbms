@@ -54,6 +54,7 @@ new_stored_table(const char *name, RDB_bool persistent,
     tbp->kind = RDB_TB_REAL;
     RDB_init_hashmap(&tbp->var.real.attrmap, RDB_DFL_MAP_CAPACITY);
     tbp->var.real.indexc = 0;
+    tbp->var.real.est_cardinality = 1000;
 
     if (name != NULL) {
         tbp->name = RDB_dup_str(name);
@@ -205,9 +206,9 @@ _RDB_drop_table(RDB_table *tbp, RDB_bool rec)
             }
             break;
         }
-        case RDB_TB_SELECT_INDEX:
-            free(tbp->var.select.objpv);
         case RDB_TB_SELECT:
+            if (tbp->var.select.indexp != NULL)
+                free(tbp->var.select.objpv);
             RDB_drop_expr(tbp->var.select.exp);
             if (rec) {
                 ret = drop_anon_table(tbp->var.select.tbp);
@@ -261,8 +262,10 @@ _RDB_drop_table(RDB_table *tbp, RDB_bool rec)
                 if (ret != RDB_OK)
                     return ret;
             }
-            for (i = 0; i < tbp->var.extend.attrc; i++)
+            for (i = 0; i < tbp->var.extend.attrc; i++) {
                 free(tbp->var.extend.attrv[i].name);
+                RDB_drop_expr(tbp->var.extend.attrv[i].exp);
+            }
             break;
         case RDB_TB_PROJECT:
             if (rec) {
@@ -1002,9 +1005,10 @@ RDB_all(RDB_table *tbp, const char *attrname, RDB_transaction *txp,
         RDB_bool *resultp)
 {
     RDB_type *attrtyp;
-    RDB_qresult *qrp;
-    RDB_object tpl;
+    RDB_object arr;
+    RDB_object *tplp;
     int ret;
+    int i;
 
     /* attrname may only be NULL if table is unary */
     if (attrname == NULL) {
@@ -1013,11 +1017,9 @@ RDB_all(RDB_table *tbp, const char *attrname, RDB_transaction *txp,
         attrname = tbp->typ->var.basetyp->var.tuple.attrv[0].name;
     }
 
-    if (attrname != NULL) {
-        attrtyp = _RDB_tuple_type_attr(tbp->typ->var.basetyp, attrname)->typ;
-        if (attrtyp == NULL)
-            return RDB_ATTRIBUTE_NOT_FOUND;
-    }
+    attrtyp = _RDB_tuple_type_attr(tbp->typ->var.basetyp, attrname)->typ;
+    if (attrtyp == NULL)
+        return RDB_ATTRIBUTE_NOT_FOUND;
 
     /* initialize result */
     *resultp = RDB_TRUE;
@@ -1026,32 +1028,32 @@ RDB_all(RDB_table *tbp, const char *attrname, RDB_transaction *txp,
      * Perform aggregation
      */
 
-    RDB_init_obj(&tpl);
+    RDB_init_obj(&arr);
 
-    ret = _RDB_table_qresult(tbp, txp, &qrp);
+    ret = RDB_table_to_array(&arr, tbp, 0, NULL, txp);
     if (ret != RDB_OK) {
         if (RDB_is_syserr(ret)) {
             RDB_rollback_all(txp);
         }
+        RDB_destroy_obj(&arr);
         return ret;
     }
 
-    while ((ret = _RDB_next_tuple(qrp, &tpl, txp)) == RDB_OK) {
-        if (!RDB_tuple_get_bool(&tpl, attrname))
+    i = 0;
+    while ((ret = RDB_array_get(&arr, (RDB_int) i++, &tplp)) == RDB_OK) {
+        if (!RDB_tuple_get_bool(tplp, attrname))
             *resultp = RDB_FALSE;
     }
 
-    RDB_destroy_obj(&tpl);
     if (ret != RDB_NOT_FOUND) {
-        _RDB_drop_qresult(qrp, txp);
+        RDB_destroy_obj(&arr);
         if (RDB_is_syserr(ret)) {
             RDB_rollback_all(txp);
         }
         return ret;
     }
 
-    _RDB_drop_qresult(qrp, txp);
-    return RDB_OK;
+    return RDB_destroy_obj(&arr);
 }
 
 int
@@ -1059,9 +1061,10 @@ RDB_any(RDB_table *tbp, const char *attrname, RDB_transaction *txp,
         RDB_bool *resultp)
 {
     RDB_type *attrtyp;
-    RDB_qresult *qrp;
-    RDB_object tpl;
+    RDB_object arr;
+    RDB_object *tplp;
     int ret;
+    int i;
 
     /* attrname may only be NULL if table is unary */
     if (attrname == NULL) {
@@ -1070,11 +1073,9 @@ RDB_any(RDB_table *tbp, const char *attrname, RDB_transaction *txp,
         attrname = tbp->typ->var.basetyp->var.tuple.attrv[0].name;
     }
 
-    if (attrname != NULL) {
-        attrtyp = _RDB_tuple_type_attr(tbp->typ->var.basetyp, attrname)->typ;
-        if (attrtyp == NULL)
-            return RDB_INVALID_ARGUMENT;
-    }
+    attrtyp = _RDB_tuple_type_attr(tbp->typ->var.basetyp, attrname)->typ;
+    if (attrtyp == NULL)
+        return RDB_INVALID_ARGUMENT;
 
     /* initialize result */
     *resultp = RDB_FALSE;
@@ -1083,32 +1084,32 @@ RDB_any(RDB_table *tbp, const char *attrname, RDB_transaction *txp,
      * Perform aggregation
      */
 
-    RDB_init_obj(&tpl);
+    RDB_init_obj(&arr);
 
-    ret = _RDB_table_qresult(tbp, txp, &qrp);
+    ret = RDB_table_to_array(&arr, tbp, 0, NULL, txp);
     if (ret != RDB_OK) {
         if (RDB_is_syserr(ret)) {
             RDB_rollback_all(txp);
         }
+        RDB_destroy_obj(&arr);
         return ret;
     }
 
-    while ((ret = _RDB_next_tuple(qrp, &tpl, txp)) == RDB_OK) {
-        if (RDB_tuple_get_bool(&tpl, attrname))
+    i = 0;
+    while ((ret = RDB_array_get(&arr, (RDB_int) i++, &tplp)) == RDB_OK) {
+        if (RDB_tuple_get_bool(tplp, attrname))
             *resultp = RDB_TRUE;
     }
 
-    RDB_destroy_obj(&tpl);
     if (ret != RDB_NOT_FOUND) {
-        _RDB_drop_qresult(qrp, txp);
+        RDB_destroy_obj(&arr);
         if (RDB_is_syserr(ret)) {
             RDB_rollback_all(txp);
         }
         return ret;
     }
 
-    _RDB_drop_qresult(qrp, txp);
-    return RDB_OK;
+    return RDB_destroy_obj(&arr);
 }
 
 int
@@ -1116,9 +1117,10 @@ RDB_max(RDB_table *tbp, const char *attrname, RDB_transaction *txp,
         RDB_object *resultp)
 {
     RDB_type *attrtyp;
-    RDB_qresult *qrp;
-    RDB_object tpl;
+    RDB_object arr;
+    RDB_object *tplp;
     int ret;
+    int i;
 
     /* attrname may only be NULL if table is unary */
     if (attrname == NULL) {
@@ -1127,11 +1129,9 @@ RDB_max(RDB_table *tbp, const char *attrname, RDB_transaction *txp,
         attrname = tbp->typ->var.basetyp->var.tuple.attrv[0].name;
     }
 
-    if (attrname != NULL) {
-        attrtyp = _RDB_tuple_type_attr(tbp->typ->var.basetyp, attrname)->typ;
-        if (attrtyp == NULL)
-            return RDB_INVALID_ARGUMENT;
-    }
+    attrtyp = _RDB_tuple_type_attr(tbp->typ->var.basetyp, attrname)->typ;
+    if (attrtyp == NULL)
+        return RDB_INVALID_ARGUMENT;
 
     _RDB_set_obj_type(resultp, attrtyp);
 
@@ -1146,40 +1146,41 @@ RDB_max(RDB_table *tbp, const char *attrname, RDB_transaction *txp,
      * Perform aggregation
      */
 
-    RDB_init_obj(&tpl);
+    RDB_init_obj(&arr);
 
-    ret = _RDB_table_qresult(tbp, txp, &qrp);
+    ret = RDB_table_to_array(&arr, tbp, 0, NULL, txp);
     if (ret != RDB_OK) {
         if (RDB_is_syserr(ret)) {
             RDB_rollback_all(txp);
         }
+        RDB_destroy_obj(&arr);
         return ret;
     }
 
-    while ((ret = _RDB_next_tuple(qrp, &tpl, txp)) == RDB_OK) {
+    i = 0;
+    while ((ret = RDB_array_get(&arr, (RDB_int) i++, &tplp)) == RDB_OK) {
         if (attrtyp == &RDB_INTEGER) {
-            RDB_int val = RDB_tuple_get_int(&tpl, attrname);
+            RDB_int val = RDB_tuple_get_int(tplp, attrname);
              
             if (val > resultp->var.int_val)
                  resultp->var.int_val = val;
         } else {
-            RDB_rational val = RDB_tuple_get_rational(&tpl, attrname);
+            RDB_rational val = RDB_tuple_get_rational(tplp, attrname);
              
             if (val > resultp->var.rational_val)
                 resultp->var.rational_val = val;
         }
     }
-    RDB_destroy_obj(&tpl);
+
     if (ret != RDB_NOT_FOUND) {
-        _RDB_drop_qresult(qrp, txp);
+        RDB_destroy_obj(&arr);
         if (RDB_is_syserr(ret)) {
             RDB_rollback_all(txp);
         }
         return ret;
     }
 
-    _RDB_drop_qresult(qrp, txp);
-    return RDB_OK;
+    return RDB_destroy_obj(&arr);
 }
 
 int
@@ -1187,9 +1188,10 @@ RDB_min(RDB_table *tbp, const char *attrname, RDB_transaction *txp,
         RDB_object *resultp)
 {
     RDB_type *attrtyp;
-    RDB_qresult *qrp;
-    RDB_object tpl;
+    RDB_object arr;
+    RDB_object *tplp;
     int ret;
+    int i;
 
     /* attrname may only be NULL if table is unary */
     if (attrname == NULL) {
@@ -1198,18 +1200,16 @@ RDB_min(RDB_table *tbp, const char *attrname, RDB_transaction *txp,
         attrname = tbp->typ->var.basetyp->var.tuple.attrv[0].name;
     }
 
-    if (attrname != NULL) {
-        attrtyp = _RDB_tuple_type_attr(tbp->typ->var.basetyp, attrname)->typ;
-        if (attrtyp == NULL)
-            return RDB_INVALID_ARGUMENT;
-    }
+    attrtyp = _RDB_tuple_type_attr(tbp->typ->var.basetyp, attrname)->typ;
+    if (attrtyp == NULL)
+        return RDB_INVALID_ARGUMENT;
 
     _RDB_set_obj_type(resultp, attrtyp);
 
     if (attrtyp == &RDB_INTEGER)
-        resultp->var.int_val = RDB_INT_MAX;
+        resultp->var.int_val = RDB_INT_MIN;
     else if (attrtyp == &RDB_RATIONAL)
-        resultp->var.rational_val = RDB_RATIONAL_MAX;
+        resultp->var.rational_val = RDB_RATIONAL_MIN;
     else
         return RDB_TYPE_MISMATCH;
 
@@ -1217,40 +1217,41 @@ RDB_min(RDB_table *tbp, const char *attrname, RDB_transaction *txp,
      * Perform aggregation
      */
 
-    RDB_init_obj(&tpl);
+    RDB_init_obj(&arr);
 
-    ret = _RDB_table_qresult(tbp, txp, &qrp);
+    ret = RDB_table_to_array(&arr, tbp, 0, NULL, txp);
     if (ret != RDB_OK) {
         if (RDB_is_syserr(ret)) {
             RDB_rollback_all(txp);
         }
+        RDB_destroy_obj(&arr);
         return ret;
     }
 
-    while ((ret = _RDB_next_tuple(qrp, &tpl, txp)) == RDB_OK) {
+    i = 0;
+    while ((ret = RDB_array_get(&arr, (RDB_int) i++, &tplp)) == RDB_OK) {
         if (attrtyp == &RDB_INTEGER) {
-            RDB_int val = RDB_tuple_get_int(&tpl, attrname);
+            RDB_int val = RDB_tuple_get_int(tplp, attrname);
              
             if (val < resultp->var.int_val)
                  resultp->var.int_val = val;
         } else {
-            RDB_rational val = RDB_tuple_get_rational(&tpl, attrname);
+            RDB_rational val = RDB_tuple_get_rational(tplp, attrname);
              
             if (val < resultp->var.rational_val)
                 resultp->var.rational_val = val;
         }
     }
-    RDB_destroy_obj(&tpl);
+
     if (ret != RDB_NOT_FOUND) {
-        _RDB_drop_qresult(qrp, txp);
+        RDB_destroy_obj(&arr);
         if (RDB_is_syserr(ret)) {
             RDB_rollback_all(txp);
         }
         return ret;
     }
 
-    _RDB_drop_qresult(qrp, txp);
-    return RDB_OK;
+    return RDB_destroy_obj(&arr);
 }
 
 int
@@ -1258,9 +1259,10 @@ RDB_sum(RDB_table *tbp, const char *attrname, RDB_transaction *txp,
         RDB_object *resultp)
 {
     RDB_type *attrtyp;
-    RDB_qresult *qrp;
-    RDB_object tpl;
+    RDB_object arr;
+    RDB_object *tplp;
     int ret;
+    int i;
 
     if (attrname == NULL) {
         if (tbp->typ->var.basetyp->var.tuple.attrc != 1)
@@ -1268,11 +1270,9 @@ RDB_sum(RDB_table *tbp, const char *attrname, RDB_transaction *txp,
         attrname = tbp->typ->var.basetyp->var.tuple.attrv[0].name;
     }
 
-    if (attrname != NULL) {
-        attrtyp = _RDB_tuple_type_attr(tbp->typ->var.basetyp, attrname)->typ;
-        if (attrtyp == NULL)
-            return RDB_INVALID_ARGUMENT;
-    }
+    attrtyp = _RDB_tuple_type_attr(tbp->typ->var.basetyp, attrname)->typ;
+    if (attrtyp == NULL)
+        return RDB_INVALID_ARGUMENT;
 
     _RDB_set_obj_type(resultp, attrtyp);
 
@@ -1288,34 +1288,35 @@ RDB_sum(RDB_table *tbp, const char *attrname, RDB_transaction *txp,
      * Perform aggregation
      */
 
-    RDB_init_obj(&tpl);
+    RDB_init_obj(&arr);
 
-    ret = _RDB_table_qresult(tbp, txp, &qrp);
+    ret = RDB_table_to_array(&arr, tbp, 0, NULL, txp);
     if (ret != RDB_OK) {
         if (RDB_is_syserr(ret)) {
             RDB_rollback_all(txp);
         }
+        RDB_destroy_obj(&arr);
         return ret;
     }
 
-    while ((ret = _RDB_next_tuple(qrp, &tpl, txp)) == RDB_OK) {
+    i = 0;
+    while ((ret = RDB_array_get(&arr, (RDB_int) i++, &tplp)) == RDB_OK) {
         if (attrtyp == &RDB_INTEGER)
-            resultp->var.int_val += RDB_tuple_get_int(&tpl, attrname);
+            resultp->var.int_val += RDB_tuple_get_int(tplp, attrname);
         else
             resultp->var.rational_val
-                            += RDB_tuple_get_rational(&tpl, attrname);
+                            += RDB_tuple_get_rational(tplp, attrname);
     }
-    RDB_destroy_obj(&tpl);
+
     if (ret != RDB_NOT_FOUND) {
-        _RDB_drop_qresult(qrp, txp);
+        RDB_destroy_obj(&arr);
         if (RDB_is_syserr(ret)) {
             RDB_rollback_all(txp);
         }
         return ret;
     }
 
-    _RDB_drop_qresult(qrp, txp);
-    return RDB_OK;
+    return RDB_destroy_obj(&arr);
 }
 
 int
@@ -1323,10 +1324,11 @@ RDB_avg(RDB_table *tbp, const char *attrname, RDB_transaction *txp,
         RDB_rational *resultp)
 {
     RDB_type *attrtyp;
-    RDB_qresult *qrp;
-    RDB_object tpl;
+    RDB_object arr;
+    RDB_object *tplp;
     int ret;
-    int count;
+    int i;
+    unsigned long count;
 
     /* attrname may only be NULL if table is unary */
     if (attrname == NULL) {
@@ -1335,11 +1337,9 @@ RDB_avg(RDB_table *tbp, const char *attrname, RDB_transaction *txp,
         attrname = tbp->typ->var.basetyp->var.tuple.attrv[0].name;
     }
 
-    if (attrname != NULL) {
-        attrtyp = _RDB_tuple_type_attr(tbp->typ->var.basetyp, attrname)->typ;
-        if (attrtyp == NULL)
-            return RDB_INVALID_ARGUMENT;
-    }
+    attrtyp = _RDB_tuple_type_attr(tbp->typ->var.basetyp, attrname)->typ;
+    if (attrtyp == NULL)
+        return RDB_INVALID_ARGUMENT;
 
     if (!RDB_type_is_numeric(attrtyp))
         return RDB_TYPE_MISMATCH;
@@ -1349,26 +1349,27 @@ RDB_avg(RDB_table *tbp, const char *attrname, RDB_transaction *txp,
      * Perform aggregation
      */
 
-    RDB_init_obj(&tpl);
+    RDB_init_obj(&arr);
 
-    ret = _RDB_table_qresult(tbp, txp, &qrp);
+    ret = RDB_table_to_array(&arr, tbp, 0, NULL, txp);
     if (ret != RDB_OK) {
         if (RDB_is_syserr(ret)) {
             RDB_rollback_all(txp);
         }
+        RDB_destroy_obj(&arr);
         return ret;
     }
 
-    while ((ret = _RDB_next_tuple(qrp, &tpl, txp)) == RDB_OK) {
+    i = 0;
+    while ((ret = RDB_array_get(&arr, (RDB_int) i++, &tplp)) == RDB_OK) {
         count++;
         if (attrtyp == &RDB_INTEGER)
-            *resultp += RDB_tuple_get_int(&tpl, attrname);
+            *resultp += RDB_tuple_get_int(tplp, attrname);
         else
-            *resultp += RDB_tuple_get_rational(&tpl, attrname);
+            *resultp += RDB_tuple_get_rational(tplp, attrname);
     }
-    RDB_destroy_obj(&tpl);
     if (ret != RDB_NOT_FOUND) {
-        _RDB_drop_qresult(qrp, txp);
+        RDB_destroy_obj(&arr);
         if (RDB_is_syserr(ret)) {
             RDB_rollback_all(txp);
         }
@@ -1379,8 +1380,7 @@ RDB_avg(RDB_table *tbp, const char *attrname, RDB_transaction *txp,
         return RDB_AGGREGATE_UNDEFINED;
     *resultp /= count;
 
-    _RDB_drop_qresult(qrp, txp);
-    return RDB_OK;
+    return RDB_destroy_obj(&arr);
 }
 
 int
@@ -1389,9 +1389,16 @@ RDB_extract_tuple(RDB_table *tbp, RDB_transaction *txp, RDB_object *tplp)
     int ret, ret2;
     RDB_qresult *qrp;
     RDB_object tpl;
+    RDB_table *ntbp;
 
-    ret = _RDB_table_qresult(tbp, txp, &qrp);
+    ret = _RDB_optimize(tbp, 0, NULL, txp, &ntbp);
+    if (ret != RDB_OK)
+        return ret;
+
+    ret = _RDB_table_qresult(ntbp, txp, &qrp);
     if (ret != RDB_OK) {
+        if (ntbp->kind != RDB_TB_REAL)
+            RDB_drop_table(ntbp, txp);
         if (RDB_is_syserr(ret)) {
             RDB_rollback_all(txp);
         }
@@ -1421,6 +1428,11 @@ cleanup:
     ret2 = _RDB_drop_qresult(qrp, txp);
     if (ret == RDB_OK)
         ret = ret2;
+    if (ntbp->kind != RDB_TB_REAL) {
+        ret2 = RDB_drop_table(ntbp, txp);
+        if (ret2 != RDB_OK)
+            ret = ret2;
+    }
     if (RDB_is_syserr(ret) || RDB_is_syserr(ret2)) {
         RDB_rollback_all(txp);
     }
@@ -1470,12 +1482,31 @@ RDB_cardinality(RDB_table *tbp, RDB_transaction *txp)
     int count;
     RDB_qresult *qrp;
     RDB_object tpl;
+    RDB_table *ntbp;
 
     if (txp != NULL && !RDB_tx_is_running(txp))
         return RDB_INVALID_TRANSACTION;
 
-    ret = _RDB_table_qresult(tbp, txp, &qrp);
+    ret = _RDB_optimize(tbp, 0, NULL, txp, &ntbp);
+    if (ret != RDB_OK)
+        return ret;
+
+    ret = _RDB_table_qresult(ntbp, txp, &qrp);
     if (ret != RDB_OK) {
+        if (ntbp->kind != RDB_TB_REAL)
+            RDB_drop_table(ntbp, txp);
+        if (RDB_is_syserr(ret)) {
+            RDB_rollback_all(txp);
+        }
+        return ret;
+    }
+
+    /* Duplicates must be removed */
+    ret = _RDB_duprem(qrp);
+    if (ret != RDB_OK) {
+        if (ntbp->kind != RDB_TB_REAL)
+            RDB_drop_table(ntbp, txp);
+        _RDB_drop_qresult(qrp, txp);
         if (RDB_is_syserr(ret)) {
             RDB_rollback_all(txp);
         }
@@ -1498,12 +1529,20 @@ RDB_cardinality(RDB_table *tbp, RDB_transaction *txp)
     if (ret != RDB_OK)
         goto error;
 
+    if (ntbp->kind != RDB_TB_REAL) {
+        ret = RDB_drop_table(ntbp, txp);
+        if (ret != RDB_OK)
+            return ret;
+    }
+
     if (tbp->kind == RDB_TB_REAL)
         tbp->var.real.est_cardinality = count;
 
     return count;
 
 error:
+    if (ntbp->kind != RDB_TB_REAL)
+        RDB_drop_table(ntbp, txp);
     if (RDB_is_syserr(ret))
         RDB_rollback_all(txp);
     return ret;

@@ -836,3 +836,29 @@ _RDB_resolve_extend_expr(RDB_expression **expp, int attrc,
     }
     abort();
 }
+
+static RDB_bool
+expr_attr(RDB_expression *exp, const char *attrname, char *opname)
+{
+    if (exp->kind == RDB_EX_RO_OP && strcmp(exp->var.op.name, opname) == 0) {
+        if (exp->var.op.argv[0]->kind == RDB_EX_ATTR
+                && strcmp(exp->var.op.argv[0]->var.attrname, attrname) == 0
+                && exp->var.op.argv[1]->kind == RDB_EX_OBJ)
+            return RDB_TRUE;
+    }
+    return RDB_FALSE;
+}
+
+RDB_expression *
+_RDB_attr_node(RDB_expression *exp, const char *attrname, char *opname)
+{
+    while (exp->kind == RDB_EX_RO_OP
+            && strcmp (exp->var.op.name, "AND") == 0) {
+        if (expr_attr(exp->var.op.argv[1], attrname, opname))
+            return exp;
+        exp = exp->var.op.argv[0];
+    }
+    if (expr_attr(exp, attrname, opname))
+        return exp;
+    return NULL;
+}

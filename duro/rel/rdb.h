@@ -190,7 +190,6 @@ typedef struct {
 enum _RDB_tb_kind {
     RDB_TB_REAL,
     RDB_TB_SELECT,
-    RDB_TB_SELECT_INDEX,
     RDB_TB_UNION,
     RDB_TB_MINUS,
     RDB_TB_INTERSECT,
@@ -250,8 +249,9 @@ typedef struct RDB_table {
             struct RDB_table *tbp;
             RDB_expression *exp;
 
-            /* RDB_TB_SELECT_INDEX */
             struct _RDB_tbindex *indexp;
+
+            /* Only used if indexp != NULL */
             RDB_object **objpv;
             int objpc;
             RDB_bool asc;

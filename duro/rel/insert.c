@@ -369,7 +369,6 @@ RDB_insert(RDB_table *tbp, const RDB_object *tplp, RDB_transaction *txp)
         case RDB_TB_REAL:
             return insert_stored(tbp, tplp, txp);
         case RDB_TB_SELECT:
-        case RDB_TB_SELECT_INDEX:
             ret = RDB_evaluate_bool(tbp->var.select.exp, tplp, txp, &b);
             if (ret != RDB_OK)
                 return ret;

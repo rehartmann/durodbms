@@ -48,6 +48,11 @@ set dbenv [duro::env open tests/dbenv]
 
 set tx [duro::begin $dbenv TEST]
 
+set c [duro::expr {COUNT(P2)} $tx]
+if {$c !=2 } {
+    error "COUNT(P2) should be 2, but is $c"
+}
+
 if {![catch {
     duro::table contains P1 {} $tx
 }]} {

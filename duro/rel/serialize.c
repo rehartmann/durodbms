@@ -480,7 +480,6 @@ serialize_table(RDB_object *valp, int *posp, RDB_table *tbp)
                 return RDB_INVALID_ARGUMENT;
             return serialize_str(valp, posp, tbp->name);
         case RDB_TB_SELECT:
-        case RDB_TB_SELECT_INDEX:
             ret = serialize_table(valp, posp, tbp->var.select.tbp);
             if (ret != RDB_OK)
                 return ret;
@@ -1451,7 +1450,6 @@ deserialize_table(RDB_object *valp, int *posp, RDB_transaction *txp,
             free(namp);
             return ret;
         case RDB_TB_SELECT:
-        case RDB_TB_SELECT_INDEX:
             ret = deserialize_table(valp, posp, txp, &tb1p);
             if (ret != RDB_OK)
                 return ret;

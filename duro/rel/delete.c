@@ -326,24 +326,25 @@ delete(RDB_table *tbp, RDB_expression *condp, RDB_transaction *txp)
                 return ret;
             return delete(tbp->var.intersect.tb2p, condp, txp);
         case RDB_TB_SELECT:
-        {
-            RDB_expression *ncondp = NULL;
+            if (tbp->var.select.indexp == NULL)
+            {
+                RDB_expression *ncondp = NULL;
 
-            if (condp != NULL) {
-                ret = RDB_ro_op_2("AND", tbp->var.select.exp, condp, txp,
-                        &ncondp);
-                if (ret != RDB_OK)
-                    return ret;
+                if (condp != NULL) {
+                    ret = RDB_ro_op_2("AND", tbp->var.select.exp, condp, txp,
+                            &ncondp);
+                    if (ret != RDB_OK)
+                        return ret;
+                }
+                ret = delete(tbp->var.select.tbp,
+                        ncondp != NULL ? ncondp : tbp->var.select.exp, txp);
+                free(ncondp);
+                return ret;
+            } else {
+                if (tbp->var.select.indexp->unique)
+                    return delete_select_uindex(tbp, condp, txp);
+                return delete_select_index(tbp, condp, txp);
             }
-            ret = delete(tbp->var.select.tbp,
-                    ncondp != NULL ? ncondp : tbp->var.select.exp, txp);
-            free(ncondp);
-            return ret;
-        }
-        case RDB_TB_SELECT_INDEX:
-            if (tbp->var.select.indexp->unique)
-                return delete_select_uindex(tbp, condp, txp);
-            return delete_select_index(tbp, condp, txp);
         case RDB_TB_JOIN:
             return RDB_NOT_SUPPORTED;
         case RDB_TB_EXTEND:
@@ -379,27 +380,42 @@ int
 RDB_delete(RDB_table *tbp, RDB_expression *condp, RDB_transaction *txp)
 {
     int ret;
+    RDB_table *ntbp;
 
     if (!RDB_tx_is_running(txp))
         return RDB_INVALID_TRANSACTION;
 
+    /*
+     * If there is a condition, create new table, so the optimization
+     * uses the contition.
+     */
     if (condp != NULL) {
-        ret = RDB_select(tbp, condp, txp, &tbp);
+        RDB_table *ctbp;
+
+        ret = RDB_select(tbp, condp, txp, &ctbp);
         if (ret != RDB_OK)
             return ret;
+        tbp = ctbp;
     }
 
-    if (!tbp->optimized) {
-        ret = _RDB_optimize(tbp, txp);
-        if (ret != RDB_OK) {
+    ret = _RDB_optimize(tbp, 0, NULL, txp, &ntbp);
+    if (ret != RDB_OK) {
+        if (condp != NULL)
             _RDB_free_table(tbp);
-            return ret;
-        }
+        return ret;
     }
 
-    ret = delete(tbp, NULL, txp);
+    ret = delete(ntbp, NULL, txp);
+    if (ret == RDB_OK) {
+        if (ntbp->kind != RDB_TB_REAL)
+            ret = RDB_drop_table(ntbp, txp);
+        ntbp = NULL;
+    }
+
     if (condp != NULL)
         _RDB_free_table(tbp);
+    if (ntbp != NULL && ntbp->kind != RDB_TB_REAL)
+        RDB_drop_table(ntbp, txp);
     if (RDB_is_syserr(ret))
         RDB_rollback_all(txp);
     return ret;

@@ -11,7 +11,9 @@
 #include <string.h>
 #include <stdlib.h>
 
+/* !!
 #include <dli/tabletostr.h>
+*/
 
 static RDB_bool is_and(RDB_expression *exp) {
     return (RDB_bool) exp->kind == RDB_EX_RO_OP
@@ -52,99 +54,35 @@ unbalance_and(RDB_expression *exp)
     }
 }
 
-static RDB_bool
-expr_attr(RDB_expression *exp, const char *attrname, char *opname)
-{
-    if (exp->kind == RDB_EX_RO_OP && strcmp(exp->var.op.name, opname) == 0) {
-        if (exp->var.op.argv[0]->kind == RDB_EX_ATTR
-                && strcmp(exp->var.op.argv[0]->var.attrname, attrname) == 0
-                && exp->var.op.argv[1]->kind == RDB_EX_OBJ)
-            return RDB_TRUE;
-    }
-    return RDB_FALSE;
-}
-
-static RDB_bool
-expr_cmp_attr(RDB_expression *exp, const char *attrname)
-{
-    return (RDB_bool) (exp->kind == RDB_EX_RO_OP &&
-            (strcmp(exp->var.op.name, "=") == 0
-            || strcmp(exp->var.op.name, ">") == 0
-            || strcmp(exp->var.op.name, "<") == 0
-            || strcmp(exp->var.op.name, ">=") == 0
-            || strcmp(exp->var.op.name, "<=") == 0)
-            && exp->var.op.argv[0]->kind == RDB_EX_ATTR
-            && strcmp(exp->var.op.argv[0]->var.attrname, attrname) == 0
-            && exp->var.op.argv[1]->kind == RDB_EX_OBJ);
-}
-
-RDB_expression *
-attr_node(RDB_expression *exp, const char *attrname, char *opname)
-{
-    while (is_and(exp)) {
-        if (expr_attr(exp->var.op.argv[1], attrname, opname))
-            return exp;
-        exp = exp->var.op.argv[0];
-    }
-    if (expr_attr(exp, attrname, opname))
-        return exp;
-    return NULL;
-}
-
 /*
- * Check if the index specified by indexp can be used for the selection
- * specified by tbp. If yes, return the estimated cost.
- * If no, return INT_MAX.
+ * Check if the expression covers all index attributes.
  */
-static int
-eval_index_exp(RDB_expression *exp, _RDB_tbindex *indexp)
+static RDB_bool
+expr_covers_index(RDB_expression *exp, _RDB_tbindex *indexp)
 {
     int i;
 
-    if (indexp->idxp != NULL && RDB_index_is_ordered(indexp->idxp)) {
-        RDB_expression *iexp = exp;
-
-        /*
-         * The index is ordered, so the expression must refer at least to the
-         * first attribute
-         */
-        if (expr_cmp_attr(iexp, indexp->attrv[0].attrname))
-            return 4;
-        iexp = exp;
-        while (iexp != NULL && is_and(iexp)) {
-            if (expr_cmp_attr(iexp->var.op.argv[1], indexp->attrv[0].attrname))
-                return 4;
-            iexp = iexp->var.op.argv[0];
-        }
-        return INT_MAX;
-    }
-
-    /*
-     * The index is not ordered, so the expression must cover
-     * all index attributes
-     */
     for (i = 0; i < indexp->attrc; i++) {
-        if (attr_node(exp, indexp->attrv[i].attrname, "=") == NULL)
-            return INT_MAX;
+        if (_RDB_attr_node(exp, indexp->attrv[i].attrname, "=") == NULL)
+            return RDB_FALSE;
     }
-    if (indexp->idxp == NULL)
-        return 1;
-    return indexp->unique ? 2 : 3;
+    return RDB_TRUE;
 }
 
+/*
+ * Check if attrv covers all index attributes.
+ */
 static int
-eval_index_attrs(int attrc, char *attrv[], _RDB_tbindex *indexp)
+attrv_covers_index(int attrc, char *attrv[], _RDB_tbindex *indexp)
 {
     int i;
 
     /* Check if all index attributes appear in attrv */
     for (i = 0; i < indexp->attrc; i++) {
         if (RDB_find_str(attrc, attrv, indexp->attrv[i].attrname) == -1)
-            return INT_MAX;
+            return RDB_FALSE;
     }
-    if (indexp->idxp == NULL)
-        return 1;
-    return indexp->unique ? 2 : 3;
+    return RDB_TRUE;
 }
 
 static void
@@ -213,28 +151,25 @@ split_by_index(RDB_table *tbp, _RDB_tbindex *indexp, RDB_transaction *txp)
     RDB_bool asc = RDB_TRUE;
     RDB_bool all_eq = RDB_TRUE;
     int objpc = 0;
-    RDB_object **objpv = malloc(sizeof (RDB_object *) * indexp->attrc);
+    RDB_object **objpv;
 
-    if (objpv == NULL)
-        return RDB_NO_MEMORY;
-    
     for (i = 0; i < indexp->attrc && all_eq; i++) {
         RDB_expression *attrexp;
 
         if (indexp->idxp != NULL && RDB_index_is_ordered(indexp->idxp)) {
-            nodep = attr_node(tbp->var.select.exp, indexp->attrv[i].attrname,
-                    "=");
+            nodep = _RDB_attr_node(tbp->var.select.exp,
+                    indexp->attrv[i].attrname, "=");
             if (nodep == NULL) {
-                nodep = attr_node(tbp->var.select.exp, indexp->attrv[i].attrname,
-                        ">=");
+                nodep = _RDB_attr_node(tbp->var.select.exp,
+                        indexp->attrv[i].attrname, ">=");
                 if (nodep == NULL) {
-                    nodep = attr_node(tbp->var.select.exp, indexp->attrv[i].attrname,
-                            ">");
+                    nodep = _RDB_attr_node(tbp->var.select.exp,
+                            indexp->attrv[i].attrname, ">");
                     if (nodep == NULL) {
-                        nodep = attr_node(tbp->var.select.exp,
+                        nodep = _RDB_attr_node(tbp->var.select.exp,
                                 indexp->attrv[i].attrname, "<=");
                         if (nodep == NULL) {
-                            nodep = attr_node(tbp->var.select.exp,
+                            nodep = _RDB_attr_node(tbp->var.select.exp,
                                     indexp->attrv[i].attrname, "<");
                             if (nodep == NULL)
                                 break;
@@ -243,10 +178,10 @@ split_by_index(RDB_table *tbp, _RDB_tbindex *indexp, RDB_transaction *txp)
                 }
                 if (strcmp(nodep->var.op.name, ">=") == 0
                         || strcmp(nodep->var.op.name, ">") == 0) {
-                    stopexp = attr_node(tbp->var.select.exp,
+                    stopexp = _RDB_attr_node(tbp->var.select.exp,
                             indexp->attrv[i].attrname, "<=");
                     if (stopexp == NULL) {
-                        stopexp = attr_node(tbp->var.select.exp,
+                        stopexp = _RDB_attr_node(tbp->var.select.exp,
                                 indexp->attrv[i].attrname, "<");
                     }
                     if (stopexp != NULL) {
@@ -260,19 +195,14 @@ split_by_index(RDB_table *tbp, _RDB_tbindex *indexp, RDB_transaction *txp)
                 all_eq = RDB_FALSE;
             }
         } else {
-            nodep = attr_node(tbp->var.select.exp, indexp->attrv[i].attrname,
-                    "=");
+            nodep = _RDB_attr_node(tbp->var.select.exp,
+                    indexp->attrv[i].attrname, "=");
         }
         attrexp = nodep;
         if (is_and(attrexp))
             attrexp = attrexp->var.op.argv[1];
-        if (attrexp->var.op.argv[1]->var.obj.typ == NULL
-                && (attrexp->var.op.argv[1]->var.obj.kind == RDB_OB_TUPLE
-                || attrexp->var.op.argv[1]->var.obj.kind == RDB_OB_ARRAY))
-            _RDB_set_nonsc_type(&attrexp->var.op.argv[1]->var.obj,
-                    RDB_type_attr_type(tbp->typ, indexp->attrv[i].attrname));
 
-        objpv[objpc++] = &attrexp->var.op.argv[1]->var.obj;
+        objpc++;
 
         if (indexp->idxp != NULL && RDB_index_is_ordered(indexp->idxp)) {
             if (strcmp(attrexp->var.op.name, "=") == 0
@@ -286,6 +216,11 @@ split_by_index(RDB_table *tbp, _RDB_tbindex *indexp, RDB_transaction *txp)
         move_node(tbp, &ixexp, nodep, txp);
     }
 
+    objpv = _RDB_index_objpv(indexp, ixexp, tbp->typ,
+            objpc, all_eq, asc);
+    if (objpv == NULL)
+        return RDB_NO_MEMORY;
+
     if (tbp->var.select.exp != NULL) {
         RDB_table *sitbp;
 
@@ -296,7 +231,6 @@ split_by_index(RDB_table *tbp, _RDB_tbindex *indexp, RDB_transaction *txp)
         if (ret != RDB_OK)
             return ret;
 
-        sitbp->kind = RDB_TB_SELECT_INDEX;
         sitbp->var.select.indexp = indexp;
         sitbp->var.select.objpv = objpv;
         sitbp->var.select.objpc = objpc;
@@ -307,9 +241,8 @@ split_by_index(RDB_table *tbp, _RDB_tbindex *indexp, RDB_transaction *txp)
         tbp->var.select.tbp = sitbp;
     } else {
         /*
-         * Convert table to RDB_SELECT_INDEX
+         * Convert table to index select
          */
-        tbp->kind = RDB_TB_SELECT_INDEX;
         tbp->var.select.indexp = indexp;
         tbp->var.select.objpv = objpv;
         tbp->var.select.objpc = objpc;
@@ -321,197 +254,357 @@ split_by_index(RDB_table *tbp, _RDB_tbindex *indexp, RDB_transaction *txp)
     return RDB_OK;
 }
 
-static int
-optimize_select(RDB_table *tbp, RDB_transaction *txp)
+static unsigned
+table_cost(RDB_table *tbp)
 {
-    int i;
-    RDB_table *stbp;
-    int idx;
-    int bestcost = INT_MAX;
-
-    if (tbp->var.select.tbp->kind != RDB_TB_REAL)
-        return RDB_OK;
-
-    stbp = tbp->var.select.tbp;
-
-    /*
-     * Convert condition into 'unbalanced' form
-     */
-    unbalance_and(tbp->var.select.exp);
-
-    /*
-     * Try to find best index
-     */
-    for (i = 0; i < stbp->var.real.indexc; i++) {
-        int cost = eval_index_exp(tbp->var.select.exp,
-                &stbp->var.real.indexv[i]);
-
-        if (cost < bestcost) {
-            bestcost = cost;
-            idx = i;
-        }
-    }
-
-    if (bestcost == INT_MAX) {
-        return RDB_OK;
-    }
-
-    return split_by_index(tbp, &stbp->var.real.indexv[idx], txp);
-}
-
-static int
-resolve_views(RDB_table *tbp);
-
-static int
-dup_named(RDB_table **tbpp)
-{
-    RDB_table *newtbp;
-
-    /*
-     * Duplicate table, if it has a name, otherwise call resolve_views().
-     */
-    if (RDB_table_name(*tbpp) != NULL) {
-        newtbp = _RDB_dup_vtable(*tbpp);
-        if (newtbp == NULL)
-            return RDB_NO_MEMORY;
-        *tbpp = newtbp;
-        return RDB_OK;
-    }
-    return resolve_views(*tbpp);
-}
-
-/*
- * Make a copy of all named virtual tables,
- * so the tree may be safely modified.
- */
-static int
-resolve_views(RDB_table *tbp)
-{
-    int ret;
-
     switch (tbp->kind) {
         case RDB_TB_REAL:
-            break;
+            return tbp->var.real.est_cardinality;
         case RDB_TB_MINUS:
-            ret = dup_named(&tbp->var.minus.tb1p);
-            if (ret != RDB_OK)
-                return ret;
-            ret = dup_named(&tbp->var.minus.tb2p);
-            if (ret != RDB_OK)
-                return ret;
-            break;
+            return table_cost(tbp->var.minus.tb1p); /* !! */
         case RDB_TB_UNION:
-            ret = dup_named(&tbp->var._union.tb1p);
-            if (ret != RDB_OK)
-                return ret;
-            ret = dup_named(&tbp->var._union.tb2p);
-            if (ret != RDB_OK)
-                return ret;
-            break;
+            return table_cost(tbp->var._union.tb1p)
+                + table_cost(tbp->var._union.tb2p);
         case RDB_TB_INTERSECT:
-            ret = dup_named(&tbp->var.intersect.tb1p);
-            if (ret != RDB_OK)
-                return ret;
-            ret = dup_named(&tbp->var.intersect.tb2p);
-            if (ret != RDB_OK)
-                return ret;
-            break;
+            return table_cost(tbp->var.intersect.tb1p);
         case RDB_TB_SELECT:
-        case RDB_TB_SELECT_INDEX:
-            ret = dup_named(&tbp->var.select.tbp);
-            if (ret != RDB_OK)
-                return ret;
-            break;
+            if (tbp->var.select.indexp == NULL)
+                return table_cost(tbp->var.select.tbp);
+            if (tbp->var.select.indexp->idxp == NULL)
+                return 1;
+            if (tbp->var.select.indexp->unique)
+                return 2;
+            if (!RDB_index_is_ordered(tbp->var.select.indexp->idxp))
+                return 3;
+            return 4; /* !! */
         case RDB_TB_JOIN:
-            ret = dup_named(&tbp->var.join.tb1p);
-            if (ret != RDB_OK)
-                return ret;
-            ret = dup_named(&tbp->var.join.tb2p);
-            if (ret != RDB_OK)
-                return ret;
-            break;
+            if (tbp->var.join.indexp == NULL)
+                return table_cost(tbp->var.join.tb1p)
+                        * table_cost(tbp->var.join.tb2p);
+            if (tbp->var.join.indexp->idxp == NULL)
+                return table_cost(tbp->var.join.tb1p);
+            if (tbp->var.join.indexp->unique)
+                return table_cost(tbp->var.join.tb1p) * 2;
+            if (!RDB_index_is_ordered(tbp->var.join.indexp->idxp))
+                return table_cost(tbp->var.join.tb1p) * 3;
+            return table_cost(tbp->var.join.tb1p) * 4;
         case RDB_TB_EXTEND:
-            ret = dup_named(&tbp->var.extend.tbp);
-            if (ret != RDB_OK)
-                return ret;
-            break;
+            return table_cost (tbp->var.extend.tbp);
         case RDB_TB_PROJECT:
-            ret = dup_named(&tbp->var.project.tbp);
-            if (ret != RDB_OK)
-                return ret;
-            break;
+            return table_cost(tbp->var.project.tbp);
         case RDB_TB_SUMMARIZE:
-            ret = dup_named(&tbp->var.summarize.tb1p);
-            if (ret != RDB_OK)
-                return ret;
-            break;
-            ret = dup_named(&tbp->var.summarize.tb2p);
-            if (ret != RDB_OK)
-                return ret;
-            break;
+            return table_cost(tbp->var.summarize.tb1p);
         case RDB_TB_RENAME:
-            ret = dup_named(&tbp->var.rename.tbp);
-            if (ret != RDB_OK)
-                return ret;
-            break;
+            return table_cost(tbp->var.rename.tbp);
         case RDB_TB_WRAP:
-            ret = dup_named(&tbp->var.wrap.tbp);
-            if (ret != RDB_OK)
-                return ret;
-            break;
+            return table_cost(tbp->var.wrap.tbp);
         case RDB_TB_UNWRAP:
-            ret = dup_named(&tbp->var.unwrap.tbp);
-            if (ret != RDB_OK)
-                return ret;
-            break;
+            return table_cost(tbp->var.unwrap.tbp);
         case RDB_TB_GROUP:
-            ret = dup_named(&tbp->var.group.tbp);
-            if (ret != RDB_OK)
-                return ret;
-            break;
+            return table_cost(tbp->var.group.tbp);
         case RDB_TB_UNGROUP:
-            ret = dup_named(&tbp->var.ungroup.tbp);
-            if (ret != RDB_OK)
-                return ret;
-            break;
+            return table_cost(tbp->var.ungroup.tbp);
         case RDB_TB_SDIVIDE:
-            ret = dup_named(&tbp->var.sdivide.tb1p);
-            if (ret != RDB_OK)
-                return ret;
-            ret = dup_named(&tbp->var.sdivide.tb2p);
-            if (ret != RDB_OK)
-                return ret;
-            ret = dup_named(&tbp->var.sdivide.tb3p);
-            if (ret != RDB_OK)
-                return ret;
-            break;
+            return table_cost(tbp->var.sdivide.tb1p)
+                    * table_cost(tbp->var.sdivide.tb2p); /* !! */
     }
-    return RDB_OK;
+    abort();
 }
 
 static int
-optimize(RDB_table *, RDB_transaction *);
+mutate(RDB_table *tbp, RDB_table **tbpv, int cap, RDB_transaction *txp);
 
 static int
-best_index(RDB_table *tbp, int attrc, char **attrv,
-        _RDB_tbindex **indexpp)
+mutate_select(RDB_table *tbp, RDB_table **tbpv, int cap, RDB_transaction *txp)
 {
     int i;
-    int bestcost = INT_MAX;
+    int ret;
+    RDB_table *ctbp = tbp->var.select.tbp;
 
-    if (tbp->kind != RDB_TB_REAL)
-        return INT_MAX;
+    if (ctbp->kind == RDB_TB_REAL) {
+        int tbc = 0;
 
-    for (i = 0; i < tbp->var.real.indexc; i++) {
-        int cost = eval_index_attrs(attrc, attrv, &tbp->var.real.indexv[i]);
+        /*
+         * Convert condition into 'unbalanced' form
+         */
+        unbalance_and(tbp->var.select.exp);
 
-        if (cost < bestcost) {
-            bestcost = cost;
-            *indexpp = &tbp->var.real.indexv[i];
+        for (i = 0; i < ctbp->var.real.indexc && tbc < cap; i++) {
+            if ((ctbp->var.real.indexv[i].idxp != NULL
+                    && RDB_index_is_ordered(ctbp->var.real.indexv[i].idxp))
+                    || expr_covers_index(tbp->var.select.exp, 
+                            &ctbp->var.real.indexv[i])) {
+                tbpv[tbc] = _RDB_dup_vtable(tbp);
+                if (tbpv[tbc] == NULL)
+                    return RDB_NO_MEMORY;
+                ret = split_by_index(tbpv[tbc++], &ctbp->var.real.indexv[i],
+                        txp);
+                if (ret != RDB_OK)
+                    return ret;
+            }
         }
+        return tbc;
+    } else {
+       int tbc = mutate(ctbp, tbpv, cap, txp);
+       if (tbc < 0)
+           return tbc;
+       for (i = 0; i < tbc; i++) {
+           RDB_table *ntbp;
+           RDB_expression *exp = RDB_dup_expr(tbp->var.select.exp);
+           if (exp == NULL)
+               return RDB_NO_MEMORY;
+
+           ret = RDB_select(tbpv[i], exp, txp, &ntbp);
+           if (ret != RDB_OK)
+               return ret;
+           tbpv[i] = ntbp;
+       }
+       return tbc;
     }
-    
-    return bestcost;
+}
+
+static int
+mutate_union(RDB_table *tbp, RDB_table **tbpv, int cap, RDB_transaction *txp)
+{
+    int tbc1, tbc2;
+    int i;
+    int ret;
+
+    tbc1 = mutate(tbp->var._union.tb1p, tbpv, cap, txp);
+    if (tbc1 < 0)
+        return tbc1;
+    for (i = 0; i < tbc1; i++) {
+        RDB_table *ntbp;
+        RDB_table *otbp = _RDB_dup_vtable(tbp->var._union.tb2p);
+        if (otbp == NULL)
+            return RDB_NO_MEMORY;
+
+        ret = RDB_union(tbpv[i], otbp, &ntbp);
+        if (ret != RDB_OK)
+            return ret;
+        tbpv[i] = ntbp;
+    }
+    tbc2 = mutate(tbp->var._union.tb2p, &tbpv[tbc1], cap - tbc1, txp);
+    if (tbc2 < 0)
+        return tbc2;
+    for (i = tbc1; i < tbc1 + tbc2; i++) {
+        RDB_table *ntbp;
+        RDB_table *otbp = _RDB_dup_vtable(tbp->var._union.tb1p);
+        if (otbp == NULL)
+            return RDB_NO_MEMORY;
+
+        ret = RDB_union(otbp, tbpv[i], &ntbp);
+        if (ret != RDB_OK)
+            return ret;
+        tbpv[i] = ntbp;
+    }
+    return tbc1 + tbc2;
+}
+
+static int
+mutate_minus(RDB_table *tbp, RDB_table **tbpv, int cap, RDB_transaction *txp)
+{
+    int tbc;
+    int i;
+    int ret;
+
+    tbc = mutate(tbp->var.minus.tb1p, tbpv, cap, txp);
+    if (tbc < 0)
+        return tbc;
+    for (i = 0; i < tbc; i++) {
+        RDB_table *ntbp;
+        RDB_table *otbp = _RDB_dup_vtable(tbp->var.minus.tb2p);
+        if (otbp == NULL)
+            return RDB_NO_MEMORY;
+
+        ret = RDB_minus(tbpv[i], otbp, &ntbp);
+        if (ret != RDB_OK)
+            return ret;
+        tbpv[i] = ntbp;
+    }
+    return tbc;
+}
+
+static int
+mutate_intersect(RDB_table *tbp, RDB_table **tbpv, int cap,
+        RDB_transaction *txp)
+{
+    int tbc1, tbc2;
+    int i;
+    int ret;
+
+    tbc1 = mutate(tbp->var.intersect.tb1p, tbpv, cap, txp);
+    if (tbc1 < 0)
+        return tbc1;
+    for (i = 0; i < tbc1; i++) {
+        RDB_table *ntbp;
+        RDB_table *otbp = _RDB_dup_vtable(tbp->var.intersect.tb2p);
+        if (otbp == NULL)
+            return RDB_NO_MEMORY;
+
+        ret = RDB_intersect(tbpv[i], otbp, &ntbp);
+        if (ret != RDB_OK)
+            return ret;
+        tbpv[i] = ntbp;
+    }
+    tbc2 = mutate(tbp->var.intersect.tb2p, &tbpv[tbc1], cap - tbc1, txp);
+    if (tbc2 < 0)
+        return tbc2;
+    for (i = tbc1; i < tbc1 + tbc2; i++) {
+        RDB_table *ntbp;
+        RDB_table *otbp = _RDB_dup_vtable(tbp->var.intersect.tb1p);
+        if (otbp == NULL)
+            return RDB_NO_MEMORY;
+
+        ret = RDB_intersect(tbpv[i], otbp, &ntbp);
+        if (ret != RDB_OK)
+            return ret;
+        tbpv[i] = ntbp;
+    }
+    return tbc1 + tbc2;
+}
+
+static int
+mutate_rename(RDB_table *tbp, RDB_table **tbpv, int cap, RDB_transaction *txp)
+{
+    int tbc;
+    int i;
+    int ret;
+
+    tbc = mutate(tbp->var.rename.tbp, tbpv, cap, txp);
+    if (tbc < 0)
+        return tbc;
+    for (i = 0; i < tbc; i++) {
+        RDB_table *ntbp;
+
+        ret = RDB_rename(tbpv[i], tbp->var.rename.renc, tbp->var.rename.renv,
+                &ntbp);
+        if (ret != RDB_OK)
+            return ret;
+        tbpv[i] = ntbp;
+    }
+    return tbc;
+}
+
+static int
+mutate_extend(RDB_table *tbp, RDB_table **tbpv, int cap, RDB_transaction *txp)
+{
+    int tbc;
+    int i, j;
+    int ret;
+    RDB_virtual_attr *extv;
+
+    tbc = mutate(tbp->var.extend.tbp, tbpv, cap, txp);
+    if (tbc < 0)
+        return tbc;
+
+    extv = malloc(sizeof (RDB_virtual_attr)
+            * tbp->var.extend.attrc);
+    if (extv == NULL)
+        return RDB_NO_MEMORY;
+    for (i = 0; i < tbp->var.extend.attrc; i++)
+        extv[i].name = tbp->var.extend.attrv[i].name;
+
+    for (i = 0; i < tbc; i++) {
+        RDB_table *ntbp;
+
+        for (j = 0; j < tbp->var.extend.attrc; j++) {
+            extv[j].exp = RDB_dup_expr(tbp->var.extend.attrv[j].exp);
+            if (extv[j].exp == NULL)
+                return RDB_NO_MEMORY;
+        }
+        ret = RDB_extend(tbpv[i], tbp->var.extend.attrc, extv, txp, &ntbp);
+        if (ret != RDB_OK) {
+            for (j = 0; j < tbp->var.extend.attrc; j++)
+                RDB_drop_expr(extv[j].exp);
+            free(extv);
+            return ret;
+        }
+        tbpv[i] = ntbp;
+    }
+    free(extv);
+    return tbc;
+}
+
+static int
+mutate_summarize(RDB_table *tbp, RDB_table **tbpv, int cap, RDB_transaction *txp)
+{
+    int tbc;
+    int i, j;
+    int ret;
+    RDB_summarize_add *addv;
+
+    tbc = mutate(tbp->var.summarize.tb1p, tbpv, cap, txp);
+    if (tbc < 0)
+        return tbc;
+
+    addv = malloc(sizeof (RDB_summarize_add) * tbp->var.summarize.addc);
+    if (addv == NULL)
+        return RDB_NO_MEMORY;
+    for (i = 0; i < tbp->var.summarize.addc; i++) {
+        addv[i].op = tbp->var.summarize.addv[i].op;
+        addv[i].name = tbp->var.summarize.addv[i].name;
+    }
+
+    for (i = 0; i < tbc; i++) {
+        RDB_table *ntbp;
+        RDB_table *otbp = _RDB_dup_vtable(tbp->var.summarize.tb2p);
+        if (otbp == NULL) {
+            free(addv);
+            return RDB_NO_MEMORY;
+        }
+
+        for (j = 0; j < tbp->var.summarize.addc; j++) {
+            addv[j].exp = RDB_dup_expr(tbp->var.summarize.addv[j].exp);
+            if (addv[j].exp == NULL)
+                return RDB_NO_MEMORY;
+        }
+
+        ret = RDB_summarize(tbpv[i], otbp, tbp->var.summarize.addc, addv,
+                txp, &ntbp);
+        if (ret != RDB_OK) {
+            for (j = 0; j < tbp->var.summarize.addc; j++)
+                RDB_drop_expr(addv[j].exp);
+            free(addv);
+            return ret;
+        }
+        tbpv[i] = ntbp;
+    }
+    free(addv);
+    return tbc;
+}
+
+static int
+mutate_project(RDB_table *tbp, RDB_table **tbpv, int cap, RDB_transaction *txp)
+{
+    int tbc;
+    int i;
+    int ret;
+    char **namev;
+
+    tbc = mutate(tbp->var.project.tbp, tbpv, cap, txp);
+    if (tbc < 0)
+        return tbc;
+
+    namev = malloc(sizeof (char *) * tbp->typ->var.basetyp->var.tuple.attrc);
+    if (namev == NULL)
+        return RDB_NO_MEMORY;
+    for (i = 0; i < tbp->typ->var.basetyp->var.tuple.attrc; i++)
+        namev[i] = tbp->typ->var.basetyp->var.tuple.attrv[i].name;
+
+    for (i = 0; i < tbc; i++) {
+        RDB_table *ntbp;
+
+        ret = RDB_project(tbpv[i], tbp->typ->var.basetyp->var.tuple.attrc,
+                namev, &ntbp);
+        if (ret != RDB_OK) {
+            free(namev);
+            return ret;
+        }
+        tbpv[i] = ntbp;
+    }
+    free(namev);
+    return tbc;
 }
 
 static int
@@ -533,11 +626,47 @@ common_attrs(RDB_type *tpltyp1, RDB_type *tpltyp2, char **cmattrv)
 }
 
 static int
-optimize_join(RDB_table *tbp, RDB_transaction *txp)
+mutate_join(RDB_table *tbp, RDB_table **tbpv, int cap, RDB_transaction *txp)
 {
+    int tbc1, tbc2, tbc;
+    int i;
     int ret;
     int cmattrc;
     char **cmattrv;
+
+    tbc1 = mutate(tbp->var.join.tb1p, tbpv, cap, txp);
+    if (tbc1 < 0)
+        return tbc1;
+    for (i = 0; i < tbc1; i++) {
+        RDB_table *ntbp;
+        RDB_table *otbp = _RDB_dup_vtable(tbp->var.join.tb2p);
+        if (otbp == NULL)
+            return RDB_NO_MEMORY;
+
+        ret = RDB_join(tbpv[i], otbp, &ntbp);
+        if (ret != RDB_OK)
+            return ret;
+        tbpv[i] = ntbp;
+    }
+    tbc2 = mutate(tbp->var.join.tb2p, &tbpv[tbc1], cap - tbc1, txp);
+    if (tbc2 < 0)
+        return tbc2;
+    for (i = tbc1; i < tbc1 + tbc2; i++) {
+        RDB_table *ntbp;
+        RDB_table *otbp = _RDB_dup_vtable(tbp->var.join.tb1p);
+        if (otbp == NULL)
+            return RDB_NO_MEMORY;
+
+        ret = RDB_join(otbp, tbpv[i], &ntbp);
+        if (ret != RDB_OK)
+            return ret;
+        tbpv[i] = ntbp;
+    }
+    tbc = tbc1 + tbc2;
+
+    /*
+     * Try to use indexes
+     */
 
     cmattrv = malloc(sizeof(char *)
             * tbp->var.join.tb1p->typ->var.basetyp->var.tuple.attrc);
@@ -547,152 +676,299 @@ optimize_join(RDB_table *tbp, RDB_transaction *txp)
             tbp->var.join.tb2p->typ->var.basetyp, cmattrv);
 
     if (cmattrc >= 1) {
-        int cost1, cost2;
-        _RDB_tbindex *index1p;
-        _RDB_tbindex *index2p;
-
-        cost1 = best_index(tbp->var.join.tb1p, cmattrc, cmattrv, &index1p);
-        cost2 = best_index(tbp->var.join.tb2p, cmattrc, cmattrv, &index2p);
-        if (cost2 < cost1 || (cost1 == cost2 && cost2 < INT_MAX)) {
-            tbp->var.join.indexp = index2p;
-        } else if (cost1 < cost2) {
-            /* Use index for table #1, swap tables */
-            RDB_table *ttbp = tbp->var.join.tb1p;
-            tbp->var.join.tb1p = tbp->var.join.tb2p;
-            tbp->var.join.tb2p = ttbp;
-
-            tbp->var.join.indexp = index1p;
+        if (tbp->var.join.tb1p->kind == RDB_TB_REAL) {
+            for (i = 0; i < tbp->var.join.tb1p->var.real.indexc && tbc < cap;
+                    i++) {
+                if (attrv_covers_index(cmattrc, cmattrv,
+                        &tbp->var.join.tb1p->var.real.indexv[i])) {
+                    /*
+                     * Different table order, because the index must belong
+                     * to table #2
+                     */
+                    ret = RDB_join(tbp->var.join.tb2p, tbp->var.join.tb1p,
+                            &tbpv[tbc]);
+                    if (ret != RDB_OK) {
+                        free(cmattrv);
+                        return ret;
+                    }
+                    tbpv[tbc++]->var.join.indexp =
+                            &tbp->var.join.tb1p->var.real.indexv[i];
+                }
+            }
+        }
+        if (tbp->var.join.tb2p->kind == RDB_TB_REAL) {
+            for (i = 0; i < tbp->var.join.tb2p->var.real.indexc && tbc < cap;
+                    i++) {
+                if (attrv_covers_index(cmattrc, cmattrv,
+                        &tbp->var.join.tb2p->var.real.indexv[i])) {
+                    tbpv[tbc] = _RDB_dup_vtable(tbp);
+                    if (tbpv[tbc] == NULL) {
+                        free(cmattrv);
+                        return RDB_NO_MEMORY;
+                    }
+                    tbpv[tbc++]->var.join.indexp =
+                            &tbp->var.join.tb2p->var.real.indexv[i];
+                }
+            }
         }
     }
 
     free(cmattrv);
-
-    ret = optimize(tbp->var.join.tb1p, txp);
-    if (ret != RDB_OK)
-        return ret;
-    if (tbp->var.join.indexp == NULL) {
-        ret = optimize(tbp->var.join.tb2p, txp);
-        if (ret != RDB_OK)
-            return ret;
-    }
-    return RDB_OK;
+    return tbc;
 }
 
 static int
-optimize(RDB_table *tbp, RDB_transaction *txp)
+mutate_wrap(RDB_table *tbp, RDB_table **tbpv, int cap, RDB_transaction *txp)
 {
+    int tbc;
+    int i;
     int ret;
 
-    switch (tbp->kind) {
-        case RDB_TB_REAL:
-            break;
-        case RDB_TB_MINUS:
-            ret = optimize(tbp->var.minus.tb1p, txp);
-            if (ret != RDB_OK)
-                return ret;
-            ret = optimize(tbp->var.minus.tb2p, txp);
-            if (ret != RDB_OK)
-                return ret;
-            break;
-        case RDB_TB_UNION:
-            ret = optimize(tbp->var._union.tb1p, txp);
-            if (ret != RDB_OK)
-                return ret;
-            ret = optimize(tbp->var._union.tb2p, txp);
-            if (ret != RDB_OK)
-                return ret;
-            break;
-        case RDB_TB_INTERSECT:
-            ret = optimize(tbp->var.intersect.tb1p, txp);
-            if (ret != RDB_OK)
-                return ret;
-            ret = optimize(tbp->var.intersect.tb2p, txp);
-            if (ret != RDB_OK)
-                return ret;
-            break;
-        case RDB_TB_SELECT:
-        case RDB_TB_SELECT_INDEX:
-            ret = optimize_select(tbp, txp);
-            if (ret != RDB_OK)
-                return ret;
-            break;
-        case RDB_TB_JOIN:
-            ret = optimize_join(tbp, txp);
-            if (ret != RDB_OK)
-                return ret;
-            break;
-        case RDB_TB_EXTEND:
-            ret = optimize(tbp->var.extend.tbp, txp);
-            if (ret != RDB_OK)
-                return ret;
-            break;
-        case RDB_TB_PROJECT:
-            ret = optimize(tbp->var.project.tbp, txp);
-            if (ret != RDB_OK)
-                return ret;
-            break;
-        case RDB_TB_SUMMARIZE:
-            ret = optimize(tbp->var.summarize.tb1p, txp);
-            if (ret != RDB_OK)
-                return ret;
-            ret = optimize(tbp->var.summarize.tb2p, txp);
-            if (ret != RDB_OK)
-                return ret;
-            break;
-        case RDB_TB_RENAME:
-            ret = optimize(tbp->var.rename.tbp, txp);
-            if (ret != RDB_OK)
-                return ret;
-            break;
-        case RDB_TB_WRAP:
-            ret = optimize(tbp->var.wrap.tbp, txp);
-            if (ret != RDB_OK)
-                return ret;
-            break;
-        case RDB_TB_UNWRAP:
-            ret = optimize(tbp->var.unwrap.tbp, txp);
-            if (ret != RDB_OK)
-                return ret;
-            break;
-        case RDB_TB_GROUP:
-            ret = optimize(tbp->var.group.tbp, txp);
-            if (ret != RDB_OK)
-                return ret;
-            break;
-        case RDB_TB_UNGROUP:
-            ret = optimize(tbp->var.ungroup.tbp, txp);
-            if (ret != RDB_OK)
-                return ret;
-            break;
-        case RDB_TB_SDIVIDE:
-            ret = optimize(tbp->var.sdivide.tb1p, txp);
-            if (ret != RDB_OK)
-                return ret;
-            ret = optimize(tbp->var.sdivide.tb2p, txp);
-            if (ret != RDB_OK)
-                return ret;
-            ret = optimize(tbp->var.sdivide.tb3p, txp);
-            if (ret != RDB_OK)
-                return ret;
-            break;
-    }
-    tbp->optimized = RDB_TRUE;
+    tbc = mutate(tbp->var.wrap.tbp, tbpv, cap, txp);
+    if (tbc < 0)
+        return tbc;
+    for (i = 0; i < tbc; i++) {
+        RDB_table *ntbp;
 
-    return RDB_OK;
+        ret = RDB_wrap(tbpv[i], tbp->var.wrap.wrapc, tbp->var.wrap.wrapv,
+                &ntbp);
+        if (ret != RDB_OK)
+            return ret;
+        tbpv[i] = ntbp;
+    }
+    return tbc;
 }
 
-int
-_RDB_optimize(RDB_table *tbp, RDB_transaction *txp)
+static int
+mutate_unwrap(RDB_table *tbp, RDB_table **tbpv, int cap, RDB_transaction *txp)
 {
+    int tbc;
+    int i;
     int ret;
 
-    ret = resolve_views(tbp);
+    tbc = mutate(tbp->var.unwrap.tbp, tbpv, cap, txp);
+    if (tbc < 0)
+        return tbc;
+    for (i = 0; i < tbc; i++) {
+        RDB_table *ntbp;
+
+        ret = RDB_unwrap(tbpv[i], tbp->var.unwrap.attrc, tbp->var.unwrap.attrv,
+                &ntbp);
+        if (ret != RDB_OK)
+            return ret;
+        tbpv[i] = ntbp;
+    }
+    return tbc;
+}
+
+static int
+mutate_group(RDB_table *tbp, RDB_table **tbpv, int cap, RDB_transaction *txp)
+{
+    int tbc;
+    int i;
+    int ret;
+
+    tbc = mutate(tbp->var.group.tbp, tbpv, cap, txp);
+    if (tbc < 0)
+        return tbc;
+    for (i = 0; i < tbc; i++) {
+        RDB_table *ntbp;
+
+        ret = RDB_group(tbpv[i], tbp->var.group.attrc, tbp->var.group.attrv,
+                tbp->var.group.gattr, &ntbp);
+        if (ret != RDB_OK)
+            return ret;
+        tbpv[i] = ntbp;
+    }
+    return tbc;
+}
+
+static int
+mutate_ungroup(RDB_table *tbp, RDB_table **tbpv, int cap, RDB_transaction *txp)
+{
+    int tbc;
+    int i;
+    int ret;
+
+    tbc = mutate(tbp->var.ungroup.tbp, tbpv, cap, txp);
+    if (tbc < 0)
+        return tbc;
+    for (i = 0; i < tbc; i++) {
+        RDB_table *ntbp;
+
+        ret = RDB_ungroup(tbpv[i], tbp->var.ungroup.attr, &ntbp);
+        if (ret != RDB_OK)
+            return ret;
+        tbpv[i] = ntbp;
+    }
+    return tbc;
+}
+
+static int
+mutate_sdivide(RDB_table *tbp, RDB_table **tbpv, int cap, RDB_transaction *txp)
+{
+    int tbc1, tbc2;
+    int i;
+    int ret;
+
+    tbc1 = mutate(tbp->var.sdivide.tb1p, tbpv, cap, txp);
+    if (tbc1 < 0)
+        return tbc1;
+    for (i = 0; i < tbc1; i++) {
+        RDB_table *ntbp;
+        RDB_table *otb1p = _RDB_dup_vtable(tbp->var.sdivide.tb2p);
+        RDB_table *otb2p = _RDB_dup_vtable(tbp->var.sdivide.tb3p);
+        if (otb1p == NULL || otb2p == NULL)
+            return RDB_NO_MEMORY;
+
+        ret = RDB_sdivide(tbpv[i], otb1p, otb2p, &ntbp);
+        if (ret != RDB_OK)
+            return ret;
+        tbpv[i] = ntbp;
+    }
+    tbc2 = mutate(tbp->var.sdivide.tb2p, &tbpv[tbc1], cap - tbc1, txp);
+    if (tbc2 < 0)
+        return tbc2;
+    for (i = tbc1; i < tbc1 + tbc2; i++) {
+        RDB_table *ntbp;
+        RDB_table *otb1p = _RDB_dup_vtable(tbp->var.sdivide.tb1p);
+        RDB_table *otb2p = _RDB_dup_vtable(tbp->var.sdivide.tb3p);
+        if (otb1p == NULL || otb2p == NULL)
+            return RDB_NO_MEMORY;
+
+        ret = RDB_sdivide(otb1p, tbpv[i], otb2p, &ntbp);
+        if (ret != RDB_OK)
+            return ret;
+        tbpv[i] = ntbp;
+    }
+    return tbc1 + tbc2;
+}
+
+static int
+mutate(RDB_table *tbp, RDB_table **tbpv, int cap, RDB_transaction *txp)
+{
+    switch (tbp->kind) {
+        case RDB_TB_REAL:
+            return 0;
+        case RDB_TB_UNION:
+            return mutate_union(tbp, tbpv, cap, txp);
+        case RDB_TB_MINUS:
+            return mutate_minus(tbp, tbpv, cap, txp);
+        case RDB_TB_INTERSECT:
+            return mutate_intersect(tbp, tbpv, cap, txp);
+        case RDB_TB_SELECT:
+            /* Select over index is not further optimized */
+            if (tbp->var.select.indexp == NULL)
+                return mutate_select(tbp, tbpv, cap, txp);
+            return 0;
+        case RDB_TB_JOIN:
+            return mutate_join(tbp, tbpv, cap, txp);
+        case RDB_TB_EXTEND:
+            return mutate_extend(tbp, tbpv, cap, txp);
+        case RDB_TB_PROJECT:
+            return mutate_project(tbp, tbpv, cap, txp);
+        case RDB_TB_SUMMARIZE:
+            return mutate_summarize(tbp, tbpv, cap, txp);
+        case RDB_TB_RENAME:
+            return mutate_rename(tbp, tbpv, cap, txp);
+        case RDB_TB_WRAP:
+            return mutate_wrap(tbp, tbpv, cap, txp);
+        case RDB_TB_UNWRAP:
+            return mutate_unwrap(tbp, tbpv, cap, txp);
+        case RDB_TB_GROUP:
+            return mutate_group(tbp, tbpv, cap, txp);
+        case RDB_TB_UNGROUP:
+            return mutate_ungroup(tbp, tbpv, cap, txp);
+        case RDB_TB_SDIVIDE:
+            return mutate_sdivide(tbp, tbpv, cap, txp);
+    }
+    return 0;
+}
+
+enum {
+    tbpv_cap = 256
+};
+
+int
+_RDB_optimize(RDB_table *tbp, int seqitc, const RDB_seq_item seqitv[],
+        RDB_transaction *txp, RDB_table **ntbpp)
+{
+    RDB_table *ntbp;
+    int ret;
+    int i, bestn;
+    int tbc;
+    unsigned bestcost, obestcost;
+    RDB_table *tbpv[tbpv_cap];
+/* !!
+    RDB_object strobj;
+*/    
+    if (tbp->kind == RDB_TB_REAL) {
+        *ntbpp = tbp;
+        return RDB_OK;
+    }
+
+    /*
+     * Make a copy of the table, so it can be transformed freely
+     */
+    ntbp = _RDB_dup_vtable(tbp);
+    if (ntbp == NULL)
+        return RDB_NO_MEMORY;
+
+    /*
+     * Algebraic optimization
+     */
+    ret = _RDB_transform(ntbp);
     if (ret != RDB_OK)
         return ret;
 
-    ret = _RDB_transform(tbp);
-    if (ret != RDB_OK)
-        return ret;
+    bestcost = table_cost(ntbp);
 
-    return optimize(tbp, txp);
+    do {
+        obestcost = bestcost;
+
+        tbc = mutate(ntbp, tbpv, tbpv_cap, txp);
+        if (tbc < 0)
+            return tbc;
+
+        bestn = -1;
+
+        for (i = 0; i < tbc; i++) {
+            int cost = table_cost(tbpv[i]);
+
+/* !!
+            RDB_init_obj(&strobj);
+            _RDB_table_to_str(&strobj, tbpv[i], RDB_SHOW_INDEX);
+            fprintf(stderr, "checking: %s, cost: %u\n", (char *) strobj.var.bin.datap,
+                    cost);
+            RDB_destroy_obj(&strobj);
+*/
+
+            if (cost < bestcost) {
+                bestcost = cost;
+                bestn = i;
+            }
+        }
+        if (bestn == -1) {
+            for (i = 0; i < tbc; i++)
+                RDB_drop_table(tbpv[i], txp);
+        } else {
+            RDB_drop_table(ntbp, txp);
+            ntbp = tbpv[bestn];
+            for (i = 0; i < tbc; i++) {
+                if (i != bestn)
+                    RDB_drop_table(tbpv[i], txp);
+            }
+        }
+
+/* !!
+        RDB_init_obj(&strobj);
+        _RDB_table_to_str(&strobj, ntbp, RDB_SHOW_INDEX);
+        fprintf(stderr, "best: %s, cost: %u\n", (char *) strobj.var.bin.datap,
+                bestcost);
+        RDB_destroy_obj(&strobj);
+*/
+    } while (bestcost < obestcost);
+
+    *ntbpp = ntbp;
+    return RDB_OK;
 }

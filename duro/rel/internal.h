@@ -406,7 +406,8 @@ _RDB_open_table_index(RDB_table *tbp, _RDB_tbindex *indexp,
         RDB_environment *, RDB_transaction *txp);
 
 int
-_RDB_optimize(RDB_table *tbp, RDB_transaction *);
+_RDB_optimize(RDB_table *tbp, int seqitc, const RDB_seq_item seqitv[],
+        RDB_transaction *, RDB_table **ntbpp);
 
 int
 _RDB_transform(RDB_table *tbp);
@@ -422,5 +423,12 @@ _RDB_ro_op(const char *opname, int argc, RDB_expression *argv[]);
 
 int
 _RDB_duprem(RDB_qresult *qrp);
+
+RDB_object **
+_RDB_index_objpv(_RDB_tbindex *indexp, RDB_expression *exp, RDB_type *tbtyp,
+        int objpc, RDB_bool all_eq, RDB_bool asc);
+
+RDB_expression *
+_RDB_attr_node(RDB_expression *exp, const char *attrname, char *opname);
 
 #endif

@@ -589,7 +589,7 @@ _RDB_tuple_equals(const RDB_object *tpl1p, const RDB_object *tpl2p,
 }
 
 /*
- * Generate type from tuple
+ * Generate type from tuple !! does not work for empty tuples
  */
 RDB_type *
 _RDB_tuple_type(const RDB_object *tplp)

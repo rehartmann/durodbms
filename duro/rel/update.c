@@ -707,8 +707,8 @@ update(RDB_table *tbp, RDB_expression *condp, int updc,
         case RDB_TB_INTERSECT:
             return RDB_NOT_SUPPORTED;
         case RDB_TB_SELECT:
-            return update_select(tbp, condp, updc, updv, txp);
-        case RDB_TB_SELECT_INDEX:
+            if (tbp->var.select.indexp == NULL)
+                return update_select(tbp, condp, updc, updv, txp);
             if (tbp->var.select.indexp->idxp == NULL)
                 return update_select_pindex(tbp, condp, updc, updv, txp);
             return update_select_index(tbp, condp, updc, updv, txp);
@@ -744,6 +744,7 @@ RDB_update(RDB_table *tbp, RDB_expression *condp, int updc,
 {
     int ret;
     int i;
+    RDB_table *ntbp;
 
     if (!RDB_tx_is_running(txp))
         return RDB_INVALID_TRANSACTION;
@@ -771,17 +772,24 @@ RDB_update(RDB_table *tbp, RDB_expression *condp, int updc,
             return ret;
     }
 
-    if (!tbp->optimized) {
-        ret = _RDB_optimize(tbp, txp);
-        if (ret != RDB_OK) {
+    ret = _RDB_optimize(tbp, 0, NULL, txp, &ntbp);
+    if (ret != RDB_OK) {
+        if (condp != NULL)
             _RDB_free_table(tbp);
-            return ret;
-        }
+        return ret;
     }
 
-    ret = update(tbp, NULL, updc, updv, txp);
+    ret = update(ntbp, NULL, updc, updv, txp);
+    if (ret == RDB_OK) {
+        if (ntbp->kind != RDB_TB_REAL)
+            ret = RDB_drop_table(ntbp, txp);
+        ntbp = NULL;
+    }
+
     if (condp != NULL)
         _RDB_free_table(tbp);
+    if (ntbp != NULL && ntbp->kind != RDB_TB_REAL)
+        RDB_drop_table(ntbp, txp);
     if (RDB_is_syserr(ret))
         RDB_rollback_all(txp);
     return ret;

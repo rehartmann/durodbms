@@ -189,7 +189,6 @@ transform_select(RDB_table *tbp)
             case RDB_TB_REAL:
                 return transform_exp(tbp->var.select.exp);
             case RDB_TB_SELECT:
-            case RDB_TB_SELECT_INDEX:
             {
                 RDB_expression *argv[2];
 
@@ -230,6 +229,7 @@ transform_select(RDB_table *tbp)
                 chtbp->kind = RDB_TB_SELECT;
                 chtbp->var.select.tbp = htbp;
                 chtbp->var.select.exp = exp;
+                chtbp->var.select.indexp = NULL;
 
                 /* Keys may have changed, so delete them */
                 del_keys(chtbp);
@@ -266,6 +266,7 @@ transform_select(RDB_table *tbp)
                 chtbp->kind = RDB_TB_SELECT;
                 chtbp->var.select.tbp = htbp;
                 chtbp->var.select.exp = exp;
+                chtbp->var.select.indexp = NULL;
 
                 ret = transform_select(newtbp);
                 if (ret != RDB_OK)
@@ -306,6 +307,7 @@ transform_select(RDB_table *tbp)
                 chtbp->kind = RDB_TB_SELECT;
                 chtbp->var.select.tbp = htbp;
                 chtbp->var.select.exp = exp;
+                chtbp->var.select.indexp = NULL;
 
                 ret = transform_select(newtbp);
                 if (ret != RDB_OK)
@@ -338,6 +340,7 @@ transform_select(RDB_table *tbp)
                 chtbp->kind = RDB_TB_SELECT;
                 chtbp->var.select.tbp = htbp;
                 chtbp->var.select.exp = exp;
+                chtbp->var.select.indexp = NULL;
 
                 ret = copy_type(chtbp, htbp);
                 if (ret != RDB_OK)
@@ -370,6 +373,7 @@ transform_select(RDB_table *tbp)
                 chtbp->kind = RDB_TB_SELECT;
                 chtbp->var.select.tbp = htbp;
                 chtbp->var.select.exp = exp;
+                chtbp->var.select.indexp = NULL;
 
                 ret = copy_type(chtbp, htbp);
                 if (ret != RDB_OK)
@@ -556,7 +560,6 @@ transform_project(RDB_table *tbp)
                 chtbp = tbp->var.project.tbp;
                 break;
             case RDB_TB_SELECT:
-            case RDB_TB_SELECT_INDEX:
             case RDB_TB_MINUS:
             case RDB_TB_INTERSECT:
             case RDB_TB_JOIN:
@@ -606,7 +609,6 @@ _RDB_transform(RDB_table *tbp)
                 return ret;
             break;
         case RDB_TB_SELECT:
-        case RDB_TB_SELECT_INDEX:
             ret = transform_select(tbp);
             if (ret != RDB_OK)
                 return ret;
