@@ -12,6 +12,8 @@ DEPTNO: 1
 COUNT_EMPS: 1
 SUM_SALARY: 4000.000000
 AVG_SALARY: 4000.000000
+Calling RDB_table_contains()...Yes - OK
+Calling RDB_table_contains()...Not found - OK
 Dropping summarize
 End of transaction
 Closing environment

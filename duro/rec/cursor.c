@@ -35,8 +35,6 @@ RDB_recmap_cursor(RDB_cursor **curpp, RDB_recmap *rfp, RDB_bool wr,
 int
 RDB_destroy_cursor(RDB_cursor *curp)
 {
-    int res;
-
     free(curp->current_key.data);
     free(curp->current_data.data);
     return RDB_convert_err(curp->cursorp->c_close(curp->cursorp));

@@ -43,6 +43,47 @@ error:
     return err;
 }
 
+static int
+check_contains(RDB_table *tbp, RDB_transaction *txp)
+{
+    int err;
+    RDB_tuple tpl;
+
+    RDB_init_tuple(&tpl);
+    
+    RDB_tuple_set_int(&tpl, "DEPTNO", 2);
+    RDB_tuple_set_int(&tpl, "COUNT_EMPS", 2);
+    RDB_tuple_set_rational(&tpl, "SUM_SALARY", 8100);
+    RDB_tuple_set_rational(&tpl, "AVG_SALARY", 4050);
+
+    printf("Calling RDB_table_contains()...");
+    err = RDB_table_contains(tbp, &tpl, txp);
+    
+    if (err == RDB_OK) {
+        puts("Yes - OK");
+    } else if (err == RDB_NOT_FOUND) {
+        puts("Not found");
+    } else {
+        puts(RDB_strerror(err));
+        return err;
+    }
+
+    RDB_tuple_set_rational(&tpl, "SUM_SALARY", 4100);
+    printf("Calling RDB_table_contains()...");
+    err = RDB_table_contains(tbp, &tpl, txp);
+    
+    if (err == RDB_OK) {
+        puts("Yes");
+    } else if (err == RDB_NOT_FOUND) {
+        puts("Not found - OK");
+    } else {
+        puts(RDB_strerror(err));
+        return err;
+    }
+
+    return RDB_OK;
+}
+
 static char *projattr = "DEPTNO";
 
 int
@@ -99,6 +140,12 @@ test_summarize(RDB_database *dbp)
     printf("Printing table\n");
     
     err = print_table(vtbp, &tx);
+    if (err != RDB_OK) {
+        RDB_rollback(&tx);
+        return err;
+    } 
+
+    err = check_contains(vtbp, &tx);
     if (err != RDB_OK) {
         RDB_rollback(&tx);
         return err;

@@ -1351,7 +1351,7 @@ drop_table_qresults(RDB_table *tbp, RDB_transaction *txp)
     qrp = txp->first_qrp;
     while (qrp != NULL) {
         nextqrp = qrp->nextp;
-        if (qrp->tablep == tbp) {
+        if (qrp->tbp == tbp) {
             hres = _RDB_drop_qresult(qrp, txp);
             if (prevqrp == NULL)
                 txp->first_qrp = nextqrp;

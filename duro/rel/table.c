@@ -139,7 +139,8 @@ RDB_insert(RDB_table *tbp, const RDB_tuple *tup, RDB_transaction *txp)
         case RDB_TB_UNION:
         {
             int res2;
-        
+
+            /* !! may be very inefficient */        
             if (RDB_table_contains(tbp->var._union.tbp1, tup, txp) == RDB_OK
                     || RDB_table_contains(tbp->var._union.tbp2, tup, txp) == RDB_OK)
                 return RDB_ELEMENT_EXISTS;
@@ -949,8 +950,19 @@ RDB_table_contains(RDB_table *tbp, const RDB_tuple *tup, RDB_transaction *txp)
         case RDB_TB_PROJECT:
             return project_contains(tbp, tup, txp);
         case RDB_TB_SUMMARIZE:
-            /* !! */
-            return RDB_NOT_SUPPORTED;
+            {
+                int res2;
+            
+                RDB_qresult *qrp;
+                res = _RDB_table_qresult(tbp, &qrp, txp);
+                if (res != RDB_OK)
+                    return res;
+                res = _RDB_qresult_contains(qrp, tup, txp);
+                res2 = _RDB_drop_qresult(qrp, txp);
+                if (res2 != RDB_OK)
+                    return res2;
+                return res;
+            }
         case RDB_TB_RENAME:
             /* !! */
             return RDB_NOT_SUPPORTED;

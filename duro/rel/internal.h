@@ -6,19 +6,16 @@
 #define AVG_COUNT_SUFFIX "$C"
 
 typedef struct RDB_qresult {
-    RDB_table *tablep;
+    RDB_table *tbp;
     union {
         RDB_cursor *curp;
         struct {
             struct RDB_qresult *qrp;
+            struct RDB_qresult *qr2p;
             
             /* only used for join */
-            struct RDB_qresult *nestedp;
             RDB_tuple tpl;
             RDB_bool tpl_valid;
-            
-            /* table #, only used for union */
-            int tbno;
         } virtual;
     } var;
     int endreached;
@@ -43,6 +40,9 @@ _RDB_table_qresult(RDB_table *, RDB_qresult **, RDB_transaction *);
 
 int
 _RDB_next_tuple(RDB_qresult *, RDB_tuple *, RDB_transaction *);
+
+int
+_RDB_qresult_contains(RDB_qresult *, const RDB_tuple *, RDB_transaction *);
 
 int
 _RDB_drop_qresult(RDB_qresult *, RDB_transaction *);
@@ -72,6 +72,6 @@ RDB_evaluate_bool(RDB_expression *, const RDB_tuple *tup, RDB_transaction *,
 int
 RDB_evaluate(RDB_expression *, const RDB_tuple *, RDB_transaction *, RDB_value *);
 
-#define _RDB_pkey_len(tbp) (tbp->keyv[0].attrc)
+#define _RDB_pkey_len(tbp) ((tbp)->keyv[0].attrc)
 
 #endif
