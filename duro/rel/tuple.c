@@ -285,7 +285,7 @@ RDB_extend_tuple(RDB_object *tplp, int attrc, RDB_virtual_attr attrv[],
 }
 
 int
-RDB_rename_tuple(const RDB_object *tplp, int renc, RDB_renaming renv[],
+RDB_rename_tuple(const RDB_object *tplp, int renc, const RDB_renaming renv[],
                  RDB_object *restup)
 {
     RDB_hashmap_iter it;
@@ -319,7 +319,7 @@ RDB_rename_tuple(const RDB_object *tplp, int renc, RDB_renaming renv[],
 }
 
 static int
-find_rename_to(int renc, RDB_renaming renv[], const char *name)
+find_rename_to(int renc, const RDB_renaming renv[], const char *name)
 {
     int i;
 
@@ -331,7 +331,7 @@ find_rename_to(int renc, RDB_renaming renv[], const char *name)
 }
 
 int
-_RDB_invrename_tuple(const RDB_object *tup, int renc, RDB_renaming renv[],
+_RDB_invrename_tuple(const RDB_object *tup, int renc, const RDB_renaming renv[],
                  RDB_object *restup)
 {
     RDB_hashmap_iter it;
@@ -368,8 +368,8 @@ _RDB_invrename_tuple(const RDB_object *tup, int renc, RDB_renaming renv[],
  * Invert wrap operation on tuple
  */
 int
-_RDB_invwrap_tuple(const RDB_object *tplp, int wrapc, RDB_wrapping wrapv[],
-        RDB_object *restplp)
+_RDB_invwrap_tuple(const RDB_object *tplp, int wrapc,
+        const RDB_wrapping wrapv[], RDB_object *restplp)
 {
     int i;
     int ret;
@@ -454,7 +454,7 @@ _RDB_copy_tuple(RDB_object *dstp, const RDB_object *srcp)
 }
 
 int
-RDB_wrap_tuple(const RDB_object *tplp, int wrapc, RDB_wrapping wrapv[],
+RDB_wrap_tuple(const RDB_object *tplp, int wrapc, const RDB_wrapping wrapv[],
                RDB_object *restplp)
 {
     int i, j;

@@ -7,14 +7,42 @@
 
 #include "rdb.h"
 #include "internal.h"
+#include <gen/strfns.h>
 #include <stdlib.h>
+
+static void
+del_keys(RDB_table *tbp)
+{
+    int i;
+
+    if (tbp->keyv != NULL) {
+        /* Delete candidate keys */
+        for (i = 0; i < tbp->keyc; i++) {
+            RDB_free_strvec(tbp->keyv[i].strc, tbp->keyv[i].strv);
+        }
+        free(tbp->keyv);
+        tbp->keyv = NULL;
+    }
+}
+
+static int
+copy_type(RDB_table *dstp, const RDB_table *srcp)
+{
+    RDB_type *typ = _RDB_dup_nonscalar_type(srcp->typ);
+    if (typ == NULL)
+        return RDB_NO_MEMORY;
+
+    RDB_drop_type(dstp->typ, NULL);
+    dstp->typ = typ;
+
+    return RDB_OK;
+}
+
 
 static int
 transform_select(RDB_table *tbp)
 {
     int ret;
-    int keyc;
-    RDB_string_vec *keyv;
     RDB_expression *exp;
     RDB_table *chtbp = tbp->var.select.tbp;
 
@@ -42,8 +70,6 @@ transform_select(RDB_table *tbp)
                 RDB_table *htbp = chtbp->var.minus.tb1p;
 
                 exp = tbp->var.select.exp;
-                keyc = tbp->keyc;
-                keyv = tbp->keyv;
 
                 ret = _RDB_transform(chtbp->var.minus.tb2p);
                 if (ret != RDB_OK)
@@ -54,11 +80,13 @@ transform_select(RDB_table *tbp)
                 tbp->keyv = chtbp->keyv;
                 tbp->var.minus.tb1p = chtbp;
                 tbp->var.minus.tb2p = chtbp->var.minus.tb2p;
+
                 chtbp->kind = RDB_TB_SELECT;
-                chtbp->keyc = keyc;
-                chtbp->keyv = keyv;
                 chtbp->var.select.tbp = htbp;
                 chtbp->var.select.exp = exp;
+
+                /* Keys may have changed, so delete them */
+                del_keys(chtbp);
 
                 tbp = chtbp;
                 chtbp = tbp->var.select.tbp;
@@ -67,7 +95,7 @@ transform_select(RDB_table *tbp)
             case RDB_TB_UNION:
             {
                 RDB_table *newtbp;
-                RDB_table *htbp = tbp->var.select.tbp->var._union.tb1p;
+                RDB_table *htbp = chtbp->var._union.tb1p;
                 RDB_expression *ex2p = RDB_dup_expr(tbp->var.select.exp);
 
                 if (ex2p == NULL)
@@ -80,23 +108,20 @@ transform_select(RDB_table *tbp)
                 }
 
                 exp = tbp->var.select.exp;
-                keyc = tbp->keyc;
-                keyv = tbp->keyv;
 
                 tbp->kind = RDB_TB_UNION;
-                tbp->keyc = chtbp->keyc;
-                tbp->keyv = chtbp->keyv;
                 tbp->var._union.tb1p = chtbp;
                 tbp->var._union.tb2p = newtbp;
                 chtbp->kind = RDB_TB_SELECT;
-                chtbp->keyc = keyc;
-                chtbp->keyv = keyv;
                 chtbp->var.select.tbp = htbp;
                 chtbp->var.select.exp = exp;
 
                 ret = transform_select(newtbp);
                 if (ret != RDB_OK)
                     return ret;
+
+                /* Keys may have changed, so delete them */
+                del_keys(chtbp);
 
                 tbp = chtbp;
                 chtbp = tbp->var.select.tbp;
@@ -105,7 +130,7 @@ transform_select(RDB_table *tbp)
             case RDB_TB_INTERSECT:
             {
                 RDB_table *newtbp;
-                RDB_table *htbp = tbp->var.select.tbp->var._union.tb1p;
+                RDB_table *htbp = chtbp->var._union.tb1p;
                 RDB_expression *ex2p = RDB_dup_expr(tbp->var.select.exp);
 
                 if (ex2p == NULL)
@@ -118,17 +143,11 @@ transform_select(RDB_table *tbp)
                 }
 
                 exp = tbp->var.select.exp;
-                keyc = tbp->keyc;
-                keyv = tbp->keyv;
 
                 tbp->kind = RDB_TB_INTERSECT;
-                tbp->keyc = chtbp->keyc;
-                tbp->keyv = chtbp->keyv;
                 tbp->var._union.tb1p = chtbp;
                 tbp->var._union.tb2p = newtbp;
                 chtbp->kind = RDB_TB_SELECT;
-                chtbp->keyc = keyc;
-                chtbp->keyv = keyv;
                 chtbp->var.select.tbp = htbp;
                 chtbp->var.select.exp = exp;
 
@@ -136,15 +155,75 @@ transform_select(RDB_table *tbp)
                 if (ret != RDB_OK)
                     return ret;
 
+                /* Keys may have changed, so delete them */
+                del_keys(chtbp);
+
+                tbp = chtbp;
+                chtbp = tbp->var.select.tbp;
+                break;
+            }
+            case RDB_TB_EXTEND:
+            {
+                RDB_table *htbp = chtbp->var.extend.tbp;
+
+                exp = tbp->var.select.exp;
+                ret = _RDB_resolve_extend_expr(&exp, chtbp->var.extend.attrc,
+                        chtbp->var.extend.attrv);
+                if (ret != RDB_OK)
+                    return ret;
+
+                tbp->kind = RDB_TB_EXTEND;
+                tbp->var.extend.attrc = chtbp->var.extend.attrc;
+                tbp->var.extend.attrv = chtbp->var.extend.attrv;
+
+                chtbp->kind = RDB_TB_SELECT;
+                chtbp->var.select.tbp = htbp;
+                chtbp->var.select.exp = exp;
+
+                ret = copy_type(chtbp, htbp);
+                if (ret != RDB_OK)
+                     return ret;
+
+                /* Keys may have changed, so delete them */
+                del_keys(chtbp);
+
+                tbp = chtbp;
+                chtbp = tbp->var.select.tbp;
+                break;
+            }
+            case RDB_TB_RENAME:
+            {
+                RDB_table *htbp = chtbp->var.rename.tbp;
+
+                exp = tbp->var.select.exp;
+                ret = _RDB_invrename_expr(exp, chtbp->var.rename.renc,
+                        chtbp->var.rename.renv);
+                if (ret != RDB_OK)
+                    return ret;
+
+                tbp->kind = RDB_TB_RENAME;
+                tbp->var.rename.renc = chtbp->var.rename.renc;
+                tbp->var.rename.renv = chtbp->var.rename.renv;
+
+                chtbp->kind = RDB_TB_SELECT;
+                chtbp->var.select.tbp = htbp;
+                chtbp->var.select.exp = exp;
+
+                ret = copy_type(chtbp, htbp);
+                if (ret != RDB_OK)
+                     return ret;
+
+                /* Keys may have changed, so delete them */
+                del_keys(chtbp);
+
                 tbp = chtbp;
                 chtbp = tbp->var.select.tbp;
                 break;
             }
             case RDB_TB_JOIN:
-            case RDB_TB_EXTEND:
             case RDB_TB_PROJECT:
             case RDB_TB_SUMMARIZE:
-            case RDB_TB_RENAME:
+                return _RDB_transform(chtbp);
             case RDB_TB_WRAP:
             case RDB_TB_UNWRAP:
             case RDB_TB_GROUP:

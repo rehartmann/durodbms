@@ -91,8 +91,14 @@ if {![catch {
     exit 1
 }
 
-# Check if the transaction is still intact
 duro::table create T {{A INTEGER}} {{A}} $tx
+
+if {![catch {
+    duro::table expr X {EXTEND T ADD (C AS B)} $tx
+}]} {
+    puts "Creation of table X should fail, but succeeded"
+    exit 1
+}
 
 duro::rollback $tx
 

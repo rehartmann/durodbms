@@ -107,8 +107,30 @@ if {![tequal $t $s] } {
     exit 1
 }
 
-# Remove tuple
-duro::delete T2 $tx
+# Tuple must not be deleted
+duro::delete T2 {INTATTR = 2 AND STRATTR2 = "Blo"} $tx
+
+set cnt [duro::expr {COUNT (T2)} $tx]
+if {$cnt != 1} {
+    puts "T2 should contain 1 tuple, but contains $cnt"
+    exit 1
+}
+
+# Tuple must not be deleted
+duro::delete T2 {INTATTR = 2 AND STRATTR2 = "Bli" AND STRATTR3 = "B"} $tx
+
+if {[duro::expr {IS_EMPTY (T2)} $tx]} {
+    puts "T2 should not be empty, but is"
+    exit 1
+}
+
+# Tuple must be deleted
+duro::delete T2 {INTATTR = 2 AND STRATTR2 = "Bli" AND STRATTR3 = "Blubbx"} $tx
+
+if {![duro::expr {IS_EMPTY (T2)} $tx]} {
+    puts "T2 should be empty, but is not"
+    exit 1
+}
 
 # Drop table
 duro::table drop T2 $tx

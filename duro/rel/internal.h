@@ -99,6 +99,14 @@ typedef struct RDB_upd_op {
     struct RDB_upd_op *nextp;
 } RDB_upd_op;
 
+typedef struct _RDB_tbindex {
+    char *name;
+    int attrc;
+    RDB_seq_item *attrv;
+    RDB_bool unique;
+    RDB_index *idxp;	/* NULL for the primary index */
+} _RDB_tbindex;
+
 /* Internal functions */
 
 void
@@ -133,6 +141,10 @@ int
 _RDB_reset_qresult(RDB_qresult *, RDB_transaction *);
 
 int
+_RDB_index_expr_to_objv(const _RDB_tbindex *idxp, const RDB_expression *exp,
+        const RDB_type *tbtyp, RDB_object *objv);
+
+int
 _RDB_get_by_uindex(RDB_table *tbp, RDB_object valv[], _RDB_tbindex *indexp,
         RDB_transaction *txp, RDB_object *tplp);
 
@@ -141,12 +153,6 @@ _RDB_drop_qresult(RDB_qresult *, RDB_transaction *);
 
 int
 _RDB_new_stored_table(const char *name, RDB_bool persistent,
-                RDB_type *reltyp,
-                int keyc, RDB_string_vec keyv[], RDB_bool usr,
-                RDB_table **tbpp);
-
-int
-_RDB_new_stored_table_a(const char *name, RDB_bool persistent,
                 int attrc, RDB_attr heading[],
                 int keyc, RDB_string_vec keyv[], RDB_bool usr,
                 RDB_table **tbpp);
@@ -231,7 +237,7 @@ RDB_project_relation_type(const RDB_type *typ, int attrc, char *attrv[],
  * and renv return the new tuple type.
  */
 int
-RDB_rename_tuple_type(const RDB_type *typ, int renc, RDB_renaming renv[],
+RDB_rename_tuple_type(const RDB_type *typ, int renc, const RDB_renaming renv[],
         RDB_type **);
 
 /*
@@ -239,12 +245,12 @@ RDB_rename_tuple_type(const RDB_type *typ, int renc, RDB_renaming renv[],
  * and renv return the new tuple type.
  */
 int
-RDB_rename_relation_type(const RDB_type *typ, int renc, RDB_renaming renv[],
+RDB_rename_relation_type(const RDB_type *typ, int renc, const RDB_renaming renv[],
         RDB_type **);
 
 int
-RDB_wrap_relation_type(const RDB_type *typ, int wrapc, RDB_wrapping wrapv[],
-        RDB_type **newtypp);
+RDB_wrap_relation_type(const RDB_type *typ, int wrapc,
+        const RDB_wrapping wrapv[], RDB_type **newtypp);
 
 int
 RDB_unwrap_relation_type(const RDB_type *typ, int attrc, char *attrv[],
@@ -259,6 +265,9 @@ RDB_ungroup_type(RDB_type *typ, const char *attr, RDB_type **newtypp);
 
 RDB_attr *
 _RDB_tuple_type_attr(const RDB_type *tuptyp, const char *attrname);
+
+RDB_type *
+_RDB_dup_nonscalar_type(RDB_type *typ);
 
 RDB_bool
 _RDB_legal_name(const char *name);
@@ -277,7 +286,7 @@ int
 RDB_evaluate(RDB_expression *, const RDB_object *, RDB_transaction *, RDB_object *);
 
 int
-_RDB_find_rename_from(int renc, RDB_renaming renv[], const char *name);
+_RDB_find_rename_from(int renc, const RDB_renaming renv[], const char *name);
 
 RDB_expression *
 _RDB_create_unexpr(RDB_expression *arg, enum _RDB_expr_kind kind);
@@ -296,6 +305,13 @@ _RDB_expr_refers(RDB_expression *, RDB_table *);
 RDB_expression *
 RDB_dup_expr(const RDB_expression *);
 
+int
+_RDB_invrename_expr(RDB_expression *exp, int renc, const RDB_renaming renv[]);
+
+int
+_RDB_resolve_extend_expr(RDB_expression **expp, int attrc,
+        const RDB_virtual_attr attrv[]);
+
 /*
  * Internal tuple functions
  */
@@ -313,12 +329,12 @@ RDB_bool
 _RDB_tuple_equals(const RDB_object *, const RDB_object *);
 
 int
-_RDB_invrename_tuple(const RDB_object *, int renc, RDB_renaming renv[],
+_RDB_invrename_tuple(const RDB_object *, int renc, const RDB_renaming renv[],
                  RDB_object *restup);
 
 int
-_RDB_invwrap_tuple(const RDB_object *tplp, int wrapc, RDB_wrapping wrapv[],
-        RDB_object *restplp);
+_RDB_invwrap_tuple(const RDB_object *tplp, int wrapc,
+        const RDB_wrapping wrapv[], RDB_object *restplp);
 
 int
 _RDB_invunwrap_tuple(const RDB_object *, int attrc, char *attrv[],
@@ -390,5 +406,8 @@ _RDB_transform(RDB_table *tbp);
 
 RDB_expression *
 _RDB_attr_node(RDB_expression *exp, const char *attrname);
+
+int
+_RDB_infer_keys(RDB_table *tbp);
 
 #endif

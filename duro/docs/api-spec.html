@@ -1130,7 +1130,7 @@ in which case the transaction is implicitly rolled back.
 #include &lt;rel/rdb.h&gt;
 
 int
-RDB_rename(RDB_table *tbp, int renc, <a href="#renaming">RDB_renaming</a> renv[],
+RDB_rename(RDB_table *tbp, int renc, const <a href="#renaming">RDB_renaming</a> renv[],
            RDB_table **resultpp);
 </pre>
 
@@ -1466,7 +1466,7 @@ typedef struct {
 } RDB_summarize_add;
 
 int
-RDB_summarize(RDB_table *tb1p, RDB_table *tb2p, int addc, RDB_summarize_add addv[],
+RDB_summarize(RDB_table *tb1p, RDB_table *tb2p, int addc, const RDB_summarize_add addv[],
               RDB_table **resultpp);
 </pre>
 
@@ -1502,7 +1502,7 @@ of Duro used. Consult the release notes of that version for details.
 #include &lt;rel/rdb.h&gt;
 
 int
-RDB_wrap(RDB_table *tbp, int wrapc, <a href="#wrapping">RDB_wrapping</a> wrapv[],
+RDB_wrap(RDB_table *tbp, int wrapc, const <a href="#wrapping">RDB_wrapping</a> wrapv[],
          RDB_table **resultpp);
 </pre>
 
@@ -1953,7 +1953,7 @@ which does not exist in the tuple.
 #include &lt;rel/rdb.h&gt;
 
 int
-RDB_rename_tuple(const RDB_object *, int renc, <a href="#renaming">RDB_renaming</a> renv[],
+RDB_rename_tuple(const RDB_object *, int renc, const <a href="#renaming">RDB_renaming</a> renv[],
                  RDB_object *restplp);
 </pre>
 
@@ -1979,7 +1979,7 @@ specified by <var>renc</var> and <var>renv</var>.
 #include &lt;rel/rdb.h&gt;
 
 int
-RDB_wrap_tuple(const RDB_object *tplp, int wrapc, <a href="#wrapping">RDB_wrapping</a> wrapv[],
+RDB_wrap_tuple(const RDB_object *tplp, int wrapc, const <a href="#wrapping">RDB_wrapping</a> wrapv[],
                RDB_object *restplp);
 </pre>
 

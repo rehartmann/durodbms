@@ -94,6 +94,9 @@ enum {
 %token TOK_AND
 %token TOK_NOT
 %token TOK_CONCAT
+%token TOK_NE
+%token TOK_LE
+%token TOK_GE
 %token TOK_IS_EMPTY
 %token TOK_COUNT
 %token TOK_SUM
@@ -804,17 +807,17 @@ rel_expression: add_expression
         if ($$ == NULL)
             YYERROR;
     }
-    | add_expression "<>" add_expression {
+    | add_expression TOK_NE add_expression {
         $$ = RDB_neq($1, $3);
         if ($$ == NULL)
             YYERROR;
     }
-    | add_expression ">=" add_expression {
+    | add_expression TOK_GE add_expression {
         $$ = RDB_get($1, $3);
         if ($$ == NULL)
             YYERROR;
     }
-    | add_expression "<=" add_expression {
+    | add_expression TOK_LE add_expression {
         $$ = RDB_let($1, $3);
         if ($$ == NULL)
             YYERROR;
@@ -1094,7 +1097,9 @@ any_invocation: TOK_ANY '(' expression_list ')' {
     ;
 
 is_empty_invocation: TOK_IS_EMPTY '(' expression ')' {
-        $$ = RDB_expr_is_empty($3);
+        RDB_table *tbp = expr_to_table($3);
+
+        $$ = RDB_expr_is_empty(tbp != NULL ? RDB_table_to_expr(tbp) : $3);
         if ($$ == NULL)
             YYERROR;
     }

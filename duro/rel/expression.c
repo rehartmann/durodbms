@@ -1281,10 +1281,14 @@ RDB_evaluate(RDB_expression *exp, const RDB_object *tup, RDB_transaction *txp,
                 RDB_destroy_obj(&val);
                 return RDB_TYPE_MISMATCH;
             }
-            RDB_destroy_obj(valp);
+            ret = RDB_destroy_obj(valp);
+            if (ret != RDB_OK) {
+                RDB_destroy_obj(&val);
+                return ret;
+            }
             RDB_init_obj(valp);
             _RDB_set_obj_type(valp, &RDB_BOOLEAN);
-            ret = RDB_table_is_empty(val.var.tbp, NULL,
+            ret = RDB_table_is_empty(val.var.tbp, txp,
                     &valp->var.bool_val);
             if (ret != RDB_OK) {
                 RDB_destroy_obj(&val);
@@ -1475,4 +1479,134 @@ RDB_expr_obj(RDB_expression *exp)
     if (exp->kind != RDB_EX_OBJ)
         return NULL;
     return &exp->var.obj;
+}
+
+int
+_RDB_invrename_expr(RDB_expression *exp, int renc, const RDB_renaming renv[])
+{
+    int ret;
+    int i;
+
+    switch (exp->kind) {
+        case RDB_EX_EQ:
+        case RDB_EX_NEQ:
+        case RDB_EX_LT:
+        case RDB_EX_GT:
+        case RDB_EX_LET:
+        case RDB_EX_GET:
+        case RDB_EX_AND:
+        case RDB_EX_OR:
+        case RDB_EX_ADD:
+        case RDB_EX_SUBTRACT:
+        case RDB_EX_MULTIPLY:
+        case RDB_EX_DIVIDE:
+        case RDB_EX_REGMATCH:
+        case RDB_EX_CONTAINS:
+        case RDB_EX_CONCAT:
+        case RDB_EX_SUBSET:
+            ret = _RDB_invrename_expr(exp->var.op.arg2, renc, renv);
+            if (ret != RDB_OK)
+                return ret;
+        case RDB_EX_NOT:
+        case RDB_EX_NEGATE:
+        case RDB_EX_IS_EMPTY:
+        case RDB_EX_STRLEN:
+        case RDB_EX_TUPLE_ATTR:
+        case RDB_EX_GET_COMP:
+            return _RDB_invrename_expr(exp->var.op.arg1, renc, renv);
+        case RDB_EX_USER_OP:
+            for (i = 0; i < exp->var.user_op.argc; i++) {
+                ret = _RDB_invrename_expr(exp->var.user_op.argv[i], renc, renv);
+                if (ret != RDB_OK)
+                    return ret;
+            }
+            return RDB_OK;
+        case RDB_EX_AGGREGATE:
+        case RDB_EX_OBJ:
+            return RDB_OK;
+        case RDB_EX_ATTR:
+            /* Search attribute name in renv[].to */
+            for (i = 0;
+                    i < renc && strcmp(renv[i].to, exp->var.attr.name) != 0;
+                    i++);
+
+            /* If found, replace it */
+            if (i < renc) {
+                char *name = realloc(exp->var.attr.name,
+                        strlen(renv[i].from) + 1);
+
+                if (name == NULL)
+                    return RDB_NO_MEMORY;
+
+                strcpy(name, renv[i].from);
+                exp->var.attr.name = name;
+            }
+            return RDB_OK;
+    }
+    abort();
+}
+
+int
+_RDB_resolve_extend_expr(RDB_expression **expp, int attrc,
+        const RDB_virtual_attr attrv[])
+{
+    int ret;
+    int i;
+
+    switch ((*expp)->kind) {
+        case RDB_EX_EQ:
+        case RDB_EX_NEQ:
+        case RDB_EX_LT:
+        case RDB_EX_GT:
+        case RDB_EX_LET:
+        case RDB_EX_GET:
+        case RDB_EX_AND:
+        case RDB_EX_OR:
+        case RDB_EX_ADD:
+        case RDB_EX_SUBTRACT:
+        case RDB_EX_MULTIPLY:
+        case RDB_EX_DIVIDE:
+        case RDB_EX_REGMATCH:
+        case RDB_EX_CONTAINS:
+        case RDB_EX_CONCAT:
+        case RDB_EX_SUBSET:
+            ret = _RDB_resolve_extend_expr(&(*expp)->var.op.arg2, attrc, attrv);
+            if (ret != RDB_OK)
+                return ret;
+        case RDB_EX_NOT:
+        case RDB_EX_NEGATE:
+        case RDB_EX_IS_EMPTY:
+        case RDB_EX_STRLEN:
+        case RDB_EX_TUPLE_ATTR:
+        case RDB_EX_GET_COMP:
+            return _RDB_resolve_extend_expr(&(*expp)->var.op.arg1, attrc, attrv);
+        case RDB_EX_USER_OP:
+            for (i = 0; i < (*expp)->var.user_op.argc; i++) {
+                ret = _RDB_resolve_extend_expr(&(*expp)->var.user_op.argv[i],
+                        attrc, attrv);
+                if (ret != RDB_OK)
+                    return ret;
+            }
+            return RDB_OK;
+        case RDB_EX_AGGREGATE:
+        case RDB_EX_OBJ:
+            return RDB_OK;
+        case RDB_EX_ATTR:
+            /* Search attribute name in attrv[].name */
+            for (i = 0;
+                    i < attrc && strcmp(attrv[i].name, (*expp)->var.attr.name) != 0;
+                    i++);
+
+            /* If found, replace attribute by expression */
+            if (i < attrc) {
+                RDB_expression *exp = RDB_dup_expr(attrv[i].exp);
+                if (exp == NULL)
+                    return RDB_NO_MEMORY;
+
+                RDB_drop_expr(*expp);
+                *expp = exp;
+            }
+            return RDB_OK;
+    }
+    abort();
 }

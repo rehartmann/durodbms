@@ -123,6 +123,34 @@ if {![duro::table contains TR $tpl $tx]} {
     exit 1
 }
 
+set l {}
+set da [duro::array create TR {KN asc} $tx]
+duro::array foreach i $da {
+    array set a $i
+    lappend l $a(KN)
+} $tx
+duro::array drop $da
+
+if {$l != {0 1 2 3 4 5}} {
+    puts "l is $l, should be {0 1 2 3 4 5}"
+    exit 1
+}
+
+duro::delete TR {KN = 1} $tx
+
+set l {}
+set da [duro::array create TR {KN asc} $tx]
+duro::array foreach i $da {
+    array set a $i
+    lappend l $a(KN)
+} $tx
+duro::array drop $da
+
+if {$l != {0 2 3 4 5}} {
+    puts "l is $l, should be {0 2 3 4 5}"
+    exit 1
+}
+
 duro::commit $tx
 
 # Close DB environment

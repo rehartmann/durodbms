@@ -48,10 +48,16 @@ cleanup:
 }
 
 static int
-delete_stored(RDB_table *tbp, RDB_transaction *txp)
+delete_stored(RDB_table *tbp, RDB_expression *condp, RDB_transaction *txp)
 {
     int ret;
+    int i;
     RDB_cursor *curp;
+    RDB_object tpl;
+    void *datap;
+    size_t len;
+    RDB_bool b;
+    RDB_type *tpltyp = tbp->typ->var.basetyp;
 
     ret = RDB_recmap_cursor(&curp, tbp->var.stored.recmapp, 0, txp->txid);
     if (ret != RDB_OK)
@@ -63,12 +69,48 @@ delete_stored(RDB_table *tbp, RDB_transaction *txp)
     }
     
     do {
-        ret = RDB_cursor_delete(curp);
-        if (ret != RDB_OK) {
-            RDB_errmsg(txp->dbp->dbrootp->envp, "cannot delete record: %s",
-                    RDB_strerror(ret));
-            goto error;
+        RDB_init_obj(&tpl);
+        if (condp != NULL) {
+            for (i = 0; i < tpltyp->var.tuple.attrc; i++) {
+                RDB_object val;
+
+                ret = RDB_cursor_get(curp, i, &datap, &len);
+                if (ret != 0) {
+                   RDB_destroy_obj(&tpl);
+                   goto error;
+                }
+                RDB_init_obj(&val);
+                ret = RDB_irep_to_obj(&val, tpltyp->var.tuple.attrv[i].typ,
+                                 datap, len);
+                if (ret != RDB_OK) {
+                   RDB_destroy_obj(&val);
+                   RDB_destroy_obj(&tpl);
+                   goto error;
+                }
+                ret = RDB_tuple_set(&tpl, tpltyp->var.tuple.attrv[i].name, &val);
+                RDB_destroy_obj(&val);
+                if (ret != RDB_OK) {
+                   RDB_destroy_obj(&tpl);
+                   goto error;
+                }
+            }
+
+            ret = RDB_evaluate_bool(condp, &tpl, txp, &b);
+            if (ret != RDB_OK)
+                 goto error;
+        } else {
+            b = RDB_TRUE;
         }
+        if (b) {
+            ret = RDB_cursor_delete(curp);
+            if (ret != RDB_OK) {
+                RDB_errmsg(txp->dbp->dbrootp->envp, "cannot delete record: %s",
+                        RDB_strerror(ret));
+                RDB_destroy_obj(&tpl);
+                goto error;
+            }
+        }
+        RDB_destroy_obj(&tpl);
         ret = RDB_cursor_next(curp);
     } while (ret == RDB_OK);
     if (ret != RDB_NOT_FOUND)
@@ -81,135 +123,119 @@ error:
 }  
 
 static int
-delete_select(RDB_table *tbp, RDB_transaction *txp)
+delete_select_index(RDB_table *tbp, RDB_expression *condp,
+        RDB_transaction *txp)
 {
     int ret;
     int i;
-    RDB_cursor *curp;
-    RDB_object tpl;
-    void *datap;
-    size_t len;
-    RDB_bool b;
-    RDB_type *tpltyp = tbp->typ->var.basetyp;
+    int objc = tbp->var.select.indexp->attrc;
+    RDB_object *objv = malloc(sizeof(RDB_object) * objc);
+    if (objv == NULL)
+        return RDB_NO_MEMORY;
 
-    if (tbp->var.select.tbp->kind != RDB_TB_STORED)
-        return RDB_NOT_SUPPORTED;
+    for (i = 0; i < objc; i++)
+        RDB_init_obj(&objv[i]);
 
-    ret = RDB_recmap_cursor(&curp, tbp->var.select.tbp->var.stored.recmapp,
-            0, txp->txid);
+    ret = _RDB_index_expr_to_objv(tbp->var.select.indexp,
+          tbp->var.select.exp, tbp->typ, objv);
     if (ret != RDB_OK)
-        return ret;
-    ret = RDB_cursor_first(curp);
-    if (ret == RDB_NOT_FOUND) {
-        RDB_destroy_cursor(curp);
-        return RDB_OK;
-    }
-    
-    do {
+        goto cleanup;
+
+    if (condp != NULL) {
+        RDB_object tpl;
+        RDB_bool b;
+
         RDB_init_obj(&tpl);
-        for (i = 0; i < tpltyp->var.tuple.attrc; i++) {
-            RDB_object val;
 
-            ret = RDB_cursor_get(curp, i, &datap, &len);
-            if (ret != 0) {
-               RDB_destroy_obj(&tpl);
-               goto error;
-            }
-            RDB_init_obj(&val);
-            ret = RDB_irep_to_obj(&val, tpltyp->var.tuple.attrv[i].typ,
-                             datap, len);
-            if (ret != RDB_OK) {
-               RDB_destroy_obj(&tpl);
-               goto error;
-            }
-            ret = RDB_tuple_set(&tpl, tpltyp->var.tuple.attrv[i].name, &val);
-            if (ret != RDB_OK) {
-               RDB_destroy_obj(&tpl);
-               goto error;
-            }
+        /*
+         * Read tuple and check condition
+         */
+        ret = _RDB_get_by_uindex(tbp->var.select.tbp, objv,
+                tbp->var.select.indexp, txp, &tpl);
+        if (ret != RDB_OK) {
+            RDB_destroy_obj(&tpl);
+            goto cleanup;
         }
-
-        ret = RDB_evaluate_bool(tbp->var.select.exp, &tpl, txp, &b);
-        if (ret != RDB_OK)
-             goto error;
-
-        if (b) {
-            ret = RDB_cursor_delete(curp);
-            if (ret != RDB_OK) {
-                RDB_destroy_obj(&tpl);
-                goto error;
-            }
-        }
+        ret = RDB_evaluate_bool(condp, &tpl, txp, &b);
         RDB_destroy_obj(&tpl);
-        ret = RDB_cursor_next(curp);
-    } while (ret == RDB_OK);
-    if (ret != RDB_NOT_FOUND)
-        goto error;
-    RDB_destroy_cursor(curp);
-    return RDB_OK;
+        if (ret != RDB_OK)
+            goto cleanup;
 
-error:
-    RDB_destroy_cursor(curp);
-    return ret;
-}  
+        if (!b)
+            return RDB_OK;
+    }
 
-static int
-delete_select_index(RDB_table *tbp, RDB_transaction *txp)
-{
-    int ret;
-    RDB_object val;
-
-    RDB_init_obj(&val);
-    /* !! */
-    ret = RDB_evaluate(tbp->var.select.exp->var.op.arg2, NULL, txp, &val);
-    if (ret != RDB_OK)
-        return ret;
-
-    ret = delete_by_uindex(tbp->var.select.tbp, &val, tbp->var.select.indexp,
+    ret = delete_by_uindex(tbp->var.select.tbp, objv, tbp->var.select.indexp,
             txp);
+    if (ret == RDB_NOT_FOUND)
+        ret = RDB_OK;
 
-    RDB_destroy_obj(&val);
+cleanup:
+    for (i = 0; i < objc; i++) {
+        int ret2 = RDB_destroy_obj(&objv[i]);
+        if (ret2 != RDB_OK && ret == RDB_OK)
+            return ret2;
+    }
+    free(objv);
     return ret;
 }
 
 static int
-delete(RDB_table *tbp, RDB_transaction *txp)
+delete(RDB_table *tbp, RDB_expression *condp, RDB_transaction *txp)
 {
     int ret;
 
     switch (tbp->kind) {
         case RDB_TB_STORED:
-            ret = delete_stored(tbp, txp);
+            ret = delete_stored(tbp, condp, txp);
             if (RDB_is_syserr(ret)) {
                 RDB_rollback_all(txp);
             }
             return ret;
         case RDB_TB_MINUS:
-            return delete(tbp->var.minus.tb1p, txp);
+            return delete(tbp->var.minus.tb1p, condp, txp); /* !! */
         case RDB_TB_UNION:
-            ret = delete(tbp->var._union.tb1p, txp);
+            ret = delete(tbp->var._union.tb1p, condp, txp);
             if (ret != RDB_OK)
                 return ret;
-            return delete(tbp->var._union.tb2p, txp);
+            return delete(tbp->var._union.tb2p, condp, txp);
         case RDB_TB_INTERSECT:
-            ret = delete(tbp->var.intersect.tb1p, txp);
+            ret = delete(tbp->var.intersect.tb1p, condp, txp);
             if (ret != RDB_OK)
                 return ret;
-            return delete(tbp->var.intersect.tb2p, txp);
+            return delete(tbp->var.intersect.tb2p, condp, txp);
         case RDB_TB_SELECT:
-            return delete_select(tbp, txp);
+        {
+            RDB_expression *ncondp = NULL;
+
+            if (condp != NULL) {
+                ncondp = RDB_and(tbp->var.select.exp, condp);
+                if (ncondp == NULL)
+                    return RDB_NO_MEMORY;
+            }
+            ret = delete(tbp->var.select.tbp,
+                    ncondp != NULL ? ncondp : tbp->var.select.exp, txp);
+            free(ncondp);
+            return ret;
+        }
         case RDB_TB_SELECT_INDEX:
-            return delete_select_index(tbp, txp);
+            return delete_select_index(tbp, condp, txp);
         case RDB_TB_JOIN:
             return RDB_NOT_SUPPORTED;
         case RDB_TB_EXTEND:
             return RDB_NOT_SUPPORTED;
         case RDB_TB_PROJECT:
-            return delete(tbp->var.project.tbp, txp);
+            return delete(tbp->var.project.tbp, condp, txp); /* !! */
         case RDB_TB_SUMMARIZE:
             return RDB_NOT_SUPPORTED;
         case RDB_TB_RENAME:
-            return RDB_NOT_SUPPORTED;
+            if (condp != NULL) {
+                ret = _RDB_invrename_expr(condp, tbp->var.rename.renc,
+                        tbp->var.rename.renv);
+                if (ret != RDB_OK)
+                    return ret;
+            }
+            return delete(tbp->var.rename.tbp, condp, txp);
         case RDB_TB_WRAP:
             return RDB_NOT_SUPPORTED;
         case RDB_TB_UNWRAP:
@@ -247,7 +273,7 @@ RDB_delete(RDB_table *tbp, RDB_expression *condp, RDB_transaction *txp)
         }
     }
 
-    ret = delete(tbp, txp);
+    ret = delete(tbp, NULL, txp);
     if (condp != NULL)
         _RDB_free_table(tbp);
     return ret;

@@ -669,7 +669,7 @@ provide_table(const char *name, RDB_bool persistent,
 {
     int ret;
 
-    ret = _RDB_new_stored_table_a(name, persistent, attrc, heading,
+    ret = _RDB_new_stored_table(name, persistent, attrc, heading,
                 keyc, keyv, usr, tbpp);
     if (ret != RDB_OK)
         return ret;

@@ -79,10 +79,10 @@ RDB_type_is_numeric(const RDB_type *typ) {
                       || typ == &RDB_RATIONAL);
 }
 
-static RDB_type *
-dup_nonscalar_type(RDB_type *typ)
+RDB_type *
+_RDB_dup_nonscalar_type(RDB_type *typ)
 {
-    int i;
+    int ret;
     RDB_type *restyp;
 
     switch (typ->kind) {
@@ -94,33 +94,17 @@ dup_nonscalar_type(RDB_type *typ)
             restyp->name = NULL;
             restyp->kind = typ->kind;
             restyp->ireplen = RDB_VARIABLE_LEN;
-            restyp->var.basetyp = dup_nonscalar_type(typ->var.basetyp);
+            restyp->var.basetyp = _RDB_dup_nonscalar_type(typ->var.basetyp);
             if (restyp->var.basetyp == NULL) {
                 free(restyp);
                 return NULL;
             }
             return restyp;
         case RDB_TP_TUPLE:
-            restyp = malloc(sizeof (RDB_type));
-            if (restyp == NULL)
+            ret = RDB_create_tuple_type(typ->var.tuple.attrc,
+                    typ->var.tuple.attrv, &restyp);
+            if (ret != RDB_OK)
                 return NULL;
-            restyp->name = NULL;
-            restyp->kind = typ->kind;
-            restyp->ireplen = RDB_VARIABLE_LEN;
-            restyp->var.tuple.attrc = typ->var.tuple.attrc;
-            restyp->var.tuple.attrv = malloc(sizeof (RDB_type)
-                    * typ->var.tuple.attrc);
-            for (i = 0; i < typ->var.tuple.attrc; i++) {
-                 restyp->var.tuple.attrv[i].name =
-                         RDB_dup_str(typ->var.tuple.attrv[i].name);
-                 if (restyp->var.tuple.attrv[i].name == NULL)
-                     return NULL;
-                 restyp->var.tuple.attrv[i].typ = dup_nonscalar_type(
-                         typ->var.tuple.attrv[i].typ);
-                 if (restyp->var.tuple.attrv[i].typ == NULL)
-                     return NULL;
-                 restyp->var.tuple.attrv[i].defaultp = NULL;
-            }
             return restyp;
         case RDB_TP_SCALAR:
             return typ;
@@ -159,7 +143,7 @@ RDB_create_tuple_type(int attrc, RDB_attr attrv[], RDB_type **typp)
             }
         }
 
-        tuptyp->var.tuple.attrv[i].typ = dup_nonscalar_type(attrv[i].typ);
+        tuptyp->var.tuple.attrv[i].typ = _RDB_dup_nonscalar_type(attrv[i].typ);
         if (tuptyp->var.tuple.attrv[i].typ == NULL) {
             ret = RDB_NO_MEMORY;
             goto error;
@@ -767,14 +751,14 @@ RDB_extend_tuple_type(const RDB_type *typ, int attrc, RDB_attr attrv[])
         if (newtyp->var.tuple.attrv[i].name == NULL)
             goto error;
         newtyp->var.tuple.attrv[i].typ =
-                dup_nonscalar_type(typ->var.tuple.attrv[i].typ);
+                _RDB_dup_nonscalar_type(typ->var.tuple.attrv[i].typ);
         newtyp->var.tuple.attrv[i].defaultp = NULL;
     }
     for (i = 0; i < attrc; i++) {
         newtyp->var.tuple.attrv[typ->var.tuple.attrc + i].name =
                 RDB_dup_str(attrv[i].name);
         newtyp->var.tuple.attrv[typ->var.tuple.attrc + i].typ =
-                dup_nonscalar_type(attrv[i].typ);
+                _RDB_dup_nonscalar_type(attrv[i].typ);
         newtyp->var.tuple.attrv[typ->var.tuple.attrc + i].defaultp = NULL;
     }
     return newtyp;    
@@ -837,7 +821,7 @@ RDB_join_tuple_types(const RDB_type *typ1, const RDB_type *typ2, RDB_type **newt
         newtyp->var.tuple.attrv[i].name = RDB_dup_str(
                 typ1->var.tuple.attrv[i].name);
         newtyp->var.tuple.attrv[i].typ = 
-                dup_nonscalar_type(typ1->var.tuple.attrv[i].typ);
+                _RDB_dup_nonscalar_type(typ1->var.tuple.attrv[i].typ);
         newtyp->var.tuple.attrv[i].defaultp = NULL;
     }
     attrc = typ1->var.tuple.attrc;
@@ -862,7 +846,7 @@ RDB_join_tuple_types(const RDB_type *typ1, const RDB_type *typ2, RDB_type **newt
             newtyp->var.tuple.attrv[attrc].name = RDB_dup_str(
                     typ2->var.tuple.attrv[i].name);
             newtyp->var.tuple.attrv[attrc].typ =
-                    dup_nonscalar_type(typ2->var.tuple.attrv[i].typ);
+                    _RDB_dup_nonscalar_type(typ2->var.tuple.attrv[i].typ);
             newtyp->var.tuple.attrv[attrc].defaultp = NULL;
             attrc++;
         }
@@ -961,7 +945,7 @@ RDB_project_tuple_type(const RDB_type *typ, int attrc, char *attrv[],
             ret = RDB_INVALID_ARGUMENT;
             goto error;
         }
-        tuptyp->var.tuple.attrv[i].typ = dup_nonscalar_type(attrp->typ);
+        tuptyp->var.tuple.attrv[i].typ = _RDB_dup_nonscalar_type(attrp->typ);
 
         tuptyp->var.tuple.attrv[i].defaultp = NULL;
         tuptyp->var.tuple.attrv[i].options = 0;
@@ -1004,7 +988,7 @@ RDB_project_relation_type(const RDB_type *typ, int attrc, char *attrv[],
 }
 
 int
-_RDB_find_rename_from(int renc, RDB_renaming renv[], const char *name)
+_RDB_find_rename_from(int renc, const RDB_renaming renv[], const char *name)
 {
     int i;
 
@@ -1016,7 +1000,7 @@ _RDB_find_rename_from(int renc, RDB_renaming renv[], const char *name)
 }
 
 int
-RDB_rename_tuple_type(const RDB_type *typ, int renc, RDB_renaming renv[],
+RDB_rename_tuple_type(const RDB_type *typ, int renc, const RDB_renaming renv[],
         RDB_type **newtypp)
 {
     RDB_type *newtyp;
@@ -1042,7 +1026,7 @@ RDB_rename_tuple_type(const RDB_type *typ, int renc, RDB_renaming renv[],
         int ai = _RDB_find_rename_from(renc, renv, attrname);
 
         /* check if the attribute has been renamed */
-        newtyp->var.tuple.attrv[i].typ = dup_nonscalar_type(
+        newtyp->var.tuple.attrv[i].typ = _RDB_dup_nonscalar_type(
                 typ->var.tuple.attrv[i].typ);
         if (ai >= 0)
             newtyp->var.tuple.attrv[i].name = RDB_dup_str(renv[ai].to);
@@ -1070,7 +1054,7 @@ error:
 }
 
 int
-RDB_rename_relation_type(const RDB_type *typ, int renc, RDB_renaming renv[],
+RDB_rename_relation_type(const RDB_type *typ, int renc, const RDB_renaming renv[],
         RDB_type **newtypp)
 {
     int ret;
@@ -1125,7 +1109,7 @@ copy_attr(RDB_attr *dstp, const RDB_attr *srcp)
     if (dstp->name == NULL) {
         return RDB_NO_MEMORY;
     }
-    dstp->typ = dup_nonscalar_type(srcp->typ);
+    dstp->typ = _RDB_dup_nonscalar_type(srcp->typ);
     if (dstp->typ == NULL) {
         return RDB_NO_MEMORY;
     }
@@ -1134,7 +1118,7 @@ copy_attr(RDB_attr *dstp, const RDB_attr *srcp)
 }
 
 int
-RDB_wrap_tuple_type(const RDB_type *typ, int wrapc, RDB_wrapping wrapv[],
+RDB_wrap_tuple_type(const RDB_type *typ, int wrapc, const RDB_wrapping wrapv[],
         RDB_type **newtypp)
 {
     int i, j, k;
@@ -1165,7 +1149,9 @@ RDB_wrap_tuple_type(const RDB_type *typ, int wrapc, RDB_wrapping wrapv[],
         (*newtypp)->var.tuple.attrv[i].typ = NULL;
     }
 
-    /* Copy attributes from wrapv */
+    /*
+     * Copy attributes from wrapv
+     */
     for (i = 0; i < wrapc; i++) {
         RDB_type *tuptyp = malloc(sizeof(RDB_type));
         if (tuptyp == NULL) {
@@ -1200,9 +1186,12 @@ RDB_wrap_tuple_type(const RDB_type *typ, int wrapc, RDB_wrapping wrapv[],
         }
         (*newtypp)->var.tuple.attrv[i].name = RDB_dup_str(wrapv[i].attrname);
         (*newtypp)->var.tuple.attrv[i].typ = tuptyp;        
+        (*newtypp)->var.tuple.attrv[i].defaultp = NULL;
     }
 
-    /* Copy remaining attributes */
+    /*
+     * Copy remaining attributes
+     */
     k = wrapc;
     for (i = 0; i < typ->var.tuple.attrc; i++) {
         /* Copy attribute if it does not appear in wrapv */
@@ -1240,8 +1229,8 @@ error:
 }
 
 int
-RDB_wrap_relation_type(const RDB_type *typ, int wrapc, RDB_wrapping wrapv[],
-        RDB_type **newtypp)
+RDB_wrap_relation_type(const RDB_type *typ, int wrapc,
+        const RDB_wrapping wrapv[], RDB_type **newtypp)
 {
     int ret;
 

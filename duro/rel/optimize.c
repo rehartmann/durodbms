@@ -339,10 +339,7 @@ static int
 optimize(RDB_table *tbp, RDB_transaction *txp)
 {
     int ret;
-/*
-    if (tbp->kind == RDB_TB_MINUS)
-        raise(2);
-*/
+
     switch (tbp->kind) {
         case RDB_TB_STORED:
             break;

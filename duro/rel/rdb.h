@@ -252,14 +252,6 @@ typedef struct {
     RDB_bool asc;
 } RDB_seq_item;
 
-typedef struct {
-    char *name;
-    int attrc;
-    RDB_seq_item *attrv;
-    RDB_bool unique;
-    RDB_index *idxp;	/* NULL for the primary index */
-} _RDB_tbindex;
-
 typedef struct RDB_table {
     /* internal */
     RDB_type *typ;
@@ -268,7 +260,13 @@ typedef struct RDB_table {
     enum _RDB_tb_kind kind;
     char *name;
     int keyc;
+
+    /*
+     * Candidate keys. NULL if table is virtual and the keys have not been
+     * inferred.
+     */
     RDB_string_vec *keyv;
+
     int refcount;
     RDB_bool optimized; /* virtual tables only */
     int est_cardinality;
@@ -279,14 +277,14 @@ typedef struct RDB_table {
 
             /* Table indexes */
             int indexc;
-            _RDB_tbindex *indexv;
+            struct _RDB_tbindex *indexv;
 
             int est_cardinality; /* estimated cardinality (from statistics) */
         } stored;
         struct {
             struct RDB_table *tbp;
             RDB_expression *exp;
-            _RDB_tbindex *indexp; /* RDB_TB_SELECT_INDEX */
+            struct _RDB_tbindex *indexp; /* RDB_TB_SELECT_INDEX */
         } select;
         struct {
             struct RDB_table *tb1p;
@@ -452,6 +450,9 @@ RDB_get_table(const char *name, RDB_transaction *txp, RDB_table **tbpp);
  */
 int
 RDB_drop_table(RDB_table *tbp, RDB_transaction *);
+
+int
+RDB_table_keys(RDB_table *, RDB_string_vec **keyvp);
 
 int
 RDB_set_table_name(RDB_table *tbp, const char *name, RDB_transaction *);
@@ -707,16 +708,15 @@ RDB_remove(RDB_table *, int attrc, char *attrv[], RDB_table **resultpp);
  *  passed through addv.
  */
 int
-RDB_summarize(RDB_table *, RDB_table *, int addc, RDB_summarize_add addv[],
-              RDB_table **resultpp);
-
+RDB_summarize(RDB_table *, RDB_table *, int addc,
+        const RDB_summarize_add addv[], RDB_table **resultpp);
 
 int
-RDB_rename(RDB_table *tbp, int renc, RDB_renaming renv[],
+RDB_rename(RDB_table *tbp, int renc, const RDB_renaming renv[],
            RDB_table **resultpp);
 
 int
-RDB_wrap(RDB_table *tbp, int wrapc, RDB_wrapping wrapv[],
+RDB_wrap(RDB_table *tbp, int wrapc, const RDB_wrapping wrapv[],
          RDB_table **resultpp);
 
 int
@@ -799,11 +799,11 @@ int
 RDB_join_tuples(const RDB_object *, const RDB_object *, RDB_object *);
 
 int
-RDB_rename_tuple(const RDB_object *, int renc, RDB_renaming renv[],
+RDB_rename_tuple(const RDB_object *, int renc, const RDB_renaming renv[],
                  RDB_object *restup);
 
 int
-RDB_wrap_tuple(const RDB_object *tplp, int wrapc, RDB_wrapping wrapv[],
+RDB_wrap_tuple(const RDB_object *tplp, int wrapc, const RDB_wrapping wrapv[],
                RDB_object *restplp);
 
 int

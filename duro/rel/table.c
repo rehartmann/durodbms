@@ -25,6 +25,7 @@ _RDB_new_table(void)
     tbp->name = NULL;
     tbp->refcount = 0;
     tbp->optimized = RDB_FALSE;
+    tbp->keyv = NULL;
     return tbp;
 }
 
@@ -33,8 +34,8 @@ _RDB_new_table(void)
  * and does not insert the table into the catalog.
  * reltyp is consumed on success (must not be freed by caller).
  */
-int
-_RDB_new_stored_table(const char *name, RDB_bool persistent,
+static int
+new_stored_table(const char *name, RDB_bool persistent,
                 RDB_type *reltyp,
                 int keyc, RDB_string_vec keyv[], RDB_bool usr,
                 RDB_table **tbpp)
@@ -48,7 +49,6 @@ _RDB_new_stored_table(const char *name, RDB_bool persistent,
     *tbpp = tbp;
     tbp->is_user = usr;
     tbp->is_persistent = persistent;
-    tbp->keyv = NULL;
 
     RDB_init_hashmap(&tbp->var.stored.attrmap, RDB_DFL_MAP_CAPACITY);
 
@@ -136,7 +136,7 @@ error:
  * Like _RDB_new_stored_table(), but uses attrc and heading instead of reltype.
  */
 int
-_RDB_new_stored_table_a(const char *name, RDB_bool persistent,
+_RDB_new_stored_table(const char *name, RDB_bool persistent,
                 int attrc, RDB_attr heading[],
                 int keyc, RDB_string_vec keyv[], RDB_bool usr,
                 RDB_table **tbpp)
@@ -161,7 +161,7 @@ _RDB_new_stored_table_a(const char *name, RDB_bool persistent,
         }
     }
 
-    ret = _RDB_new_stored_table(name, persistent, reltyp,
+    ret = new_stored_table(name, persistent, reltyp,
             keyc, keyv, usr, tbpp);
     if (ret != RDB_OK)
         RDB_drop_type(reltyp, NULL);
@@ -181,14 +181,34 @@ _RDB_free_table(RDB_table *tbp)
 {
     int i;
 
-    /* Delete candidate keys */
-    for (i = 0; i < tbp->keyc; i++) {
-        RDB_free_strvec(tbp->keyv[i].strc, tbp->keyv[i].strv);
+    if (tbp->keyv != NULL) {
+        /* Delete candidate keys */
+        for (i = 0; i < tbp->keyc; i++) {
+            RDB_free_strvec(tbp->keyv[i].strc, tbp->keyv[i].strv);
+        }
+        free(tbp->keyv);
     }
-    free(tbp->keyv);
 
+    RDB_drop_type(tbp->typ, NULL);
     free(tbp->name);
     free(tbp);
+}
+
+int
+RDB_table_keys(RDB_table *tbp, RDB_string_vec **keyvp)
+{
+    int ret;
+
+    if (tbp->keyv == NULL) {
+        ret = _RDB_infer_keys(tbp);
+        if (ret != RDB_OK)
+            return ret;
+    }
+
+    if (keyvp != NULL)
+        *keyvp = tbp->keyv;
+        
+    return tbp->keyc;
 }
 
 int
@@ -259,7 +279,6 @@ _RDB_drop_table(RDB_table *tbp, RDB_bool rec)
                 if (ret != RDB_OK)
                     return ret;
             }
-            RDB_drop_type(tbp->typ, NULL);
             free(tbp->var.join.common_attrv);
             break;
         case RDB_TB_EXTEND:
@@ -270,7 +289,6 @@ _RDB_drop_table(RDB_table *tbp, RDB_bool rec)
             }
             for (i = 0; i < tbp->var.extend.attrc; i++)
                 free(tbp->var.extend.attrv[i].name);
-            RDB_drop_type(tbp->typ, NULL);
             break;
         case RDB_TB_PROJECT:
             if (rec) {
@@ -278,7 +296,6 @@ _RDB_drop_table(RDB_table *tbp, RDB_bool rec)
                 if (ret != RDB_OK)
                     return ret;
             }
-            RDB_drop_type(tbp->typ, NULL);
             break;
         case RDB_TB_RENAME:
             if (rec) {

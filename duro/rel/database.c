@@ -634,7 +634,7 @@ _RDB_create_table(const char *name, RDB_bool persistent,
             return ret;
     }
 
-    ret = _RDB_new_stored_table_a(name, persistent, attrc, heading,
+    ret = _RDB_new_stored_table(name, persistent, attrc, heading,
                 keyv != NULL ? keyc : 1, keyv != NULL ? keyv : &allkey,
                 RDB_TRUE, tbpp);
     if (keyv == NULL)

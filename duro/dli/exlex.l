@@ -199,6 +199,12 @@ TABLE_DUM {
     return TOK_FLOAT;
 }
 
+\<\> return TOK_NE;
+
+\<\= return TOK_LE;
+
+\>\= return TOK_GE;
+
 [=><+\-*/{},().] return yytext[0];
 
 [[:space:]]

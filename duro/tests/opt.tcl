@@ -91,6 +91,21 @@ if {$ta(A) != 2 || $ta(B) != 2 || $ta(C) != 3} {
     exit 1
 }
 
+set tpl [duro::expr {TUPLE FROM (T2 RENAME (A AS AA)) WHERE B=2 AND AA=1} $tx]
+array set ta $tpl
+if {$ta(AA) != 1 || $ta(B) != 2 || $ta(C) != 3} {
+    puts "Invalid tuple value: $tpl"
+    exit 1
+}
+
+set tpl [duro::expr {TUPLE FROM (EXTEND T2 ADD (A AS AA)) WHERE B=2 AND AA=1} \
+        $tx]
+array set ta $tpl
+if {$ta(A) != 1 || $ta(B) != 2 || $ta(C) != 3 || $ta(AA) != 1} {
+    puts "Invalid tuple value: $tpl"
+    exit 1
+}
+
 duro::table drop t3 $tx
 duro::table drop t2 $tx
 duro::table drop t1 $tx

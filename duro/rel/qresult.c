@@ -314,18 +314,20 @@ cleanup:
 }
 
 static int
-do_group(RDB_qresult *qresp, RDB_transaction *txp)
+do_group(RDB_qresult *qrp, RDB_transaction *txp)
 {
-    RDB_qresult *qrp;
+    RDB_qresult *newqrp;
     RDB_object tpl;
     RDB_field *keyfv;
     RDB_field gfield;
     RDB_object gval;
     int ret;
     int i;
-    RDB_type *greltyp = _RDB_tuple_type_attr(qresp->tbp->typ->var.basetyp,
-                        qresp->tbp->var.group.gattr)->typ;
-    int keyfc = _RDB_pkey_len(qresp->tbp);
+    RDB_type *greltyp = _RDB_tuple_type_attr(qrp->tbp->typ->var.basetyp,
+                        qrp->tbp->var.group.gattr)->typ;
+    int keyfc;
+    
+    keyfc = _RDB_pkey_len(qrp->tbp);
 
     keyfv = malloc(sizeof (RDB_field) * keyfc);
     if (keyfv == NULL) {
@@ -336,7 +338,7 @@ do_group(RDB_qresult *qresp, RDB_transaction *txp)
      * Iterate over the original table, modifying the materialized table
      */
 
-    ret = _RDB_table_qresult(qresp->tbp->var.group.tbp, txp, &qrp);
+    ret = _RDB_table_qresult(qrp->tbp->var.group.tbp, txp, &newqrp);
     if (ret != RDB_OK) {
         return ret;
     }
@@ -344,21 +346,21 @@ do_group(RDB_qresult *qresp, RDB_transaction *txp)
     RDB_init_obj(&tpl);
     RDB_init_obj(&gval);
     do {
-        ret = _RDB_next_tuple(qrp, &tpl, txp);
+        ret = _RDB_next_tuple(newqrp, &tpl, txp);
         if (ret == RDB_OK) {
             /* Build key */
             for (i = 0; i < keyfc; i++) {
                 _RDB_obj_to_field(&keyfv[i],
-                        RDB_tuple_get(&tpl, qresp->tbp->keyv[0].strv[i]));
+                        RDB_tuple_get(&tpl, qrp->tbp->keyv[0].strv[i]));
             }
 
             gfield.no = *(RDB_int *)RDB_hashmap_get(
-                    &qresp->matp->var.stored.attrmap,
-                    qresp->tbp->var.group.gattr, NULL);
+                    &qrp->matp->var.stored.attrmap,
+                    qrp->tbp->var.group.gattr, NULL);
 
             /* Try to read tuple of the materialized table */
-            ret = RDB_get_fields(qresp->matp->var.stored.recmapp, keyfv,
-                    1, qresp->matp->is_persistent ? txp->txid : NULL,
+            ret = RDB_get_fields(qrp->matp->var.stored.recmapp, keyfv,
+                    1, qrp->matp->is_persistent ? txp->txid : NULL,
                     &gfield);
             if (ret == RDB_OK) {
                 /*
@@ -378,9 +380,9 @@ do_group(RDB_qresult *qresp, RDB_transaction *txp)
 
                 /* Update materialized table */
                 _RDB_obj_to_field(&gfield, &gval);
-                ret = RDB_update_rec(qresp->matp->var.stored.recmapp, keyfv,
+                ret = RDB_update_rec(qrp->matp->var.stored.recmapp, keyfv,
                         1, &gfield,
-                        qresp->matp->is_persistent ? txp->txid : NULL);
+                        qrp->matp->is_persistent ? txp->txid : NULL);
                 if (ret != RDB_OK) {
                     goto cleanup;
                 }
@@ -402,11 +404,11 @@ do_group(RDB_qresult *qresp, RDB_transaction *txp)
                     goto cleanup;
 
                 RDB_table_to_obj(&gval, gtbp);
-                ret = RDB_tuple_set(&tpl, qresp->tbp->var.group.gattr, &gval);
+                ret = RDB_tuple_set(&tpl, qrp->tbp->var.group.gattr, &gval);
                 if (ret != RDB_OK)
                     goto cleanup;
 
-                ret = RDB_insert(qresp->matp, &tpl, NULL);
+                ret = RDB_insert(qrp->matp, &tpl, NULL);
                 if (ret != RDB_OK)
                     goto cleanup;
             } else {
@@ -421,7 +423,7 @@ do_group(RDB_qresult *qresp, RDB_transaction *txp)
 cleanup:
     RDB_destroy_obj(&tpl);
     RDB_destroy_obj(&gval);
-    _RDB_drop_qresult(qrp, txp);
+    _RDB_drop_qresult(newqrp, txp);
     free(keyfv);
 
     return ret;
@@ -455,8 +457,15 @@ stored_qresult(RDB_qresult *qresp, RDB_table *tbp, RDB_transaction *txp)
 static int
 summarize_qresult(RDB_qresult *qresp, RDB_transaction *txp)
 {
-    RDB_type *tuptyp = qresp->tbp->typ->var.basetyp;
     int ret;
+    RDB_type *tuptyp = qresp->tbp->typ->var.basetyp;
+
+    /* Need keys */
+    if (qresp->tbp->keyv == NULL) {
+        ret = RDB_table_keys(qresp->tbp, NULL);
+        if (ret < 0)
+            return ret;
+    }
 
     /* create materialized table */
     ret = _RDB_create_table(NULL, RDB_FALSE,
@@ -495,6 +504,13 @@ group_qresult(RDB_qresult *qresp, RDB_transaction *txp)
 {
     RDB_type *tuptyp = qresp->tbp->typ->var.basetyp;
     int ret;
+
+    /* Need keys */
+    if (qresp->tbp->keyv == NULL) {
+        ret = RDB_table_keys(qresp->tbp, NULL);
+        if (ret < 0)
+            return ret;
+    }
 
     /* create materialized table */
     ret = RDB_create_table(NULL, RDB_FALSE,
@@ -589,6 +605,12 @@ init_qresult(RDB_qresult *qrp, RDB_table *tbp, RDB_transaction *txp)
                     txp, &qrp->var.virtual.qrp);
             break;
         case RDB_TB_PROJECT:
+            /* Need keys */
+            if (tbp->keyv == NULL) {
+                ret = RDB_table_keys(tbp, NULL);
+                if (ret < 0)
+                    break;
+            }
             if (tbp->var.project.keyloss) {
                 RDB_string_vec keyattrs;
                 int i;
@@ -711,8 +733,10 @@ _RDB_sorter(RDB_table *tbp, RDB_qresult **qrespp, RDB_transaction *txp,
      * Create a sorted RDB_table
      */
 
-    ret = _RDB_new_stored_table(NULL, RDB_FALSE, tbp->typ, 1,
-                &key, RDB_TRUE, &qresp->matp);
+    ret = _RDB_new_stored_table(NULL, RDB_FALSE,
+            tbp->typ->var.basetyp->var.tuple.attrc,
+            tbp->typ->var.basetyp->var.tuple.attrv, 1, &key, RDB_TRUE,
+            &qresp->matp);
     if (ret != RDB_OK)
         goto error;
 
@@ -1064,41 +1088,61 @@ cleanup:
     return ret;
 }
 
-static int
-next_select_index(RDB_qresult *qrp, RDB_object *tplp, RDB_transaction *txp)
+/*
+ * Get constants from an 'unbalanced' expression an store them in objv.
+ */
+int
+_RDB_index_expr_to_objv(const _RDB_tbindex *indexp, const RDB_expression *exp,
+        const RDB_type *tbtyp, RDB_object *objv)
 {
     int i;
     int ret;
-    RDB_expression *exp;
-    RDB_object *objv = malloc(sizeof(RDB_object)
-            * qrp->tbp->var.select.indexp->attrc);
+    RDB_expression *attrexp;
 
-    if (objv == NULL)
-        return RDB_NO_MEMORY;
+    for (i = 0; i < indexp->attrc; i++) {
+        char *attrname = indexp->attrv[i].attrname;
 
-    for (i = 0; i < qrp->tbp->var.select.indexp->attrc; i++) {
-        char *attrname = qrp->tbp->var.select.indexp->attrv[i].attrname;
-
-        RDB_init_obj(&objv[i]);
-        exp = _RDB_attr_node(qrp->tbp->var.select.exp, attrname);
-        if (exp->kind == RDB_EX_AND)
-            exp = exp->var.op.arg2;
-        ret = RDB_copy_obj(&objv[i], &exp->var.op.arg2->var.obj);
+        attrexp = _RDB_attr_node(exp, attrname);
+        if (attrexp->kind == RDB_EX_AND)
+            attrexp = attrexp->var.op.arg2;
+        ret = RDB_copy_obj(&objv[i], &attrexp->var.op.arg2->var.obj);
         if (ret != RDB_OK)
             return ret;
         if (objv[i].typ == NULL
                 && (objv[i].kind == RDB_OB_TUPLE
                  || objv[i].kind == RDB_OB_ARRAY))
             _RDB_set_nonsc_type(&objv[i],
-                    RDB_type_attr_type(qrp->tbp->typ, attrname));
+                    RDB_type_attr_type(tbtyp, attrname));
     }
+    return RDB_OK;
+}
 
-    return _RDB_get_by_uindex(qrp->tbp->var.select.tbp, objv,
+static int
+next_select_index(RDB_qresult *qrp, RDB_object *tplp, RDB_transaction *txp)
+{
+    int i;
+    int ret;
+    RDB_object *objv = malloc(sizeof(RDB_object)
+            * qrp->tbp->var.select.indexp->attrc);
+    if (objv == NULL)
+        return RDB_NO_MEMORY;
+
+    for (i = 0; i < qrp->tbp->var.select.indexp->attrc; i++)
+        RDB_init_obj(&objv[i]);
+
+    ret = _RDB_index_expr_to_objv(qrp->tbp->var.select.indexp,
+          qrp->tbp->var.select.exp, qrp->tbp->typ, objv);
+    if (ret != RDB_OK)
+        goto cleanup;
+
+    ret = _RDB_get_by_uindex(qrp->tbp->var.select.tbp, objv,
             qrp->tbp->var.select.indexp, txp, tplp);
 
+cleanup:
     for (i = 0; i < qrp->tbp->var.select.indexp->attrc; i++)
         RDB_destroy_obj(&objv[i]);
     free(objv);
+    return ret;
 }
 
 static int
