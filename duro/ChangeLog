@@ -4,7 +4,7 @@ Summary of Changes for Duro
 
 Changes for Duro 0.9
 
-- Documented utilities.
+- Documented utilities in utils.html.
 
 - Switched to Berkeley DB 4.3.
 
@@ -47,7 +47,7 @@ Changes for Duro 0.9
 
 - Fixed bugs in the library and Duroadmin.
 
-- lstables is no longer installed.
+- The obsolete program lstables is no longer installed.
 
 Changes for Duro 0.8
 

@@ -38,7 +38,7 @@ The order of the sublists is undefined.
 of elements. The first element in each pair contains the attribute name
 and the second element of each pair is the attribute value.
 
-<dt><b>duro::table create</b> <var>?flag? tablename attrs keys txId</var>
+<dt id="create"><b>duro::table create</b> <var>?flag? tablename attrs keys txId</var>
 <dd>
 <p>This subcommand creates a real table with the name <var>tablename</var>
 under the control of the transaction specified by <var>txId</var>.
@@ -49,6 +49,19 @@ attribute. The sublist must contain two or three elements.
 The first element of the sublist is the attribute name.
 The second element is the attribute type. The third element, if given,
 specifies the default value for the attribute.
+
+<p>A type is specified as follows:
+
+<ul>
+<li>A scalar type is represented by its name.
+<li>A tuple type is represented by a list. The first element of the
+list is the string "tuple" (without the quotes).
+The following elements are themselves lists of two elements each.
+The first element is the attribute name.
+The second element is the attribute type.
+<li>A relation type is represented like a tuple type, except that
+the first list element is "relation".
+</ul>
 
 <p>The <var>keys</var> argument specifies the candidate keys and, like
 <var>attrs</var>, must be a list of lists. Each sublist defines a key.

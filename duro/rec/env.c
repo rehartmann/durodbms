@@ -108,6 +108,7 @@ RDB_errmsg(RDB_environment *envp, const char *format, ...)
         vfprintf(envp->errfilep, format, ap);
         va_end(ap);
         fputs("\n", envp->errfilep);
+        fflush(envp->errfilep);
     }
     if (envp->errfn != NULL) {
         char buf[1024];
