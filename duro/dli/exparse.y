@@ -29,8 +29,8 @@ _RDB_parse_remove_exp(RDB_expression *exp);
 
 explink *_RDB_parse_first_exp = NULL;
 
-static RDB_table *
-expr_to_table(const RDB_expression *exp);
+RDB_table *
+_RDB_parse_expr_to_table(const RDB_expression *exp);
 
 static RDB_expression *
 table_dum_expr(void);
@@ -161,7 +161,7 @@ expression: or_expression { _RDB_parse_resultp = $1; }
 project: primary_expression '{' attribute_name_list '}' {
         RDB_table *tbp, *restbp;
 
-        tbp = expr_to_table($1);
+        tbp = _RDB_parse_expr_to_table($1);
         if (tbp == NULL)
         {
             RDB_object *valp = RDB_expr_obj($1);
@@ -198,7 +198,7 @@ project: primary_expression '{' attribute_name_list '}' {
     | primary_expression '{' TOK_ALL TOK_BUT attribute_name_list '}' {
         RDB_table *tbp, *restbp;
 
-        tbp = expr_to_table($1);
+        tbp = _RDB_parse_expr_to_table($1);
         if (tbp == NULL)
         {
             RDB_object *valp = RDB_expr_obj($1);
@@ -256,7 +256,7 @@ attribute_name_list: TOK_ID {
 select: primary_expression TOK_WHERE or_expression {
         RDB_table *tbp, *restbp;
 
-        tbp = expr_to_table($1);
+        tbp = _RDB_parse_expr_to_table($1);
         if (tbp == NULL)
         {
             YYERROR;
@@ -279,7 +279,7 @@ select: primary_expression TOK_WHERE or_expression {
 rename: primary_expression TOK_RENAME '(' renaming_list ')' {
         RDB_table *tbp, *restbp;
 
-        tbp = expr_to_table($1);
+        tbp = _RDB_parse_expr_to_table($1);
         if (tbp == NULL)
         {
             RDB_object *valp = RDB_expr_obj($1);
@@ -348,11 +348,11 @@ renaming: TOK_ID TOK_AS TOK_ID {
 relation: primary_expression TOK_UNION primary_expression {
         RDB_table *restbp, *tb1p, *tb2p;
 
-        tb1p = expr_to_table($1);
+        tb1p = _RDB_parse_expr_to_table($1);
         if (tb1p == NULL) {
             YYERROR;
         }
-        tb2p = expr_to_table($3);
+        tb2p = _RDB_parse_expr_to_table($3);
         if (tb2p == NULL) {
             YYERROR;
         }
@@ -373,11 +373,11 @@ relation: primary_expression TOK_UNION primary_expression {
     | primary_expression TOK_INTERSECT primary_expression {
         RDB_table *restbp, *tb1p, *tb2p;
 
-        tb1p = expr_to_table($1);
+        tb1p = _RDB_parse_expr_to_table($1);
         if (tb1p == NULL) {
             YYERROR;
         }
-        tb2p = expr_to_table($3);
+        tb2p = _RDB_parse_expr_to_table($3);
         if (tb2p == NULL) {
             YYERROR;
         }
@@ -396,11 +396,11 @@ relation: primary_expression TOK_UNION primary_expression {
     | primary_expression TOK_MINUS primary_expression {
         RDB_table *restbp, *tb1p, *tb2p;
 
-        tb1p = expr_to_table($1);
+        tb1p = _RDB_parse_expr_to_table($1);
         if (tb1p == NULL) {
             YYERROR;
         }
-        tb2p = expr_to_table($3);
+        tb2p = _RDB_parse_expr_to_table($3);
         if (tb2p == NULL) {
             YYERROR;
         }
@@ -419,7 +419,7 @@ relation: primary_expression TOK_UNION primary_expression {
     | primary_expression TOK_JOIN primary_expression {
         RDB_table *restbp, *tb1p, *tb2p;
 
-        tb1p = expr_to_table($1);
+        tb1p = _RDB_parse_expr_to_table($1);
         if (tb1p == NULL) {
             RDB_object *val1p = RDB_expr_obj($1);
             RDB_object *val2p = RDB_expr_obj($3);
@@ -441,7 +441,7 @@ relation: primary_expression TOK_UNION primary_expression {
             if ($$ == NULL)
                 YYERROR;
         } else {
-            tb2p = expr_to_table($3);
+            tb2p = _RDB_parse_expr_to_table($3);
             if (tb2p == NULL) {
                 YYERROR;
             }
@@ -464,7 +464,7 @@ extend: TOK_EXTEND primary_expression TOK_ADD '(' extend_add_list ')' {
         RDB_table *tbp, *restbp;
         int i;
 
-        tbp = expr_to_table($2);
+        tbp = _RDB_parse_expr_to_table($2);
         if (tbp == NULL)
         {
             RDB_object *valp = RDB_expr_obj($2);
@@ -534,13 +534,13 @@ summarize: TOK_SUMMARIZE primary_expression TOK_PER expression
         RDB_table *tb1p, *tb2p, *restbp;
         int i;
 
-        tb1p = expr_to_table($2);
+        tb1p = _RDB_parse_expr_to_table($2);
         if (tb1p == NULL)
         {
             YYERROR;
         }
 
-        tb2p = expr_to_table($4);
+        tb2p = _RDB_parse_expr_to_table($4);
         if (tb2p == NULL)
         {
             YYERROR;
@@ -567,19 +567,19 @@ sdivideby: primary_expression TOK_DIVIDEBY primary_expression
            TOK_PER primary_expression {
         RDB_table *tb1p, *tb2p, *tb3p, *restbp;
 
-        tb1p = expr_to_table($1);
+        tb1p = _RDB_parse_expr_to_table($1);
         if (tb1p == NULL)
         {
             YYERROR;
         }
 
-        tb2p = expr_to_table($3);
+        tb2p = _RDB_parse_expr_to_table($3);
         if (tb2p == NULL)
         {
             YYERROR;
         }
 
-        tb3p = expr_to_table($5);
+        tb3p = _RDB_parse_expr_to_table($5);
         if (tb3p == NULL)
         {
             YYERROR;
@@ -666,7 +666,7 @@ summary_type: TOK_SUM {
 wrap: primary_expression TOK_WRAP '(' wrapping_list ')' {
         RDB_table *tbp, *restbp;
 
-        tbp = expr_to_table($1);
+        tbp = _RDB_parse_expr_to_table($1);
         if (tbp == NULL)
         {
             RDB_object *valp = RDB_expr_obj($1);
@@ -741,7 +741,7 @@ wrapping: '{' attribute_name_list '}' TOK_AS TOK_ID {
 unwrap: primary_expression TOK_UNWRAP '(' attribute_name_list ')' {
         RDB_table *tbp, *restbp;
 
-        tbp = expr_to_table($1);
+        tbp = _RDB_parse_expr_to_table($1);
         if (tbp == NULL) {
             RDB_object *valp = RDB_expr_obj($1);
             RDB_object dstobj;
@@ -778,7 +778,7 @@ unwrap: primary_expression TOK_UNWRAP '(' attribute_name_list ')' {
 group: primary_expression TOK_GROUP '{' attribute_name_list '}' TOK_AS TOK_ID {
         RDB_table *tbp, *restbp;
 
-        tbp = expr_to_table($1);
+        tbp = _RDB_parse_expr_to_table($1);
         if (tbp == NULL)
             YYERROR;
         _RDB_parse_ret = RDB_group(tbp, $4.attrc, $4.attrv, $7->var.attr.name,
@@ -796,7 +796,7 @@ group: primary_expression TOK_GROUP '{' attribute_name_list '}' TOK_AS TOK_ID {
 ungroup: primary_expression TOK_UNGROUP TOK_ID {
         RDB_table *tbp, *restbp;
 
-        tbp = expr_to_table($1);
+        tbp = _RDB_parse_expr_to_table($1);
         if (tbp == NULL)
             YYERROR;
         _RDB_parse_ret = RDB_ungroup(tbp, $3->var.attr.name, &restbp);
@@ -911,7 +911,7 @@ rel_expression: add_expression
     }
     | add_expression TOK_IN add_expression {
         /* If $1 is a name, try to find a table with that name */
-        RDB_table *tbp = expr_to_table($1);
+        RDB_table *tbp = _RDB_parse_expr_to_table($1);
         RDB_expression *exp = tbp != NULL ? RDB_table_to_expr(tbp) : $1;
 
         $$ = RDB_expr_contains($3, exp);
@@ -940,13 +940,13 @@ rel_expression: add_expression
         RDB_table *tbp;
         RDB_expression *ex1p, *ex2p;
 
-        tbp = expr_to_table($1);
+        tbp = _RDB_parse_expr_to_table($1);
         if (tbp != NULL)
            ex1p = RDB_table_to_expr(tbp);
         else
            ex1p = $1;
 
-        tbp = expr_to_table($3);
+        tbp = _RDB_parse_expr_to_table($3);
         if (tbp != NULL)
            ex2p = RDB_table_to_expr(tbp);
         else
@@ -1060,7 +1060,7 @@ extractor: TOK_TUPLE TOK_FROM expression {
         RDB_table *tbp;
         RDB_object tpl;
 
-        tbp = expr_to_table($3);
+        tbp = _RDB_parse_expr_to_table($3);
         if (tbp == NULL)
             YYERROR;
 
@@ -1080,7 +1080,7 @@ extractor: TOK_TUPLE TOK_FROM expression {
     ;
 
 count_invocation: TOK_COUNT '(' expression ')' {
-        RDB_table *tbp = expr_to_table($3);
+        RDB_table *tbp = _RDB_parse_expr_to_table($3);
 
         $$ = RDB_expr_cardinality(tbp != NULL ? RDB_table_to_expr(tbp) : $3);
         if ($$ == NULL)
@@ -1096,7 +1096,7 @@ sum_invocation: TOK_SUM '(' expression_list ')' {
         if ($3.expc == 0 || $3.expc > 2) {
             YYERROR;
         } else {
-            RDB_table *tbp = expr_to_table($3.expv[0]);
+            RDB_table *tbp = _RDB_parse_expr_to_table($3.expv[0]);
             char *attrname = NULL;
 
             if (tbp == NULL)
@@ -1122,7 +1122,7 @@ avg_invocation: TOK_AVG '(' expression_list ')' {
         if ($3.expc == 0 || $3.expc > 2) {
             YYERROR;
         } else {
-            RDB_table *tbp = expr_to_table($3.expv[0]);
+            RDB_table *tbp = _RDB_parse_expr_to_table($3.expv[0]);
             char *attrname = NULL;
 
             if (tbp == NULL)
@@ -1148,7 +1148,7 @@ max_invocation: TOK_MAX '(' expression_list ')' {
         if ($3.expc == 0 || $3.expc > 2) {
             YYERROR;
         } else {
-            RDB_table *tbp = expr_to_table($3.expv[0]);
+            RDB_table *tbp = _RDB_parse_expr_to_table($3.expv[0]);
             char *attrname = NULL;
 
             if (tbp == NULL)
@@ -1174,7 +1174,7 @@ min_invocation: TOK_MIN '(' expression_list ')' {
         if ($3.expc == 0 || $3.expc > 2) {
             YYERROR;
         } else {
-            RDB_table *tbp = expr_to_table($3.expv[0]);
+            RDB_table *tbp = _RDB_parse_expr_to_table($3.expv[0]);
             char *attrname = NULL;
 
             if (tbp == NULL)
@@ -1200,7 +1200,7 @@ all_invocation: TOK_ALL '(' expression_list ')' {
         if ($3.expc == 0 || $3.expc > 2) {
             YYERROR;
         } else {
-            RDB_table *tbp = expr_to_table($3.expv[0]);
+            RDB_table *tbp = _RDB_parse_expr_to_table($3.expv[0]);
             char *attrname = NULL;
 
             if (tbp == NULL)
@@ -1226,7 +1226,7 @@ any_invocation: TOK_ANY '(' expression_list ')' {
         if ($3.expc == 0 || $3.expc > 2) {
             YYERROR;
         } else {
-            RDB_table *tbp = expr_to_table($3.expv[0]);
+            RDB_table *tbp = _RDB_parse_expr_to_table($3.expv[0]);
             char *attrname = NULL;
 
             if (tbp == NULL)
@@ -1249,7 +1249,7 @@ any_invocation: TOK_ANY '(' expression_list ')' {
     ;
 
 is_empty_invocation: TOK_IS_EMPTY '(' expression ')' {
-        RDB_table *tbp = expr_to_table($3);
+        RDB_table *tbp = _RDB_parse_expr_to_table($3);
 
         $$ = RDB_expr_is_empty(tbp != NULL ? RDB_table_to_expr(tbp) : $3);
         if ($$ == NULL)
@@ -1511,8 +1511,8 @@ opt_expression_list:
 RDB_table *
 RDB_get_ltable(void *arg);
 
-static RDB_table *
-expr_to_table(const RDB_expression *exp)
+RDB_table *
+_RDB_parse_expr_to_table(const RDB_expression *exp)
 {
     RDB_object val;
     RDB_table *tbp;
@@ -1623,4 +1623,3 @@ _RDB_parse_free(void)
     }
     _RDB_parse_first_exp = NULL;
 }
-     

@@ -268,7 +268,11 @@ free_type(RDB_type *typ)
             if (typ->var.scalar.arep != NULL
                     && typ->var.scalar.arep->name == NULL)
                 RDB_drop_type(typ->var.scalar.arep, NULL);
+            break;
+        default:
+            abort();
     }
+    typ->kind = (enum _RDB_tp_kind) -1;
     free(typ);
 }    
 
@@ -641,7 +645,6 @@ RDB_drop_type(RDB_type *typ, RDB_transaction *txp)
             return ret;
         }
     }
-
     free_type(typ);
     return RDB_OK;
 }
@@ -943,7 +946,6 @@ RDB_project_tuple_type(const RDB_type *typ, int attrc, char *attrv[],
         tuptyp->var.tuple.attrv[i].typ = _RDB_dup_nonscalar_type(attrp->typ);
 
         tuptyp->var.tuple.attrv[i].defaultp = NULL;
-        tuptyp->var.tuple.attrv[i].options = 0;
     }
     
     *newtypp = tuptyp;
@@ -1032,7 +1034,6 @@ RDB_rename_tuple_type(const RDB_type *typ, int renc, const RDB_renaming renv[],
             goto error;
         }
         newtyp->var.tuple.attrv[i].defaultp = NULL;
-        newtyp->var.tuple.attrv[i].options = 0;
      }
      *newtypp = newtyp;
      return RDB_OK;
@@ -1075,6 +1076,8 @@ _RDB_get_possrep(RDB_type *typ, const char *repname)
 {
     int i;
 
+    if (!RDB_type_is_scalar(typ))
+        return NULL;
     for (i = 0; i < typ->var.scalar.repc
             && strcmp(typ->var.scalar.repv[i].name, repname) != 0;
             i++);

@@ -567,7 +567,6 @@ RDB_summarize(RDB_table *tb1p, RDB_table *tb2p, int addc,
                 goto error;
         }
         tuptyp->var.tuple.attrv[i].defaultp = NULL;
-        tuptyp->var.tuple.attrv[i].options = 0;
     }
     for (i = 0; i < tb2p->typ->var.basetyp->var.tuple.attrc; i++) {
         tuptyp->var.tuple.attrv[addc + i].name =
@@ -583,13 +582,11 @@ RDB_summarize(RDB_table *tb1p, RDB_table *tb2p, int addc,
             goto error;
         }
         tuptyp->var.tuple.attrv[addc + i].defaultp = NULL;
-        tuptyp->var.tuple.attrv[addc + i].options = 0;
     }
     for (i = 0; i < avgc; i++) {
         tuptyp->var.tuple.attrv[attrc - avgc + i].name = avgv[i];
         tuptyp->var.tuple.attrv[attrc - avgc + i].typ = &RDB_INTEGER;
         tuptyp->var.tuple.attrv[attrc - avgc + i].defaultp = NULL;
-        tuptyp->var.tuple.attrv[attrc - avgc + i].options = 0;
     }
 
     newtbp->typ = malloc(sizeof (RDB_type));
@@ -801,7 +798,7 @@ RDB_sdivide(RDB_table *tb1p, RDB_table *tb2p, RDB_table *tb3p,
 
     if (!RDB_type_equals(typ, tb3p->typ)) {
         RDB_drop_type(typ, NULL);
-        return RDB_INVALID_ARGUMENT;
+        return RDB_NOT_SUPPORTED;
     }
     RDB_drop_type(typ, NULL);
 

@@ -126,4 +126,11 @@ RDB_seq_item *
 Duro_tobj_to_seq_items(Tcl_Interp *interp, Tcl_Obj *tobjp, int *seqitcp,
         RDB_bool);
 
+int
+Duro_init_tcl(Tcl_Interp *, TclState **);
+
+int
+Duro_add_table(Tcl_Interp *interp, TclState *statep, RDB_table *tbp,
+        const char *name, RDB_environment *envp);
+
 #endif

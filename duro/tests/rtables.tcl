@@ -154,11 +154,47 @@ duro::update T2 STRATTR3 {STRATTR3 || "x"} $tx
 duro::update T2 INTATTR {INTATTR * 2} $tx
 
 set t [duro::expr {TUPLE FROM T2} $tx]
-set s {INTATTR 2 STRATTR1 Bla STRATTR2 Bli STRATTR3 Blubbx}
+set st {INTATTR 2 STRATTR1 Bla STRATTR2 Bli STRATTR3 Blubbx}
 
-if {![tequal $t $s] } {
-    error "Tuple value is $t, should be $s"
+if {![tequal $t $st] } {
+    error "Tuple value is $t, should be $st"
 }
+
+
+#
+# Check duro::expr on virtual tables
+#
+
+set tl [duro::expr {T2 WHERE TRUE} $tx]
+
+if {[llength $tl] != 1} {
+   error "Wrong result from T2 WHERE TRUE: $tl"
+}
+
+if {![tequal [lindex $tl 0] $st]} {
+   error "Wrong result from T2 WHERE TRUE: $tl"
+}
+
+set tl [duro::expr {T2 WHERE FALSE} $tx]
+if {$tl != {}} {
+   error "Wrong result from T2 WHERE FALSE: $tl"
+}
+
+
+#
+# Check duro::expr on real table
+#
+
+set tl [duro::expr {T2} $tx]
+
+if {[llength $tl] != 1} {
+   error "Wrong result from T2: $tl"
+}
+
+if {![tequal [lindex $tl 0] $st]} {
+   error "Wrong result from T2: $tl"
+}
+
 
 # Should have no effect
 duro::update T2 {STRATTR1 = "Bla" AND INTATTR = 3} STRATTR3 {"Blubb"} $tx
@@ -222,6 +258,20 @@ if {![duro::expr {IS_EMPTY (T2)} $tx]} {
 
 # Drop table
 duro::table drop T2 $tx
+
+duro::table create -local t {
+   {A STRING}
+   {B STRING}
+} {{A}} $tx
+
+if {![catch {
+    duro::table create -local t {
+       {A STRING}
+       {B STRING}
+    } {{A}} $tx
+}]} {
+    error "Table creation should fail, but succeeded"
+}
 
 duro::commit $tx
 

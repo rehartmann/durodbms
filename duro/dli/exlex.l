@@ -123,11 +123,13 @@ NOT {
 
 TRUE {
     yylval = RDB_bool_to_expr(RDB_TRUE);
+    _RDB_parse_add_exp(yylval);
     return TOK_BOOLEAN;
 }
 
 FALSE {
     yylval = RDB_bool_to_expr(RDB_FALSE);
+    _RDB_parse_add_exp(yylval);
     return TOK_BOOLEAN;
 }
 

@@ -1881,7 +1881,26 @@ _RDB_get_cat_ro_op(const char *name, int argc, RDB_type *argtv[],
     }
 
     for (i = 0; i < op->argc; i++) {
-        op->argtv[i] = argtv[i];
+        switch (argtv[i]->kind) {
+            case RDB_TP_RELATION:
+                ret = RDB_create_relation_type(
+                        argtv[i]->var.basetyp->var.tuple.attrc,
+                        argtv[i]->var.basetyp->var.tuple.attrv,
+                        &op->argtv[i]);
+                if (ret != RDB_OK)
+                    goto error;
+                break;
+            case RDB_TP_TUPLE:
+                ret = RDB_create_tuple_type(
+                        argtv[i]->var.tuple.attrc,
+                        argtv[i]->var.tuple.attrv,
+                        &op->argtv[i]);
+                if (ret != RDB_OK)
+                    goto error;
+                break;
+            default:
+                op->argtv[i] = argtv[i];
+        }
     }
 
     ret = _RDB_get_cat_rtype(name, txp, &op->rtyp);
@@ -1996,7 +2015,26 @@ _RDB_get_cat_upd_op(const char *name, int argc, RDB_type *argtv[],
     }
 
     for (i = 0; i < op->argc; i++) {
-        op->argtv[i] = argtv[i];
+        switch (argtv[i]->kind) {
+            case RDB_TP_RELATION:
+                ret = RDB_create_relation_type(
+                        argtv[i]->var.basetyp->var.tuple.attrc,
+                        argtv[i]->var.basetyp->var.tuple.attrv,
+                        &op->argtv[i]);
+                if (ret != RDB_OK)
+                    goto error;
+                break;
+            case RDB_TP_TUPLE:
+                ret = RDB_create_tuple_type(
+                        argtv[i]->var.tuple.attrc,
+                        argtv[i]->var.tuple.attrv,
+                        &op->argtv[i]);
+                if (ret != RDB_OK)
+                    goto error;
+                break;
+            default:
+                op->argtv[i] = argtv[i];
+        }
     }
 
     ret = RDB_copy_obj(&op->iarg, RDB_tuple_get(&tpl, "IARG"));

@@ -4,7 +4,9 @@ Summary of Changes for Duro
 
 Changes for Duro 0.8
 
-- Introduced error code RDB_ATTRIUTE_NOT_FOUND.
+- Introduced error code RDB_ATTRIBUTE_NOT_FOUND.
+
+- Changed semantics of duro::operator create.
 
 - duro::insert now raises an error if the tuple is already an element of the
   table.

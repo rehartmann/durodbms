@@ -89,9 +89,9 @@ duro::operator create INTSET_get_INTLIST -returns STRING {is INTSET} {
 
 # Setter
 duro::operator create INTSET_set_INTLIST -updates {is} {is INTSET il STRING} {
-    set is {}
+    duro::delete $is $tx
     foreach i $il {
-        lappend is [list N $i]
+        duro::insert $is [list N $i] $tx
     }
 } $tx
 

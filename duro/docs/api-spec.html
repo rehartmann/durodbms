@@ -6,10 +6,7 @@
 <body>
 <h1>Duro API specification</h1>
 
-<p>- DRAFT -
-
-<p>Not all the functions described in this document are already implemented.
-See the release notes for details.
+<p>Version 0.8
 
 <h2>Contents</h2>
 
@@ -311,9 +308,7 @@ attributes are specified by the elements of <var>attrv</var>.
 <dd>If not NULL, this field must point to a RDB_object variable that specifies
 the default value for the attribute.
 <dt>options
-<dd>May be either zero, or RDB_SYSTEM_GENERATED. In the latter case
-the attribute must be a candidate key, and the system then will automatically
-generate a value for that attribute on insertion.
+<dd>This field is currently ignored.
 </dl>
 
 <p>The table will have <var>keyc</var> candidate keys. The <var>keyv</var>
@@ -327,8 +322,8 @@ A candidate key may not be a subset of another.
 If a single candidate key is specified, that key
 may be empty (not contain any attribute).
 
-<p>Passing a <var>keyv</var> of NULL is equivalent to specifiying
-a key which constsists of all attributes, that is, the table will become all-key.
+<p>Passing a <var>keyv</var> of NULL is equivalent to specifiying a single key
+which constsists of all attributes, that is, the table will become all-key.
 
 <h3>Return value</h3>
 
@@ -345,9 +340,6 @@ attribute.
 <dt>RDB_INVALID_ARGUMENT
 <dd>One or more of the arguments are incorrect. For example, a key attribute
 does not appear in <var>attrv</var>, etc.
-<dt>RDB_NOT_SUPPORTED
-<dd>The combination of arguments is not supported by the version
-of Duro used. Consult the release notes of that version for details.
 </dl>
 
 <p>The call may also fail for a <a href="#syserr">system error</a>,
@@ -473,6 +465,8 @@ RDB_set_table_name(RDB_table *tbp, const char *name, RDB_transaction *);
 
 <p>RDB_set_table_name sets the name of the table to <var>name</var>.
 
+<p>Currently, RDB_set_table_name does not work for global tables.
+
 <h3>Return value</h3>
 
 <p>On success, RDB_OK is returned. On failure, an error code is returned.
@@ -485,8 +479,7 @@ RDB_set_table_name(RDB_table *tbp, const char *name, RDB_transaction *);
 <dt>RDB_INVALID_ARGUMENT
 <dd><var>name</var> is not a valid table name.
 <dt>RDB_NOT_SUPPORTED
-<dd>The combination of arguments is not supported by the version
-of Duro used. Consult the release notes of that version for details.
+<dd>The table specified by <var>tbp</var> is global.
 </dl>
 
 <p>The call may also fail for a <a href="#syserr">system error</a>,
@@ -513,6 +506,8 @@ database the transaction specified by <var>txp</var> interacts with.
 
 <p>The table must have a name.
 
+<p>Currently, RDB_add_table does not work for local real tables.
+
 <h3>Return value</h3>
 
 <p>On success, RDB_OK is returned. On failure, an error code is returned.
@@ -527,8 +522,7 @@ database the transaction specified by <var>txp</var> interacts with.
 <dt>RDB_ELEMENT_EXISTS
 <dd>The table is already associated with the database.
 <dt>RDB_NOT_SUPPORTED
-<dd>The combination of arguments is not supported by the version
-of Duro used. Consult the release notes of that version for details.
+<dd>The table is a local real table.
 </dl>
 
 <p>The call may also fail for a <a href="#syserr">system error</a>,
@@ -564,13 +558,14 @@ database the transaction specified by <var>txp</var> interacts with.
 <dt>RDB_INVALID_ARGUMENT
 <dd>The table does not belong the database which the transaction interacts
 with.
-<dt>RDB_NOT_SUPPORTED
-<dd>The combination of arguments is not supported by the version
-of Duro used. Consult the release notes of that version for details.
 </dl>
 
 <p>The call may also fail for a <a href="#syserr">system error</a>,
 in which case the transaction is implicitly rolled back.
+
+<h3>Notes</h3>
+
+<p>This function is not implemented.</strong>
 
 <hr>
 
@@ -1430,9 +1425,21 @@ RDB_sdivide(RDB_table *, RDB_table *, RDB_table *, RDB_table **resultpp);
 <p>RDB_creates a local (transient) virtual table which is the
 result of a small divide of the three tables.
 
+<p>Table #3 must be of the same type as the join of table #1 and table #2.
+
 <h3>Return value</h3>
 
 <p>On success, RDB_OK is returned. On failure, an error code is returned.
+
+<h3>Errors</h3>
+
+<dl>
+<dt>RDB_TYPE_MISMATCH
+<dd>Table #1 and table #2 have an attribute with the same name, but a
+different type.
+<dt>RDB_NOT_SUPPORTED
+<dd>Table #3 is not of the same type as the join of table #1 and table #2.
+</dl>
 
 <hr>
 
@@ -1483,6 +1490,8 @@ A pointer to the result table is stored in resultpp.
 
 <p>The two argument tables must not share an unnamed child table.
 
+<p>Currently, COUNTD, SUMD, and AVGD are not supported.
+
 <h3>Return value</h3>
 
 <p>On success, RDB_OK is returned. On failure, an error code is returned.
@@ -1491,8 +1500,8 @@ A pointer to the result table is stored in resultpp.
 
 <dl>
 <dt>RDB_NOT_SUPPORTED
-<dd>The combination of arguments is not supported by the version
-of Duro used. Consult the release notes of that version for details.
+<dd>The field op of one of the elements of <var>addv</var>
+is COUNTD, SUMD, or AVGD.
 </dl>
 
 <p>The call may also fail for a <a href="#syserr">system error</a>.
@@ -2266,11 +2275,12 @@ RDB_obj_table(const RDB_object *valp);
 <h3>Description</h3>
 
 <p>RDB_obj_table returns a pointer to the table wrapped by the RDB_object pointed to by
-<var>valp</var>. The RDB_object must be of a relation type.
+<var>valp</var>.
 
 <h3>Return value</h3>
 
-<p>The table wrapped by the RDB_object.
+<p>A pointer to the table wrapped by the RDB_object, or NULL if the object
+does not wrap a table.
 
 <hr>
 

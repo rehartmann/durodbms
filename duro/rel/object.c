@@ -577,7 +577,7 @@ RDB_init_obj(RDB_object *valp)
     valp->kind = RDB_OB_INITIAL;
     valp->typ = NULL;
 }
-#include <signal.h>
+
 int
 RDB_destroy_obj(RDB_object *objp)
 {
@@ -636,8 +636,6 @@ RDB_destroy_obj(RDB_object *objp)
             objp->var.tbp->refcount--;
             if (objp->var.tbp->refcount == 0
                     && objp->var.tbp->name == NULL) {
-                if (objp->var.tbp->kind != RDB_TB_STORED)
-                    abort();
                 return RDB_drop_table(objp->var.tbp, NULL);
             }
             break;
@@ -790,6 +788,8 @@ RDB_table_to_obj(RDB_object *objp, RDB_table *tbp)
 RDB_table *
 RDB_obj_table(const RDB_object *objp)
 {
+    if (objp->kind != RDB_OB_TABLE)
+        return NULL;
     return objp->var.tbp;
 }
 

@@ -9,6 +9,8 @@ exec tclsh "$0"
 
 load .libs/libdurotcl.so
 
+source tests/testutil.tcl
+
 # Create DB environment
 file delete -force tests/dbenv
 file mkdir tests/dbenv
@@ -23,13 +25,17 @@ set tx [duro::begin $dbenv TEST]
 # Create overloaded update operator
 
 duro::operator create strmul -updates {a} {a STRING b STRING} {
-    append a $b
+    upvar $a la
+
+    append la $b
 } $tx
 
 duro::operator create strmul -updates {a} {a STRING b INTEGER} {
-    set h $a
+    upvar $a la
+
+    set h $la
     for {set i 1} {$i < $b} {incr i} {
-        append a $h
+        append la $h
     }
 } $tx
 
@@ -37,6 +43,33 @@ duro::operator create strmul -updates {a} {a STRING b INTEGER} {
 duro::operator create concat -returns STRING {a STRING b STRING} {
     return $a$b
 } $tx
+
+# Create read-only operator with relation argument and return value
+duro::operator create relop1 -returns {relation {A STRING}} \
+        {r {relation {A STRING}}} {
+    lappend r {A b}
+    return $r
+} $tx
+
+# Create update operator with relation argument
+duro::operator create relop2 -updates {r1} {r1 {relation {A STRING}} \
+        r2 {relation {A STRING}}} {
+    foreach i $r2 {
+        duro::insert $r1 $i $tx
+    }
+} $tx
+
+duro::table create -local t {
+   {A STRING}
+} {{A}} $tx
+
+duro::insert t {A a} $tx
+
+duro::call relop2 t {relation {A STRING}} {{A b}} {relation {A STRING}} $tx
+
+set arr [duro::array create t {A asc} $tx]
+checkarray $arr {{A a} {A b}} $tx
+duro::array drop $arr
 
 duro::commit $tx
 
@@ -53,8 +86,7 @@ set v foo
 duro::call strmul v STRING bar STRING $tx
 
 if {![string equal $v foobar]} {
-    puts [format "result is %s, should be %s" $v foobar]
-    exit 1
+    error [format "result is %s, should be %s" $v foobar]
 }
 
 set i X
@@ -62,21 +94,18 @@ set v foo
 duro::call strmul v STRING 3 INTEGER $tx
 
 if {![string equal $v foofoofoo]} {
-    puts [format "result is %s, should be %s" $v foofoofoo]
-    exit 1
+    error [format "result is %s, should be %s" $v foofoofoo]
 }
 
 if {$i != "X"} {
-    puts "global variable was modified by operator"
-    exit 1
+    error "global variable was modified by operator"
 }
 
 # Invoke read-only operator
 set v [duro::expr {concat("X", "Y")} $tx]
 
 if {![string equal $v XY]} {
-   puts "result is %s, should be %s" $v XY
-   exit 1
+   error "result is %s, should be %s" $v XY
 }
 
 # Destroy operators
@@ -88,8 +117,26 @@ duro::operator drop concat $tx
 if {![catch {
     duro::call strmul v STRING bar STRING $tx
 }]} {
-    puts "Operator invocation should fail, but succeded"
-    exit 1
+    error "Operator invocation should fail, but succeded"
 }
+
+set r [duro::expr {relop1(RELATION {TUPLE {A "a"}})} $tx]
+set sr {{A a} {A b}}
+if {[lsort $r] != $sr} {
+    error "relation should be $sr, but is $r"
+}
+
+duro::table create -local t {
+   {A STRING}
+} {{A}} $tx
+
+duro::call relop2 t {relation {A STRING}} {{A b} {A c}} {relation {A STRING}} \
+        $tx
+
+set arr [duro::array create t {A asc} $tx]
+checkarray $arr {{A b} {A c}} $tx
+duro::array drop $arr
+
+duro::table drop t $tx
 
 duro::commit $tx

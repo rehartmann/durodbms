@@ -17,6 +17,20 @@ duro::expr - evaluate non-relation valued expressions
 
 <p>Evaluates the expression <var>expression</var> and returns the result.
 
+<p>If the expression is tuple-valued, the return value is a list
+containing pairs of elements.
+The first element in each pair is the attribute name
+and the second element of each pair is the attribute value.
+
+<p>If the expression is relation-valued, the return value is a list
+of tuples. Each tuple is represented as described above.
+
+<p>If the type of the expression is a user-defined type, the return value
+is a list which represents a possible representation.
+The list contains the name of the representation followed by pairs of elements.
+The first element in the <em>n</em>th pair is the component name
+and the second element of each pair is the component value.
+
 <h2>See Also</h2>
 
 <p><a href="../expressions.html">Expressions</a>

@@ -21,18 +21,6 @@
 
 <h2>Functions only partially implemented</h2>
 
-<h3>RDB_create_table</h3>
-
-<p>System-generated key values are not supported.
-
-<h3>RDB_set_table_name</h3>
-
-<p>RDB_set_table_name is not supported for global (persistent) tables.
-
-<h3>RDB_add_table</h3>
-
-<p>RDB_add_table is not supported for local real tables.
-
 <h3>RDB_insert</h3>
 
 <p>RDB_insert is not supported for virtual tables which are the result
@@ -40,20 +28,12 @@ of a MINUS, SUMMARIZE, or DIVIDEBY PER.
 
 <h3>RDB_update</h3>
 
-<p>RDB_update is not supported for virtual tables.
+<p>RDB_update is not supported for virtual tables except selection tables.
 
 <h3>RDB_delete</h3>
 
 <p>RDB_delete is not supported for virtual tables which are the result of
-a JOIN, EXTEND, SUMMARIZE, WRAP, UNWRAP, GROUP, UNGROUP, or DIVIDEBY PER.
-
-<h3>RDB_sdivide</h3>
-
-<p>Table #3 must be of the same type as the join of table #1 and table #2.
-
-<h3>RDB_summarize</h3>
-
-<p>COUNTD, SUMD, and AVGD are not supported.
+a JOIN, SUMMARIZE, WRAP, UNWRAP, GROUP, UNGROUP, or DIVIDEBY PER.
 
 <h3>RDB_table_to_array</h3>
 
@@ -70,14 +50,6 @@ the array is destroyed.
 <h3>RDB_array_set</h3>
 
 <p>...
-
-<h3>RDB_create_ro_op</h3>
-
-<p>Only scalar argument and return types are supported.
-
-<h3>RDB_create_update_op</h3>
-
-<p>Only scalar argument types are supported.
 
 <h2>Implementation-specific details</h2>
 
