@@ -79,42 +79,68 @@ test_table(RDB_database *dbp)
     RDB_init_value(&ival);
     RDB_init_value(&tival);
 
+    printf("Trying to insert tuple with INTEGER\n");
+
+    ret = RDB_tuple_set_int(&tpl, "NUMBER", 50);
+    if (ret != RDB_OK) {
+        goto error;
+    }
+
+    ret = RDB_insert(tbp, &tpl, &tx);
+    if (ret != RDB_TYPE_MISMATCH) {
+        fprintf(stderr, "Wrong return code: %s\n", RDB_strerror(ret));
+        goto error;
+    }
+    printf("Return code: %s - OK\n", RDB_strerror(ret));
+
+    printf("Trying to create TINYINT fromt INTEGER=200\n");
+
     RDB_value_set_int(&ival, (RDB_int)200);
     ivalp = &ival;
 
     ret = RDB_value_set(&tival, tinyintp, "TINYINT", &ivalp);
+    if (ret != RDB_TYPE_CONSTRAINT_VIOLATION) {
+        fprintf(stderr, "Wrong return code: %s\n", RDB_strerror(ret));
+        goto error;
+    }
+    printf("Return code: %s - OK\n", RDB_strerror(ret));
+
+    printf("Creating TINYINT from INTEGER=99\n");
+
+    RDB_value_set_int(&ival, (RDB_int)99);
+    ivalp = &ival;
+
+    ret = RDB_value_set(&tival, tinyintp, "TINYINT", &ivalp);
     if (ret != RDB_OK) {
-        RDB_rollback(&tx);
-        return ret;
+        goto error;
     }
 
     ret = RDB_tuple_set(&tpl, "NUMBER", &tival);
     if (ret != RDB_OK) {
-        RDB_rollback(&tx);
-        return ret;
+        goto error;
     }
 
-    printf("Inserting tuple #1\n");
+    printf("Inserting Tuple\n");
+
     ret = RDB_insert(tbp, &tpl, &tx);
     if (ret != RDB_OK) {
         RDB_rollback(&tx);
         return ret;
     }
-/*
-    printf("Inserting tuple #2\n");
-    ret = RDB_insert(tbp, &tpl, &tx);
-    if (ret != RDB_OK && ret != RDB_ELEMENT_EXISTS ) {
-        RDB_rollback(&tx);
-        return ret;
-    }
-    if (ret == RDB_ELEMENT_EXISTS)
-        printf("Error: element exists - OK\n");
-*/
+
     RDB_destroy_tuple(&tpl);
+    RDB_destroy_value(&ival);
     RDB_destroy_value(&tival);
 
     printf("End of transaction\n");
     return RDB_commit(&tx);
+error:
+    RDB_destroy_tuple(&tpl);
+    RDB_destroy_value(&ival);
+    RDB_destroy_value(&tival);
+
+    RDB_rollback(&tx);
+    return ret;
 }
 
 int

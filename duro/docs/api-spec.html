@@ -38,6 +38,8 @@
 <li><a href="#union">RDB_union</a>
 <li><a href="#intersect">RDB_intersect</a>
 <li><a href="#minus">RDB_minus</a>
+<li><a href="#divide">RDB_divide</a>
+<li><a href="#gdivide">RDB_gdivide</a>
 <li><a href="#summarize">RDB_summarize</a>
 </ul>
 
@@ -412,6 +414,11 @@ RDB_copy_table(RDB_table *dstp, RDB_table *srcp, RDB_transaction *);
 <pre>
 #include &lt;rel/rdb.h&gt;
 
+typedef struct {
+    char *from;
+    char *to;
+} RDB_renaming;
+
 int
 RDB_rename(RDB_table *tbp, int renc, RDB_renaming renv[],
            RDB_table **resultpp);
@@ -464,7 +471,7 @@ RDB_project(RDB_table *, int attrc, char *attrv[], RDB_table **resultpp);
 #include &lt;rel/rdb.h&gt;
 
 int
-RDB_join(RDB_table *, RDB_table *, RDB_table **resultpp);
+RDB_join(RDB_table *tb1p, RDB_table *tb2p, RDB_table **resultpp);
 </pre>
 
 <h3>Description</h3>
@@ -513,9 +520,34 @@ RDB_minus(RDB_table *, RDB_table *, RDB_table **resultpp);
 
 <hr>
 
+<h2 id="divide">RDB_divide</h2>
+
+<pre>
+#include &lt;rel/rdb.h&gt;
+
+int
+RDB_divide(RDB_table *, RDB_table *, RDB_table *, RDB_table **resultpp);
+</pre>
+
+<hr>
+
+<h2 id="gdivide">RDB_gdivide</h2>
+
+<pre>
+#include &lt;rel/rdb.h&gt;
+
+int
+RDB_gdivide(RDB_table *, RDB_table *, RDB_table *, RDB_table *,
+           RDB_table **resultpp);
+</pre>
+
+<hr>
+
 <h2 id="summarize">RDB_summarize</h2>
 
 <pre>
+#include &lt;rel/rdb.h&gt;
+
 typedef struct {
     RDB_aggregate_op op;
     RDB_expression *exp;
@@ -745,6 +777,18 @@ RDB_copy_value(RDB_value *dstvalp, const RDB_value *srcvalp);
 
 <hr>
 
+<h2 id="value_set">RDB_value_set</h2>
+
+<pre>
+#include &lt;rel/rdb.h&gt;
+
+int
+RDB_value_set(RDB_value *valp, RDB_type *, const char *repname,
+              RDB_value **compv);
+</pre>
+
+<hr>
+
 <h2 id="value_set_bool">RDB_value_set_bool</h2>
 
 <pre>
@@ -829,6 +873,30 @@ RDB_value_rational(const RDB_value *valp);
 
 char *
 RDB_value_string(RDB_value *valp);
+</pre>
+
+<hr>
+
+<h2 id="value_get_comp">RDB_value_get_comp</h2>
+
+<pre>
+#include &lt;rel/rdb.h&gt;
+
+int
+RDB_value_get_comp(const RDB_value *valp, const char *compname,
+                   RDB_value *comp);
+</pre>
+
+<hr>
+
+<h2 id="value_set_comp">RDB_value_set_comp</h2>
+
+<pre>
+#include &lt;rel/rdb.h&gt;
+
+int
+RDB_value_set_comp(RDB_value *valp, const char *compname,
+                   const RDB_value *comp);
 </pre>
 
 <hr>

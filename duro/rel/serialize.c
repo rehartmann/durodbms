@@ -195,7 +195,7 @@ serialize_summarize(RDB_value *valp, int *posp, RDB_table *tbp)
     if (ret != RDB_OK)
         return ret;
 
-    ret = _RDB_serialize_table(valp, posp, tbp->var.summarize.tb1p);
+    ret = _RDB_serialize_table(valp, posp, tbp->var.summarize.tb2p);
     if (ret != RDB_OK)
         return ret;
 
@@ -234,7 +234,7 @@ serialize_rename(RDB_value *valp, int *posp, RDB_table *tbp)
     if (ret != RDB_OK)
         return ret;
 
-    for (i = 0; i < tbp->var.summarize.addc; i++) {
+    for (i = 0; i < tbp->var.rename.renc; i++) {
         ret = serialize_str(valp, posp, tbp->var.rename.renv[i].from);
         if (ret != RDB_OK)
             return ret;
@@ -315,7 +315,7 @@ enum {
 };
 
 int
-_RDB_vtable_to_value(RDB_table *tbp, RDB_value *valp)
+_RDB_table_to_value(RDB_table *tbp, RDB_value *valp)
 {
     int pos;
     int ret;
@@ -389,13 +389,12 @@ deserialize_int(RDB_value *valp, int *posp, RDB_int *vp)
 }
 
 static int
-deserialize_byte(RDB_value *valp, int *posp, RDB_byte *bp)
+deserialize_byte(RDB_value *valp, int *posp)
 {
     if (*posp + 1 > valp->var.bin.len)
         return RDB_INTERNAL;
 
-    *bp = ((RDB_byte *)valp->var.bin.datap)[(*posp)++];
-    return RDB_OK;
+    return ((RDB_byte *)valp->var.bin.datap)[(*posp)++];
 }
 
 static int
@@ -440,21 +439,22 @@ deserialize_value(RDB_value *valp, int *posp, RDB_transaction *txp,
 }
 
 static int
-deserialize_vtable(RDB_value *valp, int *posp, RDB_transaction *txp,
+deserialize_table(RDB_value *valp, int *posp, RDB_transaction *txp,
                    RDB_table **tbpp);
 
 static int
 deserialize_expr(RDB_value *valp, int *posp, RDB_transaction *txp,
                  RDB_expression **exprpp)
 {
-    RDB_byte b;
     RDB_expression *expr1p, *expr2p;
+    enum _RDB_expr_kind ekind;
     int ret;
 
-    ret = deserialize_byte(valp, posp, &b);
-    if (ret != RDB_OK)
+    ret = deserialize_byte(valp, posp);
+    if (ret < 0)
         return ret;
-    switch (b) {
+    ekind = (enum _RDB_expr_kind) ret;
+    switch (ekind) {
         case RDB_CONST:
             {
                RDB_value val;
@@ -523,7 +523,7 @@ deserialize_expr(RDB_value *valp, int *posp, RDB_transaction *txp,
             ret = deserialize_expr(valp, posp, txp, &expr2p);
             if (ret != RDB_OK)
                 return ret;
-            *exprpp = _RDB_create_binexpr(expr1p, expr2p, (enum _RDB_expr_kind)b);
+            *exprpp = _RDB_create_binexpr(expr1p, expr2p, ekind);
             if (*exprpp == NULL)
                 return RDB_NO_MEMORY;
             break;
@@ -531,7 +531,7 @@ deserialize_expr(RDB_value *valp, int *posp, RDB_transaction *txp,
             {
                 RDB_table *tbp;
 
-                ret = deserialize_vtable(valp, posp, txp, &tbp);
+                ret = deserialize_table(valp, posp, txp, &tbp);
                 if (ret != RDB_OK)
                     return ret;
                 *exprpp = RDB_rel_table(tbp);
@@ -562,7 +562,7 @@ deserialize_project(RDB_value *valp, int *posp, RDB_transaction *txp,
     int i;
     int ret;
 
-    ret = deserialize_vtable(valp, posp, txp, &tbp);
+    ret = deserialize_table(valp, posp, txp, &tbp);
     if (ret != RDB_OK)
         return ret;
     ret = deserialize_int(valp, posp, &ac);
@@ -597,7 +597,7 @@ deserialize_extend(RDB_value *valp, int *posp, RDB_transaction *txp,
     int i;
     int ret;
 
-    ret = deserialize_vtable(valp, posp, txp, &tbp);
+    ret = deserialize_table(valp, posp, txp, &tbp);
     if (ret != RDB_OK)
         return ret;
     ret = deserialize_int(valp, posp, &ac);
@@ -636,38 +636,137 @@ int
 deserialize_summarize(RDB_value *valp, int *posp, RDB_transaction *txp,
                     RDB_table **tbpp)
 {
-    return RDB_NOT_SUPPORTED;
+    RDB_table *tb1p;
+    RDB_table *tb2p;
+    RDB_summarize_add *addv;
+    RDB_int addc;
+    int ret;
+    int i;
+
+    ret = deserialize_table(valp, posp, txp, &tb1p);
+    if (ret != RDB_OK)
+        return ret;
+
+    ret = deserialize_table(valp, posp, txp, &tb2p);
+    if (ret != RDB_OK)
+        return ret;
+
+    ret = deserialize_int(valp, posp, &addc);
+    if (ret != RDB_OK)
+        return ret;
+
+    addv = malloc(addc * sizeof (RDB_summarize_add));
+    if (addv == NULL)
+        return RDB_NO_MEMORY;
+
+    for (i = 0; i < addc; i++) {
+        addv[i].exp = NULL;
+        addv[i].name = NULL;
+    }
+
+    for (i = 0; i < addc; i++) {
+        ret = deserialize_byte(valp, posp);
+        if (ret < 0)
+            goto error;
+        addv[i].op = (RDB_aggregate_op)ret;
+        ret = deserialize_expr(valp, posp, txp, &addv[i].exp);
+        if (ret != RDB_OK)
+            goto error;
+        ret = deserialize_str(valp, posp, &addv[i].name);
+        if (ret != RDB_OK)
+            goto error;
+    }
+
+    ret = RDB_summarize(tb1p, tb2p, addc, addv, tbpp);
+    if (ret != RDB_OK) {
+        goto error;
+    }
+
+    for (i = 0; i < addc; i++) {
+        free(addv[i].name);
+    }
+    free(addv);
+
+    return RDB_OK;
+error:
+    for (i = 0; i < addc; i++) {
+        if (addv[i].exp != NULL)
+            RDB_drop_expr(addv[i].exp);
+        free(addv[i].name);
+    }
+    free(addv);
+    return ret;
 }
 
 int
 deserialize_rename(RDB_value *valp, int *posp, RDB_transaction *txp,
-                    RDB_table **tbpp)
+                   RDB_table **tbpp)
 {
-    return RDB_NOT_SUPPORTED;
+    RDB_table *tb1p;
+    RDB_int renc;
+    RDB_renaming *renv;
+    int ret;
+    int i;
+
+    ret = deserialize_table(valp, posp, txp, &tb1p);
+    if (ret != RDB_OK)
+        return ret;
+
+    ret = deserialize_int(valp, posp, &renc);
+    if (ret != RDB_OK)
+        return ret;
+
+    renv = malloc(renc * sizeof (RDB_renaming));
+    if (renv == NULL)
+        return RDB_NO_MEMORY;
+
+    for (i = 0; i < renc; i++) {
+        renv[i].from = NULL;
+        renv[i].to = NULL;
+    }
+
+    for (i = 0; i < renc; i++) {
+        ret = deserialize_str(valp, posp, &renv[i].from);
+        if (ret != RDB_OK)
+            goto cleanup;
+        ret = deserialize_str(valp, posp, &renv[i].to);
+        if (ret != RDB_OK)
+            goto cleanup;
+    }
+
+    ret = RDB_rename(tb1p, renc, renv, tbpp);
+
+cleanup:
+    for (i = 0; i < renc; i++) {
+        free(renv[i].from);
+        free(renv[i].to);
+    }
+    free(renv);
+
+    return ret;
 }
 
 int
-_RDB_deserialize_vtable(RDB_value *valp, RDB_transaction *txp, RDB_table **tbpp)
+_RDB_deserialize_table(RDB_value *valp, RDB_transaction *txp, RDB_table **tbpp)
 {
     int pos = 0;
 
-    return deserialize_vtable(valp, &pos, txp, tbpp);
+    return deserialize_table(valp, &pos, txp, tbpp);
 }
 
 static int
-deserialize_vtable(RDB_value *valp, int *posp, RDB_transaction *txp,
+deserialize_table(RDB_value *valp, int *posp, RDB_transaction *txp,
                    RDB_table **tbpp)
 {
     int ret;
-    RDB_byte b;
     char *namp;
     RDB_table *tb1p, *tb2p;
     RDB_expression *exprp;
 
-    ret = deserialize_byte(valp, posp, &b);
-    if (ret != RDB_OK)
+    ret = deserialize_byte(valp, posp);
+    if (ret < 0)
         return ret;
-    switch ((enum _RDB_tb_kind) b) {
+    switch ((enum _RDB_tb_kind) ret) {
         case RDB_TB_STORED:
             ret = deserialize_str(valp, posp, &namp);
             if (ret != RDB_OK)
@@ -677,7 +776,7 @@ deserialize_vtable(RDB_value *valp, int *posp, RDB_transaction *txp,
             return ret;
         case RDB_TB_SELECT:
         case RDB_TB_SELECT_PINDEX:
-            ret = deserialize_vtable(valp, posp, txp, &tb1p);
+            ret = deserialize_table(valp, posp, txp, &tb1p);
             if (ret != RDB_OK)
                 return ret;
             ret = deserialize_expr(valp, posp, txp, &exprp);
@@ -686,34 +785,34 @@ deserialize_vtable(RDB_value *valp, int *posp, RDB_transaction *txp,
             return RDB_select(tb1p, exprp, tbpp);
             break;
         case RDB_TB_UNION:
-            ret = deserialize_vtable(valp, posp, txp, &tb1p);
+            ret = deserialize_table(valp, posp, txp, &tb1p);
             if (ret != RDB_OK)
                 return ret;
-            ret = deserialize_vtable(valp, posp, txp, &tb2p);
+            ret = deserialize_table(valp, posp, txp, &tb2p);
             if (ret != RDB_OK)
                 return ret;
             return RDB_union(tb1p, tb2p, tbpp);
         case RDB_TB_MINUS:
-            ret = deserialize_vtable(valp, posp, txp, &tb1p);
+            ret = deserialize_table(valp, posp, txp, &tb1p);
             if (ret != RDB_OK)
                 return ret;
-            ret = deserialize_vtable(valp, posp, txp, &tb2p);
+            ret = deserialize_table(valp, posp, txp, &tb2p);
             if (ret != RDB_OK)
                 return ret;
             return RDB_minus(tb1p, tb2p, tbpp);
         case RDB_TB_INTERSECT:
-            ret = deserialize_vtable(valp, posp, txp, &tb1p);
+            ret = deserialize_table(valp, posp, txp, &tb1p);
             if (ret != RDB_OK)
                 return ret;
-            ret = deserialize_vtable(valp, posp, txp, &tb2p);
+            ret = deserialize_table(valp, posp, txp, &tb2p);
             if (ret != RDB_OK)
                 return ret;
             return RDB_union(tb1p, tb2p, tbpp);
         case RDB_TB_JOIN:
-            ret = deserialize_vtable(valp, posp, txp, &tb1p);
+            ret = deserialize_table(valp, posp, txp, &tb1p);
             if (ret != RDB_OK)
                 return ret;
-            ret = deserialize_vtable(valp, posp, txp, &tb2p);
+            ret = deserialize_table(valp, posp, txp, &tb2p);
             if (ret != RDB_OK)
                 return ret;
             return RDB_join(tb1p, tb2p, tbpp);

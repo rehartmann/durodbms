@@ -1692,7 +1692,11 @@ RDB_summarize(RDB_table *tb1p, RDB_table *tb2p, int addc, RDB_summarize_add addv
     for (i = 0; i < addc; i++) {
         RDB_type *typ = addv[i].op == RDB_COUNT ? &RDB_INTEGER : RDB_expr_type(addv[i].exp);
 
-        tuptyp->var.tuple.attrv[i].name = addv[i].name;
+        tuptyp->var.tuple.attrv[i].name = RDB_dup_str(addv[i].name);
+        if (tuptyp->var.tuple.attrv[i].name == NULL) {
+            ret = RDB_NO_MEMORY;
+            goto error;
+        }
         if (addv[i].op == RDB_COUNT) {
             tuptyp->var.tuple.attrv[i].type = &RDB_INTEGER;
         } else {

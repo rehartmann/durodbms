@@ -1,0 +1,14 @@
+Opening environment
+Starting transaction
+Creating table UTYPETEST
+Table UTYPETEST created.
+End of transaction
+Starting transaction
+Trying to insert tuple with INTEGER
+Return code: type mismatch - OK
+Trying to create TINYINT fromt INTEGER=200
+Return code: type constraint violation - OK
+Creating TINYINT from INTEGER=99
+Inserting Tuple
+End of transaction
+Closing environment

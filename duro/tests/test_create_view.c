@@ -81,7 +81,7 @@ create_view2(RDB_database *dbp)
         return ret;
     }
 
-    printf("Creating EMPS1 select (SALARY > 4000)\n");
+    printf("Creating EMPS1 WHERE (SALARY > 4000)\n");
 
     exprp = RDB_expr_attr("SALARY", &RDB_RATIONAL);
     if (exprp == NULL)
@@ -134,7 +134,7 @@ create_view3(RDB_database *dbp)
         return ret;
     }
 
-    printf("Creating extend EMPS1 add (SALARY > 4000 AS HIGHSAL)\n");
+    printf("Creating EXTEND EMPS1 ADD (SALARY > 4000 AS HIGHSAL)\n");
 
     exprp = RDB_expr_attr("SALARY", &RDB_RATIONAL);
     if (exprp == NULL)
@@ -152,8 +152,76 @@ create_view3(RDB_database *dbp)
         return ret;
     }
     
-    printf("Making virtual table persistent as EMPS1SQ\n");
-    ret = RDB_set_table_name(vtbp, "EMPS1SQ", &tx);
+    printf("Making virtual table persistent as EMPS1S\n");
+    ret = RDB_set_table_name(vtbp, "EMPS1S", &tx);
+    if (ret != RDB_OK) {
+        RDB_rollback(&tx);
+        return ret;
+    } 
+    ret = RDB_make_persistent(vtbp, &tx);
+    if (ret != RDB_OK) {
+        RDB_rollback(&tx);
+        return ret;
+    } 
+
+    printf("End of transaction\n");
+    return RDB_commit(&tx);
+}
+
+static char *projattr = "DEPTNO";
+
+int
+create_view4(RDB_database *dbp)
+{
+    RDB_transaction tx;
+    RDB_table *tbp, *vtbp, *projtbp;
+    int ret;
+    RDB_summarize_add add;
+    RDB_renaming ren;
+
+    printf("Starting transaction\n");
+    ret = RDB_begin_tx(&tx, dbp, NULL);
+    if (ret != RDB_OK) {
+        return ret;
+    }
+
+    RDB_get_table("EMPS1", &tx, &tbp);
+    if (ret != RDB_OK) {
+        RDB_rollback(&tx);
+        return ret;
+    }
+
+    printf("Creating ( SUMMARIZE EMPS1 PER ( EMPS1 { DEPTNO } )"
+           " ADD MAX (SALARY) AS MAX_SALARY ) RENAME DEPTNO AS DEPARTMENT\n");
+
+    ret = RDB_project(tbp, 1, &projattr, &projtbp);
+    if (ret != RDB_OK) {
+        RDB_rollback(&tx);
+        return ret;
+    }
+
+    add.op = RDB_MAX;
+    add.exp = RDB_expr_attr("SALARY", &RDB_RATIONAL);
+    add.name = "MAX_SALARY";
+
+    ret = RDB_summarize(tbp, projtbp, 1, &add, &vtbp);
+    if (ret != RDB_OK) {
+        RDB_rollback(&tx);
+        return ret;
+    }
+
+    ren.from = "DEPTNO";
+    ren.to = "DEPARTMENT";
+
+    ret = RDB_rename(vtbp, 1, &ren, &vtbp);
+    if (ret != RDB_OK) {
+        RDB_rollback(&tx);
+        return ret;
+    }
+
+    printf("Making virtual table persistent as EMPS1S2\n");
+
+    ret = RDB_set_table_name(vtbp, "EMPS1S2", &tx);
     if (ret != RDB_OK) {
         RDB_rollback(&tx);
         return ret;
@@ -199,6 +267,12 @@ main()
     }
 
     ret = create_view3(dbp);
+    if (ret != RDB_OK) {
+        fprintf(stderr, "Error: %s\n", RDB_strerror(ret));
+        return 2;
+    }
+
+    ret = create_view4(dbp);
     if (ret != RDB_OK) {
         fprintf(stderr, "Error: %s\n", RDB_strerror(ret));
         return 2;

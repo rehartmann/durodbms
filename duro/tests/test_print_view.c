@@ -101,7 +101,7 @@ error:
 }
 
 int
-print_empsq_view(RDB_database *dbp)
+print_emps_view(RDB_database *dbp)
 {
     RDB_transaction tx;
     RDB_table *tmpvtbp;
@@ -115,8 +115,8 @@ print_empsq_view(RDB_database *dbp)
         return ret;
     }
 
-    printf("Table EMPS1SQ\n");
-    ret = RDB_get_table("EMPS1SQ", &tx, &tmpvtbp);
+    printf("Table EMPS1S\n");
+    ret = RDB_get_table("EMPS1S", &tx, &tmpvtbp);
     if (ret != RDB_OK) {
         fprintf(stderr, "Error: %s\n", RDB_strerror(ret));
         return 2;
@@ -138,6 +138,53 @@ print_empsq_view(RDB_database *dbp)
         printf("SALARY: %f\n", (float) RDB_tuple_get_rational(&tpl, "SALARY"));
         b = RDB_tuple_get_bool(&tpl, "HIGHSAL");
         printf("HIGHSAL: %s\n", b ? "TRUE" : "FALSE");
+    }
+    RDB_destroy_tuple(&tpl);
+    if (ret != RDB_NOT_FOUND) {
+        goto error;
+    }
+
+    RDB_destroy_array(&array);
+    RDB_commit(&tx);
+    return RDB_OK;
+error:
+    RDB_rollback(&tx);
+    return ret;
+}
+
+int
+print_emps2_view(RDB_database *dbp)
+{
+    RDB_transaction tx;
+    RDB_table *tmpvtbp;
+    RDB_tuple tpl;
+    RDB_array array;
+    int ret;
+    int i;
+
+    ret = RDB_begin_tx(&tx, dbp, NULL);
+    if (ret != RDB_OK) {
+        return ret;
+    }
+
+    printf("Table EMPS1S2\n");
+    ret = RDB_get_table("EMPS1S2", &tx, &tmpvtbp);
+    if (ret != RDB_OK) {
+        fprintf(stderr, "Error: %s\n", RDB_strerror(ret));
+        return 2;
+    }
+
+    RDB_init_array(&array);
+
+    ret = RDB_table_to_array(tmpvtbp, &array, 0, NULL, &tx);
+    if (ret != RDB_OK) {
+        goto error;
+    }
+
+    RDB_init_tuple(&tpl);    
+    for (i = 0; (ret = RDB_array_get_tuple(&array, i, &tpl)) == RDB_OK; i++) {
+        printf("DEPARTMENT: %d\n", (int) RDB_tuple_get_int(&tpl, "DEPARTMENT"));
+        printf("MAX_SALARY: %f\n", (float) RDB_tuple_get_rational(&tpl, "MAX_SALARY"));
     }
     RDB_destroy_tuple(&tpl);
     if (ret != RDB_NOT_FOUND) {
@@ -183,7 +230,13 @@ main()
         return 2;
     }
 
-    ret = print_empsq_view(dbp);
+    ret = print_emps_view(dbp);
+    if (ret != RDB_OK) {
+        fprintf(stderr, "Error: %s\n", RDB_strerror(ret));
+        return 2;
+    }
+
+    ret = print_emps2_view(dbp);
     if (ret != RDB_OK) {
         fprintf(stderr, "Error: %s\n", RDB_strerror(ret));
         return 2;

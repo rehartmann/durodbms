@@ -1384,7 +1384,7 @@ get_cat_vtable(const char *name, RDB_transaction *txp, RDB_table **tbpp)
     usr = RDB_tuple_get_bool(&tpl, "IS_USER");
 
     valp = RDB_tuple_get(&tpl, "I_DEF");
-    ret = _RDB_deserialize_vtable(valp, txp, tbpp);
+    ret = _RDB_deserialize_table(valp, txp, tbpp);
     if (ret != RDB_OK)
         goto error;
     
@@ -1600,7 +1600,7 @@ RDB_make_persistent(RDB_table *tbp, RDB_transaction *txp)
     if (ret != RDB_OK)
         goto error;
 
-    ret = _RDB_vtable_to_value(tbp, &defval);
+    ret = _RDB_table_to_value(tbp, &defval);
     if (ret != RDB_OK)
         goto error;
     ret = RDB_tuple_set(&tpl, "I_DEF", &defval);
