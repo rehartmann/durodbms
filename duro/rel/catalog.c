@@ -660,6 +660,33 @@ cleanup:
     return ret;
 }
 
+static int
+provide_table(const char *name, RDB_bool persistent,
+           int attrc, RDB_attr heading[],
+           int keyc, RDB_string_vec keyv[], RDB_bool usr,
+           RDB_bool create, RDB_transaction *txp, RDB_environment *envp,
+           RDB_table **tbpp)
+{
+    int ret = _RDB_new_stored_table_a(name, persistent, attrc, heading,
+                keyc, keyv, usr, tbpp);
+
+    if (ret != RDB_OK)
+        return ret;
+
+    if (create) {
+        ret = _RDB_create_table_storage(*tbpp, txp != NULL ? txp->envp : NULL,
+                NULL, txp);
+    } else {
+        ret = _RDB_open_table_storage(*tbpp, txp != NULL ? txp->envp : NULL,
+                txp);
+    }
+    if (ret != RDB_OK) {
+        _RDB_free_table(*tbpp, NULL);
+        return ret;
+    }
+    return RDB_OK;
+}
+
 /*
  * Create or open system tables.
  * If the tables are created, associate them with the database pointed to by
@@ -676,7 +703,7 @@ _RDB_open_systables(RDB_dbroot *dbrootp, RDB_transaction *txp)
     /* create or open catalog tables */
 
     for(;;) {
-        ret = _RDB_provide_table("SYS_TABLEATTRS", RDB_TRUE, 4, table_attr_attrv,
+        ret = provide_table("SYS_TABLEATTRS", RDB_TRUE, 4, table_attr_attrv,
                 1, table_attr_keyv, RDB_FALSE, create, txp, dbrootp->envp,
                 &dbrootp->table_attr_tbp);
         if (!create && ret == RDB_NOT_FOUND) {
@@ -690,7 +717,7 @@ _RDB_open_systables(RDB_dbroot *dbrootp, RDB_transaction *txp)
         return ret;
     }
         
-    ret = _RDB_provide_table("SYS_TABLEATTR_DEFVALS", RDB_TRUE,
+    ret = provide_table("SYS_TABLEATTR_DEFVALS", RDB_TRUE,
             3, table_attr_defvals_attrv, 1, table_attr_defvals_keyv,
             RDB_FALSE, create, txp, dbrootp->envp,
             &dbrootp->table_attr_defvals_tbp);
@@ -698,21 +725,21 @@ _RDB_open_systables(RDB_dbroot *dbrootp, RDB_transaction *txp)
         return ret;
     }
 
-    ret = _RDB_provide_table("SYS_RTABLES", RDB_TRUE, 3, rtables_attrv,
+    ret = provide_table("SYS_RTABLES", RDB_TRUE, 3, rtables_attrv,
             1, rtables_keyv, RDB_FALSE, create,
             txp, dbrootp->envp, &dbrootp->rtables_tbp);
     if (ret != RDB_OK) {
         return ret;
     }
 
-    ret = _RDB_provide_table("SYS_VTABLES", RDB_TRUE, 3, vtables_attrv,
+    ret = provide_table("SYS_VTABLES", RDB_TRUE, 3, vtables_attrv,
             1, vtables_keyv, RDB_FALSE, create, txp, dbrootp->envp,
             &dbrootp->vtables_tbp);
     if (ret != RDB_OK) {
         return ret;
     }
 
-    ret = _RDB_provide_table("SYS_DBTABLES", RDB_TRUE, 2, dbtables_attrv, 1, dbtables_keyv,
+    ret = provide_table("SYS_DBTABLES", RDB_TRUE, 2, dbtables_attrv, 1, dbtables_keyv,
             RDB_FALSE, create, txp, dbrootp->envp, &dbrootp->dbtables_tbp);
     if (ret != RDB_OK) {
         return ret;
@@ -724,26 +751,26 @@ _RDB_open_systables(RDB_dbroot *dbrootp, RDB_transaction *txp)
     if (ret != RDB_OK)
         return ret;
 
-    ret = _RDB_provide_table("SYS_KEYS", RDB_TRUE, 3, keys_attrv, 1, keys_keyv,
+    ret = provide_table("SYS_KEYS", RDB_TRUE, 3, keys_attrv, 1, keys_keyv,
             RDB_FALSE, create, txp, dbrootp->envp, &dbrootp->keys_tbp);
     if (ret != RDB_OK) {
         return ret;
     }
 
-    ret = _RDB_provide_table("SYS_TYPES", RDB_TRUE, 4, types_attrv, 1, types_keyv,
+    ret = provide_table("SYS_TYPES", RDB_TRUE, 4, types_attrv, 1, types_keyv,
             RDB_FALSE, create, txp, dbrootp->envp, &dbrootp->types_tbp);
     if (ret != RDB_OK) {
         return ret;
     }
 
-    ret = _RDB_provide_table("SYS_POSSREPS", RDB_TRUE, 3, possreps_attrv,
+    ret = provide_table("SYS_POSSREPS", RDB_TRUE, 3, possreps_attrv,
             1, possreps_keyv, RDB_FALSE, create, txp, dbrootp->envp,
             &dbrootp->possreps_tbp);
     if (ret != RDB_OK) {
         return ret;
     }
 
-    ret = _RDB_provide_table("SYS_POSSREPCOMPS", RDB_TRUE, 5, possrepcomps_attrv,
+    ret = provide_table("SYS_POSSREPCOMPS", RDB_TRUE, 5, possrepcomps_attrv,
             2, possrepcomps_keyv, RDB_FALSE, create, txp, dbrootp->envp,
             &dbrootp->possrepcomps_tbp);
     if (ret != RDB_OK) {
@@ -754,14 +781,14 @@ _RDB_open_systables(RDB_dbroot *dbrootp, RDB_transaction *txp)
     if (ro_ops_attrv[1].typ == NULL)
         return RDB_NO_MEMORY;
 
-    ret = _RDB_provide_table("SYS_RO_OPS", RDB_TRUE, 5, ro_ops_attrv,
+    ret = provide_table("SYS_RO_OPS", RDB_TRUE, 5, ro_ops_attrv,
             1, ro_ops_keyv, RDB_FALSE, create, txp, dbrootp->envp,
             &dbrootp->ro_ops_tbp);
     if (ret != RDB_OK) {
         return ret;
     }
 
-    ret = _RDB_provide_table("SYS_RO_OP_RTYPES", RDB_TRUE, 2, ro_op_rtypes_attrv,
+    ret = provide_table("SYS_RO_OP_RTYPES", RDB_TRUE, 2, ro_op_rtypes_attrv,
             1, ro_op_rtypes_keyv, RDB_FALSE, create, txp, dbrootp->envp,
             &dbrootp->ro_op_rtypes_tbp);
     if (ret != RDB_OK) {
@@ -775,7 +802,7 @@ _RDB_open_systables(RDB_dbroot *dbrootp, RDB_transaction *txp)
     if (upd_ops_attrv[5].typ == NULL)
         return RDB_NO_MEMORY;
 
-    ret = _RDB_provide_table("SYS_UPD_OPS", RDB_TRUE, 6, upd_ops_attrv,
+    ret = provide_table("SYS_UPD_OPS", RDB_TRUE, 6, upd_ops_attrv,
             1, upd_ops_keyv, RDB_FALSE, create, txp, dbrootp->envp,
             &dbrootp->upd_ops_tbp);
     if (ret != RDB_OK) {
@@ -787,7 +814,7 @@ _RDB_open_systables(RDB_dbroot *dbrootp, RDB_transaction *txp)
         return ret;
     indexes_attrv[2].typ = RDB_create_array_type(typ);
 
-    ret = _RDB_provide_table("SYS_INDEXES", RDB_TRUE, 4, indexes_attrv,
+    ret = provide_table("SYS_INDEXES", RDB_TRUE, 4, indexes_attrv,
             1, indexes_keyv, RDB_FALSE, create, txp, dbrootp->envp,
             &dbrootp->indexes_tbp);
     if (ret != RDB_OK) {
@@ -1240,7 +1267,7 @@ _RDB_get_cat_rtable(const char *name, RDB_transaction *txp, RDB_table **tbpp)
     if (ret != RDB_OK)
         goto error;
     
-    ret = _RDB_provide_table(name, RDB_TRUE, attrc, attrv, keyc, keyv, usr,
+    ret = provide_table(name, RDB_TRUE, attrc, attrv, keyc, keyv, usr,
             RDB_FALSE, &tx, tx.dbp->dbrootp->envp, tbpp);
     for (i = 0; i < keyc; i++) {
         for (j = 0; j < keyv[i].strc; j++)

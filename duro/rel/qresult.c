@@ -717,8 +717,8 @@ _RDB_sorter(RDB_table *tbp, RDB_qresult **qrespp, RDB_transaction *txp,
     if (ret != RDB_OK)
         goto error;
 
-    ret = _RDB_open_table(qresp->matp, seqitc, key.strv, RDB_TRUE, txp,
-            txp->dbp->dbrootp->envp, ascv);
+    ret = _RDB_create_table_storage(qresp->matp, txp->dbp->dbrootp->envp,
+            ascv, txp);
     if (ret != RDB_OK)
         goto error;
 

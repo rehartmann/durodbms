@@ -7,9 +7,13 @@
 
 #include "rdb.h"
 #include "typeimpl.h"
+#include "catalog.h"
 #include "internal.h"
 #include <gen/strfns.h>
 #include <string.h>
+
+/* name of the file in which the tables are physically stored */
+#define RDB_DATAFILE "rdata"
 
 RDB_table *
 _RDB_new_table(void)
@@ -88,6 +92,463 @@ error:
         free(tbp);
     }
     return ret;
+}
+
+/*
+ * Like _RDB_new_stored_table(), but uses attrc and heading instead of reltype.
+ */
+int
+_RDB_new_stored_table_a(const char *name, RDB_bool persistent,
+                int attrc, RDB_attr heading[],
+                int keyc, RDB_string_vec keyv[], RDB_bool usr,
+                RDB_table **tbpp)
+{
+    RDB_type *reltyp;
+    int i;
+    int ret = RDB_create_relation_type(attrc, heading, &reltyp);
+
+    if (ret != RDB_OK) {
+        return ret;
+    }
+    for (i = 0; i < attrc; i++) {
+        if (heading[i].defaultp != NULL) {
+            RDB_type *tuptyp = reltyp->var.basetyp;
+
+            tuptyp->var.tuple.attrv[i].defaultp = malloc(sizeof (RDB_object));
+            if (tuptyp->var.tuple.attrv[i].defaultp == NULL)
+                return RDB_NO_MEMORY;
+            RDB_init_obj(tuptyp->var.tuple.attrv[i].defaultp);
+            RDB_copy_obj(tuptyp->var.tuple.attrv[i].defaultp,
+                    heading[i].defaultp);
+        }
+    }
+
+    ret = _RDB_new_stored_table(name, persistent, reltyp,
+            keyc, keyv, usr, tbpp);
+    if (ret != RDB_OK)
+        RDB_drop_type(reltyp, NULL);
+    return ret;
+}
+
+static int
+compare_field(const void *data1p, size_t len1,
+              const void *data2p, size_t len2, void *arg)
+{
+    RDB_object val1, val2;
+    int res;
+    RDB_type *typ = (RDB_type *)arg;
+
+    RDB_init_obj(&val1);
+    RDB_init_obj(&val2);
+
+    RDB_irep_to_obj(&val1, typ, data1p, len1);
+    RDB_irep_to_obj(&val2, typ, data2p, len2);
+
+    res = (*typ->comparep)(&val1, &val2);
+
+    RDB_destroy_obj(&val1);
+    RDB_destroy_obj(&val2);
+
+    return res;
+}
+
+static int
+create_index(RDB_table *tbp, RDB_environment *envp, RDB_transaction *txp,
+             _RDB_tbindex *indexp)
+{
+    int ret;
+    int i;
+    int *fieldv = malloc(sizeof(int *) * indexp->attrc);
+
+    if (fieldv == NULL) {
+        ret = RDB_NO_MEMORY;
+        goto cleanup;
+    }
+
+    /* Get index numbers */
+    for (i = 0; i < indexp->attrc; i++) {
+        void *np = RDB_hashmap_get(&tbp->var.stored.attrmap,
+                indexp->attrv[i].attrname, NULL);
+        if (np == NULL)
+            return RDB_INVALID_ARGUMENT;
+        fieldv[i] = *(int *) np;
+    }
+
+    /* Create record-layer index */
+    ret = RDB_create_index(tbp->var.stored.recmapp,
+                  tbp->is_persistent ? indexp->name : NULL,
+                  tbp->is_persistent ? RDB_DATAFILE : NULL,
+                  envp, indexp->attrc, fieldv, indexp->unique,
+                  txp != NULL ? txp->txid : NULL, &indexp->idxp);
+
+cleanup:
+    free(fieldv);
+    return ret;
+}
+
+/*
+ * Create secondary indexes
+ */
+static int
+create_key_indexes(RDB_table *tbp, RDB_environment *envp, RDB_transaction *txp)
+{
+    int i;
+    int j;
+    int ret;
+    tbp->var.stored.indexc = tbp->keyc;
+    tbp->var.stored.indexv = malloc(sizeof (_RDB_tbindex)
+            * tbp->var.stored.indexc);
+    if (tbp->var.stored.indexv == NULL)
+        return RDB_NO_MEMORY;
+
+    for (i = 0; i < tbp->var.stored.indexc; i++) {
+        tbp->var.stored.indexv[i].attrc = tbp->keyv[i].strc;
+        tbp->var.stored.indexv[i].attrv = malloc (sizeof(RDB_seq_item)
+                * tbp->keyv[i].strc);
+        if (tbp->var.stored.indexv[i].attrv == NULL)
+            return RDB_NO_MEMORY;
+        for (j = 0; j < tbp->keyv[i].strc; j++) {
+            tbp->var.stored.indexv[i].attrv[j].asc = RDB_TRUE;
+            tbp->var.stored.indexv[i].attrv[j].attrname =
+                    RDB_dup_str(tbp->keyv[i].strv[j]);
+            if (tbp->var.stored.indexv[i].attrv[j].attrname == NULL)
+                return RDB_NO_MEMORY;
+        }
+
+        /* A primary index has no name */
+        if (tbp->is_persistent) {
+            tbp->var.stored.indexv[i].name =
+                    malloc(strlen(RDB_table_name(tbp)) + 4);
+            if (tbp->var.stored.indexv[i].name == NULL) {
+                return RDB_NO_MEMORY;
+            }
+            /* build index name */            
+            sprintf(tbp->var.stored.indexv[i].name, "%s$%d", tbp->name, i);
+        } else {
+            tbp->var.stored.indexv[i].name = NULL;
+        }
+
+        tbp->var.stored.indexv[i].unique = RDB_TRUE;
+
+        if (i > 0) {
+            /* Create index, if it's not the primary index */
+            ret = create_index(tbp, envp, txp, &tbp->var.stored.indexv[i]);
+            if (ret != RDB_OK)
+                return ret;
+        } else {
+            tbp->var.stored.indexv[i].idxp = NULL;
+        }
+    }
+    return RDB_OK;
+}
+
+/*
+ * Return the length (in bytes) of the internal representation
+ * of the type pointed to by typ.
+ */
+static int replen(const RDB_type *typ) {
+    switch(typ->kind) {
+        case RDB_TP_TUPLE:
+        {
+            int i;
+            size_t len;
+            size_t tlen = 0;
+
+            /*
+             * Add lengths of attribute types. If one of the attributes is
+             * of variable length, the tuple type is of variable length.
+             */
+            for (i = 0; i < typ->var.tuple.attrc; i++) {
+                len = replen(typ->var.tuple.attrv[i].typ);
+                if (len == RDB_VARIABLE_LEN)
+                    return RDB_VARIABLE_LEN;
+                tlen += len;
+            }
+            return tlen;
+        }
+        case RDB_TP_RELATION:
+        case RDB_TP_ARRAY:
+        case RDB_TP_SCALAR:
+            return typ->ireplen;
+    }
+    abort();
+}
+
+int
+key_fnos(RDB_table *tbp, int **flenvp, RDB_bool ascv[], RDB_compare_field *cmpv)
+{
+    int ret;
+    int i, di;
+    int attrc = tbp->typ->var.basetyp->var.tuple.attrc;
+    RDB_attr *heading = tbp->typ->var.basetyp->var.tuple.attrv;
+    int piattrc = tbp->keyv[0].strc;
+    char **piattrv = tbp->keyv[0].strv;
+
+    *flenvp = malloc(sizeof(int) * attrc);
+    if (*flenvp == NULL) {
+        return RDB_NO_MEMORY;
+    }
+
+    di = piattrc;
+    for (i = 0; i < attrc; i++) {
+        RDB_int fno;
+
+        if (piattrc == attrc) {
+            fno = i;
+        } else {            
+            /* Search attribute in key */
+            fno = (RDB_int) RDB_find_str(piattrc, piattrv, heading[i].name);
+        }
+
+        /* If it's not found in the key, give it a non-key field number */
+        if (fno == -1)
+            fno = di++;
+        else if (ascv != NULL) {
+            /* Set comparison field */
+            if (heading[i].typ->comparep != NULL) {
+                cmpv[fno].comparep = &compare_field;
+                cmpv[fno].arg = heading[i].typ;
+            } else {
+                cmpv[fno].comparep = NULL;
+            }
+            cmpv[fno].asc = ascv[fno];
+        }
+
+        /* Put the field number into the attrmap */
+        ret = RDB_hashmap_put(&tbp->var.stored.attrmap,
+                tbp->typ->var.basetyp->var.tuple.attrv[i].name,
+                &fno, sizeof fno);
+        if (ret != RDB_OK) {
+            free(*flenvp);
+            return ret;
+        }
+
+        (*flenvp)[fno] = replen(heading[i].typ);
+    }
+    return RDB_OK;
+}
+
+/*
+ * Create the physical representation of a table.
+ * (The recmap and the indexes)
+ *
+ * Arguments:
+ * tbp        the table
+ * envp       the database environment
+ * txp        the transaction under which the operation is performed
+ * ascv       the sort order of the primary index, or NULL if unordered
+ */
+int
+_RDB_create_table_storage(RDB_table *tbp, RDB_environment *envp, RDB_bool ascv[],
+           RDB_transaction *txp)
+{
+    int ret;
+    int *flenv;
+    RDB_compare_field *cmpv = NULL;
+    int attrc = tbp->typ->var.basetyp->var.tuple.attrc;
+    int piattrc = tbp->keyv[0].strc;
+
+    if (!tbp->is_persistent)
+       txp = NULL;
+
+    if (txp != NULL && !RDB_tx_is_running(txp))
+        return RDB_INVALID_TRANSACTION;
+
+    /* Allocate comparison vector, if needed */
+    if (ascv != NULL) {
+        cmpv = malloc(sizeof (RDB_compare_field) * piattrc);
+        if (cmpv == NULL) {
+            ret = RDB_NO_MEMORY;
+            goto error;
+        }
+    }
+
+    ret = key_fnos(tbp, &flenv, ascv, cmpv);
+    if (ret != RDB_OK)
+        return ret;
+
+    if (ascv == NULL)
+        ret = RDB_create_recmap(tbp->is_persistent ? tbp->name : NULL,
+                tbp->is_persistent ? RDB_DATAFILE : NULL,
+                envp, attrc, flenv, piattrc, txp != NULL ? txp->txid : NULL,
+                &tbp->var.stored.recmapp);
+    else {
+        ret = RDB_create_sorted_recmap(tbp->is_persistent ? tbp->name : NULL,
+                tbp->is_persistent ? RDB_DATAFILE : NULL,
+                envp, attrc, flenv, piattrc, cmpv,
+                RDB_TRUE, txp != NULL ? txp->txid : NULL,
+                &tbp->var.stored.recmapp);
+    }
+    if (ret != RDB_OK)
+        goto error;
+
+    /* Open/create indexes if there is more than one key */
+    ret = create_key_indexes(tbp, envp, txp);
+    if (ret != RDB_OK)
+        goto error;
+
+    free(flenv);
+    free(cmpv);
+    return RDB_OK;
+
+error:
+    /* clean up */
+    free(flenv);
+    free(cmpv);
+    if (tbp != NULL) {
+        RDB_destroy_hashmap(&tbp->var.stored.attrmap);
+    }
+    if (RDB_is_syserr(ret) && txp != NULL)
+        RDB_rollback_all(txp);
+    return ret;
+}
+
+/*
+ * Open the physical representation of a table.
+ * (The recmap and the indexes)
+ *
+ * Arguments:
+ * tbp        the table
+ * envp       the database environment
+ * txp        the transaction under which the operation is performed
+ */
+int
+_RDB_open_table_storage(RDB_table *tbp, RDB_environment *envp,
+           RDB_transaction *txp)
+{
+    int ret;
+    int *flenv;
+    RDB_compare_field *cmpv = NULL;
+    int attrc = tbp->typ->var.basetyp->var.tuple.attrc;
+    int piattrc = tbp->keyv[0].strc;
+
+    if (!tbp->is_persistent)
+       txp = NULL;
+
+    if (txp != NULL && !RDB_tx_is_running(txp))
+        return RDB_INVALID_TRANSACTION;
+
+    ret = key_fnos(tbp, &flenv, NULL, NULL);
+    if (ret != RDB_OK)
+        return ret;
+
+    ret = RDB_open_recmap(tbp->name, RDB_DATAFILE, envp,
+            attrc, flenv, piattrc, txp != NULL ? txp->txid : NULL,
+            &tbp->var.stored.recmapp);
+    if (ret != RDB_OK)
+        goto error;
+
+    /* Flag that the indexes have not been opened */
+    tbp->var.stored.indexc = -1;
+
+    free(flenv);
+    free(cmpv);
+    return RDB_OK;
+
+error:
+    /* clean up */
+    free(flenv);
+    free(cmpv);
+    if (tbp != NULL) {
+        RDB_destroy_hashmap(&tbp->var.stored.attrmap);
+    }
+    if (RDB_is_syserr(ret) && txp != NULL)
+        RDB_rollback_all(txp);
+    return ret;
+}
+
+int
+_RDB_open_table_index(RDB_table *tbp, _RDB_tbindex *indexp,
+        RDB_environment *envp, RDB_transaction *txp)
+{
+    int ret;
+    int i;
+    int *fieldv = malloc(sizeof(int *) * indexp->attrc);
+
+    if (fieldv == NULL) {
+        ret = RDB_NO_MEMORY;
+        goto cleanup;
+    }
+
+    /* get index numbers */
+    for (i = 0; i < indexp->attrc; i++) {
+        fieldv[i] = *(int *) RDB_hashmap_get(&tbp->var.stored.attrmap,
+                        indexp->attrv[i].attrname, NULL);
+    }
+
+    /* open index */
+    ret = RDB_open_index(tbp->var.stored.recmapp,
+                  tbp->is_persistent ? indexp->name : NULL,
+                  tbp->is_persistent ? RDB_DATAFILE : NULL,
+                  envp, indexp->attrc, fieldv, indexp->unique,
+                  txp != NULL ? txp->txid : NULL, &indexp->idxp);
+
+cleanup:
+    free(fieldv);
+    return ret;
+}
+
+int
+RDB_create_table_index(const char *name, RDB_table *tbp, int idxcompc,
+        RDB_seq_item idxcompv[], int flags, RDB_transaction *txp)
+{
+    int i;
+    int ret;
+    _RDB_tbindex *indexp;
+
+    if (!_RDB_legal_name(name))
+        return RDB_INVALID_ARGUMENT;
+
+    tbp->var.stored.indexv = realloc(tbp->var.stored.indexv,
+            (tbp->var.stored.indexc + 1) * sizeof (_RDB_tbindex));
+    if (tbp->var.stored.indexv == NULL) {
+        RDB_rollback_all(txp);
+        return RDB_NO_MEMORY;
+    }
+
+    indexp = &tbp->var.stored.indexv[tbp->var.stored.indexc++];
+
+    indexp->name = RDB_dup_str(name);
+    if (indexp->name == NULL) {
+        RDB_rollback_all(txp);
+        return RDB_NO_MEMORY;
+    }
+
+    indexp->unique = RDB_FALSE;
+
+    for (i = 0; i < idxcompc; i++) {
+        indexp->attrv[i].asc = idxcompv[i].asc;
+        indexp->attrv[i].attrname = RDB_dup_str(idxcompv[i].attrname);
+        if (indexp->attrv[i].attrname == NULL) {
+            RDB_rollback_all(txp);
+            return RDB_NO_MEMORY;
+        }
+    }
+
+    /* Create index in catalog */
+    ret = _RDB_cat_insert_index(indexp, tbp->name, txp);
+    if (ret != RDB_OK) {
+        if (RDB_is_syserr(ret))
+            RDB_rollback_all(txp);
+        return ret;
+    }
+
+    /* Create index */
+    ret = create_index(tbp, RDB_db_env(RDB_tx_db(txp)), txp,
+            &tbp->var.stored.indexv[i]);
+    if (ret != RDB_OK) {
+        if (RDB_is_syserr(ret))
+            RDB_rollback_all(txp);
+        return ret;
+    }
+
+    return RDB_OK;
+}
+
+int
+RDB_drop_table_index(const char *name, RDB_table *tbp, RDB_transaction *txp)
+{
+    return RDB_NOT_SUPPORTED;
 }
 
 RDB_type *
