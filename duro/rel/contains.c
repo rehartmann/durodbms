@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2003, 2004 René Hartmann.
+ * Copyright (C) 2003-2005 René Hartmann.
  * See the file COPYING for redistribution information.
  */
 
@@ -306,8 +306,7 @@ stored_contains(RDB_table *tbp, const RDB_object *tplp, RDB_transaction *txp)
         if (objp->typ == NULL
                 && (objp->kind == RDB_OB_TUPLE
                 || objp->kind == RDB_OB_TABLE)) {
-            _RDB_set_nonsc_type(objp,
-                    tpltyp->var.tuple.attrv[i].typ);
+            objp->typ = tpltyp->var.tuple.attrv[i].typ;
         }
         ret = _RDB_obj_to_field(&fvp[fno], objp);
         if (ret != RDB_OK) {

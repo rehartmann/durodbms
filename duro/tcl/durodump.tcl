@@ -2,12 +2,15 @@
 # Execute tclsh from the user's PATH \
 exec tclsh "$0" ${1+"$@"}
 
+# Durodump - tool to dump a Duro database environment to a file.
 # Copyright (C) 2004, 2005 René Hartmann.
 # See the file COPYING for redistribution information.
 
 # $Id$
 
-package require duro
+set duro_version 0.9
+
+package require -exact duro $duro_version
 
 proc dump_rtable {out t tx cr} {
     if {$cr} {
@@ -43,6 +46,7 @@ set out [open $outfile w 0755]
 puts $out "#!/bin/sh"
 puts $out "# Execute tclsh from the user's PATH \\"
 puts $out {exec tclsh "$0" ${1+"$@"}}
+puts $out "# Created by Durodump / Duro $duro_version"
 puts $out "package require duro"
 
 puts $out "if {\$argc > 1} {"

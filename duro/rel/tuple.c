@@ -592,7 +592,7 @@ _RDB_tuple_equals(const RDB_object *tpl1p, const RDB_object *tpl2p,
 }
 
 /*
- * Generate type from tuple !! does not work for empty tuples
+ * Generate type from tuple
  */
 RDB_type *
 _RDB_tuple_type(const RDB_object *tplp)
@@ -612,29 +612,29 @@ _RDB_tuple_type(const RDB_object *tplp)
         typ->var.tuple.attrv = malloc(sizeof(RDB_attr) * typ->var.tuple.attrc);
         if (typ->var.tuple.attrv == NULL)
             goto error;
-    }
 
-    for (i = 0; i < typ->var.tuple.attrc; i++)
-        typ->var.tuple.attrv[i].name = NULL;
+        for (i = 0; i < typ->var.tuple.attrc; i++)
+            typ->var.tuple.attrv[i].name = NULL;
 
-    RDB_init_hashmap_iter(&hiter, (RDB_hashmap *) &tplp->var.tpl_map);
-    i = 0;
-    while ((objp = (RDB_object *) RDB_hashmap_next(&hiter, &key, NULL))
-            != NULL) {
-        if (objp->kind != RDB_OB_TUPLE) {
-            typ->var.tuple.attrv[i].typ = RDB_obj_type(objp);
-        } else {
-            typ->var.tuple.attrv[i].typ = _RDB_tuple_type(objp);
+        RDB_init_hashmap_iter(&hiter, (RDB_hashmap *) &tplp->var.tpl_map);
+        i = 0;
+        while ((objp = (RDB_object *) RDB_hashmap_next(&hiter, &key, NULL))
+                != NULL) {
+            if (objp->kind != RDB_OB_TUPLE) {
+                typ->var.tuple.attrv[i].typ = RDB_obj_type(objp);
+            } else {
+                typ->var.tuple.attrv[i].typ = _RDB_tuple_type(objp);
+            }
+            typ->var.tuple.attrv[i].name = RDB_dup_str(key);
+            if (typ->var.tuple.attrv[i].name == NULL) {
+                RDB_destroy_hashmap_iter(&it);
+                goto error;
+            }
+            typ->var.tuple.attrv[i].defaultp = NULL;
+            i++;
         }
-        typ->var.tuple.attrv[i].name = RDB_dup_str(key);
-        if (typ->var.tuple.attrv[i].name == NULL) {
-            RDB_destroy_hashmap_iter(&it);
-            goto error;
-        }
-        typ->var.tuple.attrv[i].defaultp = NULL;
-        i++;
+        RDB_destroy_hashmap_iter(&it);
     }
-    RDB_destroy_hashmap_iter(&it);
     return typ;
 
 error:

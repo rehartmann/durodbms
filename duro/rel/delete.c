@@ -77,7 +77,11 @@ delete_stored(RDB_table *tbp, RDB_expression *condp, RDB_transaction *txp)
             for (i = 0; i < tpltyp->var.tuple.attrc; i++) {
                 RDB_object val;
 
-                ret = RDB_cursor_get(curp, i, &datap, &len);
+                ret = RDB_cursor_get(curp,
+                        *(int*) RDB_hashmap_get(
+                                &tbp->var.real.attrmap,
+                                tpltyp->var.tuple.attrv[i].name, NULL),
+                        &datap, &len);
                 if (ret != 0) {
                    RDB_destroy_obj(&tpl);
                    goto error;
@@ -358,7 +362,7 @@ delete(RDB_table *tbp, RDB_expression *condp, RDB_transaction *txp)
         case RDB_TB_EXTEND:
             return delete_extend(tbp, condp, txp);
         case RDB_TB_PROJECT:
-            /* !! check if condp refers to attributes "projected away" */
+            /* !! should check if condp refers to attributes "projected away" */
             return delete(tbp->var.project.tbp, condp, txp);
         case RDB_TB_SUMMARIZE:
             return RDB_NOT_SUPPORTED;

@@ -123,6 +123,7 @@ Duro_init_tcl(Tcl_Interp *interp, TclState **statepp)
     }
 
     setlocale(LC_COLLATE, "");
+/*    setlocale(LC_CTYPE, ""); */
 
     *statepp = (TclState *) Tcl_Alloc(sizeof (TclState));
     Tcl_InitHashTable(&(*statepp)->envs, TCL_STRING_KEYS);
@@ -499,7 +500,20 @@ Duro_tcl_to_duro(Tcl_Interp *interp, Tcl_Obj *tobjp, RDB_type *typ,
     RDB_table *tbp;
 
     if (typ == &RDB_STRING) {
-        RDB_string_to_obj(objp, Tcl_GetString(tobjp));
+        /* Convert from UTF */
+        char *s = Tcl_GetString(tobjp);
+        int srclen = strlen(s);
+        int dstlen = (srclen + 1) * 2;
+        char *dst = Tcl_Alloc(dstlen);
+        ret = Tcl_UtfToExternal(interp, NULL, s, strlen(s), 0, NULL,
+                dst, dstlen, NULL, NULL, NULL);
+        if (ret != TCL_OK) {
+            Tcl_Free(dst);
+            return ret;
+        }
+
+        RDB_string_to_obj(objp, dst);
+        Tcl_Free(dst);
         return TCL_OK;
     }
     if (typ == &RDB_INTEGER) {

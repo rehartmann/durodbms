@@ -98,6 +98,14 @@ duro::rollback $tx
 
 set tx [duro::begin $dbenv TEST]
 
+# Remove tuple by non-key attribute
+duro::delete T1 {STRATTR = "Bla"} $tx
+
+set tpl [duro::expr {TUPLE FROM T1} $tx]
+if {![tequal $tpl {INTATTR 2 STRATTR Blax}]} {
+    error "wrong value of TUPLE FROM T1"
+}
+
 # Remove tuple
 duro::delete T1 $tx
 
@@ -316,6 +324,30 @@ set a [duro::array create T3 {A asc} $tx]
 checkarray $a {{A 1 B 1.0} {A 2 B 2.0} {A 3 B 3.0} {A 4 B 4.0}
         {A 5 B 5.0}} $tx
 duro::array drop $a
+
+#
+# Check table with compound string key
+#
+
+duro::table create T4 {
+   {A STRING}
+   {B STRING}
+   {C STRING}
+} {{B C}} $tx
+
+duro::insert T4 {A a B be C c} $tx
+
+#
+# Shrink 1st key attribute
+#
+duro::update T4 {B="be" AND C="c"} A {"a"} B {"b"} C {"c"} $tx
+
+set tpl [duro::expr {TUPLE FROM T4} $tx]
+if {![tequal $tpl {A a B b C c}]} {
+    error "wrong value of TUPLE FROM T4"
+}
+
+duro::table drop T4 $tx
 
 duro::commit $tx
 

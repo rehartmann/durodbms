@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2004 René Hartmann.
+ * Copyright (C) 2004, 2005 René Hartmann.
  * See the file COPYING for redistribution information.
  */
 
@@ -11,8 +11,6 @@
 #include <string.h>
 #include <stdlib.h>
 #include <math.h>
-
-#include <dli/tabletostr.h> /* !! */
 
 static RDB_bool is_and(RDB_expression *exp) {
     return (RDB_bool) exp->kind == RDB_EX_RO_OP
@@ -322,6 +320,9 @@ table_cost(RDB_table *tbp)
 static int
 mutate(RDB_table *tbp, RDB_table **tbpv, int cap, RDB_transaction *txp);
 
+/*
+ * Add "null project" parent
+ */
 static RDB_table *
 null_project(RDB_table *tbp)
 {
@@ -336,6 +337,7 @@ null_project(RDB_table *tbp)
     ptbp->keyv = NULL;
     ptbp->var.project.tbp = tbp;
     ptbp->var.project.indexp = NULL;
+    ptbp->var.project.keyloss = RDB_FALSE;
 
     /* Create type */
     ret = RDB_create_relation_type(
@@ -944,11 +946,14 @@ _RDB_index_sorts(struct _RDB_tbindex *indexp, int seqitc, const RDB_seq_item seq
     return RDB_TRUE;
 }
 
+/*
+ * Estimate cost for reading all tuples of the table in the order
+ * specified by seqitc/seqitv.
+ */
 static unsigned
 sorted_table_cost(RDB_table *tbp, int seqitc,
         const RDB_seq_item seqitv[])
 {
-/*    RDB_object strobj; */
     int cost = table_cost(tbp);
 
     /* Check if the index must be sorted */
@@ -963,13 +968,7 @@ sorted_table_cost(RDB_table *tbp, int seqitc,
             cost += scost;
         }
     }
-/*
-    RDB_init_obj(&strobj);
-    _RDB_table_to_str(&strobj, tbp, RDB_SHOW_INDEX);
-    fprintf(stderr, "checking: %s, cost: %u\n", (char *) strobj.var.bin.datap,
-            cost);
-    RDB_destroy_obj(&strobj);
-*/
+
     return cost;
 }
 
@@ -1205,7 +1204,6 @@ _RDB_optimize(RDB_table *tbp, int seqitc, const RDB_seq_item seqitv[],
 {
     int ret;
     int i;
-/*    RDB_object strobj; */
 
     if (tbp->kind == RDB_TB_REAL) {
         if (seqitc > 0) {
@@ -1291,13 +1289,6 @@ _RDB_optimize(RDB_table *tbp, int seqitc, const RDB_seq_item seqitv[],
                         RDB_drop_table(tbpv[i], txp);
                 }
             }
-/*
-            RDB_init_obj(&strobj);
-            _RDB_table_to_str(&strobj, ntbp, RDB_SHOW_INDEX);
-            fprintf(stderr, "best: %s, cost: %u\n", (char *) strobj.var.bin.datap,
-                    bestcost);
-            RDB_destroy_obj(&strobj);
-*/
         } while (bestcost < obestcost);
         *ntbpp = ntbp;
     }

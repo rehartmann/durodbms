@@ -322,8 +322,8 @@ update_stored_simple(RDB_table *tbp, RDB_expression *condp,
                 if (valv[i].typ == NULL
                         && (valv[i].kind == RDB_OB_TUPLE
                          || valv[i].kind == RDB_OB_ARRAY)) {
-                    _RDB_set_nonsc_type(&valv[i], RDB_type_attr_type(
-                            RDB_table_type(tbp), updv[i].name));
+                    valv[i].typ = RDB_type_attr_type(RDB_table_type(tbp),
+                            updv[i].name);
                 }
 
                 /* Get data */
@@ -437,8 +437,8 @@ update_select_pindex(RDB_table *tbp, RDB_expression *condp,
         if (valv[i].typ == NULL
                 && (valv[i].kind == RDB_OB_TUPLE
                  || valv[i].kind == RDB_OB_ARRAY)) {
-            _RDB_set_nonsc_type(&valv[i], RDB_type_attr_type(
-                    RDB_table_type(tbp->var.select.tbp), updv[i].name));
+            valv[i].typ = RDB_type_attr_type(
+                    RDB_table_type(tbp->var.select.tbp), updv[i].name);
         }
         ret = _RDB_obj_to_field(&fieldv[i], &valv[i]);
         if (ret != RDB_OK)
@@ -579,8 +579,8 @@ update_select_index_simple(RDB_table *tbp, RDB_expression *condp,
                 if (valv[i].typ == NULL
                         && (valv[i].kind == RDB_OB_TUPLE
                          || valv[i].kind == RDB_OB_ARRAY)) {
-                    _RDB_set_nonsc_type(&valv[i], RDB_type_attr_type(
-                            RDB_table_type(tbp->var.select.tbp), updv[i].name));
+                    valv[i].typ = RDB_type_attr_type(
+                            RDB_table_type(tbp->var.select.tbp), updv[i].name);
                 }
                 ret = _RDB_obj_to_field(&fieldv[i], &valv[i]);
                 if (ret != RDB_OK)

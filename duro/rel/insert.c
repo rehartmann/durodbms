@@ -89,7 +89,7 @@ insert_stored(RDB_table *tbp, const RDB_object *tplp, RDB_transaction *txp)
         if (valp->typ == NULL
                 && (valp->kind == RDB_OB_TUPLE
                  || valp->kind == RDB_OB_ARRAY))
-            _RDB_set_nonsc_type(valp, tuptyp->var.tuple.attrv[i].typ);
+            valp->typ =  tuptyp->var.tuple.attrv[i].typ;
             /* !! check object kind against type? */
 
         ret = _RDB_obj_to_field(&fvp[*fnop], valp);
@@ -322,40 +322,6 @@ insert_unwrap(RDB_table *tbp, const RDB_object *tup, RDB_transaction *txp)
 cleanup:
     RDB_destroy_obj(&tpl);
     return ret;
-}
-
-void
-_RDB_set_nonsc_type(RDB_object *objp, RDB_type *typ)
-{
-/*    int i; */
-
-    objp->typ = typ;
-
-    /* Set tuple/table attribute types */
-/* !! check if needed
-    if (typ->kind == RDB_TP_TUPLE) {
-        for (i = 0; i < typ->var.tuple.attrc; i++) {
-            RDB_type *attrtyp = typ->var.tuple.attrv[i].typ;
-
-            if (attrtyp->kind == RDB_TP_TUPLE || attrtyp->kind == RDB_TP_RELATION) {
-                _RDB_set_nonsc_type(
-                        RDB_tuple_get(objp, typ->var.tuple.attrv[i].name),
-                        attrtyp);
-            }
-        }
-    } else {
-        for (i = 0; i < typ->var.basetyp->var.tuple.attrc; i++) {
-            RDB_type *attrtyp = typ->var.basetyp->var.tuple.attrv[i].typ;
-
-            if (attrtyp->kind == RDB_TP_TUPLE || attrtyp->kind == RDB_TP_RELATION) {
-                _RDB_set_nonsc_type(
-                        RDB_tuple_get(objp,
-                        typ->var.basetyp->var.tuple.attrv[i].name),
-                        attrtyp);
-            }
-        }
-    }
-*/
 }
 
 int

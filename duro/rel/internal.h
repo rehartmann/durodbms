@@ -379,9 +379,6 @@ _RDB_get_icomp(RDB_type *, const char *compname);
 void
 _RDB_set_obj_type(RDB_object *, RDB_type *);
 
-void
-_RDB_set_nonsc_type(RDB_object *objp, RDB_type *typ);
-
 int
 _RDB_get_ro_op(const char *name, int argc, RDB_type *argtv[],
                RDB_transaction *txp, RDB_ro_op_desc **opp);

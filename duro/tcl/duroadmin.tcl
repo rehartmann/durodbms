@@ -2,12 +2,15 @@
 # Execute wish from the user's PATH \
 exec wish "$0" ${1+"$@"}
 
+# Duroadmin - GUI administration tool for Duro.
 # Copyright (C) 2004, 2005 René Hartmann.
 # See the file COPYING for redistribution information.
 
 # $Id$
 
-package require duro
+set duro_version 0.9
+
+package require -exact duro $duro_version
 package require Tktable
 
 # Global variables:
@@ -15,10 +18,11 @@ package require Tktable
 # dbenv		current DB environment ID
 # db		currently selected database
 # tableattrs	list of table attributes
-# tablekey      table key
+# tablekey      table key (attribute list)
 # tabletypes    array which maps table attributes to their types
-# ltables	local tables
-# types         scalar types
+# ltables	list of local tables
+# types         list of scalar types
+# keyvals	array which maps (row,key attribute) to key value
 #
 
 #
@@ -47,7 +51,8 @@ proc show_tables {} {
     # Read global tables
     if {[catch {
         set tx [duro::begin $::dbenv $::db]
-        set tables [duro::tables [expr {$::showsys ? "-all" : "-user"}] $tx]
+        set tables [lsort [duro::tables \
+                [expr {$::showsys ? "-all" : "-user"}] $tx]]
         duro::commit $tx
     } msg]} {
         catch {duro::rollback $tx}
@@ -55,7 +60,7 @@ proc show_tables {} {
     }
 
     # Add local tables
-    set tables [concat $tables $::ltables]
+    set tables [concat $tables [lsort $::ltables]]
 
     foreach tb $tables {
         .tables insert end $tb
@@ -72,6 +77,7 @@ proc add_db {newdb} {
         .mbar.db.create entryconfigure 2 -state normal
         .mbar.db.create entryconfigure 3 -state normal
         .mbar.db.drop entryconfigure 1 -state normal
+        .mbar.db entryconfigure 5 -state normal
     }
 
     # Add menu entry
@@ -164,7 +170,7 @@ proc close_env {} {
 proc clear_bottom_row {} {
     set rowcount [.tableframe.table cget -rows]
     for {set i 0} {$i < [llength $::tableattrs]} {incr i} {
-        .tableframe.table set [expr $rowcount - 1],$i ""
+        .tableframe.table set [expr {$rowcount - 1}],$i ""
     }
 }
 
@@ -194,8 +200,8 @@ proc add_tuples {arr tx rowcount} {
         }
         set_row [expr {$i + 1}] $tpl
         array set ta $tpl
-        foreach j $::tablekey {
-            set ::keyvals($i,$j) $ta($j)
+        foreach k $::tablekey {
+            set ::keyvals($i,$k) $ta($k)
         }
     }
     if {$i < $rowcount} {
@@ -253,7 +259,13 @@ proc show_table {} {
     clear_bottom_row
 
     .mbar.db.drop entryconfigure 2 -state normal
+    if {[.tableframe.table cget -rows] > 2} {
+        .mbar.db entryconfigure 3 -state normal
+    } else {
+        .mbar.db entryconfigure 3 -state disabled
+    }
     .mbar.db entryconfigure 4 -state normal
+    .tableframe.table activate 1,0
 }
 
 proc more_tuples {} {
@@ -380,7 +392,6 @@ proc rename_table {} {
     if {$i != -1} {
         set ::ltables [lreplace $::ltables $i $i $::newtablename]
     }
-
     show_tables
 }
 
@@ -565,10 +576,10 @@ proc create_rtable {} {
         }
      }
 
-    .tables insert end $::newtablename
     if {$::tableflag == "-local"} {
         lappend ::ltables $::newtablename
     }
+    show_tables
 
     destroy .dialog
 }
@@ -626,10 +637,10 @@ proc create_vtable {} {
         }
     }
 
-    .tables insert end $::newtablename
     if {$::tableflag == "-local"} {
         lappend ::ltables $::newtablename
     }
+    show_tables
 
     destroy .dialog
 }
@@ -649,6 +660,7 @@ proc drop_db {} {
         .dbsframe.dbl configure -state disabled
         .mbar.db.create entryconfigure 2 -state disabled
         .mbar.db.drop entryconfigure 1 -state disabled
+        .mbar.db entryconfigure 5 -state disabled
     }
 }
 
@@ -776,7 +788,7 @@ proc update_tuple {row} {
         return
     }
 
-    catch {unset ::modified([expr {$row -1}])}
+    catch {unset ::modified([expr {$row - 1}])}
 
     # Move active cell to next row
     .tableframe.table activate [expr {$row + 1}],0
@@ -787,9 +799,9 @@ proc update_tuple {row} {
         set a [lindex $::tableattrs $i]
         lappend updattrs $a
         if {[must_quote $::tabletypes($a)]} {
-            lappend updattrs [quote_str [.tableframe.table get [expr {$row}],$i]]
+            lappend updattrs [quote_str [.tableframe.table get $row,$i]]
         } else {
-            lappend updattrs [.tableframe.table get [expr {$row}],$i]
+            lappend updattrs [.tableframe.table get $row,$i]
         }
     }
 
@@ -803,12 +815,21 @@ proc update_tuple {row} {
         set tx [duro::begin $::dbenv $::db]
         set uexp \{[eq_exp $row]\}
         # Must use eval, because updattrs is a list of arguments
-        eval duro::update $table $uexp $updattrs $tx        
+        eval duro::update $table $uexp $updattrs $tx
         duro::commit $tx
     } msg]} {
         catch {duro::rollback $tx}
         tk_messageBox -type ok -title "Error" -message $msg -icon error
         get_row $row
+    }
+
+    # Update ::keyvals
+    for {set i 0} {$i < [llength $::tableattrs]} {incr i} {
+        set attr [lindex $::tableattrs $i]
+        if {[lsearch -exact $::tablekey $attr] >= 0} {
+            set ::keyvals([expr {$row - 1}],$attr) \
+                    [.tableframe.table get $row,$i]
+        }
     }
 }
 
@@ -853,6 +874,17 @@ proc del_row {} {
     # Delete row from table widget
     .tableframe.table delete rows $row
 
+    # Delete row from keyvals
+    for {set i [expr {$row - 1}]} {$i < [expr {$rowcount - 3}]} {incr i} {
+        foreach k $::tablekey {
+            set ::keyvals($i,$k) $::keyvals([expr {$i + 1}],$k)
+        }
+    }
+    foreach k $::tablekey {
+        unset ::keyvals([expr {$rowcount - 3}],$k)
+    }
+
+    # If last row was deleted, disable row deletion
     if {$row >= [expr {$rowcount - 2}]} {
         .mbar.db entryconfigure 3 -state disabled
     }
@@ -938,6 +970,28 @@ proc exec_script {} {
     destroy .dialog
 }
 
+proc about {} {
+    toplevel .about
+    wm title .about "About Duroadmin"
+    wm geometry .about "+300+300"
+
+    set ::newtablename ""
+
+    label .about.l1 -text "Duroadmin"
+    label .about.l2 -text "Duro $::duro_version, (C) 2003-2005 Rene Hartmann"
+
+    set ::action ok
+    frame .about.buttons
+    button .about.buttons.ok -text OK -command {set action ok}
+
+    pack .about.l1 .about.l2 -side top -anchor w -padx 10 -pady 10
+    pack .about.buttons -side bottom
+    pack .about.buttons.ok -side left
+
+    grab .about
+    tkwait variable action
+    destroy .about
+}
 
 set duroadmin(initrows) 20
 set dbenv ""
@@ -948,7 +1002,7 @@ menu .mbar
 . config -menu .mbar
 
 menu .mbar.file
-.mbar add cascade -label File -menu .mbar.file
+.mbar add cascade -label File -menu .mbar.file -underline 0
 
 .mbar.file add command -label "Open Environment..." -command open_env
 .mbar.file add command -label "Create Environment..." -command create_env
@@ -958,14 +1012,14 @@ menu .mbar.file
 .mbar.file add command -label Quit -command exit
 
 menu .mbar.view
-.mbar add cascade -label View -menu .mbar.view
+.mbar add cascade -label View -menu .mbar.view -underline 0
 
 .mbar.view add checkbutton -label "Show system tables" -variable showsys \
         -command show_tables
 .mbar.view add command -label "Show errlor log" -command show_errlog
 
 menu .mbar.db
-.mbar add cascade -label Database -menu .mbar.db
+.mbar add cascade -label Database -menu .mbar.db -underline 0
 
 menu .mbar.db.create
 .mbar.db add cascade -label Create -menu .mbar.db.create
@@ -974,7 +1028,8 @@ menu .mbar.db.drop
 .mbar.db add command -label "Delete row" -command del_row -state disabled
 .mbar.db add command -label "Rename table" -command rename_table \
         -state disabled
-.mbar.db add command -label "Execute script..." -command exec_script
+.mbar.db add command -label "Execute script..." -command exec_script \
+        -state disabled
 
 .mbar.db.create add command -label "Database" -state disabled \
         -command create_db
@@ -986,6 +1041,10 @@ menu .mbar.db.drop
         -command drop_db
 .mbar.db.drop add command -label "Table" -state disabled \
         -command drop_table
+
+menu .mbar.help
+.mbar add cascade -label "Help" -menu .mbar.help -underline 0
+.mbar.help add command -label "About Duroadmin" -command about
 
 frame .dbsframe
 label .dbsframe.dbl -text "Database:" -state disabled

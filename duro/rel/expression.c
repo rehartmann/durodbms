@@ -344,16 +344,22 @@ RDB_ro_op(const char *opname, int argc, RDB_expression *argv[])
     return exp;
 }
 
+enum {
+    EXPV_LEN = 64
+};
+
 RDB_expression *
 RDB_ro_op_va(const char *opname, RDB_expression *arg, ...
         /* (RDB_expression *) NULL */ )
 {
     va_list ap;
-    RDB_expression *argv[64];
+    RDB_expression *argv[EXPV_LEN];
     int argc = 0;
 
     va_start(ap, arg);
     while (arg != NULL) {
+        if (argc >= EXPV_LEN)
+            return NULL;
         argv[argc++] = arg;
         arg = va_arg(ap, RDB_expression *);
     }
