@@ -48,6 +48,10 @@ TUPLE   {
     return TOK_TUPLE;
 }
 
+RELATION {
+    return TOK_RELATION;
+}
+
 BUT {
     return TOK_BUT;
 }

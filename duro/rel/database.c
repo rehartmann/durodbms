@@ -123,7 +123,7 @@ cleanup:
 
 int
 RDB_create_table_index(const char *name, RDB_table *tbp, int idxcompc,
-        RDB_seq_item idxcompv[], RDB_bool ordered, RDB_transaction *txp)
+        RDB_seq_item idxcompv[], int flags, RDB_transaction *txp)
 {
     int i;
     int ret;
@@ -366,7 +366,6 @@ _RDB_open_table(RDB_table *tbp,
     if (create) {
         ret = create_key_indexes(tbp, envp, txp);
         if (ret != RDB_OK) {
-            RDB_errmsg(envp, RDB_strerror(ret));
             goto error;
         }
     } else {
@@ -1023,6 +1022,8 @@ _RDB_provide_table(const char *name, RDB_bool persistent,
             RDB_type *tuptyp = reltyp->var.basetyp;
 
             tuptyp->var.tuple.attrv[i].defaultp = malloc(sizeof (RDB_object));
+            if (tuptyp->var.tuple.attrv[i].defaultp == NULL)
+                return RDB_NO_MEMORY;
             RDB_init_obj(tuptyp->var.tuple.attrv[i].defaultp);
             RDB_copy_obj(tuptyp->var.tuple.attrv[i].defaultp,
                     heading[i].defaultp);
@@ -1177,7 +1178,7 @@ static int
 drop_anon_table(RDB_table *tbp, RDB_transaction *txp)
 {
     if (tbp->name == NULL)
-        return RDB_drop_table(tbp, txp);
+        return _RDB_drop_table(tbp, txp, RDB_TRUE);
     return RDB_OK;
 }
 

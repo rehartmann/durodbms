@@ -382,7 +382,8 @@ update_select_index(RDB_table *tbp, int updc, const RDB_attr_update updv[],
     ret = RDB_update_rec(tbp->var.select.tbp->var.stored.recmapp, &fv, updc, fieldv,
             txp->txid);
     if (RDB_is_syserr(ret)) {
-        RDB_errmsg(txp->dbp->dbrootp->envp, RDB_strerror(ret));
+        RDB_errmsg(txp->dbp->dbrootp->envp, "cannot update record: %s",
+               RDB_strerror(ret));
         return ret;
     }
     ret = RDB_OK;

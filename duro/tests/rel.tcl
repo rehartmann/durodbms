@@ -100,4 +100,13 @@ if {$n != 2} {
     exit 1
 }
 
+duro::update T1 {SCATTR = 2} RLATTR {RELATION {TUPLE {A 1, B "y"}}} $tx
+
+set rel [lindex [duro::expr {TUPLE FROM ((T1 WHERE SCATTR = 2) {RLATTR})} $tx] 1]
+
+if {![tequal [lindex $rel 0] {A 1 B y}]} {
+    puts "Incorrect relation value: $rel"
+    exit 1
+}
+
 duro::commit $tx

@@ -65,6 +65,8 @@ delete_stored(RDB_table *tbp, RDB_transaction *txp)
     do {
         ret = RDB_cursor_delete(curp);
         if (ret != RDB_OK) {
+            RDB_errmsg(txp->dbp->dbrootp->envp, "cannot delete record: %s",
+                    RDB_strerror(ret));
             goto error;
         }
         ret = RDB_cursor_next(curp);
@@ -179,7 +181,6 @@ delete(RDB_table *tbp, RDB_transaction *txp)
         case RDB_TB_STORED:
             ret = delete_stored(tbp, txp);
             if (RDB_is_syserr(ret)) {
-                RDB_errmsg(txp->dbp->dbrootp->envp, RDB_strerror(ret));
                 RDB_rollback_all(txp);
             }
             return ret;

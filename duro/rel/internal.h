@@ -349,7 +349,7 @@ _RDB_free_upd_ops(RDB_upd_op *op);
 int
 _RDB_move_tuples(RDB_table *dstp, RDB_table *srcp, RDB_transaction *);
 
-void
+int
 _RDB_obj_to_field(RDB_field *, RDB_object *);
 
 #define _RDB_pkey_len(tbp) ((tbp)->keyv[0].strc)
@@ -362,9 +362,6 @@ _RDB_check_type_constraint(RDB_object *valp, RDB_transaction *txp);
 
 int
 _RDB_copy_obj(RDB_object *dstvalp, const RDB_object *srcvalp);
-
-RDB_table *
-_RDB_new_table(void);
 
 int
 _RDB_open_table_index(RDB_table *tbp, _RDB_tbindex *indexp,

@@ -33,11 +33,13 @@ RDB_obj_irep(RDB_object *valp, size_t *lenp)
     }
 } 
 
-static size_t
-obj_ilen(const RDB_object *objp)
+static int
+obj_ilen(const RDB_object *objp, size_t *lenp)
 {
     int ret;
-    size_t len = 0;
+    size_t len;
+
+    *lenp = 0;
 
     switch(objp->kind) {
         case RDB_OB_TUPLE:
@@ -56,11 +58,14 @@ obj_ilen(const RDB_object *objp)
                 if (attrobjp->typ == NULL)
                     attrobjp->typ = attrtyp;
                 if (attrtyp->ireplen == RDB_VARIABLE_LEN)
-                    len += sizeof (size_t);
-                len += obj_ilen(attrobjp);
+                    *lenp += sizeof (size_t);
+                ret = obj_ilen(attrobjp, &len);
+                if (ret != RDB_OK)
+                    return ret;
+                *lenp += len;
             }
 
-            return len;
+            return RDB_OK;
         }
         case RDB_OB_TABLE:
         {
@@ -74,8 +79,14 @@ obj_ilen(const RDB_object *objp)
             RDB_init_obj(&tpl);
 
             while ((ret = _RDB_next_tuple(qrp, &tpl, NULL)) == RDB_OK) {
-                tpl.typ = objp->typ->var.basetyp;
-                len += obj_ilen(&tpl);
+                tpl.typ = RDB_obj_type(objp)->var.basetyp;
+                ret = obj_ilen(&tpl, &len);
+                if (ret != RDB_OK) {
+                     RDB_destroy_obj(&tpl);
+                    _RDB_drop_qresult(qrp, NULL);
+                    return ret;
+                }
+                *lenp += len;
             }
             RDB_destroy_obj(&tpl);
             if (ret != RDB_NOT_FOUND) {
@@ -86,7 +97,7 @@ obj_ilen(const RDB_object *objp)
             ret = _RDB_drop_qresult(qrp, NULL);
             if (ret != RDB_OK)
                 return ret;
-            return len;
+            return RDB_OK;
         }
         case RDB_OB_ARRAY:
         {
@@ -97,19 +108,22 @@ obj_ilen(const RDB_object *objp)
                     &elemp)) == RDB_OK) {
                 elemp->typ = objp->typ->var.basetyp;
                 if (elemp->typ->ireplen == RDB_VARIABLE_LEN)
-                    len += sizeof (size_t);
-                len += obj_ilen(elemp);
+                    *lenp += sizeof (size_t);
+                ret = obj_ilen(elemp, &len);
+                if (ret != RDB_OK)
+                    return ret;
+                *lenp += len;
             }
             if (ret != RDB_NOT_FOUND)
                 return ret;
-            return len;
+            return RDB_OK;
         }            
         default: ;
     }
-    len = objp->typ->ireplen;
-    if (len == RDB_VARIABLE_LEN)
-        len = objp->var.bin.len;
-    return len;
+    *lenp = objp->typ->ireplen;
+    if (*lenp == RDB_VARIABLE_LEN)
+        *lenp = objp->var.bin.len;
+    return RDB_OK;
 }
 
 static enum _RDB_obj_kind
@@ -338,11 +352,14 @@ obj_to_irep(void *dstp, const void *srcp, size_t len);
 static void *
 obj_to_len_irep(void *dstp, const RDB_object *objp, RDB_type *typ)
 {
+    int ret;
     RDB_byte *bp = dstp;
     size_t len = typ->ireplen;
 
     if (len == RDB_VARIABLE_LEN) {
-        len = obj_ilen(objp);
+        ret = obj_ilen(objp, &len);
+        if (ret != RDB_OK)
+            return NULL;
         memcpy(bp, &len, sizeof (size_t));
         bp += sizeof (size_t);
     }
@@ -399,8 +416,10 @@ obj_to_irep(void *dstp, const void *srcp, size_t len)
             RDB_init_obj(&tpl);
 
             while ((ret = _RDB_next_tuple(qrp, &tpl, NULL)) == RDB_OK) {
-                tpl.typ = objp->typ->var.basetyp;
-                l = obj_ilen(&tpl);
+                tpl.typ = RDB_obj_type(objp)->var.basetyp;
+                ret = obj_ilen(&tpl, &l);
+                if (ret != RDB_OK)
+                    return NULL;
                 obj_to_irep(bp, &tpl, l);
                 bp += l;
             }
@@ -436,12 +455,12 @@ obj_to_irep(void *dstp, const void *srcp, size_t len)
     return dstp;
 } 
 
-void
+int
 _RDB_obj_to_field(RDB_field *fvp, RDB_object *objp)
 {
     fvp->datap = objp;
     fvp->copyfp = obj_to_irep;
-    fvp->len = obj_ilen(objp);
+    return obj_ilen(objp, &fvp->len);
 }
 
 RDB_bool
@@ -824,6 +843,14 @@ size_t
 RDB_binary_length(const RDB_object *objp)
 {
     return objp->var.bin.len;
+}
+
+RDB_type *
+RDB_obj_type(const RDB_object *objp)
+{
+    if (objp->kind == RDB_OB_TABLE)
+        return RDB_table_type(objp->var.tbp);
+    return objp->typ;
 }
 
 /* Works only for scalar types */

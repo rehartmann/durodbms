@@ -22,10 +22,10 @@ insert_stored(RDB_table *tbp, const RDB_object *tplp, RDB_transaction *txp)
     fvp = malloc(sizeof(RDB_field) * attrcount);
     if (fvp == NULL) {
         if (txp != NULL) {
-            RDB_errmsg(txp->dbp->dbrootp->envp, RDB_strerror(RDB_NO_MEMORY));
             RDB_rollback_all(txp);
         }
-        return RDB_NO_MEMORY;
+        ret = RDB_NO_MEMORY;
+        goto cleanup;
     }
     for (i = 0; i < attrcount; i++) {
         int *fnop;
@@ -39,7 +39,8 @@ insert_stored(RDB_table *tbp, const RDB_object *tplp, RDB_transaction *txp)
         if (valp == NULL) {
             valp = tuptyp->var.tuple.attrv[i].defaultp;
             if (valp == NULL) {
-                return RDB_INVALID_ARGUMENT;
+                ret = RDB_INVALID_ARGUMENT;
+                goto cleanup;
             }
         }
         
@@ -52,22 +53,31 @@ insert_stored(RDB_table *tbp, const RDB_object *tplp, RDB_transaction *txp)
                 case RDB_OB_INT:
                 case RDB_OB_RATIONAL:
                 case RDB_OB_BIN:
-                    return RDB_INTERNAL;
+                    ret = RDB_INTERNAL;
+                    goto cleanup;
                 case RDB_OB_INITIAL:
-                    if (!RDB_type_is_scalar(attrtyp))
-                        return RDB_TYPE_MISMATCH;
+                    if (!RDB_type_is_scalar(attrtyp)) {
+                        ret = RDB_TYPE_MISMATCH;
+                        goto cleanup;
+                    }
                     break;
                 case RDB_OB_TUPLE:
-                    if (attrtyp->kind != RDB_TP_TUPLE)
-                        return RDB_TYPE_MISMATCH;
+                    if (attrtyp->kind != RDB_TP_TUPLE) {
+                        ret = RDB_TYPE_MISMATCH;
+                        goto cleanup;
+                    }
                     break;
                 case RDB_OB_TABLE:
-                    if (attrtyp->kind != RDB_TP_RELATION)
-                        return RDB_TYPE_MISMATCH;
+                    if (attrtyp->kind != RDB_TP_RELATION) {
+                        ret = RDB_TYPE_MISMATCH;
+                        goto cleanup;
+                     }
                      break;
                 case RDB_OB_ARRAY:
-                    if (attrtyp->kind != RDB_TP_ARRAY)
-                        return RDB_TYPE_MISMATCH;
+                    if (attrtyp->kind != RDB_TP_ARRAY) {
+                        ret = RDB_TYPE_MISMATCH;
+                        goto cleanup;
+                    }
                     break;
             }
         } else {
@@ -82,14 +92,17 @@ insert_stored(RDB_table *tbp, const RDB_object *tplp, RDB_transaction *txp)
             _RDB_set_nonsc_type(valp, tuptyp->var.tuple.attrv[i].typ);
             /* !! check object kind against type? */
 
-        _RDB_obj_to_field(&fvp[*fnop], valp);
+        ret = _RDB_obj_to_field(&fvp[*fnop], valp);
+        if (ret != RDB_OK)
+            goto cleanup;
     }
 
     ret = RDB_insert_rec(tbp->var.stored.recmapp, fvp,
             tbp->is_persistent ? txp->txid : NULL);
     if (RDB_is_syserr(ret)) {
         if (txp != NULL) {
-            RDB_errmsg(txp->dbp->dbrootp->envp, RDB_strerror(ret));
+            RDB_errmsg(txp->dbp->dbrootp->envp, "cannot insert record: %s",
+                    RDB_strerror(ret));
             RDB_rollback_all(txp);
         }
     } else if (ret == RDB_KEY_VIOLATION) {
@@ -98,6 +111,8 @@ insert_stored(RDB_table *tbp, const RDB_object *tplp, RDB_transaction *txp)
                 tbp->is_persistent ? txp->txid : NULL) == RDB_OK)
             ret = RDB_ELEMENT_EXISTS;
     }            
+
+cleanup:
     free(fvp);
     return ret;
 }

@@ -1124,7 +1124,7 @@ _RDB_get_cat_rtable(const char *name, RDB_transaction *txp, RDB_table **tbpp)
         goto error;
     }
     
-    ret = RDB_extract_tuple(tmptb1p, &tpl, txp);
+    ret = RDB_extract_tuple(tmptb1p, txp, &tpl);
 
     if (ret != RDB_OK) {
         goto error;
@@ -1321,7 +1321,7 @@ _RDB_get_cat_vtable(const char *name, RDB_transaction *txp, RDB_table **tbpp)
     }
     
     RDB_init_obj(&tpl);
-    ret = RDB_extract_tuple(tmptbp, &tpl, txp);
+    ret = RDB_extract_tuple(tmptbp, txp, &tpl);
 
     RDB_drop_table(tmptbp, txp);
     if (ret != RDB_OK) {
@@ -1476,7 +1476,7 @@ _RDB_get_cat_type(const char *name, RDB_transaction *txp, RDB_type **typp)
     if (ret != RDB_OK)
         goto error;
 
-    ret = RDB_extract_tuple(tmptb1p, &tpl, txp);
+    ret = RDB_extract_tuple(tmptb1p, txp, &tpl);
     if (ret != RDB_OK)
         goto error;
 
@@ -1664,7 +1664,7 @@ _RDB_get_cat_rtype(const char *opname, RDB_transaction *txp, RDB_type **typp)
      */
 
     RDB_init_obj(&tpl);
-    ret = RDB_extract_tuple(vtbp, &tpl, txp);
+    ret = RDB_extract_tuple(vtbp, txp, &tpl);
     RDB_drop_table(vtbp, txp);
     if (ret != RDB_OK) {
         if (RDB_is_syserr(ret))
@@ -1752,7 +1752,7 @@ _RDB_get_cat_ro_op(const char *name, int argc, RDB_type *argtv[],
         return ret;
     }
     RDB_init_obj(&tpl);
-    ret = RDB_extract_tuple(vtbp, &tpl, txp);
+    ret = RDB_extract_tuple(vtbp, txp, &tpl);
     RDB_drop_table(vtbp, txp);
     if (ret != RDB_OK)
         goto error;
@@ -1866,7 +1866,7 @@ _RDB_get_cat_upd_op(const char *name, int argc, RDB_type *argtv[],
         return ret;
     }
     RDB_init_obj(&tpl);
-    ret = RDB_extract_tuple(vtbp, &tpl, txp);
+    ret = RDB_extract_tuple(vtbp, txp, &tpl);
     RDB_drop_table(vtbp, txp);
     if (ret != RDB_OK)
         goto error;

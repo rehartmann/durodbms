@@ -13,7 +13,7 @@ int
 RDB_recmap_cursor(RDB_cursor **curpp, RDB_recmap *rfp, RDB_bool wr,
                   DB_TXN *txid)
 {
-    int res;
+    int ret;
     RDB_cursor *curp = malloc(sizeof(RDB_cursor));
     u_int32_t flags = 0;
     
@@ -24,10 +24,10 @@ RDB_recmap_cursor(RDB_cursor **curpp, RDB_recmap *rfp, RDB_bool wr,
         flags |= DB_WRITECURSOR;
     curp->recmapp = rfp;
     curp->txid = txid;
-    res = rfp->dbp->cursor(rfp->dbp, txid, &curp->cursorp, flags);
-    if (res != 0) {
-        free(curp);
-        return RDB_convert_err(res);
+    ret = rfp->dbp->cursor(rfp->dbp, txid, &curp->cursorp, flags);
+    if (ret != 0) {
+        free(curp);        
+        return RDB_convert_err(ret);
     }
     memset(&curp->current_key, 0, sizeof(DBT));
     curp->current_key.flags = DB_DBT_REALLOC;

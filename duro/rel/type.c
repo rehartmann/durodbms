@@ -517,7 +517,7 @@ RDB_implement_type(const char *name, RDB_type *arep,
         if (ret != RDB_OK)
             return ret;
     } else {
-        if (arep != NULL && !RDB_type_is_builtin(arep)) {
+        if (arep != NULL && arep->kind == RDB_TP_RELATION) {
             return RDB_NOT_SUPPORTED;
         }
     }
@@ -914,22 +914,22 @@ RDB_project_tuple_type(const RDB_type *typ, int attrc, char *attrv[],
         tuptyp->var.tuple.attrv[i].name = NULL;
 
     for (i = 0; i < attrc; i++) {
-        char *attrname;
-        RDB_type *attrtyp;
-    
-        attrname  = RDB_dup_str(attrv[i]);
+        RDB_attr *attrp;
+        char *attrname = RDB_dup_str(attrv[i]);
+
         if (attrname == NULL) {
             ret = RDB_NO_MEMORY;
             goto error;
         }
         tuptyp->var.tuple.attrv[i].name = attrname;
 
-        attrtyp = _RDB_tuple_type_attr(typ, attrname)->typ;
-        if (attrtyp == NULL) {
+        attrp = _RDB_tuple_type_attr(typ, attrname);
+        if (attrp == NULL) {
             ret = RDB_INVALID_ARGUMENT;
             goto error;
         }
-        tuptyp->var.tuple.attrv[i].typ = dup_nonscalar_type(attrtyp);
+        tuptyp->var.tuple.attrv[i].typ = dup_nonscalar_type(attrp->typ);
+
         tuptyp->var.tuple.attrv[i].defaultp = NULL;
         tuptyp->var.tuple.attrv[i].options = 0;
     }

@@ -23,7 +23,7 @@ RDB_expr_type(const RDB_expression *exp, const RDB_type *tuptyp)
 {
     switch (exp->kind) {
         case RDB_EX_OBJ:
-            return exp->var.obj.typ;
+            return RDB_obj_type(&exp->var.obj);
         case RDB_EX_ATTR:
         {
             RDB_attr *attrp = _RDB_tuple_type_attr(

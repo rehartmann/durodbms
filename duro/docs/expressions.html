@@ -4,7 +4,7 @@
 <head>
 <title>Duro expression syntax</title>
 <body>
-<h2>Duro 0.7 expression syntax</h2>
+<h2>Duro 0.8 expression syntax</h2>
 
 <p>The language for Duro expressions is a subset of Tutorial D, as defined
 in <cite>TTM</cite>, with a few differences:
@@ -86,15 +86,19 @@ extractor = TUPLE FROM expression.
 
 count_invocation = COUNT '(' expression ')'.
 
-aggregate_invocation = summary_type '(' argument_list ')'.
+aggregate_invocation = summary_type '(' expression_list ')'.
 
 is_empty_invocation = IS_EMPTY '(' expression ')'.
 
-operator_invocation = id '(' [argument_list] ')'.
+operator_invocation = id '(' [expression_list] ')'.
 
-argument_list = expression {',' expression}.
+literal = string | integer | decimal | float | TRUE | FALSE
+        | TUPLE '{' [tuple_item_list] '}'
+        | RELATION '{' expression_list '}' | TABLE_DEE | TABLE_DUM.
 
-literal = string | integer | decimal | float | TRUE | FALSE.
+expression_list = expression {',' expression}.
+
+tuple_item_list = id expression {',' id expression}.
 
 string = '"' {char} '"'.
 

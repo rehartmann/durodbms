@@ -94,19 +94,20 @@ make_skey(DB *dbp, const DBT *pkeyp, const DBT *pdatap, DBT *skeyp)
 
 int
 RDB_create_index(RDB_recmap *rmp, const char *namp, const char *filenamp,
-        RDB_environment *dsp, int fieldc, const int fieldv[],
+        RDB_environment *envp, int fieldc, const int fieldv[],
         RDB_bool unique, DB_TXN *txid, RDB_index **ixpp)
 {
     RDB_index *ixp;
     int ret;
    
-    ret = create_index(rmp, namp, filenamp, dsp, fieldc, fieldv, unique, &ixp);
+    ret = create_index(rmp, namp, filenamp, envp, fieldc, fieldv, unique, &ixp);
     if (ret != RDB_OK)
         return ret;
 
     ret = ixp->dbp->open(ixp->dbp, txid, filenamp, namp, DB_HASH, DB_CREATE, 0664);
     if (ret != 0) {
         ret = RDB_convert_err(ret);
+        RDB_errmsg(envp, "cannot open index: %s", RDB_strerror(ret));
         goto error;
     }
 
@@ -123,19 +124,19 @@ RDB_create_index(RDB_recmap *rmp, const char *namp, const char *filenamp,
     *ixpp = ixp;
     return RDB_OK;
 error:
-    RDB_delete_index(ixp, dsp, txid);
+    RDB_delete_index(ixp, envp, txid);
     return ret;
 }
 
 int
 RDB_open_index(RDB_recmap *rmp, const char *namp, const char *filenamp,
-        RDB_environment *dsp, int fieldc, const int fieldv[], RDB_bool unique,
+        RDB_environment *envp, int fieldc, const int fieldv[], RDB_bool unique,
         DB_TXN *txid, RDB_index **ixpp)
 {
     RDB_index *ixp;
     int ret;
 
-    ret = create_index(rmp, namp, filenamp, dsp, fieldc, fieldv, unique, &ixp);
+    ret = create_index(rmp, namp, filenamp, envp, fieldc, fieldv, unique, &ixp);
     if (ret != RDB_OK)
         return RDB_convert_err(ret);
 
@@ -190,7 +191,7 @@ cleanup:
     free(ixp->fieldv);
     free(ixp);
     if (ret != 0)
-        RDB_errmsg(envp, "Error deleting index: %s", RDB_strerror(ret));
+        RDB_errmsg(envp, "cannot delete index: %s", RDB_strerror(ret));
     return RDB_convert_err(ret);
 }
 

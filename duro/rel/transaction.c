@@ -128,7 +128,7 @@ RDB_commit(RDB_transaction *txp)
 
     ret = txp->txid->commit(txp->txid, 0);
     if (ret != 0) {
-        RDB_errmsg(txp->envp, RDB_strerror(ret));
+        RDB_errmsg(txp->envp, "cannot commit tx: %s", RDB_strerror(ret));
         return RDB_convert_err(ret);
     }
 
@@ -181,7 +181,7 @@ RDB_rollback(RDB_transaction *txp)
 
     ret = txp->txid->abort(txp->txid);
     if (ret != 0) {
-        RDB_errmsg(txp->envp, RDB_strerror(ret));        
+        RDB_errmsg(txp->envp, "cannot abort tx: %s", RDB_strerror(ret));        
         return RDB_convert_err(ret);
     }
 

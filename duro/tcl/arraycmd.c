@@ -152,7 +152,7 @@ Duro_table_to_list(Tcl_Interp *interp, RDB_table *tbp, RDB_transaction *txp)
     int ret;
     Tcl_Obj *listobjp = Tcl_NewListObj(0, NULL);
 
-    ret = _RDB_table_qresult(tbp, NULL, &qrp);
+    ret = _RDB_table_qresult(tbp, txp, &qrp);
     if (ret != RDB_OK) {
         if (RDB_is_syserr(ret)) {
             RDB_rollback_all(txp);

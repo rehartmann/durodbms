@@ -11,8 +11,8 @@
 #include <gen/strfns.h>
 #include <string.h>
 
-RDB_table *
-_RDB_new_table(void)
+static RDB_table *
+new_table(void)
 {
     RDB_table *tbp = malloc(sizeof (RDB_table));
     if (tbp == NULL) {
@@ -51,7 +51,7 @@ _RDB_new_stored_table(const char *name, RDB_bool persistent,
         }
     }
 
-    tbp = _RDB_new_table();
+    tbp = new_table();
     if (tbp == NULL)
         return RDB_NO_MEMORY;
     *tbpp = tbp;
@@ -249,7 +249,6 @@ RDB_all(RDB_table *tbp, const char *attrname, RDB_transaction *txp,
     ret = _RDB_table_qresult(tbp, txp, &qrp);
     if (ret != RDB_OK) {
         if (RDB_is_syserr(ret)) {
-            RDB_errmsg(txp->dbp->dbrootp->envp, RDB_strerror(ret));
             RDB_rollback_all(txp);
         }
         return ret;
@@ -264,7 +263,6 @@ RDB_all(RDB_table *tbp, const char *attrname, RDB_transaction *txp,
     if (ret != RDB_NOT_FOUND) {
         _RDB_drop_qresult(qrp, txp);
         if (RDB_is_syserr(ret)) {
-            RDB_errmsg(txp->dbp->dbrootp->envp, RDB_strerror(ret));
             RDB_rollback_all(txp);
         }
         return ret;
@@ -308,7 +306,6 @@ RDB_any(RDB_table *tbp, const char *attrname, RDB_transaction *txp,
     ret = _RDB_table_qresult(tbp, txp, &qrp);
     if (ret != RDB_OK) {
         if (RDB_is_syserr(ret)) {
-            RDB_errmsg(txp->dbp->dbrootp->envp, RDB_strerror(ret));
             RDB_rollback_all(txp);
         }
         return ret;
@@ -323,7 +320,6 @@ RDB_any(RDB_table *tbp, const char *attrname, RDB_transaction *txp,
     if (ret != RDB_NOT_FOUND) {
         _RDB_drop_qresult(qrp, txp);
         if (RDB_is_syserr(ret)) {
-            RDB_errmsg(txp->dbp->dbrootp->envp, RDB_strerror(ret));
             RDB_rollback_all(txp);
         }
         return ret;
@@ -373,7 +369,6 @@ RDB_max(RDB_table *tbp, const char *attrname, RDB_transaction *txp,
     ret = _RDB_table_qresult(tbp, txp, &qrp);
     if (ret != RDB_OK) {
         if (RDB_is_syserr(ret)) {
-            RDB_errmsg(txp->dbp->dbrootp->envp, RDB_strerror(ret));
             RDB_rollback_all(txp);
         }
         return ret;
@@ -396,7 +391,6 @@ RDB_max(RDB_table *tbp, const char *attrname, RDB_transaction *txp,
     if (ret != RDB_NOT_FOUND) {
         _RDB_drop_qresult(qrp, txp);
         if (RDB_is_syserr(ret)) {
-            RDB_errmsg(txp->dbp->dbrootp->envp, RDB_strerror(ret));
             RDB_rollback_all(txp);
         }
         return ret;
@@ -446,7 +440,6 @@ RDB_min(RDB_table *tbp, const char *attrname, RDB_transaction *txp,
     ret = _RDB_table_qresult(tbp, txp, &qrp);
     if (ret != RDB_OK) {
         if (RDB_is_syserr(ret)) {
-            RDB_errmsg(txp->dbp->dbrootp->envp, RDB_strerror(ret));
             RDB_rollback_all(txp);
         }
         return ret;
@@ -469,7 +462,6 @@ RDB_min(RDB_table *tbp, const char *attrname, RDB_transaction *txp,
     if (ret != RDB_NOT_FOUND) {
         _RDB_drop_qresult(qrp, txp);
         if (RDB_is_syserr(ret)) {
-            RDB_errmsg(txp->dbp->dbrootp->envp, RDB_strerror(ret));
             RDB_rollback_all(txp);
         }
         return ret;
@@ -519,7 +511,6 @@ RDB_sum(RDB_table *tbp, const char *attrname, RDB_transaction *txp,
     ret = _RDB_table_qresult(tbp, txp, &qrp);
     if (ret != RDB_OK) {
         if (RDB_is_syserr(ret)) {
-            RDB_errmsg(txp->dbp->dbrootp->envp, RDB_strerror(ret));
             RDB_rollback_all(txp);
         }
         return ret;
@@ -536,7 +527,6 @@ RDB_sum(RDB_table *tbp, const char *attrname, RDB_transaction *txp,
     if (ret != RDB_NOT_FOUND) {
         _RDB_drop_qresult(qrp, txp);
         if (RDB_is_syserr(ret)) {
-            RDB_errmsg(txp->dbp->dbrootp->envp, RDB_strerror(ret));
             RDB_rollback_all(txp);
         }
         return ret;
@@ -582,7 +572,6 @@ RDB_avg(RDB_table *tbp, const char *attrname, RDB_transaction *txp,
     ret = _RDB_table_qresult(tbp, txp, &qrp);
     if (ret != RDB_OK) {
         if (RDB_is_syserr(ret)) {
-            RDB_errmsg(txp->dbp->dbrootp->envp, RDB_strerror(ret));
             RDB_rollback_all(txp);
         }
         return ret;
@@ -599,7 +588,6 @@ RDB_avg(RDB_table *tbp, const char *attrname, RDB_transaction *txp,
     if (ret != RDB_NOT_FOUND) {
         _RDB_drop_qresult(qrp, txp);
         if (RDB_is_syserr(ret)) {
-            RDB_errmsg(txp->dbp->dbrootp->envp, RDB_strerror(ret));
             RDB_rollback_all(txp);
         }
         return ret;
@@ -614,7 +602,7 @@ RDB_avg(RDB_table *tbp, const char *attrname, RDB_transaction *txp,
 }
 
 int
-RDB_extract_tuple(RDB_table *tbp, RDB_object *tup, RDB_transaction *txp)
+RDB_extract_tuple(RDB_table *tbp, RDB_transaction *txp, RDB_object *tplp)
 {
     int ret, ret2;
     RDB_qresult *qrp;
@@ -623,7 +611,6 @@ RDB_extract_tuple(RDB_table *tbp, RDB_object *tup, RDB_transaction *txp)
     ret = _RDB_table_qresult(tbp, txp, &qrp);
     if (ret != RDB_OK) {
         if (RDB_is_syserr(ret)) {
-            RDB_errmsg(txp->dbp->dbrootp->envp, RDB_strerror(ret));
             RDB_rollback_all(txp);
         }
         return ret;
@@ -632,7 +619,7 @@ RDB_extract_tuple(RDB_table *tbp, RDB_object *tup, RDB_transaction *txp)
     RDB_init_obj(&tpl);
 
     /* Get tuple */
-    ret = _RDB_next_tuple(qrp, tup, txp);
+    ret = _RDB_next_tuple(qrp, tplp, txp);
     if (ret != RDB_OK)
         goto cleanup;
 
@@ -671,7 +658,6 @@ RDB_table_is_empty(RDB_table *tbp, RDB_transaction *txp, RDB_bool *resultp)
     ret = _RDB_table_qresult(tbp, txp, &qrp);
     if (ret != RDB_OK) {
         if (RDB_is_syserr(ret)) {
-            RDB_errmsg(txp->dbp->dbrootp->envp, RDB_strerror(ret));
             RDB_rollback_all(txp);
         }
         return ret;
@@ -709,7 +695,6 @@ RDB_cardinality(RDB_table *tbp, RDB_transaction *txp)
     ret = _RDB_table_qresult(tbp, txp, &qrp);
     if (ret != RDB_OK) {
         if (RDB_is_syserr(ret)) {
-            RDB_errmsg(txp->dbp->dbrootp->envp, RDB_strerror(ret));
             RDB_rollback_all(txp);
         }
         return ret;
@@ -823,7 +808,7 @@ RDB_select(RDB_table *tbp, RDB_expression *condp, RDB_table **resultpp)
         return RDB_TYPE_MISMATCH;
 
     /* Allocate RDB_table structure */    
-    newtbp = _RDB_new_table();    
+    newtbp = new_table();    
     if (newtbp == NULL)
         return RDB_NO_MEMORY;
 
@@ -886,7 +871,7 @@ RDB_union(RDB_table *tb1p, RDB_table *tb2p, RDB_table **resultpp)
     if (!RDB_type_equals(tb1p->typ, tb2p->typ))
         return RDB_TYPE_MISMATCH;
 
-    newtbp = _RDB_new_table();
+    newtbp = new_table();
     if (newtbp == NULL)
         return RDB_NO_MEMORY;
 
@@ -920,7 +905,7 @@ RDB_minus(RDB_table *tb1p, RDB_table *tb2p, RDB_table **result)
     if (!RDB_type_equals(tb1p->typ, tb2p->typ))
         return RDB_TYPE_MISMATCH;
 
-    newtbp = _RDB_new_table();
+    newtbp = new_table();
     if (newtbp == NULL)
         return RDB_NO_MEMORY;
 
@@ -950,7 +935,7 @@ RDB_intersect(RDB_table *tb1p, RDB_table *tb2p, RDB_table **result)
     if (!RDB_type_equals(tb1p->typ, tb2p->typ))
         return RDB_TYPE_MISMATCH;
 
-    newtbp = _RDB_new_table();
+    newtbp = new_table();
     if (newtbp == NULL)
         return RDB_NO_MEMORY;
 
@@ -985,7 +970,7 @@ RDB_join(RDB_table *tb1p, RDB_table *tb2p, RDB_table **resultpp)
     int attrc2 = tpltyp2->var.tuple.attrc;
     int cattrc;
 
-    newtbp = _RDB_new_table();
+    newtbp = new_table();
     if (newtbp == NULL)
         return RDB_NO_MEMORY;
 
@@ -1067,7 +1052,7 @@ RDB_extend(RDB_table *tbp, int attrc, RDB_virtual_attr attrv[],
     RDB_table *newtbp = NULL;
     RDB_attr *attrdefv = NULL;
 
-    newtbp = _RDB_new_table();
+    newtbp = new_table();
     if (newtbp == NULL)
         return RDB_NO_MEMORY;
 
@@ -1162,7 +1147,7 @@ RDB_project(RDB_table *tbp, int attrc, char *attrv[], RDB_table **resultpp)
     int ret;
     int i;
 
-    newtbp = _RDB_new_table();
+    newtbp = new_table();
     if (newtbp == NULL)
         return RDB_NO_MEMORY;
 
@@ -1290,7 +1275,7 @@ RDB_summarize(RDB_table *tb1p, RDB_table *tb2p, int addc, RDB_summarize_add addv
     int avgc;
     char **avgv;
 
-    newtbp = _RDB_new_table();
+    newtbp = new_table();
     if (newtbp == NULL)
         return RDB_NO_MEMORY;
 
@@ -1435,7 +1420,7 @@ RDB_rename(RDB_table *tbp, int renc, RDB_renaming renv[],
     int i;
     int ret;
 
-    newtbp = _RDB_new_table();
+    newtbp = new_table();
     if (newtbp == NULL)
         return RDB_NO_MEMORY;
 
@@ -1501,7 +1486,7 @@ RDB_wrap(RDB_table *tbp, int wrapc, RDB_wrapping wrapv[],
     int i;
     int ret;
 
-    newtbp = _RDB_new_table();
+    newtbp = new_table();
     if (newtbp == NULL)
         return RDB_NO_MEMORY;
 
@@ -1576,7 +1561,7 @@ RDB_unwrap(RDB_table *tbp, int attrc, char *attrv[],
     int ret;
     int i;
 
-    newtbp = _RDB_new_table();
+    newtbp = new_table();
     if (newtbp == NULL)
         return RDB_NO_MEMORY;
 
@@ -1642,7 +1627,7 @@ RDB_sdivide(RDB_table *tb1p, RDB_table *tb2p, RDB_table *tb3p,
     }
     RDB_drop_type(typ, NULL);
     
-    newtbp = _RDB_new_table();    
+    newtbp = new_table();    
     if (newtbp == NULL)
         return RDB_NO_MEMORY;
 

@@ -320,6 +320,10 @@ stored_qresult(RDB_qresult *qresp, RDB_table *tbp, RDB_transaction *txp)
     ret = RDB_recmap_cursor(&qresp->var.curp, tbp->var.stored.recmapp,
                     0, tbp->is_persistent ? txp->txid : NULL);
     if (ret != RDB_OK) {
+        if (txp != NULL) {
+            RDB_errmsg(txp->dbp->dbrootp->envp, "cannot create cursor: %s",
+                    RDB_strerror(ret));
+        }
         return ret;
     }
     ret = RDB_cursor_first(qresp->var.curp);

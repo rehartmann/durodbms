@@ -103,6 +103,7 @@ eval_index(RDB_table *tbp, _RDB_tbindex *indexp)
 static int
 split_by_index(RDB_table *tbp, _RDB_tbindex *indexp)
 {
+    int ret;
     RDB_expression *exp;
     RDB_expression *ixexp;
     RDB_bool dosplit;
@@ -144,15 +145,14 @@ split_by_index(RDB_table *tbp, _RDB_tbindex *indexp)
     }
 
     if (dosplit) {
-        RDB_table *sitbp = _RDB_new_table();
+        RDB_table *sitbp;
 
-        if (sitbp == NULL)
-            return RDB_NO_MEMORY;
+        ret = RDB_select(tbp->var.select.tbp, ixexp, &sitbp);
+        if (ret != RDB_OK)
+            return ret;
 
         sitbp->kind = RDB_TB_SELECT_INDEX;
         sitbp->var.select.indexp = indexp;
-        sitbp->var.select.exp = ixexp;
-        sitbp->var.select.tbp = tbp->var.select.tbp;
         sitbp->optimized = RDB_TRUE;
         tbp->var.select.tbp = sitbp;
     } else {

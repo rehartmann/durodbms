@@ -636,7 +636,7 @@ RDB_subset(RDB_table *tb1p, RDB_table *tb2p, RDB_transaction *txp,
  * RDB_INVALID_ARGUMENT the table contains more than one tuple.
  */
 int
-RDB_extract_tuple(RDB_table *, RDB_object *, RDB_transaction *);
+RDB_extract_tuple(RDB_table *, RDB_transaction *, RDB_object *);
 
 /*
  * Store RDB_TRUE in the location pointed to by resultp if the table
@@ -874,7 +874,8 @@ RDB_type_is_scalar(const RDB_type *);
 RDB_bool
 RDB_type_equals(const RDB_type *, const RDB_type *);
 
-#define RDB_obj_type(valp) ((valp)->typ)
+RDB_type *
+RDB_obj_type(const RDB_object *);
 
 RDB_type *
 RDB_type_attr_type(const RDB_type *, const char *);
