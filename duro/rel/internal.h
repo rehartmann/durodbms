@@ -244,7 +244,10 @@ RDB_bool
 _RDB_legal_name(const char *name);
 
 int
-_RDB_del_recmap(RDB_transaction *txp, RDB_recmap *rmp);
+_RDB_del_recmap(RDB_transaction *, RDB_recmap *);
+
+int
+_RDB_del_index(RDB_transaction *, RDB_index *);
 
 int
 RDB_evaluate_bool(RDB_expression *, const RDB_tuple *tup, RDB_transaction *,

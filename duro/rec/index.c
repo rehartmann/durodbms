@@ -10,7 +10,7 @@ create_index(RDB_recmap *rmp, const char *name, const char *filename,
         RDB_environment *dsp, int fieldc, const int fieldv[],
         RDB_bool unique, RDB_index **ixpp)
 {
-    int res;
+    int ret;
     int i;
     RDB_index *ixp = malloc(sizeof (RDB_index));
 
@@ -21,23 +21,24 @@ create_index(RDB_recmap *rmp, const char *name, const char *filename,
     ixp->rmp = rmp;
     
     ixp->namp = RDB_dup_str(name);
-    ixp->filenamp = RDB_dup_str(name);
+    ixp->filenamp = RDB_dup_str(filename);
     if (ixp->namp == NULL || ixp->filenamp == NULL) {
-        res = RDB_NO_MEMORY;
+        ret = RDB_NO_MEMORY;
         goto error;
     }
 
     ixp->fieldc = fieldc;
     ixp->fieldv = malloc(fieldc * sizeof(int));
     if (ixp->fieldv == NULL) {
-        res = RDB_NO_MEMORY;
+        ret = RDB_NO_MEMORY;
         goto error;
     }
     for (i = 0; i < fieldc; i++)
         ixp->fieldv[i] = fieldv[i];
 
-    res = db_create(&ixp->dbp, dsp->envp, 0);
-    if (res != 0) {
+    ret = db_create(&ixp->dbp, dsp->envp, 0);
+    if (ret != 0) {
+        ret = RDB_convert_err(ret);
         goto error;
     }
     ixp->unique = unique;
@@ -50,7 +51,7 @@ error:
     free(ixp->filenamp);
     free(ixp->fieldv);
     free(ixp);
-    return res;
+    return ret;
 }
 
 /* Fill the DBT for the secondary key */
@@ -59,7 +60,7 @@ make_skey(DB *dbp, const DBT *pkeyp, const DBT *pdatap, DBT *skeyp)
 {
     RDB_index *ixp = dbp->app_private;
     RDB_field *fieldv;
-    int res;
+    int ret;
     int i;
     
     fieldv = malloc (sizeof(RDB_field) * ixp->fieldc);
@@ -68,17 +69,17 @@ make_skey(DB *dbp, const DBT *pkeyp, const DBT *pdatap, DBT *skeyp)
 
     for (i = 0; i < ixp->fieldc; i++)
         fieldv[i].no = ixp->fieldv[i];
-    res = _RDB_get_fields(ixp->rmp, pkeyp, pdatap, ixp->fieldc, fieldv);
-    if (res != RDB_OK) {
+    ret = _RDB_get_fields(ixp->rmp, pkeyp, pdatap, ixp->fieldc, fieldv);
+    if (ret != RDB_OK) {
         free(fieldv);
-        return res;
+        return ret;
     }
 
     memset(skeyp, 0, sizeof (DBT));
-    res = _RDB_fields_to_DBT(ixp->rmp, ixp->fieldc, fieldv, skeyp);
+    ret = _RDB_fields_to_DBT(ixp->rmp, ixp->fieldc, fieldv, skeyp);
     skeyp->flags = DB_DBT_APPMALLOC;
     free(fieldv);
-    return res;
+    return ret;
 }
 
 int
@@ -87,29 +88,33 @@ RDB_create_index(RDB_recmap *rmp, const char *namp, const char *filenamp,
         RDB_bool unique, DB_TXN *txid, RDB_index **ixpp)
 {
     RDB_index *ixp;
-    int res;
+    int ret;
    
-    res = create_index(rmp, namp, filenamp, dsp, fieldc, fieldv, unique, &ixp);
-    if (res != RDB_OK)
-        return res;
+    ret = create_index(rmp, namp, filenamp, dsp, fieldc, fieldv, unique, &ixp);
+    if (ret != RDB_OK)
+        return ret;
 
-    res = ixp->dbp->open(ixp->dbp, txid, filenamp, namp, DB_HASH, DB_CREATE, 0664);
-    if (res != 0)
+    ret = ixp->dbp->open(ixp->dbp, txid, filenamp, namp, DB_HASH, DB_CREATE, 0664);
+    if (ret != 0) {
+        ret = RDB_convert_err(ret);
         goto error;
-        
+    }
+
     /* attach index to BDB database (for the callback) */
     ixp->dbp->app_private = ixp;
 
     /* associate the index DB with the recmap DB */
-    res = ixp->dbp->associate(rmp->dbp, txid, ixp->dbp, make_skey, DB_CREATE);
-    if (res != 0)
-        goto error;    
+    ret = ixp->dbp->associate(rmp->dbp, txid, ixp->dbp, make_skey, DB_CREATE);
+    if (ret != 0) {
+        ret = RDB_convert_err(ret);
+        goto error;
+    }
    
     *ixpp = ixp;
     return RDB_OK;
 error:
-    RDB_delete_index(ixp, dsp);
-    return res;
+    RDB_delete_index(ixp, dsp, txid);
+    return ret;
 }
 
 int
@@ -118,51 +123,60 @@ RDB_open_index(RDB_recmap *rmp, const char *namp, const char *filenamp,
         DB_TXN *txid, RDB_index **ixpp)
 {
     RDB_index *ixp;
-    int res;
+    int ret;
 
-    res = create_index(rmp, namp, filenamp, dsp, fieldc, fieldv, unique, &ixp);
-    if (res != RDB_OK)
-        return res;
+    ret = create_index(rmp, namp, filenamp, dsp, fieldc, fieldv, unique, &ixp);
+    if (ret != RDB_OK)
+        return RDB_convert_err(ret);
 
-    res = ixp->dbp->open(ixp->dbp, txid, filenamp, namp, DB_UNKNOWN, 0, 0664);
-    if (res != 0)
-        goto error; 
+    ret = ixp->dbp->open(ixp->dbp, txid, filenamp, namp, DB_UNKNOWN, 0, 0664);
+    if (ret != 0) {
+        ret = RDB_convert_err(ret);
+        goto error;
+    }
 
     /* attach index to BDB database (for the callback) */
     ixp->dbp->app_private = ixp;
 
     /* associate the index DB with the recmap DB */
-    res = ixp->dbp->associate(rmp->dbp, txid, ixp->dbp, make_skey, 0);
-    if (res != 0)
-        goto error;    
+    ret = ixp->dbp->associate(rmp->dbp, txid, ixp->dbp, make_skey, 0);
+    if (ret != 0) {
+        ret = RDB_convert_err(ret);
+        goto error;
+    }
 
     *ixpp = ixp;
     return RDB_OK;
 error:
     RDB_close_index(ixp);
-    return res;
+    return ret;
 }
 
 int
 RDB_close_index(RDB_index *ixp)
 {
-    int res = ixp->dbp->close(ixp->dbp, 0);
+    int ret = ixp->dbp->close(ixp->dbp, 0);
     free(ixp->namp);
     free(ixp->filenamp);
     free(ixp->fieldv);
     free(ixp);
-    return res;
+    return RDB_convert_err(ret);
 }
 
 /* Delete an index. */
 int
-RDB_delete_index(RDB_index *ixp, RDB_environment *envp)
+RDB_delete_index(RDB_index *ixp, RDB_environment *envp, DB_TXN *txid)
 {
-    int res = ixp->dbp->close(ixp->dbp, 0);
+    int ret = ixp->dbp->close(ixp->dbp, 0);
+    if (ret != 0)
+        goto cleanup;
+
+    ret = envp->envp->dbremove(envp->envp, txid, ixp->filenamp, ixp->namp, 0);
+
+cleanup:
     free(ixp->namp);
     free(ixp->filenamp);
     free(ixp->fieldv);
     free(ixp);
-    /* ... */
-    return res;
+    return RDB_convert_err(ret);
 }

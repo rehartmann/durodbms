@@ -1051,9 +1051,9 @@ _RDB_drop_rtable(RDB_table *tbp, RDB_transaction *txp)
 {
     int i;
 
-    /* Delete secondary indexes */
+    /* Schedule secondary indexes for deletion */
     for (i = 0; i < tbp->keyc - 1; i++) {
-        RDB_delete_index(tbp->var.stored.keyidxv[i], txp->dbp->dbrootp->envp);
+        _RDB_del_index(txp, tbp->var.stored.keyidxv[i]);
     }
 
     /* Schedule recmap for deletion */

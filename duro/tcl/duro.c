@@ -1,8 +1,10 @@
+/* $Id$ */
+
 #include "duro.h"
 #include <string.h>
 #include <stdio.h>
 
-void
+static void
 duro_cleanup(ClientData data)
 {
     RDB_environment *envp;
@@ -11,22 +13,23 @@ duro_cleanup(ClientData data)
     Tcl_HashSearch search;
     TclState *statep = (TclState *) data;
 
-    /* Abort transactions */
+    /* Abort pending transactions */
     entryp = Tcl_FirstHashEntry(&statep->txs, &search);
     while (entryp != NULL) {
         txp = Tcl_GetHashValue(entryp);
-        rollback_tx(txp, entryp);
+        RDB_tcl_rollback(txp, entryp);
         free(txp);
         entryp = Tcl_FirstHashEntry(&statep->txs, &search);
     }
 
-    /* Close DB environments */
+    /* Close open DB environments */
     entryp = Tcl_FirstHashEntry(&statep->envs, &search);
     while (entryp != NULL) {
         envp = Tcl_GetHashValue(entryp);
-        close_env(envp, entryp);
+        RDB_tcl_close_env(envp, entryp);
         entryp = Tcl_FirstHashEntry(&statep->envs, &search);
     }
+
     Tcl_Free((char *)statep);
 }
 
@@ -45,12 +48,17 @@ Duro_Init(Tcl_Interp *interp)
     Tcl_InitHashTable(&statep->txs, TCL_STRING_KEYS);
     statep->tx_uid = 0;
 
-    Tcl_CreateCommand(interp, "duro::env", env_cmd, (ClientData)statep,
-            duro_cleanup);
-    Tcl_CreateCommand(interp, "duro::tx", tx_cmd, (ClientData)statep,
-            duro_cleanup);
-    Tcl_CreateObjCommand(interp, "duro::table", table_cmd, (ClientData)statep,
-            duro_cleanup);
+    Tcl_CreateCommand(interp, "duro::env", RDB_env_cmd, (ClientData)statep, NULL);
+    Tcl_CreateCommand(interp, "duro::begin", RDB_begin_cmd,
+            (ClientData)statep, NULL);
+    Tcl_CreateCommand(interp, "duro::commit", RDB_commit_cmd,
+            (ClientData)statep, NULL);
+    Tcl_CreateCommand(interp, "duro::rollback", RDB_rollback_cmd,
+            (ClientData)statep, NULL);
+    Tcl_CreateObjCommand(interp, "duro::table", RDB_table_cmd,
+            (ClientData)statep, NULL);
+
+    Tcl_CreateExitHandler(duro_cleanup, (ClientData)statep);
     
     Tcl_PkgProvide(interp, "duro", "0.7");
     return TCL_OK;

@@ -35,6 +35,6 @@ RDB_close_index(RDB_index *);
 
 /* Delete an index. */
 int
-RDB_delete_index(RDB_index *, RDB_environment *);
+RDB_delete_index(RDB_index *, RDB_environment *, DB_TXN *txid);
 
 #endif

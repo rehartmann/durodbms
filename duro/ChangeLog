@@ -2,6 +2,12 @@ $Id$
 
 Summary of Changes for Duro
 
+Changes for Duro 0.7
+
+- Fixed problem with commit/rollback after deleting tables.
+
+- Tcl interface
+
 Changes for Duro 0.6
 
 - For the sake of uniformity, changed argument order of RDB_table_to_array()

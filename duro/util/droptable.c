@@ -18,17 +18,7 @@ delete_table(RDB_database *dbp, const char *tbnamp)
     err = RDB_get_table(tbnamp, &tx, &tbp);
     if (err != RDB_OK) {
         goto error;
-    } 
-
-    err = RDB_commit(&tx);
-    if (err != RDB_OK) {
-        return err;
-    } 
-
-    err = RDB_begin_tx(&tx, dbp, NULL);
-    if (err != RDB_OK) {
-        return err;
-    } 
+    }
 
     err = RDB_drop_table(tbp, &tx);
     if (err != RDB_OK)

@@ -1,15 +1,17 @@
+/* $Id$ */
+
 #include "duro.h"
 #include <string.h>
 
 int
-close_env(RDB_environment *envp, Tcl_HashEntry *entryp)
+RDB_tcl_close_env(RDB_environment *envp, Tcl_HashEntry *entryp)
 {
     Tcl_DeleteHashEntry(entryp);
     return RDB_close_env(envp);
 }
 
 int
-env_cmd(ClientData data, Tcl_Interp *interp, int argc, const char *argv[])
+RDB_env_cmd(ClientData data, Tcl_Interp *interp, int argc, const char *argv[])
 {
     int ret;
     RDB_environment *envp;
@@ -75,7 +77,7 @@ env_cmd(ClientData data, Tcl_Interp *interp, int argc, const char *argv[])
             return TCL_ERROR;
         }
         envp = Tcl_GetHashValue(entryp);
-        ret = close_env(envp, entryp);
+        ret = RDB_tcl_close_env(envp, entryp);
         if (ret != RDB_OK) {
             interp->result = (char *) RDB_strerror(ret);
             return TCL_ERROR;

@@ -236,18 +236,18 @@ RDB_delete_recmap(RDB_recmap *rmp, RDB_environment *envp, DB_TXN *txid)
     int ret;
     ret = rmp->dbp->close(rmp->dbp, DB_NOSYNC);
     if (ret != 0)
-        goto error;
+        goto cleanup;
 
     if (rmp->namp != NULL) {
         ret = envp->envp->dbremove(envp->envp, txid, rmp->filenamp, rmp->namp, 0);
     }
 
-error:
+cleanup:
     free(rmp->namp);
     free(rmp->filenamp);
     free(rmp->fieldlens);
     free(rmp);
-    return ret;
+    return RDB_convert_err(ret);
 }
 
 static size_t
