@@ -24,7 +24,7 @@ AC_CHECK_LIB([m], [atan])
 
 # Checks for header files.
 AC_HEADER_STDC
-AC_CHECK_HEADERS([float.h limits.h malloc.h stdlib.h string.h])
+AC_CHECK_HEADERS([float.h limits.h malloc.h stdlib.h string.h regex.h])
 
 # Checks for typedefs, structures, and compiler characteristics.
 AC_C_CONST

@@ -1,25 +1,20 @@
 	README for Duro 0.5
 $Id$
 
-This directory contains release 0.5 of Duro, a relational database library
+This directory contains release 0.6 of Duro, a relational database library
 written in C.
 
 Compiling and running Duro requires the Berkeley DB database library,
 release 4.1. Berkeley DB can be obtained for free from
 http://www.sleepycat.com. Also required are POSIX.2 regular expressions
-and Libtool.
+and GNU Libtool.
 
 Berkeley DB is assumed to be located in /usr/local/BerkeleyDB.4.1.
-If Berkeley DB is located in a different directory, modify make.vars
-appropriately. 
 
 Duro has been tested on a GNU/Linux PC.
 
-To learn about how to use the Duro, see rel/rdb.h and the programs
-located in the directories util and tests.
-
-Duro is copyright by René Hartmann. It is published under the terms of the
-GNU General Public License.
+To learn about how to use the Duro, see the API specification
+and Release Notes in the 'docs' directory.
 
 This software is still under development. Report bugs to
 rhartmann@users.sourceforge.net.
@@ -34,3 +29,24 @@ Known bugs:
 
 - A table from which a RDB_array was created must not be dropped before
   the array is destroyed.
+
+Copyright 2003 René Hartmann.
+
+-----
+
+This file is part of Duro, a relational database library.
+Copyright (C) 2003 René Hartmann.
+
+Duro is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 2 of the License, or
+(at your option) any later version.
+
+Duro is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with Duro; if not, write to the Free Software Foundation, Inc.,
+59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
