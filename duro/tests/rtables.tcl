@@ -2,11 +2,12 @@
 
 # $Id$
 #
-# Test create, insert, update with several kinds of tables
+# Test create, insert, update with several kinds of real tables
 #
 
 load .libs/libdurotcl.so duro
 
+# Compare tuples
 proc tequal {t1 t2} {
     return [string equal [lsort $t1] [lsort $t2]]
 }
