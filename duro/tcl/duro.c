@@ -178,3 +178,57 @@ Duro_get_ltable(const char *name, void *arg)
 
     return ((table_entry *)Tcl_GetHashValue(entryp))->tablep;
 }
+
+RDB_seq_item *
+Duro_tobj_to_seq_items(Tcl_Interp *interp, Tcl_Obj *tobjp, int *seqitcp,
+        RDB_bool needdir)
+{
+    int ret;
+    int len, i;
+    RDB_seq_item *seqitv;
+
+    Tcl_ListObjLength(interp, tobjp, &len);
+    if (len % 2 != 0) {
+        Tcl_SetResult(interp, "Invalid order", TCL_STATIC);
+        return NULL;
+    }
+    *seqitcp = len / 2;
+    if (*seqitcp > 0) {
+        seqitv = (RDB_seq_item *) Tcl_Alloc(*seqitcp * sizeof(RDB_seq_item));
+        for (i = 0; i < *seqitcp; i++) {
+            Tcl_Obj *dirobjp, *nameobjp;
+            char *dir;
+
+            ret = Tcl_ListObjIndex(interp, tobjp, i * 2, &nameobjp);
+            if (ret != TCL_OK) {
+                Tcl_Free((char *) seqitv);
+                return NULL;
+            }
+            ret = Tcl_ListObjIndex(interp, tobjp, i * 2 + 1, &dirobjp);
+            if (ret != TCL_OK) {
+                Tcl_Free((char *) seqitv);
+                return NULL;
+            }
+
+            seqitv[i].attrname = Tcl_GetStringFromObj(nameobjp, NULL);
+
+            dir = Tcl_GetString(dirobjp);
+            if (strcmp(dir, "asc") == 0)
+                seqitv[i].asc = RDB_TRUE;
+            else if (strcmp(dir, "desc") == 0)
+                seqitv[i].asc = RDB_FALSE;
+            else {
+                if (needdir) {
+                    Tcl_AppendResult(interp, "Invalid direction: \"", dir,                            
+                            "\", must be \"asc\" or \"desc\"", NULL);
+                    return NULL;
+                } else if (strcmp(dir, "-") != 0) {
+                    Tcl_AppendResult(interp, "Invalid direction: \"", dir,                            
+                            "\", must be \"asc\", \"desc\", or \"-\"", NULL);
+                    return NULL;
+                }
+            }
+        }
+    }
+    return seqitv;
+}

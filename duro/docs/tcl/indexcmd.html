@@ -1,0 +1,40 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN"
+"http://www.w3.org/TR/html4/strict.dtd">
+<html lang="en">
+<head>
+<title>Durotcl commands - index</title>
+<body>
+
+<h2>Name</h2>
+
+<p>duro::index - create and delete indexes
+
+<h2>Synopsis</h2>
+
+<p><b>duro::index</b> <var>arg ?arg ...?</var>
+
+<h2>Description</h2>
+
+<dl>
+<dt><b>duro::index create </b> <var>indexname tablename attrs txId</var>
+<dd>
+<p>This subcommand creates the index <var>indexname</var> on the
+table <var>tablename</var> under the control of the transaction specified
+by <var>txId</var>.
+
+<p>The <var>attrs</var> argument specifies the index attributes.
+<var>attrs</var> is a list containg pairs of elements.
+The first element of each pair is an attribute name.
+The second element must be "asc", "desc", or "-" and currently
+has no meaning, since only hash indexes are supported.
+
+<dt><b>duro::index drop</b> <var>indexname txId</var>
+<dd>
+<p>This subcommand deletes the index <var>indexname</var>
+under the control of the transaction specified by <var>txId</var>.
+
+</dl>
+
+<p>$Id$
+
+</html>

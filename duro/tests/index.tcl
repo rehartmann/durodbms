@@ -35,13 +35,13 @@ duro::table create T2 {
    {E STRING}
 } {{B C E}} $tx
 
-duro::index create IX1 T1 {B asc} $tx
+duro::index create IX1 T1 {B -} $tx
 
-if {![catch {duro::index create IX1 T1 {C asc} $tx}]} {
+if {![catch {duro::index create IX1 T1 {C -} $tx}]} {
     error "Index creation should fail, but succeeded"
 }
 
-duro::index create IX2 T1 {C asc} $tx
+duro::index create IX2 T1 {C -} $tx
 
 duro::insert T1 {A 1 B Bli C X} $tx
 duro::insert T1 {A 2 B Bla C Y} $tx

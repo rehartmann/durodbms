@@ -212,7 +212,7 @@ type_implement_cmd(TclState *statep, Tcl_Interp *interp, int objc,
     RDB_type *irep = NULL;
 
     if ((objc != 4) && (objc != 5)) {
-        Tcl_WrongNumArgs(interp, 2, objv, "typename ?irep? tx");
+        Tcl_WrongNumArgs(interp, 2, objv, "typename ?arep? tx");
         return TCL_ERROR;
     }
 

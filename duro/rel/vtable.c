@@ -896,6 +896,7 @@ RDB_ungroup(RDB_table *tbp, const char *attr, RDB_table **resultpp)
 RDB_table *
 _RDB_dup_vtable(RDB_table *tbp)
 {
+    int i;
     int ret;
     RDB_table *tb1p;
     RDB_table *tb2p;
@@ -964,7 +965,6 @@ _RDB_dup_vtable(RDB_table *tbp)
         case RDB_TB_EXTEND:
         {
             RDB_virtual_attr *vattrv;
-            int i;
 
             tb1p = _RDB_dup_vtable(tbp->var.extend.tbp);
             if (tb1p == NULL)
@@ -986,7 +986,6 @@ _RDB_dup_vtable(RDB_table *tbp)
         }
         case RDB_TB_PROJECT:
         {
-            int i;
             char **attrnamev;
             int attrc = tbp->typ->var.basetyp->var.tuple.attrc;
 
@@ -1006,8 +1005,17 @@ _RDB_dup_vtable(RDB_table *tbp)
             return tbp;
         }
         case RDB_TB_SUMMARIZE:
-            /* !! */
-            break;
+            tb1p = _RDB_dup_vtable(tbp->var.summarize.tb1p);
+            if (tb1p == NULL)
+                return NULL;
+            tb2p = _RDB_dup_vtable(tbp->var.summarize.tb2p);
+            if (tb2p == NULL)
+                return NULL;
+            ret = RDB_summarize(tb1p, tb2p, tbp->var.summarize.addc,
+                    tbp->var.summarize.addv, &tbp);
+            if (ret != RDB_OK)
+                return NULL;
+            return tbp;
         case RDB_TB_RENAME:
             tb1p = _RDB_dup_vtable(tbp->var.rename.tbp);
             if (tb1p == NULL)

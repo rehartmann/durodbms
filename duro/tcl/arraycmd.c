@@ -21,54 +21,6 @@ Duro_tcl_drop_array(RDB_object *arrayp, Tcl_HashEntry *entryp)
     return ret;
 }
 
-RDB_seq_item *
-Duro_tobj_to_seq_items(Tcl_Interp *interp, Tcl_Obj *tobjp, int *seqitcp)
-{
-    int ret;
-    int len, i;
-    RDB_seq_item *seqitv;
-
-    Tcl_ListObjLength(interp, tobjp, &len);
-    if (len % 2 != 0) {
-        Tcl_SetResult(interp, "Invalid order", TCL_STATIC);
-        return NULL;
-    }
-    *seqitcp = len / 2;
-    if (*seqitcp > 0) {
-        seqitv = (RDB_seq_item *) Tcl_Alloc(*seqitcp * sizeof(RDB_seq_item));
-        for (i = 0; i < *seqitcp; i++) {
-            Tcl_Obj *dirobjp, *nameobjp;
-            char *dir;
-
-            ret = Tcl_ListObjIndex(interp, tobjp, i * 2, &nameobjp);
-            if (ret != TCL_OK) {
-                Tcl_Free((char *) seqitv);
-                return NULL;
-            }
-            ret = Tcl_ListObjIndex(interp, tobjp, i * 2 + 1, &dirobjp);
-            if (ret != TCL_OK) {
-                Tcl_Free((char *) seqitv);
-                return NULL;
-            }
-
-            seqitv[i].attrname = Tcl_GetStringFromObj(nameobjp, NULL);
-
-            dir = Tcl_GetStringFromObj(dirobjp, NULL);
-            if (strcmp(dir, "asc") == 0)
-                seqitv[i].asc = RDB_TRUE;
-            else if (strcmp(dir, "desc") == 0)
-                seqitv[i].asc = RDB_FALSE;
-            else {
-                Tcl_SetResult(interp,
-                        "Invalid direction, must be asc or desc",
-                        TCL_STATIC);
-                return NULL;
-            }
-        }
-    }
-    return seqitv;
-}
-
 static int
 array_create_cmd(TclState *statep, Tcl_Interp *interp, int objc,
         Tcl_Obj *CONST objv[])
@@ -105,7 +57,7 @@ array_create_cmd(TclState *statep, Tcl_Interp *interp, int objc,
     }
 
     if (objc == 5) {
-        seqitv = Duro_tobj_to_seq_items(interp, objv[3], &seqitc);
+        seqitv = Duro_tobj_to_seq_items(interp, objv[3], &seqitc, RDB_TRUE);
         if (seqitv == NULL)
             return TCL_ERROR;
     }
@@ -160,8 +112,29 @@ array_drop_cmd(TclState *statep, Tcl_Interp *interp, int objc,
     return TCL_OK;
 }
 
-Tcl_Obj *
-Duro_table_to_list(Tcl_Interp *interp, RDB_table *tbp, RDB_transaction *txp)
+static Tcl_Obj *
+array_to_list(Tcl_Interp *interp, RDB_object *arrayp,
+        RDB_transaction *txp)
+{
+    int i;
+    int ret;
+    RDB_object *objp;
+    Tcl_Obj *listobjp = Tcl_NewListObj(0, NULL);
+
+    for (i = 0; (ret = RDB_array_get(arrayp, i, &objp)) == RDB_OK; i++) {
+        Tcl_Obj *tobjp = Duro_to_tcl(interp, objp, txp);
+
+        if (tobjp == NULL) {
+            return NULL;
+        }
+
+        Tcl_ListObjAppendElement(interp, listobjp, tobjp);
+    }
+    return listobjp;
+}
+
+static Tcl_Obj *
+table_to_list(Tcl_Interp *interp, RDB_table *tbp, RDB_transaction *txp)
 {
     RDB_qresult *qrp;
     RDB_object tpl;
@@ -204,21 +177,31 @@ Duro_table_to_list(Tcl_Interp *interp, RDB_table *tbp, RDB_transaction *txp)
 }
 
 static Tcl_Obj *
-array_to_list(Tcl_Interp *interp, RDB_object *arrayp,
+tuple_to_list(Tcl_Interp *interp, const RDB_object *tplp,
         RDB_transaction *txp)
 {
     int i;
-    int ret;
-    RDB_object *objp;
+    char **namev;
     Tcl_Obj *listobjp = Tcl_NewListObj(0, NULL);
+    int attrcount = RDB_tuple_size(tplp);
 
-    for (i = 0; (ret = RDB_array_get(arrayp, i, &objp)) == RDB_OK; i++) {
+    if (attrcount == 0)
+        return listobjp;
+    
+    namev = (char **) Tcl_Alloc(attrcount * sizeof(char *));
+
+    RDB_tuple_attr_names(tplp, namev);
+    for (i = 0; i < attrcount; i++) {
+        RDB_object *objp = RDB_tuple_get(tplp, namev[i]);
         Tcl_Obj *tobjp = Duro_to_tcl(interp, objp, txp);
 
         if (tobjp == NULL) {
+            Tcl_Free((char *) namev);
             return NULL;
         }
 
+        Tcl_ListObjAppendElement(interp, listobjp,
+                Tcl_NewStringObj(namev[i], strlen(namev[i])));
         Tcl_ListObjAppendElement(interp, listobjp, tobjp);
     }
     return listobjp;
@@ -265,10 +248,10 @@ Duro_irep_to_tcl(Tcl_Interp *interp, const RDB_object *objp,
         return tobjp;
     }
     if (objp->kind == RDB_OB_TUPLE || objp->kind == RDB_OB_INITIAL) {
-        return Duro_tuple_to_list(interp, objp, txp);
+        return tuple_to_list(interp, objp, txp);
     }
     if (objp->kind == RDB_OB_TABLE) {
-        return Duro_table_to_list(interp, RDB_obj_table(objp), txp);
+        return table_to_list(interp, RDB_obj_table(objp), txp);
     }
     if (objp->kind == RDB_OB_ARRAY) {
         return array_to_list(interp, (RDB_object *) objp, txp);
@@ -326,37 +309,6 @@ Duro_to_tcl(Tcl_Interp *interp, const RDB_object *objp,
     return Duro_irep_to_tcl(interp, objp, txp);
 }
 
-Tcl_Obj *
-Duro_tuple_to_list(Tcl_Interp *interp, const RDB_object *tplp,
-        RDB_transaction *txp)
-{
-    int i;
-    char **namev;
-    Tcl_Obj *listobjp = Tcl_NewListObj(0, NULL);
-    int attrcount = RDB_tuple_size(tplp);
-
-    if (attrcount == 0)
-        return listobjp;
-    
-    namev = (char **) Tcl_Alloc(attrcount * sizeof(char *));
-
-    RDB_tuple_attr_names(tplp, namev);
-    for (i = 0; i < attrcount; i++) {
-        RDB_object *objp = RDB_tuple_get(tplp, namev[i]);
-        Tcl_Obj *tobjp = Duro_to_tcl(interp, objp, txp);
-
-        if (tobjp == NULL) {
-            Tcl_Free((char *) namev);
-            return NULL;
-        }
-
-        Tcl_ListObjAppendElement(interp, listobjp,
-                Tcl_NewStringObj(namev[i], strlen(namev[i])));
-        Tcl_ListObjAppendElement(interp, listobjp, tobjp);
-    }
-    return listobjp;
-}
-
 static int
 array_index_cmd(TclState *statep, Tcl_Interp *interp, int objc,
         Tcl_Obj *CONST objv[])
@@ -402,7 +354,7 @@ array_index_cmd(TclState *statep, Tcl_Interp *interp, int objc,
         return TCL_ERROR;
     }
 
-    listobjp = Duro_tuple_to_list(interp, tplp, txp);
+    listobjp = tuple_to_list(interp, tplp, txp);
     if (listobjp == NULL)
         return TCL_ERROR;
 

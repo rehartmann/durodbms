@@ -89,7 +89,6 @@ new_stored_table(const char *name, RDB_bool persistent,
         if (tbp->var.stored.indexv[i].attrv == NULL)
             return RDB_NO_MEMORY;
         for (j = 0; j < tbp->keyv[i].strc; j++) {
-            tbp->var.stored.indexv[i].attrv[j].asc = RDB_TRUE;
             tbp->var.stored.indexv[i].attrv[j].attrname =
                     RDB_dup_str(tbp->keyv[i].strv[j]);
             if (tbp->var.stored.indexv[i].attrv[j].attrname == NULL)
@@ -752,7 +751,6 @@ RDB_create_table_index(const char *name, RDB_table *tbp, int idxcompc,
     indexp->unique = RDB_FALSE;
 
     for (i = 0; i < idxcompc; i++) {
-        indexp->attrv[i].asc = idxcompv[i].asc;
         indexp->attrv[i].attrname = RDB_dup_str(idxcompv[i].attrname);
         if (indexp->attrv[i].attrname == NULL) {
             RDB_rollback_all(txp);
@@ -873,6 +871,12 @@ _RDB_move_tuples(RDB_table *dstp, RDB_table *srcp, RDB_transaction *txp)
     RDB_object tpl;
     int ret;
 
+    if (!srcp->optimized) {
+        ret = _RDB_optimize(srcp, txp);
+        if (ret != RDB_OK)
+            return ret;
+    }
+
     /*
      * Copy all tuples from source table to destination table
      */
@@ -911,6 +915,12 @@ RDB_copy_table(RDB_table *dstp, RDB_table *srcp, RDB_transaction *txp)
     /* check if types of the two tables match */
     if (!RDB_type_equals(dstp->typ, srcp->typ))
         return RDB_TYPE_MISMATCH;
+
+    if (!srcp->optimized) {
+        ret = _RDB_optimize(srcp, txp);
+        if (ret != RDB_OK)
+            return ret;
+    }
 
     /* start subtransaction */
     ret = RDB_begin_tx(&tx, txp->dbp, txp);
@@ -953,6 +963,12 @@ RDB_all(RDB_table *tbp, const char *attrname, RDB_transaction *txp,
         attrtyp = _RDB_tuple_type_attr(tbp->typ->var.basetyp, attrname)->typ;
         if (attrtyp == NULL)
             return RDB_ATTRIBUTE_NOT_FOUND;
+    }
+
+    if (!tbp->optimized) {
+        ret = _RDB_optimize(tbp, txp);
+        if (ret != RDB_OK)
+            return ret;
     }
 
     /* initialize result */
@@ -1010,6 +1026,12 @@ RDB_any(RDB_table *tbp, const char *attrname, RDB_transaction *txp,
         attrtyp = _RDB_tuple_type_attr(tbp->typ->var.basetyp, attrname)->typ;
         if (attrtyp == NULL)
             return RDB_INVALID_ARGUMENT;
+    }
+
+    if (!tbp->optimized) {
+        ret = _RDB_optimize(tbp, txp);
+        if (ret != RDB_OK)
+            return ret;
     }
 
     /* initialize result */
@@ -1077,6 +1099,12 @@ RDB_max(RDB_table *tbp, const char *attrname, RDB_transaction *txp,
         resultp->var.rational_val = RDB_RATIONAL_MIN;
     else
         return RDB_TYPE_MISMATCH;
+
+    if (!tbp->optimized) {
+        ret = _RDB_optimize(tbp, txp);
+        if (ret != RDB_OK)
+            return ret;
+    }
 
     /*
      * Perform aggregation
@@ -1149,6 +1177,12 @@ RDB_min(RDB_table *tbp, const char *attrname, RDB_transaction *txp,
     else
         return RDB_TYPE_MISMATCH;
 
+    if (!tbp->optimized) {
+        ret = _RDB_optimize(tbp, txp);
+        if (ret != RDB_OK)
+            return ret;
+    }
+
     /*
      * Perform aggregation
      */
@@ -1220,6 +1254,12 @@ RDB_sum(RDB_table *tbp, const char *attrname, RDB_transaction *txp,
     else
        return RDB_TYPE_MISMATCH;
 
+    if (!tbp->optimized) {
+        ret = _RDB_optimize(tbp, txp);
+        if (ret != RDB_OK)
+            return ret;
+    }
+
     /*
      * Perform aggregation
      */
@@ -1281,6 +1321,12 @@ RDB_avg(RDB_table *tbp, const char *attrname, RDB_transaction *txp,
         return RDB_TYPE_MISMATCH;
     count = 0;
 
+    if (!tbp->optimized) {
+        ret = _RDB_optimize(tbp, txp);
+        if (ret != RDB_OK)
+            return ret;
+    }
+
     /*
      * Perform aggregation
      */
@@ -1325,6 +1371,12 @@ RDB_extract_tuple(RDB_table *tbp, RDB_transaction *txp, RDB_object *tplp)
     int ret, ret2;
     RDB_qresult *qrp;
     RDB_object tpl;
+
+    if (!tbp->optimized) {
+        ret = _RDB_optimize(tbp, txp);
+        if (ret != RDB_OK)
+            return ret;
+    }
 
     ret = _RDB_table_qresult(tbp, txp, &qrp);
     if (ret != RDB_OK) {
@@ -1373,6 +1425,12 @@ RDB_table_is_empty(RDB_table *tbp, RDB_transaction *txp, RDB_bool *resultp)
     if (txp != NULL && !RDB_tx_is_running(txp))
         return RDB_INVALID_TRANSACTION;
 
+    if (!tbp->optimized) {
+        ret = _RDB_optimize(tbp, txp);
+        if (ret != RDB_OK)
+            return ret;
+    }
+
     ret = _RDB_table_qresult(tbp, txp, &qrp);
     if (ret != RDB_OK) {
         if (RDB_is_syserr(ret)) {
@@ -1409,6 +1467,12 @@ RDB_cardinality(RDB_table *tbp, RDB_transaction *txp)
 
     if (txp != NULL && !RDB_tx_is_running(txp))
         return RDB_INVALID_TRANSACTION;
+
+    if (!tbp->optimized) {
+        ret = _RDB_optimize(tbp, txp);
+        if (ret != RDB_OK)
+            return ret;
+    }
 
     ret = _RDB_table_qresult(tbp, txp, &qrp);
     if (ret != RDB_OK) {
@@ -1455,6 +1519,12 @@ RDB_subset(RDB_table *tb1p, RDB_table *tb2p, RDB_transaction *txp,
 
     if (!RDB_type_equals(tb1p->typ, tb2p->typ))
         return RDB_TYPE_MISMATCH;
+
+    if (!tb1p->optimized) {
+        ret = _RDB_optimize(tb1p, txp);
+        if (ret != RDB_OK)
+            return ret;
+    }
 
     ret = _RDB_table_qresult(tb1p, txp, &qrp);
     if (ret != RDB_OK) {

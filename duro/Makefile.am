@@ -22,7 +22,8 @@ docs/tcl/array.html docs/tcl/begin.html docs/tcl/call.html \
 docs/tcl/commit.html docs/tcl/db.html docs/tcl/delete.html \
 docs/tcl/env.html docs/tcl/expr.html docs/tcl/insert.html \
 docs/tcl/operator.html docs/tcl/ptable.html docs/tcl/rollback.html \
-docs/tcl/table.html docs/tcl/update.html
+docs/tcl/txdb.html docs/tcl/table.html docs/tcl/update.html \
+docs/tcl/type.html docs/tcl/indexcmd.html
 
 check_PROGRAMS = tests/prepare tests/test_aggregate tests/test_binary \
 tests/test_create_view tests/test_defpointtype tests/test_deftype \

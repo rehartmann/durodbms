@@ -1,0 +1,53 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN"
+"http://www.w3.org/TR/html4/strict.dtd">
+<html lang="en">
+<head>
+<title>Durotcl commands - type</title>
+<body>
+
+<h2>Name</h2>
+
+<p>duro::type - create and destroy user-defined types
+
+<h2>Synopsis</h2>
+
+<p><b>duro::type</b> <var>arg ?arg ...?</var>
+
+<h2>Description</h2>
+
+<dl>
+<dt><b>duro::type define</b> <var>typename possreps txId</var>
+<dd>
+<p>This subcommand defines the user-defined type <var>typename</var>
+under the control of the transaction specified by <var>txId</var>.
+
+<p><var>possreps</var> is a list of possible representations.
+Each possible representation is itself a list of two or three elements.
+
+<p>The first element is the name of the possible representation.
+
+<p>The second element is a list of components. Each component is represented
+by a list consisting of two elements. The first element is the component
+name, and the second element is the component type.
+
+<p>The third, optional element is a type constraint.
+
+<dt><b>duro::type implement</b> <var>typename ?arep? txId</var>
+<dd>
+<p>This subcommand implements the type <var>typename</var>
+under the control of the transaction specified by <var>txId</var>.
+The type must have been defined using <strong>duro::type define</strong>.
+
+<p>The optional argument <var>arep</var> is a type which will serve as the actual
+representation for the type.
+
+<dt><b>duro::type drop</b> <var>typename txId</var>
+<dd>
+<p>This subcommand deletes the type <var>typename</var>
+under the control of the transaction specified by <var>txId</var>.
+
+</dl>
+
+<p>$Id$
+
+</html>

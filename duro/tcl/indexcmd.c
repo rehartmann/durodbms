@@ -37,7 +37,7 @@ index_create_cmd(TclState *statep, Tcl_Interp *interp, int objc,
         return TCL_ERROR;
     }
 
-    idxattrv = Duro_tobj_to_seq_items(interp, objv[4], &attrc);
+    idxattrv = Duro_tobj_to_seq_items(interp, objv[4], &attrc, RDB_FALSE);
     if (idxattrv == NULL) {
         return TCL_ERROR;
     }
