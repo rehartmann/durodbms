@@ -35,7 +35,7 @@ RDB_expr_type(const RDB_expression *exp, const RDB_type *tuptyp,
              break;
         case RDB_EX_ATTR:
             attrp = _RDB_tuple_type_attr(
-                    tuptyp, exp->var.attr.name);
+                    tuptyp, exp->var.attrname);
             if (attrp == NULL)
                 return RDB_ATTRIBUTE_NOT_FOUND;
             *typp = attrp->typ;
@@ -339,8 +339,8 @@ RDB_expr_attr(const char *attrname)
         return NULL;
         
     exp->kind = RDB_EX_ATTR;
-    exp->var.attr.name = RDB_dup_str(attrname);
-    if (exp->var.attr.name == NULL) {
+    exp->var.attrname = RDB_dup_str(attrname);
+    if (exp->var.attrname == NULL) {
         free(exp);
         return NULL;
     }
@@ -726,7 +726,7 @@ RDB_drop_expr(RDB_expression *exp)
             RDB_destroy_obj(&exp->var.obj);
             break;
         case RDB_EX_ATTR:
-            free(exp->var.attr.name);
+            free(exp->var.attrname);
             break;
     }
     free(exp);
@@ -1166,13 +1166,13 @@ RDB_evaluate(RDB_expression *exp, const RDB_object *tup, RDB_transaction *txp,
         case RDB_EX_ATTR:
         {
             if (tup != NULL) {
-                RDB_object *srcp = RDB_tuple_get(tup, exp->var.attr.name);
+                RDB_object *srcp = RDB_tuple_get(tup, exp->var.attrname);
                 if (srcp != NULL)
                     return RDB_copy_obj(valp, srcp);
             }
 
             RDB_errmsg(RDB_db_env(RDB_tx_db(txp)), "attribute %s not found",
-                    exp->var.attr.name);
+                    exp->var.attrname);
             return RDB_INVALID_ARGUMENT;
         }
         case RDB_EX_OBJ:
@@ -1583,7 +1583,7 @@ RDB_dup_expr(const RDB_expression *exp)
         case RDB_EX_OBJ:
             return RDB_obj_to_expr(&exp->var.obj);
         case RDB_EX_ATTR:
-            return RDB_expr_attr(exp->var.attr.name);
+            return RDB_expr_attr(exp->var.attrname);
     }
     abort();
 }
@@ -1694,19 +1694,19 @@ _RDB_invrename_expr(RDB_expression *exp, int renc, const RDB_renaming renv[])
         case RDB_EX_ATTR:
             /* Search attribute name in renv[].to */
             for (i = 0;
-                    i < renc && strcmp(renv[i].to, exp->var.attr.name) != 0;
+                    i < renc && strcmp(renv[i].to, exp->var.attrname) != 0;
                     i++);
 
             /* If found, replace it */
             if (i < renc) {
-                char *name = realloc(exp->var.attr.name,
+                char *name = realloc(exp->var.attrname,
                         strlen(renv[i].from) + 1);
 
                 if (name == NULL)
                     return RDB_NO_MEMORY;
 
                 strcpy(name, renv[i].from);
-                exp->var.attr.name = name;
+                exp->var.attrname = name;
             }
             return RDB_OK;
     }
@@ -1761,7 +1761,7 @@ _RDB_resolve_extend_expr(RDB_expression **expp, int attrc,
         case RDB_EX_ATTR:
             /* Search attribute name in attrv[].name */
             for (i = 0;
-                    i < attrc && strcmp(attrv[i].name, (*expp)->var.attr.name) != 0;
+                    i < attrc && strcmp(attrv[i].name, (*expp)->var.attrname) != 0;
                     i++);
 
             /* If found, replace attribute by expression */

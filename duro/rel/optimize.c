@@ -49,11 +49,11 @@ static RDB_bool
 expr_eq_attr(RDB_expression *exp, const char *attrname)
 {
     if (exp->kind == RDB_EX_ATTR
-            && strcmp(exp->var.attr.name, attrname) == 0)
+            && strcmp(exp->var.attrname, attrname) == 0)
         return RDB_TRUE;
     if (exp->kind == RDB_EX_EQ) {
         if (exp->var.op.arg1->kind == RDB_EX_ATTR
-                && strcmp(exp->var.op.arg1->var.attr.name, attrname) == 0
+                && strcmp(exp->var.op.arg1->var.attrname, attrname) == 0
                 && exp->var.op.arg2->kind == RDB_EX_OBJ)
             return RDB_TRUE;
     }

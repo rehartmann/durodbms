@@ -201,7 +201,7 @@ serialize_expr(RDB_object *valp, int *posp, const RDB_expression *exp)
         case RDB_EX_OBJ:
             return serialize_obj(valp, posp, &exp->var.obj);
         case RDB_EX_ATTR:
-            return serialize_str(valp, posp, exp->var.attr.name);
+            return serialize_str(valp, posp, exp->var.attrname);
         case RDB_EX_NOT:
         case RDB_EX_NEGATE:
         case RDB_EX_IS_EMPTY:

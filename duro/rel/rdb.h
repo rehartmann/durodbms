@@ -182,9 +182,7 @@ typedef struct RDB_expression {
                            and RDB_EX_TUPLE_ATTR */
             RDB_aggregate_op op; /* only for RDB_EX_AGGREGATE */
         } op;
-        struct {
-            char *name;
-        } attr;
+        char *attrname;
         RDB_object obj;
         struct {
             struct RDB_expression **argv;
