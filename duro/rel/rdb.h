@@ -231,8 +231,10 @@ typedef struct RDB_table {
      */
     RDB_string_vec *keyv;
 
+    /*
+     * Only used if the table is referred to by RDB_object.var.tbp
+     */
     int refcount;
-    RDB_bool optimized; /* virtual tables only */
 
     union {
         struct {
@@ -251,8 +253,6 @@ typedef struct RDB_table {
              */
             struct RDB_table *tbp;
             RDB_expression *exp;
-
-            /* struct _RDB_tbindex *indexp; !! */
 
             /* Only used if indexp != NULL */
             RDB_object **objpv;
@@ -553,7 +553,7 @@ int
 RDB_copy_table(RDB_table *dstp, RDB_table *srcp, RDB_transaction *);
 
 /*
- * !! Needs rewrite
+ * !! Needs rewriting
  *
  * Aggregate operation.
  * op may be RDB_COUNT, RDB_SUM, RDB_AVG, RDB_MAX, RDB_MIN, RDB_ALL, or RDB_ANY.

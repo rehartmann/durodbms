@@ -239,7 +239,6 @@ split_by_index(RDB_table *tbp, _RDB_tbindex *indexp, RDB_transaction *txp)
         sitbp->var.select.asc = asc;
         sitbp->var.select.all_eq = all_eq;
         sitbp->var.select.stopexp = stopexp;
-        sitbp->optimized = RDB_TRUE;
         tbp->var.select.tbp = sitbp;
     } else {
         /*

@@ -25,7 +25,6 @@ _RDB_new_table(void)
     }
     tbp->name = NULL;
     tbp->refcount = 0;
-    tbp->optimized = RDB_FALSE;
     tbp->keyv = NULL;
     return tbp;
 }

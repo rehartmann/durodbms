@@ -870,7 +870,8 @@ table_showplan_cmd(TclState *statep, Tcl_Interp *interp, int objc,
     _RDB_optimize(tbp, 0, NULL, txp, &ntbp);
     RDB_init_obj(&defobj);
     ret = _RDB_table_to_str(&defobj, ntbp, RDB_SHOW_INDEX);
-    RDB_drop_table(ntbp, txp);
+    if (RDB_table_name(ntbp) == NULL)
+        RDB_drop_table(ntbp, txp);
     if (ret != RDB_OK) {
         RDB_destroy_obj(&defobj);
         Duro_dberror(interp, ret);

@@ -308,9 +308,11 @@ proc create_db {} {
     button .dialog.buttons.ok -text OK -command {set action ok}
     button .dialog.buttons.cancel -text Cancel -command {set action cancel}
 
-    pack .dialog.buttons -side bottom
+    pack .dialog.buttons -side bottom -padx 5 -pady 5
     pack .dialog.buttons.ok .dialog.buttons.cancel -side left
-    pack .dialog.l .dialog.dbname -side left
+    pack .dialog.l .dialog.dbname -side left -padx 5 -pady 5
+
+    focus .dialog.dbname
 
     set done 0
     grab .dialog
@@ -347,16 +349,18 @@ proc rename_table {} {
     set ::newtablename ""
 
     label .dialog.l -text "New table name:"
-    entry .dialog.dbname -textvariable newtablename
+    entry .dialog.tablename -textvariable newtablename
 
     set ::action ok
     frame .dialog.buttons
     button .dialog.buttons.ok -text OK -command {set action ok}
     button .dialog.buttons.cancel -text Cancel -command {set action cancel}
 
-    pack .dialog.buttons -side bottom
+    pack .dialog.buttons -side bottom -padx 5 -pady 5
     pack .dialog.buttons.ok .dialog.buttons.cancel -side left
-    pack .dialog.l .dialog.dbname -side left
+    pack .dialog.l .dialog.tablename -side left -padx 5 -pady 5
+
+    focus .dialog.tablename
 
     set done 0
     grab .dialog
@@ -481,14 +485,12 @@ proc create_rtable {} {
     table .dialog.tabledef -titlerows 1 -rows [expr {$attrcount +1}] \
             -cols 3 -variable tabledef -anchor w
 
-    frame .dialog.attrbuttons
-    button .dialog.attrbuttons.addattr -text "Add attribute" -command add_attr_row
-    button .dialog.attrbuttons.addkey -text "Add key" -command add_key
-
     set ::action ok
     frame .dialog.buttons
     button .dialog.buttons.ok -text OK -command {set action ok}
     button .dialog.buttons.cancel -text Cancel -command {set action cancel}
+    button .dialog.buttons.addattr -text "Add attribute" -command add_attr_row
+    button .dialog.buttons.addkey -text "Add key" -command add_key
 
     set ::tabledef(0,0) "Attribute name"
     set ::tabledef(0,1) Type
@@ -503,19 +505,20 @@ proc create_rtable {} {
     # Change type in line #1 to RATIONAL to set width
     $::mw invoke 2
     .dialog.tabledef width 1 [expr {-[winfo reqwidth .dialog.tabledef.type0] - 2 *
-           [.dialog.tabledef.type0 cget -pady]}]
+            [.dialog.tabledef.type0 cget -pady]}]
 
     # Change type back
     $::mw invoke 0
 
     .dialog.tabledef.key0,0 select
 
-    pack .dialog.buttons -side bottom
-    pack .dialog.buttons.ok .dialog.buttons.cancel -side left
-    pack .dialog.attrbuttons -side bottom -anchor e
-    pack .dialog.attrbuttons.addattr .dialog.attrbuttons.addkey -side left
-    pack .dialog.tabledef -side bottom
-    pack .dialog.l .dialog.tablename .dialog.global -side left
+    pack .dialog.buttons -side bottom -padx 5 -pady 5
+    pack .dialog.buttons.ok .dialog.buttons.cancel \
+            .dialog.buttons.addattr .dialog.buttons.addkey -side left
+    pack .dialog.tabledef -side bottom -anchor w -padx 5 -pady 5
+    pack .dialog.l .dialog.tablename .dialog.global -side left -padx 5 -pady 5
+
+    focus .dialog.tablename
 
     set done 0
     grab .dialog
@@ -604,11 +607,13 @@ proc create_vtable {} {
     button .dialog.buttons.ok -text OK -command {set action ok}
     button .dialog.buttons.cancel -text Cancel -command {set action cancel}
 
-    pack .dialog.buttons -side bottom
+    pack .dialog.buttons -side bottom -padx 5 -pady 5
     pack .dialog.buttons.ok .dialog.buttons.cancel -side left
-    pack .dialog.tabledef -side bottom
-    pack .dialog.defl -side bottom -anchor w
-    pack .dialog.l .dialog.tablename .dialog.global -side left
+    pack .dialog.tabledef -side bottom -padx 5
+    pack .dialog.defl -side bottom -anchor w -padx 5
+    pack .dialog.l .dialog.tablename .dialog.global -side left -padx 5 -pady 5
+
+    focus .dialog.tablename
 
     set done 0
     grab .dialog
@@ -942,10 +947,12 @@ proc exec_script {} {
 
     pack .dialog.output -side bottom
     pack .dialog.outputl -side bottom -anchor w
-    pack .dialog.buttons -side bottom
+    pack .dialog.buttons -side bottom -padx 5 -pady 5
     pack .dialog.buttons.execute .dialog.buttons.close -side left
     pack .dialog.script -side bottom
     pack .dialog.scriptl -side bottom -anchor w
+
+    focus .dialog.script
 
     grab .dialog
     while {$::action != "close"} {
@@ -980,16 +987,15 @@ proc about {} {
     label .about.l1 -text "Duroadmin"
     label .about.l2 -text "Duro $::duro_version, (C) 2003-2005 Rene Hartmann"
 
-    set ::action ok
     frame .about.buttons
-    button .about.buttons.ok -text OK -command {set action ok}
+    button .about.buttons.ok -text OK -command {destroy .about}
 
     pack .about.l1 .about.l2 -side top -anchor w -padx 10 -pady 10
     pack .about.buttons -side bottom
     pack .about.buttons.ok -side left
 
     grab .about
-    tkwait variable action
+    tkwait window .about
     destroy .about
 }
 
