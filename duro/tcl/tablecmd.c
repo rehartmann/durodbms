@@ -4,6 +4,38 @@
 #include <gen/strfns.h>
 #include <string.h>
 
+int
+Duro_get_table(TclState *statep, Tcl_Interp *interp, const char *name,
+          RDB_transaction *txp, RDB_table **tbpp)
+{
+    Tcl_HashEntry *entryp;
+    int ret;
+
+    /*
+     * Search for transient table first
+     */
+    entryp = Tcl_FindHashEntry(&statep->ltables, name);
+    if (entryp != NULL) {
+        /* Found */
+        *tbpp = Tcl_GetHashValue(entryp);
+        return TCL_OK;
+    }
+
+    /*
+     * Search for persistent table
+     */
+    ret = RDB_get_table(name, txp, tbpp);
+    if (ret == RDB_NOT_FOUND) {
+        Tcl_AppendResult(interp, "Unknown table: ", name, NULL);
+        return TCL_ERROR;
+    }
+    if (ret != RDB_OK) {
+        Duro_dberror(interp, ret);
+        return TCL_ERROR;
+    }
+    return TCL_OK;
+}
+
 static int
 table_create_cmd(TclState *statep, Tcl_Interp *interp, int objc,
         Tcl_Obj *CONST objv[])
@@ -109,7 +141,11 @@ table_create_cmd(TclState *statep, Tcl_Interp *interp, int objc,
     }
 
     if (!persistent) {
-        /* ... */
+        int new;
+
+        statep->ltable_uid++;
+        entryp = Tcl_CreateHashEntry(&statep->ltables, RDB_table_name(tbp), &new);
+        Tcl_SetHashValue(entryp, (ClientData)tbp);
     }
 
 cleanup:
@@ -156,9 +192,8 @@ table_drop_cmd(TclState *statep, Tcl_Interp *interp, int objc,
     txp = Tcl_GetHashValue(entryp);
 
     name = Tcl_GetStringFromObj(objv[2], NULL);
-    ret = RDB_get_table(name, txp, &tbp);
-    if (ret != RDB_OK) {
-        Tcl_SetResult(interp, (char *) RDB_strerror(ret), TCL_STATIC);
+    ret = Duro_get_table(statep, interp, name, txp, &tbp);
+    if (ret != TCL_OK) {
         return TCL_ERROR;
     }
 
@@ -243,16 +278,15 @@ table_insert_cmd(TclState *statep, Tcl_Interp *interp, int objc,
     }
     txp = Tcl_GetHashValue(entryp);
 
-    ret = RDB_get_table(name, txp, &tbp);
-    if (ret != RDB_OK) {
-        Tcl_SetResult(interp, (char *) RDB_strerror(ret), TCL_STATIC);
+    ret = Duro_get_table(statep, interp, name, txp, &tbp);
+    if (ret != TCL_OK) {
         return TCL_ERROR;
     }
     typ = RDB_table_type(tbp);
 
     Tcl_ListObjLength(interp, objv[3], &attrcount);
     if (attrcount % 2 != 0) {
-        Tcl_SetResult(interp, "Illegal tuple value", TCL_STATIC);
+        Tcl_SetResult(interp, "Invalid tuple value", TCL_STATIC);
         return TCL_ERROR;
     } 
 
@@ -260,16 +294,24 @@ table_insert_cmd(TclState *statep, Tcl_Interp *interp, int objc,
     RDB_init_obj(&obj);
     for (i = 0; i < attrcount; i += 2) {
         Tcl_Obj *nameobjp, *valobjp;
-        char *name;
+        RDB_type *attrtyp;
+        char *attrname;
 
         Tcl_ListObjIndex(interp, objv[3], i, &nameobjp);
-        name = Tcl_GetStringFromObj(nameobjp, NULL);
+        attrname = Tcl_GetStringFromObj(nameobjp, NULL);
+        attrtyp = RDB_type_attr_type(typ, attrname);
+        if (attrtyp == NULL) {
+            Tcl_AppendResult(interp, "Unknown attribute: ", attrname, NULL);
+            ret = TCL_ERROR;
+            goto cleanup;
+        }
+
         Tcl_ListObjIndex(interp, objv[3], i + 1, &valobjp);
-        ret = tcl_to_duro(interp, valobjp, RDB_type_attr_type(typ, name), &obj);
+        ret = tcl_to_duro(interp, valobjp, attrtyp, &obj);
         if (ret != TCL_OK)
             goto cleanup;
 
-        RDB_tuple_set(&tpl, name, &obj);
+        RDB_tuple_set(&tpl, attrname, &obj);
     }
     ret = RDB_insert(tbp, &tpl, txp);
     if (ret != RDB_OK) {

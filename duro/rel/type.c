@@ -551,14 +551,21 @@ RDB_type_name(const RDB_type *typ)
 RDB_type *
 RDB_type_attr_type(const RDB_type *typ, const char *name)
 {
+    RDB_attr *attrp;
+
     switch (typ->kind) {
         case RDB_TP_RELATION:
-            return _RDB_tuple_type_attr(typ->var.basetyp, name)->typ;
+            attrp = _RDB_tuple_type_attr(typ->var.basetyp, name);
+            break;
         case RDB_TP_TUPLE:
-            return _RDB_tuple_type_attr(typ, name)->typ;
-        default: ;
+            attrp = _RDB_tuple_type_attr(typ, name);
+            break;
+        default:
+            return NULL;
     }
-    return NULL;
+    if (attrp == NULL)
+        return NULL;
+    return attrp->typ;
 }
 
 RDB_type *

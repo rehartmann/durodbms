@@ -41,6 +41,12 @@ duro_cleanup(ClientData data)
     Tcl_Free((char *)statep);
 }
 
+void Duro_dberror(Tcl_Interp *interp, int err)
+{
+    Tcl_AppendResult(interp, "Database error: ", (char *) RDB_strerror(err),
+            TCL_STATIC);
+}    
+
 int
 Duro_Init(Tcl_Interp *interp)
 {
@@ -57,6 +63,8 @@ Duro_Init(Tcl_Interp *interp)
     statep->tx_uid = 0;
     Tcl_InitHashTable(&statep->arrays, TCL_STRING_KEYS);
     statep->array_uid = 0;
+    Tcl_InitHashTable(&statep->ltables, TCL_STRING_KEYS);
+    statep->ltable_uid = 0;
 
     Tcl_CreateCommand(interp, "duro::env", Duro_env_cmd, (ClientData)statep, NULL);
     Tcl_CreateCommand(interp, "duro::begin", Duro_begin_cmd,
@@ -68,6 +76,8 @@ Duro_Init(Tcl_Interp *interp)
     Tcl_CreateObjCommand(interp, "duro::table", Duro_table_cmd,
             (ClientData)statep, NULL);
     Tcl_CreateObjCommand(interp, "duro::array", Duro_array_cmd,
+            (ClientData)statep, NULL);
+    Tcl_CreateObjCommand(interp, "duro::operator", Duro_operator_cmd,
             (ClientData)statep, NULL);
 
     Tcl_CreateExitHandler(duro_cleanup, (ClientData)statep);

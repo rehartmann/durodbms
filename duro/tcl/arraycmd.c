@@ -28,13 +28,15 @@ array_create_cmd(TclState *statep, Tcl_Interp *interp, int objc,
     RDB_array *arrayp;
     int new;
     char handle[20];
+    RDB_seq_item *seqitv;
+    int seqitc = 0;
 
-    if (objc != 4) {
-        Tcl_WrongNumArgs(interp, 2, objv, "table tx");
+    if (objc < 4 || objc > 5) {
+        Tcl_WrongNumArgs(interp, 2, objv, "table ?{ ?attr dir? ... }? tx");
         return TCL_ERROR;
     }
 
-    txstr = Tcl_GetStringFromObj(objv[3], NULL);
+    txstr = Tcl_GetStringFromObj(objv[objc - 1], NULL);
     entryp = Tcl_FindHashEntry(&statep->txs, txstr);
     if (entryp == NULL) {
         Tcl_AppendResult(interp, "Unknown transaction: ", txstr, NULL);
@@ -43,16 +45,60 @@ array_create_cmd(TclState *statep, Tcl_Interp *interp, int objc,
     txp = Tcl_GetHashValue(entryp);
 
     tbname = Tcl_GetStringFromObj(objv[2], NULL);
-    ret = RDB_get_table(tbname, txp, &tbp);
-    if (ret != RDB_OK) {
-        Tcl_SetResult(interp, (char *) RDB_strerror(ret), TCL_STATIC);
+    ret = Duro_get_table(statep, interp, tbname, txp, &tbp);
+    if (ret != TCL_OK) {
         return TCL_ERROR;
+    }
+
+    if (objc == 5) {
+        int len, i;
+
+        Tcl_ListObjLength(interp, objv[3], &len);
+        if (len % 2 != 0) {
+            Tcl_SetResult(interp, "Invalid order", TCL_STATIC);
+            return TCL_ERROR;
+        }
+        seqitc = len / 2;
+        if (seqitc > 0) {
+            seqitv = (RDB_seq_item *) Tcl_Alloc(seqitc * sizeof(RDB_seq_item));
+            for (i = 0; i < seqitc; i++) {
+                Tcl_Obj *dirobjp, *nameobjp;
+                char *dir;
+
+                ret = Tcl_ListObjIndex(interp, objv[3], i * 2, &nameobjp);
+                if (ret != TCL_OK) {
+                    Tcl_Free((char *) seqitv);
+                    return TCL_ERROR;
+                }
+                ret = Tcl_ListObjIndex(interp, objv[3], i * 2 + 1, &dirobjp);
+                if (ret != TCL_OK) {
+                    Tcl_Free((char *) seqitv);
+                    return TCL_ERROR;
+                }
+ 
+                seqitv[i].attrname = Tcl_GetStringFromObj(nameobjp, NULL);
+ 
+                dir = Tcl_GetStringFromObj(dirobjp, NULL);
+                if (strcmp(dir, "asc") == 0)
+                    seqitv[i].asc = RDB_TRUE;
+                else if (strcmp(dir, "desc") == 0)
+                    seqitv[i].asc = RDB_FALSE;
+                else {
+                    Tcl_SetResult(interp,
+                            "Invalid direction, must be asc or desc",
+                            TCL_STATIC);
+                    return TCL_ERROR;
+                }
+            }
+        }
     }
 
     arrayp = (RDB_array *) Tcl_Alloc(sizeof (RDB_array));
     RDB_init_array(arrayp);
 
-    ret = RDB_table_to_array(arrayp, tbp, 0, NULL, txp);
+    ret = RDB_table_to_array(arrayp, tbp, seqitc, seqitv, txp);
+    if (seqitc > 0)
+        Tcl_Free((char *) seqitv);
     if (ret != RDB_OK) {
         Tcl_SetResult(interp, (char *) RDB_strerror(ret), TCL_STATIC);
         return TCL_ERROR;
@@ -120,6 +166,31 @@ duro_to_tcl(Tcl_Interp *interp, const RDB_object *objp)
     return NULL;
 }
 
+static Tcl_Obj *
+tuple_to_list(Tcl_Interp *interp, RDB_tuple *tplp)
+{
+    int i;
+    Tcl_Obj *listobjp = Tcl_NewListObj(0, NULL);
+    int attrcount = RDB_tuple_size(tplp);
+    char **namev = (char **) Tcl_Alloc(attrcount * sizeof(char *));
+
+    RDB_tuple_attr_names(tplp, namev);
+    for (i = 0; i < attrcount; i++) {
+        RDB_object *objp = RDB_tuple_get(tplp, namev[i]);
+        Tcl_Obj *tobjp = duro_to_tcl(interp, objp);
+
+        if (tobjp == NULL) {
+            Tcl_Free((char *) namev);
+            return NULL;
+        }
+
+        Tcl_ListObjAppendElement(interp, listobjp,
+                Tcl_NewStringObj(namev[i], strlen(namev[i])));
+        Tcl_ListObjAppendElement(interp, listobjp, tobjp);
+    }
+    return listobjp;
+}
+
 static int
 array_index_cmd(TclState *statep, Tcl_Interp *interp, int objc,
         Tcl_Obj *CONST objv[])
@@ -130,9 +201,6 @@ array_index_cmd(TclState *statep, Tcl_Interp *interp, int objc,
     RDB_array *arrayp;
     RDB_tuple *tplp;
     int idx;
-    int attrcount;
-    int i;
-    char **namev;
     Tcl_Obj *listobjp;
 
     if (objc != 4) {
@@ -158,26 +226,53 @@ array_index_cmd(TclState *statep, Tcl_Interp *interp, int objc,
         return TCL_ERROR;
     }
 
-    listobjp = Tcl_NewListObj(0, NULL);
-
-    attrcount = RDB_tuple_size(tplp);
-    namev = (char **)Tcl_Alloc(attrcount * sizeof(char *));
-    RDB_tuple_attr_names(tplp, namev);
-    for (i = 0; i < attrcount; i++) {
-        RDB_object *objp = RDB_tuple_get(tplp, namev[i]);
-        Tcl_Obj *tobjp = duro_to_tcl(interp, objp);
-
-        if (tobjp == NULL) {
-            Tcl_Free((char *) namev);
-            return TCL_ERROR;
-        }
-
-        Tcl_ListObjAppendElement(interp, listobjp,
-                Tcl_NewStringObj(namev[i], strlen(namev[i])));
-        Tcl_ListObjAppendElement(interp, listobjp, tobjp);
-    }
+    listobjp = tuple_to_list(interp, tplp);
+    if (listobjp == NULL)
+        return TCL_ERROR;
 
     Tcl_SetObjResult(interp, listobjp);
+    return TCL_OK;
+}
+
+static int
+array_foreach_cmd(TclState *statep, Tcl_Interp *interp, int objc,
+        Tcl_Obj *CONST objv[])
+{
+    int ret;
+    char *arraystr;
+    Tcl_HashEntry *entryp;
+    RDB_array *arrayp;
+    RDB_tuple *tplp;
+    int i;
+    Tcl_Obj *listobjp;
+
+    if (objc != 5) {
+        Tcl_WrongNumArgs(interp, 2, objv, "varname arrayname command");
+        return TCL_ERROR;
+    }
+
+    /* Get duro array */
+    arraystr = Tcl_GetStringFromObj(objv[3], NULL);
+    entryp = Tcl_FindHashEntry(&statep->arrays, arraystr);
+    if (entryp == NULL) {
+        Tcl_AppendResult(interp, "Unknown array: ", arraystr, NULL);
+        return TCL_ERROR;
+    }
+    arrayp = Tcl_GetHashValue(entryp);
+
+    for (i = 0; (ret = RDB_array_get_tuple(arrayp, i, &tplp)) == RDB_OK; i++) {
+        /* Set variable */
+        listobjp = tuple_to_list(interp, tplp);
+        if (listobjp == NULL)
+            return TCL_ERROR;
+        
+        Tcl_ObjSetVar2(interp, objv[2], NULL, listobjp, 0);
+
+        /* Invoke script */
+        ret = Tcl_EvalObjEx(interp, objv[4], 0);
+        if (ret != TCL_OK)
+            return ret;
+    }
     return TCL_OK;
 }
 
@@ -222,10 +317,10 @@ Duro_array_cmd(ClientData data, Tcl_Interp *interp, int objc, Tcl_Obj *CONST obj
     TclState *statep = (TclState *) data;
 
     const char *sub_cmds[] = {
-        "create", "drop", "length", "index", NULL
+        "create", "drop", "length", "index", "foreach", NULL
     };
     enum array_ix {
-        create_ix, drop_ix, length_ix, index_ix
+        create_ix, drop_ix, length_ix, index_ix, foreach_ix
     };
     int index;
 
@@ -248,6 +343,8 @@ Duro_array_cmd(ClientData data, Tcl_Interp *interp, int objc, Tcl_Obj *CONST obj
             return array_length_cmd(statep, interp, objc, objv);
         case index_ix:
             return array_index_cmd(statep, interp, objc, objv);
+        case foreach_ix:
+            return array_foreach_cmd(statep, interp, objc, objv);
     }
     return TCL_ERROR;
 }

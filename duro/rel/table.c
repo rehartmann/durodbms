@@ -123,8 +123,9 @@ RDB_insert(RDB_table *tbp, const RDB_tuple *tup, RDB_transaction *txp)
                 /* If there is no value, check if there is a default */
                 if (valp == NULL) {
                     valp = tuptyp->var.tuple.attrv[i].defaultp;
-                    if (valp == NULL)
+                    if (valp == NULL) {
                         return RDB_INVALID_ARGUMENT;
+                    }
                 }
                 
                 /* Typecheck */

@@ -48,8 +48,7 @@ rec/cursor.h rec/env.h rec/index.h rec/recmap.h \
 rel/rdb.h rel/typeimpl.h
 
 libdurotcl_la_SOURCES = tcl/duro.c tcl/duro.h tcl/envcmd.c tcl/txcmd.c \
-        tcl/tablecmd.c tcl/arraycmd.c
-
+        tcl/tablecmd.c tcl/arraycmd.c tcl/opcmd.c
 
 libdurotcl_la_LIBADD = -L$(BDB_HOME)/lib libduro.la -ldb
 

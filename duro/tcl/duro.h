@@ -18,6 +18,10 @@ typedef struct {
     /* Arrays */
     Tcl_HashTable arrays;
     int array_uid;
+
+    /* Local tables */
+    Tcl_HashTable ltables;
+    int ltable_uid;
 } TclState;
 
 int
@@ -39,6 +43,9 @@ int
 Duro_array_cmd(ClientData data, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[]);
 
 int
+Duro_operator_cmd(ClientData data, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[]);
+
+int
 Duro_tcl_close_env(RDB_environment *, Tcl_HashEntry *entryp);
 
 int
@@ -46,5 +53,12 @@ Duro_tcl_rollback(RDB_transaction *, Tcl_HashEntry *entryp);
 
 int
 Duro_tcl_drop_array(RDB_array *arrayp, Tcl_HashEntry *entryp);
+
+void
+Duro_dberror(Tcl_Interp *interp, int err);
+
+int
+Duro_get_table(TclState *, Tcl_Interp *, const char *name, RDB_transaction *,
+        RDB_table **);
 
 #endif
