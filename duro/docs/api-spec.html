@@ -2408,13 +2408,15 @@ in which case the transaction is implicitly rolled back.
 #include &lt;rel/rdb.h&gt;
 
 int
-RDB_array_get_tuple(RDB_array *, RDB_int idx, RDB_tuple *tplp);
+RDB_array_get_tuple(RDB_array *, RDB_int idx, RDB_tuple **tplpp);
 </pre>
 
 <h3>Description</h3>
 
-<p>RDB_array_get_tuple copies the tuple with index <var>idx</var>
-from the RDB_array to <var>tplp</var>.
+<p>RDB_array_get_tuple stores a pointer to the tuple at index <var>idx</var>
+at the location pointed to by <var>tplpp</var>. This pointer may become
+invalid after the next invocation of RDB_array_get_tuple.
+The pointer will become invalid when the array is destroyed.
 
 <h3>Return value</h3>
 

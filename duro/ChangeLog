@@ -4,8 +4,9 @@ Summary of Changes for Duro
 
 Changes for Duro 0.6
 
-- For the sake of uniformity, changed argument order of
-  RDB_table_to_array().
+- For the sake of uniformity, changed argument order of RDB_table_to_array()
+
+- RDB_array_get_tuple() now obtains a pointer to a RDB_tuple.
 
 - Added sorting (through the seqitc/seqitv arguments of
   RDB_table_to_array())
@@ -13,7 +14,9 @@ Changes for Duro 0.6
 - Renamed RDB_value as RDB_object. Renamed RDB_init_value() as
   RDB_init_obj(), etc.
 
-- RDB_drop_type now takes a RDB_transaction * argument.
+- RDB_drop_type now takes a RDB_transaction * argument
+
+- More API changes. A draft API spec is now available.
 
 - Replaced structure RDB_key_attrs by the more general RDB_string_vec.
 

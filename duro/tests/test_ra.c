@@ -12,7 +12,7 @@ test_ra(RDB_database *dbp)
     RDB_transaction tx;
     RDB_table *tb1p, *tb2p, *vtbp;
     RDB_array array;
-    RDB_tuple tpl;
+    RDB_tuple *tplp;
     int ret;
     RDB_int i;
 
@@ -49,8 +49,6 @@ test_ra(RDB_database *dbp)
         return ret;
     }
 
-    RDB_init_tuple(&tpl);
-
     RDB_init_array(&array);
 
     printf("Converting virtual table to array\n");
@@ -61,10 +59,9 @@ test_ra(RDB_database *dbp)
         return ret;
     } 
 
-    for (i = 0; (ret = RDB_array_get_tuple(&array, i, &tpl)) == RDB_OK; i++) {
-        printf("NAME: %s\n", RDB_tuple_get_string(&tpl, "NAME"));
+    for (i = 0; (ret = RDB_array_get_tuple(&array, i, &tplp)) == RDB_OK; i++) {
+        printf("NAME: %s\n", RDB_tuple_get_string(tplp, "NAME"));
     }
-    RDB_destroy_tuple(&tpl);
     RDB_destroy_array(&array);
 
     if (ret != RDB_NOT_FOUND) {

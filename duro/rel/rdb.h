@@ -318,6 +318,7 @@ typedef struct {
     struct RDB_qresult *qrp;
     RDB_int pos;
     RDB_int length;	/* length of array; -1 means unknown */
+    RDB_tuple tpl;
 } RDB_array;
 
 /*
@@ -703,10 +704,10 @@ RDB_table_to_array(RDB_array *arrp, RDB_table *,
                    RDB_transaction *);
 
 /*
- * Read the tuple with index idx from the array.
+ * Get a pointer to the tuple with index idx.
  */
 int
-RDB_array_get_tuple(RDB_array *, RDB_int idx, RDB_tuple *);
+RDB_array_get_tuple(RDB_array *, RDB_int idx, RDB_tuple **);
 
 /*
  * Return the length of the array.

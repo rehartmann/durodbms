@@ -155,7 +155,7 @@ error:
 int
 test_query(RDB_database *dbp)
 {
-    RDB_tuple tpl;
+    RDB_tuple *tplp;
     RDB_transaction tx;
     RDB_table *tbp;
     RDB_table *tmptbp = NULL;
@@ -174,7 +174,6 @@ test_query(RDB_database *dbp)
     }
 
     RDB_init_array(&array);
-    RDB_init_tuple(&tpl);
     RDB_init_obj(&xval);
     RDB_init_obj(&yval);
 
@@ -188,9 +187,9 @@ test_query(RDB_database *dbp)
     if (ret != RDB_OK) {
         goto error;
     } 
-
-    for (i = 0; (ret = RDB_array_get_tuple(&array, i, &tpl)) == RDB_OK; i++) {
-        RDB_object *pvalp = RDB_tuple_get(&tpl, "POINT");
+ 
+    for (i = 0; (ret = RDB_array_get_tuple(&array, i, &tplp)) == RDB_OK; i++) {
+        RDB_object *pvalp = RDB_tuple_get(tplp, "POINT");
 
         ret = RDB_obj_comp(pvalp, "X", &xval);
         ret = RDB_obj_comp(pvalp, "Y", &yval);
@@ -215,8 +214,8 @@ test_query(RDB_database *dbp)
         goto error;
     } 
 
-    for (i = 0; (ret = RDB_array_get_tuple(&array, i, &tpl)) == RDB_OK; i++) {
-        RDB_object *pvalp = RDB_tuple_get(&tpl, "POINT");
+    for (i = 0; (ret = RDB_array_get_tuple(&array, i, &tplp)) == RDB_OK; i++) {
+        RDB_object *pvalp = RDB_tuple_get(tplp, "POINT");
 
         ret = RDB_obj_comp(pvalp, "X", &xval);
         if (ret != RDB_OK) {
@@ -253,8 +252,8 @@ test_query(RDB_database *dbp)
         goto error;
     } 
 
-    for (i = 0; (ret = RDB_array_get_tuple(&array, i, &tpl)) == RDB_OK; i++) {
-        RDB_object *pvalp = RDB_tuple_get(&tpl, "POINT");
+    for (i = 0; (ret = RDB_array_get_tuple(&array, i, &tplp)) == RDB_OK; i++) {
+        RDB_object *pvalp = RDB_tuple_get(tplp, "POINT");
 
         ret = RDB_obj_comp(pvalp, "X", &xval);
         if (ret != RDB_OK) {
@@ -274,8 +273,6 @@ test_query(RDB_database *dbp)
     RDB_destroy_obj(&xval);
     RDB_destroy_obj(&yval);
     
-    RDB_destroy_tuple(&tpl);
-
     RDB_destroy_array(&array);
 
     ret = RDB_drop_table(tmptbp, &tx);
@@ -289,8 +286,6 @@ test_query(RDB_database *dbp)
 error:
     RDB_destroy_obj(&xval);
     RDB_destroy_obj(&yval);
-
-    RDB_destroy_tuple(&tpl);
 
     RDB_destroy_array(&array);
 

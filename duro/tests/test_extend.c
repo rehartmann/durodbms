@@ -8,7 +8,7 @@ int
 print_extend(RDB_table *vtbp, RDB_transaction *txp)
 {
     RDB_array array;
-    RDB_tuple tpl;
+    RDB_tuple *tplp;
     int ret;
     int i;
     RDB_seq_item sq;
@@ -23,16 +23,14 @@ print_extend(RDB_table *vtbp, RDB_transaction *txp)
         goto error;
     }
     
-    RDB_init_tuple(&tpl);    
-    for (i = 0; (ret = RDB_array_get_tuple(&array, i, &tpl)) == RDB_OK; i++) {
-        printf("EMPNO: %d\n", (int)RDB_tuple_get_int(&tpl, "EMPNO"));
-        printf("NAME: %s\n", RDB_tuple_get_string(&tpl, "NAME"));
-        printf("SALARY: %f\n", (float)RDB_tuple_get_rational(&tpl, "SALARY"));
+    for (i = 0; (ret = RDB_array_get_tuple(&array, i, &tplp)) == RDB_OK; i++) {
+        printf("EMPNO: %d\n", (int)RDB_tuple_get_int(tplp, "EMPNO"));
+        printf("NAME: %s\n", RDB_tuple_get_string(tplp, "NAME"));
+        printf("SALARY: %f\n", (float)RDB_tuple_get_rational(tplp, "SALARY"));
         printf("SALARY_AFTER_TAX: %f\n",
-                (float)RDB_tuple_get_rational(&tpl, "SALARY_AFTER_TAX"));
-        printf("NAME_LEN: %d\n", (int)RDB_tuple_get_int(&tpl, "NAME_LEN"));
+                (float)RDB_tuple_get_rational(tplp, "SALARY_AFTER_TAX"));
+        printf("NAME_LEN: %d\n", (int)RDB_tuple_get_int(tplp, "NAME_LEN"));
     }
-    RDB_destroy_tuple(&tpl);
     if (ret != RDB_NOT_FOUND) {
         RDB_rollback(txp);
         goto error;

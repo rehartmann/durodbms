@@ -7,6 +7,7 @@ void
 RDB_init_array(RDB_array *arrp)
 {
     arrp->tbp = NULL;
+    RDB_init_tuple(&arrp->tpl);
 }
 
 int
@@ -22,7 +23,7 @@ RDB_destroy_array(RDB_array *arrp)
             RDB_rollback(arrp->txp);
         return ret;
     }
-    return RDB_OK;
+    return RDB_destroy_tuple(&arrp->tpl);
 }
 
 int
@@ -53,7 +54,7 @@ RDB_table_to_array(RDB_array *arrp, RDB_table *tbp,
 }    
 
 int
-RDB_array_get_tuple(RDB_array *arrp, RDB_int idx, RDB_tuple *tup)
+RDB_array_get_tuple(RDB_array *arrp, RDB_int idx, RDB_tuple **tplpp)
 {
     int ret;
 
@@ -75,14 +76,15 @@ RDB_array_get_tuple(RDB_array *arrp, RDB_int idx, RDB_tuple *tup)
 
     /* Move forward until the right position is reached */
     while (arrp->pos < idx) {
-        ret = _RDB_next_tuple(arrp->qrp, tup, arrp->txp);
+        ret = _RDB_next_tuple(arrp->qrp, &arrp->tpl, arrp->txp);
         if (ret != RDB_OK)
             return ret;
         ++arrp->pos;
     }
 
     ++arrp->pos;
-    return _RDB_next_tuple(arrp->qrp, tup, arrp->txp);
+    *tplpp = &arrp->tpl;
+    return _RDB_next_tuple(arrp->qrp, &arrp->tpl, arrp->txp);
 }
 
 RDB_int

@@ -9,7 +9,7 @@ print_deptsx_view(RDB_database *dbp)
 {
     RDB_transaction tx;
     RDB_table *tmpvtbp;
-    RDB_tuple tpl;
+    RDB_tuple *tplp;
     RDB_array array;
     int ret;
     int i;
@@ -34,13 +34,11 @@ print_deptsx_view(RDB_database *dbp)
         goto error;
     }
     
-    RDB_init_tuple(&tpl);    
-    for (i = 0; (ret = RDB_array_get_tuple(&array, i, &tpl)) == RDB_OK; i++) {
-        printf("DEPTNO: %d\n", (int)RDB_tuple_get_int(&tpl, "DEPTNO"));
-        printf("DEPTNAME: %s\n", RDB_tuple_get_string(&tpl, "DEPTNAME"));
-        printf("XDEPTNO: %d\n", (int)RDB_tuple_get_int(&tpl, "XDEPTNO"));
+    for (i = 0; (ret = RDB_array_get_tuple(&array, i, &tplp)) == RDB_OK; i++) {
+        printf("DEPTNO: %d\n", (int)RDB_tuple_get_int(tplp, "DEPTNO"));
+        printf("DEPTNAME: %s\n", RDB_tuple_get_string(tplp, "DEPTNAME"));
+        printf("XDEPTNO: %d\n", (int)RDB_tuple_get_int(tplp, "XDEPTNO"));
     }
-    RDB_destroy_tuple(&tpl);
     if (ret != RDB_NOT_FOUND) {
         goto error;
     }

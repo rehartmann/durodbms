@@ -8,7 +8,7 @@ static int
 print_table(RDB_table *tbp, RDB_transaction *txp)
 {
     int ret;
-    RDB_tuple tpl;
+    RDB_tuple *tplp;
     RDB_array array;
     RDB_int i;
 
@@ -19,13 +19,11 @@ print_table(RDB_table *tbp, RDB_transaction *txp)
         goto error;
     }
     
-    RDB_init_tuple(&tpl);    
-    for (i = 0; (ret = RDB_array_get_tuple(&array, i, &tpl)) == RDB_OK; i++) {
-        printf("EMP#: %d\n", (int) RDB_tuple_get_int(&tpl, "EMP#"));
-        printf("NAME: %s\n", RDB_tuple_get_string(&tpl, "NAME"));
-        printf("SAL: %f\n", (double) RDB_tuple_get_rational(&tpl, "SAL"));
+    for (i = 0; (ret = RDB_array_get_tuple(&array, i, &tplp)) == RDB_OK; i++) {
+        printf("EMP#: %d\n", (int) RDB_tuple_get_int(tplp, "EMP#"));
+        printf("NAME: %s\n", RDB_tuple_get_string(tplp, "NAME"));
+        printf("SAL: %f\n", (double) RDB_tuple_get_rational(tplp, "SAL"));
     }
-    RDB_destroy_tuple(&tpl);
     if (ret != RDB_NOT_FOUND) {
         goto error;
     }

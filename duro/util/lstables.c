@@ -22,7 +22,7 @@ print_tables(RDB_transaction *txp, RDB_bool all, RDB_bool real)
     RDB_table *vtb1p = NULL;
     RDB_table *vtb2p = NULL;
     RDB_array array;
-    RDB_tuple tpl;
+    RDB_tuple *tplp;
     RDB_expression *condp = NULL;
     RDB_int i;
 
@@ -68,11 +68,9 @@ print_tables(RDB_transaction *txp, RDB_bool all, RDB_bool real)
         goto error;
     } 
     
-    RDB_init_tuple(&tpl);
-    for (i = 0; (ret = RDB_array_get_tuple(&array, i, &tpl)) == RDB_OK; i++) {
-        printf(real ? "%s\n" : "%s*\n", RDB_tuple_get_string(&tpl, "TABLENAME"));
+    for (i = 0; (ret = RDB_array_get_tuple(&array, i, &tplp)) == RDB_OK; i++) {
+        printf(real ? "%s\n" : "%s*\n", RDB_tuple_get_string(tplp, "TABLENAME"));
     }
-    RDB_destroy_tuple(&tpl);
     if (ret != RDB_NOT_FOUND) {
         goto error;
     }

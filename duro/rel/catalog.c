@@ -506,7 +506,7 @@ get_keys(const char *name, RDB_transaction *txp,
     RDB_expression *wherep;
     RDB_table *vtbp;
     RDB_array arr;
-    RDB_tuple tpl;
+    RDB_tuple *tplp;
     int ret;
     int i;
     
@@ -542,28 +542,23 @@ get_keys(const char *name, RDB_transaction *txp,
     for (i = 0; i < *keycp; i++)
         (*keyvp)[i].strv = NULL;
 
-    RDB_init_tuple(&tpl);
-
     for (i = 0; i < *keycp; i++) {
         RDB_int kno;
         int attrc;
     
-        ret = RDB_array_get_tuple(&arr, i, &tpl);
+        ret = RDB_array_get_tuple(&arr, i, &tplp);
         if (ret != RDB_OK) {
-            RDB_destroy_tuple(&tpl);
             goto error;
         }
-        kno = RDB_tuple_get_int(&tpl, "KEYNO");
-        attrc = RDB_split_str(RDB_tuple_get_string(&tpl, "ATTRS"),
+        kno = RDB_tuple_get_int(tplp, "KEYNO");
+        attrc = RDB_split_str(RDB_tuple_get_string(tplp, "ATTRS"),
                 &(*keyvp)[kno].strv);
         if (attrc == -1) {
             (*keyvp)[kno].strv = NULL;
-            RDB_destroy_tuple(&tpl);
             goto error;
         }
         (*keyvp)[kno].strc = attrc;
     }
-    RDB_destroy_tuple(&tpl);
     ret = RDB_destroy_array(&arr);
     RDB_drop_table(vtbp, txp);
 
@@ -594,6 +589,7 @@ _RDB_get_cat_rtable(const char *name, RDB_transaction *txp, RDB_table **tbpp)
     RDB_table *tmptb3p = NULL;
     RDB_array arr;
     RDB_tuple tpl;
+    RDB_tuple *tplp;
     RDB_bool usr;
     int ret;
     RDB_int i, j;
@@ -655,12 +651,12 @@ _RDB_get_cat_rtable(const char *name, RDB_transaction *txp, RDB_table **tbpp)
         RDB_type *attrtyp;
         RDB_int fno;
 
-        ret = RDB_array_get_tuple(&arr, i, &tpl);
+        ret = RDB_array_get_tuple(&arr, i, &tplp);
         if (ret != RDB_OK)
             goto error;
-        fno = RDB_tuple_get_int(&tpl, "I_FNO");
-        attrv[fno].name = RDB_dup_str(RDB_tuple_get_string(&tpl, "ATTRNAME"));
-        ret = RDB_get_type(RDB_tuple_get_string(&tpl, "TYPE"), txp,
+        fno = RDB_tuple_get_int(tplp, "I_FNO");
+        attrv[fno].name = RDB_dup_str(RDB_tuple_get_string(tplp, "ATTRNAME"));
+        ret = RDB_get_type(RDB_tuple_get_string(tplp, "TYPE"), txp,
                            &attrtyp);
         if (ret != RDB_OK)
             goto error;
@@ -689,15 +685,16 @@ _RDB_get_cat_rtable(const char *name, RDB_transaction *txp, RDB_table **tbpp)
 
     defvalc = RDB_array_length(&arr);
 
+/*!!
     RDB_init_tuple(&tpl);
-
+*/
     for (i = 0; i < defvalc; i++) {
         char *name;
         RDB_object *binvalp;
 
-        RDB_array_get_tuple(&arr, i, &tpl);
-        name = RDB_tuple_get_string(&tpl, "ATTRNAME");
-        binvalp = RDB_tuple_get(&tpl, "DEFAULT_VALUE");
+        RDB_array_get_tuple(&arr, i, &tplp);
+        name = RDB_tuple_get_string(tplp, "ATTRNAME");
+        binvalp = RDB_tuple_get(tplp, "DEFAULT_VALUE");
         
         /* Find attrv entry and set default value */
         for (i = 0; i < attrc && (strcmp(attrv[i].name, name) != 0); i++);
@@ -976,6 +973,7 @@ _RDB_get_cat_type(const char *name, RDB_transaction *txp, RDB_type **typp)
     RDB_table *tmptb2p = NULL;
     RDB_table *tmptb3p = NULL;
     RDB_tuple tpl;
+    RDB_tuple *tplp;
     RDB_array possreps;
     RDB_array comps;
     RDB_type *typ = NULL;
@@ -1066,17 +1064,17 @@ _RDB_get_cat_type(const char *name, RDB_transaction *txp, RDB_type **typp)
     for (i = 0; i < typ->var.scalar.repc; i++) {
         int j;
 
-        ret = RDB_array_get_tuple(&possreps, (RDB_int) i, &tpl);
+        ret = RDB_array_get_tuple(&possreps, (RDB_int) i, &tplp);
         if (ret != RDB_OK)
             goto error;
         typ->var.scalar.repv[i].name = RDB_dup_str(
-                RDB_tuple_get_string(&tpl, "POSSREPNAME"));
+                RDB_tuple_get_string(tplp, "POSSREPNAME"));
         if (typ->var.scalar.repv[i].name == NULL) {
             ret = RDB_NO_MEMORY;
             goto error;
         }
 
-        ret = _RDB_deserialize_expr(RDB_tuple_get(&tpl, "I_CONSTRAINT"), txp,
+        ret = _RDB_deserialize_expr(RDB_tuple_get(tplp, "I_CONSTRAINT"), txp,
                 &typ->var.scalar.repv[i].constraintp);
         if (ret != RDB_OK) {
             goto error;
@@ -1108,17 +1106,17 @@ _RDB_get_cat_type(const char *name, RDB_transaction *txp, RDB_type **typp)
         for (j = 0; j < typ->var.scalar.repv[i].compc; j++) {
             RDB_int idx;
 
-            ret = RDB_array_get_tuple(&comps, (RDB_int) j, &tpl);
+            ret = RDB_array_get_tuple(&comps, (RDB_int) j, &tplp);
             if (ret != RDB_OK)
                 goto error;
-            idx = RDB_tuple_get_int(&tpl, "COMPNO");
+            idx = RDB_tuple_get_int(tplp, "COMPNO");
             typ->var.scalar.repv[i].compv[idx].name = RDB_dup_str(
-                    RDB_tuple_get_string(&tpl, "COMPNAME"));
+                    RDB_tuple_get_string(tplp, "COMPNAME"));
             if (typ->var.scalar.repv[i].compv[idx].name == NULL) {
                 ret = RDB_NO_MEMORY;
                 goto error;
             }
-            ret = RDB_get_type(RDB_tuple_get_string(&tpl, "COMPTYPENAME"),
+            ret = RDB_get_type(RDB_tuple_get_string(tplp, "COMPTYPENAME"),
                     txp, &typ->var.scalar.repv[i].compv[idx].typ);
             if (ret != RDB_OK)
                 goto error;

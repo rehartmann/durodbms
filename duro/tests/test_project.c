@@ -12,7 +12,7 @@ static int
 print_table1(RDB_table *tbp, RDB_transaction *txp)
 {
     int ret;
-    RDB_tuple tpl;
+    RDB_tuple *tplp;
     RDB_array array;
     RDB_int i;
 
@@ -23,11 +23,9 @@ print_table1(RDB_table *tbp, RDB_transaction *txp)
         goto error;
     }
     
-    RDB_init_tuple(&tpl);    
-    for (i = 0; (ret = RDB_array_get_tuple(&array, i, &tpl)) == RDB_OK; i++) {
-        printf("SALARY: %f\n", (float)RDB_tuple_get_rational(&tpl, "SALARY"));
+    for (i = 0; (ret = RDB_array_get_tuple(&array, i, &tplp)) == RDB_OK; i++) {
+        printf("SALARY: %f\n", (float)RDB_tuple_get_rational(tplp, "SALARY"));
     }
-    RDB_destroy_tuple(&tpl);
     if (ret != RDB_NOT_FOUND) {
         goto error;
     }
@@ -45,7 +43,7 @@ static int
 print_table2(RDB_table *tbp, RDB_transaction *txp)
 {
     int ret;
-    RDB_tuple tpl;
+    RDB_tuple *tplp;
     RDB_array array;
     RDB_int i;
 
@@ -56,12 +54,10 @@ print_table2(RDB_table *tbp, RDB_transaction *txp)
         goto error;
     }
     
-    RDB_init_tuple(&tpl);    
-    for (i = 0; (ret = RDB_array_get_tuple(&array, i, &tpl)) == RDB_OK; i++) {
-        printf("EMPNO: %d\n", (int) RDB_tuple_get_int(&tpl, "EMPNO"));
-        printf("NAME: %s\n", RDB_tuple_get_string(&tpl, "NAME"));
+    for (i = 0; (ret = RDB_array_get_tuple(&array, i, &tplp)) == RDB_OK; i++) {
+        printf("EMPNO: %d\n", (int) RDB_tuple_get_int(tplp, "EMPNO"));
+        printf("NAME: %s\n", RDB_tuple_get_string(tplp, "NAME"));
     }
-    RDB_destroy_tuple(&tpl);
     if (ret != RDB_NOT_FOUND) {
         goto error;
     }

@@ -141,7 +141,7 @@ test_print(RDB_database *dbp)
     RDB_transaction tx;
     RDB_table *tbp;
     RDB_array array;
-    RDB_tuple tpl;
+    RDB_tuple *tplp;
     int ret;
     int i;
 
@@ -166,14 +166,11 @@ test_print(RDB_database *dbp)
         return ret;
     } 
 
-    RDB_init_tuple(&tpl);
-
-    for (i = 0; (ret = RDB_array_get_tuple(&array, i, &tpl)) == RDB_OK; i++) {
-        printf("NO=%d, O_NO=%d, COUNT=%d\n", (int)RDB_tuple_get_int(&tpl, "NO"),
-                (int)RDB_tuple_get_int(&tpl, "O_NO"),
-                (int)RDB_tuple_get_int(&tpl, "COUNT"));
+    for (i = 0; (ret = RDB_array_get_tuple(&array, i, &tplp)) == RDB_OK; i++) {
+        printf("NO=%d, O_NO=%d, COUNT=%d\n", (int)RDB_tuple_get_int(tplp, "NO"),
+                (int)RDB_tuple_get_int(tplp, "O_NO"),
+                (int)RDB_tuple_get_int(tplp, "COUNT"));
     }
-    RDB_destroy_tuple(&tpl);
     RDB_destroy_array(&array);
     if (ret != RDB_NOT_FOUND) {
         RDB_rollback(&tx);
