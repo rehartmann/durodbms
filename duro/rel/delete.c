@@ -210,28 +210,48 @@ delete_select_index(RDB_table *tbp, RDB_expression *condp,
     }
 
     do {
-        RDB_bool b = RDB_TRUE;
+        RDB_bool del = RDB_TRUE;
+        RDB_bool b;
 
-        if (condp != NULL) {
-            RDB_object tpl;
+        RDB_object tpl;
 
-            RDB_init_obj(&tpl);
+        RDB_init_obj(&tpl);
 
-            /*
-             * Read tuple and check condition
-             */
-            ret = _RDB_get_by_cursor(tbp->var.select.tbp, curp, &tpl);
+        /*
+         * Read tuple and check condition
+         */
+        ret = _RDB_get_by_cursor(tbp->var.select.tbp, curp, &tpl);
+        if (ret != RDB_OK) {
+            RDB_destroy_obj(&tpl);
+            goto cleanup;
+        }
+        if (tbp->var.select.stopexp != NULL) {
+            ret = RDB_evaluate_bool(tbp->var.select.stopexp, &tpl,
+                    txp, &b);
             if (ret != RDB_OK) {
                 RDB_destroy_obj(&tpl);
                 goto cleanup;
             }
-            ret = RDB_evaluate_bool(condp, &tpl, txp, &b);
-            RDB_destroy_obj(&tpl);
-            if (ret != RDB_OK)
+            if (!b) {
+                ret = RDB_OK;
+                RDB_destroy_obj(&tpl);
                 goto cleanup;
+            }
         }
+        if (condp != NULL) {
+            ret = RDB_evaluate_bool(condp, &tpl, txp, &del);
+            if (ret != RDB_OK) {
+                RDB_destroy_obj(&tpl);
+                goto cleanup;
+            }
+        }
+        ret = RDB_evaluate_bool(tbp->var.select.exp, &tpl, txp, &b);
+        RDB_destroy_obj(&tpl);
+        if (ret != RDB_OK)
+            goto cleanup;
+        del = (RDB_bool) (del && b);
 
-        if (b) {
+        if (del) {
             ret = RDB_cursor_delete(curp);
             if (ret != RDB_OK)
                 goto cleanup;

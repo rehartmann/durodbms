@@ -1479,6 +1479,19 @@ next_select_index(RDB_qresult *qrp, RDB_object *tplp, RDB_transaction *txp)
             if (qrp->tbp->var.select.all_eq)
                 rtup = RDB_TRUE;
             else {
+                if (qrp->tbp->var.select.stopexp != NULL) {
+                    ret = RDB_evaluate_bool(qrp->tbp->var.select.stopexp, tplp,
+                            txp, &rtup);
+                    if (ret != RDB_OK)
+                        return ret;
+                    if (!rtup) {
+                        qrp->endreached = RDB_TRUE;
+                        return RDB_NOT_FOUND;
+                    }
+                }
+                /*
+                 * Check condition, because it could be an open start
+                 */
                 ret = RDB_evaluate_bool(qrp->tbp->var.select.exp, tplp, txp,
                         &rtup);
                 if (ret != RDB_OK)

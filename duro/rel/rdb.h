@@ -292,6 +292,7 @@ typedef struct RDB_table {
             int objpc;
             RDB_bool asc;
             RDB_bool all_eq;
+            RDB_expression *stopexp;
         } select;
         struct {
             struct RDB_table *tb1p;

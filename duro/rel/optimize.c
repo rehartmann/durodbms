@@ -144,14 +144,64 @@ eval_index_attrs(int attrc, char *attrv[], _RDB_tbindex *indexp)
     return indexp->unique ? 2 : 3;
 }
 
+static void
+move_node(RDB_table *tbp, RDB_expression **dstpp, RDB_expression *nodep)
+{
+    RDB_expression *prevp;
+
+    /*
+     * Move node
+     */
+
+    /* Get previous node */
+    if (nodep == tbp->var.select.exp) {
+        prevp = NULL;
+    } else {
+        prevp = tbp->var.select.exp;
+        while (prevp->var.op.arg1 != nodep)
+            prevp = prevp->var.op.arg1;
+    }
+
+    if (nodep->kind != RDB_EX_AND) {
+        if (*dstpp == NULL)
+            *dstpp = nodep;
+        else
+            *dstpp = RDB_and(*dstpp, nodep);
+        if (prevp == NULL) {
+            tbp->var.select.exp = NULL;
+        } else {
+            if (prevp == tbp->var.select.exp) {
+                tbp->var.select.exp = prevp->var.op.arg2;
+            } else {
+                RDB_expression *pprevp = tbp->var.select.exp;
+
+                while (pprevp->var.op.arg1 != prevp)
+                    pprevp = pprevp->var.op.arg1;
+                pprevp->var.op.arg1 = prevp->var.op.arg2;
+            }
+            free(prevp);
+        }
+    } else {
+        if (*dstpp == NULL)
+            *dstpp = nodep->var.op.arg2;
+        else
+            *dstpp = RDB_and(*dstpp, nodep->var.op.arg2);
+        if (prevp == NULL)
+            tbp->var.select.exp = nodep->var.op.arg1;
+        else
+            prevp->var.op.arg1 = nodep->var.op.arg1;
+        free(nodep);
+    }
+}
+
 static int
 split_by_index(RDB_table *tbp, _RDB_tbindex *indexp)
 {
     int ret;
     int i;
-    RDB_expression *prevp;
     RDB_expression *nodep;
     RDB_expression *ixexp = NULL;
+    RDB_expression *stopexp = NULL;
     RDB_bool asc = RDB_TRUE;
     RDB_bool all_eq = RDB_TRUE;
     int objpc = 0;
@@ -183,6 +233,21 @@ split_by_index(RDB_table *tbp, _RDB_tbindex *indexp)
                         }
                     }
                 }
+                if (nodep->kind == RDB_EX_GET || nodep->kind == RDB_EX_GT) {
+                    stopexp = attr_node(tbp->var.select.exp,
+                            indexp->attrv[i].attrname, RDB_EX_LET);
+                    if (stopexp == NULL) {
+                        stopexp = attr_node(tbp->var.select.exp,
+                                indexp->attrv[i].attrname, RDB_EX_LT);
+                    }
+                    if (stopexp != NULL) {
+                        attrexp = stopexp;
+                        if (attrexp->kind == RDB_EX_AND)
+                            attrexp = attrexp->var.op.arg2;
+                        move_node(tbp, &ixexp, stopexp);
+                        stopexp = attrexp;
+                    }
+                }
                 all_eq = RDB_FALSE;
             }
         } else {
@@ -207,49 +272,8 @@ split_by_index(RDB_table *tbp, _RDB_tbindex *indexp)
             else
                 asc = (RDB_bool) !indexp->attrv[i].asc;
         }
-        /*
-         * Delete node
-         */
-
-        /* Get previous node */
-        if (nodep == tbp->var.select.exp) {
-            prevp = NULL;
-        } else {
-            prevp = tbp->var.select.exp;
-            while (prevp->var.op.arg1 != nodep)
-                prevp = prevp->var.op.arg1;
-        }
-
-        if (nodep->kind != RDB_EX_AND) {
-            if (ixexp == NULL)
-                ixexp = nodep;
-            else
-                ixexp = RDB_and(ixexp, nodep);
-            if (prevp == NULL) {
-                tbp->var.select.exp = NULL;
-            } else {
-                if (prevp == tbp->var.select.exp) {
-                    tbp->var.select.exp = prevp->var.op.arg2;
-                } else {
-                    RDB_expression *pprevp = tbp->var.select.exp;
-
-                    while (pprevp->var.op.arg1 != prevp)
-                        pprevp = pprevp->var.op.arg1;
-                    pprevp->var.op.arg1 = prevp->var.op.arg2;
-                }
-                free(prevp);
-            }
-        } else {
-            if (ixexp == NULL)
-                ixexp = nodep->var.op.arg2;
-            else
-                ixexp = RDB_and(ixexp, nodep->var.op.arg2);
-            if (prevp == NULL)
-                tbp->var.select.exp = nodep->var.op.arg1;
-            else
-                prevp->var.op.arg1 = nodep->var.op.arg1;
-            free(nodep);
-        }
+        
+        move_node(tbp, &ixexp, nodep);
     }
 
     if (tbp->var.select.exp != NULL) {
@@ -268,6 +292,7 @@ split_by_index(RDB_table *tbp, _RDB_tbindex *indexp)
         sitbp->var.select.objpc = objpc;
         sitbp->var.select.asc = asc;
         sitbp->var.select.all_eq = all_eq;
+        sitbp->var.select.stopexp = stopexp;
         sitbp->optimized = RDB_TRUE;
         tbp->var.select.tbp = sitbp;
     } else {
@@ -281,6 +306,7 @@ split_by_index(RDB_table *tbp, _RDB_tbindex *indexp)
         tbp->var.select.asc = asc;
         tbp->var.select.all_eq = all_eq;
         tbp->var.select.exp = ixexp;
+        tbp->var.select.stopexp = stopexp;
     }
     return RDB_OK;
 }

@@ -516,7 +516,8 @@ update_select_index_simple(RDB_table *tbp, RDB_expression *condp,
     }
 
     do {
-        RDB_bool b = RDB_TRUE;
+        RDB_bool upd = RDB_TRUE;
+        RDB_bool b;
 
         /* Read tuple */
         RDB_init_obj(&tpl);
@@ -526,18 +527,39 @@ update_select_index_simple(RDB_table *tbp, RDB_expression *condp,
             goto cleanup;
         }
 
+        if (tbp->var.select.stopexp != NULL) {
+            ret = RDB_evaluate_bool(tbp->var.select.stopexp, &tpl,
+                    txp, &b);
+            if (ret != RDB_OK) {
+                RDB_destroy_obj(&tpl);
+                goto cleanup;
+            }
+            if (!b) {
+                ret = RDB_OK;
+                RDB_destroy_obj(&tpl);
+                goto cleanup;
+            }
+        }
+
         if (condp != NULL) {
             /*
              * Check condition
              */
-            ret = RDB_evaluate_bool(condp, &tpl, &tx, &b);
+            ret = RDB_evaluate_bool(condp, &tpl, &tx, &upd);
             if (ret != RDB_OK) {
                 RDB_destroy_obj(&tpl);
                 goto cleanup;
             }
         }
 
-        if (b) {
+        ret = RDB_evaluate_bool(tbp->var.select.exp, &tpl, &tx, &b);
+        if (ret != RDB_OK) {
+            RDB_destroy_obj(&tpl);
+            goto cleanup;
+        }
+        upd = (RDB_bool) (upd && b);
+
+        if (upd) {
             ret = upd_to_vals(tbp->var.select.tbp, updc, updv, &tpl, valv, &tx);
             RDB_destroy_obj(&tpl);
             if (ret != RDB_OK)
