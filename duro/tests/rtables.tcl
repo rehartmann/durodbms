@@ -277,12 +277,36 @@ duro::commit $tx
 
 set tx [duro::begin $dbenv TEST]
 
-# Recreate table
+# Test recreating table
 duro::table create T2 {
    {STRATTR1 STRING}
    {INTATTR INTEGER}
    {STRATTR2 STRING}
    {STRATTR3 STRING}
 } {{STRATTR1} {INTATTR STRATTR2}} $tx
+
+# Create table
+duro::table create T3 {
+   {A INTEGER}
+   {B RATIONAL}
+} {{A}} $tx
+
+# Insert tuples
+duro::insert T3 {A 1 B 1.0} $tx
+duro::insert T3 {A 2 B 2.0} $tx
+duro::insert T3 {A 3 B 3.0} $tx
+duro::insert T3 {A 4 B 4.0} $tx
+duro::insert T3 {A 5 B 5.0} $tx
+
+# Update must fail
+if {![catch {
+    duro::update T3 B {1.0 / (B - 3.0)} $tx
+}]} {
+    error "Update should fail, but succeeded"
+}
+
+set a [duro::array create T3 {A asc} $tx]
+checkarray $a {{A 1 B 1.0} {A 2 B 2.0} {A 3 B 3.0} {A 4 B 4.0}
+        {A 5 B 5.0}} $tx
 
 duro::commit $tx

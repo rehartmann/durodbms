@@ -18,6 +18,7 @@ package require Tktable
 # tablekey      table key
 # tabletypes    array which maps table attributes to their types
 # ltables	local tables
+# types         scalar types
 #
 
 #
@@ -317,13 +318,21 @@ proc create_db {} {
     show_tables
 }
 
-proc get_types {} {
-    return {STRING INTEGER RATIONAL BINARY}
+proc get_types {tx} {
+    set types {STRING INTEGER RATIONAL BINARY}
+
+    # Add user-defined types
+    set tnames [duro::expr {SYS_TYPES {TYPENAME}} $tx]
+    foreach i $tnames {
+        lappend types [lindex $i 1]
+    }
+
+    return $types
 }
 
 proc set_attr_row {r} {
     set menucmd [concat "tk_optionMenu .dialog.tabledef.type$r ::type($r)" \
-            [get_types]]
+            $::types]
     if {$r == 0} {
         set ::mw [eval $menucmd]
     } else {
@@ -368,6 +377,16 @@ proc add_key {} {
 }
 
 proc create_rtable {} {
+    if {[catch {
+        set tx [duro::begin $::dbenv $::db]
+        set ::types [get_types $tx]
+        duro::commit $tx
+    } msg]} {
+        catch {duro::rollback $tx}
+        tk_messageBox -type ok -title "Error" -message $msg -icon error
+        return
+    }
+
     toplevel .dialog
     wm title .dialog "Create real table"
     wm geometry .dialog "+300+300"

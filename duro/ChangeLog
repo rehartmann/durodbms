@@ -4,6 +4,8 @@ Summary of Changes for Duro
 
 Changes for Duro 0.9
 
+- Durotcl now supports creating tables with user-defined types.
+
 - Small change to RDB_expression struct.
 
 Changes for Duro 0.8
