@@ -22,20 +22,20 @@ typedef struct {
 } RDB_field;
 
 typedef struct {
-   /* internal */
-   DB *dbp;
-   char *namp;
-   char *filenamp;
-   int fieldcount;	/* # of fields total */
-   int keyfieldcount;	/* # of primary index fields */
+    /* internal */
+    DB *dbp;
+    char *namp;
+    char *filenamp;
+    int fieldcount;	/* # of fields total */
+    int keyfieldcount;	/* # of primary index fields */
 
-   /* the length for each field, if it's fixed-length field,
-    * RDB_VARIABLE_LEN if it's a variable-length field
-    */
-   RDB_int *fieldlens;
+    /* the length for each field, if it's fixed-length field,
+     * RDB_VARIABLE_LEN if it's a variable-length field
+     */
+    RDB_int *fieldlens;
 
-   int varkeyfieldcount; /* # of variable-length key fields */
-   int vardatafieldcount; /* # of variable-length nonkey fields */ 
+    int varkeyfieldcount; /* # of variable-length key fields */
+    int vardatafieldcount; /* # of variable-length nonkey fields */ 
 } RDB_recmap;
 
 /* Create a recmap with the name specified by name in the DB environment

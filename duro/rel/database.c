@@ -174,14 +174,14 @@ open_table(const char *name, RDB_bool persistent,
     ki = 0;
     di = prkeyattrs->attrc;
     for (i = 0; i < attrc; i++) {
-        RDB_int val;
+        RDB_int fno;
     
         if (key_contains(prkeyattrs, heading[i].name))
-            val = ki++;
+            fno = ki++;
         else
-            val = di++;
+            fno = di++;
         res = RDB_hashmap_put(&tbp->var.stored.attrmap, heading[i].name,
-                              &val, sizeof val);
+                              &fno, sizeof fno);
         if (res != RDB_OK)
             goto error;
         /* Only built-in types supported by this version */
@@ -189,8 +189,8 @@ open_table(const char *name, RDB_bool persistent,
             res = RDB_NOT_SUPPORTED;
             goto error;
         }
-        flens[i] = replen(heading[i].type);
-        if (flens[i] == 0) {
+        flens[fno] = replen(heading[i].type);
+        if (flens[fno] == 0) {
             res = RDB_ILLEGAL_ARG;
             goto error;
         }

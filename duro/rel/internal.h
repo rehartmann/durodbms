@@ -8,7 +8,7 @@ typedef struct RDB_qresult {
     union {
         RDB_cursor *curp;
         struct {
-            struct RDB_qresult *itp;
+            struct RDB_qresult *qrp;
             
             /* only used for join */
             struct RDB_qresult *nestedp;
@@ -70,5 +70,7 @@ RDB_evaluate_bool(RDB_expression *, const RDB_tuple *tup, RDB_transaction *,
 
 int
 RDB_evaluate(RDB_expression *, const RDB_tuple *, RDB_transaction *, RDB_value *);
+
+#define _RDB_pkey_len(tbp) (tbp->keyv[0].attrc)
 
 #endif

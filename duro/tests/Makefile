@@ -67,6 +67,9 @@ test_keys : test_keys.c
 test_aggregate : test_aggregate.c
 	$(CC) -o test_aggregate $(CFLAGS) $(LDFLAGS) test_aggregate.c $(LDLIBS)
 
+test_summarize : test_summarize.c
+	$(CC) -o test_summarize $(CFLAGS) $(LDFLAGS) test_summarize.c $(LDLIBS)
+
 test_create_view : test_create_view.c
 	$(CC) -o test_create_view $(CFLAGS) $(LDFLAGS) test_create_view.c $(LDLIBS)
 

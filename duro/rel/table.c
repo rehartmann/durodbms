@@ -215,7 +215,7 @@ attr_is_pindex(RDB_table *tbp, const char *attrname) {
 static RDB_expression *
 pindex_expr(RDB_table *tbp, RDB_expression *exprp) {
     if (tbp->kind != RDB_TB_STORED
-            || tbp->var.stored.recmapp->keyfieldcount != 1 /* keyc != 1 */)
+            || _RDB_pkey_len(tbp) != 1)
         return NULL;
     if (exprp->var.op.arg1->kind == RDB_ATTR
             && RDB_expr_is_const(exprp->var.op.arg2)
@@ -621,9 +621,9 @@ error:
 
 static int
 aggr_type(RDB_type *tuptyp, RDB_type *attrtyp, RDB_aggregate_op op,
-                    RDB_type **resultpp)
+          RDB_type **resultpp)
 {
-    if (op == RDB_COUNT || RDB_COUNTD) {
+    if (op == RDB_COUNT || op == RDB_COUNTD) {
         *resultpp = &RDB_INTEGER;
         return RDB_OK;
     }
@@ -635,7 +635,7 @@ aggr_type(RDB_type *tuptyp, RDB_type *attrtyp, RDB_aggregate_op op,
         case RDB_AVG:
         case RDB_AVGD:
             if (!RDB_type_is_numeric(attrtyp))
-                *resultpp = NULL;
+                return RDB_TYPE_MISMATCH;
             *resultpp = &RDB_RATIONAL;
             break;
         case RDB_SUM:
@@ -643,19 +643,18 @@ aggr_type(RDB_type *tuptyp, RDB_type *attrtyp, RDB_aggregate_op op,
         case RDB_MAX:
         case RDB_MIN:
             if (!RDB_type_is_numeric(attrtyp))
-                *resultpp = NULL;
+                return RDB_TYPE_MISMATCH;
             *resultpp = attrtyp;
             break;
         case RDB_ALL:
         case RDB_ANY:
             if (attrtyp != &RDB_BOOLEAN)
-                *resultpp = NULL;
+                return RDB_TYPE_MISMATCH;
             *resultpp = &RDB_BOOLEAN;
             break;
      }
      return RDB_OK;
 }
-
 
 int
 RDB_aggregate(RDB_table *tbp, RDB_aggregate_op op, const char *attrname,
@@ -1390,7 +1389,7 @@ RDB_project(RDB_table *tbp, int attrc, char *attrv[], RDB_table **resultpp)
     if (newtbp->var.project.keyloss) {
         /* Table is all-key */
         newtbp->keyc = 1;
-        newtbp->keyv = all_key(tbp);
+        newtbp->keyv = all_key(newtbp);
         if (newtbp->keyv == NULL) {
             goto error;
         }
@@ -1468,6 +1467,7 @@ RDB_summarize(RDB_table *tb1p, RDB_table *tb2p, int addc, RDB_summarize_add addv
     newtbp->var.summarize.tb2p = tb2p;
     newtbp->typ = NULL;
 
+    newtbp->var.summarize.addc = addc;
     newtbp->var.summarize.addv = malloc(sizeof(RDB_summarize_add) * addc);
     if (newtbp->var.summarize.addv == NULL) {
         free(newtbp->keyv);
@@ -1478,6 +1478,11 @@ RDB_summarize(RDB_table *tb1p, RDB_table *tb2p, int addc, RDB_summarize_add addv
         newtbp->var.summarize.addv[i].name = NULL;
     }
     for (i = 0; i < addc; i++) {
+        if (addv[i].op == RDB_COUNTD || addv[i].op == RDB_SUMD
+                || addv[i].op == RDB_AVGD) {
+            return RDB_NOT_SUPPORTED;
+        }
+        newtbp->var.summarize.addv[i].op = addv[i].op;
         newtbp->var.summarize.addv[i].name = RDB_dup_str(addv[i].name);
         if (newtbp->var.summarize.addv[i].name == NULL) {
             res = RDB_NO_MEMORY;
@@ -1491,6 +1496,7 @@ RDB_summarize(RDB_table *tb1p, RDB_table *tb2p, int addc, RDB_summarize_add addv
     attrc = tb2p->typ->complex.basetyp->complex.tuple.attrc + addc;
     tuptyp = malloc(sizeof (RDB_type));
     tuptyp->kind = RDB_TP_TUPLE;
+    tuptyp->complex.tuple.attrc = attrc;
     tuptyp->complex.tuple.attrv = malloc(attrc * sizeof(RDB_attr));
     for (i = 0; i < addc; i++) {
         tuptyp->complex.tuple.attrv[i].name = addv[i].name;
@@ -1510,9 +1516,14 @@ RDB_summarize(RDB_table *tb1p, RDB_table *tb2p, int addc, RDB_summarize_add addv
         tuptyp->complex.tuple.attrv[addc + i].options = 0;
     }
     newtbp->typ = malloc(sizeof (RDB_type));
+    if (newtbp->typ == NULL) {
+        res = RDB_NO_MEMORY;
+        goto error;
+    }
     newtbp->typ->kind = RDB_TP_RELATION;
     newtbp->typ->complex.basetyp = tuptyp;
 
+    *resultpp = newtbp;
     return RDB_OK;
 error:
     if (tuptyp != NULL) {

@@ -21,10 +21,9 @@ print_table(RDB_table *tbp, RDB_transaction *txp)
     
     RDB_init_tuple(&tpl);    
     for (i = 0; (err = RDB_array_get_tuple(&array, i, &tpl)) == RDB_OK; i++) {
-        printf("EMPNO: %d\n", RDB_tuple_get_int(&tpl, "EMPNO"));
-        printf("NAME: %s\n", RDB_tuple_get_string(&tpl, "NAME"));
         printf("DEPTNO: %d\n", RDB_tuple_get_int(&tpl, "DEPTNO"));
-        printf("SALARY: %f\n", (float)RDB_tuple_get_rational(&tpl, "SALARY"));
+        printf("SUM_SALARY: %f\n",
+               (double)RDB_tuple_get_rational(&tpl, "SUM_SALARY"));
     }
     RDB_destroy_tuple(&tpl);
     if (err != RDB_NOT_FOUND) {
@@ -40,12 +39,15 @@ error:
     return err;
 }
 
+static char *projattr = "DEPTNO";
+
 int
-test_union(RDB_database *dbp)
+test_summarize(RDB_database *dbp)
 {
     RDB_transaction tx;
-    RDB_table *tbp, *tbp2, *vtbp;
+    RDB_table *tbp, *tbp2, *vtbp, *projtbp;
     int err;
+    RDB_summarize_add add;
 
     RDB_get_table(dbp, "EMPS1", &tbp);
     RDB_get_table(dbp, "EMPS2", &tbp2);
@@ -63,15 +65,33 @@ test_union(RDB_database *dbp)
         RDB_rollback(&tx);
         return err;
     }
+
+    printf("Summarizing union PER { DEPTNO } ADD SUM(SALARY)\n");
+
+    err = RDB_project(vtbp, 1, &projattr, &projtbp);
+    if (err != RDB_OK) {
+        RDB_rollback(&tx);
+        return err;
+    }
+
+    add.op = RDB_SUM;
+    add.exp = RDB_expr_attr("SALARY", &RDB_RATIONAL);
+    add.name = "SUM_SALARY";
+    err = RDB_summarize(vtbp, projtbp, 1, &add, &vtbp);
+    if (err != RDB_OK) {
+        RDB_rollback(&tx);
+        return err;
+    }
+
+    printf("Printing table\n");
     
-    printf("converting union table to array\n");
     err = print_table(vtbp, &tx);
     if (err != RDB_OK) {
         RDB_rollback(&tx);
         return err;
     } 
 
-    printf("Dropping union\n");
+    printf("Dropping summarize\n");
     RDB_drop_table(vtbp, &tx);
 
     printf("End of transaction\n");
@@ -97,7 +117,7 @@ main()
         return 1;
     }
 
-    err = test_union(dbp);
+    err = test_summarize(dbp);
     if (err != RDB_OK) {
         fprintf(stderr, "Error: %s\n", RDB_strerror(err));
         return 2;

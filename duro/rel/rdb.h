@@ -40,7 +40,7 @@ enum RDB_tp_kind {
     RDB_TP_BINARY,
     RDB_TP_USER,
     RDB_TP_TUPLE,
-    RDB_TP_RELATION,
+    RDB_TP_RELATION
 };
 
 typedef struct RDB_type {

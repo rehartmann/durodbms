@@ -111,8 +111,11 @@ test_extend(RDB_database *dbp)
     int err;
     RDB_virtual_attr extend = {
         "SALARY_W_BONUS",
-        RDB_add(RDB_expr_attr("SALARY", &RDB_RATIONAL), RDB_rational_const(100))
+        NULL
     };
+
+    extend.exp = RDB_add(RDB_expr_attr("SALARY", &RDB_RATIONAL),
+                         RDB_rational_const(100));
 
     RDB_get_table(dbp, "EMPS1", &tbp);
 

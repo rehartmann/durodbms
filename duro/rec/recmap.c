@@ -445,9 +445,9 @@ _RDB_set_field(RDB_recmap *recmapp, DBT *recpartp, const RDB_field *fieldp,
         recpartp->data = realloc(recpartp->data,
                                  recpartp->size + fieldp->len - oldlen);
         databp = ((RDB_byte *)recpartp->data);
-        memmove(recpartp->data + offs + fieldp->len,
-                        recpartp->data + offs + oldlen,
-                        recpartp->size - offs - oldlen);
+        memmove(databp + offs + fieldp->len,
+                databp + offs + oldlen,
+                recpartp->size - offs - oldlen);
         recpartp->size = recpartp->size + fieldp->len - oldlen;
         set_len(&databp[recpartp->size - varfieldc * RECLEN_SIZE
                         + vpos * RECLEN_SIZE], fieldp->len);
@@ -552,7 +552,7 @@ _RDB_get_fields(RDB_recmap *rmp, const DBT *keyp, const DBT *datap, int fieldc,
     for (i = 0; i < fieldc; i++) {
         int offs = _RDB_get_field(rmp, resfieldv[i].no,
                                  datap->data, datap->size, &resfieldv[i].len, NULL);
-        resfieldv[i].datap = datap->data + offs;
+        resfieldv[i].datap = ((RDB_byte *)datap->data) + offs;
     }
 
     return RDB_OK;
