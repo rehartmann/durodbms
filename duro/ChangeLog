@@ -29,6 +29,8 @@ Changes for Duro 0.7
 
 - Replaced RDB_make_persistent() by RDB_add_table().
 
+- Now using to BerkeleyDB 4.2 (no modifications were required)
+
 Changes for Duro 0.6
 
 - For the sake of uniformity, changed argument order of RDB_table_to_array()

@@ -148,7 +148,7 @@ RDB_insert(RDB_table *tbp, const RDB_object *tup, RDB_transaction *txp)
                 }
                 
                 /* Typecheck */
-                if (valp->typ != NULL /* !! */ && !RDB_type_equals(valp->typ,
+                if (valp->typ != NULL && !RDB_type_equals(valp->typ,
                                      tuptyp->var.tuple.attrv[i].typ)) {
                      return RDB_TYPE_MISMATCH;
                 }
@@ -254,13 +254,10 @@ RDB_insert(RDB_table *tbp, const RDB_object *tup, RDB_transaction *txp)
         case RDB_TB_SUMMARIZE:
              return RDB_NOT_SUPPORTED;
         case RDB_TB_RENAME:
-             /* !! ... */
              return RDB_NOT_SUPPORTED;
         case RDB_TB_WRAP:
-             /* !! ... */
              return RDB_NOT_SUPPORTED;
         case RDB_TB_UNWRAP:
-             /* !! ... */
              return RDB_NOT_SUPPORTED;
         case RDB_TB_SDIVIDE:
              return RDB_NOT_SUPPORTED;

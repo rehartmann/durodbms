@@ -210,7 +210,6 @@ RDB_delete(RDB_table *tbp, RDB_expression *condp, RDB_transaction *txp)
         case RDB_TB_SUMMARIZE:
             return RDB_NOT_SUPPORTED;
         case RDB_TB_RENAME:
-            /* !! */
             return RDB_NOT_SUPPORTED;
         case RDB_TB_WRAP:
             return RDB_NOT_SUPPORTED;

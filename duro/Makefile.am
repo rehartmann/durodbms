@@ -61,7 +61,7 @@ libdurotcl_la_SOURCES = tcl/duro.c tcl/duro.h tcl/envcmd.c tcl/txcmd.c \
 libdurotcl_la_LIBADD = -L$(BDB_HOME)/lib libduro.la -ldb
 
 pkglibdir = $(prefix)/lib
-pkglib_DATA = tcl/util.tcl
+dist_pkglib_DATA = tcl/util.tcl
 
 INCLUDES = -I$(top_srcdir) -I$(BDB_HOME)/include
 

@@ -413,14 +413,30 @@ insert_rtable(RDB_table *tbp, RDB_transaction *txp)
     RDB_init_obj(&tpl);
     ret = RDB_tuple_set_string(&tpl, "TABLENAME", tbp->name);
     if (ret != RDB_OK)
-        return ret;
+        goto cleanup;
+
     for (i = 0; i < tbp->keyc; i++) {
         RDB_string_vec *kap = &tbp->keyv[i];
-        char buf[1024]; /* !! */
+        size_t buflen;
+        char *buf;
 
         ret = RDB_tuple_set_int(&tpl, "KEYNO", i);
         if (ret != RDB_OK)
-            return ret;
+            goto cleanup;
+
+        /* Allocate buffer */
+        buflen = 1;
+        if (kap->strc > 0) {
+            buflen += strlen (kap->strv[0]);
+            for (j = 1; j < kap->strc; j++) {
+                buflen += strlen(kap->strv[j]) + 1;
+            }
+        }
+        buf = malloc(buflen);
+        if (buf == NULL) {
+            ret = RDB_NO_MEMORY;
+            goto cleanup;
+        }
 
         /* Concatenate attribute names */
         buf[0] = '\0';
@@ -433,16 +449,20 @@ insert_rtable(RDB_table *tbp, RDB_transaction *txp)
         }
 
         ret = RDB_tuple_set_string(&tpl, "ATTRS", buf);
+        free(buf);
         if (ret != RDB_OK)
-            return ret;
+            goto cleanup;
 
         ret = RDB_insert(txp->dbp->dbrootp->keys_tbp, &tpl, txp);
         if (ret != RDB_OK)
-            return ret;
+            goto cleanup;
     }
+    ret = RDB_OK;
+
+cleanup:
     RDB_destroy_obj(&tpl);
 
-    return RDB_OK;
+    return ret;
 }
 
 static int
