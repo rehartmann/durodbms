@@ -342,6 +342,7 @@ copy_obj(RDB_object *dstvalp, const RDB_object *srcvalp)
             /* The table itself is not copied, only the pointer */
             dstvalp->kind = srcvalp->kind;
             dstvalp->var.tbp = srcvalp->var.tbp;
+            srcvalp->var.tbp->refcount++;
             break;
         default:
             dstvalp->kind = srcvalp->kind;
@@ -400,26 +401,36 @@ RDB_destroy_obj(RDB_object *objp)
             break;
         }
         case RDB_OB_ARRAY:
+        {
+            int ret = RDB_OK;
+            int ret2 = RDB_OK;
+
             if (objp->var.arr.tbp == NULL)
                 return RDB_OK;
             
             if (objp->var.arr.qrp != NULL) {
-                int ret = _RDB_drop_qresult(objp->var.arr.qrp,
+                ret = _RDB_drop_qresult(objp->var.arr.qrp,
                         objp->var.arr.txp);
 
-                if (RDB_is_syserr(ret))
-                    RDB_rollback_all(objp->var.arr.txp);
-                return ret;
+                if (ret != RDB_OK) {
+                    if (RDB_is_syserr(ret) && objp->var.arr.txp != NULL)
+                        RDB_rollback_all(objp->var.arr.txp);
+                }
             }
             if (objp->var.arr.tplp != NULL) {
-                int ret = RDB_destroy_obj(objp->var.arr.tplp);
+                ret2 = RDB_destroy_obj(objp->var.arr.tplp);
                 free(objp->var.arr.tplp);
-                return ret;
             }
-            break;
+            if (ret != RDB_OK)
+                return ret;
+            return ret2;
+        }
         case RDB_OB_TABLE:
-            if (objp->var.tbp != NULL && objp->var.tbp->name == NULL)
-                RDB_drop_table(objp->var.tbp, NULL);
+            objp->var.tbp->refcount--;
+            if (objp->var.tbp->refcount == 0
+                    && objp->var.tbp->name == NULL) {
+                return RDB_drop_table(objp->var.tbp, NULL);
+            }
             break;
         default: ;
     }
@@ -515,6 +526,7 @@ RDB_table_to_obj(RDB_object *objp, RDB_table *tbp)
     objp->typ = tbp->typ;
     objp->kind = RDB_OB_TABLE;
     objp->var.tbp = tbp;
+    tbp->refcount++;
 }
 
 RDB_table *

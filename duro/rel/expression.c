@@ -733,8 +733,8 @@ cleanup:
     return ret;
 }
 
-static int evaluate_selector(RDB_expression *exp, const RDB_object *tup, RDB_transaction *txp,
-            RDB_object *valp)
+static int evaluate_selector(RDB_expression *exp, const RDB_object *tup,
+        RDB_transaction *txp, RDB_object *valp)
 {
     int ret;
     int i;
@@ -1033,8 +1033,11 @@ RDB_evaluate(RDB_expression *exp, const RDB_object *tup, RDB_transaction *txp,
                 return RDB_INVALID_ARGUMENT;
             }
             ret = RDB_copy_obj(valp, attrp);
-            RDB_destroy_obj(&tpl);
-            return ret;
+            if (ret != RDB_OK) {
+                RDB_destroy_obj(&tpl);
+                return ret;
+            }
+            return RDB_destroy_obj(&tpl);
         }
         case RDB_EX_GET_COMP:
         {
@@ -1212,10 +1215,14 @@ RDB_evaluate(RDB_expression *exp, const RDB_object *tup, RDB_transaction *txp,
             RDB_init_obj(&val);
 
             ret = RDB_evaluate(exp->var.op.arg1, tup, txp, &val);
-            if (ret != RDB_OK)
+            if (ret != RDB_OK) {
+                RDB_destroy_obj(&val);
                 return ret;
-            if (RDB_obj_type(&val) != &RDB_STRING)
+            }
+            if (RDB_obj_type(&val) != &RDB_STRING) {
+                RDB_destroy_obj(&val);
                 return RDB_TYPE_MISMATCH;
+            }
 
             RDB_destroy_obj(valp);
             RDB_init_obj(valp);
@@ -1226,20 +1233,53 @@ RDB_evaluate(RDB_expression *exp, const RDB_object *tup, RDB_transaction *txp,
             return RDB_OK;
         }           
         case RDB_EX_AGGREGATE:
-            if (exp->var.op.arg1->kind != RDB_EX_OBJ
-                    && exp->var.op.arg1->var.obj.kind != RDB_OB_TABLE)
+        {
+            RDB_object val;
+
+            RDB_init_obj(&val);
+            ret = RDB_evaluate(exp->var.op.arg1, tup, txp, &val);
+            if (ret != RDB_OK) {
+                RDB_destroy_obj(&val);
+                return ret;
+            }
+            if (val.kind != RDB_OB_TABLE) {
+                RDB_destroy_obj(&val);
                 return RDB_TYPE_MISMATCH;
-            return aggregate(exp->var.op.arg1->var.obj.var.tbp, exp->var.op.op,
-                    exp->var.op.name, txp, valp);
+            }
+            ret = aggregate(val.var.tbp, exp->var.op.op,
+                    exp->var.op.name, NULL, valp);
+            if (ret != RDB_OK) {
+                RDB_destroy_obj(&val);
+                return ret;
+            }
+            return RDB_destroy_obj(&val);
+        }
         case RDB_EX_IS_EMPTY:
-            if (exp->var.op.arg1->kind != RDB_EX_OBJ
-                    && exp->var.op.arg1->var.obj.kind != RDB_OB_TABLE)
+        {
+            RDB_object val;
+
+            RDB_init_obj(&val);
+
+            ret = RDB_evaluate(exp->var.op.arg1, tup, txp, &val);
+            if (ret != RDB_OK) {
+                RDB_destroy_obj(&val);
+                return ret;
+            }
+            if (val.kind != RDB_OB_TABLE) {
+                RDB_destroy_obj(&val);
                 return RDB_TYPE_MISMATCH;
+            }
             RDB_destroy_obj(valp);
             RDB_init_obj(valp);
             _RDB_set_obj_type(valp, &RDB_BOOLEAN);
-            return RDB_table_is_empty(exp->var.op.arg1->var.obj.var.tbp, txp,
+            ret = RDB_table_is_empty(val.var.tbp, NULL,
                     &valp->var.bool_val);
+            if (ret != RDB_OK) {
+                RDB_destroy_obj(&val);
+                return ret;
+            }
+            return RDB_destroy_obj(&val);
+        }
     }
     /* Should never be reached */
     abort();

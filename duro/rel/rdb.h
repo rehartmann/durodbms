@@ -243,6 +243,7 @@ typedef struct RDB_table {
     char *name;
     int keyc;
     RDB_string_vec *keyv;
+    int refcount;
     union {
         struct {
             RDB_recmap *recmapp;

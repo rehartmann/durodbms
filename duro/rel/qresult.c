@@ -286,9 +286,8 @@ do_summarize(RDB_qresult *qresp, RDB_transaction *txp)
                 ret = RDB_update_rec(qresp->matp->var.stored.recmapp, keyfv,
                     addc + avgc, nonkeyfv, txp->txid);
                 if (ret != RDB_OK) {
-                    if (RDB_is_syserr(ret)) {
+                    if (RDB_is_syserr(ret) && txp != NULL)
                         RDB_rollback_all(txp);
-                    }
                     goto error;
                 }
             } else if (ret != RDB_NOT_FOUND)
@@ -320,7 +319,7 @@ stored_qresult(RDB_qresult *qresp, RDB_table *tbp, RDB_transaction *txp)
     ret = RDB_recmap_cursor(&qresp->var.curp, tbp->var.stored.recmapp,
                     0, txp != NULL ? txp->txid : NULL);
     if (ret != RDB_OK) {
-        if (RDB_is_syserr(ret))
+        if (RDB_is_syserr(ret) && (txp != NULL))
             RDB_rollback_all(txp);
         return ret;
     }
@@ -330,7 +329,7 @@ stored_qresult(RDB_qresult *qresp, RDB_table *tbp, RDB_transaction *txp)
         ret = RDB_OK;
     } else if (ret != RDB_OK) {
         RDB_destroy_cursor(qresp->var.curp);
-        if (RDB_is_syserr(ret))
+        if (RDB_is_syserr(ret) && txp != NULL)
             RDB_rollback_all(txp);
         return ret;
     }
@@ -622,9 +621,11 @@ next_stored_tuple(RDB_qresult *qrp, RDB_table *tbp, RDB_object *tup)
             RDB_init_obj(&val);
             ret = RDB_irep_to_obj(&val, attrp->typ, datap, len);
             if (ret != RDB_OK) {
+                RDB_destroy_obj(&val);
                 return ret;
             }
             ret = RDB_tuple_set(tup, attrp->name, &val);
+            RDB_destroy_obj(&val);
             if (ret != RDB_OK) {
                 return ret;
             }
@@ -742,7 +743,7 @@ _RDB_get_by_pindex(RDB_table *tbp, RDB_object valv[], RDB_object *tup, RDB_trans
                          tpltyp->var.tuple.attrc - pkeylen,
                          txp->txid, resfv);
     if (ret != RDB_OK) {
-        if (RDB_is_syserr(ret)) {
+        if (RDB_is_syserr(ret) && txp != NULL) {
             RDB_rollback_all(txp);
         }
         goto error;
@@ -1024,7 +1025,7 @@ _RDB_next_tuple(RDB_qresult *qrp, RDB_object *tup, RDB_transaction *txp)
     if (tbp == NULL) {
         /* It's a sorter */
         ret = next_stored_tuple(qrp, qrp->matp, tup);
-        if (RDB_is_syserr(ret))
+        if (RDB_is_syserr(ret) && txp != NULL)
             RDB_rollback_all(txp);
         return ret;
     }
@@ -1034,7 +1035,7 @@ _RDB_next_tuple(RDB_qresult *qrp, RDB_object *tup, RDB_transaction *txp)
 
         case RDB_TB_STORED:
             ret = next_stored_tuple(qrp, qrp->tbp, tup);
-            if (RDB_is_syserr(ret))
+            if (RDB_is_syserr(ret) && txp != NULL)
                 RDB_rollback_all(txp);
             return ret;
         case RDB_TB_SELECT:
@@ -1168,7 +1169,7 @@ _RDB_reset_qresult(RDB_qresult *qrp, RDB_transaction *txp)
             qrp->endreached = 1;
             ret = RDB_OK;
         } else if (ret != RDB_OK) {
-            if (RDB_is_syserr(ret))
+            if (RDB_is_syserr(ret) && txp != NULL)
                 RDB_rollback_all(txp);
         } else {
             qrp->endreached = 0;
@@ -1251,7 +1252,7 @@ _RDB_drop_qresult(RDB_qresult *qrp, RDB_transaction *txp)
 
     free(qrp);
 
-    if (RDB_is_syserr(ret))
+    if (RDB_is_syserr(ret) && txp != NULL)
         RDB_rollback_all(txp);
     return ret;
 }

@@ -97,10 +97,6 @@ list_to_tuple(Tcl_Interp *interp, Tcl_Obj *tobjp, RDB_type *typ,
         }
         ret = RDB_tuple_set(tplp, attrname, &obj);
 
-        /* If it's table, set pointer to NULL so it is not deleted */
-        if (obj.kind == RDB_OB_TABLE)
-            obj.var.tbp = NULL;
-
         RDB_destroy_obj(&obj);
         if (ret != RDB_OK) {
             Duro_dberror(interp, ret);
@@ -796,10 +792,6 @@ Duro_insert_cmd(ClientData data, Tcl_Interp *interp, int objc,
 
         RDB_tuple_set(&tpl, attrname, &obj);
 
-        /* If it's table, set pointer to NULL so it is not deleted */
-        if (obj.kind == RDB_OB_TABLE)
-            obj.var.tbp = NULL;
-
         RDB_destroy_obj(&obj);
     }
 
@@ -890,10 +882,6 @@ table_contains_cmd(TclState *statep, Tcl_Interp *interp, int objc,
         }
 
         RDB_tuple_set(&tpl, attrname, &obj);
-
-        /* If it's table, set pointer to NULL so it is not deleted */
-        if (obj.kind == RDB_OB_TABLE)
-            obj.var.tbp = NULL;
 
         RDB_destroy_obj(&obj);
     }

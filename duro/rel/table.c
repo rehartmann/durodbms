@@ -11,6 +11,18 @@
 #include <gen/strfns.h>
 #include <string.h>
 
+static RDB_table *
+new_table(void)
+{
+    RDB_table *tbp = malloc(sizeof (RDB_table));
+    if (tbp == NULL) {
+        return NULL;
+    }
+    tbp->name = NULL;
+    tbp->refcount = 0;
+    return tbp;
+}
+
 /*
  * Creates a stored table, but not the recmap and the indexes
  * and does not insert the table into the catalog.
@@ -22,7 +34,7 @@ _RDB_new_stored_table(const char *name, RDB_bool persistent,
                 int keyc, RDB_string_vec keyv[], RDB_bool usr,
                 RDB_table **tbpp)
 {
-    RDB_table *tbp = NULL;
+    RDB_table *tbp;
     int ret, i;
 
     for (i = 0; i < keyc; i++) {
@@ -38,10 +50,10 @@ _RDB_new_stored_table(const char *name, RDB_bool persistent,
         }
     }
 
-    tbp = *tbpp = malloc(sizeof (RDB_table));
-    if (tbp == NULL) {
+    tbp = new_table();
+    if (tbp == NULL)
         return RDB_NO_MEMORY;
-    }
+    *tbpp = tbp;
     tbp->is_user = usr;
     tbp->is_persistent = persistent;
     tbp->keyv = NULL;
@@ -55,8 +67,6 @@ _RDB_new_stored_table(const char *name, RDB_bool persistent,
             ret = RDB_NO_MEMORY;
             goto error;
         }
-    } else {
-        tbp->name = NULL;
     }
 
     /* copy candidate keys */
@@ -820,7 +830,7 @@ RDB_table_is_empty(RDB_table *tbp, RDB_transaction *txp, RDB_bool *resultp)
     RDB_qresult *qrp;
     RDB_object tpl;
 
-    if (!RDB_tx_is_running(txp))
+    if (txp != NULL && !RDB_tx_is_running(txp))
         return RDB_INVALID_TRANSACTION;
 
     ret = _RDB_table_qresult(tbp, txp, &qrp);
@@ -851,7 +861,7 @@ RDB_cardinality(RDB_table *tbp, RDB_transaction *txp)
     RDB_qresult *qrp;
     RDB_object tpl;
 
-    if (!RDB_tx_is_running(txp))
+    if (txp != NULL && !RDB_tx_is_running(txp))
         return RDB_INVALID_TRANSACTION;
 
     ret = _RDB_table_qresult(tbp, txp, &qrp);
@@ -950,7 +960,7 @@ error:
 int
 RDB_select(RDB_table *tbp, RDB_expression *condp, RDB_table **resultpp)
 {
-    RDB_table *newtbp = malloc(sizeof (RDB_table));
+    RDB_table *newtbp = new_table();
     
     if (newtbp == NULL)
         return RDB_NO_MEMORY;
@@ -973,7 +983,6 @@ RDB_select(RDB_table *tbp, RDB_expression *condp, RDB_table **resultpp)
     newtbp->var.select.tbp = tbp;
     newtbp->var.select.exprp = condp;
     newtbp->typ = tbp->typ;
-    newtbp->name = NULL;
 
     newtbp->keyc = tbp->keyc;
     newtbp->keyv = dup_keys(tbp->keyc, tbp->keyv);
@@ -1027,7 +1036,7 @@ RDB_union(RDB_table *tbp1, RDB_table *tbp2, RDB_table **resultpp)
     if (!RDB_type_equals(tbp1->typ, tbp2->typ))
         return RDB_TYPE_MISMATCH;
 
-    newtbp = malloc(sizeof (RDB_table));
+    newtbp = new_table();
     if (newtbp == NULL)
         return RDB_NO_MEMORY;
 
@@ -1037,7 +1046,6 @@ RDB_union(RDB_table *tbp1, RDB_table *tbp2, RDB_table **resultpp)
     newtbp->var._union.tbp1 = tbp1;
     newtbp->var._union.tbp2 = tbp2;
     newtbp->typ = tbp1->typ;
-    newtbp->name = NULL;
 
     /*
      * Set keys. The result table becomes all-key.
@@ -1062,7 +1070,7 @@ RDB_minus(RDB_table *tbp1, RDB_table *tbp2, RDB_table **result)
     if (!RDB_type_equals(tbp1->typ, tbp2->typ))
         return RDB_TYPE_MISMATCH;
 
-    newtbp = malloc(sizeof (RDB_table));
+    newtbp = new_table();
     if (newtbp == NULL)
         return RDB_NO_MEMORY;
 
@@ -1073,7 +1081,6 @@ RDB_minus(RDB_table *tbp1, RDB_table *tbp2, RDB_table **result)
     newtbp->var.minus.tbp1 = tbp1;
     newtbp->var.minus.tbp2 = tbp2;
     newtbp->typ = tbp1->typ;
-    newtbp->name = NULL;
 
     newtbp->keyc = tbp1->keyc;
     newtbp->keyv = dup_keys(tbp1->keyc, tbp1->keyv);
@@ -1093,7 +1100,7 @@ RDB_intersect(RDB_table *tbp1, RDB_table *tbp2, RDB_table **result)
     if (!RDB_type_equals(tbp1->typ, tbp2->typ))
         return RDB_TYPE_MISMATCH;
 
-    newtbp = malloc(sizeof (RDB_table));
+    newtbp = new_table();
     if (newtbp == NULL)
         return RDB_NO_MEMORY;
 
@@ -1128,7 +1135,7 @@ RDB_join(RDB_table *tbp1, RDB_table *tbp2, RDB_table **resultpp)
     int attrc2 = tpltyp2->var.tuple.attrc;
     int cattrc;
 
-    newtbp = malloc(sizeof (RDB_table));
+    newtbp = new_table();
     if (newtbp == NULL)
         return RDB_NO_MEMORY;
 
@@ -1137,7 +1144,6 @@ RDB_join(RDB_table *tbp1, RDB_table *tbp2, RDB_table **resultpp)
     newtbp->is_persistent = RDB_FALSE;
     newtbp->var.join.tbp1 = tbp1;
     newtbp->var.join.tbp2 = tbp2;
-    newtbp->name = NULL;
     
     ret = RDB_join_relation_types(tbp1->typ, tbp2->typ, &newtbp->typ);
     if (ret != RDB_OK) {
@@ -1211,12 +1217,11 @@ RDB_extend(RDB_table *tbp, int attrc, RDB_virtual_attr attrv[],
     RDB_table *newtbp = NULL;
     RDB_attr *attrdefv = NULL;
 
-    newtbp = malloc(sizeof (RDB_table));
+    newtbp = new_table();
     if (newtbp == NULL)
         return RDB_NO_MEMORY;
 
     *resultpp = newtbp;
-    newtbp->name = NULL;
     newtbp->is_user = RDB_TRUE;
     newtbp->is_persistent = RDB_FALSE;
     newtbp->kind = RDB_TB_EXTEND;
@@ -1307,7 +1312,7 @@ RDB_project(RDB_table *tbp, int attrc, char *attrv[], RDB_table **resultpp)
     int ret;
     int i;
 
-    newtbp = malloc(sizeof (RDB_table));
+    newtbp = new_table();
     if (newtbp == NULL)
         return RDB_NO_MEMORY;
 
@@ -1435,11 +1440,10 @@ RDB_summarize(RDB_table *tb1p, RDB_table *tb2p, int addc, RDB_summarize_add addv
     int avgc;
     char **avgv;
 
-    newtbp = malloc(sizeof (RDB_table));
+    newtbp = new_table();
     if (newtbp == NULL)
         return RDB_NO_MEMORY;
 
-    newtbp->name = NULL;
     newtbp->is_user = RDB_TRUE;
     newtbp->is_persistent = RDB_FALSE;
     newtbp->kind = RDB_TB_SUMMARIZE;
@@ -1581,11 +1585,10 @@ RDB_rename(RDB_table *tbp, int renc, RDB_renaming renv[],
     int i;
     int ret;
 
-    newtbp = malloc(sizeof (RDB_table));
+    newtbp = new_table();
     if (newtbp == NULL)
         return RDB_NO_MEMORY;
 
-    newtbp->name = NULL;
     newtbp->is_user = RDB_TRUE;
     newtbp->is_persistent = RDB_FALSE;
     newtbp->kind = RDB_TB_RENAME;
@@ -1648,11 +1651,10 @@ RDB_wrap(RDB_table *tbp, int wrapc, RDB_wrapping wrapv[],
     int i;
     int ret;
 
-    newtbp = malloc(sizeof (RDB_table));
+    newtbp = new_table();
     if (newtbp == NULL)
         return RDB_NO_MEMORY;
 
-    newtbp->name = NULL;
     newtbp->is_user = RDB_TRUE;
     newtbp->is_persistent = RDB_FALSE;
     newtbp->kind = RDB_TB_WRAP;
@@ -1724,11 +1726,10 @@ RDB_unwrap(RDB_table *tbp, int attrc, char *attrv[],
     int ret;
     int i;
 
-    newtbp = malloc(sizeof (RDB_table));
+    newtbp = new_table();
     if (newtbp == NULL)
         return RDB_NO_MEMORY;
 
-    newtbp->name = NULL;
     newtbp->is_user = RDB_TRUE;
     newtbp->is_persistent = RDB_FALSE;
     newtbp->kind = RDB_TB_UNWRAP;
@@ -1791,7 +1792,7 @@ RDB_sdivide(RDB_table *tb1p, RDB_table *tb2p, RDB_table *tb3p,
     }
     RDB_drop_type(typ, NULL);
     
-    newtbp = malloc(sizeof (RDB_table));    
+    newtbp = new_table();    
     if (newtbp == NULL)
         return RDB_NO_MEMORY;
 
@@ -1801,7 +1802,6 @@ RDB_sdivide(RDB_table *tb1p, RDB_table *tb2p, RDB_table *tb3p,
     newtbp->var.sdivide.tb2p = tb2p;
     newtbp->var.sdivide.tb3p = tb3p;
     newtbp->typ = tb1p->typ;
-    newtbp->name = NULL;
     newtbp->kind = RDB_TB_SDIVIDE;
 
     newtbp->keyc = tb1p->keyc;

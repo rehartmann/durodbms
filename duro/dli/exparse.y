@@ -844,12 +844,7 @@ extractor: TOK_TUPLE TOK_FROM expression {
     ;
 
 count_invocation: TOK_COUNT '(' expression ')' {
-        RDB_table *tbp = expr_to_table($3);
-
-        if (tbp == NULL)
-            YYERROR;
-
-        $$ = RDB_expr_cardinality(RDB_table_to_expr(tbp));
+        $$ = RDB_expr_cardinality($3);
         if ($$ == NULL)
             YYERROR;
     }
@@ -994,12 +989,7 @@ any_invocation: TOK_ANY '(' argument_list ')' {
     ;
 
 is_empty_invocation: TOK_IS_EMPTY '(' expression ')' {
-        RDB_table *tbp = expr_to_table($3);
-
-        if (tbp == NULL)
-            YYERROR;
-
-        $$ = RDB_expr_is_empty(RDB_table_to_expr(tbp));
+        $$ = RDB_expr_is_empty($3);
         if ($$ == NULL)
             YYERROR;
     }
