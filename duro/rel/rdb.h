@@ -38,7 +38,6 @@ enum RDB_tp_kind {
     RDB_TP_RATIONAL,
     RDB_TP_STRING,
     RDB_TP_BINARY,
-    RDB_TP_USER,
     RDB_TP_TUPLE,
     RDB_TP_RELATION
 };
@@ -64,7 +63,7 @@ typedef struct RDB_type {
             int repc;
             RDB_possrep *repv;
         } scalar;
-    } complex;
+    } var;
 } RDB_type;
 
 /* built-in types */
@@ -721,6 +720,13 @@ RDB_bool
 RDB_is_builtin_type(const RDB_type *);
 
 /*
+ * Return RDB_TRUE if the type pointed to by typ is a scalar type,
+ * or RDB_FALSE if it's a user type.
+ */
+RDB_bool
+RDB_is_scalar_type(const RDB_type *);
+
+/*
  * Return RDB_TRUE if the two types are equal
  * or RDB_FALSE if they are not .
  * Two types are equal if there definition is equal.
@@ -823,7 +829,8 @@ void
 RDB_destroy_value(RDB_value *valp);
 
 int
-RDB_value_set(RDB_value *valp, const RDB_value **compv);
+RDB_value_set(RDB_value *valp, RDB_type *, const char *repname,
+              RDB_value **compv);
 
 void
 RDB_value_set_bool(RDB_value *valp, RDB_bool v);
@@ -836,6 +843,14 @@ RDB_value_set_rational(RDB_value *valp, RDB_rational v);
 
 int
 RDB_value_set_string(RDB_value *valp, const char *str);
+
+int
+RDB_value_get_comp(const RDB_value *valp, const char *compname,
+                   RDB_value *comp);
+
+int
+RDB_value_set_comp(RDB_value *valp, const char *compname,
+                   const RDB_value *comp);
 
 RDB_bool
 RDB_value_bool(const RDB_value *valp);

@@ -188,8 +188,8 @@ open_table(const char *name, RDB_bool persistent,
                               &fno, sizeof fno);
         if (ret != RDB_OK)
             goto error;
-        /* Only built-in types supported by this version */
-        if (!RDB_is_builtin_type(heading[i].type)) {
+        /* Only scalar types supported by this version */
+        if (!RDB_is_scalar_type(heading[i].type)) {
             ret = RDB_NOT_SUPPORTED;
             goto error;
         }
@@ -297,7 +297,7 @@ static int
 catalog_insert(RDB_table *tbp, RDB_transaction *txp)
 {
     RDB_tuple tpl;
-    RDB_type *tuptyp = tbp->typ->complex.basetyp;
+    RDB_type *tuptyp = tbp->typ->var.basetyp;
     int ret;
     int i, j;
 
@@ -335,9 +335,9 @@ catalog_insert(RDB_table *tbp, RDB_transaction *txp)
         return ret;
     }
 
-    for (i = 0; i < tuptyp->complex.tuple.attrc; i++) {
-        char *attrname = tuptyp->complex.tuple.attrv[i].name;
-        char *typename = RDB_type_name(tuptyp->complex.tuple.attrv[i].type);
+    for (i = 0; i < tuptyp->var.tuple.attrc; i++) {
+        char *attrname = tuptyp->var.tuple.attrv[i].name;
+        char *typename = RDB_type_name(tuptyp->var.tuple.attrv[i].type);
 
         ret = RDB_tuple_set_string(&tpl, "ATTRNAME", attrname);
         if (ret != RDB_OK) {
@@ -1358,7 +1358,6 @@ get_cat_vtable(const char *name, RDB_transaction *txp, RDB_table **tbpp)
     RDB_value *valp;
     RDB_bool usr;
     int ret;
-    int pos;
 
     /* read real table data from the catalog */
 
@@ -1387,8 +1386,7 @@ get_cat_vtable(const char *name, RDB_transaction *txp, RDB_table **tbpp)
     usr = RDB_tuple_get_bool(&tpl, "IS_USER");
 
     valp = RDB_tuple_get(&tpl, "I_DEF");
-    pos = 0;
-    ret = _RDB_deserialize_table(valp, &pos, txp, tbpp);
+    ret = _RDB_deserialize_vtable(valp, txp, tbpp);
     if (ret != RDB_OK)
         goto error;
     
@@ -1637,12 +1635,17 @@ get_cat_type(const char *name, RDB_transaction *txp, RDB_type **typp)
 {
     RDB_expression *exp;
     RDB_expression *wherep;
-    RDB_table *tmptbp;
+    RDB_table *tmptb1p = NULL;
+    RDB_table *tmptb2p = NULL;
+    RDB_table *tmptb3p = NULL;
     RDB_tuple tpl;
-    int ret;
+    RDB_array possreps;
+    RDB_array comps;
+    RDB_type *typ = NULL;
+    int ret, tret;
+    int i;
 
-    *typp = NULL;
-
+    /* Create where condition for 1st query */
     exp = RDB_expr_attr("TYPENAME", &RDB_STRING);
     if (exp == NULL)
         return RDB_NO_MEMORY;
@@ -1651,48 +1654,190 @@ get_cat_type(const char *name, RDB_transaction *txp, RDB_type **typp)
         RDB_drop_expr(exp);
         return RDB_NO_MEMORY;
     }
-    
-    ret = RDB_select(txp->dbp->types_tbp, wherep, &tmptbp);
+
+    ret = RDB_select(txp->dbp->types_tbp, wherep, &tmptb1p);
     if (ret != RDB_OK) {
          RDB_drop_expr(wherep);
          return ret;
     }
 
     RDB_init_tuple(&tpl);
-    ret = RDB_extract_tuple(tmptbp, &tpl, txp);
+    RDB_init_array(&possreps);
+    RDB_init_array(&comps);
+    ret = RDB_extract_tuple(tmptb1p, &tpl, txp);
     if (ret != RDB_OK)
         goto error;
 
-    *typp = malloc(sizeof (RDB_type));
-    if (*typp == NULL) {
+    typ = malloc(sizeof (RDB_type));
+    if (typ == NULL) {
+        ret = RDB_NO_MEMORY;
+        goto error;
+    }
+    typ->var.scalar.repc = 0;
+
+    typ->name = RDB_dup_str(name);
+    if (typ->name == NULL) {
         ret = RDB_NO_MEMORY;
         goto error;
     }
 
-    (*typp)->name = RDB_dup_str(name);
-    if ((*typp)->name == NULL) {
-        free(*typp);
+    /* Create where condition for 2nd query */
+    exp = RDB_expr_attr("TYPENAME", &RDB_STRING);
+    if (exp == NULL) {
         ret = RDB_NO_MEMORY;
         goto error;
     }
-    (*typp)->kind = RDB_TP_USER;
-    /* !! */
-    
-    ret = RDB_drop_table(tmptbp, txp);
-    tmptbp = NULL;
+    wherep = RDB_eq(exp, RDB_string_const(name));
+    if (wherep == NULL) {
+        RDB_drop_expr(exp);
+        ret = RDB_NO_MEMORY;
+        goto error;
+    }
+
+    ret = RDB_select(txp->dbp->possreps_tbp, wherep, &tmptb2p);
+    if (ret != RDB_OK) {
+        RDB_drop_expr(wherep);
+        goto error;
+    }
+    ret = RDB_table_to_array(tmptb2p, &possreps, 0, NULL, txp);
     if (ret != RDB_OK) {
         goto error;
     }
+    ret = RDB_array_length(&possreps);
+    if (ret < 0) {
+        goto error;
+    }
+    typ->var.scalar.repc = ret;
+    if (ret > 0)
+        typ->var.scalar.repv = malloc(ret * sizeof (RDB_possrep));
+    for (i = 0; i < typ->var.scalar.repc; i++)
+        typ->var.scalar.repv[i].compv = NULL;
+    /*
+     * Read possrep data from array and store it in typ->var.scalar.repv.
+     */
+    for (i = 0; i < typ->var.scalar.repc; i++) {
+        RDB_expression *ex2p;
+        int j;
+
+        ret = RDB_array_get_tuple(&possreps, (RDB_int) i, &tpl);
+        if (ret != RDB_OK)
+            goto error;
+        typ->var.scalar.repv[i].name = RDB_dup_str(
+                RDB_tuple_get_string(&tpl, "POSSREPNAME"));
+
+        ret = _RDB_deserialize_expr(RDB_tuple_get(&tpl, "I_CONSTRAINT"), txp,
+                &typ->var.scalar.repv[i].constraintp);
+        if (ret != RDB_OK) {
+            goto error;
+        }
+
+        /* Create where condition for 3rd query */
+        exp = RDB_expr_attr("TYPENAME", &RDB_STRING);
+        if (exp == NULL) {
+            ret = RDB_NO_MEMORY;
+            goto error;
+        }
+        wherep = RDB_eq(exp, RDB_string_const(name));
+        if (wherep == NULL) {
+            RDB_drop_expr(exp);
+            ret = RDB_NO_MEMORY;
+            goto error;
+        }
+        exp = RDB_expr_attr("POSSREPNAME", &RDB_STRING);
+        if (exp == NULL) {
+            RDB_drop_expr(wherep);
+            ret = RDB_NO_MEMORY;
+            goto error;
+        }
+        ex2p = RDB_eq(exp, RDB_string_const(typ->var.scalar.repv[i].name));
+        if (ex2p == NULL) {
+            RDB_drop_expr(exp);
+            RDB_drop_expr(wherep);
+            ret = RDB_NO_MEMORY;
+            goto error;
+        }
+        exp = wherep;
+        wherep = RDB_and(exp, ex2p);
+        if (wherep == NULL) {
+            RDB_drop_expr(exp);
+            RDB_drop_expr(ex2p);
+            ret = RDB_NO_MEMORY;
+            goto error;
+        }
+        ret = RDB_select(txp->dbp->possrepcomps_tbp, wherep, &tmptb3p);
+        if (ret != RDB_OK) {
+            RDB_drop_expr(wherep);
+            goto error;
+        }
+        ret = RDB_table_to_array(tmptb3p, &comps, 0, NULL, txp);
+        if (ret != RDB_OK) {
+            goto error;
+        }
+        ret = RDB_array_length(&comps);
+        if (ret < 0) {
+            goto error;
+        }
+        typ->var.scalar.repv[i].compc = ret;
+        if (ret > 0)
+            typ->var.scalar.repv[i].compv = malloc(ret * sizeof (RDB_attr));
+        else
+            typ->var.scalar.repv[i].compv = NULL;
+
+        /*
+         * Read component data from array and store it in
+         * typ->var.scalar.repv[i].compv.
+         */
+        for (j = 0; j < typ->var.scalar.repv[i].compc; j++) {
+            RDB_int idx;
+
+            ret = RDB_array_get_tuple(&comps, (RDB_int) i, &tpl);
+            if (ret != RDB_OK)
+                goto error;
+            idx = RDB_tuple_get_int(&tpl, "COMPNO");
+            typ->var.scalar.repv[i].compv[idx].name = RDB_dup_str(
+                    RDB_tuple_get_string(&tpl, "COMPNAME"));
+            if (typ->var.scalar.repv[i].compv[idx].name == NULL) {
+                ret = RDB_NO_MEMORY;
+                goto error;
+            }
+            ret = RDB_get_type(RDB_tuple_get_string(&tpl, "COMPTYPENAME"),
+                    txp, &typ->var.scalar.repv[i].compv[idx].type);
+            if (ret != RDB_OK)
+                goto error;
+        }
+    }
+    typ->kind = typ->var.scalar.repv[0].compv[0].type->kind;
+
+    *typp = typ;
+
+    ret = RDB_drop_table(tmptb1p, txp);
+    tret = RDB_drop_table(tmptb2p, txp);
+    if (ret == RDB_OK)
+        ret = tret;
+
     RDB_destroy_tuple(&tpl);
-    return RDB_OK;
-    
+    RDB_destroy_array(&possreps);
+    RDB_destroy_array(&comps);
+
+    return ret;
 error:
-    if (tmptbp == NULL)
-        RDB_drop_table(tmptbp, txp);
+    if (tmptb1p != NULL)
+        RDB_drop_table(tmptb1p, txp);
+    if (tmptb2p != NULL)
+        RDB_drop_table(tmptb2p, txp);
+    if (tmptb3p != NULL)
+        RDB_drop_table(tmptb3p, txp);
     RDB_destroy_tuple(&tpl);
-    if (*typp != NULL) {
-        free((*typp)->name);
-        free(*typp);
+    RDB_destroy_array(&possreps);
+    RDB_destroy_array(&comps);
+    if (typ != NULL) {
+        if (typ->var.scalar.repc != 0) {
+            for (i = 0; i < typ->var.scalar.repc; i++)
+                free(typ->var.scalar.repv[i].compv);
+            free(typ->var.scalar.repv);
+        }
+        free(typ->name);
+        free(typ);
     }
     return ret;
 }
@@ -1743,6 +1888,9 @@ RDB_define_type(const char *name, int repc, RDB_possrep repv[],
     int ret;
     int i, j;
 
+    if (repc != 1)
+        return RDB_ILLEGAL_ARG;
+
     ret = RDB_begin_tx(&tx, RDB_tx_db(txp), txp);
     if (ret != RDB_OK)
         return ret;
@@ -1750,7 +1898,9 @@ RDB_define_type(const char *name, int repc, RDB_possrep repv[],
     RDB_init_tuple(&tpl);
     RDB_init_value(&conval);
 
-    /* Insert tuple into SYSTYPES */
+    /*
+     * Insert tuple into SYSTYPES
+     */
 
     ret = RDB_tuple_set_string(&tpl, "TYPENAME", name);
     if (ret != RDB_OK)
@@ -1766,24 +1916,46 @@ RDB_define_type(const char *name, int repc, RDB_possrep repv[],
     if (ret != RDB_OK)
         goto error;
 
-    /* Insert tuple into SYSPOSSREPS */
-    
+    /*
+     * Insert tuple into SYSPOSSREPS
+     */   
+
     for (i = 0; i < repc; i++) {
         char *prname = repv[i].name;
         RDB_expression *exp = repv[i].constraintp;
 
+        if (repv[i].compc != 1) {
+            ret = RDB_ILLEGAL_ARG;
+            goto error;
+        }
+
         if (prname == NULL) {
+            /* possrep name may be NULL if there's only 1 possrep */
             if (repc > 1) {
                 ret = RDB_ILLEGAL_ARG;
                 goto error;
             }
-            prname = "";
+            prname = (char *)name;
         }
         ret = RDB_tuple_set_string(&tpl, "POSSREPNAME", prname);
         if (ret != RDB_OK)
             goto error;
+        
+        /* If constraintp is NULL, replace is by RDB_TRUE */
         if (exp == NULL)
             exp = RDB_bool_const(RDB_TRUE);
+        if (exp == NULL) {
+            ret = RDB_NO_MEMORY;
+            goto error;
+        }
+
+        /* Check if type of constraint is RDB_BOOLEAN */
+        if (RDB_expr_type(exp) != &RDB_BOOLEAN) {
+            ret = RDB_TYPE_MISMATCH;
+            goto error;
+        }
+
+        /* Store constraint in tuple */
         ret = _RDB_expr_to_value(exp, &conval);
         if (ret != RDB_OK)
             goto error;
@@ -1791,6 +1963,7 @@ RDB_define_type(const char *name, int repc, RDB_possrep repv[],
         if (ret != RDB_OK)
             goto error;
 
+        /* Store tuple */
         ret = RDB_insert(txp->dbp->possreps_tbp, &tpl, &tx);
         if (ret != RDB_OK)
             goto error;
@@ -1803,7 +1976,7 @@ RDB_define_type(const char *name, int repc, RDB_possrep repv[],
                     ret = RDB_ILLEGAL_ARG;
                     goto error;
                 }
-                cname = "";
+                cname = prname;
             }
             ret = RDB_tuple_set_int(&tpl, "COMPNO", (RDB_int)j);
             if (ret != RDB_OK)

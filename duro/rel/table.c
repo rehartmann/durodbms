@@ -97,8 +97,8 @@ RDB_insert(RDB_table *tbp, const RDB_tuple *tup, RDB_transaction *txp)
         case RDB_TB_STORED:
         {
             int i;
-            RDB_type *tuptyp = tbp->typ->complex.basetyp;
-            int attrcount = tuptyp->complex.tuple.attrc;
+            RDB_type *tuptyp = tbp->typ->var.basetyp;
+            int attrcount = tuptyp->var.tuple.attrc;
             RDB_field *fvp;
 
             fvp = malloc(sizeof(RDB_field) * attrcount);
@@ -109,12 +109,12 @@ RDB_insert(RDB_table *tbp, const RDB_tuple *tup, RDB_transaction *txp)
                 RDB_value *valp;
                 
                 fnop = RDB_hashmap_get(&tbp->var.stored.attrmap,
-                        tuptyp->complex.tuple.attrv[i].name, NULL);
-                valp = RDB_tuple_get(tup, tuptyp->complex.tuple.attrv[i].name);
+                        tuptyp->var.tuple.attrv[i].name, NULL);
+                valp = RDB_tuple_get(tup, tuptyp->var.tuple.attrv[i].name);
                 
                 /* Typecheck */
                 if (!RDB_type_equals(valp->typ,
-                                     tuptyp->complex.tuple.attrv[i].type)) {
+                                     tuptyp->var.tuple.attrv[i].type)) {
                      return RDB_TYPE_MISMATCH;
                 }
                 fvp[*fnop].datap = RDB_value_irep(valp, &fvp[*fnop].len);
@@ -270,7 +270,7 @@ update_stored(RDB_table *tbp, RDB_expression *condp,
     RDB_tuple tpl;
     void *datap;
     size_t len;
-    RDB_type *tpltyp = tbp->typ->complex.basetyp;
+    RDB_type *tpltyp = tbp->typ->var.basetyp;
     RDB_expression *exprp;
     RDB_value *valv = malloc(sizeof(RDB_value) * attrc);
     RDB_field *fieldv = malloc(sizeof(RDB_field) * attrc);
@@ -350,7 +350,7 @@ update_stored(RDB_table *tbp, RDB_expression *condp,
     
     do {
         RDB_init_tuple(&tpl);
-        for (i = 0; i < tpltyp->complex.tuple.attrc; i++) {
+        for (i = 0; i < tpltyp->var.tuple.attrc; i++) {
             RDB_value val;
 
             ret = RDB_cursor_get(curp, i, &datap, &len);
@@ -358,12 +358,12 @@ update_stored(RDB_table *tbp, RDB_expression *condp,
                goto error;
             }
             RDB_init_value(&val);
-            ret = RDB_irep_to_value(&val, tpltyp->complex.tuple.attrv[i].type,
+            ret = RDB_irep_to_value(&val, tpltyp->var.tuple.attrv[i].type,
                               datap, len);
             if (ret != RDB_OK) {
                goto error;
             }
-            ret = RDB_tuple_set(&tpl, tpltyp->complex.tuple.attrv[i].name, &val);
+            ret = RDB_tuple_set(&tpl, tpltyp->var.tuple.attrv[i].name, &val);
             if (ret != RDB_OK) {
                goto error;
             }
@@ -383,7 +383,7 @@ update_stored(RDB_table *tbp, RDB_expression *condp,
             for (i = 0; i < attrc; i++) {
                 /* Typecheck */
                 if (!RDB_type_equals(valv[i].typ,
-                        _RDB_tuple_attr_type(tbp->typ->complex.basetyp, attrv[i].name))) {
+                        _RDB_tuple_attr_type(tbp->typ->var.basetyp, attrv[i].name))) {
                     ret = RDB_TYPE_MISMATCH;
                     goto error;
                 }
@@ -473,7 +473,7 @@ delete_stored(RDB_table *tbp, RDB_expression *condp,
     RDB_tuple tpl;
     void *datap;
     size_t len;
-    RDB_type *tpltyp = tbp->typ->complex.basetyp;
+    RDB_type *tpltyp = tbp->typ->var.basetyp;
     RDB_expression *exprp;
     RDB_bool b;
 
@@ -501,7 +501,7 @@ delete_stored(RDB_table *tbp, RDB_expression *condp,
     
     do {
         RDB_init_tuple(&tpl);
-        for (i = 0; i < tpltyp->complex.tuple.attrc; i++) {
+        for (i = 0; i < tpltyp->var.tuple.attrc; i++) {
             RDB_value val;
 
             ret = RDB_cursor_get(curp, i, &datap, &len);
@@ -510,13 +510,13 @@ delete_stored(RDB_table *tbp, RDB_expression *condp,
                goto error;
             }
             RDB_init_value(&val);
-            ret = RDB_irep_to_value(&val, tpltyp->complex.tuple.attrv[i].type,
+            ret = RDB_irep_to_value(&val, tpltyp->var.tuple.attrv[i].type,
                              datap, len);
             if (ret != RDB_OK) {
                RDB_destroy_tuple(&tpl);
                goto error;
             }
-            ret = RDB_tuple_set(&tpl, tpltyp->complex.tuple.attrv[i].name, &val);
+            ret = RDB_tuple_set(&tpl, tpltyp->var.tuple.attrv[i].name, &val);
             if (ret != RDB_OK) {
                RDB_destroy_tuple(&tpl);
                goto error;
@@ -695,18 +695,18 @@ RDB_aggregate(RDB_table *tbp, RDB_aggregate_op op, const char *attrname,
 
     /* attrname may only be NULL if op == RDB_AVG or table is unary */
     if (attrname == NULL && op != RDB_COUNT) {
-        if (tbp->typ->complex.basetyp->complex.tuple.attrc != 1)
+        if (tbp->typ->var.basetyp->var.tuple.attrc != 1)
             return RDB_ILLEGAL_ARG;
-        attrname = tbp->typ->complex.basetyp->complex.tuple.attrv[0].name;
+        attrname = tbp->typ->var.basetyp->var.tuple.attrv[0].name;
     }
 
     if (attrname != NULL) {
-        attrtyp = _RDB_tuple_attr_type(tbp->typ->complex.basetyp, attrname);
+        attrtyp = _RDB_tuple_attr_type(tbp->typ->var.basetyp, attrname);
         if (attrtyp == NULL)
             return RDB_ILLEGAL_ARG;
     }
 
-    ret = aggr_type(tbp->typ->complex.basetyp, attrtyp, op, &resultp->typ);
+    ret = aggr_type(tbp->typ->var.basetyp, attrtyp, op, &resultp->typ);
     if (ret != RDB_OK)
         return ret;
 
@@ -854,20 +854,20 @@ attr_eq(RDB_attr *attrp, const RDB_tuple *tup)
 static int
 project_contains(RDB_table *tbp, const RDB_tuple *tup, RDB_transaction *txp)
 {
-    RDB_type *tuptyp = tbp->typ->complex.basetyp;
+    RDB_type *tuptyp = tbp->typ->var.basetyp;
     RDB_bool result;
     int ret;
     
-    if (tuptyp->complex.tuple.attrc > 0) {
+    if (tuptyp->var.tuple.attrc > 0) {
         RDB_expression *condp;
         RDB_table *seltbp;
         int i, ret;
 
         /* create where-condition */        
-        condp = attr_eq(&tuptyp->complex.tuple.attrv[0], tup);
+        condp = attr_eq(&tuptyp->var.tuple.attrv[0], tup);
         
-        for (i = 1; i < tuptyp->complex.tuple.attrc; i++) {
-            condp = RDB_and(condp, attr_eq(&tuptyp->complex.tuple.attrv[0],
+        for (i = 1; i < tuptyp->var.tuple.attrc; i++) {
+            condp = RDB_and(condp, attr_eq(&tuptyp->var.tuple.attrv[0],
                     tup));
         }
         if (condp == NULL)
@@ -914,12 +914,12 @@ RDB_rename_contains(RDB_table *tbp, const RDB_tuple *tup, RDB_transaction *txp)
     RDB_tuple tpl;
     int i;
     int ret;
-    RDB_type *tuptyp = tbp->typ->complex.basetyp;
+    RDB_type *tuptyp = tbp->typ->var.basetyp;
 
     RDB_init_tuple(&tpl);
-    for (i = 0; i < tuptyp->complex.tuple.attrc; i++) {
+    for (i = 0; i < tuptyp->var.tuple.attrc; i++) {
         /* has the attribute been renamed? */
-        char *attrname = tuptyp->complex.tuple.attrv[i].name;
+        char *attrname = tuptyp->var.tuple.attrv[i].name;
         int ai = _RDB_find_rename_to(tbp->var.rename.renc, tbp->var.rename.renv,
                 attrname);
 
@@ -952,8 +952,8 @@ RDB_table_contains(RDB_table *tbp, const RDB_tuple *tup, RDB_transaction *txp)
         case RDB_TB_STORED:
             {
                 int i;
-                RDB_type *tuptyp = tbp->typ->complex.basetyp;
-                int attrcount = tuptyp->complex.tuple.attrc;
+                RDB_type *tuptyp = tbp->typ->var.basetyp;
+                int attrcount = tuptyp->var.tuple.attrc;
                 RDB_field *fvp;
 
                 fvp = malloc(sizeof(RDB_field) * attrcount);
@@ -962,9 +962,9 @@ RDB_table_contains(RDB_table *tbp, const RDB_tuple *tup, RDB_transaction *txp)
                 for (i = 0; i < attrcount; i++) {
                     RDB_value* valp;
                     int fno = *(int*)RDB_hashmap_get(&tbp->var.stored.attrmap,
-                            tuptyp->complex.tuple.attrv[i].name, NULL);
+                            tuptyp->var.tuple.attrv[i].name, NULL);
                     valp = RDB_tuple_get(tup,
-                            tuptyp->complex.tuple.attrv[i].name);
+                            tuptyp->var.tuple.attrv[i].name);
                     fvp[fno].datap = RDB_value_irep(valp, &fvp[fno].len);
                 }
                 ret = RDB_contains_rec(tbp->var.stored.recmapp, fvp, txp->txid);
@@ -1216,7 +1216,7 @@ static RDB_key_attrs *all_key(RDB_table *tbp) {
         return NULL;
     
     attrc = keyv[0].attrc =
-            tbp->typ->complex.basetyp->complex.tuple.attrc;
+            tbp->typ->var.basetyp->var.tuple.attrc;
     keyv[0].attrv = malloc(sizeof(char *) * attrc);
     if (keyv[0].attrv == NULL) {
         free(keyv);
@@ -1226,7 +1226,7 @@ static RDB_key_attrs *all_key(RDB_table *tbp) {
         keyv[0].attrv[i] = NULL;
     for (i = 0; i < attrc; i++) {
         keyv[0].attrv[i] = RDB_dup_str(
-                tbp->typ->complex.basetyp->complex.tuple.attrv[i].name);
+                tbp->typ->var.basetyp->var.tuple.attrv[i].name);
         if (keyv[0].attrv[i] == NULL) {
             goto error;
         }
@@ -1342,10 +1342,10 @@ RDB_join(RDB_table *tbp1, RDB_table *tbp2, RDB_table **resultpp)
     RDB_table *newtbp;
     int ret;
     int i, j, k;
-    RDB_type *tpltyp1 = tbp1->typ->complex.basetyp;
-    RDB_type *tpltyp2 = tbp2->typ->complex.basetyp;
-    int attrc1 = tpltyp1->complex.tuple.attrc;
-    int attrc2 = tpltyp2->complex.tuple.attrc;
+    RDB_type *tpltyp1 = tbp1->typ->var.basetyp;
+    RDB_type *tpltyp2 = tbp2->typ->var.basetyp;
+    int attrc1 = tpltyp1->var.tuple.attrc;
+    int attrc2 = tpltyp2->var.tuple.attrc;
     int cattrc;
 
     newtbp = malloc(sizeof (RDB_table));
@@ -1369,13 +1369,13 @@ RDB_join(RDB_table *tbp1, RDB_table *tbp2, RDB_table **resultpp)
     cattrc = 0;
     for (i = 0; i < attrc1; i++) {
         for (j = 0;
-             j < attrc2 && strcmp(tpltyp1->complex.tuple.attrv[i].name,
-                     tpltyp2->complex.tuple.attrv[j].name) != 0;
+             j < attrc2 && strcmp(tpltyp1->var.tuple.attrv[i].name,
+                     tpltyp2->var.tuple.attrv[j].name) != 0;
              j++)
             ;
         if (j < attrc2)
             newtbp->var.join.common_attrv[cattrc++] =
-                    tpltyp1->complex.tuple.attrv[i].name;
+                    tpltyp1->var.tuple.attrv[i].name;
     }
     newtbp->var.join.common_attrc = cattrc;
 
@@ -1684,39 +1684,39 @@ RDB_summarize(RDB_table *tb1p, RDB_table *tb2p, int addc, RDB_summarize_add addv
 
     /* Create type */
 
-    attrc = tb2p->typ->complex.basetyp->complex.tuple.attrc + addc + avgc;
+    attrc = tb2p->typ->var.basetyp->var.tuple.attrc + addc + avgc;
     tuptyp = malloc(sizeof (RDB_type));
     tuptyp->kind = RDB_TP_TUPLE;
-    tuptyp->complex.tuple.attrc = attrc;
-    tuptyp->complex.tuple.attrv = malloc(attrc * sizeof(RDB_attr));
+    tuptyp->var.tuple.attrc = attrc;
+    tuptyp->var.tuple.attrv = malloc(attrc * sizeof(RDB_attr));
     for (i = 0; i < addc; i++) {
         RDB_type *typ = addv[i].op == RDB_COUNT ? &RDB_INTEGER : RDB_expr_type(addv[i].exp);
 
-        tuptyp->complex.tuple.attrv[i].name = addv[i].name;
+        tuptyp->var.tuple.attrv[i].name = addv[i].name;
         if (addv[i].op == RDB_COUNT) {
-            tuptyp->complex.tuple.attrv[i].type = &RDB_INTEGER;
+            tuptyp->var.tuple.attrv[i].type = &RDB_INTEGER;
         } else {
-            ret = aggr_type(tb1p->typ->complex.basetyp, typ,
-                        addv[i].op, &tuptyp->complex.tuple.attrv[i].type);
+            ret = aggr_type(tb1p->typ->var.basetyp, typ,
+                        addv[i].op, &tuptyp->var.tuple.attrv[i].type);
             if (ret != RDB_OK)
                 goto error;
         }
-        tuptyp->complex.tuple.attrv[i].defaultp = NULL;
-        tuptyp->complex.tuple.attrv[i].options = 0;
+        tuptyp->var.tuple.attrv[i].defaultp = NULL;
+        tuptyp->var.tuple.attrv[i].options = 0;
     }
-    for (i = 0; i < tb2p->typ->complex.basetyp->complex.tuple.attrc; i++) {
-        tuptyp->complex.tuple.attrv[addc + i].name =
-                tb2p->typ->complex.basetyp->complex.tuple.attrv[i].name;
-        tuptyp->complex.tuple.attrv[addc + i].type =
-                tb2p->typ->complex.basetyp->complex.tuple.attrv[i].type;
-        tuptyp->complex.tuple.attrv[addc + i].defaultp = NULL;
-        tuptyp->complex.tuple.attrv[addc + i].options = 0;
+    for (i = 0; i < tb2p->typ->var.basetyp->var.tuple.attrc; i++) {
+        tuptyp->var.tuple.attrv[addc + i].name =
+                tb2p->typ->var.basetyp->var.tuple.attrv[i].name;
+        tuptyp->var.tuple.attrv[addc + i].type =
+                tb2p->typ->var.basetyp->var.tuple.attrv[i].type;
+        tuptyp->var.tuple.attrv[addc + i].defaultp = NULL;
+        tuptyp->var.tuple.attrv[addc + i].options = 0;
     }
     for (i = 0; i < avgc; i++) {
-        tuptyp->complex.tuple.attrv[attrc - avgc + i].name = avgv[i];
-        tuptyp->complex.tuple.attrv[attrc - avgc + i].type = &RDB_INTEGER;
-        tuptyp->complex.tuple.attrv[attrc - avgc + i].defaultp = NULL;
-        tuptyp->complex.tuple.attrv[attrc - avgc + i].options = 0;
+        tuptyp->var.tuple.attrv[attrc - avgc + i].name = avgv[i];
+        tuptyp->var.tuple.attrv[attrc - avgc + i].type = &RDB_INTEGER;
+        tuptyp->var.tuple.attrv[attrc - avgc + i].defaultp = NULL;
+        tuptyp->var.tuple.attrv[attrc - avgc + i].options = 0;
     }
         
     newtbp->typ = malloc(sizeof (RDB_type));
@@ -1725,13 +1725,13 @@ RDB_summarize(RDB_table *tb1p, RDB_table *tb2p, int addc, RDB_summarize_add addv
         goto error;
     }
     newtbp->typ->kind = RDB_TP_RELATION;
-    newtbp->typ->complex.basetyp = tuptyp;
+    newtbp->typ->var.basetyp = tuptyp;
 
     *resultpp = newtbp;
     return RDB_OK;
 error:
     if (tuptyp != NULL) {
-        free(tuptyp->complex.tuple.attrv);
+        free(tuptyp->var.tuple.attrv);
         free(tuptyp);
     }
     if (newtbp->typ != NULL)

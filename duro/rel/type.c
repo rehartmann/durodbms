@@ -14,15 +14,23 @@ void _RDB_init_builtin_types(void)
 {
     RDB_BOOLEAN.kind = RDB_TP_BOOLEAN;
     RDB_BOOLEAN.name = "BOOLEAN";
-    RDB_BOOLEAN.complex.scalar.repc = 0;
+    RDB_BOOLEAN.var.scalar.repc = 0;
+
     RDB_STRING.kind = RDB_TP_STRING;
     RDB_STRING.name = "STRING";
+    RDB_STRING.var.scalar.repc = 0;
+
     RDB_INTEGER.kind = RDB_TP_INTEGER;
     RDB_INTEGER.name = "INTEGER";
+    RDB_INTEGER.var.scalar.repc = 0;
+
     RDB_RATIONAL.kind = RDB_TP_RATIONAL;
     RDB_RATIONAL.name = "RATIONAL";
+    RDB_RATIONAL.var.scalar.repc = 0;
+
     RDB_BINARY.kind = RDB_TP_BINARY;
     RDB_BINARY.name = "BINARY";
+    RDB_BINARY.var.scalar.repc = 0;
 }
 
 RDB_bool
@@ -41,16 +49,15 @@ RDB_create_tuple_type(int attrc, RDB_attr attrv[])
         return NULL;
     tbtyp->name = NULL;
     tbtyp->kind = RDB_TP_TUPLE;
-    if ((tbtyp->complex.tuple.attrv = malloc(sizeof(RDB_attr) * attrc))
-            == NULL) {
+    if ((tbtyp->var.tuple.attrv = malloc(sizeof(RDB_attr) * attrc)) == NULL) {
         free(tbtyp);
         return NULL;
     }
     for (i = 0; i < attrc; i++) {
-        tbtyp->complex.tuple.attrv[i].type = attrv[i].type;
-        tbtyp->complex.tuple.attrv[i].name = RDB_dup_str(attrv[i].name);
+        tbtyp->var.tuple.attrv[i].type = attrv[i].type;
+        tbtyp->var.tuple.attrv[i].name = RDB_dup_str(attrv[i].name);
     }   
-    tbtyp->complex.tuple.attrc = attrc;
+    tbtyp->var.tuple.attrc = attrc;
     
     return tbtyp;
 }
@@ -65,7 +72,7 @@ RDB_create_relation_type(int attrc, RDB_attr attrv[])
     
     typ->name = NULL;
     typ->kind = RDB_TP_RELATION;
-    if ((typ->complex.basetyp = RDB_create_tuple_type(attrc, attrv))
+    if ((typ->var.basetyp = RDB_create_tuple_type(attrc, attrv))
             == NULL) {
         free(typ);
         return NULL;
@@ -76,50 +83,66 @@ RDB_create_relation_type(int attrc, RDB_attr attrv[])
 RDB_bool
 RDB_is_builtin_type(const RDB_type *typ)
 {
-    switch (typ->kind) {
-        case RDB_TP_BOOLEAN:
-        case RDB_TP_INTEGER:
-        case RDB_TP_RATIONAL:
-        case RDB_TP_STRING:
-        case RDB_TP_BINARY:
-            return RDB_TRUE;
-        default: ;
-    }
-    return RDB_FALSE;
+    return (RDB_bool) ((typ == &RDB_BOOLEAN) || (typ == &RDB_INTEGER)
+            || (typ == &RDB_RATIONAL) || (typ == &RDB_STRING)
+            || (typ == &RDB_BINARY));
 }
+
+RDB_bool
+RDB_is_scalar_type(const RDB_type *typ)
+{
+    return (typ->kind != RDB_TP_TUPLE) && (typ->kind != RDB_TP_RELATION);
+}
+
+static void
+free_type(RDB_type *typ)
+{
+    int i;
+
+    free(typ->name);
+
+    switch (typ->kind) {
+        case RDB_TP_TUPLE:
+            for (i = 0; i < typ->var.tuple.attrc; i++) {
+                RDB_type *attrtyp = typ->var.tuple.attrv[i].type;
+            
+                free(typ->var.tuple.attrv[i].name);
+                if (attrtyp->name == NULL)
+                    RDB_drop_type(attrtyp);
+            }
+            free(typ->var.tuple.attrv);
+            break;
+        case RDB_TP_RELATION:
+            RDB_drop_type(typ->var.basetyp);
+            break;
+        default:
+            if (typ->var.scalar.repc > 0) {
+                int i, j;
+                
+                for (i = 0; i < typ->var.scalar.repc; i++) {
+                    for (j = 0; j < typ->var.scalar.repv[i].compc; j++) {
+                        free(typ->var.scalar.repv[i].compv[i].name);
+                    }
+                    free(typ->var.scalar.repv[i].compv);
+                }
+                free(typ->var.scalar.repv);
+            }                
+    }
+    free(typ);
+}    
 
 int
 RDB_drop_type(RDB_type *typ)
 {
-    int i;
-
     if (RDB_is_builtin_type(typ))
         return RDB_ILLEGAL_ARG;
 
     if (typ->name != NULL) {
         /* delete type from database */
-        /* persistent user-defined types are not yet implemented ... */
-        free(typ->name);
+        /* !! ... */
     }
-    switch (typ->kind) {
-        case RDB_TP_TUPLE:
-            for (i = 0; i < typ->complex.tuple.attrc; i++) {
-                RDB_type *attrtyp = typ->complex.tuple.attrv[i].type;
-            
-                free(typ->complex.tuple.attrv[i].name);
-                if (attrtyp->name == NULL)
-                    RDB_drop_type(attrtyp);
-            }
-            free(typ->complex.tuple.attrv);
-            break;
-        case RDB_TP_RELATION:
-            RDB_drop_type(typ->complex.basetyp);
-            break;
-        default:
-            abort();
-    }
-    free(typ);
 
+    free_type(typ);
     return RDB_OK;
 }
 
@@ -138,22 +161,22 @@ RDB_type_equals(const RDB_type *typ1, const RDB_type *typ2)
     
     switch (typ1->kind) {
         case RDB_TP_RELATION:
-            return RDB_type_equals(typ1->complex.basetyp, typ2->complex.basetyp);
+            return RDB_type_equals(typ1->var.basetyp, typ2->var.basetyp);
         case RDB_TP_TUPLE:
             {
                 int i, j;
-                int attrcnt = typ1->complex.tuple.attrc;
+                int attrcnt = typ1->var.tuple.attrc;
 
-                if (attrcnt != typ2->complex.tuple.attrc)
+                if (attrcnt != typ2->var.tuple.attrc)
                     return RDB_FALSE;
                     
                 /* check if all attributes of typ1 also appear in typ2 */
                 for (i = 0; i < attrcnt; i++) {
                     for (j = 0; j < attrcnt; j++) {
-                        if (RDB_type_equals(typ1->complex.tuple.attrv[i].type,
-                                typ2->complex.tuple.attrv[j].type)
-                                && (strcmp(typ1->complex.tuple.attrv[i].name,
-                                typ2->complex.tuple.attrv[j].name) == 0))
+                        if (RDB_type_equals(typ1->var.tuple.attrv[i].type,
+                                typ2->var.tuple.attrv[j].type)
+                                && (strcmp(typ1->var.tuple.attrv[i].name,
+                                typ2->var.tuple.attrv[j].name) == 0))
                             break;
                     }
                     if (j >= attrcnt) {
@@ -185,35 +208,35 @@ RDB_extend_tuple_type(const RDB_type *typ, int attrc, RDB_attr attrv[])
         return NULL;
     newtyp->name = NULL;
     newtyp->kind = RDB_TP_TUPLE;
-    newtyp->complex.tuple.attrc = typ->complex.tuple.attrc + attrc;
-    newtyp->complex.tuple.attrv = malloc(sizeof (RDB_attr)
-            * (newtyp->complex.tuple.attrc));
-    if (newtyp->complex.tuple.attrv == NULL) {
+    newtyp->var.tuple.attrc = typ->var.tuple.attrc + attrc;
+    newtyp->var.tuple.attrv = malloc(sizeof (RDB_attr)
+            * (newtyp->var.tuple.attrc));
+    if (newtyp->var.tuple.attrv == NULL) {
         free(newtyp);
         return NULL;
     }
-    for (i = 0; i < typ->complex.tuple.attrc; i++) {
-        newtyp->complex.tuple.attrv[i].name = NULL;
+    for (i = 0; i < typ->var.tuple.attrc; i++) {
+        newtyp->var.tuple.attrv[i].name = NULL;
     }
-    for (i = 0; i < typ->complex.tuple.attrc; i++) {
-        newtyp->complex.tuple.attrv[i].name =
-                RDB_dup_str(typ->complex.tuple.attrv[i].name);
-        if (newtyp->complex.tuple.attrv[i].name == NULL)
+    for (i = 0; i < typ->var.tuple.attrc; i++) {
+        newtyp->var.tuple.attrv[i].name =
+                RDB_dup_str(typ->var.tuple.attrv[i].name);
+        if (newtyp->var.tuple.attrv[i].name == NULL)
             goto error;
-        newtyp->complex.tuple.attrv[i].type = typ->complex.tuple.attrv[i].type;
+        newtyp->var.tuple.attrv[i].type = typ->var.tuple.attrv[i].type;
     }
     for (i = 0; i < attrc; i++) {
-        newtyp->complex.tuple.attrv[typ->complex.tuple.attrc + i].name =
+        newtyp->var.tuple.attrv[typ->var.tuple.attrc + i].name =
                 RDB_dup_str(attrv[i].name);
-        newtyp->complex.tuple.attrv[typ->complex.tuple.attrc + i].type =
+        newtyp->var.tuple.attrv[typ->var.tuple.attrc + i].type =
                 attrv[i].type;
     }
     return newtyp;    
 
 error:
-    for (i = 0; i < typ->complex.tuple.attrc; i++)
-        free(newtyp->complex.tuple.attrv[i].name);
-    free(newtyp->complex.tuple.attrv);
+    for (i = 0; i < typ->var.tuple.attrc; i++)
+        free(newtyp->var.tuple.attrv[i].name);
+    free(newtyp->var.tuple.attrv);
     free(newtyp);
     return NULL;
 }
@@ -229,8 +252,8 @@ RDB_extend_relation_type(const RDB_type *typ, int attrc, RDB_attr attrv[])
     }
     restyp->name = NULL;
     restyp->kind = RDB_TP_RELATION;
-    restyp->complex.basetyp = RDB_extend_tuple_type(
-            typ->complex.basetyp, attrc, attrv);
+    restyp->var.basetyp = RDB_extend_tuple_type(
+            typ->var.basetyp, attrc, attrv);
     return restyp;
 }
 
@@ -255,58 +278,58 @@ RDB_join_tuple_types(const RDB_type *typ1, const RDB_type *typ2, RDB_type **newt
      * of both types.
      * That often will be too high; in this case it is reduced later.
      */
-    newtyp->complex.tuple.attrc = typ1->complex.tuple.attrc
-            + typ2->complex.tuple.attrc;
-    newtyp->complex.tuple.attrv = malloc(sizeof (RDB_attr)
-            * newtyp->complex.tuple.attrc);
+    newtyp->var.tuple.attrc = typ1->var.tuple.attrc
+            + typ2->var.tuple.attrc;
+    newtyp->var.tuple.attrv = malloc(sizeof (RDB_attr)
+            * newtyp->var.tuple.attrc);
 
-    for (i = 0; i < typ1->complex.tuple.attrc; i++)
-        newtyp->complex.tuple.attrv[i].name = NULL;
+    for (i = 0; i < typ1->var.tuple.attrc; i++)
+        newtyp->var.tuple.attrv[i].name = NULL;
 
     /* copy attributes from first tuple type */
-    for (i = 0; i < typ1->complex.tuple.attrc; i++) {
-        newtyp->complex.tuple.attrv[i].name = RDB_dup_str(
-                typ1->complex.tuple.attrv[i].name);
-        newtyp->complex.tuple.attrv[i].type = 
-                typ1->complex.tuple.attrv[i].type;
+    for (i = 0; i < typ1->var.tuple.attrc; i++) {
+        newtyp->var.tuple.attrv[i].name = RDB_dup_str(
+                typ1->var.tuple.attrv[i].name);
+        newtyp->var.tuple.attrv[i].type = 
+                typ1->var.tuple.attrv[i].type;
     }
-    attrc = typ1->complex.tuple.attrc;
+    attrc = typ1->var.tuple.attrc;
 
     /* add attributes from second tuple type */
-    for (i = 0; i < typ2->complex.tuple.attrc; i++) {
-        for (j = 0; j < typ1->complex.tuple.attrc; j++) {
-            if (strcmp(typ2->complex.tuple.attrv[i].name,
-                    typ1->complex.tuple.attrv[j].name) == 0) {
+    for (i = 0; i < typ2->var.tuple.attrc; i++) {
+        for (j = 0; j < typ1->var.tuple.attrc; j++) {
+            if (strcmp(typ2->var.tuple.attrv[i].name,
+                    typ1->var.tuple.attrv[j].name) == 0) {
                 /* If two attributes match by name, they must be of
                    the same type */
-                if (!RDB_type_equals(typ2->complex.tuple.attrv[i].type,
-                        typ1->complex.tuple.attrv[j].type)) {
+                if (!RDB_type_equals(typ2->var.tuple.attrv[i].type,
+                        typ1->var.tuple.attrv[j].type)) {
                     ret = RDB_TYPE_MISMATCH;
                     goto error;
                 }
                 break;
             }
         }
-        if (j >= typ1->complex.tuple.attrc) {
+        if (j >= typ1->var.tuple.attrc) {
             /* attribute not found, so add it to result type */
-            newtyp->complex.tuple.attrv[attrc].name = RDB_dup_str(
-                    typ2->complex.tuple.attrv[i].name);
-            newtyp->complex.tuple.attrv[attrc++].type =
-                    typ2->complex.tuple.attrv[i].type;
+            newtyp->var.tuple.attrv[attrc].name = RDB_dup_str(
+                    typ2->var.tuple.attrv[i].name);
+            newtyp->var.tuple.attrv[attrc++].type =
+                    typ2->var.tuple.attrv[i].type;
         }
     }
 
     /* adjust array size, if necessary */    
-    if (attrc < newtyp->complex.tuple.attrc) {
-        newtyp->complex.tuple.attrc = attrc;
-        newtyp->complex.tuple.attrv = realloc(newtyp->complex.tuple.attrv,
+    if (attrc < newtyp->var.tuple.attrc) {
+        newtyp->var.tuple.attrc = attrc;
+        newtyp->var.tuple.attrv = realloc(newtyp->var.tuple.attrv,
                 sizeof(RDB_attr) * attrc);
     }
     return RDB_OK;
 
 error:
-    for (i = 0; i < typ1->complex.tuple.attrc; i++)
-        free(newtyp->complex.tuple.attrv[i].name);
+    for (i = 0; i < typ1->var.tuple.attrc; i++)
+        free(newtyp->var.tuple.attrv[i].name);
 
     free(newtyp);
     return ret;
@@ -326,8 +349,8 @@ RDB_join_relation_types(const RDB_type *typ1, const RDB_type *typ2,
     newtyp->name = NULL;
     newtyp->kind = RDB_TP_RELATION;
 
-    ret = RDB_join_tuple_types(typ1->complex.basetyp, typ2->complex.basetyp,
-                               &newtyp->complex.basetyp);
+    ret = RDB_join_tuple_types(typ1->var.basetyp, typ2->var.basetyp,
+                               &newtyp->var.basetyp);
     if (ret != RDB_OK) {
         free(newtyp);
         return ret;
@@ -342,9 +365,9 @@ RDB_type *_RDB_tuple_attr_type(const RDB_type *tuptyp, const char *attrname)
 {
     int i;
     
-    for (i = 0; i < tuptyp->complex.tuple.attrc; i++) {
-        if (strcmp(tuptyp->complex.tuple.attrv[i].name, attrname) == 0)
-            return tuptyp->complex.tuple.attrv[i].type;
+    for (i = 0; i < tuptyp->var.tuple.attrc; i++) {
+        if (strcmp(tuptyp->var.tuple.attrv[i].name, attrname) == 0)
+            return tuptyp->var.tuple.attrv[i].type;
     }
     /* not found */
     return NULL;
@@ -364,14 +387,14 @@ RDB_project_tuple_type(const RDB_type *typ, int attrc, char *attrv[],
     }
     tuptyp->name = NULL;
     tuptyp->kind = RDB_TP_TUPLE;
-    tuptyp->complex.tuple.attrc = attrc;
-    tuptyp->complex.tuple.attrv = malloc(attrc * sizeof (RDB_attr));
-    if (tuptyp->complex.tuple.attrv == NULL) {
+    tuptyp->var.tuple.attrc = attrc;
+    tuptyp->var.tuple.attrv = malloc(attrc * sizeof (RDB_attr));
+    if (tuptyp->var.tuple.attrv == NULL) {
         free(tuptyp);
         return RDB_NO_MEMORY;
     }
     for (i = 0; i < attrc; i++)
-        tuptyp->complex.tuple.attrv[i].name = NULL;
+        tuptyp->var.tuple.attrv[i].name = NULL;
 
     for (i = 0; i < attrc; i++) {
         char *attrname;
@@ -382,16 +405,16 @@ RDB_project_tuple_type(const RDB_type *typ, int attrc, char *attrv[],
             ret = RDB_NO_MEMORY;
             goto error;
         }
-        tuptyp->complex.tuple.attrv[i].name = attrname;
+        tuptyp->var.tuple.attrv[i].name = attrname;
 
         attrtyp = _RDB_tuple_attr_type(typ, attrname);
         if (attrtyp == NULL) {
             ret = RDB_ILLEGAL_ARG;
             goto error;
         }
-        tuptyp->complex.tuple.attrv[i].type = attrtyp;
-        tuptyp->complex.tuple.attrv[i].defaultp = NULL;
-        tuptyp->complex.tuple.attrv[i].options = 0;
+        tuptyp->var.tuple.attrv[i].type = attrtyp;
+        tuptyp->var.tuple.attrv[i].defaultp = NULL;
+        tuptyp->var.tuple.attrv[i].options = 0;
     }
     
     *newtypp = tuptyp;
@@ -399,8 +422,8 @@ RDB_project_tuple_type(const RDB_type *typ, int attrc, char *attrv[],
     return RDB_OK;
 error:
     for (i = 0; i < attrc; i++)
-        free(tuptyp->complex.tuple.attrv[i].name);
-    free(tuptyp->complex.tuple.attrv);
+        free(tuptyp->var.tuple.attrv[i].name);
+    free(tuptyp->var.tuple.attrv);
     free(tuptyp);
     return ret;
 }
@@ -417,8 +440,8 @@ RDB_project_relation_type(const RDB_type *typ, int attrc, char *attrv[],
         return RDB_NO_MEMORY;
     }
 
-    ret = RDB_project_tuple_type(typ->complex.basetyp, attrc, attrv,
-            &reltyp->complex.basetyp);
+    ret = RDB_project_tuple_type(typ->var.basetyp, attrc, attrv,
+            &reltyp->var.basetyp);
     if (ret != RDB_OK) {
         free(reltyp);
         return ret;
@@ -456,34 +479,34 @@ RDB_rename_tuple_type(const RDB_type *typ, int renc, RDB_renaming renv[],
 
     newtyp->name = NULL;
     newtyp->kind = RDB_TP_TUPLE;
-    newtyp->complex.tuple.attrc = typ->complex.tuple.attrc;
-    newtyp->complex.tuple.attrv = malloc (typ->complex.tuple.attrc * sizeof(RDB_attr));
-    if (newtyp->complex.tuple.attrv == NULL)
+    newtyp->var.tuple.attrc = typ->var.tuple.attrc;
+    newtyp->var.tuple.attrv = malloc (typ->var.tuple.attrc * sizeof(RDB_attr));
+    if (newtyp->var.tuple.attrv == NULL)
         goto error;
-    for (i = 0; i < typ->complex.tuple.attrc; i++)
-        newtyp->complex.tuple.attrv[i].name = NULL;
-    for (i = 0; i < typ->complex.tuple.attrc; i++) {
-        char *attrname = typ->complex.tuple.attrv[i].name; 
+    for (i = 0; i < typ->var.tuple.attrc; i++)
+        newtyp->var.tuple.attrv[i].name = NULL;
+    for (i = 0; i < typ->var.tuple.attrc; i++) {
+        char *attrname = typ->var.tuple.attrv[i].name; 
         int ai = _RDB_find_rename_from(renc, renv, attrname);
 
         /* check if the attribute has been renamed */
         if (ai >= 0)
-            newtyp->complex.tuple.attrv[i].name = RDB_dup_str(renv[ai].to);
+            newtyp->var.tuple.attrv[i].name = RDB_dup_str(renv[ai].to);
         else
-            newtyp->complex.tuple.attrv[i].name = RDB_dup_str(attrname);
-        if (newtyp->complex.tuple.attrv[i].name == NULL)
+            newtyp->var.tuple.attrv[i].name = RDB_dup_str(attrname);
+        if (newtyp->var.tuple.attrv[i].name == NULL)
             goto error;
-        newtyp->complex.tuple.attrv[i].defaultp = NULL;
-        newtyp->complex.tuple.attrv[i].options = 0;
+        newtyp->var.tuple.attrv[i].defaultp = NULL;
+        newtyp->var.tuple.attrv[i].options = 0;
      }
      *newtypp = newtyp;
      return RDB_OK;
 
 error:
-    if (newtyp->complex.tuple.attrv != NULL) {
-        for (i = 0; i < newtyp->complex.tuple.attrc; i++)
-            free(newtyp->complex.tuple.attrv[i].name);
-        free(newtyp->complex.tuple.attrv);
+    if (newtyp->var.tuple.attrv != NULL) {
+        for (i = 0; i < newtyp->var.tuple.attrc; i++)
+            free(newtyp->var.tuple.attrv[i].name);
+        free(newtyp->var.tuple.attrv);
     }
 
     free(newtyp);
@@ -503,8 +526,8 @@ RDB_rename_relation_type(const RDB_type *typ, int renc, RDB_renaming renv[],
     (*newtypp)->name = NULL;
     (*newtypp)->kind = RDB_TP_TUPLE;
 
-    ret = RDB_rename_tuple_type(typ->complex.basetyp, renc, renv,
-            &(*newtypp)->complex.basetyp);
+    ret = RDB_rename_tuple_type(typ->var.basetyp, renc, renv,
+            &(*newtypp)->var.basetyp);
     if (ret != RDB_OK) {
         free(*newtypp);
         return ret;

@@ -42,6 +42,8 @@ RDB_strerror(int err)
             return "table predicate violation";
         case RDB_AGGREGATE_UNDEFINED:
             return "result of aggregate operation is undefined";
+        case RDB_TYPE_CONSTRAINT_VIOLATION:
+            return "type constraint violation";
 
         case RDB_NOT_SUPPORTED:
             return "operation or option not supported";

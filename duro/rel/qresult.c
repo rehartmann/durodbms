@@ -330,13 +330,13 @@ stored_qresult(RDB_qresult *qresp, RDB_table *tbp, RDB_transaction *txp)
 static int
 summarize_qresult(RDB_qresult *qresp, RDB_transaction *txp)
 {
-    RDB_type *tuptyp = qresp->tbp->typ->complex.basetyp;
+    RDB_type *tuptyp = qresp->tbp->typ->var.basetyp;
     int res;
 
     /* create materialized table */
     res = _RDB_create_table(NULL, RDB_FALSE,
-                        tuptyp->complex.tuple.attrc,
-                        tuptyp->complex.tuple.attrv,
+                        tuptyp->var.tuple.attrc,
+                        tuptyp->var.tuple.attrv,
                         qresp->tbp->keyc, qresp->tbp->keyv,
                         txp, &qresp->matp);
     if (res != RDB_OK)
@@ -431,18 +431,18 @@ _RDB_table_qresult(RDB_table *tbp, RDB_qresult **qrespp, RDB_transaction *txp)
             if (tbp->var.project.keyloss) {
                 RDB_key_attrs keyattrs;
                 int i;
-                RDB_type *tuptyp = tbp->typ->complex.basetyp;
+                RDB_type *tuptyp = tbp->typ->var.basetyp;
 
-                keyattrs.attrc = tuptyp->complex.tuple.attrc;
+                keyattrs.attrc = tuptyp->var.tuple.attrc;
                 keyattrs.attrv = malloc(sizeof (char *) * keyattrs.attrc);
                 
                 for (i = 0; i < keyattrs.attrc; i++)
-                    keyattrs.attrv[i] = tuptyp->complex.tuple.attrv[i].name;
+                    keyattrs.attrv[i] = tuptyp->var.tuple.attrv[i].name;
 
                 /* Create materialized (all-key) table */
                 res = _RDB_create_table(NULL, RDB_FALSE,
-                        tuptyp->complex.tuple.attrc,
-                        tuptyp->complex.tuple.attrv,
+                        tuptyp->var.tuple.attrc,
+                        tuptyp->var.tuple.attrv,
                         1, &keyattrs, txp, &qresp->matp);
                 free(keyattrs.attrv);
                 if (res != RDB_OK)
@@ -472,13 +472,13 @@ next_stored_tuple(RDB_qresult *qrp, RDB_table *tbp, RDB_tuple *tup)
     int res;
     void *datap;
     size_t len;
-    RDB_type *tuptyp = tbp->typ->complex.basetyp;
+    RDB_type *tuptyp = tbp->typ->var.basetyp;
 
     if (tup != NULL) {
-        for (i = 0; i < tuptyp->complex.tuple.attrc; i++) {
+        for (i = 0; i < tuptyp->var.tuple.attrc; i++) {
         RDB_value val;
             RDB_int fno;
-            RDB_attr *attrp = &tuptyp->complex.tuple.attrv[i];
+            RDB_attr *attrp = &tuptyp->var.tuple.attrv[i];
 
             fno = *(RDB_int *)RDB_hashmap_get(&tbp->var.stored.attrmap,
                                           attrp->name, NULL);
@@ -512,7 +512,7 @@ next_join_tuple(RDB_qresult *qrp, RDB_tuple *tup, RDB_transaction *txp)
     int i;
     
     /* tuple type of first ('outer') table */
-    RDB_type *tpltyp1 = qrp->tbp->var.join.tbp1->typ->complex.basetyp;
+    RDB_type *tpltyp1 = qrp->tbp->var.join.tbp1->typ->var.basetyp;
             
     /* read first 'outer' tuple, if it's the first invocation */
     if (!qrp->var.virtual.tpl_valid) {
@@ -571,10 +571,10 @@ next_join_tuple(RDB_qresult *qrp, RDB_tuple *tup, RDB_transaction *txp)
     }      
     
     /* join the two tuples into tup */
-    for (i = 0; i < tpltyp1->complex.tuple.attrc; i++) {
-         res = RDB_tuple_set(tup, tpltyp1->complex.tuple.attrv[i].name,
+    for (i = 0; i < tpltyp1->var.tuple.attrc; i++) {
+         res = RDB_tuple_set(tup, tpltyp1->var.tuple.attrv[i].name,
                        RDB_tuple_get(&qrp->var.virtual.tpl,
-                       tpltyp1->complex.tuple.attrv[i].name));
+                       tpltyp1->var.tuple.attrv[i].name));
          if (res != RDB_OK) {
              return res;
          }
@@ -590,11 +590,11 @@ get_by_pindex(RDB_table *tbp, RDB_value valv[], RDB_tuple *tup, RDB_transaction 
     RDB_field *resfv;
     int i;
     int res;
-    RDB_type *tpltyp = tbp->typ->complex.basetyp;
+    RDB_type *tpltyp = tbp->typ->var.basetyp;
     int pkeylen = _RDB_pkey_len(tbp);
 
     resfv = malloc(sizeof (RDB_field)
-            * (tpltyp->complex.tuple.attrc - pkeylen));
+            * (tpltyp->var.tuple.attrc - pkeylen));
     fv = malloc(sizeof (RDB_field) * pkeylen);
     if (fv == NULL || resfv == NULL) {
         res = RDB_NO_MEMORY;
@@ -604,11 +604,11 @@ get_by_pindex(RDB_table *tbp, RDB_value valv[], RDB_tuple *tup, RDB_transaction 
     for (i = 0; i < pkeylen; i++) {
         fv[i].datap = RDB_value_irep(&valv[i], &fv[i].len);
     }
-    for (i = 0; i < tpltyp->complex.tuple.attrc - pkeylen; i++) {
+    for (i = 0; i < tpltyp->var.tuple.attrc - pkeylen; i++) {
         resfv[i].no = pkeylen + i;
     }
     res = RDB_get_fields(tbp->var.stored.recmapp, fv,
-                         tpltyp->complex.tuple.attrc - pkeylen,
+                         tpltyp->var.tuple.attrc - pkeylen,
                          txp->txid, resfv);
     if (res != RDB_OK) {
         if (RDB_is_syserr(res)) {
@@ -618,8 +618,8 @@ get_by_pindex(RDB_table *tbp, RDB_value valv[], RDB_tuple *tup, RDB_transaction 
     }
 
     /* set key fields */
-    for (i = 0; i < tpltyp->complex.tuple.attrc; i++) {
-        char *attrname = tpltyp->complex.tuple.attrv[i].name;
+    for (i = 0; i < tpltyp->var.tuple.attrc; i++) {
+        char *attrname = tpltyp->var.tuple.attrv[i].name;
         RDB_int fno = *(RDB_int *)RDB_hashmap_get(
                     &tbp->var.stored.attrmap, attrname, NULL);
 
@@ -633,7 +633,7 @@ get_by_pindex(RDB_table *tbp, RDB_value valv[], RDB_tuple *tup, RDB_transaction 
             RDB_value val;
 
             RDB_init_value(&val);
-            res = RDB_irep_to_value(&val, tpltyp->complex.tuple.attrv[i].type,
+            res = RDB_irep_to_value(&val, tpltyp->var.tuple.attrv[i].type,
                     resfv[fno - pkeylen].datap, resfv[fno - pkeylen].len);
             if (res != RDB_OK) {
                 RDB_destroy_value(&val);
@@ -665,7 +665,7 @@ next_project_tuple(RDB_qresult *qrp, RDB_tuple *tup, RDB_transaction *txp)
     RDB_tuple tpl;
     int i, res;
     RDB_value *valp;
-    RDB_type *tuptyp = qrp->tbp->typ->complex.basetyp;
+    RDB_type *tuptyp = qrp->tbp->typ->var.basetyp;
             
     RDB_init_tuple(&tpl);
 
@@ -679,8 +679,8 @@ next_project_tuple(RDB_qresult *qrp, RDB_tuple *tup, RDB_transaction *txp)
 
         if (tup != NULL) {            
             /* Copy attributes into new tuple */
-            for (i = 0; i < tuptyp->complex.tuple.attrc; i++) {
-                char *attrnamp = tuptyp->complex.tuple.attrv[i].name;
+            for (i = 0; i < tuptyp->var.tuple.attrc; i++) {
+                char *attrnamp = tuptyp->var.tuple.attrv[i].name;
             
                 valp = RDB_tuple_get(&tpl, attrnamp);
                 RDB_tuple_set(tup, attrnamp, valp);

@@ -1,6 +1,8 @@
 /* $Id$ */
 
 #include "rdb.h"
+#include "internal.h"
+#include <gen/errors.h>
 #include <string.h>
 
 void *
@@ -70,13 +72,9 @@ RDB_value_equals(const RDB_value *valp1, const RDB_value *valp2)
     }
 } 
 
-int
-RDB_copy_value(RDB_value *dstvalp, const RDB_value *srcvalp)
+static int
+copy_value(RDB_value *dstvalp, const RDB_value *srcvalp)
 {
-    if (dstvalp->typ != NULL)
-        RDB_destroy_value(dstvalp);
-
-    dstvalp->typ = srcvalp->typ;
     switch (srcvalp->typ->kind) {
         case RDB_TP_BOOLEAN:
             dstvalp->var.bool_val = srcvalp->var.bool_val;
@@ -96,6 +94,16 @@ RDB_copy_value(RDB_value *dstvalp, const RDB_value *srcvalp)
                         srcvalp->var.bin.len);
     }
     return RDB_OK;
+}
+
+int
+RDB_copy_value(RDB_value *dstvalp, const RDB_value *srcvalp)
+{
+    if (dstvalp->typ != NULL)
+        RDB_destroy_value(dstvalp);
+
+    dstvalp->typ = srcvalp->typ;
+    return copy_value(dstvalp, srcvalp);
 } 
 
 void
@@ -154,6 +162,91 @@ RDB_value_set_string(RDB_value *valp, const char *str)
     if (valp->var.bin.datap == NULL)
         return RDB_NO_MEMORY;
     strcpy(valp->var.bin.datap, str);
+    return RDB_OK;
+}
+
+int
+RDB_value_get_comp(const RDB_value *valp, const char *compname,
+                   RDB_value *comp)
+{
+    RDB_destroy_value(comp);
+
+    comp->typ = valp->typ->var.scalar.repv[0].compv[0].type;
+    return copy_value(comp, valp);   
+}
+
+int
+RDB_value_set_comp(RDB_value *valp, const char *compname,
+                   const RDB_value *comp)
+{
+    RDB_destroy_value(valp);
+
+    return copy_value(valp, comp);
+}
+
+static RDB_bool
+check_constraint(RDB_value *valp) {
+    int i, j;
+
+    /* Check constraint for each possrep */
+    for (i = 0; i < valp->typ->var.scalar.repc; i++) {
+        RDB_tuple tpl;
+        RDB_bool result;
+
+        RDB_init_tuple(&tpl);
+        /* Set tuple attributes */
+        for (j = 0; j < valp->typ->var.scalar.repv[i].compc; j++) {
+            RDB_value comp;
+            char *compname = valp->typ->var.scalar.repv[i].compv[j].name;
+
+            RDB_init_value(&comp);
+            RDB_value_get_comp(valp, compname, &comp);
+            RDB_tuple_set(&tpl, compname, &comp);
+            RDB_destroy_value(&comp);
+        }
+        RDB_evaluate_bool(valp->typ->var.scalar.repv[i].constraintp,
+                &tpl, NULL, &result);
+        RDB_destroy_tuple(&tpl);
+        if (!result)
+            return RDB_FALSE;
+    }
+    return RDB_TRUE;
+}
+
+int
+RDB_value_set(RDB_value *valp, RDB_type *typ, const char *repname,
+              RDB_value **compv)
+{
+    /* RDB_possrep prp;
+    int i; */
+    int ret;
+
+    RDB_destroy_value(valp);
+
+    if (typ->var.scalar.repc == 0 || !RDB_is_scalar_type(typ))
+        return RDB_ILLEGAL_ARG;
+
+    /* Find possrep - not used yet
+    for (i = 0; i < typ->scalar.repc
+            && strcmp(typ->scalar.repv[i].name, repname) == 0);
+            i++);
+    if (i > typ->scalar.repc)
+        return RDB_ILLEGAL_ARG;
+    prp = typ->scalar.repv[i].exp;
+    */
+
+    if (repname == NULL)
+        repname = typ->name;
+
+    valp->typ = typ;
+    
+    ret = copy_value(valp, *compv);
+    if (ret != RDB_OK)
+        return ret;
+
+    if (!check_constraint(valp))
+        return RDB_TYPE_CONSTRAINT_VIOLATION;
+
     return RDB_OK;
 }
 
