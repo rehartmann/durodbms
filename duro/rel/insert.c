@@ -31,7 +31,7 @@ insert_stored(RDB_table *tbp, const RDB_object *tplp, RDB_transaction *txp)
         int *fnop;
         RDB_object *valp;
         
-        fnop = RDB_hashmap_get(&tbp->var.stored.attrmap,
+        fnop = RDB_hashmap_get(&tbp->var.real.attrmap,
                 tuptyp->var.tuple.attrv[i].name, NULL);
         valp = RDB_tuple_get(tplp, tuptyp->var.tuple.attrv[i].name);
 
@@ -97,7 +97,7 @@ insert_stored(RDB_table *tbp, const RDB_object *tplp, RDB_transaction *txp)
             goto cleanup;
     }
 
-    ret = RDB_insert_rec(tbp->var.stored.recmapp, fvp,
+    ret = RDB_insert_rec(tbp->var.real.recmapp, fvp,
             tbp->is_persistent ? txp->txid : NULL);
     if (RDB_is_syserr(ret)) {
         if (txp != NULL) {
@@ -107,7 +107,7 @@ insert_stored(RDB_table *tbp, const RDB_object *tplp, RDB_transaction *txp)
         }
     } else if (ret == RDB_KEY_VIOLATION) {
         /* check if the tuple is an element of the table */
-        if (RDB_contains_rec(tbp->var.stored.recmapp, fvp,
+        if (RDB_contains_rec(tbp->var.real.recmapp, fvp,
                 tbp->is_persistent ? txp->txid : NULL) == RDB_OK)
             ret = RDB_ELEMENT_EXISTS;
     }            
@@ -366,7 +366,7 @@ RDB_insert(RDB_table *tbp, const RDB_object *tplp, RDB_transaction *txp)
         return RDB_INVALID_TRANSACTION;
 
     switch (tbp->kind) {
-        case RDB_TB_STORED:
+        case RDB_TB_REAL:
             return insert_stored(tbp, tplp, txp);
         case RDB_TB_SELECT:
         case RDB_TB_SELECT_INDEX:

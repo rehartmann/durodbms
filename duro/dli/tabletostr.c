@@ -306,7 +306,7 @@ append_table(RDB_object *objp, RDB_table *tbp)
     int i;
 
     switch (tbp->kind) {
-        case RDB_TB_STORED:
+        case RDB_TB_REAL:
         {
             if (RDB_table_name(tbp) == NULL)
                 return RDB_INVALID_ARGUMENT;

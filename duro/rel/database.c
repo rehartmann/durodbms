@@ -73,17 +73,17 @@ close_table(RDB_table *tbp, RDB_environment *envp)
     RDB_dbroot *dbrootp;
     RDB_database *dbp;
 
-    if (tbp->kind == RDB_TB_STORED) {
-        if (tbp->var.stored.indexc > 0) {
+    if (tbp->kind == RDB_TB_REAL) {
+        if (tbp->var.real.indexc > 0) {
             /* close secondary indexes */
-            for (i = 0; i < tbp->var.stored.indexc; i++) {
-                if (tbp->var.stored.indexv[i].idxp != NULL)
-                    RDB_close_index(tbp->var.stored.indexv[i].idxp);
+            for (i = 0; i < tbp->var.real.indexc; i++) {
+                if (tbp->var.real.indexv[i].idxp != NULL)
+                    RDB_close_index(tbp->var.real.indexv[i].idxp);
             }
         }
 
         /* close recmap */
-        ret = RDB_close_recmap(tbp->var.stored.recmapp);
+        ret = RDB_close_recmap(tbp->var.real.recmapp);
         if (ret != RDB_OK)
             return ret;
 
@@ -805,21 +805,21 @@ RDB_drop_table(RDB_table *tbp, RDB_transaction *txp)
     /*
      * Delete recmap
      */
-    if (tbp->kind == RDB_TB_STORED && tbp->var.stored.recmapp != NULL) {
+    if (tbp->kind == RDB_TB_REAL && tbp->var.real.recmapp != NULL) {
         int i;
         int ret;
 
         /* Schedule secondary indexes for deletion */
-        for (i = 0; i < tbp->var.stored.indexc; i++) {
-            if (tbp->var.stored.indexv[i].idxp != NULL)
-                _RDB_del_index(txp, tbp->var.stored.indexv[i].idxp);
+        for (i = 0; i < tbp->var.real.indexc; i++) {
+            if (tbp->var.real.indexv[i].idxp != NULL)
+                _RDB_del_index(txp, tbp->var.real.indexv[i].idxp);
         }
 
         if (txp != NULL) {
             /* Schedule recmap for deletion */
-            ret = _RDB_del_recmap(txp, tbp->var.stored.recmapp);
+            ret = _RDB_del_recmap(txp, tbp->var.real.recmapp);
         } else {
-            ret = RDB_delete_recmap(tbp->var.stored.recmapp, NULL);
+            ret = RDB_delete_recmap(tbp->var.real.recmapp, NULL);
         }
         if (ret != RDB_OK)
             return ret;
@@ -889,7 +889,7 @@ RDB_add_table(RDB_table *tbp, RDB_transaction *txp)
         return RDB_INVALID_ARGUMENT;
 
     /* Turning a local real table into a persistent table is not supported */
-    if (!tbp->is_persistent && tbp->kind == RDB_TB_STORED)
+    if (!tbp->is_persistent && tbp->kind == RDB_TB_REAL)
         return RDB_NOT_SUPPORTED;
 
     if (!RDB_tx_is_running(txp))

@@ -223,7 +223,7 @@ typedef struct {
 
 /* internal */
 enum _RDB_tb_kind {
-    RDB_TB_STORED,
+    RDB_TB_REAL,
     RDB_TB_SELECT,
     RDB_TB_SELECT_INDEX,
     RDB_TB_UNION,
@@ -280,7 +280,7 @@ typedef struct RDB_table {
             struct _RDB_tbindex *indexv;
 
             int est_cardinality; /* estimated cardinality (from statistics) */
-        } stored;
+        } real;
         struct {
             struct RDB_table *tbp;
             RDB_expression *exp;

@@ -150,7 +150,7 @@ transform_select(RDB_table *tbp)
 
     do {
         switch (chtbp->kind) {
-            case RDB_TB_STORED:
+            case RDB_TB_REAL:
                 return transform_exp(tbp->var.select.exp);
             case RDB_TB_SELECT:
             case RDB_TB_SELECT_INDEX:
@@ -490,7 +490,7 @@ transform_project(RDB_table *tbp)
 
     do {
         switch (chtbp->kind) {
-            case RDB_TB_STORED:
+            case RDB_TB_REAL:
                 return RDB_OK;
             case RDB_TB_PROJECT:
                 /* Merge projects */
@@ -538,7 +538,7 @@ _RDB_transform(RDB_table *tbp)
     int ret;
 
     switch (tbp->kind) {
-        case RDB_TB_STORED:
+        case RDB_TB_REAL:
             break;
         case RDB_TB_MINUS:
             ret = _RDB_transform(tbp->var.minus.tb1p);

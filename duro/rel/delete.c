@@ -32,7 +32,7 @@ delete_by_uindex(RDB_table *tbp, RDB_object *objpv[], _RDB_tbindex *indexp,
     }
 
     if (indexp->idxp == NULL) {
-        ret = RDB_delete_rec(tbp->var.stored.recmapp, fv,
+        ret = RDB_delete_rec(tbp->var.real.recmapp, fv,
                 tbp->is_persistent ? txp->txid : NULL);
     } else {
         ret = RDB_index_delete_rec(indexp->idxp, fv,
@@ -61,7 +61,7 @@ delete_stored(RDB_table *tbp, RDB_expression *condp, RDB_transaction *txp)
     RDB_bool b;
     RDB_type *tpltyp = tbp->typ->var.basetyp;
 
-    ret = RDB_recmap_cursor(&curp, tbp->var.stored.recmapp, RDB_TRUE,
+    ret = RDB_recmap_cursor(&curp, tbp->var.real.recmapp, RDB_TRUE,
             tbp->is_persistent ? txp->txid : NULL);
     if (ret != RDB_OK)
         return ret;
@@ -311,7 +311,7 @@ delete(RDB_table *tbp, RDB_expression *condp, RDB_transaction *txp)
     int ret;
 
     switch (tbp->kind) {
-        case RDB_TB_STORED:
+        case RDB_TB_REAL:
             return delete_stored(tbp, condp, txp);
         case RDB_TB_MINUS:
             return delete(tbp->var.minus.tb1p, condp, txp);

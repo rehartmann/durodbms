@@ -502,7 +502,7 @@ serialize_table(RDB_object *valp, int *posp, RDB_table *tbp)
         return ret;
 
     switch (tbp->kind) {
-        case RDB_TB_STORED:
+        case RDB_TB_REAL:
             if (!tbp->is_persistent)
                 return RDB_INVALID_ARGUMENT;
             return serialize_str(valp, posp, tbp->name);
@@ -1516,7 +1516,7 @@ deserialize_table(RDB_object *valp, int *posp, RDB_transaction *txp,
     if (ret < 0)
         return ret;
     switch ((enum _RDB_tb_kind) ret) {
-        case RDB_TB_STORED:
+        case RDB_TB_REAL:
             ret = deserialize_str(valp, posp, &namp);
             if (ret != RDB_OK)
                 return ret;

@@ -901,7 +901,7 @@ _RDB_dup_vtable(RDB_table *tbp)
     RDB_expression *exp;
 
     switch (tbp->kind) {
-        case RDB_TB_STORED:
+        case RDB_TB_REAL:
             return tbp;
         case RDB_TB_SELECT:
         case RDB_TB_SELECT_INDEX:
@@ -1235,7 +1235,7 @@ _RDB_infer_keys(RDB_table *tbp)
     RDB_string_vec *newkeyv;
 
     switch (tbp->kind) {
-        case RDB_TB_STORED:
+        case RDB_TB_REAL:
             return RDB_INVALID_ARGUMENT;
         case RDB_TB_SELECT:
         case RDB_TB_SELECT_INDEX:
@@ -1346,7 +1346,7 @@ RDB_table_refers(RDB_table *tbp, RDB_table *rtbp)
     int i;
 
     switch (tbp->kind) {
-        case RDB_TB_STORED:
+        case RDB_TB_REAL:
             return (RDB_bool) (tbp == rtbp);
         case RDB_TB_SELECT:
         case RDB_TB_SELECT_INDEX:

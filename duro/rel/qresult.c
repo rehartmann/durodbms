@@ -244,7 +244,7 @@ do_summarize(RDB_qresult *qresp, RDB_transaction *txp)
                 char *attrname = qresp->tbp->var.summarize.addv[i].name;
 
                 nonkeyfv[i].no = *(RDB_int *)RDB_hashmap_get(
-                        &qresp->matp->var.stored.attrmap, attrname, NULL);
+                        &qresp->matp->var.real.attrmap, attrname, NULL);
                 if (qresp->tbp->var.summarize.addv[i].op == RDB_AVG) {
                     char *cattrname = malloc(strlen(attrname) + 3);
                     if (cattrname == NULL) {
@@ -254,13 +254,13 @@ do_summarize(RDB_qresult *qresp, RDB_transaction *txp)
                     strcpy(cattrname, attrname);
                     strcat(cattrname, AVG_COUNT_SUFFIX);
                     nonkeyfv[addc + ai].no = *(RDB_int *)RDB_hashmap_get(
-                        &qresp->matp->var.stored.attrmap, cattrname, NULL);
+                        &qresp->matp->var.real.attrmap, cattrname, NULL);
                     free(cattrname);
                     svalv[i].fvidx = addc + ai;
                     ai++;
                 }
             }
-            ret = RDB_get_fields(qresp->matp->var.stored.recmapp, keyfv,
+            ret = RDB_get_fields(qresp->matp->var.real.recmapp, keyfv,
                     addc + avgc, qresp->matp->is_persistent ? txp->txid : NULL,
                     nonkeyfv);
             if (ret == RDB_OK) {
@@ -304,7 +304,7 @@ do_summarize(RDB_qresult *qresp, RDB_transaction *txp)
                         nonkeyfv[svalv[i].fvidx].copyfp = memcpy;
                     }
                 }
-                ret = RDB_update_rec(qresp->matp->var.stored.recmapp, keyfv,
+                ret = RDB_update_rec(qresp->matp->var.real.recmapp, keyfv,
                         addc + avgc, nonkeyfv,
                         qresp->matp->is_persistent ? txp->txid : NULL);
                 if (ret != RDB_OK) {
@@ -375,11 +375,11 @@ do_group(RDB_qresult *qrp, RDB_transaction *txp)
             }
 
             gfield.no = *(RDB_int *)RDB_hashmap_get(
-                    &qrp->matp->var.stored.attrmap,
+                    &qrp->matp->var.real.attrmap,
                     qrp->tbp->var.group.gattr, NULL);
 
             /* Try to read tuple of the materialized table */
-            ret = RDB_get_fields(qrp->matp->var.stored.recmapp, keyfv,
+            ret = RDB_get_fields(qrp->matp->var.real.recmapp, keyfv,
                     1, qrp->matp->is_persistent ? txp->txid : NULL,
                     &gfield);
             if (ret == RDB_OK) {
@@ -402,7 +402,7 @@ do_group(RDB_qresult *qrp, RDB_transaction *txp)
                 ret = _RDB_obj_to_field(&gfield, &gval);
                 if (ret != RDB_OK)
                     goto cleanup;
-                ret = RDB_update_rec(qrp->matp->var.stored.recmapp, keyfv,
+                ret = RDB_update_rec(qrp->matp->var.real.recmapp, keyfv,
                         1, &gfield,
                         qrp->matp->is_persistent ? txp->txid : NULL);
                 if (ret != RDB_OK)
@@ -456,7 +456,7 @@ stored_qresult(RDB_qresult *qresp, RDB_table *tbp, RDB_transaction *txp)
     int ret;
 
     /* !! delay after first call to _RDB_qresult_next()? */
-    ret = RDB_recmap_cursor(&qresp->var.curp, tbp->var.stored.recmapp,
+    ret = RDB_recmap_cursor(&qresp->var.curp, tbp->var.real.recmapp,
                     RDB_FALSE, tbp->is_persistent ? txp->txid : NULL);
     if (ret != RDB_OK) {
         if (txp != NULL) {
@@ -664,7 +664,7 @@ init_qresult(RDB_qresult *qrp, RDB_table *tbp, RDB_transaction *txp)
     qrp->matp = NULL;
     qrp->var.virtual.qr2p = NULL;
 
-    if (tbp->kind != RDB_TB_STORED) {
+    if (tbp->kind != RDB_TB_REAL) {
         if (!tbp->optimized) {
             ret = _RDB_optimize(tbp, txp);
             if (ret != RDB_OK)
@@ -673,7 +673,7 @@ init_qresult(RDB_qresult *qrp, RDB_table *tbp, RDB_transaction *txp)
     }
 
     switch (tbp->kind) {
-        case RDB_TB_STORED:
+        case RDB_TB_REAL:
             ret = stored_qresult(qrp, tbp, txp);
             break;
         case RDB_TB_SELECT:
@@ -912,7 +912,7 @@ _RDB_get_by_cursor(RDB_table *tbp, RDB_cursor *curp, RDB_object *tplp)
     for (i = 0; i < tuptyp->var.tuple.attrc; i++) {
         attrp = &tuptyp->var.tuple.attrv[i];
 
-        fno = *(RDB_int *)RDB_hashmap_get(&tbp->var.stored.attrmap,
+        fno = *(RDB_int *)RDB_hashmap_get(&tbp->var.real.attrmap,
                                       attrp->name, NULL);
         ret = RDB_cursor_get(curp, fno, &datap, &len);
         if (ret != RDB_OK) {
@@ -1367,7 +1367,7 @@ _RDB_get_by_uindex(RDB_table *tbp, RDB_object *objpv[], _RDB_tbindex *indexp,
         for (i = 0; i < tpltyp->var.tuple.attrc - keylen; i++) {
             resfv[i].no = keylen + i;
         }
-        ret = RDB_get_fields(tbp->var.stored.recmapp, fv,
+        ret = RDB_get_fields(tbp->var.real.recmapp, fv,
                              tpltyp->var.tuple.attrc - keylen,
                              tbp->is_persistent ? txp->txid : NULL, resfv);
     } else {
@@ -1408,7 +1408,7 @@ _RDB_get_by_uindex(RDB_table *tbp, RDB_object *objpv[], _RDB_tbindex *indexp,
         int rfi; /* Index in resv, -1 if key attr */
         char *attrname = tpltyp->var.tuple.attrv[i].name;
         RDB_int fno = *(RDB_int *)RDB_hashmap_get(
-                    &tbp->var.stored.attrmap, attrname, NULL);
+                    &tbp->var.real.attrmap, attrname, NULL);
 
         if (indexp->idxp == NULL) {
             if (fno < keylen)
@@ -1602,7 +1602,7 @@ destroy_qresult(RDB_qresult *qrp, RDB_transaction *txp)
 {
     int ret;
 
-    if (qrp->tbp == NULL || qrp->tbp->kind == RDB_TB_STORED
+    if (qrp->tbp == NULL || qrp->tbp->kind == RDB_TB_REAL
             || qrp->tbp->kind == RDB_TB_SUMMARIZE
             || qrp->tbp->kind == RDB_TB_GROUP
             || (qrp->tbp->kind == RDB_TB_SELECT_INDEX
@@ -1780,7 +1780,7 @@ _RDB_next_tuple(RDB_qresult *qrp, RDB_object *tplp, RDB_transaction *txp)
     }
 
     switch (tbp->kind) {
-        case RDB_TB_STORED:
+        case RDB_TB_REAL:
             return next_stored_tuple(qrp, qrp->tbp, tplp, RDB_TRUE, RDB_FALSE);
         case RDB_TB_SELECT:
             return next_select_tuple(qrp, tplp, txp);
@@ -1896,7 +1896,7 @@ _RDB_reset_qresult(RDB_qresult *qrp, RDB_transaction *txp)
     int ret;
     RDB_table *tbp = qrp->tbp;
 
-    if (tbp == NULL || qrp->tbp->kind == RDB_TB_STORED
+    if (tbp == NULL || qrp->tbp->kind == RDB_TB_REAL
             || qrp->tbp->kind == RDB_TB_SUMMARIZE) {
         /* Sorter, stored table or SUMMARIZE PER - reset cursor */
         ret = RDB_cursor_first(qrp->var.curp);
@@ -1952,7 +1952,7 @@ _RDB_qresult_contains(RDB_qresult *qrp, const RDB_object *tplp,
         objpv[i] = attrobjp;
     }
         
-    ret = _RDB_get_by_uindex(qrp->matp, objpv, &qrp->matp->var.stored.indexv[0],
+    ret = _RDB_get_by_uindex(qrp->matp, objpv, &qrp->matp->var.real.indexv[0],
             txp, &tpl);
     if (ret != RDB_OK) /* handles RDB_NOT_FOUND too */
         goto error;

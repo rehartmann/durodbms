@@ -319,7 +319,7 @@ optimize_select(RDB_table *tbp, RDB_transaction *txp)
     int idx;
     int bestcost = INT_MAX;
 
-    if (tbp->var.select.tbp->kind != RDB_TB_STORED)
+    if (tbp->var.select.tbp->kind != RDB_TB_REAL)
         return RDB_OK;
 
     stbp = tbp->var.select.tbp;
@@ -332,9 +332,9 @@ optimize_select(RDB_table *tbp, RDB_transaction *txp)
     /*
      * Try to find best index
      */
-    for (i = 0; i < stbp->var.stored.indexc; i++) {
+    for (i = 0; i < stbp->var.real.indexc; i++) {
         int cost = eval_index_exp(tbp->var.select.exp,
-                &stbp->var.stored.indexv[i]);
+                &stbp->var.real.indexv[i]);
 
         if (cost < bestcost) {
             bestcost = cost;
@@ -346,7 +346,7 @@ optimize_select(RDB_table *tbp, RDB_transaction *txp)
         return RDB_OK;
     }
 
-    return split_by_index(tbp, &stbp->var.stored.indexv[idx]);
+    return split_by_index(tbp, &stbp->var.real.indexv[idx]);
 }
 
 static int
@@ -380,7 +380,7 @@ resolve_views(RDB_table *tbp)
     int ret;
 
     switch (tbp->kind) {
-        case RDB_TB_STORED:
+        case RDB_TB_REAL:
             break;
         case RDB_TB_MINUS:
             ret = dup_named(&tbp->var.minus.tb1p);
@@ -489,15 +489,15 @@ best_index(RDB_table *tbp, int attrc, char **attrv,
     int i;
     int bestcost = INT_MAX;
 
-    if (tbp->kind != RDB_TB_STORED)
+    if (tbp->kind != RDB_TB_REAL)
         return INT_MAX;
 
-    for (i = 0; i < tbp->var.stored.indexc; i++) {
-        int cost = eval_index_attrs(attrc, attrv, &tbp->var.stored.indexv[i]);
+    for (i = 0; i < tbp->var.real.indexc; i++) {
+        int cost = eval_index_attrs(attrc, attrv, &tbp->var.real.indexv[i]);
 
         if (cost < bestcost) {
             bestcost = cost;
-            *indexpp = &tbp->var.stored.indexv[i];
+            *indexpp = &tbp->var.real.indexv[i];
         }
     }
     
@@ -574,7 +574,7 @@ optimize(RDB_table *tbp, RDB_transaction *txp)
     int ret;
 
     switch (tbp->kind) {
-        case RDB_TB_STORED:
+        case RDB_TB_REAL:
             break;
         case RDB_TB_MINUS:
             ret = optimize(tbp->var.minus.tb1p, txp);
