@@ -49,32 +49,32 @@ enum {
     } arglist;
 }
 
-%token <exp> ID
-%token <exp> INTEGER
-%token <exp> STRING
-%token <exp> DECIMAL
-%token <exp> FLOAT
-%token <exp> TRUE
-%token <exp> FALSE
-%token WHERE
-%token UNION
-%token INTERSECT
-%token MINUS
-%token JOIN
-%token FROM
-%token TUPLE
-%token ALL_BUT
-%token AS
-%token RENAME
-%token EXTEND
-%token SUMMARIZE
-%token PER
-%token ADD
-%token MATCHES
-%token OR
-%token AND
-%token NOT
-%token CONCAT
+%token <exp> TOK_ID
+%token <exp> TOK_INTEGER
+%token <exp> TOK_STRING
+%token <exp> TOK_DECIMAL
+%token <exp> TOK_FLOAT
+%token <exp> TOK_TRUE
+%token <exp> TOK_FALSE
+%token TOK_WHERE
+%token TOK_UNION
+%token TOK_INTERSECT
+%token TOK_MINUS
+%token TOK_JOIN
+%token TOK_FROM
+%token TOK_TUPLE
+%token TOK_ALL_BUT
+%token TOK_AS
+%token TOK_RENAME
+%token TOK_EXTEND
+%token TOK_SUMMARIZE
+%token TOK_PER
+%token TOK_ADD
+%token TOK_MATCHES
+%token TOK_OR
+%token TOK_AND
+%token TOK_NOT
+%token TOK_CONCAT
 %token TOK_COUNT
 %token TOK_COUNTD
 %token TOK_SUM
@@ -117,7 +117,7 @@ expression: or_expression { resultp = $1; }
         ;
 
 /*
-extractor: ID FROM expression {
+extractor: TOK_ID FROM expression {
         }
         | TUPLE FROM expression {
         }
@@ -141,15 +141,15 @@ project: primary_expression '{' attribute_name_list '}' {
             }
             $$ = RDB_expr_table(restbp);
             }
-            | primary_expression '{' ALL_BUT attribute_name_list '}'
+            | primary_expression '{' TOK_ALL_BUT attribute_name_list '}'
         ;
 
-attribute_name_list: ID {
+attribute_name_list: TOK_ID {
             $$.attrc = 1;
             $$.attrv[0] = RDB_dup_str($1->var.attr.name);
             RDB_drop_expr($1);
         }
-        | attribute_name_list ',' ID {
+        | attribute_name_list ',' TOK_ID {
             int i;
 
             /* Copy old attributes */
@@ -161,7 +161,7 @@ attribute_name_list: ID {
         }
         ;
 
-select: primary_expression WHERE or_expression {
+select: primary_expression TOK_WHERE or_expression {
             RDB_table *tbp, *restbp;
 
             tbp = expr_to_table($1);
@@ -178,7 +178,7 @@ select: primary_expression WHERE or_expression {
         }
         ;
 
-rename: primary_expression RENAME '(' renaming_list ')' {
+rename: primary_expression TOK_RENAME '(' renaming_list ')' {
             RDB_table *tbp, *restbp;
             int i;
 
@@ -218,7 +218,7 @@ renaming_list: renaming {
         }
         ;
 
-renaming: ID AS ID {
+renaming: TOK_ID TOK_AS TOK_ID {
             $$.renv[0].from = RDB_dup_str($1->var.attr.name);
             $$.renv[0].to = RDB_dup_str($3->var.attr.name);
             RDB_drop_expr($1);
@@ -230,7 +230,7 @@ renaming: ID AS ID {
 */
         ;
 
-relation: primary_expression UNION primary_expression {
+relation: primary_expression TOK_UNION primary_expression {
             RDB_table *restbp, *tb1p, *tb2p;
 
             tb1p = expr_to_table($1);
@@ -251,7 +251,7 @@ relation: primary_expression UNION primary_expression {
             RDB_drop_expr($1);
             RDB_drop_expr($3);
         }
-        | primary_expression INTERSECT primary_expression {
+        | primary_expression TOK_INTERSECT primary_expression {
             RDB_table *restbp, *tb1p, *tb2p;
 
             tb1p = expr_to_table($1);
@@ -272,7 +272,7 @@ relation: primary_expression UNION primary_expression {
             RDB_drop_expr($1);
             RDB_drop_expr($3);
         }
-        | primary_expression MINUS primary_expression {
+        | primary_expression TOK_MINUS primary_expression {
             RDB_table *restbp, *tb1p, *tb2p;
 
             tb1p = expr_to_table($1);
@@ -293,7 +293,7 @@ relation: primary_expression UNION primary_expression {
             RDB_drop_expr($1);
             RDB_drop_expr($3);
         }
-        | primary_expression JOIN primary_expression {
+        | primary_expression TOK_JOIN primary_expression {
             RDB_table *restbp, *tb1p, *tb2p;
 
             tb1p = expr_to_table($1);
@@ -316,7 +316,7 @@ relation: primary_expression UNION primary_expression {
         }
         ;
 
-extend: EXTEND primary_expression ADD '(' extend_add_list ')' {
+extend: TOK_EXTEND primary_expression TOK_ADD '(' extend_add_list ')' {
             RDB_table *tbp, *restbp;
             int i;
 
@@ -361,14 +361,14 @@ extend_add_list: extend_add {
         }
         ;
 
-extend_add: expression AS ID {
+extend_add: expression TOK_AS TOK_ID {
             $$.extv[0].name = RDB_dup_str($3->var.attr.name);
             $$.extv[0].exp = $1;
         }
         ;
 
-summarize: SUMMARIZE primary_expression PER expression
-           ADD '(' summarize_add_list ')' {
+summarize: TOK_SUMMARIZE primary_expression TOK_PER expression
+           TOK_ADD '(' summarize_add_list ')' {
             RDB_table *tb1p, *tb2p, *restbp;
             int i;
 
@@ -424,7 +424,7 @@ summarize_add_list: summarize_add {
         }
         ;
 
-summarize_add: summary AS ID {
+summarize_add: summary TOK_AS TOK_ID {
             $$.addv[0].op = $1.addv[0].op;
             $$.addv[0].exp = $1.addv[0].exp;
             $$.addv[0].name = RDB_dup_str($3->var.attr.name);
@@ -471,7 +471,7 @@ summary_type: TOK_SUM {
         ;
 
 or_expression: and_expression
-        | or_expression OR and_expression {
+        | or_expression TOK_OR and_expression {
             $$ = RDB_or($1, $3);
             if ($$ == NULL)
                 YYERROR;
@@ -479,7 +479,7 @@ or_expression: and_expression
         ;
 
 and_expression: not_expression
-        | and_expression AND not_expression {
+        | and_expression TOK_AND not_expression {
             $$ = RDB_and($1, $3);
             if ($$ == NULL)
                 YYERROR;
@@ -487,7 +487,7 @@ and_expression: not_expression
         ;
 
 not_expression: rel_expression
-        | NOT rel_expression {
+        | TOK_NOT rel_expression {
             $$ = RDB_not($2);
             if ($$ == NULL)
                 YYERROR;
@@ -526,7 +526,7 @@ rel_expression: add_expression
                 YYERROR;
         }
         | add_expression "IN" add_expression
-        | add_expression MATCHES add_expression {
+        | add_expression TOK_MATCHES add_expression {
             $$ = RDB_regmatch($1, $3);
             if ($$ == NULL)
                 YYERROR;
@@ -550,7 +550,7 @@ add_expression: mul_expression
             if ($$ == NULL)
                 YYERROR;
         }
-        | add_expression CONCAT mul_expression {
+        | add_expression TOK_CONCAT mul_expression {
             $$ = RDB_concat($1, $3);
             if ($$ == NULL)
                 YYERROR;
@@ -570,7 +570,7 @@ mul_expression: primary_expression
         }
         ;
 
-primary_expression: ID
+primary_expression: TOK_ID
         | literal
         | count_invocation
         | sum_invocation
@@ -735,7 +735,7 @@ any_invocation: TOK_ANY '(' argument_list ')' {
         }
         ;
 
-operator_invocation: ID '(' opt_argument_list ')' {
+operator_invocation: TOK_ID '(' opt_argument_list ')' {
             if (strcmp ($1->var.attr.name, "IS_EMPTY") == 0) {
                 if ($3.argc != 1) {
                     YYERROR;
@@ -807,12 +807,12 @@ literal: /* "RELATION" '{' expression_list '}' {
         }
         | "TABLE_DUM" {
         }
-        | */ STRING
-        | INTEGER
-        | DECIMAL
-        | FLOAT
-        | TRUE
-        | FALSE
+        | */ TOK_STRING
+        | TOK_INTEGER
+        | TOK_DECIMAL
+        | TOK_FLOAT
+        | TOK_TRUE
+        | TOK_FALSE
         ;
 /*
 opt_tuple_item_list:
@@ -823,17 +823,17 @@ tuple_item_list: tuple_item
         | tuple_item_list ',' tuple_item
         ;
 
-tuple_item: ID expression
+tuple_item: TOK_ID expression
         ;
 
 attribute_name_type_list: attribute_name_type
         | attribute_name_type_list ',' attribute_name_type
         ;
 
-attribute_name_type: ID type
+attribute_name_type: TOK_ID type
         ;
 
-type: ID
+type: TOK_ID
         | "SAME_TYPE_AS" '(' expression ')'
         | "RELATION" '{' attribute_name_type_list '}'
         | "RELATION" '{' '}'

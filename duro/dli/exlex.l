@@ -23,75 +23,75 @@ extern const char *expr_in;
 %%
 
 WHERE   {
-        return WHERE;
+        return TOK_WHERE;
         }
 
 UNION   {
-        return UNION;
+        return TOK_UNION;
         }
 
 INTERSECT {
-        return INTERSECT;
+        return TOK_INTERSECT;
         }
 
 MINUS   {
-        return MINUS;
+        return TOK_MINUS;
         }
 
 JOIN    {
-        return JOIN;
+        return TOK_JOIN;
         }
 
 FROM    {
-        return FROM;
+        return TOK_FROM;
         }
 
 TUPLE   {
-        return TUPLE;
+        return TOK_TUPLE;
         }
 
 ALL[ \t]+BUT {
-        return ALL_BUT;
+        return TOK_ALL_BUT;
         }
 
 AS      {
-        return AS;
+        return TOK_AS;
         }
 
 EXTEND  {
-        return EXTEND;
+        return TOK_EXTEND;
 }
 
 RENAME  {
-        return RENAME;
+        return TOK_RENAME;
         }
 
 SUMMARIZE {
-        return SUMMARIZE;
+        return TOK_SUMMARIZE;
         }
 
 PER     {
-        return PER;
+        return TOK_PER;
         }
 
 ADD     {
-        return ADD;
+        return TOK_ADD;
         }
 
 MATCHES {
-        return MATCHES;
+        return TOK_MATCHES;
         }
 
 OR      {
-        return OR;
+        return TOK_OR;
         }
 
 AND     {
-        return AND;
+        return TOK_AND;
 }
 
 NOT     {
-        return NOT;
+        return TOK_NOT;
 }
 
 TRUE    {
@@ -143,12 +143,12 @@ ANY     {
 }
 
 \|\|    {
-        return CONCAT;
+        return TOK_CONCAT;
 }
 
 [a-zA-Z][a-zA-Z0-9_#]* {
 	yylval = RDB_expr_attr(yytext);
-        return ID;
+        return TOK_ID;
         }
 
 \".*\"	{
@@ -157,22 +157,22 @@ ANY     {
          */
         yytext[(strlen(yytext) - 1)] = '\0';
         yylval = RDB_string_const(yytext + 1);
-        return STRING;
+        return TOK_STRING;
         }
 
 [0-9]+	{
         yylval = RDB_int_const((RDB_int) atoi(yytext));
-        return INTEGER;
+        return TOK_INTEGER;
         }
 
 [0-9]+"."[0-9]+[Ee][0-9]+ {
         yylval = RDB_rational_const((RDB_rational) atof(yytext));
-        return FLOAT;
+        return TOK_FLOAT;
         }
 
 [0-9]+"."[0-9]+	{
         yylval = RDB_rational_const((RDB_rational) atof(yytext));
-        return DECIMAL;
+        return TOK_DECIMAL;
         }
 
 [=><+\-*/{},()]   return yytext[0];
