@@ -106,7 +106,7 @@ obj_ilen(const RDB_object *objp, size_t *lenp)
 
             while ((ret = RDB_array_get((RDB_object *)objp, (RDB_int) i++,
                     &elemp)) == RDB_OK) {
-                elemp->typ = objp->typ->var.basetyp;
+                elemp->typ = RDB_obj_type(objp)->var.basetyp;
                 if (elemp->typ->ireplen == RDB_VARIABLE_LEN)
                     *lenp += sizeof (size_t);
                 ret = obj_ilen(elemp, &len);
@@ -120,7 +120,7 @@ obj_ilen(const RDB_object *objp, size_t *lenp)
         }            
         default: ;
     }
-    *lenp = objp->typ->ireplen;
+    *lenp = RDB_obj_type(objp)->ireplen;
     if (*lenp == RDB_VARIABLE_LEN)
         *lenp = objp->var.bin.len;
     return RDB_OK;
@@ -442,7 +442,7 @@ obj_to_irep(void *dstp, const void *srcp, size_t len)
 
             while ((ret = RDB_array_get((RDB_object *) objp, (RDB_int) i++,
                     &elemp)) == RDB_OK) {
-                elemp->typ = objp->typ->var.basetyp;
+                elemp->typ = RDB_obj_type(objp)->var.basetyp;
                 bp = obj_to_len_irep(bp, elemp, elemp->typ);
             }
             if (ret != RDB_NOT_FOUND)

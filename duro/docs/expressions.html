@@ -68,7 +68,8 @@ rel_expression = add_expression | add_expression '=' add_expression
         | add_expression '>' add_expression
         | add_expression '<' add_expression
         | add_expression IN add_expression
-        | add_expression MATCHES add_expression.
+        | add_expression MATCHES add_expression
+        | add_expression SUBSET add_expression.
 
 add_expression = mul_expression | '+' mul_expression | '-' mul_expression
         | add_expression '+' mul_expression

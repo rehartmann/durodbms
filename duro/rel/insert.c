@@ -85,9 +85,9 @@ insert_stored(RDB_table *tbp, const RDB_object *tplp, RDB_transaction *txp)
                 return RDB_TYPE_MISMATCH;
         }
 
-        /* Set type - needed for non-scalar attributes */
+        /* Set type - needed for tuple and array attributes */
         if (valp->typ == NULL
-                && (valp->kind == RDB_OB_TUPLE || valp->kind == RDB_OB_TABLE
+                && (valp->kind == RDB_OB_TUPLE
                  || valp->kind == RDB_OB_ARRAY))
             _RDB_set_nonsc_type(valp, tuptyp->var.tuple.attrv[i].typ);
             /* !! check object kind against type? */

@@ -4,7 +4,7 @@ exec tclsh "$0"
 
 # $Id$
 #
-# Test create, insert, UNWRAP on table with tuple attribute
+# Test create, insert, update, UNWRAP on table with tuple attribute
 # Test tuple project, EXTEND, JOIN, WRAP, and UNWRAP
 
 load .libs/libdurotcl.so
@@ -59,7 +59,14 @@ duro::table create T1 {
     }}
 } {{SCATTR}} $tx
 
-duro::insert T1 {SCATTR Bla TPATTR {A 1 B Blubb T {C Blip}}} $tx
+duro::insert T1 {SCATTR Bla TPATTR {A 1 B Blubb T {C Blap}}} $tx
+
+# Update w/ WHERE
+duro::update T1 {SCATTR="Bla"} TPATTR \
+        {TUPLE {A 1, B "Blubb", T TUPLE {C "Blop"}}} $tx
+
+# Update w/o WHERE
+duro::update T1 TPATTR {TUPLE {A 1, B "Blubb", T TUPLE {C "Blip"}}} $tx
 
 #
 # Create UNWRAP table
