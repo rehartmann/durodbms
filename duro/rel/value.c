@@ -286,8 +286,6 @@ RDB_select_value(RDB_value *valp, RDB_type *typ, const char *repname,
     int ret;
     RDB_bool b;
 
-    RDB_destroy_value(valp);
-
     if (typ->var.scalar.repc == 0 || !RDB_type_is_scalar(typ))
         return RDB_INVALID_ARGUMENT;
 
@@ -311,6 +309,7 @@ RDB_select_value(RDB_value *valp, RDB_type *typ, const char *repname,
     if (prp->selectorp != NULL)
         ret = (prp->selectorp)(valp, compv, typ, repname);
     else {
+        RDB_destroy_value(valp);
         _RDB_set_value_type(valp, typ);
         ret = copy_value(valp, *compv);
     }

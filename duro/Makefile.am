@@ -22,7 +22,7 @@ TESTS = tests/testall
 
 TESTS_ENVIRONMENT = BDB_HOME=$(BDB_HOME)
 
-LDADD = -L$(BDB_HOME)/lib libduro.la -ldb @LIBS@
+LDADD = -L$(BDB_HOME)/lib libduro.la -ldb @LIBS@ -lmcheck
 
 tests_test_pointtable_LDADD = $(LDADD) -lm
 

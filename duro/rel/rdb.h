@@ -987,7 +987,7 @@ RDB_expression *
 RDB_get_comp(RDB_expression *, const char *);
 
 RDB_expression *
-RDB_selector(RDB_expression *, const char *repname, RDB_expression *[]);
+RDB_selector(RDB_type *, const char *repname, RDB_expression *[]);
 
 RDB_expression *
 RDB_user_op(const char *opname, RDB_attr *argv[]);

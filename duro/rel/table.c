@@ -1516,7 +1516,8 @@ error:
 }
 
 static int
-check_keyloss(RDB_table *tbp, int attrc, char *attrv[], RDB_bool presv[]) {
+check_keyloss(RDB_table *tbp, int attrc, char *attrv[], RDB_bool presv[])
+{
     int i, j, k;
     int count = 0;
 
@@ -1565,7 +1566,10 @@ RDB_project(RDB_table *tbp, int attrc, char *attrv[], RDB_table **resultpp)
         return ret;
     }
 
-    presv = malloc(sizeof(RDB_bool) * attrc);
+    presv = malloc(sizeof(RDB_bool) * tbp->keyc);
+    if (presv == NULL) {
+        goto error;
+    }
     keyc = check_keyloss(tbp, attrc, attrv, presv);
     newtbp->var.project.keyloss = (RDB_bool) (keyc == 0);
     if (newtbp->var.project.keyloss) {
@@ -1616,6 +1620,7 @@ error:
         }
         free (newtbp->keyv);
     }
+    RDB_drop_type(newtbp->typ);
     free(newtbp);
 
     return RDB_NO_MEMORY;

@@ -69,12 +69,14 @@ calltest test_null
 calltest test_binary
 calltest test_deftype
 calltest test_utypetable
+calltest test_defpointtype
+calltest test_pointtable
 
 rm /tmp/duro$$
 
 echo Dropping tables
 if ../util/droptable -e db -d TEST SALARIES EMPS1H EMPS1 EMPS2 DEPTS DEEDUM \
-        UTYPETEST; then :; else
+        UTYPETEST POINTTEST; then :; else
     failure
 fi
 

@@ -433,10 +433,9 @@ get_keyattrs(const char *attrstr, RDB_key_attrs *attrsp)
                 strncpy(attrsp->attrv[i], sp, ep - sp);
                 attrsp->attrv[i][ep - sp] = '\0';
             } else {
-                attrsp->attrv[i] = malloc(strlen(sp));
+                attrsp->attrv[i] = RDB_dup_str(sp);
                 if (attrsp->attrv[i] == NULL)
                     goto error;
-                strcpy(attrsp->attrv[i], sp);
             }
             sp = ep;
         }
