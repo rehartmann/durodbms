@@ -310,7 +310,9 @@ update_stored_simple(RDB_table *tbp, RDB_expression *condp,
                 }
 
                 /* Get data */
-                _RDB_obj_to_field(&fieldv[i], &valv[i]);
+                ret = _RDB_obj_to_field(&fieldv[i], &valv[i]);
+                if (ret != RDB_OK)
+                    goto cleanup;
             }
             ret = RDB_cursor_set(curp, updc, fieldv);
             if (ret != RDB_OK) {
@@ -375,8 +377,11 @@ update_select_pindex(RDB_table *tbp, RDB_expression *condp,
         goto cleanup;
 
     /* Convert to a field value */
-    for (i = 0; i < objc; i++)
-        _RDB_obj_to_field(&fvv[i], &objv[i]);
+    for (i = 0; i < objc; i++) {
+        ret = _RDB_obj_to_field(&fvv[i], &objv[i]);
+        if (ret != RDB_OK)
+            goto cleanup;
+    }
 
     /* Read tuple */
     RDB_init_obj(&tpl);
@@ -420,7 +425,9 @@ update_select_pindex(RDB_table *tbp, RDB_expression *condp,
             _RDB_set_nonsc_type(&valv[i], RDB_type_attr_type(
                     RDB_table_type(tbp->var.select.tbp), updv[i].name));
         }
-        _RDB_obj_to_field(&fieldv[i], &valv[i]);
+        ret = _RDB_obj_to_field(&fieldv[i], &valv[i]);
+        if (ret != RDB_OK)
+            goto cleanup;
     }
         
     ret = RDB_update_rec(tbp->var.select.tbp->var.stored.recmapp, fvv, updc,
@@ -479,8 +486,11 @@ update_select_index_simple(RDB_table *tbp, RDB_expression *condp,
         goto cleanup;
 
     /* Convert to a field value */
-    for (i = 0; i < objc; i++)
-        _RDB_obj_to_field(&fv[i], &objv[i]);
+    for (i = 0; i < objc; i++) {
+        ret = _RDB_obj_to_field(&fv[i], &objv[i]);
+        if (ret != RDB_OK)
+            goto cleanup;
+    }
 
     ret = RDB_cursor_seek(curp, fv);
     if (ret == RDB_NOT_FOUND) {
@@ -528,7 +538,9 @@ update_select_index_simple(RDB_table *tbp, RDB_expression *condp,
                     _RDB_set_nonsc_type(&valv[i], RDB_type_attr_type(
                             RDB_table_type(tbp->var.select.tbp), updv[i].name));
                 }
-                _RDB_obj_to_field(&fieldv[i], &valv[i]);
+                ret = _RDB_obj_to_field(&fieldv[i], &valv[i]);
+                if (ret != RDB_OK)
+                    goto cleanup;
             }
                 
             ret = RDB_cursor_update(curp, updc, fieldv);

@@ -463,6 +463,10 @@ obj_to_irep(void *dstp, const void *srcp, size_t len)
 int
 _RDB_obj_to_field(RDB_field *fvp, RDB_object *objp)
 {
+    /* Persistent tables cannot be converted to field values */
+    if (objp->kind == RDB_OB_TABLE && objp->var.tbp->is_persistent)
+        return RDB_INVALID_ARGUMENT;
+
     fvp->datap = objp;
     fvp->copyfp = obj_to_irep;
     return obj_ilen(objp, &fvp->len);
@@ -573,7 +577,7 @@ RDB_init_obj(RDB_object *valp)
     valp->kind = RDB_OB_INITIAL;
     valp->typ = NULL;
 }
-
+#include <signal.h>
 int
 RDB_destroy_obj(RDB_object *objp)
 {
@@ -632,6 +636,8 @@ RDB_destroy_obj(RDB_object *objp)
             objp->var.tbp->refcount--;
             if (objp->var.tbp->refcount == 0
                     && objp->var.tbp->name == NULL) {
+                if (objp->var.tbp->kind != RDB_TB_STORED)
+                    abort();
                 return RDB_drop_table(objp->var.tbp, NULL);
             }
             break;

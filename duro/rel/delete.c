@@ -26,7 +26,9 @@ delete_by_uindex(RDB_table *tbp, RDB_object valv[], _RDB_tbindex *indexp,
     }
     
     for (i = 0; i < keylen; i++) {
-        _RDB_obj_to_field(&fv[i], &valv[i]);
+        ret = _RDB_obj_to_field(&fv[i], &valv[i]);
+        if (ret != RDB_OK)
+            goto cleanup;
     }
 
     if (indexp->idxp == NULL) {

@@ -307,7 +307,11 @@ stored_contains(RDB_table *tbp, const RDB_object *tplp, RDB_transaction *txp)
             _RDB_set_nonsc_type(objp,
                     tuptyp->var.tuple.attrv[i].typ);
         }
-        _RDB_obj_to_field(&fvp[fno], objp);
+        ret = _RDB_obj_to_field(&fvp[fno], objp);
+        if (ret != RDB_OK) {
+            free(fvp);
+            return ret;
+        }
     }
 
     /* Don't use tx if table is local */

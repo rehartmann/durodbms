@@ -188,8 +188,8 @@ project: primary_expression '{' attribute_name_list '}' {
             if (_RDB_parse_ret != RDB_OK) {
                 YYERROR;
             }
-            $$ = RDB_table_to_expr(restbp);
             tbp->refcount++;
+            $$ = RDB_table_to_expr(restbp);
             _RDB_parse_ret = _RDB_parse_add_exp($$);
             if (_RDB_parse_ret != RDB_OK)
                 YYERROR;
@@ -225,13 +225,13 @@ project: primary_expression '{' attribute_name_list '}' {
             if (_RDB_parse_ret != RDB_OK) {
                 YYERROR;
             }
+            tbp->refcount++;
             $$ = RDB_table_to_expr(restbp);
             if ($$ == NULL)
                 YYERROR;
             _RDB_parse_ret = _RDB_parse_add_exp($$);
             if (_RDB_parse_ret != RDB_OK)
                 YYERROR;
-            tbp->refcount++;
         }
     }
     ;
@@ -265,7 +265,7 @@ select: primary_expression TOK_WHERE or_expression {
         if (_RDB_parse_ret != RDB_OK) {
             YYERROR;
         }
-        _RDB_parse_remove_exp($1);
+        tbp->refcount++;
         _RDB_parse_remove_exp($3);
         $$ = RDB_table_to_expr(restbp);
         if ($$ == NULL)
@@ -273,7 +273,6 @@ select: primary_expression TOK_WHERE or_expression {
         _RDB_parse_ret = _RDB_parse_add_exp($$);
         if (_RDB_parse_ret != RDB_OK)
             YYERROR;
-        tbp->refcount++;
     }
     ;
 
@@ -307,11 +306,11 @@ rename: primary_expression TOK_RENAME '(' renaming_list ')' {
             if (_RDB_parse_ret != RDB_OK) {
                 YYERROR;
             }
+            tbp->refcount++;
             $$ = RDB_table_to_expr(restbp);
             _RDB_parse_ret = _RDB_parse_add_exp($$);
             if (_RDB_parse_ret != RDB_OK)
                 YYERROR;
-            tbp->refcount++;
         }
     }
     ;
@@ -362,12 +361,14 @@ relation: primary_expression TOK_UNION primary_expression {
         if (_RDB_parse_ret != RDB_OK) {
             YYERROR;
         }
+        tb1p->refcount++;
+        tb2p->refcount++;
         $$ = RDB_table_to_expr(restbp);
         _RDB_parse_ret = _RDB_parse_add_exp($$);
         if (_RDB_parse_ret != RDB_OK)
             YYERROR;
-        tb1p->refcount++;
-        tb2p->refcount++;
+        _RDB_parse_remove_exp($1);
+        _RDB_parse_remove_exp($3);
     }
     | primary_expression TOK_INTERSECT primary_expression {
         RDB_table *restbp, *tb1p, *tb2p;
@@ -385,12 +386,12 @@ relation: primary_expression TOK_UNION primary_expression {
         if (_RDB_parse_ret != RDB_OK) {
             YYERROR;
         }
+        tb1p->refcount++;
+        tb2p->refcount++;
         $$ = RDB_table_to_expr(restbp);
         _RDB_parse_ret = _RDB_parse_add_exp($$);
         if (_RDB_parse_ret != RDB_OK)
             YYERROR;
-        tb1p->refcount++;
-        tb2p->refcount++;
     }
     | primary_expression TOK_MINUS primary_expression {
         RDB_table *restbp, *tb1p, *tb2p;
@@ -408,12 +409,12 @@ relation: primary_expression TOK_UNION primary_expression {
         if (_RDB_parse_ret != RDB_OK) {
             YYERROR;
         }
+        tb1p->refcount++;
+        tb2p->refcount++;
         $$ = RDB_table_to_expr(restbp);
         _RDB_parse_ret = _RDB_parse_add_exp($$);
         if (_RDB_parse_ret != RDB_OK)
             YYERROR;
-        tb1p->refcount++;
-        tb2p->refcount++;
     }
     | primary_expression TOK_JOIN primary_expression {
         RDB_table *restbp, *tb1p, *tb2p;
@@ -449,12 +450,12 @@ relation: primary_expression TOK_UNION primary_expression {
             if (_RDB_parse_ret != RDB_OK) {
                 YYERROR;
             }
+            tb1p->refcount++;
+            tb2p->refcount++;
             $$ = RDB_table_to_expr(restbp);
             _RDB_parse_ret = _RDB_parse_add_exp($$);
             if (_RDB_parse_ret != RDB_OK)
                 YYERROR;
-            tb1p->refcount++;
-            tb2p->refcount++;
         }
     }
     ;
@@ -485,8 +486,8 @@ extend: TOK_EXTEND primary_expression TOK_ADD '(' extend_add_list ')' {
             if (_RDB_parse_ret != RDB_OK) {
                 YYERROR;
             }
-            $$ = RDB_table_to_expr(restbp);
             tbp->refcount++;
+            $$ = RDB_table_to_expr(restbp);
             _RDB_parse_ret = _RDB_parse_add_exp($$);
             if (_RDB_parse_ret != RDB_OK)
                 YYERROR;
@@ -552,12 +553,13 @@ summarize: TOK_SUMMARIZE primary_expression TOK_PER expression
         if (_RDB_parse_ret != RDB_OK) {
             YYERROR;
         }
+        tb1p->refcount++;
+        tb2p->refcount++;
+
         $$ = RDB_table_to_expr(restbp);
         _RDB_parse_ret = _RDB_parse_add_exp($$);
         if (_RDB_parse_ret != RDB_OK)
             YYERROR;
-        tb1p->refcount++;
-        tb2p->refcount++;
     }
     ;
 
@@ -690,11 +692,11 @@ wrap: primary_expression TOK_WRAP '(' wrapping_list ')' {
             if (_RDB_parse_ret != RDB_OK) {
                 YYERROR;
             }
+            tbp->refcount++;
             $$ = RDB_table_to_expr(restbp);
             _RDB_parse_ret = _RDB_parse_add_exp($$);
             if (_RDB_parse_ret != RDB_OK)
                 YYERROR;
-            tbp->refcount++;
         }
     }
     ;
@@ -747,7 +749,8 @@ unwrap: primary_expression TOK_UNWRAP '(' attribute_name_list ')' {
             RDB_init_obj(&dstobj);
             if (valp == NULL)
                 YYERROR;
-            _RDB_parse_ret = RDB_unwrap_tuple(valp, $4.attrc, $4.attrv, &dstobj);
+            _RDB_parse_ret = RDB_unwrap_tuple(valp, $4.attrc, $4.attrv,
+                    &dstobj);
             if (_RDB_parse_ret != RDB_OK) {
                 RDB_destroy_obj(&dstobj);
                 YYERROR;
@@ -763,11 +766,11 @@ unwrap: primary_expression TOK_UNWRAP '(' attribute_name_list ')' {
             _RDB_parse_ret = RDB_unwrap(tbp, $4.attrc, $4.attrv, &restbp);
             if (_RDB_parse_ret != RDB_OK)
                 YYERROR;
+            tbp->refcount++;
             $$ = RDB_table_to_expr(restbp);
             _RDB_parse_ret = _RDB_parse_add_exp($$);
             if (_RDB_parse_ret != RDB_OK)
                 YYERROR;
-            tbp->refcount++;
         }
     }
     ;    
@@ -782,6 +785,7 @@ group: primary_expression TOK_GROUP '{' attribute_name_list '}' TOK_AS TOK_ID {
                 &restbp);
         if (_RDB_parse_ret != RDB_OK)
             YYERROR;
+        tbp->refcount++;
         $$ = RDB_table_to_expr(restbp);
         _RDB_parse_ret = _RDB_parse_add_exp($$);
         if (_RDB_parse_ret != RDB_OK)
@@ -798,6 +802,7 @@ ungroup: primary_expression TOK_UNGROUP TOK_ID {
         _RDB_parse_ret = RDB_ungroup(tbp, $3->var.attr.name, &restbp);
         if (_RDB_parse_ret != RDB_OK)
             YYERROR;
+        tbp->refcount++;
         $$ = RDB_table_to_expr(restbp);
         _RDB_parse_ret = _RDB_parse_add_exp($$);
         if (_RDB_parse_ret != RDB_OK)
@@ -905,17 +910,17 @@ rel_expression: add_expression
             YYERROR;
     }
     | add_expression TOK_IN add_expression {
-        /* If $3 is a name, try to find a table with that name */
+        /* If $1 is a name, try to find a table with that name */
         RDB_table *tbp = expr_to_table($1);
         RDB_expression *exp = tbp != NULL ? RDB_table_to_expr(tbp) : $1;
 
         $$ = RDB_expr_contains($3, exp);
         if ($$ == NULL)
             YYERROR;
-        if (tbp != NULL) {
+        if (tbp != NULL)
             tbp->refcount++;
-        }
-        _RDB_parse_remove_exp($1);
+        else
+            _RDB_parse_remove_exp(exp);
         _RDB_parse_remove_exp($3);
         _RDB_parse_ret = _RDB_parse_add_exp($$);
         if (_RDB_parse_ret != RDB_OK)
@@ -950,6 +955,8 @@ rel_expression: add_expression
         $$ = RDB_expr_subset(ex1p, ex2p);
         if ($$ == NULL)
             YYERROR;
+        _RDB_parse_remove_exp($1);
+        _RDB_parse_remove_exp($3);
         _RDB_parse_ret = _RDB_parse_add_exp($$);
         if (_RDB_parse_ret != RDB_OK)
             YYERROR;
@@ -1063,6 +1070,7 @@ extractor: TOK_TUPLE TOK_FROM expression {
             RDB_destroy_obj(&tpl);
             YYERROR;
         }
+        _RDB_parse_remove_exp($3);
         $$ = RDB_obj_to_expr(&tpl);
         RDB_destroy_obj(&tpl);
         _RDB_parse_ret = _RDB_parse_add_exp($$);
