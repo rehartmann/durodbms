@@ -1253,7 +1253,7 @@ next_join_tuple_nuix(RDB_qresult *qrp, RDB_object *tplp, RDB_transaction *txp)
 
     return RDB_OK;
 }
-
+#include <signal.h>
 static int
 next_join_tuple_uix(RDB_qresult *qrp, RDB_object *tplp, RDB_transaction *txp)
 {
@@ -1289,8 +1289,10 @@ next_join_tuple_uix(RDB_qresult *qrp, RDB_object *tplp, RDB_transaction *txp)
         }
         ret = _RDB_get_by_uindex(qrp->tbp->var.join.tb2p, objv,
                 qrp->tbp->var.join.indexp, txp, &tpl);
-        if (ret == RDB_NOT_FOUND)
+        if (ret == RDB_NOT_FOUND) {
+            match = RDB_FALSE;
             continue;
+        }
         if (ret != RDB_OK)
             goto cleanup;
 
