@@ -7,7 +7,7 @@ void
 RDB_init_array(RDB_array *arrp)
 {
     arrp->tbp = NULL;
-    RDB_init_tuple(&arrp->tpl);
+    RDB_init_obj(&arrp->tpl);
 }
 
 int
@@ -23,7 +23,7 @@ RDB_destroy_array(RDB_array *arrp)
             RDB_rollback(arrp->txp);
         return ret;
     }
-    return RDB_destroy_tuple(&arrp->tpl);
+    return RDB_destroy_obj(&arrp->tpl);
 }
 
 int
@@ -54,7 +54,7 @@ RDB_table_to_array(RDB_array *arrp, RDB_table *tbp,
 }    
 
 int
-RDB_array_get_tuple(RDB_array *arrp, RDB_int idx, RDB_tuple **tplpp)
+RDB_array_get(RDB_array *arrp, RDB_int idx, RDB_object **tplpp)
 {
     int ret;
 
@@ -93,13 +93,13 @@ RDB_array_length(RDB_array *arrp)
     int ret;
 
     if (arrp->length == -1) {    
-        RDB_tuple tpl;
+        RDB_object tpl;
 
-        RDB_init_tuple(&tpl);
+        RDB_init_obj(&tpl);
         if (arrp->qrp == NULL) {
             ret = _RDB_table_qresult(arrp->tbp, arrp->txp, &arrp->qrp);
             if (ret != RDB_OK) {
-                RDB_destroy_tuple(&tpl);            
+                RDB_destroy_obj(&tpl);            
                 return ret;
             }
             arrp->pos = 0;
@@ -111,7 +111,7 @@ RDB_array_length(RDB_array *arrp)
                 arrp->pos++;
             }
         } while (ret == RDB_OK);
-        RDB_destroy_tuple(&tpl);
+        RDB_destroy_obj(&tpl);
         arrp->length = arrp->pos;
     }
     return arrp->length;

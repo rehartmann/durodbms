@@ -21,7 +21,7 @@ create_table(RDB_database *dbp)
 {
     RDB_transaction tx;
     RDB_table *tbp;
-    RDB_tuple tpl;
+    RDB_object tpl;
     int ret;
     int i;
    
@@ -40,7 +40,7 @@ create_table(RDB_database *dbp)
     }
     printf("Table %s created.\n", RDB_table_name(tbp));
 
-    RDB_init_tuple(&tpl);
+    RDB_init_obj(&tpl);
 
     for (i = 0; i < 3; i++) {
         RDB_tuple_set_int(&tpl, "NO", (RDB_int) i);
@@ -49,7 +49,7 @@ create_table(RDB_database *dbp)
 
         ret = RDB_insert(tbp, &tpl, &tx);
         if (ret != RDB_OK) {
-            RDB_destroy_tuple(&tpl);
+            RDB_destroy_obj(&tpl);
             RDB_rollback(&tx);
             return ret;
         }
@@ -141,7 +141,7 @@ test_print(RDB_database *dbp)
     RDB_transaction tx;
     RDB_table *tbp;
     RDB_array array;
-    RDB_tuple *tplp;
+    RDB_object *tplp;
     int ret;
     int i;
 
@@ -166,7 +166,7 @@ test_print(RDB_database *dbp)
         return ret;
     } 
 
-    for (i = 0; (ret = RDB_array_get_tuple(&array, i, &tplp)) == RDB_OK; i++) {
+    for (i = 0; (ret = RDB_array_get(&array, i, &tplp)) == RDB_OK; i++) {
         printf("NO=%d, O_NO=%d, COUNT=%d\n", (int)RDB_tuple_get_int(tplp, "NO"),
                 (int)RDB_tuple_get_int(tplp, "O_NO"),
                 (int)RDB_tuple_get_int(tplp, "COUNT"));

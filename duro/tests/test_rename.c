@@ -8,7 +8,7 @@ static int
 print_table(RDB_table *tbp, RDB_transaction *txp)
 {
     int ret;
-    RDB_tuple *tplp;
+    RDB_object *tplp;
     RDB_array array;
     RDB_int i;
 
@@ -19,7 +19,7 @@ print_table(RDB_table *tbp, RDB_transaction *txp)
         goto error;
     }
     
-    for (i = 0; (ret = RDB_array_get_tuple(&array, i, &tplp)) == RDB_OK; i++) {
+    for (i = 0; (ret = RDB_array_get(&array, i, &tplp)) == RDB_OK; i++) {
         printf("EMP#: %d\n", (int) RDB_tuple_get_int(tplp, "EMP#"));
         printf("NAME: %s\n", RDB_tuple_get_string(tplp, "NAME"));
         printf("SAL: %f\n", (double) RDB_tuple_get_rational(tplp, "SAL"));
@@ -47,7 +47,7 @@ test_rename(RDB_database *dbp)
 {
     RDB_transaction tx;
     RDB_table *tbp, *vtbp;
-    RDB_tuple tpl;
+    RDB_object tpl;
     int ret;
 
     printf("Starting transaction\n");
@@ -73,7 +73,7 @@ test_rename(RDB_database *dbp)
     printf("Printing renaming table\n");
     ret = print_table(vtbp, &tx);
 
-    RDB_init_tuple(&tpl);
+    RDB_init_obj(&tpl);
     ret = RDB_tuple_set_int(&tpl, "EMP#", 1);
     if (ret != RDB_OK)
         goto error;
@@ -94,7 +94,7 @@ test_rename(RDB_database *dbp)
         goto error;
     }
 
-    RDB_destroy_tuple(&tpl);
+    RDB_destroy_obj(&tpl);
 
     printf("Dropping rename\n");
     RDB_drop_table(vtbp, &tx);
@@ -103,7 +103,7 @@ test_rename(RDB_database *dbp)
     return RDB_commit(&tx);
 
 error:
-    RDB_destroy_tuple(&tpl);
+    RDB_destroy_obj(&tpl);
 
     printf("Dropping rename\n");
     RDB_drop_table(vtbp, &tx);

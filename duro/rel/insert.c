@@ -6,7 +6,7 @@
 #include <string.h>
 
 static int
-insert_intersect(RDB_table *tbp, const RDB_tuple *tup, RDB_transaction *txp)
+insert_intersect(RDB_table *tbp, const RDB_object *tup, RDB_transaction *txp)
 {
     RDB_transaction tx;
     int ret, ret2;
@@ -45,7 +45,7 @@ insert_intersect(RDB_table *tbp, const RDB_tuple *tup, RDB_transaction *txp)
 }
 
 static int
-insert_join(RDB_table *tbp, const RDB_tuple *tup, RDB_transaction *txp)
+insert_join(RDB_table *tbp, const RDB_object *tup, RDB_transaction *txp)
 {
     RDB_transaction tx;
     int ret, ret2;
@@ -84,7 +84,7 @@ insert_join(RDB_table *tbp, const RDB_tuple *tup, RDB_transaction *txp)
 }
 
 int
-RDB_insert(RDB_table *tbp, const RDB_tuple *tup, RDB_transaction *txp)
+RDB_insert(RDB_table *tbp, const RDB_object *tup, RDB_transaction *txp)
 {
     int ret;
     RDB_bool b;

@@ -124,26 +124,26 @@ static RDB_string_vec tuple_attrs_keyv[] = { { 2, tuple_attrs_keyattrv } };
 int
 _RDB_dbtables_insert(RDB_table *tbp, RDB_transaction *txp)
 {
-    RDB_tuple tpl;
+    RDB_object tpl;
     int ret;
 
     /* Insert (database, table) pair into SYS_DBTABLES */
-    RDB_init_tuple(&tpl);
+    RDB_init_obj(&tpl);
 
     ret = RDB_tuple_set_string(&tpl, "TABLENAME", tbp->name);
     if (ret != RDB_OK)
     {
-        RDB_destroy_tuple(&tpl);
+        RDB_destroy_obj(&tpl);
         return ret;
     }
     ret = RDB_tuple_set_string(&tpl, "DBNAME", txp->dbp->name);
     if (ret != RDB_OK)
     {
-        RDB_destroy_tuple(&tpl);
+        RDB_destroy_obj(&tpl);
         return ret;
     }
     ret = RDB_insert(txp->dbp->dbrootp->dbtables_tbp, &tpl, txp);
-    RDB_destroy_tuple(&tpl);
+    RDB_destroy_obj(&tpl);
     
     return ret;
 }
@@ -156,9 +156,9 @@ insert_tuptype(RDB_type *tuptyp, const char *key, RDB_transaction *txp)
 {
     int i;
     int ret;
-    RDB_tuple tpl;
+    RDB_object tpl;
 
-    RDB_init_tuple(&tpl);
+    RDB_init_obj(&tpl);
     for (i = 0; i < tuptyp->var.tuple.attrc; i++) {
         ret = RDB_tuple_set_string(&tpl, "TYPEKEY", key);
         if (ret != RDB_OK)
@@ -186,7 +186,7 @@ insert_tuptype(RDB_type *tuptyp, const char *key, RDB_transaction *txp)
     ret = RDB_OK;
 
 cleanup:
-    RDB_destroy_tuple(&tpl);
+    RDB_destroy_obj(&tpl);
     return ret;
 }
 
@@ -210,30 +210,30 @@ new_nstypekey(const char *tbname, const char *attrname)
 int
 _RDB_catalog_insert(RDB_table *tbp, RDB_transaction *txp)
 {
-    RDB_tuple tpl;
+    RDB_object tpl;
     RDB_type *tuptyp = tbp->typ->var.basetyp;
     int ret;
     int i, j;
 
     /* insert entry into table SYS_RTABLES */
-    RDB_init_tuple(&tpl);
+    RDB_init_obj(&tpl);
     ret = RDB_tuple_set_string(&tpl, "TABLENAME", tbp->name);
     if (ret != RDB_OK) {
-        RDB_destroy_tuple(&tpl);
+        RDB_destroy_obj(&tpl);
         return ret;
     }
     ret = RDB_tuple_set_bool(&tpl, "IS_USER", tbp->is_user);
     if (ret != RDB_OK) {
-        RDB_destroy_tuple(&tpl);
+        RDB_destroy_obj(&tpl);
         return ret;
     }
     ret = RDB_tuple_set_string(&tpl, "I_RECMAP", tbp->name);
     if (ret != RDB_OK) {
-        RDB_destroy_tuple(&tpl);
+        RDB_destroy_obj(&tpl);
         return ret;
     }
     ret = RDB_insert(txp->dbp->dbrootp->rtables_tbp, &tpl, txp);
-    RDB_destroy_tuple(&tpl);
+    RDB_destroy_obj(&tpl);
     if (ret != RDB_OK) {
         return ret;
     }
@@ -243,10 +243,10 @@ _RDB_catalog_insert(RDB_table *tbp, RDB_transaction *txp)
         return ret;
 
     /* insert entries into table SYS_TABLEATTRS */
-    RDB_init_tuple(&tpl);
+    RDB_init_obj(&tpl);
     ret = RDB_tuple_set_string(&tpl, "TABLENAME", tbp->name);
     if (ret != RDB_OK) {
-        RDB_destroy_tuple(&tpl);
+        RDB_destroy_obj(&tpl);
         return ret;
     }
 
@@ -269,7 +269,7 @@ _RDB_catalog_insert(RDB_table *tbp, RDB_transaction *txp)
                 ret = insert_tuptype(tuptyp->var.tuple.attrv[i].typ, typekey, txp);
                 free(typekey);
                 if (ret != RDB_OK) {
-                    RDB_destroy_tuple(&tpl);
+                    RDB_destroy_obj(&tpl);
                     return ret;
                 }
             } else {
@@ -282,32 +282,32 @@ _RDB_catalog_insert(RDB_table *tbp, RDB_transaction *txp)
 
         ret = RDB_tuple_set_string(&tpl, "TYPE", typename);
         if (ret != RDB_OK) {
-            RDB_destroy_tuple(&tpl);
+            RDB_destroy_obj(&tpl);
             return ret;
         }
         ret = RDB_tuple_set_string(&tpl, "ATTRNAME", attrname);
         if (ret != RDB_OK) {
-            RDB_destroy_tuple(&tpl);
+            RDB_destroy_obj(&tpl);
             return ret;
         }
         ret = RDB_tuple_set_int(&tpl, "I_FNO", i);
         if (ret != RDB_OK) {
-            RDB_destroy_tuple(&tpl);
+            RDB_destroy_obj(&tpl);
             return ret;
         }
         ret = RDB_insert(txp->dbp->dbrootp->table_attr_tbp, &tpl, txp);
         if (ret != RDB_OK) {
-            RDB_destroy_tuple(&tpl);
+            RDB_destroy_obj(&tpl);
             return ret;
         }
     }
-    RDB_destroy_tuple(&tpl);
+    RDB_destroy_obj(&tpl);
 
     /* insert entries into table SYS_TABLEATTR_DEFVALS */
-    RDB_init_tuple(&tpl);
+    RDB_init_obj(&tpl);
     ret = RDB_tuple_set_string(&tpl, "TABLENAME", tbp->name);
     if (ret != RDB_OK) {
-        RDB_destroy_tuple(&tpl);
+        RDB_destroy_obj(&tpl);
         return ret;
     }
 
@@ -324,7 +324,7 @@ _RDB_catalog_insert(RDB_table *tbp, RDB_transaction *txp)
             
             ret = RDB_tuple_set_string(&tpl, "ATTRNAME", attrname);
             if (ret != RDB_OK) {
-                RDB_destroy_tuple(&tpl);
+                RDB_destroy_obj(&tpl);
                 return ret;
             }
 
@@ -332,7 +332,7 @@ _RDB_catalog_insert(RDB_table *tbp, RDB_transaction *txp)
             datap = RDB_obj_irep(tuptyp->var.tuple.attrv[i].defaultp, &len);
             ret = RDB_binary_set(&binval, 0, datap, len);
             if (ret != RDB_OK) {
-                RDB_destroy_tuple(&tpl);
+                RDB_destroy_obj(&tpl);
                 RDB_destroy_obj(&binval);
                 return ret;
             }
@@ -340,21 +340,21 @@ _RDB_catalog_insert(RDB_table *tbp, RDB_transaction *txp)
             ret = RDB_tuple_set(&tpl, "DEFAULT_VALUE", &binval);
             RDB_destroy_obj(&binval);
             if (ret != RDB_OK) {
-                RDB_destroy_tuple(&tpl);
+                RDB_destroy_obj(&tpl);
                 return ret;
             }
 
             ret = RDB_insert(txp->dbp->dbrootp->table_attr_defvals_tbp, &tpl, txp);
             if (ret != RDB_OK) {
-                RDB_destroy_tuple(&tpl);
+                RDB_destroy_obj(&tpl);
                 return ret;
             }
         }
     }
-    RDB_destroy_tuple(&tpl);
+    RDB_destroy_obj(&tpl);
 
     /* insert keys into SYS_KEYS */
-    RDB_init_tuple(&tpl);
+    RDB_init_obj(&tpl);
     ret = RDB_tuple_set_string(&tpl, "TABLENAME", tbp->name);
     if (ret != RDB_OK)
         return ret;
@@ -384,7 +384,7 @@ _RDB_catalog_insert(RDB_table *tbp, RDB_transaction *txp)
         if (ret != RDB_OK)
             return ret;
     }
-    RDB_destroy_tuple(&tpl);
+    RDB_destroy_obj(&tpl);
 
     return RDB_OK;
 }
@@ -650,7 +650,7 @@ get_keys(const char *name, RDB_transaction *txp,
     RDB_expression *wherep;
     RDB_table *vtbp;
     RDB_array arr;
-    RDB_tuple *tplp;
+    RDB_object *tplp;
     int ret;
     int i;
     
@@ -690,7 +690,7 @@ get_keys(const char *name, RDB_transaction *txp,
         RDB_int kno;
         int attrc;
     
-        ret = RDB_array_get_tuple(&arr, i, &tplp);
+        ret = RDB_array_get(&arr, i, &tplp);
         if (ret != RDB_OK) {
             goto error;
         }
@@ -759,9 +759,9 @@ get_tuple_type(const char *typekey, RDB_transaction *txp, RDB_type **typp)
 
     for (i = 0; i < attrc; i++) {
         RDB_attr *attrp;
-        RDB_tuple *tplp;
+        RDB_object *tplp;
 
-        ret = RDB_array_get_tuple(&arr, i, &tplp);
+        ret = RDB_array_get(&arr, i, &tplp);
         if (ret != RDB_OK)
             goto cleanup;
         attrp = &attrv[RDB_tuple_get_int(tplp, "I_ATTRNO")];
@@ -799,8 +799,8 @@ _RDB_get_cat_rtable(const char *name, RDB_transaction *txp, RDB_table **tbpp)
     RDB_table *tmptb2p = NULL;
     RDB_table *tmptb3p = NULL;
     RDB_array arr;
-    RDB_tuple tpl;
-    RDB_tuple *tplp;
+    RDB_object tpl;
+    RDB_object *tplp;
     RDB_bool usr;
     int ret;
     RDB_int i, j;
@@ -813,7 +813,7 @@ _RDB_get_cat_rtable(const char *name, RDB_transaction *txp, RDB_table **tbpp)
     /* Read real table data from the catalog */
 
     RDB_init_array(&arr);
-    RDB_init_tuple(&tpl);
+    RDB_init_obj(&tpl);
 
     exprp = RDB_eq(RDB_expr_attr("TABLENAME"),
             RDB_string_const(name));
@@ -863,7 +863,7 @@ _RDB_get_cat_rtable(const char *name, RDB_transaction *txp, RDB_table **tbpp)
         RDB_type *attrtyp;
         RDB_int fno;
 
-        ret = RDB_array_get_tuple(&arr, i, &tplp);
+        ret = RDB_array_get(&arr, i, &tplp);
         if (ret != RDB_OK)
             goto error;
         fno = RDB_tuple_get_int(tplp, "I_FNO");
@@ -907,7 +907,7 @@ _RDB_get_cat_rtable(const char *name, RDB_transaction *txp, RDB_table **tbpp)
         char *name;
         RDB_object *binvalp;
 
-        RDB_array_get_tuple(&arr, i, &tplp);
+        RDB_array_get(&arr, i, &tplp);
         name = RDB_tuple_get_string(tplp, "ATTRNAME");
         binvalp = RDB_tuple_get(tplp, "DEFAULT_VALUE");
         
@@ -960,7 +960,7 @@ _RDB_get_cat_rtable(const char *name, RDB_transaction *txp, RDB_table **tbpp)
     RDB_drop_table(tmptb1p, txp);
     RDB_drop_table(tmptb2p, txp);
 
-    RDB_destroy_tuple(&tpl);
+    RDB_destroy_obj(&tpl);
 
     return ret;
 error:
@@ -979,7 +979,7 @@ error:
     if (tmptb3p != NULL)
         RDB_drop_table(tmptb3p, txp);
 
-    RDB_destroy_tuple(&tpl);
+    RDB_destroy_obj(&tpl);
     
     return ret;
 }
@@ -989,7 +989,7 @@ _RDB_get_cat_vtable(const char *name, RDB_transaction *txp, RDB_table **tbpp)
 {
     RDB_expression *exprp;
     RDB_table *tmptbp = NULL;
-    RDB_tuple tpl;
+    RDB_object tpl;
     RDB_array arr;
     RDB_object *valp;
     RDB_bool usr;
@@ -1010,7 +1010,7 @@ _RDB_get_cat_vtable(const char *name, RDB_transaction *txp, RDB_table **tbpp)
         goto error;
     }
     
-    RDB_init_tuple(&tpl);
+    RDB_init_obj(&tpl);
     ret = RDB_extract_tuple(tmptbp, &tpl, txp);
 
     RDB_drop_table(tmptbp, txp);
@@ -1186,8 +1186,8 @@ _RDB_get_cat_type(const char *name, RDB_transaction *txp, RDB_type **typp)
     RDB_table *tmptb1p = NULL;
     RDB_table *tmptb2p = NULL;
     RDB_table *tmptb3p = NULL;
-    RDB_tuple tpl;
-    RDB_tuple *tplp;
+    RDB_object tpl;
+    RDB_object *tplp;
     RDB_array possreps;
     RDB_array comps;
     RDB_type *typ = NULL;
@@ -1196,7 +1196,7 @@ _RDB_get_cat_type(const char *name, RDB_transaction *txp, RDB_type **typp)
     int ret, tret;
     int i;
 
-    RDB_init_tuple(&tpl);
+    RDB_init_obj(&tpl);
     RDB_init_array(&possreps);
     RDB_init_array(&comps);
 
@@ -1278,7 +1278,7 @@ _RDB_get_cat_type(const char *name, RDB_transaction *txp, RDB_type **typp)
     for (i = 0; i < typ->var.scalar.repc; i++) {
         int j;
 
-        ret = RDB_array_get_tuple(&possreps, (RDB_int) i, &tplp);
+        ret = RDB_array_get(&possreps, (RDB_int) i, &tplp);
         if (ret != RDB_OK)
             goto error;
         typ->var.scalar.repv[i].name = RDB_dup_str(
@@ -1320,7 +1320,7 @@ _RDB_get_cat_type(const char *name, RDB_transaction *txp, RDB_type **typp)
         for (j = 0; j < typ->var.scalar.repv[i].compc; j++) {
             RDB_int idx;
 
-            ret = RDB_array_get_tuple(&comps, (RDB_int) j, &tplp);
+            ret = RDB_array_get(&comps, (RDB_int) j, &tplp);
             if (ret != RDB_OK)
                 goto error;
             idx = RDB_tuple_get_int(tplp, "COMPNO");
@@ -1377,7 +1377,7 @@ _RDB_get_cat_type(const char *name, RDB_transaction *txp, RDB_type **typp)
     if (ret == RDB_OK)
         ret = tret;
 
-    RDB_destroy_tuple(&tpl);
+    RDB_destroy_obj(&tpl);
     tret = RDB_destroy_array(&possreps);
     if (ret == RDB_OK)
         ret = tret;
@@ -1393,7 +1393,7 @@ error:
         RDB_drop_table(tmptb2p, txp);
     if (tmptb3p != NULL)
         RDB_drop_table(tmptb3p, txp);
-    RDB_destroy_tuple(&tpl);
+    RDB_destroy_obj(&tpl);
     RDB_destroy_array(&possreps);
     RDB_destroy_array(&comps);
     if (typ != NULL) {
@@ -1459,7 +1459,7 @@ _RDB_get_cat_ro_op(const char *name, int argc, RDB_type *argtv[],
 {
     RDB_expression *exp;
     RDB_table *vtbp;
-    RDB_tuple tpl;
+    RDB_object tpl;
     int i;
     int ret;
     char *libname, *symname;
@@ -1486,7 +1486,7 @@ _RDB_get_cat_ro_op(const char *name, int argc, RDB_type *argtv[],
         RDB_drop_expr(exp);
         return ret;
     }
-    RDB_init_tuple(&tpl);
+    RDB_init_obj(&tpl);
     ret = RDB_extract_tuple(vtbp, &tpl, txp);
     RDB_drop_table(vtbp, txp);
     if (ret != RDB_OK)
@@ -1542,7 +1542,7 @@ _RDB_get_cat_ro_op(const char *name, int argc, RDB_type *argtv[],
         goto error;
     }
 
-    RDB_destroy_tuple(&tpl);
+    RDB_destroy_obj(&tpl);
 
     *opp = op;
     return RDB_OK;
@@ -1555,7 +1555,7 @@ error:
         free(op);
     }
 
-    RDB_destroy_tuple(&tpl);
+    RDB_destroy_obj(&tpl);
     return ret;
 }
 
@@ -1566,7 +1566,7 @@ _RDB_get_cat_upd_op(const char *name, int argc, RDB_object *argv[],
 {
     RDB_expression *exp;
     RDB_table *vtbp;
-    RDB_tuple tpl;
+    RDB_object tpl;
     int i;
     int ret;
     char *libname, *symname;
@@ -1595,7 +1595,7 @@ _RDB_get_cat_upd_op(const char *name, int argc, RDB_object *argv[],
         RDB_drop_expr(exp);
         return ret;
     }
-    RDB_init_tuple(&tpl);
+    RDB_init_obj(&tpl);
     ret = RDB_extract_tuple(vtbp, &tpl, txp);
     RDB_drop_table(vtbp, txp);
     if (ret != RDB_OK)
@@ -1646,7 +1646,7 @@ _RDB_get_cat_upd_op(const char *name, int argc, RDB_object *argv[],
         goto error;
     }
 
-    RDB_destroy_tuple(&tpl);
+    RDB_destroy_obj(&tpl);
 
     *opp = op;
     return RDB_OK;
@@ -1659,6 +1659,6 @@ error:
         free(op);
     }
 
-    RDB_destroy_tuple(&tpl);
+    RDB_destroy_obj(&tpl);
     return ret;
 }

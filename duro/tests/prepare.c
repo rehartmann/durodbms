@@ -80,13 +80,13 @@ int
 fill_tables(RDB_database *dbp)
 {
     int ret;
-    RDB_tuple deptpl, emptpl;
+    RDB_object deptpl, emptpl;
     RDB_transaction tx;
     RDB_table *tbp, *tbp2, *tbp3;
 
-    RDB_init_tuple(&emptpl);
+    RDB_init_obj(&emptpl);
 
-    RDB_init_tuple(&deptpl);
+    RDB_init_obj(&deptpl);
 
     ret = RDB_begin_tx(&tx, dbp, NULL);
     if (ret != RDB_OK) {
@@ -137,8 +137,8 @@ fill_tables(RDB_database *dbp)
 
     printf("Filling EMPS2\n");
 
-    RDB_destroy_tuple(&emptpl);
-    RDB_init_tuple(&emptpl);
+    RDB_destroy_obj(&emptpl);
+    RDB_init_obj(&emptpl);
 
     ret = RDB_tuple_set_int(&emptpl, "EMPNO", 1);
     if (ret != RDB_OK)
@@ -200,14 +200,14 @@ fill_tables(RDB_database *dbp)
         return ret;
     }
 
-    RDB_destroy_tuple(&emptpl);
-    RDB_destroy_tuple(&deptpl);
+    RDB_destroy_obj(&emptpl);
+    RDB_destroy_obj(&deptpl);
 
     return RDB_commit(&tx);
 
 error:
-    RDB_destroy_tuple(&emptpl);
-    RDB_destroy_tuple(&deptpl);
+    RDB_destroy_obj(&emptpl);
+    RDB_destroy_obj(&deptpl);
     
     return ret;
 }

@@ -8,7 +8,7 @@ static int
 print_table(RDB_table *tbp, RDB_transaction *txp)
 {
     int ret;
-    RDB_tuple *tplp;
+    RDB_object *tplp;
     RDB_array array;
     RDB_int i;
 
@@ -19,7 +19,7 @@ print_table(RDB_table *tbp, RDB_transaction *txp)
         goto error;
     }
     
-    for (i = 0; (ret = RDB_array_get_tuple(&array, i, &tplp)) == RDB_OK; i++) {
+    for (i = 0; (ret = RDB_array_get(&array, i, &tplp)) == RDB_OK; i++) {
         printf("DEPTNO: %d\n", (int) RDB_tuple_get_int(tplp, "DEPTNO"));
         printf("COUNT_EMPS: %d\n",
                (int) RDB_tuple_get_int(tplp, "COUNT_EMPS"));
@@ -45,9 +45,9 @@ static int
 check_contains(RDB_table *tbp, RDB_transaction *txp)
 {
     int ret;
-    RDB_tuple tpl;
+    RDB_object tpl;
 
-    RDB_init_tuple(&tpl);
+    RDB_init_obj(&tpl);
     
     RDB_tuple_set_int(&tpl, "DEPTNO", 2);
     RDB_tuple_set_int(&tpl, "COUNT_EMPS", 2);

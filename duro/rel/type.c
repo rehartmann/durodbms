@@ -212,7 +212,7 @@ int
 RDB_define_type(const char *name, int repc, RDB_possrep repv[],
                 RDB_transaction *txp)
 {
-    RDB_tuple tpl;
+    RDB_object tpl;
     RDB_object conval;
     int ret;
     int i, j;
@@ -220,7 +220,7 @@ RDB_define_type(const char *name, int repc, RDB_possrep repv[],
     if (!RDB_tx_is_running(txp))
         return RDB_INVALID_TRANSACTION;
 
-    RDB_init_tuple(&tpl);
+    RDB_init_obj(&tpl);
     RDB_init_obj(&conval);
 
     /*
@@ -305,13 +305,13 @@ RDB_define_type(const char *name, int repc, RDB_possrep repv[],
     }
 
     RDB_destroy_obj(&conval);    
-    RDB_destroy_tuple(&tpl);
+    RDB_destroy_obj(&tpl);
     
     return RDB_OK;
     
 error:
     RDB_destroy_obj(&conval);    
-    RDB_destroy_tuple(&tpl);
+    RDB_destroy_obj(&tpl);
 
     if (RDB_is_syserr(ret))
         RDB_rollback(txp);
@@ -341,7 +341,7 @@ RDB_implement_type(const char *name, const char *libname, RDB_type *arep,
          */
         RDB_table *tmptb1p;
         RDB_table *tmptb2p;
-        RDB_tuple tpl;
+        RDB_object tpl;
         char *possrepname;
 
         if (arep != NULL)
@@ -351,11 +351,11 @@ RDB_implement_type(const char *name, const char *libname, RDB_type *arep,
         ret = _RDB_possreps_query(name, txp, &tmptb1p);
         if (ret != RDB_OK)
             return ret;
-        RDB_init_tuple(&tpl);
+        RDB_init_obj(&tpl);
         ret = RDB_extract_tuple(tmptb1p, &tpl, txp);
         RDB_drop_table(tmptb1p, txp);
         if (ret != RDB_OK) {
-            RDB_destroy_tuple(&tpl);
+            RDB_destroy_obj(&tpl);
             return ret;
         }
         possrepname = RDB_tuple_get_string(&tpl, "POSSREPNAME");
@@ -363,17 +363,17 @@ RDB_implement_type(const char *name, const char *libname, RDB_type *arep,
         /* only 1 possrep component currently supported */
         ret = _RDB_possrepcomps_query(name, possrepname, txp, &tmptb2p);
         if (ret != RDB_OK) {
-            RDB_destroy_tuple(&tpl);
+            RDB_destroy_obj(&tpl);
             return ret;
         }
         ret = RDB_extract_tuple(tmptb2p, &tpl, txp);
         RDB_drop_table(tmptb2p, txp);
         if (ret != RDB_OK) {
-            RDB_destroy_tuple(&tpl);
+            RDB_destroy_obj(&tpl);
             return ret == RDB_INVALID_ARGUMENT ? RDB_NOT_SUPPORTED : ret;
         }
         ret = RDB_get_type(RDB_tuple_get_string(&tpl, "COMPTYPENAME"), txp, &arep);
-        RDB_destroy_tuple(&tpl);
+        RDB_destroy_obj(&tpl);
         if (ret != RDB_OK) {
             return ret;
         }

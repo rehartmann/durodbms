@@ -8,7 +8,7 @@ static int
 print_table(RDB_table *tbp, RDB_transaction *txp)
 {
     int ret;
-    RDB_tuple *tplp;
+    RDB_object *tplp;
     RDB_array array;
     RDB_int i;
 
@@ -20,7 +20,7 @@ print_table(RDB_table *tbp, RDB_transaction *txp)
         goto error;
     }
     
-    for (i = 0; (ret = RDB_array_get_tuple(&array, i, &tplp)) == RDB_OK; i++) {
+    for (i = 0; (ret = RDB_array_get(&array, i, &tplp)) == RDB_OK; i++) {
         printf("EMPNO: %d\n", (int) RDB_tuple_get_int(tplp, "EMPNO"));
         printf("NAME: %s\n", RDB_tuple_get_string(tplp, "NAME"));
         printf("SALARY: %f\n", (double) RDB_tuple_get_rational(tplp, "SALARY"));

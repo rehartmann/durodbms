@@ -52,7 +52,7 @@ int
 test_insert(RDB_database *dbp)
 {
     int ret;
-    RDB_tuple tpl;
+    RDB_object tpl;
     RDB_transaction tx;
     RDB_table *tbp;
     RDB_object xval, yval;
@@ -72,7 +72,7 @@ test_insert(RDB_database *dbp)
         return ret;
     }
 
-    RDB_init_tuple(&tpl);
+    RDB_init_obj(&tpl);
 
     RDB_init_obj(&xval);
     RDB_init_obj(&yval);
@@ -131,7 +131,7 @@ test_insert(RDB_database *dbp)
         goto error;
     }
 
-    RDB_destroy_tuple(&tpl);
+    RDB_destroy_obj(&tpl);
     RDB_destroy_obj(&xval);
     RDB_destroy_obj(&yval);
     RDB_destroy_obj(&pval);
@@ -141,7 +141,7 @@ test_insert(RDB_database *dbp)
     printf("End of transaction\n");
     return RDB_commit(&tx);
 error:
-    RDB_destroy_tuple(&tpl);
+    RDB_destroy_obj(&tpl);
     RDB_destroy_obj(&xval);
     RDB_destroy_obj(&yval);
     RDB_destroy_obj(&pval);
@@ -155,7 +155,7 @@ error:
 int
 test_query(RDB_database *dbp)
 {
-    RDB_tuple *tplp;
+    RDB_object *tplp;
     RDB_transaction tx;
     RDB_table *tbp;
     RDB_table *tmptbp = NULL;
@@ -188,7 +188,7 @@ test_query(RDB_database *dbp)
         goto error;
     } 
  
-    for (i = 0; (ret = RDB_array_get_tuple(&array, i, &tplp)) == RDB_OK; i++) {
+    for (i = 0; (ret = RDB_array_get(&array, i, &tplp)) == RDB_OK; i++) {
         RDB_object *pvalp = RDB_tuple_get(tplp, "POINT");
 
         ret = RDB_obj_comp(pvalp, "X", &xval);
@@ -214,7 +214,7 @@ test_query(RDB_database *dbp)
         goto error;
     } 
 
-    for (i = 0; (ret = RDB_array_get_tuple(&array, i, &tplp)) == RDB_OK; i++) {
+    for (i = 0; (ret = RDB_array_get(&array, i, &tplp)) == RDB_OK; i++) {
         RDB_object *pvalp = RDB_tuple_get(tplp, "POINT");
 
         ret = RDB_obj_comp(pvalp, "X", &xval);
@@ -256,7 +256,7 @@ test_query(RDB_database *dbp)
         goto error;
     } 
 
-    for (i = 0; (ret = RDB_array_get_tuple(&array, i, &tplp)) == RDB_OK; i++) {
+    for (i = 0; (ret = RDB_array_get(&array, i, &tplp)) == RDB_OK; i++) {
         RDB_object *pvalp = RDB_tuple_get(tplp, "POINT");
 
         ret = RDB_obj_comp(pvalp, "X", &xval);

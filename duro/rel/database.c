@@ -653,7 +653,7 @@ RDB_get_db_from_env(const char *name, RDB_environment *envp,
     int ret;
     RDB_database *dbp, *idbp;
     RDB_transaction tx;
-    RDB_tuple tpl;
+    RDB_object tpl;
     RDB_dbroot *dbrootp = (RDB_dbroot *)RDB_env_private(envp);
     RDB_bool crdbroot = RDB_FALSE;
 
@@ -706,7 +706,7 @@ RDB_get_db_from_env(const char *name, RDB_environment *envp,
     /* Check if the database exists by checking if the DBTABLES contains
      * SYS_RTABLES for this database.
      */
-    RDB_init_tuple(&tpl);
+    RDB_init_obj(&tpl);
     ret = RDB_tuple_set_string(&tpl, "TABLENAME", "SYS_RTABLES");
     if (ret != RDB_OK) {
         RDB_rollback(&tx);
@@ -720,11 +720,11 @@ RDB_get_db_from_env(const char *name, RDB_environment *envp,
 
     ret = RDB_table_contains(dbp->dbrootp->dbtables_tbp, &tpl, &tx);
     if (ret != RDB_OK) {
-        RDB_destroy_tuple(&tpl);
+        RDB_destroy_obj(&tpl);
         RDB_rollback(&tx);
         goto error;
     }
-    RDB_destroy_tuple(&tpl);
+    RDB_destroy_obj(&tpl);
     
     ret = RDB_commit(&tx);
     if (ret != RDB_OK)
@@ -1257,7 +1257,7 @@ RDB_set_table_name(RDB_table *tbp, const char *name, RDB_transaction *txp)
 int
 RDB_make_persistent(RDB_table *tbp, RDB_transaction *txp)
 {
-    RDB_tuple tpl;
+    RDB_object tpl;
     RDB_object defval;
     int ret;
 
@@ -1274,7 +1274,7 @@ RDB_make_persistent(RDB_table *tbp, RDB_transaction *txp)
     if (!RDB_tx_is_running(txp))
         return RDB_INVALID_TRANSACTION;
 
-    RDB_init_tuple(&tpl);
+    RDB_init_obj(&tpl);
     RDB_init_obj(&defval);
 
     ret = RDB_tuple_set_string(&tpl, "TABLENAME", tbp->name);
@@ -1303,12 +1303,12 @@ RDB_make_persistent(RDB_table *tbp, RDB_transaction *txp)
     if (ret != RDB_OK)
         goto error;
 
-    RDB_destroy_tuple(&tpl);
+    RDB_destroy_obj(&tpl);
     RDB_destroy_obj(&defval);
 
     return RDB_OK;
 error:
-    RDB_destroy_tuple(&tpl);
+    RDB_destroy_obj(&tpl);
     RDB_destroy_obj(&defval);
     return ret;
 }
@@ -1319,7 +1319,7 @@ RDB_create_ro_op(const char *name, int argc, RDB_type *argtv[], RDB_type *rtyp,
                  const void *iargp, size_t iarglen, 
                  RDB_transaction *txp)
 {
-    RDB_tuple tpl;
+    RDB_object tpl;
     RDB_object iarg;
     char *typesbuf;
     int ret;
@@ -1336,7 +1336,7 @@ RDB_create_ro_op(const char *name, int argc, RDB_type *argtv[], RDB_type *rtyp,
     if (!RDB_type_is_scalar(rtyp))
         return RDB_NOT_SUPPORTED;
 
-    RDB_init_tuple(&tpl);
+    RDB_init_obj(&tpl);
     ret = RDB_tuple_set_string(&tpl, "NAME", name);
     if (ret != RDB_OK)
         goto cleanup;
@@ -1379,7 +1379,7 @@ RDB_create_ro_op(const char *name, int argc, RDB_type *argtv[], RDB_type *rtyp,
     ret = RDB_insert(txp->dbp->dbrootp->ro_ops_tbp, &tpl, txp);
 
 cleanup:
-    RDB_destroy_tuple(&tpl);
+    RDB_destroy_obj(&tpl);
     return ret;
 }
 
@@ -1389,7 +1389,7 @@ RDB_create_update_op(const char *name, int argc, RDB_type *argtv[],
                   const void *iargp, size_t iarglen,
                   RDB_transaction *txp)
 {
-    RDB_tuple tpl;
+    RDB_object tpl;
     RDB_object iarg;
     char *typesbuf;
     int i;
@@ -1403,7 +1403,7 @@ RDB_create_update_op(const char *name, int argc, RDB_type *argtv[],
             return RDB_NOT_SUPPORTED;
     }
 
-    RDB_init_tuple(&tpl);
+    RDB_init_obj(&tpl);
     ret = RDB_tuple_set_string(&tpl, "NAME", name);
     if (ret != RDB_OK)
         goto cleanup;
@@ -1443,7 +1443,7 @@ RDB_create_update_op(const char *name, int argc, RDB_type *argtv[],
     ret = RDB_insert(txp->dbp->dbrootp->upd_ops_tbp, &tpl, txp);
 
 cleanup:
-    RDB_destroy_tuple(&tpl);
+    RDB_destroy_obj(&tpl);
     return ret;
 }
 

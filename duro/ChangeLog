@@ -4,6 +4,10 @@ Summary of Changes for Duro
 
 Changes for Duro 0.7
 
+- Dropped RDB_tuple, using RDB_object instead.
+
+- Implemented tuple-valued table attributes.
+
 - Implemented RDB_remove().
 
 - Implemented insert into and update of projections.

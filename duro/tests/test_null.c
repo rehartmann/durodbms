@@ -38,7 +38,7 @@ int
 test_table(RDB_database *dbp)
 {
     int ret;
-    RDB_tuple tpl;
+    RDB_object tpl;
     RDB_transaction tx;
     RDB_table *tbp;
 
@@ -54,7 +54,7 @@ test_table(RDB_database *dbp)
         return ret;
     }
 
-    RDB_init_tuple(&tpl);
+    RDB_init_obj(&tpl);
 
     printf("Inserting tuple #1\n");
     ret = RDB_insert(tbp, &tpl, &tx);
@@ -71,7 +71,7 @@ test_table(RDB_database *dbp)
     }
     if (ret == RDB_ELEMENT_EXISTS)
         printf("Error: element exists - OK\n");    
-    RDB_destroy_tuple(&tpl);
+    RDB_destroy_obj(&tpl);
 
     printf("End of transaction\n");
     return RDB_commit(&tx);

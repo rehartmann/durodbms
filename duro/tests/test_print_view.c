@@ -9,7 +9,7 @@ print_salary_view(RDB_database *dbp)
 {
     RDB_transaction tx;
     RDB_table *tmpvtbp;
-    RDB_tuple *tplp;
+    RDB_object *tplp;
     RDB_array array;
     int ret;
     int i;
@@ -34,7 +34,7 @@ print_salary_view(RDB_database *dbp)
         goto error;
     }
     
-    for (i = 0; (ret = RDB_array_get_tuple(&array, i, &tplp)) == RDB_OK; i++) {
+    for (i = 0; (ret = RDB_array_get(&array, i, &tplp)) == RDB_OK; i++) {
         printf("SALARY: %f\n", (float)RDB_tuple_get_rational(tplp, "SALARY"));
     }
     if (ret != RDB_NOT_FOUND) {
@@ -54,7 +54,7 @@ print_emp_view(RDB_database *dbp)
 {
     RDB_transaction tx;
     RDB_table *tmpvtbp;
-    RDB_tuple *tplp;
+    RDB_object *tplp;
     RDB_array array;
     int ret;
     int i;
@@ -79,7 +79,7 @@ print_emp_view(RDB_database *dbp)
         goto error;
     }
     
-    for (i = 0; (ret = RDB_array_get_tuple(&array, i, &tplp)) == RDB_OK; i++) {
+    for (i = 0; (ret = RDB_array_get(&array, i, &tplp)) == RDB_OK; i++) {
         printf("EMPNO: %d\n", (int) RDB_tuple_get_int(tplp, "EMPNO"));
         printf("NAME: %s\n", RDB_tuple_get_string(tplp, "NAME"));
         printf("SALARY: %f\n", (float)RDB_tuple_get_rational(tplp, "SALARY"));
@@ -101,7 +101,7 @@ print_emps_view(RDB_database *dbp)
 {
     RDB_transaction tx;
     RDB_table *tmpvtbp;
-    RDB_tuple *tplp;
+    RDB_object *tplp;
     RDB_array array;
     int ret;
     int i;
@@ -125,7 +125,7 @@ print_emps_view(RDB_database *dbp)
         goto error;
     }
     
-    for (i = 0; (ret = RDB_array_get_tuple(&array, i, &tplp)) == RDB_OK; i++) {
+    for (i = 0; (ret = RDB_array_get(&array, i, &tplp)) == RDB_OK; i++) {
         RDB_bool b;
     
         printf("EMPNO: %d\n", (int) RDB_tuple_get_int(tplp, "EMPNO"));
@@ -151,7 +151,7 @@ print_emps2_view(RDB_database *dbp)
 {
     RDB_transaction tx;
     RDB_table *tmpvtbp;
-    RDB_tuple *tplp;
+    RDB_object *tplp;
     RDB_array array;
     int ret;
     int i;
@@ -175,7 +175,7 @@ print_emps2_view(RDB_database *dbp)
         goto error;
     }
 
-    for (i = 0; (ret = RDB_array_get_tuple(&array, i, &tplp)) == RDB_OK; i++) {
+    for (i = 0; (ret = RDB_array_get(&array, i, &tplp)) == RDB_OK; i++) {
         printf("DEPARTMENT: %d\n", (int) RDB_tuple_get_int(tplp, "DEPARTMENT"));
         printf("MAX_SALARY: %f\n", (float) RDB_tuple_get_rational(tplp, "MAX_SALARY"));
     }

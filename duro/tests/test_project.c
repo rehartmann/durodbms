@@ -12,7 +12,7 @@ static int
 print_table1(RDB_table *tbp, RDB_transaction *txp)
 {
     int ret;
-    RDB_tuple *tplp;
+    RDB_object *tplp;
     RDB_array array;
     RDB_int i;
 
@@ -23,7 +23,7 @@ print_table1(RDB_table *tbp, RDB_transaction *txp)
         goto error;
     }
     
-    for (i = 0; (ret = RDB_array_get_tuple(&array, i, &tplp)) == RDB_OK; i++) {
+    for (i = 0; (ret = RDB_array_get(&array, i, &tplp)) == RDB_OK; i++) {
         printf("SALARY: %f\n", (float)RDB_tuple_get_rational(tplp, "SALARY"));
     }
     if (ret != RDB_NOT_FOUND) {
@@ -43,7 +43,7 @@ static int
 print_table2(RDB_table *tbp, RDB_transaction *txp)
 {
     int ret;
-    RDB_tuple *tplp;
+    RDB_object *tplp;
     RDB_array array;
     RDB_int i;
 
@@ -54,7 +54,7 @@ print_table2(RDB_table *tbp, RDB_transaction *txp)
         goto error;
     }
     
-    for (i = 0; (ret = RDB_array_get_tuple(&array, i, &tplp)) == RDB_OK; i++) {
+    for (i = 0; (ret = RDB_array_get(&array, i, &tplp)) == RDB_OK; i++) {
         printf("EMPNO: %d\n", (int) RDB_tuple_get_int(tplp, "EMPNO"));
         printf("NAME: %s\n", RDB_tuple_get_string(tplp, "NAME"));
     }
@@ -76,7 +76,7 @@ test_project(RDB_database *dbp)
 {
     RDB_transaction tx;
     RDB_table *tbp, *vtbp;
-    RDB_tuple tpl;
+    RDB_object tpl;
     int ret;
 
     printf("Starting transaction\n");
@@ -102,7 +102,7 @@ test_project(RDB_database *dbp)
     printf("Converting projection table to array\n");
     ret = print_table1(vtbp, &tx);
 
-    RDB_init_tuple(&tpl);
+    RDB_init_obj(&tpl);
     RDB_tuple_set_rational(&tpl, "SALARY", (RDB_rational)4000.0);
     ret = RDB_table_contains(vtbp, &tpl, &tx);
     printf("Projection contains SALARY(4000.0): %d %s\n", ret, RDB_strerror(ret));

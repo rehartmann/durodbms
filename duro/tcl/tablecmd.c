@@ -54,7 +54,7 @@ tcl_to_duro(Tcl_Interp *interp, Tcl_Obj *tobjp, RDB_type *typ, RDB_object *objp)
 
 static int
 list_to_tuple(Tcl_Interp *interp, Tcl_Obj *tobjp, RDB_type *typ,
-        RDB_tuple *tplp)
+        RDB_object *tplp)
 {
     int ret;
     int llen;
@@ -101,6 +101,7 @@ list_to_tuple(Tcl_Interp *interp, Tcl_Obj *tobjp, RDB_type *typ,
         }
     }
 
+    tplp->typ = typ; /* !! */
     return TCL_OK;
 }
 
@@ -141,8 +142,7 @@ tcl_to_duro(Tcl_Interp *interp, Tcl_Obj *tobjp, RDB_type *typ, RDB_object *objp)
         return TCL_OK;
     }
     if (typ->kind == RDB_TP_TUPLE) {
-        _RDB_set_obj_type(objp, typ);
-        return list_to_tuple(interp, tobjp, typ, RDB_obj_tuple(objp));
+        return list_to_tuple(interp, tobjp, typ, objp);
     }
     Tcl_SetResult(interp, "Unsupported type", TCL_STATIC);
     return TCL_ERROR;
@@ -658,7 +658,7 @@ table_extract_cmd(TclState *statep, Tcl_Interp *interp, int objc,
     Tcl_HashEntry *entryp;
     RDB_transaction *txp;
     RDB_table *tbp;
-    RDB_tuple tpl;
+    RDB_object tpl;
     Tcl_Obj *listobjp;
 
     if (objc != 4) {
@@ -681,17 +681,17 @@ table_extract_cmd(TclState *statep, Tcl_Interp *interp, int objc,
         return TCL_ERROR;
     }
 
-    RDB_init_tuple(&tpl);
+    RDB_init_obj(&tpl);
 
     ret = RDB_extract_tuple(tbp, &tpl, txp);
     if (ret != RDB_OK) {
-        RDB_destroy_tuple(&tpl);
+        RDB_destroy_obj(&tpl);
         Duro_dberror(interp, ret);
         return TCL_ERROR;
     }
 
     listobjp = Duro_tuple_to_list(interp, &tpl);
-    RDB_destroy_tuple(&tpl);
+    RDB_destroy_obj(&tpl);
     if (listobjp == NULL)
         return TCL_ERROR;
 
@@ -804,7 +804,7 @@ table_insert_cmd(TclState *statep, Tcl_Interp *interp, int objc,
     RDB_table *tbp;
     int attrcount;
     int i;
-    RDB_tuple tpl;
+    RDB_object tpl;
     RDB_object obj;
     RDB_type *typ;
 
@@ -835,7 +835,7 @@ table_insert_cmd(TclState *statep, Tcl_Interp *interp, int objc,
         return TCL_ERROR;
     } 
 
-    RDB_init_tuple(&tpl);
+    RDB_init_obj(&tpl);
     RDB_init_obj(&obj);
     for (i = 0; i < attrcount; i += 2) {
         Tcl_Obj *nameobjp, *valobjp;
@@ -867,7 +867,7 @@ table_insert_cmd(TclState *statep, Tcl_Interp *interp, int objc,
     ret = TCL_OK;
 
 cleanup:
-    RDB_destroy_tuple(&tpl);
+    RDB_destroy_obj(&tpl);
     RDB_destroy_obj(&obj);
 
     return ret;

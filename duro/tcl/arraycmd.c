@@ -163,15 +163,14 @@ duro_to_tcl(Tcl_Interp *interp, const RDB_object *objp)
         return Tcl_NewBooleanObj((int) RDB_obj_bool(objp));
     }
     if (typ->kind == RDB_TP_TUPLE) {
-        return Duro_tuple_to_list(interp,
-                (const RDB_tuple *) RDB_obj_tuple((RDB_object *) objp));
+        return Duro_tuple_to_list(interp, objp);
     }
     Tcl_SetResult(interp, "Unsupported type", TCL_STATIC);
     return NULL;
 }
 
 Tcl_Obj *
-Duro_tuple_to_list(Tcl_Interp *interp, const RDB_tuple *tplp)
+Duro_tuple_to_list(Tcl_Interp *interp, const RDB_object *tplp)
 {
     int i;
     Tcl_Obj *listobjp = Tcl_NewListObj(0, NULL);
@@ -203,7 +202,7 @@ array_index_cmd(TclState *statep, Tcl_Interp *interp, int objc,
     char *arraystr;
     Tcl_HashEntry *entryp;
     RDB_array *arrayp;
-    RDB_tuple *tplp;
+    RDB_object *tplp;
     int idx;
     Tcl_Obj *listobjp;
 
@@ -224,7 +223,7 @@ array_index_cmd(TclState *statep, Tcl_Interp *interp, int objc,
     if (ret != TCL_OK)
         return ret;
 
-    ret = RDB_array_get_tuple(arrayp, (RDB_int) idx, &tplp);
+    ret = RDB_array_get(arrayp, (RDB_int) idx, &tplp);
     if (ret != RDB_OK) {
         Duro_dberror(interp, ret);
 
@@ -246,7 +245,7 @@ array_foreach_cmd(TclState *statep, Tcl_Interp *interp, int objc,
     char *arraystr;
     Tcl_HashEntry *entryp;
     RDB_array *arrayp;
-    RDB_tuple *tplp;
+    RDB_object *tplp;
     int i;
     Tcl_Obj *listobjp;
 
@@ -264,7 +263,7 @@ array_foreach_cmd(TclState *statep, Tcl_Interp *interp, int objc,
     }
     arrayp = Tcl_GetHashValue(entryp);
 
-    for (i = 0; (ret = RDB_array_get_tuple(arrayp, i, &tplp)) == RDB_OK; i++) {
+    for (i = 0; (ret = RDB_array_get(arrayp, i, &tplp)) == RDB_OK; i++) {
         /* Set variable */
         listobjp = Duro_tuple_to_list(interp, tplp);
         if (listobjp == NULL)

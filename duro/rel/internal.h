@@ -38,7 +38,7 @@ typedef struct RDB_qresult {
             struct RDB_qresult *qr2p;
             
             /* only used for join */
-            RDB_tuple tpl;
+            RDB_object tpl;
             RDB_bool tpl_valid;
         } virtual;
     } var;
@@ -121,16 +121,16 @@ _RDB_sorter(RDB_table *tbp, RDB_qresult **qrespp, RDB_transaction *txp,
             int seqitc, RDB_seq_item seqitv[]);
 
 int
-_RDB_next_tuple(RDB_qresult *, RDB_tuple *, RDB_transaction *);
+_RDB_next_tuple(RDB_qresult *, RDB_object *, RDB_transaction *);
 
 int
-_RDB_qresult_contains(RDB_qresult *, const RDB_tuple *, RDB_transaction *);
+_RDB_qresult_contains(RDB_qresult *, const RDB_object *, RDB_transaction *);
 
 int
 _RDB_reset_qresult(RDB_qresult *, RDB_transaction *);
 
 int
-_RDB_get_by_pindex(RDB_table *, RDB_object[], RDB_tuple *,
+_RDB_get_by_pindex(RDB_table *, RDB_object[], RDB_object *,
         RDB_transaction *);
 
 int
@@ -251,11 +251,11 @@ int
 _RDB_del_index(RDB_transaction *, RDB_index *);
 
 int
-RDB_evaluate_bool(RDB_expression *, const RDB_tuple *tup, RDB_transaction *,
+RDB_evaluate_bool(RDB_expression *, const RDB_object *tup, RDB_transaction *,
                   RDB_bool *);
 
 int
-RDB_evaluate(RDB_expression *, const RDB_tuple *, RDB_transaction *, RDB_object *);
+RDB_evaluate(RDB_expression *, const RDB_object *, RDB_transaction *, RDB_object *);
 
 int
 _RDB_find_rename_from(int renc, RDB_renaming renv[], const char *name);

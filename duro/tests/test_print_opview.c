@@ -9,7 +9,7 @@ print_deptsx_view(RDB_database *dbp)
 {
     RDB_transaction tx;
     RDB_table *tmpvtbp;
-    RDB_tuple *tplp;
+    RDB_object *tplp;
     RDB_array array;
     int ret;
     int i;
@@ -34,7 +34,7 @@ print_deptsx_view(RDB_database *dbp)
         goto error;
     }
     
-    for (i = 0; (ret = RDB_array_get_tuple(&array, i, &tplp)) == RDB_OK; i++) {
+    for (i = 0; (ret = RDB_array_get(&array, i, &tplp)) == RDB_OK; i++) {
         printf("DEPTNO: %d\n", (int)RDB_tuple_get_int(tplp, "DEPTNO"));
         printf("DEPTNAME: %s\n", RDB_tuple_get_string(tplp, "DEPTNAME"));
         printf("XDEPTNO: %d\n", (int)RDB_tuple_get_int(tplp, "XDEPTNO"));

@@ -12,7 +12,7 @@ test_ra(RDB_database *dbp)
     RDB_transaction tx;
     RDB_table *tb1p, *tb2p, *vtbp;
     RDB_array array;
-    RDB_tuple *tplp;
+    RDB_object *tplp;
     int ret;
     RDB_int i;
 
@@ -59,7 +59,7 @@ test_ra(RDB_database *dbp)
         return ret;
     } 
 
-    for (i = 0; (ret = RDB_array_get_tuple(&array, i, &tplp)) == RDB_OK; i++) {
+    for (i = 0; (ret = RDB_array_get(&array, i, &tplp)) == RDB_OK; i++) {
         printf("NAME: %s\n", RDB_tuple_get_string(tplp, "NAME"));
     }
     RDB_destroy_array(&array);

@@ -9,22 +9,22 @@ test_keys(RDB_database *dbp)
 {
     RDB_transaction tx;
     RDB_table *tbp;
-    RDB_tuple tpl;
+    RDB_object tpl;
     int ret;
 
-    RDB_init_tuple(&tpl);    
+    RDB_init_obj(&tpl);    
 
     printf("Starting transaction\n");
     ret = RDB_begin_tx(&tx, dbp, NULL);
     if (ret != RDB_OK) {
-        RDB_destroy_tuple(&tpl);
+        RDB_destroy_obj(&tpl);
         return ret;
     }
 
     ret = RDB_get_table("EMPS1", &tx, &tbp);
     if (ret != RDB_OK) {
         RDB_rollback(&tx);
-        RDB_destroy_tuple(&tpl);
+        RDB_destroy_obj(&tpl);
         return ret;
     }
 
@@ -71,13 +71,13 @@ test_keys(RDB_database *dbp)
     } else {
         printf("Error: %s\n", RDB_strerror(ret));
     }
-    RDB_destroy_tuple(&tpl);
+    RDB_destroy_obj(&tpl);
 
     printf("End of transaction\n");
     return RDB_commit(&tx);
 error:
     RDB_rollback(&tx);
-    RDB_destroy_tuple(&tpl);
+    RDB_destroy_obj(&tpl);
     return ret;
 }
 

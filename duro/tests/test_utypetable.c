@@ -53,7 +53,7 @@ int
 test_table(RDB_database *dbp)
 {
     int ret;
-    RDB_tuple tpl;
+    RDB_object tpl;
     RDB_transaction tx;
     RDB_table *tbp;
     RDB_object ival;
@@ -72,7 +72,7 @@ test_table(RDB_database *dbp)
         return ret;
     }
 
-    RDB_init_tuple(&tpl);
+    RDB_init_obj(&tpl);
     RDB_init_obj(&ival);
     RDB_init_obj(&tival);
 
@@ -125,14 +125,14 @@ test_table(RDB_database *dbp)
         return ret;
     }
 
-    RDB_destroy_tuple(&tpl);
+    RDB_destroy_obj(&tpl);
     RDB_destroy_obj(&ival);
     RDB_destroy_obj(&tival);
 
     printf("End of transaction\n");
     return RDB_commit(&tx);
 error:
-    RDB_destroy_tuple(&tpl);
+    RDB_destroy_obj(&tpl);
     RDB_destroy_obj(&ival);
     RDB_destroy_obj(&tival);
 

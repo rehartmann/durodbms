@@ -551,7 +551,7 @@ RDB_drop_expr(RDB_expression *exp)
 }
 
 static int
-evaluate_arith(RDB_expression *exp, const RDB_tuple *tup, RDB_transaction *txp,
+evaluate_arith(RDB_expression *exp, const RDB_object *tup, RDB_transaction *txp,
             RDB_object *valp, enum _RDB_expr_kind kind)
 {
     int ret;
@@ -654,7 +654,7 @@ evaluate_arith(RDB_expression *exp, const RDB_tuple *tup, RDB_transaction *txp,
 }
 
 static int
-evaluate_eq(RDB_expression *exp, const RDB_tuple *tup,
+evaluate_eq(RDB_expression *exp, const RDB_object *tup,
                   RDB_transaction *txp, RDB_bool *resp)
 {
     int ret;
@@ -697,7 +697,7 @@ cleanup:
     return ret;
 }
 
-static int evaluate_selector(RDB_expression *exp, const RDB_tuple *tup, RDB_transaction *txp,
+static int evaluate_selector(RDB_expression *exp, const RDB_object *tup, RDB_transaction *txp,
             RDB_object *valp)
 {
     int ret;
@@ -735,7 +735,7 @@ cleanup:
     return ret;
 }
 
-static int evaluate_user_op(RDB_expression *exp, const RDB_tuple *tup,
+static int evaluate_user_op(RDB_expression *exp, const RDB_object *tup,
         RDB_transaction *txp, RDB_object *valp)
 {
     int ret;
@@ -774,7 +774,7 @@ cleanup:
 }
 
 static int
-evaluate_order(RDB_expression *exp, const RDB_tuple *tup, RDB_transaction *txp,
+evaluate_order(RDB_expression *exp, const RDB_object *tup, RDB_transaction *txp,
             RDB_object *valp, enum _RDB_expr_kind kind)
 {
     int ret;
@@ -860,7 +860,7 @@ evaluate_order(RDB_expression *exp, const RDB_tuple *tup, RDB_transaction *txp,
 }
 
 static int
-evaluate_logbin(RDB_expression *exp, const RDB_tuple *tup, RDB_transaction *txp,
+evaluate_logbin(RDB_expression *exp, const RDB_object *tup, RDB_transaction *txp,
             RDB_object *valp, enum _RDB_expr_kind kind)
 {
     int ret;
@@ -947,7 +947,7 @@ aggregate(RDB_table *tbp, RDB_aggregate_op op, const char *attrname,
 }
 
 int
-RDB_evaluate(RDB_expression *exp, const RDB_tuple *tup, RDB_transaction *txp,
+RDB_evaluate(RDB_expression *exp, const RDB_object *tup, RDB_transaction *txp,
             RDB_object *valp)
 {
     int ret;
@@ -1160,7 +1160,7 @@ RDB_evaluate(RDB_expression *exp, const RDB_tuple *tup, RDB_transaction *txp,
 }
 
 int
-RDB_evaluate_bool(RDB_expression *exp, const RDB_tuple *tup, RDB_transaction *txp,
+RDB_evaluate_bool(RDB_expression *exp, const RDB_object *tup, RDB_transaction *txp,
                   RDB_bool *resp)
 {
     int ret;

@@ -20,7 +20,7 @@ is_keyattr(const char *attrname, RDB_table *tbp)
 
 static int
 upd_to_vals(RDB_table *tbp, int updc, const RDB_attr_update updv[],
-               RDB_tuple *tplp, RDB_object *valv, RDB_transaction *txp)
+               RDB_object *tplp, RDB_object *valv, RDB_transaction *txp)
 {
     int i, ret;
 
@@ -43,7 +43,7 @@ update_stored_complex(RDB_table *tbp, RDB_expression *condp,
         RDB_transaction *txp)
 {
     RDB_table *tmptbp = NULL;
-    RDB_tuple tpl;
+    RDB_object tpl;
     int ret, ret2;
     int i;
     void *datap;
@@ -59,7 +59,7 @@ update_stored_complex(RDB_table *tbp, RDB_expression *condp,
 
     for (i = 0; i < updc; i++)
         RDB_init_obj(&valv[i]);
-    RDB_init_tuple(&tpl);
+    RDB_init_obj(&tpl);
 
     /*
      * Iterate over the records and insert the updated records into
@@ -196,7 +196,7 @@ cleanup:
     }
     for (i = 0; i < updc; i++)
         RDB_destroy_obj(&valv[i]);
-    ret2 = RDB_destroy_tuple(&tpl);
+    ret2 = RDB_destroy_obj(&tpl);
     if (ret == RDB_OK)
         ret = ret2;
     return ret;
@@ -207,7 +207,7 @@ update_stored_simple(RDB_table *tbp, RDB_expression *condp,
         int updc, const RDB_attr_update updv[],
         RDB_transaction *txp)
 {
-    RDB_tuple tpl;
+    RDB_object tpl;
     int ret, ret2;
     int i;
     void *datap;
@@ -226,7 +226,7 @@ update_stored_simple(RDB_table *tbp, RDB_expression *condp,
 
     for (i = 0; i < updc; i++)
         RDB_init_obj(&valv[i]);
-    RDB_init_tuple(&tpl);
+    RDB_init_obj(&tpl);
 
     /*
      * Walk through the records and update them if the expression pointed to
@@ -304,7 +304,7 @@ cleanup:
     }
     for (i = 0; i < updc; i++)
         RDB_destroy_obj(&valv[i]);
-    ret2 = RDB_destroy_tuple(&tpl);
+    ret2 = RDB_destroy_obj(&tpl);
     if (ret == RDB_OK)
         ret = ret2;
     return ret;
@@ -317,7 +317,7 @@ update_stored_by_key(RDB_table *tbp, RDB_expression *exp,
 {
     RDB_field fv;
     RDB_object val;
-    RDB_tuple tpl;
+    RDB_object tpl;
     int ret;
     int i;
     RDB_object *valv = malloc(sizeof(RDB_object) * updc);
@@ -344,15 +344,15 @@ update_stored_by_key(RDB_table *tbp, RDB_expression *exp,
     _RDB_obj_to_field(&fv, &val);
 
     /* Read tuple */
-    RDB_init_tuple(&tpl);
+    RDB_init_obj(&tpl);
     ret = _RDB_get_by_pindex(tbp, &val, &tpl, txp);
     if (ret != RDB_OK) {
-        RDB_destroy_tuple(&tpl);
+        RDB_destroy_obj(&tpl);
         goto cleanup;
     }
 
     ret = upd_to_vals(tbp, updc, updv, &tpl, valv, txp);
-    RDB_destroy_tuple(&tpl);
+    RDB_destroy_obj(&tpl);
     if (ret != RDB_OK) {
         goto cleanup;
     }

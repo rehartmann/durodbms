@@ -8,7 +8,7 @@ int
 print_extend(RDB_table *vtbp, RDB_transaction *txp)
 {
     RDB_array array;
-    RDB_tuple *tplp;
+    RDB_object *tplp;
     int ret;
     int i;
     RDB_seq_item sq;
@@ -23,7 +23,7 @@ print_extend(RDB_table *vtbp, RDB_transaction *txp)
         goto error;
     }
     
-    for (i = 0; (ret = RDB_array_get_tuple(&array, i, &tplp)) == RDB_OK; i++) {
+    for (i = 0; (ret = RDB_array_get(&array, i, &tplp)) == RDB_OK; i++) {
         printf("EMPNO: %d\n", (int)RDB_tuple_get_int(tplp, "EMPNO"));
         printf("NAME: %s\n", RDB_tuple_get_string(tplp, "NAME"));
         printf("SALARY: %f\n", (float)RDB_tuple_get_rational(tplp, "SALARY"));
@@ -46,10 +46,10 @@ error:
 int
 insert_extend(RDB_table *vtbp, RDB_transaction *txp)
 {
-    RDB_tuple tpl;
+    RDB_object tpl;
     int ret;
 
-    RDB_init_tuple(&tpl);    
+    RDB_init_obj(&tpl);    
 
     printf("Inserting tuple #1\n");
 
@@ -101,11 +101,11 @@ insert_extend(RDB_table *vtbp, RDB_transaction *txp)
     if (ret != RDB_OK)
         goto error;
 
-    RDB_destroy_tuple(&tpl);
+    RDB_destroy_obj(&tpl);
     return RDB_OK;
 
 error:
-    RDB_destroy_tuple(&tpl);
+    RDB_destroy_obj(&tpl);
     return ret;
 }
 

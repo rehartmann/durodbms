@@ -8,7 +8,7 @@ static int
 print_table(RDB_table *tbp, RDB_transaction *txp)
 {
     int ret;
-    RDB_tuple *tplp;
+    RDB_object *tplp;
     RDB_array array;
     RDB_int i;
     int len;
@@ -31,7 +31,7 @@ print_table(RDB_table *tbp, RDB_transaction *txp)
 
     len = ret;
     for (i = len - 1; i >= 0; i--) {
-        ret = RDB_array_get_tuple(&array, i, &tplp);
+        ret = RDB_array_get(&array, i, &tplp);
         if (ret != RDB_OK) {
             goto error;
         }

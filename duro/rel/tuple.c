@@ -1,47 +1,36 @@
+/* $Id$ */
+
 #include "rdb.h"
 #include "internal.h"
 #include <string.h>
 #include <malloc.h>
 
-/* $Id$ */
-
 #define RDB_TUPLE_CAPACITY 37
 
 /*
- * RDB_tuple is implemented using a static hash table, taking advantage of
+ * A tuple is implemented using a static hash table, taking advantage of
  * the fact that removing attributes is not supported.
  */
 
-void
-RDB_init_tuple(RDB_tuple *tp)
-{
-    RDB_init_hashmap(&tp->map, RDB_TUPLE_CAPACITY);
-}
-
 static void
-destroy_obj(RDB_hashmap *hp, const char *key, void *arg) {
-    RDB_destroy_obj((RDB_object *) RDB_hashmap_get(hp, key, NULL));
-}
-
-int
-RDB_destroy_tuple(RDB_tuple *tp)
+init_tuple(RDB_object *tp)
 {
-    RDB_hashmap_apply(&tp->map, destroy_obj, NULL);
-
-    RDB_destroy_hashmap(&tp->map);
-
-    return RDB_OK;
+    RDB_init_hashmap(&tp->var.tpl_map, RDB_TUPLE_CAPACITY);
+    tp->kind = _RDB_TUPLE;
 }
 
 int
-RDB_tuple_set(RDB_tuple *tp, const char *namp, const RDB_object *valp)
+RDB_tuple_set(RDB_object *tp, const char *namp, const RDB_object *valp)
 {
     RDB_object newval;
     RDB_object *oldvalp;
     int res;
 
+    if (tp->kind == _RDB_INITIAL)
+        init_tuple(tp);
+
     /* delete old value */
-    oldvalp = (RDB_object *) RDB_hashmap_get(&tp->map, namp, NULL);
+    oldvalp = (RDB_object *) RDB_hashmap_get(&tp->var.tpl_map, namp, NULL);
     if (oldvalp != NULL) {
         RDB_destroy_obj(oldvalp);
     }
@@ -51,47 +40,59 @@ RDB_tuple_set(RDB_tuple *tp, const char *namp, const RDB_object *valp)
     res = RDB_copy_obj(&newval, valp);
     if (res != RDB_OK)
         return res;
-    return RDB_hashmap_put(&tp->map, namp, &newval, sizeof (RDB_object));
+    return RDB_hashmap_put(&tp->var.tpl_map, namp, &newval, sizeof (RDB_object));
 }
 
 int
-RDB_tuple_set_bool(RDB_tuple *tp, const char *namp, RDB_bool val)
+RDB_tuple_set_bool(RDB_object *tp, const char *namp, RDB_bool val)
 {
     RDB_object value;
+
+    if (tp->kind == _RDB_INITIAL)
+        init_tuple(tp);
 
     RDB_init_obj(&value);
     RDB_obj_set_bool(&value, val);
 
-    return RDB_hashmap_put(&tp->map, namp, &value, sizeof(value));
+    return RDB_hashmap_put(&tp->var.tpl_map, namp, &value, sizeof(value));
 } 
 
 int
-RDB_tuple_set_int(RDB_tuple *tp, const char *namp, RDB_int val)
+RDB_tuple_set_int(RDB_object *tp, const char *namp, RDB_int val)
 {
     RDB_object value;
+
+    if (tp->kind == _RDB_INITIAL)
+        init_tuple(tp);
 
     RDB_init_obj(&value);
     RDB_obj_set_int(&value, val);
 
-    return RDB_hashmap_put(&tp->map, namp, &value, sizeof(value));
+    return RDB_hashmap_put(&tp->var.tpl_map, namp, &value, sizeof(value));
 }
 
 int
-RDB_tuple_set_rational(RDB_tuple *tp, const char *namp, RDB_rational val)
+RDB_tuple_set_rational(RDB_object *tp, const char *namp, RDB_rational val)
 {
     RDB_object value;
+
+    if (tp->kind == _RDB_INITIAL)
+        init_tuple(tp);
 
     RDB_init_obj(&value);
     RDB_obj_set_rational(&value, val);
 
-    return RDB_hashmap_put(&tp->map, namp, &value, sizeof(value));
+    return RDB_hashmap_put(&tp->var.tpl_map, namp, &value, sizeof(value));
 }
 
 int
-RDB_tuple_set_string(RDB_tuple *tp, const char *namp, const char *str)
+RDB_tuple_set_string(RDB_object *tp, const char *namp, const char *str)
 {
     RDB_object value;
     int res;
+
+    if (tp->kind == _RDB_INITIAL)
+        init_tuple(tp);
 
     RDB_init_obj(&value);
     res = RDB_obj_set_string(&value, str);
@@ -99,56 +100,56 @@ RDB_tuple_set_string(RDB_tuple *tp, const char *namp, const char *str)
         RDB_destroy_obj(&value);
         return res;
     }
-    res = RDB_hashmap_put(&tp->map, namp, &value, sizeof(value));
+    res = RDB_hashmap_put(&tp->var.tpl_map, namp, &value, sizeof(value));
     /* Must not destroy value because datap is not copied */
     return res;
 }
 
 RDB_object *
-RDB_tuple_get(const RDB_tuple *tp, const char *namp)
+RDB_tuple_get(const RDB_object *tp, const char *namp)
 {
-    return (RDB_object *) RDB_hashmap_get(&tp->map, namp, NULL);
+    return (RDB_object *) RDB_hashmap_get(&tp->var.tpl_map, namp, NULL);
 }
 
 RDB_bool
-RDB_tuple_get_bool(const RDB_tuple *tp, const char *namp)
+RDB_tuple_get_bool(const RDB_object *tp, const char *namp)
 {
-    return ((RDB_object *) RDB_hashmap_get(&tp->map, namp, NULL))->var.bool_val;
+    return ((RDB_object *) RDB_hashmap_get(&tp->var.tpl_map, namp, NULL))->var.bool_val;
 }
 
 RDB_int
-RDB_tuple_get_int(const RDB_tuple *tp, const char *namp)
+RDB_tuple_get_int(const RDB_object *tp, const char *namp)
 {
-    return ((RDB_object *) RDB_hashmap_get(&tp->map, namp, NULL))->var.int_val;
+    return ((RDB_object *) RDB_hashmap_get(&tp->var.tpl_map, namp, NULL))->var.int_val;
 }
 
 RDB_rational
-RDB_tuple_get_rational(const RDB_tuple *tp, const char *namp)
+RDB_tuple_get_rational(const RDB_object *tp, const char *namp)
 {
-    return ((RDB_object *) RDB_hashmap_get(&tp->map, namp, NULL))->var.rational_val;
+    return ((RDB_object *) RDB_hashmap_get(&tp->var.tpl_map, namp, NULL))->var.rational_val;
 }
 
 char *
-RDB_tuple_get_string(const RDB_tuple *tp, const char *namp)
+RDB_tuple_get_string(const RDB_object *tp, const char *namp)
 {
-    return ((RDB_object *) RDB_hashmap_get(&tp->map, namp, NULL))
+    return ((RDB_object *) RDB_hashmap_get(&tp->var.tpl_map, namp, NULL))
             ->var.bin.datap;
 }
 
 RDB_int
-RDB_tuple_size(const RDB_tuple *tplp)
+RDB_tuple_size(const RDB_object *tplp)
 {
-    return (RDB_int) RDB_hashmap_size(&tplp->map);
+    return (RDB_int) RDB_hashmap_size(&tplp->var.tpl_map);
 }
 
 void
-RDB_tuple_attr_names(const RDB_tuple *tplp, char **namev)
+RDB_tuple_attr_names(const RDB_object *tplp, char **namev)
 {
-    RDB_hashmap_keys(&tplp->map, namev);
+    RDB_hashmap_keys(&tplp->var.tpl_map, namev);
 }
 
 int
-RDB_extend_tuple(RDB_tuple *tup, int attrc, RDB_virtual_attr attrv[],
+RDB_extend_tuple(RDB_object *tup, int attrc, RDB_virtual_attr attrv[],
                 RDB_transaction *txp)
 {
     int i;
@@ -168,8 +169,8 @@ RDB_extend_tuple(RDB_tuple *tup, int attrc, RDB_virtual_attr attrv[],
 struct _RDB_rename_attr_info {
     int renc;
     RDB_renaming *renv;
-    const RDB_tuple *srctup;
-    RDB_tuple *dsttup;
+    const RDB_object *srctup;
+    RDB_object *dsttup;
 };
 
 static void
@@ -188,8 +189,8 @@ rename_attr(RDB_hashmap *hp, const char *attrname, void *arg)
 }    
 
 int
-RDB_rename_tuple(const RDB_tuple *tup, int renc, RDB_renaming renv[],
-                 RDB_tuple *restup)
+RDB_rename_tuple(const RDB_object *tup, int renc, RDB_renaming renv[],
+                 RDB_object *restup)
 {
     struct _RDB_rename_attr_info info;
 
@@ -199,13 +200,7 @@ RDB_rename_tuple(const RDB_tuple *tup, int renc, RDB_renaming renv[],
     info.dsttup = restup;
 
     /* Copy attributes to tup */
-    RDB_hashmap_apply((RDB_hashmap *)&tup->map, &rename_attr, &info);
+    RDB_hashmap_apply((RDB_hashmap *)&tup->var.tpl_map, &rename_attr, &info);
 
     return RDB_OK;
-}
-
-int
-RDB_copy_tuple(RDB_tuple *dstp, const RDB_tuple *srcp)
-{
-    return RDB_rename_tuple(srcp, 0, NULL, dstp);
 }

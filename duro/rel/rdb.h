@@ -48,6 +48,7 @@ typedef struct {
 } RDB_possrep;
 
 enum _RDB_obj_kind {
+    _RDB_INITIAL,
     _RDB_BOOL,
     _RDB_INT,
     _RDB_RATIONAL,
@@ -55,17 +56,6 @@ enum _RDB_obj_kind {
     _RDB_TABLE,
     _RDB_TUPLE
 };
-
-/*
- * The RDB_tuple structure represents a tuple.
- * It does not carry type information for the tuple itself,
- * but the type information can be extracted from the values
- * which the tuple contains.
- */
-typedef struct {
-    /* internal */
-    RDB_hashmap map;
-} RDB_tuple;
 
 /*
  * A RDB_object structure carries a value of an arbitrary type,
@@ -84,7 +74,7 @@ typedef struct {
             size_t len;
         } bin;
         struct RDB_table *tbp;
-        RDB_tuple tpl;
+        RDB_hashmap tpl_map;
      } var;
 } RDB_object;
 
@@ -324,7 +314,7 @@ typedef struct {
     struct RDB_qresult *qrp;
     RDB_int pos;
     RDB_int length;	/* length of array; -1 means unknown */
-    RDB_tuple tpl;
+    RDB_object tpl;
 } RDB_array;
 
 /*
@@ -497,7 +487,7 @@ RDB_table_type(const RDB_table *);
  * Other	if an error occured.
  */
 int
-RDB_insert(RDB_table *tbp, const RDB_tuple *tplp, RDB_transaction *);
+RDB_insert(RDB_table *tbp, const RDB_object *tplp, RDB_transaction *);
 
 /*
  * Update the tuple which satisfy the condition pointed to by condp.
@@ -589,7 +579,7 @@ RDB_avg(RDB_table *tbp, const char *attrname, RDB_transaction *txp,
  * Other	a system error occured.
  */
 int
-RDB_table_contains(RDB_table *, const RDB_tuple *, RDB_transaction *);
+RDB_table_contains(RDB_table *, const RDB_object *, RDB_transaction *);
 
 /*
  * Extract a tuple from the table. The table must contain
@@ -601,7 +591,7 @@ RDB_table_contains(RDB_table *, const RDB_tuple *, RDB_transaction *);
  * RDB_INVALID_ARGUMENT the table contains more than one tuple.
  */
 int
-RDB_extract_tuple(RDB_table *, RDB_tuple *, RDB_transaction *);
+RDB_extract_tuple(RDB_table *, RDB_object *, RDB_transaction *);
 
 /*
  * Store RDB_TRUE in the location pointed to by resultp if the table
@@ -666,29 +656,23 @@ RDB_rename(RDB_table *tbp, int renc, RDB_renaming renv[],
 
 /*
  * Functions for creation/destruction of tuples and reading/modifying attributes.
- * RDB_tuple represents a tuple variable.
+ * RDB_object represents a tuple variable.
  */
 
-void
-RDB_init_tuple(RDB_tuple *);
+int
+RDB_tuple_set(RDB_object *, const char *name, const RDB_object *);
 
 int
-RDB_destroy_tuple(RDB_tuple *);
+RDB_tuple_set_bool(RDB_object *, const char *name, RDB_bool val);
 
 int
-RDB_tuple_set(RDB_tuple *, const char *name, const RDB_object *);
+RDB_tuple_set_int(RDB_object *, const char *name, RDB_int val);
 
 int
-RDB_tuple_set_bool(RDB_tuple *, const char *name, RDB_bool val);
+RDB_tuple_set_rational(RDB_object *, const char *name, RDB_rational val);
 
 int
-RDB_tuple_set_int(RDB_tuple *, const char *name, RDB_int val);
-
-int
-RDB_tuple_set_rational(RDB_tuple *, const char *name, RDB_rational val);
-
-int
-RDB_tuple_set_string(RDB_tuple *, const char *name, const char *valp);
+RDB_tuple_set_string(RDB_object *, const char *name, const char *valp);
 
 /**
  * Return a pointer to the tuple's value corresponding to name name.
@@ -698,36 +682,36 @@ RDB_tuple_set_string(RDB_tuple *, const char *name, const char *valp);
  * If an attribute of name name does not exist, NULL is returned.
  */
 RDB_object *
-RDB_tuple_get(const RDB_tuple *, const char *name);
+RDB_tuple_get(const RDB_object *, const char *name);
 
 RDB_bool
-RDB_tuple_get_bool(const RDB_tuple *, const char *name);
+RDB_tuple_get_bool(const RDB_object *, const char *name);
 
 RDB_int
-RDB_tuple_get_int(const RDB_tuple *, const char *name);
+RDB_tuple_get_int(const RDB_object *, const char *name);
 
 RDB_rational
-RDB_tuple_get_rational(const RDB_tuple *, const char *name);
+RDB_tuple_get_rational(const RDB_object *, const char *name);
 
 RDB_int
-RDB_tuple_size(const RDB_tuple *);
+RDB_tuple_size(const RDB_object *);
 
 void
-RDB_tuple_attr_names(const RDB_tuple *, char **namev);
+RDB_tuple_attr_names(const RDB_object *, char **namev);
 
 char *
-RDB_tuple_get_string(const RDB_tuple *, const char *name);
+RDB_tuple_get_string(const RDB_object *, const char *name);
 
 int
-RDB_copy_tuple(RDB_tuple *dstp, const RDB_tuple *srcp);
+RDB_copy_tuple(RDB_object *dstp, const RDB_object *srcp);
 
 int
-RDB_extend_tuple(RDB_tuple *, int attrc, RDB_virtual_attr attrv[],
+RDB_extend_tuple(RDB_object *, int attrc, RDB_virtual_attr attrv[],
                  RDB_transaction *);
 
 int
-RDB_rename_tuple(const RDB_tuple *, int renc, RDB_renaming renv[],
-                 RDB_tuple *restup);
+RDB_rename_tuple(const RDB_object *, int renc, RDB_renaming renv[],
+                 RDB_object *restup);
 
 void
 RDB_init_array(RDB_array *);
@@ -757,7 +741,7 @@ RDB_table_to_array(RDB_array *arrp, RDB_table *,
  * Get a pointer to the tuple with index idx.
  */
 int
-RDB_array_get_tuple(RDB_array *, RDB_int idx, RDB_tuple **);
+RDB_array_get(RDB_array *, RDB_int idx, RDB_object **);
 
 /*
  * Return the length of the array.
@@ -903,9 +887,6 @@ RDB_binary_length(const RDB_object *);
 
 void
 _RDB_set_obj_type(RDB_object *valp, RDB_type *typ);
-
-RDB_tuple *
-RDB_obj_tuple(RDB_object *objp);
 
 /*
  * Functions for creating expressions
