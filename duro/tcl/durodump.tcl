@@ -2,7 +2,7 @@
 # Execute tclsh from the user's PATH \
 exec tclsh "$0" ${1+"$@"}
 
-# Copyright (C) 2004 René Hartmann.
+# Copyright (C) 2004, 2005 René Hartmann.
 # See the file COPYING for redistribution information.
 
 # $Id$
@@ -27,7 +27,7 @@ proc dump_vtable {out t tx} {
     puts $out "duro::table expr -global $t \{[duro::table def $t $tx]\} \$tx"
 }
 
-if {$argc < 1 || $argc > 2} {
+if {$argc == 0 || $argc > 2} {
     puts "usage: durodump.tcl environment \[output_file\]"
     exit 1
 }
@@ -45,8 +45,17 @@ puts $out "# Execute tclsh from the user's PATH \\"
 puts $out {exec tclsh "$0" ${1+"$@"}}
 puts $out "package require duro"
 
+puts $out "if {\$argc > 1} {"
+puts $out "    puts \"usage: $outfile environment \\\[output_file\\\]\""
+puts $out "    exit 1"
+puts $out "}"
+
 set dbenvpath [lindex $argv 0]
-puts $out "set dbenv \[duro::env open $dbenvpath\]"
+puts $out "if {\$argc == 1 } {"
+puts $out "    set dbenv \[duro::env open \[lindex \$argv 0\]\]"
+puts $out "} else {"
+puts $out "    set dbenv \[duro::env open \{$dbenvpath\}\]"
+puts $out "}"
 
 set dbenv [duro::env open $dbenvpath]
 set dbs [duro::env dbs $dbenv]

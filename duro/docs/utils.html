@@ -1,0 +1,64 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN"
+"http://www.w3.org/TR/html4/strict.dtd">
+<html lang="en">
+<head>
+<title>Duro 0.9 utilities description</title>
+<body>
+<h1>Duro utilities</h1>
+
+<p>Version 0.9
+
+<h2>Table of Contents</h2>
+
+<ul>
+<li><a href="#duroadmin">Duroadmin</a>
+<li><a href="#durodump">Durodump</a>
+</ul>
+
+<h2 id="duroadmin">Duroadmin</h2>
+
+<h3>Synopsis</h3>
+
+<pre>
+duroadmin.tcl [<var>envpath</var>]
+</pre>
+
+<h3>Description</h3>
+
+<p>Duroadmin is a Tcl/Tk script which allows manipulation of Duro
+databases.
+
+<p>If <var>envpath</var> is given, Duroadmin interprets it as
+a database environment directory and tries to open that environment.
+
+<p>To create a new database within a new environment, first create
+a new environment by selecting File-&gt;Create Environment, specifying
+a new directory or an empty existing directory. Then create a database
+by selecting Database-&gt;Create-&gt;Database.
+
+<h2 id="durodump">Durodump</h2>
+
+<h3>Synopsis</h3>
+
+<pre>
+durodump.tcl <var>envpath</var> [<var>output_file</var>]
+</pre>
+
+<h3>Description</h3>
+
+<p>Durodump is a Tcl script which dumps the data of the database environment
+specified by <var>envpath</var> to a file.
+If the name of the output file is not specified by the <var>output_file</var>
+argument, the output file will be named restore.tcl.
+
+<h4>Restoring the data</h4>
+
+<p>The output file of Durodump is a Tcl script which must be run in order
+to restore the data. The environment directory which is to be restored
+can be passed as an argument. If no argument is given,
+the original environment directory is used.
+The environment directory must exist and is expected to be empty.
+
+<p>$Id$
+
+</html>
