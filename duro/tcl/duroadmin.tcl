@@ -914,11 +914,12 @@ proc exec_script {} {
             } msg]} {
                 catch {duro::rollback $tx}
                 tk_messageBox -type ok -title "Error" -message $msg -icon error
+            } else {
+                .dialog.output configure -state normal
+                .dialog.output insert end $res\n
+                .dialog.output configure -state disabled
+                .dialog.output see end
             }
-            .dialog.output configure -state normal
-            .dialog.output insert end $res\n
-            .dialog.output configure -state disabled
-            .dialog.output see end
         }
     }
     destroy .dialog

@@ -126,8 +126,8 @@ enum {
 %type <exp> relation project select rename extend summarize wrap unwrap
         group ungroup sdivideby expression or_expression and_expression
         not_expression primary_expression rel_expression add_expression
-        mul_expression literal operator_invocation
-        count_invocation sum_invocation avg_invocation min_invocation
+        mul_expression literal operator_invocation count_invocation
+        sum_invocation avg_invocation min_invocation
         max_invocation all_invocation any_invocation extractor tuple_item_list
 
 %type <attrlist> attribute_name_list
@@ -1120,7 +1120,8 @@ extractor: TOK_TUPLE TOK_FROM expression {
 count_invocation: TOK_COUNT '(' expression ')' {
         RDB_table *tbp = _RDB_parse_expr_to_table($3);
 
-        $$ = RDB_expr_cardinality(tbp != NULL ? RDB_table_to_expr(tbp) : $3);
+        $$ = RDB_ro_op_l("COUNT", tbp != NULL ? RDB_table_to_expr(tbp) : $3,
+                NULL);
         if ($$ == NULL)
             YYERROR;
         _RDB_parse_remove_exp($3);

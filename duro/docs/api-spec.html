@@ -151,9 +151,7 @@
 <li><a href="#expr_any">RDB_expr_any</a>
 <li><a href="#expr_all">RDB_expr_all</a>
 <li><a href="#expr_avg">RDB_expr_avg</a>
-<li><a href="#expr_cardinality">RDB_expr_cardinality</a>
 <li><a href="#expr_comp">RDB_expr_comp</a>
-<li><a href="#expr_is_empty">RDB_expr_is_empty</a>
 <li><a href="#expr_max">RDB_expr_max</a>
 <li><a href="#expr_min">RDB_expr_min</a>
 <li><a href="#expr_sum">RDB_expr_sum</a>
@@ -3178,27 +3176,6 @@ failed.
 
 <hr>
 
-<h2 id="expr_is_empty">RDB_expr_is_empty</h2>
-
-<pre>
-#include &lt;rel/rdb.h&gt;
-
-RDB_expression *
-RDB_expr_is_empty(RDB_expression *);
-</pre>
-
-<h3>Description</h3>
-
-<p>RDB_expr_is_empty creates an expression which evaluates to RDB_TRUE
-if the subexpression evaluates to an empty table.
-
-<h3>Return value</h3>
-
-<p>A pointer to the newly created expression, of NULL if the creation
-failed.
-
-<hr>
-
 <h2 id="expr_any">RDB_expr_any</h2>
 
 <pre>
@@ -3254,27 +3231,6 @@ RDB_expr_avg(RDB_expression *, const char *attrname);
 
 <p>RDB_expr_avg creates an expression which represents the <a
 href="#avg">RDB_avg</a> operator.
-
-<h3>Return value</h3>
-
-<p>A pointer to the newly created expression, of NULL if the creation
-failed.
-
-<hr>
-
-<h2 id="expr_cardinality">RDB_expr_cardinality</h2>
-
-<pre>
-#include &lt;rel/rdb.h&gt;
-
-RDB_expression *
-RDB_expr_cardinality(RDB_expression *arg1);
-</pre>
-
-<h3>Description</h3>
-
-<p>RDB_expr_cardinality creates an expression which represents the <a
-href="#cardinality">RDB_cardinality</a> operator.
 
 <h3>Return value</h3>
 

@@ -660,6 +660,13 @@ RDB_call_ro_op(const char *name, int argc, RDB_object *argv[],
             RDB_bool_to_obj(retvalp, res);
             return RDB_OK;
         }
+        if (strcmp(name, "COUNT") == 0) {
+            ret = RDB_cardinality(argv[0]->var.tbp, txp);
+            if (ret < 0)
+                return ret;
+            RDB_int_to_obj(retvalp, ret);
+            return RDB_OK;
+        }
     } else if (argc == 2 && obj_is_table(argv[1])) {
         if (strcmp(name, "IN") == 0) {
             ret = RDB_table_contains(argv[1]->var.tbp, argv[0], txp);
