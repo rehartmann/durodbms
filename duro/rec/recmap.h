@@ -19,6 +19,7 @@ typedef struct {
     int no;
     void *datap;
     size_t len;
+    void *(*copyfp)(void *, const void *, size_t);
 } RDB_field;
 
 typedef int RDB_field_compare_func(const void *data1p, size_t len1,

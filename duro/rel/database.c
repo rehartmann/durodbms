@@ -284,9 +284,6 @@ _RDB_open_table(RDB_table *tbp,
         if (heading[i].typ->kind == RDB_TP_RELATION) {
             ret = RDB_NOT_SUPPORTED;
             goto error;
-        } else if (heading[i].typ->kind == RDB_TP_TUPLE) {
-            /* Store type in catalog */
-            /* !! ... */
         }
 
         flenv[fno] = replen(heading[i].typ);
@@ -971,6 +968,7 @@ _RDB_provide_table(const char *name, RDB_bool persistent,
 {
     RDB_type *reltyp;
     int ret;
+    int i;
 
     /* At least one key is required */
     if (keyc < 1)
@@ -983,6 +981,16 @@ _RDB_provide_table(const char *name, RDB_bool persistent,
     reltyp = RDB_create_relation_type(attrc, heading);
     if (reltyp == NULL) {
         return RDB_NO_MEMORY;
+    }
+    for (i = 0; i < attrc; i++) {
+        if (heading[i].defaultp != NULL) {
+            RDB_type *tuptyp = reltyp->var.basetyp;
+
+            tuptyp->var.tuple.attrv[i].defaultp = malloc(sizeof (RDB_object));
+            RDB_init_obj(tuptyp->var.tuple.attrv[i].defaultp);
+            RDB_copy_obj(tuptyp->var.tuple.attrv[i].defaultp,
+                    heading[i].defaultp);
+        }
     }
 
     ret = _RDB_new_stored_table(name, persistent, reltyp,
@@ -1107,33 +1115,9 @@ _RDB_drop_table(RDB_table *tbp, RDB_transaction *txp, RDB_bool rec)
     switch (tbp->kind) {
         case RDB_TB_STORED:
         {
-            RDB_expression *exprp;
-
             if (tbp->is_persistent) {
                 /* Delete table from catalog */
-                        
-                exprp = RDB_eq(RDB_expr_attr("TABLENAME"),
-                               RDB_string_const(tbp->name));
-                if (exprp == NULL) {
-                    return RDB_NO_MEMORY;
-                }
-                ret = RDB_delete(txp->dbp->dbrootp->rtables_tbp, exprp, txp);
-                if (ret != RDB_OK)
-                    return ret;
-
-                ret = RDB_delete(txp->dbp->dbrootp->table_attr_tbp, exprp, txp);
-                if (ret != RDB_OK)
-                    return ret;
-
-                ret = RDB_delete(txp->dbp->dbrootp->table_attr_defvals_tbp, exprp, txp);
-                if (ret != RDB_OK)
-                    return ret;
-
-                ret = RDB_delete(txp->dbp->dbrootp->keys_tbp, exprp, txp);
-                if (ret != RDB_OK)
-                    return ret;
-
-                RDB_drop_expr(exprp);
+                ret = _RDB_catalog_delete(tbp, txp);
             }
 
             ret = _RDB_drop_rtable(tbp, txp);

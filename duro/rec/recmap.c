@@ -444,13 +444,13 @@ _RDB_fields_to_DBT(RDB_recmap *rmp, int fldc, const RDB_field fldv[],
     /* fixed-length fields */
     for (i = 0; i < fldc - vfldc; i++) {
         int fn = fno[i];
-        memcpy(databp + offs, fldv[fn].datap, fldv[fn].len);
+        (*fldv[fn].copyfp)(databp + offs, fldv[fn].datap, fldv[fn].len);
         offs += fldv[fn].len;
     }
     /* variable-length fields */
     for (i = 0; i < vfldc; i++) {
         int fn = vfno[i];
-        memcpy(databp + offs, fldv[fn].datap, fldv[fn].len);
+        (*fldv[fn].copyfp)(databp + offs, fldv[fn].datap, fldv[fn].len);
         offs += fldv[fn].len;
         
         /* field length */
@@ -556,7 +556,7 @@ _RDB_set_field(RDB_recmap *recmapp, DBT *recpartp, const RDB_field *fieldp,
                         + vpos * RECLEN_SIZE], fieldp->len);
     }
     /* copy data */
-    memcpy(databp + offs, fieldp->datap, fieldp->len);
+    (*(fieldp->copyfp))(databp + offs, fieldp->datap, fieldp->len);
 }
 
 int

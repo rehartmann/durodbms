@@ -57,6 +57,17 @@ enum _RDB_obj_kind {
 };
 
 /*
+ * The RDB_tuple structure represents a tuple.
+ * It does not carry type information for the tuple itself,
+ * but the type information can be extracted from the values
+ * which the tuple contains.
+ */
+typedef struct {
+    /* internal */
+    RDB_hashmap map;
+} RDB_tuple;
+
+/*
  * A RDB_object structure carries a value of an arbitrary type,
  * together with the type information.
  */
@@ -73,7 +84,7 @@ typedef struct {
             size_t len;
         } bin;
         struct RDB_table *tbp;
-        struct RDB_tuple *tplp;
+        RDB_tuple tpl;
      } var;
 } RDB_object;
 
@@ -305,17 +316,6 @@ typedef struct RDB_transaction {
     struct RDB_rmlink *delrmp;
     struct RDB_ixlink *delixp;
 } RDB_transaction;
-
-/*
- * The RDB_tuple structure represents a tuple.
- * It does not carry type information for the tuple itself,
- * but the type information can be extracted from the values
- * which the tuple contains.
- */
-typedef struct {
-    /* internal */
-    RDB_hashmap map;
-} RDB_tuple;
 
 typedef struct {
     /* internal */
@@ -719,6 +719,9 @@ char *
 RDB_tuple_get_string(const RDB_tuple *, const char *name);
 
 int
+RDB_copy_tuple(RDB_tuple *dstp, const RDB_tuple *srcp);
+
+int
 RDB_extend_tuple(RDB_tuple *, int attrc, RDB_virtual_attr attrv[],
                  RDB_transaction *);
 
@@ -897,6 +900,12 @@ RDB_binary_get(const RDB_object *, size_t pos, void *dstp, size_t len);
 
 size_t
 RDB_binary_length(const RDB_object *);
+
+void
+_RDB_set_obj_type(RDB_object *valp, RDB_type *typ);
+
+RDB_tuple *
+RDB_obj_tuple(RDB_object *objp);
 
 /*
  * Functions for creating expressions

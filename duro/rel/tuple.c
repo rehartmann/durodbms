@@ -203,3 +203,9 @@ RDB_rename_tuple(const RDB_tuple *tup, int renc, RDB_renaming renv[],
 
     return RDB_OK;
 }
+
+int
+RDB_copy_tuple(RDB_tuple *dstp, const RDB_tuple *srcp)
+{
+    return RDB_rename_tuple(srcp, 0, NULL, dstp);
+}

@@ -91,14 +91,7 @@ RDB_create_tuple_type(int attrc, RDB_attr attrv[])
     for (i = 0; i < attrc; i++) {
         tbtyp->var.tuple.attrv[i].typ = attrv[i].typ;
         tbtyp->var.tuple.attrv[i].name = RDB_dup_str(attrv[i].name);
-        if (attrv[i].defaultp != NULL) {
-            tbtyp->var.tuple.attrv[i].defaultp = malloc(sizeof (RDB_object));
-            RDB_init_obj(tbtyp->var.tuple.attrv[i].defaultp);
-            RDB_copy_obj(tbtyp->var.tuple.attrv[i].defaultp,
-                    attrv[i].defaultp);
-        } else {
-            tbtyp->var.tuple.attrv[i].defaultp = NULL;
-        }
+        tbtyp->var.tuple.attrv[i].defaultp = NULL;
     }
     tbtyp->var.tuple.attrc = attrc;
     

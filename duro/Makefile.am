@@ -59,7 +59,7 @@ libdurotcl_la_LIBADD = -L$(BDB_HOME)/lib libduro.la -ldb
 
 INCLUDES = -I$(top_srcdir) -I$(BDB_HOME)/include
 
-EXTRA_DIST = tests/testall tests/lstables_output tests/test_2db_output \
+EXTRA_DIST = tests/ctests tests/lstables_output tests/test_2db_output \
 tests/test_aggregate_output tests/test_binary_output tests/test_callop_output \
 tests/test_create_view_output tests/test_defop_output tests/test_defpointtype_output \
 tests/test_deftype_output tests/test_delete_output tests/test_dropop_output \

@@ -13,6 +13,9 @@ int
 _RDB_catalog_insert(RDB_table *, RDB_transaction *);
 
 int
+_RDB_catalog_delete(RDB_table *, RDB_transaction *);
+
+int
 _RDB_open_systables(RDB_transaction *);
 
 int

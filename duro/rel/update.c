@@ -281,7 +281,7 @@ update_stored_simple(RDB_table *tbp, RDB_expression *condp,
                         updv[i].name, NULL);
                 
                 /* Get data */
-                fieldv[i].datap = RDB_obj_irep(&valv[i], &fieldv[i].len);
+                _RDB_obj_to_field(&fieldv[i], &valv[i]);
             }
             ret = RDB_cursor_set(curp, updc, fieldv);
             if (ret != RDB_OK) {
@@ -341,7 +341,7 @@ update_stored_by_key(RDB_table *tbp, RDB_expression *exp,
     }
 
     /* Convert to a field value */
-    fv.datap = RDB_obj_irep(&val, &fv.len);
+    _RDB_obj_to_field(&fv, &val);
 
     /* Read tuple */
     RDB_init_tuple(&tpl);
@@ -358,9 +358,10 @@ update_stored_by_key(RDB_table *tbp, RDB_expression *exp,
     }
 
     for (i = 0; i < updc; i++) {
-         fieldv[i].no = *(int*) RDB_hashmap_get(&tbp->var.stored.attrmap,
+        fieldv[i].no = *(int*) RDB_hashmap_get(&tbp->var.stored.attrmap,
                  updv[i].name, NULL);
-         fieldv[i].datap = RDB_obj_irep(&valv[i], &fieldv[i].len);
+         
+        _RDB_obj_to_field(&fieldv[i], &valv[i]);
     }
         
     ret = RDB_update_rec(tbp->var.stored.recmapp, &fv, updc, fieldv,

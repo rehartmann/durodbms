@@ -215,9 +215,8 @@ do_summarize(RDB_qresult *qresp, RDB_transaction *txp)
         
             /* Build key */
             for (i = 0; i < keyfc; i++) {
-                keyfv[i].datap = RDB_obj_irep(
-                        RDB_tuple_get(&tpl, qresp->tbp->keyv[0].strv[i]),
-                        &keyfv[i].len);
+                _RDB_obj_to_field(&keyfv[i],
+                        RDB_tuple_get(&tpl, qresp->tbp->keyv[0].strv[i]));
             }
 
             /* Read added attributes from table #2 */
@@ -270,13 +269,14 @@ do_summarize(RDB_qresult *qresp, RDB_transaction *txp)
                     }
                     summ_step(&svalv[i], &addval, summp->op);
 
-                    nonkeyfv[i].datap = RDB_obj_irep(&svalv[i].val, &nonkeyfv[i].len);
+                    _RDB_obj_to_field(&nonkeyfv[i], &svalv[i].val);
 
                     /* If it's AVG, store count */
                     if (summp->op == RDB_AVG) {
                         nonkeyfv[svalv[i].fvidx].datap = &svalv[i].count;
                         nonkeyfv[svalv[i].fvidx].len = sizeof(RDB_int);
-                    }                        
+                        nonkeyfv[svalv[i].fvidx].copyfp = memcpy;
+                    }
                 }
                 ret = RDB_update_rec(qresp->matp->var.stored.recmapp, keyfv,
                     addc + avgc, nonkeyfv, txp->txid);
@@ -707,7 +707,7 @@ _RDB_get_by_pindex(RDB_table *tbp, RDB_object valv[], RDB_tuple *tup, RDB_transa
     }
     
     for (i = 0; i < pkeylen; i++) {
-        fv[i].datap = RDB_obj_irep(&valv[i], &fv[i].len);
+        _RDB_obj_to_field(&fv[i], &valv[i]);
     }
     for (i = 0; i < tpltyp->var.tuple.attrc - pkeylen; i++) {
         resfv[i].no = pkeylen + i;

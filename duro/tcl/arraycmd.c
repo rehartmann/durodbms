@@ -161,13 +161,17 @@ duro_to_tcl(Tcl_Interp *interp, const RDB_object *objp)
     }
     if (typ == &RDB_BOOLEAN) {
         return Tcl_NewBooleanObj((int) RDB_obj_bool(objp));
-    }    
+    }
+    if (typ->kind == RDB_TP_TUPLE) {
+        return Duro_tuple_to_list(interp,
+                (const RDB_tuple *) RDB_obj_tuple((RDB_object *) objp));
+    }
     Tcl_SetResult(interp, "Unsupported type", TCL_STATIC);
     return NULL;
 }
 
 Tcl_Obj *
-Duro_tuple_to_list(Tcl_Interp *interp, RDB_tuple *tplp)
+Duro_tuple_to_list(Tcl_Interp *interp, const RDB_tuple *tplp)
 {
     int i;
     Tcl_Obj *listobjp = Tcl_NewListObj(0, NULL);

@@ -76,8 +76,10 @@ make_skey(DB *dbp, const DBT *pkeyp, const DBT *pdatap, DBT *skeyp)
     if (fieldv == NULL)
         return RDB_NO_MEMORY;
 
-    for (i = 0; i < ixp->fieldc; i++)
+    for (i = 0; i < ixp->fieldc; i++) {
         fieldv[i].no = ixp->fieldv[i];
+        fieldv[i].copyfp = &memcpy;
+    }
     ret = _RDB_get_fields(ixp->rmp, pkeyp, pdatap, ixp->fieldc, fieldv);
     if (ret != RDB_OK) {
         free(fieldv);

@@ -105,7 +105,7 @@ delete_stored(RDB_table *tbp, RDB_expression *condp,
         ret = RDB_evaluate(exprp, NULL, txp, &val);
         if (ret != RDB_OK)
             return ret;
-        fv.datap = RDB_obj_irep(&val, &fv.len);
+        _RDB_obj_to_field(&fv, &val);
         return RDB_delete_rec(tbp->var.stored.recmapp, &fv, txp->txid);
     }
 
@@ -815,7 +815,7 @@ RDB_table_contains(RDB_table *tbp, const RDB_tuple *tup, RDB_transaction *txp)
                         free(fvp);
                         return RDB_TYPE_MISMATCH;
                     }
-                    fvp[fno].datap = RDB_obj_irep(valp, &fvp[fno].len);
+                    _RDB_obj_to_field(&fvp[fno], valp);
                 }
                 ret = RDB_contains_rec(tbp->var.stored.recmapp, fvp, txp->txid);
                 free(fvp);

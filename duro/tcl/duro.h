@@ -77,6 +77,6 @@ Duro_get_table(TclState *, Tcl_Interp *, const char *name, RDB_transaction *,
         RDB_table **);
 
 Tcl_Obj *
-Duro_tuple_to_list(Tcl_Interp *, RDB_tuple *);
+Duro_tuple_to_list(Tcl_Interp *, const RDB_tuple *);
 
 #endif

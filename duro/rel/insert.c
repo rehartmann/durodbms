@@ -3,6 +3,7 @@
 #include "rdb.h"
 #include "typeimpl.h"
 #include "internal.h"
+#include <string.h>
 
 static int
 insert_intersect(RDB_table *tbp, const RDB_tuple *tup, RDB_transaction *txp)
@@ -125,7 +126,7 @@ RDB_insert(RDB_table *tbp, const RDB_tuple *tup, RDB_transaction *txp)
                                      tuptyp->var.tuple.attrv[i].typ)) {
                      return RDB_TYPE_MISMATCH;
                 }
-                fvp[*fnop].datap = RDB_obj_irep(valp, &fvp[*fnop].len);
+                _RDB_obj_to_field(&fvp[*fnop], valp);
             }
             ret = RDB_insert_rec(tbp->var.stored.recmapp, fvp, txp->txid);
             if (RDB_is_syserr(ret)) {

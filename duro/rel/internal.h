@@ -26,6 +26,7 @@ typedef struct RDB_dbroot {
     RDB_table *possrepcomps_tbp;
     RDB_table *ro_ops_tbp;
     RDB_table *upd_ops_tbp;
+    RDB_table *tuple_attrs_tbp;
 } RDB_dbroot;
 
 typedef struct RDB_qresult {
@@ -288,6 +289,9 @@ _RDB_get_ro_op(const char *name, int argc, RDB_type *argtv[],
 
 int
 _RDB_move_tuples(RDB_table *dstp, RDB_table *srcp, RDB_transaction *);
+
+void
+_RDB_obj_to_field(RDB_field *, RDB_object *);
 
 RDB_expression *
 _RDB_pindex_expr(RDB_table *tbp, RDB_expression *exprp);
