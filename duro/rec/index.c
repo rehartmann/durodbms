@@ -86,7 +86,6 @@ make_skey(DB *dbp, const DBT *pkeyp, const DBT *pdatap, DBT *skeyp)
         return ret;
     }
 
-    memset(skeyp, 0, sizeof (DBT));
     ret = _RDB_fields_to_DBT(ixp->rmp, ixp->fieldc, fieldv, skeyp);
     skeyp->flags = DB_DBT_APPMALLOC;
     free(fieldv);
@@ -193,4 +192,73 @@ cleanup:
     if (ret != 0)
         RDB_errmsg(envp, "Error deleting index: %s", RDB_strerror(ret));
     return RDB_convert_err(ret);
+}
+
+int
+RDB_index_get_fields(RDB_index *ixp, RDB_field keyv[], int fieldc, DB_TXN *txid,
+           RDB_field retfieldv[])
+{
+    DBT key, pkey, data;
+    int ret;
+    int i;
+
+    for (i = 0; i < ixp->fieldc; i++) {
+        keyv[i].no = ixp->fieldv[i];
+    }
+
+    /* Fill key DBT */
+    ret = _RDB_fields_to_DBT(ixp->rmp, ixp->fieldc, keyv, &key);
+    if (ret != RDB_OK)
+        return ret;
+
+    memset(&pkey, 0, sizeof (DBT));
+    memset(&data, 0, sizeof (DBT));
+
+    /* Get primary key and data */
+    ret = ixp->dbp->pget(ixp->dbp, txid, &key, &pkey, &data, 0);
+    if (ret != 0) {
+        return RDB_convert_err(ret);
+    }
+
+    /* Get field values */
+    for (i = 0; i < fieldc; i++) {
+        int offs;
+        int fno = retfieldv[i].no;
+
+        if (fno < ixp->rmp->keyfieldcount) {
+            offs = _RDB_get_field(ixp->rmp, fno, pkey.data, pkey.size,
+                    &retfieldv[i].len, NULL);
+            retfieldv[i].datap = ((RDB_byte *)pkey.data) + offs;
+        } else {
+            offs = _RDB_get_field(ixp->rmp, fno,
+                    data.data, data.size, &retfieldv[i].len, NULL);
+            retfieldv[i].datap = ((RDB_byte *)data.data) + offs;
+        }
+    }
+    return RDB_OK;
+}
+
+int
+RDB_index_delete_rec(RDB_index *ixp, RDB_field keyv[], DB_TXN *txid)
+{
+    DBT key;
+    int ret;
+    int i;
+
+    for (i = 0; i < ixp->fieldc; i++) {
+        keyv[i].no = ixp->fieldv[i];
+    }
+
+    /* Fill key DBT */
+    ret = _RDB_fields_to_DBT(ixp->rmp, ixp->fieldc, keyv, &key);
+    if (ret != RDB_OK)
+        return ret;
+
+    /* Delete record */
+    ret = ixp->dbp->del(ixp->dbp, txid, &key, 0);
+    if (ret != 0) {
+        return RDB_convert_err(ret);
+    }
+
+    return RDB_OK;
 }

@@ -23,6 +23,7 @@ insert_stored(RDB_table *tbp, const RDB_object *tplp, RDB_transaction *txp)
     if (fvp == NULL) {
         if (txp != NULL) {
             RDB_errmsg(txp->dbp->dbrootp->envp, RDB_strerror(RDB_NO_MEMORY));
+            RDB_rollback_all(txp);
         }
         return RDB_NO_MEMORY;
     }
@@ -107,8 +108,8 @@ insert_union(RDB_table *tbp, const RDB_object *tplp, RDB_transaction *txp)
     int ret, ret2;
 
     /* !! may be very inefficient */        
-    if (RDB_table_contains(tbp->var._union.tbp1, tplp, txp) == RDB_OK
-            || RDB_table_contains(tbp->var._union.tbp2, tplp, txp) == RDB_OK)
+    if (RDB_table_contains(tbp->var._union.tb1p, tplp, txp) == RDB_OK
+            || RDB_table_contains(tbp->var._union.tb2p, tplp, txp) == RDB_OK)
         return RDB_ELEMENT_EXISTS;
      
     /* Try to insert the tuple into both tables. The insertion into the union
@@ -116,12 +117,12 @@ insert_union(RDB_table *tbp, const RDB_object *tplp, RDB_transaction *txp)
      * a predicate violation or (2) if both inserts fail because of
      * a predicate violation.
      */
-    ret = RDB_insert(tbp->var._union.tbp1, tplp, txp);
+    ret = RDB_insert(tbp->var._union.tb1p, tplp, txp);
     if (ret != RDB_OK) {
         if (ret != RDB_KEY_VIOLATION && ret != RDB_PREDICATE_VIOLATION)
             return ret;
     }
-    ret2 = RDB_insert(tbp->var._union.tbp2, tplp, txp);
+    ret2 = RDB_insert(tbp->var._union.tb2p, tplp, txp);
     if (ret2 != RDB_OK) {
         if (ret2 != RDB_KEY_VIOLATION && ret2 != RDB_PREDICATE_VIOLATION)
             return ret2;
@@ -186,13 +187,13 @@ insert_intersect(RDB_table *tbp, const RDB_object *tup, RDB_transaction *txp)
     if (ret != RDB_OK)
         return ret;
             
-    ret = RDB_insert(tbp->var.intersect.tbp1, tup, &tx);
+    ret = RDB_insert(tbp->var.intersect.tb1p, tup, &tx);
     if (ret != RDB_OK && ret != RDB_ELEMENT_EXISTS) {
         RDB_rollback(&tx);
         return ret;
     }
 
-    ret2 = RDB_insert(tbp->var.intersect.tbp2, tup, &tx);
+    ret2 = RDB_insert(tbp->var.intersect.tb2p, tup, &tx);
     if (ret2 != RDB_OK && ret2 != RDB_ELEMENT_EXISTS) {
         RDB_rollback(&tx);
         return ret2;
@@ -226,13 +227,13 @@ insert_join(RDB_table *tbp, const RDB_object *tup, RDB_transaction *txp)
     if (ret != RDB_OK)
         return ret;
             
-    ret = RDB_insert(tbp->var.join.tbp1, tup, &tx);
+    ret = RDB_insert(tbp->var.join.tb1p, tup, &tx);
     if (ret != RDB_OK && ret != RDB_ELEMENT_EXISTS) {
         RDB_rollback(&tx);
         return ret;
     }
 
-    ret2 = RDB_insert(tbp->var.join.tbp2, tup, &tx);
+    ret2 = RDB_insert(tbp->var.join.tb2p, tup, &tx);
     if (ret2 != RDB_OK && ret2 != RDB_ELEMENT_EXISTS) {
         RDB_rollback(&tx);
         return ret2;
@@ -351,7 +352,7 @@ RDB_insert(RDB_table *tbp, const RDB_object *tplp, RDB_transaction *txp)
         case RDB_TB_STORED:
             return insert_stored(tbp, tplp, txp);
         case RDB_TB_SELECT:
-        case RDB_TB_SELECT_PINDEX:
+        case RDB_TB_SELECT_INDEX:
             ret = RDB_evaluate_bool(tbp->var.select.exprp, tplp, txp, &b);
             if (ret != RDB_OK)
                 return ret;

@@ -217,7 +217,7 @@ See the release notes for details.
 <li><a href="#end_uoi">RDB_end_uoi</a>
 </ul>
 
-<h3>Database Environment functions</h3>
+<h3>Database environment functions</h3>
 
 <ul>
 <li><a href="#create_env">RDB_create_env</a>
@@ -2372,15 +2372,21 @@ the position <var>pos</var> in the RDB_object pointed to by <var>valp</var>.
 #include &lt;rel/rdb.h&gt;
 
 int
-RDB_binary_get(const RDB_object *valp, size_t pos, void *dstp, size_t len);
+RDB_binary_get(const RDB_object *, size_t pos, void **pp, size_t len, size_t *alenp);
 </pre>
 
 <h3>Description</h3>
 
-<p>RDB_binary_get copies <var>len</var> bytes starting at position
-<var>pos</var> from the RDB_object pointed to by <var>valp</var>
-to <var>dstp</var>. <var>valp</var> must point to a RDB_object of
-type BINARY.
+<p>RDB_binary_get obtains a pointer to <var>len</var> bytes starting at position
+<var>pos</var> of the RDB_object pointed to by <var>valp</var>
+and stores this pointer at the location pointed to by <var>pp</var>.
+If the sum of <var>pos</var> and <var>len</var> exceeds the length of the
+object, the length of the byte block will be lower than requested.
+
+<p>If <var>alenp</var> is not NULL, the actual length of the byte block is stored
+at the location pointed to by <var>alenp</var>.
+
+<p><var>valp</var> must point to a RDB_object of type BINARY.
 
 <h3>Return value</h3>
 
@@ -2718,7 +2724,7 @@ RDB_array_length(RDB_object *);
 
 <h3>Description</h3>
 
-<p>RDB_array_length determines the length of the array.
+<p>RDB_array_length determines the length of an array.
 
 <h3>Return value</h3>
 
@@ -3199,9 +3205,9 @@ RDB_regmatch(RDB_expression *arg1p, RDB_expression *arg2p);
 
 <p>RDB_regmatch creates an expression that represents a regular
 expression match. Both subexpressions must be of type STRING.
-The expression evaluates to RDB_TRUE if the expression represented by arg1p
-evaluates to a string that matches the regular expression
-to which the expression represented by arg2p evaluates.
+The expression evaluates to RDB_TRUE if the expression represented by
+<var>arg1p</var> evaluates to a string that matches the regular expression
+to which the expression represented by <var>arg2p</var> evaluates.
 If one of the arguments is NULL, NULL is returned.
 
 <h3>Return value</h3>
@@ -3492,31 +3498,29 @@ RDB_implement_type(const char *name, RDB_type *arep,
                    size_t areplen, RDB_transaction *txp);
 </pre>
 
-<p>Note: The specification of RDB_implement_type is not stable yet;
-it will probably change in future versions of Duro.
-
 <h3>Description</h3>
 
 <p>RDB_implement_type implements the user-defined type with name
-<var>name</var>. After RDB_implement_type was inkoved successfully,
+<var>name</var>. The type must have been previously defined using
+RDB_define_type. After RDB_implement_type was inkoved successfully,
 this type may be used for local variables and table attributes.
 
 <p>If <var>arep</var> is not NULL, it must point to a type which is used
-as the actual representation.
+as the actual representation. The getter, setter, and selector operators
+must be provided by the user.
 
 <p>If <var>arep</var> is NULL and <var>areplen</var> is not -1,
 <var>areplen</var> specifies the length, in bytes,
-of the actual representation,
-which is a fixed-length array of bytes.
-
-<p>If <var>arep</var> is NULL and <var>areplen</var> is not -1,
-the getter functions, setter functions, and selector
+of the actual representation, which is a fixed-length array of bytes.
+The getter, setter, and selector operators
 must be provided by the user.
-Otherwise, these functions are provided by Duro,
-the type may only have one possible representation,
-and this representation becomes the actual representation.
 
 <p>...
+
+<p>If <var>arep</var> is NULL and <var>areplen</var> is -1,
+the getter and setter operators and the selector operator are provided by Duro.
+In this case, the type may only have one possible representation,
+and this representation becomes the actual representation.
 
 <h3>Return value</h3>
 
@@ -3527,9 +3531,11 @@ and this representation becomes the actual representation.
 <dl>
 <dt>RDB_INVALID_TRANSACTION
 <dd><var>txp</var> does not point to a running transaction.
+<dt>RDB_NOT_FOUND
+<dd>The type has not been previously defined.
 <dt>RDB_INVALID_ARGUMENT
-<dd>An invalid combination of <var>libname</var> and <var>arep</var> was
-used.
+<dd><var>arep</var> is NULL and <var>areplen</var> is -1,
+and the type was defined with more than one possible representation.
 <dt>RDB_NOT_SUPPORTED
 <dd>The requested internal representation is not supported by this version
 of the library.

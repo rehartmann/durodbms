@@ -106,10 +106,12 @@ NOT {
 
 TRUE {
     yylval = RDB_bool_to_expr(RDB_TRUE);
+    return TOK_BOOLEAN;
 }
 
 FALSE {
     yylval = RDB_bool_to_expr(RDB_FALSE);
+    return TOK_BOOLEAN;
 }
 
 IS_EMPTY {
@@ -182,7 +184,7 @@ TABLE_DUM {
 
 [0-9]+"."[0-9]+	{
     yylval = RDB_rational_to_expr((RDB_rational) atof(yytext));
-    return TOK_DECIMAL;
+    return TOK_FLOAT;
 }
 
 [=><+\-*/{},().] return yytext[0];

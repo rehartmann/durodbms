@@ -53,4 +53,8 @@ int
 _RDB_get_cat_upd_op(const char *name, int argc, RDB_type *argtv[],
         RDB_transaction *txp, RDB_upd_op **opp);
 
+int
+_RDB_cat_insert_index(_RDB_tbindex *, const char *tbname,
+        RDB_transaction *);
+
 #endif

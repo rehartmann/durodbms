@@ -463,40 +463,40 @@ serialize_table(RDB_object *valp, int *posp, RDB_table *tbp)
                 return RDB_INVALID_ARGUMENT;
             return serialize_str(valp, posp, tbp->name);
         case RDB_TB_SELECT:
-        case RDB_TB_SELECT_PINDEX:
+        case RDB_TB_SELECT_INDEX:
             ret = serialize_table(valp, posp, tbp->var.select.tbp);
             if (ret != RDB_OK)
                 return ret;
             return serialize_expr(valp, posp, tbp->var.select.exprp);
         case RDB_TB_UNION:
-            ret = serialize_table(valp, posp, tbp->var._union.tbp1);
+            ret = serialize_table(valp, posp, tbp->var._union.tb1p);
             if (ret != RDB_OK)
                 return ret;
-            ret = serialize_table(valp, posp, tbp->var._union.tbp2);
+            ret = serialize_table(valp, posp, tbp->var._union.tb2p);
             if (ret != RDB_OK)
                 return ret;
             return RDB_OK;
         case RDB_TB_MINUS:
-            ret = serialize_table(valp, posp, tbp->var.minus.tbp1);
+            ret = serialize_table(valp, posp, tbp->var.minus.tb1p);
             if (ret != RDB_OK)
                 return ret;
-            ret = serialize_table(valp, posp, tbp->var.minus.tbp2);
+            ret = serialize_table(valp, posp, tbp->var.minus.tb2p);
             if (ret != RDB_OK)
                 return ret;
             return RDB_OK;
         case RDB_TB_INTERSECT:
-            ret = serialize_table(valp, posp, tbp->var.intersect.tbp1);
+            ret = serialize_table(valp, posp, tbp->var.intersect.tb1p);
             if (ret != RDB_OK)
                 return ret;
-            ret = serialize_table(valp, posp, tbp->var.intersect.tbp2);
+            ret = serialize_table(valp, posp, tbp->var.intersect.tb2p);
             if (ret != RDB_OK)
                 return ret;
             return RDB_OK;
         case RDB_TB_JOIN:
-            ret = serialize_table(valp, posp, tbp->var.join.tbp1);
+            ret = serialize_table(valp, posp, tbp->var.join.tb1p);
             if (ret != RDB_OK)
                 return ret;
-            ret = serialize_table(valp, posp, tbp->var.join.tbp2);
+            ret = serialize_table(valp, posp, tbp->var.join.tb2p);
             if (ret != RDB_OK)
                 return ret;
             return RDB_OK;
@@ -1395,7 +1395,7 @@ deserialize_table(RDB_object *valp, int *posp, RDB_transaction *txp,
             free(namp);
             return ret;
         case RDB_TB_SELECT:
-        case RDB_TB_SELECT_PINDEX:
+        case RDB_TB_SELECT_INDEX:
             ret = deserialize_table(valp, posp, txp, &tb1p);
             if (ret != RDB_OK)
                 return ret;

@@ -130,7 +130,7 @@ duro::table create T2 {
     {IATTR INTEGER}
 } {{SATTR}} $tx
 
-duro::table expr -global WR {T2 WRAP ((SATTR, IATTR) AS A)} $tx
+duro::table expr -global WR {T2 WRAP ({SATTR, IATTR} AS A)} $tx
 
 set tpl {A {SATTR a IATTR 1}}
 duro::insert T2 {SATTR a IATTR 1} $tx
@@ -179,7 +179,7 @@ if {![tequal $tpl $stpl]} {
     exit 1
 }
 
-set tpl [duro::expr {TUPLE {A 1, B "Bee"} WRAP ((A, B) AS T)} $tx]
+set tpl [duro::expr {TUPLE {A 1, B "Bee"} WRAP ({A, B} AS T)} $tx]
 set stpl {T {A 1 B Bee}}
 if {![tequal $tpl $stpl]} {
     puts "Tuple is $tpl, should be $stpl"

@@ -63,10 +63,8 @@ enum {
 %token <exp> TOK_ID
 %token <exp> TOK_INTEGER
 %token <exp> TOK_STRING
-%token <exp> TOK_DECIMAL
 %token <exp> TOK_FLOAT
-%token <exp> TOK_TRUE
-%token <exp> TOK_FALSE
+%token <exp> TOK_BOOLEAN
 %token TOK_WHERE
 %token TOK_UNION
 %token TOK_INTERSECT
@@ -663,7 +661,7 @@ wrapping_list: wrapping {
     }
     ;
 
-wrapping: '(' attribute_name_list ')' TOK_AS TOK_ID {
+wrapping: '{' attribute_name_list '}' TOK_AS TOK_ID {
         int i;
 
         $$.wrapv[0].attrc = $2.attrc;
@@ -861,15 +859,14 @@ primary_expression: TOK_ID
 extractor: TOK_TUPLE TOK_FROM expression {
         RDB_table *tbp;
         RDB_object tpl;
-        int ret;
 
         tbp = expr_to_table($3);
         if (tbp == NULL)
             YYERROR;
 
         RDB_init_obj(&tpl);
-        ret = RDB_extract_tuple(tbp, &tpl, expr_txp);
-        if (ret != RDB_OK) {
+        expr_ret = RDB_extract_tuple(tbp, &tpl, expr_txp);
+        if (expr_ret != RDB_OK) {
             RDB_destroy_obj(&tpl);
             YYERROR;
         }
@@ -1118,10 +1115,8 @@ literal: /* "RELATION" '{' expression_list '}' {
      } 
      | TOK_STRING
      | TOK_INTEGER
-     | TOK_DECIMAL
      | TOK_FLOAT
-     | TOK_TRUE
-     | TOK_FALSE
+     | TOK_BOOLEAN
      ;
 
 tuple_item_list: TOK_ID expression {

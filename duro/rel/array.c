@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2003 René Hartmann.
+ * Copyright (C) 2003, 2004 René Hartmann.
  * See the file COPYING for redistribution information.
  */
 
@@ -10,7 +10,7 @@
 
 int
 RDB_table_to_array(RDB_object *arrp, RDB_table *tbp,
-                   int seqitc, RDB_seq_item seqitv[],
+                   int seqitc, const RDB_seq_item seqitv[],
                    RDB_transaction *txp)
 {
     int ret;
@@ -84,6 +84,8 @@ RDB_array_get(RDB_object *arrp, RDB_int idx, RDB_object **tplpp)
                 &arrp->var.arr.qrp);
         if (ret != RDB_OK) {
             arrp->var.arr.qrp = NULL;
+            if (RDB_is_syserr(ret))
+                RDB_rollback_all(arrp->var.arr.txp);
             return ret;
         }
         arrp->var.arr.pos = 0;
@@ -133,8 +135,8 @@ RDB_array_get(RDB_object *arrp, RDB_int idx, RDB_object **tplpp)
              elemc *= 2;
          } while (elemc < idx);
 
-         arrp->var.arr.elemv = realloc (arrp->var.arr.elemv,
-                 sizeof(RDB_object) * arrp->var.arr.elemc);
+         arrp->var.arr.elemv = realloc(arrp->var.arr.elemv,
+                 sizeof(RDB_object) * elemc);
          if (arrp->var.arr.elemv == NULL)
              return RDB_NO_MEMORY;
          for (i = oldelemc; i < elemc; i++)
@@ -147,16 +149,31 @@ RDB_array_get(RDB_object *arrp, RDB_int idx, RDB_object **tplpp)
      */
     while (arrp->var.arr.pos < idx) {
         ret = fetch_next(arrp);
-        if (ret != RDB_OK)
+        if (ret != RDB_OK) {
+            if (RDB_is_syserr(ret)) {
+                _RDB_drop_qresult(arrp->var.arr.qrp, arrp->var.arr.txp);
+                arrp->var.arr.qrp = NULL;
+                RDB_rollback_all(arrp->var.arr.txp);
+            }
             return ret;
+        }
         ++arrp->var.arr.pos;
     }
 
     /* Read next element */
     ret = fetch_next(arrp);
     if (ret != RDB_OK) {
-        if (ret == RDB_NOT_FOUND)
+        if (ret == RDB_NOT_FOUND) {
             arrp->var.arr.length = arrp->var.arr.pos;
+            if (arrp->var.arr.tbp->kind == RDB_TB_STORED) {
+                arrp->var.arr.tbp->var.stored.est_cardinality =
+                        arrp->var.arr.length;
+            }
+        } else if (RDB_is_syserr(ret)) {
+            _RDB_drop_qresult(arrp->var.arr.qrp, arrp->var.arr.txp);
+            arrp->var.arr.qrp = NULL;
+            RDB_rollback_all(arrp->var.arr.txp);
+        }
         return ret;
     }
 
@@ -186,13 +203,12 @@ RDB_array_length(RDB_object *arrp)
             i++;
         if (ret != RDB_NOT_FOUND)
             return ret;
-        arrp->var.arr.length = i;
     }
     return arrp->var.arr.length;
 }
 
-int
-RDB_detach_array(RDB_object *arrp)
+static int
+detach_array(RDB_object *arrp)
 {
     int ret;
 
@@ -240,13 +256,13 @@ RDB_set_array_length(RDB_object *arrp, RDB_int len)
         return RDB_OK;
     }
     if (arrp->var.arr.tbp != NULL) {
-        ret = RDB_detach_array(arrp);
+        ret = detach_array(arrp);
         if (ret != RDB_OK)
             return ret;
     }
 
     if (len < arrp->var.arr.length) {
-        /* Shorten array */
+        /* Shrink array */
         for (i = len; i < arrp->var.arr.length; i++) {
             ret = RDB_destroy_obj(&arrp->var.arr.elemv[i]);
             if (ret != RDB_OK)
@@ -269,8 +285,13 @@ RDB_set_array_length(RDB_object *arrp, RDB_int len)
 int
 RDB_array_set(RDB_object *arrp, RDB_int idx, const RDB_object *objp)
 {
-    if (arrp->var.arr.tbp != NULL)
-        return RDB_NOT_SUPPORTED;
+    int ret;
+
+    if (arrp->var.arr.tbp != NULL) {
+        ret = detach_array(arrp);
+        if (ret != RDB_OK)
+            return ret;
+    }
 
     if (idx >= arrp->var.arr.length)
         return RDB_NOT_FOUND;

@@ -154,6 +154,9 @@ Duro_table_to_list(Tcl_Interp *interp, RDB_table *tbp, RDB_transaction *txp)
 
     ret = _RDB_table_qresult(tbp, NULL, &qrp);
     if (ret != RDB_OK) {
+        if (RDB_is_syserr(ret)) {
+            RDB_rollback_all(txp);
+        }
         Duro_dberror(interp, ret);
         return NULL;
     }
@@ -167,12 +170,16 @@ Duro_table_to_list(Tcl_Interp *interp, RDB_table *tbp, RDB_transaction *txp)
     RDB_destroy_obj(&tpl);
     if (ret != RDB_NOT_FOUND) {
         _RDB_drop_qresult(qrp, NULL);
+        if (RDB_is_syserr(ret))
+            RDB_rollback_all(txp);
         Duro_dberror(interp, ret);
         return NULL;
     }
 
     ret = _RDB_drop_qresult(qrp, NULL);
     if (ret != RDB_OK) {
+        if (RDB_is_syserr(ret))
+            RDB_rollback_all(txp);
         Duro_dberror(interp, ret);
         return NULL;
     }
@@ -216,6 +223,27 @@ uobj_to_list(Tcl_Interp *interp, const RDB_object *objp, RDB_transaction *txp)
     return listobjp;
 }
 
+static Tcl_Obj *
+array_to_list(Tcl_Interp *interp, RDB_object *arrayp,
+        RDB_transaction *txp)
+{
+    int i;
+    int ret;
+    RDB_object *objp;
+    Tcl_Obj *listobjp = Tcl_NewListObj(0, NULL);
+
+    for (i = 0; (ret = RDB_array_get(arrayp, i, &objp)) == RDB_OK; i++) {
+        Tcl_Obj *tobjp = Duro_to_tcl(interp, objp, txp);
+
+        if (tobjp == NULL) {
+            return NULL;
+        }
+
+        Tcl_ListObjAppendElement(interp, listobjp, tobjp);
+    }
+    return listobjp;
+}
+
 Tcl_Obj *
 Duro_to_tcl(Tcl_Interp *interp, const RDB_object *objp, RDB_transaction *txp)
 {
@@ -246,19 +274,13 @@ Duro_to_tcl(Tcl_Interp *interp, const RDB_object *objp, RDB_transaction *txp)
             return NULL;
         }
 
-        datap = malloc(len);
-        if (datap == NULL)
-            return NULL;
-
-        ret = RDB_binary_get(objp, 0, datap, len);
+        ret = RDB_binary_get(objp, 0, &datap, len, NULL);
         if (ret != RDB_OK) {
-            free(datap);
             Duro_dberror(interp, ret);
             return NULL;
         }
 
         tobjp = Tcl_NewByteArrayObj(datap, len);
-        free(datap);
         return tobjp;
     }
     if (typ != NULL && RDB_type_is_scalar(typ)) {
@@ -269,6 +291,9 @@ Duro_to_tcl(Tcl_Interp *interp, const RDB_object *objp, RDB_transaction *txp)
     }
     if (objp->kind == RDB_OB_TABLE) {
         return Duro_table_to_list(interp, RDB_obj_table(objp), txp);
+    }
+    if (objp->kind == RDB_OB_ARRAY) {
+        return array_to_list(interp, (RDB_object *) objp, txp);
     }
     Tcl_SetResult(interp, "Unsupported type", TCL_STATIC);
     return NULL;
@@ -370,7 +395,7 @@ array_foreach_cmd(TclState *statep, Tcl_Interp *interp, int objc,
     RDB_object *arrayp;
     RDB_object *tplp;
     int i;
-    Tcl_Obj *listobjp;
+    Tcl_Obj *elemobjp;
 
     if (objc != 6) {
         Tcl_WrongNumArgs(interp, 2, objv, "varname arrayname body tx");
@@ -396,11 +421,11 @@ array_foreach_cmd(TclState *statep, Tcl_Interp *interp, int objc,
 
     for (i = 0; (ret = RDB_array_get(arrayp, i, &tplp)) == RDB_OK; i++) {
         /* Set variable */
-        listobjp = Duro_tuple_to_list(interp, tplp, txp);
-        if (listobjp == NULL)
+        elemobjp = Duro_to_tcl(interp, tplp, txp);
+        if (elemobjp == NULL)
             return TCL_ERROR;
         
-        Tcl_ObjSetVar2(interp, objv[2], NULL, listobjp, 0);
+        Tcl_ObjSetVar2(interp, objv[2], NULL, elemobjp, 0);
 
         /* Invoke script */
         ret = Tcl_EvalObjEx(interp, objv[4], 0);
@@ -460,7 +485,6 @@ array_set_cmd(TclState *statep, Tcl_Interp *interp, int objc,
     RDB_transaction *txp;
     Tcl_HashEntry *entryp;
     RDB_object *arrayp;
-    RDB_object *tplp;
     int idx;
     RDB_type *typ;
     RDB_object obj;

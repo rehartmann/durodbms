@@ -805,26 +805,33 @@ RDB_binary_set(RDB_object *valp, size_t pos, const void *srcp, size_t len)
 }
 
 int
-RDB_binary_get(const RDB_object *valp, size_t pos, void *dstp, size_t len)
+RDB_binary_get(const RDB_object *objp, size_t pos, void **pp, size_t len,
+        size_t *alenp)
 {
-    if (pos + len > valp->var.bin.len)
+    if (pos > objp->var.bin.len)
         return RDB_NOT_FOUND;
-    memcpy(dstp, ((RDB_byte *)valp->var.bin.datap) + pos, len);
+    if (alenp != NULL) {
+        if (pos + len > objp->var.bin.len)
+            *alenp = objp->var.bin.len - pos;
+        else
+            *alenp = len;
+    }
+    *pp = (RDB_byte *)objp->var.bin.datap + pos;
     return RDB_OK;
 }
 
 size_t
-RDB_binary_length(const RDB_object *valp)
+RDB_binary_length(const RDB_object *objp)
 {
-    return valp->var.bin.len;
+    return objp->var.bin.len;
 }
 
 /* Works only for scalar types */
 void
-_RDB_set_obj_type(RDB_object *valp, RDB_type *typ)
+_RDB_set_obj_type(RDB_object *objp, RDB_type *typ)
 {
-    valp->typ = typ;
-    valp->kind = val_kind(typ);
-    if (valp->kind == RDB_OB_BIN)
-        valp->var.bin.datap = NULL;
+    objp->typ = typ;
+    objp->kind = val_kind(typ);
+    if (objp->kind == RDB_OB_BIN)
+        objp->var.bin.datap = NULL;
 }

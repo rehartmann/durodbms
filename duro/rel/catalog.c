@@ -127,7 +127,8 @@ static RDB_string_vec upd_ops_keyv[] = { { 2, upd_ops_keyattrv } };
 static RDB_attr indexes_attrv[] = {
     { "NAME", &RDB_STRING, NULL, 0 },
     { "TABLENAME", &RDB_STRING, NULL, 0 },
-    { "ATTRS", NULL, NULL, 0 } /* type is set to an array type later */
+    { "ATTRS", NULL, NULL, 0 }, /* type is set to an array type later */
+    { "UNIQUE", &RDB_BOOLEAN, 0 }
 };
 
 static char *indexes_keyattrv[] = { "NAME" };
@@ -393,8 +394,8 @@ cleanup:
     return ret;
 }
 
-static int
-insert_index(struct _RDB_tbindex *indexp, const char *tbname,
+int
+_RDB_cat_insert_index(_RDB_tbindex *indexp, const char *tbname,
         RDB_transaction *txp)
 {
     int ret;
@@ -433,6 +434,10 @@ insert_index(struct _RDB_tbindex *indexp, const char *tbname,
     if (ret != RDB_OK)
         goto cleanup;   
 
+    ret = RDB_tuple_set_bool(&tpl, "UNIQUE", indexp->unique);
+    if (ret != RDB_OK)
+        goto cleanup;   
+
     ret = RDB_insert(txp->dbp->dbrootp->indexes_tbp, &tpl, txp);
 
 cleanup:
@@ -465,7 +470,8 @@ _RDB_cat_insert(RDB_table *tbp, RDB_transaction *txp)
 
         if (ret == RDB_OK) {
             for (i = 0; i < tbp->var.stored.indexc; i++) {
-                ret = insert_index(&tbp->var.stored.indexv[i], tbp->name, txp);
+                ret = _RDB_cat_insert_index(&tbp->var.stored.indexv[i],
+                        tbp->name, txp);
                 if (ret != RDB_OK)
                     return ret;
             }
@@ -571,7 +577,7 @@ get_indexes(RDB_table *tbp, RDB_dbroot *dbrootp, RDB_transaction *txp)
 
     tbp->var.stored.indexc = RDB_array_length(&arr);
     if (tbp->var.stored.indexc > 0) {
-        tbp->var.stored.indexv = malloc(sizeof(struct _RDB_tbindex)
+        tbp->var.stored.indexv = malloc(sizeof(_RDB_tbindex)
                 * tbp->var.stored.indexc);
         if (tbp->var.stored.indexv == NULL) {
             ret = RDB_NO_MEMORY;
@@ -580,16 +586,21 @@ get_indexes(RDB_table *tbp, RDB_dbroot *dbrootp, RDB_transaction *txp)
         for (i = 0; i < tbp->var.stored.indexc; i++) {
             RDB_object *tplp;
             RDB_object *attrarrp;
-            struct _RDB_tbindex *indexp = &tbp->var.stored.indexv[i];
+            char *idxname;
+            char *p;
+            _RDB_tbindex *indexp = &tbp->var.stored.indexv[i];
 
             ret = RDB_array_get(&arr, (RDB_int) i, &tplp);
             if (ret != RDB_OK)
                 goto cleanup;
 
-            indexp->name = RDB_dup_str(RDB_tuple_get_string(tplp, "NAME"));
-            if (indexp->name == NULL) {
-                ret = RDB_NO_MEMORY;
-                goto cleanup;
+            idxname = RDB_tuple_get_string(tplp, "NAME");
+            if (idxname[0] != '\0') {
+                indexp->name = RDB_dup_str(idxname);
+                if (indexp->name == NULL) {
+                    ret = RDB_NO_MEMORY;
+                    goto cleanup;
+                }
             }
 
             attrarrp = RDB_tuple_get(tplp, "ATTRS");
@@ -606,7 +617,7 @@ get_indexes(RDB_table *tbp, RDB_dbroot *dbrootp, RDB_transaction *txp)
             }
             
             for (j = 0; j < indexp->attrc; j++) {
-                RDB_object *attrtplp;
+                RDB_object *attrtplp;                
 
                 ret = RDB_array_get(attrarrp, (RDB_int) j, &attrtplp);
                 if (ret != RDB_OK)
@@ -620,10 +631,18 @@ get_indexes(RDB_table *tbp, RDB_dbroot *dbrootp, RDB_transaction *txp)
                 }
                 indexp->attrv[j].asc = RDB_tuple_get_bool(attrtplp, "ASC");
             }
-            
-            ret = _RDB_open_table_index(tbp, indexp, dbrootp->envp, txp);
-            if (ret != RDB_OK)
-                goto cleanup;
+
+            indexp->unique = RDB_tuple_get_bool(tplp, "UNIQUE");
+
+            /* Don't open the index if it's a primary index */
+            p = strchr(indexp->name, '$');
+            if (p == NULL || strcmp (p, "$0") != 0) {
+                ret = _RDB_open_table_index(tbp, indexp, dbrootp->envp, txp);
+                if (ret != RDB_OK)
+                    goto cleanup;
+            } else {
+                indexp->idxp = NULL;
+            }
         }
     }
 
@@ -634,7 +653,7 @@ cleanup:
 }
 
 /*
- * Create or open system tables, depending on the create argument.
+ * Create or open system tables.
  * If the tables are created, associate them with the database pointed to by
  * txp->dbp.
  */
@@ -721,6 +740,8 @@ _RDB_open_systables(RDB_dbroot *dbrootp, RDB_transaction *txp)
     }
 
     ro_ops_attrv[1].typ = RDB_create_array_type(&RDB_BINARY);
+    if (ro_ops_attrv[1].typ == NULL)
+        return RDB_NO_MEMORY;
 
     ret = _RDB_provide_table("SYS_RO_OPS", RDB_TRUE, 5, ro_ops_attrv,
             1, ro_ops_keyv, RDB_FALSE, create, txp, dbrootp->envp,
@@ -753,7 +774,7 @@ _RDB_open_systables(RDB_dbroot *dbrootp, RDB_transaction *txp)
     indexes_attrv[2].typ = RDB_create_array_type(
         RDB_create_tuple_type(2, indexes_attrs_attrv));
 
-    ret = _RDB_provide_table("SYS_INDEXES", RDB_TRUE, 3, indexes_attrv,
+    ret = _RDB_provide_table("SYS_INDEXES", RDB_TRUE, 4, indexes_attrv,
             1, indexes_keyv, RDB_FALSE, create, txp, dbrootp->envp,
             &dbrootp->indexes_tbp);
     if (ret != RDB_OK) {

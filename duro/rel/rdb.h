@@ -225,7 +225,7 @@ typedef struct {
 enum _RDB_tb_kind {
     RDB_TB_STORED,
     RDB_TB_SELECT,
-    RDB_TB_SELECT_PINDEX,
+    RDB_TB_SELECT_INDEX,
     RDB_TB_UNION,
     RDB_TB_MINUS,
     RDB_TB_INTERSECT,
@@ -250,12 +250,13 @@ typedef struct {
     RDB_bool asc;
 } RDB_seq_item;
 
-struct _RDB_tbindex {
+typedef struct {
     char *name;
     int attrc;
     RDB_seq_item *attrv;
-    RDB_index *idxp;
-};
+    RDB_bool unique;
+    RDB_index *idxp;	/* NULL for the primary index */
+} _RDB_tbindex;
 
 typedef struct RDB_table {
     /* internal */
@@ -267,6 +268,8 @@ typedef struct RDB_table {
     int keyc;
     RDB_string_vec *keyv;
     int refcount;
+    RDB_bool optimized; /* virtual tables only */
+    int est_cardinality;
     union {
         struct {
             RDB_recmap *recmapp;
@@ -274,34 +277,32 @@ typedef struct RDB_table {
 
             /* Table indexes */
             int indexc;
-            struct _RDB_tbindex *indexv;
+            _RDB_tbindex *indexv;
+
+            int est_cardinality; /* estimated cardinality (from statistics) */
         } stored;
         struct {
             struct RDB_table *tbp;
             RDB_expression *exprp;
-            /* for RDB_TB_SELECT_PINDEX */
-            RDB_object val;
+            _RDB_tbindex *indexp; /* RDB_TB_SELECT_INDEX */
         } select;
         struct {
-            struct RDB_table *tbp;
-        } select_index;
-        struct {
-            struct RDB_table *tbp1;
-            struct RDB_table *tbp2;
+            struct RDB_table *tb1p;
+            struct RDB_table *tb2p;
         } _union;
         struct {
-            struct RDB_table *tbp1;
-            struct RDB_table *tbp2;
+            struct RDB_table *tb1p;
+            struct RDB_table *tb2p;
         } minus;
         struct {
-            struct RDB_table *tbp1;
-            struct RDB_table *tbp2;
+            struct RDB_table *tb1p;
+            struct RDB_table *tb2p;
         } intersect;
         struct {
             char **common_attrv;
             int common_attrc;
-            struct RDB_table *tbp1;
-            struct RDB_table *tbp2;
+            struct RDB_table *tb1p;
+            struct RDB_table *tb2p;
         } join;
         struct {
             struct RDB_table *tbp;
@@ -797,7 +798,7 @@ RDB_unwrap_tuple(const RDB_object *tplp, int attrc, char *attrv[],
  */
 int
 RDB_table_to_array(RDB_object *arrp, RDB_table *, 
-                   int seqitc, RDB_seq_item seqitv[],
+                   int seqitc, const RDB_seq_item seqitv[],
                    RDB_transaction *);
 
 /*
@@ -951,10 +952,11 @@ int
 RDB_binary_set(RDB_object *, size_t pos, const void *srcp, size_t len);
 
 /*
- * Copy len bytes from the RDB_object at position pos to dstp.
+ * Obtain a pointer to len bytes from the RDB_object at position pos.
  */
 int
-RDB_binary_get(const RDB_object *, size_t pos, void *dstp, size_t len);
+RDB_binary_get(const RDB_object *, size_t pos, void **pp, size_t len,
+        size_t *alenp);
 
 size_t
 RDB_binary_length(const RDB_object *);

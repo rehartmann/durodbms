@@ -121,7 +121,7 @@ _RDB_table_qresult(RDB_table *, RDB_transaction *, RDB_qresult **);
 
 int
 _RDB_sorter(RDB_table *tbp, RDB_qresult **qrespp, RDB_transaction *txp,
-            int seqitc, RDB_seq_item seqitv[]);
+            int seqitc, const RDB_seq_item seqitv[]);
 
 int
 _RDB_next_tuple(RDB_qresult *, RDB_object *, RDB_transaction *);
@@ -133,8 +133,8 @@ int
 _RDB_reset_qresult(RDB_qresult *, RDB_transaction *);
 
 int
-_RDB_get_by_pindex(RDB_table *, RDB_object[], RDB_object *,
-        RDB_transaction *);
+_RDB_get_by_uindex(RDB_table *tbp, RDB_object valv[], _RDB_tbindex *indexp,
+        RDB_transaction *txp, RDB_object *tplp);
 
 int
 _RDB_drop_qresult(RDB_qresult *, RDB_transaction *);
@@ -352,9 +352,6 @@ _RDB_move_tuples(RDB_table *dstp, RDB_table *srcp, RDB_transaction *);
 void
 _RDB_obj_to_field(RDB_field *, RDB_object *);
 
-RDB_expression *
-_RDB_pindex_expr(RDB_table *tbp, RDB_expression *exprp);
-
 #define _RDB_pkey_len(tbp) ((tbp)->keyv[0].strc)
 
 RDB_type *
@@ -366,8 +363,14 @@ _RDB_check_type_constraint(RDB_object *valp, RDB_transaction *txp);
 int
 _RDB_copy_obj(RDB_object *dstvalp, const RDB_object *srcvalp);
 
+RDB_table *
+_RDB_new_table(void);
+
 int
-_RDB_open_table_index(RDB_table *tbp, struct _RDB_tbindex *indexp,
+_RDB_open_table_index(RDB_table *tbp, _RDB_tbindex *indexp,
         RDB_environment *, RDB_transaction *txp);
+
+int
+_RDB_optimize(RDB_table *tbp, RDB_transaction *);
 
 #endif

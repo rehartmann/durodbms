@@ -483,9 +483,6 @@ RDB_implement_type(const char *name, RDB_type *arep,
         int compc;
         int i;
 
-        if (arep != NULL)
-            return RDB_INVALID_ARGUMENT;
-
         ret = RDB_get_type(name, txp, &typ);
         if (ret != RDB_OK)
             return ret;

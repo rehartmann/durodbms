@@ -4,6 +4,12 @@ Summary of Changes for Duro
 
 Changes for Duro 0.8
 
+- Added query optimizer
+
+- Fixed WRAP syntax.
+
+- RDB_binary_get() now returns a pointer to the data instead of copying it.
+
 - Now allowing nonscalar types as operator argument and return types.
 
 - Changed argument order of RDB_call_ro_op().

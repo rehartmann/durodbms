@@ -37,4 +37,11 @@ RDB_close_index(RDB_index *);
 int
 RDB_delete_index(RDB_index *, RDB_environment *, DB_TXN *txid);
 
+int
+RDB_index_get_fields(RDB_index *ixp, RDB_field keyv[], int fieldc, DB_TXN *txid,
+           RDB_field retfieldv[]);
+
+int
+RDB_index_delete_rec(RDB_index *ixp, RDB_field keyv[], DB_TXN *txid);
+
 #endif

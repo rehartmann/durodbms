@@ -809,7 +809,6 @@ Duro_insert_cmd(ClientData data, Tcl_Interp *interp, int objc,
     RDB_transaction *txp;
     RDB_table *tbp;
     int attrcount;
-    int i;
     RDB_object tpl;
     RDB_type *typ;
     TclState *statep = (TclState *) data;

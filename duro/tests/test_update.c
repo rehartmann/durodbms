@@ -12,9 +12,11 @@ print_table(RDB_table *tbp, RDB_transaction *txp)
     RDB_object array;
     RDB_int i;
 
+    static const RDB_seq_item seq = { "EMPNO", RDB_TRUE };
+
     RDB_init_obj(&array);
 
-    ret = RDB_table_to_array(&array, tbp, 0, NULL, txp);
+    ret = RDB_table_to_array(&array, tbp, 1, &seq, txp);
     if (ret != RDB_OK) {
         goto error;
     }

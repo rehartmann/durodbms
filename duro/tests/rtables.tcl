@@ -30,8 +30,8 @@ duro::db create TEST $dbenv
 # Create table
 set tx [duro::begin $dbenv TEST]
 duro::table create T1 {
-   {INTATTR INTEGER}
    {STRATTR STRING}
+   {INTATTR INTEGER}
 } {{INTATTR}} $tx
 
 # Insert tuple

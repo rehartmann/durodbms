@@ -50,8 +50,8 @@ summary_type = SUM | AVG | MAX | MIN | ALL | ANY.
 
 wrap =   primary_expression WRAP '(' wrapping_list ')'.
 
-wrapping_list = '(' id {',' id} ')' AS id
-        {',' '(' id {',' id} ')' AS id ')'}.
+wrapping_list = '{' id {',' id} '}' AS id
+        {',' '{' id {',' id} ')' AS id '}'}.
 
 unwrap = primary_expression UNWRAP '(' id {',' id} ')'.
 
