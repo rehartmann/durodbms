@@ -10,7 +10,6 @@ AM_INIT_AUTOMAKE
 AC_PREFIX_DEFAULT(/usr/local/duro.0.9)
 
 # Checks for programs.
-AC_PROG_CXX
 AC_PROG_CC
 AC_PROG_CPP
 AC_PROG_INSTALL
