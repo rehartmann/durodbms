@@ -1,5 +1,7 @@
 /* $Id$ */
 
+%option nounput
+
 %{
 #define YYSTYPE RDB_expression *
 

@@ -1680,12 +1680,14 @@ _RDB_sdivide_preserves(RDB_table *tbp, const RDB_object *tplp,
     }
 
     for (;;) {
+        RDB_type *tb1tuptyp = tbp->var.sdivide.tb1p->typ->var.basetyp;
+        RDB_bool match = RDB_TRUE;
+
         RDB_init_obj(&tpl2);
+
         ret = _RDB_next_tuple(&qr, &tpl2, txp);
         if (ret != RDB_OK)
             break;
-        RDB_type *tb1tuptyp = tbp->var.sdivide.tb1p->typ->var.basetyp;
-        RDB_bool match = RDB_TRUE;
 
         /* Join *tplp and tpl2 into tpl2 */
         for (i = 0; i < tb1tuptyp->var.tuple.attrc; i++) {
@@ -1724,7 +1726,6 @@ _RDB_sdivide_preserves(RDB_table *tbp, const RDB_object *tplp,
             ret = _RDB_qresult_contains(qr3p, &tpl2, txp);
         else
             ret = RDB_table_contains(tbp->var.sdivide.tb3p, &tpl2, txp);
-
         RDB_destroy_obj(&tpl2);
         if (ret != RDB_OK) {
             matchall = RDB_FALSE;

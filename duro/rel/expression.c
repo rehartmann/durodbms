@@ -1381,7 +1381,7 @@ RDB_evaluate(RDB_expression *exp, const RDB_object *tup, RDB_transaction *txp,
                 return RDB_NO_MEMORY;
             }
             strcpy(valp->var.bin.datap, val1.var.bin.datap);
-            strcpy(((RDB_byte *)valp->var.bin.datap) + s1len,
+            strcpy(((char *)valp->var.bin.datap) + s1len,
                     val2.var.bin.datap);
 
             RDB_destroy_obj(&val1);
