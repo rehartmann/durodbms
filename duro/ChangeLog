@@ -4,6 +4,9 @@ Summary of Changes for Duro
 
 Changes for Duro 0.9
 
+- Changed expression grammar so that expressions like A UNION B UNION C
+  are now possible.
+
 - Added dump utility durodump.tcl.
 
 - Added B-tree indexes.

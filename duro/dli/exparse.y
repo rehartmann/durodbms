@@ -47,6 +47,8 @@ enum {
 
 %}
 
+%expect 12
+
 %union {
     RDB_expression *exp;
     struct {
@@ -162,7 +164,7 @@ expression: or_expression { _RDB_parse_resultp = $1; }
     | sdivideby { _RDB_parse_resultp = $1; }
     ;
 
-project: primary_expression '{' attribute_name_list '}' {
+project: expression '{' attribute_name_list '}' {
         RDB_table *tbp, *restbp;
 
         tbp = _RDB_parse_expr_to_table($1);
@@ -199,7 +201,7 @@ project: primary_expression '{' attribute_name_list '}' {
                 YYERROR;
         }
     }
-    | primary_expression '{' TOK_ALL TOK_BUT attribute_name_list '}' {
+    | expression '{' TOK_ALL TOK_BUT attribute_name_list '}' {
         RDB_table *tbp, *restbp;
 
         tbp = _RDB_parse_expr_to_table($1);
@@ -257,7 +259,7 @@ attribute_name_list: TOK_ID {
     }
     ;
 
-select: primary_expression TOK_WHERE or_expression {
+select: expression TOK_WHERE or_expression {
         RDB_table *tbp, *restbp;
 
         tbp = _RDB_parse_expr_to_table($1);
@@ -280,7 +282,7 @@ select: primary_expression TOK_WHERE or_expression {
     }
     ;
 
-rename: primary_expression TOK_RENAME '(' renaming_list ')' {
+rename: expression TOK_RENAME '(' renaming_list ')' {
         RDB_table *tbp, *restbp;
 
         tbp = _RDB_parse_expr_to_table($1);
@@ -349,7 +351,7 @@ renaming: TOK_ID TOK_AS TOK_ID {
 */
         ;
 
-relation: primary_expression TOK_UNION primary_expression {
+relation: expression TOK_UNION primary_expression {
         RDB_table *restbp, *tb1p, *tb2p;
 
         tb1p = _RDB_parse_expr_to_table($1);
@@ -374,7 +376,7 @@ relation: primary_expression TOK_UNION primary_expression {
         _RDB_parse_remove_exp($1);
         _RDB_parse_remove_exp($3);
     }
-    | primary_expression TOK_INTERSECT primary_expression {
+    | expression TOK_INTERSECT primary_expression {
         RDB_table *restbp, *tb1p, *tb2p;
 
         tb1p = _RDB_parse_expr_to_table($1);
@@ -397,7 +399,7 @@ relation: primary_expression TOK_UNION primary_expression {
         if (_RDB_parse_ret != RDB_OK)
             YYERROR;
     }
-    | primary_expression TOK_MINUS primary_expression {
+    | expression TOK_MINUS primary_expression {
         RDB_table *restbp, *tb1p, *tb2p;
 
         tb1p = _RDB_parse_expr_to_table($1);
@@ -420,7 +422,7 @@ relation: primary_expression TOK_UNION primary_expression {
         if (_RDB_parse_ret != RDB_OK)
             YYERROR;
     }
-    | primary_expression TOK_JOIN primary_expression {
+    | expression TOK_JOIN primary_expression {
         RDB_table *restbp, *tb1p, *tb2p;
 
         tb1p = _RDB_parse_expr_to_table($1);
@@ -464,7 +466,7 @@ relation: primary_expression TOK_UNION primary_expression {
     }
     ;
 
-extend: TOK_EXTEND primary_expression TOK_ADD '(' extend_add_list ')' {
+extend: TOK_EXTEND expression TOK_ADD '(' extend_add_list ')' {
         RDB_table *tbp, *restbp;
         int i;
 
@@ -533,7 +535,7 @@ extend_add: expression TOK_AS TOK_ID {
     }
     ;
 
-summarize: TOK_SUMMARIZE primary_expression TOK_PER expression
+summarize: TOK_SUMMARIZE expression TOK_PER expression
            TOK_ADD '(' summarize_add_list ')' {
         RDB_table *tb1p, *tb2p, *restbp;
         int i;
@@ -567,7 +569,7 @@ summarize: TOK_SUMMARIZE primary_expression TOK_PER expression
     }
     ;
 
-sdivideby: primary_expression TOK_DIVIDEBY primary_expression
+sdivideby: expression TOK_DIVIDEBY expression
            TOK_PER primary_expression {
         RDB_table *tb1p, *tb2p, *tb3p, *restbp;
 
@@ -667,7 +669,7 @@ summary_type: TOK_SUM {
     }
     ;
 
-wrap: primary_expression TOK_WRAP '(' wrapping_list ')' {
+wrap: expression TOK_WRAP '(' wrapping_list ')' {
         RDB_table *tbp, *restbp;
 
         tbp = _RDB_parse_expr_to_table($1);
@@ -742,7 +744,7 @@ wrapping: '{' attribute_name_list '}' TOK_AS TOK_ID {
     }
     ;
 
-unwrap: primary_expression TOK_UNWRAP '(' attribute_name_list ')' {
+unwrap: expression TOK_UNWRAP '(' attribute_name_list ')' {
         RDB_table *tbp, *restbp;
 
         tbp = _RDB_parse_expr_to_table($1);
@@ -779,7 +781,7 @@ unwrap: primary_expression TOK_UNWRAP '(' attribute_name_list ')' {
     }
     ;    
 
-group: primary_expression TOK_GROUP '{' attribute_name_list '}' TOK_AS TOK_ID {
+group: expression TOK_GROUP '{' attribute_name_list '}' TOK_AS TOK_ID {
         RDB_table *tbp, *restbp;
 
         tbp = _RDB_parse_expr_to_table($1);
@@ -797,7 +799,7 @@ group: primary_expression TOK_GROUP '{' attribute_name_list '}' TOK_AS TOK_ID {
     }
     ;    
 
-ungroup: primary_expression TOK_UNGROUP TOK_ID {
+ungroup: expression TOK_UNGROUP TOK_ID {
         RDB_table *tbp, *restbp;
 
         tbp = _RDB_parse_expr_to_table($1);

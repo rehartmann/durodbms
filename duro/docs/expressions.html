@@ -25,39 +25,38 @@ the character "Z".
 expression = or_expression | extractor | relation | project | select | rename
         | extend | summarize | wrap | unwrap | group | ungroup | divideby.
 
-project = primary_expression '{' [ALL BUT] id {',' id} '}'.
+project = expression '{' [ALL BUT] id {',' id} '}'.
 
-select = primary_expression WHERE or_expression.
+select = expression WHERE or_expression.
 
-rename = primary_expression RENAME '(' id AS id {',' id AS id} ')'.
+rename = expression RENAME '(' id AS id {',' id AS id} ')'.
 
-relation = primary_expression UNION primary_expression
-        | primary_expression INTERSECT primary_expression
-        | primary_expression MINUS primary_expression
-        | primary_expression JOIN primary_expression.
+relation = expression UNION primary_expression
+        | expression INTERSECT primary_expression
+        | expression MINUS primary_expression
+        | expression JOIN primary_expression.
 
-extend = EXTEND primary_expression ADD '(' expression AS id
+extend = EXTEND expression ADD '(' expression AS id
         {',' expression AS id} ')'.
 
-summarize = SUMMARIZE primary_expression PER expression
+summarize = SUMMARIZE expression PER expression
            ADD '(' summary AS id {',' summary AS id} ')'.
 
-divideby = primary_expression DIVIDEBY primary_expression
-           PER primary_expression.
+divideby = expression DIVIDEBY expression PER primary_expression.
 
 summary = COUNT | summary_type '(' expression ')'.
 
 summary_type = SUM | AVG | MAX | MIN | ALL | ANY.
 
-wrap   = primary_expression WRAP '(' wrapping {',' wrapping} ')'.
+wrap   = expression WRAP '(' wrapping {',' wrapping} ')'.
 
 wrapping = '{' id {',' id} '}' AS id.
 
-unwrap = primary_expression UNWRAP '(' id {',' id} ')'.
+unwrap = expression UNWRAP '(' id {',' id} ')'.
 
-group  = primary_expression GROUP '{' id {',' id} '}' AS id.
+group  = expression GROUP '{' id {',' id} '}' AS id.
 
-ungroup = primary_expression UNGROUP id.
+ungroup = expression UNGROUP id.
 
 or_expression = and_expression | or_expression OR and_expression.
 
