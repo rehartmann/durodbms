@@ -12,21 +12,21 @@ test_select(RDB_database *dbp)
     RDB_array array;
     RDB_tuple tpl;
     RDB_expression *exprp;
-    int err;
+    int ret;
     RDB_int i;
 
-    err = RDB_get_table(dbp, "EMPS1", &tbp);
-    if (err != RDB_OK) {
-        return err;
+    ret = RDB_get_table(dbp, "EMPS1", &tbp);
+    if (ret != RDB_OK) {
+        return ret;
     }
 
     RDB_init_array(&array);
 
     printf("Starting transaction\n");
-    err = RDB_begin_tx(&tx, dbp, NULL);
-    if (err != RDB_OK) {
+    ret = RDB_begin_tx(&tx, dbp, NULL);
+    if (ret != RDB_OK) {
         RDB_destroy_array(&array);
-        return err;
+        return ret;
     }
 
     printf("Creating selection (name=\"Smith\")\n");
@@ -34,26 +34,26 @@ test_select(RDB_database *dbp)
     exprp = RDB_eq(RDB_expr_attr("NAME", &RDB_STRING),
                     RDB_string_const("Smith"));
     
-    err = RDB_select(tbp, exprp, &vtbp);
-    if (err != RDB_OK) {
+    ret = RDB_select(tbp, exprp, &vtbp);
+    if (ret != RDB_OK) {
         goto error;
     }
 
     printf("Converting selection table to array\n");
-    err = RDB_table_to_array(vtbp, &array, 0, NULL, &tx);
-    if (err != RDB_OK) {
+    ret = RDB_table_to_array(vtbp, &array, 0, NULL, &tx);
+    if (ret != RDB_OK) {
         goto error;
     } 
 
     RDB_init_tuple(&tpl);
 
-    for (i = 0; (err = RDB_array_get_tuple(&array, i, &tpl)) == RDB_OK; i++) {
+    for (i = 0; (ret = RDB_array_get_tuple(&array, i, &tpl)) == RDB_OK; i++) {
         printf("EMPNO: %d\n", RDB_tuple_get_int(&tpl, "EMPNO"));
         printf("NAME: %s\n", RDB_tuple_get_string(&tpl, "NAME"));
         printf("SALARY: %f\n", (double)RDB_tuple_get_rational(&tpl, "SALARY"));
     }
     RDB_destroy_tuple(&tpl);
-    if (err != RDB_NOT_FOUND) {
+    if (ret != RDB_NOT_FOUND) {
         goto error;
     }
 
@@ -69,27 +69,27 @@ test_select(RDB_database *dbp)
     exprp = RDB_eq(RDB_expr_attr("EMPNO", &RDB_INTEGER),
                     RDB_int_const(1));
     
-    err = RDB_select(tbp, exprp, &vtbp);
-    if (err != RDB_OK) {
+    ret = RDB_select(tbp, exprp, &vtbp);
+    if (ret != RDB_OK) {
         RDB_rollback(&tx);
-        return err;
+        return ret;
     }
 
     printf("Converting selection table to array\n");
-    err = RDB_table_to_array(vtbp, &array, 0, NULL, &tx);
-    if (err != RDB_OK) {
+    ret = RDB_table_to_array(vtbp, &array, 0, NULL, &tx);
+    if (ret != RDB_OK) {
         goto error;
     } 
 
     RDB_init_tuple(&tpl);
 
-    for (i = 0; (err = RDB_array_get_tuple(&array, i, &tpl)) == RDB_OK; i++) {
+    for (i = 0; (ret = RDB_array_get_tuple(&array, i, &tpl)) == RDB_OK; i++) {
         printf("EMPNO: %d\n", RDB_tuple_get_int(&tpl, "EMPNO"));
         printf("NAME: %s\n", RDB_tuple_get_string(&tpl, "NAME"));
         printf("SALARY: %f\n", (double)RDB_tuple_get_rational(&tpl, "SALARY"));
     }
     RDB_destroy_tuple(&tpl);
-    if (err != RDB_NOT_FOUND) {
+    if (ret != RDB_NOT_FOUND) {
         goto error;
     }
 
@@ -103,38 +103,41 @@ test_select(RDB_database *dbp)
 error:
     RDB_destroy_array(&array);
     RDB_rollback(&tx);
-    return err;
+    return ret;
 }
 
 int
 main()
 {
-    RDB_environment *dsp;
+    RDB_environment *envp;
     RDB_database *dbp;
-    int err;
+    int ret;
     
     printf("Opening environment\n");
-    err = RDB_open_env("db", &dsp);
-    if (err != 0) {
-        fprintf(stderr, "Error: %s\n", RDB_strerror(err));
-        return 1;
-    }
-    err = RDB_get_db("TEST", dsp, &dbp);
-    if (err != 0) {
-        fprintf(stderr, "Error: %s\n", RDB_strerror(err));
+    ret = RDB_open_env("db", &envp);
+    if (ret != 0) {
+        fprintf(stderr, "Error: %s\n", RDB_strerror(ret));
         return 1;
     }
 
-    err = test_select(dbp);
-    if (err != RDB_OK) {
-        fprintf(stderr, "Error: %s\n", RDB_strerror(err));
+    RDB_internal_env(envp)->set_errfile(RDB_internal_env(envp), stderr);
+
+    ret = RDB_get_db_from_env("TEST", envp, &dbp);
+    if (ret != 0) {
+        fprintf(stderr, "Error: %s\n", RDB_strerror(ret));
+        return 1;
+    }
+
+    ret = test_select(dbp);
+    if (ret != RDB_OK) {
+        fprintf(stderr, "Error: %s\n", RDB_strerror(ret));
         return 2;
     }
 
     printf ("Closing environment\n");
-    err = RDB_close_env(dsp);
-    if (err != RDB_OK) {
-        fprintf(stderr, "Error: %s\n", RDB_strerror(err));
+    ret = RDB_close_env(envp);
+    if (ret != RDB_OK) {
+        fprintf(stderr, "Error: %s\n", RDB_strerror(ret));
         return 2;
     }
 

@@ -84,7 +84,7 @@ main()
         fprintf(stderr, "Error: %s\n", RDB_strerror(err));
         return 1;
     }
-    err = RDB_get_db("TEST", dsp, &dbp);
+    err = RDB_get_db_from_env("TEST", dsp, &dbp);
     if (err != 0) {
         fprintf(stderr, "Error: %s\n", RDB_strerror(err));
         return 1;

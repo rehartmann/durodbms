@@ -257,7 +257,6 @@ typedef struct RDB_transaction {
     RDB_database *dbp;
     DB_TXN *txid;
     struct RDB_transaction *parentp;
-    struct RDB_qresult *first_qrp;
 } RDB_transaction;
 
 /*
@@ -299,7 +298,7 @@ typedef struct RDB_attr {
  * Return RDB_OK on success. A return other than RDB_OK indicates an error.
  */
 int
-RDB_create_db(const char *name, RDB_environment *envp, RDB_database **dbpp);
+RDB_create_db_from_env(const char *name, RDB_environment *envp, RDB_database **dbpp);
 
 /*
  * Get the database with name name in the environment pointed to
@@ -308,7 +307,7 @@ RDB_create_db(const char *name, RDB_environment *envp, RDB_database **dbpp);
  * Return RDB_OK on success. A return value other than RDB_OK indicates an error.
  */
 int
-RDB_get_db(const char *name, RDB_environment *, RDB_database **dbpp);
+RDB_get_db_from_env(const char *name, RDB_environment *, RDB_database **dbpp);
 
 /*
  * Release the RDB_database structure pointed to by dbp.
@@ -382,6 +381,9 @@ RDB_get_type(RDB_database *dbp, const char *name, RDB_type **typp);
  * Return the database assoctiated with the transaction.
  */
 #define RDB_tx_db(txp) ((txp)->dbp)
+
+RDB_bool
+RDB_tx_is_running(RDB_transaction *txp);
 
 /*
  * Start the transaction pointed to by txp.
@@ -499,12 +501,24 @@ RDB_aggregate(RDB_table *, RDB_aggregate_op op, const char *attrname,
  * pointed to by tplp.
  *
  * Return value:
- * RDB_OK	if the table contains the tuple
- * RDB_NOT_FOUND	if the table does not cointain the tuple
- * Other	if an error occured.
+ * RDB_OK	the table contains the tuple
+ * RDB_NOT_FOUND the table does not cointain the tuple
+ * Other	a system error occured.
  */
 int
 RDB_table_contains(RDB_table *, const RDB_tuple *, RDB_transaction *);
+
+/*
+ * Extract a tuple from the table. The table must contain
+ * exactly one tuple.
+ *
+ * Return value:
+ * RDB_OK	the tuple has been successfully extracted.
+ * RDB_NOT_FOUND the table is empty.
+ * RDB_ILLEGAL_ARG the table contains more than one tuple.
+ */
+int
+RDB_extract_tuple(RDB_table *, RDB_tuple *, RDB_transaction *);
 
 /*
  * Store RDB_TRUE in the location pointed to by resultp if the table

@@ -9,9 +9,73 @@
 
 <p>- DRAFT -
 
-<h2>Scalar types</h2>
+<h2>Contents</h2>
 
-<h3>Built-in types</h3>
+<h3>Table functions</h3>
+
+<ul>
+<li><a href="#create_table">RDB_create_table</a>
+<li>RDB_drop_table
+<li>RDB_table_name
+<li>RDB_insert
+<li>RDB_update
+<li>RDB_delete
+<li>RDB_table_contains
+<li>RDB_extract_tuple
+<li>RDB_table_is_empty
+<li>RDB_set_table_name
+<li>RDB_make_persistent
+<li>RDB_rename
+<li>RDB_select
+<li>RDB_extend
+<li>RDB_join
+<li>RDB_union
+<li>RDB_intersect
+<li>RDB_minus
+<li>RDB_summarize
+</ul>
+
+<h2 id="create_table">RDB_create_table</h2>
+
+<pre>
+#include &lt;rdb.h&gt;
+
+int
+RDB_create_table(const char *name, RDB_bool persistent,
+                 int attrc, RDB_attr attrv[],
+                 int keyc, RDB_key_attrs keyv[],
+                 RDB_transaction *txp, RDB_table **tbpp);
+</pre>
+
+<h3>Description</h3>
+
+<p>Create a table with name <var>name</var> under the control of
+the transaction pointed to by <var>txp</var>.
+A pointer to the newly created RDB_table structure
+will be stored at the location pointed to by <var>tbpp</var>.
+
+<p>If <var>persistent</var> is RDB_FALSE, a transient table will be created.
+In this case, <var>name</var> may be NULL.
+
+<p>If <var>persistent</var> is RDB_TRUE, a persistent table in the database associated
+with the transaction pointed to by <var>txp</var> will be created.
+
+<p>The attributes of the table are specified by <var>attrc</var> and
+<var>attrv</var>.
+
+<p>The candidate keys are specified by <var>keyc</var> and <var>keyv</var>.
+At least one candidate key must be specified.
+
+<p>If the operations fails for a system error, the transaction is rolled
+back.
+
+<h3>Return value</h3>
+
+On success, RDB_OK is returned. Any other return value indicates an error.
+
+<h3>Errors</h3>
+
+<h2>Built-in types</h2>
 
 <table border="1">
 <tr><th>Name<th>RDB_type variable<th>C type
@@ -248,11 +312,6 @@ typedef struct {
     int attrc;
 } RDB_key_attrs;
 
-int
-RDB_create_table(const char *name, RDB_bool persistent,
-        int attrc, RDB_attr heading[],
-        int keyc, RDB_key_attrs keyv[],
-        RDB_transaction *txp, RDB_table **tbpp);
 
 </pre>
 
@@ -286,6 +345,9 @@ RDB_delete(RDB_table *tbp, RDB_expression *exprp, RDB_transaction *);
 
 int
 RDB_table_contains(RDB_table *, const RDB_tuple *, RDB_transaction *);
+
+int
+RDB_extract_tuple(RDB_table *, RDB_tuple *, RDB_transaction *);
 
 int
 RDB_table_is_empty(RDB_table *, RDB_transaction *, RDB_bool *resultp);
@@ -328,6 +390,9 @@ RDB_commit(RDB_transaction *);
 
 int
 RDB_rollback(RDB_transaction *);
+
+RDB_bool
+RDB_tx_is_running(RDB_transaction *txp);
 
 </pre>
 

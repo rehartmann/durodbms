@@ -11,8 +11,15 @@ RDB_init_array(RDB_array *arrp) {
 void
 RDB_destroy_array(RDB_array *arrp)
 {
-    /* Nothing to do, because the qresult is dropped by
-     * RDB_tx_commit()/RDB_tx_abort() */
+    if (arrp->tbp == NULL)
+        return;
+    
+    if (arrp->qrp != NULL) {
+        int ret = _RDB_drop_qresult(arrp->qrp, arrp->txp);
+
+        if (RDB_is_syserr(ret))
+            RDB_rollback(arrp->txp);
+    }
 }
 
 int
@@ -28,47 +35,33 @@ RDB_table_to_array(RDB_table *tbp, RDB_array *arrp,
     arrp->tbp = tbp;
     arrp->txp = txp;
     arrp->qrp = NULL;
-    arrp->pos = -1;
     arrp->length = -1;
     
     return RDB_OK;
 }    
 
-static int
-add_qresult(RDB_array *arrp)
-{
-    int res;
-
-    res = _RDB_table_qresult(arrp->tbp, &arrp->qrp, arrp->txp);
-    if (res != RDB_OK)
-       return res;
-
-    /* insert qresult into list */
-    arrp->qrp->nextp = arrp->txp->first_qrp;
-    arrp->txp->first_qrp = arrp->qrp;
-    
-    return RDB_OK;
-}
-
 int
 RDB_array_get_tuple(RDB_array *arrp, int idx, RDB_tuple *tup)
 {
-    int res;
+    int ret;
 
-    if (arrp->pos > idx) {
-        arrp->pos = -1;
+    if (arrp->pos > idx && arrp->qrp != NULL) {
+        ret = _RDB_drop_qresult(arrp->qrp, arrp->txp);
+        arrp->qrp = NULL;
+        if (ret != RDB_OK)
+            return ret;
     }
 
-    if (arrp->pos == -1) {
-        res = add_qresult(arrp);
-        if (res != RDB_OK)
-            return res;
+    if (arrp->qrp == NULL) {
+        ret = _RDB_table_qresult(arrp->tbp, &arrp->qrp, arrp->txp);
+        if (ret != RDB_OK)
+            return ret;
         arrp->pos = 0;
     }
     while (arrp->pos < idx) {
-        res = _RDB_next_tuple(arrp->qrp, tup, arrp->txp);
-        if (res != RDB_OK)
-            return res;
+        ret = _RDB_next_tuple(arrp->qrp, tup, arrp->txp);
+        if (ret != RDB_OK)
+            return ret;
         ++arrp->pos;
     }
 
@@ -79,30 +72,32 @@ RDB_array_get_tuple(RDB_array *arrp, int idx, RDB_tuple *tup)
 int
 RDB_array_length(RDB_array *arrp)
 {
-    int res;
+    int ret;
 
     if (arrp->length == -1) {    
         RDB_tuple tpl;
 
         RDB_init_tuple(&tpl);
-        if (arrp->pos == -1) {
-            res = add_qresult(arrp);
-            if (res != RDB_OK) {
+        if (arrp->qrp == NULL) {
+            ret = _RDB_table_qresult(arrp->tbp, &arrp->qrp, arrp->txp);
+            if (ret != RDB_OK) {
                 RDB_destroy_tuple(&tpl);            
-                return res;
+                return ret;
             }
             arrp->pos = 0;
         }
 
         do {
-            res = _RDB_next_tuple(arrp->qrp, &tpl, arrp->txp);
-            if (res == RDB_OK) {
+            ret = _RDB_next_tuple(arrp->qrp, &tpl, arrp->txp);
+            if (ret == RDB_OK) {
                 arrp->pos++;
             }
-        } while (res == RDB_OK);
+        } while (ret == RDB_OK);
         RDB_destroy_tuple(&tpl);
-        if (res != RDB_NOT_FOUND)
-            return res;
+        _RDB_drop_qresult(arrp->qrp, arrp->txp);
+        arrp->qrp = NULL;
+        if (ret != RDB_NOT_FOUND)
+            return ret;
         arrp->length = arrp->pos;
     }
     return arrp->length;

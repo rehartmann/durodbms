@@ -13,74 +13,47 @@ RDB_begin_tx(RDB_transaction *txp, RDB_database *dbp,
         RDB_transaction *parent)
 {
     DB_TXN *partxid = parent != NULL ? parent->txid : NULL;
-    int res;
+    int ret;
 
     txp->dbp = dbp;
     txp->parentp = parent;
-    txp->first_qrp = NULL;
-    res = dbp->envp->envp->txn_begin(dbp->envp->envp, partxid, &txp->txid, 0);
-    if (res != 0) {
-        return res;
+    ret = dbp->envp->envp->txn_begin(dbp->envp->envp, partxid, &txp->txid, 0);
+    if (ret != 0) {
+        return ret;
     }
     return RDB_OK;
-}
-
-static int
-drop_qresults(RDB_transaction *txp) {
-    RDB_qresult *qrp;
-    RDB_qresult *nextqrp;
-    int res = RDB_OK;
-    int hres;
-
-    for (qrp = txp->first_qrp; qrp != NULL; qrp = nextqrp) {
-        nextqrp = qrp->nextp;
-        hres = _RDB_drop_qresult(qrp, txp);
-        if (hres != RDB_OK)
-            res = hres;
-    }
-    return res;
 }
 
 int
 RDB_commit(RDB_transaction *txp)
 {
-    int res;
+    int ret;
 
     if (txp->txid == NULL)
         return RDB_INVALID_TRANSACTION;
 
-    /* Drop qresults */
-    res = drop_qresults(txp);
-    if (res != RDB_OK) {
-        if (txp->txid != NULL)
-            txp->txid->abort(txp->txid);
-        return res;
-    }
-        
-    res = txp->txid->commit(txp->txid, 0);
+    ret = txp->txid->commit(txp->txid, 0);
     txp->txid = NULL;
     
-    return res;
+    return ret;
 }   
 
 int
 RDB_rollback(RDB_transaction *txp)
 {
-    int res;
+    int ret;
 
     if (txp->txid == NULL)
         return RDB_INVALID_TRANSACTION;
 
-    /* Drop qresults */
-    res = drop_qresults(txp);
-    if (res != RDB_OK) {
-        if (txp->txid != NULL)
-            txp->txid->abort(txp->txid);
-        return res;
-    }
-
-    res = txp->txid->abort(txp->txid);
+    ret = txp->txid->abort(txp->txid);
     txp->txid = NULL;
 
-    return res;
+    return ret;
+}
+
+RDB_bool
+RDB_tx_is_running(RDB_transaction *txp)
+{
+    return (RDB_bool)(txp->txid != NULL);
 }

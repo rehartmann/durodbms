@@ -474,25 +474,27 @@ next_stored_tuple(RDB_qresult *qrp, RDB_table *tbp, RDB_tuple *tup)
     size_t len;
     RDB_type *tuptyp = tbp->typ->complex.basetyp;
 
-    for (i = 0; i < tuptyp->complex.tuple.attrc; i++) {
+    if (tup != NULL) {
+        for (i = 0; i < tuptyp->complex.tuple.attrc; i++) {
         RDB_value val;
-        RDB_int fno;
-        RDB_attr *attrp = &tuptyp->complex.tuple.attrv[i];
+            RDB_int fno;
+            RDB_attr *attrp = &tuptyp->complex.tuple.attrv[i];
 
-        fno = *(RDB_int *)RDB_hashmap_get(&tbp->var.stored.attrmap,
+            fno = *(RDB_int *)RDB_hashmap_get(&tbp->var.stored.attrmap,
                                           attrp->name, NULL);
-        res = RDB_cursor_get(qrp->var.curp, fno, &datap, &len);
-        if (res != RDB_OK) {
-            return res;
-        }
-        RDB_init_value(&val);
-        res = RDB_irep_to_value(&val, attrp->type, datap, len);
-        if (res != RDB_OK) {
-            return res;
-        }
-        res = RDB_tuple_set(tup, attrp->name, &val);
-        if (res != RDB_OK) {
-            return res;
+            res = RDB_cursor_get(qrp->var.curp, fno, &datap, &len);
+            if (res != RDB_OK) {
+                return res;
+            }
+            RDB_init_value(&val);
+            res = RDB_irep_to_value(&val, attrp->type, datap, len);
+            if (res != RDB_OK) {
+                return res;
+            }
+            res = RDB_tuple_set(tup, attrp->name, &val);
+            if (res != RDB_OK) {
+                return res;
+            }
         }
     }
     res = RDB_cursor_next(qrp->var.curp);
@@ -674,23 +676,26 @@ next_project_tuple(RDB_qresult *qrp, RDB_tuple *tup, RDB_transaction *txp)
             RDB_destroy_tuple(&tpl);
             return res;
         }
+
+        if (tup != NULL) {            
+            /* Copy attributes into new tuple */
+            for (i = 0; i < tuptyp->complex.tuple.attrc; i++) {
+                char *attrnamp = tuptyp->complex.tuple.attrv[i].name;
             
-        /* Copy attributes into new tuple */
-        for (i = 0; i < tuptyp->complex.tuple.attrc; i++) {
-            char *attrnamp = tuptyp->complex.tuple.attrv[i].name;
-            
-            valp = RDB_tuple_get(&tpl, attrnamp);
-            RDB_tuple_set(tup, attrnamp, valp);
+                valp = RDB_tuple_get(&tpl, attrnamp);
+                RDB_tuple_set(tup, attrnamp, valp);
+            }
         }
-            
+
         /* eliminate duplicates, if necessary */
         if (qrp->tbp->var.project.keyloss) {
-            res = RDB_insert(qrp->matp, tup, txp);
+            res = RDB_insert(qrp->matp, &tpl, txp);
         } else {
             res = RDB_OK;
         }
     } while (res == RDB_ELEMENT_EXISTS);
 
+    RDB_destroy_tuple(&tpl);
     return RDB_OK;
 }
 
@@ -903,8 +908,7 @@ _RDB_drop_qresult(RDB_qresult *qrp, RDB_transaction *txp)
 {
     int res;
 
-    if (qrp->tbp->kind == RDB_TB_STORED
-        || qrp->tbp->kind == RDB_TB_SUMMARIZE) {
+    if (qrp->tbp->kind == RDB_TB_STORED || qrp->tbp->kind == RDB_TB_SUMMARIZE) {
         res = RDB_destroy_cursor(qrp->var.curp);
         if (RDB_is_syserr(res))
             RDB_rollback(txp);

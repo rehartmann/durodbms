@@ -11,24 +11,24 @@ char *projattrs2[] = { "EMPNO", "NAME" };
 static int
 print_table1(RDB_table *tbp, RDB_transaction *txp)
 {
-    int err;
+    int ret;
     RDB_tuple tpl;
     RDB_array array;
     RDB_int i;
 
     RDB_init_array(&array);
 
-    err = RDB_table_to_array(tbp, &array, 0, NULL, txp);
-    if (err != RDB_OK) {
+    ret = RDB_table_to_array(tbp, &array, 0, NULL, txp);
+    if (ret != RDB_OK) {
         goto error;
     }
     
     RDB_init_tuple(&tpl);    
-    for (i = 0; (err = RDB_array_get_tuple(&array, i, &tpl)) == RDB_OK; i++) {
+    for (i = 0; (ret = RDB_array_get_tuple(&array, i, &tpl)) == RDB_OK; i++) {
         printf("SALARY: %f\n", (float)RDB_tuple_get_rational(&tpl, "SALARY"));
     }
     RDB_destroy_tuple(&tpl);
-    if (err != RDB_NOT_FOUND) {
+    if (ret != RDB_NOT_FOUND) {
         goto error;
     }
 
@@ -38,31 +38,31 @@ print_table1(RDB_table *tbp, RDB_transaction *txp)
 error:
     RDB_destroy_array(&array);
     
-    return err;
+    return ret;
 }
 
 static int
 print_table2(RDB_table *tbp, RDB_transaction *txp)
 {
-    int err;
+    int ret;
     RDB_tuple tpl;
     RDB_array array;
     RDB_int i;
 
     RDB_init_array(&array);
 
-    err = RDB_table_to_array(tbp, &array, 0, NULL, txp);
-    if (err != RDB_OK) {
+    ret = RDB_table_to_array(tbp, &array, 0, NULL, txp);
+    if (ret != RDB_OK) {
         goto error;
     }
     
     RDB_init_tuple(&tpl);    
-    for (i = 0; (err = RDB_array_get_tuple(&array, i, &tpl)) == RDB_OK; i++) {
+    for (i = 0; (ret = RDB_array_get_tuple(&array, i, &tpl)) == RDB_OK; i++) {
         printf("EMPNO: %d\n", RDB_tuple_get_int(&tpl, "EMPNO"));
         printf("NAME: %s\n", RDB_tuple_get_string(&tpl, "NAME"));
     }
     RDB_destroy_tuple(&tpl);
-    if (err != RDB_NOT_FOUND) {
+    if (ret != RDB_NOT_FOUND) {
         goto error;
     }
 
@@ -72,7 +72,7 @@ print_table2(RDB_table *tbp, RDB_transaction *txp)
 error:
     RDB_destroy_array(&array);
     
-    return err;
+    return ret;
 }
 
 int
@@ -81,44 +81,44 @@ test_project(RDB_database *dbp)
     RDB_transaction tx;
     RDB_table *tbp, *vtbp;
     RDB_tuple tpl;
-    int err;
+    int ret;
 
     RDB_get_table(dbp, "EMPS2", &tbp);
 
     printf("Starting transaction\n");
-    err = RDB_begin_tx(&tx, dbp, NULL);
-    if (err != RDB_OK) {
-        return err;
+    ret = RDB_begin_tx(&tx, dbp, NULL);
+    if (ret != RDB_OK) {
+        return ret;
     }
 
     printf("Creating projection (SALARY)\n");
 
-    err = RDB_project(tbp, 1, projattrs1, &vtbp);
-    if (err != RDB_OK) {
+    ret = RDB_project(tbp, 1, projattrs1, &vtbp);
+    if (ret != RDB_OK) {
         RDB_rollback(&tx);
-        return err;
+        return ret;
     }
 
     printf("Converting projection table to array\n");
-    err = print_table1(vtbp, &tx);
+    ret = print_table1(vtbp, &tx);
 
     RDB_init_tuple(&tpl);
     RDB_tuple_set_rational(&tpl, "SALARY", (RDB_rational)4000.0);
-    err = RDB_table_contains(vtbp, &tpl, &tx);
-    printf("Projection contains SALARY(4000.0): %d %s\n", err, RDB_strerror(err));
+    ret = RDB_table_contains(vtbp, &tpl, &tx);
+    printf("Projection contains SALARY(4000.0): %d %s\n", ret, RDB_strerror(ret));
 
-    if (err != RDB_OK && err != RDB_NOT_FOUND) {
+    if (ret != RDB_OK && ret != RDB_NOT_FOUND) {
         RDB_rollback(&tx);
-        return err;
+        return ret;
     }
 
     RDB_tuple_set_rational(&tpl, "SALARY", (RDB_rational)4400.0);
-    err = RDB_table_contains(vtbp, &tpl, &tx);
-    printf("Projection contains SALARY(4400.0): %d %s\n", err, RDB_strerror(err));
+    ret = RDB_table_contains(vtbp, &tpl, &tx);
+    printf("Projection contains SALARY(4400.0): %d %s\n", ret, RDB_strerror(ret));
 
-    if (err != RDB_OK && err != RDB_NOT_FOUND) {
+    if (ret != RDB_OK && ret != RDB_NOT_FOUND) {
         RDB_rollback(&tx);
-        return err;
+        return ret;
     }
 
     printf("Dropping projection\n");
@@ -126,17 +126,17 @@ test_project(RDB_database *dbp)
 
     printf("Creating projection (EMPNO,NAME)\n");
 
-    err = RDB_project(tbp, 2, projattrs2, &vtbp);
-    if (err != RDB_OK) {
+    ret = RDB_project(tbp, 2, projattrs2, &vtbp);
+    if (ret != RDB_OK) {
         RDB_rollback(&tx);
-        return err;
+        return ret;
     }
 
     printf("Converting projection table to array\n");
-    err = print_table2(vtbp, &tx);
-    if (err != RDB_OK) {
+    ret = print_table2(vtbp, &tx);
+    if (ret != RDB_OK) {
         RDB_rollback(&tx);
-        return err;
+        return ret;
     } 
 
     printf("Dropping projection\n");
@@ -149,32 +149,32 @@ test_project(RDB_database *dbp)
 int
 main()
 {
-    RDB_environment *dsp;
+    RDB_environment *envp;
     RDB_database *dbp;
-    int err;
+    int ret;
     
     printf("Opening environment\n");
-    err = RDB_open_env("db", &dsp);
-    if (err != 0) {
-        fprintf(stderr, "Error: %s\n", RDB_strerror(err));
+    ret = RDB_open_env("db", &envp);
+    if (ret != 0) {
+        fprintf(stderr, "Error: %s\n", RDB_strerror(ret));
         return 1;
     }
-    err = RDB_get_db("TEST", dsp, &dbp);
-    if (err != 0) {
-        fprintf(stderr, "Error: %s\n", RDB_strerror(err));
+    ret = RDB_get_db_from_env("TEST", envp, &dbp);
+    if (ret != 0) {
+        fprintf(stderr, "Error: %s\n", RDB_strerror(ret));
         return 1;
     }
 
-    err = test_project(dbp);
-    if (err != RDB_OK) {
-        fprintf(stderr, "Error: %s\n", RDB_strerror(err));
+    ret = test_project(dbp);
+    if (ret != RDB_OK) {
+        fprintf(stderr, "Error: %s\n", RDB_strerror(ret));
         return 2;
     }
 
     printf ("Closing environment\n");
-    err = RDB_close_env(dsp);
-    if (err != RDB_OK) {
-        fprintf(stderr, "Error: %s\n", RDB_strerror(err));
+    ret = RDB_close_env(envp);
+    if (ret != RDB_OK) {
+        fprintf(stderr, "Error: %s\n", RDB_strerror(ret));
         return 2;
     }
 

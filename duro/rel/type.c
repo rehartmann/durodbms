@@ -239,7 +239,7 @@ RDB_join_tuple_types(const RDB_type *typ1, const RDB_type *typ2, RDB_type **newt
     RDB_type *newtyp;
     int attrc;
     int i, j;
-    int res;
+    int ret;
     
     /* Create new tuple type */
     newtyp = malloc(sizeof (RDB_type));
@@ -280,7 +280,7 @@ RDB_join_tuple_types(const RDB_type *typ1, const RDB_type *typ2, RDB_type **newt
                    the same type */
                 if (!RDB_type_equals(typ2->complex.tuple.attrv[i].type,
                         typ1->complex.tuple.attrv[j].type)) {
-                    res = RDB_TYPE_MISMATCH;
+                    ret = RDB_TYPE_MISMATCH;
                     goto error;
                 }
                 break;
@@ -308,7 +308,7 @@ error:
         free(newtyp->complex.tuple.attrv[i].name);
 
     free(newtyp);
-    return res;
+    return ret;
 }
 
 int
@@ -316,7 +316,7 @@ RDB_join_relation_types(const RDB_type *typ1, const RDB_type *typ2,
                      RDB_type **newtypp)
 {
     RDB_type *newtyp;
-    int res;
+    int ret;
 
     newtyp = malloc(sizeof (RDB_type));
     if (newtyp == NULL) {
@@ -325,11 +325,11 @@ RDB_join_relation_types(const RDB_type *typ1, const RDB_type *typ2,
     newtyp->name = NULL;
     newtyp->kind = RDB_TP_RELATION;
 
-    res = RDB_join_tuple_types(typ1->complex.basetyp, typ2->complex.basetyp,
+    ret = RDB_join_tuple_types(typ1->complex.basetyp, typ2->complex.basetyp,
                                &newtyp->complex.basetyp);
-    if (res != RDB_OK) {
+    if (ret != RDB_OK) {
         free(newtyp);
-        return res;
+        return ret;
     }
     *newtypp = newtyp;
     return RDB_OK;
@@ -355,7 +355,7 @@ RDB_project_relation_type(const RDB_type *typ, int attrc, char *attrv[],
 {
     RDB_type *reltyp;
     RDB_type *tuptyp = NULL;
-    int res;
+    int ret;
     int i;
 
     reltyp = malloc(sizeof (RDB_type));
@@ -366,7 +366,7 @@ RDB_project_relation_type(const RDB_type *typ, int attrc, char *attrv[],
     /* Create tuple type */
     tuptyp = malloc(sizeof (RDB_type));
     if (tuptyp == NULL) {
-        res = RDB_NO_MEMORY;
+        ret = RDB_NO_MEMORY;
         goto error;
     }
     tuptyp->name = NULL;
@@ -382,14 +382,14 @@ RDB_project_relation_type(const RDB_type *typ, int attrc, char *attrv[],
     
         attrname  = RDB_dup_str(attrv[i]);
         if (attrname == NULL) {
-            res = RDB_NO_MEMORY;
+            ret = RDB_NO_MEMORY;
             goto error;
         }
         tuptyp->complex.tuple.attrv[i].name = attrname;
 
         attrtyp = _RDB_tuple_attr_type(typ->complex.basetyp, attrname);
         if (attrtyp == NULL) {
-            res = RDB_ILLEGAL_ARG;
+            ret = RDB_ILLEGAL_ARG;
             goto error;
         }
         tuptyp->complex.tuple.attrv[i].type = attrtyp;
@@ -412,7 +412,7 @@ error:
         
     free(reltyp);
 
-    return res;
+    return ret;
 }
 
 int
@@ -433,7 +433,7 @@ RDB_rename_tuple_type(const RDB_type *typ, int renc, RDB_renaming renv[],
 {
     RDB_type *newtyp;
     int i;
-    int res;
+    int ret;
 
     newtyp = malloc(sizeof (RDB_type));
     if (newtyp == NULL)
@@ -472,14 +472,14 @@ error:
     }
 
     free(newtyp);
-    return res;
+    return ret;
 }
 
 int
 RDB_rename_relation_type(const RDB_type *typ, int renc, RDB_renaming renv[],
         RDB_type **newtypp)
 {
-    int res;
+    int ret;
 
     *newtypp = malloc(sizeof (RDB_type));
     if (*newtypp == NULL)
@@ -488,11 +488,11 @@ RDB_rename_relation_type(const RDB_type *typ, int renc, RDB_renaming renv[],
     (*newtypp)->name = NULL;
     (*newtypp)->kind = RDB_TP_TUPLE;
 
-    res = RDB_rename_tuple_type(typ->complex.basetyp, renc, renv,
+    ret = RDB_rename_tuple_type(typ->complex.basetyp, renc, renv,
             &(*newtypp)->complex.basetyp);
-    if (res != RDB_OK) {
+    if (ret != RDB_OK) {
         free(*newtypp);
-        return res;
+        return ret;
     }
     return RDB_OK;
 }

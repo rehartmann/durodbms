@@ -2,7 +2,9 @@ $Id$
 
 Summary of Changes for Duro
 
-Changes for (planned) Duro 0.5
+Changes for Duro 0.5
+
+- Added RDB_extract_tuple() to extract a single tuple from a table.
 
 - Bugfixes
 
@@ -10,15 +12,13 @@ Changes for (planned) Duro 0.5
 
 - Added argument 'options' to RDB_create_env().
 
-- Added support for SUMMARIZE PER and RENAME.
+- Added support for RENAME and SUMMARIZE PER (except COUNTD, SUMD, and AVGD).
 
 - Changed error handling: Implicit rollback also by other system errors
   than deadlock; added function RDB_is_syserr() for checking for system
   errors.
 
 - Renamed RDB_deinit_XXX functions as RDB_destroy_XXX.
-
-- Removed an obsolete attribute from the catalog.
 
 - Checking table and attribute names: nonprintable characters, whitespace,
 and '$' are not permitted.
