@@ -96,6 +96,8 @@ obj_ilen(const RDB_object *objp)
             while ((ret = RDB_array_get((RDB_object *)objp, (RDB_int) i++,
                     &elemp)) == RDB_OK) {
                 elemp->typ = objp->typ->var.basetyp;
+                if (elemp->typ->ireplen == RDB_VARIABLE_LEN)
+                    len += sizeof (size_t);
                 len += obj_ilen(elemp);
             }
             if (ret != RDB_NOT_FOUND)
@@ -136,6 +138,26 @@ val_kind(const RDB_type *typ)
 }
 
 static int
+len_irep_to_obj(RDB_object *valp, RDB_type *typ, const void *datap)
+{
+    int ret;
+    size_t llen = 0;
+    size_t len = typ->ireplen;
+    RDB_byte *bp = (RDB_byte *)datap;
+
+    if (len == RDB_VARIABLE_LEN) {
+        memcpy(&len, bp, sizeof len);
+        llen = sizeof (size_t);
+        bp += sizeof (size_t);
+    }
+
+    ret = RDB_irep_to_obj(valp, typ, bp, len);
+    if (ret != RDB_OK)
+        return ret;
+    return llen + len;
+}
+
+static int
 irep_to_tuple(RDB_object *tplp, RDB_type *typ, const void *datap)
 {
     int i;
@@ -148,24 +170,20 @@ irep_to_tuple(RDB_object *tplp, RDB_type *typ, const void *datap)
 
     for (i = 0; i < typ->var.tuple.attrc; i++) {
         RDB_object obj;
-        size_t l = typ->var.tuple.attrv[i].typ->ireplen;
+        size_t l;
 
-        if (l == RDB_VARIABLE_LEN) {
-            memcpy(&l, bp, sizeof l);
-            bp += sizeof (size_t);
-            len += sizeof(size_t);
-        }
         RDB_init_obj(&obj);
-        ret = RDB_irep_to_obj(&obj, typ->var.tuple.attrv[i].typ, bp, l);
-        if (ret != RDB_OK)
-            return ret;
+        l = len_irep_to_obj(&obj, typ->var.tuple.attrv[i].typ, bp);
+        if (l < 0) {
+            RDB_destroy_obj(&obj);
+            return l;
+        }
         bp += l;
         len += l;
         ret = RDB_tuple_set(tplp, typ->var.tuple.attrv[i].name, &obj);
-        if (ret != RDB_OK)
-            return ret;
-        
         RDB_destroy_obj(&obj);
+        if (ret != RDB_OK)
+            return ret;        
     }
     return len;
 }
@@ -221,8 +239,7 @@ irep_to_array(RDB_object *arrp, RDB_type *typ, const void *datap, size_t len)
     while (len > 0) {
         int l;
 
-        /* !! - call RDB_irep_to_obj - requires len */        
-        l = irep_to_tuple(&tpl, typ->var.basetyp, bp);
+        l = len_irep_to_obj(&tpl, typ->var.basetyp, bp);
         if (l < 0) {
             RDB_destroy_obj(&tpl);
             return l;
@@ -240,7 +257,7 @@ irep_to_array(RDB_object *arrp, RDB_type *typ, const void *datap, size_t len)
     
     bp = (RDB_byte *)datap;
     for (i = 0; i < arrlen; i++) {
-        int l = irep_to_tuple(&tpl, typ->var.basetyp, bp);
+        int l = len_irep_to_obj(&tpl, typ->var.basetyp, bp);
 
         ret = RDB_array_set(arrp, i, &tpl);
         if (ret != RDB_OK) {
@@ -314,6 +331,26 @@ typedef struct {
 } irep_info;
 
 static void *
+obj_to_irep(void *dstp, const void *srcp, size_t len);
+
+static void *
+obj_to_len_irep(void *dstp, const RDB_object *objp, RDB_type *typ)
+{
+    RDB_byte *bp = dstp;
+    size_t len = typ->ireplen;
+
+    if (len == RDB_VARIABLE_LEN) {
+        len = obj_ilen(objp);
+        memcpy(bp, &len, sizeof (size_t));
+        bp += sizeof (size_t);
+    }
+    obj_to_irep(bp, objp, len);
+    bp += len;
+
+    return bp;
+}    
+
+static void *
 obj_to_irep(void *dstp, const void *srcp, size_t len)
 {
     const RDB_object *objp = (RDB_object *) srcp;
@@ -341,17 +378,8 @@ obj_to_irep(void *dstp, const void *srcp, size_t len)
             for (i = 0; i < tpltyp->var.tuple.attrc; i++) {
                 RDB_object *attrp;
 
-                attrp = RDB_tuple_get(objp,
-                        tpltyp->var.tuple.attrv[i].name);
-
-                int l = tpltyp->var.tuple.attrv[i].typ->ireplen;
-                if (l == RDB_VARIABLE_LEN) {
-                    l = obj_ilen(attrp);
-                    memcpy(bp, &l, sizeof (size_t));
-                    bp += sizeof (size_t);
-                }
-                obj_to_irep(bp, attrp, l);
-                bp += l;
+                attrp = RDB_tuple_get(objp, tpltyp->var.tuple.attrv[i].name);
+                bp = obj_to_len_irep(bp, attrp, tpltyp->var.tuple.attrv[i].typ);
             }
             break;
         }
@@ -389,15 +417,12 @@ obj_to_irep(void *dstp, const void *srcp, size_t len)
         {
             RDB_object *elemp;
             int ret;
-            size_t l;
             int i = 0;
 
             while ((ret = RDB_array_get((RDB_object *) objp, (RDB_int) i++,
                     &elemp)) == RDB_OK) {
                 elemp->typ = objp->typ->var.basetyp;
-                l = obj_ilen(elemp);
-                obj_to_irep(bp, elemp, l);
-                bp += l;
+                bp = obj_to_len_irep(bp, elemp, elemp->typ);
             }
             if (ret != RDB_NOT_FOUND)
                 return NULL;

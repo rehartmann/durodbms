@@ -85,6 +85,7 @@ dup_nonscalar_type(RDB_type *typ)
     int i;
     RDB_type *restyp;
 
+
     switch (typ->kind) {
         case RDB_TP_RELATION:
         case RDB_TP_ARRAY:
@@ -93,6 +94,7 @@ dup_nonscalar_type(RDB_type *typ)
                 return NULL;
             restyp->name = NULL;
             restyp->kind = typ->kind;
+            restyp->ireplen = RDB_VARIABLE_LEN;
             restyp->var.basetyp = dup_nonscalar_type(typ->var.basetyp);
             if (restyp->var.basetyp == NULL) {
                 free(restyp);
@@ -104,7 +106,8 @@ dup_nonscalar_type(RDB_type *typ)
             if (restyp == NULL)
                 return NULL;
             restyp->name = NULL;
-            restyp->kind = RDB_TP_TUPLE;
+            restyp->kind = typ->kind;
+            restyp->ireplen = RDB_VARIABLE_LEN;
             restyp->var.tuple.attrc = typ->var.tuple.attrc;
             restyp->var.tuple.attrv = malloc(sizeof (RDB_type)
                     * typ->var.tuple.attrc);

@@ -619,6 +619,7 @@ deserialize_type(RDB_object *valp, int *posp, RDB_transaction *txp,
                 return RDB_NO_MEMORY;
             (*typp)->name = NULL;
             (*typp)->kind = RDB_TP_TUPLE;
+            (*typp)->ireplen = RDB_VARIABLE_LEN;
 
             (*typp)->var.tuple.attrv = malloc(sizeof(RDB_attr) * attrc);
             if ((*typp)->var.tuple.attrv == NULL) {
@@ -650,6 +651,8 @@ deserialize_type(RDB_object *valp, int *posp, RDB_transaction *txp,
                 return RDB_NO_MEMORY;
             (*typp)->name = NULL;
             (*typp)->kind = kind;
+            (*typp)->ireplen = RDB_VARIABLE_LEN;
+
             ret = deserialize_type(valp, posp, txp,
                         &(*typp)->var.basetyp);
             if (ret != RDB_OK)
