@@ -522,8 +522,6 @@ delete_rtable(RDB_table *tbp, RDB_transaction *txp)
         goto cleanup;
 
     ret = RDB_delete(txp->dbp->dbrootp->dbtables_tbp, exprp, txp);
-    if (ret != RDB_OK)
-        goto cleanup;
 
 cleanup:
     RDB_drop_expr(exprp);
@@ -541,6 +539,12 @@ delete_vtable(RDB_table *tbp, RDB_transaction *txp)
         return RDB_NO_MEMORY;
     }
     ret = RDB_delete(txp->dbp->dbrootp->vtables_tbp, exprp, txp);
+    if (ret != RDB_OK)
+        goto cleanup;
+
+    ret = RDB_delete(txp->dbp->dbrootp->dbtables_tbp, exprp, txp);
+
+cleanup:
     RDB_drop_expr(exprp);
 
     return ret;
@@ -1352,9 +1356,12 @@ _RDB_get_cat_vtable(const char *name, RDB_transaction *txp, RDB_table **tbpp)
     RDB_bool usr;
     int ret;
 
-    /* read virtual table data from the catalog */
+    /*
+     * Read virtual table data from the catalog
+     */
 
     RDB_init_obj(&arr);
+    RDB_init_obj(&tpl);
 
     exprp = RDB_eq(RDB_expr_attr("TABLENAME"), RDB_string_to_expr(name));
     if (exprp == NULL) {
@@ -1367,7 +1374,6 @@ _RDB_get_cat_vtable(const char *name, RDB_transaction *txp, RDB_table **tbpp)
         goto error;
     }
     
-    RDB_init_obj(&tpl);
     ret = RDB_extract_tuple(tmptbp, txp, &tpl);
 
     RDB_drop_table(tmptbp, txp);
@@ -1382,6 +1388,7 @@ _RDB_get_cat_vtable(const char *name, RDB_transaction *txp, RDB_table **tbpp)
     if (ret != RDB_OK)
         goto error;
     
+    RDB_destroy_obj(&tpl);
     ret = RDB_destroy_obj(&arr);
 
     (*tbpp)->is_persistent = RDB_TRUE;
@@ -1393,7 +1400,9 @@ _RDB_get_cat_vtable(const char *name, RDB_transaction *txp, RDB_table **tbpp)
     _RDB_assoc_table_db(*tbpp, txp->dbp);
     
     return ret;
+
 error:
+    RDB_destroy_obj(&tpl);
     RDB_destroy_obj(&arr);
     
     return ret;

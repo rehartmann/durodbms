@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2003 René Hartmann.
+ * Copyright (C) 2003, 2004 René Hartmann.
  * See the file COPYING for redistribution information.
  */
 
@@ -625,10 +625,6 @@ table_drop_cmd(TclState *statep, Tcl_Interp *interp, int objc,
         return TCL_ERROR;
     }
 
-    /*
-     * Search for transient table first
-     */
-
     name = Tcl_GetStringFromObj(objv[2], NULL);
     txstr = Tcl_GetStringFromObj(objv[3], NULL);
     entryp = Tcl_FindHashEntry(&statep->txs, txstr);
@@ -995,16 +991,64 @@ table_add_cmd(TclState *statep, Tcl_Interp *interp, int objc,
     return TCL_OK;
 }
 
+static int
+table_attrs_cmd(TclState *statep, Tcl_Interp *interp, int objc,
+        Tcl_Obj *CONST objv[])
+{
+    int ret;
+    int i;
+    char *name;
+    char *txstr;
+    Tcl_HashEntry *entryp;
+    RDB_transaction *txp;
+    RDB_table *tbp;
+    RDB_type *tuptyp;
+    Tcl_Obj *listobjp;
+
+    if (objc != 4) {
+        Tcl_WrongNumArgs(interp, 2, objv, "tablename tx");
+        return TCL_ERROR;
+    }
+
+    name = Tcl_GetString(objv[2]);
+    txstr = Tcl_GetString(objv[3]);
+    entryp = Tcl_FindHashEntry(&statep->txs, txstr);
+    if (entryp == NULL) {
+        Tcl_AppendResult(interp, "Unknown transaction: ", txstr, NULL);
+        return TCL_ERROR;
+    }
+    txp = Tcl_GetHashValue(entryp);
+
+    ret = Duro_get_table(statep, interp, name, txp, &tbp);
+    if (ret != TCL_OK) {
+        return TCL_ERROR;
+    }
+    tuptyp = RDB_table_type(tbp)->var.basetyp;
+
+    listobjp = Tcl_NewListObj(0, NULL);
+    for (i = 0; i < tuptyp->var.tuple.attrc; i++) {
+        char *name = tuptyp->var.tuple.attrv[i].name;
+
+        ret = Tcl_ListObjAppendElement(interp, listobjp,
+               Tcl_NewStringObj(name, strlen(name)));
+        if (ret != TCL_OK)
+            return ret;
+    }
+
+    Tcl_SetObjResult(interp, listobjp);
+    return TCL_OK;
+}
+
 int
 Duro_table_cmd(ClientData data, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[])
 {
     TclState *statep = (TclState *) data;
 
     const char *sub_cmds[] = {
-        "create", "drop", "expr", "contains", "add", NULL
+        "create", "drop", "expr", "contains", "add", "attrs", NULL
     };
     enum table_ix {
-        create_ix, drop_ix, expr_ix, contains_ix, add_ix
+        create_ix, drop_ix, expr_ix, contains_ix, add_ix, attrs_ix
     };
     int index;
 
@@ -1029,6 +1073,8 @@ Duro_table_cmd(ClientData data, Tcl_Interp *interp, int objc, Tcl_Obj *CONST obj
             return table_contains_cmd(statep, interp, objc, objv);
         case add_ix:
             return table_add_cmd(statep, interp, objc, objv);
+        case attrs_ix:
+            return table_attrs_cmd(statep, interp, objc, objv);
     }
     return TCL_ERROR;
 }

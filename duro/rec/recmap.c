@@ -85,6 +85,7 @@ new_recmap(RDB_recmap **rmpp, const char *namp, const char *filenamp,
 
     *rmpp = rmp;
     return RDB_OK;
+
 error:
     free(rmp->namp);
     free(rmp->filenamp);
@@ -618,7 +619,6 @@ RDB_update_rec(RDB_recmap *recmapp, RDB_field keyv[],
 {
     DBT key, data;
     int ret;
-    int i;
 
     ret = key_to_DBT(recmapp, keyv, &key);
     if (ret != RDB_OK)
@@ -628,11 +628,11 @@ RDB_update_rec(RDB_recmap *recmapp, RDB_field keyv[],
 
     ret = recmapp->dbp->get(recmapp->dbp, txid, &key, &data, 0);
     if (ret != 0)
-        goto error;
+        goto cleanup;
 
     ret = _RDB_update_rec(recmapp, &key, &data, fieldc, fieldv, txid);
 
-error:
+cleanup:
     free(key.data);
     free(data.data);
     

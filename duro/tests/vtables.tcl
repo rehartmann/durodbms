@@ -167,7 +167,13 @@ if {![tequal $tpl $stpl]} {
     exit 1
 }
 
+duro::table drop TU $tx
+
 duro::table drop TX $tx
+
+# Recreate TU
+
+duro::table expr -global TU {T1 UNION T2} $tx
 
 duro::commit $tx
 

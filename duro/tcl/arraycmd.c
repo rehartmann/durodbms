@@ -1,3 +1,8 @@
+/*
+ * Copyright (C) 2003, 2004 René Hartmann.
+ * See the file COPYING for redistribution information.
+ */
+
 /* $Id$ */
 
 #include "duro.h"
@@ -263,7 +268,7 @@ Duro_to_tcl(Tcl_Interp *interp, const RDB_object *objp, RDB_transaction *txp)
     if (typ == &RDB_STRING) {
         char *str = RDB_obj_string((RDB_object *)objp);
 
-        return Tcl_NewStringObj(str, strlen (str));
+        return Tcl_NewStringObj(str, strlen(str));
     }
     if (typ == &RDB_INTEGER) {
         return Tcl_NewIntObj((int) RDB_obj_int(objp));
