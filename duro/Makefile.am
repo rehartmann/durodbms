@@ -14,7 +14,8 @@ lib_LTLIBRARIES = libduro.la libdurotcl.la \
 
 htmldir = $(prefix)
 
-nobase_dist_html_DATA = docs/api-spec.html docs/relnotes.html docs/tcl/index.html \
+nobase_dist_html_DATA = docs/api-spec.html docs/relnotes.html \
+docs/expressions.html docs/tcl/index.html \
 docs/tcl/array.html docs/tcl/begin.html docs/tcl/call.html \
 docs/tcl/commit.html docs/tcl/db.html docs/tcl/delete.html \
 docs/tcl/env.html docs/tcl/expr.html docs/tcl/insert.html \
