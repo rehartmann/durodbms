@@ -15,6 +15,16 @@ package require Tktable
 # dbenv	current DB environment ID
 # db	currently selected database
 
+proc dberror {msg} {
+    .errlog.msgs configure -state normal
+    .errlog.msgs insert end $msg\n
+    .errlog.msgs configure -state disabled
+}
+
+proc show_errlog {} {
+    wm state .errlog normal
+}
+
 proc show_tables {} {
     if {$::dbenv == "" || $::db == ""} {
         return
@@ -499,6 +509,7 @@ menu .mbar.file
 menu .mbar.view
 .mbar add cascade -label View -menu .mbar.view
 
+.mbar.view add command -label "Show errlor log" -command show_errlog
 .mbar.view add checkbutton -label "Show system tables" -variable showsys \
         -command show_tables
 
@@ -553,6 +564,14 @@ grid rowconfigure .tableframe 0 -weight 1
 
 bind .tables <<ListboxSelect>> show_table
 bind .tableframe.table <Return> update_row
+
+toplevel .errlog
+wm withdraw .errlog
+wm title .errlog "Error Log"
+wm protocol .errlog WM_DELETE_WINDOW { wm withdraw .errlog }
+
+text .errlog.msgs -state disabled
+pack .errlog.msgs
 
 if {$argc > 1} {
     puts stderr "duroadmin: too many arguments"

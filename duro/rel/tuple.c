@@ -240,6 +240,7 @@ RDB_join_tuples(const RDB_object *tpl1p, const RDB_object *tpl2p,
         /* Get corresponding attribute from tuple #1 */
         dstattrp = RDB_tuple_get(restplp, key);
         if (dstattrp != NULL) {
+             RDB_bool b;
              RDB_type *typ = RDB_obj_type(dstattrp);
              
              /* Check attribute types for equality */
@@ -249,7 +250,12 @@ RDB_join_tuples(const RDB_object *tpl1p, const RDB_object *tpl2p,
              }
              
              /* Check attribute values for equality */
-             if (!RDB_obj_equals(dstattrp, srcattrp)) {
+             ret = RDB_obj_equals(dstattrp, srcattrp, &b);
+             if (ret != RDB_OK) {
+                 RDB_destroy_hashmap_iter(&hiter);
+                 return ret;
+             }
+             if (!b) {
                  RDB_destroy_hashmap_iter(&hiter);
                  return RDB_INVALID_ARGUMENT;
              }
@@ -550,21 +556,31 @@ RDB_unwrap_tuple(const RDB_object *tplp, int attrc, char *attrv[],
     return RDB_OK;
 }
 
-RDB_bool
-_RDB_tuple_equals(const RDB_object *tpl1p, const RDB_object *tpl2p)
+int
+_RDB_tuple_equals(const RDB_object *tpl1p, const RDB_object *tpl2p,
+        RDB_bool *resp)
 {
+    int ret;
     RDB_hashmap_iter hiter;
     RDB_object *attrp;
     char *key;
+    RDB_bool b;
 
     RDB_init_hashmap_iter(&hiter, (RDB_hashmap *) &tpl1p->var.tpl_map);
     while ((attrp = (RDB_object *) RDB_hashmap_next(&hiter, &key, NULL))
             != NULL) {
-        if (!RDB_obj_equals(attrp, RDB_tuple_get(tpl2p, key))) {
+        ret = RDB_obj_equals(attrp, RDB_tuple_get(tpl2p, key), &b);
+        if (ret != RDB_OK) {
             RDB_destroy_hashmap_iter(&it);
-            return RDB_FALSE;
+            return ret;
+        }
+        if (!b) {
+            RDB_destroy_hashmap_iter(&it);
+            *resp = RDB_FALSE;
+            return RDB_OK;
         }
     }
     RDB_destroy_hashmap_iter(&it);
-    return RDB_TRUE;
+    *resp = RDB_TRUE;
+    return RDB_OK;
 }

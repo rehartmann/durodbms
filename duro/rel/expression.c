@@ -867,9 +867,7 @@ evaluate_eq(RDB_expression *exp, const RDB_object *tup,
      * Compare values
      */
 
-    *resp = RDB_obj_equals(&val1, &val2);
-
-    ret = RDB_OK;
+    ret = RDB_obj_equals(&val1, &val2, resp);
 
 cleanup:
     RDB_destroy_obj(&val1);

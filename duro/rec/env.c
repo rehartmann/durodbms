@@ -17,6 +17,7 @@ RDB_open_env(const char *path, RDB_environment **envpp)
 
     envp->closefn = NULL;
     envp->errfilep = NULL;
+    envp->errfn = NULL;
     envp->user_data = NULL;
 
     /* create environment handle */
@@ -66,6 +67,14 @@ RDB_set_errfile(RDB_environment *envp, FILE *errfile)
 }
 
 void
+RDB_set_errfn(RDB_environment *envp,
+        void (*errfn)(const char *msg, void *arg), void *arg)
+{
+    envp->errfn = errfn;
+    envp->errfn_arg = arg;
+}
+
+void
 RDB_errmsg(RDB_environment *envp, const char *format, ...)
 {
     if (envp->errfilep != NULL) {
@@ -75,5 +84,15 @@ RDB_errmsg(RDB_environment *envp, const char *format, ...)
         vfprintf(envp->errfilep, format, ap);
         va_end(ap);
         fputs("\n", envp->errfilep);
+    }
+    if (envp->errfn != NULL) {
+        char buf[1024];
+
+        va_list ap;
+
+        va_start(ap,format);
+        vsnprintf(buf, sizeof (buf), format, ap);
+        va_end(ap);
+        (*envp->errfn)(buf, envp->errfn_arg);
     }
 }

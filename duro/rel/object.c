@@ -463,43 +463,48 @@ _RDB_obj_to_field(RDB_field *fvp, RDB_object *objp)
     return obj_ilen(objp, &fvp->len);
 }
 
-RDB_bool
-RDB_obj_equals(const RDB_object *val1p, const RDB_object *val2p)
+int
+RDB_obj_equals(const RDB_object *val1p, const RDB_object *val2p, RDB_bool *resp)
 {
+    int ret;
+
     switch (val1p->kind) {
         case RDB_OB_BOOL:
-            return (RDB_bool) val1p->var.bool_val == val2p->var.bool_val;
+            *resp = (RDB_bool) val1p->var.bool_val == val2p->var.bool_val;
+            break;
         case RDB_OB_INT:
-            return (RDB_bool) (val1p->var.int_val == val2p->var.int_val);
+            *resp = (RDB_bool) (val1p->var.int_val == val2p->var.int_val);
+            break;
         case RDB_OB_RATIONAL:
-            return (RDB_bool) (val1p->var.rational_val == val2p->var.rational_val);
+            *resp = (RDB_bool) (val1p->var.rational_val == val2p->var.rational_val);
+            break;
         case RDB_OB_INITIAL:
-            return RDB_FALSE;
+            return RDB_INVALID_ARGUMENT;
         case RDB_OB_BIN:
             if (val1p->var.bin.len != val2p->var.bin.len)
-                return RDB_FALSE;
-            if (val1p->var.bin.len == 0)
-                return RDB_TRUE;
-            return (RDB_bool) (memcmp(val1p->var.bin.datap, val2p->var.bin.datap,
-                    val1p->var.bin.len) == 0);
+                *resp = RDB_FALSE;
+            else if (val1p->var.bin.len == 0)
+                *resp = RDB_TRUE;
+            else *resp = (RDB_bool) (memcmp(val1p->var.bin.datap,
+                    val2p->var.bin.datap, val1p->var.bin.len) == 0);
+            break;
         case RDB_OB_TUPLE:
-            return _RDB_tuple_equals(val1p, val2p);
+            ret = _RDB_tuple_equals(val1p, val2p, resp);
+            if (ret != RDB_OK)
+                return ret;
+            break;
         case RDB_OB_TABLE:
-        {
-            int ret;
-            RDB_bool res;
-
-            ret = RDB_table_equals(val1p->var.tbp, val2p->var.tbp, NULL, &res);
-            if (ret != RDB_OK) {
-                /* !! */
-                return RDB_FALSE;
-            }
-            return res;
-        }
+            ret = RDB_table_equals(val1p->var.tbp, val2p->var.tbp, NULL, resp);
+            if (ret != RDB_OK)
+                return ret;
+            break;
         case RDB_OB_ARRAY:
-            return _RDB_array_equals((RDB_object *)val1p, (RDB_object *)val2p);
+            ret = _RDB_array_equals((RDB_object *)val1p, (RDB_object *)val2p, resp);
+            if (ret != RDB_OK)
+                return ret;
+            break;
     }
-    abort();
+    return RDB_OK;
 } 
 
 /* Copy data only, not the type information */

@@ -33,6 +33,21 @@ Duro_tcl_close_env(TclState *statep, RDB_environment *envp, Tcl_HashEntry *entry
     return RDB_close_env(envp);
 }
 
+static void
+dberror(const char *msg, void *arg)
+{
+    int ret;
+    Tcl_Obj *objv[2];
+    Tcl_Interp *interp = (Tcl_Interp *)arg;
+
+    objv[0] = Tcl_NewStringObj("dberror", strlen("dberror"));
+    objv[1] = Tcl_NewStringObj(msg, strlen(msg));
+
+    ret = Tcl_EvalObjv(interp, 2, objv, 0);
+    if (ret != TCL_OK)
+        fputs(msg, stderr);
+}
+
 int
 Duro_env_cmd(ClientData data, Tcl_Interp *interp, int argc, CONST char *argv[])
 {
@@ -63,16 +78,13 @@ Duro_env_cmd(ClientData data, Tcl_Interp *interp, int argc, CONST char *argv[])
             return TCL_ERROR;
         }
 
-        /* Store a pointer to the Tcl interpreter in the user_data field */
-        /* envp->user_data = interp; */
-
         statep->env_uid++;
         sprintf(handle, "env%d", statep->env_uid);
         entryp = Tcl_CreateHashEntry(&statep->envs, handle, &new);
         Tcl_SetHashValue(entryp, (ClientData)envp);
 
-        RDB_set_errfile(envp, stderr);
-        
+        RDB_set_errfn(envp, &dberror, interp);
+
         Tcl_SetStringObj(Tcl_GetObjResult(interp), handle, -1);
         return TCL_OK;
     }

@@ -913,8 +913,8 @@ RDB_type_attr_type(const RDB_type *, const char *);
  * Return RDB_TRUE if the two types are equal
  * or RDB_FALSE if they are not.
  */
-RDB_bool
-RDB_obj_equals(const RDB_object *, const RDB_object *);
+int
+RDB_obj_equals(const RDB_object *, const RDB_object *, RDB_bool *);
 
 /*
  * Initialize the value pointed to by dstvalp with the value

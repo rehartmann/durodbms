@@ -325,11 +325,11 @@ _RDB_copy_tuple(RDB_object *dstp, const RDB_object *srcp);
 int
 _RDB_copy_array(RDB_object *dstp, const RDB_object *srcp);
 
-RDB_bool
-_RDB_array_equals(RDB_object *arr1p, RDB_object *arr2p);
+int
+_RDB_array_equals(RDB_object *arr1p, RDB_object *arr2p, RDB_bool *);
 
-RDB_bool
-_RDB_tuple_equals(const RDB_object *, const RDB_object *);
+int
+_RDB_tuple_equals(const RDB_object *, const RDB_object *, RDB_bool *);
 
 int
 _RDB_invrename_tuple(const RDB_object *, int renc, const RDB_renaming renv[],

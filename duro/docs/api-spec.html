@@ -225,6 +225,7 @@ See the release notes for details.
 <li><a href="#open_env">RDB_open_env</a>
 <li><a href="#close_env">RDB_close_env</a>
 <li><a href="#set_errfile">RDB_set_errfile</a>
+<li><a href="#set_errfn">RDB_set_errfn</a>
 </ul>
 
 <h3>Error handling functions</h3>
@@ -2060,18 +2061,18 @@ variable.
 <pre>
 #include &lt;rel/rdb.h&gt;
 
-RDB_bool
-RDB_obj_equals(const RDB_object *, const RDB_object *);
+int
+RDB_obj_equals(const RDB_object *, const RDB_object *, RDB_bool *resp);
 </pre>
 
 <h3>Description</h3>
 
-<p>RDB_obj_equals checks two RDB_object variables for equality.
+<p>RDB_obj_equals checks two RDB_object variables for equality
+and stores the result in the variable pointed to by <var>resp</var>.
 
 <h3>Return value</h3>
 
-<p>If the value of the two variables are equal, RDB_obj_equals returns RDB_TRUE,
-othwerwise RDB_FALSE.
+<p>On success, RDB_OK is returned. On failure, an error code is returned.
 
 <hr>
 

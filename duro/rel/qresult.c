@@ -1038,6 +1038,7 @@ next_join_tuple(RDB_qresult *qrp, RDB_object *tplp, RDB_transaction *txp)
             for (i = 0; (i < qrp->tbp->var.join.common_attrc) && iseq; i++) {
                 RDB_object *valp;
                 RDB_object *valp2;
+                RDB_bool b;
 
                 valp = RDB_tuple_get(&qrp->var.virtual.tpl,
                         qrp->tbp->var.join.common_attrv[i]);
@@ -1045,7 +1046,10 @@ next_join_tuple(RDB_qresult *qrp, RDB_object *tplp, RDB_transaction *txp)
                         qrp->tbp->var.join.common_attrv[i]);
 
                 /* if the attribute values are not equal, skip to next tuple */
-                if (!RDB_obj_equals(valp, valp2))
+                ret = RDB_obj_equals(valp, valp2, &b);
+                if (ret != RDB_OK)
+                    return ret;
+                if (!b)
                     iseq = RDB_FALSE;
             }
 
@@ -1435,9 +1439,19 @@ _RDB_sdivide_preserves(RDB_table *tbp, const RDB_object *tplp,
              RDB_object *dstobjp = RDB_tuple_get(&tpl2,
                      tb1tuptyp->var.tuple.attrv[i].name);
 
-             if (dstobjp != NULL && !RDB_obj_equals(objp, dstobjp)) {
-                 match = RDB_FALSE;
-                 break;
+             if (dstobjp != NULL) {
+                 RDB_bool b;
+
+                 ret = RDB_obj_equals(objp, dstobjp, &b);
+                 if (ret != RDB_OK) {
+                     destroy_qresult(&qr, txp);
+                     RDB_destroy_obj(&tpl2);
+                     return ret;
+                 }
+                 if (!b) {                     
+                     match = RDB_FALSE;
+                     break;
+                 }
              } else {
                  ret = RDB_tuple_set(&tpl2,
                          tb1tuptyp->var.tuple.attrv[i].name, objp);
@@ -1672,6 +1686,7 @@ _RDB_qresult_contains(RDB_qresult *qrp, const RDB_object *tplp,
 {
     int i;
     int ret;
+    RDB_bool b;
     RDB_object *valv;
     int kattrc;
     RDB_object tpl;
@@ -1719,8 +1734,11 @@ _RDB_qresult_contains(RDB_qresult *qrp, const RDB_object *tplp,
         for (i = 0; i < qrp->tbp->var.summarize.addc; i++) {
             char *attrname = qrp->tbp->var.summarize.addv[i].name;
 
-            if (!RDB_obj_equals(RDB_tuple_get(tplp, attrname),
-                    RDB_tuple_get(&tpl, attrname))) {
+            ret = RDB_obj_equals(RDB_tuple_get(tplp, attrname),
+                    RDB_tuple_get(&tpl, attrname), &b);
+            if (ret != RDB_OK)
+                goto error;
+            if (!b) {
                 ret = RDB_NOT_FOUND;
                 goto error;
             }
@@ -1728,8 +1746,11 @@ _RDB_qresult_contains(RDB_qresult *qrp, const RDB_object *tplp,
     } else {
         char *attrname = qrp->tbp->var.group.gattr;
 
-        if (!RDB_obj_equals(RDB_tuple_get(tplp, attrname),
-                RDB_tuple_get(&tpl, attrname))) {
+        ret = RDB_obj_equals(RDB_tuple_get(tplp, attrname),
+                RDB_tuple_get(&tpl, attrname), &b);
+        if (ret != RDB_OK)
+            goto error;
+        if (!b) {
             ret = RDB_NOT_FOUND;
             goto error;
         }
