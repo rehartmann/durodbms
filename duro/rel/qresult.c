@@ -909,80 +909,104 @@ destroy_qresult(RDB_qresult *qrp, RDB_transaction *txp)
     return RDB_OK;
 }
 
-static int
-next_sdivide_tuple(RDB_qresult *qrp, RDB_object *tplp, RDB_transaction *txp)
+/*
+ * Given T1 DIVIDE T2 BY T3, tplp representing a tuple from T1.
+ * Return RDB_OK if the tuple is an element of the result,
+ * RDB_NOT_FOUND if not.
+ * If qr2p is not NULL, it points to a RDB_qresult containing
+ * the tuples from T3.
+ */
+int
+_RDB_sdivide_preserves(RDB_table *tbp, const RDB_object *tplp,
+        RDB_qresult *qr3p, RDB_transaction *txp)
 {
     int ret;
     int i;
     RDB_object tpl2;
     RDB_qresult qr;
-    RDB_bool matchall; /* signals if a tuple from table 1 belongs to the result table */
+    RDB_bool matchall = RDB_TRUE;
+
+    /*
+     * Join this tuple with all tuple from table 2 and set matchall to RDB_FALSE
+     * if not all the result tuples are found in table 3
+     */
+
+    ret = init_qresult(&qr, tbp->var.sdivide.tb2p, txp);
+    if (ret != RDB_OK) {
+        return ret;
+    }
+
+    for (;;) {
+        RDB_init_obj(&tpl2);
+        ret = _RDB_next_tuple(&qr, &tpl2, txp);
+        if (ret != RDB_OK)
+            break;
+        RDB_type *tb1tuptyp = tbp->var.sdivide.tb1p->typ->var.basetyp;
+        RDB_bool match = RDB_TRUE;
+
+        /* Join *tplp and tpl2 into tpl2 */
+        for (i = 0; i < tb1tuptyp->var.tuple.attrc; i++) {
+             RDB_object *objp = RDB_tuple_get(tplp,
+                     tb1tuptyp->var.tuple.attrv[i].name);
+             RDB_object *dstobjp = RDB_tuple_get(&tpl2,
+                     tb1tuptyp->var.tuple.attrv[i].name);
+
+             if (dstobjp != NULL && !RDB_obj_equals(objp, dstobjp)) {
+                 match = RDB_FALSE;
+                 break;
+             } else {
+                 ret = RDB_tuple_set(&tpl2,
+                         tb1tuptyp->var.tuple.attrv[i].name, objp);
+                 if (ret != RDB_OK) {
+                     destroy_qresult(&qr, txp);
+                     RDB_destroy_obj(&tpl2);
+                     return ret;
+                 }
+             }
+        }
+        if (!match)
+            continue;
+
+        if (qr3p != NULL)
+            ret = _RDB_qresult_contains(qr3p, &tpl2, txp);
+        else
+            ret = RDB_table_contains(tbp->var.sdivide.tb3p, &tpl2, txp);
+
+        RDB_destroy_obj(&tpl2);
+        if (ret != RDB_OK) {
+            matchall = RDB_FALSE;
+            break;
+        }
+    }
+    if (ret != RDB_NOT_FOUND) {
+        destroy_qresult(&qr, txp);
+        return ret;
+    }
+    
+    ret = destroy_qresult(&qr, txp);
+    if (ret != RDB_OK)
+        return ret;
+
+    return matchall ? RDB_OK : RDB_NOT_FOUND;
+}
+
+static int
+next_sdivide_tuple(RDB_qresult *qrp, RDB_object *tplp, RDB_transaction *txp)
+{
+    int ret;
 
     do {
-        matchall = RDB_TRUE;
-
         ret = _RDB_next_tuple(qrp->var.virtual.qrp, tplp, txp);
         if (ret != RDB_OK) {
             return ret;
         }
 
-        /*
-         * Join this tuple with all tuple from table 2 and set matchall to RDB_FALSE
-         * if not all the result tuples are found in table 3
-         */
-
-        ret = init_qresult(&qr, qrp->tbp->var.sdivide.tb2p, txp);
-        if (ret != RDB_OK) {
+        ret = _RDB_sdivide_preserves(qrp->tbp, tplp, qrp->var.virtual.qr2p,
+                txp);
+        if (ret != RDB_OK && ret != RDB_NOT_FOUND)
             return ret;
-        }
 
-        for (;;) {
-            RDB_init_obj(&tpl2);
-            ret = _RDB_next_tuple(&qr, &tpl2, txp);
-            if (ret != RDB_OK)
-                break;
-            RDB_type *tb1tuptyp = qrp->tbp->var.sdivide.tb1p->typ->var.basetyp;
-            RDB_bool match = RDB_TRUE;
-
-            /* Join *tplp and tpl2 into tpl2 */
-            for (i = 0; i < tb1tuptyp->var.tuple.attrc; i++) {
-                 RDB_object *objp = RDB_tuple_get(tplp,
-                         tb1tuptyp->var.tuple.attrv[i].name);
-                 RDB_object *dstobjp = RDB_tuple_get(&tpl2,
-                         tb1tuptyp->var.tuple.attrv[i].name);
-
-                 if (dstobjp != NULL && !RDB_obj_equals(objp, dstobjp)) {
-                     match = RDB_FALSE;
-                     break;
-                 } else {
-                     ret = RDB_tuple_set(&tpl2,
-                             tb1tuptyp->var.tuple.attrv[i].name, objp);
-                     if (ret != RDB_OK) {
-                         destroy_qresult(&qr, txp);
-                         RDB_destroy_obj(&tpl2);
-                         return ret;
-                     }
-                 }
-            }
-            if (!match)
-                continue;
-
-            ret = _RDB_qresult_contains(qrp->var.virtual.qr2p, &tpl2, txp);
-            RDB_destroy_obj(&tpl2);
-            if (ret != RDB_OK) {
-                matchall = RDB_FALSE;
-                break;
-            }
-        }
-        if (ret != RDB_NOT_FOUND) {
-            destroy_qresult(&qr, txp);
-            return ret;
-        }
-        
-        ret = destroy_qresult(&qr, txp);
-        if (ret != RDB_OK)
-            return ret;
-    } while (!matchall);
+    } while (ret == RDB_NOT_FOUND);
 
     return RDB_OK;
 }

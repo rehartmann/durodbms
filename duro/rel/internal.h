@@ -295,6 +295,10 @@ RDB_expr_aggregate(RDB_expression *arg, RDB_aggregate_op op,
 RDB_bool
 _RDB_expr_refers(RDB_expression *, RDB_table *);
 
+int
+_RDB_sdivide_preserves(RDB_table *, const RDB_object *tplp, RDB_qresult *qr3p,
+        RDB_transaction *);
+
 RDB_ipossrep *
 _RDB_get_possrep(RDB_type *typ, const char *repname);
 

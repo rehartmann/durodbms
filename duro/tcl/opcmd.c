@@ -240,7 +240,7 @@ Duro_call_cmd(ClientData data, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv
         Tcl_Obj *valobjp = objv[2 + i * 2];
 
         if (op->updv[i]) {
-            /* Update argument - read variable */
+            /* It's an update argument - read variable */
             valobjp = Tcl_ObjGetVar2(interp, valobjp, NULL, 0);
         }
 

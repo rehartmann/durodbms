@@ -739,12 +739,16 @@ Duro_insert_cmd(ClientData data, Tcl_Interp *interp, int objc,
     }
 
     ret = RDB_insert(tbp, &tpl, txp);
-    if (ret != RDB_OK) {
+    if (ret == RDB_OK) {
+        Tcl_SetObjResult(interp, Tcl_NewBooleanObj(0));
+        ret = TCL_OK;        
+    } else if (ret == RDB_ELEMENT_EXISTS) {
+        Tcl_SetObjResult(interp, Tcl_NewBooleanObj(1));
+        ret = TCL_OK;
+    } else {
         Duro_dberror(interp, ret);
         ret = TCL_ERROR;
-        goto cleanup;
     }
-    ret = TCL_OK;
 
 cleanup:
     RDB_destroy_obj(&tpl);

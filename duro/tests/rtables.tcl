@@ -33,7 +33,18 @@ duro::table create T1 {
 } {{INTATTR}} $tx
 
 # Insert tuple
-duro::insert T1 {INTATTR 1 STRATTR Bla} $tx
+set r [duro::insert T1 {INTATTR 1 STRATTR Bla} $tx]
+if {$r != 0} {
+    puts "Insert returned $r, should be 0"
+    exit 1
+}
+
+# Insert tuple a second time
+set r [duro::insert T1 {INTATTR 1 STRATTR Bla} $tx]
+if {$r != 1} {
+    puts "Insert returned $r, should be 1"
+    exit 1
+}
 
 # Update nonkey attribute
 duro::update T1 STRATTR {STRATTR || "x"} $tx

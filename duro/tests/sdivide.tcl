@@ -102,7 +102,7 @@ set a [duro::array create DIV {SNO asc} $tx]
 checkarray $a { {SNO S1} {SNO S4} }
 duro::array drop $a
 
-duro::insert P {PNO P1} $tx
+duro::insert P {PNO P1} $tx 
 duro::insert P {PNO P3} $tx
 duro::insert P {PNO P5} $tx
 duro::insert P {PNO P6} $tx
@@ -111,8 +111,27 @@ set a [duro::array create DIV $tx]
 checkarray $a { {SNO S1} }
 duro::array drop $a
 
+set r [duro::table contains DIV {SNO S1} $tx]
+if {!$r} {
+    puts "Result of DIVIDE does not contain {SNO S1}, but should"
+    exit 1
+}
+
+set r [duro::table contains DIV {SNO S2} $tx]
+if {$r} {
+    puts "Result of DIVIDE contains {SNO S2}, but should not"
+    exit 1
+}
+
+set r [duro::table contains DIV {SNO S22} $tx]
+if {$r} {
+    puts "Result of DIVIDE contains {SNO S22}, but should not"
+    exit 1
+}
+
 # Drop tables
 
+duro::table drop DIV $tx
 duro::table drop S $tx
 duro::table drop P $tx
 duro::table drop SP $tx
