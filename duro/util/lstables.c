@@ -39,7 +39,7 @@ print_tables(RDB_transaction *txp, RDB_bool all, RDB_bool real)
     RDB_init_obj(&array);
 
     if (all) {
-        condp = RDB_bool_const(RDB_TRUE);
+        condp = RDB_bool_to_expr(RDB_TRUE);
     } else {
         condp = RDB_expr_attr("IS_USER");
     }
@@ -50,7 +50,7 @@ print_tables(RDB_transaction *txp, RDB_bool all, RDB_bool real)
     }
 
     condp = RDB_eq(RDB_expr_attr("DBNAME"),
-                   RDB_string_const(RDB_db_name(RDB_tx_db(txp))));
+                   RDB_string_to_expr(RDB_db_name(RDB_tx_db(txp))));
     ret = RDB_select(db_tbp, condp, &vtb2p);
     if (ret != RDB_OK) {
         RDB_drop_expr(condp);

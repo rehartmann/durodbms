@@ -78,7 +78,7 @@ RDB_expr_type(const RDB_expression *exp, const RDB_type *tuptyp)
 }
 
 RDB_expression *
-RDB_bool_const(RDB_bool v)
+RDB_bool_to_expr(RDB_bool v)
 {
     RDB_expression *exp = malloc(sizeof (RDB_expression));
     
@@ -94,7 +94,7 @@ RDB_bool_const(RDB_bool v)
 }
 
 RDB_expression *
-RDB_int_const(RDB_int v)
+RDB_int_to_expr(RDB_int v)
 {
     RDB_expression *exp = malloc(sizeof (RDB_expression));
     
@@ -110,7 +110,7 @@ RDB_int_const(RDB_int v)
 }
 
 RDB_expression *
-RDB_rational_const(RDB_rational v)
+RDB_rational_to_expr(RDB_rational v)
 {
     RDB_expression *exp = malloc(sizeof (RDB_expression));
     
@@ -126,7 +126,7 @@ RDB_rational_const(RDB_rational v)
 }
 
 RDB_expression *
-RDB_string_const(const char *v)
+RDB_string_to_expr(const char *v)
 {
     RDB_expression *exp = malloc(sizeof (RDB_expression));
     
@@ -143,7 +143,7 @@ RDB_string_const(const char *v)
 }
 
 RDB_expression *
-RDB_obj_const(const RDB_object *valp)
+RDB_obj_to_expr(const RDB_object *valp)
 {
     int ret;
     RDB_expression *exp = malloc(sizeof (RDB_expression));

@@ -105,11 +105,11 @@ NOT {
 }
 
 TRUE {
-    yylval = RDB_bool_const(RDB_TRUE);
+    yylval = RDB_bool_to_expr(RDB_TRUE);
 }
 
 FALSE {
-    yylval = RDB_bool_const(RDB_FALSE);
+    yylval = RDB_bool_to_expr(RDB_FALSE);
 }
 
 IS_EMPTY {
@@ -144,6 +144,14 @@ ANY {
     return TOK_ANY;
 }
 
+TABLE_DEE {
+    return TOK_TABLE_DEE;
+}
+
+TABLE_DUM {
+    return TOK_TABLE_DUM;
+}
+
 \|\| {
     return TOK_CONCAT;
 }
@@ -158,22 +166,22 @@ ANY {
      * Remove trailing "s
      */
     yytext[(strlen(yytext) - 1)] = '\0';
-    yylval = RDB_string_const(yytext + 1);
+    yylval = RDB_string_to_expr(yytext + 1);
     return TOK_STRING;
 }
 
 [0-9]+ {
-    yylval = RDB_int_const((RDB_int) atoi(yytext));
+    yylval = RDB_int_to_expr((RDB_int) atoi(yytext));
     return TOK_INTEGER;
 }
 
 [0-9]+"."[0-9]+[Ee][0-9]+ {
-    yylval = RDB_rational_const((RDB_rational) atof(yytext));
+    yylval = RDB_rational_to_expr((RDB_rational) atof(yytext));
     return TOK_FLOAT;
 }
 
 [0-9]+"."[0-9]+	{
-    yylval = RDB_rational_const((RDB_rational) atof(yytext));
+    yylval = RDB_rational_to_expr((RDB_rational) atof(yytext));
     return TOK_DECIMAL;
 }
 

@@ -82,7 +82,7 @@ test_update1(RDB_database *dbp)
 
     printf("Updating table\n");
 
-    exp = RDB_int_const(2);
+    exp = RDB_int_to_expr(2);
     exp = RDB_subtract(exp, RDB_expr_attr("NO"));
 
     upd.name = "NO";
@@ -121,7 +121,7 @@ test_update2(RDB_database *dbp)
     printf("Updating table\n");
 
     exp = RDB_expr_sum(RDB_table_to_expr(tbp), "COUNT");
-    exp = RDB_add(exp, RDB_int_const(1));
+    exp = RDB_add(exp, RDB_int_to_expr(1));
 
     upd.name = "COUNT";
     upd.exp = exp;

@@ -148,6 +148,8 @@ RDB_tuple_get_string(const RDB_object *tp, const char *namp)
 RDB_int
 RDB_tuple_size(const RDB_object *tplp)
 {
+    if (tplp->kind == RDB_OB_INITIAL)
+        return (RDB_int) 0;
     return (RDB_int) RDB_hashmap_size(&tplp->var.tpl_map);
 }
 

@@ -93,7 +93,6 @@ typedef struct RDB_type {
     char *name;
     enum _RDB_tp_kind kind;
 
-
     /* comparison function */
     RDB_compare_func *comparep;
 
@@ -941,19 +940,19 @@ RDB_bool
 RDB_expr_is_const(const RDB_expression *);
 
 RDB_expression *
-RDB_bool_const(RDB_bool);
+RDB_bool_to_expr(RDB_bool);
 
 RDB_expression *
-RDB_int_const(RDB_int);
+RDB_int_to_expr(RDB_int);
 
 RDB_expression *
-RDB_rational_const(RDB_rational);
+RDB_rational_to_expr(RDB_rational);
 
 RDB_expression *
-RDB_string_const(const char *);
+RDB_string_to_expr(const char *);
 
 RDB_expression *
-RDB_obj_const(const RDB_object *valp);
+RDB_obj_to_expr(const RDB_object *valp);
 
 RDB_expression *
 RDB_expr_attr(const char *attrname);

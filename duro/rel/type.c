@@ -505,7 +505,7 @@ RDB_implement_type(const char *name, RDB_type *arep,
     if (exp == NULL) {
         return RDB_NO_MEMORY;
     }
-    wherep = RDB_eq(exp, RDB_string_const(name));
+    wherep = RDB_eq(exp, RDB_string_to_expr(name));
     if (wherep == NULL) {
         RDB_drop_expr(exp);
         return RDB_NO_MEMORY;
@@ -514,13 +514,13 @@ RDB_implement_type(const char *name, RDB_type *arep,
     upd[0].exp = upd[1].exp = upd[2].exp = NULL;
 
     upd[0].name = "I_AREP_LEN";
-    upd[0].exp = RDB_int_const(arep == NULL ? areplen : arep->ireplen);
+    upd[0].exp = RDB_int_to_expr(arep == NULL ? areplen : arep->ireplen);
     if (upd[0].exp == NULL) {
         ret = RDB_NO_MEMORY;
         goto cleanup;
     }
     upd[1].name = "I_SYSIMPL";
-    upd[1].exp = RDB_bool_const(sysimpl);
+    upd[1].exp = RDB_bool_to_expr(sysimpl);
     if (upd[1].exp == NULL) {
         ret = RDB_NO_MEMORY;
         goto cleanup;
@@ -534,7 +534,7 @@ RDB_implement_type(const char *name, RDB_type *arep,
         }
 
         upd[2].name = "I_AREP_TYPE";
-        upd[2].exp = RDB_obj_const(&typedata);
+        upd[2].exp = RDB_obj_to_expr(&typedata);
         if (upd[2].exp == NULL) {
             ret = RDB_NO_MEMORY;
             RDB_destroy_obj(&typedata);
@@ -587,7 +587,7 @@ RDB_drop_type(RDB_type *typ, RDB_transaction *txp)
         }
 
         /* Delete type from database */
-        wherep = RDB_eq(RDB_expr_attr("TYPENAME"), RDB_string_const(typ->name));
+        wherep = RDB_eq(RDB_expr_attr("TYPENAME"), RDB_string_to_expr(typ->name));
         if (wherep == NULL) {
             RDB_rollback_all(txp);
             return RDB_NO_MEMORY;

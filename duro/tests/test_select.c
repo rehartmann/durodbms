@@ -31,7 +31,7 @@ test_select(RDB_database *dbp)
 
     printf("Creating selection (name=\"Smith\")\n");
 
-    exprp = RDB_eq(RDB_expr_attr("NAME"), RDB_string_const("Smith"));
+    exprp = RDB_eq(RDB_expr_attr("NAME"), RDB_string_to_expr("Smith"));
     
     ret = RDB_select(tbp, exprp, &vtbp);
     if (ret != RDB_OK) {
@@ -62,7 +62,7 @@ test_select(RDB_database *dbp)
 
     printf("Creating selection (EMPNO=1)\n");
 
-    exprp = RDB_eq(RDB_expr_attr("EMPNO"), RDB_int_const(1));
+    exprp = RDB_eq(RDB_expr_attr("EMPNO"), RDB_int_to_expr(1));
     
     ret = RDB_select(tbp, exprp, &vtbp);
     if (ret != RDB_OK) {

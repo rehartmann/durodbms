@@ -42,7 +42,7 @@ tests_libplus_la_SOURCES = tests/plus.c
 TESTS = tests/ctests tests/rtables.tcl tests/project.tcl tests/tuple.tcl \
         tests/sdivide.tcl tests/invtable.tcl tests/operator.tcl \
         tests/vtables.tcl tests/db2.tcl tests/rel.tcl tests/subset.tcl \
-        tests/utype.tcl
+        tests/utype.tcl tests/deedum.tcl
 
 TESTS_ENVIRONMENT = LD_LIBRARY_PATH=$(LD_LIBRARY_PATH):$(BDB_HOME)/lib
 
@@ -89,7 +89,7 @@ tests/test_update_output tests/test_utypetable_output tests/tupletest_output \
 tests/rtables.tcl tests/project.tcl tests/tuple.tcl \
 tests/sdivide.tcl tests/invtable.tcl tests/operator.tcl \
 tests/vtables.tcl tests/db2.tcl tests/rel.tcl tests/subset.tcl \
-tests/utype.tcl
+tests/utype.tcl tests/deedum.tcl
 
 # Delete test libs
 install-exec-hook:

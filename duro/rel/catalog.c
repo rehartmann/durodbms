@@ -400,7 +400,7 @@ delete_rtable(RDB_table *tbp, RDB_transaction *txp)
 {
     int ret;
     RDB_expression *exprp = RDB_eq(RDB_expr_attr("TABLENAME"),
-                   RDB_string_const(tbp->name));
+                   RDB_string_to_expr(tbp->name));
     if (exprp == NULL) {
         return RDB_NO_MEMORY;
     }
@@ -431,7 +431,7 @@ delete_vtable(RDB_table *tbp, RDB_transaction *txp)
 {
     int ret;
     RDB_expression *exprp = RDB_eq(RDB_expr_attr("TABLENAME"),
-                   RDB_string_const(tbp->name));
+                   RDB_string_to_expr(tbp->name));
     if (exprp == NULL) {
         return RDB_NO_MEMORY;
     }
@@ -661,7 +661,7 @@ get_keys(const char *name, RDB_transaction *txp,
 
     RDB_init_obj(&arr);
     
-    wherep = RDB_eq(RDB_string_const(name),
+    wherep = RDB_eq(RDB_string_to_expr(name),
             RDB_expr_attr("TABLENAME"));
     if (wherep == NULL)
         return RDB_NO_MEMORY;
@@ -754,7 +754,7 @@ _RDB_get_cat_rtable(const char *name, RDB_transaction *txp, RDB_table **tbpp)
     RDB_init_obj(&tpl);
 
     exprp = RDB_eq(RDB_expr_attr("TABLENAME"),
-            RDB_string_const(name));
+            RDB_string_to_expr(name));
     if (exprp == NULL) {
         ret = RDB_NO_MEMORY;
         goto error;
@@ -774,7 +774,7 @@ _RDB_get_cat_rtable(const char *name, RDB_transaction *txp, RDB_table **tbpp)
     usr = RDB_tuple_get_bool(&tpl, "IS_USER");
 
     exprp = RDB_eq(RDB_expr_attr("TABLENAME"),
-            RDB_string_const(name));
+            RDB_string_to_expr(name));
     if (exprp == NULL) {
         ret = RDB_NO_MEMORY;
         goto error;
@@ -818,7 +818,7 @@ _RDB_get_cat_rtable(const char *name, RDB_transaction *txp, RDB_table **tbpp)
      * Read default values
      */
 
-    exprp = RDB_eq(RDB_expr_attr("TABLENAME"), RDB_string_const(name));
+    exprp = RDB_eq(RDB_expr_attr("TABLENAME"), RDB_string_to_expr(name));
     if (exprp == NULL) {
         ret = RDB_NO_MEMORY;
         goto error;
@@ -943,7 +943,7 @@ _RDB_get_cat_vtable(const char *name, RDB_transaction *txp, RDB_table **tbpp)
 
     RDB_init_obj(&arr);
 
-    exprp = RDB_eq(RDB_expr_attr("TABLENAME"), RDB_string_const(name));
+    exprp = RDB_eq(RDB_expr_attr("TABLENAME"), RDB_string_to_expr(name));
     if (exprp == NULL) {
         ret = RDB_NO_MEMORY;
         goto error;
@@ -996,7 +996,7 @@ types_query(const char *name, RDB_transaction *txp, RDB_table **tbpp)
     exp = RDB_expr_attr("TYPENAME");
     if (exp == NULL)
         return RDB_NO_MEMORY;
-    wherep = RDB_eq(exp, RDB_string_const(name));
+    wherep = RDB_eq(exp, RDB_string_to_expr(name));
     if (wherep == NULL) {
         RDB_drop_expr(exp);
         return RDB_NO_MEMORY;
@@ -1021,7 +1021,7 @@ _RDB_possreps_query(const char *name, RDB_transaction *txp, RDB_table **tbpp)
     if (exp == NULL) {
         return RDB_NO_MEMORY;
     }
-    wherep = RDB_eq(exp, RDB_string_const(name));
+    wherep = RDB_eq(exp, RDB_string_to_expr(name));
     if (wherep == NULL) {
         RDB_drop_expr(exp);
         return RDB_NO_MEMORY;
@@ -1048,7 +1048,7 @@ _RDB_possrepcomps_query(const char *name, const char *possrepname,
         ret = RDB_NO_MEMORY;
         return ret;
     }
-    wherep = RDB_eq(exp, RDB_string_const(name));
+    wherep = RDB_eq(exp, RDB_string_to_expr(name));
     if (wherep == NULL) {
         RDB_drop_expr(exp);
         ret = RDB_NO_MEMORY;
@@ -1060,7 +1060,7 @@ _RDB_possrepcomps_query(const char *name, const char *possrepname,
         ret = RDB_NO_MEMORY;
         return ret;
     }
-    ex2p = RDB_eq(exp, RDB_string_const(possrepname));
+    ex2p = RDB_eq(exp, RDB_string_to_expr(possrepname));
     if (ex2p == NULL) {
         RDB_drop_expr(exp);
         RDB_drop_expr(wherep);
@@ -1281,7 +1281,7 @@ _RDB_get_cat_rtype(const char *opname, RDB_transaction *txp, RDB_type **typp)
      * Build query
      */
 
-    wherep = RDB_eq(RDB_expr_attr("NAME"), RDB_string_const(opname));
+    wherep = RDB_eq(RDB_expr_attr("NAME"), RDB_string_to_expr(opname));
     if (wherep == NULL) {
         RDB_rollback_all(txp);
         return RDB_NO_MEMORY;
@@ -1375,9 +1375,9 @@ _RDB_get_cat_ro_op(const char *name, int argc, RDB_type *argtv[],
         
     exp = RDB_and(
             RDB_eq(RDB_expr_attr("NAME"),
-                   RDB_string_const(name)),
+                   RDB_string_to_expr(name)),
             RDB_eq(RDB_expr_attr("ARGTYPES"),
-                   RDB_string_const(typestr)));
+                   RDB_string_to_expr(typestr)));
     free(typestr);
     if (exp == NULL) {
         RDB_rollback_all(txp);
@@ -1482,9 +1482,9 @@ _RDB_get_cat_upd_op(const char *name, int argc, RDB_type *argtv[],
         
     exp = RDB_and(
             RDB_eq(RDB_expr_attr("NAME"),
-                   RDB_string_const(name)),
+                   RDB_string_to_expr(name)),
             RDB_eq(RDB_expr_attr("ARGTYPES"),
-                   RDB_string_const(typestr)));
+                   RDB_string_to_expr(typestr)));
     free(typestr);
     if (exp == NULL) {
         RDB_rollback_all(txp);

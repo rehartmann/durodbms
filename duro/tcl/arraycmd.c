@@ -264,7 +264,7 @@ Duro_to_tcl(Tcl_Interp *interp, const RDB_object *objp, RDB_transaction *txp)
     if (typ != NULL && RDB_type_is_scalar(typ)) {
         return uobj_to_list(interp, objp, txp);
     }
-    if (objp->kind == RDB_OB_TUPLE) {
+    if (objp->kind == RDB_OB_TUPLE || objp->kind == RDB_OB_INITIAL) {
         return Duro_tuple_to_list(interp, objp, txp);
     }
     if (objp->kind == RDB_OB_TABLE) {
@@ -279,9 +279,14 @@ Duro_tuple_to_list(Tcl_Interp *interp, const RDB_object *tplp,
         RDB_transaction *txp)
 {
     int i;
+    char **namev;
     Tcl_Obj *listobjp = Tcl_NewListObj(0, NULL);
     int attrcount = RDB_tuple_size(tplp);
-    char **namev = (char **) Tcl_Alloc(attrcount * sizeof(char *));
+
+    if (attrcount == 0)
+        return listobjp;
+    
+    namev = (char **) Tcl_Alloc(attrcount * sizeof(char *));
 
     RDB_tuple_attr_names(tplp, namev);
     for (i = 0; i < attrcount; i++) {

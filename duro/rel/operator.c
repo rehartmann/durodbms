@@ -341,7 +341,7 @@ RDB_drop_op(const char *name, RDB_transaction *txp)
     /*
      * Check if it's a read-only operator
      */
-    exp = RDB_eq(RDB_expr_attr("NAME"), RDB_string_const(name));
+    exp = RDB_eq(RDB_expr_attr("NAME"), RDB_string_to_expr(name));
     if (exp == NULL) {
         RDB_rollback_all(txp);
         return RDB_NO_MEMORY;
@@ -378,7 +378,7 @@ RDB_drop_op(const char *name, RDB_transaction *txp)
         }
         
         /* Delete all versions of update operator from the database */
-        exp = RDB_eq(RDB_expr_attr("NAME"), RDB_string_const(name));
+        exp = RDB_eq(RDB_expr_attr("NAME"), RDB_string_to_expr(name));
         if (exp == NULL) {
             RDB_rollback_all(txp);
             return RDB_NO_MEMORY;
@@ -406,7 +406,7 @@ RDB_drop_op(const char *name, RDB_transaction *txp)
         }
 
         /* Delete all versions of update operator from the database */
-        exp = RDB_eq(RDB_expr_attr("NAME"), RDB_string_const(name));
+        exp = RDB_eq(RDB_expr_attr("NAME"), RDB_string_to_expr(name));
         if (exp == NULL) {
             RDB_rollback_all(txp);
             return RDB_NO_MEMORY;

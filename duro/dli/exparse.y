@@ -15,7 +15,10 @@ extern RDB_ltablefn *expr_ltfp;
 extern void *expr_arg;
 
 static RDB_table *
-expr_to_table (const RDB_expression *exp);
+expr_to_table(const RDB_expression *exp);
+
+static RDB_expression *
+table_dum_expr(void);
 
 int
 yylex(void);
@@ -96,6 +99,8 @@ enum {
 %token TOK_MIN
 %token TOK_ALL
 %token TOK_ANY
+%token TOK_TABLE_DEE
+%token TOK_TABLE_DUM
 %token INVALID
 
 %type <exp> relation project select rename extend summarize wrap unwrap
@@ -150,7 +155,7 @@ project: primary_expression '{' attribute_name_list '}' {
                 RDB_destroy_obj(&dstobj);
                 YYERROR;
             }
-            $$ = RDB_obj_const(&dstobj);
+            $$ = RDB_obj_to_expr(&dstobj);
             RDB_destroy_obj(&dstobj);
             if ($$ == NULL) {
                 YYERROR;
@@ -184,7 +189,7 @@ project: primary_expression '{' attribute_name_list '}' {
                 RDB_destroy_obj(&dstobj);
                 YYERROR;
             }
-            $$ = RDB_obj_const(&dstobj);
+            $$ = RDB_obj_to_expr(&dstobj);
             RDB_destroy_obj(&dstobj);
             if ($$ == NULL) {
                 YYERROR;
@@ -255,7 +260,7 @@ rename: primary_expression TOK_RENAME '(' renaming_list ')' {
                 RDB_destroy_obj(&dstobj);
                 YYERROR;
             }
-            $$ = RDB_obj_const(&dstobj);
+            $$ = RDB_obj_to_expr(&dstobj);
             RDB_destroy_obj(&dstobj);
             if ($$ == NULL) {
                 YYERROR;
@@ -384,7 +389,7 @@ relation: primary_expression TOK_UNION primary_expression {
                 RDB_destroy_obj(&dstobj);
                 YYERROR;
             }
-            $$ = RDB_obj_const(&dstobj);
+            $$ = RDB_obj_to_expr(&dstobj);
             RDB_destroy_obj(&dstobj);
             if ($$ == NULL)
                 YYERROR;
@@ -420,7 +425,7 @@ extend: TOK_EXTEND primary_expression TOK_ADD '(' extend_add_list ')' {
             if (expr_ret != RDB_OK) {
                 YYERROR;
             }
-            $$ = RDB_obj_const(valp);
+            $$ = RDB_obj_to_expr(valp);
             if ($$ == NULL)
                 YYERROR;
         } else {
@@ -615,7 +620,7 @@ wrap: primary_expression TOK_WRAP '(' wrapping_list ')' {
                 RDB_destroy_obj(&dstobj);
                 YYERROR;
             }
-            $$ = RDB_obj_const(&dstobj);
+            $$ = RDB_obj_to_expr(&dstobj);
             RDB_destroy_obj(&dstobj);
             if ($$ == NULL)
                 YYERROR;
@@ -689,7 +694,7 @@ unwrap: primary_expression TOK_UNWRAP '(' attribute_name_list ')' {
                 RDB_destroy_obj(&dstobj);
                 YYERROR;
             }
-            $$ = RDB_obj_const(&dstobj);
+            $$ = RDB_obj_to_expr(&dstobj);
             RDB_destroy_obj(&dstobj);
             if ($$ == NULL)
                 YYERROR;
@@ -868,13 +873,15 @@ extractor: TOK_TUPLE TOK_FROM expression {
             RDB_destroy_obj(&tpl);
             YYERROR;
         }
-        $$ = RDB_obj_const(&tpl);
+        $$ = RDB_obj_to_expr(&tpl);
         RDB_destroy_obj(&tpl);
     }
     ;
 
 count_invocation: TOK_COUNT '(' expression ')' {
-        $$ = RDB_expr_cardinality($3);
+        RDB_table *tbp = expr_to_table($3);
+
+        $$ = RDB_expr_cardinality(tbp != NULL ? RDB_table_to_expr(tbp) : $3);
         if ($$ == NULL)
             YYERROR;
     }
@@ -1073,16 +1080,36 @@ literal: /* "RELATION" '{' expression_list '}' {
      | "RELATION" '{' '}'
        '{' opt_expression_list '}' {
      }
-     | "TABLE_DEE" {
+     | */ TOK_TABLE_DEE {
+         RDB_object tpl;
+         RDB_expression *exp = table_dum_expr();
+
+         if (exp == NULL)
+             YYERROR;
+
+         RDB_init_obj(&tpl);
+         expr_ret = RDB_insert(exp->var.obj.var.tbp, &tpl, expr_txp);
+         RDB_destroy_obj(&tpl);
+         if (expr_ret != RDB_OK) {
+             RDB_drop_expr(exp);
+             YYERROR;
+         }
+
+         $$ = exp;
      }
-     | "TABLE_DUM" {
+     | TOK_TABLE_DUM {
+         RDB_expression *exp = table_dum_expr();
+
+         if (exp == NULL)
+             YYERROR;
+         $$ = exp;
      }
-     | */ TOK_TUPLE '{' '}' {
+     | TOK_TUPLE '{' '}' {
         RDB_object obj;
 
         RDB_init_obj(&obj);
 
-        $$ = RDB_obj_const(&obj);
+        $$ = RDB_obj_to_expr(&obj);
 
         RDB_destroy_obj(&obj);
      } 
@@ -1109,7 +1136,7 @@ tuple_item_list: TOK_ID expression {
         if (expr_ret != RDB_OK)
             YYERROR;
 
-        $$ = RDB_obj_const(&obj);
+        $$ = RDB_obj_to_expr(&obj);
 
         RDB_destroy_obj(&obj);
         RDB_drop_expr($2);
@@ -1123,7 +1150,7 @@ tuple_item_list: TOK_ID expression {
         if (valp == NULL)
             YYERROR;
 
-        $$ = RDB_obj_const(RDB_expr_obj($1));
+        $$ = RDB_obj_to_expr(RDB_expr_obj($1));
         expr_ret = RDB_tuple_set(RDB_expr_obj($$), $3->var.attr.name, valp);
         if (expr_ret != RDB_OK)
             YYERROR;
@@ -1193,4 +1220,25 @@ expr_to_table(const RDB_expression *exp)
 
     expr_ret = RDB_INVALID_ARGUMENT;
     return NULL;
+}
+
+static RDB_expression *
+table_dum_expr(void)
+{
+     RDB_object obj;
+     RDB_table *tbp;
+     RDB_expression *exp;
+
+     expr_ret = RDB_create_table(NULL, RDB_FALSE, 0, NULL, 0, NULL,
+             expr_txp, &tbp);
+     if (expr_ret != RDB_OK)
+         return NULL;
+
+     RDB_init_obj(&obj);
+
+     RDB_table_to_obj(&obj, tbp);
+     exp = RDB_obj_to_expr(&obj);
+
+     RDB_destroy_obj(&obj);
+     return exp;
 }

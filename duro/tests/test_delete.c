@@ -56,7 +56,7 @@ test_delete(RDB_database *dbp)
 
     printf("Deleting #1 from EMPS1\n");
     exprp = RDB_eq(RDB_expr_attr("EMPNO"),
-            RDB_int_const(1));
+            RDB_int_to_expr(1));
     ret = RDB_delete(tbp, exprp, &tx);
     if (ret != RDB_OK) {
         RDB_rollback(&tx);

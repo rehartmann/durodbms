@@ -143,11 +143,11 @@ See the release notes for details.
 
 <ul>
 <li><a href="#expr_is_const">RDB_expr_is_const</a>
-<li><a href="#bool_const">RDB_bool_const</a>
-<li><a href="#int_const">RDB_int_const</a>
-<li><a href="#rational_const">RDB_rational_const</a>
-<li><a href="#string_const">RDB_string_const</a>
-<li><a href="#obj_const">RDB_obj_const</a>
+<li><a href="#bool_to_expr">RDB_bool_to_expr</a>
+<li><a href="#int_to_expr">RDB_int_to_expr</a>
+<li><a href="#rational_to_expr">RDB_rational_to_expr</a>
+<li><a href="#string_to_expr">RDB_string_to_expr</a>
+<li><a href="#obj_to_expr">RDB_obj_to_expr</a>
 <li><a href="#expr_attr">RDB_expr_attr</a>
 <li><a href="#eq">RDB_eq</a>
 <li><a href="#neq">RDB_neq</a>
@@ -2767,16 +2767,16 @@ RDB_expr_is_const(const RDB_expression *);
 
 <hr>
 
-<h2 id="bool_const">RDB_bool_const</h2>
+<h2 id="bool_to_expr">RDB_bool_to_expr</h2>
 
 <pre>
 RDB_expression *
-RDB_bool_const(RDB_bool);
+RDB_bool_to_expr(RDB_bool);
 </pre>
 
 <h3>Description</h3>
 
-<p>RDB_bool_const creates a constant expression of type BOOLEAN.
+<p>RDB_bool_to_expr creates a constant expression of type BOOLEAN.
 
 <h3>Return value</h3>
 
@@ -2785,16 +2785,16 @@ failed.
 
 <hr>
 
-<h2 id="int_const">RDB_int_const</h2>
+<h2 id="int_to_expr">RDB_int_to_expr</h2>
 
 <pre>
 RDB_expression *
-RDB_int_const(RDB_int);
+RDB_int_to_expr(RDB_int);
 </pre>
 
 <h3>Description</h3>
 
-<p>RDB_int_const creates a constant expression of type INTEGER.
+<p>RDB_int_to_expr creates a constant expression of type INTEGER.
 
 <h3>Return value</h3>
 
@@ -2803,16 +2803,16 @@ failed.
 
 <hr>
 
-<h2 id="rational_const">RDB_rational_const</h2>
+<h2 id="rational_to_expr">RDB_rational_to_expr</h2>
 
 <pre>
 RDB_expression *
-RDB_rational_const(RDB_rational);
+RDB_rational_to_expr(RDB_rational);
 </pre>
 
 <h3>Description</h3>
 
-<p>RDB_rational_const creates a constant expression of type RATIONAL.
+<p>RDB_rational_to_expr creates a constant expression of type RATIONAL.
 
 <h3>Return value</h3>
 
@@ -2821,16 +2821,16 @@ failed.
 
 <hr>
 
-<h2 id="string_const">RDB_string_const</h2>
+<h2 id="string_to_expr">RDB_string_to_expr</h2>
 
 <pre>
 RDB_expression *
-RDB_string_const(const char *);
+RDB_string_to_expr(const char *);
 </pre>
 
 <h3>Description</h3>
 
-<p>RDB_string_const creates a constant expression of type STRING.
+<p>RDB_string_to_expr creates a constant expression of type STRING.
 
 <h3>Return value</h3>
 
@@ -2839,16 +2839,16 @@ failed.
 
 <hr>
 
-<h2 id="obj_const">RDB_obj_const</h2>
+<h2 id="obj_to_expr">RDB_obj_to_expr</h2>
 
 <pre>
 RDB_expression *
-RDB_obj_const(const RDB_object *valp);
+RDB_obj_to_expr(const RDB_object *valp);
 </pre>
 
 <h3>Description</h3>
 
-<p>RDB_obj_const creates a constant expression from a RDB_object.
+<p>RDB_obj_to_expr creates a constant expression from a RDB_object.
 
 <h3>Return value</h3>
 

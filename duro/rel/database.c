@@ -780,7 +780,7 @@ RDB_drop_db(RDB_database *dbp)
         goto error;
     }
     exprp = RDB_eq(RDB_expr_attr("DBNAME"),
-                   RDB_string_const(dbp->name));
+                   RDB_string_to_expr(dbp->name));
     ret = RDB_select(dbp->dbrootp->dbtables_tbp, exprp, &vtb2p);
     if (ret != RDB_OK) {
         RDB_drop_expr(exprp);
@@ -808,7 +808,7 @@ RDB_drop_db(RDB_database *dbp)
     /* Check if the database exists */
 
     exprp = RDB_eq(RDB_expr_attr("DBNAME"),
-                  RDB_string_const(dbp->name));
+                  RDB_string_to_expr(dbp->name));
     if (exprp == NULL) {
         ret = RDB_NO_MEMORY;
         goto error;
@@ -829,7 +829,7 @@ RDB_drop_db(RDB_database *dbp)
     /* Disassociate all tables from database */
 
     exprp = RDB_eq(RDB_expr_attr("DBNAME"),
-                  RDB_string_const(dbp->name));
+                  RDB_string_to_expr(dbp->name));
     if (exprp == NULL) {
         ret = RDB_NO_MEMORY;
         goto error;

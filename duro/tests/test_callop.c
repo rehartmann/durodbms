@@ -88,7 +88,7 @@ test_useop(RDB_database *dbp)
     }
 
     expv[0] = RDB_expr_attr("DEPTNO");
-    expv[1] = RDB_int_const(100);
+    expv[1] = RDB_int_to_expr(100);
 
     extend.name = "XDEPTNO";
     ret = RDB_user_op("PLUS", 2, expv, &tx, &extend.exp);

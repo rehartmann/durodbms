@@ -14,7 +14,7 @@ static RDB_expression *
 attr_eq(RDB_attr *attrp, const RDB_object *tup)
 {
     return RDB_eq(RDB_expr_attr(attrp->name),
-                  RDB_obj_const(RDB_tuple_get(tup, attrp->name)));
+                  RDB_obj_to_expr(RDB_tuple_get(tup, attrp->name)));
 }
 
 static int

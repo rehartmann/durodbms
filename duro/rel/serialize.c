@@ -736,7 +736,7 @@ deserialize_expr(RDB_object *valp, int *posp, RDB_transaction *txp,
                    RDB_destroy_obj(&val);
                    return ret;
                }
-               *expp = RDB_obj_const(&val);
+               *expp = RDB_obj_to_expr(&val);
                RDB_destroy_obj(&val);
                if (exp == NULL)
                    return RDB_NO_MEMORY;
