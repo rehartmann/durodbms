@@ -201,7 +201,7 @@ type_implement_cmd(TclState *statep, Tcl_Interp *interp, int objc,
     RDB_type *irep = NULL;
 
     if ((objc != 4) && (objc != 5)) {
-        Tcl_WrongNumArgs(interp, 2, objv, "typename ?arep? tx");
+        Tcl_WrongNumArgs(interp, 2, objv, "typename ?irep? tx");
         return TCL_ERROR;
     }
 
@@ -219,8 +219,10 @@ type_implement_cmd(TclState *statep, Tcl_Interp *interp, int objc,
             return ret;
     }
 
-    ret = RDB_implement_type(Tcl_GetString(objv[objc - 2]), NULL, (size_t)-1,
+    ret = RDB_implement_type(Tcl_GetString(objv[objc - 2]), irep, (size_t)-1,
             txp);
+    if (irep != NULL && !RDB_type_is_scalar(irep))
+        RDB_drop_type(irep, txp);
     if (ret != RDB_OK) {
         Duro_dberror(interp, ret);
         return TCL_ERROR;
