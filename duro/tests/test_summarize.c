@@ -22,8 +22,14 @@ print_table(RDB_table *tbp, RDB_transaction *txp)
     RDB_init_tuple(&tpl);    
     for (i = 0; (err = RDB_array_get_tuple(&array, i, &tpl)) == RDB_OK; i++) {
         printf("DEPTNO: %d\n", RDB_tuple_get_int(&tpl, "DEPTNO"));
+        printf("COUNT_EMPS: %d\n",
+               RDB_tuple_get_int(&tpl, "COUNT_EMPS"));
+
         printf("SUM_SALARY: %f\n",
                (double)RDB_tuple_get_rational(&tpl, "SUM_SALARY"));
+
+        printf("AVG_SALARY: %f\n",
+               (double)RDB_tuple_get_rational(&tpl, "AVG_SALARY"));
     }
     RDB_destroy_tuple(&tpl);
     if (err != RDB_NOT_FOUND) {
@@ -47,7 +53,7 @@ test_summarize(RDB_database *dbp)
     RDB_transaction tx;
     RDB_table *tbp, *tbp2, *vtbp, *projtbp;
     int err;
-    RDB_summarize_add add;
+    RDB_summarize_add addv[3];
 
     RDB_get_table(dbp, "EMPS1", &tbp);
     RDB_get_table(dbp, "EMPS2", &tbp2);
@@ -74,10 +80,18 @@ test_summarize(RDB_database *dbp)
         return err;
     }
 
-    add.op = RDB_SUM;
-    add.exp = RDB_expr_attr("SALARY", &RDB_RATIONAL);
-    add.name = "SUM_SALARY";
-    err = RDB_summarize(vtbp, projtbp, 1, &add, &vtbp);
+    addv[0].op = RDB_COUNT;
+    addv[0].name = "COUNT_EMPS";
+
+    addv[1].op = RDB_SUM;
+    addv[1].exp = RDB_expr_attr("SALARY", &RDB_RATIONAL);
+    addv[1].name = "SUM_SALARY";
+
+    addv[2].op = RDB_AVG;
+    addv[2].exp = RDB_expr_attr("SALARY", &RDB_RATIONAL);
+    addv[2].name = "AVG_SALARY";
+
+    err = RDB_summarize(vtbp, projtbp, 3, addv, &vtbp);
     if (err != RDB_OK) {
         RDB_rollback(&tx);
         return err;

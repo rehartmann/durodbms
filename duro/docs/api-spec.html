@@ -286,9 +286,6 @@ RDB_make_persistent(RDB_table *, RDB_transaction *);
 RDB_db_name(dbp)
 
 int
-RDB_get_db(const char *name, RDB_environment *, RDB_database **dbpp);
-
-int
 RDB_release_db(RDB_database *dbp);
 
 
@@ -380,6 +377,12 @@ RDB_table_to_array(RDB_table *, RDB_array *arrp,
                    RDB_transaction *);
 
 int
+RDB_array_get(RDB_array *, RDB_int idx, RDB_value *);
+
+int
+RDB_array_set(RDB_array *, RDB_int idx, const RDB_value *);
+
+int
 RDB_array_get_tuple(RDB_array *, RDB_int idx, RDB_tuple *);
 
 int
@@ -387,6 +390,9 @@ RDB_array_set_tuple(RDB_array *, RDB_int idx, const RDB_tuple *);
 
 int
 RDB_array_length(RDB_array *);
+
+int
+RDB_detach_array(RDB_array *);
 
 </pre>
 
@@ -488,18 +494,21 @@ RDB_destroy_value(RDB_value *valp);
 
 <h2>Non-D functions</h2>
 
-<h3>Creating a database</h3>
+<h3>Environment functions</h3>
 
 <pre>
 int
-RDB_create_db(const char *name, RDB_environment *envp, RDB_database **dbpp);
+RDB_get_db_from_env(const char *name, RDB_environment *, RDB_database **dbpp);
+
+int
+RDB_create_db_from_env(const char *name, RDB_environment *envp, RDB_database **dbpp);
 </pre>
 
 <h3>Implementing a type</h3>
 
 <pre>
 int
-RDB_implement_type(RDB_type *, const char *modname, int option);
+RDB_implement_type(RDB_type *, const char *modname, int options);
 </pre>
 
 <h3>Dropping a database</h3>

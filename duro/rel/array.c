@@ -66,14 +66,14 @@ RDB_array_get_tuple(RDB_array *arrp, int idx, RDB_tuple *tup)
         arrp->pos = 0;
     }
     while (arrp->pos < idx) {
-        res = _RDB_next_tuple(arrp->qrp, tup);
+        res = _RDB_next_tuple(arrp->qrp, tup, arrp->txp);
         if (res != RDB_OK)
             return res;
         ++arrp->pos;
     }
 
     ++arrp->pos;
-    return _RDB_next_tuple(arrp->qrp, tup);
+    return _RDB_next_tuple(arrp->qrp, tup, arrp->txp);
 }
 
 int
@@ -95,7 +95,7 @@ RDB_array_length(RDB_array *arrp)
         }
 
         do {
-            res = _RDB_next_tuple(arrp->qrp, &tpl);
+            res = _RDB_next_tuple(arrp->qrp, &tpl, arrp->txp);
             if (res == RDB_OK) {
                 arrp->pos++;
             }

@@ -34,7 +34,7 @@ drop_qresults(RDB_transaction *txp) {
 
     for (qrp = txp->first_qrp; qrp != NULL; qrp = nextqrp) {
         nextqrp = qrp->nextp;
-        hres = _RDB_drop_qresult(qrp);
+        hres = _RDB_drop_qresult(qrp, txp);
         if (hres != RDB_OK)
             res = hres;
     }

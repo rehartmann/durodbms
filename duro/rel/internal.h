@@ -20,7 +20,6 @@ typedef struct RDB_qresult {
         } virtual;
     } var;
     int endreached;
-    RDB_transaction *txp;
  
     /* needed for duplicate elimination */
     RDB_table *matp;
@@ -41,10 +40,10 @@ int
 _RDB_table_qresult(RDB_table *, RDB_qresult **, RDB_transaction *);
 
 int
-_RDB_next_tuple(RDB_qresult *, RDB_tuple *);
+_RDB_next_tuple(RDB_qresult *, RDB_tuple *, RDB_transaction *);
 
 int
-_RDB_drop_qresult(RDB_qresult *);
+_RDB_drop_qresult(RDB_qresult *, RDB_transaction *);
 
 int
 _RDB_create_table(const char *name, RDB_bool persistent,

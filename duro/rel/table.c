@@ -571,7 +571,7 @@ RDB_delete(RDB_table *tbp, RDB_expression *condp, RDB_transaction *txp)
 int
 RDB_copy_table(RDB_table *dstp, RDB_table *srcp, RDB_transaction *txp)
 {
-    RDB_qresult *itp = NULL;
+    RDB_qresult *qrp = NULL;
     RDB_tuple tpl;
     RDB_transaction tx;
     int res;
@@ -592,13 +592,13 @@ RDB_copy_table(RDB_table *dstp, RDB_table *srcp, RDB_transaction *txp)
 
     /* copy all tuples from source table to destination table */
 
-    res = _RDB_table_qresult(srcp, &itp, &tx);
+    res = _RDB_table_qresult(srcp, &qrp, &tx);
     if (res != RDB_OK)
         goto error;
 
     RDB_init_tuple(&tpl);
 
-    while ((res = _RDB_next_tuple(itp, &tpl)) == RDB_OK) {
+    while ((res = _RDB_next_tuple(qrp, &tpl, txp)) == RDB_OK) {
         res = RDB_insert(dstp, &tpl, &tx);
         RDB_destroy_tuple(&tpl);
         if (res != RDB_OK) {
@@ -608,13 +608,13 @@ RDB_copy_table(RDB_table *dstp, RDB_table *srcp, RDB_transaction *txp)
     if (res != RDB_NOT_FOUND)
         goto error;
 
-    _RDB_drop_qresult(itp);
+    _RDB_drop_qresult(qrp, &tx);
 
     return RDB_commit(&tx);
 
 error:
-    if (itp != NULL)
-        _RDB_drop_qresult(itp);
+    if (qrp != NULL)
+        _RDB_drop_qresult(qrp, &tx);
     RDB_rollback(&tx);
     return res;
 }
@@ -738,7 +738,7 @@ RDB_aggregate(RDB_table *tbp, RDB_aggregate_op op, const char *attrname,
     if (res != RDB_OK)
         return res;
 
-    while ((res = _RDB_next_tuple(qrp, &tpl)) == RDB_OK) {
+    while ((res = _RDB_next_tuple(qrp, &tpl, txp)) == RDB_OK) {
         switch (op) {
             case RDB_COUNT:
                 resultp->var.int_val++;
@@ -798,7 +798,7 @@ RDB_aggregate(RDB_table *tbp, RDB_aggregate_op op, const char *attrname,
     }
     RDB_destroy_tuple(&tpl);
     if (res != RDB_NOT_FOUND) {
-        _RDB_drop_qresult(qrp);
+        _RDB_drop_qresult(qrp, txp);
         return res;
     }
 
@@ -808,7 +808,7 @@ RDB_aggregate(RDB_table *tbp, RDB_aggregate_op op, const char *attrname,
         resultp->var.rational_val /= count;
     }
 
-    _RDB_drop_qresult(qrp);
+    _RDB_drop_qresult(qrp, txp);
     return RDB_OK;
 }
 
@@ -948,26 +948,26 @@ int
 RDB_table_is_empty(RDB_table *tbp, RDB_transaction *txp, RDB_bool *resultp)
 {
     int res;
-    RDB_qresult *itp;
+    RDB_qresult *qrp;
     RDB_tuple tpl;
 
-    res = _RDB_table_qresult(tbp, &itp, txp);
+    res = _RDB_table_qresult(tbp, &qrp, txp);
     if (res != RDB_OK)
         return res;
 
     RDB_init_tuple(&tpl);
 
-    res = _RDB_next_tuple(itp, &tpl);
+    res = _RDB_next_tuple(qrp, &tpl, txp);
     RDB_destroy_tuple(&tpl);
     if (res == RDB_OK)
         *resultp = RDB_FALSE;
     else if (res == RDB_NOT_FOUND)
         *resultp = RDB_TRUE;
     else {
-        _RDB_drop_qresult(itp);
+        _RDB_drop_qresult(qrp, txp);
         return res;
     }
-    return _RDB_drop_qresult(itp);
+    return _RDB_drop_qresult(qrp, txp);
 }
 
 static RDB_key_attrs *
@@ -1499,11 +1499,17 @@ RDB_summarize(RDB_table *tb1p, RDB_table *tb2p, int addc, RDB_summarize_add addv
     tuptyp->complex.tuple.attrc = attrc;
     tuptyp->complex.tuple.attrv = malloc(attrc * sizeof(RDB_attr));
     for (i = 0; i < addc; i++) {
+        RDB_type *typ = addv[i].op == RDB_COUNT ? &RDB_INTEGER : RDB_expr_type(addv[i].exp);
+
         tuptyp->complex.tuple.attrv[i].name = addv[i].name;
-        res = aggr_type(tb1p->typ->complex.basetyp, RDB_expr_type(addv[i].exp),
+        if (addv[i].op == RDB_COUNT) {
+            tuptyp->complex.tuple.attrv[i].type = &RDB_INTEGER;
+        } else {
+            res = aggr_type(tb1p->typ->complex.basetyp, typ,
                         addv[i].op, &tuptyp->complex.tuple.attrv[i].type);
-        if (res != RDB_OK)
-            goto error;
+            if (res != RDB_OK)
+                goto error;
+        }
         tuptyp->complex.tuple.attrv[i].defaultp = NULL;
         tuptyp->complex.tuple.attrv[i].options = 0;
     }

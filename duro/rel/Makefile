@@ -17,7 +17,7 @@ clean :
 database.o : database.c rdb.h internal.h serialize.h
 	$(CC) $(CFLAGS) -c database.c
 
-transaction.o : transaction.c rdb.h
+transaction.o : transaction.c rdb.h internal.h
 	$(CC) $(CFLAGS) -c transaction.c
 
 table.o : table.c rdb.h typeimpl.h internal.h
