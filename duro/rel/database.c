@@ -17,7 +17,8 @@
 #include <ctype.h>
 
 RDB_environment *
-RDB_db_env(RDB_database *dbp) {
+RDB_db_env(RDB_database *dbp)
+{
     return dbp->dbrootp->envp;
 }
 

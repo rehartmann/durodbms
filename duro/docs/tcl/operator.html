@@ -31,14 +31,18 @@ operator. The arguments are available as Tcl variables.
 Values are represented the same way as values returned by
 <a href="expr.html">duro::expr</a>, with the following exception:
 If the operator is a getter, the actual representation of the argument
-passed rather than a possible representation.
+is used instead of a possible representation.
 
 <dt><b>duro::operator create</b> <var>opname</var> <b>-updates</b>
 <var>updList argList body txId</var>
 <dd>
 <p>Creates an update operator <var>opname</var>. <var>updList</var> is a
 list of the arguments which are updated by the operator.
-These arguments must be passed as Tcl variables.
+These arguments must be passed to <a href="call.html">duro::call</a> as Tcl variables.
+
+<p>The argument <var>argList</var> defines the arguments of the operator.
+<var>argList</var> is a list of element pairs. The first element of each
+pair is a argument name and the second element is the type of the argument.
 
 <p>The argument <var>body</var> contains the Tcl code which implements the
 operator. The arguments are available as Tcl variables.
@@ -47,12 +51,11 @@ Values are represented the same way as values returned by
 
 <ol>
 <li>Updated relation arguments are passed as table names.
-<li>If the operator is a setter, the actual representation of the first
-argument is passed as an actual representation.
+<li>If the operator is a setter, the actual representation of the argument
+is used instead of a possible representation.
 </ol>
 
-<p>The transaction id passed to <a href="call.html">duro::call</a>
-is available as $tx.
+<p>The transaction id passed to duro::call is available as $tx.
 
 <dt><b>duro::operator drop</b> <var>opname</var> <var>txId</var>
 <dd>

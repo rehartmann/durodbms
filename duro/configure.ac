@@ -2,12 +2,12 @@
 # Process this file with autoconf to produce a configure script.
 
 AC_PREREQ(2.57)
-AC_INIT(duro, 0.8, rhartmann@users.sourceforge.net)
+AC_INIT(duro, 0.9, rhartmann@users.sourceforge.net)
 AC_CONFIG_SRCDIR([util/lstables.c])
 
 AM_INIT_AUTOMAKE
 
-AC_PREFIX_DEFAULT(/usr/local/duro.0.8)
+AC_PREFIX_DEFAULT(/usr/local/duro.0.9)
 
 # Checks for programs.
 AC_PROG_CXX

@@ -663,7 +663,7 @@ update(RDB_table *tbp, RDB_expression *condp, int updc,
         case RDB_TB_SELECT_INDEX:
             if (tbp->var.select.indexp->idxp == NULL)
                 return update_select_pindex(tbp, condp, updc, updv, txp);
-            return update_select_index(tbp, condp, updc, updv, txp);;
+            return update_select_index(tbp, condp, updc, updv, txp);
         case RDB_TB_JOIN:
             return RDB_NOT_SUPPORTED;
         case RDB_TB_EXTEND:

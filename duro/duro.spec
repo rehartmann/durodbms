@@ -1,6 +1,6 @@
 Summary: Relational open source database library
 Name: duro
-Version: 0.8
+Version: 0.9
 Release: 1
 Source: %{name}-%{version}.tar.gz
 Copyright: GPL

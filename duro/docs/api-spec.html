@@ -2685,6 +2685,26 @@ specified by <var>dbp</var>.
 
 <hr>
 
+<h2 id="db_env">RDB_db_env</h2>
+
+<pre>
+#include &lt;rel/rdb.h&gt;
+
+RDB_environment *
+RDB_db_env(RDB_database *dbp);
+</pre>
+
+<h3>Description</h3>
+
+<p>RDB_db_env returns a pointer to the database environment of the database
+specified by <var>dbp</var>.
+
+<h3>Return value</h3>
+
+<p>A pointer to the database environment.
+
+<hr>
+
 <h2 id="begin_tx">RDB_begin_tx</h2>
 
 <pre>
@@ -2970,6 +2990,8 @@ using RDB_table_to_array.
 <h2 id="expr_is_const">RDB_expr_is_const</h2>
 
 <pre>
+#include &lt;rel/rdb.h&gt;
+
 RDB_bool
 RDB_expr_is_const(const RDB_expression *);
 </pre>
@@ -2989,6 +3011,8 @@ RDB_expr_is_const(const RDB_expression *);
 <h2 id="bool_to_expr">RDB_bool_to_expr</h2>
 
 <pre>
+#include &lt;rel/rdb.h&gt;
+
 RDB_expression *
 RDB_bool_to_expr(RDB_bool);
 </pre>
@@ -3007,6 +3031,8 @@ failed.
 <h2 id="int_to_expr">RDB_int_to_expr</h2>
 
 <pre>
+#include &lt;rel/rdb.h&gt;
+
 RDB_expression *
 RDB_int_to_expr(RDB_int);
 </pre>
@@ -3025,6 +3051,8 @@ failed.
 <h2 id="rational_to_expr">RDB_rational_to_expr</h2>
 
 <pre>
+#include &lt;rel/rdb.h&gt;
+
 RDB_expression *
 RDB_rational_to_expr(RDB_rational);
 </pre>
@@ -3043,6 +3071,8 @@ failed.
 <h2 id="string_to_expr">RDB_string_to_expr</h2>
 
 <pre>
+#include &lt;rel/rdb.h&gt;
+
 RDB_expression *
 RDB_string_to_expr(const char *);
 </pre>
@@ -3061,6 +3091,8 @@ failed.
 <h2 id="obj_to_expr">RDB_obj_to_expr</h2>
 
 <pre>
+#include &lt;rel/rdb.h&gt;
+
 RDB_expression *
 RDB_obj_to_expr(const RDB_object *valp);
 </pre>
@@ -3079,6 +3111,8 @@ failed.
 <h2 id="expr_attr">RDB_expr_attr</h2>
 
 <pre>
+#include &lt;rel/rdb.h&gt;
+
 RDB_expression *
 RDB_expr_attr(const char *attrname);
 </pre>
@@ -3097,6 +3131,8 @@ failed.
 <h2 id="eq">RDB_eq</h2>
 
 <pre>
+#include &lt;rel/rdb.h&gt;
+
 RDB_expression *
 RDB_eq(RDB_expression *, RDB_expression *);
 </pre>
@@ -3116,6 +3152,8 @@ failed.
 <h2 id="neq">RDB_neq</h2>
 
 <pre>
+#include &lt;rel/rdb.h&gt;
+
 RDB_expression *
 RDB_neq(RDB_expression *, RDB_expression *);
 </pre>
@@ -3135,6 +3173,8 @@ failed.
 <h2 id="lt">RDB_lt</h2>
 
 <pre>
+#include &lt;rel/rdb.h&gt;
+
 RDB_expression *
 RDB_lt(RDB_expression *, RDB_expression *);
 </pre>
@@ -3154,6 +3194,8 @@ failed.
 <h2 id="gt">RDB_gt</h2>
 
 <pre>
+#include &lt;rel/rdb.h&gt;
+
 RDB_expression *
 RDB_gt(RDB_expression *, RDB_expression *);
 </pre>
@@ -3173,6 +3215,8 @@ failed.
 <h2 id="let">RDB_let</h2>
 
 <pre>
+#include &lt;rel/rdb.h&gt;
+
 RDB_expression *
 RDB_let(RDB_expression *, RDB_expression *);
 </pre>
@@ -3192,6 +3236,8 @@ failed.
 <h2 id="get">RDB_get</h2>
 
 <pre>
+#include &lt;rel/rdb.h&gt;
+
 RDB_expression *
 RDB_get(RDB_expression *, RDB_expression *);
 </pre>
@@ -3211,6 +3257,8 @@ failed.
 <h2 id="and">RDB_and</h2>
 
 <pre>
+#include &lt;rel/rdb.h&gt;
+
 RDB_expression *
 RDB_and(RDB_expression *, RDB_expression *);
 </pre>
@@ -3230,6 +3278,8 @@ failed.
 <h2 id="or">RDB_or</h2>
 
 <pre>
+#include &lt;rel/rdb.h&gt;
+
 RDB_expression *
 RDB_or(RDB_expression *, RDB_expression *);
 </pre>
@@ -3249,6 +3299,8 @@ failed.
 <h2 id="not">RDB_not</h2>
 
 <pre>
+#include &lt;rel/rdb.h&gt;
+
 RDB_expression *
 RDB_not(RDB_expression *);
 </pre>
@@ -3268,6 +3320,8 @@ failed.
 <h2 id="add">RDB_add</h2>
 
 <pre>
+#include &lt;rel/rdb.h&gt;
+
 RDB_expression *
 RDB_add(RDB_expression *, RDB_expression *);
 </pre>
@@ -3289,6 +3343,8 @@ failed.
 <h2 id="subtract">RDB_subtract</h2>
 
 <pre>
+#include &lt;rel/rdb.h&gt;
+
 RDB_expression *
 RDB_subtract(RDB_expression *, RDB_expression *);
 </pre>
@@ -3309,6 +3365,8 @@ failed.
 <h2 id="negate">RDB_negate</h2>
 
 <pre>
+#include &lt;rel/rdb.h&gt;
+
 RDB_expression *
 RDB_negate(RDB_expression *);
 </pre>
@@ -3329,6 +3387,8 @@ failed.
 <h2 id="multiply">RDB_multiply</h2>
 
 <pre>
+#include &lt;rel/rdb.h&gt;
+
 RDB_expression *
 RDB_multiply(RDB_expression *, RDB_expression *);
 </pre>
@@ -3349,6 +3409,8 @@ failed.
 <h2 id="divide">RDB_divide</h2>
 
 <pre>
+#include &lt;rel/rdb.h&gt;
+
 RDB_expression *
 RDB_divide(RDB_expression *, RDB_expression *);
 </pre>
@@ -3369,6 +3431,8 @@ failed.
 <h2 id="concat">RDB_concat</h2>
 
 <pre>
+#include &lt;rel/rdb.h&gt;
+
 RDB_expression *
 RDB_concat(RDB_expression *, RDB_expression *);
 </pre>
@@ -3389,6 +3453,8 @@ failed.
 <h2 id="strlen">RDB_strlen</h2>
 
 <pre>
+#include &lt;rel/rdb.h&gt;
+
 RDB_expression *
 RDB_strlen(RDB_expression *arg);
 </pre>
@@ -3409,6 +3475,8 @@ failed.
 <h2 id="regmatch">RDB_regmatch</h2>
 
 <pre>
+#include &lt;rel/rdb.h&gt;
+
 RDB_expression *
 RDB_regmatch(RDB_expression *arg1p, RDB_expression *arg2p);
 </pre>
@@ -3432,6 +3500,8 @@ failed.
 <h2 id="table_to_expr">RDB_table_to_expr</h2>
 
 <pre>
+#include &lt;rel/rdb.h&gt;
+
 RDB_expression *
 RDB_table_to_expr(RDB_table *);
 </pre>
@@ -3447,9 +3517,32 @@ failed.
 
 <hr>
 
+<h2 id="tuple_attr">RDB_tuple_attr</h2>
+
+<pre>
+#include &lt;rel/rdb.h&gt;
+
+RDB_expression *
+RDB_tuple_attr(RDB_expression *, const char *attrname);
+</pre>
+
+<h3>Description</h3>
+
+<p>RDB_table_to_expr creates an expression that represents a tuple attribute
+extraction.
+
+<h3>Return value</h3>
+
+<p>A pointer to the newly created expression, of NULL if the creation
+failed.
+
+<hr>
+
 <h2 id="expr_is_empty">RDB_expr_is_empty</h2>
 
 <pre>
+#include &lt;rel/rdb.h&gt;
+
 RDB_expression *
 RDB_expr_is_empty(RDB_expression *);
 </pre>
@@ -3469,6 +3562,8 @@ failed.
 <h2 id="expr_any">RDB_expr_any</h2>
 
 <pre>
+#include &lt;rel/rdb.h&gt;
+
 RDB_expression *
 RDB_expr_any(RDB_expression *, const char *attrname);
 </pre>
@@ -3488,6 +3583,8 @@ failed.
 <h2 id="expr_all">RDB_expr_all</h2>
 
 <pre>
+#include &lt;rel/rdb.h&gt;
+
 RDB_expression *
 RDB_expr_all(RDB_expression *, const char *attrname);
 </pre>
@@ -3507,6 +3604,8 @@ failed.
 <h2 id="expr_avg">RDB_expr_avg</h2>
 
 <pre>
+#include &lt;rel/rdb.h&gt;
+
 RDB_expression *
 RDB_expr_avg(RDB_expression *, const char *attrname);
 </pre>
@@ -3526,6 +3625,8 @@ failed.
 <h2 id="expr_cardinality">RDB_expr_cardinality</h2>
 
 <pre>
+#include &lt;rel/rdb.h&gt;
+
 RDB_expression *
 RDB_expr_cardinality(RDB_expression *arg1);
 </pre>
@@ -3545,6 +3646,8 @@ failed.
 <h2 id="expr_max">RDB_expr_max</h2>
 
 <pre>
+#include &lt;rel/rdb.h&gt;
+
 RDB_expression *
 RDB_expr_max(RDB_expression *, const char *attrname);
 </pre>
@@ -3564,6 +3667,8 @@ failed.
 <h2 id="expr_min">RDB_expr_min</h2>
 
 <pre>
+#include &lt;rel/rdb.h&gt;
+
 RDB_expression *
 RDB_expr_min(RDB_expression *, const char *attrname);
 </pre>
@@ -3583,6 +3688,8 @@ failed.
 <h2 id="expr_sum">RDB_expr_sum</h2>
 
 <pre>
+#include &lt;rel/rdb.h&gt;
+
 RDB_expression *
 RDB_expr_sum(RDB_expression *, const char *attrname);
 </pre>
@@ -3602,6 +3709,8 @@ failed.
 <h2 id="expr_subset">RDB_expr_subset</h2>
 
 <pre>
+#include &lt;rel/rdb.h&gt;
+
 RDB_expression *
 RDB_expr_subset(RDB_expression *, RDB_expression *);
 </pre>
@@ -3621,6 +3730,8 @@ failed.
 <h2 id="expr_comp">RDB_expr_comp</h2>
 
 <pre>
+#include &lt;rel/rdb.h&gt;
+
 RDB_expression *
 RDB_expr_comp(RDB_expression *arg, const char *compname);
 </pre>
@@ -3640,6 +3751,8 @@ failed.
 <h2 id="user_op">RDB_user_op</h2>
 
 <pre>
+#include &lt;rel/rdb.h&gt;
+
 int
 RDB_user_op(const char *opname, int argc, RDB_expression *argv[],
        RDB_transaction *txp, RDB_expression **expp);
@@ -3670,6 +3783,8 @@ in which case the transaction is implicitly rolled back.
 <h2 id="drop_expr">RDB_drop_expr</h2>
 
 <pre>
+#include &lt;rel/rdb.h&gt;
+
 void
 RDB_drop_expr(RDB_expression *exp);
 </pre>
@@ -4627,6 +4742,10 @@ not found.
 <p>RDB_parse_expr converts an expression into a RDB_expression.
 
 <p>RDB_parse_table converts an expression into a virtual table.
+
+<h3>Return value</h3>
+
+<p>On success, RDB_OK is returned. On failure, an error code is returned.
 
 <h3>Notes</h3>
 

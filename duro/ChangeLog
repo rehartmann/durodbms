@@ -2,6 +2,10 @@ $Id$
 
 Summary of Changes for Duro
 
+Changes for Duro 0.9
+
+- Small change to RDB_expression struct.
+
 Changes for Duro 0.8
 
 - Introduced error code RDB_ATTRIBUTE_NOT_FOUND.
