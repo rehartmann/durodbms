@@ -182,8 +182,22 @@ if {![tequal $tpl $stpl]} {
     exit 1
 }
 
-# Drop tables
+#
+# Test tuple equality
+#
 
+duro::table expr t \
+    {(T1 WHERE TPATTR = TUPLE {T TUPLE {C "Blip"}, A 1, B "Blubb" }) \
+    { SCATTR } } $tx
+
+if {[duro::expr {TUPLE FROM t} $tx] != "SCATTR Bla"} {
+    puts "SCATTR should be \"Bla\", but is not"
+    exit 1
+}
+
+duro::table drop t $tx
+
+# Drop tables
 duro::table drop S $tx
 duro::table drop UW $tx
 duro::table drop T1 $tx

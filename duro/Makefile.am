@@ -41,7 +41,8 @@ tests_libplus_la_SOURCES = tests/plus.c
 
 TESTS = tests/ctests tests/rtables.tcl tests/project.tcl tests/tuple.tcl \
         tests/sdivide.tcl tests/invtable.tcl tests/operator.tcl \
-        tests/vtables.tcl tests/db2.tcl tests/rel.tcl tests/subset.tcl
+        tests/vtables.tcl tests/db2.tcl tests/rel.tcl tests/subset.tcl \
+        tests/utype.tcl
 
 TESTS_ENVIRONMENT = LD_LIBRARY_PATH=$(LD_LIBRARY_PATH):$(BDB_HOME)/lib
 
@@ -51,7 +52,7 @@ tests_test_pointtable_LDADD = $(LDADD) -lm
 
 libduro_la_SOURCES = gen/errors.c gen/hashmap.c gen/hashmapit.c \
 gen/strfns.c rec/cursor.c rec/env.c rec/index.c rec/recmap.c \
-rel/array.c rel/internal.h rel/database.c \
+rel/array.c rel/internal.h rel/database.c rel/operator.c \
 rel/expression.c rel/getargs.c rel/qresult.c rel/serialize.c rel/serialize.h \
 rel/table.c rel/update.c rel/insert.c rel/contains.c rel/transaction.c \
 rel/tuple.c rel/type.c rel/object.c rel/catalog.c rel/catalog.h \
@@ -63,7 +64,8 @@ rec/cursor.h rec/env.h rec/index.h rec/recmap.h \
 rel/rdb.h rel/typeimpl.h dli/parse.h
 
 libdurotcl_la_SOURCES = tcl/duro.c tcl/duro.h tcl/envcmd.c tcl/txcmd.c \
-        tcl/tablecmd.c tcl/dbcmd.c tcl/arraycmd.c tcl/opcmd.c tcl/exprcmd.c
+        tcl/tablecmd.c tcl/dbcmd.c tcl/arraycmd.c tcl/opcmd.c tcl/exprcmd.c \
+        tcl/typecmd.c
 
 libdurotcl_la_LIBADD = -L$(BDB_HOME)/lib libduro.la -ldb
 
@@ -86,7 +88,8 @@ tests/test_srupdate_output tests/test_summarize_output tests/test_union_output \
 tests/test_update_output tests/test_utypetable_output tests/tupletest_output \
 tests/rtables.tcl tests/project.tcl tests/tuple.tcl \
 tests/sdivide.tcl tests/invtable.tcl tests/operator.tcl \
-tests/vtables.tcl tests/db2.tcl
+tests/vtables.tcl tests/db2.tcl tests/rel.tcl tests/subset.tcl \
+tests/utype.tcl
 
 # Delete test libs
 install-exec-hook:
@@ -97,4 +100,4 @@ install-exec-hook:
 install-data-hook:
 	LD_LIBRARY_PATH=$(BDB_HOME)/lib;export LD_LIBRARY_PATH; \
                 echo pkg_mkIndex $(DESTDIR)$(prefix)/lib \
-                libdurotcl.* util.tcl | tclsh
+                libdurotcl.so util.tcl | tclsh

@@ -105,7 +105,6 @@ See the release notes for details.
 <li><a href="#obj_set_comp">RDB_obj_set_comp</a>
 <li><a href="#obj_string">RDB_obj_string</a>
 <li><a href="#obj_table">RDB_obj_table</a>
-<li><a href="#select_obj">RDB_select_obj</a>
 <li><a href="#table_to_obj">RDB_table_to_obj</a>
 
 </ul>
@@ -178,7 +177,6 @@ See the release notes for details.
 <li><a href="#expr_min">RDB_expr_min</a>
 <li><a href="#expr_sum">RDB_expr_sum</a>
 <li><a href="#expr_subset">RDB_expr_subset</a>
-<li><a href="#selector">RDB_selector</a>
 <li><a href="#table_to_expr">RDB_table_to_expr</a>
 <li><a href="#user_op">RDB_user_op</a>
 <li><a href="#drop_expr">RDB_drop_expr</a>
@@ -1176,7 +1174,12 @@ A pointer to the result table is stored at the location pointed to by
 
 <h3>Errors</h3>
 
-<p>The call may fail for a <a href="#syserr">system error</a>.
+<dl>
+<dt>RDB_TYPE_MISMATCH
+<dd>The condition is not of type BOOLEAN.
+</dl>
+
+<p>The call may also fail for a <a href="#syserr">system error</a>.
 
 <hr>
 
@@ -2089,43 +2092,6 @@ by <var>srcp</var> to the RDB_object pointed to by <var>dstp</var>.
 <h3>Errors</h3>
 
 <p>The call may fail for a <a href="#syserr">system error</a>.
-
-<hr>
-
-<h2 id="select_obj">RDB_select_obj</h2>
-
-<pre>
-#include &lt;rel/rdb.h&gt;
-
-int
-RDB_select_obj(RDB_object *valp, RDB_type *typ, const char *repname,
-              RDB_object *compv[], RDB_transaction *);
-</pre>
-
-<h3>Description</h3>
-
-<p>RDB_select_obj invokes the selector operator for the
-possible representation <var>repname</var> of the type
-specified to by <var>typ</var>. The components of the possible
-representation are passed via <var>compv</var>.
-The result value is stored in the RDB_object pointed to by
-<var>valp</var>.
-
-<h3>Return value</h3>
-
-<p>On success, RDB_OK is returned. On failure, an error code is returned.
-
-<h3>Errors</h3>
-
-<dl>
-<dt>RDB_INVALID_ARGUMENT
-<dd><var>typ</var> is not a scalar, user-defined type.
-<dd><var>repname</var> is not the name of a possible representation of
-the type specified by <var>typ</var>.
-<dt>RDB_TYPE_CONSTRAINT_VIOLATION
-<dd>The value specified violates the type constraint for
-the type specified by <var>typ</var>.
-</dl>
 
 <hr>
 
@@ -3433,25 +3399,6 @@ failed.
 
 <hr>
 
-<h2 id="selector">RDB_selector</h2>
-
-<pre>
-RDB_expression *
-RDB_selector(RDB_type *, const char *repname, RDB_expression *argv[]);
-</pre>
-
-<h3>Description</h3>
-
-<p>RDB_selector creates an expression which represents a selector
-invocation.
-
-<h3>Return value</h3>
-
-<p>A pointer to the newly created expression, of NULL if the creation
-failed.
-
-<hr>
-
 <h2 id="user_op">RDB_user_op</h2>
 
 <pre>
@@ -4279,7 +4226,7 @@ RDB_is_syserr(int err);
 <h3>Return value</h3>
 
 <p>The value returned is nonzero if <var>err</var> represents a system error,
-and zero if it is not.
+and zero if it does not.
 
 <hr>
 
@@ -4393,7 +4340,7 @@ typedef enum {
 <dt>RDB_NO_MEMORY
 <dd>Insufficient memory.
 <dt>RDB_DEADLOCK
-<dd>A deadlock condition occured.
+<dd>A deadlock condition was detected.
 <dt>RDB_INTERNAL
 <dd>Internal error.
 <dt>RDB_RESOURCE_NOT_FOUND

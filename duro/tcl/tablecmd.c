@@ -10,6 +10,7 @@
 #include <gen/strfns.h>
 #include <string.h>
 #include <ctype.h>
+#include <rel/internal.h>
 
 int
 Duro_tcl_drop_ltable(table_entry *tbep, Tcl_HashEntry *entryp)
@@ -56,7 +57,7 @@ Duro_get_table(TclState *statep, Tcl_Interp *interp, const char *name,
 
 static int
 list_to_tuple(Tcl_Interp *interp, Tcl_Obj *tobjp, RDB_type *typ,
-        RDB_object *tplp)
+        RDB_object *tplp, RDB_transaction *txp)
 {
     int ret;
     int llen;
@@ -90,7 +91,7 @@ list_to_tuple(Tcl_Interp *interp, Tcl_Obj *tobjp, RDB_type *typ,
 
         /* Convert value to RDB_object and set tuple attribute */
         RDB_init_obj(&obj);
-        ret = Duro_tcl_to_duro(interp, valuep, attrtyp, &obj);
+        ret = Duro_tcl_to_duro(interp, valuep, attrtyp, &obj, txp);
         if (ret != TCL_OK) {
             RDB_destroy_obj(&obj);
             return ret;
@@ -109,7 +110,7 @@ list_to_tuple(Tcl_Interp *interp, Tcl_Obj *tobjp, RDB_type *typ,
 
 static int
 list_to_table(Tcl_Interp *interp, Tcl_Obj *tobjp, RDB_type *typ,
-        RDB_table **tbpp)
+        RDB_table **tbpp, RDB_transaction *txp)
 {
     int ret;
     int i;
@@ -134,7 +135,7 @@ list_to_table(Tcl_Interp *interp, Tcl_Obj *tobjp, RDB_type *typ,
     for (i = 0; i < llen; i++) {
         Tcl_ListObjIndex(interp, tobjp, i, &tplobjp);
 
-        ret = list_to_tuple(interp, tplobjp, typ->var.basetyp, &tpl);
+        ret = list_to_tuple(interp, tplobjp, typ->var.basetyp, &tpl, txp);
         if (ret != TCL_OK) {
             RDB_destroy_obj(&tpl);
             return ret;
@@ -153,8 +154,82 @@ list_to_table(Tcl_Interp *interp, Tcl_Obj *tobjp, RDB_type *typ,
 }
 
 int
+call_selector(Tcl_Interp *interp, Tcl_Obj *tobjp, RDB_type *typ,
+       RDB_object *objp, RDB_transaction *txp)
+{
+    int ret;
+    int i;
+    int llen;
+    Tcl_Obj *nametobjp;
+    RDB_object **argpv;
+    RDB_object *argv;
+    RDB_ipossrep *irep;
+    char *selname;
+
+    ret = Tcl_ListObjLength(interp, tobjp, &llen);
+    if (ret != TCL_OK)
+        return ret;
+
+    if (llen == 0) {
+        Tcl_SetResult(interp, "Invalid type representation", TCL_STATIC);
+        return TCL_ERROR;
+    }
+
+    ret = Tcl_ListObjIndex(interp, tobjp, 0, &nametobjp);
+    if (ret != TCL_OK)
+        return ret;
+
+    selname = Tcl_GetString(nametobjp);
+    irep = _RDB_get_possrep(typ, selname);
+    if (irep == NULL) {
+        Tcl_AppendResult(interp, "Invalid selector: ", selname, NULL);
+        return TCL_ERROR;
+    }
+
+    argv = (RDB_object *) Tcl_Alloc(sizeof(RDB_object) * (llen - 1));
+    argpv = (RDB_object **) Tcl_Alloc(sizeof(RDB_object *) * (llen - 1));
+
+    for (i = 0; i < llen - 1; i++)
+        RDB_init_obj(&argv[i]);
+
+    for (i = 0; i < llen - 1; i++) {
+        Tcl_Obj *argtobjp;
+
+        ret = Tcl_ListObjIndex(interp, tobjp, i + 1, &argtobjp);
+        if (ret != TCL_OK)
+            goto cleanup;
+
+        ret = Duro_tcl_to_duro(interp, argtobjp, irep->compv[i].typ,
+                &argv[i], txp);
+        if (ret != RDB_OK) {
+            Duro_dberror(interp, ret);
+            ret = TCL_ERROR;
+            goto cleanup;
+        }
+        argpv[i] = &argv[i];
+    }
+
+    ret = RDB_call_ro_op(Tcl_GetString(nametobjp), llen - 1, argpv,
+            objp, txp);
+    if (ret != RDB_OK) {
+        Duro_dberror(interp, ret);
+        ret = TCL_ERROR;
+        goto cleanup;
+    }
+
+    ret = TCL_OK;
+
+cleanup:
+    for (i = 0; i < llen - 1; i++)
+        RDB_destroy_obj(&argv[i]);
+    Tcl_Free((char *) argv);
+    Tcl_Free((char *) argpv);
+    return ret;
+}
+
+int
 Duro_tcl_to_duro(Tcl_Interp *interp, Tcl_Obj *tobjp, RDB_type *typ,
-        RDB_object *objp)
+        RDB_object *objp, RDB_transaction *txp)
 {
     int ret;
 
@@ -190,18 +265,21 @@ Duro_tcl_to_duro(Tcl_Interp *interp, Tcl_Obj *tobjp, RDB_type *typ,
         return TCL_OK;
     }
     if (typ->kind == RDB_TP_TUPLE) {
-        return list_to_tuple(interp, tobjp, typ, objp);
+        return list_to_tuple(interp, tobjp, typ, objp, txp);
     }
     if (typ->kind == RDB_TP_RELATION) {
         RDB_table *tbp;
 
-        ret = list_to_table(interp, tobjp, typ, &tbp);
+        ret = list_to_table(interp, tobjp, typ, &tbp, txp);
         if (ret != TCL_OK)
             return ret;
         RDB_table_to_obj(objp, tbp);
         return TCL_OK;
     }
-    Tcl_SetResult(interp, "Unsupported type", TCL_STATIC);
+    if (RDB_type_is_scalar(typ)) {
+        return call_selector(interp, tobjp, typ, objp, txp);
+    }
+    Tcl_AppendResult(interp, "Unsupported type", TCL_STATIC);
     return TCL_ERROR;
 }
 
@@ -232,8 +310,8 @@ contains_space(const char *s)
     return RDB_FALSE;
 }    
 
-static int
-get_type(Tcl_Obj *objp, Tcl_Interp *interp, RDB_transaction *txp,
+int
+Duro_get_type(Tcl_Obj *objp, Tcl_Interp *interp, RDB_transaction *txp,
          RDB_type **typp)
 {
     int ret;
@@ -288,7 +366,7 @@ get_type(Tcl_Obj *objp, Tcl_Interp *interp, RDB_transaction *txp,
             attrv[i].name = Tcl_GetStringFromObj(elem2p, NULL);
 
             Tcl_ListObjIndex(interp, elemp, 1, &elem2p);
-            ret = get_type(elem2p, interp, txp, &attrv[i].typ);
+            ret = Duro_get_type(elem2p, interp, txp, &attrv[i].typ);
             if (ret != TCL_OK) {
                 free(attrv);
                 return ret;
@@ -393,7 +471,7 @@ table_create_cmd(TclState *statep, Tcl_Interp *interp, int objc,
         Tcl_ListObjIndex(interp, attrobjp, 0, &nameobjp);
         Tcl_ListObjIndex(interp, attrobjp, 1, &typeobjp);
         attrv[i].name = RDB_dup_str(Tcl_GetStringFromObj(nameobjp, NULL));
-        ret = get_type(typeobjp, interp, txp, &attrv[i].typ);
+        ret = Duro_get_type(typeobjp, interp, txp, &attrv[i].typ);
         if (ret != TCL_OK) {
             goto cleanup;
         }
@@ -407,7 +485,7 @@ table_create_cmd(TclState *statep, Tcl_Interp *interp, int objc,
             RDB_init_obj(attrv[i].defaultp);
             Tcl_ListObjIndex(interp, attrobjp, 2, &defvalobjp);
             ret = Duro_tcl_to_duro(interp, defvalobjp, attrv[i].typ,
-                    attrv[i].defaultp);
+                    attrv[i].defaultp, txp);
             if (ret != RDB_OK) {
                 goto cleanup;
             }
@@ -785,7 +863,7 @@ Duro_insert_cmd(ClientData data, Tcl_Interp *interp, int objc,
         }
 
         Tcl_ListObjIndex(interp, objv[2], i + 1, &valobjp);
-        ret = Duro_tcl_to_duro(interp, valobjp, attrtyp, &obj);
+        ret = Duro_tcl_to_duro(interp, valobjp, attrtyp, &obj, txp);
         if (ret != TCL_OK) {
             RDB_destroy_obj(&obj);
             goto cleanup;
@@ -876,7 +954,7 @@ table_contains_cmd(TclState *statep, Tcl_Interp *interp, int objc,
         }
 
         Tcl_ListObjIndex(interp, objv[3], i + 1, &valobjp);
-        ret = Duro_tcl_to_duro(interp, valobjp, attrtyp, &obj);
+        ret = Duro_tcl_to_duro(interp, valobjp, attrtyp, &obj, txp);
         if (ret != TCL_OK) {
             RDB_destroy_obj(&obj);
             goto cleanup;

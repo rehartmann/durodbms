@@ -54,6 +54,11 @@ RDB_strerror(int err)
 }
 
 int
+RDB_is_syserr(int err) {
+    return (err <= -100) && (err >= -199);
+}
+
+int
 RDB_convert_err(int err)
 {
     switch(err) {

@@ -27,7 +27,8 @@ enum {
 };
 
 /* Check for a system error */
-#define RDB_is_syserr(err) ((err) <= -100 && (err) >= -199)
+int
+RDB_is_syserr(int);
 
 const char *
 RDB_strerror(int err);

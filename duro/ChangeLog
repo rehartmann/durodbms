@@ -4,6 +4,13 @@ Summary of Changes for Duro
 
 Changes for Duro 0.8
 
+- Removed RDB_select_obj() and RDB_selector(). Use RDB_call_ro_op() and
+  RDB_user_op() instead.
+
+- Added support for user-defined types in Durotcl through duro::type.
+
+- Fixed bugs in deserialization and table creation code.
+
 - Added SUBSET operator.
 
 - Removed the libname argument from RDB_implement_type(). Selectors,

@@ -153,7 +153,6 @@ enum _RDB_expr_kind {
     RDB_EX_AGGREGATE,
     RDB_EX_TUPLE_ATTR,
     RDB_EX_GET_COMP,
-    RDB_SELECTOR,
     RDB_EX_USER_OP
 };
 
@@ -875,10 +874,6 @@ RDB_init_obj(RDB_object *valp);
 int
 RDB_destroy_obj(RDB_object *valp);
 
-int
-RDB_select_obj(RDB_object *valp, RDB_type *, const char *repname,
-              RDB_object **compv, RDB_transaction *);
-
 void
 RDB_bool_to_obj(RDB_object *valp, RDB_bool v);
 
@@ -1054,9 +1049,6 @@ RDB_tuple_attr(RDB_expression *, const char *attrname);
 
 RDB_expression *
 RDB_expr_comp(RDB_expression *, const char *);
-
-RDB_expression *
-RDB_selector(RDB_type *, const char *repname, RDB_expression *[]);
 
 int
 RDB_user_op(const char *opname, int argc, RDB_expression *argv[],

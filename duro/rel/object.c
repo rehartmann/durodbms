@@ -1,3 +1,8 @@
+/*
+ * Copyright (C) 2003, 2004 René Hartmann.
+ * See the file COPYING for redistribution information.
+ */
+
 /* $Id$ */
 
 #include "rdb.h"
@@ -319,8 +324,9 @@ RDB_obj_equals(const RDB_object *val1p, const RDB_object *val2p)
                 return RDB_TRUE;
             return (RDB_bool) (memcmp(val1p->var.bin.datap, val2p->var.bin.datap,
                     val1p->var.bin.len) == 0);
-        case RDB_OB_TABLE:
         case RDB_OB_TUPLE:
+            return _RDB_tuple_equals(val1p, val2p);
+        case RDB_OB_TABLE:
         case RDB_OB_ARRAY:
             /* !! */
             return RDB_FALSE;
@@ -328,8 +334,9 @@ RDB_obj_equals(const RDB_object *val1p, const RDB_object *val2p)
     return RDB_FALSE;
 } 
 
-static int
-copy_obj(RDB_object *dstvalp, const RDB_object *srcvalp)
+/* Copy data only, not the type information */
+int
+_RDB_copy_obj(RDB_object *dstvalp, const RDB_object *srcvalp)
 {
     switch (srcvalp->kind) {
         case RDB_OB_BOOL:
@@ -377,7 +384,7 @@ RDB_copy_obj(RDB_object *dstvalp, const RDB_object *srcvalp)
 
     if (srcvalp->typ != NULL && RDB_type_is_scalar(srcvalp->typ))
         dstvalp->typ = srcvalp->typ;
-    return copy_obj(dstvalp, srcvalp);
+    return _RDB_copy_obj(dstvalp, srcvalp);
 } 
 
 void
@@ -504,7 +511,7 @@ RDB_obj_comp(const RDB_object *valp, const char *compname, RDB_object *compvalp,
             return ret;
 
         _RDB_set_obj_type(compvalp, valp->typ->var.scalar.repv[0].compv[0].typ);
-        ret = copy_obj(compvalp, valp);   
+        ret = _RDB_copy_obj(compvalp, valp);   
     } else {
         /* Getter is implemented by user */
         char *opname;
@@ -538,7 +545,7 @@ RDB_obj_set_comp(RDB_object *valp, const char *compname,
         if (ret != RDB_OK)
             return ret;
 
-        ret = copy_obj(valp, compvalp);
+        ret = _RDB_copy_obj(valp, compvalp);
     } else {
         /* Setter is implemented by user */
         char *opname;
@@ -557,6 +564,8 @@ RDB_obj_set_comp(RDB_object *valp, const char *compname,
         ret = RDB_call_update_op(opname, 2, argv, txp);
         free(opname);        
     }
+    
+    /* Check constraint !? */
     return ret;
 }
 
@@ -574,93 +583,6 @@ RDB_table *
 RDB_obj_table(const RDB_object *objp)
 {
     return objp->var.tbp;
-}
-
-static int
-check_constraint(RDB_object *valp, RDB_bool *resultp, RDB_transaction *txp)
-{
-    int i, j;
-    int ret;
-
-    *resultp = RDB_TRUE;
-
-    /* Check constraint for each possrep */
-    for (i = 0; i < valp->typ->var.scalar.repc; i++) {
-        RDB_object tpl;
-
-        if (valp->typ->var.scalar.repv[i].constraintp != NULL) {
-            RDB_init_obj(&tpl);
-            /* Set tuple attributes */
-            for (j = 0; j < valp->typ->var.scalar.repv[i].compc; j++) {
-                RDB_object comp;
-                char *compname = valp->typ->var.scalar.repv[i].compv[j].name;
-
-                RDB_init_obj(&comp);
-                ret = RDB_obj_comp(valp, compname, &comp, txp);
-                if (ret != RDB_OK) {
-                    RDB_destroy_obj(&comp);
-                    RDB_destroy_obj(&tpl);
-                    return ret;
-                }
-                ret = RDB_tuple_set(&tpl, compname, &comp);
-                RDB_destroy_obj(&comp);
-                if (ret != RDB_OK) {
-                    RDB_destroy_obj(&tpl);
-                    return ret;
-                }
-            }
-            RDB_evaluate_bool(valp->typ->var.scalar.repv[i].constraintp,
-                    &tpl, NULL, &*resultp);
-            RDB_destroy_obj(&tpl);
-            if (!*resultp) {
-                return RDB_OK;
-            }
-        }
-    }
-    return RDB_OK;
-}
-
-int
-RDB_select_obj(RDB_object *valp, RDB_type *typ, const char *repname,
-              RDB_object **compv, RDB_transaction *txp)
-{
-    RDB_ipossrep *prp;
-    int ret;
-    RDB_bool b;
-
-    if (!RDB_type_is_scalar(typ) || typ->var.scalar.repc == 0)
-        return RDB_INVALID_ARGUMENT;
-
-    if (repname == NULL) {
-        if (typ->var.scalar.repc == 1) {
-            repname = typ->name;
-        } else {
-            return RDB_INVALID_ARGUMENT;
-        }
-    }
-
-    /* Find possrep */
-    prp = _RDB_get_possrep(typ, repname);
-    if (prp == NULL)
-        return RDB_INVALID_ARGUMENT;
-
-    if (typ->var.scalar.sysimpl) {
-        /* Selector is implemented by the system */
-        RDB_destroy_obj(valp);
-        _RDB_set_obj_type(valp, typ);
-        ret = copy_obj(valp, *compv);
-    } else {
-        /* Selector is implemented by user */
-        ret = RDB_call_ro_op(repname, typ->var.scalar.repc, compv, valp, txp);
-    }
-    if (ret != RDB_OK)
-        return ret;
-
-    ret = check_constraint(valp, &b, txp);
-    if (ret != RDB_OK)
-        return ret;
-
-    return b ? RDB_OK : RDB_TYPE_CONSTRAINT_VIOLATION;
 }
 
 RDB_bool

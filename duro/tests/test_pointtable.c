@@ -87,7 +87,8 @@ test_insert(RDB_database *dbp)
 
     compv[0] = &xval;
     compv[1] = &yval;
-    ret = RDB_select_obj(&pval, pointtyp, "POINT", compv, &tx);
+    ret = RDB_call_ro_op("POINT", 2, compv, &pval, &tx);
+
     if (ret != RDB_OK)
         goto error;
 
@@ -240,7 +241,10 @@ test_query(RDB_database *dbp)
 
     compv[0] = RDB_rational_const(1.0);
     compv[1] = RDB_rational_const(2.0);
-    wherep = RDB_selector(pointtyp, "POINT", compv);
+    ret = RDB_user_op("POINT", 2, compv, &tx, &wherep);
+    if (ret != RDB_OK) {
+        goto error;
+    } 
     wherep = RDB_eq(wherep, RDB_expr_attr("POINT"));
 
     ret = RDB_select(tbp, wherep, &tmptbp);

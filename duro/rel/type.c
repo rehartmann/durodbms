@@ -375,6 +375,34 @@ error:
     return ret;
 }
 
+/* Implements a system-generated selector */
+int
+_RDB_sys_select(const char *name, int argc, RDB_object *argv[],
+        const void *iargp, size_t iarglen, RDB_transaction *txp,
+        RDB_object *retvalp)
+{
+    int ret;
+    RDB_type *typ;
+    RDB_ipossrep *prp;
+
+    ret = RDB_get_type((char *) iargp, txp, &typ);
+    if (ret != RDB_OK)
+        return ret;
+
+    /* Find possrep */
+    prp = _RDB_get_possrep(typ, name);
+    if (prp == NULL)
+        return RDB_INVALID_ARGUMENT;
+
+    RDB_destroy_obj(retvalp);
+    _RDB_set_obj_type(retvalp, typ);
+    ret = _RDB_copy_obj(retvalp, argv[0]);
+    if (ret != RDB_OK)
+        return ret;
+
+    return RDB_OK;
+}
+
 int
 RDB_implement_type(const char *name, RDB_type *arep,
                    size_t areplen, RDB_transaction *txp)
@@ -397,6 +425,8 @@ RDB_implement_type(const char *name, RDB_type *arep,
         RDB_table *tmptb2p;
         RDB_object tpl;
         char *possrepname;
+        RDB_type *typ;
+        RDB_type **argtv;
 
         if (arep != NULL)
             return RDB_INVALID_ARGUMENT;
@@ -428,6 +458,22 @@ RDB_implement_type(const char *name, RDB_type *arep,
         }
         ret = RDB_get_type(RDB_tuple_get_string(&tpl, "COMPTYPENAME"), txp, &arep);
         RDB_destroy_obj(&tpl);
+        if (ret != RDB_OK)
+            return ret;
+
+        /* Create selector */
+        ret = RDB_get_type(name, txp, &typ);
+        if (ret != RDB_OK)
+            return ret;
+
+        argtv = malloc(sizeof(RDB_type *));
+        if (argtv == NULL)
+            return RDB_NO_MEMORY;
+        argtv[0] = arep;
+        ret = RDB_create_ro_op(typ->var.scalar.repv[0].name, 1, argtv, typ,
+                "libduro", "_RDB_sys_select", typ->name, strlen(typ->name) + 1,
+                txp);
+        free(argtv);
         if (ret != RDB_OK)
             return ret;
     } else {
@@ -477,7 +523,8 @@ RDB_implement_type(const char *name, RDB_type *arep,
         }
     }
 
-    ret = RDB_update(txp->dbp->dbrootp->types_tbp, wherep, arep != NULL ? 3 : 2, upd, txp);
+    ret = RDB_update(txp->dbp->dbrootp->types_tbp, wherep,
+            arep != NULL ? 3 : 2, upd, txp);
 
 cleanup:    
     if (upd[0].exp != NULL)

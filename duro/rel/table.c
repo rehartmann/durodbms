@@ -34,8 +34,8 @@ _RDB_new_stored_table(const char *name, RDB_bool persistent,
                 int keyc, RDB_string_vec keyv[], RDB_bool usr,
                 RDB_table **tbpp)
 {
-    RDB_table *tbp;
     int ret, i;
+    RDB_table *tbp = NULL;
 
     for (i = 0; i < keyc; i++) {
         int j;
@@ -90,7 +90,7 @@ error:
     /* clean up */
     if (tbp != NULL) {
         free(tbp->name);
-        for (i = 0; i < tbp->keyc; i++) {
+        for (i = 0; i < keyc; i++) {
             if (tbp->keyv[i].strv != NULL) {
                 RDB_free_strvec(tbp->keyv[i].strc, tbp->keyv[i].strv);
             }
@@ -966,8 +966,14 @@ error:
 int
 RDB_select(RDB_table *tbp, RDB_expression *condp, RDB_table **resultpp)
 {
-    RDB_table *newtbp = new_table();
-    
+    RDB_table *newtbp;
+
+    /* Check if condition is of type BOOLEAN */
+    if (RDB_expr_type(condp, tbp->typ->var.basetyp) != &RDB_BOOLEAN)
+        return RDB_TYPE_MISMATCH;
+
+    /* Allocate RDB_table structure */    
+    newtbp = new_table();    
     if (newtbp == NULL)
         return RDB_NO_MEMORY;
 

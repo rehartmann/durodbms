@@ -60,8 +60,6 @@ RDB_expr_type(const RDB_expression *exp, const RDB_type *tuptyp)
         case RDB_EX_GET_COMP:
             return _RDB_get_icomp(RDB_expr_type(exp->var.op.arg1, tuptyp),
                     exp->var.op.name)->typ;
-        case RDB_SELECTOR:
-            return exp->var.selector.typ;
         case RDB_EX_USER_OP:
             return exp->var.user_op.rtyp;
         case RDB_EX_AGGREGATE:
@@ -139,7 +137,7 @@ RDB_string_const(const char *v)
     exp->var.obj.typ = &RDB_STRING;
     exp->var.obj.kind = RDB_OB_BIN;
     exp->var.obj.var.bin.datap = RDB_dup_str(v);
-    exp->var.obj.var.bin.len = strlen(v)+1;
+    exp->var.obj.var.bin.len = strlen(v) + 1;
 
     return exp;
 }
@@ -457,43 +455,6 @@ RDB_expr_comp(RDB_expression *arg, const char *compname)
     return exp;
 }
 
-RDB_expression *
-RDB_selector(RDB_type *typ, const char *repname, RDB_expression *argv[])
-{
-    RDB_expression *exp;
-    RDB_ipossrep *prp = _RDB_get_possrep(typ, repname);
-    int i;
-
-    if (prp == NULL)
-        return NULL;
-    exp = malloc(sizeof (RDB_expression));
-    if (exp == NULL)
-        return NULL;   
-
-    exp->kind = RDB_SELECTOR;
-    exp->var.selector.typ = typ;
-    exp->var.selector.argv = NULL;
-
-    exp->var.selector.name = RDB_dup_str(repname);
-    if (exp->var.selector.name == NULL)
-        goto error;
-
-    exp->var.selector.argv = malloc(prp->compc * sizeof(RDB_expression *));
-    if (exp->var.selector.argv == NULL)
-        goto error;
-
-    for (i = 0; i < prp->compc; i++)
-        exp->var.selector.argv[i] = argv[i];
-
-    return exp;
-error:
-    free(exp->var.selector.name);
-    free(exp->var.selector.argv);
-    free(exp);
-
-    return NULL;    
-}
-
 int
 RDB_user_op(const char *opname, int argc, RDB_expression *argv[],
        RDB_transaction *txp, RDB_expression **expp)
@@ -568,18 +529,6 @@ RDB_drop_expr(RDB_expression *exp)
             free(exp->var.op.name);
             RDB_drop_expr(exp->var.op.arg1);
             break;
-        case RDB_SELECTOR:
-        {
-            int i;
-            int compc = _RDB_get_possrep(exp->var.selector.typ,
-                    exp->var.selector.name)->compc;
-
-            for (i = 0; i < compc; i++)
-                RDB_drop_expr(exp->var.selector.argv[i]);
-            free(exp->var.selector.argv);
-            free(exp->var.selector.name);
-            break;
-        }
         case RDB_EX_USER_OP:
         {
             int i;
@@ -746,46 +695,6 @@ cleanup:
     RDB_destroy_obj(&val1);
     RDB_destroy_obj(&val2);
 
-    return ret;
-}
-
-static int evaluate_selector(RDB_expression *exp, const RDB_object *tup,
-        RDB_transaction *txp, RDB_object *valp)
-{
-    int ret;
-    int i;
-    int compc = _RDB_get_possrep(exp->var.selector.typ, exp->var.selector.name)->compc;
-    RDB_object **valpv;
-    RDB_object *valv = NULL;
-
-    valpv = malloc(compc * sizeof (RDB_object *));
-    if (valpv == NULL) {
-        ret = RDB_NO_MEMORY;
-        goto cleanup;
-    }
-    valv = malloc(compc * sizeof (RDB_object));
-    if (valv == NULL) {
-        ret = RDB_NO_MEMORY;
-        goto cleanup;
-    }
-    for (i = 0; i < compc; i++) {
-        valpv[i] = &valv[i];
-        RDB_init_obj(&valv[i]);
-        ret = RDB_evaluate(exp->var.selector.argv[i], tup, txp, &valv[i]);
-        if (ret != RDB_OK)
-            goto cleanup;
-    }
-    ret = RDB_select_obj(valp, exp->var.selector.typ, exp->var.selector.name,
-            valpv, txp);
-
-cleanup:
-    if (valv != NULL) {
-        for (i = 0; i < compc; i++) {
-            RDB_destroy_obj(&valv[i]);
-        }
-        free(valv);
-    }
-    free(valpv);
     return ret;
 }
 
@@ -1072,8 +981,6 @@ RDB_evaluate(RDB_expression *exp, const RDB_object *tup, RDB_transaction *txp,
             RDB_destroy_obj(&obj);
             return ret;
         }
-        case RDB_SELECTOR:
-            return evaluate_selector(exp, tup, txp, valp);
         case RDB_EX_USER_OP:
             return evaluate_user_op(exp, tup, txp, valp);
         case RDB_EX_ATTR:
@@ -1434,18 +1341,6 @@ _RDB_expr_refers(RDB_expression *exp, RDB_table *tbp)
         case RDB_EX_TUPLE_ATTR:
         case RDB_EX_GET_COMP:
             return _RDB_expr_refers(exp->var.op.arg1, tbp);
-        case RDB_SELECTOR:
-        {
-            int i;
-            int compc = _RDB_get_possrep(exp->var.selector.typ,
-                    exp->var.selector.name)->compc;
-
-            for (i = 0; i < compc; i++)
-                if (_RDB_expr_refers(exp->var.selector.argv[i], tbp))
-                    return RDB_TRUE;
-            
-            return RDB_FALSE;
-        }
         case RDB_EX_USER_OP:
         {
             int i;

@@ -547,6 +547,25 @@ RDB_unwrap_tuple(const RDB_object *tplp, int attrc, char *attrv[],
         }
     }
     RDB_destroy_hashmap_iter(&it);
-    
+
     return RDB_OK;
+}
+
+RDB_bool
+_RDB_tuple_equals(const RDB_object *tpl1p, const RDB_object *tpl2p)
+{
+    RDB_hashmap_iter hiter;
+    RDB_object *attrp;
+    char *key;
+
+    RDB_init_hashmap_iter(&hiter, (RDB_hashmap *) &tpl1p->var.tpl_map);
+    while ((attrp = (RDB_object *) RDB_hashmap_next(&hiter, &key, NULL))
+            != NULL) {
+        if (!RDB_obj_equals(attrp, RDB_tuple_get(tpl2p, key))) {
+            RDB_destroy_hashmap_iter(&it);
+            return RDB_FALSE;
+        }
+    }
+    RDB_destroy_hashmap_iter(&it);
+    return RDB_TRUE;
 }

@@ -136,6 +136,7 @@ serialize_obj(RDB_object *valp, int *posp, const RDB_object *argvalp)
     *posp += sizeof len;
     memcpy(((RDB_byte *) valp->var.bin.datap) + *posp, datap, len);
     *posp += len;
+
     return RDB_OK;
 }
 
@@ -189,26 +190,6 @@ serialize_expr(RDB_object *valp, int *posp, const RDB_expression *exp)
             if (ret != RDB_OK)
                 return ret;
             return serialize_str(valp, posp, exp->var.op.name);
-        case RDB_SELECTOR:
-        {
-            int i;
-            int compc = _RDB_get_possrep(exp->var.selector.typ,
-                        exp->var.selector.name)->compc;
-
-            ret = serialize_type (valp, posp, exp->var.selector.typ);
-            if (ret != RDB_OK)
-                return ret;
-            ret = serialize_str(valp, posp, exp->var.selector.name);
-            if (ret != RDB_OK)
-                return ret;
-
-            for (i = 0; i < compc; i++) {
-                ret = serialize_expr(valp, posp, exp->var.selector.argv[i]);
-                if (ret != RDB_OK)
-                    return ret;
-            }
-            return RDB_OK;
-        }
         case RDB_EX_USER_OP:
         {
             int i;
@@ -580,6 +561,7 @@ deserialize_str(RDB_object *valp, int *posp, char **strp)
     memcpy(*strp, ((RDB_byte *)valp->var.bin.datap) + *posp, len);
     (*strp)[len] = '\0';
     *posp += len;
+
     return RDB_OK;
 }
 
@@ -677,7 +659,7 @@ deserialize_obj(RDB_object *valp, int *posp, RDB_transaction *txp,
     if (*posp + len > valp->var.bin.len)
         return RDB_INTERNAL;
     ret = RDB_irep_to_obj(argvalp, typ,
-            ((RDB_byte *)valp->var.bin.datap) + *posp, sizeof len);
+            ((RDB_byte *)valp->var.bin.datap) + *posp, len);
     *posp += len;
 
     return RDB_OK;
@@ -796,40 +778,6 @@ deserialize_expr(RDB_object *valp, int *posp, RDB_transaction *txp,
                 RDB_drop_expr(*expp);
                 return RDB_NO_MEMORY;
             }
-            break;
-        }
-        case RDB_SELECTOR:
-        {
-            RDB_type *typ;
-            char *name;
-            int compc;
-            int i;
-            RDB_expression **argv;
-        
-            ret = deserialize_type(valp, posp, txp, &typ);
-            if (ret != RDB_OK)
-                return ret;
-            ret = deserialize_str(valp, posp, &name);
-            if (ret != RDB_OK) {
-                return ret;
-            }
-
-            compc = _RDB_get_possrep(typ, name)->compc;
-            argv = malloc(compc * sizeof (RDB_expression *));
-            if (argv == NULL)
-                return RDB_NO_MEMORY;
-
-            for (i = 0; i < compc; i++) {
-                ret = deserialize_expr(valp, posp, txp, &argv[i]);
-                if (ret != RDB_OK) {
-                    return ret;
-                }
-            }
-    
-            *expp = RDB_selector(typ, name, argv);
-            free(argv);
-            if (*expp == NULL)
-                return RDB_SYSTEM_ERROR;
             break;
         }
         case RDB_EX_USER_OP:

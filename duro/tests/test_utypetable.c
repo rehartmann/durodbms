@@ -95,7 +95,7 @@ test_table(RDB_database *dbp)
     RDB_int_to_obj(&ival, (RDB_int)200);
     ivalp = &ival;
 
-    ret = RDB_select_obj(&tival, tinyintp, "TINYINT", &ivalp, &tx);
+    ret = RDB_call_ro_op("TINYINT", 1, &ivalp, &tival, &tx);
     if (ret != RDB_TYPE_CONSTRAINT_VIOLATION) {
         fprintf(stderr, "Wrong return code: %s\n", RDB_strerror(ret));
         goto error;
@@ -107,7 +107,7 @@ test_table(RDB_database *dbp)
     RDB_int_to_obj(&ival, (RDB_int)99);
     ivalp = &ival;
 
-    ret = RDB_select_obj(&tival, tinyintp, "TINYINT", &ivalp, &tx);
+    ret = RDB_call_ro_op("TINYINT", 1, &ivalp, &tival, &tx);
     if (ret != RDB_OK) {
         goto error;
     }

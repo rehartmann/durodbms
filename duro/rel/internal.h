@@ -180,9 +180,6 @@ _RDB_drop_rtable(RDB_table *tbp, RDB_transaction *txp);
 int
 _RDB_drop_table(RDB_table *tbp, RDB_transaction *txp, RDB_bool rec);
 
-int
-_RDB_copy_tuple(RDB_object *dstp, const RDB_object *srcp);
-
 /*
  * Extend the tuple type pointed to by typ by the attributes given by
  * attrv and return the new tuple type.
@@ -261,18 +258,6 @@ RDB_unwrap_relation_type(const RDB_type *typ, int attrc, char *attrv[],
 RDB_attr *
 _RDB_tuple_type_attr(const RDB_type *tuptyp, const char *attrname);
 
-int
-_RDB_invrename_tuple(const RDB_object *, int renc, RDB_renaming renv[],
-                 RDB_object *restup);
-
-int
-_RDB_invwrap_tuple(const RDB_object *tplp, int wrapc, RDB_wrapping wrapv[],
-        RDB_object *restplp);
-
-int
-_RDB_invunwrap_tuple(const RDB_object *, int attrc, char *attrv[],
-        RDB_type *srctuptyp, RDB_object *restplp);
-
 RDB_bool
 _RDB_legal_name(const char *name);
 
@@ -306,6 +291,29 @@ RDB_expr_aggregate(RDB_expression *arg, RDB_aggregate_op op,
 RDB_bool
 _RDB_expr_refers(RDB_expression *, RDB_table *);
 
+/*
+ * Internal tuple functions
+ */
+
+int
+_RDB_copy_tuple(RDB_object *dstp, const RDB_object *srcp);
+
+RDB_bool
+_RDB_tuple_equals(const RDB_object *, const RDB_object *);
+
+int
+_RDB_invrename_tuple(const RDB_object *, int renc, RDB_renaming renv[],
+                 RDB_object *restup);
+
+int
+_RDB_invwrap_tuple(const RDB_object *tplp, int wrapc, RDB_wrapping wrapv[],
+        RDB_object *restplp);
+
+int
+_RDB_invunwrap_tuple(const RDB_object *, int attrc, char *attrv[],
+        RDB_type *srctuptyp, RDB_object *restplp);
+
+
 int
 _RDB_sdivide_preserves(RDB_table *, const RDB_object *tplp, RDB_qresult *qr3p,
         RDB_transaction *);
@@ -330,6 +338,12 @@ int
 _RDB_get_upd_op(const char *name, int argc, RDB_type *argtv[],
                RDB_transaction *txp, RDB_upd_op **opp);
 
+void
+_RDB_free_ro_ops(RDB_ro_op *op);
+
+void
+_RDB_free_upd_ops(RDB_upd_op *op);
+
 int
 _RDB_move_tuples(RDB_table *dstp, RDB_table *srcp, RDB_transaction *);
 
@@ -343,5 +357,8 @@ _RDB_pindex_expr(RDB_table *tbp, RDB_expression *exprp);
 
 RDB_type *
 RDB_expr_type(const RDB_expression *exp, const RDB_type *);
+
+int
+_RDB_copy_obj(RDB_object *dstvalp, const RDB_object *srcvalp);
 
 #endif

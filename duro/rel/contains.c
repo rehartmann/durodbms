@@ -126,7 +126,7 @@ unwrap_contains(RDB_table *tbp, const RDB_object *tup, RDB_transaction *txp)
     ret = RDB_table_contains(tbp->var.unwrap.tbp, &tpl, txp);
     RDB_destroy_obj(&tpl);
     return ret;
-}    
+}
 
 static int    
 sdivide_contains(RDB_table *tbp, const RDB_object *tplp, RDB_transaction *txp)
