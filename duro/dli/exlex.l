@@ -124,13 +124,25 @@ NOT {
 TRUE {
     yylval = RDB_bool_to_expr(RDB_TRUE);
     _RDB_parse_add_exp(yylval);
-    return TOK_BOOLEAN;
+    return TOK_LIT_BOOLEAN;
 }
 
 FALSE {
     yylval = RDB_bool_to_expr(RDB_FALSE);
     _RDB_parse_add_exp(yylval);
-    return TOK_BOOLEAN;
+    return TOK_LIT_BOOLEAN;
+}
+
+INTEGER {
+    return TOK_INTEGER;
+}
+
+RATIONAL {
+    return TOK_RATIONAL;
+}
+
+STRING {
+    return TOK_STRING;
 }
 
 IS_EMPTY {
@@ -190,25 +202,25 @@ TABLE_DUM {
     yytext[(strlen(yytext) - 1)] = '\0';
     yylval = RDB_string_to_expr(yytext + 1);
     _RDB_parse_add_exp(yylval);
-    return TOK_STRING;
+    return TOK_LIT_STRING;
 }
 
 [0-9]+ {
     yylval = RDB_int_to_expr((RDB_int) atoi(yytext));
     _RDB_parse_add_exp(yylval);
-    return TOK_INTEGER;
+    return TOK_LIT_INTEGER;
 }
 
 [0-9]+"."[0-9]+[Ee][0-9]+ {
     yylval = RDB_rational_to_expr((RDB_rational) atof(yytext));
     _RDB_parse_add_exp(yylval);
-    return TOK_FLOAT;
+    return TOK_LIT_FLOAT;
 }
 
 [0-9]+"."[0-9]+	{
     yylval = RDB_rational_to_expr((RDB_rational) atof(yytext));
     _RDB_parse_add_exp(yylval);
-    return TOK_FLOAT;
+    return TOK_LIT_FLOAT;
 }
 
 \<\> return TOK_NE;

@@ -76,10 +76,10 @@ enum {
 }
 
 %token <exp> TOK_ID
-%token <exp> TOK_INTEGER
-%token <exp> TOK_STRING
-%token <exp> TOK_FLOAT
-%token <exp> TOK_BOOLEAN
+%token <exp> TOK_LIT_INTEGER
+%token <exp> TOK_LIT_STRING
+%token <exp> TOK_LIT_FLOAT
+%token <exp> TOK_LIT_BOOLEAN
 %token TOK_WHERE
 %token TOK_UNION
 %token TOK_INTERSECT
@@ -110,6 +110,9 @@ enum {
 %token TOK_NE
 %token TOK_LE
 %token TOK_GE
+%token TOK_INTEGER
+%token TOK_RATIONAL
+%token TOK_STRING
 %token TOK_IS_EMPTY
 %token TOK_COUNT
 %token TOK_SUM
@@ -126,6 +129,7 @@ enum {
         group ungroup sdivideby expression or_expression and_expression
         not_expression primary_expression rel_expression add_expression
         mul_expression literal operator_invocation is_empty_invocation
+        integer_invocation rational_invocation string_invocation
         count_invocation sum_invocation avg_invocation min_invocation
         max_invocation all_invocation any_invocation extractor tuple_item_list
 
@@ -1050,6 +1054,9 @@ primary_expression: TOK_ID
     | all_invocation
     | any_invocation
     | is_empty_invocation
+    | integer_invocation
+    | rational_invocation
+    | string_invocation
     | operator_invocation
     | '(' expression ')' {
         $$ = $2;
@@ -1248,6 +1255,39 @@ any_invocation: TOK_ANY '(' expression_list ')' {
     }
     ;
 
+integer_invocation: TOK_INTEGER  '(' expression ')' {
+        $$ = RDB_to_int($3);
+        if ($$ == NULL)
+            YYERROR;
+        _RDB_parse_remove_exp($3);
+        _RDB_parse_ret = _RDB_parse_add_exp($$);
+        if (_RDB_parse_ret != RDB_OK)
+            YYERROR;
+    }
+    ;
+
+rational_invocation: TOK_RATIONAL  '(' expression ')' {
+        $$ = RDB_to_rational($3);
+        if ($$ == NULL)
+            YYERROR;
+        _RDB_parse_remove_exp($3);
+        _RDB_parse_ret = _RDB_parse_add_exp($$);
+        if (_RDB_parse_ret != RDB_OK)
+            YYERROR;
+    }
+    ;
+
+string_invocation: TOK_STRING  '(' expression ')' {
+        $$ = RDB_to_string($3);
+        if ($$ == NULL)
+            YYERROR;
+        _RDB_parse_remove_exp($3);
+        _RDB_parse_ret = _RDB_parse_add_exp($$);
+        if (_RDB_parse_ret != RDB_OK)
+            YYERROR;
+    }
+    ;
+
 is_empty_invocation: TOK_IS_EMPTY '(' expression ')' {
         RDB_table *tbp = _RDB_parse_expr_to_table($3);
 
@@ -1441,10 +1481,10 @@ literal: TOK_RELATION '{' expression_list '}' {
     | TOK_TUPLE '{' tuple_item_list '}' {
         $$ = $3;
      } 
-     | TOK_STRING
-     | TOK_INTEGER
-     | TOK_FLOAT
-     | TOK_BOOLEAN
+     | TOK_LIT_STRING
+     | TOK_LIT_INTEGER
+     | TOK_LIT_FLOAT
+     | TOK_LIT_BOOLEAN
      ;
 
 tuple_item_list: TOK_ID expression {

@@ -205,6 +205,15 @@ RDB_expr_type(const RDB_expression *exp, const RDB_type *tuptyp,
                 return RDB_TYPE_MISMATCH;
             *typp = &RDB_STRING;
             break;
+        case RDB_EX_TO_INTEGER:
+            *typp = &RDB_INTEGER;
+            break;
+        case RDB_EX_TO_RATIONAL:
+            *typp = &RDB_RATIONAL;
+            break;
+        case RDB_EX_TO_STRING:
+            *typp = &RDB_STRING;
+            break;
         case RDB_EX_TUPLE_ATTR:
             ret = RDB_expr_type(exp->var.op.arg1, tuptyp, &typ);
             if (ret != RDB_OK)
@@ -523,9 +532,27 @@ RDB_table_to_expr(RDB_table *tbp)
 }
 
 RDB_expression *
-RDB_expr_is_empty(RDB_expression *arg1)
+RDB_expr_is_empty(RDB_expression *arg)
 {
-    return _RDB_create_unexpr(arg1, RDB_EX_IS_EMPTY);
+    return _RDB_create_unexpr(arg, RDB_EX_IS_EMPTY);
+}
+
+RDB_expression *
+RDB_to_int(RDB_expression *arg)
+{
+    return _RDB_create_unexpr(arg, RDB_EX_TO_INTEGER);
+}
+
+RDB_expression *
+RDB_to_rational(RDB_expression *arg)
+{
+    return _RDB_create_unexpr(arg, RDB_EX_TO_RATIONAL);
+}
+
+RDB_expression *
+RDB_to_string(RDB_expression *arg)
+{
+    return _RDB_create_unexpr(arg, RDB_EX_TO_STRING);
 }
 
 RDB_expression *
@@ -703,6 +730,9 @@ RDB_drop_expr(RDB_expression *exp)
         case RDB_EX_NEGATE:
         case RDB_EX_IS_EMPTY:
         case RDB_EX_STRLEN:
+        case RDB_EX_TO_INTEGER:
+        case RDB_EX_TO_RATIONAL:
+        case RDB_EX_TO_STRING:
             RDB_drop_expr(exp->var.op.arg1);
             break;
         case RDB_EX_TUPLE_ATTR:
@@ -877,7 +907,8 @@ cleanup:
     return ret;
 }
 
-static int evaluate_user_op(RDB_expression *exp, const RDB_object *tup,
+static int
+evaluate_user_op(RDB_expression *exp, const RDB_object *tup,
         RDB_transaction *txp, RDB_object *valp)
 {
     int ret;
@@ -1304,6 +1335,101 @@ RDB_evaluate(RDB_expression *exp, const RDB_object *tup, RDB_transaction *txp,
             RDB_destroy_obj(&val1);
             return RDB_destroy_obj(&val2);
         }
+        case RDB_EX_TO_INTEGER:
+        {
+            RDB_object val;
+
+            RDB_init_obj(&val);
+            ret = RDB_evaluate(exp->var.op.arg1, tup, txp, &val);
+            if (ret != RDB_OK) {
+                RDB_destroy_obj(&val);
+                return ret;
+            }
+            if (val.typ == &RDB_INTEGER) {
+                RDB_int_to_obj(valp, val.var.int_val);
+            } else if (val.typ == &RDB_RATIONAL) {
+                RDB_int_to_obj(valp, (RDB_int) val.var.rational_val);
+            } else if (val.typ == &RDB_STRING) {
+                char *endp;
+
+                RDB_int_to_obj(valp, (RDB_int)
+                        strtol(val.var.bin.datap, &endp, 10));
+                if (*endp != '\0') {
+                    RDB_destroy_obj(&val);
+                    return RDB_INVALID_ARGUMENT;
+                }
+            } else {
+                RDB_destroy_obj(&val);
+                return RDB_INVALID_ARGUMENT;
+            }
+            return RDB_destroy_obj(&val);
+        }
+        case RDB_EX_TO_RATIONAL:
+        {
+            RDB_object val;
+
+            RDB_init_obj(&val);
+            ret = RDB_evaluate(exp->var.op.arg1, tup, txp, &val);
+            if (ret != RDB_OK) {
+                RDB_destroy_obj(&val);
+                return ret;
+            }
+            if (val.typ == &RDB_INTEGER) {
+                RDB_rational_to_obj(valp, (RDB_rational) val.var.int_val);
+            } else if (val.typ == &RDB_RATIONAL) {
+                RDB_rational_to_obj(valp, val.var.rational_val);
+            } else if (val.typ == &RDB_STRING) {
+                char *endp;
+
+                RDB_rational_to_obj(valp, (RDB_rational)
+                        strtod(val.var.bin.datap, &endp));
+                if (*endp != '\0') {
+                    RDB_destroy_obj(&val);
+                    return RDB_INVALID_ARGUMENT;
+                }
+            } else {
+                RDB_destroy_obj(&val);
+                return RDB_INVALID_ARGUMENT;
+            }
+            return RDB_destroy_obj(&val);
+        }
+        case RDB_EX_TO_STRING:
+        {
+            RDB_object val;
+            char buf[64];
+
+            RDB_init_obj(&val);
+            ret = RDB_evaluate(exp->var.op.arg1, tup, txp, &val);
+            if (ret != RDB_OK) {
+                RDB_destroy_obj(&val);
+                return ret;
+            }
+            if (val.typ == &RDB_INTEGER) {
+                sprintf(buf, "%d", RDB_obj_int(&val));
+                ret = RDB_string_to_obj(valp, buf);
+                if (ret != RDB_OK) {
+                    RDB_destroy_obj(&val);
+                    return RDB_INVALID_ARGUMENT;
+                }
+            } else if (val.typ == &RDB_RATIONAL) {
+                sprintf(buf, "%g", RDB_obj_rational(&val));
+                ret = RDB_string_to_obj(valp, buf);
+                if (ret != RDB_OK) {
+                    RDB_destroy_obj(&val);
+                    return RDB_INVALID_ARGUMENT;
+                }
+            } else if (val.typ == &RDB_STRING) {
+                ret = RDB_string_to_obj(valp, RDB_obj_string(&val));
+                if (ret != RDB_OK) {
+                    RDB_destroy_obj(&val);
+                    return RDB_INVALID_ARGUMENT;
+                }
+            } else {
+                RDB_destroy_obj(&val);
+                return RDB_INVALID_ARGUMENT;
+            }
+            return RDB_destroy_obj(&val);
+        }
         case RDB_EX_SUBSET:
         {
             RDB_object val1, val2;
@@ -1551,6 +1677,12 @@ RDB_dup_expr(const RDB_expression *exp)
             return RDB_expr_is_empty(RDB_dup_expr(exp->var.op.arg1));
         case RDB_EX_STRLEN:
             return RDB_strlen(RDB_dup_expr(exp->var.op.arg1));
+        case RDB_EX_TO_INTEGER:
+            return RDB_to_int(RDB_dup_expr(exp->var.op.arg1));
+        case RDB_EX_TO_RATIONAL:
+            return RDB_to_rational(RDB_dup_expr(exp->var.op.arg1));
+        case RDB_EX_TO_STRING:
+            return RDB_to_string(RDB_dup_expr(exp->var.op.arg1));
         case RDB_EX_TUPLE_ATTR:
             return RDB_tuple_attr(RDB_dup_expr(exp->var.op.arg1),
                     exp->var.op.name);
@@ -1620,6 +1752,9 @@ _RDB_expr_refers(RDB_expression *exp, RDB_table *tbp)
         case RDB_EX_NEGATE:
         case RDB_EX_IS_EMPTY:
         case RDB_EX_STRLEN:
+        case RDB_EX_TO_INTEGER:
+        case RDB_EX_TO_RATIONAL:
+        case RDB_EX_TO_STRING:
         case RDB_EX_TUPLE_ATTR:
         case RDB_EX_GET_COMP:
             return _RDB_expr_refers(exp->var.op.arg1, tbp);
@@ -1678,6 +1813,9 @@ _RDB_invrename_expr(RDB_expression *exp, int renc, const RDB_renaming renv[])
         case RDB_EX_NEGATE:
         case RDB_EX_IS_EMPTY:
         case RDB_EX_STRLEN:
+        case RDB_EX_TO_INTEGER:
+        case RDB_EX_TO_RATIONAL:
+        case RDB_EX_TO_STRING:
         case RDB_EX_TUPLE_ATTR:
         case RDB_EX_GET_COMP:
             return _RDB_invrename_expr(exp->var.op.arg1, renc, renv);
@@ -1744,6 +1882,9 @@ _RDB_resolve_extend_expr(RDB_expression **expp, int attrc,
         case RDB_EX_NEGATE:
         case RDB_EX_IS_EMPTY:
         case RDB_EX_STRLEN:
+        case RDB_EX_TO_INTEGER:
+        case RDB_EX_TO_RATIONAL:
+        case RDB_EX_TO_STRING:
         case RDB_EX_TUPLE_ATTR:
         case RDB_EX_GET_COMP:
             return _RDB_resolve_extend_expr(&(*expp)->var.op.arg1, attrc, attrv);

@@ -281,6 +281,7 @@ RDB_extend_tuple(RDB_object *tplp, int attrc, RDB_virtual_attr attrv[],
     RDB_object val;
 
     for (i = 0; i < attrc; i++) {
+        RDB_init_obj(&val);
         res = RDB_evaluate(attrv[i].exp, tplp, txp, &val);
         if (res != RDB_OK)
             return res;

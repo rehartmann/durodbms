@@ -157,6 +157,9 @@ enum _RDB_expr_kind {
     RDB_EX_REGMATCH,
     RDB_EX_CONCAT,
     RDB_EX_CONTAINS,
+    RDB_EX_TO_INTEGER,
+    RDB_EX_TO_RATIONAL,
+    RDB_EX_TO_STRING,
 
     RDB_EX_IS_EMPTY,
     RDB_EX_SUBSET,
@@ -1112,6 +1115,15 @@ RDB_tuple_attr(RDB_expression *, const char *attrname);
 
 RDB_expression *
 RDB_expr_comp(RDB_expression *, const char *);
+
+RDB_expression *
+RDB_to_int(RDB_expression *);
+
+RDB_expression *
+RDB_to_rational(RDB_expression *);
+
+RDB_expression *
+RDB_to_string(RDB_expression *);
 
 int
 RDB_user_op(const char *opname, int argc, RDB_expression *argv[],

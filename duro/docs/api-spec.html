@@ -2,11 +2,11 @@
 "http://www.w3.org/TR/html4/strict.dtd">
 <html lang="en">
 <head>
-<title>Duro 0.8 API specification</title>
+<title>Duro 0.9 API specification</title>
 <body>
 <h1>Duro API specification</h1>
 
-<p>Version 0.8
+<p>Version 0.9
 
 <h2>Contents</h2>
 
@@ -164,6 +164,9 @@
 <li><a href="#concat">RDB_concat</a>
 <li><a href="#strlen">RDB_strlen</a>
 <li><a href="#regmatch">RDB_regmatch</a>
+<li><a href="#to_int">RDB_to_int</a>
+<li><a href="#to_rational">RDB_to_rational</a>
+<li><a href="#to_string">RDB_to_string</a>
 <li><a href="#expr_any">RDB_expr_any</a>
 <li><a href="#expr_all">RDB_expr_all</a>
 <li><a href="#expr_avg">RDB_expr_avg</a>
@@ -3494,6 +3497,39 @@ If one of the arguments is NULL, NULL is returned.
 
 <p>A pointer to the newly created expression, of NULL if the creation
 failed.
+
+<hr>
+
+<h2 id="to_int">RDB_to_int</h2>
+
+<pre>
+#include &lt;rel/rdb.h&gt;
+
+RDB_expression *
+RDB_to_int(RDB_expression *);
+</pre>
+
+<hr>
+
+<h2 id="to_rational">RDB_to_rational</h2>
+
+<pre>
+#include &lt;rel/rdb.h&gt;
+
+RDB_expression *
+RDB_to_rational(RDB_expression *);
+</pre>
+
+<hr>
+
+<h2 id="to_string">RDB_to_string</h2>
+
+<pre>
+#include &lt;rel/rdb.h&gt;
+
+RDB_expression *
+RDB_to_string(RDB_expression *);
+</pre>
 
 <hr>
 

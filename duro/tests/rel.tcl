@@ -146,7 +146,7 @@ if {[array size ta] != 3 || $ta(A) != 1 || $ta(B) != "z"
 set alen [duro::array length $da]
 
 if {$alen != 2} {
-    error "Incorrect length of array from U1: $alen
+    error "Incorrect length of array from U1: $alen"
 }
 
 duro::array drop $da

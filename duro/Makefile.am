@@ -46,11 +46,11 @@ TESTS = tests/ctests.sh tests/rtables.tcl tests/ltables.tcl tests/project.tcl \
         tests/tuple.tcl tests/sdivide.tcl tests/invtable.tcl \
         tests/operator.tcl tests/vtables.tcl tests/db2.tcl tests/rel.tcl \
         tests/subset.tcl tests/utype.tcl tests/deedum.tcl tests/opt.tcl \
-        tests/index.tcl
+        tests/index.tcl tests/convert.tcl
 
 TESTS_ENVIRONMENT = LD_LIBRARY_PATH=$(LD_LIBRARY_PATH):$(BDB_HOME)/lib
 
-LDADD = -L$(BDB_HOME)/lib libduro.la -ldb @LIBS@
+LDADD = -L$(BDB_HOME)/lib libduro.la -ldb @LIBS@ -lmcheck
 
 tests_test_pointtable_LDADD = $(LDADD) -lm
 

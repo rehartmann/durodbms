@@ -206,6 +206,9 @@ serialize_expr(RDB_object *valp, int *posp, const RDB_expression *exp)
         case RDB_EX_NEGATE:
         case RDB_EX_IS_EMPTY:
         case RDB_EX_STRLEN:
+        case RDB_EX_TO_INTEGER:
+        case RDB_EX_TO_RATIONAL:
+        case RDB_EX_TO_STRING:
             return serialize_expr(valp, posp, exp->var.op.arg1);
         case RDB_EX_EQ:
         case RDB_EX_NEQ:
@@ -878,7 +881,6 @@ deserialize_expr(RDB_object *valp, int *posp, RDB_transaction *txp,
         case RDB_EX_OBJ:
             {
                RDB_object val;
-               RDB_expression *exp;
 
                RDB_init_obj(&val);
                ret = deserialize_obj(valp, posp, txp, &val);
@@ -888,7 +890,7 @@ deserialize_expr(RDB_object *valp, int *posp, RDB_transaction *txp,
                }
                *expp = RDB_obj_to_expr(&val);
                RDB_destroy_obj(&val);
-               if (exp == NULL)
+               if (*expp == NULL)
                    return RDB_NO_MEMORY;
             }
             break;
@@ -909,6 +911,9 @@ deserialize_expr(RDB_object *valp, int *posp, RDB_transaction *txp,
         case RDB_EX_NOT:
         case RDB_EX_NEGATE:
         case RDB_EX_STRLEN:
+        case RDB_EX_TO_INTEGER:
+        case RDB_EX_TO_RATIONAL:
+        case RDB_EX_TO_STRING:
             ret = deserialize_expr(valp, posp, txp, &ex1p);
             if (ret != RDB_OK)
                 return ret;
