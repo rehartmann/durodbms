@@ -479,13 +479,14 @@ _RDB_sys_select(const char *name, int argc, RDB_object *argv[],
 }
 
 int
-RDB_implement_type(const char *name, RDB_type *arep,
-                   size_t areplen, RDB_transaction *txp)
+RDB_implement_type(const char *name, RDB_type *arep, RDB_int areplen,
+        RDB_transaction *txp)
 {
     RDB_expression *exp, *wherep;
     RDB_attr_update upd[3];
     RDB_object typedata;
     int ret;
+    int i;
     RDB_bool sysimpl = (arep == NULL) && (areplen == -1);
 
     if (!RDB_tx_is_running(txp))
@@ -583,12 +584,10 @@ RDB_implement_type(const char *name, RDB_type *arep,
             arep != NULL ? 3 : 2, upd, txp);
 
 cleanup:    
-    if (upd[0].exp != NULL)
-        RDB_drop_expr(upd[0].exp);
-    if (upd[1].exp != NULL)
-        RDB_drop_expr(upd[1].exp);
-    if (upd[2].exp != NULL)
-        RDB_drop_expr(upd[2].exp);
+    for (i = 0; i < 3; i++) {
+        if (upd[i].exp != NULL)
+            RDB_drop_expr(upd[i].exp);
+    }
     RDB_drop_expr(wherep);
 
     if (RDB_is_syserr(ret))
@@ -1261,7 +1260,11 @@ RDB_unwrap_tuple_type(const RDB_type *typ, int attrc, char *attrv[],
     nattrc = typ->var.tuple.attrc;
     for (i = 0; i < attrc; i++) {
         RDB_type *tuptyp = RDB_type_attr_type(typ, attrv[i]);
-        if (tuptyp == NULL || tuptyp->kind != RDB_TP_TUPLE) {
+        if (tuptyp == NULL) {
+            ret = RDB_ATTRIBUTE_NOT_FOUND;
+            goto error;
+        }        
+        if (tuptyp->kind != RDB_TP_TUPLE) {
             ret = RDB_INVALID_ARGUMENT;
             goto error;
         }        
@@ -1420,7 +1423,7 @@ RDB_group_type(RDB_type *typ, int attrc, char *attrv[], const char *gattr,
         if (_RDB_tuple_type_attr(gattrtyp->var.basetyp, attrname) == NULL) {
             if (strcmp(attrname, gattr) == 0) {
                 RDB_drop_type(gattrtyp, NULL);
-                ret = RDB_ATTRIBUTE_NOT_FOUND;
+                ret = RDB_INVALID_ARGUMENT;
                 goto error;
             }
             ret = copy_attr(&tuptyp->var.tuple.attrv[j],
@@ -1479,8 +1482,10 @@ RDB_ungroup_type(RDB_type *typ, const char *attr, RDB_type **newtypp)
     RDB_type *tuptyp;
     RDB_attr *relattrp = _RDB_tuple_type_attr(typ->var.basetyp, attr);
 
-    if (relattrp == NULL || relattrp->typ->kind != RDB_TP_RELATION)
+    if (relattrp == NULL)
         return RDB_ATTRIBUTE_NOT_FOUND;
+    if (relattrp->typ->kind != RDB_TP_RELATION)
+        return RDB_INVALID_ARGUMENT;
 
     tuptyp = malloc(sizeof (RDB_type));
     if (tuptyp == NULL)

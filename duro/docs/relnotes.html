@@ -6,63 +6,34 @@
 <body>
 <h1>Release Notes for Duro 0.8</h1>
 
-<h2>Functions only partially implemented</h2>
-
-<h3>RDB_insert</h3>
-
-<p>RDB_insert is not supported for virtual tables which are the result
-of a MINUS, SUMMARIZE, or DIVIDEBY PER.
-
-<h3>RDB_update</h3>
-
-<p>RDB_update is not supported for virtual tables except selection tables.
-
-<h3>RDB_delete</h3>
-
-<p>RDB_delete is not supported for virtual tables which are the result of
-a JOIN, SUMMARIZE, WRAP, UNWRAP, GROUP, UNGROUP, or DIVIDEBY PER.
-
-<h3>RDB_table_to_array</h3>
-
-<p>An RDB_array created by RDB_table_to_array becomes invalid after the
-end of the transaction in which it was created.
-
-<p>The table from which a RDB_array was created must not be dropped before
-the array is destroyed.
-
-<h3>RDB_set_array_length</h3>
-
-<p>...
-
-<h3>RDB_array_set</h3>
-
-<p>...
-
-<h2>Implementation-specific details</h2>
-
-<h3>Nested transactions</h3>
+<h2>Nested transactions</h2>
 
 <p>The execution of a parent transaction is suspended while a child
-transaction executes. It is illegal to perform an operation under
+transaction executes. It is an error to perform an operation under
 the control of a transaction which has a running child transaction.
 
-<h3>Creating libraries</h3>
+<h2>Creating libraries</h2>
 
 <p>Libraries for user-defined types and operators must be created
 using GNU Libtool. The name of the library is passed without
 the file extension.
 
-<h3>RDB_open_env</h3>
+<h2>Performance</h2>
 
-<p>The path passed to RDB_open_env is a Berkeley DB database
-environment directory.
+<p>Duro 0.8 supports indexes and has limited query optimization
+capabilities. Only "equality queries" will use an index.
+For example, if a compound index for attributes A and B has been created,
+T WHERE A=1 AND B=2 will use the index, but T WHERE A=1 will not,
+neither will T WHERE A=1 AND B>2.
 
-<p>To create a new, empty environment, simply pass an empty directory
-to RDB_open_env.
+<h2>Expressions</h2>
 
-<h3>RDB_parse_expr and RDB_parse_table</h3>
+<p>Duro 0.8 expressions may not contain relation-valued expressions
+which contain variables referring to variables in the enclosing expression.
+In other words, a relation-valued RDB_expression may only represent a table,
+but not a general relation-valued expression.
 
-<p>The parser is not reentrant.
+<p>For key attributes, an index is created automatically.
 
 <p>$Id$
 

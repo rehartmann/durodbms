@@ -6,16 +6,9 @@ Changes for Duro 0.8
 
 - Introduced error code RDB_ATTRIBUTE_NOT_FOUND.
 
-- Changed semantics of duro::operator create.
+- Implemented RDB_insert() for RENAME, WRAP, UNWRAP tables.
 
-- duro::insert now raises an error if the tuple is already an element of the
-  table.
-
-- Removed RDB_create_env().
-
-- Implemented GUI admin tool duroadmin.tcl.
-
-- Implemented duro::table attrs.
+- Implemented RDB_project_tuple() and RDB_join_tuples().
 
 - Implemented RDB_update() for selection tables.
 
@@ -25,11 +18,11 @@ Changes for Duro 0.8
 
 - Implemented RDB_table_equals().
 
+- Implemented RDB_expr_contains().
+
 - RDB_create_table() does now more complete argument checking.
 
 - Added query optimizer.
-
-- Fixed WRAP syntax.
 
 - RDB_binary_get() now returns a pointer to the data instead of copying it.
 
@@ -37,45 +30,52 @@ Changes for Duro 0.8
 
 - Now allowing nonscalar types as actual representations.
 
+- Added SUBSET operator.
+
+- Implemented GROUP and UNGROUP.
+
+- Implemented support for system-implemented user-defined types with
+  more than one possrep component.
+
 - Changed RDB_create_tuple_type() and RDB_create_relation_type(), which now
   return an error code.
 
 - Changed argument order of RDB_extract_tuple() and RDB_call_ro_op().
 
-- Implemented RDB_get_dbs() and duro::env dbs.
+- Implemented relation-valued table attributes.
 
 - Implemented array-valued attributes and RDB_create_array_type().
-
-- Durotcl: duro::array index and duro:array foreach now take a
-  transaction argument.
-
-- Durotcl functions now set errorCode.
-
-- Implemented support for system-implemented user-defined types with
-  more than one possrep component.
-
-- Removed RDB_select_obj() and RDB_selector(). Use RDB_call_ro_op() and
-  RDB_user_op() instead.
-
-- Added support for user-defined types in Durotcl through duro::type.
-
-- Added SUBSET operator.
 
 - Removed the libname argument from RDB_implement_type(). Selectors,
   getters, and setters are now created using RDB_create_ro_op() and
   RDB_create_update_op().
 
-- Implemented relation-valued table attributes.
+- Removed RDB_select_obj() and RDB_selector(). Use RDB_call_ro_op() and
+  RDB_user_op() instead.
 
-- Implemented GROUP and UNGROUP.
+- Removed RDB_create_env().
 
-- Added RDB_expr_contains().
+- Implemented duro::table attrs.
 
-- Implemented insert into RENAME, WRAP, UNWRAP tables.
+- Implemented RDB_get_dbs() and duro::env dbs.
 
-- Implemented RDB_project_tuple() and RDB_join_tuples().
+- Changed semantics of duro::operator create.
+
+- Implemented GUI admin tool.
+
+- duro::insert now raises an error if the tuple is already an element of the
+  table.
+
+- duro::array index and duro:array foreach now take a
+  transaction argument.
+
+- Durotcl functions now set errorCode.
+
+- Added support for user-defined types in Durotcl through duro::type.
 
 - Added tuple operations and relation literals to the expression parser.
+
+- Fixed WRAP syntax.
 
 - Fixed several bugs.
 

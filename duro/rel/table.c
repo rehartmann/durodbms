@@ -1454,6 +1454,9 @@ RDB_subset(RDB_table *tb1p, RDB_table *tb2p, RDB_transaction *txp,
     if (!RDB_type_equals(tb1p->typ, tb2p->typ))
         return RDB_TYPE_MISMATCH;
 
+    if (!RDB_tx_is_running(txp))
+        return RDB_INVALID_TRANSACTION;
+
     ret = _RDB_table_qresult(tb1p, txp, &qrp);
     if (ret != RDB_OK) {
         if (RDB_is_syserr(ret)) {
@@ -1504,13 +1507,19 @@ RDB_table_equals(RDB_table *tb1p, RDB_table *tb2p, RDB_transaction *txp,
     int ret;
     RDB_qresult *qrp;
     RDB_object tpl;
-    int cnt = RDB_cardinality(tb1p, txp);
+    int cnt;
+
+    /* Check if types of the two tables match */
+    if (!RDB_type_equals(tb1p->typ, tb2p->typ))
+        return RDB_TYPE_MISMATCH;
 
     /*
      * Check if both tables have same cardinality
      */
+    cnt = RDB_cardinality(tb1p, txp);
     if (cnt < 0)
         return cnt;
+
     ret =  RDB_cardinality(tb2p, txp);
     if (ret < 0)
         return ret;

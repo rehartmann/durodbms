@@ -479,7 +479,7 @@ RDB_wrap_tuple(const RDB_object *tplp, int wrapc, const RDB_wrapping wrapv[],
 
             if (attrp == NULL) {
                 RDB_destroy_obj(&tpl);
-                return RDB_INVALID_ARGUMENT;
+                return RDB_ATTRIBUTE_NOT_FOUND;
             }
 
             ret = RDB_tuple_set(&tpl, wrapv[i].attrv[j], attrp);
@@ -531,7 +531,9 @@ RDB_unwrap_tuple(const RDB_object *tplp, int attrc, char *attrv[],
     for (i = 0; i < attrc; i++) {
         RDB_object *wtplp = RDB_tuple_get(tplp, attrv[i]);
 
-        if (wtplp == NULL || wtplp->kind != RDB_OB_TUPLE)
+        if (wtplp == NULL)
+            return RDB_ATTRIBUTE_NOT_FOUND;
+        if (wtplp->kind != RDB_OB_TUPLE)
             return RDB_INVALID_ARGUMENT;
 
         ret = _RDB_copy_tuple(restplp, wtplp);

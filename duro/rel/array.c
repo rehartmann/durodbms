@@ -215,6 +215,7 @@ RDB_array_length(RDB_object *arrp)
     return arrp->var.arr.length;
 }
 
+/* currently unused
 static int
 detach_array(RDB_object *arrp)
 {
@@ -242,6 +243,7 @@ detach_array(RDB_object *arrp)
     arrp->var.arr.txp = NULL;
     return RDB_OK;
 }
+*/
 
 int
 RDB_set_array_length(RDB_object *arrp, RDB_int len)
@@ -264,9 +266,7 @@ RDB_set_array_length(RDB_object *arrp, RDB_int len)
         return RDB_OK;
     }
     if (arrp->var.arr.tbp != NULL) {
-        ret = detach_array(arrp);
-        if (ret != RDB_OK)
-            return ret;
+        return RDB_NOT_SUPPORTED;
     }
 
     if (len < arrp->var.arr.length) {
@@ -293,12 +293,8 @@ RDB_set_array_length(RDB_object *arrp, RDB_int len)
 int
 RDB_array_set(RDB_object *arrp, RDB_int idx, const RDB_object *objp)
 {
-    int ret;
-
     if (arrp->var.arr.tbp != NULL) {
-        ret = detach_array(arrp);
-        if (ret != RDB_OK)
-            return ret;
+        return RDB_NOT_SUPPORTED;
     }
 
     if (idx >= arrp->var.arr.length)

@@ -11,7 +11,7 @@ The following software is required for compiling and running Duro:
 - GNU Libtool
 - Tcl 8.1 or later
 
-Duro 0.8 has been tested on a GNU/Linux PC with Berkeley DB 4.2 and Tcl 8.4.
+Duro 0.8 has been tested under Linux/x86 with Berkeley DB 4.2 and Tcl 8.4.
 
 To learn about how to use Duro, see the documentation in the 'docs'
 subdirectory. Example code can be found in the 'tests' subdirectory
@@ -20,13 +20,18 @@ of the build directory.
 By default, Duro is installed in the directory /usr/local/duro.0.8.
 
 When Duro is installed, the Tcl interface is installed as a package in
-the 'lib' subdirectory. To use it from application scripts, the
-following code can be used:
+the 'lib' subdirectory. To make it available to application scripts, the
+simplest way is to add ths subdirectory to TCLLIBPATH, e.g.:
 
-    lappend auto_path "/usr/local/duro.0.8/lib"
-    package require duro
+    TCLLIBPATH=/usr/local/duro.0.8/lib
+    export TCLLIBPATH
 
 The Berkeley DB library directory must be added to LD_LIBRARY_PATH.
+
+To run Duroadmin, run duroadmin.tcl from the 'bin' subdirectory
+after setting TCLLIBPATH as described above. Duroadmin requires
+the TkTable extension, which is part of ActiveTcl, available
+from tcl.activestate.com.
 
 Duro is still under development. Report bugs to
 rhartmann@users.sourceforge.net.
