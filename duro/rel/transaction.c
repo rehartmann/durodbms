@@ -86,7 +86,7 @@ del_storage(RDB_transaction *txp)
     for (rmlinkp = txp->delrmp;
          (rmlinkp != NULL) && (ret == RDB_OK);
          rmlinkp = rmlinkp->nextp) {
-        ret = RDB_delete_recmap(rmlinkp->rmp, txp->envp, NULL);
+        ret = RDB_delete_recmap(rmlinkp->rmp, NULL);
     }
 
     cleanup_storage(txp);

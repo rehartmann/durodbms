@@ -201,7 +201,7 @@ delete_select_index(RDB_table *tbp, RDB_expression *condp,
         RDB_init_obj(&objv[i]);
 
     ret = RDB_index_cursor(&curp, tbp->var.select.indexp->idxp,
-            0, tbp->var.select.tbp->is_persistent ? txp->txid : NULL);
+            RDB_TRUE, tbp->var.select.tbp->is_persistent ? txp->txid : NULL);
     if (ret != RDB_OK) {
         if (txp != NULL) {
             RDB_errmsg(txp->dbp->dbrootp->envp, "cannot create cursor: %s",

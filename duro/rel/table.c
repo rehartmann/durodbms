@@ -42,7 +42,7 @@ new_stored_table(const char *name, RDB_bool persistent,
                 RDB_table **tbpp)
 {
     int ret;
-    int i, j;
+    int i;
     RDB_table *tbp = _RDB_new_table();
 
     if (tbp == NULL)
@@ -51,9 +51,10 @@ new_stored_table(const char *name, RDB_bool persistent,
     tbp->is_user = usr;
     tbp->is_persistent = persistent;
 
-    RDB_init_hashmap(&tbp->var.stored.attrmap, RDB_DFL_MAP_CAPACITY);
-
     tbp->kind = RDB_TB_STORED;
+    RDB_init_hashmap(&tbp->var.stored.attrmap, RDB_DFL_MAP_CAPACITY);
+    tbp->var.stored.indexc = 0;
+
     if (name != NULL) {
         tbp->name = RDB_dup_str(name);
         if (tbp->name == NULL) {
@@ -74,42 +75,6 @@ new_stored_table(const char *name, RDB_bool persistent,
         tbp->keyv[i].strv = RDB_dup_strvec(keyv[i].strc, keyv[i].strv);
         if (tbp->keyv[i].strv == NULL)
             goto error;
-    }
-
-    tbp->var.stored.indexc = tbp->keyc;
-    tbp->var.stored.indexv = malloc(sizeof (_RDB_tbindex)
-            * tbp->var.stored.indexc);
-    if (tbp->var.stored.indexv == NULL)
-        return RDB_NO_MEMORY;
-
-    for (i = 0; i < tbp->var.stored.indexc; i++) {
-        tbp->var.stored.indexv[i].attrc = tbp->keyv[i].strc;
-        tbp->var.stored.indexv[i].attrv = malloc (sizeof(RDB_seq_item)
-                * tbp->keyv[i].strc);
-        if (tbp->var.stored.indexv[i].attrv == NULL)
-            return RDB_NO_MEMORY;
-        for (j = 0; j < tbp->keyv[i].strc; j++) {
-            tbp->var.stored.indexv[i].attrv[j].attrname =
-                    RDB_dup_str(tbp->keyv[i].strv[j]);
-            if (tbp->var.stored.indexv[i].attrv[j].attrname == NULL)
-                return RDB_NO_MEMORY;
-        }
-
-        /* A primary index has no name */
-        if (tbp->is_persistent) {
-            tbp->var.stored.indexv[i].name =
-                    malloc(strlen(RDB_table_name(tbp)) + 4);
-            if (tbp->var.stored.indexv[i].name == NULL) {
-                return RDB_NO_MEMORY;
-            }
-            /* build index name */            
-            sprintf(tbp->var.stored.indexv[i].name, "%s$%d", tbp->name, i);
-        } else {
-            tbp->var.stored.indexv[i].name = NULL;
-        }
-
-        tbp->var.stored.indexv[i].unique = RDB_TRUE;
-        tbp->var.stored.indexv[i].idxp = NULL;
     }
 
     tbp->typ = reltyp;
@@ -192,6 +157,41 @@ _RDB_free_table(RDB_table *tbp)
     RDB_drop_type(tbp->typ, NULL);
     free(tbp->name);
     free(tbp);
+}
+
+int
+RDB_set_table_name(RDB_table *tbp, const char *name, RDB_transaction *txp)
+{
+    int ret;
+
+    if (!_RDB_legal_name(name))
+        return RDB_INVALID_ARGUMENT;
+
+    /* !! should check if virtual tables depend on this table */
+
+    if (tbp->is_persistent) {
+        ret = _RDB_cat_rename_table(tbp, name, txp);
+        if (ret != RDB_OK) {
+            RDB_errmsg(RDB_db_env(RDB_tx_db(txp)),
+                    "cannot rename table in catalog: %s", RDB_strerror(ret));
+            if (!RDB_is_syserr(ret)) {
+                /* Should not happen */
+                ret = RDB_INTERNAL;
+            }
+            RDB_rollback_all(txp);            
+            return ret;
+        }
+    }
+    
+    if (tbp->name != NULL)
+        free(tbp->name);
+    tbp->name = RDB_dup_str(name);
+    if (tbp->name == NULL) {
+        RDB_rollback_all(txp);
+        return RDB_NO_MEMORY;
+    }
+
+    return RDB_OK;
 }
 
 int
@@ -451,10 +451,63 @@ cleanup:
 static int
 create_key_indexes(RDB_table *tbp, RDB_environment *envp, RDB_transaction *txp)
 {
-    int i;
+    int i, j;
     int ret;
 
-    /* Create secondary indexes */
+    tbp->var.stored.indexc = tbp->keyc;
+    tbp->var.stored.indexv = malloc(sizeof (_RDB_tbindex)
+            * tbp->var.stored.indexc);
+    if (tbp->var.stored.indexv == NULL)
+        return RDB_NO_MEMORY;
+
+    for (i = 0; i < tbp->var.stored.indexc; i++) {
+        tbp->var.stored.indexv[i].attrc = tbp->keyv[i].strc;
+        tbp->var.stored.indexv[i].attrv = malloc(sizeof(RDB_seq_item)
+                * tbp->keyv[i].strc);
+        if (tbp->var.stored.indexv[i].attrv == NULL)
+            return RDB_NO_MEMORY;
+        for (j = 0; j < tbp->keyv[i].strc; j++) {
+            tbp->var.stored.indexv[i].attrv[j].attrname =
+                    RDB_dup_str(tbp->keyv[i].strv[j]);
+            if (tbp->var.stored.indexv[i].attrv[j].attrname == NULL)
+                return RDB_NO_MEMORY;
+        }
+
+        /* A primary index has no name */
+        if (tbp->is_persistent) {
+            tbp->var.stored.indexv[i].name =
+                    malloc(strlen(RDB_recmap_name(tbp->var.stored.recmapp)) + 4);
+            if (tbp->var.stored.indexv[i].name == NULL) {
+                return RDB_NO_MEMORY;
+            }
+            /* build index name */            
+            sprintf(tbp->var.stored.indexv[i].name, "%s$%d",
+                    RDB_recmap_name(tbp->var.stored.recmapp), i);
+        } else {
+            tbp->var.stored.indexv[i].name = NULL;
+        }
+
+        tbp->var.stored.indexv[i].unique = RDB_TRUE;
+        tbp->var.stored.indexv[i].idxp = NULL;
+    }
+
+    /*
+     * Create secondary indexes
+     */
+
+    /* If it's not a system table, create index in catalog */
+    if (tbp->is_user && tbp->is_persistent) {
+        for (i = 0; i < tbp->var.stored.indexc; i++) {
+            ret = _RDB_cat_insert_index(&tbp->var.stored.indexv[i], tbp->name,
+                    txp);
+            if (ret != RDB_OK) {
+                if (ret == RDB_KEY_VIOLATION)
+                    ret = RDB_ELEMENT_EXISTS;
+                return ret;
+            }
+        }
+    }
+
     for (i = 1; i < tbp->var.stored.indexc; i++) {
         ret = create_index(tbp, envp, txp, &tbp->var.stored.indexv[i]);
         if (ret != RDB_OK)
@@ -560,11 +613,12 @@ key_fnos(RDB_table *tbp, int **flenvp, RDB_bool ascv[], RDB_compare_field *cmpv)
  * ascv       the sort order of the primary index, or NULL if unordered
  */
 int
-_RDB_create_table_storage(RDB_table *tbp, RDB_environment *envp, RDB_bool ascv[],
-           RDB_transaction *txp)
+_RDB_create_table_storage(RDB_table *tbp, RDB_environment *envp,
+        RDB_bool ascv[], RDB_transaction *txp)
 {
     int ret;
     int *flenv;
+    char *rmname = NULL;
     RDB_compare_field *cmpv = NULL;
     int attrc = tbp->typ->var.basetyp->var.tuple.attrc;
     int piattrc = tbp->keyv[0].strc;
@@ -589,17 +643,41 @@ _RDB_create_table_storage(RDB_table *tbp, RDB_environment *envp, RDB_bool ascv[]
         return ret;
 
     /*
+     * If the table is a persistent user table, insert recmap int SYS_TABLE_RECMAP
+     */
+    if (tbp->is_persistent && tbp->is_user) {
+        ret = _RDB_cat_insert_table_recmap(tbp, tbp->name, txp);
+        if (ret == RDB_KEY_VIOLATION) {
+            /* Choose a different recmap name */
+            int n = 0;
+            rmname = malloc(strlen(tbp->name) + 4);
+            if (rmname == NULL) {
+                ret = RDB_NO_MEMORY;
+                goto error;
+            }
+            do {
+                sprintf(rmname, "%s%d", tbp->name, ++n);
+                ret = _RDB_cat_insert_table_recmap(tbp, rmname, txp);
+            } while (ret == RDB_KEY_VIOLATION && n <= 999);
+        }
+        if (ret != RDB_OK)
+            goto error;
+    }
+
+    /*
      * Use a sorted recmap for local tables, so the order of the tuples
      * is always the same if the table is stored as an attribute in a table.
      */
     if (ascv != NULL || !tbp->is_persistent)
-        ret = RDB_create_sorted_recmap(tbp->is_persistent ? tbp->name : NULL,
+        ret = RDB_create_sorted_recmap(tbp->is_persistent ?
+                (rmname == NULL ? tbp->name : rmname) : NULL,
                 tbp->is_persistent ? RDB_DATAFILE : NULL,
                 envp, attrc, flenv, piattrc, ascv != NULL ? cmpv : NULL,
                 (RDB_bool) (ascv != NULL), txp != NULL ? txp->txid : NULL,
                 &tbp->var.stored.recmapp);
     else {
-        ret = RDB_create_recmap(tbp->is_persistent ? tbp->name : NULL,
+        ret = RDB_create_recmap(tbp->is_persistent ?
+                (rmname == NULL ? tbp->name : rmname) : NULL,
                 tbp->is_persistent ? RDB_DATAFILE : NULL,
                 envp, attrc, flenv, piattrc, txp != NULL ? txp->txid : NULL,
                 &tbp->var.stored.recmapp);
@@ -614,12 +692,14 @@ _RDB_create_table_storage(RDB_table *tbp, RDB_environment *envp, RDB_bool ascv[]
 
     free(flenv);
     free(cmpv);
+    free(rmname);
     return RDB_OK;
 
 error:
     /* clean up */
     free(flenv);
     free(cmpv);
+    free(rmname);
     if (tbp != NULL) {
         RDB_destroy_hashmap(&tbp->var.stored.attrmap);
     }
@@ -639,7 +719,7 @@ error:
  */
 int
 _RDB_open_table_storage(RDB_table *tbp, RDB_environment *envp,
-           RDB_transaction *txp)
+        const char *rmname, RDB_transaction *txp)
 {
     int ret;
     int *flenv;
@@ -657,7 +737,7 @@ _RDB_open_table_storage(RDB_table *tbp, RDB_environment *envp,
     if (ret != RDB_OK)
         return ret;
 
-    ret = RDB_open_recmap(tbp->name, RDB_DATAFILE, envp,
+    ret = RDB_open_recmap(rmname, RDB_DATAFILE, envp,
             attrc, flenv, piattrc, txp != NULL ? txp->txid : NULL,
             &tbp->var.stored.recmapp);
     if (ret != RDB_OK)
@@ -765,12 +845,11 @@ RDB_create_table_index(const char *name, RDB_table *tbp, int idxcompc,
         return ret;
     }
 
-    /* Create index in catalog */
-    ret = _RDB_cat_insert_index(indexp, tbp->name, &tx);
-    if (ret != RDB_OK) {
-        if (ret == RDB_KEY_VIOLATION)
-            ret = RDB_ELEMENT_EXISTS;
-        goto error;
+    if (tbp->is_persistent) {
+        /* Insert index into catalog */
+        ret = _RDB_cat_insert_index(indexp, tbp->name, &tx);
+        if (ret != RDB_OK)
+            goto error;
     }
 
     /* Create index */

@@ -29,6 +29,7 @@ typedef struct RDB_dbroot {
     RDB_table *table_attr_tbp;
     RDB_table *table_attr_defvals_tbp;
     RDB_table *vtables_tbp;
+    RDB_table *table_recmap_tbp;
     RDB_table *dbtables_tbp;
     RDB_table *keys_tbp;
     RDB_table *types_tbp;    
@@ -171,7 +172,7 @@ _RDB_create_table_storage(RDB_table *tbp, RDB_environment *envp,
         RDB_bool ascv[], RDB_transaction *txp);
 
 int
-_RDB_open_table_storage(RDB_table *tbp, RDB_environment *envp,
+_RDB_open_table_storage(RDB_table *tbp, RDB_environment *envp, const char *,
            RDB_transaction *txp);
 
 int

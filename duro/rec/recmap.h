@@ -61,6 +61,8 @@ typedef struct {
     RDB_bool dup_keys;
 } RDB_recmap;
 
+#define RDB_recmap_name(rmp) ((rmp)->namp)
+
 /*
  * Create a recmap with the name specified by name in the DB environment
  * pointed to by envp in the file specified by filename.
@@ -95,9 +97,10 @@ RDB_close_recmap(RDB_recmap *);
 
 /* Delete a recmap. */
 int
-RDB_delete_recmap(RDB_recmap *, RDB_environment *, DB_TXN *);
+RDB_delete_recmap(RDB_recmap *, DB_TXN *);
 
-/* Insert a record into a recmap. The values are given by valv.
+/*
+ * Insert a record into a recmap. The values are given by valv.
  * valv[..].no is ignored.
  */
 int

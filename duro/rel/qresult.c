@@ -489,7 +489,7 @@ select_index_qresult(RDB_qresult *qrp, RDB_transaction *txp)
         return RDB_OK;
 
     ret = RDB_index_cursor(&qrp->var.curp, qrp->tbp->var.select.indexp->idxp,
-            0, qrp->tbp->var.select.tbp->is_persistent ? txp->txid : NULL);
+            RDB_FALSE, qrp->tbp->var.select.tbp->is_persistent ? txp->txid : NULL);
     if (ret != RDB_OK) {
         if (txp != NULL) {
             RDB_errmsg(txp->dbp->dbrootp->envp, "cannot create cursor: %s",
@@ -647,7 +647,7 @@ join_qresult(RDB_qresult *qrp, RDB_transaction *txp)
         qrp->var.virtual.qr2p->matp = NULL;
 
         ret = RDB_index_cursor(&qrp->var.virtual.qr2p->var.curp,
-                qrp->tbp->var.join.indexp->idxp, 0,
+                qrp->tbp->var.join.indexp->idxp, RDB_FALSE,
                 qrp->tbp->var.join.tb2p->is_persistent ? txp->txid : NULL);
         if (ret != RDB_OK) {
             free(qrp->var.virtual.qr2p);

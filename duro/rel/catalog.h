@@ -31,10 +31,13 @@ _RDB_possrepcomps_query(const char *name, const char *possrepname,
         RDB_transaction *txp, RDB_table **tbpp);
 
 int
-_RDB_get_cat_rtable(const char *name, RDB_transaction *, RDB_table **tbpp);
+_RDB_get_cat_rtable(const char *, RDB_transaction *, RDB_table **tbpp);
 
 int
-_RDB_get_cat_vtable(const char *name, RDB_transaction *, RDB_table **tbpp);
+_RDB_get_cat_vtable(const char *, RDB_transaction *, RDB_table **tbpp);
+
+int
+_RDB_cat_rename_table(RDB_table *, const char *, RDB_transaction *);
 
 int
 _RDB_get_cat_type(const char *name, RDB_transaction *, RDB_type **typp);
@@ -52,6 +55,10 @@ _RDB_get_cat_ro_op(const char *name, int argc, RDB_type *argtv[],
 int
 _RDB_get_cat_upd_op(const char *name, int argc, RDB_type *argtv[],
         RDB_transaction *txp, RDB_upd_op **opp);
+
+int
+_RDB_cat_insert_table_recmap(RDB_table *tbp, const char *rmname,
+        RDB_transaction *txp);
 
 int
 _RDB_cat_insert_index(_RDB_tbindex *, const char *tbname,

@@ -171,6 +171,7 @@ close_systables(RDB_dbroot *dbrootp)
     close_table(dbrootp->table_attr_tbp, dbrootp->envp);
     close_table(dbrootp->table_attr_defvals_tbp, dbrootp->envp);
     close_table(dbrootp->vtables_tbp, dbrootp->envp);
+    close_table(dbrootp->table_recmap_tbp, dbrootp->envp);
     close_table(dbrootp->dbtables_tbp, dbrootp->envp);
     close_table(dbrootp->keys_tbp, dbrootp->envp);
     close_table(dbrootp->types_tbp, dbrootp->envp);
@@ -812,33 +813,13 @@ RDB_drop_table(RDB_table *tbp, RDB_transaction *txp)
             /* Schedule recmap for deletion */
             ret = _RDB_del_recmap(txp, tbp->var.stored.recmapp);
         } else {
-            ret = RDB_delete_recmap(tbp->var.stored.recmapp, NULL, NULL);
+            ret = RDB_delete_recmap(tbp->var.stored.recmapp, NULL);
         }
         if (ret != RDB_OK)
             return ret;
     }
 
     return _RDB_drop_table(tbp, RDB_TRUE);
-}
-
-int
-RDB_set_table_name(RDB_table *tbp, const char *name, RDB_transaction *txp)
-{
-    if (!_RDB_legal_name(name))
-        return RDB_INVALID_ARGUMENT;
-
-    if (tbp->is_persistent)
-        return RDB_NOT_SUPPORTED;
-    
-    if (tbp->name != NULL)
-        free(tbp->name);
-    tbp->name = RDB_dup_str(name);
-    if (tbp->name == NULL) {
-        RDB_rollback_all(txp);
-        return RDB_NO_MEMORY;
-    }
-
-    return RDB_OK;
 }
 
 int

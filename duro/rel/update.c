@@ -411,6 +411,8 @@ update_select_pindex(RDB_table *tbp, RDB_expression *condp,
             tbp->var.select.indexp, txp, &tpl);
     if (ret != RDB_OK) {
         RDB_destroy_obj(&tpl);
+        if (ret == RDB_NOT_FOUND)
+            ret = RDB_OK;
         goto cleanup;
     }
 
@@ -505,8 +507,8 @@ update_select_index_simple(RDB_table *tbp, RDB_expression *condp,
     for (i = 0; i < updc; i++)
         RDB_init_obj(&valv[i]);
 
-    ret = RDB_index_cursor(&curp, tbp->var.select.indexp->idxp,
-            0, tbp->var.select.tbp->is_persistent ? tx.txid : NULL);
+    ret = RDB_index_cursor(&curp, tbp->var.select.indexp->idxp, RDB_TRUE,
+            tbp->var.select.tbp->is_persistent ? tx.txid : NULL);
     if (ret != RDB_OK) {
         return ret;
     }

@@ -60,13 +60,10 @@ RDB_index_cursor(RDB_cursor **curpp, RDB_index *idxp, RDB_bool wr,
 {
     int ret;
     RDB_cursor *curp = new_cursor(idxp->rmp, txid, idxp);
-    u_int32_t flags = 0;
     
     if (curp == NULL)
         return RDB_NO_MEMORY;
-    if (wr)
-        flags |= DB_WRITECURSOR;
-    ret = idxp->dbp->cursor(idxp->dbp, txid, &curp->cursorp, flags);
+    ret = idxp->dbp->cursor(idxp->dbp, txid, &curp->cursorp, 0);
     if (ret != 0) {
         free(curp);        
         if (curp->recmapp->envp != NULL) {

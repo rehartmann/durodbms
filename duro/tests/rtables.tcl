@@ -32,6 +32,9 @@ duro::table create T1 {
    {INTATTR INTEGER}
 } {{INTATTR}} $tx
 
+# Rename table
+# duro::table rename T T1 $tx
+
 # Insert tuple
 duro::insert T1 {INTATTR 1 STRATTR Bla} $tx
 
@@ -111,12 +114,14 @@ duro::table drop T1 $tx
 #
 
 # Create table
-duro::table create T2 {
+duro::table create T {
    {STRATTR1 STRING}
    {INTATTR INTEGER}
    {STRATTR2 STRING}
    {STRATTR3 STRING}
 } {{STRATTR1} {INTATTR STRATTR2}} $tx
+
+duro::table rename T T2 $tx
 
 duro::commit $tx
 
@@ -277,19 +282,21 @@ duro::commit $tx
 
 set tx [duro::begin $dbenv TEST]
 
-# Test recreating table
+# Create table
+duro::table create T {
+   {A INTEGER}
+   {B RATIONAL}
+} {{A}} $tx
+
+duro::table rename T T3 $tx
+
+# Test recreating table T2
 duro::table create T2 {
    {STRATTR1 STRING}
    {INTATTR INTEGER}
    {STRATTR2 STRING}
    {STRATTR3 STRING}
 } {{STRATTR1} {INTATTR STRATTR2}} $tx
-
-# Create table
-duro::table create T3 {
-   {A INTEGER}
-   {B RATIONAL}
-} {{A}} $tx
 
 # Insert tuples
 duro::insert T3 {A 1 B 1.0} $tx

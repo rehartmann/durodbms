@@ -108,8 +108,12 @@ RDB_create_recmap(const char *name, const char *filename,
        
     /* Create BDB database */
     if ((ret = (*rmpp)->dbp->open((*rmpp)->dbp, txid, filename, name, DB_HASH,
-            DB_CREATE, 0664)) != 0)
+            DB_CREATE, 0664)) != 0) {
+        if (envp != NULL) {
+            RDB_errmsg(envp, "cannot create recmap: %s", RDB_strerror(ret));
+        }
         goto error;
+    }
 
     return RDB_OK;
 
@@ -242,15 +246,15 @@ RDB_close_recmap(RDB_recmap *rmp)
 }
 
 int
-RDB_delete_recmap(RDB_recmap *rmp, RDB_environment *envp, DB_TXN *txid)
+RDB_delete_recmap(RDB_recmap *rmp, DB_TXN *txid)
 {
     int ret;
     ret = rmp->dbp->close(rmp->dbp, DB_NOSYNC);
     if (ret != 0)
         goto cleanup;
 
-    if (envp != NULL && rmp->namp != NULL) {
-        ret = envp->envp->dbremove(envp->envp, txid, rmp->filenamp, rmp->namp, 0);
+    if (rmp->envp != NULL && rmp->namp != NULL) {
+        ret = rmp->envp->envp->dbremove(rmp->envp->envp, txid, rmp->filenamp, rmp->namp, 0);
     }
 
 cleanup:
@@ -258,8 +262,8 @@ cleanup:
     free(rmp->filenamp);
     free(rmp->fieldlens);
     free(rmp);
-    if (ret != 0)
-        RDB_errmsg(envp, "cannot delete recmap: %s", RDB_strerror(ret));
+    if (ret != 0 && rmp->envp != NULL)
+        RDB_errmsg(rmp->envp, "cannot delete recmap: %s", RDB_strerror(ret));
 
     return RDB_convert_err(ret);
 }

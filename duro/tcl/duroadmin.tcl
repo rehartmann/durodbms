@@ -60,6 +60,7 @@ proc show_tables {} {
     foreach tb $tables {
         .tables insert end $tb
     }
+    .mbar.db entryconfigure 4 -state disabled
 }
 
 proc add_db {newdb} {
@@ -91,7 +92,7 @@ proc open_env_path {envpath} {
         tk_messageBox -type ok -title "Error" -message $msg -icon error
         return
     }
-    wm title . "Duroadmin - $envpath"
+    wm title . "$envpath - Duroadmin"
 
     # Add new entries
     foreach i $dbs {
@@ -170,9 +171,12 @@ proc clear_bottom_row {} {
 proc set_row {row tpl} {
     array set ta $tpl
     for {set j 0} {$j < [llength $::tableattrs]} {incr j} {
-        set s $ta([lindex $::tableattrs $j])
+        set attrname [lindex $::tableattrs $j]
+        set s $ta($attrname)
         if {![string is print $s]} {
             set s "(nonprintable)"
+        } elseif {$::tabletypes($attrname) == "BOOLEAN"} {
+            set s [expr {$s ?  "TRUE" : "FALSE"}]
         }
         .tableframe.table set $row,$j $s
     }
@@ -247,6 +251,7 @@ proc show_table {} {
     clear_bottom_row
 
     .mbar.db.drop entryconfigure 2 -state normal
+    .mbar.db entryconfigure 4 -state normal
 }
 
 proc more_tuples {} {
@@ -315,6 +320,65 @@ proc create_db {} {
     add_db $::newdbname
     set ::db $::newdbname
     .mbar.db.drop entryconfigure 1 -state normal
+    show_tables
+}
+
+proc rename_table {} {
+    set table [.tables get anchor]
+
+    toplevel .dialog
+    wm title .dialog "Rename table"
+    wm geometry .dialog "+300+300"
+
+    set ::newtablename ""
+
+    label .dialog.l -text "New table name:"
+    entry .dialog.dbname -textvariable newtablename
+
+    set ::action ok
+    frame .dialog.buttons
+    button .dialog.buttons.ok -text OK -command {set action ok}
+    button .dialog.buttons.cancel -text Cancel -command {set action cancel}
+
+    pack .dialog.buttons -side bottom
+    pack .dialog.buttons.ok .dialog.buttons.cancel -side left
+    pack .dialog.l .dialog.dbname -side left
+
+    set done 0
+    grab .dialog
+    while {!$done} {
+        tkwait variable action
+        if {$::action != "ok"} {
+            destroy .dialog
+            return
+        }
+        if {$::newtablename == ""} {
+            tk_messageBox -type ok -title "Error" \
+                    -message "Please enter a table name." -icon warning
+            continue
+        }
+
+        # Rename table
+        if {[catch {
+            set tx [duro::begin $::dbenv $::db]
+            duro::table rename $table $::newtablename $tx
+            duro::commit $tx
+        } msg]} {
+            catch {duro::rollback $tx}
+            tk_messageBox -type ok -title "Error" -message $msg -icon error
+            continue
+        }
+        set done 1
+    }
+    destroy .dialog
+    .mbar.db.drop entryconfigure 1 -state normal
+
+    # If the table is local, replace it in the list of local tables
+    set i [lsearch -exact $::ltables $table]
+    if {$i != -1} {
+        set ::ltables [lreplace $::ltables $i $i $::newtablename]
+    }
+
     show_tables
 }
 
@@ -603,6 +667,7 @@ proc drop_table {} {
 
         .tables delete anchor
         .mbar.db.drop entryconfigure 2 -state disabled
+        .mbar.db entryconfigure 4 -state disabled
 
         # If the table is local, delete it from the list of local tables
         set ti [lsearch $::ltables $table]
@@ -763,6 +828,12 @@ proc del_row {} {
 
     # Delete row from table widget
     .tableframe.table delete rows $row
+
+    puts $row
+    puts $rowcount
+    if {$row >= [expr {$rowcount - 2}]} {
+        .mbar.db entryconfigure 3 -state disabled
+    }
 }
 
 proc valcell {s} {
@@ -777,12 +848,17 @@ proc valcell {s} {
 }
 
 proc browse {old new} {
+    set rowcount [.tableframe.table cget -rows]
+    scan $old %d,%d orow ocol
+    scan $new %d,%d nrow ncol
+    if {$nrow < [expr {$rowcount - 1}]} {
+        .mbar.db entryconfigure 3 -state normal
+    } else {
+        .mbar.db entryconfigure 3 -state disabled
+    }
     if {$old == ""} {
         return
     }
-    scan $old %d,%d orow ocol
-    scan $new %d,%d nrow ncol
-    set rowcount [.tableframe.table cget -rows]
 
     set i [expr $orow - 1]
     if {$nrow != $orow && $orow < [expr {$rowcount - 1}]
@@ -824,7 +900,9 @@ menu .mbar.db.create
 .mbar.db add cascade -label Create -menu .mbar.db.create
 menu .mbar.db.drop
 .mbar.db add cascade -label Drop -menu .mbar.db.drop
-.mbar.db add command -label "Delete row" -command del_row
+.mbar.db add command -label "Delete row" -command del_row -state disabled
+.mbar.db add command -label "Rename table" -command rename_table \
+        -state disabled
 
 .mbar.db.create add command -label "Database" -state disabled \
         -command create_db

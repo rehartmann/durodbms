@@ -162,7 +162,7 @@ Duro_init_tcl(Tcl_Interp *interp, TclState **statepp)
 
     Tcl_CreateExitHandler(duro_cleanup, (ClientData)*statepp);
 
-    return Tcl_PkgProvide(interp, "duro", "0.8");
+    return Tcl_PkgProvide(interp, "duro", "0.9");
 }
 
 int

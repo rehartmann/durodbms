@@ -475,8 +475,6 @@ RDB_set_table_name(RDB_table *tbp, const char *name, RDB_transaction *);
 
 <p>RDB_set_table_name sets the name of the table to <var>name</var>.
 
-<p>Currently, RDB_set_table_name does not work for global tables.
-
 <h3>Return value</h3>
 
 <p>On success, RDB_OK is returned. On failure, an error code is returned.
@@ -488,8 +486,6 @@ RDB_set_table_name(RDB_table *tbp, const char *name, RDB_transaction *);
 <dd><var>txp</var> does not point to a running transaction.
 <dt>RDB_INVALID_ARGUMENT
 <dd><var>name</var> is not a valid table name.
-<dt>RDB_NOT_SUPPORTED
-<dd>The table specified by <var>tbp</var> is global.
 </dl>
 
 <p>The call may also fail for a <a href="#syserr">system error</a>,

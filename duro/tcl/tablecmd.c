@@ -742,16 +742,95 @@ table_keys_cmd(TclState *statep, Tcl_Interp *interp, int objc,
     return TCL_OK;
 }
 
+static int
+table_rename_cmd(TclState *statep, Tcl_Interp *interp, int objc,
+        Tcl_Obj *CONST objv[])
+{
+    int ret;
+    char *name;
+    char *newname;
+    char *txstr;
+    Tcl_HashEntry *entryp;
+    RDB_transaction *txp;
+    RDB_table *tbp;
+
+    if (objc != 5) {
+        Tcl_WrongNumArgs(interp, 2, objv, "tablename newname tx");
+        return TCL_ERROR;
+    }
+
+    name = Tcl_GetString(objv[2]);
+    newname = Tcl_GetString(objv[3]);
+    txstr = Tcl_GetString(objv[4]);
+    entryp = Tcl_FindHashEntry(&statep->txs, txstr);
+    if (entryp == NULL) {
+        Tcl_AppendResult(interp, "Unknown transaction: ", txstr, NULL);
+        return TCL_ERROR;
+    }
+    txp = Tcl_GetHashValue(entryp);
+
+    ret = Duro_get_table(statep, interp, name, txp, &tbp);
+    if (ret != TCL_OK) {
+        return TCL_ERROR;
+    }
+
+    if (tbp->is_persistent) {
+        ret = RDB_set_table_name(tbp, newname, txp);
+        if (ret != RDB_OK) {
+            Duro_dberror(interp, ret);
+            return TCL_ERROR;
+        }
+    } else {
+        Tcl_HashSearch search;
+        table_entry *tbep;
+
+        /*
+         * Check if there is another local table which depends on this table
+         */
+        entryp = Tcl_FirstHashEntry(&statep->ltables, &search);
+        while (entryp != NULL) {
+            table_entry *iep = (table_entry *) Tcl_GetHashValue(entryp);
+
+            if (iep->tablep != tbp && RDB_table_refers(iep->tablep, tbp)) {
+                Tcl_AppendResult(interp, "Cannot rename table ", tbp->name,
+                        ": ", iep->tablep->name, " depends on it", NULL);
+                return TCL_ERROR;
+            }
+            entryp = Tcl_NextHashEntry(&search);
+        }
+
+        entryp = Tcl_FindHashEntry(&statep->ltables, name);
+        tbep = (table_entry *)Tcl_GetHashValue(entryp);
+        Tcl_DeleteHashEntry(entryp);
+        Tcl_Free((char *) tbep);
+
+        ret = RDB_set_table_name(tbp, newname, txp);
+        if (ret != RDB_OK) {
+            Duro_dberror(interp, ret);
+            return TCL_ERROR;
+        }
+
+        ret = Duro_add_table(interp, statep, tbp, newname, RDB_db_env(RDB_tx_db(txp)));
+        if (ret != TCL_OK) {
+            return TCL_ERROR;
+        }
+    }
+
+    return TCL_OK;
+}
+
 int
 Duro_table_cmd(ClientData data, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[])
 {
     TclState *statep = (TclState *) data;
 
     const char *sub_cmds[] = {
-        "create", "drop", "expr", "contains", "add", "attrs", "keys", NULL
+        "create", "drop", "expr", "contains", "add", "attrs", "keys", "rename",
+        NULL
     };
     enum table_ix {
-        create_ix, drop_ix, expr_ix, contains_ix, add_ix, attrs_ix, keys_ix
+        create_ix, drop_ix, expr_ix, contains_ix, add_ix, attrs_ix, keys_ix,
+        rename_ix
     };
     int index;
 
@@ -780,6 +859,8 @@ Duro_table_cmd(ClientData data, Tcl_Interp *interp, int objc, Tcl_Obj *CONST obj
             return table_attrs_cmd(statep, interp, objc, objv);
         case keys_ix:
             return table_keys_cmd(statep, interp, objc, objv);
+        case rename_ix:
+            return table_rename_cmd(statep, interp, objc, objv);
     }
     return TCL_ERROR;
 }
