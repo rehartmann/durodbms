@@ -46,9 +46,11 @@ expr_to_table (RDB_expression *exp)
 %token SUMMARIZE
 %token PER
 %token ADD
+%token MATCHES
+%token OR
+%token AND
 %token TRUE
 %token FALSE
-%token MATCHES
 
 %%
 
@@ -78,17 +80,10 @@ select: primary_expression WHERE or_expression {
             RDB_table *tbp, *restbp;
             int ret;
 
-            if ($1->kind == RDB_ATTR) {
-                ret = RDB_get_table($1->var.attr.name, expr_txp, &tbp);
-                if (ret != RDB_OK) {
-                    yyerror(RDB_strerror(ret));
-                    YYERROR;
-                }
-            } else if ($1->kind == RDB_TABLE) {
-                tbp = $1->var.tbp;
-            } else {
+            tbp = expr_to_table($1);
+            if (tbp == NULL)
+            {
                 yyerror("select: table expected\n");
-                printf("kind is %d\n", $1->kind);
                 YYERROR;
             }
             ret = RDB_select(tbp, $3, &restbp);
@@ -237,45 +232,65 @@ summary_type: "SUM"
         ;
 
 or_expression: and_expression
-        | or_expression "OR" and_expression {
+        | or_expression OR and_expression {
             $$ = RDB_or($1, $3);
+            if ($$ == NULL)
+                YYERROR;
         }
         ;
 
 and_expression: not_expression
-        | and_expression "AND" not_expression {
+        | and_expression AND not_expression {
             $$ = RDB_and($1, $3);
+            if ($$ == NULL)
+                YYERROR;
         }
         ;
 
 not_expression: rel_expression
         | "NOT" rel_expression {
             $$ = RDB_not($1);
+            if ($$ == NULL)
+                YYERROR;
         }
         ;
 
 rel_expression: add_expression
         | add_expression '=' add_expression {
-                $$ = RDB_eq($1, $3);
+            $$ = RDB_eq($1, $3);
+            if ($$ == NULL)
+                YYERROR;
         }
         | add_expression "<>" add_expression {
-                $$ = RDB_neq($1, $3);
+            $$ = RDB_neq($1, $3);
+            if ($$ == NULL)
+                YYERROR;
         }
         | add_expression ">=" add_expression {
-                $$ = RDB_get($1, $3);
+            $$ = RDB_get($1, $3);
+            if ($$ == NULL)
+                YYERROR;
         }
         | add_expression "<=" add_expression {
-                $$ = RDB_let($1, $3);
+            $$ = RDB_let($1, $3);
+            if ($$ == NULL)
+                YYERROR;
         }
         | add_expression '>' add_expression {
-                $$ = RDB_gt($1, $3);
+            $$ = RDB_gt($1, $3);
+            if ($$ == NULL)
+                YYERROR;
         }
         | add_expression '<' add_expression {
-                $$ = RDB_lt($1, $3);
+            $$ = RDB_lt($1, $3);
+            if ($$ == NULL)
+                YYERROR;
         }
         | add_expression "IN" add_expression
         | add_expression MATCHES add_expression {
-                $$ = RDB_regmatch($1, $3);
+            $$ = RDB_regmatch($1, $3);
+            if ($$ == NULL)
+                YYERROR;
         }
         ;
 
@@ -284,16 +299,28 @@ add_expression: mul_expression
         | '-' mul_expression
         | add_expression '+' mul_expression {
             $$ = RDB_add($1, $3);
+            if ($$ == NULL)
+                YYERROR;
         }
         | add_expression '-' mul_expression {
             $$ = RDB_subtract($1, $3);
+            if ($$ == NULL)
+                YYERROR;
         }
         | add_expression "||" mul_expression
         ;
 
 mul_expression: primary_expression
-        | mul_expression '/' primary_expression
-        | mul_expression '*' primary_expression
+        | mul_expression '*' primary_expression {
+            $$ = RDB_multiply($1, $3);
+            if ($$ == NULL)
+                YYERROR;
+        }
+        | mul_expression '/' primary_expression {
+            $$ = RDB_divide($1, $3);
+            if ($$ == NULL)
+                YYERROR;
+        }
         ;
 
 primary_expression: ID

@@ -127,6 +127,8 @@ serialize_expr(RDB_object *valp, int *posp, const RDB_expression *exp)
         case RDB_OP_OR:
         case RDB_OP_ADD:
         case RDB_OP_SUBTRACT:
+        case RDB_OP_MULTIPLY:
+        case RDB_OP_DIVIDE:
         case RDB_OP_REGMATCH:
             ret = serialize_expr(valp, posp, exp->var.op.arg1);
             if (ret != RDB_OK)
@@ -581,6 +583,8 @@ deserialize_expr(RDB_object *valp, int *posp, RDB_transaction *txp,
         case RDB_OP_OR:
         case RDB_OP_ADD:
         case RDB_OP_SUBTRACT:
+        case RDB_OP_MULTIPLY:
+        case RDB_OP_DIVIDE:
         case RDB_OP_REGMATCH:
             ret = deserialize_expr(valp, posp, txp, &ex1p);
             if (ret != RDB_OK)

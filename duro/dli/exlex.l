@@ -86,6 +86,14 @@ MATCHES {
         return MATCHES;
         }
 
+OR      {
+        return OR;
+        }
+
+AND     {
+        return AND;
+}
+
 TRUE    {
         yylval = RDB_bool_const(RDB_TRUE);
 }
@@ -125,6 +133,6 @@ FALSE    {
         return DECIMAL;
         }
 
-[=><+\-]   return (int)yytext[0];
+[=><+\-\*/\(\)]   return (int)yytext[0];
 
 %%

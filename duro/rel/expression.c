@@ -38,6 +38,8 @@ RDB_expr_type(const RDB_expression *exp, const RDB_type *tuptyp)
             return &RDB_BOOLEAN;
         case RDB_OP_ADD:
         case RDB_OP_SUBTRACT:
+        case RDB_OP_MULTIPLY:
+        case RDB_OP_DIVIDE:
             return RDB_expr_type(exp->var.op.arg1, tuptyp);
         case RDB_OP_STRLEN:
             return &RDB_INTEGER;
@@ -278,6 +280,18 @@ RDB_subtract(RDB_expression *arg1, RDB_expression *arg2)
 }
 
 RDB_expression *
+RDB_multiply(RDB_expression *arg1, RDB_expression *arg2)
+{
+    return _RDB_create_binexpr(arg1, arg2, RDB_OP_MULTIPLY);
+}
+
+RDB_expression *
+RDB_divide(RDB_expression *arg1, RDB_expression *arg2)
+{
+    return _RDB_create_binexpr(arg1, arg2, RDB_OP_DIVIDE);
+}
+
+RDB_expression *
 RDB_strlen(RDB_expression *arg)
 {
     return _RDB_create_unexpr(arg, RDB_OP_STRLEN);
@@ -431,6 +445,8 @@ RDB_drop_expr(RDB_expression *exp)
         case RDB_OP_OR:
         case RDB_OP_ADD:
         case RDB_OP_SUBTRACT:
+        case RDB_OP_MULTIPLY:
+        case RDB_OP_DIVIDE:
         case RDB_OP_REGMATCH:
             RDB_drop_expr(exp->var.op.arg2);
         case RDB_OP_NOT:
@@ -556,6 +572,17 @@ evaluate_arith(RDB_expression *exp, const RDB_tuple *tup, RDB_transaction *txp,
             case RDB_OP_SUBTRACT:
                 valp->var.int_val = val1.var.int_val - val2.var.int_val;
                 break;
+            case RDB_OP_MULTIPLY:
+                valp->var.int_val = val1.var.int_val * val2.var.int_val;
+                break;
+            case RDB_OP_DIVIDE:
+                if (val2.var.int_val == 0) {
+                    RDB_destroy_obj(&val1);
+                    RDB_destroy_obj(&val2);
+                    return RDB_INVALID_ARGUMENT;
+                }
+                valp->var.int_val = val1.var.int_val / val2.var.int_val;
+                break;
            default: /* should never happen */
                 return RDB_INVALID_ARGUMENT;
         }
@@ -572,6 +599,19 @@ evaluate_arith(RDB_expression *exp, const RDB_tuple *tup, RDB_transaction *txp,
             case RDB_OP_SUBTRACT:
                 valp->var.rational_val = val1.var.rational_val
                         - val2.var.rational_val;
+                break;
+            case RDB_OP_MULTIPLY:
+                valp->var.rational_val = val1.var.rational_val
+                        * val2.var.rational_val;
+                break;
+            case RDB_OP_DIVIDE:
+                if (val2.var.rational_val == 0) {
+                    RDB_destroy_obj(&val1);
+                    RDB_destroy_obj(&val2);
+                    return RDB_INVALID_ARGUMENT;
+                }
+                valp->var.rational_val = val1.var.rational_val
+                        / val2.var.rational_val;
                 break;
            default: /* should never happen */
                 return RDB_INVALID_ARGUMENT;
@@ -909,6 +949,8 @@ RDB_evaluate(RDB_expression *exp, const RDB_tuple *tup, RDB_transaction *txp,
             return evaluate_logbin(exp, tup, txp, valp, exp->kind);
         case RDB_OP_ADD:
         case RDB_OP_SUBTRACT:
+        case RDB_OP_MULTIPLY:
+        case RDB_OP_DIVIDE:
             return evaluate_arith(exp, tup, txp, valp, exp->kind);
         case RDB_OP_NOT:
         {
@@ -1014,6 +1056,8 @@ _RDB_expr_refers(RDB_expression *exp, RDB_table *tbp)
         case RDB_OP_OR:
         case RDB_OP_ADD:
         case RDB_OP_SUBTRACT:
+        case RDB_OP_MULTIPLY:
+        case RDB_OP_DIVIDE:
         case RDB_OP_REGMATCH:
             return (RDB_bool) (_RDB_expr_refers(exp->var.op.arg1, tbp)
                     || _RDB_expr_refers(exp->var.op.arg2, tbp));

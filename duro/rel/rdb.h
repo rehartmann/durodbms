@@ -131,6 +131,8 @@ enum _RDB_expr_kind {
     RDB_OP_NOT,
     RDB_OP_ADD,
     RDB_OP_SUBTRACT,
+    RDB_OP_MULTIPLY,
+    RDB_OP_DIVIDE,
 
     RDB_OP_STRLEN,
     RDB_OP_REGMATCH,
@@ -919,6 +921,12 @@ RDB_add(RDB_expression *, RDB_expression *);
 
 RDB_expression *
 RDB_subtract(RDB_expression *arg1, RDB_expression *arg2);
+
+RDB_expression *
+RDB_multiply(RDB_expression *arg1, RDB_expression *arg2);
+
+RDB_expression *
+RDB_divide(RDB_expression *arg1, RDB_expression *arg2);
 
 RDB_expression *
 RDB_strlen(RDB_expression *arg);
