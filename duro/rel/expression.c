@@ -1594,7 +1594,7 @@ _RDB_expr_refers(RDB_expression *exp, RDB_table *tbp)
     switch (exp->kind) {
         case RDB_EX_OBJ:
             if (exp->var.obj.kind == RDB_OB_TABLE)
-                return (RDB_bool) (tbp == exp->var.obj.var.tbp);
+                return RDB_table_refers(exp->var.obj.var.tbp, tbp);
             return RDB_FALSE;
         case RDB_EX_ATTR:
             return RDB_FALSE;

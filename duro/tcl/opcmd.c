@@ -468,8 +468,10 @@ Duro_invoke_ro_op(const char *name, int argc, RDB_object *argv[],
     Tcl_Obj *namelistp;
     Tcl_Obj *bodyp;
     Tcl_Interp *slinterp;
+    RDB_type *convtyp;
     RDB_environment *envp = RDB_db_env(RDB_tx_db(txp));
     Tcl_Interp *interp = txp->user_data;
+    RDB_type *rtyp = RDB_obj_type(retvalp);
 
     /* Get operator data (arg names + body) */
     opdatap = Tcl_NewStringObj((CONST char *) iargp, iarglen);
@@ -540,9 +542,20 @@ Duro_invoke_ro_op(const char *name, int argc, RDB_object *argv[],
             return RDB_INVALID_ARGUMENT;
     }
 
-    /* Convert result */
+    /*
+     * Convert result
+     */
+    if (rtyp->kind == RDB_TP_SCALAR) {
+        if(_RDB_get_possrep(retvalp->typ, name) != NULL) {
+            /* It's a selector, so use internal rep */
+            convtyp = rtyp->var.scalar.arep;
+        } else {
+            convtyp = rtyp;
+        }
+    }
     ret = Duro_tcl_to_duro(slinterp, Tcl_GetObjResult(slinterp),
-            RDB_obj_type(retvalp), retvalp, txp);
+            convtyp, retvalp, txp);
+    retvalp->typ = rtyp;
     Tcl_DeleteInterp(slinterp);
-    return ret;
+    return ret == TCL_OK ? RDB_OK : RDB_INVALID_ARGUMENT;
 }

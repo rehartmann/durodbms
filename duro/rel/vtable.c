@@ -1334,3 +1334,69 @@ _RDB_infer_keys(RDB_table *tbp)
     /* Must never be reached */
     abort();
 }
+
+RDB_bool
+RDB_table_refers(RDB_table *tbp, RDB_table *rtbp)
+{
+    int i;
+
+    switch (tbp->kind) {
+        case RDB_TB_STORED:
+            return (RDB_bool) (tbp == rtbp);
+        case RDB_TB_SELECT:
+        case RDB_TB_SELECT_INDEX:
+            if (_RDB_expr_refers(tbp->var.select.exp, rtbp))
+                return RDB_TRUE;
+            return RDB_table_refers(tbp->var.select.tbp, rtbp);
+        case RDB_TB_UNION:
+            if (RDB_table_refers(tbp->var._union.tb1p, rtbp))
+                return RDB_TRUE;
+            return RDB_table_refers(tbp->var._union.tb2p, rtbp);
+        case RDB_TB_MINUS:
+            if (RDB_table_refers(tbp->var.minus.tb1p, rtbp))
+                return RDB_TRUE;
+            return RDB_table_refers(tbp->var.minus.tb2p, rtbp);
+        case RDB_TB_INTERSECT:
+            if (RDB_table_refers(tbp->var.intersect.tb1p, rtbp))
+                return RDB_TRUE;
+            return RDB_table_refers(tbp->var.intersect.tb2p, rtbp);
+        case RDB_TB_JOIN:
+            if (RDB_table_refers(tbp->var.join.tb1p, rtbp))
+                return RDB_TRUE;
+            return RDB_table_refers(tbp->var.join.tb2p, rtbp);
+        case RDB_TB_EXTEND:
+            for (i = 0; i < tbp->var.extend.attrc; i++) {
+                if (_RDB_expr_refers(tbp->var.extend.attrv[i].exp, tbp))
+                    return RDB_TRUE;
+            }
+            return RDB_table_refers(tbp->var.extend.tbp, rtbp);
+        case RDB_TB_PROJECT:
+            return RDB_table_refers(tbp->var.project.tbp, rtbp);
+        case RDB_TB_SUMMARIZE:
+            for (i = 0; i < tbp->var.summarize.addc; i++) {
+                if (_RDB_expr_refers(tbp->var.summarize.addv[i].exp, rtbp))
+                    return RDB_TRUE;
+            }
+            if (RDB_table_refers(tbp->var.summarize.tb1p, rtbp))
+                return RDB_TRUE;
+            return RDB_table_refers(tbp->var.summarize.tb2p, rtbp);
+        case RDB_TB_RENAME:
+            return RDB_table_refers(tbp->var.rename.tbp, rtbp);
+        case RDB_TB_WRAP:
+            return RDB_table_refers(tbp->var.wrap.tbp, rtbp);
+        case RDB_TB_UNWRAP:
+            return RDB_table_refers(tbp->var.unwrap.tbp, rtbp);
+        case RDB_TB_GROUP:
+            return RDB_table_refers(tbp->var.group.tbp, rtbp);
+        case RDB_TB_UNGROUP:
+            return RDB_table_refers(tbp->var.ungroup.tbp, rtbp);
+        case RDB_TB_SDIVIDE:
+            if (RDB_table_refers(tbp->var.sdivide.tb1p, rtbp))
+                return RDB_TRUE;
+            if (RDB_table_refers(tbp->var.sdivide.tb2p, rtbp))
+                return RDB_TRUE;
+            return RDB_table_refers(tbp->var.sdivide.tb3p, rtbp);
+    }
+    /* Must never be reached */
+    abort();
+}

@@ -501,7 +501,7 @@ serialize_table(RDB_object *valp, int *posp, RDB_table *tbp)
 
     switch (tbp->kind) {
         case RDB_TB_STORED:
-            if (tbp->name == NULL)
+            if (!tbp->is_persistent)
                 return RDB_INVALID_ARGUMENT;
             return serialize_str(valp, posp, tbp->name);
         case RDB_TB_SELECT:

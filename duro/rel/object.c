@@ -79,7 +79,7 @@ obj_ilen(const RDB_object *objp, size_t *lenp)
             RDB_init_obj(&tpl);
 
             while ((ret = _RDB_next_tuple(qrp, &tpl, NULL)) == RDB_OK) {
-                tpl.typ = RDB_obj_type(objp)->var.basetyp;
+                tpl.typ = objp->var.tbp->typ->var.basetyp;
                 ret = obj_ilen(&tpl, &len);
                 if (ret != RDB_OK) {
                      RDB_destroy_obj(&tpl);
@@ -209,6 +209,9 @@ irep_to_table(RDB_table **tbpp, RDB_type *typ, const void *datap, size_t len)
     RDB_object tpl;
     RDB_byte *bp = (RDB_byte *)datap;
 
+    if (RDB_type_is_scalar(typ))
+        typ = typ->var.scalar.arep;
+
     ret = RDB_create_table(NULL, RDB_FALSE,
                         typ->var.basetyp->var.tuple.attrc,
                         typ->var.basetyp->var.tuple.attrv,
@@ -332,6 +335,8 @@ RDB_irep_to_obj(RDB_object *valp, RDB_type *typ, const void *datap, size_t len)
             if (ret != RDB_OK)
                 return ret;
             RDB_table_to_obj(valp, tbp);
+            if (RDB_type_is_scalar(typ))
+                valp->typ = typ;
             return RDB_OK;
         }
         case RDB_OB_ARRAY:
@@ -416,7 +421,7 @@ obj_to_irep(void *dstp, const void *srcp, size_t len)
             RDB_init_obj(&tpl);
 
             while ((ret = _RDB_next_tuple(qrp, &tpl, NULL)) == RDB_OK) {
-                tpl.typ = RDB_obj_type(objp)->var.basetyp;
+                tpl.typ = objp->var.tbp->typ->var.basetyp;
                 ret = obj_ilen(&tpl, &l);
                 if (ret != RDB_OK)
                     return NULL;
@@ -863,7 +868,8 @@ RDB_binary_length(const RDB_object *objp)
 RDB_type *
 RDB_obj_type(const RDB_object *objp)
 {
-    if (objp->kind == RDB_OB_TABLE)
+    if (objp->kind == RDB_OB_TABLE
+            && (objp->typ == NULL || objp->typ->kind == RDB_TP_RELATION))
         return RDB_table_type(objp->var.tbp);
     return objp->typ;
 }

@@ -317,9 +317,9 @@ generate a value for that attribute on insertion.
 </dl>
 
 <p>The table will have <var>keyc</var> candidate keys. The <var>keyv</var>
-argument specifies the names of the candidate keys.
+argument specifies the key attributes.
 The strc field of the RDB_string_vec structure specifies
-the number of fields in a key, while the elements of the strv field specify
+the number of attributes in a key, while the elements of the strv field specify
 the names of the key attributes.
 
 <p>At least one candidate key must be specified.
@@ -327,9 +327,8 @@ A candidate key may not be a subset of another.
 If a single candidate key is specified, that key
 may be empty (not contain any attribute).
 
-<p>Passing a <var>keyv</var> of NULL is equivalent to passing
-all attributes in <var>keyv</var> and the number of table attributes
-in <var>keyc</var>, that is, the table will become all-key.
+<p>Passing a <var>keyv</var> of NULL is equivalent to specifiying
+a key which constsists of all attributes, that is, the table will become all-key.
 
 <h3>Return value</h3>
 

@@ -71,7 +71,7 @@ get_ro_op(const RDB_dbroot *dbrootp, const char *name,
 
     if (opp == NULL || *opp == NULL)
         return NULL;
-    
+
     op = *opp;
 
     /* Find a operation with same signature */
@@ -80,15 +80,15 @@ get_ro_op(const RDB_dbroot *dbrootp, const char *name,
             int i;
 
             for (i = 0; (i < argc)
-                    && !RDB_type_equals(op->argtv[i], argtv[i]);
+                    && RDB_type_equals(op->argtv[i], argtv[i]);
                  i++);
-            if (i >= argc) {
+            if (i == argc) {
                 /* Found */
                 return op;
             }
         }
         op = op->nextp;
-    } while(op != NULL);
+    } while (op != NULL);
 
     return NULL;
 }
@@ -254,9 +254,9 @@ get_upd_op(const RDB_dbroot *dbrootp, const char *name,
             int i;
 
             for (i = 0; (i < argc)
-                    && !RDB_type_equals(op->argtv[i], argtv[i]);
+                    && RDB_type_equals(op->argtv[i], argtv[i]);
                  i++);
-            if (i >= argc) {
+            if (i == argc) {
                 /* Found */
                 return op;
             }

@@ -89,10 +89,21 @@ type_define_cmd(TclState *statep, Tcl_Interp *interp, int objc,
             Tcl_Obj *compobjp;
             Tcl_Obj *nameobjp;
             Tcl_Obj *typeobjp;
+            int compobjlen;
 
             ret = Tcl_ListObjIndex(interp, repcompsobjp, j, &compobjp);
             if (ret != TCL_OK)
                 goto cleanup;
+
+            ret = Tcl_ListObjLength(interp, compobjp, &compobjlen);
+            if (ret != TCL_OK)
+                goto cleanup;
+
+            if (compobjlen != 2) {
+                Tcl_SetResult(interp, "Invalid component", TCL_STATIC);
+                ret = TCL_ERROR;
+                goto cleanup;
+            }
 
             ret = Tcl_ListObjIndex(interp, compobjp, 0, &nameobjp);
             if (ret != TCL_OK)
@@ -219,7 +230,7 @@ type_implement_cmd(TclState *statep, Tcl_Interp *interp, int objc,
             return ret;
     }
 
-    ret = RDB_implement_type(Tcl_GetString(objv[objc - 2]), irep, (size_t)-1,
+    ret = RDB_implement_type(Tcl_GetString(objv[2]), irep, (size_t)-1,
             txp);
     if (irep != NULL && !RDB_type_is_scalar(irep))
         RDB_drop_type(irep, txp);

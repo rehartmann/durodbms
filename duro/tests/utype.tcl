@@ -59,6 +59,34 @@ duro::type define PNAME {
 
 duro::type implement PNAME $tx
 
+#
+# Define type INTSET
+#
+
+duro::type define INTSET {
+    {INTLIST {{INTLIST STRING}}}
+} $tx
+
+duro::type implement INTSET {relation {N INTEGER}} $tx
+
+# Selector
+duro::operator create INTLIST -returns INTSET { l STRING } {
+    set r {}
+    foreach i $l {
+        lappend r [list N $i]
+    }
+    return $r
+} $tx
+
+# Getter
+duro::operator create INTSET_get_INTLIST -returns STRING { is INTSET } {
+    set r {}
+    foreach i j $is {
+        lappend r $i
+    }
+    return $r
+} $tx
+
 duro::commit $tx
 
 # Close DB environment
@@ -88,6 +116,17 @@ if {($a(NO) != 1) || ($a(NAME) != {PNAME Peter Potter})} {
     puts "T2 has wrong value"
     exit 2
 }
+
+duro::table create T3 {
+    {IS INTSET}
+} {{IS}} $tx
+
+# duro::insert T3 {IS {INTLIST {1 2}}} $tx
+
+# puts [duro::expr {TUPLE FROM T3} $tx]
+
+# source tcl/util.tcl
+# duro::ptable T3 $tx
 
 duro::commit $tx
 

@@ -532,11 +532,6 @@ RDB_implement_type(const char *name, RDB_type *arep,
         free(argtv);
         if (ret != RDB_OK)
             return ret;
-    } else {
-        /* !! Enable and test */
-        if (arep != NULL && arep->kind == RDB_TP_RELATION) {
-            return RDB_NOT_SUPPORTED;
-        }
     }
 
     exp = RDB_expr_attr("TYPENAME");

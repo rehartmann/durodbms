@@ -646,6 +646,23 @@ table_drop_cmd(TclState *statep, Tcl_Interp *interp, int objc,
             return TCL_ERROR;
         }
     } else {
+        Tcl_HashSearch search;
+
+        /*
+         * Check if there is another local table which depends on this table
+         */
+        entryp = Tcl_FirstHashEntry(&statep->ltables, &search);
+        while (entryp != NULL) {
+            table_entry *iep = (table_entry *) Tcl_GetHashValue(entryp);
+
+            if (iep->tablep != tbp && RDB_table_refers(iep->tablep, tbp)) {
+                Tcl_AppendResult(interp, "Cannot drop table ", tbp->name,
+                        ": ", iep->tablep->name, " depends on it", NULL);
+                return TCL_ERROR;
+            }
+            entryp = Tcl_NextHashEntry(&search);
+        }
+
         entryp = Tcl_FindHashEntry(&statep->ltables, name);
         ret = Duro_tcl_drop_ltable((table_entry *)Tcl_GetHashValue(entryp),
                 entryp);

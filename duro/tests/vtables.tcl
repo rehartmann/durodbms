@@ -165,6 +165,27 @@ duro::table drop TX $tx
 
 duro::table expr -global TU {T1 UNION T2} $tx
 
+#
+# Check if persistent virtual tables can depend on transient tables
+#
+
+duro::table create -local LT {
+    {A INTEGER}
+} {{A}} $tx
+
+if {![catch {duro::table expr -global TL {LT { A }} $tx}]} {
+    error "Creation of TL should fail, but succeeded"
+}
+
+duro::table expr LTL {LT { A }} $tx
+
+if {![catch {duro::table drop LT $tx}]} {
+    error "Dropping TL should fail, but succeeded"
+}
+
+duro::table drop LTL $tx
+duro::table drop LT $tx
+
 duro::commit $tx
 
 # Close DB environment
