@@ -680,9 +680,17 @@ _RDB_get_fields(RDB_recmap *rmp, const DBT *keyp, const DBT *datap, int fieldc,
     int i;
 
     for (i = 0; i < fieldc; i++) {
-        int offs = _RDB_get_field(rmp, retfieldv[i].no,
-                                 datap->data, datap->size, &retfieldv[i].len, NULL);
-        retfieldv[i].datap = ((RDB_byte *)datap->data) + offs;
+        int offs;
+
+        if (retfieldv[i].no < rmp->keyfieldcount) {
+            offs = _RDB_get_field(rmp, retfieldv[i].no,
+                    keyp->data, keyp->size, &retfieldv[i].len, NULL);
+            retfieldv[i].datap = ((RDB_byte *)keyp->data) + offs;
+        } else {
+            offs = _RDB_get_field(rmp, retfieldv[i].no,
+                    datap->data, datap->size, &retfieldv[i].len, NULL);
+            retfieldv[i].datap = ((RDB_byte *)datap->data) + offs;
+        }
     }
 
     return RDB_OK;

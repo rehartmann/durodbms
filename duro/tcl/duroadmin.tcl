@@ -180,7 +180,10 @@ proc set_row {row tpl} {
 proc add_tuples {arr tx rowcount} {
     .tableframe.table configure -rows [expr {$rowcount + 2}]
     for {set i 0} {$i < $rowcount} {incr i} {
-        if {[catch {set tpl [duro::array index $arr $i $tx]} err]} {
+        if {[catch {set tpl [duro::array index $arr $i $tx]} errmsg]} {
+            if {![regexp {not found$} $errmsg]} {
+                error $errmsg
+            }
             break
         }
         set_row [expr {$i + 1}] $tpl

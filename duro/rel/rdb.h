@@ -299,10 +299,9 @@ typedef struct RDB_table {
             struct RDB_table *tb2p;
         } intersect;
         struct {
-            char **common_attrv;
-            int common_attrc;
             struct RDB_table *tb1p;
             struct RDB_table *tb2p;
+            struct _RDB_tbindex *indexp;
         } join;
         struct {
             struct RDB_table *tbp;

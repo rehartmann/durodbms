@@ -279,7 +279,6 @@ _RDB_drop_table(RDB_table *tbp, RDB_bool rec)
                 if (ret != RDB_OK)
                     return ret;
             }
-            free(tbp->var.join.common_attrv);
             break;
         case RDB_TB_EXTEND:
             if (rec) {

@@ -7,6 +7,7 @@
 
 #include "rdb.h"
 #include "internal.h"
+#include <gen/strfns.h>
 #include <string.h>
 #include <stdlib.h>
 
@@ -78,17 +79,32 @@ _RDB_attr_node(RDB_expression *exp, const char *attrname)
  * If no, return INT_MAX.
  */
 static int
-eval_index(RDB_table *tbp, _RDB_tbindex *indexp)
+eval_index_exp(RDB_expression *exp, _RDB_tbindex *indexp)
 {
     int i;
-    RDB_expression *exp;
 
     for (i = 0; i < indexp->attrc; i++) {
-        if (_RDB_attr_node(exp = tbp->var.select.exp,
-                indexp->attrv[i].attrname) == NULL)
+        if (_RDB_attr_node(exp, indexp->attrv[i].attrname) == NULL)
             return INT_MAX;
     }
-    return indexp->idxp == NULL ? 1 : 2;
+    if (indexp->idxp == NULL)
+        return 1;
+    return indexp->unique ? 2 : 3;
+}
+
+static int
+eval_index_attrs(int attrc, char *attrv[], _RDB_tbindex *indexp)
+{
+    int i;
+
+    /* Check if all index attributes appear in attrv */
+    for (i = 0; i < indexp->attrc; i++) {
+        if (RDB_find_str(attrc, attrv, indexp->attrv[i].attrname) == -1)
+            return INT_MAX;
+    }
+    if (indexp->idxp == NULL)
+        return 1;
+    return indexp->unique ? 2 : 3;
 }
 
 static int
@@ -191,7 +207,8 @@ optimize_select(RDB_table *tbp, RDB_transaction *txp)
      * Try to find best index
      */
     for (i = 0; i < stbp->var.stored.indexc; i++) {
-        int cost = eval_index(tbp, &stbp->var.stored.indexv[i]);
+        int cost = eval_index_exp(tbp->var.select.exp,
+                &stbp->var.stored.indexv[i]);
 
         if (cost < bestcost) {
             bestcost = cost;
@@ -337,6 +354,95 @@ resolve_views(RDB_table *tbp)
 }
 
 static int
+optimize(RDB_table *, RDB_transaction *);
+
+static int
+best_index(RDB_table *tbp, int attrc, char **attrv,
+        _RDB_tbindex **indexpp)
+{
+    int i;
+    int bestcost = INT_MAX;
+
+    if (tbp->kind != RDB_TB_STORED)
+        return INT_MAX;
+
+    for (i = 0; i < tbp->var.stored.indexc; i++) {
+        int cost = eval_index_attrs(attrc, attrv, &tbp->var.stored.indexv[i]);
+
+        if (cost < bestcost) {
+            bestcost = cost;
+            *indexpp = &tbp->var.stored.indexv[i];
+        }
+    }
+    
+    return bestcost;
+}
+
+static int
+common_attrs(RDB_type *tpltyp1, RDB_type *tpltyp2, char **cmattrv)
+{
+    int i, j;
+    int cattrc = 0;
+
+    for (i = 0; i < tpltyp1->var.tuple.attrc; i++) {
+        for (j = 0;
+             j < tpltyp2->var.tuple.attrc
+                     && strcmp(tpltyp1->var.tuple.attrv[i].name,
+                     tpltyp2->var.tuple.attrv[j].name) != 0;
+             j++);
+        if (j < tpltyp2->var.tuple.attrc)
+            cmattrv[cattrc++] = tpltyp1->var.tuple.attrv[i].name;
+    }
+    return cattrc;
+}
+
+static int
+optimize_join(RDB_table *tbp, RDB_transaction *txp)
+{
+    int ret;
+    int cmattrc;
+    char **cmattrv;
+
+    cmattrv = malloc(sizeof(char *)
+            * tbp->var.join.tb1p->typ->var.basetyp->var.tuple.attrc);
+    if (cmattrv == NULL)
+        return RDB_NO_MEMORY;
+    cmattrc = common_attrs(tbp->var.join.tb1p->typ->var.basetyp,
+            tbp->var.join.tb2p->typ->var.basetyp, cmattrv);
+
+    if (cmattrc >= 1) {
+        int cost1, cost2;
+        _RDB_tbindex *index1p;
+        _RDB_tbindex *index2p;
+
+        cost1 = best_index(tbp->var.join.tb1p, cmattrc, cmattrv, &index1p);
+        cost2 = best_index(tbp->var.join.tb2p, cmattrc, cmattrv, &index2p);
+        if (cost2 < cost1 || (cost1 == cost2 && cost2 < INT_MAX)) {
+            tbp->var.join.indexp = index2p;
+        } else if (cost1 < cost2) {
+            /* Use index for table #1, swap tables */
+            RDB_table *ttbp = tbp->var.join.tb1p;
+            tbp->var.join.tb1p = tbp->var.join.tb2p;
+            tbp->var.join.tb2p = ttbp;
+
+            tbp->var.join.indexp = index1p;
+        }
+    }
+
+    free(cmattrv);
+
+    ret = optimize(tbp->var.join.tb1p, txp);
+    if (ret != RDB_OK)
+        return ret;
+    if (tbp->var.join.indexp == NULL) {
+        ret = optimize(tbp->var.join.tb2p, txp);
+        if (ret != RDB_OK)
+            return ret;
+    }
+    return RDB_OK;
+}
+
+static int
 optimize(RDB_table *tbp, RDB_transaction *txp)
 {
     int ret;
@@ -375,10 +481,7 @@ optimize(RDB_table *tbp, RDB_transaction *txp)
                 return ret;
             break;
         case RDB_TB_JOIN:
-            ret = optimize(tbp->var.join.tb1p, txp);
-            if (ret != RDB_OK)
-                return ret;
-            ret = optimize(tbp->var.join.tb2p, txp);
+            ret = optimize_join(tbp, txp);
             if (ret != RDB_OK)
                 return ret;
             break;

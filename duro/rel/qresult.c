@@ -474,7 +474,7 @@ stored_qresult(RDB_qresult *qresp, RDB_table *tbp, RDB_transaction *txp)
 }
 
 static int
-index_qresult(RDB_qresult *qrp, RDB_transaction *txp)
+select_index_qresult(RDB_qresult *qrp, RDB_transaction *txp)
 {
     int ret;
     int i;
@@ -620,6 +620,49 @@ group_qresult(RDB_qresult *qresp, RDB_transaction *txp)
 }
 
 static int
+join_qresult(RDB_qresult *qrp, RDB_transaction *txp)
+{
+    /* Create qresult for the first table */
+    int ret = _RDB_table_qresult(qrp->tbp->var.join.tb1p,
+            txp, &qrp->var.virtual.qrp);
+    if (ret != RDB_OK)
+        return ret;
+
+    if (qrp->tbp->var.join.indexp == NULL) {
+        /* Create qresult for 2nd table */
+        ret = _RDB_table_qresult(qrp->tbp->var.join.tb2p,
+                txp, &qrp->var.virtual.qr2p);
+        if (ret != RDB_OK) {
+            _RDB_drop_qresult(qrp->var.virtual.qr2p, txp);
+            return ret;
+        }
+        qrp->var.virtual.tpl_valid = RDB_FALSE;
+    } else if (!qrp->tbp->var.join.indexp->unique) {
+        /* Create index qresult for 2nd table */
+        qrp->var.virtual.qr2p = malloc(sizeof (RDB_qresult));
+        if (qrp->var.virtual.qr2p == NULL)
+            return RDB_NO_MEMORY;          
+        qrp->var.virtual.qr2p->tbp = qrp->tbp->var.join.tb2p;
+        qrp->var.virtual.qr2p->endreached = RDB_FALSE;
+        qrp->var.virtual.qr2p->matp = NULL;
+        qrp->var.virtual.tpl_valid = RDB_FALSE;
+
+        ret = RDB_index_cursor(&qrp->var.virtual.qr2p->var.curp,
+                qrp->tbp->var.join.indexp->idxp, 0,
+                qrp->tbp->var.join.tb2p->is_persistent ? txp->txid : NULL);
+        if (ret != RDB_OK) {
+            free(qrp->var.virtual.qr2p);
+            if (txp != NULL) {
+                RDB_errmsg(txp->dbp->dbrootp->envp, "cannot create cursor: %s",
+                        RDB_strerror(ret));
+            }
+            return ret;
+        }
+    }
+    return RDB_OK;
+}
+
+static int
 init_qresult(RDB_qresult *qrp, RDB_table *tbp, RDB_transaction *txp)
 {
     int ret;
@@ -646,7 +689,7 @@ init_qresult(RDB_qresult *qrp, RDB_table *tbp, RDB_transaction *txp)
                     txp, &qrp->var.virtual.qrp);
             break;
         case RDB_TB_SELECT_INDEX:
-            ret = index_qresult(qrp, txp);
+            ret = select_index_qresult(qrp, txp);
             break;
         case RDB_TB_UNION:
             ret = _RDB_table_qresult(tbp->var._union.tb1p,
@@ -669,18 +712,7 @@ init_qresult(RDB_qresult *qrp, RDB_table *tbp, RDB_transaction *txp)
                     txp, &qrp->var.virtual.qr2p);
             break;
         case RDB_TB_JOIN:
-            /* create qresults for each of the two tables */
-            ret = _RDB_table_qresult(tbp->var.join.tb1p,
-                    txp, &qrp->var.virtual.qrp);
-            if (ret != RDB_OK)
-                break;
-            ret = _RDB_table_qresult(tbp->var.join.tb2p,
-                    txp, &qrp->var.virtual.qr2p);
-            if (ret != RDB_OK) {
-                _RDB_drop_qresult(qrp->var.virtual.qr2p, txp);
-                break;
-            }
-            qrp->var.virtual.tpl_valid = RDB_FALSE;
+            ret = join_qresult(qrp, txp);
             break;
         case RDB_TB_EXTEND:
             ret = _RDB_table_qresult(tbp->var.extend.tbp,
@@ -915,6 +947,9 @@ next_stored_tuple(RDB_qresult *qrp, RDB_table *tbp, RDB_object *tplp,
 {
     int ret;
 
+    if (qrp->endreached)
+        return RDB_NOT_FOUND;
+
     if (tplp != NULL) {
         ret = _RDB_get_by_cursor(tbp, qrp->var.curp, tplp);
         if (ret != RDB_OK)
@@ -1032,28 +1067,31 @@ next_join_tuple(RDB_qresult *qrp, RDB_object *tplp, RDB_transaction *txp)
             return ret;
         }
         if (ret == RDB_OK) {
-            /* compare common attributes */
+            /* Compare common attributes */
             RDB_bool iseq = RDB_TRUE;
+            RDB_type *tpltyp = qrp->tbp->var.join.tb1p->typ->var.basetyp;
 
-            for (i = 0; (i < qrp->tbp->var.join.common_attrc) && iseq; i++) {
-                RDB_object *valp;
-                RDB_object *valp2;
+            /*
+             * If the values of the common attributes are not equal,
+             * skip to next tuple
+             */
+            for (i = 0; (i < tpltyp->var.tuple.attrc) && iseq; i++) {
                 RDB_bool b;
+                char *attrname = tpltyp->var.tuple.attrv[i].name;
 
-                valp = RDB_tuple_get(&qrp->var.virtual.tpl,
-                        qrp->tbp->var.join.common_attrv[i]);
-                valp2 = RDB_tuple_get(tplp,
-                        qrp->tbp->var.join.common_attrv[i]);
-
-                /* if the attribute values are not equal, skip to next tuple */
-                ret = RDB_obj_equals(valp, valp2, &b);
-                if (ret != RDB_OK)
-                    return ret;
-                if (!b)
-                    iseq = RDB_FALSE;
+                if (RDB_type_attr_type(qrp->tbp->var.join.tb2p->typ, attrname)
+                        != NULL) {
+                    ret = RDB_obj_equals(
+                            RDB_tuple_get(&qrp->var.virtual.tpl, attrname),
+                            RDB_tuple_get(tplp, attrname), &b);
+                    if (ret != RDB_OK)
+                        return ret;
+                    if (!b)
+                        iseq = RDB_FALSE;
+                }
             }
 
-            /* if common attributes are equal, leave the loop,
+            /* If common attributes are equal, leave the loop,
              * otherwise read next tuple
              */
             if (iseq)
@@ -1085,6 +1123,223 @@ next_join_tuple(RDB_qresult *qrp, RDB_object *tplp, RDB_transaction *txp)
     }
 
     return RDB_OK;
+}
+
+static int
+seek_index_qresult(RDB_qresult *qrp, _RDB_tbindex *indexp,
+        const RDB_object *tplp)
+{
+    int i;
+    int ret;
+    RDB_field *fv = malloc(sizeof (RDB_field) * indexp->attrc);
+    if (fv == NULL) {
+        return RDB_NO_MEMORY;
+    }
+
+    for (i = 0; i < indexp->attrc; i++) {
+        ret = _RDB_obj_to_field(&fv[i],
+                RDB_tuple_get(tplp, indexp->attrv[i].attrname));
+        if (ret != RDB_OK)
+            goto cleanup;
+    }
+
+    ret = RDB_cursor_seek(qrp->var.curp, fv);
+    if (ret == RDB_OK) {
+        qrp->endreached = RDB_FALSE;
+    } else {
+        qrp->endreached = RDB_TRUE;
+    }
+
+cleanup:
+    free(fv);
+
+    return ret;
+}
+
+static int
+next_join_tuple_nuix(RDB_qresult *qrp, RDB_object *tplp, RDB_transaction *txp)
+{
+    int ret;
+    int i;
+
+    /* tuple type of first ('outer') table */
+    RDB_type *tpltyp1 = qrp->tbp->var.join.tb1p->typ->var.basetyp;
+
+    /* read first 'outer' tuple, if it's the first invocation */
+    if (!qrp->var.virtual.tpl_valid) {
+        RDB_init_obj(&qrp->var.virtual.tpl);
+        ret = _RDB_next_tuple(qrp->var.virtual.qrp, &qrp->var.virtual.tpl, txp);
+        if (ret != RDB_OK)
+            return ret;
+        qrp->var.virtual.tpl_valid = RDB_TRUE;
+
+        /* Set cursor position */
+        ret = seek_index_qresult(qrp->var.virtual.qr2p,
+                qrp->tbp->var.join.indexp, &qrp->var.virtual.tpl);
+        if (ret != RDB_OK)
+            return ret;
+    }
+        
+    for (;;) {
+        /* read next 'inner' tuple */
+        ret = next_stored_tuple(qrp->var.virtual.qr2p,
+                qrp->var.virtual.qr2p->tbp, tplp, RDB_TRUE);
+        if (ret != RDB_NOT_FOUND && ret != RDB_OK) {
+            return ret;
+        }
+        if (ret == RDB_OK) {
+            /* Compare common attributes */
+            RDB_bool iseq = RDB_TRUE;
+            RDB_type *tpltyp = qrp->tbp->var.join.tb1p->typ->var.basetyp;
+
+            /*
+             * If the values of the common attributes are not equal,
+             * skip to next tuple
+             */
+            for (i = 0; (i < tpltyp->var.tuple.attrc) && iseq; i++) {
+                RDB_bool b;
+                char *attrname = tpltyp->var.tuple.attrv[i].name;
+
+                if (RDB_type_attr_type(qrp->tbp->var.join.tb2p->typ, attrname)
+                        != NULL) {
+                    int j;
+
+                    /* Don't compare index attributes */
+                    for (j = 0; j < qrp->tbp->var.join.indexp->attrc
+                            && strcmp(attrname,
+                            qrp->tbp->var.join.indexp->attrv[j].attrname) != 0;
+                            j++);
+                    if (j >= qrp->tbp->var.join.indexp->attrc) {
+                        ret = RDB_obj_equals(RDB_tuple_get(
+                                &qrp->var.virtual.tpl, attrname),
+                                RDB_tuple_get(tplp, attrname), &b);
+                        if (ret != RDB_OK)
+                            return ret;
+                        if (!b)
+                            iseq = RDB_FALSE;
+                    }
+                }
+            }
+
+            /* If common attributes are equal, leave the loop,
+             * otherwise read next tuple
+             */
+            if (iseq)
+                break;
+            continue;
+        }
+
+        /* read next 'outer' tuple */
+        ret = _RDB_next_tuple(qrp->var.virtual.qrp, &qrp->var.virtual.tpl, txp);
+        if (ret != RDB_OK) {
+            return ret;
+        }
+
+        /* reset cursor */
+        ret = seek_index_qresult(qrp->var.virtual.qr2p,
+                qrp->tbp->var.join.indexp, &qrp->var.virtual.tpl);
+        if (ret != RDB_OK)
+            return ret;
+    }
+    
+    /* join the two tuples into tplp */
+    for (i = 0; i < tpltyp1->var.tuple.attrc; i++) {
+         ret = RDB_tuple_set(tplp, tpltyp1->var.tuple.attrv[i].name,
+                       RDB_tuple_get(&qrp->var.virtual.tpl,
+                       tpltyp1->var.tuple.attrv[i].name));
+         if (ret != RDB_OK) {
+             return ret;
+         }
+    }
+
+    return RDB_OK;
+}
+
+static int
+next_join_tuple_uix(RDB_qresult *qrp, RDB_object *tplp, RDB_transaction *txp)
+{
+    int ret;
+    int i;
+    RDB_bool match;
+    RDB_object tpl;
+    RDB_type *tpltyp;
+    RDB_object *objv = NULL;
+
+    RDB_init_obj(&tpl);
+
+    objv = malloc(sizeof(RDB_object)
+            * qrp->tbp->var.join.indexp->attrc);
+    if (objv == NULL)
+        goto cleanup;
+
+    for (i = 0; i < qrp->tbp->var.join.indexp->attrc; i++)
+        RDB_init_obj(&objv[i]);
+
+    do {
+        match = RDB_TRUE;
+    
+        ret = _RDB_next_tuple(qrp->var.virtual.qrp, tplp, txp);
+        if (ret != RDB_OK)
+            goto cleanup;
+
+        for (i = 0; i < qrp->tbp->var.join.indexp->attrc; i++) {
+            ret = RDB_copy_obj(&objv[i], RDB_tuple_get(tplp,
+                    qrp->tbp->var.join.indexp->attrv[i].attrname));
+            if (ret != RDB_OK)
+                goto cleanup;
+        }
+        ret = _RDB_get_by_uindex(qrp->tbp->var.join.tb2p, objv,
+                qrp->tbp->var.join.indexp, txp, &tpl);
+        if (ret != RDB_OK)
+            goto cleanup;
+
+        tpltyp = qrp->tbp->var.join.tb2p->typ->var.basetyp;
+        for (i = 0; i < tpltyp->var.tuple.attrc;
+                i++) {
+            char *attrname = tpltyp->var.tuple.attrv[i].name;
+
+            /* Check if the attribute appears in both tables */
+            if (RDB_type_attr_type(qrp->tbp->var.join.tb1p->typ, attrname)
+                    == NULL) {
+                /* No, so copy it */
+                ret = RDB_tuple_set(tplp, attrname,
+                        RDB_tuple_get(&tpl, attrname));
+                if (ret != RDB_OK)
+                    return ret;
+            } else {
+                /* Yes, so compare attribute values if the attribute
+                 * doesn't appear in the index
+                 */
+                int j;
+
+                for (j = 0; j < qrp->tbp->var.join.indexp->attrc
+                        && strcmp(qrp->tbp->var.join.indexp->attrv[j].attrname,
+                                  attrname) != 0;
+                        j++);
+                if (j >= qrp->tbp->var.join.indexp->attrc) {
+                    ret = RDB_obj_equals(RDB_tuple_get(&tpl, attrname),
+                            RDB_tuple_get(tplp, attrname), &match);
+                    if (ret != RDB_OK)
+                        goto cleanup;
+                    if (!match)
+                        break;
+                }
+            }
+        }
+    } while (!match);
+
+    ret = RDB_OK;
+
+cleanup:
+    if (objv != NULL) {
+        for (i = 0; i < qrp->tbp->var.join.indexp->attrc; i++)
+            RDB_destroy_obj(&objv[i]);
+        free(objv);
+    }
+
+    RDB_destroy_obj(&tpl);
+
+    return ret;
 }
 
 int
@@ -1604,7 +1859,11 @@ _RDB_next_tuple(RDB_qresult *qrp, RDB_object *tplp, RDB_transaction *txp)
             } while (ret == RDB_NOT_FOUND);
             break;
         case RDB_TB_JOIN:
-            return next_join_tuple(qrp, tplp, txp);
+            if (tbp->var.join.indexp == NULL)
+                return next_join_tuple(qrp, tplp, txp);
+            if (tbp->var.join.indexp->unique)
+                return next_join_tuple_uix(qrp, tplp, txp);
+            return next_join_tuple_nuix(qrp, tplp, txp);            
         case RDB_TB_EXTEND:
             ret = _RDB_next_tuple(qrp->var.virtual.qrp, tplp, txp);
             if (ret != RDB_OK)

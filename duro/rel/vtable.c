@@ -253,12 +253,8 @@ RDB_join(RDB_table *tb1p, RDB_table *tb2p, RDB_table **resultpp)
 {
     RDB_table *newtbp;
     int ret;
-    int i, j;
     RDB_type *tpltyp1 = tb1p->typ->var.basetyp;
     RDB_type *tpltyp2 = tb2p->typ->var.basetyp;
-    int attrc1 = tpltyp1->var.tuple.attrc;
-    int attrc2 = tpltyp2->var.tuple.attrc;
-    int cattrc;
 
     newtbp = _RDB_new_table();
     if (newtbp == NULL)
@@ -269,27 +265,13 @@ RDB_join(RDB_table *tb1p, RDB_table *tb2p, RDB_table **resultpp)
     newtbp->is_persistent = RDB_FALSE;
     newtbp->var.join.tb1p = tb1p;
     newtbp->var.join.tb2p = tb2p;
+    newtbp->var.join.indexp = NULL;
 
     ret = RDB_join_relation_types(tb1p->typ, tb2p->typ, &newtbp->typ);
     if (ret != RDB_OK) {
         free(newtbp);
         return ret;
     }
-
-    newtbp->var.join.common_attrv = malloc(sizeof(char *) * attrc1);
-    cattrc = 0;
-    for (i = 0; i < attrc1; i++) {
-        for (j = 0;
-             j < attrc2 && strcmp(tpltyp1->var.tuple.attrv[i].name,
-                     tpltyp2->var.tuple.attrv[j].name) != 0;
-             j++)
-            ;
-        if (j < attrc2)
-            newtbp->var.join.common_attrv[cattrc++] =
-                    tpltyp1->var.tuple.attrv[i].name;
-    }
-    newtbp->var.join.common_attrc = cattrc;
-
     *resultpp = newtbp;
     return RDB_OK;
 }

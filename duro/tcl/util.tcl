@@ -43,7 +43,6 @@ proc tables {sys tx} {
     duro::table expr t "(SYS_VTABLES $cond) \
             JOIN (SYS_DBTABLES WHERE DBNAME = \"$db\")" $tx
     set arr [duro::array create t $tx]
-    set i 0
     duro::array foreach tpl $arr {
         ::array set a $tpl
         lappend tables $a(TABLENAME)

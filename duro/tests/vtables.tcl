@@ -88,6 +88,11 @@ if {![duro::table contains TJ $tpl $tx]} {
     error "Insert into TJ was not successful."
 }
 
+set da [duro::array create TJ {K asc S1 asc} $tx]
+checkarray $da {{K 0 S1 Bold S2 Z} {K 1 S1 Bla S2 A} {K 2 S1 Blipp S2 B}
+        {K 2 S1 Blubb S2 B}} $tx
+duro::array drop $da
+
 set tpl {K 3 S1 Blu}
 
 duro::insert TI $tpl $tx
@@ -112,31 +117,29 @@ if {![duro::table contains TR $tpl $tx]} {
     error "Insert into TR was not successful."
 }
 
-set l {}
 set da [duro::array create TR {KN asc} $tx]
-duro::array foreach i $da {
-    array set a $i
-    lappend l $a(KN)
-} $tx
+checkarray $da {{KN 0 SN Bold} {KN 1 SN Bla} {KN 2 SN Blubb} {KN 3 SN Blu}
+        {KN 4 SN Buchara} {KN 5 SN Ballermann}} $tx
 duro::array drop $da
-
-if {$l != {0 1 2 3 4 5}} {
-    error "l is $l, should be {0 1 2 3 4 5}"
-}
 
 duro::delete TR {KN = 1} $tx
 
-set l {}
 set da [duro::array create TR {KN asc} $tx]
-duro::array foreach i $da {
-    array set a $i
-    lappend l $a(KN)
-} $tx
+checkarray $da {{KN 0 SN Bold} {KN 2 SN Blubb} {KN 3 SN Blu}
+        {KN 4 SN Buchara} {KN 5 SN Ballermann}} $tx
 duro::array drop $da
 
-if {$l != {0 2 3 4 5}} {
-    error "l is $l, should be {0 2 3 4 5}"
-}
+duro::delete TR {KN >= 4} $tx
+
+set da [duro::array create TR {KN asc} $tx]
+checkarray $da {{KN 0 SN Bold} {KN 2 SN Blubb} {KN 3 SN Blu}} $tx
+duro::array drop $da
+
+duro::delete TR {SN = "Bold"} $tx
+
+set da [duro::array create TR {KN asc} $tx]
+checkarray $da {{KN 2 SN Blubb} {KN 3 SN Blu}} $tx
+duro::array drop $da
 
 duro::delete TM {K = 5} $tx
 
