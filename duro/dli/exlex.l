@@ -32,6 +32,14 @@ JOIN {
     return TOK_JOIN;
 }
 
+WRAP {
+    return TOK_WRAP;
+}
+
+UNWRAP {
+    return TOK_UNWRAP;
+}
+
 FROM    {
     return TOK_FROM;
 }

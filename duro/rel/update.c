@@ -474,6 +474,10 @@ RDB_update(RDB_table *tbp, RDB_expression *condp, int updc,
             return RDB_NOT_SUPPORTED;
         case RDB_TB_RENAME:
             return RDB_NOT_SUPPORTED;
+        case RDB_TB_WRAP:
+            return RDB_NOT_SUPPORTED;
+        case RDB_TB_UNWRAP:
+            return RDB_NOT_SUPPORTED;
     }
 
     /* should never be reached */

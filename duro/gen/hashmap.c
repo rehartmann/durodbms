@@ -186,19 +186,3 @@ RDB_hashmap_keys(const RDB_hashmap *hp, char **keys)
             keys[ki++] = hp->kv_tab[i].keyp;
     }
 }
-
-void
-RDB_hashmap_apply(RDB_hashmap *hp,
-                  void (*fp)(RDB_hashmap *, const char *, void *),
-                  void *arg)
-{
-    int i;
-
-    if (hp->key_count == 0)
-        return;
-    
-    for (i = 0; i < hp->capacity; i++) {
-        if (hp->kv_tab[i].keyp != NULL)
-            (*fp)(hp, hp->kv_tab[i].keyp, arg);
-    }
-}

@@ -47,6 +47,10 @@ enum {
         int argc;
         RDB_expression *argv[DURO_MAX_LLEN];
     } arglist;
+    struct {
+        int wrapc;
+        RDB_wrapping wrapv[DURO_MAX_LLEN];
+    } wraplist;
 }
 
 %token <exp> TOK_ID
@@ -68,6 +72,8 @@ enum {
 %token TOK_RENAME
 %token TOK_EXTEND
 %token TOK_SUMMARIZE
+%token TOK_WRAP
+%token TOK_UNWRAP
 %token TOK_PER
 %token TOK_ADD
 %token TOK_MATCHES
@@ -87,7 +93,7 @@ enum {
 %token TOK_ANY
 %token INVALID
 
-%type <exp> relation project select rename extend summarize
+%type <exp> relation project select rename extend summarize wrap
         expression or_expression and_expression not_expression
         primary_expression rel_expression add_expression mul_expression
         literal operator_invocation count_invocation sum_invocation
@@ -104,117 +110,120 @@ enum {
 
 %type <arglist> opt_argument_list argument_list
 
+%type <wraplist> wrapping wrapping_list
+
 %%
 
 expression: or_expression { resultp = $1; }
-/*        | extractor { resultp = $1; } */
-        | relation { resultp = $1; }
-        | project { resultp = $1; }
-        | select { resultp = $1; }
-        | rename { resultp = $1; }
-        | extend { resultp = $1; }
-        | summarize { resultp = $1; }
-        ;
+/*    | extractor { resultp = $1; } */
+    | relation { resultp = $1; }
+    | project { resultp = $1; }
+    | select { resultp = $1; }
+    | rename { resultp = $1; }
+    | extend { resultp = $1; }
+    | summarize { resultp = $1; }
+    | wrap { resultp = $1; }
+    ;
 
 /*
 extractor: TOK_ID FROM expression {
-        }
-        | TUPLE FROM expression {
-        }
-        ;
+    }
+    | TUPLE FROM expression {
+    }
+    ;
 */
 
 project: primary_expression '{' attribute_name_list '}' {
-            RDB_table *tbp, *restbp;
-            int i;
+        RDB_table *tbp, *restbp;
+        int i;
 
-            tbp = expr_to_table($1);
-            if (tbp == NULL)
-            {
-                YYERROR;
-            }
-            expr_ret = RDB_project(tbp, $3.attrc, $3.attrv, &restbp);
-            for (i = 0; i < $3.attrc; i++)
-                free($3.attrv[i]);
-            if (expr_ret != RDB_OK) {
-                YYERROR;
-            }
-            $$ = RDB_expr_table(restbp);
+        tbp = expr_to_table($1);
+        if (tbp == NULL)
+        {
+            YYERROR;
         }
-        | primary_expression '{' TOK_ALL TOK_BUT attribute_name_list '}' {
-            RDB_table *tbp, *restbp;
-            int i;
+        expr_ret = RDB_project(tbp, $3.attrc, $3.attrv, &restbp);
+        for (i = 0; i < $3.attrc; i++)
+            free($3.attrv[i]);
+        if (expr_ret != RDB_OK) {
+            YYERROR;
+        }
+        $$ = RDB_expr_table(restbp);
+    }
+    | primary_expression '{' TOK_ALL TOK_BUT attribute_name_list '}' {
+        RDB_table *tbp, *restbp;
+        int i;
 
-            tbp = expr_to_table($1);
-            if (tbp == NULL)
-            {
-                YYERROR;
-            }
-            expr_ret = RDB_remove(tbp, $5.attrc, $5.attrv, &restbp);
-            for (i = 0; i < $5.attrc; i++)
-                free($5.attrv[i]);
-            if (expr_ret != RDB_OK) {
-                YYERROR;
-            }
-            $$ = RDB_expr_table(restbp);
+        tbp = expr_to_table($1);
+        if (tbp == NULL)
+        {
+            YYERROR;
         }
-        ;
+        expr_ret = RDB_remove(tbp, $5.attrc, $5.attrv, &restbp);
+        for (i = 0; i < $5.attrc; i++)
+            free($5.attrv[i]);
+        if (expr_ret != RDB_OK) {
+            YYERROR;
+        }
+        $$ = RDB_expr_table(restbp);
+    }
+    ;
 
 attribute_name_list: TOK_ID {
-            $$.attrc = 1;
-            $$.attrv[0] = RDB_dup_str($1->var.attr.name);
-            RDB_drop_expr($1);
-        }
-        | attribute_name_list ',' TOK_ID {
-            int i;
+        $$.attrc = 1;
+        $$.attrv[0] = RDB_dup_str($1->var.attr.name);
+        RDB_drop_expr($1);
+    }
+    | attribute_name_list ',' TOK_ID {
+        int i;
 
-            /* Copy old attributes */
-            for (i = 0; i < $1.attrc; i++)
-                $$.attrv[i] = $1.attrv[i];
-            $$.attrv[$1.attrc] = RDB_dup_str($3->var.attr.name);
-            $$.attrc = $1.attrc + 1;
-            RDB_drop_expr($3);
-        }
-        ;
+        /* Copy old attributes */
+        for (i = 0; i < $1.attrc; i++)
+            $$.attrv[i] = $1.attrv[i];
+        $$.attrv[$1.attrc] = RDB_dup_str($3->var.attr.name);
+        $$.attrc = $1.attrc + 1;
+        RDB_drop_expr($3);
+    }
+    ;
 
 select: primary_expression TOK_WHERE or_expression {
-            RDB_table *tbp, *restbp;
+        RDB_table *tbp, *restbp;
 
-            tbp = expr_to_table($1);
-            if (tbp == NULL)
-            {
-                YYERROR;
-            }
-            expr_ret = RDB_select(tbp, $3, &restbp);
-            if (expr_ret != RDB_OK) {
-                yyerror(RDB_strerror(expr_ret));
-                YYERROR;
-            }
-            $$ = RDB_expr_table(restbp);
+        tbp = expr_to_table($1);
+        if (tbp == NULL)
+        {
+            YYERROR;
         }
-        ;
+        expr_ret = RDB_select(tbp, $3, &restbp);
+        if (expr_ret != RDB_OK) {
+            yyerror(RDB_strerror(expr_ret));
+            YYERROR;
+        }
+        $$ = RDB_expr_table(restbp);
+    }
+    ;
 
 rename: primary_expression TOK_RENAME '(' renaming_list ')' {
-            RDB_table *tbp, *restbp;
-            int i;
+        RDB_table *tbp, *restbp;
+        int i;
 
-            tbp = expr_to_table($1);
-            if (tbp == NULL)
-            {
-                YYERROR;
-            }
-            expr_ret = RDB_rename(tbp, $4.renc, $4.renv, &restbp);
-            for (i = 0; i < $4.renc; i++) {
-                free($4.renv[i].to);
-                free($4.renv[i].from);
-            }
-            if (expr_ret != RDB_OK) {
-                yyerror(RDB_strerror(expr_ret));
-                YYERROR;
-            }
-            $$ = RDB_expr_table(restbp);
+        tbp = expr_to_table($1);
+        if (tbp == NULL)
+        {
+            YYERROR;
         }
-        ;
+        expr_ret = RDB_rename(tbp, $4.renc, $4.renv, &restbp);
+        for (i = 0; i < $4.renc; i++) {
+            free($4.renv[i].to);
+            free($4.renv[i].from);
+        }
+        if (expr_ret != RDB_OK) {
+            yyerror(RDB_strerror(expr_ret));
+            YYERROR;
+        }
+        $$ = RDB_expr_table(restbp);
+    }
+    ;
 
 renaming_list: renaming {
             $$.renv[0].from = $1.renv[0].from;
@@ -483,6 +492,63 @@ summary_type: TOK_SUM {
         }
         | TOK_ANY {
             $$.addv[0].op = RDB_ANY;
+        }
+        ;
+
+wrap:   primary_expression TOK_WRAP
+        '(' wrapping_list ')' {
+            RDB_table *tbp, *restbp;
+            int i;
+
+            tbp = expr_to_table($1);
+            if (tbp == NULL)
+            {
+                YYERROR;
+            }
+            expr_ret = RDB_wrap(tbp, $4.wrapc, $4.wrapv, &restbp);
+            for (i = 0; i < $4.wrapc; i++) {
+                /* !! */
+            }
+            if (expr_ret != RDB_OK) {
+                yyerror(RDB_strerror(expr_ret));
+                YYERROR;
+            }
+            $$ = RDB_expr_table(restbp);
+        }
+        ;
+
+wrapping_list: wrapping {
+            $$.wrapv[0].attrname = $1.wrapv[0].attrname;
+            $$.wrapv[0].attrv = $1.wrapv[0].attrv;
+            $$.wrapv[0].attrc = $1.wrapv[0].attrc;
+            $$.wrapc = 1;
+        }
+        | wrapping_list ',' wrapping {
+            int i;
+
+            /* Copy old elements */
+            for (i = 0; i < $1.wrapc; i++) {
+                $$.wrapv[i] = $1.wrapv[i];
+            }
+
+            /* Add new element */
+            $$.wrapv[$1.wrapc] = $3.wrapv[0];
+        
+            $$.wrapc = $1.wrapc + 1;
+        }
+        ;
+
+wrapping: '(' attribute_name_list ')' TOK_AS TOK_ID {
+            int i;
+
+            $$.wrapv[0].attrc = $2.attrc;
+            $$.wrapv[0].attrv = malloc(sizeof(char *) * $2.attrc);
+
+            for (i = 0; i < $2.attrc; i++) {
+                $$.wrapv[0].attrv[i] = $2.attrv[i];
+            }
+            $$.wrapv[0].attrname = RDB_dup_str($5->var.attr.name);
+            RDB_drop_expr($5);
         }
         ;
 

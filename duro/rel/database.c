@@ -5,6 +5,7 @@
 #include "typeimpl.h"
 #include "serialize.h"
 #include "catalog.h"
+#include <gen/hashmapit.h>
 #include <gen/strfns.h>
 #include <string.h>
 #include <stdio.h>
@@ -373,16 +374,8 @@ free_ro_op(RDB_ro_op *op) {
 }
 
 static void
-free_ro_ops(RDB_hashmap *hp, const char *key, void *argp)
+free_ro_ops(RDB_ro_op *op)
 {
-    RDB_ro_op **opp = RDB_hashmap_get(hp, key, NULL);
-    RDB_ro_op *op;
-
-    if (opp == NULL || *opp == NULL)
-        return;
-    
-    op = *opp;
-
     do {
         RDB_ro_op *nextop = op->nextp;
         free_ro_op(op);
@@ -406,16 +399,8 @@ free_upd_op(RDB_upd_op *op) {
 }
 
 static void
-free_upd_ops(RDB_hashmap *hp, const char *key, void *argp)
+free_upd_ops(RDB_upd_op *op)
 {
-    RDB_upd_op **opp = RDB_hashmap_get(hp, key, NULL);
-    RDB_upd_op *op;
-
-    if (opp == NULL || *opp == NULL)
-        return;
-    
-    op = *opp;
-
     do {
         RDB_upd_op *nextop = op->nextp;
         free_upd_op(op);
@@ -426,13 +411,32 @@ free_upd_ops(RDB_hashmap *hp, const char *key, void *argp)
 static void
 free_dbroot(RDB_dbroot *dbrootp)
 {
+    RDB_hashmap_iter it;
+    char *keyp;
+    void *datap;
+
     RDB_destroy_hashmap(&dbrootp->typemap);
 
     /*
      * destroy user-defined operators in memory
      */
-    RDB_hashmap_apply(&dbrootp->ro_opmap, &free_ro_ops, &dbrootp->ro_opmap);
-    RDB_hashmap_apply(&dbrootp->upd_opmap, &free_upd_ops, &dbrootp->upd_opmap);
+    RDB_init_hashmap_iter(&it, &dbrootp->ro_opmap);
+    while ((datap = RDB_hashmap_next(&it, &keyp, NULL)) != NULL) {
+        RDB_ro_op *op = *(RDB_ro_op **)datap;
+
+        if (op != NULL)
+            free_ro_ops(op);
+    }
+    RDB_destroy_hashmap_iter(&it);
+
+    RDB_init_hashmap_iter(&it, &dbrootp->upd_opmap);
+    while ((datap = RDB_hashmap_next(&it, &keyp, NULL)) != NULL) {
+        RDB_upd_op *op = *(RDB_upd_op **)datap;
+
+        if (op != NULL)
+            free_upd_ops(op);
+    }
+    RDB_destroy_hashmap_iter(&it);
 
     RDB_destroy_hashmap(&dbrootp->ro_opmap);
     RDB_destroy_hashmap(&dbrootp->upd_opmap);
@@ -1220,6 +1224,26 @@ _RDB_drop_table(RDB_table *tbp, RDB_transaction *txp, RDB_bool rec)
                 free(tbp->var.summarize.addv[i].name);
             }
             break;
+        case RDB_TB_WRAP:
+            if (rec) {
+                ret = drop_anon_table(tbp->var.wrap.tbp, txp);
+                if (ret != RDB_OK)
+                    return ret;
+            }
+            for (i = 0; i < tbp->var.wrap.wrapc; i++) {
+                free(tbp->var.wrap.wrapv[i].attrname);
+                RDB_free_strvec(tbp->var.wrap.wrapv[i].attrc,
+                        tbp->var.wrap.wrapv[i].attrv);
+            }
+            break;        
+        case RDB_TB_UNWRAP:
+            if (rec) {
+                ret = drop_anon_table(tbp->var.unwrap.tbp, txp);
+                if (ret != RDB_OK)
+                    return ret;
+            }
+            RDB_free_strvec(tbp->var.unwrap.attrc, tbp->var.unwrap.attrv);
+            break;        
     }
 
     _RDB_free_table(tbp, txp != NULL ? txp->dbp->dbrootp->envp : NULL);
@@ -1684,10 +1708,14 @@ RDB_drop_op(const char *name, RDB_transaction *txp)
 
     if (isempty) {
         /* It's an update operator */
+        RDB_upd_op **oldopp;
         RDB_upd_op *op = NULL;
 
         /* Delete all versions of update operator from hashmap */
-        free_upd_ops(&txp->dbp->dbrootp->upd_opmap, name, NULL);
+        oldopp = (RDB_upd_op **)RDB_hashmap_get(&txp->dbp->dbrootp->ro_opmap,
+                name, NULL);
+        if (oldopp != NULL && *oldopp != NULL)
+            free_upd_ops(*oldopp);
         ret = RDB_hashmap_put(&txp->dbp->dbrootp->upd_opmap, name,
                 &op, sizeof (op));
         if (ret != RDB_OK) {
@@ -1708,10 +1736,14 @@ RDB_drop_op(const char *name, RDB_transaction *txp)
         }        
     } else {
         /* It's a read-only operator */
+        RDB_ro_op **oldopp;
         RDB_ro_op *op = NULL;
 
         /* Delete all versions of readonly operator from hashmap */
-        free_ro_ops(&txp->dbp->dbrootp->ro_opmap, name, NULL);
+        oldopp = (RDB_ro_op **)RDB_hashmap_get(&txp->dbp->dbrootp->ro_opmap,
+                name, NULL);
+        if (oldopp != NULL && *oldopp != NULL)
+            free_ro_ops(*oldopp);
         ret = RDB_hashmap_put(&txp->dbp->dbrootp->ro_opmap, name,
                 &op, sizeof (op));
         if (ret != RDB_OK) {

@@ -6,8 +6,6 @@
 #include <gen/strfns.h>
 #include <string.h>
 
-#include <signal.h>
-
 RDB_type *
 RDB_table_type(const RDB_table *tbp)
 {
@@ -208,6 +206,10 @@ RDB_delete(RDB_table *tbp, RDB_expression *condp, RDB_transaction *txp)
             return RDB_NOT_SUPPORTED;
         case RDB_TB_RENAME:
             /* !! */
+            return RDB_NOT_SUPPORTED;
+        case RDB_TB_WRAP:
+            return RDB_NOT_SUPPORTED;
+        case RDB_TB_UNWRAP:
             return RDB_NOT_SUPPORTED;
     }
     /* should never be reached */
@@ -744,8 +746,8 @@ _RDB_find_rename_to(int renc, RDB_renaming renv[], const char *name)
     return i;
 }
 
-int    
-RDB_rename_contains(RDB_table *tbp, const RDB_object *tup, RDB_transaction *txp)
+static int    
+rename_contains(RDB_table *tbp, const RDB_object *tup, RDB_transaction *txp)
 {
     RDB_object tpl;
     int i;
@@ -779,6 +781,32 @@ error:
     RDB_destroy_obj(&tpl);
     return ret;
 }
+
+static int    
+wrap_contains(RDB_table *tbp, const RDB_object *tup, RDB_transaction *txp)
+{
+    int ret;
+    int i;
+    RDB_object tpl;
+    char **attrv = malloc(sizeof(char *) * tbp->var.wrap.wrapc);
+
+    if (attrv == NULL)
+        return RDB_NO_MEMORY;
+
+    for (i = 0; i < tbp->var.wrap.wrapc; i++)
+        attrv[i] = tbp->var.wrap.wrapv[i].attrname;
+
+    RDB_init_obj(&tpl);
+    ret = RDB_unwrap_tuple(tup, tbp->var.wrap.wrapc, attrv, &tpl);
+    free(attrv);
+    if (ret != RDB_OK) {
+        RDB_destroy_obj(&tpl);
+        return ret;
+    }
+    ret = RDB_table_contains(tbp->var.wrap.tbp, &tpl, txp);
+    RDB_destroy_obj(&tpl);
+    return ret;
+}    
     
 int
 RDB_table_contains(RDB_table *tbp, const RDB_object *tup, RDB_transaction *txp)
@@ -881,7 +909,11 @@ RDB_table_contains(RDB_table *tbp, const RDB_object *tup, RDB_transaction *txp)
                 return ret;
             }
         case RDB_TB_RENAME:
-            return RDB_rename_contains(tbp, tup, txp);
+            return rename_contains(tbp, tup, txp);
+        case RDB_TB_WRAP:
+            return wrap_contains(tbp, tup, txp);
+        case RDB_TB_UNWRAP:
+            return RDB_NOT_SUPPORTED;
     }
     /* should never be reached */
     abort();
@@ -1153,7 +1185,8 @@ RDB_union(RDB_table *tbp1, RDB_table *tbp2, RDB_table **resultpp)
     newtbp->typ = tbp1->typ;
     newtbp->name = NULL;
 
-    /* Set keys. The result table becomes all-key.
+    /*
+     * Set keys. The result table becomes all-key.
      */
     newtbp->keyc = 1;
     newtbp->keyv = all_key(tbp1);
@@ -1749,6 +1782,77 @@ error:
         free(newtbp->var.rename.renv[i].from);
     }
     free(newtbp->var.rename.renv);
+    free(newtbp);
+    return ret;
+}
+
+int
+RDB_wrap(RDB_table *tbp, int wrapc, RDB_wrapping wrapv[],
+         RDB_table **resultpp)
+{
+    RDB_table *newtbp;
+    int i;
+    int ret;
+
+    newtbp = malloc(sizeof (RDB_table));
+    if (newtbp == NULL)
+        return RDB_NO_MEMORY;
+
+    newtbp->name = NULL;
+    newtbp->is_user = RDB_TRUE;
+    newtbp->is_persistent = RDB_FALSE;
+    newtbp->kind = RDB_TB_WRAP;
+
+    newtbp->keyc = 1;
+    newtbp->keyv = all_key(tbp);
+    if (newtbp->keyv == NULL) {
+        free(newtbp);
+        return RDB_NO_MEMORY;
+    }
+
+    ret = RDB_wrap_relation_type(tbp->typ, wrapc, wrapv, &newtbp->typ);
+    if (ret != RDB_OK) {
+        free(newtbp);
+        return ret;
+    }
+
+    newtbp->var.wrap.wrapc = wrapc;
+    newtbp->var.wrap.wrapv = malloc(sizeof (RDB_wrapping) * wrapc);
+    if (newtbp->var.wrap.wrapv == NULL) {
+        RDB_drop_type(newtbp->typ, NULL);
+        free(newtbp);
+        return RDB_NO_MEMORY;
+    }
+    for (i = 0; i < wrapc; i++) {
+        newtbp->var.wrap.wrapv[i].attrname = NULL;
+        newtbp->var.wrap.wrapv[i].attrv = NULL;
+    }
+    for (i = 0; i < wrapc; i++) {
+        newtbp->var.wrap.wrapv[i].attrname = RDB_dup_str(wrapv[i].attrname);
+        if (newtbp->var.wrap.wrapv[i].attrname == NULL) {
+            ret = RDB_NO_MEMORY;
+            goto error;
+        }
+        newtbp->var.wrap.wrapv[i].attrc = wrapv[i].attrc;
+        newtbp->var.wrap.wrapv[i].attrv = RDB_dup_strvec(wrapv[i].attrc,
+                wrapv[i].attrv);
+        if (newtbp->var.wrap.wrapv[i].attrv == NULL) {
+            ret = RDB_NO_MEMORY;
+            goto error;
+        }
+    }
+    newtbp->var.wrap.tbp = tbp;
+
+    *resultpp = newtbp;
+    return RDB_OK; 
+error:
+    for (i = 0; i < wrapc; i++) {
+        free(newtbp->var.wrap.wrapv[i].attrname);
+        if (newtbp->var.wrap.wrapv[i].attrv != NULL)
+            RDB_free_strvec(newtbp->var.wrap.wrapv[i].attrc,
+                    newtbp->var.wrap.wrapv[i].attrv);
+    }
+    free(newtbp->var.wrap.wrapv);
     free(newtbp);
     return ret;
 }

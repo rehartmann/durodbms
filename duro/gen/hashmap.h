@@ -86,10 +86,4 @@ RDB_hashmap_size(const RDB_hashmap *);
 void
 RDB_hashmap_keys(const RDB_hashmap *, char **keyv);
 
-/* Call the function pointed to by fp for all keys. */
-void
-RDB_hashmap_apply(RDB_hashmap *hp,
-                  void (*fp)(RDB_hashmap *, const char *, void *),
-                  void *arg);
-
 #endif

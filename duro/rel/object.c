@@ -3,6 +3,7 @@
 #include "rdb.h"
 #include "typeimpl.h"
 #include "internal.h"
+#include <gen/hashmapit.h>
 #include <gen/errors.h>
 #include <string.h>
 
@@ -30,23 +31,19 @@ RDB_obj_irep(RDB_object *valp, size_t *lenp)
 } 
 
 static size_t
-obj_ilen(const RDB_object *objp);
-
-static void
-add_obj_ilen(RDB_hashmap *hp, const char *key, void *arg) {
-    size_t *lenp = (size_t *) arg;
-
-    *lenp += obj_ilen((RDB_object *) RDB_hashmap_get(hp, key, arg));
-}
-
-static size_t
 obj_ilen(const RDB_object *objp)
 {
     size_t len;
 
     if (objp->kind == _RDB_TUPLE) {
-        len = 0;
-        RDB_hashmap_apply((RDB_hashmap *) &objp->var.tpl_map, add_obj_ilen, &len);
+        RDB_hashmap_iter it;
+        char *key;
+        void *datap;
+
+        RDB_init_hashmap_iter(&it, (RDB_hashmap *) &objp->var.tpl_map);
+        while ((datap = RDB_hashmap_next(&it, &key, NULL)) != NULL)
+            len += obj_ilen((RDB_object *) datap);
+        RDB_destroy_hashmap_iter(&it);
         return len;
     }
     len = objp->typ->ireplen;
@@ -268,11 +265,6 @@ RDB_init_obj(RDB_object *valp)
     valp->typ = NULL;
 }
 
-static void
-destroy_obj(RDB_hashmap *hp, const char *key, void *arg) {
-    RDB_destroy_obj((RDB_object *) RDB_hashmap_get(hp, key, NULL));
-}
-
 int
 RDB_destroy_obj(RDB_object *objp)
 {
@@ -282,7 +274,14 @@ RDB_destroy_obj(RDB_object *objp)
     if (objp->kind == _RDB_BIN && (objp->var.bin.len > 0)) {
         free(objp->var.bin.datap);
     } else if (objp->kind == _RDB_TUPLE) {
-        RDB_hashmap_apply(&objp->var.tpl_map, destroy_obj, NULL);
+        RDB_hashmap_iter it;
+        char *key;
+        void *datap;
+
+        RDB_init_hashmap_iter(&it, (RDB_hashmap *) &objp->var.tpl_map);
+        while ((datap = RDB_hashmap_next(&it, &key, NULL)) != NULL)
+            RDB_destroy_obj((RDB_object *) datap);
+        RDB_destroy_hashmap_iter(&it);
         RDB_destroy_hashmap(&objp->var.tpl_map);
     }
     return RDB_OK;

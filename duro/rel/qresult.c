@@ -460,6 +460,14 @@ init_qresult(RDB_qresult *qrp, RDB_table *tbp, RDB_transaction *txp)
             ret = _RDB_table_qresult(tbp->var.rename.tbp,
                     txp, &qrp->var.virtual.qrp);
             break;
+        case RDB_TB_WRAP:
+            ret = _RDB_table_qresult(tbp->var.wrap.tbp,
+                    txp, &qrp->var.virtual.qrp);
+            break;
+        case RDB_TB_UNWRAP:
+            ret = _RDB_table_qresult(tbp->var.unwrap.tbp,
+                    txp, &qrp->var.virtual.qrp);
+            break;        
     }
     return ret;
 }
@@ -822,6 +830,42 @@ next_rename_tuple(RDB_qresult *qrp, RDB_object *tup, RDB_transaction *txp)
     return ret;
 }
 
+static int
+next_wrap_tuple(RDB_qresult *qrp, RDB_object *tup, RDB_transaction *txp)
+{
+    RDB_object tpl;
+    int ret;
+
+    RDB_init_obj(&tpl);
+    ret = _RDB_next_tuple(qrp->var.virtual.qrp, &tpl, txp);
+    if (ret != RDB_OK) {
+        RDB_destroy_obj(&tpl);
+        return ret;
+    }
+    ret = RDB_wrap_tuple(&tpl, qrp->tbp->var.wrap.wrapc,
+                           qrp->tbp->var.wrap.wrapv, tup);
+    RDB_destroy_obj(&tpl);
+    return ret;
+}
+
+static int
+next_unwrap_tuple(RDB_qresult *qrp, RDB_object *tup, RDB_transaction *txp)
+{
+    RDB_object tpl;
+    int ret;
+
+    RDB_init_obj(&tpl);
+    ret = _RDB_next_tuple(qrp->var.virtual.qrp, &tpl, txp);
+    if (ret != RDB_OK) {
+        RDB_destroy_obj(&tpl);
+        return ret;
+    }
+    ret = RDB_unwrap_tuple(&tpl, qrp->tbp->var.unwrap.attrc,
+                           qrp->tbp->var.unwrap.attrv, tup);
+    RDB_destroy_obj(&tpl);
+    return ret;
+}
+
 int
 _RDB_next_tuple(RDB_qresult *qrp, RDB_object *tup, RDB_transaction *txp)
 {
@@ -954,6 +998,10 @@ _RDB_next_tuple(RDB_qresult *qrp, RDB_object *tup, RDB_transaction *txp)
             break;
         case RDB_TB_RENAME:
             return next_rename_tuple(qrp, tup, txp);            
+        case RDB_TB_WRAP:
+            return next_wrap_tuple(qrp, tup, txp);            
+        case RDB_TB_UNWRAP:
+            return next_unwrap_tuple(qrp, tup, txp);            
     }
     return RDB_OK;
 }

@@ -987,8 +987,9 @@ copy_attr(RDB_attr *dstp, const RDB_attr *srcp)
     if (dstp->typ == NULL) {
         return RDB_NO_MEMORY;
     }
+    dstp->defaultp = NULL;
     return RDB_OK;
-}    
+}
 
 int
 RDB_wrap_tuple_type(const RDB_type *typ, int wrapc, RDB_wrapping wrapv[],
@@ -1063,7 +1064,7 @@ RDB_wrap_tuple_type(const RDB_type *typ, int wrapc, RDB_wrapping wrapv[],
     for (i = 0; i < typ->var.tuple.attrc; i++) {
         /* Copy attribute if it does not appear in wrapv */
         for (j = 0; j < wrapc && RDB_find_str(wrapv[j].attrc, wrapv[j].attrv,
-                typ->var.tuple.attrv[i].name) != 0; j++);
+                typ->var.tuple.attrv[i].name) == -1; j++);
         if (j == wrapc) {
             /* Not found */
             ret = copy_attr(&(*newtypp)->var.tuple.attrv[k],
@@ -1083,9 +1084,10 @@ RDB_wrap_tuple_type(const RDB_type *typ, int wrapc, RDB_wrapping wrapv[],
 error:
     for (i = 0; i < attrc; i++) {
         attrp = &(*newtypp)->var.tuple.attrv[i];
-        if (attrp->name != NULL) {
+        if (attrp->name != NULL)
             free (attrp->name);
-            if (attrp->typ->name == NULL)
+        if (attrp->typ != NULL) {
+            if (attrp->typ == NULL)
                 RDB_drop_type(attrp->typ, NULL);
         }
     }

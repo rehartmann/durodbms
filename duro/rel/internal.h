@@ -241,6 +241,10 @@ int
 RDB_rename_relation_type(const RDB_type *typ, int renc, RDB_renaming renv[],
         RDB_type **);
 
+int
+RDB_wrap_relation_type(const RDB_type *typ, int wrapc, RDB_wrapping wrapv[],
+        RDB_type **newtypp);
+
 RDB_attr *
 _RDB_tuple_type_attr(const RDB_type *tuptyp, const char *attrname);
 

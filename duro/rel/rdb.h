@@ -216,7 +216,7 @@ enum _RDB_tb_kind {
     RDB_TB_SUMMARIZE,
     RDB_TB_RENAME,
     RDB_TB_WRAP,
-    RDB_TP_UNWRAP
+    RDB_TB_UNWRAP
 };
 
 typedef struct {
@@ -288,13 +288,15 @@ typedef struct RDB_table {
             RDB_renaming *renv;
         } rename;
         struct {
+            struct RDB_table *tbp;
             int wrapc;
             RDB_wrapping *wrapv;
         } wrap;
         struct {
+            struct RDB_table *tbp;
             int attrc;
             char **attrv;            
-        } unwwrap;
+        } unwrap;
     } var;
     int refcount;
 } RDB_table;
@@ -742,7 +744,7 @@ RDB_wrap_tuple(const RDB_object *tplp, int wrapc, RDB_wrapping wrapv[],
                RDB_object *restplp);
 
 int
-RDB_unwrap_tuple(const RDB_object *tplp, int attrc, const char *attrv[],
+RDB_unwrap_tuple(const RDB_object *tplp, int attrc, char *attrv[],
         RDB_object *restplp);
 
 void
