@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2004 René Hartmann.
+ * Copyright (C) 2004-2005 René Hartmann.
  * See the file COPYING for redistribution information.
  */
 
@@ -1040,7 +1040,8 @@ dup_summarize(RDB_table *tbp)
             goto error;
         }
         exp = tbp->var.summarize.addv[i].exp;
-        if (exp != NULL) {
+        if (tbp->var.summarize.addv[i].op != RDB_COUNT
+                && tbp->var.summarize.addv[i].op != RDB_COUNTD) {
             newtbp->var.summarize.addv[i].exp = RDB_dup_expr(exp);
             if (newtbp->var.summarize.addv[i].exp == NULL)
                 goto error;

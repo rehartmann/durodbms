@@ -6,7 +6,7 @@ This directory contains release 0.9 of Duro, a relational database library.
 
 The following software is required for compiling and running Duro:
 
-- Berkeley DB, release 4.3
+- Berkeley DB Transactional Data Store, release 4.3
 - POSIX.2 regular expressions
 - GNU Libtool
 - Tcl 8.1 or later
