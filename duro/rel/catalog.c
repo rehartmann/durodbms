@@ -190,6 +190,21 @@ cleanup:
     return ret;
 }
 
+static int
+delete_tuptype(const char *key, RDB_transaction *txp)
+{
+    int ret;
+    RDB_expression *exprp = RDB_eq(RDB_expr_attr("TYPEKEY"),
+            RDB_string_const(key));
+
+    if (exprp == NULL)
+        return RDB_NO_MEMORY;
+
+    ret = RDB_delete(txp->dbp->dbrootp->tuple_attrs_tbp, exprp, txp);
+    RDB_drop_expr(exprp);
+    return ret;
+}
+
 static char *
 new_nstypekey(const char *tbname, const char *attrname)
 {
@@ -444,10 +459,11 @@ _RDB_catalog_insert(RDB_table *tbp, RDB_transaction *txp)
 }
 
 /* Delete a real table from the catalog */
-int
-_RDB_catalog_delete(RDB_table *tbp, RDB_transaction *txp)
+static int
+delete_rtable(RDB_table *tbp, RDB_transaction *txp)
 {
     int ret;
+    int i;
     RDB_expression *exprp = RDB_eq(RDB_expr_attr("TABLENAME"),
                    RDB_string_const(tbp->name));
     if (exprp == NULL) {
@@ -470,11 +486,47 @@ _RDB_catalog_delete(RDB_table *tbp, RDB_transaction *txp)
         goto cleanup;
 
     /* Delete non-scalar types */
-    /* !! ... */
+    for (i = 0; i < tbp->typ->var.basetyp->var.tuple.attrc; i++) {
+        RDB_attr *attrp = &tbp->typ->var.basetyp->var.tuple.attrv[i];
+
+        if (attrp->typ->kind == RDB_TP_TUPLE) {
+            char *typekey = new_nstypekey(tbp->name, attrp->name);
+            ret = delete_tuptype(typekey, txp);
+            free(typekey);
+            if (ret != RDB_OK)
+                goto cleanup;
+            /* !! should delete attribute tuple types too */
+        }
+    }
 
 cleanup:
     RDB_drop_expr(exprp);
     return ret;
+}
+
+/* Delete a virtual table from the catalog */
+static int
+delete_vtable(RDB_table *tbp, RDB_transaction *txp)
+{
+    int ret;
+    RDB_expression *exprp = RDB_eq(RDB_expr_attr("TABLENAME"),
+                   RDB_string_const(tbp->name));
+    if (exprp == NULL) {
+        return RDB_NO_MEMORY;
+    }
+    ret = RDB_delete(txp->dbp->dbrootp->vtables_tbp, exprp, txp);
+    RDB_drop_expr(exprp);
+
+    return ret;
+}
+
+int
+_RDB_catalog_delete(RDB_table *tbp, RDB_transaction *txp)
+{
+    if (tbp->kind == RDB_TB_STORED)
+        return delete_rtable(tbp, txp);
+    else
+        return delete_vtable(tbp, txp);
 }
 
 /*

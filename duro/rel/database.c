@@ -1119,10 +1119,6 @@ _RDB_drop_table(RDB_table *tbp, RDB_transaction *txp, RDB_bool rec)
     switch (tbp->kind) {
         case RDB_TB_STORED:
         {
-            if (tbp->is_persistent) {
-                /* Delete table from catalog */
-                ret = _RDB_catalog_delete(tbp, txp);
-            }
 
             ret = _RDB_drop_rtable(tbp, txp);
             break;
@@ -1244,6 +1240,11 @@ _RDB_drop_table(RDB_table *tbp, RDB_transaction *txp, RDB_bool rec)
             }
             RDB_free_strvec(tbp->var.unwrap.attrc, tbp->var.unwrap.attrv);
             break;        
+    }
+
+    if (tbp->is_persistent) {
+        /* Delete table from catalog */
+        ret = _RDB_catalog_delete(tbp, txp);
     }
 
     _RDB_free_table(tbp, txp != NULL ? txp->dbp->dbrootp->envp : NULL);

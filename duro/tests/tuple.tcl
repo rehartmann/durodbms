@@ -48,6 +48,9 @@ duro::table create T1 {
 
 duro::table insert T1 {SCATTR Bla TPATTR {A 1 B Blubb}} $tx
 
+# Create UNWRAP table
+duro::table expr -global T2 {T1 UNWRAP (TPATTR)} $tx
+
 duro::commit $tx
 
 # Close DB environment
@@ -61,9 +64,6 @@ set tx [duro::begin $dbenv TEST]
 set a [duro::array create T1 $tx]
 checkarray $a { {SCATTR Bla TPATTR {A 1 B Blubb}} }
 duro::array drop $a
-
-# Create UNWRAP table
-duro::table expr T2 {T1 UNWRAP (TPATTR)} $tx
 
 set a [duro::array create T2 $tx]
 checkarray $a { {SCATTR Bla A 1 B Blubb} }
