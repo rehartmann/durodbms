@@ -818,8 +818,8 @@ ungroup: expression TOK_UNGROUP TOK_ID {
 
 or_expression: and_expression
     | or_expression TOK_OR and_expression {
-        $$ = RDB_or($1, $3);
-        if ($$ == NULL)
+        _RDB_parse_ret = RDB_ro_op_2("OR", $1, $3, _RDB_parse_txp, &$$);
+        if (_RDB_parse_ret != RDB_OK)
             YYERROR;
         _RDB_parse_remove_exp($1);
         _RDB_parse_remove_exp($3);
@@ -831,7 +831,9 @@ or_expression: and_expression
 
 and_expression: not_expression
     | and_expression TOK_AND not_expression {
-        $$ = RDB_and($1, $3);
+        _RDB_parse_ret = RDB_ro_op_2("AND", $1, $3, _RDB_parse_txp, &$$);
+        if (_RDB_parse_ret != RDB_OK)
+            YYERROR;
         if ($$ == NULL)
             YYERROR;
         _RDB_parse_remove_exp($1);
@@ -844,7 +846,9 @@ and_expression: not_expression
 
 not_expression: rel_expression
     | TOK_NOT rel_expression {
-        $$ = RDB_not($2);
+        _RDB_parse_ret = RDB_ro_op_1("NOT", $2, _RDB_parse_txp, &$$);
+        if (_RDB_parse_ret != RDB_OK)
+            YYERROR;
         if ($$ == NULL)
             YYERROR;
         _RDB_parse_remove_exp($2);

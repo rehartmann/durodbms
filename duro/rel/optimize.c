@@ -12,7 +12,8 @@
 #include <stdlib.h>
 
 static RDB_bool is_and(RDB_expression *exp) {
-    return (RDB_bool) (exp->kind == RDB_EX_AND);
+    return (RDB_bool) exp->kind == RDB_EX_USER_OP
+        && strcmp (exp->var.op.name, "AND") == 0;
 }
 
 static void
@@ -23,28 +24,28 @@ unbalance_and(RDB_expression *exp)
     if (!is_and(exp))
         return;
 
-    if (is_and(exp->var.op.arg1))
-        unbalance_and(exp->var.op.arg1);
+    if (is_and(exp->var.op.argv[0]))
+        unbalance_and(exp->var.op.argv[0]);
         
-    if (is_and(exp->var.op.arg2)) {
-        unbalance_and(exp->var.op.arg2);
-        if (is_and(exp->var.op.arg1)) {
+    if (is_and(exp->var.op.argv[1])) {
+        unbalance_and(exp->var.op.argv[1]);
+        if (is_and(exp->var.op.argv[0])) {
             RDB_expression *ax2p;
 
             /* find leftmost factor */
-            axp = exp->var.op.arg1;
-            while (is_and(axp->var.op.arg1))
-                axp = axp->var.op.arg1;
+            axp = exp->var.op.argv[0];
+            while (is_and(axp->var.op.argv[0]))
+                axp = axp->var.op.argv[0];
 
             /* switch leftmost factor and right child */
-            ax2p = exp->var.op.arg2;
-            exp->var.op.arg2 = axp->var.op.arg1;
-            axp->var.op.arg1 = ax2p;
+            ax2p = exp->var.op.argv[1];
+            exp->var.op.argv[1] = axp->var.op.argv[0];
+            axp->var.op.argv[0] = ax2p;
         } else {
             /* swap children */
-            axp = exp->var.op.arg1;
-            exp->var.op.arg1 = exp->var.op.arg2;
-            exp->var.op.arg2 = axp;
+            axp = exp->var.op.argv[0];
+            exp->var.op.argv[0] = exp->var.op.argv[1];
+            exp->var.op.argv[1] = axp;
         }
     }
 }
@@ -53,9 +54,9 @@ static RDB_bool
 expr_attr(RDB_expression *exp, const char *attrname, enum _RDB_expr_kind kind)
 {
     if (exp->kind == kind) {
-        if (exp->var.op.arg1->kind == RDB_EX_ATTR
-                && strcmp(exp->var.op.arg1->var.attrname, attrname) == 0
-                && exp->var.op.arg2->kind == RDB_EX_OBJ)
+        if (exp->var.op.argv[0]->kind == RDB_EX_ATTR
+                && strcmp(exp->var.op.argv[0]->var.attrname, attrname) == 0
+                && exp->var.op.argv[1]->kind == RDB_EX_OBJ)
             return RDB_TRUE;
     }
     return RDB_FALSE;
@@ -70,9 +71,9 @@ expr_cmp_attr(RDB_expression *exp, const char *attrname)
         case RDB_EX_LT:
         case RDB_EX_GET:
         case RDB_EX_LET:
-            if (exp->var.op.arg1->kind == RDB_EX_ATTR
-                    && strcmp(exp->var.op.arg1->var.attrname, attrname) == 0
-                    && exp->var.op.arg2->kind == RDB_EX_OBJ)
+            if (exp->var.op.argv[0]->kind == RDB_EX_ATTR
+                    && strcmp(exp->var.op.argv[0]->var.attrname, attrname) == 0
+                    && exp->var.op.argv[1]->kind == RDB_EX_OBJ)
                 return RDB_TRUE;
         default: ;
     }
@@ -83,9 +84,9 @@ RDB_expression *
 attr_node(RDB_expression *exp, const char *attrname, enum _RDB_expr_kind kind)
 {
     while (is_and(exp)) {
-        if (expr_attr(exp->var.op.arg2, attrname, kind))
+        if (expr_attr(exp->var.op.argv[1], attrname, kind))
             return exp;
-        exp = exp->var.op.arg1;
+        exp = exp->var.op.argv[0];
     }
     if (expr_attr(exp, attrname, kind))
         return exp;
@@ -113,9 +114,9 @@ eval_index_exp(RDB_expression *exp, _RDB_tbindex *indexp)
             return 4;
         iexp = exp;
         while (iexp != NULL && is_and(iexp)) {
-            if (expr_cmp_attr(iexp->var.op.arg2, indexp->attrv[0].attrname))
+            if (expr_cmp_attr(iexp->var.op.argv[1], indexp->attrv[0].attrname))
                 return 4;
-            iexp = iexp->var.op.arg1;
+            iexp = iexp->var.op.argv[0];
         }
         return INT_MAX;
     }
@@ -149,7 +150,8 @@ eval_index_attrs(int attrc, char *attrv[], _RDB_tbindex *indexp)
 }
 
 static void
-move_node(RDB_table *tbp, RDB_expression **dstpp, RDB_expression *nodep)
+move_node(RDB_table *tbp, RDB_expression **dstpp, RDB_expression *nodep,
+        RDB_transaction *txp)
 {
     RDB_expression *prevp;
 
@@ -162,44 +164,48 @@ move_node(RDB_table *tbp, RDB_expression **dstpp, RDB_expression *nodep)
         prevp = NULL;
     } else {
         prevp = tbp->var.select.exp;
-        while (prevp->var.op.arg1 != nodep)
-            prevp = prevp->var.op.arg1;
+        while (prevp->var.op.argv[0] != nodep)
+            prevp = prevp->var.op.argv[0];
     }
 
     if (!is_and(nodep)) {
         if (*dstpp == NULL)
             *dstpp = nodep;
         else
-            *dstpp = RDB_and(*dstpp, nodep);
+            RDB_ro_op_2("AND", *dstpp, nodep, txp, dstpp);
         if (prevp == NULL) {
             tbp->var.select.exp = NULL;
         } else {
             if (prevp == tbp->var.select.exp) {
-                tbp->var.select.exp = prevp->var.op.arg2;
+                tbp->var.select.exp = prevp->var.op.argv[1];
             } else {
                 RDB_expression *pprevp = tbp->var.select.exp;
 
-                while (pprevp->var.op.arg1 != prevp)
-                    pprevp = pprevp->var.op.arg1;
-                pprevp->var.op.arg1 = prevp->var.op.arg2;
+                while (pprevp->var.op.argv[0] != prevp)
+                    pprevp = pprevp->var.op.argv[0];
+                pprevp->var.op.argv[0] = prevp->var.op.argv[1];
             }
+            free(prevp->var.op.name);
+            free(prevp->var.op.argv);
             free(prevp);
         }
     } else {
         if (*dstpp == NULL)
-            *dstpp = nodep->var.op.arg2;
+            *dstpp = nodep->var.op.argv[1];
         else
-            *dstpp = RDB_and(*dstpp, nodep->var.op.arg2);
+            RDB_ro_op_2("AND", *dstpp, nodep->var.op.argv[1], txp, dstpp);
         if (prevp == NULL)
-            tbp->var.select.exp = nodep->var.op.arg1;
+            tbp->var.select.exp = nodep->var.op.argv[0];
         else
-            prevp->var.op.arg1 = nodep->var.op.arg1;
+            prevp->var.op.argv[0] = nodep->var.op.argv[0];
+        free(nodep->var.op.name);
+        free(nodep->var.op.argv);
         free(nodep);
     }
 }
 
 static int
-split_by_index(RDB_table *tbp, _RDB_tbindex *indexp)
+split_by_index(RDB_table *tbp, _RDB_tbindex *indexp, RDB_transaction *txp)
 {
     int ret;
     int i;
@@ -247,8 +253,8 @@ split_by_index(RDB_table *tbp, _RDB_tbindex *indexp)
                     if (stopexp != NULL) {
                         attrexp = stopexp;
                         if (is_and(attrexp))
-                            attrexp = attrexp->var.op.arg2;
-                        move_node(tbp, &ixexp, stopexp);
+                            attrexp = attrexp->var.op.argv[1];
+                        move_node(tbp, &ixexp, stopexp, txp);
                         stopexp = attrexp;
                     }
                 }
@@ -260,14 +266,14 @@ split_by_index(RDB_table *tbp, _RDB_tbindex *indexp)
         }
         attrexp = nodep;
         if (is_and(attrexp))
-            attrexp = attrexp->var.op.arg2;
-        if (attrexp->var.op.arg2->var.obj.typ == NULL
-                && (attrexp->var.op.arg2->var.obj.kind == RDB_OB_TUPLE
-                || attrexp->var.op.arg2->var.obj.kind == RDB_OB_ARRAY))
-            _RDB_set_nonsc_type(&attrexp->var.op.arg2->var.obj,
+            attrexp = attrexp->var.op.argv[1];
+        if (attrexp->var.op.argv[1]->var.obj.typ == NULL
+                && (attrexp->var.op.argv[1]->var.obj.kind == RDB_OB_TUPLE
+                || attrexp->var.op.argv[1]->var.obj.kind == RDB_OB_ARRAY))
+            _RDB_set_nonsc_type(&attrexp->var.op.argv[1]->var.obj,
                     RDB_type_attr_type(tbp->typ, indexp->attrv[i].attrname));
 
-        objpv[objpc++] = &attrexp->var.op.arg2->var.obj;
+        objpv[objpc++] = &attrexp->var.op.argv[1]->var.obj;
 
         if (indexp->idxp != NULL && RDB_index_is_ordered(indexp->idxp)) {
             if (attrexp->kind == RDB_EX_EQ || attrexp->kind == RDB_EX_GET
@@ -277,7 +283,7 @@ split_by_index(RDB_table *tbp, _RDB_tbindex *indexp)
                 asc = (RDB_bool) !indexp->attrv[i].asc;
         }
         
-        move_node(tbp, &ixexp, nodep);
+        move_node(tbp, &ixexp, nodep, txp);
     }
 
     if (tbp->var.select.exp != NULL) {
@@ -350,7 +356,7 @@ optimize_select(RDB_table *tbp, RDB_transaction *txp)
         return RDB_OK;
     }
 
-    return split_by_index(tbp, &stbp->var.real.indexv[idx]);
+    return split_by_index(tbp, &stbp->var.real.indexv[idx], txp);
 }
 
 static int
@@ -678,18 +684,15 @@ optimize(RDB_table *tbp, RDB_transaction *txp)
 int
 _RDB_optimize(RDB_table *tbp, RDB_transaction *txp)
 {
-/*    int ret; */
+    int ret;
 
-    return RDB_OK;
-/*
     ret = resolve_views(tbp);
     if (ret != RDB_OK)
         return ret;
-
+/*
     ret = _RDB_transform(tbp);
     if (ret != RDB_OK)
         return ret;
-
-    return optimize(tbp, txp);
 */
+    return optimize(tbp, txp);
 }

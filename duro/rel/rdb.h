@@ -145,9 +145,6 @@ enum _RDB_expr_kind {
     RDB_EX_LT,
     RDB_EX_GET,
     RDB_EX_LET,
-    RDB_EX_AND,
-    RDB_EX_OR,
-    RDB_EX_NOT,
     RDB_EX_ADD,
     RDB_EX_SUBTRACT,
     RDB_EX_NEGATE,
@@ -175,26 +172,15 @@ typedef struct RDB_expression {
     /* internal */
     enum _RDB_expr_kind kind;
     union {
-        struct {
-            struct RDB_expression *arg1;
-            struct RDB_expression *arg2;
-            char *name;	/* only for RDB_EX_GET_COMP, RDB_EX_AGGREGATE,
-                           and RDB_EX_TUPLE_ATTR */
-            RDB_aggregate_op op; /* only for RDB_EX_AGGREGATE */
-        } op;
         char *attrname;
         RDB_object obj;
-        struct {
-            struct RDB_expression **argv;
-            RDB_type *typ;
-            char *name;
-        } selector;
         struct {
             int argc;
             struct RDB_expression **argv;
             char *name;
             RDB_type *rtyp;
-        } user_op;
+            RDB_aggregate_op op; /* only for RDB_EX_AGGREGATE */
+        } op;
     } var;
 } RDB_expression;
 
@@ -1046,15 +1032,6 @@ RDB_let(RDB_expression *, RDB_expression *);
 
 RDB_expression *
 RDB_get(RDB_expression *, RDB_expression *);
-
-RDB_expression *
-RDB_and(RDB_expression *, RDB_expression *);
-
-RDB_expression *
-RDB_or(RDB_expression *, RDB_expression *);
-
-RDB_expression *
-RDB_not(RDB_expression *);
 
 RDB_expression *
 RDB_add(RDB_expression *, RDB_expression *);

@@ -38,8 +38,12 @@ project_contains(RDB_table *tbp, const RDB_object *tplp, RDB_transaction *txp)
                     RDB_drop_expr(condp);
                 return RDB_INVALID_ARGUMENT;
             }
-            condp = RDB_and(condp, RDB_eq(RDB_expr_attr(
-                    tuptyp->var.tuple.attrv[i].name), RDB_obj_to_expr(objp)));
+            
+            ret = RDB_ro_op_2("AND", condp, RDB_eq(RDB_expr_attr(
+                    tuptyp->var.tuple.attrv[i].name), RDB_obj_to_expr(objp)),
+                    txp, &condp);
+            if (ret != RDB_OK)
+                return ret;
         }
         if (condp == NULL)
             return RDB_NO_MEMORY;
@@ -120,9 +124,11 @@ ungroup_contains(RDB_table *tbp, const RDB_object *tplp, RDB_transaction *txp)
                         RDB_drop_expr(condp);
                     return RDB_INVALID_ARGUMENT;
                 }
-                condp = RDB_and(condp, RDB_eq(RDB_expr_attr(
+                ret = RDB_ro_op_2("AND", condp, RDB_eq(RDB_expr_attr(
                         tuptyp->var.tuple.attrv[i].name),
-                        RDB_obj_to_expr(objp)));
+                        RDB_obj_to_expr(objp)), txp, &condp);
+                if (ret != RDB_OK)
+                    return ret;
             }
             i++;
         }

@@ -202,38 +202,35 @@ serialize_expr(RDB_object *valp, int *posp, const RDB_expression *exp)
             return serialize_obj(valp, posp, &exp->var.obj);
         case RDB_EX_ATTR:
             return serialize_str(valp, posp, exp->var.attrname);
-        case RDB_EX_NOT:
         case RDB_EX_NEGATE:
         case RDB_EX_IS_EMPTY:
         case RDB_EX_TO_INTEGER:
         case RDB_EX_TO_RATIONAL:
         case RDB_EX_TO_STRING:
-            return serialize_expr(valp, posp, exp->var.op.arg1);
+            return serialize_expr(valp, posp, exp->var.op.argv[0]);
         case RDB_EX_EQ:
         case RDB_EX_NEQ:
         case RDB_EX_LT:
         case RDB_EX_GT:
         case RDB_EX_LET:
         case RDB_EX_GET:
-        case RDB_EX_AND:
-        case RDB_EX_OR:
         case RDB_EX_ADD:
         case RDB_EX_SUBTRACT:
         case RDB_EX_MULTIPLY:
         case RDB_EX_DIVIDE:
         case RDB_EX_CONTAINS:
         case RDB_EX_SUBSET:
-            ret = serialize_expr(valp, posp, exp->var.op.arg1);
+            ret = serialize_expr(valp, posp, exp->var.op.argv[0]);
             if (ret != RDB_OK)
                 return ret;
-            return serialize_expr(valp, posp, exp->var.op.arg2);
+            return serialize_expr(valp, posp, exp->var.op.argv[1]);
         case RDB_EX_GET_COMP:
-            ret = serialize_expr(valp, posp, exp->var.op.arg1);
+            ret = serialize_expr(valp, posp, exp->var.op.argv[0]);
             if (ret != RDB_OK)
                 return ret;
             return serialize_str(valp, posp, exp->var.op.name);
         case RDB_EX_AGGREGATE:
-            ret = serialize_expr(valp, posp, exp->var.op.arg1);
+            ret = serialize_expr(valp, posp, exp->var.op.argv[0]);
             if (ret != RDB_OK)
                 return ret;
             ret = serialize_byte(valp, posp, (RDB_byte) exp->var.op.op);
@@ -243,23 +240,23 @@ serialize_expr(RDB_object *valp, int *posp, const RDB_expression *exp)
         case RDB_EX_USER_OP:
         {
             int i;
-            int argc = exp->var.user_op.argc;
+            int argc = exp->var.op.argc;
 
-            ret = serialize_str(valp, posp, exp->var.user_op.name);
+            ret = serialize_str(valp, posp, exp->var.op.name);
             if (ret != RDB_OK)
                 return ret;
             ret = serialize_int (valp, posp, argc);
             if (ret != RDB_OK)
                 return ret;
             for (i = 0; i < argc; i++) {
-                ret = serialize_expr(valp, posp, exp->var.user_op.argv[i]);
+                ret = serialize_expr(valp, posp, exp->var.op.argv[i]);
                 if (ret != RDB_OK)
                     return ret;
             }
             return RDB_OK;
         }
         case RDB_EX_TUPLE_ATTR:
-            ret = serialize_expr(valp, posp, exp->var.op.arg1);
+            ret = serialize_expr(valp, posp, exp->var.op.argv[0]);
             if (ret != RDB_OK)
                 return ret;
             return serialize_str(valp, posp, exp->var.op.name);
@@ -905,7 +902,6 @@ deserialize_expr(RDB_object *valp, int *posp, RDB_transaction *txp,
                     return RDB_NO_MEMORY;
             }
             break;
-        case RDB_EX_NOT:
         case RDB_EX_NEGATE:
         case RDB_EX_TO_INTEGER:
         case RDB_EX_TO_RATIONAL:
@@ -931,8 +927,6 @@ deserialize_expr(RDB_object *valp, int *posp, RDB_transaction *txp,
         case RDB_EX_GT:
         case RDB_EX_LET:
         case RDB_EX_GET:
-        case RDB_EX_AND:
-        case RDB_EX_OR:
         case RDB_EX_ADD:
         case RDB_EX_SUBTRACT:
         case RDB_EX_MULTIPLY:

@@ -11,6 +11,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+#ifdef NIXDA
+
 static void
 del_keys(RDB_table *tbp)
 {
@@ -636,3 +638,5 @@ _RDB_transform(RDB_table *tbp)
 
     return RDB_OK;
 }
+
+#endif

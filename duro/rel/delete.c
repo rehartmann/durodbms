@@ -327,12 +327,13 @@ delete(RDB_table *tbp, RDB_expression *condp, RDB_transaction *txp)
             return delete(tbp->var.intersect.tb2p, condp, txp);
         case RDB_TB_SELECT:
         {
-            RDB_expression *ncondp = NULL;
+            RDB_expression *ncondp;
 
             if (condp != NULL) {
-                ncondp = RDB_and(tbp->var.select.exp, condp);
-                if (ncondp == NULL)
-                    return RDB_NO_MEMORY;
+                ret = RDB_ro_op_2("AND", tbp->var.select.exp, condp, txp,
+                        &ncondp);
+                if (ret != RDB_OK)
+                    return ret;
             }
             ret = delete(tbp->var.select.tbp,
                     ncondp != NULL ? ncondp : tbp->var.select.exp, txp);

@@ -67,25 +67,12 @@ append_ex(RDB_object *objp, RDB_expression *exp)
              if (ret != RDB_OK)
                  return ret;
             break;
-        case RDB_EX_NOT:
-            ret = append_str(objp, "NOT (");
-            if (ret != RDB_OK)
-                return ret;
-            ret = append_ex(objp, exp->var.op.arg1);
-            if (ret != RDB_OK)
-                return ret;
-            ret = append_str(objp, ")");
-            if (ret != RDB_OK)
-                return ret;
-            break;
         case RDB_EX_EQ:
         case RDB_EX_NEQ:
         case RDB_EX_LT:
         case RDB_EX_GT:
         case RDB_EX_LET:
         case RDB_EX_GET:
-        case RDB_EX_AND:
-        case RDB_EX_OR:
         case RDB_EX_ADD:
         case RDB_EX_SUBTRACT:
         case RDB_EX_MULTIPLY:
@@ -94,7 +81,7 @@ append_ex(RDB_object *objp, RDB_expression *exp)
             ret = append_str(objp, "(");
             if (ret != RDB_OK)
                 return ret;
-            ret = append_ex(objp, exp->var.op.arg1);
+            ret = append_ex(objp, exp->var.op.argv[0]);
             if (ret != RDB_OK)
                 return ret;
             switch (objp->kind) {
@@ -116,14 +103,8 @@ append_ex(RDB_object *objp, RDB_expression *exp)
                 case RDB_EX_GET:
                     ret = append_str(objp, ") >= (");
                     break;
-                case RDB_EX_AND:
-                    ret = append_str(objp, ") AND (");
-                    break;
-                case RDB_EX_OR:
-                    ret = append_str(objp, ") OR (");
-                    break;
 /* !!
-                case RDB_EX_REGMATCH:
+                case RDB_EX_REGMATCH: AND OR NOT
                     ret = append_str(objp, ") MATCHES (");
                     break;
 */
@@ -149,7 +130,7 @@ append_ex(RDB_object *objp, RDB_expression *exp)
                     break;
                 default: ; /* never reached */
             }
-            ret = append_ex(objp, exp->var.op.arg2);
+            ret = append_ex(objp, exp->var.op.argv[1]);
             if (ret != RDB_OK)
                 return ret;
             ret = append_str(objp, ")");
@@ -160,13 +141,13 @@ append_ex(RDB_object *objp, RDB_expression *exp)
             ret = append_str(objp, "(");
             if (ret != RDB_OK)
                 return ret;
-            ret = append_ex(objp, exp->var.op.arg2);
+            ret = append_ex(objp, exp->var.op.argv[1]);
             if (ret != RDB_OK)
                 return ret;
             ret = append_str(objp, ") IN (");
             if (ret != RDB_OK)
                 return ret;
-            ret = append_ex(objp, exp->var.op.arg1);
+            ret = append_ex(objp, exp->var.op.argv[0]);
             if (ret != RDB_OK)
                 return ret;
             ret = append_str(objp, ")");
@@ -177,7 +158,7 @@ append_ex(RDB_object *objp, RDB_expression *exp)
             ret = append_str(objp, "IS_EMPTY(");
             if (ret != RDB_OK)
                 return ret;
-            ret = append_ex(objp, exp->var.op.arg1);
+            ret = append_ex(objp, exp->var.op.argv[0]);
             if (ret != RDB_OK)
                 return ret;
             ret = append_str(objp, ")");
@@ -187,7 +168,7 @@ append_ex(RDB_object *objp, RDB_expression *exp)
             ret = append_str(objp, "-(");
             if (ret != RDB_OK)
                 return ret;
-            ret = append_ex(objp, exp->var.op.arg1);
+            ret = append_ex(objp, exp->var.op.argv[0]);
             if (ret != RDB_OK)
                 return ret;
             ret = append_str(objp, ")");
@@ -198,7 +179,7 @@ append_ex(RDB_object *objp, RDB_expression *exp)
             ret = append_str(objp, "INTEGER(");
             if (ret != RDB_OK)
                 return ret;
-            ret = append_ex(objp, exp->var.op.arg1);
+            ret = append_ex(objp, exp->var.op.argv[0]);
             if (ret != RDB_OK)
                 return ret;
             ret = append_str(objp, ")");
@@ -209,7 +190,7 @@ append_ex(RDB_object *objp, RDB_expression *exp)
             ret = append_str(objp, "RATIONAL(");
             if (ret != RDB_OK)
                 return ret;
-            ret = append_ex(objp, exp->var.op.arg1);
+            ret = append_ex(objp, exp->var.op.argv[0]);
             if (ret != RDB_OK)
                 return ret;
             ret = append_str(objp, ")");
@@ -220,7 +201,7 @@ append_ex(RDB_object *objp, RDB_expression *exp)
             ret = append_str(objp, "STRING(");
             if (ret != RDB_OK)
                 return ret;
-            ret = append_ex(objp, exp->var.op.arg1);
+            ret = append_ex(objp, exp->var.op.argv[0]);
             if (ret != RDB_OK)
                 return ret;
             ret = append_str(objp, ")");
@@ -231,7 +212,7 @@ append_ex(RDB_object *objp, RDB_expression *exp)
             ret = append_str(objp, "(");
             if (ret != RDB_OK)
                 return ret;
-            ret = append_ex(objp, exp->var.op.arg1);
+            ret = append_ex(objp, exp->var.op.argv[0]);
             if (ret != RDB_OK)
                 return ret;
             ret = append_str(objp, ").");
@@ -254,7 +235,7 @@ append_ex(RDB_object *objp, RDB_expression *exp)
             ret = append_str(objp, "(");
             if (ret != RDB_OK)
                 return ret;
-            ret = append_ex(objp, exp->var.op.arg1);
+            ret = append_ex(objp, exp->var.op.argv[0]);
             if (ret != RDB_OK)
                 return ret;
             ret = append_str(objp, ")");
@@ -268,7 +249,7 @@ append_ex(RDB_object *objp, RDB_expression *exp)
             ret = append_str(objp, "(");
             if (ret != RDB_OK)
                 return ret;
-            ret = append_ex(objp, exp->var.op.arg1);
+            ret = append_ex(objp, exp->var.op.argv[0]);
             if (ret != RDB_OK)
                 return ret;
             ret = append_str(objp, ")");
@@ -282,7 +263,7 @@ append_ex(RDB_object *objp, RDB_expression *exp)
             ret = append_str(objp, " (");
             if (ret != RDB_OK)
                 return ret;
-            ret = append_ex(objp, exp->var.op.arg1);
+            ret = append_ex(objp, exp->var.op.argv[0]);
             if (ret != RDB_OK)
                 return ret;
             if (exp->var.op.op != RDB_COUNT) {

@@ -153,9 +153,6 @@
 <li><a href="#gt">RDB_gt</a>
 <li><a href="#let">RDB_let</a>
 <li><a href="#get">RDB_get</a>
-<li><a href="#and">RDB_and</a>
-<li><a href="#or">RDB_or</a>
-<li><a href="#not">RDB_not</a>
 <li><a href="#add">RDB_add</a>
 <li><a href="#subtract">RDB_subtract</a>
 <li><a href="#negate">RDB_negate</a>
@@ -3244,69 +3241,6 @@ RDB_get(RDB_expression *, RDB_expression *);
 
 <p>RDB_get creates an expression that represents a "greater or equal than" operator.
 If one of the arguments is NULL, NULL is returned.
-
-<h3>Return value</h3>
-
-<p>A pointer to the newly created expression, of NULL if the creation
-failed.
-
-<hr>
-
-<h2 id="and">RDB_and</h2>
-
-<pre>
-#include &lt;rel/rdb.h&gt;
-
-RDB_expression *
-RDB_and(RDB_expression *, RDB_expression *);
-</pre>
-
-<h3>Description</h3>
-
-<p>RDB_and creates an expression that represents a logical AND.
-If one of the arguments is NULL, NULL is returned.
-
-<h3>Return value</h3>
-
-<p>A pointer to the newly created expression, of NULL if the creation
-failed.
-
-<hr>
-
-<h2 id="or">RDB_or</h2>
-
-<pre>
-#include &lt;rel/rdb.h&gt;
-
-RDB_expression *
-RDB_or(RDB_expression *, RDB_expression *);
-</pre>
-
-<h3>Description</h3>
-
-<p>RDB_or creates an expression that represents a logical OR.
-If one of the arguments is NULL, NULL is returned.
-
-<h3>Return value</h3>
-
-<p>A pointer to the newly created expression, of NULL if the creation
-failed.
-
-<hr>
-
-<h2 id="not">RDB_not</h2>
-
-<pre>
-#include &lt;rel/rdb.h&gt;
-
-RDB_expression *
-RDB_not(RDB_expression *);
-</pre>
-
-<h3>Description</h3>
-
-<p>RDB_or creates an expression that represents a logical NOT.
-If the argument is NULL, NULL is returned.
 
 <h3>Return value</h3>
 
