@@ -16,10 +16,8 @@ Duro_tcl_close_env(TclState *statep, RDB_environment *envp, Tcl_HashEntry *entry
     entryp = Tcl_FirstHashEntry(&statep->ltables, &search);
     while (entryp != NULL) {
         tbep = Tcl_GetHashValue(entryp);
-        printf("yo\n");
         if (tbep->envp == envp) {
             /* Drop table, delete entry and start from the beginning */
-            printf("Dropping table %s\n", RDB_table_name(tbep->tablep));
             Duro_tcl_drop_ltable(tbep, entryp);
             entryp = Tcl_FirstHashEntry(&statep->ltables, &search);
         } else {

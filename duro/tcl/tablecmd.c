@@ -16,7 +16,6 @@ Duro_tcl_drop_ltable(table_entry *tbep, Tcl_HashEntry *entryp)
     return ret;
 }
 
-
 int
 Duro_get_table(TclState *statep, Tcl_Interp *interp, const char *name,
           RDB_transaction *txp, RDB_table **tbpp)
@@ -30,7 +29,7 @@ Duro_get_table(TclState *statep, Tcl_Interp *interp, const char *name,
     entryp = Tcl_FindHashEntry(&statep->ltables, name);
     if (entryp != NULL) {
         /* Found */
-        *tbpp = Tcl_GetHashValue(entryp);
+        *tbpp = ((table_entry *)Tcl_GetHashValue(entryp))->tablep;
         return TCL_OK;
     }
 
