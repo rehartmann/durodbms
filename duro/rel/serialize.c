@@ -329,6 +329,7 @@ _RDB_table_to_value(RDB_table *tbp, RDB_value *valp)
 
     RDB_destroy_value(valp);
     valp->typ = &RDB_BINARY;
+    valp->kind = _RDB_BIN;
     valp->var.bin.len = RDB_BUF_INITLEN;
     valp->var.bin.datap = malloc(RDB_BUF_INITLEN);
     if (valp->var.bin.datap == NULL) {
@@ -351,6 +352,7 @@ _RDB_expr_to_value(const RDB_expression *exp, RDB_value *valp)
 
     RDB_destroy_value(valp);
     valp->typ = &RDB_BINARY;
+    valp->kind = _RDB_BIN;
     if (exp != NULL) {
         valp->var.bin.len = RDB_BUF_INITLEN;
         valp->var.bin.datap = malloc(RDB_BUF_INITLEN);

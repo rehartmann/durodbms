@@ -56,6 +56,7 @@ RDB_bool_const(RDB_bool v)
         
     exp->kind = RDB_CONST;
     exp->var.const_val.typ = &RDB_BOOLEAN;
+    exp->var.const_val.kind = _RDB_BOOL;
     exp->var.const_val.var.bool_val = v;
 
     return exp;
@@ -71,6 +72,7 @@ RDB_int_const(RDB_int v)
         
     exp->kind = RDB_CONST;
     exp->var.const_val.typ = &RDB_INTEGER;
+    exp->var.const_val.kind = _RDB_INT;
     exp->var.const_val.var.int_val = v;
 
     return exp;
@@ -86,6 +88,7 @@ RDB_rational_const(RDB_rational v)
         
     exp->kind = RDB_CONST;
     exp->var.const_val.typ = &RDB_RATIONAL;
+    exp->var.const_val.kind = _RDB_RATIONAL;
     exp->var.const_val.var.rational_val = v;
 
     return exp;
@@ -101,6 +104,7 @@ RDB_string_const(const char *v)
         
     exp->kind = RDB_CONST;
     exp->var.const_val.typ = &RDB_STRING;
+    exp->var.const_val.kind = _RDB_BIN;
     exp->var.const_val.var.bin.datap = RDB_dup_str(v);
     exp->var.const_val.var.bin.len = strlen(v)+1;
 
@@ -830,7 +834,6 @@ RDB_evaluate(RDB_expression *exp, const RDB_tuple *tup, RDB_transaction *txp,
     RDB_type *typ = RDB_expr_type(exp);
 
     if (typ != NULL) {
-        valp->typ = typ;
         switch (exp->kind) {
             case RDB_OP_GET_COMP:
                 {
@@ -851,6 +854,7 @@ RDB_evaluate(RDB_expression *exp, const RDB_tuple *tup, RDB_transaction *txp,
                 return RDB_copy_value(valp, RDB_tuple_get(tup, exp->var.attr.name));
             default: ;
         }
+        _RDB_set_value_type(valp, typ);
         if (typ == &RDB_BOOLEAN)
             return RDB_evaluate_bool(exp, tup, txp, &valp->var.bool_val);
         if (typ == &RDB_INTEGER)

@@ -55,7 +55,6 @@ typedef struct RDB_type {
     /* actual representation, NULL for built-in and nonscalar types */
     struct RDB_type *arep; 
 
-    /* Only used for built-in types */
     RDB_int ireplen;
 
     union {
@@ -79,6 +78,15 @@ extern RDB_type RDB_RATIONAL;
 extern RDB_type RDB_STRING;
 extern RDB_type RDB_BINARY;
 
+enum _RDB_value_kind {
+    _RDB_BOOL,
+    _RDB_INT,
+    _RDB_RATIONAL,
+    _RDB_BIN,
+    _RDB_TABLE,
+    _RDB_TUPLE
+};
+
 /* A RDB_value struct carries a value of an arbitrary type,
  * together with the type information.
  * (Note that a variable of type RDB_value represents a
@@ -86,7 +94,8 @@ extern RDB_type RDB_BINARY;
  */
 typedef struct {
     /* internal */
-    RDB_type *typ;
+    RDB_type *typ;	/* Type */
+    enum _RDB_value_kind kind;
     union {
         RDB_bool bool_val;
         RDB_int int_val;
@@ -977,11 +986,36 @@ RDB_expression *
 RDB_get_comp(RDB_expression *, const char *);
 
 RDB_expression *
-RDB_selector(RDB_expression *, const char *, RDB_expression **);
+RDB_selector(RDB_expression *, const char *repname, RDB_expression *[]);
 
-/* Destroy the expression and all its subexpressions */
+RDB_expression *
+RDB_user_op(const char *opname, RDB_attr *argv[]);
+
+/*
+ * Destroy the expression and all its subexpressions
+ */
 void
 RDB_drop_expr(RDB_expression *);
+
+int
+RDB_define_ro_op(const char *name, RDB_attr *argv[], RDB_type *rtyp,
+                 RDB_transaction *txp);
+
+int
+RDB_define_upd_op(const char *name, RDB_attr *argv[],
+                  int updargc, const char *updargv[],
+                  RDB_transaction *txp);
+
+int
+RDB_call_ro_op(const char *name, int argc, RDB_value *argv[],
+               RDB_value *retvalp, RDB_transaction *txp);
+
+int
+RDB_call_upd_op(const char *name, int argc, RDB_value *argv[],
+                RDB_transaction *txp);
+
+int
+RDB_drop_op(const char *name, RDB_transaction *txp);
 
 /* Extract the "-e <environment> -d <database>" arguments from the command line */
 int

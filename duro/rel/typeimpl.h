@@ -24,9 +24,11 @@ along with Duro; if not, write to the Free Software Foundation, Inc.,
 
 #include <rel/rdb.h>
 
+#define RDB_FIXED_BINARY 1
+
 int
-RDB_implement_type(const char *name, const char *modname, RDB_type *, int options,
-        RDB_transaction *);
+RDB_implement_type(const char *name, const char *libname, RDB_type *,
+        int options, size_t ireplen, RDB_transaction *);
 
 /*
  * Return a pointer to the internal representaion of the value

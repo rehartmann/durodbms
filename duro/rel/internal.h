@@ -113,6 +113,9 @@ _RDB_create_binexpr(RDB_expression *arg1, RDB_expression *arg2,
 RDB_icomp *
 _RDB_get_icomp(RDB_type *, const char *compname);
 
+void
+_RDB_set_value_type(RDB_value *, RDB_type *);
+
 #define _RDB_pkey_len(tbp) ((tbp)->keyv[0].attrc)
 
 #endif

@@ -22,12 +22,7 @@ enum {
  * of the type pointed to by typ.
  */
 static int replen(const RDB_type *typ) {
-    const RDB_type *reptyp = typ;
-
-    if (!RDB_type_is_builtin(typ))
-        reptyp = typ->arep;
-
-    return reptyp->ireplen;
+    return typ->ireplen;
 }
 
 /* Return RDB_TRUE if the attribute name is contained
@@ -452,8 +447,9 @@ static RDB_key_attrs keys_keyv[] = { { 2, keys_keyattrv } };
 
 static RDB_attr types_attrv[] = {
     { "TYPENAME", &RDB_STRING, NULL, 0 },
-    { "I_MODNAME", &RDB_STRING, NULL, 0 },
-    { "I_ACTUAL_REP", &RDB_STRING, NULL, 0 }
+    { "I_LIBNAME", &RDB_STRING, NULL, 0 },
+    { "I_AREP_LEN", &RDB_INTEGER, NULL, 0 },
+    { "I_AREP_TYPE", &RDB_STRING, NULL, 0 }
 };
 static char *types_keyattrv[] = { "TYPENAME" };
 static RDB_key_attrs types_keyv[] = { { 1, types_keyattrv } };
@@ -526,7 +522,7 @@ provide_systables(RDB_transaction *txp)
     }
     assign_table_db(txp->dbp->keys_tbp, txp->dbp);
 
-    ret = open_table("SYSTYPES", RDB_TRUE, 3, types_attrv, 1, types_keyv,
+    ret = open_table("SYSTYPES", RDB_TRUE, 4, types_attrv, 1, types_keyv,
             RDB_FALSE, RDB_TRUE, txp, &txp->dbp->types_tbp);
     if (ret != RDB_OK) {
         return ret;
@@ -786,7 +782,7 @@ RDB_get_db_from_env(const char *name, RDB_environment *envp,
     }
     assign_table_db(dbp->keys_tbp, dbp);
 
-    ret = open_table("SYSTYPES", RDB_TRUE, 3, types_attrv, 1, types_keyv,
+    ret = open_table("SYSTYPES", RDB_TRUE, 4, types_attrv, 1, types_keyv,
             RDB_FALSE, RDB_FALSE, &tx, &dbp->types_tbp);
     if (ret != RDB_OK) {
         goto error;
@@ -1794,7 +1790,8 @@ get_cat_type(const char *name, RDB_transaction *txp, RDB_type **typp)
     RDB_array possreps;
     RDB_array comps;
     RDB_type *typ = NULL;
-    char *modname;
+    char *libname;
+    char *typename;
     int ret, tret;
     int i;
 
@@ -1821,10 +1818,14 @@ get_cat_type(const char *name, RDB_transaction *txp, RDB_type **typp)
     }
     typ->kind = RDB_TP_SCALAR;
 
-    ret = RDB_get_type(RDB_tuple_get_string(&tpl, "I_ACTUAL_REP"), txp,
-            &typ->arep);
-    if (ret != RDB_OK)
-        goto error;
+    typename = RDB_tuple_get_string(&tpl, "I_AREP_TYPE");
+    if (typename[0] != '\0') {
+        ret = RDB_get_type(typename, txp, &typ->arep);
+        if (ret != RDB_OK)
+            goto error;
+    } else {
+        typ->arep = NULL;
+    }
 
     typ->name = RDB_dup_str(name);
     if (typ->name == NULL) {
@@ -1832,11 +1833,13 @@ get_cat_type(const char *name, RDB_transaction *txp, RDB_type **typp)
         goto error;
     }
 
+    typ->ireplen = RDB_tuple_get_int(&tpl, "I_AREP_LEN");
+
     typ->var.scalar.repc = 0;
 
-    modname = RDB_tuple_get_string(&tpl, "I_MODNAME");
-    if (modname[0] != '\0') {
-        typ->var.scalar.modhdl = lt_dlopenext(modname);
+    libname = RDB_tuple_get_string(&tpl, "I_LIBNAME");
+    if (libname[0] != '\0') {
+        typ->var.scalar.modhdl = lt_dlopenext(libname);
         if (typ->var.scalar.modhdl == NULL) {
             fprintf(stderr, "Error: %s\n", lt_dlerror());
             ret = RDB_RESOURCE_NOT_FOUND;
@@ -2061,10 +2064,13 @@ RDB_define_type(const char *name, int repc, RDB_possrep repv[],
     ret = RDB_tuple_set_string(&tpl, "TYPENAME", name);
     if (ret != RDB_OK)
         goto error;
-    ret = RDB_tuple_set_string(&tpl, "I_MODNAME", "");
+    ret = RDB_tuple_set_string(&tpl, "I_LIBNAME", "");
     if (ret != RDB_OK)
         goto error;
-    ret = RDB_tuple_set_string(&tpl, "I_ACTUAL_REP", "");
+    ret = RDB_tuple_set_string(&tpl, "I_AREP_TYPE", "");
+    if (ret != RDB_OK)
+        goto error;
+    ret = RDB_tuple_set_int(&tpl, "I_AREP_LEN", -2);
     if (ret != RDB_OK)
         goto error;
 
@@ -2151,20 +2157,29 @@ error:
 }
 
 int
-RDB_implement_type(const char *name, const char *modname, RDB_type *arep,
-                   int options, RDB_transaction *txp)
+RDB_implement_type(const char *name, const char *libname, RDB_type *arep,
+                   int options, size_t areplen, RDB_transaction *txp)
 {
     RDB_expression *exp, *wherep;
-    RDB_attr_update upd[2];
+    RDB_attr_update upd[3];
     int ret;
 
     if (!RDB_tx_is_running(txp))
         return RDB_INVALID_TRANSACTION;
 
-    if (modname != NULL) {
-        if (arep == NULL || !RDB_type_is_builtin(arep))
-            return RDB_NOT_SUPPORTED;
+    if (libname != NULL) {
+        if (arep == NULL) {
+            if (!(RDB_FIXED_BINARY & options))
+                return RDB_INVALID_ARGUMENT;
+        } else {
+            if (!RDB_type_is_builtin(arep))
+                return RDB_NOT_SUPPORTED;
+        }
     } else {
+        /*
+         * No libname given, so selector and getters/setters must be provided
+         * by the system
+         */
         RDB_table *tmptb1p;
         RDB_table *tmptb2p;
         RDB_tuple tpl;
@@ -2173,7 +2188,7 @@ RDB_implement_type(const char *name, const char *modname, RDB_type *arep,
         if (arep != NULL)
             return RDB_INVALID_ARGUMENT;
 
-        /* # of possreps must be 1 */
+        /* # of possreps must be one */
         ret = possreps_query(name, txp, &tmptb1p);
         if (ret != RDB_OK)
             return ret;
@@ -2203,7 +2218,8 @@ RDB_implement_type(const char *name, const char *modname, RDB_type *arep,
         if (ret != RDB_OK) {
             return ret;
         }
-        modname = "";
+        /* Empty string indicates that there is no library */
+        libname = "";
     }
 
     exp = RDB_expr_attr("TYPENAME", &RDB_STRING);
@@ -2218,26 +2234,34 @@ RDB_implement_type(const char *name, const char *modname, RDB_type *arep,
 
     upd[0].exp = upd[1].exp = NULL;
 
-    upd[0].name = "I_ACTUAL_REP";
-    upd[0].exp = RDB_string_const(arep->name);
+    upd[0].name = "I_AREP_TYPE";
+    upd[0].exp = RDB_string_const(arep != NULL ? arep->name : "");
     if (upd[0].exp == NULL) {
         ret = RDB_NO_MEMORY;
         goto cleanup;
     }
-    upd[1].name = "I_MODNAME";
-    upd[1].exp = RDB_string_const(modname);
+    upd[1].name = "I_AREP_LEN";
+    upd[1].exp = RDB_int_const(options & RDB_FIXED_BINARY ? areplen : arep->ireplen);
     if (upd[1].exp == NULL) {
         ret = RDB_NO_MEMORY;
         goto cleanup;
     }
+    upd[2].name = "I_LIBNAME";
+    upd[2].exp = RDB_string_const(libname);
+    if (upd[2].exp == NULL) {
+        ret = RDB_NO_MEMORY;
+        goto cleanup;
+    }
 
-    ret = RDB_update(txp->dbp->types_tbp, wherep, 2, upd, txp);
+    ret = RDB_update(txp->dbp->types_tbp, wherep, 3, upd, txp);
 
-cleanup:
+cleanup:    
     if (upd[0].exp != NULL)
         RDB_drop_expr(upd[0].exp);
     if (upd[1].exp != NULL)
         RDB_drop_expr(upd[1].exp);
+    if (upd[2].exp != NULL)
+        RDB_drop_expr(upd[2].exp);
     RDB_drop_expr(wherep);
 
     return ret;

@@ -9,36 +9,46 @@
 void *
 RDB_value_irep(RDB_value *valp, size_t *lenp)
 {
-    RDB_type *rep = valp->typ;
-
-    if (!RDB_type_is_builtin(rep))
-        rep = rep->arep;
-
     if (lenp != NULL) {
-        *lenp = rep->ireplen;
+        *lenp = valp->typ->ireplen;
         if (*lenp == RDB_VARIABLE_LEN)
             *lenp = valp->var.bin.len;
     }
 
-    if (rep == &RDB_BOOLEAN) {
-        return &valp->var.bool_val;
-    } else if (rep == &RDB_INTEGER) {
-        return &valp->var.int_val;
-    } else if (rep == &RDB_RATIONAL) {
-        return &valp->var.rational_val;
-    } else {
-        return valp->var.bin.datap;
+    switch(valp->kind) {
+        case _RDB_BOOL:
+            return &valp->var.bool_val;
+        case _RDB_INT:
+            return &valp->var.int_val;
+        case _RDB_RATIONAL:
+            return &valp->var.rational_val;
+        default:
+            return valp->var.bin.datap;
     }
 } 
+
+static enum _RDB_value_kind
+val_kind(const RDB_type *typ)
+{
+    if (typ == &RDB_BOOLEAN)
+        return _RDB_BOOL;
+    if (typ == &RDB_INTEGER)
+        return _RDB_INT;
+    if (typ == &RDB_RATIONAL)
+        return _RDB_RATIONAL;
+    if (typ->arep == &RDB_BOOLEAN)
+        return _RDB_BOOL;
+    if (typ->arep == &RDB_INTEGER)
+        return _RDB_INT;
+    if (typ->arep == &RDB_RATIONAL)
+        return _RDB_RATIONAL;
+    return _RDB_BIN;
+}
 
 int
 RDB_irep_to_value(RDB_value *valp, RDB_type *typ, void *datap, size_t len)
 {
     int ret;
-    const RDB_type *rep = typ;
-
-    if (!RDB_type_is_builtin(typ))
-        rep = typ->arep;
 
     if (valp->typ != NULL) {
         ret = RDB_destroy_value(valp);
@@ -47,65 +57,66 @@ RDB_irep_to_value(RDB_value *valp, RDB_type *typ, void *datap, size_t len)
     }
 
     valp->typ = typ;
-    if (typ == &RDB_BOOLEAN) {
-        valp->var.bool_val = *(RDB_bool *) datap;
-    } else if (typ == &RDB_INTEGER) {
-        memcpy(&valp->var.int_val, datap, sizeof (RDB_int));
-    } else if (typ == &RDB_RATIONAL) {
-        memcpy(&valp->var.rational_val, datap, sizeof (RDB_rational));
-    } else {
-        valp->var.bin.len = len;
-        valp->var.bin.datap = malloc(len);
-        if (valp->var.bin.datap == NULL)
-            return RDB_NO_MEMORY;
-        memcpy(valp->var.bin.datap, datap, len);
+    valp->kind = val_kind(typ);
+
+    switch(valp->kind) {
+        case _RDB_BOOL:
+            valp->var.bool_val = *(RDB_bool *) datap;
+            break;
+        case _RDB_INT:
+            memcpy(&valp->var.int_val, datap, sizeof (RDB_int));
+            break;
+        case _RDB_RATIONAL:
+            memcpy(&valp->var.rational_val, datap, sizeof (RDB_rational));
+            break;
+        default:
+            valp->var.bin.len = len;
+            valp->var.bin.datap = malloc(len);
+            if (valp->var.bin.datap == NULL)
+                return RDB_NO_MEMORY;
+            memcpy(valp->var.bin.datap, datap, len);
     }
     return RDB_OK;
 } 
 
 RDB_bool
-RDB_value_equals(const RDB_value *valp1, const RDB_value *valp2)
+RDB_value_equals(const RDB_value *val1p, const RDB_value *val2p)
 {
-    RDB_type *rep = valp1->typ;
-
-    if (!RDB_type_is_builtin(rep))
-        rep = rep->arep;
-
-    if (rep == &RDB_BOOLEAN) {
-        return (RDB_bool) valp1->var.bool_val == valp2->var.bool_val;
-    } else if (rep == &RDB_INTEGER) {
-        return (RDB_bool) (valp1->var.int_val == valp2->var.int_val);
-    } else if (rep == &RDB_RATIONAL) {
-        return (RDB_bool) (valp1->var.rational_val == valp2->var.rational_val);
-    } else {
-        if (valp1->var.bin.len != valp2->var.bin.len)
-            return RDB_FALSE;
-        return (RDB_bool) (memcmp(valp1->var.bin.datap, valp2->var.bin.datap,
-                valp1->var.bin.len) == 0);
+    switch(val1p->kind) {
+        case _RDB_BOOL:
+            return (RDB_bool) val1p->var.bool_val == val2p->var.bool_val;
+        case _RDB_INT:
+            return (RDB_bool) (val1p->var.int_val == val2p->var.int_val);
+        case _RDB_RATIONAL:
+            return (RDB_bool) (val1p->var.rational_val == val2p->var.rational_val);
+        default:
+            if (val1p->var.bin.len != val2p->var.bin.len)
+                return RDB_FALSE;
+            return (RDB_bool) (memcmp(val1p->var.bin.datap, val2p->var.bin.datap,
+                    val1p->var.bin.len) == 0);
     }
 } 
 
 static int
 copy_value(RDB_value *dstvalp, const RDB_value *srcvalp)
 {
-    RDB_type *rep = srcvalp->typ;
-
-    if (!RDB_type_is_builtin(rep))
-        rep = rep->arep;
-
-    if (rep == &RDB_BOOLEAN) {
-        dstvalp->var.bool_val = srcvalp->var.bool_val;
-    } else if (rep == &RDB_INTEGER) {
-        dstvalp->var.int_val = srcvalp->var.int_val;
-    } else if (rep == &RDB_RATIONAL) {
-        dstvalp->var.rational_val = srcvalp->var.rational_val;
-    } else {
-        dstvalp->var.bin.len = srcvalp->var.bin.len;
-        dstvalp->var.bin.datap = malloc(srcvalp->var.bin.len);
-        if (dstvalp->var.bin.datap == NULL)
-            return RDB_NO_MEMORY;
-        memcpy(dstvalp->var.bin.datap, srcvalp->var.bin.datap,
-                srcvalp->var.bin.len);
+    switch(srcvalp->kind) {
+        case _RDB_BOOL:
+            dstvalp->var.bool_val = srcvalp->var.bool_val;
+            break;
+        case _RDB_INT:
+            dstvalp->var.int_val = srcvalp->var.int_val;
+            break;
+        case _RDB_RATIONAL:
+            dstvalp->var.rational_val = srcvalp->var.rational_val;
+            break;
+        default:
+            dstvalp->var.bin.len = srcvalp->var.bin.len;
+            dstvalp->var.bin.datap = malloc(srcvalp->var.bin.len);
+            if (dstvalp->var.bin.datap == NULL)
+                return RDB_NO_MEMORY;
+            memcpy(dstvalp->var.bin.datap, srcvalp->var.bin.datap,
+                    srcvalp->var.bin.len);
     }
     return RDB_OK;
 }
@@ -122,6 +133,7 @@ RDB_copy_value(RDB_value *dstvalp, const RDB_value *srcvalp)
     }
 
     dstvalp->typ = srcvalp->typ;
+    dstvalp->kind = srcvalp->kind;
     return copy_value(dstvalp, srcvalp);
 } 
 
@@ -134,16 +146,11 @@ RDB_init_value(RDB_value *valp)
 int
 RDB_destroy_value(RDB_value *valp)
 {
-    RDB_type *rep = valp->typ;
-
-    if (rep == NULL)
+    if (valp->typ == NULL)
         return RDB_OK;
 
-    if (!RDB_type_is_builtin(rep))
-        rep = rep->arep;
-
-    if (rep->ireplen == RDB_VARIABLE_LEN) {
-         free(valp->var.bin.datap);
+    if (valp->kind == _RDB_BIN) {
+        free(valp->var.bin.datap);
     }
     return RDB_OK;
 }
@@ -153,6 +160,7 @@ RDB_value_set_bool(RDB_value *valp, RDB_bool v)
 {
     RDB_destroy_value(valp);
     valp->typ = &RDB_BOOLEAN;
+    valp->kind = _RDB_BOOL;
     valp->var.bool_val = v;
 }
 
@@ -161,6 +169,7 @@ RDB_value_set_int(RDB_value *valp, RDB_int v)
 {
     RDB_destroy_value(valp);
     valp->typ = &RDB_INTEGER;
+    valp->kind = _RDB_INT;
     valp->var.int_val = v;
 }
 
@@ -169,6 +178,7 @@ RDB_value_set_rational(RDB_value *valp, RDB_rational v)
 {
     RDB_destroy_value(valp);
     valp->typ = &RDB_RATIONAL;
+    valp->kind = _RDB_RATIONAL;
     valp->var.rational_val = v;
 }
 
@@ -177,6 +187,7 @@ RDB_value_set_string(RDB_value *valp, const char *str)
 {
     RDB_destroy_value(valp);
     valp->typ = &RDB_STRING;
+    valp->kind = _RDB_BIN;
     valp->var.bin.len = strlen(str) + 1;
     valp->var.bin.datap = malloc(valp->var.bin.len);
     if (valp->var.bin.datap == NULL)
@@ -199,7 +210,7 @@ RDB_value_get_comp(const RDB_value *valp, const char *compname,
         if (ret != RDB_OK)
             return ret;
 
-        compvalp->typ = valp->typ->var.scalar.repv[0].compv[0].typ;
+        _RDB_set_value_type(compvalp, valp->typ->var.scalar.repv[0].compv[0].typ);
         return copy_value(compvalp, valp);   
     }
 }
@@ -293,12 +304,12 @@ RDB_select_value(RDB_value *valp, RDB_type *typ, const char *repname,
         return RDB_INVALID_ARGUMENT;
     prp = &typ->var.scalar.repv[i];
 
-    valp->typ = typ;
-
     if (prp->selectorp != NULL)
         ret = (prp->selectorp)(valp, compv, typ, repname);
-    else
+    else {
+        _RDB_set_value_type(valp, typ);
         ret = copy_value(valp, *compv);
+    }
     if (ret != RDB_OK)
         return ret;
 
@@ -342,6 +353,7 @@ RDB_binary_set(RDB_value *valp, size_t pos, void *srcp, size_t len)
         if (valp->var.bin.datap == NULL)
             return RDB_NO_MEMORY;
         valp->typ = &RDB_BINARY;
+        valp->kind = _RDB_BIN;
     }
 
     /* If the memory block is to small, reallocate */
@@ -373,4 +385,11 @@ size_t
 RDB_binary_get_length(const RDB_value *valp)
 {
     return valp->var.bin.len;
+}
+
+void
+_RDB_set_value_type(RDB_value *valp, RDB_type *typ)
+{
+    valp->typ = typ;
+    valp->kind = val_kind(typ);
 }

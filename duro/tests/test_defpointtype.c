@@ -40,7 +40,8 @@ test_type(RDB_database *dbp)
     }
 
     printf("Implementing type\n");
-    ret = RDB_implement_type("POINT", "libpoint", &RDB_BINARY, 0, &tx);
+    ret = RDB_implement_type("POINT", "libpoint", NULL, RDB_FIXED_BINARY,
+            sizeof(RDB_rational) * 2, &tx);
     if (ret != RDB_OK) {
         RDB_rollback(&tx);
         return ret;

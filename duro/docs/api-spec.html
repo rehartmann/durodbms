@@ -154,6 +154,7 @@
 <li><a href="#rel_is_empty">RDB_rel_is_empty</a>
 <li><a href="#get_comp">RDB_get_comp</a>
 <li><a href="#selector">RDB_selector</a>
+<li><a href="#user_op">RDB_user_op</a>
 <li><a href="#drop_expr">RDB_drop_expr</a>
 </ul>
 
@@ -178,6 +179,16 @@
 <li><a href="#project_relation_type">RDB_project_relation_type</a>
 <li><a href="#rename_tuple_type">RDB_rename_tuple_type</a>
 <li><a href="#rename_relation_type">RDB_rename_relation_type</a>
+</ul>
+
+<h3>Operator functions</h3>
+
+<ul>
+<li><a href="#define_ro_op">RDB_define_ro_op</a>
+<li><a href="#define_upd_op">RDB_define_upd_op</a>
+<li><a href="#call_ro_op">RDB_call_ro_op</a>
+<li><a href="#call_upd_op">RDB_call_upd_op</a>
+<li><a href="#drop_op">RDB_drop_op</a>
 </ul>
 
 <h3>Constraint functions</h3>
@@ -799,7 +810,7 @@ RDB_copy_value(RDB_value *dstvalp, const RDB_value *srcvalp);
 
 int
 RDB_select_value(RDB_value *valp, RDB_type *, const char *repname,
-              RDB_value *compv[]);
+              RDB_value *compv[][B);
 </pre>
 
 <hr>
@@ -1365,6 +1376,24 @@ RDB_get_comp(RDB_expression *arg, const char *compname);
 
 <hr>
 
+<h2 id="selector">RDB_selector</h2>
+
+<pre>
+RDB_expression *
+RDB_selector(RDB_type *, const char *repname, RDB_expression *argv[]);
+</pre>
+
+<hr>
+
+<h2 id="user_op">RDB_user_op</h2>
+
+<pre>
+RDB_expression *
+RDB_user_op(const char *opname, RDB_attr *argv[]);
+</pre>
+
+<hr>
+
 <h2 id="drop_expr">RDB_drop_expr</h2>
 
 <pre>
@@ -1398,7 +1427,7 @@ RDB_define_type(const char *name, int repc, RDB_possrep repv[],
 
 int
 RDB_implement_type(const char *name, const char *modname, RDB_type *arep, int options,
-                   RDB_transaction *);
+                   size_t ireplen, RDB_transaction *);
 </pre>
 
 <h3>Description</h3>
@@ -1613,6 +1642,66 @@ RDB_join_tuple_types(const RDB_type *typ1, const RDB_type *typ2,
 int
 RDB_join_relation_types(const RDB_type *typ1, const RDB_type *typ2,
                      RDB_type **newtypp);
+</pre>
+
+<hr>
+
+<h2 id="define_ro_op">RDB_define_ro_op</h2>
+
+<pre>
+#include &lt;rel/rdb.h&gt;
+
+int
+RDB_define_ro_op(const char *name, RDB_attr *argv[], RDB_type *rtyp,
+                 RDB_transaction *txp);
+</pre>
+
+<hr>
+
+<h2 id="define_upd_op">RDB_define_upd_op</h2>
+
+<pre>
+#include &lt;rel/rdb.h&gt;
+
+int
+RDB_define_upd_op(const char *name, RDB_attr *argv[],
+                  int updargc, const char *updargv[],
+                  RDB_transaction *txp);
+</pre>
+
+<hr>
+
+<h2 id="call_ro_op">RDB_call_ro_op</h2>
+
+<pre>
+#include &lt;rel/rdb.h&gt;
+
+int
+RDB_call_ro_op(const char *name, int argc, RDB_value *argv[],
+               RDB_value *retvalp, RDB_transaction *txp);
+</pre>
+
+<hr>
+
+<h2 id="call_upd_op">RDB_call_upd_op</h2>
+
+<pre>
+#include &lt;rel/rdb.h&gt;
+
+int
+RDB_call_upd_op(const char *name, int argc, RDB_value *argv[],
+                RDB_transaction *txp);
+</pre>
+
+<hr>
+
+<h2 id="drop_op">RDB_drop_op</h2>
+
+<pre>
+#include &lt;rel/rdb.h&gt;
+
+int
+RDB_drop_op(const char *name, RDB_transaction *txp);
 </pre>
 
 <hr>

@@ -1,3 +1,5 @@
+CFLAGS = -g
+
 bin_PROGRAMS = util/lstables util/droptable util/dropdb
 
 # Muss geändert werden, sonst wird libpoint installiert
@@ -19,8 +21,6 @@ tests_libpoint_la_LDFLAGS =
 TESTS = tests/testall
 
 TESTS_ENVIRONMENT = BDB_HOME=/usr/local/BerkeleyDB.4.1
-
-AM_CFLAGS = -g
 
 LDADD = -L/usr/local/BerkeleyDB.4.1/lib libduro.la -ldb @LIBS@
 

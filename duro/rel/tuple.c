@@ -57,8 +57,8 @@ RDB_tuple_set_bool(RDB_tuple *tp, const char *namp, RDB_bool val)
 {
     RDB_value value;
 
-    value.typ = &RDB_BOOLEAN;
-    value.var.bool_val = val;
+    RDB_init_value(&value);
+    RDB_value_set_bool(&value, val);
 
     return RDB_hashmap_put(&tp->map, namp, &value, sizeof(value));
 } 
@@ -68,8 +68,8 @@ RDB_tuple_set_int(RDB_tuple *tp, const char *namp, RDB_int val)
 {
     RDB_value value;
 
-    value.typ = &RDB_INTEGER;
-    value.var.int_val = val;
+    RDB_init_value(&value);
+    RDB_value_set_int(&value, val);
 
     return RDB_hashmap_put(&tp->map, namp, &value, sizeof(value));
 }
@@ -79,8 +79,8 @@ RDB_tuple_set_rational(RDB_tuple *tp, const char *namp, RDB_rational val)
 {
     RDB_value value;
 
-    value.typ = &RDB_RATIONAL;
-    value.var.rational_val = val;
+    RDB_init_value(&value);
+    RDB_value_set_rational(&value, val);
 
     return RDB_hashmap_put(&tp->map, namp, &value, sizeof(value));
 }
