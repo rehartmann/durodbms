@@ -27,26 +27,57 @@ expr_op_type(const RDB_expression *exp, const RDB_type *tuptyp,
     int ret;
     RDB_ro_op_desc *op;
 
-    if (strcmp(exp->var.op.name, "=") == 0
-            || strcmp(exp->var.op.name, "<>") == 0
-            || strcmp(exp->var.op.name, "IN") == 0
-            || strcmp(exp->var.op.name, "SUBSET_OF") == 0
-            || strcmp(exp->var.op.name, "IS_EMPTY") == 0) {
-        *typp = &RDB_BOOLEAN;
-        return RDB_OK;
-    }
-
     RDB_type **argtv = malloc(sizeof (RDB_type *) * exp->var.op.argc);
     if (argtv == NULL)
         return RDB_NO_MEMORY;
 
     for (i = 0; i < exp->var.op.argc; i++) {
         ret = RDB_expr_type(exp->var.op.argv[i], tuptyp, txp, &argtv[i]);
-        if (ret != RDB_OK) {
+        if (ret == RDB_NOT_FOUND)
+            argtv[i] = NULL;
+        else if (ret != RDB_OK) {
             free(argtv);
             return ret;
         }
     }
+
+    /*
+     * Handle nonscalar comparison
+     */
+    if (exp->var.op.argc == 2
+            && (argtv[0] == NULL || !RDB_type_is_scalar(argtv[0]))
+            && (argtv[1] == NULL || !RDB_type_is_scalar(argtv[1]))
+            && (strcmp(exp->var.op.name, "=") == 0
+                    || strcmp(exp->var.op.name, "<>") == 0)) {
+        *typp = &RDB_BOOLEAN;
+        free(argtv);
+        return RDB_OK;
+    }
+
+    /*
+     * Handle built-in operators with relational arguments
+     */
+    if (exp->var.op.argc == 1
+            && (argtv[0] != NULL && argtv[0]->kind == RDB_TP_RELATION)) {
+        *typp = &RDB_BOOLEAN;
+        free(argtv);
+        return RDB_OK;
+    } else if (exp->var.op.argc == 2
+            && (argtv[1] != NULL && argtv[1]->kind == RDB_TP_RELATION)
+            && (strcmp(exp->var.op.name, "IN") == 0
+                    || strcmp(exp->var.op.name, "SUBSET_OF") == 0)) {
+        *typp = &RDB_BOOLEAN;
+        free(argtv);
+        return RDB_OK;
+    }
+
+    for (i = 0; i < exp->var.op.argc; i++) {
+        if (argtv[i] == NULL) {
+            free(argtv);
+            return RDB_INVALID_ARGUMENT;
+        }
+    }
+
     ret = _RDB_get_ro_op(exp->var.op.name, exp->var.op.argc,
             argtv, txp, &op);
     free(argtv);

@@ -610,13 +610,15 @@ static RDB_bool
 obj_is_table(RDB_object *objp)
 {
     RDB_type *typ = RDB_obj_type(objp);
-    return typ != NULL && typ->kind == RDB_TP_RELATION; 
+    if (typ == NULL)
+        return (RDB_bool) (objp->kind == RDB_OB_TABLE);
+    return (RDB_bool) (typ->kind == RDB_TP_RELATION);
 }
 
 static RDB_bool
 obj_is_scalar(RDB_object *objp)
 {
-    return objp->typ != NULL && RDB_type_is_scalar(objp->typ);
+    return (RDB_bool) (objp->typ != NULL && RDB_type_is_scalar(objp->typ));
 }
 
 int
@@ -670,8 +672,7 @@ RDB_call_ro_op(const char *name, int argc, RDB_object *argv[],
             } else {
                 return ret;
             }
-        } else if (strcmp(name, "SUBSET_OF") == 0
-                && argv[0]->kind == RDB_OB_TABLE) {
+        } else if (strcmp(name, "SUBSET_OF") == 0) {
             RDB_bool res;
 
             ret = RDB_subset(argv[0]->var.tbp, argv[1]->var.tbp, txp, &res);

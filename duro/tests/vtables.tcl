@@ -208,6 +208,30 @@ if {![catch {duro::table drop LT $tx}]} {
     error "Dropping TL should fail, but succeeded"
 }
 
+#
+# Check invalid expressions
+#
+if {![catch {duro::table expr -global ES {T1 WHERE S1 = 2} $tx}]} {
+    error "Table creation should fail, but succeded"
+}
+if {[lindex $::errorCode 1] != "RDB_TYPE_MISMATCH"} {
+    error "Wrong error: $::errorCode"
+}
+
+if {![catch {duro::table expr -global ES {T1 WHERE S1 > 2} $tx}]} {
+    error "Table creation should fail, but succeded"
+}
+if {[lindex $::errorCode 1] != "RDB_TYPE_MISMATCH"} {
+    error "Wrong error: $::errorCode"
+}
+
+if {![catch {duro::table expr -global ES {T1 WHERE I > 2} $tx}]} {
+    error "Table creation should fail, but succeded"
+}
+if {[lindex $::errorCode 1] != "RDB_ATTRIBUTE_NOT_FOUND"} {
+    error "Wrong error: $::errorCode"
+}
+
 duro::table drop LTL $tx
 duro::table drop LT $tx
 
