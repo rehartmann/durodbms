@@ -5,7 +5,7 @@
 #include <stdlib.h>
 
 int
-RDB_create_env(const char *path, RDB_environment **envpp)
+RDB_create_env(const char *path, int options, RDB_environment **envpp)
 {
     RDB_environment *envp;
     int err;

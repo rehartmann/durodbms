@@ -75,6 +75,10 @@ RDB_evaluate(RDB_expression *, const RDB_tuple *, RDB_transaction *, RDB_value *
 int
 _RDB_find_rename_from(int renc, RDB_renaming renv[], const char *name);
 
+RDB_expression *
+_RDB_create_binexpr(RDB_expression *arg1, RDB_expression *arg2,
+                    enum _RDB_expr_kind kind);
+
 #define _RDB_pkey_len(tbp) ((tbp)->keyv[0].attrc)
 
 #endif

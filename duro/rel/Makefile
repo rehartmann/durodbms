@@ -44,5 +44,5 @@ array.o : array.c rdb.h internal.h
 getargs.o : getargs.c rdb.h
 	$(CC) $(CFLAGS) -c getargs.c
 
-serialize.o : serialize.c serialize.h rdb.h typeimpl.h
+serialize.o : serialize.c serialize.h rdb.h typeimpl.h internal.h
 	$(CC) $(CFLAGS) -c serialize.c

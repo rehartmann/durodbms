@@ -4,6 +4,12 @@ Summary of Changes for Duro
 
 Changes for (planned) Duro 0.5
 
+- Bugfixes
+
+- Added regular expression matching (requires POSIX.2 regular expressions)
+
+- Added argument 'options' to RDB_create_env().
+
 - Added support for SUMMARIZE PER and RENAME.
 
 - Changed error handling: Implicit rollback also by other system errors

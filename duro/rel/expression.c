@@ -4,6 +4,7 @@
 #include "internal.h"
 #include <gen/strfns.h>
 #include <string.h>
+#include <regex.h>
 
 RDB_bool
 RDB_expr_is_const(const RDB_expression *exprp)
@@ -28,11 +29,11 @@ RDB_expr_type(const RDB_expression *exprp)
         case RDB_OP_GET:
         case RDB_OP_AND:
         case RDB_OP_OR:
+        case RDB_OP_REGMATCH:
+        case RDB_OP_REL_IS_EMPTY:
             return &RDB_BOOLEAN;
         case RDB_OP_ADD:
             return RDB_expr_type(exprp->var.op.arg1);
-        case RDB_OP_REL_IS_EMPTY:
-            return &RDB_BOOLEAN;
         case RDB_TABLE:
             return exprp->var.tbp->typ;
     }
@@ -103,7 +104,7 @@ RDB_string_const(const char *v)
 RDB_expression *
 RDB_value_const(const RDB_value *valp)
 {
-    int res;
+    int ret;
     RDB_expression *exprp = malloc(sizeof (RDB_expression));
     
     if (exprp == NULL)
@@ -111,8 +112,8 @@ RDB_value_const(const RDB_value *valp)
         
     exprp->kind = RDB_CONST;
     RDB_init_value(&exprp->var.const_val);
-    res = RDB_copy_value(&exprp->var.const_val, valp);
-    if (res != RDB_OK) {
+    ret = RDB_copy_value(&exprp->var.const_val, valp);
+    if (ret != RDB_OK) {
         free(exprp);
         return NULL;
     }
@@ -137,7 +138,7 @@ RDB_expr_attr(const char *attrname, RDB_type *typ)
 RDB_expression *
 RDB_dup_expr(const RDB_expression *exprp)
 {
-    int res;
+    int ret;
     RDB_expression *newexprp = malloc(sizeof (RDB_expression));
     
     if (newexprp == NULL)
@@ -147,8 +148,8 @@ RDB_dup_expr(const RDB_expression *exprp)
     switch (exprp->kind) {
         case RDB_CONST:
             RDB_init_value(&newexprp->var.const_val);
-            res = RDB_copy_value(&newexprp->var.const_val, &exprp->var.const_val);
-            if (res != RDB_OK) {
+            ret = RDB_copy_value(&newexprp->var.const_val, &exprp->var.const_val);
+            if (ret != RDB_OK) {
                 free(newexprp);
                 return NULL;
             }
@@ -181,8 +182,8 @@ RDB_dup_expr(const RDB_expression *exprp)
     }
 }
 
-static RDB_expression *
-create_binexpr(RDB_expression *arg1, RDB_expression *arg2, int kind)
+RDB_expression *
+_RDB_create_binexpr(RDB_expression *arg1, RDB_expression *arg2, enum _RDB_expr_kind kind)
 {
     RDB_expression *exprp;
 
@@ -203,70 +204,44 @@ create_binexpr(RDB_expression *arg1, RDB_expression *arg2, int kind)
 RDB_expression *
 RDB_eq(RDB_expression *arg1, RDB_expression *arg2)
 {
-    return create_binexpr(arg1, arg2, RDB_OP_EQ);
+    return _RDB_create_binexpr(arg1, arg2, RDB_OP_EQ);
 }
 
 RDB_expression *
 RDB_neq(RDB_expression *arg1, RDB_expression *arg2) {
-    return create_binexpr(arg1, arg2, RDB_OP_NEQ);
+    return _RDB_create_binexpr(arg1, arg2, RDB_OP_NEQ);
 }
 
 RDB_expression *
 RDB_lt(RDB_expression *arg1, RDB_expression *arg2) {
-    return create_binexpr(arg1, arg2, RDB_OP_LT);
+    return _RDB_create_binexpr(arg1, arg2, RDB_OP_LT);
 }
 
 RDB_expression *
 RDB_gt(RDB_expression *arg1, RDB_expression *arg2) {
-    return create_binexpr(arg1, arg2, RDB_OP_GT);
+    return _RDB_create_binexpr(arg1, arg2, RDB_OP_GT);
 }
 
 RDB_expression *
 RDB_let(RDB_expression *arg1, RDB_expression *arg2) {
-    return create_binexpr(arg1, arg2, RDB_OP_LET);
+    return _RDB_create_binexpr(arg1, arg2, RDB_OP_LET);
 }
 
 RDB_expression *
 RDB_get(RDB_expression *arg1, RDB_expression *arg2) {
-    return create_binexpr(arg1, arg2, RDB_OP_GET);
+    return _RDB_create_binexpr(arg1, arg2, RDB_OP_GET);
 }
 
 RDB_expression *
 RDB_and(RDB_expression *arg1, RDB_expression *arg2)
 {
-    RDB_expression *exprp;
-
-    if ((arg1 == NULL) || (arg2 == NULL))
-        return NULL;
-
-    exprp = malloc(sizeof (RDB_expression));  
-    if (exprp == NULL)
-        return NULL;
-        
-    exprp->kind = RDB_OP_AND;
-    exprp->var.op.arg1 = arg1;
-    exprp->var.op.arg2 = arg2;
-
-    return exprp;
-}    
+    return _RDB_create_binexpr(arg1, arg2, RDB_OP_AND);
+}
 
 RDB_expression *
 RDB_or(RDB_expression *arg1, RDB_expression *arg2)
 {
-    RDB_expression *exprp;
-
-    if ((arg1 == NULL) || (arg2 == NULL))
-        return NULL;
-
-    exprp = malloc(sizeof (RDB_expression));  
-    if (exprp == NULL)
-        return NULL;
-        
-    exprp->kind = RDB_OP_OR;
-    exprp->var.op.arg1 = arg1;
-    exprp->var.op.arg2 = arg2;
-
-    return exprp;
+    return _RDB_create_binexpr(arg1, arg2, RDB_OP_OR);
 }    
 
 RDB_expression *
@@ -290,20 +265,13 @@ RDB_not(RDB_expression *arg)
 RDB_expression *
 RDB_add(RDB_expression *arg1, RDB_expression *arg2)
 {
-    RDB_expression *exprp;
+    return _RDB_create_binexpr(arg1, arg2, RDB_OP_ADD);
+}
 
-    if ((arg1 == NULL) || (arg2 == NULL))
-        return NULL;
-
-    exprp = malloc(sizeof (RDB_expression));  
-    if (exprp == NULL)
-        return NULL;
-        
-    exprp->kind = RDB_OP_ADD;
-    exprp->var.op.arg1 = arg1;
-    exprp->var.op.arg2 = arg2;
-
-    return exprp;
+RDB_expression *
+RDB_regmatch(RDB_expression *arg1, RDB_expression *arg2)
+{
+    return _RDB_create_binexpr(arg1, arg2, RDB_OP_REGMATCH);
 }
 
 RDB_expression *
@@ -457,6 +425,12 @@ RDB_evaluate_bool(RDB_expression *exprp, const RDB_tuple *tup,
     int err;
 
     switch (exprp->kind) {
+        case RDB_CONST:
+            *resp = exprp->var.const_val.var.bool_val;
+            return RDB_OK;
+        case RDB_ATTR:
+            *resp = RDB_tuple_get_bool(tup, exprp->var.attr.name);
+            return RDB_OK;
         case RDB_OP_EQ:
             typ = RDB_expr_type(exprp->var.op.arg1);
             if (typ == &RDB_INTEGER) {
@@ -489,6 +463,7 @@ RDB_evaluate_bool(RDB_expression *exprp, const RDB_tuple *tup,
             }
             if (typ == &RDB_STRING) {
                 char *s1, *s2;
+
                 err = evaluate_string(exprp->var.op.arg1, tup, txp, &s1);
                 if (err != RDB_OK)
                     return err;
@@ -500,6 +475,8 @@ RDB_evaluate_bool(RDB_expression *exprp, const RDB_tuple *tup,
                 }
                     
                 *resp = (RDB_bool) (strcmp (s1, s2) == 0);
+                free(s1);
+                free(s2);
                 return RDB_OK;
             }
             return RDB_TYPE_MISMATCH;
@@ -672,11 +649,32 @@ RDB_evaluate_bool(RDB_expression *exprp, const RDB_tuple *tup,
                 *resp = (RDB_bool)!v;
             }
             return RDB_OK;
-        case RDB_CONST:
-            *resp = exprp->var.const_val.var.bool_val;
-            return RDB_OK;
-        case RDB_ATTR:
-            *resp = RDB_tuple_get_bool(tup, exprp->var.attr.name);
+        case RDB_OP_REGMATCH:
+            {
+                regex_t reg;
+                char *s1, *s2;
+
+                err = evaluate_string(exprp->var.op.arg1, tup, txp, &s1);
+                if (err != RDB_OK)
+                    return err;
+
+                err = evaluate_string(exprp->var.op.arg2, tup, txp, &s2);
+                if (err != RDB_OK) {
+                    free(s1);
+                    return err;
+                }
+
+                err = regcomp(&reg, s2, REG_NOSUB);
+                if (err != 0) {
+                    free(s1);
+                    free(s2);
+                    return RDB_ILLEGAL_ARG;
+                }
+                *resp = (RDB_bool)(regexec(&reg, s1, 0, NULL, 0) == 0);
+                regfree(&reg);
+                free(s1);
+                free(s2);
+            }
             return RDB_OK;
         case RDB_OP_REL_IS_EMPTY:
         {

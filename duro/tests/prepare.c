@@ -214,7 +214,7 @@ main() {
     int err;
     
     printf("Creating environment\n");
-    err = RDB_create_env("db", &dsp);
+    err = RDB_create_env("db", 0, &dsp);
     if (err != RDB_OK) {
         fprintf(stderr, "Error: %s\n", RDB_strerror(err));
         return 1;

@@ -19,10 +19,11 @@ typedef struct RDB_environment {
  *
  * Arguments:
  * path		pathname of the direcory where the data is stored.
+ * options      currently ignored.
  * dspp		location where the pointer to the environment is stored.
  */
 int
-RDB_create_env(const char *path, RDB_environment **);
+RDB_create_env(const char *path, int options, RDB_environment **);
 
 /*
  * Open a database environment.

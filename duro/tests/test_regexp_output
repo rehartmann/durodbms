@@ -1,0 +1,10 @@
+Opening environment
+Starting transaction
+Creating selection (NAME regmatch "o")
+Converting selection table to array
+EMPNO: 2
+NAME: Jones
+SALARY: 4100.000000
+Dropping selection
+End of transaction
+Closing environment

@@ -102,6 +102,8 @@ enum _RDB_expr_kind {
     RDB_OP_NOT,
     RDB_OP_ADD,
 
+    RDB_OP_REGMATCH,
+
     RDB_OP_REL_IS_EMPTY
 };
 
@@ -882,6 +884,9 @@ RDB_not(RDB_expression *);
 
 RDB_expression *
 RDB_add(RDB_expression *, RDB_expression *);
+
+RDB_expression *
+RDB_regmatch(RDB_expression *, RDB_expression *);
 
 /*
  * Create table-valued expression

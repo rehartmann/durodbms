@@ -406,8 +406,8 @@ RDB_project_relation_type(const RDB_type *typ, int attrc, char *attrv[],
 
 error:
     if (tuptyp != NULL) {
-      for (i = 0; i < attrc; i++)
-          free(tuptyp->complex.tuple.attrv[i].name);
+        for (i = 0; i < attrc; i++)
+            free(tuptyp->complex.tuple.attrv[i].name);
     }
         
     free(reltyp);
