@@ -348,9 +348,10 @@ _RDB_array_equals(RDB_object *arr1p, RDB_object *arr2p, RDB_bool *resp)
             *resp = RDB_FALSE;
             return RDB_OK;
         }
+        /* At end of both arrays, which means they are equal */
         if (ret == RDB_NOT_FOUND) {
             *resp = RDB_TRUE;
-            return ret;
+            return RDB_OK;
         }
         i++;
         ret = RDB_obj_equals(obj1p, obj2p, resp);

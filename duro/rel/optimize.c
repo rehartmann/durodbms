@@ -678,8 +678,10 @@ optimize(RDB_table *tbp, RDB_transaction *txp)
 int
 _RDB_optimize(RDB_table *tbp, RDB_transaction *txp)
 {
-    int ret;
+/*    int ret; */
 
+    return RDB_OK;
+/*
     ret = resolve_views(tbp);
     if (ret != RDB_OK)
         return ret;
@@ -689,4 +691,5 @@ _RDB_optimize(RDB_table *tbp, RDB_transaction *txp)
         return ret;
 
     return optimize(tbp, txp);
+*/
 }
