@@ -102,6 +102,8 @@ RDB_obj_equals(const RDB_object *val1p, const RDB_object *val2p)
 static int
 copy_obj(RDB_object *dstvalp, const RDB_object *srcvalp)
 {
+    dstvalp->kind = srcvalp->kind;
+    dstvalp->typ = dstvalp->typ;
     switch (srcvalp->kind) {
         case _RDB_BOOL:
             dstvalp->var.bool_val = srcvalp->var.bool_val;

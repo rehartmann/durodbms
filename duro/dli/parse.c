@@ -7,6 +7,8 @@
 
 int yyparse(void);
 
+void _RDB_flush_buf(void);
+
 extern RDB_expression *yylval;
 RDB_transaction *expr_txp;
 const char *expr_in;
@@ -30,6 +32,7 @@ int RDB_parse_expr(const char *txt, RDB_transaction *txp, RDB_expression **exp)
     expr_txp = txp;
     expr_in = txt;
 
+    _RDB_flush_buf();
     ret = yyparse();
     if (ret > 0)
         return RDB_INVALID_ARGUMENT;

@@ -132,3 +132,9 @@ FALSE   {
 [=><+\-*/]   return yytext[0];
 
 %%
+
+void
+_RDB_flush_buf(void)
+{
+    YY_FLUSH_BUFFER;
+}

@@ -426,8 +426,13 @@ static void
 cleanup_env(RDB_environment *envp)
 {
     RDB_dbroot *dbrootp = (RDB_dbroot *)RDB_env_private(envp);
-    RDB_database *dbp = dbrootp->firstdbp;
+    RDB_database *dbp;
     RDB_database *nextdbp;
+
+    if (dbrootp == NULL)
+        return;
+
+    dbp = dbrootp->firstdbp;
 
     while (dbp != NULL) {
         nextdbp = dbp->nextdbp;

@@ -354,7 +354,7 @@ table_update_cmd(TclState *statep, Tcl_Interp *interp, int objc,
 
     if (objc % 2 == 1) {
         /* Read where conditon */
-        ret = RDB_parse_expr(Tcl_GetStringFromObj(objv[2], NULL),
+        ret = RDB_parse_expr(Tcl_GetStringFromObj(objv[3], NULL),
                 txp, &wherep);
         if (ret != RDB_OK) {
             Duro_dberror(interp, ret);
@@ -397,6 +397,59 @@ cleanup:
     }
     Tcl_Free((char *) updv);
     return ret;                    
+}
+
+static int
+table_delete_cmd(TclState *statep, Tcl_Interp *interp, int objc,
+        Tcl_Obj *CONST objv[])
+{
+    int ret;
+    char *name;
+    char *txstr;
+    Tcl_HashEntry *entryp;
+    RDB_transaction *txp;
+    RDB_table *tbp;
+    RDB_expression *wherep;
+
+    if (objc < 4 || objc > 5) {
+        Tcl_WrongNumArgs(interp, 2, objv, "name ?where? tx");
+        return TCL_ERROR;
+    }
+
+    name = Tcl_GetStringFromObj(objv[2], NULL);
+
+    txstr = Tcl_GetStringFromObj(objv[objc - 1], NULL);
+    entryp = Tcl_FindHashEntry(&statep->txs, txstr);
+    if (entryp == NULL) {
+        Tcl_AppendResult(interp, "Unknown transaction: ", txstr, NULL);
+        return TCL_ERROR;
+    }
+    txp = Tcl_GetHashValue(entryp);
+
+    ret = Duro_get_table(statep, interp, name, txp, &tbp);
+    if (ret != TCL_OK) {
+        return TCL_ERROR;
+    }
+
+    if (objc == 5) {
+        /* Read where conditon */
+        ret = RDB_parse_expr(Tcl_GetStringFromObj(objv[3], NULL),
+                txp, &wherep);
+        if (ret != RDB_OK) {
+            Duro_dberror(interp, ret);
+            return TCL_ERROR;
+        }
+    } else {
+        wherep = NULL;
+    }
+
+    ret = RDB_delete(tbp, wherep, txp);
+    if (ret != RDB_OK) {
+        Duro_dberror(interp, ret);
+        return TCL_ERROR;
+    }
+
+    return TCL_OK;
 }
 
 static int
@@ -485,10 +538,10 @@ Duro_table_cmd(ClientData data, Tcl_Interp *interp, int objc, Tcl_Obj *CONST obj
     TclState *statep = (TclState *) data;
 
     const char *sub_cmds[] = {
-        "create", "expr", "drop", "insert", "update", NULL
+        "create", "expr", "drop", "insert", "update", "delete", NULL
     };
     enum table_ix {
-        create_ix, expr_ix, drop_ix, insert_ix, update_ix
+        create_ix, expr_ix, drop_ix, insert_ix, update_ix, delete_ix
     };
     int index;
 
@@ -513,6 +566,8 @@ Duro_table_cmd(ClientData data, Tcl_Interp *interp, int objc, Tcl_Obj *CONST obj
             return table_insert_cmd(statep, interp, objc, objv);
         case update_ix:
             return table_update_cmd(statep, interp, objc, objv);
+        case delete_ix:
+            return table_delete_cmd(statep, interp, objc, objv);
     }
     return TCL_ERROR;
 }

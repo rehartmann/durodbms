@@ -9,22 +9,7 @@ extern RDB_transaction *expr_txp;
 extern RDB_expression *resultp;
 
 static RDB_table *
-expr_to_table (RDB_expression *exp)
-{
-    int ret;
-
-    if (exp->kind == RDB_TABLE)
-        return exp->var.tbp;
-    if (exp->kind == RDB_ATTR) {
-        RDB_table *tbp;
-
-        ret = RDB_get_table(exp->var.attr.name, expr_txp, &tbp);
-        if (ret != RDB_OK)
-            return NULL;
-        return tbp;
-    }
-    return NULL;
-}
+expr_to_table (RDB_expression *exp);
 
 %}
 
@@ -396,3 +381,21 @@ expression_list: expression
         ;
 
 %%
+
+static RDB_table *
+expr_to_table (RDB_expression *exp)
+{
+    int ret;
+
+    if (exp->kind == RDB_TABLE)
+        return exp->var.tbp;
+    if (exp->kind == RDB_ATTR) {
+        RDB_table *tbp;
+
+        ret = RDB_get_table(exp->var.attr.name, expr_txp, &tbp);
+        if (ret != RDB_OK)
+            return NULL;
+        return tbp;
+    }
+    return NULL;
+}
