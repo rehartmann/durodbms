@@ -7,6 +7,7 @@
 
 #include "rdb.h"
 #include "internal.h"
+#include "catalog.h"
 #include <gen/strfns.h>
 #include <string.h>
 #include <regex.h>
@@ -481,11 +482,12 @@ error:
 }
 
 int
-RDB_user_op(const char *opname, RDB_type *rtyp, int argc, RDB_expression *argv[],
+RDB_user_op(const char *opname, int argc, RDB_expression *argv[],
        RDB_transaction *txp, RDB_expression **expp)
 {
     RDB_expression *exp;
     int i;
+    int ret;
 
     exp = malloc(sizeof (RDB_expression));
     if (exp == NULL)
@@ -498,8 +500,14 @@ RDB_user_op(const char *opname, RDB_type *rtyp, int argc, RDB_expression *argv[]
         free(exp);
         return RDB_NO_MEMORY;
     }
+
+    ret = _RDB_get_cat_rtype(opname, txp, &exp->var.user_op.rtyp);
+    if (ret != RDB_OK) {
+        free(exp);
+        return ret;
+    }
+
     exp->var.user_op.argc = argc;
-    exp->var.user_op.rtyp = rtyp;
     exp->var.user_op.argv = malloc(argc * sizeof(RDB_expression *));
     if (exp->var.user_op.argv == NULL) {
         free(exp->var.user_op.name);

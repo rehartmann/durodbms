@@ -1043,7 +1043,7 @@ RDB_expression *
 RDB_selector(RDB_type *, const char *repname, RDB_expression *[]);
 
 int
-RDB_user_op(const char *opname, RDB_type *rtyp, int argc, RDB_expression *argv[],
+RDB_user_op(const char *opname, int argc, RDB_expression *argv[],
        RDB_transaction *txp, RDB_expression **expp);
 
 /*

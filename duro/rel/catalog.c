@@ -1350,6 +1350,7 @@ _RDB_possrepcomps_query(const char *name, const char *possrepname,
     }
     return RDB_OK;
 }
+
 int
 _RDB_get_cat_type(const char *name, RDB_transaction *txp, RDB_type **typp)
 {
@@ -1556,6 +1557,7 @@ _RDB_get_cat_type(const char *name, RDB_transaction *txp, RDB_type **typp)
         ret = tret;
 
     return ret;
+
 error:
     if (tmptb1p != NULL)
         RDB_drop_table(tmptb1p, txp);
@@ -1576,6 +1578,68 @@ error:
         free(typ);
     }
     return ret;
+}
+
+int
+_RDB_get_cat_rtype(const char *opname, RDB_transaction *txp, RDB_type **typp)
+{
+    int ret;
+    RDB_expression *wherep;
+    RDB_table *hvtbp, *vtbp;
+    RDB_object tpl;
+    char *attrv[] = { "RTYPE" };
+
+    /*
+     * Build query
+     */
+
+    wherep = RDB_eq(RDB_expr_attr("NAME"), RDB_string_const(opname));
+    if (wherep == NULL) {
+        RDB_rollback_all(txp);
+        return RDB_NO_MEMORY;
+    }
+
+    ret = RDB_select(txp->dbp->dbrootp->ro_ops_tbp, wherep, &hvtbp);
+    if (ret != RDB_OK) {
+        RDB_drop_expr(wherep);
+        RDB_rollback_all(txp);
+        return ret;
+    }
+
+    ret = RDB_project(hvtbp, 1, attrv, &vtbp);
+    if (ret != RDB_OK) {
+        RDB_drop_table(hvtbp, txp);
+        RDB_rollback_all(txp);
+        return ret;
+    }
+
+    /*
+     * Read tuple
+     */
+
+    RDB_init_obj(&tpl);
+    ret = RDB_extract_tuple(vtbp, &tpl, txp);
+    RDB_drop_table(vtbp, txp);
+    if (ret != RDB_OK) {
+        if (RDB_is_syserr(ret))
+            RDB_rollback_all(txp);
+        RDB_destroy_obj(&tpl);
+        return ret;
+    }
+
+    /*
+     * Get type
+     */
+
+    ret = RDB_get_type(RDB_tuple_get_string(&tpl, "RTYPE"), txp, typp);
+    RDB_destroy_obj(&tpl);
+    if (ret != RDB_OK) {
+        if (RDB_is_syserr(ret))
+            RDB_rollback_all(txp);
+        return ret;
+    }
+
+    return RDB_OK;
 }
 
 char *

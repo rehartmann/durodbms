@@ -177,9 +177,6 @@ serialize_expr(RDB_object *valp, int *posp, const RDB_expression *exp)
             ret = serialize_str(valp, posp, exp->var.user_op.name);
             if (ret != RDB_OK)
                 return ret;
-            ret = serialize_type(valp, posp, exp->var.user_op.rtyp);
-            if (ret != RDB_OK)
-                return ret;
             ret = serialize_int (valp, posp, argc);
             if (ret != RDB_OK)
                 return ret;
@@ -745,17 +742,12 @@ deserialize_expr(RDB_object *valp, int *posp, RDB_transaction *txp,
             char *name;
             int argc;
             int i;
-            RDB_type *rtyp;
             RDB_expression **argv;
         
             ret = deserialize_str(valp, posp, &name);
             if (ret != RDB_OK) {
                 return ret;
             }
-
-            ret = deserialize_type(valp, posp, txp, &rtyp);
-            if (ret != RDB_OK)
-                return ret;
 
             ret = deserialize_int(valp, posp, &argc);
             if (ret != RDB_OK)
@@ -771,7 +763,7 @@ deserialize_expr(RDB_object *valp, int *posp, RDB_transaction *txp,
                     return ret;
                 }
             }
-            ret = RDB_user_op(name, rtyp, argc, argv, txp, expp);
+            ret = RDB_user_op(name, argc, argv, txp, expp);
             free(argv);
             if (ret != RDB_OK)
                 return ret;

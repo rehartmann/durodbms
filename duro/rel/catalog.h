@@ -39,6 +39,9 @@ _RDB_get_cat_vtable(const char *name, RDB_transaction *, RDB_table **tbpp);
 int
 _RDB_get_cat_type(const char *name, RDB_transaction *, RDB_type **typp);
 
+int
+_RDB_get_cat_rtype(const char *opname, RDB_transaction *, RDB_type **typp);
+
 char *
 _RDB_make_typestr(int argc, RDB_type *argtv[]);
 
