@@ -247,7 +247,8 @@ do_summarize(RDB_qresult *qresp, RDB_transaction *txp)
                 }
             }
             ret = RDB_get_fields(qresp->matp->var.stored.recmapp, keyfv,
-                                 addc + avgc, txp->txid, nonkeyfv);
+                    addc + avgc, qresp->matp->is_persistent ? txp->txid : NULL,
+                    nonkeyfv);
             if (ret == RDB_OK) {
                 /* A corresponding tuple in table 2 has been found */
                 for (i = 0; i < addc; i++) {
@@ -284,7 +285,8 @@ do_summarize(RDB_qresult *qresp, RDB_transaction *txp)
                     }
                 }
                 ret = RDB_update_rec(qresp->matp->var.stored.recmapp, keyfv,
-                    addc + avgc, nonkeyfv, txp->txid);
+                        addc + avgc, nonkeyfv,
+                        qresp->matp->is_persistent ? txp->txid : NULL);
                 if (ret != RDB_OK) {
                     if (RDB_is_syserr(ret) && txp != NULL)
                         RDB_rollback_all(txp);
@@ -317,7 +319,7 @@ stored_qresult(RDB_qresult *qresp, RDB_table *tbp, RDB_transaction *txp)
 
     /* !! delay after first call to _RDB_qresult_next()? */
     ret = RDB_recmap_cursor(&qresp->var.curp, tbp->var.stored.recmapp,
-                    0, txp != NULL ? txp->txid : NULL);
+                    0, tbp->is_persistent ? txp->txid : NULL);
     if (ret != RDB_OK) {
         if (RDB_is_syserr(ret) && (txp != NULL))
             RDB_rollback_all(txp);
@@ -566,8 +568,14 @@ _RDB_sorter(RDB_table *tbp, RDB_qresult **qrespp, RDB_transaction *txp,
         goto error;
 
     RDB_init_obj(&tpl);
-    while ((ret = _RDB_next_tuple(tmpqrp, &tpl, txp)) == RDB_OK)
-        RDB_insert(qresp->matp, &tpl, txp);
+    while ((ret = _RDB_next_tuple(tmpqrp, &tpl, txp)) == RDB_OK) {
+        int ret2 = RDB_insert(qresp->matp, &tpl, txp);
+        if (ret2 != RDB_OK) {
+            RDB_destroy_obj(&tpl);
+            ret = ret2;
+            goto error;
+        }
+    }
     RDB_destroy_obj(&tpl);
     if (ret != RDB_NOT_FOUND)
         goto error;
@@ -741,7 +749,7 @@ _RDB_get_by_pindex(RDB_table *tbp, RDB_object valv[], RDB_object *tup, RDB_trans
     }
     ret = RDB_get_fields(tbp->var.stored.recmapp, fv,
                          tpltyp->var.tuple.attrc - pkeylen,
-                         txp->txid, resfv);
+                         tbp->is_persistent ? txp->txid : NULL, resfv);
     if (ret != RDB_OK) {
         if (RDB_is_syserr(ret) && txp != NULL) {
             RDB_rollback_all(txp);
@@ -1025,8 +1033,9 @@ _RDB_next_tuple(RDB_qresult *qrp, RDB_object *tup, RDB_transaction *txp)
     if (tbp == NULL) {
         /* It's a sorter */
         ret = next_stored_tuple(qrp, qrp->matp, tup);
-        if (RDB_is_syserr(ret) && txp != NULL)
+        if (RDB_is_syserr(ret) && txp != NULL) {
             RDB_rollback_all(txp);
+        }
         return ret;
     }
 
@@ -1035,8 +1044,9 @@ _RDB_next_tuple(RDB_qresult *qrp, RDB_object *tup, RDB_transaction *txp)
 
         case RDB_TB_STORED:
             ret = next_stored_tuple(qrp, qrp->tbp, tup);
-            if (RDB_is_syserr(ret) && txp != NULL)
+            if (RDB_is_syserr(ret) && txp != NULL) {
                 RDB_rollback_all(txp);
+            }
             return ret;
         case RDB_TB_SELECT:
             do {

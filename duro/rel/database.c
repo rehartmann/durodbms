@@ -160,6 +160,9 @@ _RDB_open_table(RDB_table *tbp,
     int attrc = tbp->typ->var.basetyp->var.tuple.attrc;
     RDB_attr *heading = tbp->typ->var.basetyp->var.tuple.attrv;
 
+    if (!tbp->is_persistent)
+       txp = NULL;
+
     if (txp != NULL && !RDB_tx_is_running(txp))
         return RDB_INVALID_TRANSACTION;
 

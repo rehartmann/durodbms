@@ -15,9 +15,9 @@ insert_stored(RDB_table *tbp, const RDB_object *tplp, RDB_transaction *txp)
 {
     int i;
     int ret;
+    RDB_field *fvp;
     RDB_type *tuptyp = tbp->typ->var.basetyp;
     int attrcount = tuptyp->var.tuple.attrc;
-    RDB_field *fvp;
 
     fvp = malloc(sizeof(RDB_field) * attrcount);
     if (fvp == NULL) {
@@ -57,7 +57,7 @@ insert_stored(RDB_table *tbp, const RDB_object *tplp, RDB_transaction *txp)
     }
 
     ret = RDB_insert_rec(tbp->var.stored.recmapp, fvp,
-            txp != NULL ? txp->txid : NULL);
+            tbp->is_persistent ? txp->txid : NULL);
     if (RDB_is_syserr(ret)) {
         if (txp != NULL) {
             RDB_errmsg(txp->dbp->dbrootp->envp, RDB_strerror(ret));
@@ -66,7 +66,7 @@ insert_stored(RDB_table *tbp, const RDB_object *tplp, RDB_transaction *txp)
     } else if (ret == RDB_KEY_VIOLATION) {
         /* check if the tuple is an element of the table */
         if (RDB_contains_rec(tbp->var.stored.recmapp, fvp,
-                txp != NULL ? txp->txid : NULL) == RDB_OK)
+                tbp->is_persistent ? txp->txid : NULL) == RDB_OK)
             ret = RDB_ELEMENT_EXISTS;
     }            
     free(fvp);

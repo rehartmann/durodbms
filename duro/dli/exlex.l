@@ -84,6 +84,10 @@ MATCHES {
     return TOK_MATCHES;
 }
 
+IN {
+    return TOK_IN;
+}
+
 OR  {
     return TOK_OR;
 }

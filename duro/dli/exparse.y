@@ -82,6 +82,7 @@ enum {
 %token TOK_PER
 %token TOK_ADD
 %token TOK_MATCHES
+%token TOK_IN
 %token TOK_OR
 %token TOK_AND
 %token TOK_NOT
@@ -758,7 +759,11 @@ rel_expression: add_expression
             if ($$ == NULL)
                 YYERROR;
         }
-        | add_expression "IN" add_expression
+        | add_expression TOK_IN add_expression {
+            $$ = RDB_contains($3, $1);
+            if ($$ == NULL)
+                YYERROR;
+        }
         | add_expression TOK_MATCHES add_expression {
             $$ = RDB_regmatch($1, $3);
             if ($$ == NULL)

@@ -10,7 +10,7 @@
 #include <gen/hashmapit.h>
 #include <gen/strfns.h>
 #include <string.h>
-#include <malloc.h>
+#include <stdlib.h>
 
 #define RDB_TUPLE_CAPACITY 7
 
@@ -271,10 +271,10 @@ RDB_extend_tuple(RDB_object *tup, int attrc, RDB_virtual_attr attrv[],
     int i;
     int res;
     RDB_object val;
-/*
+
     if (tup->kind != RDB_OB_TUPLE)
         return RDB_INVALID_ARGUMENT;
-*/
+
     for (i = 0; i < attrc; i++) {
         res = RDB_evaluate(attrv[i].exp, tup, txp, &val);
         if (res != RDB_OK)

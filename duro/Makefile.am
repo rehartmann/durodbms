@@ -41,7 +41,7 @@ tests_libplus_la_SOURCES = tests/plus.c
 
 TESTS = tests/ctests tests/rtables.tcl tests/project.tcl tests/tuple.tcl \
         tests/sdivide.tcl tests/invtable.tcl tests/operator.tcl \
-        tests/vtables.tcl tests/db2.tcl
+        tests/vtables.tcl tests/db2.tcl tests/rel.tcl
 
 TESTS_ENVIRONMENT = LD_LIBRARY_PATH=$(LD_LIBRARY_PATH):$(BDB_HOME)/lib
 

@@ -138,6 +138,7 @@ serialize_expr(RDB_object *valp, int *posp, const RDB_expression *exp)
         case RDB_EX_MULTIPLY:
         case RDB_EX_DIVIDE:
         case RDB_EX_REGMATCH:
+        case RDB_EX_CONTAINS:
         case RDB_EX_CONCAT:
             ret = serialize_expr(valp, posp, exp->var.op.arg1);
             if (ret != RDB_OK)
@@ -662,17 +663,13 @@ deserialize_expr(RDB_object *valp, int *posp, RDB_transaction *txp,
                 return RDB_NO_MEMORY;
             break;
         case RDB_EX_IS_EMPTY:
-            /* !! not implemented */
-            abort();
-/*
             ret = deserialize_expr(valp, posp, txp, &ex1p);
             if (ret != RDB_OK)
                 return ret;
-            *expp = RDB_rel_is_empty(ex1p);
+            *expp = RDB_expr_is_empty(ex1p);
             if (*expp == NULL)
                 return RDB_NO_MEMORY;
             break;
-*/
         case RDB_EX_EQ:
         case RDB_EX_NEQ:
         case RDB_EX_LT:
@@ -686,6 +683,7 @@ deserialize_expr(RDB_object *valp, int *posp, RDB_transaction *txp,
         case RDB_EX_MULTIPLY:
         case RDB_EX_DIVIDE:
         case RDB_EX_REGMATCH:
+        case RDB_EX_CONTAINS:
         case RDB_EX_CONCAT:
             ret = deserialize_expr(valp, posp, txp, &ex1p);
             if (ret != RDB_OK)

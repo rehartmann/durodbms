@@ -140,6 +140,55 @@ sdivide_contains(RDB_table *tbp, const RDB_object *tplp, RDB_transaction *txp)
     return _RDB_sdivide_preserves(tbp, tplp, NULL, txp);
 }
 
+static int
+stored_contains(RDB_table *tbp, const RDB_object *tplp, RDB_transaction *txp)
+{
+    int i;
+    int ret;
+    RDB_field *fvp;
+    RDB_type *tuptyp = tbp->typ->var.basetyp;
+    int attrcount = tuptyp->var.tuple.attrc;
+
+    fvp = malloc(sizeof(RDB_field) * attrcount);
+    if (fvp == NULL)
+        return RDB_NO_MEMORY;
+    for (i = 0; i < attrcount; i++) {
+        RDB_object *valp;
+        int fno = *(int*)RDB_hashmap_get(&tbp->var.stored.attrmap,
+                tuptyp->var.tuple.attrv[i].name, NULL);
+
+        valp = RDB_tuple_get(tplp, tuptyp->var.tuple.attrv[i].name);
+        if (valp == NULL) {
+            free(fvp);
+            return RDB_INVALID_ARGUMENT;
+        }
+        if (valp->typ != NULL && !RDB_type_equals (RDB_obj_type(valp),
+                tuptyp->var.tuple.attrv[i].typ)) {
+            free(fvp);
+            return RDB_TYPE_MISMATCH;
+        }
+
+        /* Set type - needed for tuples */
+        if (valp->typ == NULL
+                && (valp->kind == RDB_OB_TUPLE
+                || valp->kind == RDB_OB_TABLE)) {
+            _RDB_set_nonsc_type(valp,
+                    tuptyp->var.tuple.attrv[i].typ);
+        }
+        _RDB_obj_to_field(&fvp[fno], valp);
+    }
+
+    /* Don't use tx if table is local */
+    ret = RDB_contains_rec(tbp->var.stored.recmapp, fvp,
+            tbp->is_persistent ? txp->txid : NULL);
+    free(fvp);
+    if (RDB_is_syserr(ret)) {
+        RDB_errmsg(txp->dbp->dbrootp->envp, RDB_strerror(ret));
+        RDB_rollback_all(txp);
+    }
+    return ret;
+}
+
 int
 RDB_table_contains(RDB_table *tbp, const RDB_object *tup, RDB_transaction *txp)
 {
@@ -148,51 +197,10 @@ RDB_table_contains(RDB_table *tbp, const RDB_object *tup, RDB_transaction *txp)
 
     if (!RDB_tx_is_running(txp))
         return RDB_INVALID_TRANSACTION;
-    
+
     switch (tbp->kind) {
         case RDB_TB_STORED:
-            {
-                int i;
-                RDB_type *tuptyp = tbp->typ->var.basetyp;
-                int attrcount = tuptyp->var.tuple.attrc;
-                RDB_field *fvp;
-
-                fvp = malloc(sizeof(RDB_field) * attrcount);
-                if (fvp == NULL)
-                    return RDB_NO_MEMORY;
-                for (i = 0; i < attrcount; i++) {
-                    RDB_object *valp;
-                    int fno = *(int*)RDB_hashmap_get(&tbp->var.stored.attrmap,
-                            tuptyp->var.tuple.attrv[i].name, NULL);
-
-                    valp = RDB_tuple_get(tup, tuptyp->var.tuple.attrv[i].name);
-                    if (valp == NULL) {
-                        free(fvp);
-                        return RDB_INVALID_ARGUMENT;
-                    }
-                    if (valp->typ != NULL && !RDB_type_equals (RDB_obj_type(valp),
-                            tuptyp->var.tuple.attrv[i].typ)) {
-                        free(fvp);
-                        return RDB_TYPE_MISMATCH;
-                    }
-
-                    /* Set type - needed for tuples */
-                    if (valp->typ == NULL
-                            && (valp->kind == RDB_OB_TUPLE
-                            || valp->kind == RDB_OB_TABLE)) {
-                        _RDB_set_nonsc_type(valp,
-                                tuptyp->var.tuple.attrv[i].typ);
-                    }
-                    _RDB_obj_to_field(&fvp[fno], valp);
-                }
-                ret = RDB_contains_rec(tbp->var.stored.recmapp, fvp, txp->txid);
-                free(fvp);
-                if (RDB_is_syserr(ret)) {
-                    RDB_errmsg(txp->dbp->dbrootp->envp, RDB_strerror(ret));
-                    RDB_rollback_all(txp);
-                }
-                return ret;
-            }
+            return stored_contains(tbp, tup, txp);
         case RDB_TB_SELECT:
         case RDB_TB_SELECT_PINDEX:
             ret = RDB_evaluate_bool(tbp->var.select.exprp, tup, txp, &b);

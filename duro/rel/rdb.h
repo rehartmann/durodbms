@@ -146,6 +146,7 @@ enum _RDB_expr_kind {
     RDB_EX_STRLEN,
     RDB_EX_REGMATCH,
     RDB_EX_CONCAT,
+    RDB_EX_CONTAINS,
 
     RDB_EX_IS_EMPTY,
     RDB_EX_AGGREGATE,

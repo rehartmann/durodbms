@@ -9,7 +9,7 @@
 
 #include <gen/errors.h>
 #include <gen/strfns.h>
-#include <malloc.h>
+#include <stdlib.h>
 #include <string.h>
 #include <errno.h>
 

@@ -40,6 +40,7 @@ RDB_expr_type(const RDB_expression *exp, const RDB_type *tuptyp)
         case RDB_EX_AND:
         case RDB_EX_OR:
         case RDB_EX_REGMATCH:
+        case RDB_EX_CONTAINS:
         case RDB_EX_IS_EMPTY:
             return &RDB_BOOLEAN;
         case RDB_EX_ADD:
@@ -320,6 +321,12 @@ RDB_regmatch(RDB_expression *arg1, RDB_expression *arg2)
 }
 
 RDB_expression *
+RDB_contains(RDB_expression *arg1, RDB_expression *arg2)
+{
+    return _RDB_create_binexpr(arg1, arg2, RDB_EX_CONTAINS);
+}
+
+RDB_expression *
 RDB_concat(RDB_expression *arg1, RDB_expression *arg2)
 {
     return _RDB_create_binexpr(arg1, arg2, RDB_EX_CONCAT);
@@ -539,6 +546,7 @@ RDB_drop_expr(RDB_expression *exp)
         case RDB_EX_MULTIPLY:
         case RDB_EX_DIVIDE:
         case RDB_EX_REGMATCH:
+        case RDB_EX_CONTAINS:
         case RDB_EX_CONCAT:
             RDB_drop_expr(exp->var.op.arg2);
         case RDB_EX_NOT:
@@ -1162,8 +1170,42 @@ RDB_evaluate(RDB_expression *exp, const RDB_object *tup, RDB_transaction *txp,
                     (regexec(&reg, val1.var.bin.datap, 0, NULL, 0) == 0);
             regfree(&reg);
             RDB_destroy_obj(&val1);
-            RDB_destroy_obj(&val2);
-            return RDB_OK;
+            return RDB_destroy_obj(&val2);
+        }
+        case RDB_EX_CONTAINS:
+        {
+            RDB_object val1, val2;
+
+            RDB_init_obj(&val1);
+            RDB_init_obj(&val2);
+            ret = RDB_evaluate(exp->var.op.arg1, tup, txp, &val1);
+            if (ret != RDB_OK) {
+                RDB_destroy_obj(&val1);
+                RDB_destroy_obj(&val2);
+                return ret;
+            }
+            if (val1.kind != RDB_OB_TABLE) {
+                RDB_destroy_obj(&val1);
+                return RDB_TYPE_MISMATCH;
+            }
+            ret = RDB_evaluate(exp->var.op.arg2, tup, txp, &val2);
+            if (ret != RDB_OK) {
+                RDB_destroy_obj(&val1);
+                RDB_destroy_obj(&val2);
+                return ret;
+            }
+            ret = RDB_table_contains(val1.var.tbp, &val2, txp);
+            if (ret != RDB_OK && ret != RDB_NOT_FOUND) {
+                RDB_destroy_obj(&val1);
+                RDB_destroy_obj(&val2);
+                return ret;
+            }
+            RDB_destroy_obj(valp);
+            RDB_init_obj(valp);
+            _RDB_set_obj_type(valp, &RDB_BOOLEAN);
+            valp->var.bool_val = ret == RDB_OK ? RDB_TRUE : RDB_FALSE;
+            RDB_destroy_obj(&val1);
+            return RDB_destroy_obj(&val2);
         }
         case RDB_EX_CONCAT:
         {
@@ -1205,8 +1247,7 @@ RDB_evaluate(RDB_expression *exp, const RDB_object *tup, RDB_transaction *txp,
                     val2.var.bin.datap);
 
             RDB_destroy_obj(&val1);
-            RDB_destroy_obj(&val2);
-            return RDB_OK;
+            return RDB_destroy_obj(&val2);
         }
         case RDB_EX_STRLEN:
         {
@@ -1247,7 +1288,7 @@ RDB_evaluate(RDB_expression *exp, const RDB_object *tup, RDB_transaction *txp,
                 return RDB_TYPE_MISMATCH;
             }
             ret = aggregate(val.var.tbp, exp->var.op.op,
-                    exp->var.op.name, NULL, valp);
+                    exp->var.op.name, txp, valp);
             if (ret != RDB_OK) {
                 RDB_destroy_obj(&val);
                 return ret;
@@ -1331,6 +1372,7 @@ _RDB_expr_refers(RDB_expression *exp, RDB_table *tbp)
         case RDB_EX_MULTIPLY:
         case RDB_EX_DIVIDE:
         case RDB_EX_REGMATCH:
+        case RDB_EX_CONTAINS:
         case RDB_EX_CONCAT:
             return (RDB_bool) (_RDB_expr_refers(exp->var.op.arg1, tbp)
                     || _RDB_expr_refers(exp->var.op.arg2, tbp));

@@ -147,7 +147,10 @@ _RDB_move_tuples(RDB_table *dstp, RDB_table *srcp, RDB_transaction *txp)
     int ret;
 
     /* delete all tuples from destination table */
-    ret = RDB_delete(dstp, NULL, txp);
+    if (dstp->kind == RDB_TB_STORED && !dstp->is_persistent)
+        ret = RDB_delete(dstp, NULL, NULL);
+    else
+        ret = RDB_delete(dstp, NULL, txp);
     if (ret != RDB_OK)
         return ret;
 
@@ -159,7 +162,10 @@ _RDB_move_tuples(RDB_table *dstp, RDB_table *srcp, RDB_transaction *txp)
     RDB_init_obj(&tpl);
 
     while ((ret = _RDB_next_tuple(qrp, &tpl, txp)) == RDB_OK) {
-        ret = RDB_insert(dstp, &tpl, txp);
+        if (dstp->kind == RDB_TB_STORED && !dstp->is_persistent)
+            ret = RDB_insert(dstp, &tpl, NULL);
+        else
+            ret = RDB_insert(dstp, &tpl, txp);
         if (ret != RDB_OK) {
             goto cleanup;
         }

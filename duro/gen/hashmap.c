@@ -3,7 +3,7 @@
 #include "hashmap.h"
 #include "errors.h"
 #include <string.h>
-#include <malloc.h>
+#include <stdlib.h>
 
 static void
 alloc_map(RDB_hashmap *hp) {
