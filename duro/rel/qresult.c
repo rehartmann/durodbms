@@ -40,6 +40,7 @@ init_summ_table(RDB_qresult *qresp, RDB_transaction *txp)
         for (i = 0; i < qresp->tbp->var.summarize.addc; i++) {
             char *name = qresp->tbp->var.summarize.addv[i].name;
             char *cname;
+            RDB_type *typ;
 
             switch (qresp->tbp->var.summarize.addv[i].op) {
                 case RDB_COUNT:
@@ -63,25 +64,34 @@ init_summ_table(RDB_qresult *qresp, RDB_transaction *txp)
                     break;
                 case RDB_SUM:
                 case RDB_SUMD:
-                    if (RDB_expr_type(qresp->tbp->var.summarize.addv[i].exp,
-                            qresp->tbp->var.summarize.tb1p->typ->var.basetyp)
-                            == &RDB_INTEGER)
+                    ret = RDB_expr_type(qresp->tbp->var.summarize.addv[i].exp,
+                            qresp->tbp->var.summarize.tb1p->typ->var.basetyp,
+                            &typ);
+                    if (ret != RDB_OK)
+                        goto error;
+                    if (typ == &RDB_INTEGER)
                         ret = RDB_tuple_set_int(&tpl, name, 0);
                     else
                         ret = RDB_tuple_set_rational(&tpl, name, 0.0);
                     break;
                 case RDB_MAX:
-                    if (RDB_expr_type(qresp->tbp->var.summarize.addv[i].exp,
-                            qresp->tbp->var.summarize.tb1p->typ->var.basetyp)
-                            == &RDB_INTEGER)
+                    ret = RDB_expr_type(qresp->tbp->var.summarize.addv[i].exp,
+                            qresp->tbp->var.summarize.tb1p->typ->var.basetyp,
+                            &typ);
+                    if (ret != RDB_OK)
+                        goto error;
+                    if (typ == &RDB_INTEGER)
                         ret = RDB_tuple_set_int(&tpl, name, RDB_INT_MIN);
                     else
                         ret = RDB_tuple_set_rational(&tpl, name, RDB_RATIONAL_MIN);
                     break;
                 case RDB_MIN:
-                    if (RDB_expr_type(qresp->tbp->var.summarize.addv[i].exp,
-                            qresp->tbp->var.summarize.tb1p->typ->var.basetyp)
-                            == &RDB_INTEGER)
+                    ret = RDB_expr_type(qresp->tbp->var.summarize.addv[i].exp,
+                            qresp->tbp->var.summarize.tb1p->typ->var.basetyp,
+                            &typ);
+                    if (ret != RDB_OK)
+                        goto error;
+                    if (typ == &RDB_INTEGER)
                         ret = RDB_tuple_set_int(&tpl, name, RDB_INT_MAX);
                     else
                         ret = RDB_tuple_set_rational(&tpl, name, RDB_RATIONAL_MAX);
@@ -257,14 +267,18 @@ do_summarize(RDB_qresult *qresp, RDB_transaction *txp)
                 /* A corresponding tuple in table 2 has been found */
                 for (i = 0; i < addc; i++) {
                     RDB_summarize_add *summp = &qresp->tbp->var.summarize.addv[i];
+                    RDB_type *typ;
 
                     if (summp->op == RDB_COUNT) {
                         ret = RDB_irep_to_obj(&svalv[i].val, &RDB_INTEGER,
                                 nonkeyfv[i].datap, nonkeyfv[i].len);
                     } else {
-                        ret = RDB_irep_to_obj(&svalv[i].val,
-                                RDB_expr_type(summp->exp,
-                                qresp->tbp->var.summarize.tb1p->typ->var.basetyp),
+                        ret = RDB_expr_type(summp->exp,
+                                qresp->tbp->var.summarize.tb1p->typ->var.basetyp,
+                                &typ);
+                        if (ret != RDB_OK)
+                            goto cleanup;
+                        ret = RDB_irep_to_obj(&svalv[i].val, typ,
                                 nonkeyfv[i].datap, nonkeyfv[i].len);
                         if (ret != RDB_OK)
                             goto cleanup;

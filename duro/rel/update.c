@@ -712,15 +712,19 @@ RDB_update(RDB_table *tbp, RDB_expression *condp, int updc,
 
     /* Typecheck */
     for (i = 0; i < updc; i++) {
-        RDB_type *typ;
         RDB_attr *attrp = _RDB_tuple_type_attr(tbp->typ->var.basetyp,
                 updv[i].name);
+        RDB_type *typ;
 
         if (attrp == NULL)
             return RDB_INVALID_ARGUMENT;
-        typ = RDB_expr_type(updv[i].exp, tbp->typ->var.basetyp);
-        if (typ != NULL && !RDB_type_equals(typ, attrp->typ))
-            return RDB_TYPE_MISMATCH;
+        if (RDB_type_is_scalar(attrp->typ)) {
+            ret = RDB_expr_type(updv[i].exp, tbp->typ->var.basetyp, &typ);
+            if (ret != RDB_OK)
+                return ret;
+            if (!RDB_type_equals(typ, attrp->typ))
+                return RDB_TYPE_MISMATCH;
+        }
     }
 
     if (condp != NULL) {

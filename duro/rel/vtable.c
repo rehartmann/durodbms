@@ -89,10 +89,18 @@ error:
 int
 RDB_select(RDB_table *tbp, RDB_expression *condp, RDB_table **resultpp)
 {
+    int ret;
     RDB_table *newtbp;
+    RDB_type *typ;
 
-    /* Check if condition is of type BOOLEAN */
-    if (RDB_expr_type(condp, tbp->typ->var.basetyp) != &RDB_BOOLEAN)
+    /*
+     * Check if condition is of type BOOLEAN
+     */
+    
+    ret = RDB_expr_type(condp, tbp->typ->var.basetyp, &typ);
+    if (ret != RDB_OK)
+        return ret;
+    if (typ != &RDB_BOOLEAN)
         return RDB_TYPE_MISMATCH;
 
     /* Allocate RDB_table structure */
@@ -327,11 +335,9 @@ RDB_extend(RDB_table *tbp, int attrc, RDB_virtual_attr attrv[],
             ret = RDB_NO_MEMORY;
             goto error;
         }
-        attrdefv[i].typ = RDB_expr_type(attrv[i].exp, tbp->typ->var.basetyp);
-        if (attrdefv[i].typ == NULL) {
-            ret = RDB_INVALID_ARGUMENT;
+        ret = RDB_expr_type(attrv[i].exp, tbp->typ->var.basetyp, &attrdefv[i].typ);
+        if (ret != RDB_OK)
             goto error;
-        }
     }
     newtbp->typ = RDB_extend_relation_type(tbp->typ, attrc, attrdefv);
 
@@ -557,8 +563,15 @@ RDB_summarize(RDB_table *tb1p, RDB_table *tb2p, int addc,
     tuptyp->var.tuple.attrc = attrc;
     tuptyp->var.tuple.attrv = malloc(attrc * sizeof(RDB_attr));
     for (i = 0; i < addc; i++) {
-        RDB_type *typ = addv[i].op == RDB_COUNT ? &RDB_INTEGER
-                : RDB_expr_type(addv[i].exp, tb1p->typ->var.basetyp);
+        RDB_type *typ;
+
+        if (addv[i].op == RDB_COUNT) {
+            typ = &RDB_INTEGER;
+        } else {
+            ret = RDB_expr_type(addv[i].exp, tb1p->typ->var.basetyp, &typ);
+            if (ret != RDB_OK)
+                goto error;
+        }
 
         tuptyp->var.tuple.attrv[i].name = RDB_dup_str(addv[i].name);
         if (tuptyp->var.tuple.attrv[i].name == NULL) {

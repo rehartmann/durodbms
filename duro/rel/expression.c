@@ -18,63 +18,231 @@ RDB_expr_is_const(const RDB_expression *exp)
     return (RDB_bool) exp->kind == RDB_EX_OBJ;
 }
 
-RDB_type *
-RDB_expr_type(const RDB_expression *exp, const RDB_type *tuptyp)
+int
+RDB_expr_type(const RDB_expression *exp, const RDB_type *tuptyp, RDB_type **typp)
 {
+    int ret;
+    RDB_attr *attrp;
+    RDB_type *typ;
+    RDB_type *typ2;
+
     switch (exp->kind) {
         case RDB_EX_OBJ:
-            return RDB_obj_type(&exp->var.obj);
+             *typp = RDB_obj_type(&exp->var.obj);
+             if (*typp == NULL)
+                 return RDB_NOT_FOUND;
+             break;
         case RDB_EX_ATTR:
-        {
-            RDB_attr *attrp = _RDB_tuple_type_attr(
+            attrp = _RDB_tuple_type_attr(
                     tuptyp, exp->var.attr.name);
-            return attrp != NULL ? attrp->typ : NULL;
-        }
+            if (attrp == NULL)
+                return RDB_NOT_FOUND;
+            *typp = attrp->typ;
+            break;
         case RDB_EX_NOT:
+            /* Argument must be BOOLEAN */
+            ret = RDB_expr_type(exp->var.op.arg1, tuptyp, &typ);
+            if (ret != RDB_OK)
+                return ret;
+            *typp = &RDB_BOOLEAN;
+            break;
         case RDB_EX_EQ:
         case RDB_EX_NEQ:
+            /*
+             * Operand types must be equal
+             */
+            ret = RDB_expr_type(exp->var.op.arg1, tuptyp, &typ);
+
+            /* Special treatment of tuple operands */
+            if (ret != RDB_OK && ret != RDB_NOT_FOUND)
+                return ret;
+            if (ret == RDB_NOT_FOUND) {
+                /* Operand must be tuple-type constant */
+                if (exp->var.op.arg1->kind != RDB_EX_OBJ
+                    || exp->var.op.arg1->var.obj.kind != RDB_OB_TUPLE) {
+                        return RDB_NOT_FOUND;
+                }
+            } else if (RDB_type_is_scalar(typ)) {
+                ret = RDB_expr_type(exp->var.op.arg2, tuptyp, &typ2);
+                if (ret != RDB_OK)
+                    return ret;
+                if (!RDB_type_equals(typ, typ2))
+                    return RDB_TYPE_MISMATCH;
+            }
+            *typp = &RDB_BOOLEAN;
+            break;
         case RDB_EX_LT:
         case RDB_EX_GT:
         case RDB_EX_LET:
         case RDB_EX_GET:
+            /*
+             * Operand types must be equal and (numeric or STRING)
+             */
+            ret = RDB_expr_type(exp->var.op.arg1, tuptyp, &typ);
+            if (ret != RDB_OK)
+                return ret;
+            if (!RDB_type_is_numeric(typ) && typ != &RDB_STRING)
+                return RDB_TYPE_MISMATCH;
+            ret = RDB_expr_type(exp->var.op.arg2, tuptyp, &typ2);
+            if (ret != RDB_OK)
+                return ret;
+            if (!RDB_type_is_numeric(typ2) && typ != &RDB_STRING)
+                return RDB_TYPE_MISMATCH;
+            if (!RDB_type_equals(typ, typ2))
+                return RDB_TYPE_MISMATCH;
+            *typp = &RDB_BOOLEAN;
+            break;
         case RDB_EX_AND:
         case RDB_EX_OR:
+            /*
+             * Operand types must be BOOLEAN
+             */
+            ret = RDB_expr_type(exp->var.op.arg1, tuptyp, &typ);
+            if (ret != RDB_OK)
+                return ret;
+            if (typ != &RDB_BOOLEAN)
+                return RDB_TYPE_MISMATCH;
+            ret = RDB_expr_type(exp->var.op.arg2, tuptyp, &typ2);
+            if (ret != RDB_OK)
+                return ret;
+            if (typ != &RDB_BOOLEAN)
+                return RDB_TYPE_MISMATCH;
+            *typp = &RDB_BOOLEAN;
+            break;
         case RDB_EX_REGMATCH:
+            /*
+             * Operand type must be STRING
+             */
+            ret = RDB_expr_type(exp->var.op.arg1, tuptyp, &typ);
+            if (ret != RDB_OK)
+                return ret;
+            if (typ != &RDB_STRING)
+                return RDB_TYPE_MISMATCH;
+            *typp = &RDB_BOOLEAN;
+            break;
         case RDB_EX_CONTAINS:
+            /*
+             * Operand #1 must be a relation
+             */
+            ret = RDB_expr_type(exp->var.op.arg1, tuptyp, &typ);
+            if (ret != RDB_OK)
+                return ret;
+            if (typ->kind != RDB_TP_RELATION)
+                return RDB_TYPE_MISMATCH;
+            *typp = &RDB_BOOLEAN;
+            break;
         case RDB_EX_IS_EMPTY:
+            /*
+             * Operand must be a relation
+             */
+            ret = RDB_expr_type(exp->var.op.arg1, tuptyp, &typ);
+            if (ret != RDB_OK)
+                return ret;
+            if (typ->kind != RDB_TP_RELATION)
+                return RDB_TYPE_MISMATCH;
+            *typp = &RDB_BOOLEAN;
+            break;
         case RDB_EX_SUBSET:
-            return &RDB_BOOLEAN;
+            *typp = &RDB_BOOLEAN;
+            break;
         case RDB_EX_ADD:
         case RDB_EX_SUBTRACT:
-        case RDB_EX_NEGATE:
         case RDB_EX_MULTIPLY:
         case RDB_EX_DIVIDE:
-            return RDB_expr_type(exp->var.op.arg1, tuptyp);
+            /*
+             * Operand types must be equal and numeric
+             */
+            ret = RDB_expr_type(exp->var.op.arg1, tuptyp, &typ);
+            if (ret != RDB_OK)
+                return ret;
+            if (!RDB_type_is_numeric(typ))
+                return RDB_TYPE_MISMATCH;
+            ret = RDB_expr_type(exp->var.op.arg2, tuptyp, &typ2);
+            if (ret != RDB_OK)
+                return ret;
+            if (!RDB_type_is_numeric(typ2))
+                return RDB_TYPE_MISMATCH;
+            if (!RDB_type_equals(typ, typ2))
+                return RDB_TYPE_MISMATCH;
+            *typp = typ;
+            break;
+        case RDB_EX_NEGATE:
+            /*
+             * Operand type must be numeric
+             */
+            ret = RDB_expr_type(exp->var.op.arg1, tuptyp, &typ);
+            if (ret != RDB_OK)
+                return ret;
+            if (!RDB_type_is_numeric(typ))
+                return RDB_TYPE_MISMATCH;
+            *typp = typ;
+            break;
         case RDB_EX_STRLEN:
-            return &RDB_INTEGER;
+            /*
+             * Operand type must be STRING
+             */
+            ret = RDB_expr_type(exp->var.op.arg1, tuptyp, &typ);
+            if (ret != RDB_OK)
+                return ret;
+            if (typ != &RDB_STRING)
+                return RDB_TYPE_MISMATCH;
+            *typp = &RDB_INTEGER;
+            break;
         case RDB_EX_CONCAT:
-            return &RDB_STRING;
+            /*
+             * Operand types must be STRING
+             */
+            ret = RDB_expr_type(exp->var.op.arg1, tuptyp, &typ);
+            if (ret != RDB_OK)
+                return ret;
+            if (typ != &RDB_STRING)
+                return RDB_TYPE_MISMATCH;
+            ret = RDB_expr_type(exp->var.op.arg2, tuptyp, &typ2);
+            if (ret != RDB_OK)
+                return ret;
+            if (typ != &RDB_STRING)
+                return RDB_TYPE_MISMATCH;
+            *typp = &RDB_STRING;
+            break;
         case RDB_EX_TUPLE_ATTR:
-            return RDB_type_attr_type(RDB_expr_type(exp->var.op.arg1, tuptyp),
-                    exp->var.op.name);
+            ret = RDB_expr_type(exp->var.op.arg1, tuptyp, &typ);
+            if (ret != RDB_OK)
+                return ret;
+            *typp = RDB_type_attr_type(typ, exp->var.op.name);
+            if (*typp == NULL)
+                return RDB_NOT_FOUND;
+            break;
         case RDB_EX_GET_COMP:
-            return _RDB_get_icomp(RDB_expr_type(exp->var.op.arg1, tuptyp),
-                    exp->var.op.name)->typ;
+            ret = RDB_expr_type(exp->var.op.arg1, tuptyp, &typ);
+            if (ret != RDB_OK)
+                return ret;
+            attrp = _RDB_get_icomp(typ, exp->var.op.name);
+            if (attrp == NULL)
+                return RDB_NOT_FOUND;
+            *typp = attrp->typ;
+            break;
         case RDB_EX_USER_OP:
-            return exp->var.user_op.rtyp;
+            *typp = exp->var.user_op.rtyp;
+            break;
         case RDB_EX_AGGREGATE:
             switch (exp->var.op.op) {
                 case RDB_COUNT:
-                    return &RDB_INTEGER;
+                    *typp = &RDB_INTEGER;
+                    break;
                 case RDB_AVG:
-                    return &RDB_RATIONAL;
+                    *typp = &RDB_RATIONAL;
+                    break;
                 default:
-                    return _RDB_tuple_type_attr(
+                    attrp = _RDB_tuple_type_attr(
                             exp->var.op.arg1->var.obj.var.tbp->typ->var.basetyp,
-                            exp->var.op.name)->typ;
+                            exp->var.op.name);
+                    if (attrp == NULL)
+                        return RDB_NOT_FOUND;
+                    *typp = attrp->typ;
             }
+            break;
     }
-    abort();
+    return RDB_OK;
 }
 
 RDB_expression *

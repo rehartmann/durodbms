@@ -7,6 +7,8 @@ AM_YFLAGS = -d
 
 bin_PROGRAMS = util/lstables
 
+bin_SCRIPTS = tcl/duroadmin.tcl
+
 # Shared libs for testing are listed here too, because check_LTLIBRARIES does
 # not work
 lib_LTLIBRARIES = libduro.la libdurotcl.la \
@@ -76,7 +78,12 @@ dist_pkglib_DATA = tcl/util.tcl
 
 INCLUDES = -I$(top_srcdir) -I$(BDB_HOME)/include
 
-EXTRA_DIST = tests/ctests.sh tests/lstables_output tests/test_2db_output \
+check_SCRIPTS = tests/ctests.sh tests/rtables.tcl tests/project.tcl \
+tests/tuple.tcl tests/sdivide.tcl tests/invtable.tcl tests/operator.tcl \
+tests/vtables.tcl tests/db2.tcl tests/rel.tcl tests/subset.tcl \
+tests/utype.tcl tests/deedum.tcl tests/opt.tcl tests/index.tcl
+
+check_DATA = tests/lstables_output tests/test_2db_output \
 tests/test_aggregate_output tests/test_binary_output tests/test_callop_output \
 tests/test_create_view_output tests/test_defop_output \
 tests/test_defpointtype_output tests/test_deftype_output \
@@ -87,11 +94,7 @@ tests/test_pointtable_output tests/test_print_opview_output \
 tests/test_print_view_output tests/test_project_output tests/test_ra_output \
 tests/test_regexp_output tests/test_rename_output tests/test_select_output \
 tests/test_srupdate_output tests/test_summarize_output tests/test_union_output \
-tests/test_update_output tests/test_utypetable_output tests/tupletest_output \
-tests/rtables.tcl tests/project.tcl tests/tuple.tcl \
-tests/sdivide.tcl tests/invtable.tcl tests/operator.tcl \
-tests/vtables.tcl tests/db2.tcl tests/rel.tcl tests/subset.tcl \
-tests/utype.tcl tests/deedum.tcl tests/opt.tcl tests/index.tcl
+tests/test_update_output tests/test_utypetable_output tests/tupletest_output
 
 # Delete test libs
 install-exec-hook:

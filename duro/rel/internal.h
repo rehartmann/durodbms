@@ -388,8 +388,8 @@ _RDB_obj_to_field(RDB_field *, RDB_object *);
 
 #define _RDB_pkey_len(tbp) ((tbp)->keyv[0].strc)
 
-RDB_type *
-RDB_expr_type(const RDB_expression *exp, const RDB_type *);
+int
+RDB_expr_type(const RDB_expression *exp, const RDB_type *, RDB_type **);
 
 int
 _RDB_check_type_constraint(RDB_object *valp, RDB_transaction *txp);
