@@ -1,9 +1,9 @@
 /*
+ * $Id$
+ *
  * Copyright (C) 2003-2005 René Hartmann.
  * See the file COPYING for redistribution information.
  */
-
-/* $Id$ */
 
 #include "catalog.h"
 #include "typeimpl.h"
@@ -1354,6 +1354,8 @@ _RDB_cat_get_rtable(const char *name, RDB_transaction *txp, RDB_table **tbpp)
     *tbpp = NULL;
     RDB_init_obj(&arr);
     RDB_init_obj(&tpl);
+
+    /* !! Table should be from txp->dbp ... */
 
     exprp = RDB_eq(RDB_expr_attr("TABLENAME"),
             RDB_string_to_expr(name));

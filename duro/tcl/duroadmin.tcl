@@ -976,6 +976,9 @@ proc exec_script {} {
                 tk_messageBox -type ok -title "Error" -message $msg \
                         -icon error -parent .dialog \
             } else {
+                if {$res == ""} {
+                    set res "(ok)"
+                }
                 .dialog.output configure -state normal
                 .dialog.output insert end $res\n
                 .dialog.output configure -state disabled

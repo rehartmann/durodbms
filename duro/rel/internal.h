@@ -2,11 +2,11 @@
 #define RDB_INTERNAL_H
 
 /*
+ * $Id$
+ *
  * Copyright (C) 2003-2005 René Hartmann.
  * See the file COPYING for redistribution information.
  */
-
-/* $Id$ */
 
 #include <rec/index.h>
 #include <rec/cursor.h>
@@ -222,7 +222,7 @@ int
 _RDB_assoc_table_db(RDB_table *tbp, RDB_database *dbp);
 
 RDB_bool
-RDB_table_refers(RDB_table *tbp, RDB_table *rtbp);
+_RDB_table_refers(RDB_table *tbp, RDB_table *rtbp);
 
 /*
  * Extend the tuple type pointed to by typ by the attributes given by
@@ -343,7 +343,13 @@ RDB_expr_aggregate(RDB_expression *arg, RDB_aggregate_op op,
         const char *attrname);
 
 RDB_bool
-_RDB_expr_refers(RDB_expression *, RDB_table *);
+_RDB_expr_refers(const RDB_expression *, RDB_table *);
+
+RDB_bool
+_RDB_expr_table_depend(const RDB_expression *, RDB_table *);
+
+RDB_bool
+_RDB_expr_expr_depend(const RDB_expression *, const RDB_expression *);
 
 RDB_expression *
 RDB_dup_expr(const RDB_expression *);
@@ -482,6 +488,9 @@ _RDB_attr_node(RDB_expression *exp, const char *attrname, char *opname);
 
 int
 _RDB_read_constraints(RDB_transaction *);
+
+int
+_RDB_check_constraints(const RDB_constraint *, RDB_transaction *);
 
 int
 _RDB_insert_real(RDB_table *tbp, const RDB_object *tplp, RDB_transaction *);

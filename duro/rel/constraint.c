@@ -191,14 +191,20 @@ RDB_drop_constraint(const char *name, RDB_transaction *txp)
 }
 
 int
-_RDB_constraint_count(RDB_dbroot *dbrootp)
+_RDB_check_constraints(const RDB_constraint *constrp, RDB_transaction *txp)
 {
-    int count = 0;
-    RDB_constraint *constrp = dbrootp->first_constrp;
+    RDB_bool b;
+    int ret;
 
     while (constrp != NULL) {
-        count++;
+        ret = RDB_evaluate_bool(constrp->exp, NULL, txp, &b);
+        if (ret != RDB_OK) {
+            return ret;
+        }
+        if (!b) {
+            return RDB_PREDICATE_VIOLATION;
+        }
         constrp = constrp->nextp;
     }
-    return count;
+    return RDB_OK;
 }

@@ -1,9 +1,9 @@
 /*
- * Copyright (C) 2003, 2004 René Hartmann.
+ * $Id$
+ *
+ * Copyright (C) 2003-2005 René Hartmann.
  * See the file COPYING for redistribution information.
  */
-
-/* $Id$ */
 
 #include "rdb.h"
 #include "typeimpl.h"
@@ -753,6 +753,11 @@ RDB_update(RDB_table *tbp, RDB_expression *condp, int updc,
     int ret;
     int i;
     RDB_table *ntbp;
+    RDB_dbroot *dbrootp;
+    RDB_constraint *constrp;
+    RDB_transaction tx;
+    RDB_constraint *checklistp = NULL;
+    RDB_bool need_subtx = RDB_FALSE;
 
     if (!RDB_tx_is_running(txp))
         return RDB_INVALID_TRANSACTION;
@@ -787,11 +792,87 @@ RDB_update(RDB_table *tbp, RDB_expression *condp, int updc,
         return ret;
     }
 
+    dbrootp = RDB_tx_db(txp)->dbrootp;
+
+    if (!dbrootp->constraints_read) {
+        ret = _RDB_read_constraints(txp);
+        if (ret != RDB_OK) {
+            return ret;
+        }
+        dbrootp->constraints_read = RDB_TRUE;
+    }
+
+    /*
+     * Identify the constraints which must be checked
+     * and insert them into a list
+     */
+    constrp = dbrootp->first_constrp;
+    while (constrp != NULL) {
+        RDB_bool check;
+        RDB_constraint *chconstrp;
+
+/* !! ...
+        if (constrp->empty_tbp != NULL) {
+        }
+*/
+        /* Check if constrp->exp and tbp depend on the same table(s) */
+        check = _RDB_expr_table_depend(constrp->exp, tbp);
+
+        if (check) {
+            need_subtx = RDB_TRUE;
+            chconstrp = malloc(sizeof(RDB_constraint));
+            if (chconstrp == NULL) {
+                ret = RDB_NO_MEMORY;
+                goto cleanup;
+            }
+            chconstrp->name = RDB_dup_str(constrp->name);
+            if (chconstrp->name == NULL) {
+                ret = RDB_NO_MEMORY;
+                goto cleanup;
+            }
+            chconstrp->exp = constrp->exp;
+            chconstrp->empty_tbp = constrp->empty_tbp;
+            chconstrp->nextp = checklistp;
+            checklistp = chconstrp;
+        }
+        constrp = constrp->nextp;
+    }
+
+    if (need_subtx) {
+        ret = RDB_begin_tx(&tx, RDB_tx_db(txp), txp);
+        if (ret != RDB_OK) {
+            goto cleanup;
+        }
+        txp = &tx;
+    }
+
     ret = update(ntbp, NULL, updc, updv, txp);
-    if (ret == RDB_OK) {
-        if (ntbp->kind != RDB_TB_REAL)
-            ret = RDB_drop_table(ntbp, txp);
-        ntbp = NULL;
+    if (ret != RDB_OK)
+        goto cleanup;
+
+    if (ntbp->kind != RDB_TB_REAL)
+        ret = RDB_drop_table(ntbp, txp);
+    ntbp = NULL;
+
+    /*
+     * Check selected constraints
+     */
+    if (txp != NULL) {
+        ret = _RDB_check_constraints(checklistp, txp);
+        if (ret != RDB_OK) {
+            if (need_subtx)
+                RDB_rollback(&tx);
+            goto cleanup;
+        }
+    }
+
+cleanup:
+    while (checklistp != NULL) {
+        RDB_constraint *nextp = checklistp->nextp;
+
+        free(checklistp->name);
+        free(checklistp);
+        checklistp = nextp;
     }
 
     if (condp != NULL)

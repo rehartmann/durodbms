@@ -1,12 +1,11 @@
 /*
- * Copyright (C) 2003, 2004 René Hartmann.
+ * $Id$
+ * 
+ * Copyright (C) 2003-2005 René Hartmann.
  * See the file COPYING for redistribution information.
  */
 
-/* $Id$ */
-
 #include "recmap.h"
-
 #include <gen/errors.h>
 #include <gen/strfns.h>
 #include <stdlib.h>

@@ -1,9 +1,9 @@
 /*
- * Copyright (C) 2003, 2004 René Hartmann.
+ * $Id$
+ *
+ * Copyright (C) 2004-2005 René Hartmann.
  * See the file COPYING for redistribution information.
  */
-
-/* $Id$ */
 
 #include "rdb.h"
 #include "internal.h"
@@ -762,12 +762,45 @@ RDB_dup_expr(const RDB_expression *exp)
 }
 
 RDB_bool
-_RDB_expr_refers(RDB_expression *exp, RDB_table *tbp)
+_RDB_expr_expr_depend(const RDB_expression *ex1p, const RDB_expression *ex2p)
+{
+    switch (ex1p->kind) {
+        case RDB_EX_OBJ:
+            if (ex1p->var.obj.kind == RDB_OB_TABLE)
+                return _RDB_expr_table_depend(ex2p, ex1p->var.obj.var.tbp);
+            return RDB_FALSE;
+        case RDB_EX_ATTR:
+            return RDB_FALSE;
+        case RDB_EX_TUPLE_ATTR:
+        case RDB_EX_GET_COMP:
+            return _RDB_expr_expr_depend(ex1p->var.op.argv[0], ex2p);
+        case RDB_EX_RO_OP:
+        {
+            int i;
+
+            for (i = 0; i < ex1p->var.op.argc; i++)
+                if (_RDB_expr_expr_depend(ex1p->var.op.argv[i], ex2p))
+                    return RDB_TRUE;
+            
+            return RDB_FALSE;
+        }
+        case RDB_EX_AGGREGATE:
+            if (ex2p->kind != RDB_EX_OBJ || ex2p->var.obj.kind != RDB_OB_TABLE)
+                return RDB_FALSE;
+            return (RDB_bool) (ex1p->var.op.argv[0]->var.obj.var.tbp ==
+                    ex2p->var.obj.var.tbp);
+    }
+    /* Should never be reached */
+    abort();
+}
+
+RDB_bool
+_RDB_expr_refers(const RDB_expression *exp, RDB_table *tbp)
 {
     switch (exp->kind) {
         case RDB_EX_OBJ:
             if (exp->var.obj.kind == RDB_OB_TABLE)
-                return RDB_table_refers(exp->var.obj.var.tbp, tbp);
+                return _RDB_table_refers(exp->var.obj.var.tbp, tbp);
             return RDB_FALSE;
         case RDB_EX_ATTR:
             return RDB_FALSE;
@@ -788,6 +821,74 @@ _RDB_expr_refers(RDB_expression *exp, RDB_table *tbp)
             return (RDB_bool) (exp->var.op.argv[0]->var.obj.var.tbp == tbp);
     }
     /* Should never be reached */
+    abort();
+}
+
+/*
+ * Check if there is some table which both exp and tbp depend on
+ */
+RDB_bool
+_RDB_expr_table_depend(const RDB_expression *exp, RDB_table *tbp)
+{
+    int i;
+
+    switch (tbp->kind) {
+        case RDB_TB_REAL:
+            return _RDB_expr_refers(exp, tbp);
+        case RDB_TB_SELECT:
+            if (_RDB_expr_expr_depend(tbp->var.select.exp, exp))
+                return RDB_TRUE;
+            return _RDB_expr_table_depend(exp, tbp->var.select.tbp);
+        case RDB_TB_UNION:
+            if (_RDB_expr_table_depend(exp, tbp->var._union.tb1p))
+                return RDB_TRUE;
+            return _RDB_expr_table_depend(exp, tbp->var._union.tb2p);
+        case RDB_TB_MINUS:
+            if (_RDB_expr_table_depend(exp, tbp->var.minus.tb1p))
+                return RDB_TRUE;
+            return _RDB_expr_table_depend(exp, tbp->var.minus.tb2p);
+        case RDB_TB_INTERSECT:
+            if (_RDB_expr_table_depend(exp, tbp->var.intersect.tb1p))
+                return RDB_TRUE;
+            return _RDB_expr_table_depend(exp, tbp->var.intersect.tb2p);
+        case RDB_TB_JOIN:
+            if (_RDB_expr_table_depend(exp, tbp->var.join.tb1p))
+                return RDB_TRUE;
+            return _RDB_expr_table_depend(exp, tbp->var.join.tb2p);
+        case RDB_TB_EXTEND:
+            for (i = 0; i < tbp->var.extend.attrc; i++) {
+                if (_RDB_expr_expr_depend(tbp->var.extend.attrv[i].exp, exp))
+                    return RDB_TRUE;
+            }
+            return _RDB_expr_table_depend(exp, tbp->var.extend.tbp);
+        case RDB_TB_PROJECT:
+            return _RDB_expr_table_depend(exp, tbp->var.project.tbp);
+        case RDB_TB_SUMMARIZE:
+            for (i = 0; i < tbp->var.summarize.addc; i++) {
+                if (_RDB_expr_expr_depend(tbp->var.summarize.addv[i].exp, exp))
+                    return RDB_TRUE;
+            }
+            if (_RDB_expr_table_depend(exp, tbp->var.summarize.tb1p))
+                return RDB_TRUE;
+            return _RDB_expr_table_depend(exp, tbp->var.summarize.tb2p);
+        case RDB_TB_RENAME:
+            return _RDB_expr_table_depend(exp, tbp->var.rename.tbp);
+        case RDB_TB_WRAP:
+            return _RDB_expr_table_depend(exp, tbp->var.wrap.tbp);
+        case RDB_TB_UNWRAP:
+            return _RDB_expr_table_depend(exp, tbp->var.unwrap.tbp);
+        case RDB_TB_GROUP:
+            return _RDB_expr_table_depend(exp, tbp->var.group.tbp);
+        case RDB_TB_UNGROUP:
+            return _RDB_expr_table_depend(exp, tbp->var.ungroup.tbp);
+        case RDB_TB_SDIVIDE:
+            if (_RDB_expr_table_depend(exp, tbp->var.sdivide.tb1p))
+                return RDB_TRUE;
+            if (_RDB_expr_table_depend(exp, tbp->var.sdivide.tb2p))
+                return RDB_TRUE;
+            return _RDB_expr_table_depend(exp, tbp->var.sdivide.tb3p);
+    }
+    /* Must never be reached */
     abort();
 }
 

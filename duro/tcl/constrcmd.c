@@ -38,8 +38,7 @@ constraint_create_cmd(TclState *statep, Tcl_Interp *interp, int objc,
 
     ret = Duro_parse_expr_utf(interp, Tcl_GetString(objv[3]), statep, txp,
             &exp);
-    if (ret != RDB_OK) {
-        Duro_dberror(interp, ret);
+    if (ret != TCL_OK) {
         return TCL_ERROR;
     }
 

@@ -8,6 +8,7 @@
 #include "rdb.h"
 #include "typeimpl.h"
 #include "internal.h"
+#include <gen/strfns.h>
 #include <string.h>
 
 int
@@ -119,6 +120,9 @@ cleanup:
 }
 
 static int
+insert(RDB_table *, const RDB_object *tplp, RDB_transaction *);
+
+static int
 insert_union(RDB_table *tbp, const RDB_object *tplp, RDB_transaction *txp)
 {
     int ret, ret2;
@@ -133,12 +137,12 @@ insert_union(RDB_table *tbp, const RDB_object *tplp, RDB_transaction *txp)
      * a predicate violation or (2) if both inserts fail because of
      * a predicate violation.
      */
-    ret = RDB_insert(tbp->var._union.tb1p, tplp, txp);
+    ret = insert(tbp->var._union.tb1p, tplp, txp);
     if (ret != RDB_OK) {
         if (ret != RDB_KEY_VIOLATION && ret != RDB_PREDICATE_VIOLATION)
             return ret;
     }
-    ret2 = RDB_insert(tbp->var._union.tb2p, tplp, txp);
+    ret2 = insert(tbp->var._union.tb2p, tplp, txp);
     if (ret2 != RDB_OK) {
         if (ret2 != RDB_KEY_VIOLATION && ret2 != RDB_PREDICATE_VIOLATION)
             return ret2;
@@ -185,7 +189,7 @@ insert_extend(RDB_table *tbp, const RDB_object *tplp, RDB_transaction *txp)
     /*
      * Insert the tuple (the additional attribute(s) don't do any harm)
      */
-     return RDB_insert(tbp->var.extend.tbp, tplp, txp);
+     return insert(tbp->var.extend.tbp, tplp, txp);
 }
 
 static int
@@ -205,13 +209,13 @@ insert_intersect(RDB_table *tbp, const RDB_object *tup, RDB_transaction *txp)
     if (ret != RDB_OK)
         return ret;
             
-    ret = RDB_insert(tbp->var.intersect.tb1p, tup, &tx);
+    ret = insert(tbp->var.intersect.tb1p, tup, &tx);
     if (ret != RDB_OK && ret != RDB_ELEMENT_EXISTS) {
         RDB_rollback(&tx);
         return ret;
     }
 
-    ret2 = RDB_insert(tbp->var.intersect.tb2p, tup, &tx);
+    ret2 = insert(tbp->var.intersect.tb2p, tup, &tx);
     if (ret2 != RDB_OK && ret2 != RDB_ELEMENT_EXISTS) {
         RDB_rollback(&tx);
         return ret2;
@@ -245,13 +249,13 @@ insert_join(RDB_table *tbp, const RDB_object *tup, RDB_transaction *txp)
     if (ret != RDB_OK)
         return ret;
             
-    ret = RDB_insert(tbp->var.join.tb1p, tup, &tx);
+    ret = insert(tbp->var.join.tb1p, tup, &tx);
     if (ret != RDB_OK && ret != RDB_ELEMENT_EXISTS) {
         RDB_rollback(&tx);
         return ret;
     }
 
-    ret2 = RDB_insert(tbp->var.join.tb2p, tup, &tx);
+    ret2 = insert(tbp->var.join.tb2p, tup, &tx);
     if (ret2 != RDB_OK && ret2 != RDB_ELEMENT_EXISTS) {
         RDB_rollback(&tx);
         return ret2;
@@ -280,7 +284,7 @@ insert_rename(RDB_table *tbp, const RDB_object *tup, RDB_transaction *txp)
     if (ret != RDB_OK)
         goto cleanup;
 
-    ret = RDB_insert(tbp->var.rename.tbp, &tpl, txp);
+    ret = insert(tbp->var.rename.tbp, &tpl, txp);
 
 cleanup:
     RDB_destroy_obj(&tpl);
@@ -299,7 +303,7 @@ insert_wrap(RDB_table *tbp, const RDB_object *tup, RDB_transaction *txp)
     if (ret != RDB_OK)
         goto cleanup;
 
-    ret = RDB_insert(tbp->var.wrap.tbp, &tpl, txp);
+    ret = insert(tbp->var.wrap.tbp, &tpl, txp);
 
 cleanup:
     RDB_destroy_obj(&tpl);
@@ -318,7 +322,7 @@ insert_unwrap(RDB_table *tbp, const RDB_object *tup, RDB_transaction *txp)
     if (ret != RDB_OK)
         goto cleanup;
 
-    ret = RDB_insert(tbp->var.unwrap.tbp, &tpl, txp);
+    ret = insert(tbp->var.unwrap.tbp, &tpl, txp);
 
 cleanup:
     RDB_destroy_obj(&tpl);
@@ -347,7 +351,7 @@ check_insert_empty_real(RDB_table *chtbp, RDB_table *tbp, const RDB_object *tplp
         case RDB_TB_GROUP:
         case RDB_TB_UNGROUP:
         case RDB_TB_SDIVIDE:
-            return (RDB_table_refers(tbp, chtbp)) ? RDB_MAYBE : RDB_OK;
+            return (_RDB_table_refers(tbp, chtbp)) ? RDB_MAYBE : RDB_OK;
     }
     return RDB_OK;
 }
@@ -361,24 +365,54 @@ check_insert_inserted(RDB_table *chtbp, RDB_table *tbp, const RDB_object *tplp,
         RDB_transaction *txp, RDB_object *itplp)
 {
     int ret;
+    int i;
+    RDB_object tpl2;
+    RDB_type *tuptyp;
 
     switch(chtbp->kind) {
         case RDB_TB_REAL:
-             if (chtbp == tbp) {
+            if (chtbp == tbp) {
                  ret = RDB_copy_obj(itplp, tplp);
                  if (ret != RDB_OK)
                      return ret;
                  return RDB_TUPLE_INSERTED;
             }
-            return RDB_table_refers(tbp, chtbp) ? RDB_MAYBE : RDB_OK;
+            return _RDB_table_refers(tbp, chtbp) ? RDB_MAYBE : RDB_OK;
+        case RDB_TB_PROJECT:
+            RDB_init_obj(&tpl2);
+            ret = check_insert_inserted(chtbp->var.project.tbp, tbp, tplp,
+                    txp, &tpl2);
+            switch (ret) {
+                case RDB_OK:
+                case RDB_MAYBE:
+                case RDB_PREDICATE_VIOLATION:
+                    break;
+                case RDB_TUPLE_INSERTED:
+                    /* Copy attributes */
+                    tuptyp = chtbp->var.project.tbp->typ->var.basetyp;
+                    for (i = 0; i < tuptyp->var.tuple.attrc; i++) {
+                        ret = RDB_tuple_set(itplp,
+                                tuptyp->var.tuple.attrv[i].name,
+                                RDB_tuple_get(&tpl2,
+                                        tuptyp->var.tuple.attrv[i].name));
+                        if (ret != RDB_OK) {
+                            RDB_destroy_obj(&tpl2);
+                            return ret;
+                        }
+                    }
+                    ret = RDB_TUPLE_INSERTED;
+                    break;
+                default: ;
+            }
+            RDB_destroy_obj(&tpl2);
+            return ret;                    
+        case RDB_TB_RENAME:
+        case RDB_TB_EXTEND:
         case RDB_TB_SELECT:
         case RDB_TB_UNION:
         case RDB_TB_INTERSECT:
         case RDB_TB_JOIN:
-        case RDB_TB_EXTEND:
-        case RDB_TB_PROJECT:
         case RDB_TB_SUMMARIZE:
-        case RDB_TB_RENAME:
         case RDB_TB_WRAP:
         case RDB_TB_UNWRAP:
         case RDB_TB_MINUS:
@@ -427,6 +461,113 @@ check_insert_empty_select(RDB_table *chtbp, RDB_table *tbp, const RDB_object *tp
     return ret;
 }
 
+/*
+ * Check if inserting a tuple into tbp deletes a tuple from chtbp.
+ * May return RDB_OK or RDB_MAYBE.
+ */
+static int
+check_insert_deleted(RDB_table *chtbp, RDB_table *tbp, RDB_transaction *txp)
+{
+    switch(chtbp->kind) {
+        case RDB_TB_REAL:
+            return RDB_OK;
+        case RDB_TB_RENAME:
+            return check_insert_deleted(chtbp->var.rename.tbp, tbp, txp);
+        case RDB_TB_EXTEND:
+            return check_insert_deleted(chtbp->var.extend.tbp, tbp, txp);
+        case RDB_TB_SELECT:
+            return check_insert_deleted(chtbp->var.select.tbp, tbp, txp);
+        case RDB_TB_PROJECT:
+            return check_insert_deleted(chtbp->var.project.tbp, tbp, txp);
+        case RDB_TB_WRAP:
+            return check_insert_deleted(chtbp->var.wrap.tbp, tbp, txp);
+        case RDB_TB_UNWRAP:
+            return check_insert_deleted(chtbp->var.unwrap.tbp, tbp, txp);
+        case RDB_TB_GROUP:
+            return check_insert_deleted(chtbp->var.group.tbp, tbp, txp);
+        case RDB_TB_UNGROUP:
+            return check_insert_deleted(chtbp->var.ungroup.tbp, tbp, txp);
+        case RDB_TB_UNION:
+        case RDB_TB_INTERSECT:
+        case RDB_TB_JOIN:
+        case RDB_TB_SUMMARIZE:
+        case RDB_TB_MINUS:
+        case RDB_TB_SDIVIDE:
+            return RDB_MAYBE;
+    }
+    abort();
+}
+
+static int
+check_insert_empty_minus(RDB_table *chtbp, RDB_table *tbp,
+        const RDB_object *tplp, RDB_transaction *txp)
+{
+    int ret;
+    RDB_object tpl1;
+    RDB_object tpl2;
+    RDB_bool iseq;
+
+    /*
+     * Check if the insert may delete tuples from table #2
+     */
+    ret = check_insert_deleted(chtbp->var.minus.tb2p, tbp, txp);
+    if (ret == RDB_PREDICATE_VIOLATION || ret == RDB_MAYBE)
+        return RDB_MAYBE;
+    if (ret != RDB_OK)
+        return ret;
+
+    RDB_init_obj(&tpl1);
+    ret = check_insert_inserted(chtbp->var.minus.tb1p, tbp, tplp, txp, &tpl1);
+    switch (ret) {
+        case RDB_OK:
+        case RDB_MAYBE:
+            break;
+        case RDB_PREDICATE_VIOLATION:
+            /*
+             * Tuples will be inserted into table #1, but is is not known
+             * which ones. The may have been inserted into table #2 too.
+             */
+            ret = RDB_MAYBE;
+            break;
+        case RDB_TUPLE_INSERTED:
+            /*
+             * Tuple tpl1 will be inserted into table #1.
+             * Check if it is already in table #2.
+             */
+             ret = RDB_table_contains(chtbp->var.minus.tb2p, &tpl1, txp);
+             if (ret == RDB_OK || ret != RDB_NOT_FOUND)
+                 break;
+            /*
+             * Check if it will be inserted into table #2 too.
+             */
+            RDB_init_obj(&tpl2);
+            ret = check_insert_inserted(chtbp->var.minus.tb2p, tbp, tplp,
+                    txp, &tpl2);
+            switch (ret) {
+                case RDB_OK:
+                    ret = RDB_PREDICATE_VIOLATION;
+                    break;
+                case RDB_MAYBE:
+                case RDB_PREDICATE_VIOLATION:
+                    ret = RDB_MAYBE;
+                    break;
+                case RDB_TUPLE_INSERTED:
+                    /* Compare tuples */
+                    ret = RDB_obj_equals(&tpl1, &tpl2, txp, &iseq);
+                    if (ret != RDB_OK)
+                        break;
+                    ret = iseq ? RDB_OK : RDB_PREDICATE_VIOLATION;
+                    break;
+                default: ;
+            }
+            RDB_destroy_obj(&tpl2);
+            break;
+        default: ;
+    }
+    RDB_destroy_obj(&tpl1);
+    return ret;
+}
+
 static int
 check_insert_empty(RDB_table *chtbp, RDB_table *tbp, const RDB_object *tplp,
         RDB_transaction *txp)
@@ -435,95 +576,40 @@ check_insert_empty(RDB_table *chtbp, RDB_table *tbp, const RDB_object *tplp,
         return RDB_PREDICATE_VIOLATION;
     switch (chtbp->kind) {
         case RDB_TB_REAL:
-           return check_insert_empty_real(chtbp, tbp, tplp, txp);
+            return check_insert_empty_real(chtbp, tbp, tplp, txp);
         case RDB_TB_SELECT:
-           return check_insert_empty_select(chtbp, tbp, tplp, txp);
+            return check_insert_empty_select(chtbp, tbp, tplp, txp);
+        case RDB_TB_RENAME:
+            return check_insert_empty(chtbp->var.rename.tbp, tbp, tplp, txp);
+        case RDB_TB_EXTEND:
+            return check_insert_empty(chtbp->var.extend.tbp, tbp, tplp, txp);
+        case RDB_TB_MINUS:
+            return check_insert_empty_minus(chtbp, tbp, tplp, txp);
+        case RDB_TB_WRAP:
+            return check_insert_empty(chtbp->var.wrap.tbp, tbp, tplp, txp);
+        case RDB_TB_UNWRAP:
+            return check_insert_empty(chtbp->var.unwrap.tbp, tbp, tplp, txp);
+        case RDB_TB_GROUP:
+            return check_insert_empty(chtbp->var.group.tbp, tbp, tplp, txp);
+        case RDB_TB_UNGROUP:
+            return check_insert_empty(chtbp->var.ungroup.tbp, tbp, tplp, txp);
         case RDB_TB_UNION:
         case RDB_TB_INTERSECT:
         case RDB_TB_JOIN:
-        case RDB_TB_EXTEND:
         case RDB_TB_PROJECT:
         case RDB_TB_SUMMARIZE:
-        case RDB_TB_RENAME:
-        case RDB_TB_WRAP:
-        case RDB_TB_UNWRAP:
-        case RDB_TB_MINUS:
-        case RDB_TB_GROUP:
-        case RDB_TB_UNGROUP:
         case RDB_TB_SDIVIDE:
             return RDB_MAYBE;
     }
     abort();
 }
 
-int
-RDB_insert(RDB_table *tbp, const RDB_object *tplp, RDB_transaction *txp)
+static int
+insert(RDB_table *tbp, const RDB_object *tplp, RDB_transaction *txp)
 {
     int ret;
-    int i;
     RDB_bool b;
-    RDB_dbroot *dbrootp;
-    RDB_constraint *constrp;
-    RDB_transaction tx;
-    int ccount = 0;
-    RDB_bool *checkv = NULL;
-    RDB_bool need_subtx = RDB_FALSE;
 
-    if (txp != NULL && !RDB_tx_is_running(txp))
-        return RDB_INVALID_TRANSACTION;
-
-    if (txp != NULL) {
-        dbrootp = RDB_tx_db(txp)->dbrootp;
-
-        ccount = _RDB_constraint_count(dbrootp);
-        if (ccount > 0) {
-            checkv = malloc(ccount * sizeof (RDB_bool));
-            if (checkv == NULL)
-                return RDB_NO_MEMORY;
-        }
-
-        if (!dbrootp->constraints_read) {
-            ret = _RDB_read_constraints(txp);
-            if (ret != RDB_OK) {
-                free(checkv);
-                return ret;
-            }
-            dbrootp->constraints_read = RDB_TRUE;
-        }
-
-        /*
-         * Identify the constraints which must be checked
-         */
-        constrp = dbrootp->first_constrp;
-        for (i = 0; i < ccount; i++) {
-            if (constrp->empty_tbp != NULL) {
-                ret = check_insert_empty(constrp->empty_tbp, tbp, tplp, txp);
-                if (ret == RDB_PREDICATE_VIOLATION) {
-                    free(checkv);
-                    return RDB_PREDICATE_VIOLATION;
-                }
-                checkv[i] = (RDB_bool) (ret == RDB_MAYBE);
-            } else {
-                checkv[i] = RDB_TRUE;
-            }
-            if (checkv[i])
-                need_subtx = RDB_TRUE;
-            constrp = constrp->nextp;
-        }
-
-        if (need_subtx) {
-            ret = RDB_begin_tx(&tx, RDB_tx_db(txp), txp);
-            if (ret != RDB_OK) {
-                free(checkv);
-                return ret;
-            }
-            txp = &tx;
-        }
-    }
-
-    /*
-     * Execute insert
-     */
     switch (tbp->kind) {
         case RDB_TB_REAL:
             ret = _RDB_insert_real(tbp, tplp, txp);
@@ -536,7 +622,7 @@ RDB_insert(RDB_table *tbp, const RDB_object *tplp, RDB_transaction *txp)
                 ret = RDB_PREDICATE_VIOLATION;
                 break;
             }
-            ret = RDB_insert(tbp->var.select.tbp, tplp, txp);
+            ret = insert(tbp->var.select.tbp, tplp, txp);
             break;
         case RDB_TB_MINUS:
             ret = RDB_NOT_SUPPORTED;
@@ -554,7 +640,7 @@ RDB_insert(RDB_table *tbp, const RDB_object *tplp, RDB_transaction *txp)
             ret = insert_extend(tbp, tplp, txp);
             break;
         case RDB_TB_PROJECT:
-            ret = RDB_insert(tbp->var.project.tbp, tplp, txp);
+            ret = insert(tbp->var.project.tbp, tplp, txp);
             break;
         case RDB_TB_SUMMARIZE:
             ret = RDB_NOT_SUPPORTED;
@@ -574,39 +660,107 @@ RDB_insert(RDB_table *tbp, const RDB_object *tplp, RDB_transaction *txp)
             ret = RDB_NOT_SUPPORTED;
             break;
     }
+    return ret;
+}
+
+int
+RDB_insert(RDB_table *tbp, const RDB_object *tplp, RDB_transaction *txp)
+{
+    int ret;
+    RDB_dbroot *dbrootp;
+    RDB_constraint *constrp;
+    RDB_transaction tx;
+    RDB_constraint *checklistp = NULL;
+    RDB_bool need_subtx = RDB_FALSE;
+
+    if (txp != NULL && !RDB_tx_is_running(txp))
+        return RDB_INVALID_TRANSACTION;
+
+    if (txp != NULL) {
+        dbrootp = RDB_tx_db(txp)->dbrootp;
+
+        if (!dbrootp->constraints_read) {
+            ret = _RDB_read_constraints(txp);
+            if (ret != RDB_OK) {
+                return ret;
+            }
+            dbrootp->constraints_read = RDB_TRUE;
+        }
+
+        /*
+         * Identify the constraints which must be checked
+         * and insert them into a list
+         */
+        constrp = dbrootp->first_constrp;
+        while (constrp != NULL) {
+            RDB_bool check;
+            RDB_constraint *chconstrp;
+
+            if (constrp->empty_tbp != NULL) {
+                ret = check_insert_empty(constrp->empty_tbp, tbp, tplp, txp);
+                if (ret != RDB_OK && ret != RDB_MAYBE)
+                    goto cleanup;
+                check = (RDB_bool) (ret == RDB_MAYBE);
+            } else {
+                /* Check if constrp->exp and tbp depend on the same table(s) */
+                check = _RDB_expr_table_depend(constrp->exp, tbp);
+            }
+            if (check) {
+                need_subtx = RDB_TRUE;
+                chconstrp = malloc(sizeof(RDB_constraint));
+                if (chconstrp == NULL) {
+                    ret = RDB_NO_MEMORY;
+                    goto cleanup;
+                }
+                chconstrp->name = RDB_dup_str(constrp->name);
+                if (chconstrp->name == NULL) {
+                    ret = RDB_NO_MEMORY;
+                    goto cleanup;
+                }
+                chconstrp->exp = constrp->exp;
+                chconstrp->empty_tbp = constrp->empty_tbp;
+                chconstrp->nextp = checklistp;
+                checklistp = chconstrp;
+            }                
+            constrp = constrp->nextp;
+        }
+
+        if (need_subtx) {
+            ret = RDB_begin_tx(&tx, RDB_tx_db(txp), txp);
+            if (ret != RDB_OK) {
+                goto cleanup;
+            }
+            txp = &tx;
+        }
+    }
+
+    ret = insert(tbp, tplp, txp);
     if (ret != RDB_OK) {
-        free(checkv);
         if (need_subtx)
             RDB_rollback(&tx);
-        return ret;
+        goto cleanup;
     }
 
     /*
-     * Check constraints, if necessary
+     * Check constraints in list
      */
     if (txp != NULL) {
-        constrp = dbrootp->first_constrp;
-        for (i = 0; i < ccount; i++) {
-            if (checkv[i]) {
-                ret = RDB_evaluate_bool(constrp->exp, NULL, txp, &b);
-                if (ret != RDB_OK) {
-                    free(checkv);
-                    if (need_subtx)
-                        RDB_rollback(&tx);
-                    return ret;
-                }
-                if (!b) {
-                    free(checkv);
-                    if (need_subtx)
-                        RDB_rollback(&tx);
-                    return RDB_PREDICATE_VIOLATION;
-                }
-            }
-            constrp = constrp->nextp;
+        ret = _RDB_check_constraints(checklistp, txp);
+        if (ret != RDB_OK) {
+            if (need_subtx)
+                RDB_rollback(&tx);
+            goto cleanup;
         }
     }
-    free(checkv);
-    if (need_subtx)
-        return RDB_commit(&tx);
-    return RDB_OK;
+    ret = need_subtx ? RDB_commit(&tx) : RDB_OK;
+
+cleanup:
+    while (checklistp != NULL) {
+        RDB_constraint *nextp = checklistp->nextp;
+
+        free(checklistp->name);
+        free(checklistp);
+        checklistp = nextp;
+    }
+    return ret;
 }

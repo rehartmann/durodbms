@@ -1,13 +1,14 @@
 /*
- * Copyright (C) 2004 René Hartmann.
+ * $Id$
+ *
+ * Copyright (C) 2004-2005 René Hartmann.
  * See the file COPYING for redistribution information.
  */
-
-/* $Id$ */
 
 #include "rdb.h"
 #include "typeimpl.h"
 #include "internal.h"
+#include <gen/strfns.h>
 #include <string.h>
 
 static int
@@ -388,11 +389,74 @@ delete(RDB_table *tbp, RDB_expression *condp, RDB_transaction *txp)
     abort();
 }
 
+static int
+check_delete_empty_real(RDB_table *chtbp, RDB_table *tbp, RDB_transaction *txp)
+{
+    switch (tbp->kind) {
+        case RDB_TB_REAL:
+            return chtbp == tbp ? RDB_MAYBE : RDB_OK;
+        case RDB_TB_SELECT:
+        case RDB_TB_RENAME:
+        case RDB_TB_EXTEND:
+        case RDB_TB_MINUS:
+        case RDB_TB_WRAP:
+        case RDB_TB_UNWRAP:
+        case RDB_TB_GROUP:
+        case RDB_TB_UNGROUP:
+        case RDB_TB_UNION:
+        case RDB_TB_INTERSECT:
+        case RDB_TB_JOIN:
+        case RDB_TB_PROJECT:
+        case RDB_TB_SUMMARIZE:
+        case RDB_TB_SDIVIDE:
+            return _RDB_table_refers(tbp, chtbp) ? RDB_MAYBE : RDB_OK;
+    }
+    abort();
+}
+
+static int
+check_delete_empty(RDB_table *chtbp, RDB_table *tbp, RDB_transaction *txp)
+{
+    switch (chtbp->kind) {
+        case RDB_TB_REAL:
+            return check_delete_empty_real(chtbp, tbp, txp);
+        case RDB_TB_SELECT:
+            return check_delete_empty(chtbp->var.rename.tbp, tbp, txp);
+        case RDB_TB_RENAME:
+            return check_delete_empty(chtbp->var.rename.tbp, tbp, txp);
+        case RDB_TB_EXTEND:
+            return check_delete_empty(chtbp->var.extend.tbp, tbp, txp);
+        case RDB_TB_MINUS:
+            return RDB_MAYBE;
+        case RDB_TB_WRAP:
+            return check_delete_empty(chtbp->var.wrap.tbp, tbp, txp);
+        case RDB_TB_UNWRAP:
+            return check_delete_empty(chtbp->var.unwrap.tbp, tbp, txp);
+        case RDB_TB_GROUP:
+            return check_delete_empty(chtbp->var.group.tbp, tbp, txp);
+        case RDB_TB_UNGROUP:
+            return check_delete_empty(chtbp->var.ungroup.tbp, tbp, txp);
+        case RDB_TB_UNION:
+        case RDB_TB_INTERSECT:
+        case RDB_TB_JOIN:
+        case RDB_TB_PROJECT:
+        case RDB_TB_SUMMARIZE:
+        case RDB_TB_SDIVIDE:
+            return RDB_MAYBE;
+    }
+    abort();
+}
+
 int
 RDB_delete(RDB_table *tbp, RDB_expression *condp, RDB_transaction *txp)
 {
     int ret;
     RDB_table *ntbp;
+    RDB_dbroot *dbrootp;
+    RDB_constraint *constrp;
+    RDB_transaction tx;
+    RDB_constraint *checklistp = NULL;
+    RDB_bool need_subtx = RDB_FALSE;
 
     if (!RDB_tx_is_running(txp))
         return RDB_INVALID_TRANSACTION;
@@ -417,11 +481,86 @@ RDB_delete(RDB_table *tbp, RDB_expression *condp, RDB_transaction *txp)
         return ret;
     }
 
+    dbrootp = RDB_tx_db(txp)->dbrootp;
+
+    if (!dbrootp->constraints_read) {
+        ret = _RDB_read_constraints(txp);
+        if (ret != RDB_OK) {
+            return ret;
+        }
+        dbrootp->constraints_read = RDB_TRUE;
+    }
+
+    /*
+     * Identify the constraints which must be checked
+     * and insert them into a list
+     */
+    constrp = dbrootp->first_constrp;
+    while (constrp != NULL) {
+        RDB_bool check;
+        RDB_constraint *chconstrp;
+
+        if (constrp->empty_tbp != NULL) {
+            ret = check_delete_empty(constrp->empty_tbp, tbp, txp);
+            if (ret != RDB_OK && ret != RDB_MAYBE) {
+                goto cleanup;
+            }
+            check = (RDB_bool) (ret == RDB_MAYBE);
+        } else {
+            /* Check if constrp->exp and tbp depend on the same table(s) */
+            check = _RDB_expr_table_depend(constrp->exp, tbp);
+        }
+        if (check) {
+            need_subtx = RDB_TRUE;
+            chconstrp = malloc(sizeof(RDB_constraint));
+            if (chconstrp == NULL) {
+                ret = RDB_NO_MEMORY;
+                goto cleanup;
+            }
+            chconstrp->name = RDB_dup_str(constrp->name);
+            if (chconstrp->name == NULL) {
+                ret = RDB_NO_MEMORY;
+                goto cleanup;
+            }
+            chconstrp->exp = constrp->exp;
+            chconstrp->empty_tbp = constrp->empty_tbp;
+            chconstrp->nextp = checklistp;
+            checklistp = chconstrp;
+        }                
+        constrp = constrp->nextp;
+    }
+
+    if (need_subtx) {
+        ret = RDB_begin_tx(&tx, RDB_tx_db(txp), txp);
+        if (ret != RDB_OK) {
+            goto cleanup;
+        }
+        txp = &tx;
+    }
     ret = delete(ntbp, NULL, txp);
-    if (ret == RDB_OK) {
-        if (ntbp->kind != RDB_TB_REAL)
-            ret = RDB_drop_table(ntbp, txp);
-        ntbp = NULL;
+    if (ret != RDB_OK)
+        goto cleanup;
+
+    /*
+     * Check constraints in list
+     */
+    if (txp != NULL) {
+        ret = _RDB_check_constraints(checklistp, txp);
+        if (ret != RDB_OK) {
+            if (need_subtx)
+                RDB_rollback(&tx);
+            goto cleanup;
+        }
+    }
+    ret = need_subtx ? RDB_commit(&tx) : RDB_OK;
+
+cleanup:
+    while (checklistp != NULL) {
+        RDB_constraint *nextp = checklistp->nextp;
+
+        free(checklistp->name);
+        free(checklistp);
+        checklistp = nextp;
     }
 
     if (condp != NULL)

@@ -1,9 +1,9 @@
 /*
+ * $Id$
+ *
  * Copyright (C) 2003-2005 René Hartmann.
  * See the file COPYING for redistribution information.
  */
-
-/* $Id$ */
 
 #include "duro.h"
 #include <rel/internal.h>
@@ -445,7 +445,7 @@ table_drop_cmd(TclState *statep, Tcl_Interp *interp, int objc,
         while (entryp != NULL) {
             table_entry *iep = (table_entry *) Tcl_GetHashValue(entryp);
 
-            if (iep->tablep != tbp && RDB_table_refers(iep->tablep, tbp)) {
+            if (iep->tablep != tbp && _RDB_table_refers(iep->tablep, tbp)) {
                 Tcl_AppendResult(interp, "Cannot drop table ", tbp->name,
                         ": ", iep->tablep->name, " depends on it", NULL);
                 return TCL_ERROR;
@@ -993,7 +993,7 @@ table_rename_cmd(TclState *statep, Tcl_Interp *interp, int objc,
         while (entryp != NULL) {
             table_entry *iep = (table_entry *) Tcl_GetHashValue(entryp);
 
-            if (iep->tablep != tbp && RDB_table_refers(iep->tablep, tbp)) {
+            if (iep->tablep != tbp && _RDB_table_refers(iep->tablep, tbp)) {
                 Tcl_AppendResult(interp, "Cannot rename table ", tbp->name,
                         ": ", iep->tablep->name, " depends on it", NULL);
                 return TCL_ERROR;

@@ -20,16 +20,15 @@ set dbenv [duro::env open tests/dbenv]
 # Create Database
 duro::db create $dbenv TEST
 
-#
-# Perform test with table with integer key
-#
-
 set tx [duro::begin $dbenv TEST]
 
 # Create table
 duro::table create T {
    {A STRING}
+   {B STRING}
 } {{A}} $tx
+
+duro::index create TIX T {B asc} $tx
 
 duro::commit $tx
 

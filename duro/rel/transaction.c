@@ -243,3 +243,13 @@ _RDB_del_index(RDB_transaction *txp, RDB_index *ixp)
     
     return RDB_OK;
 }
+
+int
+_RDB_handle_syserr(RDB_transaction *txp, int err)
+{
+    if (err == DB_LOCK_DEADLOCK) {
+        RDB_rollback_all(txp);
+        err = RDB_DEADLOCK; /* !! */
+    }
+    return err;
+}
