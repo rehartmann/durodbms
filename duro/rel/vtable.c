@@ -109,7 +109,7 @@ _RDB_select(RDB_table *tbp, RDB_expression *condp, RDB_table **resultpp)
     newtbp->kind = RDB_TB_SELECT;
     newtbp->var.select.tbp = tbp;
     newtbp->var.select.exp = condp;
-    newtbp->var.select.indexp = NULL;
+    newtbp->var.select.objpc = 0;
     *resultpp = newtbp;
 
     return RDB_OK;
@@ -276,7 +276,6 @@ RDB_join(RDB_table *tb1p, RDB_table *tb2p, RDB_table **resultpp)
     newtbp->is_persistent = RDB_FALSE;
     newtbp->var.join.tb1p = tb1p;
     newtbp->var.join.tb2p = tb2p;
-    newtbp->var.join.indexp = NULL;
 
     ret = RDB_join_relation_types(tb1p->typ, tb2p->typ, &newtbp->typ);
     if (ret != RDB_OK) {
@@ -390,6 +389,7 @@ RDB_project(RDB_table *tbp, int attrc, char *attrv[], RDB_table **resultpp)
     newtbp->is_persistent = RDB_FALSE;
     newtbp->kind = RDB_TB_PROJECT;
     newtbp->var.project.tbp = tbp;
+    newtbp->var.project.indexp = NULL;
     newtbp->keyv = NULL;
 
     /* Create type */
@@ -517,6 +517,7 @@ RDB_summarize(RDB_table *tb1p, RDB_table *tb2p, int addc,
         newtbp->var.summarize.addv[i].name = NULL;
         if (addv[i].op == RDB_AVG)
             avgc++;
+        newtbp->var.summarize.addv[i].exp = NULL;
     }
     avgv = malloc(avgc * sizeof(char *));
     for (i = 0; i < avgc; i++)
@@ -1086,13 +1087,14 @@ dup_select(RDB_table *tbp)
     if (ret != RDB_OK)
         return NULL;
 
-    if (tbp->var.select.indexp != NULL) {
-         ntbp->var.select.objpv = _RDB_index_objpv(tbp->var.select.indexp,
+    if (tbp->var.select.tbp->kind == RDB_TB_PROJECT
+            && tbp->var.select.tbp->var.project.indexp != NULL) {
+        ntbp->var.select.objpv = _RDB_index_objpv(
+                tbp->var.select.tbp->var.project.indexp,
                 exp, ntbp->typ, tbp->var.select.objpc, tbp->var.select.all_eq,
                 tbp->var.select.asc);
         if (ntbp->var.select.objpv == NULL)
             return NULL;
-        ntbp->var.select.indexp = tbp->var.select.indexp;
         ntbp->var.select.objpc = tbp->var.select.objpc;
         ntbp->var.select.all_eq = tbp->var.select.all_eq;
         ntbp->var.select.asc = tbp->var.select.asc;
@@ -1159,7 +1161,6 @@ _RDB_dup_vtable(RDB_table *tbp)
             ret = RDB_join(tb1p, tb2p, &ntbp);
             if (ret != RDB_OK)
                 return NULL;
-            ntbp->var.join.indexp = tbp->var.join.indexp;
             return ntbp;
         case RDB_TB_EXTEND:
             return dup_extend(tbp);
@@ -1177,11 +1178,12 @@ _RDB_dup_vtable(RDB_table *tbp)
             for (i = 0; i < attrc; i++) {
                 attrnamev[i] = tbp->typ->var.basetyp->var.tuple.attrv[i].name;
             }
-            ret = RDB_project(tb1p, attrc, attrnamev, &tbp);
+            ret = RDB_project(tb1p, attrc, attrnamev, &ntbp);
             free(attrnamev);
             if (ret != RDB_OK)
                 return NULL;
-            return tbp;
+            ntbp->var.project.indexp = tbp->var.project.indexp;
+            return ntbp;
         }
         case RDB_TB_SUMMARIZE:
             return dup_summarize(tbp);

@@ -229,7 +229,7 @@ transform_select(RDB_table *tbp)
                 chtbp->kind = RDB_TB_SELECT;
                 chtbp->var.select.tbp = htbp;
                 chtbp->var.select.exp = exp;
-                chtbp->var.select.indexp = NULL;
+                chtbp->var.select.objpc = 0;
 
                 /* Keys may have changed, so delete them */
                 del_keys(chtbp);
@@ -266,7 +266,7 @@ transform_select(RDB_table *tbp)
                 chtbp->kind = RDB_TB_SELECT;
                 chtbp->var.select.tbp = htbp;
                 chtbp->var.select.exp = exp;
-                chtbp->var.select.indexp = NULL;
+                chtbp->var.select.objpc = 0;
 
                 ret = transform_select(newtbp);
                 if (ret != RDB_OK)
@@ -307,7 +307,7 @@ transform_select(RDB_table *tbp)
                 chtbp->kind = RDB_TB_SELECT;
                 chtbp->var.select.tbp = htbp;
                 chtbp->var.select.exp = exp;
-                chtbp->var.select.indexp = NULL;
+                chtbp->var.select.objpc = 0;
 
                 ret = transform_select(newtbp);
                 if (ret != RDB_OK)
@@ -340,7 +340,7 @@ transform_select(RDB_table *tbp)
                 chtbp->kind = RDB_TB_SELECT;
                 chtbp->var.select.tbp = htbp;
                 chtbp->var.select.exp = exp;
-                chtbp->var.select.indexp = NULL;
+                chtbp->var.select.objpc = 0;
 
                 ret = copy_type(chtbp, htbp);
                 if (ret != RDB_OK)
@@ -373,7 +373,7 @@ transform_select(RDB_table *tbp)
                 chtbp->kind = RDB_TB_SELECT;
                 chtbp->var.select.tbp = htbp;
                 chtbp->var.select.exp = exp;
-                chtbp->var.select.indexp = NULL;
+                chtbp->var.select.objpc = 0;
 
                 ret = copy_type(chtbp, htbp);
                 if (ret != RDB_OK)
@@ -444,6 +444,7 @@ swap_project_union(RDB_table *tbp, RDB_table *chtbp)
     /* Alter child #1 */
     chtbp->kind = RDB_TB_PROJECT;
     chtbp->var.project.tbp = htbp;
+    chtbp->var.project.indexp = NULL;
     ret = RDB_project_relation_type(chtbp->typ, attrc, attrnamev, &newtyp);
     free(attrnamev);
     if (ret != RDB_OK) {
@@ -506,6 +507,7 @@ swap_project_rename(RDB_table *tbp, RDB_table *chtbp)
     }
     chtbp->kind = RDB_TB_PROJECT;
     chtbp->var.project.tbp = htbp;
+    chtbp->var.project.indexp = NULL;
 
     attrnamev = malloc(nattrc * sizeof(char *));
     if (attrnamev == NULL)

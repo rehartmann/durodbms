@@ -141,7 +141,7 @@ delete_select_uindex(RDB_table *tbp, RDB_expression *condp,
          * Read tuple and check condition
          */
         ret = _RDB_get_by_uindex(tbp->var.select.tbp->var.project.tbp,
-                tbp->var.select.objpv, tbp->var.select.indexp,
+                tbp->var.select.objpv, tbp->var.select.tbp->var.project.indexp,
                 tbp->typ->var.basetyp, txp, &tpl);
         if (ret != RDB_OK) {
             RDB_destroy_obj(&tpl);
@@ -157,7 +157,8 @@ delete_select_uindex(RDB_table *tbp, RDB_expression *condp,
     }
 
     ret = delete_by_uindex(tbp->var.select.tbp->var.project.tbp,
-            tbp->var.select.objpv, tbp->var.select.indexp, txp);
+            tbp->var.select.objpv, tbp->var.select.tbp->var.project.indexp,
+            txp);
     if (ret == RDB_NOT_FOUND)
         ret = RDB_OK;
 
@@ -174,10 +175,11 @@ delete_select_index(RDB_table *tbp, RDB_expression *condp,
     int flags;
     RDB_cursor *curp = NULL;
     RDB_field *fv = NULL;
-    int keylen = tbp->var.select.indexp->attrc;
+    _RDB_tbindex *indexp = tbp->var.select.tbp->var.project.indexp;
+    int keylen = indexp->attrc;
 
-    ret = RDB_index_cursor(&curp, tbp->var.select.indexp->idxp,
-            RDB_TRUE, tbp->var.select.tbp->var.project.tbp->is_persistent ?
+    ret = RDB_index_cursor(&curp, indexp->idxp, RDB_TRUE,
+            tbp->var.select.tbp->var.project.tbp->is_persistent ?
             txp->txid : NULL);
     if (ret != RDB_OK) {
         if (txp != NULL) {
@@ -199,7 +201,7 @@ delete_select_index(RDB_table *tbp, RDB_expression *condp,
             goto cleanup;
     }
 
-    if (tbp->var.select.objpc != tbp->var.select.indexp->attrc
+    if (tbp->var.select.objpc != indexp->attrc
             || !tbp->var.select.all_eq)
         flags = RDB_REC_RANGE;
     else
@@ -223,7 +225,7 @@ delete_select_index(RDB_table *tbp, RDB_expression *condp,
          * Read tuple and check condition
          */
         ret = _RDB_get_by_cursor(tbp->var.select.tbp->var.project.tbp,
-                curp, &tpl);
+                curp, tbp->typ->var.basetyp, &tpl);
         if (ret != RDB_OK) {
             RDB_destroy_obj(&tpl);
             goto cleanup;
@@ -260,7 +262,7 @@ delete_select_index(RDB_table *tbp, RDB_expression *condp,
                 goto cleanup;
         }
 
-        if (tbp->var.select.objpc == tbp->var.select.indexp->attrc
+        if (tbp->var.select.objpc == indexp->attrc
                 && tbp->var.select.all_eq)
             flags = RDB_REC_DUP;
         else
@@ -329,7 +331,9 @@ delete(RDB_table *tbp, RDB_expression *condp, RDB_transaction *txp)
                 return ret;
             return delete(tbp->var.intersect.tb2p, condp, txp);
         case RDB_TB_SELECT:
-            if (tbp->var.select.indexp == NULL)
+            if (tbp->var.select.tbp->kind != RDB_TB_PROJECT
+                    || tbp->var.select.tbp->var.project.indexp == NULL
+                    || tbp->var.select.objpc == 0)
             {
                 RDB_expression *ncondp = NULL;
 
@@ -344,7 +348,7 @@ delete(RDB_table *tbp, RDB_expression *condp, RDB_transaction *txp)
                 free(ncondp);
                 return ret;
             } else {
-                if (tbp->var.select.indexp->unique)
+                if (tbp->var.select.tbp->var.project.indexp->unique)
                     return delete_select_uindex(tbp, condp, txp);
                 return delete_select_index(tbp, condp, txp);
             }

@@ -34,17 +34,17 @@ RDB_table_to_array(RDB_object *arrp, RDB_table *tbp,
     arrp->var.arr.pos = 0;
 
     if (seqitc > 0) {
-        indexp = _RDB_sortindex(arrp->var.arr.tbp, seqitc, seqitv);
-        if (indexp == NULL) {
+        indexp = _RDB_sortindex(arrp->var.arr.tbp);
+        if (indexp == NULL || !_RDB_index_sorts(indexp, seqitc, seqitv)) {
             /* Create sorter */
             ret = _RDB_sorter(arrp->var.arr.tbp, &arrp->var.arr.qrp, txp,
-                seqitc, seqitv);
+                    seqitc, seqitv);
             if (ret != RDB_OK)
                 return ret;
         }
     }
     if (arrp->var.arr.qrp == NULL) {
-        ret = _RDB_table_qresult(arrp->var.arr.tbp, indexp, arrp->var.arr.txp,
+        ret = _RDB_table_qresult(arrp->var.arr.tbp, arrp->var.arr.txp,
                 &arrp->var.arr.qrp);
         if (ret != RDB_OK) {
             arrp->var.arr.qrp = NULL;

@@ -631,7 +631,7 @@ _RDB_cat_delete(RDB_table *tbp, RDB_transaction *txp)
     else
         return delete_vtable(tbp, txp);
 }
-
+#include <signal.h>
 /*
  * Read table indexes from catalog
  */

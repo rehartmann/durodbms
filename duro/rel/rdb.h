@@ -233,7 +233,7 @@ typedef struct RDB_table {
 
     int refcount;
     RDB_bool optimized; /* virtual tables only */
-    int est_cardinality;
+
     union {
         struct {
             RDB_recmap *recmapp;
@@ -242,7 +242,6 @@ typedef struct RDB_table {
             /* Table indexes */
             int indexc;
             struct _RDB_tbindex *indexv;
-
             int est_cardinality; /* estimated cardinality (from statistics) */
         } real;
         struct {
@@ -253,7 +252,7 @@ typedef struct RDB_table {
             struct RDB_table *tbp;
             RDB_expression *exp;
 
-            struct _RDB_tbindex *indexp;
+            /* struct _RDB_tbindex *indexp; !! */
 
             /* Only used if indexp != NULL */
             RDB_object **objpv;
@@ -277,7 +276,6 @@ typedef struct RDB_table {
         struct {
             struct RDB_table *tb1p;
             struct RDB_table *tb2p;
-            struct _RDB_tbindex *indexp;
         } join;
         struct {
             struct RDB_table *tbp;
@@ -287,6 +285,7 @@ typedef struct RDB_table {
         struct {
             struct RDB_table *tbp;
             RDB_bool keyloss;
+            struct _RDB_tbindex *indexp;
         } project;
         struct {
             struct RDB_table *tb1p;

@@ -11,7 +11,6 @@
 #include <gen/hashmapit.h>
 #include <gen/strfns.h>
 #include <string.h>
-#include <db.h>
 
 static int
 init_summ_table(RDB_qresult *qresp, RDB_transaction *txp)
@@ -24,7 +23,7 @@ init_summ_table(RDB_qresult *qresp, RDB_transaction *txp)
      * Initialize table from table #2
      */
 
-    ret = _RDB_table_qresult(qresp->tbp->var.summarize.tb2p, NULL, txp, &qrp);
+    ret = _RDB_table_qresult(qresp->tbp->var.summarize.tb2p, txp, &qrp);
     if (ret != RDB_OK) {
         return ret;
     }
@@ -221,7 +220,7 @@ do_summarize(RDB_qresult *qresp, RDB_transaction *txp)
      * Iterate over table 1, modifying the materialized table
      */
 
-    ret = _RDB_table_qresult(qresp->tbp->var.summarize.tb1p, NULL, txp, &qrp);
+    ret = _RDB_table_qresult(qresp->tbp->var.summarize.tb1p, txp, &qrp);
     if (ret != RDB_OK) {
         return ret;
     }
@@ -363,7 +362,7 @@ do_group(RDB_qresult *qrp, RDB_transaction *txp)
      * Iterate over the original table, modifying the materialized table
      */
 
-    ret = _RDB_table_qresult(qrp->tbp->var.group.tbp, NULL, txp, &newqrp);
+    ret = _RDB_table_qresult(qrp->tbp->var.group.tbp, txp, &newqrp);
     if (ret != RDB_OK) {
         return ret;
     }
@@ -459,12 +458,13 @@ cleanup:
 }
 
 static int
-stored_qresult(RDB_qresult *qresp, RDB_table *tbp, RDB_transaction *txp)
+stored_qresult(RDB_qresult *qrp, RDB_table *tbp, RDB_transaction *txp)
 {
     int ret;
 
     /* !! delay after first call to _RDB_qresult_next()? */
-    ret = RDB_recmap_cursor(&qresp->var.curp, tbp->var.real.recmapp,
+    qrp->uses_cursor = RDB_TRUE;
+    ret = RDB_recmap_cursor(&qrp->var.curp, tbp->var.real.recmapp,
                     RDB_FALSE, tbp->is_persistent ? txp->txid : NULL);
     if (ret != RDB_OK) {
         if (txp != NULL) {
@@ -473,21 +473,23 @@ stored_qresult(RDB_qresult *qresp, RDB_table *tbp, RDB_transaction *txp)
         }
         return ret;
     }
-    ret = RDB_cursor_first(qresp->var.curp);
+    ret = RDB_cursor_first(qrp->var.curp);
     if (ret == RDB_NOT_FOUND) {
-        qresp->endreached = RDB_TRUE;
+        qrp->endreached = RDB_TRUE;
         ret = RDB_OK;
     }
     return ret;
 }
 
 static int
-stored_index_qresult(RDB_qresult *qrp, _RDB_tbindex *indexp,
+index_qresult(RDB_qresult *qrp, _RDB_tbindex *indexp,
         RDB_transaction *txp)
 {
     int ret;
 
     /* !! delay after first call to _RDB_qresult_next()? */
+    qrp->uses_cursor = RDB_TRUE;
+    qrp->matp = NULL;
     ret = RDB_index_cursor(&qrp->var.curp, indexp->idxp, RDB_FALSE,
             txp != NULL ? txp->txid : NULL);
     if (ret != RDB_OK) {
@@ -512,19 +514,26 @@ select_index_qresult(RDB_qresult *qrp, RDB_transaction *txp)
     int i;
     RDB_field *fv;
     int flags = 0;
+    _RDB_tbindex *indexp = qrp->tbp->var.select.tbp->var.project.indexp;
 
     /*
      * If the index is unique, there is nothing to do
      */
-    if (qrp->tbp->var.select.indexp->unique)
+    if (indexp->unique) {
+        qrp->uses_cursor = RDB_FALSE;
+        qrp->matp = NULL;
+        qrp->var.virtual.qrp = NULL;
         return RDB_OK;
+    }
 
-    fv  = malloc(sizeof (RDB_field) * qrp->tbp->var.select.indexp->attrc);
+    fv  = malloc(sizeof (RDB_field) * indexp->attrc);
 
     if (fv == NULL)
         return RDB_NO_MEMORY;
 
-    ret = RDB_index_cursor(&qrp->var.curp, qrp->tbp->var.select.indexp->idxp,
+    qrp->uses_cursor = RDB_TRUE;
+    qrp->matp = NULL;
+    ret = RDB_index_cursor(&qrp->var.curp, indexp->idxp,
             RDB_FALSE, qrp->tbp->var.select.tbp->var.project.tbp->is_persistent ?
             txp->txid : NULL);
     if (ret != RDB_OK) {
@@ -543,12 +552,12 @@ select_index_qresult(RDB_qresult *qrp, RDB_transaction *txp)
             return ret;
         }
     }
-    for (i = qrp->tbp->var.select.objpc; i < qrp->tbp->var.select.indexp->attrc;
+    for (i = qrp->tbp->var.select.objpc; i < indexp->attrc;
             i++) {
         fv[i].len = 0;
     }
 
-    if (qrp->tbp->var.select.objpc != qrp->tbp->var.select.indexp->attrc
+    if (qrp->tbp->var.select.objpc != indexp->attrc
             || !qrp->tbp->var.select.all_eq)
         flags = RDB_REC_RANGE;
 
@@ -648,22 +657,27 @@ group_qresult(RDB_qresult *qresp, RDB_transaction *txp)
 static int
 join_qresult(RDB_qresult *qrp, RDB_transaction *txp)
 {
+    int ret;
+
+    qrp->uses_cursor = RDB_FALSE;
+    qrp->matp = NULL;
     /* Create qresult for the first table */
-    int ret = _RDB_table_qresult(qrp->tbp->var.join.tb1p, NULL,
-            txp, &qrp->var.virtual.qrp);
+    ret = _RDB_table_qresult(qrp->tbp->var.join.tb1p, txp,
+            &qrp->var.virtual.qrp);
     if (ret != RDB_OK)
         return ret;
 
     qrp->var.virtual.tpl_valid = RDB_FALSE;
-    if (qrp->tbp->var.join.indexp == NULL) {
+    if (qrp->tbp->var.join.tb2p->kind != RDB_TB_PROJECT
+            || qrp->tbp->var.join.tb2p->var.project.indexp == NULL) {
         /* Create qresult for 2nd table */
-        ret = _RDB_table_qresult(qrp->tbp->var.join.tb2p, NULL,
-                txp, &qrp->var.virtual.qr2p);
+        ret = _RDB_table_qresult(qrp->tbp->var.join.tb2p, txp,
+                &qrp->var.virtual.qr2p);
         if (ret != RDB_OK) {
             _RDB_drop_qresult(qrp->var.virtual.qr2p, txp);
             return ret;
         }
-    } else if (!qrp->tbp->var.join.indexp->unique) {
+    } else if (!qrp->tbp->var.join.tb2p->var.project.indexp->unique) {
         /* Create index qresult for 2nd table */
         qrp->var.virtual.qr2p = malloc(sizeof (RDB_qresult));
         if (qrp->var.virtual.qr2p == NULL)
@@ -672,9 +686,12 @@ join_qresult(RDB_qresult *qrp, RDB_transaction *txp)
         qrp->var.virtual.qr2p->endreached = RDB_FALSE;
         qrp->var.virtual.qr2p->matp = NULL;
 
+        qrp->var.virtual.qr2p->uses_cursor = RDB_TRUE;
+        qrp->var.virtual.qr2p->matp = NULL;
         ret = RDB_index_cursor(&qrp->var.virtual.qr2p->var.curp,
-                qrp->tbp->var.join.indexp->idxp, RDB_FALSE,
-                qrp->tbp->var.join.tb2p->is_persistent ? txp->txid : NULL);
+                qrp->tbp->var.join.tb2p->var.project.indexp->idxp, RDB_FALSE,
+                qrp->tbp->var.join.tb2p->var.project.tbp->is_persistent ?
+                        txp->txid : NULL);
         if (ret != RDB_OK) {
             free(qrp->var.virtual.qr2p);
             if (txp != NULL) {
@@ -683,97 +700,132 @@ join_qresult(RDB_qresult *qrp, RDB_transaction *txp)
             }
             return ret;
         }
+    } else {
+        qrp->var.virtual.qr2p = NULL;
     }
     return RDB_OK;
 }
 
 static int
-init_qresult(RDB_qresult *qrp, RDB_table *tbp, _RDB_tbindex *indexp,
-        RDB_transaction *txp)
+init_qresult(RDB_qresult *qrp, RDB_table *tbp, RDB_transaction *txp)
 {
     int ret;
 
     qrp->tbp = tbp;
     qrp->endreached = RDB_FALSE;
     qrp->matp = NULL;
-    qrp->var.virtual.qr2p = NULL;
 
     switch (tbp->kind) {
         case RDB_TB_REAL:
-            if (indexp == NULL)
-                ret = stored_qresult(qrp, tbp, txp);
-            else
-                ret = stored_index_qresult(qrp, indexp, txp);
+            ret = stored_qresult(qrp, tbp, txp);
             break;
         case RDB_TB_SELECT:
-            if (tbp->var.select.indexp == NULL)
-                ret = _RDB_table_qresult(tbp->var.select.tbp, NULL,
-                        txp, &qrp->var.virtual.qrp);
-            else
+            if (tbp->var.select.objpc == 0) {
+                qrp->uses_cursor = RDB_FALSE;
+                qrp->matp = NULL;
+                qrp->var.virtual.qr2p = NULL;
+                ret = _RDB_table_qresult(tbp->var.select.tbp, txp,
+                        &qrp->var.virtual.qrp);
+            } else {
                 ret = select_index_qresult(qrp, txp);
+            }
             break;
         case RDB_TB_UNION:
-            ret = _RDB_table_qresult(tbp->var._union.tb1p, NULL,
-                    txp, &qrp->var.virtual.qrp);
+            qrp->uses_cursor = RDB_FALSE;
+            qrp->matp = NULL;
+            qrp->var.virtual.qr2p = NULL;
+            ret = _RDB_table_qresult(tbp->var._union.tb1p, txp,
+                    &qrp->var.virtual.qrp);
             break;
         case RDB_TB_MINUS:
-            ret = _RDB_table_qresult(tbp->var.minus.tb1p, NULL,
-                    txp, &qrp->var.virtual.qrp);
+            qrp->uses_cursor = RDB_FALSE;
+            qrp->var.virtual.qr2p = NULL;
+            qrp->matp = NULL;
+            ret = _RDB_table_qresult(tbp->var.minus.tb1p, txp,
+                    &qrp->var.virtual.qrp);
             if (ret != RDB_OK)
                 break;
-            ret = _RDB_table_qresult(tbp->var.minus.tb2p, NULL,
-                    txp, &qrp->var.virtual.qr2p);
+            ret = _RDB_table_qresult(tbp->var.minus.tb2p, txp,
+                    &qrp->var.virtual.qr2p);
             break;
         case RDB_TB_INTERSECT:
-            ret = _RDB_table_qresult(tbp->var.intersect.tb1p, NULL,
-                    txp, &qrp->var.virtual.qrp);
+            qrp->uses_cursor = RDB_FALSE;
+            qrp->var.virtual.qr2p = NULL;
+            qrp->matp = NULL;
+            ret = _RDB_table_qresult(tbp->var.intersect.tb1p, txp,
+                    &qrp->var.virtual.qrp);
             if (ret != RDB_OK)
                 break;
-            ret = _RDB_table_qresult(tbp->var.minus.tb2p, NULL,
-                    txp, &qrp->var.virtual.qr2p);
+            ret = _RDB_table_qresult(tbp->var.minus.tb2p, txp,
+                    &qrp->var.virtual.qr2p);
             break;
         case RDB_TB_JOIN:
             ret = join_qresult(qrp, txp);
             break;
         case RDB_TB_EXTEND:
-            ret = _RDB_table_qresult(tbp->var.extend.tbp, NULL,
-                    txp, &qrp->var.virtual.qrp);
+            qrp->uses_cursor = RDB_FALSE;
+            qrp->var.virtual.qr2p = NULL;
+            qrp->matp = NULL;
+            ret = _RDB_table_qresult(tbp->var.extend.tbp, txp,
+                    &qrp->var.virtual.qrp);
             break;
         case RDB_TB_PROJECT:
-            ret = _RDB_table_qresult(tbp->var.project.tbp, NULL,
-                    txp, &qrp->var.virtual.qrp);
+            if (tbp->var.project.indexp == NULL
+                    || tbp->var.project.indexp->idxp == NULL) {
+                qrp->uses_cursor = RDB_FALSE;
+                qrp->var.virtual.qr2p = NULL;
+                qrp->matp = NULL;
+                ret = _RDB_table_qresult(tbp->var.project.tbp, txp,
+                        &qrp->var.virtual.qrp);
+            } else {
+                ret = index_qresult(qrp, tbp->var.project.indexp, txp);
+            }
             break;
         case RDB_TB_SUMMARIZE:
             ret = summarize_qresult(qrp, txp);
             break;
         case RDB_TB_RENAME:
-            ret = _RDB_table_qresult(tbp->var.rename.tbp, NULL,
-                    txp, &qrp->var.virtual.qrp);
+            qrp->uses_cursor = RDB_FALSE;
+            qrp->var.virtual.qr2p = NULL;
+            qrp->matp = NULL;
+            ret = _RDB_table_qresult(tbp->var.rename.tbp, txp,
+                    &qrp->var.virtual.qrp);
             break;
         case RDB_TB_WRAP:
-            ret = _RDB_table_qresult(tbp->var.wrap.tbp, NULL,
-                    txp, &qrp->var.virtual.qrp);
+            qrp->uses_cursor = RDB_FALSE;
+            qrp->var.virtual.qr2p = NULL;
+            qrp->matp = NULL;
+            ret = _RDB_table_qresult(tbp->var.wrap.tbp, txp,
+                    &qrp->var.virtual.qrp);
             break;
         case RDB_TB_UNWRAP:
-            ret = _RDB_table_qresult(tbp->var.unwrap.tbp, NULL,
-                    txp, &qrp->var.virtual.qrp);
+            qrp->uses_cursor = RDB_FALSE;
+            qrp->var.virtual.qr2p = NULL;
+            qrp->matp = NULL;
+            ret = _RDB_table_qresult(tbp->var.unwrap.tbp, txp,
+                    &qrp->var.virtual.qrp);
             break;
         case RDB_TB_GROUP:
             ret = group_qresult(qrp, txp);
             break;
         case RDB_TB_UNGROUP:
-            ret = _RDB_table_qresult(tbp->var.ungroup.tbp, NULL,
-                    txp, &qrp->var.virtual.qrp);
+            qrp->uses_cursor = RDB_FALSE;
+            qrp->var.virtual.qr2p = NULL;
+            qrp->matp = NULL;
+            ret = _RDB_table_qresult(tbp->var.ungroup.tbp, txp,
+                    &qrp->var.virtual.qrp);
             qrp->var.virtual.tpl_valid = RDB_FALSE;
             break;
         case RDB_TB_SDIVIDE:
-            /* Create qresults for table 1 and table 3 */
-            ret = _RDB_table_qresult(tbp->var.sdivide.tb1p, NULL,
-                    txp, &qrp->var.virtual.qrp);
+            qrp->uses_cursor = RDB_FALSE;
+            qrp->matp = NULL;
+            /* Create qresults for table #1 and table #3 */
+            ret = _RDB_table_qresult(tbp->var.sdivide.tb1p, txp,
+                    &qrp->var.virtual.qrp);
             if (ret != RDB_OK)
                 break;
-            ret = _RDB_table_qresult(tbp->var.sdivide.tb3p, NULL,
-                    txp, &qrp->var.virtual.qr2p);
+            ret = _RDB_table_qresult(tbp->var.sdivide.tb3p, txp,
+                    &qrp->var.virtual.qr2p);
             if (ret != RDB_OK) {
                 _RDB_drop_qresult(qrp->var.virtual.qr2p, txp);
                 break;
@@ -857,15 +909,14 @@ _RDB_duprem(RDB_qresult *qrp)
 }
 
 int
-_RDB_table_qresult(RDB_table *tbp, _RDB_tbindex *indexp,
-        RDB_transaction *txp, RDB_qresult **qrpp)
+_RDB_table_qresult(RDB_table *tbp, RDB_transaction *txp, RDB_qresult **qrpp)
 {
     int ret;
 
     *qrpp = malloc(sizeof (RDB_qresult));
     if (*qrpp == NULL)
         return RDB_NO_MEMORY;
-    ret = init_qresult(*qrpp, tbp, indexp, txp);
+    ret = init_qresult(*qrpp, tbp, txp);
     if (ret != RDB_OK)
         free(*qrpp);
     return ret;
@@ -925,7 +976,6 @@ _RDB_sorter(RDB_table *tbp, RDB_qresult **qrespp, RDB_transaction *txp,
     }
 
     qresp->tbp = NULL;
-    qresp->matp = NULL;
     qresp->endreached = RDB_FALSE;
 
     for (i = 0; i < seqitc; i++) {
@@ -953,7 +1003,7 @@ _RDB_sorter(RDB_table *tbp, RDB_qresult **qrespp, RDB_transaction *txp,
      * Copy tuples into the newly created RDB_table
      */
 
-    ret = _RDB_table_qresult(tbp, NULL, txp, &tmpqrp);
+    ret = _RDB_table_qresult(tbp, txp, &tmpqrp);
     if (ret != RDB_OK)
         goto error;
 
@@ -1009,7 +1059,8 @@ error:
 }
 
 int
-_RDB_get_by_cursor(RDB_table *tbp, RDB_cursor *curp, RDB_object *tplp)
+_RDB_get_by_cursor(RDB_table *tbp, RDB_cursor *curp, RDB_type *tpltyp,
+        RDB_object *tplp)
 {
     int i;
     int ret;
@@ -1018,10 +1069,9 @@ _RDB_get_by_cursor(RDB_table *tbp, RDB_cursor *curp, RDB_object *tplp)
     RDB_attr *attrp;
     void *datap;
     size_t len;
-    RDB_type *tuptyp = tbp->typ->var.basetyp;
 
-    for (i = 0; i < tuptyp->var.tuple.attrc; i++) {
-        attrp = &tuptyp->var.tuple.attrv[i];
+    for (i = 0; i < tpltyp->var.tuple.attrc; i++) {
+        attrp = &tpltyp->var.tuple.attrv[i];
 
         fno = *(RDB_int *)RDB_hashmap_get(&tbp->var.real.attrmap,
                                       attrp->name, NULL);
@@ -1046,7 +1096,7 @@ _RDB_get_by_cursor(RDB_table *tbp, RDB_cursor *curp, RDB_object *tplp)
 
 static int
 next_stored_tuple(RDB_qresult *qrp, RDB_table *tbp, RDB_object *tplp,
-        RDB_bool asc, RDB_bool dup)
+        RDB_bool asc, RDB_bool dup, RDB_type *tpltyp)
 {
     int ret;
 
@@ -1054,7 +1104,7 @@ next_stored_tuple(RDB_qresult *qrp, RDB_table *tbp, RDB_object *tplp,
         return RDB_NOT_FOUND;
 
     if (tplp != NULL) {
-        ret = _RDB_get_by_cursor(tbp, qrp->var.curp, tplp);
+        ret = _RDB_get_by_cursor(tbp, qrp->var.curp, tpltyp, tplp);
         if (ret != RDB_OK)
             return ret;
     }
@@ -1094,7 +1144,7 @@ next_ungroup_tuple(RDB_qresult *qrp, RDB_object *tplp, RDB_transaction *txp)
         attrtbp = RDB_tuple_get(&qrp->var.virtual.tpl,
                 qrp->tbp->var.ungroup.attr)->var.tbp;
 
-        ret = _RDB_table_qresult(attrtbp, NULL, txp, &qrp->var.virtual.qr2p);
+        ret = _RDB_table_qresult(attrtbp, txp, &qrp->var.virtual.qr2p);
         if (ret != RDB_OK)
             return ret;
     }
@@ -1119,7 +1169,7 @@ next_ungroup_tuple(RDB_qresult *qrp, RDB_object *tplp, RDB_transaction *txp)
                 qrp->tbp->var.ungroup.attr)->var.tbp;
 
         /* Create qresult over relation-valued attribute */
-        ret = _RDB_table_qresult(attrtbp, NULL, txp, &qrp->var.virtual.qr2p);
+        ret = _RDB_table_qresult(attrtbp, txp, &qrp->var.virtual.qr2p);
         if (ret != RDB_OK) {
             return ret;
         }
@@ -1266,6 +1316,7 @@ next_join_tuple_nuix(RDB_qresult *qrp, RDB_object *tplp, RDB_transaction *txp)
 {
     int ret;
     int i;
+    _RDB_tbindex *indexp = qrp->tbp->var.join.tb2p->var.project.indexp;
 
     /* tuple type of first ('outer') table */
     RDB_type *tpltyp1 = qrp->tbp->var.join.tb1p->typ->var.basetyp;
@@ -1279,8 +1330,8 @@ next_join_tuple_nuix(RDB_qresult *qrp, RDB_object *tplp, RDB_transaction *txp)
         qrp->var.virtual.tpl_valid = RDB_TRUE;
 
         /* Set cursor position */
-        ret = seek_index_qresult(qrp->var.virtual.qr2p,
-                qrp->tbp->var.join.indexp, &qrp->var.virtual.tpl);
+        ret = seek_index_qresult(qrp->var.virtual.qr2p, indexp,
+                &qrp->var.virtual.tpl);
         if (ret != RDB_OK)
             return ret;
     }
@@ -1288,7 +1339,8 @@ next_join_tuple_nuix(RDB_qresult *qrp, RDB_object *tplp, RDB_transaction *txp)
     for (;;) {
         /* read next 'inner' tuple */
         ret = next_stored_tuple(qrp->var.virtual.qr2p,
-                qrp->var.virtual.qr2p->tbp, tplp, RDB_TRUE, RDB_TRUE);
+                qrp->var.virtual.qr2p->tbp->var.project.tbp, tplp, RDB_TRUE,
+                RDB_TRUE, qrp->var.virtual.qr2p->tbp->typ->var.basetyp);
         if (ret != RDB_NOT_FOUND && ret != RDB_OK) {
             return ret;
         }
@@ -1310,11 +1362,11 @@ next_join_tuple_nuix(RDB_qresult *qrp, RDB_object *tplp, RDB_transaction *txp)
                     int j;
 
                     /* Don't compare index attributes */
-                    for (j = 0; j < qrp->tbp->var.join.indexp->attrc
-                            && strcmp(attrname,
-                            qrp->tbp->var.join.indexp->attrv[j].attrname) != 0;
-                            j++);
-                    if (j >= qrp->tbp->var.join.indexp->attrc) {
+                    for (j = 0;
+                         j < indexp->attrc && strcmp(attrname,
+                                 indexp->attrv[j].attrname) != 0;
+                         j++);
+                    if (j >= indexp->attrc) {
                         ret = RDB_obj_equals(RDB_tuple_get(
                                 &qrp->var.virtual.tpl, attrname),
                                 RDB_tuple_get(tplp, attrname), txp, &b);
@@ -1341,8 +1393,8 @@ next_join_tuple_nuix(RDB_qresult *qrp, RDB_object *tplp, RDB_transaction *txp)
         }
 
         /* reset cursor */
-        ret = seek_index_qresult(qrp->var.virtual.qr2p,
-                qrp->tbp->var.join.indexp, &qrp->var.virtual.tpl);
+        ret = seek_index_qresult(qrp->var.virtual.qr2p, indexp,
+                &qrp->var.virtual.tpl);
         if (ret != RDB_OK)
             return ret;
     }
@@ -1369,9 +1421,9 @@ next_join_tuple_uix(RDB_qresult *qrp, RDB_object *tplp, RDB_transaction *txp)
     RDB_object tpl;
     RDB_type *tpltyp;
     RDB_object **objpv;
+    _RDB_tbindex *indexp = qrp->tbp->var.join.tb2p->var.project.indexp;
 
-    objpv = malloc(sizeof(RDB_object *)
-            * qrp->tbp->var.join.indexp->attrc);
+    objpv = malloc(sizeof(RDB_object *) * indexp->attrc);
     if (objpv == NULL)
         return RDB_NO_MEMORY;
 
@@ -1384,13 +1436,12 @@ next_join_tuple_uix(RDB_qresult *qrp, RDB_object *tplp, RDB_transaction *txp)
         if (ret != RDB_OK)
             goto cleanup;
 
-        for (i = 0; i < qrp->tbp->var.join.indexp->attrc; i++) {
-            objpv[i] = RDB_tuple_get(tplp,
-                    qrp->tbp->var.join.indexp->attrv[i].attrname);
+        for (i = 0; i < indexp->attrc; i++) {
+            objpv[i] = RDB_tuple_get(tplp, indexp->attrv[i].attrname);
         }
-        ret = _RDB_get_by_uindex(qrp->tbp->var.join.tb2p, objpv,
-                qrp->tbp->var.join.indexp,
-                qrp->tbp->var.join.tb2p->typ->var.basetyp, txp, &tpl);
+        ret = _RDB_get_by_uindex(qrp->tbp->var.join.tb2p->var.project.tbp,
+                objpv, indexp, qrp->tbp->var.join.tb2p->typ->var.basetyp,
+                txp, &tpl);
         if (ret == RDB_NOT_FOUND) {
             match = RDB_FALSE;
             continue;
@@ -1417,11 +1468,10 @@ next_join_tuple_uix(RDB_qresult *qrp, RDB_object *tplp, RDB_transaction *txp)
                  */
                 int j;
 
-                for (j = 0; j < qrp->tbp->var.join.indexp->attrc
-                        && strcmp(qrp->tbp->var.join.indexp->attrv[j].attrname,
-                                  attrname) != 0;
+                for (j = 0; j < indexp->attrc
+                        && strcmp(indexp->attrv[j].attrname, attrname) != 0;
                         j++);
-                if (j >= qrp->tbp->var.join.indexp->attrc) {
+                if (j >= indexp->attrc) {
                     ret = RDB_obj_equals(RDB_tuple_get(&tpl, attrname),
                             RDB_tuple_get(tplp, attrname), txp, &match);
                     if (ret != RDB_OK)
@@ -1565,10 +1615,11 @@ static int
 next_select_index(RDB_qresult *qrp, RDB_object *tplp, RDB_transaction *txp)
 {
     int ret;
+    _RDB_tbindex *indexp = qrp->tbp->var.select.tbp->var.project.indexp;
 
-    if (qrp->tbp->var.select.indexp->unique) {
+    if (indexp->unique) {
         ret = _RDB_get_by_uindex(qrp->tbp->var.select.tbp->var.project.tbp,
-                qrp->tbp->var.select.objpv, qrp->tbp->var.select.indexp,
+                qrp->tbp->var.select.objpv, indexp,
                 qrp->tbp->typ->var.basetyp, txp, tplp);
         if (ret != RDB_OK)
             return ret;
@@ -1578,14 +1629,16 @@ next_select_index(RDB_qresult *qrp, RDB_object *tplp, RDB_transaction *txp)
         RDB_bool rtup;
         RDB_bool dup = RDB_FALSE;
 
-        if (qrp->tbp->var.select.objpc == qrp->tbp->var.select.indexp->attrc
+        if (qrp->tbp->var.select.objpc == indexp->attrc
                 && qrp->tbp->var.select.all_eq)
             dup = RDB_TRUE;
 
         tplp->typ = qrp->tbp->typ->var.basetyp;
         do {
-            ret = next_stored_tuple(qrp, qrp->tbp->var.select.tbp->var.project.tbp,
-                    tplp, qrp->tbp->var.select.asc, dup);
+            ret = next_stored_tuple(qrp,
+                    qrp->tbp->var.select.tbp->var.project.tbp,
+                    tplp, qrp->tbp->var.select.asc, dup,
+                    qrp->tbp->var.select.tbp->typ->var.basetyp);
             if (ret != RDB_OK)
                 return ret;
             if (qrp->tbp->var.select.all_eq)
@@ -1618,31 +1671,46 @@ next_select_index(RDB_qresult *qrp, RDB_object *tplp, RDB_transaction *txp)
 static int
 next_project_tuple(RDB_qresult *qrp, RDB_object *tplp, RDB_transaction *txp)
 {
-    RDB_object tpl;
     int i, ret;
     RDB_object *valp;
-    RDB_type *tuptyp = qrp->tbp->typ->var.basetyp;
+    RDB_type *tpltyp = qrp->tbp->typ->var.basetyp;
             
-    RDB_init_obj(&tpl);
-
     /* Get tuple */
-    ret = _RDB_next_tuple(qrp->var.virtual.qrp, &tpl, txp);
-    if (ret != RDB_OK) {
-        RDB_destroy_obj(&tpl);
-        return ret;
-    }
-
-    if (tplp != NULL) {
-        /* Copy attributes into new tuple */
-        for (i = 0; i < tuptyp->var.tuple.attrc; i++) {
-            char *attrnamp = tuptyp->var.tuple.attrv[i].name;
-
-            valp = RDB_tuple_get(&tpl, attrnamp);
-            RDB_tuple_set(tplp, attrnamp, valp);
+    if (qrp->uses_cursor) {
+        if (tplp != NULL) {
+            ret = _RDB_get_by_cursor(qrp->tbp->var.project.tbp, qrp->var.curp,
+                    tpltyp, tplp);
+            if (ret != RDB_OK)
+                return ret;
         }
-    }
+        ret = RDB_cursor_next(qrp->var.curp, 0);
+        if (ret == RDB_NOT_FOUND)
+            qrp->endreached = RDB_TRUE;
+        else if (ret != RDB_OK)
+            return ret;
+    } else {
+        RDB_object tpl;
 
-    RDB_destroy_obj(&tpl);
+        RDB_init_obj(&tpl);
+
+        ret = _RDB_next_tuple(qrp->var.virtual.qrp, &tpl, txp);
+        if (ret != RDB_OK) {
+            RDB_destroy_obj(&tpl);
+            return ret;
+        }
+
+        if (tplp != NULL) {
+            /* Copy attributes into new tuple */
+            for (i = 0; i < tpltyp->var.tuple.attrc; i++) {
+                char *attrnamp = tpltyp->var.tuple.attrv[i].name;
+
+                valp = RDB_tuple_get(&tpl, attrnamp);
+                RDB_tuple_set(tplp, attrnamp, valp);
+            }
+        }
+
+        RDB_destroy_obj(&tpl);
+    }
     return RDB_OK;
 }
 
@@ -1705,16 +1773,9 @@ destroy_qresult(RDB_qresult *qrp, RDB_transaction *txp)
 {
     int ret;
 
-    if (qrp->tbp == NULL || qrp->tbp->kind == RDB_TB_REAL
-            || qrp->tbp->kind == RDB_TB_SUMMARIZE
-            || qrp->tbp->kind == RDB_TB_GROUP
-            || (qrp->tbp->kind == RDB_TB_SELECT
-                && qrp->tbp->var.select.indexp != NULL
-                && !qrp->tbp->var.select.indexp->unique)) {
-        /* Sorter, stored table, SUMMARIZE PER, or GROUP */
+    if (qrp->uses_cursor) {
         ret = RDB_destroy_cursor(qrp->var.curp);
-    } else if (qrp->tbp->kind != RDB_TB_SELECT
-            || qrp->tbp->var.select.indexp == NULL) {
+    } else if (qrp->var.virtual.qrp != NULL) {
         ret = _RDB_drop_qresult(qrp->var.virtual.qrp, txp);
         if (qrp->var.virtual.qr2p != NULL)
             _RDB_drop_qresult(qrp->var.virtual.qr2p, txp);
@@ -1728,7 +1789,7 @@ destroy_qresult(RDB_qresult *qrp, RDB_transaction *txp)
 
     if (qrp->matp != NULL)
         RDB_drop_table(qrp->matp, txp);
-    return RDB_OK;
+    return ret;
 }
 
 /*
@@ -1753,7 +1814,7 @@ _RDB_sdivide_preserves(RDB_table *tbp, const RDB_object *tplp,
      * if not all the result tuples are an element of table 3
      */
 
-    ret = init_qresult(&qr, tbp->var.sdivide.tb2p, NULL, txp);
+    ret = init_qresult(&qr, tbp->var.sdivide.tb2p, txp);
     if (ret != RDB_OK) {
         return ret;
     }
@@ -1873,18 +1934,20 @@ _RDB_next_tuple(RDB_qresult *qrp, RDB_object *tplp, RDB_transaction *txp)
 
     if (tbp == NULL) {
         /* It's a sorter */
-        return next_stored_tuple(qrp, qrp->matp, tplp, RDB_TRUE, RDB_FALSE);
+        return next_stored_tuple(qrp, qrp->matp, tplp, RDB_TRUE, RDB_FALSE,
+                qrp->matp->typ->var.basetyp);
     }
 
     do {
         switch (tbp->kind) {
             case RDB_TB_REAL:
-                return next_stored_tuple(qrp, qrp->tbp, tplp, RDB_TRUE, RDB_FALSE);
+                return next_stored_tuple(qrp, qrp->tbp, tplp, RDB_TRUE, RDB_FALSE,
+                        qrp->tbp->typ->var.basetyp);
             case RDB_TB_SELECT:
-                if (qrp->tbp->var.select.indexp == NULL)
-                    ret = next_select_tuple(qrp, tplp, txp);
-                else
+                if (qrp->tbp->var.select.objpc > 0)
                     ret = next_select_index(qrp, tplp, txp);
+                else
+                    ret = next_select_tuple(qrp, tplp, txp);
                 if (ret != RDB_OK)
                     return ret;                
                 break;
@@ -1893,8 +1956,8 @@ _RDB_next_tuple(RDB_qresult *qrp, RDB_object *tplp, RDB_transaction *txp)
                     ret = _RDB_next_tuple(qrp->var.virtual.qrp, tplp, txp);
                     if (ret == RDB_NOT_FOUND) {
                         /* switch to second table */
-                        ret = _RDB_table_qresult(tbp->var._union.tb2p, NULL,
-                                    txp, &qrp->var.virtual.qr2p);
+                        ret = _RDB_table_qresult(tbp->var._union.tb2p, txp,
+                                &qrp->var.virtual.qr2p);
                         if (ret != RDB_OK)
                             return ret;
                         ret = _RDB_next_tuple(qrp->var.virtual.qr2p, tplp, txp);
@@ -1930,13 +1993,14 @@ _RDB_next_tuple(RDB_qresult *qrp, RDB_object *tplp, RDB_transaction *txp)
                 } while (ret == RDB_NOT_FOUND);
                 break;
             case RDB_TB_JOIN:
-                if (tbp->var.join.indexp == NULL) {
+                if (tbp->var.join.tb2p->kind != RDB_TB_PROJECT
+                        || tbp->var.join.tb2p->var.project.indexp == NULL) {
                     ret = next_join_tuple(qrp, tplp, txp);
                     if (ret != RDB_OK)
                         return ret;
                     break;
                 }
-                if (tbp->var.join.indexp->unique) {
+                if (tbp->var.join.tb2p->var.project.indexp->unique) {
                     ret = next_join_tuple_uix(qrp, tplp, txp);
                     if (ret != RDB_OK)
                         return ret;
@@ -1967,7 +2031,7 @@ _RDB_next_tuple(RDB_qresult *qrp, RDB_object *tplp, RDB_transaction *txp)
                     RDB_int count;
                 
                     ret = next_stored_tuple(qrp, qrp->matp, tplp, RDB_TRUE,
-                            RDB_FALSE);
+                            RDB_FALSE, qrp->tbp->typ->var.basetyp);
                     if (ret != RDB_OK)
                         return ret;
                     /* check AVG counts */
@@ -2003,7 +2067,8 @@ _RDB_next_tuple(RDB_qresult *qrp, RDB_object *tplp, RDB_transaction *txp)
                     return ret;
                 break;
             case RDB_TB_GROUP:
-                ret = next_stored_tuple(qrp, qrp->matp, tplp, RDB_TRUE, RDB_FALSE);
+                ret = next_stored_tuple(qrp, qrp->matp, tplp, RDB_TRUE, RDB_FALSE,
+                        qrp->tbp->typ->var.basetyp);
                 if (ret != RDB_OK)
                     return ret;
                 break;
@@ -2053,7 +2118,7 @@ _RDB_reset_qresult(RDB_qresult *qrp, RDB_transaction *txp)
     ret = destroy_qresult(qrp, txp);
     if (ret != RDB_OK)
         return ret;
-    return init_qresult(qrp, tbp, NULL, txp);
+    return init_qresult(qrp, tbp, txp);
 }
 
 int

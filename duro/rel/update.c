@@ -371,7 +371,8 @@ update_select_pindex(RDB_table *tbp, RDB_expression *condp,
     int ret;
     int i;
     RDB_bool b;
-    int objc = tbp->var.select.indexp->attrc;
+    _RDB_tbindex *indexp = tbp->var.select.tbp->var.project.indexp;
+    int objc = indexp->attrc;
     RDB_field *fvv = malloc(sizeof(RDB_field) * objc);
     RDB_object *valv = malloc(sizeof(RDB_object) * updc);
     RDB_field *fieldv = malloc(sizeof(RDB_field) * updc);
@@ -397,7 +398,7 @@ update_select_pindex(RDB_table *tbp, RDB_expression *condp,
     /* Read tuple */
     RDB_init_obj(&tpl);
     ret = _RDB_get_by_uindex(tbp->var.select.tbp->var.project.tbp,
-            tbp->var.select.objpv, tbp->var.select.indexp,
+            tbp->var.select.objpv, indexp,
             tbp->typ->var.basetyp, txp, &tpl);
     if (ret != RDB_OK) {
         RDB_destroy_obj(&tpl);
@@ -467,7 +468,8 @@ update_select_index_simple(RDB_table *tbp, RDB_expression *condp,
     int ret, ret2;
     int i;
     int flags;
-    int objc = tbp->var.select.indexp->attrc;
+    _RDB_tbindex *indexp = tbp->var.select.tbp->var.project.indexp;
+    int objc = indexp->attrc;
     RDB_cursor *curp = NULL;
     RDB_field *fv = malloc(sizeof(RDB_field) * objc);
     RDB_object *valv = malloc(sizeof(RDB_object) * updc);
@@ -492,7 +494,7 @@ update_select_index_simple(RDB_table *tbp, RDB_expression *condp,
     for (i = 0; i < updc; i++)
         RDB_init_obj(&valv[i]);
 
-    ret = RDB_index_cursor(&curp, tbp->var.select.indexp->idxp, RDB_TRUE,
+    ret = RDB_index_cursor(&curp, indexp->idxp, RDB_TRUE,
             tbp->var.select.tbp->var.project.tbp->is_persistent ? tx.txid : NULL);
     if (ret != RDB_OK) {
         return ret;
@@ -505,7 +507,7 @@ update_select_index_simple(RDB_table *tbp, RDB_expression *condp,
             goto cleanup;
     }
 
-    if (tbp->var.select.objpc != tbp->var.select.indexp->attrc
+    if (tbp->var.select.objpc != indexp->attrc
             || !tbp->var.select.all_eq)
         flags = RDB_REC_RANGE;
     else
@@ -524,7 +526,7 @@ update_select_index_simple(RDB_table *tbp, RDB_expression *condp,
         /* Read tuple */
         RDB_init_obj(&tpl);
         ret = _RDB_get_by_cursor(tbp->var.select.tbp->var.project.tbp, curp,
-                &tpl);
+                tbp->typ->var.basetyp, &tpl);
         if (ret != RDB_OK) {
             RDB_destroy_obj(&tpl);
             goto cleanup;
@@ -589,7 +591,7 @@ update_select_index_simple(RDB_table *tbp, RDB_expression *condp,
             if (ret != RDB_OK)
                 goto cleanup;
         }
-        if (tbp->var.select.objpc == tbp->var.select.indexp->attrc
+        if (tbp->var.select.objpc == indexp->attrc
                 && tbp->var.select.all_eq)
             flags = RDB_REC_DUP;
         else
@@ -710,9 +712,11 @@ update(RDB_table *tbp, RDB_expression *condp, int updc,
         case RDB_TB_INTERSECT:
             return RDB_NOT_SUPPORTED;
         case RDB_TB_SELECT:
-            if (tbp->var.select.indexp == NULL)
+            if (tbp->var.select.tbp->kind != RDB_TB_PROJECT
+                    || tbp->var.select.tbp->var.project.indexp == NULL
+                    || tbp->var.select.objpc == 0)
                 return update_select(tbp, condp, updc, updv, txp);
-            if (tbp->var.select.indexp->idxp == NULL)
+            if (tbp->var.select.tbp->var.project.indexp->idxp == NULL)
                 return update_select_pindex(tbp, condp, updc, updv, txp);
             return update_select_index(tbp, condp, updc, updv, txp);
         case RDB_TB_JOIN:

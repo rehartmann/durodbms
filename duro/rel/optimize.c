@@ -12,7 +12,7 @@
 #include <stdlib.h>
 #include <math.h>
 
-#include <dli/tabletostr.h>
+#include <dli/tabletostr.h> /* !! */
 
 static RDB_bool is_and(RDB_expression *exp) {
     return (RDB_bool) exp->kind == RDB_EX_RO_OP
@@ -40,7 +40,7 @@ unbalance_and(RDB_expression *exp)
             while (is_and(axp->var.op.argv[0]))
                 axp = axp->var.op.argv[0];
 
-            /* switch leftmost factor and right child */
+            /* swap leftmost factor and right child */
             ax2p = exp->var.op.argv[1];
             exp->var.op.argv[1] = axp->var.op.argv[0];
             axp->var.op.argv[0] = ax2p;
@@ -56,16 +56,15 @@ unbalance_and(RDB_expression *exp)
 /*
  * Check if the expression covers all index attributes.
  */
-static RDB_bool
+static int
 expr_covers_index(RDB_expression *exp, _RDB_tbindex *indexp)
 {
     int i;
 
-    for (i = 0; i < indexp->attrc; i++) {
-        if (_RDB_attr_node(exp, indexp->attrv[i].attrname, "=") == NULL)
-            return RDB_FALSE;
-    }
-    return RDB_TRUE;
+    for (i = 0; i < indexp->attrc
+            && _RDB_attr_node(exp, indexp->attrv[i].attrname, "=") != NULL;
+            i++);
+    return i;
 }
 
 /*
@@ -235,7 +234,6 @@ split_by_index(RDB_table *tbp, _RDB_tbindex *indexp, RDB_transaction *txp)
         if (ret != RDB_OK)
             return ret;
 
-        sitbp->var.select.indexp = indexp;
         sitbp->var.select.objpv = objpv;
         sitbp->var.select.objpc = objpc;
         sitbp->var.select.asc = asc;
@@ -247,7 +245,6 @@ split_by_index(RDB_table *tbp, _RDB_tbindex *indexp, RDB_transaction *txp)
         /*
          * Convert table to index select
          */
-        tbp->var.select.indexp = indexp;
         tbp->var.select.objpv = objpv;
         tbp->var.select.objpc = objpc;
         tbp->var.select.asc = asc;
@@ -261,6 +258,8 @@ split_by_index(RDB_table *tbp, _RDB_tbindex *indexp, RDB_transaction *txp)
 static unsigned
 table_cost(RDB_table *tbp)
 {
+    _RDB_tbindex *indexp;
+
     switch (tbp->kind) {
         case RDB_TB_REAL:
             return tbp->var.real.est_cardinality;
@@ -272,24 +271,27 @@ table_cost(RDB_table *tbp)
         case RDB_TB_INTERSECT:
             return table_cost(tbp->var.intersect.tb1p);
         case RDB_TB_SELECT:
-            if (tbp->var.select.indexp == NULL)
+            if (tbp->var.select.objpc == 0)
                 return table_cost(tbp->var.select.tbp);
-            if (tbp->var.select.indexp->idxp == NULL)
+            indexp = tbp->var.select.tbp->var.project.indexp;
+            if (indexp->idxp == NULL)
                 return 1;
-            if (tbp->var.select.indexp->unique)
+            if (indexp->unique)
                 return 2;
-            if (!RDB_index_is_ordered(tbp->var.select.indexp->idxp))
+            if (!RDB_index_is_ordered(indexp->idxp))
                 return 3;
             return 4; /* !! */
         case RDB_TB_JOIN:
-            if (tbp->var.join.indexp == NULL)
+            if (tbp->var.join.tb2p->kind != RDB_TB_PROJECT
+                    || tbp->var.join.tb2p->var.project.indexp == NULL)
                 return table_cost(tbp->var.join.tb1p)
                         * table_cost(tbp->var.join.tb2p);
-            if (tbp->var.join.indexp->idxp == NULL)
+            indexp = tbp->var.join.tb2p->var.project.indexp;
+            if (indexp->idxp == NULL)
                 return table_cost(tbp->var.join.tb1p);
-            if (tbp->var.join.indexp->unique)
+            if (indexp->unique)
                 return table_cost(tbp->var.join.tb1p) * 2;
-            if (!RDB_index_is_ordered(tbp->var.join.indexp->idxp))
+            if (!RDB_index_is_ordered(indexp->idxp))
                 return table_cost(tbp->var.join.tb1p) * 3;
             return table_cost(tbp->var.join.tb1p) * 4;
         case RDB_TB_EXTEND:
@@ -318,6 +320,32 @@ table_cost(RDB_table *tbp)
 static int
 mutate(RDB_table *tbp, RDB_table **tbpv, int cap, RDB_transaction *txp);
 
+static RDB_table *
+null_project(RDB_table *tbp)
+{
+    int ret;
+    RDB_table *ptbp = _RDB_new_table();
+    if (tbp == NULL)
+        return NULL;
+
+    ptbp->is_user = RDB_TRUE;
+    ptbp->is_persistent = RDB_FALSE;
+    ptbp->kind = RDB_TB_PROJECT;
+    ptbp->keyv = NULL;
+    ptbp->var.project.tbp = tbp;
+    ptbp->var.project.indexp = NULL;
+
+    /* Create type */
+    ret = RDB_create_relation_type(
+            tbp->typ->var.basetyp->var.tuple.attrc,
+            tbp->typ->var.basetyp->var.tuple.attrv, &ptbp->typ);
+    if (ret != RDB_OK) {
+        free(ptbp);
+        return NULL;
+    }
+    return ptbp;
+}
+
 static int
 mutate_select(RDB_table *tbp, RDB_table **tbpv, int cap, RDB_transaction *txp)
 {
@@ -325,85 +353,41 @@ mutate_select(RDB_table *tbp, RDB_table **tbpv, int cap, RDB_transaction *txp)
     int ret;
     RDB_table *ctbp = tbp->var.select.tbp;
 
-    if ((ctbp->kind == RDB_TB_PROJECT
-            && ctbp->var.project.tbp->kind == RDB_TB_REAL)
-            || ctbp->kind == RDB_TB_REAL) {
-        RDB_table *rtbp = ctbp->kind == RDB_TB_REAL ? ctbp
-                : ctbp->var.project.tbp;
-        RDB_table *ptbp;
-        int tbc = 0;
-
-        /*
-         * Convert condition into 'unbalanced' form
-         */
+    if (ctbp->kind == RDB_TB_PROJECT
+            && ctbp->var.project.tbp->kind == RDB_TB_REAL) {
+        /* Convert condition into 'unbalanced' form */
         unbalance_and(tbp->var.select.exp);
+    }
 
-        for (i = 0; i < rtbp->var.real.indexc && tbc < cap; i++) {
-            if ((rtbp->var.real.indexv[i].idxp != NULL
-                    && RDB_index_is_ordered(rtbp->var.real.indexv[i].idxp))
-                    || expr_covers_index(tbp->var.select.exp, 
-                            &rtbp->var.real.indexv[i])) {
-                tbpv[tbc] = _RDB_dup_vtable(tbp);
-                if (tbpv[tbc] == NULL)
-                    return RDB_NO_MEMORY;
-                ret = split_by_index(tbpv[tbc], &rtbp->var.real.indexv[i],
-                        txp);
+    int tbc = mutate(ctbp, tbpv, cap, txp);
+    if (tbc < 0)
+        return tbc;
+
+    for (i = 0; i < tbc; i++) {
+        RDB_table *ntbp;
+        RDB_expression *exp = RDB_dup_expr(tbp->var.select.exp);
+        if (exp == NULL)
+            return RDB_NO_MEMORY;
+
+        ret = RDB_select(tbpv[i], exp, txp, &ntbp);
+        if (ret != RDB_OK)
+            return ret;
+        if (tbpv[i]->kind == RDB_TB_PROJECT
+                && tbpv[i]->var.project.indexp != NULL)
+        {
+            _RDB_tbindex *indexp = tbpv[i]->var.project.indexp;
+
+            if ((indexp->idxp != NULL && RDB_index_is_ordered(indexp->idxp))
+                    || expr_covers_index(tbp->var.select.exp, indexp)
+                            == indexp->attrc) {
+                ret = split_by_index(ntbp, indexp, txp);
                 if (ret != RDB_OK)
                     return ret;
-
-                if (ctbp->kind == RDB_TB_REAL /*
-                        && (tbpv[tbc]->var.select.indexp != NULL
-                           || tbpv[tbc]->var.select.tbp->kind == RDB_TB_SELECT) */) {
-                    /* Create projection for uniformity */
-                    ptbp = _RDB_new_table();
-                    if (tbp == NULL)
-                        return RDB_NO_MEMORY;
-                    ptbp->is_user = RDB_TRUE;
-                    ptbp->is_persistent = RDB_FALSE;
-                    ptbp->kind = RDB_TB_PROJECT;
-                    ptbp->keyv = NULL;
-
-                    /* Create type */
-                    ret = RDB_create_relation_type(
-                            tbp->typ->var.basetyp->var.tuple.attrc,
-                            tbp->typ->var.basetyp->var.tuple.attrv, &ptbp->typ);
-                    if (ret != RDB_OK) {
-                        free(ptbp);
-                        return ret;
-                    }
-
-                    if (tbpv[tbc]->var.select.indexp != NULL) {
-                        ptbp->var.project.tbp = tbpv[tbc]->var.select.tbp;
-                        tbpv[tbc]->var.select.tbp = ptbp;
-                    } else {
-                        ptbp->var.project.tbp = tbpv[tbc]->var.select.tbp
-                                ->var.select.tbp;
-                        tbpv[tbc]->var.select.tbp->var.select.tbp = ptbp;
-                    }
-                }
-
-                tbc++;
             }
         }
-
-        return tbc;
-    } else {
-       int tbc = mutate(ctbp, tbpv, cap, txp);
-       if (tbc < 0)
-           return tbc;
-       for (i = 0; i < tbc; i++) {
-           RDB_table *ntbp;
-           RDB_expression *exp = RDB_dup_expr(tbp->var.select.exp);
-           if (exp == NULL)
-               return RDB_NO_MEMORY;
-
-           ret = RDB_select(tbpv[i], exp, txp, &ntbp);
-           if (ret != RDB_OK)
-               return ret;
-           tbpv[i] = ntbp;
-       }
-       return tbc;
+        tbpv[i] = ntbp;
     }
+    return tbc;
 }
 
 static int
@@ -598,9 +582,13 @@ mutate_summarize(RDB_table *tbp, RDB_table **tbpv, int cap, RDB_transaction *txp
         }
 
         for (j = 0; j < tbp->var.summarize.addc; j++) {
-            addv[j].exp = RDB_dup_expr(tbp->var.summarize.addv[j].exp);
-            if (addv[j].exp == NULL)
-                return RDB_NO_MEMORY;
+            if (tbp->var.summarize.addv[j].exp != NULL) {
+                addv[j].exp = RDB_dup_expr(tbp->var.summarize.addv[j].exp);
+                if (addv[j].exp == NULL)
+                    return RDB_NO_MEMORY;
+            } else {
+                addv[i].exp = NULL;
+            }
         }
 
         ret = RDB_summarize(tbpv[i], otbp, tbp->var.summarize.addc, addv,
@@ -625,28 +613,41 @@ mutate_project(RDB_table *tbp, RDB_table **tbpv, int cap, RDB_transaction *txp)
     int ret;
     char **namev;
 
-    tbc = mutate(tbp->var.project.tbp, tbpv, cap, txp);
-    if (tbc < 0)
-        return tbc;
-
-    namev = malloc(sizeof (char *) * tbp->typ->var.basetyp->var.tuple.attrc);
-    if (namev == NULL)
-        return RDB_NO_MEMORY;
-    for (i = 0; i < tbp->typ->var.basetyp->var.tuple.attrc; i++)
-        namev[i] = tbp->typ->var.basetyp->var.tuple.attrv[i].name;
-
-    for (i = 0; i < tbc; i++) {
-        RDB_table *ntbp;
-
-        ret = RDB_project(tbpv[i], tbp->typ->var.basetyp->var.tuple.attrc,
-                namev, &ntbp);
-        if (ret != RDB_OK) {
-            free(namev);
-            return ret;
+    if (tbp->var.project.tbp->kind == RDB_TB_REAL
+            && tbp->var.project.tbp->var.real.indexc > 0) {
+        tbc = tbp->var.project.tbp->var.real.indexc;
+        for (i = 0; i < tbc; i++) {
+            _RDB_tbindex *indexp = &tbp->var.project.tbp->var.real.indexv[i];
+            RDB_table *ptbp = _RDB_dup_vtable(tbp);
+            if (ptbp == NULL)
+                return RDB_NO_MEMORY;
+            ptbp->var.project.indexp = indexp;
+            tbpv[i] = ptbp;
         }
-        tbpv[i] = ntbp;
+    } else {            
+        tbc = mutate(tbp->var.project.tbp, tbpv, cap, txp);
+        if (tbc < 0)
+            return tbc;
+
+        namev = malloc(sizeof (char *) * tbp->typ->var.basetyp->var.tuple.attrc);
+        if (namev == NULL)
+            return RDB_NO_MEMORY;
+        for (i = 0; i < tbp->typ->var.basetyp->var.tuple.attrc; i++)
+            namev[i] = tbp->typ->var.basetyp->var.tuple.attrv[i].name;
+
+        for (i = 0; i < tbc; i++) {
+            RDB_table *ntbp;
+
+            ret = RDB_project(tbpv[i], tbp->typ->var.basetyp->var.tuple.attrc,
+                    namev, &ntbp);
+            if (ret != RDB_OK) {
+                free(namev);
+                return ret;
+            }
+            tbpv[i] = ntbp;
+        }
+        free(namev);
     }
-    free(namev);
     return tbc;
 }
 
@@ -677,40 +678,6 @@ mutate_join(RDB_table *tbp, RDB_table **tbpv, int cap, RDB_transaction *txp)
     int cmattrc;
     char **cmattrv;
 
-    tbc1 = mutate(tbp->var.join.tb1p, tbpv, cap, txp);
-    if (tbc1 < 0)
-        return tbc1;
-    for (i = 0; i < tbc1; i++) {
-        RDB_table *ntbp;
-        RDB_table *otbp = _RDB_dup_vtable(tbp->var.join.tb2p);
-        if (otbp == NULL)
-            return RDB_NO_MEMORY;
-
-        ret = RDB_join(tbpv[i], otbp, &ntbp);
-        if (ret != RDB_OK)
-            return ret;
-        tbpv[i] = ntbp;
-    }
-    tbc2 = mutate(tbp->var.join.tb2p, &tbpv[tbc1], cap - tbc1, txp);
-    if (tbc2 < 0)
-        return tbc2;
-    for (i = tbc1; i < tbc1 + tbc2; i++) {
-        RDB_table *ntbp;
-        RDB_table *otbp = _RDB_dup_vtable(tbp->var.join.tb1p);
-        if (otbp == NULL)
-            return RDB_NO_MEMORY;
-
-        ret = RDB_join(otbp, tbpv[i], &ntbp);
-        if (ret != RDB_OK)
-            return ret;
-        tbpv[i] = ntbp;
-    }
-    tbc = tbc1 + tbc2;
-
-    /*
-     * Try to use indexes
-     */
-
     cmattrv = malloc(sizeof(char *)
             * tbp->var.join.tb1p->typ->var.basetyp->var.tuple.attrc);
     if (cmattrv == NULL)
@@ -718,43 +685,65 @@ mutate_join(RDB_table *tbp, RDB_table **tbpv, int cap, RDB_transaction *txp)
     cmattrc = common_attrs(tbp->var.join.tb1p->typ->var.basetyp,
             tbp->var.join.tb2p->typ->var.basetyp, cmattrv);
 
-    if (cmattrc >= 1) {
-        if (tbp->var.join.tb1p->kind == RDB_TB_REAL) {
-            for (i = 0; i < tbp->var.join.tb1p->var.real.indexc && tbc < cap;
-                    i++) {
-                if (attrv_covers_index(cmattrc, cmattrv,
-                        &tbp->var.join.tb1p->var.real.indexv[i])) {
-                    /*
-                     * Different table order, because the index must belong
-                     * to table #2
-                     */
-                    ret = RDB_join(tbp->var.join.tb2p, tbp->var.join.tb1p,
-                            &tbpv[tbc]);
-                    if (ret != RDB_OK) {
-                        free(cmattrv);
-                        return ret;
-                    }
-                    tbpv[tbc++]->var.join.indexp =
-                            &tbp->var.join.tb1p->var.real.indexv[i];
-                }
+    tbc1 = mutate(tbp->var.join.tb1p, tbpv, cap, txp);
+    if (tbc1 < 0) {
+        free(cmattrv);
+        return tbc1;
+    }
+    tbc = 0;
+    for (i = 0; i < tbc1; i++) {
+        RDB_table *ntbp;
+
+        /*
+         * Take project with index only if the index covers the
+         * common attributes
+         */
+        if (tbpv[i]->kind != RDB_TB_PROJECT
+                || tbpv[i]->var.project.indexp == NULL
+                || attrv_covers_index(cmattrc, cmattrv,
+                        tbpv[i]->var.project.indexp)) {
+            RDB_table *otbp = _RDB_dup_vtable(tbp->var.join.tb2p);
+            if (otbp == NULL) {
+                free(cmattrv);
+                return RDB_NO_MEMORY;
             }
-        }
-        if (tbp->var.join.tb2p->kind == RDB_TB_REAL) {
-            for (i = 0; i < tbp->var.join.tb2p->var.real.indexc && tbc < cap;
-                    i++) {
-                if (attrv_covers_index(cmattrc, cmattrv,
-                        &tbp->var.join.tb2p->var.real.indexv[i])) {
-                    tbpv[tbc] = _RDB_dup_vtable(tbp);
-                    if (tbpv[tbc] == NULL) {
-                        free(cmattrv);
-                        return RDB_NO_MEMORY;
-                    }
-                    tbpv[tbc++]->var.join.indexp =
-                            &tbp->var.join.tb2p->var.real.indexv[i];
-                }
+
+            ret = RDB_join(otbp, tbpv[i], &ntbp);
+            if (ret != RDB_OK) {
+                free(cmattrv);
+                return ret;
             }
+            tbpv[tbc++] = ntbp;
         }
     }
+    tbc1 = tbc;
+    tbc2 = mutate(tbp->var.join.tb2p, &tbpv[tbc1], cap - tbc1, txp);
+    if (tbc2 < 0) {
+        free(cmattrv);
+        return tbc2;
+    }
+    tbc = 0;
+    for (i = tbc1; i < tbc1 + tbc2; i++) {
+        RDB_table *ntbp;
+
+        if (tbpv[i]->kind != RDB_TB_PROJECT
+                || tbpv[i]->var.project.indexp == NULL
+                || attrv_covers_index(cmattrc, cmattrv,
+                        tbpv[i]->var.project.indexp)) {
+            RDB_table *otbp = _RDB_dup_vtable(tbp->var.join.tb1p);
+            if (otbp == NULL) {
+                free(cmattrv);
+                return RDB_NO_MEMORY;
+            }
+            ret = RDB_join(otbp, tbpv[i], &ntbp);
+            if (ret != RDB_OK) {
+                free(cmattrv);
+                return ret;
+            }
+            tbpv[tbc1 + tbc++] = ntbp;
+        }
+    }
+    tbc = tbc1 + tbc;
 
     free(cmattrv);
     return tbc;
@@ -901,7 +890,8 @@ mutate(RDB_table *tbp, RDB_table **tbpv, int cap, RDB_transaction *txp)
             return mutate_intersect(tbp, tbpv, cap, txp);
         case RDB_TB_SELECT:
             /* Select over index is not further optimized */
-            if (tbp->var.select.indexp == NULL)
+            if (tbp->var.select.tbp->kind != RDB_TB_PROJECT
+                    || tbp->var.select.tbp->var.project.indexp == NULL)
                 return mutate_select(tbp, tbpv, cap, txp);
             return 0;
         case RDB_TB_JOIN:
@@ -932,88 +922,383 @@ enum {
     tbpv_cap = 256
 };
 
+RDB_bool
+_RDB_index_sorts(struct _RDB_tbindex *indexp, int seqitc, const RDB_seq_item seqitv[])
+{
+    int i;
+/*
+    if (indexp->unique)
+        return RDB_TRUE;
+*/
+    if (indexp->idxp == NULL || !RDB_index_is_ordered(indexp->idxp)
+            || indexp->attrc < seqitc)
+        return RDB_FALSE;
+
+    for (i = 0; i < seqitc; i++) {
+        if (strcmp(indexp->attrv[i].attrname, seqitv[i].attrname) != 0
+                || indexp->attrv[i].asc != seqitv[i].asc)
+            return RDB_FALSE;
+    }
+    return RDB_TRUE;
+}
+
+static unsigned
+sorted_table_cost(RDB_table *tbp, int seqitc,
+        const RDB_seq_item seqitv[])
+{
+/*    RDB_object strobj; */
+    int cost = table_cost(tbp);
+
+    /* Check if the index must be sorted */
+    if (seqitc > 0) {
+        _RDB_tbindex *indexp = _RDB_sortindex(tbp);
+        if (indexp == NULL || !_RDB_index_sorts(indexp, seqitc, seqitv))
+        {
+            int scost = (((double) cost) /* !! * log10(cost) */ / 7);
+
+            if (scost == 0)
+                scost = 1;
+            cost += scost;
+        }
+    }
+/*
+    RDB_init_obj(&strobj);
+    _RDB_table_to_str(&strobj, tbp, RDB_SHOW_INDEX);
+    fprintf(stderr, "checking: %s, cost: %u\n", (char *) strobj.var.bin.datap,
+            cost);
+    RDB_destroy_obj(&strobj);
+*/
+    return cost;
+}
+
+static int
+add_project(RDB_table *tbp)
+{
+    RDB_table *ptbp;
+    int ret;
+
+    switch (tbp->kind) {
+        case RDB_TB_REAL:
+            break;
+        case RDB_TB_MINUS:
+            if (tbp->var.minus.tb1p->kind == RDB_TB_REAL) {
+                ptbp = null_project(tbp->var.minus.tb1p);
+                if (ptbp == NULL)
+                    return RDB_NO_MEMORY;
+                tbp->var.minus.tb1p = ptbp;
+            } else {
+                ret = add_project(tbp->var.minus.tb1p);
+                if (ret != RDB_OK)
+                    return ret;
+            }
+            if (tbp->var.minus.tb2p->kind == RDB_TB_REAL) {
+                ptbp = null_project(tbp->var.minus.tb2p);
+                if (ptbp == NULL)
+                    return RDB_NO_MEMORY;
+                tbp->var.minus.tb2p = ptbp;
+            } else {
+                ret = add_project(tbp->var.minus.tb2p);
+                if (ret != RDB_OK)
+                    return ret;
+            }
+            break;
+        case RDB_TB_UNION:
+            if (tbp->var._union.tb1p->kind == RDB_TB_REAL) {
+                ptbp = null_project(tbp->var._union.tb1p);
+                if (ptbp == NULL)
+                    return RDB_NO_MEMORY;
+                tbp->var._union.tb1p = ptbp;
+            } else {
+                ret = add_project(tbp->var._union.tb1p);
+                if (ret != RDB_OK)
+                    return ret;
+            }
+            if (tbp->var._union.tb2p->kind == RDB_TB_REAL) {
+                ptbp = null_project(tbp->var._union.tb2p);
+                if (ptbp == NULL)
+                    return RDB_NO_MEMORY;
+                tbp->var._union.tb2p = ptbp;
+            } else {
+                ret = add_project(tbp->var._union.tb2p);
+                if (ret != RDB_OK)
+                    return ret;
+            }
+            break;
+        case RDB_TB_INTERSECT:
+            if (tbp->var.intersect.tb1p->kind == RDB_TB_REAL) {
+                ptbp = null_project(tbp->var.intersect.tb1p);
+                if (ptbp == NULL)
+                    return RDB_NO_MEMORY;
+                tbp->var.intersect.tb1p = ptbp;
+            } else {
+                ret = add_project(tbp->var.intersect.tb1p);
+                if (ret != RDB_OK)
+                    return ret;
+            }
+            if (tbp->var.intersect.tb2p->kind == RDB_TB_REAL) {
+                ptbp = null_project(tbp->var.intersect.tb2p);
+                if (ptbp == NULL)
+                    return RDB_NO_MEMORY;
+                tbp->var.intersect.tb2p = ptbp;
+            } else {
+                ret = add_project(tbp->var.intersect.tb2p);
+                if (ret != RDB_OK)
+                    return ret;
+            }
+            break;
+        case RDB_TB_SELECT:
+            if (tbp->var.select.tbp->kind == RDB_TB_REAL) {
+                ptbp = null_project(tbp->var.select.tbp);
+                if (ptbp == NULL)
+                    return RDB_NO_MEMORY;
+                tbp->var.select.tbp = ptbp;
+            } else {
+                ret = add_project(tbp->var.select.tbp);
+                if (ret != RDB_OK)
+                    return ret;
+            }
+            break;
+        case RDB_TB_JOIN:
+            if (tbp->var.join.tb1p->kind == RDB_TB_REAL) {
+                ptbp = null_project(tbp->var.join.tb1p);
+                if (ptbp == NULL)
+                    return RDB_NO_MEMORY;
+                tbp->var.join.tb1p = ptbp;
+            } else {
+                ret = add_project(tbp->var.join.tb1p);
+                if (ret != RDB_OK)
+                    return ret;
+            }
+            if (tbp->var.join.tb2p->kind == RDB_TB_REAL) {
+                ptbp = null_project(tbp->var.join.tb2p);
+                if (ptbp == NULL)
+                    return RDB_NO_MEMORY;
+                tbp->var.join.tb2p = ptbp;
+            } else {
+                ret = add_project(tbp->var.join.tb2p);
+                if (ret != RDB_OK)
+                    return ret;
+            }
+            break;
+        case RDB_TB_EXTEND:
+            if (tbp->var.extend.tbp->kind == RDB_TB_REAL) {
+                ptbp = null_project(tbp->var.extend.tbp);
+                if (ptbp == NULL)
+                    return RDB_NO_MEMORY;
+                tbp->var.extend.tbp = ptbp;
+            } else {
+                ret = add_project(tbp->var.extend.tbp);
+                if (ret != RDB_OK)
+                    return ret;
+            }
+            break;
+        case RDB_TB_PROJECT:
+            if (tbp->var.project.tbp->kind != RDB_TB_REAL) {
+                ret = add_project(tbp->var.project.tbp);
+                if (ret != RDB_OK)
+                    return ret;
+            }
+            break;
+        case RDB_TB_SUMMARIZE:
+            if (tbp->var.summarize.tb1p->kind == RDB_TB_REAL) {
+                ptbp = null_project(tbp->var.summarize.tb1p);
+                if (ptbp == NULL)
+                    return RDB_NO_MEMORY;
+                tbp->var.summarize.tb1p = ptbp;
+            } else {
+                ret = add_project(tbp->var.summarize.tb1p);
+                if (ret != RDB_OK)
+                    return ret;
+            }
+            break;
+        case RDB_TB_RENAME:
+            if (tbp->var.rename.tbp->kind == RDB_TB_REAL) {
+                ptbp = null_project(tbp->var.rename.tbp);
+                if (ptbp == NULL)
+                    return RDB_NO_MEMORY;
+                tbp->var.rename.tbp = ptbp;
+            } else {
+                ret = add_project(tbp->var.rename.tbp);
+                if (ret != RDB_OK)
+                    return ret;
+            }
+            break;
+        case RDB_TB_WRAP:
+            if (tbp->var.wrap.tbp->kind == RDB_TB_REAL) {
+                ptbp = null_project(tbp->var.wrap.tbp);
+                if (ptbp == NULL)
+                    return RDB_NO_MEMORY;
+                tbp->var.wrap.tbp = ptbp;
+            } else {
+                ret = add_project(tbp->var.wrap.tbp);
+                if (ret != RDB_OK)
+                    return ret;
+            }
+            break;
+        case RDB_TB_UNWRAP:
+            if (tbp->var.unwrap.tbp->kind == RDB_TB_REAL) {
+                ptbp = null_project(tbp->var.unwrap.tbp);
+                if (ptbp == NULL)
+                    return RDB_NO_MEMORY;
+                tbp->var.unwrap.tbp = ptbp;
+            } else {
+                ret = add_project(tbp->var.unwrap.tbp);
+                if (ret != RDB_OK)
+                    return ret;
+            }
+            break;
+        case RDB_TB_GROUP:
+            if (tbp->var.group.tbp->kind == RDB_TB_REAL) {
+                ptbp = null_project(tbp->var.group.tbp);
+                if (ptbp == NULL)
+                    return RDB_NO_MEMORY;
+                tbp->var.group.tbp = ptbp;
+            } else {
+                ret = add_project(tbp->var.group.tbp);
+                if (ret != RDB_OK)
+                    return ret;
+            }
+            break;
+        case RDB_TB_UNGROUP:
+            if (tbp->var.ungroup.tbp->kind == RDB_TB_REAL) {
+                ptbp = null_project(tbp->var.ungroup.tbp);
+                if (ptbp == NULL)
+                    return RDB_NO_MEMORY;
+                tbp->var.ungroup.tbp = ptbp;
+            } else {
+                ret = add_project(tbp->var.ungroup.tbp);
+                if (ret != RDB_OK)
+                    return ret;
+            }
+            break;
+        case RDB_TB_SDIVIDE:
+            if (tbp->var.sdivide.tb1p->kind == RDB_TB_REAL) {
+                ptbp = null_project(tbp->var.sdivide.tb1p);
+                if (ptbp == NULL)
+                    return RDB_NO_MEMORY;
+                tbp->var.sdivide.tb1p = ptbp;
+            } else {
+                ret = add_project(tbp->var.sdivide.tb1p);
+                if (ret != RDB_OK)
+                    return ret;
+            }
+            if (tbp->var.sdivide.tb2p->kind == RDB_TB_REAL) {
+                ptbp = null_project(tbp->var.sdivide.tb2p);
+                if (ptbp == NULL)
+                    return RDB_NO_MEMORY;
+                tbp->var.sdivide.tb2p = ptbp;
+            } else {
+                ret = add_project(tbp->var.sdivide.tb2p);
+                if (ret != RDB_OK)
+                    return ret;
+            }
+            break;
+    }
+    return RDB_OK;
+}
+
 int
 _RDB_optimize(RDB_table *tbp, int seqitc, const RDB_seq_item seqitv[],
         RDB_transaction *txp, RDB_table **ntbpp)
 {
-    RDB_table *ntbp;
     int ret;
-    int i, bestn;
-    int tbc;
-    unsigned bestcost, obestcost;
-    RDB_table *tbpv[tbpv_cap];
+    int i;
 /*    RDB_object strobj; */
 
     if (tbp->kind == RDB_TB_REAL) {
+        if (seqitc > 0) {
+            /*
+             * Check if an index can be used for sorting
+             */
+
+            for (i = 0; i < tbp->var.real.indexc
+                    && !_RDB_index_sorts(&tbp->var.real.indexv[i],
+                            seqitc, seqitv);
+                    i++);
+            /* If yes, create projection */
+            if (i < tbp->var.real.indexc) {
+                RDB_table *ptbp = null_project(tbp);
+                if (ptbp == NULL)
+                    return RDB_NO_MEMORY;
+                ptbp->var.project.indexp = &tbp->var.real.indexv[i];
+                tbp = ptbp;
+            }
+        }
         *ntbpp = tbp;
-        return RDB_OK;
-    }
+    } else {
+        RDB_table *ntbp;
+        unsigned obestcost, bestcost;
+        int bestn;
+        int tbc;
+        RDB_table *tbpv[tbpv_cap];
 
-    /*
-     * Make a copy of the table, so it can be transformed freely
-     */
-    ntbp = _RDB_dup_vtable(tbp);
-    if (ntbp == NULL)
-        return RDB_NO_MEMORY;
+        /*
+         * Make a copy of the table, so it can be transformed freely
+         */
+        ntbp = _RDB_dup_vtable(tbp);
+        if (ntbp == NULL)
+            return RDB_NO_MEMORY;
 
-    /*
-     * Algebraic optimization
-     */
-    ret = _RDB_transform(ntbp);
-    if (ret != RDB_OK)
-        return ret;
+        /*
+         * Algebraic optimization
+         */
 
-    bestcost = table_cost(ntbp);
+        ret = _RDB_transform(ntbp);
+        if (ret != RDB_OK)
+            return ret;
 
-    do {
-        obestcost = bestcost;
+        /*
+         * Add a project table above real tables
+         * to prepare for indexes
+         */
+        
+        ret = add_project(ntbp);
+        if (ret != RDB_OK)
+            return ret;
 
-        tbc = mutate(ntbp, tbpv, tbpv_cap, txp);
-        if (tbc < 0)
-            return tbc;
+        /*
+         * Try to bind best table
+         */
 
-        bestn = -1;
+        bestcost = sorted_table_cost(ntbp, seqitc, seqitv);
+        do {
+            obestcost = bestcost;
 
-        for (i = 0; i < tbc; i++) {
-            int cost = table_cost(tbpv[i]);
-            /* Check if the index must be sorted */
-            _RDB_tbindex *indexp = _RDB_sortindex(tbpv[i], seqitc, seqitv);
-            if (indexp == NULL)
-                cost = cost + (((double) cost) /* !! * log10(cost) */ / 7);
+            tbc = mutate(ntbp, tbpv, tbpv_cap, txp);
+            if (tbc < 0)
+                return tbc;
 
-/* !!
+            bestn = -1;
+
+            for (i = 0; i < tbc; i++) {
+                int cost = sorted_table_cost(tbpv[i], seqitc, seqitv);
+
+                if (cost < bestcost) {
+                    bestcost = cost;
+                    bestn = i;
+                }
+            }
+            if (bestn == -1) {
+                for (i = 0; i < tbc; i++)
+                    RDB_drop_table(tbpv[i], txp);
+            } else {
+                RDB_drop_table(ntbp, txp);
+                ntbp = tbpv[bestn];
+                for (i = 0; i < tbc; i++) {
+                    if (i != bestn)
+                        RDB_drop_table(tbpv[i], txp);
+                }
+            }
+/*
             RDB_init_obj(&strobj);
-            _RDB_table_to_str(&strobj, tbpv[i], RDB_SHOW_INDEX);
-            fprintf(stderr, "checking: %s, cost: %u\n", (char *) strobj.var.bin.datap,
-                    cost);
+            _RDB_table_to_str(&strobj, ntbp, RDB_SHOW_INDEX);
+            fprintf(stderr, "best: %s, cost: %u\n", (char *) strobj.var.bin.datap,
+                    bestcost);
             RDB_destroy_obj(&strobj);
 */
+        } while (bestcost < obestcost);
+        *ntbpp = ntbp;
+    }
 
-            if (cost < bestcost) {
-                bestcost = cost;
-                bestn = i;
-            }
-        }
-        if (bestn == -1) {
-            for (i = 0; i < tbc; i++)
-                RDB_drop_table(tbpv[i], txp);
-        } else {
-            RDB_drop_table(ntbp, txp);
-            ntbp = tbpv[bestn];
-            for (i = 0; i < tbc; i++) {
-                if (i != bestn)
-                    RDB_drop_table(tbpv[i], txp);
-            }
-        }
-/*
-        RDB_init_obj(&strobj);
-        _RDB_table_to_str(&strobj, ntbp, RDB_SHOW_INDEX);
-        fprintf(stderr, "best: %s, cost: %u\n", (char *) strobj.var.bin.datap,
-                bestcost);
-        RDB_destroy_obj(&strobj);
-*/
-    } while (bestcost < obestcost);
-
-    *ntbpp = ntbp;
     return RDB_OK;
 }

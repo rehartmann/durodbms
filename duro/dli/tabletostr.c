@@ -236,16 +236,6 @@ append_table(RDB_object *objp, RDB_table *tbp, int options)
             ret = append_str(objp, ")");
             if (ret != RDB_OK)
                 return ret;
-            if (RDB_SHOW_INDEX & options) {
-                if (tbp->var.select.indexp != NULL) {
-                    ret = append_str(objp, " INDEX ");
-                    if (ret != RDB_OK)
-                        return ret;
-                    ret = append_str(objp, tbp->var.select.indexp->name);
-                    if (ret != RDB_OK)
-                        return ret;
-                }
-            }
             break;
         case RDB_TB_UNION:
             ret = append_str(objp, "(");
@@ -314,16 +304,6 @@ append_table(RDB_object *objp, RDB_table *tbp, int options)
             ret = append_str(objp, ")");
             if (ret != RDB_OK)
                 return ret;
-            if (RDB_SHOW_INDEX & options) {
-                if (tbp->var.join.indexp != NULL) {
-                    ret = append_str(objp, " INDEX ");
-                    if (ret != RDB_OK)
-                        return ret;
-                    ret = append_str(objp, tbp->var.join.indexp->name);
-                    if (ret != RDB_OK)
-                        return ret;
-                }
-            }
             break;
         case RDB_TB_EXTEND:
             ret = append_str(objp, "EXTEND ");
@@ -385,6 +365,16 @@ append_table(RDB_object *objp, RDB_table *tbp, int options)
             ret = append_str(objp, "}");
             if (ret != RDB_OK)
                 return ret;
+            if (RDB_SHOW_INDEX & options) {
+                if (tbp->var.project.indexp != NULL) {
+                    ret = append_str(objp, " INDEX ");
+                    if (ret != RDB_OK)
+                        return ret;
+                    ret = append_str(objp, tbp->var.project.indexp->name);
+                    if (ret != RDB_OK)
+                        return ret;
+                }
+            }
             break;
         case RDB_TB_RENAME:
             ret = append_table(objp, tbp->var.rename.tbp, options);

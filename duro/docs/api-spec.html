@@ -1478,7 +1478,7 @@ RDB_sdivide(RDB_table *, RDB_table *, RDB_table *, RDB_table **resultpp);
 
 <h3>Description</h3>
 
-<p>RDB_creates a local (transient) virtual table which is the
+<p>RDB_sdivide creates a local (transient) virtual table which is the
 result of a small divide of the three tables.
 
 <p>Table #3 must be of the same type as the join of table #1 and table #2.
@@ -1511,7 +1511,7 @@ RDB_gdivide(RDB_table *, RDB_table *, RDB_table *, RDB_table *,
 
 <h3>Description</h3>
 
-<p>RDB_creates a local (transient) virtual table which is the
+<p>RDB_gdivide creates a local (transient) virtual table which is the
 result of a great divide of the four tables.
 
 <h3>Return value</h3>
@@ -1619,9 +1619,9 @@ relational UNWRAP operator.
 
 <dl>
 <dt>RDB_ATTRIBUTE_NOT_FOUND
-<dd>An attribute specified by attrv does not exist.
+<dd>An attribute specified by <var>attrv</var> does not exist.
 <dt>RDB_INVALID_ARGUMENT
-<dd>An attribute specified by attrv is not tuple-typed.
+<dd>An attribute specified by <var>attrv</var> is not tuple-typed.
 </dl>
 
 <hr>
@@ -1651,10 +1651,10 @@ and <var>attrv</var> are grouped into a relation-valued attribute
 
 <dl>
 <dt>RDB_ATTRIBUTE_NOT_FOUND
-<dd>An attribute specified by attrv does not exist.
+<dd>An attribute specified by <var>attrv</var> does not exist.
 <dt>RDB_INVALID_ARGUMENT
 <dd>The attribute <var>gattr</var> already appears in the table,
-but not in attrv.
+but not in <var>attrv</var>.
 </dl>
 
 <hr>

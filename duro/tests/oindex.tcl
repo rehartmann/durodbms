@@ -112,6 +112,15 @@ checkarray $a {{A 3 B Bla C X D x} {A 1 B Blb C Y D u} {A 2 B Ble C Y D u}
 
 duro::array drop $a
 
+duro::table expr v {T1 WHERE A > 1} $tx
+
+set a [duro::array create v {B asc} $tx]
+
+checkarray $a {{A 3 B Bla C X D x} {A 2 B Ble C Y D u}
+        {A 5 B Blubb C Y D x}} $tx
+
+duro::array drop $a
+
 duro::commit $tx
 
 duro::env close $dbenv

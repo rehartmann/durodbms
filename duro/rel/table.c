@@ -207,7 +207,7 @@ _RDB_drop_table(RDB_table *tbp, RDB_bool rec)
             break;
         }
         case RDB_TB_SELECT:
-            if (tbp->var.select.indexp != NULL)
+            if (tbp->var.select.objpc > 0)
                 free(tbp->var.select.objpv);
             RDB_drop_expr(tbp->var.select.exp);
             if (rec) {
@@ -943,7 +943,7 @@ _RDB_move_tuples(RDB_table *dstp, RDB_table *srcp, RDB_transaction *txp)
     /*
      * Copy all tuples from source table to destination table
      */
-    ret = _RDB_table_qresult(srcp, NULL, txp, &qrp);
+    ret = _RDB_table_qresult(srcp, txp, &qrp);
     if (ret != RDB_OK)
         return ret;
 
@@ -1395,7 +1395,7 @@ RDB_extract_tuple(RDB_table *tbp, RDB_transaction *txp, RDB_object *tplp)
     if (ret != RDB_OK)
         return ret;
 
-    ret = _RDB_table_qresult(ntbp, NULL, txp, &qrp);
+    ret = _RDB_table_qresult(ntbp, txp, &qrp);
     if (ret != RDB_OK) {
         if (ntbp->kind != RDB_TB_REAL)
             RDB_drop_table(ntbp, txp);
@@ -1449,7 +1449,7 @@ RDB_table_is_empty(RDB_table *tbp, RDB_transaction *txp, RDB_bool *resultp)
     if (txp != NULL && !RDB_tx_is_running(txp))
         return RDB_INVALID_TRANSACTION;
 
-    ret = _RDB_table_qresult(tbp, NULL, txp, &qrp);
+    ret = _RDB_table_qresult(tbp, txp, &qrp);
     if (ret != RDB_OK) {
         if (RDB_is_syserr(ret)) {
             RDB_rollback_all(txp);
@@ -1491,7 +1491,7 @@ RDB_cardinality(RDB_table *tbp, RDB_transaction *txp)
     if (ret != RDB_OK)
         return ret;
 
-    ret = _RDB_table_qresult(ntbp, NULL, txp, &qrp);
+    ret = _RDB_table_qresult(ntbp, txp, &qrp);
     if (ret != RDB_OK) {
         if (ntbp->kind != RDB_TB_REAL)
             RDB_drop_table(ntbp, txp);
@@ -1562,7 +1562,7 @@ RDB_subset(RDB_table *tb1p, RDB_table *tb2p, RDB_transaction *txp,
     if (!RDB_tx_is_running(txp))
         return RDB_INVALID_TRANSACTION;
 
-    ret = _RDB_table_qresult(tb1p, NULL, txp, &qrp);
+    ret = _RDB_table_qresult(tb1p, txp, &qrp);
     if (ret != RDB_OK) {
         if (RDB_is_syserr(ret)) {
             RDB_rollback_all(txp);
@@ -1638,7 +1638,7 @@ RDB_table_equals(RDB_table *tb1p, RDB_table *tb2p, RDB_transaction *txp,
      * (The implementation is quite inefficient if table #2
      * is a SUMMARIZE PER or GROUP table)
      */
-    ret = _RDB_table_qresult(tb1p, NULL, txp, &qrp);
+    ret = _RDB_table_qresult(tb1p, txp, &qrp);
     if (ret != RDB_OK)
         return ret;
 
@@ -1664,56 +1664,30 @@ error:
     return ret;
 }
 
-static RDB_bool
-index_sorts(struct _RDB_tbindex *indexp, int seqitc, const RDB_seq_item seqitv[])
-{
-    int i;
-
-    if (indexp->idxp == NULL || !RDB_index_is_ordered(indexp->idxp)
-            || indexp->attrc < seqitc)
-        return RDB_FALSE;
-
-    for (i = 0; i < seqitc; i++) {
-        if (strcmp(indexp->attrv[i].attrname, seqitv[i].attrname) != 0
-                || indexp->attrv[i].asc != seqitv[i].asc)
-            return RDB_FALSE;
-    }
-    return RDB_TRUE;
-}
-
 /*
  * If there is an index by which the tuples are ordered
  * when read through a qresult.
  */
 struct _RDB_tbindex *
-_RDB_sortindex (RDB_table *tbp, int seqitc, const RDB_seq_item seqitv[])
+_RDB_sortindex (RDB_table *tbp)
 {
-    int i;
-
     switch (tbp->kind) {
         case RDB_TB_REAL:
-            for (i = 0; i < tbp->var.real.indexc; i++) {
-                if (index_sorts(&tbp->var.real.indexv[i], seqitc, seqitv))
-                    return &tbp->var.real.indexv[i];
-            }
             return NULL;
         case RDB_TB_SELECT:
-            if (tbp->var.select.indexp != NULL
-                    && index_sorts(tbp->var.select.indexp, seqitc, seqitv))
-                return tbp->var.select.indexp;
-            return _RDB_sortindex(tbp->var.select.tbp, seqitc, seqitv);
+            return _RDB_sortindex(tbp->var.select.tbp);
         case RDB_TB_UNION:
             return NULL;
         case RDB_TB_MINUS:
-            return _RDB_sortindex(tbp->var.minus.tb1p, seqitc, seqitv);
+            return _RDB_sortindex(tbp->var.minus.tb1p);
         case RDB_TB_INTERSECT:
-            return _RDB_sortindex(tbp->var.intersect.tb1p, seqitc, seqitv);
+            return _RDB_sortindex(tbp->var.intersect.tb1p);
         case RDB_TB_JOIN:
-            return _RDB_sortindex(tbp->var.join.tb1p, seqitc, seqitv);
+            return _RDB_sortindex(tbp->var.join.tb1p);
         case RDB_TB_EXTEND:
-            return _RDB_sortindex(tbp->var.extend.tbp, seqitc, seqitv);
+            return _RDB_sortindex(tbp->var.extend.tbp);
         case RDB_TB_PROJECT:
-            return NULL; /* !! */
+            return tbp->var.project.indexp;
         case RDB_TB_RENAME:
             return NULL; /* !! */
         case RDB_TB_SUMMARIZE:
@@ -1723,7 +1697,7 @@ _RDB_sortindex (RDB_table *tbp, int seqitc, const RDB_seq_item seqitv[])
         case RDB_TB_UNWRAP:
             return NULL; /* !! */
         case RDB_TB_SDIVIDE:
-            return _RDB_sortindex(tbp->var.sdivide.tb1p, seqitc, seqitv);
+            return _RDB_sortindex(tbp->var.sdivide.tb1p);
         case RDB_TB_GROUP:
             return NULL; /* !! */
         case RDB_TB_UNGROUP:

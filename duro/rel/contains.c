@@ -15,24 +15,28 @@ project_contains(RDB_table *tbp, const RDB_object *tplp, RDB_transaction *txp)
 {
     RDB_bool result;
     int ret;
-    RDB_type *tuptyp = tbp->typ->var.basetyp;
+    RDB_type *tpltyp = tbp->typ->var.basetyp;
 
-    if (tuptyp->var.tuple.attrc > 0) {
+    if (tpltyp->var.tuple.attrc ==
+            tbp->var.project.tbp->typ->var.basetyp->var.tuple.attrc) {
+        /* Null project */
+        return RDB_table_contains(tbp->var.project.tbp, tplp, txp);
+    } else if (tpltyp->var.tuple.attrc > 0) {
         RDB_expression *condp;
         RDB_table *seltbp;
         RDB_object *objp;
         int i, ret;
 
         /* create where-condition */
-        objp = RDB_tuple_get(tplp, tuptyp->var.tuple.attrv[0].name);
+        objp = RDB_tuple_get(tplp, tpltyp->var.tuple.attrv[0].name);
         if (objp == NULL)
             return RDB_INVALID_ARGUMENT;
-        condp = RDB_eq(RDB_expr_attr(tuptyp->var.tuple.attrv[0].name),
+        condp = RDB_eq(RDB_expr_attr(tpltyp->var.tuple.attrv[0].name),
                 RDB_obj_to_expr(objp));
         if (condp == NULL)
             return RDB_NO_MEMORY;
-        for (i = 1; i < tuptyp->var.tuple.attrc; i++) {
-            objp = RDB_tuple_get(tplp, tuptyp->var.tuple.attrv[i].name);
+        for (i = 1; i < tpltyp->var.tuple.attrc; i++) {
+            objp = RDB_tuple_get(tplp, tpltyp->var.tuple.attrv[i].name);
             if (objp == NULL) {
                 if (condp != NULL)
                     RDB_drop_expr(condp);
@@ -40,7 +44,7 @@ project_contains(RDB_table *tbp, const RDB_object *tplp, RDB_transaction *txp)
             }
             
             ret = RDB_ro_op_2("AND", condp, RDB_eq(RDB_expr_attr(
-                    tuptyp->var.tuple.attrv[i].name), RDB_obj_to_expr(objp)),
+                    tpltyp->var.tuple.attrv[i].name), RDB_obj_to_expr(objp)),
                     txp, &condp);
             if (ret != RDB_OK)
                 return ret;
@@ -97,35 +101,35 @@ ungroup_contains(RDB_table *tbp, const RDB_object *tplp, RDB_transaction *txp)
     RDB_object tpl;
     RDB_qresult *qrp;
     RDB_table *seltbp = NULL;
-    RDB_type *tuptyp = tbp->var.ungroup.tbp->typ->var.basetyp;
+    RDB_type *tpltyp = tbp->var.ungroup.tbp->typ->var.basetyp;
 
-    if (tuptyp->var.tuple.attrc > 1) {
+    if (tpltyp->var.tuple.attrc > 1) {
         RDB_expression *condp;
         RDB_object *objp;
         int i;
 
         /* create where-condition */
         i = 0;
-        if (i < tuptyp->var.tuple.attrc
-                && strcmp(tuptyp->var.tuple.attrv[i].name,
+        if (i < tpltyp->var.tuple.attrc
+                && strcmp(tpltyp->var.tuple.attrv[i].name,
                           tbp->var.ungroup.attr) == 0)
             i++;
-        objp = RDB_tuple_get(tplp, tuptyp->var.tuple.attrv[i].name);
+        objp = RDB_tuple_get(tplp, tpltyp->var.tuple.attrv[i].name);
         if (objp == NULL)
             return RDB_INVALID_ARGUMENT;
-        condp = RDB_eq(RDB_expr_attr(tuptyp->var.tuple.attrv[i++].name),
+        condp = RDB_eq(RDB_expr_attr(tpltyp->var.tuple.attrv[i++].name),
                 RDB_obj_to_expr(objp));
-        while (i < tuptyp->var.tuple.attrc) {
-            if (strcmp(tuptyp->var.tuple.attrv[i].name,
+        while (i < tpltyp->var.tuple.attrc) {
+            if (strcmp(tpltyp->var.tuple.attrv[i].name,
                           tbp->var.ungroup.attr) != 0) {
-                objp = RDB_tuple_get(tplp, tuptyp->var.tuple.attrv[i].name);
+                objp = RDB_tuple_get(tplp, tpltyp->var.tuple.attrv[i].name);
                 if (objp == NULL) {
                     if (condp != NULL)
                         RDB_drop_expr(condp);
                     return RDB_INVALID_ARGUMENT;
                 }
                 ret = RDB_ro_op_2("AND", condp, RDB_eq(RDB_expr_attr(
-                        tuptyp->var.tuple.attrv[i].name),
+                        tpltyp->var.tuple.attrv[i].name),
                         RDB_obj_to_expr(objp)), txp, &condp);
                 if (ret != RDB_OK)
                     return ret;
@@ -143,7 +147,7 @@ ungroup_contains(RDB_table *tbp, const RDB_object *tplp, RDB_transaction *txp)
             RDB_drop_expr(condp);
             return ret;
         }
-        ret = _RDB_table_qresult(seltbp, NULL, txp, &qrp);
+        ret = _RDB_table_qresult(seltbp, txp, &qrp);
         if (ret != RDB_OK) {
             RDB_drop_table(seltbp, txp);
             if (RDB_is_syserr(ret))
@@ -154,7 +158,7 @@ ungroup_contains(RDB_table *tbp, const RDB_object *tplp, RDB_transaction *txp)
         /*
          * Only one attribute (the UNGROUPed attribute)
          */
-        ret = _RDB_table_qresult(tbp->var.ungroup.tbp, NULL, txp, &qrp);
+        ret = _RDB_table_qresult(tbp->var.ungroup.tbp, txp, &qrp);
         if (ret != RDB_OK) {
             if (RDB_is_syserr(ret))
                 RDB_rollback_all(txp);
@@ -272,8 +276,8 @@ stored_contains(RDB_table *tbp, const RDB_object *tplp, RDB_transaction *txp)
     int i;
     int ret;
     RDB_field *fvp;
-    RDB_type *tuptyp = tbp->typ->var.basetyp;
-    int attrcount = tuptyp->var.tuple.attrc;
+    RDB_type *tpltyp = tbp->typ->var.basetyp;
+    int attrcount = tpltyp->var.tuple.attrc;
 
     fvp = malloc(sizeof(RDB_field) * attrcount);
     if (fvp == NULL)
@@ -281,15 +285,15 @@ stored_contains(RDB_table *tbp, const RDB_object *tplp, RDB_transaction *txp)
     for (i = 0; i < attrcount; i++) {
         RDB_object *objp;
         int fno = *(int*)RDB_hashmap_get(&tbp->var.real.attrmap,
-                tuptyp->var.tuple.attrv[i].name, NULL);
+                tpltyp->var.tuple.attrv[i].name, NULL);
 
-        objp = RDB_tuple_get(tplp, tuptyp->var.tuple.attrv[i].name);
+        objp = RDB_tuple_get(tplp, tpltyp->var.tuple.attrv[i].name);
         if (objp == NULL) {
             free(fvp);
             return RDB_INVALID_ARGUMENT;
         }
         if (objp->typ != NULL && !RDB_type_equals (RDB_obj_type(objp),
-                tuptyp->var.tuple.attrv[i].typ)) {
+                tpltyp->var.tuple.attrv[i].typ)) {
             free(fvp);
             return RDB_TYPE_MISMATCH;
         }
@@ -299,7 +303,7 @@ stored_contains(RDB_table *tbp, const RDB_object *tplp, RDB_transaction *txp)
                 && (objp->kind == RDB_OB_TUPLE
                 || objp->kind == RDB_OB_TABLE)) {
             _RDB_set_nonsc_type(objp,
-                    tuptyp->var.tuple.attrv[i].typ);
+                    tpltyp->var.tuple.attrv[i].typ);
         }
         ret = _RDB_obj_to_field(&fvp[fno], objp);
         if (ret != RDB_OK) {
@@ -376,7 +380,7 @@ RDB_table_contains(RDB_table *tbp, const RDB_object *tplp, RDB_transaction *txp)
                 int ret2;
 
                 RDB_qresult *qrp;
-                ret = _RDB_table_qresult(tbp, NULL, txp, &qrp);
+                ret = _RDB_table_qresult(tbp, txp, &qrp);
                 if (ret != RDB_OK) {
                     RDB_errmsg(txp->dbp->dbrootp->envp,
                             "Unable to create qresult: %s", RDB_strerror(ret));
