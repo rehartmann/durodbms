@@ -1,3 +1,8 @@
+/*
+ * Copyright (C) 2003, 2004 René Hartmann.
+ * See the file COPYING for redistribution information.
+ */
+
 /* $Id$ */
 
 #include "recmap.h"
@@ -12,12 +17,13 @@ enum {
     RECLEN_SIZE = 4
 };
 
-/* Allocate a RDB_recmap structure and initialize its fields.
+/*
+ * Allocate a RDB_recmap structure and initialize its fields.
  * The underlying BDB database is created using db_create(), but not opened.
  */
 static int
 new_recmap(RDB_recmap **rmpp, const char *namp, const char *filenamp,
-        RDB_environment *dsp, int fieldc, const int fieldlenv[], int keyfieldc,
+        RDB_environment *envp, int fieldc, const int fieldlenv[], int keyfieldc,
         RDB_bool dup)
 {
     int i, ret;
@@ -72,7 +78,7 @@ new_recmap(RDB_recmap **rmpp, const char *namp, const char *filenamp,
             }
         }
     }
-    ret = db_create(&rmp->dbp, dsp->envp, 0);
+    ret = db_create(&rmp->dbp, envp != NULL ? envp->envp : NULL, 0);
     if (ret != 0) {
         goto error;
     }
@@ -89,11 +95,11 @@ error:
 
 int
 RDB_create_recmap(const char *name, const char *filename,
-        RDB_environment *dsp, int fieldc, const int fieldlenv[], int keyfieldc,
+        RDB_environment *envp, int fieldc, const int fieldlenv[], int keyfieldc,
         DB_TXN *txid, RDB_recmap **rmpp)
 {
     /* Allocate and initialize RDB_recmap structure */
-    int ret = new_recmap(rmpp, name, filename, dsp,
+    int ret = new_recmap(rmpp, name, filename, envp,
             fieldc, fieldlenv, keyfieldc, RDB_FALSE); 
     if (ret != RDB_OK)
         return ret;
@@ -153,13 +159,13 @@ compare_key(DB *dbp, const DBT *dbt1p, const DBT *dbt2p)
 
 int
 RDB_create_sorted_recmap(const char *name, const char *filename,
-        RDB_environment *dsp, int fieldc, const int fieldlenv[], int keyfieldc,
+        RDB_environment *envp, int fieldc, const int fieldlenv[], int keyfieldc,
         const RDB_compare_field cmpv[],
         RDB_bool dup, DB_TXN *txid, RDB_recmap **rmpp)
 {
     int i;
     /* Allocate and initialize RDB_recmap structure */
-    int ret = new_recmap(rmpp, name, filename, dsp,
+    int ret = new_recmap(rmpp, name, filename, envp,
             fieldc, fieldlenv, keyfieldc, dup); 
 
     if (ret != RDB_OK)
@@ -197,10 +203,10 @@ error:
 
 int
 RDB_open_recmap(const char *name, const char *filename,
-       RDB_environment *dsp, int fieldc, const int fieldlenv[], int keyfieldc,
+       RDB_environment *envp, int fieldc, const int fieldlenv[], int keyfieldc,
        DB_TXN *txid, RDB_recmap **rmpp)
 {
-    int ret = new_recmap(rmpp, name, filename, dsp,
+    int ret = new_recmap(rmpp, name, filename, envp,
             fieldc, fieldlenv, keyfieldc, RDB_FALSE);
     if (ret != RDB_OK)
        return ret;
@@ -239,7 +245,7 @@ RDB_delete_recmap(RDB_recmap *rmp, RDB_environment *envp, DB_TXN *txid)
     if (ret != 0)
         goto cleanup;
 
-    if (rmp->namp != NULL) {
+    if (envp != NULL && rmp->namp != NULL) {
         ret = envp->envp->dbremove(envp->envp, txid, rmp->filenamp, rmp->namp, 0);
     }
 

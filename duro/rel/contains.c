@@ -177,8 +177,12 @@ RDB_table_contains(RDB_table *tbp, const RDB_object *tup, RDB_transaction *txp)
                     }
 
                     /* Set type - needed for tuples */
-                    if (valp->typ == NULL && valp->kind == RDB_OB_TUPLE)
-                        _RDB_set_tuple_type(valp, tuptyp->var.tuple.attrv[i].typ);
+                    if (valp->typ == NULL
+                            && (valp->kind == RDB_OB_TUPLE
+                            || valp->kind == RDB_OB_TABLE)) {
+                        _RDB_set_nonsc_type(valp,
+                                tuptyp->var.tuple.attrv[i].typ);
+                    }
                     _RDB_obj_to_field(&fvp[fno], valp);
                 }
                 ret = RDB_contains_rec(tbp->var.stored.recmapp, fvp, txp->txid);

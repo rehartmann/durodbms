@@ -32,22 +32,28 @@ static int replen(const RDB_type *typ) {
     if (RDB_type_is_scalar(typ))
         return typ->ireplen;
 
-    if (typ->kind == RDB_TP_TUPLE) {
-        int i;
-        size_t len;
-        size_t tlen = 0;
+    switch(typ->kind) {
+        case RDB_TP_TUPLE:
+        {
+            int i;
+            size_t len;
+            size_t tlen = 0;
 
-        /*
-         * Add lengths of attribute types. If one of the attributes is
-         * of variable length, the tuple type is of variable length.
-         */
-        for (i = 0; i < typ->var.tuple.attrc; i++) {
-            len = replen(typ->var.tuple.attrv[i].typ);
-            if (len == RDB_VARIABLE_LEN)
-                return RDB_VARIABLE_LEN;
-            tlen += len;
+            /*
+             * Add lengths of attribute types. If one of the attributes is
+             * of variable length, the tuple type is of variable length.
+             */
+            for (i = 0; i < typ->var.tuple.attrc; i++) {
+                len = replen(typ->var.tuple.attrv[i].typ);
+                if (len == RDB_VARIABLE_LEN)
+                    return RDB_VARIABLE_LEN;
+                tlen += len;
+            }
+            return tlen;
         }
-        return tlen;
+        case RDB_TP_RELATION:
+            return RDB_VARIABLE_LEN;
+        default: ;
     }
     abort();
 }
@@ -90,12 +96,12 @@ open_key_index(RDB_table *tbp, int keyno, const RDB_string_vec *keyattrsp,
                   tbp->is_persistent ? idx_name : NULL,
                   tbp->is_persistent ? RDB_DATAFILE : NULL,
                   envp, keyattrsp->strc, fieldv, RDB_TRUE,
-                  txp->txid, idxp);
+                  txp != NULL ? txp->txid : NULL, idxp);
     } else {
         /* open index */
         ret = RDB_open_index(tbp->var.stored.recmapp, idx_name, RDB_DATAFILE,
                   envp, keyattrsp->strc, fieldv, RDB_TRUE,
-                  txp->txid, idxp);
+                  txp != NULL ? txp->txid : NULL, idxp);
     }
 
     if (ret != RDB_OK)
@@ -154,7 +160,7 @@ _RDB_open_table(RDB_table *tbp,
     int attrc = tbp->typ->var.basetyp->var.tuple.attrc;
     RDB_attr *heading = tbp->typ->var.basetyp->var.tuple.attrv;
 
-    if (!RDB_tx_is_running(txp))
+    if (txp != NULL && !RDB_tx_is_running(txp))
         return RDB_INVALID_TRANSACTION;
 
     flenv = malloc(sizeof(int) * attrc);
@@ -174,8 +180,14 @@ _RDB_open_table(RDB_table *tbp,
 
     di = piattrc;
     for (i = 0; i < attrc; i++) {
-        /* Search attribute in key */
-        RDB_int fno = (RDB_int) RDB_find_str(piattrc, piattrv, heading[i].name);
+        RDB_int fno;
+
+        if (piattrc == attrc) {
+            fno = i;
+        } else {            
+            /* Search attribute in key */
+            fno = (RDB_int) RDB_find_str(piattrc, piattrv, heading[i].name);
+        }
 
         /* If it's not found in the key, give it a non-key field number */
         if (fno == -1)
@@ -198,12 +210,6 @@ _RDB_open_table(RDB_table *tbp,
         if (ret != RDB_OK)
             goto error;
 
-        /* Relation types are supported by this version */
-        if (heading[i].typ->kind == RDB_TP_RELATION) {
-            ret = RDB_NOT_SUPPORTED;
-            goto error;
-        }
-
         flenv[fno] = replen(heading[i].typ);
     }
 
@@ -211,13 +217,13 @@ _RDB_open_table(RDB_table *tbp,
         if (ascv == NULL)
             ret = RDB_create_recmap(tbp->is_persistent ? tbp->name : NULL,
                     tbp->is_persistent ? RDB_DATAFILE : NULL,
-                    envp, attrc, flenv, piattrc, txp->txid,
+                    envp, attrc, flenv, piattrc, txp != NULL ? txp->txid : NULL,
                     &tbp->var.stored.recmapp);
         else {
             ret = RDB_create_sorted_recmap(tbp->is_persistent ? tbp->name : NULL,
                     tbp->is_persistent ? RDB_DATAFILE : NULL,
-                    envp, attrc, flenv,
-                    piattrc, cmpv, RDB_TRUE, txp->txid,
+                    envp, attrc, flenv, piattrc, cmpv,
+                    RDB_TRUE, txp != NULL ? txp->txid : NULL,
                     &tbp->var.stored.recmapp);
         }
     } else {
@@ -226,7 +232,7 @@ _RDB_open_table(RDB_table *tbp,
             goto error;
         }
         ret = RDB_open_recmap(tbp->name, RDB_DATAFILE, envp,
-                attrc, flenv, piattrc, txp->txid,
+                attrc, flenv, piattrc, txp != NULL ? txp->txid : NULL,
                 &tbp->var.stored.recmapp);
     }
 
@@ -260,7 +266,7 @@ error:
     if (tbp != NULL) {
         RDB_destroy_hashmap(&tbp->var.stored.attrmap);
     }
-    if (RDB_is_syserr(ret))
+    if (RDB_is_syserr(ret) && txp != NULL)
         RDB_rollback_all(txp);
     return ret;
 }
@@ -827,7 +833,7 @@ RDB_drop_db(RDB_database *dbp)
         goto error;
     }
     exprp = RDB_eq(RDB_expr_attr("DBNAME"),
-                                 RDB_string_const(dbp->name));
+                   RDB_string_const(dbp->name));
     ret = RDB_select(dbp->dbrootp->dbtables_tbp, exprp, &vtb2p);
     if (ret != RDB_OK) {
         RDB_drop_expr(exprp);
@@ -903,6 +909,7 @@ error:
  * or opens an existing table, depending on the create
  * argument.
  * Does not insert the table into the catalog.
+ * If keyv is NULL, the table will be all-key.
  */
 int
 _RDB_provide_table(const char *name, RDB_bool persistent,
@@ -961,37 +968,57 @@ _RDB_create_table(const char *name, RDB_bool persistent,
                 RDB_transaction *txp, RDB_table **tbpp)
 {
     return _RDB_provide_table(name, persistent,
-           attrc, heading, keyc, keyv, RDB_TRUE,
-           RDB_TRUE, txp, txp->dbp->dbrootp->envp, tbpp);
+           attrc, heading, keyc, keyv, RDB_TRUE, RDB_TRUE,
+           txp, txp != NULL ? txp->dbp->dbrootp->envp : NULL, tbpp);
 }
 
 int
 RDB_create_table(const char *name, RDB_bool persistent,
-                int strc, RDB_attr heading[],
+                int attrc, RDB_attr heading[],
                 int keyc, RDB_string_vec keyv[],
                 RDB_transaction *txp, RDB_table **tbpp)
 {
     int ret;
     int i;
     RDB_transaction tx;
+    RDB_string_vec allkey; /* Used if keyv is NULL */
 
-    /* Create subtransaction */
-    ret = RDB_begin_tx(&tx, txp->dbp, txp);
-    if (ret != RDB_OK)
-        return ret;
+    if (txp != NULL) {
+        /* Create subtransaction */
+        ret = RDB_begin_tx(&tx, txp->dbp, txp);
+        if (ret != RDB_OK)
+            return ret;
+    }
 
-    if (!_RDB_legal_name(name))
+    if (name != NULL && !_RDB_legal_name(name))
         return RDB_INVALID_ARGUMENT;
 
-    for (i = 0; i < strc; i++) {
+    for (i = 0; i < attrc; i++) {
         if (!_RDB_legal_name(heading[i].name))
             return RDB_INVALID_ARGUMENT;
     }
 
-    ret = _RDB_create_table(name, persistent, strc, heading, keyc, keyv,
-                            &tx, tbpp);
+    if (keyv == NULL) {
+        /* Create key for all-key table */
+        allkey.strc = attrc;
+        allkey.strv = malloc(sizeof (char *) * attrc);
+        if (allkey.strv == NULL) {
+            if (txp != NULL)
+                RDB_rollback_all(txp);            
+            return RDB_NO_MEMORY;
+        }
+        for (i = 0; i < attrc; i++)
+            allkey.strv[i] = heading[i].name;
+    }
+
+    ret = _RDB_create_table(name, persistent, attrc, heading,
+            keyv != NULL ? keyc : 1, keyv != NULL ? keyv : &allkey,
+            txp != NULL ? &tx : NULL, tbpp);
+    if (keyv == NULL)
+        free(allkey.strv);
     if (ret != RDB_OK) {
-        RDB_rollback(&tx);
+        if (txp != NULL)
+            RDB_rollback(&tx);
         return ret;
     }
 
@@ -1009,7 +1036,7 @@ RDB_create_table(const char *name, RDB_bool persistent,
         _RDB_assoc_table_db(*tbpp, txp->dbp);
     }
 
-    return RDB_commit(&tx);
+    return txp != NULL ? RDB_commit(&tx) : RDB_OK;
 }
 
 int
@@ -1053,8 +1080,12 @@ _RDB_drop_rtable(RDB_table *tbp, RDB_transaction *txp)
         _RDB_del_index(txp, tbp->var.stored.keyidxv[i]);
     }
 
-    /* Schedule recmap for deletion */
-    return _RDB_del_recmap(txp, tbp->var.stored.recmapp);
+    if (txp != NULL) {
+        /* Schedule recmap for deletion */
+        return _RDB_del_recmap(txp, tbp->var.stored.recmapp);
+    } else {
+        return RDB_delete_recmap(tbp->var.stored.recmapp, NULL, NULL);
+    }
 }
 
 static int

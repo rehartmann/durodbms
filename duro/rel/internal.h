@@ -332,7 +332,7 @@ void
 _RDB_set_obj_type(RDB_object *, RDB_type *);
 
 void
-_RDB_set_tuple_type(RDB_object *objp, RDB_type *typ);
+_RDB_set_nonsc_type(RDB_object *objp, RDB_type *typ);
 
 int
 _RDB_get_ro_op(const char *name, int argc, RDB_type *argtv[],

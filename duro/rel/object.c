@@ -44,6 +44,31 @@ obj_ilen(const RDB_object *objp)
         RDB_destroy_hashmap_iter(&it);
         return len + sizeof(size_t);
     }
+    if (objp->kind == RDB_OB_TABLE) {
+        RDB_object tpl;
+        RDB_qresult *qrp;
+        int ret;
+
+        ret = _RDB_table_qresult(objp->var.tbp, NULL, &qrp);
+        if (ret != RDB_OK)
+            return ret;
+
+        RDB_init_obj(&tpl);
+
+        while ((ret = _RDB_next_tuple(qrp, &tpl, NULL)) == RDB_OK) {
+            len += obj_ilen(&tpl);
+        }
+        RDB_destroy_obj(&tpl);
+        if (ret != RDB_NOT_FOUND) {
+            _RDB_drop_qresult(qrp, NULL);
+            return ret;
+        }
+
+        ret = _RDB_drop_qresult(qrp, NULL);
+        if (ret != RDB_OK)
+            return ret;
+        return len;
+    }
     len = objp->typ->ireplen;
     if (len == RDB_VARIABLE_LEN)
         len = objp->var.bin.len;
@@ -59,14 +84,16 @@ val_kind(const RDB_type *typ)
         return RDB_OB_INT;
     if (typ == &RDB_RATIONAL)
         return RDB_OB_RATIONAL;
-    if (typ->kind == RDB_TP_TUPLE)
-        return RDB_OB_TUPLE;
     if (typ->arep == &RDB_BOOLEAN)
         return RDB_OB_BOOL;
     if (typ->arep == &RDB_INTEGER)
         return RDB_OB_INT;
     if (typ->arep == &RDB_RATIONAL)
         return RDB_OB_RATIONAL;
+    if (typ->kind == RDB_TP_TUPLE)
+        return RDB_OB_TUPLE;
+    if (typ->kind == RDB_TP_RELATION)
+        return RDB_OB_TABLE;
     return RDB_OB_BIN;
 }
 
@@ -75,6 +102,7 @@ irep_to_tuple(RDB_object *tplp, RDB_type *typ, const void *datap)
 {
     int i;
     int ret;
+    size_t len = 0;
     const RDB_byte *bp = (RDB_byte *)datap;
 
     for (i = 0; i < typ->var.tuple.attrc; i++) {
@@ -84,18 +112,56 @@ irep_to_tuple(RDB_object *tplp, RDB_type *typ, const void *datap)
         if (l == RDB_VARIABLE_LEN) {
             memcpy(&l, bp, sizeof l);
             bp += sizeof (size_t);
+            len += sizeof(size_t);
         }
         RDB_init_obj(&obj);
         ret = RDB_irep_to_obj(&obj, typ->var.tuple.attrv[i].typ, bp, l);
         if (ret != RDB_OK)
             return ret;
         bp += l;
+        len += l;
         ret = RDB_tuple_set(tplp, typ->var.tuple.attrv[i].name, &obj);
         if (ret != RDB_OK)
             return ret;
         
         RDB_destroy_obj(&obj);
     }
+    return len;
+}
+
+static int
+irep_to_table(RDB_table **tbpp, RDB_type *typ, const void *datap, size_t len)
+{
+    int ret;
+    RDB_object tpl;
+    RDB_byte *bp = (RDB_byte *)datap;
+
+    ret = RDB_create_table(NULL, RDB_FALSE,
+                        typ->var.basetyp->var.tuple.attrc,
+                        typ->var.basetyp->var.tuple.attrv,
+                        0, NULL, NULL, tbpp);
+    if (ret != RDB_OK)
+        return ret;
+
+    RDB_init_obj(&tpl);
+    while (len > 0) {
+        int l;
+        
+        l = irep_to_tuple(&tpl, typ->var.basetyp, bp);
+        if (l < 0) {
+            RDB_destroy_obj(&tpl);
+            return l;
+        }
+        ret = RDB_insert(*tbpp, &tpl, NULL);
+        if (ret != RDB_OK) {
+            RDB_destroy_obj(&tpl);
+            return ret;
+        }
+        bp += l;
+        len -= l;
+    }
+    RDB_destroy_obj(&tpl);
+
     return RDB_OK;
 }
 
@@ -125,7 +191,20 @@ RDB_irep_to_obj(RDB_object *valp, RDB_type *typ, const void *datap, size_t len)
             memcpy(&valp->var.rational_val, datap, sizeof (RDB_rational));
             break;
         case RDB_OB_TUPLE:
-            return irep_to_tuple(valp, typ, datap);
+            ret = irep_to_tuple(valp, typ, datap);
+            if (ret > 0)
+                ret = RDB_OK;
+            return ret;
+        case RDB_OB_TABLE:
+        {
+            RDB_table *tbp;
+        
+            ret = irep_to_table(&tbp, typ, datap, len);
+            if (ret != RDB_OK)
+                return ret;
+            RDB_table_to_obj(valp, tbp);
+            return RDB_OK;
+        }
         default:
             valp->var.bin.len = len;
             valp->var.bin.datap = malloc(len);
@@ -175,6 +254,36 @@ obj_to_irep(void *dstp, const void *srcp, size_t len)
                 obj_to_irep(bp, attrp, l);
                 bp += l;
             }
+            break;
+        }
+        case RDB_OB_TABLE:
+        {
+            RDB_object tpl;
+            RDB_qresult *qrp;
+            int ret;
+            size_t l;
+
+            ret = _RDB_table_qresult(objp->var.tbp, NULL, &qrp);
+            if (ret != RDB_OK)
+                return NULL;
+
+            RDB_init_obj(&tpl);
+
+            while ((ret = _RDB_next_tuple(qrp, &tpl, NULL)) == RDB_OK) {
+                tpl.typ = objp->typ->var.basetyp;
+                l = obj_ilen(&tpl);
+                obj_to_irep(bp, &tpl, l);
+                bp += l;
+            }
+            RDB_destroy_obj(&tpl);
+            if (ret != RDB_NOT_FOUND) {
+                _RDB_drop_qresult(qrp, NULL);
+                return NULL;
+            }
+
+            ret = _RDB_drop_qresult(qrp, NULL);
+            if (ret != RDB_OK)
+                return NULL;
             break;
         }
         default:
@@ -229,6 +338,11 @@ copy_obj(RDB_object *dstvalp, const RDB_object *srcvalp)
             break;
         case RDB_OB_TUPLE:
             return _RDB_copy_tuple(dstvalp, srcvalp);
+        case RDB_OB_TABLE:
+            /* The table itself is not copied, only the pointer */
+            dstvalp->kind = srcvalp->kind;
+            dstvalp->var.tbp = srcvalp->var.tbp;
+            break;
         default:
             dstvalp->kind = srcvalp->kind;
             dstvalp->var.bin.len = srcvalp->var.bin.len;
@@ -304,7 +418,7 @@ RDB_destroy_obj(RDB_object *objp)
             }
             break;
         case RDB_OB_TABLE:
-            if (objp->var.tbp->name == NULL)
+            if (objp->var.tbp != NULL && objp->var.tbp->name == NULL)
                 RDB_drop_table(objp->var.tbp, NULL);
             break;
         default: ;

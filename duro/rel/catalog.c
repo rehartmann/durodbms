@@ -320,18 +320,29 @@ insert_rtable(RDB_table *tbp, RDB_dbroot *dbrootp, RDB_transaction *txp)
             if (typekey == NULL)
                 return RDB_NO_MEMORY;
 
-            /* Insert tuple type definition into the cataog */
             if (attrtyp->kind == RDB_TP_TUPLE) {
+                /* Insert tuple type definition into the cataog */
                 ret = insert_tuptype(tuptyp->var.tuple.attrv[i].typ, typekey, txp);
                 free(typekey);
                 if (ret != RDB_OK) {
                     RDB_destroy_obj(&tpl);
                     return ret;
                 }
+
+                typename = "";
             } else {
-                return RDB_NOT_SUPPORTED;
+                /* Insert tuple type definition into the cataog */
+                ret = insert_tuptype(tuptyp->var.tuple.attrv[i].typ->var.basetyp,
+                        typekey, txp);
+                free(typekey);
+                if (ret != RDB_OK) {
+                    RDB_destroy_obj(&tpl);
+                    return ret;
+                }
+
+                /* Mark relation type */
+                typename = "$";
             }
-            typename = "";
         } else {
             typename = RDB_type_name(tuptyp->var.tuple.attrv[i].typ);
         }
@@ -1053,6 +1064,24 @@ _RDB_get_cat_rtable(const char *name, RDB_transaction *txp, RDB_table **tbpp)
             typename = new_nstypekey(name, attrv[fno].name);
             ret = get_tuple_type(typename, txp, &attrtyp);
             free(typename);
+        } else if (strcmp(typename, "$") == 0) {
+            /* Get relation type */
+            RDB_type *tuptyp;
+
+            typename = new_nstypekey(name, attrv[fno].name);
+            ret = get_tuple_type(typename, txp, &tuptyp);
+            free(typename);
+            if (ret != RDB_OK)
+                goto error;
+
+            attrtyp = malloc(sizeof (RDB_type));
+            if (attrtyp == NULL) {
+                RDB_drop_type(tuptyp, NULL);
+                ret = RDB_NO_MEMORY;
+                goto error;
+            }
+            attrtyp->kind = RDB_TP_RELATION;
+            attrtyp->var.basetyp = tuptyp;
         } else {        
             ret = RDB_get_type(typename, txp, &attrtyp);
         }

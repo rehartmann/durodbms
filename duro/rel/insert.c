@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2003 René Hartmann.
+ * Copyright (C) 2003, 2004 René Hartmann.
  * See the file COPYING for redistribution information.
  */
 
@@ -21,7 +21,9 @@ insert_stored(RDB_table *tbp, const RDB_object *tplp, RDB_transaction *txp)
 
     fvp = malloc(sizeof(RDB_field) * attrcount);
     if (fvp == NULL) {
-        RDB_errmsg(txp->dbp->dbrootp->envp, RDB_strerror(RDB_NO_MEMORY));
+        if (txp != NULL) {
+            RDB_errmsg(txp->dbp->dbrootp->envp, RDB_strerror(RDB_NO_MEMORY));
+        }
         return RDB_NO_MEMORY;
     }
     for (i = 0; i < attrcount; i++) {
@@ -43,24 +45,28 @@ insert_stored(RDB_table *tbp, const RDB_object *tplp, RDB_transaction *txp)
         /* Typecheck */
         if (valp->typ != NULL && !RDB_type_equals(valp->typ,
                              tuptyp->var.tuple.attrv[i].typ)) {
-             return RDB_TYPE_MISMATCH;
+            return RDB_TYPE_MISMATCH;
         }
 
-        /* Set type - needed for tuples */
-        if (valp->typ == NULL && valp->kind == RDB_OB_TUPLE)
-            _RDB_set_tuple_type(valp, tuptyp->var.tuple.attrv[i].typ);
+        /* Set type - needed for non-scalar attributes */
+        if (valp->typ == NULL
+                && (valp->kind == RDB_OB_TUPLE || valp->kind == RDB_OB_TABLE))
+            _RDB_set_nonsc_type(valp, tuptyp->var.tuple.attrv[i].typ);
 
         _RDB_obj_to_field(&fvp[*fnop], valp);
     }
 
-    ret = RDB_insert_rec(tbp->var.stored.recmapp, fvp, txp->txid);
+    ret = RDB_insert_rec(tbp->var.stored.recmapp, fvp,
+            txp != NULL ? txp->txid : NULL);
     if (RDB_is_syserr(ret)) {
-        RDB_errmsg(txp->dbp->dbrootp->envp, RDB_strerror(ret));
-        RDB_rollback_all(txp);
+        if (txp != NULL) {
+            RDB_errmsg(txp->dbp->dbrootp->envp, RDB_strerror(ret));
+            RDB_rollback_all(txp);
+        }
     } else if (ret == RDB_KEY_VIOLATION) {
         /* check if the tuple is an element of the table */
-        if (RDB_contains_rec(tbp->var.stored.recmapp, fvp, txp->txid)
-                == RDB_OK)
+        if (RDB_contains_rec(tbp->var.stored.recmapp, fvp,
+                txp != NULL ? txp->txid : NULL) == RDB_OK)
             ret = RDB_ELEMENT_EXISTS;
     }            
     free(fvp);
@@ -273,20 +279,33 @@ cleanup:
 }
 
 void
-_RDB_set_tuple_type(RDB_object *objp, RDB_type *typ)
+_RDB_set_nonsc_type(RDB_object *objp, RDB_type *typ)
 {
     int i;
 
     objp->typ = typ;
 
-    /* Set tuple attribute types */
-    for (i = 0; i < typ->var.tuple.attrc; i++) {
-        RDB_type *attrtyp = typ->var.tuple.attrv[i].typ;
+    /* Set tuple/table attribute types */
+    if (typ->kind == RDB_TP_TUPLE) {
+        for (i = 0; i < typ->var.tuple.attrc; i++) {
+            RDB_type *attrtyp = typ->var.tuple.attrv[i].typ;
 
-        if (attrtyp->kind == RDB_TP_TUPLE) {
-            _RDB_set_tuple_type(
-                    RDB_tuple_get(objp, typ->var.tuple.attrv[i].name),
-                    attrtyp);
+            if (attrtyp->kind == RDB_TP_TUPLE || attrtyp->kind == RDB_TP_RELATION) {
+                _RDB_set_nonsc_type(
+                        RDB_tuple_get(objp, typ->var.tuple.attrv[i].name),
+                        attrtyp);
+            }
+        }
+    } else {
+        for (i = 0; i < typ->var.basetyp->var.tuple.attrc; i++) {
+            RDB_type *attrtyp = typ->var.basetyp->var.tuple.attrv[i].typ;
+
+            if (attrtyp->kind == RDB_TP_TUPLE || attrtyp->kind == RDB_TP_RELATION) {
+                _RDB_set_nonsc_type(
+                        RDB_tuple_get(objp,
+                        typ->var.basetyp->var.tuple.attrv[i].name),
+                        attrtyp);
+            }
         }
     }
 }
@@ -297,7 +316,7 @@ RDB_insert(RDB_table *tbp, const RDB_object *tplp, RDB_transaction *txp)
     int ret;
     RDB_bool b;
 
-    if (!RDB_tx_is_running(txp))
+    if (txp != NULL && !RDB_tx_is_running(txp))
         return RDB_INVALID_TRANSACTION;
 
     switch (tbp->kind) {

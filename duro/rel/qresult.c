@@ -318,7 +318,7 @@ stored_qresult(RDB_qresult *qresp, RDB_table *tbp, RDB_transaction *txp)
 
     /* !! delay after first call to _RDB_qresult_next()? */
     ret = RDB_recmap_cursor(&qresp->var.curp, tbp->var.stored.recmapp,
-                    0, txp->txid);
+                    0, txp != NULL ? txp->txid : NULL);
     if (ret != RDB_OK) {
         if (RDB_is_syserr(ret))
             RDB_rollback_all(txp);
@@ -446,7 +446,7 @@ init_qresult(RDB_qresult *qrp, RDB_table *tbp, RDB_transaction *txp)
                     keyattrs.strv[i] = tuptyp->var.tuple.attrv[i].name;
 
                 /* Create materialized (all-key) table */
-                ret = _RDB_create_table(NULL, RDB_FALSE,
+                ret = RDB_create_table(NULL, RDB_FALSE,
                         tuptyp->var.tuple.attrc,
                         tuptyp->var.tuple.attrv,
                         1, &keyattrs, txp, &qrp->matp);

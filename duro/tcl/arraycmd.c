@@ -1,6 +1,7 @@
 /* $Id$ */
 
 #include "duro.h"
+#include <rel/internal.h>
 #include <gen/strfns.h>
 #include <string.h>
 
@@ -144,13 +145,45 @@ array_drop_cmd(TclState *statep, Tcl_Interp *interp, int objc,
 }
 
 Tcl_Obj *
+Duro_table_to_list(Tcl_Interp *interp, RDB_table *tbp)
+{
+    RDB_qresult *qrp;
+    RDB_object tpl;
+    int ret;
+    Tcl_Obj *listobjp = Tcl_NewListObj(0, NULL);
+
+    ret = _RDB_table_qresult(tbp, NULL, &qrp);
+    if (ret != RDB_OK) {
+        Duro_dberror(interp, ret);
+        return NULL;
+    }
+
+    RDB_init_obj(&tpl);
+
+    while ((ret = _RDB_next_tuple(qrp, &tpl, NULL)) == RDB_OK) {
+        Tcl_ListObjAppendElement(interp, listobjp, Duro_to_tcl(interp, &tpl));
+    }
+    RDB_destroy_obj(&tpl);
+    if (ret != RDB_NOT_FOUND) {
+        _RDB_drop_qresult(qrp, NULL);
+        Duro_dberror(interp, ret);
+        return NULL;
+    }
+
+    ret = _RDB_drop_qresult(qrp, NULL);
+    if (ret != RDB_OK) {
+        Duro_dberror(interp, ret);
+        return NULL;
+    }
+
+    return listobjp;
+}
+
+Tcl_Obj *
 Duro_to_tcl(Tcl_Interp *interp, const RDB_object *objp)
 {
     RDB_type *typ = RDB_obj_type(objp);
 
-    if (objp->kind == RDB_OB_TUPLE) {
-        return Duro_tuple_to_list(interp, objp);
-    }
     if (typ == &RDB_STRING) {
         char *str = RDB_obj_string((RDB_object *)objp);
 
@@ -190,6 +223,12 @@ Duro_to_tcl(Tcl_Interp *interp, const RDB_object *objp)
         tobjp = Tcl_NewByteArrayObj(datap, len);
         free(datap);
         return tobjp;
+    }
+    if (objp->kind == RDB_OB_TUPLE) {
+        return Duro_tuple_to_list(interp, objp);
+    }
+    if (objp->kind == RDB_OB_TABLE) {
+        return Duro_table_to_list(interp, RDB_obj_table(objp));
     }
     Tcl_SetResult(interp, "Unsupported type", TCL_STATIC);
     return NULL;

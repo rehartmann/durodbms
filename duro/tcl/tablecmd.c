@@ -96,12 +96,62 @@ list_to_tuple(Tcl_Interp *interp, Tcl_Obj *tobjp, RDB_type *typ,
             return ret;
         }
         ret = RDB_tuple_set(tplp, attrname, &obj);
+
+        /* If it's table, set pointer to NULL so it is not deleted */
+        if (obj.kind == RDB_OB_TABLE)
+            obj.var.tbp = NULL;
+
         RDB_destroy_obj(&obj);
         if (ret != RDB_OK) {
             Duro_dberror(interp, ret);
             return TCL_ERROR;
         }
     }
+
+    return TCL_OK;
+}
+
+static int
+list_to_table(Tcl_Interp *interp, Tcl_Obj *tobjp, RDB_type *typ,
+        RDB_table **tbpp)
+{
+    int ret;
+    int i;
+    int llen;
+    Tcl_Obj *tplobjp;
+    RDB_object tpl;
+
+    ret = RDB_create_table(NULL, RDB_FALSE,
+                        typ->var.basetyp->var.tuple.attrc,
+                        typ->var.basetyp->var.tuple.attrv,
+                        0, NULL, NULL, tbpp);
+    if (ret != RDB_OK) {
+        Duro_dberror(interp, ret);
+        return TCL_ERROR;
+    }
+
+    ret = Tcl_ListObjLength(interp, tobjp, &llen);
+    if (ret != TCL_OK)
+        return ret;
+
+    RDB_init_obj(&tpl);
+    for (i = 0; i < llen; i++) {
+        Tcl_ListObjIndex(interp, tobjp, i, &tplobjp);
+
+        ret = list_to_tuple(interp, tplobjp, typ->var.basetyp, &tpl);
+        if (ret != TCL_OK) {
+            RDB_destroy_obj(&tpl);
+            return ret;
+        }
+
+        ret = RDB_insert(*tbpp, &tpl, NULL);
+        if (ret != RDB_OK) {
+            RDB_destroy_obj(&tpl);
+            Duro_dberror(interp, ret);
+            return TCL_ERROR;
+        }
+    }
+    RDB_destroy_obj(&tpl);   
 
     return TCL_OK;
 }
@@ -145,6 +195,15 @@ Duro_tcl_to_duro(Tcl_Interp *interp, Tcl_Obj *tobjp, RDB_type *typ,
     }
     if (typ->kind == RDB_TP_TUPLE) {
         return list_to_tuple(interp, tobjp, typ, objp);
+    }
+    if (typ->kind == RDB_TP_RELATION) {
+        RDB_table *tbp;
+
+        ret = list_to_table(interp, tobjp, typ, &tbp);
+        if (ret != TCL_OK)
+            return ret;
+        RDB_table_to_obj(objp, tbp);
+        return TCL_OK;
     }
     Tcl_SetResult(interp, "Unsupported type", TCL_STATIC);
     return TCL_ERROR;
@@ -722,7 +781,7 @@ Duro_insert_cmd(ClientData data, Tcl_Interp *interp, int objc,
         attrname = Tcl_GetStringFromObj(nameobjp, NULL);
         attrtyp = RDB_type_attr_type(typ, attrname);
         if (attrtyp == NULL) {
-            Tcl_AppendResult(interp, "Unknown attribute: ", attrname, NULL);
+            Tcl_AppendResult(interp, "Invalid  attribute: ", attrname, NULL);
             ret = TCL_ERROR;
             RDB_destroy_obj(&obj);
             goto cleanup;
@@ -736,6 +795,11 @@ Duro_insert_cmd(ClientData data, Tcl_Interp *interp, int objc,
         }
 
         RDB_tuple_set(&tpl, attrname, &obj);
+
+        /* If it's table, set pointer to NULL so it is not deleted */
+        if (obj.kind == RDB_OB_TABLE)
+            obj.var.tbp = NULL;
+
         RDB_destroy_obj(&obj);
     }
 
@@ -812,7 +876,7 @@ table_contains_cmd(TclState *statep, Tcl_Interp *interp, int objc,
         attrname = Tcl_GetStringFromObj(nameobjp, NULL);
         attrtyp = RDB_type_attr_type(typ, attrname);
         if (attrtyp == NULL) {
-            Tcl_AppendResult(interp, "Unknown attribute: ", attrname, NULL);
+            Tcl_AppendResult(interp, "Invalid attribute: ", attrname, NULL);
             ret = TCL_ERROR;
             RDB_destroy_obj(&obj);
             goto cleanup;
@@ -826,6 +890,11 @@ table_contains_cmd(TclState *statep, Tcl_Interp *interp, int objc,
         }
 
         RDB_tuple_set(&tpl, attrname, &obj);
+
+        /* If it's table, set pointer to NULL so it is not deleted */
+        if (obj.kind == RDB_OB_TABLE)
+            obj.var.tbp = NULL;
+
         RDB_destroy_obj(&obj);
     }
 

@@ -53,8 +53,10 @@ RDB_array_get(RDB_object *arrp, RDB_int idx, RDB_object **tplpp)
     /* If there is no qresult, create it */
     if (arrp->var.arr.qrp == NULL) {
         ret = _RDB_table_qresult(arrp->var.arr.tbp, arrp->var.arr.txp, &arrp->var.arr.qrp);
-        if (ret != RDB_OK)
+        if (ret != RDB_OK) {
+            arrp->var.arr.qrp = NULL;
             return ret;
+        }
         arrp->var.arr.pos = 0;
     }
 
