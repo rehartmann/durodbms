@@ -136,6 +136,7 @@ enum _RDB_expr_kind {
 
     RDB_OP_STRLEN,
     RDB_OP_REGMATCH,
+    RDB_OP_CONCAT,
 
     RDB_OP_REL_IS_EMPTY,
     RDB_OP_AGGREGATE,
@@ -933,6 +934,9 @@ RDB_strlen(RDB_expression *arg);
 
 RDB_expression *
 RDB_regmatch(RDB_expression *, RDB_expression *);
+
+RDB_expression *
+RDB_concat(RDB_expression *, RDB_expression *);
 
 /*
  * Create table-valued expression

@@ -100,7 +100,7 @@ array_create_cmd(TclState *statep, Tcl_Interp *interp, int objc,
     if (seqitc > 0)
         Tcl_Free((char *) seqitv);
     if (ret != RDB_OK) {
-        Tcl_SetResult(interp, (char *) RDB_strerror(ret), TCL_STATIC);
+        Duro_dberror(interp, ret);
         return TCL_ERROR;
     }
 
@@ -136,7 +136,7 @@ array_drop_cmd(TclState *statep, Tcl_Interp *interp, int objc,
     arrayp = Tcl_GetHashValue(entryp);
     ret = Duro_tcl_drop_array(arrayp, entryp);
     if (ret != RDB_OK) {
-        Tcl_SetResult(interp, (char *) RDB_strerror(ret), TCL_STATIC);
+        Duro_dberror(interp, ret);
         return TCL_ERROR;
     }      
 
@@ -222,7 +222,7 @@ array_index_cmd(TclState *statep, Tcl_Interp *interp, int objc,
 
     ret = RDB_array_get_tuple(arrayp, (RDB_int) idx, &tplp);
     if (ret != RDB_OK) {
-        Tcl_SetResult(interp, (char *) RDB_strerror(ret), TCL_STATIC);
+        Duro_dberror(interp, ret);
         return TCL_ERROR;
     }
 
@@ -301,7 +301,7 @@ array_length_cmd(TclState *statep, Tcl_Interp *interp, int objc,
 
     len = RDB_array_length(arrayp);
     if (len < 0) {
-        Tcl_SetResult(interp, (char *) RDB_strerror(len), TCL_STATIC);
+        Duro_dberror(interp, len);
         return TCL_ERROR;
     }
 

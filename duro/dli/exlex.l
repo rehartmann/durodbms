@@ -66,14 +66,6 @@ SUMMARIZE {
         return SUMMARIZE;
         }
 
-RENAME  {
-        return RENAME;
-        }
-
-SUMMARIZE {
-        return SUMMARIZE;
-        }
-
 PER     {
         return PER;
         }
@@ -98,8 +90,12 @@ TRUE    {
         yylval = RDB_bool_const(RDB_TRUE);
 }
 
-FALSE    {
+FALSE   {
         yylval = RDB_bool_const(RDB_FALSE);
+}
+
+\|\|    {
+        return CONCAT;
 }
 
 [a-zA-Z][a-zA-Z0-9]* {
@@ -133,6 +129,6 @@ FALSE    {
         return DECIMAL;
         }
 
-[=><+\-\*/\(\)]   return (int)yytext[0];
+[=><+\-*/]   return yytext[0];
 
 %%

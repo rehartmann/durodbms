@@ -51,6 +51,7 @@ expr_to_table (RDB_expression *exp)
 %token AND
 %token TRUE
 %token FALSE
+%token CONCAT
 
 %%
 
@@ -307,7 +308,11 @@ add_expression: mul_expression
             if ($$ == NULL)
                 YYERROR;
         }
-        | add_expression "||" mul_expression
+        | add_expression CONCAT mul_expression {
+            $$ = RDB_concat($1, $3);
+            if ($$ == NULL)
+                YYERROR;
+        }            
         ;
 
 mul_expression: primary_expression

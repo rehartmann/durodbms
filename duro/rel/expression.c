@@ -43,6 +43,8 @@ RDB_expr_type(const RDB_expression *exp, const RDB_type *tuptyp)
             return RDB_expr_type(exp->var.op.arg1, tuptyp);
         case RDB_OP_STRLEN:
             return &RDB_INTEGER;
+        case RDB_OP_CONCAT:
+            return &RDB_STRING;
         case RDB_OP_GET_COMP:
             return _RDB_get_icomp(RDB_expr_type(exp->var.op.arg1, tuptyp),
                     exp->var.op.name)->typ;
@@ -304,6 +306,12 @@ RDB_regmatch(RDB_expression *arg1, RDB_expression *arg2)
 }
 
 RDB_expression *
+RDB_concat(RDB_expression *arg1, RDB_expression *arg2)
+{
+    return _RDB_create_binexpr(arg1, arg2, RDB_OP_CONCAT);
+}
+
+RDB_expression *
 RDB_expr_table(RDB_table *tbp)
 {
     RDB_expression *exp;
@@ -448,6 +456,7 @@ RDB_drop_expr(RDB_expression *exp)
         case RDB_OP_MULTIPLY:
         case RDB_OP_DIVIDE:
         case RDB_OP_REGMATCH:
+        case RDB_OP_CONCAT:
             RDB_drop_expr(exp->var.op.arg2);
         case RDB_OP_NOT:
         case RDB_OP_REL_IS_EMPTY:
@@ -493,42 +502,6 @@ RDB_drop_expr(RDB_expression *exp)
     }
     free(exp);
 }
-
-static int
-evaluate_string(RDB_expression *exp, const RDB_tuple *tup,
-                    RDB_transaction *txp, char **resp)
-{
-    switch (exp->kind) {
-        case RDB_CONST:
-            *resp = RDB_dup_str(exp->var.const_val.var.bin.datap);
-            break;
-        case RDB_ATTR:
-            *resp = RDB_dup_str(RDB_tuple_get_string(tup, exp->var.attr.name));
-            break;
-        case RDB_OP_GET_COMP:
-        case RDB_USER_OP:
-        {
-            RDB_object val;
-            int ret;
-
-            RDB_init_obj(&val);
-            ret = RDB_evaluate(exp, tup, txp, &val);
-            if (ret != RDB_OK) {
-                RDB_destroy_obj(&val);
-                return ret;
-            }
-            *resp = RDB_dup_str(val.var.bin.datap);
-            RDB_destroy_obj(&val);
-            break;
-        }
-        default:
-            return RDB_TYPE_MISMATCH;
-    }
-    if (resp == NULL)
-        return RDB_NO_MEMORY;
-    return RDB_OK;
-}
-
 
 static int
 evaluate_arith(RDB_expression *exp, const RDB_tuple *tup, RDB_transaction *txp,
@@ -966,46 +939,104 @@ RDB_evaluate(RDB_expression *exp, const RDB_tuple *tup, RDB_transaction *txp,
         case RDB_OP_REGMATCH:
         {
             regex_t reg;
-            char *s1, *s2;
+            RDB_object val1, val2;
 
-            ret = evaluate_string(exp->var.op.arg1, tup, txp, &s1);
+            RDB_init_obj(&val1);
+            RDB_init_obj(&val2);
+
+            ret = RDB_evaluate(exp->var.op.arg1, tup, txp, &val1);
             if (ret != RDB_OK)
                 return ret;
+            if (RDB_obj_type(&val1) != &RDB_STRING)
+                return RDB_TYPE_MISMATCH;
 
-            ret = evaluate_string(exp->var.op.arg2, tup, txp, &s2);
+            ret = RDB_evaluate(exp->var.op.arg2, tup, txp, &val2);
             if (ret != RDB_OK) {
-                free(s1);
+                RDB_destroy_obj(&val1);
                 return ret;
             }
+            if (RDB_obj_type(&val2) != &RDB_STRING) {
+                RDB_destroy_obj(&val1);
+                return RDB_TYPE_MISMATCH;
+            }
 
-            ret = regcomp(&reg, s2, REG_NOSUB);
+            ret = regcomp(&reg, val2.var.bin.datap, REG_NOSUB);
             if (ret != 0) {
-                free(s1);
-                free(s2);
+                RDB_destroy_obj(&val1);
+                RDB_destroy_obj(&val2);
                 return RDB_INVALID_ARGUMENT;
             }
             RDB_destroy_obj(valp);
             RDB_init_obj(valp);
             _RDB_set_obj_type(valp, &RDB_BOOLEAN);
-            valp->var.bool_val = (RDB_bool)(regexec(&reg, s1, 0, NULL, 0) == 0);
+            valp->var.bool_val = (RDB_bool)
+                    (regexec(&reg, val1.var.bin.datap, 0, NULL, 0) == 0);
             regfree(&reg);
-            free(s1);
-            free(s2);
+            RDB_destroy_obj(&val1);
+            RDB_destroy_obj(&val2);
+            return RDB_OK;
+        }
+        case RDB_OP_CONCAT:
+        {
+            int s1len;
+            RDB_object val1, val2;
+
+            RDB_init_obj(&val1);
+            RDB_init_obj(&val2);
+
+            ret = RDB_evaluate(exp->var.op.arg1, tup, txp, &val1);
+            if (ret != RDB_OK)
+                return ret;
+            if (RDB_obj_type(&val1) != &RDB_STRING)
+                return RDB_TYPE_MISMATCH;
+
+            ret = RDB_evaluate(exp->var.op.arg2, tup, txp, &val2);
+            if (ret != RDB_OK) {
+                RDB_destroy_obj(&val1);
+                return ret;
+            }
+            if (RDB_obj_type(&val2) != &RDB_STRING) {
+                RDB_destroy_obj(&val1);
+                return RDB_TYPE_MISMATCH;
+            }
+
+            RDB_destroy_obj(valp);
+            RDB_init_obj(valp);
+            _RDB_set_obj_type(valp, &RDB_STRING);
+            s1len = strlen(val1.var.bin.datap);
+            valp->var.bin.len = s1len + strlen(val2.var.bin.datap) + 1;
+            valp->var.bin.datap = malloc(valp->var.bin.len);
+            if (valp->var.bin.datap == NULL) {
+                RDB_destroy_obj(&val1);
+                RDB_destroy_obj(&val2);
+                return RDB_NO_MEMORY;
+            }
+            strcpy(valp->var.bin.datap, val1.var.bin.datap);
+            strcpy(((RDB_byte *)valp->var.bin.datap) + s1len,
+                    val2.var.bin.datap);
+
+            RDB_destroy_obj(&val1);
+            RDB_destroy_obj(&val2);
             return RDB_OK;
         }
         case RDB_OP_STRLEN:
         {
-            int err;
-            char *str;
+            RDB_object val;
 
-            ret = evaluate_string(exp->var.op.arg1, tup, txp, &str);
+            RDB_init_obj(&val);
+
+            ret = RDB_evaluate(exp->var.op.arg1, tup, txp, &val);
             if (ret != RDB_OK)
-               return err;
+                return ret;
+            if (RDB_obj_type(&val) != &RDB_STRING)
+                return RDB_TYPE_MISMATCH;
+
             RDB_destroy_obj(valp);
             RDB_init_obj(valp);
             _RDB_set_obj_type(valp, &RDB_INTEGER);
-            valp->var.int_val = strlen(str);
-            free(str);
+            valp->var.int_val = val.var.bin.len - 1;
+            RDB_destroy_obj(&val);
+
             return RDB_OK;
         }           
         case RDB_OP_REL_IS_EMPTY:
@@ -1059,6 +1090,7 @@ _RDB_expr_refers(RDB_expression *exp, RDB_table *tbp)
         case RDB_OP_MULTIPLY:
         case RDB_OP_DIVIDE:
         case RDB_OP_REGMATCH:
+        case RDB_OP_CONCAT:
             return (RDB_bool) (_RDB_expr_refers(exp->var.op.arg1, tbp)
                     || _RDB_expr_refers(exp->var.op.arg2, tbp));
         case RDB_OP_NOT:

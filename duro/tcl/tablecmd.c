@@ -108,7 +108,7 @@ table_create_cmd(TclState *statep, Tcl_Interp *interp, int objc,
         ret = RDB_get_type(Tcl_GetStringFromObj(typeobjp, NULL),
                 txp, &attrv[i].typ);
         if (ret != RDB_OK) {
-            Tcl_SetResult(interp, (char *) RDB_strerror(ret), TCL_STATIC);
+            Duro_dberror(interp, ret);
             ret = TCL_ERROR;
             goto cleanup;
         }
@@ -136,7 +136,7 @@ table_create_cmd(TclState *statep, Tcl_Interp *interp, int objc,
     ret = RDB_create_table(Tcl_GetStringFromObj(objv[objc - 4], NULL), persistent,
             attrc, attrv, keyc, keyv, txp, &tbp);
     if (ret != RDB_OK) {
-        Tcl_SetResult(interp, (char *) RDB_strerror(ret), TCL_STATIC);
+        Duro_dberror(interp, ret);
         ret = TCL_ERROR;
         goto cleanup;
     }
@@ -268,7 +268,7 @@ table_drop_cmd(TclState *statep, Tcl_Interp *interp, int objc,
 
     ret = RDB_drop_table(tbp, txp);
     if (ret != RDB_OK) {
-        Tcl_SetResult(interp, (char *) RDB_strerror(ret), TCL_STATIC);
+        Duro_dberror(interp, ret);
         return TCL_ERROR;
     }
 
@@ -467,7 +467,7 @@ table_insert_cmd(TclState *statep, Tcl_Interp *interp, int objc,
     }
     ret = RDB_insert(tbp, &tpl, txp);
     if (ret != RDB_OK) {
-        Tcl_SetResult(interp, (char *) RDB_strerror(ret), TCL_STATIC);
+        Duro_dberror(interp, ret);
         ret = TCL_ERROR;
         goto cleanup;
     }
