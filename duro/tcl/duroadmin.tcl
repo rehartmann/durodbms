@@ -216,7 +216,7 @@ proc show_table {} {
         array unset ::tabletypes
         array set ::tabletypes [duro::table attrs $table $tx]
         set ::tableattrs [array names ::tabletypes]
-        set ::tablekey [lindex [duro::table keys $table $tx]]
+        set ::tablekey [lindex [duro::table keys $table $tx] 0]
 
         .tableframe.table configure -state normal
         pack propagate . 0
@@ -321,31 +321,50 @@ proc get_types {} {
     return {STRING INTEGER RATIONAL BINARY}
 }
 
-proc set_attr_row {i} {
-    set menucmd [concat "tk_optionMenu .dialog.tabledef.type$i ::type($i)" \
+proc set_attr_row {r} {
+    set menucmd [concat "tk_optionMenu .dialog.tabledef.type$r ::type($r)" \
             [get_types]]
-    if {$i == 0} {
+    if {$r == 0} {
         set ::mw [eval $menucmd]
     } else {
         eval $menucmd
     }
-    .dialog.tabledef window configure [expr $i + 1],1 \
-            -window .dialog.tabledef.type$i
-    set t$i STRING
+    set keycount [expr {[.dialog.tabledef cget -cols] - 2}]
 
-    checkbutton .dialog.tabledef.key$i,0 -variable key($i,0)
-    .dialog.tabledef window configure [expr $i + 1],2 \
-            -window .dialog.tabledef.key$i,0
+    .dialog.tabledef window configure [expr $r + 1],1 \
+            -window .dialog.tabledef.type$r
+    set t$r STRING
 
-    set h [expr {-[winfo reqheight .dialog.tabledef.type$i] - 2 *
+    for {set i 0} {$i < $keycount} {incr i} {
+        checkbutton .dialog.tabledef.key$r,$i -variable key($r,$i)
+        .dialog.tabledef window configure [expr $r + 1],[expr $i + 2] \
+                -window .dialog.tabledef.key$r,$i
+    }
+
+    set h [expr {-[winfo reqheight .dialog.tabledef.type$r] - 2 *
                 [.dialog.tabledef.key0,0 cget -pady]}]
-    .dialog.tabledef height [expr $i + 1] $h
+    .dialog.tabledef height [expr $r + 1] $h
 }
 
 proc add_attr_row {} {
     set rowcount [.dialog.tabledef cget -rows]
     .dialog.tabledef configure -rows [expr {$rowcount + 1}]
-    set_attr_row [expr {$rowcount -1}]
+    set_attr_row [expr {$rowcount - 1}]
+}
+
+proc add_key {} {
+    set rowcount [.dialog.tabledef cget -rows]
+    set colcount [.dialog.tabledef cget -cols]
+    set keycount [expr {$colcount - 2}]
+
+    .dialog.tabledef configure -cols [expr {$colcount + 1}]
+    set ::tabledef(0,$colcount) "Key #[expr $keycount + 1]"
+    for {set i 0} {$i < $rowcount - 1} {incr i} {
+        checkbutton .dialog.tabledef.key$i,$keycount \
+                -variable key($i,$keycount)
+        .dialog.tabledef window configure [expr $i + 1],[expr {$keycount + 2}] \
+                -window .dialog.tabledef.key$i,$keycount
+    }
 }
 
 proc create_rtable {} {
@@ -366,7 +385,9 @@ proc create_rtable {} {
     table .dialog.tabledef -titlerows 1 -rows [expr {$attrcount +1}] \
             -cols 3 -variable tabledef -anchor w
 
-    button .dialog.addattr -text "Add attribute" -command add_attr_row
+    frame .dialog.attrbuttons
+    button .dialog.attrbuttons.addattr -text "Add attribute" -command add_attr_row
+    button .dialog.attrbuttons.addkey -text "Add key" -command add_key
 
     set ::action ok
     frame .dialog.buttons
@@ -375,7 +396,7 @@ proc create_rtable {} {
 
     set ::tabledef(0,0) "Attribute name"
     set ::tabledef(0,1) Type
-    set ::tabledef(0,2) "Is key"
+    set ::tabledef(0,2) "Key #1"
 
     for {set i 0} {$i < $attrcount} {incr i} {
         set_attr_row $i
@@ -395,7 +416,8 @@ proc create_rtable {} {
 
     pack .dialog.buttons -side bottom
     pack .dialog.buttons.ok .dialog.buttons.cancel -side left
-    pack .dialog.addattr -side bottom -anchor e
+    pack .dialog.attrbuttons -side bottom -anchor e
+    pack .dialog.attrbuttons.addattr .dialog.attrbuttons.addkey -side left
     pack .dialog.tabledef -side bottom
     pack .dialog.l .dialog.tablename .dialog.global -side left
 
@@ -415,23 +437,36 @@ proc create_rtable {} {
 
         # Build lists for attributes and keys
         set attrs {}
-        set key {}
 
         set attrcount [expr {[.dialog.tabledef cget -rows] - 1}]
+        set keycount [expr {[.dialog.tabledef cget -cols] - 2}]
 
         for {set i 0} {$i < $attrcount} {incr i} {
             if {[info exists ::tabledef([expr $i + 1],0)]} {
                 set attrname $::tabledef([expr $i + 1],0)
                 if {$attrname != ""} {
                     lappend attrs [list $attrname $::type($i)]
-                    if {$::key($i,0)} {
-                        lappend key $attrname
-                    }
                 }
             }
         }
 
-        set keys [list $key]
+        set keys {}
+        for {set i 0} {$i < $keycount} {incr i} {
+            set key {}
+            for {set j 0} {$j < $attrcount} {incr j} {
+                if {[info exists ::tabledef([expr $j + 1],0)]} {
+                    set attrname $::tabledef([expr $j + 1],0)
+                    if {$attrname != ""} {
+                        if {$::key($j,$i)} {
+                            lappend key $attrname
+                        }
+                    }
+                }
+            }
+            if {$i == 0 || $key != {}} {
+                lappend keys $key
+            }
+        }
 
         if {[catch {
             # Create table
@@ -650,6 +685,11 @@ proc update_tuple {row} {
         } else {
             lappend updattrs [.tableframe.table get [expr {$row}],$i]
         }
+    }
+
+    # Updating table with no attrbutes makes no sense
+    if {$updattrs == {}} {
+        return
     }
 
     # Update tuple

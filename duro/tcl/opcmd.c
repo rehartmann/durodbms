@@ -424,7 +424,7 @@ Duro_invoke_update_op(const char *name, int argc, RDB_object *argv[],
     if (ret != TCL_OK)
         return RDB_INTERNAL;
 
-    if (!Tcl_GetCommandInfo(interp, "duro::table", &cmdinfo))
+    if (!Tcl_GetCommandInfo(interp, "duro::operator", &cmdinfo))
         return RDB_INTERNAL;
 
     /* Find tx id */
