@@ -4,14 +4,14 @@
 #include <string.h>
 
 int
-RDB_tcl_close_env(RDB_environment *envp, Tcl_HashEntry *entryp)
+Duro_tcl_close_env(RDB_environment *envp, Tcl_HashEntry *entryp)
 {
     Tcl_DeleteHashEntry(entryp);
     return RDB_close_env(envp);
 }
 
 int
-RDB_env_cmd(ClientData data, Tcl_Interp *interp, int argc, const char *argv[])
+Duro_env_cmd(ClientData data, Tcl_Interp *interp, int argc, const char *argv[])
 {
     int ret;
     RDB_environment *envp;
@@ -19,7 +19,8 @@ RDB_env_cmd(ClientData data, Tcl_Interp *interp, int argc, const char *argv[])
     TclState *statep = (TclState *) data;
 
     if (argc < 2) {
-        interp->result = "wrong # args: should be \"env option ?arg ...?\"";
+        Tcl_SetResult(interp, "wrong # args: should be \"env option ?arg ...?\"",
+                TCL_STATIC);
         return TCL_ERROR;
     }
 
@@ -28,13 +29,14 @@ RDB_env_cmd(ClientData data, Tcl_Interp *interp, int argc, const char *argv[])
         char handle[20];
     
         if (argc != 3) {
-            interp->result = "wrong # args: should be \"env open path\"";
+            Tcl_SetResult(interp, "wrong # args: should be \"env open path\"",
+                    TCL_STATIC);
             return TCL_ERROR;
         }
 
         ret = RDB_open_env(argv[2], &envp);
         if (ret != RDB_OK) {
-            interp->result = (char *) RDB_strerror(ret);
+            Tcl_SetResult(interp, (char *) RDB_strerror(ret), TCL_STATIC);
             return TCL_ERROR;
         }
         statep->env_uid++;
@@ -49,13 +51,14 @@ RDB_env_cmd(ClientData data, Tcl_Interp *interp, int argc, const char *argv[])
         char handle[20];
     
         if (argc != 3) {
-            interp->result = "wrong # args: should be \"env create path\"";
+            Tcl_SetResult(interp, "wrong # args: should be \"env create path\"",
+                    TCL_STATIC);
             return TCL_ERROR;
         }
 
         ret = RDB_create_env(argv[2], &envp);
         if (ret != RDB_OK) {
-            interp->result = (char *) RDB_strerror(ret);
+            Tcl_SetResult(interp, (char *) RDB_strerror(ret), TCL_STATIC);
             return TCL_ERROR;
         }
         statep->env_uid++;
@@ -67,7 +70,8 @@ RDB_env_cmd(ClientData data, Tcl_Interp *interp, int argc, const char *argv[])
         return RDB_OK;
     } else if (strcmp(argv[1], "close") == 0) {
         if (argc != 3) {
-            interp->result = "wrong # args: should be \"env close handle\"";
+            Tcl_SetResult(interp, "wrong # args: should be \"env close handle\"",
+                    TCL_STATIC);
             return TCL_ERROR;
         }
 
@@ -77,9 +81,9 @@ RDB_env_cmd(ClientData data, Tcl_Interp *interp, int argc, const char *argv[])
             return TCL_ERROR;
         }
         envp = Tcl_GetHashValue(entryp);
-        ret = RDB_tcl_close_env(envp, entryp);
+        ret = Duro_tcl_close_env(envp, entryp);
         if (ret != RDB_OK) {
-            interp->result = (char *) RDB_strerror(ret);
+            Tcl_SetResult(interp, (char *) RDB_strerror(ret), TCL_STATIC);
             return TCL_ERROR;
         }      
         return RDB_OK;

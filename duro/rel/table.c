@@ -6,6 +6,12 @@
 #include <gen/strfns.h>
 #include <string.h>
 
+RDB_type *
+RDB_table_type(const RDB_table *tbp)
+{
+    return tbp->typ;
+}
+
 static int
 insert_intersect(RDB_table *tbp, const RDB_tuple *tup, RDB_transaction *txp)
 {

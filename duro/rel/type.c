@@ -549,6 +549,19 @@ RDB_type_name(const RDB_type *typ)
 }
 
 RDB_type *
+RDB_type_attr_type(const RDB_type *typ, const char *name)
+{
+    switch (typ->kind) {
+        case RDB_TP_RELATION:
+            return _RDB_tuple_type_attr(typ->var.basetyp, name)->typ;
+        case RDB_TP_TUPLE:
+            return _RDB_tuple_type_attr(typ, name)->typ;
+        default: ;
+    }
+    return NULL;
+}
+
+RDB_type *
 RDB_extend_tuple_type(const RDB_type *typ, int attrc, RDB_attr attrv[])
 {
     int i;
@@ -714,9 +727,10 @@ RDB_join_relation_types(const RDB_type *typ1, const RDB_type *typ2,
     return RDB_OK;
 }
 
-/* Return the type of the attribute with name attrname in the tuple
+/* Return a pointer to the RDB_attr strcuture of the attribute with name attrname in the tuple
    type pointed to by tutyp. */
-RDB_attr *_RDB_tuple_type_attr(const RDB_type *tuptyp, const char *attrname)
+RDB_attr *
+_RDB_tuple_type_attr(const RDB_type *tuptyp, const char *attrname)
 {
     int i;
     

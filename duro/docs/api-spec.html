@@ -45,6 +45,7 @@ See the release notes for details.
 <li><a href="#table_contains">RDB_table_contains</a>
 <li><a href="#table_is_empty">RDB_table_is_empty</a>
 <li><a href="#table_name">RDB_table_name</a>
+<li><a href="#table_type">RDB_table_type</a>
 <li><a href="#ungroup">RDB_ungroup</a>
 <li><a href="#union">RDB_union</a>
 <li><a href="#unwrap">RDB_unwrap</a>
@@ -61,6 +62,7 @@ See the release notes for details.
 <li><a href="#join_tuples">RDB_join_tuples</a>
 <li><a href="#project_tuple">RDB_project_tuple</a>
 <li><a href="#rename_tuple">RDB_rename_tuple</a>
+<li><a href="#tuple_attr_names">RDB_tuple_attr_names</a>
 <li><a href="#tuple_get">RDB_tuple_get</a>
 <li><a href="#tuple_get_bool">RDB_tuple_get_bool</a>
 <li><a href="#tuple_get_int">RDB_tuple_get_int</a>
@@ -71,6 +73,7 @@ See the release notes for details.
 <li><a href="#tuple_set_int">RDB_tuple_set_int</a>
 <li><a href="#tuple_set_rational">RDB_tuple_set_rational</a>
 <li><a href="#tuple_set_string">RDB_tuple_set_string</a>
+<li><a href="#tuple_size">RDB_tuple_size</a>
 <li><a href="#unwrap_tuple">RDB_unwrap_tuple</a>
 <li><a href="#wrap_tuple">RDB_wrap_tuple</a>
 </ul>
@@ -402,6 +405,26 @@ RDB_table_name(RDB_table *tbp)
 <h3>Return value</h3>
 
 <p>A pointer to the name of the table, or NULL if the table has no name.
+
+<hr>
+
+<h2 id="table_type">RDB_table_type</h2>
+
+<pre>
+#include &lt;rel/rdb.h&gt;
+
+RDB_type *
+RDB_table_type(const RDB_table *tbp)
+</pre>
+
+<h3>Description</h3>
+
+<p>RDB_table_type returns a pointer to the type of the table
+specified by <var>tbp</var>.
+
+<h3>Return value</h3>
+
+<p>A pointer to the type of the table.
 
 <hr>
 
@@ -1454,6 +1477,48 @@ variable specified by <var>tplp</var> to the string value specified by
 
 <hr>
 
+<h2 id="tuple_size">RDB_tuple_size</h2>
+
+<pre>
+#include &lt;rel/rdb.h&gt;
+
+RDB_int
+RDB_tuple_size(const RDB_tuple *tplp);
+</pre>
+
+<h3>Description</h3>
+
+<p>RDB_tuple_size determines the number of attributes of the tuple
+specified by <var>tplp</var>.
+
+<h3>Return value</h3>
+
+<p>The number of attributes.
+
+<hr>
+
+<h2 id="tuple_attr_names">RDB_tuple_attr_names</h2>
+
+<pre>
+#include &lt;rel/rdb.h&gt;
+
+void
+RDB_tuple_attr_names(const RDB_tuple *, char **namev);
+</pre>
+
+<h3>Description</h3>
+
+<p>RDB_tuple_attr_names fills <var>namev</var> with pointers to
+the attribute names of the tuple specified by <var>tplp</var>.
+
+<p><var>namev</var> must be large enough for all attribute names.
+The pointers must not be modified by the caller and will become invalid
+when the tuple is destroyed.
+
+<h3>Return value</h3>
+
+<p>None.
+
 <h2 id="tuple_get">RDB_tuple_get</h2>
 
 <pre>
@@ -2390,7 +2455,7 @@ RDB_table_to_array(RDB_array *arrp, RDB_table *tbp,
 
 <p>RDB_table_to_array creates an array which contains
 all tuples from the table specified by <var>tbp</var>.
-If <var>seqitc</var> is zero, the tuples appear in random order.
+If <var>seqitc</var> is zero, the order of the tuples is undefined.
 If <var>seqitc</var> is greater than zero, the order of the tuples
 is specified by <var>seqitv</var>.
 
@@ -2466,7 +2531,7 @@ RDB_array_length(RDB_array *);
 <h3>Return value</h3>
 
 <p>The length of the array. A return code lower than zero
-inicates an error.
+indicates an error.
 
 <hr>
 

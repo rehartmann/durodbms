@@ -9,16 +9,24 @@ duro_cleanup(ClientData data)
 {
     RDB_environment *envp;
     RDB_transaction *txp;
+    RDB_array *arrayp;
     Tcl_HashEntry *entryp;
     Tcl_HashSearch search;
     TclState *statep = (TclState *) data;
+
+    /* Destroy existing arrays */
+    entryp = Tcl_FirstHashEntry(&statep->arrays, &search);
+    while (entryp != NULL) {
+        arrayp = Tcl_GetHashValue(entryp);
+        Duro_tcl_drop_array(arrayp, entryp);
+        entryp = Tcl_FirstHashEntry(&statep->arrays, &search);
+    }
 
     /* Abort pending transactions */
     entryp = Tcl_FirstHashEntry(&statep->txs, &search);
     while (entryp != NULL) {
         txp = Tcl_GetHashValue(entryp);
-        RDB_tcl_rollback(txp, entryp);
-        free(txp);
+        Duro_tcl_rollback(txp, entryp);
         entryp = Tcl_FirstHashEntry(&statep->txs, &search);
     }
 
@@ -26,7 +34,7 @@ duro_cleanup(ClientData data)
     entryp = Tcl_FirstHashEntry(&statep->envs, &search);
     while (entryp != NULL) {
         envp = Tcl_GetHashValue(entryp);
-        RDB_tcl_close_env(envp, entryp);
+        Duro_tcl_close_env(envp, entryp);
         entryp = Tcl_FirstHashEntry(&statep->envs, &search);
     }
 
@@ -47,15 +55,19 @@ Duro_Init(Tcl_Interp *interp)
     statep->env_uid = 0;
     Tcl_InitHashTable(&statep->txs, TCL_STRING_KEYS);
     statep->tx_uid = 0;
+    Tcl_InitHashTable(&statep->arrays, TCL_STRING_KEYS);
+    statep->array_uid = 0;
 
-    Tcl_CreateCommand(interp, "duro::env", RDB_env_cmd, (ClientData)statep, NULL);
-    Tcl_CreateCommand(interp, "duro::begin", RDB_begin_cmd,
+    Tcl_CreateCommand(interp, "duro::env", Duro_env_cmd, (ClientData)statep, NULL);
+    Tcl_CreateCommand(interp, "duro::begin", Duro_begin_cmd,
             (ClientData)statep, NULL);
-    Tcl_CreateCommand(interp, "duro::commit", RDB_commit_cmd,
+    Tcl_CreateCommand(interp, "duro::commit", Duro_commit_cmd,
             (ClientData)statep, NULL);
-    Tcl_CreateCommand(interp, "duro::rollback", RDB_rollback_cmd,
+    Tcl_CreateCommand(interp, "duro::rollback", Duro_rollback_cmd,
             (ClientData)statep, NULL);
-    Tcl_CreateObjCommand(interp, "duro::table", RDB_table_cmd,
+    Tcl_CreateObjCommand(interp, "duro::table", Duro_table_cmd,
+            (ClientData)statep, NULL);
+    Tcl_CreateObjCommand(interp, "duro::array", Duro_array_cmd,
             (ClientData)statep, NULL);
 
     Tcl_CreateExitHandler(duro_cleanup, (ClientData)statep);

@@ -473,6 +473,9 @@ typedef struct {
 
 #define RDB_table_name(tbp) ((tbp)->name)
 
+RDB_type *
+RDB_table_type(const RDB_table *);
+
 /*
  * Insert the tuple pointed to by tplp into the table pointed to by tbp.
  * Insertion into virtual relvars is currently only supported for
@@ -669,6 +672,12 @@ RDB_tuple_get_int(const RDB_tuple *, const char *name);
 RDB_rational
 RDB_tuple_get_rational(const RDB_tuple *, const char *name);
 
+RDB_int
+RDB_tuple_size(const RDB_tuple *);
+
+void
+RDB_tuple_attr_names(const RDB_tuple *, char **namev);
+
 char *
 RDB_tuple_get_string(const RDB_tuple *, const char *name);
 
@@ -769,6 +778,9 @@ RDB_bool
 RDB_type_equals(const RDB_type *, const RDB_type *);
 
 #define RDB_obj_type(valp) ((valp)->typ)
+
+RDB_type *
+RDB_type_attr_type(const RDB_type *, const char *);
 
 /*
  * Return RDB_TRUE if the two types are equal

@@ -14,27 +14,37 @@ typedef struct {
     /* Transactions */
     Tcl_HashTable txs;
     int tx_uid;
+
+    /* Arrays */
+    Tcl_HashTable arrays;
+    int array_uid;
 } TclState;
 
 int
-RDB_env_cmd(ClientData data, Tcl_Interp *interp, int argc, const char *argv[]);
+Duro_env_cmd(ClientData data, Tcl_Interp *interp, int argc, const char *argv[]);
 
 int
-RDB_begin_cmd(ClientData data, Tcl_Interp *interp, int argc, const char *argv[]);
+Duro_begin_cmd(ClientData data, Tcl_Interp *interp, int argc, const char *argv[]);
 
 int
-RDB_commit_cmd(ClientData data, Tcl_Interp *interp, int argc, const char *argv[]);
+Duro_commit_cmd(ClientData data, Tcl_Interp *interp, int argc, const char *argv[]);
 
 int
-RDB_rollback_cmd(ClientData data, Tcl_Interp *interp, int argc, const char *argv[]);
+Duro_rollback_cmd(ClientData data, Tcl_Interp *interp, int argc, const char *argv[]);
 
 int
-RDB_table_cmd(ClientData data, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[]);
+Duro_table_cmd(ClientData data, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[]);
 
 int
-RDB_tcl_close_env(RDB_environment *, Tcl_HashEntry *entryp);
+Duro_array_cmd(ClientData data, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[]);
 
 int
-RDB_tcl_rollback(RDB_transaction *, Tcl_HashEntry *entryp);
+Duro_tcl_close_env(RDB_environment *, Tcl_HashEntry *entryp);
+
+int
+Duro_tcl_rollback(RDB_transaction *, Tcl_HashEntry *entryp);
+
+int
+Duro_tcl_drop_array(RDB_array *arrayp, Tcl_HashEntry *entryp);
 
 #endif

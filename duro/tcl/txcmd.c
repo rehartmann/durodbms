@@ -4,14 +4,18 @@
 #include <string.h>
 
 int
-RDB_tcl_rollback(RDB_transaction *txp, Tcl_HashEntry *entryp)
+Duro_tcl_rollback(RDB_transaction *txp, Tcl_HashEntry *entryp)
 {
+    int ret;
+
     Tcl_DeleteHashEntry(entryp);
-    return RDB_rollback(txp);
+    ret = RDB_rollback(txp);
+    Tcl_Free((char *) txp);
+    return ret;
 }
 
 int
-RDB_begin_cmd(ClientData data, Tcl_Interp *interp, int argc, const char *argv[])
+Duro_begin_cmd(ClientData data, Tcl_Interp *interp, int argc, const char *argv[])
 {
     int ret;
     RDB_transaction *txp;
@@ -23,7 +27,8 @@ RDB_begin_cmd(ClientData data, Tcl_Interp *interp, int argc, const char *argv[])
     TclState *statep = (TclState *) data;
 
     if (argc != 3) {
-        interp->result = "wrong # args: should be \"begin env db\"";
+        Tcl_SetResult(interp, "wrong # args: should be \"begin env db\"",
+                TCL_STATIC);
         return TCL_ERROR;
     }
 
@@ -37,7 +42,7 @@ RDB_begin_cmd(ClientData data, Tcl_Interp *interp, int argc, const char *argv[])
     /* Get database */
     ret = RDB_get_db_from_env(argv[2], envp, &dbp);
     if (ret != RDB_OK) { 
-        interp->result = (char *) RDB_strerror(ret);
+        Tcl_SetResult(interp, (char *) RDB_strerror(ret), TCL_STATIC);
         return TCL_ERROR;
     }
 
@@ -45,7 +50,7 @@ RDB_begin_cmd(ClientData data, Tcl_Interp *interp, int argc, const char *argv[])
     txp = (RDB_transaction *)Tcl_Alloc(sizeof (RDB_transaction));
     ret = RDB_begin_tx(txp, dbp, NULL);
     if (ret != RDB_OK) { 
-        interp->result = (char *) RDB_strerror(ret);
+        Tcl_SetResult(interp, (char *) RDB_strerror(ret), TCL_STATIC);
         return TCL_ERROR;
     }        
 
@@ -59,7 +64,7 @@ RDB_begin_cmd(ClientData data, Tcl_Interp *interp, int argc, const char *argv[])
 }
 
 int
-RDB_commit_cmd(ClientData data, Tcl_Interp *interp, int argc, const char *argv[])
+Duro_commit_cmd(ClientData data, Tcl_Interp *interp, int argc, const char *argv[])
 {
     int ret;
     RDB_transaction *txp;
@@ -67,7 +72,8 @@ RDB_commit_cmd(ClientData data, Tcl_Interp *interp, int argc, const char *argv[]
     TclState *statep = (TclState *) data;
 
     if (argc != 2) {
-        interp->result = "wrong # args: should be \"commit tx\"";
+        Tcl_SetResult(interp, "wrong # args: should be \"commit tx\"",
+                TCL_STATIC);
         return TCL_ERROR;
     }
 
@@ -81,14 +87,14 @@ RDB_commit_cmd(ClientData data, Tcl_Interp *interp, int argc, const char *argv[]
     ret = RDB_commit(txp);
     Tcl_Free((char *) txp);
     if (ret != RDB_OK) { 
-        interp->result = (char *) RDB_strerror(ret);
+        Tcl_SetResult(interp, (char *) RDB_strerror(ret), TCL_STATIC);
         return TCL_ERROR;
     }
     return RDB_OK;
 }
 
 int
-RDB_rollback_cmd(ClientData data, Tcl_Interp *interp, int argc, const char *argv[])
+Duro_rollback_cmd(ClientData data, Tcl_Interp *interp, int argc, const char *argv[])
 {
     int ret;
     RDB_transaction *txp;
@@ -96,7 +102,8 @@ RDB_rollback_cmd(ClientData data, Tcl_Interp *interp, int argc, const char *argv
     TclState *statep = (TclState *) data;
 
     if (argc != 2) {
-        interp->result = "wrong # args: should be \"rollback tx\"";
+        Tcl_SetResult(interp, "wrong # args: should be \"rollback tx\"",
+                TCL_STATIC);
         return TCL_ERROR;
     }
 
@@ -106,10 +113,9 @@ RDB_rollback_cmd(ClientData data, Tcl_Interp *interp, int argc, const char *argv
         return TCL_ERROR;
     }
     txp = Tcl_GetHashValue(entryp);
-    ret = RDB_tcl_rollback(txp, entryp);
-    Tcl_Free((char *) txp);
+    ret = Duro_tcl_rollback(txp, entryp);
     if (ret != RDB_OK) { 
-        interp->result = (char *) RDB_strerror(ret);
+        Tcl_SetResult(interp, (char *) RDB_strerror(ret), TCL_STATIC);
         return TCL_ERROR;
     }
     return RDB_OK;

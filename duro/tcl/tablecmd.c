@@ -28,8 +28,9 @@ table_create_cmd(TclState *statep, Tcl_Interp *interp, int objc,
                 || (strcmp(flagstr, "-local") == 0)) {
             persistent = RDB_FALSE;
         } else {
-            interp->result = "Wrong flag: must be -global, -persistent, "
-                    "-local, or -transient";
+            Tcl_SetResult(interp,
+                    "Wrong flag: must be -global, -persistent,"
+                    " -local, or -transient", TCL_STATIC);
             return TCL_ERROR;
         }
     } else if (objc != 6) {
@@ -63,9 +64,9 @@ table_create_cmd(TclState *statep, Tcl_Interp *interp, int objc,
         if (ret != TCL_OK)
             goto cleanup;
         if (llen < 2 || llen > 4) {
-            interp->result = "Invalid attribute definition";
+            Tcl_SetResult(interp, "Invalid attribute definition", TCL_STATIC);
             ret = TCL_ERROR;
-                goto cleanup;
+            goto cleanup;
         }
         
         Tcl_ListObjIndex(interp, attrobjp, 0, &nameobjp);
@@ -74,7 +75,7 @@ table_create_cmd(TclState *statep, Tcl_Interp *interp, int objc,
         ret = RDB_get_type(Tcl_GetStringFromObj(typeobjp, NULL),
                 txp, &attrv[i].typ);
         if (ret != RDB_OK) {
-            Tcl_AppendResult(interp, RDB_strerror(ret), NULL);
+            Tcl_SetResult(interp, (char *) RDB_strerror(ret), TCL_STATIC);
             ret = TCL_ERROR;
             goto cleanup;
         }
@@ -102,7 +103,7 @@ table_create_cmd(TclState *statep, Tcl_Interp *interp, int objc,
     ret = RDB_create_table(Tcl_GetStringFromObj(objv[objc - 4], NULL), persistent,
             attrc, attrv, keyc, keyv, txp, &tbp);
     if (ret != RDB_OK) {
-        interp->result = (char *) RDB_strerror(ret);
+        Tcl_SetResult(interp, (char *) RDB_strerror(ret), TCL_STATIC);
         ret = TCL_ERROR;
         goto cleanup;
     }
@@ -145,7 +146,6 @@ table_drop_cmd(TclState *statep, Tcl_Interp *interp, int objc,
         return TCL_ERROR;
     }
 
-    name = Tcl_GetStringFromObj(objv[2], NULL);
 
     txstr = Tcl_GetStringFromObj(objv[3], NULL);
     entryp = Tcl_FindHashEntry(&statep->txs, txstr);
@@ -155,19 +155,61 @@ table_drop_cmd(TclState *statep, Tcl_Interp *interp, int objc,
     }
     txp = Tcl_GetHashValue(entryp);
 
+    name = Tcl_GetStringFromObj(objv[2], NULL);
     ret = RDB_get_table(name, txp, &tbp);
     if (ret != RDB_OK) {
-        interp->result = (char *) RDB_strerror(ret);
+        Tcl_SetResult(interp, (char *) RDB_strerror(ret), TCL_STATIC);
         return TCL_ERROR;
     }
 
     ret = RDB_drop_table(tbp, txp);
     if (ret != RDB_OK) {
-        interp->result = (char *) RDB_strerror(ret);
+        Tcl_SetResult(interp, (char *) RDB_strerror(ret), TCL_STATIC);
         return TCL_ERROR;
     }
 
     return RDB_OK;
+}
+
+static int
+tcl_to_duro(Tcl_Interp *interp, Tcl_Obj *tobjp, const RDB_type *typ,
+        RDB_object *objp)
+{
+    int ret;
+
+    if (typ == &RDB_STRING) {
+        RDB_obj_set_string(objp, Tcl_GetStringFromObj(tobjp, NULL));
+        return TCL_OK;
+    }
+    if (typ == &RDB_INTEGER) {
+        int val;
+
+        ret = Tcl_GetIntFromObj(interp, tobjp, &val);
+        if (ret != TCL_OK)
+            return ret;
+        RDB_obj_set_int(objp, (RDB_int) val);
+        return TCL_OK;
+    }
+    if (typ == &RDB_RATIONAL) {
+        double val;
+
+        ret = Tcl_GetDoubleFromObj(interp, tobjp, &val);
+        if (ret != TCL_OK)
+            return ret;
+        RDB_obj_set_rational(objp, (RDB_rational) val);
+        return TCL_OK;
+    }
+    if (typ == &RDB_BOOLEAN) {
+        int val;
+
+        ret = Tcl_GetBooleanFromObj(interp, tobjp, &val);
+        if (ret != TCL_OK)
+            return ret;
+        RDB_obj_set_bool(objp, (RDB_bool) val);
+        return TCL_OK;
+    }    
+    Tcl_SetResult(interp, "Unsupported type", TCL_STATIC);
+    return TCL_ERROR;
 }
 
 static int
@@ -180,6 +222,11 @@ table_insert_cmd(TclState *statep, Tcl_Interp *interp, int objc,
     Tcl_HashEntry *entryp;
     RDB_transaction *txp;
     RDB_table *tbp;
+    int attrcount;
+    int i;
+    RDB_tuple tpl;
+    RDB_object obj;
+    RDB_type *typ;
 
     if (objc != 5) {
         Tcl_WrongNumArgs(interp, 2, objv, "name tuple tx");
@@ -198,17 +245,48 @@ table_insert_cmd(TclState *statep, Tcl_Interp *interp, int objc,
 
     ret = RDB_get_table(name, txp, &tbp);
     if (ret != RDB_OK) {
-        interp->result = (char *) RDB_strerror(ret);
+        Tcl_SetResult(interp, (char *) RDB_strerror(ret), TCL_STATIC);
         return TCL_ERROR;
     }
+    typ = RDB_table_type(tbp);
 
-    /* ... */
+    Tcl_ListObjLength(interp, objv[3], &attrcount);
+    if (attrcount % 2 != 0) {
+        Tcl_SetResult(interp, "Illegal tuple value", TCL_STATIC);
+        return TCL_ERROR;
+    } 
 
-    return TCL_OK;
+    RDB_init_tuple(&tpl);
+    RDB_init_obj(&obj);
+    for (i = 0; i < attrcount; i += 2) {
+        Tcl_Obj *nameobjp, *valobjp;
+        char *name;
+
+        Tcl_ListObjIndex(interp, objv[3], i, &nameobjp);
+        name = Tcl_GetStringFromObj(nameobjp, NULL);
+        Tcl_ListObjIndex(interp, objv[3], i + 1, &valobjp);
+        ret = tcl_to_duro(interp, valobjp, RDB_type_attr_type(typ, name), &obj);
+        if (ret != TCL_OK)
+            goto cleanup;
+
+        RDB_tuple_set(&tpl, name, &obj);
+    }
+    ret = RDB_insert(tbp, &tpl, txp);
+    if (ret != RDB_OK) {
+        Tcl_SetResult(interp, (char *) RDB_strerror(ret), TCL_STATIC);
+        ret = TCL_ERROR;
+        goto cleanup;
+    }
+    ret = TCL_OK;
+
+cleanup:
+    RDB_destroy_tuple(&tpl);
+
+    return ret;
 }
 
 int
-RDB_table_cmd(ClientData data, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[])
+Duro_table_cmd(ClientData data, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[])
 {
     TclState *statep = (TclState *) data;
 

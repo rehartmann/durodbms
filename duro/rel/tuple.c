@@ -135,6 +135,18 @@ RDB_tuple_get_string(const RDB_tuple *tp, const char *namp)
             ->var.bin.datap;
 }
 
+RDB_int
+RDB_tuple_size(const RDB_tuple *tplp)
+{
+    return (RDB_int) RDB_hashmap_size(&tplp->map);
+}
+
+void
+RDB_tuple_attr_names(const RDB_tuple *tplp, char **namev)
+{
+    RDB_hashmap_keys(&tplp->map, namev);
+}
+
 int
 RDB_extend_tuple(RDB_tuple *tup, int attrc, RDB_virtual_attr attrv[],
                 RDB_transaction *txp)
