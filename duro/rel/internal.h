@@ -282,9 +282,14 @@ int
 _RDB_get_ro_op(const char *name, int argc, RDB_type *argtv[],
                RDB_transaction *txp, RDB_ro_op **opp);
 
+int
+_RDB_move_tuples(RDB_table *dstp, RDB_table *srcp, RDB_transaction *);
+
+RDB_expression *
+_RDB_pindex_expr(RDB_table *tbp, RDB_expression *exprp);
+
 #define _RDB_pkey_len(tbp) ((tbp)->keyv[0].strc)
 
-/* Is going to be removed */
 RDB_type *
 RDB_expr_type(const RDB_expression *exp, const RDB_type *);
 

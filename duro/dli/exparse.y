@@ -11,6 +11,12 @@ extern RDB_expression *resultp;
 static RDB_table *
 expr_to_table (const RDB_expression *exp);
 
+int
+yylex(void);
+
+void
+yyerror(const char *);
+
 enum {
     DURO_MAX_LLEN = 200
 };
@@ -31,6 +37,10 @@ enum {
         int addc;
         RDB_summarize_add addv[DURO_MAX_LLEN];
     } addlist;
+    struct {
+        int renc;
+        RDB_renaming renv[DURO_MAX_LLEN];
+    } renlist;
 }
 
 %token <exp> ID
@@ -68,7 +78,7 @@ enum {
 %token TOK_MAX
 %token TOK_MIN
 
-%type <exp> extractor relation project select rename extend summarize
+%type <exp> relation project select rename extend summarize
         expression or_expression and_expression not_expression
         primary_expression rel_expression add_expression mul_expression
         literal operator_invocation
@@ -79,10 +89,12 @@ enum {
 
 %type <addlist> summarize_add summarize_add_list summary summary_type
 
+%type <renlist> renaming renaming_list
+
 %%
 
 expression: or_expression { resultp = $1; }
-        | extractor { resultp = $1; }
+/*        | extractor { resultp = $1; } */
         | relation { resultp = $1; }
         | project { resultp = $1; }
         | select { resultp = $1; }
@@ -91,11 +103,13 @@ expression: or_expression { resultp = $1; }
         | summarize { resultp = $1; }
         ;
 
+/*
 extractor: ID FROM expression {
         }
         | TUPLE FROM expression {
         }
         ;
+*/
 
 project: primary_expression '{' attribute_name_list '}' {
             RDB_table *tbp, *restbp;
@@ -124,8 +138,8 @@ attribute_name_list: ID {
             $$.attrc = 1;
             $$.attrv[0] = RDB_dup_str($1->var.attr.name);
             RDB_drop_expr($1);
-            }
-            | attribute_name_list ',' ID {
+        }
+        | attribute_name_list ',' ID {
             int i;
 
             /* Copy old attributes */
@@ -156,16 +170,58 @@ select: primary_expression WHERE or_expression {
         }
         ;
 
-rename: primary_expression RENAME '(' renaming_list ')'
+rename: primary_expression RENAME '(' renaming_list ')' {
+            RDB_table *tbp, *restbp;
+            int ret;
+            int i;
+
+            tbp = expr_to_table($1);
+            if (tbp == NULL)
+            {
+                yyerror("rename: table expected\n");
+                YYERROR;
+            }
+            ret = RDB_rename(tbp, $4.renc, $4.renv, &restbp);
+            for (i = 0; i < $4.renc; i++) {
+                free($4.renv[i].to);
+                free($4.renv[i].from);
+            }
+            if (ret != RDB_OK) {
+                yyerror(RDB_strerror(ret));
+                YYERROR;
+            }
+            $$ = RDB_expr_table(restbp);
+        }
         ;
 
-renaming_list: renaming
-        | renaming_list ',' renaming
+renaming_list: renaming {
+            $$.renv[0].from = $1.renv[0].from;
+            $$.renv[0].to = $1.renv[0].to;
+            $$.renc = 1;
+        }
+        | renaming_list ',' renaming {
+            int i;
+
+            for (i = 0; i < $1.renc; i++) {
+                $$.renv[i].from = $1.renv[i].from;
+                $$.renv[i].to = $1.renv[i].to;
+            }
+            $$.renv[$1.renc].from = $3.renv[0].from;
+            $$.renv[$1.renc].to = $3.renv[0].to;
+            $$.renc = $1.renc + 1;
+        }
         ;
 
-renaming: ID AS ID
+renaming: ID AS ID {
+            $$.renv[0].from = RDB_dup_str($1->var.attr.name);
+            $$.renv[0].to = RDB_dup_str($3->var.attr.name);
+            RDB_drop_expr($1);
+            RDB_drop_expr($3);
+        }
+/*
         | "PREFIX" STRING AS STRING
         | "SUFFIX" STRING AS STRING
+*/
         ;
 
 relation: primary_expression UNION primary_expression {
@@ -479,7 +535,7 @@ add_expression: mul_expression
             $$ = $2;
         }
         | '-' mul_expression {
-            /* !! */
+            $$ = RDB_negate($2);
         }
         | add_expression '+' mul_expression {
             $$ = RDB_add($1, $3);
@@ -530,7 +586,7 @@ argument_list: expression
         | argument_list ',' expression
         ;
 
-literal: "RELATION" '{' expression_list '}' {
+literal: /* "RELATION" '{' expression_list '}' {
         }
         | "RELATION" '{' attribute_name_type_list '}'
           '{' opt_expression_list '}' {
@@ -544,14 +600,14 @@ literal: "RELATION" '{' expression_list '}' {
         }
         | "TABLE_DUM" {
         }
-        | STRING
+        | */ STRING
         | INTEGER
         | DECIMAL
         | FLOAT
         | TRUE
         | FALSE
         ;
-
+/*
 opt_tuple_item_list:
         | tuple_item_list
         ;
@@ -575,7 +631,7 @@ type: ID
         | "RELATION" '{' attribute_name_type_list '}'
         | "RELATION" '{' '}'
         | TUPLE '{' attribute_name_type_list '}'
-        | TUPLE '{' '}'      
+        | TUPLE '{' '}'
         ;
 
 opt_expression_list:
@@ -585,7 +641,7 @@ opt_expression_list:
 expression_list: expression
         | expression_list ',' expression
         ;
-
+*/
 %%
 
 static RDB_table *

@@ -15,7 +15,7 @@ Duro_tcl_rollback(RDB_transaction *txp, Tcl_HashEntry *entryp)
 }
 
 int
-Duro_begin_cmd(ClientData data, Tcl_Interp *interp, int argc, const char *argv[])
+Duro_begin_cmd(ClientData data, Tcl_Interp *interp, int argc, CONST char *argv[])
 {
     int ret;
     RDB_transaction *txp;
@@ -81,7 +81,7 @@ Duro_begin_cmd(ClientData data, Tcl_Interp *interp, int argc, const char *argv[]
 }
 
 int
-Duro_commit_cmd(ClientData data, Tcl_Interp *interp, int argc, const char *argv[])
+Duro_commit_cmd(ClientData data, Tcl_Interp *interp, int argc, CONST char *argv[])
 {
     int ret;
     RDB_transaction *txp;
@@ -111,7 +111,7 @@ Duro_commit_cmd(ClientData data, Tcl_Interp *interp, int argc, const char *argv[
 }
 
 int
-Duro_rollback_cmd(ClientData data, Tcl_Interp *interp, int argc, const char *argv[])
+Duro_rollback_cmd(ClientData data, Tcl_Interp *interp, int argc, CONST char *argv[])
 {
     int ret;
     RDB_transaction *txp;

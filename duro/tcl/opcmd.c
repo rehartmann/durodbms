@@ -7,7 +7,7 @@ int
 Duro_operator_cmd(ClientData data, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[])
 {
     RDB_bool update;
-    TclState *statep = (TclState *) data;
+    /* TclState *statep = (TclState *) data; */
 
     if (objc != 7) {
         Tcl_WrongNumArgs(interp, 1, objv, "name opt returnsOrUpdates tx args body");

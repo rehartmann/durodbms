@@ -19,10 +19,7 @@ int yywrap(void) {
 }
 
 void yyerror(char *errtxt) {
-    FILE *errfp = expr_txp->dbp->dbrootp->envp->errfilep;
-
-    if (errfp != NULL)
-        fputs(errtxt, errfp);
+    RDB_errmsg(expr_txp->dbp->dbrootp->envp, "%s", errtxt);
 }
 
 int RDB_parse_expr(const char *txt, RDB_transaction *txp, RDB_expression **exp)

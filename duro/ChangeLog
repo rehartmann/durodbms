@@ -4,9 +4,16 @@ Summary of Changes for Duro
 
 Changes for Duro 0.7
 
+- Added support for multiplication, division, unary minus, and string concatenation
+  in expressions.
+
+- Fixed bug with updating key attributes of tables with more than one
+  candidate key.
+
 - Fixed problem with commit/rollback after dropping tables.
 
-- Tcl interface
+- Tcl interface, including evaluation of relational expressions in
+  Tutorial D syntax.
 
 Changes for Duro 0.6
 

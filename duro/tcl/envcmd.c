@@ -11,7 +11,7 @@ Duro_tcl_close_env(RDB_environment *envp, Tcl_HashEntry *entryp)
 }
 
 int
-Duro_env_cmd(ClientData data, Tcl_Interp *interp, int argc, const char *argv[])
+Duro_env_cmd(ClientData data, Tcl_Interp *interp, int argc, CONST char *argv[])
 {
     int ret;
     RDB_environment *envp;

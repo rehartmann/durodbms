@@ -156,6 +156,10 @@ See the release notes for details.
 <li><a href="#not">RDB_not</a>
 <li><a href="#add">RDB_add</a>
 <li><a href="#subtract">RDB_subtract</a>
+<li><a href="#negate">RDB_negate</a>
+<li><a href="#multiply">RDB_multiply</a>
+<li><a href="#divide">RDB_divide</a>
+<li><a href="#concat">RDB_concat</a>
 <li><a href="#strlen">RDB_strlen</a>
 <li><a href="#regmatch">RDB_regmatch</a>
 <li><a href="#expr_table">RDB_expr_table</a>
@@ -1086,7 +1090,7 @@ but the second table does not contain.
 
 <hr>
 
-<h2 id="divide">RDB_sdivide</h2>
+<h2 id="sdivide">RDB_sdivide</h2>
 
 <pre>
 #include &lt;rel/rdb.h&gt;
@@ -2867,6 +2871,86 @@ RDB_subtract(RDB_expression *, RDB_expression *);
 
 <p>RDB_subtract creates an expression that represents an arithmetical
 subtraction. Both arguments must be numeric and of the same type.
+If one of the arguments is NULL, NULL is returned.
+
+<h3>Return value</h3>
+
+<p>A pointer to the newly created expression, of NULL if the creation
+failed.
+
+<hr>
+
+<h2 id="negate">RDB_negate</h2>
+
+<pre>
+RDB_expression *
+RDB_negate(RDB_expression *);
+</pre>
+
+<h3>Description</h3>
+
+<p>RDB_negate creates an expression that represents a unary
+minus. The argument must be numeric.
+If it is NULL, NULL is returned.
+
+<h3>Return value</h3>
+
+<p>A pointer to the newly created expression, of NULL if the creation
+failed.
+
+<hr>
+
+<h2 id="multiply">RDB_multiply</h2>
+
+<pre>
+RDB_expression *
+RDB_multiply(RDB_expression *, RDB_expression *);
+</pre>
+
+<h3>Description</h3>
+
+<p>RDB_multiply creates an expression that represents an arithmetical
+multiplication. Both arguments must be numeric and of the same type.
+If one of the arguments is NULL, NULL is returned.
+
+<h3>Return value</h3>
+
+<p>A pointer to the newly created expression, of NULL if the creation
+failed.
+
+<hr>
+
+<h2 id="divide">RDB_divide</h2>
+
+<pre>
+RDB_expression *
+RDB_divide(RDB_expression *, RDB_expression *);
+</pre>
+
+<h3>Description</h3>
+
+<p>RDB_subtract creates an expression that represents an arithmetical
+division. Both arguments must be numeric and of the same type.
+If one of the arguments is NULL, NULL is returned.
+
+<h3>Return value</h3>
+
+<p>A pointer to the newly created expression, of NULL if the creation
+failed.
+
+<hr>
+
+<h2 id="concat">RDB_concat</h2>
+
+<pre>
+RDB_expression *
+RDB_concat(RDB_expression *, RDB_expression *);
+</pre>
+
+<h3>Description</h3>
+
+<p>RDB_concat creates an expression that represents a string
+concatenation. Both arguments must be of type STRING.
 If one of the arguments is NULL, NULL is returned.
 
 <h3>Return value</h3>

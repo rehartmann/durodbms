@@ -170,6 +170,8 @@ MIN     {
 
 [=><+\-*/{},()]   return yytext[0];
 
+[[:space:]]
+
 %%
 
 void

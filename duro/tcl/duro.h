@@ -25,22 +25,22 @@ typedef struct {
 } TclState;
 
 int
-Duro_env_cmd(ClientData data, Tcl_Interp *interp, int argc, const char *argv[]);
+Duro_env_cmd(ClientData data, Tcl_Interp *interp, int argc, CONST char *argv[]);
 
 int
-Duro_begin_cmd(ClientData data, Tcl_Interp *interp, int argc, const char *argv[]);
+Duro_begin_cmd(ClientData data, Tcl_Interp *interp, int argc, CONST char *argv[]);
 
 int
-Duro_commit_cmd(ClientData data, Tcl_Interp *interp, int argc, const char *argv[]);
+Duro_commit_cmd(ClientData data, Tcl_Interp *interp, int argc, CONST char *argv[]);
 
 int
-Duro_rollback_cmd(ClientData data, Tcl_Interp *interp, int argc, const char *argv[]);
+Duro_rollback_cmd(ClientData data, Tcl_Interp *interp, int argc, CONST char *argv[]);
 
 int
 Duro_table_cmd(ClientData data, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[]);
 
 int
-Duro_db_cmd(ClientData data, Tcl_Interp *interp, int argc, char *argv[]);
+Duro_db_cmd(ClientData data, Tcl_Interp *interp, int argc, CONST char *argv[]);
 
 int
 Duro_array_cmd(ClientData data, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[]);

@@ -131,6 +131,7 @@ enum _RDB_expr_kind {
     RDB_OP_NOT,
     RDB_OP_ADD,
     RDB_OP_SUBTRACT,
+    RDB_OP_NEGATE,
     RDB_OP_MULTIPLY,
     RDB_OP_DIVIDE,
 
@@ -142,7 +143,7 @@ enum _RDB_expr_kind {
     RDB_OP_AGGREGATE,
     RDB_OP_GET_COMP,
     RDB_SELECTOR,
-    RDB_USER_OP,
+    RDB_USER_OP
 };
 
 typedef enum {
@@ -921,16 +922,20 @@ RDB_expression *
 RDB_add(RDB_expression *, RDB_expression *);
 
 RDB_expression *
-RDB_subtract(RDB_expression *arg1, RDB_expression *arg2);
+RDB_subtract(RDB_expression *, RDB_expression *);
+
+/* unary minus */
+RDB_expression *
+RDB_negate(RDB_expression *);
 
 RDB_expression *
-RDB_multiply(RDB_expression *arg1, RDB_expression *arg2);
+RDB_multiply(RDB_expression *, RDB_expression *);
 
 RDB_expression *
-RDB_divide(RDB_expression *arg1, RDB_expression *arg2);
+RDB_divide(RDB_expression *, RDB_expression *);
 
 RDB_expression *
-RDB_strlen(RDB_expression *arg);
+RDB_strlen(RDB_expression *);
 
 RDB_expression *
 RDB_regmatch(RDB_expression *, RDB_expression *);

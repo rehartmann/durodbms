@@ -1,3 +1,5 @@
+# $Id$
+
 # Default directory where Berkeley DB is installed
 BDB_HOME = /usr/local/BerkeleyDB.4.1
 
@@ -42,7 +44,7 @@ tests_test_pointtable_LDADD = $(LDADD) -lm
 libduro_la_SOURCES = gen/errors.c gen/hashmap.c gen/strfns.c rec/cursor.c \
 rec/env.c rec/index.c rec/recmap.c rel/array.c rel/internal.h rel/database.c \
 rel/expression.c rel/getargs.c rel/qresult.c rel/serialize.c rel/serialize.h \
-rel/table.c rel/transaction.c rel/tuple.c rel/type.c rel/object.c \
+rel/table.c rel/update.c rel/transaction.c rel/tuple.c rel/type.c rel/object.c \
 rel/catalog.c rel/catalog.h dli/exparse.y dli/exlex.l dli/parse.c
 
 nobase_include_HEADERS = gen/errors.h gen/hashmap.h gen/strfns.h gen/types.h \

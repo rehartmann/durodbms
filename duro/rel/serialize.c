@@ -114,6 +114,7 @@ serialize_expr(RDB_object *valp, int *posp, const RDB_expression *exp)
         case RDB_ATTR:
             return serialize_str(valp, posp, exp->var.attr.name);
         case RDB_OP_NOT:
+        case RDB_OP_NEGATE:
         case RDB_OP_REL_IS_EMPTY:
         case RDB_OP_STRLEN:
             return serialize_expr(valp, posp, exp->var.op.arg1);
@@ -554,6 +555,7 @@ deserialize_expr(RDB_object *valp, int *posp, RDB_transaction *txp,
             }
             break;
         case RDB_OP_NOT:
+        case RDB_OP_NEGATE:
         case RDB_OP_STRLEN:
             ret = deserialize_expr(valp, posp, txp, &ex1p);
             if (ret != RDB_OK)
