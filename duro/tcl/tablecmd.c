@@ -487,7 +487,11 @@ table_drop_cmd(TclState *statep, Tcl_Interp *interp, int objc,
         return TCL_ERROR;
     }
 
+    /*
+     * Search for transient table first
+     */
 
+    name = Tcl_GetStringFromObj(objv[2], NULL);
     txstr = Tcl_GetStringFromObj(objv[3], NULL);
     entryp = Tcl_FindHashEntry(&statep->txs, txstr);
     if (entryp == NULL) {
@@ -496,16 +500,25 @@ table_drop_cmd(TclState *statep, Tcl_Interp *interp, int objc,
     }
     txp = Tcl_GetHashValue(entryp);
 
-    name = Tcl_GetStringFromObj(objv[2], NULL);
     ret = Duro_get_table(statep, interp, name, txp, &tbp);
     if (ret != TCL_OK) {
         return TCL_ERROR;
     }
 
-    ret = RDB_drop_table(tbp, txp);
-    if (ret != RDB_OK) {
-        Duro_dberror(interp, ret);
-        return TCL_ERROR;
+    if (tbp->is_persistent) {
+        ret = RDB_drop_table(tbp, txp);
+        if (ret != RDB_OK) {
+            Duro_dberror(interp, ret);
+            return TCL_ERROR;
+        }
+    } else {
+        entryp = Tcl_FindHashEntry(&statep->ltables, name);
+        ret = Duro_tcl_drop_ltable((table_entry *)Tcl_GetHashValue(entryp),
+                entryp);
+        if (ret != RDB_OK) {
+            Duro_dberror(interp, ret);
+            return TCL_ERROR;
+        }
     }
 
     return RDB_OK;

@@ -282,6 +282,9 @@ RDB_unwrap_tuple(const RDB_object *tplp, int attrc, char *attrv[],
 {
     int i;
     int ret;
+    RDB_hashmap_iter it;
+    char *keyp;
+    void *datap;
     
     for (i = 0; i < attrc; i++) {
         RDB_object *wtplp = RDB_tuple_get(tplp, attrv[i]);
@@ -292,11 +295,18 @@ RDB_unwrap_tuple(const RDB_object *tplp, int attrc, char *attrv[],
     }
     
     /* Copy remaining attributes */
-    abort();
-    /*
-    RDB_init_hashmait_iter(&it);
+    RDB_init_hashmap_iter(&it, (RDB_hashmap *)&tplp->var.tpl_map);
     while ((datap = RDB_hashmap_next(&it, &keyp, NULL)) != NULL) {
-    */
+        /* Copy attribute if it does not appear in attrv */
+        if (RDB_find_str(attrc, attrv, keyp) == -1) {
+            ret = RDB_tuple_set(restplp, keyp, (RDB_object *)datap);
+            if (ret != RDB_OK) {
+                RDB_destroy_hashmap_iter(&it);
+                return ret;
+            }
+        }
+    }
+    RDB_destroy_hashmap_iter(&it);
     
     return RDB_OK;
 }

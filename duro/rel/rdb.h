@@ -677,8 +677,7 @@ RDB_wrap(RDB_table *tbp, int wrapc, RDB_wrapping wrapv[],
          RDB_table **resultpp);
 
 int
-RDB_unwrap(RDB_table *tbp, int attrc, const char *attrv[],
-        RDB_table **resultpp);
+RDB_unwrap(RDB_table *tbp, int attrc, char *attrv[], RDB_table **resultpp);
 
 /*
  * Functions for creation/destruction of tuples and reading/modifying attributes.

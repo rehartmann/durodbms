@@ -1845,7 +1845,12 @@ RDB_wrap(RDB_table *tbp, int wrapc, RDB_wrapping wrapv[],
 
     *resultpp = newtbp;
     return RDB_OK; 
+
 error:
+    for (i = 0; i < newtbp->keyc; i++)
+        RDB_free_strvec(newtbp->keyv[i].strc, newtbp->keyv[i].strv);
+    free(newtbp->keyv);
+    RDB_drop_type(newtbp->typ, NULL);
     for (i = 0; i < wrapc; i++) {
         free(newtbp->var.wrap.wrapv[i].attrname);
         if (newtbp->var.wrap.wrapv[i].attrv != NULL)
@@ -1853,6 +1858,59 @@ error:
                     newtbp->var.wrap.wrapv[i].attrv);
     }
     free(newtbp->var.wrap.wrapv);
+    free(newtbp);
+    return ret;
+}
+
+int
+RDB_unwrap(RDB_table *tbp, int attrc, char *attrv[],
+        RDB_table **resultpp)
+{
+    RDB_table *newtbp;
+    int ret;
+    int i;
+
+    newtbp = malloc(sizeof (RDB_table));
+    if (newtbp == NULL)
+        return RDB_NO_MEMORY;
+
+    newtbp->name = NULL;
+    newtbp->is_user = RDB_TRUE;
+    newtbp->is_persistent = RDB_FALSE;
+    newtbp->kind = RDB_TB_UNWRAP;
+    newtbp->typ = NULL;
+
+    newtbp->keyc = 1;
+    newtbp->keyv = all_key(tbp);
+    if (newtbp->keyv == NULL) {
+        free(newtbp);
+        return RDB_NO_MEMORY;
+    }
+
+    ret = RDB_unwrap_relation_type(tbp->typ, attrc, attrv, &newtbp->typ);
+    if (ret != RDB_OK) {
+        goto error;
+    }
+
+    newtbp->var.unwrap.attrc = attrc;
+    newtbp->var.unwrap.attrv = RDB_dup_strvec(attrc, attrv);
+    if (newtbp->var.unwrap.attrv == NULL) {    
+        RDB_drop_type(newtbp->typ, NULL);
+        free(newtbp);
+        ret = RDB_NO_MEMORY;
+        goto error;
+    }
+    newtbp->var.unwrap.tbp = tbp;
+
+    *resultpp = newtbp;
+    return RDB_OK;
+
+error:
+    for (i = 0; i < newtbp->keyc; i++)
+        RDB_free_strvec(newtbp->keyv[i].strc, newtbp->keyv[i].strv);
+    free(newtbp->keyv);
+    if (newtbp->typ != NULL)
+        RDB_drop_type(newtbp->typ, NULL);
     free(newtbp);
     return ret;
 }

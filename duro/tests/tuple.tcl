@@ -64,7 +64,19 @@ checkarray $a { {SCATTR Bla TPATTR {A 1 B Blubb}} }
 
 duro::array drop $a
 
-# Drop table
+# Create UNWRAP table
+duro::table expr T2 {T1 UNWRAP (TPATTR)} $tx
+
+set a [duro::array create T2 $tx]
+
+checkarray $a { {SCATTR Bla A 1 B Blubb} }
+
+duro::array drop $a
+
+# Drop tables
+
+duro::table drop T2 $tx
+
 duro::table drop T1 $tx
 
 duro::commit $tx
