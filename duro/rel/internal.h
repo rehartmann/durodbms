@@ -7,6 +7,24 @@
 
 #define AVG_COUNT_SUFFIX "$C"
 
+typedef struct RDB_dbroot {
+    RDB_environment *envp;
+    RDB_hashmap typemap;
+    RDB_hashmap opmap;
+    RDB_database *firstdbp;
+
+    /* catalog tables */
+    RDB_table *rtables_tbp;
+    RDB_table *table_attr_tbp;
+    RDB_table *table_attr_defvals_tbp;
+    RDB_table *vtables_tbp;
+    RDB_table *dbtables_tbp;
+    RDB_table *keys_tbp;
+    RDB_table *types_tbp;    
+    RDB_table *possreps_tbp;
+    RDB_table *possrepcomps_tbp;
+} RDB_dbroot;
+
 typedef struct RDB_qresult {
     RDB_table *tbp;
     union {

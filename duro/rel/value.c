@@ -382,7 +382,7 @@ RDB_binary_get(const RDB_value *valp, size_t pos, void *dstp, size_t len)
 }
 
 size_t
-RDB_binary_get_length(const RDB_value *valp)
+RDB_binary_length(const RDB_value *valp)
 {
     return valp->var.bin.len;
 }

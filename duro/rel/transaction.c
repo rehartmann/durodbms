@@ -17,7 +17,8 @@ RDB_begin_tx(RDB_transaction *txp, RDB_database *dbp,
 
     txp->dbp = dbp;
     txp->parentp = parent;
-    ret = dbp->envp->envp->txn_begin(dbp->envp->envp, partxid, &txp->txid, 0);
+    ret = dbp->dbrootp->envp->envp->txn_begin(dbp->dbrootp->envp->envp,
+            partxid, &txp->txid, 0);
     if (ret != 0) {
         return ret;
     }

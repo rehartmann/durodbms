@@ -73,6 +73,7 @@ calltest test_deftype
 calltest test_utypetable
 calltest test_defpointtype
 calltest test_pointtable
+calltest test_2db
 
 rm /tmp/duro$$
 
@@ -83,7 +84,7 @@ if ../util/droptable -e db -d TEST SALARIES EMPS1H EMPS1 EMPS2 DEPTS DEEDUM \
 fi
 
 echo Dropping DB
-if ../util/dropdb -e db -d TEST; then :; else
+if ../util/dropdb -e db -d TEST TEST2; then :; else
     failure
 fi
 

@@ -16,7 +16,7 @@ enum {
  * The underlying BDB database is created using db_create(), but not opened.
  */
 static int
-create_recmap(RDB_recmap **rmpp, const char *namp, const char *filenamp,
+new_recmap(RDB_recmap **rmpp, const char *namp, const char *filenamp,
         RDB_environment *dsp, int fieldc, const int fieldlenv[], int keyfieldc)
 {
     int i, ret;
@@ -88,7 +88,7 @@ RDB_create_recmap(const char *namp, const char *filenamp,
         RDB_environment *dsp, int fieldc, const int fieldlenv[], int keyfieldc,
         DB_TXN *txid, RDB_recmap **rmpp)
 {
-    int ret = create_recmap(rmpp, namp, filenamp, dsp,
+    int ret = new_recmap(rmpp, namp, filenamp, dsp,
             fieldc, fieldlenv, keyfieldc); 
     if (ret != RDB_OK)
         return ret;
@@ -108,14 +108,17 @@ RDB_open_recmap(const char *namp, const char *filenamp,
        RDB_environment *dsp, int fieldc, const int fieldlenv[], int keyfieldc,
        DB_TXN *txid, RDB_recmap **rmpp)
 {
-    int ret = create_recmap(rmpp, namp, filenamp, dsp,
+    int ret = new_recmap(rmpp, namp, filenamp, dsp,
             fieldc, fieldlenv, keyfieldc);   
     if (ret != RDB_OK)
        return ret;
 
     ret = (*rmpp)->dbp->open((*rmpp)->dbp, txid, filenamp, namp, DB_UNKNOWN, 0, 0664);
-    if (ret != 0)
+    if (ret != 0) {
+        if (ret == ENOENT)
+            ret = RDB_NOT_FOUND;
         goto error;
+    }
     return RDB_OK;
 
 error:

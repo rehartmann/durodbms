@@ -276,23 +276,12 @@ typedef struct RDB_database {
     /* internal */
 
     char *name;
-    RDB_environment *envp;
     RDB_hashmap tbmap;
-    RDB_hashmap typemap;
     
-    /* catalog tables */
-    RDB_table *table_attr_tbp;
-    RDB_table *table_attr_defvals_tbp;
-    RDB_table *rtables_tbp;
-    RDB_table *vtables_tbp;
-    RDB_table *dbtables_tbp;
-    RDB_table *keys_tbp;
-    RDB_table *types_tbp;    
-    RDB_table *possreps_tbp;
-    RDB_table *possrepcomps_tbp;
-
     /* pointer to next DB in environment */
     struct RDB_database *nextdbp;
+
+    struct RDB_dbroot *dbrootp;
     
     /* reference count */
     int refcount;
@@ -374,7 +363,7 @@ typedef struct RDB_attr {
  * Create a table with name name in the database associated with the transaction
  * pointed to by txp. Store a pointer to the newly created RDB_table structure
  * in tbpp.
- * If persistent is DB_FALSE, create a transient table. In this case,
+ * If persistent is RDB_FALSE, create a transient table. In this case,
  * name may be NULL.
  * The attributes are specified by attrc and heading.
  * The candidate keys are specified by keyc and keyv.
@@ -911,7 +900,7 @@ int
 RDB_binary_get(const RDB_value *, size_t pos, void *dstp, size_t len);
 
 size_t
-RDB_binary_get_length(const RDB_value *);
+RDB_binary_length(const RDB_value *);
 
 /*
  * Return the type of a RDB_expression.

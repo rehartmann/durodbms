@@ -3,7 +3,7 @@
 #include <rel/rdb.h>
 #include <stdio.h>
 
-int main() {
+int main(void) {
     RDB_value val;
     char buf[9];
 
@@ -14,7 +14,7 @@ int main() {
 
     RDB_binary_get(&val, 0, buf, 9);
 
-    printf("%s\n%d\n", buf, RDB_binary_get_length(&val));
+    printf("%s\n%d\n", buf, RDB_binary_length(&val));
 
     RDB_destroy_value(&val);
 

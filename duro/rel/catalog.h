@@ -12,10 +12,10 @@ int
 _RDB_catalog_insert(RDB_table *, RDB_transaction *);
 
 int
-_RDB_provide_systables(RDB_transaction *);
+_RDB_open_systables(RDB_transaction *);
 
 int
-_RDB_open_systables(RDB_transaction *);
+_RDB_create_db_in_cat(RDB_transaction *txp);
 
 int
 _RDB_possreps_query(const char *name, RDB_transaction *txp, RDB_table **tbpp);
