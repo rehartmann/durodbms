@@ -1,3 +1,8 @@
+/*
+ * Copyright (C) 2003 René Hartmann.
+ * See the file COPYING for redistribution information.
+ */
+
 /* $Id$ */
 
 #include "rdb.h"
@@ -50,7 +55,8 @@ insert_join(RDB_table *tbp, const RDB_object *tup, RDB_transaction *txp)
     RDB_transaction tx;
     int ret, ret2;
 
-    /* Try to insert tup into both tables. If one insert fails,
+    /*
+     * Try to insert tup into both tables. If one insert fails,
      * the insert into the join fails.
      * If only one of the inserts fails because the tuple already exists,
      * the overall insert succeeds. 
@@ -84,8 +90,8 @@ insert_join(RDB_table *tbp, const RDB_object *tup, RDB_transaction *txp)
     return RDB_commit(&tx);
 }
 
-static void
-set_tuple_type(RDB_object *objp, RDB_type *typ)
+void
+_RDB_set_tuple_type(RDB_object *objp, RDB_type *typ)
 {
     int i;
 
@@ -96,7 +102,7 @@ set_tuple_type(RDB_object *objp, RDB_type *typ)
         RDB_type *attrtyp = typ->var.tuple.attrv[i].typ;
 
         if (attrtyp->kind == RDB_TP_TUPLE) {
-            set_tuple_type(
+            _RDB_set_tuple_type(
                     RDB_tuple_get(objp, typ->var.tuple.attrv[i].name),
                     attrtyp);
         }
@@ -142,14 +148,14 @@ RDB_insert(RDB_table *tbp, const RDB_object *tup, RDB_transaction *txp)
                 }
                 
                 /* Typecheck */
-                if (valp->typ!= NULL /* !! */ && !RDB_type_equals(valp->typ,
+                if (valp->typ != NULL /* !! */ && !RDB_type_equals(valp->typ,
                                      tuptyp->var.tuple.attrv[i].typ)) {
                      return RDB_TYPE_MISMATCH;
                 }
 
                 /* Set type - needed for tuples */
                 if (valp->typ == NULL && valp->kind == _RDB_TUPLE)
-                    set_tuple_type(valp, tuptyp->var.tuple.attrv[i].typ);
+                    _RDB_set_tuple_type(valp, tuptyp->var.tuple.attrv[i].typ);
 
                 _RDB_obj_to_field(&fvp[*fnop], valp);
             }

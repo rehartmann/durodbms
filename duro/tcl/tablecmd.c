@@ -756,16 +756,106 @@ cleanup:
     return ret;
 }
 
+static int
+table_contains_cmd(TclState *statep, Tcl_Interp *interp, int objc,
+        Tcl_Obj *CONST objv[])
+{
+    int ret;
+    char *name;
+    char *txstr;
+    Tcl_HashEntry *entryp;
+    RDB_transaction *txp;
+    RDB_table *tbp;
+    int attrcount;
+    int i;
+    RDB_object tpl;
+    RDB_type *typ;
+
+    if (objc != 5) {
+        Tcl_WrongNumArgs(interp, 2, objv, "name tuple tx");
+        return TCL_ERROR;
+    }
+
+    name = Tcl_GetStringFromObj(objv[2], NULL);
+
+    txstr = Tcl_GetStringFromObj(objv[4], NULL);
+    entryp = Tcl_FindHashEntry(&statep->txs, txstr);
+    if (entryp == NULL) {
+        Tcl_AppendResult(interp, "Unknown transaction: ", txstr, NULL);
+        return TCL_ERROR;
+    }
+    txp = Tcl_GetHashValue(entryp);
+
+    ret = Duro_get_table(statep, interp, name, txp, &tbp);
+    if (ret != TCL_OK) {
+        return TCL_ERROR;
+    }
+    typ = RDB_table_type(tbp);
+
+    Tcl_ListObjLength(interp, objv[3], &attrcount);
+    if (attrcount % 2 != 0) {
+        Tcl_SetResult(interp, "Invalid tuple value", TCL_STATIC);
+        return TCL_ERROR;
+    } 
+
+    RDB_init_obj(&tpl);
+    for (i = 0; i < attrcount; i += 2) {
+        Tcl_Obj *nameobjp, *valobjp;
+        RDB_type *attrtyp;
+        char *attrname;
+        RDB_object obj;
+
+        RDB_init_obj(&obj);
+
+        Tcl_ListObjIndex(interp, objv[3], i, &nameobjp);
+        attrname = Tcl_GetStringFromObj(nameobjp, NULL);
+        attrtyp = RDB_type_attr_type(typ, attrname);
+        if (attrtyp == NULL) {
+            Tcl_AppendResult(interp, "Unknown attribute: ", attrname, NULL);
+            ret = TCL_ERROR;
+            RDB_destroy_obj(&obj);
+            goto cleanup;
+        }
+
+        Tcl_ListObjIndex(interp, objv[3], i + 1, &valobjp);
+        ret = tcl_to_duro(interp, valobjp, attrtyp, &obj);
+        if (ret != TCL_OK) {
+            RDB_destroy_obj(&obj);
+            goto cleanup;
+        }
+
+        RDB_tuple_set(&tpl, attrname, &obj);
+        RDB_destroy_obj(&obj);
+    }
+
+    ret = RDB_table_contains(tbp, &tpl, txp);
+    if (ret == RDB_OK) {
+        Tcl_SetObjResult(interp, Tcl_NewBooleanObj(1));
+        ret = TCL_OK;        
+    } else if (ret == RDB_NOT_FOUND) {
+        Tcl_SetObjResult(interp, Tcl_NewBooleanObj(0));
+        ret = TCL_OK;
+    } else {
+        Duro_dberror(interp, ret);
+        ret = TCL_ERROR;
+    }
+
+cleanup:
+    RDB_destroy_obj(&tpl);
+
+    return ret;
+}
+
 int
 Duro_table_cmd(ClientData data, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[])
 {
     TclState *statep = (TclState *) data;
 
     const char *sub_cmds[] = {
-        "create", "expr", "drop", NULL
+        "create", "expr", "drop", "contains", NULL
     };
     enum table_ix {
-        create_ix, expr_ix, drop_ix
+        create_ix, expr_ix, drop_ix, contains_ix
     };
     int index;
 
@@ -786,6 +876,8 @@ Duro_table_cmd(ClientData data, Tcl_Interp *interp, int objc, Tcl_Obj *CONST obj
             return table_expr_cmd(statep, interp, objc, objv);
         case drop_ix:
             return table_drop_cmd(statep, interp, objc, objv);
+        case contains_ix:
+            return table_contains_cmd(statep, interp, objc, objv);
     }
     return TCL_ERROR;
 }

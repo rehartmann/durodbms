@@ -1,3 +1,8 @@
+/*
+ * Copyright (C) 2003 René Hartmann.
+ * See the file COPYING for redistribution information.
+ */
+
 /* $Id$ */
 
 #include "rdb.h"
@@ -110,6 +115,8 @@ RDB_tuple_set_string(RDB_object *tp, const char *namp, const char *str)
 RDB_object *
 RDB_tuple_get(const RDB_object *tp, const char *namp)
 {
+    if (tp->kind == _RDB_INITIAL)
+        return NULL;
     return (RDB_object *) RDB_hashmap_get(&tp->var.tpl_map, namp, NULL);
 }
 

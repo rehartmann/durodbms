@@ -75,6 +75,20 @@ set a [duro::array create T2 $tx]
 checkarray $a { {T {C Blip} SCATTR Bla A 1 B Blubb} }
 duro::array drop $a
 
+set tpl {T {C Blip} SCATTR Bla A 1 B Blubb}
+
+if {![duro::table contains T2 $tpl $tx]} {
+    puts "T2 should contain $tpl, but does not"
+    exit 1
+}
+
+set tpl {T {C Blop} SCATTR Bla A 1 B Blubb}
+
+if {[duro::table contains T2 $tpl $tx]} {
+    puts "T2 should not contain $tpl, but does"
+    exit 1
+}
+
 duro::table expr T3 {T1 WHERE TPATTR.A = 1} $tx
 
 set a [duro::array create T3 $tx]

@@ -800,6 +800,10 @@ wrap_contains(RDB_table *tbp, const RDB_object *tup, RDB_transaction *txp)
     if (attrv == NULL)
         return RDB_NO_MEMORY;
 
+    /*
+     * Create unwrapped tuple
+     */
+
     for (i = 0; i < tbp->var.wrap.wrapc; i++)
         attrv[i] = tbp->var.wrap.wrapv[i].attrname;
 
@@ -810,11 +814,65 @@ wrap_contains(RDB_table *tbp, const RDB_object *tup, RDB_transaction *txp)
         RDB_destroy_obj(&tpl);
         return ret;
     }
+
+    /*
+     * Check if unwrapped tuple is in base table
+     */
+
     ret = RDB_table_contains(tbp->var.wrap.tbp, &tpl, txp);
     RDB_destroy_obj(&tpl);
     return ret;
 }    
+
+static int    
+unwrap_contains(RDB_table *tbp, const RDB_object *tup, RDB_transaction *txp)
+{
+    int ret;
+    int i, j;
+    RDB_object tpl;
+    RDB_wrapping *wrapv = malloc(sizeof(RDB_wrapping) * tbp->var.unwrap.attrc);
     
+    if (wrapv == NULL)
+        return RDB_NO_MEMORY;
+
+    /*
+     * Create wrapped tuple
+     */
+
+    for (i = 0; i < tbp->var.unwrap.attrc; i++) {
+        RDB_type *tuptyp = _RDB_tuple_type_attr(tbp->var.unwrap.tbp->typ->var.basetyp,
+                tbp->var.unwrap.attrv[i])->typ;
+        wrapv[i].attrc = tuptyp->var.tuple.attrc;
+        wrapv[i].attrv = malloc(sizeof(char *) * tuptyp->var.tuple.attrc);
+        if (wrapv[i].attrv == NULL)
+            return RDB_NO_MEMORY;
+        for (j = 0; j < wrapv[i].attrc; j++)
+            wrapv[i].attrv[j] = tuptyp->var.tuple.attrv[j].name;
+
+        wrapv[i].attrname = tbp->var.unwrap.attrv[i];
+        
+    }
+
+    RDB_init_obj(&tpl);
+    ret = RDB_wrap_tuple(tup, tbp->var.unwrap.attrc, wrapv, &tpl);
+    if (ret != RDB_OK)
+        goto cleanup;
+
+    /*
+     * Check if wrapped tuple is in base table
+     */
+
+    ret = RDB_table_contains(tbp->var.unwrap.tbp, &tpl, txp);
+
+cleanup:
+    for (i = 0; i < tbp->var.unwrap.attrc; i++)
+        free(wrapv[i].attrv);
+    free(wrapv);
+
+    RDB_destroy_obj(&tpl);
+    return ret;
+}    
+
 int
 RDB_table_contains(RDB_table *tbp, const RDB_object *tup, RDB_transaction *txp)
 {
@@ -845,11 +903,15 @@ RDB_table_contains(RDB_table *tbp, const RDB_object *tup, RDB_transaction *txp)
                         free(fvp);
                         return RDB_INVALID_ARGUMENT;
                     }
-                    if (!RDB_type_equals (RDB_obj_type(valp), 
+                    if (valp->typ != NULL && !RDB_type_equals (RDB_obj_type(valp),
                             tuptyp->var.tuple.attrv[i].typ)) {
                         free(fvp);
                         return RDB_TYPE_MISMATCH;
                     }
+
+                    /* Set type - needed for tuples */
+                    if (valp->typ == NULL && valp->kind == _RDB_TUPLE)
+                        _RDB_set_tuple_type(valp, tuptyp->var.tuple.attrv[i].typ);
                     _RDB_obj_to_field(&fvp[fno], valp);
                 }
                 ret = RDB_contains_rec(tbp->var.stored.recmapp, fvp, txp->txid);
@@ -920,7 +982,7 @@ RDB_table_contains(RDB_table *tbp, const RDB_object *tup, RDB_transaction *txp)
         case RDB_TB_WRAP:
             return wrap_contains(tbp, tup, txp);
         case RDB_TB_UNWRAP:
-            return /* !! required */ RDB_NOT_SUPPORTED;
+            return unwrap_contains(tbp, tup, txp);;
         case RDB_TB_SDIVIDE:
             return /* !! required */ RDB_NOT_SUPPORTED;
     }
