@@ -232,6 +232,8 @@ test_query(RDB_database *dbp)
     if (ret != RDB_NOT_FOUND)
         goto error;
 
+    RDB_destroy_array(&array);
+
     RDB_drop_table(tmptbp, &tx);
 
     printf("Creating POINTTEST WHERE POINT=POINT(1,2)\n");
@@ -245,6 +247,8 @@ test_query(RDB_database *dbp)
     if (ret != RDB_OK) {
         goto error;
     } 
+
+    RDB_init_array(&array);
 
     printf("Converting selection table to array\n");
     ret = RDB_table_to_array(&array, tmptbp, 0, NULL, &tx);

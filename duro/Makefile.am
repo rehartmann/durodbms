@@ -22,7 +22,8 @@ tests/test_rename tests/test_select tests/test_summarize \
 tests/test_union tests/test_update tests/test_utypetable \
 tests/test_defpointtype tests/test_pointtable \
 tests/test_srupdate tests/test_insert tests/test_2db \
-tests/test_defop tests/test_callop tests/test_print_opview tests/test_dropop
+tests/test_defop tests/test_callop tests/test_print_opview \
+tests/test_dropop tests/tupletest
 
 tests_libpoint_la_SOURCES = tests/point.c tests/point.h
 
@@ -32,7 +33,7 @@ TESTS = tests/testall
 
 TESTS_ENVIRONMENT = BDB_HOME=$(BDB_HOME)
 
-LDADD = -L$(BDB_HOME)/lib libduro.la -ldb @LIBS@ -lmcheck
+LDADD = -L$(BDB_HOME)/lib libduro.la -ldb @LIBS@
 
 tests_test_pointtable_LDADD = $(LDADD) -lm
 
@@ -47,6 +48,18 @@ rec/cursor.h rec/env.h rec/index.h rec/recmap.h \
 rel/rdb.h rel/typeimpl.h
 
 INCLUDES = -I$(top_srcdir) -I$(BDB_HOME)/include
+
+EXTRA_DIST = tests/testall tests/lstables_output tests/test_2db_output \
+tests/test_aggregate_output tests/test_binary_output tests/test_callop_output \
+tests/test_create_view_output tests/test_defop_output tests/test_defpointtype_output \
+tests/test_deftype_output tests/test_delete_output tests/test_dropop_output \
+tests/test_extend_output tests/test_insert_output tests/test_intersect_output \
+tests/test_join_output tests/test_keys_output tests/test_minus_output \
+tests/test_null_output tests/test_pointtable_output tests/test_print_opview_output \
+tests/test_print_view_output tests/test_project_output tests/test_ra_output \
+tests/test_regexp_output tests/test_rename_output tests/test_select_output \
+tests/test_srupdate_output tests/test_summarize_output tests/test_union_output \
+tests/test_update_output tests/test_utypetable_output tests/tupletest_output
 
 # Delete test libs
 install-exec-local:
