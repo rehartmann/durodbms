@@ -1,4 +1,4 @@
-Opening DB
+Opening environment
 Starting transaction
 Extending EMPS1 (SALARY_W_BONUS)
 converting extended table to array
@@ -15,4 +15,4 @@ predicate violation - OK
 Inserting tuple #2
 Dropping extension
 End of transaction
-Closing DB
+Closing environment

@@ -1,4 +1,4 @@
-Opening DB
+Opening environment
 Starting transaction
 Creating EMPS1 intersect EMPS2
 converting intersect table to array
@@ -6,4 +6,4 @@ EMPNO: 1
 NAME: Smith
 Dropping intersect
 End of transaction
-Closing DB
+Closing environment

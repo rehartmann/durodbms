@@ -69,7 +69,7 @@ print_tables(RDB_database *dbp, RDB_bool all, RDB_bool real)
     }
     vtb2p = NULL;
 
-    err = RDB_table_to_array(vtb1p, &array, &tx);
+    err = RDB_table_to_array(vtb1p, &array, 0, NULL, &tx);
     if (err != RDB_OK) {
         goto error;
     } 

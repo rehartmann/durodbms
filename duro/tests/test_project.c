@@ -18,7 +18,7 @@ print_table1(RDB_table *tbp, RDB_transaction *txp)
 
     RDB_init_array(&array);
 
-    err = RDB_table_to_array(tbp, &array, txp);
+    err = RDB_table_to_array(tbp, &array, 0, NULL, txp);
     if (err != RDB_OK) {
         goto error;
     }
@@ -51,7 +51,7 @@ print_table2(RDB_table *tbp, RDB_transaction *txp)
 
     RDB_init_array(&array);
 
-    err = RDB_table_to_array(tbp, &array, txp);
+    err = RDB_table_to_array(tbp, &array, 0, NULL, txp);
     if (err != RDB_OK) {
         goto error;
     }
@@ -153,7 +153,7 @@ main()
     RDB_database *dbp;
     int err;
     
-    printf("Opening DB\n");
+    printf("Opening environment\n");
     err = RDB_open_env("db", &dsp);
     if (err != 0) {
         fprintf(stderr, "Error: %s\n", RDB_strerror(err));
@@ -171,12 +171,7 @@ main()
         return 2;
     }
 
-    printf ("Closing DB\n");
-    err = RDB_release_db(dbp);
-    if (err != RDB_OK) {
-        fprintf(stderr, "Error: %s\n", RDB_strerror(err));
-        return 2;
-    }
+    printf ("Closing environment\n");
     err = RDB_close_env(dsp);
     if (err != RDB_OK) {
         fprintf(stderr, "Error: %s\n", RDB_strerror(err));

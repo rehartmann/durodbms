@@ -20,7 +20,7 @@ print_salary_view(RDB_database *dbp, RDB_table *vtbp)
 
     RDB_init_array(&array);
 
-    err = RDB_table_to_array(vtbp, &array, &tx);
+    err = RDB_table_to_array(vtbp, &array, 0, NULL, &tx);
     if (err != RDB_OK) {
         goto error;
     }
@@ -58,7 +58,7 @@ print_emp_view(RDB_database *dbp, RDB_table *vtbp)
 
     RDB_init_array(&array);
 
-    err = RDB_table_to_array(vtbp, &array, &tx);
+    err = RDB_table_to_array(vtbp, &array, 0, NULL, &tx);
     if (err != RDB_OK) {
         goto error;
     }
@@ -98,7 +98,7 @@ print_empsq_view(RDB_database *dbp, RDB_table *vtbp)
 
     RDB_init_array(&array);
 
-    err = RDB_table_to_array(vtbp, &array, &tx);
+    err = RDB_table_to_array(vtbp, &array, 0, NULL, &tx);
     if (err != RDB_OK) {
         goto error;
     }
@@ -134,7 +134,7 @@ main()
     RDB_table *viewp;
     int err;
     
-    printf("Opening Environment\n");
+    printf("Opening environment\n");
     err = RDB_open_env("db", &dsp);
     if (err != RDB_OK) {
         fprintf(stderr, "Error: %s\n", RDB_strerror(err));

@@ -1,4 +1,4 @@
-Opening DB
+Opening environment
 Starting transaction
 Deleting #1 from EMPS1
 converting table to array
@@ -8,4 +8,4 @@ SALARY: 4500.000000
 Deleting all tuples from EMPS1
 converting table to array
 End of transaction
-Closing DB
+Closing environment

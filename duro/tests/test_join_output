@@ -1,4 +1,4 @@
-Opening DB
+Opening environment
 Starting transaction
 Joining EMPS1 with DEPTS
 Converting joined table to array
@@ -12,4 +12,4 @@ DEPTNO: 1
 DEPTNAME: Dept. I
 Dropping join
 End of transaction
-Closing DB
+Closing environment

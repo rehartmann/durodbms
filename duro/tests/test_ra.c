@@ -46,7 +46,7 @@ test_ra(RDB_database *dbp)
     RDB_init_array(&array);
 
     printf("Converting virtual table to array\n");
-    err = RDB_table_to_array(vtbp, &array, &tx);
+    err = RDB_table_to_array(vtbp, &array, 0, NULL, &tx);
     if (err != RDB_OK) {
         RDB_deinit_array(&array);
         RDB_commit(&tx);

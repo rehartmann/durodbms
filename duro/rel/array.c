@@ -16,8 +16,13 @@ RDB_deinit_array(RDB_array *arrp)
 }
 
 int
-RDB_table_to_array(RDB_table *tbp, RDB_array *arrp, RDB_transaction *txp)
+RDB_table_to_array(RDB_table *tbp, RDB_array *arrp,
+                   int seqitc, RDB_seq_item seqitv[],
+                   RDB_transaction *txp)
 {
+    if (seqitc > 0)
+        return RDB_NOT_SUPPORTED;
+
     RDB_deinit_array(arrp);
 
     arrp->tbp = tbp;

@@ -1,4 +1,4 @@
-Opening DB
+Opening environment
 Starting transaction
 Creating EMPS1 minus EMPS2
 converting minus table to array
@@ -6,4 +6,4 @@ EMPNO: 2
 NAME: Jones
 Dropping minus
 End of transaction
-Closing DB
+Closing environment

@@ -1029,7 +1029,7 @@ get_keys(const char *name, RDB_transaction *txp,
         return res;
     }
 
-    res = RDB_table_to_array(vtbp, &arr, txp);
+    res = RDB_table_to_array(vtbp, &arr, 0, NULL, txp);
     if (res != RDB_OK)
         goto error;
 
@@ -1123,7 +1123,7 @@ get_cat_rtable(RDB_database *dbp, const char *name, RDB_table **tbpp)
         RDB_drop_expr(exprp);
         goto error;
     }
-    res = RDB_table_to_array(rexprp, &arr, &tx);
+    res = RDB_table_to_array(rexprp, &arr, 0, NULL, &tx);
     if (res != RDB_OK) {
         goto error;
     }
@@ -1147,7 +1147,7 @@ get_cat_rtable(RDB_database *dbp, const char *name, RDB_table **tbpp)
     res = RDB_select(dbp->table_attr_tbp, exprp, &rexprp);
     if (res != RDB_OK)
         goto error;
-    res = RDB_table_to_array(rexprp, &arr, &tx);
+    res = RDB_table_to_array(rexprp, &arr, 0, NULL, &tx);
     if (res != RDB_OK) {
         goto error;
     }
@@ -1242,7 +1242,7 @@ get_cat_vtable(RDB_database *dbp, const char *name, RDB_table **tbpp)
         RDB_drop_expr(exprp);
         goto error;
     }
-    res = RDB_table_to_array(rexprp, &arr, &tx);
+    res = RDB_table_to_array(rexprp, &arr, 0, NULL, &tx);
     if (res != RDB_OK) {
         goto error;
     }

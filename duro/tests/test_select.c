@@ -40,7 +40,7 @@ test_select(RDB_database *dbp)
     }
 
     printf("Converting selection table to array\n");
-    err = RDB_table_to_array(vtbp, &array, &tx);
+    err = RDB_table_to_array(vtbp, &array, 0, NULL, &tx);
     if (err != RDB_OK) {
         goto error;
     } 
@@ -76,7 +76,7 @@ test_select(RDB_database *dbp)
     }
 
     printf("Converting selection table to array\n");
-    err = RDB_table_to_array(vtbp, &array, &tx);
+    err = RDB_table_to_array(vtbp, &array, 0, NULL, &tx);
     if (err != RDB_OK) {
         goto error;
     } 
@@ -113,7 +113,7 @@ main()
     RDB_database *dbp;
     int err;
     
-    printf("Opening DB\n");
+    printf("Opening environment\n");
     err = RDB_open_env("db", &dsp);
     if (err != 0) {
         fprintf(stderr, "Error: %s\n", RDB_strerror(err));
@@ -131,12 +131,7 @@ main()
         return 2;
     }
 
-    printf ("Closing DB\n");
-    err = RDB_release_db(dbp);
-    if (err != RDB_OK) {
-        fprintf(stderr, "Error: %s\n", RDB_strerror(err));
-        return 2;
-    }
+    printf ("Closing environment\n");
     err = RDB_close_env(dsp);
     if (err != RDB_OK) {
         fprintf(stderr, "Error: %s\n", RDB_strerror(err));

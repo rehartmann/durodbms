@@ -1,8 +1,8 @@
-Opening DB
+Opening environment
 Starting transaction
 Inserting tuple #1
 Error: key violation - OK
 Inserting tuple #2
 key violation - OK
 End of transaction
-Closing DB
+Closing environment

@@ -594,13 +594,23 @@ RDB_init_array(RDB_array *);
 void
 RDB_deinit_array(RDB_array *);
 
+typedef struct {
+    char *attrname;
+    RDB_bool asc;
+} RDB_seq_item;
+
 /*
  * Convert a RDB_table to a RDB_array and store the array in
  * the location pointed to by arrpp.
+ * Specifying the order of the elements by seqitc and seqitv
+ * is currently not supported - the only permissible
+ * value of seqitc is 0.
  * The array becomes invalid when the transaction ends.
  */
 int
-RDB_table_to_array(RDB_table *, RDB_array *arrp, RDB_transaction *);
+RDB_table_to_array(RDB_table *, RDB_array *arrp,
+                   int seqitc, RDB_seq_item seqitv[],
+                   RDB_transaction *);
 
 /*
  * Read the tuple with index idx from the array.

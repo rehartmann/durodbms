@@ -1,4 +1,4 @@
-Opening DB
+Opening environment
 Starting transaction
 Creating selection (name="Smith")
 Converting selection table to array
@@ -13,4 +13,4 @@ NAME: Smith
 SALARY: 4000.000000
 Dropping selection
 End of transaction
-Closing DB
+Closing environment

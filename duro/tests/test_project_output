@@ -1,4 +1,4 @@
-Opening DB
+Opening environment
 Starting transaction
 Creating projection (SALARY)
 Converting projection table to array
@@ -14,4 +14,4 @@ EMPNO: 3
 NAME: Clarke
 Dropping projection
 End of transaction
-Closing DB
+Closing environment

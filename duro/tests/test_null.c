@@ -80,7 +80,7 @@ main()
     RDB_database *dbp;
     int err;
     
-    printf("Opening DB\n");
+    printf("Opening environment\n");
     err = RDB_open_env("db", &dsp);
     if (err != 0) {
         fprintf(stderr, "Error: %s\n", RDB_strerror(err));
@@ -104,12 +104,7 @@ main()
         return 2;
     }
 
-    printf ("Closing DB\n");
-    err = RDB_release_db(dbp);
-    if (err != RDB_OK) {
-        fprintf(stderr, "Error: %s\n", RDB_strerror(err));
-        return 2;
-    }
+    printf ("Closing environment\n");
     err = RDB_close_env(dsp);
     if (err != RDB_OK) {
         fprintf(stderr, "Error: %s\n", RDB_strerror(err));
