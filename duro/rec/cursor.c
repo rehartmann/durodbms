@@ -22,7 +22,7 @@ RDB_recmap_cursor(RDB_cursor **curpp, RDB_recmap *rfp, RDB_bool wr,
     res = rfp->dbp->cursor(rfp->dbp, txid, &curp->cursorp, flags);
     if (res != 0) {
         free(curp);
-        return res;
+        return RDB_convert_err(res);
     }
     memset(&curp->current_key, 0, sizeof(DBT));
     curp->current_key.flags = DB_DBT_REALLOC;
@@ -39,10 +39,7 @@ RDB_destroy_cursor(RDB_cursor *curp)
 
     free(curp->current_key.data);
     free(curp->current_data.data);
-    res = curp->cursorp->c_close(curp->cursorp);
-    if (res == DB_LOCK_DEADLOCK)
-        res = RDB_DEADLOCK;
-    return res;
+    return RDB_convert_err(curp->cursorp->c_close(curp->cursorp));
 }
 
 int
@@ -88,9 +85,7 @@ RDB_cursor_set(RDB_cursor *curp, int fieldc, RDB_field fields[])
         /* Key was modified, so delete record first */
         res = curp->cursorp->c_del(curp->cursorp, 0);
         if (res != 0) {
-            if (res == DB_LOCK_DEADLOCK)
-                res = RDB_DEADLOCK;
-            return res;
+            return RDB_convert_err(res);
         }
         /* Write both key and data */
         res = curp->recmapp->dbp->put(curp->recmapp->dbp, curp->txid,
@@ -100,59 +95,32 @@ RDB_cursor_set(RDB_cursor *curp, int fieldc, RDB_field fields[])
         res = curp->cursorp->c_put(curp->cursorp,
                 &curp->current_key, &curp->current_data, DB_CURRENT);
     }
-    if (res == DB_LOCK_DEADLOCK)
-        res = RDB_DEADLOCK;
-    return res;
+    return RDB_convert_err(res);
 }
 
 int
 RDB_cursor_delete(RDB_cursor *curp)
 {
-    int res = curp->cursorp->c_del(curp->cursorp, 0);
-
-    if (res == DB_LOCK_DEADLOCK)
-        res = RDB_DEADLOCK;
-    return res;
+    return RDB_convert_err(curp->cursorp->c_del(curp->cursorp, 0));
 }
 
 int
 RDB_cursor_first(RDB_cursor *curp)
 {
-    int res;
-
-    res = curp->cursorp->c_get(curp->cursorp, &curp->current_key,
-                &curp->current_data, DB_FIRST);
-    if (res == DB_NOTFOUND)
-        res = RDB_NOT_FOUND;
-    if (res == DB_LOCK_DEADLOCK)
-        res = RDB_DEADLOCK;
-    return res;
+    return RDB_convert_err(curp->cursorp->c_get(curp->cursorp, &curp->current_key,
+                &curp->current_data, DB_FIRST));
 }
 
 int
 RDB_cursor_next(RDB_cursor *curp)
 {
-    int res;
-
-    res = curp->cursorp->c_get(curp->cursorp, &curp->current_key,
-            &curp->current_data, DB_NEXT);
-    if (res == DB_NOTFOUND)
-        res = RDB_NOT_FOUND;
-    if (res == DB_LOCK_DEADLOCK)
-        res = RDB_DEADLOCK;
-    return res;
+    return RDB_convert_err(curp->cursorp->c_get(curp->cursorp,
+            &curp->current_key, &curp->current_data, DB_NEXT));
 }    
 
 int
 RDB_cursor_prev(RDB_cursor *curp)
 {
-    int res;
-
-    res = curp->cursorp->c_get(curp->cursorp, &curp->current_key,
-            &curp->current_data, DB_PREV);
-    if (res == DB_NOTFOUND)
-        res = RDB_NOT_FOUND;
-    if (res == DB_LOCK_DEADLOCK)
-        res = RDB_DEADLOCK;
-    return res;
+    return RDB_convert_err(curp->cursorp->c_get(curp->cursorp, &curp->current_key,
+            &curp->current_data, DB_PREV));
 }    

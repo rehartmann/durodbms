@@ -118,7 +118,7 @@ RDB_insert(RDB_table *tbp, const RDB_tuple *tup, RDB_transaction *txp)
             }
             res = RDB_insert_rec(tbp->var.stored.recmapp, fvp, txp->txid);
             free(fvp);
-            if (res == RDB_DEADLOCK) {
+            if (RDB_is_syserr(res)) {
                 RDB_rollback(txp);
             } else if (res == RDB_KEY_VIOLATION) {
                 if (RDB_table_contains(tbp, tup, txp) == RDB_OK)
@@ -315,7 +315,7 @@ update_stored(RDB_table *tbp, RDB_expression *condp,
         
         res = RDB_update_rec(tbp->var.stored.recmapp, &fv, attrc, fieldv,
                 txp->txid);
-        if (res == RDB_DEADLOCK) {
+        if (RDB_is_syserr(res)) {
             RDB_rollback(txp);
             return res;
         }
@@ -396,7 +396,7 @@ update_stored(RDB_table *tbp, RDB_expression *condp,
             for (i = 0; i < attrc; i++)
                 RDB_destroy_value(&valv[i]);
             if (res != RDB_OK) {
-                if (res == RDB_DEADLOCK) {
+                if (RDB_is_syserr(res)) {
                     RDB_rollback(txp);
                 }
                 goto error;
@@ -480,7 +480,7 @@ delete_stored(RDB_table *tbp, RDB_expression *condp,
             return res;
         fv.datap = RDB_value_irep(&val, &fv.len);
         res = RDB_delete_rec(tbp->var.stored.recmapp, &fv, txp->txid);
-        if (res == RDB_DEADLOCK) {
+        if (RDB_is_syserr(res)) {
             RDB_rollback(txp);
             return res;
         }
@@ -906,7 +906,7 @@ RDB_table_contains(RDB_table *tbp, const RDB_tuple *tup, RDB_transaction *txp)
                 }
                 res = RDB_contains_rec(tbp->var.stored.recmapp, fvp, txp->txid);
                 free(fvp);
-                if (res == RDB_DEADLOCK) {
+                if (RDB_is_syserr(res)) {
                     RDB_rollback(txp);
                 }
                 return res;

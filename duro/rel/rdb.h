@@ -287,7 +287,7 @@ typedef struct RDB_attr {
 /*
  * Return the name of the database.
  */
-#define RDB_db_name(dbp) (dbp->name)
+#define RDB_db_name(dbp) ((dbp)->name)
 
 /*
  * Create a database with name name in the environment pointed to
@@ -378,7 +378,7 @@ RDB_get_type(RDB_database *dbp, const char *name, RDB_type **typp);
 /*
  * Return the database assoctiated with the transaction.
  */
-#define RDB_tx_db(txp) (txp->dbp)
+#define RDB_tx_db(txp) ((txp)->dbp)
 
 /*
  * Start the transaction pointed to by txp.

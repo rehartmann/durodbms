@@ -80,7 +80,7 @@ error:
     free(rmp->filenamp);
     free(rmp->fieldlens);
     free(rmp);
-    return res;
+    return RDB_convert_err(res);
 }
 
 int
@@ -89,8 +89,7 @@ RDB_create_recmap(const char *namp, const char *filenamp,
         DB_TXN *txid, RDB_recmap **rmpp)
 {
     int res = create_recmap(rmpp, namp, filenamp, dsp,
-            fieldc, fieldlenv, keyfieldc);
-   
+            fieldc, fieldlenv, keyfieldc); 
     if (res != RDB_OK)
         return res;
        
@@ -101,7 +100,7 @@ RDB_create_recmap(const char *namp, const char *filenamp,
 
 error:
     RDB_close_recmap(*rmpp);
-    return res;
+    return RDB_convert_err(res);
 }
 
 int
@@ -110,8 +109,7 @@ RDB_open_recmap(const char *namp, const char *filenamp,
        DB_TXN *txid, RDB_recmap **rmpp)
 {
     int res = create_recmap(rmpp, namp, filenamp, dsp,
-            fieldc, fieldlenv, keyfieldc);
-   
+            fieldc, fieldlenv, keyfieldc);   
     if (res != RDB_OK)
        return res;
 
@@ -122,7 +120,7 @@ RDB_open_recmap(const char *namp, const char *filenamp,
 
 error:
     RDB_close_recmap(*rmpp);
-    return res;
+    return RDB_convert_err(res);
 }
 
 int
@@ -133,7 +131,7 @@ RDB_close_recmap(RDB_recmap *rmp)
     free(rmp->filenamp);
     free(rmp->fieldlens);
     free(rmp);
-    return res;
+    return RDB_convert_err(res);
 }
 
 int
@@ -415,17 +413,13 @@ RDB_insert_rec(RDB_recmap *rmp, RDB_field flds[], DB_TXN *txid)
 #endif
 
     res = rmp->dbp->put(rmp->dbp, txid, &key, &data, DB_NOOVERWRITE);
-    if (res == DB_KEYEXIST)
-        res = RDB_KEY_VIOLATION;
-    else if (res == DB_LOCK_DEADLOCK)
-        res = RDB_DEADLOCK;
-    else if (res == EINVAL)
+    if (res == EINVAL)
         /* Assume duplicate secondary index */
         res = RDB_KEY_VIOLATION;
     free(key.data);
     free(data.data);
 
-    return res;
+    return RDB_convert_err(res);
 }
 
 void
@@ -466,17 +460,12 @@ RDB_update_rec(RDB_recmap *recmapp, RDB_field keyv[],
 
     res = key_to_DBT(recmapp, keyv, &key);
     if (res != RDB_OK)
-        return res;
+        return RDB_convert_err(res);
     memset(&data, 0, sizeof (data));
     data.flags = DB_DBT_REALLOC;
 
     res = recmapp->dbp->get(recmapp->dbp, txid, &key, &data, 0);
     if (res != 0) {
-         if (res == DB_NOTFOUND)
-            res = RDB_NOT_FOUND;
-        else if (res == DB_LOCK_DEADLOCK)
-            res = RDB_DEADLOCK;
-
         goto error;
     }
 
@@ -486,8 +475,6 @@ RDB_update_rec(RDB_recmap *recmapp, RDB_field keyv[],
             /* Key is to be modified, so delete record first */
             res = recmapp->dbp->del(recmapp->dbp, txid, &key, 0);
             if (res != 0) {
-                if (res == DB_LOCK_DEADLOCK)
-                    res = RDB_DEADLOCK;
                 goto error;
             }
             break;
@@ -506,14 +493,12 @@ RDB_update_rec(RDB_recmap *recmapp, RDB_field keyv[],
 
     /* Write record back */
     res = recmapp->dbp->put(recmapp->dbp, txid, &key, &data, 0);
-    if (res == DB_LOCK_DEADLOCK)
-        res = RDB_DEADLOCK;
 
 error:
     free(key.data);
     free(data.data);
     
-    return res;
+    return RDB_convert_err(res);
 }
 
 int
@@ -528,11 +513,7 @@ RDB_delete_rec(RDB_recmap *rmp, RDB_field keyv[], DB_TXN *txid)
 
     res = rmp->dbp->del(rmp->dbp, txid, &key, 0);
     if (res != 0) {
-        if (res == DB_NOTFOUND)
-            res = RDB_NOT_FOUND;
-        else if (res == DB_LOCK_DEADLOCK)
-            res = RDB_DEADLOCK;
-        return res;
+        return RDB_convert_err(res);
     }
     return RDB_OK;
 }
@@ -573,12 +554,7 @@ RDB_get_fields(RDB_recmap *rmp, RDB_field keyv[], int fieldc, DB_TXN *txid,
 
     res = rmp->dbp->get(rmp->dbp, txid, &key, &data, 0);
     if (res != 0) {
-         if (res == DB_NOTFOUND)
-            res = RDB_NOT_FOUND;
-        else if (res == DB_LOCK_DEADLOCK)
-            res = RDB_DEADLOCK;
-
-        return res;
+        return RDB_convert_err(res);
     }
 
     return _RDB_get_fields(rmp, &key, &data, fieldc, resfieldv);
@@ -597,11 +573,5 @@ RDB_contains_rec(RDB_recmap *rmp, RDB_field flds[], DB_TXN *txid)
     if (res != RDB_OK)
         return res;
 
-    res = rmp->dbp->get(rmp->dbp, txid, &key, &data, DB_GET_BOTH);
-    if (res == DB_NOTFOUND)
-        res = RDB_NOT_FOUND;
-    else if (res == DB_LOCK_DEADLOCK)
-        res = RDB_DEADLOCK;
-
-    return res;
+    return RDB_convert_err(rmp->dbp->get(rmp->dbp, txid, &key, &data, DB_GET_BOTH));
 }

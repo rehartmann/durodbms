@@ -6,7 +6,7 @@
 enum {
     RDB_OK = 0,
 
-    RDB_NO_SPACE = -101,
+    RDB_NO_SPACE = -100,
     RDB_NO_MEMORY = -102,
     RDB_SYSTEM_ERROR = -103,
     RDB_DEADLOCK = -104,
@@ -24,7 +24,14 @@ enum {
     RDB_NOT_SUPPORTED = -300
 };
 
+/* Check for a system error */
+#define RDB_is_syserr(err) ((err) <= -100 && (err) >= -105)
+
 const char *
 RDB_strerror(int err);
+
+/* Convert a POSIX to a Duro error. */
+int
+RDB_convert_err(int);
 
 #endif

@@ -1,5 +1,6 @@
 #include "errors.h"
 #include <db.h>
+#include <errno.h>
 
 /* $Id$ */
 
@@ -46,4 +47,34 @@ RDB_strerror(int err)
             return "operation or option not supported";
     }
     return "unknown error code";
+}
+
+int
+RDB_convert_err(int err)
+{
+    switch(err) {
+        case ENOSPC:
+            err = RDB_NO_SPACE;
+            break;
+        case ENOMEM:
+            err = RDB_NO_MEMORY;
+            break;
+        case DB_LOCK_DEADLOCK:
+            err = RDB_DEADLOCK;
+            break;
+        case EINVAL:
+            err = RDB_INTERNAL;
+            break;
+        case DB_NOTFOUND:
+            err = RDB_NOT_FOUND;
+            break;
+        case DB_KEYEXIST:
+            err = RDB_KEY_VIOLATION;
+            break;
+        default:
+            if (err > 0)
+               err = RDB_SYSTEM_ERROR;
+    }        
+        
+    return err;
 }

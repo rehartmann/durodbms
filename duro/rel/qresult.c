@@ -276,6 +276,9 @@ do_summarize(RDB_qresult *qresp, RDB_transaction *txp)
                 res = RDB_update_rec(qresp->matp->var.stored.recmapp, keyfv,
                     addc + avgc, nonkeyfv, txp->txid);
                 if (res != RDB_OK)
+                    if (RDB_is_syserr(res)) {
+                        RDB_rollback(txp);
+                    }
                     goto error;
             } else if (res != RDB_NOT_FOUND)
                 goto error;
@@ -304,14 +307,20 @@ stored_qresult(RDB_qresult *qresp, RDB_table *tbp, RDB_transaction *txp)
 
     res = RDB_recmap_cursor(&qresp->var.curp, tbp->var.stored.recmapp,
                     0, txp->txid);
-    if (res != RDB_OK)
+    if (res != RDB_OK) {
+        if (RDB_is_syserr(res))
+            RDB_abort(txp);
         return res;
+    }
     res = RDB_cursor_first(qresp->var.curp);
     if (res == RDB_NOT_FOUND) {
         qresp->endreached = 1;
         res = RDB_OK;
     } else if (res != RDB_OK) {
         RDB_destroy_cursor(qresp->var.curp);
+        if (RDB_is_syserr(res))
+            RDB_abort(txp);
+        return res;
     }
     return res;
 }
@@ -582,7 +591,7 @@ next_select_pindex(RDB_qresult *qrp, RDB_tuple *tup, RDB_transaction *txp)
                          txp->txid, resfieldv);
     if (res != RDB_OK) {
         free(resfieldv);
-        if (res == RDB_DEADLOCK) {
+        if (RDB_is_syserr(res)) {
             RDB_rollback(txp);
         }
         return res;
@@ -789,7 +798,7 @@ _RDB_drop_qresult(RDB_qresult *qrp, RDB_transaction *txp)
     if (qrp->tablep->kind == RDB_TB_STORED
         || qrp->tablep->kind == RDB_TB_SUMMARIZE) {
         res = RDB_destroy_cursor(qrp->var.curp);
-        if (res == RDB_DEADLOCK)
+        if (RDB_is_syserr(res))
             RDB_rollback(txp);
     } else if (qrp->tablep->kind != RDB_TB_SELECT_PINDEX) {
         res = _RDB_drop_qresult(qrp->var.virtual.qrp, txp);
