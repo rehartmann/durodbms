@@ -696,14 +696,14 @@ RDB_aggregate(RDB_table *tbp, RDB_aggregate_op op, const char *attrname,
     /* attrname may only be NULL if op == RDB_AVG or table is unary */
     if (attrname == NULL && op != RDB_COUNT) {
         if (tbp->typ->var.basetyp->var.tuple.attrc != 1)
-            return RDB_ILLEGAL_ARG;
+            return RDB_INVALID_ARGUMENT;
         attrname = tbp->typ->var.basetyp->var.tuple.attrv[0].name;
     }
 
     if (attrname != NULL) {
         attrtyp = _RDB_tuple_attr_type(tbp->typ->var.basetyp, attrname);
         if (attrtyp == NULL)
-            return RDB_ILLEGAL_ARG;
+            return RDB_INVALID_ARGUMENT;
     }
 
     ret = aggr_type(tbp->typ->var.basetyp, attrtyp, op, &resultp->typ);
@@ -753,7 +753,7 @@ RDB_aggregate(RDB_table *tbp, RDB_aggregate_op op, const char *attrname,
             resultp->var.bool_val = RDB_FALSE;
             break;
         default:
-            return RDB_ILLEGAL_ARG;
+            return RDB_INVALID_ARGUMENT;
         break;
     }
 
@@ -1056,7 +1056,7 @@ RDB_extract_tuple(RDB_table *tbp, RDB_tuple *tup, RDB_transaction *txp)
     ret = _RDB_next_tuple(qrp, NULL, txp);
     if (ret != RDB_NOT_FOUND) {
         if (ret == RDB_OK)
-            ret = RDB_ILLEGAL_ARG;
+            ret = RDB_INVALID_ARGUMENT;
         goto error;
     }
 
@@ -1462,7 +1462,7 @@ RDB_extend(RDB_table *tbp, int attrc, RDB_virtual_attr attrv[],
     }
     for (i = 0; i < attrc; i++) {
         if (!_RDB_legal_name(attrv[i].name)) {
-            ret = RDB_ILLEGAL_ARG;
+            ret = RDB_INVALID_ARGUMENT;
             goto error;
         }
         newtbp->var.extend.attrv[i].name = RDB_dup_str(attrv[i].name);

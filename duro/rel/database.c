@@ -187,13 +187,13 @@ open_table(const char *name, RDB_bool persistent,
         if (ret != RDB_OK)
             goto error;
         /* Only scalar types supported by this version */
-        if (!RDB_is_scalar_type(heading[i].type)) {
+        if (!RDB_type_is_scalar(heading[i].type)) {
             ret = RDB_NOT_SUPPORTED;
             goto error;
         }
         flens[fno] = replen(heading[i].type);
         if (flens[fno] == 0) {
-            ret = RDB_ILLEGAL_ARG;
+            ret = RDB_INVALID_ARGUMENT;
             goto error;
         }
     }
@@ -665,7 +665,7 @@ RDB_create_db_from_env(const char *name, RDB_environment *envp,
     RDB_database *dbp;
 
     if (!_RDB_legal_name(name))
-        return RDB_ILLEGAL_ARG;
+        return RDB_INVALID_ARGUMENT;
 
     ret = alloc_db(name, envp, &dbp);
     if (ret != RDB_OK)
@@ -902,7 +902,7 @@ rm_db(RDB_database *dbp)
             hdbp = hdbp->nextdbp;
         }
         if (hdbp == NULL)
-            return RDB_ILLEGAL_ARG;
+            return RDB_INVALID_ARGUMENT;
         hdbp->nextdbp = dbp->nextdbp;
     }
     return RDB_OK;
@@ -1039,11 +1039,11 @@ _RDB_create_table(const char *name, RDB_bool persistent,
 {
     /* At least one key is required */
     if (keyc < 1)
-        return RDB_ILLEGAL_ARG;
+        return RDB_INVALID_ARGUMENT;
 
     /* name may only be NULL if table is transient */
     if ((name == NULL) && persistent)
-        return RDB_ILLEGAL_ARG;
+        return RDB_INVALID_ARGUMENT;
 
     return open_table(name, persistent, attrc, heading, keyc, keyv, RDB_TRUE,
                       RDB_TRUE, txp, tbpp);
@@ -1059,11 +1059,11 @@ RDB_create_table(const char *name, RDB_bool persistent,
     int i;
 
     if (!_RDB_legal_name(name))
-        return RDB_ILLEGAL_ARG;
+        return RDB_INVALID_ARGUMENT;
 
     for (i = 0; i < attrc; i++) {
         if (!_RDB_legal_name(heading[i].name))
-            return RDB_ILLEGAL_ARG;
+            return RDB_INVALID_ARGUMENT;
     }
 
     ret = _RDB_create_table(name, persistent, attrc, heading, keyc, keyv,
@@ -1556,7 +1556,7 @@ int
 RDB_set_table_name(RDB_table *tbp, const char *name, RDB_transaction *txp)
 {
     if (!_RDB_legal_name(name))
-        return RDB_ILLEGAL_ARG;
+        return RDB_INVALID_ARGUMENT;
 
     if (tbp->is_persistent)
         return RDB_NOT_SUPPORTED;
@@ -1581,7 +1581,7 @@ RDB_make_persistent(RDB_table *tbp, RDB_transaction *txp)
         return RDB_OK;
 
     if (tbp->name == NULL)
-        return RDB_ILLEGAL_ARG;
+        return RDB_INVALID_ARGUMENT;
 
     if (tbp->kind == RDB_TB_STORED)
         return RDB_NOT_SUPPORTED;
@@ -1887,7 +1887,7 @@ RDB_define_type(const char *name, int repc, RDB_possrep repv[],
     int i, j;
 
     if (repc != 1)
-        return RDB_ILLEGAL_ARG;
+        return RDB_INVALID_ARGUMENT;
 
     ret = RDB_begin_tx(&tx, RDB_tx_db(txp), txp);
     if (ret != RDB_OK)
@@ -1923,14 +1923,14 @@ RDB_define_type(const char *name, int repc, RDB_possrep repv[],
         RDB_expression *exp = repv[i].constraintp;
 
         if (repv[i].compc != 1) {
-            ret = RDB_ILLEGAL_ARG;
+            ret = RDB_INVALID_ARGUMENT;
             goto error;
         }
 
         if (prname == NULL) {
             /* possrep name may be NULL if there's only 1 possrep */
             if (repc > 1) {
-                ret = RDB_ILLEGAL_ARG;
+                ret = RDB_INVALID_ARGUMENT;
                 goto error;
             }
             prname = (char *)name;
@@ -1971,7 +1971,7 @@ RDB_define_type(const char *name, int repc, RDB_possrep repv[],
 
             if (cname == NULL) {
                 if (repv[i].compc > 1) {
-                    ret = RDB_ILLEGAL_ARG;
+                    ret = RDB_INVALID_ARGUMENT;
                     goto error;
                 }
                 cname = prname;

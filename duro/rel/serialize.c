@@ -258,7 +258,7 @@ _RDB_serialize_table(RDB_value *valp, int *posp, RDB_table *tbp)
     switch (tbp->kind) {
         case RDB_TB_STORED:
             if (tbp->name == NULL)
-                return RDB_ILLEGAL_ARG;
+                return RDB_INVALID_ARGUMENT;
             return serialize_str(valp, posp, tbp->name);
         case RDB_TB_SELECT:
         case RDB_TB_SELECT_PINDEX:

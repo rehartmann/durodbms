@@ -223,15 +223,15 @@ RDB_value_set(RDB_value *valp, RDB_type *typ, const char *repname,
 
     RDB_destroy_value(valp);
 
-    if (typ->var.scalar.repc == 0 || !RDB_is_scalar_type(typ))
-        return RDB_ILLEGAL_ARG;
+    if (typ->var.scalar.repc == 0 || !RDB_type_is_scalar(typ))
+        return RDB_INVALID_ARGUMENT;
 
     /* Find possrep - not used yet
     for (i = 0; i < typ->scalar.repc
             && strcmp(typ->scalar.repv[i].name, repname) == 0);
             i++);
     if (i > typ->scalar.repc)
-        return RDB_ILLEGAL_ARG;
+        return RDB_INVALID_ARGUMENT;
     prp = typ->scalar.repv[i].exp;
     */
 

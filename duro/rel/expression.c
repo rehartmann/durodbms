@@ -668,7 +668,7 @@ RDB_evaluate_bool(RDB_expression *exprp, const RDB_tuple *tup,
                 if (err != 0) {
                     free(s1);
                     free(s2);
-                    return RDB_ILLEGAL_ARG;
+                    return RDB_INVALID_ARGUMENT;
                 }
                 *resp = (RDB_bool)(regexec(&reg, s1, 0, NULL, 0) == 0);
                 regfree(&reg);

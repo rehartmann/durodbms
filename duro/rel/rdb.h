@@ -716,14 +716,14 @@ RDB_type_name(const RDB_type *);
  * or RDB_FALSE if it's a user type.
  */
 RDB_bool
-RDB_is_builtin_type(const RDB_type *);
+RDB_type_is_builtin(const RDB_type *);
 
 /*
  * Return RDB_TRUE if the type pointed to by typ is a scalar type,
  * or RDB_FALSE if it's a user type.
  */
 RDB_bool
-RDB_is_scalar_type(const RDB_type *);
+RDB_type_is_scalar(const RDB_type *);
 
 /*
  * Return RDB_TRUE if the two types are equal

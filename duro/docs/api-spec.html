@@ -2,188 +2,220 @@
 "http://www.w3.org/TR/html4/strict.dtd">
 <html lang="en">
 <head>
-<!-- $Id$ -->
 <title>Duro API specification</title>
 <body>
+<!-- $Id$ -->
 <h1>Duro API specification</h1>
 
 <p>- DRAFT -
 
 <h2>Contents</h2>
 
-<h3>Tuple functions</h3>
-
-<ul>
-<li>RDB_init_tuple
-<li>RDB_destroy_tuple
-<li>RDB_tuple_set
-<li>RDB_tuple_set_bool
-<li>RDB_tuple_set_int
-<li>RDB_tuple_set_rational
-<li>RDB_tuple_set_string
-<li>RDB_tuple_get
-<li>RDB_tuple_get_bool
-<li>RDB_tuple_get_int
-<li>RDB_tuple_get_rational
-<li>RDB_tuple_get_string
-<li>RDB_tuple_extend
-<li>RDB_tuple_rename
-</ul>
+<p><a href="#built-in-types">Built-in types</a>
 
 <h3>Table functions</h3>
 
 <ul>
 <li><a href="#create_table">RDB_create_table</a>
-<li>RDB_get_table
-<li>RDB_drop_table
-<li>RDB_table_name
-<li>RDB_set_table_name
-<li>RDB_make_persistent
-<li>RDB_table_contains
-<li>RDB_aggregate
-<li>RDB_table_is_empty
-<li>RDB_insert
-<li>RDB_update
-<li>RDB_delete
-<li>RDB_extract_tuple
-<li>RDB_set_table_name
-<li>RDB_make_persistent
-<li>RDB_copy_table
-<li>RDB_rename
-<li>RDB_select
-<li>RDB_extend
-<li>RDB_project
-<li>RDB_join
-<li>RDB_union
-<li>RDB_intersect
-<li>RDB_minus
-<li>RDB_summarize
+<li><a href="#get_table">RDB_get_table</a>
+<li><a href="#drop_table">RDB_drop_table</a>
+<li><a href="#table_name">RDB_table_name</a>
+<li><a href="#set_table_name">RDB_set_table_name</a>
+<li><a href="#make_persistent">RDB_make_persistent</a>
+<li><a href="#table_contains">RDB_table_contains</a>
+<li><a href="#aggregate">RDB_aggregate</a>
+<li><a href="#table_is_empty">RDB_table_is_empty</a>
+<li><a href="#insert">RDB_insert</a>
+<li><a href="#update">RDB_update</a>
+<li><a href="#delete">RDB_delete</a>
+<li><a href="#extract_tuple">RDB_extract_tuple</a>
+<li><a href="#copy_table">RDB_copy_table</a>
+<li><a href="#rename">RDB_rename</a>
+<li><a href="#select">RDB_select</a>
+<li><a href="#extend">RDB_extend</a>
+<li><a href="#project">RDB_project</a>
+<li><a href="#join">RDB_join</a>
+<li><a href="#union">RDB_union</a>
+<li><a href="#intersect">RDB_intersect</a>
+<li><a href="#minus">RDB_minus</a>
+<li><a href="#summarize">RDB_summarize</a>
 </ul>
 
-<h3>Array functions</h3>
+<h3>Tuple functions</h3>
 
 <ul>
-<li>RDB_init_array
-<li>RDB_destroy_array
-<li>RDB_table_to_array
-<li>RDB_array_get_tuple
-<li>RDB_array_get
-<li>RDB_array_set_tuple
-<li>RDB_array_set
-<li>RDB_array_length
-<li>RDB_resize_array
-</ul>
-
-<h3>Database functions</h3>
-
-<ul>
-<li>RDB_create_db_from_env
-<li>RDB_get_db_from_env
-<li>RDB_release_db
-<li>RDB_drop_db
-<li>RDB_db_name
-</ul>
-
-<h3>Constraint functions</h3>
-
-<ul>
-<li>RDB_create_constraint
-<li>RDB_drop_contraint
-</ul>
-
-<h3>Transaction functions</h3>
-
-<ul>
-<li>RDB_begin_tx
-<li>RDB_commit
-<li>RDB_rollback
-<li>RDB_tx_is_running
-</ul>
-
-<h3>Type functions</h3>
-
-<ul>
-<li>RDB_define_type
-<li>RDB_implement_type
-<li>RDB_create_tuple_type
-<li>RDB_create_relation_type
-<li>RDB_get_type
-<li>RDB_drop_type
-<li>RDB_type_name
-<li>RDB_is_builtin_type
-<li>RDB_is_scalar_type
-<li>RDB_type_is_numeric
-<li>RDB_type_equals
-<li>RDB_extend_tuple_type
-<li>RDB_extend_relation_type
-<li>RDB_join_tuple_types
-<li>RDB_join_relation_types
-<li>RDB_project_tuple_type
-<li>RDB_project_relation_type
-<li>RDB_rename_tuple_type
-<li>RDB_rename_relation_type
+<li><a href="#init_tuple">RDB_init_tuple</a>
+<li><a href="#destroy_tuple">RDB_destroy_tuple</a>
+<li><a href="#tuple_set">RDB_tuple_set</a>
+<li><a href="#tuple_set_bool">RDB_tuple_set_bool</a>
+<li><a href="#tuple_set_int">RDB_tuple_set_int</a>
+<li><a href="#tuple_set_rational">RDB_tuple_set_rational</a>
+<li><a href="#tuple_set_string">RDB_tuple_set_string</a>
+<li><a href="#tuple_get">RDB_tuple_get</a>
+<li><a href="#tuple_get_bool">RDB_tuple_get_bool</a>
+<li><a href="#tuple_get_int">RDB_tuple_get_int</a>
+<li><a href="#tuple_get_rational">RDB_tuple_get_rational</a>
+<li><a href="#tuple_get_string">RDB_tuple_get_string</a>
+<li><a href="#tuple_extend">RDB_tuple_extend</a>
+<li><a href="#tuple_rename">RDB_tuple_rename</a>
+<li><a href="#tuple_wrap">RDB_tuple_wrap</a>
+<li><a href="#tuple_unwrap">RDB_tuple_unwrap</a>
 </ul>
 
 <h3>RDB_value functions</h3>
 
 <ul>
-<li>RDB_init_value
-<li>RDB_destroy_value
-<li>RDB_value_equals
-<li>RDB_copy_value
-<li>RDB_value_set
-<li>RDB_value_set_bool
-<li>RDB_value_set_int
-<li>RDB_value_set_rational
-<li>RDB_value_set_string
-<li>RDB_value_bool
-<li>RDB_value_int
-<li>RDB_value_rational
-<li>RDB_value_string
-<li>RDB_value_get_comp
-<li>RDB_value_set_comp
-<li>RDB_binary_get
-<li>RDB_binary_set
+<li><a href="#init_value">RDB_init_value</a>
+<li><a href="#destroy_value">RDB_destroy_value</a>
+<li><a href="#value_equals">RDB_value_equals</a>
+<li><a href="#copy_value">RDB_copy_value</a>
+<li><a href="#value_set">RDB_value_set</a>
+<li><a href="#value_set_bool">RDB_value_set_bool</a>
+<li><a href="#value_set_int">RDB_value_set_int</a>
+<li><a href="#value_set_rational">RDB_value_set_rational</a>
+<li><a href="#value_set_string">RDB_value_set_string</a>
+<li><a href="#value_bool">RDB_value_bool</a>
+<li><a href="#value_int">RDB_value_int</a>
+<li><a href="#value_rational">RDB_value_rational</a>
+<li><a href="#value_string">RDB_value_string</a>
+<li><a href="#value_get_comp">RDB_value_get_comp</a>
+<li><a href="#value_set_comp">RDB_value_set_comp</a>
+<li><a href="#binary_get">RDB_binary_get</a>
+<li><a href="#binary_set">RDB_binary_set</a>
+<li><a href="#binary_get_length">RDB_binary_get_length</a>
+</ul>
+
+<h3>Database functions</h3>
+
+<ul>
+<li><a href="#create_db_from_env">RDB_create_db_from_env</a>
+<li><a href="#get_db_from_env">RDB_get_db_from_env</a>
+<li><a href="#release_db">RDB_release_db</a>
+<li><a href="#drop_db">RDB_drop_db</a>
+<li><a href="#db_name">RDB_db_name</a>
+</ul>
+
+<h3>Transaction functions</h3>
+
+<ul>
+<li><a href="#begin_tx">RDB_begin_tx</a>
+<li><a href="#commit">RDB_commit</a>
+<li><a href="#rollback">RDB_rollback</a>
+<li><a href="#tx_is_db">RDB_tx_db</a>
+<li><a href="#tx_is_running">RDB_tx_is_running</a>
+</ul>
+
+<h3>Array functions</h3>
+
+<ul>
+<li><a href="#init_array">RDB_init_array</a>
+<li><a href="#destroy_array">RDB_destroy_array</a>
+<li><a href="#table_to_array">RDB_table_to_array</a>
+<li><a href="#array_get_tuple">RDB_array_get_tuple</a>
+<li><a href="#array_get">RDB_array_get</a>
+<li><a href="#array_set_tuple">RDB_array_set_tuple</a>
+<li><a href="#array_set">RDB_array_set</a>
+<li><a href="#array_length">RDB_array_length</a>
+<li><a href="#resize_array">RDB_resize_array</a>
+<li><a href="#detach_array">RDB_detach_array</a>
 </ul>
 
 <h3>Expression functions</h3>
 
 <ul>
-<li>RDB_expr_type
-<li>RDB_expr_is_const
-<li>RDB_bool_const
-<li>RDB_int_const
-<li>RDB_rational_const
-<li>RDB_string_const
-<li>RDB_value_const
-<li>RDB_expr_attr
-<li>RDB_dup_expr
-<li>RDB_eq
-<li>RDB_neq
-<li>RDB_lt
-<li>RDB_gt
-<li>RDB_let
-<li>RDB_get
-<li>RDB_and
-<li>RDB_or
-<li>RDB_not
-<li>RDB_add
-<li>RDB_regmatch
-<li>RDB_rel_table
-<li>RDB_rel_is_empty
-<li>RDB_get_comp
-<li>RDB_selector
-<li>RDB_drop_expr
+<li><a href="#expr_type">RDB_expr_type</a>
+<li><a href="#expr_is_const">RDB_expr_is_const</a>
+<li><a href="#bool_const">RDB_bool_const</a>
+<li><a href="#int_const">RDB_int_const</a>
+<li><a href="#rational_const">RDB_rational_const</a>
+<li><a href="#string_const">RDB_string_const</a>
+<li><a href="#value_const">RDB_value_const</a>
+<li><a href="#expr_attr">RDB_expr_attr</a>
+<li><a href="#dup_expr">RDB_dup_expr</a>
+<li><a href="#eq">RDB_eq</a>
+<li><a href="#neq">RDB_neq</a>
+<li><a href="#lt">RDB_lt</a>
+<li><a href="#gt">RDB_gt</a>
+<li><a href="#let">RDB_let</a>
+<li><a href="#get">RDB_get</a>
+<li><a href="#and">RDB_and</a>
+<li><a href="#or">RDB_or</a>
+<li><a href="#not">RDB_not</a>
+<li><a href="#add">RDB_add</a>
+<li><a href="#subtract">RDB_subtract</a>
+<li><a href="#regmatch">RDB_regmatch</a>
+<li><a href="#rel_table">RDB_rel_table</a>
+<li><a href="#rel_is_empty">RDB_rel_is_empty</a>
+<li><a href="#get_comp">RDB_get_comp</a>
+<li><a href="#selector">RDB_selector</a>
+<li><a href="#drop_expr">RDB_drop_expr</a>
 </ul>
 
+<h3>Type functions</h3>
+
 <ul>
-<li>RDB_getargs
+<li><a href="#define_type">RDB_define_type</a>
+<li><a href="#implement_type">RDB_implement_type</a>
+<li><a href="#create_tuple_type">RDB_create_tuple_type</a>
+<li><a href="#create_relation_type">RDB_create_relation_type</a>
+<li><a href="#get_type">RDB_get_type</a>
+<li><a href="#drop_type">RDB_drop_type</a>
+<li><a href="#type_name">RDB_type_name</a>
+<li><a href="#type_is_scalar">RDB_type_is_scalar</a>
+<li><a href="#type_is_numeric">RDB_type_is_numeric</a>
+<li><a href="#type_equals">RDB_type_equals</a>
+<li><a href="#extend_tuple_type">RDB_extend_tuple_type</a>
+<li><a href="#extend_relation_type">RDB_extend_relation_type</a>
+<li><a href="#join_tuple_types">RDB_join_tuple_types</a>
+<li><a href="#join_relation_types">RDB_join_relation_types</a>
+<li><a href="#project_tuple_type">RDB_project_tuple_type</a>
+<li><a href="#project_relation_type">RDB_project_relation_type</a>
+<li><a href="#rename_tuple_type">RDB_rename_tuple_type</a>
+<li><a href="#rename_relation_type">RDB_rename_relation_type</a>
 </ul>
+
+<h3>Constraint functions</h3>
+
+<ul>
+<li><a href="#create_constraint">RDB_create_constraint</a>
+<li><a href="#drop_constraint">RDB_drop_constraint</a>
+</ul>
+
+<h3>Miscellaneous</h3>
+
+<ul>
+<li><a href="#getargs">RDB_getargs</a>
+</ul>
+
+<h3>C structures</h3>
+
+<ul>
+<li><a href="#attr">RDB_attr</a>
+<li><a href="#possrep">RDB_possrep</a>
+</ul>
+
+<h2 id="built-in-types">Built-in types</h2>
+
+<table border="1">
+<tr><th>Name<th>RDB_type variable<th>C type
+<tr><td>BOOLEAN<td>RDB_BOOLEAN<td>RDB_bool
+<tr><td>INTEGER<td>RDB_INTEGER<td>RDB_int
+<tr><td>RATIONAL<td>RDB_RATIONAL<td>RDB_rational
+<tr><td>STRING<td>RDB_STRING<td>char *
+<tr><td>BINARY<td>RDB_BINARY<td>&nbsp;-
+</table>
+
+<hr>
 
 <h2 id="create_table">RDB_create_table</h2>
 
 <pre>
-#include &lt;rdb.h&gt;
+#include &lt;rel/rdb.h&gt;
+
+typedef struct {
+    char **attrv;
+    int attrc;
+} RDB_key_attrs;
 
 int
 RDB_create_table(const char *name, RDB_bool persistent,
@@ -194,7 +226,7 @@ RDB_create_table(const char *name, RDB_bool persistent,
 
 <h3>Description</h3>
 
-<p>Create a table with name <var>name</var> under the control of
+<p>RDB_create_table creates a table with name <var>name</var> under the control of
 the transaction pointed to by <var>txp</var>.
 A pointer to the newly created RDB_table structure
 will be stored at the location pointed to by <var>tbpp</var>.
@@ -216,87 +248,80 @@ back.
 
 <h3>Return value</h3>
 
-On success, RDB_OK is returned. Any other return value indicates an error.
+<p>On success, RDB_OK is returned. Any other return value indicates an error.
 
 <h3>Errors</h3>
 
-<h2>Built-in types</h2>
+<hr>
 
-<table border="1">
-<tr><th>Name<th>RDB_type variable<th>C type
-<tr><td>BOOLEAN<td>RDB_BOOLEAN<td>RDB_bool
-<tr><td>INTEGER<td>RDB_INTEGER<td>RDB_int
-<tr><td>RATIONAL<td>RDB_RATIONAL<td>RDB_rational
-<tr><td>STRING<td>RDB_STRING<td>char *
-<tr><td>BINARY<td>RDB_BINARY<td>&nbsp;-
-</table>
-
-<h3>Defining a type</h3>
+<h2 id="get_table">RDB_get_table</h2>
 
 <pre>
-typedef struct RDB_attr {
-    char *name;
-    RDB_type *type;
-    RDB_value *defaultp;
-    int options;
-} RDB_attr;
-
-typedef struct {
-    char *name;
-    int compc;
-    RDB_attr *compv;
-    RDB_expression *constraintp;
-} RDB_possrep;
+#include &lt;rel/rdb.h&gt;
 
 int
-RDB_define_type(const char *name, int repc, RDB_possrep repv[],
-                RDB_transaction *txp, RDB_type **resultpp);
-
+RDB_get_table(RDB_database *dbp, const char *name, RDB_table **tbpp);
 </pre>
 
-<h3>Destroying a type</h3>
+<hr>
+
+<h2 id="drop_table">RDB_drop_table</h2>
 
 <pre>
+#include &lt;rel/rdb.h&gt;
 
-void
-RDB_drop_type(RDB_type *);
-
-</pre>
-
-<pre>
 int
-RDB_get_type(RDB_database *dbp, const char *name, RDB_type **typp);
+RDB_drop_table(RDB_table *tbp, RDB_transaction *);
+</pre>
 
-RDB_bool
-RDB_type_is_numeric(const RDB_type *);
+<hr>
+
+<h2 id="table_name">RDB_table_name</h2>
+
+<pre>
+#include &lt;rel/rdb.h&gt;
 
 char *
-RDB_type_name(const RDB_type *);
-
-RDB_bool
-RDB_is_builtin_type(const RDB_type *);
-
-RDB_bool
-RDB_type_equals(const RDB_type *, const RDB_type *);
-
-RDB_type *
-RDB_extend_tuple_type(const RDB_type *typ, int attrc, RDB_attr attrv[]);
-
-RDB_type *
-RDB_extend_relation_type(const RDB_type *typ, int attrc, RDB_attr attrv[]);
-
-int
-RDB_join_tuple_types(const RDB_type *typ1, const RDB_type *typ2,
-                     RDB_type **newtypp);
-
-int
-RDB_project_relation_type(const RDB_type *typ, int attrc, char *attrv[],
-                          RDB_type **newtypp);
+RDB_table_name(RDB_table *tbp)
 </pre>
 
-<h2>Scalar operations</h2>
+<hr>
+
+<h2 id="set_table_name">RDB_set_table_name</h2>
 
 <pre>
+#include &lt;rel/rdb.h&gt;
+
+int
+RDB_set_table_name(RDB_table *tbp, const char *name, RDB_transaction *);
+</pre>
+
+<hr>
+
+<h2 id="make_persistent">RDB_make_persistent</h2>
+
+<pre>
+#include &lt;rel/rdb.h&gt;
+
+int
+RDB_make_persistent(RDB_table *, RDB_transaction *);
+</pre>
+
+<hr>
+
+<h2 id="table_contains">RDB_table_contains</h2>
+
+<pre>
+#include &lt;rel/rdb.h&gt;
+
+int
+RDB_table_contains(RDB_table *, const RDB_tuple *, RDB_transaction *);
+</pre>
+
+<h2 id="aggregate">RDB_aggregate</h2>
+
+<pre>
+#include &lt;rel/rdb.h&gt;
 
 typedef enum {
     RDB_COUNT, RDB_SUM, RDB_AVG, RDB_MAX, RDB_MIN, RDB_ALL, RDB_ANY,
@@ -306,178 +331,36 @@ typedef enum {
 int
 RDB_aggregate(RDB_table *, RDB_aggregate_op op, const char *attrname,
               RDB_transaction *, RDB_value *resultp);
-
 </pre>
 
-<h2>Selector functions</h2>
+<hr>
+
+<h2 id="table_is_empty">RDB_table_is_empty</h2>
 
 <pre>
+#include &lt;rel/rdb.h&gt;
 
-int<br>
-RDB_select_value(int valc, const RDB_value *valpc[], RDB_value *resultp)
-
+int
+RDB_table_is_empty(RDB_table *, RDB_transaction *, RDB_bool *resultp);
 </pre>
 
-<h2>Expose possible representations</h2>
+<hr>
+
+<h2 id="insert">RDB_insert</h2>
 
 <pre>
-
-
-</pre>
-
-<h2>Creating tuple types</h2>
-
-<pre>
-
-RDB_type *
-RDB_create_tuple_type(int attrc, RDB_attr attrv[]);
-
-</pre>
-
-<h2>Creating relation types</h2>
-
-<pre>
-
-RDB_type *
-RDB_create_relation_type(int attrc, RDB_attr attrv[]);
-
-</pre>
-
-<h2>Equality</h2>
-
-<pre>
-
-RDB_bool
-RDB_value_equals(const RDB_value *, const RDB_value *);
-
-</pre>
-
-<h2>Tuple functions</h2>
-
-<pre>
-
-void
-RDB_init_tuple(RDB_tuple *);
-
-void
-RDB_destroy_tuple(RDB_tuple *);
-
-int
-RDB_tuple_set(RDB_tuple *, const char *name, const RDB_value *);
-
-int
-RDB_tuple_set_bool(RDB_tuple *, const char *name, RDB_bool val);
-
-int
-RDB_tuple_set_int(RDB_tuple *, const char *name, RDB_int val);
-
-int
-RDB_tuple_set_rational(RDB_tuple *, const char *name, RDB_rational val);
-
-int
-RDB_tuple_set_string(RDB_tuple *, const char *name, const char *valp);
-
-RDB_value *
-RDB_tuple_get(const RDB_tuple *, const char *name);
-
-RDB_bool
-RDB_tuple_get_bool(const RDB_tuple *, const char *name);
-
-RDB_int
-RDB_tuple_get_int(const RDB_tuple *, const char *name);
-
-RDB_rational
-RDB_tuple_get_rational(const RDB_tuple *, const char *name);
-
-char *
-RDB_tuple_get_string(const RDB_tuple *, const char *name);
-
-int
-RDB_tuple_extend(RDB_tuple *, int attrc, RDB_virtual_attr attrv[],
-                 RDB_transaction *);
-
-typedef struct {
-    int attrc;
-    char **attrv;
-    int gattrc;
-} RDB_wrapping;
-
-int
-RDB_tuple_wrap(const RDB_tuple *, int wrapc, RDB_wrapping wrapv[], RDB_tuple *);
-
-int
-RDB_tuple_unwrap(const RDB_tuple *, int attrc, const char *attrv[]);
-
-</pre>
-
-<h2>Miscellaneous RDB_value functions</h2>
-
-<pre>
-
-void
-RDB_value_set_bool(RDB_value *valp, RDB_bool v);
-
-void
-RDB_value_set_int(RDB_value *valp, RDB_int v);
-
-void
-RDB_value_set_rational(RDB_value *valp, RDB_rational v);
-
-int
-RDB_value_set_string(RDB_value *valp, const char *str);
-
-RDB_bool
-RDB_value_bool(const RDB_value *valp);
-
-RDB_int
-RDB_value_int(const RDB_value *valp);
-
-RDB_rational
-RDB_value_rational(const RDB_value *valp);
-
-char *
-RDB_value_string(RDB_value *valp);
-
-int
-RDB_binary_set(RDB_value *, size_t pos, void *srcp, size_t len);
-
-int
-RDB_binary_get(const RDB_value *, size_t pos, void *dstp, size_t len);
-
-size_t
-RDB_binary_get_length(const RDB_value *);
-
-</pre>
-
-<h2>Table functions</h2>
-
-<h3>Creating a table</h3>
-
-<pre>
-
-typedef struct {
-    char **attrv;
-    int attrc;
-} RDB_key_attrs;
-
-
-</pre>
-
-<h3>Destroying a table</h3>
-
-<pre>
-
-int
-RDB_drop_table(RDB_table *tbp, RDB_transaction *);
-
-</pre>
-
-<pre>
-
-RDB_table_name(tbp)
+#include &lt;rel/rdb.h&gt;
 
 int
 RDB_insert(RDB_table *tbp, const RDB_tuple *tplp, RDB_transaction *);
+</pre>
+
+<hr>
+
+<h2 id="update">RDB_update</h2>
+
+<pre>
+#include &lt;rel/rdb.h&gt;
 
 typedef struct {
     char *name;
@@ -487,82 +370,70 @@ typedef struct {
 int
 RDB_update(RDB_table *, RDB_expression *, int attrc,
         const RDB_attr_update attrv[], RDB_transaction *);
+</pre>
+
+<hr>
+
+<h2 id="delete">RDB_delete</h2>
+
+<pre>
+#include &lt;rel/rdb.h&gt;
 
 int
 RDB_delete(RDB_table *tbp, RDB_expression *exprp, RDB_transaction *);
+</pre>
 
-int
-RDB_table_contains(RDB_table *, const RDB_tuple *, RDB_transaction *);
+<hr>
+
+<h2 id="extract_tuple">RDB_extract_tuple</h2>
+
+<pre>
+#include &lt;rel/rdb.h&gt;
 
 int
 RDB_extract_tuple(RDB_table *, RDB_tuple *, RDB_transaction *);
-
-int
-RDB_table_is_empty(RDB_table *, RDB_transaction *, RDB_bool *resultp);
-
-int
-RDB_set_table_name(RDB_table *tbp, const char *name, RDB_transaction *);
-
-int
-RDB_make_persistent(RDB_table *, RDB_transaction *);
-
 </pre>
 
-<h3>Database functions</h3>
+<hr>
+
+<h2 id="copy_table">RDB_copy_table</h2>
 
 <pre>
-
-RDB_db_name(dbp)
-
-int
-RDB_release_db(RDB_database *dbp);
-
+#include &lt;rel/rdb.h&gt;
 
 int
-RDB_get_table(RDB_database *dbp, const char *name, RDB_table **tbpp);
-
+RDB_copy_table(RDB_table *dstp, RDB_table *srcp, RDB_transaction *);
 </pre>
 
-<h2>Transaction functions</h2>
+<hr>
+
+<h2 id="rename">RDB_rename</h2>
 
 <pre>
-
-RDB_tx_db(txp)
-
-int
-RDB_begin_tx(RDB_transaction *txp, RDB_database *dbp,
-        RDB_transaction *parent);
+#include &lt;rel/rdb.h&gt;
 
 int
-RDB_commit(RDB_transaction *);
-
-int
-RDB_rollback(RDB_transaction *);
-
-RDB_bool
-RDB_tx_is_running(RDB_transaction *txp);
-
+RDB_rename(RDB_table *tbp, int renc, RDB_renaming renv[],
+           RDB_table **resultpp);
 </pre>
 
-<h2>Relational algebra functions</h2>
+<hr>
+
+<h2 id="select">RDB_select</h2>
 
 <pre>
+#include &lt;rel/rdb.h&gt;
 
 int
 RDB_select(RDB_table *, RDB_expression *condition, RDB_table **resultpp);
+</pre>
 
-int
-RDB_union(RDB_table *, RDB_table *, RDB_table **resultpp);
+<hr>
 
-int
-RDB_minus(RDB_table *, RDB_table *, RDB_table **resultpp);
+<h2 id="extend">RDB_extend</h2>
 
-int
-RDB_intersect(RDB_table *, RDB_table *, RDB_table **resultpp);
-
-/* Perform a natural join of the two tables. */
-int
-RDB_join(RDB_table *, RDB_table *, RDB_table **resultpp);
+<pre>
+#include &lt;rel/rdb.h&gt;
 
 typedef struct RDB_virtual_attr {
     char *name;
@@ -572,10 +443,79 @@ typedef struct RDB_virtual_attr {
 int
 RDB_extend(RDB_table *, int attrc, RDB_virtual_attr attrv[],
         RDB_table **resultpp);
+</pre>
+
+<hr>
+
+<h2 id="project">RDB_project</h2>
+
+<pre>
+#include &lt;rel/rdb.h&gt;
 
 int
 RDB_project(RDB_table *, int attrc, char *attrv[], RDB_table **resultpp);
+</pre>
 
+<hr>
+
+<h2 id="join">RDB_join</h2>
+
+<pre>
+#include &lt;rel/rdb.h&gt;
+
+int
+RDB_join(RDB_table *, RDB_table *, RDB_table **resultpp);
+</pre>
+
+<h3>Description</h3>
+
+<p>RDB_join creates a table which is a natural join of the two tables
+represented by <var>tb1p</var> and <var>tb2p</var>.
+
+<hr>
+
+<h2 id="union">RDB_union</h2>
+
+<pre>
+#include &lt;rel/rdb.h&gt;
+
+int
+RDB_union(RDB_table *, RDB_table *, RDB_table **resultpp);
+</pre>
+
+<hr>
+
+<h2 id="intersect">RDB_intersect</h2>
+
+<pre>
+#include &lt;rel/rdb.h&gt;
+
+int
+RDB_intersect(RDB_table *, RDB_table *, RDB_table **resultpp);
+</pre>
+
+<h3>Description</h3>
+
+<p>RDB_intersect creates a virtual table which contains
+all tuples which are an element of the two tables
+represented by the <var>tb1p</var> and <var>tb2p</var> arguments.
+
+<hr>
+
+<h2 id="minus">RDB_minus</h2>
+
+<pre>
+#include &lt;rel/rdb.h&gt;
+
+int
+RDB_minus(RDB_table *, RDB_table *, RDB_table **resultpp);
+</pre>
+
+<hr>
+
+<h2 id="summarize">RDB_summarize</h2>
+
+<pre>
 typedef struct {
     RDB_aggregate_op op;
     RDB_expression *exp;
@@ -585,18 +525,483 @@ typedef struct {
 int
 RDB_summarize(RDB_table *, RDB_table *, int addc, RDB_summarize_add addv[],
               RDB_table **resultpp);
-
 </pre>
 
-<h2>Array functions</h2>
+<hr>
+
+<h2 id="init_tuple">RDB_init_tuple</h2>
 
 <pre>
+#include &lt;rel/rdb.h&gt;
+
+void
+RDB_init_tuple(RDB_tuple *);
+</pre>
+
+<hr>
+
+<h2 id="destroy_tuple">RDB_destroy_tuple</h2>
+
+<pre>
+#include &lt;rel/rdb.h&gt;
+
+void
+RDB_destroy_tuple(RDB_tuple *);
+</pre>
+
+<hr>
+
+<h2 id="tuple_set">RDB_tuple_set</h2>
+
+<pre>
+#include &lt;rel/rdb.h&gt;
+
+int
+RDB_tuple_set(RDB_tuple *, const char *name, const RDB_value *);
+</pre>
+
+<hr>
+
+<h2 id="tuple_set_bool">RDB_tuple_set_bool</h2>
+
+<pre>
+#include &lt;rel/rdb.h&gt;
+
+int
+RDB_tuple_set_bool(RDB_tuple *, const char *name, RDB_bool val);
+</pre>
+
+<hr>
+
+<h2 id="tuple_set_int">RDB_tuple_set_int</h2>
+
+<pre>
+#include &lt;rel/rdb.h&gt;
+
+int
+RDB_tuple_set_int(RDB_tuple *, const char *name, RDB_int val);
+</pre>
+
+<hr>
+
+<h2 id="tuple_set_rational">RDB_tuple_set_rational</h2>
+
+<pre>
+#include &lt;rel/rdb.h&gt;
+
+int
+RDB_tuple_set_rational(RDB_tuple *, const char *name, RDB_rational val);
+</pre>
+
+<hr>
+
+<h2 id="tuple_set_string">RDB_tuple_set_string</h2>
+
+<pre>
+#include &lt;rel/rdb.h&gt;
+
+int
+RDB_tuple_set_string(RDB_tuple *, const char *name, const char *valp);
+</pre>
+
+<hr>
+
+<h2 id="tuple_get">RDB_tuple_get</h2>
+
+<pre>
+#include &lt;rel/rdb.h&gt;
+
+RDB_value *
+RDB_tuple_get(const RDB_tuple *, const char *name);
+</pre>
+
+<hr>
+
+<h2 id="tuple_get_bool">RDB_tuple_get_bool</h2>
+
+<pre>
+#include &lt;rel/rdb.h&gt;
+
+RDB_bool
+RDB_tuple_get_bool(const RDB_tuple *, const char *name);
+</pre>
+
+<hr>
+
+<h2 id="tuple_get_int">RDB_tuple_get_int</h2>
+
+<pre>
+#include &lt;rel/rdb.h&gt;
+
+RDB_int
+RDB_tuple_get_int(const RDB_tuple *, const char *name);
+</pre>
+
+<hr>
+
+<h2 id="tuple_get_rational">RDB_tuple_get_rational</h2>
+
+<pre>
+#include &lt;rel/rdb.h&gt;
+
+RDB_rational
+RDB_tuple_get_rational(const RDB_tuple *, const char *name);
+</pre>
+
+<hr>
+
+<h2 id="tuple_get_string">RDB_tuple_get_string</h2>
+
+<pre>
+#include &lt;rel/rdb.h&gt;
+
+char *
+RDB_tuple_get_string(const RDB_tuple *, const char *name);
+</pre>
+
+<hr>
+
+<h2 id="tuple_extend">RDB_tuple_extend</h2>
+
+<pre>
+#include &lt;rel/rdb.h&gt;
+
+int
+RDB_tuple_extend(RDB_tuple *, int attrc, RDB_virtual_attr attrv[],
+                 RDB_transaction *);
+</pre>
+
+<hr>
+
+<h2 id="tuple_wrap">RDB_tuple_wrap</h2>
+
+<pre>
+#include &lt;rel/rdb.h&gt;
+
+typedef struct {
+    int attrc;
+    char **attrv;
+    int gattrc;
+} RDB_wrapping;
+
+int
+RDB_tuple_wrap(const RDB_tuple *, int wrapc, RDB_wrapping wrapv[], RDB_tuple *);
+</pre>
+
+<hr>
+
+<h2 id="tuple_unwrap">RDB_tuple_unwrap</h2>
+
+<pre>
+#include &lt;rel/rdb.h&gt;
+
+int
+RDB_tuple_unwrap(const RDB_tuple *, int attrc, const char *attrv[]);
+</pre>
+
+<hr>
+
+<h2 id="init_value">RDB_init_value</h2>
+
+<pre>
+#include &lt;rel/rdb.h&gt;
+
+void
+RDB_init_value(RDB_value *valp);
+</pre>
+
+<hr>
+
+<h2 id="destroy_value">RDB_destroy_value</h2>
+
+<pre>
+#include &lt;rel/rdb.h&gt;
+
+void
+RDB_destroy_value(RDB_value *valp);
+</pre>
+
+<hr>
+
+<h2 id="value_equals">RDB_value_equals</h2>
+
+<pre>
+#include &lt;rel/rdb.h&gt;
+
+RDB_bool
+RDB_value_equals(const RDB_value *, const RDB_value *);
+</pre>
+
+<hr>
+
+<h2 id="copy_value">RDB_copy_value</h2>
+
+<pre>
+#include &lt;rel/rdb.h&gt;
+
+int
+RDB_copy_value(RDB_value *dstvalp, const RDB_value *srcvalp);
+</pre>
+
+<hr>
+
+<h2 id="value_set_bool">RDB_value_set_bool</h2>
+
+<pre>
+#include &lt;rel/rdb.h&gt;
+
+void
+RDB_value_set_bool(RDB_value *valp, RDB_bool v);
+</pre>
+
+<hr>
+
+<h2 id="value_set_int">RDB_value_set_int</h2>
+
+<pre>
+#include &lt;rel/rdb.h&gt;
+
+void
+RDB_value_set_int(RDB_value *valp, RDB_int v);
+</pre>
+
+<hr>
+
+<h2 id="value_set_rational">RDB_value_set_rational</h2>
+
+<pre>
+#include &lt;rel/rdb.h&gt;
+
+void
+RDB_value_set_rational(RDB_value *valp, RDB_rational v);
+</pre>
+
+<hr>
+
+<h2 id="value_set_string">RDB_value_set_string</h2>
+
+<pre>
+#include &lt;rel/rdb.h&gt;
+
+int
+RDB_value_set_string(RDB_value *valp, const char *str);
+</pre>
+
+<hr>
+
+<h2 id="value_bool">RDB_value_bool</h2>
+
+<pre>
+#include &lt;rel/rdb.h&gt;
+
+RDB_bool
+RDB_value_bool(const RDB_value *valp);
+</pre>
+
+<hr>
+
+<h2 id="value_int">RDB_value_int</h2>
+
+<pre>
+#include &lt;rel/rdb.h&gt;
+
+RDB_int
+RDB_value_int(const RDB_value *valp);
+</pre>
+
+<hr>
+
+<h2 id="value_rational">RDB_value_rational</h2>
+
+<pre>
+#include &lt;rel/rdb.h&gt;
+
+RDB_rational
+RDB_value_rational(const RDB_value *valp);
+</pre>
+
+<hr>
+
+<h2 id="value_string">RDB_value_string</h2>
+
+<pre>
+#include &lt;rel/rdb.h&gt;
+
+char *
+RDB_value_string(RDB_value *valp);
+</pre>
+
+<hr>
+
+<h2 id="binary_set">RDB_binary_set</h2>
+
+<pre>
+#include &lt;rel/rdb.h&gt;
+
+int
+RDB_binary_set(RDB_value *, size_t pos, void *srcp, size_t len);
+</pre>
+
+<hr>
+
+<h2 id="binary_get">RDB_binary_get</h2>
+
+<pre>
+#include &lt;rel/rdb.h&gt;
+
+int
+RDB_binary_get(const RDB_value *, size_t pos, void *dstp, size_t len);
+</pre>
+
+<hr>
+
+<h2 id="binary_get_length">RDB_binary_get_length</h2>
+
+<pre>
+#include &lt;rel/rdb.h&gt;
+
+size_t
+RDB_binary_get_length(const RDB_value *);
+</pre>
+
+<hr>
+
+<h2 id="create_db_from_env">RDB_create_db_from_env</h2>
+
+<pre>
+#include &lt;rel/rdb.h&gt;
+
+int
+RDB_create_db_from_env(const char *name, RDB_environment *envp, RDB_database **dbpp);
+</pre>
+
+<hr>
+
+<h2 id="get_db_from_env">RDB_get_db_from_env</h2>
+
+<pre>
+#include &lt;rel/rdb.h&gt;
+
+int
+RDB_get_db_from_env(const char *name, RDB_environment *, RDB_database **dbpp);
+</pre>
+
+<hr>
+
+<h2 id="release_db">RDB_release_db</h2>
+
+<pre>
+#include &lt;rel/rdb.h&gt;
+
+int
+RDB_release_db(RDB_database *dbp);
+</pre>
+
+<hr>
+
+<h2 id="drop_db">RDB_drop_db</h2>
+
+<pre>
+#include &lt;rel/rdb.h&gt;
+
+int
+RDB_drop_db(const char *name, RDB_environment *);
+</pre>
+
+<hr>
+
+<h2 id="db_name">RDB_db_name</h2>
+
+<pre>
+#include &lt;rel/rdb.h&gt;
+
+char *RDB_db_name(RDB_database *dbp)
+</pre>
+
+<hr>
+
+<h2 id="begin_tx">RDB_begin_tx</h2>
+
+<pre>
+#include &lt;rel/rdb.h&gt;
+
+int
+RDB_begin_tx(RDB_transaction *txp, RDB_database *dbp,
+        RDB_transaction *parent);
+</pre>
+
+<hr>
+
+<h2 id="commit">RDB_commit</h2>
+
+<pre>
+#include &lt;rel/rdb.h&gt;
+
+int
+RDB_commit(RDB_transaction *);
+</pre>
+
+<hr>
+
+<h2 id="rollback">RDB_rollback</h2>
+
+<pre>
+#include &lt;rel/rdb.h&gt;
+
+int
+RDB_rollback(RDB_transaction *);
+</pre>
+
+<hr>
+
+<h2 id="tx_db">RDB_tx_db</h2>
+
+<pre>
+#include &lt;rel/rdb.h&gt;
+
+RDB_database *
+RDB_tx_db(RDB_transaction *)
+</pre>
+
+<hr>
+
+<h2 id="tx_is_running">RDB_tx_is_running</h2>
+
+<pre>
+#include &lt;rel/rdb.h&gt;
+
+RDB_bool
+RDB_tx_is_running(RDB_transaction *);
+</pre>
+
+<hr>
+
+<h2 id="init_array">RDB_init_array</h2>
+
+<pre>
+#include &lt;rel/rdb.h&gt;
 
 void
 RDB_init_array(RDB_array *);
+</pre>
+
+<hr>
+
+<h2 id="destroy_array">RDB_destroy_array</h2>
+
+<pre>
+#include &lt;rel/rdb.h&gt;
 
 void
 RDB_destroy_array(RDB_array *);
+</pre>
+
+<hr>
+
+<h2 id="table_to_array">RDB_table_to_array</h2>
+
+<pre>
+#include &lt;rel/rdb.h&gt;
 
 typedef struct {
     char *attrname;
@@ -607,153 +1012,467 @@ int
 RDB_table_to_array(RDB_table *, RDB_array *arrp,
                    int seqitc, RDB_seq_item seqitv[],
                    RDB_transaction *);
+</pre>
 
-int
-RDB_array_get(RDB_array *, RDB_int idx, RDB_value *);
+<hr>
 
-int
-RDB_array_set(RDB_array *, RDB_int idx, const RDB_value *);
+<h2 id="array_get_tuple">RDB_array_get_tuple</h2>
+
+<pre>
+#include &lt;rel/rdb.h&gt;
 
 int
 RDB_array_get_tuple(RDB_array *, RDB_int idx, RDB_tuple *);
+</pre>
+
+<hr>
+
+<h2 id="array_get">RDB_array_get</h2>
+
+<pre>
+#include &lt;rel/rdb.h&gt;
+
+int
+RDB_array_get(RDB_array *, RDB_int idx, RDB_value *);
+</pre>
+
+<hr>
+
+<h2 id="array_set_tuple">RDB_array_set_tuple</h2>
+
+<pre>
+#include &lt;rel/rdb.h&gt;
 
 int
 RDB_array_set_tuple(RDB_array *, RDB_int idx, const RDB_tuple *);
+</pre>
+
+<hr>
+
+<h2 id="array_set">RDB_array_set</h2>
+
+<pre>
+#include &lt;rel/rdb.h&gt;
+
+int
+RDB_array_set(RDB_array *, RDB_int idx, const RDB_value *);
+</pre>
+
+<hr>
+
+<h2 id="array_length">RDB_array_length</h2>
+
+<pre>
+#include &lt;rel/rdb.h&gt;
 
 int
 RDB_array_length(RDB_array *);
+</pre>
+
+<hr>
+
+<h2 id="resize_array">RDB_resize_array</h2>
+
+<pre>
+#include &lt;rel/rdb.h&gt;
+
+int
+RDB_resize_array(RDB_array *);
+</pre>
+
+<hr>
+
+<h2 id="detach_array">RDB_detach_array</h2>
+
+<pre>
+#include &lt;rel/rdb.h&gt;
 
 int
 RDB_detach_array(RDB_array *);
-
 </pre>
 
-<h2>Assignment</h2>
+<hr>
+
+<h2 id="expr_type">RDB_expr_type</h2>
 
 <pre>
-
-int
-RDB_copy_value(RDB_value *dstvalp, const RDB_value *srcvalp);
-
-int
-RDB_copy_table(RDB_table *dstp, RDB_table *srcp, RDB_transaction *);
-
-</pre>
-
-<h2>Expressions</h2>
-
-<pre>
-
 RDB_type *
 RDB_expr_type(const RDB_expression *);
+</pre>
 
+<hr>
+
+<h2 id="is_const">RDB_is_const</h2>
+
+<pre>
 RDB_bool
 RDB_expr_is_const(const RDB_expression *);
+</pre>
 
+<hr>
+
+<h2 id="bool_const">RDB_bool_const</h2>
+
+<pre>
 RDB_expression *
 RDB_bool_const(RDB_bool);
+</pre>
 
+<hr>
+
+<h2 id="int_const">RDB_int_const</h2>
+
+<pre>
 RDB_expression *
 RDB_int_const(RDB_int);
+</pre>
 
+<hr>
+
+<h2 id="rational_const">RDB_rational_const</h2>
+
+<pre>
 RDB_expression *
 RDB_rational_const(RDB_rational);
+</pre>
 
+<hr>
+
+<h2 id="string_const">RDB_string_const</h2>
+
+<pre>
 RDB_expression *
 RDB_string_const(const char *);
+</pre>
 
+<hr>
+
+<h2 id="value_const">RDB_value_const</h2>
+
+<pre>
 RDB_expression *
 RDB_value_const(const RDB_value *valp);
+</pre>
 
+<hr>
+
+<h2 id="expr_attr">RDB_expr_attr</h2>
+
+<pre>
 RDB_expression *
 RDB_expr_attr(const char *attrname, RDB_type *);
+</pre>
 
+<hr>
+
+<h2 id="dup_expr">RDB_dup_expr</h2>
+
+<pre>
 RDB_expression *
 RDB_dup_expr(const RDB_expression *exprp);
+</pre>
 
+<hr>
+
+<h2 id="eq">RDB_eq</h2>
+
+<pre>
 RDB_expression *
 RDB_eq(RDB_expression *, RDB_expression *);
+</pre>
 
+<hr>
+
+<h2 id="neq">RDB_neq</h2>
+
+<pre>
 RDB_expression *
 RDB_neq(RDB_expression *, RDB_expression *);
+</pre>
 
+<hr>
+
+<h2 id="and">RDB_and</h2>
+
+<pre>
 RDB_expression *
 RDB_and(RDB_expression *, RDB_expression *);
+</pre>
 
+<hr>
+
+<h2 id="or">RDB_or</h2>
+
+<pre>
 RDB_expression *
 RDB_or(RDB_expression *, RDB_expression *);
+</pre>
 
+<hr>
+
+<h2 id="not">RDB_not</h2>
+
+<pre>
 RDB_expression *
 RDB_not(RDB_expression *);
+</pre>
 
+<hr>
+
+<h2 id="add">RDB_add</h2>
+
+<pre>
 RDB_expression *
 RDB_add(RDB_expression *, RDB_expression *);
+</pre>
 
+<hr>
+
+<h2 id="subtract">RDB_subtract</h2>
+
+<pre>
+RDB_expression *
+RDB_subtract(RDB_expression *, RDB_expression *);
+</pre>
+
+<hr>
+
+<h2 id="rel_table">RDB_rel_table</h2>
+
+<pre>
 RDB_expression *
 RDB_rel_table(RDB_table *);
+</pre>
 
+<hr>
+
+<h2 id="rel_is_empty">RDB_rel_is_empty</h2>
+
+<pre>
 RDB_expression *
 RDB_rel_is_empty(RDB_expression *);
-
-/* Destroy the expression and all its subexpressions */
-void
-RDB_drop_expr(RDB_expression *);
-
 </pre>
 
-<h2>Constraints</h2>
+<hr>
 
-<pre>
-
-int
-RDB_create_constraint(const char *name, RDB_expression *constr,
-                      RDB_transaction *txp);
-
-int
-RDB_drop_constraint(const char *name, RDB_transaction *txp);
-
-</pre>
-
-<h2>Miscellaneous</h2>
+<h2 id="drop_expr">RDB_drop_expr</h2>
 
 <pre>
 void
-RDB_init_value(RDB_value *valp);
-
-void
-RDB_destroy_value(RDB_value *valp);
+RDB_drop_expr(RDB_expression *exp);
 </pre>
 
-<h2>Non-D functions</h2>
+<h3>Description</h3>
 
-<h3>Environment functions</h3>
+<p>RDB_drop_expr frees the memory pointed to by <var>exprp</var> and calls
+RDB_drop_expr on all subexpressions.
+
+<hr>
+
+<h2 id="define_type">RDB_define_type</h2>
 
 <pre>
-int
-RDB_get_db_from_env(const char *name, RDB_environment *, RDB_database **dbpp);
+#include &lt;rel/rdb.h&gt;
 
 int
-RDB_create_db_from_env(const char *name, RDB_environment *envp, RDB_database **dbpp);
+RDB_define_type(const char *name, int repc, RDB_possrep repv[],
+                RDB_transaction *txp, RDB_type **resultpp);
 </pre>
 
-<h3>Implementing a type</h3>
+<hr>
+
+<h2 id="implement_type">RDB_implement_type</h2>
 
 <pre>
+#include &lt;rel/typeimpl.h&gt;
+
 int
 RDB_implement_type(RDB_transaction *, const char *name, const char *modname, int options);
 </pre>
 
-<h3>Dropping a database</h3>
+<hr>
+
+<h2 id="create_tuple_type">RDB_create_tuple_type</h2>
+
+<pre>
+#include &lt;rel/rdb.h&gt;
+
+RDB_type *
+RDB_create_tuple_type(int attrc, RDB_attr attrv[]);
+</pre>
+
+<hr>
+
+<h2 id="create_relation_type">RDB_create_relation_type</h2>
+
+<pre>
+#include &lt;rel/rdb.h&gt;
+
+RDB_type *
+RDB_create_relation_type(int attrc, RDB_attr attrv[]);
+</pre>
+
+<hr>
+
+<h2 id="get_type">RDB_get_type</h2>
+
+<pre>
+#include &lt;rel/rdb.h&gt;
+
+int
+RDB_get_type(RDB_database *dbp, const char *name, RDB_type **typp);
+</pre>
+
+<hr>
+
+<h2 id="drop_type">RDB_drop_type</h2>
+
+<pre>
+#include &lt;rel/rdb.h&gt;
+
+void
+RDB_drop_type(RDB_type *);
+</pre>
+
+<hr>
+
+<h2 id="type_name">RDB_type_name</h2>
+
+<pre>
+#include &lt;rel/rdb.h&gt;
+
+char *
+RDB_type_name(const RDB_type *);
+</pre>
+
+<hr>
+
+<h2 id="type_is_scalar">RDB_type_is_scalar</h2>
+
+<pre>
+#include &lt;rel/rdb.h&gt;
+
+RDB_bool
+RDB_type_is_scalar(const RDB_type *);
+</pre>
+
+<hr>
+
+<h2 id="type_is_numeric">RDB_type_is_numeric</h2>
+
+<pre>
+#include &lt;rel/rdb.h&gt;
+
+RDB_bool
+RDB_type_is_numeric(const RDB_type *);
+</pre>
+
+<hr>
+
+<h2 id="type_equals">RDB_type_equals</h2>
+
+<pre>
+#include &lt;rel/rdb.h&gt;
+
+RDB_bool
+RDB_type_equals(const RDB_type *, const RDB_type *);
+</pre>
+
+<hr>
+
+<h2 id="extend_tuple_type">RDB_extend_tuple_type</h2>
+
+<pre>
+#include &lt;rel/rdb.h&gt;
+
+RDB_type *
+RDB_extend_tuple_type(const RDB_type *typ, int attrc, RDB_attr attrv[]);
+</pre>
+
+<hr>
+
+<h2 id="extend_relation_type">RDB_extend_relation_type</h2>
+
+<pre>
+#include &lt;rel/rdb.h&gt;
+
+RDB_type *
+RDB_extend_relation_type(const RDB_type *typ, int attrc, RDB_attr attrv[]);
+</pre>
+
+<hr>
+
+<h2 id="project_tuple_type">RDB_project_tuple_type</h2>
+
+<pre>
+#include &lt;rel/rdb.h&gt;
+
+int
+RDB_project_tuple_type(const RDB_type *typ, int attrc, char *attrv[],
+                          RDB_type **newtypp);
+</pre>
+
+<hr>
+
+<h2 id="project_relation_type">RDB_project_relation_type</h2>
+
+<pre>
+#include &lt;rel/rdb.h&gt;
+
+int
+RDB_project_relation_type(const RDB_type *typ, int attrc, char *attrv[],
+                          RDB_type **newtypp);
+</pre>
+
+<hr>
+
+<h2 id="join_tuple_types">RDB_join_tuple_types</h2>
+
+<pre>
+#include &lt;rel/rdb.h&gt;
+
+int
+RDB_join_tuple_types(const RDB_type *typ1, const RDB_type *typ2,
+                     RDB_type **newtypp);
+</pre>
+
+<hr>
+
+<h2 id="join_relation_types">RDB_join_relation_types</h2>
+
+<pre>
+#include &lt;rel/rdb.h&gt;
+
+int
+RDB_join_relation_types(const RDB_type *typ1, const RDB_type *typ2,
+                     RDB_type **newtypp);
+</pre>
+
+<hr>
+
+<h2 id="create_constraint">RDB_create_constraint</h2>
 
 <pre>
 int
-RDB_drop_db(const char *name, RDB_environment *);
+RDB_create_constraint(const char *name, RDB_expression *constr,
+                      RDB_transaction *txp);
+</pre>
+
+<hr>
+
+<h2 id="drop_constraint">RDB_drop_constraint</h2>
+
+<pre>
+int
+RDB_drop_constraint(const char *name, RDB_transaction *txp);
 </pre>
 
 <h3>Creating an environment</h3>
 
+<pre>
 int
 RDB_create_env(const char *path, RDB_environment **);
+</pre>
 
 <h3>Opening an environment</h3>
 
@@ -767,6 +1486,28 @@ RDB_open_env(const char *path, RDB_environment **envp);
 <pre>
 int
 RDB_close_env(RDB_environment *dsp);
+</pre>
+
+<h2 id="attr">RDB_attr</h2>
+
+<pre>
+typedef struct RDB_attr {
+    char *name;
+    RDB_type *type;
+    RDB_value *defaultp;
+    int options;
+} RDB_attr;
+</pre>
+
+<h2 id="possrep">RDB_possrep</h2>
+
+<pre>
+typedef struct {
+    char *name;
+    int compc;
+    RDB_attr *compv;
+    RDB_expression *constraintp;
+} RDB_possrep;
 </pre>
 
 </html>

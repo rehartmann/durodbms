@@ -81,7 +81,7 @@ RDB_create_relation_type(int attrc, RDB_attr attrv[])
 }
 
 RDB_bool
-RDB_is_builtin_type(const RDB_type *typ)
+RDB_type_is_builtin(const RDB_type *typ)
 {
     return (RDB_bool) ((typ == &RDB_BOOLEAN) || (typ == &RDB_INTEGER)
             || (typ == &RDB_RATIONAL) || (typ == &RDB_STRING)
@@ -89,7 +89,7 @@ RDB_is_builtin_type(const RDB_type *typ)
 }
 
 RDB_bool
-RDB_is_scalar_type(const RDB_type *typ)
+RDB_type_is_scalar(const RDB_type *typ)
 {
     return (typ->kind != RDB_TP_TUPLE) && (typ->kind != RDB_TP_RELATION);
 }
@@ -134,8 +134,8 @@ free_type(RDB_type *typ)
 int
 RDB_drop_type(RDB_type *typ)
 {
-    if (RDB_is_builtin_type(typ))
-        return RDB_ILLEGAL_ARG;
+    if (RDB_type_is_builtin(typ))
+        return RDB_INVALID_ARGUMENT;
 
     if (typ->name != NULL) {
         /* delete type from database */
@@ -409,7 +409,7 @@ RDB_project_tuple_type(const RDB_type *typ, int attrc, char *attrv[],
 
         attrtyp = _RDB_tuple_attr_type(typ, attrname);
         if (attrtyp == NULL) {
-            ret = RDB_ILLEGAL_ARG;
+            ret = RDB_INVALID_ARGUMENT;
             goto error;
         }
         tuptyp->var.tuple.attrv[i].type = attrtyp;

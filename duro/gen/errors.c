@@ -26,8 +26,8 @@ RDB_strerror(int err)
         case RDB_INTERNAL:
             return "internal error";
 
-        case RDB_ILLEGAL_ARG:
-            return "illegal argument";
+        case RDB_INVALID_ARGUMENT:
+            return "invalid argument";
         case RDB_NOT_FOUND:
             return "not found";
         case RDB_INVALID_TRANSACTION:
