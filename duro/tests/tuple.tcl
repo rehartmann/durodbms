@@ -15,23 +15,6 @@ proc tequal {t1 t2} {
     return [string equal [lsort $t1] [lsort $t2]]
 }
 
-proc checkarray {a l tx} {
-    set alen [duro::array length $a]
-    if {$alen != [llength $l]} {
-        puts "# of tuples is $alen, expected [llength $l]"
-        puts $l
-        exit 1
-    }
-    for {set i 0} {$i < $alen} {incr i} {
-        set t [duro::array index $a $i $tx]
-        set xt [lindex $l $i]
-        if {![tequal $t $xt]} {
-            puts "Tuple value is $t, expected $xt"
-            exit 1
-        }
-    }
-}   
-
 # Create DB environment
 file delete -force tests/dbenv
 file mkdir tests/dbenv
@@ -61,9 +44,19 @@ duro::table create T1 {
 
 duro::insert T1 {SCATTR Bla TPATTR {A 1 B Blubb T {C Blap}}} $tx
 
+if {[duro::expr {(TUPLE FROM (T1 {TPATTR})).TPATTR.T.C} $tx] != "Blap"} {
+    puts "Attribute value should be \"Blap\""
+    exit 1
+}
+
 # Update w/ WHERE
 duro::update T1 {SCATTR="Bla"} TPATTR \
         {TUPLE {A 1, B "Blubb", T TUPLE {C "Blop"}}} $tx
+
+if {[duro::expr {(TUPLE FROM (T1 {TPATTR})).TPATTR.T.C} $tx] != "Blop"} {
+    puts "Attribute value should be \"Blop\""
+    exit 1
+}
 
 # Update w/o WHERE
 duro::update T1 TPATTR {TUPLE {A 1, B "Blubb", T TUPLE {C "Blip"}}} $tx
@@ -91,13 +84,19 @@ set dbenv [duro::env open tests/dbenv]
 
 set tx [duro::begin $dbenv TEST]
 
-set a [duro::array create T1 $tx]
-checkarray $a { {SCATTR Bla TPATTR {T {C Blip} A 1 B Blubb}} } $tx
-duro::array drop $a
+set tpl [duro::expr {TUPLE FROM T1} $tx]
+set stpl {SCATTR Bla TPATTR {T {C Blip} A 1 B Blubb}}
+if {![tequal $tpl $stpl]} {
+    puts "Tuple value from T1 is $tpl, should be $stpl"
+    exit 1
+}
 
-set a [duro::array create UW $tx]
-checkarray $a { {T {C Blip} SCATTR Bla A 1 B Blubb} } $tx
-duro::array drop $a
+set tpl [duro::expr {TUPLE FROM UW} $tx]
+set stpl {T {C Blip} SCATTR Bla A 1 B Blubb}
+if {![tequal $tpl $stpl]} {
+    puts "Tuple value from UW is $tpl, should be $stpl"
+    exit 1
+}
 
 set tpl {T {C Blip} SCATTR Bla A 1 B Blubb}
 
@@ -115,9 +114,12 @@ if {[duro::table contains UW $tpl $tx]} {
 
 duro::table expr S {T1 WHERE TPATTR.A = 1} $tx
 
-set a [duro::array create S $tx]
-checkarray $a { {SCATTR Bla TPATTR {T {C Blip} A 1 B Blubb}} } $tx
-duro::array drop $a
+set tpl [duro::expr {TUPLE FROM S} $tx]
+set stpl {SCATTR Bla TPATTR {T {C Blip} A 1 B Blubb}}
+if {![tequal $tpl $stpl]} {
+    puts "Tuple value from S is $tpl, should be $stpl"
+    exit 1
+}
 
 # Test insert into UNWRAP table
 
