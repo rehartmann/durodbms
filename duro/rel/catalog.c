@@ -1410,7 +1410,7 @@ _RDB_get_cat_ro_op(const char *name, int argc, RDB_type *argtv[],
     }
 
     op->argc = argc;        
-    op->argtv = malloc(sizeof(RDB_type *) * op->argc);
+    op->argtv = malloc(sizeof (RDB_type *) * op->argc);
     if (op->argtv == NULL) {
         ret = RDB_NO_MEMORY;
         goto error;

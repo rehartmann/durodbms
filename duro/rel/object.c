@@ -39,15 +39,25 @@ obj_ilen(const RDB_object *objp)
     size_t len = 0;
 
     if (objp->kind == RDB_OB_TUPLE) {
-        RDB_hashmap_iter it;
-        char *key;
-        void *datap;
+        int i;
+        RDB_type *tpltyp = objp->typ;
 
-        RDB_init_hashmap_iter(&it, (RDB_hashmap *) &objp->var.tpl_map);
-        while ((datap = RDB_hashmap_next(&it, &key, NULL)) != NULL)
-            len += obj_ilen((RDB_object *) datap);
-        RDB_destroy_hashmap_iter(&it);
-        return len + sizeof(size_t);
+        if (RDB_type_is_scalar(tpltyp))
+            tpltyp = tpltyp->arep;
+
+        for (i = 0; i < tpltyp->var.tuple.attrc; i++) {
+            RDB_type *attrtyp = tpltyp->var.tuple.attrv[i].typ;
+            RDB_object *attrobjp = RDB_tuple_get(objp,
+                    tpltyp->var.tuple.attrv[i].name);
+
+            if (attrobjp->typ == NULL)
+                attrobjp->typ = attrtyp;
+            if (attrtyp->ireplen == RDB_VARIABLE_LEN)
+                len += sizeof (size_t);
+            len += obj_ilen(attrobjp);
+        }
+
+        return len;
     }
     if (objp->kind == RDB_OB_TABLE) {
         RDB_object tpl;
@@ -61,6 +71,7 @@ obj_ilen(const RDB_object *objp)
         RDB_init_obj(&tpl);
 
         while ((ret = _RDB_next_tuple(qrp, &tpl, NULL)) == RDB_OK) {
+            tpl.typ = objp->typ->var.basetyp;
             len += obj_ilen(&tpl);
         }
         RDB_destroy_obj(&tpl);
@@ -95,7 +106,8 @@ val_kind(const RDB_type *typ)
         return RDB_OB_INT;
     if (typ->arep == &RDB_RATIONAL)
         return RDB_OB_RATIONAL;
-    if (typ->kind == RDB_TP_TUPLE)
+    if (typ->kind == RDB_TP_TUPLE ||
+        (typ->arep != NULL && typ->arep->kind == RDB_TP_TUPLE))
         return RDB_OB_TUPLE;
     if (typ->kind == RDB_TP_RELATION)
         return RDB_OB_TABLE;
@@ -108,7 +120,10 @@ irep_to_tuple(RDB_object *tplp, RDB_type *typ, const void *datap)
     int i;
     int ret;
     size_t len = 0;
-    const RDB_byte *bp = (RDB_byte *)datap;
+    const RDB_byte *bp = (RDB_byte *) datap;
+
+    if (RDB_type_is_scalar(typ))
+        typ = typ->arep;
 
     for (i = 0; i < typ->var.tuple.attrc; i++) {
         RDB_object obj;

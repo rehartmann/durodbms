@@ -96,13 +96,13 @@ Duro_get_table(TclState *, Tcl_Interp *, const char *name, RDB_transaction *,
         RDB_table **);
 
 Tcl_Obj *
-Duro_tuple_to_list(Tcl_Interp *, const RDB_object *);
+Duro_tuple_to_list(Tcl_Interp *, const RDB_object *, RDB_transaction *);
 
 RDB_table *
 Duro_get_ltable(const char *name, void *arg);
 
 Tcl_Obj *
-Duro_to_tcl(Tcl_Interp *interp, const RDB_object *objp);
+Duro_to_tcl(Tcl_Interp *interp, const RDB_object *objp, RDB_transaction *);
 
 int
 Duro_tcl_to_duro(Tcl_Interp *interp, Tcl_Obj *tobjp, RDB_type *typ,

@@ -15,14 +15,14 @@ proc tequal {t1 t2} {
     return [string equal [lsort $t1] [lsort $t2]]
 }
 
-proc checkarray {a l} {
+proc checkarray {a l tx} {
     set alen [duro::array length $a]
     if {$alen != [llength $l]} {
         puts "# of tuples is $alen, expected [llength $l]"
         exit 1
     }
     for {set i 0} {$i < $alen} {incr i} {
-        set t [duro::array index $a $i]
+        set t [duro::array index $a $i $tx]
         set xt [lindex $l $i]
         if {![tequal $t $xt]} {
             puts "Tuple value is $t, expected $xt"
@@ -76,19 +76,19 @@ duro::update R {INTATTR=4} INTATTR 5 $tx
 set a [duro::array create R {INTATTR asc} $tx]
 
 checkarray $a { {INTATTR 1 STRATTR Bla} {INTATTR 2 STRATTR Blubb}
-       {INTATTR 3 STRATTR Blubb} {INTATTR 5 STRATTR yo} }
+       {INTATTR 3 STRATTR Blubb} {INTATTR 5 STRATTR yo} } $tx
 
 duro::array drop $a
 
 set a [duro::array create P1 {INTATTR asc} $tx]
 
-checkarray $a { {INTATTR 1} {INTATTR 2} {INTATTR 3} {INTATTR 5} }
+checkarray $a { {INTATTR 1} {INTATTR 2} {INTATTR 3} {INTATTR 5} } $tx
 
 duro::array drop $a
 
 set a [duro::array create P2 {STRATTR desc} $tx]
 
-checkarray $a { {STRATTR yo} {STRATTR Blubb} {STRATTR Bla} }
+checkarray $a { {STRATTR yo} {STRATTR Blubb} {STRATTR Bla} } $tx
 
 duro::array drop $a
 

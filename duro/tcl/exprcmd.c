@@ -52,7 +52,7 @@ Duro_expr_cmd(ClientData data, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv
     }
     RDB_drop_expr(exprp);
 
-    tobjp = Duro_to_tcl(interp, &val);
+    tobjp = Duro_to_tcl(interp, &val, txp);
     RDB_destroy_obj(&val);
     if (tobjp == NULL)
         return TCL_ERROR;

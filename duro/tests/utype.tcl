@@ -59,6 +59,16 @@ duro::type define PNAME {
 
 duro::type implement PNAME $tx
 
+duro::commit $tx
+
+# Close DB environment
+duro::env close $dbenv
+
+# Reopen DB environment
+set dbenv [duro::env open tests/dbenv]
+
+set tx [duro::begin $dbenv TEST]
+
 duro::table create T2 {
    {NO INTEGER}
    {NAME PNAME}
@@ -69,6 +79,13 @@ duro::insert T2 $tpl $tx
 
 if {![duro::table contains T2 $tpl $tx]} {
     puts "T2 should contain $tpl, but does not."
+    exit 2
+}
+
+array set a [duro::expr {TUPLE FROM T2} $tx]
+
+if {($a(NO) != 1) || ($a(NAME) != {PNAME Peter Potter})} {
+    puts "T2 has wrong value"
     exit 2
 }
 

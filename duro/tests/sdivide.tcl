@@ -17,14 +17,14 @@ proc tequal {t1 t2} {
     return [string equal [lsort $t1] [lsort $t2]]
 }
 
-proc checkarray {a l} {
+proc checkarray {a l tx} {
     set alen [duro::array length $a]
     if {$alen != [llength $l]} {
         puts "# of tuples is $alen, expected [llength $l]"
         exit 1
     }
     for {set i 0} {$i < $alen} {incr i} {
-        set t [duro::array index $a $i]
+        set t [duro::array index $a $i $tx]
         set xt [lindex $l $i]
         if {![tequal $t $xt]} {
             puts "Tuple value is $t, expected $xt"
@@ -93,7 +93,7 @@ set dbenv [duro::env open tests/dbenv]
 set tx [duro::begin $dbenv TEST]
 
 set a [duro::array create DIV {SNO asc} $tx]
-checkarray $a { {SNO S1} {SNO S2} }
+checkarray $a { {SNO S1} {SNO S2} } $tx
 duro::array drop $a
 
 duro::delete P {PNO = "P1"} $tx
@@ -101,7 +101,7 @@ duro::insert P {PNO P2} $tx
 duro::insert P {PNO P4} $tx
 
 set a [duro::array create DIV {SNO asc} $tx]
-checkarray $a { {SNO S1} {SNO S4} }
+checkarray $a { {SNO S1} {SNO S4} } $tx
 duro::array drop $a
 
 duro::insert P {PNO P1} $tx 
@@ -110,7 +110,7 @@ duro::insert P {PNO P5} $tx
 duro::insert P {PNO P6} $tx
 
 set a [duro::array create DIV $tx]
-checkarray $a { {SNO S1} }
+checkarray $a { {SNO S1} } $tx
 duro::array drop $a
 
 set r [duro::table contains DIV {SNO S1} $tx]

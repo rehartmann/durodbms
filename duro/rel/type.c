@@ -92,6 +92,7 @@ dup_nonscalar_type(RDB_type *typ)
                 return NULL;
             restyp->name = NULL;
             restyp->kind = RDB_TP_RELATION;
+            restyp->arep = NULL;
             restyp->var.basetyp = dup_nonscalar_type(typ->var.basetyp);
             if (restyp->var.basetyp == NULL) {
                 free(restyp);
@@ -104,6 +105,7 @@ dup_nonscalar_type(RDB_type *typ)
                 return NULL;
             restyp->name = NULL;
             restyp->kind = RDB_TP_TUPLE;
+            restyp->arep = NULL;
             restyp->var.tuple.attrc = typ->var.tuple.attrc;
             restyp->var.tuple.attrv = malloc(sizeof (RDB_type)
                     * typ->var.tuple.attrc);
@@ -134,6 +136,8 @@ RDB_create_tuple_type(int attrc, RDB_attr attrv[])
         return NULL;
     tbtyp->name = NULL;
     tbtyp->kind = RDB_TP_TUPLE;
+    tbtyp->ireplen = RDB_VARIABLE_LEN;
+    tbtyp->arep = NULL;
     if ((tbtyp->var.tuple.attrv = malloc(sizeof(RDB_attr) * attrc)) == NULL) {
         free(tbtyp);
         return NULL;
@@ -168,6 +172,8 @@ RDB_create_relation_type(int attrc, RDB_attr attrv[])
     
     typ->name = NULL;
     typ->kind = RDB_TP_RELATION;
+    typ->ireplen = RDB_VARIABLE_LEN;
+    typ->arep = NULL;
     if ((typ->var.basetyp = RDB_create_tuple_type(attrc, attrv))
             == NULL) {
         free(typ);
@@ -492,7 +498,7 @@ RDB_implement_type(const char *name, RDB_type *arep,
         if (ret != RDB_OK)
             return ret;
 
-        typ->ireplen = -1;
+        typ->ireplen = RDB_VARIABLE_LEN;
     } else {
         if (arep != NULL && !RDB_type_is_builtin(arep)) {
             return RDB_NOT_SUPPORTED;
@@ -740,6 +746,7 @@ RDB_extend_relation_type(const RDB_type *typ, int attrc, RDB_attr attrv[])
     }
     restyp->name = NULL;
     restyp->kind = RDB_TP_RELATION;
+    restyp->arep = NULL;
     restyp->var.basetyp = RDB_extend_tuple_type(
             typ->var.basetyp, attrc, attrv);
     return restyp;

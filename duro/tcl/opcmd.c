@@ -328,7 +328,7 @@ Duro_call_cmd(ClientData data, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv
     /* Store updated values */
     for (i = 0; i < argc; i++) {
         if (op->updv[i]) {
-            Tcl_Obj *valobjp = Duro_to_tcl(interp, argv[i]);
+            Tcl_Obj *valobjp = Duro_to_tcl(interp, argv[i], txp);
 
             if (valobjp == NULL) {
                 ret = TCL_ERROR;
@@ -399,7 +399,7 @@ Duro_invoke_update_op(const char *name, int argc, RDB_object *argv[],
         }
 
         if (Tcl_ObjSetVar2(slinterp, argnamep, NULL,
-                Duro_to_tcl(slinterp, argv[i]), 0) == NULL) {
+                Duro_to_tcl(slinterp, argv[i], txp), 0) == NULL) {
             Tcl_DeleteInterp(slinterp);
             return RDB_INTERNAL;
         }
@@ -507,7 +507,7 @@ Duro_invoke_ro_op(const char *name, int argc, RDB_object *argv[],
         }
 
         if (Tcl_ObjSetVar2(slinterp, argnamep, NULL,
-                Duro_to_tcl(slinterp, argv[i]), 0) == NULL) {
+                Duro_to_tcl(slinterp, argv[i], txp), 0) == NULL) {
             RDB_errmsg(envp, "%s", Tcl_GetStringResult(slinterp));
             Tcl_DeleteInterp(slinterp);
             return RDB_INTERNAL;

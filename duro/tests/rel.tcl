@@ -15,22 +15,6 @@ proc tequal {t1 t2} {
     return [string equal [lsort $t1] [lsort $t2]]
 }
 
-proc checkarray {a l} {
-    set alen [duro::array length $a]
-    if {$alen != [llength $l]} {
-        puts "# of tuples is $alen, expected [llength $l]"
-        exit 1
-    }
-    for {set i 0} {$i < $alen} {incr i} {
-        set t [duro::array index $a $i]
-        set xt [lindex $l $i]
-        if {![tequal $t $xt]} {
-            puts "Tuple value is $t, expected $xt"
-            exit 1
-        }
-    }
-}   
-
 # Create DB environment
 file delete -force tests/dbenv
 file mkdir tests/dbenv

@@ -15,14 +15,15 @@ proc tequal {t1 t2} {
     return [string equal [lsort $t1] [lsort $t2]]
 }
 
-proc checkarray {a l} {
+proc checkarray {a l tx} {
     set alen [duro::array length $a]
     if {$alen != [llength $l]} {
         puts "# of tuples is $alen, expected [llength $l]"
+        puts $l
         exit 1
     }
     for {set i 0} {$i < $alen} {incr i} {
-        set t [duro::array index $a $i]
+        set t [duro::array index $a $i $tx]
         set xt [lindex $l $i]
         if {![tequal $t $xt]} {
             puts "Tuple value is $t, expected $xt"
@@ -74,11 +75,11 @@ set dbenv [duro::env open tests/dbenv]
 set tx [duro::begin $dbenv TEST]
 
 set a [duro::array create T1 $tx]
-checkarray $a { {SCATTR Bla TPATTR {T {C Blip} A 1 B Blubb}} }
+checkarray $a { {SCATTR Bla TPATTR {T {C Blip} A 1 B Blubb}} } $tx
 duro::array drop $a
 
 set a [duro::array create UW $tx]
-checkarray $a { {T {C Blip} SCATTR Bla A 1 B Blubb} }
+checkarray $a { {T {C Blip} SCATTR Bla A 1 B Blubb} } $tx
 duro::array drop $a
 
 set tpl {T {C Blip} SCATTR Bla A 1 B Blubb}
@@ -98,7 +99,7 @@ if {[duro::table contains UW $tpl $tx]} {
 duro::table expr S {T1 WHERE TPATTR.A = 1} $tx
 
 set a [duro::array create S $tx]
-checkarray $a { {SCATTR Bla TPATTR {T {C Blip} A 1 B Blubb}} }
+checkarray $a { {SCATTR Bla TPATTR {T {C Blip} A 1 B Blubb}} } $tx
 duro::array drop $a
 
 # Test insert into UNWRAP table
