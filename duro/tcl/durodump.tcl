@@ -21,6 +21,10 @@ proc dump_rtable {out t tx} {
     duro::array drop $a
 }
 
+proc dump_vtable {out t tx} {
+    puts $out "duro::table expr -global $t \{[duro::table def $t $tx]\} \$tx"
+}
+
 if {$argc < 1 || $argc > 2} {
     puts "usage: durodump.tcl environment \[output_file\]"
     exit 1
@@ -55,6 +59,12 @@ foreach db $dbs {
     foreach t [duro::tables -real $tx] {
         if {[lsearch -exact $tables $t] == -1} {
             dump_rtable $out $t $tx
+            lappend tables $t
+        }
+    }
+    foreach t [duro::tables -virtual $tx] {
+        if {[lsearch -exact $tables $t] == -1} {
+            dump_vtable $out $t $tx
             lappend tables $t
         }
     }

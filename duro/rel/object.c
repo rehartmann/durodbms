@@ -889,3 +889,29 @@ _RDB_set_obj_type(RDB_object *objp, RDB_type *typ)
     if (objp->kind == RDB_OB_BIN)
         objp->var.bin.datap = NULL;
 }
+
+int
+RDB_obj_to_string(RDB_object *dstp, const RDB_object *srcp)
+{
+    char buf[64];
+    int ret;
+
+    if (srcp->typ == &RDB_INTEGER) {
+        sprintf(buf, "%d", RDB_obj_int(srcp));
+        ret = RDB_string_to_obj(dstp, buf);
+        if (ret != RDB_OK)
+            return ret;
+    } else if (srcp->typ == &RDB_RATIONAL) {
+        sprintf(buf, "%g", RDB_obj_rational(srcp));
+        ret = RDB_string_to_obj(dstp, buf);
+        if (ret != RDB_OK)
+            return ret;
+    } else if (srcp->typ == &RDB_STRING) {
+        ret = RDB_string_to_obj(dstp, RDB_obj_string(srcp));
+        if (ret != RDB_OK)
+            return ret;
+    } else {
+        return RDB_INVALID_ARGUMENT;
+    }
+    return RDB_OK;
+}

@@ -1397,7 +1397,6 @@ RDB_evaluate(RDB_expression *exp, const RDB_object *tup, RDB_transaction *txp,
         case RDB_EX_TO_STRING:
         {
             RDB_object val;
-            char buf[64];
 
             RDB_init_obj(&val);
             ret = RDB_evaluate(exp->var.op.arg1, tup, txp, &val);
@@ -1405,31 +1404,9 @@ RDB_evaluate(RDB_expression *exp, const RDB_object *tup, RDB_transaction *txp,
                 RDB_destroy_obj(&val);
                 return ret;
             }
-            if (val.typ == &RDB_INTEGER) {
-                sprintf(buf, "%d", RDB_obj_int(&val));
-                ret = RDB_string_to_obj(valp, buf);
-                if (ret != RDB_OK) {
-                    RDB_destroy_obj(&val);
-                    return RDB_INVALID_ARGUMENT;
-                }
-            } else if (val.typ == &RDB_RATIONAL) {
-                sprintf(buf, "%g", RDB_obj_rational(&val));
-                ret = RDB_string_to_obj(valp, buf);
-                if (ret != RDB_OK) {
-                    RDB_destroy_obj(&val);
-                    return RDB_INVALID_ARGUMENT;
-                }
-            } else if (val.typ == &RDB_STRING) {
-                ret = RDB_string_to_obj(valp, RDB_obj_string(&val));
-                if (ret != RDB_OK) {
-                    RDB_destroy_obj(&val);
-                    return RDB_INVALID_ARGUMENT;
-                }
-            } else {
-                RDB_destroy_obj(&val);
-                return RDB_INVALID_ARGUMENT;
-            }
-            return RDB_destroy_obj(&val);
+            ret = RDB_obj_to_string(valp, &val);
+            RDB_destroy_obj(&val);
+            return ret;
         }
         case RDB_EX_SUBSET:
         {

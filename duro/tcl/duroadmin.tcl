@@ -676,6 +676,13 @@ proc drop_table {} {
         if {$ti != -1} {
             lreplace ::ltables $ti $ti
         }
+
+        # Clear table
+        .tableframe.table configure -rows 1
+        set colcount [.tableframe.table cget -cols]
+        for {set i 0} {$i < $colcount} {incr i} {
+            .tableframe.table set 0,$i ""
+        }
     } msg]} {
         catch {duro::rollback $tx}
         tk_messageBox -type ok -title "Error" -message $msg -icon error

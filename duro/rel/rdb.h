@@ -959,6 +959,9 @@ int
 RDB_string_to_obj(RDB_object *valp, const char *str);
 
 int
+RDB_obj_to_string(RDB_object *dstp, const RDB_object *srcp);
+
+int
 RDB_obj_comp(const RDB_object *valp, const char *compname,
                    RDB_object *comp, RDB_transaction *);
 

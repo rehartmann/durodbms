@@ -62,6 +62,13 @@ If <strong>-local</strong> is specified,
 the table will become a local (transient) table.
 Default is <strong>-global</strong>.
 
+<dt><b>duro::table def</b> <var>tablename txId</var>
+<dd>
+<p>If the table <var>tablename</var> is a virtual table,
+this subcommand returns the expression that defines the table.
+
+<p>If the table is a real table, the table name is returned.
+
 <dt><b>duro::table drop</b> <var>tablename txId</var>
 <dd>
 <p>This subcommand deletes the table <var>tablename</var>

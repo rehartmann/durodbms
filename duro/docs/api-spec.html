@@ -3416,7 +3416,7 @@ RDB_divide(RDB_expression *, RDB_expression *);
 
 <h3>Description</h3>
 
-<p>RDB_subtract creates an expression that represents an arithmetical
+<p>RDB_divide creates an expression that represents an arithmetical
 division. Both arguments must be numeric and of the same type.
 If one of the arguments is NULL, NULL is returned.
 
@@ -3460,9 +3460,8 @@ RDB_strlen(RDB_expression *arg);
 
 <h3>Description</h3>
 
-<p>RDB_subtract creates an expression that represents a string length
+<p>RDB_strlen creates an expression that represents a string length
 operator. If the argument is NULL, NULL is returned.
-
 
 <h3>Return value</h3>
 
@@ -3560,7 +3559,7 @@ RDB_tuple_attr(RDB_expression *, const char *attrname);
 
 <h3>Description</h3>
 
-<p>RDB_table_to_expr creates an expression that represents a tuple attribute
+<p>RDB_tuple_attr creates an expression that represents a tuple attribute
 extraction.
 
 <h3>Return value</h3>
@@ -3602,7 +3601,7 @@ RDB_expr_any(RDB_expression *, const char *attrname);
 
 <h3>Description</h3>
 
-<p>RDB_expr_ creates an expression which represents the <a
+<p>RDB_expr_any creates an expression which represents the <a
 href="#any">RDB_any</a> operator.
 
 <h3>Return value</h3>
@@ -3623,7 +3622,7 @@ RDB_expr_all(RDB_expression *, const char *attrname);
 
 <h3>Description</h3>
 
-<p>RDB_expr_ creates an expression which represents the <a
+<p>RDB_expr_all creates an expression which represents the <a
 href="#all">RDB_all</a> operator.
 
 <h3>Return value</h3>
@@ -3686,7 +3685,7 @@ RDB_expr_max(RDB_expression *, const char *attrname);
 
 <h3>Description</h3>
 
-<p>RDB_expr_ creates an expression which represents the <a
+<p>RDB_expr_max creates an expression which represents the <a
 href="#max">RDB_max</a> operator.
 
 <h3>Return value</h3>
@@ -4766,10 +4765,10 @@ RDB_parse_table(const char *exprtxt, RDB_ltablefn *ltfnp, void *arg, RDB_transac
 
 <h3>Description</h3>
 
-<p>These function parse the <a href="expressions.html">expression</a>
+<p>These functions parse the <a href="expressions.html">expression</a>
 specified by <var>exprtxt</var>. If <var>ltfnp</var> is not NULL,
 it must point to a function which is used to look up local tables.
-The function is invoked with the table name and <var>argp</var> as
+The function is invoked with the table name and <var>arg</var> as
 arguments. It must return a pointer to the table or NULL if the table was
 not found.
 
