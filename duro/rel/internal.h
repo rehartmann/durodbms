@@ -3,6 +3,8 @@
 
 /* $Id$ */
 
+#include <ltdl.h>
+
 #define AVG_COUNT_SUFFIX "$C"
 
 typedef struct RDB_qresult {
@@ -26,6 +28,32 @@ typedef struct RDB_qresult {
     /* needed to attach the qresults to the transaction */
     struct RDB_qresult *nextp;
 } RDB_qresult;
+
+typedef int RDB_selector_func(RDB_value *, RDB_value *[],
+        const RDB_type *, const char *);
+
+typedef int RDB_setter_func(RDB_value *, const RDB_value *,
+        const RDB_type *, const char *);
+
+typedef int RDB_getter_func(const RDB_value *, RDB_value *,
+        const RDB_type *, const char *);
+
+typedef struct {
+    char *name;
+    RDB_type *type;
+    RDB_value *defaultp;
+    int options;
+    RDB_getter_func *getterp;
+    RDB_setter_func *setterp;
+} RDB_icomp;
+
+typedef struct RDB_ipossrep {
+    char *name;
+    int compc;
+    RDB_icomp *compv;
+    struct RDB_expression *constraintp;
+    RDB_selector_func *selectorp;
+} RDB_ipossrep;
 
 /* Internal functions */
 

@@ -11,7 +11,6 @@ test_type(RDB_database *dbp)
     RDB_transaction tx;
     RDB_possrep pr;
     RDB_attr comp;
-    RDB_type *typ;
     int ret;
 
     printf("Starting transaction\n");
@@ -28,7 +27,7 @@ test_type(RDB_database *dbp)
     pr.compv = &comp;
     pr.constraintp = RDB_lt(RDB_expr_attr("TINYINT", &RDB_INTEGER),
             RDB_int_const(100));
-    ret = RDB_define_type("TINYINT", 1, &pr, &tx, &typ);
+    ret = RDB_define_type("TINYINT", 1, &pr, &tx);
     if (ret != RDB_OK) {
         RDB_rollback(&tx);
         return ret;

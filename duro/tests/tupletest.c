@@ -1,13 +1,16 @@
 /* $Id$ */
 
 #include <rel/rdb.h>
+#include <rel/internal.h>
 #include <stdio.h>
 
-int main() {
+int main(void) {
     const void *datap;
     int i;
     int res;
     RDB_tuple tpl;
+
+    _RDB_init_builtin_types();
 
     RDB_init_tuple(&tpl);
     RDB_destroy_tuple(&tpl);

@@ -8,7 +8,7 @@ int
 RDB_create_env(const char *path, int options, RDB_environment **envpp)
 {
     RDB_environment *envp;
-    int err;
+    int ret;
     
     envp = malloc(sizeof (RDB_environment));
     if (envp == NULL)
@@ -18,20 +18,20 @@ RDB_create_env(const char *path, int options, RDB_environment **envpp)
 
     /* create environment handle */
     *envpp = envp;
-    err = db_env_create(&envp->envp, 0);
-    if (err != 0) {
+    ret = db_env_create(&envp->envp, 0);
+    if (ret != 0) {
         free(envp);
-        return err;
+        return RDB_convert_err(ret);
     }
     
     /* create environment */
-    err = envp->envp->open(envp->envp, path,
+    ret = envp->envp->open(envp->envp, path,
             DB_INIT_LOCK | DB_INIT_LOG | DB_INIT_MPOOL | DB_INIT_TXN | DB_CREATE,
             0);
-    if (err != 0) {
+    if (ret != 0) {
         envp->envp->close(envp->envp, 0);
         free(envp);
-        return err;
+        return RDB_convert_err(ret);
     }
     
     return RDB_OK;
@@ -41,7 +41,7 @@ int
 RDB_open_env(const char *path, RDB_environment **envpp)
 {
     RDB_environment *envp;
-    int err;
+    int ret;
 
     envp = malloc(sizeof (RDB_environment));
     if (envp == NULL)
@@ -51,18 +51,18 @@ RDB_open_env(const char *path, RDB_environment **envpp)
 
     /* create environment handle */
     *envpp = envp;
-    err = db_env_create(&envp->envp, 0);
-    if (err != 0) {
+    ret = db_env_create(&envp->envp, 0);
+    if (ret != 0) {
         free(envp);
-        return err;
+        return RDB_convert_err(ret);
     }
     
     /* open DB environment */
-    err = envp->envp->open(envp->envp, path, DB_JOINENV, 0);
-    if (err != 0) {
+    ret = envp->envp->open(envp->envp, path, DB_JOINENV, 0);
+    if (ret != 0) {
         envp->envp->close(envp->envp, 0);
         free(envp);
-        return err;
+        return RDB_convert_err(ret);
     }
     
     return RDB_OK;
@@ -71,13 +71,13 @@ RDB_open_env(const char *path, RDB_environment **envpp)
 int
 RDB_close_env(RDB_environment *envp)
 {
-    int err;
+    int ret;
 
     if (envp->closefn != NULL)
         (*envp->closefn)(envp);
-    err = envp->envp->close(envp->envp, 0);
+    ret = envp->envp->close(envp->envp, 0);
     free(envp);
-    return err;
+    return RDB_convert_err(ret);
 }
 
 void

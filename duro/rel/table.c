@@ -1558,15 +1558,17 @@ RDB_project(RDB_table *tbp, int attrc, char *attrv[], RDB_table **resultpp)
         int j;
     
         /* Pick the keys which survived the projection */
+
         newtbp->keyc = keyc;
         newtbp->keyv = malloc(sizeof (RDB_key_attrs) * keyc);
         if (newtbp->keyv == NULL) {
             goto error;
         }
 
-        for (i = 0; i < tbp->keyc; i++) {
+        for (i = 0; i < keyc; i++) {
             newtbp->keyv[i].attrv = NULL;
         }
+
         for (j = i = 0; j < tbp->keyc; j++) {
             if (presv[j]) {
                 newtbp->keyv[i].attrc = tbp->keyv[j].attrc;
@@ -1577,11 +1579,9 @@ RDB_project(RDB_table *tbp, int attrc, char *attrv[], RDB_table **resultpp)
                 i++;
             }
         }
-
-        newtbp->keyv = dup_keys(tbp->keyc, tbp->keyv);
     }
     free(presv);
-    
+
     *resultpp = newtbp;
     return RDB_OK;
 error:

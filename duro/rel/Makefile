@@ -14,7 +14,7 @@ all : $(OBJS)
 clean :
 	$(RM) $(OBJS) core
 
-database.o : database.c rdb.h internal.h serialize.h
+database.o : database.c rdb.h internal.h typeimpl.h serialize.h
 	$(CC) $(CFLAGS) -c database.c
 
 transaction.o : transaction.c rdb.h internal.h
@@ -23,10 +23,10 @@ transaction.o : transaction.c rdb.h internal.h
 table.o : table.c rdb.h typeimpl.h internal.h
 	$(CC) $(CFLAGS) -c table.c
 
-type.o : type.c rdb.h
+type.o : type.c rdb.h typeimpl.h internal.h
 	$(CC) $(CFLAGS) -c type.c
 
-value.o : value.c rdb.h
+value.o : value.c rdb.h typeimpl.h internal.h
 	$(CC) $(CFLAGS) -c value.c
 
 tuple.o : tuple.c rdb.h internal.h

@@ -14,8 +14,8 @@ char *emp_keyattrs1[] = { "EMPNO" };
 char *emp_keyattrs2[] = { "NAME" };
 
 RDB_key_attrs emp_keyattrs[] = {
-    { emp_keyattrs1, 1 },
-    { emp_keyattrs2, 1 }
+    { 1, emp_keyattrs1 },
+    { 1, emp_keyattrs2 }
 };
 
 RDB_attr dept_attrs[] = {
@@ -208,7 +208,7 @@ error:
 }
 
 int
-main() {
+main(void) {
     RDB_environment *envp;
     RDB_database *dbp;
     int ret;

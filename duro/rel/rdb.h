@@ -30,13 +30,12 @@ along with Duro; if not, write to the Free Software Foundation, Inc.,
 #include <gen/hashmap.h>
 #include <gen/types.h>
 #include <stdlib.h>
+#include <ltdl.h>
+
 
 /* internal */
-enum RDB_tp_kind {
-    RDB_TP_BOOLEAN,
-    RDB_TP_INTEGER,
-    RDB_TP_RATIONAL,
-    RDB_TP_BINARY, /* binary, variable-length */
+enum _RDB_tp_kind {
+    RDB_TP_SCALAR,
     RDB_TP_TUPLE,
     RDB_TP_RELATION
 };
@@ -51,7 +50,8 @@ typedef struct {
 typedef struct RDB_type {
     /* internal */
     char *name;
-    enum RDB_tp_kind kind; /* internal representation */
+    enum _RDB_tp_kind kind;
+    int irep; /* internal representation */
     union {
         struct RDB_type *basetyp; /* relation type */
         struct {
@@ -60,7 +60,8 @@ typedef struct RDB_type {
         } tuple;
         struct {
             int repc;
-            RDB_possrep *repv;
+            struct RDB_ipossrep *repv;
+            lt_dlhandle modhdl;	/* library handle for module */
         } scalar;
     } var;
 } RDB_type;
@@ -141,8 +142,8 @@ typedef struct {
 } RDB_virtual_attr;
 
 typedef struct {
-    char **attrv;
     int attrc;
+    char **attrv;
 } RDB_key_attrs;
 
 typedef enum {
@@ -386,7 +387,7 @@ RDB_make_persistent(RDB_table *, RDB_transaction *);
 
 int
 RDB_define_type(const char *name, int repc, RDB_possrep repv[],
-                RDB_transaction *txp, RDB_type **resultpp);
+                RDB_transaction *txp);
 
 /*
  * Lookup the type with name name from the database pointed to by dbp.
@@ -536,7 +537,7 @@ RDB_table_contains(RDB_table *, const RDB_tuple *, RDB_transaction *);
  * Return value:
  * RDB_OK	the tuple has been successfully extracted.
  * RDB_NOT_FOUND the table is empty.
- * RDB_ILLEGAL_ARG the table contains more than one tuple.
+ * RDB_INVALID_ARGUMENT the table contains more than one tuple.
  */
 int
 RDB_extract_tuple(RDB_table *, RDB_tuple *, RDB_transaction *);
@@ -830,7 +831,7 @@ void
 RDB_destroy_value(RDB_value *valp);
 
 int
-RDB_value_set(RDB_value *valp, RDB_type *, const char *repname,
+RDB_select_value(RDB_value *valp, RDB_type *, const char *repname,
               RDB_value **compv);
 
 void

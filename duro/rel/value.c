@@ -1,6 +1,7 @@
 /* $Id$ */
 
 #include "rdb.h"
+#include "typeimpl.h"
 #include "internal.h"
 #include <gen/errors.h>
 #include <string.h>
@@ -8,14 +9,14 @@
 void *
 RDB_value_irep(RDB_value *valp, size_t *lenp)
 {
-    switch (valp->typ->kind) {
-        case RDB_TP_BOOLEAN:
+    switch (valp->typ->irep) {
+        case RDB_IREP_BOOLEAN:
             *lenp = sizeof (RDB_bool);
             return &valp->var.bool_val;
-        case RDB_TP_INTEGER:
+        case RDB_IREP_INTEGER:
             *lenp = sizeof (RDB_int);
             return &valp->var.int_val;
-        case RDB_TP_RATIONAL:
+        case RDB_IREP_RATIONAL:
             *lenp = sizeof (RDB_rational);
             return &valp->var.rational_val;
         default:
@@ -31,14 +32,14 @@ RDB_irep_to_value(RDB_value *valp, RDB_type *typ, void *datap, size_t len)
         RDB_destroy_value(valp);
 
     valp->typ = typ;
-    switch (valp->typ->kind) {
-        case RDB_TP_BOOLEAN:
+    switch (valp->typ->irep) {
+        case RDB_IREP_BOOLEAN:
             valp->var.bool_val = *(RDB_bool *) datap;
             break;
-        case RDB_TP_INTEGER:
+        case RDB_IREP_INTEGER:
             memcpy(&valp->var.int_val, datap, sizeof (RDB_int));
             break;
-        case RDB_TP_RATIONAL:
+        case RDB_IREP_RATIONAL:
             memcpy(&valp->var.rational_val, datap, sizeof (RDB_rational));
             break;
         default:
@@ -54,14 +55,14 @@ RDB_irep_to_value(RDB_value *valp, RDB_type *typ, void *datap, size_t len)
 RDB_bool
 RDB_value_equals(const RDB_value *valp1, const RDB_value *valp2)
 {
-    switch (valp1->typ->kind) {
-        case RDB_TP_BOOLEAN:
+    switch (valp1->typ->irep) {
+        case RDB_IREP_BOOLEAN:
             return (RDB_bool) valp1->var.bool_val == valp2->var.bool_val;
             break;
-        case RDB_TP_INTEGER:
+        case RDB_IREP_INTEGER:
             return (RDB_bool) (valp1->var.int_val == valp2->var.int_val);
             break;
-        case RDB_TP_RATIONAL:
+        case RDB_IREP_RATIONAL:
             return (RDB_bool) (valp1->var.rational_val == valp2->var.rational_val);
             break;
         default:
@@ -75,14 +76,14 @@ RDB_value_equals(const RDB_value *valp1, const RDB_value *valp2)
 static int
 copy_value(RDB_value *dstvalp, const RDB_value *srcvalp)
 {
-    switch (srcvalp->typ->kind) {
-        case RDB_TP_BOOLEAN:
+    switch (srcvalp->typ->irep) {
+        case RDB_IREP_BOOLEAN:
             dstvalp->var.bool_val = srcvalp->var.bool_val;
             break;
-        case RDB_TP_INTEGER:
+        case RDB_IREP_INTEGER:
             dstvalp->var.int_val = srcvalp->var.int_val;
             break;
-        case RDB_TP_RATIONAL:
+        case RDB_IREP_RATIONAL:
             dstvalp->var.rational_val = srcvalp->var.rational_val;
             break;
         default:
@@ -118,10 +119,10 @@ RDB_destroy_value(RDB_value *valp)
     if (valp->typ == NULL)
         return;
 
-    switch (valp->typ->kind) {
-        case RDB_TP_BOOLEAN:
-        case RDB_TP_INTEGER:
-        case RDB_TP_RATIONAL:
+    switch (valp->typ->irep) {
+        case RDB_IREP_BOOLEAN:
+        case RDB_IREP_INTEGER:
+        case RDB_IREP_RATIONAL:
             break;
         default:
             free(valp->var.bin.datap);
@@ -165,23 +166,49 @@ RDB_value_set_string(RDB_value *valp, const char *str)
     return RDB_OK;
 }
 
+static RDB_icomp *
+get_icomp(RDB_type *typ, const char *compname)
+{
+    int i, j;
+
+    for (i = 0; i < typ->var.scalar.repc; i++) {
+        for (j = 0; j < typ->var.scalar.repv[i].compc; j++) {
+            if (strcmp(typ->var.scalar.repv[i].compv[j].name, compname) == 0)
+                return &typ->var.scalar.repv[i].compv[j];
+        }
+    }
+    return NULL;
+}
+
 int
 RDB_value_get_comp(const RDB_value *valp, const char *compname,
-                   RDB_value *comp)
+                   RDB_value *compvalp)
 {
-    RDB_destroy_value(comp);
+    RDB_icomp *comp = get_icomp(valp->typ, compname);
 
-    comp->typ = valp->typ->var.scalar.repv[0].compv[0].type;
-    return copy_value(comp, valp);   
+    if (comp->setterp != NULL) {
+        return (*(comp->getterp))(valp, compvalp, valp->typ, compname);
+    } else {
+        RDB_destroy_value(compvalp);
+
+        compvalp->typ = valp->typ->var.scalar.repv[0].compv[0].type;
+        return copy_value(compvalp, valp);   
+    }
 }
 
 int
 RDB_value_set_comp(RDB_value *valp, const char *compname,
-                   const RDB_value *comp)
+                   const RDB_value *compvalp)
 {
-    RDB_destroy_value(valp);
+    RDB_icomp *comp = get_icomp(valp->typ, compname);
 
-    return copy_value(valp, comp);
+    if (comp->setterp != NULL) {
+        return (*(comp->setterp))(valp, compvalp, valp->typ, compname);
+    } else {
+        RDB_destroy_value(valp);
+
+        return copy_value(valp, compvalp);
+    }
 }
 
 static RDB_bool
@@ -214,11 +241,11 @@ check_constraint(RDB_value *valp) {
 }
 
 int
-RDB_value_set(RDB_value *valp, RDB_type *typ, const char *repname,
+RDB_select_value(RDB_value *valp, RDB_type *typ, const char *repname,
               RDB_value **compv)
 {
-    /* RDB_possrep prp;
-    int i; */
+    RDB_ipossrep *prp;
+    int i;
     int ret;
 
     RDB_destroy_value(valp);
@@ -226,21 +253,29 @@ RDB_value_set(RDB_value *valp, RDB_type *typ, const char *repname,
     if (typ->var.scalar.repc == 0 || !RDB_type_is_scalar(typ))
         return RDB_INVALID_ARGUMENT;
 
-    /* Find possrep - not used yet
-    for (i = 0; i < typ->scalar.repc
-            && strcmp(typ->scalar.repv[i].name, repname) == 0);
-            i++);
-    if (i > typ->scalar.repc)
-        return RDB_INVALID_ARGUMENT;
-    prp = typ->scalar.repv[i].exp;
-    */
+    if (repname == NULL) {
+        if (typ->var.scalar.repc == 1) {
+            repname = typ->name;
+            prp = &typ->var.scalar.repv[0];
+        } else {
+            return RDB_INVALID_ARGUMENT;
+        }
+    }
 
-    if (repname == NULL)
-        repname = typ->name;
+    /* Find possrep */
+    for (i = 0; i < typ->var.scalar.repc
+            && strcmp(typ->var.scalar.repv[i].name, repname) != 0;
+            i++);
+    if (i >= typ->var.scalar.repc)
+        return RDB_INVALID_ARGUMENT;
+    prp = &typ->var.scalar.repv[i];
 
     valp->typ = typ;
-    
-    ret = copy_value(valp, *compv);
+
+    if (prp->selectorp != NULL)
+        ret = (prp->selectorp)(valp, compv, typ, repname);
+    else
+        ret = copy_value(valp, *compv);
     if (ret != RDB_OK)
         return ret;
 

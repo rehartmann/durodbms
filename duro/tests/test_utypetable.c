@@ -4,10 +4,10 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-char *utype_keyattrs1[] = { "NAME" };
+char *utype_keyattrs1[] = { "NUMBER" };
 
 RDB_key_attrs utype_keyattrs[] = {
-    { utype_keyattrs1, 1 }
+    { 1, utype_keyattrs1 }
 };
 
 RDB_type *tinyintp;
@@ -98,7 +98,7 @@ test_table(RDB_database *dbp)
     RDB_value_set_int(&ival, (RDB_int)200);
     ivalp = &ival;
 
-    ret = RDB_value_set(&tival, tinyintp, "TINYINT", &ivalp);
+    ret = RDB_select_value(&tival, tinyintp, "TINYINT", &ivalp);
     if (ret != RDB_TYPE_CONSTRAINT_VIOLATION) {
         fprintf(stderr, "Wrong return code: %s\n", RDB_strerror(ret));
         goto error;
@@ -110,7 +110,7 @@ test_table(RDB_database *dbp)
     RDB_value_set_int(&ival, (RDB_int)99);
     ivalp = &ival;
 
-    ret = RDB_value_set(&tival, tinyintp, "TINYINT", &ivalp);
+    ret = RDB_select_value(&tival, tinyintp, "TINYINT", &ivalp);
     if (ret != RDB_OK) {
         goto error;
     }

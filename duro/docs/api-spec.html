@@ -71,7 +71,7 @@
 <li><a href="#destroy_value">RDB_destroy_value</a>
 <li><a href="#value_equals">RDB_value_equals</a>
 <li><a href="#copy_value">RDB_copy_value</a>
-<li><a href="#value_set">RDB_value_set</a>
+<li><a href="#select_value">RDB_select_value</a>
 <li><a href="#value_set_bool">RDB_value_set_bool</a>
 <li><a href="#value_set_int">RDB_value_set_int</a>
 <li><a href="#value_set_rational">RDB_value_set_rational</a>
@@ -216,8 +216,8 @@
 #include &lt;rel/rdb.h&gt;
 
 typedef struct {
-    char **attrv;
     int attrc;
+    char **attrv;
 } RDB_key_attrs;
 
 int
@@ -778,14 +778,14 @@ RDB_copy_value(RDB_value *dstvalp, const RDB_value *srcvalp);
 
 <hr>
 
-<h2 id="value_set">RDB_value_set</h2>
+<h2 id="select_value">RDB_select_value</h2>
 
 <pre>
 #include &lt;rel/rdb.h&gt;
 
 int
-RDB_value_set(RDB_value *valp, RDB_type *, const char *repname,
-              RDB_value **compv);
+RDB_select_value(RDB_value *valp, RDB_type *, const char *repname,
+              RDB_value *compv[]);
 </pre>
 
 <hr>
@@ -1061,7 +1061,7 @@ RDB_init_array(RDB_array *);
 <pre>
 #include &lt;rel/rdb.h&gt;
 
-void
+int
 RDB_destroy_array(RDB_array *);
 </pre>
 
@@ -1363,7 +1363,7 @@ RDB_drop_expr on all subexpressions.
 
 int
 RDB_define_type(const char *name, int repc, RDB_possrep repv[],
-                RDB_transaction *txp, RDB_type **resultpp);
+                RDB_transaction *txp);
 </pre>
 
 <hr>
@@ -1376,6 +1376,64 @@ RDB_define_type(const char *name, int repc, RDB_possrep repv[],
 int
 RDB_implement_type(RDB_transaction *, const char *name, const char *modname, int options);
 </pre>
+
+<h3>Description</h3>
+
+<p>RDB_implement_type implements the user-defined type with name
+<var>name</var>. When RDB_implement_type was inkoved successfully,
+the type may be used for local variables and relvar attributes.
+
+<p>If <var>modname</var> is not NULL, it is taken as a name of a library
+which contains the getter functions, setter functions, and selector
+functions for the type. The actual (internal) representation is
+denoted by the <var>options</var> argument, which must take one of the values
+RDB_IREP_BOOLEAN, RDB_IREP_INTEGER, RDB_IREP_RATIONAL,
+RDB_IREP_BINARY, RDB_IREP_TUPLE, and RDB_IREP_TABLE.
+
+<p>If <var>modname</var> is NULL, the getter functions, setter functions, and selector
+functions for the type are provided by the system. In this case,
+<var>options</var> must be zero, the type may only have one possible representation,
+and this representation is also the actual (internal) representation.
+
+<h4>Conventions for user-supplied selector, setter, and getter
+functions</h4>
+
+<p>The functions provided in a user-supplied library must obey the following
+conventions:
+
+<pre>
+int
+RDBU_select_<var>possrep</var> (RDB_value *valp, RDB_value *compv[],
+        const RDB_type *, const char *possrepname);
+</pre>
+
+<pre>
+int
+RDBU_set_<var>component</var> (RDB_value *valp, const RDB_value *comp,
+        const RDB_type *, const char *compname);
+</pre>
+
+<pre>
+int
+RDBU_get_<var>component</var> (const RDB_value *src, RDB_value *comp,
+        const RDB_type *, const char *compname);
+</pre>
+
+<h3>Return value</h3>
+
+<p>On success, RDB_OK is returned. Any other return value indicates an error.
+
+<h3>Errors</h3>
+
+<dl>
+<dt>RDB_INVALID_ARGUMENT
+<dd>An invalid combination of <var>modname</var> and <var>options</var> was
+used.
+<dt>RDB_NOT_SUPPORTED
+<dd>The requested internal representation is not supported by this version
+of the library.
+<dt>...
+</dl>
 
 <hr>
 

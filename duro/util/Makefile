@@ -4,7 +4,7 @@ include ../make.vars
 
 CFLAGS = -I$(BDB_INCLUDE) -I.. $(COPTS)
 LDFLAGS = -L$(BDB_LIB) -L../lib -g
-LDLIBS = -ldb -lduro
+LDLIBS = -ldb -lduro -lltdl
 RM = rm -f
 
 OBJS = lstables.o

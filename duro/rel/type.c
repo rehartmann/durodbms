@@ -1,6 +1,8 @@
 /* $Id$ */
 
 #include "rdb.h"
+#include "typeimpl.h"
+#include "internal.h"
 #include <gen/strfns.h>
 #include <string.h>
 
@@ -12,31 +14,36 @@ RDB_type RDB_BINARY;
 
 void _RDB_init_builtin_types(void)
 {
-    RDB_BOOLEAN.kind = RDB_TP_BOOLEAN;
+    RDB_BOOLEAN.kind = RDB_TP_SCALAR;
+    RDB_BOOLEAN.irep = RDB_IREP_BOOLEAN;
     RDB_BOOLEAN.name = "BOOLEAN";
     RDB_BOOLEAN.var.scalar.repc = 0;
 
-    RDB_STRING.kind = RDB_TP_BINARY;
+    RDB_STRING.kind = RDB_TP_SCALAR;
+    RDB_STRING.irep = RDB_IREP_BINARY;
     RDB_STRING.name = "STRING";
     RDB_STRING.var.scalar.repc = 0;
 
-    RDB_INTEGER.kind = RDB_TP_INTEGER;
+    RDB_INTEGER.kind = RDB_TP_SCALAR;
+    RDB_INTEGER.irep = RDB_IREP_INTEGER;
     RDB_INTEGER.name = "INTEGER";
     RDB_INTEGER.var.scalar.repc = 0;
 
-    RDB_RATIONAL.kind = RDB_TP_RATIONAL;
+    RDB_RATIONAL.kind = RDB_TP_SCALAR;
+    RDB_RATIONAL.irep = RDB_IREP_RATIONAL;
     RDB_RATIONAL.name = "RATIONAL";
     RDB_RATIONAL.var.scalar.repc = 0;
 
-    RDB_BINARY.kind = RDB_TP_BINARY;
+    RDB_BINARY.kind = RDB_TP_SCALAR;
+    RDB_BINARY.irep = RDB_IREP_BINARY;
     RDB_BINARY.name = "BINARY";
     RDB_BINARY.var.scalar.repc = 0;
 }
 
 RDB_bool
 RDB_type_is_numeric(const RDB_type *typ) {
-    return (RDB_bool)(typ->kind == RDB_TP_INTEGER
-                      || typ->kind == RDB_TP_RATIONAL);
+    return (RDB_bool)(typ == &RDB_INTEGER
+                      || typ == &RDB_RATIONAL);
 }
 
 RDB_type *

@@ -11,6 +11,7 @@ enum {
     RDB_SYSTEM_ERROR = -103,
     RDB_DEADLOCK = -104,
     RDB_INTERNAL = -105,
+    RDB_RESOURCE_NOT_FOUND = - 106,
 
     RDB_INVALID_ARGUMENT = -200,
     RDB_NOT_FOUND = -201,
@@ -26,7 +27,7 @@ enum {
 };
 
 /* Check for a system error */
-#define RDB_is_syserr(err) ((err) <= -100 && (err) >= -105)
+#define RDB_is_syserr(err) ((err) <= -100 && (err) >= -199)
 
 const char *
 RDB_strerror(int err);

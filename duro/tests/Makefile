@@ -4,7 +4,7 @@ include ../make.vars
 
 CFLAGS = -I$(BDB_INCLUDE) -I.. $(COPTS)
 LDFLAGS = -L$(BDB_LIB) -L../lib -g
-LDLIBS = -lduro -ldb
+LDLIBS = -lduro -ldb -lltdl
 RM = rm -f
 
 OBJS =
@@ -12,7 +12,8 @@ OBJS =
 EXECS = maptest tupletest prepare test_select test_minus test_union test_intersect \
        test_extend test_ra test_project test_join test_update test_delete \
        test_null test_keys test_aggregate test_create_view test_print_view \
-       test_binary test_summarize test_rename test_regexp test_deftype test_utypetable
+       test_binary test_summarize test_rename test_regexp test_deftype test_utypetable \
+       test_defpointtype test_pointtable
 
 all :	$(EXECS)
 
@@ -88,8 +89,14 @@ test_binary: test_binary.c
 test_deftype: test_deftype.c
 	$(CC) $(CFLAGS) $(LDFLAGS) -o test_deftype test_deftype.c $(LDLIBS)
 
+test_defpointtype: test_defpointtype.c
+	$(CC) $(CFLAGS) $(LDFLAGS) -o test_defpointtype test_defpointtype.c $(LDLIBS)
+
 test_regexp : test_regexp.c
 	$(CC) -o test_regexp $(CFLAGS) $(LDFLAGS) test_regexp.c $(LDLIBS)
 
 test_utypetable: test_utypetable.c
 	$(CC) $(CFLAGS) $(LDFLAGS) -o test_utypetable test_utypetable.c $(LDLIBS)
+
+test_pointtable: test_pointtable.c
+	$(CC) $(CFLAGS) $(LDFLAGS) -o test_pointtable test_pointtable.c $(LDLIBS)

@@ -9,7 +9,7 @@
 RDB_bool
 RDB_expr_is_const(const RDB_expression *exprp)
 {
-    return exprp->kind == RDB_CONST;
+    return (RDB_bool) exprp->kind == RDB_CONST;
 }
 
 RDB_type *

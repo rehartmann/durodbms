@@ -25,6 +25,8 @@ RDB_strerror(int err)
             return "deadlock occured";
         case RDB_INTERNAL:
             return "internal error";
+        case RDB_RESOURCE_NOT_FOUND:
+            return "resource not found";
 
         case RDB_INVALID_ARGUMENT:
             return "invalid argument";
@@ -66,6 +68,9 @@ RDB_convert_err(int err)
             break;
         case EINVAL:
             err = RDB_INTERNAL;
+            break;
+        case ENOENT:
+            err = RDB_RESOURCE_NOT_FOUND;
             break;
         case DB_NOTFOUND:
             err = RDB_NOT_FOUND;

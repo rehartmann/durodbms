@@ -2,6 +2,7 @@
 
 #include "rdb.h"
 #include "internal.h"
+#include "typeimpl.h"
 #include "serialize.h"
 #include <gen/strfns.h>
 #include <string.h>
@@ -21,12 +22,12 @@ enum {
  * of the type pointed to by typ.
  */
 static int replen(const RDB_type *typ) {
-    switch (typ->kind) {
-        case RDB_TP_BOOLEAN:
+    switch (typ->irep) {
+        case RDB_IREP_BOOLEAN:
             return 1;
-        case RDB_TP_INTEGER:
+        case RDB_IREP_INTEGER:
             return sizeof(RDB_int);
-        case RDB_TP_RATIONAL:
+        case RDB_IREP_RATIONAL:
             return sizeof(RDB_rational);
         default:
             return RDB_VARIABLE_LEN;
@@ -186,11 +187,13 @@ open_table(const char *name, RDB_bool persistent,
                               &fno, sizeof fno);
         if (ret != RDB_OK)
             goto error;
+
         /* Only scalar types supported by this version */
         if (!RDB_type_is_scalar(heading[i].type)) {
             ret = RDB_NOT_SUPPORTED;
             goto error;
         }
+
         flens[fno] = replen(heading[i].type);
         if (flens[fno] == 0) {
             ret = RDB_INVALID_ARGUMENT;
@@ -406,7 +409,7 @@ static RDB_attr table_attr_attrv[] = {
             { "TYPE", &RDB_STRING, NULL, 0 },
             { "I_FNO", &RDB_INTEGER, NULL, 0 } };
 static char *table_attr_keyattrv[] = { "ATTRNAME", "TABLENAME" };
-static RDB_key_attrs table_attr_keyv[] = { { table_attr_keyattrv, 2 } };
+static RDB_key_attrs table_attr_keyv[] = { { 2, table_attr_keyattrv } };
 
 static RDB_attr rtables_attrv[] = {
     { "TABLENAME", &RDB_STRING, NULL, 0 },
@@ -414,7 +417,7 @@ static RDB_attr rtables_attrv[] = {
     { "I_RECMAP", &RDB_STRING, NULL, 0 }
 };
 static char *rtables_keyattrv[] = { "TABLENAME" };
-static RDB_key_attrs rtables_keyv[] = { { rtables_keyattrv, 1 } };
+static RDB_key_attrs rtables_keyv[] = { { 1, rtables_keyattrv } };
 
 static RDB_attr vtables_attrv[] = {
     { "TABLENAME", &RDB_STRING, NULL, 0 },
@@ -422,14 +425,14 @@ static RDB_attr vtables_attrv[] = {
     { "I_DEF", &RDB_BINARY, NULL, 0 }
 };
 static char *vtables_keyattrv[] = { "TABLENAME" };
-static RDB_key_attrs vtables_keyv[] = { { vtables_keyattrv, 1 } };
+static RDB_key_attrs vtables_keyv[] = { { 1, vtables_keyattrv } };
 
 static RDB_attr dbtables_attrv[] = {
     { "TABLENAME", &RDB_STRING },
     { "DBNAME", &RDB_STRING }
 };
 static char *dbtables_keyattrv[] = { "TABLENAME", "DBNAME" };
-static RDB_key_attrs dbtables_keyv[] = { { dbtables_keyattrv, 2 } };
+static RDB_key_attrs dbtables_keyv[] = { { 2, dbtables_keyattrv } };
 
 static RDB_attr keys_attrv[] = {
     { "TABLENAME", &RDB_STRING, NULL, 0 },
@@ -437,7 +440,7 @@ static RDB_attr keys_attrv[] = {
     { "ATTRS", &RDB_STRING, NULL, 0 }
 };
 static char *keys_keyattrv[] = { "TABLENAME", "KEYNO" };
-static RDB_key_attrs keys_keyv[] = { { keys_keyattrv, 2 } };
+static RDB_key_attrs keys_keyv[] = { { 2, keys_keyattrv } };
 
 static RDB_attr types_attrv[] = {
     { "TYPENAME", &RDB_STRING, NULL, 0 },
@@ -445,7 +448,7 @@ static RDB_attr types_attrv[] = {
     { "I_IMPLINFO", &RDB_INTEGER, NULL, 0 }
 };
 static char *types_keyattrv[] = { "TYPENAME" };
-static RDB_key_attrs types_keyv[] = { { types_keyattrv, 1 } };
+static RDB_key_attrs types_keyv[] = { { 1, types_keyattrv } };
 
 static RDB_attr possreps_attrv[] = {
     { "TYPENAME", &RDB_STRING, NULL, 0 },
@@ -453,7 +456,7 @@ static RDB_attr possreps_attrv[] = {
     { "I_CONSTRAINT", &RDB_BINARY, NULL, 0 }
 };
 static char *possreps_keyattrv[] = { "TYPENAME", "POSSREPNAME" };
-static RDB_key_attrs possreps_keyv[] = { { possreps_keyattrv, 2 } };
+static RDB_key_attrs possreps_keyv[] = { { 2, possreps_keyattrv } };
 
 static RDB_attr possrepcomps_attrv[] = {
     { "TYPENAME", &RDB_STRING, NULL, 0 },
@@ -465,8 +468,8 @@ static RDB_attr possrepcomps_attrv[] = {
 static char *possrepcomps_keyattrv1[] = { "TYPENAME", "POSSREPNAME", "COMPNO" };
 static char *possrepcomps_keyattrv2[] = { "TYPENAME", "POSSREPNAME", "COMPNAME" };
 static RDB_key_attrs possrepcomps_keyv[] = {
-    { possrepcomps_keyattrv1, 2 },
-    { possrepcomps_keyattrv2, 2 }
+    { 3, possrepcomps_keyattrv1 },
+    { 3, possrepcomps_keyattrv2 }
 };
 
 /* Create system tables if they do not already exist.
@@ -671,13 +674,14 @@ RDB_create_db_from_env(const char *name, RDB_environment *envp,
     if (ret != RDB_OK)
         return ret;
 
-    _RDB_init_builtin_types();
-
     ret = RDB_begin_tx(&tx, dbp, NULL);
     if (ret != RDB_OK) {
         free_db(dbp);
         return ret;
     }
+
+    _RDB_init_builtin_types();
+    lt_dlinit();
 
     ret = provide_systables(&tx);
     if (ret != RDB_OK) {
@@ -698,6 +702,7 @@ RDB_create_db_from_env(const char *name, RDB_environment *envp,
 error:
     RDB_rollback(&tx);
     free_db(dbp);
+    lt_dlexit();
     return ret;
 }
 
@@ -725,13 +730,14 @@ RDB_get_db_from_env(const char *name, RDB_environment *envp,
     if (ret != RDB_OK)
         return ret;
 
-    _RDB_init_builtin_types();
-   
     ret = RDB_begin_tx(&tx, dbp, NULL);
     if (ret != RDB_OK) {
         free_db(dbp);
         return ret;
     }
+
+    _RDB_init_builtin_types();
+    lt_dlinit();
 
     /* open catalog tables */
 
@@ -827,9 +833,8 @@ RDB_get_db_from_env(const char *name, RDB_environment *envp,
 
 error:
     RDB_rollback(&tx);
-    RDB_destroy_hashmap(&dbp->tbmap);
-    free(dbp->name);
-    free(dbp);
+    free_db(dbp);
+    lt_dlexit();
     return ret;
 }
 
@@ -1198,10 +1203,10 @@ get_keys(const char *name, RDB_transaction *txp,
         }
     }
     RDB_destroy_tuple(&tpl);
-    RDB_destroy_array(&arr);
+    ret = RDB_destroy_array(&arr);
     RDB_drop_table(vtbp, txp);
 
-    return RDB_OK;
+    return ret;
 error:
     RDB_destroy_array(&arr);
     RDB_drop_table(vtbp, txp);
@@ -1319,14 +1324,14 @@ get_cat_rtable(const char *name, RDB_transaction *txp, RDB_table **tbpp)
 
     assign_table_db(*tbpp, txp->dbp);
 
-    RDB_destroy_array(&arr);
+    ret = RDB_destroy_array(&arr);
 
     RDB_drop_table(tmptb1p, txp);
     RDB_drop_table(tmptb2p, txp);
 
     RDB_destroy_tuple(&tpl);
 
-    return RDB_OK;
+    return ret;
 error:
     if (attrv != NULL) {
         for (i = 0; i < attrc; i++)
@@ -1388,14 +1393,14 @@ get_cat_vtable(const char *name, RDB_transaction *txp, RDB_table **tbpp)
     if (ret != RDB_OK)
         goto error;
     
-    RDB_destroy_array(&arr);
+    ret = RDB_destroy_array(&arr);
 
     (*tbpp)->is_persistent = RDB_TRUE;
     (*tbpp)->name = RDB_dup_str(name);
 
     assign_table_db(*tbpp, txp->dbp);
     
-    return RDB_OK;
+    return ret;
 error:
     RDB_destroy_array(&arr);
     
@@ -1628,22 +1633,13 @@ error:
     return ret;
 }
 
-static int
-get_cat_type(const char *name, RDB_transaction *txp, RDB_type **typp)
+int
+types_query(const char *name, RDB_transaction *txp, RDB_table **tbpp)
 {
     RDB_expression *exp;
     RDB_expression *wherep;
-    RDB_table *tmptb1p = NULL;
-    RDB_table *tmptb2p = NULL;
-    RDB_table *tmptb3p = NULL;
-    RDB_tuple tpl;
-    RDB_array possreps;
-    RDB_array comps;
-    RDB_type *typ = NULL;
-    int ret, tret;
-    int i;
+    int ret;
 
-    /* Create where condition for 1st query */
     exp = RDB_expr_attr("TYPENAME", &RDB_STRING);
     if (exp == NULL)
         return RDB_NO_MEMORY;
@@ -1653,15 +1649,158 @@ get_cat_type(const char *name, RDB_transaction *txp, RDB_type **typp)
         return RDB_NO_MEMORY;
     }
 
-    ret = RDB_select(txp->dbp->types_tbp, wherep, &tmptb1p);
+    ret = RDB_select(txp->dbp->types_tbp, wherep, tbpp);
     if (ret != RDB_OK) {
          RDB_drop_expr(wherep);
          return ret;
     }
+    return RDB_OK;
+}
+
+int
+possreps_query(const char *name, RDB_transaction *txp, RDB_table **tbpp)
+{
+    RDB_expression *exp;
+    RDB_expression *wherep;
+    int ret;
+
+    exp = RDB_expr_attr("TYPENAME", &RDB_STRING);
+    if (exp == NULL) {
+        return RDB_NO_MEMORY;
+    }
+    wherep = RDB_eq(exp, RDB_string_const(name));
+    if (wherep == NULL) {
+        RDB_drop_expr(exp);
+        return RDB_NO_MEMORY;
+    }
+
+    ret = RDB_select(txp->dbp->possreps_tbp, wherep, tbpp);
+    if (ret != RDB_OK) {
+        RDB_drop_expr(wherep);
+        return ret;
+    }
+    return RDB_OK;
+}
+
+int
+possrepcomps_query(const char *name, const char *possrepname,
+        RDB_transaction *txp, RDB_table **tbpp)
+{
+    RDB_expression *exp, *ex2p;
+    RDB_expression *wherep;
+    int ret;
+
+    exp = RDB_expr_attr("TYPENAME", &RDB_STRING);
+    if (exp == NULL) {
+        ret = RDB_NO_MEMORY;
+        return ret;
+    }
+    wherep = RDB_eq(exp, RDB_string_const(name));
+    if (wherep == NULL) {
+        RDB_drop_expr(exp);
+        ret = RDB_NO_MEMORY;
+        return ret;
+    }
+    exp = RDB_expr_attr("POSSREPNAME", &RDB_STRING);
+    if (exp == NULL) {
+        RDB_drop_expr(wherep);
+        ret = RDB_NO_MEMORY;
+        return ret;
+    }
+    ex2p = RDB_eq(exp, RDB_string_const(possrepname));
+    if (ex2p == NULL) {
+        RDB_drop_expr(exp);
+        RDB_drop_expr(wherep);
+        ret = RDB_NO_MEMORY;
+        return ret;
+    }
+    exp = wherep;
+    wherep = RDB_and(exp, ex2p);
+    if (wherep == NULL) {
+        RDB_drop_expr(exp);
+        RDB_drop_expr(ex2p);
+        ret = RDB_NO_MEMORY;
+        return ret;
+    }
+    ret = RDB_select(txp->dbp->possrepcomps_tbp, wherep, tbpp);
+    if (ret != RDB_OK) {
+        RDB_drop_expr(wherep);
+        return ret;
+    }
+    return RDB_OK;
+}
+
+static RDB_selector_func *
+get_selector(lt_dlhandle lhdl, const char *possrepname) {
+    RDB_selector_func *fnp;
+    char *fname = malloc(13 + strlen(possrepname));
+
+    if (fname == NULL)
+        return NULL;
+    strcpy(fname, "RDBU_select_");
+    strcat(fname, possrepname);
+
+    fnp = (RDB_selector_func *) lt_dlsym(lhdl, fname);
+    free(fname);
+    return fnp;
+}
+
+static RDB_setter_func *
+get_setter(lt_dlhandle lhdl, const char *compname) {
+    RDB_setter_func *fnp;
+    char *fname = malloc(10 + strlen(compname));
+
+    if (fname == NULL)
+        return NULL;
+    strcpy(fname, "RDBU_set_");
+    strcat(fname, compname);
+
+    fnp = (RDB_setter_func *) lt_dlsym(lhdl, fname);
+    free(fname);
+    return fnp;
+}
+
+static RDB_getter_func *
+get_getter(lt_dlhandle lhdl, const char *compname) {
+    RDB_getter_func *fnp;
+    char *fname = malloc(10 + strlen(compname));
+
+    if (fname == NULL)
+        return NULL;
+    strcpy(fname, "RDBU_get_");
+    strcat(fname, compname);
+
+    fnp = (RDB_getter_func *) lt_dlsym(lhdl, fname);
+    free(fname);
+    return fnp;
+}
+
+static int
+get_cat_type(const char *name, RDB_transaction *txp, RDB_type **typp)
+{
+    RDB_table *tmptb1p = NULL;
+    RDB_table *tmptb2p = NULL;
+    RDB_table *tmptb3p = NULL;
+    RDB_tuple tpl;
+    RDB_array possreps;
+    RDB_array comps;
+    RDB_type *typ = NULL;
+    char *modname;
+    int ret, tret;
+    int i;
 
     RDB_init_tuple(&tpl);
     RDB_init_array(&possreps);
     RDB_init_array(&comps);
+
+    /*
+     * Get type info from SYSTYPES
+     */
+
+    ret = types_query(name, txp, &tmptb1p);
+    if (ret != RDB_OK)
+        goto error;
+
     ret = RDB_extract_tuple(tmptb1p, &tpl, txp);
     if (ret != RDB_OK)
         goto error;
@@ -1671,7 +1810,9 @@ get_cat_type(const char *name, RDB_transaction *txp, RDB_type **typp)
         ret = RDB_NO_MEMORY;
         goto error;
     }
-    typ->var.scalar.repc = 0;
+    typ->kind = RDB_TP_SCALAR;
+
+    typ->irep = RDB_tuple_get_int(&tpl, "I_IMPLINFO");
 
     typ->name = RDB_dup_str(name);
     if (typ->name == NULL) {
@@ -1679,24 +1820,27 @@ get_cat_type(const char *name, RDB_transaction *txp, RDB_type **typp)
         goto error;
     }
 
-    /* Create where condition for 2nd query */
-    exp = RDB_expr_attr("TYPENAME", &RDB_STRING);
-    if (exp == NULL) {
-        ret = RDB_NO_MEMORY;
-        goto error;
-    }
-    wherep = RDB_eq(exp, RDB_string_const(name));
-    if (wherep == NULL) {
-        RDB_drop_expr(exp);
-        ret = RDB_NO_MEMORY;
-        goto error;
+    typ->var.scalar.repc = 0;
+
+    modname = RDB_tuple_get_string(&tpl, "I_MODNAME");
+    if (modname[0] != '\0') {
+        typ->var.scalar.modhdl = lt_dlopenext(modname);
+        if (typ->var.scalar.modhdl == NULL) {
+            ret = RDB_RESOURCE_NOT_FOUND;
+            RDB_rollback(txp);
+            goto error;
+        }
+    } else {
+        typ->var.scalar.modhdl = NULL;
     }
 
-    ret = RDB_select(txp->dbp->possreps_tbp, wherep, &tmptb2p);
-    if (ret != RDB_OK) {
-        RDB_drop_expr(wherep);
+    /*
+     * Get possrep info from SYSPOSSREPS
+     */
+
+    ret = possreps_query(name, txp, &tmptb2p);
+    if (ret != RDB_OK)
         goto error;
-    }
     ret = RDB_table_to_array(tmptb2p, &possreps, 0, NULL, txp);
     if (ret != RDB_OK) {
         goto error;
@@ -1707,14 +1851,13 @@ get_cat_type(const char *name, RDB_transaction *txp, RDB_type **typp)
     }
     typ->var.scalar.repc = ret;
     if (ret > 0)
-        typ->var.scalar.repv = malloc(ret * sizeof (RDB_possrep));
+        typ->var.scalar.repv = malloc(ret * sizeof (RDB_ipossrep));
     for (i = 0; i < typ->var.scalar.repc; i++)
         typ->var.scalar.repv[i].compv = NULL;
     /*
      * Read possrep data from array and store it in typ->var.scalar.repv.
      */
     for (i = 0; i < typ->var.scalar.repc; i++) {
-        RDB_expression *ex2p;
         int j;
 
         ret = RDB_array_get_tuple(&possreps, (RDB_int) i, &tpl);
@@ -1722,6 +1865,10 @@ get_cat_type(const char *name, RDB_transaction *txp, RDB_type **typp)
             goto error;
         typ->var.scalar.repv[i].name = RDB_dup_str(
                 RDB_tuple_get_string(&tpl, "POSSREPNAME"));
+        if (typ->var.scalar.repv[i].name == NULL) {
+            ret = RDB_NO_MEMORY;
+            goto error;
+        }
 
         ret = _RDB_deserialize_expr(RDB_tuple_get(&tpl, "I_CONSTRAINT"), txp,
                 &typ->var.scalar.repv[i].constraintp);
@@ -1729,42 +1876,9 @@ get_cat_type(const char *name, RDB_transaction *txp, RDB_type **typp)
             goto error;
         }
 
-        /* Create where condition for 3rd query */
-        exp = RDB_expr_attr("TYPENAME", &RDB_STRING);
-        if (exp == NULL) {
-            ret = RDB_NO_MEMORY;
-            goto error;
-        }
-        wherep = RDB_eq(exp, RDB_string_const(name));
-        if (wherep == NULL) {
-            RDB_drop_expr(exp);
-            ret = RDB_NO_MEMORY;
-            goto error;
-        }
-        exp = RDB_expr_attr("POSSREPNAME", &RDB_STRING);
-        if (exp == NULL) {
-            RDB_drop_expr(wherep);
-            ret = RDB_NO_MEMORY;
-            goto error;
-        }
-        ex2p = RDB_eq(exp, RDB_string_const(typ->var.scalar.repv[i].name));
-        if (ex2p == NULL) {
-            RDB_drop_expr(exp);
-            RDB_drop_expr(wherep);
-            ret = RDB_NO_MEMORY;
-            goto error;
-        }
-        exp = wherep;
-        wherep = RDB_and(exp, ex2p);
-        if (wherep == NULL) {
-            RDB_drop_expr(exp);
-            RDB_drop_expr(ex2p);
-            ret = RDB_NO_MEMORY;
-            goto error;
-        }
-        ret = RDB_select(txp->dbp->possrepcomps_tbp, wherep, &tmptb3p);
+        ret = possrepcomps_query(name, typ->var.scalar.repv[i].name, txp,
+                &tmptb3p);
         if (ret != RDB_OK) {
-            RDB_drop_expr(wherep);
             goto error;
         }
         ret = RDB_table_to_array(tmptb3p, &comps, 0, NULL, txp);
@@ -1777,7 +1891,7 @@ get_cat_type(const char *name, RDB_transaction *txp, RDB_type **typp)
         }
         typ->var.scalar.repv[i].compc = ret;
         if (ret > 0)
-            typ->var.scalar.repv[i].compv = malloc(ret * sizeof (RDB_attr));
+            typ->var.scalar.repv[i].compv = malloc(ret * sizeof (RDB_icomp));
         else
             typ->var.scalar.repv[i].compv = NULL;
 
@@ -1802,9 +1916,38 @@ get_cat_type(const char *name, RDB_transaction *txp, RDB_type **typp)
                     txp, &typ->var.scalar.repv[i].compv[idx].type);
             if (ret != RDB_OK)
                 goto error;
+            
+            if (typ->var.scalar.modhdl == NULL) {
+                typ->var.scalar.repv[i].compv[idx].getterp = NULL;
+                typ->var.scalar.repv[i].compv[idx].setterp = NULL;
+            } else {
+                typ->var.scalar.repv[i].compv[idx].getterp = get_getter(
+                        typ->var.scalar.modhdl,
+                        typ->var.scalar.repv[i].compv[idx].name);
+                typ->var.scalar.repv[i].compv[idx].setterp = get_setter(
+                        typ->var.scalar.modhdl,
+                        typ->var.scalar.repv[i].compv[idx].name);
+                if (typ->var.scalar.repv[i].compv[idx].getterp == NULL
+                        || typ->var.scalar.repv[i].compv[idx].setterp == NULL) {
+                    ret = RDB_RESOURCE_NOT_FOUND;
+                    RDB_rollback(txp);
+                    goto error;
+                }
+            }
+        }
+        if (typ->var.scalar.modhdl == NULL) {
+            typ->var.scalar.repv[i].selectorp = NULL;
+        } else {
+            typ->var.scalar.repv[i].selectorp = get_selector(
+                        typ->var.scalar.modhdl,
+                        typ->var.scalar.repv[i].name);
+            if (typ->var.scalar.repv[i].selectorp == NULL) {
+                ret = RDB_RESOURCE_NOT_FOUND;
+                RDB_rollback(txp);
+                goto error;
+            }
         }
     }
-    typ->kind = typ->var.scalar.repv[0].compv[0].type->kind;
 
     *typp = typ;
 
@@ -1812,10 +1955,17 @@ get_cat_type(const char *name, RDB_transaction *txp, RDB_type **typp)
     tret = RDB_drop_table(tmptb2p, txp);
     if (ret == RDB_OK)
         ret = tret;
+    tret = RDB_drop_table(tmptb3p, txp);
+    if (ret == RDB_OK)
+        ret = tret;
 
     RDB_destroy_tuple(&tpl);
-    RDB_destroy_array(&possreps);
-    RDB_destroy_array(&comps);
+    tret = RDB_destroy_array(&possreps);
+    if (ret == RDB_OK)
+        ret = tret;
+    tret = RDB_destroy_array(&comps);
+    if (ret == RDB_OK)
+        ret = tret;
 
     return ret;
 error:
@@ -1878,20 +2028,15 @@ RDB_get_type(const char *name, RDB_transaction *txp, RDB_type **typp)
 
 int
 RDB_define_type(const char *name, int repc, RDB_possrep repv[],
-                RDB_transaction *txp, RDB_type **resultpp)
+                RDB_transaction *txp)
 {
-    RDB_transaction tx;
     RDB_tuple tpl;
     RDB_value conval;
     int ret;
     int i, j;
 
-    if (repc != 1)
-        return RDB_INVALID_ARGUMENT;
-
-    ret = RDB_begin_tx(&tx, RDB_tx_db(txp), txp);
-    if (ret != RDB_OK)
-        return ret;
+    if (!RDB_tx_is_running(txp))
+        return RDB_INVALID_TRANSACTION;
 
     RDB_init_tuple(&tpl);
     RDB_init_value(&conval);
@@ -1910,7 +2055,7 @@ RDB_define_type(const char *name, int repc, RDB_possrep repv[],
     if (ret != RDB_OK)
         goto error;
 
-    ret = RDB_insert(txp->dbp->types_tbp, &tpl, &tx);
+    ret = RDB_insert(txp->dbp->types_tbp, &tpl, txp);
     if (ret != RDB_OK)
         goto error;
 
@@ -1921,11 +2066,6 @@ RDB_define_type(const char *name, int repc, RDB_possrep repv[],
     for (i = 0; i < repc; i++) {
         char *prname = repv[i].name;
         RDB_expression *exp = repv[i].constraintp;
-
-        if (repv[i].compc != 1) {
-            ret = RDB_INVALID_ARGUMENT;
-            goto error;
-        }
 
         if (prname == NULL) {
             /* possrep name may be NULL if there's only 1 possrep */
@@ -1962,7 +2102,7 @@ RDB_define_type(const char *name, int repc, RDB_possrep repv[],
             goto error;
 
         /* Store tuple */
-        ret = RDB_insert(txp->dbp->possreps_tbp, &tpl, &tx);
+        ret = RDB_insert(txp->dbp->possreps_tbp, &tpl, txp);
         if (ret != RDB_OK)
             goto error;
 
@@ -1987,7 +2127,7 @@ RDB_define_type(const char *name, int repc, RDB_possrep repv[],
             if (ret != RDB_OK)
                 goto error;
 
-            ret = RDB_insert(txp->dbp->possrepcomps_tbp, &tpl, &tx);
+            ret = RDB_insert(txp->dbp->possrepcomps_tbp, &tpl, txp);
             if (ret != RDB_OK)
                 goto error;
         }
@@ -1996,46 +2136,107 @@ RDB_define_type(const char *name, int repc, RDB_possrep repv[],
     RDB_destroy_value(&conval);    
     RDB_destroy_tuple(&tpl);
     
-    return RDB_commit(&tx);
+    return RDB_OK;
     
 error:
     RDB_destroy_value(&conval);    
     RDB_destroy_tuple(&tpl);
-    RDB_rollback(&tx);
 
     return ret;
 }
 
 int
-RDB_implement_type(const char *name, const char *module, int options,
+RDB_implement_type(const char *name, const char *modname, int options,
                    RDB_transaction *txp)
 {
     RDB_expression *exp, *wherep;
-    RDB_attr_update upd;
+    RDB_attr_update upd[2];
     int ret;
+
+    if (!RDB_tx_is_running(txp))
+        return RDB_INVALID_TRANSACTION;
+
+    if (modname != NULL) {
+        if (options < RDB_IREP_BOOLEAN || options > RDB_IREP_TABLE)
+            return RDB_INVALID_ARGUMENT;
+        if (options == RDB_IREP_TUPLE || options == RDB_IREP_TABLE)
+            return RDB_NOT_SUPPORTED;
+    } else {
+        RDB_table *tmptb1p;
+        RDB_table *tmptb2p;
+        RDB_tuple tpl;
+        char *possrepname;
+        RDB_type *comptyp;
+
+        if (options != 0)
+            return RDB_INVALID_ARGUMENT;
+
+        /* # of possreps must be 1 */
+        ret = possreps_query(name, txp, &tmptb1p);
+        if (ret != RDB_OK)
+            return ret;
+        RDB_init_tuple(&tpl);
+        ret = RDB_extract_tuple(tmptb1p, &tpl, txp);
+        RDB_drop_table(tmptb1p, txp);
+        if (ret != RDB_OK) {
+            RDB_destroy_tuple(&tpl);
+            return ret;
+        }
+        possrepname = RDB_tuple_get_string(&tpl, "POSSREPNAME");
+
+        /* only 1 possrep component currently supported */
+        ret = possrepcomps_query(name, possrepname, txp, &tmptb2p);
+        if (ret != RDB_OK) {
+            RDB_destroy_tuple(&tpl);
+            return ret;
+        }
+        ret = RDB_extract_tuple(tmptb2p, &tpl, txp);
+        RDB_drop_table(tmptb2p, txp);
+        if (ret != RDB_OK) {
+            RDB_destroy_tuple(&tpl);
+            return ret == RDB_INVALID_ARGUMENT ? RDB_NOT_SUPPORTED : ret;
+        }
+        ret = RDB_get_type(RDB_tuple_get_string(&tpl, "COMPTYPENAME"), txp, &comptyp);
+        RDB_destroy_tuple(&tpl);
+        if (ret != RDB_OK) {
+            return ret;
+        }
+        options = comptyp->irep;
+        modname = "";
+    }
 
     exp = RDB_expr_attr("TYPENAME", &RDB_STRING);
     if (exp == NULL) {
         return RDB_NO_MEMORY;
     }
     wherep = RDB_eq(exp, RDB_string_const(name));
-    if (exp == NULL) {
+    if (wherep == NULL) {
         RDB_drop_expr(exp);
         return RDB_NO_MEMORY;
     }    
 
-    upd.name = "I_IMPLINFO";
-    upd.exp = RDB_int_const(0);
-    if (upd.exp == NULL) {
+    upd[0].exp = upd[1].exp = NULL;
+
+    upd[0].name = "I_IMPLINFO";
+    upd[0].exp = RDB_int_const((RDB_int) options);
+    if (upd[0].exp == NULL) {
         ret = RDB_NO_MEMORY;
-        goto error;
+        goto cleanup;
+    }
+    upd[1].name = "I_MODNAME";
+    upd[1].exp = RDB_string_const(modname);
+    if (upd[1].exp == NULL) {
+        ret = RDB_NO_MEMORY;
+        goto cleanup;
     }
 
-    ret = RDB_update(txp->dbp->types_tbp, wherep, 1, &upd, txp);
+    ret = RDB_update(txp->dbp->types_tbp, wherep, 2, upd, txp);
 
-error:
-    if (upd.exp != NULL)
-        RDB_drop_expr(upd.exp);  
+cleanup:
+    if (upd[0].exp != NULL)
+        RDB_drop_expr(upd[0].exp);
+    if (upd[1].exp != NULL)
+        RDB_drop_expr(upd[1].exp);
     RDB_drop_expr(wherep);
 
     return ret;
