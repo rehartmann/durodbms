@@ -9,6 +9,8 @@ exec tclsh "$0"
 
 load .libs/libdurotcl.so
 
+source tests/testutil.tcl
+
 # Create DB environment
 file delete -force tests/dbenv
 file mkdir tests/dbenv
@@ -58,14 +60,17 @@ duro::insert T3 {A 2 B 2 C 3} $tx
 
 duro::insert T4 {A 1 B 3 C 3} $tx
 
-duro::expr {TUPLE FROM (T1 WHERE A=1 AND B=1)} $tx
+set tpl [duro::expr {TUPLE FROM (T1 WHERE A=1 AND B=1)} $tx]
+set stpl {A 1 B 1}
+if {![tequal $tpl $stpl]} {
+    error "Tuple should be $stpl, but is $tpl"
+}
 
 duro::table expr t {T1 WHERE A=1 AND B=0} $tx
 set a [duro::array create t $tx]
 set len [duro::array length $a]
 if {$len != 0} {
-    puts "$len tuples selected, should be 0"
-    exit 1
+    error "$len tuples selected, should be 0"
 }
 duro::array drop $a
 duro::table drop t $tx
@@ -79,31 +84,33 @@ duro::table expr t3 {t2 WHERE B=2} $tx
 set tpl [duro::expr {TUPLE FROM t3} $tx]
 array set ta $tpl
 if {$ta(A) != 1 || $ta(B) != 2 || $ta(C) != 3} {
-    puts "Invalid value for TUPLE FROM t3: $tpl"
-    exit 1
+    error "Invalid value for TUPLE FROM t3: $tpl"
 }
 
 set tpl [duro::expr {TUPLE FROM ((((T2 WHERE A=1) INTERSECT T4) UNION T3)
         WHERE B=2)} $tx]
 array set ta $tpl
 if {$ta(A) != 2 || $ta(B) != 2 || $ta(C) != 3} {
-    puts "Invalid tuple value: $tpl"
-    exit 1
+    error "Invalid tuple value: $tpl"
 }
 
 set tpl [duro::expr {TUPLE FROM (T2 RENAME (A AS AA)) WHERE B=2 AND AA=1} $tx]
 array set ta $tpl
 if {$ta(AA) != 1 || $ta(B) != 2 || $ta(C) != 3} {
-    puts "Invalid tuple value: $tpl"
-    exit 1
+    error "Invalid tuple value: $tpl"
 }
 
 set tpl [duro::expr {TUPLE FROM (EXTEND T2 ADD (A AS AA)) WHERE B=2 AND AA=1} \
         $tx]
 array set ta $tpl
 if {$ta(A) != 1 || $ta(B) != 2 || $ta(C) != 3 || $ta(AA) != 1} {
-    puts "Invalid tuple value: $tpl"
-    exit 1
+    error "Invalid tuple value: $tpl"
+}
+
+set tpl [duro::expr {TUPLE FROM (T2 WHERE NOT(A<>1 OR B<>2))} $tx]
+set stpl {A 1 B 2 C 3}
+if {![tequal $tpl $stpl]} {
+    error "Tuple should be $stpl, but is $tpl"
 }
 
 duro::table drop t3 $tx
