@@ -29,15 +29,13 @@ if {![catch {
        {A INTEGER}
    } {{A}} $tx
 }]} {
-   puts "Creation of table \"T 1\" should fail, but succeeded"
-   exit 1
+   error "Creation of table \"T 1\" should fail, but succeeded"
 }
 
 if {![catch {
     duro::table drop "T 1" $tx
 }]} {
-    puts "Table \"T 1\" should not exist, but does"
-    exit 1
+    error "Table \"T 1\" should not exist, but does"
 }
 
 if {![catch {
@@ -46,15 +44,13 @@ if {![catch {
         {A STRING}
     } {{A}} $tx
 }]} {
-    puts "Creation of table T1 should fail, but succeeded"
-    exit 1
+    error "Creation of table T1 should fail, but succeeded"
 }
 
 if {![catch {
     duro::table drop T1 $tx
 }]} {
-    puts "Table T1 should not exist, but does"
-    exit 1
+    error "Table T1 should not exist, but does"
 }
 
 if {![catch {
@@ -63,15 +59,13 @@ if {![catch {
        {A2 STRING}
     } {{A1 A1}} $tx
 }]} {
-    puts "Creation of table T2 should fail, but succeeded"
-    exit 1
+    error "Creation of table T2 should fail, but succeeded"
 }
 
 if {![catch {
     duro::table drop T2 $tx
 }]} {
-    puts "Table T2 should not exist, but does"
-    exit 1
+    error "Table T2 should not exist, but does"
 }
 
 if {![catch {
@@ -80,15 +74,13 @@ if {![catch {
        {A2 STRING}
     } {{A1} {A1 A2}} $tx
 }]} {
-    puts "Creation of table T3 should fail, but succeeded"
-    exit 1
+    error "Creation of table T3 should fail, but succeeded"
 }
 
 if {![catch {
     duro::table drop T3 $tx
 }]} {
-    puts "Table T3 should not exist, but does"
-    exit 1
+    error "Table T3 should not exist, but does"
 }
 
 duro::table create T {{A INTEGER}} {{A}} $tx
@@ -96,8 +88,7 @@ duro::table create T {{A INTEGER}} {{A}} $tx
 if {![catch {
     duro::table expr X {EXTEND T ADD (C AS B)} $tx
 }]} {
-    puts "Creation of table X should fail, but succeeded"
-    exit 1
+    error "Creation of table X should fail, but succeeded"
 }
 
 duro::rollback $tx

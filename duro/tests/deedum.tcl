@@ -23,15 +23,13 @@ set tx [duro::begin $dbenv TEST]
 duro::table expr tdee TABLE_DEE $tx
 
 if {[duro::expr {TUPLE FROM tdee} $tx] != ""} {
-    puts "Incorrect TABLE_DEE value"
-    exit 2
+    error "Incorrect TABLE_DEE value"
 }
 
 duro::table expr tdum TABLE_DUM $tx
 
 if {[duro::expr COUNT(tdum) $tx] != 0} {
-    puts "TABLE_DUM is not empty"
-    exit 2
+    error "TABLE_DUM is not empty"
 }
 
 duro::commit $tx

@@ -8,7 +8,6 @@ exec tclsh "$0"
 #
 
 load .libs/libdurotcl.so
-
 source tests/testutil.tcl
 
 # Create DB environment

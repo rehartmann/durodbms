@@ -51,20 +51,17 @@ set tx [duro::begin $dbenv TEST]
 if {![catch {
     duro::table contains P1 {} $tx
 }]} {
-    puts "P1 contains empty tuple, but should not"
-    exit 1
+    error "P1 contains empty tuple, but should not"
 }
 
 set tpl {A 1 C c}
 if {![duro::table contains P1 $tpl $tx]} {
-    puts "P1 does not contain $tpl, but should"
-    exit 1
+    error "P1 does not contain $tpl, but should"
 }
 
 set tpl {A 1 C d}
 if {[duro::table contains P1 $tpl $tx]} {
-    puts "P1 contains $tpl, but should not"
-    exit 1
+    error "P1 contains $tpl, but should not"
 }
 
 # Insert tuple into virtual table

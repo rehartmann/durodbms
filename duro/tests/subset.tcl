@@ -52,13 +52,11 @@ duro::insert T3 {INTATTR 1 STRATTR B} $tx
 #
 
 if {![duro::expr {T2 SUBSET T1} $tx]} {
-    puts "T2 is not subset of T1, but should"
-    exit 1
+    error "T2 is not subset of T1, but should"
 }
 
 if {[duro::expr {T3 SUBSET T1} $tx]} {
-    puts "T3 is subset of T1, but should not"
-    exit 1
+    error "T3 is subset of T1, but should not"
 }
 
 duro::commit $tx

@@ -4,6 +4,8 @@ Summary of Changes for Duro
 
 Changes for Duro 0.9
 
+- Added dump utility durodump.tcl.
+
 - Added B-tree indexes.
 
 - RDB_set_table_name() now works for global tables.

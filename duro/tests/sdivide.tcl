@@ -95,20 +95,17 @@ duro::array drop $a
 
 set r [duro::table contains DIV {SNO S1} $tx]
 if {!$r} {
-    puts "Result of DIVIDE does not contain {SNO S1}, but should"
-    exit 1
+    error "Result of DIVIDE does not contain {SNO S1}, but should"
 }
 
 set r [duro::table contains DIV {SNO S2} $tx]
 if {$r} {
-    puts "Result of DIVIDE contains {SNO S2}, but should not"
-    exit 1
+    error "Result of DIVIDE contains {SNO S2}, but should not"
 }
 
 set r [duro::table contains DIV {SNO S22} $tx]
 if {$r} {
-    puts "Result of DIVIDE contains {SNO S22}, but should not"
-    exit 1
+    error "Result of DIVIDE contains {SNO S22}, but should not"
 }
 
 # Drop tables

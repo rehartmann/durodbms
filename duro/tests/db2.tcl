@@ -44,8 +44,7 @@ set tx [duro::begin $dbenv TEST1]
 
 duro::table expr T {(SYS_DBTABLES WHERE TABLENAME="T1") {DBNAME}} $tx
 if {![duro::table contains T {DBNAME TEST2} $tx]} {
-    puts "Table T1 should be in database TEST2, but is not"
-    exit 1
+    error "Table T1 should be in database TEST2, but is not"
 }
 duro::table drop T $tx
 
