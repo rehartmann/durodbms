@@ -289,7 +289,7 @@ next_project_tuple(RDB_qresult *itp, RDB_tuple *tup)
         /* Get tuple */
         res = _RDB_next_tuple(itp->var.virtual.itp, &tpl);
         if (res != RDB_OK) {
-            RDB_deinit_tuple(&tpl);
+            RDB_destroy_tuple(&tpl);
             return res;
         }
             
@@ -437,7 +437,7 @@ _RDB_drop_qresult(RDB_qresult *itp)
         if (itp->tablep->kind == RDB_TB_JOIN) {
             res = _RDB_drop_qresult(itp->var.virtual.nestedp);
             if (itp->var.virtual.tpl_valid)
-                RDB_deinit_tuple(&itp->var.virtual.tpl);
+                RDB_destroy_tuple(&itp->var.virtual.tpl);
         }
     }
 

@@ -239,7 +239,7 @@ error:
         free(tbp->keyv);
         if (tbp->typ != NULL) {
             RDB_drop_type(tbp->typ);
-            RDB_deinit_hashmap(&tbp->var.stored.attrmap);
+            RDB_destroy_hashmap(&tbp->var.stored.attrmap);
         }
         free(tbp);
     }
@@ -266,22 +266,22 @@ dbtables_insert(RDB_table *tbp, RDB_transaction *txp)
     res = RDB_tuple_set_string(&tpl, "TABLENAME", tbp->name);
     if (res != RDB_OK)
     {
-        RDB_deinit_tuple(&tpl);
+        RDB_destroy_tuple(&tpl);
         return res;
     }
     res = RDB_tuple_set_string(&tpl, "DBNAME", txp->dbp->name);
     if (res != RDB_OK)
     {
-        RDB_deinit_tuple(&tpl);
+        RDB_destroy_tuple(&tpl);
         return res;
     }
     res = RDB_insert(txp->dbp->dbtables_tbp, &tpl, txp);
     if (res != RDB_OK)
     {
-        RDB_deinit_tuple(&tpl);
+        RDB_destroy_tuple(&tpl);
         return res;
     }
-    RDB_deinit_tuple(&tpl);
+    RDB_destroy_tuple(&tpl);
     
     return RDB_OK;
 }
@@ -303,21 +303,21 @@ catalog_insert(RDB_table *tbp, RDB_transaction *txp)
     RDB_init_tuple(&tpl);
     res = RDB_tuple_set_string(&tpl, "TABLENAME", tbp->name);
     if (res != RDB_OK) {
-        RDB_deinit_tuple(&tpl);
+        RDB_destroy_tuple(&tpl);
         return res;
     }
     res = RDB_tuple_set_bool(&tpl, "IS_USER", tbp->is_user);
     if (res != RDB_OK) {
-        RDB_deinit_tuple(&tpl);
+        RDB_destroy_tuple(&tpl);
         return res;
     }
     res = RDB_tuple_set_string(&tpl, "I_RECMAP", tbp->name);
     if (res != RDB_OK) {
-        RDB_deinit_tuple(&tpl);
+        RDB_destroy_tuple(&tpl);
         return res;
     }
     res = RDB_insert(txp->dbp->rtables_tbp, &tpl, txp);
-    RDB_deinit_tuple(&tpl);
+    RDB_destroy_tuple(&tpl);
     if (res != RDB_OK)
         return res;
 
@@ -325,7 +325,7 @@ catalog_insert(RDB_table *tbp, RDB_transaction *txp)
     RDB_init_tuple(&tpl);
     res = RDB_tuple_set_string(&tpl, "TABLENAME", tbp->name);
     if (res != RDB_OK) {
-        RDB_deinit_tuple(&tpl);
+        RDB_destroy_tuple(&tpl);
         return res;
     }
 
@@ -335,26 +335,26 @@ catalog_insert(RDB_table *tbp, RDB_transaction *txp)
 
         res = RDB_tuple_set_string(&tpl, "ATTRNAME", attrname);
         if (res != RDB_OK) {
-            RDB_deinit_tuple(&tpl);
+            RDB_destroy_tuple(&tpl);
             return res;
         }
         res = RDB_tuple_set_string(&tpl, "TYPE", typename);
         if (res != RDB_OK) {
-            RDB_deinit_tuple(&tpl);
+            RDB_destroy_tuple(&tpl);
             return res;
         }
         res = RDB_tuple_set_int(&tpl, "I_FNO", i);
         if (res != RDB_OK) {
-            RDB_deinit_tuple(&tpl);
+            RDB_destroy_tuple(&tpl);
             return res;
         }
         res = RDB_insert(txp->dbp->table_attr_tbp, &tpl, txp);
         if (res != RDB_OK) {
-            RDB_deinit_tuple(&tpl);
+            RDB_destroy_tuple(&tpl);
             return res;
         }
     }
-    RDB_deinit_tuple(&tpl);
+    RDB_destroy_tuple(&tpl);
 
     /* insert keys into SYSKEYS */
     RDB_init_tuple(&tpl);
@@ -387,7 +387,7 @@ catalog_insert(RDB_table *tbp, RDB_transaction *txp)
         if (res != RDB_OK)
             return res;
     }
-    RDB_deinit_tuple(&tpl);
+    RDB_destroy_tuple(&tpl);
 
     return RDB_OK;
 }
@@ -397,25 +397,25 @@ catalog_insert(RDB_table *tbp, RDB_transaction *txp)
  */
 
 static RDB_attr table_attr_attrs[] = {
-            { "ATTRNAME", &RDB_STRING },
-            { "TABLENAME", &RDB_STRING },
-            { "TYPE", &RDB_STRING },
-            { "I_FNO", &RDB_INTEGER } };
+            { "ATTRNAME", &RDB_STRING, NULL, 0 },
+            { "TABLENAME", &RDB_STRING, NULL, 0 },
+            { "TYPE", &RDB_STRING, NULL, 0 },
+            { "I_FNO", &RDB_INTEGER, NULL, 0 } };
 static char *table_attr_keyattrs[] = { "ATTRNAME", "TABLENAME" };
 static RDB_key_attrs table_attr_key[] = { { table_attr_keyattrs, 2 } };
 
 static RDB_attr rtables_attrs[] = {
-    { "TABLENAME", &RDB_STRING },
-    { "IS_USER", &RDB_BOOLEAN },
-    { "I_RECMAP", &RDB_STRING }
+    { "TABLENAME", &RDB_STRING, NULL, 0 },
+    { "IS_USER", &RDB_BOOLEAN, NULL, 0 },
+    { "I_RECMAP", &RDB_STRING, NULL, 0 }
 };
 static char *rtables_keyattrs[] = { "TABLENAME" };
 static RDB_key_attrs rtables_key[] = { { rtables_keyattrs, 1 } };
 
 static RDB_attr vtables_attrs[] = {
-    { "TABLENAME", &RDB_STRING },
-    { "IS_USER", &RDB_BOOLEAN },
-    { "I_DEF", &RDB_BINARY }
+    { "TABLENAME", &RDB_STRING, NULL, 0 },
+    { "IS_USER", &RDB_BOOLEAN, NULL, 0 },
+    { "I_DEF", &RDB_BINARY, NULL, 0 }
 };
 static char *vtables_keyattrs[] = { "TABLENAME" };
 static RDB_key_attrs vtables_key[] = { { vtables_keyattrs, 1 } };
@@ -428,9 +428,9 @@ static char *dbtables_keyattrs[] = { "TABLENAME", "DBNAME" };
 static RDB_key_attrs dbtables_key[] = { { dbtables_keyattrs, 2 } };
 
 static RDB_attr keys_attrs[] = {
-    { "TABLENAME", &RDB_STRING },
-    { "KEYNO", &RDB_INTEGER },
-    { "ATTRS", &RDB_STRING }
+    { "TABLENAME", &RDB_STRING, NULL, 0 },
+    { "KEYNO", &RDB_INTEGER, NULL, 0 },
+    { "ATTRS", &RDB_STRING, NULL, 0 }
 };
 static char *keys_keyattrs[] = { "TABLENAME", "KEYNO" };
 static RDB_key_attrs keys_key[] = { { keys_keyattrs, 2 } };
@@ -560,7 +560,7 @@ error:
 
 static void
 free_db(RDB_database *dbp) {
-    RDB_deinit_hashmap(&dbp->tbmap);
+    RDB_destroy_hashmap(&dbp->tbmap);
     free(dbp->name);
     free(dbp);
 }
@@ -703,10 +703,10 @@ RDB_get_db(const char *name, RDB_environment *envp, RDB_database **dbpp)
 
     res = RDB_table_contains(dbp->dbtables_tbp, &tpl, &tx);
     if (res != RDB_OK) {
-        RDB_deinit_tuple(&tpl);
+        RDB_destroy_tuple(&tpl);
         goto error;
     }
-    RDB_deinit_tuple(&tpl);
+    RDB_destroy_tuple(&tpl);
     
     res = RDB_commit(&tx);
     if (res != RDB_OK)
@@ -722,7 +722,7 @@ RDB_get_db(const char *name, RDB_environment *envp, RDB_database **dbpp)
 
 error:
     RDB_rollback(&tx);
-    RDB_deinit_hashmap(&dbp->tbmap);
+    RDB_destroy_hashmap(&dbp->tbmap);
     free(dbp->name);
     free(dbp);
     return res;
@@ -750,7 +750,7 @@ free_table(RDB_table *tbp, RDB_environment *envp)
 
     if (tbp->kind == RDB_TB_STORED) {
         RDB_drop_type(tbp->typ);
-        RDB_deinit_hashmap(&tbp->var.stored.attrmap);
+        RDB_destroy_hashmap(&tbp->var.stored.attrmap);
     }
 
     /* Delete candidate keys */
@@ -1076,19 +1076,19 @@ get_keys(const char *name, RDB_transaction *txp,
     
         res = RDB_array_get_tuple(&arr, i, &tpl);
         if (res != RDB_OK) {
-            RDB_deinit_tuple(&tpl);
+            RDB_destroy_tuple(&tpl);
             goto error;
         }
         kno = RDB_tuple_get_int(&tpl, "KEYNO");
         res = get_keyattrs(RDB_tuple_get_string(&tpl, "ATTRS"), &(*keyvp)[kno]);
         if (res != RDB_OK) {
             (*keyvp)[kno].attrv = NULL;
-            RDB_deinit_tuple(&tpl);
+            RDB_destroy_tuple(&tpl);
             goto error;
         }
     }
-    RDB_deinit_tuple(&tpl);
-    RDB_deinit_array(&arr);
+    RDB_destroy_tuple(&tpl);
+    RDB_destroy_array(&arr);
     RDB_drop_table(vtbp, txp);
 
     return RDB_OK;
@@ -1105,7 +1105,7 @@ error:
         }
         free(*keyvp);
     }
-    RDB_deinit_array(&arr);
+    RDB_destroy_array(&arr);
     return res;
 }
 
@@ -1131,7 +1131,7 @@ get_cat_rtable(RDB_database *dbp, const char *name, RDB_table **tbpp)
 
     res = RDB_begin_tx(&tx, dbp, NULL);
     if (res != RDB_OK) {
-        RDB_deinit_array(&arr);
+        RDB_destroy_array(&arr);
         return res;
     }
 
@@ -1182,19 +1182,18 @@ get_cat_rtable(RDB_database *dbp, const char *name, RDB_table **tbpp)
 
     for (i = 0; i < attrc; i++) {
         RDB_type *attrtyp;
-        RDB_int val;
-        
+        RDB_int fno;
+
         RDB_array_get_tuple(&arr, i, &tpl);
-        val = RDB_tuple_get_int(&tpl, "I_FNO");
-        attrv[RDB_tuple_get_int(&tpl, "I_FNO")].name =
-                RDB_dup_str(RDB_tuple_get_string(&tpl, "ATTRNAME"));
+        fno = RDB_tuple_get_int(&tpl, "I_FNO");
+        attrv[fno].name = RDB_dup_str(RDB_tuple_get_string(&tpl, "ATTRNAME"));
         res = RDB_get_type(dbp, RDB_tuple_get_string(&tpl, "TYPE"),
                            &attrtyp);
         if (res != RDB_OK)
             goto error;
-        attrv[RDB_tuple_get_int(&tpl, "I_FNO")].type = attrtyp;
+        attrv[fno].type = attrtyp;
     }
-    RDB_deinit_tuple(&tpl);
+    RDB_destroy_tuple(&tpl);
 
     /* Open the table */
 
@@ -1215,7 +1214,7 @@ get_cat_rtable(RDB_database *dbp, const char *name, RDB_table **tbpp)
 
     assign_table_db(*tbpp, dbp);
 
-    RDB_deinit_array(&arr);
+    RDB_destroy_array(&arr);
 
     return RDB_commit(&tx);
 error:
@@ -1225,7 +1224,7 @@ error:
         free(attrv);
     }
 
-    RDB_deinit_array(&arr);
+    RDB_destroy_array(&arr);
     
     RDB_rollback(&tx);
     return res;
@@ -1250,7 +1249,7 @@ get_cat_vtable(RDB_database *dbp, const char *name, RDB_table **tbpp)
 
     res = RDB_begin_tx(&tx, dbp, NULL);
     if (res != RDB_OK) {
-        RDB_deinit_array(&arr);
+        RDB_destroy_array(&arr);
         return res;
     }
 
@@ -1286,7 +1285,7 @@ get_cat_vtable(RDB_database *dbp, const char *name, RDB_table **tbpp)
     if (res != RDB_OK)
         goto error;
     
-    RDB_deinit_array(&arr);
+    RDB_destroy_array(&arr);
 
     (*tbpp)->is_persistent = RDB_TRUE;
     (*tbpp)->name = RDB_dup_str(name);
@@ -1294,7 +1293,7 @@ get_cat_vtable(RDB_database *dbp, const char *name, RDB_table **tbpp)
     RDB_commit(&tx);
     return RDB_OK;
 error:
-    RDB_deinit_array(&arr);
+    RDB_destroy_array(&arr);
     
     RDB_rollback(&tx);
     return res;
@@ -1428,7 +1427,7 @@ _RDB_drop_table(RDB_table *tbp, RDB_transaction *txp, RDB_bool rec)
             break;
         }
         case RDB_TB_SELECT_PINDEX:
-            RDB_deinit_value(&tbp->var.select.val);
+            RDB_destroy_value(&tbp->var.select.val);
         case RDB_TB_SELECT:
             RDB_drop_expr(tbp->var.select.exprp);
             if (rec) {
@@ -1554,11 +1553,11 @@ RDB_make_persistent(RDB_table *tbp, RDB_transaction *txp)
     if (res != RDB_OK)
         goto error;
 
-    RDB_deinit_tuple(&tpl);
+    RDB_destroy_tuple(&tpl);
 
     return RDB_OK;
 error:
-    RDB_deinit_tuple(&tpl);
+    RDB_destroy_tuple(&tpl);
     return res;
 }
 

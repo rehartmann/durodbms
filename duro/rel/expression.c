@@ -1,20 +1,20 @@
 /* $Id$ */
 
 #include "rdb.h"
+#include "internal.h"
 #include <gen/strfns.h>
 #include <string.h>
-#include "internal.h"
 
 RDB_bool
 RDB_expr_is_const(const RDB_expression *exprp)
 {
-    return (exprp->kind == RDB_CONST);
+    return exprp->kind == RDB_CONST;
 }
 
 RDB_type *
 RDB_expr_type(const RDB_expression *exprp)
 {
-    switch(exprp->kind) {
+    switch (exprp->kind) {
         case RDB_CONST:
             return exprp->var.const_val.typ;
         case RDB_ATTR:
@@ -144,7 +144,7 @@ RDB_dup_expr(const RDB_expression *exprp)
         return NULL;   
     newexprp->kind = exprp->kind;
 
-    switch(exprp->kind) {
+    switch (exprp->kind) {
         case RDB_CONST:
             RDB_init_value(&newexprp->var.const_val);
             res = RDB_copy_value(&newexprp->var.const_val, &exprp->var.const_val);
@@ -358,7 +358,7 @@ RDB_drop_expr(RDB_expression *exprp)
             RDB_drop_expr(exprp->var.op.arg1);
             break;
         case RDB_CONST:
-            RDB_deinit_value(&exprp->var.const_val);
+            RDB_destroy_value(&exprp->var.const_val);
             break;
         default: ;
     }
@@ -385,6 +385,70 @@ evaluate_string(RDB_expression *exprp, const RDB_tuple *tup,
     return RDB_OK;
 }
 
+static int
+evaluate_int(RDB_expression *exprp, const RDB_tuple *tup,
+                 RDB_transaction *txp, RDB_int *resp)
+{
+    switch (exprp->kind) {
+        case RDB_CONST:
+            *resp = exprp->var.const_val.var.int_val;
+            break;
+        case RDB_ATTR:
+            *resp = RDB_tuple_get_int(tup, exprp->var.attr.name);
+            break;
+        case RDB_OP_ADD:
+        {
+            int err;
+            RDB_int v1, v2;
+
+            err = evaluate_int(exprp->var.op.arg1, tup, txp, &v1);
+            if (err != RDB_OK)
+                return err;
+
+            err = evaluate_int(exprp->var.op.arg2, tup, txp, &v2);
+            if (err != RDB_OK)
+                return err;
+
+            *resp = v1 + v2;
+            break;
+        }
+        default: ;
+    }
+    return RDB_OK;
+}
+
+static int
+evaluate_rational(RDB_expression *exprp, const RDB_tuple *tup,
+                 RDB_transaction *txp, RDB_rational *resp)
+{
+    switch (exprp->kind) {
+        case RDB_CONST:
+            *resp = exprp->var.const_val.var.rational_val;
+            break;
+        case RDB_ATTR:
+            *resp = RDB_tuple_get_rational(tup, exprp->var.attr.name);
+            break;
+        case RDB_OP_ADD:
+        {
+            int err;
+            RDB_rational v1, v2;
+
+            err = evaluate_rational(exprp->var.op.arg1, tup, txp, &v1);
+            if (err != RDB_OK)
+                return err;
+
+            err = evaluate_rational(exprp->var.op.arg2, tup, txp, &v2);
+            if (err != RDB_OK)
+                return err;
+
+            *resp = v1 + v2;
+            break;
+        }
+        default: ;
+    }
+    return RDB_OK;
+}
+
 int
 RDB_evaluate_bool(RDB_expression *exprp, const RDB_tuple *tup,
                   RDB_transaction *txp, RDB_bool *resp)
@@ -398,11 +462,11 @@ RDB_evaluate_bool(RDB_expression *exprp, const RDB_tuple *tup,
             if (typ == &RDB_INTEGER) {
                 int v1, v2;
                 
-                err = RDB_evaluate_int(exprp->var.op.arg1, tup, txp, &v1);
+                err = evaluate_int(exprp->var.op.arg1, tup, txp, &v1);
                 if (err != RDB_OK)
                     return err;
 
-                err = RDB_evaluate_int(exprp->var.op.arg2, tup, txp, &v2);
+                err = evaluate_int(exprp->var.op.arg2, tup, txp, &v2);
                 if (err != RDB_OK)
                     return err;
 
@@ -412,11 +476,11 @@ RDB_evaluate_bool(RDB_expression *exprp, const RDB_tuple *tup,
             if (typ == &RDB_RATIONAL) {
                 RDB_rational v1, v2;
                 
-                err = RDB_evaluate_rational(exprp->var.op.arg1, tup, txp, &v1);
+                err = evaluate_rational(exprp->var.op.arg1, tup, txp, &v1);
                 if (err != RDB_OK)
                     return err;
 
-                err = RDB_evaluate_rational(exprp->var.op.arg2, tup, txp, &v2);
+                err = evaluate_rational(exprp->var.op.arg2, tup, txp, &v2);
                 if (err != RDB_OK)
                     return err;
 
@@ -452,11 +516,11 @@ RDB_evaluate_bool(RDB_expression *exprp, const RDB_tuple *tup,
             if (typ == &RDB_INTEGER) {
                 int v1, v2;
                 
-                err = RDB_evaluate_int(exprp->var.op.arg1, tup, txp, &v1);
+                err = evaluate_int(exprp->var.op.arg1, tup, txp, &v1);
                 if (err != RDB_OK)
                     return err;
 
-                err = RDB_evaluate_int(exprp->var.op.arg2, tup, txp, &v2);
+                err = evaluate_int(exprp->var.op.arg2, tup, txp, &v2);
                 if (err != RDB_OK)
                     return err;
 
@@ -466,11 +530,11 @@ RDB_evaluate_bool(RDB_expression *exprp, const RDB_tuple *tup,
             if (typ == &RDB_RATIONAL) {
                 RDB_rational v1, v2;
                 
-                err = RDB_evaluate_rational(exprp->var.op.arg1, tup, txp, &v1);
+                err = evaluate_rational(exprp->var.op.arg1, tup, txp, &v1);
                 if (err != RDB_OK)
                     return err;
 
-                err = RDB_evaluate_rational(exprp->var.op.arg2, tup, txp, &v2);
+                err = evaluate_rational(exprp->var.op.arg2, tup, txp, &v2);
                 if (err != RDB_OK)
                     return err;
 
@@ -482,11 +546,11 @@ RDB_evaluate_bool(RDB_expression *exprp, const RDB_tuple *tup,
             if (typ == &RDB_INTEGER) {
                 int v1, v2;
                 
-                err = RDB_evaluate_int(exprp->var.op.arg1, tup, txp, &v1);
+                err = evaluate_int(exprp->var.op.arg1, tup, txp, &v1);
                 if (err != RDB_OK)
                     return err;
 
-                err = RDB_evaluate_int(exprp->var.op.arg2, tup, txp, &v2);
+                err = evaluate_int(exprp->var.op.arg2, tup, txp, &v2);
                 if (err != RDB_OK)
                     return err;
 
@@ -496,11 +560,11 @@ RDB_evaluate_bool(RDB_expression *exprp, const RDB_tuple *tup,
             if (typ == &RDB_RATIONAL) {
                 RDB_rational v1, v2;
                 
-                err = RDB_evaluate_rational(exprp->var.op.arg1, tup, txp, &v1);
+                err = evaluate_rational(exprp->var.op.arg1, tup, txp, &v1);
                 if (err != RDB_OK)
                     return err;
 
-                err = RDB_evaluate_rational(exprp->var.op.arg2, tup, txp, &v2);
+                err = evaluate_rational(exprp->var.op.arg2, tup, txp, &v2);
                 if (err != RDB_OK)
                     return err;
 
@@ -512,11 +576,11 @@ RDB_evaluate_bool(RDB_expression *exprp, const RDB_tuple *tup,
             if (typ == &RDB_INTEGER) {
                 int v1, v2;
                 
-                err = RDB_evaluate_int(exprp->var.op.arg1, tup, txp, &v1);
+                err = evaluate_int(exprp->var.op.arg1, tup, txp, &v1);
                 if (err != RDB_OK)
                     return err;
 
-                err = RDB_evaluate_int(exprp->var.op.arg2, tup, txp, &v2);
+                err = evaluate_int(exprp->var.op.arg2, tup, txp, &v2);
                 if (err != RDB_OK)
                     return err;
 
@@ -526,11 +590,11 @@ RDB_evaluate_bool(RDB_expression *exprp, const RDB_tuple *tup,
             if (typ == &RDB_RATIONAL) {
                 RDB_rational v1, v2;
                 
-                err = RDB_evaluate_rational(exprp->var.op.arg1, tup, txp, &v1);
+                err = evaluate_rational(exprp->var.op.arg1, tup, txp, &v1);
                 if (err != RDB_OK)
                     return err;
 
-                err = RDB_evaluate_rational(exprp->var.op.arg2, tup, txp, &v2);
+                err = evaluate_rational(exprp->var.op.arg2, tup, txp, &v2);
                 if (err != RDB_OK)
                     return err;
 
@@ -542,11 +606,11 @@ RDB_evaluate_bool(RDB_expression *exprp, const RDB_tuple *tup,
             if (typ == &RDB_INTEGER) {
                 int v1, v2;
                 
-                err = RDB_evaluate_int(exprp->var.op.arg1, tup, txp, &v1);
+                err = evaluate_int(exprp->var.op.arg1, tup, txp, &v1);
                 if (err != RDB_OK)
                     return err;
 
-                err = RDB_evaluate_int(exprp->var.op.arg2, tup, txp, &v2);
+                err = evaluate_int(exprp->var.op.arg2, tup, txp, &v2);
                 if (err != RDB_OK)
                     return err;
 
@@ -556,11 +620,11 @@ RDB_evaluate_bool(RDB_expression *exprp, const RDB_tuple *tup,
             if (typ == &RDB_RATIONAL) {
                 RDB_rational v1, v2;
                 
-                err = RDB_evaluate_rational(exprp->var.op.arg1, tup, txp, &v1);
+                err = evaluate_rational(exprp->var.op.arg1, tup, txp, &v1);
                 if (err != RDB_OK)
                     return err;
 
-                err = RDB_evaluate_rational(exprp->var.op.arg2, tup, txp, &v2);
+                err = evaluate_rational(exprp->var.op.arg2, tup, txp, &v2);
                 if (err != RDB_OK)
                     return err;
 
@@ -628,70 +692,6 @@ RDB_evaluate_bool(RDB_expression *exprp, const RDB_tuple *tup,
 }
 
 int
-RDB_evaluate_int(RDB_expression *exprp, const RDB_tuple *tup,
-                 RDB_transaction *txp, RDB_int *resp)
-{
-    switch (exprp->kind) {
-        case RDB_CONST:
-            *resp = exprp->var.const_val.var.int_val;
-            break;
-        case RDB_ATTR:
-            *resp = RDB_tuple_get_int(tup, exprp->var.attr.name);
-            break;
-        case RDB_OP_ADD:
-        {
-            int err;
-            RDB_int v1, v2;
-
-            err = RDB_evaluate_int(exprp->var.op.arg1, tup, txp, &v1);
-            if (err != RDB_OK)
-                return err;
-
-            err = RDB_evaluate_int(exprp->var.op.arg2, tup, txp, &v2);
-            if (err != RDB_OK)
-                return err;
-
-            *resp = v1 + v2;
-            break;
-        }
-        default: ;
-    }
-    return RDB_OK;
-}
-
-int
-RDB_evaluate_rational(RDB_expression *exprp, const RDB_tuple *tup,
-                 RDB_transaction *txp, RDB_rational *resp)
-{
-    switch (exprp->kind) {
-        case RDB_CONST:
-            *resp = exprp->var.const_val.var.rational_val;
-            break;
-        case RDB_ATTR:
-            *resp = RDB_tuple_get_rational(tup, exprp->var.attr.name);
-            break;
-        case RDB_OP_ADD:
-        {
-            int err;
-            RDB_rational v1, v2;
-
-            err = RDB_evaluate_rational(exprp->var.op.arg1, tup, txp, &v1);
-            if (err != RDB_OK)
-                return err;
-
-            err = RDB_evaluate_rational(exprp->var.op.arg2, tup, txp, &v2);
-            if (err != RDB_OK)
-                return err;
-
-            *resp = v1 + v2;
-            break;
-        }
-        default: ;
-    }
-    return RDB_OK;
-}
-
-int
 RDB_evaluate(RDB_expression *exprp, const RDB_tuple *tup, RDB_transaction *txp,
             RDB_value *valp)
 {
@@ -699,26 +699,27 @@ RDB_evaluate(RDB_expression *exprp, const RDB_tuple *tup, RDB_transaction *txp,
 
     if (typ != NULL) {
         valp->typ = typ;
-        switch(typ->kind) {   
+        switch (typ->kind) {   
             case RDB_TP_BOOLEAN:
                 return RDB_evaluate_bool(exprp, tup, txp, &valp->var.bool_val);
             case RDB_TP_INTEGER:
-                return RDB_evaluate_int(exprp, tup, txp, &valp->var.int_val);
+                return evaluate_int(exprp, tup, txp, &valp->var.int_val);
             case RDB_TP_RATIONAL:
-                return RDB_evaluate_rational(exprp, tup, txp, &valp->var.rational_val);
+                return evaluate_rational(exprp, tup, txp, &valp->var.rational_val);
             case RDB_TP_STRING:
-            {
-                char *str;
-                int err;
+                {
+                    char *str;
+                    int err;
                 
-                err = evaluate_string(exprp, tup, txp, &str);
-                if (err != RDB_OK)
-                    return err;
-                        
-                valp->var.bin.datap = str;
-                valp->var.bin.len = strlen(valp->var.bin.datap) + 1;
-                return RDB_OK;
-            }
+                    err = evaluate_string(exprp, tup, txp, &str);
+                    if (err != RDB_OK)
+                        return err;
+
+                    valp->var.bin.datap = str;
+                    valp->var.bin.len = strlen(valp->var.bin.datap) + 1;
+
+                    return RDB_OK;
+                }
             case RDB_TP_RELATION:
                 valp->var.tbp = exprp->var.tbp;
                 return RDB_OK;

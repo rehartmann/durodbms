@@ -16,7 +16,7 @@ int main() {
 
     printf("%s\n%d\n", buf, RDB_binary_get_length(&val));
 
-    RDB_deinit_value(&val);
+    RDB_destroy_value(&val);
 
     return 0;
 }

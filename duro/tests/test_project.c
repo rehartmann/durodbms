@@ -27,16 +27,16 @@ print_table1(RDB_table *tbp, RDB_transaction *txp)
     for (i = 0; (err = RDB_array_get_tuple(&array, i, &tpl)) == RDB_OK; i++) {
         printf("SALARY: %f\n", (float)RDB_tuple_get_rational(&tpl, "SALARY"));
     }
-    RDB_deinit_tuple(&tpl);
+    RDB_destroy_tuple(&tpl);
     if (err != RDB_NOT_FOUND) {
         goto error;
     }
 
-    RDB_deinit_array(&array);
+    RDB_destroy_array(&array);
     
     return RDB_OK;
 error:
-    RDB_deinit_array(&array);
+    RDB_destroy_array(&array);
     
     return err;
 }
@@ -61,16 +61,16 @@ print_table2(RDB_table *tbp, RDB_transaction *txp)
         printf("EMPNO: %d\n", RDB_tuple_get_int(&tpl, "EMPNO"));
         printf("NAME: %s\n", RDB_tuple_get_string(&tpl, "NAME"));
     }
-    RDB_deinit_tuple(&tpl);
+    RDB_destroy_tuple(&tpl);
     if (err != RDB_NOT_FOUND) {
         goto error;
     }
 
-    RDB_deinit_array(&array);
+    RDB_destroy_array(&array);
     
     return RDB_OK;
 error:
-    RDB_deinit_array(&array);
+    RDB_destroy_array(&array);
     
     return err;
 }

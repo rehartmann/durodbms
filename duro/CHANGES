@@ -4,9 +4,11 @@ Summary of Changes for Duro
 
 Changes for (planned) Duro 0.5
 
-- Adding support for SUMMARIZE PER and RENAME
+- Renamed RDB_deinit_XXX functions as RDB_destroy_XXX.
 
-- Removed superfluous attribute from the catalog
+- Adding support for SUMMARIZE PER and RENAME.
+
+- Removed an obsolete attribute from the catalog.
 
 - Checking table and attribute names: nonprintable characters, whitespace,
 and '$' are not permitted.

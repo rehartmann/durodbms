@@ -19,7 +19,7 @@ test_keys(RDB_database *dbp)
     printf("Starting transaction\n");
     err = RDB_begin_tx(&tx, dbp, NULL);
     if (err != RDB_OK) {
-        RDB_deinit_tuple(&tpl);
+        RDB_destroy_tuple(&tpl);
         return err;
     }
 
@@ -66,13 +66,13 @@ test_keys(RDB_database *dbp)
     } else {
         printf("Error: %s\n", RDB_strerror(err));
     }
-    RDB_deinit_tuple(&tpl);
+    RDB_destroy_tuple(&tpl);
 
     printf("End of transaction\n");
     return RDB_commit(&tx);
 error:
     RDB_rollback(&tx);
-    RDB_deinit_tuple(&tpl);
+    RDB_destroy_tuple(&tpl);
     return err;
 }
 

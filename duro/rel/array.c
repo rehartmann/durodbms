@@ -9,7 +9,7 @@ RDB_init_array(RDB_array *arrp) {
 }
 
 void
-RDB_deinit_array(RDB_array *arrp)
+RDB_destroy_array(RDB_array *arrp)
 {
     /* Nothing to do, because the qresult is dropped by
      * RDB_tx_commit()/RDB_tx_abort() */
@@ -23,7 +23,7 @@ RDB_table_to_array(RDB_table *tbp, RDB_array *arrp,
     if (seqitc > 0)
         return RDB_NOT_SUPPORTED;
 
-    RDB_deinit_array(arrp);
+    RDB_destroy_array(arrp);
 
     arrp->tbp = tbp;
     arrp->txp = txp;
@@ -88,7 +88,7 @@ RDB_array_length(RDB_array *arrp)
         if (arrp->pos == -1) {
             res = add_qresult(arrp);
             if (res != RDB_OK) {
-                RDB_deinit_tuple(&tpl);            
+                RDB_destroy_tuple(&tpl);            
                 return res;
             }
             arrp->pos = 0;
@@ -100,7 +100,7 @@ RDB_array_length(RDB_array *arrp)
                 arrp->pos++;
             }
         } while (res == RDB_OK);
-        RDB_deinit_tuple(&tpl);
+        RDB_destroy_tuple(&tpl);
         if (res != RDB_NOT_FOUND)
             return res;
         arrp->length = arrp->pos;

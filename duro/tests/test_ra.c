@@ -48,7 +48,7 @@ test_ra(RDB_database *dbp)
     printf("Converting virtual table to array\n");
     err = RDB_table_to_array(vtbp, &array, 0, NULL, &tx);
     if (err != RDB_OK) {
-        RDB_deinit_array(&array);
+        RDB_destroy_array(&array);
         RDB_commit(&tx);
         return err;
     } 
@@ -56,8 +56,8 @@ test_ra(RDB_database *dbp)
     for (i = 0; (err = RDB_array_get_tuple(&array, i, &tpl)) == RDB_OK; i++) {
         printf("NAME: %s\n", RDB_tuple_get_string(&tpl, "NAME"));
     }
-    RDB_deinit_tuple(&tpl);
-    RDB_deinit_array(&array);
+    RDB_destroy_tuple(&tpl);
+    RDB_destroy_array(&array);
 
     if (err != RDB_NOT_FOUND) {
         RDB_commit(&tx);

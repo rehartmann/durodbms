@@ -64,4 +64,11 @@ _RDB_tuple_attr_type(const RDB_type *tuptyp, const char *attrname);
 RDB_bool
 _RDB_legal_name(const char *name);
 
+int
+RDB_evaluate_bool(RDB_expression *, const RDB_tuple *tup, RDB_transaction *,
+                  RDB_bool *);
+
+int
+RDB_evaluate(RDB_expression *, const RDB_tuple *, RDB_transaction *, RDB_value *);
+
 #endif

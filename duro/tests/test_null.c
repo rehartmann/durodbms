@@ -67,7 +67,7 @@ test_table(RDB_database *dbp)
     }
     if (err == RDB_ELEMENT_EXISTS)
         printf("Error: element exists - OK\n");    
-    RDB_deinit_tuple(&tpl);
+    RDB_destroy_tuple(&tpl);
 
     printf("End of transaction\n");
     return RDB_commit(&tx);

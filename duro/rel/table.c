@@ -179,7 +179,7 @@ RDB_insert(RDB_table *tbp, const RDB_tuple *tup, RDB_transaction *txp)
                     return res;
                 iseq = RDB_value_equals(&val, (RDB_value *)RDB_tuple_get(
                         tup, vattrp->name));
-                RDB_deinit_value(&val);
+                RDB_destroy_value(&val);
                 if (!iseq)
                     return RDB_PREDICATE_VIOLATION;
             }
@@ -242,7 +242,7 @@ upd_to_vals(RDB_table *tbp, int attrc, const RDB_attr_update attrv[],
             int j;
             
             for (j = 0; j < i; j++)
-                RDB_deinit_value(&valv[i]);
+                RDB_destroy_value(&valv[i]);
             return res;
         }
     }                
@@ -379,7 +379,7 @@ update_stored(RDB_table *tbp, RDB_expression *condp,
             }
             res = RDB_cursor_set(curp, attrc, fieldv);
             for (i = 0; i < attrc; i++)
-                RDB_deinit_value(&valv[i]);
+                RDB_destroy_value(&valv[i]);
             if (res != RDB_OK) {
                 if (res == RDB_DEADLOCK) {
                     RDB_rollback(txp);
@@ -387,7 +387,7 @@ update_stored(RDB_table *tbp, RDB_expression *condp,
                 goto error;
             }
         }
-        RDB_deinit_tuple(&tpl);
+        RDB_destroy_tuple(&tpl);
         res = RDB_cursor_next(curp);
     } while (res == RDB_OK);
     if (res != RDB_NOT_FOUND)
@@ -401,7 +401,7 @@ error:
     free(fieldv);
 
     RDB_destroy_cursor(curp);
-    RDB_deinit_tuple(&tpl);
+    RDB_destroy_tuple(&tpl);
     return res;
 }  
 
@@ -488,19 +488,19 @@ delete_stored(RDB_table *tbp, RDB_expression *condp,
 
             res = RDB_cursor_get(curp, i, &datap, &len);
             if (res != 0) {
-               RDB_deinit_tuple(&tpl);
+               RDB_destroy_tuple(&tpl);
                goto error;
             }
             RDB_init_value(&val);
             res = RDB_irep_to_value(&val, tpltyp->complex.tuple.attrv[i].type,
                              datap, len);
             if (res != RDB_OK) {
-               RDB_deinit_tuple(&tpl);
+               RDB_destroy_tuple(&tpl);
                goto error;
             }
             res = RDB_tuple_set(&tpl, tpltyp->complex.tuple.attrv[i].name, &val);
             if (res != RDB_OK) {
-               RDB_deinit_tuple(&tpl);
+               RDB_destroy_tuple(&tpl);
                goto error;
             }
         }
@@ -514,11 +514,11 @@ delete_stored(RDB_table *tbp, RDB_expression *condp,
         if (b) {
             res = RDB_cursor_delete(curp);
             if (res != RDB_OK) {
-                RDB_deinit_tuple(&tpl);
+                RDB_destroy_tuple(&tpl);
                 goto error;
             }
         }
-        RDB_deinit_tuple(&tpl);
+        RDB_destroy_tuple(&tpl);
         res = RDB_cursor_next(curp);
     } while (res == RDB_OK);
     if (res != RDB_NOT_FOUND)
@@ -600,7 +600,7 @@ RDB_copy_table(RDB_table *dstp, RDB_table *srcp, RDB_transaction *txp)
 
     while ((res = _RDB_next_tuple(itp, &tpl)) == RDB_OK) {
         res = RDB_insert(dstp, &tpl, &tx);
-        RDB_deinit_tuple(&tpl);
+        RDB_destroy_tuple(&tpl);
         if (res != RDB_OK) {
             goto error;
         }
@@ -685,7 +685,7 @@ RDB_aggregate(RDB_table *tbp, RDB_aggregate_op op, const char *attrname,
         return res;
 
     /* initialize result */
-    switch(op) {
+    switch (op) {
         case RDB_COUNT:
             resultp->var.int_val = 0;
             break;
@@ -794,10 +794,10 @@ RDB_aggregate(RDB_table *tbp, RDB_aggregate_op op, const char *attrname,
                 if (RDB_tuple_get_bool(&tpl, attrname))
                     resultp->var.bool_val = RDB_TRUE;
                 break;
-            default:
+            default: ;
         }
     }
-    RDB_deinit_tuple(&tpl);
+    RDB_destroy_tuple(&tpl);
     if (res != RDB_NOT_FOUND) {
         _RDB_drop_qresult(qrp);
         return res;
@@ -959,7 +959,7 @@ RDB_table_is_empty(RDB_table *tbp, RDB_transaction *txp, RDB_bool *resultp)
     RDB_init_tuple(&tpl);
 
     res = _RDB_next_tuple(itp, &tpl);
-    RDB_deinit_tuple(&tpl);
+    RDB_destroy_tuple(&tpl);
     if (res == RDB_OK)
         *resultp = RDB_FALSE;
     else if (res == RDB_NOT_FOUND)
@@ -1498,14 +1498,16 @@ RDB_summarize(RDB_table *tb1p, RDB_table *tb2p, int addc, RDB_summarize_add addv
                         addv[i].op, &tuptyp->complex.tuple.attrv[i].type);
         if (res != RDB_OK)
             goto error;
-        tuptyp->complex.tuple.attrv[i].default_value = NULL;
+        tuptyp->complex.tuple.attrv[i].defaultp = NULL;
+        tuptyp->complex.tuple.attrv[i].options = 0;
     }
     for (i = 0; i < tb2p->typ->complex.basetyp->complex.tuple.attrc; i++) {
         tuptyp->complex.tuple.attrv[addc + i].name =
                 tb2p->typ->complex.basetyp->complex.tuple.attrv[i].name;
         tuptyp->complex.tuple.attrv[addc + i].type =
                 tb2p->typ->complex.basetyp->complex.tuple.attrv[i].type;
-        tuptyp->complex.tuple.attrv[addc + i].default_value = NULL;
+        tuptyp->complex.tuple.attrv[addc + i].defaultp = NULL;
+        tuptyp->complex.tuple.attrv[addc + i].options = 0;
     }
     newtbp->typ = malloc(sizeof (RDB_type));
     newtbp->typ->kind = RDB_TP_RELATION;

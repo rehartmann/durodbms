@@ -2,9 +2,7 @@
 
 include ../make.vars
 
-CC = gcc
 CFLAGS = -I$(BDB_INCLUDE) -I.. $(COPTS)
-LD = gcc
 LDFLAGS = -L$(BDB_LIB) -L../lib -g
 LDLIBS = -ldb -lduro
 RM = rm -f

@@ -180,6 +180,68 @@ serialize_extend(RDB_value *valp, int *posp, RDB_table *tbp)
     return RDB_OK;
 }      
 
+static int
+serialize_summarize(RDB_value *valp, int *posp, RDB_table *tbp)
+{
+    int i;
+    int res;
+
+    res = _RDB_serialize_table(valp, posp, tbp->var.summarize.tb1p);
+    if (res != RDB_OK)
+        return res;
+
+    res = _RDB_serialize_table(valp, posp, tbp->var.summarize.tb1p);
+    if (res != RDB_OK)
+        return res;
+
+    res = serialize_int(valp, posp, tbp->var.summarize.addc);
+    if (res != RDB_OK)
+        return res;
+
+    for (i = 0; i < tbp->var.summarize.addc; i++) {
+        res = serialize_byte(valp, posp,
+                             (RDB_byte)tbp->var.summarize.addv[i].op);
+        if (res != RDB_OK)
+            return res;
+
+        res = serialize_expr(valp, posp, tbp->var.summarize.addv[i].exp);
+        if (res != RDB_OK)
+            return res;
+
+        res = serialize_str(valp, posp, tbp->var.summarize.addv[i].name);
+        if (res != RDB_OK)
+            return res;
+    }
+    return RDB_OK;
+}
+
+static int
+serialize_rename(RDB_value *valp, int *posp, RDB_table *tbp)
+{
+    int i;
+    int res;
+
+    res = _RDB_serialize_table(valp, posp, tbp->var.rename.tbp);
+    if (res != RDB_OK)
+        return res;
+
+    res = serialize_int(valp, posp, tbp->var.rename.renc);
+    if (res != RDB_OK)
+        return res;
+
+    for (i = 0; i < tbp->var.summarize.addc; i++) {
+        res = serialize_str(valp, posp, tbp->var.rename.renv[i].from);
+        if (res != RDB_OK)
+            return res;
+
+        res = serialize_str(valp, posp, tbp->var.rename.renv[i].to);
+        if (res != RDB_OK)
+            return res;
+    }
+
+    return RDB_OK;
+}
+
 int
 _RDB_serialize_table(RDB_value *valp, int *posp, RDB_table *tbp)
 {
@@ -235,6 +297,10 @@ _RDB_serialize_table(RDB_value *valp, int *posp, RDB_table *tbp)
             return serialize_extend(valp, posp, tbp);
         case RDB_TB_PROJECT:
             return serialize_project(valp, posp, tbp);
+        case RDB_TB_SUMMARIZE:
+            return serialize_summarize(valp, posp, tbp);
+        case RDB_TB_RENAME:
+            return serialize_rename(valp, posp, tbp);
     }
     abort();
 }
@@ -296,7 +362,7 @@ deserialize_type(RDB_value *valp, int *posp, RDB_database *dbp,
 
 static int
 deserialize_value(RDB_value *valp, int *posp, RDB_database *dbp,
-                      RDB_value *argvalp)
+                  RDB_value *argvalp)
 {
     RDB_type *typ;
     size_t len;
@@ -340,11 +406,11 @@ deserialize_expr(RDB_value *valp, int *posp, RDB_database *dbp,
                RDB_init_value(&val);
                res = deserialize_value(valp, posp, dbp, &val);
                if (res != RDB_OK) {
-                   RDB_deinit_value(&val);
+                   RDB_destroy_value(&val);
                    return res;
                }
                *exprpp = RDB_value_const(&val);
-               RDB_deinit_value(&val);
+               RDB_destroy_value(&val);
                if (exprp == NULL)
                    return RDB_NO_MEMORY;
             }
@@ -580,6 +646,20 @@ error:
 }
 
 int
+deserialize_summarize(RDB_value *valp, int *posp, RDB_database *dbp,
+                    RDB_table **tbpp)
+{
+    return RDB_NOT_SUPPORTED;
+}
+
+int
+deserialize_rename(RDB_value *valp, int *posp, RDB_database *dbp,
+                    RDB_table **tbpp)
+{
+    return RDB_NOT_SUPPORTED;
+}
+
+int
 _RDB_deserialize_table(RDB_value *valp, int *posp, RDB_database *dbp,
                        RDB_table **tbpp)
 {
@@ -592,7 +672,7 @@ _RDB_deserialize_table(RDB_value *valp, int *posp, RDB_database *dbp,
     res = deserialize_byte(valp, posp, &b);
     if (res != RDB_OK)
         return res;
-    switch (b) {
+    switch ((enum _RDB_tb_kind) b) {
         case RDB_TB_STORED:
             res = deserialize_str(valp, posp, &namp);
             if (res != RDB_OK)
@@ -646,6 +726,10 @@ _RDB_deserialize_table(RDB_value *valp, int *posp, RDB_database *dbp,
             return deserialize_extend(valp, posp, dbp, tbpp);
         case RDB_TB_PROJECT:
             return deserialize_project(valp, posp, dbp, tbpp);
+        case RDB_TB_SUMMARIZE:
+            return deserialize_summarize(valp, posp, dbp, tbpp);
+        case RDB_TB_RENAME:
+            return deserialize_rename(valp, posp, dbp, tbpp);
     }
     abort();
 error:

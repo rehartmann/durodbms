@@ -36,12 +36,12 @@ RDB_init_hashmap(RDB_hashmap *, int capacity);
 
 /*
  * Free the resources associated with the hashmap pointed to by hp.
- * Calling RDB_deinit_hashmap() again has no effect.
- * Calling RDB_deinit_hashmap after an unsuccessful call to RDB_init_hashmap()
+ * Calling RDB_destroy_hashmap() again has no effect.
+ * Calling RDB_destroy_hashmap after an unsuccessful call to RDB_init_hashmap()
  * also has no effect.
  */
 void
-RDB_deinit_hashmap(RDB_hashmap *);
+RDB_destroy_hashmap(RDB_hashmap *);
 
 /*
  * Insert the key/value pair (key, valp) into the hashmap pointed to by hp.

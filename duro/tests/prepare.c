@@ -4,10 +4,10 @@
 #include <stdio.h>
 
 RDB_attr emp_attrs[] = {
-    {"EMPNO", &RDB_INTEGER, NULL },
-    {"NAME", &RDB_STRING, NULL },
-    {"SALARY", &RDB_RATIONAL, NULL },
-    {"DEPTNO", &RDB_INTEGER, NULL }
+    {"EMPNO", &RDB_INTEGER, NULL, 0 },
+    {"NAME", &RDB_STRING, NULL, 0 },
+    {"SALARY", &RDB_RATIONAL, NULL, 0 },
+    {"DEPTNO", &RDB_INTEGER, NULL, 0 }
 };
 
 char *emp_keyattrs1[] = { "EMPNO" };
@@ -19,8 +19,8 @@ RDB_key_attrs emp_keyattrs[] = {
 };
 
 RDB_attr dept_attrs[] = {
-    {"DEPTNO", &RDB_INTEGER, NULL },
-    {"DEPTNAME", &RDB_STRING, NULL }
+    {"DEPTNO", &RDB_INTEGER, NULL, 0 },
+    {"DEPTNAME", &RDB_STRING, NULL, 0 }
 };
 
 char *dept_key_attrs[] = { "DEPTNO" };
@@ -195,14 +195,14 @@ fill_tables(RDB_database *dbp)
         return err;
     }
 
-    RDB_deinit_tuple(&emptpl);
-    RDB_deinit_tuple(&deptpl);
+    RDB_destroy_tuple(&emptpl);
+    RDB_destroy_tuple(&deptpl);
 
     return RDB_commit(&tx);
 
 error:
-    RDB_deinit_tuple(&emptpl);
-    RDB_deinit_tuple(&deptpl);
+    RDB_destroy_tuple(&emptpl);
+    RDB_destroy_tuple(&deptpl);
     
     return err;
 }

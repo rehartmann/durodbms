@@ -27,16 +27,16 @@ print_extend(RDB_table *vtbp, RDB_transaction *txp)
         printf("SALARY_W_BONUS: %f\n",
                 (float)RDB_tuple_get_rational(&tpl, "SALARY_W_BONUS"));
     }
-    RDB_deinit_tuple(&tpl);
+    RDB_destroy_tuple(&tpl);
     if (err != RDB_NOT_FOUND) {
         RDB_rollback(txp);
         goto error;
     }
 
-    RDB_deinit_array(&array);
+    RDB_destroy_array(&array);
     return RDB_OK;
 error:
-    RDB_deinit_array(&array);
+    RDB_destroy_array(&array);
     return err;
 }
 
@@ -95,11 +95,11 @@ insert_extend(RDB_table *vtbp, RDB_transaction *txp)
     if (err != RDB_OK)
         goto error;
     
-    RDB_deinit_tuple(&tpl);
+    RDB_destroy_tuple(&tpl);
     return RDB_OK;
 
 error:
-    RDB_deinit_tuple(&tpl);
+    RDB_destroy_tuple(&tpl);
     return err;
 }
 

@@ -2,7 +2,6 @@
 
 include ../make.vars
 
-CC = gcc
 CFLAGS = -I$(BDB_INCLUDE) $(COPTS)
 
 RM = rm -f

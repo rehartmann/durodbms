@@ -3,6 +3,7 @@
 #include "index.h"
 #include <gen/errors.h>
 #include <gen/strfns.h>
+#include <string.h>
 
 static int
 create_index(RDB_recmap *rmp, const char *name, const char *filename,

@@ -2,6 +2,7 @@
 
 #include <rel/rdb.h>
 #include <stdio.h>
+#include <string.h>
 
 /*
  * lstables - list table names
@@ -40,7 +41,7 @@ print_tables(RDB_database *dbp, RDB_bool all, RDB_bool real)
 
     err = RDB_begin_tx(&tx, dbp, NULL);
     if (err != RDB_OK) {
-        RDB_deinit_array(&array);
+        RDB_destroy_array(&array);
         return err;
     } 
 
@@ -78,12 +79,12 @@ print_tables(RDB_database *dbp, RDB_bool all, RDB_bool real)
     for (i = 0; (err = RDB_array_get_tuple(&array, i, &tpl)) == RDB_OK; i++) {
         printf(real ? "%s\n" : "%s*\n", RDB_tuple_get_string(&tpl, "TABLENAME"));
     }
-    RDB_deinit_tuple(&tpl);
+    RDB_destroy_tuple(&tpl);
     if (err != RDB_NOT_FOUND) {
         goto error;
     }
 
-    RDB_deinit_array(&array);
+    RDB_destroy_array(&array);
 
     RDB_drop_table(vtb1p, &tx);
 
@@ -91,7 +92,7 @@ print_tables(RDB_database *dbp, RDB_bool all, RDB_bool real)
     return RDB_OK;
 
 error:
-    RDB_deinit_array(&array);
+    RDB_destroy_array(&array);
     if (vtb1p != NULL)
         RDB_drop_table(vtb1p, &tx);
     if (vtb2p != NULL)

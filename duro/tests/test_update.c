@@ -25,16 +25,16 @@ print_table(RDB_table *tbp, RDB_transaction *txp)
         printf("NAME: %s\n", RDB_tuple_get_string(&tpl, "NAME"));
         printf("SALARY: %f\n", (double)RDB_tuple_get_rational(&tpl, "SALARY"));
     }
-    RDB_deinit_tuple(&tpl);
+    RDB_destroy_tuple(&tpl);
     if (err != RDB_NOT_FOUND) {
         goto error;
     }
 
-    RDB_deinit_array(&array);
+    RDB_destroy_array(&array);
     
     return RDB_OK;
 error:
-    RDB_deinit_array(&array);
+    RDB_destroy_array(&array);
     
     return err;
 }

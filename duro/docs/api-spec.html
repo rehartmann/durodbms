@@ -13,12 +13,12 @@
 <h3>Built-in types</h3>
 
 <table border="1">
-<tr><th>RDB_type variable<th>C type
-<tr><td>RDB_BOOLEAN<td>RDB_bool
-<tr><td>RDB_INTEGER<td>RDB_int
-<tr><td>RDB_RATIONAL<td>RDB_rational
-<tr><td>RDB_STRING<td>char *
-<tr><td>RDB_BINARY<td>&nbsp;-
+<tr><th>Name<th>RDB_type variable<th>C type
+<tr><td>BOOLEAN<td>RDB_BOOLEAN<td>RDB_bool
+<tr><td>INTEGER<td>RDB_INTEGER<td>RDB_int
+<tr><td>RATIONAL<td>RDB_RATIONAL<td>RDB_rational
+<tr><td>STRING<td>RDB_STRING<td>char *
+<tr><td>BINARY<td>RDB_BINARY<td>&nbsp;-
 </table>
 
 <h3>Defining a type</h3>
@@ -27,22 +27,21 @@
 typedef struct RDB_attr {
     char *name;
     RDB_type *type;
-    RDB_value *default_value;
+    RDB_value *defaultp;
+    int options;
 } RDB_attr;
 
 typedef struct {
     char *name;
     int compc;
     RDB_attr *compv;
+    RDB_expression *constraintp;
 } RDB_possrep;
 
 int
 RDB_define_type(const char *name, int repc, RDB_possrep repv[],
-                RDB_expression *constraint, RDB_transaction *txp,
+                RDB_transaction *txp,
                 RDB_type **resultpp);
-
-int
-RDB_implement_type(RDB_type *, const char *modname, int option);
 
 </pre>
 
@@ -168,7 +167,7 @@ void
 RDB_init_tuple(RDB_tuple *);
 
 void
-RDB_deinit_tuple(RDB_tuple *);
+RDB_destroy_tuple(RDB_tuple *);
 
 int
 RDB_tuple_set(RDB_tuple *, const char *name, const RDB_value *);
@@ -283,19 +282,14 @@ RDB_make_persistent(RDB_table *, RDB_transaction *);
 
 <pre>
 
-int
-RDB_create_db(const char *name, RDB_environment *envp, RDB_database **dbpp);
-
 RDB_db_name(dbp)
 
 int
-RDB_open_db(const char *name, RDB_environment *, RDB_database **dbpp);
+RDB_get_db(const char *name, RDB_environment *, RDB_database **dbpp);
 
 int
-RDB_close_db(RDB_database *dbp);
+RDB_release_db(RDB_database *dbp);
 
-int
-RDB_drop_db(const char *name, RDB_environment *);
 
 int
 RDB_get_table(RDB_database *dbp, const char *name, RDB_table **tbpp);
@@ -372,7 +366,7 @@ void
 RDB_init_array(RDB_array *);
 
 void
-RDB_deinit_array(RDB_array *);
+RDB_destroy_array(RDB_array *);
 
 typedef struct {
     char *attrname;
@@ -484,13 +478,53 @@ RDB_drop_constraint(const char *name, RDB_transaction *txp);
 <h2>Miscellaneous</h2>
 
 <pre>
-
 void
 RDB_init_value(RDB_value *valp);
 
 void
-RDB_deinit_value(RDB_value *valp);
+RDB_destroy_value(RDB_value *valp);
+</pre>
 
+<h2>Non-D functions</h2>
+
+<h3>Creating a database</h3>
+
+<pre>
+int
+RDB_create_db(const char *name, RDB_environment *envp, RDB_database **dbpp);
+</pre>
+
+<h3>Implementing a type</h3>
+
+<pre>
+int
+RDB_implement_type(RDB_type *, const char *modname, int option);
+</pre>
+
+<h3>Dropping a database</h3>
+
+<pre>
+int
+RDB_drop_db(const char *name, RDB_environment *);
+</pre>
+
+<h3>Creating an environment</h3>
+
+int
+RDB_create_env(const char *path, RDB_environment **);
+
+<h3>Opening an environment</h3>
+
+<pre>
+int
+RDB_open_env(const char *path, RDB_environment **envp);
+</pre>
+
+<h3>Closing an environment</h3>
+
+<pre>
+int
+RDB_close_env(RDB_environment *dsp);
 </pre>
 
 </html>

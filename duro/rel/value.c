@@ -26,7 +26,7 @@ int
 RDB_irep_to_value(RDB_value *valp, RDB_type *typ, void *datap, size_t len)
 {
     if (valp->typ != NULL)
-        RDB_deinit_value(valp);
+        RDB_destroy_value(valp);
 
     valp->typ = typ;
     switch (valp->typ->kind) {
@@ -74,7 +74,7 @@ int
 RDB_copy_value(RDB_value *dstvalp, const RDB_value *srcvalp)
 {
     if (dstvalp->typ != NULL)
-        RDB_deinit_value(dstvalp);
+        RDB_destroy_value(dstvalp);
 
     dstvalp->typ = srcvalp->typ;
     switch (srcvalp->typ->kind) {
@@ -105,7 +105,7 @@ RDB_init_value(RDB_value *valp)
 }
 
 void
-RDB_deinit_value(RDB_value *valp)
+RDB_destroy_value(RDB_value *valp)
 {
     if (valp->typ == NULL)
         return;
@@ -162,4 +162,3 @@ RDB_binary_get_length(const RDB_value *valp)
 {
     return valp->var.bin.len;
 }
-        

@@ -25,7 +25,7 @@ main(void)
     printf("C -> %d\n", *(int *)RDB_hashmap_get(&map, "C", NULL));
     printf("D -> %d\n", *(int *)RDB_hashmap_get(&map, "D", NULL));
     
-    RDB_deinit_hashmap(&map);
+    RDB_destroy_hashmap(&map);
     
     return 0;
 }

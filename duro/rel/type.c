@@ -75,7 +75,7 @@ RDB_create_relation_type(int attrc, RDB_attr attrv[])
 RDB_bool
 RDB_is_builtin_type(const RDB_type *typ)
 {
-    switch(typ->kind) {
+    switch (typ->kind) {
         case RDB_TP_BOOLEAN:
         case RDB_TP_INTEGER:
         case RDB_TP_RATIONAL:
@@ -93,14 +93,14 @@ RDB_drop_type(RDB_type *typ)
     int i;
 
     if (RDB_is_builtin_type(typ))
-        return;
+        return RDB_ILLEGAL_ARG;
 
     if (typ->name != NULL) {
         /* delete type from database */
         /* persistent user-defined types are not yet implemented ... */
         free(typ->name);
     }
-    switch(typ->kind) {
+    switch (typ->kind) {
         case RDB_TP_TUPLE:
             for (i = 0; i < typ->complex.tuple.attrc; i++) {
                 RDB_type *attrtyp = typ->complex.tuple.attrv[i].type;
@@ -118,6 +118,8 @@ RDB_drop_type(RDB_type *typ)
             abort();
     }
     free(typ);
+
+    return RDB_OK;
 }
 
 RDB_bool
@@ -367,7 +369,8 @@ RDB_project_relation_type(const RDB_type *typ, int attrc, char *attrv[],
             goto error;
         }
         tuptyp->complex.tuple.attrv[i].type = attrtyp;
-        tuptyp->complex.tuple.attrv[i].default_value = NULL;
+        tuptyp->complex.tuple.attrv[i].defaultp = NULL;
+        tuptyp->complex.tuple.attrv[i].options = 0;
     }
 
     reltyp->name = NULL;

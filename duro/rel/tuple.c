@@ -1,4 +1,5 @@
 #include "rdb.h"
+#include "internal.h"
 #include <string.h>
 #include <malloc.h>
 
@@ -18,16 +19,16 @@ RDB_init_tuple(RDB_tuple *tp)
 }
 
 static void
-deinit_value(RDB_hashmap *hp, const char *key) {
-    RDB_deinit_value((RDB_value *) RDB_hashmap_get(hp, key, NULL));
+destroy_value(RDB_hashmap *hp, const char *key) {
+    RDB_destroy_value((RDB_value *) RDB_hashmap_get(hp, key, NULL));
 }
 
 void
-RDB_deinit_tuple(RDB_tuple *tp)
+RDB_destroy_tuple(RDB_tuple *tp)
 {
-    RDB_hashmap_apply(&tp->map, deinit_value);
+    RDB_hashmap_apply(&tp->map, destroy_value);
 
-    RDB_deinit_hashmap(&tp->map);
+    RDB_destroy_hashmap(&tp->map);
 }
 
 int
@@ -40,7 +41,7 @@ RDB_tuple_set(RDB_tuple *tp, const char *namp, const RDB_value *valp)
     /* delete old value */
     oldvalp = (RDB_value *) RDB_hashmap_get(&tp->map, namp, NULL);
     if (oldvalp != NULL) {
-        RDB_deinit_value(oldvalp);
+        RDB_destroy_value(oldvalp);
     }
 
     /* insert new value */
@@ -143,7 +144,7 @@ RDB_tuple_extend(RDB_tuple *tup, int attrc, RDB_virtual_attr attrv[],
         if (res != RDB_OK)
             return res;
         RDB_tuple_set(tup, attrv[i].name, &val);
-        RDB_deinit_value(&val);
+        RDB_destroy_value(&val);
     }
     return RDB_OK;
 }

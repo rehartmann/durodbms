@@ -280,7 +280,8 @@ typedef struct {
 typedef struct RDB_attr {
     char *name;
     RDB_type *type;
-    RDB_value *default_value;
+    RDB_value *defaultp;
+    int options;
 } RDB_attr;
 
 /*
@@ -565,7 +566,7 @@ void
 RDB_init_tuple(RDB_tuple *);
 
 void
-RDB_deinit_tuple(RDB_tuple *);
+RDB_destroy_tuple(RDB_tuple *);
 
 int
 RDB_tuple_set(RDB_tuple *, const char *name, const RDB_value *);
@@ -584,7 +585,7 @@ RDB_tuple_set_string(RDB_tuple *, const char *name, const char *valp);
 
 /**
  * Return a pointer to the tuple's value corresponding to name name.
- * The pointer returned will become invalid if RDB_deinit_tuple()
+ * The pointer returned will become invalid if RDB_destroy_tuple()
  * is called if the attribute is overwritten
  * by calling RDB_set_tuple_attr() with the same name argument.
  * If an attribute of name name does not exist, NULL is returned.
@@ -612,7 +613,7 @@ void
 RDB_init_array(RDB_array *);
 
 void
-RDB_deinit_array(RDB_array *);
+RDB_destroy_array(RDB_array *);
 
 typedef struct {
     char *attrname;
@@ -746,7 +747,7 @@ RDB_init_value(RDB_value *valp);
  * Release the resources associated with the value pointed to by valp.
  */
 void
-RDB_deinit_value(RDB_value *valp);
+RDB_destroy_value(RDB_value *valp);
 
 /*
  * Copy len bytes from srcp into the RDB_value at position pos.
@@ -844,21 +845,6 @@ RDB_rel_is_empty(RDB_expression *);
 /* Destroy the expression and all its subexpressions */
 void
 RDB_drop_expr(RDB_expression *);
-
-int
-RDB_evaluate_bool(RDB_expression *, const RDB_tuple *tup, RDB_transaction *,
-                  RDB_bool *);
-
-int
-RDB_evaluate_int(RDB_expression *, const RDB_tuple *tup, RDB_transaction *,
-                 RDB_int *);
-
-int
-RDB_evaluate_rational(RDB_expression *, const RDB_tuple *tup, RDB_transaction *,
-                 RDB_rational *);
-
-int
-RDB_evaluate(RDB_expression *, const RDB_tuple *, RDB_transaction *, RDB_value *);
 
 /* Extract the "-e <environment> -d <database>" arguments from the command line */
 int

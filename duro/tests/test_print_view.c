@@ -29,12 +29,12 @@ print_salary_view(RDB_database *dbp, RDB_table *vtbp)
     for (i = 0; (err = RDB_array_get_tuple(&array, i, &tpl)) == RDB_OK; i++) {
         printf("SALARY: %f\n", (float)RDB_tuple_get_rational(&tpl, "SALARY"));
     }
-    RDB_deinit_tuple(&tpl);
+    RDB_destroy_tuple(&tpl);
     if (err != RDB_NOT_FOUND) {
         goto error;
     }
 
-    RDB_deinit_array(&array);
+    RDB_destroy_array(&array);
     RDB_commit(&tx);
     return RDB_OK;
 error:
@@ -69,12 +69,12 @@ print_emp_view(RDB_database *dbp, RDB_table *vtbp)
         printf("NAME: %s\n", RDB_tuple_get_string(&tpl, "NAME"));
         printf("SALARY: %f\n", (float)RDB_tuple_get_rational(&tpl, "SALARY"));
     }
-    RDB_deinit_tuple(&tpl);
+    RDB_destroy_tuple(&tpl);
     if (err != RDB_NOT_FOUND) {
         goto error;
     }
 
-    RDB_deinit_array(&array);
+    RDB_destroy_array(&array);
     RDB_commit(&tx);
     return RDB_OK;
 error:
@@ -113,12 +113,12 @@ print_empsq_view(RDB_database *dbp, RDB_table *vtbp)
         b = RDB_tuple_get_bool(&tpl, "HIGHSAL");
         printf("HIGHSAL: %s\n", b ? "TRUE" : "FALSE");
     }
-    RDB_deinit_tuple(&tpl);
+    RDB_destroy_tuple(&tpl);
     if (err != RDB_NOT_FOUND) {
         goto error;
     }
 
-    RDB_deinit_array(&array);
+    RDB_destroy_array(&array);
     RDB_commit(&tx);
     return RDB_OK;
 error:

@@ -25,7 +25,7 @@ test_select(RDB_database *dbp)
     printf("Starting transaction\n");
     err = RDB_begin_tx(&tx, dbp, NULL);
     if (err != RDB_OK) {
-        RDB_deinit_array(&array);
+        RDB_destroy_array(&array);
         return err;
     }
 
@@ -52,12 +52,12 @@ test_select(RDB_database *dbp)
         printf("NAME: %s\n", RDB_tuple_get_string(&tpl, "NAME"));
         printf("SALARY: %f\n", (double)RDB_tuple_get_rational(&tpl, "SALARY"));
     }
-    RDB_deinit_tuple(&tpl);
+    RDB_destroy_tuple(&tpl);
     if (err != RDB_NOT_FOUND) {
         goto error;
     }
 
-    RDB_deinit_array(&array);
+    RDB_destroy_array(&array);
 
     printf("Dropping selection\n");
     RDB_drop_table(vtbp, &tx);
@@ -88,12 +88,12 @@ test_select(RDB_database *dbp)
         printf("NAME: %s\n", RDB_tuple_get_string(&tpl, "NAME"));
         printf("SALARY: %f\n", (double)RDB_tuple_get_rational(&tpl, "SALARY"));
     }
-    RDB_deinit_tuple(&tpl);
+    RDB_destroy_tuple(&tpl);
     if (err != RDB_NOT_FOUND) {
         goto error;
     }
 
-    RDB_deinit_array(&array);
+    RDB_destroy_array(&array);
 
     printf("Dropping selection\n");
     RDB_drop_table(vtbp, &tx);
@@ -101,7 +101,7 @@ test_select(RDB_database *dbp)
     printf("End of transaction\n");
     return RDB_commit(&tx);
 error:
-    RDB_deinit_array(&array);
+    RDB_destroy_array(&array);
     RDB_rollback(&tx);
     return err;
 }

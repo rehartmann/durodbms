@@ -28,7 +28,7 @@ RDB_init_hashmap(RDB_hashmap *hp, int capacity)
 }
 
 void
-RDB_deinit_hashmap(RDB_hashmap *hp)
+RDB_destroy_hashmap(RDB_hashmap *hp)
 {
     int i;
 
@@ -197,4 +197,3 @@ RDB_hashmap_apply(RDB_hashmap *hp, void (*fp)(RDB_hashmap *, const char *key))
             (*fp)(hp, hp->kv_tab[i].keyp);
     }
 }
-    
