@@ -39,7 +39,7 @@ tests_libpoint_la_SOURCES = tests/point.c tests/point.h
 
 tests_libplus_la_SOURCES = tests/plus.c
 
-TESTS = tests/ctests tests/rtables.tcl tests/project.tcl tests/tuple.tcl \
+TESTS = tests/ctests.sh tests/rtables.tcl tests/project.tcl tests/tuple.tcl \
         tests/sdivide.tcl tests/invtable.tcl tests/operator.tcl \
         tests/vtables.tcl tests/db2.tcl tests/rel.tcl tests/subset.tcl \
         tests/utype.tcl tests/deedum.tcl tests/opt.tcl tests/index.tcl
@@ -76,7 +76,7 @@ dist_pkglib_DATA = tcl/util.tcl
 
 INCLUDES = -I$(top_srcdir) -I$(BDB_HOME)/include
 
-EXTRA_DIST = tests/ctests tests/lstables_output tests/test_2db_output \
+EXTRA_DIST = tests/ctests.sh tests/lstables_output tests/test_2db_output \
 tests/test_aggregate_output tests/test_binary_output tests/test_callop_output \
 tests/test_create_view_output tests/test_defop_output \
 tests/test_defpointtype_output tests/test_deftype_output \
@@ -91,7 +91,7 @@ tests/test_update_output tests/test_utypetable_output tests/tupletest_output \
 tests/rtables.tcl tests/project.tcl tests/tuple.tcl \
 tests/sdivide.tcl tests/invtable.tcl tests/operator.tcl \
 tests/vtables.tcl tests/db2.tcl tests/rel.tcl tests/subset.tcl \
-tests/utype.tcl tests/deedum.tcl
+tests/utype.tcl tests/deedum.tcl tests/opt.tcl tests/index.tcl
 
 # Delete test libs
 install-exec-hook:

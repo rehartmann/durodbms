@@ -59,6 +59,13 @@ int
 RDB_cursor_next(RDB_cursor *);
 
 /*
+ * Move the cursor to the next record. Return RDB_NOT_FOUND
+ * if the cursor is at the end or the next record has a different key.
+ */
+int
+RDB_cursor_next_dup(RDB_cursor *);
+
+/*
  * Move the cursor to the position specified by keyv.
  */
 int
