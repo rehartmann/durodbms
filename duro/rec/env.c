@@ -66,6 +66,12 @@ RDB_set_errfile(RDB_environment *envp, FILE *errfile)
     envp->envp->set_errfile(envp->envp, errfile);
 }
 
+FILE *
+RDB_get_errfile(RDB_environment *envp)
+{
+    return envp->errfilep;
+}
+
 static void
 dberrfn(const DB_ENV *dbenv, const char *errpfx, const char *msg)
 {
@@ -75,14 +81,21 @@ dberrfn(const DB_ENV *dbenv, const char *errpfx, const char *msg)
 }
 
 void
-RDB_set_errfn(RDB_environment *envp,
-        void (*errfn)(const char *msg, void *arg), void *arg)
+RDB_set_errfn(RDB_environment *envp, RDB_errfn *errfn, void *arg)
 {
     envp->errfn = errfn;
     envp->errfn_arg = arg;
 
     envp->envp->app_private = envp;
-    envp->envp->set_errcall(envp->envp, &dberrfn);
+    envp->envp->set_errcall(envp->envp, errfn != NULL ? &dberrfn : NULL);
+}
+
+RDB_errfn *
+RDB_get_errfn(RDB_environment *envp, void **argp)
+{
+    if (argp != NULL)
+        *argp = envp->errfn_arg;
+    return envp->errfn;
 }
 
 void

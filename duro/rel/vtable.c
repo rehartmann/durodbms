@@ -369,7 +369,6 @@ RDB_project(RDB_table *tbp, int attrc, char *attrv[], RDB_table **resultpp)
     if (newtbp == NULL)
         return RDB_NO_MEMORY;
 
-    newtbp->name = NULL;
     newtbp->is_user = RDB_TRUE;
     newtbp->is_persistent = RDB_FALSE;
     newtbp->kind = RDB_TB_PROJECT;

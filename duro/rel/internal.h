@@ -419,4 +419,7 @@ RDB_expression *
 _RDB_ro_op(const char *opname, int argc, RDB_expression *argv[],
            RDB_type *rtyp);
 
+int
+_RDB_duprem(RDB_qresult *qrp);
+
 #endif

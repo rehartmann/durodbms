@@ -96,6 +96,11 @@ RDB_array_get(RDB_object *arrp, RDB_int idx, RDB_object **tplpp)
                 RDB_rollback_all(arrp->var.arr.txp);
             return ret;
         }
+        /* Add duplicate remover, if necessary */
+        ret = _RDB_duprem(arrp->var.arr.qrp);
+        if (ret != RDB_OK)
+            return ret;
+
         arrp->var.arr.pos = 0;
     }
 

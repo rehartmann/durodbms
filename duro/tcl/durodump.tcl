@@ -36,7 +36,7 @@ if {$argc == 2} {
     set outfile restore.tcl
 }
 
-set out [open $outfile w]
+set out [open $outfile w 0755]
 
 puts $out "#!/bin/sh"
 puts $out "# Execute tclsh from the user's PATH \\"

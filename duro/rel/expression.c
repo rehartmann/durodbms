@@ -10,7 +10,6 @@
 #include "catalog.h"
 #include <gen/strfns.h>
 #include <string.h>
-#include <regex.h>
 
 RDB_bool
 RDB_expr_is_const(const RDB_expression *exp)
