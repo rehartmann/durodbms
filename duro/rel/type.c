@@ -613,6 +613,11 @@ RDB_drop_type(RDB_type *typ, RDB_transaction *txp)
 
         /* !! should check if the type is still used by a table */
 
+        /* Delete selector */
+        ret = RDB_drop_op(typ->name, txp);
+        if (ret != RDB_OK && ret != RDB_NOT_FOUND)
+            return ret;
+
         /* Delete type from type table by puting a NULL pointer into it */
         ret = RDB_hashmap_put(&txp->dbp->dbrootp->typemap, typ->name, &ntp,
                 sizeof (ntp));
