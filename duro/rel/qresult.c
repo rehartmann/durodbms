@@ -20,7 +20,7 @@ init_summ_table(RDB_qresult *qresp, RDB_transaction *txp)
     int ret;
 
     /*
-     * initialize table from table #2
+     * Initialize table from table #2
      */
 
     ret = _RDB_table_qresult(qresp->tbp->var.summarize.tb2p, txp, &qrp);
@@ -222,8 +222,10 @@ do_summarize(RDB_qresult *qresp, RDB_transaction *txp)
 
             /* Build key */
             for (i = 0; i < keyfc; i++) {
-                _RDB_obj_to_field(&keyfv[i],
+                ret = _RDB_obj_to_field(&keyfv[i],
                         RDB_tuple_get(&tpl, qresp->tbp->keyv[0].strv[i]));
+                if (ret != RDB_OK)
+                    return ret;
             }
 
             /* Read added attributes from table #2 */
@@ -277,7 +279,9 @@ do_summarize(RDB_qresult *qresp, RDB_transaction *txp)
                     }
                     summ_step(&svalv[i], &addval, summp->op);
 
-                    _RDB_obj_to_field(&nonkeyfv[i], &svalv[i].val);
+                    ret = _RDB_obj_to_field(&nonkeyfv[i], &svalv[i].val);
+                    if (ret != RDB_OK)
+                        return ret;
 
                     /* If it's AVG, store count */
                     if (summp->op == RDB_AVG) {
@@ -350,8 +354,10 @@ do_group(RDB_qresult *qrp, RDB_transaction *txp)
         if (ret == RDB_OK) {
             /* Build key */
             for (i = 0; i < keyfc; i++) {
-                _RDB_obj_to_field(&keyfv[i],
+                ret = _RDB_obj_to_field(&keyfv[i],
                         RDB_tuple_get(&tpl, qrp->tbp->keyv[0].strv[i]));
+                if (ret != RDB_OK)
+                    goto cleanup;
             }
 
             gfield.no = *(RDB_int *)RDB_hashmap_get(
@@ -379,13 +385,14 @@ do_group(RDB_qresult *qrp, RDB_transaction *txp)
                     goto cleanup;
 
                 /* Update materialized table */
-                _RDB_obj_to_field(&gfield, &gval);
+                ret = _RDB_obj_to_field(&gfield, &gval);
+                if (ret != RDB_OK)
+                    goto cleanup;
                 ret = RDB_update_rec(qrp->matp->var.stored.recmapp, keyfv,
                         1, &gfield,
                         qrp->matp->is_persistent ? txp->txid : NULL);
-                if (ret != RDB_OK) {
+                if (ret != RDB_OK)
                     goto cleanup;
-                }
             } else if (ret == RDB_NOT_FOUND) {
                 /*
                  * A tuple has been found, build tuple and insert it
@@ -446,11 +453,72 @@ stored_qresult(RDB_qresult *qresp, RDB_table *tbp, RDB_transaction *txp)
     }
     ret = RDB_cursor_first(qresp->var.curp);
     if (ret == RDB_NOT_FOUND) {
-        qresp->endreached = 1;
+        qresp->endreached = RDB_TRUE;
         ret = RDB_OK;
-    } else if (ret != RDB_OK) {
+    }
+    return ret;
+}
+
+static int
+index_qresult(RDB_qresult *qrp, RDB_transaction *txp)
+{
+    int ret;
+    int i;
+    RDB_object *objv;
+    RDB_field *fv = NULL;
+    int keylen = qrp->tbp->var.select.indexp->attrc;
+
+    /*
+     * If the index is unique, there is nothing to do
+     */
+    if (qrp->tbp->var.select.indexp->unique)
+        return RDB_OK;
+
+    ret = RDB_index_cursor(&qrp->var.curp, qrp->tbp->var.select.indexp->idxp,
+            0, qrp->tbp->var.select.tbp->is_persistent ? txp->txid : NULL);
+    if (ret != RDB_OK) {
+        if (txp != NULL) {
+            RDB_errmsg(txp->dbp->dbrootp->envp, "cannot create cursor: %s",
+                    RDB_strerror(ret));
+        }
         return ret;
     }
+
+    objv = malloc(sizeof (RDB_object) * keylen);
+    if (objv == NULL)
+        return RDB_NO_MEMORY;
+
+    for (i = 0; i < keylen; i++)
+        RDB_init_obj(&objv[i]);
+
+    ret = _RDB_index_expr_to_objv(qrp->tbp->var.select.indexp,
+          qrp->tbp->var.select.exp, qrp->tbp->typ, objv);
+    if (ret != RDB_OK)
+        goto cleanup;
+
+    fv = malloc(sizeof (RDB_field) * keylen);
+    if (fv == NULL) {
+        ret = RDB_NO_MEMORY;
+        goto cleanup;
+    }
+
+    for (i = 0; i < keylen; i++) {
+        ret =_RDB_obj_to_field(&fv[i], &objv[i]);
+        if (ret != RDB_OK)
+            goto cleanup;
+    }
+
+    ret = RDB_cursor_seek(qrp->var.curp, fv);
+    if (ret == RDB_NOT_FOUND) {
+        qrp->endreached = RDB_TRUE;
+        ret = RDB_OK;
+    }
+
+cleanup:
+    for (i = 0; i < qrp->tbp->var.select.indexp->attrc; i++)
+        RDB_destroy_obj(&objv[i]);
+    free(objv);
+    free(fv);
     return ret;
 }
 
@@ -543,7 +611,7 @@ init_qresult(RDB_qresult *qrp, RDB_table *tbp, RDB_transaction *txp)
     int ret;
 
     qrp->tbp = tbp;
-    qrp->endreached = 0;
+    qrp->endreached = RDB_FALSE;
     qrp->matp = NULL;
     qrp->var.virtual.qr2p = NULL;
 
@@ -564,8 +632,8 @@ init_qresult(RDB_qresult *qrp, RDB_table *tbp, RDB_transaction *txp)
                     txp, &qrp->var.virtual.qrp);
             break;
         case RDB_TB_SELECT_INDEX:
-            /* nothing special to do */
-            return RDB_OK;
+            ret = index_qresult(qrp, txp);
+            break;
         case RDB_TB_UNION:
             ret = _RDB_table_qresult(tbp->var._union.tb1p,
                     txp, &qrp->var.virtual.qrp);
@@ -722,7 +790,7 @@ _RDB_sorter(RDB_table *tbp, RDB_qresult **qrespp, RDB_transaction *txp,
 
     qresp->tbp = NULL;
     qresp->matp = NULL;
-    qresp->endreached = 0;
+    qresp->endreached = RDB_FALSE;
 
     for (i = 0; i < seqitc; i++) {
         key.strv[i] = seqitv[i].attrname;
@@ -792,7 +860,8 @@ error:
 }
 
 static int
-next_stored_tuple(RDB_qresult *qrp, RDB_table *tbp, RDB_object *tplp)
+next_stored_tuple(RDB_qresult *qrp, RDB_table *tbp, RDB_object *tplp,
+        RDB_bool dup)
 {
     int i;
     int ret;
@@ -825,9 +894,13 @@ next_stored_tuple(RDB_qresult *qrp, RDB_table *tbp, RDB_object *tplp)
             }
         }
     }
-    ret = RDB_cursor_next(qrp->var.curp);
+    if (dup) {
+        ret = RDB_cursor_next_dup(qrp->var.curp);
+    } else {
+        ret = RDB_cursor_next(qrp->var.curp);
+    }
     if (ret == RDB_NOT_FOUND) {
-        qrp->endreached = 1;
+        qrp->endreached = RDB_TRUE;
         return RDB_OK;
     }
     return ret;
@@ -1002,10 +1075,19 @@ _RDB_get_by_uindex(RDB_table *tbp, RDB_object valv[], _RDB_tbindex *indexp,
         ret = RDB_NO_MEMORY;
         goto cleanup;
     }
-    
+
+    /*
+     * Convert data to fields
+     */    
     for (i = 0; i < keylen; i++) {
-        _RDB_obj_to_field(&fv[i], &valv[i]);
+        ret = _RDB_obj_to_field(&fv[i], &valv[i]);
+        if (ret != RDB_OK)
+            goto cleanup;
     }
+
+    /*
+     * Read fields
+     */
     if (indexp->idxp == NULL) {
         for (i = 0; i < tpltyp->var.tuple.attrc - keylen; i++) {
             resfv[i].no = keylen + i;
@@ -1035,13 +1117,18 @@ _RDB_get_by_uindex(RDB_table *tbp, RDB_object valv[], _RDB_tbindex *indexp,
         goto cleanup;
     }
 
-    /* Set key attributes */
+    /*
+     * Set key attributes
+     */
     for (i = 0; i < indexp->attrc; i++) {
         ret = RDB_tuple_set(tplp, indexp->attrv[i].attrname, &valv[i]);
         if (ret != RDB_OK)
             return ret;
     }
 
+    /*
+     * Set non-key attributes
+     */
     for (i = 0; i < tpltyp->var.tuple.attrc; i++) {
         int rfi; /* Index in resv, -1 if key attr */
         char *attrname = tpltyp->var.tuple.attrv[i].name;
@@ -1092,7 +1179,7 @@ cleanup:
  * Get constants from an 'unbalanced' expression an store them in objv.
  */
 int
-_RDB_index_expr_to_objv(const _RDB_tbindex *indexp, const RDB_expression *exp,
+_RDB_index_expr_to_objv(const _RDB_tbindex *indexp, RDB_expression *exp,
         const RDB_type *tbtyp, RDB_object *objv)
 {
     int i;
@@ -1122,26 +1209,38 @@ next_select_index(RDB_qresult *qrp, RDB_object *tplp, RDB_transaction *txp)
 {
     int i;
     int ret;
-    RDB_object *objv = malloc(sizeof(RDB_object)
-            * qrp->tbp->var.select.indexp->attrc);
-    if (objv == NULL)
-        return RDB_NO_MEMORY;
+    RDB_object *objv = NULL;
 
-    for (i = 0; i < qrp->tbp->var.select.indexp->attrc; i++)
-        RDB_init_obj(&objv[i]);
+    if (qrp->tbp->var.select.indexp->unique) {
+        objv = malloc(sizeof(RDB_object)
+                * qrp->tbp->var.select.indexp->attrc);
+        if (objv == NULL)
+            return RDB_NO_MEMORY;
 
-    ret = _RDB_index_expr_to_objv(qrp->tbp->var.select.indexp,
-          qrp->tbp->var.select.exp, qrp->tbp->typ, objv);
-    if (ret != RDB_OK)
-        goto cleanup;
+        for (i = 0; i < qrp->tbp->var.select.indexp->attrc; i++)
+            RDB_init_obj(&objv[i]);
 
-    ret = _RDB_get_by_uindex(qrp->tbp->var.select.tbp, objv,
-            qrp->tbp->var.select.indexp, txp, tplp);
+        ret = _RDB_index_expr_to_objv(qrp->tbp->var.select.indexp,
+              qrp->tbp->var.select.exp, qrp->tbp->typ, objv);
+        if (ret != RDB_OK)
+            goto cleanup;
+
+        ret = _RDB_get_by_uindex(qrp->tbp->var.select.tbp, objv,
+                qrp->tbp->var.select.indexp, txp, tplp);
+        if (ret != RDB_OK)
+            goto cleanup;
+
+        qrp->endreached = RDB_TRUE;
+    } else {
+        ret = next_stored_tuple(qrp, qrp->tbp->var.select.tbp, tplp, RDB_TRUE);
+    }
 
 cleanup:
-    for (i = 0; i < qrp->tbp->var.select.indexp->attrc; i++)
-        RDB_destroy_obj(&objv[i]);
-    free(objv);
+    if (objv != NULL) {
+        for (i = 0; i < qrp->tbp->var.select.indexp->attrc; i++)
+            RDB_destroy_obj(&objv[i]);
+        free(objv);
+    }
     return ret;
 }
 
@@ -1246,7 +1345,9 @@ destroy_qresult(RDB_qresult *qrp, RDB_transaction *txp)
 
     if (qrp->tbp == NULL || qrp->tbp->kind == RDB_TB_STORED
             || qrp->tbp->kind == RDB_TB_SUMMARIZE
-            || qrp->tbp->kind == RDB_TB_GROUP) {
+            || qrp->tbp->kind == RDB_TB_GROUP
+            || (qrp->tbp->kind == RDB_TB_SELECT_INDEX
+                && !qrp->tbp->var.select.indexp->unique)) {
         /* Sorter, stored table, SUMMARIZE PER, or GROUP */
         ret = RDB_destroy_cursor(qrp->var.curp);
     } else if (qrp->tbp->kind != RDB_TB_SELECT_INDEX) {
@@ -1405,20 +1506,16 @@ _RDB_next_tuple(RDB_qresult *qrp, RDB_object *tplp, RDB_transaction *txp)
 
     if (tbp == NULL) {
         /* It's a sorter */
-        return next_stored_tuple(qrp, qrp->matp, tplp);
+        return next_stored_tuple(qrp, qrp->matp, tplp, RDB_FALSE);
     }
 
     switch (tbp->kind) {
         case RDB_TB_STORED:
-            return next_stored_tuple(qrp, qrp->tbp, tplp);
+            return next_stored_tuple(qrp, qrp->tbp, tplp, RDB_FALSE);
         case RDB_TB_SELECT:
             return next_select_tuple(qrp, tplp, txp);
         case RDB_TB_SELECT_INDEX:
-            ret = next_select_index(qrp, tplp, txp);
-            qrp->endreached = 1;
-            if (ret != RDB_OK)
-                return ret;
-            break;
+            return next_select_index(qrp, tplp, txp);
         case RDB_TB_UNION:
             for(;;) {
                 if (qrp->var.virtual.qr2p == NULL) {
@@ -1485,7 +1582,7 @@ _RDB_next_tuple(RDB_qresult *qrp, RDB_object *tplp, RDB_transaction *txp)
                 char *cname;
                 RDB_int count;
             
-                ret = next_stored_tuple(qrp, qrp->matp, tplp);
+                ret = next_stored_tuple(qrp, qrp->matp, tplp, RDB_FALSE);
                 if (ret != RDB_OK)
                     return ret;
                 /* check AVG counts */
@@ -1510,7 +1607,7 @@ _RDB_next_tuple(RDB_qresult *qrp, RDB_object *tplp, RDB_transaction *txp)
         case RDB_TB_UNWRAP:
             return next_unwrap_tuple(qrp, tplp, txp);
         case RDB_TB_GROUP:
-            return next_stored_tuple(qrp, qrp->matp, tplp);
+            return next_stored_tuple(qrp, qrp->matp, tplp, RDB_FALSE);
         case RDB_TB_UNGROUP:
             return next_ungroup_tuple(qrp, tplp, txp);
         case RDB_TB_SDIVIDE:
@@ -1530,10 +1627,10 @@ _RDB_reset_qresult(RDB_qresult *qrp, RDB_transaction *txp)
         /* Sorter, stored table or SUMMARIZE PER - reset cursor */
         ret = RDB_cursor_first(qrp->var.curp);
         if (ret == RDB_NOT_FOUND) {
-            qrp->endreached = 1;
+            qrp->endreached = RDB_TRUE;
             ret = RDB_OK;
         } else {
-            qrp->endreached = 0;
+            qrp->endreached = RDB_FALSE;
         }
         return ret;
     }

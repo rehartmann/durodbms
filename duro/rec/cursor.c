@@ -9,31 +9,63 @@
 #include <gen/errors.h>
 #include <string.h>
 
-int
-RDB_recmap_cursor(RDB_cursor **curpp, RDB_recmap *rfp, RDB_bool wr,
-                  DB_TXN *txid)
+static RDB_cursor *
+new_cursor(RDB_recmap *rmp, DB_TXN *txid, RDB_index *idxp)
 {
-    int ret;
     RDB_cursor *curp = malloc(sizeof(RDB_cursor));
-    u_int32_t flags = 0;
-    
     if (curp == NULL)
-        return RDB_NO_MEMORY;
-    *curpp = curp;
-    if (wr)
-        flags |= DB_WRITECURSOR;
-    curp->recmapp = rfp;
+        return NULL;
+
+    curp->recmapp = rmp;
+    curp->idxp = idxp;
     curp->txid = txid;
-    ret = rfp->dbp->cursor(rfp->dbp, txid, &curp->cursorp, flags);
-    if (ret != 0) {
-        free(curp);        
-        return RDB_convert_err(ret);
-    }
     memset(&curp->current_key, 0, sizeof(DBT));
     curp->current_key.flags = DB_DBT_REALLOC;
     memset(&curp->current_data, 0, sizeof(DBT));
     curp->current_data.flags = DB_DBT_REALLOC;
 
+    return curp;
+}
+
+int
+RDB_recmap_cursor(RDB_cursor **curpp, RDB_recmap *rmp, RDB_bool wr,
+                  DB_TXN *txid)
+{
+    int ret;
+    RDB_cursor *curp = new_cursor(rmp, txid, NULL);
+    u_int32_t flags = 0;
+    
+    if (curp == NULL)
+        return RDB_NO_MEMORY;
+    if (wr)
+        flags |= DB_WRITECURSOR;
+    ret = rmp->dbp->cursor(rmp->dbp, txid, &curp->cursorp, flags);
+    if (ret != 0) {
+        free(curp);        
+        return RDB_convert_err(ret);
+    }
+    *curpp = curp;
+    return RDB_OK;
+}
+
+int
+RDB_index_cursor(RDB_cursor **curpp, RDB_index *idxp, RDB_bool wr,
+                  DB_TXN *txid)
+{
+    int ret;
+    RDB_cursor *curp = new_cursor(idxp->rmp, txid, idxp);
+    u_int32_t flags = 0;
+    
+    if (curp == NULL)
+        return RDB_NO_MEMORY;
+    if (wr)
+        flags |= DB_WRITECURSOR;
+    ret = idxp->dbp->cursor(idxp->dbp, txid, &curp->cursorp, flags);
+    if (ret != 0) {
+        free(curp);        
+        return RDB_convert_err(ret);
+    }
+    *curpp = curp;
     return RDB_OK;
 }
 
@@ -67,7 +99,7 @@ RDB_cursor_get(RDB_cursor *curp, int fno, void **datapp, size_t *lenp)
 int
 RDB_cursor_set(RDB_cursor *curp, int fieldc, RDB_field fields[])
 {
-    int res;
+    int ret;
     int i;
     RDB_bool keymodfd = RDB_FALSE;
 
@@ -89,10 +121,10 @@ RDB_cursor_set(RDB_cursor *curp, int fieldc, RDB_field fields[])
         return RDB_INVALID_ARGUMENT;
         
     /* Key not modified, so write data only */
-    res = curp->cursorp->c_put(curp->cursorp,
+    ret = curp->cursorp->c_put(curp->cursorp,
                 &curp->current_key, &curp->current_data, DB_CURRENT);
 
-    return RDB_convert_err(res);
+    return RDB_convert_err(ret);
 }
 
 int
@@ -111,9 +143,30 @@ RDB_cursor_first(RDB_cursor *curp)
 int
 RDB_cursor_next(RDB_cursor *curp)
 {
-    return RDB_convert_err(curp->cursorp->c_get(curp->cursorp,
-            &curp->current_key, &curp->current_data, DB_NEXT));
-}    
+    DBT key;
+
+    if (curp->idxp == NULL) {
+        return RDB_convert_err(curp->cursorp->c_get(curp->cursorp,
+                &curp->current_key, &curp->current_data, DB_NEXT));
+    } else {
+        return RDB_convert_err(curp->cursorp->c_pget(curp->cursorp,
+                &key, &curp->current_key, &curp->current_data, DB_NEXT));
+    }
+}
+
+int
+RDB_cursor_next_dup(RDB_cursor *curp)
+{
+    DBT key;
+
+    if (curp->idxp == NULL) {
+        return RDB_convert_err(curp->cursorp->c_get(curp->cursorp,
+                &curp->current_key, &curp->current_data, DB_NEXT_DUP));
+    } else {
+        return RDB_convert_err(curp->cursorp->c_pget(curp->cursorp,
+                &key, &curp->current_key, &curp->current_data, DB_NEXT_DUP));
+    }
+}
 
 int
 RDB_cursor_prev(RDB_cursor *curp)
@@ -121,3 +174,35 @@ RDB_cursor_prev(RDB_cursor *curp)
     return RDB_convert_err(curp->cursorp->c_get(curp->cursorp, &curp->current_key,
             &curp->current_data, DB_PREV));
 }    
+
+int
+RDB_cursor_seek(RDB_cursor *curp, RDB_field keyv[])
+{
+    int ret;
+    int i;
+    DBT key;
+
+    if (curp->idxp == NULL) {
+        for (i = 0; i < curp->recmapp->keyfieldcount; i++)
+            keyv[i].no = i;
+    } else {
+        for (i = 0; i < curp->idxp->fieldc; i++)
+            keyv[i].no = curp->idxp->fieldv[i];
+    }
+
+    ret = _RDB_fields_to_DBT(curp->recmapp, curp->recmapp->keyfieldcount,
+            keyv, curp->idxp == NULL ? &curp->current_key : &key);
+    if (ret != RDB_OK)
+        return ret;
+
+    if (curp->idxp == NULL) {
+        ret = RDB_convert_err(curp->cursorp->c_get(curp->cursorp,
+                &curp->current_key, &curp->current_data, DB_SET));
+    } else {
+        ret = RDB_convert_err(curp->cursorp->c_pget(curp->cursorp,
+                &key, &curp->current_key, &curp->current_data, DB_SET));
+    }
+    if (curp->idxp != NULL)
+        free(key.data);
+    return ret;
+}

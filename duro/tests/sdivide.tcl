@@ -11,11 +11,7 @@ exec tclsh "$0"
 
 load .libs/libdurotcl.so
 
-source tcl/util.tcl
-
-proc tequal {t1 t2} {
-    return [string equal [lsort $t1] [lsort $t2]]
-}
+source tests/testutil.tcl
 
 proc checkarray {a l tx} {
     set alen [duro::array length $a]

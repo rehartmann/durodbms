@@ -9,7 +9,7 @@
  * Secondary index.
  */
 
-typedef struct {
+typedef struct RDB_index {
     RDB_recmap *rmp;
     DB *dbp;
     char *namp;

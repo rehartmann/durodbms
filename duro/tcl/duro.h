@@ -77,6 +77,10 @@ Duro_type_cmd(ClientData data, Tcl_Interp *interp,
         int objc, Tcl_Obj *CONST objv[]);
 
 int
+Duro_index_cmd(ClientData data, Tcl_Interp *interp,
+        int objc, Tcl_Obj *CONST objv[]);
+
+int
 Duro_tcl_close_env(TclState *statep, RDB_environment *, Tcl_HashEntry *entryp);
 
 int
@@ -111,5 +115,8 @@ Duro_tcl_to_duro(Tcl_Interp *interp, Tcl_Obj *tobjp, RDB_type *typ,
 int
 Duro_get_type(Tcl_Obj *objp, Tcl_Interp *, RDB_transaction *,
          RDB_type **typp);
+
+RDB_seq_item *
+Duro_tobj_to_seq_items(Tcl_Interp *interp, Tcl_Obj *tobjp, int *seqitcp);
 
 #endif

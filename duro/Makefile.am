@@ -42,7 +42,7 @@ tests_libplus_la_SOURCES = tests/plus.c
 TESTS = tests/ctests tests/rtables.tcl tests/project.tcl tests/tuple.tcl \
         tests/sdivide.tcl tests/invtable.tcl tests/operator.tcl \
         tests/vtables.tcl tests/db2.tcl tests/rel.tcl tests/subset.tcl \
-        tests/utype.tcl tests/deedum.tcl tests/opt.tcl
+        tests/utype.tcl tests/deedum.tcl tests/opt.tcl tests/index.tcl
 
 TESTS_ENVIRONMENT = LD_LIBRARY_PATH=$(LD_LIBRARY_PATH):$(BDB_HOME)/lib
 
@@ -67,7 +67,7 @@ rel/rdb.h rel/typeimpl.h dli/parse.h
 
 libdurotcl_la_SOURCES = tcl/duro.c tcl/duro.h tcl/envcmd.c tcl/txcmd.c \
         tcl/tablecmd.c tcl/dbcmd.c tcl/arraycmd.c tcl/opcmd.c tcl/exprcmd.c \
-        tcl/typecmd.c
+        tcl/typecmd.c tcl/indexcmd.c
 
 libdurotcl_la_LIBADD = -L$(BDB_HOME)/lib libduro.la -ldb
 

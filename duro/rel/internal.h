@@ -53,7 +53,7 @@ typedef struct RDB_qresult {
             RDB_bool tpl_valid;
         } virtual;
     } var;
-    int endreached;
+    RDB_bool endreached;
  
     /*
      * 'materialized' table, needed for PROJECT with duplicate elimination,
@@ -141,7 +141,7 @@ int
 _RDB_reset_qresult(RDB_qresult *, RDB_transaction *);
 
 int
-_RDB_index_expr_to_objv(const _RDB_tbindex *idxp, const RDB_expression *exp,
+_RDB_index_expr_to_objv(const _RDB_tbindex *idxp, RDB_expression *exp,
         const RDB_type *tbtyp, RDB_object *objv);
 
 int

@@ -708,6 +708,7 @@ RDB_create_table_index(const char *name, RDB_table *tbp, int idxcompc,
     int i;
     int ret;
     _RDB_tbindex *indexp;
+    RDB_transaction tx;
 
     if (!_RDB_legal_name(name))
         return RDB_INVALID_ARGUMENT;
@@ -727,6 +728,14 @@ RDB_create_table_index(const char *name, RDB_table *tbp, int idxcompc,
         return RDB_NO_MEMORY;
     }
 
+    indexp->attrc = idxcompc;
+    indexp->attrv = malloc(sizeof (RDB_seq_item) * idxcompc);
+    if (indexp->attrv == NULL) {
+        free(indexp->name);
+        RDB_rollback_all(txp);
+        return RDB_NO_MEMORY;
+    }
+
     indexp->unique = RDB_FALSE;
 
     for (i = 0; i < idxcompc; i++) {
@@ -738,28 +747,34 @@ RDB_create_table_index(const char *name, RDB_table *tbp, int idxcompc,
         }
     }
 
-    /* Create index in catalog */
-    ret = _RDB_cat_insert_index(indexp, tbp->name, txp);
+    ret = RDB_begin_tx(&tx, RDB_tx_db(txp), txp);
     if (ret != RDB_OK) {
         if (RDB_is_syserr(ret))
             RDB_rollback_all(txp);
+        return ret;
+    }
+
+    /* Create index in catalog */
+    ret = _RDB_cat_insert_index(indexp, tbp->name, &tx);
+    if (ret != RDB_OK) {
+        if (RDB_is_syserr(ret))
+            RDB_rollback_all(&tx);
         return ret;
     }
 
     /* Create index */
-    ret = create_index(tbp, RDB_db_env(RDB_tx_db(txp)), txp,
-            &tbp->var.stored.indexv[i]);
+    ret = create_index(tbp, RDB_db_env(RDB_tx_db(txp)), &tx, indexp);
     if (ret != RDB_OK) {
         if (RDB_is_syserr(ret))
-            RDB_rollback_all(txp);
+            RDB_rollback_all(&tx);
         return ret;
     }
 
-    return RDB_OK;
+    return RDB_commit(&tx);
 }
 
 int
-RDB_drop_table_index(const char *name, RDB_table *tbp, RDB_transaction *txp)
+RDB_drop_table_index(const char *name, RDB_transaction *txp)
 {
     return RDB_NOT_SUPPORTED;
 }

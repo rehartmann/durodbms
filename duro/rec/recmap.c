@@ -481,6 +481,9 @@ error:
     return ret;
 }
 
+/*
+ * Convert the field data in flds to key DBT.
+ */
 static int
 key_to_DBT(RDB_recmap *rmp, RDB_field fldv[], DBT *keyp)
 {

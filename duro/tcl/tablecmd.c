@@ -79,7 +79,7 @@ list_to_tuple(Tcl_Interp *interp, Tcl_Obj *tobjp, RDB_type *typ,
 
         /* Get attribute name and type */
         Tcl_ListObjIndex(interp, tobjp, i, &attrp);
-        attrname = Tcl_GetStringFromObj(attrp, NULL);
+        attrname = Tcl_GetString(attrp);
         attrtyp = RDB_type_attr_type(typ, attrname);
         if (attrtyp == NULL) {
             Tcl_AppendResult(interp, "Invalid attribute: ", attrname, NULL);
@@ -233,7 +233,7 @@ Duro_tcl_to_duro(Tcl_Interp *interp, Tcl_Obj *tobjp, RDB_type *typ,
     int ret;
 
     if (typ == &RDB_STRING) {
-        RDB_string_to_obj(objp, Tcl_GetStringFromObj(tobjp, NULL));
+        RDB_string_to_obj(objp, Tcl_GetString(tobjp));
         return TCL_OK;
     }
     if (typ == &RDB_INTEGER) {
@@ -336,10 +336,9 @@ Duro_get_type(Tcl_Obj *objp, Tcl_Interp *interp, RDB_transaction *txp,
         if (ret != TCL_OK)
             return ret;
 
-        if (strcmp(Tcl_GetStringFromObj(elemp, NULL), "tuple") == 0) {
+        if (strcmp(Tcl_GetString(elemp), "tuple") == 0) {
             istuple = RDB_TRUE;
-        } else if (strcmp(Tcl_GetStringFromObj(elemp, NULL),
-                "relation") == 0) {
+        } else if (strcmp(Tcl_GetString(elemp), "relation") == 0) {
             istuple = RDB_FALSE;
         } else {
             Tcl_SetResult(interp, "Invalid type", TCL_STATIC);
@@ -362,7 +361,7 @@ Duro_get_type(Tcl_Obj *objp, Tcl_Interp *interp, RDB_transaction *txp,
             }
 
             Tcl_ListObjIndex(interp, elemp, 0, &elem2p);
-            attrv[i].name = Tcl_GetStringFromObj(elem2p, NULL);
+            attrv[i].name = Tcl_GetString(elem2p);
 
             Tcl_ListObjIndex(interp, elemp, 1, &elem2p);
             ret = Duro_get_type(elem2p, interp, txp, &attrv[i].typ);
@@ -660,7 +659,7 @@ table_drop_cmd(TclState *statep, Tcl_Interp *interp, int objc,
         }
     }
 
-    return RDB_OK;
+    return TCL_OK;
 }
 
 int

@@ -191,9 +191,6 @@ optimize_select(RDB_table *tbp, RDB_transaction *txp)
      * Try to find best index
      */
     for (i = 0; i < stbp->var.stored.indexc; i++) {
-        if (!stbp->var.stored.indexv[i].unique)
-            continue;
-
         int cost = eval_index(tbp, &stbp->var.stored.indexv[i]);
 
         if (cost < bestcost) {
@@ -230,6 +227,10 @@ dup_named(RDB_table **tbpp)
     return resolve_views(*tbpp);
 }
 
+/*
+ * Make a copy of all named virtual tables,
+ * so the tree may be safely modified.
+ */
 static int
 resolve_views(RDB_table *tbp)
 {

@@ -9,11 +9,7 @@ exec tclsh "$0"
 
 load .libs/libdurotcl.so
 
-source tcl/util.tcl
-
-proc tequal {t1 t2} {
-    return [string equal [lsort $t1] [lsort $t2]]
-}
+source tests/testutil.tcl
 
 # Create DB environment
 file delete -force tests/dbenv
@@ -202,12 +198,10 @@ if {![tequal $tpl $stpl]} {
     exit 1
 }
 
-
 if {[duro::expr {TUPLE FROM WH} $tx] != "SCATTR Bla"} {
     puts "SCATTR should be \"Bla\", but is not"
     exit 1
 }
-
 
 # Drop tables
 duro::table drop S $tx

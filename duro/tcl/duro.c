@@ -101,6 +101,8 @@ Durotcl_Init(Tcl_Interp *interp)
             (ClientData)statep, NULL);
     Tcl_CreateObjCommand(interp, "duro::type", Duro_type_cmd,
             (ClientData)statep, NULL);
+    Tcl_CreateObjCommand(interp, "duro::index", Duro_index_cmd,
+            (ClientData)statep, NULL);
 
     Tcl_CreateExitHandler(duro_cleanup, (ClientData)statep);
 

@@ -4,6 +4,7 @@
 /* $Id$ */
 
 #include "recmap.h"
+#include "index.h"
 #include <db.h>
 #include <stdlib.h>
 
@@ -13,20 +14,29 @@ typedef struct {
     DBT current_key;
     DBT current_data;
     RDB_recmap *recmapp;
+    RDB_index *idxp;
     DB_TXN *txid;
 } RDB_cursor;
 
-/* Create a cursor for a recmap. The initial position of the cursor is
+/*
+ * Create a cursor for a recmap. The initial position of the cursor is
  * undefined.
  */
 int
 RDB_recmap_cursor(RDB_cursor **, RDB_recmap *, RDB_bool wr, DB_TXN *txid);
 
+/*
+ * Create a cursor over an index. The initial position of the cursor is
+ * undefined.
+ */
+int
+RDB_index_cursor(RDB_cursor **, struct RDB_index *, RDB_bool wr, DB_TXN *txid);
+
 /* Read the value of field fno from the current record.  */
 int
 RDB_cursor_get(RDB_cursor *, int fno, void **datapp, size_t *sizep);
 
-/* Set the value of field fno of the current record.  */
+/* Set the values of the fields specified by fieldc/fieldv.  */
 int
 RDB_cursor_set(RDB_cursor *, int fieldc, RDB_field[]);
 
@@ -34,17 +44,25 @@ RDB_cursor_set(RDB_cursor *, int fieldc, RDB_field[]);
 int
 RDB_cursor_delete(RDB_cursor *);
 
-/* Move the cursor to the first record.
+/*
+ * Move the cursor to the first record.
  * If there is no first record, RDB_NOT_FOUND is returned.
  */
 int
 RDB_cursor_first(RDB_cursor *);
 
-/* Move the cursor to the next record.
+/*
+ * Move the cursor to the next record.
  * If the cursor is at the end, RDB_NOT_FOUND is returned.
  */
 int
 RDB_cursor_next(RDB_cursor *);
+
+/*
+ * Move the cursor to the position specified by keyv.
+ */
+int
+RDB_cursor_seek(RDB_cursor *curp, RDB_field keyv[]);
 
 /* Detroy the cursor, releasing the resources associated with it
  * and freeing its memory.

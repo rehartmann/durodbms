@@ -9,10 +9,7 @@ exec tclsh "$0"
 
 load .libs/libdurotcl.so
 
-# Compare tuples
-proc tequal {t1 t2} {
-    return [string equal [lsort $t1] [lsort $t2]]
-}
+source tests/testutil.tcl
 
 # Create DB environment
 file delete -force tests/dbenv

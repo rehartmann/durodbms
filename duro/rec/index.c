@@ -104,6 +104,9 @@ RDB_create_index(RDB_recmap *rmp, const char *namp, const char *filenamp,
     if (ret != RDB_OK)
         return ret;
 
+    if (!unique)
+        ixp->dbp->set_flags(ixp->dbp, DB_DUPSORT);
+
     ret = ixp->dbp->open(ixp->dbp, txid, filenamp, namp, DB_HASH, DB_CREATE, 0664);
     if (ret != 0) {
         ret = RDB_convert_err(ret);
@@ -123,6 +126,7 @@ RDB_create_index(RDB_recmap *rmp, const char *namp, const char *filenamp,
    
     *ixpp = ixp;
     return RDB_OK;
+
 error:
     RDB_delete_index(ixp, envp, txid);
     return ret;
@@ -139,6 +143,9 @@ RDB_open_index(RDB_recmap *rmp, const char *namp, const char *filenamp,
     ret = create_index(rmp, namp, filenamp, envp, fieldc, fieldv, unique, &ixp);
     if (ret != RDB_OK)
         return RDB_convert_err(ret);
+
+    if (!unique)
+        ixp->dbp->set_flags(ixp->dbp, DB_DUPSORT);
 
     ret = ixp->dbp->open(ixp->dbp, txid, filenamp, namp, DB_UNKNOWN, 0, 0664);
     if (ret != 0) {
@@ -236,6 +243,7 @@ RDB_index_get_fields(RDB_index *ixp, RDB_field keyv[], int fieldc, DB_TXN *txid,
             retfieldv[i].datap = ((RDB_byte *)data.data) + offs;
         }
     }
+    free(key.data);
     return RDB_OK;
 }
 

@@ -4,6 +4,8 @@ Summary of Changes for Duro
 
 Changes for Duro 0.8
 
+- Implemented RDB_create_table_index().
+
 - Implemented RDB_table_equals().
 
 - RDB_create_table() does now more complete argument checking.
