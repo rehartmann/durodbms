@@ -362,7 +362,6 @@ delete(RDB_table *tbp, RDB_expression *condp, RDB_transaction *txp)
         case RDB_TB_EXTEND:
             return delete_extend(tbp, condp, txp);
         case RDB_TB_PROJECT:
-            /* !! should check if condp refers to attributes "projected away" */
             return delete(tbp->var.project.tbp, condp, txp);
         case RDB_TB_SUMMARIZE:
             return RDB_NOT_SUPPORTED;

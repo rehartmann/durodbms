@@ -64,6 +64,7 @@ duro::table expr -global TR {T1 RENAME (K AS KN, S1 AS SN)} $tx
 duro::table expr -global TX {EXTEND T1 ADD (K*10 AS K0)} $tx
 
 duro::table expr -global TP {(T1 WHERE K = 1) {K}} $tx
+duro::table expr -global TP2 {T1 {S1}} $tx
 duro::table expr -global TM2 {(T1 WHERE K = 1) MINUS (T2 WHERE K = 1)} $tx
 duro::table expr -global TI2 {(T1 WHERE K = 1) INTERSECT (T2 WHERE K = 1)} $tx
 duro::table expr -global TU2 {(T1 WHERE K = 1) UNION (T2 WHERE K = 1)} $tx
@@ -79,6 +80,38 @@ if {![tequal $tpl {K 2 S1 Blubb S2 B}]} {
     error "Invalid value of TUPLE FROM TJ2"
 }
 
+#
+# Referring to an attribute which has been removed by project
+# must fail
+#
+
+if {![catch {duro::update TP2 {K = 1} S1 {"Bli"} $tx}]} {
+    error "duro::update shuld fail, but succeeded"
+}
+
+set code [lindex $errorCode 1]
+if {$code != "RDB_ATTRIBUTE_NOT_FOUND"} {
+    error "wrong error code: $code"
+}
+
+if {![catch {duro::update TP2 {S1 = "Bla"} K 3 $tx}]} {
+    error "duro::update shuld fail, but succeeded"
+}
+
+set code [lindex $errorCode 1]
+if {$code != "RDB_ATTRIBUTE_NOT_FOUND"} {
+    error "wrong error code: $code"
+}
+
+if {![catch {duro::delete TP2 {K = 1} $tx}]} {
+    error "duro::delete shuld fail, but succeeded"
+}
+
+set code [lindex $errorCode 1]
+if {$code != "RDB_ATTRIBUTE_NOT_FOUND"} {
+    error "wrong error code: $code"
+}
+
 duro::commit $tx
 
 # Close DB environment
@@ -89,10 +122,9 @@ set dbenv [duro::env open tests/dbenv]
 
 set tx [duro::begin $dbenv TEST]
 
-# !! Will work again when operator expressions check their argument(s)
-# if {![catch {duro::delete TP {S1 = "Bla"} $tx}]} {
-#     error "duro::delete on TP should fail, but succeeded"
-# }
+if {![catch {duro::delete TP {S1 = "Bla"} $tx}]} {
+    error "duro::delete on TP should fail, but succeeded"
+}
 
 set tpl {K 0 S1 Bold S2 Z}
 

@@ -693,7 +693,7 @@ update_select_index(RDB_table *tbp, RDB_expression *condp,
         || _RDB_expr_refers(tbp->var.select.exp, tbp->var.select.tbp)
         || (condp != NULL && _RDB_expr_refers(condp, tbp->var.select.tbp))) {
 
-        /* !! Should do a complex update by index, but this is not implelemnted */
+        /* !! Should do a complex update by index, but this is not implemented */
         return update_select(tbp, condp, updc, updv, txp);
     }
     return update_select_index_simple(tbp, condp, updc, updv, txp);
@@ -725,7 +725,6 @@ update(RDB_table *tbp, RDB_expression *condp, int updc,
         case RDB_TB_EXTEND:
             return RDB_NOT_SUPPORTED;
         case RDB_TB_PROJECT:
-            /* !! check if condp or updv refer to attributes "projected away" */
             return update(tbp->var.project.tbp, condp, updc, updv, txp);
         case RDB_TB_SUMMARIZE:
             return RDB_NOT_SUPPORTED;
@@ -765,7 +764,7 @@ RDB_update(RDB_table *tbp, RDB_expression *condp, int updc,
         RDB_type *typ;
 
         if (attrp == NULL)
-            return RDB_INVALID_ARGUMENT;
+            return RDB_ATTRIBUTE_NOT_FOUND;
         if (RDB_type_is_scalar(attrp->typ)) {
             ret = RDB_expr_type(updv[i].exp, tbp->typ->var.basetyp, txp, &typ);
             if (ret != RDB_OK)
