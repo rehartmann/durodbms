@@ -1,0 +1,8 @@
+Opening DB
+Starting transaction
+Creating aggregation COUNT ( EMPS1 )
+Count is 2
+Creating aggregation AVG ( EMPS1, SALARY )
+Average is 4050.000000
+End of transaction
+Closing DB

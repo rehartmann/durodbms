@@ -1,0 +1,9 @@
+Opening environment
+Starting transaction
+Creating intersection (EMPS1, EMPS2)
+Creating projection (NAME)
+Converting virtual table to array
+NAME: Smith
+Dropping virtual table
+End of transaction
+Closing environment

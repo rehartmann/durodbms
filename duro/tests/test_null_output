@@ -1,0 +1,11 @@
+Opening DB
+Starting transaction
+Creating table DEEDUM
+Table DEEDUM created.
+End of transaction
+Starting transaction
+Inserting tuple #1
+Inserting tuple #2
+Error: element exists - OK
+End of transaction
+Closing DB

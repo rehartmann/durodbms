@@ -1,0 +1,42 @@
+	README for Duro 0.1
+$Id$
+
+This directory contains release 0.3 of Duro, a relational
+database library written in C.
+
+To compile Duro, simply run make in this directory.
+'make test' will build and run the test suite.
+
+Compiling and running Duro requires the Berkeley DB database library,
+release 4.1.
+
+Berkeley DB is assumed to be located in /usr/local/BerkeleyDB.4.1.
+If Berkeley DB is located in a different directory, modify make.vars
+appropriately.
+
+Duro has been tested on a GNU/Linux PC. Building Duro on a different
+system may require some modifications to the Makefiles.
+
+Berkeley DB can be obtained for free from http://www.sleepycat.com.
+
+To learn about how to use the Duro, see rel/rdb.h and the programs
+located in the directories util and tests.
+
+Duro is copyright by René Hartmann. It is published under the terms of the
+GNU General Public License.
+
+This software is still under development. Report bugs to rehartmann@t-online.de.
+
+Programming notes:
+
+- If a table from which an array was created is dropped before the transaction
+  which was used to create the array was terminated, this transaction
+  must be used when dropping the table.
+
+Known bugs:
+
+- RDB_update() does not work always correctly if a key is updated.
+  See the comments in the code for details.
+
+- An RDB_array becomes invalid after the end of the transaction in which
+  it was created.

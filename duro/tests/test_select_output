@@ -1,0 +1,16 @@
+Opening DB
+Starting transaction
+Creating selection (name="Smith")
+Converting selection table to array
+EMPNO: 1
+NAME: Smith
+SALARY: 4000.000000
+Dropping selection
+Creating selection (EMPNO=1)
+Converting selection table to array
+EMPNO: 1
+NAME: Smith
+SALARY: 4000.000000
+Dropping selection
+End of transaction
+Closing DB

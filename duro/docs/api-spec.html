@@ -1,0 +1,493 @@
+<html lang="en">
+<title>Duro API specification</title>
+
+<body>
+
+<h1>Duro API specification</h1>
+
+<h2>Scalar types</h2>
+
+<h3>Built-in types</h3>
+
+<table border="1">
+<tr><th>RDB_type variable<th>C type
+<tr><td>RDB_BOOLEAN<td>RDB_bool
+<tr><td>RDB_INTEGER<td>RDB_int
+<tr><td>RDB_RATIONAL<td>RDB_rational
+<tr><td>RDB_STRING<td>char *
+</table>
+
+<h3>Defining a type</h3>
+
+<pre>
+typedef struct RDB_attr {
+    char *name;
+    RDB_type *type;
+    RDB_value *default_value;
+} RDB_attr;
+
+typedef struct {
+    char *name;
+    int compc;
+    RDB_attr *compv;
+} RDB_possrep;
+
+int
+RDB_define_type(const char *name, int repc, RDB_possrep repv[],
+                RDB_expression *constraint, RDB_transaction *txp,
+                RDB_type **resultpp);
+
+int
+RDB_implement_type(const char *modname);
+
+</pre>
+
+<h3>Destroying a type</h3>
+
+<pre>
+
+void
+RDB_drop_type(RDB_type *);
+
+</pre>
+
+<pre>
+int
+RDB_get_type(RDB_database *dbp, const char *name, RDB_type **typp);
+
+RDB_bool
+RDB_type_is_numeric(const RDB_type *);
+
+char *
+RDB_type_name(const RDB_type *);
+
+RDB_bool
+RDB_is_builtin_type(const RDB_type *);
+
+RDB_bool
+RDB_type_equals(const RDB_type *, const RDB_type *);
+
+RDB_type *
+RDB_extend_tuple_type(const RDB_type *typ, int attrc, RDB_attr attrv[]);
+
+RDB_type *
+RDB_extend_relation_type(const RDB_type *typ, int attrc, RDB_attr attrv[]);
+
+int
+RDB_join_tuple_types(const RDB_type *typ1, const RDB_type *typ2,
+                     RDB_type **newtypp);
+
+int
+RDB_project_relation_type(const RDB_type *typ, int attrc, char *attrv[],
+                          RDB_type **newtypp);
+</pre>
+
+<h2>Scalar operations</h2>
+
+<pre>
+
+typedef enum {
+    RDB_COUNT, RDB_SUM, RDB_AVG, RDB_MAX, RDB_MIN, RDB_ALL, RDB_ANY,
+    RDB_COUNTD, RDB_SUMD, RDB_AVGD
+} RDB_aggregate_op;
+
+int
+RDB_aggregate(RDB_table *, RDB_aggregate_op op, const char *attrname,
+              RDB_transaction *, RDB_value *resultp);
+
+</pre>
+
+<h2>Selector functions</h2>
+
+<pre>
+
+int<br>
+RDB_select_value(int valc, const RDB_value *valpc[], RDB_value *resultp)
+
+</pre>
+
+<h2>Expose possible representations</h2>
+
+<pre>
+
+int
+RDB_value_set(RDB_value *valp, const char *compname,
+              const RDB_value *compvalp);
+
+int
+RDB_value_get(RDB_value *valp, const char *compname,
+              RDB_value *compvalp);
+
+</pre>
+
+<h2>Creating tuple types</h2>
+
+<pre>
+
+RDB_type *
+RDB_create_tuple_type(int attrc, RDB_attr attrv[]);
+
+</pre>
+
+<h2>Creating relation types</h2>
+
+<pre>
+
+RDB_type *
+RDB_create_relation_type(int attrc, RDB_attr attrv[]);
+
+</pre>
+
+<h2>Equality</h2>
+
+<pre>
+
+RDB_bool
+RDB_value_equals(const RDB_value *, const RDB_value *);
+
+</pre>
+
+<h2>Tuple functions</h3>
+
+<pre>
+
+void
+RDB_init_tuple(RDB_tuple *);
+
+void
+RDB_deinit_tuple(RDB_tuple *);
+
+int
+RDB_tuple_set(RDB_tuple *, const char *name, const RDB_value *);
+
+int
+RDB_tuple_set_bool(RDB_tuple *, const char *name, RDB_bool val);
+
+int
+RDB_tuple_set_int(RDB_tuple *, const char *name, RDB_int val);
+
+int
+RDB_tuple_set_rational(RDB_tuple *, const char *name, RDB_rational val);
+
+int
+RDB_tuple_set_string(RDB_tuple *, const char *name, const char *valp);
+
+RDB_value *
+RDB_tuple_get(const RDB_tuple *, const char *name);
+
+RDB_bool
+RDB_tuple_get_bool(const RDB_tuple *, const char *name);
+
+RDB_int
+RDB_tuple_get_int(const RDB_tuple *, const char *name);
+
+RDB_rational
+RDB_tuple_get_rational(const RDB_tuple *, const char *name);
+
+char *
+RDB_tuple_get_string(const RDB_tuple *, const char *name);
+
+int
+RDB_tuple_extend(RDB_tuple *, int attrc, RDB_virtual_attr attrv[],
+                 RDB_transaction *);
+
+typedef struct {
+    int attrc;
+    char **attrv;
+    int gattrc;
+} RDB_wrapping;
+
+int
+RDB_tuple_wrap(const RDB_tuple *, int wrapc, RDB_wrapping wrapv[], RDB_tuple *);
+
+int
+RDB_tuple_unwrap(const RDB_tuple *, int attrc, const char *attrv[]);
+
+</pre>
+
+<h2>Table functions</h2>
+
+<h3>Creating a table</h3>
+
+<pre>
+
+typedef struct {
+    char **attrv;
+    int attrc;
+} RDB_key_attrs;
+
+int
+RDB_create_table(const char *name, RDB_bool persistent,
+        int attrc, RDB_attr heading[],
+        int keyc, RDB_key_attrs keyv[],
+        RDB_transaction *txp, RDB_table **tbpp);
+
+</pre>
+
+<h3>Destroying a table</h3>
+
+<pre>
+
+int
+RDB_drop_table(RDB_table *tbp, RDB_transaction *);
+
+</pre>
+
+<pre>
+
+RDB_table_name(tbp)
+
+int
+RDB_insert(RDB_table *tbp, const RDB_tuple *tplp, RDB_transaction *);
+
+typedef struct {
+    char *name;
+    RDB_expression *valuep;
+} RDB_attr_update;
+
+int
+RDB_update(RDB_table *, RDB_expression *, int attrc,
+        const RDB_attr_update attrv[], RDB_transaction *);
+
+int
+RDB_delete(RDB_table *tbp, RDB_expression *exprp, RDB_transaction *);
+
+int
+RDB_table_contains(RDB_table *, const RDB_tuple *, RDB_transaction *);
+
+int
+RDB_table_is_empty(RDB_table *, RDB_transaction *, RDB_bool *resultp);
+
+int
+RDB_set_table_name(RDB_table *tbp, const char *name, RDB_transaction *);
+
+int
+RDB_make_persistent(RDB_table *, RDB_transaction *);
+
+</pre>
+
+<h3>Database functions</h3>
+
+int
+RDB_create_db(const char *name, RDB_environment *envp, RDB_database **dbpp);
+
+RDB_db_name(dbp)
+
+int
+RDB_open_db(const char *name, RDB_environment *, RDB_database **dbpp);
+
+int
+RDB_close_db(RDB_database *dbp);
+
+int
+RDB_drop_db(const char *name, RDB_environment *);
+
+int
+RDB_get_table(RDB_database *dbp, const char *name, RDB_table **tbpp);
+
+<h2>Transaction functions</h2>
+
+<pre>
+
+RDB_tx_db(txp)
+
+int
+RDB_begin_tx(RDB_transaction *txp, RDB_database *dbp,
+        RDB_transaction *parent);
+
+int
+RDB_commit(RDB_transaction *);
+
+int
+RDB_rollback(RDB_transaction *);
+
+</pre>
+
+<h2>Relational algebra functions</h2>
+
+<pre>
+
+int
+RDB_select(RDB_table *, RDB_expression *condition, RDB_table **resultpp);
+
+int
+RDB_union(RDB_table *, RDB_table *, RDB_table **resultpp);
+
+int
+RDB_minus(RDB_table *, RDB_table *, RDB_table **resultpp);
+
+int
+RDB_intersect(RDB_table *, RDB_table *, RDB_table **resultpp);
+
+/* Perform a natural join of the two tables. */
+int
+RDB_join(RDB_table *, RDB_table *, RDB_table **resultpp);
+
+typedef struct RDB_virtual_attr {
+    char *name;
+    RDB_expression *value;
+} RDB_virtual_attr;
+
+int
+RDB_extend(RDB_table *, int attrc, RDB_virtual_attr attrv[],
+        RDB_table **resultpp);
+
+int
+RDB_project(RDB_table *, int attrc, char *attrv[], RDB_table **resultpp);
+
+typedef struct {
+    RDB_aggregate_op op;
+    RDB_expression *exp;
+    char *name;
+} RDB_summarize_add;
+
+int
+RDB_summarize(RDB_table *, int addc, RDB_summarize_add addv[],
+              RDB_table **resultpp);
+
+</pre>
+
+<h2>Array functions</h2>
+
+<pre>
+
+void
+RDB_init_array(RDB_array *);
+
+void
+RDB_deinit_array(RDB_array *);
+
+int
+RDB_table_to_array(RDB_table *, RDB_array **arrpp, RDB_transaction *);
+
+int
+RDB_array_get_tuple(RDB_array *, RDB_int idx, RDB_tuple *);
+
+int
+RDB_array_set_tuple(RDB_array *, RDB_int idx, const RDB_tuple *);
+
+int
+RDB_array_length(RDB_array *);
+
+</pre>
+
+<h2>Assignment</h2>
+
+<pre>
+
+int
+RDB_copy_value(RDB_value *dstvalp, const RDB_value *srcvalp);
+
+int
+RDB_copy_table(RDB_table *dstp, RDB_table *srcp, RDB_transaction *);
+
+</pre>
+
+<h2>Expressions</h2>
+
+<pre>
+
+RDB_type *
+RDB_expr_type(const RDB_expression *);
+
+RDB_bool
+RDB_expr_is_const(const RDB_expression *);
+
+RDB_expression *
+RDB_bool_const(RDB_bool);
+
+RDB_expression *
+RDB_int_const(RDB_int);
+
+RDB_expression *
+RDB_rational_const(RDB_rational);
+
+RDB_expression *
+RDB_string_const(const char *);
+
+RDB_expression *
+RDB_value_const(const RDB_value *valp);
+
+RDB_expression *
+RDB_expr_attr(const char *attrname, RDB_type *);
+
+RDB_expression *
+RDB_dup_expr(const RDB_expression *exprp);
+
+RDB_expression *
+RDB_eq(RDB_expression *, RDB_expression *);
+
+RDB_expression *
+RDB_neq(RDB_expression *, RDB_expression *);
+
+RDB_expression *
+RDB_and(RDB_expression *, RDB_expression *);
+
+RDB_expression *
+RDB_or(RDB_expression *, RDB_expression *);
+
+RDB_expression *
+RDB_not(RDB_expression *);
+
+RDB_expression *
+RDB_add(RDB_expression *, RDB_expression *);
+
+RDB_expression *
+RDB_rel_table(RDB_table *);
+
+RDB_expression *
+RDB_rel_select(RDB_expression *tbexprp, RDB_expression *condp);
+
+RDB_expression *
+RDB_rel_union(RDB_expression *, RDB_expression *);
+
+RDB_expression *
+RDB_rel_minus(RDB_expression *, RDB_expression *);
+
+RDB_expression *
+RDB_rel_intersect(RDB_expression *, RDB_expression *);
+
+RDB_expression *
+RDB_rel_join(RDB_expression *, RDB_expression *);
+
+RDB_expression *
+RDB_rel_extend(RDB_expression *, int attrc, RDB_virtual_attr attrv[]);
+
+RDB_expression *
+RDB_rel_project(RDB_expression *, int attrc, char *attrv[]);
+
+RDB_expression *
+RDB_rel_is_empty(RDB_expression *);
+
+/* Destroy the expression and all its subexpressions */
+void
+RDB_drop_expr(RDB_expression *);
+
+</pre>
+
+<h2>Constraints</h2>
+
+<pre>
+
+int
+RDB_create_constraint(const char *name, RDB_expression *constr,
+                      RDB_transaction *txp);
+
+int
+RDB_drop_constraint(const char *name, RDB_transaction *txp);
+
+</pre>
+
+<h2>Miscellaneous</h2>
+
+<pre>
+
+void
+RDB_init_value(RDB_value *valp);
+
+void
+RDB_deinit_value(RDB_value *valp);
+
+</pre>
+
+</html>

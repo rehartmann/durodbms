@@ -1,0 +1,12 @@
+Starting transaction
+Creating (EMPS1 union EMPS2) { SALARY }
+Making virtual table persistent as SALARIES
+End of transaction
+Starting transaction
+Creating EMPS1 select (SALARY > 4000)
+Making virtual table persistent as EMPS1H
+End of transaction
+Starting transaction
+Creating extend EMPS1 add (SALARY > 4000 AS HIGHSAL)
+Making virtual table persistent as EMPS1SQ
+End of transaction

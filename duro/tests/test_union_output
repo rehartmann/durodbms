@@ -1,0 +1,13 @@
+Opening DB
+Starting transaction
+Creating EMPS1 union EMPS2
+converting union table to array
+EMPNO: 1
+NAME: Smith
+EMPNO: 3
+NAME: Clarke
+EMPNO: 2
+NAME: Jones
+Dropping union
+End of transaction
+Closing DB

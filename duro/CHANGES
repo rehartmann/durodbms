@@ -1,0 +1,56 @@
+$Id$
+
+Summary of Changes for Duro
+
+Changes for Duro 0.4
+
+- Persistent virtual tables now supported through RDB_set_table_name()
+  and RDB_make_persistent().
+
+- Releasing databases no longer required before closing environment
+
+- Added operators < > <= >=
+
+- RDB_init_value(), RDB_init_array(), and RDB_init_tuple() do no longer
+  return an error code (the error checking, if necessary, is delayed
+  to first use of the variable). This makes initialization/deinitialization
+  code much easier.
+
+- Fixed alignment bug
+
+- Added data type BINARY
+
+Changes for Duro 0.3
+
+- Changed command line arguments of utility programs, added utility function
+  RDB_getargs() to read command line arguments
+
+- Changed array interface
+
+- Added RDB_init_value()
+
+- Renamed RDB_open_db to RDB_get_db and RDB_close_db to RDB_release_db
+
+- RDB_drop_db now takes pointer to RDB_database as argument
+
+- Minor internal API changes
+
+- Bugfix (Projection over virtual table crashed)
+
+- Fixed bug in intersection, added test
+
+- Added argument "persistent" to RDB_create_table()
+
+- Aggregate operation
+
+Changes for Duro 0.2
+
+- Switched to Berkeley DB 4.1
+
+- Added support for projection (through RDB_project())
+
+- RDB_create_table() now allows for more than one candidate key
+
+- Renamed the Relational Algebra functions: RDB_table_select()
+  becomes RDB_select(), etc. These functions are now the
+  recommended way to create queries.

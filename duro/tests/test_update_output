@@ -1,0 +1,15 @@
+Opening DB
+Starting transaction
+Updating table, setting SALARY to 4500
+Updating table, setting EMPNO from 2 to 3
+Updating table, setting NAME of no 1 to Smythe
+Updating table, setting NAME of no 3 to Johnson
+Converting table to array
+EMPNO: 1
+NAME: Smythe
+SALARY: 4500.000000
+EMPNO: 3
+NAME: Johnson
+SALARY: 4500.000000
+End of transaction
+Closing DB

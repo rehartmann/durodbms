@@ -1,0 +1,18 @@
+Opening DB
+Starting transaction
+Extending EMPS1 (SALARY_W_BONUS)
+converting extended table to array
+EMPNO: 2
+NAME: Jones
+SALARY: 4100.000000
+SALARY_W_BONUS: 4200.000000
+EMPNO: 1
+NAME: Smith
+SALARY: 4000.000000
+SALARY_W_BONUS: 4100.000000
+Inserting tuple #1
+predicate violation - OK
+Inserting tuple #2
+Dropping extension
+End of transaction
+Closing DB
