@@ -2,7 +2,6 @@
 
 #include "rdb.h"
 #include "internal.h"
-#include <signal.h>
 
 typedef struct RDB_rmlink {
     RDB_recmap *rmp;

@@ -252,7 +252,6 @@ array_index_cmd(TclState *statep, Tcl_Interp *interp, int objc,
     ret = RDB_array_get(arrayp, (RDB_int) idx, &tplp);
     if (ret != RDB_OK) {
         Duro_dberror(interp, ret);
-
     }
 
     listobjp = Duro_tuple_to_list(interp, tplp);

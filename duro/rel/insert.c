@@ -72,6 +72,7 @@ insert_join(RDB_table *tbp, const RDB_object *tup, RDB_transaction *txp)
         RDB_rollback(&tx);
         return ret2;
     }
+
     /* If both inserts fail because the tuples exist, the insert fails
      * with an error of RDB_ELEMENT_EXISTS.
      */
@@ -81,6 +82,25 @@ insert_join(RDB_table *tbp, const RDB_object *tup, RDB_transaction *txp)
     }       
     
     return RDB_commit(&tx);
+}
+
+static void
+set_tuple_type(RDB_object *objp, RDB_type *typ)
+{
+    int i;
+
+    objp->typ = typ;
+
+    /* Set tuple attribute types */
+    for (i = 0; i < typ->var.tuple.attrc; i++) {
+        RDB_type *attrtyp = typ->var.tuple.attrv[i].typ;
+
+        if (attrtyp->kind == RDB_TP_TUPLE) {
+            set_tuple_type(
+                    RDB_tuple_get(objp, typ->var.tuple.attrv[i].name),
+                    attrtyp);
+        }
+    }
 }
 
 int
@@ -128,8 +148,8 @@ RDB_insert(RDB_table *tbp, const RDB_object *tup, RDB_transaction *txp)
                 }
 
                 /* Set type - needed for tuples */
-                if (valp->typ == NULL)
-                    valp->typ = tuptyp->var.tuple.attrv[i].typ;
+                if (valp->typ == NULL && valp->kind == _RDB_TUPLE)
+                    set_tuple_type(valp, tuptyp->var.tuple.attrv[i].typ);
 
                 _RDB_obj_to_field(&fvp[*fnop], valp);
             }

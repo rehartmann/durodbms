@@ -148,6 +148,22 @@ _RDB_dbtables_insert(RDB_table *tbp, RDB_transaction *txp)
     return ret;
 }
 
+static char *
+new_nstypekey(const char *tbname, const char *attrname)
+{
+    int tbnamelen = strlen(tbname);
+    char *typename = malloc(tbnamelen + strlen(attrname) + 2);
+
+    if (typename == NULL)
+        return NULL;
+
+    /* Type key is <tablename>$<attribute name> */
+    strcpy(typename, tbname);
+    typename[tbnamelen] = '$';
+    strcpy(typename + tbnamelen + 1, attrname);
+    return typename;
+}
+
 /*
  * Store the definition of a tuple type in the catalog.
  */
@@ -160,19 +176,40 @@ insert_tuptype(RDB_type *tuptyp, const char *key, RDB_transaction *txp)
 
     RDB_init_obj(&tpl);
     for (i = 0; i < tuptyp->var.tuple.attrc; i++) {
+        RDB_type *attrtyp = tuptyp->var.tuple.attrv[i].typ;
+        char *attrname = tuptyp->var.tuple.attrv[i].name;
+
         ret = RDB_tuple_set_string(&tpl, "TYPEKEY", key);
         if (ret != RDB_OK)
             goto cleanup;
 
-        ret = RDB_tuple_set_string(&tpl, "ATTRNAME", tuptyp->var.tuple.attrv[i].name);
+        ret = RDB_tuple_set_string(&tpl, "ATTRNAME", attrname);
         if (ret != RDB_OK)
             goto cleanup;
 
-        /* !! works only if the tuple consists of scalar types only */
-        ret = RDB_tuple_set_string(&tpl, "TYPE",
-                RDB_type_name(tuptyp->var.tuple.attrv[i].typ));
-        if (ret != RDB_OK)
+        if (RDB_type_is_scalar(attrtyp)) {
+            ret = RDB_tuple_set_string(&tpl, "TYPE",
+                    RDB_type_name(tuptyp->var.tuple.attrv[i].typ));
+            if (ret != RDB_OK)
+                 goto cleanup;
+        } else if (attrtyp->kind == RDB_TP_TUPLE) {
+            /* Attribute has tuple type */
+            char *attrkey;
+
+            attrkey = new_nstypekey(key, attrname);
+            ret = RDB_tuple_set_string(&tpl, "TYPE", attrkey);
+            if (ret != RDB_OK) {
+                 free(attrkey);
+                 goto cleanup;
+            }
+            ret = insert_tuptype(attrtyp, attrkey, txp);
+            free(attrkey);
+            if (ret != RDB_OK)
+                goto cleanup;
+        } else {
+            ret = RDB_NOT_SUPPORTED;
             goto cleanup;
+        }
 
         ret = RDB_tuple_set_int(&tpl, "I_ATTRNO", (RDB_int)i);
         if (ret != RDB_OK)
@@ -191,9 +228,10 @@ cleanup:
 }
 
 static int
-delete_tuptype(const char *key, RDB_transaction *txp)
+delete_tuptype(RDB_type *typ, const char *key, RDB_transaction *txp)
 {
     int ret;
+    int i;
     RDB_expression *exprp = RDB_eq(RDB_expr_attr("TYPEKEY"),
             RDB_string_const(key));
 
@@ -202,23 +240,24 @@ delete_tuptype(const char *key, RDB_transaction *txp)
 
     ret = RDB_delete(txp->dbp->dbrootp->tuple_attrs_tbp, exprp, txp);
     RDB_drop_expr(exprp);
-    return ret;
-}
+    if (ret != RDB_OK)
+        return ret;
 
-static char *
-new_nstypekey(const char *tbname, const char *attrname)
-{
-    int tbnamelen = strlen(tbname);
-    char *typename = malloc(tbnamelen + strlen(attrname) + 2);
+    /* Delete tuple attributes */
+    for (i = 0; i < typ->var.tuple.attrc; i++) {
+        RDB_type *attrtyp = typ->var.tuple.attrv[i].typ;
+        char *attrname = typ->var.tuple.attrv[i].name;
 
-    if (typename == NULL)
-        return NULL;
+        if (attrtyp->kind == RDB_TP_TUPLE) {
+            char *attrkey = new_nstypekey(key, attrname);
 
-    /* Type key is <tablename>$<attribute name> */
-    strcpy(typename, tbname);
-    typename[tbnamelen] = '$';
-    strcpy(typename + tbnamelen + 1, attrname);
-    return typename;
+            ret = delete_tuptype(attrtyp, attrkey, txp);
+            free(attrkey);
+            if (ret != RDB_OK)
+                return ret;
+        }
+    }
+    return RDB_OK;
 }
 
 /* Insert the table pointed to by tbp into the catalog. */
@@ -491,11 +530,10 @@ delete_rtable(RDB_table *tbp, RDB_transaction *txp)
 
         if (attrp->typ->kind == RDB_TP_TUPLE) {
             char *typekey = new_nstypekey(tbp->name, attrp->name);
-            ret = delete_tuptype(typekey, txp);
+            ret = delete_tuptype(attrp->typ, typekey, txp);
             free(typekey);
             if (ret != RDB_OK)
                 goto cleanup;
-            /* !! should delete attribute tuple types too */
         }
     }
 
@@ -866,6 +904,7 @@ get_tuple_type(const char *typekey, RDB_transaction *txp, RDB_type **typp)
     for (i = 0; i < attrc; i++) {
         RDB_attr *attrp;
         RDB_object *tplp;
+        char *attrtypekey;
 
         ret = RDB_array_get(&arr, i, &tplp);
         if (ret != RDB_OK)
@@ -876,7 +915,12 @@ get_tuple_type(const char *typekey, RDB_transaction *txp, RDB_type **typp)
             ret = RDB_NO_MEMORY;
             goto cleanup;
         }
-        ret = RDB_get_type(RDB_tuple_get_string(tplp, "TYPE"), txp, &attrp->typ);
+
+        attrtypekey = RDB_tuple_get_string(tplp, "TYPE");
+        if (strchr(attrtypekey, '$') == NULL)
+            ret = RDB_get_type(attrtypekey, txp, &attrp->typ);
+        else
+            ret = get_tuple_type(attrtypekey, txp, &attrp->typ);
         if (ret != RDB_OK)
             goto cleanup;
     }

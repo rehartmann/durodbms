@@ -7,8 +7,6 @@
 #include <gen/errors.h>
 #include <string.h>
 
-#include <signal.h>
-
 void *
 RDB_obj_irep(RDB_object *valp, size_t *lenp)
 {
@@ -33,7 +31,7 @@ RDB_obj_irep(RDB_object *valp, size_t *lenp)
 static size_t
 obj_ilen(const RDB_object *objp)
 {
-    size_t len;
+    size_t len = 0;
 
     if (objp->kind == _RDB_TUPLE) {
         RDB_hashmap_iter it;
@@ -44,7 +42,7 @@ obj_ilen(const RDB_object *objp)
         while ((datap = RDB_hashmap_next(&it, &key, NULL)) != NULL)
             len += obj_ilen((RDB_object *) datap);
         RDB_destroy_hashmap_iter(&it);
-        return len;
+        return len + sizeof(size_t);
     }
     len = objp->typ->ireplen;
     if (len == RDB_VARIABLE_LEN)
@@ -92,7 +90,9 @@ irep_to_tuple(RDB_object *tplp, RDB_type *typ, const void *datap)
         if (ret != RDB_OK)
             return ret;
         bp += l;
-        RDB_tuple_set(tplp, typ->var.tuple.attrv[i].name, &obj);
+        ret = RDB_tuple_set(tplp, typ->var.tuple.attrv[i].name, &obj);
+        if (ret != RDB_OK)
+            return ret;
         
         RDB_destroy_obj(&obj);
     }
@@ -165,14 +165,13 @@ obj_to_irep(void *dstp, const void *srcp, size_t len)
             for (i = 0; i < objp->typ->var.tuple.attrc; i++) {
                 RDB_object *attrp = RDB_tuple_get(objp,
                         objp->typ->var.tuple.attrv[i].name);
-                int l = objp->typ->var.tuple.attrv[i].typ->ireplen;
 
+                int l = objp->typ->var.tuple.attrv[i].typ->ireplen;
                 if (l == RDB_VARIABLE_LEN) {
                     l = obj_ilen(attrp);
                     memcpy(bp, &l, sizeof (size_t));
                     bp += sizeof (size_t);
                 }
-
                 obj_to_irep(bp, attrp, l);
                 bp += l;
             }

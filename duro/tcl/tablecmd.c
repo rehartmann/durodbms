@@ -876,6 +876,7 @@ table_insert_cmd(TclState *statep, Tcl_Interp *interp, int objc,
         RDB_tuple_set(&tpl, attrname, &obj);
         RDB_destroy_obj(&obj);
     }
+
     ret = RDB_insert(tbp, &tpl, txp);
     if (ret != RDB_OK) {
         Duro_dberror(interp, ret);
