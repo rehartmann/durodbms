@@ -614,7 +614,7 @@ Duro_invoke_ro_op(const char *name, int argc, RDB_object *argv[],
      * Set arguments
      */
 
-    opargv = (Tcl_Obj **) Tcl_Alloc(sizeof (Tcl_Obj *) * argc + 1);
+    opargv = (Tcl_Obj **) Tcl_Alloc(sizeof (Tcl_Obj *) * (argc + 1));
 
     opargv[0] = nametop;
 

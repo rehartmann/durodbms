@@ -57,6 +57,8 @@ RDB_strerror(int err)
             return "operator not found";
         case RDB_SYNTAX:
             return "syntax error";
+        case RDB_VERSION_MISMATCH:
+            return "version mismatch";
 
         case RDB_NOT_SUPPORTED:
             return "operation or option not supported";

@@ -5,7 +5,7 @@
 
 /*
 This file is part of Duro, a relational database library.
-Copyright (C) 2003, 2004 René Hartmann.
+Copyright (C) 2003-2005 René Hartmann.
 
 Duro is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by

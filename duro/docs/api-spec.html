@@ -2703,6 +2703,18 @@ RDB_create_db_from_env(const char *name, RDB_environment *envp, RDB_database **d
 
 <p>On success, RDB_OK is returned. On failure, an error code is returned.
 
+<h3>Errors</h3>
+
+<dl>
+<dt>RDB_ELEMENT_EXISTS
+<dd>A database with the name <var>name</var> already exixts.
+<dt>RDB_VERSION_MISMATCH
+<dd>The version number stored in the catalog does not match
+the version of the library.
+</dl>
+
+<p>The call may also fail for a <a href="#syserr">system error</a>.
+
 <hr>
 
 <h2 id="get_db_from_env">RDB_get_db_from_env</h2>
@@ -2723,6 +2735,18 @@ and stores this pointer at the location pointed to by <var>dbpp</var>.
 <h3>Return value</h3>
 
 <p>On success, RDB_OK is returned. On failure, an error code is returned.
+
+<h3>Errors</h3>
+
+<dl>
+<dt>RDB_NOT_FOUND
+<dd>A database with the name <var>name</var> could not be found.
+<dt>RDB_VERSION_MISMATCH
+<dd>The version number stored in the catalog does not match
+the version of the library.
+</dl>
+
+<p>The call may also fail for a <a href="#syserr">system error</a>.
 
 <hr>
 

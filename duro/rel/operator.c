@@ -448,8 +448,8 @@ get_ro_op(RDB_dbroot *dbrootp, const char *name,
             op = new_ro_op("=", 2, &RDB_BOOLEAN, &_obj_equals);
             if (op == NULL)
                 return RDB_NO_MEMORY;
-            op->argtv[0] = argtv[0];
-            op->argtv[1] = argtv[1];
+            op->argtv[0] = _RDB_dup_nonscalar_type(argtv[0]);
+            op->argtv[1] = _RDB_dup_nonscalar_type(argtv[1]);
             ret = put_ro_op(dbrootp, op);
             if (ret != RDB_OK)
                 return ret;
@@ -460,8 +460,8 @@ get_ro_op(RDB_dbroot *dbrootp, const char *name,
             op = new_ro_op("<>", 2, &RDB_BOOLEAN, &_obj_not_equals);
             if (op == NULL)
                 return RDB_NO_MEMORY;
-            op->argtv[0] = argtv[0];
-            op->argtv[1] = argtv[1];
+            op->argtv[0] = _RDB_dup_nonscalar_type(argtv[0]);
+            op->argtv[1] = _RDB_dup_nonscalar_type(argtv[1]);
             ret = put_ro_op(dbrootp, op);
             if (ret != RDB_OK)
                 return ret;
@@ -715,7 +715,9 @@ RDB_call_ro_op(const char *name, int argc, RDB_object *argv[],
     if (ret != RDB_OK)
         goto error;
 
+    /* Set return type to make it available to the function */
     retvalp->typ = op->rtyp;
+
     ret = (*op->funcp)(name, argc, argv, op->iarg.var.bin.datap,
             op->iarg.var.bin.len, txp, retvalp);
     if (ret != RDB_OK)
@@ -1044,7 +1046,7 @@ substring(const char *name, int argc, RDB_object *argv[],
     RDB_destroy_obj(retvalp);
     retvalp->typ = &RDB_STRING;
     retvalp->kind = RDB_OB_BIN;
-    retvalp->var.bin.len = blen;
+    retvalp->var.bin.len = blen + 1;
     retvalp->var.bin.datap = malloc(retvalp->var.bin.len);
     if (retvalp->var.bin.datap == NULL)
         return RDB_NO_MEMORY;

@@ -2,7 +2,7 @@
 #define RDB_INTERNAL_H
 
 /*
- * Copyright (C) 2003, 2004 René Hartmann.
+ * Copyright (C) 2003-2005 René Hartmann.
  * See the file COPYING for redistribution information.
  */
 
@@ -17,11 +17,13 @@ enum {
     RDB_DFL_MAP_CAPACITY = 37
 };
 
+/*
 typedef struct RDB_constraint {
     char *name;
     RDB_expression *exp;
     struct RDB_constraint *nextp;
 } RDB_constraint;
+*/
 
 typedef struct RDB_dbroot {
     RDB_environment *envp;
@@ -29,7 +31,7 @@ typedef struct RDB_dbroot {
     RDB_hashmap ro_opmap;
     RDB_hashmap upd_opmap;
     RDB_database *firstdbp;
-    RDB_constraint *firstconstrp;
+    /* RDB_constraint *firstconstrp; */
 
     /* catalog tables */
     RDB_table *rtables_tbp;
@@ -45,7 +47,8 @@ typedef struct RDB_dbroot {
     RDB_table *ro_ops_tbp;
     RDB_table *upd_ops_tbp;
     RDB_table *indexes_tbp;
-    RDB_table *constraints_tbp;
+    /* constraints not yet supported  RDB_table *constraints_tbp; */
+    RDB_table *version_info_tbp;
 } RDB_dbroot;
 
 typedef struct RDB_qresult {

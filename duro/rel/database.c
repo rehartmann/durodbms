@@ -16,11 +16,6 @@
 #include <stdio.h>
 #include <ctype.h>
 
-enum {
-    MAJOR_VERSION = 0,
-    MINOR_VERSION = 9
-};
-
 RDB_environment *
 RDB_db_env(RDB_database *dbp)
 {
@@ -41,8 +36,9 @@ free_dbroot(RDB_dbroot *dbrootp)
     RDB_hashmap_iter it;
     char *keyp;
     void *datap;
+/* Database constraints are not yet supported
     RDB_constraint *constrp, *nextconstrp;
-
+*/
     RDB_destroy_hashmap(&dbrootp->typemap);
 
     /*
@@ -57,9 +53,9 @@ free_dbroot(RDB_dbroot *dbrootp)
     }
     RDB_destroy_hashmap_iter(&it);
 
-    /*
+    /* Database constraints are not yet supported
      * Destroy constraints
-     */
+     *
     constrp = dbrootp->firstconstrp;
     while (constrp != NULL) {
         nextconstrp = constrp->nextp;
@@ -68,6 +64,7 @@ free_dbroot(RDB_dbroot *dbrootp)
         free(constrp);
         constrp = nextconstrp;
     }
+    */
 
     RDB_init_hashmap_iter(&it, &dbrootp->upd_opmap);
     while ((datap = RDB_hashmap_next(&it, &keyp, NULL)) != NULL) {
@@ -194,7 +191,10 @@ close_systables(RDB_dbroot *dbrootp)
     close_table(dbrootp->ro_ops_tbp, dbrootp->envp);
     close_table(dbrootp->upd_ops_tbp, dbrootp->envp);
     close_table(dbrootp->indexes_tbp, dbrootp->envp);
+/* Database constraints are not yet supported
     close_table(dbrootp->constraints_tbp, dbrootp->envp);
+*/
+    close_table(dbrootp->version_info_tbp, dbrootp->envp);
 }
 
 /* cleanup function to close all DBs and tables */
@@ -239,7 +239,9 @@ new_dbroot(RDB_environment *envp)
         return NULL;
 
     dbrootp->firstdbp = NULL;
+/*
     dbrootp->firstconstrp = NULL;
+*/
 
     return dbrootp;
 }
@@ -292,30 +294,21 @@ static void
 assoc_systables(RDB_dbroot *dbrootp, RDB_database *dbp)
 {
     _RDB_assoc_table_db(dbrootp->table_attr_tbp, dbp);
-
     _RDB_assoc_table_db(dbrootp->table_attr_defvals_tbp, dbp);
-
     _RDB_assoc_table_db(dbrootp->rtables_tbp, dbp);
-
     _RDB_assoc_table_db(dbrootp->vtables_tbp, dbp);
-
     _RDB_assoc_table_db(dbrootp->dbtables_tbp, dbp);
-
     _RDB_assoc_table_db(dbrootp->keys_tbp, dbp);
-
     _RDB_assoc_table_db(dbrootp->types_tbp, dbp);
-
     _RDB_assoc_table_db(dbrootp->possreps_tbp, dbp);
-
     _RDB_assoc_table_db(dbrootp->possrepcomps_tbp, dbp);
-
     _RDB_assoc_table_db(dbrootp->ro_ops_tbp, dbp);
-
     _RDB_assoc_table_db(dbrootp->upd_ops_tbp, dbp);
-
     _RDB_assoc_table_db(dbrootp->indexes_tbp, dbp);
-
+/* Database constraints are not yet supported
     _RDB_assoc_table_db(dbrootp->constraints_tbp, dbp);
+*/
+    _RDB_assoc_table_db(dbrootp->version_info_tbp, dbp);
 }
 
 /*
@@ -359,6 +352,7 @@ create_dbroot(RDB_environment *envp, RDB_bool newdb,
 
     *dbrootpp = dbrootp;
     return RDB_OK;
+
 error:
     free_dbroot(dbrootp);
     return ret;

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2003, 2004 René Hartmann.
+ * Copyright (C) 2003-2005 René Hartmann.
  * See the file COPYING for redistribution information.
  */
 
@@ -11,6 +11,11 @@
 #include "serialize.h"
 #include <gen/strfns.h>
 #include <string.h>
+
+enum {
+    MAJOR_VERSION = 0,
+    MINOR_VERSION = 9
+};
 
 /*
  * Definitions of the catalog tables.
@@ -140,12 +145,21 @@ static RDB_attr indexes_attrs_attrv[] = {
     { "ASC", &RDB_BOOLEAN, NULL, 0 }
 };
 
+/* Constraints are not yet supported
 static RDB_attr constraints_attrv[] = {
     { "CONSTRAINTNAME", &RDB_STRING, NULL, 0 },
     { "I_EXPR", &RDB_BINARY, NULL, 0 }
 };
 static char *constraints_keyattrv[] = { "CONSTRAINTNAME" };
 static RDB_string_vec constraints_keyv[] = { { 1, constraints_keyattrv } };
+*/
+
+static RDB_attr version_info_attrv[] = {
+    { "MAJOR_VERSION", &RDB_INTEGER, NULL, 0 },
+    { "MINOR_VERSION", &RDB_INTEGER, NULL, 0 },
+    { "MICRO_VERSION", &RDB_INTEGER, NULL, 0 }
+};
+static RDB_string_vec version_info_keyv[] = { { 0, NULL } };
 
 static int
 dbtables_insert(RDB_table *tbp, RDB_transaction *txp)
@@ -771,6 +785,56 @@ provide_systable(const char *name, int attrc, RDB_attr heading[],
     return RDB_OK;
 }
 
+static int
+insert_version_info(RDB_dbroot *dbrootp, RDB_transaction *txp)
+{
+    int ret;
+    RDB_object tpl;
+
+    RDB_init_obj(&tpl);
+    ret = RDB_tuple_set_int(&tpl, "MAJOR_VERSION", MAJOR_VERSION);
+    if (ret != RDB_OK)
+        goto cleanup;
+    ret = RDB_tuple_set_int(&tpl, "MINOR_VERSION", MINOR_VERSION);
+    if (ret != RDB_OK)
+        goto cleanup;
+    ret = RDB_tuple_set_int(&tpl, "MICRO_VERSION", 0);
+    if (ret != RDB_OK)
+        goto cleanup;
+
+    ret = RDB_insert(dbrootp->version_info_tbp, &tpl, txp);
+
+cleanup:
+    RDB_destroy_obj(&tpl);
+    return ret;
+}
+
+static int
+check_version_info(RDB_dbroot *dbrootp, RDB_transaction *txp)
+{
+    int ret;
+    RDB_object tpl;
+
+    RDB_init_obj(&tpl);
+    ret = RDB_extract_tuple(dbrootp->version_info_tbp, txp, &tpl);
+    if (ret != RDB_OK) {
+        if (ret == RDB_NOT_FOUND)
+            ret = RDB_VERSION_MISMATCH;
+        goto cleanup;
+    }
+
+    if (RDB_tuple_get_int(&tpl, "MAJOR_VERSION") != MAJOR_VERSION
+            || RDB_tuple_get_int(&tpl, "MINOR_VERSION") != MINOR_VERSION) {
+        ret = RDB_VERSION_MISMATCH;
+    } else {
+        ret = RDB_OK;
+    }
+
+cleanup:
+    RDB_destroy_obj(&tpl);
+    return ret;
+}
+
 /*
  * Create or open system tables.
  * If the tables are created, associate them with the database pointed to by
@@ -787,11 +851,11 @@ _RDB_open_systables(RDB_dbroot *dbrootp, RDB_transaction *txp)
     /* create or open catalog tables */
 
     for(;;) {
-        ret = provide_systable("SYS_TABLEATTRS",4, table_attr_attrv,
+        ret = provide_systable("SYS_TABLEATTRS", 4, table_attr_attrv,
                 1, table_attr_keyv, create, txp, dbrootp->envp,
                 &dbrootp->table_attr_tbp);
         if (!create && ret == RDB_NOT_FOUND) {
-            /* Table not found, so create it */
+            /* Table not found, so tables must be created */
             create = RDB_TRUE;
         } else {
             break;
@@ -891,10 +955,17 @@ _RDB_open_systables(RDB_dbroot *dbrootp, RDB_transaction *txp)
     if (ret != RDB_OK) {
         return ret;
     }
-
+/* Constraints are not yet supported
     ret = provide_systable("SYS_CONSTRAINTS", 2, constraints_attrv,
             1, constraints_keyv, create, txp, dbrootp->envp,
             &dbrootp->constraints_tbp);
+    if (ret != RDB_OK) {
+        return ret;
+    }
+*/
+    ret = provide_systable("SYS_VERSION_INFO", 3, version_info_attrv,
+            1, version_info_keyv, create, txp, dbrootp->envp,
+            &dbrootp->version_info_tbp);
     if (ret != RDB_OK) {
         return ret;
     }
@@ -909,6 +980,18 @@ _RDB_open_systables(RDB_dbroot *dbrootp, RDB_transaction *txp)
             &dbrootp->indexes_tbp);
     if (ret != RDB_OK) {
         return ret;
+    }
+
+    if (create) {
+        /* Insert version info into catalog */
+        ret = insert_version_info(dbrootp, txp);
+        if (ret != RDB_OK)
+            return ret;
+    } else {
+        /* Check if catalog version matches software version */
+        ret = check_version_info(dbrootp, txp);
+        if (ret != RDB_OK)
+            return ret;
     }
 
     if (!create && (dbrootp->rtables_tbp->var.real.indexc == -1)) {
@@ -967,8 +1050,12 @@ _RDB_open_systables(RDB_dbroot *dbrootp, RDB_transaction *txp)
         ret = _RDB_cat_get_indexes(dbrootp->indexes_tbp, dbrootp, txp);
         if (ret != RDB_OK)
             return ret;
-
+/* Constraints are not yet supported
         ret = _RDB_cat_get_indexes(dbrootp->constraints_tbp, dbrootp, txp);
+        if (ret != RDB_OK)
+            return ret;
+*/
+        ret = _RDB_cat_get_indexes(dbrootp->version_info_tbp, dbrootp, txp);
         if (ret != RDB_OK)
             return ret;
     }
@@ -1026,7 +1113,12 @@ _RDB_cat_create_db(RDB_transaction *txp)
             ret = dbtables_insert(txp->dbp->dbrootp->indexes_tbp, txp);
             if (ret != RDB_OK) 
                 return ret;
+/* Constraints are not yet supported
             ret = dbtables_insert(txp->dbp->dbrootp->constraints_tbp, txp);
+            if (ret != RDB_OK) 
+                return ret;
+*/
+            ret = dbtables_insert(txp->dbp->dbrootp->version_info_tbp, txp);
         }
         return ret;
     }
@@ -1090,8 +1182,13 @@ _RDB_cat_create_db(RDB_transaction *txp)
     if (ret != RDB_OK) {
         return ret;
     }
-
+/* Constraints are not yet supported
     ret = _RDB_cat_insert(txp->dbp->dbrootp->constraints_tbp, txp);
+    if (ret != RDB_OK) {
+        return ret;
+    }
+*/
+    ret = _RDB_cat_insert(txp->dbp->dbrootp->version_info_tbp, txp);
     if (ret != RDB_OK) {
         return ret;
     }
@@ -2174,6 +2271,8 @@ error:
     return ret;
 }
 
+/* Constraints are not yet supported */
+#ifdef DB_CONSTRAINTS_SUPPORTED
 int
 _RDB_cat_create_constraint(const char *name, RDB_expression *exp,
                       RDB_transaction *txp)
@@ -2215,3 +2314,4 @@ cleanup:
 
     return ret;
 }
+#endif

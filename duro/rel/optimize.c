@@ -589,7 +589,7 @@ mutate_summarize(RDB_table *tbp, RDB_table **tbpv, int cap, RDB_transaction *txp
                 if (addv[j].exp == NULL)
                     return RDB_NO_MEMORY;
             } else {
-                addv[i].exp = NULL;
+                addv[j].exp = NULL;
             }
         }
 
