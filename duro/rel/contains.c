@@ -239,26 +239,47 @@ RDB_table_contains(RDB_table *tbp, const RDB_object *tup, RDB_transaction *txp)
         case RDB_TB_PROJECT:
             return project_contains(tbp, tup, txp);
         case RDB_TB_SUMMARIZE:
+        case RDB_TB_GROUP:
+        case RDB_TB_UNGROUP:
+            /*
+             * Create qresult and check if it contains the tuple
+             */
             {
                 int ret2;
-            
+
                 RDB_qresult *qrp;
                 ret = _RDB_table_qresult(tbp, txp, &qrp);
                 if (ret != RDB_OK) {
+                    RDB_errmsg(txp->dbp->dbrootp->envp,
+                            "Unable to create qresult: %s", RDB_strerror(ret));
                     if (RDB_is_syserr(ret)) {
                         RDB_rollback_all(txp);
                     }
                     return ret;
                 }
-                ret = _RDB_qresult_contains(qrp, tup, txp);
-                ret2 = _RDB_drop_qresult(qrp, txp);
-                if (ret == RDB_OK)
-                    ret =  ret2;
-                if (RDB_is_syserr(ret)) {
-                    RDB_errmsg(txp->dbp->dbrootp->envp, RDB_strerror(ret));
-                    RDB_rollback_all(txp);
+
+                ret2 = _RDB_qresult_contains(qrp, tup, txp);
+                if (ret2 != RDB_OK && ret2 != RDB_NOT_FOUND) {
+                    _RDB_drop_qresult(qrp, txp);
+                    RDB_errmsg(txp->dbp->dbrootp->envp,
+                            "_RDB_qresult_contains() failed: %s",
+                            RDB_strerror(ret2));
+                    if (RDB_is_syserr(ret2)) {
+                        RDB_rollback_all(txp);
+                    }
+                    return ret2;
                 }
-                return ret;
+
+                ret = _RDB_drop_qresult(qrp, txp);
+                if (ret != RDB_OK) {
+                    RDB_errmsg(txp->dbp->dbrootp->envp,
+                            "Unable to drop qresult: %s", RDB_strerror(ret));
+                    if (RDB_is_syserr(ret)) {
+                        RDB_rollback_all(txp);
+                    }
+                    return ret;
+                }
+                return ret2;
             }
         case RDB_TB_RENAME:
             return rename_contains(tbp, tup, txp);

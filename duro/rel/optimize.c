@@ -283,6 +283,16 @@ _RDB_optimize(RDB_table *tbp, RDB_transaction *txp)
             if (ret != RDB_OK)
                 return ret;
             break;
+        case RDB_TB_GROUP:
+            ret = _RDB_optimize(tbp->var.group.tbp, txp);
+            if (ret != RDB_OK)
+                return ret;
+            break;
+        case RDB_TB_UNGROUP:
+            ret = _RDB_optimize(tbp->var.ungroup.tbp, txp);
+            if (ret != RDB_OK)
+                return ret;
+            break;
         case RDB_TB_SDIVIDE:
             ret = _RDB_optimize(tbp->var.sdivide.tb1p, txp);
             if (ret != RDB_OK)

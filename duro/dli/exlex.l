@@ -40,6 +40,14 @@ UNWRAP {
     return TOK_UNWRAP;
 }
 
+GROUP {
+    return TOK_GROUP;
+}
+
+UNGROUP {
+    return TOK_UNGROUP;
+}
+
 FROM    {
     return TOK_FROM;
 }

@@ -236,7 +236,9 @@ enum _RDB_tb_kind {
     RDB_TB_RENAME,
     RDB_TB_WRAP,
     RDB_TB_UNWRAP,
-    RDB_TB_SDIVIDE
+    RDB_TB_SDIVIDE,
+    RDB_TB_GROUP,
+    RDB_TB_UNGROUP
 };
 
 typedef struct {
@@ -339,6 +341,16 @@ typedef struct RDB_table {
             struct RDB_table *tb2p;
             struct RDB_table *tb3p;
         } sdivide;
+        struct {
+            struct RDB_table *tbp;
+            int attrc;
+            char **attrv;
+            char *gattr;
+        } group;
+        struct {
+            struct RDB_table *tbp;
+            char *attr;
+        } ungroup;
     } var;
 } RDB_table;
 
@@ -710,6 +722,13 @@ RDB_unwrap(RDB_table *tbp, int attrc, char *attrv[], RDB_table **resultpp);
 int
 RDB_sdivide(RDB_table *, RDB_table *, RDB_table *, RDB_table **resultpp);
 
+int
+RDB_group(RDB_table *, int attrc, char *attrv[], const char *gattr,
+        RDB_table **);
+
+int
+RDB_ungroup(RDB_table *, const char *, RDB_table **);
+
 /*
  * Functions for creation/destruction of tuples and reading/modifying attributes.
  * RDB_object represents a tuple variable.
@@ -826,14 +845,14 @@ RDB_type_is_numeric(const RDB_type *);
 /*
  * Create an anonymous tuple type from the attributes given by attrv.
  */
-RDB_type *
-RDB_create_tuple_type(int attrc, RDB_attr attrv[]);
+int
+RDB_create_tuple_type(int attrc, RDB_attr attrv[], RDB_type **typp);
 
 /*
  * Create an anonymous relation type from the attributes given by attrv.
  */
-RDB_type *
-RDB_create_relation_type(int attrc, RDB_attr attrv[]);
+int
+RDB_create_relation_type(int attrc, RDB_attr attrv[], RDB_type **typp);
 
 RDB_type *
 RDB_create_array_type(RDB_type *);

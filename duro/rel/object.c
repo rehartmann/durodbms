@@ -485,11 +485,12 @@ RDB_obj_equals(const RDB_object *val1p, const RDB_object *val2p)
         case RDB_OB_TUPLE:
             return _RDB_tuple_equals(val1p, val2p);
         case RDB_OB_TABLE:
-            abort();
+            /* !! */
+            return RDB_FALSE;
         case RDB_OB_ARRAY:
             return _RDB_array_equals((RDB_object *)val1p, (RDB_object *)val2p);
     }
-    return RDB_FALSE;
+    abort();
 } 
 
 /* Copy data only, not the type information */

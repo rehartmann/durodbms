@@ -394,6 +394,8 @@ RDB_insert(RDB_table *tbp, const RDB_object *tplp, RDB_transaction *txp)
              return insert_wrap(tbp, tplp, txp);
         case RDB_TB_UNWRAP:
              return insert_unwrap(tbp, tplp, txp);
+        case RDB_TB_GROUP:
+        case RDB_TB_UNGROUP:
         case RDB_TB_SDIVIDE:
              return RDB_NOT_SUPPORTED;
     }

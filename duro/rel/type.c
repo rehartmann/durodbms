@@ -85,7 +85,6 @@ dup_nonscalar_type(RDB_type *typ)
     int i;
     RDB_type *restyp;
 
-
     switch (typ->kind) {
         case RDB_TP_RELATION:
         case RDB_TP_ARRAY:
@@ -129,58 +128,89 @@ dup_nonscalar_type(RDB_type *typ)
     abort();
 }
 
-RDB_type *
-RDB_create_tuple_type(int attrc, RDB_attr attrv[])
+int
+RDB_create_tuple_type(int attrc, RDB_attr attrv[], RDB_type **typp)
 {
-    RDB_type *tbtyp;
-    int i;
-    
-    if ((tbtyp = malloc(sizeof(RDB_type))) == NULL)
-        return NULL;
-    tbtyp->name = NULL;
-    tbtyp->kind = RDB_TP_TUPLE;
-    tbtyp->ireplen = RDB_VARIABLE_LEN;
-    if ((tbtyp->var.tuple.attrv = malloc(sizeof(RDB_attr) * attrc)) == NULL) {
-        free(tbtyp);
-        return NULL;
+    RDB_type *tuptyp;
+    int i, j;
+    int ret;
+
+    tuptyp = malloc(sizeof(RDB_type));
+    if (tuptyp == NULL)
+        return RDB_NO_MEMORY;
+    tuptyp->name = NULL;
+    tuptyp->kind = RDB_TP_TUPLE;
+    tuptyp->ireplen = RDB_VARIABLE_LEN;
+    tuptyp->var.tuple.attrv = malloc(sizeof(RDB_attr) * attrc);
+    if (tuptyp->var.tuple.attrv == NULL) {
+        free(tuptyp);
+        return RDB_NO_MEMORY;
     }
     for (i = 0; i < attrc; i++) {
-        tbtyp->var.tuple.attrv[i].typ = dup_nonscalar_type(attrv[i].typ);
-        if (tbtyp->var.tuple.attrv[i].typ == NULL) {
-            free(tbtyp->var.tuple.attrv);
-            free(tbtyp);
-            return NULL;
-        }
-        tbtyp->var.tuple.attrv[i].name = RDB_dup_str(attrv[i].name);
-        if (tbtyp->var.tuple.attrv[i].name == NULL) {
-            free(tbtyp->var.tuple.attrv);
-            free(tbtyp);
-            return NULL;
-        }
-        tbtyp->var.tuple.attrv[i].defaultp = NULL;
+        tuptyp->var.tuple.attrv[i].typ = NULL;
+        tuptyp->var.tuple.attrv[i].name = NULL;
     }
-    tbtyp->var.tuple.attrc = attrc;
-    
-    return tbtyp;
+    for (i = 0; i < attrc; i++) {
+        /* Check if name appears twice */
+        for (j = i + 1; j < attrc; j++) {
+            if (strcmp(attrv[i].name, attrv[j].name) == 0) {
+                ret = RDB_INVALID_ARGUMENT;
+                goto error;
+            }
+        }
+
+        tuptyp->var.tuple.attrv[i].typ = dup_nonscalar_type(attrv[i].typ);
+        if (tuptyp->var.tuple.attrv[i].typ == NULL) {
+            ret = RDB_NO_MEMORY;
+            goto error;
+        }
+        tuptyp->var.tuple.attrv[i].name = RDB_dup_str(attrv[i].name);
+        if (tuptyp->var.tuple.attrv[i].name == NULL) {
+            ret = RDB_NO_MEMORY;
+            goto error;
+        }
+        tuptyp->var.tuple.attrv[i].defaultp = NULL;
+    }
+    tuptyp->var.tuple.attrc = attrc;
+
+    *typp = tuptyp;
+    return RDB_OK;
+
+error:
+    for (i = 0; i < attrc; i++) {
+        RDB_attr *attrp = &tuptyp->var.tuple.attrv[i];
+        if (attrp->name != NULL)
+            free(attrp->name);
+        if (attrp->typ != NULL) {
+            if (attrp->typ->name == NULL)
+                RDB_drop_type(attrp->typ, NULL);
+        }
+    }
+    free(tuptyp->var.tuple.attrv);
+    free(tuptyp);
+
+    return ret;
 }
 
-RDB_type *
-RDB_create_relation_type(int attrc, RDB_attr attrv[])
+int
+RDB_create_relation_type(int attrc, RDB_attr attrv[], RDB_type **typp)
 {
+    int ret;
     RDB_type *typ = malloc(sizeof (RDB_type));
     
     if (typ == NULL)
-        return NULL;
+        return RDB_NO_MEMORY;
     
     typ->name = NULL;
     typ->kind = RDB_TP_RELATION;
     typ->ireplen = RDB_VARIABLE_LEN;
-    if ((typ->var.basetyp = RDB_create_tuple_type(attrc, attrv))
-            == NULL) {
+    ret = RDB_create_tuple_type(attrc, attrv, &typ->var.basetyp);
+    if (ret != RDB_OK) {
         free(typ);
-        return NULL;
+        return ret;
     }
-    return typ;
+    *typp = typ;
+    return RDB_OK;
 }
 
 RDB_type *
@@ -496,8 +526,10 @@ RDB_implement_type(const char *name, RDB_type *arep,
             arep = typ->var.scalar.repv[0].compv[0].typ;
         } else {
             /* More than one component, so internal rep is a tuple */
-            arep = RDB_create_tuple_type(typ->var.scalar.repv[0].compc,
-                    typ->var.scalar.repv[0].compv);
+            ret = RDB_create_tuple_type(typ->var.scalar.repv[0].compc,
+                    typ->var.scalar.repv[0].compv, &arep);
+            if (ret != RDB_OK)
+                return ret;
         }
 
         typ->var.scalar.arep = arep;
@@ -517,6 +549,7 @@ RDB_implement_type(const char *name, RDB_type *arep,
         if (ret != RDB_OK)
             return ret;
     } else {
+        /* !! Enable and test */
         if (arep != NULL && arep->kind == RDB_TP_RELATION) {
             return RDB_NOT_SUPPORTED;
         }
@@ -1306,7 +1339,7 @@ error:
         if (attrp->name != NULL)
             free (attrp->name);
         if (attrp->typ != NULL) {
-            if (attrp->typ == NULL)
+            if (attrp->typ->name == NULL)
                 RDB_drop_type(attrp->typ, NULL);
         }
     }
@@ -1335,4 +1368,213 @@ RDB_unwrap_relation_type(const RDB_type *typ, int attrc, char *attrv[],
         return ret;
     }
     return RDB_OK;
+}
+
+int
+RDB_group_type(RDB_type *typ, int attrc, char *attrv[], const char *gattr,
+        RDB_type **newtypp)
+{
+    int i, j;
+    int ret;
+    RDB_attr *rtattrv;
+    RDB_attr *attrp;
+    RDB_type *tuptyp;
+    RDB_type *gattrtyp;
+
+    /*
+     * Create relation type for attribute gattr
+     */
+    rtattrv = malloc(sizeof(RDB_attr) * attrc);
+    if (rtattrv == NULL) {
+        return RDB_NO_MEMORY;
+    }
+    for (i = 0; i < attrc; i++) {
+        attrp = _RDB_tuple_type_attr(typ->var.basetyp, attrv[i]);
+        if (attrp == NULL) {
+            free(rtattrv);
+            return RDB_INVALID_ARGUMENT;
+        }
+        rtattrv[i].typ = attrp->typ;
+        rtattrv[i].name = attrp->name;
+    }
+    ret = RDB_create_relation_type(attrc, rtattrv, &gattrtyp);
+    free(rtattrv);
+    if (ret != RDB_OK)
+        return ret;
+
+    /*
+     * Create tuple type
+     */
+    tuptyp = malloc(sizeof (RDB_type));
+    if (tuptyp == NULL) {
+        RDB_drop_type(gattrtyp, NULL);
+        return RDB_NO_MEMORY;
+    }
+
+    tuptyp->kind = RDB_TP_TUPLE;
+    tuptyp->name = NULL;
+    tuptyp->var.tuple.attrc = typ->var.basetyp->var.tuple.attrc + 1 - attrc;
+    tuptyp->var.tuple.attrv = malloc(tuptyp->var.tuple.attrc * sizeof(RDB_attr));
+    if (tuptyp->var.tuple.attrv == NULL) {
+        free(tuptyp);
+        RDB_drop_type(gattrtyp, NULL);
+        return RDB_NO_MEMORY;
+    }
+
+    for (i = 0; i < tuptyp->var.tuple.attrc; i++) {
+        tuptyp->var.tuple.attrv[i].name = NULL;
+        tuptyp->var.tuple.attrv[i].typ = NULL;
+    }
+
+    j = 0;
+    for (i = 0; i < typ->var.basetyp->var.tuple.attrc; i++) {
+        char *attrname = typ->var.basetyp->var.tuple.attrv[i].name;
+
+        if (_RDB_tuple_type_attr(gattrtyp->var.basetyp, attrname) == NULL) {
+            if (strcmp(attrname, gattr) == 0) {
+                RDB_drop_type(gattrtyp, NULL);
+                ret = RDB_INVALID_ARGUMENT;
+                goto error;
+            }
+            ret = copy_attr(&tuptyp->var.tuple.attrv[j],
+                    &typ->var.basetyp->var.tuple.attrv[i]);
+            if (ret != RDB_OK) {
+                RDB_drop_type(gattrtyp, NULL);
+                goto error;
+            }
+            tuptyp->var.tuple.attrv[j].defaultp = NULL;
+            j++;
+        }
+    }
+    tuptyp->var.tuple.attrv[j].typ = gattrtyp;
+    tuptyp->var.tuple.attrv[j].name = RDB_dup_str(gattr);
+    if (tuptyp->var.tuple.attrv[j].name == NULL) {
+        ret = RDB_NO_MEMORY;
+        goto error;
+    }
+    tuptyp->var.tuple.attrv[j].defaultp = NULL;
+
+    /*
+     * Create relation type
+     */
+    (*newtypp) = malloc(sizeof(RDB_type));
+    if (*newtypp == NULL) {
+        ret = RDB_NO_MEMORY;
+        goto error;
+    }
+    (*newtypp)->kind = RDB_TP_RELATION;
+    (*newtypp)->name = NULL;
+    (*newtypp)->var.basetyp = tuptyp;
+
+    return RDB_OK;    
+
+error:
+    for (i = 0; i < tuptyp->var.tuple.attrc; i++) {
+        RDB_attr *attrp = &tuptyp->var.tuple.attrv[i];
+        if (attrp->name != NULL)
+            free(attrp->name);
+        if (attrp->typ != NULL) {
+            if (attrp->typ->name == NULL)
+                RDB_drop_type(attrp->typ, NULL);
+        }
+    }
+    free(tuptyp->var.tuple.attrv);
+    free(tuptyp);
+
+    return ret;
+}
+
+int
+RDB_ungroup_type(RDB_type *typ, const char *attr, RDB_type **newtypp)
+{
+    int i, j;
+    int ret;
+    RDB_type *tuptyp;
+    RDB_attr *relattrp = _RDB_tuple_type_attr(typ->var.basetyp, attr);
+
+    if (relattrp == NULL || relattrp->typ->kind != RDB_TP_RELATION)
+        return RDB_INVALID_ARGUMENT;
+
+    tuptyp = malloc(sizeof (RDB_type));
+    if (tuptyp == NULL)
+        return RDB_NO_MEMORY;
+
+    tuptyp->kind = RDB_TP_TUPLE;
+    tuptyp->name = NULL;
+
+    /* Compute # of attributes */
+    tuptyp->var.tuple.attrc = typ->var.basetyp->var.tuple.attrc
+            + relattrp->typ->var.basetyp->var.tuple.attrc - 1;
+
+    /* Allocate tuple attributes */
+    tuptyp->var.tuple.attrv = malloc(tuptyp->var.tuple.attrc * sizeof(RDB_attr));
+    if (tuptyp->var.tuple.attrv == NULL) {
+        free(tuptyp);
+        return RDB_NO_MEMORY;
+    }
+
+    for (i = 0; i < tuptyp->var.tuple.attrc; i++) {
+        tuptyp->var.tuple.attrv[i].name = NULL;
+        tuptyp->var.tuple.attrv[i].typ = NULL;
+    }
+
+    /* Copy attributes from the original type */
+    j = 0;
+    for (i = 0; i < typ->var.basetyp->var.tuple.attrc; i++) {
+        if (strcmp(typ->var.basetyp->var.tuple.attrv[i].name,
+                attr) != 0) {
+            ret = copy_attr(&tuptyp->var.tuple.attrv[j],
+                    &typ->var.basetyp->var.tuple.attrv[i]);
+            if (ret != RDB_OK)
+                goto error;
+            j++;
+        }
+    }
+
+    /* Copy attributes from the attribute type */
+    for (i = 0; i < relattrp->typ->var.basetyp->var.tuple.attrc; i++) {
+        char *attrname = relattrp->typ->var.basetyp->var.tuple.attrv[i].name;
+
+        /* Check for attribute name clash */
+        if (strcmp(attrname, attr) != 0
+                && _RDB_tuple_type_attr(typ->var.basetyp, attrname)
+                != NULL) {
+            ret = RDB_INVALID_ARGUMENT;
+            goto error;
+        }
+        ret = copy_attr(&tuptyp->var.tuple.attrv[j],
+                    &relattrp->typ->var.basetyp->var.tuple.attrv[i]);
+        if (ret != RDB_OK)
+            goto error;
+        j++;
+    }
+
+    /*
+     * Create relation type
+     */
+    (*newtypp) = malloc(sizeof(RDB_type));
+    if (*newtypp == NULL) {
+        ret = RDB_NO_MEMORY;
+        goto error;
+    }
+    (*newtypp)->kind = RDB_TP_RELATION;
+    (*newtypp)->name = NULL;
+    (*newtypp)->var.basetyp = tuptyp;
+
+    return RDB_OK;    
+
+error:
+    for (i = 0; i < tuptyp->var.tuple.attrc; i++) {
+        RDB_attr *attrp = &tuptyp->var.tuple.attrv[i];
+        if (attrp->name != NULL)
+            free(attrp->name);
+        if (attrp->typ != NULL) {
+            if (attrp->typ->name == NULL)
+                RDB_drop_type(attrp->typ, NULL);
+        }
+    }
+    free(tuptyp->var.tuple.attrv);
+    free(tuptyp);
+
+    return ret;
 }

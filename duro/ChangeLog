@@ -4,9 +4,9 @@ Summary of Changes for Duro
 
 Changes for Duro 0.8
 
-- RDB_create_table() does now more complete argument checking.
+- Implemented GROUP and UNGROUP.
 
-- Changed argument order of RDB_extract_tuple().
+- RDB_create_table() does now more complete argument checking.
 
 - Added (albeit icomplete) query optimizer.
 
@@ -16,7 +16,10 @@ Changes for Duro 0.8
 
 - Now allowing nonscalar types as operator argument and return types.
 
-- Changed argument order of RDB_call_ro_op().
+- Changed RDB_create_tuple_type() and RDB_create_relation_type(), which now
+  return an error code.
+
+- Changed argument order of RDB_extract_tuple() and RDB_call_ro_op().
 
 - Implemented RDB_get_dbs() and duro::env dbs.
 

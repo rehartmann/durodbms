@@ -3,7 +3,7 @@
 
 AC_PREREQ(2.57)
 AC_INIT(duro, 0.8, rhartmann@users.sourceforge.net)
-AC_CONFIG_SRCDIR([util/dropdb.c])
+AC_CONFIG_SRCDIR([util/lstables.c])
 
 AM_INIT_AUTOMAKE
 

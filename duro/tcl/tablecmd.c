@@ -374,13 +374,15 @@ Duro_get_type(Tcl_Obj *objp, Tcl_Interp *interp, RDB_transaction *txp,
             attrv[i].defaultp = NULL;
         }
         if (istuple) {
-            *typp = RDB_create_tuple_type(attrc, attrv);
+            ret = RDB_create_tuple_type(attrc, attrv, typp);
         } else {
-            *typp = RDB_create_relation_type(attrc, attrv);
+            ret = RDB_create_relation_type(attrc, attrv, typp);
         }
         free(attrv);
-        if (*typp == NULL)
+        if (ret != RDB_OK) {
+            Duro_dberror(interp, ret);
             return TCL_ERROR;
+        }
         return TCL_OK;
     }
 

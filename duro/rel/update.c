@@ -516,6 +516,10 @@ update(RDB_table *tbp, int updc, const RDB_attr_update updv[],
             return RDB_NOT_SUPPORTED;
         case RDB_TB_UNWRAP:
             return RDB_NOT_SUPPORTED;
+        case RDB_TB_GROUP:
+            return RDB_NOT_SUPPORTED;
+        case RDB_TB_UNGROUP:
+            return RDB_NOT_SUPPORTED;
         case RDB_TB_SDIVIDE:
             return RDB_NOT_SUPPORTED;
     }

@@ -41,10 +41,10 @@ if {![catch {
 }
 
 if {![catch {
-   duro::table create T1 {
-       {A INTEGER}
-       {A STRING}
-   } {{A}} $tx
+    duro::table create T1 {
+        {A INTEGER}
+        {A STRING}
+    } {{A}} $tx
 }]} {
     puts "Creation of table T1 should fail, but succeeded"
     exit 1

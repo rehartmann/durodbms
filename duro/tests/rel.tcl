@@ -4,16 +4,10 @@ exec tclsh "$0"
 
 # $Id$
 #
-# Test tables with relation-valued attribute
+# Test tables with relation-valued attribute, GROUP and UNGROUP.
 #
 
 load .libs/libdurotcl.so
-
-source tcl/util.tcl
-
-proc tequal {t1 t2} {
-    return [string equal [lsort $t1] [lsort $t2]]
-}
 
 # Create DB environment
 file delete -force tests/dbenv
@@ -34,6 +28,31 @@ duro::table create T1 {
         {B STRING}
     }}
 } {{SCATTR}} $tx
+
+duro::table create T2 {
+    {SCATTR INTEGER}
+    {RLATTR {relation
+        {SCATTR INTEGER}
+        {B STRING}
+    }}
+} {{SCATTR}} $tx
+
+duro::table create T3 {
+    {A STRING}
+    {B INTEGER}
+    {C STRING}
+} {{A B}} $tx
+
+duro::table expr -global U1 {T1 UNGROUP RLATTR} $tx
+
+if {![catch {
+    duro::table expr -global U2 {T2 UNGROUP RLATTR} $tx
+}]} {
+    puts "Creation of U2 should fail, but did not"
+    exit 1
+}
+
+duro::table expr -global G1 {T3 GROUP {B, C} AS BC} $tx
 
 duro::commit $tx
 
@@ -100,13 +119,59 @@ if {$n != 2} {
     exit 1
 }
 
-duro::update T1 {SCATTR = 2} RLATTR {RELATION {TUPLE {A 1, B "y"}}} $tx
+duro::update T1 {SCATTR = 2} RLATTR {RELATION {TUPLE {A 1, B "y"},
+        TUPLE {A 1, B "z"}}} $tx
 
-set rel [lindex [duro::expr {TUPLE FROM ((T1 WHERE SCATTR = 2) {RLATTR})} $tx] 1]
+set da [duro::array create U1 {B asc} $tx]
 
-if {![tequal [lindex $rel 0] {A 1 B y}]} {
-    puts "Incorrect relation value: $rel"
+array set ta [duro::array index $da 0 $tx]
+
+if {[array size ta] != 3 || $ta(A) != 1 || $ta(B) != "y"
+        || $ta(SCATTR) != 2} {
+    puts "Incorrect tuple value #0 from U1: $tpl"
     exit 1
 }
+
+array set ta [duro::array index $da 1 $tx]
+
+if {[array size ta] != 3 || $ta(A) != 1 || $ta(B) != "z"
+        || $ta(SCATTR) != 2} {
+    puts "Incorrect tuple value #1 from U1: $tpl"
+    exit 1
+}
+
+set alen [duro::array length $da]
+
+if {$alen != 2} {
+    puts "Incorrect length of array from U1: $alen
+    exit 1
+}
+
+duro::insert T3 {A a B 2 C c} $tx
+duro::insert T3 {A a B 3 C c} $tx
+duro::insert T3 {A b B 2 C d} $tx
+
+set cnt [duro::expr {COUNT(G1)} $tx]
+if {$cnt != 2} {
+    puts "G1 should contain 2 tuples, but contains $cnt"
+    exit 1
+}
+
+set tpl [lindex [duro::expr {(TUPLE FROM ((G1 WHERE A = "b") {BC})).BC} \
+        $tx] 0]
+array unset ta
+array set ta $tpl
+if {$ta(B) != 2 || $ta(C) != "d"} {
+    puts "Incorrect value of BC: $tpl"
+    exit 1
+}
+
+set cnt [duro::expr {COUNT((TUPLE FROM ((G1 WHERE A = "a") {BC})).BC)} $tx]
+if {$cnt != 2} {
+puts "Incorrect cardinality of BC: $cnt"
+    exit 1
+}   
+
+duro::array drop $da
 
 duro::commit $tx

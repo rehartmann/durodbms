@@ -82,6 +82,8 @@ enum {
 %token TOK_DIVIDEBY
 %token TOK_WRAP
 %token TOK_UNWRAP
+%token TOK_GROUP
+%token TOK_UNGROUP
 %token TOK_PER
 %token TOK_ADD
 %token TOK_MATCHES
@@ -104,11 +106,11 @@ enum {
 %token INVALID
 
 %type <exp> relation project select rename extend summarize wrap unwrap
-        sdivideby expression or_expression and_expression not_expression
-        primary_expression rel_expression add_expression mul_expression
-        literal operator_invocation is_empty_invocation count_invocation
-        sum_invocation avg_invocation min_invocation max_invocation
-        all_invocation any_invocation extractor tuple_item_list
+        group ungroup sdivideby expression or_expression and_expression
+        not_expression primary_expression rel_expression add_expression
+        mul_expression literal operator_invocation is_empty_invocation
+        count_invocation sum_invocation avg_invocation min_invocation
+        max_invocation all_invocation any_invocation extractor tuple_item_list
 
 %type <attrlist> attribute_name_list
 
@@ -134,6 +136,8 @@ expression: or_expression { resultp = $1; }
     | summarize { resultp = $1; }
     | wrap { resultp = $1; }
     | unwrap { resultp = $1; }
+    | group { resultp = $1; }
+    | ungroup { resultp = $1; }
     | sdivideby { resultp = $1; }
     ;
 
@@ -740,137 +744,166 @@ unwrap: primary_expression TOK_UNWRAP '(' attribute_name_list ')' {
     }
     ;    
 
+group: primary_expression TOK_GROUP '{' attribute_name_list '}' TOK_AS TOK_ID {
+        RDB_table *tbp, *restbp;
+
+        tbp = expr_to_table($1);
+        if (tbp == NULL)
+            YYERROR;
+        expr_ret = RDB_group(tbp, $4.attrc, $4.attrv, $7->var.attr.name,
+                &restbp);
+        if (expr_ret != RDB_OK)
+            YYERROR;
+        $$ = RDB_table_to_expr(restbp);
+        RDB_drop_expr($1);
+    }
+    ;    
+
+ungroup: primary_expression TOK_UNGROUP TOK_ID {
+        RDB_table *tbp, *restbp;
+
+        tbp = expr_to_table($1);
+        if (tbp == NULL)
+            YYERROR;
+        expr_ret = RDB_ungroup(tbp, $3->var.attr.name, &restbp);
+        if (expr_ret != RDB_OK)
+            YYERROR;
+        $$ = RDB_table_to_expr(restbp);
+        RDB_drop_expr($1);
+    }
+    ;    
+
 or_expression: and_expression
-        | or_expression TOK_OR and_expression {
-            $$ = RDB_or($1, $3);
-            if ($$ == NULL)
-                YYERROR;
-        }
-        ;
+    | or_expression TOK_OR and_expression {
+        $$ = RDB_or($1, $3);
+        if ($$ == NULL)
+            YYERROR;
+    }
+    ;
 
 and_expression: not_expression
-        | and_expression TOK_AND not_expression {
-            $$ = RDB_and($1, $3);
-            if ($$ == NULL)
-                YYERROR;
-        }
-        ;
+    | and_expression TOK_AND not_expression {
+        $$ = RDB_and($1, $3);
+        if ($$ == NULL)
+            YYERROR;
+    }
+    ;
 
 not_expression: rel_expression
-        | TOK_NOT rel_expression {
-            $$ = RDB_not($2);
-            if ($$ == NULL)
-                YYERROR;
-        }
-        ;
+    | TOK_NOT rel_expression {
+        $$ = RDB_not($2);
+        if ($$ == NULL)
+            YYERROR;
+    }
+    ;
 
 rel_expression: add_expression
-        | add_expression '=' add_expression {
-            $$ = RDB_eq($1, $3);
-            if ($$ == NULL)
-                YYERROR;
-        }
-        | add_expression "<>" add_expression {
-            $$ = RDB_neq($1, $3);
-            if ($$ == NULL)
-                YYERROR;
-        }
-        | add_expression ">=" add_expression {
-            $$ = RDB_get($1, $3);
-            if ($$ == NULL)
-                YYERROR;
-        }
-        | add_expression "<=" add_expression {
-            $$ = RDB_let($1, $3);
-            if ($$ == NULL)
-                YYERROR;
-        }
-        | add_expression '>' add_expression {
-            $$ = RDB_gt($1, $3);
-            if ($$ == NULL)
-                YYERROR;
-        }
-        | add_expression '<' add_expression {
-            $$ = RDB_lt($1, $3);
-            if ($$ == NULL)
-                YYERROR;
-        }
-        | add_expression TOK_IN add_expression {
-            /* If $3 is a name, try to find a table with that name */
-            RDB_table *tbp = expr_to_table($1);
-            RDB_expression *exp = tbp != NULL ? RDB_table_to_expr(tbp) : $1;
+    | add_expression '=' add_expression {
+        $$ = RDB_eq($1, $3);
+        if ($$ == NULL)
+            YYERROR;
+    }
+    | add_expression "<>" add_expression {
+        $$ = RDB_neq($1, $3);
+        if ($$ == NULL)
+            YYERROR;
+    }
+    | add_expression ">=" add_expression {
+        $$ = RDB_get($1, $3);
+        if ($$ == NULL)
+            YYERROR;
+    }
+    | add_expression "<=" add_expression {
+        $$ = RDB_let($1, $3);
+        if ($$ == NULL)
+            YYERROR;
+    }
+    | add_expression '>' add_expression {
+        $$ = RDB_gt($1, $3);
+        if ($$ == NULL)
+            YYERROR;
+    }
+    | add_expression '<' add_expression {
+        $$ = RDB_lt($1, $3);
+        if ($$ == NULL)
+            YYERROR;
+    }
+    | add_expression TOK_IN add_expression {
+        /* If $3 is a name, try to find a table with that name */
+        RDB_table *tbp = expr_to_table($1);
+        RDB_expression *exp = tbp != NULL ? RDB_table_to_expr(tbp) : $1;
 
-            $$ = RDB_expr_contains($3, exp);
-            if ($$ == NULL)
-                YYERROR;
-            if (tbp != NULL) {
-                tbp->refcount++;
-                RDB_drop_expr($1);
-            }
+        $$ = RDB_expr_contains($3, exp);
+        if ($$ == NULL)
+            YYERROR;
+        if (tbp != NULL) {
+            tbp->refcount++;
+            RDB_drop_expr($1);
         }
-        | add_expression TOK_MATCHES add_expression {
-            $$ = RDB_regmatch($1, $3);
-            if ($$ == NULL)
-                YYERROR;
-        }
-        | add_expression TOK_SUBSET add_expression {
-            RDB_table *tbp;
-            RDB_expression *ex1p, *ex2p;
+    }
+    | add_expression TOK_MATCHES add_expression {
+        $$ = RDB_regmatch($1, $3);
+        if ($$ == NULL)
+            YYERROR;
+    }
+    | add_expression TOK_SUBSET add_expression {
+        RDB_table *tbp;
+        RDB_expression *ex1p, *ex2p;
 
-            tbp = expr_to_table($1);
-            if (tbp != NULL)
-               ex1p = RDB_table_to_expr(tbp);
-            else
-               ex1p = $1;
+        tbp = expr_to_table($1);
+        if (tbp != NULL)
+           ex1p = RDB_table_to_expr(tbp);
+        else
+           ex1p = $1;
 
-            tbp = expr_to_table($3);
-            if (tbp != NULL)
-               ex2p = RDB_table_to_expr(tbp);
-            else
-               ex2p = $3;
+        tbp = expr_to_table($3);
+        if (tbp != NULL)
+           ex2p = RDB_table_to_expr(tbp);
+        else
+           ex2p = $3;
 
-            $$ = RDB_expr_subset(ex1p, ex2p);
-            if ($$ == NULL)
-                YYERROR;
-        }
-        ;
+        $$ = RDB_expr_subset(ex1p, ex2p);
+        if ($$ == NULL)
+            YYERROR;
+    }
+    ;
 
 add_expression: mul_expression
-        | '+' mul_expression {
-            $$ = $2;
-        }
-        | '-' mul_expression {
-            $$ = RDB_negate($2);
-        }
-        | add_expression '+' mul_expression {
-            $$ = RDB_add($1, $3);
-            if ($$ == NULL)
-                YYERROR;
-        }
-        | add_expression '-' mul_expression {
-            $$ = RDB_subtract($1, $3);
-            if ($$ == NULL)
-                YYERROR;
-        }
-        | add_expression TOK_CONCAT mul_expression {
-            $$ = RDB_concat($1, $3);
-            if ($$ == NULL)
-                YYERROR;
-        }            
-        ;
+    | '+' mul_expression {
+        $$ = $2;
+    }
+    | '-' mul_expression {
+        $$ = RDB_negate($2);
+    }
+    | add_expression '+' mul_expression {
+        $$ = RDB_add($1, $3);
+        if ($$ == NULL)
+            YYERROR;
+    }
+    | add_expression '-' mul_expression {
+        $$ = RDB_subtract($1, $3);
+        if ($$ == NULL)
+            YYERROR;
+    }
+    | add_expression TOK_CONCAT mul_expression {
+        $$ = RDB_concat($1, $3);
+        if ($$ == NULL)
+            YYERROR;
+    }            
+    ;
 
 mul_expression: primary_expression
-        | mul_expression '*' primary_expression {
-            $$ = RDB_multiply($1, $3);
-            if ($$ == NULL)
-                YYERROR;
-        }
-        | mul_expression '/' primary_expression {
-            $$ = RDB_divide($1, $3);
-            if ($$ == NULL)
-                YYERROR;
-        }
-        ;
+    | mul_expression '*' primary_expression {
+        $$ = RDB_multiply($1, $3);
+        if ($$ == NULL)
+            YYERROR;
+    }
+    | mul_expression '/' primary_expression {
+        $$ = RDB_divide($1, $3);
+        if ($$ == NULL)
+            YYERROR;
+    }
+    ;
 
 primary_expression: TOK_ID
     | primary_expression '.' TOK_ID {

@@ -432,6 +432,48 @@ serialize_unwrap(RDB_object *valp, int *posp, RDB_table *tbp)
 }
 
 static int
+serialize_group(RDB_object *valp, int *posp, RDB_table *tbp)
+{
+    int i;
+    int ret;
+
+    ret = serialize_table(valp, posp, tbp->var.group.tbp);
+    if (ret != RDB_OK)
+        return ret;
+
+    ret = serialize_int(valp, posp, tbp->var.group.attrc);
+    if (ret != RDB_OK)
+        return ret;
+
+    for (i = 0; i < tbp->var.group.attrc; i++) {
+        ret = serialize_str(valp, posp, tbp->var.group.attrv[i]);
+        if (ret != RDB_OK)
+            return ret;
+    }
+    ret = serialize_str(valp, posp, tbp->var.group.gattr);
+    if (ret != RDB_OK)
+        return ret;
+
+    return RDB_OK;
+}
+
+static int
+serialize_ungroup(RDB_object *valp, int *posp, RDB_table *tbp)
+{
+    int ret;
+
+    ret = serialize_table(valp, posp, tbp->var.ungroup.tbp);
+    if (ret != RDB_OK)
+        return ret;
+
+    ret = serialize_str(valp, posp, tbp->var.ungroup.attr);
+    if (ret != RDB_OK)
+        return ret;
+
+    return RDB_OK;
+}
+
+static int
 serialize_sdivide(RDB_object *valp, int *posp, RDB_table *tbp)
 {
     int ret;
@@ -512,6 +554,10 @@ serialize_table(RDB_object *valp, int *posp, RDB_table *tbp)
             return serialize_wrap(valp, posp, tbp);
         case RDB_TB_UNWRAP:
             return serialize_unwrap(valp, posp, tbp);
+        case RDB_TB_GROUP:
+            return serialize_group(valp, posp, tbp);
+        case RDB_TB_UNGROUP:
+            return serialize_ungroup(valp, posp, tbp);
         case RDB_TB_SDIVIDE:
             return serialize_sdivide(valp, posp, tbp);
     }
@@ -1234,19 +1280,19 @@ deserialize_wrap(RDB_object *valp, int *posp, RDB_transaction *txp,
     int ret;
     RDB_table *tbp;
     int wrapc;
-    RDB_wrapping *wrapv;
-    
+    RDB_wrapping *wrapv = NULL;
+
     ret = deserialize_table(valp, posp, txp, &tbp);
     if (ret != RDB_OK)
         return ret;
 
     ret = deserialize_int(valp, posp, &wrapc);
     if (ret != RDB_OK)
-        return ret;
+        goto cleanup;
 
     wrapv = malloc(wrapc * sizeof (RDB_wrapping));
     if (wrapv == NULL)
-        return RDB_NO_MEMORY;
+        goto cleanup;
 
     for (i = 0; i < wrapc; i++) {
         wrapv[i].attrname = NULL;
@@ -1275,11 +1321,13 @@ cleanup:
     if (ret != RDB_OK && RDB_table_name(tbp) == NULL)
         RDB_drop_table(tbp, NULL);
 
-    for (i = 0; i < wrapc; i++) {
-        free(wrapv[i].attrname);
-        if (wrapv[i].attrv != NULL) {
-            for (j = 0; j < wrapv[i].attrc; i++)
-                free(wrapv[i].attrv[j]);
+    if (wrapv != NULL) {
+        for (i = 0; i < wrapc; i++) {
+            free(wrapv[i].attrname);
+            if (wrapv[i].attrv != NULL) {
+                for (j = 0; j < wrapv[i].attrc; i++)
+                    free(wrapv[i].attrv[j]);
+            }
         }
     }
 
@@ -1328,6 +1376,85 @@ cleanup:
         free(attrv[i]);
     }
     free(attrv);
+
+    return ret;
+}
+
+int
+deserialize_group(RDB_object *valp, int *posp, RDB_transaction *txp,
+                   RDB_table **tbpp)
+{
+    int i;
+    int ret;
+    RDB_table *tbp;
+    int attrc;
+    char **attrv = NULL;
+    char *gattr = NULL;
+
+    ret = deserialize_table(valp, posp, txp, &tbp);
+    if (ret != RDB_OK)
+        return ret;
+
+    ret = deserialize_int(valp, posp, &attrc);
+    if (ret != RDB_OK)
+        goto cleanup;
+
+    attrv = malloc(attrc * sizeof (char *));
+    if (attrv == NULL)
+        goto cleanup;
+
+    for (i = 0; i < attrc; i++)
+        attrv[i] = NULL;
+
+    for (i = 0; i < attrc; i++) {
+        ret = deserialize_str(valp, posp, &attrv[i]);
+        if (ret != RDB_OK)
+            goto cleanup;
+    }
+
+    ret = deserialize_str(valp, posp, &gattr);
+    if (ret != RDB_OK)
+        goto cleanup;
+
+    ret = RDB_group(tbp, attrc, attrv, gattr, tbpp);
+
+cleanup:
+    if (ret != RDB_OK && RDB_table_name(tbp) == NULL)
+        RDB_drop_table(tbp, NULL);
+
+    if (attrv != NULL) {
+        for (i = 0; i < attrc; i++)
+            free(attrv[i]);
+    }
+    free(gattr);
+
+    return ret;
+}
+
+int
+deserialize_ungroup(RDB_object *valp, int *posp, RDB_transaction *txp,
+                   RDB_table **tbpp)
+{
+    RDB_table *tbp;
+    char *attrname = NULL;
+    int ret;
+
+    ret = deserialize_table(valp, posp, txp, &tbp);
+    if (ret != RDB_OK)
+        return ret;
+
+    ret = deserialize_str(valp, posp, &attrname);
+    if (ret != RDB_OK)
+        goto cleanup;
+
+    ret = RDB_ungroup(tbp, attrname, tbpp);
+
+cleanup:
+    if (ret != RDB_OK && RDB_table_name(tbp) == NULL)
+        RDB_drop_table(tbp, NULL);
+
+    if (attrname != NULL)
+        free(attrname);
 
     return ret;
 }
@@ -1448,6 +1575,10 @@ deserialize_table(RDB_object *valp, int *posp, RDB_transaction *txp,
             return deserialize_wrap(valp, posp, txp, tbpp);
         case RDB_TB_UNWRAP:
             return deserialize_unwrap(valp, posp, txp, tbpp);
+        case RDB_TB_GROUP:
+            return deserialize_group(valp, posp, txp, tbpp);
+        case RDB_TB_UNGROUP:
+            return deserialize_ungroup(valp, posp, txp, tbpp);
         case RDB_TB_SDIVIDE:
             return deserialize_sdivide(valp, posp, txp, tbpp);
     }

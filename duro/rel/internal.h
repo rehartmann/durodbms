@@ -48,7 +48,7 @@ typedef struct RDB_qresult {
             struct RDB_qresult *qrp;
             struct RDB_qresult *qr2p;
             
-            /* only used for join */
+            /* only used for join and ungroup */
             RDB_object tpl;
             RDB_bool tpl_valid;
         } virtual;
@@ -251,6 +251,13 @@ int
 RDB_unwrap_relation_type(const RDB_type *typ, int attrc, char *attrv[],
         RDB_type **newtypp);
 
+int
+RDB_group_type(RDB_type *typ, int attrc, char *attrv[], const char *gattr,
+        RDB_type **newtypp);
+
+int
+RDB_ungroup_type(RDB_type *typ, const char *attr, RDB_type **newtypp);
+
 RDB_attr *
 _RDB_tuple_type_attr(const RDB_type *tuptyp, const char *attrname);
 
@@ -315,6 +322,9 @@ int
 _RDB_invunwrap_tuple(const RDB_object *, int attrc, char *attrv[],
         RDB_type *srctuptyp, RDB_object *restplp);
 
+
+RDB_table *
+_RDB_new_table(void);
 
 int
 _RDB_sdivide_preserves(RDB_table *, const RDB_object *tplp, RDB_qresult *qr3p,

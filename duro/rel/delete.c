@@ -214,6 +214,10 @@ delete(RDB_table *tbp, RDB_transaction *txp)
             return RDB_NOT_SUPPORTED;
         case RDB_TB_UNWRAP:
             return RDB_NOT_SUPPORTED;
+        case RDB_TB_GROUP:
+            return RDB_NOT_SUPPORTED;
+        case RDB_TB_UNGROUP:
+            return RDB_NOT_SUPPORTED;
         case RDB_TB_SDIVIDE:
             return RDB_NOT_SUPPORTED;
     }

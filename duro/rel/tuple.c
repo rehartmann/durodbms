@@ -267,39 +267,36 @@ RDB_join_tuples(const RDB_object *tpl1p, const RDB_object *tpl2p,
 }
 
 int
-RDB_extend_tuple(RDB_object *tup, int attrc, RDB_virtual_attr attrv[],
+RDB_extend_tuple(RDB_object *tplp, int attrc, RDB_virtual_attr attrv[],
                 RDB_transaction *txp)
 {
     int i;
     int res;
     RDB_object val;
 
-    if (tup->kind != RDB_OB_TUPLE)
-        return RDB_INVALID_ARGUMENT;
-
     for (i = 0; i < attrc; i++) {
-        res = RDB_evaluate(attrv[i].exp, tup, txp, &val);
+        res = RDB_evaluate(attrv[i].exp, tplp, txp, &val);
         if (res != RDB_OK)
             return res;
-        RDB_tuple_set(tup, attrv[i].name, &val);
+        RDB_tuple_set(tplp, attrv[i].name, &val);
         RDB_destroy_obj(&val);
     }
     return RDB_OK;
 }
 
 int
-RDB_rename_tuple(const RDB_object *tup, int renc, RDB_renaming renv[],
+RDB_rename_tuple(const RDB_object *tplp, int renc, RDB_renaming renv[],
                  RDB_object *restup)
 {
     RDB_hashmap_iter it;
     void *datap;
     char *keyp;
 
-    if (tup->kind != RDB_OB_TUPLE)
+    if (tplp->kind != RDB_OB_TUPLE)
         return RDB_INVALID_ARGUMENT;
 
-    /* Copy attributes to tup */
-    RDB_init_hashmap_iter(&it, (RDB_hashmap *)&tup->var.tpl_map);
+    /* Copy attributes to tplp */
+    RDB_init_hashmap_iter(&it, (RDB_hashmap *)&tplp->var.tpl_map);
     while ((datap = RDB_hashmap_next(&it, &keyp, NULL)) != NULL) {
         int ret;
         int ai = _RDB_find_rename_from(renc, renv, keyp);

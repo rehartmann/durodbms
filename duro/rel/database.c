@@ -1010,14 +1010,28 @@ _RDB_provide_table(const char *name, RDB_bool persistent,
     RDB_type *reltyp;
     int ret;
     int i;
+    RDB_string_vec allkey; /* Used if keyv is NULL */
 
     /* name may only be NULL if table is transient */
     if ((name == NULL) && persistent)
         return RDB_INVALID_ARGUMENT;
 
-    reltyp = RDB_create_relation_type(attrc, heading);
-    if (reltyp == NULL) {
-        return RDB_NO_MEMORY;
+    if (keyv == NULL) {
+        /* Create key for all-key table */
+        allkey.strc = attrc;
+        allkey.strv = malloc(sizeof (char *) * attrc);
+        if (allkey.strv == NULL) {
+            if (txp != NULL)
+                RDB_rollback_all(txp);
+            return RDB_NO_MEMORY;
+        }
+        for (i = 0; i < attrc; i++)
+            allkey.strv[i] = heading[i].name;
+    }
+
+    ret = RDB_create_relation_type(attrc, heading, &reltyp);
+    if (ret != RDB_OK) {
+        return ret;
     }
     for (i = 0; i < attrc; i++) {
         if (heading[i].defaultp != NULL) {
@@ -1032,15 +1046,18 @@ _RDB_provide_table(const char *name, RDB_bool persistent,
         }
     }
 
-    ret = _RDB_new_stored_table(name, persistent, reltyp, keyc, keyv, usr,
-            tbpp);
+    ret = _RDB_new_stored_table(name, persistent, reltyp,
+            keyv != NULL ? keyc : 1, keyv != NULL ? keyv : &allkey, usr, tbpp);
+    if (keyv == NULL)
+        free(allkey.strv);
+
     if (ret != RDB_OK) {
         RDB_drop_type(reltyp, NULL);
         return ret;
     }
 
-    ret = _RDB_open_table(*tbpp, keyv[0].strc, keyv[0].strv, create, txp,
-            envp, NULL);
+    ret = _RDB_open_table(*tbpp, (*tbpp)->keyv[0].strc, (*tbpp)->keyv[0].strv,
+            create, txp, envp, NULL);
     if (ret != RDB_OK) {
         _RDB_free_table(*tbpp, NULL);
         return ret;
@@ -1080,7 +1097,6 @@ RDB_create_table(const char *name, RDB_bool persistent,
     int ret;
     int i;
     RDB_transaction tx;
-    RDB_string_vec allkey; /* Used if keyv is NULL */
 
     if (name != NULL && !_RDB_legal_name(name))
         return RDB_INVALID_ARGUMENT;
@@ -1140,25 +1156,8 @@ RDB_create_table(const char *name, RDB_bool persistent,
             return ret;
     }
 
-    if (keyv == NULL) {
-        /* Create key for all-key table */
-        allkey.strc = attrc;
-        allkey.strv = malloc(sizeof (char *) * attrc);
-        if (allkey.strv == NULL) {
-            if (txp != NULL)
-                RDB_rollback_all(&tx);
-            return RDB_NO_MEMORY;
-        }
-        for (i = 0; i < attrc; i++)
-            allkey.strv[i] = heading[i].name;
-    }
-                
-
     ret = _RDB_create_table(name, persistent, attrc, heading,
-            keyv != NULL ? keyc : 1, keyv != NULL ? keyv : &allkey,
-            txp != NULL ? &tx : NULL, tbpp);
-    if (keyv == NULL)
-        free(allkey.strv);
+            keyc, keyv, txp != NULL ? &tx : NULL, tbpp);
     if (ret != RDB_OK) {
         if (txp != NULL)
             RDB_rollback(&tx);
@@ -1385,6 +1384,25 @@ _RDB_drop_table(RDB_table *tbp, RDB_transaction *txp, RDB_bool rec)
                 if (ret != RDB_OK)
                     return ret;
             }
+            break;
+        case RDB_TB_GROUP:
+            if (rec) {
+                ret = drop_anon_table(tbp->var.group.tbp, txp);
+                if (ret != RDB_OK)
+                    return ret;
+            }
+            for (i = 0; i < tbp->var.group.attrc; i++) {
+                free(tbp->var.group.attrv[i]);
+            }
+            free(tbp->var.group.gattr);
+            break;
+        case RDB_TB_UNGROUP:
+            if (rec) {
+                ret = drop_anon_table(tbp->var.ungroup.tbp, txp);
+                if (ret != RDB_OK)
+                    return ret;
+            }
+            free(tbp->var.ungroup.attr);
             break;
     }
 

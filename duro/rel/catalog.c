@@ -670,6 +670,7 @@ _RDB_open_systables(RDB_dbroot *dbrootp, RDB_transaction *txp)
 {
     int ret;
     RDB_attr keysattr;
+    RDB_type *typ;
     RDB_bool create = RDB_FALSE;
 
     /* create or open catalog tables */
@@ -719,7 +720,9 @@ _RDB_open_systables(RDB_dbroot *dbrootp, RDB_transaction *txp)
 
     keysattr.name = "KEY";
     keysattr.typ = &RDB_STRING;
-    keys_attrv[2].typ = RDB_create_relation_type(1, &keysattr);
+    ret = RDB_create_relation_type(1, &keysattr, &keys_attrv[2].typ);
+    if (ret != RDB_OK)
+        return ret;
 
     ret = _RDB_provide_table("SYS_KEYS", RDB_TRUE, 3, keys_attrv, 1, keys_keyv,
             RDB_FALSE, create, txp, dbrootp->envp, &dbrootp->keys_tbp);
@@ -779,8 +782,10 @@ _RDB_open_systables(RDB_dbroot *dbrootp, RDB_transaction *txp)
         return ret;
     }
 
-    indexes_attrv[2].typ = RDB_create_array_type(
-        RDB_create_tuple_type(2, indexes_attrs_attrv));
+    ret = RDB_create_tuple_type(2, indexes_attrs_attrv, &typ);
+    if (ret != RDB_OK)
+        return ret;
+    indexes_attrv[2].typ = RDB_create_array_type(typ);
 
     ret = _RDB_provide_table("SYS_INDEXES", RDB_TRUE, 4, indexes_attrv,
             1, indexes_keyv, RDB_FALSE, create, txp, dbrootp->envp,
