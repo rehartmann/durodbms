@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2003 René Hartmann.
+ * Copyright (C) 2003-2005 René Hartmann.
  * See the file COPYING for redistribution information.
  */
 
@@ -23,14 +23,14 @@ db_create_cmd(TclState *statep, Tcl_Interp *interp, int argc, CONST char *argv[]
         return TCL_ERROR;
     }
 
-    entryp = Tcl_FindHashEntry(&statep->envs, argv[3]);
+    entryp = Tcl_FindHashEntry(&statep->envs, argv[2]);
     if (entryp == NULL) {
         Tcl_AppendResult(interp, "Unknown environment: ", argv[3], NULL);
         return TCL_ERROR;
     }
     envp = Tcl_GetHashValue(entryp);
 
-    ret = RDB_create_db_from_env(argv[2], envp, &dbp);
+    ret = RDB_create_db_from_env(argv[3], envp, &dbp);
     if (ret != RDB_OK) {
         Duro_dberror(interp, ret);
         return TCL_ERROR;
@@ -53,14 +53,14 @@ db_drop_cmd(TclState *statep, Tcl_Interp *interp, int argc, CONST char *argv[])
         return TCL_ERROR;
     }
 
-    entryp = Tcl_FindHashEntry(&statep->envs, argv[3]);
+    entryp = Tcl_FindHashEntry(&statep->envs, argv[2]);
     if (entryp == NULL) {
         Tcl_AppendResult(interp, "Unknown environment: ", argv[3], NULL);
         return TCL_ERROR;
     }
     envp = Tcl_GetHashValue(entryp);
 
-    ret = RDB_get_db_from_env(argv[2], envp, &dbp);
+    ret = RDB_get_db_from_env(argv[3], envp, &dbp);
     if (ret != RDB_OK) {
         Duro_dberror(interp, ret);
         return TCL_ERROR;

@@ -16,8 +16,8 @@ file mkdir tests/dbenv
 set dbenv [duro::env open tests/dbenv]
 
 # Create Databases
-duro::db create TEST1 $dbenv
-duro::db create TEST2 $dbenv
+duro::db create $dbenv TEST1
+duro::db create $dbenv TEST2
 
 # Create table
 set tx [duro::begin $dbenv TEST1]
@@ -55,5 +55,5 @@ duro::commit $tx
 
 # Drop databases
 
-duro::db drop TEST1 $dbenv
-duro::db drop TEST2 $dbenv
+duro::db drop $dbenv TEST1
+duro::db drop $dbenv TEST2

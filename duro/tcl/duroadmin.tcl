@@ -329,7 +329,7 @@ proc create_db {} {
         }
 
         # Create database
-        duro::db create $::newdbname $::dbenv
+        duro::db create $::dbenv $::newdbname
         set done 1
     }
     destroy .dialog
@@ -656,7 +656,7 @@ proc drop_db {} {
         return
     }
 
-    duro::db drop $::db $::dbenv
+    duro::db drop $::dbenv $::db
 
     $::dbmenu delete $::db
     set ::db [$::dbmenu entrycget 0 -value]

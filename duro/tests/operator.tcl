@@ -17,7 +17,7 @@ file mkdir tests/dbenv
 set dbenv [duro::env open tests/dbenv]
 
 # Create Database
-duro::db create TEST $dbenv
+duro::db create $dbenv TEST
 
 # Start transaction
 set tx [duro::begin $dbenv TEST]

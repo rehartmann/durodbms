@@ -478,7 +478,7 @@ serialize_rtable(RDB_object *valp, int *posp, RDB_table *tbp)
     if (tbp->is_persistent)
         return serialize_str(valp, posp, tbp->name != NULL ? tbp->name : "");
 
-    if (tbp->name != '\0')
+    if (tbp->name != NULL)
         return RDB_INVALID_ARGUMENT;
 
     ret = serialize_str(valp, posp, "");

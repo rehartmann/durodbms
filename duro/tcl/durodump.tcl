@@ -67,7 +67,7 @@ set tables {}
 set types_ops_dumped 0
 
 foreach db $dbs {
-    puts $out "duro::db create $db \$dbenv"
+    puts $out "duro::db create \$dbenv $db"
 
     set tx [duro::begin $dbenv $db]
 
