@@ -79,8 +79,9 @@ if {![string equal $v XY]} {
    exit 1
 }
 
-# Destroy operator
+# Destroy operators
 duro::operator drop strmul $tx
+duro::operator drop concat $tx
 
 # try to invoke deleted operator
 

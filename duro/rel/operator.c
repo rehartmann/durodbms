@@ -415,8 +415,17 @@ RDB_drop_op(const char *name, RDB_transaction *txp)
             return RDB_NO_MEMORY;
         }
         ret = RDB_delete(txp->dbp->dbrootp->ro_ops_tbp, exp, txp);
+        if (ret != RDB_OK) {
+            RDB_drop_expr(exp);
+            if (RDB_is_syserr(ret))
+                RDB_rollback_all(txp);
+            return ret;
+        }
+        ret = RDB_delete(txp->dbp->dbrootp->ro_op_rtypes_tbp, exp, txp);
         RDB_drop_expr(exp);
         if (ret != RDB_OK) {
+            if (RDB_is_syserr(ret))
+                RDB_rollback_all(txp);
             return ret;
         }
     }

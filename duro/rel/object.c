@@ -564,8 +564,8 @@ RDB_destroy_obj(RDB_object *objp)
             if (objp->var.arr.elemv != NULL) {
                 int i;
 
-                for (i = 0; i < objp->var.arr.capacity; i++)
-                    RDB_destroy_obj(&objp->var.arr.elemv[i]); /* !! */
+                for (i = 0; i < objp->var.arr.elemc; i++)
+                    RDB_destroy_obj(&objp->var.arr.elemv[i]);
                 free(objp->var.arr.elemv);
             }
 

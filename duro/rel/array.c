@@ -26,56 +26,75 @@ RDB_table_to_array(RDB_object *arrp, RDB_table *tbp,
     arrp->var.arr.length = -1;
     arrp->var.arr.tplp = NULL;
     arrp->var.arr.elemv = NULL;
+    arrp->var.arr.pos = 0;
 
     if (seqitc > 0) {
         /* Create sorter */
         ret = _RDB_sorter(tbp, &arrp->var.arr.qrp, txp, seqitc, seqitv);
         if (ret != RDB_OK)
             return ret;
-        arrp->var.arr.pos = 0;
     }
     
     return RDB_OK;
 }    
+
+/*
+ * Get next element from qresult
+ */
+
+static int
+fetch_next(RDB_object *arrp)
+{
+    if (arrp->var.arr.pos < arrp->var.arr.elemc)
+        return _RDB_next_tuple(arrp->var.arr.qrp,
+                &arrp->var.arr.elemv[arrp->var.arr.pos],
+                arrp->var.arr.txp);
+
+    return _RDB_next_tuple(arrp->var.arr.qrp, arrp->var.arr.tplp,
+                arrp->var.arr.txp);
+}
 
 enum {
     ARRAY_BUFLEN_MIN = 256,
     ARRAY_BUFLEN_MAX = 32768
 };
 
-/* !! elemc bzw. capacity kann entfallen (?) */
-
 int
 RDB_array_get(RDB_object *arrp, RDB_int idx, RDB_object **tplpp)
 {
     int ret;
 
-    if (arrp->var.arr.elemv != NULL && idx < arrp->var.arr.elemc) {
+    if (arrp->var.arr.length != -1 && idx >= arrp->var.arr.length)
+        return RDB_NOT_FOUND;
+
+    if (arrp->var.arr.tbp == NULL) {
         *tplpp = &arrp->var.arr.elemv[idx];
         return RDB_OK;
     }
 
-    if (arrp->var.arr.tbp == NULL) {
-        /* lement is not in buffer and no table available */
-        return RDB_NOT_FOUND;
-    }
-    
-    /* Reset qresult to start */
-    if (arrp->var.arr.pos > idx && arrp->var.arr.qrp != NULL) {
-        ret = _RDB_reset_qresult(arrp->var.arr.qrp, arrp->var.arr.txp);
-        arrp->var.arr.pos = 0;
-        if (ret != RDB_OK)
-            return ret;
+    /* If the element is in buffer, return it */
+    if (idx < arrp->var.arr.elemc && idx < arrp->var.arr.pos) {
+        *tplpp = &arrp->var.arr.elemv[idx];
+        return RDB_OK;
     }
 
     /* If there is no qresult, create it */
     if (arrp->var.arr.qrp == NULL) {
-        ret = _RDB_table_qresult(arrp->var.arr.tbp, arrp->var.arr.txp, &arrp->var.arr.qrp);
+        ret = _RDB_table_qresult(arrp->var.arr.tbp, arrp->var.arr.txp,
+                &arrp->var.arr.qrp);
         if (ret != RDB_OK) {
             arrp->var.arr.qrp = NULL;
             return ret;
         }
         arrp->var.arr.pos = 0;
+    }
+
+    /* Reset qresult to start, if necessary */
+    if (arrp->var.arr.pos > idx) {
+        ret = _RDB_reset_qresult(arrp->var.arr.qrp, arrp->var.arr.txp);
+        arrp->var.arr.pos = 0;
+        if (ret != RDB_OK)
+            return ret;
     }
 
     if (arrp->var.arr.tplp == NULL) {
@@ -85,80 +104,69 @@ RDB_array_get(RDB_object *arrp, RDB_int idx, RDB_object **tplpp)
         RDB_init_obj(arrp->var.arr.tplp);
     }
 
+    /*
+     * Allocate buffer, not already present
+     */
     if (arrp->var.arr.elemv == NULL) {
         int i;
-
-        /*
-         * Allocate buffer
-         */
         
-        arrp->var.arr.capacity = ARRAY_BUFLEN_MIN;
-        if (idx > arrp->var.arr.capacity)
-            arrp->var.arr.capacity = idx + 1;
-        if (arrp->var.arr.capacity > ARRAY_BUFLEN_MAX)
-            arrp->var.arr.capacity = ARRAY_BUFLEN_MAX;
-        arrp->var.arr.elemv = malloc (sizeof(RDB_object) * arrp->var.arr.capacity);
+        arrp->var.arr.elemc = ARRAY_BUFLEN_MIN;
+        if (idx > arrp->var.arr.elemc)
+            arrp->var.arr.elemc = idx + 1;
+        if (arrp->var.arr.elemc > ARRAY_BUFLEN_MAX)
+            arrp->var.arr.elemc = ARRAY_BUFLEN_MAX;
+        arrp->var.arr.elemv = malloc (sizeof(RDB_object) * arrp->var.arr.elemc);
         if (arrp->var.arr.elemv == NULL)
             return RDB_NO_MEMORY;
 
-        arrp->var.arr.elemc = idx;
-        if (arrp->var.arr.elemc > arrp->var.arr.capacity)
-            arrp->var.arr.elemc = arrp->var.arr.capacity;
-
-        for (i = 0; i < arrp->var.arr.capacity; i++)
+        for (i = 0; i < arrp->var.arr.elemc; i++)
             RDB_init_obj(&arrp->var.arr.elemv[i]);
     }
 
-    /* Enlarge buffer is necessary and permtted */
-    if (idx >= arrp->var.arr.capacity && idx < ARRAY_BUFLEN_MAX) {
-         int oldcapacity = arrp->var.arr.capacity;
-         int capacity = oldcapacity;
+    /* Enlarge buffer if necessary and permitted */
+    if (idx >= arrp->var.arr.elemc && idx < ARRAY_BUFLEN_MAX) {
+         int oldelemc = arrp->var.arr.elemc;
+         int elemc = oldelemc;
          int i;
 
          do {
-             capacity *= 2;
-         } while (capacity < idx);
+             elemc *= 2;
+         } while (elemc < idx);
 
          arrp->var.arr.elemv = realloc (arrp->var.arr.elemv,
-                 sizeof(RDB_object) * capacity);
+                 sizeof(RDB_object) * arrp->var.arr.elemc);
          if (arrp->var.arr.elemv == NULL)
              return RDB_NO_MEMORY;
-         for (i = oldcapacity; i < capacity; i++)
+         for (i = oldelemc; i < elemc; i++)
             RDB_init_obj(&arrp->var.arr.elemv[i]);
-         arrp->var.arr.capacity = capacity;
+         arrp->var.arr.elemc = elemc;
     }
          
     /*
      * Move forward until the right position is reached
      */
     while (arrp->var.arr.pos < idx) {
-        if (arrp->var.arr.pos < arrp->var.arr.capacity)
-            ret = _RDB_next_tuple(arrp->var.arr.qrp,
-                    &arrp->var.arr.elemv[arrp->var.arr.pos],
-                    arrp->var.arr.txp);
-        else
-            ret = _RDB_next_tuple(arrp->var.arr.qrp, arrp->var.arr.tplp,
-                    arrp->var.arr.txp);
+        ret = fetch_next(arrp);
         if (ret != RDB_OK)
             return ret;
         ++arrp->var.arr.pos;
     }
 
-    if (arrp->var.arr.pos < arrp->var.arr.capacity) {
-        *tplpp = &arrp->var.arr.elemv[arrp->var.arr.pos];
-        arrp->var.arr.elemc = arrp->var.arr.pos + 1;
-    } else {
-        *tplpp = arrp->var.arr.tplp;
-        arrp->var.arr.elemc = arrp->var.arr.capacity;
+    /* Read next element */
+    ret = fetch_next(arrp);
+    if (ret != RDB_OK) {
+        if (ret == RDB_NOT_FOUND)
+            arrp->var.arr.length = arrp->var.arr.pos;
+        return ret;
     }
 
-    /* Read next element */
-    if (arrp->var.arr.pos < arrp->var.arr.capacity)
-        ret = _RDB_next_tuple(arrp->var.arr.qrp,
-                &arrp->var.arr.elemv[arrp->var.arr.pos], arrp->var.arr.txp);
-    else
-        ret = _RDB_next_tuple(arrp->var.arr.qrp, arrp->var.arr.tplp, arrp->var.arr.txp);
+    if (arrp->var.arr.pos < arrp->var.arr.elemc) {
+        *tplpp = &arrp->var.arr.elemv[arrp->var.arr.pos];
+    } else {
+        *tplpp = arrp->var.arr.tplp;
+    }
     ++arrp->var.arr.pos;
+
     return ret;
 }
 
@@ -170,35 +178,52 @@ RDB_array_length(RDB_object *arrp)
     if (arrp->kind == RDB_OB_INITIAL)
         return 0;
 
-    if (arrp->var.arr.length == -1) {    
-        RDB_object tpl;
+    if (arrp->var.arr.length == -1) {
+        RDB_object *tplp;
+        int i = arrp->var.arr.pos;
 
-        RDB_init_obj(&tpl);
-        if (arrp->var.arr.qrp == NULL) {
-            ret = _RDB_table_qresult(arrp->var.arr.tbp, arrp->var.arr.txp, &arrp->var.arr.qrp);
-            if (ret != RDB_OK) {
-                RDB_destroy_obj(&tpl);            
-                return ret;
-            }
-            arrp->var.arr.pos = 0;
-        }
-
-        do {
-            ret = _RDB_next_tuple(arrp->var.arr.qrp, &tpl, arrp->var.arr.txp);
-            if (ret == RDB_OK) {
-                arrp->var.arr.pos++;
-            }
-        } while (ret == RDB_OK);
-        RDB_destroy_obj(&tpl);
-        arrp->var.arr.length = arrp->var.arr.pos;
+        while ((ret = RDB_array_get(arrp, (RDB_int) i, &tplp)) == RDB_OK)
+            i++;
+        if (ret != RDB_NOT_FOUND)
+            return ret;
+        arrp->var.arr.length = i;
     }
     return arrp->var.arr.length;
+}
+
+int
+RDB_detach_array(RDB_object *arrp)
+{
+    int ret;
+
+    if (arrp->var.arr.tbp == NULL)
+        return RDB_OK;
+
+    if (arrp->var.arr.length == -1
+            || arrp->var.arr.length > arrp->var.arr.elemc)
+        return RDB_NOT_SUPPORTED;
+
+    if (arrp->var.arr.qrp != NULL) {
+        ret = _RDB_drop_qresult(arrp->var.arr.qrp,
+                arrp->var.arr.txp);
+        if (ret != RDB_OK) {
+            if (RDB_is_syserr(ret) && arrp->var.arr.txp != NULL)
+                RDB_rollback_all(arrp->var.arr.txp);
+            return ret;
+        }
+        arrp->var.arr.qrp = NULL;
+    }
+
+    arrp->var.arr.tbp = NULL;
+    arrp->var.arr.txp = NULL;
+    return RDB_OK;
 }
 
 int
 RDB_set_array_length(RDB_object *arrp, RDB_int len)
 {
     int i;
+    int ret;
 
     if (arrp->kind == RDB_OB_INITIAL) {
         arrp->kind = RDB_OB_ARRAY;
@@ -210,12 +235,35 @@ RDB_set_array_length(RDB_object *arrp, RDB_int len)
             RDB_init_obj(&arrp->var.arr.elemv[i]);
 
         arrp->var.arr.tbp = NULL;
-        arrp->var.arr.length = arrp->var.arr.capacity =
-                arrp->var.arr.elemc = len;
+        arrp->var.arr.length = arrp->var.arr.elemc = len;
         
         return RDB_OK;
     }
-    return RDB_NOT_SUPPORTED;
+    if (arrp->var.arr.tbp != NULL) {
+        ret = RDB_detach_array(arrp);
+        if (ret != RDB_OK)
+            return ret;
+    }
+
+    if (len < arrp->var.arr.length) {
+        /* Shorten array */
+        for (i = len; i < arrp->var.arr.length; i++) {
+            ret = RDB_destroy_obj(&arrp->var.arr.elemv[i]);
+            if (ret != RDB_OK)
+                return ret;
+        }            
+        arrp->var.arr.elemv = realloc(arrp->var.arr.elemv,
+                sizeof (RDB_object) * len);
+    } else if (len < arrp->var.arr.length) {
+        /* Enlarge array */
+        arrp->var.arr.elemv = realloc(arrp->var.arr.elemv,
+                sizeof (RDB_object) * len);
+        for (i = arrp->var.arr.length; i < len; i++)
+            RDB_init_obj(&arrp->var.arr.elemv[i]);
+    }
+    arrp->var.arr.length = len;
+        
+    return RDB_OK;
 }
 
 int

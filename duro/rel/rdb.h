@@ -71,13 +71,18 @@ typedef struct RDB_object {
             struct RDB_table *tbp;
             struct RDB_transaction *txp;
             struct RDB_qresult *qrp;
+
+            /* Position of next element returned by qresult */
             RDB_int pos;
 
             RDB_int length; /* length of array; -1 means unknown */
-            struct RDB_object *tplp;
+
+            /* Elements (buffer, if tbp is not NULl) */
+            int elemc;
             struct RDB_object *elemv;
-            int elemc; /* # of managed elements */
-            int capacity; /* # of elements allocated for elemv */
+
+            /* Buffers elements beyonc elemc */
+            struct RDB_object *tplp;
         } arr;
      } var;
 } RDB_object;

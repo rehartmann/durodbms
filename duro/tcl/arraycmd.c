@@ -347,6 +347,7 @@ array_index_cmd(TclState *statep, Tcl_Interp *interp, int objc,
     ret = RDB_array_get(arrayp, (RDB_int) idx, &tplp);
     if (ret != RDB_OK) {
         Duro_dberror(interp, ret);
+        return TCL_ERROR;
     }
 
     listobjp = Duro_tuple_to_list(interp, tplp, txp);
@@ -449,16 +450,77 @@ array_length_cmd(TclState *statep, Tcl_Interp *interp, int objc,
     return TCL_OK;
 }
 
+static int
+array_set_cmd(TclState *statep, Tcl_Interp *interp, int objc,
+        Tcl_Obj *CONST objv[])
+{
+    int ret;
+    char *arraystr;
+    char *txstr;
+    RDB_transaction *txp;
+    Tcl_HashEntry *entryp;
+    RDB_object *arrayp;
+    RDB_object *tplp;
+    int idx;
+    RDB_type *typ;
+    RDB_object obj;
+
+    if (objc != 7) {
+        Tcl_WrongNumArgs(interp, 2, objv, "arrayname idx value type tx");
+        return TCL_ERROR;
+    }
+
+    txstr = Tcl_GetStringFromObj(objv[objc - 1], NULL);
+    entryp = Tcl_FindHashEntry(&statep->txs, txstr);
+    if (entryp == NULL) {
+        Tcl_AppendResult(interp, "Unknown transaction: ", txstr, NULL);
+        return TCL_ERROR;
+    }
+    txp = Tcl_GetHashValue(entryp);
+
+    arraystr = Tcl_GetStringFromObj(objv[2], NULL);
+    entryp = Tcl_FindHashEntry(&statep->arrays, arraystr);
+    if (entryp == NULL) {
+        Tcl_AppendResult(interp, "Unknown array: ", arraystr, NULL);
+        return TCL_ERROR;
+    }
+    arrayp = Tcl_GetHashValue(entryp);
+
+    ret = Tcl_GetIntFromObj(interp, objv[3], &idx);
+    if (ret != TCL_OK)
+        return ret;
+
+    ret = Duro_get_type(objv[5], interp, txp, &typ);
+    if (ret != TCL_OK)
+        return ret;
+
+    RDB_init_obj(&obj);
+    ret = Duro_tcl_to_duro(interp, objv[4], typ, &obj, txp);
+    if (ret != TCL_OK) {
+        RDB_destroy_obj(&obj);
+        return ret;
+    }
+
+    ret = RDB_array_set(arrayp, (RDB_int) idx, &obj);
+    RDB_destroy_obj(&obj);
+    if (ret != RDB_OK) {
+        Duro_dberror(interp, ret);
+        return TCL_ERROR;
+    }
+
+    return TCL_OK;
+}
+
 int
 Duro_array_cmd(ClientData data, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[])
 {
     TclState *statep = (TclState *) data;
 
     const char *sub_cmds[] = {
-        "create", "drop", "length", "index", "foreach", NULL
+        "create", "drop", "length", "index", "foreach", "set", NULL
     };
     enum array_ix {
-        create_ix, drop_ix, length_ix, index_ix, foreach_ix
+        create_ix, drop_ix, length_ix, index_ix, foreach_ix, set_ix
     };
     int index;
 
@@ -483,6 +545,8 @@ Duro_array_cmd(ClientData data, Tcl_Interp *interp, int objc, Tcl_Obj *CONST obj
             return array_index_cmd(statep, interp, objc, objv);
         case foreach_ix:
             return array_foreach_cmd(statep, interp, objc, objv);
+        case set_ix:
+            return array_set_cmd(statep, interp, objc, objv);
     }
     return TCL_ERROR;
 }

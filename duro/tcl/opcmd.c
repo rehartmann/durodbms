@@ -10,7 +10,8 @@
 #include <string.h>
 
 static int
-operator_create_cmd(ClientData data, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[])
+operator_create_cmd(ClientData data, Tcl_Interp *interp, int objc,
+        Tcl_Obj *CONST objv[])
 {
     RDB_bool update;
     int ret;
@@ -85,11 +86,8 @@ operator_create_cmd(ClientData data, Tcl_Interp *interp, int objc, Tcl_Obj *CONS
             goto cleanup;
         }
 
-        ret = RDB_get_type(Tcl_GetStringFromObj(typeobjp, NULL), txp,
-                &argtv[i]);
-        if (ret != RDB_OK) {
-            Duro_dberror(interp, ret);
-            ret = TCL_ERROR;
+        ret = Duro_get_type(typeobjp, interp, txp, &argtv[i]);
+        if (ret != TCL_OK) {
             goto cleanup;
         }
     }
@@ -161,10 +159,8 @@ operator_create_cmd(ClientData data, Tcl_Interp *interp, int objc, Tcl_Obj *CONS
     } else {
         RDB_type *rtyp;
 
-        ret = RDB_get_type(Tcl_GetStringFromObj(objv[4], NULL), txp, &rtyp);
-        if (ret != RDB_OK) {
-            Duro_dberror(interp, ret);
-            ret = TCL_ERROR;
+        ret = Duro_get_type(objv[4], interp, txp, &rtyp);
+        if (ret != TCL_OK) {
             goto cleanup;
         }
 
@@ -280,11 +276,8 @@ Duro_call_cmd(ClientData data, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv
     argtv = (RDB_type **) Tcl_Alloc(sizeof (RDB_type *) * argc);
 
     for (i = 0; i < argc; i++) {
-        char *typename = Tcl_GetString(objv[3 + i * 2]);
-        ret = RDB_get_type(typename, txp, &argtv[i]);
-        if (ret != RDB_OK) {
-            Tcl_AppendResult(interp, "Unknown type: ", typename, NULL);
-            ret = TCL_ERROR;
+        ret = Duro_get_type(objv[3 + i * 2], interp, txp, &argtv[i]);
+        if (ret != TCL_OK) {
             goto cleanup;
         }
     }

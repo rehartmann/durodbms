@@ -318,7 +318,7 @@ Duro_get_type(Tcl_Obj *objp, Tcl_Interp *interp, RDB_transaction *txp,
     /*
      * Check for a tuple or relation type by searching for whitespace
      */
-    if (contains_space(Tcl_GetStringFromObj(objp, NULL))) {
+    if (contains_space(Tcl_GetString(objp))) {
         int llen;
         int attrc;
         int i;
@@ -839,39 +839,13 @@ Duro_insert_cmd(ClientData data, Tcl_Interp *interp, int objc,
     if (attrcount % 2 != 0) {
         Tcl_SetResult(interp, "Invalid tuple value", TCL_STATIC);
         return TCL_ERROR;
-    } 
-
-    RDB_init_obj(&tpl);
-    for (i = 0; i < attrcount; i += 2) {
-        Tcl_Obj *nameobjp, *valobjp;
-        RDB_type *attrtyp;
-        char *attrname;
-        RDB_object obj;
-
-        RDB_init_obj(&obj);
-
-        Tcl_ListObjIndex(interp, objv[2], i, &nameobjp);
-        attrname = Tcl_GetStringFromObj(nameobjp, NULL);
-        attrtyp = RDB_type_attr_type(typ, attrname);
-        if (attrtyp == NULL) {
-            Tcl_AppendResult(interp, "Invalid  attribute: ", attrname, NULL);
-            ret = TCL_ERROR;
-            RDB_destroy_obj(&obj);
-            goto cleanup;
-        }
-
-        Tcl_ListObjIndex(interp, objv[2], i + 1, &valobjp);
-        ret = Duro_tcl_to_duro(interp, valobjp, attrtyp, &obj, txp);
-        if (ret != TCL_OK) {
-            RDB_destroy_obj(&obj);
-            goto cleanup;
-        }
-
-        RDB_tuple_set(&tpl, attrname, &obj);
-
-        RDB_destroy_obj(&obj);
     }
 
+    RDB_init_obj(&tpl);
+    ret = list_to_tuple(interp, objv[2], typ, &tpl, txp);
+    if (ret != TCL_OK) {
+        goto cleanup;
+    }
     ret = RDB_insert(tbp, &tpl, txp);
     if (ret == RDB_OK) {
         Tcl_SetObjResult(interp, Tcl_NewBooleanObj(0));
