@@ -140,8 +140,24 @@ project: primary_expression '{' attribute_name_list '}' {
                 YYERROR;
             }
             $$ = RDB_expr_table(restbp);
+        }
+        | primary_expression '{' TOK_ALL_BUT attribute_name_list '}' {
+            RDB_table *tbp, *restbp;
+            int i;
+
+            tbp = expr_to_table($1);
+            if (tbp == NULL)
+            {
+                YYERROR;
             }
-            | primary_expression '{' TOK_ALL_BUT attribute_name_list '}'
+            expr_ret = RDB_remove(tbp, $4.attrc, $4.attrv, &restbp);
+            for (i = 0; i < $4.attrc; i++)
+                free($4.attrv[i]);
+            if (expr_ret != RDB_OK) {
+                YYERROR;
+            }
+            $$ = RDB_expr_table(restbp);
+        }
         ;
 
 attribute_name_list: TOK_ID {

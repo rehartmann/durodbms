@@ -95,6 +95,18 @@ error:
     return -1;
 }
 
+int
+RDB_find_str(int strc, char *strv[], const char *str)
+{
+    int i;
+    
+    for (i = 0; i < strc; i++) {
+        if (strcmp(strv[i], str) == 0)
+            return i;
+    }
+    return -1;
+}
+
 void
 _RDB_dump(void *datap, size_t size)
 {

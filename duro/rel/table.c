@@ -6,6 +6,8 @@
 #include <gen/strfns.h>
 #include <string.h>
 
+#include <signal.h>
+
 RDB_type *
 RDB_table_type(const RDB_table *tbp)
 {
@@ -1488,13 +1490,49 @@ error:
             if (newtbp->keyv[i].strv != NULL)
                 RDB_free_strvec(newtbp->keyv[i].strc, newtbp->keyv[i].strv);
         }
-        free (newtbp->keyv);
+        free(newtbp->keyv);
     }
     RDB_drop_type(newtbp->typ, NULL);
     free(newtbp);
 
     return RDB_NO_MEMORY;
 }
+
+int
+RDB_remove(RDB_table *tbp, int attrc, char *attrv[], RDB_table **resultpp)
+{
+    int ret;
+    int i, j;
+    RDB_type *tuptyp = tbp->typ->var.basetyp;
+    int baseattrc = tuptyp->var.tuple.attrc;
+    char **resattrv;
+
+    if (attrc > baseattrc)
+        return RDB_INVALID_ARGUMENT;
+
+    /* Allocate vector of remaining attributes */
+    resattrv = malloc((baseattrc - attrc) * sizeof (char *));
+    if (resattrv == NULL)
+        return RDB_NO_MEMORY;
+
+    /* Get the table attributes which are not in attrv */
+    for (i = 0, j = 0; i < baseattrc && j < baseattrc - attrc; i++) {
+        if (RDB_find_str(attrc, attrv, tuptyp->var.tuple.attrv[i].name) == -1) {
+            if (j == baseattrc - attrc) {
+                /* Not-existing attribute in attrv */
+                ret = RDB_INVALID_ARGUMENT;
+                goto cleanup;
+            }                
+            resattrv[j++] = tuptyp->var.tuple.attrv[i].name;
+        }
+    }
+
+    ret = RDB_project(tbp, baseattrc - attrc, resattrv, resultpp);
+
+cleanup:
+    free(resattrv);
+    return ret;
+}    
 
 int
 RDB_summarize(RDB_table *tb1p, RDB_table *tb2p, int addc, RDB_summarize_add addv[],

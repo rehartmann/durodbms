@@ -30,23 +30,27 @@ RDB_db_env(RDB_database *dbp) {
  * of the type pointed to by typ.
  */
 static int replen(const RDB_type *typ) {
-    return typ->ireplen;
-}
+    if (RDB_type_is_scalar(typ))
+        return typ->ireplen;
 
-/*
- * Return the idex of string name in attrv, or -1
- * if not found.
- */
-static int
-find_str(int attrc, char *attrv[], const char *name)
-{
-    int i;
-    
-    for (i = 0; i < attrc; i++) {
-        if (strcmp(attrv[i], name) == 0)
-            return i;
+    if (typ->kind == RDB_TP_TUPLE) {
+        int i;
+        size_t len;
+        size_t tlen = 0;
+
+        /*
+         * Add lengths of attribute types. If one of the attributes is
+         * of variable length, the tuple type is of variable length.
+         */
+        for (i = 0; i < typ->var.tuple.attrc; i++) {
+            len = replen(typ->var.tuple.attrv[i].typ);
+            if (len == RDB_VARIABLE_LEN)
+                return RDB_VARIABLE_LEN;
+            tlen += len;
+        }
+        return tlen;
     }
-    return -1;
+    abort();
 }
 
 static int
@@ -253,7 +257,7 @@ _RDB_open_table(RDB_table *tbp,
     di = piattrc;
     for (i = 0; i < attrc; i++) {
         /* Search attribute in key */
-        RDB_int fno = (RDB_int) find_str(piattrc, piattrv, heading[i].name);
+        RDB_int fno = (RDB_int) RDB_find_str(piattrc, piattrv, heading[i].name);
 
         /* If it's not found in the key, give it a non-key field number */
         if (fno == -1)
@@ -276,10 +280,13 @@ _RDB_open_table(RDB_table *tbp,
         if (ret != RDB_OK)
             goto error;
 
-        /* Only scalar types are supported by this version */
-        if (!RDB_type_is_scalar(heading[i].typ)) {
+        /* Relation types are supported by this version */
+        if (heading[i].typ->kind == RDB_TP_RELATION) {
             ret = RDB_NOT_SUPPORTED;
             goto error;
+        } else if (heading[i].typ->kind == RDB_TP_TUPLE) {
+            /* Store type in catalog */
+            /* !! ... */
         }
 
         flenv[fno] = replen(heading[i].typ);

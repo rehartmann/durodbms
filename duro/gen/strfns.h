@@ -34,6 +34,13 @@ RDB_free_strvec(int cnt, char **strv);
 int
 RDB_split_str(const char *str, char *(*substrvp[]));
 
+/*
+ * Return the index of string name in attrv, or -1
+ * if not found.
+ */
+int
+RDB_find_str(int strc, char *strv[], const char *str);
+
 void
 _RDB_dump(void *datap, size_t size);
 

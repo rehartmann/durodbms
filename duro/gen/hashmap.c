@@ -178,6 +178,9 @@ RDB_hashmap_keys(const RDB_hashmap *hp, char **keys)
     int i;
     int ki = 0;
     
+    if (hp->key_count == 0)
+        return;
+
     for (i = 0; i < hp->capacity; i++) {
         if (hp->kv_tab[i].keyp != NULL)
             keys[ki++] = hp->kv_tab[i].keyp;

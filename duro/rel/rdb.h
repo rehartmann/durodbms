@@ -649,6 +649,9 @@ RDB_extend(RDB_table *, int attrc, RDB_virtual_attr attrv[],
 int
 RDB_project(RDB_table *, int attrc, char *attrv[], RDB_table **resultpp);
 
+int
+RDB_remove(RDB_table *, int attrc, char *attrv[], RDB_table **resultpp);
+
 /* Create a table which is the result of a SUMMARIZE PER operation.
  * The table created takes resposibility for the RDB_expressions
  *  passed through addv.
