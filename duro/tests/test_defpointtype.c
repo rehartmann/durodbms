@@ -5,12 +5,25 @@
 #include <stdlib.h>
 #include <stdio.h>
 
+RDB_attr pointcompv[] = {
+    { "X", &RDB_RATIONAL, NULL, 0 },
+    { "Y", &RDB_RATIONAL, NULL, 0 }
+};
+
+RDB_attr polarcompv[] = {
+    { "THETA", &RDB_RATIONAL, NULL, 0 },
+    { "LENGTH", &RDB_RATIONAL, NULL, 0 }
+};
+
+RDB_possrep prv[] = {
+    { "POINT", 2, pointcompv, NULL },
+    { "POLAR", 2, polarcompv, NULL }
+};
+
 int
 test_type(RDB_database *dbp)
 {
     RDB_transaction tx;
-    RDB_possrep pr;
-    RDB_attr comp;
     int ret;
 
     printf("Starting transaction\n");
@@ -20,21 +33,14 @@ test_type(RDB_database *dbp)
     }
 
     printf("Defining type\n");
-    comp.name = NULL;
-    comp.typ = &RDB_INTEGER;
-    pr.name = NULL;
-    pr.compc = 1;
-    pr.compv = &comp;
-    pr.constraintp = RDB_lt(RDB_expr_attr("TINYINT", &RDB_INTEGER),
-            RDB_int_const(100));
-    ret = RDB_define_type("TINYINT", 1, &pr, &tx);
+    ret = RDB_define_type("POINT", 2, prv, &tx);
     if (ret != RDB_OK) {
         RDB_rollback(&tx);
         return ret;
     }
 
     printf("Implementing type\n");
-    ret = RDB_implement_type("TINYINT", NULL, NULL, 0, &tx);
+    ret = RDB_implement_type("POINT", "libpoint", &RDB_BINARY, 0, &tx);
     if (ret != RDB_OK) {
         RDB_rollback(&tx);
         return ret;

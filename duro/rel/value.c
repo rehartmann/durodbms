@@ -9,45 +9,52 @@
 void *
 RDB_value_irep(RDB_value *valp, size_t *lenp)
 {
-    switch (valp->typ->irep) {
-        case RDB_IREP_BOOLEAN:
-            *lenp = sizeof (RDB_bool);
-            return &valp->var.bool_val;
-        case RDB_IREP_INTEGER:
-            *lenp = sizeof (RDB_int);
-            return &valp->var.int_val;
-        case RDB_IREP_RATIONAL:
-            *lenp = sizeof (RDB_rational);
-            return &valp->var.rational_val;
-        default:
+    RDB_type *rep = valp->typ;
+
+    if (!RDB_type_is_builtin(rep))
+        rep = rep->arep;
+
+    if (lenp != NULL) {
+        *lenp = rep->ireplen;
+        if (*lenp == RDB_VARIABLE_LEN)
             *lenp = valp->var.bin.len;
-            return valp->var.bin.datap;
+    }
+
+    if (rep == &RDB_BOOLEAN) {
+        return &valp->var.bool_val;
+    } else if (rep == &RDB_INTEGER) {
+        return &valp->var.int_val;
+    } else if (rep == &RDB_RATIONAL) {
+        return &valp->var.rational_val;
+    } else {
+        return valp->var.bin.datap;
     }
 } 
 
 int
 RDB_irep_to_value(RDB_value *valp, RDB_type *typ, void *datap, size_t len)
 {
+    const RDB_type *rep = typ;
+
+    if (!RDB_type_is_builtin(typ))
+        rep = typ->arep;
+
     if (valp->typ != NULL)
         RDB_destroy_value(valp);
 
     valp->typ = typ;
-    switch (valp->typ->irep) {
-        case RDB_IREP_BOOLEAN:
-            valp->var.bool_val = *(RDB_bool *) datap;
-            break;
-        case RDB_IREP_INTEGER:
-            memcpy(&valp->var.int_val, datap, sizeof (RDB_int));
-            break;
-        case RDB_IREP_RATIONAL:
-            memcpy(&valp->var.rational_val, datap, sizeof (RDB_rational));
-            break;
-        default:
-            valp->var.bin.len = len;
-            valp->var.bin.datap = malloc(len);
-            if (valp->var.bin.datap == NULL)
-                return RDB_NO_MEMORY;
-            memcpy(valp->var.bin.datap, datap, len);
+    if (typ == &RDB_BOOLEAN) {
+        valp->var.bool_val = *(RDB_bool *) datap;
+    } else if (typ == &RDB_INTEGER) {
+        memcpy(&valp->var.int_val, datap, sizeof (RDB_int));
+    } else if (typ == &RDB_RATIONAL) {
+        memcpy(&valp->var.rational_val, datap, sizeof (RDB_rational));
+    } else {
+        valp->var.bin.len = len;
+        valp->var.bin.datap = malloc(len);
+        if (valp->var.bin.datap == NULL)
+            return RDB_NO_MEMORY;
+        memcpy(valp->var.bin.datap, datap, len);
     }
     return RDB_OK;
 } 
@@ -55,44 +62,46 @@ RDB_irep_to_value(RDB_value *valp, RDB_type *typ, void *datap, size_t len)
 RDB_bool
 RDB_value_equals(const RDB_value *valp1, const RDB_value *valp2)
 {
-    switch (valp1->typ->irep) {
-        case RDB_IREP_BOOLEAN:
-            return (RDB_bool) valp1->var.bool_val == valp2->var.bool_val;
-            break;
-        case RDB_IREP_INTEGER:
-            return (RDB_bool) (valp1->var.int_val == valp2->var.int_val);
-            break;
-        case RDB_IREP_RATIONAL:
-            return (RDB_bool) (valp1->var.rational_val == valp2->var.rational_val);
-            break;
-        default:
-            if (valp1->var.bin.len != valp2->var.bin.len)
-                return RDB_FALSE;
-            return (RDB_bool) (memcmp(valp1->var.bin.datap, valp2->var.bin.datap,
-                    valp1->var.bin.len) == 0);
+    RDB_type *rep = valp1->typ;
+
+    if (!RDB_type_is_builtin(rep))
+        rep = rep->arep;
+
+    if (rep == &RDB_BOOLEAN) {
+        return (RDB_bool) valp1->var.bool_val == valp2->var.bool_val;
+    } else if (rep == &RDB_INTEGER) {
+        return (RDB_bool) (valp1->var.int_val == valp2->var.int_val);
+    } else if (rep == &RDB_RATIONAL) {
+        return (RDB_bool) (valp1->var.rational_val == valp2->var.rational_val);
+    } else {
+        if (valp1->var.bin.len != valp2->var.bin.len)
+            return RDB_FALSE;
+        return (RDB_bool) (memcmp(valp1->var.bin.datap, valp2->var.bin.datap,
+                valp1->var.bin.len) == 0);
     }
 } 
 
 static int
 copy_value(RDB_value *dstvalp, const RDB_value *srcvalp)
 {
-    switch (srcvalp->typ->irep) {
-        case RDB_IREP_BOOLEAN:
-            dstvalp->var.bool_val = srcvalp->var.bool_val;
-            break;
-        case RDB_IREP_INTEGER:
-            dstvalp->var.int_val = srcvalp->var.int_val;
-            break;
-        case RDB_IREP_RATIONAL:
-            dstvalp->var.rational_val = srcvalp->var.rational_val;
-            break;
-        default:
-            dstvalp->var.bin.len = srcvalp->var.bin.len;
-            dstvalp->var.bin.datap = malloc(srcvalp->var.bin.len);
-            if (dstvalp->var.bin.datap == NULL)
-                return RDB_NO_MEMORY;
-            memcpy(dstvalp->var.bin.datap, srcvalp->var.bin.datap,
-                        srcvalp->var.bin.len);
+    RDB_type *rep = srcvalp->typ;
+
+    if (!RDB_type_is_builtin(rep))
+        rep = rep->arep;
+
+    if (rep == &RDB_BOOLEAN) {
+        dstvalp->var.bool_val = srcvalp->var.bool_val;
+    } else if (rep == &RDB_INTEGER) {
+        dstvalp->var.int_val = srcvalp->var.int_val;
+    } else if (rep == &RDB_RATIONAL) {
+        dstvalp->var.rational_val = srcvalp->var.rational_val;
+    } else {
+        dstvalp->var.bin.len = srcvalp->var.bin.len;
+        dstvalp->var.bin.datap = malloc(srcvalp->var.bin.len);
+        if (dstvalp->var.bin.datap == NULL)
+            return RDB_NO_MEMORY;
+        memcpy(dstvalp->var.bin.datap, srcvalp->var.bin.datap,
+                srcvalp->var.bin.len);
     }
     return RDB_OK;
 }
@@ -116,16 +125,16 @@ RDB_init_value(RDB_value *valp)
 void
 RDB_destroy_value(RDB_value *valp)
 {
-    if (valp->typ == NULL)
+    RDB_type *rep = valp->typ;
+
+    if (rep == NULL)
         return;
 
-    switch (valp->typ->irep) {
-        case RDB_IREP_BOOLEAN:
-        case RDB_IREP_INTEGER:
-        case RDB_IREP_RATIONAL:
-            break;
-        default:
-            free(valp->var.bin.datap);
+    if (!RDB_type_is_builtin(rep))
+        rep = rep->arep;
+
+    if (rep->ireplen == RDB_VARIABLE_LEN) {
+         free(valp->var.bin.datap);
     }
 }
 
@@ -166,32 +175,18 @@ RDB_value_set_string(RDB_value *valp, const char *str)
     return RDB_OK;
 }
 
-static RDB_icomp *
-get_icomp(RDB_type *typ, const char *compname)
-{
-    int i, j;
-
-    for (i = 0; i < typ->var.scalar.repc; i++) {
-        for (j = 0; j < typ->var.scalar.repv[i].compc; j++) {
-            if (strcmp(typ->var.scalar.repv[i].compv[j].name, compname) == 0)
-                return &typ->var.scalar.repv[i].compv[j];
-        }
-    }
-    return NULL;
-}
-
 int
 RDB_value_get_comp(const RDB_value *valp, const char *compname,
                    RDB_value *compvalp)
 {
-    RDB_icomp *comp = get_icomp(valp->typ, compname);
+    RDB_icomp *comp = _RDB_get_icomp(valp->typ, compname);
 
     if (comp->setterp != NULL) {
         return (*(comp->getterp))(valp, compvalp, valp->typ, compname);
     } else {
         RDB_destroy_value(compvalp);
 
-        compvalp->typ = valp->typ->var.scalar.repv[0].compv[0].type;
+        compvalp->typ = valp->typ->var.scalar.repv[0].compv[0].typ;
         return copy_value(compvalp, valp);   
     }
 }
@@ -200,7 +195,7 @@ int
 RDB_value_set_comp(RDB_value *valp, const char *compname,
                    const RDB_value *compvalp)
 {
-    RDB_icomp *comp = get_icomp(valp->typ, compname);
+    RDB_icomp *comp = _RDB_get_icomp(valp->typ, compname);
 
     if (comp->setterp != NULL) {
         return (*(comp->setterp))(valp, compvalp, valp->typ, compname);
@@ -214,28 +209,40 @@ RDB_value_set_comp(RDB_value *valp, const char *compname,
 static RDB_bool
 check_constraint(RDB_value *valp) {
     int i, j;
+    int ret;
 
     /* Check constraint for each possrep */
     for (i = 0; i < valp->typ->var.scalar.repc; i++) {
         RDB_tuple tpl;
         RDB_bool result;
 
-        RDB_init_tuple(&tpl);
-        /* Set tuple attributes */
-        for (j = 0; j < valp->typ->var.scalar.repv[i].compc; j++) {
-            RDB_value comp;
-            char *compname = valp->typ->var.scalar.repv[i].compv[j].name;
+        if (valp->typ->var.scalar.repv[i].constraintp != NULL) {
+            RDB_init_tuple(&tpl);
+            /* Set tuple attributes */
+            for (j = 0; j < valp->typ->var.scalar.repv[i].compc; j++) {
+                RDB_value comp;
+                char *compname = valp->typ->var.scalar.repv[i].compv[j].name;
 
-            RDB_init_value(&comp);
-            RDB_value_get_comp(valp, compname, &comp);
-            RDB_tuple_set(&tpl, compname, &comp);
-            RDB_destroy_value(&comp);
+                RDB_init_value(&comp);
+                ret = RDB_value_get_comp(valp, compname, &comp);
+                if (ret != RDB_OK) {
+                    RDB_destroy_value(&comp);
+                    RDB_destroy_tuple(&tpl);
+                    return RDB_FALSE; /* !! */
+                }
+                ret = RDB_tuple_set(&tpl, compname, &comp);
+                RDB_destroy_value(&comp);
+                if (ret != RDB_OK) {
+                    RDB_destroy_tuple(&tpl);
+                    return RDB_FALSE; /* !! */
+                }
+            }
+            RDB_evaluate_bool(valp->typ->var.scalar.repv[i].constraintp,
+                    &tpl, NULL, &result);
+            RDB_destroy_tuple(&tpl);
+            if (!result)
+                return RDB_FALSE;
         }
-        RDB_evaluate_bool(valp->typ->var.scalar.repv[i].constraintp,
-                &tpl, NULL, &result);
-        RDB_destroy_tuple(&tpl);
-        if (!result)
-            return RDB_FALSE;
     }
     return RDB_TRUE;
 }

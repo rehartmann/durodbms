@@ -135,6 +135,11 @@ serialize_expr(RDB_value *valp, int *posp, const RDB_expression *exprp)
             if (ret != RDB_OK)
                 return ret;
             return serialize_expr(valp, posp, exprp->var.op.arg2);
+        case RDB_OP_GET_COMP:
+            ret = serialize_expr(valp, posp, exprp->var.op.arg1);
+            if (ret != RDB_OK)
+                return ret;
+            return serialize_str(valp, posp, exprp->var.op.name);
         case RDB_TABLE:
             return _RDB_serialize_table(valp, posp, exprp->var.tbp);
     }
@@ -341,20 +346,23 @@ _RDB_table_to_value(RDB_table *tbp, RDB_value *valp)
 int
 _RDB_expr_to_value(const RDB_expression *exp, RDB_value *valp)
 {
-    int pos;
+    int pos = 0;
     int ret;
 
     RDB_destroy_value(valp);
     valp->typ = &RDB_BINARY;
-    valp->var.bin.len = RDB_BUF_INITLEN;
-    valp->var.bin.datap = malloc(RDB_BUF_INITLEN);
-    if (valp->var.bin.datap == NULL) {
-        return RDB_NO_MEMORY;
+    if (exp != NULL) {
+        valp->var.bin.len = RDB_BUF_INITLEN;
+        valp->var.bin.datap = malloc(RDB_BUF_INITLEN);
+        if (valp->var.bin.datap == NULL) {
+            return RDB_NO_MEMORY;
+        }
+        ret = serialize_expr(valp, &pos, exp);
+        if (ret != RDB_OK)
+            return ret;
+    } else {
+        valp->var.bin.datap = NULL;
     }
-    pos = 0;
-    ret = serialize_expr(valp, &pos, exp);
-    if (ret != RDB_OK)
-        return ret;
 
     valp->var.bin.len = pos; /* Only store actual length */
     return RDB_OK;
@@ -452,6 +460,11 @@ deserialize_expr(RDB_value *valp, int *posp, RDB_transaction *txp,
     enum _RDB_expr_kind ekind;
     int ret;
 
+    if (valp->var.bin.len == 0) {
+        *exprpp = NULL;
+        return RDB_OK;
+    }
+
     ret = deserialize_byte(valp, posp);
     if (ret < 0)
         return ret;
@@ -530,6 +543,20 @@ deserialize_expr(RDB_value *valp, int *posp, RDB_transaction *txp,
             *exprpp = _RDB_create_binexpr(expr1p, expr2p, ekind);
             if (*exprpp == NULL)
                 return RDB_NO_MEMORY;
+            break;
+        case RDB_OP_GET_COMP:
+            {
+                char *name;
+            
+                ret = deserialize_expr(valp, posp, txp, &expr1p);
+                if (ret != RDB_OK)
+                    return ret;
+                ret = deserialize_str(valp, posp, &name);
+                if (ret != RDB_OK) {
+                    RDB_drop_expr(expr1p);
+                    return ret;
+                }
+            }
             break;
         case RDB_TABLE:
             {

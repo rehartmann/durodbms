@@ -321,6 +321,8 @@ int
 RDB_table_contains(RDB_table *, const RDB_tuple *, RDB_transaction *);
 </pre>
 
+<hr>
+
 <h2 id="aggregate">RDB_aggregate</h2>
 
 <pre>
@@ -1342,6 +1344,15 @@ RDB_rel_is_empty(RDB_expression *);
 
 <hr>
 
+<h2 id="get_comp">RDB_get_comp</h2>
+
+<pre>
+RDB_expression *
+RDB_get_comp(RDB_expression *arg, const char *compname);
+</pre>
+
+<hr>
+
 <h2 id="drop_expr">RDB_drop_expr</h2>
 
 <pre>
@@ -1374,7 +1385,8 @@ RDB_define_type(const char *name, int repc, RDB_possrep repv[],
 #include &lt;rel/typeimpl.h&gt;
 
 int
-RDB_implement_type(RDB_transaction *, const char *name, const char *modname, int options);
+RDB_implement_type(const char *name, const char *modname, RDB_type *arep, int options,
+                   RDB_transaction *);
 </pre>
 
 <h3>Description</h3>
@@ -1382,18 +1394,16 @@ RDB_implement_type(RDB_transaction *, const char *name, const char *modname, int
 <p>RDB_implement_type implements the user-defined type with name
 <var>name</var>. When RDB_implement_type was inkoved successfully,
 the type may be used for local variables and relvar attributes.
+The actual representation is denoted by the <var>arep</var> argument.
 
 <p>If <var>modname</var> is not NULL, it is taken as a name of a library
 which contains the getter functions, setter functions, and selector
-functions for the type. The actual (internal) representation is
-denoted by the <var>options</var> argument, which must take one of the values
-RDB_IREP_BOOLEAN, RDB_IREP_INTEGER, RDB_IREP_RATIONAL,
-RDB_IREP_BINARY, RDB_IREP_TUPLE, and RDB_IREP_TABLE.
+functions for the type.
 
 <p>If <var>modname</var> is NULL, the getter functions, setter functions, and selector
 functions for the type are provided by the system. In this case,
-<var>options</var> must be zero, the type may only have one possible representation,
-and this representation is also the actual (internal) representation.
+<var>arep</var> must be NULL, the type may only have one possible representation,
+and this representation is also the actual representation.
 
 <h4>Conventions for user-supplied selector, setter, and getter
 functions</h4>
@@ -1403,20 +1413,20 @@ conventions:
 
 <pre>
 int
-RDBU_select_<var>possrep</var> (RDB_value *valp, RDB_value *compv[],
-        const RDB_type *, const char *possrepname);
+RDBU_select_<var>possrep</var>(RDB_value *valp, RDB_value *compv[],
+        RDB_type *, const char *possrepname);
 </pre>
 
 <pre>
 int
-RDBU_set_<var>component</var> (RDB_value *valp, const RDB_value *comp,
-        const RDB_type *, const char *compname);
+RDBU_set_<var>component</var>(RDB_value *valp, const RDB_value *comp,
+        RDB_type *, const char *compname);
 </pre>
 
 <pre>
 int
-RDBU_get_<var>component</var> (const RDB_value *src, RDB_value *comp,
-        const RDB_type *, const char *compname);
+RDBU_get_<var>component</var>(const RDB_value *src, RDB_value *comp,
+        RDB_type *, const char *compname);
 </pre>
 
 <h3>Return value</h3>
@@ -1427,7 +1437,7 @@ RDBU_get_<var>component</var> (const RDB_value *src, RDB_value *comp,
 
 <dl>
 <dt>RDB_INVALID_ARGUMENT
-<dd>An invalid combination of <var>modname</var> and <var>options</var> was
+<dd>An invalid combination of <var>modname</var> and <var>arep</var> was
 used.
 <dt>RDB_NOT_SUPPORTED
 <dd>The requested internal representation is not supported by this version
@@ -1465,7 +1475,7 @@ RDB_create_relation_type(int attrc, RDB_attr attrv[]);
 #include &lt;rel/rdb.h&gt;
 
 int
-RDB_get_type(RDB_database *dbp, const char *name, RDB_type **typp);
+RDB_get_type(const char *name, RDB_transaction *, RDB_type **typp);
 </pre>
 
 <hr>

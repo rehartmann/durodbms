@@ -5,17 +5,8 @@
 
 #include <rel/rdb.h>
 
-enum {
-    RDB_IREP_BOOLEAN = 1,
-    RDB_IREP_INTEGER = 2,
-    RDB_IREP_RATIONAL = 3,
-    RDB_IREP_BINARY = 4, /* binary, variable-length */
-    RDB_IREP_TUPLE = 5,
-    RDB_IREP_TABLE = 6
-};
-
 int
-RDB_implement_type(const char *name, const char *modname, int options,
+RDB_implement_type(const char *name, const char *modname, RDB_type *, int options,
         RDB_transaction *);
 
 /*

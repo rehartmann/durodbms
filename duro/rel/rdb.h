@@ -51,7 +51,13 @@ typedef struct RDB_type {
     /* internal */
     char *name;
     enum _RDB_tp_kind kind;
-    int irep; /* internal representation */
+
+    /* actual representation, NULL for built-in and nonscalar types */
+    struct RDB_type *arep; 
+
+    /* Only used for built-in types */
+    RDB_int ireplen;
+
     union {
         struct RDB_type *basetyp; /* relation type */
         struct {
@@ -116,7 +122,8 @@ enum _RDB_expr_kind {
     RDB_OP_STRLEN,
     RDB_OP_REGMATCH,
 
-    RDB_OP_REL_IS_EMPTY
+    RDB_OP_REL_IS_EMPTY,
+    RDB_OP_GET_COMP
 };
 
 typedef struct RDB_expression {
@@ -126,6 +133,7 @@ typedef struct RDB_expression {
         struct {
             struct RDB_expression *arg1;
             struct RDB_expression *arg2;
+            char *name;	/* only for RDB_OP_GET_COMP */
         } op;
         struct {
             char *name;
@@ -969,7 +977,7 @@ RDB_expression *
 RDB_get_comp(RDB_expression *, const char *);
 
 RDB_expression *
-RDB_selector(RDB_expression *, char *, RDB_expression **);
+RDB_selector(RDB_expression *, const char *, RDB_expression **);
 
 /* Destroy the expression and all its subexpressions */
 void

@@ -15,27 +15,32 @@ RDB_type RDB_BINARY;
 void _RDB_init_builtin_types(void)
 {
     RDB_BOOLEAN.kind = RDB_TP_SCALAR;
-    RDB_BOOLEAN.irep = RDB_IREP_BOOLEAN;
+    RDB_BOOLEAN.arep = NULL;
+    RDB_BOOLEAN.ireplen = 1;
     RDB_BOOLEAN.name = "BOOLEAN";
     RDB_BOOLEAN.var.scalar.repc = 0;
 
     RDB_STRING.kind = RDB_TP_SCALAR;
-    RDB_STRING.irep = RDB_IREP_BINARY;
+    RDB_STRING.arep = NULL;
+    RDB_STRING.ireplen = RDB_VARIABLE_LEN;
     RDB_STRING.name = "STRING";
     RDB_STRING.var.scalar.repc = 0;
 
     RDB_INTEGER.kind = RDB_TP_SCALAR;
-    RDB_INTEGER.irep = RDB_IREP_INTEGER;
+    RDB_INTEGER.arep = NULL;
+    RDB_INTEGER.ireplen = sizeof (RDB_int);
     RDB_INTEGER.name = "INTEGER";
     RDB_INTEGER.var.scalar.repc = 0;
 
     RDB_RATIONAL.kind = RDB_TP_SCALAR;
-    RDB_RATIONAL.irep = RDB_IREP_RATIONAL;
+    RDB_RATIONAL.arep = NULL;
+    RDB_RATIONAL.ireplen = sizeof (RDB_rational);
     RDB_RATIONAL.name = "RATIONAL";
     RDB_RATIONAL.var.scalar.repc = 0;
 
     RDB_BINARY.kind = RDB_TP_SCALAR;
-    RDB_BINARY.irep = RDB_IREP_BINARY;
+    RDB_BINARY.arep = NULL;
+    RDB_BINARY.ireplen = RDB_VARIABLE_LEN;
     RDB_BINARY.name = "BINARY";
     RDB_BINARY.var.scalar.repc = 0;
 }
@@ -540,4 +545,18 @@ RDB_rename_relation_type(const RDB_type *typ, int renc, RDB_renaming renv[],
         return ret;
     }
     return RDB_OK;
+}
+
+RDB_icomp *
+_RDB_get_icomp(RDB_type *typ, const char *compname)
+{
+    int i, j;
+
+    for (i = 0; i < typ->var.scalar.repc; i++) {
+        for (j = 0; j < typ->var.scalar.repv[i].compc; j++) {
+            if (strcmp(typ->var.scalar.repv[i].compv[j].name, compname) == 0)
+                return &typ->var.scalar.repv[i].compv[j];
+        }
+    }
+    return NULL;
 }

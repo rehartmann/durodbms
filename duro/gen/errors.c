@@ -31,7 +31,7 @@ RDB_strerror(int err)
         case RDB_INVALID_ARGUMENT:
             return "invalid argument";
         case RDB_NOT_FOUND:
-            return "not found";
+            return "data not found";
         case RDB_INVALID_TRANSACTION:
             return "invalid transaction";
         case RDB_ELEMENT_EXISTS:

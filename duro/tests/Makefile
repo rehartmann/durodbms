@@ -4,8 +4,9 @@ include ../make.vars
 
 CFLAGS = -I$(BDB_INCLUDE) -I.. $(COPTS)
 LDFLAGS = -L$(BDB_LIB) -L../lib -g
-LDLIBS = -lduro -ldb -lltdl
+LDLIBS = -lduro -ldb -lltdl -lm
 RM = rm -f
+LIBTOOL = libtool
 
 OBJS =
 
@@ -15,10 +16,12 @@ EXECS = maptest tupletest prepare test_select test_minus test_union test_interse
        test_binary test_summarize test_rename test_regexp test_deftype test_utypetable \
        test_defpointtype test_pointtable
 
-all :	$(EXECS)
+LIBS = libpoint.lo
+
+all :	$(EXECS) $(LIBS)
 
 clean :
-	$(RM) $(OBJS) $(EXECS) core
+	$(RM) *.o *.lo $(EXECS) $(LIBS) core
 	$(RM) -r db
 
 test : clean all
@@ -100,3 +103,10 @@ test_utypetable: test_utypetable.c
 
 test_pointtable: test_pointtable.c
 	$(CC) $(CFLAGS) $(LDFLAGS) -o test_pointtable test_pointtable.c $(LDLIBS)
+
+point.lo : point.c
+	$(LIBTOOL) --mode=compile $(CC) $(CFLAGS) -c point.c
+
+libpoint.lo : point.lo
+	$(LIBTOOL) --mode=link $(CC) -g -module -o libpoint.la point.lo \
+        -rpath $$PATH

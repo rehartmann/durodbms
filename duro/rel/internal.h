@@ -30,17 +30,17 @@ typedef struct RDB_qresult {
 } RDB_qresult;
 
 typedef int RDB_selector_func(RDB_value *, RDB_value *[],
-        const RDB_type *, const char *);
+        RDB_type *, const char *);
 
 typedef int RDB_setter_func(RDB_value *, const RDB_value *,
-        const RDB_type *, const char *);
+        RDB_type *, const char *);
 
 typedef int RDB_getter_func(const RDB_value *, RDB_value *,
-        const RDB_type *, const char *);
+        RDB_type *, const char *);
 
 typedef struct {
     char *name;
-    RDB_type *type;
+    RDB_type *typ;
     RDB_value *defaultp;
     int options;
     RDB_getter_func *getterp;
@@ -109,6 +109,9 @@ _RDB_create_unexpr(RDB_expression *arg, enum _RDB_expr_kind kind);
 RDB_expression *
 _RDB_create_binexpr(RDB_expression *arg1, RDB_expression *arg2,
                     enum _RDB_expr_kind kind);
+
+RDB_icomp *
+_RDB_get_icomp(RDB_type *, const char *compname);
 
 #define _RDB_pkey_len(tbp) ((tbp)->keyv[0].attrc)
 

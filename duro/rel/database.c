@@ -22,17 +22,12 @@ enum {
  * of the type pointed to by typ.
  */
 static int replen(const RDB_type *typ) {
-    switch (typ->irep) {
-        case RDB_IREP_BOOLEAN:
-            return 1;
-        case RDB_IREP_INTEGER:
-            return sizeof(RDB_int);
-        case RDB_IREP_RATIONAL:
-            return sizeof(RDB_rational);
-        default:
-            return RDB_VARIABLE_LEN;
-    }
-    return 0;
+    const RDB_type *reptyp = typ;
+
+    if (!RDB_type_is_builtin(typ))
+        reptyp = typ->arep;
+
+    return reptyp->ireplen;
 }
 
 /* Return RDB_TRUE if the attribute name is contained
@@ -458,7 +453,7 @@ static RDB_key_attrs keys_keyv[] = { { 2, keys_keyattrv } };
 static RDB_attr types_attrv[] = {
     { "TYPENAME", &RDB_STRING, NULL, 0 },
     { "I_MODNAME", &RDB_STRING, NULL, 0 },
-    { "I_IMPLINFO", &RDB_INTEGER, NULL, 0 }
+    { "I_ACTUAL_REP", &RDB_STRING, NULL, 0 }
 };
 static char *types_keyattrv[] = { "TYPENAME" };
 static RDB_key_attrs types_keyv[] = { { 1, types_keyattrv } };
@@ -1825,7 +1820,10 @@ get_cat_type(const char *name, RDB_transaction *txp, RDB_type **typp)
     }
     typ->kind = RDB_TP_SCALAR;
 
-    typ->irep = RDB_tuple_get_int(&tpl, "I_IMPLINFO");
+    ret = RDB_get_type(RDB_tuple_get_string(&tpl, "I_ACTUAL_REP"), txp,
+            &typ->arep);
+    if (ret != RDB_OK)
+        goto error;
 
     typ->name = RDB_dup_str(name);
     if (typ->name == NULL) {
@@ -1839,6 +1837,7 @@ get_cat_type(const char *name, RDB_transaction *txp, RDB_type **typp)
     if (modname[0] != '\0') {
         typ->var.scalar.modhdl = lt_dlopenext(modname);
         if (typ->var.scalar.modhdl == NULL) {
+            fprintf(stderr, "Error: %s\n", lt_dlerror());
             ret = RDB_RESOURCE_NOT_FOUND;
             RDB_rollback(txp);
             goto error;
@@ -1915,7 +1914,7 @@ get_cat_type(const char *name, RDB_transaction *txp, RDB_type **typp)
         for (j = 0; j < typ->var.scalar.repv[i].compc; j++) {
             RDB_int idx;
 
-            ret = RDB_array_get_tuple(&comps, (RDB_int) i, &tpl);
+            ret = RDB_array_get_tuple(&comps, (RDB_int) j, &tpl);
             if (ret != RDB_OK)
                 goto error;
             idx = RDB_tuple_get_int(&tpl, "COMPNO");
@@ -1926,7 +1925,7 @@ get_cat_type(const char *name, RDB_transaction *txp, RDB_type **typp)
                 goto error;
             }
             ret = RDB_get_type(RDB_tuple_get_string(&tpl, "COMPTYPENAME"),
-                    txp, &typ->var.scalar.repv[i].compv[idx].type);
+                    txp, &typ->var.scalar.repv[i].compv[idx].typ);
             if (ret != RDB_OK)
                 goto error;
             
@@ -2064,7 +2063,7 @@ RDB_define_type(const char *name, int repc, RDB_possrep repv[],
     ret = RDB_tuple_set_string(&tpl, "I_MODNAME", "");
     if (ret != RDB_OK)
         goto error;
-    ret = RDB_tuple_set_int(&tpl, "I_IMPLINFO", -1);
+    ret = RDB_tuple_set_string(&tpl, "I_ACTUAL_REP", "");
     if (ret != RDB_OK)
         goto error;
 
@@ -2092,16 +2091,8 @@ RDB_define_type(const char *name, int repc, RDB_possrep repv[],
         if (ret != RDB_OK)
             goto error;
         
-        /* If constraintp is NULL, replace is by RDB_TRUE */
-        if (exp == NULL)
-            exp = RDB_bool_const(RDB_TRUE);
-        if (exp == NULL) {
-            ret = RDB_NO_MEMORY;
-            goto error;
-        }
-
         /* Check if type of constraint is RDB_BOOLEAN */
-        if (RDB_expr_type(exp) != &RDB_BOOLEAN) {
+        if (exp != NULL && RDB_expr_type(exp) != &RDB_BOOLEAN) {
             ret = RDB_TYPE_MISMATCH;
             goto error;
         }
@@ -2159,8 +2150,8 @@ error:
 }
 
 int
-RDB_implement_type(const char *name, const char *modname, int options,
-                   RDB_transaction *txp)
+RDB_implement_type(const char *name, const char *modname, RDB_type *arep,
+                   int options, RDB_transaction *txp)
 {
     RDB_expression *exp, *wherep;
     RDB_attr_update upd[2];
@@ -2170,18 +2161,15 @@ RDB_implement_type(const char *name, const char *modname, int options,
         return RDB_INVALID_TRANSACTION;
 
     if (modname != NULL) {
-        if (options < RDB_IREP_BOOLEAN || options > RDB_IREP_TABLE)
-            return RDB_INVALID_ARGUMENT;
-        if (options == RDB_IREP_TUPLE || options == RDB_IREP_TABLE)
+        if (arep == NULL || !RDB_type_is_builtin(arep))
             return RDB_NOT_SUPPORTED;
     } else {
         RDB_table *tmptb1p;
         RDB_table *tmptb2p;
         RDB_tuple tpl;
         char *possrepname;
-        RDB_type *comptyp;
 
-        if (options != 0)
+        if (arep != NULL)
             return RDB_INVALID_ARGUMENT;
 
         /* # of possreps must be 1 */
@@ -2209,12 +2197,11 @@ RDB_implement_type(const char *name, const char *modname, int options,
             RDB_destroy_tuple(&tpl);
             return ret == RDB_INVALID_ARGUMENT ? RDB_NOT_SUPPORTED : ret;
         }
-        ret = RDB_get_type(RDB_tuple_get_string(&tpl, "COMPTYPENAME"), txp, &comptyp);
+        ret = RDB_get_type(RDB_tuple_get_string(&tpl, "COMPTYPENAME"), txp, &arep);
         RDB_destroy_tuple(&tpl);
         if (ret != RDB_OK) {
             return ret;
         }
-        options = comptyp->irep;
         modname = "";
     }
 
@@ -2230,8 +2217,8 @@ RDB_implement_type(const char *name, const char *modname, int options,
 
     upd[0].exp = upd[1].exp = NULL;
 
-    upd[0].name = "I_IMPLINFO";
-    upd[0].exp = RDB_int_const((RDB_int) options);
+    upd[0].name = "I_ACTUAL_REP";
+    upd[0].exp = RDB_string_const(arep->name);
     if (upd[0].exp == NULL) {
         ret = RDB_NO_MEMORY;
         goto cleanup;

@@ -2,6 +2,12 @@ $Id$
 
 Summary of Changes for Duro
 
+Changes for Duro 0.6
+
+- Implemented RDB_define_type() and RDB_implement_type().
+
+- Renamed field "type" in RDB_attr as "typ", for uniformity.
+
 Changes for Duro 0.5
 
 - Added RDB_extract_tuple() to extract a single tuple from a table.
