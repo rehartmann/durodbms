@@ -9,6 +9,7 @@
 #include "internal.h"
 #include "catalog.h"
 #include "serialize.h"
+#include <gen/strfns.h>
 
 int
 RDB_create_ro_op(const char *name, int argc, RDB_type *argtv[], RDB_type *rtyp,
@@ -180,8 +181,11 @@ free_ro_op(RDB_ro_op *op) {
     free(op->argtv);
     if (RDB_type_name(op->rtyp) == NULL)
         RDB_drop_type(op->rtyp, NULL);
-    lt_dlclose(op->modhdl);
-    RDB_destroy_obj(&op->iarg);
+    if (op->modhdl != NULL) {
+        /* Built-in operator */
+        lt_dlclose(op->modhdl);
+        RDB_destroy_obj(&op->iarg);
+    }
     free(op);
 }
 
@@ -589,5 +593,34 @@ RDB_drop_op(const char *name, RDB_transaction *txp)
         }
     }
 
+    return RDB_OK;
+}
+
+static int
+length_string(const char *name, int argc, RDB_object *argv[],
+        const void *iargp, size_t iarglen, RDB_transaction *txp,
+        RDB_object *retvalp)
+{
+    RDB_int_to_obj(retvalp, argv[0]->var.bin.len - 1);
+    return RDB_OK;
+}
+
+int
+_RDB_add_builtin_ops(RDB_dbroot *dbrootp)
+{
+    RDB_ro_op *op = malloc(sizeof(RDB_dbroot));
+    if (op == NULL)
+        return RDB_NO_MEMORY;
+    op->name = RDB_dup_str("LENGTH");
+    op->argc = 1;
+    op->argtv = malloc(sizeof (RDB_type *));
+    if (op->argtv == NULL)
+        return RDB_NO_MEMORY;
+    op->argtv[0] = &RDB_STRING;
+    op->rtyp = &RDB_INTEGER;
+    op->funcp = &length_string;
+    op->modhdl = NULL;
+
+    put_ro_op(dbrootp, op);
     return RDB_OK;
 }

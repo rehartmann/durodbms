@@ -209,6 +209,7 @@ cleanup_env(RDB_environment *envp)
 static RDB_dbroot *
 new_dbroot(RDB_environment *envp)
 {
+    int ret;
     RDB_dbroot *dbrootp = malloc(sizeof (RDB_dbroot));
 
     if (dbrootp == NULL)
@@ -218,6 +219,11 @@ new_dbroot(RDB_environment *envp)
     RDB_init_hashmap(&dbrootp->typemap, RDB_DFL_MAP_CAPACITY);
     RDB_init_hashmap(&dbrootp->ro_opmap, RDB_DFL_MAP_CAPACITY);
     RDB_init_hashmap(&dbrootp->upd_opmap, RDB_DFL_MAP_CAPACITY);
+
+    ret = _RDB_add_builtin_ops(dbrootp);
+    if (ret != RDB_OK)
+        return NULL;
+
     dbrootp->firstdbp = NULL;
 
     return dbrootp;

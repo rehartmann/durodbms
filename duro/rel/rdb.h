@@ -153,7 +153,6 @@ enum _RDB_expr_kind {
     RDB_EX_NEGATE,
     RDB_EX_MULTIPLY,
     RDB_EX_DIVIDE,
-    RDB_EX_STRLEN,
     RDB_EX_REGMATCH,
     RDB_EX_CONCAT,
     RDB_EX_CONTAINS,
@@ -1074,9 +1073,6 @@ RDB_multiply(RDB_expression *, RDB_expression *);
 
 RDB_expression *
 RDB_divide(RDB_expression *, RDB_expression *);
-
-RDB_expression *
-RDB_strlen(RDB_expression *);
 
 RDB_expression *
 RDB_regmatch(RDB_expression *, RDB_expression *);

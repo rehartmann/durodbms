@@ -114,22 +114,31 @@ int
 test_extend(RDB_database *dbp)
 {
     RDB_transaction tx;
-    RDB_table *tbp, *vtbp;
+    RDB_table *tbp;
+    RDB_expression *exp;
     int ret;
+    RDB_table *vtbp = NULL;
     RDB_virtual_attr extend[] = {
         { "SALARY_AFTER_TAX", NULL },
         { "NAME_LEN", NULL }
     };
-
-    extend[0].exp = RDB_subtract(RDB_expr_attr("SALARY"),
-                         RDB_rational_to_expr(4100));
-    extend[1].exp = RDB_strlen(RDB_expr_attr("NAME"));
 
     printf("Starting transaction\n");
     ret = RDB_begin_tx(&tx, dbp, NULL);
     if (ret != RDB_OK) {
         return ret;
     }
+
+    extend[0].exp = RDB_subtract(RDB_expr_attr("SALARY"),
+                         RDB_rational_to_expr(4100));
+    exp = RDB_expr_attr("NAME");
+    if (exp == NULL) {
+        ret = RDB_NO_MEMORY;
+        goto error;
+    }
+    ret = RDB_user_op("LENGTH", 1, &exp, &tx, &extend[1].exp);
+    if (ret != RDB_OK)
+        goto error;
 
     ret = RDB_get_table("EMPS1", &tx, &tbp);
     if (ret != RDB_OK) {
@@ -162,8 +171,8 @@ test_extend(RDB_database *dbp)
     return RDB_rollback(&tx);
 
 error:
-    printf("Dropping extension\n");
-    RDB_drop_table(vtbp, &tx);
+    if (vtbp != NULL)
+        RDB_drop_table(vtbp, &tx);
 
     RDB_rollback(&tx);
     return ret;

@@ -407,4 +407,7 @@ _RDB_transform(RDB_table *tbp);
 int
 _RDB_infer_keys(RDB_table *tbp);
 
+int
+_RDB_add_builtin_ops(RDB_dbroot *);
+
 #endif

@@ -162,7 +162,6 @@
 <li><a href="#multiply">RDB_multiply</a>
 <li><a href="#divide">RDB_divide</a>
 <li><a href="#concat">RDB_concat</a>
-<li><a href="#strlen">RDB_strlen</a>
 <li><a href="#regmatch">RDB_regmatch</a>
 <li><a href="#to_int">RDB_to_int</a>
 <li><a href="#to_rational">RDB_to_rational</a>
@@ -3441,27 +3440,6 @@ RDB_concat(RDB_expression *, RDB_expression *);
 <p>RDB_concat creates an expression that represents a string
 concatenation. Both arguments must be of type STRING.
 If one of the arguments is NULL, NULL is returned.
-
-<h3>Return value</h3>
-
-<p>A pointer to the newly created expression, of NULL if the creation
-failed.
-
-<hr>
-
-<h2 id="strlen">RDB_strlen</h2>
-
-<pre>
-#include &lt;rel/rdb.h&gt;
-
-RDB_expression *
-RDB_strlen(RDB_expression *arg);
-</pre>
-
-<h3>Description</h3>
-
-<p>RDB_strlen creates an expression that represents a string length
-operator. If the argument is NULL, NULL is returned.
 
 <h3>Return value</h3>
 

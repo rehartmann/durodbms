@@ -363,6 +363,26 @@ transform_select(RDB_table *tbp)
     return RDB_OK;
 }
 
+static int
+transform_project(RDB_table *tbp)
+{
+    RDB_table *chtbp = tbp->var.project.tbp;
+
+    do {
+        switch (chtbp->kind) {
+            case RDB_TB_PROJECT:
+                /* Merge projects */
+                tbp->var.project.tbp = chtbp->var.project.tbp;
+                _RDB_free_table(chtbp);
+                chtbp = tbp->var.project.tbp;
+                break;
+            default:
+                return _RDB_transform(chtbp);
+        }
+    } while (tbp->kind == RDB_TB_PROJECT);
+    return RDB_OK;
+}
+
 int
 _RDB_transform(RDB_table *tbp)
 {
@@ -415,7 +435,7 @@ _RDB_transform(RDB_table *tbp)
                 return ret;
             break;
         case RDB_TB_PROJECT:
-            ret = _RDB_transform(tbp->var.project.tbp);
+            ret = transform_project(tbp);
             if (ret != RDB_OK)
                 return ret;
             break;

@@ -205,7 +205,6 @@ serialize_expr(RDB_object *valp, int *posp, const RDB_expression *exp)
         case RDB_EX_NOT:
         case RDB_EX_NEGATE:
         case RDB_EX_IS_EMPTY:
-        case RDB_EX_STRLEN:
         case RDB_EX_TO_INTEGER:
         case RDB_EX_TO_RATIONAL:
         case RDB_EX_TO_STRING:
@@ -910,7 +909,6 @@ deserialize_expr(RDB_object *valp, int *posp, RDB_transaction *txp,
             break;
         case RDB_EX_NOT:
         case RDB_EX_NEGATE:
-        case RDB_EX_STRLEN:
         case RDB_EX_TO_INTEGER:
         case RDB_EX_TO_RATIONAL:
         case RDB_EX_TO_STRING:

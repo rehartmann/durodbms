@@ -15,7 +15,7 @@
 RDB_bool
 RDB_expr_is_const(const RDB_expression *exp)
 {
-    /* Check for constant subexpressions */
+    /* !! Check for constant subexpressions missing */
     return (RDB_bool) exp->kind == RDB_EX_OBJ;
 }
 
@@ -178,17 +178,6 @@ RDB_expr_type(const RDB_expression *exp, const RDB_type *tuptyp,
             if (!RDB_type_is_numeric(typ))
                 return RDB_TYPE_MISMATCH;
             *typp = typ;
-            break;
-        case RDB_EX_STRLEN:
-            /*
-             * Operand type must be STRING
-             */
-            ret = RDB_expr_type(exp->var.op.arg1, tuptyp, &typ);
-            if (ret != RDB_OK)
-                return ret;
-            if (typ != &RDB_STRING)
-                return RDB_TYPE_MISMATCH;
-            *typp = &RDB_INTEGER;
             break;
         case RDB_EX_CONCAT:
             /*
@@ -487,12 +476,6 @@ RDB_divide(RDB_expression *arg1, RDB_expression *arg2)
 }
 
 RDB_expression *
-RDB_strlen(RDB_expression *arg)
-{
-    return _RDB_create_unexpr(arg, RDB_EX_STRLEN);
-}
-
-RDB_expression *
 RDB_regmatch(RDB_expression *arg1, RDB_expression *arg2)
 {
     return _RDB_create_binexpr(arg1, arg2, RDB_EX_REGMATCH);
@@ -693,10 +676,17 @@ RDB_user_op(const char *opname, int argc, RDB_expression *argv[],
 {
     RDB_type *rtyp;
     int ret;
+    RDB_ro_op **opp;
 
-    ret = _RDB_get_cat_rtype(opname, txp, &rtyp);
-    if (ret != RDB_OK) {
-        return ret;
+    /* Try to get return type from ro_opmap */
+    opp = RDB_hashmap_get(&txp->dbp->dbrootp->ro_opmap, opname, NULL);
+    if (opp != NULL && *opp != NULL) {
+        rtyp = (*opp)->rtyp;
+    } else {
+        ret = _RDB_get_cat_rtype(opname, txp, &rtyp);
+        if (ret != RDB_OK) {
+            return ret;
+        }
     }
 
     *expp = user_op(opname, argc, argv, rtyp);
@@ -730,7 +720,6 @@ RDB_drop_expr(RDB_expression *exp)
         case RDB_EX_NOT:
         case RDB_EX_NEGATE:
         case RDB_EX_IS_EMPTY:
-        case RDB_EX_STRLEN:
         case RDB_EX_TO_INTEGER:
         case RDB_EX_TO_RATIONAL:
         case RDB_EX_TO_STRING:
@@ -1491,30 +1480,6 @@ RDB_evaluate(RDB_expression *exp, const RDB_object *tup, RDB_transaction *txp,
             RDB_destroy_obj(&val1);
             return RDB_destroy_obj(&val2);
         }
-        case RDB_EX_STRLEN:
-        {
-            RDB_object val;
-
-            RDB_init_obj(&val);
-
-            ret = RDB_evaluate(exp->var.op.arg1, tup, txp, &val);
-            if (ret != RDB_OK) {
-                RDB_destroy_obj(&val);
-                return ret;
-            }
-            if (RDB_obj_type(&val) != &RDB_STRING) {
-                RDB_destroy_obj(&val);
-                return RDB_TYPE_MISMATCH;
-            }
-
-            RDB_destroy_obj(valp);
-            RDB_init_obj(valp);
-            _RDB_set_obj_type(valp, &RDB_INTEGER);
-            valp->var.int_val = val.var.bin.len - 1;
-            RDB_destroy_obj(&val);
-
-            return RDB_OK;
-        }           
         case RDB_EX_AGGREGATE:
         {
             RDB_object val;
@@ -1653,8 +1618,6 @@ RDB_dup_expr(const RDB_expression *exp)
             return RDB_negate(RDB_dup_expr(exp->var.op.arg1));
         case RDB_EX_IS_EMPTY:
             return RDB_expr_is_empty(RDB_dup_expr(exp->var.op.arg1));
-        case RDB_EX_STRLEN:
-            return RDB_strlen(RDB_dup_expr(exp->var.op.arg1));
         case RDB_EX_TO_INTEGER:
             return RDB_to_int(RDB_dup_expr(exp->var.op.arg1));
         case RDB_EX_TO_RATIONAL:
@@ -1729,7 +1692,6 @@ _RDB_expr_refers(RDB_expression *exp, RDB_table *tbp)
         case RDB_EX_NOT:
         case RDB_EX_NEGATE:
         case RDB_EX_IS_EMPTY:
-        case RDB_EX_STRLEN:
         case RDB_EX_TO_INTEGER:
         case RDB_EX_TO_RATIONAL:
         case RDB_EX_TO_STRING:
@@ -1790,7 +1752,6 @@ _RDB_invrename_expr(RDB_expression *exp, int renc, const RDB_renaming renv[])
         case RDB_EX_NOT:
         case RDB_EX_NEGATE:
         case RDB_EX_IS_EMPTY:
-        case RDB_EX_STRLEN:
         case RDB_EX_TO_INTEGER:
         case RDB_EX_TO_RATIONAL:
         case RDB_EX_TO_STRING:
@@ -1859,7 +1820,6 @@ _RDB_resolve_extend_expr(RDB_expression **expp, int attrc,
         case RDB_EX_NOT:
         case RDB_EX_NEGATE:
         case RDB_EX_IS_EMPTY:
-        case RDB_EX_STRLEN:
         case RDB_EX_TO_INTEGER:
         case RDB_EX_TO_RATIONAL:
         case RDB_EX_TO_STRING:
