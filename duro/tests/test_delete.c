@@ -55,7 +55,7 @@ test_delete(RDB_database *dbp)
     RDB_get_table("EMPS1", &tx, &tbp);
 
     printf("Deleting #1 from EMPS1\n");
-    exprp = RDB_eq(RDB_expr_attr("EMPNO", &RDB_INTEGER),
+    exprp = RDB_eq(RDB_expr_attr("EMPNO"),
             RDB_int_const(1));
     ret = RDB_delete(tbp, exprp, &tx);
     if (ret != RDB_OK) {

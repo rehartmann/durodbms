@@ -56,21 +56,24 @@ init_summ_table(RDB_qresult *qresp, RDB_transaction *txp)
                     break;
                 case RDB_SUM:
                 case RDB_SUMD:
-                    if (RDB_expr_type(qresp->tbp->var.summarize.addv[i].exp)
+                    if (RDB_expr_type(qresp->tbp->var.summarize.addv[i].exp,
+                            qresp->tbp->var.summarize.tb1p->typ->var.basetyp)
                             == &RDB_INTEGER)
                         ret = RDB_tuple_set_int(&tpl, name, 0);
                     else
                         ret = RDB_tuple_set_rational(&tpl, name, 0.0);
                     break;
                 case RDB_MAX:
-                    if (RDB_expr_type(qresp->tbp->var.summarize.addv[i].exp)
+                    if (RDB_expr_type(qresp->tbp->var.summarize.addv[i].exp,
+                            qresp->tbp->var.summarize.tb1p->typ->var.basetyp)
                             == &RDB_INTEGER)
                         ret = RDB_tuple_set_int(&tpl, name, RDB_INT_MIN);
                     else
                         ret = RDB_tuple_set_rational(&tpl, name, RDB_RATIONAL_MIN);
                     break;
                 case RDB_MIN:
-                    if (RDB_expr_type(qresp->tbp->var.summarize.addv[i].exp)
+                    if (RDB_expr_type(qresp->tbp->var.summarize.addv[i].exp,
+                            qresp->tbp->var.summarize.tb1p->typ->var.basetyp)
                             == &RDB_INTEGER)
                         ret = RDB_tuple_set_int(&tpl, name, RDB_INT_MAX);
                     else
@@ -250,7 +253,9 @@ do_summarize(RDB_qresult *qresp, RDB_transaction *txp)
                         ret = RDB_irep_to_obj(&svalv[i].val, &RDB_INTEGER,
                                 nonkeyfv[i].datap, nonkeyfv[i].len);
                     } else {
-                        ret = RDB_irep_to_obj(&svalv[i].val, RDB_expr_type(summp->exp),
+                        ret = RDB_irep_to_obj(&svalv[i].val,
+                                RDB_expr_type(summp->exp,
+                                qresp->tbp->var.summarize.tb1p->typ->var.basetyp),
                                 nonkeyfv[i].datap, nonkeyfv[i].len);
                         if (ret != RDB_OK)
                             goto error;

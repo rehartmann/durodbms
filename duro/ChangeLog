@@ -4,7 +4,7 @@ Summary of Changes for Duro
 
 Changes for Duro 0.7
 
-- Fixed problem with commit/rollback after deleting tables.
+- Fixed problem with commit/rollback after dropping tables.
 
 - Tcl interface
 

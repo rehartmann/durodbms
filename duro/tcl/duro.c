@@ -4,6 +4,8 @@
 #include <string.h>
 #include <stdio.h>
 
+extern int yydebug;
+
 static void
 duro_cleanup(ClientData data)
 {
@@ -81,6 +83,8 @@ Duro_Init(Tcl_Interp *interp)
             (ClientData)statep, NULL);
 
     Tcl_CreateExitHandler(duro_cleanup, (ClientData)statep);
+
+    yydebug = 1;
     
     Tcl_PkgProvide(interp, "duro", "0.7");
     return TCL_OK;

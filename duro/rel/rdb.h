@@ -159,7 +159,6 @@ typedef struct RDB_expression {
         } op;
         struct {
             char *name;
-            RDB_type *typ;
         } attr;
         struct RDB_table *tbp;
         RDB_object const_val;
@@ -169,8 +168,10 @@ typedef struct RDB_expression {
             char *name;
         } selector;
         struct {
+            int argc;
             struct RDB_expression **argv;
-            struct RDB_ro_op *op;
+            char *name;
+            RDB_type *rtyp;
         } user_op;
     } var;
 } RDB_expression;
@@ -862,12 +863,6 @@ size_t
 RDB_binary_length(const RDB_object *);
 
 /*
- * Return the type of a RDB_expression.
- */
-RDB_type *
-RDB_expr_type(const RDB_expression *);
-
-/*
  * Functions for creating expressions
  */
 
@@ -890,7 +885,7 @@ RDB_expression *
 RDB_obj_const(const RDB_object *valp);
 
 RDB_expression *
-RDB_expr_attr(const char *attrname, RDB_type *);
+RDB_expr_attr(const char *attrname);
 
 RDB_expression *
 RDB_eq(RDB_expression *, RDB_expression *);
@@ -947,7 +942,7 @@ RDB_expression *
 RDB_selector(RDB_type *, const char *repname, RDB_expression *[]);
 
 int
-RDB_user_op(const char *opname, int argc, RDB_expression *argv[],
+RDB_user_op(const char *opname, RDB_type *rtyp, int argc, RDB_expression *argv[],
        RDB_transaction *txp, RDB_expression **expp);
 
 /*

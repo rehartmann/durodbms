@@ -284,4 +284,8 @@ _RDB_get_ro_op(const char *name, int argc, RDB_type *argtv[],
 
 #define _RDB_pkey_len(tbp) ((tbp)->keyv[0].strc)
 
+/* Is going to be removed */
+RDB_type *
+RDB_expr_type(const RDB_expression *exp, const RDB_type *);
+
 #endif

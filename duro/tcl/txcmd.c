@@ -24,31 +24,48 @@ Duro_begin_cmd(ClientData data, Tcl_Interp *interp, int argc, const char *argv[]
     char handle[20];
     RDB_environment *envp;
     RDB_database *dbp;
+    RDB_transaction *parentp;
     TclState *statep = (TclState *) data;
 
-    if (argc != 3) {
-        Tcl_SetResult(interp, "wrong # args: should be \"begin env db\"",
+    if (argc == 3) {
+        /*
+         * Transaction is not nested
+         */
+        entryp = Tcl_FindHashEntry(&statep->envs, argv[1]);
+        if (entryp == NULL) {
+            Tcl_AppendResult(interp, "Unknown environment: ", argv[1], NULL);
+            return TCL_ERROR;
+        }
+        envp = Tcl_GetHashValue(entryp);
+
+        /* Get database */
+        ret = RDB_get_db_from_env(argv[2], envp, &dbp);
+        if (ret != RDB_OK) { 
+            Tcl_SetResult(interp, (char *) RDB_strerror(ret), TCL_STATIC);
+            return TCL_ERROR;
+        }
+
+        parentp = NULL;
+    } else if (argc == 2) {
+        /*
+         * Transaction is nested
+         */
+        entryp = Tcl_FindHashEntry(&statep->txs, argv[1]);
+        if (entryp == NULL) {
+            Tcl_AppendResult(interp, "Unknown transaction: ", argv[1], NULL);
+            return TCL_ERROR;
+        }
+        parentp = Tcl_GetHashValue(entryp);
+        dbp = RDB_tx_db(parentp);
+    } else {
+        Tcl_SetResult(interp, "wrong # args: should be \"begin env db\" or \"begin tx\"",
                 TCL_STATIC);
-        return TCL_ERROR;
-    }
-
-    entryp = Tcl_FindHashEntry(&statep->envs, argv[1]);
-    if (entryp == NULL) {
-        Tcl_AppendResult(interp, "Unknown environment: ", argv[1], NULL);
-        return TCL_ERROR;
-    }
-    envp = Tcl_GetHashValue(entryp);
-
-    /* Get database */
-    ret = RDB_get_db_from_env(argv[2], envp, &dbp);
-    if (ret != RDB_OK) { 
-        Tcl_SetResult(interp, (char *) RDB_strerror(ret), TCL_STATIC);
         return TCL_ERROR;
     }
 
     /* Start transaction */
     txp = (RDB_transaction *)Tcl_Alloc(sizeof (RDB_transaction));
-    ret = RDB_begin_tx(txp, dbp, NULL);
+    ret = RDB_begin_tx(txp, dbp, parentp);
     if (ret != RDB_OK) { 
         Tcl_SetResult(interp, (char *) RDB_strerror(ret), TCL_STATIC);
         return TCL_ERROR;

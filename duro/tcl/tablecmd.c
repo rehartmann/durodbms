@@ -1,6 +1,7 @@
 /* $Id$ */
 
 #include "duro.h"
+#include <dli/parse.h>
 #include <gen/strfns.h>
 #include <string.h>
 
@@ -167,6 +168,74 @@ cleanup:
 }
 
 static int
+table_expr_cmd(TclState *statep, Tcl_Interp *interp, int objc,
+        Tcl_Obj *CONST objv[])
+{
+    int ret;
+    char *flagstr;
+    char *txstr;
+    RDB_transaction *txp;
+    Tcl_HashEntry *entryp;
+    RDB_table *tbp;
+    RDB_bool persistent = RDB_FALSE;
+
+    if (objc == 6) {
+        flagstr = Tcl_GetStringFromObj(objv[2], NULL);
+        if ((strcmp(flagstr, "-persistent") == 0)
+                || (strcmp(flagstr, "-global") == 0)) {
+        } else if ((strcmp(flagstr, "-transient") == 0)
+                || (strcmp(flagstr, "-local") == 0)) {
+            persistent = RDB_FALSE;
+        } else {
+            Tcl_SetResult(interp,
+                    "Wrong flag: must be -global, -persistent,"
+                    " -local, or -transient", TCL_STATIC);
+            return TCL_ERROR;
+        }
+    } else if (objc != 5) {
+        Tcl_WrongNumArgs(interp, 2, objv, "?flag? name expression tx");
+        return TCL_ERROR;
+    }
+
+    txstr = Tcl_GetStringFromObj(objv[objc - 1], NULL);
+    entryp = Tcl_FindHashEntry(&statep->txs, txstr);
+    if (entryp == NULL) {
+        Tcl_AppendResult(interp, "Unknown transaction: ", txstr, NULL);
+        return TCL_ERROR;
+    }
+    txp = Tcl_GetHashValue(entryp);
+
+    ret = RDB_parse_table(Tcl_GetStringFromObj(objv[objc - 2], NULL), txp, &tbp);
+    if (ret != RDB_OK) {
+        Duro_dberror(interp, ret);
+        return TCL_ERROR;
+    }
+
+    ret = RDB_set_table_name(tbp, Tcl_GetStringFromObj(objv[objc - 3], NULL),
+            txp);
+    if (ret != RDB_OK) {
+        Duro_dberror(interp, ret);
+        return TCL_ERROR;
+    }
+
+    if (persistent) {
+        ret = RDB_make_persistent(tbp, txp);
+        if (ret != RDB_OK) {
+            Duro_dberror(interp, ret);
+            return TCL_ERROR;
+        }
+    } else {
+        int new;
+
+        statep->ltable_uid++;
+        entryp = Tcl_CreateHashEntry(&statep->ltables, RDB_table_name(tbp), &new);
+        Tcl_SetHashValue(entryp, (ClientData)tbp);
+    }
+
+    return ret;
+}
+
+static int
 table_drop_cmd(TclState *statep, Tcl_Interp *interp, int objc,
         Tcl_Obj *CONST objv[])
 {
@@ -245,6 +314,89 @@ tcl_to_duro(Tcl_Interp *interp, Tcl_Obj *tobjp, const RDB_type *typ,
     }    
     Tcl_SetResult(interp, "Unsupported type", TCL_STATIC);
     return TCL_ERROR;
+}
+
+static int
+table_update_cmd(TclState *statep, Tcl_Interp *interp, int objc,
+        Tcl_Obj *CONST objv[])
+{
+    int ret;
+    int i;
+    char *name;
+    char *txstr;
+    Tcl_HashEntry *entryp;
+    RDB_transaction *txp;
+    RDB_table *tbp;
+    int updc;
+    RDB_attr_update *updv;
+    RDB_expression *wherep;
+    int upd_arg_idx;
+
+    if (objc < 6) {
+        Tcl_WrongNumArgs(interp, 2, objv, "name ?where? ?attribute val? ... tx");
+        return TCL_ERROR;
+    }
+
+    name = Tcl_GetStringFromObj(objv[2], NULL);
+
+    txstr = Tcl_GetStringFromObj(objv[objc - 1], NULL);
+    entryp = Tcl_FindHashEntry(&statep->txs, txstr);
+    if (entryp == NULL) {
+        Tcl_AppendResult(interp, "Unknown transaction: ", txstr, NULL);
+        return TCL_ERROR;
+    }
+    txp = Tcl_GetHashValue(entryp);
+
+    ret = Duro_get_table(statep, interp, name, txp, &tbp);
+    if (ret != TCL_OK) {
+        return TCL_ERROR;
+    }
+
+    if (objc % 2 == 1) {
+        /* Read where conditon */
+        ret = RDB_parse_expr(Tcl_GetStringFromObj(objv[2], NULL),
+                txp, &wherep);
+        if (ret != RDB_OK) {
+            Duro_dberror(interp, ret);
+            return TCL_ERROR;
+        }
+        upd_arg_idx = 4;
+    } else {
+        wherep = NULL;
+        upd_arg_idx = 3;
+    }
+
+    updc = (objc - 4) / 2;
+    updv = (RDB_attr_update *) Tcl_Alloc(updc * sizeof (RDB_attr_update));
+    for (i = 0; i < updc; i++)
+        updv[i].exp = NULL;
+    for (i = 0; i < updc; i++) {
+        updv[i].name = Tcl_GetStringFromObj(objv[upd_arg_idx + i * 2], NULL);
+        ret = RDB_parse_expr(
+                Tcl_GetStringFromObj(objv[upd_arg_idx + i * 2 + 1], NULL),
+                txp, &updv[i].exp);
+        if (ret != RDB_OK) {
+            Duro_dberror(interp, ret);
+            ret = TCL_ERROR;
+            goto cleanup;
+        }
+    }
+    ret = RDB_update(tbp, wherep, updc, updv, txp);
+    if (ret != RDB_OK) {
+        Duro_dberror(interp, ret);
+        ret = TCL_ERROR;
+        goto cleanup;
+    }
+
+    ret = TCL_OK;
+
+cleanup:
+    for (i = 0; i < updc; i++) {
+        if (updv[i].exp != NULL)
+            RDB_drop_expr(updv[i].exp);
+    }
+    Tcl_Free((char *) updv);
+    return ret;                    
 }
 
 static int
@@ -333,10 +485,10 @@ Duro_table_cmd(ClientData data, Tcl_Interp *interp, int objc, Tcl_Obj *CONST obj
     TclState *statep = (TclState *) data;
 
     const char *sub_cmds[] = {
-        "create", "drop", "insert", NULL
+        "create", "expr", "drop", "insert", "update", NULL
     };
     enum table_ix {
-        create_ix, drop_ix, insert_ix
+        create_ix, expr_ix, drop_ix, insert_ix, update_ix
     };
     int index;
 
@@ -353,10 +505,14 @@ Duro_table_cmd(ClientData data, Tcl_Interp *interp, int objc, Tcl_Obj *CONST obj
     switch (index) {
         case create_ix:
             return table_create_cmd(statep, interp, objc, objv);
+        case expr_ix:
+            return table_expr_cmd(statep, interp, objc, objv);
         case drop_ix:
             return table_drop_cmd(statep, interp, objc, objv);
         case insert_ix:
             return table_insert_cmd(statep, interp, objc, objv);
+        case update_ix:
+            return table_update_cmd(statep, interp, objc, objv);
     }
     return TCL_ERROR;
 }

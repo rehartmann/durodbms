@@ -120,9 +120,9 @@ test_extend(RDB_database *dbp)
         { "NAME_LEN", NULL }
     };
 
-    extend[0].exp = RDB_subtract(RDB_expr_attr("SALARY", &RDB_RATIONAL),
+    extend[0].exp = RDB_subtract(RDB_expr_attr("SALARY"),
                          RDB_rational_const(4100));
-    extend[1].exp = RDB_strlen(RDB_expr_attr("NAME", &RDB_STRING));
+    extend[1].exp = RDB_strlen(RDB_expr_attr("NAME"));
 
     printf("Starting transaction\n");
     ret = RDB_begin_tx(&tx, dbp, NULL);

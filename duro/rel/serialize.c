@@ -112,9 +112,6 @@ serialize_expr(RDB_object *valp, int *posp, const RDB_expression *exp)
         case RDB_CONST:
             return serialize_obj(valp, posp, &exp->var.const_val);
         case RDB_ATTR:
-            ret = serialize_type(valp, posp, exp->var.attr.typ);
-            if (ret != RDB_OK)
-                return ret;
             return serialize_str(valp, posp, exp->var.attr.name);
         case RDB_OP_NOT:
         case RDB_OP_REL_IS_EMPTY:
@@ -171,9 +168,12 @@ serialize_expr(RDB_object *valp, int *posp, const RDB_expression *exp)
         case RDB_USER_OP:
         {
             int i;
-            int argc = exp->var.user_op.op->argc;
+            int argc = exp->var.user_op.argc;
 
-            ret = serialize_str(valp, posp, exp->var.user_op.op->name);
+            ret = serialize_str(valp, posp, exp->var.user_op.name);
+            if (ret != RDB_OK)
+                return ret;
+            ret = serialize_type(valp, posp, exp->var.user_op.rtyp);
             if (ret != RDB_OK)
                 return ret;
             ret = serialize_int (valp, posp, argc);
@@ -538,18 +538,13 @@ deserialize_expr(RDB_object *valp, int *posp, RDB_transaction *txp,
             break;
         case RDB_ATTR:
             {
-                RDB_type *typ;
                 char *attrnamp;
             
-                ret = deserialize_type(valp, posp, txp, &typ);
-                if (ret != RDB_OK)
-                    return ret;
-
                 ret = deserialize_str(valp, posp, &attrnamp);
                 if (ret != RDB_OK)
                     return ret;
 
-                *expp = RDB_expr_attr(attrnamp, typ);
+                *expp = RDB_expr_attr(attrnamp);
                 free(attrnamp);
                 if (*expp == NULL)
                     return RDB_NO_MEMORY;
@@ -658,12 +653,18 @@ deserialize_expr(RDB_object *valp, int *posp, RDB_transaction *txp,
             char *name;
             int argc;
             int i;
+            RDB_type *rtyp;
             RDB_expression **argv;
         
             ret = deserialize_str(valp, posp, &name);
             if (ret != RDB_OK) {
                 return ret;
             }
+
+            ret = deserialize_type(valp, posp, txp, &rtyp);
+            if (ret != RDB_OK)
+                return ret;
+
             ret = deserialize_int(valp, posp, &argc);
             if (ret != RDB_OK)
                 return ret;
@@ -678,7 +679,7 @@ deserialize_expr(RDB_object *valp, int *posp, RDB_transaction *txp,
                     return ret;
                 }
             }
-            ret = RDB_user_op(name, argc, argv, txp, expp);
+            ret = RDB_user_op(name, rtyp, argc, argv, txp, expp);
             free(argv);
             if (ret != RDB_OK)
                 return ret;

@@ -726,7 +726,8 @@ RDB_update(RDB_table *tbp, RDB_expression *condp, int updc,
 
         if (attrp == NULL)
             return RDB_INVALID_ARGUMENT;
-        if (!RDB_type_equals(RDB_expr_type(updv[i].exp), attrp->typ))
+        if (!RDB_type_equals(RDB_expr_type(updv[i].exp, tbp->typ->var.basetyp),
+                attrp->typ))
             return RDB_TYPE_MISMATCH;
     }
 
@@ -1138,7 +1139,7 @@ RDB_aggregate(RDB_table *tbp, RDB_aggregate_op op, const char *attrname,
 static RDB_expression *
 attr_eq(RDB_attr *attrp, const RDB_tuple *tup)
 {
-    return RDB_eq(RDB_expr_attr(attrp->name, attrp->typ),
+    return RDB_eq(RDB_expr_attr(attrp->name),
                   RDB_obj_const(RDB_tuple_get(tup, attrp->name)));
 }
 
@@ -1787,7 +1788,7 @@ RDB_extend(RDB_table *tbp, int attrc, RDB_virtual_attr attrv[],
             ret = RDB_NO_MEMORY;
             goto error;
         }
-        attrdefv[i].typ = RDB_expr_type(attrv[i].exp);
+        attrdefv[i].typ = RDB_expr_type(attrv[i].exp, tbp->typ->var.basetyp);
     }
     newtbp->typ = RDB_extend_relation_type(tbp->typ, attrc, attrdefv);
 
@@ -2011,7 +2012,7 @@ RDB_summarize(RDB_table *tb1p, RDB_table *tb2p, int addc, RDB_summarize_add addv
     tuptyp->var.tuple.attrv = malloc(attrc * sizeof(RDB_attr));
     for (i = 0; i < addc; i++) {
         RDB_type *typ = addv[i].op == RDB_COUNT ? &RDB_INTEGER
-                : RDB_expr_type(addv[i].exp);
+                : RDB_expr_type(addv[i].exp, tb1p->typ->var.basetyp);
 
         tuptyp->var.tuple.attrv[i].name = RDB_dup_str(addv[i].name);
         if (tuptyp->var.tuple.attrv[i].name == NULL) {

@@ -271,12 +271,6 @@ RDB_define_type(const char *name, int repc, RDB_possrep repv[],
         if (ret != RDB_OK)
             goto error;
         
-        /* Check if type of constraint is RDB_BOOLEAN */
-        if (exp != NULL && RDB_expr_type(exp) != &RDB_BOOLEAN) {
-            ret = RDB_TYPE_MISMATCH;
-            goto error;
-        }
-
         /* Store constraint in tuple */
         ret = _RDB_expr_to_obj(exp, &conval);
         if (ret != RDB_OK)
@@ -394,7 +388,7 @@ RDB_implement_type(const char *name, const char *libname, RDB_type *arep,
         libname = "";
     }
 
-    exp = RDB_expr_attr("TYPENAME", &RDB_STRING);
+    exp = RDB_expr_attr("TYPENAME");
     if (exp == NULL) {
         return RDB_NO_MEMORY;
     }
@@ -469,8 +463,7 @@ RDB_drop_type(RDB_type *typ, RDB_transaction *txp)
         }
 
         /* Delete type from database */
-        wherep = RDB_eq(RDB_expr_attr("TYPENAME", &RDB_STRING),
-                        RDB_string_const(typ->name));
+        wherep = RDB_eq(RDB_expr_attr("TYPENAME"), RDB_string_const(typ->name));
         if (wherep == NULL) {
             RDB_rollback(txp);
             return RDB_NO_MEMORY;

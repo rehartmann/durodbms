@@ -87,11 +87,11 @@ int test_useop(RDB_database *dbp) {
         goto error;
     }
 
-    expv[0] = RDB_expr_attr("DEPTNO", &RDB_INTEGER);
+    expv[0] = RDB_expr_attr("DEPTNO");
     expv[1] = RDB_int_const(100);
 
     extend.name = "XDEPTNO";
-    ret = RDB_user_op("PLUS", 2, expv, &tx, &extend.exp);
+    ret = RDB_user_op("PLUS", &RDB_INTEGER, 2, expv, &tx, &extend.exp);
     if (ret != RDB_OK) {
         goto error;
     }

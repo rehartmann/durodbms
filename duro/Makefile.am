@@ -1,6 +1,8 @@
 # Default directory where Berkeley DB is installed
 BDB_HOME = /usr/local/BerkeleyDB.4.1
 
+AM_YFLAGS = -d
+
 bin_PROGRAMS = util/lstables util/droptable util/dropdb
 
 # Shared libs for testing are listed here, because check_LTLIBRARIES does
@@ -41,11 +43,11 @@ libduro_la_SOURCES = gen/errors.c gen/hashmap.c gen/strfns.c rec/cursor.c \
 rec/env.c rec/index.c rec/recmap.c rel/array.c rel/internal.h rel/database.c \
 rel/expression.c rel/getargs.c rel/qresult.c rel/serialize.c rel/serialize.h \
 rel/table.c rel/transaction.c rel/tuple.c rel/type.c rel/object.c \
-rel/catalog.c rel/catalog.h
+rel/catalog.c rel/catalog.h dli/exparse.y dli/exlex.l dli/parse.c
 
 nobase_include_HEADERS = gen/errors.h gen/hashmap.h gen/strfns.h gen/types.h \
 rec/cursor.h rec/env.h rec/index.h rec/recmap.h \
-rel/rdb.h rel/typeimpl.h
+rel/rdb.h rel/typeimpl.h dli/parse.h
 
 libdurotcl_la_SOURCES = tcl/duro.c tcl/duro.h tcl/envcmd.c tcl/txcmd.c \
         tcl/tablecmd.c tcl/arraycmd.c tcl/opcmd.c

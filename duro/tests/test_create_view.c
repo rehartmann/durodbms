@@ -83,7 +83,7 @@ create_view2(RDB_database *dbp)
 
     printf("Creating EMPS1 WHERE (SALARY > 4000)\n");
 
-    exprp = RDB_expr_attr("SALARY", &RDB_RATIONAL);
+    exprp = RDB_expr_attr("SALARY");
     if (exprp == NULL)
         return RDB_NO_MEMORY;
     exprp = RDB_gt(exprp, RDB_rational_const(4000.0));
@@ -136,7 +136,7 @@ create_view3(RDB_database *dbp)
 
     printf("Creating EXTEND EMPS1 ADD (SALARY > 4000 AS HIGHSAL)\n");
 
-    exprp = RDB_expr_attr("SALARY", &RDB_RATIONAL);
+    exprp = RDB_expr_attr("SALARY");
     if (exprp == NULL)
         return RDB_NO_MEMORY;
     exprp = RDB_gt(exprp, RDB_rational_const(4000.0));
@@ -201,7 +201,7 @@ create_view4(RDB_database *dbp)
     }
 
     add.op = RDB_MAX;
-    add.exp = RDB_expr_attr("SALARY", &RDB_RATIONAL);
+    add.exp = RDB_expr_attr("SALARY");
     add.name = "MAX_SALARY";
 
     ret = RDB_summarize(tbp, projtbp, 1, &add, &vtbp);

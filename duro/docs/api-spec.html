@@ -1,4 +1,4 @@
-<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN"
+
 "http://www.w3.org/TR/html4/strict.dtd">
 <html lang="en">
 <head>
@@ -111,7 +111,6 @@ See the release notes for details.
 <li><a href="#db_name">RDB_db_name</a>
 <li><a href="#drop_db">RDB_drop_db</a>
 <li><a href="#get_db_from_env">RDB_get_db_from_env</a>
-<li><a href="#release_db">RDB_release_db</a>
 </ul>
 
 <h3>Transaction functions</h3>
@@ -139,7 +138,6 @@ See the release notes for details.
 <h3>Expression functions</h3>
 
 <ul>
-<li><a href="#expr_type">RDB_expr_type</a>
 <li><a href="#expr_is_const">RDB_expr_is_const</a>
 <li><a href="#bool_const">RDB_bool_const</a>
 <li><a href="#int_const">RDB_int_const</a>
@@ -2217,27 +2215,6 @@ and stores this pointer at the location pointed to by <var>dbpp</var>.
 
 <hr>
 
-<h2 id="release_db">RDB_release_db</h2>
-
-<pre>
-#include &lt;rel/rdb.h&gt;
-
-int
-RDB_release_db(RDB_database *dbp);
-</pre>
-
-<h3>Description</h3>
-
-<p>RDB_release_db informs the system that the pointer <var>dbp</var>
-is no longer used. If the use count for the database drops to zero,
-the RDB_database structure is freed.
-
-<h3>Return value</h3>
-
-<p>On success, RDB_OK is returned. On failure, an error code is returned.
-
-<hr>
-
 <h2 id="drop_db">RDB_drop_db</h2>
 
 <pre>
@@ -2557,23 +2534,6 @@ RDB_set_array_length(RDB_array *arrp, int len);
 
 <hr>
 
-<h2 id="expr_type">RDB_expr_type</h2>
-
-<pre>
-RDB_type *
-RDB_expr_type(const RDB_expression *);
-</pre>
-
-<h3>Description</h3>
-
-<p>RDB_expr_type determines the type of an expression.
-
-<h3>Return value</h3>
-
-<p>The type of the expression.
-
-<hr>
-
 <h2 id="expr_is_const">RDB_expr_is_const</h2>
 
 <pre>
@@ -2687,7 +2647,7 @@ failed.
 
 <pre>
 RDB_expression *
-RDB_expr_attr(const char *attrname, RDB_type *);
+RDB_expr_attr(const char *attrname);
 </pre>
 
 <h3>Description</h3>
@@ -3054,14 +3014,14 @@ failed.
 
 <pre>
 int
-RDB_user_op(const char *opname, int argc, RDB_expression *argv[],
+RDB_user_op(const char *opname, RDB_type *rtyp, int argc, RDB_expression *argv[],
        RDB_transaction *txp, RDB_expression **expp);
 </pre>
 
 <h3>Description</h3>
 
-<p>RDB_user_op creates an expression which represents a the invocation
-of user-defined operator and stores a pointer to the expression
+<p>RDB_user_op creates an expression which represents the invocation
+of a user-defined operator and stores a pointer to the expression
 at the location pointed to by <var>expp</var>.
 
 <h3>Return value</h3>
@@ -3125,10 +3085,7 @@ described by the elements of <var>repv</var>.
 <dt>RDB_INVALID_TRANSACTION
 <dd><var>txp</var> does not point to a running transaction.
 <dt>RDB_ELEMENT_EXISTS
-<dd>There is altready a type with name <var>name</var>.
-<dt>RDB_TYPE_MISMATCH
-<dd>The expression pointed to by the field constraintp of one
-of the elements of <var>repv</var> is not of type BOOLEAN.
+<dd>There is already a type with name <var>name</var>.
 </dl>
 
 <p>The call may also fail for a <a href="#syserr">system error</a>,

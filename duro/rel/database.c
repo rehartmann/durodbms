@@ -848,13 +848,13 @@ RDB_drop_db(RDB_database *dbp)
         return ret;
 
     /* Check if the database contains user tables */
-    exprp = RDB_expr_attr("IS_USER", &RDB_BOOLEAN);
+    exprp = RDB_expr_attr("IS_USER");
     ret = RDB_select(dbp->dbrootp->rtables_tbp, exprp, &vtbp);
     if (ret != RDB_OK) {
         RDB_drop_expr(exprp);
         goto error;
     }
-    exprp = RDB_eq(RDB_expr_attr("DBNAME", &RDB_STRING),
+    exprp = RDB_eq(RDB_expr_attr("DBNAME"),
                                  RDB_string_const(dbp->name));
     ret = RDB_select(dbp->dbrootp->dbtables_tbp, exprp, &vtb2p);
     if (ret != RDB_OK) {
@@ -882,7 +882,7 @@ RDB_drop_db(RDB_database *dbp)
 
     /* Check if the database exists */
 
-    exprp = RDB_eq(RDB_expr_attr("DBNAME", &RDB_STRING),
+    exprp = RDB_eq(RDB_expr_attr("DBNAME"),
                   RDB_string_const(dbp->name));
     if (exprp == NULL) {
         ret = RDB_NO_MEMORY;
@@ -903,7 +903,7 @@ RDB_drop_db(RDB_database *dbp)
 
     /* Disassociate all tables from database */
 
-    exprp = RDB_eq(RDB_expr_attr("DBNAME", &RDB_STRING),
+    exprp = RDB_eq(RDB_expr_attr("DBNAME"),
                   RDB_string_const(dbp->name));
     if (exprp == NULL) {
         ret = RDB_NO_MEMORY;
@@ -1086,7 +1086,7 @@ _RDB_drop_table(RDB_table *tbp, RDB_transaction *txp, RDB_bool rec)
             if (tbp->is_persistent) {
                 /* Delete table from catalog */
                         
-                exprp = RDB_eq(RDB_expr_attr("TABLENAME", &RDB_STRING),
+                exprp = RDB_eq(RDB_expr_attr("TABLENAME"),
                                RDB_string_const(tbp->name));
                 if (exprp == NULL) {
                     return RDB_NO_MEMORY;
@@ -1597,7 +1597,7 @@ RDB_drop_op(const char *name, RDB_transaction *txp)
     /*
      * Check if it's a read-only operator
      */
-    exp = RDB_eq(RDB_expr_attr("NAME", &RDB_STRING), RDB_string_const(name));
+    exp = RDB_eq(RDB_expr_attr("NAME"), RDB_string_const(name));
     if (exp == NULL) {
         RDB_rollback(txp);
         return RDB_NO_MEMORY;
@@ -1630,7 +1630,7 @@ RDB_drop_op(const char *name, RDB_transaction *txp)
         }
         
         /* Delete all versions of update operator from the database */
-        exp = RDB_eq(RDB_expr_attr("NAME", &RDB_STRING), RDB_string_const(name));
+        exp = RDB_eq(RDB_expr_attr("NAME"), RDB_string_const(name));
         if (exp == NULL) {
             RDB_rollback(txp);
             return RDB_NO_MEMORY;
@@ -1654,7 +1654,7 @@ RDB_drop_op(const char *name, RDB_transaction *txp)
         }
 
         /* Delete all versions of update operator from the database */
-        exp = RDB_eq(RDB_expr_attr("NAME", &RDB_STRING), RDB_string_const(name));
+        exp = RDB_eq(RDB_expr_attr("NAME"), RDB_string_const(name));
         if (exp == NULL) {
             RDB_rollback(txp);
             return RDB_NO_MEMORY;

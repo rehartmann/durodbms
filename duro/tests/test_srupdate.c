@@ -83,7 +83,7 @@ test_update1(RDB_database *dbp)
     printf("Updating table\n");
 
     exp = RDB_int_const(2);
-    exp = RDB_subtract(exp, RDB_expr_attr("NO", &RDB_INTEGER));
+    exp = RDB_subtract(exp, RDB_expr_attr("NO"));
 
     upd.name = "NO";
     upd.exp = exp;
