@@ -63,7 +63,7 @@ enum {
 %token TOK_JOIN
 %token TOK_FROM
 %token TOK_TUPLE
-%token TOK_ALL_BUT
+%token TOK_BUT
 %token TOK_AS
 %token TOK_RENAME
 %token TOK_EXTEND
@@ -141,7 +141,7 @@ project: primary_expression '{' attribute_name_list '}' {
             }
             $$ = RDB_expr_table(restbp);
         }
-        | primary_expression '{' TOK_ALL_BUT attribute_name_list '}' {
+        | primary_expression '{' TOK_ALL TOK_BUT attribute_name_list '}' {
             RDB_table *tbp, *restbp;
             int i;
 
@@ -150,9 +150,9 @@ project: primary_expression '{' attribute_name_list '}' {
             {
                 YYERROR;
             }
-            expr_ret = RDB_remove(tbp, $4.attrc, $4.attrv, &restbp);
-            for (i = 0; i < $4.attrc; i++)
-                free($4.attrv[i]);
+            expr_ret = RDB_remove(tbp, $5.attrc, $5.attrv, &restbp);
+            for (i = 0; i < $5.attrc; i++)
+                free($5.attrv[i]);
             if (expr_ret != RDB_OK) {
                 YYERROR;
             }

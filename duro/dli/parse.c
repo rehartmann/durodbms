@@ -6,12 +6,9 @@
 #include <rel/internal.h>
 
 int yyparse(void);
+void yy_scan_string(const char *txt);
 
-void _RDB_flush_buf(void);
-
-extern RDB_expression *yylval;
 RDB_transaction *expr_txp;
-const char *expr_in;
 RDB_expression *resultp;
 int expr_ret;
 
@@ -26,10 +23,9 @@ void yyerror(char *errtxt) {
 int RDB_parse_expr(const char *txt, RDB_transaction *txp, RDB_expression **exp)
 {
     expr_txp = txp;
-    expr_in = txt;
     expr_ret = RDB_OK;
 
-    _RDB_flush_buf();
+    yy_scan_string(txt);
     if (yyparse() > 0) {
         if (expr_ret == RDB_OK) {
             /* syntax error */
