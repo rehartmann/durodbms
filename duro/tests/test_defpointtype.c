@@ -2,6 +2,7 @@
 
 #include <rel/rdb.h>
 #include <rel/typeimpl.h>
+#include <tests/point.h>
 #include <stdlib.h>
 #include <stdio.h>
 
@@ -41,7 +42,7 @@ test_type(RDB_database *dbp)
 
     printf("Implementing type\n");
     ret = RDB_implement_type("POINT", "libpoint", NULL, RDB_FIXED_BINARY,
-            sizeof(RDB_rational) * 2, &tx);
+            sizeof(i_point), &tx);
     if (ret != RDB_OK) {
         RDB_rollback(&tx);
         return ret;

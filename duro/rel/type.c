@@ -326,6 +326,9 @@ error:
     RDB_destroy_obj(&conval);    
     RDB_destroy_tuple(&tpl);
 
+    if (RDB_is_syserr(ret))
+        RDB_rollback(txp);
+
     return ret;
 }
 
@@ -405,7 +408,7 @@ RDB_implement_type(const char *name, const char *libname, RDB_type *arep,
         return RDB_NO_MEMORY;
     }    
 
-    upd[0].exp = upd[1].exp = NULL;
+    upd[0].exp = upd[1].exp = upd[2].exp = NULL;
 
     upd[0].name = "I_AREP_TYPE";
     upd[0].exp = RDB_string_const(arep != NULL ? arep->name : "");
@@ -436,6 +439,9 @@ cleanup:
     if (upd[2].exp != NULL)
         RDB_drop_expr(upd[2].exp);
     RDB_drop_expr(wherep);
+
+    if (RDB_is_syserr(ret))
+        RDB_rollback(txp);
 
     return ret;
 }

@@ -11,7 +11,9 @@
 
 <h2>Contents</h2>
 
-<p><a href="#built-in-types">Built-in types</a>
+<h3>Built-in types</h3>
+
+<p><a href="#built-in-types">Table of built-in types</a>
 
 <h3>Table functions</h3>
 
@@ -53,6 +55,8 @@
 <li><a href="#destroy_tuple">RDB_destroy_tuple</a>
 <li><a href="#extend_tuple">RDB_extend_tuple</a>
 <li><a href="#init_tuple">RDB_init_tuple</a>
+<li><a href="#join_tuples">RDB_join_tuples</a>
+<li><a href="#project_tuple">RDB_project_tuple</a>
 <li><a href="#rename_tuple">RDB_rename_tuple</a>
 <li><a href="#tuple_get">RDB_tuple_get</a>
 <li><a href="#tuple_get_bool">RDB_tuple_get_bool</a>
@@ -151,7 +155,7 @@
 <li><a href="#strlen">RDB_strlen</a>
 <li><a href="#regmatch">RDB_regmatch</a>
 <li><a href="#expr_table">RDB_expr_table</a>
-<li><a href="#rel_is_empty">RDB_rel_is_empty</a>
+<li><a href="#expr_is_empty">RDB_expr_is_empty</a>
 <li><a href="#expr_aggregate">RDB_expr_aggregate</a>
 <li><a href="#expr_comp">RDB_expr_comp</a>
 <li><a href="#selector">RDB_selector</a>
@@ -172,14 +176,6 @@
 <li><a href="#type_is_scalar">RDB_type_is_scalar</a>
 <li><a href="#type_is_numeric">RDB_type_is_numeric</a>
 <li><a href="#type_equals">RDB_type_equals</a>
-<li><a href="#extend_tuple_type">RDB_extend_tuple_type</a>
-<li><a href="#extend_relation_type">RDB_extend_relation_type</a>
-<li><a href="#join_tuple_types">RDB_join_tuple_types</a>
-<li><a href="#join_relation_types">RDB_join_relation_types</a>
-<li><a href="#project_tuple_type">RDB_project_tuple_type</a>
-<li><a href="#project_relation_type">RDB_project_relation_type</a>
-<li><a href="#rename_tuple_type">RDB_rename_tuple_type</a>
-<li><a href="#rename_relation_type">RDB_rename_relation_type</a>
 </ul>
 
 <h3>Operator functions</h3>
@@ -610,7 +606,7 @@ RDB_insert(RDB_table *tbp, const RDB_tuple *tplp, RDB_transaction *);
 
 <h3>Description</h3>
 
-RDB_insert inserts the tuple specified by <var>tplp</var>
+<p>RDB_insert inserts the tuple specified by <var>tplp</var>
 into the table specified by <var>tbp</var>.
  
 <h3>Return value</h3>
@@ -629,6 +625,12 @@ On failure, an error code different from RDB_ELEMENT_EXISTS is returned.
 <dt>RDB_INVALID_ARGUMENT
 <dd>A table attribute is missing in the tuple and no default value
 was specified for that attribute.
+<dt>RDB_KEY_VIOLATION
+<dd>Inserting the tuple would result in a table which contains
+a key value twice.
+<dt>RDB_PREDICATE_VIOLATION
+<dd>Inserting the tuple would result in a table which violates its
+predicate.
 <dt>RDB_TYPE_MISMATCH
 <dd>The type of a tuple attribute does not match the type of the
 corresponding table attribute.
@@ -681,6 +683,14 @@ obtained by evaluating the expression specified by the field exp.
 <dd>One of the attributes in <var>updv</var> does not exist in the table.
 <dd>One of the expressions specified in <var>updv</var> refers to an attribute
 which does not exist in the table.
+
+<dt>RDB_KEY_VIOLATION
+<dd>The update operation would result in a table which contains
+a key value twice.
+
+<dt>RDB_PREDICATE_VIOLATION
+<dd>The update operation would result in a table which violates its
+predicate.
 
 <dt>RDB_TYPE_MISMATCH
 <dd>The type of one the expressions in <var>attrv</var> is not the same
@@ -853,7 +863,7 @@ A pointer to the result table is stored at the location pointed to by
 
 <h3>Errors</h3>
 
-A pointer to the result table is stored at the location pointed to by
+<p>A pointer to the result table is stored at the location pointed to by
 <var>resultpp</var>
 
 <hr>
@@ -1211,6 +1221,24 @@ relational UNGROUP operation.
 
 <hr>
 
+<h2 id="destroy_tuple">RDB_destroy_tuple</h2>
+
+<pre>
+#include &lt;rel/rdb.h&gt;
+
+int
+RDB_destroy_tuple(RDB_tuple *);
+</pre>
+
+<h3>Description</h3>
+
+<p>RDB_destroy_tuple frees all resources associated with a RDB_tuple
+variable.
+
+<h3>Return value</h3>
+
+<p>On success, RDB_OK is returned. On failure, an error code is returned.
+
 <h2 id="init_tuple">RDB_init_tuple</h2>
 
 <pre>
@@ -1232,23 +1260,66 @@ operation can be performed on a RDB_tuple variable.
 
 <hr>
 
-<h2 id="destroy_tuple">RDB_destroy_tuple</h2>
+<h2 id="join_tuples">RDB_join_tuples</h2>
 
 <pre>
 #include &lt;rel/rdb.h&gt;
 
 int
-RDB_destroy_tuple(RDB_tuple *);
+RDB_join_tuples(const RDB_tuple *tpl1p, const RDB_tuple *tpl2p, RDB_tuple **resultpp);
 </pre>
 
 <h3>Description</h3>
 
-<p>RDB_destroy_tuple frees all resources associated with a RDB_tuple
-variable.
+<p>RDB_join creates a tuple which contains the attributes
+of the two tuples specified by <var>tpl1p</var> and <var>tpl2p</var>.
 
 <h3>Return value</h3>
 
 <p>On success, RDB_OK is returned. On failure, an error code is returned.
+
+<h3>Errors</h3>
+
+<dl>
+<dt>RDB_TYPE_MISMATCH
+<dd>The two tuples have an attribute with the same name, but with
+different types.
+<dt>RDB_INVALID_ARGUMENT
+<dd>The two tuples have an attribute with the same name, but with
+different values.
+</dl>
+
+<p>The call may also fail for a <a href="#syserr">system error</a>.
+
+<hr>
+
+<h2 id="project_tuple">RDB_project_tuple</h2>
+
+<pre>
+#include &lt;rel/rdb.h&gt;
+
+int
+RDB_project_tuple(const RDB_tuple *, int attrc, char *attrv[], RDB_tuple **resultpp);
+</pre>
+
+<h3>Description</h3>
+
+<p>RDB_project_tuple creates a tuple which contains only the attributes
+specified by <var>attrc</var> and <var>attrv</var>.
+
+<h3>Return value</h3>
+
+<p>On success, RDB_OK is returned. On failure, an error code is returned.
+
+<h3>Errors</h3>
+
+<dl>
+<dt>RDB_INVALID_ARGUMENT
+<dd>One of the attributes specified by <var>attrv</var> is not an attribute
+of the original tuple.
+</dl>
+
+<p>The call may also fail for a <a href="#syserr">system error</a>.
 
 <hr>
 
@@ -1612,18 +1683,12 @@ RDB_destroy_obj(RDB_object *valp);
 
 <h3>Description</h3>
 
-<p>RDB_destroy_tuple frees all resources associated with a RDB_tuple
+<p>RDB_destroy_obj frees all resources associated with a RDB_obj
 variable.
 
 <h3>Return value</h3>
 
 <p>On success, RDB_OK is returned. On failure, an error code is returned.
-
-<h3>Return value</h3>
-
-<p>On success, RDB_OK is returned. On failure, an error code is returned.
-
-<h3>Errors</h3>
 
 <hr>
 
@@ -1638,7 +1703,7 @@ RDB_obj_equals(const RDB_object *, const RDB_object *);
 
 <h3>Description</h3>
 
-RDB_obj_equals checks two RDB_object variables for equality.
+<p>RDB_obj_equals checks two RDB_object variables for equality.
 
 <h3>Return value</h3>
 
@@ -2273,9 +2338,9 @@ RDB_init_array(RDB_array *);
 
 <h3>Description</h3>
 
-<h3>Return value</h3>
-
-<h3>Errors</h3>
+<p>RDB_init_array initializes en array variable.
+RDB_init_array must be called before any other
+operation can be performed on a RDB_array variable.
 
 <hr>
 
@@ -2290,9 +2355,12 @@ RDB_destroy_array(RDB_array *);
 
 <h3>Description</h3>
 
+<p>RDB_destroy_array frees all resources associated with a RDB_array
+variable.
+
 <h3>Return value</h3>
 
-<h3>Errors</h3>
+<p>On success, RDB_OK is returned. On failure, an error code is returned.
 
 <hr>
 
@@ -2429,7 +2497,7 @@ RDB_expr_type(const RDB_expression *);
 
 <h3>Return value</h3>
 
-The type of the expression.
+<p>The type of the expression.
 
 <hr>
 
@@ -2570,6 +2638,7 @@ RDB_eq(RDB_expression *, RDB_expression *);
 <h3>Description</h3>
 
 <p>RDB_eq creates an expression that represents an "is equal" operator.
+If one of the arguments is NULL, NULL is returned.
 
 <h3>Return value</h3>
 
@@ -2588,6 +2657,83 @@ RDB_neq(RDB_expression *, RDB_expression *);
 <h3>Description</h3>
 
 <p>RDB_neq creates an expression that represents an "is not equal" operator.
+If one of the arguments is NULL, NULL is returned.
+
+<h3>Return value</h3>
+
+<p>A pointer to the newly created expression, of NULL if the creation
+failed.
+
+<hr>
+
+<h2 id="lt">RDB_lt</h2>
+
+<pre>
+RDB_expression *
+RDB_lt(RDB_expression *, RDB_expression *);
+</pre>
+
+<h3>Description</h3>
+
+<p>RDB_lt creates an expression that represents a "lower than" operator.
+If one of the arguments is NULL, NULL is returned.
+
+<h3>Return value</h3>
+
+<p>A pointer to the newly created expression, of NULL if the creation
+failed.
+
+<hr>
+
+<h2 id="gt">RDB_gt</h2>
+
+<pre>
+RDB_expression *
+RDB_gt(RDB_expression *, RDB_expression *);
+</pre>
+
+<h3>Description</h3>
+
+<p>RDB_gt creates an expression that represents a "greater than" operator.
+If one of the arguments is NULL, NULL is returned.
+
+<h3>Return value</h3>
+
+<p>A pointer to the newly created expression, of NULL if the creation
+failed.
+
+<hr>
+
+<h2 id="let">RDB_let</h2>
+
+<pre>
+RDB_expression *
+RDB_let(RDB_expression *, RDB_expression *);
+</pre>
+
+<h3>Description</h3>
+
+<p>RDB_let creates an expression that represents a "lower or equal than" operator.
+If one of the arguments is NULL, NULL is returned.
+
+<h3>Return value</h3>
+
+<p>A pointer to the newly created expression, of NULL if the creation
+failed.
+
+<hr>
+
+<h2 id="get">RDB_get</h2>
+
+<pre>
+RDB_expression *
+RDB_get(RDB_expression *, RDB_expression *);
+</pre>
+
+<h3>Description</h3>
+
+<p>RDB_get creates an expression that represents a "greater or equal than" operator.
+If one of the arguments is NULL, NULL is returned.
 
 <h3>Return value</h3>
 
@@ -2606,6 +2752,7 @@ RDB_and(RDB_expression *, RDB_expression *);
 <h3>Description</h3>
 
 <p>RDB_and creates an expression that represents a logical AND.
+If one of the arguments is NULL, NULL is returned.
 
 <h3>Return value</h3>
 
@@ -2624,6 +2771,7 @@ RDB_or(RDB_expression *, RDB_expression *);
 <h3>Description</h3>
 
 <p>RDB_or creates an expression that represents a logical OR.
+If one of the arguments is NULL, NULL is returned.
 
 <h3>Return value</h3>
 
@@ -2642,6 +2790,7 @@ RDB_not(RDB_expression *);
 <h3>Description</h3>
 
 <p>RDB_or creates an expression that represents a logical NOT.
+If the argument is NULL, NULL is returned.
 
 <h3>Return value</h3>
 
@@ -2661,6 +2810,8 @@ RDB_add(RDB_expression *, RDB_expression *);
 
 <p>RDB_add creates an expression that represents an arithmetical addition.
 Both arguments must be numeric and of the same type.
+If one of the arguments is NULL, NULL is returned.
+
 
 <h3>Return value</h3>
 
@@ -2680,6 +2831,7 @@ RDB_subtract(RDB_expression *, RDB_expression *);
 
 <p>RDB_subtract creates an expression that represents an arithmetical
 subtraction. Both arguments must be numeric and of the same type.
+If one of the arguments is NULL, NULL is returned.
 
 <h3>Return value</h3>
 
@@ -2698,7 +2850,8 @@ RDB_strlen(RDB_expression *arg);
 <h3>Description</h3>
 
 <p>RDB_subtract creates an expression that represents a string length
-operation.
+operation. If the argument is NULL, NULL is returned.
+
 
 <h3>Return value</h3>
 
@@ -2711,14 +2864,17 @@ failed.
 
 <pre>
 RDB_expression *
-RDB_regmatch(RDB_expression *arg1, RDB_expression *arg2);
+RDB_regmatch(RDB_expression *arg1p, RDB_expression *arg2p);
 </pre>
 
 <h3>Description</h3>
 
-<p>RDB_subtract creates an expression that represents a regular
-expression match. The expression evaluates to RDB_TRUE if
-if arg1 matches the regular expression arg2.
+<p>RDB_regmatch creates an expression that represents a regular
+expression match. Both subexpressions must be of type STRING.
+The expression evaluates to RDB_TRUE if the expression represented by arg1p
+evaluates to a string that matches the regular expression
+to which the expression represented by arg2p evaluates.
+If one of the arguments is NULL, NULL is returned.
 
 <h3>Return value</h3>
 
@@ -2745,7 +2901,7 @@ failed.
 
 <hr>
 
-<h2 id="rel_is_empty">RDB_rel_is_empty</h2>
+<h2 id="expr_is_empty">RDB_expr_is_empty</h2>
 
 <pre>
 RDB_expression *
@@ -2875,15 +3031,35 @@ RDB_drop_expr on all subexpressions.
 #include &lt;rel/rdb.h&gt;
 
 int
-RDB_define_type(const char *name, int repc, RDB_possrep repv[],
+RDB_define_type(const char *name, int repc, <a href="#possrep">RDB_possrep</a> repv[],
                 RDB_transaction *txp);
 </pre>
 
 <h3>Description</h3>
 
+<p>RDB_define_type defines a type with the name <var>name</var> and
+<var>repc</var> possible representations.
+The individual possible representations are
+described by the elements of <var>repv</var>.
+
 <h3>Return value</h3>
 
+<p>On success, RDB_OK is returned. On failure, an error code is returned.
+
 <h3>Errors</h3>
+
+<dl>
+<dt>RDB_INVALID_TRANSACTION
+<dd><var>txp</var> does not point to a running transaction.
+<dt>RDB_ELEMENT_EXISTS
+<dd>There is altready a type with name <var>name</var>.
+<dt>RDB_TYPE_MISMATCH
+<dd>The expression pointed to by the field constraintp of one
+of the elements of <var>repv</var> is not of type BOOLEAN.
+</dl>
+
+<p>The call may also fail for a <a href="#syserr">system error</a>,
+in which case the transaction is implicitly rolled back.
 
 <hr>
 
@@ -2892,26 +3068,35 @@ RDB_define_type(const char *name, int repc, RDB_possrep repv[],
 <pre>
 #include &lt;rel/typeimpl.h&gt;
 
-int
-RDB_implement_type(const char *name, const char *libname, RDB_type *arep, int options,
-                   size_t ireplen, RDB_transaction *);
+RDB_implement_type(const char *name, const char *libname, RDB_type *arep,
+                   int options, size_t areplen, RDB_transaction *txp);
 </pre>
 
 <h3>Description</h3>
 
 <p>RDB_implement_type implements the user-defined type with name
-<var>name</var>. When RDB_implement_type was inkoved successfully,
-the type may be used for local variables and relvar attributes.
-The actual representation is denoted by the <var>arep</var> argument.
+<var>name</var>. After RDB_implement_type was inkoved successfully,
+this type may be used for local variables and table attributes.
+The actual representation is specified by the <var>arep</var> argument.
 
-<p>If <var>modname</var> is not NULL, it is taken as a name of a library
+<p>If <var>libname</var> is not NULL, then:
+
+<p>If <var>arep</var> is not NULL, it must point to a type which is used
+as the actual representation.
+
+<p>If <var>arep</var> is NULL, <var>options</var> must be RDB_FIXED_BINARY
+and <var>areplen</var> specifies the length, in bytes, of the actual representation,
+which is a fixed-length array of bytes.
+
+<p>In either case, <var>libname</var> it is taken as a name of a library
 which contains the getter functions, setter functions, and selector
-functions for the type.
+functions for the type. See the release notes for details on how
+to create such a library.
 
-<p>If <var>modname</var> is NULL, the getter functions, setter functions, and selector
-functions for the type are provided by the system. In this case,
+<p>If <var>libname</var> is NULL, the getter functions, setter functions, and selector
+functions for the type are provided by Duro. In this case,
 <var>arep</var> must be NULL, the type may only have one possible representation,
-and this representation is also the actual representation.
+and this representation becomes the actual representation.
 
 <h4>Conventions for user-supplied selector, setter, and getter
 functions</h4>
@@ -2921,21 +3106,25 @@ conventions:
 
 <pre>
 int
-RDBU_select_<var>possrep</var>(RDB_object *valp, RDB_object *compv[],
+RDBU_select_&lt;possrep&gt;(RDB_object *valp, RDB_object *compv[],
         RDB_type *, const char *possrepname);
 </pre>
 
+<p>where &lt;possrep&gt; is the name of the possible representation in question.
+
 <pre>
 int
-RDBU_set_<var>component</var>(RDB_object *valp, const RDB_object *comp,
+RDBU_set_&lt;component&gt;(RDB_object *valp, const RDB_object *comp,
         RDB_type *, const char *compname);
 </pre>
 
 <pre>
 int
-RDBU_get_<var>component</var>(const RDB_object *src, RDB_object *comp,
+RDBU_get_&lt;component&gt;(const RDB_object *src, RDB_object *comp,
         RDB_type *, const char *compname);
 </pre>
+
+<p>where &lt;component&gt; is the name of the component in question.
 
 <h3>Return value</h3>
 
@@ -2944,14 +3133,18 @@ RDBU_get_<var>component</var>(const RDB_object *src, RDB_object *comp,
 <h3>Errors</h3>
 
 <dl>
+<dt>RDB_INVALID_TRANSACTION
+<dd><var>txp</var> does not point to a running transaction.
 <dt>RDB_INVALID_ARGUMENT
-<dd>An invalid combination of <var>modname</var> and <var>arep</var> was
+<dd>An invalid combination of <var>libname</var> and <var>arep</var> was
 used.
 <dt>RDB_NOT_SUPPORTED
 <dd>The requested internal representation is not supported by this version
 of the library.
-<dt>...
 </dl>
+
+<p>The call may also fail for a <a href="#syserr">system error</a>,
+in which case the transaction is implicitly rolled back.
 
 <hr>
 
@@ -2961,14 +3154,18 @@ of the library.
 #include &lt;rel/rdb.h&gt;
 
 RDB_type *
-RDB_create_tuple_type(int attrc, RDB_attr attrv[]);
+RDB_create_tuple_type(int attrc, <a href="#attr">RDB_attr</a> attrv[]);
 </pre>
 
 <h3>Description</h3>
 
+<p>RDB_create_tuple_type creates a transient tuple type. The attributes
+are specified by <var>attrc</var> and <var>attrv</var>.
+The fields defaultp and options of RDB_attr are ignored.
+
 <h3>Return value</h3>
 
-<h3>Errors</h3>
+<p>A pointer to the newly created type, or NULL if the creation failed.
 
 <hr>
 
@@ -2983,9 +3180,12 @@ RDB_create_relation_type(int attrc, RDB_attr attrv[]);
 
 <h3>Description</h3>
 
+<p>RDB_create_relation_type creates a transient relation type. The attributes
+are specified by <var>attrc</var> and <var>attrv</var>.
+
 <h3>Return value</h3>
 
-<h3>Errors</h3>
+<p>A pointer to the newly created type, or NULL if the creation failed.
 
 <hr>
 
@@ -3000,9 +3200,25 @@ RDB_get_type(const char *name, RDB_transaction *, RDB_type **typp);
 
 <h3>Description</h3>
 
+<p>RDB_get_type obtains a pointer to RDB_type structure which
+represents the type with the name <var>name</var>
+and stores that pointer at the location pointed to by <var>typp</var>.
+
 <h3>Return value</h3>
 
+<p>On success, RDB_OK is returned. Any other return value indicates an error.
+
 <h3>Errors</h3>
+
+<dl>
+<dt>RDB_INVALID_TRANSACTION
+<dd><var>txp</var> does not point to a running transaction.
+<dt>RDB_NOT_FOUND
+<dd>A type with the name <var>name</var> could not be found.
+</dl>
+
+<p>The call may also fail for a <a href="#syserr">system error</a>,
+in which case the transaction is implicitly rolled back.
 
 <hr>
 
@@ -3012,18 +3228,32 @@ RDB_get_type(const char *name, RDB_transaction *, RDB_type **typp);
 #include &lt;rel/rdb.h&gt;
 
 void
-RDB_drop_type(RDB_type *, RDB_transaction *txp);
+RDB_drop_type(RDB_type *typ, RDB_transaction *txp);
 </pre>
 
 <h3>Description</h3>
 
-<p>...
+<p>RDB_drop_type destroys the type specified by <var>typ</var>.
 
-<p>If the type has no name, <var>txp</var> may be NULL.
+<p>If the type is transient, the argument <var>txp</var> is ignored.
+
+<p>It is not possible to destroy built-in types.
 
 <h3>Return value</h3>
 
+<p>On success, RDB_OK is returned. Any other return value indicates an error.
+
 <h3>Errors</h3>
+
+<dl>
+<dt>RDB_INVALID_TRANSACTION
+<dd><var>txp</var> does not point to a running transaction.
+<dt>RDB_INVALID_ARGUMENT
+<dd>The type is a builtin type.
+</dl>
+
+<p>The call may also fail for a <a href="#syserr">system error</a>,
+in which case the transaction is implicitly rolled back.
 
 <hr>
 
@@ -3038,9 +3268,11 @@ RDB_type_name(const RDB_type *);
 
 <h3>Description</h3>
 
+<p>RDB_type_name returns the name of a type.
+
 <h3>Return value</h3>
 
-<h3>Errors</h3>
+<p>A pointer to the name of the type or NULL if the type has no name.
 
 <hr>
 
@@ -3055,9 +3287,11 @@ RDB_type_is_scalar(const RDB_type *);
 
 <h3>Description</h3>
 
+<p>RDB_type_is_scalar checks if a type is scalar.
+
 <h3>Return value</h3>
 
-<h3>Errors</h3>
+<p>RDB_TRUE if the type is scalar, RDB_FALSE otherwise.
 
 <hr>
 
@@ -3072,9 +3306,13 @@ RDB_type_is_numeric(const RDB_type *);
 
 <h3>Description</h3>
 
+<p>RDB_type_is_numeric checks if a type is numeric.
+
 <h3>Return value</h3>
 
-<h3>Errors</h3>
+<p>RDB_TRUE if the type is INTEGER or RATIONAL, RDB_FALSE otherwise.
+
+<h3>Return value</h3>
 
 <hr>
 
@@ -3089,115 +3327,13 @@ RDB_type_equals(const RDB_type *, const RDB_type *);
 
 <h3>Description</h3>
 
-<h3>Return value</h3>
+<p>RDB_type_equals checks if two types are equal.
 
-<h3>Errors</h3>
-
-<hr>
-
-<h2 id="extend_tuple_type">RDB_extend_tuple_type</h2>
-
-<pre>
-#include &lt;rel/rdb.h&gt;
-
-RDB_type *
-RDB_extend_tuple_type(const RDB_type *typ, int attrc, RDB_attr attrv[]);
-</pre>
-
-<h3>Description</h3>
+<p>Nonscalar types are equal if there definition is the same.
 
 <h3>Return value</h3>
 
-<h3>Errors</h3>
-
-<hr>
-
-<h2 id="extend_relation_type">RDB_extend_relation_type</h2>
-
-<pre>
-#include &lt;rel/rdb.h&gt;
-
-RDB_type *
-RDB_extend_relation_type(const RDB_type *typ, int attrc, RDB_attr attrv[]);
-</pre>
-
-<h3>Description</h3>
-
-<h3>Return value</h3>
-
-<h3>Errors</h3>
-
-<hr>
-
-<h2 id="project_tuple_type">RDB_project_tuple_type</h2>
-
-<pre>
-#include &lt;rel/rdb.h&gt;
-
-int
-RDB_project_tuple_type(const RDB_type *typ, int attrc, char *attrv[],
-                          RDB_type **newtypp);
-</pre>
-
-<h3>Description</h3>
-
-<h3>Return value</h3>
-
-<h3>Errors</h3>
-
-<hr>
-
-<h2 id="project_relation_type">RDB_project_relation_type</h2>
-
-<pre>
-#include &lt;rel/rdb.h&gt;
-
-int
-RDB_project_relation_type(const RDB_type *typ, int attrc, char *attrv[],
-                          RDB_type **newtypp);
-</pre>
-
-<h3>Description</h3>
-
-<h3>Return value</h3>
-
-<h3>Errors</h3>
-
-<hr>
-
-<h2 id="join_tuple_types">RDB_join_tuple_types</h2>
-
-<pre>
-#include &lt;rel/rdb.h&gt;
-
-int
-RDB_join_tuple_types(const RDB_type *typ1, const RDB_type *typ2,
-                     RDB_type **newtypp);
-</pre>
-
-<h3>Description</h3>
-
-<h3>Return value</h3>
-
-<h3>Errors</h3>
-
-<hr>
-
-<h2 id="join_relation_types">RDB_join_relation_types</h2>
-
-<pre>
-#include &lt;rel/rdb.h&gt;
-
-int
-RDB_join_relation_types(const RDB_type *typ1, const RDB_type *typ2,
-                     RDB_type **newtypp);
-</pre>
-
-<h3>Description</h3>
-
-<h3>Return value</h3>
-
-<h3>Errors</h3>
+<p>RDB_TRUE if the types are equal, RDB_FALSE otherwise.
 
 <hr>
 
@@ -3215,9 +3351,49 @@ RDB_create_ro_op(const char *name, int argc, RDB_type *argtv[], RDB_type *rtyp,
 
 <h3>Description</h3>
 
+<p>RDB_create_ro_op creates a read-only operator with name <var>name</var>.
+The argument types are specified by <var>argc</var> and <var>argtv</var>.
+
+<p>To execute the operator, Duro will execute the function specified by
+<var>symname</var> from the library specified by <var>libname</var>.
+
+<p>This function must have the following signature:
+
+<pre>
+int
+&lt;symname&gt;(const char *name, int argc, RDB_object *argv[],
+          const void *iargp, size_t iarglen, RDB_transaction *txp,
+          RDB_object *retvalp)
+</pre>
+
+<p>When the function is executed, the name of the operator is passed through <var>name</var>
+and the arguments are passed through <var>argc</var> and <var>argv</var>.
+
+<p>The function specified by <var>symname</var> must store the result at the
+location specified by <var>retvalp</var> and return RDB_OK.
+It can indicate an error condition by passing an error code.
+
+<p>If <var>iargp</var> is not NULL, <var>iargp</var> and <var>iarglen</var>
+must point to a byte block which is passed to the function specified by
+<var>symname</var>. This can be used to pass code to an interpreter function.
+
+<p>Overloading functions is possible.
+
 <h3>Return value</h3>
 
+<p>On success, RDB_OK is returned. On failure, an error code is returned.
+
 <h3>Errors</h3>
+
+<dl>
+<dt>RDB_INVALID_TRANSACTION
+<dd><var>txp</var> does not point to a running transaction.
+<dt>RDB_ELEMENT_EXISTS
+<dd>A read-only operator with this name and signature does already exist.
+</dl>
+
+<p>The call may also fail for a <a href="#syserr">system error</a>,
+in which case the transaction is implicitly rolled back.
 
 <hr>
 
@@ -3235,9 +3411,51 @@ RDB_create_update_op(const char *name, int argc, RDB_type *argtv[],
 
 <h3>Description</h3>
 
+<p>RDB_create_update_op creates an update operator with name <var>name</var>.
+The argument types are specified by <var>argc</var> and <var>argtv</var>.
+
+<p>The argument <var>upd</var> specifies which of the arguments are updated.
+If upd[<em>i</em>] is RDB_TRUE, the <em>i</em>th argument is updated.
+
+<p>To execute the operator, Duro will execute the function specified by
+<var>symname</var> from the library specified by <var>libname</var>.
+
+<p>This function must have the following signature:
+
+<pre>
+int
+&lt;symname&gt;(const char *name, int argc, RDB_object *argv[],
+        RDB_bool updv[], const void *iargp, size_t iarglen, RDB_transaction *txp)
+
+</pre>
+
+<p>When the function is executed, the name of the operator is passed through <var>name</var>
+and the arguments are passed through <var>argc</var> and <var>argv</var>.
+
+<p>On success, the function specified by <var>symname</var> must return RDB_OK.
+It can indicate an error condition by passing an error code.
+
+<p>If <var>iargp</var> is not NULL, <var>iargp</var> and <var>iarglen</var>
+must point to a byte block which is passed to the function specified by
+<var>symname</var>. This can be used to pass code to an interpreter function.
+
+<p>Overloading functions is possible.
+
 <h3>Return value</h3>
 
+<p>On success, RDB_OK is returned. On failure, an error code is returned.
+
 <h3>Errors</h3>
+
+<dl>
+<dt>RDB_INVALID_TRANSACTION
+<dd><var>txp</var> does not point to a running transaction.
+<dt>RDB_ELEMENT_EXISTS
+<dd>An update operator with this name and signature does already exist.
+</dl>
+
+<p>The call may also fail for a <a href="#syserr">system error</a>,
+in which case the transaction is implicitly rolled back.
 
 <hr>
 
@@ -3253,9 +3471,31 @@ RDB_call_ro_op(const char *name, int argc, RDB_object *argv[],
 
 <h3>Description</h3>
 
+<p>RDB_call_ro_op invokes the read-only operator with the name <var>name</var>,
+passing the arguments in <var>argc</var> and <var>argv</var>.
+
+<p>The result will be stored at the location pointed to by
+<var>retvalp</var>. 
+
 <h3>Return value</h3>
 
+<p>On success, RDB_OK is returned. On failure, an error code is returned.
+
 <h3>Errors</h3>
+
+<dl>
+<dt>RDB_INVALID_TRANSACTION
+<dd><var>txp</var> does not point to a running transaction.
+<dt>RDB_NOT_FOUND
+<dd>A read-only operator that matches the name and arguments could not be
+found.
+</dl>
+
+<p>If the user-supplied function which implements the function returns an
+error code, this code is returned.
+
+<p>The call may also fail for a <a href="#syserr">system error</a>,
+in which case the transaction is implicitly rolled back.
 
 <hr>
 
@@ -3271,9 +3511,28 @@ RDB_call_update_op(const char *name, int argc, RDB_object *argv[],
 
 <h3>Description</h3>
 
+<p>RDB_call_update_op invokes the update operator with the name <var>name</var>,
+passing the arguments in <var>argc</var> and <var>argv</var>.
+
 <h3>Return value</h3>
 
+<p>On success, RDB_OK is returned. On failure, an error code is returned.
+
 <h3>Errors</h3>
+
+<dl>
+<dt>RDB_INVALID_TRANSACTION
+<dd><var>txp</var> does not point to a running transaction.
+<dt>RDB_NOT_FOUND
+<dd>An update operator that matches the name and arguments could not be
+found.
+</dl>
+
+<p>If the user-supplied function which implements the operator returns an
+error code, this code is returned.
+
+<p>The call may also fail for a <a href="#syserr">system error</a>,
+in which case the transaction is implicitly rolled back.
 
 <hr>
 
@@ -3288,9 +3547,24 @@ RDB_drop_op(const char *name, RDB_transaction *txp);
 
 <h3>Description</h3>
 
+<p>RDB_drop_op deletes the operator with the name <var>name</var>
+from the database. This affects all overloaded versions.
+
 <h3>Return value</h3>
 
+<p>On success, RDB_OK is returned. On failure, an error code is returned.
+
 <h3>Errors</h3>
+
+<dl>
+<dt>RDB_INVALID_TRANSACTION
+<dd><var>txp</var> does not point to a running transaction.
+<dt>RDB_NOT_FOUND
+<dd>An operator with the specified name could not be found.
+</dl>
+
+<p>The call may also fail for a <a href="#syserr">system error</a>,
+in which case the transaction is implicitly rolled back.
 
 <hr>
 
@@ -3300,15 +3574,30 @@ RDB_drop_op(const char *name, RDB_transaction *txp);
 #include &lt;rel/rdb.h&gt;
 
 int
-RDB_create_constraint(const char *name, RDB_expression *constr,
+RDB_create_constraint(const char *name, RDB_expression *constrp,
                       RDB_transaction *txp);
 </pre>
 
 <h3>Description</h3>
 
+<p>RDB_create_constraint creates a constraint with the name <var>name</var>
+on the database associated with the transaction specified by <var>txp</var>.
+
 <h3>Return value</h3>
 
+<p>On success, RDB_OK is returned. On failure, an error code is returned.
+
 <h3>Errors</h3>
+
+<dl>
+<dt>RDB_INVALID_TRANSACTION
+<dd><var>txp</var> does not point to a running transaction.
+<dt>RDB_TYPE_MISMATCH
+<dd>The expression specified by <var>constrp</var> is not of type BOOLEAN.
+</dl>
+
+<p>The call may also fail for a <a href="#syserr">system error</a>,
+in which case the transaction is implicitly rolled back.
 
 <hr>
 
@@ -3323,13 +3612,87 @@ RDB_drop_constraint(const char *name, RDB_transaction *txp);
 
 <h3>Description</h3>
 
+<p>RDB_drop_constraint deletes the constraint with the name <var>name</var>.
+
 <h3>Return value</h3>
+
+<p>On success, RDB_OK is returned. On failure, an error code is returned.
 
 <h3>Errors</h3>
 
+<dl>
+<dt>RDB_INVALID_TRANSACTION
+<dd><var>txp</var> does not point to a running transaction.
+<dt>RDB_NOT_FOUND
+<dd>A constraint with the name <var>name</var> could not be found.
+</dl>
+
+<p>The call may also fail for a <a href="#syserr">system error</a>,
+in which case the transaction is implicitly rolled back.
+
 <hr>
 
-<h2 id="create_env">Creating an environment</h2>
+<h2 id="begin_uoi">RDB_begin_uoi</h2>
+
+<pre>
+#include &lt;rel/rdb.h&gt;
+
+int
+RDB_begin_uio(RDB_transaction *txp);
+</pre>
+
+<h3>Description</h3>
+
+<p>RDB_begin_uio starts a unit of integrity (UOI), which means that
+integrity checking is delayed until the of the UOI.
+UOIs cannot be nested.
+
+<h3>Return value</h3>
+
+<p>On success, RDB_OK is returned. On failure, an error code is returned.
+
+<h3>Errors</h3>
+
+<dl>
+<dt>RDB_INVALID_TRANSACTION
+<dd><var>txp</var> does not point to a running transaction.
+<dt>RDB_INVALID_ARGUMENT
+<dd>A unit of integrity has already been started.
+</dl>
+
+<hr>
+
+<h2 id="end_uoi">RDB_end_uoi</h2>
+
+<pre>
+#include &lt;rel/rdb.h&gt;
+
+int
+RDB_end_uio(RDB_transaction *txp);
+</pre>
+
+<h3>Description</h3>
+
+<p>RDB_end_uio ends a unit of integrity.
+
+<h3>Return value</h3>
+
+<p>On success, RDB_OK is returned. On failure, an error code is returned.
+
+<h3>Errors</h3>
+
+<dl>
+<dt>RDB_INVALID_TRANSACTION
+<dd><var>txp</var> does not point to a running transaction.
+<dt>RDB_INVALID_ARGUMENT
+<dd>A unit of integrity has not been started.
+<dt>RDB_PREDICATE_VIOLATION
+<dd>A violation of a integrity constraint has been detected.
+</dl>
+
+<hr>
+
+<h2 id="create_env">RDB_create_env</h2>
 
 <pre>
 #include &lt;rel/rdb.h&gt;
@@ -3340,9 +3703,22 @@ RDB_create_env(const char *path, RDB_environment **);
 
 <h3>Description</h3>
 
+<p>RDB_create_env creates a database environment from the
+system resource <var>path</var>. See the release notes for details.
+
 <h3>Return value</h3>
 
+<p>On success, RDB_OK is returned. On failure, an error code is returned.
+
 <h3>Errors</h3>
+
+<dl>
+<dt>RDB_RESOURCE_NOT_FOUND
+<dd>The resource specified by <var>path</var> could not be found.
+</dl>
+
+<p>The call may also fail for a <a href="#syserr">system error</a>
+different from RDB_RESOURCE_NOT_FOUND.
 
 <hr>
 
@@ -3357,6 +3733,23 @@ RDB_open_env(const char *path, RDB_environment **envp);
 
 <h3>Description</h3>
 
+<p>RDB_open_env opens a database environment identified by the
+system resource <var>path</var>.  See the release notes for details.
+
+<h3>Return value</h3>
+
+<p>On success, RDB_OK is returned. On failure, an error code is returned.
+
+<h3>Errors</h3>
+
+<dl>
+<dt>RDB_RESOURCE_NOT_FOUND
+<dd>The resource specified by <var>path</var> could not be found.
+</dl>
+
+<p>The call may also fail for a <a href="#syserr">system error</a>
+different from RDB_RESOURCE_NOT_FOUND.
+
 <h3>Return value</h3>
 
 <h3>Errors</h3>
@@ -3369,14 +3762,21 @@ RDB_open_env(const char *path, RDB_environment **envp);
 #include &lt;rel/rdb.h&gt;
 
 int
-RDB_close_env(RDB_environment *);
+RDB_close_env(RDB_environment *envp);
 </pre>
 
 <h3>Description</h3>
 
+<p>RDB_close_env closes the database environment specified by
+<var>envp</var>.
+
 <h3>Return value</h3>
 
+<p>On success, RDB_OK is returned. On failure, an error code is returned.
+
 <h3>Errors</h3>
+
+<p>The call may fail for a <a href="#syserr">system error</a>
 
 <hr>
 
@@ -3384,7 +3784,6 @@ RDB_close_env(RDB_environment *);
 
 <pre>
 #include &lt;rel/rdb.h&gt;
-#include &lt;stdio.h&gt;
 
 void
 RDB_set_errfile(RDB_environment *, FILE *errfile);
@@ -3392,9 +3791,7 @@ RDB_set_errfile(RDB_environment *, FILE *errfile);
 
 <h3>Description</h3>
 
-<h3>Return value</h3>
-
-<h3>Errors</h3>
+<p>RDB_set_errfile sets a C library FILE * to be used for error messages.
 
 <hr>
 
@@ -3473,17 +3870,17 @@ typedef enum {
 
 <dl>
 <dt>RDB_NO_SPACE
-<dd>Insufficient disk space
+<dd>Insufficient disk space.
 <dt>RDB_NO_MEMORY
-<dd>Insufficient memory
+<dd>Insufficient memory.
 <dt>RDB_DEADLOCK
 <dd>A deadlock condition occured.
 <dt>RDB_INTERNAL
-<dd>Internal error
+<dd>Internal error.
 <dt>RDB_RESOURCE_NOT_FOUND
 <dd>A system resource, usually a file, could not be found.
 <dt>RDB_SYSTEM_ERROR
-<dd>Unspecified system error
+<dd>Unspecified system error.
 </dl>
 
 </html>

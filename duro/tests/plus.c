@@ -5,7 +5,7 @@
  */
 int
 RDBU_plus(const char *name, int argc, RDB_object *argv[],
-        RDB_object *retvalp, const char *iargp, RDB_transaction *txp)
+        const void *iargp, size_t iarglen, RDB_transaction *txp, RDB_object *retvalp)
 {
     RDB_obj_set_int(retvalp, RDB_obj_int(argv[0]) + RDB_obj_int(argv[1]));
     
@@ -17,7 +17,7 @@ RDBU_plus(const char *name, int argc, RDB_object *argv[],
  */
 int
 RDBU_add(const char *name, int argc, RDB_object *argv[],
-        RDB_bool updv[], const char *iargp, RDB_transaction *txp)
+        RDB_bool updv[], const void *iargp, size_t iarglen, RDB_transaction *txp)
 {
     RDB_obj_set_int(argv[0], RDB_obj_int(argv[0]) + RDB_obj_int(argv[1]));
 

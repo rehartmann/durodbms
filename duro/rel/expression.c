@@ -1003,7 +1003,8 @@ static int evaluate_user_op(RDB_expression *exp, const RDB_tuple *tup, RDB_trans
         if (ret != RDB_OK)
             goto cleanup;
     }
-    ret = (*op->funcp) (op->name, op->argc, valpv, valp, op->iargp, txp);
+    ret = (*op->funcp)(op->name, op->argc, valpv, op->iarg.var.bin.datap,
+            op->iarg.var.bin.len, txp, valp);
 cleanup:
     if (valv != NULL) {
         for (i = 0; i < op->argc; i++) {

@@ -350,6 +350,7 @@ free_ro_op(RDB_ro_op *op) {
     if (RDB_type_name(op->rtyp) == NULL)
         RDB_drop_type(op->rtyp, NULL);
     lt_dlclose(op->modhdl);
+    RDB_destroy_obj(&op->iarg);
     free(op);
 }
 
@@ -382,6 +383,7 @@ free_upd_op(RDB_upd_op *op) {
     }
     free(op->argtv);
     lt_dlclose(op->modhdl);
+    RDB_destroy_obj(&op->iarg);
     free(op);
 }
 
@@ -1464,14 +1466,24 @@ RDB_call_ro_op(const char *name, int argc, RDB_object *argv[],
         return RDB_INVALID_TRANSACTION;
 
     argtv = valv_to_typev(argc, argv);
-    if (argtv == NULL)
+    if (argtv == NULL) {
+        RDB_rollback(txp);
         return RDB_NO_MEMORY;
+    }
     ret = _RDB_get_ro_op(name, argc, argtv, txp, &op);
     free(argtv);
     if (ret != RDB_OK)
-        return ret;
+        goto error;
 
-    return (*op->funcp) (name, argc, argv, retvalp, op->iargp, txp);
+    ret = (*op->funcp)(name, argc, argv, op->iarg.var.bin.datap,
+            op->iarg.var.bin.len, txp, retvalp);
+    if (ret != RDB_OK)
+        goto error;
+    return RDB_OK;
+error:
+    if (RDB_is_syserr(ret))
+        RDB_rollback(txp);
+    return ret;
 }
 
 static RDB_upd_op *
@@ -1551,7 +1563,8 @@ RDB_call_update_op(const char *name, int argc, RDB_object *argv[],
         return RDB_NO_MEMORY;
     for (i = 0; i < argc; i++)
         updv[i] = RDB_FALSE;
-    ret = (*op->funcp) (name, argc, argv, updv, op->iargp, txp);
+    ret = (*op->funcp)(name, argc, argv, updv, op->iarg.var.bin.datap,
+            op->iarg.var.bin.len, txp);
     free(updv);
     return ret;
 }

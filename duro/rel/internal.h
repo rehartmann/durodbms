@@ -77,27 +77,27 @@ typedef struct RDB_ipossrep {
 } RDB_ipossrep;
 
 typedef int RDB_ro_op_func(const char *name, int argc, RDB_object *argv[],
-        RDB_object *retvalp, const char *iargp, RDB_transaction *txp);
+        const void *iargp, size_t iarglen, RDB_transaction *txp, RDB_object *retvalp);
 
 typedef struct RDB_ro_op {
     char *name;
     int argc;
     RDB_type **argtv;
     RDB_type *rtyp;
-    char *iargp;
+    RDB_object iarg;
     lt_dlhandle modhdl;
     RDB_ro_op_func *funcp;
     struct RDB_ro_op *nextp;
 } RDB_ro_op;
 
 typedef int RDB_upd_op_func(const char *name, int argc, RDB_object *argv[],
-        RDB_bool updv[], const char *iargp, RDB_transaction *txp);
+        RDB_bool updv[], const void *iargp, size_t iarglen, RDB_transaction *txp);
 
 typedef struct RDB_upd_op {
     char *name;
     int argc;
     RDB_type **argtv;
-    char *iargp;
+    RDB_object iarg;
     lt_dlhandle modhdl;
     RDB_upd_op_func *funcp;
     struct RDB_upd_op *nextp;
@@ -169,6 +169,73 @@ _RDB_drop_rtable(RDB_table *tbp, RDB_transaction *txp);
 
 int
 _RDB_drop_table(RDB_table *tbp, RDB_transaction *txp, RDB_bool rec);
+
+/*
+ * Extend the tuple type pointed to by typ by the attributes given by
+ * attrv and return the new tuple type.
+ */
+RDB_type *
+RDB_extend_tuple_type(const RDB_type *typ, int attrc, RDB_attr attrv[]);
+
+/*
+ * Extend the relation type pointed to by typ by the attributes given by
+ * attrv and return the new relation type.
+ */
+RDB_type *
+RDB_extend_relation_type(const RDB_type *typ, int attrc, RDB_attr attrv[]);
+
+/*
+ * Join the tuple types pointed to by typ1 and typ2 and store a pointer to
+ * The new type in the location pointed to by newtypp.
+ * The new type has the attributes from both types.
+ * If both types have an attribute with the same name but a different type,
+ * RDB_TYPE_MISMATCH is returned.
+ */
+int
+RDB_join_tuple_types(const RDB_type *typ1, const RDB_type *typ2,
+                     RDB_type **newtypp);
+
+/*
+ * Join the relation types pointed to by typ1 and typ2 and store a pointer to
+ * The new type in the location pointed to by newtypp.
+ * The new type has the attributes from both types.
+ * If both types have an attribute with the same name but a different type,
+ * RDB_TYPE_MISMATCH is returned.
+ */
+int
+RDB_join_relation_types(const RDB_type *typ1, const RDB_type *typ2,
+                     RDB_type **newtypp);
+
+int
+RDB_project_tuple_type(const RDB_type *typ, int attrc, char *attrv[],
+                          RDB_type **newtypp);
+
+/*
+ * Create a type that is a projection of the relation type pointed to by typ
+ * over the attributes given by attrc and attrv.
+ * The new type in the location pointed to by newtypp.
+ * If one of the attributes in attrv is not found in the relation type,
+ * RDB_INVALID_ARGUMENT is returned.
+ */
+int
+RDB_project_relation_type(const RDB_type *typ, int attrc, char *attrv[],
+                          RDB_type **newtypp);
+
+/*
+ * Rename the attributes of the tuple type pointed to by typ according to renc
+ * and renv return the new tuple type.
+ */
+int
+RDB_rename_tuple_type(const RDB_type *typ, int renc, RDB_renaming renv[],
+        RDB_type **);
+
+/*
+ * Rename the attributes of the relation type pointed to by typ according to renc
+ * and renv return the new tuple type.
+ */
+int
+RDB_rename_relation_type(const RDB_type *typ, int renc, RDB_renaming renv[],
+        RDB_type **);
 
 RDB_attr *
 _RDB_tuple_type_attr(const RDB_type *tuptyp, const char *attrname);

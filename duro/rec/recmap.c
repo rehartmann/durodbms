@@ -599,6 +599,10 @@ RDB_update_rec(RDB_recmap *recmapp, RDB_field keyv[],
 
     /* Write record back */
     ret = recmapp->dbp->put(recmapp->dbp, txid, &key, &data, 0);
+    if (ret == EINVAL) {
+        /* Assume duplicate secondary index */
+        ret = RDB_KEY_VIOLATION;
+    }
 
 error:
     free(key.data);

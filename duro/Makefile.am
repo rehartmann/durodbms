@@ -3,9 +3,14 @@ BDB_HOME = /usr/local/BerkeleyDB.4.1
 
 bin_PROGRAMS = util/lstables util/droptable util/dropdb
 
-# Must be changed, because libpoint should not be installed
+# Shared libs for testing are listed here, because check_LTLIBRARIES does
+# not work
 lib_LTLIBRARIES = libduro.la \
         tests/libpoint.la tests/libplus.la
+
+htmldir = $(prefix)/docs
+html_DATA = docs/api-spec.html docs/relnotes.html
+dist_html_DATA = docs/api-spec.html docs/relnotes.html
 
 check_PROGRAMS = tests/prepare tests/test_aggregate tests/test_binary \
 tests/test_create_view tests/test_defpointtype tests/test_deftype \
@@ -19,7 +24,7 @@ tests/test_defpointtype tests/test_pointtable \
 tests/test_srupdate tests/test_insert tests/test_2db \
 tests/test_defop tests/test_callop tests/test_print_opview tests/test_dropop
 
-tests_libpoint_la_SOURCES = tests/point.c
+tests_libpoint_la_SOURCES = tests/point.c tests/point.h
 
 tests_libplus_la_SOURCES = tests/plus.c
 
@@ -43,15 +48,7 @@ rel/rdb.h rel/typeimpl.h
 
 INCLUDES = -I$(top_srcdir) -I$(BDB_HOME)/include
 
-# check-local:
-#	libtool --mode=link gcc $(CPPFLAGS) $(CFLAGS) tests/point.c \
-#		-o libpoint.lo	
-
-install-data-local:
-	mkdir $(DESTDIR)$(prefix)/docs
-	$(INSTALL_DATA) $(srcdir)/docs/api-spec.html \
-	        $(DESTDIR)$(prefix)/docs/api-spec.html
-
+# Delete test libs
 install-exec-local:
 	rm $(DESTDIR)$(prefix)/lib/libpoint.*
 	rm $(DESTDIR)$(prefix)/lib/libplus.*

@@ -1286,8 +1286,9 @@ _RDB_get_cat_ro_op(const char *name, int argc, RDB_type *argtv[],
         goto error;
     }
 
+    RDB_init_obj(&op->iarg);
+
     op->argtv = NULL;
-    op->iargp = NULL;
     op->name = RDB_dup_str(RDB_tuple_get_string(&tpl, "NAME"));
     if (op->name == NULL) {
         ret = RDB_NO_MEMORY;
@@ -1309,7 +1310,9 @@ _RDB_get_cat_ro_op(const char *name, int argc, RDB_type *argtv[],
     if (ret != RDB_OK)
         goto error;
 
-    op->iargp = RDB_dup_str(RDB_tuple_get_string(&tpl, "IARG"));
+    ret = RDB_copy_obj(&op->iarg, RDB_tuple_get(&tpl, "IARG"));
+    if (ret != RDB_OK)
+        goto error;
     libname = RDB_tuple_get_string(&tpl, "LIB");
     op->modhdl = lt_dlopenext(libname);
     if (op->modhdl == NULL) {
@@ -1334,9 +1337,9 @@ _RDB_get_cat_ro_op(const char *name, int argc, RDB_type *argtv[],
 
 error:
     if (op != NULL) {
+        RDB_destroy_obj(&op->iarg);
         free(op->name);
         free(op->argtv);
-        free(op->iargp);
         free(op);
     }
 
@@ -1392,8 +1395,9 @@ _RDB_get_cat_upd_op(const char *name, int argc, RDB_object *argv[],
         goto error;
     }
 
+    RDB_init_obj(&op->iarg);
+
     op->argtv = NULL;
-    op->iargp = NULL;
     op->name = RDB_dup_str(RDB_tuple_get_string(&tpl, "NAME"));
     if (op->name == NULL) {
         ret = RDB_NO_MEMORY;
@@ -1410,7 +1414,9 @@ _RDB_get_cat_upd_op(const char *name, int argc, RDB_object *argv[],
     for (i = 0; i < op->argc; i++) {
         op->argtv[i] = RDB_obj_type(argv[i]);
     }
-    op->iargp = RDB_dup_str(RDB_tuple_get_string(&tpl, "IARG"));
+    ret = RDB_copy_obj(&op->iarg, RDB_tuple_get(&tpl, "IARG"));
+    if (ret != RDB_OK)
+        goto error;
     libname = RDB_tuple_get_string(&tpl, "LIB");
     op->modhdl = lt_dlopenext(libname);
     if (op->modhdl == NULL) {
@@ -1435,9 +1441,9 @@ _RDB_get_cat_upd_op(const char *name, int argc, RDB_object *argv[],
 
 error:
     if (op != NULL) {
+        RDB_destroy_obj(&op->iarg);
         free(op->name);
         free(op->argtv);
-        free(op->iargp);
         free(op);
     }
 

@@ -564,8 +564,10 @@ deserialize_expr(RDB_object *valp, int *posp, RDB_transaction *txp,
             if (*expp == NULL)
                 return RDB_NO_MEMORY;
             break;
-/*
         case RDB_OP_REL_IS_EMPTY:
+            /* not implemented */
+            abort();
+/*
             ret = deserialize_expr(valp, posp, txp, &ex1p);
             if (ret != RDB_OK)
                 return ret;
