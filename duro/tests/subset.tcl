@@ -51,11 +51,11 @@ duro::insert T3 {INTATTR 1 STRATTR B} $tx
 # Check SUBSET operator
 #
 
-if {![duro::expr {T2 SUBSET T1} $tx]} {
+if {![duro::expr {T2 SUBSET_OF T1} $tx]} {
     error "T2 is not subset of T1, but should"
 }
 
-if {[duro::expr {T3 SUBSET T1} $tx]} {
+if {[duro::expr {T3 SUBSET_OF T1} $tx]} {
     error "T3 is subset of T1, but should not"
 }
 

@@ -41,42 +41,6 @@ RDB_expr_type(const RDB_expression *exp, const RDB_type *tuptyp,
                 return RDB_ATTRIBUTE_NOT_FOUND;
             *typp = attrp->typ;
             break;
-        case RDB_EX_EQ:
-        case RDB_EX_NEQ:
-            /*
-             * Operand types must be equal
-             */
-            ret = RDB_expr_type(exp->var.op.argv[0], tuptyp, &typ);
-
-            /* Special treatment of tuple operands */
-            if (ret != RDB_OK && ret != RDB_NOT_FOUND)
-                return ret;
-            if (ret == RDB_NOT_FOUND) {
-                /* Operand must be tuple-type constant */
-                if (exp->var.op.argv[0]->kind != RDB_EX_OBJ
-                    || exp->var.op.argv[0]->var.obj.kind != RDB_OB_TUPLE) {
-                        return RDB_NOT_FOUND;
-                }
-            } else if (RDB_type_is_scalar(typ)) {
-                ret = RDB_expr_type(exp->var.op.argv[0], tuptyp, &typ2);
-                if (ret != RDB_OK)
-                    return ret;
-                if (!RDB_type_equals(typ, typ2))
-                    return RDB_TYPE_MISMATCH;
-            }
-            *typp = &RDB_BOOLEAN;
-            break;
-        case RDB_EX_CONTAINS:
-            /*
-             * Operand #1 must be a relation
-             */
-            ret = RDB_expr_type(exp->var.op.argv[0], tuptyp, &typ);
-            if (ret != RDB_OK)
-                return ret;
-            if (typ->kind != RDB_TP_RELATION)
-                return RDB_TYPE_MISMATCH;
-            *typp = &RDB_BOOLEAN;
-            break;
         case RDB_EX_IS_EMPTY:
             /*
              * Operand must be a relation
@@ -86,9 +50,6 @@ RDB_expr_type(const RDB_expression *exp, const RDB_type *tuptyp,
                 return ret;
             if (typ->kind != RDB_TP_RELATION)
                 return RDB_TYPE_MISMATCH;
-            *typp = &RDB_BOOLEAN;
-            break;
-        case RDB_EX_SUBSET:
             *typp = &RDB_BOOLEAN;
             break;
         case RDB_EX_ADD:
@@ -321,14 +282,48 @@ _RDB_create_binexpr(RDB_expression *arg1, RDB_expression *arg2, enum _RDB_expr_k
 }
 
 RDB_expression *
-RDB_eq(RDB_expression *arg1, RDB_expression *arg2)
+_RDB_ro_op(const char *opname, int argc, RDB_expression *argv[],
+        RDB_type *rtyp)
 {
-    return _RDB_create_binexpr(arg1, arg2, RDB_EX_EQ);
+    RDB_expression *exp;
+    int i;
+
+    exp = malloc(sizeof (RDB_expression));
+    if (exp == NULL)
+        return NULL;
+
+    exp->kind = RDB_EX_USER_OP;
+    
+    exp->var.op.name = RDB_dup_str(opname);
+    if (exp->var.op.name == NULL) {
+        free(exp);
+        return NULL;
+    }
+
+    exp->var.op.rtyp = rtyp;
+
+    exp->var.op.argc = argc;
+    exp->var.op.argv = malloc(argc * sizeof(RDB_expression *));
+    if (exp->var.op.argv == NULL) {
+        free(exp->var.op.name);
+        free(exp);
+        return NULL;
+    }
+
+    for (i = 0; i < argc; i++)
+        exp->var.op.argv[i] = argv[i];
+
+    return exp;
 }
 
 RDB_expression *
-RDB_neq(RDB_expression *arg1, RDB_expression *arg2) {
-    return _RDB_create_binexpr(arg1, arg2, RDB_EX_NEQ);
+RDB_eq(RDB_expression *arg1, RDB_expression *arg2)
+{
+    RDB_expression *argv[2];
+
+    argv[0] = arg1;
+    argv[1] = arg2;
+    return _RDB_ro_op("=", 2, argv, &RDB_BOOLEAN);
 }
 
 RDB_expression *
@@ -359,18 +354,6 @@ RDB_expression *
 RDB_divide(RDB_expression *arg1, RDB_expression *arg2)
 {
     return _RDB_create_binexpr(arg1, arg2, RDB_EX_DIVIDE);
-}
-
-RDB_expression *
-RDB_expr_contains(RDB_expression *arg1, RDB_expression *arg2)
-{
-    return _RDB_create_binexpr(arg1, arg2, RDB_EX_CONTAINS);
-}
-
-RDB_expression *
-RDB_expr_subset(RDB_expression *arg1, RDB_expression *arg2)
-{
-    return _RDB_create_binexpr(arg1, arg2, RDB_EX_SUBSET);
 }
 
 RDB_expression *
@@ -509,41 +492,6 @@ RDB_expr_comp(RDB_expression *arg, const char *compname)
     return exp;
 }
 
-static RDB_expression *
-user_op(const char *opname, int argc, RDB_expression *argv[],
-       RDB_type *rtyp)
-{
-    RDB_expression *exp;
-    int i;
-
-    exp = malloc(sizeof (RDB_expression));
-    if (exp == NULL)
-        return NULL;
-
-    exp->kind = RDB_EX_USER_OP;
-    
-    exp->var.op.name = RDB_dup_str(opname);
-    if (exp->var.op.name == NULL) {
-        free(exp);
-        return NULL;
-    }
-
-    exp->var.op.rtyp = rtyp;
-
-    exp->var.op.argc = argc;
-    exp->var.op.argv = malloc(argc * sizeof(RDB_expression *));
-    if (exp->var.op.argv == NULL) {
-        free(exp->var.op.name);
-        free(exp);
-        return NULL;
-    }
-
-    for (i = 0; i < argc; i++)
-        exp->var.op.argv[i] = argv[i];
-
-    return exp;
-}
-
 int
 RDB_ro_op(const char *opname, int argc, RDB_expression *argv[],
        RDB_transaction *txp, RDB_expression **expp)
@@ -552,18 +500,27 @@ RDB_ro_op(const char *opname, int argc, RDB_expression *argv[],
     int ret;
     RDB_ro_op_desc **opp;
 
-    /* Try to get return type from ro_opmap */
-    opp = RDB_hashmap_get(&txp->dbp->dbrootp->ro_opmap, opname, NULL);
-    if (opp != NULL && *opp != NULL) {
-        rtyp = (*opp)->rtyp;
+    /*
+     * Determine return type
+     */
+
+    if (strcmp(opname, "=") == 0 || strcmp(opname, "IN") == 0
+            || strcmp(opname, "SUBSET_OF") == 0) {
+        rtyp = &RDB_BOOLEAN;
     } else {
-        ret = _RDB_get_cat_rtype(opname, txp, &rtyp);
-        if (ret != RDB_OK) {
-            return ret;
+        /* Try to get return type from ro_opmap */
+        opp = RDB_hashmap_get(&txp->dbp->dbrootp->ro_opmap, opname, NULL);
+        if (opp != NULL && *opp != NULL) {
+            rtyp = (*opp)->rtyp;
+        } else {
+            ret = _RDB_get_cat_rtype(opname, txp, &rtyp);
+            if (ret != RDB_OK) {
+                return ret;
+            }
         }
     }
 
-    *expp = user_op(opname, argc, argv, rtyp);
+    *expp = _RDB_ro_op(opname, argc, argv, rtyp);
     if (*expp == NULL)
         return RDB_NO_MEMORY;
     return RDB_OK;
@@ -592,14 +549,10 @@ void
 RDB_drop_expr(RDB_expression *exp)
 {
     switch (exp->kind) {
-        case RDB_EX_EQ:
-        case RDB_EX_NEQ:
         case RDB_EX_ADD:
         case RDB_EX_SUBTRACT:
         case RDB_EX_MULTIPLY:
         case RDB_EX_DIVIDE:
-        case RDB_EX_CONTAINS:
-        case RDB_EX_SUBSET:
             RDB_drop_expr(exp->var.op.argv[1]);
         case RDB_EX_NEGATE:
         case RDB_EX_IS_EMPTY:
@@ -740,49 +693,7 @@ evaluate_arith(RDB_expression *exp, const RDB_object *tup, RDB_transaction *txp,
 }
 
 static int
-evaluate_eq(RDB_expression *exp, const RDB_object *tup,
-                  RDB_transaction *txp, RDB_bool *resp)
-{
-    int ret;
-    RDB_object val1, val2;
-
-    RDB_init_obj(&val1);
-    RDB_init_obj(&val2);
-
-    /*
-     * Evaluate arguments
-     */
-
-    ret = RDB_evaluate(exp->var.op.argv[0], tup, txp, &val1);
-    if (ret != RDB_OK)
-        goto cleanup;
-
-    ret = RDB_evaluate(exp->var.op.argv[1], tup, txp, &val2);
-    if (ret != RDB_OK)
-        goto cleanup;
-
-    /*
-     * Check types
-     */
-
-    if (!RDB_type_equals(RDB_obj_type(&val1), RDB_obj_type(&val2)))
-        return RDB_TYPE_MISMATCH;
-
-    /*
-     * Compare values
-     */
-
-    ret = RDB_obj_equals(&val1, &val2, resp);
-
-cleanup:
-    RDB_destroy_obj(&val1);
-    RDB_destroy_obj(&val2);
-
-    return ret;
-}
-
-static int
-evaluate_user_op(RDB_expression *exp, const RDB_object *tup,
+evaluate_ro_op(RDB_expression *exp, const RDB_object *tup,
         RDB_transaction *txp, RDB_object *valp)
 {
     int ret;
@@ -908,7 +819,7 @@ RDB_evaluate(RDB_expression *exp, const RDB_object *tup, RDB_transaction *txp,
             return ret;
         }
         case RDB_EX_USER_OP:
-            return evaluate_user_op(exp, tup, txp, valp);
+            return evaluate_ro_op(exp, tup, txp, valp);
         case RDB_EX_ATTR:
         {
             if (tup != NULL) {
@@ -923,21 +834,6 @@ RDB_evaluate(RDB_expression *exp, const RDB_object *tup, RDB_transaction *txp,
         }
         case RDB_EX_OBJ:
             return RDB_copy_obj(valp, &exp->var.obj);
-        case RDB_EX_EQ:
-            RDB_destroy_obj(valp);
-            _RDB_set_obj_type(valp, &RDB_BOOLEAN);
-            return evaluate_eq(exp, tup, txp, &valp->var.bool_val);
-        case RDB_EX_NEQ:
-        {
-            RDB_bool b;
-        
-            ret = evaluate_eq(exp, tup, txp, &b);
-            if (ret != RDB_OK)
-               return ret;
-            _RDB_set_obj_type(valp, &RDB_BOOLEAN);
-            valp->var.bool_val = !b;
-            return RDB_OK;
-        }
         case RDB_EX_ADD:
         case RDB_EX_SUBTRACT:
         case RDB_EX_MULTIPLY:
@@ -956,41 +852,6 @@ RDB_evaluate(RDB_expression *exp, const RDB_object *tup, RDB_transaction *txp,
                 return RDB_TYPE_MISMATCH;
 
             return RDB_OK;
-        }
-        case RDB_EX_CONTAINS:
-        {
-            RDB_object val1, val2;
-
-            RDB_init_obj(&val1);
-            RDB_init_obj(&val2);
-            ret = RDB_evaluate(exp->var.op.argv[0], tup, txp, &val1);
-            if (ret != RDB_OK) {
-                RDB_destroy_obj(&val1);
-                RDB_destroy_obj(&val2);
-                return ret;
-            }
-            if (val1.kind != RDB_OB_TABLE) {
-                RDB_destroy_obj(&val1);
-                return RDB_TYPE_MISMATCH;
-            }
-            ret = RDB_evaluate(exp->var.op.argv[1], tup, txp, &val2);
-            if (ret != RDB_OK) {
-                RDB_destroy_obj(&val1);
-                RDB_destroy_obj(&val2);
-                return ret;
-            }
-            ret = RDB_table_contains(val1.var.tbp, &val2, txp);
-            if (ret != RDB_OK && ret != RDB_NOT_FOUND) {
-                RDB_destroy_obj(&val1);
-                RDB_destroy_obj(&val2);
-                return ret;
-            }
-            RDB_destroy_obj(valp);
-            RDB_init_obj(valp);
-            _RDB_set_obj_type(valp, &RDB_BOOLEAN);
-            valp->var.bool_val = ret == RDB_OK ? RDB_TRUE : RDB_FALSE;
-            RDB_destroy_obj(&val1);
-            return RDB_destroy_obj(&val2);
         }
         case RDB_EX_TO_INTEGER:
         {
@@ -1063,47 +924,6 @@ RDB_evaluate(RDB_expression *exp, const RDB_object *tup, RDB_transaction *txp,
             ret = RDB_obj_to_string(valp, &val);
             RDB_destroy_obj(&val);
             return ret;
-        }
-        case RDB_EX_SUBSET:
-        {
-            RDB_object val1, val2;
-
-            RDB_init_obj(&val1);
-            RDB_init_obj(&val2);
-            ret = RDB_evaluate(exp->var.op.argv[0], tup, txp, &val1);
-            if (ret != RDB_OK) {
-                RDB_destroy_obj(&val1);
-                RDB_destroy_obj(&val2);
-                return ret;
-            }
-            if (val1.kind != RDB_OB_TABLE) {
-                RDB_destroy_obj(&val1);
-                RDB_destroy_obj(&val2);
-                return RDB_TYPE_MISMATCH;
-            }
-            ret = RDB_evaluate(exp->var.op.argv[1], tup, txp, &val2);
-            if (ret != RDB_OK) {
-                RDB_destroy_obj(&val1);
-                RDB_destroy_obj(&val2);
-                return ret;
-            }
-            if (val2.kind != RDB_OB_TABLE) {
-                RDB_destroy_obj(&val2);
-                RDB_destroy_obj(&val2);
-                return RDB_TYPE_MISMATCH;
-            }
-            RDB_destroy_obj(valp);
-            RDB_init_obj(valp);
-            _RDB_set_obj_type(valp, &RDB_BOOLEAN);
-            ret = RDB_subset(val1.var.tbp, val2.var.tbp, txp,
-                    &valp->var.bool_val);
-            if (ret != RDB_OK && ret != RDB_NOT_FOUND) {
-                RDB_destroy_obj(&val1);
-                RDB_destroy_obj(&val2);
-                return ret;
-            }
-            RDB_destroy_obj(&val1);
-            return RDB_destroy_obj(&val2);
         }
         case RDB_EX_AGGREGATE:
         {
@@ -1189,12 +1009,6 @@ RDB_expression *
 RDB_dup_expr(const RDB_expression *exp)
 {
     switch (exp->kind) {
-        case RDB_EX_EQ:
-            return RDB_eq(RDB_dup_expr(exp->var.op.argv[0]),
-                    RDB_dup_expr(exp->var.op.argv[1]));
-        case RDB_EX_NEQ:
-            return RDB_neq(RDB_dup_expr(exp->var.op.argv[0]),
-                    RDB_dup_expr(exp->var.op.argv[1]));
         case RDB_EX_ADD:
             return RDB_add(RDB_dup_expr(exp->var.op.argv[0]),
                     RDB_dup_expr(exp->var.op.argv[1]));
@@ -1206,12 +1020,6 @@ RDB_dup_expr(const RDB_expression *exp)
                     RDB_dup_expr(exp->var.op.argv[1]));
         case RDB_EX_DIVIDE:
             return RDB_divide(RDB_dup_expr(exp->var.op.argv[0]),
-                    RDB_dup_expr(exp->var.op.argv[1]));
-        case RDB_EX_CONTAINS:
-            return RDB_expr_contains(RDB_dup_expr(exp->var.op.argv[0]),
-                    RDB_dup_expr(exp->var.op.argv[1]));
-        case RDB_EX_SUBSET:
-            return RDB_expr_subset(RDB_dup_expr(exp->var.op.argv[0]),
                     RDB_dup_expr(exp->var.op.argv[1]));
         case RDB_EX_NEGATE:
             return RDB_negate(RDB_dup_expr(exp->var.op.argv[0]));
@@ -1244,7 +1052,7 @@ RDB_dup_expr(const RDB_expression *exp)
                 if (argexpv[i] == NULL)
                     return NULL;
             }
-            newexp = user_op(exp->var.op.name, exp->var.op.argc,
+            newexp = _RDB_ro_op(exp->var.op.name, exp->var.op.argc,
                     argexpv, exp->var.op.rtyp);
             free(argexpv);
             return newexp;
@@ -1270,14 +1078,10 @@ _RDB_expr_refers(RDB_expression *exp, RDB_table *tbp)
             return RDB_FALSE;
         case RDB_EX_ATTR:
             return RDB_FALSE;
-        case RDB_EX_EQ:
-        case RDB_EX_NEQ:
         case RDB_EX_ADD:
         case RDB_EX_SUBTRACT:
         case RDB_EX_MULTIPLY:
         case RDB_EX_DIVIDE:
-        case RDB_EX_CONTAINS:
-        case RDB_EX_SUBSET:
             return (RDB_bool) (_RDB_expr_refers(exp->var.op.argv[0], tbp)
                     || _RDB_expr_refers(exp->var.op.argv[1], tbp));
         case RDB_EX_NEGATE:
@@ -1320,14 +1124,10 @@ _RDB_invrename_expr(RDB_expression *exp, int renc, const RDB_renaming renv[])
     int i;
 
     switch (exp->kind) {
-        case RDB_EX_EQ:
-        case RDB_EX_NEQ:
         case RDB_EX_ADD:
         case RDB_EX_SUBTRACT:
         case RDB_EX_MULTIPLY:
         case RDB_EX_DIVIDE:
-        case RDB_EX_CONTAINS:
-        case RDB_EX_SUBSET:
             ret = _RDB_invrename_expr(exp->var.op.argv[1], renc, renv);
             if (ret != RDB_OK)
                 return ret;
@@ -1379,14 +1179,10 @@ _RDB_resolve_extend_expr(RDB_expression **expp, int attrc,
     int i;
 
     switch ((*expp)->kind) {
-        case RDB_EX_EQ:
-        case RDB_EX_NEQ:
         case RDB_EX_ADD:
         case RDB_EX_SUBTRACT:
         case RDB_EX_MULTIPLY:
         case RDB_EX_DIVIDE:
-        case RDB_EX_CONTAINS:
-        case RDB_EX_SUBSET:
             ret = _RDB_resolve_extend_expr(&(*expp)->var.op.argv[1],
                     attrc, attrv);
             if (ret != RDB_OK)

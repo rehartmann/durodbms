@@ -323,10 +323,12 @@ int
 _RDB_copy_array(RDB_object *dstp, const RDB_object *srcp);
 
 int
-_RDB_array_equals(RDB_object *arr1p, RDB_object *arr2p, RDB_bool *);
+_RDB_array_equals(RDB_object *arr1p, RDB_object *arr2p, RDB_transaction *,
+        RDB_bool *);
 
 int
-_RDB_tuple_equals(const RDB_object *, const RDB_object *, RDB_bool *);
+_RDB_tuple_equals(const RDB_object *, const RDB_object *, RDB_transaction *,
+        RDB_bool *);
 
 int
 _RDB_invrename_tuple(const RDB_object *, int renc, const RDB_renaming renv[],
@@ -388,6 +390,9 @@ _RDB_obj_to_field(RDB_field *, RDB_object *);
 int
 RDB_expr_type(const RDB_expression *exp, const RDB_type *, RDB_type **);
 
+RDB_type *
+_RDB_tuple_type(const RDB_object *tplp);
+
 int
 _RDB_check_type_constraint(RDB_object *valp, RDB_transaction *txp);
 
@@ -409,5 +414,9 @@ _RDB_infer_keys(RDB_table *tbp);
 
 int
 _RDB_add_builtin_ops(RDB_dbroot *);
+
+RDB_expression *
+_RDB_ro_op(const char *opname, int argc, RDB_expression *argv[],
+           RDB_type *rtyp);
 
 #endif

@@ -1076,7 +1076,7 @@ next_join_tuple(RDB_qresult *qrp, RDB_object *tplp, RDB_transaction *txp)
                         != NULL) {
                     ret = RDB_obj_equals(
                             RDB_tuple_get(&qrp->var.virtual.tpl, attrname),
-                            RDB_tuple_get(tplp, attrname), &b);
+                            RDB_tuple_get(tplp, attrname), txp, &b);
                     if (ret != RDB_OK)
                         return ret;
                     if (!b)
@@ -1205,7 +1205,7 @@ next_join_tuple_nuix(RDB_qresult *qrp, RDB_object *tplp, RDB_transaction *txp)
                     if (j >= qrp->tbp->var.join.indexp->attrc) {
                         ret = RDB_obj_equals(RDB_tuple_get(
                                 &qrp->var.virtual.tpl, attrname),
-                                RDB_tuple_get(tplp, attrname), &b);
+                                RDB_tuple_get(tplp, attrname), txp, &b);
                         if (ret != RDB_OK)
                             return ret;
                         if (!b)
@@ -1310,7 +1310,7 @@ next_join_tuple_uix(RDB_qresult *qrp, RDB_object *tplp, RDB_transaction *txp)
                         j++);
                 if (j >= qrp->tbp->var.join.indexp->attrc) {
                     ret = RDB_obj_equals(RDB_tuple_get(&tpl, attrname),
-                            RDB_tuple_get(tplp, attrname), &match);
+                            RDB_tuple_get(tplp, attrname), txp, &match);
                     if (ret != RDB_OK)
                         goto cleanup;
                     if (!match)
@@ -1673,7 +1673,7 @@ _RDB_sdivide_preserves(RDB_table *tbp, const RDB_object *tplp,
              if (dstobjp != NULL) {
                  RDB_bool b;
 
-                 ret = RDB_obj_equals(objp, dstobjp, &b);
+                 ret = RDB_obj_equals(objp, dstobjp, txp, &b);
                  if (ret != RDB_OK) {
                      destroy_qresult(&qr, txp);
                      RDB_destroy_obj(&tpl2);
@@ -1963,7 +1963,7 @@ _RDB_qresult_contains(RDB_qresult *qrp, const RDB_object *tplp,
             char *attrname = qrp->tbp->var.summarize.addv[i].name;
 
             ret = RDB_obj_equals(RDB_tuple_get(tplp, attrname),
-                    RDB_tuple_get(&tpl, attrname), &b);
+                    RDB_tuple_get(&tpl, attrname), txp, &b);
             if (ret != RDB_OK)
                 goto error;
             if (!b) {
@@ -1975,7 +1975,7 @@ _RDB_qresult_contains(RDB_qresult *qrp, const RDB_object *tplp,
         char *attrname = qrp->tbp->var.group.gattr;
 
         ret = RDB_obj_equals(RDB_tuple_get(tplp, attrname),
-                RDB_tuple_get(&tpl, attrname), &b);
+                RDB_tuple_get(&tpl, attrname), txp, &b);
         if (ret != RDB_OK)
             goto error;
         if (!b) {

@@ -105,8 +105,8 @@ IN {
     return TOK_IN;
 }
 
-SUBSET {
-    return TOK_SUBSET;
+SUBSET_OF {
+    return TOK_SUBSET_OF;
 }
 
 OR  {

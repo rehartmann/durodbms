@@ -310,6 +310,7 @@ create_dbroot(RDB_environment *envp, RDB_bool newdb,
 {
     RDB_transaction tx;
     RDB_dbroot *dbrootp;
+    RDB_database sdb; /* Incomplete database, needed for built-in ops */
     int ret;
 
     /* Set cleanup function */
@@ -324,6 +325,8 @@ create_dbroot(RDB_environment *envp, RDB_bool newdb,
         goto error;
     }
 
+    tx.dbp = &sdb;
+    sdb.dbrootp = dbrootp;
     ret = _RDB_open_systables(dbrootp, &tx);
     if (ret != RDB_OK) {
         RDB_rollback(&tx);

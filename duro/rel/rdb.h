@@ -139,20 +139,16 @@ enum _RDB_expr_kind {
 
     RDB_EX_ATTR,
 
-    RDB_EX_EQ,
-    RDB_EX_NEQ,
     RDB_EX_ADD,
     RDB_EX_SUBTRACT,
     RDB_EX_NEGATE,
     RDB_EX_MULTIPLY,
     RDB_EX_DIVIDE,
-    RDB_EX_CONTAINS,
     RDB_EX_TO_INTEGER,
     RDB_EX_TO_RATIONAL,
     RDB_EX_TO_STRING,
 
     RDB_EX_IS_EMPTY,
-    RDB_EX_SUBSET,
     RDB_EX_AGGREGATE,
     RDB_EX_TUPLE_ATTR,
     RDB_EX_GET_COMP,
@@ -792,7 +788,8 @@ RDB_extend_tuple(RDB_object *, int attrc, RDB_virtual_attr attrv[],
                  RDB_transaction *);
 
 int
-RDB_join_tuples(const RDB_object *, const RDB_object *, RDB_object *);
+RDB_join_tuples(const RDB_object *, const RDB_object *, RDB_transaction *,
+        RDB_object *);
 
 int
 RDB_rename_tuple(const RDB_object *, int renc, const RDB_renaming renv[],
@@ -903,7 +900,8 @@ RDB_type_attr_type(const RDB_type *, const char *);
  * or RDB_FALSE if they are not.
  */
 int
-RDB_obj_equals(const RDB_object *, const RDB_object *, RDB_bool *);
+RDB_obj_equals(const RDB_object *, const RDB_object *, RDB_transaction *,
+        RDB_bool *);
 
 /*
  * Initialize the value pointed to by dstvalp with the value
@@ -1033,9 +1031,6 @@ RDB_multiply(RDB_expression *, RDB_expression *);
 RDB_expression *
 RDB_divide(RDB_expression *, RDB_expression *);
 
-RDB_expression *
-RDB_expr_subset(RDB_expression *, RDB_expression *);
-
 /*
  * Create table-valued expression
  */
@@ -1047,9 +1042,6 @@ RDB_expr_is_empty(RDB_expression *arg1);
 
 RDB_expression *
 RDB_expr_cardinality(RDB_expression *arg1);
-
-RDB_expression *
-RDB_expr_contains(RDB_expression *, RDB_expression *);
 
 RDB_expression *
 RDB_expr_sum(RDB_expression *, const char *attrname);

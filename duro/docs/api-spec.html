@@ -148,7 +148,6 @@
 <li><a href="#obj_to_expr">RDB_obj_to_expr</a>
 <li><a href="#expr_attr">RDB_expr_attr</a>
 <li><a href="#eq">RDB_eq</a>
-<li><a href="#neq">RDB_neq</a>
 <li><a href="#add">RDB_add</a>
 <li><a href="#subtract">RDB_subtract</a>
 <li><a href="#negate">RDB_negate</a>
@@ -161,13 +160,11 @@
 <li><a href="#expr_all">RDB_expr_all</a>
 <li><a href="#expr_avg">RDB_expr_avg</a>
 <li><a href="#expr_cardinality">RDB_expr_cardinality</a>
-<li><a href="#expr_contains">RDB_expr_contains</a>
 <li><a href="#expr_comp">RDB_expr_comp</a>
 <li><a href="#expr_is_empty">RDB_expr_is_empty</a>
 <li><a href="#expr_max">RDB_expr_max</a>
 <li><a href="#expr_min">RDB_expr_min</a>
 <li><a href="#expr_sum">RDB_expr_sum</a>
-<li><a href="#expr_subset">RDB_expr_subset</a>
 <li><a href="#table_to_expr">RDB_table_to_expr</a>
 <li><a href="#tuple_attr">RDB_tuple_attr</a>
 <li><a href="#ro_op">RDB_ro_op</a>
@@ -460,7 +457,7 @@ specified by <var>tbp</var>.
 #include &lt;rel/rdb.h&gt;
 
 int
-RDB_set_table_name(RDB_table *tbp, const char *name, RDB_transaction *);
+RDB_set_table_name(RDB_table *tbp, const char *name, RDB_transaction *txp);
 </pre>
 
 <h3>Description</h3>
@@ -606,7 +603,7 @@ in which case the transaction is implicitly rolled back.
 #include &lt;rel/rdb.h&gt;
 
 int
-RDB_table_contains(RDB_table *tbp, const RDB_object *tplp, RDB_transaction *);
+RDB_table_contains(RDB_table *tbp, const RDB_object *tplp, RDB_transaction *txp);
 </pre>
 
 <h3>Description</h3>
@@ -1701,7 +1698,7 @@ relational UNGROUP operator.
 
 int
 RDB_join_tuples(const RDB_object *tpl1p, const RDB_object *tpl2p,
-                RDB_object *restplp);
+                RDB_transaction *txp, RDB_object *restplp);
 </pre>
 
 <h3>Description</h3>
@@ -2041,7 +2038,7 @@ type STRING.
 
 int
 RDB_extend_tuple(RDB_object *tplp, int attrc, <a href="#virtual_attr">RDB_virtual_attr</a> attrv[],
-                 RDB_transaction *);
+                 RDB_transaction *txp);
 </pre>
 
 <h3>Description</h3>
@@ -2195,7 +2192,8 @@ variable.
 #include &lt;rel/rdb.h&gt;
 
 int
-RDB_obj_equals(const RDB_object *, const RDB_object *, RDB_bool *resp);
+RDB_obj_equals(const RDB_object *, const RDB_object *, RDB_transaction *txp,
+               RDB_bool *resp);
 </pre>
 
 <h3>Description</h3>
@@ -2429,7 +2427,7 @@ the RDB_object pointed to by <var>objp</var>.
 
 int
 RDB_obj_comp(const RDB_object *valp, const char *compname,
-             RDB_object *comp, RDB_transaction *);
+             RDB_object *comp, RDB_transaction *txp);
 </pre>
 
 <h3>Description</h3>
@@ -2464,7 +2462,7 @@ user-provided getter function.
 
 int
 RDB_obj_set_comp(RDB_object *valp, const char *compname,
-                 const RDB_object *comp, RDB_transaction *);
+                 const RDB_object *comp, RDB_transaction *txp);
 </pre>
 
 <h3>Description</h3>
@@ -2754,7 +2752,7 @@ RDB_commit(RDB_transaction *txp);
 #include &lt;rel/rdb.h&gt;
 
 int
-RDB_rollback(RDB_transaction *);
+RDB_rollback(RDB_transaction *txp);
 </pre>
 
 <h3>Description</h3>
@@ -2830,7 +2828,7 @@ typedef struct {
 int
 RDB_table_to_array(RDB_object *arrp, RDB_table *tbp,
                    int seqitc, const RDB_seq_item seqitv[],
-                   RDB_transaction *);
+                   RDB_transaction *txp);
 </pre>
 
 <h3>Description</h3>
@@ -3131,27 +3129,6 @@ RDB_eq(RDB_expression *, RDB_expression *);
 <h3>Description</h3>
 
 <p>RDB_eq creates an expression that represents an "is equal" operator.
-If one of the arguments is NULL, NULL is returned.
-
-<h3>Return value</h3>
-
-<p>A pointer to the newly created expression, of NULL if the creation
-failed.
-
-<hr>
-
-<h2 id="neq">RDB_neq</h2>
-
-<pre>
-#include &lt;rel/rdb.h&gt;
-
-RDB_expression *
-RDB_neq(RDB_expression *, RDB_expression *);
-</pre>
-
-<h3>Description</h3>
-
-<p>RDB_neq creates an expression that represents an "is not equal" operator.
 If one of the arguments is NULL, NULL is returned.
 
 <h3>Return value</h3>
@@ -3506,27 +3483,6 @@ RDB_expr_sum(RDB_expression *, const char *attrname);
 
 <p>RDB_expr_sum creates an expression which represents the <a
 href="#sum">RDB_sum</a> operator.
-
-<h3>Return value</h3>
-
-<p>A pointer to the newly created expression, of NULL if the creation
-failed.
-
-<hr>
-
-<h2 id="expr_subset">RDB_expr_subset</h2>
-
-<pre>
-#include &lt;rel/rdb.h&gt;
-
-RDB_expression *
-RDB_expr_subset(RDB_expression *, RDB_expression *);
-</pre>
-
-<h3>Description</h3>
-
-<p>RDB_expr_subset creates an expression which represents the <a
-href="#subset">RDB_subset</a> operator.
 
 <h3>Return value</h3>
 
@@ -4484,7 +4440,7 @@ RDB_set_errfn(RDB_environment *envp, void (*errfn)(const char *msg, void *arg), 
 
 int
 RDB_create_table_index(const char *name, RDB_table *tbp, int idxcompc,
-                       RDB_seq_item idxcompv[], int flags, RDB_transaction *);
+                       RDB_seq_item idxcompv[], int flags, RDB_transaction *txp);
 </pre>
 
 <h3>Description</h3>
@@ -4523,7 +4479,7 @@ in which case the transaction is implicitly rolled back.
 #include &lt;rel/rdb.h&gt;
 
 int
-RDB_drop_table_index(const char *name, RDB_transaction *);
+RDB_drop_table_index(const char *name, RDB_transaction *txp);
 </pre>
 
 <h3>Description</h3>

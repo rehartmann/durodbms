@@ -277,14 +277,18 @@ put_ro_op(RDB_dbroot *dbrootp, RDB_ro_op_desc *op)
 }
 
 static RDB_type **
-valv_to_typev(int valc, RDB_object **valv) {
+valv_to_typev(int valc, RDB_object **valv)
+{
     int i;
     RDB_type **typv = malloc(sizeof (RDB_type *) * valc);
 
     if (typv == NULL)
         return NULL;
     for (i = 0; i < valc; i++) {
-        typv[i] = RDB_obj_type(valv[i]);
+        if (valv[i]->kind == RDB_OB_TUPLE)
+            typv[i] = _RDB_tuple_type(valv[i]);
+        else
+            typv[i] = RDB_obj_type(valv[i]);
     }
     return typv;
 }
@@ -357,6 +361,166 @@ _RDB_check_type_constraint(RDB_object *valp, RDB_transaction *txp)
     return RDB_OK;
 }
 
+static int
+eq_bool(const char *name, int argc, RDB_object *argv[],
+        const void *iargp, size_t iarglen, RDB_transaction *txp,
+        RDB_object *retvalp)
+{
+    RDB_bool_to_obj(retvalp,
+            (RDB_bool) (argv[0]->var.bool_val == argv[1]->var.bool_val));
+    return RDB_OK;
+}
+
+static int
+eq_int(const char *name, int argc, RDB_object *argv[],
+        const void *iargp, size_t iarglen, RDB_transaction *txp,
+        RDB_object *retvalp)
+{
+    RDB_bool_to_obj(retvalp,
+            (RDB_bool) (argv[0]->var.int_val == argv[1]->var.int_val));
+    return RDB_OK;
+}
+
+static int
+eq_rational(const char *name, int argc, RDB_object *argv[],
+        const void *iargp, size_t iarglen, RDB_transaction *txp,
+        RDB_object *retvalp)
+{
+    RDB_bool_to_obj(retvalp,
+            (RDB_bool) (argv[0]->var.rational_val == argv[1]->var.rational_val));
+    return RDB_OK;
+}
+
+static int
+eq_string(const char *name, int argc, RDB_object *argv[],
+        const void *iargp, size_t iarglen, RDB_transaction *txp,
+        RDB_object *retvalp)
+{
+    RDB_bool_to_obj(retvalp,
+            (RDB_bool) strcmp ((char *) argv[0]->var.bin.datap,
+            (char *) argv[1]->var.bin.datap) == 0);
+    return RDB_OK;
+}
+
+static int
+eq_binary(const char *name, int argc, RDB_object *argv[],
+        const void *iargp, size_t iarglen, RDB_transaction *txp,
+        RDB_object *retvalp)
+{
+    if (argv[0]->var.bin.len != argv[1]->var.bin.len)
+        RDB_bool_to_obj(retvalp, RDB_FALSE);
+    else if (argv[0]->var.bin.len == 0)
+        RDB_bool_to_obj(retvalp, RDB_TRUE);
+    else
+        RDB_bool_to_obj(retvalp, (RDB_bool) (memcmp(argv[0]->var.bin.datap,
+            argv[1]->var.bin.datap, argv[0]->var.bin.len) == 0));
+    return RDB_OK;
+}
+
+static int
+neq_bool(const char *name, int argc, RDB_object *argv[],
+        const void *iargp, size_t iarglen, RDB_transaction *txp,
+        RDB_object *retvalp)
+{
+    RDB_bool_to_obj(retvalp,
+            (RDB_bool) (argv[0]->var.bool_val != argv[1]->var.bool_val));
+    return RDB_OK;
+}
+
+static int
+neq_int(const char *name, int argc, RDB_object *argv[],
+        const void *iargp, size_t iarglen, RDB_transaction *txp,
+        RDB_object *retvalp)
+{
+    RDB_bool_to_obj(retvalp,
+            (RDB_bool) (argv[0]->var.int_val != argv[1]->var.int_val));
+    return RDB_OK;
+}
+
+static int
+neq_rational(const char *name, int argc, RDB_object *argv[],
+        const void *iargp, size_t iarglen, RDB_transaction *txp,
+        RDB_object *retvalp)
+{
+    RDB_bool_to_obj(retvalp,
+            (RDB_bool) (argv[0]->var.rational_val != argv[1]->var.rational_val));
+    return RDB_OK;
+}
+
+static int
+neq_string(const char *name, int argc, RDB_object *argv[],
+        const void *iargp, size_t iarglen, RDB_transaction *txp,
+        RDB_object *retvalp)
+{
+    RDB_bool_to_obj(retvalp,
+            (RDB_bool) strcmp ((char *) argv[0]->var.bin.datap,
+            (char *) argv[1]->var.bin.datap) != 0);
+    return RDB_OK;
+}
+
+static int
+neq_binary(const char *name, int argc, RDB_object *argv[],
+        const void *iargp, size_t iarglen, RDB_transaction *txp,
+        RDB_object *retvalp)
+{
+    if (argv[0]->var.bin.len != argv[1]->var.bin.len)
+        RDB_bool_to_obj(retvalp, RDB_TRUE);
+    else if (argv[0]->var.bin.len == 0)
+        RDB_bool_to_obj(retvalp, RDB_FALSE);
+    else
+        RDB_bool_to_obj(retvalp, (RDB_bool) (memcmp(argv[0]->var.bin.datap,
+            argv[1]->var.bin.datap, argv[0]->var.bin.len) != 0));
+    return RDB_OK;
+}
+
+static int
+obj_equals(RDB_object *argv[],
+        RDB_transaction *txp, RDB_object *retvalp)
+{
+    int ret;
+    RDB_bool res;
+
+    if (argv[0]->kind != argv[1]->kind)
+        return RDB_TYPE_MISMATCH;
+
+    switch (argv[0]->kind) {
+        case RDB_OB_INITIAL:
+            return RDB_INVALID_ARGUMENT;
+        case RDB_OB_BOOL:
+            return eq_bool("=", 2, argv, NULL, 0, txp, retvalp);
+        case RDB_OB_INT:
+            return eq_bool("=", 2, argv, NULL, 0, txp, retvalp);
+        case RDB_OB_RATIONAL:
+            return eq_bool("=", 2, argv, NULL, 0, txp, retvalp);
+        case RDB_OB_BIN:
+            return eq_binary("=", 2, argv, NULL, 0, txp, retvalp);
+        case RDB_OB_TUPLE:
+            ret = _RDB_tuple_equals(argv[0], argv[1], txp, &res);
+            if (ret != RDB_OK)
+                return ret;
+            RDB_bool_to_obj(retvalp, res);
+            break;
+        case RDB_OB_TABLE:
+            if (!RDB_type_equals(argv[0]->var.tbp->typ, argv[1]->var.tbp->typ))
+                return RDB_TYPE_MISMATCH;
+            ret = RDB_table_equals(argv[0]->var.tbp, argv[1]->var.tbp, NULL,
+                    &res);
+            if (ret != RDB_OK)
+                return ret;
+            RDB_bool_to_obj(retvalp, res);
+            break;
+        case RDB_OB_ARRAY:
+            ret = _RDB_array_equals(argv[0], argv[1], txp, &res);
+            if (ret != RDB_OK)
+                return ret;
+            RDB_bool_to_obj(retvalp, res);
+            break;
+        default:
+            return RDB_INTERNAL;
+    }
+    return RDB_OK;
+} 
+
 int
 RDB_call_ro_op(const char *name, int argc, RDB_object *argv[],
                RDB_transaction *txp, RDB_object *retvalp)
@@ -364,9 +528,34 @@ RDB_call_ro_op(const char *name, int argc, RDB_object *argv[],
     RDB_ro_op_desc *op;
     int ret;
     RDB_type **argtv;
+    int i;
 
     if (!RDB_tx_is_running(txp))
         return RDB_INVALID_TRANSACTION;
+
+    if (argc == 2 && argv[1]->kind == RDB_OB_TABLE) {
+        if (strcmp(name, "IN") == 0) {
+            ret = RDB_table_contains(argv[1]->var.tbp, argv[0], txp);
+            if (ret == RDB_OK) {
+                RDB_bool_to_obj(retvalp, RDB_TRUE);
+                return RDB_OK;
+            } else if (ret == RDB_NOT_FOUND) {
+                RDB_bool_to_obj(retvalp, RDB_FALSE);
+                return RDB_OK;
+            } else {
+                return ret;
+            }
+        } else if (strcmp(name, "SUBSET_OF") == 0
+                && argv[0]->kind == RDB_OB_TABLE) {
+            RDB_bool res;
+
+            ret = RDB_subset(argv[0]->var.tbp, argv[1]->var.tbp, txp, &res);
+            if (ret != RDB_OK)
+                return ret;
+            RDB_bool_to_obj(retvalp, res);
+            return RDB_OK;
+        }
+    }
 
     argtv = valv_to_typev(argc, argv);
     if (argtv == NULL) {
@@ -374,9 +563,27 @@ RDB_call_ro_op(const char *name, int argc, RDB_object *argv[],
         return RDB_NO_MEMORY;
     }
     ret = _RDB_get_ro_op(name, argc, argtv, txp, &op);
+    for (i = 0; i < argc; i++) {
+        if (argv[i]->kind == RDB_OB_TUPLE)
+            RDB_drop_type(argtv[i], NULL);
+    }
     free(argtv);
-    if (ret != RDB_OK)
+    if (ret != RDB_OK) {
+        if (ret == RDB_NOT_FOUND && argc == 2) {
+            if (strcmp(name, "=") == 0) {
+                /* Call default equality */
+                return obj_equals(argv, txp, retvalp);
+            } else if (strcmp(name, "<>") == 0) {
+                /* Call default inequality */
+                ret = obj_equals(argv, txp, retvalp);
+                if (ret != RDB_OK)
+                    return ret;
+                retvalp->var.bool_val = (RDB_bool) !retvalp->var.bool_val;
+                return RDB_OK;
+            }
+        }
         goto error;
+    }
 
     retvalp->typ = op->rtyp;
     ret = (*op->funcp)(name, argc, argv, op->iarg.var.bin.datap,
@@ -477,6 +684,7 @@ RDB_call_update_op(const char *name, int argc, RDB_object *argv[],
     RDB_upd_op *op;
     RDB_type **argtv;
     int ret;
+    int i;
 
     if (!RDB_tx_is_running(txp))
         return RDB_INVALID_TRANSACTION;
@@ -487,6 +695,10 @@ RDB_call_update_op(const char *name, int argc, RDB_object *argv[],
         return RDB_NO_MEMORY;
     }
     ret = _RDB_get_upd_op(name, argc, argtv, txp, &op);
+    for (i = 0; i < argc; i++) {
+        if (argv[i]->kind == RDB_OB_TUPLE)
+            RDB_drop_type(argtv[i], NULL);
+    }
     free(argtv);
     if (ret != RDB_OK)
         return ret;
@@ -1118,6 +1330,226 @@ _RDB_add_builtin_ops(RDB_dbroot *dbrootp)
     op->argtv[1] = &RDB_STRING;
     op->rtyp = &RDB_BOOLEAN;
     op->funcp = &get;
+    op->modhdl = NULL;
+
+    ret = put_ro_op(dbrootp, op);
+    if (ret != RDB_OK)
+        return ret;
+
+    op = malloc(sizeof(RDB_dbroot));
+    if (op == NULL)
+        return RDB_NO_MEMORY;
+    op->name = RDB_dup_str(">=");
+    if (op->name == NULL)
+        return RDB_NO_MEMORY;
+    op->argc = 2;
+    op->argtv = malloc(sizeof (RDB_type *) * 2);
+    if (op->argtv == NULL)
+        return RDB_NO_MEMORY;
+    op->argtv[0] = &RDB_STRING;
+    op->argtv[1] = &RDB_STRING;
+    op->rtyp = &RDB_BOOLEAN;
+    op->funcp = &get;
+    op->modhdl = NULL;
+
+    ret = put_ro_op(dbrootp, op);
+    if (ret != RDB_OK)
+        return ret;
+
+    op = malloc(sizeof(RDB_dbroot));
+    if (op == NULL)
+        return RDB_NO_MEMORY;
+    op->name = RDB_dup_str("=");
+    if (op->name == NULL)
+        return RDB_NO_MEMORY;
+    op->argc = 2;
+    op->argtv = malloc(sizeof (RDB_type *) * 2);
+    if (op->argtv == NULL)
+        return RDB_NO_MEMORY;
+    op->argtv[0] = &RDB_BOOLEAN;
+    op->argtv[1] = &RDB_BOOLEAN;
+    op->rtyp = &RDB_BOOLEAN;
+    op->funcp = &eq_bool;
+    op->modhdl = NULL;
+
+    ret = put_ro_op(dbrootp, op);
+    if (ret != RDB_OK)
+        return ret;
+
+    op = malloc(sizeof(RDB_dbroot));
+    if (op == NULL)
+        return RDB_NO_MEMORY;
+    op->name = RDB_dup_str("=");
+    if (op->name == NULL)
+        return RDB_NO_MEMORY;
+    op->argc = 2;
+    op->argtv = malloc(sizeof (RDB_type *) * 2);
+    if (op->argtv == NULL)
+        return RDB_NO_MEMORY;
+    op->argtv[0] = &RDB_INTEGER;
+    op->argtv[1] = &RDB_INTEGER;
+    op->rtyp = &RDB_BOOLEAN;
+    op->funcp = &eq_int;
+    op->modhdl = NULL;
+
+    ret = put_ro_op(dbrootp, op);
+    if (ret != RDB_OK)
+        return ret;
+
+    op = malloc(sizeof(RDB_dbroot));
+    if (op == NULL)
+        return RDB_NO_MEMORY;
+    op->name = RDB_dup_str("=");
+    if (op->name == NULL)
+        return RDB_NO_MEMORY;
+    op->argc = 2;
+    op->argtv = malloc(sizeof (RDB_type *) * 2);
+    if (op->argtv == NULL)
+        return RDB_NO_MEMORY;
+    op->argtv[0] = &RDB_RATIONAL;
+    op->argtv[1] = &RDB_RATIONAL;
+    op->rtyp = &RDB_BOOLEAN;
+    op->funcp = &eq_rational;
+    op->modhdl = NULL;
+
+    ret = put_ro_op(dbrootp, op);
+    if (ret != RDB_OK)
+        return ret;
+
+    op = malloc(sizeof(RDB_dbroot));
+    if (op == NULL)
+        return RDB_NO_MEMORY;
+    op->name = RDB_dup_str("=");
+    if (op->name == NULL)
+        return RDB_NO_MEMORY;
+    op->argc = 2;
+    op->argtv = malloc(sizeof (RDB_type *) * 2);
+    if (op->argtv == NULL)
+        return RDB_NO_MEMORY;
+    op->argtv[0] = &RDB_STRING;
+    op->argtv[1] = &RDB_STRING;
+    op->rtyp = &RDB_BOOLEAN;
+    op->funcp = &eq_string;
+    op->modhdl = NULL;
+
+    ret = put_ro_op(dbrootp, op);
+    if (ret != RDB_OK)
+        return ret;
+
+    op = malloc(sizeof(RDB_dbroot));
+    if (op == NULL)
+        return RDB_NO_MEMORY;
+    op->name = RDB_dup_str("=");
+    if (op->name == NULL)
+        return RDB_NO_MEMORY;
+    op->argc = 2;
+    op->argtv = malloc(sizeof (RDB_type *) * 2);
+    if (op->argtv == NULL)
+        return RDB_NO_MEMORY;
+    op->argtv[0] = &RDB_BINARY;
+    op->argtv[1] = &RDB_BINARY;
+    op->rtyp = &RDB_BOOLEAN;
+    op->funcp = &eq_binary;
+    op->modhdl = NULL;
+
+    ret = put_ro_op(dbrootp, op);
+    if (ret != RDB_OK)
+        return ret;
+
+    op = malloc(sizeof(RDB_dbroot));
+    if (op == NULL)
+        return RDB_NO_MEMORY;
+    op->name = RDB_dup_str("<>");
+    if (op->name == NULL)
+        return RDB_NO_MEMORY;
+    op->argc = 2;
+    op->argtv = malloc(sizeof (RDB_type *) * 2);
+    if (op->argtv == NULL)
+        return RDB_NO_MEMORY;
+    op->argtv[0] = &RDB_BOOLEAN;
+    op->argtv[1] = &RDB_BOOLEAN;
+    op->rtyp = &RDB_BOOLEAN;
+    op->funcp = &neq_bool;
+    op->modhdl = NULL;
+
+    ret = put_ro_op(dbrootp, op);
+    if (ret != RDB_OK)
+        return ret;
+
+    op = malloc(sizeof(RDB_dbroot));
+    if (op == NULL)
+        return RDB_NO_MEMORY;
+    op->name = RDB_dup_str("<>");
+    if (op->name == NULL)
+        return RDB_NO_MEMORY;
+    op->argc = 2;
+    op->argtv = malloc(sizeof (RDB_type *) * 2);
+    if (op->argtv == NULL)
+        return RDB_NO_MEMORY;
+    op->argtv[0] = &RDB_INTEGER;
+    op->argtv[1] = &RDB_INTEGER;
+    op->rtyp = &RDB_BOOLEAN;
+    op->funcp = &neq_int;
+    op->modhdl = NULL;
+
+    ret = put_ro_op(dbrootp, op);
+    if (ret != RDB_OK)
+        return ret;
+
+    op = malloc(sizeof(RDB_dbroot));
+    if (op == NULL)
+        return RDB_NO_MEMORY;
+    op->name = RDB_dup_str("<>");
+    if (op->name == NULL)
+        return RDB_NO_MEMORY;
+    op->argc = 2;
+    op->argtv = malloc(sizeof (RDB_type *) * 2);
+    if (op->argtv == NULL)
+        return RDB_NO_MEMORY;
+    op->argtv[0] = &RDB_RATIONAL;
+    op->argtv[1] = &RDB_RATIONAL;
+    op->rtyp = &RDB_BOOLEAN;
+    op->funcp = &neq_rational;
+    op->modhdl = NULL;
+
+    ret = put_ro_op(dbrootp, op);
+    if (ret != RDB_OK)
+        return ret;
+
+    op = malloc(sizeof(RDB_dbroot));
+    if (op == NULL)
+        return RDB_NO_MEMORY;
+    op->name = RDB_dup_str("<>");
+    if (op->name == NULL)
+        return RDB_NO_MEMORY;
+    op->argc = 2;
+    op->argtv = malloc(sizeof (RDB_type *) * 2);
+    if (op->argtv == NULL)
+        return RDB_NO_MEMORY;
+    op->argtv[0] = &RDB_STRING;
+    op->argtv[1] = &RDB_STRING;
+    op->rtyp = &RDB_BOOLEAN;
+    op->funcp = &neq_string;
+    op->modhdl = NULL;
+
+    ret = put_ro_op(dbrootp, op);
+    if (ret != RDB_OK)
+        return ret;
+
+    op = malloc(sizeof(RDB_dbroot));
+    if (op == NULL)
+        return RDB_NO_MEMORY;
+    op->name = RDB_dup_str("<>");
+    if (op->name == NULL)
+        return RDB_NO_MEMORY;
+    op->argc = 2;
+    op->argtv = malloc(sizeof (RDB_type *) * 2);
+    if (op->argtv == NULL)
+        return RDB_NO_MEMORY;
+    op->argtv[0] = &RDB_BINARY;
+    op->argtv[1] = &RDB_BINARY;
+    op->rtyp = &RDB_BOOLEAN;
+    op->funcp = &neq_binary;
     op->modhdl = NULL;
 
     ret = put_ro_op(dbrootp, op);

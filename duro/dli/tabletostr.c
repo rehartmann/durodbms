@@ -48,6 +48,7 @@ append_ex(RDB_object *objp, RDB_expression *exp)
 {
     RDB_object dst;
     int ret;
+    int i;
 
     switch (exp->kind) {
         case RDB_EX_OBJ:
@@ -67,13 +68,10 @@ append_ex(RDB_object *objp, RDB_expression *exp)
              if (ret != RDB_OK)
                  return ret;
             break;
-        case RDB_EX_EQ:
-        case RDB_EX_NEQ:
         case RDB_EX_ADD:
         case RDB_EX_SUBTRACT:
         case RDB_EX_MULTIPLY:
         case RDB_EX_DIVIDE:
-        case RDB_EX_SUBSET:
             ret = append_str(objp, "(");
             if (ret != RDB_OK)
                 return ret;
@@ -81,28 +79,6 @@ append_ex(RDB_object *objp, RDB_expression *exp)
             if (ret != RDB_OK)
                 return ret;
             switch (objp->kind) {
-                case RDB_EX_EQ:
-                    ret = append_str(objp, ") = (");
-                    break;
-                case RDB_EX_NEQ:
-                    ret = append_str(objp, ") <> (");
-                    break;
-/* !!           case RDB_EX_LT:
-                    ret = append_str(objp, ") < (");
-                    break;
-                case RDB_EX_GT:
-                    ret = append_str(objp, ") > (");
-                    break;
-                case RDB_EX_LET:
-                    ret = append_str(objp, ") <= (");
-                    break;
-                case RDB_EX_GET:
-                    ret = append_str(objp, ") >= (");
-                    break;
-                case RDB_EX_REGMATCH AND OR NOT
-                    ret = append_str(objp, ") MATCHES (");
-                    break;
-*/
                 case RDB_EX_ADD:
                     ret = append_str(objp, ") + (");
                     break;
@@ -115,34 +91,9 @@ append_ex(RDB_object *objp, RDB_expression *exp)
                 case RDB_EX_DIVIDE:
                     ret = append_str(objp, ") / (");
                     break;
-/* !!
-                case RDB_EX_CONCAT:
-                    ret = append_str(objp, ") || (");
-                    break;
-*/
-                case RDB_EX_SUBSET:
-                    ret = append_str(objp, ") SUBSET (");
-                    break;
                 default: ; /* never reached */
             }
             ret = append_ex(objp, exp->var.op.argv[1]);
-            if (ret != RDB_OK)
-                return ret;
-            ret = append_str(objp, ")");
-            if (ret != RDB_OK)
-                return ret;
-            break;
-        case RDB_EX_CONTAINS:
-            ret = append_str(objp, "(");
-            if (ret != RDB_OK)
-                return ret;
-            ret = append_ex(objp, exp->var.op.argv[1]);
-            if (ret != RDB_OK)
-                return ret;
-            ret = append_str(objp, ") IN (");
-            if (ret != RDB_OK)
-                return ret;
-            ret = append_ex(objp, exp->var.op.argv[0]);
             if (ret != RDB_OK)
                 return ret;
             ret = append_str(objp, ")");
@@ -238,18 +189,60 @@ append_ex(RDB_object *objp, RDB_expression *exp)
                 return ret;
             break;
         case RDB_EX_USER_OP:
-            ret = append_str(objp, exp->var.op.name);
-            if (ret != RDB_OK)
-                return ret;
-            ret = append_str(objp, "(");
-            if (ret != RDB_OK)
-                return ret;
-            ret = append_ex(objp, exp->var.op.argv[0]);
-            if (ret != RDB_OK)
-                return ret;
-            ret = append_str(objp, ")");
-            if (ret != RDB_OK)
-                return ret;
+            if (strcmp(exp->var.op.name, "=") == 0
+                    || strcmp(exp->var.op.name, "<>") == 0
+                    || strcmp(exp->var.op.name, "<") == 0
+                    || strcmp(exp->var.op.name, ">") == 0
+                    || strcmp(exp->var.op.name, "<=") == 0
+                    || strcmp(exp->var.op.name, ">=") == 0
+                    || strcmp(exp->var.op.name, "||") == 0
+                    || strcmp(exp->var.op.name, "MATCHES") == 0
+                    || strcmp(exp->var.op.name, "AND") == 0
+                    || strcmp(exp->var.op.name, "OR") == 0
+                    || strcmp(exp->var.op.name, "IN") == 0
+                    || strcmp(exp->var.op.name, "SUBSET_OF") == 0) {
+                ret = append_str(objp, "(");
+                if (ret != RDB_OK)
+                    return ret;
+                ret = append_ex(objp, exp->var.op.argv[0]);
+                if (ret != RDB_OK)
+                    return ret;
+                ret = append_str(objp, ") ");
+                if (ret != RDB_OK)
+                    return ret;
+                ret = append_str(objp, exp->var.op.name);
+                if (ret != RDB_OK)
+                    return ret;
+                ret = append_str(objp, " (");
+                if (ret != RDB_OK)
+                    return ret;
+                ret = append_ex(objp, exp->var.op.argv[1]);
+                if (ret != RDB_OK)
+                    return ret;
+                ret = append_str(objp, ")");
+                if (ret != RDB_OK)
+                    return ret;
+            } else {
+                ret = append_str(objp, exp->var.op.name);
+                if (ret != RDB_OK)
+                    return ret;
+                ret = append_str(objp, "(");
+                if (ret != RDB_OK)
+                    return ret;
+                for (i = 0; i < exp->var.op.argc; i++) {
+                    if (i > 0) {
+                        ret = append_str(objp, ", ");
+                        if (ret != RDB_OK)
+                            return ret;
+                    }
+                    ret = append_ex(objp, exp->var.op.argv[i]);
+                    if (ret != RDB_OK)
+                        return ret;
+                }
+                ret = append_str(objp, ")");
+                if (ret != RDB_OK)
+                    return ret;
+            }
             break;
         case RDB_EX_AGGREGATE:
             ret = append_aggr_op(objp, exp->var.op.op);

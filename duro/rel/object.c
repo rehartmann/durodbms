@@ -474,48 +474,27 @@ _RDB_obj_to_field(RDB_field *fvp, RDB_object *objp)
 }
 
 int
-RDB_obj_equals(const RDB_object *val1p, const RDB_object *val2p, RDB_bool *resp)
+RDB_obj_equals(const RDB_object *val1p, const RDB_object *val2p,
+        RDB_transaction *txp, RDB_bool *resp)
 {
     int ret;
+    RDB_object retval;
+    RDB_object *argv[2];
 
-    switch (val1p->kind) {
-        case RDB_OB_BOOL:
-            *resp = (RDB_bool) val1p->var.bool_val == val2p->var.bool_val;
-            break;
-        case RDB_OB_INT:
-            *resp = (RDB_bool) (val1p->var.int_val == val2p->var.int_val);
-            break;
-        case RDB_OB_RATIONAL:
-            *resp = (RDB_bool) (val1p->var.rational_val == val2p->var.rational_val);
-            break;
-        case RDB_OB_INITIAL:
-            return RDB_INVALID_ARGUMENT;
-        case RDB_OB_BIN:
-            if (val1p->var.bin.len != val2p->var.bin.len)
-                *resp = RDB_FALSE;
-            else if (val1p->var.bin.len == 0)
-                *resp = RDB_TRUE;
-            else *resp = (RDB_bool) (memcmp(val1p->var.bin.datap,
-                    val2p->var.bin.datap, val1p->var.bin.len) == 0);
-            break;
-        case RDB_OB_TUPLE:
-            ret = _RDB_tuple_equals(val1p, val2p, resp);
-            if (ret != RDB_OK)
-                return ret;
-            break;
-        case RDB_OB_TABLE:
-            ret = RDB_table_equals(val1p->var.tbp, val2p->var.tbp, NULL, resp);
-            if (ret != RDB_OK)
-                return ret;
-            break;
-        case RDB_OB_ARRAY:
-            ret = _RDB_array_equals((RDB_object *)val1p, (RDB_object *)val2p, resp);
-            if (ret != RDB_OK)
-                return ret;
-            break;
+    argv[0] = (RDB_object *) val1p;
+    argv[1] = (RDB_object *) val2p;
+    RDB_init_obj(&retval);
+    ret = RDB_call_ro_op("=", 2, argv, txp, &retval);
+    if (ret != RDB_OK) {
+        RDB_destroy_obj(&retval);
+        if (ret == RDB_NOT_FOUND)
+            ret = RDB_INTERNAL;
+        return ret;
     }
-    return RDB_OK;
-} 
+    *resp = RDB_obj_bool(&retval);
+    return RDB_destroy_obj(&retval);
+}
+
 
 /* Copy data only, not the type information. Assume non-initialized
    destination. */

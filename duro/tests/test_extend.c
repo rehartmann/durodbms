@@ -69,6 +69,9 @@ insert_extend(RDB_table *vtbp, RDB_transaction *txp)
     ret = RDB_tuple_set_rational(&tpl, "SALARY_AFTER_TAX", (RDB_rational)4200.0);
     if (ret != RDB_OK)
         goto error;
+    ret = RDB_tuple_set_int(&tpl, "NAME_LEN", (RDB_int)7);
+    if (ret != RDB_OK)
+        goto error;
 
     ret = RDB_insert(vtbp, &tpl, txp);
     if (ret == RDB_PREDICATE_VIOLATION) {
@@ -145,7 +148,7 @@ test_extend(RDB_database *dbp)
         goto error;
     }
 
-    printf("Extending EMPS1 (SALARY_AFTER_TAX)\n");
+    printf("Extending EMPS1 (SALARY_AFTER_TAX,NAME_LEN)\n");
 
     ret = RDB_extend(tbp, 2, extend, &vtbp);
     if (ret != RDB_OK) {

@@ -173,7 +173,7 @@ insert_extend(RDB_table *tbp, const RDB_object *tplp, RDB_transaction *txp)
             RDB_destroy_obj(&val);
             return ret;
         }
-        ret = RDB_obj_equals(&val, valp, &iseq);
+        ret = RDB_obj_equals(&val, valp, txp, &iseq);
         RDB_destroy_obj(&val);
         if (ret != RDB_OK)
             return ret;

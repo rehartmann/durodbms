@@ -1,6 +1,6 @@
 Opening environment
 Starting transaction
-Extending EMPS1 (SALARY_AFTER_TAX)
+Extending EMPS1 (SALARY_AFTER_TAX,NAME_LEN)
 Converting extended table to array
 EMPNO: 1
 NAME: Smith

@@ -331,7 +331,8 @@ _RDB_copy_array(RDB_object *dstp, const RDB_object *srcp)
 }
 
 int
-_RDB_array_equals(RDB_object *arr1p, RDB_object *arr2p, RDB_bool *resp)
+_RDB_array_equals(RDB_object *arr1p, RDB_object *arr2p, RDB_transaction *txp,
+        RDB_bool *resp)
 {
     int ret, ret2;
     RDB_object *obj1p, *obj2p;
@@ -354,7 +355,7 @@ _RDB_array_equals(RDB_object *arr1p, RDB_object *arr2p, RDB_bool *resp)
             return RDB_OK;
         }
         i++;
-        ret = RDB_obj_equals(obj1p, obj2p, resp);
+        ret = RDB_obj_equals(obj1p, obj2p, txp, resp);
     } while (ret == RDB_OK && *resp);
     return ret;
 }

@@ -11,7 +11,28 @@
 #include <stdlib.h>
 #include <string.h>
 
-#ifdef NIXDA
+static int
+alter_op(RDB_expression *exp, const char *name, int argc)
+{
+    RDB_expression **argv;
+    char *newname;
+    
+    newname = realloc(exp->var.op.name, strlen(name) + 1);
+    if (newname == NULL)
+        return RDB_NO_MEMORY;
+    strcpy(newname, name);
+    exp->var.op.name = newname;
+
+    if (argc != exp->var.op.argc) {
+        argv = realloc(exp->var.op.argv, sizeof (RDB_expression *) * argc);
+        if (argv == NULL)
+            return RDB_NO_MEMORY;
+        exp->var.op.argc = argc;
+        exp->var.op.argv = argv;
+    }
+
+    return RDB_OK;
+}
 
 static void
 del_keys(RDB_table *tbp)
@@ -44,6 +65,26 @@ copy_type(RDB_table *dstp, const RDB_table *srcp)
 static int
 transform_exp(RDB_expression *);
 
+/* Only for binary operators */
+static int
+eliminate_child (RDB_expression *exp, const char *name)
+{
+    RDB_expression *hexp = exp->var.op.argv[0];
+    int ret = alter_op(exp, name, 2);
+    if (ret != RDB_OK)
+        return ret;
+
+    exp->var.op.argv[0] = hexp->var.op.argv[0];
+    exp->var.op.argv[1] = hexp->var.op.argv[1];
+    free(hexp->var.op.name);
+    free(hexp->var.op.argv);
+    free(hexp);
+    ret = transform_exp(exp->var.op.argv[0]);
+    if (ret != RDB_OK)
+        return ret;
+    return transform_exp(exp->var.op.argv[1]);
+}
+
 /* Try to eliminate NOT operator */
 static int
 eliminate_not(RDB_expression *exp)
@@ -51,94 +92,89 @@ eliminate_not(RDB_expression *exp)
     int ret;
     RDB_expression *hexp;
 
-    switch (exp->var.op.arg1->kind) {
-        case RDB_EX_AND:
-            hexp = RDB_not(exp->var.op.arg1->var.op.arg2);
-            if (hexp == NULL)
-                return RDB_NO_MEMORY;
-            exp->kind = RDB_EX_OR;
-            exp->var.op.arg2 = hexp;
-            exp->var.op.arg1->kind = RDB_EX_NOT;
+    if (exp->var.op.argv[0]->kind != RDB_EX_USER_OP)
+        return RDB_OK;
 
-            ret = eliminate_not(exp->var.op.arg1);
-            if (ret != RDB_OK)
-                return ret;
-            return eliminate_not(exp->var.op.arg2);
-        case RDB_EX_OR:
-            hexp = RDB_not(exp->var.op.arg1->var.op.arg2);
-            if (hexp == NULL)
-                return RDB_NO_MEMORY;
-            exp->kind = RDB_EX_AND;
-            exp->var.op.arg2 = hexp;
-            exp->var.op.arg1->kind = RDB_EX_NOT;
+    if (strcmp(exp->var.op.argv[0]->var.op.name, "AND") == 0) {
+        hexp = _RDB_ro_op("NOT", 1, &exp->var.op.argv[0]->var.op.argv[1],
+                &RDB_BOOLEAN);
+        if (hexp == NULL)
+            return RDB_NO_MEMORY;
+        ret = alter_op(exp, "OR", 2);
+        if (ret != RDB_OK)
+            return ret;
+        exp->var.op.argv[1] = hexp;
 
-            ret = eliminate_not(exp->var.op.arg1);
-            if (ret != RDB_OK)
-                return ret;
-            return eliminate_not(exp->var.op.arg2);
-        case RDB_EX_EQ:
-        case RDB_EX_NEQ:
-        case RDB_EX_LT:
-        case RDB_EX_GT:
-        case RDB_EX_LET:
-        case RDB_EX_GET:
-            hexp = exp->var.op.arg1;
-            switch (exp->var.op.arg1->kind) {
-                case RDB_EX_EQ:
-                    exp->kind = RDB_EX_NEQ;
-                    break;
-                case RDB_EX_NEQ:
-                    exp->kind = RDB_EX_EQ;
-                    break;
-                case RDB_EX_LT:
-                    exp->kind = RDB_EX_GET;
-                    break;
-                case RDB_EX_GT:
-                    exp->kind = RDB_EX_LET;
-                    break;
-                case RDB_EX_LET:
-                    exp->kind = RDB_EX_GT;
-                    break;
-                case RDB_EX_GET:
-                    exp->kind = RDB_EX_LT;
-                    break;
-                default: ; /* never reached */
-            }
-            exp->var.op.arg1 = hexp->var.op.arg1;
-            exp->var.op.arg2 = hexp->var.op.arg2;
-            free(hexp);
-            ret = transform_exp(exp->var.op.arg1);
-            if (ret != RDB_OK)
-                return ret;
-            return transform_exp(exp->var.op.arg2);
-        case RDB_EX_NOT:
-            hexp = exp->var.op.arg1;
-            memcpy(exp, hexp->var.op.arg1, sizeof (RDB_expression));
-            free(hexp->var.op.arg1);
-            free(hexp);
-            return transform_exp(exp);
-        default:
-            return transform_exp(exp->var.op.arg1);
+        ret = alter_op(exp->var.op.argv[0], "NOT", 1);
+        if (ret != RDB_OK)
+            return ret;
+
+        ret = eliminate_not(exp->var.op.argv[0]);
+        if (ret != RDB_OK)
+            return ret;
+        return eliminate_not(exp->var.op.argv[1]);
     }
+    if (strcmp(exp->var.op.argv[0]->var.op.name, "OR") == 0) {
+        hexp = _RDB_ro_op("NOT", 1, &exp->var.op.argv[0]->var.op.argv[1],
+                &RDB_BOOLEAN);
+        if (hexp == NULL)
+            return RDB_NO_MEMORY;
+        ret = alter_op(exp, "AND", 2);
+        if (ret != RDB_OK)
+            return ret;
+        exp->var.op.argv[1] = hexp;
+
+        ret = alter_op(exp->var.op.argv[0], "NOT", 1);
+        if (ret != RDB_OK)
+            return ret;
+
+        ret = eliminate_not(exp->var.op.argv[0]);
+        if (ret != RDB_OK)
+            return ret;
+        return eliminate_not(exp->var.op.argv[1]);
+    }
+    if (strcmp(exp->var.op.argv[0]->var.op.name, "=") == 0)
+        return eliminate_child(exp, "<>");
+    if (strcmp(exp->var.op.argv[0]->var.op.name, "<>") == 0)
+        return eliminate_child(exp, "=");
+    if (strcmp(exp->var.op.argv[0]->var.op.name, "<") == 0)
+        return eliminate_child(exp, ">=");
+    if (strcmp(exp->var.op.argv[0]->var.op.name, ">") == 0)
+        return eliminate_child(exp, "<=");
+    if (strcmp(exp->var.op.argv[0]->var.op.name, "<=") == 0)
+        return eliminate_child(exp, ">");
+    if (strcmp(exp->var.op.argv[0]->var.op.name, ">=") == 0)
+        return eliminate_child(exp, "<");
+    if (strcmp(exp->var.op.argv[0]->var.op.name, "NOT") == 0) {
+        hexp = exp->var.op.argv[0];
+        memcpy(exp, hexp->var.op.argv[0], sizeof (RDB_expression));
+        free(hexp->var.op.argv[0]->var.op.name);
+        free(hexp->var.op.argv[0]->var.op.argv);
+        free(hexp->var.op.argv[0]);
+        free(hexp->var.op.name);
+        free(hexp->var.op.argv);
+        free(hexp);
+        return transform_exp(exp);
+    }
+
+    return transform_exp(exp->var.op.argv[0]);
 }
 
 static int
 transform_exp(RDB_expression *exp)
 {
     int ret;
+    int i;
 
-    switch (exp->kind) {
-        case RDB_EX_NOT:
-            return eliminate_not(exp);
-        case RDB_EX_EQ:
-        case RDB_EX_NEQ:
-        case RDB_EX_AND:
-        case RDB_EX_OR:
-            ret = transform_exp(exp->var.op.arg1);
-            if (ret != RDB_OK)
-                return ret;
-            return transform_exp(exp->var.op.arg2);
-        default: ;
+    if (exp->kind != RDB_EX_USER_OP)
+        return RDB_OK;
+
+    if (strcmp(exp->var.op.name, "NOT") == 0)
+        return eliminate_not(exp);
+    for (i = 0; i < exp->var.op.argc; i++) {
+        ret = transform_exp(exp->var.op.argv[i]);
+        if (ret != RDB_OK)
+            return ret;
     }
     return RDB_OK;
 }
@@ -156,11 +192,15 @@ transform_select(RDB_table *tbp)
                 return transform_exp(tbp->var.select.exp);
             case RDB_TB_SELECT:
             case RDB_TB_SELECT_INDEX:
+            {
+                RDB_expression *argv[2];
+
                 /*
                  * Merge SELECT tables
                  */
-                exp = RDB_and(tbp->var.select.exp,
-                        chtbp->var.select.exp);
+                argv[0] = tbp->var.select.exp;
+                argv[1] = chtbp->var.select.exp;
+                exp = _RDB_ro_op("AND", 2, argv, &RDB_BOOLEAN);
                 if (exp == NULL)
                     return RDB_NO_MEMORY;
 
@@ -169,6 +209,7 @@ transform_select(RDB_table *tbp)
                 _RDB_free_table(chtbp);
                 chtbp = tbp->var.select.tbp;
                 break;
+            }
             case RDB_TB_MINUS:
             {
                 RDB_table *htbp = chtbp->var.minus.tb1p;
@@ -638,5 +679,3 @@ _RDB_transform(RDB_table *tbp)
 
     return RDB_OK;
 }
-
-#endif

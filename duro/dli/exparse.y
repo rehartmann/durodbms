@@ -104,7 +104,7 @@ enum {
 %token TOK_ADD
 %token TOK_MATCHES
 %token TOK_IN
-%token TOK_SUBSET
+%token TOK_SUBSET_OF
 %token TOK_OR
 %token TOK_AND
 %token TOK_NOT
@@ -434,7 +434,8 @@ relation: expression TOK_UNION primary_expression {
             if (val1p == NULL || val2p == NULL)
                 YYERROR;
             RDB_init_obj(&dstobj);
-            _RDB_parse_ret = RDB_join_tuples(val1p, val2p, &dstobj);
+            _RDB_parse_ret = RDB_join_tuples(val1p, val2p, _RDB_parse_txp,
+                    &dstobj);
             if (_RDB_parse_ret != RDB_OK) {
                 RDB_destroy_obj(&dstobj);
                 YYERROR;
@@ -849,8 +850,6 @@ not_expression: rel_expression
         _RDB_parse_ret = RDB_ro_op_1("NOT", $2, _RDB_parse_txp, &$$);
         if (_RDB_parse_ret != RDB_OK)
             YYERROR;
-        if ($$ == NULL)
-            YYERROR;
         _RDB_parse_remove_exp($2);
         _RDB_parse_ret = _RDB_parse_add_exp($$);
         if (_RDB_parse_ret != RDB_OK)
@@ -870,8 +869,8 @@ rel_expression: add_expression
             YYERROR;
     }
     | add_expression TOK_NE add_expression {
-        $$ = RDB_neq($1, $3);
-        if ($$ == NULL)
+        _RDB_parse_ret = RDB_ro_op_2("<>", $1, $3, _RDB_parse_txp, &$$);
+        if (_RDB_parse_ret != RDB_OK)
             YYERROR;
         _RDB_parse_remove_exp($1);
         _RDB_parse_remove_exp($3);
@@ -924,8 +923,8 @@ rel_expression: add_expression
         RDB_table *tbp = _RDB_parse_expr_to_table($1);
         RDB_expression *exp = tbp != NULL ? RDB_table_to_expr(tbp) : $1;
 
-        $$ = RDB_expr_contains($3, exp);
-        if ($$ == NULL)
+        _RDB_parse_ret = RDB_ro_op_2("IN", exp, $3, _RDB_parse_txp, &$$);
+        if (_RDB_parse_ret != RDB_OK)
             YYERROR;
         if (tbp != NULL)
             tbp->refcount++;
@@ -946,7 +945,7 @@ rel_expression: add_expression
         if (_RDB_parse_ret != RDB_OK)
             YYERROR;
     }
-    | add_expression TOK_SUBSET add_expression {
+    | add_expression TOK_SUBSET_OF add_expression {
         RDB_table *tbp;
         RDB_expression *ex1p, *ex2p;
 
@@ -962,8 +961,9 @@ rel_expression: add_expression
         else
            ex2p = $3;
 
-        $$ = RDB_expr_subset(ex1p, ex2p);
-        if ($$ == NULL)
+        _RDB_parse_ret = RDB_ro_op_2("SUBSET_OF", ex1p, ex2p, _RDB_parse_txp,
+                &$$);
+        if (_RDB_parse_ret != RDB_OK)
             YYERROR;
         _RDB_parse_remove_exp($1);
         _RDB_parse_remove_exp($3);
