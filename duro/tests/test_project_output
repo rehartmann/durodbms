@@ -4,7 +4,7 @@ Creating projection (SALARY)
 Converting projection table to array
 SALARY: 4000.000000
 Projection contains SALARY(4000.0): 0 OK
-Projection contains SALARY(4400.0): -105 not found
+Projection contains SALARY(4400.0): -201 not found
 Dropping projection
 Creating projection (EMPNO,NAME)
 Converting projection table to array

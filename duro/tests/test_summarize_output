@@ -1,0 +1,17 @@
+Opening environment
+Starting transaction
+Creating EMPS1 union EMPS2
+Summarizing union PER { DEPTNO } ADD COUNT AS COUNT_EMPS,
+    SUM(SALARY) AS SUM_SALARY, AVG(SALARY) AS AVG_SALARY
+Printing table
+DEPTNO: 2
+COUNT_EMPS: 2
+SUM_SALARY: 8100.000000
+AVG_SALARY: 4050.000000
+DEPTNO: 1
+COUNT_EMPS: 1
+SUM_SALARY: 4000.000000
+AVG_SALARY: 4000.000000
+Dropping summarize
+End of transaction
+Closing environment

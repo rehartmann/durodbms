@@ -108,6 +108,12 @@ RDB_insert(RDB_table *tbp, const RDB_tuple *tup, RDB_transaction *txp)
                 fnop = RDB_hashmap_get(&tbp->var.stored.attrmap,
                         tuptyp->complex.tuple.attrv[i].name, NULL);
                 valp = RDB_tuple_get(tup, tuptyp->complex.tuple.attrv[i].name);
+                
+                /* Typecheck */
+                if (!RDB_type_equals(valp->typ,
+                                     tuptyp->complex.tuple.attrv[i].type)) {
+                     return RDB_TYPE_MISMATCH;
+                }
                 fvp[*fnop].datap = RDB_value_irep(valp, &fvp[*fnop].len);
             }
             res = RDB_insert_rec(tbp->var.stored.recmapp, fvp, txp->txid);
@@ -322,8 +328,7 @@ update_stored(RDB_table *tbp, RDB_expression *condp,
      * Walk through the records and update them if the expression pointed to
      * by condp evaluates to true.
      * This may not work correctly if a primary key attribute is updated
-     * or if the expression refers to the table itself (the latter is
-     * currently not possible).
+     * or if the expression refers to the table itself.
      * A possible solution in this case is to perform the update in three steps:
      * 1. Iterate over the records and insert the updated records into
      * a temporary table.
@@ -373,8 +378,18 @@ update_stored(RDB_table *tbp, RDB_expression *condp,
                 goto error;
             }
             for (i = 0; i < attrc; i++) {
+                /* Typecheck */
+                if (!RDB_type_equals(valv[i].typ,
+                        _RDB_tuple_attr_type(tbp->typ->complex.basetyp, attrv[i].name))) {
+                    res = RDB_TYPE_MISMATCH;
+                    goto error;
+                }
+
+                /* Get field number from map */
                 fieldv[i].no = *(int*) RDB_hashmap_get(&tbp->var.stored.attrmap,
                         attrv[i].name, NULL);
+                
+                /* Get data */
                 fieldv[i].datap = RDB_value_irep(&valv[i], &fieldv[i].len);
             }
             res = RDB_cursor_set(curp, attrc, fieldv);
@@ -804,7 +819,7 @@ RDB_aggregate(RDB_table *tbp, RDB_aggregate_op op, const char *attrname,
 
     if (op == RDB_AVG) {
         if (count == 0)
-            return RDB_NOT_FOUND;
+            return RDB_AGGREGATE_UNDEFINED;
         resultp->var.rational_val /= count;
     }
 
@@ -1445,9 +1460,13 @@ RDB_summarize(RDB_table *tb1p, RDB_table *tb2p, int addc, RDB_summarize_add addv
 {
     RDB_table *newtbp;
     RDB_type *tuptyp = NULL;
-    int i;
+    int i, ai;
     int res;
     int attrc;
+    
+    /* Additional attribute for each AVG */
+    int avgc;
+    char **avgv;
 
     newtbp = malloc(sizeof (RDB_table));
     if (newtbp == NULL)
@@ -1474,13 +1493,39 @@ RDB_summarize(RDB_table *tb1p, RDB_table *tb2p, int addc, RDB_summarize_add addv
         free(newtbp);
         return RDB_NO_MEMORY;
     }
+    avgc = 0;
     for (i = 0; i < addc; i++) {
         newtbp->var.summarize.addv[i].name = NULL;
+        if (addv[i].op == RDB_AVG)
+            avgc++;
     }
+    avgv = malloc(avgc * sizeof(char *));
+    for (i = 0; i < avgc; i++)
+        avgv[i] = NULL;
+    if (avgv == NULL) {
+        free(newtbp->var.summarize.addv);
+        free(newtbp->keyv);
+        free(newtbp);
+        return RDB_NO_MEMORY;
+    }
+    ai = 0;
     for (i = 0; i < addc; i++) {
-        if (addv[i].op == RDB_COUNTD || addv[i].op == RDB_SUMD
-                || addv[i].op == RDB_AVGD) {
-            return RDB_NOT_SUPPORTED;
+        switch (addv[i].op) {
+            case RDB_COUNTD:
+            case RDB_SUMD:
+            case RDB_AVGD:
+                return RDB_NOT_SUPPORTED;
+            case RDB_AVG:
+                avgv[ai] = malloc(strlen(addv[i].name) + 3);
+                if (avgv[ai] == NULL) {
+                    res = RDB_NO_MEMORY;
+                    goto error;
+                }
+                strcpy(avgv[ai], addv[i].name);
+                strcat(avgv[ai], AVG_COUNT_SUFFIX);
+                ai++;
+                break;
+            default: ;
         }
         newtbp->var.summarize.addv[i].op = addv[i].op;
         newtbp->var.summarize.addv[i].name = RDB_dup_str(addv[i].name);
@@ -1493,7 +1538,7 @@ RDB_summarize(RDB_table *tb1p, RDB_table *tb2p, int addc, RDB_summarize_add addv
 
     /* Create type */
 
-    attrc = tb2p->typ->complex.basetyp->complex.tuple.attrc + addc;
+    attrc = tb2p->typ->complex.basetyp->complex.tuple.attrc + addc + avgc;
     tuptyp = malloc(sizeof (RDB_type));
     tuptyp->kind = RDB_TP_TUPLE;
     tuptyp->complex.tuple.attrc = attrc;
@@ -1521,6 +1566,13 @@ RDB_summarize(RDB_table *tb1p, RDB_table *tb2p, int addc, RDB_summarize_add addv
         tuptyp->complex.tuple.attrv[addc + i].defaultp = NULL;
         tuptyp->complex.tuple.attrv[addc + i].options = 0;
     }
+    for (i = 0; i < avgc; i++) {
+        tuptyp->complex.tuple.attrv[attrc - avgc + i].name = avgv[i];
+        tuptyp->complex.tuple.attrv[attrc - avgc + i].type = &RDB_INTEGER;
+        tuptyp->complex.tuple.attrv[attrc - avgc + i].defaultp = NULL;
+        tuptyp->complex.tuple.attrv[attrc - avgc + i].options = 0;
+    }
+        
     newtbp->typ = malloc(sizeof (RDB_type));
     if (newtbp->typ == NULL) {
         res = RDB_NO_MEMORY;
@@ -1538,6 +1590,9 @@ error:
     }
     if (newtbp->typ != NULL)
         free(newtbp->typ);
+    for (i = 0; i < avgc; i++)
+        free(avgv[i]);
+    free(avgv);
     for (i = 0; i < addc; i++) {
         free(newtbp->var.summarize.addv[i].name);
     }

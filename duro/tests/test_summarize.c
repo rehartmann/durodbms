@@ -24,10 +24,8 @@ print_table(RDB_table *tbp, RDB_transaction *txp)
         printf("DEPTNO: %d\n", RDB_tuple_get_int(&tpl, "DEPTNO"));
         printf("COUNT_EMPS: %d\n",
                RDB_tuple_get_int(&tpl, "COUNT_EMPS"));
-
         printf("SUM_SALARY: %f\n",
                (double)RDB_tuple_get_rational(&tpl, "SUM_SALARY"));
-
         printf("AVG_SALARY: %f\n",
                (double)RDB_tuple_get_rational(&tpl, "AVG_SALARY"));
     }
@@ -72,7 +70,8 @@ test_summarize(RDB_database *dbp)
         return err;
     }
 
-    printf("Summarizing union PER { DEPTNO } ADD SUM(SALARY)\n");
+    printf("Summarizing union PER { DEPTNO } ADD COUNT AS COUNT_EMPS,\n");
+    printf("    SUM(SALARY) AS SUM_SALARY, AVG(SALARY) AS AVG_SALARY\n");
 
     err = RDB_project(vtbp, 1, &projattr, &projtbp);
     if (err != RDB_OK) {

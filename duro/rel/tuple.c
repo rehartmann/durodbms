@@ -86,18 +86,20 @@ RDB_tuple_set_rational(RDB_tuple *tp, const char *namp, RDB_rational val)
 }
 
 int
-RDB_tuple_set_string(RDB_tuple *tp, const char *namp, const char *valp)
+RDB_tuple_set_string(RDB_tuple *tp, const char *namp, const char *str)
 {
     RDB_value value;
-    
-    value.typ = &RDB_STRING;
-    value.var.bin.len = strlen(valp) + 1;
-    value.var.bin.datap = malloc(value.var.bin.len);
-    if (value.var.bin.datap == NULL)
-        return RDB_NO_MEMORY;
-    strcpy(value.var.bin.datap, valp);
+    int res;
 
-    return RDB_hashmap_put(&tp->map, namp, &value, sizeof(value));
+    RDB_init_value(&value);
+    res = RDB_value_set_string(&value, str);
+    if (res != RDB_OK) {
+        RDB_destroy_value(&value);
+        return res;
+    }
+    res = RDB_hashmap_put(&tp->map, namp, &value, sizeof(value));
+    /* Must not destroy value because datap is not copied */
+    return res;
 }
 
 RDB_value *

@@ -3,6 +3,8 @@
 
 /* $Id$ */
 
+#define AVG_COUNT_SUFFIX "$C"
+
 typedef struct RDB_qresult {
     RDB_table *tablep;
     union {

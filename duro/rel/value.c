@@ -120,6 +120,53 @@ RDB_destroy_value(RDB_value *valp)
     }
 }
 
+void
+RDB_value_set_int(RDB_value *valp, RDB_int v)
+{
+    RDB_destroy_value(valp);
+    valp->typ = &RDB_INTEGER;
+    valp->var.int_val = v;
+}
+
+void
+RDB_value_set_rational(RDB_value *valp, RDB_rational v)
+{
+    RDB_destroy_value(valp);
+    valp->typ = &RDB_RATIONAL;
+    valp->var.rational_val = v;
+}
+
+int
+RDB_value_set_string(RDB_value *valp, const char *str)
+{
+    RDB_destroy_value(valp);
+    valp->typ = &RDB_STRING;
+    valp->var.bin.len = strlen(str) + 1;
+    valp->var.bin.datap = malloc(valp->var.bin.len);
+    if (valp->var.bin.datap == NULL)
+        return RDB_NO_MEMORY;
+    strcpy(valp->var.bin.datap, str);
+    return RDB_OK;
+}
+
+RDB_int
+RDB_value_int(const RDB_value *valp)
+{
+    return valp->var.int_val;
+}
+
+RDB_rational
+RDB_value_rational(const RDB_value *valp)
+{
+    return valp->var.rational_val;
+}
+
+char *
+RDB_value_string(RDB_value *valp)
+{
+    return valp->var.bin.datap;
+}
+
 int
 RDB_binary_set(RDB_value *valp, size_t pos, void *srcp, size_t len)
 {

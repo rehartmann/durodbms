@@ -3,7 +3,7 @@
 #include "rdb.h"
 #include "internal.h"
 #include "typeimpl.h"
-#include <math.h>
+#include <string.h>
 
 static int
 init_summ_table(RDB_qresult *qresp, RDB_transaction *txp)
@@ -32,6 +32,7 @@ init_summ_table(RDB_qresult *qresp, RDB_transaction *txp)
         /* Extend tuple */
         for (i = 0; i < qresp->tablep->var.summarize.addc; i++) {
             char *name = qresp->tablep->var.summarize.addv[i].name;
+            char *cname;
 
             switch (qresp->tablep->var.summarize.addv[i].op) {
                 case RDB_COUNT:
@@ -40,7 +41,18 @@ init_summ_table(RDB_qresult *qresp, RDB_transaction *txp)
                     break;
                 case RDB_AVG:
                 case RDB_AVGD:
-                    res = RDB_tuple_set_rational(&tpl, name, NAN);
+                    res = RDB_tuple_set_rational(&tpl, name, 0);
+                    if (res != RDB_OK)
+                       break;
+                    cname = malloc(strlen(name) + 3);
+                    if (cname == NULL) {
+                        res = RDB_NO_MEMORY;
+                        break;
+                    }
+                    strcpy(cname, name);
+                    strcat(cname, AVG_COUNT_SUFFIX);
+                    res = RDB_tuple_set_int(&tpl, cname, 0);
+                    free(cname);
                     break;
                 case RDB_SUM:
                 case RDB_SUMD:
@@ -89,55 +101,65 @@ error:
     return res;
 }
 
+struct _RDB_summval {
+    RDB_value val;
+
+    /* for AVG */
+    int fvidx;
+    RDB_int count;
+};
+
 static void
-summ_step(RDB_value *valp, const RDB_value *addvalp, RDB_aggregate_op op)
+summ_step(struct _RDB_summval *svalp, const RDB_value *addvalp, RDB_aggregate_op op)
 {
     switch (op) {
         case RDB_COUNT:
-            valp->var.int_val++;
+            svalp->val.var.int_val++;
             break;
         case RDB_COUNTD:
             break;
         case RDB_AVG:
-            if (isnan(valp->var.rational_val))
-                valp->var.rational_val = addvalp->var.rational_val;
-            else
-                /* ... */;
+                svalp->val.var.rational_val =
+                        (svalp->val.var.rational_val * svalp->count
+                        + addvalp->var.rational_val)
+                        / (svalp->count + 1);
+                svalp->count++;
             break;
         case RDB_AVGD:
             break;
         case RDB_SUM:
-            if (valp->typ == &RDB_INTEGER)
-                valp->var.int_val += addvalp->var.int_val;
+            if (svalp->val.typ == &RDB_INTEGER)
+                svalp->val.var.int_val += addvalp->var.int_val;
             else
-                valp->var.rational_val += addvalp->var.rational_val;
+                svalp->val.var.rational_val += addvalp->var.rational_val;
             break;
-        case RDB_SUMD: ;
+        case RDB_SUMD:
+            break;
         case RDB_MAX:
-            if (valp->typ == &RDB_INTEGER) {
-                if (addvalp->var.int_val > valp->var.int_val)
-                    valp->var.int_val = addvalp->var.int_val;
+            if (svalp->val.typ == &RDB_INTEGER) {
+                if (addvalp->var.int_val > svalp->val.var.int_val)
+                    svalp->val.var.int_val = addvalp->var.int_val;
             } else {
-                if (addvalp->var.rational_val > valp->var.rational_val)
-                    valp->var.rational_val = addvalp->var.rational_val;
+                if (addvalp->var.rational_val > svalp->val.var.rational_val)
+                    svalp->val.var.rational_val = addvalp->var.rational_val;
             }
             break;
         case RDB_MIN:
-            if (valp->typ == &RDB_INTEGER) {
-                if (addvalp->var.int_val < valp->var.int_val)
-                    valp->var.int_val = addvalp->var.int_val;
+            if (svalp->val.typ == &RDB_INTEGER) {
+                if (addvalp->var.int_val < svalp->val.var.int_val)
+                    svalp->val.var.int_val = addvalp->var.int_val;
             } else {
-                if (addvalp->var.rational_val < valp->var.rational_val)
-                    valp->var.rational_val = addvalp->var.rational_val;
+                if (addvalp->var.rational_val < svalp->val.var.rational_val)
+                    svalp->val.var.rational_val = addvalp->var.rational_val;
             }
             break;
         case RDB_ANY:
             if (addvalp->var.bool_val)
-                valp->var.bool_val = RDB_TRUE;
+                svalp->val.var.bool_val = RDB_TRUE;
             break;
         case RDB_ALL: ;
             if (!addvalp->var.bool_val)
-                valp->var.bool_val = RDB_FALSE;
+                svalp->val.var.bool_val = RDB_FALSE;
             break;
     }
 }
@@ -149,18 +171,24 @@ do_summarize(RDB_qresult *qresp, RDB_transaction *txp)
     RDB_tuple tpl;
     RDB_field *keyfv, *nonkeyfv;
     int res;
-    RDB_value *valv;
+    struct _RDB_summval *svalv;
     RDB_value addval;
     int keyfc = _RDB_pkey_len(qresp->tablep);
     int addc = qresp->tablep->var.summarize.addc;
+    int avgc = 0;
     int i;
-    
+
+    for (i = 0; i < addc; i++) {
+        if (qresp->tablep->var.summarize.addv[i].op == RDB_AVG)
+            avgc++;
+    }
     keyfv = malloc(sizeof (RDB_field) * keyfc);
-    nonkeyfv = malloc(sizeof (RDB_field) * addc);
-    valv = malloc(sizeof (RDB_value) * addc);
-    if (keyfv == NULL || nonkeyfv == NULL) {
+    nonkeyfv = malloc(sizeof (RDB_field) * (addc + avgc));
+    svalv = malloc(sizeof (struct _RDB_summval) * addc);
+    if (keyfv == NULL || nonkeyfv == NULL || svalv == NULL) {
         free(keyfv);
         free(nonkeyfv);
+        free(svalv);
         return RDB_NO_MEMORY;
     }
 
@@ -176,52 +204,77 @@ do_summarize(RDB_qresult *qresp, RDB_transaction *txp)
     RDB_init_tuple(&tpl);
     RDB_init_value(&addval);
     for (i = 0; i < addc; i++)
-       RDB_init_value(&valv[i]);
+        RDB_init_value(&svalv[i].val);
     do {
         res = _RDB_next_tuple(qrp, &tpl, txp);
         if (res == RDB_OK) {
-            /* The following code works because we know qresp->matp
-             * is a stored table.
-             */
-
+            int ai;
+        
+            /* Build key */
             for (i = 0; i < keyfc; i++) {
                 keyfv[i].datap = RDB_value_irep(
                         RDB_tuple_get(&tpl, qresp->tablep->keyv[0].attrv[i]),
                         &keyfv[i].len);
             }
 
+            /* Read added attributes from table #2 */
+            ai = 0;
             for (i = 0; i < addc; i++) {
+                char *attrname = qresp->tablep->var.summarize.addv[i].name;
+            
                 nonkeyfv[i].no = *(RDB_int *)RDB_hashmap_get(
-                        &qresp->matp->var.stored.attrmap,
-                        qresp->tablep->var.summarize.addv[i].name, NULL);
+                        &qresp->matp->var.stored.attrmap, attrname, NULL);
+                if (qresp->tablep->var.summarize.addv[i].op == RDB_AVG) {
+                    char *cattrname = malloc(strlen(attrname) + 3);
+                    if (cattrname == NULL) {
+                        res = RDB_NO_MEMORY;
+                        goto error;
+                    }
+                    strcpy(cattrname, attrname);
+                    strcat(cattrname, AVG_COUNT_SUFFIX);               
+                    nonkeyfv[addc + ai].no = *(RDB_int *)RDB_hashmap_get(
+                        &qresp->matp->var.stored.attrmap, cattrname, NULL);
+                    free(cattrname);
+                    svalv[i].fvidx = addc + ai;
+                    ai++;
+                }
             }
-
             res = RDB_get_fields(qresp->matp->var.stored.recmapp, keyfv,
-                                 addc, txp->txid, nonkeyfv);
+                                 addc + avgc, txp->txid, nonkeyfv);
             if (res == RDB_OK) {
                 /* A corresponding tuple in table 2 has been found */
                 for (i = 0; i < addc; i++) {
                     RDB_summarize_add *summp = &qresp->tablep->var.summarize.addv[i];
 
                     if (summp->op == RDB_COUNT) {
-                        res = RDB_irep_to_value(&valv[i], &RDB_INTEGER,
+                        res = RDB_irep_to_value(&svalv[i].val, &RDB_INTEGER,
                                 nonkeyfv[i].datap, nonkeyfv[i].len);
                     } else {
-                        res = RDB_irep_to_value(&valv[i], RDB_expr_type(summp->exp),
+                        res = RDB_irep_to_value(&svalv[i].val, RDB_expr_type(summp->exp),
                                 nonkeyfv[i].datap, nonkeyfv[i].len);
                         if (res != RDB_OK)
                             goto error;
                         res = RDB_evaluate(summp->exp, &tpl, txp, &addval);
                         if (res != RDB_OK)
                             goto error;
+                        /* If it's AVG, get count */
+                        if (summp->op == RDB_AVG) {
+                            memcpy(&svalv[i].count, nonkeyfv[svalv[i].fvidx].datap,
+                                    sizeof(RDB_int));
+                        }
                     }
-                    summ_step(&valv[i], &addval, summp->op);
+                    summ_step(&svalv[i], &addval, summp->op);
 
-                    nonkeyfv[i].datap = RDB_value_irep(&valv[i], &nonkeyfv[i].len);
+                    nonkeyfv[i].datap = RDB_value_irep(&svalv[i].val, &nonkeyfv[i].len);
+
+                    /* If it's AVG, store count */
+                    if (summp->op == RDB_AVG) {
+                        nonkeyfv[svalv[i].fvidx].datap = &svalv[i].count;
+                        nonkeyfv[svalv[i].fvidx].len = sizeof(RDB_int);
+                    }                        
                 }
-                
                 res = RDB_update_rec(qresp->matp->var.stored.recmapp, keyfv,
-                    addc, nonkeyfv, txp->txid);
+                    addc + avgc, nonkeyfv, txp->txid);
                 if (res != RDB_OK)
                     goto error;
             } else if (res != RDB_NOT_FOUND)
@@ -236,11 +289,11 @@ error:
     RDB_destroy_tuple(&tpl);
     RDB_destroy_value(&addval);
     for (i = 0; i < addc; i++)
-        RDB_destroy_value(&valv[i]);
+        RDB_destroy_value(&svalv[i].val);
     _RDB_drop_qresult(qrp, txp);
     free(keyfv);
     free(nonkeyfv);
-    free(valv);
+    free(svalv);
     return res;
 }
 
@@ -390,22 +443,22 @@ _RDB_table_qresult(RDB_table *tbp, RDB_qresult **qrespp, RDB_transaction *txp)
 }
 
 static int
-next_stored_tuple(RDB_qresult *qrp, RDB_hashmap *attrmap, RDB_tuple *tup)
+next_stored_tuple(RDB_qresult *qrp, RDB_table *tbp, RDB_tuple *tup)
 {
     int i;
     int res;
     void *datap;
     size_t len;
-    RDB_table *tbp = qrp->tablep;
     RDB_type *tuptyp = tbp->typ->complex.basetyp;
 
     for (i = 0; i < tuptyp->complex.tuple.attrc; i++) {
         RDB_value val;
-        RDB_int *fnop;
+        RDB_int fno;
         RDB_attr *attrp = &tuptyp->complex.tuple.attrv[i];
 
-        fnop = RDB_hashmap_get(attrmap, attrp->name, NULL);
-        res = RDB_cursor_get(qrp->var.curp, *fnop, &datap, &len);
+        fno = *(RDB_int *)RDB_hashmap_get(&tbp->var.stored.attrmap,
+                                          attrp->name, NULL);
+        res = RDB_cursor_get(qrp->var.curp, fno, &datap, &len);
         if (res != RDB_OK) {
             return res;
         }
@@ -612,7 +665,7 @@ _RDB_next_tuple(RDB_qresult *qrp, RDB_tuple *tup, RDB_transaction *txp)
         RDB_bool expres;
 
         case RDB_TB_STORED:
-            return next_stored_tuple(qrp, &tbp->var.stored.attrmap, tup);
+            return next_stored_tuple(qrp, qrp->tablep, tup);
         case RDB_TB_SELECT:
             do {
                 res = _RDB_next_tuple(qrp->var.virtual.qrp, tup, txp);
@@ -701,10 +754,29 @@ _RDB_next_tuple(RDB_qresult *qrp, RDB_tuple *tup, RDB_transaction *txp)
         case RDB_TB_PROJECT:
             return next_project_tuple(qrp, tup, txp);
         case RDB_TB_SUMMARIZE:
-            return next_stored_tuple(qrp, &qrp->matp->var.stored.attrmap, tup);
-/*
-            return _RDB_next_tuple(qrp->var.virtual.qrp, tup, txp);
-*/
+            {
+                int i;
+                char *cname;
+                RDB_int count;
+            
+                res = next_stored_tuple(qrp, qrp->matp, tup);
+                if (res != RDB_OK)
+                    return res;
+                /* check AVG counts */
+                for (i = 0; i < qrp->tablep->var.summarize.addc; i++) {
+                    RDB_summarize_add *summp = &qrp->tablep->var.summarize.addv[i];
+                    if (summp->op == RDB_AVG) {
+                        cname = malloc(strlen(summp->name) + 3);
+                        strcpy (cname, summp->name);
+                        strcat (cname, AVG_COUNT_SUFFIX);
+                        count = RDB_tuple_get_int(tup, cname);
+                        free(cname);
+                        if (count == 0)
+                            return RDB_AGGREGATE_UNDEFINED;
+                    }
+                }
+            }
+            break;
     }
     return RDB_OK;
 }

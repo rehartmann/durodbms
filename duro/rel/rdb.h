@@ -416,7 +416,7 @@ RDB_rollback(RDB_transaction *);
 
 typedef struct {
     char *name;
-    RDB_expression *valuep;
+    RDB_expression *valuep; /* !! */
 } RDB_attr_update;
 
 #define RDB_table_name(tbp) ((tbp)->name)
@@ -748,6 +748,24 @@ RDB_init_value(RDB_value *valp);
  */
 void
 RDB_destroy_value(RDB_value *valp);
+
+void
+RDB_value_set_int(RDB_value *valp, RDB_int v);
+
+void
+RDB_value_set_rational(RDB_value *valp, RDB_rational v);
+
+int
+RDB_value_set_string(RDB_value *valp, const char *str);
+
+RDB_int
+RDB_value_int(const RDB_value *valp);
+
+RDB_rational
+RDB_value_rational(const RDB_value *valp);
+
+char *
+RDB_value_string(RDB_value *valp);
 
 /*
  * Copy len bytes from srcp into the RDB_value at position pos.

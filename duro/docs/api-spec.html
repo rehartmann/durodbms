@@ -99,15 +99,6 @@ int
 RDB_aggregate(RDB_table *, RDB_aggregate_op op, const char *attrname,
               RDB_transaction *, RDB_value *resultp);
 
-int
-RDB_binary_set(RDB_value *, size_t pos, void *srcp, size_t len);
-
-int
-RDB_binary_get(const RDB_value *, size_t pos, void *dstp, size_t len);
-
-size_t
-RDB_binary_get_length(const RDB_value *);
-
 </pre>
 
 <h2>Selector functions</h2>
@@ -123,13 +114,6 @@ RDB_select_value(int valc, const RDB_value *valpc[], RDB_value *resultp)
 
 <pre>
 
-int
-RDB_value_set(RDB_value *valp, const char *compname,
-              const RDB_value *compvalp);
-
-int
-RDB_value_get(RDB_value *valp, const char *compname,
-              RDB_value *compvalp);
 
 </pre>
 
@@ -217,6 +201,41 @@ int
 RDB_tuple_unwrap(const RDB_tuple *, int attrc, const char *attrv[]);
 
 </pre>
+
+<h2>Miscellaneous RDB_value functions</h2>
+
+<pre>
+
+void
+RDB_value_set_int(RDB_value *valp, RDB_int v);
+
+void
+RDB_value_set_rational(RDB_value *valp, RDB_rational v);
+
+int
+RDB_value_set_string(RDB_value *valp, const char *str);
+
+RDB_int
+RDB_value_int(const RDB_value *valp);
+
+RDB_rational
+RDB_value_rational(const RDB_value *valp);
+
+char *
+RDB_value_string(RDB_value *valp);
+
+int
+RDB_binary_set(RDB_value *, size_t pos, void *srcp, size_t len);
+
+int
+RDB_binary_get(const RDB_value *, size_t pos, void *dstp, size_t len);
+
+size_t
+RDB_binary_get_length(const RDB_value *);
+
+</pre>
+
+</h2>
 
 <h2>Table functions</h2>
 
