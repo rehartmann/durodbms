@@ -214,8 +214,16 @@ enum _RDB_tb_kind {
     RDB_TB_EXTEND,
     RDB_TB_PROJECT,
     RDB_TB_SUMMARIZE,
-    RDB_TB_RENAME
+    RDB_TB_RENAME,
+    RDB_TB_WRAP,
+    RDB_TP_UNWRAP
 };
+
+typedef struct {
+    int attrc;
+    char **attrv;
+    char *attrname;
+} RDB_wrapping;
 
 typedef struct RDB_table {
     /* internal */
@@ -279,6 +287,14 @@ typedef struct RDB_table {
             int renc;
             RDB_renaming *renv;
         } rename;
+        struct {
+            int wrapc;
+            RDB_wrapping *wrapv;
+        } wrap;
+        struct {
+            int attrc;
+            char **attrv;            
+        } unwwrap;
     } var;
     int refcount;
 } RDB_table;
@@ -654,6 +670,14 @@ int
 RDB_rename(RDB_table *tbp, int renc, RDB_renaming renv[],
            RDB_table **resultpp);
 
+int
+RDB_wrap(RDB_table *tbp, int wrapc, RDB_wrapping wrapv[],
+         RDB_table **resultpp);
+
+int
+RDB_unwrap(RDB_table *tbp, int attrc, const char *attrv[],
+        RDB_table **resultpp);
+
 /*
  * Functions for creation/destruction of tuples and reading/modifying attributes.
  * RDB_object represents a tuple variable.
@@ -712,6 +736,14 @@ RDB_extend_tuple(RDB_object *, int attrc, RDB_virtual_attr attrv[],
 int
 RDB_rename_tuple(const RDB_object *, int renc, RDB_renaming renv[],
                  RDB_object *restup);
+
+int
+RDB_wrap_tuple(const RDB_object *tplp, int wrapc, RDB_wrapping wrapv[],
+               RDB_object *restplp);
+
+int
+RDB_unwrap_tuple(const RDB_object *tplp, int attrc, const char *attrv[],
+        RDB_object *restplp);
 
 void
 RDB_init_array(RDB_array *);

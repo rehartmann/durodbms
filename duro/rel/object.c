@@ -232,7 +232,7 @@ copy_obj(RDB_object *dstvalp, const RDB_object *srcvalp)
             dstvalp->var.rational_val = srcvalp->var.rational_val;
             break;
         case _RDB_TUPLE:
-            return RDB_rename_tuple(srcvalp, 0, NULL, dstvalp);
+            return _RDB_copy_tuple(dstvalp, srcvalp);
         default:
             dstvalp->kind = srcvalp->kind;
             dstvalp->var.bin.len = srcvalp->var.bin.len;

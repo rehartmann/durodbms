@@ -186,7 +186,7 @@ rename_attr(RDB_hashmap *hp, const char *attrname, void *arg)
         RDB_tuple_set(infop->dsttup, attrname,
                           RDB_tuple_get(infop->srctup, attrname));
     }
-}    
+}
 
 int
 RDB_rename_tuple(const RDB_object *tup, int renc, RDB_renaming renv[],
@@ -201,6 +201,115 @@ RDB_rename_tuple(const RDB_object *tup, int renc, RDB_renaming renv[],
 
     /* Copy attributes to tup */
     RDB_hashmap_apply((RDB_hashmap *)&tup->var.tpl_map, &rename_attr, &info);
+
+    return RDB_OK;
+}
+
+struct _RDB_copy_attr_info {
+    const RDB_object *srctup;
+    RDB_object *dsttup;
+};
+
+static void
+copy_attr(RDB_hashmap *hp, const char *attrname, void *arg)
+{
+    struct _RDB_copy_attr_info *infop = (struct _RDB_copy_attr_info *)arg;
+
+    RDB_tuple_set(infop->dsttup, attrname, RDB_tuple_get(infop->srctup, attrname));
+}
+
+/* Copy all attributes from one tuple to another. */
+int
+_RDB_copy_tuple(RDB_object *dstp, const RDB_object *srcp)
+{
+    struct _RDB_copy_attr_info info;
+
+    info.srctup = srcp;
+    info.dsttup = dstp;
+
+    /* Copy attributes to tup */
+    RDB_hashmap_apply((RDB_hashmap *)&srcp->var.tpl_map, &copy_attr, &info);
+    
+    return RDB_OK;
+}
+
+static void
+copy_nexattr(RDB_hashmap *hp, const char *attrname, void *arg)
+{
+    struct _RDB_copy_attr_info *infop = (struct _RDB_copy_attr_info *)arg;
+
+    if (RDB_tuple_get(infop->dsttup, attrname) == NULL) {
+        RDB_tuple_set(infop->dsttup, attrname,
+                RDB_tuple_get(infop->srctup, attrname));
+    }
+}
+
+/* Copy only those attributes which do not exist in the destination tuple */
+static int
+copy_remaining(RDB_object *dstp, const RDB_object *srcp)
+{
+    struct _RDB_copy_attr_info info;
+
+    info.srctup = srcp;
+    info.dsttup = dstp;
+
+    /* Copy attributes to tup */
+    RDB_hashmap_apply((RDB_hashmap *)&srcp->var.tpl_map, &copy_nexattr, &info);
+    
+    return RDB_OK;
+}
+
+int
+RDB_wrap_tuple(const RDB_object *tplp, int wrapc, RDB_wrapping wrapv[],
+               RDB_object *restplp)
+{
+    int i, j;
+    int ret;
+    RDB_object tpl;
+
+    RDB_init_obj(&tpl);
+
+    /* Wrap attributes */
+    for (i = 0; i < wrapc; i++) {
+        for (j = 0; j < wrapv[i].attrc; j++) {
+            ret = RDB_tuple_set(&tpl, wrapv[i].attrv[j],
+                    RDB_tuple_get(tplp, wrapv[i].attrv[j]));
+            if (ret != RDB_OK) {
+                RDB_destroy_obj(&tpl);
+                return ret;
+            }
+        }
+        RDB_tuple_set(restplp, wrapv[i].attrname, &tpl);
+        if (ret != RDB_OK) {
+            RDB_destroy_obj(&tpl);
+            return ret;
+        }
+    }
+    RDB_destroy_obj(&tpl);
+
+    /* Copy remaining attributes */
+    copy_remaining(restplp, tplp);
+    
+    return RDB_OK;
+}
+
+int
+RDB_unwrap_tuple(const RDB_object *tplp, int attrc, const char *attrv[],
+        RDB_object *restplp)
+{
+    int i;
+    int ret;
+    
+    for (i = 0; i < attrc; i++) {
+        RDB_object *wtplp = RDB_tuple_get(tplp, attrv[i]);
+
+        ret = _RDB_copy_tuple(restplp, wtplp);
+        if (ret != RDB_OK)
+            return ret;
+    }
+    
+    /* Copy remaining attributes */
+    copy_remaining(restplp, tplp);
 
     return RDB_OK;
 }

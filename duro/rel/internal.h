@@ -171,6 +171,9 @@ _RDB_drop_rtable(RDB_table *tbp, RDB_transaction *txp);
 int
 _RDB_drop_table(RDB_table *tbp, RDB_transaction *txp, RDB_bool rec);
 
+int
+_RDB_copy_tuple(RDB_object *dstp, const RDB_object *srcp);
+
 /*
  * Extend the tuple type pointed to by typ by the attributes given by
  * attrv and return the new tuple type.
