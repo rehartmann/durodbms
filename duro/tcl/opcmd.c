@@ -31,13 +31,15 @@ operator_create_cmd(ClientData data, Tcl_Interp *interp, int objc, Tcl_Obj *CONS
                 "arglist body txId");
         return TCL_ERROR;
     }
-    if (strcmp (Tcl_GetStringFromObj(objv[3], NULL), "-updates") == 0)
+    if (strcmp (Tcl_GetString(objv[3]), "-updates") == 0) {
         update = RDB_TRUE;
-    if (strcmp (Tcl_GetStringFromObj(objv[3], NULL), "-returns") == 0)
+    } else if (strcmp (Tcl_GetString(objv[3]), "-returns") == 0) {
         update = RDB_FALSE;
-    else
-        Tcl_SetResult(interp, "invalid option, must be -updates or -returns",
+    } else {
+        Tcl_SetResult(interp, "Invalid option, must be -updates or -returns",
                 TCL_STATIC);
+        return TCL_ERROR;
+    }
 
     txstr = Tcl_GetStringFromObj(objv[7], NULL);
     entryp = Tcl_FindHashEntry(&statep->txs, txstr);

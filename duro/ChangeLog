@@ -4,6 +4,8 @@ Summary of Changes for Duro
 
 Changes for Duro 0.8
 
+- Now allowing nonscalar types as operator argument and return types.
+
 - Changed argument order of RDB_call_ro_op().
 
 - Implemented RDB_get_dbs() and duro::env dbs.
@@ -21,8 +23,6 @@ Changes for Duro 0.8
 
 - Added support for user-defined types in Durotcl through duro::type.
 
-- Fixed bugs in deserialization and table creation code.
-
 - Added SUBSET operator.
 
 - Removed the libname argument from RDB_implement_type(). Selectors,
@@ -38,6 +38,8 @@ Changes for Duro 0.8
 - Implemented RDB_project_tuple() and RDB_join_tuples().
 
 - Added tuple operations to the expression parser.
+
+- Fixed several bugs.
 
 Changes for Duro 0.7
 

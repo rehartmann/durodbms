@@ -288,6 +288,7 @@ RDB_irep_to_obj(RDB_object *valp, RDB_type *typ, const void *datap, size_t len)
     kind = val_kind(typ);
 
     switch (kind) {
+        case RDB_OB_INITIAL:
         case RDB_OB_BOOL:
             valp->var.bool_val = *(RDB_bool *) datap;
             break;
@@ -296,6 +297,13 @@ RDB_irep_to_obj(RDB_object *valp, RDB_type *typ, const void *datap, size_t len)
             break;
         case RDB_OB_RATIONAL:
             memcpy(&valp->var.rational_val, datap, sizeof (RDB_rational));
+            break;
+        case RDB_OB_BIN:
+            valp->var.bin.len = len;
+            valp->var.bin.datap = malloc(len);
+            if (valp->var.bin.datap == NULL)
+                return RDB_NO_MEMORY;
+            memcpy(valp->var.bin.datap, datap, len);
             break;
         case RDB_OB_TUPLE:
             ret = irep_to_tuple(valp, typ, datap);
@@ -314,12 +322,6 @@ RDB_irep_to_obj(RDB_object *valp, RDB_type *typ, const void *datap, size_t len)
         }
         case RDB_OB_ARRAY:
             return irep_to_array(valp, typ, datap, len);
-        default:
-            valp->var.bin.len = len;
-            valp->var.bin.datap = malloc(len);
-            if (valp->var.bin.datap == NULL)
-                return RDB_NO_MEMORY;
-            memcpy(valp->var.bin.datap, datap, len);
     }
     valp->kind = kind;
     return RDB_OK;
@@ -464,9 +466,9 @@ RDB_obj_equals(const RDB_object *val1p, const RDB_object *val2p)
         case RDB_OB_TUPLE:
             return _RDB_tuple_equals(val1p, val2p);
         case RDB_OB_TABLE:
+            abort();
         case RDB_OB_ARRAY:
-            /* !! */
-            return RDB_FALSE;
+            return _RDB_array_equals((RDB_object *)val1p, (RDB_object *)val2p);
     }
     return RDB_FALSE;
 } 
@@ -776,10 +778,11 @@ RDB_binary_set(RDB_object *valp, size_t pos, const void *srcp, size_t len)
     /* If the value is newly initialized, allocate memory */
     if (valp->kind == RDB_OB_INITIAL) {
         valp->var.bin.len = pos + len;
-        if (valp->var.bin.len > 0)
+        if (valp->var.bin.len > 0) {
             valp->var.bin.datap = malloc(valp->var.bin.len);
-        if (valp->var.bin.datap == NULL)
-            return RDB_NO_MEMORY;
+            if (valp->var.bin.datap == NULL)
+                return RDB_NO_MEMORY;
+        }
         valp->typ = &RDB_BINARY;
         valp->kind = RDB_OB_BIN;
     }

@@ -35,6 +35,7 @@ typedef struct RDB_dbroot {
     RDB_table *possreps_tbp;
     RDB_table *possrepcomps_tbp;
     RDB_table *ro_ops_tbp;
+    RDB_table *ro_op_rtypes_tbp;
     RDB_table *upd_ops_tbp;
     RDB_table *indexes_tbp;
 } RDB_dbroot;
@@ -295,6 +296,9 @@ _RDB_copy_tuple(RDB_object *dstp, const RDB_object *srcp);
 
 int
 _RDB_copy_array(RDB_object *dstp, const RDB_object *srcp);
+
+RDB_bool
+_RDB_array_equals(RDB_object *arr1p, RDB_object *arr2p);
 
 RDB_bool
 _RDB_tuple_equals(const RDB_object *, const RDB_object *);

@@ -43,9 +43,35 @@ insert_stored(RDB_table *tbp, const RDB_object *tplp, RDB_transaction *txp)
         }
         
         /* Typecheck */
-        if (valp->typ != NULL && !RDB_type_equals(valp->typ,
-                             tuptyp->var.tuple.attrv[i].typ)) {
-            return RDB_TYPE_MISMATCH;
+        if (valp->typ == NULL) {
+            RDB_type *attrtyp = tuptyp->var.tuple.attrv[i].typ;
+
+            switch (valp->kind) {
+                case RDB_OB_BOOL:
+                case RDB_OB_INT:
+                case RDB_OB_RATIONAL:
+                case RDB_OB_BIN:
+                    return RDB_INTERNAL;
+                case RDB_OB_INITIAL:
+                    if (!RDB_type_is_scalar(attrtyp))
+                        return RDB_TYPE_MISMATCH;
+                    break;
+                case RDB_OB_TUPLE:
+                    if (attrtyp->kind != RDB_TP_TUPLE)
+                        return RDB_TYPE_MISMATCH;
+                    break;
+                case RDB_OB_TABLE:
+                    if (attrtyp->kind != RDB_TP_RELATION)
+                        return RDB_TYPE_MISMATCH;
+                     break;
+                case RDB_OB_ARRAY:
+                    if (attrtyp->kind != RDB_TP_ARRAY)
+                        return RDB_TYPE_MISMATCH;
+                    break;
+            }
+        } else {
+            if (!RDB_type_equals(valp->typ, tuptyp->var.tuple.attrv[i].typ))
+                return RDB_TYPE_MISMATCH;
         }
 
         /* Set type - needed for non-scalar attributes */

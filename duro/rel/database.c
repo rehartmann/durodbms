@@ -464,6 +464,7 @@ close_systables(RDB_dbroot *dbrootp)
     close_table(dbrootp->possreps_tbp, dbrootp->envp);
     close_table(dbrootp->possrepcomps_tbp, dbrootp->envp);
     close_table(dbrootp->ro_ops_tbp, dbrootp->envp);
+    close_table(dbrootp->ro_op_rtypes_tbp, dbrootp->envp);
     close_table(dbrootp->upd_ops_tbp, dbrootp->envp);
     close_table(dbrootp->indexes_tbp, dbrootp->envp);
 }
@@ -1332,7 +1333,8 @@ RDB_create_ro_op(const char *name, int argc, RDB_type *argtv[], RDB_type *rtyp,
 {
     RDB_object tpl;
     RDB_object iarg;
-    char *typesbuf;
+    RDB_object rtypobj;
+    RDB_object typesobj;
     int ret;
     int i;
 
@@ -1348,16 +1350,16 @@ RDB_create_ro_op(const char *name, int argc, RDB_type *argtv[], RDB_type *rtyp,
         return RDB_NOT_SUPPORTED;
 
     RDB_init_obj(&tpl);
+    RDB_init_obj(&rtypobj);
+
     ret = RDB_tuple_set_string(&tpl, "NAME", name);
     if (ret != RDB_OK)
         goto cleanup;
-    RDB_tuple_set_string(&tpl, "RTYPE", RDB_type_name(rtyp));
+
+    ret = RDB_tuple_set_string(&tpl, "LIB", libname);
     if (ret != RDB_OK)
         goto cleanup;
-    RDB_tuple_set_string(&tpl, "LIB", libname);
-    if (ret != RDB_OK)
-        goto cleanup;
-    RDB_tuple_set_string(&tpl, "SYMBOL", symname);
+    ret = RDB_tuple_set_string(&tpl, "SYMBOL", symname);
     if (ret != RDB_OK)
         goto cleanup;
 
@@ -1375,22 +1377,38 @@ RDB_create_ro_op(const char *name, int argc, RDB_type *argtv[], RDB_type *rtyp,
     if (ret != RDB_OK)
         goto cleanup;
 
-    /* Set ARGTYPES to concatenation of arg type names */
-    typesbuf = _RDB_make_typestr(argc, argtv);
-    if (typesbuf == NULL) {
-        ret = RDB_NO_MEMORY;
+    /* Set ARGTYPES to array of serialized arg types */
+    RDB_init_obj(&typesobj);
+    ret = _RDB_make_typesobj(argc, argtv, &typesobj);
+    if (ret != RDB_OK) {
+        RDB_destroy_obj(&typesobj);
         goto cleanup;
     }
 
-    ret = RDB_tuple_set_string(&tpl, "ARGTYPES", typesbuf);
-    free(typesbuf);
+    ret = RDB_tuple_set(&tpl, "ARGTYPES", &typesobj);
+    RDB_destroy_obj(&typesobj);
     if (ret != RDB_OK)
         goto cleanup;
 
     ret = RDB_insert(txp->dbp->dbrootp->ro_ops_tbp, &tpl, txp);
+    if (ret != RDB_OK)
+        goto cleanup;
+
+    ret = _RDB_type_to_obj(&rtypobj, rtyp);
+    if (ret != RDB_OK)
+        goto cleanup;
+    ret = RDB_tuple_set(&tpl, "RTYPE", &rtypobj);
+    if (ret != RDB_OK)
+        goto cleanup;
+
+    ret = RDB_insert(txp->dbp->dbrootp->ro_op_rtypes_tbp, &tpl, txp);
+    /* Operator may be overloaded */
+    if (ret == RDB_ELEMENT_EXISTS)
+        ret = RDB_OK;
 
 cleanup:
     RDB_destroy_obj(&tpl);
+    RDB_destroy_obj(&rtypobj);
     return ret;
 }
 
@@ -1403,7 +1421,8 @@ RDB_create_update_op(const char *name, int argc, RDB_type *argtv[],
     RDB_object tpl;
     RDB_object iarg;
     RDB_object updvobj;
-    char *typesbuf;
+    RDB_object updobj;
+    RDB_object typesobj;
     int i;
     int ret;
 
@@ -1441,25 +1460,33 @@ RDB_create_update_op(const char *name, int argc, RDB_type *argtv[],
         goto cleanup;
 
     RDB_init_obj(&updvobj);
-    ret = RDB_binary_set(&updvobj, 0, updv, argc);
-    if (ret != RDB_OK) {
-        RDB_destroy_obj(&updvobj);
-        goto cleanup;
+    RDB_init_obj(&updobj);
+    RDB_set_array_length(&updvobj, (RDB_int) argc);
+    for (i = 0; i < argc; i++) {
+        RDB_bool_to_obj(&updobj, updv[i]);
+        ret = RDB_array_set(&updvobj, (RDB_int) i, &updobj);
+        if (ret != RDB_OK) {
+            RDB_destroy_obj(&updvobj);
+            RDB_destroy_obj(&updobj);
+            goto cleanup;
+        }
     }
     ret = RDB_tuple_set(&tpl, "UPDV", &updvobj);
     RDB_destroy_obj(&updvobj);
+    RDB_destroy_obj(&updobj);
     if (ret != RDB_OK)
         goto cleanup;
 
-    /* Set ARGTYPES to concatenation of arg type names */
-    typesbuf = _RDB_make_typestr(argc, argtv);
-    if (typesbuf == NULL) {
-        ret = RDB_NO_MEMORY;
+    /* Set ARGTYPES to array of serialized arg types */
+    RDB_init_obj(&typesobj);
+    ret = _RDB_make_typesobj(argc, argtv, &typesobj);
+    if (ret != RDB_OK) {
+        RDB_destroy_obj(&typesobj);
         goto cleanup;
     }
     
-    ret = RDB_tuple_set_string(&tpl, "ARGTYPES", typesbuf);
-    free(typesbuf);
+    ret = RDB_tuple_set(&tpl, "ARGTYPES", &typesobj);
+    RDB_destroy_obj(&typesobj);
     if (ret != RDB_OK)
         goto cleanup;
 

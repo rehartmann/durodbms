@@ -318,7 +318,9 @@ RDB_define_type(const char *name, int repc, RDB_possrep repv[],
     RDB_init_obj(&conval);
     RDB_init_obj(&typedata);
 
-    RDB_binary_set(&typedata, 0, NULL, 0);
+    ret = RDB_binary_set(&typedata, 0, NULL, 0);
+    if (ret != RDB_OK)
+        return ret;
 
     /*
      * Insert tuple into SYS_TYPES

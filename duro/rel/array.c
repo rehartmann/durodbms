@@ -256,3 +256,26 @@ _RDB_copy_array(RDB_object *dstp, const RDB_object *srcp)
 
     return RDB_OK;
 }
+
+RDB_bool
+_RDB_array_equals(RDB_object *arr1p, RDB_object *arr2p)
+{
+    int ret, ret2;
+    RDB_object *obj1p, *obj2p;
+    int i = 0;
+
+    do {
+        ret = RDB_array_get(arr1p, (RDB_int) i, &obj1p);
+        if (ret != RDB_OK && ret != RDB_NOT_FOUND)
+            return RDB_FALSE;
+        ret2 = RDB_array_get(arr2p, (RDB_int) i, &obj2p);
+        if (ret2 != RDB_OK && ret2 != RDB_NOT_FOUND)
+            return RDB_FALSE;
+        if (ret != ret2)
+            return RDB_FALSE;
+        if (ret == RDB_NOT_FOUND)
+            return RDB_TRUE;
+        i++;
+    } while (RDB_obj_equals(obj1p, obj2p));
+    return RDB_FALSE;
+}
