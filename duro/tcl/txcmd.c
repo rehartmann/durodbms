@@ -11,7 +11,7 @@ RDB_tcl_rollback(RDB_transaction *txp, Tcl_HashEntry *entryp)
 }
 
 int
-begin_cmd(ClientData data, Tcl_Interp *interp, int argc, const char *argv[])
+RDB_begin_cmd(ClientData data, Tcl_Interp *interp, int argc, const char *argv[])
 {
     int ret;
     RDB_transaction *txp;
@@ -59,7 +59,7 @@ begin_cmd(ClientData data, Tcl_Interp *interp, int argc, const char *argv[])
 }
 
 int
-commit_cmd(ClientData data, Tcl_Interp *interp, int argc, const char *argv[])
+RDB_commit_cmd(ClientData data, Tcl_Interp *interp, int argc, const char *argv[])
 {
     int ret;
     RDB_transaction *txp;
@@ -88,7 +88,7 @@ commit_cmd(ClientData data, Tcl_Interp *interp, int argc, const char *argv[])
 }
 
 int
-rollback_cmd(ClientData data, Tcl_Interp *interp, int argc, const char *argv[])
+RDB_rollback_cmd(ClientData data, Tcl_Interp *interp, int argc, const char *argv[])
 {
     int ret;
     RDB_transaction *txp;
