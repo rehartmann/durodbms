@@ -81,6 +81,35 @@ Duro_operator_cmd(ClientData data, Tcl_Interp *interp, int objc, Tcl_Obj *CONST 
     return TCL_OK;
 }
 
+static int
+tcl_to_duro(Tcl_Obj *tobjp, RDB_object *objp)
+{
+    int ret;
+    int int_val;
+    double double_val;
+
+    ret = Tcl_GetIntFromObj(NULL, tobjp, &int_val);
+    if (ret == TCL_OK) {
+        RDB_obj_set_int(objp, (RDB_int) int_val);
+        return TCL_OK;
+    }
+
+    ret = Tcl_GetDoubleFromObj(NULL, tobjp, &double_val);
+    if (ret == TCL_OK) {
+        RDB_obj_set_rational(objp, (RDB_rational) double_val);
+        return TCL_OK;
+    }
+
+    ret = Tcl_GetBooleanFromObj(NULL, tobjp, &int_val);
+    if (ret == TCL_OK) {
+        RDB_obj_set_bool(objp, (RDB_bool) int_val);
+        return TCL_OK;
+    }
+
+    RDB_obj_set_string(objp, Tcl_GetStringFromObj(tobjp, NULL));
+    return TCL_OK;
+}
+
 int
 Duro_call_cmd(ClientData data, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[])
 {
@@ -112,7 +141,10 @@ Duro_call_cmd(ClientData data, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv
 
     for (i = 0; i < argc; i++) {
         argv[i] = (RDB_object *) Tcl_Alloc(sizeof (RDB_object));
-        /* ... */
+        RDB_init_obj(argv[i]);
+        ret = tcl_to_duro(objv[3 - i], argv[i]);
+        if (ret != TCL_OK)
+            return ret;
     }
 
     ret = RDB_call_update_op(Tcl_GetStringFromObj(objv[1], NULL),
@@ -136,10 +168,16 @@ Duro_invoke_update_op(const char *name, int argc, RDB_object *argv[],
         RDB_bool updv[], const void *iargp, size_t iarglen,
         RDB_transaction *txp)
 {
+    int ret;
+    Tcl_Interp *interp = (Tcl_Interp *) RDB_db_env(RDB_tx_db(txp))->user_data;
+
+    if (argc > 0) {
+        Tcl_SetVar2Ex(interp, "a", NULL, Duro_to_tcl(interp, argv[0]), 0);
+    }
+
     /* ... */
 
-    Tcl_EvalEx((Tcl_Interp *)RDB_db_env(RDB_tx_db(txp))->user_data,
-            (CONST char *)iargp, iarglen, TCL_EVAL_GLOBAL);
+    ret = Tcl_EvalEx(interp, (CONST char *)iargp, iarglen, 0);
 
-    return RDB_OK;
+    return ret == TCL_OK ? RDB_OK : RDB_INTERNAL;
 }

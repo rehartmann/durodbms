@@ -86,6 +86,7 @@ enum {
 %token TOK_AND
 %token TOK_NOT
 %token TOK_CONCAT
+%token TOK_IS_EMPTY
 %token TOK_COUNT
 %token TOK_COUNTD
 %token TOK_SUM
@@ -101,9 +102,9 @@ enum {
 %type <exp> relation project select rename extend summarize wrap unwrap
         sdivideby expression or_expression and_expression not_expression
         primary_expression rel_expression add_expression mul_expression
-        literal operator_invocation count_invocation sum_invocation
-        avg_invocation min_invocation max_invocation all_invocation
-        any_invocation extractor
+        literal operator_invocation is_empty_invocation count_invocation
+        sum_invocation avg_invocation min_invocation max_invocation
+        all_invocation any_invocation extractor
 
 %type <attrlist> attribute_name_list
 
@@ -705,6 +706,7 @@ primary_expression: TOK_ID
     | min_invocation
     | all_invocation
     | any_invocation
+    | is_empty_invocation
     | operator_invocation
     | '(' expression ')' {
         $$ = $2;
@@ -881,50 +883,47 @@ any_invocation: TOK_ANY '(' argument_list ')' {
     }
     ;
 
+is_empty_invocation: TOK_IS_EMPTY '(' expression ')' {
+        RDB_table *tbp = expr_to_table($3);
+
+        if (tbp == NULL)
+            YYERROR;
+
+        $$ = RDB_expr_is_empty(RDB_expr_table(tbp));
+        if ($$ == NULL)
+            YYERROR;
+    }
+    ;
+
 operator_invocation: TOK_ID '(' opt_argument_list ')' {
-            if (strcmp ($1->var.attr.name, "IS_EMPTY") == 0) {
-                if ($3.argc != 1) {
-                    YYERROR;
-                } else {
-                    RDB_table *tbp = expr_to_table($3.argv[0]);
-
-                    if (tbp == NULL)
-                        YYERROR;
-
-                    $$ = RDB_expr_is_empty(RDB_expr_table(tbp));
-                    if ($$ == NULL)
-                        YYERROR;
-                }
-            } else {
-                expr_ret = RDB_user_op($1->var.attr.name,
-                        NULL /* !! RDB_type *rtyp */, $3.argc, $3.argv,
-                        expr_txp, &$$);
-                if (expr_ret != RDB_OK)
-                    YYERROR;
-            }
-        }
-        ;
+        expr_ret = RDB_user_op($1->var.attr.name,
+                NULL /* !! RDB_type *rtyp */, $3.argc, $3.argv,
+                expr_txp, &$$);
+        if (expr_ret != RDB_OK)
+            YYERROR;
+    }
+    ;
 
 opt_argument_list: {
-            $$.argc = 0;
-        }
-        | argument_list
-        ;
+        $$.argc = 0;
+    }
+    | argument_list
+    ;
 
 argument_list: expression {
-            $$.argc = 1;
-            $$.argv[0] = $1;
-        }
-        | argument_list ',' expression {
-            int i;
+        $$.argc = 1;
+        $$.argv[0] = $1;
+    }
+    | argument_list ',' expression {
+        int i;
 
-            for (i = 0; i < $1.argc; i++) {
-                $$.argv[i] = $1.argv[i];
-            }
-            $$.argv[$1.argc] = $3;
-            $$.argc = $1.argc + 1;
+        for (i = 0; i < $1.argc; i++) {
+            $$.argv[i] = $1.argv[i];
         }
-        ;
+        $$.argv[$1.argc] = $3;
+        $$.argc = $1.argc + 1;
+    }
+    ;
 
 literal: /* "RELATION" '{' expression_list '}' {
         }

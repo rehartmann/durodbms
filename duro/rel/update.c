@@ -1,3 +1,8 @@
+/*
+ * Copyright (C) 2003 René Hartmann.
+ * See the file COPYING for redistribution information.
+ */
+
 /* $Id$ */
 
 #include "rdb.h"
@@ -480,6 +485,8 @@ RDB_update(RDB_table *tbp, RDB_expression *condp, int updc,
         case RDB_TB_WRAP:
             return RDB_NOT_SUPPORTED;
         case RDB_TB_UNWRAP:
+            return RDB_NOT_SUPPORTED;
+        case RDB_TB_SDIVIDE:
             return RDB_NOT_SUPPORTED;
     }
 

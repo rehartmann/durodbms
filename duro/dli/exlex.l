@@ -104,6 +104,10 @@ FALSE {
     yylval = RDB_bool_const(RDB_FALSE);
 }
 
+IS_EMPTY {
+    return TOK_IS_EMPTY;
+}
+
 COUNT {
     return TOK_COUNT;
 }

@@ -55,7 +55,8 @@ Duro_get_table(TclState *statep, Tcl_Interp *interp, const char *name,
 }
 
 static int
-tcl_to_duro(Tcl_Interp *interp, Tcl_Obj *tobjp, RDB_type *typ, RDB_object *objp);
+tcl_to_duro(Tcl_Interp *interp, Tcl_Obj *tobjp, RDB_type *typ,
+        RDB_object *objp);
 
 static int
 list_to_tuple(Tcl_Interp *interp, Tcl_Obj *tobjp, RDB_type *typ,
@@ -110,7 +111,8 @@ list_to_tuple(Tcl_Interp *interp, Tcl_Obj *tobjp, RDB_type *typ,
 }
 
 static int
-tcl_to_duro(Tcl_Interp *interp, Tcl_Obj *tobjp, RDB_type *typ, RDB_object *objp)
+tcl_to_duro(Tcl_Interp *interp, Tcl_Obj *tobjp, RDB_type *typ,
+        RDB_object *objp)
 {
     int ret;
 
