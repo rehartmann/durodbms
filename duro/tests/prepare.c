@@ -64,8 +64,8 @@ create_tables(RDB_database *dbp)
     }
 
     printf("Creating table DEPTS\n");
-    key.attrv = dept_key_attrs;
-    key.attrc = 1;
+    key.strv = dept_key_attrs;
+    key.strc = 1;
     ret = RDB_create_table("DEPTS", RDB_TRUE, 2, dept_attrs, 1, &key, &tx, &tbp);
     if (ret != RDB_OK) {
         RDB_rollback(&tx);

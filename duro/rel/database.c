@@ -33,8 +33,8 @@ key_contains(const RDB_str_vec *keyp, const char *name)
 {
     int i;
     
-    for (i = 0; i < keyp->attrc; i++) {
-        if (strcmp(keyp->attrv[i], name) == 0)
+    for (i = 0; i < keyp->strc; i++) {
+        if (strcmp(keyp->strv[i], name) == 0)
             return RDB_TRUE;
     }
     return RDB_FALSE;
@@ -47,7 +47,7 @@ open_key_index(RDB_table *tbp, int keyno, const RDB_str_vec *keyattrsp,
     int ret;
     int i;
     char *idx_name = malloc(strlen(tbp->name) + 4);
-    int *fieldv = malloc(sizeof(int *) * keyattrsp->attrc);
+    int *fieldv = malloc(sizeof(int *) * keyattrsp->strc);
 
     if (idx_name == NULL || fieldv == NULL) {
         ret = RDB_NO_MEMORY;
@@ -59,9 +59,9 @@ open_key_index(RDB_table *tbp, int keyno, const RDB_str_vec *keyattrsp,
     sprintf(idx_name, "%s$%d", tbp->name, keyno);
 
     /* get index numbers */
-    for (i = 0; i < keyattrsp->attrc; i++) {
+    for (i = 0; i < keyattrsp->strc; i++) {
         fieldv[i] = *(int *) RDB_hashmap_get(&tbp->var.stored.attrmap,
-                        keyattrsp->attrv[i], NULL);
+                        keyattrsp->strv[i], NULL);
     }
 
     if (create) {
@@ -69,11 +69,11 @@ open_key_index(RDB_table *tbp, int keyno, const RDB_str_vec *keyattrsp,
         ret = RDB_create_index(tbp->var.stored.recmapp,
                   tbp->is_persistent ? idx_name : NULL,
                   tbp->is_persistent ? RDB_DATAFILE : NULL,
-                  txp->dbp->dbrootp->envp, keyattrsp->attrc, fieldv, RDB_TRUE, txp->txid, idxp);
+                  txp->dbp->dbrootp->envp, keyattrsp->strc, fieldv, RDB_TRUE, txp->txid, idxp);
     } else {
         /* open index */
         ret = RDB_open_index(tbp->var.stored.recmapp, idx_name, RDB_DATAFILE,
-                  txp->dbp->dbrootp->envp, keyattrsp->attrc, fieldv, RDB_TRUE, txp->txid, idxp);
+                  txp->dbp->dbrootp->envp, keyattrsp->strc, fieldv, RDB_TRUE, txp->txid, idxp);
     }
 
     if (ret != RDB_OK)
@@ -93,7 +93,7 @@ error:
  * name       the name of the table
  * persistent RDB_TRUE for a persistent table, RDB_FALSE for a transient table.
  *            May only be RDB_FALSE if create is RDB_TRUE (see below).
- * attrc      the number of attributes
+ * strc      the number of attributes
  * keyc       number of keys
  * keyv       vector of keys
  * usr        if RDB_TRUE, the table is a user table, if RDB_FALSE,
@@ -106,7 +106,7 @@ error:
  */
 int
 _RDB_open_table(const char *name, RDB_bool persistent,
-           int attrc, RDB_attr heading[],
+           int strc, RDB_attr heading[],
            int keyc, RDB_str_vec keyv[], RDB_bool usr,
            RDB_bool create, RDB_transaction *txp, RDB_table **tbpp)
 {
@@ -147,16 +147,16 @@ _RDB_open_table(const char *name, RDB_bool persistent,
     tbp->keyc = keyc;
     tbp->keyv = malloc(sizeof(RDB_attr) * keyc);
     for (i = 0; i < keyc; i++) {
-        tbp->keyv[i].attrv = NULL;
+        tbp->keyv[i].strv = NULL;
     }
     for (i = 0; i < keyc; i++) {
-        tbp->keyv[i].attrc = keyv[i].attrc;
-        tbp->keyv[i].attrv = RDB_dup_strvec(keyv[i].attrc, keyv[i].attrv);
-        if (tbp->keyv[i].attrv == NULL)
+        tbp->keyv[i].strc = keyv[i].strc;
+        tbp->keyv[i].strv = RDB_dup_strvec(keyv[i].strc, keyv[i].strv);
+        if (tbp->keyv[i].strv == NULL)
             goto error;
     }
 
-    tbp->typ = RDB_create_relation_type(attrc, heading);
+    tbp->typ = RDB_create_relation_type(strc, heading);
     if (tbp->typ == NULL) {
         ret = RDB_NO_MEMORY;
         RDB_errmsg(txp->dbp->dbrootp->envp, RDB_strerror(ret));
@@ -167,8 +167,8 @@ _RDB_open_table(const char *name, RDB_bool persistent,
         int j;
 
         /* check if all the key attributes appear in the heading */
-        for (j = 0; j < keyv[i].attrc; j++) {
-            if (_RDB_tuple_type_attr(tbp->typ->var.basetyp, keyv[i].attrv[j])
+        for (j = 0; j < keyv[i].strc; j++) {
+            if (_RDB_tuple_type_attr(tbp->typ->var.basetyp, keyv[i].strv[j])
                     == NULL) {
                 ret = RDB_INVALID_ARGUMENT;
                 goto error;
@@ -176,12 +176,12 @@ _RDB_open_table(const char *name, RDB_bool persistent,
         }
     }
 
-    flens = malloc(sizeof(int) * attrc);
+    flens = malloc(sizeof(int) * strc);
     if (flens == NULL)
         goto error;
     ki = 0;
-    di = prkeyattrs->attrc;
-    for (i = 0; i < attrc; i++) {
+    di = prkeyattrs->strc;
+    for (i = 0; i < strc; i++) {
         RDB_int fno;
     
         if (key_contains(prkeyattrs, heading[i].name))
@@ -204,11 +204,11 @@ _RDB_open_table(const char *name, RDB_bool persistent,
     if (create) {
         ret = RDB_create_recmap(persistent ? name : NULL,
                     persistent ? RDB_DATAFILE : NULL, txp->dbp->dbrootp->envp,
-                    attrc, flens, prkeyattrs->attrc,
+                    strc, flens, prkeyattrs->strc,
                     txp->txid, &tbp->var.stored.recmapp);
     } else {
-        ret = RDB_open_recmap(name, RDB_DATAFILE, txp->dbp->dbrootp->envp, attrc, flens,
-                    prkeyattrs->attrc, txp->txid, &tbp->var.stored.recmapp);
+        ret = RDB_open_recmap(name, RDB_DATAFILE, txp->dbp->dbrootp->envp, strc, flens,
+                    prkeyattrs->strc, txp->txid, &tbp->var.stored.recmapp);
     }
 
     if (ret != RDB_OK)
@@ -239,8 +239,8 @@ error:
     if (tbp != NULL) {
         free(tbp->name);
         for (i = 0; i < tbp->keyc; i++) {
-            if (tbp->keyv[i].attrv != NULL) {
-                RDB_free_strvec(tbp->keyv[i].attrc, tbp->keyv[i].attrv);
+            if (tbp->keyv[i].strv != NULL) {
+                RDB_free_strvec(tbp->keyv[i].strc, tbp->keyv[i].strv);
             }
         }
         free(tbp->keyv);
@@ -264,11 +264,82 @@ _RDB_assign_table_db(RDB_table *tbp, RDB_database *dbp)
 }
 
 static void
+free_ro_op(RDB_ro_op *op) {
+    int i;
+
+    free(op->name);
+    for (i = 0; i < op->argc; i++) {
+        if (RDB_type_name(op->argtv[i]) == NULL)
+            RDB_drop_type(op->argtv[i]);
+    }
+    free(op->argtv);
+    if (RDB_type_name(op->rtyp) == NULL)
+        RDB_drop_type(op->rtyp);
+    lt_dlclose(op->modhdl);
+    free(op);
+}
+
+static void
+free_ro_ops(RDB_hashmap *hp, const char *key, void *argp)
+{
+    RDB_ro_op **opp = RDB_hashmap_get(hp, key, NULL);
+    RDB_ro_op *op;
+
+    if (opp == NULL)
+        return;
+    
+    op = *opp;
+
+    do {
+        RDB_ro_op *nextop = op->nextp;
+        free_ro_op(op);
+        op = nextop;
+    } while (op != NULL);
+}
+
+static void
+free_upd_op(RDB_upd_op *op) {
+    int i;
+
+    free(op->name);
+    for (i = 0; i < op->argc; i++) {
+        if (RDB_type_name(op->argtv[i]) == NULL)
+            RDB_drop_type(op->argtv[i]);
+    }
+    free(op->argtv);
+    lt_dlclose(op->modhdl);
+    free(op);
+}
+
+static void
+free_upd_ops(RDB_hashmap *hp, const char *key, void *argp)
+{
+    RDB_upd_op **opp = RDB_hashmap_get(hp, key, NULL);
+    RDB_upd_op *op;
+
+    if (opp == NULL)
+        return;
+    
+    op = *opp;
+
+    do {
+        RDB_upd_op *nextop = op->nextp;
+        free_upd_op(op);
+        op = nextop;
+    } while (op != NULL);
+}
+
+static void
 free_dbroot(RDB_dbroot *dbrootp)
 {
     RDB_destroy_hashmap(&dbrootp->typemap);
-    
-    /* !! free RDB_upd_op and RDB_ro_op structures */
+
+    /*
+     * destroy user-defined operators in memory
+     */
+    RDB_hashmap_apply(&dbrootp->ro_opmap, &free_ro_ops, &dbrootp->ro_opmap);
+    RDB_hashmap_apply(&dbrootp->upd_opmap, &free_upd_ops, &dbrootp->upd_opmap);
+
     RDB_destroy_hashmap(&dbrootp->ro_opmap);
     RDB_destroy_hashmap(&dbrootp->upd_opmap);
     free(dbrootp);
@@ -592,7 +663,7 @@ free_table(RDB_table *tbp, RDB_environment *envp)
 
     /* Delete candidate keys */
     for (i = 0; i < tbp->keyc; i++) {
-        RDB_free_strvec(tbp->keyv[i].attrc, tbp->keyv[i].attrv);
+        RDB_free_strvec(tbp->keyv[i].strc, tbp->keyv[i].strv);
     }
     free(tbp->keyv);
 
@@ -772,7 +843,7 @@ error:
 
 int
 _RDB_create_table(const char *name, RDB_bool persistent,
-                int attrc, RDB_attr heading[],
+                int strc, RDB_attr heading[],
                 int keyc, RDB_str_vec keyv[],
                 RDB_transaction *txp, RDB_table **tbpp)
 {
@@ -784,13 +855,13 @@ _RDB_create_table(const char *name, RDB_bool persistent,
     if ((name == NULL) && persistent)
         return RDB_INVALID_ARGUMENT;
 
-    return _RDB_open_table(name, persistent, attrc, heading, keyc, keyv,
+    return _RDB_open_table(name, persistent, strc, heading, keyc, keyv,
                            RDB_TRUE, RDB_TRUE, txp, tbpp);
 }
 
 int
 RDB_create_table(const char *name, RDB_bool persistent,
-                int attrc, RDB_attr heading[],
+                int strc, RDB_attr heading[],
                 int keyc, RDB_str_vec keyv[],
                 RDB_transaction *txp, RDB_table **tbpp)
 {
@@ -800,12 +871,12 @@ RDB_create_table(const char *name, RDB_bool persistent,
     if (!_RDB_legal_name(name))
         return RDB_INVALID_ARGUMENT;
 
-    for (i = 0; i < attrc; i++) {
+    for (i = 0; i < strc; i++) {
         if (!_RDB_legal_name(heading[i].name))
             return RDB_INVALID_ARGUMENT;
     }
 
-    ret = _RDB_create_table(name, persistent, attrc, heading, keyc, keyv,
+    ret = _RDB_create_table(name, persistent, strc, heading, keyc, keyv,
                             txp, tbpp);
     if (ret != RDB_OK)
         return ret;
@@ -1363,7 +1434,7 @@ cleanup:
 
 int
 RDB_define_update_op(const char *name, int argc, RDB_type *argtv[],
-                  int updargc, int updargv[],
+                  RDB_bool upd[],
                   const char *libname, const char *symname, const char *iarg,
                   RDB_transaction *txp)
 {
@@ -1416,13 +1487,14 @@ static RDB_ro_op *
 get_ro_op(const RDB_dbroot *dbrootp, const char *name,
         int argc, RDB_value *argv[])
 {
+    RDB_ro_op **opp = RDB_hashmap_get(&dbrootp->ro_opmap, name, NULL);
     RDB_ro_op *op;
-    RDB_ro_op **opp = RDB_hashmap_get(&dbrootp->ro_opmap, name, NULL);    
 
     if (opp == NULL)
         return NULL;
-    op = *opp;
     
+    op = *opp;
+
     /* Find a operation with same signature */
     do {
         if (op->argc == argc) {
@@ -1437,9 +1509,27 @@ get_ro_op(const RDB_dbroot *dbrootp, const char *name,
             }
         }
         op = op->nextp;
-    } while (op != NULL);
+    } while(op != NULL);
 
     return NULL;
+}
+
+static int
+put_ro_op(RDB_dbroot *dbrootp, RDB_ro_op *op)
+{
+    int ret;
+    RDB_ro_op *fop = RDB_hashmap_get(&dbrootp->ro_opmap, op->name, NULL);
+
+    if (fop == NULL) {
+        op->nextp = NULL;
+        ret = RDB_hashmap_put(&dbrootp->ro_opmap, op->name, &op, sizeof (op));
+        if (ret != RDB_OK)
+            return ret;
+    } else {
+        op->nextp = fop->nextp;
+        fop->nextp = op;
+    }
+    return RDB_OK;
 }
 
 int
@@ -1454,6 +1544,11 @@ RDB_call_ro_op(const char *name, int argc, RDB_value *argv[],
         ret = _RDB_get_cat_ro_op(name, argc, argv, txp, &op);
         if (ret != RDB_OK)
             return ret;
+        ret = put_ro_op(txp->dbp->dbrootp, op);
+        if (ret != RDB_OK) {
+            free_ro_op(op);
+            return ret;
+        }
     }
 
     return (*op->funcp) (name, argc, argv, retvalp, op->iargp, txp);
@@ -1489,11 +1584,31 @@ get_upd_op(const RDB_dbroot *dbrootp, const char *name,
     return NULL;
 }
 
+static int
+put_upd_op(RDB_dbroot *dbrootp, RDB_upd_op *op)
+{
+    int ret;
+    RDB_upd_op *fop = RDB_hashmap_get(&dbrootp->upd_opmap, op->name, NULL);
+
+    if (fop == NULL) {
+        op->nextp = NULL;
+        ret = RDB_hashmap_put(&dbrootp->upd_opmap, op->name, &op, sizeof (op));
+        if (ret != RDB_OK)
+            return ret;
+    } else {
+        op->nextp = fop->nextp;
+        fop->nextp = op;
+    }
+    return RDB_OK;
+}
+
 int
 RDB_call_update_op(const char *name, int argc, RDB_value *argv[],
                 RDB_transaction *txp)
 {
     RDB_upd_op *op;
+    RDB_bool *updv;
+    int i;
     int ret;
 
     op = get_upd_op(txp->dbp->dbrootp, name, argc, argv);
@@ -1501,13 +1616,26 @@ RDB_call_update_op(const char *name, int argc, RDB_value *argv[],
         ret = _RDB_get_cat_upd_op(name, argc, argv, txp, &op);
         if (ret != RDB_OK)
             return ret;
+        ret = put_upd_op(txp->dbp->dbrootp, op);
+        if (ret != RDB_OK) {
+            free_upd_op(op);
+            return ret;
+        }
     }
 
-    return (*op->funcp) (name, argc, argv, 0, NULL, op->iargp, txp);
+    updv = malloc(sizeof(RDB_bool) * argc);
+    if (updv == NULL)
+        return RDB_NO_MEMORY;
+    for (i = 0; i < argc; i++)
+        updv[i] = RDB_FALSE;
+    ret = (*op->funcp) (name, argc, argv, updv, op->iargp, txp);
+    free(updv);
+    return ret;
 }
 
 int
 RDB_drop_op(const char *name, RDB_transaction *txp)
 {
+    /* !! */
     return RDB_NOT_SUPPORTED;
 }

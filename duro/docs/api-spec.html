@@ -244,14 +244,14 @@
 #include &lt;rel/rdb.h&gt;
 
 typedef struct {
-    int attrc;
-    char **attrv;
-} RDB_key_attrs;
+    int strc;
+    char **strv;
+} RDB_str_vec;
 
 int
 RDB_create_table(const char *name, RDB_bool persistent,
                  int attrc, RDB_attr attrv[],
-                 int keyc, RDB_key_attrs keyv[],
+                 int keyc, RDB_str_vec keyv[],
                  RDB_transaction *txp, RDB_table **tbpp);
 </pre>
 
@@ -1714,8 +1714,8 @@ RDB_define_ro_op(const char *name, int argc, RDB_type *argtv[], RDB_type *rtyp,
 #include &lt;rel/rdb.h&gt;
 
 int
-RDB_define_update_op(const char *name, inz argc, RDB_type *argtv[],
-                  int updargc, int updargv[],
+RDB_define_update_op(const char *name, int argc, RDB_type *argtv[],
+                  RDB_bool upd[],
                   const char *libname, const char *symname, const char *arg,
                   RDB_transaction *txp);
 </pre>

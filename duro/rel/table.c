@@ -253,13 +253,13 @@ pindex_expr(RDB_table *tbp, RDB_expression *exprp) {
 }
 
 static int
-upd_to_vals(RDB_table *tbp, int attrc, const RDB_attr_update attrv[],
+upd_to_vals(RDB_table *tbp, int attrc, const RDB_attr_update strv[],
                RDB_tuple *tplp, RDB_value *valv, RDB_transaction *txp)
 {
     int i, ret;
 
     for (i = 0; i < attrc; i++) {
-        ret = RDB_evaluate(attrv[i].exp, tplp, txp, &valv[i]);
+        ret = RDB_evaluate(strv[i].exp, tplp, txp, &valv[i]);
         if (ret != RDB_OK) {
             int j;
             
@@ -277,8 +277,8 @@ is_keyattr(const char *attrname, RDB_table *tbp)
     int i, j;
 
     for (i = 0; i < tbp->keyc; i++)
-        for (j = 0; j < tbp->keyv[i].attrc; j++)
-            if (strcmp(attrname, tbp->keyv[i].attrv[j]) == 0)
+        for (j = 0; j < tbp->keyv[i].strc; j++)
+            if (strcmp(attrname, tbp->keyv[i].strv[j]) == 0)
                 return RDB_TRUE;
     return RDB_FALSE;
 }
@@ -319,7 +319,7 @@ cleanup:
 
 static int
 update_stored_complex(RDB_table *tbp, RDB_expression *condp,
-        int attrc, const RDB_attr_update attrv[],
+        int attrc, const RDB_attr_update strv[],
         RDB_transaction *txp)
 {
     RDB_table *tmptbp = NULL;
@@ -389,13 +389,13 @@ update_stored_complex(RDB_table *tbp, RDB_expression *condp,
             }
         }
         if (b) {
-            ret = upd_to_vals(tbp, attrc, attrv, &tpl, valv, txp);
+            ret = upd_to_vals(tbp, attrc, strv, &tpl, valv, txp);
             if (ret != RDB_OK) {
                 goto cleanup;
             }
             for (i = 0; i < attrc; i++) {
                 /* Update tuple */
-                ret = RDB_tuple_set(&tpl, attrv[i].name, &valv[i]);
+                ret = RDB_tuple_set(&tpl, strv[i].name, &valv[i]);
                 if (ret != RDB_OK)
                     goto cleanup;
             }
@@ -485,7 +485,7 @@ cleanup:
 
 static int
 update_stored_simple(RDB_table *tbp, RDB_expression *condp,
-        int attrc, const RDB_attr_update attrv[],
+        int attrc, const RDB_attr_update strv[],
         RDB_transaction *txp)
 {
     RDB_tuple tpl;
@@ -552,14 +552,14 @@ update_stored_simple(RDB_table *tbp, RDB_expression *condp,
         }
         if (b) {
             /* Perform update */
-            ret = upd_to_vals(tbp, attrc, attrv, &tpl, valv, txp);
+            ret = upd_to_vals(tbp, attrc, strv, &tpl, valv, txp);
             if (ret != RDB_OK) {
                 goto cleanup;
             }
             for (i = 0; i < attrc; i++) {
                 /* Get field number from map */
                 fieldv[i].no = *(int*) RDB_hashmap_get(&tbp->var.stored.attrmap,
-                        attrv[i].name, NULL);
+                        strv[i].name, NULL);
                 
                 /* Get data */
                 fieldv[i].datap = RDB_value_irep(&valv[i], &fieldv[i].len);
@@ -593,7 +593,7 @@ cleanup:
 
 static int
 update_stored_by_key(RDB_table *tbp, RDB_expression *exp,
-        int attrc, const RDB_attr_update attrv[],
+        int attrc, const RDB_attr_update strv[],
         RDB_transaction *txp)
 {
     RDB_field fv;
@@ -632,7 +632,7 @@ update_stored_by_key(RDB_table *tbp, RDB_expression *exp,
         goto cleanup;
     }
 
-    ret = upd_to_vals(tbp, attrc, attrv, &tpl, valv, txp);
+    ret = upd_to_vals(tbp, attrc, strv, &tpl, valv, txp);
     RDB_destroy_tuple(&tpl);
     if (ret != RDB_OK) {
         goto cleanup;
@@ -640,7 +640,7 @@ update_stored_by_key(RDB_table *tbp, RDB_expression *exp,
 
     for (i = 0; i < attrc; i++) {
          fieldv[i].no = *(int*) RDB_hashmap_get(&tbp->var.stored.attrmap,
-                 attrv[i].name, NULL);
+                 strv[i].name, NULL);
          fieldv[i].datap = RDB_value_irep(&valv[i], &fieldv[i].len);
     }
         
@@ -663,7 +663,7 @@ cleanup:
 
 static int
 update_stored(RDB_table *tbp, RDB_expression *condp,
-        int attrc, const RDB_attr_update attrv[],
+        int attrc, const RDB_attr_update strv[],
         RDB_transaction *txp)
 {
     int i;
@@ -674,12 +674,12 @@ update_stored(RDB_table *tbp, RDB_expression *condp,
     /* Check if the primary index can be used */
     exprp = condp != NULL ? pindex_expr(tbp, condp) : NULL;
     if (exprp != NULL) {
-        return update_stored_by_key(tbp, exprp, attrc, attrv, txp);
+        return update_stored_by_key(tbp, exprp, attrc, strv, txp);
     }
 
     /* Check if a key attribute is updated */
     for (i = 0; i < attrc; i++) {
-        if (is_keyattr(attrv[i].name, tbp)) {
+        if (is_keyattr(strv[i].name, tbp)) {
             keyupd = RDB_TRUE;
             break;
         }
@@ -693,20 +693,20 @@ update_stored(RDB_table *tbp, RDB_expression *condp,
              int i;
         
              for (i = 0; i < attrc; i++)
-                 sref |= _RDB_expr_refers(attrv[i].exp, tbp);
+                 sref |= _RDB_expr_refers(strv[i].exp, tbp);
         }
     }
 
     /* If a key is updated or condp refers to the table, the simple update method cannot be used */
     if (keyupd || sref)
-        return update_stored_complex(tbp, exprp, attrc, attrv, txp);
+        return update_stored_complex(tbp, exprp, attrc, strv, txp);
 
-    return update_stored_simple(tbp, exprp, attrc, attrv, txp);
+    return update_stored_simple(tbp, exprp, attrc, strv, txp);
 }  
 
 int
 RDB_update(RDB_table *tbp, RDB_expression *condp, int attrc,
-                const RDB_attr_update attrv[], RDB_transaction *txp)
+                const RDB_attr_update strv[], RDB_transaction *txp)
 {
     int i;
 
@@ -716,18 +716,18 @@ RDB_update(RDB_table *tbp, RDB_expression *condp, int attrc,
     /* Typecheck */
     for (i = 0; i < attrc; i++) {
         RDB_attr *attrp = _RDB_tuple_type_attr(tbp->typ->var.basetyp,
-                attrv[i].name);
+                strv[i].name);
 
         if (attrp == NULL)
             return RDB_INVALID_ARGUMENT;
-        if (!RDB_type_equals(RDB_expr_type(attrv[i].exp), attrp->typ))
+        if (!RDB_type_equals(RDB_expr_type(strv[i].exp), attrp->typ))
             return RDB_TYPE_MISMATCH;
     }
 
     switch (tbp->kind) {
         case RDB_TB_STORED:
         {
-            int ret = update_stored(tbp, condp, attrc, attrv, txp);
+            int ret = update_stored(tbp, condp, attrc, strv, txp);
             if (RDB_is_syserr(ret)) {
                 RDB_errmsg(txp->dbp->dbrootp->envp, RDB_strerror(ret));
                 RDB_rollback(txp);
@@ -1398,12 +1398,12 @@ dup_keys(int keyc, RDB_str_vec *keyv) {
         return NULL;
     }
     for (i = 0; i < keyc; i++)
-        newkeyv[i].attrv = NULL;
+        newkeyv[i].strv = NULL;
     for (i = 0; i < keyc; i++) {
-        newkeyv[i].attrc = keyv[i].attrc;
-        newkeyv[i].attrv = RDB_dup_strvec(
-                keyv[i].attrc, keyv[i].attrv);
-        if (newkeyv[i].attrv == NULL) {
+        newkeyv[i].strc = keyv[i].strc;
+        newkeyv[i].strv = RDB_dup_strvec(
+                keyv[i].strc, keyv[i].strv);
+        if (newkeyv[i].strv == NULL) {
             goto error;
         }
     }
@@ -1411,8 +1411,8 @@ dup_keys(int keyc, RDB_str_vec *keyv) {
 error:
     /* free keys */
     for (i = 0; i < keyc; i++) {
-        if (newkeyv[i].attrv != NULL)
-            RDB_free_strvec(newkeyv[i].attrc, newkeyv[i].attrv);
+        if (newkeyv[i].strv != NULL)
+            RDB_free_strvec(newkeyv[i].strc, newkeyv[i].strv);
     }
     return NULL;
 }
@@ -1427,23 +1427,23 @@ dup_rename_keys(int keyc, RDB_str_vec *keyv, int renc, RDB_renaming renv[]) {
         return NULL;
     }
     for (i = 0; i < keyc; i++)
-        newkeyv[i].attrv = NULL;
+        newkeyv[i].strv = NULL;
     for (i = 0; i < keyc; i++) {
-        newkeyv[i].attrc = keyv[i].attrc;
-        newkeyv[i].attrv = malloc(sizeof (RDB_attr) * keyv[i].attrc);
-        if (newkeyv[i].attrv == NULL) {
+        newkeyv[i].strc = keyv[i].strc;
+        newkeyv[i].strv = malloc(sizeof (RDB_attr) * keyv[i].strc);
+        if (newkeyv[i].strv == NULL) {
             goto error;
         }
-        for (j = 0; j < keyv[i].attrc; j++)
-            newkeyv[i].attrv[j] = NULL;
-        for (j = 0; j < keyv[i].attrc; j++) {
+        for (j = 0; j < keyv[i].strc; j++)
+            newkeyv[i].strv[j] = NULL;
+        for (j = 0; j < keyv[i].strc; j++) {
             /* Has the attribute been renamed */
-            int ai = _RDB_find_rename_from(renc, renv, keyv[i].attrv[j]);
+            int ai = _RDB_find_rename_from(renc, renv, keyv[i].strv[j]);
             if (ai >= 0) /* Yes */
-                newkeyv[i].attrv[j] = RDB_dup_str(renv[ai].to);
+                newkeyv[i].strv[j] = RDB_dup_str(renv[ai].to);
             else
-                newkeyv[i].attrv[j] = RDB_dup_str(keyv[i].attrv[j]);
-            if (newkeyv[i].attrv[j] == NULL)
+                newkeyv[i].strv[j] = RDB_dup_str(keyv[i].strv[j]);
+            if (newkeyv[i].strv[j] == NULL)
                 goto error;
         }
     }
@@ -1451,8 +1451,8 @@ dup_rename_keys(int keyc, RDB_str_vec *keyv, int renc, RDB_renaming renv[]) {
 error:
     /* free keys */
     for (i = 0; i < keyc; i++) {
-        if (newkeyv[i].attrv != NULL)
-            RDB_free_strvec(newkeyv[i].attrc, newkeyv[i].attrv);
+        if (newkeyv[i].strv != NULL)
+            RDB_free_strvec(newkeyv[i].strc, newkeyv[i].strv);
     }
     return NULL;
 }
@@ -1505,26 +1505,26 @@ static RDB_str_vec *all_key(RDB_table *tbp) {
     if (keyv == NULL)
         return NULL;
     
-    attrc = keyv[0].attrc =
+    attrc = keyv[0].strc =
             tbp->typ->var.basetyp->var.tuple.attrc;
-    keyv[0].attrv = malloc(sizeof(char *) * attrc);
-    if (keyv[0].attrv == NULL) {
+    keyv[0].strv = malloc(sizeof(char *) * attrc);
+    if (keyv[0].strv == NULL) {
         free(keyv);
         return NULL;
     }
     for (i = 0; i < attrc; i++)
-        keyv[0].attrv[i] = NULL;
+        keyv[0].strv[i] = NULL;
     for (i = 0; i < attrc; i++) {
-        keyv[0].attrv[i] = RDB_dup_str(
+        keyv[0].strv[i] = RDB_dup_str(
                 tbp->typ->var.basetyp->var.tuple.attrv[i].name);
-        if (keyv[0].attrv[i] == NULL) {
+        if (keyv[0].strv[i] == NULL) {
             goto error;
         }
     }
 
     return keyv;
 error:
-    RDB_free_strvec(keyv[0].attrc, keyv[0].attrv);
+    RDB_free_strvec(keyv[0].strc, keyv[0].strv);
     free(keyv);
     return NULL;
 }
@@ -1678,21 +1678,21 @@ RDB_join(RDB_table *tbp1, RDB_table *tbp2, RDB_table **resultpp)
         for (j = 0; j < tbp2->keyc; j++) {
             RDB_str_vec *attrsp = &newtbp->keyv[i * tbp2->keyc + j];
            
-            attrsp->attrc = tbp1->keyv[i].attrc + tbp2->keyv[j].attrc;
-            attrsp->attrv = malloc(sizeof(char *) * attrsp->attrc);
-            if (attrsp->attrv == NULL)
+            attrsp->strc = tbp1->keyv[i].strc + tbp2->keyv[j].strc;
+            attrsp->strv = malloc(sizeof(char *) * attrsp->strc);
+            if (attrsp->strv == NULL)
                 goto error;
-            for (k = 0; k < attrsp->attrc; k++)
-                attrsp->attrv[k] = NULL;
-            for (k = 0; k < tbp1->keyv[i].attrc; k++) {
-                attrsp->attrv[k] = RDB_dup_str(tbp1->keyv[i].attrv[k]);
-                if (attrsp->attrv[k] == NULL)
+            for (k = 0; k < attrsp->strc; k++)
+                attrsp->strv[k] = NULL;
+            for (k = 0; k < tbp1->keyv[i].strc; k++) {
+                attrsp->strv[k] = RDB_dup_str(tbp1->keyv[i].strv[k]);
+                if (attrsp->strv[k] == NULL)
                     goto error;
             }
-            for (k = 0; k < tbp2->keyv[j].attrc; k++) {
-                attrsp->attrv[tbp1->keyv[i].attrc + k] =
-                        RDB_dup_str(tbp2->keyv[j].attrv[k]);
-                if (attrsp->attrv[tbp1->keyv[i].attrc + k] == NULL)
+            for (k = 0; k < tbp2->keyv[j].strc; k++) {
+                attrsp->strv[tbp1->keyv[i].strc + k] =
+                        RDB_dup_str(tbp2->keyv[j].strv[k]);
+                if (attrsp->strv[tbp1->keyv[i].strc + k] == NULL)
                     goto error;
             }
         }
@@ -1704,8 +1704,8 @@ RDB_join(RDB_table *tbp1, RDB_table *tbp2, RDB_table **resultpp)
 error:
     if (newtbp->keyv != NULL) {
         for (i = 0; i < newtbp->keyc; i++) {
-            if (newtbp->keyv[i].attrv != NULL)
-                RDB_free_strvec(newtbp->keyv[i].attrc, newtbp->keyv[i].attrv);
+            if (newtbp->keyv[i].strv != NULL)
+                RDB_free_strvec(newtbp->keyv[i].strc, newtbp->keyv[i].strv);
         }
     }
     free (newtbp);
@@ -1713,7 +1713,7 @@ error:
 }
 
 int
-RDB_extend(RDB_table *tbp, int attrc, RDB_virtual_attr attrv[],
+RDB_extend(RDB_table *tbp, int attrc, RDB_virtual_attr strv[],
         RDB_table **resultpp)
 {
     int i;
@@ -1751,18 +1751,18 @@ RDB_extend(RDB_table *tbp, int attrc, RDB_virtual_attr attrv[],
         goto error;
     }
     for (i = 0; i < attrc; i++) {
-        if (!_RDB_legal_name(attrv[i].name)) {
+        if (!_RDB_legal_name(strv[i].name)) {
             ret = RDB_INVALID_ARGUMENT;
             goto error;
         }
-        newtbp->var.extend.attrv[i].name = RDB_dup_str(attrv[i].name);
-        newtbp->var.extend.attrv[i].exp = attrv[i].exp;
-        attrdefv[i].name = RDB_dup_str(attrv[i].name);
+        newtbp->var.extend.attrv[i].name = RDB_dup_str(strv[i].name);
+        newtbp->var.extend.attrv[i].exp = strv[i].exp;
+        attrdefv[i].name = RDB_dup_str(strv[i].name);
         if (attrdefv[i].name == NULL) {
             ret = RDB_NO_MEMORY;
             goto error;
         }
-        attrdefv[i].typ = RDB_expr_type(attrv[i].exp);
+        attrdefv[i].typ = RDB_expr_type(strv[i].exp);
     }
     newtbp->typ = RDB_extend_relation_type(tbp->typ, attrc, attrdefv);
 
@@ -1778,30 +1778,30 @@ error:
         free(attrdefv);
     }
     for (i = 0; i < newtbp->keyc; i++) {
-        if (newtbp->keyv[i].attrv != NULL)
-            RDB_free_strvec(newtbp->keyv[i].attrc, newtbp->keyv[i].attrv);
+        if (newtbp->keyv[i].strv != NULL)
+            RDB_free_strvec(newtbp->keyv[i].strc, newtbp->keyv[i].strv);
     }
     return ret;
 }
 
 static int
-check_keyloss(RDB_table *tbp, int attrc, char *attrv[], RDB_bool presv[])
+check_keyloss(RDB_table *tbp, int attrc, char *strv[], RDB_bool presv[])
 {
     int i, j, k;
     int count = 0;
 
     for (i = 0; i < tbp->keyc; i++) {
-        for (j = 0; j < tbp->keyv[i].attrc; j++) {
-            /* Search for key attribute in attrv */
+        for (j = 0; j < tbp->keyv[i].strc; j++) {
+            /* Search for key attribute in strv */
             for (k = 0;
-                 (k < attrc) && (strcmp(tbp->keyv[i].attrv[j], attrv[k]) != 0);
+                 (k < attrc) && (strcmp(tbp->keyv[i].strv[j], strv[k]) != 0);
                  k++);
             /* If not found, exit loop */
             if (k >= attrc)
                 break;
         }
         /* If the loop didn't terminate prematurely, the key is preserved */
-        presv[i] = (RDB_bool) (j >= tbp->keyv[i].attrc);
+        presv[i] = (RDB_bool) (j >= tbp->keyv[i].strc);
         if (presv[i])
             count++;
     }
@@ -1809,7 +1809,7 @@ check_keyloss(RDB_table *tbp, int attrc, char *attrv[], RDB_bool presv[])
 }
 
 int
-RDB_project(RDB_table *tbp, int attrc, char *attrv[], RDB_table **resultpp)
+RDB_project(RDB_table *tbp, int attrc, char *strv[], RDB_table **resultpp)
 {
     RDB_table *newtbp;
     RDB_bool *presv;
@@ -1829,7 +1829,7 @@ RDB_project(RDB_table *tbp, int attrc, char *attrv[], RDB_table **resultpp)
     newtbp->keyv = NULL;
 
     /* Create type */
-    ret = RDB_project_relation_type(tbp->typ, attrc, attrv, &newtbp->typ);
+    ret = RDB_project_relation_type(tbp->typ, attrc, strv, &newtbp->typ);
     if (ret != RDB_OK) {
         free(newtbp);
         return ret;
@@ -1839,7 +1839,7 @@ RDB_project(RDB_table *tbp, int attrc, char *attrv[], RDB_table **resultpp)
     if (presv == NULL) {
         goto error;
     }
-    keyc = check_keyloss(tbp, attrc, attrv, presv);
+    keyc = check_keyloss(tbp, attrc, strv, presv);
     newtbp->var.project.keyloss = (RDB_bool) (keyc == 0);
     if (newtbp->var.project.keyloss) {
         /* Table is all-key */
@@ -1860,15 +1860,15 @@ RDB_project(RDB_table *tbp, int attrc, char *attrv[], RDB_table **resultpp)
         }
 
         for (i = 0; i < keyc; i++) {
-            newtbp->keyv[i].attrv = NULL;
+            newtbp->keyv[i].strv = NULL;
         }
 
         for (j = i = 0; j < tbp->keyc; j++) {
             if (presv[j]) {
-                newtbp->keyv[i].attrc = tbp->keyv[j].attrc;
-                newtbp->keyv[i].attrv = RDB_dup_strvec(tbp->keyv[j].attrc,
-                        tbp->keyv[j].attrv);
-                if (newtbp->keyv[i].attrv == NULL)
+                newtbp->keyv[i].strc = tbp->keyv[j].strc;
+                newtbp->keyv[i].strv = RDB_dup_strvec(tbp->keyv[j].strc,
+                        tbp->keyv[j].strv);
+                if (newtbp->keyv[i].strv == NULL)
                     goto error;
                 i++;
             }
@@ -1884,8 +1884,8 @@ error:
     /* free keys */
     if (newtbp->keyv != NULL) {       
         for (i = 0; i < keyc; i++) {
-            if (newtbp->keyv[i].attrv != NULL)
-                RDB_free_strvec(newtbp->keyv[i].attrc, newtbp->keyv[i].attrv);
+            if (newtbp->keyv[i].strv != NULL)
+                RDB_free_strvec(newtbp->keyv[i].strc, newtbp->keyv[i].strv);
         }
         free (newtbp->keyv);
     }

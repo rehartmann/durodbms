@@ -20,8 +20,8 @@ create_table(RDB_database *dbp)
     }
 
     printf("Creating table DEEDUM\n");
-    key.attrv = NULL;
-    key.attrc = 0;
+    key.strv = NULL;
+    key.strc = 0;
     ret = RDB_create_table("DEEDUM", RDB_TRUE, 0, NULL, 1, &key, &tx, &tbp);
     if (ret != RDB_OK) {
         RDB_rollback(&tx);

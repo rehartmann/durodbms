@@ -213,7 +213,7 @@ do_summarize(RDB_qresult *qresp, RDB_transaction *txp)
             /* Build key */
             for (i = 0; i < keyfc; i++) {
                 keyfv[i].datap = RDB_value_irep(
-                        RDB_tuple_get(&tpl, qresp->tbp->keyv[0].attrv[i]),
+                        RDB_tuple_get(&tpl, qresp->tbp->keyv[0].strv[i]),
                         &keyfv[i].len);
             }
 
@@ -433,18 +433,18 @@ _RDB_table_qresult(RDB_table *tbp, RDB_qresult **qrespp, RDB_transaction *txp)
                 int i;
                 RDB_type *tuptyp = tbp->typ->var.basetyp;
 
-                keyattrs.attrc = tuptyp->var.tuple.attrc;
-                keyattrs.attrv = malloc(sizeof (char *) * keyattrs.attrc);
+                keyattrs.strc = tuptyp->var.tuple.attrc;
+                keyattrs.strv = malloc(sizeof (char *) * keyattrs.strc);
                 
-                for (i = 0; i < keyattrs.attrc; i++)
-                    keyattrs.attrv[i] = tuptyp->var.tuple.attrv[i].name;
+                for (i = 0; i < keyattrs.strc; i++)
+                    keyattrs.strv[i] = tuptyp->var.tuple.attrv[i].name;
 
                 /* Create materialized (all-key) table */
                 ret = _RDB_create_table(NULL, RDB_FALSE,
                         tuptyp->var.tuple.attrc,
                         tuptyp->var.tuple.attrv,
                         1, &keyattrs, txp, &qresp->matp);
-                free(keyattrs.attrv);
+                free(keyattrs.strv);
                 if (ret != RDB_OK)
                     break;                    
             }
@@ -873,7 +873,7 @@ _RDB_qresult_contains(RDB_qresult *qrp, const RDB_tuple *tup,
 
     for (i = 0; i < kattrc; i++) {
         ret = RDB_copy_value(&valv[i], RDB_tuple_get(
-                tup, qrp->matp->keyv[0].attrv[i]));
+                tup, qrp->matp->keyv[0].strv[i]));
         if (ret != RDB_OK)
             goto error;
     }

@@ -14,7 +14,7 @@ RDB_type *addargtv[] = {
     &RDB_INTEGER
 };
 
-int updv[] = { 0 };
+RDB_bool updv[] = { RDB_TRUE, RDB_FALSE };
 
 int
 test_defop(RDB_database *dbp)
@@ -37,7 +37,7 @@ test_defop(RDB_database *dbp)
     }
 
     printf("Defining ADD\n");
-    ret = RDB_define_update_op("ADD", 2, addargtv, 1, updv, "libplus", "RDBU_add",
+    ret = RDB_define_update_op("ADD", 2, addargtv, updv, "libplus", "RDBU_add",
             NULL, &tx);
     if (ret != RDB_OK) {
         RDB_rollback(&tx);

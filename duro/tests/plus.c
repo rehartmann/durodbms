@@ -17,7 +17,7 @@ RDBU_plus(const char *name, int argc, RDB_value *argv[],
  */
 int
 RDBU_add(const char *name, int argc, RDB_value *argv[],
-        int updargc, int updargv[], const char *iargp, RDB_transaction *txp)
+        RDB_bool updv[], const char *iargp, RDB_transaction *txp)
 {
     RDB_value_set_int(argv[0], RDB_value_int(argv[0]) + RDB_value_int(argv[1]));
 

@@ -274,11 +274,11 @@ _RDB_catalog_insert(RDB_table *tbp, RDB_transaction *txp)
 
         /* Concatenate attribute names */
         buf[0] = '\0';
-        if (kap->attrc > 0) {
-            strcpy(buf, kap->attrv[0]);
-            for (j = 1; j < kap->attrc; j++) {
+        if (kap->strc > 0) {
+            strcpy(buf, kap->strv[0]);
+            for (j = 1; j < kap->strc; j++) {
                 strcat(buf, " ");
-                strcat(buf, kap->attrv[j]);
+                strcat(buf, kap->strv[j]);
             }
         }
 
@@ -540,7 +540,7 @@ get_keys(const char *name, RDB_transaction *txp,
         goto error;
     }
     for (i = 0; i < *keycp; i++)
-        (*keyvp)[i].attrv = NULL;
+        (*keyvp)[i].strv = NULL;
 
     RDB_init_tuple(&tpl);
 
@@ -555,13 +555,13 @@ get_keys(const char *name, RDB_transaction *txp,
         }
         kno = RDB_tuple_get_int(&tpl, "KEYNO");
         attrc = RDB_split_str(RDB_tuple_get_string(&tpl, "ATTRS"),
-                &(*keyvp)[kno].attrv);
+                &(*keyvp)[kno].strv);
         if (attrc == -1) {
-            (*keyvp)[kno].attrv = NULL;
+            (*keyvp)[kno].strv = NULL;
             RDB_destroy_tuple(&tpl);
             goto error;
         }
-        (*keyvp)[kno].attrc = attrc;
+        (*keyvp)[kno].strc = attrc;
     }
     RDB_destroy_tuple(&tpl);
     ret = RDB_destroy_array(&arr);
@@ -575,9 +575,9 @@ error:
         int i, j;
     
         for (i = 0; i < *keycp; i++) {
-            if ((*keyvp)[i].attrv != NULL) {
-                for (j = 0; j < (*keyvp)[i].attrc; j++)
-                    free((*keyvp)[i].attrv[j]);
+            if ((*keyvp)[i].strv != NULL) {
+                for (j = 0; j < (*keyvp)[i].strc; j++)
+                    free((*keyvp)[i].strv[j]);
             }
         }
         free(*keyvp);
@@ -721,8 +721,8 @@ _RDB_get_cat_rtable(const char *name, RDB_transaction *txp, RDB_table **tbpp)
     ret = _RDB_open_table(name, RDB_TRUE, attrc, attrv, keyc, keyv, usr, RDB_FALSE,
                      txp, tbpp);
     for (i = 0; i < keyc; i++) {
-        for (j = 0; j < keyv[i].attrc; j++)
-            free(keyv[i].attrv[j]);
+        for (j = 0; j < keyv[i].strc; j++)
+            free(keyv[i].strv[j]);
     }
     free(keyv);
 

@@ -91,7 +91,7 @@ typedef struct RDB_ro_op {
 } RDB_ro_op;
 
 typedef int RDB_upd_op_func(const char *name, int argc, RDB_value *argv[],
-        int updargc, int updargv[], const char *iargp, RDB_transaction *txp);
+        RDB_bool updv[], const char *iargp, RDB_transaction *txp);
 
 typedef struct RDB_upd_op {
     char *name;
@@ -183,6 +183,6 @@ _RDB_get_icomp(RDB_type *, const char *compname);
 void
 _RDB_set_value_type(RDB_value *, RDB_type *);
 
-#define _RDB_pkey_len(tbp) ((tbp)->keyv[0].attrc)
+#define _RDB_pkey_len(tbp) ((tbp)->keyv[0].strc)
 
 #endif

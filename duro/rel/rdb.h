@@ -176,8 +176,8 @@ typedef struct {
 } RDB_virtual_attr;
 
 typedef struct {
-    int attrc;
-    char **attrv;
+    int strc;
+    char **strv;
 } RDB_str_vec;
 
 typedef struct {
@@ -1008,9 +1008,8 @@ RDB_define_ro_op(const char *name, int argc, RDB_type *argtv[], RDB_type *rtyp,
 
 int
 RDB_define_update_op(const char *name, int argc, RDB_type *argtv[],
-                  int updargc, int updargv[],
-                  const char *libname, const char *symname, const char *arg,
-                  RDB_transaction *txp);
+                  RDB_bool upd[], const char *libname, const char *symname,
+                  const char *arg, RDB_transaction *txp);
 
 int
 RDB_call_ro_op(const char *name, int argc, RDB_value *argv[],

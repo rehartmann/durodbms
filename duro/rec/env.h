@@ -55,6 +55,4 @@ RDB_set_errfile(RDB_environment *, FILE *errfile);
 void
 RDB_errmsg(RDB_environment *envp, const char *format, ...);
 
-#define ERRMSG(envp,msg) RDB_errmsg(envp, msg)
-
 #endif
