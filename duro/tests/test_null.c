@@ -9,7 +9,7 @@ create_table(RDB_database *dbp)
 {
     RDB_transaction tx;
     RDB_table *tbp;
-    RDB_key_attrs key;
+    RDB_str_vec key;
     int ret;
     
     printf("Starting transaction\n");
@@ -78,7 +78,7 @@ test_table(RDB_database *dbp)
 }
 
 int
-main()
+main(void)
 {
     RDB_environment *dsp;
     RDB_database *dbp;

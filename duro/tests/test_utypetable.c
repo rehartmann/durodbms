@@ -6,7 +6,7 @@
 
 char *utype_keyattrs1[] = { "NUMBER" };
 
-RDB_key_attrs utype_keyattrs[] = {
+RDB_str_vec utype_keyattrs[] = {
     { 1, utype_keyattrs1 }
 };
 
@@ -141,7 +141,7 @@ error:
 }
 
 int
-main()
+main(void)
 {
     RDB_environment *dsp;
     RDB_database *dbp;

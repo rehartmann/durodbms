@@ -29,7 +29,7 @@ static int replen(const RDB_type *typ) {
  * in the attribute list pointed to by keyp.
  */
 static RDB_bool
-key_contains(const RDB_key_attrs *keyp, const char *name)
+key_contains(const RDB_str_vec *keyp, const char *name)
 {
     int i;
     
@@ -41,7 +41,7 @@ key_contains(const RDB_key_attrs *keyp, const char *name)
 }
 
 static int
-open_key_index(RDB_table *tbp, int keyno, const RDB_key_attrs *keyattrsp,
+open_key_index(RDB_table *tbp, int keyno, const RDB_str_vec *keyattrsp,
                  RDB_bool create, RDB_transaction *txp, RDB_index **idxp)
 {
     int ret;
@@ -51,7 +51,7 @@ open_key_index(RDB_table *tbp, int keyno, const RDB_key_attrs *keyattrsp,
 
     if (idx_name == NULL || fieldv == NULL) {
         ret = RDB_NO_MEMORY;
-        ERRMSG(txp->dbp->dbrootp->envp, RDB_strerror(ret));
+        RDB_errmsg(txp->dbp->dbrootp->envp, RDB_strerror(ret));
         goto error;
     }
 
@@ -107,7 +107,7 @@ error:
 int
 _RDB_open_table(const char *name, RDB_bool persistent,
            int attrc, RDB_attr heading[],
-           int keyc, RDB_key_attrs keyv[], RDB_bool usr,
+           int keyc, RDB_str_vec keyv[], RDB_bool usr,
            RDB_bool create, RDB_transaction *txp, RDB_table **tbpp)
 {
     RDB_table *tbp = NULL;
@@ -115,7 +115,7 @@ _RDB_open_table(const char *name, RDB_bool persistent,
     int ret, i, ki, di;
 
     /* choose key #0 as for the primary index */
-    const RDB_key_attrs *prkeyattrs = &keyv[0];
+    const RDB_str_vec *prkeyattrs = &keyv[0];
     
     if (!RDB_tx_is_running(txp))
         return RDB_INVALID_TRANSACTION;
@@ -129,13 +129,14 @@ _RDB_open_table(const char *name, RDB_bool persistent,
     tbp->is_persistent = persistent;
     tbp->keyv = NULL;
     tbp->refcount = 1;
+    RDB_init_hashmap(&tbp->var.stored.attrmap, RDB_DFL_MAP_CAPACITY);
 
     tbp->kind = RDB_TB_STORED;
     if (name != NULL) {
         tbp->name = RDB_dup_str(name);
         if (tbp->name == NULL) {
             ret = RDB_NO_MEMORY;
-            ERRMSG(txp->dbp->dbrootp->envp, RDB_strerror(ret));
+            RDB_errmsg(txp->dbp->dbrootp->envp, RDB_strerror(ret));
             goto error;
         }
     } else {
@@ -158,7 +159,7 @@ _RDB_open_table(const char *name, RDB_bool persistent,
     tbp->typ = RDB_create_relation_type(attrc, heading);
     if (tbp->typ == NULL) {
         ret = RDB_NO_MEMORY;
-        ERRMSG(txp->dbp->dbrootp->envp, RDB_strerror(ret));
+        RDB_errmsg(txp->dbp->dbrootp->envp, RDB_strerror(ret));
         goto error;
     }
 
@@ -174,8 +175,6 @@ _RDB_open_table(const char *name, RDB_bool persistent,
             }
         }
     }
-
-    RDB_init_hashmap(&tbp->var.stored.attrmap, RDB_DFL_MAP_CAPACITY);
 
     flens = malloc(sizeof(int) * attrc);
     if (flens == NULL)
@@ -220,7 +219,7 @@ _RDB_open_table(const char *name, RDB_bool persistent,
         tbp->var.stored.keyidxv = malloc(sizeof(RDB_index *) * (keyc - 1));
         if (tbp->var.stored.keyidxv == NULL) {
             ret = RDB_NO_MEMORY;
-            ERRMSG(txp->dbp->dbrootp->envp, RDB_strerror(ret));
+            RDB_errmsg(txp->dbp->dbrootp->envp, RDB_strerror(ret));
             goto error;
         }
         for (i = 1; i < keyc; i++) {    
@@ -247,8 +246,8 @@ error:
         free(tbp->keyv);
         if (tbp->typ != NULL) {
             RDB_drop_type(tbp->typ);
-            RDB_destroy_hashmap(&tbp->var.stored.attrmap);
         }
+        RDB_destroy_hashmap(&tbp->var.stored.attrmap);
         free(tbp);
     }
     if (RDB_is_syserr(ret))
@@ -265,9 +264,13 @@ _RDB_assign_table_db(RDB_table *tbp, RDB_database *dbp)
 }
 
 static void
-free_dbroot(RDB_dbroot *dbrootp) {
+free_dbroot(RDB_dbroot *dbrootp)
+{
     RDB_destroy_hashmap(&dbrootp->typemap);
-    RDB_destroy_hashmap(&dbrootp->opmap);
+    
+    /* !! free RDB_upd_op and RDB_ro_op structures */
+    RDB_destroy_hashmap(&dbrootp->ro_opmap);
+    RDB_destroy_hashmap(&dbrootp->upd_opmap);
     free(dbrootp);
 }
 
@@ -298,7 +301,8 @@ new_dbroot(RDB_environment *envp)
     
     dbrootp->envp = envp;
     RDB_init_hashmap(&dbrootp->typemap, RDB_DFL_MAP_CAPACITY);
-    RDB_init_hashmap(&dbrootp->opmap, RDB_DFL_MAP_CAPACITY);
+    RDB_init_hashmap(&dbrootp->ro_opmap, RDB_DFL_MAP_CAPACITY);
+    RDB_init_hashmap(&dbrootp->upd_opmap, RDB_DFL_MAP_CAPACITY);
     dbrootp->firstdbp = NULL;
 
     return dbrootp;
@@ -769,7 +773,7 @@ error:
 int
 _RDB_create_table(const char *name, RDB_bool persistent,
                 int attrc, RDB_attr heading[],
-                int keyc, RDB_key_attrs keyv[],
+                int keyc, RDB_str_vec keyv[],
                 RDB_transaction *txp, RDB_table **tbpp)
 {
     /* At least one key is required */
@@ -787,7 +791,7 @@ _RDB_create_table(const char *name, RDB_bool persistent,
 int
 RDB_create_table(const char *name, RDB_bool persistent,
                 int attrc, RDB_attr heading[],
-                int keyc, RDB_key_attrs keyv[],
+                int keyc, RDB_str_vec keyv[],
                 RDB_transaction *txp, RDB_table **tbpp)
 {
     int ret;
@@ -1305,4 +1309,205 @@ cleanup:
     RDB_drop_expr(wherep);
 
     return ret;
+}
+
+int
+RDB_define_ro_op(const char *name, int argc, RDB_type *argtv[], RDB_type *rtyp,
+                 const char *libname, const char *symname, const char *iarg,
+                 RDB_transaction *txp)
+{
+    RDB_tuple tpl;
+    char *typesbuf;
+    int ret;
+
+    if (!RDB_type_is_scalar(rtyp))
+        return RDB_NOT_SUPPORTED;
+
+    RDB_init_tuple(&tpl);
+    ret = RDB_tuple_set_string(&tpl, "NAME", name);
+    if (ret != RDB_OK)
+        goto cleanup;
+    RDB_tuple_set_string(&tpl, "RTYPE", RDB_type_name(rtyp));
+    if (ret != RDB_OK)
+        goto cleanup;
+    RDB_tuple_set_string(&tpl, "LIB", libname);
+    if (ret != RDB_OK)
+        goto cleanup;
+    RDB_tuple_set_string(&tpl, "SYMBOL", symname);
+    if (ret != RDB_OK)
+        goto cleanup;
+    if (iarg == NULL)
+        iarg = "";
+    RDB_tuple_set_string(&tpl, "IARG", iarg);
+    if (ret != RDB_OK)
+        goto cleanup;
+
+    /* Set ARGTYPES to concatenation of arg type names */
+    typesbuf = _RDB_make_typestr(argc, argtv);
+    if (typesbuf == NULL) {
+        ret = RDB_NO_MEMORY;
+        goto cleanup;
+    }
+
+    ret = RDB_tuple_set_string(&tpl, "ARGTYPES", typesbuf);
+    free(typesbuf);
+    if (ret != RDB_OK)
+        goto cleanup;
+
+    ret = RDB_insert(txp->dbp->dbrootp->ro_ops_tbp, &tpl, txp);
+
+cleanup:
+    RDB_destroy_tuple(&tpl);
+    return ret;
+}
+
+int
+RDB_define_update_op(const char *name, int argc, RDB_type *argtv[],
+                  int updargc, int updargv[],
+                  const char *libname, const char *symname, const char *iarg,
+                  RDB_transaction *txp)
+{
+    RDB_tuple tpl;
+    char *typesbuf;
+    int i;
+    int ret;
+
+    for (i = 0; i < argc; i++) {
+        if (!RDB_type_is_scalar(argtv[i]))
+            return RDB_NOT_SUPPORTED;
+    }
+
+    RDB_init_tuple(&tpl);
+    ret = RDB_tuple_set_string(&tpl, "NAME", name);
+    if (ret != RDB_OK)
+        goto cleanup;
+    RDB_tuple_set_string(&tpl, "LIB", libname);
+    if (ret != RDB_OK)
+        goto cleanup;
+    RDB_tuple_set_string(&tpl, "SYMBOL", symname);
+    if (ret != RDB_OK)
+        goto cleanup;
+    if (iarg == NULL)
+        iarg = "";
+    RDB_tuple_set_string(&tpl, "IARG", iarg);
+    if (ret != RDB_OK)
+        goto cleanup;
+
+    /* Set ARGTYPES to concatenation of arg type names */
+    typesbuf = _RDB_make_typestr(argc, argtv);
+    if (typesbuf == NULL) {
+        ret = RDB_NO_MEMORY;
+        goto cleanup;
+    }
+    
+    ret = RDB_tuple_set_string(&tpl, "ARGTYPES", typesbuf);
+    free(typesbuf);
+    if (ret != RDB_OK)
+        goto cleanup;
+
+    ret = RDB_insert(txp->dbp->dbrootp->upd_ops_tbp, &tpl, txp);
+
+cleanup:
+    RDB_destroy_tuple(&tpl);
+    return ret;
+}
+
+static RDB_ro_op *
+get_ro_op(const RDB_dbroot *dbrootp, const char *name,
+        int argc, RDB_value *argv[])
+{
+    RDB_ro_op *op;
+    RDB_ro_op **opp = RDB_hashmap_get(&dbrootp->ro_opmap, name, NULL);    
+
+    if (opp == NULL)
+        return NULL;
+    op = *opp;
+    
+    /* Find a operation with same signature */
+    do {
+        if (op->argc == argc) {
+            int i;
+
+            for (i = 0; (i < argc)
+                    && !RDB_type_equals(op->argtv[i], argv[i]->typ);
+                 i++);
+            if (i >= argc) {
+                /* Found */
+                return op;
+            }
+        }
+        op = op->nextp;
+    } while (op != NULL);
+
+    return NULL;
+}
+
+int
+RDB_call_ro_op(const char *name, int argc, RDB_value *argv[],
+               RDB_value *retvalp, RDB_transaction *txp)
+{
+    RDB_ro_op *op;
+    int ret;
+
+    op = get_ro_op(txp->dbp->dbrootp, name, argc, argv);
+    if (op == NULL) {
+        ret = _RDB_get_cat_ro_op(name, argc, argv, txp, &op);
+        if (ret != RDB_OK)
+            return ret;
+    }
+
+    return (*op->funcp) (name, argc, argv, retvalp, op->iargp, txp);
+}
+
+static RDB_upd_op *
+get_upd_op(const RDB_dbroot *dbrootp, const char *name,
+        int argc, RDB_value *argv[])
+{
+    RDB_upd_op *op;
+    RDB_upd_op **opp = RDB_hashmap_get(&dbrootp->upd_opmap, name, NULL);    
+
+    if (opp == NULL)
+        return NULL;
+    op = *opp;
+    
+    /* Find a operation with same signature */
+    do {
+        if (op->argc == argc) {
+            int i;
+
+            for (i = 0; (i < argc)
+                    && !RDB_type_equals(op->argtv[i], argv[i]->typ);
+                 i++);
+            if (i >= argc) {
+                /* Found */
+                return op;
+            }
+        }
+        op = op->nextp;
+    } while (op != NULL);
+
+    return NULL;
+}
+
+int
+RDB_call_update_op(const char *name, int argc, RDB_value *argv[],
+                RDB_transaction *txp)
+{
+    RDB_upd_op *op;
+    int ret;
+
+    op = get_upd_op(txp->dbp->dbrootp, name, argc, argv);
+    if (op == NULL) {
+        ret = _RDB_get_cat_upd_op(name, argc, argv, txp, &op);
+        if (ret != RDB_OK)
+            return ret;
+    }
+
+    return (*op->funcp) (name, argc, argv, 0, NULL, op->iargp, txp);
+}
+
+int
+RDB_drop_op(const char *name, RDB_transaction *txp)
+{
+    return RDB_NOT_SUPPORTED;
 }

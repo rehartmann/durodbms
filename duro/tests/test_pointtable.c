@@ -6,7 +6,7 @@
 
 char *upoint_keyattrs1[] = { "POINT" };
 
-RDB_key_attrs upoint_keyattrs[] = {
+RDB_str_vec upoint_keyattrs[] = {
     { 1, upoint_keyattrs1 }
 };
 

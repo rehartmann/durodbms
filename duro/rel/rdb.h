@@ -178,7 +178,7 @@ typedef struct {
 typedef struct {
     int attrc;
     char **attrv;
-} RDB_key_attrs;
+} RDB_str_vec;
 
 typedef struct {
     RDB_aggregate_op op;
@@ -214,7 +214,7 @@ typedef struct RDB_table {
     enum _RDB_tb_kind kind;
     char *name;
     int keyc;
-    RDB_key_attrs *keyv;
+    RDB_str_vec *keyv;
     union {
         struct {
             RDB_recmap *recmapp;
@@ -374,7 +374,7 @@ typedef struct RDB_attr {
 int
 RDB_create_table(const char *name, RDB_bool persistent,
         int attrc, RDB_attr heading[],
-        int keyc, RDB_key_attrs keyv[],
+        int keyc, RDB_str_vec keyv[],
         RDB_transaction *txp, RDB_table **tbpp);
 
 /*
@@ -823,6 +823,8 @@ int
 RDB_rename_relation_type(const RDB_type *typ, int renc, RDB_renaming renv[],
         RDB_type **);
 
+#define RDB_value_type(valp) ((valp)->typ)
+
 /*
  * Return RDB_TRUE if the two types are equal
  * or RDB_FALSE if they are not.
@@ -1000,12 +1002,14 @@ void
 RDB_drop_expr(RDB_expression *);
 
 int
-RDB_define_ro_op(const char *name, RDB_attr *argv[], RDB_type *rtyp,
+RDB_define_ro_op(const char *name, int argc, RDB_type *argtv[], RDB_type *rtyp,
+                 const char *libname, const char *symname, const char *arg,
                  RDB_transaction *txp);
 
 int
-RDB_define_upd_op(const char *name, RDB_attr *argv[],
-                  int updargc, const char *updargv[],
+RDB_define_update_op(const char *name, int argc, RDB_type *argtv[],
+                  int updargc, int updargv[],
+                  const char *libname, const char *symname, const char *arg,
                   RDB_transaction *txp);
 
 int
@@ -1013,7 +1017,7 @@ RDB_call_ro_op(const char *name, int argc, RDB_value *argv[],
                RDB_value *retvalp, RDB_transaction *txp);
 
 int
-RDB_call_upd_op(const char *name, int argc, RDB_value *argv[],
+RDB_call_update_op(const char *name, int argc, RDB_value *argv[],
                 RDB_transaction *txp);
 
 int

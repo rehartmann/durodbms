@@ -10,7 +10,8 @@
 typedef struct RDB_dbroot {
     RDB_environment *envp;
     RDB_hashmap typemap;
-    RDB_hashmap opmap;
+    RDB_hashmap ro_opmap;
+    RDB_hashmap upd_opmap;
     RDB_database *firstdbp;
 
     /* catalog tables */
@@ -23,6 +24,8 @@ typedef struct RDB_dbroot {
     RDB_table *types_tbp;    
     RDB_table *possreps_tbp;
     RDB_table *possrepcomps_tbp;
+    RDB_table *ro_ops_tbp;
+    RDB_table *upd_ops_tbp;
 } RDB_dbroot;
 
 typedef struct RDB_qresult {
@@ -73,6 +76,33 @@ typedef struct RDB_ipossrep {
     RDB_selector_func *selectorp;
 } RDB_ipossrep;
 
+typedef int RDB_ro_op_func(const char *name, int argc, RDB_value *argv[],
+        RDB_value *retvalp, const char *iargp, RDB_transaction *txp);
+
+typedef struct RDB_ro_op {
+    char *name;
+    int argc;
+    RDB_type **argtv;
+    RDB_type *rtyp;
+    char *iargp;
+    lt_dlhandle modhdl;
+    RDB_ro_op_func *funcp;
+    struct RDB_ro_op *nextp;
+} RDB_ro_op;
+
+typedef int RDB_upd_op_func(const char *name, int argc, RDB_value *argv[],
+        int updargc, int updargv[], const char *iargp, RDB_transaction *txp);
+
+typedef struct RDB_upd_op {
+    char *name;
+    int argc;
+    RDB_type **argtv;
+    char *iargp;
+    lt_dlhandle modhdl;
+    RDB_upd_op_func *funcp;
+    struct RDB_upd_op *nextp;
+} RDB_upd_op;
+
 /* Internal functions */
 
 void
@@ -100,13 +130,13 @@ _RDB_drop_qresult(RDB_qresult *, RDB_transaction *);
 int
 _RDB_create_table(const char *name, RDB_bool persistent,
                 int attrc, RDB_attr heading[],
-                int keyc, RDB_key_attrs keyv[],
+                int keyc, RDB_str_vec keyv[],
                 RDB_transaction *txp, RDB_table **tbpp);
 
 int
 _RDB_open_table(const char *name, RDB_bool persistent,
            int attrc, RDB_attr heading[],
-           int keyc, RDB_key_attrs keyv[], RDB_bool usr,
+           int keyc, RDB_str_vec keyv[], RDB_bool usr,
            RDB_bool create, RDB_transaction *txp, RDB_table **tbpp);
 
 int

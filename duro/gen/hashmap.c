@@ -48,12 +48,12 @@ RDB_destroy_hashmap(RDB_hashmap *hp)
 /*
  * Compute a hash value for the string str.
  */
-static int
+static unsigned
 hash_str(const char *str)
 {
     int len = strlen(str);
     int i;
-    int res = 0;
+    unsigned res = 0;
     
     for (i = 0; i < len; i++)
         res += str[i];
@@ -93,7 +93,7 @@ RDB_hashmap_put(RDB_hashmap *hp, const char *key, const void *valp, size_t len)
         /* Copy old table to new */
         for (i = 0; i < oldcapacity; i++) {
             if (oldtab[i].keyp != NULL) {
-                idx = hash_str(oldtab[i].keyp) % hp->capacity;
+                idx = (int)(hash_str(oldtab[i].keyp) % hp->capacity);
                 while (hp->kv_tab[idx].keyp != NULL) {
                     if (++idx >= hp->capacity)
                         idx = 0;
@@ -108,7 +108,7 @@ RDB_hashmap_put(RDB_hashmap *hp, const char *key, const void *valp, size_t len)
         free(oldtab);
     }
 
-    idx = hash_str(key) % hp->capacity;
+    idx = (int)(hash_str(key) % hp->capacity);
     while (hp->kv_tab[idx].keyp != NULL 
             && strcmp(hp->kv_tab[idx].keyp, key) != 0) {
         if (++idx >= hp->capacity)
@@ -147,7 +147,7 @@ RDB_hashmap_put(RDB_hashmap *hp, const char *key, const void *valp, size_t len)
 void *
 RDB_hashmap_get(const RDB_hashmap *hp, const char *key, size_t *lenp)
 {
-    int idx = hash_str(key) % hp->capacity;
+    int idx = (int)(hash_str(key) % hp->capacity);
     struct RDB_kv_pair *attrp;
 
     if (hp->kv_tab == NULL)

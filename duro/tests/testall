@@ -74,6 +74,8 @@ calltest test_utypetable
 calltest test_defpointtype
 calltest test_pointtable
 calltest test_2db
+calltest test_defop
+calltest test_callop
 
 rm /tmp/duro$$
 

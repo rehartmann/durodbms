@@ -186,9 +186,9 @@
 
 <ul>
 <li><a href="#define_ro_op">RDB_define_ro_op</a>
-<li><a href="#define_upd_op">RDB_define_upd_op</a>
+<li><a href="#define_update_op">RDB_define_update_op</a>
 <li><a href="#call_ro_op">RDB_call_ro_op</a>
-<li><a href="#call_upd_op">RDB_call_upd_op</a>
+<li><a href="#call_update_op">RDB_call_update_op</a>
 <li><a href="#drop_op">RDB_drop_op</a>
 </ul>
 
@@ -214,6 +214,8 @@
 
 <ul>
 <li><a href="#getargs">RDB_getargs</a>
+<li><a href="#strerror">RDB_strerror</a>
+<li><a href="#is_syserr">RDB_is_syserr</a>
 </ul>
 
 <h3>C structures</h3>
@@ -1699,21 +1701,21 @@ RDB_join_relation_types(const RDB_type *typ1, const RDB_type *typ2,
 #include &lt;rel/rdb.h&gt;
 
 int
-RDB_define_ro_op(const char *name, RDB_attr *argv[], RDB_type *rtyp,
+RDB_define_ro_op(const char *name, int argc, RDB_type *argtv[], RDB_type *rtyp,
                  const char *libname, const char *symname, const char *arg,
-                  RDB_transaction *txp);
+                 RDB_transaction *txp);
 </pre>
 
 <hr>
 
-<h2 id="define_upd_op">RDB_define_upd_op</h2>
+<h2 id="define_update_op">RDB_define_update_op</h2>
 
 <pre>
 #include &lt;rel/rdb.h&gt;
 
 int
-RDB_define_upd_op(const char *name, RDB_attr *argv[],
-                  int updargc, const char *updargv[],
+RDB_define_update_op(const char *name, inz argc, RDB_type *argtv[],
+                  int updargc, int updargv[],
                   const char *libname, const char *symname, const char *arg,
                   RDB_transaction *txp);
 </pre>
@@ -1732,13 +1734,13 @@ RDB_call_ro_op(const char *name, int argc, RDB_value *argv[],
 
 <hr>
 
-<h2 id="call_upd_op">RDB_call_upd_op</h2>
+<h2 id="call_update_op">RDB_call_update_op</h2>
 
 <pre>
 #include &lt;rel/rdb.h&gt;
 
 int
-RDB_call_upd_op(const char *name, int argc, RDB_value *argv[],
+RDB_call_update_op(const char *name, int argc, RDB_value *argv[],
                 RDB_transaction *txp);
 </pre>
 

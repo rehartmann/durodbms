@@ -103,7 +103,7 @@ RDB_insert(RDB_table *tbp, const RDB_tuple *tup, RDB_transaction *txp)
 
             fvp = malloc(sizeof(RDB_field) * attrcount);
             if (fvp == NULL) {
-                ERRMSG(txp->dbp->dbrootp->envp, RDB_strerror(ret));
+                RDB_errmsg(txp->dbp->dbrootp->envp, RDB_strerror(ret));
                 return RDB_NO_MEMORY;
             }
             for (i = 0; i < attrcount; i++) {
@@ -130,7 +130,7 @@ RDB_insert(RDB_table *tbp, const RDB_tuple *tup, RDB_transaction *txp)
             }
             ret = RDB_insert_rec(tbp->var.stored.recmapp, fvp, txp->txid);
             if (RDB_is_syserr(ret)) {
-                ERRMSG(txp->dbp->dbrootp->envp, RDB_strerror(ret));
+                RDB_errmsg(txp->dbp->dbrootp->envp, RDB_strerror(ret));
                 RDB_rollback(txp);
             } else if (ret == RDB_KEY_VIOLATION) {
                 /* check if the tuple is an element of the table */
@@ -647,7 +647,7 @@ update_stored_by_key(RDB_table *tbp, RDB_expression *exp,
     ret = RDB_update_rec(tbp->var.stored.recmapp, &fv, attrc, fieldv,
             txp->txid);
     if (RDB_is_syserr(ret)) {
-        ERRMSG(txp->dbp->dbrootp->envp, RDB_strerror(ret));
+        RDB_errmsg(txp->dbp->dbrootp->envp, RDB_strerror(ret));
         return ret;
     }
     ret = RDB_OK;
@@ -729,7 +729,7 @@ RDB_update(RDB_table *tbp, RDB_expression *condp, int attrc,
         {
             int ret = update_stored(tbp, condp, attrc, attrv, txp);
             if (RDB_is_syserr(ret)) {
-                ERRMSG(txp->dbp->dbrootp->envp, RDB_strerror(ret));
+                RDB_errmsg(txp->dbp->dbrootp->envp, RDB_strerror(ret));
                 RDB_rollback(txp);
             }
             return ret;
@@ -859,7 +859,7 @@ RDB_delete(RDB_table *tbp, RDB_expression *condp, RDB_transaction *txp)
         case RDB_TB_STORED:
             ret = delete_stored(tbp, condp, txp);
             if (RDB_is_syserr(ret)) {
-                ERRMSG(txp->dbp->dbrootp->envp, RDB_strerror(ret));
+                RDB_errmsg(txp->dbp->dbrootp->envp, RDB_strerror(ret));
                 RDB_rollback(txp);
             }
             return ret;
@@ -1041,7 +1041,7 @@ RDB_aggregate(RDB_table *tbp, RDB_aggregate_op op, const char *attrname,
     ret = _RDB_table_qresult(tbp, &qrp, txp);
     if (ret != RDB_OK) {
         if (RDB_is_syserr(ret)) {
-            ERRMSG(txp->dbp->dbrootp->envp, RDB_strerror(ret));
+            RDB_errmsg(txp->dbp->dbrootp->envp, RDB_strerror(ret));
             RDB_rollback(txp);
         }
         return ret;
@@ -1109,7 +1109,7 @@ RDB_aggregate(RDB_table *tbp, RDB_aggregate_op op, const char *attrname,
     if (ret != RDB_NOT_FOUND) {
         _RDB_drop_qresult(qrp, txp);
         if (RDB_is_syserr(ret)) {
-            ERRMSG(txp->dbp->dbrootp->envp, RDB_strerror(ret));
+            RDB_errmsg(txp->dbp->dbrootp->envp, RDB_strerror(ret));
             RDB_rollback(txp);
         }
         return ret;
@@ -1212,7 +1212,7 @@ RDB_rename_contains(RDB_table *tbp, const RDB_tuple *tup, RDB_transaction *txp)
         }
         if (ret != RDB_OK) {
             if (RDB_is_syserr(ret)) {
-                ERRMSG(txp->dbp->dbrootp->envp, RDB_strerror(ret));
+                RDB_errmsg(txp->dbp->dbrootp->envp, RDB_strerror(ret));
                 RDB_rollback(txp);
             }
             goto error;
@@ -1253,7 +1253,7 @@ RDB_table_contains(RDB_table *tbp, const RDB_tuple *tup, RDB_transaction *txp)
                 ret = RDB_contains_rec(tbp->var.stored.recmapp, fvp, txp->txid);
                 free(fvp);
                 if (RDB_is_syserr(ret)) {
-                    ERRMSG(txp->dbp->dbrootp->envp, RDB_strerror(ret));
+                    RDB_errmsg(txp->dbp->dbrootp->envp, RDB_strerror(ret));
                     RDB_rollback(txp);
                 }
                 return ret;
@@ -1308,7 +1308,7 @@ RDB_table_contains(RDB_table *tbp, const RDB_tuple *tup, RDB_transaction *txp)
                 if (ret == RDB_OK)
                     ret =  ret2;
                 if (RDB_is_syserr(ret)) {
-                    ERRMSG(txp->dbp->dbrootp->envp, RDB_strerror(ret));
+                    RDB_errmsg(txp->dbp->dbrootp->envp, RDB_strerror(ret));
                     RDB_rollback(txp);
                 }
                 return ret;
@@ -1329,7 +1329,7 @@ RDB_extract_tuple(RDB_table *tbp, RDB_tuple *tup, RDB_transaction *txp)
     ret = _RDB_table_qresult(tbp, &qrp, txp);
     if (ret != RDB_OK) {
         if (RDB_is_syserr(ret)) {
-            ERRMSG(txp->dbp->dbrootp->envp, RDB_strerror(ret));
+            RDB_errmsg(txp->dbp->dbrootp->envp, RDB_strerror(ret));
             RDB_rollback(txp);
         }
         return ret;
@@ -1355,7 +1355,7 @@ error:
     if (ret == RDB_OK)
         ret = ret2;
     if (RDB_is_syserr(ret)) {
-        ERRMSG(txp->dbp->dbrootp->envp, RDB_strerror(ret));
+        RDB_errmsg(txp->dbp->dbrootp->envp, RDB_strerror(ret));
         RDB_rollback(txp);
     }
     return ret;
@@ -1388,12 +1388,12 @@ RDB_table_is_empty(RDB_table *tbp, RDB_transaction *txp, RDB_bool *resultp)
     return _RDB_drop_qresult(qrp, txp);
 }
 
-static RDB_key_attrs *
-dup_keys(int keyc, RDB_key_attrs *keyv) {
-    RDB_key_attrs *newkeyv;
+static RDB_str_vec *
+dup_keys(int keyc, RDB_str_vec *keyv) {
+    RDB_str_vec *newkeyv;
     int i;
 
-    newkeyv = malloc(keyc * sizeof(RDB_key_attrs));
+    newkeyv = malloc(keyc * sizeof(RDB_str_vec));
     if (newkeyv == NULL) {
         return NULL;
     }
@@ -1417,12 +1417,12 @@ error:
     return NULL;
 }
 
-static RDB_key_attrs *
-dup_rename_keys(int keyc, RDB_key_attrs *keyv, int renc, RDB_renaming renv[]) {
-    RDB_key_attrs *newkeyv;
+static RDB_str_vec *
+dup_rename_keys(int keyc, RDB_str_vec *keyv, int renc, RDB_renaming renv[]) {
+    RDB_str_vec *newkeyv;
     int i, j;
 
-    newkeyv = malloc(keyc * sizeof(RDB_key_attrs));
+    newkeyv = malloc(keyc * sizeof(RDB_str_vec));
     if (newkeyv == NULL) {
         return NULL;
     }
@@ -1497,8 +1497,8 @@ RDB_select(RDB_table *tbp, RDB_expression *condp, RDB_table **resultpp)
     return RDB_OK;
 }
 
-static RDB_key_attrs *all_key(RDB_table *tbp) {
-    RDB_key_attrs *keyv = malloc(sizeof (RDB_key_attrs));
+static RDB_str_vec *all_key(RDB_table *tbp) {
+    RDB_str_vec *keyv = malloc(sizeof (RDB_str_vec));
     int attrc;
     int i;
     
@@ -1671,12 +1671,12 @@ RDB_join(RDB_table *tbp1, RDB_table *tbp2, RDB_table **resultpp)
 
     /* Candidate keys */
     newtbp->keyc = tbp1->keyc * tbp2->keyc;
-    newtbp->keyv = malloc(sizeof (RDB_key_attrs) * newtbp->keyc);
+    newtbp->keyv = malloc(sizeof (RDB_str_vec) * newtbp->keyc);
     if (newtbp->keyv == NULL)
         goto error;
     for (i = 0; i < tbp1->keyc; i++) {
         for (j = 0; j < tbp2->keyc; j++) {
-            RDB_key_attrs *attrsp = &newtbp->keyv[i * tbp2->keyc + j];
+            RDB_str_vec *attrsp = &newtbp->keyv[i * tbp2->keyc + j];
            
             attrsp->attrc = tbp1->keyv[i].attrc + tbp2->keyv[j].attrc;
             attrsp->attrv = malloc(sizeof(char *) * attrsp->attrc);
@@ -1854,7 +1854,7 @@ RDB_project(RDB_table *tbp, int attrc, char *attrv[], RDB_table **resultpp)
         /* Pick the keys which survived the projection */
 
         newtbp->keyc = keyc;
-        newtbp->keyv = malloc(sizeof (RDB_key_attrs) * keyc);
+        newtbp->keyv = malloc(sizeof (RDB_str_vec) * keyc);
         if (newtbp->keyv == NULL) {
             goto error;
         }

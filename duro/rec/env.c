@@ -3,6 +3,7 @@
 #include "env.h"
 #include <gen/errors.h>
 #include <stdlib.h>
+#include <stdarg.h>
 
 int
 RDB_create_env(const char *path, int options, RDB_environment **envpp)
@@ -96,9 +97,13 @@ RDB_set_errfile(RDB_environment *envp, FILE *errfile)
 }
 
 void
-RDB_errmsg(RDB_environment *envp, const char *msg)
+RDB_errmsg(RDB_environment *envp, const char *format, ...)
 {
     if (envp->errfilep != NULL) {
-        fprintf(envp->errfilep, "%s\n", msg);
+        va_list ap;
+
+        va_start(ap,format);
+        vfprintf(envp->errfilep, format, ap);
+        va_end(ap);
     }
 }
