@@ -44,7 +44,8 @@ TESTS = tests/ctests.sh tests/rtables.tcl tests/ltables.tcl tests/project.tcl \
         tests/tuple.tcl tests/sdivide.tcl tests/invtable.tcl \
         tests/operator.tcl tests/vtables.tcl tests/db2.tcl tests/rel.tcl \
         tests/subset.tcl tests/utype.tcl tests/deedum.tcl tests/opt.tcl \
-        tests/index.tcl tests/oindex.tcl tests/convert.tcl tests/string.tcl
+        tests/index.tcl tests/oindex.tcl tests/convert.tcl tests/string.tcl \
+        tests/rollback.tcl
 
 TESTS_ENVIRONMENT = LD_LIBRARY_PATH=$(LD_LIBRARY_PATH):$(BDB_HOME)/lib
 
@@ -59,6 +60,7 @@ libduro_la_SOURCES = gen/errors.c gen/hashmap.c gen/hashmapit.c gen/strfns.c \
         rel/serialize.h rel/table.c rel/vtable.c rel/update.c rel/insert.c \
         rel/contains.c rel/transaction.c rel/delete.c rel/tuple.c rel/type.c \
         rel/object.c rel/catalog.c rel/optimize.c rel/transform.c \
+        rel/constraint.c \
         rel/catalog.h \
         dli/exparse.y dli/exlex.l dli/parse.c dli/tabletostr.c \
         dli/tabletostr.h 
@@ -70,7 +72,8 @@ nobase_include_HEADERS = gen/errors.h gen/hashmap.h gen/hashmapit.h \
 
 libdurotcl_la_SOURCES = tcl/duro.c tcl/duro.h tcl/envcmd.c tcl/txcmd.c \
         tcl/tablecmd.c tcl/dbcmd.c tcl/arraycmd.c tcl/opcmd.c tcl/exprcmd.c \
-        tcl/typecmd.c tcl/indexcmd.c tcl/insertcmd.c tcl/updatecmd.c
+        tcl/typecmd.c tcl/indexcmd.c tcl/insertcmd.c tcl/updatecmd.c \
+        tcl/constrcmd.c
 
 libdurotcl_la_LIBADD = -L$(BDB_HOME)/lib libduro.la -ldb
 

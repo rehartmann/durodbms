@@ -17,21 +17,21 @@ enum {
     RDB_DFL_MAP_CAPACITY = 37
 };
 
-/*
 typedef struct RDB_constraint {
     char *name;
     RDB_expression *exp;
     struct RDB_constraint *nextp;
+    struct RDB_table *empty_tbp;
 } RDB_constraint;
-*/
 
 typedef struct RDB_dbroot {
     RDB_environment *envp;
     RDB_hashmap typemap;
     RDB_hashmap ro_opmap;
     RDB_hashmap upd_opmap;
-    RDB_database *firstdbp;
-    /* RDB_constraint *firstconstrp; */
+    RDB_database *first_dbp;
+    RDB_constraint *first_constrp;
+    RDB_bool constraints_read;
 
     /* catalog tables */
     RDB_table *rtables_tbp;
@@ -47,7 +47,7 @@ typedef struct RDB_dbroot {
     RDB_table *ro_ops_tbp;
     RDB_table *upd_ops_tbp;
     RDB_table *indexes_tbp;
-    /* constraints not yet supported  RDB_table *constraints_tbp; */
+    RDB_table *constraints_tbp;
     RDB_table *version_info_tbp;
 } RDB_dbroot;
 
@@ -447,5 +447,11 @@ _RDB_index_sorts(struct _RDB_tbindex *indexp, int seqitc,
 
 RDB_expression *
 _RDB_attr_node(RDB_expression *exp, const char *attrname, char *opname);
+
+int
+_RDB_read_constraints(RDB_transaction *);
+
+int
+_RDB_insert_stored(RDB_table *tbp, const RDB_object *tplp, RDB_transaction *);
 
 #endif

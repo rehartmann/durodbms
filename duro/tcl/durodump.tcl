@@ -8,7 +8,7 @@ exec tclsh "$0" ${1+"$@"}
 
 # $Id$
 
-set duro_version 0.9
+set duro_version 0.10
 
 package require -exact duro $duro_version
 

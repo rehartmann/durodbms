@@ -36,9 +36,8 @@ free_dbroot(RDB_dbroot *dbrootp)
     RDB_hashmap_iter it;
     char *keyp;
     void *datap;
-/* Database constraints are not yet supported
     RDB_constraint *constrp, *nextconstrp;
-*/
+
     RDB_destroy_hashmap(&dbrootp->typemap);
 
     /*
@@ -53,10 +52,10 @@ free_dbroot(RDB_dbroot *dbrootp)
     }
     RDB_destroy_hashmap_iter(&it);
 
-    /* Database constraints are not yet supported
+    /*
      * Destroy constraints
-     *
-    constrp = dbrootp->firstconstrp;
+     */
+    constrp = dbrootp->first_constrp;
     while (constrp != NULL) {
         nextconstrp = constrp->nextp;
         free(constrp->name);
@@ -64,7 +63,6 @@ free_dbroot(RDB_dbroot *dbrootp)
         free(constrp);
         constrp = nextconstrp;
     }
-    */
 
     RDB_init_hashmap_iter(&it, &dbrootp->upd_opmap);
     while ((datap = RDB_hashmap_next(&it, &keyp, NULL)) != NULL) {
@@ -107,7 +105,7 @@ close_table(RDB_table *tbp, RDB_environment *envp)
      * Remove table from all RDB_databases in list
      */
     dbrootp = (RDB_dbroot *)RDB_env_private(envp);
-    for (dbp = dbrootp->firstdbp; dbp != NULL; dbp = dbp->nextdbp) {
+    for (dbp = dbrootp->first_dbp; dbp != NULL; dbp = dbp->nextdbp) {
         RDB_table **foundtbpp = (RDB_table **)RDB_hashmap_get(
                 &dbp->tbmap, tbp->name, NULL);
         if (foundtbpp != NULL && *foundtbpp != NULL) {
@@ -123,10 +121,10 @@ static int
 rm_db(RDB_database *dbp)
 {
     /* Remove database from list */
-    if (dbp->dbrootp->firstdbp == dbp) {
-        dbp->dbrootp->firstdbp = dbp->nextdbp;
+    if (dbp->dbrootp->first_dbp == dbp) {
+        dbp->dbrootp->first_dbp = dbp->nextdbp;
     } else {
-        RDB_database *hdbp = dbp->dbrootp->firstdbp;
+        RDB_database *hdbp = dbp->dbrootp->first_dbp;
         while (hdbp != NULL && hdbp->nextdbp != dbp) {
             hdbp = hdbp->nextdbp;
         }
@@ -191,9 +189,7 @@ close_systables(RDB_dbroot *dbrootp)
     close_table(dbrootp->ro_ops_tbp, dbrootp->envp);
     close_table(dbrootp->upd_ops_tbp, dbrootp->envp);
     close_table(dbrootp->indexes_tbp, dbrootp->envp);
-/* Database constraints are not yet supported
     close_table(dbrootp->constraints_tbp, dbrootp->envp);
-*/
     close_table(dbrootp->version_info_tbp, dbrootp->envp);
 }
 
@@ -208,7 +204,7 @@ cleanup_env(RDB_environment *envp)
     if (dbrootp == NULL)
         return;
 
-    dbp = dbrootp->firstdbp;
+    dbp = dbrootp->first_dbp;
 
     while (dbp != NULL) {
         nextdbp = dbp->nextdbp;
@@ -238,10 +234,9 @@ new_dbroot(RDB_environment *envp)
     if (ret != RDB_OK)
         return NULL;
 
-    dbrootp->firstdbp = NULL;
-/*
-    dbrootp->firstconstrp = NULL;
-*/
+    dbrootp->first_dbp = NULL;
+    dbrootp->first_constrp = NULL;
+    dbrootp->constraints_read = RDB_FALSE;
 
     return dbrootp;
 }
@@ -305,9 +300,7 @@ assoc_systables(RDB_dbroot *dbrootp, RDB_database *dbp)
     _RDB_assoc_table_db(dbrootp->ro_ops_tbp, dbp);
     _RDB_assoc_table_db(dbrootp->upd_ops_tbp, dbp);
     _RDB_assoc_table_db(dbrootp->indexes_tbp, dbp);
-/* Database constraints are not yet supported
     _RDB_assoc_table_db(dbrootp->constraints_tbp, dbp);
-*/
     _RDB_assoc_table_db(dbrootp->version_info_tbp, dbp);
 }
 
@@ -413,8 +406,8 @@ RDB_create_db_from_env(const char *name, RDB_environment *envp,
     assoc_systables(dbrootp, dbp);
 
     /* Insert database into list */
-    dbp->nextdbp = dbrootp->firstdbp;
-    dbrootp->firstdbp = dbp;
+    dbp->nextdbp = dbrootp->first_dbp;
+    dbrootp->first_dbp = dbp;
 
     *dbpp = dbp;
     return RDB_OK;
@@ -451,7 +444,7 @@ RDB_get_db_from_env(const char *name, RDB_environment *envp,
     }
 
     /* search the DB list for the database */
-    for (dbp = dbrootp->firstdbp; dbp != NULL; dbp = dbp->nextdbp) {
+    for (dbp = dbrootp->first_dbp; dbp != NULL; dbp = dbp->nextdbp) {
         if (strcmp(dbp->name, name) == 0) {
             *dbpp = dbp;
             return RDB_OK;
@@ -468,7 +461,7 @@ RDB_get_db_from_env(const char *name, RDB_environment *envp,
     }
 
     /*
-     *Check if the database exists by checking if the DBTABLES contains
+     * Check if the database exists by checking if the DBTABLES contains
      * SYS_RTABLES for this database.
      */
 
@@ -497,7 +490,7 @@ RDB_get_db_from_env(const char *name, RDB_environment *envp,
         goto error;
     }
     RDB_destroy_obj(&tpl);
-    
+
     ret = RDB_commit(&tx);
     if (ret != RDB_OK)
         return ret;
@@ -506,8 +499,8 @@ RDB_get_db_from_env(const char *name, RDB_environment *envp,
     dbp->dbrootp = dbrootp;
     
     /* Insert database into list */
-    dbp->nextdbp = dbrootp->firstdbp;
-    dbrootp->firstdbp = dbp;
+    dbp->nextdbp = dbrootp->first_dbp;
+    dbrootp->first_dbp = dbp;
 
     *dbpp = dbp;
 
@@ -778,7 +771,7 @@ RDB_get_table(const char *name, RDB_transaction *txp, RDB_table **tbpp)
     RDB_database *dbp;
 
     /* Search table in all databases */
-    dbp = txp->dbp->dbrootp->firstdbp;
+    dbp = txp->dbp->dbrootp->first_dbp;
     while (dbp != NULL) {
         foundtbpp = (RDB_table **)RDB_hashmap_get(&dbp->tbmap, name, NULL);
         if (foundtbpp != NULL && *foundtbpp != NULL) {
@@ -814,7 +807,7 @@ RDB_drop_table(RDB_table *tbp, RDB_transaction *txp)
          * Remove table from all RDB_databases in list
          */
         dbrootp = (RDB_dbroot *)RDB_env_private(txp->envp);
-        for (dbp = dbrootp->firstdbp; dbp != NULL; dbp = dbp->nextdbp) {
+        for (dbp = dbrootp->first_dbp; dbp != NULL; dbp = dbp->nextdbp) {
             RDB_table **foundtbpp = (RDB_table **)RDB_hashmap_get(
                     &dbp->tbmap, tbp->name, NULL);
             if (foundtbpp != NULL) {
@@ -871,7 +864,7 @@ RDB_set_table_name(RDB_table *tbp, const char *name, RDB_transaction *txp)
         RDB_database *dbp;
 
         /* Delete and reinsert tables from/to table maps */
-        for (dbp = txp->dbp->dbrootp->firstdbp; dbp != NULL;
+        for (dbp = txp->dbp->dbrootp->first_dbp; dbp != NULL;
                 dbp = dbp->nextdbp) {
             RDB_table **foundtbpp = (RDB_table **)RDB_hashmap_get(
                     &dbp->tbmap, tbp->name, NULL);

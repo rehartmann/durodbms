@@ -123,7 +123,7 @@ Duro_init_tcl(Tcl_Interp *interp, TclState **statepp)
     }
 
     setlocale(LC_COLLATE, "");
-/*    setlocale(LC_CTYPE, ""); */
+    setlocale(LC_CTYPE, "");
 
     *statepp = (TclState *) Tcl_Alloc(sizeof (TclState));
     Tcl_InitHashTable(&(*statepp)->envs, TCL_STRING_KEYS);
@@ -135,7 +135,8 @@ Duro_init_tcl(Tcl_Interp *interp, TclState **statepp)
     Tcl_InitHashTable(&(*statepp)->ltables, TCL_STRING_KEYS);
     (*statepp)->ltable_uid = 0;
 
-    Tcl_CreateCommand(interp, "duro::env", Duro_env_cmd, (ClientData)*statepp, NULL);
+    Tcl_CreateCommand(interp, "duro::env", Duro_env_cmd,
+            (ClientData)*statepp, NULL);
     Tcl_CreateCommand(interp, "duro::begin", Duro_begin_cmd,
             (ClientData)*statepp, NULL);
     Tcl_CreateCommand(interp, "duro::commit", Duro_commit_cmd,
@@ -166,10 +167,12 @@ Duro_init_tcl(Tcl_Interp *interp, TclState **statepp)
             (ClientData)*statepp, NULL);
     Tcl_CreateObjCommand(interp, "duro::index", Duro_index_cmd,
             (ClientData)*statepp, NULL);
+    Tcl_CreateObjCommand(interp, "duro::constraint", Duro_constraint_cmd,
+            (ClientData)*statepp, NULL);
 
     Tcl_CreateExitHandler(duro_cleanup, (ClientData)*statepp);
 
-    return Tcl_PkgProvide(interp, "duro", "0.9");
+    return Tcl_PkgProvide(interp, "duro", "0.10");
 }
 
 int

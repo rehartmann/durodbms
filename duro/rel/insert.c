@@ -10,8 +10,9 @@
 #include "internal.h"
 #include <string.h>
 
-static int
-insert_stored(RDB_table *tbp, const RDB_object *tplp, RDB_transaction *txp)
+int
+_RDB_insert_stored(RDB_table *tbp, const RDB_object *tplp,
+                   RDB_transaction *txp)
 {
     int i;
     int ret;
@@ -325,6 +326,20 @@ cleanup:
 }
 
 int
+check_insert_empty(RDB_table *chtbp, RDB_table *tbp, const RDB_object *tplp,
+        RDB_transaction *txp)
+{
+    if (chtbp == tbp)
+        return RDB_PREDICATE_VIOLATION;
+    switch (chtbp->kind) {
+        case RDB_TB_REAL:
+            return RDB_OK;
+        default: /* !! */ ;
+    }
+    return RDB_OK;
+}
+
+int
 RDB_insert(RDB_table *tbp, const RDB_object *tplp, RDB_transaction *txp)
 {
     int ret;
@@ -333,9 +348,29 @@ RDB_insert(RDB_table *tbp, const RDB_object *tplp, RDB_transaction *txp)
     if (txp != NULL && !RDB_tx_is_running(txp))
         return RDB_INVALID_TRANSACTION;
 
+
+    if (txp != NULL) {
+        RDB_constraint *constrp;
+
+        if (!RDB_tx_db(txp)->dbrootp->constraints_read) {
+            ret = _RDB_read_constraints(txp);
+            if (ret != RDB_OK)
+                return ret;
+            RDB_tx_db(txp)->dbrootp->constraints_read = RDB_TRUE;
+        }
+
+        constrp = RDB_tx_db(txp)->dbrootp->first_constrp;
+        while (constrp != NULL) {
+            if (check_insert_empty(constrp->empty_tbp, tbp, tplp, txp)
+                    == RDB_PREDICATE_VIOLATION)
+                return RDB_PREDICATE_VIOLATION;
+            constrp = constrp->nextp;
+        }
+    }
+
     switch (tbp->kind) {
         case RDB_TB_REAL:
-            return insert_stored(tbp, tplp, txp);
+            return _RDB_insert_stored(tbp, tplp, txp);
         case RDB_TB_SELECT:
             ret = RDB_evaluate_bool(tbp->var.select.exp, tplp, txp, &b);
             if (ret != RDB_OK)

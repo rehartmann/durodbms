@@ -198,9 +198,8 @@ RDB_open_recmap(const char *name, const char *filename,
             fieldc, fieldlenv, keyfieldc, RDB_UNIQUE);
     if (ret != RDB_OK)
        return ret;
-
-    ret = (*rmpp)->dbp->open((*rmpp)->dbp, txid, filename, name, DB_UNKNOWN,
-            0, 0664);
+    ret = (*rmpp)->dbp->open((*rmpp)->dbp, 0, filename, name, DB_UNKNOWN,
+            DB_AUTO_COMMIT, 0664);
     if (ret != 0) {
         if (ret == ENOENT)
             ret = RDB_NOT_FOUND;
