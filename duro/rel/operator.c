@@ -150,7 +150,7 @@ _RDB_get_ro_op(const char *name, int argc, RDB_type *argtv[],
 }
 
 int
-check_type_constraint(RDB_object *valp, RDB_transaction *txp)
+_RDB_check_type_constraint(RDB_object *valp, RDB_transaction *txp)
 {
     int i, j;
     int ret;
@@ -221,9 +221,13 @@ RDB_call_ro_op(const char *name, int argc, RDB_object *argv[],
 
     /* Check type constraint if the operator is a selector */
     if (_RDB_get_possrep(retvalp->typ, name) != NULL) {
-        ret = check_type_constraint(retvalp, txp);
-        if (ret != RDB_OK)
+        ret = _RDB_check_type_constraint(retvalp, txp);
+        if (ret != RDB_OK) {
+            /* Destroy illegal value */
+            RDB_destroy_obj(retvalp);
+            RDB_init_obj(retvalp);
             return ret;
+        }
     }
 
     return RDB_OK;

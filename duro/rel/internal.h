@@ -357,6 +357,9 @@ RDB_type *
 RDB_expr_type(const RDB_expression *exp, const RDB_type *);
 
 int
+_RDB_check_type_constraint(RDB_object *valp, RDB_transaction *txp);
+
+int
 _RDB_copy_obj(RDB_object *dstvalp, const RDB_object *srcvalp);
 
 int

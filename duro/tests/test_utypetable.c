@@ -104,10 +104,37 @@ test_table(RDB_database *dbp)
 
     printf("Creating TINYINT from INTEGER=99\n");
 
-    RDB_int_to_obj(&ival, (RDB_int)99);
+    RDB_int_to_obj(&ival, (RDB_int) 99);
     ivalp = &ival;
 
     ret = RDB_call_ro_op("TINYINT", 1, &ivalp, &tx, &tival);
+    if (ret != RDB_OK) {
+        goto error;
+    }
+
+    /*
+     * Try to set tival to illegal value by calling the setter function
+     */
+    RDB_int_to_obj(&ival, 200);
+    ret = RDB_obj_set_comp(&tival, "TINYINT", &ival, &tx);
+    if (ret != RDB_TYPE_CONSTRAINT_VIOLATION) {
+        fprintf(stderr, "Wrong return code: %s\n", RDB_strerror(ret));
+        goto error;
+    }
+
+    /*
+     * Call selector again
+     */
+    RDB_int_to_obj(&ival, 99);
+    ret = RDB_call_ro_op("TINYINT", 1, &ivalp, &tx, &tival);
+    if (ret != RDB_OK) {
+        goto error;
+    }
+
+    /*
+     * Call setter with valid value
+     */
+    ret = RDB_obj_set_comp(&tival, "TINYINT", &ival, &tx);
     if (ret != RDB_OK) {
         goto error;
     }

@@ -697,7 +697,7 @@ RDB_obj_set_comp(RDB_object *valp, const char *compname,
 
             ret = _RDB_copy_obj(valp, compvalp);
         } else {
-            RDB_tuple_set(valp, compname, compvalp);
+            ret = RDB_tuple_set(valp, compname, compvalp);
         }
     } else {
         /* Setter is implemented by user */
@@ -717,8 +717,16 @@ RDB_obj_set_comp(RDB_object *valp, const char *compname,
         ret = RDB_call_update_op(opname, 2, argv, txp);
         free(opname);        
     }
+
+    if (ret != RDB_OK)
+        return ret;
     
-    /* !! Check constraint */
+    ret = _RDB_check_type_constraint(valp, txp);
+    if (ret != RDB_OK) {
+        /* Destroy illegal value */
+        RDB_destroy_obj(valp);
+        RDB_init_obj(valp);
+    }
     return ret;
 }
 
