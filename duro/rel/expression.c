@@ -42,6 +42,8 @@ RDB_expr_type(const RDB_expression *exp)
                     exp->var.op.name)->typ;
         case RDB_TABLE:
             return exp->var.tbp->typ;
+        case RDB_SELECTOR:
+            return exp->var.selector.typ;
     }
     abort();
 }
@@ -365,6 +367,43 @@ RDB_get_comp(RDB_expression *arg, const char *compname)
     return exp;
 }
 
+RDB_expression *
+RDB_selector(RDB_type *typ, const char *repname, RDB_expression *argv[])
+{
+    RDB_expression *exp;
+    RDB_ipossrep *prp = _RDB_get_possrep(typ, repname);
+    int i;
+
+    if (prp == NULL)
+        return NULL;
+    exp = malloc(sizeof (RDB_expression));
+    if (exp == NULL)
+        return NULL;   
+
+    exp->kind = RDB_SELECTOR;
+    exp->var.selector.typ = typ;
+    exp->var.selector.argv = NULL;
+
+    exp->var.selector.name = RDB_dup_str(repname);
+    if (exp->var.selector.name == NULL)
+        goto error;
+
+    exp->var.selector.argv = malloc(prp->compc * sizeof(RDB_expression *));
+    if (exp->var.selector.argv == NULL)
+        goto error;
+
+    for (i = 0; i < prp->compc; i++)
+        exp->var.selector.argv[i] = argv[i];
+
+    return exp;
+error:
+    free(exp->var.selector.name);
+    free(exp->var.selector.argv);
+    free(exp);
+
+    return NULL;    
+}
+
 /* Destroy the expression and all subexpressions */
 void 
 RDB_drop_expr(RDB_expression *exp)
@@ -389,6 +428,18 @@ RDB_drop_expr(RDB_expression *exp)
         case RDB_OP_GET_COMP:
             free(exp->var.op.name);
             RDB_drop_expr(exp->var.op.arg1);
+            break;
+        case RDB_SELECTOR:
+            {
+                int compc = _RDB_get_possrep(exp->var.selector.typ,
+                        exp->var.selector.name)->compc;
+                int i;
+
+                for (i = 0; i < compc; i++)
+                    RDB_drop_expr(exp->var.selector.argv[i]);
+                free(exp->var.selector.argv);
+                free(exp->var.selector.name);
+            }
             break;
         case RDB_CONST:
             RDB_destroy_value(&exp->var.const_val);
@@ -540,6 +591,43 @@ evaluate_rational(RDB_expression *exp, const RDB_tuple *tup,
     return RDB_OK;
 }
 
+static int
+evaluate_eq(RDB_expression *exp, const RDB_tuple *tup,
+                  RDB_transaction *txp, RDB_bool *resp)
+{
+    int ret;
+    RDB_value val1, val2;
+
+    RDB_init_value(&val1);
+    RDB_init_value(&val2);
+
+    /*
+     * Evaluate arguments
+     */
+
+    ret = RDB_evaluate(exp->var.op.arg1, tup, txp, &val1);
+    if (ret != RDB_OK)
+        goto cleanup;
+
+    ret = RDB_evaluate(exp->var.op.arg2, tup, txp, &val2);
+    if (ret != RDB_OK)
+        goto cleanup;
+
+    /*
+     * Compare values
+     */
+
+    *resp = RDB_value_equals(&val1, &val2);
+
+    ret = RDB_OK;
+
+cleanup:
+    RDB_destroy_value(&val1);
+    RDB_destroy_value(&val2);
+
+    return ret;
+}
+
 int
 RDB_evaluate_bool(RDB_expression *exp, const RDB_tuple *tup,
                   RDB_transaction *txp, RDB_bool *resp)
@@ -555,55 +643,7 @@ RDB_evaluate_bool(RDB_expression *exp, const RDB_tuple *tup,
             *resp = RDB_tuple_get_bool(tup, exp->var.attr.name);
             return RDB_OK;
         case RDB_OP_EQ:
-            typ = RDB_expr_type(exp->var.op.arg1);
-            if (typ == &RDB_INTEGER) {
-                RDB_int v1, v2;
-                
-                err = evaluate_int(exp->var.op.arg1, tup, txp, &v1);
-                if (err != RDB_OK)
-                    return err;
-
-                err = evaluate_int(exp->var.op.arg2, tup, txp, &v2);
-                if (err != RDB_OK)
-                    return err;
-
-                *resp = (RDB_bool)(v1 == v2);
-                return RDB_OK;
-            }
-            if (typ == &RDB_RATIONAL) {
-                RDB_rational v1, v2;
-                
-                err = evaluate_rational(exp->var.op.arg1, tup, txp, &v1);
-                if (err != RDB_OK)
-                    return err;
-
-                err = evaluate_rational(exp->var.op.arg2, tup, txp, &v2);
-                if (err != RDB_OK)
-                    return err;
-
-                *resp = (RDB_bool)(v1 == v2);
-                return RDB_OK;
-            }
-            if (typ == &RDB_STRING) {
-                char *s1, *s2;
-
-                err = evaluate_string(exp->var.op.arg1, tup, txp, &s1);
-                if (err != RDB_OK)
-                    return err;
-
-                err = evaluate_string(exp->var.op.arg2, tup, txp, &s2);
-                if (err != RDB_OK) {
-                    free(s1);
-                    return err;
-                }
-                    
-                *resp = (RDB_bool) (strcmp (s1, s2) == 0);
-                free(s1);
-                free(s2);
-                return RDB_OK;
-            }
-            return RDB_TYPE_MISMATCH;
-            break;
+            return evaluate_eq(exp, tup, txp, resp);
         case RDB_OP_NEQ:
             err = RDB_evaluate_bool(exp, tup, txp, resp);
             if (err != RDB_OK)
@@ -827,6 +867,39 @@ RDB_evaluate_bool(RDB_expression *exp, const RDB_tuple *tup,
     abort();
 }
 
+static int evaluate_selector(RDB_expression *exp, const RDB_tuple *tup, RDB_transaction *txp,
+            RDB_value *valp)
+{
+    int ret;
+    int i;
+    int compc = _RDB_get_possrep(exp->var.selector.typ, exp->var.selector.name)->compc;
+    RDB_value **valpv;
+    RDB_value *valv;
+
+    valpv = malloc(compc * sizeof (RDB_value *));
+    if (valpv == NULL)
+        goto error;
+    valv = malloc(compc * sizeof (RDB_value));
+    if (valv == NULL)
+        goto error;
+    for (i = 0; i < compc; i++) {
+        valpv[i] = &valv[i];
+        RDB_init_value(&valv[i]);
+        ret = RDB_evaluate(exp->var.selector.argv[i], tup, txp, &valv[i]);
+        /* !! */
+    }
+    ret = RDB_select_value(valp, exp->var.selector.typ, exp->var.selector.name, valpv);
+    for (i = 0; i < compc; i++) {
+        RDB_destroy_value(&valv[i]);
+    }
+    free(valv);
+    free(valpv);
+    return ret;
+error:
+    /* !! */
+    return RDB_NO_MEMORY;
+}
+
 int
 RDB_evaluate(RDB_expression *exp, const RDB_tuple *tup, RDB_transaction *txp,
             RDB_value *valp)
@@ -850,6 +923,8 @@ RDB_evaluate(RDB_expression *exp, const RDB_tuple *tup, RDB_transaction *txp,
                     RDB_destroy_value(&val);
                     return ret;
                 }
+            case RDB_SELECTOR:
+                return evaluate_selector(exp, tup, txp, valp);
             case RDB_ATTR:
                 return RDB_copy_value(valp, RDB_tuple_get(tup, exp->var.attr.name));
             default: ;

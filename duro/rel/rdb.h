@@ -132,7 +132,8 @@ enum _RDB_expr_kind {
     RDB_OP_REGMATCH,
 
     RDB_OP_REL_IS_EMPTY,
-    RDB_OP_GET_COMP
+    RDB_OP_GET_COMP,
+    RDB_SELECTOR
 };
 
 typedef struct RDB_expression {
@@ -150,6 +151,11 @@ typedef struct RDB_expression {
         } attr;
         struct RDB_table *tbp;
         RDB_value const_val;
+        struct {
+            struct RDB_expression **argv;
+            RDB_type *typ;
+            char *name;
+        } selector;
     } var;
 } RDB_expression;
 

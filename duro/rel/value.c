@@ -299,12 +299,9 @@ RDB_select_value(RDB_value *valp, RDB_type *typ, const char *repname,
     }
 
     /* Find possrep */
-    for (i = 0; i < typ->var.scalar.repc
-            && strcmp(typ->var.scalar.repv[i].name, repname) != 0;
-            i++);
-    if (i >= typ->var.scalar.repc)
+    prp  = _RDB_get_possrep(typ, repname);
+    if (prp == NULL)
         return RDB_INVALID_ARGUMENT;
-    prp = &typ->var.scalar.repv[i];
 
     if (prp->selectorp != NULL)
         ret = (prp->selectorp)(valp, compv, typ, repname);

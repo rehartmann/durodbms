@@ -119,6 +119,9 @@ RDB_expression *
 _RDB_create_binexpr(RDB_expression *arg1, RDB_expression *arg2,
                     enum _RDB_expr_kind kind);
 
+RDB_ipossrep *
+_RDB_get_possrep(RDB_type *typ, const char *repname);
+
 RDB_icomp *
 _RDB_get_icomp(RDB_type *, const char *compname);
 

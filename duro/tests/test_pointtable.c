@@ -219,24 +219,33 @@ test_query(RDB_database *dbp)
         RDB_value *pvalp = RDB_tuple_get(&tpl, "POINT");
 
         ret = RDB_value_get_comp(pvalp, "X", &xval);
+        if (ret != RDB_OK) {
+            goto error;
+        } 
         ret = RDB_value_get_comp(pvalp, "Y", &yval);
+        if (ret != RDB_OK) {
+            goto error;
+        } 
 
         printf("X=%f, Y=%f\n", (float)RDB_value_rational(&xval),
                 (float)RDB_value_rational(&yval));
     }
     if (ret != RDB_NOT_FOUND)
         goto error;
-/*
+
     RDB_drop_table(tmptbp, &tx);
 
-    printf("Creating POINTTEST WHERE POINT=POINT(2,4)");
+    printf("Creating POINTTEST WHERE POINT=POINT(1,2)\n");
 
-    compv[0] = RDB_rational_const(2.0);
-    compv[1] = RDB_rational_const(4.0);
+    compv[0] = RDB_rational_const(1.0);
+    compv[1] = RDB_rational_const(2.0);
     wherep = RDB_selector(pointtyp, "POINT", compv);
     wherep = RDB_eq(wherep, RDB_expr_attr("POINT", pointtyp));
 
     ret = RDB_select(tbp, wherep, &tmptbp);
+    if (ret != RDB_OK) {
+        goto error;
+    } 
 
     printf("Converting selection table to array\n");
     ret = RDB_table_to_array(tmptbp, &array, 0, NULL, &tx);
@@ -248,14 +257,20 @@ test_query(RDB_database *dbp)
         RDB_value *pvalp = RDB_tuple_get(&tpl, "POINT");
 
         ret = RDB_value_get_comp(pvalp, "X", &xval);
+        if (ret != RDB_OK) {
+            goto error;
+        } 
         ret = RDB_value_get_comp(pvalp, "Y", &yval);
+        if (ret != RDB_OK) {
+            goto error;
+        } 
 
         printf("X=%f, Y=%f\n", (float)RDB_value_rational(&xval),
                 (float)RDB_value_rational(&yval));
     }
     if (ret != RDB_NOT_FOUND)
         goto error;
-*/
+
     RDB_destroy_value(&xval);
     RDB_destroy_value(&yval);
     

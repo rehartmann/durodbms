@@ -547,6 +547,19 @@ RDB_rename_relation_type(const RDB_type *typ, int renc, RDB_renaming renv[],
     return RDB_OK;
 }
 
+RDB_ipossrep *
+_RDB_get_possrep(RDB_type *typ, const char *repname)
+{
+    int i;
+
+    for (i = 0; i < typ->var.scalar.repc
+            && strcmp(typ->var.scalar.repv[i].name, repname) != 0;
+            i++);
+    if (i >= typ->var.scalar.repc)
+        return NULL;
+    return &typ->var.scalar.repv[i];
+}
+
 RDB_icomp *
 _RDB_get_icomp(RDB_type *typ, const char *compname)
 {

@@ -1699,7 +1699,7 @@ RDB_join_relation_types(const RDB_type *typ1, const RDB_type *typ2,
 
 int
 RDB_define_ro_op(const char *name, RDB_attr *argv[], RDB_type *rtyp,
-                 RDB_transaction *txp);
+                 ... RDB_transaction *txp);
 </pre>
 
 <hr>
@@ -1712,7 +1712,7 @@ RDB_define_ro_op(const char *name, RDB_attr *argv[], RDB_type *rtyp,
 int
 RDB_define_upd_op(const char *name, RDB_attr *argv[],
                   int updargc, const char *updargv[],
-                  RDB_transaction *txp);
+                  ... RDB_transaction *txp);
 </pre>
 
 <hr>
