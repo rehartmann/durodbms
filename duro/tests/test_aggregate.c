@@ -9,7 +9,7 @@ test_aggregate(RDB_database *dbp)
 {
     RDB_transaction tx;
     RDB_table *tbp;
-    RDB_object val;
+    RDB_rational avg;
     int ret;
 
     printf("Starting transaction\n");
@@ -26,23 +26,23 @@ test_aggregate(RDB_database *dbp)
 
     printf("Creating aggregation COUNT ( EMPS1 )\n");
 
-    ret = RDB_aggregate(tbp, RDB_COUNT, NULL, &tx, &val);
-    if (ret != RDB_OK) {
+    ret = RDB_cardinality(tbp, &tx);
+    if (ret < 0) {
         RDB_rollback(&tx);
         return ret;
     }
 
-    printf("Count is %d\n", (int)val.var.int_val);
+    printf("Count is %d\n", ret);
 
     printf("Creating aggregation AVG ( EMPS1, SALARY )\n");
 
-    ret = RDB_aggregate(tbp, RDB_AVG, "SALARY", &tx, &val);
+    ret = RDB_avg(tbp, "SALARY", &tx, &avg);
     if (ret != RDB_OK) {
         RDB_commit(&tx);
         return ret;
     }
 
-    printf("Average is %f\n", (float)val.var.rational_val);
+    printf("Average is %f\n", (float)avg);
 
     printf("End of transaction\n");
     return RDB_commit(&tx);

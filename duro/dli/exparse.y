@@ -83,12 +83,16 @@ enum {
 %token TOK_AVGD
 %token TOK_MAX
 %token TOK_MIN
+%token TOK_ALL
+%token TOK_ANY
 %token INVALID
 
 %type <exp> relation project select rename extend summarize
         expression or_expression and_expression not_expression
         primary_expression rel_expression add_expression mul_expression
-        literal operator_invocation
+        literal operator_invocation count_invocation sum_invocation
+        avg_invocation min_invocation max_invocation all_invocation
+        any_invocation
 
 %type <attrlist> attribute_name_list
 
@@ -458,6 +462,12 @@ summary_type: TOK_SUM {
         | TOK_MIN {
             $$.addv[0].op = RDB_MIN;
         }
+        | TOK_ALL {
+            $$.addv[0].op = RDB_ALL;
+        }
+        | TOK_ANY {
+            $$.addv[0].op = RDB_ANY;
+        }
         ;
 
 or_expression: and_expression
@@ -562,24 +572,203 @@ mul_expression: primary_expression
 
 primary_expression: ID
         | literal
+        | count_invocation
+        | sum_invocation
+        | avg_invocation
+        | max_invocation
+        | min_invocation
+        | all_invocation
+        | any_invocation
         | operator_invocation
         | '(' expression ')' {
             $$ = $2;
         }
         ;
 
-operator_invocation: ID '(' opt_argument_list ')' {
-            if (strcmp ($1->var.attr.name, "CARDINALITY") == 0) {
-                if ($3.argc != 1) {
+count_invocation: TOK_COUNT '(' expression ')' {
+            RDB_table *tbp = expr_to_table($3);
+
+            if (tbp == NULL)
+                YYERROR;
+
+            $$ = RDB_expr_cardinality(RDB_expr_table(tbp));
+            if ($$ == NULL)
+                YYERROR;
+        }
+        ;
+
+sum_invocation: TOK_SUM '(' argument_list ')' {
+                if ($3.argc == 0 || $3.argc > 2) {
                     YYERROR;
                 } else {
-                    $$ = RDB_expr_cardinality($3.argv[0]);
+                    RDB_table *tbp = expr_to_table($3.argv[0]);
+                    char *attrname = NULL;
+
+                    if (tbp == NULL)
+                        YYERROR;
+
+                    if ($3.argc == 2) {
+                        if ($3.argv[1]->kind != RDB_ATTR)
+                            YYERROR;
+                        attrname = $3.argv[1]->var.attr.name;
+                    }
+
+                    $$ = RDB_expr_sum(RDB_expr_table(tbp), attrname);
                     if ($$ == NULL)
                         YYERROR;
                 }
-             } else {
-                 /* .... */
-             }
+        }
+        ;
+
+avg_invocation: TOK_AVG '(' argument_list ')' {
+                if ($3.argc == 0 || $3.argc > 2) {
+                    YYERROR;
+                } else {
+                    RDB_table *tbp = expr_to_table($3.argv[0]);
+                    char *attrname = NULL;
+
+                    if (tbp == NULL)
+                        YYERROR;
+
+                    if ($3.argc == 2) {
+                        if ($3.argv[1]->kind != RDB_ATTR)
+                            YYERROR;
+                        attrname = $3.argv[1]->var.attr.name;
+                    }
+
+                    $$ = RDB_expr_avg(RDB_expr_table(tbp), attrname);
+                    if ($$ == NULL)
+                        YYERROR;
+                }
+        }
+        ;
+
+max_invocation: TOK_MAX '(' argument_list ')' {
+                if ($3.argc == 0 || $3.argc > 2) {
+                    YYERROR;
+                } else {
+                    RDB_table *tbp = expr_to_table($3.argv[0]);
+                    char *attrname = NULL;
+
+                    if (tbp == NULL)
+                        YYERROR;
+
+                    if ($3.argc == 2) {
+                        if ($3.argv[1]->kind != RDB_ATTR)
+                            YYERROR;
+                        attrname = $3.argv[1]->var.attr.name;
+                    }
+
+                    $$ = RDB_expr_max(RDB_expr_table(tbp), attrname);
+                    if ($$ == NULL)
+                        YYERROR;
+                }
+        }
+        ;
+
+min_invocation: TOK_MIN '(' argument_list ')' {
+                if ($3.argc == 0 || $3.argc > 2) {
+                    YYERROR;
+                } else {
+                    RDB_table *tbp = expr_to_table($3.argv[0]);
+                    char *attrname = NULL;
+
+                    if (tbp == NULL)
+                        YYERROR;
+
+                    if ($3.argc == 2) {
+                        if ($3.argv[1]->kind != RDB_ATTR)
+                            YYERROR;
+                        attrname = $3.argv[1]->var.attr.name;
+                    }
+
+                    $$ = RDB_expr_min(RDB_expr_table(tbp), attrname);
+                    if ($$ == NULL)
+                        YYERROR;
+                }
+        }
+        ;
+
+all_invocation: TOK_ALL '(' argument_list ')' {
+                if ($3.argc == 0 || $3.argc > 2) {
+                    YYERROR;
+                } else {
+                    RDB_table *tbp = expr_to_table($3.argv[0]);
+                    char *attrname = NULL;
+
+                    if (tbp == NULL)
+                        YYERROR;
+
+                    if ($3.argc == 2) {
+                        if ($3.argv[1]->kind != RDB_ATTR)
+                            YYERROR;
+                        attrname = $3.argv[1]->var.attr.name;
+                    }
+
+                    $$ = RDB_expr_all(RDB_expr_table(tbp), attrname);
+                    if ($$ == NULL)
+                        YYERROR;
+                }
+        }
+        ;
+
+any_invocation: TOK_ANY '(' argument_list ')' {
+                if ($3.argc == 0 || $3.argc > 2) {
+                    YYERROR;
+                } else {
+                    RDB_table *tbp = expr_to_table($3.argv[0]);
+                    char *attrname = NULL;
+
+                    if (tbp == NULL)
+                        YYERROR;
+
+                    if ($3.argc == 2) {
+                        if ($3.argv[1]->kind != RDB_ATTR)
+                            YYERROR;
+                        attrname = $3.argv[1]->var.attr.name;
+                    }
+
+                    $$ = RDB_expr_any(RDB_expr_table(tbp), attrname);
+                    if ($$ == NULL)
+                        YYERROR;
+                }
+        }
+        ;
+
+operator_invocation: ID '(' opt_argument_list ')' {
+            if (strcmp ($1->var.attr.name, "IS_EMPTY") == 0) {
+                if ($3.argc != 1) {
+                    YYERROR;
+                } else {
+                    RDB_table *tbp = expr_to_table($3.argv[0]);
+
+                    if (tbp == NULL)
+                        YYERROR;
+
+                    $$ = RDB_expr_is_empty(RDB_expr_table(tbp));
+                    if ($$ == NULL)
+                        YYERROR;
+                }
+            } else if (strcmp ($1->var.attr.name, "COUNT") == 0) {
+                if ($3.argc != 1) {
+                    YYERROR;
+                } else {
+                    RDB_table *tbp = expr_to_table($3.argv[0]);
+
+                    if (tbp == NULL)
+                        YYERROR;
+
+                    $$ = RDB_expr_cardinality(RDB_expr_table(tbp));
+                    if ($$ == NULL)
+                        YYERROR;
+                }
+            } else {
+                expr_ret = RDB_user_op($1->var.attr.name,
+                        NULL /* !! RDB_type *rtyp */, $3.argc, $3.argv,
+                        expr_txp, &$$);
+                if (expr_ret != RDB_OK)
+                    YYERROR;
+            }
         }
         ;
 

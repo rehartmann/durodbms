@@ -362,6 +362,36 @@ RDB_expr_aggregate(RDB_expression *arg, RDB_aggregate_op op,
 }
 
 RDB_expression *
+RDB_expr_sum(RDB_expression *arg, const char *attrname) {
+    return RDB_expr_aggregate(arg, RDB_SUM, attrname);
+}
+
+RDB_expression *
+RDB_expr_avg(RDB_expression *arg, const char *attrname) {
+    return RDB_expr_aggregate(arg, RDB_AVG, attrname);
+}
+
+RDB_expression *
+RDB_expr_max(RDB_expression *arg, const char *attrname) {
+    return RDB_expr_aggregate(arg, RDB_MAX, attrname);
+}
+
+RDB_expression *
+RDB_expr_min(RDB_expression *arg, const char *attrname) {
+    return RDB_expr_aggregate(arg, RDB_MIN, attrname);
+}
+
+RDB_expression *
+RDB_expr_all(RDB_expression *arg, const char *attrname) {
+    return RDB_expr_aggregate(arg, RDB_ALL, attrname);
+}
+
+RDB_expression *
+RDB_expr_any(RDB_expression *arg, const char *attrname) {
+    return RDB_expr_aggregate(arg, RDB_ANY, attrname);
+}
+
+RDB_expression *
 RDB_expr_cardinality(RDB_expression *arg) {
     return RDB_expr_aggregate(arg, RDB_COUNT, NULL);
 }
@@ -881,6 +911,41 @@ evaluate_logbin(RDB_expression *exp, const RDB_tuple *tup, RDB_transaction *txp,
     return RDB_OK;
 }
 
+static int
+aggregate(RDB_table *tbp, RDB_aggregate_op op, const char *attrname,
+          RDB_transaction *txp, RDB_object *resultp)
+{
+    switch(op) {
+        case RDB_COUNT:
+        {
+            int ret = RDB_cardinality(tbp, txp);
+
+            if (ret < 0)
+                return ret;
+            _RDB_set_obj_type(resultp, &RDB_INTEGER);
+            ret = resultp->var.int_val = ret;
+            return RDB_OK;
+        }
+        case RDB_SUM:
+            return RDB_sum(tbp, attrname, txp, resultp);
+        case RDB_AVG:
+            _RDB_set_obj_type(resultp, &RDB_RATIONAL);
+            return RDB_avg(tbp, attrname, txp, &resultp->var.rational_val);
+        case RDB_MAX:
+            return RDB_max(tbp, attrname, txp, resultp);
+        case RDB_MIN:
+            return RDB_min(tbp, attrname, txp, resultp);
+        case RDB_ALL:
+            _RDB_set_obj_type(resultp, &RDB_BOOLEAN);
+            return RDB_all(tbp, attrname, txp, &resultp->var.bool_val);
+        case RDB_ANY:
+            _RDB_set_obj_type(resultp, &RDB_BOOLEAN);
+            return RDB_any(tbp, attrname, txp, &resultp->var.bool_val);
+        default: ;
+    }
+    abort();
+}
+
 int
 RDB_evaluate(RDB_expression *exp, const RDB_tuple *tup, RDB_transaction *txp,
             RDB_object *valp)
@@ -907,9 +972,6 @@ RDB_evaluate(RDB_expression *exp, const RDB_tuple *tup, RDB_transaction *txp,
             return evaluate_selector(exp, tup, txp, valp);
         case RDB_USER_OP:
             return evaluate_user_op(exp, tup, txp, valp);
-        case RDB_OP_AGGREGATE:
-            return RDB_aggregate(exp->var.op.arg1->var.tbp, exp->var.op.op,
-                    exp->var.op.name, txp, valp);
         case RDB_ATTR:
         {
             RDB_object *srcp = RDB_tuple_get(tup, exp->var.attr.name);
@@ -1077,8 +1139,20 @@ RDB_evaluate(RDB_expression *exp, const RDB_tuple *tup, RDB_transaction *txp,
 
             return RDB_OK;
         }           
+        case RDB_OP_AGGREGATE:
+            if (exp->var.op.arg1->kind != RDB_TABLE)
+                return RDB_TYPE_MISMATCH;
+            return aggregate(exp->var.op.arg1->var.tbp, exp->var.op.op,
+                    exp->var.op.name, txp, valp);
         case RDB_OP_IS_EMPTY:
-        case RDB_TABLE:
+            if (exp->var.op.arg1->kind != RDB_TABLE)
+                return RDB_TYPE_MISMATCH;
+            RDB_destroy_obj(valp);
+            RDB_init_obj(valp);
+            _RDB_set_obj_type(valp, &RDB_BOOLEAN);
+            return RDB_table_is_empty(exp->var.op.arg1->var.tbp, txp,
+                    &valp->var.bool_val);
+        case RDB_TABLE:            
             return RDB_NOT_SUPPORTED;
     }
     /* Should never be reached */

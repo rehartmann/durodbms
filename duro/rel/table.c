@@ -281,25 +281,15 @@ aggr_type(RDB_type *tuptyp, RDB_type *attrtyp, RDB_aggregate_op op,
 }
 
 int
-RDB_aggregate(RDB_table *tbp, RDB_aggregate_op op, const char *attrname,
-              RDB_transaction *txp, RDB_object *resultp)
+RDB_all(RDB_table *tbp, const char *attrname, RDB_transaction *txp,
+        RDB_bool *resultp)
 {
     RDB_type *attrtyp;
     RDB_qresult *qrp;
     RDB_tuple tpl;
     int ret;
-    int count; /* only needed for AVG */
 
-    if (op == RDB_COUNT) {
-        resultp->typ = &RDB_INTEGER;
-        ret = RDB_cardinality(tbp, txp);
-        if (ret < 0)
-            return ret;
-        resultp->var.int_val = ret;
-        return RDB_OK;
-    }
-
-    /* attrname may only be NULL if op == RDB_AVG or table is unary */
+    /* attrname may only be NULL if table is unary */
     if (attrname == NULL) {
         if (tbp->typ->var.basetyp->var.tuple.attrc != 1)
             return RDB_INVALID_ARGUMENT;
@@ -312,55 +302,8 @@ RDB_aggregate(RDB_table *tbp, RDB_aggregate_op op, const char *attrname,
             return RDB_INVALID_ARGUMENT;
     }
 
-    ret = aggr_type(tbp->typ->var.basetyp, attrtyp, op, &resultp->typ);
-    if (ret != RDB_OK)
-        return ret;
-
     /* initialize result */
-    switch (op) {
-        case RDB_AVG:
-            if (!RDB_type_is_numeric(attrtyp))
-                return RDB_TYPE_MISMATCH;
-            count = 0;
-            resultp->var.rational_val = 0.0;
-            break;
-        case RDB_SUM:
-            if (attrtyp == &RDB_INTEGER)
-                resultp->var.int_val = 0;
-            else if (attrtyp == &RDB_RATIONAL)
-                resultp->var.rational_val = 0.0;
-            else
-                return RDB_TYPE_MISMATCH;
-            break;
-        case RDB_MAX:
-            if (attrtyp == &RDB_INTEGER)
-                resultp->var.int_val = RDB_INT_MIN;
-            else if (attrtyp == &RDB_RATIONAL)
-                resultp->var.rational_val = RDB_RATIONAL_MIN;
-            else
-                return RDB_TYPE_MISMATCH;
-            break;
-        case RDB_MIN:
-            if (attrtyp == &RDB_INTEGER)
-                resultp->var.int_val = RDB_INT_MAX;
-            else if (attrtyp == &RDB_RATIONAL)
-                resultp->var.rational_val = RDB_RATIONAL_MAX;
-                return RDB_TYPE_MISMATCH;
-            break;
-        case RDB_ALL:
-            if (attrtyp != &RDB_BOOLEAN)
-                return RDB_TYPE_MISMATCH;
-            resultp->var.bool_val = RDB_TRUE;
-            break;
-        case RDB_ANY:
-            if (attrtyp != &RDB_BOOLEAN)
-                return RDB_TYPE_MISMATCH;
-            resultp->var.bool_val = RDB_FALSE;
-            break;
-        default:
-            return RDB_INVALID_ARGUMENT;
-        break;
-    }
+    *resultp = RDB_TRUE;
 
     /*
      * Perform aggregation
@@ -378,58 +321,140 @@ RDB_aggregate(RDB_table *tbp, RDB_aggregate_op op, const char *attrname,
     }
 
     while ((ret = _RDB_next_tuple(qrp, &tpl, txp)) == RDB_OK) {
-        switch (op) {
-            case RDB_SUM:
-                if (attrtyp == &RDB_INTEGER)
-                    resultp->var.int_val += RDB_tuple_get_int(&tpl, attrname);
-                else
-                    resultp->var.rational_val
-                            += RDB_tuple_get_rational(&tpl, attrname);
-                break;
-            case RDB_AVG:
-                count++;
-                if (attrtyp == &RDB_INTEGER)
-                    resultp->var.rational_val
-                            += RDB_tuple_get_int(&tpl, attrname);
-                else
-                    resultp->var.rational_val
-                            += RDB_tuple_get_rational(&tpl, attrname);
-                break;
-            case RDB_MAX:
-                if (attrtyp == &RDB_INTEGER) {
-                    RDB_int val = RDB_tuple_get_int(&tpl, attrname);
-                    
-                    if (val > resultp->var.int_val)
-                        resultp->var.int_val = val;
-                } else {
-                    RDB_rational val = RDB_tuple_get_rational(&tpl, attrname);
-                    
-                    if (val > resultp->var.rational_val)
-                        resultp->var.rational_val = val;
-                }
-                break;
-            case RDB_MIN:
-                if (attrtyp == &RDB_INTEGER) {
-                    RDB_int val = RDB_tuple_get_int(&tpl, attrname);
-                    
-                    if (val < resultp->var.int_val)
-                        resultp->var.int_val = val;
-                } else {
-                    RDB_rational val = RDB_tuple_get_rational(&tpl, attrname);
-                    
-                    if (val < resultp->var.rational_val)
-                        resultp->var.rational_val = val;
-                }
-                break;
-            case RDB_ALL:
-                if (!RDB_tuple_get_bool(&tpl, attrname))
-                    resultp->var.bool_val = RDB_FALSE;
-                break;
-            case RDB_ANY:
-                if (RDB_tuple_get_bool(&tpl, attrname))
-                    resultp->var.bool_val = RDB_TRUE;
-                break;
-            default: ;
+        if (!RDB_tuple_get_bool(&tpl, attrname))
+            *resultp = RDB_FALSE;
+    }
+
+    RDB_destroy_tuple(&tpl);
+    if (ret != RDB_NOT_FOUND) {
+        _RDB_drop_qresult(qrp, txp);
+        if (RDB_is_syserr(ret)) {
+            RDB_errmsg(txp->dbp->dbrootp->envp, RDB_strerror(ret));
+            RDB_rollback(txp);
+        }
+        return ret;
+    }
+
+    _RDB_drop_qresult(qrp, txp);
+    return RDB_OK;
+}
+
+int
+RDB_any(RDB_table *tbp, const char *attrname, RDB_transaction *txp,
+        RDB_bool *resultp)
+{
+    RDB_type *attrtyp;
+    RDB_qresult *qrp;
+    RDB_tuple tpl;
+    int ret;
+
+    /* attrname may only be NULL if table is unary */
+    if (attrname == NULL) {
+        if (tbp->typ->var.basetyp->var.tuple.attrc != 1)
+            return RDB_INVALID_ARGUMENT;
+        attrname = tbp->typ->var.basetyp->var.tuple.attrv[0].name;
+    }
+
+    if (attrname != NULL) {
+        attrtyp = _RDB_tuple_type_attr(tbp->typ->var.basetyp, attrname)->typ;
+        if (attrtyp == NULL)
+            return RDB_INVALID_ARGUMENT;
+    }
+
+    /* initialize result */
+    *resultp = RDB_FALSE;
+
+    /*
+     * Perform aggregation
+     */
+
+    RDB_init_tuple(&tpl);
+
+    ret = _RDB_table_qresult(tbp, txp, &qrp);
+    if (ret != RDB_OK) {
+        if (RDB_is_syserr(ret)) {
+            RDB_errmsg(txp->dbp->dbrootp->envp, RDB_strerror(ret));
+            RDB_rollback(txp);
+        }
+        return ret;
+    }
+
+    while ((ret = _RDB_next_tuple(qrp, &tpl, txp)) == RDB_OK) {
+        if (RDB_tuple_get_bool(&tpl, attrname))
+            *resultp = RDB_TRUE;
+    }
+
+    RDB_destroy_tuple(&tpl);
+    if (ret != RDB_NOT_FOUND) {
+        _RDB_drop_qresult(qrp, txp);
+        if (RDB_is_syserr(ret)) {
+            RDB_errmsg(txp->dbp->dbrootp->envp, RDB_strerror(ret));
+            RDB_rollback(txp);
+        }
+        return ret;
+    }
+
+    _RDB_drop_qresult(qrp, txp);
+    return RDB_OK;
+}
+
+int
+RDB_max(RDB_table *tbp, const char *attrname, RDB_transaction *txp,
+        RDB_object *resultp)
+{
+    RDB_type *attrtyp;
+    RDB_qresult *qrp;
+    RDB_tuple tpl;
+    int ret;
+
+    /* attrname may only be NULL if table is unary */
+    if (attrname == NULL) {
+        if (tbp->typ->var.basetyp->var.tuple.attrc != 1)
+            return RDB_INVALID_ARGUMENT;
+        attrname = tbp->typ->var.basetyp->var.tuple.attrv[0].name;
+    }
+
+    if (attrname != NULL) {
+        attrtyp = _RDB_tuple_type_attr(tbp->typ->var.basetyp, attrname)->typ;
+        if (attrtyp == NULL)
+            return RDB_INVALID_ARGUMENT;
+    }
+
+    _RDB_set_obj_type(resultp, attrtyp);
+
+    if (attrtyp == &RDB_INTEGER)
+        resultp->var.int_val = RDB_INT_MIN;
+    else if (attrtyp == &RDB_RATIONAL)
+        resultp->var.rational_val = RDB_RATIONAL_MIN;
+    else
+        return RDB_TYPE_MISMATCH;
+
+    /*
+     * Perform aggregation
+     */
+
+    RDB_init_tuple(&tpl);
+
+    ret = _RDB_table_qresult(tbp, txp, &qrp);
+    if (ret != RDB_OK) {
+        if (RDB_is_syserr(ret)) {
+            RDB_errmsg(txp->dbp->dbrootp->envp, RDB_strerror(ret));
+            RDB_rollback(txp);
+        }
+        return ret;
+    }
+
+    while ((ret = _RDB_next_tuple(qrp, &tpl, txp)) == RDB_OK) {
+        if (attrtyp == &RDB_INTEGER) {
+            RDB_int val = RDB_tuple_get_int(&tpl, attrname);
+             
+            if (val > resultp->var.int_val)
+                 resultp->var.int_val = val;
+        } else {
+            RDB_rational val = RDB_tuple_get_rational(&tpl, attrname);
+             
+            if (val > resultp->var.rational_val)
+                resultp->var.rational_val = val;
         }
     }
     RDB_destroy_tuple(&tpl);
@@ -442,11 +467,212 @@ RDB_aggregate(RDB_table *tbp, RDB_aggregate_op op, const char *attrname,
         return ret;
     }
 
-    if (op == RDB_AVG) {
-        if (count == 0)
-            return RDB_AGGREGATE_UNDEFINED;
-        resultp->var.rational_val /= count;
+    _RDB_drop_qresult(qrp, txp);
+    return RDB_OK;
+}
+
+int
+RDB_min(RDB_table *tbp, const char *attrname, RDB_transaction *txp,
+        RDB_object *resultp)
+{
+    RDB_type *attrtyp;
+    RDB_qresult *qrp;
+    RDB_tuple tpl;
+    int ret;
+
+    /* attrname may only be NULL if table is unary */
+    if (attrname == NULL) {
+        if (tbp->typ->var.basetyp->var.tuple.attrc != 1)
+            return RDB_INVALID_ARGUMENT;
+        attrname = tbp->typ->var.basetyp->var.tuple.attrv[0].name;
     }
+
+    if (attrname != NULL) {
+        attrtyp = _RDB_tuple_type_attr(tbp->typ->var.basetyp, attrname)->typ;
+        if (attrtyp == NULL)
+            return RDB_INVALID_ARGUMENT;
+    }
+
+    _RDB_set_obj_type(resultp, attrtyp);
+
+    if (attrtyp == &RDB_INTEGER)
+        resultp->var.int_val = RDB_INT_MAX;
+    else if (attrtyp == &RDB_RATIONAL)
+        resultp->var.rational_val = RDB_RATIONAL_MAX;
+    else
+        return RDB_TYPE_MISMATCH;
+
+    /*
+     * Perform aggregation
+     */
+
+    RDB_init_tuple(&tpl);
+
+    ret = _RDB_table_qresult(tbp, txp, &qrp);
+    if (ret != RDB_OK) {
+        if (RDB_is_syserr(ret)) {
+            RDB_errmsg(txp->dbp->dbrootp->envp, RDB_strerror(ret));
+            RDB_rollback(txp);
+        }
+        return ret;
+    }
+
+    while ((ret = _RDB_next_tuple(qrp, &tpl, txp)) == RDB_OK) {
+        if (attrtyp == &RDB_INTEGER) {
+            RDB_int val = RDB_tuple_get_int(&tpl, attrname);
+             
+            if (val < resultp->var.int_val)
+                 resultp->var.int_val = val;
+        } else {
+            RDB_rational val = RDB_tuple_get_rational(&tpl, attrname);
+             
+            if (val < resultp->var.rational_val)
+                resultp->var.rational_val = val;
+        }
+    }
+    RDB_destroy_tuple(&tpl);
+    if (ret != RDB_NOT_FOUND) {
+        _RDB_drop_qresult(qrp, txp);
+        if (RDB_is_syserr(ret)) {
+            RDB_errmsg(txp->dbp->dbrootp->envp, RDB_strerror(ret));
+            RDB_rollback(txp);
+        }
+        return ret;
+    }
+
+    _RDB_drop_qresult(qrp, txp);
+    return RDB_OK;
+}
+
+int
+RDB_sum(RDB_table *tbp, const char *attrname, RDB_transaction *txp,
+        RDB_object *resultp)
+{
+    RDB_type *attrtyp;
+    RDB_qresult *qrp;
+    RDB_tuple tpl;
+    int ret;
+
+    if (attrname == NULL) {
+        if (tbp->typ->var.basetyp->var.tuple.attrc != 1)
+            return RDB_INVALID_ARGUMENT;
+        attrname = tbp->typ->var.basetyp->var.tuple.attrv[0].name;
+    }
+
+    if (attrname != NULL) {
+        attrtyp = _RDB_tuple_type_attr(tbp->typ->var.basetyp, attrname)->typ;
+        if (attrtyp == NULL)
+            return RDB_INVALID_ARGUMENT;
+    }
+
+    _RDB_set_obj_type(resultp, attrtyp);
+
+    /* initialize result */
+    if (attrtyp == &RDB_INTEGER)
+        resultp->var.int_val = 0;
+    else if (attrtyp == &RDB_RATIONAL)
+        resultp->var.rational_val = 0.0;
+    else
+       return RDB_TYPE_MISMATCH;
+
+    /*
+     * Perform aggregation
+     */
+
+    RDB_init_tuple(&tpl);
+
+    ret = _RDB_table_qresult(tbp, txp, &qrp);
+    if (ret != RDB_OK) {
+        if (RDB_is_syserr(ret)) {
+            RDB_errmsg(txp->dbp->dbrootp->envp, RDB_strerror(ret));
+            RDB_rollback(txp);
+        }
+        return ret;
+    }
+
+    while ((ret = _RDB_next_tuple(qrp, &tpl, txp)) == RDB_OK) {
+        if (attrtyp == &RDB_INTEGER)
+            resultp->var.int_val += RDB_tuple_get_int(&tpl, attrname);
+        else
+            resultp->var.rational_val
+                            += RDB_tuple_get_rational(&tpl, attrname);
+    }
+    RDB_destroy_tuple(&tpl);
+    if (ret != RDB_NOT_FOUND) {
+        _RDB_drop_qresult(qrp, txp);
+        if (RDB_is_syserr(ret)) {
+            RDB_errmsg(txp->dbp->dbrootp->envp, RDB_strerror(ret));
+            RDB_rollback(txp);
+        }
+        return ret;
+    }
+
+    _RDB_drop_qresult(qrp, txp);
+    return RDB_OK;
+}
+
+int
+RDB_avg(RDB_table *tbp, const char *attrname, RDB_transaction *txp,
+        RDB_rational *resultp)
+{
+    RDB_type *attrtyp;
+    RDB_qresult *qrp;
+    RDB_tuple tpl;
+    int ret;
+    int count;
+
+    /* attrname may only be NULL if table is unary */
+    if (attrname == NULL) {
+        if (tbp->typ->var.basetyp->var.tuple.attrc != 1)
+            return RDB_INVALID_ARGUMENT;
+        attrname = tbp->typ->var.basetyp->var.tuple.attrv[0].name;
+    }
+
+    if (attrname != NULL) {
+        attrtyp = _RDB_tuple_type_attr(tbp->typ->var.basetyp, attrname)->typ;
+        if (attrtyp == NULL)
+            return RDB_INVALID_ARGUMENT;
+    }
+
+    if (!RDB_type_is_numeric(attrtyp))
+        return RDB_TYPE_MISMATCH;
+    count = 0;
+
+    /*
+     * Perform aggregation
+     */
+
+    RDB_init_tuple(&tpl);
+
+    ret = _RDB_table_qresult(tbp, txp, &qrp);
+    if (ret != RDB_OK) {
+        if (RDB_is_syserr(ret)) {
+            RDB_errmsg(txp->dbp->dbrootp->envp, RDB_strerror(ret));
+            RDB_rollback(txp);
+        }
+        return ret;
+    }
+
+    while ((ret = _RDB_next_tuple(qrp, &tpl, txp)) == RDB_OK) {
+        count++;
+        if (attrtyp == &RDB_INTEGER)
+            *resultp += RDB_tuple_get_int(&tpl, attrname);
+        else
+            *resultp += RDB_tuple_get_rational(&tpl, attrname);
+    }
+    RDB_destroy_tuple(&tpl);
+    if (ret != RDB_NOT_FOUND) {
+        _RDB_drop_qresult(qrp, txp);
+        if (RDB_is_syserr(ret)) {
+            RDB_errmsg(txp->dbp->dbrootp->envp, RDB_strerror(ret));
+            RDB_rollback(txp);
+        }
+        return ret;
+    }
+
+    if (count == 0)
+        return RDB_AGGREGATE_UNDEFINED;
+    *resultp /= count;
 
     _RDB_drop_qresult(qrp, txp);
     return RDB_OK;

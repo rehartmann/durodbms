@@ -266,6 +266,10 @@ RDB_expression *
 _RDB_create_binexpr(RDB_expression *arg1, RDB_expression *arg2,
                     enum _RDB_expr_kind kind);
 
+RDB_expression *
+RDB_expr_aggregate(RDB_expression *arg, RDB_aggregate_op op,
+        const char *attrname);
+
 RDB_bool
 _RDB_expr_refers(RDB_expression *, RDB_table *);
 

@@ -155,8 +155,10 @@ table_create_cmd(TclState *statep, Tcl_Interp *interp, int objc,
     if (ret != TCL_OK)
         goto cleanup;
     attrv = (RDB_attr *) Tcl_Alloc(sizeof (RDB_attr) * attrc);
-    for (i = 0; i < attrc; i++)
+    for (i = 0; i < attrc; i++) {
         attrv[i].name = NULL;
+        attrv[i].defaultp = NULL;
+    }
     /*
      * Read attribute defs
      */
@@ -512,7 +514,7 @@ table_extract_cmd(TclState *statep, Tcl_Interp *interp, int objc,
     RDB_tuple tpl;
     Tcl_Obj *listobjp;
 
-    if (objc < 4) {
+    if (objc != 4) {
         Tcl_WrongNumArgs(interp, 2, objv, "table tx");
         return TCL_ERROR;
     }
@@ -547,6 +549,99 @@ table_extract_cmd(TclState *statep, Tcl_Interp *interp, int objc,
         return TCL_ERROR;
 
     Tcl_SetObjResult(interp, listobjp);
+    return TCL_OK;
+}
+
+static int
+table_cardinality_cmd(TclState *statep, Tcl_Interp *interp, int objc,
+        Tcl_Obj *CONST objv[])
+{
+    int ret;
+    char *name;
+    char *txstr;
+    Tcl_HashEntry *entryp;
+    RDB_transaction *txp;
+    RDB_table *tbp;
+    Tcl_Obj *objp;
+
+    if (objc != 4) {
+        Tcl_WrongNumArgs(interp, 2, objv, "table tx");
+        return TCL_ERROR;
+    }
+
+    name = Tcl_GetStringFromObj(objv[2], NULL);
+
+    txstr = Tcl_GetStringFromObj(objv[3], NULL);
+    entryp = Tcl_FindHashEntry(&statep->txs, txstr);
+    if (entryp == NULL) {
+        Tcl_AppendResult(interp, "Unknown transaction: ", txstr, NULL);
+        return TCL_ERROR;
+    }
+    txp = Tcl_GetHashValue(entryp);
+
+    ret = Duro_get_table(statep, interp, name, txp, &tbp);
+    if (ret != TCL_OK) {
+        return TCL_ERROR;
+    }
+
+    ret = RDB_cardinality(tbp, txp);
+    if (ret < 0) {
+        Duro_dberror(interp, ret);
+        return TCL_ERROR;
+    }
+
+    objp = Tcl_NewIntObj(ret);
+    if (objp == NULL)
+        return TCL_ERROR;
+
+    Tcl_SetObjResult(interp, objp);
+    return TCL_OK;
+}
+
+static int
+table_isempty_cmd(TclState *statep, Tcl_Interp *interp, int objc,
+        Tcl_Obj *CONST objv[])
+{
+    int ret;
+    char *name;
+    char *txstr;
+    Tcl_HashEntry *entryp;
+    RDB_transaction *txp;
+    RDB_table *tbp;
+    Tcl_Obj *objp;
+    RDB_bool res;
+
+    if (objc != 4) {
+        Tcl_WrongNumArgs(interp, 2, objv, "table tx");
+        return TCL_ERROR;
+    }
+
+    name = Tcl_GetStringFromObj(objv[2], NULL);
+
+    txstr = Tcl_GetStringFromObj(objv[3], NULL);
+    entryp = Tcl_FindHashEntry(&statep->txs, txstr);
+    if (entryp == NULL) {
+        Tcl_AppendResult(interp, "Unknown transaction: ", txstr, NULL);
+        return TCL_ERROR;
+    }
+    txp = Tcl_GetHashValue(entryp);
+
+    ret = Duro_get_table(statep, interp, name, txp, &tbp);
+    if (ret != TCL_OK) {
+        return TCL_ERROR;
+    }
+
+    ret = RDB_table_is_empty(tbp, txp, &res);
+    if (ret != RDB_OK) {
+        Duro_dberror(interp, ret);
+        return TCL_ERROR;
+    }
+
+    objp = Tcl_NewBooleanObj(res);
+    if (objp == NULL)
+        return TCL_ERROR;
+
+    Tcl_SetObjResult(interp, objp);
     return TCL_OK;
 }
 
@@ -637,10 +732,12 @@ Duro_table_cmd(ClientData data, Tcl_Interp *interp, int objc, Tcl_Obj *CONST obj
     TclState *statep = (TclState *) data;
 
     const char *sub_cmds[] = {
-        "create", "expr", "drop", "insert", "update", "delete", "extract", NULL
+        "create", "expr", "drop", "insert", "update", "delete", "extract",
+        "cardinality", "isempty", NULL
     };
     enum table_ix {
-        create_ix, expr_ix, drop_ix, insert_ix, update_ix, delete_ix, extract_ix
+        create_ix, expr_ix, drop_ix, insert_ix, update_ix, delete_ix, extract_ix,
+        cardinality_ix, isempty_ix
     };
     int index;
 
@@ -669,6 +766,10 @@ Duro_table_cmd(ClientData data, Tcl_Interp *interp, int objc, Tcl_Obj *CONST obj
             return table_delete_cmd(statep, interp, objc, objv);
         case extract_ix:
             return table_extract_cmd(statep, interp, objc, objv);
+        case cardinality_ix:
+            return table_cardinality_cmd(statep, interp, objc, objv);
+        case isempty_ix:
+            return table_isempty_cmd(statep, interp, objc, objv);
     }
     return TCL_ERROR;
 }

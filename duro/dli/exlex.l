@@ -102,36 +102,44 @@ FALSE   {
         yylval = RDB_bool_const(RDB_FALSE);
 }
 
-COUNT    {
-         return TOK_COUNT;
+COUNT   {
+        return TOK_COUNT;
 }
 
-COUNTD   {
-         return TOK_COUNTD;
+COUNTD  {
+        return TOK_COUNTD;
 }
 
-SUM      {
-         return TOK_SUM;
+SUM     {
+        return TOK_SUM;
 }
 
-SUMD     {
-         return TOK_SUMD;
+SUMD    {
+        return TOK_SUMD;
 }
 
 AVG     {
-         return TOK_AVG;
+        return TOK_AVG;
 }
 
-AVGD     {
-         return TOK_AVGD;
+AVGD    {
+        return TOK_AVGD;
 }
 
 MAX     {
-         return TOK_MAX;
+        return TOK_MAX;
 }
 
 MIN     {
-         return TOK_MIN;
+        return TOK_MIN;
+}
+
+ALL     {
+        return TOK_ALL;
+}
+
+ANY     {
+        return TOK_ANY;
 }
 
 \|\|    {

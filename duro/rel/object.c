@@ -77,7 +77,7 @@ RDB_irep_to_obj(RDB_object *valp, RDB_type *typ, const void *datap, size_t len)
             memcpy(valp->var.bin.datap, datap, len);
     }
     return RDB_OK;
-} 
+}
 
 RDB_bool
 RDB_obj_equals(const RDB_object *val1p, const RDB_object *val2p)

@@ -528,6 +528,8 @@ int
 RDB_copy_table(RDB_table *dstp, RDB_table *srcp, RDB_transaction *);
 
 /*
+ * !! Needs rewrite
+ *
  * Aggregate operation.
  * op may be RDB_COUNT, RDB_SUM, RDB_AVG, RDB_MAX, RDB_MIN, RDB_ALL, or RDB_ANY.
  * attrname may be NULL if op is RDB_COUNT or the table is unary.
@@ -552,9 +554,30 @@ RDB_copy_table(RDB_table *dstp, RDB_table *srcp, RDB_transaction *);
  * Other values
  *       A database error occured.
  */
+
 int
-RDB_aggregate(RDB_table *, RDB_aggregate_op op, const char *attrname,
-              RDB_transaction *, RDB_object *resultp);
+RDB_max(RDB_table *tbp, const char *attrname, RDB_transaction *txp,
+        RDB_object *resultp);
+
+int
+RDB_min(RDB_table *tbp, const char *attrname, RDB_transaction *txp,
+        RDB_object *resultp);
+
+int
+RDB_all(RDB_table *tbp, const char *attrname, RDB_transaction *txp,
+        RDB_bool *resultp);
+
+int
+RDB_any(RDB_table *tbp, const char *attrname, RDB_transaction *txp,
+        RDB_bool *resultp);
+
+int
+RDB_sum(RDB_table *tbp, const char *attrname, RDB_transaction *txp,
+        RDB_object *resultp);
+
+int
+RDB_avg(RDB_table *tbp, const char *attrname, RDB_transaction *txp,
+        RDB_rational *resultp);
 
 /*
  * Check if the table pointed to by tbp contains the tuple
@@ -962,7 +985,22 @@ RDB_expression *
 RDB_expr_cardinality(RDB_expression *arg1);
 
 RDB_expression *
-RDB_expr_aggregate(RDB_expression *, RDB_aggregate_op op, const char *attrname);
+RDB_expr_sum(RDB_expression *, const char *attrname);
+
+RDB_expression *
+RDB_expr_avg(RDB_expression *, const char *attrname);
+
+RDB_expression *
+RDB_expr_max(RDB_expression *, const char *attrname);
+
+RDB_expression *
+RDB_expr_min(RDB_expression *, const char *attrname);
+
+RDB_expression *
+RDB_expr_all(RDB_expression *, const char *attrname);
+
+RDB_expression *
+RDB_expr_any(RDB_expression *, const char *attrname);
 
 RDB_expression *
 RDB_expr_comp(RDB_expression *, const char *);
