@@ -696,7 +696,7 @@ a key value twice.
 predicate.
 
 <dt>RDB_TYPE_MISMATCH
-<dd>The type of one the expressions in <var>attrv</var> is not the same
+<dd>The type of one of the expressions in <var>updv</var> is not the same
 as the type of the corresponding table attribute.
 
 <dt>RDB_NOT_SUPPORTED
@@ -866,8 +866,7 @@ A pointer to the result table is stored at the location pointed to by
 
 <h3>Errors</h3>
 
-<p>A pointer to the result table is stored at the location pointed to by
-<var>resultpp</var>
+<p>The call may fail for a <a href="#syserr">system error</a>.
 
 <hr>
 
@@ -1019,6 +1018,10 @@ RDB_intersect(RDB_table *, RDB_table *, RDB_table **resultpp);
 result of a relational INTERSECT of the two tables, that is,
 it contains the tuples which both tables contain.
 
+<h3>Return value</h3>
+
+<p>On success, RDB_OK is returned. On failure, an error code is returned.
+
 <h3>Errors</h3>
 
 <dl>
@@ -1094,7 +1097,7 @@ RDB_gdivide(RDB_table *, RDB_table *, RDB_table *, RDB_table *,
 <h3>Description</h3>
 
 <p>RDB_creates a transient virtual table which is the
-result of a great divide of the three tables
+result of a great divide of the four tables.
 
 <h3>Return value</h3>
 
@@ -3695,7 +3698,7 @@ RDB_end_uio(RDB_transaction *txp);
 <dt>RDB_INVALID_ARGUMENT
 <dd>A unit of integrity has not been started.
 <dt>RDB_PREDICATE_VIOLATION
-<dd>A violation of a integrity constraint has been detected.
+<dd>A violation of an integrity constraint has been detected.
 </dl>
 
 <hr>

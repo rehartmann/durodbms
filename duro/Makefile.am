@@ -5,7 +5,7 @@ bin_PROGRAMS = util/lstables util/droptable util/dropdb
 
 # Shared libs for testing are listed here, because check_LTLIBRARIES does
 # not work
-lib_LTLIBRARIES = libduro.la \
+lib_LTLIBRARIES = libduro.la libdurotcl.la \
         tests/libpoint.la tests/libplus.la
 
 htmldir = $(prefix)/docs
@@ -46,6 +46,11 @@ rel/catalog.c rel/catalog.h
 nobase_include_HEADERS = gen/errors.h gen/hashmap.h gen/strfns.h gen/types.h \
 rec/cursor.h rec/env.h rec/index.h rec/recmap.h \
 rel/rdb.h rel/typeimpl.h
+
+libdurotcl_la_SOURCES = tcl/duro.c tcl/envcmd.c tcl/txcmd.c tcl/tablecmd.c \
+tcl/duro.h
+
+libdurotcl_la_LIBADD = -L$(BDB_HOME)/lib libduro.la -ldb
 
 INCLUDES = -I$(top_srcdir) -I$(BDB_HOME)/include
 

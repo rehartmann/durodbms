@@ -42,6 +42,8 @@
 <p>It is not enforced that a candidate key may not be a true subset
 of another.
 
+<p>System-generated key values are not supported.
+
 <h3>RDB_set_table_name</h3>
 
 <p>RDB_set_table_name is not supported for persistent tables.
@@ -85,7 +87,7 @@ the array is destroyed.
 
 <p>Nonscalar types are not supported as actual representations.
 
-<p>System-provided providing getter, setter, and selector functions
+<p>System-provided getter, setter, and selector functions
 are not supported if the possible representation has more than one
 component.
 
@@ -102,7 +104,7 @@ component.
 <h3>Creating libraries</h3>
 
 <p>Libraries for user-defined types and operators must be created
-using GNU libtool. The name of the library is passed without
+using GNU Libtool. The name of the library is passed without
 the file extension.
 
 <h3>RDB_create_env</h3>

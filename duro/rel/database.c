@@ -550,7 +550,7 @@ create_dbroot(const char *dbname, RDB_environment *envp, RDB_bool newdb,
         goto error;
 
     RDB_env_private(envp) = dbrootp;
-    
+
     *dbrootpp = dbrootp;
     return RDB_OK;
 error:
@@ -632,6 +632,7 @@ RDB_get_db_from_env(const char *name, RDB_environment *envp,
     RDB_transaction tx;
     RDB_tuple tpl;
     RDB_dbroot *dbrootp = (RDB_dbroot *)RDB_env_private(envp);
+    RDB_bool crdbroot = RDB_FALSE;
 
     if (dbrootp == NULL) {
         /*
@@ -639,25 +640,30 @@ RDB_get_db_from_env(const char *name, RDB_environment *envp,
          * and create RDB_dbroot structure
          */
 
-        /* Create db structure required by create_dbroot() */
+        /* Create db structure */
         dbp = new_db(name);
         if (dbp == NULL)
             return RDB_NO_MEMORY;
 
+        crdbroot = RDB_TRUE;
         _RDB_init_builtin_types();
         lt_dlinit();
         ret = create_dbroot(name, envp, RDB_FALSE, dbp, &dbrootp);
         if (ret != RDB_OK) {
             goto error;
         }
+    } else {
+        /* Get first db in list */
+        dbp = dbrootp->firstdbp;
     }
 
     /* search the DB list for the database */
-    for (idbp = dbrootp->firstdbp; idbp != NULL; idbp = dbp->nextdbp) {
+    for (idbp = dbrootp->firstdbp; idbp != NULL; idbp = idbp->nextdbp) {
         if (strcmp(dbp->name, name) == 0) {
-        
-            /* dbp is not used */
-            free_db(dbp);
+            if (crdbroot) {
+                /* dbp is not used */
+                free_db(dbp);
+            }
 
             *dbpp = idbp;
             idbp->refcount++;
@@ -665,7 +671,10 @@ RDB_get_db_from_env(const char *name, RDB_environment *envp,
         }
     }
 
-    /* Not found */
+    /*
+     * Not found, read database from catalog
+     */
+
     ret = RDB_begin_tx(&tx, dbp, NULL);
     if (ret != RDB_OK) {
         goto error;
@@ -707,6 +716,11 @@ RDB_get_db_from_env(const char *name, RDB_environment *envp,
     return RDB_OK;
 
 error:
+    if (crdbroot) {
+        free_dbroot(dbrootp);
+        RDB_env_private(envp) = NULL;
+    }
+
     free_db(dbp);
     lt_dlexit();
     return ret;
