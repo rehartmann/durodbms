@@ -6,41 +6,6 @@
 #include <stdarg.h>
 
 int
-RDB_create_env(const char *path, RDB_environment **envpp)
-{
-    RDB_environment *envp;
-    int ret;
-    
-    envp = malloc(sizeof (RDB_environment));
-    if (envp == NULL)
-       return RDB_NO_MEMORY;
-
-    envp->closefn = NULL;
-    envp->errfilep = NULL;
-    envp->user_data = NULL;
-
-    /* create environment handle */
-    *envpp = envp;
-    ret = db_env_create(&envp->envp, 0);
-    if (ret != 0) {
-        free(envp);
-        return RDB_convert_err(ret);
-    }
-    
-    /* create environment */
-    ret = envp->envp->open(envp->envp, path,
-            DB_INIT_LOCK | DB_INIT_LOG | DB_INIT_MPOOL | DB_INIT_TXN | DB_CREATE,
-            0);
-    if (ret != 0) {
-        envp->envp->close(envp->envp, 0);
-        free(envp);
-        return RDB_convert_err(ret);
-    }
-    
-    return RDB_OK;
-}
-
-int
 RDB_open_env(const char *path, RDB_environment **envpp)
 {
     RDB_environment *envp;
@@ -63,7 +28,9 @@ RDB_open_env(const char *path, RDB_environment **envpp)
     }
     
     /* open DB environment */
-    ret = envp->envp->open(envp->envp, path, DB_JOINENV, 0);
+    ret = envp->envp->open(envp->envp, path,
+            DB_INIT_LOCK | DB_INIT_LOG | DB_INIT_MPOOL | DB_INIT_TXN | DB_CREATE,
+            0);
     if (ret != 0) {
         envp->envp->close(envp->envp, 0);
         free(envp);

@@ -23,16 +23,6 @@ typedef struct RDB_environment {
 #define RDB_env_private(renvp) (renvp->envp->app_private)
 
 /*
- * Create a database environment.
- *
- * Arguments:
- * path		pathname of the direcory where the data is stored.
- * envpp	location where the pointer to the environment is stored.
- */
-int
-RDB_create_env(const char *path, RDB_environment **envpp);
-
-/*
  * Open a database environment.
  *
  * Arguments:

@@ -7,7 +7,7 @@
 
 static int
 create_index(RDB_recmap *rmp, const char *name, const char *filename,
-        RDB_environment *dsp, int fieldc, const int fieldv[],
+        RDB_environment *envp, int fieldc, const int fieldv[],
         RDB_bool unique, RDB_index **ixpp)
 {
     int ret;
@@ -45,7 +45,7 @@ create_index(RDB_recmap *rmp, const char *name, const char *filename,
     for (i = 0; i < fieldc; i++)
         ixp->fieldv[i] = fieldv[i];
 
-    ret = db_create(&ixp->dbp, dsp->envp, 0);
+    ret = db_create(&ixp->dbp, envp->envp, 0);
     if (ret != 0) {
         ret = RDB_convert_err(ret);
         goto error;

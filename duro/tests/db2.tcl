@@ -8,13 +8,12 @@ exec tclsh "$0"
 #
 
 load .libs/libdurotcl.so
-source tcl/util.tcl
 
 # Create DB environment
 file delete -force tests/dbenv
 file mkdir tests/dbenv
 
-set dbenv [duro::env create tests/dbenv]
+set dbenv [duro::env open tests/dbenv]
 
 # Create Databases
 duro::db create TEST1 $dbenv

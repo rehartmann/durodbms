@@ -4,6 +4,10 @@ Summary of Changes for Duro
 
 Changes for Duro 0.8
 
+- Removed RDB_create_env().
+
+- Implemented GUI admin tool duroadmin.tcl.
+
 - Implemented duro::table attrs.
 
 - Implemented RDB_update() for selection tables.

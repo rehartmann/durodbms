@@ -213,8 +213,8 @@ main(void) {
     RDB_database *dbp;
     int ret;
     
-    printf("Creating environment\n");
-    ret = RDB_create_env("dbenv", &envp);
+    printf("Opening environment\n");
+    ret = RDB_open_env("dbenv", &envp);
     if (ret != RDB_OK) {
         fprintf(stderr, "Error: %s\n", RDB_strerror(ret));
         return 1;

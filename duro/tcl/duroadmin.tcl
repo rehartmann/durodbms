@@ -55,11 +55,16 @@ proc add_db {newdb} {
 }
 
 proc open_env_path {envpath} {
-    set ::dbenv [duro::env open $envpath]
-    .mbar.file entryconfigure Close* -state normal
+    if {[catch {
+        set ::dbenv [duro::env open $envpath]
+        .mbar.file entryconfigure Close* -state normal
 
-    # Get databases
-    set dbs [duro::env dbs $::dbenv]
+        # Get databases
+        set dbs [duro::env dbs $::dbenv]
+    } msg]} {
+        tk_messageBox -type ok -title "Error" -message $msg -icon error
+        return
+    }
 
     # Add new entries
     foreach i $dbs {
@@ -95,11 +100,16 @@ proc create_env {} {
         close_env
     }
 
-    if {![file exists $envpath]} {
-        file mkdir $envpath
-    }
+    if {[catch {
+        if {![file exists $envpath]} {
+            file mkdir $envpath
+        }
 
-    set ::dbenv [duro::env create $envpath]
+        set ::dbenv [duro::env open $envpath]
+    } msg]} {
+        tk_messageBox -type ok -title "Error" -message $msg -icon error
+        return
+    }
     .mbar.db.create entryconfigure 1 -state normal
     .mbar.file entryconfigure Close* -state normal
 }
@@ -171,6 +181,7 @@ proc show_table {} {
         catch {duro::array drop $arr}
         catch {duro::rollback $tx}
         tk_messageBox -type ok -title "Error" -message $msg -icon error
+        return
     }
 
     # Clear last row, which is for entering new rows
@@ -198,18 +209,25 @@ proc create_db {} {
     pack .dialog.buttons.ok .dialog.buttons.cancel -side left
     pack .dialog.l .dialog.dbname -side left
 
+    set done 0
     grab .dialog
-    tkwait variable action
-    destroy .dialog
-    if {$::action != "ok"} {
-        return
-    }
-    if {$::newdbname == ""} {
-        return
-    }
+    while {!$done} {
+        tkwait variable action
+        if {$::action != "ok"} {
+            destroy .dialog
+            return
+        }
+        if {$::newdbname == ""} {
+            tk_messageBox -type ok -title "Error" \
+                    -message "Please enter a table name." -icon warning
+            continue
+        }
 
-    # Create database
-    duro::db create $::newdbname $::dbenv
+        # Create database
+        duro::db create $::newdbname $::dbenv
+        set done 1
+    }
+    destroy .dialog
     add_db $::newdbname
     set ::db $::newdbname
     .mbar.db.drop entryconfigure 1 -state normal
@@ -288,8 +306,9 @@ proc create_rtable {} {
             return
         }
         if {$::newtablename == ""} {
-            destroy .dialog
-            return
+            tk_messageBox -type ok -title "Error" \
+                    -message "Please enter a table name." -icon warning
+            continue
         }
 
         # Build lists for attributes and keys
@@ -358,8 +377,9 @@ proc create_vtable {} {
             return
         }
         if {$::newtablename == ""} {
-            destroy .dialog
-            return
+            tk_messageBox -type ok -title "Error" \
+                    -message "Please enter a table name." -icon warning
+            continue
         }
 
         if {[catch {

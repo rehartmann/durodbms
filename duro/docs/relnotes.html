@@ -97,15 +97,13 @@ the control of a transaction which has a running child transaction.
 using GNU Libtool. The name of the library is passed without
 the file extension.
 
-<h3>RDB_create_env</h3>
-
-<p>The path passed to RDB_create_env is a Berkeley DB database
-environment directory. The directory must exist and should be empty.
-
 <h3>RDB_open_env</h3>
 
 <p>The path passed to RDB_open_env is a Berkeley DB database
 environment directory.
+
+<p>To create a new, empty environment, simply pass an empty directory
+to RDB_open_env.
 
 <h3>RDB_parse_expr and RDB_parse_table</h3>
 

@@ -13,7 +13,7 @@ load .libs/libdurotcl.so
 file delete -force tests/dbenv
 file mkdir tests/dbenv
 
-set dbenv [duro::env create tests/dbenv]
+set dbenv [duro::env open tests/dbenv]
 
 # Create Database
 duro::db create TEST $dbenv

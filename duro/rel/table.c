@@ -780,6 +780,9 @@ RDB_create_table_index(const char *name, RDB_table *tbp, int idxcompc,
 int
 RDB_drop_table_index(const char *name, RDB_transaction *txp)
 {
+    if (!_RDB_legal_name(name))
+        return RDB_NOT_FOUND;
+
     return RDB_NOT_SUPPORTED;
 }
 

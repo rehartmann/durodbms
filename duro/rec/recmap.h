@@ -159,4 +159,8 @@ int
 _RDB_fields_to_DBT(RDB_recmap *rmp, int fldc, const RDB_field fldv[],
                    DBT *dbtp);
 
+int
+_RDB_update_rec(RDB_recmap *recmapp, DBT *keyp, DBT *datap,
+        int fieldc, const RDB_field fieldv[], DB_TXN *txid);
+
 #endif

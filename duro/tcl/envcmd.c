@@ -74,36 +74,9 @@ Duro_env_cmd(ClientData data, Tcl_Interp *interp, int argc, CONST char *argv[])
         RDB_set_errfile(envp, stderr);
         
         Tcl_SetStringObj(Tcl_GetObjResult(interp), handle, -1);
-        return RDB_OK;
-    } else if (strcmp(argv[1], "create") == 0) {
-        int new;
-        char handle[20];
-    
-        if (argc != 3) {
-            Tcl_SetResult(interp, "wrong # args: should be \"env create path\"",
-                    TCL_STATIC);
-            return TCL_ERROR;
-        }
-
-        ret = RDB_create_env(argv[2], &envp);
-        if (ret != RDB_OK) {
-            Duro_dberror(interp, ret);
-            return TCL_ERROR;
-        }
-
-        /* Store a pointer to the Tcl interpreter in the user_data field */
-        /* envp->user_data = interp; */
-
-        statep->env_uid++;
-        sprintf(handle, "env%d", statep->env_uid);
-        entryp = Tcl_CreateHashEntry(&statep->envs, handle, &new);
-        Tcl_SetHashValue(entryp, (ClientData)envp);
-
-        RDB_set_errfile(envp, stderr);
-        
-        Tcl_SetStringObj(Tcl_GetObjResult(interp), handle, -1);
         return TCL_OK;
-    } else if (strcmp(argv[1], "close") == 0) {
+    }
+    if (strcmp(argv[1], "close") == 0) {
         if (argc != 3) {
             Tcl_SetResult(interp, "wrong # args: should be \"env close envId\"",
                     TCL_STATIC);
@@ -122,7 +95,8 @@ Duro_env_cmd(ClientData data, Tcl_Interp *interp, int argc, CONST char *argv[])
             return TCL_ERROR;
         }      
         return TCL_OK;
-    } else if (strcmp(argv[1], "dbs") == 0) {
+    }
+    if (strcmp(argv[1], "dbs") == 0) {
         int i;
         Tcl_Obj *dblistp;
         RDB_object arr;
@@ -170,8 +144,7 @@ Duro_env_cmd(ClientData data, Tcl_Interp *interp, int argc, CONST char *argv[])
         Tcl_SetObjResult(interp, dblistp);
 
         return TCL_OK;
-    } else {
-        Tcl_AppendResult(interp, "Bad option: ", argv[1], NULL);
-        return TCL_ERROR;
     }
+    Tcl_AppendResult(interp, "Bad option: ", argv[1], NULL);
+    return TCL_ERROR;
 }

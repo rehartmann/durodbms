@@ -222,7 +222,6 @@ See the release notes for details.
 <h3>Database environment functions</h3>
 
 <ul>
-<li><a href="#create_env">RDB_create_env</a>
 <li><a href="#open_env">RDB_open_env</a>
 <li><a href="#close_env">RDB_close_env</a>
 <li><a href="#set_errfile">RDB_set_errfile</a>
@@ -1395,7 +1394,7 @@ RDB_minus(RDB_table *, RDB_table *, RDB_table **resultpp);
 
 <p>RDB_intersect creates a local (transient) virtual table which is the
 result of a relational MINUS of the two tables, that is,
-it contains the tuples which the first table contains,
+it contains the tuples from the first table,
 except those which the second table contains.
 
 <h3>Return value</h3>
@@ -4115,36 +4114,6 @@ RDB_end_uoi(RDB_transaction *txp);
 <dt>RDB_PREDICATE_VIOLATION
 <dd>A violation of an integrity constraint has been detected.
 </dl>
-
-<hr>
-
-<h2 id="create_env">RDB_create_env</h2>
-
-<pre>
-#include &lt;rel/rdb.h&gt;
-
-int
-RDB_create_env(const char *path, RDB_environment **);
-</pre>
-
-<h3>Description</h3>
-
-<p>RDB_create_env creates a database environment from the
-system resource <var>path</var>. See the release notes for details.
-
-<h3>Return value</h3>
-
-<p>On success, RDB_OK is returned. On failure, an error code is returned.
-
-<h3>Errors</h3>
-
-<dl>
-<dt>RDB_RESOURCE_NOT_FOUND
-<dd>The resource specified by <var>path</var> could not be found.
-</dl>
-
-<p>The call may also fail for a <a href="#syserr">system error</a>
-different from RDB_RESOURCE_NOT_FOUND.
 
 <hr>
 

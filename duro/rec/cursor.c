@@ -138,7 +138,6 @@ RDB_cursor_update(RDB_cursor *curp, int fieldc, const RDB_field fieldv[])
 {
     DBT key, pkey, data;
     int ret;
-    int i;
 
     memset(&key, 0, sizeof (key));
     memset(&pkey, 0, sizeof (pkey));
