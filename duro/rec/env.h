@@ -1,6 +1,11 @@
 #ifndef RDB_ENV_H
 #define RDB_ENV_H
 
+/*
+ * Copyright (C) 2003 René Hartmann.
+ * See the file COPYING for redistribution information.
+ */
+
 /* $Id$ */
 
 #include <db.h>
@@ -10,6 +15,7 @@ typedef struct RDB_environment {
     DB_ENV *envp;
     void (*closefn)(struct RDB_environment *);
     FILE *errfilep;
+    void *user_data;
 } RDB_environment;
 
 #define RDB_internal_env(renvp) (renvp->envp)

@@ -4,9 +4,11 @@ Summary of Changes for Duro
 
 Changes for Duro 0.7
 
+- Implemented RDB_sdivide().
+
 - Dropped RDB_tuple, using RDB_object instead.
 
-- Implemented tuple-valued table attributes.
+- Implemented tuple-valued table attributes, RDB_wrap(), and RDB_unwrap().
 
 - Implemented RDB_remove().
 

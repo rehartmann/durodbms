@@ -51,9 +51,9 @@ duro::table expr -global P1 {R {ALL BUT STRATTR}} $tx
 duro::table expr -global P2 {R {STRATTR}} $tx
 
 # Insert tuple into real table
-duro::table insert R {INTATTR 1 STRATTR Bla} $tx
-duro::table insert R {INTATTR 2 STRATTR Blubb} $tx
-duro::table insert R {INTATTR 3 STRATTR Blubb} $tx
+duro::insert R {INTATTR 1 STRATTR Bla} $tx
+duro::insert R {INTATTR 2 STRATTR Blubb} $tx
+duro::insert R {INTATTR 3 STRATTR Blubb} $tx
 
 duro::commit $tx
 
@@ -66,10 +66,10 @@ set dbenv [duro::env open tests/dbenv]
 set tx [duro::begin $dbenv TEST]
 
 # Insert tuple into virtual table
-duro::table insert P1 {INTATTR 4} $tx
+duro::insert P1 {INTATTR 4} $tx
 
 # Update virtual table
-duro::table update R {INTATTR=4} INTATTR 5 $tx
+duro::update R {INTATTR=4} INTATTR 5 $tx
 
 set a [duro::array create R {INTATTR asc} $tx]
 

@@ -1,3 +1,8 @@
+/*
+ * Copyright (C) 2003 René Hartmann.
+ * See the file COPYING for redistribution information.
+ */
+
 /* $Id$ */
 
 #include "rdb.h"
@@ -570,8 +575,10 @@ RDB_drop_expr(RDB_expression *exp)
         case RDB_ATTR:
             free(exp->var.attr.name);
             break;
-        default:
-            abort();
+        case RDB_TABLE:
+            if (exp->var.tbp->name == NULL)
+                RDB_drop_table(exp->var.tbp, NULL);
+            break;
     }
     free(exp);
 }
@@ -1026,10 +1033,13 @@ RDB_evaluate(RDB_expression *exp, const RDB_object *tup, RDB_transaction *txp,
             return evaluate_user_op(exp, tup, txp, valp);
         case RDB_ATTR:
         {
+            if (tup == NULL)
+                return RDB_INVALID_ARGUMENT;
+        
             RDB_object *srcp = RDB_tuple_get(tup, exp->var.attr.name);
 
             if (srcp == NULL)
-                return RDB_INVALID_ARGUMENT;
+                return RDB_NOT_FOUND;
 
             return RDB_copy_obj(valp, srcp);
         }

@@ -143,8 +143,8 @@ array_drop_cmd(TclState *statep, Tcl_Interp *interp, int objc,
     return TCL_OK;
 }
 
-static Tcl_Obj *
-duro_to_tcl(Tcl_Interp *interp, const RDB_object *objp)
+Tcl_Obj *
+Duro_to_tcl(Tcl_Interp *interp, const RDB_object *objp)
 {
     RDB_type *typ = RDB_obj_type(objp);
 
@@ -206,7 +206,7 @@ Duro_tuple_to_list(Tcl_Interp *interp, const RDB_object *tplp)
     RDB_tuple_attr_names(tplp, namev);
     for (i = 0; i < attrcount; i++) {
         RDB_object *objp = RDB_tuple_get(tplp, namev[i]);
-        Tcl_Obj *tobjp = duro_to_tcl(interp, objp);
+        Tcl_Obj *tobjp = Duro_to_tcl(interp, objp);
 
         if (tobjp == NULL) {
             Tcl_Free((char *) namev);

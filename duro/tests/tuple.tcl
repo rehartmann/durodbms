@@ -52,7 +52,7 @@ duro::table create T1 {
     }}
 } {{SCATTR}} $tx
 
-duro::table insert T1 {SCATTR Bla TPATTR {A 1 B Blubb T {C Blip}}} $tx
+duro::insert T1 {SCATTR Bla TPATTR {A 1 B Blubb T {C Blip}}} $tx
 
 # Create UNWRAP table
 duro::table expr -global T2 {T1 UNWRAP (TPATTR)} $tx

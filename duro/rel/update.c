@@ -435,13 +435,16 @@ RDB_update(RDB_table *tbp, RDB_expression *condp, int updc,
 
     /* Typecheck */
     for (i = 0; i < updc; i++) {
+        RDB_type *typ;
         RDB_attr *attrp = _RDB_tuple_type_attr(tbp->typ->var.basetyp,
                 updv[i].name);
 
         if (attrp == NULL)
             return RDB_INVALID_ARGUMENT;
-        if (!RDB_type_equals(RDB_expr_type(updv[i].exp, tbp->typ->var.basetyp),
-                attrp->typ))
+        typ = RDB_expr_type(updv[i].exp, tbp->typ->var.basetyp);
+        if (typ == NULL)
+            return RDB_INVALID_ARGUMENT;
+        if (!RDB_type_equals(typ, attrp->typ))
             return RDB_TYPE_MISMATCH;
     }
 

@@ -85,9 +85,19 @@ Duro_Init(Tcl_Interp *interp)
             (ClientData)statep, NULL);
     Tcl_CreateObjCommand(interp, "duro::table", Duro_table_cmd,
             (ClientData)statep, NULL);
+    Tcl_CreateObjCommand(interp, "duro::insert", Duro_insert_cmd,
+            (ClientData)statep, NULL);
+    Tcl_CreateObjCommand(interp, "duro::update", Duro_update_cmd,
+            (ClientData)statep, NULL);
+    Tcl_CreateObjCommand(interp, "duro::delete", Duro_delete_cmd,
+            (ClientData)statep, NULL);
     Tcl_CreateObjCommand(interp, "duro::array", Duro_array_cmd,
             (ClientData)statep, NULL);
     Tcl_CreateObjCommand(interp, "duro::operator", Duro_operator_cmd,
+            (ClientData)statep, NULL);
+    Tcl_CreateObjCommand(interp, "duro::call", Duro_call_cmd,
+            (ClientData)statep, NULL);
+    Tcl_CreateObjCommand(interp, "duro::expr", Duro_expr_cmd,
             (ClientData)statep, NULL);
 
     Tcl_CreateExitHandler(duro_cleanup, (ClientData)statep);

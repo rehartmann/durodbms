@@ -57,6 +57,10 @@ Duro_env_cmd(ClientData data, Tcl_Interp *interp, int argc, CONST char *argv[])
             Duro_dberror(interp, ret);
             return TCL_ERROR;
         }
+
+        /* Store a pointer to the Tcl interpreter in the user_data field */
+        envp->user_data = interp;
+
         statep->env_uid++;
         sprintf(handle, "env%d", statep->env_uid);
         entryp = Tcl_CreateHashEntry(&statep->envs, handle, &new);
@@ -81,6 +85,10 @@ Duro_env_cmd(ClientData data, Tcl_Interp *interp, int argc, CONST char *argv[])
             Duro_dberror(interp, ret);
             return TCL_ERROR;
         }
+
+        /* Store a pointer to the Tcl interpreter in the user_data field */
+        envp->user_data = interp;
+
         statep->env_uid++;
         sprintf(handle, "env%d", statep->env_uid);
         entryp = Tcl_CreateHashEntry(&statep->envs, handle, &new);

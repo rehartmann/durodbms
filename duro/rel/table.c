@@ -32,8 +32,8 @@ attr_is_pindex(RDB_table *tbp, const char *attrname) {
 RDB_expression *
 _RDB_pindex_expr(RDB_table *tbp, RDB_expression *exprp)
 {
-    if (tbp->kind != RDB_TB_STORED
-            || _RDB_pkey_len(tbp) != 1)
+    if (tbp->kind != RDB_TB_STORED || _RDB_pkey_len(tbp) != 1
+            || exprp->kind != RDB_OP_EQ)
         return NULL;
     if (exprp->var.op.arg1->kind == RDB_ATTR
             && RDB_expr_is_const(exprp->var.op.arg2)
@@ -149,7 +149,7 @@ delete_stored(RDB_table *tbp, RDB_expression *condp,
         else {
             ret = RDB_evaluate_bool(condp, &tpl, txp, &b);
             if (ret != RDB_OK)
-                return ret;
+                goto error;
         }
         if (b) {
             ret = RDB_cursor_delete(curp);

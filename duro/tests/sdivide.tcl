@@ -59,26 +59,26 @@ duro::table create SP {
 
 duro::table expr -global DIV {S DIVIDEBY P PER SP} $tx
 
-duro::table insert S {SNO S1} $tx
-duro::table insert S {SNO S2} $tx
-duro::table insert S {SNO S3} $tx
-duro::table insert S {SNO S4} $tx
-duro::table insert S {SNO S5} $tx
+duro::insert S {SNO S1} $tx
+duro::insert S {SNO S2} $tx
+duro::insert S {SNO S3} $tx
+duro::insert S {SNO S4} $tx
+duro::insert S {SNO S5} $tx
 
-duro::table insert P {PNO P1} $tx
+duro::insert P {PNO P1} $tx
 
-duro::table insert SP {SNO S1 PNO P1} $tx
-duro::table insert SP {SNO S1 PNO P2} $tx
-duro::table insert SP {SNO S1 PNO P3} $tx
-duro::table insert SP {SNO S1 PNO P4} $tx
-duro::table insert SP {SNO S1 PNO P5} $tx
-duro::table insert SP {SNO S1 PNO P6} $tx
-duro::table insert SP {SNO S2 PNO P1} $tx
-duro::table insert SP {SNO S2 PNO P2} $tx
-duro::table insert SP {SNO S3 PNO P2} $tx
-duro::table insert SP {SNO S4 PNO P2} $tx
-duro::table insert SP {SNO S4 PNO P4} $tx
-duro::table insert SP {SNO S4 PNO P5} $tx
+duro::insert SP {SNO S1 PNO P1} $tx
+duro::insert SP {SNO S1 PNO P2} $tx
+duro::insert SP {SNO S1 PNO P3} $tx
+duro::insert SP {SNO S1 PNO P4} $tx
+duro::insert SP {SNO S1 PNO P5} $tx
+duro::insert SP {SNO S1 PNO P6} $tx
+duro::insert SP {SNO S2 PNO P1} $tx
+duro::insert SP {SNO S2 PNO P2} $tx
+duro::insert SP {SNO S3 PNO P2} $tx
+duro::insert SP {SNO S4 PNO P2} $tx
+duro::insert SP {SNO S4 PNO P4} $tx
+duro::insert SP {SNO S4 PNO P5} $tx
 
 duro::commit $tx
 
@@ -94,18 +94,18 @@ set a [duro::array create DIV {SNO asc} $tx]
 checkarray $a { {SNO S1} {SNO S2} }
 duro::array drop $a
 
-duro::table delete P {PNO = "P1"} $tx
-duro::table insert P {PNO P2} $tx
-duro::table insert P {PNO P4} $tx
+duro::delete P {PNO = "P1"} $tx
+duro::insert P {PNO P2} $tx
+duro::insert P {PNO P4} $tx
 
 set a [duro::array create DIV {SNO asc} $tx]
 checkarray $a { {SNO S1} {SNO S4} }
 duro::array drop $a
 
-duro::table insert P {PNO P1} $tx
-duro::table insert P {PNO P3} $tx
-duro::table insert P {PNO P5} $tx
-duro::table insert P {PNO P6} $tx
+duro::insert P {PNO P1} $tx
+duro::insert P {PNO P3} $tx
+duro::insert P {PNO P5} $tx
+duro::insert P {PNO P6} $tx
 
 set a [duro::array create DIV $tx]
 checkarray $a { {SNO S1} }

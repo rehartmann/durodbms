@@ -33,15 +33,15 @@ duro::table create T1 {
 } {{INTATTR}} $tx
 
 # Insert tuple
-duro::table insert T1 {INTATTR 1 STRATTR Bla} $tx
+duro::insert T1 {INTATTR 1 STRATTR Bla} $tx
 
 # Update nonkey attribute
-duro::table update T1 STRATTR {STRATTR || "x"} $tx
+duro::update T1 STRATTR {STRATTR || "x"} $tx
 
 # Update key attribute
-duro::table update T1 INTATTR {INTATTR + 1} $tx
+duro::update T1 INTATTR {INTATTR + 1} $tx
 
-set t [duro::table extract T1 $tx]
+set t [duro::expr {TUPLE FROM T1} $tx]
 set s {INTATTR 2 STRATTR Blax}
 
 if {![tequal $t $s] } {
@@ -50,7 +50,7 @@ if {![tequal $t $s] } {
 }
 
 # Remove tuple
-duro::table delete T1 $tx
+duro::delete T1 $tx
 
 # Drop table
 duro::table drop T1 $tx
@@ -78,15 +78,15 @@ set dbenv [duro::env open tests/dbenv]
 set tx [duro::begin $dbenv TEST]
 
 # Insert tuple
-duro::table insert T2 {INTATTR 1 STRATTR1 Bla STRATTR2 Bli STRATTR3 Blubb} $tx
+duro::insert T2 {INTATTR 1 STRATTR1 Bla STRATTR2 Bli STRATTR3 Blubb} $tx
 
 # Update nonkey attribute
-duro::table update T2 STRATTR3 {STRATTR3 || "x"} $tx
+duro::update T2 STRATTR3 {STRATTR3 || "x"} $tx
 
 # Update key attribute
-duro::table update T2 INTATTR {INTATTR * 2} $tx
+duro::update T2 INTATTR {INTATTR * 2} $tx
 
-set t [duro::table extract T2 $tx]
+set t [duro::expr {TUPLE FROM T2} $tx]
 set s {INTATTR 2 STRATTR1 Bla STRATTR2 Bli STRATTR3 Blubbx}
 
 if {![tequal $t $s] } {
@@ -95,7 +95,7 @@ if {![tequal $t $s] } {
 }
 
 # Remove tuple
-duro::table delete T2 $tx
+duro::delete T2 $tx
 
 # Drop table
 duro::table drop T2 $tx

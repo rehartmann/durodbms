@@ -1604,7 +1604,8 @@ make_typestr_from_valv(int argc, RDB_object *argpv[]) {
         typp[i] = argpv[i]->typ;
 
     typestr = _RDB_make_typestr(argc, typp);
-    free(typp);
+    if (argc > 0)
+        free(typp);
     return typestr;
 }
 

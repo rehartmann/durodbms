@@ -49,6 +49,15 @@ int
 Duro_table_cmd(ClientData data, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[]);
 
 int
+Duro_insert_cmd(ClientData data, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[]);
+
+int
+Duro_delete_cmd(ClientData data, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[]);
+
+int
+Duro_update_cmd(ClientData data, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[]);
+
+int
 Duro_db_cmd(ClientData data, Tcl_Interp *interp, int argc, CONST char *argv[]);
 
 int
@@ -56,6 +65,12 @@ Duro_array_cmd(ClientData data, Tcl_Interp *interp, int objc, Tcl_Obj *CONST obj
 
 int
 Duro_operator_cmd(ClientData data, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[]);
+
+int
+Duro_call_cmd(ClientData data, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[]);
+
+int
+Duro_expr_cmd(ClientData data, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[]);
 
 int
 Duro_tcl_close_env(TclState *statep, RDB_environment *, Tcl_HashEntry *entryp);
@@ -81,5 +96,8 @@ Duro_tuple_to_list(Tcl_Interp *, const RDB_object *);
 
 RDB_table *
 Duro_get_ltable(const char *name, void *arg);
+
+Tcl_Obj *
+Duro_to_tcl(Tcl_Interp *interp, const RDB_object *objp);
 
 #endif
