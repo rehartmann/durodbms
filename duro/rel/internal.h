@@ -36,7 +36,6 @@ typedef struct RDB_dbroot {
     RDB_table *possrepcomps_tbp;
     RDB_table *ro_ops_tbp;
     RDB_table *upd_ops_tbp;
-    RDB_table *tuple_attrs_tbp;
 } RDB_dbroot;
 
 typedef struct RDB_qresult {
@@ -61,17 +60,10 @@ typedef struct RDB_qresult {
     RDB_table *matp;
 } RDB_qresult;
 
-typedef struct {
-    char *name;
-    RDB_type *typ;
-    RDB_object *defaultp;
-    int options;
-} RDB_icomp;
-
 typedef struct RDB_ipossrep {
     char *name;
     int compc;
-    RDB_icomp *compv;
+    RDB_attr *compv;
     struct RDB_expression *constraintp;
 } RDB_ipossrep;
 
@@ -321,7 +313,7 @@ _RDB_sdivide_preserves(RDB_table *, const RDB_object *tplp, RDB_qresult *qr3p,
 RDB_ipossrep *
 _RDB_get_possrep(RDB_type *typ, const char *repname);
 
-RDB_icomp *
+RDB_attr *
 _RDB_get_icomp(RDB_type *, const char *compname);
 
 void

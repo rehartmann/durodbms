@@ -111,7 +111,7 @@ typedef struct RDB_type {
             int repc;
             struct RDB_ipossrep *repv;
 
-            /* RDB_TRUE if selector/getters/settersthe are privided by the system */
+            /* RDB_TRUE if selector/getters/setters are provided by the system */
             RDB_bool sysimpl; 
         } scalar;
     } var;

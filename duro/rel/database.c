@@ -408,7 +408,6 @@ close_systables(RDB_dbroot *dbrootp)
     close_table(dbrootp->possrepcomps_tbp, dbrootp->envp);
     close_table(dbrootp->ro_ops_tbp, dbrootp->envp);
     close_table(dbrootp->upd_ops_tbp, dbrootp->envp);
-    close_table(dbrootp->tuple_attrs_tbp, dbrootp->envp);
 }
 
 /* cleanup function to close all DBs and tables */
@@ -516,8 +515,6 @@ assoc_systables(RDB_dbroot *dbrootp, RDB_database *dbp)
     _RDB_assoc_table_db(dbrootp->ro_ops_tbp, dbp);
 
     _RDB_assoc_table_db(dbrootp->upd_ops_tbp, dbp);
-
-    _RDB_assoc_table_db(dbrootp->tuple_attrs_tbp, dbp);
 }
 
 /*

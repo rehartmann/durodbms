@@ -244,13 +244,20 @@ obj_to_irep(void *dstp, const void *srcp, size_t len)
             break;
         case RDB_OB_TUPLE:
         {
+            RDB_type *tpltyp = objp->typ;
             int i;
 
-            for (i = 0; i < objp->typ->var.tuple.attrc; i++) {
-                RDB_object *attrp = RDB_tuple_get(objp,
-                        objp->typ->var.tuple.attrv[i].name);
+            /* If the type is scalar, use internal rep */
+            if (tpltyp->kind == RDB_TP_SCALAR)
+                tpltyp = tpltyp->arep;
 
-                int l = objp->typ->var.tuple.attrv[i].typ->ireplen;
+            for (i = 0; i < tpltyp->var.tuple.attrc; i++) {
+                RDB_object *attrp;
+
+                attrp = RDB_tuple_get(objp,
+                        tpltyp->var.tuple.attrv[i].name);
+
+                int l = tpltyp->var.tuple.attrv[i].typ->ireplen;
                 if (l == RDB_VARIABLE_LEN) {
                     l = obj_ilen(attrp);
                     memcpy(bp, &l, sizeof (size_t));
@@ -498,32 +505,35 @@ RDB_obj_comp(const RDB_object *valp, const char *compname, RDB_object *compvalp,
         RDB_transaction *txp)
 {
     int ret;
-    RDB_icomp *comp;
     
     if (!RDB_type_is_scalar(valp->typ) || valp->typ->var.scalar.repc == 0)
         return RDB_INVALID_ARGUMENT;
-
-    comp = _RDB_get_icomp(valp->typ, compname);
 
     if (valp->typ->var.scalar.sysimpl) {
         ret = RDB_destroy_obj(compvalp);
         if (ret != RDB_OK)
             return ret;
 
-        _RDB_set_obj_type(compvalp, valp->typ->var.scalar.repv[0].compv[0].typ);
-        ret = _RDB_copy_obj(compvalp, valp);   
+        if (valp->typ->var.scalar.repv[0].compc == 1) {
+            _RDB_set_obj_type(compvalp,
+                    valp->typ->var.scalar.repv[0].compv[0].typ);
+            ret = _RDB_copy_obj(compvalp, valp);
+        } else {
+            RDB_init_obj(compvalp);
+            RDB_copy_obj(compvalp, RDB_tuple_get(valp, compname));
+        }
     } else {
         /* Getter is implemented by user */
         char *opname;
         RDB_object *argv[1];
 
-        opname = malloc(strlen(valp->typ->name) + strlen(comp->name) + 6);
+        opname = malloc(strlen(valp->typ->name) + strlen(compname) + 6);
         if (opname == NULL)
             return RDB_NO_MEMORY;
 
         strcpy(opname, valp->typ->name);
         strcat(opname, "_get_");
-        strcat(opname, comp->name);
+        strcat(opname, compname);
         argv[0] = (RDB_object *) valp;
 
         ret = RDB_call_ro_op(opname, 1, argv, compvalp, txp);
@@ -536,28 +546,31 @@ int
 RDB_obj_set_comp(RDB_object *valp, const char *compname,
         const RDB_object *compvalp, RDB_transaction *txp)
 {
-    RDB_icomp *comp = _RDB_get_icomp(valp->typ, compname);
     int ret;
 
     if (valp->typ->var.scalar.sysimpl) {
         /* Setter is implemented by the system */
-        ret = RDB_destroy_obj(valp);
-        if (ret != RDB_OK)
-            return ret;
+        if (valp->typ->var.scalar.repv[0].compc == 1) {
+            ret = RDB_destroy_obj(valp);
+            if (ret != RDB_OK)
+                return ret;
 
-        ret = _RDB_copy_obj(valp, compvalp);
+            ret = _RDB_copy_obj(valp, compvalp);
+        } else {
+            RDB_tuple_set(valp, compname, compvalp);
+        }
     } else {
         /* Setter is implemented by user */
         char *opname;
         RDB_object *argv[2];
 
-        opname = malloc(strlen(valp->typ->name) + strlen(comp->name) + 6);
+        opname = malloc(strlen(valp->typ->name) + strlen(compname) + 6);
         if (opname == NULL)
             return RDB_NO_MEMORY;
 
         strcpy(opname, valp->typ->name);
         strcat(opname, "_set_");
-        strcat(opname, comp->name);
+        strcat(opname, compname);
         argv[0] = valp;
         argv[1] = (RDB_object *) compvalp;
         
@@ -565,7 +578,7 @@ RDB_obj_set_comp(RDB_object *valp, const char *compname,
         free(opname);        
     }
     
-    /* Check constraint !? */
+    /* !! Check constraint */
     return ret;
 }
 

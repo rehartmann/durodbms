@@ -100,6 +100,7 @@ serialize_type(RDB_object *valp, int *posp, const RDB_type *typ)
                 if (ret != RDB_OK)
                     return ret;
             }
+            return RDB_OK;
         }
         case RDB_TP_RELATION:
             return serialize_type(valp, posp, typ->var.basetyp);
@@ -607,10 +608,51 @@ deserialize_type(RDB_object *valp, int *posp, RDB_transaction *txp,
             free(namp);
             return ret;
         case RDB_TP_TUPLE:
-            /* !! */
+        {
+            RDB_int attrc;
+            int i;
+
+            ret = deserialize_int(valp, posp, &attrc);
+            *typp = (RDB_type *) malloc(sizeof (RDB_type));
+            if (*typp == NULL)
+                return RDB_NO_MEMORY;
+            (*typp)->name = NULL;
+            (*typp)->kind = RDB_TP_TUPLE;
+
+            (*typp)->var.tuple.attrv = malloc(sizeof(RDB_attr) * attrc);
+            if ((*typp)->var.tuple.attrv == NULL) {
+                free(*typp);
+                return RDB_NO_MEMORY;
+            }
+            for (i = 0; i < attrc; i++) {
+                ret = deserialize_str(valp, posp,
+                        &(*typp)->var.tuple.attrv[i].name);
+                if (ret != RDB_OK) {
+                    free((*typp)->var.tuple.attrv);
+                    free(*typp);
+                }
+                ret = deserialize_type(valp, posp, txp,
+                        &(*typp)->var.tuple.attrv[i].typ);
+                if (ret != RDB_OK) {
+                    free((*typp)->var.tuple.attrv);
+                    free(*typp);
+                }
+                (*typp)->var.tuple.attrv[i].defaultp = NULL;
+            }
+            (*typp)->var.tuple.attrc = attrc;
+            return RDB_OK;
+        }
         case RDB_TP_RELATION:
-            /* !! */
-            ;
+            *typp = (RDB_type *) malloc(sizeof (RDB_type));
+            if (*typp == NULL)
+                return RDB_NO_MEMORY;
+            (*typp)->name = NULL;
+            (*typp)->kind = RDB_TP_RELATION;
+            ret = deserialize_type(valp, posp, txp,
+                        &(*typp)->var.basetyp);
+            if (ret != RDB_OK)
+                free(*typp);
+            return RDB_OK;
     }
     return RDB_INTERNAL;
 }

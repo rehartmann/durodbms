@@ -4,6 +4,9 @@ Summary of Changes for Duro
 
 Changes for Duro 0.8
 
+- Implemented support for system-implemented user-defined types with
+  more than one possrep component.
+
 - Removed RDB_select_obj() and RDB_selector(). Use RDB_call_ro_op() and
   RDB_user_op() instead.
 

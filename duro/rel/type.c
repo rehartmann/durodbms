@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2003 René Hartmann.
+ * Copyright (C) 2003, 2004 René Hartmann.
  * See the file COPYING for redistribution information.
  */
 
@@ -140,7 +140,17 @@ RDB_create_tuple_type(int attrc, RDB_attr attrv[])
     }
     for (i = 0; i < attrc; i++) {
         tbtyp->var.tuple.attrv[i].typ = dup_nonscalar_type(attrv[i].typ);
+        if (tbtyp->var.tuple.attrv[i].typ == NULL) {
+            free(tbtyp->var.tuple.attrv);
+            free(tbtyp);
+            return NULL;
+        }
         tbtyp->var.tuple.attrv[i].name = RDB_dup_str(attrv[i].name);
+        if (tbtyp->var.tuple.attrv[i].name == NULL) {
+            free(tbtyp->var.tuple.attrv);
+            free(tbtyp);
+            return NULL;
+        }
         tbtyp->var.tuple.attrv[i].defaultp = NULL;
     }
     tbtyp->var.tuple.attrc = attrc;
@@ -216,7 +226,9 @@ free_type(RDB_type *typ)
                     free(typ->var.scalar.repv[i].compv);
                 }
                 free(typ->var.scalar.repv);
-            }                
+            }
+            if (typ->arep != NULL && typ->arep->name == NULL)
+                RDB_drop_type(typ->arep, NULL);
     }
     free(typ);
 }    
@@ -225,6 +237,7 @@ int
 RDB_get_type(const char *name, RDB_transaction *txp, RDB_type **typp)
 {
     RDB_type **foundtypp;
+    int ret;
 
     if (strcmp(name, "BOOLEAN") == 0) {
         *typp = &RDB_BOOLEAN;
@@ -255,7 +268,12 @@ RDB_get_type(const char *name, RDB_transaction *txp, RDB_type **typp)
         return RDB_OK;
     }
     
-    return _RDB_get_cat_type(name, txp, typp);
+    ret = _RDB_get_cat_type(name, txp, typp);
+    if (ret != RDB_OK)
+        return ret;
+
+    return RDB_hashmap_put(&txp->dbp->dbrootp->typemap, name, typp,
+            sizeof (RDB_type *));
 }
 
 int
@@ -395,11 +413,23 @@ _RDB_sys_select(const char *name, int argc, RDB_object *argv[],
         return RDB_INVALID_ARGUMENT;
 
     RDB_destroy_obj(retvalp);
-    _RDB_set_obj_type(retvalp, typ);
-    ret = _RDB_copy_obj(retvalp, argv[0]);
-    if (ret != RDB_OK)
-        return ret;
+    if (argc == 1) {
+        _RDB_set_obj_type(retvalp, typ);
+        ret = _RDB_copy_obj(retvalp, argv[0]);
+        if (ret != RDB_OK)
+            return ret;
+    } else {
+        int i;
 
+        RDB_init_obj(retvalp);
+        retvalp->typ = typ;
+        for (i = 0; i < argc; i++) {
+            ret = RDB_tuple_set(retvalp, typ->var.scalar.repv[0].compv[i].name,
+                    argv[i]);
+            if (ret != RDB_OK)
+                return ret;
+        }
+    }
     return RDB_OK;
 }
 
@@ -421,61 +451,48 @@ RDB_implement_type(const char *name, RDB_type *arep,
          * No actual rep given, so selector and getters/setters must be provided
          * by the system
          */
-        RDB_table *tmptb1p;
-        RDB_table *tmptb2p;
-        RDB_object tpl;
-        char *possrepname;
         RDB_type *typ;
         RDB_type **argtv;
+        int compc;
+        int i;
 
         if (arep != NULL)
             return RDB_INVALID_ARGUMENT;
 
-        /* # of possreps must be one */
-        ret = _RDB_possreps_query(name, txp, &tmptb1p);
-        if (ret != RDB_OK)
-            return ret;
-        RDB_init_obj(&tpl);
-        ret = RDB_extract_tuple(tmptb1p, &tpl, txp);
-        RDB_drop_table(tmptb1p, txp);
-        if (ret != RDB_OK) {
-            RDB_destroy_obj(&tpl);
-            return ret;
-        }
-        possrepname = RDB_tuple_get_string(&tpl, "POSSREPNAME");
-
-        /* only 1 possrep component currently supported */
-        ret = _RDB_possrepcomps_query(name, possrepname, txp, &tmptb2p);
-        if (ret != RDB_OK) {
-            RDB_destroy_obj(&tpl);
-            return ret;
-        }
-        ret = RDB_extract_tuple(tmptb2p, &tpl, txp);
-        RDB_drop_table(tmptb2p, txp);
-        if (ret != RDB_OK) {
-            RDB_destroy_obj(&tpl);
-            return ret == RDB_INVALID_ARGUMENT ? RDB_NOT_SUPPORTED : ret;
-        }
-        ret = RDB_get_type(RDB_tuple_get_string(&tpl, "COMPTYPENAME"), txp, &arep);
-        RDB_destroy_obj(&tpl);
-        if (ret != RDB_OK)
-            return ret;
-
-        /* Create selector */
         ret = RDB_get_type(name, txp, &typ);
         if (ret != RDB_OK)
             return ret;
 
-        argtv = malloc(sizeof(RDB_type *));
+        /* # of possreps must be one */
+        if (typ->var.scalar.repc != 1)
+            return RDB_INVALID_ARGUMENT;
+
+        compc = typ->var.scalar.repv[0].compc;
+        if (compc == 1) {
+            arep = typ->var.scalar.repv[0].compv[0].typ;
+        } else {
+            /* More than one component, so internal rep is a tuple */
+            arep = RDB_create_tuple_type(typ->var.scalar.repv[0].compc,
+                    typ->var.scalar.repv[0].compv);
+        }
+
+        typ->arep = arep;
+        typ->var.scalar.sysimpl = sysimpl;
+
+        /* Create selector */
+        argtv = malloc(sizeof(RDB_type *) * compc);
         if (argtv == NULL)
             return RDB_NO_MEMORY;
-        argtv[0] = arep;
-        ret = RDB_create_ro_op(typ->var.scalar.repv[0].name, 1, argtv, typ,
+        for (i = 0; i < compc; i++)
+            argtv[i] = typ->var.scalar.repv[0].compv[i].typ;
+        ret = RDB_create_ro_op(typ->var.scalar.repv[0].name, compc, argtv, typ,
                 "libduro", "_RDB_sys_select", typ->name, strlen(typ->name) + 1,
                 txp);
         free(argtv);
         if (ret != RDB_OK)
             return ret;
+
+        typ->ireplen = -1;
     } else {
         if (arep != NULL && !RDB_type_is_builtin(arep)) {
             return RDB_NOT_SUPPORTED;
@@ -1029,7 +1046,7 @@ _RDB_get_possrep(RDB_type *typ, const char *repname)
     return &typ->var.scalar.repv[i];
 }
 
-RDB_icomp *
+RDB_attr *
 _RDB_get_icomp(RDB_type *typ, const char *compname)
 {
     int i, j;

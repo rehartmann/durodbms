@@ -26,7 +26,8 @@ set tx [duro::begin $dbenv TEST]
 # Define type NAME. Only rep is a string without leading or trailing blanks
 #
 duro::type define NAME {
-    {NAME {{NAME STRING}} {NOT (NAME MATCHES " .* ")}}
+    {NAME {{NAME STRING}} {NOT ((NAME MATCHES "^ .*") \
+            OR (NAME MATCHES ".* $"))}}
 } $tx
 
 duro::type implement NAME $tx
@@ -36,9 +37,9 @@ duro::table create T1 {
    {NAME NAME}
 } {{NO}} $tx
 
-duro::insert T1 {NO 1 NAME {NAME "Peter Potter"}} $tx
+duro::insert T1 {NO 1 NAME {NAME "Potter"}} $tx
 
-set tpl {NO 2 NAME {NAME " John Johnson"}}
+set tpl {NO 2 NAME {NAME " Johnson"}}
 if {![catch {
     duro::insert T1 $tpl $tx
 }]} {
@@ -47,6 +48,29 @@ if {![catch {
 }
 
 duro::table drop T1 $tx
+
+#
+# Define type PNAME. Only rep is (FIRSTNAME,LASTNAME)
+#
+
+duro::type define PNAME {
+    {PNAME {{FIRSTNAME STRING} {LASTNAME STRING}}}
+} $tx
+
+duro::type implement PNAME $tx
+
+duro::table create T2 {
+   {NO INTEGER}
+   {NAME PNAME}
+} {{NO}} $tx
+
+set tpl {NO 1 NAME {PNAME "Peter" "Potter"}}
+duro::insert T2 $tpl $tx
+
+if {![duro::table contains T2 $tpl $tx]} {
+    puts "T2 should contain $tpl, but does not."
+    exit 2
+}
 
 duro::commit $tx
 
