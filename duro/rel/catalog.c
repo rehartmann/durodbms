@@ -1396,8 +1396,13 @@ _RDB_cat_get_rtable(const char *name, RDB_transaction *txp, RDB_table **tbpp)
     }
 
     attrc = RDB_array_length(&arr);
-    if (attrc > 0)
+    if (attrc > 0) {
         attrv = malloc(sizeof(RDB_attr) * attrc);
+        if (attrv == NULL) {
+            ret = RDB_NO_MEMORY;
+            goto error;
+        }
+    }
     for (i = 0; i < attrc; i++)
         attrv[i].name = NULL;
 
@@ -1460,6 +1465,10 @@ _RDB_cat_get_rtable(const char *name, RDB_transaction *txp, RDB_table **tbpp)
             goto error;
         }
         attrv[i].defaultp = malloc(sizeof (RDB_object));
+        if (attrv[i].defaultp == NULL) {
+            ret = RDB_NO_MEMORY;
+            goto error;
+        }
         RDB_init_obj(attrv[i].defaultp);
         ret = RDB_irep_to_obj(attrv[i].defaultp, attrv[i].typ,
                 binvalp->var.bin.datap, binvalp->var.bin.len);
@@ -1572,8 +1581,7 @@ error:
     if (*tbpp != NULL)
         _RDB_drop_table(*tbpp, RDB_FALSE);
 
-    if (RDB_is_syserr(ret))
-        RDB_rollback_all(txp);    
+    _RDB_handle_syserr(txp, ret);
     return ret;
 }
 
@@ -1867,8 +1875,13 @@ _RDB_cat_get_type(const char *name, RDB_transaction *txp, RDB_type **typp)
         goto error;
     }
     typ->var.scalar.repc = ret;
-    if (ret > 0)
-        typ->var.scalar.repv = malloc(ret * sizeof (RDB_ipossrep));
+    if (ret > 0) {
+        typ->var.scalar.repv = malloc(ret * sizeof (RDB_possrep));
+        if (typ->var.scalar.repv == NULL) {
+            ret = RDB_NO_MEMORY;
+            goto error;
+        }
+    }
     for (i = 0; i < typ->var.scalar.repc; i++)
         typ->var.scalar.repv[i].compv = NULL;
     /*
@@ -1901,10 +1914,15 @@ _RDB_cat_get_type(const char *name, RDB_transaction *txp, RDB_type **typp)
             goto error;
         }
         typ->var.scalar.repv[i].compc = ret;
-        if (ret > 0)
+        if (ret > 0) {
             typ->var.scalar.repv[i].compv = malloc(ret * sizeof (RDB_attr));
-        else
+            if (typ->var.scalar.repv[i].compv == NULL) {
+                ret = RDB_NO_MEMORY;
+                goto error;
+            }
+        } else {
             typ->var.scalar.repv[i].compv = NULL;
+        }
 
         /*
          * Read component data from array and store it in
@@ -2014,8 +2032,7 @@ _RDB_cat_get_ro_op(const char *name, int argc, RDB_type *argtv[],
     RDB_init_obj(&typesobj);
     ret = _RDB_make_typesobj(argc, argtv, &typesobj);
     if (ret != RDB_OK) {
-        if (RDB_is_syserr(ret))
-            RDB_rollback_all(txp);
+        _RDB_handle_syserr(txp, ret);
         RDB_destroy_obj(&typesobj);
         return ret;
     }
@@ -2145,8 +2162,7 @@ _RDB_cat_get_upd_op(const char *name, int argc, RDB_type *argtv[],
     RDB_init_obj(&typesobj);
     ret = _RDB_make_typesobj(argc, argtv, &typesobj);
     if (ret != RDB_OK) {
-        if (RDB_is_syserr(ret))
-            RDB_rollback_all(txp);
+        _RDB_handle_syserr(txp, ret);
         RDB_destroy_obj(&typesobj);
         return ret;
     }
@@ -2162,8 +2178,7 @@ _RDB_cat_get_upd_op(const char *name, int argc, RDB_type *argtv[],
     }
     ret = RDB_select(txp->dbp->dbrootp->upd_ops_tbp, exp, txp, &vtbp);
     if (ret != RDB_OK) {
-        if (RDB_is_syserr(ret))
-            RDB_rollback_all(txp);
+        _RDB_handle_syserr(txp, ret);
         RDB_drop_expr(exp);
         return ret;
     }

@@ -138,8 +138,7 @@ error:
     free(constrp->name);
     free(constrp);
 
-    if (RDB_is_syserr(ret))
-        RDB_rollback_all(txp);
+    _RDB_handle_syserr(txp, ret);
     return ret;
 }
 
@@ -185,8 +184,7 @@ RDB_drop_constraint(const char *name, RDB_transaction *txp)
     ret = RDB_delete(dbrootp->constraints_tbp, condp, txp);
     RDB_drop_expr(condp);
 
-    if (RDB_is_syserr(ret))
-        RDB_rollback_all(txp);
+    _RDB_handle_syserr(txp, ret);
     return ret;
 }
 

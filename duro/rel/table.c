@@ -1,9 +1,9 @@
 /*
+ * $Id$
+ *
  * Copyright (C) 2003-2005 René Hartmann.
  * See the file COPYING for redistribution information.
  */
-
-/* $Id$ */
 
 #include "rdb.h"
 #include "typeimpl.h"
@@ -506,9 +506,7 @@ RDB_all(RDB_table *tbp, const char *attrname, RDB_transaction *txp,
 
     ret = RDB_table_to_array(&arr, tbp, 0, NULL, txp);
     if (ret != RDB_OK) {
-        if (RDB_is_syserr(ret)) {
-            RDB_rollback_all(txp);
-        }
+        _RDB_handle_syserr(txp, ret);
         RDB_destroy_obj(&arr);
         return ret;
     }
@@ -521,9 +519,7 @@ RDB_all(RDB_table *tbp, const char *attrname, RDB_transaction *txp,
 
     if (ret != RDB_NOT_FOUND) {
         RDB_destroy_obj(&arr);
-        if (RDB_is_syserr(ret)) {
-            RDB_rollback_all(txp);
-        }
+        _RDB_handle_syserr(txp, ret);
         return ret;
     }
 
@@ -562,9 +558,7 @@ RDB_any(RDB_table *tbp, const char *attrname, RDB_transaction *txp,
 
     ret = RDB_table_to_array(&arr, tbp, 0, NULL, txp);
     if (ret != RDB_OK) {
-        if (RDB_is_syserr(ret)) {
-            RDB_rollback_all(txp);
-        }
+        _RDB_handle_syserr(txp, ret);
         RDB_destroy_obj(&arr);
         return ret;
     }
@@ -577,9 +571,7 @@ RDB_any(RDB_table *tbp, const char *attrname, RDB_transaction *txp,
 
     if (ret != RDB_NOT_FOUND) {
         RDB_destroy_obj(&arr);
-        if (RDB_is_syserr(ret)) {
-            RDB_rollback_all(txp);
-        }
+        _RDB_handle_syserr(txp, ret);
         return ret;
     }
 
@@ -624,9 +616,7 @@ RDB_max(RDB_table *tbp, const char *attrname, RDB_transaction *txp,
 
     ret = RDB_table_to_array(&arr, tbp, 0, NULL, txp);
     if (ret != RDB_OK) {
-        if (RDB_is_syserr(ret)) {
-            RDB_rollback_all(txp);
-        }
+        _RDB_handle_syserr(txp, ret);
         RDB_destroy_obj(&arr);
         return ret;
     }
@@ -648,9 +638,7 @@ RDB_max(RDB_table *tbp, const char *attrname, RDB_transaction *txp,
 
     if (ret != RDB_NOT_FOUND) {
         RDB_destroy_obj(&arr);
-        if (RDB_is_syserr(ret)) {
-            RDB_rollback_all(txp);
-        }
+        _RDB_handle_syserr(txp, ret);
         return ret;
     }
 
@@ -695,9 +683,7 @@ RDB_min(RDB_table *tbp, const char *attrname, RDB_transaction *txp,
 
     ret = RDB_table_to_array(&arr, tbp, 0, NULL, txp);
     if (ret != RDB_OK) {
-        if (RDB_is_syserr(ret)) {
-            RDB_rollback_all(txp);
-        }
+        _RDB_handle_syserr(txp, ret);
         RDB_destroy_obj(&arr);
         return ret;
     }
@@ -719,9 +705,7 @@ RDB_min(RDB_table *tbp, const char *attrname, RDB_transaction *txp,
 
     if (ret != RDB_NOT_FOUND) {
         RDB_destroy_obj(&arr);
-        if (RDB_is_syserr(ret)) {
-            RDB_rollback_all(txp);
-        }
+        _RDB_handle_syserr(txp, ret);
         return ret;
     }
 
@@ -766,9 +750,7 @@ RDB_sum(RDB_table *tbp, const char *attrname, RDB_transaction *txp,
 
     ret = RDB_table_to_array(&arr, tbp, 0, NULL, txp);
     if (ret != RDB_OK) {
-        if (RDB_is_syserr(ret)) {
-            RDB_rollback_all(txp);
-        }
+        _RDB_handle_syserr(txp, ret);
         RDB_destroy_obj(&arr);
         return ret;
     }
@@ -784,9 +766,7 @@ RDB_sum(RDB_table *tbp, const char *attrname, RDB_transaction *txp,
 
     if (ret != RDB_NOT_FOUND) {
         RDB_destroy_obj(&arr);
-        if (RDB_is_syserr(ret)) {
-            RDB_rollback_all(txp);
-        }
+        _RDB_handle_syserr(txp, ret);
         return ret;
     }
 
@@ -827,9 +807,7 @@ RDB_avg(RDB_table *tbp, const char *attrname, RDB_transaction *txp,
 
     ret = RDB_table_to_array(&arr, tbp, 0, NULL, txp);
     if (ret != RDB_OK) {
-        if (RDB_is_syserr(ret)) {
-            RDB_rollback_all(txp);
-        }
+        _RDB_handle_syserr(txp, ret);
         RDB_destroy_obj(&arr);
         return ret;
     }
@@ -844,9 +822,7 @@ RDB_avg(RDB_table *tbp, const char *attrname, RDB_transaction *txp,
     }
     if (ret != RDB_NOT_FOUND) {
         RDB_destroy_obj(&arr);
-        if (RDB_is_syserr(ret)) {
-            RDB_rollback_all(txp);
-        }
+        _RDB_handle_syserr(txp, ret);
         return ret;
     }
 
@@ -873,9 +849,7 @@ RDB_extract_tuple(RDB_table *tbp, RDB_transaction *txp, RDB_object *tplp)
     if (ret != RDB_OK) {
         if (ntbp->kind != RDB_TB_REAL)
             RDB_drop_table(ntbp, txp);
-        if (RDB_is_syserr(ret)) {
-            RDB_rollback_all(txp);
-        }
+        _RDB_handle_syserr(txp, ret);
         return ret;
     }
 
@@ -907,9 +881,8 @@ cleanup:
         if (ret2 != RDB_OK)
             ret = ret2;
     }
-    if (RDB_is_syserr(ret) || RDB_is_syserr(ret2)) {
-        RDB_rollback_all(txp);
-    }
+    _RDB_handle_syserr(txp, ret);
+    _RDB_handle_syserr(txp, ret2);
     return ret;
 }
 
@@ -925,9 +898,7 @@ RDB_table_is_empty(RDB_table *tbp, RDB_transaction *txp, RDB_bool *resultp)
 
     ret = _RDB_table_qresult(tbp, txp, &qrp);
     if (ret != RDB_OK) {
-        if (RDB_is_syserr(ret)) {
-            RDB_rollback_all(txp);
-        }
+        _RDB_handle_syserr(txp, ret);
         return ret;
     }
 
@@ -941,8 +912,7 @@ RDB_table_is_empty(RDB_table *tbp, RDB_transaction *txp, RDB_bool *resultp)
     else {
          RDB_destroy_obj(&tpl);
         _RDB_drop_qresult(qrp, txp);
-        if (RDB_is_syserr(ret))
-            RDB_rollback_all(txp);
+        _RDB_handle_syserr(txp, ret);
         return ret;
     }
     RDB_destroy_obj(&tpl);
@@ -969,9 +939,7 @@ RDB_cardinality(RDB_table *tbp, RDB_transaction *txp)
     if (ret != RDB_OK) {
         if (ntbp->kind != RDB_TB_REAL)
             RDB_drop_table(ntbp, txp);
-        if (RDB_is_syserr(ret)) {
-            RDB_rollback_all(txp);
-        }
+        _RDB_handle_syserr(txp, ret);
         return ret;
     }
 
@@ -981,9 +949,7 @@ RDB_cardinality(RDB_table *tbp, RDB_transaction *txp)
         if (ntbp->kind != RDB_TB_REAL)
             RDB_drop_table(ntbp, txp);
         _RDB_drop_qresult(qrp, txp);
-        if (RDB_is_syserr(ret)) {
-            RDB_rollback_all(txp);
-        }
+        _RDB_handle_syserr(txp, ret);
         return ret;
     }
 
@@ -1017,8 +983,7 @@ RDB_cardinality(RDB_table *tbp, RDB_transaction *txp)
 error:
     if (ntbp->kind != RDB_TB_REAL)
         RDB_drop_table(ntbp, txp);
-    if (RDB_is_syserr(ret))
-        RDB_rollback_all(txp);
+     _RDB_handle_syserr(txp, ret);
     return ret;
 }
 
@@ -1038,9 +1003,7 @@ RDB_subset(RDB_table *tb1p, RDB_table *tb2p, RDB_transaction *txp,
 
     ret = _RDB_table_qresult(tb1p, txp, &qrp);
     if (ret != RDB_OK) {
-        if (RDB_is_syserr(ret)) {
-            RDB_rollback_all(txp);
-        }
+        _RDB_handle_syserr(txp, ret);
         return ret;
     }
 
@@ -1054,9 +1017,7 @@ RDB_subset(RDB_table *tb1p, RDB_table *tb2p, RDB_transaction *txp,
             break;
         }
         if (ret != RDB_OK) {
-            if (RDB_is_syserr(ret)) {
-                RDB_rollback_all(txp);
-            }
+            _RDB_handle_syserr(txp, ret);
             RDB_destroy_obj(&tpl);
             _RDB_drop_qresult(qrp, txp);
             goto error;
@@ -1074,8 +1035,7 @@ RDB_subset(RDB_table *tb1p, RDB_table *tb2p, RDB_transaction *txp,
     return RDB_OK;
 
 error:
-    if (RDB_is_syserr(ret))
-        RDB_rollback_all(txp);
+    _RDB_handle_syserr(txp, ret);
     return ret;
 }
 
@@ -1139,8 +1099,8 @@ error:
 }
 
 /*
- * If there is an index by which the tuples are ordered
- * when read through a qresult.
+ * If the tuples are sorted by an ordered index when read using
+ * a table qresult, return the index, otherwise NULL.
  */
 struct _RDB_tbindex *
 _RDB_sortindex (RDB_table *tbp)

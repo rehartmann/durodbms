@@ -105,7 +105,7 @@ _RDB_insert_real(RDB_table *tbp, const RDB_object *tplp,
         if (txp != NULL) {
             RDB_errmsg(txp->dbp->dbrootp->envp, "cannot insert record: %s",
                     RDB_strerror(ret));
-            RDB_rollback_all(txp);
+            _RDB_handle_syserr(txp, ret);
         }
     } else if (ret == RDB_KEY_VIOLATION) {
         /* check if the tuple is an element of the table */

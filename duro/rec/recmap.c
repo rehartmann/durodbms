@@ -232,7 +232,8 @@ RDB_delete_recmap(RDB_recmap *rmp, DB_TXN *txid)
         goto cleanup;
 
     if (rmp->envp != NULL && rmp->namp != NULL) {
-        ret = rmp->envp->envp->dbremove(rmp->envp->envp, txid, rmp->filenamp, rmp->namp, 0);
+        ret = rmp->envp->envp->dbremove(rmp->envp->envp, txid, rmp->filenamp,
+                rmp->namp, 0);
     }
 
 cleanup:
@@ -514,13 +515,6 @@ RDB_insert_rec(RDB_recmap *rmp, RDB_field flds[], DB_TXN *txid)
     ret = data_to_DBT(rmp, flds, &data);
     if (ret != RDB_OK)
         return ret;
-
-#ifdef DEBUG
-    printf("storing key:\n");
-    _RDB_dump(key.data, key.size);
-    printf("storing data:\n");
-    _RDB_dump(data.data, data.size);
-#endif
 
     ret = rmp->dbp->put(rmp->dbp, txid, &key, &data,
             rmp->dup_keys ? 0 : DB_NOOVERWRITE);

@@ -112,7 +112,7 @@ typedef struct RDB_type {
         } tuple;
         struct {
             int repc;
-            struct RDB_ipossrep *repv;
+            RDB_possrep *repv;
 
             /* RDB_TRUE if selector/getters/setters are provided by the system */
             RDB_bool sysimpl; 

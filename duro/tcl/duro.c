@@ -1,9 +1,9 @@
 /*
+ * $Id$
+ *
  * Copyright (C) 2003-2005 René Hartmann.
  * See the file COPYING for redistribution information.
  */
-
-/* $Id$ */
 
 #include "duro.h"
 #include <rel/rdb.h>
@@ -430,7 +430,7 @@ call_selector(Tcl_Interp *interp, Tcl_Obj *tobjp, RDB_type *typ,
     Tcl_Obj *nametobjp;
     RDB_object **argpv;
     RDB_object *argv;
-    RDB_ipossrep *irep;
+    RDB_possrep *irep;
     char *selname;
 
     ret = Tcl_ListObjLength(interp, tobjp, &llen);
@@ -745,7 +745,7 @@ uobj_to_list(Tcl_Interp *interp, const RDB_object *objp, RDB_transaction *txp)
     RDB_object comp;
     Tcl_Obj *tcomp;
     Tcl_Obj *listobjp = Tcl_NewListObj(0, NULL);
-    RDB_ipossrep *rep = &objp->typ->var.scalar.repv[0];
+    RDB_possrep *rep = &objp->typ->var.scalar.repv[0];
 
     /* Convert object to its first possible representation */
 

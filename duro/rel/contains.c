@@ -154,8 +154,7 @@ ungroup_contains(RDB_table *tbp, const RDB_object *tplp, RDB_transaction *txp)
         ret = _RDB_table_qresult(seltbp, txp, &qrp);
         if (ret != RDB_OK) {
             RDB_drop_table(seltbp, txp);
-            if (RDB_is_syserr(ret))
-                RDB_rollback_all(txp);
+            _RDB_handle_syserr(txp, ret);
             return ret;
         }
     } else {
@@ -164,8 +163,7 @@ ungroup_contains(RDB_table *tbp, const RDB_object *tplp, RDB_transaction *txp)
          */
         ret = _RDB_table_qresult(tbp->var.ungroup.tbp, txp, &qrp);
         if (ret != RDB_OK) {
-            if (RDB_is_syserr(ret))
-                RDB_rollback_all(txp);
+            _RDB_handle_syserr(txp, ret);
             return ret;
         }
     }
@@ -185,23 +183,20 @@ ungroup_contains(RDB_table *tbp, const RDB_object *tplp, RDB_transaction *txp)
         }
     }
     if (ret != RDB_OK && ret != RDB_NOT_FOUND) {
-        if (RDB_is_syserr(ret))
-            RDB_rollback_all(txp);
+        _RDB_handle_syserr(txp, ret);
         goto error;
     }
 
     RDB_destroy_obj(&tpl);
     ret2 = _RDB_drop_qresult(qrp, txp);
     if (ret2 != RDB_OK) {
-        if (RDB_is_syserr(ret))
-            RDB_rollback_all(txp);
+        _RDB_handle_syserr(txp, ret2);
         return ret2;
     }    
     if (seltbp != NULL) {
         ret2 = RDB_drop_table(seltbp, txp);
         if (ret2 != RDB_OK) {
-            if (RDB_is_syserr(ret))
-                RDB_rollback_all(txp);
+            _RDB_handle_syserr(txp, ret);
             return ret2;
         }
     }
@@ -321,7 +316,7 @@ stored_contains(RDB_table *tbp, const RDB_object *tplp, RDB_transaction *txp)
     free(fvp);
     if (RDB_is_syserr(ret)) {
         RDB_errmsg(txp->dbp->dbrootp->envp, RDB_strerror(ret));
-        RDB_rollback_all(txp);
+        _RDB_handle_syserr(txp, ret);
     }
     return ret;
 }
@@ -387,9 +382,7 @@ RDB_table_contains(RDB_table *tbp, const RDB_object *tplp, RDB_transaction *txp)
                 if (ret != RDB_OK) {
                     RDB_errmsg(txp->dbp->dbrootp->envp,
                             "Unable to create qresult: %s", RDB_strerror(ret));
-                    if (RDB_is_syserr(ret)) {
-                        RDB_rollback_all(txp);
-                    }
+                    _RDB_handle_syserr(txp, ret);
                     return ret;
                 }
 
@@ -400,9 +393,7 @@ RDB_table_contains(RDB_table *tbp, const RDB_object *tplp, RDB_transaction *txp)
                     RDB_errmsg(txp->dbp->dbrootp->envp,
                             "_RDB_qresult_contains() failed: %s",
                             RDB_strerror(ret2));
-                    if (RDB_is_syserr(ret2)) {
-                        RDB_rollback_all(txp);
-                    }
+                    _RDB_handle_syserr(txp, ret2);
                     return ret2;
                 }
 
@@ -410,9 +401,7 @@ RDB_table_contains(RDB_table *tbp, const RDB_object *tplp, RDB_transaction *txp)
                 if (ret != RDB_OK) {
                     RDB_errmsg(txp->dbp->dbrootp->envp,
                             "Unable to drop qresult: %s", RDB_strerror(ret));
-                    if (RDB_is_syserr(ret)) {
-                        RDB_rollback_all(txp);
-                    }
+                    _RDB_handle_syserr(txp, ret);
                     return ret;
                 }
                 return ret2;

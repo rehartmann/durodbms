@@ -1,9 +1,9 @@
 /*
- * Copyright (C) 2003, 2004 René Hartmann.
+ * $Id$
+ *
+ * Copyright (C) 2003-2005 René Hartmann.
  * See the file COPYING for redistribution information.
  */
-
-/* $Id$ */
 
 #include "errors.h"
 #include <db.h>
@@ -27,11 +27,13 @@ RDB_strerror(int err)
         case RDB_SYSTEM_ERROR:
             return "system error";
         case RDB_DEADLOCK:
-            return "deadlock occured";
+            return "deadlock detected";
         case RDB_INTERNAL:
             return "internal error";
         case RDB_RESOURCE_NOT_FOUND:
             return "resource not found";
+        case RDB_LOCK_NOT_GRANTED:
+            return "lock not granted";
 
         case RDB_INVALID_ARGUMENT:
             return "invalid argument";
@@ -83,6 +85,9 @@ RDB_convert_err(int err)
             break;
         case DB_LOCK_DEADLOCK:
             err = RDB_DEADLOCK;
+            break;
+        case DB_LOCK_NOTGRANTED:
+            err = RDB_LOCK_NOT_GRANTED;
             break;
         case EINVAL:
             err = RDB_INTERNAL;

@@ -2,11 +2,11 @@
 #define RDB_ERRORS_H
 
 /*
- * Copyright (C) 2003, 2004 René Hartmann.
+ * $Id$
+ *
+ * Copyright (C) 2003-2005 René Hartmann.
  * See the file COPYING for redistribution information.
  */
-
-/* $Id$ */
 
 enum {
     RDB_OK = 0,
@@ -17,6 +17,7 @@ enum {
     RDB_DEADLOCK = -104,
     RDB_INTERNAL = -105,
     RDB_RESOURCE_NOT_FOUND = - 106,
+    RDB_LOCK_NOT_GRANTED = -107,
 
     RDB_INVALID_ARGUMENT = -200,
     RDB_NOT_FOUND = -201,

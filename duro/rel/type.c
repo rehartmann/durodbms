@@ -1,9 +1,9 @@
 /*
- * Copyright (C) 2003, 2004 René Hartmann.
+ * $Id$
+ *
+ * Copyright (C) 2003-2005 René Hartmann.
  * See the file COPYING for redistribution information.
  */
-
-/* $Id$ */
 
 #include "rdb.h"
 #include "typeimpl.h"
@@ -446,8 +446,7 @@ error:
     RDB_destroy_obj(&conval);    
     RDB_destroy_obj(&tpl);
 
-    if (RDB_is_syserr(ret))
-        RDB_rollback_all(txp);
+    _RDB_handle_syserr(txp, ret);
 
     return ret;
 }
@@ -460,7 +459,7 @@ _RDB_sys_select(const char *name, int argc, RDB_object *argv[],
 {
     int ret;
     RDB_type *typ;
-    RDB_ipossrep *prp;
+    RDB_possrep *prp;
 
     ret = RDB_get_type((char *) iargp, txp, &typ);
     if (ret != RDB_OK)
@@ -612,8 +611,7 @@ cleanup:
     }
     RDB_drop_expr(wherep);
 
-    if (RDB_is_syserr(ret))
-        RDB_rollback_all(txp);
+    _RDB_handle_syserr(txp, ret);
 
     return ret;
 }
@@ -644,8 +642,7 @@ RDB_drop_type(RDB_type *typ, RDB_transaction *txp)
         ret = RDB_hashmap_put(&txp->dbp->dbrootp->typemap, typ->name, &ntp,
                 sizeof (ntp));
         if (ret != RDB_OK) {
-            if (RDB_is_syserr(ret))
-                RDB_rollback_all(txp);
+            _RDB_handle_syserr(txp, ret);
             return ret;
         }
 
@@ -1098,7 +1095,7 @@ RDB_rename_relation_type(const RDB_type *typ, int renc, const RDB_renaming renv[
     return RDB_OK;
 }
 
-RDB_ipossrep *
+RDB_possrep *
 _RDB_get_possrep(RDB_type *typ, const char *repname)
 {
     int i;

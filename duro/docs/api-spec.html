@@ -348,7 +348,7 @@ does not appear in <var>attrv</var>, etc.
 </dl>
 
 <p>The call may also fail for a <a href="#syserr">system error</a>,
-in which case the transaction is implicitly rolled back.
+in which case the transaction may be implicitly rolled back.
 
 <hr>
 
@@ -382,7 +382,7 @@ RDB_table structure in <var>tbpp</var>.
 </dl>
 
 <p>The call may also fail for a <a href="#syserr">system error</a>,
-in which case the transaction is implicitly rolled back.
+in which case the transaction may be implicitly rolled back.
 
 <hr>
 
@@ -416,7 +416,7 @@ does not point to a running transaction.
 </dl>
 
 <p>The call may also fail for a <a href="#syserr">system error</a>,
-in which case the transaction is implicitly rolled back.
+in which case the transaction may be implicitly rolled back.
 
 <hr>
 
@@ -486,7 +486,7 @@ RDB_set_table_name(RDB_table *tbp, const char *name, RDB_transaction *txp);
 </dl>
 
 <p>The call may also fail for a <a href="#syserr">system error</a>,
-in which case the transaction is implicitly rolled back.
+in which case the transaction may be implicitly rolled back.
 
 <hr>
 
@@ -522,7 +522,7 @@ refers to a non-existing operator.
 </dl>
 
 <p>The call may also fail for a <a href="#syserr">system error</a>,
-in which case the transaction is implicitly rolled back.
+in which case the transaction may be implicitly rolled back.
 
 <hr>
 
@@ -565,7 +565,7 @@ database the transaction specified by <var>txp</var> interacts with.
 </dl>
 
 <p>The call may also fail for a <a href="#syserr">system error</a>,
-in which case the transaction is implicitly rolled back.
+in which case the transaction may be implicitly rolled back.
 
 <hr>
 
@@ -600,7 +600,7 @@ with.
 </dl>
 
 <p>The call may also fail for a <a href="#syserr">system error</a>,
-in which case the transaction is implicitly rolled back.
+in which case the transaction may be implicitly rolled back.
 
 <h3>Notes</h3>
 
@@ -644,7 +644,7 @@ refers to a non-existing operator.
 </dl>
 
 <p>The call may also fail for a <a href="#syserr">system error</a>,
-in which case the transaction is implicitly rolled back.
+in which case the transaction may be implicitly rolled back.
 
 <hr>
 
@@ -712,7 +712,7 @@ and stores the result at the location pointed to by <var>resultp</var>.
 </dl>
 
 <p>The call may also fail for a <a href="#syserr">system error</a>,
-in which case the transaction is implicitly rolled back.
+in which case the transaction may be implicitly rolled back.
 
 <hr>
 
@@ -752,7 +752,7 @@ type BOOLEAN.
 </dl>
 
 <p>The call may also fail for a <a href="#syserr">system error</a>,
-in which case the transaction is implicitly rolled back.
+in which case the transaction may be implicitly rolled back.
 
 <hr>
 
@@ -793,7 +793,7 @@ pointed to by <var>resultp</var>.
 </dl>
 
 <p>The call may also fail for a <a href="#syserr">system error</a>,
-in which case the transaction is implicitly rolled back.
+in which case the transaction may be implicitly rolled back.
 
 <hr>
 
@@ -827,7 +827,7 @@ refers to a non-existing operator.
 </dl>
 
 <p>The call may also fail for a <a href="#syserr">system error</a>,
-in which case the transaction is implicitly rolled back.
+in which case the transaction may be implicitly rolled back.
 
 <hr>
 
@@ -866,7 +866,7 @@ and the result is of the same type as the attribute.
 </dl>
 
 <p>The call may also fail for a <a href="#syserr">system error</a>,
-in which case the transaction is implicitly rolled back.
+in which case the transaction may be implicitly rolled back.
 
 <hr>
 
@@ -905,7 +905,7 @@ and the result is of the same type as the attribute.
 </dl>
 
 <p>The call may also fail for a <a href="#syserr">system error</a>,
-in which case the transaction is implicitly rolled back.
+in which case the transaction may be implicitly rolled back.
 
 <hr>
 
@@ -944,7 +944,7 @@ and the result is of the same type as the attribute.
 </dl>
 
 <p>The call may also fail for a <a href="#syserr">system error</a>,
-in which case the transaction is implicitly rolled back.
+in which case the transaction may be implicitly rolled back.
 
 <hr>
 
@@ -978,7 +978,7 @@ refers to a non-existing operator.
 </dl>
 
 <p>The call may also fail for a <a href="#syserr">system error</a>,
-in which case the transaction is implicitly rolled back.
+in which case the transaction may be implicitly rolled back.
 
 <hr>
 
@@ -1031,7 +1031,7 @@ refers to a non-existing operator.
 </dl>
 
 <p>The call may also fail for a <a href="#syserr">system error</a>,
-in which case the transaction is implicitly rolled back.
+in which case the transaction may be implicitly rolled back.
 
 <hr>
 
@@ -1106,7 +1106,7 @@ refers to a non-existing operator.
 </dl>
 
 <p>The call may also fail for a <a href="#syserr">system error</a>,
-in which case the transaction is implicitly rolled back.
+in which case the transaction may be implicitly rolled back.
 
 <hr>
 
@@ -1152,7 +1152,7 @@ refers to a non-existing operator.
 </dl>
 
 <p>The call may also fail for a <a href="#syserr">system error</a>,
-in which case the transaction is implicitly rolled back.
+in which case the transaction may be implicitly rolled back.
 
 <hr>
 
@@ -1190,7 +1190,7 @@ refers to a non-existing operator.
 </dl>
 
 <p>The call may also fail for a <a href="#syserr">system error</a>,
-in which case the transaction is implicitly rolled back.
+in which case the transaction may be implicitly rolled back.
 
 <hr>
 
@@ -1226,7 +1226,7 @@ refers to a non-existing operator.
 </dl>
 
 <p>The call may also fail for a <a href="#syserr">system error</a>,
-in which case the transaction is implicitly rolled back.
+in which case the transaction may be implicitly rolled back.
 
 <hr>
 
@@ -1332,6 +1332,9 @@ automatically dropped when the table is dropped.
 <dt>RDB_INVALID_ARGUMENT
 <dd>An invalid attribute name has been specified.
 </dl>
+
+<p>The call may also fail for a <a href="#syserr">system error</a>,
+in which case the transaction may be implicitly rolled back.
 
 <hr>
 
@@ -2970,7 +2973,7 @@ refers to a non-existing operator.
 </dl>
 
 <p>The call may also fail for a <a href="#syserr">system error</a>,
-in which case the transaction is implicitly rolled back.
+in which case the transaction may be implicitly rolled back.
 
 <h3>Notes</h3>
 
@@ -3560,7 +3563,7 @@ as an attribute with the same name as the type.
 </dl>
 
 <p>The call may also fail for a <a href="#syserr">system error</a>,
-in which case the transaction is implicitly rolled back.
+in which case the transaction may be implicitly rolled back.
 
 <hr>
 
@@ -3633,7 +3636,7 @@ and the type was defined with more than one possible representation.
 </dl>
 
 <p>The call may also fail for a <a href="#syserr">system error</a>,
-in which case the transaction is implicitly rolled back.
+in which case the transaction may be implicitly rolled back.
 
 <hr>
 
@@ -3748,7 +3751,7 @@ and stores that pointer at the location pointed to by <var>typp</var>.
 </dl>
 
 <p>The call may also fail for a <a href="#syserr">system error</a>,
-in which case the transaction is implicitly rolled back.
+in which case the transaction may be implicitly rolled back.
 
 <hr>
 
@@ -3783,7 +3786,7 @@ RDB_drop_type(RDB_type *typ, RDB_transaction *txp);
 </dl>
 
 <p>The call may also fail for a <a href="#syserr">system error</a>,
-in which case the transaction is implicitly rolled back.
+in which case the transaction may be implicitly rolled back.
 
 <hr>
 
@@ -3928,7 +3931,7 @@ This can be used to pass code to an interpreter function.
 </dl>
 
 <p>The call may also fail for a <a href="#syserr">system error</a>,
-in which case the transaction is implicitly rolled back.
+in which case the transaction may be implicitly rolled back.
 
 <hr>
 
@@ -3996,7 +3999,7 @@ This can be used to pass code to an interpreter function.
 </dl>
 
 <p>The call may also fail for a <a href="#syserr">system error</a>,
-in which case the transaction is implicitly rolled back.
+in which case the transaction may be implicitly rolled back.
 
 <hr>
 
@@ -4039,7 +4042,7 @@ but it does not match the argument types.
 error code, this code is returned.
 
 <p>The call may also fail for a <a href="#syserr">system error</a>,
-in which case the transaction is implicitly rolled back.
+in which case the transaction may be implicitly rolled back.
 
 <hr>
 
@@ -4076,7 +4079,7 @@ found.
 error code, this code is returned.
 
 <p>The call may also fail for a <a href="#syserr">system error</a>,
-in which case the transaction is implicitly rolled back.
+in which case the transaction may be implicitly rolled back.
 
 <hr>
 
@@ -4108,7 +4111,7 @@ from the database. This affects all overloaded versions.
 </dl>
 
 <p>The call may also fail for a <a href="#syserr">system error</a>,
-in which case the transaction is implicitly rolled back.
+in which case the transaction may be implicitly rolled back.
 
 <hr>
 
@@ -4143,7 +4146,7 @@ on the database the transaction specified by <var>txp</var> interacts with.
 </dl>
 
 <p>The call may also fail for a <a href="#syserr">system error</a>,
-in which case the transaction is implicitly rolled back.
+in which case the transaction may be implicitly rolled back.
 
 <hr>
 
@@ -4174,7 +4177,7 @@ RDB_drop_constraint(const char *name, RDB_transaction *txp);
 </dl>
 
 <p>The call may also fail for a <a href="#syserr">system error</a>,
-in which case the transaction is implicitly rolled back.
+in which case the transaction may be implicitly rolled back.
 
 <hr>
 
@@ -4327,7 +4330,7 @@ RDB_create_table_index(const char *name, RDB_table *tbp, int idxcompc,
 
 <h3>Description</h3>
 
-<p>RDB_create_table_index creates and index with name <var>name</var>
+<p>RDB_create_table_index creates an index with name <var>name</var>
 for the table specified by <var>tbp</var> over the attributes
 specified by <var>idxcompc</var> and <var>idxcompv</var>.
 The <var>flags</var> argument must be either 0 or RDB_ORDERED.
@@ -4351,7 +4354,7 @@ table.
 </dl>
 
 <p>The call may also fail for a <a href="#syserr">system error</a>,
-in which case the transaction is implicitly rolled back.
+in which case the transaction may be implicitly rolled back.
 
 <hr>
 
@@ -4380,7 +4383,7 @@ RDB_drop_table_index(const char *name, RDB_transaction *txp);
 </dl>
 
 <p>The call may also fail for a <a href="#syserr">system error</a>,
-in which case the transaction is implicitly rolled back.
+in which case the transaction may be implicitly rolled back.
 
 <hr>
 
@@ -4544,6 +4547,8 @@ typedef enum {
 <dd>Insufficient memory.
 <dt>RDB_DEADLOCK
 <dd>A deadlock condition was detected.
+<dt>RDB_LOCK_NOT_GRANTED
+<dd>A lock was requested but could not be granted.
 <dt>RDB_INTERNAL
 <dd>Internal error.
 <dt>RDB_RESOURCE_NOT_FOUND
@@ -4757,6 +4762,8 @@ If the operands are strings, the strings will be compared using strcoll().
 <dt>INVALID_ARGUMENT
 <dd>The divisor is zero.
 </dl>
+
+<hr>
 
 <h3 id="op_and">OPERATOR AND</h3>
 

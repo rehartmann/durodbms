@@ -1,9 +1,9 @@
 /*
- * Copyright (C) 2003, 2004 René Hartmann.
+ * $Id$
+ *
+ * Copyright (C) 2003-2005 René Hartmann.
  * See the file COPYING for redistribution information.
  */
-
-/* $Id$ */
 
 #include "rdb.h"
 #include "internal.h"
@@ -244,12 +244,10 @@ _RDB_del_index(RDB_transaction *txp, RDB_index *ixp)
     return RDB_OK;
 }
 
-int
+void
 _RDB_handle_syserr(RDB_transaction *txp, int err)
 {
-    if (err == DB_LOCK_DEADLOCK) {
+    if (err == RDB_DEADLOCK) {
         RDB_rollback_all(txp);
-        err = RDB_DEADLOCK; /* !! */
     }
-    return err;
 }

@@ -1,9 +1,9 @@
 /*
+ * $Id$
+ *
  * Copyright (C) 2004-2005 René Hartmann.
  * See the file COPYING for redistribution information.
  */
-
-/* $Id$ */
 
 #include "duro.h"
 
@@ -67,9 +67,7 @@ Duro_update_cmd(ClientData data, Tcl_Interp *interp, int objc,
         ret = Duro_parse_expr_utf(interp,
                 Tcl_GetString(objv[upd_arg_idx + i * 2 + 1]), statep,
                 txp, &updv[i].exp);
-        if (ret != RDB_OK) {
-            Duro_dberror(interp, ret);
-            ret = TCL_ERROR;
+        if (ret != TCL_OK) {
             goto cleanup;
         }
     }

@@ -341,6 +341,7 @@ RDB_extend(RDB_table *tbp, int attrc, const RDB_virtual_attr attrv[],
         free(attrdefv[i].name);
     free(attrdefv);
     return RDB_OK;
+
 error:
     free(newtbp);
     if (attrdefv != NULL) {
@@ -348,6 +349,7 @@ error:
             free(attrdefv[i].name);
         free(attrdefv);
     }
+    _RDB_handle_syserr(txp, ret);
     return ret;
 }
 

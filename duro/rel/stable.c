@@ -1,11 +1,9 @@
 /*
+ * $Id$
+ *
  * Copyright (C) 2005 René Hartmann.
  * See the file COPYING for redistribution information.
- */
-
-/* $Id$ */
-
-/*
+ *
  * Functions for physical storage of tables
  */
 
@@ -408,8 +406,8 @@ error:
     RDB_destroy_hashmap(&tbp->stp->attrmap);
     free(tbp->stp);
 
-    if (RDB_is_syserr(ret) && txp != NULL)
-        RDB_rollback_all(txp);
+    if (txp != NULL)
+        _RDB_handle_syserr(txp, ret);
     return ret;
 }
 
@@ -470,8 +468,8 @@ error:
     RDB_destroy_hashmap(&tbp->stp->attrmap);
     free(tbp->stp);
 
-    if (RDB_is_syserr(ret) && txp != NULL)
-        RDB_rollback_all(txp);
+    if (txp != NULL)
+        _RDB_handle_syserr(txp, ret);
     return ret;
 }
 
@@ -553,8 +551,7 @@ RDB_create_table_index(const char *name, RDB_table *tbp, int idxcompc,
 
     ret = RDB_begin_tx(&tx, RDB_tx_db(txp), txp);
     if (ret != RDB_OK) {
-        if (RDB_is_syserr(ret))
-            RDB_rollback_all(txp);
+        _RDB_handle_syserr(txp, ret);
         return ret;
     }
 
@@ -574,12 +571,10 @@ RDB_create_table_index(const char *name, RDB_table *tbp, int idxcompc,
     return RDB_commit(&tx);
 
 error:
-    if (RDB_is_syserr(ret))
-        RDB_rollback_all(&tx);
-    else
-        RDB_rollback(&tx);
+    _RDB_handle_syserr(txp, ret);
+    RDB_rollback(&tx);
     tbp->stp->indexv = realloc(tbp->stp->indexv,
-            (--tbp->stp->indexc) * sizeof (_RDB_tbindex));
+            (--tbp->stp->indexc) * sizeof (_RDB_tbindex)); /* !! */
     return ret;
 }
 

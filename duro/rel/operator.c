@@ -1,9 +1,9 @@
 /*
+ * $Id$
+ *
  * Copyright (C) 2004, 2005 René Hartmann.
  * See the file COPYING for redistribution information.
  */
-
-/* $Id$ */
 
 #include "rdb.h"
 #include "internal.h"
@@ -723,8 +723,7 @@ RDB_call_ro_op(const char *name, int argc, RDB_object *argv[],
 
     return RDB_OK;
 error:
-    if (RDB_is_syserr(ret))
-        RDB_rollback_all(txp);
+    _RDB_handle_syserr(txp, ret);
     return ret;
 }
 
@@ -913,8 +912,7 @@ RDB_drop_op(const char *name, RDB_transaction *txp)
         ret = RDB_delete(txp->dbp->dbrootp->ro_ops_tbp, exp, txp);
         if (ret != RDB_OK) {
             RDB_drop_expr(exp);
-            if (RDB_is_syserr(ret))
-                RDB_rollback_all(txp);
+            _RDB_handle_syserr(txp, ret);
             return ret;
         }
     }

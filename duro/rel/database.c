@@ -1,9 +1,9 @@
 /*
+ * $Id$
+ *
  * Copyright (C) 2003-2005 René Hartmann.
  * See the file COPYING for redistribution information.
  */
-
-/* $Id$ */
 
 #include "rdb.h"
 #include "internal.h"
@@ -668,8 +668,7 @@ _RDB_create_table(const char *name, RDB_bool persistent,
         if (ret != RDB_OK) {
             RDB_rollback(&tx);
             _RDB_free_table(*tbpp);
-            if (RDB_is_syserr(ret))
-                RDB_rollback_all(txp);
+            _RDB_handle_syserr(txp, ret);
             return ret;
         }
 
@@ -860,11 +859,9 @@ RDB_set_table_name(RDB_table *tbp, const char *name, RDB_transaction *txp)
                 /* Should not happen */
                 ret = RDB_INTERNAL;
             }
-            RDB_rollback_all(txp);            
+            _RDB_handle_syserr(txp, ret);
             return ret;
         }
-
-
     }
     
     if (tbp->name != NULL)

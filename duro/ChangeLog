@@ -4,9 +4,15 @@ Summary of Changes for Duro
 
 Changes for Duro 0.10
 
+- Type constraints are no longer specified with the possible
+  representation(s).
+
 - Fixed problem with error dialogs in Durotcl.
 
 - Implemented RDB_create_constraint() and RDB_drop_constraint().
+
+- A call failing for a system error no longer always results in
+  an implicit rollback.
 
 Changes for Duro 0.9
 

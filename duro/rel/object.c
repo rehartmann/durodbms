@@ -1,9 +1,9 @@
 /*
+ * $Id$
+ *
  * Copyright (C) 2003-2005 René Hartmann.
  * See the file COPYING for redistribution information.
  */
-
-/* $Id$ */
 
 #include "rdb.h"
 #include "typeimpl.h"
@@ -625,8 +625,8 @@ RDB_destroy_obj(RDB_object *objp)
                         objp->var.arr.txp);
 
                 if (ret != RDB_OK) {
-                    if (RDB_is_syserr(ret) && objp->var.arr.txp != NULL)
-                        RDB_rollback_all(objp->var.arr.txp);
+                    if (objp->var.arr.txp != NULL)
+                        _RDB_handle_syserr(objp->var.arr.txp, ret);
                 }
             }
 

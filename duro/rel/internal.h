@@ -90,12 +90,6 @@ typedef struct RDB_qresult {
     RDB_table *matp;
 } RDB_qresult;
 
-typedef struct RDB_ipossrep {
-    char *name;
-    int compc;
-    RDB_attr *compv;
-} RDB_ipossrep;
-
 typedef int RDB_ro_op_func(const char *name, int argc, RDB_object *argv[],
         const void *iargp, size_t iarglen, RDB_transaction *txp,
         RDB_object *retvalp);
@@ -404,7 +398,7 @@ int
 _RDB_sdivide_preserves(RDB_table *, const RDB_object *tplp, RDB_qresult *qr3p,
         RDB_transaction *);
 
-RDB_ipossrep *
+RDB_possrep *
 _RDB_get_possrep(RDB_type *typ, const char *repname);
 
 RDB_attr *
@@ -493,5 +487,8 @@ _RDB_check_constraints(const RDB_constraint *, RDB_transaction *);
 
 int
 _RDB_insert_real(RDB_table *tbp, const RDB_object *tplp, RDB_transaction *);
+
+void
+_RDB_handle_syserr(RDB_transaction *txp, int err);
 
 #endif

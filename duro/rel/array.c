@@ -1,9 +1,9 @@
 /*
- * Copyright (C) 2003, 2004 René Hartmann.
+ * $Id$
+ *
+ * Copyright (C) 2003-2005 René Hartmann.
  * See the file COPYING for redistribution information.
  */
-
-/* $Id$ */
 
 #include "rdb.h"
 #include "internal.h"
@@ -59,8 +59,7 @@ RDB_table_to_array(RDB_object *arrp, RDB_table *tbp,
     return RDB_OK;
 
 error:
-    if (RDB_is_syserr(ret))
-        RDB_rollback_all(arrp->var.arr.txp);
+    _RDB_handle_syserr(arrp->var.arr.txp, ret);
     return ret;
 }
 
@@ -174,7 +173,7 @@ RDB_array_get(RDB_object *arrp, RDB_int idx, RDB_object **tplpp)
             if (RDB_is_syserr(ret)) {
                 _RDB_drop_qresult(arrp->var.arr.qrp, arrp->var.arr.txp);
                 arrp->var.arr.qrp = NULL;
-                RDB_rollback_all(arrp->var.arr.txp);
+                _RDB_handle_syserr(arrp->var.arr.txp, ret);
             }
             return ret;
         }
@@ -193,7 +192,7 @@ RDB_array_get(RDB_object *arrp, RDB_int idx, RDB_object **tplpp)
         } else if (RDB_is_syserr(ret)) {
             _RDB_drop_qresult(arrp->var.arr.qrp, arrp->var.arr.txp);
             arrp->var.arr.qrp = NULL;
-            RDB_rollback_all(arrp->var.arr.txp);
+            _RDB_handle_syserr(arrp->var.arr.txp, ret);
         }
         return ret;
     }
@@ -227,36 +226,6 @@ RDB_array_length(RDB_object *arrp)
     }
     return arrp->var.arr.length;
 }
-
-/* currently unused
-static int
-detach_array(RDB_object *arrp)
-{
-    int ret;
-
-    if (arrp->var.arr.tbp == NULL)
-        return RDB_OK;
-
-    if (arrp->var.arr.length == -1
-            || arrp->var.arr.length > arrp->var.arr.elemc)
-        return RDB_NOT_SUPPORTED;
-
-    if (arrp->var.arr.qrp != NULL) {
-        ret = _RDB_drop_qresult(arrp->var.arr.qrp,
-                arrp->var.arr.txp);
-        if (ret != RDB_OK) {
-            if (RDB_is_syserr(ret) && arrp->var.arr.txp != NULL)
-                RDB_rollback_all(arrp->var.arr.txp);
-            return ret;
-        }
-        arrp->var.arr.qrp = NULL;
-    }
-
-    arrp->var.arr.tbp = NULL;
-    arrp->var.arr.txp = NULL;
-    return RDB_OK;
-}
-*/
 
 int
 RDB_set_array_length(RDB_object *arrp, RDB_int len)

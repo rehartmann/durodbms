@@ -879,7 +879,6 @@ cleanup:
         _RDB_free_table(tbp);
     if (ntbp != NULL && ntbp->kind != RDB_TB_REAL)
         RDB_drop_table(ntbp, txp);
-    if (RDB_is_syserr(ret))
-        RDB_rollback_all(txp);
+    _RDB_handle_syserr(txp, ret);
     return ret;
 }
