@@ -79,7 +79,7 @@ dist_pkglib_DATA = tcl/util.tcl
 
 INCLUDES = -I$(top_srcdir) -I$(BDB_HOME)/include
 
-dist_check_SCRIPTS = $(TESTS)
+dist_check_SCRIPTS = $(TESTS) tests/testutil.tcl
 
 dist_check_DATA = tests/lstables_output tests/test_2db_output \
 tests/test_aggregate_output tests/test_binary_output tests/test_callop_output \

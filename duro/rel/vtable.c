@@ -253,8 +253,6 @@ RDB_join(RDB_table *tb1p, RDB_table *tb2p, RDB_table **resultpp)
 {
     RDB_table *newtbp;
     int ret;
-    RDB_type *tpltyp1 = tb1p->typ->var.basetyp;
-    RDB_type *tpltyp2 = tb2p->typ->var.basetyp;
 
     newtbp = _RDB_new_table();
     if (newtbp == NULL)
