@@ -203,8 +203,12 @@ RDB_obj_comp(const RDB_object *valp, const char *compname,
                    RDB_object *compvalp)
 {
     int ret;
-    RDB_icomp *comp = _RDB_get_icomp(valp->typ, compname);
+    RDB_icomp *comp;
+    
+    if (!RDB_type_is_scalar(valp->typ) || valp->typ->var.scalar.repc == 0)
+        return RDB_INVALID_ARGUMENT;
 
+    comp = _RDB_get_icomp(valp->typ, compname);
     if (comp->setterp != NULL) {
         return (*(comp->getterp))(valp, compvalp, valp->typ, compname);
     } else {
@@ -287,7 +291,7 @@ RDB_select_obj(RDB_object *valp, RDB_type *typ, const char *repname,
     int ret;
     RDB_bool b;
 
-    if (typ->var.scalar.repc == 0 || !RDB_type_is_scalar(typ))
+    if (!RDB_type_is_scalar(typ) || typ->var.scalar.repc == 0)
         return RDB_INVALID_ARGUMENT;
 
     if (repname == NULL) {

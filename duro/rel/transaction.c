@@ -66,7 +66,7 @@ RDB_commit(RDB_transaction *txp)
     ret = txp->txid->commit(txp->txid, 0);
     txp->txid = NULL;
     
-    return ret;
+    return RDB_convert_err(ret);
 }   
 
 int
@@ -78,6 +78,8 @@ RDB_rollback(RDB_transaction *txp)
         return RDB_INVALID_TRANSACTION;
 
     ret = txp->txid->abort(txp->txid);
+    if (ret != 0)
+        return RDB_convert_err(ret);
 
     /*
      * Delete recmaps scheduled for deletion after abort,

@@ -85,7 +85,7 @@ RDB_array_get_tuple(RDB_array *arrp, RDB_int idx, RDB_tuple *tup)
     return _RDB_next_tuple(arrp->qrp, tup, arrp->txp);
 }
 
-int
+RDB_int
 RDB_array_length(RDB_array *arrp)
 {
     int ret;

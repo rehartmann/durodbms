@@ -88,9 +88,9 @@
 <li><a href="#obj_set_rational">RDB_obj_set_rational</a>
 <li><a href="#obj_set_string">RDB_obj_set_string</a>
 <li><a href="#obj_set_tuple">RDB_obj_set_tuple</a>
-<li><a href="#obj_set_table">RDB_obj_set_table</a>
 <li><a href="#obj_set_comp">RDB_obj_set_comp</a>
 <li><a href="#obj_string">RDB_obj_string</a>
+<li><a href="#obj_tuple">RDB_obj_tuple</a>
 <li><a href="#select_obj">RDB_select_obj</a>
 </ul>
 
@@ -324,7 +324,7 @@ of Duro used. Consult the release notes of that version for details.
 <p>The call may also fail for a <a href="#syserr">system error</a>,
 in which case the transaction is implicitly rolled back.
 
-<hr>
+
 
 <h2 id="get_table">RDB_get_table</h2>
 
@@ -1226,7 +1226,7 @@ RDB_init_tuple(RDB_tuple *);
 
 <p>RDB_init_tuple initializes the tuple variable pointed to by
 <var>tplp</var>. RDB_init_tuple must be called before any other
-operation can be performed on a RDB_tupl variable.
+operation can be performed on a RDB_tuple variable.
 
 <h3>Return value</h3>
 
@@ -1548,14 +1548,15 @@ specified by <var>renc</var> and <var>renv</var>.
 #include &lt;rel/rdb.h&gt;
 
 int
-RDB_wrap_tuple(const RDB_tuple *, int wrapc, <a href="#wrapping">RDB_wrapping</a> wrapv[],
-               RDB_tuple *);
+RDB_wrap_tuple(const RDB_tuple *tplp, int wrapc, <a href="#wrapping">RDB_wrapping</a> wrapv[],
+               RDB_tuple *restplp);
 </pre>
 
 <h3>Description</h3>
 
-<p>RDB_wrap creates a transient virtual table which is the result of a
-tuple WRAP operation.
+<p>RDB_wrap_tuple performs a tuple WRAP operation on the tuple pointed to by
+<var>tplp</var> and stores the result in the variable pointed to by
+<var>restplp</var>.
 
 <h3>Return value</h3>
 
@@ -1569,14 +1570,15 @@ tuple WRAP operation.
 #include &lt;rel/rdb.h&gt;
 
 int
-RDB_unwrap_tuple(const RDB_tuple *, int attrc, const char *attrv[],
+RDB_unwrap_tuple(const RDB_tuple *tplp, int attrc, const char *attrv[],
         RDB_tuple *restplp);
 </pre>
 
 <h3>Description</h3>
 
-<p>RDB_unwrap creates a transient virtual table which is the result of a
-tuple UNWRAP operation.
+<p>RDB_unwrap_tuple performs a tuple UNWRAP operation on the tuple pointed to by
+<var>tplp</var> and stores the result in the variable pointed to by
+<var>restplp</var>.
 
 <h3>Return value</h3>
 
@@ -1595,11 +1597,9 @@ RDB_init_obj(RDB_object *valp);
 
 <h3>Description</h3>
 
-<h3>Return value</h3>
-
-<p>On success, RDB_OK is returned. On failure, an error code is returned.
-
-<h3>Errors</h3>
+<p>RDB_init_obj initializes the variable pointed to by
+<var>valp</var>. RDB_init_obj must be called before any other
+operation can be performed on a RDB_object variable.
 
 <hr>
 
@@ -1728,8 +1728,6 @@ to the boolean value specified by <var>v</var>.
 
 <p>On success, RDB_OK is returned. On failure, an error code is returned.
 
-<h3>Errors</h3>
-
 <hr>
 
 <h2 id="obj_set_int">RDB_obj_set_int</h2>
@@ -1749,8 +1747,6 @@ to the integer value specified by <var>v</var>.
 <h3>Return value</h3>
 
 <p>On success, RDB_OK is returned. On failure, an error code is returned.
-
-<h3>Errors</h3>
 
 <hr>
 
@@ -1772,8 +1768,6 @@ to the rational value specified by <var>v</var>.
 
 <p>On success, RDB_OK is returned. On failure, an error code is returned.
 
-<h3>Errors</h3>
-
 <hr>
 
 <h2 id="obj_set_string">RDB_obj_set_string</h2>
@@ -1787,14 +1781,32 @@ RDB_obj_set_string(RDB_object *valp, const char *str);
 
 <h3>Description</h3>
 
-<p>RDB_obj_set_bool sets the RDB_object pointed to by <var>valp</var>
+<p>RDB_obj_set_string sets the RDB_object pointed to by <var>valp</var>
 to the string value specified by <var>str</var>.
 
 <h3>Return value</h3>
 
 <p>On success, RDB_OK is returned. On failure, an error code is returned.
 
-<h3>Errors</h3>
+<hr>
+
+<h2 id="obj_set_tuple">RDB_obj_set_tuple</h2>
+
+<pre>
+#include &lt;rel/rdb.h&gt;
+
+int
+RDB_obj_set_tuple(RDB_object *valp, const RDB_tuple *tplp);
+</pre>
+
+<h3>Description</h3>
+
+<p>RDB_obj_set_tuple sets the RDB_object pointed to by <var>valp</var>
+to the tuple value specified by <var>tplp</var>.
+
+<h3>Return value</h3>
+
+<p>On success, RDB_OK is returned. On failure, an error code is returned.
 
 <hr>
 
@@ -1851,7 +1863,7 @@ RDB_obj_rational(const RDB_object *valp);
 
 <h3>Description</h3>
 
-<p>RDB_obj_int returns the value of the RDB_object pointed to by
+<p>RDB_obj_rational returns the value of the RDB_object pointed to by
 <var>valp</var> as a RDB_rational. The RDB_object must be of type
 RATIONAL.
 
@@ -1872,12 +1884,33 @@ RDB_obj_string(RDB_object *valp);
 
 <h3>Description</h3>
 
-<p>RDB_obj_int returns a pointer to the value of the RDB_object pointed to by
+<p>RDB_obj_string returns a pointer to the value of the RDB_object pointed to by
 <var>valp</var> as a char *. The RDB_object must be of type STRING.
 
 <h3>Return value</h3>
 
-<p>The value of the RDB_object.
+<p>The string value of the RDB_object.
+
+<hr>
+
+<h2 id="obj_tuple">RDB_obj_tuple</h2>
+
+<pre>
+#include &lt;rel/rdb.h&gt;
+
+RDB_tuple *
+RDB_obj_tuple(RDB_object *valp);
+</pre>
+
+<h3>Description</h3>
+
+<p>RDB_obj_tuple returns a pointer to RDB_tuple variable
+represented by the RDB_object pointed to by <var>valp</var>.
+The RDB_object must be of a tuple type.
+
+<h3>Return value</h3>
+
+<p>A pointer to the RDB_tuple.
 
 <hr>
 
@@ -1893,9 +1926,26 @@ RDB_obj_comp(const RDB_object *valp, const char *compname,
 
 <h3>Description</h3>
 
+<p>RDB_obj_comp copies the value of component <var>compname</var>
+of a possible representation of the variable pointed to by <var>valp</var>
+to the variable pointed to by <var>comp</var>.
+
 <h3>Return value</h3>
 
+<p>On success, RDB_OK is returned. On failure, an error code is returned.
+
 <h3>Errors</h3>
+
+<dl>
+<dt>RDB_INVALID_ARGUMENT
+<dd>The type of the variable pointed to by <var>valp</var> ist not
+a scalar user-defined type.
+</dl>
+
+<p>RDB_obj_comp may also return an error code returned by a
+user-provided getter function.
+
+<p>The call may also fail for a <a href="#syserr">system error</a>.
 
 <hr>
 
@@ -1911,9 +1961,13 @@ RDB_obj_set_comp(RDB_object *valp, const char *compname,
 
 <h3>Description</h3>
 
+<p>RDB_obj_set_comp sets the the value of component <var>compname</var>
+of a possible representation of the variable pointed to by <var>valp</var>
+to the value of the riable pointed to by <var>comp</var>.
+
 <h3>Return value</h3>
 
-<h3>Errors</h3>
+<p>On success, RDB_OK is returned. On failure, an error code is returned.
 
 <hr>
 
@@ -2000,9 +2054,11 @@ RDB_create_db_from_env(const char *name, RDB_environment *envp, RDB_database **d
 
 <h3>Description</h3>
 
+<p>RDB_create_db_from_env creates a database from a database environment.
+
 <h3>Return value</h3>
 
-<h3>Errors</h3>
+<p>On success, RDB_OK is returned. On failure, an error code is returned.
 
 <hr>
 
@@ -2012,14 +2068,18 @@ RDB_create_db_from_env(const char *name, RDB_environment *envp, RDB_database **d
 #include &lt;rel/rdb.h&gt;
 
 int
-RDB_get_db_from_env(const char *name, RDB_environment *, RDB_database **dbpp);
+RDB_get_db_from_env(const char *name, RDB_environment *envp, RDB_database **dbpp);
 </pre>
 
 <h3>Description</h3>
 
+<p>RDB_get_db_from_env obtains a pointer to the database with name
+<var>name</var> in the environment specified by <var>envp</var>
+and stores this pointer at the location pointed to by <var>dbpp</var>.
+
 <h3>Return value</h3>
 
-<h3>Errors</h3>
+<p>On success, RDB_OK is returned. On failure, an error code is returned.
 
 <hr>
 
@@ -2034,9 +2094,13 @@ RDB_release_db(RDB_database *dbp);
 
 <h3>Description</h3>
 
+<p>RDB_release_db informs the system that the pointer <var>dbp</var>
+is no longer used. If the use count for the database drops to zero,
+the RDB_database structure is freed.
+
 <h3>Return value</h3>
 
-<h3>Errors</h3>
+<p>On success, RDB_OK is returned. On failure, an error code is returned.
 
 <hr>
 
@@ -2046,14 +2110,16 @@ RDB_release_db(RDB_database *dbp);
 #include &lt;rel/rdb.h&gt;
 
 int
-RDB_drop_db(const char *name, RDB_environment *);
+RDB_drop_db(RDB_database *dbp);
 </pre>
 
 <h3>Description</h3>
 
+<p>RDB_drop_db deletes the database specified by <var>dbp</var>.
+
 <h3>Return value</h3>
 
-<h3>Errors</h3>
+<p>On success, RDB_OK is returned. On failure, an error code is returned.
 
 <hr>
 
@@ -2062,14 +2128,18 @@ RDB_drop_db(const char *name, RDB_environment *);
 <pre>
 #include &lt;rel/rdb.h&gt;
 
-char *RDB_db_name(RDB_database *dbp)
+char *
+RDB_db_name(RDB_database *dbp)
 </pre>
 
 <h3>Description</h3>
 
+<p>RDB_db_name returns a pointer to the name of the database
+specified by <var>dbp</var>.
+
 <h3>Return value</h3>
 
-<h3>Errors</h3>
+<p>The name of the database.
 
 <hr>
 
@@ -2080,14 +2150,20 @@ char *RDB_db_name(RDB_database *dbp)
 
 int
 RDB_begin_tx(RDB_transaction *txp, RDB_database *dbp,
-        RDB_transaction *parent);
+        RDB_transaction *parentp);
 </pre>
 
 <h3>Description</h3>
 
+<p>RDB_begin_tx starts a transaction which interacts with the
+database specified by <var>dbp</var>.
+
+<p>If <var>parentp</var> is not NULL, the new transaction is
+a subtransaction of the transaction specified by <var>parentp</var>.
+
 <h3>Return value</h3>
 
-<h3>Errors</h3>
+<p>On success, RDB_OK is returned. On failure, an error code is returned.
 
 <hr>
 
@@ -2097,14 +2173,25 @@ RDB_begin_tx(RDB_transaction *txp, RDB_database *dbp,
 #include &lt;rel/rdb.h&gt;
 
 int
-RDB_commit(RDB_transaction *);
+RDB_commit(RDB_transaction *txp);
 </pre>
 
 <h3>Description</h3>
 
+<p>RDB_commit commits the transaction pointed to by <var>txp</var>.
+
 <h3>Return value</h3>
 
+<p>On success, RDB_OK is returned. On failure, an error code is returned.
+
 <h3>Errors</h3>
+
+<dl>
+<dt>RDB_INVALID_TRANSACTION
+<dd><var>txp</var> does not point to a running transaction.
+</dl>
+
+<p>The call may also fail for a <a href="#syserr">system error</a>.
 
 <hr>
 
@@ -2119,9 +2206,21 @@ RDB_rollback(RDB_transaction *);
 
 <h3>Description</h3>
 
+<p>RDB_rollback terminates the transaction pointed to by <var>txp</var>
+and rolls back all changes made by this transaction and its subtrabsactions.
+
 <h3>Return value</h3>
 
+<p>On success, RDB_OK is returned. On failure, an error code is returned.
+
 <h3>Errors</h3>
+
+<dl>
+<dt>RDB_INVALID_TRANSACTION
+<dd><var>txp</var> does not point to a running transaction.
+</dl>
+
+<p>The call may also fail for a <a href="#syserr">system error</a>.
 
 <hr>
 
@@ -2131,14 +2230,17 @@ RDB_rollback(RDB_transaction *);
 #include &lt;rel/rdb.h&gt;
 
 RDB_database *
-RDB_tx_db(RDB_transaction *)
+RDB_tx_db(RDB_transaction *txp)
 </pre>
 
 <h3>Description</h3>
 
+<p>RDB_tx_db determines the database with which the transaction pointed
+to by <var>txp</var> interacts.
+
 <h3>Return value</h3>
 
-<h3>Errors</h3>
+<p>A pointer the RDB_database structure that represents the database.
 
 <hr>
 
@@ -2148,14 +2250,17 @@ RDB_tx_db(RDB_transaction *)
 #include &lt;rel/rdb.h&gt;
 
 RDB_bool
-RDB_tx_is_running(RDB_transaction *);
+RDB_tx_is_running(RDB_transaction *txp);
 </pre>
 
 <h3>Description</h3>
 
+<p>RDB_tx_is_running determines if <var>txp</var> points to a running
+transaction.
+
 <h3>Return value</h3>
 
-<h3>Errors</h3>
+<p>RDB_TRUE if the transaction is running, RDB_FALSE otherwise.
 
 <hr>
 
@@ -2219,6 +2324,8 @@ is specified by <var>seqitv</var>.
 
 <h3>Return value</h3>
 
+<h3>Errors</h3>
+
 <dl>
 <dt>RDB_INVALID_TRANSACTION
 <dd><var>txp</var> does not point to a running transaction.
@@ -2226,8 +2333,6 @@ is specified by <var>seqitv</var>.
 
 <p>The call may also fail for a <a href="#syserr">system error</a>,
 in which case the transaction is implicitly rolled back.
-
-<h3>Errors</h3>
 
 <hr>
 
@@ -2237,14 +2342,17 @@ in which case the transaction is implicitly rolled back.
 #include &lt;rel/rdb.h&gt;
 
 int
-RDB_array_get_tuple(RDB_array *, RDB_int idx, RDB_tuple *);
+RDB_array_get_tuple(RDB_array *, RDB_int idx, RDB_tuple *tplp);
 </pre>
 
 <h3>Description</h3>
 
+<p>RDB_array_get_tuple copies the tuple with index <var>idx</var>
+from the RDB_array to <var>tplp</var>.
+
 <h3>Return value</h3>
 
-<h3>Errors</h3>
+<p>On success, RDB_OK is returned. On failure, an error code is returned.
 
 <hr>
 
@@ -2254,14 +2362,17 @@ RDB_array_get_tuple(RDB_array *, RDB_int idx, RDB_tuple *);
 #include &lt;rel/rdb.h&gt;
 
 int
-RDB_array_set_tuple(RDB_array *, RDB_int idx, const RDB_tuple *);
+RDB_array_set_tuple(RDB_array *, RDB_int idx, const RDB_tuple *tplp);
 </pre>
 
 <h3>Description</h3>
 
+<p>RDB_array_set_tuple copies the tuple pointed to by tplp
+into the RDB_array at index <var>idx</var>.
+
 <h3>Return value</h3>
 
-<h3>Errors</h3>
+<p>On success, RDB_OK is returned. On failure, an error code is returned.
 
 <hr>
 
@@ -2270,15 +2381,18 @@ RDB_array_set_tuple(RDB_array *, RDB_int idx, const RDB_tuple *);
 <pre>
 #include &lt;rel/rdb.h&gt;
 
-int
+RDB_int
 RDB_array_length(RDB_array *);
 </pre>
 
 <h3>Description</h3>
 
+<p>RDB_array_length determines the length of the array.
+
 <h3>Return value</h3>
 
-<h3>Errors</h3>
+<p>The length of the array. A return code lower than zero
+inicates an error.
 
 <hr>
 
@@ -2288,12 +2402,17 @@ RDB_array_length(RDB_array *);
 #include &lt;rel/rdb.h&gt;
 
 int
-RDB_set_array_length(RDB_array *, int len);
+RDB_set_array_length(RDB_array *arrp, int len);
 </pre>
 
 <h3>Description</h3>
 
+<p>RDB_set_array_length sets the length of the array specified by
+<var>arrp</var>.
+
 <h3>Return value</h3>
+
+<p>On success, RDB_OK is returned. On failure, an error code is returned.
 
 <h3>Errors</h3>
 
@@ -2308,13 +2427,15 @@ RDB_expr_type(const RDB_expression *);
 
 <h3>Description</h3>
 
+<p>RDB_expr_type determines the type of an expression.
+
 <h3>Return value</h3>
 
-<h3>Errors</h3>
+The type of the expression.
 
 <hr>
 
-<h2 id="is_const">RDB_is_const</h2>
+<h2 id="expr_is_const">RDB_expr_is_const</h2>
 
 <pre>
 RDB_bool
@@ -2323,7 +2444,11 @@ RDB_expr_is_const(const RDB_expression *);
 
 <h3>Description</h3>
 
+<p>RDB_expr_is_const determines if the expression is a constant expression.
+
 <h3>Return value</h3>
+
+<p>RDB_TRUE if the expression is a constant expression, RDB_FALSE otherwise.
 
 <h3>Errors</h3>
 
@@ -2338,9 +2463,12 @@ RDB_bool_const(RDB_bool);
 
 <h3>Description</h3>
 
+<p>RDB_bool_const creates a constant expression of type BOOLEAN.
+
 <h3>Return value</h3>
 
-<h3>Errors</h3>
+<p>A pointer to the newly created expression, of NULL if the creation
+failed.
 
 <hr>
 
@@ -2353,9 +2481,12 @@ RDB_int_const(RDB_int);
 
 <h3>Description</h3>
 
+<p>RDB_int_const creates a constant expression of type INTEGER.
+
 <h3>Return value</h3>
 
-<h3>Errors</h3>
+<p>A pointer to the newly created expression, of NULL if the creation
+failed.
 
 <hr>
 
@@ -2368,9 +2499,12 @@ RDB_rational_const(RDB_rational);
 
 <h3>Description</h3>
 
+<p>RDB_rational_const creates a constant expression of type RATIONAL.
+
 <h3>Return value</h3>
 
-<h3>Errors</h3>
+<p>A pointer to the newly created expression, of NULL if the creation
+failed.
 
 <hr>
 
@@ -2383,9 +2517,12 @@ RDB_string_const(const char *);
 
 <h3>Description</h3>
 
+<p>RDB_string_const creates a constant expression of type STRING.
+
 <h3>Return value</h3>
 
-<h3>Errors</h3>
+<p>A pointer to the newly created expression, of NULL if the creation
+failed.
 
 <hr>
 
@@ -2398,9 +2535,12 @@ RDB_obj_const(const RDB_object *valp);
 
 <h3>Description</h3>
 
+<p>RDB_obj_const creates a constant expression from a RDB_object.
+
 <h3>Return value</h3>
 
-<h3>Errors</h3>
+<p>A pointer to the newly created expression, of NULL if the creation
+failed.
 
 <hr>
 
@@ -2413,9 +2553,12 @@ RDB_expr_attr(const char *attrname, RDB_type *);
 
 <h3>Description</h3>
 
+<p>RDB_expr_attr creates an expression that represents an attribute.
+
 <h3>Return value</h3>
 
-<h3>Errors</h3>
+<p>A pointer to the newly created expression, of NULL if the creation
+failed.
 
 <hr>
 
@@ -2428,9 +2571,12 @@ RDB_eq(RDB_expression *, RDB_expression *);
 
 <h3>Description</h3>
 
+<p>RDB_eq creates an expression that represents an equality check.
+
 <h3>Return value</h3>
 
-<h3>Errors</h3>
+<p>A pointer to the newly created expression, of NULL if the creation
+failed.
 
 <hr>
 

@@ -321,7 +321,7 @@ typedef struct {
     RDB_transaction *txp;
     struct RDB_qresult *qrp;
     RDB_int pos;
-    int length;	/* length of array; -1 means unknown */
+    RDB_int length;	/* length of array; -1 means unknown */
 } RDB_array;
 
 /*
@@ -716,7 +716,7 @@ RDB_array_get_tuple(RDB_array *, RDB_int idx, RDB_tuple *);
  * Return the length of the array.
  * A return value < 0 indicates an error.
  */
-int
+RDB_int
 RDB_array_length(RDB_array *);
 
 RDB_bool
