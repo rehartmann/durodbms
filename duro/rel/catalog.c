@@ -1675,7 +1675,7 @@ _RDB_possrepcomps_query(const char *name, const char *possrepname,
         return ret;
     }
     exp = wherep;
-    wherep = RDB_ro_op_l("AND", exp, ex2p, (RDB_expression *) NULL);
+    wherep = RDB_ro_op_va("AND", exp, ex2p, (RDB_expression *) NULL);
     if (wherep == NULL) {
         RDB_drop_expr(exp);
         RDB_drop_expr(ex2p);
@@ -1922,7 +1922,7 @@ _RDB_cat_get_ro_op(const char *name, int argc, RDB_type *argtv[],
         return ret;
     }
 
-    exp = RDB_ro_op_l("AND", RDB_eq(RDB_expr_attr("NAME"),
+    exp = RDB_ro_op_va("AND", RDB_eq(RDB_expr_attr("NAME"),
                    RDB_string_to_expr(name)),
             RDB_eq(RDB_expr_attr("ARGTYPES"),
                    RDB_obj_to_expr(&typesobj)), (RDB_expression *) NULL);
@@ -2053,7 +2053,7 @@ _RDB_cat_get_upd_op(const char *name, int argc, RDB_type *argtv[],
         return ret;
     }
         
-    exp = RDB_ro_op_l("AND", RDB_eq(RDB_expr_attr("NAME"),
+    exp = RDB_ro_op_va("AND", RDB_eq(RDB_expr_attr("NAME"),
                    RDB_string_to_expr(name)),
             RDB_eq(RDB_expr_attr("ARGTYPES"),
                    RDB_obj_to_expr(&typesobj)), (RDB_expression *) NULL);

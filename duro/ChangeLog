@@ -6,35 +6,32 @@ Changes for Duro 0.9
 
 - Switched to Berkeley DB 4.3.
 
-- Renamed operator SUBSET to SUBSET_OF.
-
-- Replaced RDB_user_op() by RDB_ro_op() and RDB_ro_op_l().
-
-- Dropped RDB_neq, etc, replaced by RDB_ro_op() and RDB_ro_op_l(), resp.
-
-- Changed expression grammar so that expressions like A UNION B UNION C
-  are now possible.
-
 - Added dump utility durodump.tcl.
 
 - Added B-tree indexes.
 
 - RDB_set_table_name() now works for global tables.
 
-- Implemented duro::table rename and duro::table def.
+- Replaced RDB_user_op() by RDB_ro_op() and RDB_ro_op_va().
 
-- Added conversion operators (RDB_to_int() etc.), added conversion operators
-  to expression parser.
+- Dropped RDB_neq() etc., replaced by RDB_ro_op() and RDB_ro_op_va().
 
-- Added operators LENGTH and SUBSTRING.
+- Added built-in operators LENGTH, SUBSTRING, IS_EMPTY, COUNT, and SUBSET_OF.
+
+- Added conversion operators, arithmetical operators, etc., as built-in operators.
 
 - Durotcl now supports creating tables with user-defined types.
 
-- Expressions now support backslash escaping in strings.
-
-- Small change to RDB_expression struct.
+- Implemented duro::table rename and duro::table def.
 
 - Changed duro::table attrs.
+
+- Expressions now support backslash escaping in strings.
+
+- Changed expression grammar so that expressions like A UNION B UNION C
+  are now possible.
+
+- Small change to RDB_expression struct.
 
 Changes for Duro 0.8
 

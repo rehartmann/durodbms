@@ -91,7 +91,7 @@ test_update(RDB_database *dbp)
 
     printf("Updating table, setting SALARY of no 3 to SALARY + 100\n");
     attrs[0].name = "SALARY";
-    attrs[0].exp = RDB_ro_op_l("+", RDB_rational_to_expr(100),
+    attrs[0].exp = RDB_ro_op_va("+", RDB_rational_to_expr(100),
             RDB_expr_attr("SALARY"), (RDB_expression *) NULL);
     if (attrs[0].exp == NULL) {
         ret = RDB_NO_MEMORY;

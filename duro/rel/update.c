@@ -674,7 +674,7 @@ update_select(RDB_table *tbp, RDB_expression *condp,
     RDB_expression *ncondp = NULL;
 
     if (condp != NULL) {
-        ncondp = RDB_ro_op_l("AND", tbp->var.select.exp, condp,
+        ncondp = RDB_ro_op_va("AND", tbp->var.select.exp, condp,
                 (RDB_expression *) NULL);
         if (ncondp == NULL)
             return RDB_NO_MEMORY;

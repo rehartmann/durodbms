@@ -816,7 +816,7 @@ ungroup: expression TOK_UNGROUP TOK_ID {
 
 or_expression: and_expression
     | or_expression TOK_OR and_expression {
-        $$ = RDB_ro_op_l("OR", $1, $3, (RDB_expression *) NULL);
+        $$ = RDB_ro_op_va("OR", $1, $3, (RDB_expression *) NULL);
         if ($$ == NULL) {
             _RDB_parse_ret = RDB_NO_MEMORY;
             YYERROR;
@@ -831,7 +831,7 @@ or_expression: and_expression
 
 and_expression: not_expression
     | and_expression TOK_AND not_expression {
-        $$ = RDB_ro_op_l("AND", $1, $3, (RDB_expression *) NULL);
+        $$ = RDB_ro_op_va("AND", $1, $3, (RDB_expression *) NULL);
         if ($$ == NULL) {
             _RDB_parse_ret = RDB_NO_MEMORY;
             YYERROR;
@@ -846,7 +846,7 @@ and_expression: not_expression
 
 not_expression: rel_expression
     | TOK_NOT rel_expression {
-        $$ = RDB_ro_op_l("NOT", $2, (RDB_expression *) NULL);
+        $$ = RDB_ro_op_va("NOT", $2, (RDB_expression *) NULL);
         if ($$ == NULL) {
             _RDB_parse_ret = RDB_NO_MEMORY;
             YYERROR;
@@ -860,7 +860,7 @@ not_expression: rel_expression
 
 rel_expression: add_expression
     | add_expression '=' add_expression {
-        $$ = RDB_ro_op_l("=", $1, $3, (RDB_expression *) NULL);
+        $$ = RDB_ro_op_va("=", $1, $3, (RDB_expression *) NULL);
         if ($$ == NULL)
             YYERROR;
         _RDB_parse_remove_exp($1);
@@ -870,7 +870,7 @@ rel_expression: add_expression
             YYERROR;
     }
     | add_expression TOK_NE add_expression {
-        $$ = RDB_ro_op_l("<>", $1, $3, (RDB_expression *) NULL);
+        $$ = RDB_ro_op_va("<>", $1, $3, (RDB_expression *) NULL);
         if ($$ == NULL) {
             _RDB_parse_ret = RDB_NO_MEMORY;
             YYERROR;
@@ -882,7 +882,7 @@ rel_expression: add_expression
             YYERROR;
     }
     | add_expression TOK_GE add_expression {
-        $$ = RDB_ro_op_l(">=", $1, $3, (RDB_expression *) NULL);
+        $$ = RDB_ro_op_va(">=", $1, $3, (RDB_expression *) NULL);
         if ($$ == NULL) {
             _RDB_parse_ret = RDB_NO_MEMORY;
             YYERROR;
@@ -894,7 +894,7 @@ rel_expression: add_expression
             YYERROR;
     }
     | add_expression TOK_LE add_expression {
-        $$ = RDB_ro_op_l("<=", $1, $3, (RDB_expression *) NULL);
+        $$ = RDB_ro_op_va("<=", $1, $3, (RDB_expression *) NULL);
         if ($$ == NULL) {
             _RDB_parse_ret = RDB_NO_MEMORY;
             YYERROR;
@@ -906,7 +906,7 @@ rel_expression: add_expression
             YYERROR;
     }
     | add_expression '>' add_expression {
-        $$ = RDB_ro_op_l(">", $1, $3, (RDB_expression *) NULL);
+        $$ = RDB_ro_op_va(">", $1, $3, (RDB_expression *) NULL);
         if ($$ == NULL) {
             _RDB_parse_ret = RDB_NO_MEMORY;
             YYERROR;
@@ -918,7 +918,7 @@ rel_expression: add_expression
             YYERROR;
     }
     | add_expression '<' add_expression {
-        $$ = RDB_ro_op_l("<", $1, $3, (RDB_expression *) NULL);
+        $$ = RDB_ro_op_va("<", $1, $3, (RDB_expression *) NULL);
         if ($$ == NULL) {
             _RDB_parse_ret = RDB_NO_MEMORY;
             YYERROR;
@@ -934,7 +934,7 @@ rel_expression: add_expression
         RDB_table *tbp = _RDB_parse_expr_to_table($1);
         RDB_expression *exp = tbp != NULL ? RDB_table_to_expr(tbp) : $1;
 
-        $$ = RDB_ro_op_l("IN", exp, $3, (RDB_expression *) NULL);
+        $$ = RDB_ro_op_va("IN", exp, $3, (RDB_expression *) NULL);
         if ($$ == NULL) {
             _RDB_parse_ret = RDB_NO_MEMORY;
             YYERROR;
@@ -949,7 +949,7 @@ rel_expression: add_expression
             YYERROR;
     }
     | add_expression TOK_MATCHES add_expression {
-        $$ = RDB_ro_op_l("MATCHES", $1, $3, (RDB_expression *) NULL);
+        $$ = RDB_ro_op_va("MATCHES", $1, $3, (RDB_expression *) NULL);
         if ($$ == NULL) {
             _RDB_parse_ret = RDB_NO_MEMORY;
             YYERROR;
@@ -976,7 +976,7 @@ rel_expression: add_expression
         else
            ex2p = $3;
 
-        $$ = RDB_ro_op_l("SUBSET_OF", ex1p, ex2p, (RDB_expression *) NULL);
+        $$ = RDB_ro_op_va("SUBSET_OF", ex1p, ex2p, (RDB_expression *) NULL);
         if ($$ == NULL) {
             _RDB_parse_ret = RDB_NO_MEMORY;
             YYERROR;
@@ -998,7 +998,7 @@ add_expression: mul_expression
             YYERROR;
     }
     | '-' mul_expression {
-        $$ = RDB_ro_op_l("-", $2, (RDB_expression *) NULL);
+        $$ = RDB_ro_op_va("-", $2, (RDB_expression *) NULL);
         if ($$ == NULL) {
             _RDB_parse_ret = RDB_NO_MEMORY;
             YYERROR;
@@ -1009,7 +1009,7 @@ add_expression: mul_expression
             YYERROR;
     }
     | add_expression '+' mul_expression {
-        $$ = RDB_ro_op_l("+", $1, $3, (RDB_expression *) NULL);
+        $$ = RDB_ro_op_va("+", $1, $3, (RDB_expression *) NULL);
         if ($$ == NULL) {
             _RDB_parse_ret = RDB_NO_MEMORY;
             YYERROR;
@@ -1021,7 +1021,7 @@ add_expression: mul_expression
             YYERROR;
     }
     | add_expression '-' mul_expression {
-        $$ = RDB_ro_op_l("-", $1, $3, (RDB_expression *) NULL);
+        $$ = RDB_ro_op_va("-", $1, $3, (RDB_expression *) NULL);
         if ($$ == NULL) {
             _RDB_parse_ret = RDB_NO_MEMORY;
             YYERROR;
@@ -1033,7 +1033,7 @@ add_expression: mul_expression
             YYERROR;
     }
     | add_expression TOK_CONCAT mul_expression {
-        $$ = RDB_ro_op_l("||", $1, $3, (RDB_expression *) NULL);
+        $$ = RDB_ro_op_va("||", $1, $3, (RDB_expression *) NULL);
         if ($$ == NULL) {
             _RDB_parse_ret = RDB_NO_MEMORY;
             YYERROR;
@@ -1048,7 +1048,7 @@ add_expression: mul_expression
 
 mul_expression: primary_expression
     | mul_expression '*' primary_expression {
-        $$ = RDB_ro_op_l("*", $1, $3, (RDB_expression *) NULL);
+        $$ = RDB_ro_op_va("*", $1, $3, (RDB_expression *) NULL);
         if ($$ == NULL) {
             _RDB_parse_ret = RDB_NO_MEMORY;
             YYERROR;
@@ -1060,7 +1060,7 @@ mul_expression: primary_expression
             YYERROR;
     }
     | mul_expression '/' primary_expression {
-        $$ = RDB_ro_op_l("/", $1, $3, (RDB_expression *) NULL);
+        $$ = RDB_ro_op_va("/", $1, $3, (RDB_expression *) NULL);
         if ($$ == NULL) {
             _RDB_parse_ret = RDB_NO_MEMORY;
             YYERROR;
@@ -1120,7 +1120,7 @@ extractor: TOK_TUPLE TOK_FROM expression {
 count_invocation: TOK_COUNT '(' expression ')' {
         RDB_table *tbp = _RDB_parse_expr_to_table($3);
 
-        $$ = RDB_ro_op_l("COUNT", tbp != NULL ? RDB_table_to_expr(tbp) : $3,
+        $$ = RDB_ro_op_va("COUNT", tbp != NULL ? RDB_table_to_expr(tbp) : $3,
                 NULL);
         if ($$ == NULL)
             YYERROR;

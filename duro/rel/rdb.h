@@ -1037,19 +1037,10 @@ RDB_expression *
 RDB_expr_comp(RDB_expression *, const char *);
 
 RDB_expression *
-RDB_to_int(RDB_expression *);
-
-RDB_expression *
-RDB_to_rational(RDB_expression *);
-
-RDB_expression *
-RDB_to_string(RDB_expression *);
-
-RDB_expression *
 RDB_ro_op(const char *opname, int argc, RDB_expression *argv[]);
 
 RDB_expression *
-RDB_ro_op_l(const char *opname, RDB_expression *arg, ...
+RDB_ro_op_va(const char *opname, RDB_expression *arg, ...
         /* (RDB_expression *) NULL */ );
 
 /* Return address of encapsulated object, or NULL if not a value */

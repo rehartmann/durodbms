@@ -31,8 +31,8 @@ test_regexp(RDB_database *dbp)
 
     printf("Creating selection (NAME regmatch \"o\")\n");
 
-    exprp = RDB_ro_op_l("MATCHES", RDB_expr_attr("NAME"), RDB_string_to_expr("o"),
-            (RDB_expression *) NULL);
+    exprp = RDB_ro_op_va("MATCHES", RDB_expr_attr("NAME"),
+            RDB_string_to_expr("o"), (RDB_expression *) NULL);
     if (exprp == NULL) {
         ret = RDB_NO_MEMORY;
         goto error;

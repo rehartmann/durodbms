@@ -86,7 +86,7 @@ create_view2(RDB_database *dbp)
     hexprp = RDB_expr_attr("SALARY");
     if (hexprp == NULL)
         return RDB_NO_MEMORY;
-    exprp = RDB_ro_op_l(">", hexprp, RDB_rational_to_expr(4000.0),
+    exprp = RDB_ro_op_va(">", hexprp, RDB_rational_to_expr(4000.0),
             (RDB_expression *) NULL);
     if (exprp == NULL)
         return RDB_NO_MEMORY;
@@ -140,7 +140,7 @@ create_view3(RDB_database *dbp)
     exprp = RDB_expr_attr("SALARY");
     if (exprp == NULL)
         return RDB_NO_MEMORY;
-    exprp = RDB_ro_op_l(">", exprp, RDB_rational_to_expr(4000.0),
+    exprp = RDB_ro_op_va(">", exprp, RDB_rational_to_expr(4000.0),
             (RDB_expression *) NULL);
     if (exprp == NULL)
         return RDB_NO_MEMORY;

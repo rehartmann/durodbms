@@ -345,7 +345,7 @@ RDB_ro_op(const char *opname, int argc, RDB_expression *argv[])
 }
 
 RDB_expression *
-RDB_ro_op_l(const char *opname, RDB_expression *arg, ...
+RDB_ro_op_va(const char *opname, RDB_expression *arg, ...
         /* (RDB_expression *) NULL */ )
 {
     va_list ap;

@@ -132,7 +132,7 @@ test_extend(RDB_database *dbp)
         return ret;
     }
 
-    extend[0].exp = RDB_ro_op_l("-", RDB_expr_attr("SALARY"),
+    extend[0].exp = RDB_ro_op_va("-", RDB_expr_attr("SALARY"),
             RDB_rational_to_expr(4100), (RDB_expression *) NULL);
     if (extend[0].exp == NULL)
         return RDB_NO_MEMORY;
@@ -142,7 +142,7 @@ test_extend(RDB_database *dbp)
         ret = RDB_NO_MEMORY;
         goto error;
     }
-    extend[1].exp = RDB_ro_op_l("LENGTH", exp, (RDB_expression *) NULL);
+    extend[1].exp = RDB_ro_op_va("LENGTH", exp, (RDB_expression *) NULL);
     if (extend[1].exp == NULL) {
         ret = RDB_NO_MEMORY;
         goto error;

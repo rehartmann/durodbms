@@ -25,7 +25,7 @@ test_type(RDB_database *dbp)
     pr.name = NULL;
     pr.compc = 1;
     pr.compv = &comp;
-    pr.constraintp = RDB_ro_op_l("<", RDB_expr_attr("TINYINT"),
+    pr.constraintp = RDB_ro_op_va("<", RDB_expr_attr("TINYINT"),
             RDB_int_to_expr(100), (RDB_expression *) NULL);
     if (pr.constraintp == NULL) {
         return RDB_NO_MEMORY;

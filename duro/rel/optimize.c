@@ -107,7 +107,7 @@ move_node(RDB_table *tbp, RDB_expression **dstpp, RDB_expression *nodep,
         if (*dstpp == NULL)
             *dstpp = nodep;
         else
-            *dstpp = RDB_ro_op_l("AND", *dstpp, nodep, (RDB_expression *) NULL);
+            *dstpp = RDB_ro_op_va("AND", *dstpp, nodep, (RDB_expression *) NULL);
         if (prevp == NULL) {
             tbp->var.select.exp = NULL;
         } else {
@@ -128,7 +128,7 @@ move_node(RDB_table *tbp, RDB_expression **dstpp, RDB_expression *nodep,
         if (*dstpp == NULL)
             *dstpp = nodep->var.op.argv[1];
         else
-            *dstpp = RDB_ro_op_l("AND", *dstpp, nodep->var.op.argv[1],
+            *dstpp = RDB_ro_op_va("AND", *dstpp, nodep->var.op.argv[1],
                     (RDB_expression *) NULL);
         if (prevp == NULL)
             tbp->var.select.exp = nodep->var.op.argv[0];

@@ -158,7 +158,7 @@
 <li><a href="#table_to_expr">RDB_table_to_expr</a>
 <li><a href="#tuple_attr">RDB_tuple_attr</a>
 <li><a href="#ro_op">RDB_ro_op</a>
-<li><a href="#ro_op_l">RDB_ro_op_l</a>
+<li><a href="#ro_op_va">RDB_ro_op_va</a>
 <li><a href="#drop_expr">RDB_drop_expr</a>
 </ul>
 
@@ -3345,18 +3345,18 @@ NULL is returned.
 
 <hr>
 
-<h2 id="ro_op_l">RDB_ro_op_l</h2>
+<h2 id="ro_op_va">RDB_ro_op_va</h2>
 
 <pre>
 #include &lt;rel/rdb.h&gt;
 
 RDB_expression *
-RDB_ro_op_l(const char *opname, RDB_expression *arg, ... /* (RDB_expression *) NULL */ );
+RDB_ro_op_va(const char *opname, RDB_expression *arg, ... /* (RDB_expression *) NULL */ );
 </pre>
 
 <h3>Description</h3>
 
-<p>RDB_ro_op creates an expression which represents the invocation
+<p>RDB_ro_op_va creates an expression which represents the invocation
 of a user-defined operator. The arguments are passed as a variable argument
 list, delimited by a NULL.
 

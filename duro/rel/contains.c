@@ -31,7 +31,7 @@ project_contains(RDB_table *tbp, const RDB_object *tplp, RDB_transaction *txp)
         objp = RDB_tuple_get(tplp, tpltyp->var.tuple.attrv[0].name);
         if (objp == NULL)
             return RDB_INVALID_ARGUMENT;
-        condp = RDB_ro_op_l("=", RDB_expr_attr(tpltyp->var.tuple.attrv[0].name),
+        condp = RDB_ro_op_va("=", RDB_expr_attr(tpltyp->var.tuple.attrv[0].name),
                 RDB_obj_to_expr(objp), (RDB_expression *) NULL);
         if (condp == NULL)
             return RDB_NO_MEMORY;
@@ -43,8 +43,8 @@ project_contains(RDB_table *tbp, const RDB_object *tplp, RDB_transaction *txp)
                 return RDB_INVALID_ARGUMENT;
             }
             
-            condp = RDB_ro_op_l("AND", condp,
-                    RDB_ro_op_l("=", RDB_expr_attr(
+            condp = RDB_ro_op_va("AND", condp,
+                    RDB_ro_op_va("=", RDB_expr_attr(
                             tpltyp->var.tuple.attrv[i].name),
                             RDB_obj_to_expr(objp), (RDB_expression *) NULL),
                     (RDB_expression *) NULL);
@@ -119,7 +119,7 @@ ungroup_contains(RDB_table *tbp, const RDB_object *tplp, RDB_transaction *txp)
         objp = RDB_tuple_get(tplp, tpltyp->var.tuple.attrv[i].name);
         if (objp == NULL)
             return RDB_INVALID_ARGUMENT;
-        condp = RDB_ro_op_l("=", RDB_expr_attr(tpltyp->var.tuple.attrv[i++].name),
+        condp = RDB_ro_op_va("=", RDB_expr_attr(tpltyp->var.tuple.attrv[i++].name),
                 RDB_obj_to_expr(objp), (RDB_expression *) NULL);
         while (i < tpltyp->var.tuple.attrc) {
             if (strcmp(tpltyp->var.tuple.attrv[i].name,
@@ -130,8 +130,8 @@ ungroup_contains(RDB_table *tbp, const RDB_object *tplp, RDB_transaction *txp)
                         RDB_drop_expr(condp);
                     return RDB_INVALID_ARGUMENT;
                 }
-                condp = RDB_ro_op_l("AND", condp,
-                        RDB_ro_op_l("=",
+                condp = RDB_ro_op_va("AND", condp,
+                        RDB_ro_op_va("=",
                                 RDB_expr_attr(tpltyp->var.tuple.attrv[i].name),
                                 RDB_obj_to_expr(objp), (RDB_expression *) NULL),
                         (RDB_expression *) NULL);
