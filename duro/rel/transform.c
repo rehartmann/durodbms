@@ -9,6 +9,7 @@
 #include "internal.h"
 #include <gen/strfns.h>
 #include <stdlib.h>
+#include <string.h>
 
 static void
 del_keys(RDB_table *tbp)
@@ -38,6 +39,9 @@ copy_type(RDB_table *dstp, const RDB_table *srcp)
     return RDB_OK;
 }
 
+static int
+transform_exp(RDB_expression *);
+
 /* Try to eliminate NOT operator */
 static int
 eliminate_not(RDB_expression *exp)
@@ -47,46 +51,73 @@ eliminate_not(RDB_expression *exp)
 
     switch (exp->var.op.arg1->kind) {
         case RDB_EX_AND:
-           hexp = RDB_not(exp->var.op.arg1->var.op.arg2);
-           if (hexp == NULL)
-               return RDB_NO_MEMORY;
-           exp->kind = RDB_EX_OR;
-           exp->var.op.arg2 = hexp;
-           exp->var.op.arg1->kind = RDB_EX_NOT;
+            hexp = RDB_not(exp->var.op.arg1->var.op.arg2);
+            if (hexp == NULL)
+                return RDB_NO_MEMORY;
+            exp->kind = RDB_EX_OR;
+            exp->var.op.arg2 = hexp;
+            exp->var.op.arg1->kind = RDB_EX_NOT;
 
-           ret = eliminate_not(exp->var.op.arg1);
-           if (ret != RDB_OK)
-               return ret;
-           return eliminate_not(exp->var.op.arg2);
+            ret = eliminate_not(exp->var.op.arg1);
+            if (ret != RDB_OK)
+                return ret;
+            return eliminate_not(exp->var.op.arg2);
         case RDB_EX_OR:
-           hexp = RDB_not(exp->var.op.arg1->var.op.arg2);
-           if (hexp == NULL)
-               return RDB_NO_MEMORY;
-           exp->kind = RDB_EX_AND;
-           exp->var.op.arg2 = hexp;
-           exp->var.op.arg1->kind = RDB_EX_NOT;
+            hexp = RDB_not(exp->var.op.arg1->var.op.arg2);
+            if (hexp == NULL)
+                return RDB_NO_MEMORY;
+            exp->kind = RDB_EX_AND;
+            exp->var.op.arg2 = hexp;
+            exp->var.op.arg1->kind = RDB_EX_NOT;
 
-           ret = eliminate_not(exp->var.op.arg1);
-           if (ret != RDB_OK)
-               return ret;
-           return eliminate_not(exp->var.op.arg2);
+            ret = eliminate_not(exp->var.op.arg1);
+            if (ret != RDB_OK)
+                return ret;
+            return eliminate_not(exp->var.op.arg2);
         case RDB_EX_EQ:
-           hexp = exp->var.op.arg1;
-           exp->kind = RDB_EX_NEQ;
-           exp->var.op.arg1 = hexp->var.op.arg1;
-           exp->var.op.arg2 = hexp->var.op.arg2;
-           free(hexp);
-           break;
         case RDB_EX_NEQ:
-           hexp = exp->var.op.arg1;
-           exp->kind = RDB_EX_EQ;
-           exp->var.op.arg1 = hexp->var.op.arg1;
-           exp->var.op.arg2 = hexp->var.op.arg2;
-           free(hexp);
-           break;
-        default: ;
+        case RDB_EX_LT:
+        case RDB_EX_GT:
+        case RDB_EX_LET:
+        case RDB_EX_GET:
+            hexp = exp->var.op.arg1;
+            switch (exp->var.op.arg1->kind) {
+                case RDB_EX_EQ:
+                    exp->kind = RDB_EX_NEQ;
+                    break;
+                case RDB_EX_NEQ:
+                    exp->kind = RDB_EX_EQ;
+                    break;
+                case RDB_EX_LT:
+                    exp->kind = RDB_EX_GET;
+                    break;
+                case RDB_EX_GT:
+                    exp->kind = RDB_EX_LET;
+                    break;
+                case RDB_EX_LET:
+                    exp->kind = RDB_EX_GT;
+                    break;
+                case RDB_EX_GET:
+                    exp->kind = RDB_EX_LT;
+                    break;
+                default: ; /* never reached */
+            }
+            exp->var.op.arg1 = hexp->var.op.arg1;
+            exp->var.op.arg2 = hexp->var.op.arg2;
+            free(hexp);
+            ret = transform_exp(exp->var.op.arg1);
+            if (ret != RDB_OK)
+                return ret;
+            return transform_exp(exp->var.op.arg2);
+        case RDB_EX_NOT:
+            hexp = exp->var.op.arg1;
+            memcpy(exp, hexp->var.op.arg1, sizeof (RDB_expression));
+            free(hexp->var.op.arg1);
+            free(hexp);
+            return transform_exp(exp);
+        default:
+            return transform_exp(exp->var.op.arg1);
     }
-    return RDB_OK;
 }
 
 static int

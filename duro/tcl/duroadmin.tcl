@@ -319,7 +319,7 @@ proc create_db {} {
 }
 
 proc get_types {tx} {
-    set types {STRING INTEGER RATIONAL BINARY}
+    set types {STRING BOOLEAN INTEGER RATIONAL BINARY}
 
     # Add user-defined types
     set tnames [duro::expr {SYS_TYPES {TYPENAME}} $tx]

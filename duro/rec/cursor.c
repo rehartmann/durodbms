@@ -31,15 +31,17 @@ int
 RDB_recmap_cursor(RDB_cursor **curpp, RDB_recmap *rmp, RDB_bool wr,
                   DB_TXN *txid)
 {
+    /*
+     * The wr agument is ignored, because setting DB_WRITECURSOR only
+     * works for multiple reader/single writer access.
+     */
+
     int ret;
     RDB_cursor *curp = new_cursor(rmp, txid, NULL);
-    u_int32_t flags = 0;
     
     if (curp == NULL)
         return RDB_NO_MEMORY;
-    if (wr)
-        flags |= DB_WRITECURSOR;
-    ret = rmp->dbp->cursor(rmp->dbp, txid, &curp->cursorp, flags);
+    ret = rmp->dbp->cursor(rmp->dbp, txid, &curp->cursorp, 0);
     if (ret != 0) {
         free(curp);
         if (rmp->envp != NULL) {

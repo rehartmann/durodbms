@@ -85,7 +85,7 @@ update_stored_complex(RDB_table *tbp, RDB_expression *condp,
     if (ret != RDB_OK)
         goto cleanup;
 
-    ret = RDB_recmap_cursor(&curp, tbp->var.stored.recmapp, 0,
+    ret = RDB_recmap_cursor(&curp, tbp->var.stored.recmapp, RDB_TRUE,
             tbp->is_persistent ? tx.txid : NULL);
     if (ret != RDB_OK)        
         goto cleanup;
@@ -264,8 +264,8 @@ update_stored_simple(RDB_table *tbp, RDB_expression *condp,
      * Iterator over the records and update them if the select expression
      * evaluates to true.
      */
-    ret = RDB_recmap_cursor(&curp, tbp->var.stored.recmapp,
-            0, tbp->is_persistent ? tx.txid : NULL);
+    ret = RDB_recmap_cursor(&curp, tbp->var.stored.recmapp, RDB_TRUE,
+            tbp->is_persistent ? tx.txid : NULL);
     if (ret != RDB_OK)        
         return ret;
 
