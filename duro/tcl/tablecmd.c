@@ -991,6 +991,16 @@ table_add_cmd(TclState *statep, Tcl_Interp *interp, int objc,
     return TCL_OK;
 }
 
+static Tcl_Obj *
+type_to_tobj(const RDB_type *typ)
+{
+    char *name = RDB_type_name(typ);
+
+    if (name != NULL)
+        return Tcl_NewStringObj(name, strlen(name));
+    return Tcl_NewStringObj("", 0);
+}
+
 static int
 table_attrs_cmd(TclState *statep, Tcl_Interp *interp, int objc,
         Tcl_Obj *CONST objv[])
@@ -1030,7 +1040,69 @@ table_attrs_cmd(TclState *statep, Tcl_Interp *interp, int objc,
         char *name = tuptyp->var.tuple.attrv[i].name;
 
         ret = Tcl_ListObjAppendElement(interp, listobjp,
-               Tcl_NewStringObj(name, strlen(name)));
+                Tcl_NewStringObj(name, strlen(name)));
+        if (ret != TCL_OK)
+            return ret;
+        ret = Tcl_ListObjAppendElement(interp, listobjp,
+                type_to_tobj(tuptyp->var.tuple.attrv[i].typ));
+        if (ret != TCL_OK)
+            return ret;
+    }
+
+    Tcl_SetObjResult(interp, listobjp);
+    return TCL_OK;
+}
+
+static int
+table_keys_cmd(TclState *statep, Tcl_Interp *interp, int objc,
+        Tcl_Obj *CONST objv[])
+{
+    int ret;
+    int i, j;
+    char *name;
+    char *txstr;
+    Tcl_HashEntry *entryp;
+    RDB_transaction *txp;
+    RDB_table *tbp;
+    int keyc;
+    RDB_string_vec *keyv;
+    Tcl_Obj *listobjp;
+
+    if (objc != 4) {
+        Tcl_WrongNumArgs(interp, 2, objv, "tablename tx");
+        return TCL_ERROR;
+    }
+
+    name = Tcl_GetString(objv[2]);
+    txstr = Tcl_GetString(objv[3]);
+    entryp = Tcl_FindHashEntry(&statep->txs, txstr);
+    if (entryp == NULL) {
+        Tcl_AppendResult(interp, "Unknown transaction: ", txstr, NULL);
+        return TCL_ERROR;
+    }
+    txp = Tcl_GetHashValue(entryp);
+
+    ret = Duro_get_table(statep, interp, name, txp, &tbp);
+    if (ret != TCL_OK) {
+        return TCL_ERROR;
+    }
+    keyc = RDB_table_keys(tbp, &keyv);
+    if (keyc < 0) {
+        Duro_dberror(interp, keyc);
+        return TCL_ERROR;
+    }
+
+    listobjp = Tcl_NewListObj(0, NULL);
+    for (i = 0; i < keyc; i++) {
+        Tcl_Obj *ilistobjp = Tcl_NewListObj(0, NULL);
+
+        for (j = 0; j < keyv[i].strc; j++) {
+            ret = Tcl_ListObjAppendElement(interp, ilistobjp,
+               Tcl_NewStringObj(keyv[i].strv[j], strlen(keyv[i].strv[j])));
+            if (ret != TCL_OK)
+                return ret;
+        }
+        ret = Tcl_ListObjAppendElement(interp, listobjp, ilistobjp);
         if (ret != TCL_OK)
             return ret;
     }
@@ -1045,10 +1117,10 @@ Duro_table_cmd(ClientData data, Tcl_Interp *interp, int objc, Tcl_Obj *CONST obj
     TclState *statep = (TclState *) data;
 
     const char *sub_cmds[] = {
-        "create", "drop", "expr", "contains", "add", "attrs", NULL
+        "create", "drop", "expr", "contains", "add", "attrs", "keys", NULL
     };
     enum table_ix {
-        create_ix, drop_ix, expr_ix, contains_ix, add_ix, attrs_ix
+        create_ix, drop_ix, expr_ix, contains_ix, add_ix, attrs_ix, keys_ix
     };
     int index;
 
@@ -1075,6 +1147,8 @@ Duro_table_cmd(ClientData data, Tcl_Interp *interp, int objc, Tcl_Obj *CONST obj
             return table_add_cmd(statep, interp, objc, objv);
         case attrs_ix:
             return table_attrs_cmd(statep, interp, objc, objv);
+        case keys_ix:
+            return table_keys_cmd(statep, interp, objc, objv);
     }
     return TCL_ERROR;
 }

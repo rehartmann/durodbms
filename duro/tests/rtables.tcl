@@ -24,8 +24,9 @@ duro::db create TEST $dbenv
 # Perform test with table with integer key
 #
 
-# Create table
 set tx [duro::begin $dbenv TEST]
+
+# Create table
 duro::table create T1 {
    {STRATTR STRING}
    {INTATTR INTEGER}
@@ -34,13 +35,13 @@ duro::table create T1 {
 # Insert tuple
 set r [duro::insert T1 {INTATTR 1 STRATTR Bla} $tx]
 if {$r != 0} {
-    error "Insert returned $r, should be 0"
+    error "Insert returned $r, should return 0"
 }
 
 # Insert tuple a second time
 set r [duro::insert T1 {INTATTR 1 STRATTR Bla} $tx]
 if {$r != 1} {
-    error "Insert returned $r, should be 1"
+    error "Insert returned $r, should return 1"
 }
 
 # Update nonkey attribute
@@ -56,8 +57,55 @@ if {![tequal $t $s] } {
     error "Tuple value is $t, should be $s"
 }
 
+# Insert 2nd tuple
+duro::insert T1 {INTATTR 3 STRATTR Bla} $tx
+
+duro::commit $tx
+
+set tx [duro::begin $dbenv TEST]
+
+# Must fail
+if {![catch {
+    duro::update T1 {INTATTR = 3} INTATTR 2 STRATTR {"Bla"} $tx
+}]} {
+    error "update should fail, but succeeded"
+}
+
+duro::rollback $tx
+
+set tx [duro::begin $dbenv TEST]
+
+# Must fail
+if {![catch {
+    duro::update T1 {STRATTR = "Bla"} INTATTR 2 STRATTR {"Bla"} $tx
+}]} {
+    error "update should fail, but succeeded"
+}
+
+duro::rollback $tx
+
+set tx [duro::begin $dbenv TEST]
+
+# Must succeed
+duro::update T1 {INTATTR = 3} INTATTR 2 STRATTR {"Blax"} $tx
+
+set stpl {INTATTR 2 STRATTR Blax}
+set tpl [duro::expr {TUPLE FROM T1} $tx]
+if {![tequal $tpl $stpl]} {
+     error "Tuple is $tpl, should be $stpl"
+}
+
+duro::commit $tx
+
+set tx [duro::begin $dbenv TEST]
+
 # Remove tuple
 duro::delete T1 $tx
+
+# Check if table is empty
+if {![duro::expr {IS_EMPTY (T1)} $tx]} {
+    error "Table should be empty, but is not"
+}
 
 # Drop table
 duro::table drop T1 $tx
@@ -83,6 +131,22 @@ duro::env close $dbenv
 set dbenv [duro::env open tests/dbenv]
 
 set tx [duro::begin $dbenv TEST]
+
+#
+# Check keys
+#
+set keys [duro::table keys T2 $tx]
+
+set keycount [llength $keys]
+if {$keycount != 2} {
+    error "# of keys is $keycount, should be 2"
+}
+
+set keys [lsort $keys]
+if {[lsort [lindex $keys 0]] != {INTATTR STRATTR2}
+        || [lindex $keys 1] == {STRATTR}} {
+    error "Invalid keys: $keys"
+}
 
 # Insert tuple
 duro::insert T2 {INTATTR 1 STRATTR1 Bla STRATTR2 Bli STRATTR3 Blubb} $tx

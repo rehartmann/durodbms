@@ -7,7 +7,7 @@ AM_YFLAGS = -d
 
 bin_PROGRAMS = util/lstables
 
-bin_SCRIPTS = tcl/duroadmin.tcl
+dist_bin_SCRIPTS = tcl/duroadmin.tcl
 
 # Shared libs for testing are listed here too, because check_LTLIBRARIES does
 # not work
@@ -52,20 +52,20 @@ LDADD = -L$(BDB_HOME)/lib libduro.la -ldb @LIBS@ -lmcheck
 
 tests_test_pointtable_LDADD = $(LDADD) -lm
 
-libduro_la_SOURCES = gen/errors.c gen/hashmap.c gen/hashmapit.c \
-gen/strfns.c rec/cursor.c rec/env.c rec/index.c rec/recmap.c \
-rel/array.c rel/internal.h rel/database.c rel/operator.c \
-rel/expression.c rel/getargs.c rel/qresult.c rel/serialize.c rel/serialize.h \
-rel/table.c rel/vtable.c rel/update.c rel/insert.c rel/contains.c \
-rel/transaction.c rel/delete.c rel/tuple.c rel/type.c rel/object.c \
-rel/catalog.c rel/optimize.c rel/transform.c \
-rel/catalog.h \
-dli/exparse.y dli/exlex.l dli/parse.c
+libduro_la_SOURCES = gen/errors.c gen/hashmap.c gen/hashmapit.c gen/strfns.c \
+        rec/cursor.c rec/env.c rec/index.c rec/recmap.c \
+        rel/array.c rel/internal.h rel/database.c rel/operator.c \
+        rel/expression.c rel/getargs.c rel/qresult.c rel/serialize.c \
+        rel/serialize.h rel/table.c rel/vtable.c rel/update.c rel/insert.c \
+        rel/contains.c rel/transaction.c rel/delete.c rel/tuple.c rel/type.c \
+        rel/object.c rel/catalog.c rel/optimize.c rel/transform.c \
+        rel/catalog.h \
+        dli/exparse.y dli/exlex.l dli/parse.c
 
 nobase_include_HEADERS = gen/errors.h gen/hashmap.h gen/hashmapit.h \
-gen/strfns.h gen/types.h \
-rec/cursor.h rec/env.h rec/index.h rec/recmap.h \
-rel/rdb.h rel/typeimpl.h dli/parse.h
+        gen/strfns.h gen/types.h \
+        rec/cursor.h rec/env.h rec/index.h rec/recmap.h \
+        rel/rdb.h rel/typeimpl.h dli/parse.h
 
 libdurotcl_la_SOURCES = tcl/duro.c tcl/duro.h tcl/envcmd.c tcl/txcmd.c \
         tcl/tablecmd.c tcl/dbcmd.c tcl/arraycmd.c tcl/opcmd.c tcl/exprcmd.c \
@@ -78,12 +78,9 @@ dist_pkglib_DATA = tcl/util.tcl
 
 INCLUDES = -I$(top_srcdir) -I$(BDB_HOME)/include
 
-check_SCRIPTS = tests/ctests.sh tests/rtables.tcl tests/project.tcl \
-tests/tuple.tcl tests/sdivide.tcl tests/invtable.tcl tests/operator.tcl \
-tests/vtables.tcl tests/db2.tcl tests/rel.tcl tests/subset.tcl \
-tests/utype.tcl tests/deedum.tcl tests/opt.tcl tests/index.tcl
+dist_check_SCRIPTS = $(TESTS)
 
-check_DATA = tests/lstables_output tests/test_2db_output \
+dist_check_DATA = tests/lstables_output tests/test_2db_output \
 tests/test_aggregate_output tests/test_binary_output tests/test_callop_output \
 tests/test_create_view_output tests/test_defop_output \
 tests/test_defpointtype_output tests/test_deftype_output \

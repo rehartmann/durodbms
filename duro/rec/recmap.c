@@ -576,41 +576,51 @@ _RDB_set_field(RDB_recmap *recmapp, DBT *recpartp, const RDB_field *fieldp,
 }
 
 int
-_RDB_update_rec(RDB_recmap *recmapp, DBT *keyp, DBT *datap,
+_RDB_update_rec(RDB_recmap *rmp, DBT *keyp, DBT *datap,
         int fieldc, const RDB_field fieldv[], DB_TXN *txid)
 {
     int i;
     int ret;
+    RDB_bool del = RDB_FALSE;
 
     /* Check if the key is to be modified */
     for (i = 0; i < fieldc; i++) {
-        if (fieldv[i].no < recmapp->keyfieldcount) {
+        if (fieldv[i].no < rmp->keyfieldcount) {
             /* Key is to be modified, so delete record first */
-            ret = recmapp->dbp->del(recmapp->dbp, txid, keyp, 0);
+            ret = rmp->dbp->del(rmp->dbp, txid, keyp, 0);
             if (ret != 0) {
                 return ret;
             }
+            del = RDB_TRUE;
             break;
         }
     }
 
     for (i = 0; i < fieldc; i++) {
-        if (fieldv[i].no < recmapp->keyfieldcount) {
-            _RDB_set_field(recmapp, keyp, &fieldv[i],
-                           recmapp->varkeyfieldcount);
+        if (fieldv[i].no < rmp->keyfieldcount) {
+            _RDB_set_field(rmp, keyp, &fieldv[i],
+                           rmp->varkeyfieldcount);
         } else {
-            _RDB_set_field(recmapp, datap, &fieldv[i],
-                           recmapp->vardatafieldcount);
+            _RDB_set_field(rmp, datap, &fieldv[i],
+                           rmp->vardatafieldcount);
         }
     }
 
     /* Write record back */
-    ret = recmapp->dbp->put(recmapp->dbp, txid, keyp, datap, 0);
+    ret = rmp->dbp->put(rmp->dbp, txid, keyp, datap,
+            del ? DB_NOOVERWRITE : 0);
     if (ret == EINVAL) {
         /* Assume duplicate secondary index */
-        ret = RDB_KEY_VIOLATION;
+        return RDB_KEY_VIOLATION;
     }
-    return 0;
+    if (ret == DB_KEYEXIST) {
+        /* Possible key violation - check if the record already exists */
+        ret = rmp->dbp->get(rmp->dbp, txid, keyp, datap, DB_GET_BOTH);
+        if (ret == DB_NOTFOUND) {
+            return RDB_KEY_VIOLATION;
+        }
+    }
+    return ret;
 }
 
 int

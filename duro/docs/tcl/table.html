@@ -23,8 +23,10 @@ which the transaction identified by <var>txId</var> interacts with.
 
 <dt><b>duro::table attrs</b> <var>tablename txId</var>
 <dd>
-<p>This subcommand returns the attribute names of table <var>tablename</var>
-as a Tcl list.
+<p>This subcommand returns a list containing pairs of elements.
+The first element in each pair is the name of an attribute of
+table <var>tablename</var> and the second element is the type of the
+attribute. The order of pairs is undefined.
 
 <dt><b>duro::table contains</b> <var>tablename tuple txId</var>
 <dd>
@@ -79,6 +81,10 @@ the transaction specified by <var>txId</var> interacts with.
 If <strong>-local</strong> is specified,
 the table will become a local (transient) table.
 Default is <strong>-local</strong>.
+
+<dt><b>duro::table keys</b> <var>tablename txId</var>
+<dd>
+<p>This subcommand returns the keys of table <var>tablename</var>.
 
 </dl>
 

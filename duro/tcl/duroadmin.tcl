@@ -12,8 +12,12 @@ package require Tktable
 
 # Global variables:
 #
-# dbenv	current DB environment ID
-# db	currently selected database
+# dbenv		current DB environment ID
+# db		currently selected database
+# tableattrs	list of table attributes
+# tablekey      table key
+# tabletypes    array which maps table attributes to their types
+# 
 
 proc dberror {msg} {
     .errlog.msgs configure -state normal
@@ -75,6 +79,7 @@ proc open_env_path {envpath} {
         tk_messageBox -type ok -title "Error" -message $msg -icon error
         return
     }
+    wm title . "Duroadmin - $envpath"
 
     # Add new entries
     foreach i $dbs {
@@ -120,6 +125,9 @@ proc create_env {} {
         tk_messageBox -type ok -title "Error" -message $msg -icon error
         return
     }
+
+    wm title . "Duroadmin - $envpath"
+
     .mbar.db.create entryconfigure 1 -state normal
     .mbar.file entryconfigure Close* -state normal
 }
@@ -147,6 +155,46 @@ proc clear_bottom_row {} {
     }
 }
 
+proc set_row {row tpl} {
+    array set ta $tpl
+    for {set j 0} {$j < [llength $::tableattrs]} {incr j} {
+        set s $ta([lindex $::tableattrs $j])
+        if {![string is print $s]} {
+            set s "(nonprintable)"
+        }
+        .tableframe.table set $row,$j $s
+    }
+}
+
+proc add_tuples {arr tx rowcount} {
+    .tableframe.table configure -rows [expr {$rowcount + 2}]
+    for {set i 0} {$i < $rowcount} {incr i} {
+        if {[catch {set tpl [duro::array index $arr $i $tx]} err]} {
+            break
+        }
+        set_row [expr {$i + 1}] $tpl
+        array set ta $tpl
+        foreach j $::tablekey {
+            set ::keyvals([expr {$i}],$j) $ta($j)
+        }
+    }
+    if {$i < $rowcount} {
+        .morebutton configure -state disabled
+        .tableframe.table configure -rows [expr {$i + 2}]
+    } else {
+        .morebutton configure -state normal
+    }
+}
+
+# unused
+proc get_sortspec {} {
+    set sortspec {}
+    foreach i $::tablekey {
+        lappend sortspec $i asc
+    }
+    return $sortspec
+}
+
 proc show_table {} {
     set table [.tables get anchor]
     if {$table == ""} {
@@ -155,11 +203,15 @@ proc show_table {} {
 
     if {[catch {
         set tx [duro::begin $::dbenv $::db]
-        set ::tableattrs [duro::table attrs $table $tx]
+
+        array set ::tabletypes [duro::table attrs $table $tx]
+        set ::tableattrs [array names ::tabletypes]
+        set ::tablekey [lindex [duro::table keys $table $tx]]
 
         .tableframe.table configure -state normal
         pack propagate . 0
         .tableframe.table configure -cols [llength $::tableattrs] -colwidth 16
+        .tableframe.table configure -rows 2
 
         # Set table heading
         for {set i 0} {$i < [llength $::tableattrs]} {incr i} {
@@ -168,25 +220,11 @@ proc show_table {} {
 
         # Set values - # of rows displayed is limited to the value
         # of duroadmin(initrows)
+
         set arr [duro::array create $table $tx]
-        .tableframe.table configure -rows [expr {$::duroadmin(initrows) + 2}]
-        for {set i 0} {$i < $::duroadmin(initrows)} {incr i} {
-            if {[catch {array set ta [duro::array index $arr $i $tx]} err]} {
-                break
-            }
-            for {set j 0} {$j < [llength $::tableattrs]} {incr j} {
-                set s $ta([lindex $::tableattrs $j])
-                if {![string is print $s]} {
-                    set s "(nonprintable)"
-                }
-                .tableframe.table set [expr {$i + 1}],$j $s
-            }
-        }                
+        add_tuples $arr $tx $::duroadmin(initrows)
         duro::array drop $arr
         duro::commit $tx
-
-        set rowcount [expr {$i + 2}]
-        .tableframe.table configure -rows $rowcount
     } msg]} {
         catch {duro::array drop $arr}
         catch {duro::rollback $tx}
@@ -198,6 +236,31 @@ proc show_table {} {
     clear_bottom_row
 
     .mbar.db.drop entryconfigure 2 -state normal
+}
+
+proc more_tuples {} {
+    set table [.tables get anchor]
+    if {$table == ""} {
+        return
+    }
+
+    if {[catch {
+        set tx [duro::begin $::dbenv $::db]
+
+        # Set values - # of rows displayed is limited to the value
+        # of duroadmin(initrows)
+        set arr [duro::array create $table $tx]
+        add_tuples $arr $tx [expr {[.tableframe.table cget -rows]
+                + $::duroadmin(initrows)}]
+
+        duro::array drop $arr
+        duro::commit $tx
+    } msg]} {
+        catch {duro::array drop $arr}
+        catch {duro::rollback $tx}
+        tk_messageBox -type ok -title "Error" -message $msg -icon error
+        return
+    }
 }
 
 proc create_db {} {
@@ -244,6 +307,33 @@ proc create_db {} {
     show_tables
 }
 
+proc set_attr_row {i} {
+    if {$i == 0} {
+        set ::mw [tk_optionMenu .dialog.tabledef.type$i ::type($i) \
+                STRING INTEGER RATIONAL BINARY]
+    } else {
+        tk_optionMenu .dialog.tabledef.type$i ::type($i) \
+                STRING INTEGER RATIONAL BINARY
+    }
+    .dialog.tabledef window configure [expr $i + 1],1 \
+            -window .dialog.tabledef.type$i
+    set t$i STRING
+
+    checkbutton .dialog.tabledef.key$i,0 -variable key($i,0)
+    .dialog.tabledef window configure [expr $i + 1],2 \
+            -window .dialog.tabledef.key$i,0
+
+    set h [expr {-[winfo reqheight .dialog.tabledef.type$i] - 2 *
+                [.dialog.tabledef.key0,0 cget -pady]}]
+    .dialog.tabledef height [expr $i + 1] $h
+}
+
+proc add_attr_row {} {
+    set rowcount [.dialog.tabledef cget -rows]
+    .dialog.tabledef configure -rows [expr {$rowcount + 1}]
+    set_attr_row [expr {$rowcount -1}]
+}
+
 proc create_rtable {} {
     toplevel .dialog
     wm title .dialog "Create table"
@@ -259,51 +349,36 @@ proc create_rtable {} {
     button .dialog.buttons.ok -text OK -command {set action ok}
     button .dialog.buttons.cancel -text Cancel -command {set action cancel}
 
-    table .dialog.tabledef -titlerows 1 -rows 5 -cols 3 -variable tabledef \
-            -anchor w
+    set attrcount 4
+
+    table .dialog.tabledef -titlerows 1 -rows [expr {$attrcount +1}] \
+            -cols 3 -variable tabledef -anchor w
 
     set ::tabledef(0,0) "Attribute name"
     set ::tabledef(0,1) Type
     set ::tabledef(0,2) "Is key"
 
-    set attrcount 4
-
     for {set i 0} {$i < $attrcount} {incr i} {
-        if {$i == 0} {
-            set mw [tk_optionMenu .dialog.tabledef.type$i type($i) \
-                    STRING INTEGER RATIONAL BINARY]
-        } else {
-            tk_optionMenu .dialog.tabledef.type$i type($i) \
-                    STRING INTEGER RATIONAL BINARY
-        }
-        .dialog.tabledef window configure [expr $i + 1],1 \
-                -window .dialog.tabledef.type$i
-        set t$i STRING
-
-        checkbutton .dialog.tabledef.key$i,0 -variable key($i,0)
-        .dialog.tabledef window configure [expr $i + 1],2 \
-                -window .dialog.tabledef.key$i,0
-        if {$i == 0} {
-            set h [expr {-[winfo reqheight .dialog.tabledef.type$i] - 2 *
-                    [.dialog.tabledef.key0,0 cget -pady]}]
-        }
-        .dialog.tabledef height [expr $i + 1] $h
+        set_attr_row $i
     }
 
     .dialog.tabledef width 0 [string length ::tabledef(0,0)]
 
     # Change type in line #1 to RATIONAL to set width
-    $mw invoke 2
+    $::mw invoke 2
     .dialog.tabledef width 1 [expr {-[winfo reqwidth .dialog.tabledef.type0] - 2 *
            [.dialog.tabledef.type0 cget -pady]}]
 
     # Change type back
-    $mw invoke 0
+    $::mw invoke 0
 
     .dialog.tabledef.key0,0 select
 
+    button .dialog.addattr -text "Add attribute" -command add_attr_row
+
     pack .dialog.buttons -side bottom
     pack .dialog.buttons.ok .dialog.buttons.cancel -side left
+    pack .dialog.addattr -side bottom -anchor e
     pack .dialog.tabledef -side bottom
     pack .dialog.l .dialog.tablename -side left
 
@@ -323,7 +398,9 @@ proc create_rtable {} {
 
         # Build lists for attributes and keys
         set attrs {}
-        set keys {}
+        set key {}
+
+        set attrcount [expr {[.dialog.tabledef cget -rows] - 1}]
 
         for {set i 0} {$i < $attrcount} {incr i} {
             if {[info exists ::tabledef([expr $i + 1],0)]} {
@@ -331,11 +408,13 @@ proc create_rtable {} {
                 if {$attrname != ""} {
                     lappend attrs [list $attrname $::type($i)]
                     if {$::key($i,0)} {
-                        lappend keys $attrname
+                        lappend key $attrname
                     }
                 }
             }
         }
+
+        set keys [list $key]
 
         if {[catch {
             # Create table
@@ -449,16 +528,10 @@ proc drop_table {} {
     }
 }
 
-proc update_row {} {
+proc insert_tuple {} {
     set table [.tables get anchor]
     set rowcount [.tableframe.table cget -rows]
-    scan [.tableframe.table index active] %d,%d row col
 
-    if {$row < [expr {$rowcount - 1}]} {
-        return
-    }
-
-    # Add empty row and move active cell to this row
     .tableframe.table configure -rows [expr $rowcount + 1]
     clear_bottom_row
     .tableframe.table activate $rowcount,0
@@ -467,7 +540,7 @@ proc update_row {} {
     set tpl ""
     set i 0
     foreach attr $::tableattrs {
-        lappend tpl $attr [.tableframe.table get $row,$i]
+        lappend tpl $attr [.tableframe.table get [expr {$rowcount - 1}],$i]
         incr i
     }
 
@@ -483,8 +556,117 @@ proc update_row {} {
     }
 }
 
-# Don't allow control characters as cell values (prevents the return
-# from being written into the cell)
+proc eq_exp {row} {
+    # Build condition
+    set exp ""
+    for {set i 0} {$i < [llength $::tablekey]} {incr i} {
+        set a [lindex $::tablekey $i]
+        if {$i > 0} {
+            append exp " AND "
+        }
+        if {[must_quote $::tabletypes($a)]} {
+            append exp "$a=\"$::keyvals([expr {$row - 1}],$a)\""
+        } else {
+            append exp "$a=$::keyvals([expr {$row - 1}],$a)"
+        }
+    }
+    return $exp
+}
+
+proc get_row {row} {
+    set table [.tables get anchor]
+    if {$table == ""} {
+        return
+    }
+
+    set rexp "TUPLE FROM ($table WHERE [eq_exp $row])"
+    if {[catch {
+        set tx [duro::begin $::dbenv $::db]
+        set_row $row [duro::expr $rexp $tx]
+        duro::commit $tx
+    } msg]} {
+        catch {duro::rollback $tx}
+        tk_messageBox -type ok -title "Error" -message $msg -icon error
+    }
+}
+
+proc update_tuple {row} {
+    set table [.tables get anchor]
+    if {$table == ""} {
+        return
+    }
+
+    # Move active cell to next row
+    .tableframe.table activate [expr {$row + 1}],0
+
+    # Build update arguments
+    set updattrs {}
+    for {set i 0} {$i < [llength $::tableattrs]} {incr i} {
+        set a [lindex $::tableattrs $i]
+        lappend updattrs $a
+        if {[must_quote $::tabletypes($a)]} {
+            lappend updattrs \"[.tableframe.table get [expr {$row}],$i]\"
+        } else {
+            lappend updattrs [.tableframe.table get [expr {$row}],$i]
+        }
+    }
+
+    # Update tuple
+    if {[catch {
+        set tx [duro::begin $::dbenv $::db]
+        eval duro::update $table [eq_exp $row] $updattrs $tx
+        duro::commit $tx
+    } msg]} {
+        catch {duro::rollback $tx}
+        tk_messageBox -type ok -title "Error" -message $msg -icon error
+        get_row $row
+    }
+}
+
+proc update_row {} {
+    scan [.tableframe.table index active] %d,%d row col
+    set rowcount [.tableframe.table cget -rows]
+
+    if {$row == [expr {$rowcount - 1}]} {
+        insert_tuple
+    } else {
+        update_tuple $row
+    }
+}
+
+proc must_quote {type} {
+    return [expr {$type == "STRING" || $type == "BINARY"}]
+}
+
+proc del_row {} {
+    set table [.tables get anchor]
+    if {$table == ""} {
+        return
+    }
+
+    scan [.tableframe.table index active] %d,%d row col
+    set rowcount [.tableframe.table cget -rows]
+    if {$row == [expr {$rowcount - 1}]} {
+        return
+    }
+
+    # Delete tuple from DB table
+    if {[catch {
+        set tx [duro::begin $::dbenv $::db]
+        duro::delete $table [eq_exp $row] $tx
+        duro::commit $tx
+    } msg]} {
+        catch {duro::rollback $tx}
+        tk_messageBox -type ok -title "Error" -message $msg -icon error
+        return
+    }
+
+    # Delete row from table widget
+    .tableframe.table delete rows $row
+}
+
+# Don't allow control characters as trailing characters in cell values
+# (prevents the return from being written into the cell)
 proc valcell {s} {
     return [expr {![string is control -strict [string index $s end]]}]
 }
@@ -509,9 +691,9 @@ menu .mbar.file
 menu .mbar.view
 .mbar add cascade -label View -menu .mbar.view
 
-.mbar.view add command -label "Show errlor log" -command show_errlog
 .mbar.view add checkbutton -label "Show system tables" -variable showsys \
         -command show_tables
+.mbar.view add command -label "Show errlor log" -command show_errlog
 
 menu .mbar.db
 .mbar add cascade -label Database -menu .mbar.db
@@ -520,6 +702,7 @@ menu .mbar.db.create
 .mbar.db add cascade -label Create -menu .mbar.db.create
 menu .mbar.db.drop
 .mbar.db add cascade -label Drop -menu .mbar.db.drop
+.mbar.db add command -label "Delete row" -command del_row
 
 .mbar.db.create add command -label "Database" -state disabled \
         -command create_db
@@ -541,7 +724,7 @@ listbox .tables -yscrollcommand ".tablesbar set"
 scrollbar .tablesbar -orient vertical -command ".tables yview"
 
 frame .tableframe
-table .tableframe.table -titlerows 1 -rows 20 \
+table .tableframe.table -titlerows 1 -rows [expr {$duroadmin(initrows) + 2}] \
         -xscrollcommand ".tableframe.xbar set" \
         -yscrollcommand ".tableframe.ybar set" \
         -variable tbcontent -state disabled -anchor w \
@@ -549,7 +732,7 @@ table .tableframe.table -titlerows 1 -rows 20 \
 scrollbar .tableframe.xbar -orient horizontal -command ".tableframe.table xview"
 scrollbar .tableframe.ybar -orient vertical -command ".tableframe.table yview"
 
-button .morebutton -text More -state disabled
+button .morebutton -text More -state disabled -command more_tuples
 
 pack .dbsframe -anchor w
 pack .tables .tablesbar -side left -fill y

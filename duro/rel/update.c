@@ -575,14 +575,6 @@ cleanup:
     return ret;
 }
 
-/*
-static RDB_bool
-exp_req_complex(RDB_expression
-    if (exprp != NULL) {
-        return _RDB_expr_refers(exprp, tbp);
-    }
-*/
-
 static RDB_bool
 upd_complex(RDB_table *tbp, int updc, const RDB_attr_update updv[])
 {

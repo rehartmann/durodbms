@@ -35,7 +35,7 @@ RDB_strerror(int err)
         case RDB_INVALID_TRANSACTION:
             return "invalid transaction";
         case RDB_ELEMENT_EXISTS:
-            return "element already exists in set";
+            return "element exists";
         case RDB_TYPE_MISMATCH:
             return "type mismatch";
         case RDB_KEY_VIOLATION:
