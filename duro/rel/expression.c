@@ -318,149 +318,6 @@ RDB_rel_table(RDB_table *tbp) {
 }
 
 RDB_expression *
-RDB_rel_select(RDB_expression *tbexprp, RDB_expression *condp)
-{
-    RDB_expression *exprp;
-
-    if ((tbexprp == NULL) || (condp == NULL))
-        return NULL;
-
-    exprp = malloc(sizeof (RDB_expression));  
-    if (exprp == NULL)
-        return NULL;
-
-    exprp->kind = RDB_OP_REL_SELECT;
-    exprp->var.op.arg1 = tbexprp;
-    exprp->var.op.arg2 = condp;
-
-    return exprp;
-}
-
-RDB_expression *
-RDB_rel_union(RDB_expression *arg1, RDB_expression *arg2)
-{
-    RDB_expression *exprp;
-
-    if ((arg1 == NULL) || (arg2 == NULL))
-        return NULL;
-
-    exprp = malloc(sizeof (RDB_expression));  
-    if (exprp == NULL)
-        return NULL;
-        
-    exprp->kind = RDB_OP_REL_UNION;
-    exprp->var.op.arg1 = arg1;
-    exprp->var.op.arg2 = arg2;
-
-    return exprp;
-}
-
-RDB_expression *
-RDB_rel_minus(RDB_expression *arg1, RDB_expression *arg2)
-{
-    RDB_expression *exprp;
-
-    if ((arg1 == NULL) || (arg2 == NULL))
-        return NULL;
-
-    exprp = malloc(sizeof (RDB_expression));  
-    if (exprp == NULL)
-        return NULL;
-        
-    exprp->kind = RDB_OP_REL_MINUS;
-    exprp->var.op.arg1 = arg1;
-    exprp->var.op.arg2 = arg2;
-
-    return exprp;
-}
-
-RDB_expression *
-RDB_rel_intersect(RDB_expression *arg1, RDB_expression *arg2)
-{
-    RDB_expression *exprp;
-
-    if ((arg1 == NULL) || (arg2 == NULL))
-        return NULL;
-
-    exprp = malloc(sizeof (RDB_expression));  
-    if (exprp == NULL)
-        return NULL;
-        
-    exprp->kind = RDB_OP_REL_INTERSECT;
-    exprp->var.op.arg1 = arg1;
-    exprp->var.op.arg2 = arg2;
-
-    return exprp;
-}
-
-/* Perform a natural join of the two tables. */
-RDB_expression *
-RDB_rel_join(RDB_expression *arg1, RDB_expression *arg2)
-{
-    RDB_expression *exprp;
-
-    if ((arg1 == NULL) || (arg2 == NULL))
-        return NULL;
-
-    exprp = malloc(sizeof (RDB_expression));  
-    if (exprp == NULL)
-        return NULL;
-        
-    exprp->kind = RDB_OP_REL_JOIN;
-    exprp->var.op.arg1 = arg1;
-    exprp->var.op.arg2 = arg2;
-
-    return exprp;
-}
-
-RDB_expression *
-RDB_rel_extend(RDB_expression *arg1, int attrc, RDB_virtual_attr attrv[])
-{
-    RDB_expression *exprp;
-    int i;
-
-    if (arg1 == NULL)
-        return NULL;
-
-    exprp = malloc(sizeof (RDB_expression));  
-    if (exprp == NULL)
-        return NULL;
-        
-    exprp->kind = RDB_OP_REL_EXTEND;
-    exprp->var.op.arg1 = arg1;
-    exprp->var.op.attrc = attrc;
-    exprp->var.op.attrv = malloc(sizeof (RDB_virtual_attr) * attrc);
-    for (i = 0; i < attrc; i++) {
-        exprp->var.op.attrv[i].name = RDB_dup_str(attrv[i].name);
-        exprp->var.op.attrv[i].value = RDB_dup_expr(attrv[i].value);
-    }
-    return exprp;
-}
-
-RDB_expression *
-RDB_rel_project(RDB_expression *arg1, int attrc, char *attrv[])
-{
-    RDB_expression *exprp;
-    int i;
-
-    if (arg1 == NULL)
-        return NULL;
-
-    exprp = malloc(sizeof (RDB_expression));  
-    if (exprp == NULL)
-        return NULL;
-        
-    exprp->kind = RDB_OP_REL_PROJECT;
-    exprp->var.op.arg1 = arg1;
-    exprp->var.op.attrc = attrc;
-    exprp->var.op.attrv = malloc(sizeof (RDB_virtual_attr) * attrc);
-    for (i = 0; i < attrc; i++) {
-        exprp->var.op.attrv[i].name = RDB_dup_str(attrv[i]);
-    }
-    return exprp;
-}
-
-RDB_expression *
 RDB_rel_is_empty(RDB_expression *arg1)
 {
     RDB_expression *exprp;
@@ -482,8 +339,6 @@ RDB_rel_is_empty(RDB_expression *arg1)
 void 
 RDB_drop_expr(RDB_expression *exprp)
 {
-    int i;
-
     switch (exprp->kind) {
         case RDB_OP_EQ:
         case RDB_OP_NEQ:
@@ -494,32 +349,11 @@ RDB_drop_expr(RDB_expression *exprp)
         case RDB_OP_AND:
         case RDB_OP_OR:
         case RDB_OP_ADD:
-        case RDB_OP_REL_SELECT:
-        case RDB_OP_REL_UNION:
-        case RDB_OP_REL_MINUS:
-        case RDB_OP_REL_INTERSECT:
             RDB_drop_expr(exprp->var.op.arg2);
         case RDB_OP_NOT:
         case RDB_OP_REL_IS_EMPTY:
             RDB_drop_expr(exprp->var.op.arg1);
             break;
-        case RDB_OP_REL_JOIN:
-            RDB_drop_expr(exprp->var.op.arg1);
-            RDB_drop_expr(exprp->var.op.arg2);
-            break;
-        case RDB_OP_REL_EXTEND:
-            RDB_drop_expr(exprp->var.op.arg1);
-            for (i = 0; i < exprp->var.op.attrc; i++) {
-                free(exprp->var.op.attrv[i].name);
-                RDB_drop_expr(exprp->var.op.attrv[i].value);
-            }
-            break;
-        case RDB_OP_REL_PROJECT:
-            RDB_drop_expr(exprp->var.op.arg1);
-            for (i = 0; i < exprp->var.op.attrc; i++) {
-                free(exprp->var.op.attrv[i].name);
-            }
-            break;       
         case RDB_CONST:
             RDB_deinit_value(&exprp->var.const_val);
             break;
@@ -774,11 +608,8 @@ RDB_evaluate_bool(RDB_expression *exprp, const RDB_tuple *tup,
             return RDB_OK;
         case RDB_OP_REL_IS_EMPTY:
         {
-            RDB_table *tbp;
-
-            err = RDB_evaluate_table(exprp->var.op.arg1, tup, txp, &tbp);
-            if (err != RDB_OK)
-                return err;
+            RDB_table *tbp = exprp->var.tbp;
+        
             *resp = RDB_table_is_empty(tbp, txp, resp);
             return RDB_table_name(tbp) == NULL ?
                     RDB_drop_table(tbp, txp) : RDB_OK;
@@ -853,84 +684,6 @@ RDB_evaluate_rational(RDB_expression *exprp, const RDB_tuple *tup,
 }
 
 int
-RDB_evaluate_table(RDB_expression *exprp, const RDB_tuple *tup,
-                   RDB_transaction *txp, RDB_table **resultpp)
-{
-    int res;
-    RDB_table *tbp1, *tbp2;
-
-    switch (exprp->kind) {
-        case RDB_TABLE:
-            *resultpp = exprp->var.tbp;
-            return RDB_OK;
-        case RDB_OP_REL_SELECT:
-            res = RDB_evaluate_table(exprp->var.op.arg1, tup, txp, &tbp1);
-            if (res != RDB_OK)
-                return res;
-            return RDB_select(tbp1, RDB_dup_expr(exprp->var.op.arg2),
-                                    resultpp);
-        case RDB_OP_REL_UNION:
-            res = RDB_evaluate_table(exprp->var.op.arg1, tup, txp, &tbp1);
-            if (res != RDB_OK)
-                return res;
-            res = RDB_evaluate_table(exprp->var.op.arg2, tup, txp, &tbp2);
-            if (res != RDB_OK)
-                return res;
-            return RDB_union(tbp1, tbp2, resultpp);
-        case RDB_OP_REL_MINUS:
-            res = RDB_evaluate_table(exprp->var.op.arg1, tup, txp, &tbp1);
-            if (res != RDB_OK)
-                return res;
-            res = RDB_evaluate_table(exprp->var.op.arg2, tup, txp, &tbp2);
-            if (res != RDB_OK)
-                return res;
-            return RDB_minus(tbp1, tbp2, resultpp);
-        case RDB_OP_REL_INTERSECT:
-            res = RDB_evaluate_table(exprp->var.op.arg1, tup, txp, &tbp1);
-            if (res != RDB_OK)
-                return res;
-            res = RDB_evaluate_table(exprp->var.op.arg2, tup, txp, &tbp2);
-            if (res != RDB_OK)
-                return res;
-            return RDB_intersect(tbp1, tbp2, resultpp);
-        case RDB_OP_REL_JOIN:
-            res = RDB_evaluate_table(exprp->var.op.arg1, tup, txp, &tbp1);
-            if (res != RDB_OK)
-                return res;
-            res = RDB_evaluate_table(exprp->var.op.arg2, tup, txp, &tbp2);
-            if (res != RDB_OK)
-                return res;
-            return RDB_join(tbp1, tbp2, resultpp);
-        case RDB_OP_REL_EXTEND:
-            res = RDB_evaluate_table(exprp->var.op.arg1, tup, txp, &tbp1);
-            if (res != RDB_OK)
-                return res;
-            return RDB_extend(tbp1, exprp->var.op.attrc,
-                                    exprp->var.op.attrv, resultpp);
-        case RDB_OP_REL_PROJECT:
-        {
-            char **attrnamv;
-            int attrc = exprp->var.op.attrc;
-            int i;
-
-            res = RDB_evaluate_table(exprp->var.op.arg1, tup, txp, &tbp1);
-            if (res != RDB_OK)
-                return res;
-            
-            attrnamv = malloc(attrc * sizeof(char *));
-            for (i = 0; i < attrc; i++) {
-                attrnamv[i] = exprp->var.op.attrv[i].name;
-            }
-            res = RDB_project(tbp1, attrc, attrnamv, resultpp);
-            free(attrnamv);
-            return res;
-        }
-        default:
-             return RDB_ILLEGAL_ARG;
-    }
-}
-
-int
 RDB_evaluate(RDB_expression *exprp, const RDB_tuple *tup, RDB_transaction *txp,
             RDB_value *valp)
 {
@@ -958,10 +711,12 @@ RDB_evaluate(RDB_expression *exprp, const RDB_tuple *tup, RDB_transaction *txp,
                 valp->var.bin.len = strlen(valp->var.bin.datap) + 1;
                 return RDB_OK;
             }
+            case RDB_TP_RELATION:
+                valp->var.tbp = exprp->var.tbp;
+                return RDB_OK;
             default:
-                abort();
+                ;
         }
-    } else {
-        return RDB_evaluate_table(exprp, tup, txp, &valp->var.tbp);
     }
+    abort();
 }

@@ -1,9 +1,12 @@
 <html lang="en">
+<head>
 <title>Duro API specification</title>
 
 <body>
 
 <h1>Duro API specification</h1>
+
+<p>- DRAFT -
 
 <h2>Scalar types</h2>
 
@@ -15,6 +18,7 @@
 <tr><td>RDB_INTEGER<td>RDB_int
 <tr><td>RDB_RATIONAL<td>RDB_rational
 <tr><td>RDB_STRING<td>char *
+<tr><td>RDB_BINARY<td>&nbsp;-
 </table>
 
 <h3>Defining a type</h3>
@@ -95,6 +99,15 @@ int
 RDB_aggregate(RDB_table *, RDB_aggregate_op op, const char *attrname,
               RDB_transaction *, RDB_value *resultp);
 
+int
+RDB_binary_set(RDB_value *, size_t pos, void *srcp, size_t len);
+
+int
+RDB_binary_get(const RDB_value *, size_t pos, void *dstp, size_t len);
+
+size_t
+RDB_binary_get_length(const RDB_value *);
+
 </pre>
 
 <h2>Selector functions</h2>
@@ -147,7 +160,7 @@ RDB_value_equals(const RDB_value *, const RDB_value *);
 
 </pre>
 
-<h2>Tuple functions</h3>
+<h2>Tuple functions</h2>
 
 <pre>
 
@@ -357,8 +370,15 @@ RDB_init_array(RDB_array *);
 void
 RDB_deinit_array(RDB_array *);
 
+typedef struct {
+    char *attrname;
+    RDB_bool asc;
+} RDB_seq_item;
+
 int
-RDB_table_to_array(RDB_table *, RDB_array **arrpp, RDB_transaction *);
+RDB_table_to_array(RDB_table *, RDB_array *arrp,
+                   int seqitc, RDB_seq_item seqitv[],
+                   RDB_transaction *);
 
 int
 RDB_array_get_tuple(RDB_array *, RDB_int idx, RDB_tuple *);
@@ -434,27 +454,6 @@ RDB_add(RDB_expression *, RDB_expression *);
 
 RDB_expression *
 RDB_rel_table(RDB_table *);
-
-RDB_expression *
-RDB_rel_select(RDB_expression *tbexprp, RDB_expression *condp);
-
-RDB_expression *
-RDB_rel_union(RDB_expression *, RDB_expression *);
-
-RDB_expression *
-RDB_rel_minus(RDB_expression *, RDB_expression *);
-
-RDB_expression *
-RDB_rel_intersect(RDB_expression *, RDB_expression *);
-
-RDB_expression *
-RDB_rel_join(RDB_expression *, RDB_expression *);
-
-RDB_expression *
-RDB_rel_extend(RDB_expression *, int attrc, RDB_virtual_attr attrv[]);
-
-RDB_expression *
-RDB_rel_project(RDB_expression *, int attrc, char *attrv[]);
 
 RDB_expression *
 RDB_rel_is_empty(RDB_expression *);

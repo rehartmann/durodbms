@@ -124,21 +124,10 @@ serialize_expr(RDB_value *valp, int *posp, const RDB_expression *exprp)
         case RDB_OP_AND:
         case RDB_OP_OR:
         case RDB_OP_ADD:
-        case RDB_OP_REL_SELECT:
-        case RDB_OP_REL_UNION:
-        case RDB_OP_REL_MINUS:
-        case RDB_OP_REL_INTERSECT:
-        case RDB_OP_REL_JOIN:
             res = serialize_expr(valp, posp, exprp->var.op.arg1);
             if (res != RDB_OK)
                 return res;
             return serialize_expr(valp, posp, exprp->var.op.arg2);
-        case RDB_OP_REL_EXTEND:
-            return RDB_NOT_SUPPORTED;
-            break;
-        case RDB_OP_REL_PROJECT:
-            return RDB_NOT_SUPPORTED;
-            break;
         case RDB_TABLE:
             return _RDB_serialize_table(valp, posp, exprp->var.tbp);
     }
@@ -494,14 +483,6 @@ deserialize_expr(RDB_value *valp, int *posp, RDB_database *dbp,
             if (*exprpp == NULL)
                 return RDB_NO_MEMORY;
             break;
-        case RDB_OP_REL_SELECT:
-        case RDB_OP_REL_UNION:
-        case RDB_OP_REL_MINUS:
-        case RDB_OP_REL_INTERSECT:
-        case RDB_OP_REL_JOIN:
-        case RDB_OP_REL_EXTEND:
-        case RDB_OP_REL_PROJECT:
-            return RDB_NOT_SUPPORTED;
         case RDB_TABLE:
             {
                 RDB_table *tbp;

@@ -2,6 +2,10 @@ $Id$
 
 Summary of Changes for Duro
 
+Changes for (planned) Duro 0.5
+
+- Made RDB_rel_table() the only way to create a relational expression.
+
 Changes for Duro 0.4
 
 - Persistent virtual tables now supported through RDB_set_table_name()

@@ -831,8 +831,7 @@ RDB_drop_db(RDB_database *dbp)
     int res;
     RDB_transaction tx;
     RDB_expression *exprp;
-    RDB_expression *rexprp;
-    RDB_table *vtbp;
+    RDB_table *vtbp, *vtb2p;
     RDB_bool empty;
 
     res = RDB_begin_tx(&tx, dbp, NULL);
@@ -840,26 +839,30 @@ RDB_drop_db(RDB_database *dbp)
         return res;
 
     /* Check if the database contains user tables */
-    rexprp = RDB_rel_select(RDB_rel_table(dbp->rtables_tbp),
-                            RDB_expr_attr("IS_USER", &RDB_BOOLEAN));
-    rexprp = RDB_rel_join(rexprp,
-            RDB_rel_select(RDB_rel_table(dbp->dbtables_tbp),
-                           RDB_eq(RDB_expr_attr("DBNAME", &RDB_STRING),
-                                  RDB_string_const(dbp->name))));
-    if (rexprp == NULL) {
-        res = RDB_NO_MEMORY;    
-        goto error;
-    }
-
-    res = RDB_evaluate_table(rexprp, NULL, &tx, &vtbp);
+    exprp = RDB_expr_attr("IS_USER", &RDB_BOOLEAN);
+    res = RDB_select(dbp->rtables_tbp, exprp, &vtbp);
     if (res != RDB_OK) {
-        RDB_drop_expr(rexprp);
+        RDB_drop_expr(exprp);
         goto error;
     }
-
+    exprp = RDB_eq(RDB_expr_attr("DBNAME", &RDB_STRING),
+                                 RDB_string_const(dbp->name));
+    res = RDB_select(dbp->dbtables_tbp, exprp, &vtb2p);
+    if (res != RDB_OK) {
+        RDB_drop_expr(exprp);
+        RDB_drop_table(vtbp, &tx);
+        goto error;
+    }
+    
+    res = RDB_join(vtbp, vtb2p, &vtbp);
+    if (res != RDB_OK) {
+        RDB_drop_table(vtbp, &tx);
+        RDB_drop_table(vtb2p, &tx);
+        goto error;
+    }
+    
     res = RDB_table_is_empty(vtbp, &tx, &empty);
     RDB_drop_table(vtbp, &tx);
-    RDB_drop_expr(rexprp);
     if (res != RDB_OK) {
         goto error;
     }

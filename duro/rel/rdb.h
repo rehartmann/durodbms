@@ -101,13 +101,6 @@ enum _RDB_expr_kind {
     RDB_OP_NOT,
     RDB_OP_ADD,
 
-    RDB_OP_REL_SELECT,
-    RDB_OP_REL_UNION,
-    RDB_OP_REL_MINUS,
-    RDB_OP_REL_INTERSECT,
-    RDB_OP_REL_JOIN,
-    RDB_OP_REL_EXTEND,
-    RDB_OP_REL_PROJECT,
     RDB_OP_REL_IS_EMPTY
 };
 
@@ -118,9 +111,6 @@ typedef struct RDB_expression {
         struct {
             struct RDB_expression *arg1;
             struct RDB_expression *arg2;
-            /* For EXTEND and PROJECT */
-            int attrc;
-            struct RDB_virtual_attr *attrv;
         } op;
         struct {
             char *name;
@@ -813,32 +803,10 @@ RDB_expression *
 RDB_add(RDB_expression *, RDB_expression *);
 
 /*
- * Functions for creating relational expressions
+ * Create table-valued expression
  */
-
 RDB_expression *
 RDB_rel_table(RDB_table *);
-
-RDB_expression *
-RDB_rel_select(RDB_expression *tbexprp, RDB_expression *condp);
-
-RDB_expression *
-RDB_rel_union(RDB_expression *, RDB_expression *);
-
-RDB_expression *
-RDB_rel_minus(RDB_expression *, RDB_expression *);
-
-RDB_expression *
-RDB_rel_intersect(RDB_expression *, RDB_expression *);
-
-RDB_expression *
-RDB_rel_join(RDB_expression *, RDB_expression *);
-
-RDB_expression *
-RDB_rel_extend(RDB_expression *, int attrc, RDB_virtual_attr attrv[]);
-
-RDB_expression *
-RDB_rel_project(RDB_expression *, int attrc, char *attrv[]);
 
 RDB_expression *
 RDB_rel_is_empty(RDB_expression *);
@@ -858,10 +826,6 @@ RDB_evaluate_int(RDB_expression *, const RDB_tuple *tup, RDB_transaction *,
 int
 RDB_evaluate_rational(RDB_expression *, const RDB_tuple *tup, RDB_transaction *,
                  RDB_rational *);
-
-int
-RDB_evaluate_table(RDB_expression *, const RDB_tuple *, RDB_transaction *,
-                  RDB_table **resultpp);
 
 int
 RDB_evaluate(RDB_expression *, const RDB_tuple *, RDB_transaction *, RDB_value *);
