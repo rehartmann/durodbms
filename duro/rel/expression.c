@@ -1016,7 +1016,7 @@ evaluate_order(RDB_expression *exp, const RDB_object *tup, RDB_transaction *txp,
         switch (kind) {
             case RDB_EX_LT:
                 valp->var.bool_val = (RDB_bool)
-                        (strcmp(val1.var.bin.datap, val2.var.bin.datap) < 0);
+                        (strcmp(val1.var.bin.datap, val2.var.bin.datap) < 0); /* !! */
                 break;
             case RDB_EX_GT:
                 valp->var.bool_val = (RDB_bool)

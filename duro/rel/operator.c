@@ -10,6 +10,7 @@
 #include "catalog.h"
 #include "serialize.h"
 #include <gen/strfns.h>
+#include <string.h>
 
 int
 RDB_create_ro_op(const char *name, int argc, RDB_type *argtv[], RDB_type *rtyp,
@@ -605,10 +606,42 @@ length_string(const char *name, int argc, RDB_object *argv[],
     return RDB_OK;
 }
 
+static int
+substring(const char *name, int argc, RDB_object *argv[],
+        const void *iargp, size_t iarglen, RDB_transaction *txp,
+        RDB_object *retvalp)
+{
+    int start = argv[1]->var.int_val;
+    int len = argv[2]->var.int_val;
+
+    /* Operands must not be negative */
+    if (len < 0 || start < 0)
+        return RDB_INVALID_ARGUMENT;
+
+    /* Check if substring exceeds source string */
+    if (start + len + 1 > argv[0]->var.bin.len)
+        return RDB_INVALID_ARGUMENT;
+
+    RDB_destroy_obj(retvalp);
+    retvalp->typ = &RDB_STRING;
+    retvalp->kind = RDB_OB_BIN;
+    retvalp->var.bin.len = len + 1;
+    retvalp->var.bin.datap = malloc(retvalp->var.bin.len);
+    if (retvalp->var.bin.datap == NULL)
+        return RDB_NO_MEMORY;
+    strncpy(retvalp->var.bin.datap, (char *) argv[0]->var.bin.datap
+            + start, len);
+    ((char *) retvalp->var.bin.datap)[len] = '\0';
+    return RDB_OK;
+}
+
 int
 _RDB_add_builtin_ops(RDB_dbroot *dbrootp)
 {
-    RDB_ro_op *op = malloc(sizeof(RDB_dbroot));
+    RDB_ro_op *op;
+    int ret;
+
+    op = malloc(sizeof(RDB_dbroot));
     if (op == NULL)
         return RDB_NO_MEMORY;
     op->name = RDB_dup_str("LENGTH");
@@ -621,6 +654,28 @@ _RDB_add_builtin_ops(RDB_dbroot *dbrootp)
     op->funcp = &length_string;
     op->modhdl = NULL;
 
-    put_ro_op(dbrootp, op);
+    ret = put_ro_op(dbrootp, op);
+    if (ret != RDB_OK)
+        return ret;
+
+    op = malloc(sizeof(RDB_dbroot));
+    if (op == NULL)
+        return RDB_NO_MEMORY;
+    op->name = RDB_dup_str("SUBSTRING");
+    op->argc = 3;
+    op->argtv = malloc(sizeof (RDB_type *) * 3);
+    if (op->argtv == NULL)
+        return RDB_NO_MEMORY;
+    op->argtv[0] = &RDB_STRING;
+    op->argtv[1] = &RDB_INTEGER;
+    op->argtv[2] = &RDB_INTEGER;
+    op->rtyp = &RDB_STRING;
+    op->funcp = &substring;
+    op->modhdl = NULL;
+
+    ret = put_ro_op(dbrootp, op);
+    if (ret != RDB_OK)
+        return ret;
+
     return RDB_OK;
 }

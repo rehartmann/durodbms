@@ -364,19 +364,168 @@ transform_select(RDB_table *tbp)
 }
 
 static int
+transform_project(RDB_table *tbp);
+
+static int
+swap_project_union(RDB_table *tbp, RDB_table *chtbp)
+{
+    int ret;
+    int i;
+    RDB_table *newtbp;
+    RDB_type *newtyp;
+    RDB_table *htbp = chtbp->var._union.tb1p;
+    int attrc = tbp->typ->var.basetyp->var.tuple.attrc;
+    char **attrnamev = malloc(attrc * sizeof(char *));
+    if (attrnamev == NULL)
+        return RDB_NO_MEMORY;
+
+    for (i = 0; i < attrc; i++) {
+        attrnamev[i] = tbp->typ->var.basetyp
+                ->var.tuple.attrv[i].name;
+    }
+
+    /* Create new project table for child #2 */
+    ret = RDB_project(chtbp->var._union.tb2p, attrc, attrnamev, &newtbp);
+    if (ret != RDB_OK) {
+        free(attrnamev);
+        return ret;
+    }
+
+    /* Alter parent */
+    tbp->kind = RDB_TB_UNION;
+    tbp->var._union.tb1p = chtbp;
+    tbp->var._union.tb2p = newtbp;
+
+    /* Alter child #1 */
+    chtbp->kind = RDB_TB_PROJECT;
+    chtbp->var.project.tbp = htbp;
+    ret = RDB_project_relation_type(chtbp->typ, attrc, attrnamev, &newtyp);
+    free(attrnamev);
+    if (ret != RDB_OK) {
+        return ret;
+    }
+    RDB_drop_type(chtbp->typ, NULL);
+    chtbp->typ = newtyp;
+
+    ret = transform_project(newtbp);
+    if (ret != RDB_OK)
+        return ret;
+
+    /* Infer keys for first child to set keyloss flag */
+    return _RDB_infer_keys(chtbp);
+}
+
+static int
+swap_project_rename(RDB_table *tbp, RDB_table *chtbp)
+{
+    int i, j;
+    int ret;
+    RDB_type *newtyp;
+    RDB_renaming *renv;
+    char **attrnamev;
+    RDB_table *htbp = chtbp->var.rename.tbp;
+    int nattrc = tbp->typ->var.basetyp->var.tuple.attrc;
+
+    /*
+     * Alter parent
+     */
+    renv = malloc(sizeof (RDB_renaming) * tbp->var.rename.renc);
+    if (renv == NULL)
+        return RDB_NO_MEMORY;
+    tbp->kind = RDB_TB_RENAME;
+    tbp->var.rename.tbp = chtbp;
+    tbp->var.rename.renc = chtbp->var.rename.renc;
+    tbp->var.rename.renv = renv;
+
+    /* Take renamings whose dest appear in the parent */
+    j = 0;
+    for (i = 0; i < chtbp->var.rename.renc; i++) {
+        if (_RDB_tuple_type_attr(tbp->typ->var.basetyp,
+                chtbp->var.rename.renv[i].to) != NULL) {
+            tbp->var.rename.renv[j].from =
+                    RDB_dup_str(chtbp->var.rename.renv[i].from);
+            tbp->var.rename.renv[j].to =
+                    RDB_dup_str(chtbp->var.rename.renv[i].to);
+            j++;
+        }
+    }
+
+    /*
+     * Alter child
+     */
+     
+    /* Destroy renamings */
+    for (i = 0; i < chtbp->var.rename.renc; i++) {
+        free(chtbp->var.rename.renv[i].from);
+        free(chtbp->var.rename.renv[i].to);
+    }
+    chtbp->kind = RDB_TB_PROJECT;
+    chtbp->var.project.tbp = htbp;
+
+    attrnamev = malloc(nattrc * sizeof(char *));
+    if (attrnamev == NULL)
+        return RDB_NO_MEMORY;
+    for (i = 0; i < nattrc; i++) {
+        attrnamev[i] = tbp->typ->var.basetyp->var.tuple.attrv[i].name;
+        for (j = 0; j < tbp->var.rename.renc
+                && strcmp(attrnamev[i], tbp->var.rename.renv[j].to) != 0; j++);
+        if (j < tbp->var.rename.renc)
+            attrnamev[j] = tbp->var.rename.renv[j].from;
+    }
+    ret = RDB_project_relation_type(htbp->typ, nattrc, attrnamev, &newtyp);
+    free(attrnamev);
+    if (ret != RDB_OK)
+        return ret;
+    RDB_drop_type(chtbp->typ, NULL);
+    chtbp->typ = newtyp;
+
+    return RDB_OK;
+}
+
+static int
 transform_project(RDB_table *tbp)
 {
+    int ret;
     RDB_table *chtbp = tbp->var.project.tbp;
 
     do {
         switch (chtbp->kind) {
+            case RDB_TB_STORED:
+                return RDB_OK;
             case RDB_TB_PROJECT:
                 /* Merge projects */
                 tbp->var.project.tbp = chtbp->var.project.tbp;
+                tbp->var.project.keyloss = (RDB_bool) (tbp->var.project.keyloss
+                        || chtbp->var.project.keyloss);
                 _RDB_free_table(chtbp);
                 chtbp = tbp->var.project.tbp;
                 break;
-            default:
+            case RDB_TB_UNION:
+                ret = swap_project_union(tbp, chtbp);
+                if (ret != RDB_OK)
+                    return ret;
+                tbp = chtbp;
+                chtbp = tbp->var.project.tbp;
+                break;
+            case RDB_TB_RENAME:
+                ret = swap_project_rename(tbp, chtbp);
+                if (ret != RDB_OK)
+                    return ret;
+                tbp = chtbp;
+                chtbp = tbp->var.project.tbp;
+                break;
+            case RDB_TB_SELECT:
+            case RDB_TB_SELECT_INDEX:
+            case RDB_TB_MINUS:
+            case RDB_TB_INTERSECT:
+            case RDB_TB_JOIN:
+            case RDB_TB_EXTEND:
+            case RDB_TB_SUMMARIZE:
+            case RDB_TB_WRAP:
+            case RDB_TB_UNWRAP:
+            case RDB_TB_SDIVIDE:
+            case RDB_TB_GROUP:
+            case RDB_TB_UNGROUP:
                 return _RDB_transform(chtbp);
         }
     } while (tbp->kind == RDB_TB_PROJECT);
