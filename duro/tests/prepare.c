@@ -13,7 +13,7 @@ RDB_attr emp_attrs[] = {
 char *emp_keyattrs1[] = { "EMPNO" };
 char *emp_keyattrs2[] = { "NAME" };
 
-RDB_str_vec emp_keyattrs[] = {
+RDB_string_vec emp_keyattrs[] = {
     { 1, emp_keyattrs1 },
     { 1, emp_keyattrs2 }
 };
@@ -30,7 +30,7 @@ create_tables(RDB_database *dbp)
 {
     RDB_transaction tx;
     RDB_table *tbp;
-    RDB_str_vec key;
+    RDB_string_vec key;
     RDB_object defval;
     int ret;
     

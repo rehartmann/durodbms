@@ -185,8 +185,8 @@
 <h3>Operator functions</h3>
 
 <ul>
-<li><a href="#define_ro_op">RDB_define_ro_op</a>
-<li><a href="#define_update_op">RDB_define_update_op</a>
+<li><a href="#create_ro_op">RDB_create_ro_op</a>
+<li><a href="#create_update_op">RDB_create_update_op</a>
 <li><a href="#call_ro_op">RDB_call_ro_op</a>
 <li><a href="#call_update_op">RDB_call_update_op</a>
 <li><a href="#drop_op">RDB_drop_op</a>
@@ -246,12 +246,12 @@
 typedef struct {
     int strc;
     char **strv;
-} RDB_str_vec;
+} RDB_string_vec;
 
 int
 RDB_create_table(const char *name, RDB_bool persistent,
                  int attrc, RDB_attr attrv[],
-                 int keyc, RDB_str_vec keyv[],
+                 int keyc, RDB_string_vec keyv[],
                  RDB_transaction *txp, RDB_table **tbpp);
 </pre>
 
@@ -1015,7 +1015,7 @@ RDB_obj_set_comp(RDB_object *valp, const char *compname,
 #include &lt;rel/rdb.h&gt;
 
 int
-RDB_binary_set(RDB_object *, size_t pos, void *srcp, size_t len);
+RDB_binary_set(RDB_object *, size_t pos, const void *srcp, size_t len);
 </pre>
 
 <hr>
@@ -1701,28 +1701,29 @@ RDB_join_relation_types(const RDB_type *typ1, const RDB_type *typ2,
 
 <hr>
 
-<h2 id="define_ro_op">RDB_define_ro_op</h2>
+<h2 id="create_ro_op">RDB_create_ro_op</h2>
 
 <pre>
 #include &lt;rel/rdb.h&gt;
 
 int
-RDB_define_ro_op(const char *name, int argc, RDB_type *argtv[], RDB_type *rtyp,
-                 const char *libname, const char *symname, const char *arg,
+RDB_create_ro_op(const char *name, int argc, RDB_type *argtv[], RDB_type *rtyp,
+                 const char *libname, const char *symname,
+                 const void *iargp, size_t iarglen, 
                  RDB_transaction *txp);
 </pre>
 
 <hr>
 
-<h2 id="define_update_op">RDB_define_update_op</h2>
+<h2 id="create_update_op">RDB_create_update_op</h2>
 
 <pre>
 #include &lt;rel/rdb.h&gt;
 
 int
-RDB_define_update_op(const char *name, int argc, RDB_type *argtv[],
-                  RDB_bool upd[],
-                  const char *libname, const char *symname, const char *arg,
+RDB_create_update_op(const char *name, int argc, RDB_type *argtv[],
+                  RDB_bool upd[], const char *libname, const char *symname,
+                  const void *iargp, size_t iarglen,
                   RDB_transaction *txp);
 </pre>
 

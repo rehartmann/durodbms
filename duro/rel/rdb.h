@@ -177,7 +177,7 @@ typedef struct {
 typedef struct {
     int strc;
     char **strv;
-} RDB_str_vec;
+} RDB_string_vec;
 
 typedef struct {
     RDB_aggregate_op op;
@@ -213,7 +213,7 @@ typedef struct RDB_table {
     enum _RDB_tb_kind kind;
     char *name;
     int keyc;
-    RDB_str_vec *keyv;
+    RDB_string_vec *keyv;
     union {
         struct {
             RDB_recmap *recmapp;
@@ -373,7 +373,7 @@ typedef struct RDB_attr {
 int
 RDB_create_table(const char *name, RDB_bool persistent,
         int attrc, RDB_attr heading[],
-        int keyc, RDB_str_vec keyv[],
+        int keyc, RDB_string_vec keyv[],
         RDB_transaction *txp, RDB_table **tbpp);
 
 /*
@@ -896,7 +896,7 @@ RDB_obj_string(RDB_object *valp);
  * The RDB_object must be of type BINARY or newly initialized.
  */
 int
-RDB_binary_set(RDB_object *, size_t pos, void *srcp, size_t len);
+RDB_binary_set(RDB_object *, size_t pos, const void *srcp, size_t len);
 
 /*
  * Copy len bytes from the RDB_object at position pos to dstp.
@@ -1005,14 +1005,16 @@ void
 RDB_drop_expr(RDB_expression *);
 
 int
-RDB_define_ro_op(const char *name, int argc, RDB_type *argtv[], RDB_type *rtyp,
-                 const char *libname, const char *symname, const char *arg,
+RDB_create_ro_op(const char *name, int argc, RDB_type *argtv[], RDB_type *rtyp,
+                 const char *libname, const char *symname,
+                 const void *iargp, size_t iarglen, 
                  RDB_transaction *txp);
 
 int
-RDB_define_update_op(const char *name, int argc, RDB_type *argtv[],
+RDB_create_update_op(const char *name, int argc, RDB_type *argtv[],
                   RDB_bool upd[], const char *libname, const char *symname,
-                  const char *arg, RDB_transaction *txp);
+                  const void *iargp, size_t iarglen,
+                  RDB_transaction *txp);
 
 int
 RDB_call_ro_op(const char *name, int argc, RDB_object *argv[],

@@ -17,14 +17,14 @@ static RDB_attr table_attr_attrv[] = {
             { "TYPE", &RDB_STRING, NULL, 0 },
             { "I_FNO", &RDB_INTEGER, NULL, 0 } };
 static char *table_attr_keyattrv[] = { "ATTRNAME", "TABLENAME" };
-static RDB_str_vec table_attr_keyv[] = { { 2, table_attr_keyattrv } };
+static RDB_string_vec table_attr_keyv[] = { { 2, table_attr_keyattrv } };
 
 static RDB_attr table_attr_defvals_attrv[] = {
             { "ATTRNAME", &RDB_STRING, NULL, 0 },
             { "TABLENAME", &RDB_STRING, NULL, 0 },
             { "DEFAULT_VALUE", &RDB_BINARY, NULL, 0 } };
 static char *table_attr_defvals_keyattrv[] = { "ATTRNAME", "TABLENAME" };
-static RDB_str_vec table_attr_defvals_keyv[] = { { 2, table_attr_defvals_keyattrv } };
+static RDB_string_vec table_attr_defvals_keyv[] = { { 2, table_attr_defvals_keyattrv } };
 
 static RDB_attr rtables_attrv[] = {
     { "TABLENAME", &RDB_STRING, NULL, 0 },
@@ -32,7 +32,7 @@ static RDB_attr rtables_attrv[] = {
     { "I_RECMAP", &RDB_STRING, NULL, 0 }
 };
 static char *rtables_keyattrv[] = { "TABLENAME" };
-static RDB_str_vec rtables_keyv[] = { { 1, rtables_keyattrv } };
+static RDB_string_vec rtables_keyv[] = { { 1, rtables_keyattrv } };
 
 static RDB_attr vtables_attrv[] = {
     { "TABLENAME", &RDB_STRING, NULL, 0 },
@@ -40,14 +40,14 @@ static RDB_attr vtables_attrv[] = {
     { "I_DEF", &RDB_BINARY, NULL, 0 }
 };
 static char *vtables_keyattrv[] = { "TABLENAME" };
-static RDB_str_vec vtables_keyv[] = { { 1, vtables_keyattrv } };
+static RDB_string_vec vtables_keyv[] = { { 1, vtables_keyattrv } };
 
 static RDB_attr dbtables_attrv[] = {
     { "TABLENAME", &RDB_STRING },
     { "DBNAME", &RDB_STRING }
 };
 static char *dbtables_keyattrv[] = { "TABLENAME", "DBNAME" };
-static RDB_str_vec dbtables_keyv[] = { { 2, dbtables_keyattrv } };
+static RDB_string_vec dbtables_keyv[] = { { 2, dbtables_keyattrv } };
 
 static RDB_attr keys_attrv[] = {
     { "TABLENAME", &RDB_STRING, NULL, 0 },
@@ -55,7 +55,7 @@ static RDB_attr keys_attrv[] = {
     { "ATTRS", &RDB_STRING, NULL, 0 }
 };
 static char *keys_keyattrv[] = { "TABLENAME", "KEYNO" };
-static RDB_str_vec keys_keyv[] = { { 2, keys_keyattrv } };
+static RDB_string_vec keys_keyv[] = { { 2, keys_keyattrv } };
 
 static RDB_attr types_attrv[] = {
     { "TYPENAME", &RDB_STRING, NULL, 0 },
@@ -64,7 +64,7 @@ static RDB_attr types_attrv[] = {
     { "I_AREP_TYPE", &RDB_STRING, NULL, 0 }
 };
 static char *types_keyattrv[] = { "TYPENAME" };
-static RDB_str_vec types_keyv[] = { { 1, types_keyattrv } };
+static RDB_string_vec types_keyv[] = { { 1, types_keyattrv } };
 
 static RDB_attr possreps_attrv[] = {
     { "TYPENAME", &RDB_STRING, NULL, 0 },
@@ -72,7 +72,7 @@ static RDB_attr possreps_attrv[] = {
     { "I_CONSTRAINT", &RDB_BINARY, NULL, 0 }
 };
 static char *possreps_keyattrv[] = { "TYPENAME", "POSSREPNAME" };
-static RDB_str_vec possreps_keyv[] = { { 2, possreps_keyattrv } };
+static RDB_string_vec possreps_keyv[] = { { 2, possreps_keyattrv } };
 
 static RDB_attr possrepcomps_attrv[] = {
     { "TYPENAME", &RDB_STRING, NULL, 0 },
@@ -83,7 +83,7 @@ static RDB_attr possrepcomps_attrv[] = {
 };
 static char *possrepcomps_keyattrv1[] = { "TYPENAME", "POSSREPNAME", "COMPNO" };
 static char *possrepcomps_keyattrv2[] = { "TYPENAME", "POSSREPNAME", "COMPNAME" };
-static RDB_str_vec possrepcomps_keyv[] = {
+static RDB_string_vec possrepcomps_keyv[] = {
     { 3, possrepcomps_keyattrv1 },
     { 3, possrepcomps_keyattrv2 }
 };
@@ -94,22 +94,22 @@ static RDB_attr ro_ops_attrv[] = {
     { "RTYPE", &RDB_STRING, NULL, 0 },
     { "LIB", &RDB_STRING, NULL, 0 },
     { "SYMBOL", &RDB_STRING, NULL, 0 },
-    { "IARG", &RDB_STRING, NULL, 0 }
+    { "IARG", &RDB_BINARY, NULL, 0 }
 };
 
 static char *ro_ops_keyattrv[] = { "NAME", "ARGTYPES" };
-static RDB_str_vec ro_ops_keyv[] = { { 2, ro_ops_keyattrv } };
+static RDB_string_vec ro_ops_keyv[] = { { 2, ro_ops_keyattrv } };
 
 static RDB_attr upd_ops_attrv[] = {
     { "NAME", &RDB_STRING, NULL, 0 },
     { "ARGTYPES", &RDB_STRING, NULL, 0 },
     { "LIB", &RDB_STRING, NULL, 0 },
     { "SYMBOL", &RDB_STRING, NULL, 0 },
-    { "IARG", &RDB_STRING, NULL, 0 }
+    { "IARG", &RDB_BINARY, NULL, 0 }
 };
 
 static char *upd_ops_keyattrv[] = { "NAME", "ARGTYPES" };
-static RDB_str_vec upd_ops_keyv[] = { { 2, upd_ops_keyattrv } };
+static RDB_string_vec upd_ops_keyv[] = { { 2, upd_ops_keyattrv } };
 
 int
 _RDB_dbtables_insert(RDB_table *tbp, RDB_transaction *txp)
@@ -265,7 +265,7 @@ _RDB_catalog_insert(RDB_table *tbp, RDB_transaction *txp)
     if (ret != RDB_OK)
         return ret;
     for (i = 0; i < tbp->keyc; i++) {
-        RDB_str_vec *kap = &tbp->keyv[i];
+        RDB_string_vec *kap = &tbp->keyv[i];
         char buf[1024];
 
         ret = RDB_tuple_set_int(&tpl, "KEYNO", i);
@@ -501,7 +501,7 @@ _RDB_create_db_in_cat(RDB_transaction *txp)
 
 static int
 get_keys(const char *name, RDB_transaction *txp,
-         int *keycp, RDB_str_vec **keyvp)
+         int *keycp, RDB_string_vec **keyvp)
 {
     RDB_expression *wherep;
     RDB_table *vtbp;
@@ -534,7 +534,7 @@ get_keys(const char *name, RDB_transaction *txp,
         goto error;
     *keycp = ret;
 
-    *keyvp = malloc(sizeof(RDB_str_vec) * *keycp);
+    *keyvp = malloc(sizeof(RDB_string_vec) * *keycp);
     if (*keyvp == NULL) {
         ret = RDB_NO_MEMORY;
         goto error;
@@ -601,7 +601,7 @@ _RDB_get_cat_rtable(const char *name, RDB_transaction *txp, RDB_table **tbpp)
     RDB_attr *attrv = NULL;
     int defvalc;
     int keyc;
-    RDB_str_vec *keyv;
+    RDB_string_vec *keyv;
 
     /* Read real table data from the catalog */
 

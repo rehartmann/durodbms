@@ -1388,12 +1388,12 @@ RDB_table_is_empty(RDB_table *tbp, RDB_transaction *txp, RDB_bool *resultp)
     return _RDB_drop_qresult(qrp, txp);
 }
 
-static RDB_str_vec *
-dup_keys(int keyc, RDB_str_vec *keyv) {
-    RDB_str_vec *newkeyv;
+static RDB_string_vec *
+dup_keys(int keyc, RDB_string_vec *keyv) {
+    RDB_string_vec *newkeyv;
     int i;
 
-    newkeyv = malloc(keyc * sizeof(RDB_str_vec));
+    newkeyv = malloc(keyc * sizeof(RDB_string_vec));
     if (newkeyv == NULL) {
         return NULL;
     }
@@ -1417,12 +1417,12 @@ error:
     return NULL;
 }
 
-static RDB_str_vec *
-dup_rename_keys(int keyc, RDB_str_vec *keyv, int renc, RDB_renaming renv[]) {
-    RDB_str_vec *newkeyv;
+static RDB_string_vec *
+dup_rename_keys(int keyc, RDB_string_vec *keyv, int renc, RDB_renaming renv[]) {
+    RDB_string_vec *newkeyv;
     int i, j;
 
-    newkeyv = malloc(keyc * sizeof(RDB_str_vec));
+    newkeyv = malloc(keyc * sizeof(RDB_string_vec));
     if (newkeyv == NULL) {
         return NULL;
     }
@@ -1497,8 +1497,8 @@ RDB_select(RDB_table *tbp, RDB_expression *condp, RDB_table **resultpp)
     return RDB_OK;
 }
 
-static RDB_str_vec *all_key(RDB_table *tbp) {
-    RDB_str_vec *keyv = malloc(sizeof (RDB_str_vec));
+static RDB_string_vec *all_key(RDB_table *tbp) {
+    RDB_string_vec *keyv = malloc(sizeof (RDB_string_vec));
     int attrc;
     int i;
     
@@ -1671,12 +1671,12 @@ RDB_join(RDB_table *tbp1, RDB_table *tbp2, RDB_table **resultpp)
 
     /* Candidate keys */
     newtbp->keyc = tbp1->keyc * tbp2->keyc;
-    newtbp->keyv = malloc(sizeof (RDB_str_vec) * newtbp->keyc);
+    newtbp->keyv = malloc(sizeof (RDB_string_vec) * newtbp->keyc);
     if (newtbp->keyv == NULL)
         goto error;
     for (i = 0; i < tbp1->keyc; i++) {
         for (j = 0; j < tbp2->keyc; j++) {
-            RDB_str_vec *attrsp = &newtbp->keyv[i * tbp2->keyc + j];
+            RDB_string_vec *attrsp = &newtbp->keyv[i * tbp2->keyc + j];
            
             attrsp->strc = tbp1->keyv[i].strc + tbp2->keyv[j].strc;
             attrsp->strv = malloc(sizeof(char *) * attrsp->strc);
@@ -1854,7 +1854,7 @@ RDB_project(RDB_table *tbp, int attrc, char *strv[], RDB_table **resultpp)
         /* Pick the keys which survived the projection */
 
         newtbp->keyc = keyc;
-        newtbp->keyv = malloc(sizeof (RDB_str_vec) * keyc);
+        newtbp->keyv = malloc(sizeof (RDB_string_vec) * keyc);
         if (newtbp->keyv == NULL) {
             goto error;
         }

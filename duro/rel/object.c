@@ -149,7 +149,7 @@ RDB_destroy_obj(RDB_object *valp)
     if (valp->typ == NULL)
         return RDB_OK;
 
-    if (valp->kind == _RDB_BIN) {
+    if (valp->kind == _RDB_BIN && (valp->var.bin.len > 0)) {
         free(valp->var.bin.datap);
     }
     return RDB_OK;
@@ -344,12 +344,13 @@ RDB_obj_string(RDB_object *valp)
 }
 
 int
-RDB_binary_set(RDB_object *valp, size_t pos, void *srcp, size_t len)
+RDB_binary_set(RDB_object *valp, size_t pos, const void *srcp, size_t len)
 {
     /* If the value is newly initialized, allocate memory */
     if (valp->typ == NULL) {
         valp->var.bin.len = pos + len;
-        valp->var.bin.datap = malloc(valp->var.bin.len);
+        if (valp->var.bin.len > 0)
+            valp->var.bin.datap = malloc(valp->var.bin.len);
         if (valp->var.bin.datap == NULL)
             return RDB_NO_MEMORY;
         valp->typ = &RDB_BINARY;
@@ -368,7 +369,8 @@ RDB_binary_set(RDB_object *valp, size_t pos, void *srcp, size_t len)
     }
     
     /* copy data */
-    memcpy(((RDB_byte *)valp->var.bin.datap) + pos, srcp, len);
+    if (len > 0)
+        memcpy(((RDB_byte *)valp->var.bin.datap) + pos, srcp, len);
     return RDB_OK;
 }
 

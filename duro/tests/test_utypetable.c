@@ -6,7 +6,7 @@
 
 char *utype_keyattrs1[] = { "NUMBER" };
 
-RDB_str_vec utype_keyattrs[] = {
+RDB_string_vec utype_keyattrs[] = {
     { 1, utype_keyattrs1 }
 };
 
@@ -141,6 +141,52 @@ error:
 }
 
 int
+test_drop(RDB_database *dbp)
+{
+    int ret;
+    RDB_table *tbp;
+    RDB_transaction tx;
+
+    printf("Starting transaction\n");
+    ret = RDB_begin_tx(&tx, dbp, NULL);
+    if (ret != RDB_OK) {
+        return ret;
+    }
+
+    ret = RDB_get_table("UTYPETEST", &tx, &tbp);
+    if (ret != RDB_OK) {
+        RDB_rollback(&tx);
+        return ret;
+    }
+
+    printf("Dropping table %s\n", RDB_table_name(tbp));
+    ret = RDB_drop_table(tbp, &tx);
+    if (ret != RDB_OK) {
+        RDB_rollback(&tx);
+        return ret;
+    }
+
+    printf("Dropping type %s\n", RDB_type_name(tinyintp));
+    ret = RDB_drop_type(tinyintp, &tx);
+    if (ret != RDB_OK) {
+        RDB_rollback(&tx);
+        return ret;
+    }
+
+    printf("Trying to get type\n");
+    ret = RDB_get_type("TINYINT", &tx, &tinyintp);
+    if (ret != RDB_NOT_FOUND) {
+        fprintf(stderr, "Wrong return code: %s\n", RDB_strerror(ret));
+        RDB_rollback(&tx);
+        return ret;
+    }
+    printf("Return code: %s - OK\n", RDB_strerror(ret));
+
+    printf("End of transaction\n");
+    return RDB_commit(&tx);
+}
+
+int
 main(void)
 {
     RDB_environment *dsp;
@@ -166,6 +212,12 @@ main(void)
     }
 
     ret = test_table(dbp);
+    if (ret != RDB_OK) {
+        fprintf(stderr, "Error: %s\n", RDB_strerror(ret));
+        return 2;
+    }
+
+    ret = test_drop(dbp);
     if (ret != RDB_OK) {
         fprintf(stderr, "Error: %s\n", RDB_strerror(ret));
         return 2;

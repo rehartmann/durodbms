@@ -4,6 +4,11 @@ Summary of Changes for Duro
 
 Changes for Duro 0.6
 
+- Renamed RDB_value as RDB_object. Renamed RDB_init_value() as
+  RDB_init_obj(), etc.
+
+- RDB_drop_type now takes a RDB_transaction * argument.
+
 - Replaced structure RDB_key_attrs by the more general RDB_str_vec.
 
 - Implemented user-defined operations.
@@ -19,6 +24,8 @@ Changes for Duro 0.6
 - Implemented user-defined types.
 
 - Renamed field "type" in RDB_attr as "typ", for the sake of uniformity.
+
+- Bugfixes
 
 Changes for Duro 0.5
 

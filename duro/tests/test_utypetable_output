@@ -11,4 +11,10 @@ Return code: type constraint violation - OK
 Creating TINYINT from INTEGER=99
 Inserting Tuple
 End of transaction
+Starting transaction
+Dropping table UTYPETEST
+Dropping type TINYINT
+Trying to get type
+Return code: data not found - OK
+End of transaction
 Closing environment

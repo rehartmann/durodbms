@@ -3,6 +3,8 @@
 #include "rdb.h"
 #include "typeimpl.h"
 #include "internal.h"
+#include "catalog.h"
+#include "serialize.h"
 #include <gen/strfns.h>
 #include <string.h>
 
@@ -156,19 +158,315 @@ free_type(RDB_type *typ)
 }    
 
 int
+RDB_get_type(const char *name, RDB_transaction *txp, RDB_type **typp)
+{
+    RDB_type **foundtypp;
+
+    if (strcmp(name, "BOOLEAN") == 0) {
+        *typp = &RDB_BOOLEAN;
+        return RDB_OK;
+    }
+    if (strcmp(name, "INTEGER") == 0) {
+        *typp = &RDB_INTEGER;
+        return RDB_OK;
+    }
+    if (strcmp(name, "RATIONAL") == 0) {
+        *typp = &RDB_RATIONAL;
+        return RDB_OK;
+    }
+    if (strcmp(name, "STRING") == 0) {
+        *typp = &RDB_STRING;
+        return RDB_OK;
+    }
+    if (strcmp(name, "BINARY") == 0) {
+        *typp = &RDB_BINARY;
+        return RDB_OK;
+    }
+    /* search for user defined type */
+
+    foundtypp = (RDB_type **)RDB_hashmap_get(&txp->dbp->dbrootp->typemap,
+            name, NULL);
+    if ((foundtypp != NULL) && (*foundtypp != NULL)) {
+        *typp = *foundtypp;
+        return RDB_OK;
+    }
+    
+    return _RDB_get_cat_type(name, txp, typp);
+}
+
+int
+RDB_define_type(const char *name, int repc, RDB_possrep repv[],
+                RDB_transaction *txp)
+{
+    RDB_tuple tpl;
+    RDB_object conval;
+    int ret;
+    int i, j;
+
+    if (!RDB_tx_is_running(txp))
+        return RDB_INVALID_TRANSACTION;
+
+    RDB_init_tuple(&tpl);
+    RDB_init_obj(&conval);
+
+    /*
+     * Insert tuple into SYS_TYPES
+     */
+
+    ret = RDB_tuple_set_string(&tpl, "TYPENAME", name);
+    if (ret != RDB_OK)
+        goto error;
+    ret = RDB_tuple_set_string(&tpl, "I_LIBNAME", "");
+    if (ret != RDB_OK)
+        goto error;
+    ret = RDB_tuple_set_string(&tpl, "I_AREP_TYPE", "");
+    if (ret != RDB_OK)
+        goto error;
+    ret = RDB_tuple_set_int(&tpl, "I_AREP_LEN", -2);
+    if (ret != RDB_OK)
+        goto error;
+
+    ret = RDB_insert(txp->dbp->dbrootp->types_tbp, &tpl, txp);
+    if (ret != RDB_OK)
+        goto error;
+
+    /*
+     * Insert tuple into SYS_POSSREPS
+     */   
+
+    for (i = 0; i < repc; i++) {
+        char *prname = repv[i].name;
+        RDB_expression *exp = repv[i].constraintp;
+
+        if (prname == NULL) {
+            /* possrep name may be NULL if there's only 1 possrep */
+            if (repc > 1) {
+                ret = RDB_INVALID_ARGUMENT;
+                goto error;
+            }
+            prname = (char *)name;
+        }
+        ret = RDB_tuple_set_string(&tpl, "POSSREPNAME", prname);
+        if (ret != RDB_OK)
+            goto error;
+        
+        /* Check if type of constraint is RDB_BOOLEAN */
+        if (exp != NULL && RDB_expr_type(exp) != &RDB_BOOLEAN) {
+            ret = RDB_TYPE_MISMATCH;
+            goto error;
+        }
+
+        /* Store constraint in tuple */
+        ret = _RDB_expr_to_obj(exp, &conval);
+        if (ret != RDB_OK)
+            goto error;
+        ret = RDB_tuple_set(&tpl, "I_CONSTRAINT", &conval);
+        if (ret != RDB_OK)
+            goto error;
+
+        /* Store tuple */
+        ret = RDB_insert(txp->dbp->dbrootp->possreps_tbp, &tpl, txp);
+        if (ret != RDB_OK)
+            goto error;
+
+        for (j = 0; j < repv[i].compc; j++) {
+            char *cname = repv[i].compv[j].name;
+
+            if (cname == NULL) {
+                if (repv[i].compc > 1) {
+                    ret = RDB_INVALID_ARGUMENT;
+                    goto error;
+                }
+                cname = prname;
+            }
+            ret = RDB_tuple_set_int(&tpl, "COMPNO", (RDB_int)j);
+            if (ret != RDB_OK)
+                goto error;
+            ret = RDB_tuple_set_string(&tpl, "COMPNAME", cname);
+            if (ret != RDB_OK)
+                goto error;
+            ret = RDB_tuple_set_string(&tpl, "COMPTYPENAME",
+                    repv[i].compv[j].typ->name);
+            if (ret != RDB_OK)
+                goto error;
+
+            ret = RDB_insert(txp->dbp->dbrootp->possrepcomps_tbp, &tpl, txp);
+            if (ret != RDB_OK)
+                goto error;
+        }
+    }
+
+    RDB_destroy_obj(&conval);    
+    RDB_destroy_tuple(&tpl);
+    
+    return RDB_OK;
+    
+error:
+    RDB_destroy_obj(&conval);    
+    RDB_destroy_tuple(&tpl);
+
+    return ret;
+}
+
+int
+RDB_implement_type(const char *name, const char *libname, RDB_type *arep,
+                   int options, size_t areplen, RDB_transaction *txp)
+{
+    RDB_expression *exp, *wherep;
+    RDB_attr_update upd[3];
+    int ret;
+
+    if (!RDB_tx_is_running(txp))
+        return RDB_INVALID_TRANSACTION;
+
+    if (libname != NULL) {
+        if (arep == NULL) {
+            if (!(RDB_FIXED_BINARY & options))
+                return RDB_INVALID_ARGUMENT;
+        } else {
+            if (!RDB_type_is_builtin(arep))
+                return RDB_NOT_SUPPORTED;
+        }
+    } else {
+        /*
+         * No libname given, so selector and getters/setters must be provided
+         * by the system
+         */
+        RDB_table *tmptb1p;
+        RDB_table *tmptb2p;
+        RDB_tuple tpl;
+        char *possrepname;
+
+        if (arep != NULL)
+            return RDB_INVALID_ARGUMENT;
+
+        /* # of possreps must be one */
+        ret = _RDB_possreps_query(name, txp, &tmptb1p);
+        if (ret != RDB_OK)
+            return ret;
+        RDB_init_tuple(&tpl);
+        ret = RDB_extract_tuple(tmptb1p, &tpl, txp);
+        RDB_drop_table(tmptb1p, txp);
+        if (ret != RDB_OK) {
+            RDB_destroy_tuple(&tpl);
+            return ret;
+        }
+        possrepname = RDB_tuple_get_string(&tpl, "POSSREPNAME");
+
+        /* only 1 possrep component currently supported */
+        ret = _RDB_possrepcomps_query(name, possrepname, txp, &tmptb2p);
+        if (ret != RDB_OK) {
+            RDB_destroy_tuple(&tpl);
+            return ret;
+        }
+        ret = RDB_extract_tuple(tmptb2p, &tpl, txp);
+        RDB_drop_table(tmptb2p, txp);
+        if (ret != RDB_OK) {
+            RDB_destroy_tuple(&tpl);
+            return ret == RDB_INVALID_ARGUMENT ? RDB_NOT_SUPPORTED : ret;
+        }
+        ret = RDB_get_type(RDB_tuple_get_string(&tpl, "COMPTYPENAME"), txp, &arep);
+        RDB_destroy_tuple(&tpl);
+        if (ret != RDB_OK) {
+            return ret;
+        }
+        /* Empty string indicates that there is no library */
+        libname = "";
+    }
+
+    exp = RDB_expr_attr("TYPENAME", &RDB_STRING);
+    if (exp == NULL) {
+        return RDB_NO_MEMORY;
+    }
+    wherep = RDB_eq(exp, RDB_string_const(name));
+    if (wherep == NULL) {
+        RDB_drop_expr(exp);
+        return RDB_NO_MEMORY;
+    }    
+
+    upd[0].exp = upd[1].exp = NULL;
+
+    upd[0].name = "I_AREP_TYPE";
+    upd[0].exp = RDB_string_const(arep != NULL ? arep->name : "");
+    if (upd[0].exp == NULL) {
+        ret = RDB_NO_MEMORY;
+        goto cleanup;
+    }
+    upd[1].name = "I_AREP_LEN";
+    upd[1].exp = RDB_int_const(options & RDB_FIXED_BINARY ? areplen : arep->ireplen);
+    if (upd[1].exp == NULL) {
+        ret = RDB_NO_MEMORY;
+        goto cleanup;
+    }
+    upd[2].name = "I_LIBNAME";
+    upd[2].exp = RDB_string_const(libname);
+    if (upd[2].exp == NULL) {
+        ret = RDB_NO_MEMORY;
+        goto cleanup;
+    }
+
+    ret = RDB_update(txp->dbp->dbrootp->types_tbp, wherep, 3, upd, txp);
+
+cleanup:    
+    if (upd[0].exp != NULL)
+        RDB_drop_expr(upd[0].exp);
+    if (upd[1].exp != NULL)
+        RDB_drop_expr(upd[1].exp);
+    if (upd[2].exp != NULL)
+        RDB_drop_expr(upd[2].exp);
+    RDB_drop_expr(wherep);
+
+    return ret;
+}
+
+int
 RDB_drop_type(RDB_type *typ, RDB_transaction *txp)
 {
+    int ret;
+
     if (RDB_type_is_builtin(typ))
         return RDB_INVALID_ARGUMENT;
 
     if (typ->name != NULL) {
-        /*
-         * delete type from database
-         */
+        RDB_expression *wherep;
+        RDB_type *ntp = NULL;
+
         if (!RDB_tx_is_running(txp))
             return RDB_INVALID_TRANSACTION;
 
-        /* !! ... */
+        /* !! should check if the type is still used by a table */
+
+        /* Delete type from type table by puting a NULL pointer into it */
+        ret = RDB_hashmap_put(&txp->dbp->dbrootp->typemap, typ->name, &ntp,
+                sizeof (ntp));
+        if (ret != RDB_OK) {
+            if (RDB_is_syserr(ret))
+                RDB_rollback(txp);
+            return ret;
+        }
+
+        /* Delete type from database */
+        wherep = RDB_eq(RDB_expr_attr("TYPENAME", &RDB_STRING),
+                        RDB_string_const(typ->name));
+        if (wherep == NULL) {
+            RDB_rollback(txp);
+            return RDB_NO_MEMORY;
+        }
+        ret = RDB_delete(txp->dbp->dbrootp->types_tbp, wherep, txp);
+        if (ret != RDB_OK) {
+            RDB_drop_expr(wherep);
+            return ret;
+        }
+        ret = RDB_delete(txp->dbp->dbrootp->possreps_tbp, wherep, txp);
+        if (ret != RDB_OK) {
+            RDB_drop_expr(wherep);
+            return ret;
+        }
+        ret = RDB_delete(txp->dbp->dbrootp->possrepcomps_tbp, wherep, txp);
+        if (ret != RDB_OK) {
+            RDB_drop_expr(wherep);
+            return ret;
+        }
     }
 
     free_type(typ);

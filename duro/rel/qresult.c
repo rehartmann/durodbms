@@ -429,7 +429,7 @@ _RDB_table_qresult(RDB_table *tbp, RDB_qresult **qrespp, RDB_transaction *txp)
             break;
         case RDB_TB_PROJECT:
             if (tbp->var.project.keyloss) {
-                RDB_str_vec keyattrs;
+                RDB_string_vec keyattrs;
                 int i;
                 RDB_type *tuptyp = tbp->typ->var.basetyp;
 

@@ -12,7 +12,7 @@ RDB_attr srtest_attrs[] = {
 
 char *srtest_keys[] = { "NO" };
 
-RDB_str_vec srtest_keyattrs[] = {
+RDB_string_vec srtest_keyattrs[] = {
     { 1, srtest_keys }
 };
 

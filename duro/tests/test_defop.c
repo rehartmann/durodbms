@@ -29,16 +29,16 @@ test_defop(RDB_database *dbp)
     }
 
     printf("Defining PLUS\n");
-    ret = RDB_define_ro_op("PLUS", 2, plusargtv, &RDB_INTEGER, "libplus", "RDBU_plus",
-            NULL, &tx);
+    ret = RDB_create_ro_op("PLUS", 2, plusargtv, &RDB_INTEGER, "libplus", "RDBU_plus",
+            NULL, 0, &tx);
     if (ret != RDB_OK) {
         RDB_rollback(&tx);
         return ret;
     }
 
     printf("Defining ADD\n");
-    ret = RDB_define_update_op("ADD", 2, addargtv, updv, "libplus", "RDBU_add",
-            NULL, &tx);
+    ret = RDB_create_update_op("ADD", 2, addargtv, updv, "libplus", "RDBU_add",
+            NULL, 0, &tx);
     if (ret != RDB_OK) {
         RDB_rollback(&tx);
         return ret;
