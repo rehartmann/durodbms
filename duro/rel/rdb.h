@@ -676,8 +676,8 @@ RDB_join(RDB_table *, RDB_table *, RDB_table **resultpp);
  *  passed through attrv.
  */
 int
-RDB_extend(RDB_table *, int attrc, RDB_virtual_attr attrv[], RDB_transaction *,
-        RDB_table **resultpp);
+RDB_extend(RDB_table *, int attrc, const RDB_virtual_attr attrv[],
+        RDB_transaction *, RDB_table **resultpp);
 
 int
 RDB_project(RDB_table *, int attrc, char *attrv[], RDB_table **resultpp);
@@ -1048,17 +1048,12 @@ RDB_to_rational(RDB_expression *);
 RDB_expression *
 RDB_to_string(RDB_expression *);
 
-int
-RDB_ro_op(const char *opname, int argc, RDB_expression *argv[],
-       RDB_transaction *txp, RDB_expression **expp);
+RDB_expression *
+RDB_ro_op(const char *opname, int argc, RDB_expression *argv[]);
 
-int
-RDB_ro_op_1(const char *opname, RDB_expression *arg1,
-        RDB_transaction *txp, RDB_expression **expp);
-
-int
-RDB_ro_op_2(const char *opname, RDB_expression *arg1, RDB_expression *arg2,
-        RDB_transaction *txp, RDB_expression **expp);
+RDB_expression *
+RDB_ro_op_l(const char *opname, RDB_expression *arg, ...
+        /* (RDB_expression *) NULL */ );
 
 /* Return address of encapsulated object, or NULL if not a value */
 RDB_object *

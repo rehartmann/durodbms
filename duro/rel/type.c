@@ -550,7 +550,7 @@ RDB_implement_type(const char *name, RDB_type *arep, RDB_int areplen,
     if (exp == NULL) {
         return RDB_NO_MEMORY;
     }
-    wherep = RDB_eq(exp, RDB_string_to_expr(name));
+    wherep = RDB_ro_op_l("=", exp, RDB_string_to_expr(name), (RDB_expression *) NULL);
     if (wherep == NULL) {
         RDB_drop_expr(exp);
         return RDB_NO_MEMORY;
@@ -635,7 +635,8 @@ RDB_drop_type(RDB_type *typ, RDB_transaction *txp)
         }
 
         /* Delete type from database */
-        wherep = RDB_eq(RDB_expr_attr("TYPENAME"), RDB_string_to_expr(typ->name));
+        wherep = RDB_ro_op_l("=", RDB_expr_attr("TYPENAME"),
+                RDB_string_to_expr(typ->name), (RDB_expression *) NULL);
         if (wherep == NULL) {
             RDB_rollback_all(txp);
             return RDB_NO_MEMORY;

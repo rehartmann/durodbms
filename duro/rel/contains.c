@@ -31,8 +31,8 @@ project_contains(RDB_table *tbp, const RDB_object *tplp, RDB_transaction *txp)
         objp = RDB_tuple_get(tplp, tpltyp->var.tuple.attrv[0].name);
         if (objp == NULL)
             return RDB_INVALID_ARGUMENT;
-        condp = RDB_eq(RDB_expr_attr(tpltyp->var.tuple.attrv[0].name),
-                RDB_obj_to_expr(objp));
+        condp = RDB_ro_op_l("=", RDB_expr_attr(tpltyp->var.tuple.attrv[0].name),
+                RDB_obj_to_expr(objp), (RDB_expression *) NULL);
         if (condp == NULL)
             return RDB_NO_MEMORY;
         for (i = 1; i < tpltyp->var.tuple.attrc; i++) {
@@ -43,11 +43,13 @@ project_contains(RDB_table *tbp, const RDB_object *tplp, RDB_transaction *txp)
                 return RDB_INVALID_ARGUMENT;
             }
             
-            ret = RDB_ro_op_2("AND", condp, RDB_eq(RDB_expr_attr(
-                    tpltyp->var.tuple.attrv[i].name), RDB_obj_to_expr(objp)),
-                    txp, &condp);
-            if (ret != RDB_OK)
-                return ret;
+            condp = RDB_ro_op_l("AND", condp,
+                    RDB_ro_op_l("=", RDB_expr_attr(
+                            tpltyp->var.tuple.attrv[i].name),
+                            RDB_obj_to_expr(objp), (RDB_expression *) NULL),
+                    (RDB_expression *) NULL);
+            if (condp == NULL)
+                return RDB_NO_MEMORY;
         }
         if (condp == NULL)
             return RDB_NO_MEMORY;
@@ -117,8 +119,8 @@ ungroup_contains(RDB_table *tbp, const RDB_object *tplp, RDB_transaction *txp)
         objp = RDB_tuple_get(tplp, tpltyp->var.tuple.attrv[i].name);
         if (objp == NULL)
             return RDB_INVALID_ARGUMENT;
-        condp = RDB_eq(RDB_expr_attr(tpltyp->var.tuple.attrv[i++].name),
-                RDB_obj_to_expr(objp));
+        condp = RDB_ro_op_l("=", RDB_expr_attr(tpltyp->var.tuple.attrv[i++].name),
+                RDB_obj_to_expr(objp), (RDB_expression *) NULL);
         while (i < tpltyp->var.tuple.attrc) {
             if (strcmp(tpltyp->var.tuple.attrv[i].name,
                           tbp->var.ungroup.attr) != 0) {
@@ -128,11 +130,13 @@ ungroup_contains(RDB_table *tbp, const RDB_object *tplp, RDB_transaction *txp)
                         RDB_drop_expr(condp);
                     return RDB_INVALID_ARGUMENT;
                 }
-                ret = RDB_ro_op_2("AND", condp, RDB_eq(RDB_expr_attr(
-                        tpltyp->var.tuple.attrv[i].name),
-                        RDB_obj_to_expr(objp)), txp, &condp);
-                if (ret != RDB_OK)
-                    return ret;
+                condp = RDB_ro_op_l("AND", condp,
+                        RDB_ro_op_l("=",
+                                RDB_expr_attr(tpltyp->var.tuple.attrv[i].name),
+                                RDB_obj_to_expr(objp), (RDB_expression *) NULL),
+                        (RDB_expression *) NULL);
+                if (condp == NULL)
+                    return RDB_NO_MEMORY;
             }
             i++;
         }

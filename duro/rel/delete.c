@@ -338,10 +338,11 @@ delete(RDB_table *tbp, RDB_expression *condp, RDB_transaction *txp)
                 RDB_expression *ncondp = NULL;
 
                 if (condp != NULL) {
-                    ret = RDB_ro_op_2("AND", tbp->var.select.exp, condp, txp,
-                            &ncondp);
-                    if (ret != RDB_OK)
-                        return ret;
+                    /* Untested due to optimization */
+                    ncondp = RDB_ro_op_l("AND", tbp->var.select.exp, condp,
+                            (RDB_expression *) NULL);
+                    if (ncondp == NULL)
+                        return RDB_NO_MEMORY;
                 }
                 ret = delete(tbp->var.select.tbp,
                         ncondp != NULL ? ncondp : tbp->var.select.exp, txp);

@@ -287,7 +287,7 @@ RDB_join(RDB_table *tb1p, RDB_table *tb2p, RDB_table **resultpp)
 }
 
 int
-RDB_extend(RDB_table *tbp, int attrc, RDB_virtual_attr attrv[],
+RDB_extend(RDB_table *tbp, int attrc, const RDB_virtual_attr attrv[],
         RDB_transaction *txp, RDB_table **resultpp)
 {
     int i;

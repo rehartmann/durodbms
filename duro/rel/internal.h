@@ -423,9 +423,6 @@ _RDB_infer_keys(RDB_table *tbp);
 int
 _RDB_add_builtin_ops(RDB_dbroot *);
 
-RDB_expression *
-_RDB_ro_op(const char *opname, int argc, RDB_expression *argv[]);
-
 int
 _RDB_duprem(RDB_qresult *qrp);
 

@@ -86,9 +86,10 @@ create_view2(RDB_database *dbp)
     hexprp = RDB_expr_attr("SALARY");
     if (hexprp == NULL)
         return RDB_NO_MEMORY;
-    ret = RDB_ro_op_2(">", hexprp, RDB_rational_to_expr(4000.0), &tx, &exprp);
-    if (ret != RDB_OK)
-        return ret;
+    exprp = RDB_ro_op_l(">", hexprp, RDB_rational_to_expr(4000.0),
+            (RDB_expression *) NULL);
+    if (exprp == NULL)
+        return RDB_NO_MEMORY;
 
     ret = RDB_select(tbp, exprp, &tx, &vtbp);
     if (ret != RDB_OK) {
@@ -139,9 +140,10 @@ create_view3(RDB_database *dbp)
     exprp = RDB_expr_attr("SALARY");
     if (exprp == NULL)
         return RDB_NO_MEMORY;
-    ret = RDB_ro_op_2(">", exprp, RDB_rational_to_expr(4000.0), &tx, &exprp);
-    if (ret != RDB_OK)
-        return ret;
+    exprp = RDB_ro_op_l(">", exprp, RDB_rational_to_expr(4000.0),
+            (RDB_expression *) NULL);
+    if (exprp == NULL)
+        return RDB_NO_MEMORY;
 
     vattr.name = "HIGHSAL";
     vattr.exp = exprp;

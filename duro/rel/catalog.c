@@ -1646,11 +1646,11 @@ _RDB_possrepcomps_query(const char *name, const char *possrepname,
         return ret;
     }
     exp = wherep;
-    ret = RDB_ro_op_2("AND", exp, ex2p, txp, &wherep);
-    if (ret != RDB_OK) {
+    wherep = RDB_ro_op_l("AND", exp, ex2p, (RDB_expression *) NULL);
+    if (wherep == NULL) {
         RDB_drop_expr(exp);
         RDB_drop_expr(ex2p);
-        return ret;
+        return RDB_NO_MEMORY;
     }
     ret = RDB_select(txp->dbp->dbrootp->possrepcomps_tbp, wherep, txp, tbpp);
     if (ret != RDB_OK) {
@@ -1893,14 +1893,14 @@ _RDB_get_cat_ro_op(const char *name, int argc, RDB_type *argtv[],
         return ret;
     }
 
-    ret = RDB_ro_op_2("AND", RDB_eq(RDB_expr_attr("NAME"),
+    exp = RDB_ro_op_l("AND", RDB_eq(RDB_expr_attr("NAME"),
                    RDB_string_to_expr(name)),
             RDB_eq(RDB_expr_attr("ARGTYPES"),
-                   RDB_obj_to_expr(&typesobj)), txp, &exp);
+                   RDB_obj_to_expr(&typesobj)), (RDB_expression *) NULL);
     RDB_destroy_obj(&typesobj);
-    if (ret != RDB_OK) {
+    if (exp == NULL) {
         RDB_rollback_all(txp);
-        return ret;
+        return RDB_NO_MEMORY;
     }
     ret = RDB_select(txp->dbp->dbrootp->ro_ops_tbp, exp, txp, &vtbp);
     if (ret != RDB_OK) {
@@ -2024,14 +2024,14 @@ _RDB_get_cat_upd_op(const char *name, int argc, RDB_type *argtv[],
         return ret;
     }
         
-    ret = RDB_ro_op_2("AND", RDB_eq(RDB_expr_attr("NAME"),
+    exp = RDB_ro_op_l("AND", RDB_eq(RDB_expr_attr("NAME"),
                    RDB_string_to_expr(name)),
             RDB_eq(RDB_expr_attr("ARGTYPES"),
-                   RDB_obj_to_expr(&typesobj)), txp, &exp);
+                   RDB_obj_to_expr(&typesobj)), (RDB_expression *) NULL);
     RDB_destroy_obj(&typesobj);
-    if (ret != RDB_OK) {
+    if (exp == NULL) {
         RDB_rollback_all(txp);
-        return ret;
+        return RDB_NO_MEMORY;
     }
     ret = RDB_select(txp->dbp->dbrootp->upd_ops_tbp, exp, txp, &vtbp);
     if (ret != RDB_OK) {

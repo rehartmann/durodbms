@@ -10,6 +10,7 @@
 #include "catalog.h"
 #include <gen/strfns.h>
 #include <string.h>
+#include <stdarg.h>
 
 RDB_bool
 RDB_expr_is_const(const RDB_expression *exp)
@@ -267,7 +268,7 @@ _RDB_create_binexpr(RDB_expression *arg1, RDB_expression *arg2, enum _RDB_expr_k
 }
 
 RDB_expression *
-_RDB_ro_op(const char *opname, int argc, RDB_expression *argv[])
+RDB_ro_op(const char *opname, int argc, RDB_expression *argv[])
 {
     RDB_expression *exp;
     int i;
@@ -299,13 +300,30 @@ _RDB_ro_op(const char *opname, int argc, RDB_expression *argv[])
 }
 
 RDB_expression *
+RDB_ro_op_l(const char *opname, RDB_expression *arg, ...
+        /* (RDB_expression *) NULL */ )
+{
+    va_list ap;
+    RDB_expression *argv[64];
+    int argc = 0;
+
+    va_start(ap, arg);
+    while (arg != NULL) {
+        argv[argc++] = arg;
+        arg = va_arg(ap, RDB_expression *);
+    }
+    va_end(ap);
+    return RDB_ro_op(opname, argc, argv);
+}
+
+RDB_expression *
 RDB_eq(RDB_expression *arg1, RDB_expression *arg2)
 {
     RDB_expression *argv[2];
 
     argv[0] = arg1;
     argv[1] = arg2;
-    return _RDB_ro_op("=", 2, argv);
+    return RDB_ro_op("=", 2, argv);
 }
 
 RDB_expression *
@@ -418,34 +436,6 @@ RDB_expr_comp(RDB_expression *arg, const char *compname)
         return NULL;
     }
     return exp;
-}
-
-int
-RDB_ro_op(const char *opname, int argc, RDB_expression *argv[],
-       RDB_transaction *txp, RDB_expression **expp)
-{
-    *expp = _RDB_ro_op(opname, argc, argv);
-    if (*expp == NULL)
-        return RDB_NO_MEMORY;
-    return RDB_OK;
-}
-
-int
-RDB_ro_op_1(const char *opname, RDB_expression *arg,
-        RDB_transaction *txp, RDB_expression **expp)
-{
-    return RDB_ro_op(opname, 1, &arg, txp, expp);
-}
-
-int
-RDB_ro_op_2(const char *opname, RDB_expression *arg1, RDB_expression *arg2,
-        RDB_transaction *txp, RDB_expression **expp)
-{
-    RDB_expression *expv[2];
-
-    expv[0] = arg1;
-    expv[1] = arg2;
-    return RDB_ro_op(opname, 2, expv, txp, expp);
 }
 
 /* Destroy the expression and all subexpressions */
@@ -695,8 +685,7 @@ RDB_dup_expr(const RDB_expression *exp)
                 if (argexpv[i] == NULL)
                     return NULL;
             }
-            newexp = _RDB_ro_op(exp->var.op.name, exp->var.op.argc,
-                    argexpv);
+            newexp = RDB_ro_op(exp->var.op.name, exp->var.op.argc, argexpv);
             free(argexpv);
             return newexp;
         }

@@ -68,6 +68,7 @@ duro::table expr -global TM2 {(T1 WHERE K = 1) MINUS (T2 WHERE K = 1)} $tx
 duro::table expr -global TI2 {(T1 WHERE K = 1) INTERSECT (T2 WHERE K = 1)} $tx
 duro::table expr -global TU2 {(T1 WHERE K = 1) UNION (T2 WHERE K = 1)} $tx
 duro::table expr -global TJ2 {(T1 WHERE K = 2) JOIN (T3 WHERE K = 2)} $tx
+duro::table expr -global TS {T1 WHERE S1 > "Bla"} $tx
 
 if {[duro::expr {TUPLE FROM TP} $tx] != {K 1}} {
     error "Tuple value should be {K 1}, but is not"
@@ -168,6 +169,12 @@ set tpl [duro::expr {TUPLE FROM (TX WHERE K0 >= 30)} $tx]
 set stpl {K 3 S1 Blu K0 30}
 if {![tequal $tpl $stpl]} {
     error "Tuple should be $stpl, but is $tpl"
+}
+
+duro::delete TS {S1 = "Blubb"} $tx
+set tpl [duro::expr {TUPLE FROM TS} $tx]
+if {![tequal $tpl {K 3 S1 Blu}]} {
+    error "Unexpected tuple value: $tpl"
 }
 
 duro::table drop TU $tx

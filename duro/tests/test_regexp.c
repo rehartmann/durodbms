@@ -31,10 +31,12 @@ test_regexp(RDB_database *dbp)
 
     printf("Creating selection (NAME regmatch \"o\")\n");
 
-    ret = RDB_ro_op_2("MATCHES", RDB_expr_attr("NAME"), RDB_string_to_expr("o"),
-            &tx, &exprp);
-    if (ret != RDB_OK)
+    exprp = RDB_ro_op_l("MATCHES", RDB_expr_attr("NAME"), RDB_string_to_expr("o"),
+            (RDB_expression *) NULL);
+    if (exprp == NULL) {
+        ret = RDB_NO_MEMORY;
         goto error;
+    }
     
     ret = RDB_select(tbp, exprp, &tx, &vtbp);
     if (ret != RDB_OK) {

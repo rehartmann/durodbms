@@ -51,6 +51,13 @@ duro::operator create relop1 -returns {relation {A STRING}} \
     return $r
 } $tx
 
+# Create read-only operator with tuple argument
+duro::operator create tswap -returns {tuple {A STRING} {B STRING}} \
+	{r {tuple {A STRING} {B STRING}}} {
+    array set a $r
+    return [list A $a(B) B $a(A)]
+} $tx
+
 # Create update operator with relation argument
 duro::operator create relop2 -updates {r1} {r1 {relation {A STRING}} \
         r2 {relation {A STRING}}} {
@@ -58,6 +65,10 @@ duro::operator create relop2 -updates {r1} {r1 {relation {A STRING}} \
         duro::insert $r1 $i $tx
     }
 } $tx
+
+if {![tequal [duro::expr {tswap (TUPLE {A "a", B "b"})} $tx] {A b B a}]} {
+    error "unexpected value of tswap()"
+}
 
 duro::table create -local t {
    {A STRING}

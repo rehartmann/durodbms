@@ -25,10 +25,10 @@ test_type(RDB_database *dbp)
     pr.name = NULL;
     pr.compc = 1;
     pr.compv = &comp;
-    ret = RDB_ro_op_2("<", RDB_expr_attr("TINYINT"),
-            RDB_int_to_expr(100), &tx, &pr.constraintp);
-    if (ret != RDB_OK) {
-        return ret;
+    pr.constraintp = RDB_ro_op_l("<", RDB_expr_attr("TINYINT"),
+            RDB_int_to_expr(100), (RDB_expression *) NULL);
+    if (pr.constraintp == NULL) {
+        return RDB_NO_MEMORY;
     }
     ret = RDB_define_type("TINYINT", 1, &pr, &tx);
     if (ret != RDB_OK) {

@@ -91,8 +91,9 @@ test_useop(RDB_database *dbp)
     expv[1] = RDB_int_to_expr(100);
 
     extend.name = "XDEPTNO";
-    ret = RDB_ro_op("PLUS", 2, expv, &tx, &extend.exp);
-    if (ret != RDB_OK) {
+    extend.exp = RDB_ro_op("PLUS", 2, expv);
+    if (extend.exp == NULL) {
+        ret = RDB_NO_MEMORY;
         goto error;
     }
 

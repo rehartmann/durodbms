@@ -96,7 +96,7 @@ eliminate_not(RDB_expression *exp)
         return RDB_OK;
 
     if (strcmp(exp->var.op.argv[0]->var.op.name, "AND") == 0) {
-        hexp = _RDB_ro_op("NOT", 1, &exp->var.op.argv[0]->var.op.argv[1]);
+        hexp = RDB_ro_op("NOT", 1, &exp->var.op.argv[0]->var.op.argv[1]);
         if (hexp == NULL)
             return RDB_NO_MEMORY;
         ret = alter_op(exp, "OR", 2);
@@ -114,7 +114,7 @@ eliminate_not(RDB_expression *exp)
         return eliminate_not(exp->var.op.argv[1]);
     }
     if (strcmp(exp->var.op.argv[0]->var.op.name, "OR") == 0) {
-        hexp = _RDB_ro_op("NOT", 1, &exp->var.op.argv[0]->var.op.argv[1]);
+        hexp = RDB_ro_op("NOT", 1, &exp->var.op.argv[0]->var.op.argv[1]);
         if (hexp == NULL)
             return RDB_NO_MEMORY;
         ret = alter_op(exp, "AND", 2);
@@ -197,7 +197,7 @@ transform_select(RDB_table *tbp)
                  */
                 argv[0] = tbp->var.select.exp;
                 argv[1] = chtbp->var.select.exp;
-                exp = _RDB_ro_op("AND", 2, argv);
+                exp = RDB_ro_op("AND", 2, argv);
                 if (exp == NULL)
                     return RDB_NO_MEMORY;
 

@@ -132,19 +132,21 @@ test_extend(RDB_database *dbp)
         return ret;
     }
 
-    ret = RDB_ro_op_2("-", RDB_expr_attr("SALARY"), RDB_rational_to_expr(4100),
-            &tx, &extend[0].exp);
-    if (ret != RDB_OK)
-        return ret;
+    extend[0].exp = RDB_ro_op_l("-", RDB_expr_attr("SALARY"),
+            RDB_rational_to_expr(4100), (RDB_expression *) NULL);
+    if (extend[0].exp == NULL)
+        return RDB_NO_MEMORY;
 
     exp = RDB_expr_attr("NAME");
     if (exp == NULL) {
         ret = RDB_NO_MEMORY;
         goto error;
     }
-    ret = RDB_ro_op("LENGTH", 1, &exp, &tx, &extend[1].exp);
-    if (ret != RDB_OK)
+    extend[1].exp = RDB_ro_op_l("LENGTH", exp, (RDB_expression *) NULL);
+    if (extend[1].exp == NULL) {
+        ret = RDB_NO_MEMORY;
         goto error;
+    }
 
     ret = RDB_get_table("EMPS1", &tx, &tbp);
     if (ret != RDB_OK) {

@@ -8,9 +8,9 @@ Changes for Duro 0.9
 
 - Renamed operator SUBSET to SUBSET_OF.
 
-- Renamed RDB_user_op to RDB_ro_op, added RDB_ro_op_1 and RDB_ro_op_2.
+- Replaced RDB_user_op by RDB_ro_op and RDB_ro_op_l.
 
-- Dropped RDB_neq etc.
+- Dropped RDB_neq, etc.
 
 - Changed expression grammar so that expressions like A UNION B UNION C
   are now possible.

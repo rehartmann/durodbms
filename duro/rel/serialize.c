@@ -927,10 +927,10 @@ deserialize_expr(RDB_object *valp, int *posp, RDB_transaction *txp,
                     return ret;
                 }
             }
-            ret = RDB_ro_op(name, argc, argv, txp, expp);
+            *expp = RDB_ro_op(name, argc, argv);
             free(argv);
-            if (ret != RDB_OK)
-                return ret;
+            if (*expp == NULL)
+                return RDB_NO_MEMORY;
             break;
         }
         case RDB_EX_AGGREGATE:

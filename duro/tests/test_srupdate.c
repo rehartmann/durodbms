@@ -87,10 +87,10 @@ test_update1(RDB_database *dbp)
     printf("Updating table\n");
 
     exp = RDB_int_to_expr(2);
-    ret = RDB_ro_op_2("-", exp, RDB_expr_attr("NO"), &tx, &exp);
-    if (ret != RDB_OK) {
+    exp = RDB_ro_op_l("-", exp, RDB_expr_attr("NO"), (RDB_expression *) NULL);
+    if (exp == NULL) {
         RDB_rollback(&tx);
-        return ret;
+        return RDB_NO_MEMORY;
     }
 
     upd.name = "NO";
@@ -129,10 +129,10 @@ test_update2(RDB_database *dbp)
     printf("Updating table\n");
 
     exp = RDB_expr_sum(RDB_table_to_expr(tbp), "COUNT");
-    ret = RDB_ro_op_2("+", exp, RDB_int_to_expr(1), &tx, &exp);
-    if (ret != RDB_OK) {
+    exp = RDB_ro_op_l("+", exp, RDB_int_to_expr(1), (RDB_expression *) NULL);
+    if (exp == NULL) {
         RDB_rollback(&tx);
-        return ret;
+        return RDB_NO_MEMORY;
     }
 
     upd.name = "COUNT";
