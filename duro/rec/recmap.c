@@ -171,18 +171,20 @@ RDB_create_sorted_recmap(const char *name, const char *filename,
     if (ret != RDB_OK)
         return ret;
 
-    (*rmpp)->cmpv = malloc(sizeof (RDB_compare_field) * fieldc);
-    if ((*rmpp)->cmpv == NULL)
-        goto error;
-    for (i = 0; i < fieldc; i++) {
-        (*rmpp)->cmpv[i].comparep = cmpv[i].comparep;
-        (*rmpp)->cmpv[i].arg = cmpv[i].arg;
-        (*rmpp)->cmpv[i].asc = cmpv[i].asc;
-    }
+    if (cmpv != NULL) {
+        (*rmpp)->cmpv = malloc(sizeof (RDB_compare_field) * fieldc);
+        if ((*rmpp)->cmpv == NULL)
+            goto error;
+        for (i = 0; i < fieldc; i++) {
+            (*rmpp)->cmpv[i].comparep = cmpv[i].comparep;
+            (*rmpp)->cmpv[i].arg = cmpv[i].arg;
+            (*rmpp)->cmpv[i].asc = cmpv[i].asc;
+        }
 
-    /* Set comparison function */
-    (*rmpp)->dbp->app_private = *rmpp;
-    (*rmpp)->dbp->set_bt_compare((*rmpp)->dbp, &compare_key);
+        /* Set comparison function */
+        (*rmpp)->dbp->app_private = *rmpp;
+        (*rmpp)->dbp->set_bt_compare((*rmpp)->dbp, &compare_key);
+    }
 
     if (dup) {
         /* Allow duplicate keys */

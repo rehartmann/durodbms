@@ -4,6 +4,8 @@
 #include <stdlib.h>
 #include <stdio.h>
 
+RDB_seq_item depseqitv[] = { { "DEPTNO", RDB_TRUE } };
+
 static int
 print_table(RDB_table *tbp, RDB_transaction *txp)
 {
@@ -14,7 +16,7 @@ print_table(RDB_table *tbp, RDB_transaction *txp)
 
     RDB_init_obj(&array);
 
-    ret = RDB_table_to_array(&array, tbp, 0, NULL, txp);
+    ret = RDB_table_to_array(&array, tbp, 1, depseqitv, txp);
     if (ret != RDB_OK) {
         goto error;
     }

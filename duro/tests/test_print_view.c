@@ -49,6 +49,8 @@ error:
     return ret;
 }
 
+RDB_seq_item empseqit = { "EMPNO", RDB_TRUE };
+
 int
 print_emp_view(RDB_database *dbp)
 {
@@ -74,7 +76,7 @@ print_emp_view(RDB_database *dbp)
 
     RDB_init_obj(&array);
 
-    ret = RDB_table_to_array(&array, tmpvtbp, 0, NULL, &tx);
+    ret = RDB_table_to_array(&array, tmpvtbp, 1, &empseqit, &tx);
     if (ret != RDB_OK) {
         goto error;
     }
@@ -120,7 +122,7 @@ print_emps_view(RDB_database *dbp)
 
     RDB_init_obj(&array);
 
-    ret = RDB_table_to_array(&array, tmpvtbp, 0, NULL, &tx);
+    ret = RDB_table_to_array(&array, tmpvtbp, 1, &empseqit, &tx);
     if (ret != RDB_OK) {
         goto error;
     }
@@ -146,6 +148,8 @@ error:
     return ret;
 }
 
+RDB_seq_item depseqit = { "DEPARTMENT", RDB_TRUE };
+
 int
 print_emps2_view(RDB_database *dbp)
 {
@@ -170,7 +174,7 @@ print_emps2_view(RDB_database *dbp)
 
     RDB_init_obj(&array);
 
-    ret = RDB_table_to_array(&array, tmpvtbp, 0, NULL, &tx);
+    ret = RDB_table_to_array(&array, tmpvtbp, 1, &depseqit, &tx);
     if (ret != RDB_OK) {
         goto error;
     }

@@ -135,6 +135,8 @@ test_update2(RDB_database *dbp)
     return RDB_commit(&tx);
 }
 
+RDB_seq_item noseqitv[] = { { "NO", RDB_TRUE } };
+
 int
 test_print(RDB_database *dbp)
 {
@@ -160,7 +162,7 @@ test_print(RDB_database *dbp)
     RDB_init_obj(&array);
 
     printf("Converting table to array\n");
-    ret = RDB_table_to_array(&array, tbp, 0, NULL, &tx);
+    ret = RDB_table_to_array(&array, tbp, 1, noseqitv, &tx);
     if (ret != RDB_OK) {
         RDB_rollback(&tx);
         return ret;

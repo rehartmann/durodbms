@@ -70,7 +70,7 @@ typedef struct {
  */
 int
 RDB_create_recmap(const char *name, const char *filename,
-        RDB_environment *dsp, int fieldc, const int fieldlenv[], int keyfieldc,
+        RDB_environment *, int fieldc, const int fieldlenv[], int keyfieldc,
         DB_TXN *, RDB_recmap **);
 
 /*
@@ -79,13 +79,13 @@ RDB_create_recmap(const char *name, const char *filename,
  */
 int
 RDB_create_sorted_recmap(const char *name, const char *filename,
-        RDB_environment *dsp, int fieldc, const int fieldlenv[], int keyfieldc,
-        const RDB_compare_field cmpv[], RDB_bool  dup, DB_TXN *, RDB_recmap **);
+        RDB_environment *, int fieldc, const int fieldlenv[], int keyfieldc,
+        const RDB_compare_field cmpv[], RDB_bool dup, DB_TXN *, RDB_recmap **);
 
 /* Open a recmap. For a description of the arguments, see RDB_create_recmap(). */
 int
 RDB_open_recmap(const char *name, const char *filename,
-        RDB_environment *dsp, int fieldc, const int fieldlenv[], int keyfieldc,
+        RDB_environment *, int fieldc, const int fieldlenv[], int keyfieldc,
         DB_TXN *, RDB_recmap **);
 
 /* Close a recmap. */

@@ -2,14 +2,14 @@ Opening environment
 Starting transaction
 Joining EMPS1 with DEPTS
 Converting joined table to array
-EMPNO: 2
-NAME: Jones
-DEPTNO: 2
-DEPTNAME: Dept. II
 EMPNO: 1
 NAME: Smith
 DEPTNO: 1
 DEPTNAME: Dept. I
+EMPNO: 2
+NAME: Jones
+DEPTNO: 2
+DEPTNAME: Dept. II
 Dropping join
 End of transaction
 Closing environment

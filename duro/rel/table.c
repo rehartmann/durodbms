@@ -580,16 +580,20 @@ _RDB_create_table_storage(RDB_table *tbp, RDB_environment *envp, RDB_bool ascv[]
     if (ret != RDB_OK)
         return ret;
 
-    if (ascv == NULL)
+    /*
+     * Use a sorted recmap for local tables, so the order of the tuples
+     * is always the same if the table is stored as an attribute in a table.
+     */
+    if (ascv != NULL || !tbp->is_persistent)
+        ret = RDB_create_sorted_recmap(tbp->is_persistent ? tbp->name : NULL,
+                tbp->is_persistent ? RDB_DATAFILE : NULL,
+                envp, attrc, flenv, piattrc, ascv != NULL ? cmpv : NULL,
+                (RDB_bool) (ascv != NULL), txp != NULL ? txp->txid : NULL,
+                &tbp->var.stored.recmapp);
+    else {
         ret = RDB_create_recmap(tbp->is_persistent ? tbp->name : NULL,
                 tbp->is_persistent ? RDB_DATAFILE : NULL,
                 envp, attrc, flenv, piattrc, txp != NULL ? txp->txid : NULL,
-                &tbp->var.stored.recmapp);
-    else {
-        ret = RDB_create_sorted_recmap(tbp->is_persistent ? tbp->name : NULL,
-                tbp->is_persistent ? RDB_DATAFILE : NULL,
-                envp, attrc, flenv, piattrc, cmpv,
-                RDB_TRUE, txp != NULL ? txp->txid : NULL,
                 &tbp->var.stored.recmapp);
     }
     if (ret != RDB_OK)
