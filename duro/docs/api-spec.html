@@ -121,9 +121,7 @@
 <li><a href="#destroy_array">RDB_destroy_array</a>
 <li><a href="#table_to_array">RDB_table_to_array</a>
 <li><a href="#array_get_tuple">RDB_array_get_tuple</a>
-<li><a href="#array_get">RDB_array_get</a>
 <li><a href="#array_set_tuple">RDB_array_set_tuple</a>
-<li><a href="#array_set">RDB_array_set</a>
 <li><a href="#array_length">RDB_array_length</a>
 <li><a href="#resize_array">RDB_resize_array</a>
 </ul>
@@ -155,6 +153,7 @@
 <li><a href="#regmatch">RDB_regmatch</a>
 <li><a href="#rel_table">RDB_rel_table</a>
 <li><a href="#rel_is_empty">RDB_rel_is_empty</a>
+<li><a href="#aggregate_expr">RDB_aggregate_expr</a>
 <li><a href="#get_comp">RDB_get_comp</a>
 <li><a href="#selector">RDB_selector</a>
 <li><a href="#user_op">RDB_user_op</a>
@@ -1178,17 +1177,6 @@ RDB_array_get_tuple(RDB_array *, RDB_int idx, RDB_tuple *);
 
 <hr>
 
-<h2 id="array_get">RDB_array_get</h2>
-
-<pre>
-#include &lt;rel/rdb.h&gt;
-
-int
-RDB_array_get(RDB_array *, RDB_int idx, RDB_value *);
-</pre>
-
-<hr>
-
 <h2 id="array_set_tuple">RDB_array_set_tuple</h2>
 
 <pre>
@@ -1196,17 +1184,6 @@ RDB_array_get(RDB_array *, RDB_int idx, RDB_value *);
 
 int
 RDB_array_set_tuple(RDB_array *, RDB_int idx, const RDB_tuple *);
-</pre>
-
-<hr>
-
-<h2 id="array_set">RDB_array_set</h2>
-
-<pre>
-#include &lt;rel/rdb.h&gt;
-
-int
-RDB_array_set(RDB_array *, RDB_int idx, const RDB_value *);
 </pre>
 
 <hr>
@@ -1413,6 +1390,15 @@ RDB_rel_is_empty(RDB_expression *);
 
 <hr>
 
+<h2 id="aggregate_expr">RDB_aggregate_expr</h2>
+
+<pre>
+RDB_expression *
+RDB_aggregate_expr(RDB_table *, RDB_aggregate_op op, const char *attrname);
+</pre>
+
+<hr>
+
 <h2 id="get_comp">RDB_get_comp</h2>
 
 <pre>
@@ -1472,7 +1458,7 @@ RDB_define_type(const char *name, int repc, RDB_possrep repv[],
 #include &lt;rel/typeimpl.h&gt;
 
 int
-RDB_implement_type(const char *name, const char *modname, RDB_type *arep, int options,
+RDB_implement_type(const char *name, const char *libname, RDB_type *arep, int options,
                    size_t ireplen, RDB_transaction *);
 </pre>
 
@@ -1699,7 +1685,8 @@ RDB_join_relation_types(const RDB_type *typ1, const RDB_type *typ2,
 
 int
 RDB_define_ro_op(const char *name, RDB_attr *argv[], RDB_type *rtyp,
-                 ... RDB_transaction *txp);
+                 const char *libname, const char *symname, const char *arg,
+                  RDB_transaction *txp);
 </pre>
 
 <hr>
@@ -1712,7 +1699,8 @@ RDB_define_ro_op(const char *name, RDB_attr *argv[], RDB_type *rtyp,
 int
 RDB_define_upd_op(const char *name, RDB_attr *argv[],
                   int updargc, const char *updargv[],
-                  ... RDB_transaction *txp);
+                  const char *libname, const char *symname, const char *arg,
+                  RDB_transaction *txp);
 </pre>
 
 <hr>

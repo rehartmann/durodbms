@@ -132,9 +132,15 @@ enum _RDB_expr_kind {
     RDB_OP_REGMATCH,
 
     RDB_OP_REL_IS_EMPTY,
+    RDB_OP_AGGREGATE,
     RDB_OP_GET_COMP,
     RDB_SELECTOR
 };
+
+typedef enum {
+    RDB_COUNT, RDB_SUM, RDB_AVG, RDB_MAX, RDB_MIN, RDB_ALL, RDB_ANY,
+    RDB_COUNTD, RDB_SUMD, RDB_AVGD
+} RDB_aggregate_op;
 
 typedef struct RDB_expression {
     /* internal */
@@ -152,6 +158,11 @@ typedef struct RDB_expression {
         struct RDB_table *tbp;
         RDB_value const_val;
         struct {
+            struct RDB_table *tbp;
+            RDB_aggregate_op op;
+            char *attrname;
+        } aggr;
+        struct {
             struct RDB_expression **argv;
             RDB_type *typ;
             char *name;
@@ -168,11 +179,6 @@ typedef struct {
     int attrc;
     char **attrv;
 } RDB_key_attrs;
-
-typedef enum {
-    RDB_COUNT, RDB_SUM, RDB_AVG, RDB_MAX, RDB_MIN, RDB_ALL, RDB_ANY,
-    RDB_COUNTD, RDB_SUMD, RDB_AVGD
-} RDB_aggregate_op;
 
 typedef struct {
     RDB_aggregate_op op;
@@ -517,7 +523,7 @@ RDB_copy_table(RDB_table *dstp, RDB_table *srcp, RDB_transaction *);
  * op may be RDB_COUNT, RDB_SUM, RDB_AVG, RDB_MAX, RDB_MIN, RDB_ALL, or RDB_ANY.
  * attrname may be NULL if op is RDB_COUNT or the table is unary.
  * If op is RDB_COUNT, the result value is of type RDB_INTEGER.
- * If op is AVG, the result value is of type RDB_RATIONAL.
+ * If op is RDB_AVG, the result value is of type RDB_RATIONAL.
  * Otherwise, it is of the same type as the table attribute.
  *
  * Errors:
@@ -525,11 +531,11 @@ RDB_copy_table(RDB_table *dstp, RDB_table *srcp, RDB_transaction *);
  *       op is RDB_COUNT, RDB_SUM, RDB_AVG, RDB_MAX, or RDB_MIN
  *       and the attribute is non-numeric.
  *
- *       op IS ALL or ANY and the attribute is not of type RDB_BOOLEAN.
+ *       op is ALL or ANY and the attribute is not of type RDB_BOOLEAN.
  *
  *       op is not one of the above.
  *
- * RDB_ILLEGAL_ARG
+ * RDB_INVALID_ARGUMENT
  *       op is not of a permissible value (see above).
  *
  *       attrname is NULL while op is not RDB_COUNT and the table is not unary.
@@ -805,7 +811,7 @@ RDB_project_tuple_type(const RDB_type *typ, int attrc, char *attrv[],
  * over the attributes given by attrc and attrv.
  * The new type in the location pointed to by newtypp.
  * If one of the attributes in attrv is not found in the relation type,
- * RDB_ILLEGAL_ARG is returned.
+ * RDB_INVALID_ARGUMENT is returned.
  */
 int
 RDB_project_relation_type(const RDB_type *typ, int attrc, char *attrv[],
@@ -988,6 +994,9 @@ RDB_rel_table(RDB_table *);
 
 RDB_expression *
 RDB_rel_is_empty(RDB_expression *);
+
+RDB_expression *
+RDB_aggregate_expr(RDB_table *, RDB_aggregate_op op, const char *attrname);
 
 RDB_expression *
 RDB_get_comp(RDB_expression *, const char *);

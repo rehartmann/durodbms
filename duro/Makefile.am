@@ -13,7 +13,8 @@ tests/test_null tests/test_pointtable tests/test_print_view \
 tests/test_project tests/test_ra tests/test_regexp \
 tests/test_rename tests/test_select tests/test_summarize \
 tests/test_union tests/test_update tests/test_utypetable \
-tests/test_defpointtype tests/test_pointtable
+tests/test_defpointtype tests/test_pointtable \
+tests/test_srupdate
 
 tests_libpoint_la_SOURCES = tests/point.c
 tests_libpoint_la_LDFLAGS =
