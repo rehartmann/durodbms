@@ -286,7 +286,7 @@ free_ro_ops(RDB_hashmap *hp, const char *key, void *argp)
     RDB_ro_op **opp = RDB_hashmap_get(hp, key, NULL);
     RDB_ro_op *op;
 
-    if (opp == NULL)
+    if (opp == NULL || *opp == NULL)
         return;
     
     op = *opp;
@@ -318,7 +318,7 @@ free_upd_ops(RDB_hashmap *hp, const char *key, void *argp)
     RDB_upd_op **opp = RDB_hashmap_get(hp, key, NULL);
     RDB_upd_op *op;
 
-    if (opp == NULL)
+    if (opp == NULL || *opp == NULL)
         return;
     
     op = *opp;
@@ -1130,6 +1130,15 @@ RDB_create_ro_op(const char *name, int argc, RDB_type *argtv[], RDB_type *rtyp,
     RDB_object iarg;
     char *typesbuf;
     int ret;
+    int i;
+
+    if (!RDB_tx_is_running(txp))
+        return RDB_INVALID_TRANSACTION;
+
+    for (i = 0; i < argc; i++) {
+        if (!RDB_type_is_scalar(argtv[i]))
+            return RDB_NOT_SUPPORTED;
+    }
 
     if (!RDB_type_is_scalar(rtyp))
         return RDB_NOT_SUPPORTED;
@@ -1193,6 +1202,9 @@ RDB_create_update_op(const char *name, int argc, RDB_type *argtv[],
     int i;
     int ret;
 
+    if (!RDB_tx_is_running(txp))
+        return RDB_INVALID_TRANSACTION;
+
     for (i = 0; i < argc; i++) {
         if (!RDB_type_is_scalar(argtv[i]))
             return RDB_NOT_SUPPORTED;
@@ -1249,7 +1261,7 @@ get_ro_op(const RDB_dbroot *dbrootp, const char *name,
     RDB_ro_op **opp = RDB_hashmap_get(&dbrootp->ro_opmap, name, NULL);
     RDB_ro_op *op;
 
-    if (opp == NULL)
+    if (opp == NULL || *opp == NULL)
         return NULL;
     
     op = *opp;
@@ -1277,16 +1289,16 @@ static int
 put_ro_op(RDB_dbroot *dbrootp, RDB_ro_op *op)
 {
     int ret;
-    RDB_ro_op *fop = RDB_hashmap_get(&dbrootp->ro_opmap, op->name, NULL);
+    RDB_ro_op **fopp = RDB_hashmap_get(&dbrootp->ro_opmap, op->name, NULL);
 
-    if (fop == NULL) {
+    if (fopp == NULL || *fopp == NULL) {
         op->nextp = NULL;
         ret = RDB_hashmap_put(&dbrootp->ro_opmap, op->name, &op, sizeof (op));
         if (ret != RDB_OK)
             return ret;
     } else {
-        op->nextp = fop->nextp;
-        fop->nextp = op;
+        op->nextp = (*fopp)->nextp;
+        (*fopp)->nextp = op;
     }
     return RDB_OK;
 }
@@ -1297,6 +1309,9 @@ RDB_call_ro_op(const char *name, int argc, RDB_object *argv[],
 {
     RDB_ro_op *op;
     int ret;
+
+    if (!RDB_tx_is_running(txp))
+        return RDB_INVALID_TRANSACTION;
 
     op = get_ro_op(txp->dbp->dbrootp, name, argc, argv);
     if (op == NULL) {
@@ -1370,6 +1385,9 @@ RDB_call_update_op(const char *name, int argc, RDB_object *argv[],
     int i;
     int ret;
 
+    if (!RDB_tx_is_running(txp))
+        return RDB_INVALID_TRANSACTION;
+
     op = get_upd_op(txp->dbp->dbrootp, name, argc, argv);
     if (op == NULL) {
         ret = _RDB_get_cat_upd_op(name, argc, argv, txp, &op);
@@ -1395,6 +1413,85 @@ RDB_call_update_op(const char *name, int argc, RDB_object *argv[],
 int
 RDB_drop_op(const char *name, RDB_transaction *txp)
 {
-    /* !! */
-    return RDB_NOT_SUPPORTED;
+    RDB_expression *exp;
+    RDB_table *vtbp;
+    int ret;
+    RDB_bool isempty;
+
+    if (!RDB_tx_is_running(txp))
+        return RDB_INVALID_TRANSACTION;
+
+    /*
+     * Check if it's a read-only operator
+     */
+    exp = RDB_eq(RDB_expr_attr("NAME", &RDB_STRING), RDB_string_const(name));
+    if (exp == NULL) {
+        RDB_rollback(txp);
+        return RDB_NO_MEMORY;
+    }
+    ret = RDB_select(txp->dbp->dbrootp->ro_ops_tbp, exp, &vtbp);
+    if (ret != RDB_OK) {
+        return ret;
+    }
+    ret = RDB_table_is_empty(vtbp, txp, &isempty);
+    if (ret != RDB_OK) {
+        RDB_drop_table(vtbp, txp);
+        return ret;
+    }
+    ret = RDB_drop_table(vtbp, txp);
+    if (ret != RDB_OK) {
+        return ret;
+    }
+
+    if (isempty) {
+        /* It's an update operator */
+        RDB_upd_op *op = NULL;
+
+        /* Delete all versions of update operator from hashmap */
+        free_upd_ops(&txp->dbp->dbrootp->upd_opmap, name, NULL);
+        ret = RDB_hashmap_put(&txp->dbp->dbrootp->upd_opmap, name,
+                &op, sizeof (op));
+        if (ret != RDB_OK) {
+            RDB_rollback(txp);
+            return ret;
+        }
+        
+        /* Delete all versions of update operator from the database */
+        exp = RDB_eq(RDB_expr_attr("NAME", &RDB_STRING), RDB_string_const(name));
+        if (exp == NULL) {
+            RDB_rollback(txp);
+            return RDB_NO_MEMORY;
+        }
+        ret = RDB_delete(txp->dbp->dbrootp->upd_ops_tbp, exp, txp);
+        RDB_drop_expr(exp);
+        if (ret != RDB_OK) {
+            return ret;
+        }        
+    } else {
+        /* It's a read-only operator */
+        RDB_ro_op *op = NULL;
+
+        /* Delete all versions of readonly operator from hashmap */
+        free_ro_ops(&txp->dbp->dbrootp->ro_opmap, name, NULL);
+        ret = RDB_hashmap_put(&txp->dbp->dbrootp->ro_opmap, name,
+                &op, sizeof (op));
+        if (ret != RDB_OK) {
+            RDB_rollback(txp);
+            return ret;
+        }
+
+        /* Delete all versions of update operator from the database */
+        exp = RDB_eq(RDB_expr_attr("NAME", &RDB_STRING), RDB_string_const(name));
+        if (exp == NULL) {
+            RDB_rollback(txp);
+            return RDB_NO_MEMORY;
+        }
+        ret = RDB_delete(txp->dbp->dbrootp->ro_ops_tbp, exp, txp);
+        RDB_drop_expr(exp);
+        if (ret != RDB_OK) {
+            return ret;
+        }
+    }
+
+    return RDB_OK;
 }

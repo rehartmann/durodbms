@@ -334,7 +334,6 @@ update_stored_complex(RDB_table *tbp, RDB_expression *condp,
     RDB_object *valv = malloc(sizeof(RDB_object) * attrc);
 
     if (valv == NULL) {
-        free(valv);
         return RDB_NO_MEMORY;
     }
 

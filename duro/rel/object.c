@@ -15,7 +15,7 @@ RDB_obj_irep(RDB_object *valp, size_t *lenp)
             *lenp = valp->var.bin.len;
     }
 
-    switch(valp->kind) {
+    switch (valp->kind) {
         case _RDB_BOOL:
             return &valp->var.bool_val;
         case _RDB_INT:
@@ -59,7 +59,7 @@ RDB_irep_to_obj(RDB_object *valp, RDB_type *typ, void *datap, size_t len)
     valp->typ = typ;
     valp->kind = val_kind(typ);
 
-    switch(valp->kind) {
+    switch (valp->kind) {
         case _RDB_BOOL:
             valp->var.bool_val = *(RDB_bool *) datap;
             break;
@@ -82,7 +82,7 @@ RDB_irep_to_obj(RDB_object *valp, RDB_type *typ, void *datap, size_t len)
 RDB_bool
 RDB_obj_equals(const RDB_object *val1p, const RDB_object *val2p)
 {
-    switch(val1p->kind) {
+    switch (val1p->kind) {
         case _RDB_BOOL:
             return (RDB_bool) val1p->var.bool_val == val2p->var.bool_val;
         case _RDB_INT:
@@ -92,6 +92,8 @@ RDB_obj_equals(const RDB_object *val1p, const RDB_object *val2p)
         default:
             if (val1p->var.bin.len != val2p->var.bin.len)
                 return RDB_FALSE;
+            if (val1p->var.bin.len == 0)
+                return RDB_TRUE;
             return (RDB_bool) (memcmp(val1p->var.bin.datap, val2p->var.bin.datap,
                     val1p->var.bin.len) == 0);
     }
@@ -100,7 +102,7 @@ RDB_obj_equals(const RDB_object *val1p, const RDB_object *val2p)
 static int
 copy_obj(RDB_object *dstvalp, const RDB_object *srcvalp)
 {
-    switch(srcvalp->kind) {
+    switch (srcvalp->kind) {
         case _RDB_BOOL:
             dstvalp->var.bool_val = srcvalp->var.bool_val;
             break;

@@ -1268,8 +1268,6 @@ _RDB_get_cat_ro_op(const char *name, int argc, RDB_object *argv[],
     }
     ret = RDB_select(txp->dbp->dbrootp->ro_ops_tbp, exp, &vtbp);
     if (ret != RDB_OK) {
-        if (RDB_is_syserr(ret))
-            RDB_rollback(txp);
         RDB_drop_expr(exp);
         return ret;
     }

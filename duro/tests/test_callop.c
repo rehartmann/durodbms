@@ -59,6 +59,7 @@ test_callop(RDB_database *dbp)
     printf("Value of arg #1 is %d\n", RDB_obj_int(&arg1));
 
     return RDB_commit(&tx);
+
 error:
     RDB_destroy_obj(&arg1);
     RDB_destroy_obj(&arg2);
@@ -66,6 +67,34 @@ error:
 
     RDB_rollback(&tx);
     return ret;
+}
+
+int
+test_dropop(RDB_database *dbp)
+{
+    RDB_transaction tx;
+    int ret;
+
+    printf("Starting transaction\n");
+    ret = RDB_begin_tx(&tx, dbp, NULL);
+    if (ret != RDB_OK) {
+        return ret;
+    }
+
+    printf("Dropping PLUS\n");
+    ret = RDB_drop_op("PLUS", &tx);
+    if (ret != RDB_OK) {
+        RDB_rollback(&tx);
+        return ret;
+    }
+
+    printf("Dropping ADD\n");
+    ret = RDB_drop_op("ADD", &tx);
+    if (ret != RDB_OK) {
+        RDB_rollback(&tx);
+        return ret;
+    }
+    return RDB_commit(&tx);
 }
 
 int
@@ -94,6 +123,19 @@ main(void)
     if (ret != RDB_OK) {
         fprintf(stderr, "Error: %s\n", RDB_strerror(ret));
         return 2;
+    }
+
+    ret = test_dropop(dbp);
+    if (ret != RDB_OK) {
+        fprintf(stderr, "Error: %s\n", RDB_strerror(ret));
+        return 2;
+    }
+
+    ret = test_callop(dbp);
+    if (ret == RDB_NOT_FOUND) {
+        printf("Return code: not found - OK\n");
+    } else {
+        fprintf(stderr, "Wrong return code: %s\n", RDB_strerror(ret));
     }
 
     printf ("Closing environment\n");
