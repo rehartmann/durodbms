@@ -6,7 +6,7 @@
 int
 RDB_getargs(int *argcp, char **argvp[], RDB_environment **envpp, RDB_database **dbpp)
 {
-    int err;
+    int ret;
     char *envnamp = NULL;
     char *dbnamp = NULL;
 
@@ -28,14 +28,14 @@ RDB_getargs(int *argcp, char **argvp[], RDB_environment **envpp, RDB_database **
             break;
     }
     if (envnamp != NULL) {
-        err = RDB_open_env(envnamp, envpp);
-        if (err != RDB_OK)
-            return err;
+        ret = RDB_open_env(envnamp, envpp);
+        if (ret != RDB_OK)
+            return ret;
         if (dbnamp != NULL) {
-            err = RDB_get_db_from_env(dbnamp, *envpp, dbpp);
-            if (err != RDB_OK) {
+            ret = RDB_get_db_from_env(dbnamp, *envpp, dbpp);
+            if (ret != RDB_OK) {
                 RDB_close_env(*envpp);
-                return err;
+                return ret;
             }
         }
     }

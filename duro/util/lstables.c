@@ -26,12 +26,12 @@ print_tables(RDB_transaction *txp, RDB_bool all, RDB_bool real)
     RDB_expression *condp = NULL;
     RDB_int i;
 
-    ret = RDB_get_table(real ? "SYSRTABLES" : "SYSVTABLES", txp, &rt_tbp);
+    ret = RDB_get_table(real ? "SYS_RTABLES" : "SYS_VTABLES", txp, &rt_tbp);
     if (ret != RDB_OK) {
         return ret;
     } 
 
-    ret = RDB_get_table("SYSDBTABLES", txp, &db_tbp);
+    ret = RDB_get_table("SYS_DBTABLES", txp, &db_tbp);
     if (ret != RDB_OK) {
         return ret;
     } 

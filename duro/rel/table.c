@@ -113,6 +113,13 @@ RDB_insert(RDB_table *tbp, const RDB_tuple *tup, RDB_transaction *txp)
                 fnop = RDB_hashmap_get(&tbp->var.stored.attrmap,
                         tuptyp->var.tuple.attrv[i].name, NULL);
                 valp = RDB_tuple_get(tup, tuptyp->var.tuple.attrv[i].name);
+
+                /* If there is no value, check if there is a default */
+                if (valp == NULL) {
+                    valp = tuptyp->var.tuple.attrv[i].defaultp;
+                    if (valp == NULL)
+                        return RDB_INVALID_ARGUMENT;
+                }
                 
                 /* Typecheck */
                 if (!RDB_type_equals(valp->typ,
@@ -122,14 +129,16 @@ RDB_insert(RDB_table *tbp, const RDB_tuple *tup, RDB_transaction *txp)
                 fvp[*fnop].datap = RDB_value_irep(valp, &fvp[*fnop].len);
             }
             ret = RDB_insert_rec(tbp->var.stored.recmapp, fvp, txp->txid);
-            free(fvp);
             if (RDB_is_syserr(ret)) {
                 ERRMSG(txp->dbp->envp, RDB_strerror(ret));
                 RDB_rollback(txp);
             } else if (ret == RDB_KEY_VIOLATION) {
-                if (RDB_table_contains(tbp, tup, txp) == RDB_OK)
+                /* check if the tuple is an element of the table */
+                if (RDB_contains_rec(tbp->var.stored.recmapp, fvp, txp->txid)
+                        == RDB_OK)
                     ret = RDB_ELEMENT_EXISTS;
             }            
+            free(fvp);
             return ret;
         }
         case RDB_TB_SELECT:

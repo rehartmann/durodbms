@@ -68,7 +68,15 @@ RDB_create_tuple_type(int attrc, RDB_attr attrv[])
     for (i = 0; i < attrc; i++) {
         tbtyp->var.tuple.attrv[i].typ = attrv[i].typ;
         tbtyp->var.tuple.attrv[i].name = RDB_dup_str(attrv[i].name);
-    }   
+        if (attrv[i].defaultp != NULL) {
+            tbtyp->var.tuple.attrv[i].defaultp = malloc(sizeof (RDB_value));
+            RDB_init_value(tbtyp->var.tuple.attrv[i].defaultp);
+            RDB_copy_value(tbtyp->var.tuple.attrv[i].defaultp,
+                    attrv[i].defaultp);
+        } else {
+            tbtyp->var.tuple.attrv[i].defaultp = NULL;
+        }
+    }
     tbtyp->var.tuple.attrc = attrc;
     
     return tbtyp;
@@ -121,6 +129,10 @@ free_type(RDB_type *typ)
                 free(typ->var.tuple.attrv[i].name);
                 if (attrtyp->name == NULL)
                     RDB_drop_type(attrtyp);
+                if (typ->var.tuple.attrv[i].defaultp != NULL) {
+                    RDB_destroy_value(typ->var.tuple.attrv[i].defaultp);
+                    free(typ->var.tuple.attrv[i].defaultp);
+                }
             }
             free(typ->var.tuple.attrv);
             break;
@@ -236,12 +248,14 @@ RDB_extend_tuple_type(const RDB_type *typ, int attrc, RDB_attr attrv[])
         if (newtyp->var.tuple.attrv[i].name == NULL)
             goto error;
         newtyp->var.tuple.attrv[i].typ = typ->var.tuple.attrv[i].typ;
+        newtyp->var.tuple.attrv[i].defaultp = NULL;
     }
     for (i = 0; i < attrc; i++) {
         newtyp->var.tuple.attrv[typ->var.tuple.attrc + i].name =
                 RDB_dup_str(attrv[i].name);
         newtyp->var.tuple.attrv[typ->var.tuple.attrc + i].typ =
                 attrv[i].typ;
+        newtyp->var.tuple.attrv[typ->var.tuple.attrc + i].defaultp = NULL;
     }
     return newtyp;    
 
@@ -304,6 +318,7 @@ RDB_join_tuple_types(const RDB_type *typ1, const RDB_type *typ2, RDB_type **newt
                 typ1->var.tuple.attrv[i].name);
         newtyp->var.tuple.attrv[i].typ = 
                 typ1->var.tuple.attrv[i].typ;
+        newtyp->var.tuple.attrv[i].defaultp = NULL;
     }
     attrc = typ1->var.tuple.attrc;
 
@@ -326,8 +341,10 @@ RDB_join_tuple_types(const RDB_type *typ1, const RDB_type *typ2, RDB_type **newt
             /* attribute not found, so add it to result type */
             newtyp->var.tuple.attrv[attrc].name = RDB_dup_str(
                     typ2->var.tuple.attrv[i].name);
-            newtyp->var.tuple.attrv[attrc++].typ =
+            newtyp->var.tuple.attrv[attrc].typ =
                     typ2->var.tuple.attrv[i].typ;
+            newtyp->var.tuple.attrv[attrc].defaultp = NULL;
+            attrc++;
         }
     }
 

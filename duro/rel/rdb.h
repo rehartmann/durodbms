@@ -282,6 +282,7 @@ typedef struct RDB_database {
     
     /* catalog tables */
     RDB_table *table_attr_tbp;
+    RDB_table *table_attr_defvals_tbp;
     RDB_table *rtables_tbp;
     RDB_table *vtables_tbp;
     RDB_table *dbtables_tbp;

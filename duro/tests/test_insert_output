@@ -1,0 +1,14 @@
+Opening environment
+EMPNO: 4
+NAME: Taylor
+SALARY: 4000.000000
+DEPTNO: 2
+EMPNO: 1
+NAME: Smith
+SALARY: 4000.000000
+DEPTNO: 1
+EMPNO: 3
+NAME: Clarke
+SALARY: 4000.000000
+DEPTNO: 2
+Closing environment

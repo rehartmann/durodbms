@@ -427,10 +427,10 @@ RDB_get_db_from_env(const char *name, RDB_environment *envp,
 
 
     /* Check if the database exists by checking if the DBTABLES contains
-     * SYSRTABLES for this database.
+     * SYS_RTABLES for this database.
      */
     RDB_init_tuple(&tpl);
-    ret = RDB_tuple_set_string(&tpl, "TABLENAME", "SYSRTABLES");
+    ret = RDB_tuple_set_string(&tpl, "TABLENAME", "SYS_RTABLES");
     if (ret != RDB_OK) {
         goto error;
     }
@@ -798,15 +798,12 @@ _RDB_drop_table(RDB_table *tbp, RDB_transaction *txp, RDB_bool rec)
                 ret = RDB_delete(txp->dbp->rtables_tbp, exprp, txp);
                 if (ret != RDB_OK)
                     return ret;
-                RDB_drop_expr(exprp);
 
-                exprp = RDB_eq(RDB_expr_attr("TABLENAME", &RDB_STRING),
-                       RDB_string_const(tbp->name));
-                if (exprp == NULL) {
-                    ret = RDB_NO_MEMORY;
-                    return ret;
-                }
                 ret = RDB_delete(txp->dbp->table_attr_tbp, exprp, txp);
+                if (ret != RDB_OK)
+                    return ret;
+
+                ret = RDB_delete(txp->dbp->table_attr_defvals_tbp, exprp, txp);
                 if (ret != RDB_OK)
                     return ret;
 
@@ -1004,7 +1001,7 @@ RDB_define_type(const char *name, int repc, RDB_possrep repv[],
     RDB_init_value(&conval);
 
     /*
-     * Insert tuple into SYSTYPES
+     * Insert tuple into SYS_TYPES
      */
 
     ret = RDB_tuple_set_string(&tpl, "TYPENAME", name);
@@ -1025,7 +1022,7 @@ RDB_define_type(const char *name, int repc, RDB_possrep repv[],
         goto error;
 
     /*
-     * Insert tuple into SYSPOSSREPS
+     * Insert tuple into SYS_POSSREPS
      */   
 
     for (i = 0; i < repc; i++) {

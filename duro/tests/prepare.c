@@ -31,6 +31,7 @@ create_tables(RDB_database *dbp)
     RDB_transaction tx;
     RDB_table *tbp;
     RDB_key_attrs key;
+    RDB_value defval;
     int ret;
     
     ret = RDB_begin_tx(&tx, dbp, NULL);
@@ -48,8 +49,15 @@ create_tables(RDB_database *dbp)
     }
 
     printf("Creating table EMPS2\n");
+    
+    /* Set default value for SALARY */
+    RDB_init_value(&defval);
+    RDB_value_set_rational(&defval, 4000.0);
+    emp_attrs[2].defaultp = &defval;
+
     ret = RDB_create_table("EMPS2", RDB_TRUE, 4, emp_attrs, 2, emp_keyattrs,
                            &tx, &tbp);
+    RDB_destroy_value(&defval);
     if (ret != RDB_OK) {
         RDB_rollback(&tx);
         return ret;
@@ -129,13 +137,13 @@ fill_tables(RDB_database *dbp)
 
     printf("Filling EMPS2\n");
 
+    RDB_destroy_tuple(&emptpl);
+    RDB_init_tuple(&emptpl);
+
     ret = RDB_tuple_set_int(&emptpl, "EMPNO", 1);
     if (ret != RDB_OK)
         goto error;
     ret = RDB_tuple_set_string(&emptpl, "NAME", "Smith");
-    if (ret != RDB_OK)
-        goto error;
-    ret = RDB_tuple_set_rational(&emptpl, "SALARY", (RDB_rational)4000.0);
     if (ret != RDB_OK)
         goto error;
     ret = RDB_tuple_set_int(&emptpl, "DEPTNO", 1);
@@ -152,9 +160,6 @@ fill_tables(RDB_database *dbp)
     if (ret != RDB_OK)
         goto error;
     ret = RDB_tuple_set_string(&emptpl, "NAME", "Clarke");
-    if (ret != RDB_OK)
-        goto error;
-    ret = RDB_tuple_set_rational(&emptpl, "SALARY", (RDB_rational)4000.0);
     if (ret != RDB_OK)
         goto error;
     ret = RDB_tuple_set_int(&emptpl, "DEPTNO", 2);

@@ -65,6 +65,7 @@ calltest test_regexp
 calltest test_aggregate
 calltest test_update
 calltest test_srupdate
+calltest test_insert
 calltest test_delete
 calltest test_null
 calltest test_binary
