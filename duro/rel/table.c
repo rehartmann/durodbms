@@ -10,6 +10,7 @@
 #include "catalog.h"
 #include "internal.h"
 #include <gen/strfns.h>
+#include <gen/errors.h>
 #include <string.h>
 
 /* name of the file in which the tables are physically stored */
@@ -211,10 +212,21 @@ RDB_table_keys(RDB_table *tbp, RDB_string_vec **keyvp)
     return tbp->keyc;
 }
 
+static void
+destroy_tbindex(_RDB_tbindex *idxp)
+{
+    int i;
+
+    free(idxp->name);
+    for (i = 0; i < idxp->attrc; i++)
+        free(idxp->attrv[i].attrname);
+    free(idxp->attrv);
+}
+
 int
 _RDB_drop_table(RDB_table *tbp, RDB_bool rec)
 {
-    int i, j;
+    int i;
     int ret;
 
     switch (tbp->kind) {
@@ -223,9 +235,7 @@ _RDB_drop_table(RDB_table *tbp, RDB_bool rec)
             RDB_destroy_hashmap(&tbp->var.stored.attrmap);
             if (tbp->var.stored.indexc > 0) {
                 for (i = 0; i < tbp->var.stored.indexc; i++) {
-                    for (j = 0; j < tbp->var.stored.indexv[i].attrc; j++)
-                        free(tbp->var.stored.indexv[i].attrv[j].attrname);
-                    free(tbp->var.stored.indexv[i].attrv);
+                    destroy_tbindex(&tbp->var.stored.indexv[i]);
                 }
                 free(tbp->var.stored.indexv);
             }
@@ -760,29 +770,94 @@ RDB_create_table_index(const char *name, RDB_table *tbp, int idxcompc,
     /* Create index in catalog */
     ret = _RDB_cat_insert_index(indexp, tbp->name, &tx);
     if (ret != RDB_OK) {
-        if (RDB_is_syserr(ret))
-            RDB_rollback_all(&tx);
-        return ret;
+        if (ret == RDB_KEY_VIOLATION)
+            ret = RDB_ELEMENT_EXISTS;
+        goto error;
     }
 
     /* Create index */
     ret = create_index(tbp, RDB_db_env(RDB_tx_db(txp)), &tx, indexp);
     if (ret != RDB_OK) {
-        if (RDB_is_syserr(ret))
-            RDB_rollback_all(&tx);
-        return ret;
+        goto error;
     }
 
     return RDB_commit(&tx);
+
+error:
+    if (RDB_is_syserr(ret))
+        RDB_rollback_all(&tx);
+    else
+        RDB_rollback(&tx);
+    tbp->var.stored.indexv = realloc(tbp->var.stored.indexv,
+            (--tbp->var.stored.indexc) * sizeof (_RDB_tbindex));
+    return ret;
 }
 
 int
 RDB_drop_table_index(const char *name, RDB_transaction *txp)
 {
+    int ret;
+    int i;
+    int xi;
+    char *tbname;
+    RDB_table *tbp;
+
     if (!_RDB_legal_name(name))
         return RDB_NOT_FOUND;
 
-    return RDB_NOT_SUPPORTED;
+    ret = _RDB_cat_index_tablename(name, &tbname, txp);
+    if (ret != RDB_OK)
+        return ret;
+
+    ret = RDB_get_table(tbname, txp, &tbp);
+    if (ret != RDB_OK)
+        return ret;
+
+    for (i = 0; i < tbp->var.stored.indexc
+            && strcmp(tbp->var.stored.indexv[i].name, name) != 0;
+            i++);
+    if (i >= tbp->var.stored.indexc) {
+        /* Index not found, so reread indexes */
+        for (i = 0; i < tbp->var.stored.indexc; i++)
+            destroy_tbindex(&tbp->var.stored.indexv[i]);
+        ret = _RDB_get_indexes(tbp, txp->dbp->dbrootp, txp);
+        if (ret != RDB_OK)
+            return ret;
+
+        /* Search again */
+        for (i = 0; i < tbp->var.stored.indexc
+                && strcmp(tbp->var.stored.indexv[i].name, name) != 0;
+                i++);
+        if (i >= tbp->var.stored.indexc)
+            return RDB_INTERNAL;
+    }        
+    xi = i;
+
+    /* Destroy index */
+    ret = _RDB_del_index(txp, tbp->var.stored.indexv[i].idxp);
+    if (ret != RDB_OK)
+        return ret;
+
+    /* Delete index from catalog */
+    ret = _RDB_cat_delete_index(name, txp);
+    if (ret != RDB_OK)
+        return ret;
+
+    /*
+     * Delete index entry
+     */
+
+    destroy_tbindex(&tbp->var.stored.indexv[xi]);
+
+    tbp->var.stored.indexc--;
+    for (i = xi; i < tbp->var.stored.indexc; i++) {
+        tbp->var.stored.indexv[i] = tbp->var.stored.indexv[i + 1];
+    }
+
+    realloc(tbp->var.stored.indexv,
+            sizeof(_RDB_tbindex) * tbp->var.stored.indexc);
+
+    return RDB_OK;
 }
 
 RDB_type *

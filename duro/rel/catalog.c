@@ -448,6 +448,53 @@ cleanup:
 }
 
 int
+_RDB_cat_index_tablename(const char *name, char **tbnamep,
+        RDB_transaction *txp)
+{
+    int ret;
+    RDB_object tpl;
+    RDB_table *vtbp;
+    RDB_expression *wherep = RDB_eq(RDB_expr_attr("NAME"),
+            RDB_string_to_expr(name));
+    if (wherep == NULL)
+        return RDB_NO_MEMORY;
+
+    ret = RDB_select(txp->dbp->dbrootp->indexes_tbp, wherep, &vtbp);
+    if (ret != RDB_OK) {
+        RDB_drop_expr(wherep);
+        return ret;
+    }
+
+    RDB_init_obj(&tpl);
+    ret = RDB_extract_tuple(vtbp, txp, &tpl);
+    RDB_drop_table(vtbp, txp);
+    if (ret != RDB_OK) {
+        RDB_destroy_obj(&tpl);
+        return ret;
+    }
+
+    *tbnamep = RDB_dup_str(RDB_tuple_get_string(&tpl, "TABLENAME"));
+    RDB_destroy_obj(&tpl);
+    if (*tbnamep == NULL)
+        return RDB_NO_MEMORY;
+    return RDB_OK;
+}
+
+int
+_RDB_cat_delete_index(const char *name, RDB_transaction *txp)
+{
+    int ret;
+    RDB_expression *wherep = RDB_eq(RDB_expr_attr("NAME"),
+            RDB_string_to_expr(name));
+    if (wherep == NULL)
+        return RDB_NO_MEMORY;
+
+    ret = RDB_delete(txp->dbp->dbrootp->indexes_tbp, wherep, txp);
+    RDB_drop_expr(wherep);
+    return ret;
+}
+
+int
 _RDB_cat_insert(RDB_table *tbp, RDB_transaction *txp)
 {
     int ret;
@@ -562,8 +609,8 @@ _RDB_cat_delete(RDB_table *tbp, RDB_transaction *txp)
 /*
  * Read table indexes from catalog
  */
-static int
-get_indexes(RDB_table *tbp, RDB_dbroot *dbrootp, RDB_transaction *txp)
+int
+_RDB_get_indexes(RDB_table *tbp, RDB_dbroot *dbrootp, RDB_transaction *txp)
 {
     int ret;
     int i;
@@ -831,55 +878,55 @@ _RDB_open_systables(RDB_dbroot *dbrootp, RDB_transaction *txp)
          * Read indexes from the catalog 
          */
 
-        ret = get_indexes(dbrootp->rtables_tbp, dbrootp, txp);
+        ret = _RDB_get_indexes(dbrootp->rtables_tbp, dbrootp, txp);
         if (ret != RDB_OK)
             return ret;
 
-        ret = get_indexes(dbrootp->table_attr_tbp, dbrootp, txp);
+        ret = _RDB_get_indexes(dbrootp->table_attr_tbp, dbrootp, txp);
         if (ret != RDB_OK)
             return ret;
 
-        ret = get_indexes(dbrootp->table_attr_defvals_tbp, dbrootp, txp);
+        ret = _RDB_get_indexes(dbrootp->table_attr_defvals_tbp, dbrootp, txp);
         if (ret != RDB_OK)
             return ret;
 
-        ret = get_indexes(dbrootp->vtables_tbp, dbrootp, txp);
+        ret = _RDB_get_indexes(dbrootp->vtables_tbp, dbrootp, txp);
         if (ret != RDB_OK)
             return ret;
 
-        ret = get_indexes(dbrootp->dbtables_tbp, dbrootp, txp);
+        ret = _RDB_get_indexes(dbrootp->dbtables_tbp, dbrootp, txp);
         if (ret != RDB_OK)
             return ret;
 
-        ret = get_indexes(dbrootp->keys_tbp, dbrootp, txp);
+        ret = _RDB_get_indexes(dbrootp->keys_tbp, dbrootp, txp);
         if (ret != RDB_OK)
             return ret;
 
-        ret = get_indexes(dbrootp->types_tbp, dbrootp, txp);
+        ret = _RDB_get_indexes(dbrootp->types_tbp, dbrootp, txp);
         if (ret != RDB_OK)
             return ret;
 
-        ret = get_indexes(dbrootp->possreps_tbp, dbrootp, txp);
+        ret = _RDB_get_indexes(dbrootp->possreps_tbp, dbrootp, txp);
         if (ret != RDB_OK)
             return ret;
 
-        ret = get_indexes(dbrootp->possrepcomps_tbp, dbrootp, txp);
+        ret = _RDB_get_indexes(dbrootp->possrepcomps_tbp, dbrootp, txp);
         if (ret != RDB_OK)
             return ret;
 
-        ret = get_indexes(dbrootp->ro_ops_tbp, dbrootp, txp);
+        ret = _RDB_get_indexes(dbrootp->ro_ops_tbp, dbrootp, txp);
         if (ret != RDB_OK)
             return ret;
 
-        ret = get_indexes(dbrootp->ro_op_rtypes_tbp, dbrootp, txp);
+        ret = _RDB_get_indexes(dbrootp->ro_op_rtypes_tbp, dbrootp, txp);
         if (ret != RDB_OK)
             return ret;
 
-        ret = get_indexes(dbrootp->upd_ops_tbp, dbrootp, txp);
+        ret = _RDB_get_indexes(dbrootp->upd_ops_tbp, dbrootp, txp);
         if (ret != RDB_OK)
             return ret;
 
-        ret = get_indexes(dbrootp->indexes_tbp, dbrootp, txp);
+        ret = _RDB_get_indexes(dbrootp->indexes_tbp, dbrootp, txp);
         if (ret != RDB_OK)
             return ret;
     }
@@ -1267,8 +1314,6 @@ _RDB_get_cat_rtable(const char *name, RDB_transaction *txp, RDB_table **tbpp)
             goto error;            
     }
 
-    /* Open the table */
-
     ret = get_keys(name, txp, &keyc, &keyv);
     if (ret != RDB_OK)
         goto error;
@@ -1291,7 +1336,7 @@ _RDB_get_cat_rtable(const char *name, RDB_transaction *txp, RDB_table **tbpp)
         goto error;
     }
 
-    ret = get_indexes(*tbpp, tx.dbp->dbrootp, &tx);
+    ret = _RDB_get_indexes(*tbpp, tx.dbp->dbrootp, &tx);
     if (ret != RDB_OK) {
         RDB_rollback(&tx);
         goto error;

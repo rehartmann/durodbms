@@ -37,6 +37,12 @@ duro::table create T2 {
 
 duro::index create IX1 T1 {B asc} $tx
 
+if {![catch {duro::index create IX1 T1 {C asc} $tx}]} {
+    error "Index creation should fail, but succeeded"
+}
+
+duro::index create IX2 T1 {C asc} $tx
+
 duro::insert T1 {A 1 B Bli C X} $tx
 duro::insert T1 {A 2 B Bla C Y} $tx
 duro::insert T1 {A 3 B Bla C X} $tx
@@ -142,5 +148,30 @@ duro::delete T1 {B = "Bla"} $tx
 set a [duro::array create T1 {A asc} $tx]
 checkarray $a {{A 1 B Bli C X D x} {A 4 B Blubb C Y D x}} $tx
 duro::array drop $a
+
+duro::commit $tx
+
+
+set tx [duro::begin $dbenv TEST]
+
+duro::index drop IX1 $tx
+
+duro::rollback $tx
+
+
+set tx [duro::begin $dbenv TEST]
+
+duro::index drop IX1 $tx
+
+if {![catch {duro::index drop IX1 $tx}]} {
+    error "Dropping index should fail, but succeeded"
+}
+
+# Check if the table can still be accessed
+set stpl {A 1 B Bli C X D x}
+set tpl [duro::expr {TUPLE FROM (T1 WHERE A=1)} $tx]
+if {![tequal $tpl $stpl]} {
+    error "TUPLE FROM T1 is $tpl, but should be $stpl"
+}
 
 duro::commit $tx

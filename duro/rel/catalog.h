@@ -57,4 +57,13 @@ int
 _RDB_cat_insert_index(_RDB_tbindex *, const char *tbname,
         RDB_transaction *);
 
+int
+_RDB_cat_index_tablename(const char *, char **tbnamep, RDB_transaction *);
+
+int
+_RDB_cat_delete_index(const char *, RDB_transaction *);
+
+int
+_RDB_get_indexes(RDB_table *tbp, RDB_dbroot *dbrootp, RDB_transaction *);
+
 #endif
