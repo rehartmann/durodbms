@@ -8,9 +8,9 @@ Changes for Duro 0.9
 
 - Renamed operator SUBSET to SUBSET_OF.
 
-- Replaced RDB_user_op by RDB_ro_op and RDB_ro_op_l.
+- Replaced RDB_user_op() by RDB_ro_op() and RDB_ro_op_l().
 
-- Dropped RDB_neq, etc.
+- Dropped RDB_neq, etc, replaced by RDB_ro_op() and RDB_ro_op_l(), resp.
 
 - Changed expression grammar so that expressions like A UNION B UNION C
   are now possible.
@@ -26,7 +26,11 @@ Changes for Duro 0.9
 - Added conversion operators (RDB_to_int() etc.), added conversion operators
   to expression parser.
 
+- Added operators LENGTH and SUBSTRING.
+
 - Durotcl now supports creating tables with user-defined types.
+
+- Expressions now support backslash escaping in strings.
 
 - Small change to RDB_expression struct.
 
@@ -107,7 +111,9 @@ Changes for Duro 0.8
 
 - Fixed WRAP syntax.
 
-- Fixed several bugs.
+- Fixed charset handling of Durotcl expressions.
+
+- Fixed several other bugs.
 
 Changes for Duro 0.7
 

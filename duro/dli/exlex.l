@@ -179,7 +179,46 @@ TABLE_DUM {
     return TOK_ID;
 }
 
-\"[^"]*\" {
+\"([^"]|\\\"|\\\\|\\n|\\r|\\t)*\" {
+    int i = 1, j = 1;
+
+    /*
+     * Process escapes
+     */
+    for(;;) {
+        if (yytext[i] == '\\') {
+            switch (yytext[i + 1]) {
+                case '\\':
+                case '\"':
+                    yytext[j] = yytext[i + 1];
+                    i += 2;
+                    j++;
+                    continue;
+                case 'n':
+                    yytext[j] = '\n';
+                    i += 2;
+                    j++;
+                    continue;
+                case 'r':
+                    yytext[j] = '\r';
+                    i += 2;
+                    j++;
+                    continue;
+                case 't':
+                    yytext[j] = '\t';
+                    i += 2;
+                    j++;
+                    continue;
+                default: ;
+            }
+        }
+        yytext[j] = yytext[i];
+        if (yytext[i] == '\0')
+            break;
+        i++;
+        j++;
+    }
+
     /*
      * Remove trailing "s
      */

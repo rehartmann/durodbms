@@ -102,7 +102,9 @@ expression_list = expression {',' expression}.
 
 tuple_item_list = id expression {',' id expression}.
 
-string = '"' {char} '"'.
+string = '"' {char_lit} '"'.
+
+char_lit = char | '\"' | '\\' | '\n' | '\r' | '\t'.
 
 integer = ['-'] digit {digit}.
 
