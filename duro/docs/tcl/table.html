@@ -23,10 +23,11 @@ which the transaction identified by <var>txId</var> interacts with.
 
 <dt><b>duro::table attrs</b> <var>tablename txId</var>
 <dd>
-<p>This subcommand returns a list containing pairs of elements.
-The first element in each pair is the name of an attribute of
+<p>This subcommand returns a list of lists.
+The first element in sublist is the name of an attribute of
 table <var>tablename</var> and the second element is the type of the
-attribute. The order of pairs is undefined.
+attribute. The third element, if present, is the default value.
+The order of the sublists is undefined.
 
 <dt><b>duro::table contains</b> <var>tablename tuple txId</var>
 <dd>

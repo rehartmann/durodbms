@@ -20,11 +20,7 @@ the file extension.
 
 <h2>Performance</h2>
 
-<p>Duro 0.8 supports indexes and has limited query optimization
-capabilities. Only "equality queries" will use an index.
-For example, if a compound index for attributes A and B has been created,
-T WHERE A=1 AND B=2 will use the index, but T WHERE A=1 will not,
-neither will T WHERE A=1 AND B>2.
+<p>Duro 0.8 supports indexes ...
 
 <p>For each candidate key, an index is created automatically .
 

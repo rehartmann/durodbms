@@ -7,7 +7,7 @@ AM_YFLAGS = -d
 
 bin_PROGRAMS = util/lstables
 
-dist_bin_SCRIPTS = tcl/duroadmin.tcl
+dist_bin_SCRIPTS = tcl/duroadmin.tcl tcl/durodump.tcl
 
 # Shared libs for testing are listed here too, because check_LTLIBRARIES does
 # not work

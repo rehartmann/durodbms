@@ -670,14 +670,30 @@ table_attrs_cmd(TclState *statep, Tcl_Interp *interp, int objc,
 
     listobjp = Tcl_NewListObj(0, NULL);
     for (i = 0; i < tuptyp->var.tuple.attrc; i++) {
+        Tcl_Obj *sublistobjp = Tcl_NewListObj(0, NULL);
         char *name = tuptyp->var.tuple.attrv[i].name;
 
-        ret = Tcl_ListObjAppendElement(interp, listobjp,
+        ret = Tcl_ListObjAppendElement(interp, sublistobjp,
                 Tcl_NewStringObj(name, strlen(name)));
         if (ret != TCL_OK)
             return ret;
-        ret = Tcl_ListObjAppendElement(interp, listobjp,
+        ret = Tcl_ListObjAppendElement(interp, sublistobjp,
                 type_to_tobj(tuptyp->var.tuple.attrv[i].typ));
+        if (ret != TCL_OK)
+            return ret;
+
+        /* If there is a default value, add it to sublist */
+        if (tuptyp->var.tuple.attrv[i].defaultp != NULL) {
+            Tcl_Obj *defp = Duro_to_tcl(interp,
+                    tuptyp->var.tuple.attrv[i].defaultp, txp);
+            if (defp == NULL)
+                return TCL_ERROR;
+            ret = Tcl_ListObjAppendElement(interp, sublistobjp, defp);
+            if (ret != TCL_OK)
+                return ret;
+        }
+
+        ret = Tcl_ListObjAppendElement(interp, listobjp, sublistobjp);
         if (ret != TCL_OK)
             return ret;
     }

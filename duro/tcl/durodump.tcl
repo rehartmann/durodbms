@@ -10,10 +10,7 @@ exec tclsh "$0" ${1+"$@"}
 package require duro
 
 proc dump_rtable {out t tx} {
-    array set attrs [duro::table attrs $t $tx]
-    foreach i [array names attrs] {
-        lappend alist [list $i $attrs($i)]
-    }
+    set alist [duro::table attrs $t $tx]
     puts -nonewline $out "duro::table create $t \{$alist\}"
     puts $out " \{[duro::table keys $t $tx]\} \$tx"
 

@@ -219,7 +219,9 @@ proc show_table {} {
         set tx [duro::begin $::dbenv $::db]
 
         array unset ::tabletypes
-        array set ::tabletypes [duro::table attrs $table $tx]
+        foreach i [duro::table attrs $table $tx] {
+            set ::tabletypes([lindex $i 0]) [lindex $i 1]
+        }
         set ::tableattrs [array names ::tabletypes]
         set ::tablekey [lindex [duro::table keys $table $tx] 0]
 
