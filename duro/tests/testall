@@ -21,7 +21,7 @@
 
 failure () {
     echo Test failed.
-    exit
+    exit 3
 }
 
 # Invoke a test application and compare output
@@ -30,6 +30,12 @@ calltest () {
     if ./$1 > /tmp/duro$$; then true ; else echo $?; failure; fi
     if diff /tmp/duro$$ $1_output; then : ; else failure; fi
 }
+
+LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$PWD/.libs:$BDB_HOME/lib
+export LD_LIBRARY_PATH
+
+cd `dirname $0`
+echo $LD_LIBRARY_PATH
 
 calltest tupletest
 

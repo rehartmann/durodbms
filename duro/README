@@ -4,19 +4,16 @@ $Id$
 This directory contains release 0.5 of Duro, a relational database library
 written in C.
 
-To compile Duro, simply run make in this directory.
-'make test' will build and run the test suite.
-
 Compiling and running Duro requires the Berkeley DB database library,
 release 4.1. Berkeley DB can be obtained for free from
-http://www.sleepycat.com. Also required are POSIX.2 regular expressions.
+http://www.sleepycat.com. Also required are POSIX.2 regular expressions
+and Libtool.
 
 Berkeley DB is assumed to be located in /usr/local/BerkeleyDB.4.1.
 If Berkeley DB is located in a different directory, modify make.vars
 appropriately. 
 
-Duro has been tested on a GNU/Linux PC. Building Duro on a different
-system may require some modifications to the Makefiles.
+Duro has been tested on a GNU/Linux PC.
 
 To learn about how to use the Duro, see rel/rdb.h and the programs
 located in the directories util and tests.

@@ -1,0 +1,36 @@
+bin_PROGRAMS = util/lstables util/droptable util/dropdb
+
+# Muss geändert werden, sonst wird libpoint installiert
+lib_LTLIBRARIES = libduro.la tests/libpoint.la
+
+check_PROGRAMS = tests/prepare tests/test_aggregate tests/test_binary \
+tests/test_create_view tests/test_defpointtype tests/test_deftype \
+tests/test_delete tests/test_extend tests/test_intersect \
+tests/test_join tests/test_keys tests/test_minus \
+tests/test_null tests/test_pointtable tests/test_print_view \
+tests/test_project tests/test_ra tests/test_regexp \
+tests/test_rename tests/test_select tests/test_summarize \
+tests/test_union tests/test_update tests/test_utypetable \
+tests/test_defpointtype tests/test_pointtable
+
+tests_libpoint_la_SOURCES = tests/point.c
+tests_libpoint_la_LDFLAGS =
+
+TESTS = tests/testall
+
+TESTS_ENVIRONMENT = BDB_HOME=/usr/local/BerkeleyDB.4.1
+
+AM_CFLAGS = -g
+
+LDADD = -L/usr/local/BerkeleyDB.4.1/lib libduro.la -ldb @LIBS@
+
+libduro_la_SOURCES = gen/errors.c gen/hashmap.c gen/strfns.c rec/cursor.c \
+rec/env.c rec/index.c rec/recmap.c rel/array.c rel/internal.h rel/database.c \
+rel/expression.c rel/getargs.c rel/qresult.c rel/serialize.c \
+rel/table.c rel/transaction.c rel/tuple.c rel/type.c rel/value.c 
+
+include_HEADERS = gen/errors.h gen/hashmap.h gen/strfns.h gen/types.h \
+rec/cursor.h rec/env.h rec/index.h rec/recmap.h \
+rel/rdb.h rel/serialize.h rel/typeimpl.h
+
+INCLUDES = -I$(top_srcdir) -I/usr/local/BerkeleyDB.4.1/include

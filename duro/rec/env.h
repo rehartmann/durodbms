@@ -22,29 +22,29 @@ typedef struct RDB_environment {
  * Arguments:
  * path		pathname of the direcory where the data is stored.
  * options      currently ignored.
- * dspp		location where the pointer to the environment is stored.
+ * envpp	location where the pointer to the environment is stored.
  */
 int
-RDB_create_env(const char *path, int options, RDB_environment **);
+RDB_create_env(const char *path, int options, RDB_environment **envpp);
 
 /*
  * Open a database environment.
  *
  * Arguments:
  * path		pathname of the direcory where the data is stored.
- * dspp		location where the pointer to the environment is stored.
+ * envpp	location where the pointer to the environment is stored.
  */
 int
-RDB_open_env(const char *path, RDB_environment **envp);
+RDB_open_env(const char *path, RDB_environment **envpp);
 
 /*
  * close a database environment.
  *
  * Arguments:
- * dsp		the pointer to the environment.
+ * envp		the pointer to the environment.
  */
 int
-RDB_close_env(RDB_environment *dsp);
+RDB_close_env(RDB_environment *envp);
 
 void
 RDB_set_env_closefn(RDB_environment *, void (*)(struct RDB_environment *));

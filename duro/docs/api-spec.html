@@ -76,6 +76,9 @@
 <li><a href="#value_set_int">RDB_value_set_int</a>
 <li><a href="#value_set_rational">RDB_value_set_rational</a>
 <li><a href="#value_set_string">RDB_value_set_string</a>
+<li><a href="#value_set_tuple">RDB_value_set_tuple</a>
+<li><a href="#value_set_array">RDB_value_set_array</a>
+<li><a href="#value_set_table">RDB_value_set_table</a>
 <li><a href="#value_bool">RDB_value_bool</a>
 <li><a href="#value_int">RDB_value_int</a>
 <li><a href="#value_rational">RDB_value_rational</a>
@@ -589,7 +592,7 @@ RDB_init_tuple(RDB_tuple *);
 <pre>
 #include &lt;rel/rdb.h&gt;
 
-void
+int
 RDB_destroy_tuple(RDB_tuple *);
 </pre>
 
