@@ -122,10 +122,15 @@ RDB_insert(RDB_table *tbp, const RDB_object *tup, RDB_transaction *txp)
                 }
                 
                 /* Typecheck */
-                if (!RDB_type_equals(valp->typ,
+                if (valp->typ!= NULL /* !! */ && !RDB_type_equals(valp->typ,
                                      tuptyp->var.tuple.attrv[i].typ)) {
                      return RDB_TYPE_MISMATCH;
                 }
+
+                /* Set type - needed for tuples */
+                if (valp->typ == NULL)
+                    valp->typ = tuptyp->var.tuple.attrv[i].typ;
+
                 _RDB_obj_to_field(&fvp[*fnop], valp);
             }
             ret = RDB_insert_rec(tbp->var.stored.recmapp, fvp, txp->txid);

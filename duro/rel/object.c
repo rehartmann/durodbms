@@ -6,6 +6,8 @@
 #include <gen/errors.h>
 #include <string.h>
 
+#include <signal.h>
+
 void *
 RDB_obj_irep(RDB_object *valp, size_t *lenp)
 {
@@ -28,21 +30,23 @@ RDB_obj_irep(RDB_object *valp, size_t *lenp)
 } 
 
 static size_t
+obj_ilen(const RDB_object *objp);
+
+static void
+add_obj_ilen(RDB_hashmap *hp, const char *key, void *arg) {
+    size_t *lenp = (size_t *) arg;
+
+    *lenp += obj_ilen((RDB_object *) RDB_hashmap_get(hp, key, arg));
+}
+
+static size_t
 obj_ilen(const RDB_object *objp)
 {
-    size_t len, l;
-    int i;
+    size_t len;
 
-    if (objp->typ->kind == RDB_TP_TUPLE) {
+    if (objp->kind == _RDB_TUPLE) {
         len = 0;
-        for (i = 0; i < objp->typ->var.tuple.attrc; i++) {
-            l = objp->typ->var.tuple.attrv[i].typ->ireplen;
-            if (l == RDB_VARIABLE_LEN) {
-                l = sizeof(size_t) + obj_ilen(RDB_tuple_get(objp,
-                        objp->typ->var.tuple.attrv[i].name));
-            }
-            len += l;
-        }
+        RDB_hashmap_apply((RDB_hashmap *) &objp->var.tpl_map, add_obj_ilen, &len);
         return len;
     }
     len = objp->typ->ireplen;
@@ -136,29 +140,16 @@ RDB_irep_to_obj(RDB_object *valp, RDB_type *typ, const void *datap, size_t len)
     return RDB_OK;
 }
 
+typedef struct {
+    RDB_byte *bp;
+    size_t len;
+} irep_info;
+
 static void *
 obj_to_irep(void *dstp, const void *srcp, size_t len)
 {
-    int i;
     const RDB_object *objp = (RDB_object *) srcp;
     RDB_byte *bp = dstp;
-
-    if (objp->typ->kind == RDB_TP_TUPLE) {
-        for (i = 0; i < objp->typ->var.tuple.attrc; i++) {
-            RDB_object *attrp = RDB_tuple_get(objp,
-                    objp->typ->var.tuple.attrv[i].name);
-            size_t l = objp->typ->var.tuple.attrv[i].typ->ireplen;
-
-            if (l == RDB_VARIABLE_LEN) {
-                l = obj_ilen(attrp);
-                memcpy(bp, &l, sizeof l);
-                bp += sizeof l;
-            }
-            obj_to_irep(bp, attrp, l);
-            bp += l;
-        }
-        return dstp;
-    }
 
     switch (objp->kind) {
         case _RDB_BOOL:
@@ -170,6 +161,26 @@ obj_to_irep(void *dstp, const void *srcp, size_t len)
         case _RDB_RATIONAL:
             memcpy(bp, &objp->var.rational_val, sizeof (RDB_rational));
             break;
+        case _RDB_TUPLE:
+        {
+            int i;
+
+            for (i = 0; i < objp->typ->var.tuple.attrc; i++) {
+                RDB_object *attrp = RDB_tuple_get(objp,
+                        objp->typ->var.tuple.attrv[i].name);
+                int l = objp->typ->var.tuple.attrv[i].typ->ireplen;
+
+                if (l == RDB_VARIABLE_LEN) {
+                    l = obj_ilen(attrp);
+                    memcpy(bp, &l, sizeof (size_t));
+                    bp += sizeof (size_t);
+                }
+
+                obj_to_irep(bp, attrp, l);
+                bp += l;
+            }
+            break;
+        }
         default:
             memcpy(bp, objp->var.bin.datap, objp->var.bin.len);
     }
@@ -245,7 +256,8 @@ RDB_copy_obj(RDB_object *dstvalp, const RDB_object *srcvalp)
             return ret;
     }
 
-    dstvalp->typ = srcvalp->typ; /* !! non-scalar type? */
+    if (srcvalp->typ != NULL && RDB_type_is_scalar(srcvalp->typ))
+        dstvalp->typ = srcvalp->typ;
     return copy_obj(dstvalp, srcvalp);
 } 
 

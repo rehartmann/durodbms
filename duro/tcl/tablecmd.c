@@ -101,7 +101,6 @@ list_to_tuple(Tcl_Interp *interp, Tcl_Obj *tobjp, RDB_type *typ,
         }
     }
 
-    tplp->typ = typ; /* !! */
     return TCL_OK;
 }
 
@@ -805,7 +804,6 @@ table_insert_cmd(TclState *statep, Tcl_Interp *interp, int objc,
     int attrcount;
     int i;
     RDB_object tpl;
-    RDB_object obj;
     RDB_type *typ;
 
     if (objc != 5) {
@@ -836,11 +834,13 @@ table_insert_cmd(TclState *statep, Tcl_Interp *interp, int objc,
     } 
 
     RDB_init_obj(&tpl);
-    RDB_init_obj(&obj);
     for (i = 0; i < attrcount; i += 2) {
         Tcl_Obj *nameobjp, *valobjp;
         RDB_type *attrtyp;
         char *attrname;
+        RDB_object obj;
+
+        RDB_init_obj(&obj);
 
         Tcl_ListObjIndex(interp, objv[3], i, &nameobjp);
         attrname = Tcl_GetStringFromObj(nameobjp, NULL);
@@ -848,15 +848,19 @@ table_insert_cmd(TclState *statep, Tcl_Interp *interp, int objc,
         if (attrtyp == NULL) {
             Tcl_AppendResult(interp, "Unknown attribute: ", attrname, NULL);
             ret = TCL_ERROR;
+            RDB_destroy_obj(&obj);
             goto cleanup;
         }
 
         Tcl_ListObjIndex(interp, objv[3], i + 1, &valobjp);
         ret = tcl_to_duro(interp, valobjp, attrtyp, &obj);
-        if (ret != TCL_OK)
+        if (ret != TCL_OK) {
+            RDB_destroy_obj(&obj);
             goto cleanup;
+        }
 
         RDB_tuple_set(&tpl, attrname, &obj);
+        RDB_destroy_obj(&obj);
     }
     ret = RDB_insert(tbp, &tpl, txp);
     if (ret != RDB_OK) {
@@ -868,7 +872,6 @@ table_insert_cmd(TclState *statep, Tcl_Interp *interp, int objc,
 
 cleanup:
     RDB_destroy_obj(&tpl);
-    RDB_destroy_obj(&obj);
 
     return ret;
 }
