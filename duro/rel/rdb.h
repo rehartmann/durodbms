@@ -1021,6 +1021,9 @@ RDB_expression *
 RDB_expr_cardinality(RDB_expression *arg1);
 
 RDB_expression *
+RDB_expr_contains(RDB_expression *, RDB_expression *);
+
+RDB_expression *
 RDB_expr_sum(RDB_expression *, const char *attrname);
 
 RDB_expression *

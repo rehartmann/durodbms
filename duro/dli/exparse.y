@@ -760,7 +760,7 @@ rel_expression: add_expression
                 YYERROR;
         }
         | add_expression TOK_IN add_expression {
-            $$ = RDB_contains($3, $1);
+            $$ = RDB_expr_contains($3, $1);
             if ($$ == NULL)
                 YYERROR;
         }

@@ -321,7 +321,7 @@ RDB_regmatch(RDB_expression *arg1, RDB_expression *arg2)
 }
 
 RDB_expression *
-RDB_contains(RDB_expression *arg1, RDB_expression *arg2)
+RDB_expr_contains(RDB_expression *arg1, RDB_expression *arg2)
 {
     return _RDB_create_binexpr(arg1, arg2, RDB_EX_CONTAINS);
 }
