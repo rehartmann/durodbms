@@ -525,7 +525,7 @@ get_keys(const char *name, RDB_transaction *txp,
         return ret;
     }
 
-    ret = RDB_table_to_array(vtbp, &arr, 0, NULL, txp);
+    ret = RDB_table_to_array(&arr, vtbp, 0, NULL, txp);
     if (ret != RDB_OK)
         goto error;
 
@@ -642,7 +642,7 @@ _RDB_get_cat_rtable(const char *name, RDB_transaction *txp, RDB_table **tbpp)
     ret = RDB_select(txp->dbp->dbrootp->table_attr_tbp, exprp, &tmptb2p);
     if (ret != RDB_OK)
         goto error;
-    ret = RDB_table_to_array(tmptb2p, &arr, 0, NULL, txp);
+    ret = RDB_table_to_array(&arr, tmptb2p, 0, NULL, txp);
     if (ret != RDB_OK) {
         goto error;
     }
@@ -682,7 +682,7 @@ _RDB_get_cat_rtable(const char *name, RDB_transaction *txp, RDB_table **tbpp)
     ret = RDB_select(txp->dbp->dbrootp->table_attr_defvals_tbp, exprp, &tmptb3p);
     if (ret != RDB_OK)
         goto error;
-    ret = RDB_table_to_array(tmptb3p, &arr, 0, NULL, txp);
+    ret = RDB_table_to_array(&arr, tmptb3p, 0, NULL, txp);
     if (ret != RDB_OK) {
         goto error;
     }
@@ -1047,7 +1047,7 @@ _RDB_get_cat_type(const char *name, RDB_transaction *txp, RDB_type **typp)
     ret = _RDB_possreps_query(name, txp, &tmptb2p);
     if (ret != RDB_OK)
         goto error;
-    ret = RDB_table_to_array(tmptb2p, &possreps, 0, NULL, txp);
+    ret = RDB_table_to_array(&possreps, tmptb2p, 0, NULL, txp);
     if (ret != RDB_OK) {
         goto error;
     }
@@ -1087,7 +1087,7 @@ _RDB_get_cat_type(const char *name, RDB_transaction *txp, RDB_type **typp)
         if (ret != RDB_OK) {
             goto error;
         }
-        ret = RDB_table_to_array(tmptb3p, &comps, 0, NULL, txp);
+        ret = RDB_table_to_array(&comps, tmptb3p, 0, NULL, txp);
         if (ret != RDB_OK) {
             goto error;
         }

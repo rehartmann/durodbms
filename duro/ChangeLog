@@ -4,6 +4,9 @@ Summary of Changes for Duro
 
 Changes for Duro 0.6
 
+- For the sake of uniformity, changed argument order of
+  RDB_table_to_array().
+
 - Added sorting (through the seqitc/seqitv arguments of
   RDB_table_to_array())
 

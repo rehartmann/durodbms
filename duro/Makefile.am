@@ -5,7 +5,7 @@ bin_PROGRAMS = util/lstables util/droptable util/dropdb
 
 # Must be changed, because libpoint should not be installed
 lib_LTLIBRARIES = libduro.la \
-    tests/libpoint.la tests/libplus.la
+        tests/libpoint.la tests/libplus.la
 
 check_PROGRAMS = tests/prepare tests/test_aggregate tests/test_binary \
 tests/test_create_view tests/test_defpointtype tests/test_deftype \
@@ -43,7 +43,15 @@ rel/rdb.h rel/typeimpl.h
 
 INCLUDES = -I$(top_srcdir) -I$(BDB_HOME)/include
 
+# check-local:
+#	libtool --mode=link gcc $(CPPFLAGS) $(CFLAGS) tests/point.c \
+#		-o libpoint.lo	
+
 install-data-local:
 	mkdir $(DESTDIR)$(prefix)/docs
 	$(INSTALL_DATA) $(srcdir)/docs/api-spec.html \
 	        $(DESTDIR)$(prefix)/docs/api-spec.html
+
+install-exec-local:
+	rm $(DESTDIR)$(prefix)/lib/libpoint.*
+	rm $(DESTDIR)$(prefix)/lib/libplus.*

@@ -29,7 +29,7 @@ print_salary_view(RDB_database *dbp)
 
     RDB_init_array(&array);
 
-    ret = RDB_table_to_array(tmpvtbp, &array, 0, NULL, &tx);
+    ret = RDB_table_to_array(&array, tmpvtbp, 0, NULL, &tx);
     if (ret != RDB_OK) {
         goto error;
     }
@@ -76,7 +76,7 @@ print_emp_view(RDB_database *dbp)
 
     RDB_init_array(&array);
 
-    ret = RDB_table_to_array(tmpvtbp, &array, 0, NULL, &tx);
+    ret = RDB_table_to_array(&array, tmpvtbp, 0, NULL, &tx);
     if (ret != RDB_OK) {
         goto error;
     }
@@ -124,7 +124,7 @@ print_emps_view(RDB_database *dbp)
 
     RDB_init_array(&array);
 
-    ret = RDB_table_to_array(tmpvtbp, &array, 0, NULL, &tx);
+    ret = RDB_table_to_array(&array, tmpvtbp, 0, NULL, &tx);
     if (ret != RDB_OK) {
         goto error;
     }
@@ -176,7 +176,7 @@ print_emps2_view(RDB_database *dbp)
 
     RDB_init_array(&array);
 
-    ret = RDB_table_to_array(tmpvtbp, &array, 0, NULL, &tx);
+    ret = RDB_table_to_array(&array, tmpvtbp, 0, NULL, &tx);
     if (ret != RDB_OK) {
         goto error;
     }

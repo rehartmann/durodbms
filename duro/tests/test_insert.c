@@ -76,7 +76,7 @@ print_table(RDB_database *dbp)
 
     RDB_init_array(&array);
 
-    ret = RDB_table_to_array(tbp, &array, 2, sqv, &tx);
+    ret = RDB_table_to_array(&array, tbp, 2, sqv, &tx);
     if (ret != RDB_OK) {
         goto error;
     }

@@ -811,7 +811,7 @@ next_rename_tuple(RDB_qresult *qrp, RDB_tuple *tup, RDB_transaction *txp)
         RDB_destroy_tuple(&tpl);
         return ret;
     }
-    ret = RDB_tuple_rename(&tpl, qrp->tbp->var.rename.renc,
+    ret = RDB_rename_tuple(&tpl, qrp->tbp->var.rename.renc,
                            qrp->tbp->var.rename.renv, tup);
     RDB_destroy_tuple(&tpl);
     return ret;
@@ -828,14 +828,20 @@ _RDB_next_tuple(RDB_qresult *qrp, RDB_tuple *tup, RDB_transaction *txp)
 
     if (tbp == NULL) {
         /* It's a sorter */
-        return next_stored_tuple(qrp, qrp->matp, tup);
+        ret = next_stored_tuple(qrp, qrp->matp, tup);
+        if (RDB_is_syserr(ret))
+            RDB_rollback(txp);
+        return ret;
     }
 
     switch (tbp->kind) {
         RDB_bool expres;
 
         case RDB_TB_STORED:
-            return next_stored_tuple(qrp, qrp->tbp, tup);
+            ret = next_stored_tuple(qrp, qrp->tbp, tup);
+            if (RDB_is_syserr(ret))
+                RDB_rollback(txp);
+            return ret;
         case RDB_TB_SELECT:
             do {
                 ret = _RDB_next_tuple(qrp->var.virtual.qrp, tup, txp);
@@ -910,7 +916,7 @@ _RDB_next_tuple(RDB_qresult *qrp, RDB_tuple *tup, RDB_transaction *txp)
             ret = _RDB_next_tuple(qrp->var.virtual.qrp, tup, txp);
             if (ret != RDB_OK)
                 return ret;
-            ret = RDB_tuple_extend(tup, tbp->var.extend.attrc,
+            ret = RDB_extend_tuple(tup, tbp->var.extend.attrc,
                      tbp->var.extend.attrv, txp);
             if (ret != RDB_OK)
                 return ret;

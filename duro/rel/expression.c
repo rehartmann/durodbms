@@ -843,73 +843,75 @@ RDB_evaluate_bool(RDB_expression *exp, const RDB_tuple *tup,
                 return RDB_OK;
             }
         case RDB_OP_AND:
-            {
-                RDB_bool v1, v2;
-            
-                err = RDB_evaluate_bool(exp->var.op.arg1, tup, txp, &v1);
-                if (err != RDB_OK)
-                    return err;
+        {
+            RDB_bool v1, v2;
+        
+            err = RDB_evaluate_bool(exp->var.op.arg1, tup, txp, &v1);
+            if (err != RDB_OK)
+                return err;
 
-                err = RDB_evaluate_bool(exp->var.op.arg2, tup, txp, &v2);
-                if (err != RDB_OK)
-                    return err;
+            err = RDB_evaluate_bool(exp->var.op.arg2, tup, txp, &v2);
+            if (err != RDB_OK)
+                return err;
 
-                *resp = (RDB_bool)(v1 && v2);
-            }
+            *resp = (RDB_bool)(v1 && v2);
+
             return RDB_OK;                
+        }
         case RDB_OP_OR:
-            {
-                RDB_bool v1, v2;
-            
-                err = RDB_evaluate_bool(exp->var.op.arg1, tup, txp, &v1);
-                if (err != RDB_OK)
-                    return err;
+        {
+            RDB_bool v1, v2;
+        
+            err = RDB_evaluate_bool(exp->var.op.arg1, tup, txp, &v1);
+            if (err != RDB_OK)
+                return err;
 
-                err = RDB_evaluate_bool(exp->var.op.arg2, tup, txp, &v2);
-                if (err != RDB_OK)
-                    return err;
+            err = RDB_evaluate_bool(exp->var.op.arg2, tup, txp, &v2);
+            if (err != RDB_OK)
+                return err;
 
-                *resp = (RDB_bool)(v1 && v2);
-            }
+            *resp = (RDB_bool)(v1 && v2);
+
             return RDB_OK;
+        }
         case RDB_OP_NOT:
-            {
-                RDB_bool v;
-            
-                err = RDB_evaluate_bool(exp->var.op.arg1, tup, txp, &v);
-                if (err != RDB_OK)
-                    return err;
+        {
+            RDB_bool v;
+        
+            err = RDB_evaluate_bool(exp->var.op.arg1, tup, txp, &v);
+            if (err != RDB_OK)
+                return err;
 
-                *resp = (RDB_bool)!v;
-            }
+            *resp = (RDB_bool)!v;
             return RDB_OK;
+        }
         case RDB_OP_REGMATCH:
-            {
-                regex_t reg;
-                char *s1, *s2;
+        {
+            regex_t reg;
+            char *s1, *s2;
 
-                err = evaluate_string(exp->var.op.arg1, tup, txp, &s1);
-                if (err != RDB_OK)
-                    return err;
+            err = evaluate_string(exp->var.op.arg1, tup, txp, &s1);
+            if (err != RDB_OK)
+                return err;
 
-                err = evaluate_string(exp->var.op.arg2, tup, txp, &s2);
-                if (err != RDB_OK) {
-                    free(s1);
-                    return err;
-                }
+            err = evaluate_string(exp->var.op.arg2, tup, txp, &s2);
+            if (err != RDB_OK) {
+                free(s1);
+                return err;
+            }
 
-                err = regcomp(&reg, s2, REG_NOSUB);
-                if (err != 0) {
-                    free(s1);
-                    free(s2);
-                    return RDB_INVALID_ARGUMENT;
-                }
-                *resp = (RDB_bool)(regexec(&reg, s1, 0, NULL, 0) == 0);
-                regfree(&reg);
+            err = regcomp(&reg, s2, REG_NOSUB);
+            if (err != 0) {
                 free(s1);
                 free(s2);
+                return RDB_INVALID_ARGUMENT;
             }
+            *resp = (RDB_bool)(regexec(&reg, s1, 0, NULL, 0) == 0);
+            regfree(&reg);
+            free(s1);
+            free(s2);
             return RDB_OK;
+        }
         case RDB_OP_REL_IS_EMPTY:
         {
             RDB_table *tbp = exp->var.tbp;
@@ -1047,7 +1049,13 @@ RDB_evaluate(RDB_expression *exp, const RDB_tuple *tup, RDB_transaction *txp,
                 return RDB_aggregate(exp->var.aggr.tbp, exp->var.aggr.op,
                         exp->var.aggr.attrname, txp, valp);
             case RDB_ATTR:
-                return RDB_copy_obj(valp, RDB_tuple_get(tup, exp->var.attr.name));
+            {
+                RDB_object *srcp = RDB_tuple_get(tup, exp->var.attr.name);
+
+                if (srcp == NULL)
+                    return RDB_INVALID_ARGUMENT;
+                return RDB_copy_obj(valp, srcp);
+            }
             default: ;
         }
         _RDB_set_obj_type(valp, typ);

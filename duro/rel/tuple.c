@@ -136,7 +136,7 @@ RDB_tuple_get_string(const RDB_tuple *tp, const char *namp)
 }
 
 int
-RDB_tuple_extend(RDB_tuple *tup, int attrc, RDB_virtual_attr attrv[],
+RDB_extend_tuple(RDB_tuple *tup, int attrc, RDB_virtual_attr attrv[],
                 RDB_transaction *txp)
 {
     int i;
@@ -176,7 +176,7 @@ rename_attr(RDB_hashmap *hp, const char *attrname, void *arg)
 }    
 
 int
-RDB_tuple_rename(const RDB_tuple *tup, int renc, RDB_renaming renv[],
+RDB_rename_tuple(const RDB_tuple *tup, int renc, RDB_renaming renv[],
                  RDB_tuple *restup)
 {
     struct _RDB_rename_attr_info info;

@@ -18,7 +18,7 @@ print_extend(RDB_table *vtbp, RDB_transaction *txp)
     sq.attrname = "SALARY_AFTER_TAX";
     sq.asc = RDB_TRUE;
 
-    ret = RDB_table_to_array(vtbp, &array, 1, &sq, txp);
+    ret = RDB_table_to_array(&array, vtbp, 1, &sq, txp);
     if (ret != RDB_OK) {
         goto error;
     }

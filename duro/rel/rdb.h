@@ -498,7 +498,7 @@ RDB_insert(RDB_table *tbp, const RDB_tuple *tplp, RDB_transaction *);
  */
 int
 RDB_update(RDB_table *, RDB_expression *, int attrc,
-        const RDB_attr_update attrv[], RDB_transaction *);
+        const RDB_attr_update updv[], RDB_transaction *);
 
 /*
  * Delete the tuple for which the expression pointedto by exprp
@@ -585,10 +585,10 @@ RDB_table_is_empty(RDB_table *, RDB_transaction *, RDB_bool *resultp);
  
 /*
  * Create a selection table. The resulting table will take
- * reponsibility for the condition.
+ * reponsibility for the expression.
  */
 int
-RDB_select(RDB_table *, RDB_expression *condition, RDB_table **resultpp);
+RDB_select(RDB_table *, RDB_expression *, RDB_table **resultpp);
 
 int
 RDB_union(RDB_table *, RDB_table *, RDB_table **resultpp);
@@ -675,11 +675,11 @@ char *
 RDB_tuple_get_string(const RDB_tuple *, const char *name);
 
 int
-RDB_tuple_extend(RDB_tuple *, int attrc, RDB_virtual_attr attrv[],
+RDB_extend_tuple(RDB_tuple *, int attrc, RDB_virtual_attr attrv[],
                  RDB_transaction *);
 
 int
-RDB_tuple_rename(const RDB_tuple *, int renc, RDB_renaming renv[],
+RDB_rename_tuple(const RDB_tuple *, int renc, RDB_renaming renv[],
                  RDB_tuple *restup);
 
 void
@@ -702,7 +702,7 @@ typedef struct {
  * The array becomes invalid when the transaction ends.
  */
 int
-RDB_table_to_array(RDB_table *, RDB_array *arrp,
+RDB_table_to_array(RDB_array *arrp, RDB_table *, 
                    int seqitc, RDB_seq_item seqitv[],
                    RDB_transaction *);
 

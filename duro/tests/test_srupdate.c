@@ -160,7 +160,7 @@ test_print(RDB_database *dbp)
     RDB_init_array(&array);
 
     printf("Converting table to array\n");
-    ret = RDB_table_to_array(tbp, &array, 0, NULL, &tx);
+    ret = RDB_table_to_array(&array, tbp, 0, NULL, &tx);
     if (ret != RDB_OK) {
         RDB_rollback(&tx);
         return ret;

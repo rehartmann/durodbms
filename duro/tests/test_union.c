@@ -20,7 +20,7 @@ print_table(RDB_table *tbp, RDB_transaction *txp)
     sq.attrname = "NAME";
     sq.asc = RDB_TRUE;
 
-    ret = RDB_table_to_array(tbp, &array, 1, &sq, txp);
+    ret = RDB_table_to_array(&array, tbp, 1, &sq, txp);
     if (ret != RDB_OK) {
         goto error;
     }

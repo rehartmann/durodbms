@@ -26,7 +26,7 @@ RDB_destroy_array(RDB_array *arrp)
 }
 
 int
-RDB_table_to_array(RDB_table *tbp, RDB_array *arrp,
+RDB_table_to_array(RDB_array *arrp, RDB_table *tbp,
                    int seqitc, RDB_seq_item seqitv[],
                    RDB_transaction *txp)
 {

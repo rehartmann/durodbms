@@ -18,7 +18,7 @@ AC_PROG_LN_S
 AC_PROG_MAKE_SET
 AC_PROG_LIBTOOL
 
-# Checks for libraries.
+# Checks for libltdl.
 AC_CHECK_LIB([ltdl], [lt_dlinit])
 
 AC_CONFIG_FILES([Makefile])

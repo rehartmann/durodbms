@@ -834,8 +834,10 @@ RDB_rename_tuple_type(const RDB_type *typ, int renc, RDB_renaming renv[],
     newtyp->kind = RDB_TP_TUPLE;
     newtyp->var.tuple.attrc = typ->var.tuple.attrc;
     newtyp->var.tuple.attrv = malloc (typ->var.tuple.attrc * sizeof(RDB_attr));
-    if (newtyp->var.tuple.attrv == NULL)
+    if (newtyp->var.tuple.attrv == NULL) {
+        ret = RDB_NO_MEMORY;
         goto error;
+    }
     for (i = 0; i < typ->var.tuple.attrc; i++)
         newtyp->var.tuple.attrv[i].name = NULL;
     for (i = 0; i < typ->var.tuple.attrc; i++) {
@@ -847,8 +849,10 @@ RDB_rename_tuple_type(const RDB_type *typ, int renc, RDB_renaming renv[],
             newtyp->var.tuple.attrv[i].name = RDB_dup_str(renv[ai].to);
         else
             newtyp->var.tuple.attrv[i].name = RDB_dup_str(attrname);
-        if (newtyp->var.tuple.attrv[i].name == NULL)
+        if (newtyp->var.tuple.attrv[i].name == NULL) {
+            ret = RDB_NO_MEMORY;
             goto error;
+        }
         newtyp->var.tuple.attrv[i].defaultp = NULL;
         newtyp->var.tuple.attrv[i].options = 0;
      }

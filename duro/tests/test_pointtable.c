@@ -184,7 +184,7 @@ test_query(RDB_database *dbp)
     }
 
     printf("Converting table to array\n");
-    ret = RDB_table_to_array(tbp, &array, 0, NULL, &tx);
+    ret = RDB_table_to_array(&array, tbp, 0, NULL, &tx);
     if (ret != RDB_OK) {
         goto error;
     } 
@@ -210,7 +210,7 @@ test_query(RDB_database *dbp)
     ret = RDB_select(tbp, wherep, &tmptbp);
 
     printf("Converting selection table to array\n");
-    ret = RDB_table_to_array(tmptbp, &array, 0, NULL, &tx);
+    ret = RDB_table_to_array(&array, tmptbp, 0, NULL, &tx);
     if (ret != RDB_OK) {
         goto error;
     } 
@@ -248,7 +248,7 @@ test_query(RDB_database *dbp)
     } 
 
     printf("Converting selection table to array\n");
-    ret = RDB_table_to_array(tmptbp, &array, 0, NULL, &tx);
+    ret = RDB_table_to_array(&array, tmptbp, 0, NULL, &tx);
     if (ret != RDB_OK) {
         goto error;
     } 

@@ -40,7 +40,7 @@ test_regexp(RDB_database *dbp)
     }
 
     printf("Converting selection table to array\n");
-    ret = RDB_table_to_array(vtbp, &array, 0, NULL, &tx);
+    ret = RDB_table_to_array(&array, vtbp, 0, NULL, &tx);
     if (ret != RDB_OK) {
         goto error;
     } 

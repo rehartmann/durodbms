@@ -14,7 +14,7 @@ print_table(RDB_table *tbp, RDB_transaction *txp)
 
     RDB_init_array(&array);
 
-    ret = RDB_table_to_array(tbp, &array, 0, NULL, txp);
+    ret = RDB_table_to_array(&array, tbp, 0, NULL, txp);
     if (ret != RDB_OK) {
         goto error;
     }

@@ -63,7 +63,7 @@ print_tables(RDB_transaction *txp, RDB_bool all, RDB_bool real)
     }
     vtb2p = NULL;
 
-    ret = RDB_table_to_array(vtb1p, &array, 0, NULL, txp);
+    ret = RDB_table_to_array(&array, vtb1p, 0, NULL, txp);
     if (ret != RDB_OK) {
         goto error;
     } 

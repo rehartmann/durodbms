@@ -35,7 +35,6 @@ LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$PWD/.libs:$BDB_HOME/lib
 export LD_LIBRARY_PATH
 
 cd `dirname $0`
-echo $LD_LIBRARY_PATH
 
 calltest tupletest
 

@@ -26,8 +26,9 @@ static int replen(const RDB_type *typ) {
     return typ->ireplen;
 }
 
-/* Return RDB_TRUE if the attribute name is contained
- * in the attribute list pointed to by keyp.
+/*
+ * Return the idex of string name in attrv, or -1
+ * if not found.
  */
 static int
 find_str(int attrc, char *attrv[], const char *name)
@@ -1163,8 +1164,10 @@ RDB_set_table_name(RDB_table *tbp, const char *name, RDB_transaction *txp)
     if (tbp->name != NULL)
         free(tbp->name);
     tbp->name = RDB_dup_str(name);
-    if (tbp->name == NULL)
+    if (tbp->name == NULL) {
+        RDB_rollback(txp);
         return RDB_NO_MEMORY;
+    }
 
     return RDB_OK;
 }
@@ -1182,6 +1185,7 @@ RDB_make_persistent(RDB_table *tbp, RDB_transaction *txp)
     if (tbp->name == NULL)
         return RDB_INVALID_ARGUMENT;
 
+    /* Turning a transient real table into a persistent table is not supported */
     if (tbp->kind == RDB_TB_STORED)
         return RDB_NOT_SUPPORTED;
 
