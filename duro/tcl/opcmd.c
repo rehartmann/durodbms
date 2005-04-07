@@ -1,9 +1,9 @@
 /*
- * Copyright (C) 2003, 2004 René Hartmann.
+ * $Id$
+ *
+ * Copyright (C) 2003-2005 René Hartmann.
  * See the file COPYING for redistribution information.
  */
-
-/* $Id$ */
 
 #include "duro.h"
 #include <rel/internal.h>
@@ -335,7 +335,6 @@ Duro_call_cmd(ClientData data, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv
         }
     }
 
-    txp->user_data = interp;
     ret = RDB_call_update_op(Tcl_GetStringFromObj(objv[1], NULL),
             argc, argv, txp);
     if (ret != RDB_OK) {
@@ -404,7 +403,7 @@ Duro_invoke_update_op(const char *name, int argc, RDB_object *argv[],
     Tcl_Obj *procargv[5];
     Tcl_Obj **opargv;
     Tcl_CmdInfo cmdinfo;
-    RDB_environment *envp = RDB_db_env(RDB_tx_db(txp));
+    RDB_environment *envp = RDB_tx_env(txp);
     Tcl_Interp *interp = txp->user_data;
     int issetter = argc == 2 && strstr(name, "_set_") != NULL;
 
@@ -577,7 +576,7 @@ Duro_invoke_ro_op(const char *name, int argc, RDB_object *argv[],
     RDB_type *convtyp;
     RDB_type *rtyp = RDB_obj_type(retvalp);
     int isgetter = argc == 1 && strstr(name, "_get_") != NULL;
-    RDB_environment *envp = RDB_db_env(RDB_tx_db(txp));
+    RDB_environment *envp = RDB_tx_env(txp);
     Tcl_Interp *interp = txp->user_data;
 
     nametop = Tcl_NewStringObj(name, strlen(name));

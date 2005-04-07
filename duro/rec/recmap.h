@@ -2,11 +2,11 @@
 #define RDB_RECMAP_H
 
 /*
- * Copyright (C) 2003 René Hartmann.
+ * $Id$
+ *
+ * Copyright (C) 2003-2005 René Hartmann.
  * See the file COPYING for redistribution information.
  */
-
-/* $Id$ */
 
 #include "env.h"
 #include <gen/types.h>
@@ -33,7 +33,8 @@ typedef struct {
 } RDB_field;
 
 typedef int RDB_field_compare_func(const void *data1p, size_t len1,
-                const void *data2p, size_t len2, void *arg);
+                const void *data2p, size_t len2, RDB_environment *envp,
+                void *arg);
 
 typedef struct {
     RDB_field_compare_func *comparep;

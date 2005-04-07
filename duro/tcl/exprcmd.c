@@ -1,9 +1,9 @@
 /*
+ * $Id$
+ *
  * Copyright (C) 2003-2005 René Hartmann.
  * See the file COPYING for redistribution information.
  */
-
-/* $Id$ */
 
 #include "duro.h"
 #include <rel/internal.h>
@@ -41,7 +41,6 @@ Duro_expr_cmd(ClientData data, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv
     }
 
     RDB_init_obj(&val);
-    txp->user_data = interp;
     ret = RDB_evaluate(exprp, NULL, txp, &val);
     if (ret != RDB_OK) {
         RDB_drop_expr(exprp);

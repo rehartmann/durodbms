@@ -168,7 +168,7 @@ compare_key(DB *dbp, const DBT *dbt1p, const DBT *dbt2p)
         if (ixp->cmpv[i].comparep != NULL) {
             /* Comparison function is available, so call it */
             res = (*ixp->cmpv[i].comparep)(data1p, len1, data2p, len2,
-                    ixp->cmpv[i].arg);
+                    ixp->rmp->envp, ixp->cmpv[i].arg);
         } else {
             /* Compare memory */
             res = memcmp(data1p, data2p, len1 < len2 ? len1 : len2);

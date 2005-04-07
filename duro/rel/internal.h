@@ -90,10 +90,6 @@ typedef struct RDB_qresult {
     RDB_table *matp;
 } RDB_qresult;
 
-typedef int RDB_ro_op_func(const char *name, int argc, RDB_object *argv[],
-        const void *iargp, size_t iarglen, RDB_transaction *txp,
-        RDB_object *retvalp);
-
 typedef struct RDB_ro_op_desc {
     char *name;
     int argc;

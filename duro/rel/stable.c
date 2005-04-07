@@ -67,23 +67,35 @@ _RDB_close_stored_table(RDB_stored_table *stp)
 }
 
 static int
-compare_field(const void *data1p, size_t len1,
-              const void *data2p, size_t len2, void *arg)
+compare_field(const void *data1p, size_t len1, const void *data2p, size_t len2,
+              RDB_environment *envp, void *arg)
 {
-    RDB_object val1, val2;
+    RDB_object val1, val2, retval;
+    RDB_object *valv[2];
     int res;
     RDB_type *typ = (RDB_type *)arg;
+    RDB_transaction tx;
 
     RDB_init_obj(&val1);
     RDB_init_obj(&val2);
+    RDB_init_obj(&retval);
 
     RDB_irep_to_obj(&val1, typ, data1p, len1);
     RDB_irep_to_obj(&val2, typ, data2p, len2);
 
-    res = (*typ->comparep)(&val1, &val2);
+    valv[0] = &val1;
+    valv[1] = &val2;
+    tx.txid = NULL;
+    tx.envp = envp;
+    tx.user_data = typ->tx_udata;
+    retval.typ = &RDB_INTEGER;
+    (*typ->comparep)("compare", 2, valv, typ->compare_iargp,
+            typ->compare_iarglen, &tx, &retval);
+    res = RDB_obj_int(&retval);
 
     RDB_destroy_obj(&val1);
     RDB_destroy_obj(&val2);
+    RDB_destroy_obj(&retval);
 
     return res;
 }

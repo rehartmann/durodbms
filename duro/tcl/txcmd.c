@@ -1,4 +1,9 @@
-/* $Id$ */
+/*
+ * $Id$
+ *
+ * Copyright (C) 2004-2005 René Hartmann.
+ * See the file COPYING for redistribution information.
+ */
 
 #include "duro.h"
 #include <string.h>
@@ -77,6 +82,12 @@ Duro_begin_cmd(ClientData data, Tcl_Interp *interp, int argc, CONST char *argv[]
     Tcl_SetHashValue(entryp, (ClientData)txp);
         
     Tcl_SetStringObj(Tcl_GetObjResult(interp), handle, -1);
+
+    /*
+     * Attach interpreter to the transaction to make it the interpreter
+     * available to operators
+     */
+    txp->user_data = interp;
     return RDB_OK;
 }
 

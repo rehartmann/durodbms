@@ -1,9 +1,9 @@
 /*
+ * $Id$
+ *
  * Copyright (C) 2005 René Hartmann.
  * See the file COPYING for redistribution information.
  */
-
-/* $Id$ */
 
 #include "duro.h"
 #include <rel/internal.h>
@@ -42,7 +42,6 @@ constraint_create_cmd(TclState *statep, Tcl_Interp *interp, int objc,
         return TCL_ERROR;
     }
 
-    txp->user_data = interp;
     ret = RDB_create_constraint(Tcl_GetString(objv[2]), exp, txp);
     if (ret != RDB_OK) {
         RDB_drop_expr(exp);

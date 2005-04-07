@@ -477,7 +477,6 @@ call_selector(Tcl_Interp *interp, Tcl_Obj *tobjp, RDB_type *typ,
         argpv[i] = &argv[i];
     }
 
-    txp->user_data = interp;
     ret = RDB_call_ro_op(Tcl_GetString(nametobjp), llen - 1, argpv, txp, objp);
     if (ret != RDB_OK) {
         Duro_dberror(interp, ret);
@@ -754,7 +753,6 @@ uobj_to_list(Tcl_Interp *interp, const RDB_object *objp, RDB_transaction *txp)
 
     RDB_init_obj(&comp);
 
-    txp->user_data = interp;
     for (i = 0; i < rep->compc; i++) {
         ret = RDB_obj_comp(objp, rep->compv[i].name, &comp, txp);
         if (ret != RDB_OK) {

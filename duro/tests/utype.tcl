@@ -9,6 +9,8 @@ exec tclsh "$0"
 
 load .libs/libdurotcl.so
 
+source tests/testutil.tcl
+
 # Create DB environment
 file delete -force tests/dbenv
 file mkdir tests/dbenv
@@ -59,6 +61,18 @@ duro::type define PNAME {
 duro::type implement PNAME $tx
 
 #
+# Comparison operator
+#
+duro::operator create compare -returns INTEGER {name1 PNAME name2 PNAME} {
+    set ::compare_called 1
+    set r [string compare [lindex $name1 2] [lindex $name2 2]]
+    if {$r != 0} {
+        return $r
+    }
+    return [string compare [lindex $name1 1] [lindex $name2 1]]
+} $tx
+
+#
 # Define type INTSET
 #
 
@@ -95,16 +109,6 @@ duro::operator create INTSET_set_INTLIST -updates {is} {is INTSET il STRING} {
     }
 } $tx
 
-duro::commit $tx
-
-# Close DB environment
-duro::env close $dbenv
-
-# Reopen DB environment
-set dbenv [duro::env open tests/dbenv]
-
-set tx [duro::begin $dbenv TEST]
-
 duro::table create T2 {
    {NO INTEGER}
    {NAME PNAME}
@@ -129,6 +133,38 @@ array set a [duro::expr {TUPLE FROM V1} $tx]
 
 if {($a(NO) != 1) || ($a(NAME) != {PNAME Peter Potter})} {
     error "V1 has wrong value"
+}
+
+duro::insert T2 {NO 2 NAME {PNAME "Ali" "Z"}} $tx
+
+set compare_called 0
+set arr [duro::array create T2 {NAME asc} $tx]
+# checkarray $arr {{NO 1 NAME {PNAME Peter Potter}} {NO 2 NAME {PNAME Ali Z}}} \
+        $tx
+duro::array drop $arr
+
+if {!$compare_called} {
+    error "comparison operator not called"
+}
+
+duro::commit $tx
+
+# Close DB environment
+duro::env close $dbenv
+
+# Reopen DB environment
+set dbenv [duro::env open tests/dbenv]
+
+set tx [duro::begin $dbenv TEST]
+
+set compare_called 0
+set arr [duro::array create T2 {NAME asc} $tx]
+checkarray $arr {{NO 1 NAME {PNAME Peter Potter}} {NO 2 NAME {PNAME Ali Z}}} \
+        $tx
+duro::array drop $arr
+
+if {!$compare_called} {
+    error "comparison operator not called"
 }
 
 #

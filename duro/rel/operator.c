@@ -89,6 +89,22 @@ RDB_create_ro_op(const char *name, int argc, RDB_type *argtv[], RDB_type *rtyp,
         goto cleanup;
 
     ret = RDB_insert(txp->dbp->dbrootp->ro_ops_tbp, &tpl, txp);
+    if (ret != RDB_OK)
+        goto cleanup;
+
+    /* Check if it's a comparison operator */
+    if (strcmp(name, "compare") == 0 && argc == 2
+            && argtv[0] == argtv[1] && !RDB_type_is_builtin(argtv[0])) {
+        RDB_ro_op_desc *cmpop;
+
+        ret = _RDB_get_ro_op(name, argc, argtv, txp, &cmpop);
+        if (ret != RDB_OK)
+            goto cleanup;
+        argtv[0]->comparep = cmpop->funcp;
+        argtv[0]->compare_iarglen = cmpop->iarg.var.bin.len;
+        argtv[0]->compare_iargp = cmpop->iarg.var.bin.datap;
+        argtv[0]->tx_udata = txp->user_data;
+    }
 
 cleanup:
     RDB_destroy_obj(&tpl);
@@ -1114,8 +1130,17 @@ lt(const char *name, int argc, RDB_object *argv[],
         const void *iargp, size_t iarglen, RDB_transaction *txp,
         RDB_object *retvalp)
 {
-    RDB_bool_to_obj(retvalp, (RDB_bool)
-            ((*argv[0]->typ->comparep)(argv[0], argv[1]) < 0));
+    RDB_object retval;
+    int ret;
+    
+    RDB_init_obj(&retval);
+    ret = (*argv[0]->typ->comparep)(NULL, 2, argv, NULL, 0, txp, &retval);
+    if (ret != RDB_OK) {
+        RDB_destroy_obj(&retval);
+        return ret;
+    }
+    RDB_bool_to_obj(retvalp, RDB_obj_int(&retval) < 0);
+    RDB_destroy_obj(&retval);
     return RDB_OK;
 }
 
@@ -1124,8 +1149,17 @@ let(const char *name, int argc, RDB_object *argv[],
         const void *iargp, size_t iarglen, RDB_transaction *txp,
         RDB_object *retvalp)
 {
-    RDB_bool_to_obj(retvalp, (RDB_bool)
-            ((*argv[0]->typ->comparep)(argv[0], argv[1]) <= 0));
+    RDB_object retval;
+    int ret;
+    
+    RDB_init_obj(&retval);
+    ret = (*argv[0]->typ->comparep)(NULL, 2, argv, NULL, 0, txp, &retval);
+    if (ret != RDB_OK) {
+        RDB_destroy_obj(&retval);
+        return ret;
+    }
+    RDB_bool_to_obj(retvalp, RDB_obj_int(&retval) <= 0);
+    RDB_destroy_obj(&retval);
     return RDB_OK;
 }
 
@@ -1134,8 +1168,17 @@ gt(const char *name, int argc, RDB_object *argv[],
         const void *iargp, size_t iarglen, RDB_transaction *txp,
         RDB_object *retvalp)
 {
-    RDB_bool_to_obj(retvalp, (RDB_bool)
-            ((*argv[0]->typ->comparep)(argv[0], argv[1]) > 0));
+    RDB_object retval;
+    int ret;
+    
+    RDB_init_obj(&retval);
+    ret = (*argv[0]->typ->comparep)(NULL, 2, argv, NULL, 0, txp, &retval);
+    if (ret != RDB_OK) {
+        RDB_destroy_obj(&retval);
+        return ret;
+    }
+    RDB_bool_to_obj(retvalp, RDB_obj_int(&retval) > 0);
+    RDB_destroy_obj(&retval);
     return RDB_OK;
 }
 
@@ -1144,8 +1187,17 @@ get(const char *name, int argc, RDB_object *argv[],
         const void *iargp, size_t iarglen, RDB_transaction *txp,
         RDB_object *retvalp)
 {
-    RDB_bool_to_obj(retvalp, (RDB_bool)
-            ((*argv[0]->typ->comparep)(argv[0], argv[1]) >= 0));
+    RDB_object retval;
+    int ret;
+    
+    RDB_init_obj(&retval);
+    ret = (*argv[0]->typ->comparep)(NULL, 2, argv, NULL, 0, txp, &retval);
+    if (ret != RDB_OK) {
+        RDB_destroy_obj(&retval);
+        return ret;
+    }
+    RDB_bool_to_obj(retvalp, RDB_obj_int(&retval) >= 0);
+    RDB_destroy_obj(&retval);
     return RDB_OK;
 }
 

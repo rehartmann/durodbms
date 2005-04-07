@@ -4,8 +4,9 @@ Summary of Changes for Duro
 
 Changes for Duro 0.10
 
-- Type constraints are no longer specified with the possible
-  representation(s).
+- Now supporting a user-defined comparison operator for user-defined types.
+
+- Type constraints are now specified outside each possible representations.
 
 - Fixed problem with error dialogs in Durotcl.
 

@@ -21,25 +21,40 @@ RDB_type RDB_STRING;
 RDB_type RDB_BINARY;
 
 static int
-compare_int(const RDB_object *val1p, const RDB_object *val2p)
+compare_int(const char *name, int argc, RDB_object *argv[],
+        const void *iargp, size_t iarglen, RDB_transaction *txp,
+        RDB_object *retvalp)
 {
-    return val1p->var.int_val - val2p->var.int_val;
+    RDB_int_to_obj(retvalp, argv[0]->var.int_val - argv[1]->var.int_val);
+    return RDB_OK;
 }
 
 static int
-compare_rational(const RDB_object *val1p, const RDB_object *val2p)
+compare_rational(const char *name, int argc, RDB_object *argv[],
+        const void *iargp, size_t iarglen, RDB_transaction *txp,
+        RDB_object *retvalp)
 {
-    if (val1p->var.rational_val < val2p->var.rational_val)
-        return -1;
-    if (val1p->var.rational_val > val2p->var.rational_val)
-        return 1;
-    return 0;
+    RDB_int res;
+
+    if (argv[0]->var.rational_val < argv[1]->var.rational_val) {
+        res = -1;
+    } else if (argv[0]->var.rational_val > argv[1]->var.rational_val) {
+        res = 1;
+    } else {
+        res = 0;
+    }
+    RDB_int_to_obj(retvalp, res);
+    return RDB_OK;
 }
 
 static int
-compare_string(const RDB_object *val1p, const RDB_object *val2p)
+compare_string(const char *name, int argc, RDB_object *argv[],
+        const void *iargp, size_t iarglen, RDB_transaction *txp,
+        RDB_object *retvalp)
 {
-    return strcoll(val1p->var.bin.datap, val2p->var.bin.datap);
+    RDB_int_to_obj(retvalp,
+            strcoll(argv[0]->var.bin.datap, argv[1]->var.bin.datap));
+    return RDB_OK;
 }
 
 void _RDB_init_builtin_types(void)

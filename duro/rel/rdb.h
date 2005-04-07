@@ -84,7 +84,9 @@ typedef struct RDB_object {
      } var;
 } RDB_object;
 
-typedef int RDB_compare_func(const RDB_object *, const RDB_object *);
+typedef int RDB_ro_op_func(const char *name, int argc, RDB_object *argv[],
+        const void *iargp, size_t iarglen, struct RDB_transaction *txp,
+        RDB_object *retvalp);
 
 /* internal */
 enum _RDB_tp_kind {
@@ -100,7 +102,10 @@ typedef struct RDB_type {
     enum _RDB_tp_kind kind;
 
     /* comparison function */
-    RDB_compare_func *comparep;
+    RDB_ro_op_func *comparep;
+    size_t compare_iarglen;
+    void *compare_iargp;
+    void *tx_udata;
 
     RDB_int ireplen;
 
@@ -449,9 +454,14 @@ int
 RDB_get_type(const char *name, RDB_transaction *, RDB_type **typp);
 
 /*
- * Return the database assoctiated with the transaction.
+ * Return the database associated with the transaction.
  */
 #define RDB_tx_db(txp) ((txp)->dbp)
+
+/*
+ * Return the database environment associated with the transaction.
+ */
+#define RDB_tx_env(txp) ((txp)->envp)
 
 RDB_bool
 RDB_tx_is_running(RDB_transaction *txp);

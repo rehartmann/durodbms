@@ -1809,6 +1809,8 @@ _RDB_cat_get_type(const char *name, RDB_transaction *txp, RDB_type **typp)
     RDB_object *typedatap;
     int ret, tret;
     int i;
+    RDB_type *typv[2];
+    RDB_ro_op_desc *cmpop;
 
     RDB_init_obj(&tpl);
     RDB_init_obj(&possreps);
@@ -1946,6 +1948,20 @@ _RDB_cat_get_type(const char *name, RDB_transaction *txp, RDB_type **typp)
             if (ret != RDB_OK)
                 goto error;
         }
+    }
+
+    /* Search for comparison function */
+    typv[0] = typ;
+    typv[1] = typ;
+    ret = _RDB_get_ro_op("compare", 2, typv, txp, &cmpop);
+    if (ret == RDB_OK) {
+        typ->comparep = cmpop->funcp;
+        typ->compare_iarglen = cmpop->iarg.var.bin.len;
+        typ->compare_iargp = cmpop->iarg.var.bin.datap;
+        typ->tx_udata = txp->user_data;
+    } else if (ret != RDB_OPERATOR_NOT_FOUND
+            && ret != RDB_TYPE_MISMATCH) {
+        goto error;
     }
 
     *typp = typ;
