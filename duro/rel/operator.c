@@ -267,37 +267,6 @@ eq_bool(const char *name, int argc, RDB_object *argv[],
 }
 
 static int
-eq_int(const char *name, int argc, RDB_object *argv[],
-        const void *iargp, size_t iarglen, RDB_transaction *txp,
-        RDB_object *retvalp)
-{
-    RDB_bool_to_obj(retvalp,
-            (RDB_bool) (argv[0]->var.int_val == argv[1]->var.int_val));
-    return RDB_OK;
-}
-
-static int
-eq_rational(const char *name, int argc, RDB_object *argv[],
-        const void *iargp, size_t iarglen, RDB_transaction *txp,
-        RDB_object *retvalp)
-{
-    RDB_bool_to_obj(retvalp,
-            (RDB_bool) (argv[0]->var.rational_val == argv[1]->var.rational_val));
-    return RDB_OK;
-}
-
-static int
-eq_string(const char *name, int argc, RDB_object *argv[],
-        const void *iargp, size_t iarglen, RDB_transaction *txp,
-        RDB_object *retvalp)
-{
-    RDB_bool_to_obj(retvalp,
-            (RDB_bool) strcmp ((char *) argv[0]->var.bin.datap,
-            (char *) argv[1]->var.bin.datap) == 0);
-    return RDB_OK;
-}
-
-static int
 eq_binary(const char *name, int argc, RDB_object *argv[],
         const void *iargp, size_t iarglen, RDB_transaction *txp,
         RDB_object *retvalp)
@@ -312,15 +281,46 @@ eq_binary(const char *name, int argc, RDB_object *argv[],
     return RDB_OK;
 }
 
+/* Default equality operator */
 static int
-obj_equals(RDB_object *argv[],
-        RDB_transaction *txp, RDB_object *retvalp)
+obj_equals(const char *name, int argc, RDB_object *argv[],
+        const void *iargp, size_t iarglen, RDB_transaction *txp,
+        RDB_object *retvalp)
 {
     int ret;
     RDB_bool res;
+    RDB_type *arep = NULL;
 
     if (argv[0]->kind != argv[1]->kind)
         return RDB_TYPE_MISMATCH;
+
+    /*
+     * Check if there is a comparison function associated with the type
+     */
+    if (argv[0]->typ != NULL) {
+        if (argv[0]->typ->comparep != NULL) {
+            arep = argv[0]->typ;
+        } else if (argv[0]->typ->kind == RDB_TP_SCALAR
+                && argv[0]->typ->var.scalar.arep != NULL) {
+            arep = argv[0]->typ->var.scalar.arep;
+        }
+    }
+
+    /* If yes, call it */
+    if (arep != NULL && arep->comparep != NULL) {
+        RDB_object retval;
+
+        RDB_init_obj(&retval);
+        ret = (*arep->comparep)("compare", 2, argv, arep->compare_iargp,
+                arep->compare_iarglen, txp, &retval);
+        if (ret != RDB_OK) {
+            RDB_destroy_obj(&retval);
+            return ret;
+        }
+        RDB_bool_to_obj(retvalp, (RDB_bool) RDB_obj_int(&retval) == 0);
+        RDB_destroy_obj(&retval);
+        return RDB_OK;
+    }
 
     switch (argv[0]->kind) {
         case RDB_OB_INITIAL:
@@ -328,9 +328,9 @@ obj_equals(RDB_object *argv[],
         case RDB_OB_BOOL:
             return eq_bool("=", 2, argv, NULL, 0, txp, retvalp);
         case RDB_OB_INT:
-            return eq_bool("=", 2, argv, NULL, 0, txp, retvalp);
         case RDB_OB_RATIONAL:
-            return eq_bool("=", 2, argv, NULL, 0, txp, retvalp);
+            /* Must not happen, because there must be a comparsion function */
+            return RDB_INTERNAL;
         case RDB_OB_BIN:
             return eq_binary("=", 2, argv, NULL, 0, txp, retvalp);
         case RDB_OB_TUPLE:
@@ -354,24 +354,15 @@ obj_equals(RDB_object *argv[],
                 return ret;
             RDB_bool_to_obj(retvalp, res);
             break;
-        default:
-            return RDB_INTERNAL;
     }
     return RDB_OK;
 } 
 
 int
-_obj_equals(const char *name, int argc, RDB_object *argv[],
+obj_not_equals(const char *name, int argc, RDB_object *argv[],
         const void *iargp, size_t iarglen, RDB_transaction *txp,
         RDB_object *retvalp) {
-    return obj_equals(argv, txp, retvalp);
-}
-
-int
-_obj_not_equals(const char *name, int argc, RDB_object *argv[],
-        const void *iargp, size_t iarglen, RDB_transaction *txp,
-        RDB_object *retvalp) {
-    int ret = obj_equals(argv, txp, retvalp);
+    int ret = obj_equals("=", 2, argv, NULL, 0, txp, retvalp);
     if (ret != RDB_OK)
         return ret;
     retvalp->var.bool_val = (RDB_bool) !retvalp->var.bool_val;
@@ -461,7 +452,7 @@ get_ro_op(RDB_dbroot *dbrootp, const char *name,
         int ret;
 
         if (strcmp(name, "=") == 0) {
-            op = new_ro_op("=", 2, &RDB_BOOLEAN, &_obj_equals);
+            op = new_ro_op("=", 2, &RDB_BOOLEAN, &obj_equals);
             if (op == NULL)
                 return RDB_NO_MEMORY;
             op->argtv[0] = _RDB_dup_nonscalar_type(argtv[0]);
@@ -473,7 +464,7 @@ get_ro_op(RDB_dbroot *dbrootp, const char *name,
             return RDB_OK;
         }
         if (strcmp(name, "<>") == 0) {
-            op = new_ro_op("<>", 2, &RDB_BOOLEAN, &_obj_not_equals);
+            op = new_ro_op("<>", 2, &RDB_BOOLEAN, &obj_not_equals);
             if (op == NULL)
                 return RDB_NO_MEMORY;
             op->argtv[0] = _RDB_dup_nonscalar_type(argtv[0]);
@@ -572,37 +563,6 @@ neq_bool(const char *name, int argc, RDB_object *argv[],
 }
 
 static int
-neq_int(const char *name, int argc, RDB_object *argv[],
-        const void *iargp, size_t iarglen, RDB_transaction *txp,
-        RDB_object *retvalp)
-{
-    RDB_bool_to_obj(retvalp,
-            (RDB_bool) (argv[0]->var.int_val != argv[1]->var.int_val));
-    return RDB_OK;
-}
-
-static int
-neq_rational(const char *name, int argc, RDB_object *argv[],
-        const void *iargp, size_t iarglen, RDB_transaction *txp,
-        RDB_object *retvalp)
-{
-    RDB_bool_to_obj(retvalp,
-            (RDB_bool) (argv[0]->var.rational_val != argv[1]->var.rational_val));
-    return RDB_OK;
-}
-
-static int
-neq_string(const char *name, int argc, RDB_object *argv[],
-        const void *iargp, size_t iarglen, RDB_transaction *txp,
-        RDB_object *retvalp)
-{
-    RDB_bool_to_obj(retvalp,
-            (RDB_bool) strcmp ((char *) argv[0]->var.bin.datap,
-            (char *) argv[1]->var.bin.datap) != 0);
-    return RDB_OK;
-}
-
-static int
 neq_binary(const char *name, int argc, RDB_object *argv[],
         const void *iargp, size_t iarglen, RDB_transaction *txp,
         RDB_object *retvalp)
@@ -649,9 +609,9 @@ RDB_call_ro_op(const char *name, int argc, RDB_object *argv[],
      */
     if (argc == 2 && !obj_is_scalar(argv[0]) && !obj_is_scalar(argv[1])) {
         if (strcmp(name, "=") == 0)
-            return obj_equals(argv, txp, retvalp);
+            return obj_equals(name, 2, argv, NULL, 0, txp, retvalp);
         if (strcmp(name, "<>") == 0) {
-            ret = obj_equals(argv, txp, retvalp);
+            ret = obj_equals(name, 2, argv, NULL, 0, txp, retvalp);
             if (ret != RDB_OK)
                 return ret;
             retvalp->var.bool_val = (RDB_bool) !retvalp->var.bool_val;
@@ -1134,7 +1094,7 @@ lt(const char *name, int argc, RDB_object *argv[],
     int ret;
     
     RDB_init_obj(&retval);
-    ret = (*argv[0]->typ->comparep)(NULL, 2, argv, NULL, 0, txp, &retval);
+    ret = (*argv[0]->typ->comparep)("compare", 2, argv, NULL, 0, txp, &retval);
     if (ret != RDB_OK) {
         RDB_destroy_obj(&retval);
         return ret;
@@ -1153,7 +1113,7 @@ let(const char *name, int argc, RDB_object *argv[],
     int ret;
     
     RDB_init_obj(&retval);
-    ret = (*argv[0]->typ->comparep)(NULL, 2, argv, NULL, 0, txp, &retval);
+    ret = (*argv[0]->typ->comparep)("compare", 2, argv, NULL, 0, txp, &retval);
     if (ret != RDB_OK) {
         RDB_destroy_obj(&retval);
         return ret;
@@ -1172,7 +1132,7 @@ gt(const char *name, int argc, RDB_object *argv[],
     int ret;
     
     RDB_init_obj(&retval);
-    ret = (*argv[0]->typ->comparep)(NULL, 2, argv, NULL, 0, txp, &retval);
+    ret = (*argv[0]->typ->comparep)("compare", 2, argv, NULL, 0, txp, &retval);
     if (ret != RDB_OK) {
         RDB_destroy_obj(&retval);
         return ret;
@@ -1191,7 +1151,7 @@ get(const char *name, int argc, RDB_object *argv[],
     int ret;
     
     RDB_init_obj(&retval);
-    ret = (*argv[0]->typ->comparep)(NULL, 2, argv, NULL, 0, txp, &retval);
+    ret = (*argv[0]->typ->comparep)("compare", 2, argv, NULL, 0, txp, &retval);
     if (ret != RDB_OK) {
         RDB_destroy_obj(&retval);
         return ret;
@@ -1558,7 +1518,7 @@ _RDB_add_builtin_ops(RDB_dbroot *dbrootp)
     if (ret != RDB_OK)
         return ret;
 
-    op = new_ro_op("=", 2, &RDB_BOOLEAN, &eq_int);
+    op = new_ro_op("=", 2, &RDB_BOOLEAN, obj_equals);
     if (op == NULL)
         return RDB_NO_MEMORY;
     op->argtv[0] = &RDB_INTEGER;
@@ -1568,7 +1528,7 @@ _RDB_add_builtin_ops(RDB_dbroot *dbrootp)
     if (ret != RDB_OK)
         return ret;
 
-    op = new_ro_op("=", 2, &RDB_BOOLEAN, &eq_rational);
+    op = new_ro_op("=", 2, &RDB_BOOLEAN, obj_equals);
     if (op == NULL)
         return RDB_NO_MEMORY;
     op->argtv[0] = &RDB_RATIONAL;
@@ -1578,7 +1538,7 @@ _RDB_add_builtin_ops(RDB_dbroot *dbrootp)
     if (ret != RDB_OK)
         return ret;
 
-    op = new_ro_op("=", 2, &RDB_BOOLEAN, &eq_string);
+    op = new_ro_op("=", 2, &RDB_BOOLEAN, obj_equals);
     if (op == NULL)
         return RDB_NO_MEMORY;
     op->argtv[0] = &RDB_STRING;
@@ -1608,7 +1568,7 @@ _RDB_add_builtin_ops(RDB_dbroot *dbrootp)
     if (ret != RDB_OK)
         return ret;
 
-    op = new_ro_op("<>", 2, &RDB_BOOLEAN, &neq_int);
+    op = new_ro_op("<>", 2, &RDB_BOOLEAN, &obj_not_equals);
     if (op == NULL)
         return RDB_NO_MEMORY;
     op->argtv[0] = &RDB_INTEGER;
@@ -1618,7 +1578,7 @@ _RDB_add_builtin_ops(RDB_dbroot *dbrootp)
     if (ret != RDB_OK)
         return ret;
 
-    op = new_ro_op("<>", 2, &RDB_BOOLEAN, &neq_rational);
+    op = new_ro_op("<>", 2, &RDB_BOOLEAN, &obj_not_equals);
     if (op == NULL)
         return RDB_NO_MEMORY;
     op->argtv[0] = &RDB_RATIONAL;
@@ -1628,7 +1588,7 @@ _RDB_add_builtin_ops(RDB_dbroot *dbrootp)
     if (ret != RDB_OK)
         return ret;
 
-    op = new_ro_op("<>", 2, &RDB_BOOLEAN, &neq_string);
+    op = new_ro_op("<>", 2, &RDB_BOOLEAN, &obj_not_equals);
     if (op == NULL)
         return RDB_NO_MEMORY;
     op->argtv[0] = &RDB_STRING;
