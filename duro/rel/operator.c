@@ -311,6 +311,7 @@ obj_equals(const char *name, int argc, RDB_object *argv[],
         RDB_object retval;
 
         RDB_init_obj(&retval);
+        retval.typ = &RDB_INTEGER;
         ret = (*arep->comparep)("compare", 2, argv, arep->compare_iargp,
                 arep->compare_iarglen, txp, &retval);
         if (ret != RDB_OK) {
