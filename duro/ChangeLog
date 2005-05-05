@@ -4,9 +4,11 @@ Summary of Changes for Duro
 
 Changes for Duro 0.10
 
+- Now supporting general relation-valued expressions.
+
 - Now supporting a user-defined comparison operator for user-defined types.
 
-- Type constraints are now specified outside each possible representations.
+- Type constraints are now specified outside of possible representations.
 
 - Fixed problem with error dialogs in Durotcl.
 

@@ -205,12 +205,14 @@ free_ro_op(RDB_ro_op_desc *op) {
     int i;
 
     free(op->name);
-    for (i = 0; i < op->argc; i++) {
-        if (RDB_type_name(op->argtv[i]) == NULL)
-            RDB_drop_type(op->argtv[i], NULL);
+    if (op->argtv != NULL) {
+        for (i = 0; i < op->argc; i++) {
+            if (RDB_type_name(op->argtv[i]) == NULL)
+                RDB_drop_type(op->argtv[i], NULL);
+        }
+        free(op->argtv);
     }
-    free(op->argtv);
-    if (RDB_type_name(op->rtyp) == NULL)
+    if (op->rtyp != NULL && RDB_type_name(op->rtyp) == NULL)
         RDB_drop_type(op->rtyp, NULL);
     if (op->modhdl != NULL) {
         /* Built-in operator */
@@ -383,12 +385,16 @@ new_ro_op(const char *name, int argc, RDB_type *rtyp, RDB_ro_op_func *funcp)
         return NULL;
     }
 
-    op->argc = argc;
-    op->argtv = malloc(sizeof (RDB_type *) * argc);
-    if (op->argtv == NULL) {
-        free(op->name);
-        free(op);
-        return NULL;
+    if (argc > 0) {
+        op->argc = argc;
+        op->argtv = malloc(sizeof (RDB_type *) * argc);
+        if (op->argtv == NULL) {
+            free(op->name);
+            free(op);
+            return NULL;
+        }
+    } else {
+        op->argtv = NULL;
     }
 
     op->rtyp = rtyp;
@@ -430,6 +436,11 @@ get_ro_op(RDB_dbroot *dbrootp, const char *name,
 
     /* Find an operator with same signature */
     do {
+        if ((*ropp)->argtv == NULL) {
+            /* Do not compare argument types */
+            return RDB_OK;
+        }
+
         if ((*ropp)->argc == argc) {
             int i;
 
@@ -581,6 +592,10 @@ neq_binary(const char *name, int argc, RDB_object *argv[],
 static RDB_bool
 obj_is_table(RDB_object *objp)
 {
+    /*
+     * Check type first, as it could be a user-defined type
+     * with a table representation
+     */
     RDB_type *typ = RDB_obj_type(objp);
     if (typ == NULL)
         return (RDB_bool) (objp->kind == RDB_OB_TABLE);
@@ -591,6 +606,306 @@ static RDB_bool
 obj_is_scalar(RDB_object *objp)
 {
     return (RDB_bool) (objp->typ != NULL && RDB_type_is_scalar(objp->typ));
+}
+
+static int
+op_rename(const char *name, int argc, RDB_object *argv[],
+        const void *iargp, size_t iarglen, RDB_transaction *txp,
+        RDB_object *retvalp)
+{
+    int ret;
+    int i;
+    RDB_table *vtbp;
+    int renc = (argc - 1) / 2;
+    RDB_renaming *renv = malloc(sizeof(RDB_renaming) * renc);
+    if (renv == NULL)
+        return RDB_NO_MEMORY;
+
+    for (i = 0; i < renc; i++) {
+        if (argv[1 + i]->typ != &RDB_STRING
+                || argv[2 + i]->typ != &RDB_STRING) {
+            free(renv);
+            return RDB_TYPE_MISMATCH;
+        }
+        renv[i].from = RDB_obj_string(argv[1 + i * 2]);
+        renv[i].to = RDB_obj_string(argv[2 + i * 2]);
+    }
+
+    ret = RDB_rename(RDB_obj_table(argv[0]), renc, renv, &vtbp);
+    free(renv);
+    if (ret != RDB_OK)
+        return ret;
+    RDB_table_to_obj(retvalp, vtbp);
+
+    /*
+     * Since the table is consumed by RDB_rename, prevent it
+     * from being deleted when argv[0] is destroyed.
+     */
+    argv[0]->var.tbp = NULL;
+
+    return RDB_OK;
+}
+
+static int
+op_project(const char *name, int argc, RDB_object *argv[],
+        const void *iargp, size_t iarglen, RDB_transaction *txp,
+        RDB_object *retvalp)
+{
+    int ret;
+    int i;
+    RDB_table *tbp, *vtbp;
+    char **attrv = malloc(sizeof(char *) * (argc - 1));
+    if (attrv == NULL)
+        return RDB_NO_MEMORY;
+
+    for (i = 0; i < argc - 1; i++) {
+        attrv[i] = RDB_obj_string(argv[i + 1]);
+    }
+
+    tbp = RDB_obj_table(argv[0]);
+    if (tbp != NULL) {
+        ret = RDB_project(tbp, argc - 1, attrv, &vtbp);
+    } else {
+        ret = RDB_project_tuple(argv[0], argc - 1, attrv, retvalp);
+    }
+    free(attrv);
+    if (ret != RDB_OK)
+        return ret;
+    if (tbp != NULL) {
+        RDB_table_to_obj(retvalp, vtbp);
+        argv[0]->var.tbp = NULL;
+    }
+    return RDB_OK;
+}
+
+static int
+op_remove(const char *name, int argc, RDB_object *argv[],
+        const void *iargp, size_t iarglen, RDB_transaction *txp,
+        RDB_object *retvalp)
+{
+    int ret;
+    int i;
+    RDB_table *tbp, *vtbp;
+    char **attrv = malloc(sizeof(char *) * (argc - 1));
+    if (attrv == NULL)
+        return RDB_NO_MEMORY;
+
+    for (i = 0; i < argc - 1; i++) {
+        attrv[i] = RDB_obj_string(argv[i + 1]);
+    }
+
+    tbp = RDB_obj_table(argv[0]);
+    if (tbp != NULL) {
+        ret = RDB_remove(tbp, argc - 1, attrv, &vtbp);
+    } else {
+        ret = RDB_remove_tuple(argv[0], argc - 1, attrv, retvalp);
+    }
+    free(attrv);
+    if (ret != RDB_OK)
+        return ret;
+    if (tbp != NULL) {
+        RDB_table_to_obj(retvalp, vtbp);
+        argv[0]->var.tbp = NULL;
+    }
+    return RDB_OK;
+}
+
+static int
+op_unwrap(const char *name, int argc, RDB_object *argv[],
+        const void *iargp, size_t iarglen, RDB_transaction *txp,
+        RDB_object *retvalp)
+{
+    int ret;
+    int i;
+    RDB_table *tbp, *vtbp;
+    char **attrv = malloc(sizeof(char *) * (argc - 1));
+    if (attrv == NULL)
+        return RDB_NO_MEMORY;
+
+    for (i = 0; i < argc - 1; i++) {
+        attrv[i] = RDB_obj_string(argv[i + 1]);
+    }
+
+    tbp = RDB_obj_table(argv[0]);
+    if (tbp != NULL) {
+        ret = RDB_unwrap(tbp, argc - 1, attrv, &vtbp);
+    } else {
+        ret = RDB_unwrap_tuple(argv[0], argc - 1, attrv, retvalp);
+    }
+    free(attrv);
+    if (ret != RDB_OK)
+        return ret;
+    if (tbp != NULL) {
+        RDB_table_to_obj(retvalp, vtbp);
+        argv[0]->var.tbp = NULL;
+    }
+    return RDB_OK;
+}
+
+static int
+op_group(const char *name, int argc, RDB_object *argv[],
+        const void *iargp, size_t iarglen, RDB_transaction *txp,
+        RDB_object *retvalp)
+{
+    int ret;
+    int i;
+    RDB_table *vtbp;
+    char **attrv;
+    int attrc;
+
+    if (argc < 2)
+        return RDB_INVALID_ARGUMENT;
+
+    attrc = argc - 2;
+    attrv = malloc(sizeof(char *) * attrc);
+    if (attrv == NULL)
+        return RDB_NO_MEMORY;
+
+    for (i = 0; i < attrc; i++) {
+        attrv[i] = RDB_obj_string(argv[i + 1]);
+    }
+
+    ret = RDB_group(RDB_obj_table(argv[0]), attrc, attrv,
+            RDB_obj_string(argv[argc - 1]), &vtbp);
+    free(attrv);
+    if (ret != RDB_OK)
+        return ret;
+    RDB_table_to_obj(retvalp, vtbp);
+    argv[0]->var.tbp = NULL;
+
+    return RDB_OK;
+}
+
+static int
+op_ungroup(const char *name, int argc, RDB_object *argv[],
+        const void *iargp, size_t iarglen, RDB_transaction *txp,
+        RDB_object *retvalp)
+{
+    int ret;
+    RDB_table *vtbp;
+
+    ret = RDB_ungroup(RDB_obj_table(argv[0]), RDB_obj_string(argv[1]), &vtbp);
+    if (ret != RDB_OK)
+        return ret;
+    RDB_table_to_obj(retvalp, vtbp);
+    argv[0]->var.tbp = NULL;
+
+    return RDB_OK;
+}
+
+static int
+op_union(const char *name, int argc, RDB_object *argv[],
+        const void *iargp, size_t iarglen, RDB_transaction *txp,
+        RDB_object *retvalp)
+{
+    int ret;
+    RDB_table *vtbp;
+    
+    if (argc != 2)
+        return RDB_INVALID_ARGUMENT;
+    
+    ret = RDB_union(RDB_obj_table(argv[0]), RDB_obj_table(argv[1]), &vtbp);
+    if (ret != RDB_OK)
+        return ret;
+
+    RDB_table_to_obj(retvalp, vtbp);
+    argv[0]->var.tbp = NULL;
+    argv[1]->var.tbp = NULL;
+    return RDB_OK;
+}
+
+static int
+op_minus(const char *name, int argc, RDB_object *argv[],
+        const void *iargp, size_t iarglen, RDB_transaction *txp,
+        RDB_object *retvalp)
+{
+    int ret;
+    RDB_table *vtbp;
+    
+    if (argc != 2)
+        return RDB_INVALID_ARGUMENT;
+    
+    ret = RDB_minus(RDB_obj_table(argv[0]), RDB_obj_table(argv[1]), &vtbp);
+    if (ret != RDB_OK)
+        return ret;
+
+    RDB_table_to_obj(retvalp, vtbp);
+    argv[0]->var.tbp = NULL;
+    argv[1]->var.tbp = NULL;
+    return RDB_OK;
+}
+
+static int
+op_intersect(const char *name, int argc, RDB_object *argv[],
+        const void *iargp, size_t iarglen, RDB_transaction *txp,
+        RDB_object *retvalp)
+{
+    int ret;
+    RDB_table *vtbp;
+    
+    if (argc != 2)
+        return RDB_INVALID_ARGUMENT;
+    
+    ret = RDB_intersect(RDB_obj_table(argv[0]), RDB_obj_table(argv[1]), &vtbp);
+    if (ret != RDB_OK)
+        return ret;
+
+    RDB_table_to_obj(retvalp, vtbp);
+    argv[0]->var.tbp = NULL;
+    argv[1]->var.tbp = NULL;
+    return RDB_OK;
+}
+
+static int
+op_join(const char *name, int argc, RDB_object *argv[],
+        const void *iargp, size_t iarglen, RDB_transaction *txp,
+        RDB_object *retvalp)
+{
+    int ret;
+    RDB_table *tbp;
+    RDB_table *vtbp;
+    
+    if (argc != 2)
+        return RDB_INVALID_ARGUMENT;
+
+    tbp = RDB_obj_table(argv[0]);
+    if (tbp != NULL) {    
+        ret = RDB_join(tbp, RDB_obj_table(argv[1]), &vtbp);
+    } else {
+        ret = RDB_join_tuples(argv[0], argv[1], txp, retvalp);
+    }
+    if (ret != RDB_OK)
+        return ret;
+
+    if (tbp != NULL) {
+        RDB_table_to_obj(retvalp, vtbp);
+        argv[0]->var.tbp = NULL;
+        argv[1]->var.tbp = NULL;
+    }
+    return RDB_OK;
+}
+
+static int
+op_divide(const char *name, int argc, RDB_object *argv[],
+        const void *iargp, size_t iarglen, RDB_transaction *txp,
+        RDB_object *retvalp)
+{
+    int ret;
+    RDB_table *vtbp;
+    
+    if (argc != 3)
+        return RDB_INVALID_ARGUMENT;
+    
+    ret = RDB_sdivide(RDB_obj_table(argv[0]), RDB_obj_table(argv[1]),
+            RDB_obj_table(argv[2]), &vtbp);
+    if (ret != RDB_OK)
+        return ret;
+
+    RDB_table_to_obj(retvalp, vtbp);
+    argv[0]->var.tbp = NULL;
+    argv[1]->var.tbp = NULL;
+    argv[2]->var.tbp = NULL;
+    return RDB_OK;
 }
 
 int
@@ -661,6 +976,10 @@ RDB_call_ro_op(const char *name, int argc, RDB_object *argv[],
             return RDB_OK;
         }
     }
+    if (obj_is_table(argv[0]) && strcmp(name, "TO_TUPLE") == 0
+            && argc == 1) {
+        return RDB_extract_tuple(RDB_obj_table(argv[0]), txp, retvalp);
+    }
 
     argtv = valv_to_typev(argc, argv);
     if (argtv == NULL) {
@@ -676,8 +995,11 @@ RDB_call_ro_op(const char *name, int argc, RDB_object *argv[],
 
     free(argtv);
 
-    if (ret != RDB_OK)
+    if (ret != RDB_OK) {
+        if (ret == RDB_OPERATOR_NOT_FOUND)
+            RDB_errmsg(RDB_tx_env(txp), "operator \"%s\" not found", name);
         goto error;
+    }
 
     /* Set return type to make it available to the function */
     retvalp->typ = op->rtyp;
@@ -688,7 +1010,7 @@ RDB_call_ro_op(const char *name, int argc, RDB_object *argv[],
         goto error;
 
     /* Check type constraint if the operator is a selector */
-    if (_RDB_get_possrep(retvalp->typ, name) != NULL) {
+    if (retvalp->typ != NULL &&_RDB_get_possrep(retvalp->typ, name) != NULL) {
         ret = _RDB_check_type_constraint(retvalp, txp);
         if (ret != RDB_OK) {
             /* Destroy illegal value */
@@ -795,8 +1117,13 @@ RDB_call_update_op(const char *name, int argc, RDB_object *argv[],
             RDB_drop_type(argtv[i], NULL);
     }
     free(argtv);
-    if (ret != RDB_OK)
-        return ret == RDB_NOT_FOUND ? RDB_OPERATOR_NOT_FOUND : ret;
+    if (ret != RDB_OK) {
+        if (ret == RDB_NOT_FOUND)
+            ret = RDB_OPERATOR_NOT_FOUND;
+        if (ret == RDB_OPERATOR_NOT_FOUND)
+            RDB_errmsg(RDB_tx_env(txp), "operator \"%s\" not found", name);
+        return ret;
+    }
 
     return (*op->funcp)(name, argc, argv, op->updv, op->iarg.var.bin.datap,
             op->iarg.var.bin.len, txp);
@@ -1702,6 +2029,94 @@ _RDB_add_builtin_ops(RDB_dbroot *dbrootp)
         return RDB_NO_MEMORY;
     op->argtv[0] = &RDB_RATIONAL;
     op->argtv[1] = &RDB_RATIONAL;
+
+    ret = put_ro_op(dbrootp, op);
+    if (ret != RDB_OK)
+        return ret;
+
+    op = new_ro_op("RENAME", -1, NULL, &op_rename);
+    if (op == NULL)
+        return RDB_NO_MEMORY;
+
+    ret = put_ro_op(dbrootp, op);
+    if (ret != RDB_OK)
+        return ret;
+
+    op = new_ro_op("PROJECT", -1, NULL, &op_project);
+    if (op == NULL)
+        return RDB_NO_MEMORY;
+
+    ret = put_ro_op(dbrootp, op);
+    if (ret != RDB_OK)
+        return ret;
+
+    op = new_ro_op("REMOVE", -1, NULL, &op_remove);
+    if (op == NULL)
+        return RDB_NO_MEMORY;
+
+    ret = put_ro_op(dbrootp, op);
+    if (ret != RDB_OK)
+        return ret;
+
+    op = new_ro_op("UNWRAP", -1, NULL, &op_unwrap);
+    if (op == NULL)
+        return RDB_NO_MEMORY;
+
+    ret = put_ro_op(dbrootp, op);
+    if (ret != RDB_OK)
+        return ret;
+
+    op = new_ro_op("UNION", -1, NULL, &op_union);
+    if (op == NULL)
+        return RDB_NO_MEMORY;
+
+    ret = put_ro_op(dbrootp, op);
+    if (ret != RDB_OK)
+        return ret;
+
+    op = new_ro_op("MINUS", -1, NULL, &op_minus);
+    if (op == NULL)
+        return RDB_NO_MEMORY;
+
+    ret = put_ro_op(dbrootp, op);
+    if (ret != RDB_OK)
+        return ret;
+
+    op = new_ro_op("INTERSECT", -1, NULL, &op_intersect);
+    if (op == NULL)
+        return RDB_NO_MEMORY;
+
+    ret = put_ro_op(dbrootp, op);
+    if (ret != RDB_OK)
+        return ret;
+
+    op = new_ro_op("JOIN", -1, NULL, &op_join);
+    if (op == NULL)
+        return RDB_NO_MEMORY;
+
+    ret = put_ro_op(dbrootp, op);
+    if (ret != RDB_OK)
+        return ret;
+
+    op = new_ro_op("DIVIDE_BY_PER", -1, NULL, &op_divide);
+    if (op == NULL)
+        return RDB_NO_MEMORY;
+
+    ret = put_ro_op(dbrootp, op);
+    if (ret != RDB_OK)
+        return ret;
+
+    op = new_ro_op("GROUP", -1, NULL, &op_group);
+    if (op == NULL)
+        return RDB_NO_MEMORY;
+
+    ret = put_ro_op(dbrootp, op);
+    if (ret != RDB_OK)
+        return ret;
+
+    op = new_ro_op("UNGROUP", -1, NULL, &op_ungroup);
+    if (op == NULL)
+        return RDB_NO_MEMORY;
 
     ret = put_ro_op(dbrootp, op);
     if (ret != RDB_OK)

@@ -235,11 +235,6 @@ typedef struct RDB_table {
      */
     RDB_string_vec *keyv;
 
-    /*
-     * Only used if the table is referred to by RDB_object.var.tbp
-     */
-    int refcount;
-
     union {
         struct {
             /*

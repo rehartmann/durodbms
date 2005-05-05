@@ -40,6 +40,11 @@ duro::table create T3 {
    {S2 STRING}
 } {{K}} $tx
 
+duro::table create T4 {
+   {A INTEGER}
+   {B INTEGER}
+} {{A B}} $tx
+
 # Insert tuples
 duro::insert T1 {K 1 S1 Bla} $tx
 
@@ -52,6 +57,14 @@ duro::insert T2 {K 2 S1 Blipp} $tx
 duro::insert T3 {K 1 S2 A} $tx
 
 duro::insert T3 {K 2 S2 B} $tx
+
+duro::insert T4 {A 1 B 1} $tx
+
+duro::insert T4 {A 1 B 2} $tx
+
+duro::insert T4 {A 2 B 1} $tx
+
+duro::insert T4 {A 2 B 3} $tx
 
 # Create virtual tables
 
@@ -70,6 +83,8 @@ duro::table expr -global TI2 {(T1 WHERE K = 1) INTERSECT (T2 WHERE K = 1)} $tx
 duro::table expr -global TU2 {(T1 WHERE K = 1) UNION (T2 WHERE K = 1)} $tx
 duro::table expr -global TJ2 {(T1 WHERE K = 2) JOIN (T3 WHERE K = 2)} $tx
 duro::table expr -global TS {T1 WHERE S1 > "Bla"} $tx
+duro::table expr -global TSM {SUMMARIZE T4 PER T4 { A }
+        ADD (MIN(B) AS MIN_B, MAX(B) AS MAX_B)} $tx
 
 if {[duro::expr {TUPLE FROM TP} $tx] != {K 1}} {
     error "Tuple value should be {K 1}, but is not"
@@ -79,6 +94,10 @@ set tpl [duro::expr {TUPLE FROM TJ2} $tx]
 if {![tequal $tpl {K 2 S1 Blubb S2 B}]} {
     error "Invalid value of TUPLE FROM TJ2"
 }
+
+set da [duro::array create TSM {A asc} $tx]
+checkarray $da {{A 1 MIN_B 1 MAX_B 2} {A 2 MIN_B 1 MAX_B 3}} $tx
+duro::array drop $da
 
 #
 # Referring to an attribute which has been removed by project
@@ -104,7 +123,7 @@ if {$code != "RDB_ATTRIBUTE_NOT_FOUND"} {
 }
 
 if {![catch {duro::delete TP2 {K = 1} $tx}]} {
-    error "duro::delete shuld fail, but succeeded"
+    error "duro::delete should fail, but succeeded"
 }
 
 set code [lindex $errorCode 1]

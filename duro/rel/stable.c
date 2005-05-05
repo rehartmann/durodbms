@@ -157,13 +157,12 @@ cleanup:
 }
 
 /*
- * Create secondary indexes
+ * Create indexc/indexv and create secondary indexes
  */
 static int
-create_key_indexes(RDB_table *tbp, RDB_environment *envp, RDB_transaction *txp)
+key_to_indexes(RDB_table *tbp, RDB_transaction *txp)
 {
     int i, j;
-    int ret;
 
     tbp->stp->indexc = tbp->keyc;
     tbp->stp->indexv = malloc(sizeof (_RDB_tbindex)
@@ -185,14 +184,12 @@ create_key_indexes(RDB_table *tbp, RDB_environment *envp, RDB_transaction *txp)
         }
 
         if (tbp->is_persistent) {
-            tbp->stp->indexv[i].name =
-                    malloc(strlen(RDB_recmap_name(tbp->stp->recmapp)) + 4);
+            tbp->stp->indexv[i].name = malloc(strlen(tbp->name) + 4);
             if (tbp->stp->indexv[i].name == NULL) {
                 return RDB_NO_MEMORY;
             }
             /* build index name */            
-            sprintf(tbp->stp->indexv[i].name, "%s$%d",
-                    RDB_recmap_name(tbp->stp->recmapp), i);
+            sprintf(tbp->stp->indexv[i].name, "%s$%d", tbp->name, i);
         } else {
             tbp->stp->indexv[i].name = NULL;
         }
@@ -200,6 +197,14 @@ create_key_indexes(RDB_table *tbp, RDB_environment *envp, RDB_transaction *txp)
         tbp->stp->indexv[i].unique = RDB_TRUE;
         tbp->stp->indexv[i].idxp = NULL;
     }
+    return RDB_OK;
+}
+
+static int
+create_key_indexes(RDB_table *tbp, RDB_environment *envp, RDB_transaction *txp)
+{
+    int i;
+    int ret;
 
     /*
      * Create secondary indexes
@@ -260,7 +265,8 @@ key_fnos(RDB_table *tbp, int **flenvp, const RDB_bool ascv[],
          RDB_compare_field *cmpv)
 {
     int ret;
-    int i, di;
+    int i, j, di;
+    _RDB_tbindex *pindexp;
     int attrc = tbp->typ->var.basetyp->var.tuple.attrc;
     RDB_attr *heading = tbp->typ->var.basetyp->var.tuple.attrv;
     int piattrc = tbp->keyv[0].strc;
@@ -271,16 +277,59 @@ key_fnos(RDB_table *tbp, int **flenvp, const RDB_bool ascv[],
         return RDB_NO_MEMORY;
     }
 
+    /*
+     * Try to get primary index (not available for new tables are
+     * newly opened system tables)
+     */
+    if (tbp->is_persistent) {
+        pindexp = NULL;
+        for (i = 0; i < tbp->stp->indexc; i++) {
+            char *p = strchr(tbp->stp->indexv[i].name, '$');
+            if (p != NULL && strcmp (p, "$0") == 0) {
+                pindexp = &tbp->stp->indexv[i];
+                break;
+            }
+        }
+    } else {
+        /* Transient tables don't have secondary indexes */
+        pindexp = &tbp->stp->indexv[0];
+    }
+
     di = piattrc;
     for (i = 0; i < attrc; i++) {
         RDB_int fno;
 
-        if (piattrc == attrc) {
+        if (pindexp != NULL) {
+            /*
+             * Search attribute in index (necessary if there is user-defined
+             * order of key attributes, e.g. when the primary index
+             * is ordered)
+             */
+            for (j = 0; j < pindexp->attrc
+                    && strcmp(pindexp->attrv[j].attrname, heading[i].name) != 0;
+                    j++);
+            fno = (j < pindexp->attrc) ? j : -1;
+        } else {
+            if (piattrc == attrc) {
+                fno = i;
+            } else {
+                /* Search attribute in key */
+                fno = (RDB_int) RDB_find_str(piattrc, piattrv, heading[i].name);
+                if (piattrc == attrc && piattrc > 1 && fno != i)
+                    fprintf(stderr, "fno=%d, i=%d\n", fno, i);
+            }
+        }
+
+#ifdef OLD
+/*        if (piattrc == attrc) {
             fno = i;
-        } else {            
+        } else { */
             /* Search attribute in key */
             fno = (RDB_int) RDB_find_str(piattrc, piattrv, heading[i].name);
-        }
+            if (piattrc == attrc && piattrc > 1 && fno != i)
+                fprintf(stderr, "fno=%d, i=%d\n", fno, i);
+/*        } */
+#endif
 
         /* If it's not found in the key, give it a non-key field number */
         if (fno == -1)
@@ -353,6 +402,10 @@ _RDB_create_stored_table(RDB_table *tbp, RDB_environment *envp,
             goto error;
         }
     }
+
+    ret = key_to_indexes(tbp, txp);
+    if (ret != RDB_OK)
+        return ret;
 
     ret = key_fnos(tbp, &flenv, ascv, cmpv);
     if (ret != RDB_OK)
@@ -430,13 +483,17 @@ error:
  * Arguments:
  * tbp        the table
  * envp       the database environment
+ * rmname     the recmap name
+ * indexc/indexv the indexes
  * txp        the transaction under which the operation is performed
  */
 int
 _RDB_open_stored_table(RDB_table *tbp, RDB_environment *envp,
-        const char *rmname, RDB_transaction *txp)
+        const char *rmname, int indexc, _RDB_tbindex *indexv,
+        RDB_transaction *txp)
 {
     int ret;
+    int i;
     int *flenv;
     RDB_compare_field *cmpv = NULL;
     int attrc = tbp->typ->var.basetyp->var.tuple.attrc;
@@ -455,6 +512,9 @@ _RDB_open_stored_table(RDB_table *tbp, RDB_environment *envp,
     RDB_init_hashmap(&tbp->stp->attrmap, RDB_DFL_MAP_CAPACITY);
     tbp->stp->est_cardinality = 1000;
 
+    tbp->stp->indexc = indexc;
+    tbp->stp->indexv = indexv;
+
     ret = key_fnos(tbp, &flenv, NULL, NULL);
     if (ret != RDB_OK)
         return ret;
@@ -465,8 +525,17 @@ _RDB_open_stored_table(RDB_table *tbp, RDB_environment *envp,
     if (ret != RDB_OK)
         goto error;
 
-    /* Flag that the indexes have not been opened */
-    tbp->stp->indexc = -1;
+    /* Open secondary indexes */
+    for (i = 0; i < indexc; i++) {
+        char *p = strchr(indexv[i].name, '$');
+        if (p == NULL || strcmp (p, "$0") != 0) {
+            ret = _RDB_open_table_index(tbp, &indexv[i], envp, txp);
+            if (ret != RDB_OK)
+                goto error;
+        } else {
+            indexv[i].idxp = NULL;
+        }
+    }
 
     free(flenv);
     free(cmpv);

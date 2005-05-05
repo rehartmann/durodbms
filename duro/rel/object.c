@@ -501,6 +501,8 @@ RDB_obj_equals(const RDB_object *val1p, const RDB_object *val2p,
 int
 _RDB_copy_obj(RDB_object *dstvalp, const RDB_object *srcvalp)
 {
+    int ret;
+
     if (dstvalp->kind != RDB_OB_INITIAL && srcvalp->kind != dstvalp->kind)
         return RDB_TYPE_MISMATCH;
 
@@ -524,15 +526,26 @@ _RDB_copy_obj(RDB_object *dstvalp, const RDB_object *srcvalp)
         case RDB_OB_ARRAY:
             return _RDB_copy_array(dstvalp, srcvalp);
         case RDB_OB_TABLE:
-            /*
-             * The table itself is not copied, only the pointer.
-             * Otherwise, the table would have to be copied each time
-             * a table-valued object is inserted to a tuple.
-             */
             RDB_destroy_obj(dstvalp);
             dstvalp->kind = srcvalp->kind;
-            dstvalp->var.tbp = srcvalp->var.tbp;
-            srcvalp->var.tbp->refcount++;
+            if (srcvalp->var.tbp->name != NULL) {
+                dstvalp->var.tbp = srcvalp->var.tbp;
+            } else {
+                if (srcvalp->var.tbp->kind == RDB_TB_REAL) {
+                    ret = RDB_create_table(NULL, RDB_FALSE,
+                            srcvalp->var.tbp->typ->var.basetyp->var.tuple.attrc,
+                            srcvalp->var.tbp->typ->var.basetyp->var.tuple.attrv,
+                            0, NULL, NULL, &dstvalp->var.tbp);
+                    if (ret != RDB_OK)
+                        return ret;
+                    ret = _RDB_move_tuples(dstvalp->var.tbp, srcvalp->var.tbp,
+                            NULL);
+                    if (ret != RDB_OK)
+                        return ret;
+                } else {
+                    dstvalp->var.tbp = _RDB_dup_vtable(srcvalp->var.tbp);
+                }
+            }
             break;
         case RDB_OB_BIN:
             if (dstvalp->kind == RDB_OB_BIN)
@@ -646,9 +659,7 @@ RDB_destroy_obj(RDB_object *objp)
             return ret2;
         }
         case RDB_OB_TABLE:
-            objp->var.tbp->refcount--;
-            if (objp->var.tbp->refcount == 0
-                    && objp->var.tbp->name == NULL) {
+            if (objp->var.tbp != NULL && objp->var.tbp->name == NULL) {
                 return RDB_drop_table(objp->var.tbp, NULL);
             }
             break;
@@ -813,7 +824,6 @@ RDB_table_to_obj(RDB_object *objp, RDB_table *tbp)
     objp->typ = tbp->typ;
     objp->kind = RDB_OB_TABLE;
     objp->var.tbp = tbp;
-    tbp->refcount++;
 }
 
 RDB_table *

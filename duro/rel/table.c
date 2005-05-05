@@ -21,7 +21,6 @@ _RDB_new_table(void)
         return NULL;
     }
     tbp->name = NULL;
-    tbp->refcount = 0;
     tbp->keyv = NULL;
     tbp->stp = NULL;
     return tbp;
@@ -149,6 +148,7 @@ _RDB_free_table(RDB_table *tbp)
 
     RDB_drop_type(tbp->typ, NULL);
     free(tbp->name);
+    tbp->kind = -1; /* !! For debugging */
     free(tbp);
 }
 
@@ -196,7 +196,9 @@ RDB_drop_table_index(const char *name, RDB_transaction *txp)
         /* Index not found, so reread indexes */
         for (i = 0; i < tbp->stp->indexc; i++)
             _RDB_free_tbindex(&tbp->stp->indexv[i]);
-        ret = _RDB_cat_get_indexes(tbp, txp->dbp->dbrootp, txp);
+        free(tbp->stp->indexv);
+        ret = _RDB_cat_get_indexes(tbp->name, txp->dbp->dbrootp, txp,
+                &tbp->stp->indexv);
         if (ret != RDB_OK)
             return ret;
 
@@ -392,6 +394,8 @@ _RDB_drop_table(RDB_table *tbp, RDB_bool rec)
             }
             free(tbp->var.ungroup.attr);
             break;
+        default:
+            abort();
     }
     _RDB_free_table(tbp);
     return RDB_OK;
@@ -446,31 +450,34 @@ RDB_copy_table(RDB_table *dstp, RDB_table *srcp, RDB_transaction *txp)
     RDB_transaction tx;
     int ret;
 
-    if (!RDB_tx_is_running(txp))
+    if (txp != NULL && !RDB_tx_is_running(txp))
         return RDB_INVALID_TRANSACTION;
 
     /* check if types of the two tables match */
     if (!RDB_type_equals(dstp->typ, srcp->typ))
         return RDB_TYPE_MISMATCH;
 
-    /* start subtransaction */
-    ret = RDB_begin_tx(&tx, txp->dbp, txp);
-    if (ret != RDB_OK)
-        return ret;
+    if (txp != NULL) {
+        /* start subtransaction */
+        ret = RDB_begin_tx(&tx, txp->dbp, txp);
+        if (ret != RDB_OK)
+            return ret;
+    }
 
     /* Delete all tuples from destination table */
-    ret = RDB_delete(dstp, NULL, &tx);
+    ret = RDB_delete(dstp, NULL, txp != NULL ? &tx : NULL);
     if (ret != RDB_OK)
         goto error;
 
-    ret = _RDB_move_tuples(dstp, srcp, &tx);
+    ret = _RDB_move_tuples(dstp, srcp, txp != NULL ? &tx : NULL);
     if (ret != RDB_OK)
         goto error;
 
-    return RDB_commit(&tx);
+    return txp != NULL ? RDB_commit(&tx) : RDB_OK;
 
 error:
-    RDB_rollback(&tx);
+    if (txp != NULL)
+        RDB_rollback(&tx);
     return ret;
 }
 

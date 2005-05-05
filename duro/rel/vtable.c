@@ -318,6 +318,8 @@ RDB_extend(RDB_table *tbp, int attrc, const RDB_virtual_attr attrv[],
         ret = RDB_NO_MEMORY;
         goto error;
     }
+    for (i = 0; i < attrc; i++)
+        attrdefv[i].name = NULL;
     for (i = 0; i < attrc; i++) {
         if (!_RDB_legal_name(attrv[i].name)) {
             ret = RDB_INVALID_ARGUMENT;

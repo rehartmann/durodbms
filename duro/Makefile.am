@@ -45,7 +45,7 @@ TESTS = tests/ctests.sh tests/rtables.tcl tests/ltables.tcl tests/project.tcl \
         tests/operator.tcl tests/vtables.tcl tests/db2.tcl tests/rel.tcl \
         tests/subset.tcl tests/utype.tcl tests/deedum.tcl tests/opt.tcl \
         tests/index.tcl tests/oindex.tcl tests/convert.tcl tests/string.tcl \
-        tests/rollback.tcl tests/constraints.tcl
+        tests/rollback.tcl tests/constraints.tcl tests/qqueries.tcl
 
 TESTS_ENVIRONMENT = LD_LIBRARY_PATH=$(LD_LIBRARY_PATH):$(BDB_HOME)/lib
 

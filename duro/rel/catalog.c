@@ -307,7 +307,9 @@ insert_rtable(RDB_table *tbp, RDB_dbroot *dbrootp, RDB_transaction *txp)
     }
     RDB_destroy_obj(&tpl);
 
-    /* insert keys into SYS_KEYS */
+    /*
+     * Insert keys into SYS_KEYS
+     */
     RDB_init_obj(&tpl);
     ret = RDB_tuple_set_string(&tpl, "TABLENAME", tbp->name);
     if (ret != RDB_OK)
@@ -348,11 +350,13 @@ insert_rtable(RDB_table *tbp, RDB_dbroot *dbrootp, RDB_transaction *txp)
         }
 
         RDB_init_obj(&keysobj);
-        RDB_table_to_obj(&keysobj, keystbp);
         ret = RDB_tuple_set(&tpl, "ATTRS", &keysobj);
         RDB_destroy_obj(&keysobj);
-        if (ret != RDB_OK)
+        if (ret != RDB_OK)            
             goto cleanup;
+
+        /* Store keys in tuple attribute */
+        RDB_table_to_obj(RDB_tuple_get(&tpl, "ATTRS"), keystbp);
 
         ret = RDB_insert(dbrootp->keys_tbp, &tpl, txp);
         if (ret != RDB_OK)
@@ -655,15 +659,17 @@ _RDB_cat_delete(RDB_table *tbp, RDB_transaction *txp)
  * Read table indexes from catalog
  */
 int
-_RDB_cat_get_indexes(RDB_table *tbp, RDB_dbroot *dbrootp, RDB_transaction *txp)
+_RDB_cat_get_indexes(const char *tablename, RDB_dbroot *dbrootp,
+        RDB_transaction *txp, _RDB_tbindex **indexvp)
 {
     int ret;
     int i;
     int j;
+    int indexc;
     RDB_table *vtbp;
     RDB_object arr;
     RDB_expression *wherep = RDB_eq(RDB_expr_attr("TABLENAME"),
-            RDB_string_to_expr(tbp->name));
+            RDB_string_to_expr(tablename));
 
     if (wherep == NULL)
         return RDB_NO_MEMORY;
@@ -679,20 +685,18 @@ _RDB_cat_get_indexes(RDB_table *tbp, RDB_dbroot *dbrootp, RDB_transaction *txp)
     if (ret != RDB_OK)
         goto cleanup;
 
-    tbp->stp->indexc = RDB_array_length(&arr);
-    if (tbp->stp->indexc > 0) {
-        tbp->stp->indexv = malloc(sizeof(_RDB_tbindex)
-                * tbp->stp->indexc);
-        if (tbp->stp->indexv == NULL) {
+    indexc = RDB_array_length(&arr);
+    if (indexc > 0) {
+        (*indexvp) = malloc(sizeof(_RDB_tbindex) * indexc);
+        if (*indexvp == NULL) {
             ret = RDB_NO_MEMORY;
             goto cleanup;
         }
-        for (i = 0; i < tbp->stp->indexc; i++) {
+        for (i = 0; i < indexc; i++) {
             RDB_object *tplp;
             RDB_object *attrarrp;
             char *idxname;
-            char *p;
-            _RDB_tbindex *indexp = &tbp->stp->indexv[i];
+            _RDB_tbindex *indexp = &(*indexvp)[i];
 
             ret = RDB_array_get(&arr, (RDB_int) i, &tplp);
             if (ret != RDB_OK)
@@ -737,18 +741,9 @@ _RDB_cat_get_indexes(RDB_table *tbp, RDB_dbroot *dbrootp, RDB_transaction *txp)
             }
 
             indexp->unique = RDB_tuple_get_bool(tplp, "UNIQUE");
-
-            /* Don't open the index if it's a primary index */
-            p = strchr(indexp->name, '$');
-            if (p == NULL || strcmp (p, "$0") != 0) {
-                ret = _RDB_open_table_index(tbp, indexp, dbrootp->envp, txp);
-                if (ret != RDB_OK)
-                    goto cleanup;
-            } else {
-                indexp->idxp = NULL;
-            }
         }
     }
+    ret = indexc;
 
 cleanup:
     RDB_destroy_obj(&arr);
@@ -774,7 +769,7 @@ provide_systable(const char *name, int attrc, RDB_attr heading[],
                 NULL, txp);
     } else {
         ret = _RDB_open_stored_table(*tbpp, txp != NULL ? txp->envp : NULL,
-                name, txp);
+                name, -1, NULL, txp);
     }
     if (ret != RDB_OK) {
         _RDB_drop_table(*tbpp, RDB_FALSE);
@@ -832,6 +827,34 @@ check_version_info(RDB_dbroot *dbrootp, RDB_transaction *txp)
 cleanup:
     RDB_destroy_obj(&tpl);
     return ret;
+}
+
+static int
+open_indexes(RDB_table *tbp, RDB_dbroot *dbrootp, RDB_transaction *txp)
+{
+    int i;
+    int ret;
+    _RDB_tbindex *indexv;
+    int indexc = _RDB_cat_get_indexes(tbp->name, dbrootp, txp, &indexv);
+    if (indexc < 0)
+        return indexc;
+
+    tbp->stp->indexc = indexc;
+    tbp->stp->indexv = indexv;
+
+    /* Open secondary indexes */
+    for (i = 0; i < indexc; i++) {
+        char *p = strchr(indexv[i].name, '$');
+        if (p == NULL || strcmp (p, "$0") != 0) {
+            ret = _RDB_open_table_index(tbp, &indexv[i], dbrootp->envp, txp);
+            if (ret != RDB_OK)
+                return ret;
+        } else {
+            indexv[i].idxp = NULL;
+        }
+    }
+
+    return RDB_OK;
 }
 
 /*
@@ -998,63 +1021,64 @@ _RDB_open_systables(RDB_dbroot *dbrootp, RDB_transaction *txp)
          * Read indexes from the catalog 
          */
 
-        ret = _RDB_cat_get_indexes(dbrootp->rtables_tbp, dbrootp, txp);
+        /* Open indexes of SYS_INDEXES first, because they are used often */
+        ret = open_indexes(dbrootp->indexes_tbp, dbrootp, txp);
         if (ret != RDB_OK)
             return ret;
 
-        ret = _RDB_cat_get_indexes(dbrootp->table_attr_tbp, dbrootp, txp);
+        ret = open_indexes(dbrootp->rtables_tbp, dbrootp, txp);
         if (ret != RDB_OK)
             return ret;
 
-        ret = _RDB_cat_get_indexes(dbrootp->table_attr_defvals_tbp, dbrootp, txp);
+        ret = open_indexes(dbrootp->table_attr_tbp, dbrootp, txp);
         if (ret != RDB_OK)
             return ret;
 
-        ret = _RDB_cat_get_indexes(dbrootp->vtables_tbp, dbrootp, txp);
+        ret = open_indexes(dbrootp->table_attr_defvals_tbp, dbrootp, txp);
         if (ret != RDB_OK)
             return ret;
 
-        ret = _RDB_cat_get_indexes(dbrootp->table_recmap_tbp, dbrootp, txp);
+        ret = open_indexes(dbrootp->vtables_tbp, dbrootp, txp);
         if (ret != RDB_OK)
             return ret;
 
-        ret = _RDB_cat_get_indexes(dbrootp->dbtables_tbp, dbrootp, txp);
+        ret = open_indexes(dbrootp->table_recmap_tbp, dbrootp, txp);
         if (ret != RDB_OK)
             return ret;
 
-        ret = _RDB_cat_get_indexes(dbrootp->keys_tbp, dbrootp, txp);
+        ret = open_indexes(dbrootp->dbtables_tbp, dbrootp, txp);
         if (ret != RDB_OK)
             return ret;
 
-        ret = _RDB_cat_get_indexes(dbrootp->types_tbp, dbrootp, txp);
+        ret = open_indexes(dbrootp->keys_tbp, dbrootp, txp);
         if (ret != RDB_OK)
             return ret;
 
-        ret = _RDB_cat_get_indexes(dbrootp->possreps_tbp, dbrootp, txp);
+        ret = open_indexes(dbrootp->types_tbp, dbrootp, txp);
         if (ret != RDB_OK)
             return ret;
 
-        ret = _RDB_cat_get_indexes(dbrootp->possrepcomps_tbp, dbrootp, txp);
+        ret = open_indexes(dbrootp->possreps_tbp, dbrootp, txp);
         if (ret != RDB_OK)
             return ret;
 
-        ret = _RDB_cat_get_indexes(dbrootp->ro_ops_tbp, dbrootp, txp);
+        ret = open_indexes(dbrootp->possrepcomps_tbp, dbrootp, txp);
         if (ret != RDB_OK)
             return ret;
 
-        ret = _RDB_cat_get_indexes(dbrootp->upd_ops_tbp, dbrootp, txp);
+        ret = open_indexes(dbrootp->ro_ops_tbp, dbrootp, txp);
         if (ret != RDB_OK)
             return ret;
 
-        ret = _RDB_cat_get_indexes(dbrootp->indexes_tbp, dbrootp, txp);
+        ret = open_indexes(dbrootp->upd_ops_tbp, dbrootp, txp);
         if (ret != RDB_OK)
             return ret;
 
-        ret = _RDB_cat_get_indexes(dbrootp->constraints_tbp, dbrootp, txp);
+        ret = open_indexes(dbrootp->constraints_tbp, dbrootp, txp);
         if (ret != RDB_OK)
             return ret;
 
-        ret = _RDB_cat_get_indexes(dbrootp->version_info_tbp, dbrootp, txp);
+        ret = open_indexes(dbrootp->version_info_tbp, dbrootp, txp);
         if (ret != RDB_OK)
             return ret;
     }
@@ -1348,6 +1372,8 @@ _RDB_cat_get_rtable(const char *name, RDB_transaction *txp, RDB_table **tbpp)
     int keyc;
     RDB_string_vec *keyv;
     RDB_transaction tx;
+    int indexc;
+    _RDB_tbindex *indexv;
 
     /* Read real table data from the catalog */
 
@@ -1355,7 +1381,7 @@ _RDB_cat_get_rtable(const char *name, RDB_transaction *txp, RDB_table **tbpp)
     RDB_init_obj(&arr);
     RDB_init_obj(&tpl);
 
-    /* !! Table should be from txp->dbp ... */
+    /* !! Should check if table is from txp->dbp ... */
 
     exprp = RDB_eq(RDB_expr_attr("TABLENAME"),
             RDB_string_to_expr(name));
@@ -1502,7 +1528,7 @@ _RDB_cat_get_rtable(const char *name, RDB_transaction *txp, RDB_table **tbpp)
         }
     }
 
-    /* Open table in a subtransaction (required by Berkeley DB) */
+    /* Open table in a subtransaction (required by Berkeley DB) (!!) */
     ret = RDB_begin_tx(&tx, txp->dbp, txp);
     if (ret != RDB_OK)
         goto error;
@@ -1517,19 +1543,22 @@ _RDB_cat_get_rtable(const char *name, RDB_transaction *txp, RDB_table **tbpp)
         *tbpp = NULL;
         goto error;
     }
+
+    indexc = _RDB_cat_get_indexes(name, tx.dbp->dbrootp, &tx, &indexv);
+    if (indexc < 0) {
+        RDB_rollback(&tx);
+        ret = indexc;
+        goto error;
+    }
+
     ret = _RDB_open_stored_table(*tbpp, txp->envp,
-            usr ? RDB_tuple_get_string(&tpl, "RECMAP") : (*tbpp)->name, &tx);
+            usr ? RDB_tuple_get_string(&tpl, "RECMAP") : (*tbpp)->name,
+            indexc, indexv, &tx);
     if (ret != RDB_OK) {
         RDB_rollback(&tx);
         goto error;
     }
 
-    ret = _RDB_cat_get_indexes(*tbpp, tx.dbp->dbrootp, &tx);
-    if (ret != RDB_OK) {
-        RDB_rollback(&tx);
-        goto error;
-    }
-    
     ret = RDB_commit(&tx);
     if (ret != RDB_OK)
         goto error;

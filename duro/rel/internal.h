@@ -192,7 +192,7 @@ _RDB_create_stored_table(RDB_table *tbp, RDB_environment *envp,
 
 int
 _RDB_open_stored_table(RDB_table *tbp, RDB_environment *envp, const char *,
-           RDB_transaction *txp);
+           int indexc, _RDB_tbindex *indexv, RDB_transaction *txp);
 
 int
 _RDB_delete_stored_table(RDB_stored_table *, RDB_transaction *);

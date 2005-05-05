@@ -386,8 +386,8 @@ _RDB_fields_to_DBT(RDB_recmap *rmp, int fldc, const RDB_field fldv[],
     int offs;
     int i;
     int ret;
-    int *fno;	/* fixed field no in DBT -> field no */
-    int *vfno;	/* var field no in DBT -> field no */
+    int *fno = NULL;	/* fixed field no in DBT -> field no */
+    int *vfno = NULL;	/* var field no in DBT -> field no */
 
     memset(dbtp, 0, sizeof(DBT));
 
@@ -416,8 +416,7 @@ _RDB_fields_to_DBT(RDB_recmap *rmp, int fldc, const RDB_field fldv[],
         vfno = malloc(vfldc *  sizeof(int));
         if (vfno == NULL) {
             ret = RDB_NO_MEMORY;
-            if (fldc - vfldc > 0)
-                free(fno);
+            free(fno);
             free(dbtp->data);
             goto error;
         }
@@ -458,10 +457,8 @@ _RDB_fields_to_DBT(RDB_recmap *rmp, int fldc, const RDB_field fldv[],
                 fldv[fn].len);
     }
 
-    if (fldc - vfldc > 0)
-        free(fno);
-    if (vfldc > 0)
-        free(vfno);
+    free(fno);
+    free(vfno);
     return RDB_OK;
     
 error:

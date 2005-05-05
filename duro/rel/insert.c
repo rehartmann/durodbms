@@ -659,6 +659,8 @@ insert(RDB_table *tbp, const RDB_object *tplp, RDB_transaction *txp)
         case RDB_TB_SDIVIDE:
             ret = RDB_NOT_SUPPORTED;
             break;
+        default:
+            abort();
     }
     return ret;
 }

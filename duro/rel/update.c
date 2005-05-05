@@ -103,14 +103,14 @@ update_stored_complex(RDB_table *tbp, RDB_expression *condp,
                 goto cleanup;
             }
             RDB_init_obj(&val);
-            ret = RDB_irep_to_obj(&val, tpltyp->var.tuple.attrv[i].typ,
-                              datap, len);
-            if (ret != RDB_OK) {
-                RDB_destroy_obj(&val);
-                goto cleanup;
-            }
             ret = RDB_tuple_set(&tpl, tpltyp->var.tuple.attrv[i].name, &val);
             RDB_destroy_obj(&val);
+            if (ret != RDB_OK) {
+                goto cleanup;
+            }            
+            ret = RDB_irep_to_obj(
+                    RDB_tuple_get(&tpl, tpltyp->var.tuple.attrv[i].name),
+                    tpltyp->var.tuple.attrv[i].typ, datap, len);
             if (ret != RDB_OK) {
                 goto cleanup;
             }
@@ -168,14 +168,14 @@ update_stored_complex(RDB_table *tbp, RDB_expression *condp,
                 goto cleanup;
             }
             RDB_init_obj(&val);
-            ret = RDB_irep_to_obj(&val, tpltyp->var.tuple.attrv[i].typ,
-                              datap, len);
-            if (ret != RDB_OK) {
-                RDB_destroy_obj(&val);
-                goto cleanup;
-            }
             ret = RDB_tuple_set(&tpl, tpltyp->var.tuple.attrv[i].name, &val);
             RDB_destroy_obj(&val);
+            if (ret != RDB_OK) {
+                goto cleanup;
+            }
+            ret = RDB_irep_to_obj(
+                    RDB_tuple_get(&tpl, tpltyp->var.tuple.attrv[i].name),
+                    tpltyp->var.tuple.attrv[i].typ, datap, len);
             if (ret != RDB_OK) {
                 goto cleanup;
             }

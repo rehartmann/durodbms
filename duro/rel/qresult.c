@@ -1,9 +1,9 @@
 /*
- * Copyright (C) 2003, 2004 René Hartmann.
+ * $Id$
+ *
+ * Copyright (C) 2003-2005 René Hartmann.
  * See the file COPYING for redistribution information.
  */
-
-/* $Id$ */
 
 #include "rdb.h"
 #include "internal.h"
@@ -416,7 +416,7 @@ do_group(RDB_qresult *qrp, RDB_transaction *txp)
                     goto cleanup;
             } else if (ret == RDB_NOT_FOUND) {
                 /*
-                 * A tuple has been found, build tuple and insert it
+                 * A tuple has not been found, build tuple and insert it
                  */
                 RDB_table *gtbp;
 
@@ -431,10 +431,14 @@ do_group(RDB_qresult *qrp, RDB_transaction *txp)
                 if (ret != RDB_OK)
                     goto cleanup;
 
-                RDB_table_to_obj(&gval, gtbp);
+                /*
+                 * Set then attribute first, then assign the table value to it
+                 */
                 ret = RDB_tuple_set(&tpl, qrp->tbp->var.group.gattr, &gval);
                 if (ret != RDB_OK)
                     goto cleanup;
+                RDB_table_to_obj(RDB_tuple_get(&tpl, qrp->tbp->var.group.gattr),
+                                 gtbp);
 
                 ret = RDB_insert(qrp->matp, &tpl, NULL);
                 if (ret != RDB_OK)
@@ -1080,13 +1084,13 @@ _RDB_get_by_cursor(RDB_table *tbp, RDB_cursor *curp, RDB_type *tpltyp,
             return ret;
         }
         RDB_init_obj(&val);
-        ret = RDB_irep_to_obj(&val, attrp->typ, datap, len);
-        if (ret != RDB_OK) {
-            RDB_destroy_obj(&val);
-            return ret;
-        }
         ret = RDB_tuple_set(tplp, attrp->name, &val);
         RDB_destroy_obj(&val);
+        if (ret != RDB_OK) {
+            return ret;
+        }
+        ret = RDB_irep_to_obj(RDB_tuple_get(tplp, attrp->name),
+                attrp->typ, datap, len);
         if (ret != RDB_OK) {
             return ret;
         }
