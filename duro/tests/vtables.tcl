@@ -105,7 +105,7 @@ duro::array drop $da
 #
 
 if {![catch {duro::update TP2 {K = 1} S1 {"Bli"} $tx}]} {
-    error "duro::update shuld fail, but succeeded"
+    error "duro::update should fail, but succeeded"
 }
 
 set code [lindex $errorCode 1]

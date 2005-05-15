@@ -825,7 +825,8 @@ RDB_extend_relation_type(const RDB_type *typ, int attrc, RDB_attr attrv[])
 }
 
 int
-RDB_join_tuple_types(const RDB_type *typ1, const RDB_type *typ2, RDB_type **newtypp)
+RDB_join_tuple_types(const RDB_type *typ1, const RDB_type *typ2,
+        RDB_type **newtypp)
 {
     RDB_type *newtyp;
     int attrc;

@@ -481,16 +481,68 @@ aggr_type(RDB_type *tuptyp, RDB_type *attrtyp, RDB_aggregate_op op,
      return RDB_OK;
 }
 
+static int
+summarize_type(RDB_type *tb1typ, RDB_type *tb2typ,
+        int addc, const RDB_summarize_add addv[],
+        int avgc, char **avgv, RDB_transaction *txp, RDB_type **newtypp)
+{
+    int i;
+    int ret;
+    int attrc = addc + avgc;
+    RDB_attr *attrv = malloc(sizeof (RDB_attr) * attrc);
+    if (attrv == NULL)
+        return RDB_NO_MEMORY;
+
+    for (i = 0; i < addc; i++) {
+        if (addv[i].op == RDB_COUNT) {
+            attrv[i].typ = &RDB_INTEGER;
+        } else {
+            RDB_type *typ;
+
+            ret = RDB_expr_type(addv[i].exp, tb1typ->var.basetyp, txp, &typ);
+            if (ret != RDB_OK)
+                goto error;
+            ret = aggr_type(tb1typ->var.basetyp, typ,
+                        addv[i].op, &attrv[i].typ);
+            if (ret != RDB_OK)
+                goto error;
+        }
+
+        attrv[i].name = addv[i].name;
+    }
+    for (i = 0; i < avgc; i++) {
+        attrv[addc + i].name = avgv[i];
+        attrv[addc + i].typ = &RDB_INTEGER;
+    }
+
+    *newtypp = malloc(sizeof (RDB_type));
+    if (*newtypp == NULL) {
+        ret = RDB_NO_MEMORY;
+        goto error;
+    }
+    
+    *newtypp = RDB_extend_relation_type(tb2typ, attrc, attrv);
+    if (*newtypp == NULL) {
+        ret = RDB_NO_MEMORY;
+        goto error;
+    }
+
+    free(attrv);
+    return RDB_OK;
+
+error:
+    free(attrv);    
+    return ret;
+}
+
 int
 RDB_summarize(RDB_table *tb1p, RDB_table *tb2p, int addc,
         const RDB_summarize_add addv[], RDB_transaction *txp,
         RDB_table **resultpp)
 {
     RDB_table *newtbp;
-    RDB_type *tuptyp = NULL;
     int i, ai;
     int ret;
-    int attrc;
 
     if (!RDB_tx_is_running(txp))
         return RDB_INVALID_TRANSACTION;
@@ -559,84 +611,16 @@ RDB_summarize(RDB_table *tb1p, RDB_table *tb2p, int addc,
         newtbp->var.summarize.addv[i].exp = addv[i].exp;
     }
 
-    /* Create type */
-
-    attrc = tb2p->typ->var.basetyp->var.tuple.attrc + addc + avgc;
-    tuptyp = malloc(sizeof (RDB_type));
-    tuptyp->name = NULL;
-    tuptyp->kind = RDB_TP_TUPLE;
-    tuptyp->var.tuple.attrc = attrc;
-    tuptyp->var.tuple.attrv = malloc(attrc * sizeof(RDB_attr));
-    if (tuptyp->var.tuple.attrv == NULL) {
-        ret = RDB_NO_MEMORY;
+    ret = summarize_type(tb1p->typ, tb2p->typ, addc, addv, avgc, avgv, txp,
+            &newtbp->typ);
+    if (ret != RDB_OK)
         goto error;
-    }
-    for (i = 0; i < addc; i++) {
-        RDB_type *typ;
-
-        if (addv[i].op == RDB_COUNT) {
-            typ = &RDB_INTEGER;
-        } else {
-            ret = RDB_expr_type(addv[i].exp, tb1p->typ->var.basetyp, txp, &typ);
-            if (ret != RDB_OK)
-                goto error;
-        }
-
-        tuptyp->var.tuple.attrv[i].name = RDB_dup_str(addv[i].name);
-        if (tuptyp->var.tuple.attrv[i].name == NULL) {
-            ret = RDB_NO_MEMORY;
-            goto error;
-        }
-        if (addv[i].op == RDB_COUNT) {
-            tuptyp->var.tuple.attrv[i].typ = &RDB_INTEGER;
-        } else {
-            ret = aggr_type(tb1p->typ->var.basetyp, typ,
-                        addv[i].op, &tuptyp->var.tuple.attrv[i].typ);
-            if (ret != RDB_OK)
-                goto error;
-        }
-        tuptyp->var.tuple.attrv[i].defaultp = NULL;
-    }
-    for (i = 0; i < tb2p->typ->var.basetyp->var.tuple.attrc; i++) {
-        tuptyp->var.tuple.attrv[addc + i].name =
-                RDB_dup_str(tb2p->typ->var.basetyp->var.tuple.attrv[i].name);
-        if (tuptyp->var.tuple.attrv[addc + i].name == NULL) {
-            ret = RDB_NO_MEMORY;
-            goto error;
-        }
-        tuptyp->var.tuple.attrv[addc + i].typ = _RDB_dup_nonscalar_type(
-                tb2p->typ->var.basetyp->var.tuple.attrv[i].typ);
-        if (tuptyp->var.tuple.attrv[addc + i].typ == NULL) {
-            ret = RDB_NO_MEMORY;
-            goto error;
-        }
-        tuptyp->var.tuple.attrv[addc + i].defaultp = NULL;
-    }
-    for (i = 0; i < avgc; i++) {
-        tuptyp->var.tuple.attrv[attrc - avgc + i].name = avgv[i];
-        tuptyp->var.tuple.attrv[attrc - avgc + i].typ = &RDB_INTEGER;
-        tuptyp->var.tuple.attrv[attrc - avgc + i].defaultp = NULL;
-    }
-
-    newtbp->typ = malloc(sizeof (RDB_type));
-    if (newtbp->typ == NULL) {
-        ret = RDB_NO_MEMORY;
-        goto error;
-    }
-    newtbp->typ->name = NULL;
-    newtbp->typ->kind = RDB_TP_RELATION;
-    newtbp->typ->var.basetyp = tuptyp;
 
     *resultpp = newtbp;
+    free(avgv);
     return RDB_OK;
 
 error:
-    if (tuptyp != NULL) {
-        free(tuptyp->var.tuple.attrv);
-        free(tuptyp);
-    }
-    if (newtbp->typ != NULL)
-        free(newtbp->typ);
     for (i = 0; i < avgc; i++)
         free(avgv[i]);
     free(avgv);

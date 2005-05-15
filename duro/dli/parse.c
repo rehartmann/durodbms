@@ -7,8 +7,6 @@
 
 int yyparse(void);
 void yy_scan_string(const char *txt);
-void _RDB_parse_free(void);
-void _RDB_parse_remove_exp(RDB_expression *);
 RDB_table *_RDB_parse_expr_to_table(const RDB_expression *exp);
 
 RDB_transaction *_RDB_parse_txp;
@@ -29,21 +27,16 @@ int
 RDB_parse_expr(const char *txt, RDB_ltablefn *lt_fp, void *lt_arg,
         RDB_transaction *txp, RDB_expression **expp)
 {
-    int ret;
-
     _RDB_parse_txp = txp;
     _RDB_parse_ret = RDB_OK;
     _RDB_parse_ltfp = lt_fp;
     _RDB_parse_arg = lt_arg;
 
     yy_scan_string(txt);
-    ret = yyparse();
-    if (ret > 0) {
-        _RDB_parse_free();
-        if (_RDB_parse_ret == RDB_OK) {
-            /* syntax error */
-            return RDB_SYNTAX;
-        }
+    if (yyparse() > 0) {
+        return RDB_SYNTAX;
+    }
+    if (_RDB_parse_ret != RDB_OK) {
         return _RDB_parse_ret;
     }
 
@@ -55,13 +48,10 @@ RDB_parse_expr(const char *txt, RDB_ltablefn *lt_fp, void *lt_arg,
             *expp = RDB_table_to_expr(tbp);
         } else {
             *expp = _RDB_parse_resultp;
-            _RDB_parse_remove_exp(_RDB_parse_resultp);
         }
     } else {
         *expp = _RDB_parse_resultp;
-        _RDB_parse_remove_exp(_RDB_parse_resultp);
     }
-    _RDB_parse_free();
     return RDB_OK;
 }
 
