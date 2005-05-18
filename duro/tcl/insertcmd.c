@@ -1,9 +1,9 @@
 /*
- * Copyright (C) 2003, 2004 René Hartmann.
+ * $Id$
+ *
+ * Copyright (C) 2003-2005 René Hartmann.
  * See the file COPYING for redistribution information.
  */
-
-/* $Id$ */
 
 #include "duro.h"
 
@@ -57,6 +57,11 @@ Duro_insert_cmd(ClientData data, Tcl_Interp *interp, int objc,
     if (ret == RDB_OK) {
         ret = TCL_OK;
     } else {
+        /*
+         * Must Rest Result, because Duro_tcl_to_duro may have invoked a script
+         */
+        Tcl_ResetResult(interp);
+
         Duro_dberror(interp, ret);
         ret = TCL_ERROR;
     }

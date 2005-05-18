@@ -315,21 +315,8 @@ key_fnos(RDB_table *tbp, int **flenvp, const RDB_bool ascv[],
             } else {
                 /* Search attribute in key */
                 fno = (RDB_int) RDB_find_str(piattrc, piattrv, heading[i].name);
-                if (piattrc == attrc && piattrc > 1 && fno != i)
-                    fprintf(stderr, "fno=%d, i=%d\n", fno, i);
             }
         }
-
-#ifdef OLD
-/*        if (piattrc == attrc) {
-            fno = i;
-        } else { */
-            /* Search attribute in key */
-            fno = (RDB_int) RDB_find_str(piattrc, piattrv, heading[i].name);
-            if (piattrc == attrc && piattrc > 1 && fno != i)
-                fprintf(stderr, "fno=%d, i=%d\n", fno, i);
-/*        } */
-#endif
 
         /* If it's not found in the key, give it a non-key field number */
         if (fno == -1)

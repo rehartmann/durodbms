@@ -2,11 +2,11 @@
 #define RDB_TABLESTOSTR_H
 
 /*
- * Copyright (C) 2004 René Hartmann.
+ * $Id$
+ *
+ * Copyright (C) 2004, 2005 René Hartmann.
  * See the file COPYING for redistribution information.
  */
-
-/* $Id$ */
 
 #include <rel/rdb.h>
 
@@ -15,6 +15,10 @@ enum {
 };
 
 int
-_RDB_table_to_str(RDB_object *objp, RDB_table *tbp, int options);
+_RDB_table_to_str(RDB_object *objp, RDB_table *tbp, RDB_transaction *,
+                  int options);
+
+int
+_RDB_obj_to_str(RDB_object *dstp, const RDB_object *srcp, RDB_transaction *);
 
 #endif

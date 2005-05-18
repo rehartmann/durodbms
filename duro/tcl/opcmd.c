@@ -560,6 +560,16 @@ Duro_invoke_update_op(const char *name, int argc, RDB_object *argv[],
     return RDB_OK;
 }
 
+static RDB_bool
+is_getter(const char *name, int argc) {
+    return (RDB_bool) (argc == 1 && strstr(name, "_get_") != NULL);
+}
+
+static RDB_bool
+is_compare (const char *name, int argc) {
+    return (RDB_bool) (argc == 2 && strcmp(name, "compare") == 0);
+}
+
 int
 Duro_invoke_ro_op(const char *name, int argc, RDB_object *argv[],
         const void *iargp, size_t iarglen,
@@ -574,8 +584,9 @@ Duro_invoke_ro_op(const char *name, int argc, RDB_object *argv[],
     Tcl_Obj *procargv[4];
     Tcl_Obj **opargv;
     RDB_type *convtyp;
+    Tcl_CmdInfo cmdinfo;
+    Tcl_Obj *txtop = NULL;
     RDB_type *rtyp = RDB_obj_type(retvalp);
-    int isgetter = argc == 1 && strstr(name, "_get_") != NULL;
     RDB_environment *envp = RDB_tx_env(txp);
     Tcl_Interp *interp = txp->user_data;
 
@@ -588,6 +599,18 @@ Duro_invoke_ro_op(const char *name, int argc, RDB_object *argv[],
     ret = Tcl_ListObjIndex(interp, opdatap, 0, &namelistp);
     if (ret != TCL_OK) {
         return RDB_INTERNAL;
+    }
+
+    if (Tcl_GetCommandInfo(interp, "duro::operator", &cmdinfo)) {
+        /* Try to find tx id */
+        txtop = find_txid(txp, (TclState *) cmdinfo.objClientData);
+    }
+
+    if (txtop != NULL) {
+        /* Add tx argument */
+        ret = Tcl_ListObjAppendElement(interp, namelistp, Tcl_NewStringObj("tx", 2));
+        if (ret != TCL_OK)
+            return RDB_INTERNAL;
     }
 
     /* Get body */
@@ -613,19 +636,24 @@ Duro_invoke_ro_op(const char *name, int argc, RDB_object *argv[],
      * Set arguments
      */
 
-    opargv = (Tcl_Obj **) Tcl_Alloc(sizeof (Tcl_Obj *) * (argc + 1));
+    opargv = (Tcl_Obj **) Tcl_Alloc(sizeof (Tcl_Obj *) * (argc + 2));
 
     opargv[0] = nametop;
 
     for (i = 0; i < argc; i++) {
         /* If the operator is a getter, pass actual rep */
-        opargv[i + 1] = isgetter && i == 0 ?
+        opargv[i + 1] = (is_getter(name, argc) && i == 0)
+                || is_compare(name, argc) ?
                 Duro_irep_to_tcl(interp, argv[i], txp)
                 : Duro_to_tcl(interp, argv[i], txp);
     }
 
+    if (txtop != NULL) {
+        opargv[argc + 1] = txtop;
+    }
+
     /* Execute operator by invoking the Tcl procedure just created */
-    ret = Tcl_EvalObjv(interp, argc + 1, opargv, 0);
+    ret = Tcl_EvalObjv(interp, txtop != NULL ? argc + 2 : argc + 1, opargv, 0);
 
     Tcl_Free((char *) opargv);
     

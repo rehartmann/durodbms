@@ -2,11 +2,11 @@
 #define RDB_PARSE_H
 
 /*
- * Copyright (C) 2003 René Hartmann.
+ * $Id$
+ *
+ * Copyright (C) 2003-2005 René Hartmann.
  * See the file COPYING for redistribution information.
  */
-
-/* $Id$ */
 
 #include <rel/rdb.h>
 
@@ -17,7 +17,7 @@ RDB_parse_expr(const char *, RDB_ltablefn *, void *, RDB_transaction *,
         RDB_expression **);
 
 int
-RDB_parse_table(const char *txt, RDB_ltablefn *, void *, RDB_transaction *,
+RDB_parse_table(const char *, RDB_ltablefn *, void *, RDB_transaction *,
         RDB_table **);
 
 #endif

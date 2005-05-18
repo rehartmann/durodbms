@@ -309,6 +309,11 @@ array_set_cmd(TclState *statep, Tcl_Interp *interp, int objc,
     ret = RDB_array_set(arrayp, (RDB_int) idx, &obj);
     RDB_destroy_obj(&obj);
     if (ret != RDB_OK) {
+        /*
+         * Must Rest Result, because Duro_tcl_to_duro may have invoked a script
+         */
+        Tcl_ResetResult(interp);
+
         Duro_dberror(interp, ret);
         return TCL_ERROR;
     }

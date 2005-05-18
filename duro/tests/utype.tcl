@@ -39,13 +39,17 @@ duro::table create T1 {
    {NAME NAME}
 } {{NO}} $tx
 
-duro::insert T1 {NO 1 NAME {NAME "Potter"}} $tx
+duro::insert T1 {NO 1 NAME {NAME("Potter")}} $tx
 
-set tpl {NO 2 NAME {NAME " Johnson"}}
+set tpl {NO 2 NAME {NAME(" Johnson")}}
 if {![catch {
     duro::insert T1 $tpl $tx
 }]} {
     error "Insertion of tuple $tpl should fail, but succeeded"
+}
+set errcode [lindex $errorCode 1]
+if {$errcode != "RDB_TYPE_CONSTRAINT_VIOLATION"} {
+    error "Wrong error: $errcode
 }
 
 duro::table drop T1 $tx
@@ -65,11 +69,13 @@ duro::type implement PNAME $tx
 #
 duro::operator create compare -returns INTEGER {name1 PNAME name2 PNAME} {
     set ::compare_called 1
-    set r [string compare [lindex $name1 2] [lindex $name2 2]]
+    array set a1 $name1
+    array set a2 $name2
+    set r [string compare $a1(LASTNAME) $a2(LASTNAME)]
     if {$r != 0} {
         return $r
     }
-    return [string compare [lindex $name1 1] [lindex $name2 1]]
+    set r [string compare $a1(FIRSTNAME) $a2(FIRSTNAME)]
 } $tx
 
 #
@@ -114,7 +120,7 @@ duro::table create T2 {
    {NAME PNAME}
 } {{NO}} $tx
 
-set tpl {NO 1 NAME {PNAME "Peter" "Potter"}}
+set tpl {NO 1 NAME {PNAME("Peter", "Potter")}}
 duro::insert T2 $tpl $tx
 
 duro::table expr -global V1 {T2 WHERE NAME=PNAME("Peter", "Potter")} $tx
@@ -125,21 +131,21 @@ if {![duro::table contains T2 $tpl $tx]} {
 
 array set a [duro::expr {TUPLE FROM (T2 WHERE THE_LASTNAME(NAME) = "Potter")} $tx]
 
-if {($a(NO) != 1) || ($a(NAME) != {PNAME Peter Potter})} {
-    error "T2 has wrong value"
+if {($a(NO) != 1) || ($a(NAME) != {PNAME("Peter", "Potter")})} {
+    error "wrong value tuple value: $a(NAME)"
 }
 
 array set a [duro::expr {TUPLE FROM V1} $tx]
 
-if {($a(NO) != 1) || ($a(NAME) != {PNAME Peter Potter})} {
+if {($a(NO) != 1) || ($a(NAME) != {PNAME("Peter", "Potter")})} {
     error "V1 has wrong value"
 }
 
-duro::insert T2 {NO 2 NAME {PNAME "Ali" "Z"}} $tx
+duro::insert T2 {NO 2 NAME {PNAME("Ali", "Z")}} $tx
 
-set compare_called 0
 set arr [duro::array create T2 {NAME asc} $tx]
-# checkarray $arr {{NO 1 NAME {PNAME Peter Potter}} {NO 2 NAME {PNAME Ali Z}}} \
+checkarray $arr {{NO 1 NAME {PNAME("Peter", "Potter")}}
+        {NO 2 NAME {PNAME("Ali", "Z")}}} \
         $tx
 duro::array drop $arr
 
@@ -159,7 +165,8 @@ set tx [duro::begin $dbenv TEST]
 
 set compare_called 0
 set arr [duro::array create T2 {NAME asc} $tx]
-checkarray $arr {{NO 1 NAME {PNAME Peter Potter}} {NO 2 NAME {PNAME Ali Z}}} \
+checkarray $arr {{NO 1 NAME {PNAME("Peter", "Potter")}}
+        {NO 2 NAME {PNAME("Ali", "Z")}}} \
         $tx
 duro::array drop $arr
 
@@ -176,7 +183,7 @@ duro::table create T3 {
 } {{IS}} $tx
 
 set sil {1 2}
-set stpl [list IS [list INTLIST $sil]]
+set stpl [list IS INTLIST("$sil")]
 duro::insert T3 $stpl $tx
 
 set tpl [duro::expr {TUPLE FROM T3} $tx]
@@ -193,10 +200,10 @@ if {![string equal $il $sil]} {
 # Test setter
 #
 
-set is {INTLIST {1 3 4}}
+set is {INTLIST("1 3 4")}
 duro::call INTSET_set_INTLIST is INTSET {1 2 3} STRING $tx
 
-set sis {INTLIST {1 2 3}}
+set sis {INTLIST("1 2 3")}
 if {![string equal $is $sis]} {
     error "INTSET value should be $sis, but is $is"
 }
