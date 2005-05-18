@@ -486,21 +486,12 @@ Duro_tcl_to_duro(Tcl_Interp *interp, Tcl_Obj *tobjp, RDB_type *typ,
     }
     if (RDB_type_is_scalar(typ)) {
         RDB_expression *exp;
-        /* RDB_object *exobjp; */
 
         ret = RDB_parse_expr(Tcl_GetString(tobjp), NULL, NULL, txp, &exp);
         if (ret != RDB_OK) {
             Duro_dberror(interp, ret);
             return TCL_ERROR;
         }
-        /*
-        exobjp = RDB_expr_obj(exp);
-        if (exobjp == NULL) {
-            RDB_drop_expr(exp);
-            Duro_dberror(interp, RDB_INVALID_ARGUMENT);
-            return TCL_ERROR;
-        }
-        */
         ret = RDB_evaluate(exp, NULL, txp, objp);
         RDB_drop_expr(exp);
         if (ret != RDB_OK) {
@@ -508,9 +499,6 @@ Duro_tcl_to_duro(Tcl_Interp *interp, Tcl_Obj *tobjp, RDB_type *typ,
             return TCL_ERROR;
         }
         return TCL_OK;
-/*
-        return call_selector(interp, tobjp, typ, objp, txp);
-*/
     }
     switch (typ->kind) {
         case RDB_TP_TUPLE:
