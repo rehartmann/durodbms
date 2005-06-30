@@ -99,6 +99,10 @@ set da [duro::array create TSM {A asc} $tx]
 checkarray $da {{A 1 MIN_B 1 MAX_B 2} {A 2 MIN_B 1 MAX_B 3}} $tx
 duro::array drop $da
 
+if {![catch {duro::table expr -global TX2 {EXTEND T1 ADD (K*10 AS K)} $tx}]} {
+    error "invalid EXTEND should fail, but succeeded"
+}
+
 #
 # Referring to an attribute which has been removed by project
 # must fail

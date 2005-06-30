@@ -562,6 +562,7 @@ transform_project(RDB_table *tbp)
                 chtbp = tbp->var.project.tbp;
                 break;
             case RDB_TB_SELECT:
+                /* !! ... */
             case RDB_TB_MINUS:
             case RDB_TB_INTERSECT:
             case RDB_TB_JOIN:

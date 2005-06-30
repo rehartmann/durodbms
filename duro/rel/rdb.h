@@ -399,6 +399,12 @@ RDB_create_table(const char *name, RDB_bool persistent,
         int keyc, const RDB_string_vec keyv[],
         RDB_transaction *txp, RDB_table **tbpp);
 
+int
+RDB_create_table_from_type(const char *name, RDB_bool persistent,
+                RDB_type *reltyp,
+                int keyc, const RDB_string_vec keyv[],
+                RDB_transaction *txp, RDB_table **tbpp);
+
 /*
  * Lookup the table with name name from the database pointed to by dbp.
  * Store a pointer to a RDB_table structure in tbpp.
@@ -1075,6 +1081,35 @@ RDB_create_constraint(const char *name, RDB_expression *exp,
 
 int
 RDB_drop_constraint(const char *name, RDB_transaction *);
+
+typedef struct {
+    RDB_table *tbp;
+    RDB_object *tplp;
+} RDB_ma_insert;
+
+typedef struct {
+    RDB_table *tbp;
+    RDB_expression *condp;
+    int updc;
+    RDB_attr_update *updv;
+} RDB_ma_update;
+
+typedef struct {
+    RDB_table *tbp;
+    RDB_expression *condp;
+} RDB_ma_delete;
+
+typedef struct {
+    RDB_object *dstp;
+    RDB_object *srcp;
+} RDB_ma_copy;
+
+int
+RDB_multi_assign(int insc, const RDB_ma_insert insv[],
+        int updc, const RDB_ma_update updv[],
+        int delc, const RDB_ma_delete delv[],
+        int copyc, const RDB_ma_copy copyv[],
+        RDB_transaction *);
 
 /* Extract the "-e <environment> -d <database>" arguments from the command line */
 int

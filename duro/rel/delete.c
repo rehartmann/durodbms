@@ -50,8 +50,8 @@ cleanup:
     return ret;
 }
 
-static int
-delete_stored(RDB_table *tbp, RDB_expression *condp, RDB_transaction *txp)
+int
+_RDB_delete_real(RDB_table *tbp, RDB_expression *condp, RDB_transaction *txp)
 {
     int ret;
     int i;
@@ -322,7 +322,7 @@ delete(RDB_table *tbp, RDB_expression *condp, RDB_transaction *txp)
 
     switch (tbp->kind) {
         case RDB_TB_REAL:
-            return delete_stored(tbp, condp, txp);
+            return _RDB_delete_real(tbp, condp, txp);
         case RDB_TB_MINUS:
             return delete(tbp->var.minus.tb1p, condp, txp);
         case RDB_TB_UNION:
@@ -452,13 +452,19 @@ RDB_delete(RDB_table *tbp, RDB_expression *condp, RDB_transaction *txp)
 {
     int ret;
     RDB_table *ntbp;
-    RDB_dbroot *dbrootp;
     RDB_constraint *constrp;
     RDB_transaction tx;
     RDB_constraint *checklistp = NULL;
     RDB_bool need_subtx = RDB_FALSE;
+    RDB_ma_delete del;
 
-    if (!RDB_tx_is_running(txp))
+    if (tbp->kind == RDB_TB_REAL) {
+        del.tbp = tbp;
+        del.condp = condp;
+        return RDB_multi_assign(0, NULL, 0, NULL, 1, &del, 0, NULL, txp);
+    }
+
+    if (txp != NULL && !RDB_tx_is_running(txp))
         return RDB_INVALID_TRANSACTION;
 
     /*
@@ -481,53 +487,55 @@ RDB_delete(RDB_table *tbp, RDB_expression *condp, RDB_transaction *txp)
         return ret;
     }
 
-    dbrootp = RDB_tx_db(txp)->dbrootp;
+    if (txp != NULL) {
+        RDB_dbroot *dbrootp = RDB_tx_db(txp)->dbrootp;
 
-    if (!dbrootp->constraints_read) {
-        ret = _RDB_read_constraints(txp);
-        if (ret != RDB_OK) {
-            return ret;
+        if (!dbrootp->constraints_read) {
+            ret = _RDB_read_constraints(txp);
+            if (ret != RDB_OK) {
+                return ret;
+            }
+            dbrootp->constraints_read = RDB_TRUE;
         }
-        dbrootp->constraints_read = RDB_TRUE;
-    }
 
-    /*
-     * Identify the constraints which must be checked
-     * and insert them into a list
-     */
-    constrp = dbrootp->first_constrp;
-    while (constrp != NULL) {
-        RDB_bool check;
-        RDB_constraint *chconstrp;
+        /*
+         * Identify the constraints which must be checked
+         * and insert them into a list
+         */
+        constrp = dbrootp->first_constrp;
+        while (constrp != NULL) {
+            RDB_bool check;
+            RDB_constraint *chconstrp;
 
-        if (constrp->empty_tbp != NULL) {
-            ret = check_delete_empty(constrp->empty_tbp, tbp, txp);
-            if (ret != RDB_OK && ret != RDB_MAYBE) {
-                goto cleanup;
+            if (constrp->empty_tbp != NULL) {
+                ret = check_delete_empty(constrp->empty_tbp, tbp, txp);
+                if (ret != RDB_OK && ret != RDB_MAYBE) {
+                    goto cleanup;
+                }
+                check = (RDB_bool) (ret == RDB_MAYBE);
+            } else {
+                /* Check if constrp->exp and tbp depend on the same table(s) */
+                check = _RDB_expr_table_depend(constrp->exp, tbp);
             }
-            check = (RDB_bool) (ret == RDB_MAYBE);
-        } else {
-            /* Check if constrp->exp and tbp depend on the same table(s) */
-            check = _RDB_expr_table_depend(constrp->exp, tbp);
+            if (check) {
+                need_subtx = RDB_TRUE;
+                chconstrp = malloc(sizeof(RDB_constraint));
+                if (chconstrp == NULL) {
+                    ret = RDB_NO_MEMORY;
+                    goto cleanup;
+                }
+                chconstrp->name = RDB_dup_str(constrp->name);
+                if (chconstrp->name == NULL) {
+                    ret = RDB_NO_MEMORY;
+                    goto cleanup;
+                }
+                chconstrp->exp = constrp->exp;
+                chconstrp->empty_tbp = constrp->empty_tbp;
+                chconstrp->nextp = checklistp;
+                checklistp = chconstrp;
+            }                
+            constrp = constrp->nextp;
         }
-        if (check) {
-            need_subtx = RDB_TRUE;
-            chconstrp = malloc(sizeof(RDB_constraint));
-            if (chconstrp == NULL) {
-                ret = RDB_NO_MEMORY;
-                goto cleanup;
-            }
-            chconstrp->name = RDB_dup_str(constrp->name);
-            if (chconstrp->name == NULL) {
-                ret = RDB_NO_MEMORY;
-                goto cleanup;
-            }
-            chconstrp->exp = constrp->exp;
-            chconstrp->empty_tbp = constrp->empty_tbp;
-            chconstrp->nextp = checklistp;
-            checklistp = chconstrp;
-        }                
-        constrp = constrp->nextp;
     }
 
     if (need_subtx) {

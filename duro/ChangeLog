@@ -4,6 +4,11 @@ Summary of Changes for Duro
 
 Changes for Duro 0.10
 
+- Durotcl uses Tutorial D syntax to represent values of user-defined
+  types. The comparison operator is passed the actual representation.
+
+- Read-only operators can access the current transaction if called from Tcl.
+
 - Now supporting general relation-valued expressions.
 
 - Now supporting a user-defined comparison operator for user-defined types.

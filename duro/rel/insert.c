@@ -132,7 +132,8 @@ insert_union(RDB_table *tbp, const RDB_object *tplp, RDB_transaction *txp)
             || RDB_table_contains(tbp->var._union.tb2p, tplp, txp) == RDB_OK)
         return RDB_ELEMENT_EXISTS;
      
-    /* Try to insert the tuple into both tables. The insertion into the union
+    /*
+     * Try to insert the tuple into both tables. The insertion into the union
      * fails if (1) one of the inserts fails for a reason other than
      * a predicate violation or (2) if both inserts fail because of
      * a predicate violation.
@@ -674,6 +675,13 @@ RDB_insert(RDB_table *tbp, const RDB_object *tplp, RDB_transaction *txp)
     RDB_transaction tx;
     RDB_constraint *checklistp = NULL;
     RDB_bool need_subtx = RDB_FALSE;
+    RDB_ma_insert ins;
+
+    if (tbp->kind == RDB_TB_REAL) {
+        ins.tbp = tbp;
+        ins.tplp = (RDB_object *) tplp;
+        return RDB_multi_assign(1, &ins, 0, NULL, 0, NULL, 0, NULL, txp);
+    }
 
     if (txp != NULL && !RDB_tx_is_running(txp))
         return RDB_INVALID_TRANSACTION;

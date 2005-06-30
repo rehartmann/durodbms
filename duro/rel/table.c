@@ -33,9 +33,9 @@ _RDB_new_table(void)
  */
 static int
 new_rtable(const char *name, RDB_bool persistent,
-                RDB_type *reltyp,
-                int keyc, const RDB_string_vec keyv[], RDB_bool usr,
-                RDB_table **tbpp)
+           RDB_type *reltyp,
+           int keyc, const RDB_string_vec keyv[], RDB_bool usr,
+           RDB_table **tbpp)
 {
     int ret;
     int i;

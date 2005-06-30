@@ -217,15 +217,17 @@ _RDB_table_refers(RDB_table *tbp, RDB_table *rtbp);
  * Extend the tuple type pointed to by typ by the attributes given by
  * attrv and return the new tuple type.
  */
-RDB_type *
-RDB_extend_tuple_type(const RDB_type *typ, int attrc, RDB_attr attrv[]);
+int
+RDB_extend_tuple_type(const RDB_type *typ, int attrc, RDB_attr attrv[],
+        RDB_type **);
 
 /*
  * Extend the relation type pointed to by typ by the attributes given by
  * attrv and return the new relation type.
  */
-RDB_type *
-RDB_extend_relation_type(const RDB_type *typ, int attrc, RDB_attr attrv[]);
+int
+RDB_extend_relation_type(const RDB_type *typ, int attrc, RDB_attr attrv[],
+        RDB_type **);
 
 /*
  * Join the tuple types pointed to by typ1 and typ2 and store a pointer to
@@ -391,6 +393,10 @@ int
 _RDB_select(RDB_table *, RDB_expression *, RDB_table **);
 
 int
+_RDB_extend(RDB_table *, int attrc, const RDB_virtual_attr attrv[],
+        RDB_transaction *, RDB_table **);
+
+int
 _RDB_sdivide_preserves(RDB_table *, const RDB_object *tplp, RDB_qresult *qr3p,
         RDB_transaction *);
 
@@ -483,6 +489,13 @@ _RDB_check_constraints(const RDB_constraint *, RDB_transaction *);
 
 int
 _RDB_insert_real(RDB_table *tbp, const RDB_object *tplp, RDB_transaction *);
+
+int
+_RDB_update_real(RDB_table *tbp, RDB_expression *condp, int updc,
+        const RDB_attr_update updv[], RDB_transaction *);
+
+int
+_RDB_delete_real(RDB_table *tbp, RDB_expression *condp, RDB_transaction *);
 
 void
 _RDB_handle_syserr(RDB_transaction *txp, int err);

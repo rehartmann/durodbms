@@ -79,8 +79,7 @@ update_stored_complex(RDB_table *tbp, RDB_expression *condp,
      * Iterate over the records and insert the updated records into
      * a temporary table. For the temporary table, only one key is needed.
      */
-    ret = _RDB_create_table(NULL, RDB_FALSE,
-            tpltyp->var.tuple.attrc, tpltyp->var.tuple.attrv,
+    ret = RDB_create_table_from_type(NULL, RDB_FALSE, tbp->typ,
             1, tbp->keyv, &tx, &tmptbp);
     if (ret != RDB_OK)
         goto cleanup;
@@ -652,8 +651,8 @@ upd_complex(RDB_table *tbp, int updc, const RDB_attr_update updv[])
     return RDB_FALSE;
 }
 
-static int
-update_stored(RDB_table *tbp, RDB_expression *condp, int updc,
+int
+_RDB_update_real(RDB_table *tbp, RDB_expression *condp, int updc,
         const RDB_attr_update updv[], RDB_transaction *txp)
 {
     if (upd_complex(tbp, updc, updv)
@@ -705,7 +704,7 @@ update(RDB_table *tbp, RDB_expression *condp, int updc,
 {
     switch (tbp->kind) {
         case RDB_TB_REAL:
-            return update_stored(tbp, condp, updc, updv, txp);
+            return _RDB_update_real(tbp, condp, updc, updv, txp);
         case RDB_TB_UNION:
             return RDB_NOT_SUPPORTED;
         case RDB_TB_MINUS:
@@ -746,6 +745,14 @@ update(RDB_table *tbp, RDB_expression *condp, int updc,
     abort();
 }
 
+static int
+check_update_empty(RDB_table *chtbp, RDB_table *tbp, int updc,
+        const RDB_attr_update updv[], RDB_transaction *txp)
+{
+    /* !! */
+    return RDB_MAYBE;
+}
+
 int
 RDB_update(RDB_table *tbp, RDB_expression *condp, int updc,
                 const RDB_attr_update updv[], RDB_transaction *txp)
@@ -758,6 +765,15 @@ RDB_update(RDB_table *tbp, RDB_expression *condp, int updc,
     RDB_transaction tx;
     RDB_constraint *checklistp = NULL;
     RDB_bool need_subtx = RDB_FALSE;
+    RDB_ma_update upd;
+
+    if (tbp->kind == RDB_TB_REAL) {
+        upd.tbp = tbp;
+        upd.condp = condp;
+        upd.updc = updc;
+        upd.updv = (RDB_attr_update *) updv;
+        return RDB_multi_assign(0, NULL, 1, &upd, 0, NULL, 0, NULL, txp);
+    }
 
     if (!RDB_tx_is_running(txp))
         return RDB_INVALID_TRANSACTION;
@@ -811,12 +827,16 @@ RDB_update(RDB_table *tbp, RDB_expression *condp, int updc,
         RDB_bool check;
         RDB_constraint *chconstrp;
 
-/* !! ...
         if (constrp->empty_tbp != NULL) {
+             ret = check_update_empty(constrp->empty_tbp, tbp, updc, updv,
+                     txp);
+             if (ret != RDB_OK && ret != RDB_MAYBE)
+                 goto cleanup;
+             check = (RDB_bool) (ret == RDB_MAYBE);
+        } else {
+            /* Check if constrp->exp and tbp depend on the same table(s) */
+            check = _RDB_expr_table_depend(constrp->exp, tbp);
         }
-*/
-        /* Check if constrp->exp and tbp depend on the same table(s) */
-        check = _RDB_expr_table_depend(constrp->exp, tbp);
 
         if (check) {
             need_subtx = RDB_TRUE;

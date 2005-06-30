@@ -80,10 +80,10 @@ expr_op_type(const RDB_expression *exp, const RDB_type *tuptyp,
         }
         switch (tbtyp->kind) {
             case RDB_TP_RELATION:
-                *typp = RDB_extend_relation_type(tbtyp, attrc, attrv);
+                ret = RDB_extend_relation_type(tbtyp, attrc, attrv, typp);
                 break;
             case RDB_TP_TUPLE:
-                *typp = RDB_extend_tuple_type(tbtyp, attrc, attrv);
+                ret = RDB_extend_tuple_type(tbtyp, attrc, attrv, typp);
                 break;
             default:
                 free(attrv);
@@ -91,7 +91,7 @@ expr_op_type(const RDB_expression *exp, const RDB_type *tuptyp,
         }
         free(attrv);
         /* !! memory leak */
-        return RDB_OK;
+        return ret;
     }
     if (exp->var.op.argc >= 1 && exp->var.op.argc % 2 == 1
             && strcmp(exp->var.op.name, "RENAME") == 0) {
@@ -1135,17 +1135,22 @@ RDB_evaluate_bool(RDB_expression *exp, const RDB_object *tplp, RDB_transaction *
 RDB_expression *
 RDB_dup_expr(const RDB_expression *exp)
 {
+    RDB_expression *newexp;
+
     switch (exp->kind) {
         case RDB_EX_TUPLE_ATTR:
-            return RDB_tuple_attr(RDB_dup_expr(exp->var.op.argv[0]),
-                    exp->var.op.name);
+            newexp = RDB_dup_expr(exp->var.op.argv[0]);
+            if (newexp == NULL)
+                return NULL;
+            return RDB_tuple_attr(newexp, exp->var.op.name);
         case RDB_EX_GET_COMP:
-            return RDB_expr_comp(RDB_dup_expr(exp->var.op.argv[0]),
-                    exp->var.op.name);
+            newexp = RDB_dup_expr(exp->var.op.argv[0]);
+            if (newexp == NULL)
+                return NULL;
+            return RDB_expr_comp(newexp, exp->var.op.name);
         case RDB_EX_RO_OP:
         {
             int i;
-            RDB_expression *newexp;
             RDB_expression **argexpv = (RDB_expression **)
                     malloc(sizeof (RDB_expression *) * exp->var.op.argc);
 
@@ -1162,7 +1167,10 @@ RDB_dup_expr(const RDB_expression *exp)
             return newexp;
         }
         case RDB_EX_AGGREGATE:
-            return RDB_expr_aggregate(RDB_dup_expr(exp->var.op.argv[0]), exp->var.op.op,
+            newexp = RDB_dup_expr(exp->var.op.argv[0]);
+            if (newexp == NULL)
+                return NULL;
+            return RDB_expr_aggregate(newexp, exp->var.op.op,
                     exp->var.op.name);
         case RDB_EX_OBJ:
             return RDB_obj_to_expr(&exp->var.obj);

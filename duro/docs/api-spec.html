@@ -1331,6 +1331,7 @@ automatically dropped when the table is dropped.
 <dd><var>txp</var> does not point to a running transaction.
 <dt>RDB_INVALID_ARGUMENT
 <dd>An invalid attribute name has been specified.
+<dd>One of the additional attributes already exists in the original table.
 </dl>
 
 <p>The call may also fail for a <a href="#syserr">system error</a>,
@@ -2115,9 +2116,11 @@ by the attributes specified by <var>attrc</var> and <var>attrv</var>.
 <h3>Errors</h3>
 
 <dl>
-<dt>RDB_INVALID_ARGUMENT
+<dt>RDB_ATTRIBUTE_NOT_FOUND
 <dd>One of the expressions specified in <var>updv</var> refers to an attribute
 which does not exist in the tuple.
+<dt>RDB_INVALID_ARGUMENT
+<dd>One of the additional attributes already exists in the original table.
 <dt>RDB_OPERATOR_NOT_FOUND
 <dd>One of the expressions specified in <var>updv</var> refers to an
 operator which does not exist.

@@ -579,7 +579,7 @@ static int
 summarize_qresult(RDB_qresult *qresp, RDB_transaction *txp)
 {
     int ret;
-    RDB_type *tuptyp = qresp->tbp->typ->var.basetyp;
+    RDB_type *tpltyp = qresp->tbp->typ->var.basetyp;
 
     /* Need keys */
     if (qresp->tbp->keyv == NULL) {
@@ -589,9 +589,8 @@ summarize_qresult(RDB_qresult *qresp, RDB_transaction *txp)
     }
 
     /* create materialized table */
-    ret = _RDB_create_table(NULL, RDB_FALSE,
-                        tuptyp->var.tuple.attrc,
-                        tuptyp->var.tuple.attrv,
+    ret = _RDB_create_table(NULL, RDB_FALSE, tpltyp->var.tuple.attrc,
+                        tpltyp->var.tuple.attrv,
                         qresp->tbp->keyc, qresp->tbp->keyv,
                         NULL, &qresp->matp);
     if (ret != RDB_OK)

@@ -753,6 +753,17 @@ RDB_create_table(const char *name, RDB_bool persistent,
 }
 
 int
+RDB_create_table_from_type(const char *name, RDB_bool persistent,
+                RDB_type *reltyp,
+                int keyc, const RDB_string_vec keyv[],
+                RDB_transaction *txp, RDB_table **tbpp)
+{
+    return RDB_create_table(name, persistent,
+            reltyp->var.basetyp->var.tuple.attrc,
+            reltyp->var.basetyp->var.tuple.attrv, keyc, keyv, txp, tbpp);
+}
+
+int
 RDB_get_table(const char *name, RDB_transaction *txp, RDB_table **tbpp)
 {
     int ret;
