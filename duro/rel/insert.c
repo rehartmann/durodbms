@@ -677,7 +677,7 @@ RDB_insert(RDB_table *tbp, const RDB_object *tplp, RDB_transaction *txp)
     RDB_bool need_subtx = RDB_FALSE;
     RDB_ma_insert ins;
 
-    if (tbp->kind == RDB_TB_REAL) {
+    if (tbp->kind == RDB_TB_REAL || tbp->kind == RDB_TB_SELECT) {
         ins.tbp = tbp;
         ins.tplp = (RDB_object *) tplp;
         return RDB_multi_assign(1, &ins, 0, NULL, 0, NULL, 0, NULL, txp);

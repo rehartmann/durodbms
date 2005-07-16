@@ -226,9 +226,18 @@ if {![tequal $tpl $stpl]} {
     error "Tuple should be $stpl, but is $tpl"
 }
 
-duro::delete TS {S1 = "Blubb"} $tx
+if {![catch {duro::insert TS {K 4 S1 B} $tx}]} {
+    error "Insertion into TS should fail, but succeeded"
+}
+if {[lindex $errorCode 1] != "RDB_PREDICATE_VIOLATION"} {
+    error "wrong errorCode: $errorCode"
+}
+
+duro::insert TS {K 4 S1 Blb} $tx
+
+duro::delete TS {S1 >= "Blu"} $tx
 set tpl [duro::expr {TUPLE FROM TS} $tx]
-if {![tequal $tpl {K 3 S1 Blu}]} {
+if {![tequal $tpl {K 4 S1 Blb}]} {
     error "Unexpected tuple value: $tpl"
 }
 

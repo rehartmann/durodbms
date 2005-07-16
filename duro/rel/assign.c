@@ -642,6 +642,75 @@ replace_targets(RDB_expression *exp, int insc, const RDB_ma_insert insv[],
     abort();
 }
 
+typedef struct insert_node {
+    RDB_ma_insert ins;
+    struct insert_node *nextp;
+} insert_node;
+
+static void
+concat_inslists (insert_node **dstpp, insert_node *srcp)
+{
+    if (*dstpp == NULL) {
+        *dstpp = srcp;
+    } else {
+        insert_node *lastp = *dstpp;
+
+        /* Find last node */
+        while (lastp->nextp != NULL)
+            lastp = lastp->nextp;
+
+        /* Concat lists */
+        lastp->nextp = srcp;
+    }
+}
+
+static int
+resolve_insert(const RDB_ma_insert *insp, insert_node **inslpp,
+               RDB_transaction *txp)
+{
+    int ret;
+    RDB_bool b;
+    RDB_ma_insert ins;
+
+    switch (insp->tbp->kind) {
+        case RDB_TB_REAL:
+            *inslpp = malloc(sizeof (insert_node));
+            if (*inslpp == NULL)
+                return RDB_NO_MEMORY;
+            (*inslpp)->ins.tplp = malloc(sizeof(RDB_object));
+            if ((*inslpp)->ins.tplp == NULL) {
+                free(*inslpp);
+                return RDB_NO_MEMORY;
+            }
+            RDB_init_obj((*inslpp)->ins.tplp);
+            ret = _RDB_copy_tuple((*inslpp)->ins.tplp, insp->tplp);
+            if (ret != RDB_OK) {
+                RDB_destroy_obj((*inslpp)->ins.tplp);
+                free((*inslpp)->ins.tplp);
+                free(*inslpp);
+                return ret;
+            }
+            (*inslpp)->ins.tbp = insp->tbp;
+            (*inslpp)->nextp = NULL;
+            break;
+        case RDB_TB_SELECT:
+            ret = RDB_evaluate_bool(insp->tbp->var.select.exp, insp->tplp, txp, &b);
+            if (ret != RDB_OK)
+                break;
+            if (!b) {
+                ret = RDB_PREDICATE_VIOLATION;
+                break;
+            }
+            ins.tbp = insp->tbp->var.select.tbp;
+            ins.tplp = insp->tplp;
+            ret = resolve_insert(&ins, inslpp, txp);
+            break;
+        default:
+            ret = RDB_NOT_SUPPORTED;
+    }
+    return ret;
+}
+
 int
 RDB_multi_assign(int insc, const RDB_ma_insert insv[],
         int updc, const RDB_ma_update updv[],
@@ -652,6 +721,11 @@ RDB_multi_assign(int insc, const RDB_ma_insert insv[],
     int i, j;
     int ret;
     RDB_dbroot *dbrootp;
+
+    /* List of inserts generated from inserts into virtual tables */
+    insert_node *geninsnp = NULL;
+
+    insert_node *insnp;
 
     if (copyc > 0)
         return RDB_NOT_SUPPORTED;
@@ -665,8 +739,14 @@ RDB_multi_assign(int insc, const RDB_ma_insert insv[],
      * Resolve virtual table assignment
      */
     for (i = 0; i < insc; i++) {
-        if (insv[i].tbp->kind != RDB_TB_REAL)
-            return RDB_NOT_SUPPORTED;
+        if (insv[i].tbp->kind != RDB_TB_REAL) {
+            ret = resolve_insert(&insv[i], &insnp, txp);
+            if (ret != RDB_OK)
+                goto cleanup;
+
+            /* Add inserts to list */
+            concat_inslists(&geninsnp, insnp);
+        }
     }
     for (i = 0; i < updc; i++) {
         if (updv[i].tbp->kind != RDB_TB_REAL)
@@ -728,7 +808,7 @@ RDB_multi_assign(int insc, const RDB_ma_insert insv[],
         if (!dbrootp->constraints_read) {
             ret = _RDB_read_constraints(txp);
             if (ret != RDB_OK) {
-                return ret;
+                goto cleanup;
             }
             dbrootp->constraints_read = RDB_TRUE;
         }
@@ -771,24 +851,44 @@ RDB_multi_assign(int insc, const RDB_ma_insert insv[],
      * Execute assignments
      */
     for (i = 0; i < insc; i++) {
-        ret = _RDB_insert_real(insv[i].tbp, insv[i].tplp, txp);
-        if (ret != RDB_OK)
-            return ret;
+        if (insv[i].tbp->kind == RDB_TB_REAL) {
+            ret = _RDB_insert_real(insv[i].tbp, insv[i].tplp, txp);
+            if (ret != RDB_OK)
+                goto cleanup;
+        }
     }
     for (i = 0; i < updc; i++) {
         ret = _RDB_update_real(updv[i].tbp, updv[i].condp,
                  updv[i].updc, updv[i].updv, txp);
         if (ret != RDB_OK)
-            return ret;
+            goto cleanup;
     }
     for (i = 0; i < delc; i++) {
         ret = _RDB_delete_real(delv[i].tbp, delv[i].condp, txp);
         if (ret != RDB_OK)
-            return ret;
+            goto cleanup;
+    }
+
+    insnp = geninsnp;
+    while (insnp != NULL) {
+        ret = _RDB_insert_real(insnp->ins.tbp, insnp->ins.tplp, txp);
+        if (ret != RDB_OK)
+            goto cleanup;
+        insnp = insnp->nextp;
     }
 
     ret = RDB_OK;
 
 cleanup:
+    insnp = geninsnp;
+    while (insnp != NULL) {
+        insert_node *hinsnp = insnp->nextp;
+
+        RDB_destroy_obj(insnp->ins.tplp);
+        free(insnp->ins.tplp);
+        free(insnp);
+        insnp = hinsnp;
+    }    
+
     return ret;
 }
