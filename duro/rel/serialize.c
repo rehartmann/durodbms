@@ -1,9 +1,9 @@
 /*
- * Copyright (C) 2003, 2004 René Hartmann.
+ * $Id$
+ *
+ * Copyright (C) 2003-2005 René Hartmann.
  * See the file COPYING for redistribution information.
  */
-
-/* $Id$ */
 
 #include "serialize.h"
 #include "typeimpl.h"
@@ -1578,7 +1578,7 @@ deserialize_table(RDB_object *valp, int *posp, RDB_transaction *txp,
             ret = deserialize_table(valp, posp, txp, &tb2p);
             if (ret != RDB_OK)
                 return ret;
-            return RDB_union(tb1p, tb2p, tbpp);
+            return RDB_intersect(tb1p, tb2p, tbpp);
         case RDB_TB_JOIN:
             ret = deserialize_table(valp, posp, txp, &tb1p);
             if (ret != RDB_OK)

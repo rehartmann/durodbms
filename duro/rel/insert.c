@@ -677,7 +677,13 @@ RDB_insert(RDB_table *tbp, const RDB_object *tplp, RDB_transaction *txp)
     RDB_bool need_subtx = RDB_FALSE;
     RDB_ma_insert ins;
 
-    if (tbp->kind == RDB_TB_REAL || tbp->kind == RDB_TB_SELECT) {
+    if (tbp->kind == RDB_TB_REAL || tbp->kind == RDB_TB_SELECT
+            || tbp->kind == RDB_TB_PROJECT
+            || tbp->kind == RDB_TB_INTERSECT
+            || tbp->kind == RDB_TB_RENAME
+            || tbp->kind == RDB_TB_EXTEND
+            || tbp->kind == RDB_TB_UNWRAP
+            || tbp->kind == RDB_TB_WRAP) {
         ins.tbp = tbp;
         ins.tplp = (RDB_object *) tplp;
         return RDB_multi_assign(1, &ins, 0, NULL, 0, NULL, 0, NULL, txp);
