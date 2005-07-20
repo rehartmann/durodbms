@@ -752,25 +752,21 @@ resolve_insert(const RDB_ma_insert *insp, insert_node **inslpp,
             *inslpp = new_insert_node(insp->tbp, insp->tplp);
             if (*inslpp == NULL)
                 return RDB_NO_MEMORY;
-            ret = RDB_OK;
-            break;
+            return RDB_OK;
         case RDB_TB_SELECT:
             ret = RDB_evaluate_bool(insp->tbp->var.select.exp, insp->tplp, txp, &b);
             if (ret != RDB_OK)
-                break;
+                return ret;
             if (!b) {
-                ret = RDB_PREDICATE_VIOLATION;
-                break;
+                return RDB_PREDICATE_VIOLATION;
             }
             ins.tbp = insp->tbp->var.select.tbp;
             ins.tplp = insp->tplp;
-            ret = resolve_insert(&ins, inslpp, txp);
-            break;
+            return resolve_insert(&ins, inslpp, txp);
         case RDB_TB_PROJECT:
             ins.tbp = insp->tbp->var.project.tbp;
             ins.tplp = insp->tplp;
-            ret = resolve_insert(&ins, inslpp, txp);
-            break;
+            return resolve_insert(&ins, inslpp, txp);
         case RDB_TB_INTERSECT:
             ret = RDB_table_contains(insp->tbp->var.intersect.tb1p, insp->tplp,
                     txp);
@@ -815,8 +811,52 @@ resolve_insert(const RDB_ma_insert *insp, insert_node **inslpp,
                     concat_inslists(inslpp, hinsnp);
                 }
             }
-            ret = RDB_OK;
-            break;
+            return RDB_OK;
+        case RDB_TB_JOIN:
+            ret = RDB_table_contains(insp->tbp->var.join.tb1p, insp->tplp,
+                    txp);
+            if (ret != RDB_OK && ret != RDB_NOT_FOUND)
+                return ret;
+            ret2 = RDB_table_contains(insp->tbp->var.join.tb2p,
+                    insp->tplp, txp);
+            if (ret2 != RDB_OK && ret2 != RDB_NOT_FOUND)
+                return ret2;
+
+            /*
+             * If both 'subtables' contain the tuple, the insert fails
+             */
+            if (ret == RDB_OK && ret2 == RDB_OK)
+                return RDB_ELEMENT_EXISTS;
+
+            /*
+             * Insert the tuple into the table(s) which do not contain it
+             */
+            *inslpp = NULL;
+            if (ret == RDB_NOT_FOUND) {
+                ins.tbp = insp->tbp->var.join.tb1p;
+                ins.tplp = insp->tplp;
+                ret = resolve_insert(&ins, inslpp, txp);
+                if (ret != RDB_OK)
+                    return ret;
+            }
+            if (ret2 == RDB_NOT_FOUND) {
+                insert_node *hinsnp;
+
+                ins.tbp = insp->tbp->var.join.tb2p;
+                ins.tplp = insp->tplp;
+                ret = resolve_insert(&ins, &hinsnp, txp);
+                if (ret != RDB_OK) {
+                    if (*inslpp != NULL)
+                        del_inslist(*inslpp);
+                    return ret;
+                }
+                if (*inslpp == NULL) {
+                    *inslpp = hinsnp;
+                } else {
+                    concat_inslists(inslpp, hinsnp);
+                }
+            }
+            return RDB_OK;
         case RDB_TB_RENAME:
             RDB_init_obj(&tpl);
             ret = _RDB_invrename_tuple(insp->tplp,
@@ -830,15 +870,14 @@ resolve_insert(const RDB_ma_insert *insp, insert_node **inslpp,
             ins.tplp = &tpl;
             ret = resolve_insert(&ins, inslpp, txp);
             RDB_destroy_obj(&tpl);
-            break;
+            return ret;
         case RDB_TB_EXTEND:
             ret = check_extend_tuple(insp->tplp, insp->tbp, txp);
             if (ret != RDB_OK)
                 return ret;
             ins.tbp = insp->tbp->var.extend.tbp;
             ins.tplp = insp->tplp;
-            ret = resolve_insert(&ins, inslpp, txp);
-            break;
+            return resolve_insert(&ins, inslpp, txp);
         case RDB_TB_WRAP:
             RDB_init_obj(&tpl);
             ret = _RDB_invwrap_tuple(insp->tplp, insp->tbp->var.wrap.wrapc,
@@ -851,7 +890,7 @@ resolve_insert(const RDB_ma_insert *insp, insert_node **inslpp,
             ins.tplp = &tpl;
             ret = resolve_insert(&ins, inslpp, txp);
             RDB_destroy_obj(&tpl);
-            break;
+            return ret;
         case RDB_TB_UNWRAP:
             RDB_init_obj(&tpl);
             ret = _RDB_invunwrap_tuple(insp->tplp,
@@ -865,11 +904,16 @@ resolve_insert(const RDB_ma_insert *insp, insert_node **inslpp,
             ins.tplp = &tpl;
             ret = resolve_insert(&ins, inslpp, txp);
             RDB_destroy_obj(&tpl);
-            break;
-        default:
-            ret = RDB_NOT_SUPPORTED;
+            return ret;
+        case RDB_TB_UNION:
+        case RDB_TB_MINUS:
+        case RDB_TB_SUMMARIZE:
+        case RDB_TB_GROUP:
+        case RDB_TB_UNGROUP:
+        case RDB_TB_SDIVIDE:
+            return RDB_NOT_SUPPORTED;
     }
-    return ret;
+    abort();
 }
 
 int
@@ -893,6 +937,11 @@ RDB_multi_assign(int insc, const RDB_ma_insert insv[],
 
     /*
      * Check if conditions are of type BOOLEAN
+     */
+    /* ... */
+
+    /*
+     * Optimize
      */
     /* ... */
 

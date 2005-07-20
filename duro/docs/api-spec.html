@@ -33,6 +33,7 @@
 <li><a href="#max">RDB_max</a>
 <li><a href="#min">RDB_min</a>
 <li><a href="#minus">RDB_minus</a>
+<li><a href="#multi_assign">RDB_multi_assign</a>
 <li><a href="#project">RDB_project</a>
 <li><a href="#remove">RDB_remove</a>
 <li><a href="#rename">RDB_rename</a>
@@ -997,7 +998,7 @@ RDB_insert(RDB_table *tbp, const RDB_object *tplp, RDB_transaction *txp);
 into the table specified by <var>tbp</var>.
 
 <p>Currently, RDB_insert is not supported for virtual tables which are the result
-of a MINUS, SUMMARIZE, DIVIDEBY PER, GROUP, or UNGROUP.
+of a UNION, MINUS, SUMMARIZE, DIVIDEBY PER, GROUP, or UNGROUP.
  
 <h3>Return value</h3>
 
@@ -1527,6 +1528,47 @@ except those which the second table contains.
 </dl>
 
 <p>The call may also fail for a <a href="#syserr">system error</a>.
+
+<hr>
+
+<h2 id="multi_assign">RDB_multi_assign</h2>
+
+<pre>
+#include &lt;rel/rdb.h&gt;
+
+typedef struct {
+    RDB_table *tbp;
+    RDB_object *tplp;
+} RDB_ma_insert;
+
+typedef struct {
+    RDB_table *tbp;
+    RDB_expression *condp;
+    int updc;
+    RDB_attr_update *updv;
+} RDB_ma_update;
+
+typedef struct {
+    RDB_table *tbp;
+    RDB_expression *condp;
+} RDB_ma_delete;
+
+typedef struct {
+    RDB_object *dstp;
+    RDB_object *srcp;
+} RDB_ma_copy;
+
+int
+RDB_multi_assign(int insc, const RDB_ma_insert insv[],
+        int updc, const RDB_ma_update updv[],
+        int delc, const RDB_ma_delete delv[],
+        int copyc, const RDB_ma_copy copyv[],
+        RDB_transaction *txp);
+</pre>
+
+<h3>Description</h3>
+
+<p>...
 
 <hr>
 

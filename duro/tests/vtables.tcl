@@ -68,10 +68,10 @@ duro::insert T4 {A 2 B 3} $tx
 
 # Create virtual tables
 
-duro::table expr -global TU {T1 UNION T2} $tx
+# duro::table expr -global TU {T1 UNION T2} $tx
 duro::table expr -global TM {T1 MINUS T2} $tx
 duro::table expr -global TI {T1 INTERSECT T2} $tx
-duro::table expr -global VT {TU JOIN T3} $tx
+duro::table expr -global VT {T1 JOIN T3} $tx
 duro::table rename VT TJ $tx
 duro::table expr -global TR {T1 RENAME (K AS KN, S1 AS SN)} $tx
 duro::table expr -global TX {EXTEND T1 ADD (K*10 AS K0)} $tx
@@ -80,7 +80,7 @@ duro::table expr -global TP {(T1 WHERE K = 1) {K}} $tx
 duro::table expr -global TP2 {T1 {S1}} $tx
 duro::table expr -global TM2 {(T1 WHERE K = 1) MINUS (T2 WHERE K = 1)} $tx
 duro::table expr -global TI2 {(T1 WHERE K = 1) INTERSECT (T2 WHERE K = 1)} $tx
-duro::table expr -global TU2 {(T1 WHERE K = 1) UNION (T2 WHERE K = 1)} $tx
+# duro::table expr -global TU2 {(T1 WHERE K = 1) UNION (T2 WHERE K = 1)} $tx
 duro::table expr -global TJ2 {(T1 WHERE K = 2) JOIN (T3 WHERE K = 2)} $tx
 duro::table expr -global TS {T1 WHERE S1 > "Bla"} $tx
 duro::table expr -global TSM {SUMMARIZE T4 PER T4 { A }
@@ -158,8 +158,7 @@ if {![duro::table contains TJ $tpl $tx]} {
 }
 
 set da [duro::array create TJ {K asc S1 asc} $tx]
-checkarray $da {{K 0 S1 Bold S2 Z} {K 1 S1 Bla S2 A} {K 2 S1 Blipp S2 B}
-        {K 2 S1 Blubb S2 B}} $tx
+checkarray $da {{K 0 S1 Bold S2 Z} {K 1 S1 Bla S2 A} {K 2 S1 Blubb S2 B}} $tx
 duro::array drop $da
 
 set tpl {K 3 S1 Blu}
@@ -170,13 +169,13 @@ if {![duro::table contains TI $tpl $tx]} {
     error "Insert into TI was not successful."
 }
 
-set tpl {K 4 S1 Buchara}
+# set tpl {K 4 S1 Buchara}
 
-duro::insert TU $tpl $tx
+# duro::insert TU $tpl $tx
 
-if {![duro::table contains TU $tpl $tx]} {
-    error "Insert into TU was not successful."
-}
+# if {![duro::table contains TU $tpl $tx]} {
+#     error "Insert into TU was not successful."
+# }
 
 set tpl {KN 5 SN Ballermann}
 
@@ -188,14 +187,14 @@ if {![duro::table contains TR $tpl $tx]} {
 
 set da [duro::array create TR {KN asc} $tx]
 checkarray $da {{KN 0 SN Bold} {KN 1 SN Bla} {KN 2 SN Blubb} {KN 3 SN Blu}
-        {KN 4 SN Buchara} {KN 5 SN Ballermann}} $tx
+        {KN 5 SN Ballermann}} $tx
 duro::array drop $da
 
 duro::delete TR {KN = 1} $tx
 
 set da [duro::array create TR {KN asc} $tx]
 checkarray $da {{KN 0 SN Bold} {KN 2 SN Blubb} {KN 3 SN Blu}
-        {KN 4 SN Buchara} {KN 5 SN Ballermann}} $tx
+        {KN 5 SN Ballermann}} $tx
 duro::array drop $da
 
 duro::delete TR {KN >= 4} $tx
@@ -241,7 +240,7 @@ if {![tequal $tpl {K 4 S1 Blb}]} {
     error "Unexpected tuple value: $tpl"
 }
 
-duro::table drop TU $tx
+# duro::table drop TU $tx
 
 duro::table drop TX $tx
 
@@ -252,7 +251,7 @@ if {![catch {duro::table drop TX $tx}]} {
 
 # Recreate TU
 
-duro::table expr -global TU {T1 UNION T2} $tx
+# duro::table expr -global TU {T1 UNION T2} $tx
 
 #
 # Check if persistent virtual tables can depend on named transient tables
