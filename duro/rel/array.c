@@ -14,18 +14,19 @@ RDB_table_to_array(RDB_object *arrp, RDB_table *tbp,
                    RDB_transaction *txp)
 {
     int ret;
+    RDB_table *ntbp;
     _RDB_tbindex *indexp = NULL;
 
     ret = RDB_destroy_obj(arrp);
     if (ret != RDB_OK)
         goto error;
 
-    arrp->kind = RDB_OB_ARRAY;
-
-    ret = _RDB_optimize(tbp, seqitc, seqitv, txp, &arrp->var.arr.tbp);
+    ret = _RDB_optimize(tbp, seqitc, seqitv, txp, &ntbp);
     if (ret != RDB_OK)
         goto error;
 
+    arrp->kind = RDB_OB_ARRAY;
+    arrp->var.arr.tbp = ntbp;
     arrp->var.arr.txp = txp;
     arrp->var.arr.qrp = NULL;
     arrp->var.arr.length = -1;

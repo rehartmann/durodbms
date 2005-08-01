@@ -658,6 +658,8 @@ RDB_drop_expr(RDB_expression *exp)
         }
         case RDB_EX_AGGREGATE:
             free(exp->var.op.name);
+            RDB_drop_expr(exp->var.op.argv[0]);
+            free(exp->var.op.argv);
             break;
         case RDB_EX_OBJ:
             RDB_destroy_obj(&exp->var.obj);

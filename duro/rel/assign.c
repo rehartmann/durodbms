@@ -9,6 +9,7 @@
 #include "internal.h"
 #include <gen/strfns.h>
 #include <string.h>
+#include <assert.h>
 
 static RDB_bool
 exp_refers_target(const RDB_expression *exp,
@@ -20,31 +21,52 @@ exp_refers_target(const RDB_expression *exp,
     int i;
 
     for (i = 0; i < insc; i++) {
-        if (_RDB_expr_refers(exp, insv[i].tbp))
+        if (_RDB_expr_table_depend(exp, insv[i].tbp))
             return RDB_TRUE;
     }
+
     for (i = 0; i < updc; i++) {
-        if (_RDB_expr_refers(exp, updv[i].tbp))
+        if (_RDB_expr_table_depend(exp, updv[i].tbp))
             return RDB_TRUE;
     }
+
     for (i = 0; i < delc; i++) {
-        if (_RDB_expr_refers(exp, delv[i].tbp))
+        if (_RDB_expr_table_depend(exp, delv[i].tbp))
             return RDB_TRUE;
     }
+
     /* !! copyv */
+
     return RDB_FALSE;
 }
 
+typedef struct insert_node {
+    RDB_ma_insert ins;
+    struct insert_node *nextp;
+} insert_node;
+
+typedef struct update_node {
+    RDB_ma_update upd;
+    struct update_node *nextp;
+} update_node;
+
+typedef struct delete_node {
+    RDB_ma_delete del;
+    struct delete_node *nextp;
+} delete_node;
+
 static RDB_table *
-replace_targets_tb(RDB_table *tbp, int insc, const RDB_ma_insert insv[],
-        int updc, const RDB_ma_update updv[],
-        int delc, const RDB_ma_delete delv[],
+replace_targets_tb(RDB_table *tbp,
+        int insc, const RDB_ma_insert insv[], insert_node *geninsnp,
+        int updc, const RDB_ma_update updv[], update_node *genupdnp,
+        int delc, const RDB_ma_delete delv[], delete_node *gendelnp,
         int copyc, const RDB_ma_copy copyv[], RDB_transaction *);
 
 static RDB_table *
-replace_targets_extend(RDB_table *tbp, int insc, const RDB_ma_insert insv[],
-        int updc, const RDB_ma_update updv[],
-        int delc, const RDB_ma_delete delv[],
+replace_targets_extend(RDB_table *tbp,
+        int insc, const RDB_ma_insert insv[], insert_node *geninsnp,
+        int updc, const RDB_ma_update updv[], update_node *genupdnp,
+        int delc, const RDB_ma_delete delv[], delete_node *gendelnp,
         int copyc, const RDB_ma_copy copyv[], RDB_transaction *txp)
 {
     int i;
@@ -57,7 +79,8 @@ replace_targets_extend(RDB_table *tbp, int insc, const RDB_ma_insert insv[],
     newtbp->is_persistent = RDB_FALSE;
     newtbp->kind = RDB_TB_EXTEND;
     newtbp->var.extend.tbp = replace_targets_tb(tbp->var.extend.tbp,
-            insc, insv, updc, updv, delc, delv, copyc, copyv, txp);
+            insc, insv, geninsnp, updc, updv, genupdnp, delc, delv, gendelnp,
+            copyc, copyv, txp);
     if (newtbp->var.extend.tbp == NULL)
         goto error;
     newtbp->var.extend.attrc = attrc;
@@ -104,9 +127,10 @@ error:
 }
 
 static RDB_table *
-replace_targets_summarize(RDB_table *tbp, int insc, const RDB_ma_insert insv[],
-        int updc, const RDB_ma_update updv[],
-        int delc, const RDB_ma_delete delv[],
+replace_targets_summarize(RDB_table *tbp,
+        int insc, const RDB_ma_insert insv[], insert_node *geninsnp,
+        int updc, const RDB_ma_update updv[], update_node *genupdnp,
+        int delc, const RDB_ma_delete delv[], delete_node *gendelnp,
         int copyc, const RDB_ma_copy copyv[], RDB_transaction *txp)
 {
     RDB_table *newtbp;
@@ -121,13 +145,15 @@ replace_targets_summarize(RDB_table *tbp, int insc, const RDB_ma_insert insv[],
     newtbp->is_persistent = RDB_FALSE;
     newtbp->kind = RDB_TB_SUMMARIZE;
     newtbp->var.summarize.tb1p = replace_targets_tb(tbp->var.summarize.tb1p,
-            insc, insv, updc, updv, delc, delv, copyc, copyv, txp);
+            insc, insv, geninsnp, updc, updv, genupdnp, delc, delv, gendelnp,
+            copyc, copyv, txp);
     if (newtbp->var.summarize.tb1p == NULL) {
         free(newtbp);
         return NULL;
     }
     newtbp->var.summarize.tb2p = replace_targets_tb(tbp->var.summarize.tb2p,
-            insc, insv, updc, updv, delc, delv, copyc, copyv, txp);
+            insc, insv, geninsnp, updc, updv, genupdnp,
+            delc, delv, gendelnp, copyc, copyv, txp);
     if (newtbp->var.summarize.tb2p == NULL) {
         free(newtbp);
         return NULL;
@@ -202,10 +228,20 @@ replace_updattrs(RDB_table *tbp, int updc, RDB_attr_update updv[],
             goto cleanup;
         vattrv[i].name[0] = '$';
         strcpy(vattrv[i].name + 1, updv[i].name);
-        vattrv[i].exp = updv[i].exp;
+        vattrv[i].exp = RDB_dup_expr(updv[i].exp);
+        if (vattrv[i].exp == NULL) {
+            int j;
+
+            for (j = 0; j < i; j++) {
+                RDB_drop_expr(updv[i].exp);
+            }
+        }
     }
     ret = _RDB_extend(tbp, updc, vattrv, txp, &tb1p);
     if (ret != RDB_OK) {
+        for (i = 0; i < updc; i++) {
+            RDB_drop_expr(vattrv[i].exp);
+        }
         goto cleanup;
     }
 
@@ -255,83 +291,169 @@ cleanup:
 }
 
 static RDB_table *
-replace_targets_real(RDB_table *tbp, int insc, const RDB_ma_insert insv[],
-        int updc, const RDB_ma_update updv[],
-        int delc, const RDB_ma_delete delv[],
+replace_targets_real_ins(RDB_table *tbp, const RDB_ma_insert *insp,
+        RDB_transaction *txp)
+{
+    int ret;
+
+    if (insp->tbp == tbp) {
+        RDB_table *tb1p, *tb2p;
+
+        ret = RDB_create_table_from_type(NULL, RDB_FALSE, tbp->typ,
+                0, NULL, NULL, &tb1p);
+        if (ret != RDB_OK)
+            return NULL;
+        ret = RDB_insert(tb1p, insp->tplp, NULL);
+        if (ret != RDB_OK)
+            return NULL;
+        ret = RDB_union(tbp, tb1p, &tb2p);
+        if (ret != RDB_OK) {
+            RDB_drop_table(tb1p, NULL);
+            return NULL;
+        }
+        return tb2p;
+    }
+    return tbp;
+}
+
+static RDB_table *
+replace_targets_real_upd(RDB_table *tbp, const RDB_ma_update *updp,
+        RDB_transaction *txp)
+{
+    int ret;
+    RDB_expression *cond2p = NULL;
+    RDB_table *utbp = updp->tbp;
+
+    if (utbp == tbp) {
+        if (updp->condp == NULL && cond2p == NULL) {
+            return replace_updattrs(tbp, updp->updc, updp->updv, txp);
+        } else {
+            RDB_expression *ucondp, *nucondp, *tcondp;
+            RDB_table *utbp, *nutbp;
+
+            /*
+             * Create condition for the updated part
+             */
+            if (updp->condp != NULL) {
+                ucondp = RDB_dup_expr(updp->condp);
+                if (ucondp == NULL)
+                    return NULL;
+                if (cond2p != NULL) {
+                    tcondp = RDB_dup_expr(cond2p);
+                    if (tcondp == NULL) {
+                        RDB_drop_expr(cond2p);
+                        return NULL;
+                    }
+                    cond2p = tcondp;
+                    tcondp = RDB_ro_op_va("AND", ucondp, cond2p,
+                            (RDB_expression *) NULL);
+                    if (tcondp == NULL) {
+                        RDB_drop_expr(ucondp);
+                        RDB_drop_expr(cond2p);
+                        return NULL;
+                    }
+                    ucondp = tcondp;
+                }
+            } else {
+                ucondp = RDB_dup_expr(cond2p);
+                if (ucondp == NULL)
+                    return NULL;
+            }
+
+            /*
+             * Create condition for not updated part
+             */
+            tcondp = RDB_dup_expr(ucondp);
+            if (tcondp == NULL) {
+                RDB_drop_expr(ucondp);
+                return NULL;
+            }
+            nucondp = RDB_ro_op_va("NOT", tcondp, (RDB_expression *) NULL);
+            if (nucondp == NULL) {
+                RDB_drop_expr(tcondp);
+                return NULL;
+            }
+
+            /*
+             * Create selections and merge them by 'union'
+             */
+
+            ret = _RDB_select(tbp, ucondp, &utbp);
+            if (ret != RDB_OK) {
+                RDB_drop_expr(ucondp);
+                RDB_drop_expr(nucondp);
+                return NULL;
+            }
+
+            ret = _RDB_select(tbp, nucondp, &nutbp);
+            if (ret != RDB_OK) {
+                RDB_drop_expr(ucondp);
+                RDB_drop_table(utbp, NULL);
+                return NULL;
+            }
+
+            tbp = replace_updattrs(utbp, updp->updc, updp->updv, txp);
+            if (tbp == NULL) {
+                RDB_drop_table(utbp, NULL);
+                RDB_drop_table(nutbp, NULL);
+                return NULL;
+            }
+            utbp = tbp;
+                
+            ret = RDB_union(utbp, nutbp, &tbp);
+            if (ret != RDB_OK) {
+                RDB_drop_table(utbp, NULL);
+                RDB_drop_table(nutbp, NULL);
+                return NULL;
+            }
+        }
+    }
+    return tbp;
+}
+
+static RDB_table *
+replace_targets_real(RDB_table *tbp,
+        int insc, const RDB_ma_insert insv[], insert_node *geninsnp,
+        int updc, const RDB_ma_update updv[], update_node *genupdnp,
+        int delc, const RDB_ma_delete delv[], delete_node *gendelnp,
         int copyc, const RDB_ma_copy copyv[], RDB_transaction *txp)
 {
     int i;
     int ret;
+    RDB_table *htbp;
+    update_node *updnp;
+    insert_node *insnp;
 
     for (i = 0; i < insc; i++) {
-        if (insv[i].tbp == tbp) {
-            RDB_table *tb1p, *tb2p;
-
-            ret = RDB_create_table_from_type(NULL, RDB_FALSE, tbp->typ,
-                    0, NULL, NULL, &tb1p);
-            if (ret != RDB_OK)
-                return NULL;
-            ret = RDB_insert(tb1p, insv[i].tplp, NULL);
-            if (ret != RDB_OK)
-                return NULL;
-            ret = RDB_union(tbp, tb1p, &tb2p);
-            if (ret != RDB_OK) {
-                RDB_drop_table(tb1p, NULL);
-                return NULL;
-            }
-            return tb2p;
+        if (insv[i].tbp->kind == RDB_TB_REAL) {
+            htbp = replace_targets_real_ins(tbp, &insv[i], txp);
+            if (htbp != tbp)
+                return htbp;
         }
     }
+    insnp = geninsnp;
+    while (insnp != NULL) {
+        htbp = replace_targets_real_ins(tbp, &insnp->ins, txp);
+        if (htbp != tbp)
+            return htbp;
+        insnp = insnp->nextp;
+    }
+
     for (i = 0; i < updc; i++) {
-        if (updv[i].tbp == tbp) {
-            if (updv[i].condp == NULL) {
-                return replace_updattrs(tbp, updv[i].updc, updv[i].updv, txp);
-            } else {
-                RDB_expression *ucondp, *nucondp;
-                RDB_table *utbp, *nutbp;
-
-                ucondp = RDB_dup_expr(updv[i].condp);
-                if (ucondp == NULL)
-                    return NULL;
-                nucondp = RDB_ro_op_va("NOT", RDB_dup_expr(updv[i].condp),
-                        (RDB_expression *) NULL);
-                if (nucondp == NULL) {
-                    RDB_drop_expr(ucondp);
-                    return NULL;
-                }
-                ret = _RDB_select(tbp, ucondp, &utbp);
-                if (ret != RDB_OK) {
-                    RDB_drop_expr(ucondp);
-                    RDB_drop_expr(nucondp);
-                    return NULL;
-                }
-
-                ret = _RDB_select(tbp, nucondp, &nutbp);
-                if (ret != RDB_OK) {
-                    RDB_drop_expr(ucondp);
-                    RDB_drop_table(utbp, NULL);
-                    return NULL;
-                }
-
-                tbp = replace_updattrs(utbp, updv[i].updc, updv[i].updv, txp);
-                if (tbp == NULL) {
-                    RDB_drop_table(utbp, NULL);
-                    RDB_drop_table(nutbp, NULL);
-                    return NULL;
-                }
-                utbp = tbp;
-                    
-                ret = RDB_union(utbp, nutbp, &tbp);
-                if (ret != RDB_OK) {
-                    RDB_drop_table(utbp, NULL);
-                    RDB_drop_table(nutbp, NULL);
-                    return NULL;
-                }
-                    
-                return tbp;
-            }
+        if (updv[i].tbp->kind == RDB_TB_REAL) {
+            htbp = replace_targets_real_upd(tbp, &updv[i], txp);
+            if (htbp != tbp)
+                return htbp;
         }
     }
+    updnp = genupdnp;
+    while (updnp != NULL) {
+        htbp = replace_targets_real_upd(tbp, &updnp->upd, txp);
+        if (htbp != tbp)
+            return htbp;
+        updnp = updnp->nextp;
+    }
+
     for (i = 0; i < delc; i++) {
         if (delv[i].tbp == tbp) {
             RDB_table *tb1p, *tb2p;
@@ -362,6 +484,14 @@ replace_targets_real(RDB_table *tbp, int insc, const RDB_ma_insert insv[],
             return tb1p;
         }
     }
+
+    for (i = 0; i < copyc; i++) {
+        if (copyv[i].dstp->kind == RDB_OB_TABLE
+                && copyv[i].dstp->var.tbp == tbp) {
+            return copyv[i].srcp->var.tbp;
+        }
+    }
+
     return tbp;
 }
 
@@ -370,9 +500,10 @@ replace_targets_real(RDB_table *tbp, int insc, const RDB_ma_insert insv[],
  * by the assignment sources.
  */
 static RDB_table *
-replace_targets_tb(RDB_table *tbp, int insc, const RDB_ma_insert insv[],
-        int updc, const RDB_ma_update updv[],
-        int delc, const RDB_ma_delete delv[],
+replace_targets_tb(RDB_table *tbp,
+        int insc, const RDB_ma_insert insv[], insert_node *geninsnp,
+        int updc, const RDB_ma_update updv[], update_node *genupdnp,
+        int delc, const RDB_ma_delete delv[], delete_node *gendelnp,
         int copyc, const RDB_ma_copy copyv[], RDB_transaction *txp)
 {
     int i;
@@ -384,7 +515,8 @@ replace_targets_tb(RDB_table *tbp, int insc, const RDB_ma_insert insv[],
 
     switch (tbp->kind) {
         case RDB_TB_REAL:
-            return replace_targets_real(tbp, insc, insv, updc, updv, delc, delv,
+            return replace_targets_real(tbp, insc, insv, geninsnp,
+                    updc, updv, genupdnp, delc, delv, gendelnp,
                     copyc, copyv, txp);
         case RDB_TB_SELECT:
         {
@@ -392,8 +524,9 @@ replace_targets_tb(RDB_table *tbp, int insc, const RDB_ma_insert insv[],
             if (exp == NULL)
                 return NULL;
 
-            tb1p = replace_targets_tb(tbp->var.select.tbp, insc, insv,
-                    updc, updv, delc, delv, copyc, copyv, txp);
+            tb1p = replace_targets_tb(tbp->var.select.tbp,
+                    insc, insv, geninsnp, updc, updv, genupdnp,
+                    delc, delv, gendelnp, copyc, copyv, txp);
             if (tb1p == NULL) {
                 RDB_drop_expr(exp);
                 return NULL;
@@ -409,12 +542,12 @@ replace_targets_tb(RDB_table *tbp, int insc, const RDB_ma_insert insv[],
             return tbp;
         }
         case RDB_TB_UNION:
-            tb1p = replace_targets_tb(tbp->var._union.tb1p, insc, insv,
-                    updc, updv, delc, delv, copyc, copyv, txp);
+            tb1p = replace_targets_tb(tbp->var._union.tb1p, insc, insv, geninsnp,
+                    updc, updv, genupdnp, delc, delv, gendelnp, copyc, copyv, txp);
             if (tb1p == NULL)
                 return NULL;
-            tb2p = replace_targets_tb(tbp->var._union.tb2p, insc, insv,
-                    updc, updv, delc, delv, copyc, copyv, txp);
+            tb2p = replace_targets_tb(tbp->var._union.tb2p, insc, insv, geninsnp,
+                    updc, updv, genupdnp, delc, delv, gendelnp, copyc, copyv, txp);
             if (tb2p == NULL) {
                 if (tb1p->kind != RDB_TB_REAL)
                     RDB_drop_table(tb1p, NULL);
@@ -425,12 +558,12 @@ replace_targets_tb(RDB_table *tbp, int insc, const RDB_ma_insert insv[],
                 return NULL;
             return tbp;
         case RDB_TB_MINUS:
-            tb1p = replace_targets_tb(tbp->var.minus.tb1p, insc, insv,
-                    updc, updv, delc, delv, copyc, copyv, txp);
+            tb1p = replace_targets_tb(tbp->var.minus.tb1p, insc, insv, geninsnp,
+                    updc, updv, genupdnp, delc, delv, gendelnp, copyc, copyv, txp);
             if (tb1p == NULL)
                 return NULL;
-            tb2p = replace_targets_tb(tbp->var.minus.tb2p, insc, insv,
-                    updc, updv, delc, delv, copyc, copyv, txp);
+            tb2p = replace_targets_tb(tbp->var.minus.tb2p, insc, insv, geninsnp,
+                    updc, updv, genupdnp, delc, delv, gendelnp, copyc, copyv, txp);
             if (tb2p == NULL) {
                  if (tb1p->kind != RDB_TB_REAL)
                     RDB_drop_table(tb1p, NULL);
@@ -441,12 +574,12 @@ replace_targets_tb(RDB_table *tbp, int insc, const RDB_ma_insert insv[],
                 return NULL;
             return tbp;
         case RDB_TB_INTERSECT:
-            tb1p = replace_targets_tb(tbp->var.intersect.tb1p, insc, insv,
-                    updc, updv, delc, delv, copyc, copyv, txp);
+            tb1p = replace_targets_tb(tbp->var.intersect.tb1p, insc, insv, geninsnp,
+                    updc, updv, genupdnp, delc, delv, gendelnp, copyc, copyv, txp);
             if (tb1p == NULL)
                 return NULL;
-            tb2p = replace_targets_tb(tbp->var.intersect.tb2p, insc, insv,
-                    updc, updv, delc, delv, copyc, copyv, txp);
+            tb2p = replace_targets_tb(tbp->var.intersect.tb2p, insc, insv, geninsnp,
+                    updc, updv, genupdnp, delc, delv, gendelnp, copyc, copyv, txp);
             if (tb2p == NULL) {
                  if (tb1p->kind != RDB_TB_REAL)
                     RDB_drop_table(tb1p, NULL);
@@ -457,12 +590,12 @@ replace_targets_tb(RDB_table *tbp, int insc, const RDB_ma_insert insv[],
                 return NULL;
             return tbp;
         case RDB_TB_JOIN:
-            tb1p = replace_targets_tb(tbp->var.join.tb1p, insc, insv,
-                    updc, updv, delc, delv, copyc, copyv, txp);
+            tb1p = replace_targets_tb(tbp->var.join.tb1p, insc, insv, geninsnp,
+                    updc, updv, genupdnp, delc, delv, gendelnp, copyc, copyv, txp);
             if (tb1p == NULL)
                 return NULL;
-            tb2p = replace_targets_tb(tbp->var.join.tb2p, insc, insv,
-                    updc, updv, delc, delv, copyc, copyv, txp);
+            tb2p = replace_targets_tb(tbp->var.join.tb2p, insc, insv, geninsnp,
+                    updc, updv, genupdnp, delc, delv, gendelnp, copyc, copyv, txp);
             if (tb2p == NULL) {
                  if (tb1p->kind != RDB_TB_REAL)
                     RDB_drop_table(tb1p, NULL);
@@ -473,15 +606,17 @@ replace_targets_tb(RDB_table *tbp, int insc, const RDB_ma_insert insv[],
                 return NULL;
             return ntbp;
         case RDB_TB_EXTEND:
-            return replace_targets_extend(tbp, insc, insv,
-                    updc, updv, delc, delv, copyc, copyv, txp);
+            return replace_targets_extend(tbp, insc, insv, geninsnp,
+                    updc, updv, genupdnp, delc, delv, gendelnp,
+                    copyc, copyv, txp);
         case RDB_TB_PROJECT:
         {
             char **attrnamev;
             int attrc = tbp->typ->var.basetyp->var.tuple.attrc;
 
-            tb1p = replace_targets_tb(tbp->var.project.tbp, insc, insv,
-                    updc, updv, delc, delv, copyc, copyv, txp);
+            tb1p = replace_targets_tb(tbp->var.project.tbp,
+                    insc, insv, geninsnp, updc, updv, genupdnp,
+                    delc, delv, gendelnp, copyc, copyv, txp);
             if (tb1p == NULL)
                 return NULL;
             attrnamev = malloc(attrc * sizeof(char *));
@@ -494,15 +629,15 @@ replace_targets_tb(RDB_table *tbp, int insc, const RDB_ma_insert insv[],
             free(attrnamev);
             if (ret != RDB_OK)
                 return NULL;
-            ntbp->var.project.indexp = tbp->var.project.indexp;
             return ntbp;
         }
         case RDB_TB_SUMMARIZE:
-            return replace_targets_summarize(tbp, insc, insv,
-                    updc, updv, delc, delv, copyc, copyv, txp);
+            return replace_targets_summarize(tbp, insc, insv, geninsnp,
+                    updc, updv, genupdnp, delc, delv, gendelnp, copyc, copyv,
+                    txp);
         case RDB_TB_RENAME:
-            tb1p = replace_targets_tb(tbp->var.rename.tbp, insc, insv,
-                    updc, updv, delc, delv, copyc, copyv, txp);
+            tb1p = replace_targets_tb(tbp->var.rename.tbp, insc, insv, geninsnp,
+                    updc, updv, genupdnp, delc, delv, gendelnp, copyc, copyv, txp);
             if (tb1p == NULL)
                 return NULL;
             ret = RDB_rename(tb1p, tbp->var.rename.renc, tbp->var.rename.renv,
@@ -511,8 +646,8 @@ replace_targets_tb(RDB_table *tbp, int insc, const RDB_ma_insert insv[],
                 return NULL;
             return tbp;
         case RDB_TB_WRAP:
-            tb1p = replace_targets_tb(tbp->var.wrap.tbp, insc, insv,
-                    updc, updv, delc, delv, copyc, copyv, txp);
+            tb1p = replace_targets_tb(tbp->var.wrap.tbp, insc, insv, geninsnp,
+                    updc, updv, genupdnp, delc, delv, gendelnp, copyc, copyv, txp);
             if (tb1p == NULL)
                 return NULL;
             ret = RDB_wrap(tb1p, tbp->var.wrap.wrapc, tbp->var.wrap.wrapv,
@@ -521,8 +656,8 @@ replace_targets_tb(RDB_table *tbp, int insc, const RDB_ma_insert insv[],
                 return NULL;
             return tbp;
         case RDB_TB_UNWRAP:
-            tb1p = replace_targets_tb(tbp->var.unwrap.tbp, insc, insv,
-                    updc, updv, delc, delv, copyc, copyv, txp);
+            tb1p = replace_targets_tb(tbp->var.unwrap.tbp, insc, insv, geninsnp,
+                    updc, updv, genupdnp, delc, delv, gendelnp, copyc, copyv, txp);
             if (tb1p == NULL)
                 return NULL;
             ret = RDB_unwrap(tb1p, tbp->var.unwrap.attrc, tbp->var.unwrap.attrv,
@@ -531,8 +666,8 @@ replace_targets_tb(RDB_table *tbp, int insc, const RDB_ma_insert insv[],
                 return NULL;
             return tbp;
         case RDB_TB_GROUP:
-            tb1p = replace_targets_tb(tbp->var.group.tbp, insc, insv,
-                    updc, updv, delc, delv, copyc, copyv, txp);
+            tb1p = replace_targets_tb(tbp->var.group.tbp, insc, insv, geninsnp,
+                    updc, updv, genupdnp, delc, delv, gendelnp, copyc, copyv, txp);
             if (tb1p == NULL)
                 return NULL;
             ret = RDB_group(tb1p, tbp->var.group.attrc, tbp->var.group.attrv,
@@ -541,8 +676,8 @@ replace_targets_tb(RDB_table *tbp, int insc, const RDB_ma_insert insv[],
                 return NULL;
             return tbp;
         case RDB_TB_UNGROUP:
-            tb1p = replace_targets_tb(tbp->var.ungroup.tbp, insc, insv,
-                    updc, updv, delc, delv, copyc, copyv, txp);
+            tb1p = replace_targets_tb(tbp->var.ungroup.tbp, insc, insv, geninsnp,
+                    updc, updv, genupdnp, delc, delv, gendelnp, copyc, copyv, txp);
             if (tb1p == NULL)
                 return NULL;
             ret = RDB_ungroup(tb1p, tbp->var.ungroup.attr, &tbp);
@@ -550,19 +685,19 @@ replace_targets_tb(RDB_table *tbp, int insc, const RDB_ma_insert insv[],
                 return NULL;
             return tbp;
         case RDB_TB_SDIVIDE:
-            tb1p = replace_targets_tb(tbp->var.sdivide.tb1p, insc, insv,
-                    updc, updv, delc, delv, copyc, copyv, txp);
+            tb1p = replace_targets_tb(tbp->var.sdivide.tb1p, insc, insv, geninsnp,
+                    updc, updv, genupdnp, delc, delv, gendelnp, copyc, copyv, txp);
             if (tb1p == NULL)
                 return NULL;
-            tb2p = replace_targets_tb(tbp->var.sdivide.tb2p, insc, insv,
-                    updc, updv, delc, delv, copyc, copyv, txp);
+            tb2p = replace_targets_tb(tbp->var.sdivide.tb2p, insc, insv, geninsnp,
+                    updc, updv, genupdnp, delc, delv, gendelnp, copyc, copyv, txp);
             if (tb2p == NULL) {
                  if (tb1p->kind != RDB_TB_REAL)
                     RDB_drop_table(tb1p, NULL);
                 return NULL;
             }
-            tb3p = replace_targets_tb(tbp->var.sdivide.tb3p, insc, insv,
-                    updc, updv, delc, delv, copyc, copyv, txp);
+            tb3p = replace_targets_tb(tbp->var.sdivide.tb3p, insc, insv, geninsnp,
+                    updc, updv, genupdnp, delc, delv, gendelnp, copyc, copyv, txp);
             if (tb3p == NULL) {
                  if (tb1p->kind != RDB_TB_REAL)
                     RDB_drop_table(tb1p, NULL);
@@ -581,23 +716,25 @@ replace_targets_tb(RDB_table *tbp, int insc, const RDB_ma_insert insv[],
 }
 
 static RDB_expression *
-replace_targets(RDB_expression *exp, int insc, const RDB_ma_insert insv[],
-        int updc, const RDB_ma_update updv[],
-        int delc, const RDB_ma_delete delv[],
+replace_targets(RDB_expression *exp,
+        int insc, const RDB_ma_insert insv[], insert_node *geninsnp,
+        int updc, const RDB_ma_update updv[], update_node *genupdnp,
+        int delc, const RDB_ma_delete delv[], delete_node *gendelnp,
         int copyc, const RDB_ma_copy copyv[], RDB_transaction *txp)
 {
     RDB_expression *newexp;
 
     switch (exp->kind) {
         case RDB_EX_TUPLE_ATTR:
-            newexp = replace_targets(exp->var.op.argv[0], insc, insv,
-                    updc, updv, delc, delv, copyc, copyv, txp);
+            newexp = replace_targets(exp->var.op.argv[0], insc, insv, geninsnp,
+                    updc, updv, genupdnp, delc, delv, gendelnp,
+                    copyc, copyv, txp);
             if (newexp == NULL)
                 return NULL;
             return RDB_tuple_attr(newexp, exp->var.op.name);
         case RDB_EX_GET_COMP:
-            newexp = replace_targets(exp->var.op.argv[0], insc, insv,
-                    updc, updv, delc, delv, copyc, copyv, txp);
+            newexp = replace_targets(exp->var.op.argv[0], insc, insv, geninsnp,
+                    updc, updv, genupdnp, delc, delv, gendelnp, copyc, copyv, txp);
             if (newexp == NULL)
                 return NULL;
             return RDB_expr_comp(newexp, exp->var.op.name);
@@ -611,8 +748,9 @@ replace_targets(RDB_expression *exp, int insc, const RDB_ma_insert insv[],
                 return NULL;
 
             for (i = 0; i < exp->var.op.argc; i++) {
-                argexpv[i] = replace_targets(exp->var.op.argv[i], insc, insv,
-                        updc, updv, delc, delv, copyc, copyv, txp);
+                argexpv[i] = replace_targets(exp->var.op.argv[i],
+                        insc, insv, geninsnp, updc, updv, genupdnp,
+                        delc, delv, gendelnp, copyc, copyv, txp);
                 if (argexpv[i] == NULL)
                     return NULL;
             }
@@ -621,8 +759,9 @@ replace_targets(RDB_expression *exp, int insc, const RDB_ma_insert insv[],
             return newexp;
         }
         case RDB_EX_AGGREGATE:
-            newexp = replace_targets(exp->var.op.argv[0], insc, insv,
-                    updc, updv, delc, delv, copyc, copyv, txp);
+            newexp = replace_targets(exp->var.op.argv[0], insc, insv, geninsnp,
+                    updc, updv, genupdnp, delc, delv, gendelnp, copyc, copyv,
+                    txp);
             if (newexp == NULL)
                 return NULL;
             return RDB_expr_aggregate(newexp, exp->var.op.op,
@@ -630,7 +769,8 @@ replace_targets(RDB_expression *exp, int insc, const RDB_ma_insert insv[],
         case RDB_EX_OBJ:
             if (exp->var.obj.kind == RDB_OB_TABLE) {
                 RDB_table *newtbp = replace_targets_tb(exp->var.obj.var.tbp,
-                        insc, insv, updc, updv, delc, delv, copyc, copyv, txp);
+                        insc, insv, geninsnp, updc, updv, genupdnp,
+                        delc, delv, gendelnp, copyc, copyv, txp);
                 if (newtbp == NULL)
                     return NULL;
                 return RDB_table_to_expr(newtbp);
@@ -642,11 +782,6 @@ replace_targets(RDB_expression *exp, int insc, const RDB_ma_insert insv[],
     abort();
 }
 
-typedef struct insert_node {
-    RDB_ma_insert ins;
-    struct insert_node *nextp;
-} insert_node;
-
 static void
 concat_inslists (insert_node **dstpp, insert_node *srcp)
 {
@@ -654,6 +789,40 @@ concat_inslists (insert_node **dstpp, insert_node *srcp)
         *dstpp = srcp;
     } else {
         insert_node *lastp = *dstpp;
+
+        /* Find last node */
+        while (lastp->nextp != NULL)
+            lastp = lastp->nextp;
+
+        /* Concat lists */
+        lastp->nextp = srcp;
+    }
+}
+
+static void
+concat_updlists (update_node **dstpp, update_node *srcp)
+{
+    if (*dstpp == NULL) {
+        *dstpp = srcp;
+    } else {
+        update_node *lastp = *dstpp;
+
+        /* Find last node */
+        while (lastp->nextp != NULL)
+            lastp = lastp->nextp;
+
+        /* Concat lists */
+        lastp->nextp = srcp;
+    }
+}
+
+static void
+concat_dellists (delete_node **dstpp, delete_node *srcp)
+{
+    if (*dstpp == NULL) {
+        *dstpp = srcp;
+    } else {
+        delete_node *lastp = *dstpp;
 
         /* Find last node */
         while (lastp->nextp != NULL)
@@ -735,6 +904,38 @@ del_inslist(insert_node *insnp)
         free(insnp->ins.tplp);
         free(insnp);
         insnp = hinsnp;
+    }    
+}
+
+static void
+del_updlist(update_node *updnp)
+{
+    update_node *hupdnp;
+
+    while (updnp != NULL) {
+        hupdnp = updnp->nextp;
+
+        if (updnp->upd.condp != NULL) {
+            RDB_drop_expr(updnp->upd.condp);
+        }
+        free(updnp);
+        updnp = hupdnp;
+    }    
+}
+
+static void
+del_dellist(delete_node *delnp)
+{
+    delete_node *hdelnp;
+
+    while (delnp != NULL) {
+        hdelnp = delnp->nextp;
+
+        if (delnp->del.condp != NULL) {
+            RDB_drop_expr(delnp->del.condp);
+        }
+        free(delnp);
+        delnp = hdelnp;
     }    
 }
 
@@ -916,6 +1117,327 @@ resolve_insert(const RDB_ma_insert *insp, insert_node **inslpp,
     abort();
 }
 
+static update_node *
+new_update_node(const RDB_ma_update *updp)
+{
+    update_node *nupdnp = malloc(sizeof (update_node));
+    if (nupdnp == NULL)
+        return NULL;
+    if (updp->condp == NULL) {
+        nupdnp->upd.condp = NULL;
+    } else {
+        nupdnp->upd.condp = RDB_dup_expr(updp->condp);
+        if (nupdnp->upd.condp == NULL) {
+            free(nupdnp);
+            return NULL;
+        }
+    }
+    nupdnp->upd.tbp = updp->tbp;
+    nupdnp->upd.updc = updp->updc;
+    nupdnp->upd.updv = updp->updv;
+    nupdnp->nextp = NULL;
+    return nupdnp;
+}
+
+static int
+resolve_update(const RDB_ma_update *updp, update_node **updnpp,
+               RDB_transaction *txp)
+{
+    RDB_ma_update upd;
+    update_node *updnp;
+    int ret;
+
+    switch (updp->tbp->kind) {
+        case RDB_TB_REAL:
+            *updnpp = new_update_node(updp);
+            if (*updnpp == NULL)
+                return RDB_NO_MEMORY;
+            return RDB_OK;
+        case RDB_TB_SELECT:
+            upd.tbp = updp->tbp->var.select.tbp;
+            upd.condp = updp->condp;
+            upd.updc = updp->updc;
+            upd.updv = updp->updv;
+            ret = resolve_update(&upd, updnpp, txp);
+            if (ret != RDB_OK)
+                return ret;
+
+            updnp = *updnpp;
+            while (updnp != NULL) {
+                if (updnp->upd.condp == NULL) {
+                    updnp->upd.condp = RDB_dup_expr(updp->tbp->var.select.exp);
+                    if (updnp->upd.condp == NULL) {
+                        del_updlist(*updnpp);
+                        return RDB_NO_MEMORY;
+                    }
+                } else {
+                    RDB_expression *ncondp;
+                    RDB_expression *hcondp = RDB_dup_expr(updp->tbp->var.select.exp);
+                    if (hcondp == NULL) {
+                        del_updlist(*updnpp);
+                        return RDB_NO_MEMORY;
+                    }
+                    ncondp = RDB_ro_op_va("AND", hcondp, updnp->upd.condp,
+                            (RDB_expression *) NULL);
+                    if (ncondp == NULL) {
+                        RDB_drop_expr(hcondp);
+                        del_updlist(*updnpp);
+                        return RDB_NO_MEMORY;
+                    }                        
+                    updnp->upd.condp = ncondp;
+                }
+                updnp = updnp->nextp;
+            }
+            return RDB_OK;
+        case RDB_TB_PROJECT:
+            upd.tbp = updp->tbp->var.project.tbp;
+            upd.condp = updp->condp;
+            upd.updc = updp->updc;
+            upd.updv = updp->updv;
+            return resolve_update(&upd, updnpp, txp);
+        default: ;            
+    }
+    return RDB_NOT_SUPPORTED;
+}
+
+static delete_node *
+new_delete_node(const RDB_ma_delete *delp)
+{
+    delete_node *ndelnp = malloc(sizeof (delete_node));
+    if (ndelnp == NULL)
+        return NULL;
+    if (delp->condp == NULL) {
+        ndelnp->del.condp = NULL;
+    } else {
+        ndelnp->del.condp = RDB_dup_expr(delp->condp);
+        if (ndelnp->del.condp == NULL) {
+            free(ndelnp);
+            return NULL;
+        }
+    }
+    ndelnp->del.tbp = delp->tbp;
+    ndelnp->nextp = NULL;
+    return ndelnp;
+}
+
+static int
+resolve_delete(const RDB_ma_delete *delp, delete_node **delnpp,
+               RDB_transaction *txp)
+{
+    RDB_ma_delete del;
+    delete_node *delnp;
+    int ret;
+
+    switch (delp->tbp->kind) {
+        case RDB_TB_REAL:
+            *delnpp = new_delete_node(delp);
+            if (*delnpp == NULL)
+                return RDB_NO_MEMORY;
+            return RDB_OK;
+        case RDB_TB_SELECT:
+            del.tbp = delp->tbp->var.select.tbp;
+            del.condp = delp->condp;
+            ret = resolve_delete(&del, delnpp, txp);
+            if (ret != RDB_OK)
+                return ret;
+
+            delnp = *delnpp;
+            while (delnp != NULL) {
+                if (delnp->del.condp == NULL) {
+                    delnp->del.condp = RDB_dup_expr(delp->tbp->var.select.exp);
+                    if (delnp->del.condp == NULL) {
+                        del_dellist(*delnpp);
+                        return RDB_NO_MEMORY;
+                    }
+                } else {
+                    RDB_expression *ncondp;
+                    RDB_expression *hcondp = RDB_dup_expr(delp->tbp->var.select.exp);
+                    if (hcondp == NULL) {
+                        del_dellist(*delnpp);
+                        return RDB_NO_MEMORY;
+                    }
+                    ncondp = RDB_ro_op_va("AND", hcondp, delnp->del.condp,
+                            (RDB_expression *) NULL);
+                    if (ncondp == NULL) {
+                        RDB_drop_expr(hcondp);
+                        del_dellist(*delnpp);
+                        return RDB_NO_MEMORY;
+                    }                        
+                    delnp->del.condp = ncondp;
+                }
+                delnp = delnp->nextp;
+            }
+            return RDB_OK;
+        case RDB_TB_PROJECT:
+            del.tbp = delp->tbp->var.project.tbp;
+            del.condp = delp->condp;
+            return resolve_delete(&del, delnpp, txp);
+        case RDB_TB_MINUS:
+            del.tbp = delp->tbp->var.minus.tb1p;
+            del.condp = delp->condp;
+            return resolve_delete(&del, delnpp, txp);
+        case RDB_TB_RENAME:
+            del.tbp = delp->tbp->var.rename.tbp;
+            del.condp = delp->condp;
+            ret = resolve_delete(&del, delnpp, txp);
+            if (ret != RDB_OK)
+                return ret;
+            delnp = *delnpp;
+            while (delnp != NULL) {
+                if (delnp->del.condp != NULL) {
+                    ret = _RDB_invrename_expr(delnp->del.condp,
+                            delp->tbp->var.rename.renc,
+                            delp->tbp->var.rename.renv);
+                    if (ret != RDB_OK) {
+                        del_dellist(*delnpp);
+                        return ret;
+                    }
+                }
+                delnp = delnp->nextp;
+            }
+            return RDB_OK;
+        case RDB_TB_EXTEND:
+            del.tbp = delp->tbp->var.extend.tbp;
+            del.condp = delp->condp;
+            ret = resolve_delete(&del, delnpp, txp);
+            if (ret != RDB_OK)
+                return ret;
+            delnp = *delnpp;
+            while (delnp != NULL) {
+                if (delnp->del.condp != NULL) {
+                    ret = _RDB_resolve_extend_expr(&delnp->del.condp,
+                            delp->tbp->var.extend.attrc,
+                            delp->tbp->var.extend.attrv);
+                    if (ret != RDB_OK) {
+                        del_dellist(*delnpp);
+                        return ret;
+                    }
+                }
+                delnp = delnp->nextp;
+            }
+            return RDB_OK;
+        case RDB_TB_UNION:
+        case RDB_TB_JOIN:
+        case RDB_TB_INTERSECT:
+        case RDB_TB_SUMMARIZE:
+        case RDB_TB_WRAP:
+        case RDB_TB_UNWRAP:
+        case RDB_TB_GROUP:
+        case RDB_TB_UNGROUP:
+        case RDB_TB_SDIVIDE:
+            return RDB_NOT_SUPPORTED;
+    }
+    abort();
+}
+
+static int
+do_update(const RDB_ma_update *updp, RDB_transaction *txp)
+{
+    int ret;
+    RDB_table *tbp, *ntbp, *dtbp;
+    RDB_expression *condp;
+
+    if (updp->tbp->kind == RDB_TB_REAL && updp->condp == NULL) {
+        return _RDB_update_real(updp->tbp, NULL, updp->updc, updp->updv,
+                txp);
+    }
+
+    if (updp->condp != NULL) {
+        ret = _RDB_select(updp->tbp, updp->condp, &tbp);
+        if (ret != RDB_OK)
+            return ret;
+    } else {
+        tbp = updp->tbp;
+    }
+
+    ret = _RDB_optimize(tbp, 0, NULL, txp, &ntbp);
+
+    /* drop select */
+    free(tbp);
+
+    if (ntbp->var.select.tbp->kind == RDB_TB_SELECT) {
+        condp = ntbp->var.select.exp;
+        dtbp = ntbp->var.select.tbp;
+    } else {
+        condp = NULL;
+        dtbp = ntbp;
+    }
+
+    if (dtbp->var.select.tbp->var.project.indexp != NULL) {
+        if (dtbp->var.select.tbp->var.project.indexp->idxp == NULL) {
+            ret = _RDB_update_select_pindex(dtbp, condp,
+                    updp->updc, updp->updv, txp);
+        } else {
+            ret = _RDB_update_select_index(dtbp, condp,
+                    updp->updc, updp->updv, txp);
+        }
+    } else {
+        ret = _RDB_update_real(ntbp->var.select.tbp->var.project.tbp,
+                ntbp->var.select.exp, updp->updc, updp->updv, txp);
+    }
+    RDB_drop_table(ntbp, NULL);
+    return ret;
+}
+
+static int
+do_delete(const RDB_ma_delete *delp, RDB_transaction *txp)
+{
+    int ret;
+    RDB_table *tbp, *ntbp, *dtbp;
+    RDB_expression *condp;
+
+    if (delp->tbp->kind == RDB_TB_REAL && delp->condp == NULL) {
+        return _RDB_delete_real(delp->tbp, NULL, txp);
+    }
+
+    if (delp->condp != NULL) {
+        ret = _RDB_select(delp->tbp, delp->condp, &tbp);
+        if (ret != RDB_OK)
+            return ret;
+    } else {
+        tbp = delp->tbp;
+    }
+
+    ret = _RDB_optimize(tbp, 0, NULL, txp, &ntbp);
+
+    /* drop select */
+    free(tbp);
+
+    if (ntbp->var.select.tbp->kind == RDB_TB_SELECT) {
+        condp = ntbp->var.select.exp;
+        dtbp = ntbp->var.select.tbp;
+    } else {
+        condp = NULL;
+        dtbp = ntbp;
+    }
+
+    if (dtbp->var.select.tbp->var.project.indexp != NULL) {
+        if (dtbp->var.select.tbp->var.project.indexp->unique) {
+            ret = _RDB_delete_select_uindex(dtbp, condp, txp);
+        } else {
+            ret = _RDB_delete_select_index(dtbp, condp, txp);
+        }
+    } else {
+        ret = _RDB_delete_real(ntbp->var.select.tbp->var.project.tbp,
+                ntbp->var.select.exp, txp);
+    }
+    RDB_drop_table(ntbp, NULL);
+    return ret;
+}
+
+static int
+copy_obj(RDB_object *dstvalp, const RDB_object *srcvalp, RDB_transaction *txp)
+{
+    RDB_type *srctyp = RDB_obj_type(srcvalp);
+    int ret = _RDB_copy_obj(dstvalp, srcvalp, txp);
+    if (ret != RDB_OK)
+        return ret;
+
+    if (srctyp != NULL && RDB_type_is_scalar(srctyp))
+        dstvalp->typ = srctyp;
+    return RDB_OK;
+} 
+
 int
 RDB_multi_assign(int insc, const RDB_ma_insert insv[],
         int updc, const RDB_ma_update updv[],
@@ -929,25 +1451,87 @@ RDB_multi_assign(int insc, const RDB_ma_insert insv[],
 
     /* List of inserts generated from inserts into virtual tables */
     insert_node *geninsnp = NULL;
+    update_node *genupdnp = NULL;
+    delete_node *gendelnp = NULL;
 
     insert_node *insnp;
+    update_node *updnp;
+    delete_node *delnp;
 
-    if (copyc > 0)
-        return RDB_NOT_SUPPORTED;
+    /* !! check tx */
 
     /*
      * Check if conditions are of type BOOLEAN
      */
-    /* ... */
+
+    for (i = 0; i < updc; i++) {
+        RDB_type *typ;
+
+        if (updv[i].condp != NULL) {
+            ret = RDB_expr_type(updv[i].condp, updv[i].tbp->typ->var.basetyp,
+                    txp, &typ);
+            if (ret != RDB_OK)
+                return ret;
+            if (typ != &RDB_BOOLEAN)
+                return RDB_TYPE_MISMATCH;
+        }
+    }
+
+    for (i = 0; i < delc; i++) {
+        RDB_type *typ;
+
+        if (delv[i].condp != NULL) {
+            ret = RDB_expr_type(delv[i].condp, delv[i].tbp->typ->var.basetyp,
+                    txp, &typ);
+            if (ret != RDB_OK)
+                return ret;
+            if (typ != &RDB_BOOLEAN)
+                return RDB_TYPE_MISMATCH;
+        }
+    }
 
     /*
-     * Optimize
+     * Check types of updated attributes
      */
-    /* ... */
+    for (i = 0; i < updc; i++) {
+        for (j = 0; j < updv[i].updc; j++) {
+            RDB_attr *attrp = _RDB_tuple_type_attr(
+                    updv[i].tbp->typ->var.basetyp, updv[i].updv[j].name);
+            RDB_type *typ;
+
+            if (attrp == NULL)
+                return RDB_ATTRIBUTE_NOT_FOUND;
+            if (RDB_type_is_scalar(attrp->typ)) {
+                ret = RDB_expr_type(updv[i].updv[j].exp,
+                        updv[i].tbp->typ->var.basetyp, txp, &typ);
+                if (ret != RDB_OK)
+                    return ret;
+                if (!RDB_type_equals(typ, attrp->typ))
+                    return RDB_TYPE_MISMATCH;
+            }
+        }
+    }
+
+    /*
+     * Check types of copied values
+     */
+    for (i = 0; i < copyc; i++) {
+        RDB_type *srctyp = RDB_obj_type(copyv[i].srcp);
+
+        if (srctyp != NULL && RDB_type_is_scalar(srctyp)) {
+            /* If destination carries a value, types must match */
+            if (copyv[i].dstp->kind != RDB_OB_INITIAL
+                    && (copyv[i].dstp->typ == NULL
+                     || !RDB_type_equals(copyv[i].srcp->typ,
+                                    copyv[i].dstp->typ)))
+                return RDB_TYPE_MISMATCH;
+        }
+    }
 
     /*
      * Resolve virtual table assignment
      */
+
     for (i = 0; i < insc; i++) {
         if (insv[i].tbp->kind != RDB_TB_REAL) {
             ret = resolve_insert(&insv[i], &insnp, txp);
@@ -959,12 +1543,26 @@ RDB_multi_assign(int insc, const RDB_ma_insert insv[],
         }
     }
     for (i = 0; i < updc; i++) {
-        if (updv[i].tbp->kind != RDB_TB_REAL)
-            return RDB_NOT_SUPPORTED;
+        if (updv[i].tbp->kind != RDB_TB_REAL) {
+            /* Convert virtual table updates to real table updates */
+            ret = resolve_update(&updv[i], &updnp, txp);
+            if (ret != RDB_OK)
+                goto cleanup;
+
+            /* Add updates to list */
+            concat_updlists(&genupdnp, updnp);
+        }
     }
     for (i = 0; i < delc; i++) {
-        if (delv[i].tbp->kind != RDB_TB_REAL)
-            return RDB_NOT_SUPPORTED;
+        if (delv[i].tbp->kind != RDB_TB_REAL) {
+            /* Convert virtual table deletes to real table deletes */
+            ret = resolve_delete(&delv[i], &delnp, txp);
+            if (ret != RDB_OK)
+                goto cleanup;
+
+            /* Add deletes to list */
+            concat_dellists(&gendelnp, delnp);
+        }
     }
 
     /*
@@ -983,6 +1581,12 @@ RDB_multi_assign(int insc, const RDB_ma_insert insv[],
             if (insv[i].tbp == delv[j].tbp)
                 return RDB_NOT_SUPPORTED;
         }
+        for (j = 0; j < copyc; j++) {
+            if (copyv[j].dstp->kind == RDB_OB_TABLE
+                    && insv[i].tbp == copyv[j].dstp->var.tbp)
+                return RDB_NOT_SUPPORTED;
+        }
+        /* !! geninsnp etc... */
     }
     for (i = 0; i < updc; i++) {
         for (j = i + 1; j < updc; j++) {
@@ -993,13 +1597,33 @@ RDB_multi_assign(int insc, const RDB_ma_insert insv[],
             if (updv[i].tbp == delv[j].tbp)
                 return RDB_INVALID_ARGUMENT;
         }
+        for (j = 0; j < copyc; j++) {
+            if (copyv[j].dstp->kind == RDB_OB_TABLE
+                    && updv[i].tbp == copyv[j].dstp->var.tbp)
+                return RDB_NOT_SUPPORTED;
+        }
     }
     for (i = 0; i < delc; i++) {
         for (j = i + 1; j < delc; j++) {
             if (delv[i].tbp == delv[j].tbp)
                 return RDB_INVALID_ARGUMENT;
         }
+        for (j = 0; j < copyc; j++) {
+            if (copyv[j].dstp->kind == RDB_OB_TABLE
+                    && delv[i].tbp == copyv[j].dstp->var.tbp)
+                return RDB_NOT_SUPPORTED;
+        }
     }
+
+    for (i = 0; i < copyc; i++) {
+        for (j = i + 1; j < copyc; j++) {
+            if (copyv[j].dstp->kind == RDB_OB_TABLE
+                    && delv[i].tbp == copyv[j].dstp->var.tbp)
+                return RDB_NOT_SUPPORTED;
+        }
+    }
+
+    /* !! geninsnp ... */
 
     /*
      * Check for dependencies
@@ -1028,6 +1652,7 @@ RDB_multi_assign(int insc, const RDB_ma_insert insv[],
             /*
              * Check if constraint refers to assignment target
              */
+            /* resolved inserts/updates/... */
             if (exp_refers_target(constrp->exp, insc, insv, updc, updv,
                     delc, delv, copyc, copyv)) {
                 RDB_bool b;
@@ -1035,7 +1660,8 @@ RDB_multi_assign(int insc, const RDB_ma_insert insv[],
                  * Replace target tables
                  */
                 RDB_expression *newexp = replace_targets(constrp->exp,
-                        insc, insv, updc, updv, delc, delv, copyc, copyv, txp);
+                        insc, insv, geninsnp, updc, updv, genupdnp,
+                        delc, delv, gendelnp, copyc, copyv, txp);
                 if (newexp == NULL) {
                     ret = RDB_NO_MEMORY;
                     goto cleanup;
@@ -1044,6 +1670,11 @@ RDB_multi_assign(int insc, const RDB_ma_insert insv[],
                 /*
                  * Check constraint
                  */
+                ret = _RDB_optimize_expr(newexp, txp);
+                if (ret != RDB_OK) {
+                    RDB_drop_expr(newexp);
+                    goto cleanup;
+                }
                 ret = RDB_evaluate_bool(newexp, NULL, txp, &b);
                 RDB_drop_expr(newexp);
                 if (ret != RDB_OK)
@@ -1068,13 +1699,26 @@ RDB_multi_assign(int insc, const RDB_ma_insert insv[],
         }
     }
     for (i = 0; i < updc; i++) {
-        ret = _RDB_update_real(updv[i].tbp, updv[i].condp,
-                 updv[i].updc, updv[i].updv, txp);
-        if (ret != RDB_OK)
-            goto cleanup;
+        if (updv[i].tbp->kind == RDB_TB_REAL) {
+            ret = do_update(&updv[i], txp);
+            if (ret != RDB_OK)
+                goto cleanup;
+        }
     }
     for (i = 0; i < delc; i++) {
-        ret = _RDB_delete_real(delv[i].tbp, delv[i].condp, txp);
+        if (delv[i].tbp->kind == RDB_TB_REAL) {
+            ret = do_delete(&delv[i], txp);
+            if (ret != RDB_OK)
+                goto cleanup;
+        }
+    }
+    for (i = 0; i < copyc; i++) {
+        if (copyv[i].dstp->kind == RDB_OB_TABLE
+                && copyv[i].dstp->var.tbp->kind != RDB_TB_REAL) {
+            ret = RDB_NOT_SUPPORTED;
+            goto cleanup;
+        }
+        ret = copy_obj(copyv[i].dstp, copyv[i].srcp, txp);
         if (ret != RDB_OK)
             goto cleanup;
     }
@@ -1087,10 +1731,28 @@ RDB_multi_assign(int insc, const RDB_ma_insert insv[],
         insnp = insnp->nextp;
     }
 
+    updnp = genupdnp;
+    while (updnp != NULL) {
+        ret = do_update(&updnp->upd, txp);
+        if (ret != RDB_OK)
+            goto cleanup;
+        updnp = updnp->nextp;
+    }
+
+    delnp = gendelnp;
+    while (delnp != NULL) {
+        ret = do_delete(&delnp->del, txp);
+        if (ret != RDB_OK)
+            goto cleanup;
+        delnp = delnp->nextp;
+    }
+
     ret = RDB_OK;
 
 cleanup:
     del_inslist(geninsnp);
+    del_updlist(genupdnp);
+    del_dellist(gendelnp);
 
     return ret;
 }

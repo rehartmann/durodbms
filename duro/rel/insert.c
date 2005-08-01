@@ -112,7 +112,8 @@ _RDB_insert_real(RDB_table *tbp, const RDB_object *tplp,
         if (RDB_contains_rec(tbp->stp->recmapp, fvp,
                 tbp->is_persistent ? txp->txid : NULL) == RDB_OK)
             ret = RDB_ELEMENT_EXISTS;
-    }            
+    }
+    tbp->stp->est_cardinality++;
 
 cleanup:
     free(fvp);

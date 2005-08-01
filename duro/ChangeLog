@@ -4,6 +4,8 @@ Summary of Changes for Duro
 
 Changes for Duro 0.10
 
+- Implemented RDB_multi_assign().
+
 - Durotcl uses Tutorial D syntax to represent values of user-defined
   types. The comparison operator is passed the actual representation.
 
@@ -21,6 +23,8 @@ Changes for Duro 0.10
 
 - A call failing for a system error no longer always results in
   an implicit rollback.
+
+- Bugfixes.
 
 Changes for Duro 0.9
 

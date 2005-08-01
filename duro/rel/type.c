@@ -493,7 +493,7 @@ _RDB_sys_select(const char *name, int argc, RDB_object *argv[],
 
     if (argc == 1) {
         /* Copy value */
-        ret = _RDB_copy_obj(retvalp, argv[0]);
+        ret = _RDB_copy_obj(retvalp, argv[0], NULL);
         if (ret != RDB_OK)
             return ret;
     } else {

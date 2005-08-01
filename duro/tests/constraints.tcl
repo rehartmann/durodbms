@@ -22,10 +22,6 @@ duro::db create $dbenv TEST
 
 set tx [duro::begin $dbenv TEST]
 
-#
-# Create tables
-#
-
 duro::table create T1 {
    {A INTEGER}
    {B INTEGER}
@@ -36,12 +32,10 @@ duro::table create T2 {
    {C INTEGER}
 } {{B}} $tx
 
-#
-# Create constraints
-#
-
+# Create 'tuple' constraint
 duro::constraint create C1 {IS_EMPTY(T2 WHERE C>100)} $tx
 
+# Create foreign key constraint
 duro::constraint create C2 {IS_EMPTY((T1 {B}) MINUS (T2 {B}))} $tx
 
 duro::commit $tx
@@ -101,6 +95,37 @@ if {![catch {
     duro::delete T2 {B = 1} $tx
 }]} {
     error "delete should have failed, but succeded"
+}
+
+set code [lindex $errorCode 1]
+if {$code != "RDB_PREDICATE_VIOLATION"} {
+    error "wrong error code: $code"
+}
+
+duro::table create T3 {
+   {A INTEGER}
+   {B INTEGER}
+} {{A}} $tx
+
+duro::table create T4 {
+   {A INTEGER}
+   {B INTEGER}
+} {{A}} $tx
+
+duro::table expr T5 {T3 INTERSECT T4} $tx
+
+duro::insert T3 {A 1 B 1} $tx
+duro::insert T3 {A 2 B 1} $tx
+
+duro::constraint create C3 {SUM(T3, B) < 4} $tx
+
+duro::update T3 {A = 1} B 2 $tx
+
+# Must fail
+if {![catch {
+    duro::insert T5 {A 3 B 3} $tx
+}]} {
+    error "insert should have failed, but succeded"
 }
 
 set code [lindex $errorCode 1]

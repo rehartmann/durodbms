@@ -362,8 +362,8 @@ cleanup:
     return ret;
 }
 
-static int
-update_select_pindex(RDB_table *tbp, RDB_expression *condp,
+int
+_RDB_update_select_pindex(RDB_table *tbp, RDB_expression *condp,
         int updc, const RDB_attr_update updv[], RDB_transaction *txp)
 {
     RDB_object tpl;
@@ -656,9 +656,27 @@ _RDB_update_real(RDB_table *tbp, RDB_expression *condp, int updc,
         const RDB_attr_update updv[], RDB_transaction *txp)
 {
     if (upd_complex(tbp, updc, updv)
-        || (condp != NULL && _RDB_expr_refers(condp, tbp)))
+            || (condp != NULL && _RDB_expr_refers(condp, tbp)))
         return update_stored_complex(tbp, condp, updc, updv, txp);
     return update_stored_simple(tbp, condp, updc, updv, txp);
+}
+
+static int
+update_select(RDB_table *tbp, RDB_expression *condp,
+        int updc, const RDB_attr_update updv[], RDB_transaction *txp);
+
+int
+_RDB_update_select_index(RDB_table *tbp, RDB_expression *condp,
+        int updc, const RDB_attr_update updv[], RDB_transaction *txp)
+{
+    if (upd_complex(tbp, updc, updv)
+        || _RDB_expr_refers(tbp->var.select.exp, tbp->var.select.tbp)
+        || (condp != NULL && _RDB_expr_refers(condp, tbp->var.select.tbp))) {
+
+        /* !! Should do a complex update by index, but this is not implemented */
+        return update_select(tbp, condp, updc, updv, txp);
+    }
+    return update_select_index_simple(tbp, condp, updc, updv, txp);
 }
 
 static int
@@ -685,20 +703,6 @@ update_select(RDB_table *tbp, RDB_expression *condp,
 }
 
 static int
-update_select_index(RDB_table *tbp, RDB_expression *condp,
-        int updc, const RDB_attr_update updv[], RDB_transaction *txp)
-{
-    if (upd_complex(tbp, updc, updv)
-        || _RDB_expr_refers(tbp->var.select.exp, tbp->var.select.tbp)
-        || (condp != NULL && _RDB_expr_refers(condp, tbp->var.select.tbp))) {
-
-        /* !! Should do a complex update by index, but this is not implemented */
-        return update_select(tbp, condp, updc, updv, txp);
-    }
-    return update_select_index_simple(tbp, condp, updc, updv, txp);
-}
-
-static int
 update(RDB_table *tbp, RDB_expression *condp, int updc,
         const RDB_attr_update updv[], RDB_transaction *txp)
 {
@@ -717,8 +721,8 @@ update(RDB_table *tbp, RDB_expression *condp, int updc,
                     || tbp->var.select.objpc == 0)
                 return update_select(tbp, condp, updc, updv, txp);
             if (tbp->var.select.tbp->var.project.indexp->idxp == NULL)
-                return update_select_pindex(tbp, condp, updc, updv, txp);
-            return update_select_index(tbp, condp, updc, updv, txp);
+                return _RDB_update_select_pindex(tbp, condp, updc, updv, txp);
+            return _RDB_update_select_index(tbp, condp, updc, updv, txp);
         case RDB_TB_JOIN:
             return RDB_NOT_SUPPORTED;
         case RDB_TB_EXTEND:
@@ -745,160 +749,15 @@ update(RDB_table *tbp, RDB_expression *condp, int updc,
     abort();
 }
 
-static int
-check_update_empty(RDB_table *chtbp, RDB_table *tbp, int updc,
-        const RDB_attr_update updv[], RDB_transaction *txp)
-{
-    /* !! */
-    return RDB_MAYBE;
-}
-
 int
 RDB_update(RDB_table *tbp, RDB_expression *condp, int updc,
                 const RDB_attr_update updv[], RDB_transaction *txp)
 {
-    int ret;
-    int i;
-    RDB_table *ntbp;
-    RDB_dbroot *dbrootp;
-    RDB_constraint *constrp;
-    RDB_transaction tx;
-    RDB_constraint *checklistp = NULL;
-    RDB_bool need_subtx = RDB_FALSE;
     RDB_ma_update upd;
 
-    if (tbp->kind == RDB_TB_REAL) {
-        upd.tbp = tbp;
-        upd.condp = condp;
-        upd.updc = updc;
-        upd.updv = (RDB_attr_update *) updv;
-        return RDB_multi_assign(0, NULL, 1, &upd, 0, NULL, 0, NULL, txp);
-    }
-
-    if (!RDB_tx_is_running(txp))
-        return RDB_INVALID_TRANSACTION;
-
-    /* Typecheck */
-    for (i = 0; i < updc; i++) {
-        RDB_attr *attrp = _RDB_tuple_type_attr(tbp->typ->var.basetyp,
-                updv[i].name);
-        RDB_type *typ;
-
-        if (attrp == NULL)
-            return RDB_ATTRIBUTE_NOT_FOUND;
-        if (RDB_type_is_scalar(attrp->typ)) {
-            ret = RDB_expr_type(updv[i].exp, tbp->typ->var.basetyp, txp, &typ);
-            if (ret != RDB_OK)
-                return ret;
-            if (!RDB_type_equals(typ, attrp->typ))
-                return RDB_TYPE_MISMATCH;
-        }
-    }
-
-    if (condp != NULL) {
-        ret = RDB_select(tbp, condp, txp, &tbp);
-        if (ret != RDB_OK)
-            return ret;
-    }
-
-    ret = _RDB_optimize(tbp, 0, NULL, txp, &ntbp);
-    if (ret != RDB_OK) {
-        if (condp != NULL)
-            _RDB_free_table(tbp);
-        return ret;
-    }
-
-    dbrootp = RDB_tx_db(txp)->dbrootp;
-
-    if (!dbrootp->constraints_read) {
-        ret = _RDB_read_constraints(txp);
-        if (ret != RDB_OK) {
-            return ret;
-        }
-        dbrootp->constraints_read = RDB_TRUE;
-    }
-
-    /*
-     * Identify the constraints which must be checked
-     * and insert them into a list
-     */
-    constrp = dbrootp->first_constrp;
-    while (constrp != NULL) {
-        RDB_bool check;
-        RDB_constraint *chconstrp;
-
-        if (constrp->empty_tbp != NULL) {
-             ret = check_update_empty(constrp->empty_tbp, tbp, updc, updv,
-                     txp);
-             if (ret != RDB_OK && ret != RDB_MAYBE)
-                 goto cleanup;
-             check = (RDB_bool) (ret == RDB_MAYBE);
-        } else {
-            /* Check if constrp->exp and tbp depend on the same table(s) */
-            check = _RDB_expr_table_depend(constrp->exp, tbp);
-        }
-
-        if (check) {
-            need_subtx = RDB_TRUE;
-            chconstrp = malloc(sizeof(RDB_constraint));
-            if (chconstrp == NULL) {
-                ret = RDB_NO_MEMORY;
-                goto cleanup;
-            }
-            chconstrp->name = RDB_dup_str(constrp->name);
-            if (chconstrp->name == NULL) {
-                ret = RDB_NO_MEMORY;
-                goto cleanup;
-            }
-            chconstrp->exp = constrp->exp;
-            chconstrp->empty_tbp = constrp->empty_tbp;
-            chconstrp->nextp = checklistp;
-            checklistp = chconstrp;
-        }
-        constrp = constrp->nextp;
-    }
-
-    if (need_subtx) {
-        ret = RDB_begin_tx(&tx, RDB_tx_db(txp), txp);
-        if (ret != RDB_OK) {
-            goto cleanup;
-        }
-        txp = &tx;
-    }
-
-    ret = update(ntbp, NULL, updc, updv, txp);
-    if (ret != RDB_OK)
-        goto cleanup;
-
-    if (ntbp->kind != RDB_TB_REAL)
-        ret = RDB_drop_table(ntbp, txp);
-    ntbp = NULL;
-
-    /*
-     * Check selected constraints
-     */
-    if (txp != NULL) {
-        ret = _RDB_check_constraints(checklistp, txp);
-        if (ret != RDB_OK) {
-            if (need_subtx)
-                RDB_rollback(&tx);
-            goto cleanup;
-        }
-    }
-
-cleanup:
-    while (checklistp != NULL) {
-        RDB_constraint *nextp = checklistp->nextp;
-
-        free(checklistp->name);
-        free(checklistp);
-        checklistp = nextp;
-    }
-
-    if (condp != NULL)
-        _RDB_free_table(tbp);
-    if (ntbp != NULL && ntbp->kind != RDB_TB_REAL)
-        RDB_drop_table(ntbp, txp);
-    _RDB_handle_syserr(txp, ret);
-    return ret;
+    upd.tbp = tbp;
+    upd.condp = condp;
+    upd.updc = updc;
+    upd.updv = (RDB_attr_update *) updv;
+    return RDB_multi_assign(0, NULL, 1, &upd, 0, NULL, 0, NULL, txp);
 }

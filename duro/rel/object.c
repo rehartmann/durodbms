@@ -499,7 +499,7 @@ RDB_obj_equals(const RDB_object *val1p, const RDB_object *val2p,
  * Copy RDB_object, but not the type information.
  */
 int
-_RDB_copy_obj(RDB_object *dstvalp, const RDB_object *srcvalp)
+_RDB_copy_obj(RDB_object *dstvalp, const RDB_object *srcvalp, RDB_transaction *txp)
 {
     int ret;
 
@@ -526,27 +526,40 @@ _RDB_copy_obj(RDB_object *dstvalp, const RDB_object *srcvalp)
         case RDB_OB_ARRAY:
             return _RDB_copy_array(dstvalp, srcvalp);
         case RDB_OB_TABLE:
-            RDB_destroy_obj(dstvalp);
-            dstvalp->kind = srcvalp->kind;
-            if (srcvalp->var.tbp->name != NULL) {
-                dstvalp->var.tbp = srcvalp->var.tbp;
-            } else {
-                if (srcvalp->var.tbp->kind == RDB_TB_REAL) {
-                    ret = RDB_create_table(NULL, RDB_FALSE,
-                            srcvalp->var.tbp->typ->var.basetyp->var.tuple.attrc,
-                            srcvalp->var.tbp->typ->var.basetyp->var.tuple.attrv,
-                            0, NULL, NULL, &dstvalp->var.tbp);
-                    if (ret != RDB_OK)
-                        return ret;
-                    ret = _RDB_move_tuples(dstvalp->var.tbp, srcvalp->var.tbp,
-                            NULL);
-                    if (ret != RDB_OK)
-                        return ret;
-                } else {
-                    dstvalp->var.tbp = _RDB_dup_vtable(srcvalp->var.tbp);
+            /*
+             * If the target is unititialized, then:
+             * If the source is a named table, do not copy the table
+             * but make the target refer to the source table.
+             * If the source is an unnamed virtual table, duplicate
+             * the virtual table
+             */
+            if (dstvalp->kind == RDB_OB_INITIAL) {
+                if (srcvalp->var.tbp->name != NULL) {
+                    dstvalp->var.tbp = srcvalp->var.tbp;                    
+                    dstvalp->kind = RDB_OB_TABLE;
+                    return RDB_OK;
                 }
+                if (srcvalp->var.tbp->kind != RDB_TB_REAL) {
+                    dstvalp->var.tbp = _RDB_dup_vtable(srcvalp->var.tbp);
+                    if (dstvalp->var.tbp == NULL)
+                        return RDB_NO_MEMORY;
+                    dstvalp->kind = RDB_OB_TABLE;
+                    return RDB_OK;
+                }
+                ret = RDB_create_table(NULL, RDB_FALSE,
+                        srcvalp->var.tbp->typ->var.basetyp->var.tuple.attrc,
+                        srcvalp->var.tbp->typ->var.basetyp->var.tuple.attrv,
+                        0, NULL, NULL, &dstvalp->var.tbp);
+                if (ret != RDB_OK)
+                    return ret;
+                dstvalp->kind = RDB_OB_TABLE;
             }
-            break;
+            if (dstvalp->kind != RDB_OB_TABLE)
+                return RDB_TYPE_MISMATCH;
+            if (dstvalp->var.tbp->is_persistent && txp == NULL)
+                return RDB_INVALID_TRANSACTION;
+            return _RDB_move_tuples(dstvalp->var.tbp, srcvalp->var.tbp,
+                            dstvalp->var.tbp->is_persistent ? txp : NULL);
         case RDB_OB_BIN:
             if (dstvalp->kind == RDB_OB_BIN)
                 free(dstvalp->var.bin.datap);
@@ -566,22 +579,12 @@ _RDB_copy_obj(RDB_object *dstvalp, const RDB_object *srcvalp)
 int
 RDB_copy_obj(RDB_object *dstvalp, const RDB_object *srcvalp)
 {
-    int ret;
-    RDB_type *srctyp = RDB_obj_type(srcvalp);
+    RDB_ma_copy cpy;
 
-    if (srctyp != NULL && RDB_type_is_scalar(srctyp)) {
-        /* If destination carries a value, types must match */
-        if (dstvalp->kind != RDB_OB_INITIAL
-                && (dstvalp->typ == NULL
-                        || !RDB_type_equals(srcvalp->typ, dstvalp->typ)))
-            return RDB_TYPE_MISMATCH;
-    }
-    ret = _RDB_copy_obj(dstvalp, srcvalp);
-    if (ret != RDB_OK)
-        return ret;
-    if (srctyp != NULL && RDB_type_is_scalar(srctyp))
-        dstvalp->typ = srctyp;
-    return RDB_OK;
+    cpy.dstp = dstvalp;
+    cpy.srcp = (RDB_object *) srcvalp;
+
+    return RDB_multi_assign(0, NULL, 0, NULL, 0, NULL, 1, &cpy, NULL);
 } 
 
 void
@@ -742,7 +745,7 @@ RDB_obj_comp(const RDB_object *valp, const char *compname, RDB_object *compvalp,
                      && (compvalp->typ == NULL
                          || !RDB_type_equals(compvalp->typ, comptyp)))
                 return RDB_TYPE_MISMATCH;
-            ret = _RDB_copy_obj(compvalp, valp);
+            ret = _RDB_copy_obj(compvalp, valp, NULL);
             if (ret != RDB_OK)
                 return ret;
             compvalp->typ = comptyp;
@@ -782,7 +785,7 @@ RDB_obj_set_comp(RDB_object *valp, const char *compname,
             if (ret != RDB_OK)
                 return ret;
 
-            ret = _RDB_copy_obj(valp, compvalp);
+            ret = _RDB_copy_obj(valp, compvalp, NULL);
         } else {
             ret = RDB_tuple_set(valp, compname, compvalp);
         }

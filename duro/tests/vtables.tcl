@@ -118,7 +118,16 @@ if {$code != "RDB_ATTRIBUTE_NOT_FOUND"} {
 }
 
 if {![catch {duro::update TP2 {S1 = "Bla"} K 3 $tx}]} {
-    error "duro::update shuld fail, but succeeded"
+    error "duro::update should fail, but succeeded"
+}
+
+set code [lindex $errorCode 1]
+if {$code != "RDB_ATTRIBUTE_NOT_FOUND"} {
+    error "wrong error code: $code"
+}
+
+if {![catch {duro::update TP2 {K = 1} S1 {"Blb"} $tx}]} {
+    error "duro::update should fail, but succeeded"
 }
 
 set code [lindex $errorCode 1]

@@ -352,6 +352,9 @@ int
 _RDB_resolve_extend_expr(RDB_expression **expp, int attrc,
         const RDB_virtual_attr attrv[]);
 
+int
+_RDB_optimize_expr(RDB_expression *, RDB_transaction *);
+
 /*
  * Internal tuple functions
  */
@@ -445,7 +448,8 @@ int
 _RDB_constraint_count(RDB_dbroot *dbrootp);
 
 int
-_RDB_copy_obj(RDB_object *dstvalp, const RDB_object *srcvalp);
+_RDB_copy_obj(RDB_object *dstvalp, const RDB_object *srcvalp,
+        RDB_transaction *);
 
 int
 _RDB_open_table_index(RDB_table *tbp, _RDB_tbindex *indexp,
@@ -495,7 +499,23 @@ _RDB_update_real(RDB_table *tbp, RDB_expression *condp, int updc,
         const RDB_attr_update updv[], RDB_transaction *);
 
 int
+_RDB_update_select_pindex(RDB_table *, RDB_expression *,
+        int updc, const RDB_attr_update updv[], RDB_transaction *);
+
+int
+_RDB_update_select_index(RDB_table *, RDB_expression *,
+        int updc, const RDB_attr_update updv[], RDB_transaction *);
+
+int
 _RDB_delete_real(RDB_table *tbp, RDB_expression *condp, RDB_transaction *);
+
+int
+_RDB_delete_select_index(RDB_table *tbp, RDB_expression *condp,
+        RDB_transaction *);
+
+int
+_RDB_delete_select_uindex(RDB_table *tbp, RDB_expression *condp,
+        RDB_transaction *);
 
 void
 _RDB_handle_syserr(RDB_transaction *txp, int err);

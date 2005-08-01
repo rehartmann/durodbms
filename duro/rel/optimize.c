@@ -33,17 +33,17 @@ unbalance_and(RDB_expression *exp)
         if (is_and(exp->var.op.argv[0])) {
             RDB_expression *ax2p;
 
-            /* find leftmost factor */
+            /* Find leftmost factor */
             axp = exp->var.op.argv[0];
             while (is_and(axp->var.op.argv[0]))
                 axp = axp->var.op.argv[0];
 
-            /* swap leftmost factor and right child */
+            /* Swap leftmost factor and right child */
             ax2p = exp->var.op.argv[1];
             exp->var.op.argv[1] = axp->var.op.argv[0];
             axp->var.op.argv[0] = ax2p;
         } else {
-            /* swap children */
+            /* Swap children */
             axp = exp->var.op.argv[0];
             exp->var.op.argv[0] = exp->var.op.argv[1];
             exp->var.op.argv[1] = axp;
@@ -138,6 +138,12 @@ move_node(RDB_table *tbp, RDB_expression **dstpp, RDB_expression *nodep,
     }
 }
 
+/*
+ * Split a selection into two: one that uses the index specified by indexp
+ * (the child) and one which does not (the parent)
+ * If the parent condition simple becomes true, simply convert
+ * the selection into a selection which uses the index.
+ */
 static int
 split_by_index(RDB_table *tbp, _RDB_tbindex *indexp, RDB_transaction *txp)
 {
@@ -546,7 +552,7 @@ mutate_extend(RDB_table *tbp, RDB_table **tbpv, int cap, RDB_transaction *txp)
             if (extv[j].exp == NULL)
                 return RDB_NO_MEMORY;
         }
-        ret = RDB_extend(tbpv[i], tbp->var.extend.attrc, extv, txp, &ntbp);
+        ret = _RDB_extend(tbpv[i], tbp->var.extend.attrc, extv, txp, &ntbp);
         if (ret != RDB_OK) {
             for (j = 0; j < tbp->var.extend.attrc; j++)
                 RDB_drop_expr(extv[j].exp);
@@ -1296,4 +1302,58 @@ _RDB_optimize(RDB_table *tbp, int seqitc, const RDB_seq_item seqitv[],
     }
 
     return RDB_OK;
+}
+
+/*
+ * Optimize the virtual tables which are part of the expression.
+ */
+int
+_RDB_optimize_expr(RDB_expression *exp, RDB_transaction *txp)
+{
+    int ret;
+
+    switch (exp->kind) {
+        case RDB_EX_OBJ:
+            if (exp->var.obj.kind == RDB_OB_TABLE
+                    && exp->var.obj.var.tbp->kind != RDB_TB_REAL) {
+                RDB_table *ntbp;
+
+                /* Get optimized table */
+                ret = _RDB_optimize(exp->var.obj.var.tbp, 0, NULL,
+                        txp, &ntbp);
+                if (ret != RDB_OK)
+                    return ret;
+
+                /* If the table has no name, drop it */
+                if (RDB_table_name(exp->var.obj.var.tbp) == NULL) {
+                    ret = RDB_drop_table(exp->var.obj.var.tbp, txp);
+                    if (ret != RDB_OK)
+                        return ret;
+                }
+
+                /* Replace old by optimized table */
+                exp->var.obj.var.tbp = ntbp;
+            }
+            return RDB_OK;
+        case RDB_EX_ATTR:
+            return RDB_OK;
+        case RDB_EX_TUPLE_ATTR:
+            return _RDB_optimize_expr(exp->var.op.argv[0], txp);
+        case RDB_EX_GET_COMP:
+            return _RDB_optimize_expr(exp->var.op.argv[0], txp);
+        case RDB_EX_RO_OP:
+        {
+            int i;
+
+            for (i = 0; i < exp->var.op.argc; i++) {
+                ret = _RDB_optimize_expr(exp->var.op.argv[i], txp);
+                if (ret != RDB_OK)
+                    return ret;
+            }
+            return RDB_OK;
+        }
+        case RDB_EX_AGGREGATE:
+            return _RDB_optimize_expr(exp->var.op.argv[0], txp);
+    }
+    abort();
 }
