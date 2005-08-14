@@ -62,7 +62,7 @@ Duro_insert_cmd(ClientData data, Tcl_Interp *interp, int objc,
          */
         Tcl_ResetResult(interp);
 
-        Duro_dberror(interp, ret);
+        Duro_dberror(interp, txp, ret);
         ret = TCL_ERROR;
     }
 

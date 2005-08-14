@@ -23,7 +23,6 @@ typedef struct RDB_constraint {
     char *name;
     RDB_expression *exp;
     struct RDB_constraint *nextp;
-    struct RDB_table *empty_tbp;
 } RDB_constraint;
 
 enum {
@@ -212,6 +211,9 @@ _RDB_assoc_table_db(RDB_table *tbp, RDB_database *dbp);
 
 RDB_bool
 _RDB_table_refers(RDB_table *tbp, RDB_table *rtbp);
+
+RDB_bool
+_RDB_expr_refers_attr(const RDB_expression *, const char *attrname);
 
 /*
  * Extend the tuple type pointed to by typ by the attributes given by
@@ -518,6 +520,9 @@ _RDB_delete_select_uindex(RDB_table *tbp, RDB_expression *condp,
         RDB_transaction *);
 
 void
-_RDB_handle_syserr(RDB_transaction *txp, int err);
+_RDB_handle_syserr(RDB_transaction *, int err);
+
+int
+_RDB_set_tx_errinfo(RDB_transaction *, const char *errinfo);
 
 #endif

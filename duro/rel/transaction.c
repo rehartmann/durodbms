@@ -7,6 +7,7 @@
 
 #include "rdb.h"
 #include "internal.h"
+#include <gen/strfns.h>
 
 typedef struct RDB_rmlink {
     RDB_recmap *rmp;
@@ -41,7 +42,26 @@ _RDB_begin_tx(RDB_transaction *txp, RDB_environment *envp,
     }
     txp->delrmp = NULL;
     txp->delixp = NULL;
+    txp->errinfo = NULL;
     return RDB_OK;
+}
+
+int
+_RDB_set_tx_errinfo(RDB_transaction *txp, const char *errinfo)
+{
+    char *nerrinfo = RDB_dup_str(errinfo);
+    if (nerrinfo == NULL)
+        return RDB_NO_MEMORY;
+
+    free(txp->errinfo);
+    txp->errinfo = nerrinfo;
+    return RDB_OK;
+}
+
+char *
+RDB_tx_errinfo(const RDB_transaction *txp)
+{
+    return txp->errinfo;
 }
 
 static void
@@ -167,6 +187,7 @@ RDB_commit(RDB_transaction *txp)
     }
 
     txp->txid = NULL;
+    free(txp->errinfo);
     
     return RDB_OK;
 }
@@ -191,6 +212,7 @@ RDB_rollback(RDB_transaction *txp)
     ret = close_storage(txp);
 
     txp->txid = NULL;
+    free(txp->errinfo);
 
     return ret;
 }

@@ -1,9 +1,9 @@
 /*
- * Copyright (C) 2004 René Hartmann.
+ * $Id$
+ *
+ * Copyright (C) 2004-2005 René Hartmann.
  * See the file COPYING for redistribution information.
  */
-
-/* $Id$ */
 
 #include "rdb.h"
 #include "internal.h"
@@ -183,6 +183,10 @@ transform_select(RDB_table *tbp)
     int ret;
     RDB_expression *exp;
     RDB_table *chtbp = tbp->var.select.tbp;
+
+    ret = _RDB_transform(chtbp);
+    if (ret != RDB_OK)
+        return ret;
 
     do {
         switch (chtbp->kind) {
@@ -425,8 +429,7 @@ swap_project_union(RDB_table *tbp, RDB_table *chtbp)
         return RDB_NO_MEMORY;
 
     for (i = 0; i < attrc; i++) {
-        attrnamev[i] = tbp->typ->var.basetyp
-                ->var.tuple.attrv[i].name;
+        attrnamev[i] = tbp->typ->var.basetyp->var.tuple.attrv[i].name;
     }
 
     /* Create new project table for child #2 */
@@ -461,70 +464,156 @@ swap_project_union(RDB_table *tbp, RDB_table *chtbp)
     return _RDB_infer_keys(chtbp);
 }
 
+/* Transforms PROJECT(RENAME) to RENAME(PROJECT) or PROJECT */
 static int
-swap_project_rename(RDB_table *tbp, RDB_table *chtbp)
+swap_project_rename(RDB_table *tbp)
 {
     int i, j;
     int ret;
     RDB_type *newtyp;
     RDB_renaming *renv;
     char **attrnamev;
+    RDB_table *chtbp = tbp->var.project.tbp;
     RDB_table *htbp = chtbp->var.rename.tbp;
     int nattrc = tbp->typ->var.basetyp->var.tuple.attrc;
 
     /*
      * Alter parent
      */
-    renv = malloc(sizeof (RDB_renaming) * tbp->var.rename.renc);
+    renv = malloc(sizeof (RDB_renaming) * chtbp->var.rename.renc);
     if (renv == NULL)
         return RDB_NO_MEMORY;
-    tbp->kind = RDB_TB_RENAME;
-    tbp->var.rename.tbp = chtbp;
-    tbp->var.rename.renc = chtbp->var.rename.renc;
-    tbp->var.rename.renv = renv;
 
     /* Take renamings whose dest appear in the parent */
     j = 0;
     for (i = 0; i < chtbp->var.rename.renc; i++) {
         if (_RDB_tuple_type_attr(tbp->typ->var.basetyp,
                 chtbp->var.rename.renv[i].to) != NULL) {
-            tbp->var.rename.renv[j].from =
-                    RDB_dup_str(chtbp->var.rename.renv[i].from);
-            tbp->var.rename.renv[j].to =
-                    RDB_dup_str(chtbp->var.rename.renv[i].to);
+            renv[j].from = RDB_dup_str(chtbp->var.rename.renv[i].from);
+            if (renv[j].from == NULL)
+                return RDB_NO_MEMORY; /* !! */
+            renv[j].to = RDB_dup_str(chtbp->var.rename.renv[i].to);
+            if (renv[j].to == NULL)
+                return RDB_NO_MEMORY;
             j++;
         }
     }
 
-    /*
-     * Alter child
-     */
-     
-    /* Destroy renamings */
+    /* Destroy renamings of child */
     for (i = 0; i < chtbp->var.rename.renc; i++) {
         free(chtbp->var.rename.renv[i].from);
         free(chtbp->var.rename.renv[i].to);
     }
-    chtbp->kind = RDB_TB_PROJECT;
-    chtbp->var.project.tbp = htbp;
-    chtbp->var.project.indexp = NULL;
+    free (chtbp->var.rename.renv);
 
-    attrnamev = malloc(nattrc * sizeof(char *));
-    if (attrnamev == NULL)
-        return RDB_NO_MEMORY;
-    for (i = 0; i < nattrc; i++) {
-        attrnamev[i] = tbp->typ->var.basetyp->var.tuple.attrv[i].name;
-        for (j = 0; j < tbp->var.rename.renc
-                && strcmp(attrnamev[i], tbp->var.rename.renv[j].to) != 0; j++);
-        if (j < tbp->var.rename.renc)
-            attrnamev[j] = tbp->var.rename.renv[j].from;
+    if (j == 0) {
+        /* Remove child */
+        free(renv);
+        tbp->var.project.tbp = chtbp->var.rename.tbp;
+        _RDB_free_table(chtbp);
+    } else {
+        /*
+         * Swap parent and child
+         */
+        tbp->kind = RDB_TB_RENAME;
+        tbp->var.rename.tbp = chtbp;
+        tbp->var.rename.renc = j;
+        tbp->var.rename.renv = renv;
+
+        chtbp->kind = RDB_TB_PROJECT;
+        chtbp->var.project.tbp = htbp;
+        chtbp->var.project.indexp = NULL;
+
+        attrnamev = malloc(nattrc * sizeof(char *));
+        if (attrnamev == NULL)
+            return RDB_NO_MEMORY;
+        for (i = 0; i < nattrc; i++) {
+            attrnamev[i] = tbp->typ->var.basetyp->var.tuple.attrv[i].name;
+            for (j = 0; j < tbp->var.rename.renc
+                    && strcmp(attrnamev[i], tbp->var.rename.renv[j].to) != 0; j++);
+            if (j < tbp->var.rename.renc)
+                attrnamev[j] = tbp->var.rename.renv[j].from;
+        }
+        ret = RDB_project_relation_type(htbp->typ, nattrc, attrnamev, &newtyp);
+        free(attrnamev);
+        if (ret != RDB_OK)
+            return ret;
+        RDB_drop_type(chtbp->typ, NULL);
+        chtbp->typ = newtyp;
     }
-    ret = RDB_project_relation_type(htbp->typ, nattrc, attrnamev, &newtyp);
-    free(attrnamev);
-    if (ret != RDB_OK)
-        return ret;
-    RDB_drop_type(chtbp->typ, NULL);
-    chtbp->typ = newtyp;
+
+    return RDB_OK;
+}
+
+/*
+ * Transforms PROJECT(SELECT) to SELECT(PROJECT) or PROJECT(SELECT(PROJECT))
+ */
+static int
+swap_project_select(RDB_table *tbp, RDB_table *chtbp)
+{
+    int i;
+    int ret;
+    int attrc;
+    char **attrv = malloc(sizeof(char *)
+            * chtbp->var.select.tbp->typ->var.basetyp->var.tuple.attrc);
+    if (attrv == NULL)
+        return RDB_NO_MEMORY;
+
+    /*
+     * Add attributes from parent
+     */
+    attrc = tbp->typ->var.basetyp->var.tuple.attrc;
+    for (i = 0; i < attrc; i++) {
+        attrv[i] = tbp->typ->var.basetyp->var.tuple.attrv[i].name;
+    }
+
+    /*
+     * Add attributes from child which are not attributes of the parent,
+     * but are referred to by the select condition
+     */
+    for (i = 0; i < chtbp->typ->var.basetyp->var.tuple.attrc; i++) {
+        char *attrname = chtbp->typ->var.basetyp->var.tuple.attrv[i].name;
+
+        if (_RDB_tuple_type_attr(tbp->typ->var.basetyp, attrname) == NULL
+                && _RDB_expr_refers_attr(chtbp->var.select.exp, attrname)) {
+            attrv[attrc++] = attrname;
+        }
+    }
+    if (attrc > tbp->typ->var.basetyp->var.tuple.attrc) {
+        RDB_table *ntbp;
+
+        /*
+         * Add project
+         */
+        ret = RDB_project(chtbp->var.select.tbp, attrc, attrv, &ntbp);
+        free(attrv);
+        if (ret != RDB_OK) {
+            return ret;
+        }
+        chtbp->var.select.tbp = ntbp;
+    } else {
+        RDB_bool keyloss;
+
+        /*
+         * Swap SELECT and project
+         */
+        free(attrv);        
+        keyloss = tbp->var.project.keyloss;
+
+        ret = copy_type(chtbp, tbp);
+        if (ret != RDB_OK)
+            return ret;
+
+        del_keys(tbp);
+        tbp->kind = RDB_TB_SELECT;
+        tbp->var.select.exp = chtbp->var.select.exp;
+        tbp->var.select.objpc = 0;
+        
+        del_keys(chtbp);
+        chtbp->kind = RDB_TB_PROJECT;
+        chtbp->var.project.indexp = NULL;
+        chtbp->var.project.keyloss = keyloss;
+    }
 
     return RDB_OK;
 }
@@ -533,9 +622,14 @@ static int
 transform_project(RDB_table *tbp)
 {
     int ret;
-    RDB_table *chtbp = tbp->var.project.tbp;
+    RDB_table *chtbp;
 
     do {
+        chtbp = tbp->var.project.tbp;
+        ret = _RDB_transform(chtbp);
+        if (ret != RDB_OK)
+            return ret;
+
         switch (chtbp->kind) {
             case RDB_TB_REAL:
                 return RDB_OK;
@@ -545,24 +639,34 @@ transform_project(RDB_table *tbp)
                 tbp->var.project.keyloss = (RDB_bool) (tbp->var.project.keyloss
                         || chtbp->var.project.keyloss);
                 _RDB_free_table(chtbp);
-                chtbp = tbp->var.project.tbp;
                 break;
             case RDB_TB_UNION:
                 ret = swap_project_union(tbp, chtbp);
                 if (ret != RDB_OK)
                     return ret;
                 tbp = chtbp;
-                chtbp = tbp->var.project.tbp;
                 break;
             case RDB_TB_RENAME:
-                ret = swap_project_rename(tbp, chtbp);
+                ret = swap_project_rename(tbp);
                 if (ret != RDB_OK)
                     return ret;
-                tbp = chtbp;
-                chtbp = tbp->var.project.tbp;
+                if (tbp->kind == RDB_TB_PROJECT) {
+                    /* Rename has been removed */
+                    chtbp = tbp->var.project.tbp;
+                } else {
+                    /* Rename and project have been swapped */
+                    tbp = chtbp;
+                }
                 break;
             case RDB_TB_SELECT:
-                /* !! ... */
+                ret = swap_project_select(tbp, chtbp);
+                if (ret != RDB_OK)
+                    return ret;
+                if (chtbp->kind == RDB_TB_SELECT) {
+                    return transform_select(chtbp);
+                }
+                tbp = chtbp;
+                break;
             case RDB_TB_MINUS:
             case RDB_TB_INTERSECT:
             case RDB_TB_JOIN:

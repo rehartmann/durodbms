@@ -18,7 +18,7 @@
 
 /*
  * If the constraint is of the form IS_EMPTY(table), set empty_tbp
- */ 
+ *
 static void
 set_empty_tbp(RDB_constraint *constrp)
 {
@@ -33,6 +33,7 @@ set_empty_tbp(RDB_constraint *constrp)
             constrp->empty_tbp = argp->var.obj.var.tbp;
     }
 }
+*/
 
 /*
  * Read constraints from catalog
@@ -73,7 +74,7 @@ _RDB_read_constraints(RDB_transaction *txp)
             free(constrp);
             goto cleanup;
         }
-        set_empty_tbp(constrp);
+        /* set_empty_tbp(constrp); */
         constrp->nextp = dbrootp->first_constrp;
         dbrootp->first_constrp = constrp;
     }
@@ -114,7 +115,7 @@ RDB_create_constraint(const char *name, RDB_expression *exp,
         return RDB_NO_MEMORY;
 
     constrp->exp = exp;
-    set_empty_tbp(constrp);
+    /* set_empty_tbp(constrp); */
 
     constrp->name = RDB_dup_str(name);
     if (constrp->name == NULL) {

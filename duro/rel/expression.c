@@ -1245,6 +1245,34 @@ _RDB_expr_refers(const RDB_expression *exp, RDB_table *tbp)
     abort();
 }
 
+RDB_bool
+_RDB_expr_refers_attr(const RDB_expression *exp, const char *attrname)
+{
+    switch (exp->kind) {
+        case RDB_EX_OBJ:
+            return RDB_FALSE;
+        case RDB_EX_ATTR:
+            return (RDB_bool) (strcmp(exp->var.attrname, attrname) == 0);
+        case RDB_EX_TUPLE_ATTR:
+        case RDB_EX_GET_COMP:
+            return _RDB_expr_refers_attr(exp->var.op.argv[0], attrname);
+        case RDB_EX_RO_OP:
+        {
+            int i;
+
+            for (i = 0; i < exp->var.op.argc; i++) {
+                if (_RDB_expr_refers_attr(exp->var.op.argv[i], attrname))
+                    return RDB_TRUE;
+            }            
+            return RDB_FALSE;
+        }
+        case RDB_EX_AGGREGATE:
+            return (RDB_bool) (strcmp(exp->var.op.name, attrname) == 0);
+    }
+    /* Should never be reached */
+    abort();
+}
+
 /*
  * Check if there is some table which both exp and tbp depend on
  */

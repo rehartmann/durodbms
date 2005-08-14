@@ -338,6 +338,7 @@ typedef struct RDB_transaction {
     struct RDB_transaction *parentp;
     struct RDB_rmlink *delrmp;
     struct RDB_ixlink *delixp;
+    char *errinfo;
 } RDB_transaction;
 
 /*
@@ -466,6 +467,9 @@ RDB_get_type(const char *name, RDB_transaction *, RDB_type **typp);
 
 RDB_bool
 RDB_tx_is_running(RDB_transaction *txp);
+
+char *
+RDB_tx_errinfo(const RDB_transaction *);
 
 /*
  * Start the transaction pointed to by txp.

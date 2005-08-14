@@ -1,9 +1,9 @@
 /*
- * Copyright (C) 2004 René Hartmann.
+ * $Id$
+ *
+ * Copyright (C) 2004-2005 René Hartmann.
  * See the file COPYING for redistribution information.
  */
-
-/* $Id$ */
 
 #include "duro.h"
 #include <gen/strfns.h>
@@ -116,7 +116,7 @@ type_define_cmd(TclState *statep, Tcl_Interp *interp, int objc,
             ret = RDB_get_type(Tcl_GetString(typeobjp),
                     txp, &repv[i].compv[j].typ);
             if (ret != RDB_OK) {
-                Duro_dberror(interp, ret);
+                Duro_dberror(interp, txp, ret);
                 ret = TCL_ERROR;
                 goto cleanup;
             }
@@ -135,7 +135,7 @@ type_define_cmd(TclState *statep, Tcl_Interp *interp, int objc,
     ret = RDB_define_type(Tcl_GetString(objv[2]), repc, repv, constraintp, txp);
     if (ret != RDB_OK) {
         RDB_drop_expr(constraintp);
-        Duro_dberror(interp, ret);
+        Duro_dberror(interp, txp, ret);
         ret = TCL_ERROR;
         goto cleanup;
     }
@@ -179,13 +179,13 @@ type_drop_cmd(TclState *statep, Tcl_Interp *interp, int objc,
 
     ret = RDB_get_type(name, txp, &typ);
     if (ret != RDB_OK) {
-        Duro_dberror(interp, ret);
+        Duro_dberror(interp, txp, ret);
         return TCL_ERROR;
     }
 
     ret = RDB_drop_type(typ, txp);
     if (ret != RDB_OK) {
-        Duro_dberror(interp, ret);
+        Duro_dberror(interp, txp, ret);
         return TCL_ERROR;
     }
 
@@ -226,7 +226,7 @@ type_implement_cmd(TclState *statep, Tcl_Interp *interp, int objc,
     if (irep != NULL && !RDB_type_is_scalar(irep))
         RDB_drop_type(irep, txp);
     if (ret != RDB_OK) {
-        Duro_dberror(interp, ret);
+        Duro_dberror(interp, txp, ret);
         return TCL_ERROR;
     }
 

@@ -45,7 +45,7 @@ Duro_expr_cmd(ClientData data, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv
     if (ret != RDB_OK) {
         RDB_drop_expr(exprp);
         RDB_destroy_obj(&val);
-        Duro_dberror(interp, ret);
+        Duro_dberror(interp, txp, ret);
         return TCL_ERROR;
     }
     RDB_drop_expr(exprp);

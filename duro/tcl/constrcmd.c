@@ -45,7 +45,7 @@ constraint_create_cmd(TclState *statep, Tcl_Interp *interp, int objc,
     ret = RDB_create_constraint(Tcl_GetString(objv[2]), exp, txp);
     if (ret != RDB_OK) {
         RDB_drop_expr(exp);
-        Duro_dberror(interp, ret);
+        Duro_dberror(interp, txp, ret);
         return TCL_ERROR;
     }
 
@@ -76,7 +76,7 @@ constraint_drop_cmd(TclState *statep, Tcl_Interp *interp, int objc,
 
     ret = RDB_drop_constraint(Tcl_GetString(objv[2]), txp);
     if (ret != RDB_OK) {
-        Duro_dberror(interp, ret);
+        Duro_dberror(interp, txp, ret);
         return TCL_ERROR;
     }
 

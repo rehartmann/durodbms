@@ -1,9 +1,9 @@
 /*
- * Copyright (C) 2003 René Hartmann.
+ * $Id$
+ *
+ * Copyright (C) 2003-2005 René Hartmann.
  * See the file COPYING for redistribution information.
  */
-
-/* $Id$ */
 
 #include "duro.h"
 #include <string.h>
@@ -91,7 +91,7 @@ Duro_env_cmd(ClientData data, Tcl_Interp *interp, int argc, CONST char *argv[])
 
         ret = RDB_open_env(argv[2], &envp);
         if (ret != RDB_OK) {
-            Duro_dberror(interp, ret);
+            Duro_dberror(interp, NULL, ret);
             return TCL_ERROR;
         }
 
@@ -120,7 +120,7 @@ Duro_env_cmd(ClientData data, Tcl_Interp *interp, int argc, CONST char *argv[])
         envp = Tcl_GetHashValue(entryp);
         ret = Duro_tcl_close_env(statep, envp, entryp);
         if (ret != RDB_OK) {
-            Duro_dberror(interp, ret);
+            Duro_dberror(interp, NULL, ret);
             return TCL_ERROR;
         }      
         return TCL_OK;
@@ -148,7 +148,7 @@ Duro_env_cmd(ClientData data, Tcl_Interp *interp, int argc, CONST char *argv[])
         ret = RDB_get_dbs(envp, &arr);
         if (ret != RDB_OK) {
             RDB_destroy_obj(&arr);
-            Duro_dberror(interp, ret);
+            Duro_dberror(interp, NULL, ret);
             return TCL_ERROR;
         }      
 
@@ -166,7 +166,7 @@ Duro_env_cmd(ClientData data, Tcl_Interp *interp, int argc, CONST char *argv[])
                 return ret;
         }
         if (ret != RDB_NOT_FOUND) {
-            Duro_dberror(interp, ret);
+            Duro_dberror(interp, NULL, ret);
             return TCL_ERROR;
         }
 

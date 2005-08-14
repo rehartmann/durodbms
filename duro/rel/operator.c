@@ -941,9 +941,11 @@ RDB_call_ro_op(const char *name, int argc, RDB_object *argv[],
     if (argc == 1 && obj_is_table(argv[0]))  {
         if (strcmp(name, "IS_EMPTY") == 0) {
             RDB_bool res;
+
             ret = RDB_table_is_empty(argv[0]->var.tbp, txp, &res);
             if (ret != RDB_OK)
                 return ret;
+
             RDB_bool_to_obj(retvalp, res);
             return RDB_OK;
         }
@@ -951,6 +953,7 @@ RDB_call_ro_op(const char *name, int argc, RDB_object *argv[],
             ret = RDB_cardinality(argv[0]->var.tbp, txp);
             if (ret < 0)
                 return ret;
+
             RDB_int_to_obj(retvalp, ret);
             return RDB_OK;
         }

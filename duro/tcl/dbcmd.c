@@ -1,9 +1,9 @@
 /*
+ * $Id$
+ *
  * Copyright (C) 2003-2005 René Hartmann.
  * See the file COPYING for redistribution information.
  */
-
-/* $Id$ */
 
 #include "duro.h"
 #include <gen/strfns.h>
@@ -32,7 +32,7 @@ db_create_cmd(TclState *statep, Tcl_Interp *interp, int argc, CONST char *argv[]
 
     ret = RDB_create_db_from_env(argv[3], envp, &dbp);
     if (ret != RDB_OK) {
-        Duro_dberror(interp, ret);
+        Duro_dberror(interp, NULL, ret);
         return TCL_ERROR;
     }
 
@@ -62,13 +62,13 @@ db_drop_cmd(TclState *statep, Tcl_Interp *interp, int argc, CONST char *argv[])
 
     ret = RDB_get_db_from_env(argv[3], envp, &dbp);
     if (ret != RDB_OK) {
-        Duro_dberror(interp, ret);
+        Duro_dberror(interp, NULL, ret);
         return TCL_ERROR;
     }
 
     ret = RDB_drop_db(dbp);
     if (ret != RDB_OK) {
-        Duro_dberror(interp, ret);
+        Duro_dberror(interp, NULL, ret);
         return TCL_ERROR;
     }
 

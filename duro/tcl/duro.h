@@ -99,7 +99,7 @@ int
 Duro_tcl_drop_array(RDB_object *arrayp, Tcl_HashEntry *entryp);
 
 void
-Duro_dberror(Tcl_Interp *interp, int err);
+Duro_dberror(Tcl_Interp *interp, RDB_transaction *, int err);
 
 int
 Duro_get_table(TclState *, Tcl_Interp *, const char *name, RDB_transaction *,

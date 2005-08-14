@@ -1353,7 +1353,7 @@ do_update(const RDB_ma_update *updp, RDB_transaction *txp)
     ret = _RDB_optimize(tbp, 0, NULL, txp, &ntbp);
 
     /* drop select */
-    free(tbp);
+    _RDB_free_table(tbp);
 
     if (ntbp->var.select.tbp->kind == RDB_TB_SELECT) {
         condp = ntbp->var.select.exp;
@@ -1401,7 +1401,7 @@ do_delete(const RDB_ma_delete *delp, RDB_transaction *txp)
     ret = _RDB_optimize(tbp, 0, NULL, txp, &ntbp);
 
     /* drop select */
-    free(tbp);
+    _RDB_free_table(tbp);
 
     if (ntbp->var.select.tbp->kind == RDB_TB_SELECT) {
         condp = ntbp->var.select.exp;
@@ -1437,6 +1437,17 @@ copy_obj(RDB_object *dstvalp, const RDB_object *srcvalp, RDB_transaction *txp)
         dstvalp->typ = srctyp;
     return RDB_OK;
 } 
+
+static int
+find_ins_target(int insc, const RDB_ma_insert insv[], RDB_table *tbp, int start)
+{
+    int i = start;
+
+    while (i < insc && insv[i].tbp != tbp) {
+        i++;
+    }
+    return i < insc ? i : -1;
+}
 
 int
 RDB_multi_assign(int insc, const RDB_ma_insert insv[],
@@ -1569,9 +1580,8 @@ RDB_multi_assign(int insc, const RDB_ma_insert insv[],
      * Check if the same target is assigned twice
      */
     for (i = 0; i < insc; i++) {
-        for (j = i + 1; j < insc; j++) {
-            if (insv[i].tbp == insv[j].tbp)
-                return RDB_INVALID_ARGUMENT;
+        if (find_ins_target(insc, insv, insv[i].tbp, i + 1) != -1) {
+            return RDB_INVALID_ARGUMENT;
         }
         for (j = 0; j < updc; j++) {
             if (insv[i].tbp == updv[j].tbp)
@@ -1579,12 +1589,12 @@ RDB_multi_assign(int insc, const RDB_ma_insert insv[],
         }
         for (j = 0; j < delc; j++) {
             if (insv[i].tbp == delv[j].tbp)
-                return RDB_NOT_SUPPORTED;
+                return RDB_INVALID_ARGUMENT;
         }
         for (j = 0; j < copyc; j++) {
             if (copyv[j].dstp->kind == RDB_OB_TABLE
                     && insv[i].tbp == copyv[j].dstp->var.tbp)
-                return RDB_NOT_SUPPORTED;
+                return RDB_INVALID_ARGUMENT;
         }
         /* !! geninsnp etc... */
     }
@@ -1600,7 +1610,7 @@ RDB_multi_assign(int insc, const RDB_ma_insert insv[],
         for (j = 0; j < copyc; j++) {
             if (copyv[j].dstp->kind == RDB_OB_TABLE
                     && updv[i].tbp == copyv[j].dstp->var.tbp)
-                return RDB_NOT_SUPPORTED;
+                return RDB_INVALID_ARGUMENT;
         }
     }
     for (i = 0; i < delc; i++) {
@@ -1611,7 +1621,7 @@ RDB_multi_assign(int insc, const RDB_ma_insert insv[],
         for (j = 0; j < copyc; j++) {
             if (copyv[j].dstp->kind == RDB_OB_TABLE
                     && delv[i].tbp == copyv[j].dstp->var.tbp)
-                return RDB_NOT_SUPPORTED;
+                return RDB_INVALID_ARGUMENT;
         }
     }
 
@@ -1619,7 +1629,7 @@ RDB_multi_assign(int insc, const RDB_ma_insert insv[],
         for (j = i + 1; j < copyc; j++) {
             if (copyv[j].dstp->kind == RDB_OB_TABLE
                     && delv[i].tbp == copyv[j].dstp->var.tbp)
-                return RDB_NOT_SUPPORTED;
+                return RDB_INVALID_ARGUMENT;
         }
     }
 
@@ -1656,6 +1666,7 @@ RDB_multi_assign(int insc, const RDB_ma_insert insv[],
             if (exp_refers_target(constrp->exp, insc, insv, updc, updv,
                     delc, delv, copyc, copyv)) {
                 RDB_bool b;
+
                 /*
                  * Replace target tables
                  */
@@ -1670,17 +1681,15 @@ RDB_multi_assign(int insc, const RDB_ma_insert insv[],
                 /*
                  * Check constraint
                  */
-                ret = _RDB_optimize_expr(newexp, txp);
-                if (ret != RDB_OK) {
-                    RDB_drop_expr(newexp);
-                    goto cleanup;
-                }
                 ret = RDB_evaluate_bool(newexp, NULL, txp, &b);
                 RDB_drop_expr(newexp);
                 if (ret != RDB_OK)
                     goto cleanup;
                 if (!b) {
-                    ret = RDB_PREDICATE_VIOLATION;
+                    ret = _RDB_set_tx_errinfo(txp, constrp->name);
+                    if (ret != RDB_OK)
+                        goto cleanup;
+                    ret = RDB_PREDICATE_VIOLATION;                    
                     goto cleanup;
                 }
             }

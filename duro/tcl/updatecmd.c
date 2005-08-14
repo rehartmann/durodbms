@@ -73,7 +73,7 @@ Duro_update_cmd(ClientData data, Tcl_Interp *interp, int objc,
     }
     ret = RDB_update(tbp, wherep, updc, updv, txp);
     if (ret != RDB_OK) {
-        Duro_dberror(interp, ret);
+        Duro_dberror(interp, txp, ret);
         ret = TCL_ERROR;
         goto cleanup;
     }

@@ -1,9 +1,9 @@
 /*
+ * $Id$
+ *
  * Copyright (C) 2003, 2004 René Hartmann.
  * See the file COPYING for redistribution information.
  */
-
-/* $Id$ */
 
 #include "duro.h"
 #include <string.h>
@@ -68,7 +68,7 @@ array_create_cmd(TclState *statep, Tcl_Interp *interp, int objc,
     if (seqitv != NULL)
         Tcl_Free((char *) seqitv);
     if (ret != RDB_OK) {
-        Duro_dberror(interp, ret);
+        Duro_dberror(interp, txp, ret);
         return TCL_ERROR;
     }
 
@@ -104,7 +104,7 @@ array_drop_cmd(TclState *statep, Tcl_Interp *interp, int objc,
     arrayp = Tcl_GetHashValue(entryp);
     ret = Duro_tcl_drop_array(arrayp, entryp);
     if (ret != RDB_OK) {
-        Duro_dberror(interp, ret);
+        Duro_dberror(interp, NULL, ret);
         return TCL_ERROR;
     }      
 
@@ -152,7 +152,7 @@ array_index_cmd(TclState *statep, Tcl_Interp *interp, int objc,
 
     ret = RDB_array_get(arrayp, (RDB_int) idx, &tplp);
     if (ret != RDB_OK) {
-        Duro_dberror(interp, ret);
+        Duro_dberror(interp, txp, ret);
         return TCL_ERROR;
     }
 
@@ -214,7 +214,7 @@ array_foreach_cmd(TclState *statep, Tcl_Interp *interp, int objc,
             return ret;
     }
     if (ret != RDB_NOT_FOUND) {
-        Duro_dberror(interp, ret);
+        Duro_dberror(interp, txp, ret);
         return TCL_ERROR;
     }
         
@@ -246,7 +246,7 @@ array_length_cmd(TclState *statep, Tcl_Interp *interp, int objc,
 
     len = RDB_array_length(arrayp);
     if (len < 0) {
-        Duro_dberror(interp, len);
+        Duro_dberror(interp, NULL, len);
         return TCL_ERROR;
     }
 
@@ -314,7 +314,7 @@ array_set_cmd(TclState *statep, Tcl_Interp *interp, int objc,
          */
         Tcl_ResetResult(interp);
 
-        Duro_dberror(interp, ret);
+        Duro_dberror(interp, txp, ret);
         return TCL_ERROR;
     }
 

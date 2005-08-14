@@ -1,9 +1,9 @@
 /*
+ * $Id$
+ *
  * Copyright (C) 2004, 2005 René Hartmann.
  * See the file COPYING for redistribution information.
  */
-
-/* $Id$ */
 
 #include "rdb.h"
 #include "internal.h"
@@ -14,7 +14,7 @@
 
 static RDB_bool is_and(RDB_expression *exp) {
     return (RDB_bool) exp->kind == RDB_EX_RO_OP
-        && strcmp (exp->var.op.name, "AND") == 0;
+            && strcmp (exp->var.op.name, "AND") == 0;
 }
 
 static void

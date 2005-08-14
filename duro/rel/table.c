@@ -12,6 +12,19 @@
 #include <gen/strfns.h>
 #include <gen/errors.h>
 #include <string.h>
+#include <dli/tabletostr.h>
+#include <stdio.h>
+
+static void
+print_table(RDB_table *tbp, RDB_transaction *txp, FILE *fp)
+{
+    RDB_object obj;
+
+    RDB_init_obj(&obj);
+    _RDB_table_to_str(&obj, tbp, txp, RDB_SHOW_INDEX);
+    fputs(RDB_obj_string(&obj), fp);
+    RDB_destroy_obj(&obj);
+}
 
 RDB_table *
 _RDB_new_table(void)
@@ -899,12 +912,39 @@ RDB_table_is_empty(RDB_table *tbp, RDB_transaction *txp, RDB_bool *resultp)
     int ret;
     RDB_qresult *qrp;
     RDB_object tpl;
+    RDB_table *ptbp;
+    RDB_table *ntbp;
 
     if (txp != NULL && !RDB_tx_is_running(txp))
         return RDB_INVALID_TRANSACTION;
 
+    fputs("Before optimization: ", stderr);
+    print_table(tbp, txp, stderr);
+    fputs("\n", stderr);
+
+    /*
+     * Project all attributes away, then optimize
+     */
+
+    ret = RDB_project(tbp, 0, NULL, &ptbp);
+    if (ret != RDB_OK)
+        return ret;
+
+    ret = _RDB_optimize(ptbp, 0, NULL, txp, &ntbp);
+
+    /* Remove project */
+    _RDB_free_table(ptbp);
+
+    if (ret != RDB_OK)
+        return ret;
+
+    fputs("After optimization: ", stderr);
+    print_table(ntbp, txp, stderr);
+    fputs("\n", stderr);
+
     ret = _RDB_table_qresult(tbp, txp, &qrp);
     if (ret != RDB_OK) {
+        RDB_drop_table(ntbp, txp);
         _RDB_handle_syserr(txp, ret);
         return ret;
     }
@@ -917,12 +957,18 @@ RDB_table_is_empty(RDB_table *tbp, RDB_transaction *txp, RDB_bool *resultp)
     else if (ret == RDB_NOT_FOUND)
         *resultp = RDB_TRUE;
     else {
-         RDB_destroy_obj(&tpl);
+        RDB_destroy_obj(&tpl);
+        RDB_drop_table(ntbp, txp);
         _RDB_drop_qresult(qrp, txp);
         _RDB_handle_syserr(txp, ret);
         return ret;
     }
     RDB_destroy_obj(&tpl);
+    ret = RDB_drop_table(ntbp, txp);
+    if (ret != RDB_OK) {
+        _RDB_drop_qresult(qrp, txp);
+        return ret;
+    }
     return _RDB_drop_qresult(qrp, txp);
 }
 

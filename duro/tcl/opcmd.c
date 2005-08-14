@@ -169,7 +169,7 @@ operator_create_cmd(ClientData data, Tcl_Interp *interp, int objc,
     }
     
     if (ret != RDB_OK) {
-        Duro_dberror(interp, ret);
+        Duro_dberror(interp, txp, ret);
         ret = TCL_ERROR;
         goto cleanup;
     }
@@ -205,7 +205,7 @@ operator_drop_cmd(ClientData data, Tcl_Interp *interp, int objc, Tcl_Obj *CONST 
 
     ret = RDB_drop_op(Tcl_GetString(objv[2]), txp);
     if (ret != RDB_OK) {
-        Duro_dberror(interp, ret);
+        Duro_dberror(interp, txp, ret);
         return TCL_ERROR;
     }
 
@@ -283,7 +283,7 @@ Duro_call_cmd(ClientData data, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv
 
     ret = _RDB_get_upd_op(Tcl_GetString(objv[1]), argc, argtv, txp, &op);
     if (ret != RDB_OK) {
-        Duro_dberror(interp, ret);
+        Duro_dberror(interp, txp, ret);
         ret = TCL_ERROR;
         goto cleanup;
     }
@@ -338,7 +338,7 @@ Duro_call_cmd(ClientData data, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv
     ret = RDB_call_update_op(Tcl_GetStringFromObj(objv[1], NULL),
             argc, argv, txp);
     if (ret != RDB_OK) {
-        Duro_dberror(interp, ret);
+        Duro_dberror(interp, txp, ret);
         return TCL_ERROR;
     }
 

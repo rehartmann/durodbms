@@ -1,9 +1,9 @@
 /*
- * Copyright (C) 2004 René Hartmann.
+ * $Id$
+ *
+ * Copyright (C) 2004-2005 René Hartmann.
  * See the file COPYING for redistribution information.
  */
-
-/* $Id$ */
 
 #include "duro.h"
 
@@ -47,7 +47,7 @@ index_create_cmd(TclState *statep, Tcl_Interp *interp, int objc,
         idxattrv, ordered ? RDB_ORDERED : 0, txp);
     free(idxattrv);
     if (ret != RDB_OK) {
-        Duro_dberror(interp, ret);
+        Duro_dberror(interp, txp, ret);
         return TCL_ERROR;
     }
     return TCL_OK;
@@ -77,7 +77,7 @@ index_drop_cmd(TclState *statep, Tcl_Interp *interp, int objc,
 
     ret = RDB_drop_table_index(Tcl_GetString(objv[2]), txp);
     if (ret != RDB_OK) {
-        Duro_dberror(interp, ret);
+        Duro_dberror(interp, txp, ret);
         return TCL_ERROR;
     }
 

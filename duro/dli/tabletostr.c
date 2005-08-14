@@ -244,7 +244,7 @@ append_obj(RDB_object *objp, const RDB_object *srcp, RDB_transaction *txp)
 }
 
 static int
-append_ex(RDB_object *objp, RDB_expression *exp, RDB_transaction *txp)
+append_ex(RDB_object *objp, const RDB_expression *exp, RDB_transaction *txp)
 {
     int ret;
     int i;
@@ -807,4 +807,16 @@ _RDB_obj_to_str(RDB_object *dstp, const RDB_object *srcp, RDB_transaction *txp)
         return ret;
 
     return append_obj(dstp, srcp, txp);
+}
+
+int
+_RDB_expr_to_str(RDB_object *dstp, const RDB_expression *exp, RDB_transaction *txp)
+{
+    int ret;
+
+    ret = RDB_string_to_obj(dstp, "");
+    if (ret != RDB_OK)
+        return ret;
+
+    return append_ex(dstp, exp, txp);
 }

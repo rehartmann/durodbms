@@ -62,6 +62,10 @@ set code [lindex $errorCode 1]
 if {$code != "RDB_PREDICATE_VIOLATION"} {
     error "wrong error code: $code"
 }
+set con [lindex $errorCode 3]
+if {$con != "C1"} {
+    error "wrong error constraint: $con"
+}
 
 # Must succeed
 duro::insert T1 {A 1 B 1} $tx
@@ -77,6 +81,10 @@ set code [lindex $errorCode 1]
 if {$code != "RDB_PREDICATE_VIOLATION"} {
     error "wrong error code: $code"
 }
+set con [lindex $errorCode 3]
+if {$con != "C2"} {
+    error "wrong error constraint: $con"
+}
 
 # Must fail
 if {![catch {
@@ -89,6 +97,10 @@ set code [lindex $errorCode 1]
 if {$code != "RDB_PREDICATE_VIOLATION"} {
     error "wrong error code: $code"
 }
+set con [lindex $errorCode 3]
+if {$con != "C1"} {
+    error "wrong error constraint: $con"
+}
 
 # Must fail
 if {![catch {
@@ -100,6 +112,10 @@ if {![catch {
 set code [lindex $errorCode 1]
 if {$code != "RDB_PREDICATE_VIOLATION"} {
     error "wrong error code: $code"
+}
+set con [lindex $errorCode 3]
+if {$con != "C2"} {
+    error "wrong error constraint: $con"
 }
 
 duro::table create T3 {
@@ -131,6 +147,10 @@ if {![catch {
 set code [lindex $errorCode 1]
 if {$code != "RDB_PREDICATE_VIOLATION"} {
     error "wrong error code: $code"
+}
+set con [lindex $errorCode 3]
+if {$con != "C3"} {
+    error "wrong error constraint: $con"
 }
 
 duro::commit $tx
