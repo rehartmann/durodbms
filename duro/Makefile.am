@@ -55,6 +55,7 @@ LDADD = -L$(BDB_HOME)/lib libduro.la -ldb @LIBS@
 tests_test_pointtable_LDADD = $(LDADD) -lm
 
 libduro_la_SOURCES = gen/errors.c gen/hashmap.c gen/hashmapit.c gen/strfns.c \
+        gen/hashtable.c \
         rec/cursor.c rec/env.c rec/index.c rec/recmap.c \
         rel/array.c rel/internal.h rel/database.c rel/operator.c \
         rel/expression.c rel/getargs.c rel/qresult.c rel/serialize.c \

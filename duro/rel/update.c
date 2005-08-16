@@ -655,6 +655,9 @@ int
 _RDB_update_real(RDB_table *tbp, RDB_expression *condp, int updc,
         const RDB_attr_update updv[], RDB_transaction *txp)
 {
+    if (tbp->stp == NULL)
+        return RDB_OK;
+
     if (upd_complex(tbp, updc, updv)
             || (condp != NULL && _RDB_expr_refers(condp, tbp)))
         return update_stored_complex(tbp, condp, updc, updv, txp);
@@ -720,6 +723,8 @@ update(RDB_table *tbp, RDB_expression *condp, int updc,
                     || tbp->var.select.tbp->var.project.indexp == NULL
                     || tbp->var.select.objpc == 0)
                 return update_select(tbp, condp, updc, updv, txp);
+            if (tbp->var.select.tbp->var.project.tbp->stp == NULL)
+                return RDB_OK;
             if (tbp->var.select.tbp->var.project.indexp->idxp == NULL)
                 return _RDB_update_select_pindex(tbp, condp, updc, updv, txp);
             return _RDB_update_select_index(tbp, condp, updc, updv, txp);

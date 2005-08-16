@@ -278,6 +278,11 @@ stored_contains(RDB_table *tbp, const RDB_object *tplp, RDB_transaction *txp)
     RDB_type *tpltyp = tbp->typ->var.basetyp;
     int attrcount = tpltyp->var.tuple.attrc;
 
+    if (tbp->stp == NULL) {
+        /* Physical table representation has not been created, so table is empty */
+        return RDB_NOT_FOUND;
+    }
+
     fvp = malloc(sizeof(RDB_field) * attrcount);
     if (fvp == NULL)
         return RDB_NO_MEMORY;

@@ -62,6 +62,11 @@ _RDB_delete_real(RDB_table *tbp, RDB_expression *condp, RDB_transaction *txp)
     RDB_bool b;
     RDB_type *tpltyp = tbp->typ->var.basetyp;
 
+    if (tbp->stp == NULL) {
+        /* Physical table representation has not been created, so table is empty */
+        return RDB_OK;
+    }
+
     ret = RDB_recmap_cursor(&curp, tbp->stp->recmapp, RDB_TRUE,
             tbp->is_persistent ? txp->txid : NULL);
     if (ret != RDB_OK)

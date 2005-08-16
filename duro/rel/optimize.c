@@ -626,6 +626,7 @@ mutate_project(RDB_table *tbp, RDB_table **tbpv, int cap, RDB_transaction *txp)
     char **namev;
 
     if (tbp->var.project.tbp->kind == RDB_TB_REAL
+            && tbp->var.project.tbp->stp != NULL
             && tbp->var.project.tbp->stp->indexc > 0) {
         tbc = tbp->var.project.tbp->stp->indexc;
         for (i = 0; i < tbc; i++) {
@@ -1214,7 +1215,7 @@ _RDB_optimize(RDB_table *tbp, int seqitc, const RDB_seq_item seqitv[],
     int i;
 
     if (tbp->kind == RDB_TB_REAL) {
-        if (seqitc > 0) {
+        if (seqitc > 0 && tbp->stp != NULL) {
             /*
              * Check if an index can be used for sorting
              */

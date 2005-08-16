@@ -383,13 +383,17 @@ do_group(RDB_qresult *qrp, RDB_transaction *txp)
                     goto cleanup;
             }
 
-            gfield.no = *(RDB_int *)RDB_hashmap_get(
-                    &qrp->matp->stp->attrmap,
-                    qrp->tbp->var.group.gattr, NULL);
+            if (qrp->matp->stp != NULL) {
+                gfield.no = *(RDB_int *)RDB_hashmap_get(
+                        &qrp->matp->stp->attrmap,
+                        qrp->tbp->var.group.gattr, NULL);
 
-            /* Try to read tuple of the materialized table */
-            ret = RDB_get_fields(qrp->matp->stp->recmapp, keyfv,
-                    1, NULL, &gfield);
+                /* Try to read tuple of the materialized table */
+                ret = RDB_get_fields(qrp->matp->stp->recmapp, keyfv,
+                        1, NULL, &gfield);
+            } else {
+                ret = RDB_NOT_FOUND;
+            }
             if (ret == RDB_OK) {
                 /*
                  * A tuple has been found, add read tuple to
@@ -466,8 +470,16 @@ stored_qresult(RDB_qresult *qrp, RDB_table *tbp, RDB_transaction *txp)
 {
     int ret;
 
-    /* !! delay after first call to _RDB_qresult_next()? */
+    if (tbp->stp == NULL) {
+        /*
+         * Table has no physical representation, which means it is empty
+         */
+        qrp->endreached = RDB_TRUE;
+        return RDB_OK;
+    }
+
     qrp->uses_cursor = RDB_TRUE;
+    /* !! delay after first call to _RDB_qresult_next()? */
     ret = RDB_recmap_cursor(&qrp->var.curp, tbp->stp->recmapp,
                     RDB_FALSE, tbp->is_persistent ? txp->txid : NULL);
     if (ret != RDB_OK) {
@@ -1775,6 +1787,12 @@ static int
 destroy_qresult(RDB_qresult *qrp, RDB_transaction *txp)
 {
     int ret;
+
+    if (qrp->tbp != NULL && qrp->tbp->kind == RDB_TB_REAL
+            && qrp->tbp->stp == NULL) {
+        /* Real table w/o physical rep */
+        return RDB_OK;
+    }
 
     if (qrp->uses_cursor) {
         ret = RDB_destroy_cursor(qrp->var.curp);

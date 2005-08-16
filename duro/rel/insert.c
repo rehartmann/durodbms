@@ -21,6 +21,15 @@ _RDB_insert_real(RDB_table *tbp, const RDB_object *tplp,
     RDB_type *tuptyp = tbp->typ->var.basetyp;
     int attrcount = tuptyp->var.tuple.attrc;
 
+    if (tbp->stp == NULL) {
+        /* Create physical table */
+        ret = _RDB_create_stored_table(tbp, txp != NULL ? txp->envp : NULL,
+                NULL, txp);
+        if (ret != RDB_OK) {
+            return ret;
+        }
+    }
+
     fvp = malloc(sizeof(RDB_field) * attrcount);
     if (fvp == NULL) {
         if (txp != NULL) {

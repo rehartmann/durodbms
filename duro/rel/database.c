@@ -675,13 +675,6 @@ _RDB_create_table(const char *name, RDB_bool persistent,
         _RDB_assoc_table_db(*tbpp, txp->dbp);
     }
 
-    ret = _RDB_create_stored_table(*tbpp, txp != NULL ? txp->envp : NULL,
-            NULL, &tx);
-    if (ret != RDB_OK) {
-        RDB_drop_table(*tbpp, &tx);
-        return ret;
-    }
-
     return txp != NULL ? RDB_commit(&tx) : RDB_OK;
 }
 

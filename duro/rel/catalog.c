@@ -414,8 +414,8 @@ cleanup:
 }
 
 int
-_RDB_cat_insert_index(_RDB_tbindex *indexp, const char *tbname,
-        RDB_transaction *txp)
+_RDB_cat_insert_index(const char *name, int attrc, const RDB_seq_item attrv[],
+        RDB_bool unique, const char *tbname, RDB_transaction *txp)
 {
     int ret;
     int i;
@@ -427,7 +427,7 @@ _RDB_cat_insert_index(_RDB_tbindex *indexp, const char *tbname,
     RDB_init_obj(&attrsarr);
     RDB_init_obj(&attrtpl);
 
-    ret = RDB_tuple_set_string(&tpl, "NAME", indexp->name);
+    ret = RDB_tuple_set_string(&tpl, "NAME", name);
     if (ret != RDB_OK)
         goto cleanup;
 
@@ -435,14 +435,14 @@ _RDB_cat_insert_index(_RDB_tbindex *indexp, const char *tbname,
     if (ret != RDB_OK)
         goto cleanup;
 
-    ret = RDB_set_array_length(&attrsarr, (RDB_int) indexp->attrc);
+    ret = RDB_set_array_length(&attrsarr, (RDB_int) attrc);
     if (ret != RDB_OK)
         goto cleanup;
-    for (i = 0; i < indexp->attrc; i++) {
-        ret = RDB_tuple_set_string(&attrtpl, "NAME", indexp->attrv[i].attrname);
+    for (i = 0; i < attrc; i++) {
+        ret = RDB_tuple_set_string(&attrtpl, "NAME", attrv[i].attrname);
         if (ret != RDB_OK)
             goto cleanup;
-        ret = RDB_tuple_set_bool(&attrtpl, "ASC", indexp->attrv[i].asc);
+        ret = RDB_tuple_set_bool(&attrtpl, "ASC", attrv[i].asc);
         if (ret != RDB_OK)
             goto cleanup;
         ret = RDB_array_set(&attrsarr, (RDB_int) i, &attrtpl);
@@ -453,7 +453,7 @@ _RDB_cat_insert_index(_RDB_tbindex *indexp, const char *tbname,
     if (ret != RDB_OK)
         goto cleanup;   
 
-    ret = RDB_tuple_set_bool(&tpl, "UNIQUE", indexp->unique);
+    ret = RDB_tuple_set_bool(&tpl, "UNIQUE", unique);
     if (ret != RDB_OK)
         goto cleanup;   
 
@@ -561,7 +561,10 @@ _RDB_cat_insert(RDB_table *tbp, RDB_transaction *txp)
                 int i;
 
                 for (i = 0; i < tbp->stp->indexc; i++) {
-                    ret = _RDB_cat_insert_index(&tbp->stp->indexv[i],
+                    ret = _RDB_cat_insert_index(tbp->stp->indexv[i].name,
+                            tbp->stp->indexv[i].attrc,
+                            tbp->stp->indexv[i].attrv,                            
+                            tbp->stp->indexv[i].unique,
                             tbp->name, txp);
                     if (ret != RDB_OK)
                         return ret;
@@ -1374,6 +1377,7 @@ _RDB_cat_get_rtable(const char *name, RDB_transaction *txp, RDB_table **tbpp)
     RDB_transaction tx;
     int indexc;
     _RDB_tbindex *indexv;
+    char *recmapname = NULL;
 
     /* Read real table data from the catalog */
 
@@ -1523,8 +1527,11 @@ _RDB_cat_get_rtable(const char *name, RDB_transaction *txp, RDB_table **tbpp)
             goto error;
         }
         ret = RDB_extract_tuple(tmptb4p, txp, &tpl);
-        if (ret != RDB_OK) {
+        if (ret != RDB_OK && ret != RDB_NOT_FOUND) {
             goto error;
+        }
+        if (ret == RDB_OK) {
+            recmapname = RDB_tuple_get_string(&tpl, "RECMAP");
         }
     }
 
@@ -1551,12 +1558,16 @@ _RDB_cat_get_rtable(const char *name, RDB_transaction *txp, RDB_table **tbpp)
         goto error;
     }
 
-    ret = _RDB_open_stored_table(*tbpp, txp->envp,
-            usr ? RDB_tuple_get_string(&tpl, "RECMAP") : (*tbpp)->name,
-            indexc, indexv, &tx);
-    if (ret != RDB_OK) {
-        RDB_rollback(&tx);
-        goto error;
+    if (!usr) {
+        recmapname = (*tbpp)->name;
+    }
+    if (recmapname != NULL) {
+        ret = _RDB_open_stored_table(*tbpp, txp->envp, recmapname,
+                indexc, indexv, &tx);
+        if (ret != RDB_OK) {
+            RDB_rollback(&tx);
+            goto error;
+        }
     }
 
     ret = RDB_commit(&tx);
