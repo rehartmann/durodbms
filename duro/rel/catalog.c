@@ -134,7 +134,8 @@ static RDB_attr indexes_attrv[] = {
     { "NAME", &RDB_STRING, NULL, 0 },
     { "TABLENAME", &RDB_STRING, NULL, 0 },
     { "ATTRS", NULL, NULL, 0 }, /* type is set to an array type later */
-    { "UNIQUE", &RDB_BOOLEAN, 0 }
+    { "UNIQUE", &RDB_BOOLEAN, 0 },
+    { "ORDERED", &RDB_BOOLEAN, 0 }
 };
 
 static char *indexes_keyattrv[] = { "NAME" };
@@ -415,7 +416,8 @@ cleanup:
 
 int
 _RDB_cat_insert_index(const char *name, int attrc, const RDB_seq_item attrv[],
-        RDB_bool unique, const char *tbname, RDB_transaction *txp)
+        RDB_bool unique, RDB_bool ordered, const char *tbname,
+        RDB_transaction *txp)
 {
     int ret;
     int i;
@@ -454,6 +456,10 @@ _RDB_cat_insert_index(const char *name, int attrc, const RDB_seq_item attrv[],
         goto cleanup;   
 
     ret = RDB_tuple_set_bool(&tpl, "UNIQUE", unique);
+    if (ret != RDB_OK)
+        goto cleanup;   
+
+    ret = RDB_tuple_set_bool(&tpl, "ORDERED", ordered);
     if (ret != RDB_OK)
         goto cleanup;   
 
@@ -565,6 +571,7 @@ _RDB_cat_insert(RDB_table *tbp, RDB_transaction *txp)
                             tbp->stp->indexv[i].attrc,
                             tbp->stp->indexv[i].attrv,                            
                             tbp->stp->indexv[i].unique,
+                            tbp->stp->indexv[i].ordered,
                             tbp->name, txp);
                     if (ret != RDB_OK)
                         return ret;
@@ -744,6 +751,7 @@ _RDB_cat_get_indexes(const char *tablename, RDB_dbroot *dbrootp,
             }
 
             indexp->unique = RDB_tuple_get_bool(tplp, "UNIQUE");
+            indexp->ordered = RDB_tuple_get_bool(tplp, "ORDERED");
         }
     }
     ret = indexc;
@@ -1012,7 +1020,7 @@ _RDB_open_systables(RDB_dbroot *dbrootp, RDB_transaction *txp)
         return ret;
     indexes_attrv[2].typ = RDB_create_array_type(typ);
 
-    ret = provide_systable("SYS_INDEXES", 4, indexes_attrv,
+    ret = provide_systable("SYS_INDEXES", 5, indexes_attrv,
             1, indexes_keyv, create, txp, dbrootp->envp,
             &dbrootp->indexes_tbp);
     if (ret != RDB_OK) {

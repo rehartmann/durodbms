@@ -71,3 +71,16 @@ _RDB_dump(void *datap, size_t size)
         printf("%d ", (int)cp[i]);
     printf("\n");
 }
+
+unsigned
+RDB_hash_str(const char *str)
+{
+    int len = (int) strlen(str);
+    int i;
+    unsigned res = 0;
+    
+    for (i = 0; i < len; i++)
+        res += str[i];
+
+    return res;
+}

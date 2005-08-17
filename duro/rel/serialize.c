@@ -10,7 +10,7 @@
 #include "internal.h"
 #include <gen/strfns.h>
 #include <string.h>
-#include <gen/hashmapit.h>
+#include <gen/hashtabit.h>
 
 /*
  * Functions for serializing/deserializing - needed for
@@ -131,29 +131,27 @@ serialize_obj(RDB_object *valp, int *posp, const RDB_object *argvalp)
             return serialize_table(valp, posp, argvalp->var.tbp);
         case RDB_OB_TUPLE:
         {
-            RDB_object *attrp;
-            char *key;
-            RDB_hashmap_iter hiter;
+            tuple_entry *entryp;
+            RDB_hashtable_iter hiter;
         
             ret = serialize_int(valp, posp, RDB_tuple_size(argvalp));
             if (ret != RDB_OK)
                 return ret;
 
-            RDB_init_hashmap_iter(&hiter, (RDB_hashmap *) &argvalp->var.tpl_map);
-            while ((attrp = (RDB_object *) RDB_hashmap_next(&hiter, &key, NULL))
-                    != NULL)
+            RDB_init_hashtable_iter(&hiter, (RDB_hashtable *) &argvalp->var.tpl_tab);
+            while ((entryp = RDB_hashtable_next(&hiter)) != NULL)
             {
                 /* Write attribute name */
-                ret = serialize_str(valp, posp, key);
+                ret = serialize_str(valp, posp, entryp->key);
                 if (ret != RDB_OK)
                     return ret;
 
                 /* Write attribute value */
-                ret = serialize_obj(valp, posp, attrp);
+                ret = serialize_obj(valp, posp, &entryp->obj);
                 if (ret != RDB_OK)
                     return ret;
             }
-            RDB_destroy_hashmap_iter(&hiter);
+            RDB_destroy_hashtable_iter(&hiter);
             return RDB_OK;
         }
         case RDB_OB_ARRAY:

@@ -15,8 +15,8 @@
 #include <dli/tabletostr.h>
 #include <stdio.h>
 
-static void
-print_table(RDB_table *tbp, RDB_transaction *txp, FILE *fp)
+void
+_RDB_print_table(RDB_table *tbp, RDB_transaction *txp, FILE *fp)
 {
     RDB_object obj;
 
@@ -919,7 +919,7 @@ RDB_table_is_empty(RDB_table *tbp, RDB_transaction *txp, RDB_bool *resultp)
         return RDB_INVALID_TRANSACTION;
 
     fputs("Before optimization: ", stderr);
-    print_table(tbp, txp, stderr);
+    _RDB_print_table(tbp, txp, stderr);
     fputs("\n", stderr);
 
     /*
@@ -939,7 +939,7 @@ RDB_table_is_empty(RDB_table *tbp, RDB_transaction *txp, RDB_bool *resultp)
         return ret;
 
     fputs("After optimization: ", stderr);
-    print_table(ntbp, txp, stderr);
+    _RDB_print_table(ntbp, txp, stderr);
     fputs("\n", stderr);
 
     ret = _RDB_table_qresult(tbp, txp, &qrp);

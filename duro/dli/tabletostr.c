@@ -8,7 +8,7 @@
 #include "tabletostr.h"
 #include <string.h>
 #include <rel/internal.h>
-#include <gen/hashmapit.h>
+#include <gen/hashtabit.h>
 
 static int
 append_str(RDB_object *objp, const char *str)
@@ -62,20 +62,19 @@ static int
 append_tuple(RDB_object *objp, const RDB_object *tplp, RDB_transaction *txp)
 {
     int ret;
-    RDB_hashmap_iter hiter;
-    RDB_object *attrp;
-    char *key;
+    RDB_hashtable_iter hiter;
+    tuple_entry *entryp;
     RDB_bool start = RDB_TRUE;
 
     ret = append_str(objp, "TUPLE { ");
     if (ret != RDB_OK)
         return ret;
 
-    RDB_init_hashmap_iter(&hiter, (RDB_hashmap *) &tplp->var.tpl_map);
+    RDB_init_hashtable_iter(&hiter, (RDB_hashtable *) &tplp->var.tpl_tab);
     for (;;) {
         /* Get next attribute */
-        attrp = (RDB_object *) RDB_hashmap_next(&hiter, &key, NULL);
-        if (attrp == NULL)
+        entryp = RDB_hashtable_next(&hiter);
+        if (entryp == NULL)
             break;
 
         if (start) {
@@ -86,7 +85,7 @@ append_tuple(RDB_object *objp, const RDB_object *tplp, RDB_transaction *txp)
                 goto error;
         }
 
-        ret = append_str(objp, key);
+        ret = append_str(objp, entryp->key);
         if (ret != RDB_OK)
             goto error;
 
@@ -94,7 +93,7 @@ append_tuple(RDB_object *objp, const RDB_object *tplp, RDB_transaction *txp)
         if (ret != RDB_OK)
             goto error;
 
-        ret = append_obj(objp, attrp, txp);
+        ret = append_obj(objp, &entryp->obj, txp);
         if (ret != RDB_OK)
             goto error;
     }
@@ -102,11 +101,11 @@ append_tuple(RDB_object *objp, const RDB_object *tplp, RDB_transaction *txp)
     if (ret != RDB_OK)
         return ret;
 
-    RDB_destroy_hashmap_iter(&hiter);
+    RDB_destroy_hashtable_iter(&hiter);
     return RDB_OK;
 
 error:
-    RDB_destroy_hashmap_iter(&hiter);
+    RDB_destroy_hashtable_iter(&hiter);
     return ret;
 }
 

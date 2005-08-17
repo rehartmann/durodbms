@@ -8,7 +8,7 @@
 #include "rdb.h"
 #include "internal.h"
 #include "typeimpl.h"
-#include <gen/hashmapit.h>
+#include <gen/hashtabit.h>
 #include <gen/strfns.h>
 #include <string.h>
 
@@ -1142,8 +1142,7 @@ next_ungroup_tuple(RDB_qresult *qrp, RDB_object *tplp, RDB_transaction *txp)
 {
     int ret;
     RDB_table *attrtbp;
-    RDB_hashmap_iter hiter;
-    char *key;
+    RDB_hashtable_iter hiter;
 
     /* If no tuple has been read, read first tuple */
     if (!qrp->var.virtual.tpl_valid) {
@@ -1196,18 +1195,18 @@ next_ungroup_tuple(RDB_qresult *qrp, RDB_object *tplp, RDB_transaction *txp)
     }
 
     /* Merge tuples, skipping the relation-valued attribute */
-    RDB_init_hashmap_iter(&hiter, (RDB_hashmap *) &qrp->var.virtual.tpl.var.tpl_map);
+    RDB_init_hashtable_iter(&hiter,
+            (RDB_hashtable *) &qrp->var.virtual.tpl.var.tpl_tab);
     for (;;) {
         /* Get next attribute */
-        RDB_object *srcattrp = (RDB_object *) RDB_hashmap_next(&hiter, &key,
-                NULL);
-        if (srcattrp == NULL)
+        tuple_entry *entryp = RDB_hashtable_next(&hiter);
+        if (entryp == NULL)
             break;
 
-        if (strcmp(key, qrp->tbp->var.ungroup.attr) != 0)
-            RDB_tuple_set(tplp, key, srcattrp);
+        if (strcmp(entryp->key, qrp->tbp->var.ungroup.attr) != 0)
+            RDB_tuple_set(tplp, entryp->key, &entryp->obj);
     }
-    RDB_destroy_hashmap_iter(&hiter);
+    RDB_destroy_hashtable_iter(&hiter);
 
     return RDB_OK;
 }

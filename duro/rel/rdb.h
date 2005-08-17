@@ -26,6 +26,7 @@ along with Duro; if not, write to the Free Software Foundation, Inc.,
 #include <rec/env.h>
 #include <rec/recmap.h>
 #include <gen/hashmap.h>
+#include <gen/hashtable.h>
 #include <gen/types.h>
 #include <stdlib.h>
 
@@ -63,7 +64,7 @@ typedef struct RDB_object {
             size_t len;
         } bin;
         struct RDB_table *tbp;
-        RDB_hashmap tpl_map;
+        RDB_hashtable tpl_tab;
         struct {
             struct RDB_table *tbp;
             struct RDB_transaction *txp;

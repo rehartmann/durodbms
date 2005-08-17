@@ -33,6 +33,12 @@ RDB_free_strvec(int cnt, char **strv);
 int
 RDB_find_str(int strc, char *strv[], const char *str);
 
+/*
+ * Hash function for strings
+ */
+unsigned
+RDB_hash_str(const char *str);
+
 void
 _RDB_dump(void *datap, size_t size);
 

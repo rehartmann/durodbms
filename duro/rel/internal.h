@@ -10,7 +10,9 @@
 
 #include <rec/index.h>
 #include <rec/cursor.h>
+#include <gen/hashtable.h>
 #include <ltdl.h>
+#include <stdio.h>
 
 #define AVG_COUNT_SUFFIX "$C"
 
@@ -18,6 +20,11 @@
 enum {
     RDB_DFL_MAP_CAPACITY = 37
 };
+
+typedef struct {
+    char *key;
+    RDB_object obj;
+} tuple_entry;
 
 typedef struct RDB_constraint {
     char *name;
@@ -38,6 +45,7 @@ typedef struct RDB_dbroot {
     RDB_database *first_dbp;
     RDB_constraint *first_constrp;
     RDB_bool constraints_read;
+    RDB_hashtable empty_tbmap;
 
     /* catalog tables */
     RDB_table *rtables_tbp;
@@ -120,6 +128,7 @@ typedef struct _RDB_tbindex {
     int attrc;
     RDB_seq_item *attrv;
     RDB_bool unique;
+    RDB_bool ordered;
     RDB_index *idxp;	/* NULL for the primary index */
 } _RDB_tbindex;
 
@@ -214,6 +223,10 @@ _RDB_table_refers(RDB_table *tbp, RDB_table *rtbp);
 
 RDB_bool
 _RDB_expr_refers_attr(const RDB_expression *, const char *attrname);
+
+int
+_RDB_expr_equals(const RDB_expression *, const RDB_expression *,
+        RDB_transaction *, RDB_bool *);
 
 /*
  * Extend the tuple type pointed to by typ by the attributes given by
@@ -462,7 +475,7 @@ _RDB_optimize(RDB_table *tbp, int seqitc, const RDB_seq_item seqitv[],
         RDB_transaction *, RDB_table **ntbpp);
 
 int
-_RDB_transform(RDB_table *tbp);
+_RDB_transform(RDB_table *tbp, RDB_transaction *);
 
 int
 _RDB_infer_keys(RDB_table *tbp);
@@ -524,5 +537,11 @@ _RDB_handle_syserr(RDB_transaction *, int err);
 
 int
 _RDB_set_tx_errinfo(RDB_transaction *, const char *errinfo);
+
+RDB_bool
+_RDB_table_def_equals(RDB_table *, RDB_table *, RDB_transaction *);
+
+void
+_RDB_print_table(RDB_table *, RDB_transaction *, FILE *);
 
 #endif

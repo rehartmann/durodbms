@@ -8,7 +8,7 @@
 #include "rdb.h"
 #include "typeimpl.h"
 #include "internal.h"
-#include <gen/hashmapit.h>
+#include <gen/hashtabit.h>
 #include <gen/errors.h>
 #include <string.h>
 #include <assert.h>
@@ -300,6 +300,7 @@ RDB_irep_to_obj(RDB_object *valp, RDB_type *typ, const void *datap, size_t len)
         ret = RDB_destroy_obj(valp);
         if (ret != RDB_OK)
             return ret;
+        RDB_init_obj(valp);
     }
 
     valp->typ = typ;
@@ -609,15 +610,17 @@ RDB_destroy_obj(RDB_object *objp)
             break;
         case RDB_OB_TUPLE:
         {
-            RDB_hashmap_iter it;
-            char *key;
-            void *datap;
+            RDB_hashtable_iter it;
+            tuple_entry *entryp;
 
-            RDB_init_hashmap_iter(&it, (RDB_hashmap *) &objp->var.tpl_map);
-            while ((datap = RDB_hashmap_next(&it, &key, NULL)) != NULL)
-                RDB_destroy_obj((RDB_object *) datap);
-            RDB_destroy_hashmap_iter(&it);
-            RDB_destroy_hashmap(&objp->var.tpl_map);
+            RDB_init_hashtable_iter(&it, (RDB_hashtable *) &objp->var.tpl_tab);
+            while ((entryp = RDB_hashtable_next(&it)) != NULL) {
+                RDB_destroy_obj(&entryp->obj);
+                free(entryp->key);
+                free(entryp);
+            }
+            RDB_destroy_hashtable_iter(&it);
+            RDB_destroy_hashtable(&objp->var.tpl_tab);
             break;
         }
         case RDB_OB_ARRAY:

@@ -64,18 +64,23 @@ expr_op_type(const RDB_expression *exp, const RDB_type *tuptyp,
         }
 
         attrv = malloc(sizeof (RDB_attr) * attrc);
-        if (attrv == NULL)
+        if (attrv == NULL) {
+            RDB_drop_type(tbtyp, NULL);
             return RDB_NO_MEMORY;
+        }
         for (i = 0; i < attrc; i++) {
             ret = RDB_expr_type(exp->var.op.argv[1 + i * 2], tuptyp, txp,
                     &attrv[i].typ);
             if (ret != RDB_OK) {
                 free(attrv);
+                RDB_drop_type(tbtyp, NULL);
                 return ret;
             }
             if (exp->var.op.argv[2 + i * 2]->kind != RDB_EX_OBJ ||
-                    exp->var.op.argv[2 + i * 2]->var.obj.typ != &RDB_STRING)
+                    exp->var.op.argv[2 + i * 2]->var.obj.typ != &RDB_STRING) {
+                RDB_drop_type(tbtyp, NULL);
                 return RDB_INVALID_ARGUMENT;
+            }
             attrv[i].name = RDB_obj_string(&exp->var.op.argv[2 + i * 2]->var.obj);
         }
         switch (tbtyp->kind) {
@@ -86,11 +91,10 @@ expr_op_type(const RDB_expression *exp, const RDB_type *tuptyp,
                 ret = RDB_extend_tuple_type(tbtyp, attrc, attrv, typp);
                 break;
             default:
-                free(attrv);
-                return RDB_TYPE_MISMATCH;
+                ret = RDB_TYPE_MISMATCH;
         }
         free(attrv);
-        /* !! memory leak */
+        RDB_drop_type(tbtyp, NULL);
         return ret;
     }
     if (exp->var.op.argc >= 1 && exp->var.op.argc % 2 == 1
@@ -105,19 +109,24 @@ expr_op_type(const RDB_expression *exp, const RDB_type *tuptyp,
         
         if (renc > 0) {
             renv = malloc(sizeof (RDB_renaming) * renc);
-            if (renv == NULL)
+            if (renv == NULL) {
+                RDB_drop_type(tbtyp, NULL);
                 return RDB_NO_MEMORY;
+            }
         }
 
         for (i = 0; i < renc; i++) {
             if (exp->var.op.argv[1 + i * 2]->kind != RDB_EX_OBJ ||
                     exp->var.op.argv[1 + i * 2]->var.obj.typ != &RDB_STRING) {
                 free(renv);
+                RDB_drop_type(tbtyp, NULL);
                 return RDB_INVALID_ARGUMENT;
             }
             if (exp->var.op.argv[2 + i * 2]->kind != RDB_EX_OBJ ||
-                    exp->var.op.argv[2 + i * 2]->var.obj.typ != &RDB_STRING)
+                    exp->var.op.argv[2 + i * 2]->var.obj.typ != &RDB_STRING) {
+                RDB_drop_type(tbtyp, NULL);
                 return RDB_INVALID_ARGUMENT;
+            }
             renv[i].from = RDB_obj_string(&exp->var.op.argv[1 + i * 2]->var.obj);
             renv[i].to = RDB_obj_string(&exp->var.op.argv[1 + i * 2]->var.obj);
         }
@@ -133,7 +142,7 @@ expr_op_type(const RDB_expression *exp, const RDB_type *tuptyp,
                 ret = RDB_TYPE_MISMATCH;
         }
         free(renv);
-        /* !! memory leak */
+        RDB_drop_type(tbtyp, NULL);
         return ret;
     }
     if (exp->var.op.argc >= 2
@@ -262,6 +271,16 @@ RDB_expr_type(const RDB_expression *exp, const RDB_type *tuptyp,
             *typp = RDB_obj_type(&exp->var.obj);
             if (*typp == NULL)
                 return RDB_NOT_FOUND;
+
+            /*
+             * Nonscalar types are managed by the caller, so
+             * duplicate it
+             */
+            if (!RDB_type_is_scalar(*typp)) {
+                *typp = _RDB_dup_nonscalar_type(*typp);
+                if (*typp == NULL)
+                    return RDB_NO_MEMORY;
+            }
             break;
         case RDB_EX_ATTR:
             attrp = _RDB_tuple_type_attr(tuptyp, exp->var.attrname);
@@ -306,6 +325,71 @@ RDB_expr_type(const RDB_expression *exp, const RDB_type *tuptyp,
                     if (attrp == NULL)
                         return RDB_ATTRIBUTE_NOT_FOUND;
                     *typp = attrp->typ;
+            }
+            break;
+    }
+    return RDB_OK;
+}
+
+int
+_RDB_expr_equals(const RDB_expression *ex1p, const RDB_expression *ex2p,
+        RDB_transaction *txp, RDB_bool *resp)
+{
+    int ret;
+    int i;
+
+    if (ex1p->kind != ex2p->kind) {
+        *resp = RDB_FALSE;
+        return RDB_OK;
+    }
+
+    switch (ex1p->kind) {
+        case RDB_EX_OBJ:
+            return RDB_obj_equals(&ex1p->var.obj, &ex2p->var.obj, txp, resp);
+        case RDB_EX_ATTR:
+            *resp = (RDB_bool)
+                    (strcmp (ex1p->var.attrname, ex2p->var.attrname) == 0);
+            break;
+        case RDB_EX_TUPLE_ATTR:
+        case RDB_EX_GET_COMP:
+            ret = _RDB_expr_equals(ex1p->var.op.argv[0], ex2p->var.op.argv[0],
+                    txp, resp);
+            if (ret != RDB_OK)
+                return ret;
+            *resp = (RDB_bool)
+                    (strcmp (ex1p->var.op.name, ex2p->var.op.name) == 0);
+            break;
+        case RDB_EX_RO_OP:
+            if (ex1p->var.op.argc != ex2p->var.op.argc
+                    || strcmp(ex1p->var.op.name, ex2p->var.op.name) != 0) {
+                *resp = RDB_FALSE;
+                return RDB_OK;
+            }
+            for (i = 0; i < ex1p->var.op.argc; i++) {
+                ret = _RDB_expr_equals(ex1p->var.op.argv[i],
+                        ex2p->var.op.argv[i], txp, resp);
+                if (ret != RDB_OK)
+                    return ret;
+                if (!*resp)
+                    return RDB_OK;
+            }
+            *resp = RDB_TRUE;
+            break;
+        case RDB_EX_AGGREGATE:
+            if (ex1p->var.op.op != ex2p->var.op.op) {
+                *resp = RDB_FALSE;
+                return RDB_OK;
+            }
+            if (!_RDB_table_def_equals(ex1p->var.op.argv[0]->var.obj.var.tbp,
+                    ex2p->var.op.argv[0]->var.obj.var.tbp, txp)) {
+                *resp = RDB_FALSE;
+                return RDB_OK;
+            }
+            if (ex1p->var.op.op == RDB_COUNT) {
+                *resp = RDB_TRUE;
+            } else {
+                *resp = (RDB_bool) (strcmp (ex1p->var.op.name,
+                        ex2p->var.op.name) == 0);
             }
             break;
     }

@@ -1258,6 +1258,70 @@ _RDB_dup_vtable(RDB_table *tbp)
     abort();
 }
 
+RDB_bool
+_RDB_table_def_equals(RDB_table *tb1p, RDB_table *tb2p, RDB_transaction *txp)
+{
+    if (tb1p == tb2p)
+        return RDB_TRUE;
+
+    if (tb1p->kind != tb2p->kind)
+        return RDB_FALSE;
+
+    switch (tb1p->kind) {
+        case RDB_TB_REAL:
+            return RDB_FALSE;
+        case RDB_TB_SELECT:
+        {
+            RDB_bool res;
+            int ret = _RDB_expr_equals(tb1p->var.select.exp,
+                    tb2p->var.select.exp, txp, &res);
+            if (ret != RDB_OK || !res)
+                return RDB_FALSE;
+            return (RDB_bool) _RDB_table_def_equals(tb1p->var.select.tbp,
+                    tb2p->var.select.tbp, txp);
+        }
+        case RDB_TB_UNION:
+            return (RDB_bool) (_RDB_table_def_equals(tb1p->var._union.tb1p,
+                    tb2p->var._union.tb1p, txp)
+                    && _RDB_table_def_equals(tb1p->var._union.tb2p,
+                    tb2p->var._union.tb2p, txp));
+        case RDB_TB_MINUS:
+            return (RDB_bool) (_RDB_table_def_equals(tb1p->var.minus.tb1p,
+                    tb2p->var.minus.tb1p, txp)
+                    && _RDB_table_def_equals(tb1p->var.minus.tb2p,
+                    tb2p->var.minus.tb2p, txp));
+        case RDB_TB_INTERSECT:
+            return (RDB_bool) (_RDB_table_def_equals(tb1p->var.intersect.tb1p,
+                    tb2p->var.intersect.tb1p, txp)
+                    && _RDB_table_def_equals(tb1p->var.intersect.tb2p,
+                    tb2p->var.intersect.tb2p, txp));
+        case RDB_TB_JOIN:
+            return (RDB_bool) (_RDB_table_def_equals(tb1p->var.join.tb1p,
+                    tb2p->var.join.tb1p, txp)
+                    && _RDB_table_def_equals(tb1p->var.join.tb2p,
+                    tb2p->var.join.tb2p, txp));
+        case RDB_TB_SDIVIDE:
+            return (RDB_bool) (_RDB_table_def_equals(tb1p->var.sdivide.tb1p,
+                    tb2p->var.sdivide.tb1p, txp)
+                    && _RDB_table_def_equals(tb1p->var.sdivide.tb2p,
+                    tb2p->var.sdivide.tb2p, txp)
+                    && _RDB_table_def_equals(tb1p->var.sdivide.tb2p,
+                    tb2p->var.sdivide.tb3p, txp));
+        case RDB_TB_EXTEND:
+        case RDB_TB_PROJECT:
+        case RDB_TB_SUMMARIZE:
+        case RDB_TB_RENAME:
+        case RDB_TB_WRAP:
+        case RDB_TB_UNWRAP:
+        case RDB_TB_GROUP:
+        case RDB_TB_UNGROUP:
+            /* !! */
+            return RDB_FALSE;
+    }
+    /* Must never be reached */
+    abort();
+}
+
 static int
 infer_join_keys(RDB_table *tbp)
 {

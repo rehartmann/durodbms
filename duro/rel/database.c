@@ -11,6 +11,7 @@
 #include "serialize.h"
 #include "catalog.h"
 #include <gen/hashmapit.h>
+#include <gen/hashtabit.h>
 #include <gen/strfns.h>
 #include <string.h>
 #include <stdio.h>
@@ -75,6 +76,8 @@ free_dbroot(RDB_dbroot *dbrootp)
 
     RDB_destroy_hashmap(&dbrootp->ro_opmap);
     RDB_destroy_hashmap(&dbrootp->upd_opmap);
+
+    RDB_destroy_hashtable(&dbrootp->empty_tbmap);
     free(dbrootp);
 }
 
@@ -190,9 +193,20 @@ cleanup_env(RDB_environment *envp)
     RDB_dbroot *dbrootp = (RDB_dbroot *) RDB_env_private(envp);
     RDB_database *dbp;
     RDB_database *nextdbp;
+    RDB_hashtable_iter tit;
+    RDB_table *etbp;
 
     if (dbrootp == NULL)
         return;
+
+    /* Destroy tables used in IS_EMPTY constraints */
+    RDB_init_hashtable_iter(&tit, &dbrootp->empty_tbmap);
+    while ((etbp = RDB_hashtable_next(&tit)) != NULL) {
+        if (RDB_table_name(etbp) == NULL) {
+            RDB_drop_table(etbp, NULL);
+        }
+    }
+    RDB_destroy_hashtable_iter(&tit);
 
     dbp = dbrootp->first_dbp;
 
@@ -204,6 +218,17 @@ cleanup_env(RDB_environment *envp)
     close_systables(dbrootp);
     free_dbroot(dbrootp);
     lt_dlexit();
+}
+
+static int
+hash_tb(const void *tbp, void *arg) {
+    return ((RDB_table *) tbp)->kind;
+}
+
+static RDB_bool
+tb_equals(const void *tb1p, const void *tb2p, void *txp) {
+    return _RDB_table_def_equals((RDB_table *) tb1p, (RDB_table *) tb2p,
+            (RDB_transaction *) txp);
 }
 
 static RDB_dbroot *
@@ -219,6 +244,8 @@ new_dbroot(RDB_environment *envp)
     RDB_init_hashmap(&dbrootp->typemap, RDB_DFL_MAP_CAPACITY);
     RDB_init_hashmap(&dbrootp->ro_opmap, RDB_DFL_MAP_CAPACITY);
     RDB_init_hashmap(&dbrootp->upd_opmap, RDB_DFL_MAP_CAPACITY);
+    RDB_init_hashtable(&dbrootp->empty_tbmap, RDB_DFL_MAP_CAPACITY,
+            &hash_tb, &tb_equals);
 
     ret = _RDB_add_builtin_ops(dbrootp);
     if (ret != RDB_OK)

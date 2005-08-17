@@ -180,6 +180,7 @@ keys_to_indexes(RDB_table *tbp, RDB_transaction *txp)
 
     for (i = 0; i < tbp->keyc; i++) {
         tbp->stp->indexv[oindexc + i].unique = RDB_TRUE;
+        tbp->stp->indexv[oindexc + i].ordered = RDB_FALSE;
         tbp->stp->indexv[oindexc + i].attrc = tbp->keyv[i].strc;
         tbp->stp->indexv[oindexc + i].attrv = malloc(sizeof(RDB_seq_item)
                 * tbp->keyv[i].strc);
@@ -204,7 +205,7 @@ keys_to_indexes(RDB_table *tbp, RDB_transaction *txp)
                 ret = _RDB_cat_insert_index(tbp->stp->indexv[oindexc + i].name,
                         tbp->stp->indexv[oindexc + i].attrc,
                         tbp->stp->indexv[oindexc + i].attrv,
-                        RDB_TRUE, tbp->name, txp);
+                        RDB_TRUE, RDB_FALSE, tbp->name, txp);
                 if (ret != RDB_OK)
                     return ret;
             }
@@ -237,8 +238,14 @@ create_indexes(RDB_table *tbp, RDB_environment *envp, RDB_transaction *txp)
     for (i = 0; i < tbp->stp->indexc; i++) {
         /* Create a BDB secondary index if it's not the primary index */
         if (!index_is_primary(tbp->stp->indexv[i].name)) {
-            ret = create_index(tbp, envp, txp, &tbp->stp->indexv[i],
-                    tbp->stp->indexv[i].unique ? RDB_UNIQUE : 0);
+            int flags = 0;
+
+            if (tbp->stp->indexv[i].unique)
+                flags = RDB_UNIQUE;
+            if (tbp->stp->indexv[i].ordered)
+                flags |= RDB_ORDERED;
+
+            ret = create_index(tbp, envp, txp, &tbp->stp->indexv[i], flags);
             if (ret != RDB_OK)
                 return ret;
         }
@@ -617,7 +624,8 @@ RDB_create_table_index(const char *name, RDB_table *tbp, int idxcompc,
     if (tbp->is_persistent) {
         /* Insert index into catalog */
         ret = _RDB_cat_insert_index(name, idxcompc, idxcompv,
-                (RDB_bool) (RDB_UNIQUE & flags), tbp->name, txp);
+                (RDB_bool) (RDB_UNIQUE & flags),
+                (RDB_bool) (RDB_ORDERED & flags), tbp->name, txp);
         if (ret != RDB_OK)
             goto error;
     }
@@ -655,6 +663,7 @@ RDB_create_table_index(const char *name, RDB_table *tbp, int idxcompc,
             indexp->attrv[i].asc = idxcompv[i].asc;
         }
         indexp->unique = (RDB_bool) (RDB_UNIQUE & flags);
+        indexp->ordered = (RDB_bool) (RDB_ORDERED & flags);
 
         /* Create index */
         ret = create_index(tbp, RDB_db_env(RDB_tx_db(txp)), txp, indexp, flags);

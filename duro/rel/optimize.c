@@ -1252,7 +1252,7 @@ _RDB_optimize(RDB_table *tbp, int seqitc, const RDB_seq_item seqitv[],
          * Algebraic optimization
          */
 
-        ret = _RDB_transform(ntbp);
+        ret = _RDB_transform(ntbp, txp);
         if (ret != RDB_OK)
             return ret;
 
@@ -1266,7 +1266,7 @@ _RDB_optimize(RDB_table *tbp, int seqitc, const RDB_seq_item seqitv[],
             return ret;
 
         /*
-         * Try to bind best table
+         * Try to find cheapest table
          */
 
         bestcost = sorted_table_cost(ntbp, seqitc, seqitv);
@@ -1303,58 +1303,4 @@ _RDB_optimize(RDB_table *tbp, int seqitc, const RDB_seq_item seqitv[],
     }
 
     return RDB_OK;
-}
-
-/*
- * Optimize the virtual tables which are part of the expression.
- */
-int
-_RDB_optimize_expr(RDB_expression *exp, RDB_transaction *txp)
-{
-    int ret;
-
-    switch (exp->kind) {
-        case RDB_EX_OBJ:
-            if (exp->var.obj.kind == RDB_OB_TABLE
-                    && exp->var.obj.var.tbp->kind != RDB_TB_REAL) {
-                RDB_table *ntbp;
-
-                /* Get optimized table */
-                ret = _RDB_optimize(exp->var.obj.var.tbp, 0, NULL,
-                        txp, &ntbp);
-                if (ret != RDB_OK)
-                    return ret;
-
-                /* If the table has no name, drop it */
-                if (RDB_table_name(exp->var.obj.var.tbp) == NULL) {
-                    ret = RDB_drop_table(exp->var.obj.var.tbp, txp);
-                    if (ret != RDB_OK)
-                        return ret;
-                }
-
-                /* Replace old by optimized table */
-                exp->var.obj.var.tbp = ntbp;
-            }
-            return RDB_OK;
-        case RDB_EX_ATTR:
-            return RDB_OK;
-        case RDB_EX_TUPLE_ATTR:
-            return _RDB_optimize_expr(exp->var.op.argv[0], txp);
-        case RDB_EX_GET_COMP:
-            return _RDB_optimize_expr(exp->var.op.argv[0], txp);
-        case RDB_EX_RO_OP:
-        {
-            int i;
-
-            for (i = 0; i < exp->var.op.argc; i++) {
-                ret = _RDB_optimize_expr(exp->var.op.argv[i], txp);
-                if (ret != RDB_OK)
-                    return ret;
-            }
-            return RDB_OK;
-        }
-        case RDB_EX_AGGREGATE:
-            return _RDB_optimize_expr(exp->var.op.argv[0], txp);
-    }
-    abort();
 }

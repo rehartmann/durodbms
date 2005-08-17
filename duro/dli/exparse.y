@@ -7,7 +7,7 @@
 #include <rel/rdb.h>
 #include <rel/internal.h>
 #include <gen/strfns.h>
-#include <gen/hashmapit.h>
+#include <gen/hashtabit.h>
 #include <string.h>
 
 extern RDB_transaction *_RDB_parse_txp;
@@ -1264,9 +1264,8 @@ literal: TOK_RELATION '{' expression_list '}' {
         int attrc;
         int i;
         RDB_attr *attrv;
-        RDB_hashmap_iter hiter;
-        RDB_object *attrp;
-        char *key;
+        RDB_hashtable_iter hiter;
+        tuple_entry *entryp;
         RDB_table *tbp;
         RDB_object obj;
         RDB_object *tplp = RDB_expr_obj($3.expv[0]);
@@ -1284,21 +1283,21 @@ literal: TOK_RELATION '{' expression_list '}' {
             YYERROR;
         }
 
-        RDB_init_hashmap_iter(&hiter, &tplp->var.tpl_map);
+        RDB_init_hashtable_iter(&hiter, &tplp->var.tpl_tab);
         for (i = 0; i < attrc; i++) {
             /* Get next attribute */
-            attrp = (RDB_object *) RDB_hashmap_next(&hiter, &key, NULL);
+            entryp = RDB_hashtable_next(&hiter);
 
-            attrv[i].name = key;
-            if (attrp->typ == NULL) {
+            attrv[i].name = entryp->key;
+            if (entryp->obj.typ == NULL) {
                 _RDB_parse_ret = RDB_NOT_SUPPORTED;
                 free(attrv);
                 YYERROR;
             }
-            attrv[i].typ = attrp->typ;
+            attrv[i].typ = entryp->obj.typ;
             attrv[i].defaultp = NULL;
         }
-        RDB_destroy_hashmap_iter(&hiter);        
+        RDB_destroy_hashtable_iter(&hiter);        
 
         _RDB_parse_ret = RDB_create_table(NULL, RDB_FALSE, attrc, attrv, 0, NULL,
                 _RDB_parse_txp, &tbp);

@@ -17,23 +17,39 @@
 #include <string.h>
 
 /*
- * If the constraint is of the form IS_EMPTY(table), set empty_tbp
- *
-static void
-set_empty_tbp(RDB_constraint *constrp)
+ * If the constraint is of the form IS_EMPTY(table), add table to
+ * hashtable of empty tables
+ */
+static int
+add_empty_tb(RDB_constraint *constrp, RDB_transaction *txp)
 {
-    RDB_expression *argp;
+    int ret;
 
-    constrp->empty_tbp = NULL;
     if (constrp->exp->kind == RDB_EX_RO_OP
             && constrp->exp->var.op.argc == 1
             && strcmp(constrp->exp->var.op.name, "IS_EMPTY") == 0) {
-        argp = constrp->exp->var.op.argv[0];
-        if (argp->kind == RDB_EX_OBJ && argp->var.obj.kind == RDB_OB_TABLE)    
-            constrp->empty_tbp = argp->var.obj.var.tbp;
+        RDB_object resobj;
+
+        RDB_init_obj(&resobj);
+        ret = RDB_evaluate(constrp->exp->var.op.argv[0], NULL, txp, &resobj);
+        if (ret != RDB_OK) {
+            RDB_destroy_obj(&resobj);
+            return ret;
+        }
+        fputs("Empty: ", stderr);
+        _RDB_print_table(RDB_obj_table(&resobj), txp, stderr);
+        fputs("\n", stderr);
+        ret = RDB_hashtable_put(&txp->dbp->dbrootp->empty_tbmap,
+                RDB_obj_table(&resobj), txp);
+        if (ret != RDB_OK) {
+            RDB_destroy_obj(&resobj);
+            return ret;
+        }
+        resobj.var.tbp = NULL;
+        RDB_destroy_obj(&resobj);
     }
+    return RDB_OK;
 }
-*/
 
 /*
  * Read constraints from catalog
@@ -74,7 +90,7 @@ _RDB_read_constraints(RDB_transaction *txp)
             free(constrp);
             goto cleanup;
         }
-        /* set_empty_tbp(constrp); */
+        add_empty_tb(constrp, txp);
         constrp->nextp = dbrootp->first_constrp;
         dbrootp->first_constrp = constrp;
     }
@@ -115,7 +131,7 @@ RDB_create_constraint(const char *name, RDB_expression *exp,
         return RDB_NO_MEMORY;
 
     constrp->exp = exp;
-    /* set_empty_tbp(constrp); */
+    add_empty_tb(constrp, txp);
 
     constrp->name = RDB_dup_str(name);
     if (constrp->name == NULL) {
