@@ -306,7 +306,7 @@ free_type(RDB_type *typ)
 int
 RDB_get_type(const char *name, RDB_transaction *txp, RDB_type **typp)
 {
-    RDB_type **foundtypp;
+    RDB_type *foundtyp;
     int ret;
 
     if (strcmp(name, "BOOLEAN") == 0) {
@@ -331,10 +331,9 @@ RDB_get_type(const char *name, RDB_transaction *txp, RDB_type **typp)
     }
     /* search for user defined type */
 
-    foundtypp = (RDB_type **)RDB_hashmap_get(&txp->dbp->dbrootp->typemap,
-            name, NULL);
-    if ((foundtypp != NULL) && (*foundtypp != NULL)) {
-        *typp = *foundtypp;
+    foundtyp = RDB_hashmap_get(&txp->dbp->dbrootp->typemap, name);
+    if (foundtyp != NULL) {
+        *typp = foundtyp;
         return RDB_OK;
     }
     
@@ -342,8 +341,7 @@ RDB_get_type(const char *name, RDB_transaction *txp, RDB_type **typp)
     if (ret != RDB_OK)
         return ret;
 
-    return RDB_hashmap_put(&txp->dbp->dbrootp->typemap, name, typp,
-            sizeof (RDB_type *));
+    return RDB_hashmap_put(&txp->dbp->dbrootp->typemap, name, *typp);
 }
 
 int
@@ -654,8 +652,7 @@ RDB_drop_type(RDB_type *typ, RDB_transaction *txp)
             return ret;
 
         /* Delete type from type table by puting a NULL pointer into it */
-        ret = RDB_hashmap_put(&txp->dbp->dbrootp->typemap, typ->name, &ntp,
-                sizeof (ntp));
+        ret = RDB_hashmap_put(&txp->dbp->dbrootp->typemap, typ->name, ntp);
         if (ret != RDB_OK) {
             _RDB_handle_syserr(txp, ret);
             return ret;

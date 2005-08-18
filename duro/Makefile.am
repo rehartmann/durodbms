@@ -34,14 +34,14 @@ tests/test_union tests/test_update tests/test_utypetable \
 tests/test_defpointtype tests/test_pointtable \
 tests/test_srupdate tests/test_insert tests/test_2db \
 tests/test_defop tests/test_callop tests/test_print_opview \
-tests/test_dropop tests/tupletest util/lstables
+tests/test_dropop tests/maptest tests/tupletest util/lstables
 
 tests_libpoint_la_SOURCES = tests/point.c tests/point.h
 
 tests_libplus_la_SOURCES = tests/plus.c
 
-TESTS = tests/ctests.sh tests/rtables.tcl tests/ltables.tcl tests/project.tcl \
-        tests/tuple.tcl tests/sdivide.tcl tests/invtable.tcl \
+TESTS = tests/maptest tests/ctests.sh tests/rtables.tcl tests/ltables.tcl \
+        tests/project.tcl tests/tuple.tcl tests/sdivide.tcl tests/invtable.tcl \
         tests/operator.tcl tests/vtables.tcl tests/db2.tcl tests/rel.tcl \
         tests/subset.tcl tests/utype.tcl tests/deedum.tcl tests/opt.tcl \
         tests/index.tcl tests/oindex.tcl tests/convert.tcl tests/string.tcl \

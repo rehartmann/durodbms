@@ -5,6 +5,7 @@
  * See the file COPYING for redistribution information.
  */
 
+#include <stdlib.h>
 #include "hashtable.h"
 #include <gen/errors.h>
 
@@ -107,7 +108,8 @@ RDB_hashtable_put(RDB_hashtable *hp, void *entryp, void *arg)
 void *
 RDB_hashtable_get(const RDB_hashtable *hp, void *entryp, void *arg)
 {
-    int idx; 
+    int idx;
+    int cnt = 0;
 
     if (hp->entries == NULL)
         return NULL;
@@ -116,7 +118,9 @@ RDB_hashtable_get(const RDB_hashtable *hp, void *entryp, void *arg)
     while (hp->entries[idx] != NULL 
             && !(*hp->efnp)(hp->entries[idx], entryp, arg)) {
         if (++idx >= hp->capacity)
-           idx = 0;
+            idx = 0;
+        if (++cnt >= hp->capacity)
+            return NULL;
     }
     return hp->entries[idx];
 }

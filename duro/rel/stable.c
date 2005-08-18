@@ -34,7 +34,7 @@ free_stored_table(RDB_stored_table *stp)
 {
     int i;
 
-    RDB_destroy_hashmap(&stp->attrmap);
+    RDB_destroy_hashtable(&stp->attrmap);
     if (stp->indexc > 0) {
         for (i = 0; i < stp->indexc; i++) {
             _RDB_free_tbindex(&stp->indexv[i]);
@@ -64,6 +64,40 @@ _RDB_close_stored_table(RDB_stored_table *stp)
 
     free_stored_table(stp);
     return RDB_OK;
+}
+
+RDB_int *
+_RDB_field_no(RDB_stored_table *stp, const char *attrname)
+{
+    _RDB_attrmap_entry entry;
+
+    entry.key = (char *) attrname;
+    _RDB_attrmap_entry *entryp = RDB_hashtable_get(&stp->attrmap, &entry,
+            NULL);
+    return entryp != NULL ? &entryp->fno : NULL;
+}
+
+int
+_RDB_put_field_no(RDB_stored_table *stp, const char *attrname, RDB_int fno)
+{
+    int ret;
+    _RDB_attrmap_entry *entryp = malloc(sizeof(_RDB_attrmap_entry));
+    if (entryp == NULL)
+        return RDB_NO_MEMORY;
+
+    entryp->key = RDB_dup_str(attrname);
+    if (entryp->key == NULL) {
+        free(entryp);
+        return RDB_NO_MEMORY;
+    }
+
+    entryp->fno = fno;
+    ret = RDB_hashtable_put(&stp->attrmap, entryp, NULL);
+    if (ret != RDB_OK) {
+        free(entryp->key);
+        free(entryp);
+    }
+    return ret;
 }
 
 static int
@@ -136,11 +170,10 @@ create_index(RDB_table *tbp, RDB_environment *envp, RDB_transaction *txp,
 
     /* Get index numbers */
     for (i = 0; i < indexp->attrc; i++) {
-        void *np = RDB_hashmap_get(&tbp->stp->attrmap,
-                indexp->attrv[i].attrname, NULL);
+        RDB_int *np = _RDB_field_no(tbp->stp, indexp->attrv[i].attrname);
         if (np == NULL)
             return RDB_ATTRIBUTE_NOT_FOUND;
-        fieldv[i] = *(int *) np;
+        fieldv[i] = *np;
     }
 
     /* Create record-layer index */
@@ -353,9 +386,8 @@ key_fnos(RDB_table *tbp, int **flenvp, const RDB_bool ascv[],
         }
 
         /* Put the field number into the attrmap */
-        ret = RDB_hashmap_put(&tbp->stp->attrmap,
-                tbp->typ->var.basetyp->var.tuple.attrv[i].name,
-                &fno, sizeof fno);
+        ret = _RDB_put_field_no(tbp->stp,
+                tbp->typ->var.basetyp->var.tuple.attrv[i].name, fno);
         if (ret != RDB_OK) {
             free(*flenvp);
             return ret;
@@ -364,6 +396,19 @@ key_fnos(RDB_table *tbp, int **flenvp, const RDB_bool ascv[],
         (*flenvp)[fno] = replen(heading[i].typ);
     }
     return RDB_OK;
+}
+
+static unsigned
+hash_str(const void *entryp, void *arg)
+{
+    return RDB_hash_str(((_RDB_attrmap_entry *) entryp)->key);
+}
+
+static RDB_bool
+str_equals(const void *e1p, const void *e2p, void *arg)
+{
+    return (RDB_bool) strcmp(((_RDB_attrmap_entry *) e1p)->key,
+            ((_RDB_attrmap_entry *) e2p)->key) == 0;
 }
 
 /*
@@ -399,7 +444,8 @@ _RDB_create_stored_table(RDB_table *tbp, RDB_environment *envp,
         return RDB_NO_MEMORY;
 
     tbp->stp->recmapp = NULL;
-    RDB_init_hashmap(&tbp->stp->attrmap, RDB_DFL_MAP_CAPACITY);
+    RDB_init_hashtable(&tbp->stp->attrmap, RDB_DFL_MAP_CAPACITY, &hash_str,
+            &str_equals);
     tbp->stp->est_cardinality = 1000;
 
     /* Allocate comparison vector, if needed */
@@ -490,7 +536,7 @@ error:
     free(cmpv);
     free(rmname);
 
-    RDB_destroy_hashmap(&tbp->stp->attrmap);
+    RDB_destroy_hashtable(&tbp->stp->attrmap);
     if (tbp->stp->recmapp != NULL)
         RDB_delete_recmap(tbp->stp->recmapp, txp != NULL ? txp->txid : NULL);
     free(tbp->stp);
@@ -534,7 +580,8 @@ _RDB_open_stored_table(RDB_table *tbp, RDB_environment *envp,
     if (tbp->stp == NULL)
         return RDB_NO_MEMORY;
 
-    RDB_init_hashmap(&tbp->stp->attrmap, RDB_DFL_MAP_CAPACITY);
+    RDB_init_hashtable(&tbp->stp->attrmap, RDB_DFL_MAP_CAPACITY, &hash_str,
+            &str_equals);
     tbp->stp->est_cardinality = 1000;
 
     tbp->stp->indexc = indexc;
@@ -571,7 +618,7 @@ error:
     free(flenv);
     free(cmpv);
 
-    RDB_destroy_hashmap(&tbp->stp->attrmap);
+    RDB_destroy_hashtable(&tbp->stp->attrmap);
     free(tbp->stp);
 
     if (txp != NULL)
@@ -594,8 +641,7 @@ _RDB_open_table_index(RDB_table *tbp, _RDB_tbindex *indexp,
 
     /* get index numbers */
     for (i = 0; i < indexp->attrc; i++) {
-        fieldv[i] = *(int *) RDB_hashmap_get(&tbp->stp->attrmap,
-                        indexp->attrv[i].attrname, NULL);
+        fieldv[i] = *_RDB_field_no(tbp->stp, indexp->attrv[i].attrname);
     }
 
     /* open index */

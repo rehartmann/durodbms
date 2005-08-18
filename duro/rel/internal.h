@@ -45,7 +45,7 @@ typedef struct RDB_dbroot {
     RDB_database *first_dbp;
     RDB_constraint *first_constrp;
     RDB_bool constraints_read;
-    RDB_hashtable empty_tbmap;
+    RDB_hashtable empty_tbtab;
 
     /* catalog tables */
     RDB_table *rtables_tbp;
@@ -65,9 +65,14 @@ typedef struct RDB_dbroot {
     RDB_table *version_info_tbp;
 } RDB_dbroot;
 
+typedef struct {
+    char *key;
+    RDB_int fno;
+} _RDB_attrmap_entry;
+
 typedef struct RDB_stored_table {
     RDB_recmap *recmapp;
-    RDB_hashmap attrmap;   /* Maps attr names to field numbers */
+    RDB_hashtable attrmap;   /* Maps attr names to field numbers */
 
     /* Table indexes */
     int indexc;
@@ -207,6 +212,9 @@ _RDB_delete_stored_table(RDB_stored_table *, RDB_transaction *);
 
 int
 _RDB_close_stored_table(RDB_stored_table *);
+
+RDB_int *
+_RDB_field_no(RDB_stored_table *, const char *attrname);
 
 int
 _RDB_create_table(const char *name, RDB_bool persistent,

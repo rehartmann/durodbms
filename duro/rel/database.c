@@ -28,7 +28,7 @@ int
 _RDB_assoc_table_db(RDB_table *tbp, RDB_database *dbp)
 {
     /* Insert table into table map */
-    return RDB_hashmap_put(&dbp->tbmap, tbp->name, &tbp, sizeof (RDB_table *));
+    return RDB_hashmap_put(&dbp->tbmap, tbp->name, tbp);
 }
 
 static void
@@ -45,8 +45,8 @@ free_dbroot(RDB_dbroot *dbrootp)
      * destroy user-defined operators in memory
      */
     RDB_init_hashmap_iter(&it, &dbrootp->ro_opmap);
-    while ((datap = RDB_hashmap_next(&it, &keyp, NULL)) != NULL) {
-        RDB_ro_op_desc *op = *(RDB_ro_op_desc **)datap;
+    while ((datap = RDB_hashmap_next(&it, &keyp)) != NULL) {
+        RDB_ro_op_desc *op = datap;
 
         if (op != NULL)
             _RDB_free_ro_ops(op);
@@ -66,8 +66,8 @@ free_dbroot(RDB_dbroot *dbrootp)
     }
 
     RDB_init_hashmap_iter(&it, &dbrootp->upd_opmap);
-    while ((datap = RDB_hashmap_next(&it, &keyp, NULL)) != NULL) {
-        RDB_upd_op *op = *(RDB_upd_op **) datap;
+    while ((datap = RDB_hashmap_next(&it, &keyp)) != NULL) {
+        RDB_upd_op *op = datap;
 
         if (op != NULL)
             _RDB_free_upd_ops(op);
@@ -77,7 +77,7 @@ free_dbroot(RDB_dbroot *dbrootp)
     RDB_destroy_hashmap(&dbrootp->ro_opmap);
     RDB_destroy_hashmap(&dbrootp->upd_opmap);
 
-    RDB_destroy_hashtable(&dbrootp->empty_tbmap);
+    RDB_destroy_hashtable(&dbrootp->empty_tbtab);
     free(dbrootp);
 }
 
@@ -99,11 +99,9 @@ close_table(RDB_table *tbp, RDB_environment *envp)
      */
     dbrootp = (RDB_dbroot *)RDB_env_private(envp);
     for (dbp = dbrootp->first_dbp; dbp != NULL; dbp = dbp->nextdbp) {
-        RDB_table **foundtbpp = (RDB_table **)RDB_hashmap_get(
-                &dbp->tbmap, tbp->name, NULL);
-        if (foundtbpp != NULL && *foundtbpp != NULL) {
-            void *nullp = NULL;
-            RDB_hashmap_put(&dbp->tbmap, tbp->name, &nullp, sizeof nullp);
+        RDB_table *foundtbp = RDB_hashmap_get(&dbp->tbmap, tbp->name);
+        if (foundtbp != NULL) {
+            RDB_hashmap_put(&dbp->tbmap, tbp->name, NULL);
         }
     }
 
@@ -140,7 +138,7 @@ release_db(RDB_database *dbp)
 {
     int ret;
     int i;
-    RDB_table **tbpp;
+    RDB_table *tbp;
     int tbcount;
     char **tbnames;
 
@@ -149,9 +147,9 @@ release_db(RDB_database *dbp)
     tbnames = malloc(sizeof(char *) * tbcount);
     RDB_hashmap_keys(&dbp->tbmap, tbnames);
     for (i = 0; i < tbcount; i++) {
-        tbpp = (RDB_table **)RDB_hashmap_get(&dbp->tbmap, tbnames[i], NULL);
-        if (*tbpp != NULL && (*tbpp)->is_user) {
-            ret = close_table(*tbpp, dbp->dbrootp->envp);
+        tbp = RDB_hashmap_get(&dbp->tbmap, tbnames[i]);
+        if (tbp != NULL && tbp->is_user) {
+            ret = close_table(tbp, dbp->dbrootp->envp);
             if (ret != RDB_OK)
                 return ret;
 
@@ -200,7 +198,7 @@ cleanup_env(RDB_environment *envp)
         return;
 
     /* Destroy tables used in IS_EMPTY constraints */
-    RDB_init_hashtable_iter(&tit, &dbrootp->empty_tbmap);
+    RDB_init_hashtable_iter(&tit, &dbrootp->empty_tbtab);
     while ((etbp = RDB_hashtable_next(&tit)) != NULL) {
         if (RDB_table_name(etbp) == NULL) {
             RDB_drop_table(etbp, NULL);
@@ -220,7 +218,7 @@ cleanup_env(RDB_environment *envp)
     lt_dlexit();
 }
 
-static int
+static unsigned
 hash_tb(const void *tbp, void *arg) {
     return ((RDB_table *) tbp)->kind;
 }
@@ -244,7 +242,7 @@ new_dbroot(RDB_environment *envp)
     RDB_init_hashmap(&dbrootp->typemap, RDB_DFL_MAP_CAPACITY);
     RDB_init_hashmap(&dbrootp->ro_opmap, RDB_DFL_MAP_CAPACITY);
     RDB_init_hashmap(&dbrootp->upd_opmap, RDB_DFL_MAP_CAPACITY);
-    RDB_init_hashtable(&dbrootp->empty_tbmap, RDB_DFL_MAP_CAPACITY,
+    RDB_init_hashtable(&dbrootp->empty_tbtab, RDB_DFL_MAP_CAPACITY,
             &hash_tb, &tb_equals);
 
     ret = _RDB_add_builtin_ops(dbrootp);
@@ -787,16 +785,16 @@ int
 RDB_get_table(const char *name, RDB_transaction *txp, RDB_table **tbpp)
 {
     int ret;
-    RDB_table **foundtbpp;
+    RDB_table *foundtbp;
     RDB_database *dbp;
 
     /* Search table in all databases */
     dbp = txp->dbp->dbrootp->first_dbp;
     while (dbp != NULL) {
-        foundtbpp = (RDB_table **)RDB_hashmap_get(&dbp->tbmap, name, NULL);
-        if (foundtbpp != NULL && *foundtbpp != NULL) {
+        foundtbp = RDB_hashmap_get(&dbp->tbmap, name);
+        if (foundtbp != NULL) {
             /* Found */
-            *tbpp = *foundtbpp;
+            *tbpp = foundtbp;
             return RDB_OK;
         }
         dbp = dbp->nextdbp;
@@ -828,11 +826,9 @@ RDB_drop_table(RDB_table *tbp, RDB_transaction *txp)
          */
         dbrootp = (RDB_dbroot *)RDB_env_private(txp->envp);
         for (dbp = dbrootp->first_dbp; dbp != NULL; dbp = dbp->nextdbp) {
-            RDB_table **foundtbpp = (RDB_table **)RDB_hashmap_get(
-                    &dbp->tbmap, tbp->name, NULL);
-            if (foundtbpp != NULL) {
-                void *nullp = NULL;
-                RDB_hashmap_put(&dbp->tbmap, tbp->name, &nullp, sizeof nullp);
+            RDB_table *foundtbp = RDB_hashmap_get(&dbp->tbmap, tbp->name);
+            if (foundtbp != NULL) {
+                RDB_hashmap_put(&dbp->tbmap, tbp->name, NULL);
             }
         }
 
@@ -872,12 +868,10 @@ RDB_set_table_name(RDB_table *tbp, const char *name, RDB_transaction *txp)
         /* Delete and reinsert tables from/to table maps */
         for (dbp = txp->dbp->dbrootp->first_dbp; dbp != NULL;
                 dbp = dbp->nextdbp) {
-            RDB_table **foundtbpp = (RDB_table **)RDB_hashmap_get(
-                    &dbp->tbmap, tbp->name, NULL);
-            if (foundtbpp != NULL && *foundtbpp != NULL) {
-                void *nullp = NULL;
-                RDB_hashmap_put(&dbp->tbmap, tbp->name, &nullp, sizeof nullp);
-                RDB_hashmap_put(&dbp->tbmap, name, &tbp, sizeof tbp);
+            RDB_table *foundtbp = RDB_hashmap_get(&dbp->tbmap, tbp->name);
+            if (foundtbp != NULL) {
+                RDB_hashmap_put(&dbp->tbmap, tbp->name, NULL);
+                RDB_hashmap_put(&dbp->tbmap, name, tbp);
             }
         }
 

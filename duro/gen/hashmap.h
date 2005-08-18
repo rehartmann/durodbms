@@ -3,26 +3,22 @@
 
 /* $Id$ */
 
+#include "hashtable.h"
 #include <stdlib.h>
-
-#include "types.h"
 
 /**
  * A hashmap which maps key strings to arbitary values. It does not support
  * removing keys, so a static hash table can be used without problems.
  */
 
-struct RDB_kv_pair {
-    char *keyp;
-    void *valuep;
-    size_t len;
-};
+typedef struct {
+    RDB_hashtable tab;
+} RDB_hashmap;
 
 typedef struct {
-    struct RDB_kv_pair *kv_tab;
-    int capacity;	/* # of table entries */
-    int key_count;	/* # of key/value pairs */
-} RDB_hashmap;
+    char *key;
+    void *valuep;
+} RDB_kv_pair;
 
 /*
  * Initialize the hashmap pointed to by hp.
@@ -45,7 +41,6 @@ RDB_destroy_hashmap(RDB_hashmap *);
 
 /*
  * Insert the key/value pair (key, valp) into the hashmap pointed to by hp.
- * The length of the value is specified by len.
  * If a value for the key already exists in the hashmap, the old
  * key/value pair is replaced.
  *
@@ -54,15 +49,10 @@ RDB_destroy_hashmap(RDB_hashmap *);
  *     RDB_NO_MEMORY insufficient memory
  */
 int
-RDB_hashmap_put(RDB_hashmap *, const char *keyp, const void *valp, size_t len);
+RDB_hashmap_put(RDB_hashmap *, const char *keyp, void *valp);
 
 /**
- * Return a pointer to the value key maps to. If the value exists for the key
- * and lenp is not NULL, the length will be stored in the location pointed to
- * by lengthp.
- * The pointer returned will become invalid if the hashmap is destroyed
- * using RDB_destroy_hashmap() or if the value is overwritten
- * by calling RDB_hashmap_put() with the same keyp argument.
+ * Return a pointer to the value key maps to.
  * If the key does not exist, NULL is retuned.
  *
  * Returns:
@@ -70,7 +60,7 @@ RDB_hashmap_put(RDB_hashmap *, const char *keyp, const void *valp, size_t len);
  *     NULL otherwise.
  */
 void *
-RDB_hashmap_get(const RDB_hashmap *, const char *key, size_t *lenp);
+RDB_hashmap_get(const RDB_hashmap *, const char *key);
 
 /*
  * Return the number of key/data pairs the hashmap contains.

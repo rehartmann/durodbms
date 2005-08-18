@@ -39,7 +39,7 @@ add_empty_tb(RDB_constraint *constrp, RDB_transaction *txp)
         fputs("Empty: ", stderr);
         _RDB_print_table(RDB_obj_table(&resobj), txp, stderr);
         fputs("\n", stderr);
-        ret = RDB_hashtable_put(&txp->dbp->dbrootp->empty_tbmap,
+        ret = RDB_hashtable_put(&txp->dbp->dbrootp->empty_tbtab,
                 RDB_obj_table(&resobj), txp);
         if (ret != RDB_OK) {
             RDB_destroy_obj(&resobj);

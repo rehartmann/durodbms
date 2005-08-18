@@ -84,9 +84,7 @@ _RDB_delete_real(RDB_table *tbp, RDB_expression *condp, RDB_transaction *txp)
                 RDB_object val;
 
                 ret = RDB_cursor_get(curp,
-                        *(int*) RDB_hashmap_get(
-                                &tbp->stp->attrmap,
-                                tpltyp->var.tuple.attrv[i].name, NULL),
+                        *_RDB_field_no(tbp->stp, tpltyp->var.tuple.attrv[i].name),
                         &datap, &len);
                 if (ret != 0) {
                    RDB_destroy_obj(&tpl);

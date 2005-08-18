@@ -42,8 +42,7 @@ _RDB_insert_real(RDB_table *tbp, const RDB_object *tplp,
         int *fnop;
         RDB_object *valp;
         
-        fnop = RDB_hashmap_get(&tbp->stp->attrmap,
-                tuptyp->var.tuple.attrv[i].name, NULL);
+        fnop = _RDB_field_no(tbp->stp, tuptyp->var.tuple.attrv[i].name);
         valp = RDB_tuple_get(tplp, tuptyp->var.tuple.attrv[i].name);
 
         /* If there is no value, check if there is a default */

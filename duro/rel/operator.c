@@ -408,16 +408,16 @@ static int
 put_ro_op(RDB_dbroot *dbrootp, RDB_ro_op_desc *op)
 {
     int ret;
-    RDB_ro_op_desc **fopp = RDB_hashmap_get(&dbrootp->ro_opmap, op->name, NULL);
+    RDB_ro_op_desc *fop = RDB_hashmap_get(&dbrootp->ro_opmap, op->name);
 
-    if (fopp == NULL || *fopp == NULL) {
+    if (fop == NULL) {
         op->nextp = NULL;
-        ret = RDB_hashmap_put(&dbrootp->ro_opmap, op->name, &op, sizeof (op));
+        ret = RDB_hashmap_put(&dbrootp->ro_opmap, op->name, op);
         if (ret != RDB_OK)
             return ret;
     } else {
-        op->nextp = (*fopp)->nextp;
-        (*fopp)->nextp = op;
+        op->nextp = fop->nextp;
+        fop->nextp = op;
     }
     return RDB_OK;
 }
@@ -426,13 +426,13 @@ static int
 get_ro_op(RDB_dbroot *dbrootp, const char *name,
         int argc, RDB_type *argtv[], RDB_ro_op_desc **ropp)
 {
-    RDB_ro_op_desc **opp = RDB_hashmap_get(&dbrootp->ro_opmap, name, NULL);
+    RDB_ro_op_desc *op = RDB_hashmap_get(&dbrootp->ro_opmap, name);
     RDB_bool pm = RDB_FALSE;
 
-    if (opp == NULL || *opp == NULL)
+    if (op == NULL)
         return RDB_OPERATOR_NOT_FOUND;
 
-    *ropp = *opp;
+    *ropp = op;
 
     /* Find an operator with same signature */
     do {
@@ -1033,12 +1033,10 @@ static RDB_upd_op *
 get_upd_op(const RDB_dbroot *dbrootp, const char *name,
         int argc, RDB_type *argtv[])
 {
-    RDB_upd_op *op;
-    RDB_upd_op **opp = RDB_hashmap_get(&dbrootp->upd_opmap, name, NULL);    
+    RDB_upd_op *op = RDB_hashmap_get(&dbrootp->upd_opmap, name);
 
-    if (opp == NULL)
+    if (op == NULL)
         return NULL;
-    op = *opp;
     
     /* Find a operation with same signature */
     while (op != NULL) {
@@ -1063,16 +1061,16 @@ static int
 put_upd_op(RDB_dbroot *dbrootp, RDB_upd_op *op)
 {
     int ret;
-    RDB_upd_op **fopp = RDB_hashmap_get(&dbrootp->upd_opmap, op->name, NULL);
+    RDB_upd_op *fop = RDB_hashmap_get(&dbrootp->upd_opmap, op->name);
 
-    if (fopp == NULL || *fopp == NULL) {
+    if (fop == NULL) {
         op->nextp = NULL;
-        ret = RDB_hashmap_put(&dbrootp->upd_opmap, op->name, &op, sizeof (op));
+        ret = RDB_hashmap_put(&dbrootp->upd_opmap, op->name, op);
         if (ret != RDB_OK)
             return ret;
     } else {
-        op->nextp = (*fopp)->nextp;
-        (*fopp)->nextp = op;
+        op->nextp = fop->nextp;
+        fop->nextp = op;
     }
     return RDB_OK;
 }
@@ -1167,16 +1165,14 @@ RDB_drop_op(const char *name, RDB_transaction *txp)
 
     if (isempty) {
         /* It's an update operator */
-        RDB_upd_op **oldopp;
+        RDB_upd_op *oldop;
         RDB_upd_op *op = NULL;
 
         /* Delete all versions of update operator from hashmap */
-        oldopp = (RDB_upd_op **)RDB_hashmap_get(&txp->dbp->dbrootp->ro_opmap,
-                name, NULL);
-        if (oldopp != NULL && *oldopp != NULL)
-            _RDB_free_upd_ops(*oldopp);
-        ret = RDB_hashmap_put(&txp->dbp->dbrootp->upd_opmap, name,
-                &op, sizeof (op));
+        oldop = RDB_hashmap_get(&txp->dbp->dbrootp->ro_opmap, name);
+        if (oldop != NULL)
+            _RDB_free_upd_ops(oldop);
+        ret = RDB_hashmap_put(&txp->dbp->dbrootp->upd_opmap, name, op);
         if (ret != RDB_OK) {
             RDB_rollback_all(txp);
             return ret;
@@ -1195,16 +1191,14 @@ RDB_drop_op(const char *name, RDB_transaction *txp)
         }        
     } else {
         /* It's a read-only operator */
-        RDB_ro_op_desc **oldopp;
+        RDB_ro_op_desc *oldop;
         RDB_ro_op_desc *op = NULL;
 
         /* Delete all versions of readonly operator from hashmap */
-        oldopp = (RDB_ro_op_desc **)RDB_hashmap_get(&txp->dbp->dbrootp->ro_opmap,
-                name, NULL);
-        if (oldopp != NULL && *oldopp != NULL)
-            _RDB_free_ro_ops(*oldopp);
-        ret = RDB_hashmap_put(&txp->dbp->dbrootp->ro_opmap, name,
-                &op, sizeof (op));
+        oldop = RDB_hashmap_get(&txp->dbp->dbrootp->ro_opmap, name);
+        if (oldop != NULL)
+            _RDB_free_ro_ops(oldop);
+        ret = RDB_hashmap_put(&txp->dbp->dbrootp->ro_opmap, name, op);
         if (ret != RDB_OK) {
             RDB_rollback_all(txp);
             return ret;

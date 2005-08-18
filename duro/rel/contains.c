@@ -288,8 +288,7 @@ stored_contains(RDB_table *tbp, const RDB_object *tplp, RDB_transaction *txp)
         return RDB_NO_MEMORY;
     for (i = 0; i < attrcount; i++) {
         RDB_object *objp;
-        int fno = *(int*)RDB_hashmap_get(&tbp->stp->attrmap,
-                tpltyp->var.tuple.attrv[i].name, NULL);
+        int fno = *_RDB_field_no(tbp->stp, tpltyp->var.tuple.attrv[i].name);
 
         objp = RDB_tuple_get(tplp, tpltyp->var.tuple.attrv[i].name);
         if (objp == NULL) {

@@ -702,7 +702,7 @@ _RDB_transform(RDB_table *tbp, RDB_transaction *txp)
 
     /* Check if there is a constraint that says the table is empty */
     if (RDB_table_name(tbp) == NULL
-            && RDB_hashtable_get(&txp->dbp->dbrootp->empty_tbmap, tbp, txp)
+            && RDB_hashtable_get(&txp->dbp->dbrootp->empty_tbtab, tbp, txp)
                     != NULL) {
         table_to_empty(tbp);
     }

@@ -4,10 +4,10 @@
 /* $Id$ */
 
 #include "hashmap.h"
+#include "hashtabit.h"
 
 typedef struct {
-    RDB_hashmap *hp;
-    int pos;
+    RDB_hashtable_iter it;
 } RDB_hashmap_iter;
 
 void
@@ -16,6 +16,6 @@ RDB_init_hashmap_iter(RDB_hashmap_iter *hip, RDB_hashmap *hp);
 #define RDB_destroy_hashmap_iter(hp)
 
 void *
-RDB_hashmap_next(RDB_hashmap_iter *hp, char **keyp, size_t *lenp);
+RDB_hashmap_next(RDB_hashmap_iter *hp, char **keyp);
 
 #endif

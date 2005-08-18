@@ -19,8 +19,8 @@
  * the fact that removing attributes is not supported.
  */
 
-static int
-hash_entry (const void *ep, void *arg)
+static unsigned
+hash_entry(const void *ep, void *arg)
 {
     return RDB_hash_str(((tuple_entry *) ep)->key);
 }

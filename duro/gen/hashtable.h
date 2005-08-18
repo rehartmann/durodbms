@@ -11,7 +11,7 @@
 #include <stdlib.h>
 #include "types.h"
 
-typedef int RDB_hashfn(const void *, void *);
+typedef unsigned RDB_hashfn(const void *, void *);
 typedef RDB_bool RDB_equalsfn(const void *, const void *, void *);
 
 typedef struct {

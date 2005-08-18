@@ -1,188 +1,97 @@
 /* $Id$ */
 
 #include "hashmap.h"
+#include "hashtabit.h"
 #include "errors.h"
+#include "strfns.h"
 #include <string.h>
-#include <stdlib.h>
 
-static void
-alloc_map(RDB_hashmap *hp) {
-    int i;
+static unsigned
+hash_str(const void *entryp, void *arg)
+{
+    return RDB_hash_str(((RDB_kv_pair *) entryp)->key);
+}
 
-    hp->kv_tab = malloc(hp->capacity * sizeof(struct RDB_kv_pair));
-    if (hp->kv_tab == NULL) {
-        return;
-    }
-    
-    for (i = 0; i < hp->capacity; i++) {
-        hp->kv_tab[i].keyp = NULL;
-    }
+static RDB_bool
+str_equals(const void *e1p, const void *e2p, void *arg)
+{
+    return (RDB_bool) strcmp(((RDB_kv_pair *) e1p)->key,
+            ((RDB_kv_pair *) e2p)->key) == 0;
 }
 
 void
 RDB_init_hashmap(RDB_hashmap *hp, int capacity)
 {
-    hp->capacity = capacity;
-    hp->key_count = 0;
-    hp->kv_tab = NULL;
+    RDB_init_hashtable(&hp->tab, capacity, &hash_str, &str_equals);
 }
 
 void
 RDB_destroy_hashmap(RDB_hashmap *hp)
 {
-    int i;
-
-    if (hp->kv_tab == NULL)
-        return;
-    for (i = 0; i < hp->capacity; i++) {
-        if (hp->kv_tab[i].keyp != NULL) {
-            struct RDB_kv_pair *attrp = &hp->kv_tab[i];
-            free(attrp->keyp);
-            free(attrp->valuep);
-        }
-    }
-    free(hp->kv_tab);
-    hp->kv_tab = NULL;
-}
-
-/*
- * Compute a hash value for the string str.
- */
-static unsigned
-hash_str(const char *str)
-{
-    int len = (int) strlen(str);
-    int i;
-    unsigned res = 0;
-    
-    for (i = 0; i < len; i++)
-        res += str[i];
-
-    return res;
+    RDB_destroy_hashtable(&hp->tab);
 }
 
 int
-RDB_hashmap_put(RDB_hashmap *hp, const char *key, const void *valp, size_t len)
+RDB_hashmap_put(RDB_hashmap *hp, const char *key, void *valp)
 {
-    int idx;
-    struct RDB_kv_pair *attrp;
-
-    /* allocate map, if necessary */
-    if (hp->kv_tab == NULL) {
-        alloc_map(hp);
-        if (hp->kv_tab == NULL)
-            return RDB_NO_MEMORY;
-    }
-
-    /* if fill ratio is at 80%, rehash */
-    if (hp->key_count * 10 / hp->capacity >= 8) {
-        struct RDB_kv_pair *oldtab = hp->kv_tab;
-        int oldcapacity = hp->capacity;
-        int i;
+    int ret;
+    RDB_kv_pair entry;
+    RDB_kv_pair *entryp;
     
-        /* Build new empty table with twice the size */
-        hp->capacity *= 2;
-        hp->kv_tab = malloc(sizeof(struct RDB_kv_pair) * hp->capacity);
-        if (hp->kv_tab == NULL)
-            return RDB_NO_MEMORY;
-
-        for (i = 0; i < hp->capacity; i++) {
-            hp->kv_tab[i].keyp = NULL;
-        }
-        
-        /* Copy old table to new */
-        for (i = 0; i < oldcapacity; i++) {
-            if (oldtab[i].keyp != NULL) {
-                idx = (int)(hash_str(oldtab[i].keyp) % hp->capacity);
-                while (hp->kv_tab[idx].keyp != NULL) {
-                    if (++idx >= hp->capacity)
-                        idx = 0;
-                }
-                attrp = &hp->kv_tab[idx];
-                attrp->keyp = oldtab[i].keyp;
-                attrp->valuep = oldtab[i].valuep;
-                attrp->len = oldtab[i].len;
-            }
-        }
-        
-        free(oldtab);
-    }
-
-    idx = (int)(hash_str(key) % hp->capacity);
-    while (hp->kv_tab[idx].keyp != NULL 
-            && strcmp(hp->kv_tab[idx].keyp, key) != 0) {
-        if (++idx >= hp->capacity)
-           idx = 0;
-    }
-    attrp = &hp->kv_tab[idx];
-    if (attrp->keyp == NULL) {
-        attrp->keyp = malloc(strlen(key) + 1);
-        if (attrp->keyp == NULL)
-            return RDB_NO_MEMORY;
-
-        strcpy(attrp->keyp, key);
-        attrp->valuep = malloc(len);
-        if (attrp->valuep == NULL) {
-            free(attrp->keyp);
-            attrp->keyp = NULL;
-            return RDB_NO_MEMORY;
-        }
-
-        memcpy(attrp->valuep, valp, len);
-        hp->key_count++;
+    entry.key = (char *) key;
+    entryp = RDB_hashtable_get(&hp->tab, &entry, NULL);
+    if (entryp != NULL) {
+        entryp->valuep = valp;
     } else {
-        if (attrp->len < len) {
-            void *newp = realloc(attrp->valuep, len);
-
-            if (newp == NULL)
-                return RDB_NO_MEMORY;
-            attrp->valuep = newp;
+        entryp = malloc(sizeof (RDB_kv_pair));
+        if (entryp == NULL)
+            return RDB_NO_MEMORY;
+        entryp->key = RDB_dup_str(key);
+        if (entryp->key == NULL) {
+            free(entryp);
+            return RDB_NO_MEMORY;
         }
-        memcpy(attrp->valuep, valp, len);
+        entryp->valuep = valp;
+        ret = RDB_hashtable_put(&hp->tab, entryp, NULL);
+        if (ret != RDB_OK) {
+            free(entryp->key);
+            free(entryp);
+            return ret;
+        }
     }
-    attrp->len = len;
     return RDB_OK;
 }
 
 void *
-RDB_hashmap_get(const RDB_hashmap *hp, const char *key, size_t *lenp)
+RDB_hashmap_get(const RDB_hashmap *hp, const char *key)
 {
-    int idx = (int)(hash_str(key) % hp->capacity);
-    struct RDB_kv_pair *attrp;
+    RDB_kv_pair entry;
+    RDB_kv_pair *entryp;
 
-    if (hp->kv_tab == NULL)
+    entry.key = (char *) key;
+    entryp = RDB_hashtable_get(&hp->tab, &entry, NULL);
+    if (entryp == NULL)
         return NULL;
 
-    while (hp->kv_tab[idx].keyp != NULL 
-            && strcmp(hp->kv_tab[idx].keyp, key) != 0) {
-        if (++idx >= hp->capacity)
-           idx = 0;
-    }
-    attrp = &hp->kv_tab[idx];
-    if (attrp->keyp == NULL)
-        return NULL;
-    if (lenp != NULL)
-        *lenp = attrp->len;
-    return attrp->valuep;
+    return entryp->valuep;
 }
 
 int
 RDB_hashmap_size(const RDB_hashmap *hp)
 {
-    return hp->key_count;
+    return RDB_hashtable_size(&hp->tab);
 }
 
 void
-RDB_hashmap_keys(const RDB_hashmap *hp, char **keys)
+RDB_hashmap_keys(const RDB_hashmap *hp, char *keyv[])
 {
-    int i;
-    int ki = 0;
-    
-    if (hp->key_count == 0)
-        return;
+    int i = 0;
+    RDB_kv_pair *entryp;
+    RDB_hashtable_iter hiter;
 
-    for (i = 0; i < hp->capacity; i++) {
-        if (hp->kv_tab[i].keyp != NULL)
-            keys[ki++] = hp->kv_tab[i].keyp;
+    RDB_init_hashtable_iter(&hiter, (RDB_hashtable *) &hp->tab);
+    while ((entryp = RDB_hashtable_next(&hiter)) != NULL) {
+        keyv[i++] = entryp->key;
     }
+    RDB_destroy_hashtable_iter(&hiter);
 }

@@ -95,8 +95,7 @@ update_stored_complex(RDB_table *tbp, RDB_expression *condp,
             RDB_object val;
 
             ret = RDB_cursor_get(curp,
-                    *(int*) RDB_hashmap_get(&tbp->stp->attrmap,
-                            tpltyp->var.tuple.attrv[i].name, NULL),
+                    *_RDB_field_no(tbp->stp, tpltyp->var.tuple.attrv[i].name),
                     &datap, &len);
             if (ret != RDB_OK) {
                 goto cleanup;
@@ -160,8 +159,7 @@ update_stored_complex(RDB_table *tbp, RDB_expression *condp,
             RDB_object val;
 
             ret = RDB_cursor_get(curp,
-                    *(int*) RDB_hashmap_get(&tbp->stp->attrmap,
-                            tpltyp->var.tuple.attrv[i].name, NULL),
+                    *_RDB_field_no(tbp->stp, tpltyp->var.tuple.attrv[i].name),
                     &datap, &len);
             if (ret != RDB_OK) {
                 goto cleanup;
@@ -275,9 +273,7 @@ update_stored_simple(RDB_table *tbp, RDB_expression *condp,
             RDB_object val;
 
             ret = RDB_cursor_get(curp,
-                    *(int*) RDB_hashmap_get(
-                            &tbp->stp->attrmap,
-                            tpltyp->var.tuple.attrv[i].name, NULL),
+                    *_RDB_field_no(tbp->stp, tpltyp->var.tuple.attrv[i].name),
                     &datap, &len);
             if (ret != RDB_OK) {
                 goto cleanup;
@@ -313,9 +309,7 @@ update_stored_simple(RDB_table *tbp, RDB_expression *condp,
             }
             for (i = 0; i < updc; i++) {
                 /* Get field number from map */
-                fieldv[i].no = *(int*) RDB_hashmap_get(
-                        &tbp->stp->attrmap,
-                        updv[i].name, NULL);
+                fieldv[i].no = *_RDB_field_no(tbp->stp, updv[i].name);
 
                 /* Set type - needed for tuple and array attributes */
                 if (valv[i].typ == NULL
@@ -428,9 +422,8 @@ _RDB_update_select_pindex(RDB_table *tbp, RDB_expression *condp,
         goto cleanup;
 
     for (i = 0; i < updc; i++) {
-        fieldv[i].no = *(int*) RDB_hashmap_get(
-                 &tbp->var.select.tbp->var.project.tbp->stp->attrmap,
-                 updv[i].name, NULL);
+        fieldv[i].no = *_RDB_field_no(
+                 tbp->var.select.tbp->var.project.tbp->stp, updv[i].name);
          
         /* Set type - needed for tuple and array attributes */
         if (valv[i].typ == NULL
@@ -570,9 +563,8 @@ update_select_index_simple(RDB_table *tbp, RDB_expression *condp,
                 goto cleanup;
 
             for (i = 0; i < updc; i++) {
-                fieldv[i].no = *(int*) RDB_hashmap_get(
-                         &tbp->var.select.tbp->var.project.tbp->stp->attrmap,
-                         updv[i].name, NULL);
+                fieldv[i].no = *_RDB_field_no(
+                        tbp->var.select.tbp->var.project.tbp->stp, updv[i].name);
                  
                 /* Set type - needed for tuple and array attributes */
                 if (valv[i].typ == NULL

@@ -251,8 +251,7 @@ do_summarize(RDB_qresult *qresp, RDB_transaction *txp)
             for (i = 0; i < addc; i++) {
                 char *attrname = qresp->tbp->var.summarize.addv[i].name;
 
-                nonkeyfv[i].no = *(RDB_int *)RDB_hashmap_get(
-                        &qresp->matp->stp->attrmap, attrname, NULL);
+                nonkeyfv[i].no = *_RDB_field_no(qresp->matp->stp, attrname);
                 if (qresp->tbp->var.summarize.addv[i].op == RDB_AVG) {
                     char *cattrname = malloc(strlen(attrname) + 3);
                     if (cattrname == NULL) {
@@ -261,8 +260,8 @@ do_summarize(RDB_qresult *qresp, RDB_transaction *txp)
                     }
                     strcpy(cattrname, attrname);
                     strcat(cattrname, AVG_COUNT_SUFFIX);
-                    nonkeyfv[addc + ai].no = *(RDB_int *)RDB_hashmap_get(
-                        &qresp->matp->stp->attrmap, cattrname, NULL);
+                    nonkeyfv[addc + ai].no = *_RDB_field_no(qresp->matp->stp,
+                                    cattrname);
                     free(cattrname);
                     svalv[i].fvidx = addc + ai;
                     ai++;
@@ -384,9 +383,8 @@ do_group(RDB_qresult *qrp, RDB_transaction *txp)
             }
 
             if (qrp->matp->stp != NULL) {
-                gfield.no = *(RDB_int *)RDB_hashmap_get(
-                        &qrp->matp->stp->attrmap,
-                        qrp->tbp->var.group.gattr, NULL);
+                gfield.no = *_RDB_field_no(qrp->matp->stp,
+                        qrp->tbp->var.group.gattr);
 
                 /* Try to read tuple of the materialized table */
                 ret = RDB_get_fields(qrp->matp->stp->recmapp, keyfv,
@@ -1088,8 +1086,7 @@ _RDB_get_by_cursor(RDB_table *tbp, RDB_cursor *curp, RDB_type *tpltyp,
     for (i = 0; i < tpltyp->var.tuple.attrc; i++) {
         attrp = &tpltyp->var.tuple.attrv[i];
 
-        fno = *(RDB_int *)RDB_hashmap_get(&tbp->stp->attrmap,
-                                      attrp->name, NULL);
+        fno = *_RDB_field_no(tbp->stp, attrp->name);
         ret = RDB_cursor_get(curp, fno, &datap, &len);
         if (ret != RDB_OK) {
             return ret;
@@ -1582,8 +1579,7 @@ _RDB_get_by_uindex(RDB_table *tbp, RDB_object *objpv[], _RDB_tbindex *indexp,
     for (i = 0; i < tpltyp->var.tuple.attrc; i++) {
         int rfi; /* Index in resv, -1 if key attr */
         char *attrname = tpltyp->var.tuple.attrv[i].name;
-        RDB_int fno = *(RDB_int *)RDB_hashmap_get(
-                    &tbp->stp->attrmap, attrname, NULL);
+        RDB_int fno = *_RDB_field_no(tbp->stp, attrname);
 
         if (indexp->idxp == NULL) {
             if (fno < keylen)
