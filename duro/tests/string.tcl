@@ -37,7 +37,7 @@ if {$str != "C-."} {
     error "wrong string value: $str"
 }
 
-set str [duro::expr {SUBSTRING("ABC-.+ab", 2, 6)} $tx]
+set str [duro::expr {SUBSTRING('ABC-.+ab', 2, 6)} $tx]
 if {$str != "C-.+ab"} {
     error "wrong string value: $str"
 }

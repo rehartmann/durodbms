@@ -1,4 +1,9 @@
-/* $Id$ */
+/*
+ * $Id$
+ *
+ * Copyright (C) 2003-2005 René Hartmann.
+ * See the file COPYING for redistribution information.
+ */
 
 %option nounput
 
@@ -9,6 +14,48 @@
 #include "exparse.h"
 #include <string.h>
 #include <math.h>
+
+/*
+ * Process escapes
+ */
+static void
+process_escapes(char *txt) {
+    int i = 1, j = 1;
+
+    for(;;) {
+        if (yytext[i] == '\\') {
+            switch (yytext[i + 1]) {
+                case '\\':
+                case '\"':
+                    yytext[j] = yytext[i + 1];
+                    i += 2;
+                    j++;
+                    continue;
+                case 'n':
+                    yytext[j] = '\n';
+                    i += 2;
+                    j++;
+                    continue;
+                case 'r':
+                    yytext[j] = '\r';
+                    i += 2;
+                    j++;
+                    continue;
+                case 't':
+                    yytext[j] = '\t';
+                    i += 2;
+                    j++;
+                    continue;
+                default: ;
+            }
+        }
+        yytext[j] = yytext[i];
+        if (yytext[i] == '\0')
+            break;
+        i++;
+        j++;
+    }
+}
 
 %}
 
@@ -174,47 +221,23 @@ TABLE_DUM {
 }
 
 \"([^"]|\\\"|\\\\|\\n|\\r|\\t)*\" {
-    int i = 1, j = 1;
 
-    /*
-     * Process escapes
-     */
-    for(;;) {
-        if (yytext[i] == '\\') {
-            switch (yytext[i + 1]) {
-                case '\\':
-                case '\"':
-                    yytext[j] = yytext[i + 1];
-                    i += 2;
-                    j++;
-                    continue;
-                case 'n':
-                    yytext[j] = '\n';
-                    i += 2;
-                    j++;
-                    continue;
-                case 'r':
-                    yytext[j] = '\r';
-                    i += 2;
-                    j++;
-                    continue;
-                case 't':
-                    yytext[j] = '\t';
-                    i += 2;
-                    j++;
-                    continue;
-                default: ;
-            }
-        }
-        yytext[j] = yytext[i];
-        if (yytext[i] == '\0')
-            break;
-        i++;
-        j++;
-    }
+    process_escapes(yytext);
 
     /*
      * Remove trailing "s
+     */
+    yytext[(strlen(yytext) - 1)] = '\0';
+    yylval = RDB_string_to_expr(yytext + 1);
+    return TOK_LIT_STRING;
+}
+
+\'([^"]|\\\"|\\\\|\\n|\\r|\\t)*\' {
+
+    process_escapes(yytext);
+
+    /*
+     * Remove trailing 's
      */
     yytext[(strlen(yytext) - 1)] = '\0';
     yylval = RDB_string_to_expr(yytext + 1);

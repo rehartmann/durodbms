@@ -4,7 +4,7 @@
 <head>
 <title>Duro expression syntax</title>
 <body>
-<h2>Duro 0.9 expression syntax</h2>
+<h2>Duro 0.10 expression syntax</h2>
 
 <p>The language for Duro expressions is a subset of Tutorial D, as defined
 in <cite>TTM</cite>, with a few differences:
@@ -17,8 +17,7 @@ For example, the expression <code>S MATCHES "A.*Z"</code>
 evaluates to true if and only if S starts with the character "A" and ends with
 the character "Z".
 <li>Duro uses the keyword SUBSET_OF for the subset operator.
-<li>Duro uses double quotes ('"') for string literals instead of single
-quotes.
+<li>Duro supports both single ("'") and double quotes ('"') as delimiters in string literals.
 </ol>
 
 <h3>Duro expression syntax (EBNF notation)</h3>
@@ -105,7 +104,7 @@ expression_list = expression {',' expression}.
 
 tuple_item_list = id expression {',' id expression}.
 
-string = '"'{char_lit}'"'.
+string = '"'{char_lit}'"' | "'"{char_lit}"'".
 
 char_lit = char | '\"' | '\\' | '\n' | '\r' | '\t'.
 
