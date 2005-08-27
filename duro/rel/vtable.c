@@ -1307,8 +1307,11 @@ _RDB_table_def_equals(RDB_table *tb1p, RDB_table *tb2p, RDB_transaction *txp)
                     tb2p->var.sdivide.tb2p, txp)
                     && _RDB_table_def_equals(tb1p->var.sdivide.tb2p,
                     tb2p->var.sdivide.tb3p, txp));
-        case RDB_TB_EXTEND:
         case RDB_TB_PROJECT:
+            return (RDB_bool) (RDB_type_equals(tb1p->typ, tb2p->typ)
+                    && _RDB_table_def_equals(tb1p->var.project.tbp,
+                            tb2p->var.project.tbp, txp));
+        case RDB_TB_EXTEND:
         case RDB_TB_SUMMARIZE:
         case RDB_TB_RENAME:
         case RDB_TB_WRAP:

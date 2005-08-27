@@ -29,6 +29,7 @@ add_empty_tb(RDB_constraint *constrp, RDB_transaction *txp)
             && constrp->exp->var.op.argc == 1
             && strcmp(constrp->exp->var.op.name, "IS_EMPTY") == 0) {
         RDB_object resobj;
+        RDB_table *ptbp, *ctbp;
 
         RDB_init_obj(&resobj);
         ret = RDB_evaluate(constrp->exp->var.op.argv[0], NULL, txp, &resobj);
@@ -36,17 +37,31 @@ add_empty_tb(RDB_constraint *constrp, RDB_transaction *txp)
             RDB_destroy_obj(&resobj);
             return ret;
         }
-        fputs("Empty: ", stderr);
-        _RDB_print_table(RDB_obj_table(&resobj), txp, stderr);
-        fputs("\n", stderr);
-        ret = RDB_hashtable_put(&txp->dbp->dbrootp->empty_tbtab,
-                RDB_obj_table(&resobj), txp);
+        ret = RDB_project(RDB_obj_table(&resobj), 0, NULL, &ptbp);
         if (ret != RDB_OK) {
             RDB_destroy_obj(&resobj);
             return ret;
         }
         resobj.var.tbp = NULL;
         RDB_destroy_obj(&resobj);
+
+        ret = _RDB_transform(ptbp);
+        if (ret != RDB_OK) {
+            RDB_drop_table(ptbp, NULL);
+            return ret;
+        }
+        if (ptbp->kind == RDB_TB_PROJECT) {
+            ctbp = ptbp->var.project.tbp;
+            _RDB_free_table(ptbp);
+        } else {
+            ctbp = ptbp;
+        }
+        ret = RDB_hashtable_put(&txp->dbp->dbrootp->empty_tbtab,
+                ctbp, txp);
+        if (ret != RDB_OK) {
+            RDB_drop_table(ctbp, NULL);
+            return ret;
+        }
     }
     return RDB_OK;
 }

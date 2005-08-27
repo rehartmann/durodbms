@@ -32,11 +32,6 @@ typedef struct RDB_constraint {
     struct RDB_constraint *nextp;
 } RDB_constraint;
 
-enum {
-    RDB_MAYBE = 1,
-    RDB_TUPLE_INSERTED = 2
-};
-
 typedef struct RDB_dbroot {
     RDB_environment *envp;
     RDB_hashmap typemap;
@@ -483,7 +478,7 @@ _RDB_optimize(RDB_table *tbp, int seqitc, const RDB_seq_item seqitv[],
         RDB_transaction *, RDB_table **ntbpp);
 
 int
-_RDB_transform(RDB_table *tbp, RDB_transaction *);
+_RDB_transform(RDB_table *tbp);
 
 int
 _RDB_infer_keys(RDB_table *tbp);

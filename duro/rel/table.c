@@ -918,10 +918,6 @@ RDB_table_is_empty(RDB_table *tbp, RDB_transaction *txp, RDB_bool *resultp)
     if (txp != NULL && !RDB_tx_is_running(txp))
         return RDB_INVALID_TRANSACTION;
 
-    fputs("Before optimization: ", stderr);
-    _RDB_print_table(tbp, txp, stderr);
-    fputs("\n", stderr);
-
     /*
      * Project all attributes away, then optimize
      */
@@ -937,10 +933,6 @@ RDB_table_is_empty(RDB_table *tbp, RDB_transaction *txp, RDB_bool *resultp)
 
     if (ret != RDB_OK)
         return ret;
-
-    fputs("After optimization: ", stderr);
-    _RDB_print_table(ntbp, txp, stderr);
-    fputs("\n", stderr);
 
     ret = _RDB_table_qresult(tbp, txp, &qrp);
     if (ret != RDB_OK) {
