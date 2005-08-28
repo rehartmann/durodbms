@@ -73,8 +73,7 @@ foreach db $dbs {
 
     puts $out "set tx \[duro::begin \$dbenv $db\]"
     if {!$types_ops_dumped} {
-        foreach t {SYS_TYPES SYS_POSSREPS SYS_POSSREPCOMPS
-                SYS_RO_OPS SYS_UPD_OPS} {
+        foreach t {SYS_TYPES SYS_POSSREPCOMPS SYS_RO_OPS SYS_UPD_OPS} {
             dump_rtable $out $t $tx 0
         }
         set types_ops_dumped 1

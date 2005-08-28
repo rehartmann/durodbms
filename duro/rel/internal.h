@@ -51,7 +51,6 @@ typedef struct RDB_dbroot {
     RDB_table *dbtables_tbp;
     RDB_table *keys_tbp;
     RDB_table *types_tbp;    
-    RDB_table *possreps_tbp;
     RDB_table *possrepcomps_tbp;
     RDB_table *ro_ops_tbp;
     RDB_table *upd_ops_tbp;

@@ -413,11 +413,6 @@ RDB_define_type(const char *name, int repc, const RDB_possrep repv[],
         if (ret != RDB_OK)
             goto error;
 
-        /* Store tuple */
-        ret = RDB_insert(txp->dbp->dbrootp->possreps_tbp, &tpl, txp);
-        if (ret != RDB_OK)
-            goto error;
-
         for (j = 0; j < repv[i].compc; j++) {
             char *cname = repv[i].compv[j].name;
 
@@ -666,11 +661,6 @@ RDB_drop_type(RDB_type *typ, RDB_transaction *txp)
             return RDB_NO_MEMORY;
         }
         ret = RDB_delete(txp->dbp->dbrootp->types_tbp, wherep, txp);
-        if (ret != RDB_OK) {
-            RDB_drop_expr(wherep);
-            return ret;
-        }
-        ret = RDB_delete(txp->dbp->dbrootp->possreps_tbp, wherep, txp);
         if (ret != RDB_OK) {
             RDB_drop_expr(wherep);
             return ret;

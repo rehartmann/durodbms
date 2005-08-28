@@ -175,7 +175,6 @@ close_systables(RDB_dbroot *dbrootp)
     close_table(dbrootp->dbtables_tbp, dbrootp->envp);
     close_table(dbrootp->keys_tbp, dbrootp->envp);
     close_table(dbrootp->types_tbp, dbrootp->envp);
-    close_table(dbrootp->possreps_tbp, dbrootp->envp);
     close_table(dbrootp->possrepcomps_tbp, dbrootp->envp);
     close_table(dbrootp->ro_ops_tbp, dbrootp->envp);
     close_table(dbrootp->upd_ops_tbp, dbrootp->envp);
@@ -310,7 +309,6 @@ assoc_systables(RDB_dbroot *dbrootp, RDB_database *dbp)
     _RDB_assoc_table_db(dbrootp->dbtables_tbp, dbp);
     _RDB_assoc_table_db(dbrootp->keys_tbp, dbp);
     _RDB_assoc_table_db(dbrootp->types_tbp, dbp);
-    _RDB_assoc_table_db(dbrootp->possreps_tbp, dbp);
     _RDB_assoc_table_db(dbrootp->possrepcomps_tbp, dbp);
     _RDB_assoc_table_db(dbrootp->ro_ops_tbp, dbp);
     _RDB_assoc_table_db(dbrootp->upd_ops_tbp, dbp);

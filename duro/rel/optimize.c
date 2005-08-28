@@ -1208,7 +1208,8 @@ add_project(RDB_table *tbp)
 }
 
 static void
-table_to_empty(RDB_table *tbp) {
+table_to_empty(RDB_table *tbp) 
+{
     /* !! other kinds of tables */
     if (tbp->kind == RDB_TB_SELECT) {
         RDB_drop_expr(tbp->var.select.exp);
@@ -1383,9 +1384,11 @@ _RDB_optimize(RDB_table *tbp, int seqitc, const RDB_seq_item seqitv[],
          * Replace tables which are declared to be empty
          * by a constraint
          */
-        ret = replace_empty(ntbp, txp);
-        if (ret != RDB_OK)
-            return ret;
+        if (RDB_tx_db(txp) != NULL) {
+            ret = replace_empty(ntbp, txp);
+            if (ret != RDB_OK)
+                return ret;
+        }
 
         /*
          * Add a project table above real tables

@@ -85,13 +85,6 @@ static RDB_attr types_attrv[] = {
 static char *types_keyattrv[] = { "TYPENAME" };
 static RDB_string_vec types_keyv[] = { { 1, types_keyattrv } };
 
-static RDB_attr possreps_attrv[] = {
-    { "TYPENAME", &RDB_STRING, NULL, 0 },
-    { "POSSREPNAME", &RDB_STRING, NULL, 0 },
-};
-static char *possreps_keyattrv[] = { "TYPENAME", "POSSREPNAME" };
-static RDB_string_vec possreps_keyv[] = { { 2, possreps_keyattrv } };
-
 static RDB_attr possrepcomps_attrv[] = {
     { "TYPENAME", &RDB_STRING, NULL, 0 },
     { "POSSREPNAME", &RDB_STRING, NULL, 0 },
@@ -950,13 +943,6 @@ _RDB_open_systables(RDB_dbroot *dbrootp, RDB_transaction *txp)
         return ret;
     }
 
-    ret = provide_systable("SYS_POSSREPS", 2, possreps_attrv,
-            1, possreps_keyv, create, txp, dbrootp->envp,
-            &dbrootp->possreps_tbp);
-    if (ret != RDB_OK) {
-        return ret;
-    }
-
     ret = provide_systable("SYS_POSSREPCOMPS", 5, possrepcomps_attrv,
             2, possrepcomps_keyv, create, txp, dbrootp->envp,
             &dbrootp->possrepcomps_tbp);
@@ -1069,10 +1055,6 @@ _RDB_open_systables(RDB_dbroot *dbrootp, RDB_transaction *txp)
         if (ret != RDB_OK)
             return ret;
 
-        ret = open_indexes(dbrootp->possreps_tbp, dbrootp, txp);
-        if (ret != RDB_OK)
-            return ret;
-
         ret = open_indexes(dbrootp->possrepcomps_tbp, dbrootp, txp);
         if (ret != RDB_OK)
             return ret;
@@ -1132,9 +1114,6 @@ _RDB_cat_create_db(RDB_transaction *txp)
             ret = dbtables_insert(txp->dbp->dbrootp->types_tbp, txp);
             if (ret != RDB_OK) 
                 return ret;
-            ret = dbtables_insert(txp->dbp->dbrootp->possreps_tbp, txp);
-            if (ret != RDB_OK) 
-                return ret;
             ret = dbtables_insert(txp->dbp->dbrootp->possrepcomps_tbp, txp);
             if (ret != RDB_OK) 
                 return ret;
@@ -1188,11 +1167,6 @@ _RDB_cat_create_db(RDB_transaction *txp)
     }
 
     ret = _RDB_cat_insert(txp->dbp->dbrootp->types_tbp, txp);
-    if (ret != RDB_OK) {
-        return ret;
-    }
-
-    ret = _RDB_cat_insert(txp->dbp->dbrootp->possreps_tbp, txp);
     if (ret != RDB_OK) {
         return ret;
     }
@@ -1774,26 +1748,42 @@ types_query(const char *name, RDB_transaction *txp, RDB_table **tbpp)
 int
 _RDB_possreps_query(const char *name, RDB_transaction *txp, RDB_table **tbpp)
 {
-    RDB_expression *exp;
-    RDB_expression *wherep;
+    RDB_table *possreps_tbp;
     int ret;
+    RDB_expression *hexp;
+    RDB_expression *exp = NULL;
+    char *attrv[] = { "TYPENAME", "POSSREPNAME" };
+
+    ret = RDB_project(txp->dbp->dbrootp->possrepcomps_tbp, 2, attrv,
+            &possreps_tbp);
+    if (ret != RDB_OK) {
+        return ret;
+    }
 
     exp = RDB_expr_attr("TYPENAME");
     if (exp == NULL) {
-        return RDB_NO_MEMORY;
+        ret = RDB_NO_MEMORY;
+        goto error;
     }
-    wherep = RDB_eq(exp, RDB_string_to_expr(name));
-    if (wherep == NULL) {
-        RDB_drop_expr(exp);
-        return RDB_NO_MEMORY;
+    hexp = RDB_eq(exp, RDB_string_to_expr(name));
+    if (hexp == NULL) {
+        ret = RDB_NO_MEMORY;
+        goto error;
     }
+    exp = hexp;
 
-    ret = RDB_select(txp->dbp->dbrootp->possreps_tbp, wherep, txp, tbpp);
+    ret = RDB_select(possreps_tbp, exp, txp, tbpp);
     if (ret != RDB_OK) {
-        RDB_drop_expr(wherep);
-        return ret;
+        goto error;
     }
     return RDB_OK;
+
+error:
+    if (exp != NULL) {
+        RDB_drop_expr(exp);
+    }
+    RDB_drop_table(possreps_tbp, NULL);
+    return ret;
 }
 
 int
