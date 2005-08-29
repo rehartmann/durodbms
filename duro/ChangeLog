@@ -4,6 +4,8 @@ Summary of Changes for Duro
 
 Changes for Duro 0.10
 
+- Dropped catalog table SYS_POSSREPS.
+
 - Implemented RDB_multi_assign().
 
 - Durotcl uses Tutorial D syntax to represent values of user-defined

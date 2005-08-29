@@ -2,11 +2,13 @@
 # Execute tclsh from the user's PATH \
 exec tclsh "$0" ${1+"$@"}
 
+#
+# $Id$
+#
 # Durodump - tool to dump a Duro database environment to a file.
 # Copyright (C) 2004, 2005 René Hartmann.
 # See the file COPYING for redistribution information.
-
-# $Id$
+#
 
 set duro_version 0.10
 
