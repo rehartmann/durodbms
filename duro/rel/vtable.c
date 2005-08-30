@@ -1098,7 +1098,7 @@ _RDB_dup_vtable(RDB_table *tbp)
                         tbp->keyc, tbp->keyv, NULL, &ntbp);
                 if (ret != RDB_OK)
                     return NULL;
-                ret = RDB_copy_table(ntbp, tbp, NULL);
+                ret = _RDB_move_tuples(ntbp, tbp, NULL);
                 if (ret != RDB_OK)
                     return NULL;
                 return ntbp;

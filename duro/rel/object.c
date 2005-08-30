@@ -498,6 +498,7 @@ RDB_obj_equals(const RDB_object *val1p, const RDB_object *val2p,
 
 /*
  * Copy RDB_object, but not the type information.
+ * If the RDB_object wraps a table, it must be a real table.
  */
 int
 _RDB_copy_obj(RDB_object *dstvalp, const RDB_object *srcvalp, RDB_transaction *txp)

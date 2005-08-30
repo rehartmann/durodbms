@@ -848,7 +848,7 @@ update_select_index_complex(RDB_table *tbp, RDB_expression *condp,
     /*
      * Insert the records from the temporary table into the original table.
      */
-     ret = _RDB_move_tuples(tbp, tmptbp, &tx);
+     ret = _RDB_move_tuples(tbp->var.select.tbp->var.project.tbp, tmptbp, &tx);
 
 cleanup:
     if (tmptbp != NULL)

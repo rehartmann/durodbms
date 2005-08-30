@@ -424,6 +424,10 @@ RDB_table_type(const RDB_table *tbp)
     return tbp->typ;
 }
 
+/*
+ * Copy all tuples from source table into the destination table.
+ * The destination table must be a real table.
+ */
 int
 _RDB_move_tuples(RDB_table *dstp, RDB_table *srcp, RDB_transaction *txp)
 {
@@ -442,15 +446,16 @@ _RDB_move_tuples(RDB_table *dstp, RDB_table *srcp, RDB_transaction *txp)
 
     while ((ret = _RDB_next_tuple(qrp, &tpl, txp)) == RDB_OK) {
         if (dstp->kind == RDB_TB_REAL && !dstp->is_persistent)
-            ret = RDB_insert(dstp, &tpl, NULL);
+            ret = _RDB_insert_real(dstp, &tpl, NULL);
         else
-            ret = RDB_insert(dstp, &tpl, txp);
+            ret = _RDB_insert_real(dstp, &tpl, txp);
         if (ret != RDB_OK) {
             goto cleanup;
         }
     }
     if (ret == RDB_NOT_FOUND)
         ret = RDB_OK;
+
 cleanup:
     _RDB_drop_qresult(qrp, txp);
     RDB_destroy_obj(&tpl);
@@ -460,37 +465,29 @@ cleanup:
 int
 RDB_copy_table(RDB_table *dstp, RDB_table *srcp, RDB_transaction *txp)
 {
-    RDB_transaction tx;
     int ret;
+    RDB_ma_copy cpy;
+    RDB_object srcobj, dstobj;
 
-    if (txp != NULL && !RDB_tx_is_running(txp))
-        return RDB_INVALID_TRANSACTION;
+    RDB_init_obj(&dstobj);
+    RDB_table_to_obj(&dstobj, dstp);
+    RDB_init_obj(&srcobj);
+    RDB_table_to_obj(&srcobj, srcp);
 
-    /* check if types of the two tables match */
-    if (!RDB_type_equals(dstp->typ, srcp->typ))
-        return RDB_TYPE_MISMATCH;
+    cpy.dstp = &dstobj;
+    cpy.srcp = &srcobj;
 
-    if (txp != NULL) {
-        /* start subtransaction */
-        ret = RDB_begin_tx(&tx, txp->dbp, txp);
-        if (ret != RDB_OK)
-            return ret;
-    }
+    ret = RDB_multi_assign(0, NULL, 0, NULL, 0, NULL, 1, &cpy, txp);
 
-    /* Delete all tuples from destination table */
-    ret = RDB_delete(dstp, NULL, txp != NULL ? &tx : NULL);
-    if (ret != RDB_OK)
-        goto error;
+    /*
+     * Destroy the objects, but not the tables
+     */
 
-    ret = _RDB_move_tuples(dstp, srcp, txp != NULL ? &tx : NULL);
-    if (ret != RDB_OK)
-        goto error;
+    dstobj.var.tbp = NULL;
+    srcobj.var.tbp = NULL;
+    RDB_destroy_obj(&dstobj);
+    RDB_destroy_obj(&srcobj);
 
-    return txp != NULL ? RDB_commit(&tx) : RDB_OK;
-
-error:
-    if (txp != NULL)
-        RDB_rollback(&tx);
     return ret;
 }
 

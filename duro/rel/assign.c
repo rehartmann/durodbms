@@ -1468,8 +1468,34 @@ RDB_multi_assign(int insc, const RDB_ma_insert insv[],
     insert_node *insnp;
     update_node *updnp;
     delete_node *delnp;
+    RDB_bool need_tx;
 
-    /* !! check tx */
+    /*
+     * A running transaction is required for:
+     * - updates
+     * - deletes, except deletes of transient tables without a condition
+     * - copying persistent tables
+     * - inserting into persistent tables
+     */
+    if (updc > 0 || delc > 0) {
+        need_tx = RDB_TRUE;
+    } else {
+        for (i = 0;
+             i < copyc && (RDB_obj_table(copyv[i].dstp) == NULL
+                           || !RDB_obj_table(copyv[i].dstp)->is_persistent);
+             i++);
+        need_tx = (RDB_bool) (i < copyc);
+        if (!need_tx) {
+            for (i = 0;
+                 i < insc && !insv[i].tbp->is_persistent;
+                 i++);
+            need_tx = (RDB_bool) (i < insc);
+        }
+    }
+
+    if (need_tx && !RDB_tx_is_running(txp)) {
+        return RDB_INVALID_TRANSACTION;
+    }
 
     /*
      * Check if conditions are of type BOOLEAN
