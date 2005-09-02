@@ -266,6 +266,7 @@
 <li><a href="#op_count">COUNT</a>
 <li><a href="#op_in">IN</a>
 <li><a href="#op_subset_of">SUBSET_OF</a>
+<li><a href="#op_if">IF</a>
 </ul>
 
 <hr>
@@ -5009,6 +5010,20 @@ otherwise.
 <h4>Return value</h4>
 
 <p>RDB_TRUE if the <var>R1</var> is a subset of <var>R2</var>, RDB_FALSE otherwise.
+
+<hr>
+
+<h3 id="op_if">OPERATOR IF</h3>
+
+<p>OPERATOR IF (B BOOLEAN, V1 <em>ANY</em>, V2 <em>ANY</em>) RETURNS <em>ANY</em>;
+
+<h4>Description</h4>
+
+<p>The IF-THEN-ELSE operator. 
+
+<h4>Return value</h4>
+
+<p><var>V1</var> if <var>B</var> is RDB_TRUE, <var>V2</var> otherwise.
 
 <hr>
 

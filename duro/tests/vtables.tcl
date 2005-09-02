@@ -74,7 +74,15 @@ duro::table expr -global TI {T1 INTERSECT T2} $tx
 duro::table expr -global VT {T1 JOIN T3} $tx
 duro::table rename VT TJ $tx
 duro::table expr -global TR {T1 RENAME (K AS KN, S1 AS SN)} $tx
-duro::table expr -global TX {EXTEND T1 ADD (K*10 AS K0)} $tx
+if {![catch {duro::table expr -global TX {EXTEND T1 ADD (K*10 AS K0, IF K = 0 THEN "YES" ELSE 1 AS KIS1)} $tx}]} {
+    error "invalid EXTEND should fail, but succeeded"
+}
+if {[lindex $errorCode 1] != "RDB_TYPE_MISMATCH"} {
+    error "Wrong error: $errorCode"
+}
+
+duro::table expr -global TX {EXTEND T1 ADD (K*10 AS K0, IF K = 0 THEN "YES" ELSE
+"NO" AS KIS1)} $tx
 
 duro::table expr -global TP {(T1 WHERE K = 1) {K}} $tx
 duro::table expr -global TP2 {T1 {S1}} $tx
@@ -101,6 +109,9 @@ duro::array drop $da
 
 if {![catch {duro::table expr -global TX2 {EXTEND T1 ADD (K*10 AS K)} $tx}]} {
     error "invalid EXTEND should fail, but succeeded"
+}
+if {[lindex $errorCode 1] != "RDB_INVALID_ARGUMENT"} {
+    error "Wrong error: $errorCode"
 }
 
 #
@@ -229,7 +240,7 @@ if {![tequal $tpl $stpl]} {
 duro::delete TX {K0 = 40} $tx
 
 set tpl [duro::expr {TUPLE FROM (TX WHERE K0 >= 30)} $tx]
-set stpl {K 3 S1 Blu K0 30}
+set stpl {K 3 S1 Blu K0 30 KIS1 NO}
 if {![tequal $tpl $stpl]} {
     error "Tuple should be $stpl, but is $tpl"
 }

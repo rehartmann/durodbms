@@ -4,6 +4,8 @@ Summary of Changes for Duro
 
 Changes for Duro 0.10
 
+- Added IF operator.
+
 - Dropped catalog table SYS_POSSREPS.
 
 - Implemented RDB_multi_assign().

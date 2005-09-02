@@ -936,6 +936,20 @@ RDB_call_ro_op(const char *name, int argc, RDB_object *argv[],
     }
 
     /*
+     * Handle IF-THEN-ELSE
+     */
+    if (strcmp(name, "IF") == 0 && argc == 3) {
+        if (argv[0]->typ != &RDB_BOOLEAN)
+            return RDB_TYPE_MISMATCH;
+        if (argv[0]->var.bool_val) {
+            ret = RDB_copy_obj(retvalp, argv[1]);
+        } else {
+            ret = RDB_copy_obj(retvalp, argv[2]);
+        }
+        return ret;
+    }
+
+    /*
      * Handle built-in operators with relational arguments
      */
     if (argc == 1 && obj_is_table(argv[0]))  {

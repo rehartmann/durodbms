@@ -109,6 +109,9 @@ enum {
 %token TOK_MIN
 %token TOK_ALL
 %token TOK_ANY
+%token TOK_IF
+%token TOK_THEN
+%token TOK_ELSE
 %token TOK_TABLE_DEE
 %token TOK_TABLE_DUM
 %token INVALID
@@ -119,6 +122,7 @@ enum {
         mul_expression literal operator_invocation count_invocation
         sum_invocation avg_invocation min_invocation max_invocation
         all_invocation any_invocation extractor tuple_item_list
+        ifthenelse
 
 %type <attrlist> attribute_name_list
 
@@ -164,6 +168,7 @@ enum {
 
 expression: or_expression { _RDB_parse_resultp = $1; }
     | extractor { _RDB_parse_resultp = $1; }
+    | ifthenelse { _RDB_parse_resultp = $1; }
     | relation { _RDB_parse_resultp = $1; }
     | project { _RDB_parse_resultp = $1; }
     | select { _RDB_parse_resultp = $1; }
@@ -1020,6 +1025,27 @@ extractor: TOK_TUPLE TOK_FROM expression {
         $$ = RDB_ro_op_va("TO_TUPLE", texp, (RDB_expression *) NULL);
         if ($$ == NULL) {
             RDB_drop_expr(texp);
+            _RDB_parse_ret = RDB_NO_MEMORY;
+            YYERROR;
+        }
+    }
+    ;
+
+ifthenelse: TOK_IF or_expression TOK_THEN add_expression TOK_ELSE add_expression {
+        RDB_expression *ex1p, *ex2p;
+
+        ex1p = _RDB_parse_lookup_table($4);
+        if (ex1p == NULL) {
+            YYERROR;
+        }
+        ex2p = _RDB_parse_lookup_table($6);
+        if (ex2p == NULL) {
+            RDB_drop_expr(ex1p);
+            YYERROR;
+        }
+
+        $$ = RDB_ro_op_va("IF", $2, ex1p, ex2p, (RDB_expression *) NULL);
+        if ($$ == NULL) {
             _RDB_parse_ret = RDB_NO_MEMORY;
             YYERROR;
         }

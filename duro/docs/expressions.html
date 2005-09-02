@@ -23,8 +23,9 @@ the character "Z".
 <h3>Duro expression syntax (EBNF notation)</h3>
 
 <pre>
-expression = or_expression | extractor | relation | project | select | rename
-        | extend | summarize | wrap | unwrap | group | ungroup | divideby.
+expression = or_expression | extractor | ifthenelse | relation | project
+        | select | rename | extend | summarize | wrap | unwrap | group
+        | ungroup | divideby.
 
 project = expression '{' [ALL BUT] id {',' id} '}'.
 
@@ -88,6 +89,8 @@ primary_expression = id | primary_expression '.' id
         | operator_invocation | '(' expression ')'.
 
 extractor = TUPLE FROM expression.
+
+ifthenelse = IF or_expression THEN add_expression ELSE add_expression.
 
 count_invocation = COUNT '(' expression ')'.
 

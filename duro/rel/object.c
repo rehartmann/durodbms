@@ -501,7 +501,8 @@ RDB_obj_equals(const RDB_object *val1p, const RDB_object *val2p,
  * If the RDB_object wraps a table, it must be a real table.
  */
 int
-_RDB_copy_obj(RDB_object *dstvalp, const RDB_object *srcvalp, RDB_transaction *txp)
+_RDB_copy_obj(RDB_object *dstvalp, const RDB_object *srcvalp,
+        RDB_transaction *txp)
 {
     int ret;
 
@@ -555,9 +556,14 @@ _RDB_copy_obj(RDB_object *dstvalp, const RDB_object *srcvalp, RDB_transaction *t
                 if (ret != RDB_OK)
                     return ret;
                 dstvalp->kind = RDB_OB_TABLE;
+            } else {
+                if (dstvalp->kind != RDB_OB_TABLE)
+                    return RDB_TYPE_MISMATCH;
+                ret = _RDB_delete_real(dstvalp->var.tbp, NULL,
+                        dstvalp->var.tbp->is_persistent ? txp : NULL);
+                if (ret != RDB_OK)
+                    return ret;
             }
-            if (dstvalp->kind != RDB_OB_TABLE)
-                return RDB_TYPE_MISMATCH;
             if (dstvalp->var.tbp->is_persistent && txp == NULL)
                 return RDB_INVALID_TRANSACTION;
             return _RDB_move_tuples(dstvalp->var.tbp, srcvalp->var.tbp,

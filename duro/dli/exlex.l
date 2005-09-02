@@ -165,6 +165,18 @@ NOT {
     return TOK_NOT;
 }
 
+IF {
+    return TOK_IF;
+}
+
+THEN {
+    return TOK_THEN;
+}
+
+ELSE {
+    return TOK_ELSE;
+}
+
 TRUE {
     yylval = RDB_bool_to_expr(RDB_TRUE);
     return TOK_LIT_BOOLEAN;

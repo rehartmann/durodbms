@@ -178,6 +178,19 @@ expr_op_type(const RDB_expression *exp, const RDB_type *tuptyp,
     }
 
     /*
+     * Handle IF-THEN-ELSE
+     */
+    if (strcmp(exp->var.op.name, "IF") == 0 && exp->var.op.argc == 3) {
+        if (argtv[0] != &RDB_BOOLEAN || !RDB_type_equals(argtv[1], argtv[2])) {
+            free(argtv);
+            return RDB_TYPE_MISMATCH;
+        }
+        *typp = _RDB_dup_nonscalar_type(argtv[1]);
+        free(argtv);
+        return RDB_OK;
+    }
+
+    /*
      * Handle built-in scalar operators with relational arguments
      */
     if (exp->var.op.argc == 1
@@ -200,6 +213,10 @@ expr_op_type(const RDB_expression *exp, const RDB_type *tuptyp,
         free(argtv);
         return RDB_OK;
     }
+
+    /*
+     * Handle relational operators
+     */
     if (argtv[0] != NULL && argtv[0]->kind == RDB_TP_RELATION
             && (strcmp(exp->var.op.name, "PROJECT") == 0
                 || strcmp(exp->var.op.name, "REMOVE") == 0)) {
