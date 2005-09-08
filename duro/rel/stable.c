@@ -446,7 +446,7 @@ _RDB_create_stored_table(RDB_table *tbp, RDB_environment *envp,
     tbp->stp->recmapp = NULL;
     RDB_init_hashtable(&tbp->stp->attrmap, RDB_DFL_MAP_CAPACITY, &hash_str,
             &str_equals);
-    tbp->stp->est_cardinality = 1000;
+    tbp->stp->est_cardinality = 0;
 
     /* Allocate comparison vector, if needed */
     if (ascv != NULL) {

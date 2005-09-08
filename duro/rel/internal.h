@@ -477,7 +477,10 @@ _RDB_optimize(RDB_table *tbp, int seqitc, const RDB_seq_item seqitv[],
         RDB_transaction *, RDB_table **ntbpp);
 
 int
-_RDB_transform(RDB_table *tbp);
+_RDB_transform(RDB_table *tbp, RDB_transaction *);
+
+int
+_RDB_transform_exp(RDB_expression *);
 
 int
 _RDB_infer_keys(RDB_table *tbp);

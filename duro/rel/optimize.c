@@ -365,6 +365,10 @@ mutate_select(RDB_table *tbp, RDB_table **tbpv, int cap, RDB_transaction *txp)
     int ret;
     RDB_table *ctbp = tbp->var.select.tbp;
 
+    ret = _RDB_transform_exp(tbp->var.select.exp);
+    if (ret != RDB_OK)
+        return ret;
+
     if (ctbp->kind == RDB_TB_PROJECT
             && ctbp->var.project.tbp->kind == RDB_TB_REAL) {
         /* Convert condition into 'unbalanced' form */
@@ -379,7 +383,7 @@ mutate_select(RDB_table *tbp, RDB_table **tbpv, int cap, RDB_transaction *txp)
         RDB_table *ntbp;
         RDB_expression *exp = RDB_dup_expr(tbp->var.select.exp);
         if (exp == NULL)
-            return RDB_NO_MEMORY;
+            return RDB_NO_MEMORY; /* !! */
 
         ret = RDB_select(tbpv[i], exp, txp, &ntbp);
         if (ret != RDB_OK)
@@ -440,6 +444,201 @@ mutate_union(RDB_table *tbp, RDB_table **tbpv, int cap, RDB_transaction *txp)
     return tbc1 + tbc2;
 }
 
+static void
+table_to_empty(RDB_table *tbp) 
+{
+    /* !! other kinds of tables */
+    switch (tbp->kind) {
+        case RDB_TB_SELECT:
+            RDB_drop_expr(tbp->var.select.exp);
+            if (!tbp->var.select.tbp->is_persistent) {
+                RDB_drop_table(tbp->var.select.tbp, NULL);
+            }
+            tbp->kind = RDB_TB_REAL;
+            break;
+        case RDB_TB_MINUS:
+            if (!tbp->var.minus.tb1p->is_persistent) {
+                RDB_drop_table(tbp->var.minus.tb1p, NULL);
+            }
+            if (!tbp->var.minus.tb2p->is_persistent) {
+                RDB_drop_table(tbp->var.minus.tb2p, NULL);
+            }
+            tbp->kind = RDB_TB_REAL;
+            break;
+        default: ;
+    }
+}
+
+static int
+replace_empty(RDB_table *tbp, RDB_transaction *txp)
+{
+    int ret;
+
+    /* Check if there is a constraint that says the table is empty */
+    if (RDB_table_name(tbp) == NULL
+            && RDB_hashtable_get(&txp->dbp->dbrootp->empty_tbtab, tbp, txp)
+                    != NULL) {
+        table_to_empty(tbp);
+    }
+
+    switch (tbp->kind) {
+        case RDB_TB_REAL:
+            break;
+        case RDB_TB_MINUS:
+            ret = replace_empty(tbp->var.minus.tb1p, txp);
+            if (ret != RDB_OK)
+                return ret;
+            ret = replace_empty(tbp->var.minus.tb2p, txp);
+            if (ret != RDB_OK)
+                return ret;
+            break;
+        case RDB_TB_UNION:
+            ret = replace_empty(tbp->var._union.tb1p, txp);
+            if (ret != RDB_OK)
+                return ret;
+            ret = replace_empty(tbp->var._union.tb2p, txp);
+            if (ret != RDB_OK)
+                return ret;
+            break;
+        case RDB_TB_INTERSECT:
+            ret = replace_empty(tbp->var.intersect.tb1p, txp);
+            if (ret != RDB_OK)
+                return ret;
+            ret = replace_empty(tbp->var.intersect.tb2p, txp);
+            if (ret != RDB_OK)
+                return ret;
+            break;
+        case RDB_TB_SELECT:
+            ret = replace_empty(tbp->var.select.tbp, txp);
+            if (ret != RDB_OK)
+                return ret;
+            break;
+        case RDB_TB_JOIN:
+            ret = replace_empty(tbp->var.join.tb1p, txp);
+            if (ret != RDB_OK)
+                return ret;
+            ret = replace_empty(tbp->var.join.tb2p, txp);
+            if (ret != RDB_OK)
+                return ret;
+            break;
+        case RDB_TB_EXTEND:
+            ret = replace_empty(tbp->var.extend.tbp, txp);
+            if (ret != RDB_OK)
+                return ret;
+            break;
+        case RDB_TB_PROJECT:
+            ret = replace_empty(tbp->var.project.tbp, txp);
+            if (ret != RDB_OK)
+                return ret;
+            break;
+        case RDB_TB_SUMMARIZE:
+            ret = replace_empty(tbp->var.summarize.tb1p, txp);
+            if (ret != RDB_OK)
+                return ret;
+            ret = replace_empty(tbp->var.summarize.tb2p, txp);
+            if (ret != RDB_OK)
+                return ret;
+            break;
+        case RDB_TB_RENAME:
+            ret = replace_empty(tbp->var.rename.tbp, txp);
+            if (ret != RDB_OK)
+                return ret;
+            break;
+        case RDB_TB_WRAP:
+            ret = replace_empty(tbp->var.wrap.tbp, txp);
+            if (ret != RDB_OK)
+                return ret;
+            break;
+        case RDB_TB_UNWRAP:
+            ret = replace_empty(tbp->var.unwrap.tbp, txp);
+            if (ret != RDB_OK)
+                return ret;
+            break;
+        case RDB_TB_GROUP:
+            ret = replace_empty(tbp->var.group.tbp, txp);
+            if (ret != RDB_OK)
+                return ret;
+            break;
+        case RDB_TB_UNGROUP:
+            ret = replace_empty(tbp->var.ungroup.tbp, txp);
+            if (ret != RDB_OK)
+                return ret;
+            break;
+        case RDB_TB_SDIVIDE:
+            ret = replace_empty(tbp->var.sdivide.tb1p, txp);
+            if (ret != RDB_OK)
+                return ret;
+            ret = replace_empty(tbp->var.sdivide.tb2p, txp);
+            if (ret != RDB_OK)
+                return ret;
+            ret = replace_empty(tbp->var.sdivide.tb3p, txp);
+            if (ret != RDB_OK)
+                return ret;
+            break;
+    }
+
+    return RDB_OK;
+}
+
+static int
+transform_minus_union(RDB_table *tbp, RDB_transaction *txp,
+        RDB_table **restbpp)
+{
+    int ret;
+    RDB_table *tb1p, *tb2p, *tb3p, *tb4p;
+
+    tb1p = _RDB_dup_vtable(tbp->var.minus.tb1p->var._union.tb1p);
+    if (tb1p == NULL) {
+        return RDB_NO_MEMORY;
+    }
+
+    tb2p = _RDB_dup_vtable(tbp->var.minus.tb2p);
+    if (tb2p == NULL) {
+        RDB_drop_table (tb1p, NULL);
+        return RDB_NO_MEMORY;
+    }
+
+    ret = RDB_minus(tb1p, tb2p, &tb3p);
+    if (ret != RDB_OK) {
+        RDB_drop_table(tb1p, NULL);
+        RDB_drop_table(tb2p, NULL);
+        return ret;
+    }
+
+    tb1p = _RDB_dup_vtable(tbp->var.minus.tb1p->var._union.tb2p);
+    if (tb1p == NULL) {
+        RDB_drop_table(tb3p, NULL);
+        return RDB_NO_MEMORY;
+    }
+    tb2p = _RDB_dup_vtable(tbp->var.minus.tb2p);
+    if (tb2p == NULL) {
+        RDB_drop_table(tb1p, NULL);
+        RDB_drop_table(tb3p, NULL);
+        return RDB_NO_MEMORY;
+    }
+
+    ret = RDB_minus(tb1p, tb2p, &tb4p);
+    if (ret != RDB_OK) {
+        RDB_drop_table(tb1p, NULL);
+        RDB_drop_table(tb2p, NULL);
+        RDB_drop_table(tb3p, NULL);        
+        return ret;
+    }
+
+    ret = RDB_union(tb3p, tb4p, restbpp);
+    if (ret != RDB_OK) {
+        RDB_drop_table(tb3p, NULL);
+        RDB_drop_table(tb4p, NULL);
+        return ret;
+    }
+    ret = replace_empty(*restbpp, txp);
+    if (ret != RDB_OK) {
+        RDB_drop_table(*restbpp, NULL);
+        return ret;
+    }
+    return RDB_OK;
+}
+
 static int
 mutate_minus(RDB_table *tbp, RDB_table **tbpv, int cap, RDB_transaction *txp)
 {
@@ -454,12 +653,19 @@ mutate_minus(RDB_table *tbp, RDB_table **tbpv, int cap, RDB_transaction *txp)
         RDB_table *ntbp;
         RDB_table *otbp = _RDB_dup_vtable(tbp->var.minus.tb2p);
         if (otbp == NULL)
-            return RDB_NO_MEMORY;
+            return RDB_NO_MEMORY; /* !! */
 
         ret = RDB_minus(tbpv[i], otbp, &ntbp);
         if (ret != RDB_OK)
             return ret;
         tbpv[i] = ntbp;
+    }
+    if (tbc < cap && tbp->var.minus.tb1p->kind == RDB_TB_UNION) {
+        ret = transform_minus_union(tbp, txp, &tbpv[tbc]);
+        if (ret != RDB_OK)
+            return ret; /* !! */
+        tbc++;
+        /* !! mutate_union */
     }
     return tbc;
 }
@@ -1207,130 +1413,6 @@ add_project(RDB_table *tbp)
     return RDB_OK;
 }
 
-static void
-table_to_empty(RDB_table *tbp) 
-{
-    /* !! other kinds of tables */
-    if (tbp->kind == RDB_TB_SELECT) {
-        RDB_drop_expr(tbp->var.select.exp);
-        if (RDB_table_name(tbp->var.select.tbp) == NULL) {
-            RDB_drop_table(tbp->var.select.tbp, NULL);
-        }
-        tbp->kind = RDB_TB_REAL;
-    }
-}
-
-static int
-replace_empty(RDB_table *tbp, RDB_transaction *txp)
-{
-    int ret;
-
-    /* Check if there is a constraint that says the table is empty */
-    if (RDB_table_name(tbp) == NULL
-            && RDB_hashtable_get(&txp->dbp->dbrootp->empty_tbtab, tbp, txp)
-                    != NULL) {
-        table_to_empty(tbp);
-    }
-
-    switch (tbp->kind) {
-        case RDB_TB_REAL:
-            break;
-        case RDB_TB_MINUS:
-            ret = replace_empty(tbp->var.minus.tb1p, txp);
-            if (ret != RDB_OK)
-                return ret;
-            ret = replace_empty(tbp->var.minus.tb2p, txp);
-            if (ret != RDB_OK)
-                return ret;
-            break;
-        case RDB_TB_UNION:
-            ret = replace_empty(tbp->var._union.tb1p, txp);
-            if (ret != RDB_OK)
-                return ret;
-            ret = replace_empty(tbp->var._union.tb2p, txp);
-            if (ret != RDB_OK)
-                return ret;
-            break;
-        case RDB_TB_INTERSECT:
-            ret = replace_empty(tbp->var.intersect.tb1p, txp);
-            if (ret != RDB_OK)
-                return ret;
-            ret = replace_empty(tbp->var.intersect.tb2p, txp);
-            if (ret != RDB_OK)
-                return ret;
-            break;
-        case RDB_TB_SELECT:
-            ret = replace_empty(tbp->var.select.tbp, txp);
-            if (ret != RDB_OK)
-                return ret;
-            break;
-        case RDB_TB_JOIN:
-            ret = replace_empty(tbp->var.join.tb1p, txp);
-            if (ret != RDB_OK)
-                return ret;
-            ret = replace_empty(tbp->var.join.tb2p, txp);
-            if (ret != RDB_OK)
-                return ret;
-            break;
-        case RDB_TB_EXTEND:
-            ret = replace_empty(tbp->var.extend.tbp, txp);
-            if (ret != RDB_OK)
-                return ret;
-            break;
-        case RDB_TB_PROJECT:
-            ret = replace_empty(tbp->var.project.tbp, txp);
-            if (ret != RDB_OK)
-                return ret;
-            break;
-        case RDB_TB_SUMMARIZE:
-            ret = replace_empty(tbp->var.summarize.tb1p, txp);
-            if (ret != RDB_OK)
-                return ret;
-            ret = replace_empty(tbp->var.summarize.tb2p, txp);
-            if (ret != RDB_OK)
-                return ret;
-            break;
-        case RDB_TB_RENAME:
-            ret = replace_empty(tbp->var.rename.tbp, txp);
-            if (ret != RDB_OK)
-                return ret;
-            break;
-        case RDB_TB_WRAP:
-            ret = replace_empty(tbp->var.wrap.tbp, txp);
-            if (ret != RDB_OK)
-                return ret;
-            break;
-        case RDB_TB_UNWRAP:
-            ret = replace_empty(tbp->var.unwrap.tbp, txp);
-            if (ret != RDB_OK)
-                return ret;
-            break;
-        case RDB_TB_GROUP:
-            ret = replace_empty(tbp->var.group.tbp, txp);
-            if (ret != RDB_OK)
-                return ret;
-            break;
-        case RDB_TB_UNGROUP:
-            ret = replace_empty(tbp->var.ungroup.tbp, txp);
-            if (ret != RDB_OK)
-                return ret;
-            break;
-        case RDB_TB_SDIVIDE:
-            ret = replace_empty(tbp->var.sdivide.tb1p, txp);
-            if (ret != RDB_OK)
-                return ret;
-            ret = replace_empty(tbp->var.sdivide.tb2p, txp);
-            if (ret != RDB_OK)
-                return ret;
-            ret = replace_empty(tbp->var.sdivide.tb3p, txp);
-            if (ret != RDB_OK)
-                return ret;
-            break;
-    }
-
-    return RDB_OK;
-}
-
 int
 _RDB_optimize(RDB_table *tbp, int seqitc, const RDB_seq_item seqitv[],
         RDB_transaction *txp, RDB_table **ntbpp)
@@ -1376,7 +1458,7 @@ _RDB_optimize(RDB_table *tbp, int seqitc, const RDB_seq_item seqitv[],
          * Algebraic optimization
          */
 
-        ret = _RDB_transform(ntbp);
+        ret = _RDB_transform(ntbp, txp);
         if (ret != RDB_OK)
             return ret;
 

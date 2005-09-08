@@ -45,7 +45,7 @@ add_empty_tb(RDB_constraint *constrp, RDB_transaction *txp)
         resobj.var.tbp = NULL;
         RDB_destroy_obj(&resobj);
 
-        ret = _RDB_transform(ptbp);
+        ret = _RDB_transform(ptbp, txp);
         if (ret != RDB_OK) {
             RDB_drop_table(ptbp, NULL);
             return ret;

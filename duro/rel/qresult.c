@@ -1504,6 +1504,11 @@ cleanup:
     return ret;
 }
 
+/*
+ * Read a tuple from a table using the unique index given by indexp,
+ * using the values given by objpv as a key.
+ * Read only the attributes in tpltyp.
+ */
 int
 _RDB_get_by_uindex(RDB_table *tbp, RDB_object *objpv[], _RDB_tbindex *indexp,
         RDB_type *tpltyp, RDB_transaction *txp, RDB_object *tplp)
@@ -1533,11 +1538,16 @@ _RDB_get_by_uindex(RDB_table *tbp, RDB_object *objpv[], _RDB_tbindex *indexp,
     }
 
     /*
-     * Read fields
+     * Set 'no' fields of resfv and Read fields
      */
     if (indexp->idxp == NULL) {
-        for (i = 0; i < tpltyp->var.tuple.attrc - keylen; i++) {
-            resfv[i].no = keylen + i;
+        int rfi = 0;
+
+        for (i = 0; i < tpltyp->var.tuple.attrc; i++) {
+            int fno = *_RDB_field_no(tbp->stp, tpltyp->var.tuple.attrv[i].name);
+
+            if (fno >= keylen)
+                resfv[rfi++].no = fno;
         }
         ret = RDB_get_fields(tbp->stp->recmapp, fv,
                              tpltyp->var.tuple.attrc - keylen,
@@ -1546,20 +1556,21 @@ _RDB_get_by_uindex(RDB_table *tbp, RDB_object *objpv[], _RDB_tbindex *indexp,
         int rfi = 0;
 
         for (i = 0; i < tpltyp->var.tuple.attrc; i++) {
-            int j = 0;
+            int j;
+            int fno = *_RDB_field_no(tbp->stp, tpltyp->var.tuple.attrv[i].name);
 
             /* Search field number in index */
-            while (j < keylen && indexp->idxp->fieldv[j] != i)
-                j++;
+            for (j = 0; j < keylen && indexp->idxp->fieldv[j] != fno; j++);
 
-            /* Not found, so the field must be read from the DB */
+            /* If not found, so the field must be read from the DB */
             if (j >= keylen)
-                resfv[rfi++].no = i;
+                resfv[rfi++].no = fno;
         }
         ret = RDB_index_get_fields(indexp->idxp, fv,
                              tpltyp->var.tuple.attrc - keylen,
                              tbp->is_persistent ? txp->txid : NULL, resfv);
     }
+    
     if (ret != RDB_OK) {
         goto cleanup;
     }
@@ -1581,20 +1592,13 @@ _RDB_get_by_uindex(RDB_table *tbp, RDB_object *objpv[], _RDB_tbindex *indexp,
         char *attrname = tpltyp->var.tuple.attrv[i].name;
         RDB_int fno = *_RDB_field_no(tbp->stp, attrname);
 
-        if (indexp->idxp == NULL) {
-            if (fno < keylen)
-                rfi = -1;
-            else
-                rfi = fno - keylen;
-        } else {
-            /* Search field number in resfv */
-            rfi = 0;
-            while (rfi < tpltyp->var.tuple.attrc - keylen
-                    && resfv[rfi].no != fno)
-                rfi++;
-            if (rfi >= tpltyp->var.tuple.attrc - keylen)
-                rfi = -1;
-        }
+        /* Search field number in resfv */
+        rfi = 0;
+        while (rfi < tpltyp->var.tuple.attrc - keylen
+                && resfv[rfi].no != fno)
+            rfi++;
+        if (rfi >= tpltyp->var.tuple.attrc - keylen)
+            rfi = -1;
 
         if (rfi != -1) {
             /* non-key attribute */

@@ -79,8 +79,10 @@ new_rtable(const char *name, RDB_bool persistent,
     for (i = 0; i < keyc; i++) {
         tbp->keyv[i].strc = keyv[i].strc;
         tbp->keyv[i].strv = RDB_dup_strvec(keyv[i].strc, keyv[i].strv);
-        if (tbp->keyv[i].strv == NULL)
+        if (tbp->keyv[i].strv == NULL) {
+            ret = RDB_NO_MEMORY;
             goto error;
+        }
     }
 
     tbp->typ = reltyp;
@@ -103,7 +105,7 @@ error:
 }
 
 /*
- * Like _RDB_new_rtable(), but uses attrc and heading instead of reltype.
+ * Like new_rtable(), but uses attrc and heading instead of reltype.
  */
 int
 _RDB_new_rtable(const char *name, RDB_bool persistent,
@@ -123,11 +125,17 @@ _RDB_new_rtable(const char *name, RDB_bool persistent,
             RDB_type *tuptyp = reltyp->var.basetyp;
 
             tuptyp->var.tuple.attrv[i].defaultp = malloc(sizeof (RDB_object));
-            if (tuptyp->var.tuple.attrv[i].defaultp == NULL)
+            if (tuptyp->var.tuple.attrv[i].defaultp == NULL) {
+                RDB_drop_type(reltyp, NULL);
                 return RDB_NO_MEMORY;
+            }
             RDB_init_obj(tuptyp->var.tuple.attrv[i].defaultp);
-            RDB_copy_obj(tuptyp->var.tuple.attrv[i].defaultp,
+            ret = RDB_copy_obj(tuptyp->var.tuple.attrv[i].defaultp,
                     heading[i].defaultp);
+            if (ret != RDB_OK) {
+                RDB_drop_type(reltyp, NULL);
+                return ret;
+            }                
         }
     }
 
@@ -931,7 +939,7 @@ RDB_table_is_empty(RDB_table *tbp, RDB_transaction *txp, RDB_bool *resultp)
     if (ret != RDB_OK)
         return ret;
 
-    ret = _RDB_table_qresult(tbp, txp, &qrp);
+    ret = _RDB_table_qresult(ntbp, txp, &qrp);
     if (ret != RDB_OK) {
         RDB_drop_table(ntbp, txp);
         _RDB_handle_syserr(txp, ret);
@@ -947,18 +955,17 @@ RDB_table_is_empty(RDB_table *tbp, RDB_transaction *txp, RDB_bool *resultp)
         *resultp = RDB_TRUE;
     else {
         RDB_destroy_obj(&tpl);
-        RDB_drop_table(ntbp, txp);
         _RDB_drop_qresult(qrp, txp);
+        RDB_drop_table(ntbp, txp);
         _RDB_handle_syserr(txp, ret);
         return ret;
     }
     RDB_destroy_obj(&tpl);
-    ret = RDB_drop_table(ntbp, txp);
+    ret = _RDB_drop_qresult(qrp, txp);
     if (ret != RDB_OK) {
-        _RDB_drop_qresult(qrp, txp);
         return ret;
     }
-    return _RDB_drop_qresult(qrp, txp);
+    return RDB_drop_table(ntbp, txp);
 }
 
 int
