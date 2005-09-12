@@ -84,7 +84,12 @@ Duro_index_cmd(ClientData data, Tcl_Interp *interp,
         int objc, Tcl_Obj *CONST objv[]);
 
 int
-Duro_constraint_cmd(ClientData data, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[]);
+Duro_constraint_cmd(ClientData data, Tcl_Interp *interp, int objc,
+        Tcl_Obj *CONST objv[]);
+
+int
+Duro_massign_cmd(ClientData data, Tcl_Interp *interp, int objc,
+        Tcl_Obj *CONST objv[]);
 
 int
 Duro_tcl_close_env(TclState *statep, RDB_environment *, Tcl_HashEntry *entryp);
@@ -139,5 +144,9 @@ Duro_add_table(Tcl_Interp *interp, TclState *statep, RDB_table *tbp,
 int
 Duro_parse_expr_utf(Tcl_Interp *, const char *, void *,
         RDB_transaction *, RDB_expression **expp);
+
+int
+Duro_parse_table_utf(Tcl_Interp *interp, const char *s, void *arg,
+        RDB_transaction *txp, RDB_table **tbpp);
 
 #endif

@@ -547,7 +547,7 @@ database the transaction specified by <var>txp</var> interacts with.
 
 <p>The table must have a name.
 
-<p>Currently, RDB_add_table does not work for local real tables.
+<p>Currently, RDB_add_table is not supported for local real tables.
 
 <h3>Return value</h3>
 
@@ -597,7 +597,7 @@ database the transaction specified by <var>txp</var> interacts with.
 <dt>RDB_INVALID_TRANSACTION
 <dd><var>txp</var> does not point to a running transaction.
 <dt>RDB_INVALID_ARGUMENT
-<dd>The table does not belong the database which the transaction interacts
+<dd>The table does not belong to the database the transaction interacts
 with.
 </dl>
 
@@ -4991,7 +4991,7 @@ otherwise.
 
 <h4>Description</h4>
 
-<p>Checks if a table contains a certain tuple.
+<p>Checks if a table contains a given tuple.
 
 <h4>Return value</h4>
 

@@ -108,7 +108,18 @@ if {![tequal $tpl {A 1 AA 1 B 2 C 3}]} {
     error "Invalid tuple value: $tpl"
 }
 
-set tpl [duro::expr {TUPLE FROM (T2 WHERE NOT(A<>1 OR B<>2))} $tx]
+duro::table expr t {T2 WHERE NOT(A<>1 OR B<>2)} $tx
+set tpl [duro::expr {TUPLE FROM t} $tx]
+
+# Check if primary key is used
+set plan [duro::table showplan t $tx]
+if {![string match "*INDEX T2\$0*" $plan]} {
+    error "primary index should be used, but is not"
+}
+
+duro::table drop t $tx
+
+# Compare result tuple
 set stpl {A 1 B 2 C 3}
 if {![tequal $tpl $stpl]} {
     error "Tuple should be $stpl, but is $tpl"

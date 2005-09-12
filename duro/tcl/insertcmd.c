@@ -17,7 +17,6 @@ Duro_insert_cmd(ClientData data, Tcl_Interp *interp, int objc,
     Tcl_HashEntry *entryp;
     RDB_transaction *txp;
     RDB_table *tbp;
-    int attrcount;
     RDB_object tpl;
     TclState *statep = (TclState *) data;
 
@@ -26,9 +25,9 @@ Duro_insert_cmd(ClientData data, Tcl_Interp *interp, int objc,
         return TCL_ERROR;
     }
 
-    name = Tcl_GetStringFromObj(objv[1], NULL);
+    name = Tcl_GetString(objv[1]);
 
-    txstr = Tcl_GetStringFromObj(objv[3], NULL);
+    txstr = Tcl_GetString(objv[3]);
     entryp = Tcl_FindHashEntry(&statep->txs, txstr);
     if (entryp == NULL) {
         Tcl_AppendResult(interp, "Unknown transaction: ", txstr, NULL);
@@ -38,12 +37,6 @@ Duro_insert_cmd(ClientData data, Tcl_Interp *interp, int objc,
 
     ret = Duro_get_table(statep, interp, name, txp, &tbp);
     if (ret != TCL_OK) {
-        return TCL_ERROR;
-    }
-
-    Tcl_ListObjLength(interp, objv[2], &attrcount);
-    if (attrcount % 2 != 0) {
-        Tcl_SetResult(interp, "Invalid tuple value", TCL_STATIC);
         return TCL_ERROR;
     }
 
@@ -58,7 +51,7 @@ Duro_insert_cmd(ClientData data, Tcl_Interp *interp, int objc,
         ret = TCL_OK;
     } else {
         /*
-         * Must Rest Result, because Duro_tcl_to_duro may have invoked a script
+         * Must reset result, because Duro_tcl_to_duro may have invoked a script
          */
         Tcl_ResetResult(interp);
 

@@ -13,8 +13,8 @@
 #include <string.h>
 #include <ctype.h>
 
-static int
-parse_table_utf(Tcl_Interp *interp, const char *s, void *arg,
+int
+Duro_parse_table_utf(Tcl_Interp *interp, const char *s, void *arg,
         RDB_transaction *txp, RDB_table **tbpp)
 {
     int ret;
@@ -352,6 +352,7 @@ table_expr_cmd(TclState *statep, Tcl_Interp *interp, int objc,
         if (strcmp(flagstr, "-global") == 0) {
             persistent = RDB_TRUE;
         } else if (strcmp(flagstr, "-local") == 0) {
+            /* do nothing */
         } else {
             Tcl_SetResult(interp,
                     "Wrong flag: must be -global or -local", TCL_STATIC);
@@ -370,7 +371,7 @@ table_expr_cmd(TclState *statep, Tcl_Interp *interp, int objc,
     }
     txp = Tcl_GetHashValue(entryp);
 
-    ret = parse_table_utf(interp, Tcl_GetString(objv[objc - 2]), statep,
+    ret = Duro_parse_table_utf(interp, Tcl_GetString(objv[objc - 2]), statep,
             txp, &tbp);
     if (ret != TCL_OK) {
         return ret;
