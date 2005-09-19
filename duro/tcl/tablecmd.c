@@ -387,14 +387,18 @@ table_expr_cmd(TclState *statep, Tcl_Interp *interp, int objc,
 
     if (persistent) {
         ret = RDB_add_table(tbp, txp);
+        if (ret != RDB_OK) {
+            RDB_drop_table(tbp, txp);
+            Duro_dberror(interp, txp, ret);
+            return TCL_ERROR;
+        }            
     } else {
         ret = Duro_add_table(interp, statep, tbp, RDB_table_name(tbp),
                 RDB_db_env(RDB_tx_db(txp)));
-    }
-    if (ret != RDB_OK) {
-        RDB_drop_table(tbp, txp);
-        Duro_dberror(interp, txp, ret);
-        return TCL_ERROR;
+        if (ret != TCL_OK) {
+            RDB_drop_table(tbp, txp);
+            return ret;
+        }
     }
 
     return TCL_OK;

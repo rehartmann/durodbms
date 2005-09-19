@@ -32,7 +32,7 @@ duro::table create T {
 proc dberror {msg} {
 } 
 
-if {![catch {duro::table expr TU {T1 UNION T2 UNION } $tx} msg]} {
+if {![catch {duro::table expr TU {T UNION T UNION } $tx} msg]} {
     error "creating TU should fail, but succeeded"
 }
 

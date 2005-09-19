@@ -27,17 +27,20 @@ int
 RDB_parse_expr(const char *txt, RDB_ltablefn *lt_fp, void *lt_arg,
         RDB_transaction *txp, RDB_expression **expp)
 {
+    int pret;
+
     _RDB_parse_txp = txp;
     _RDB_parse_ret = RDB_OK;
     _RDB_parse_ltfp = lt_fp;
     _RDB_parse_arg = lt_arg;
 
     yy_scan_string(txt);
-    if (yyparse() > 0) {
-        return RDB_SYNTAX;
-    }
+    pret = yyparse();
     if (_RDB_parse_ret != RDB_OK) {
         return _RDB_parse_ret;
+    }
+    if (pret > 0) {
+        return RDB_SYNTAX;
     }
 
     /* If the expression represents an attribute, try to get table */

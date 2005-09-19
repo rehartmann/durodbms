@@ -238,10 +238,13 @@ expr_op_type(const RDB_expression *exp, const RDB_type *tuptyp,
         free(argtv);
         return RDB_NOT_SUPPORTED; /* !! */
     }
-    if (argtv[0] != NULL && argtv[0]->kind == RDB_TP_RELATION
+    if (exp->var.op.argc == 2
+            && argtv[0] != NULL && argtv[0]->kind == RDB_TP_RELATION
+            && argtv[1] != NULL && argtv[1]->kind == RDB_TP_RELATION
             && strcmp(exp->var.op.name, "JOIN") == 0) {
+        ret = RDB_join_relation_types(argtv[0], argtv[1], typp);
         free(argtv);
-        return RDB_NOT_SUPPORTED; /* !! */
+        return ret;
     }
     if (argtv[0] != NULL && argtv[0]->kind == RDB_TP_RELATION
             && (strcmp(exp->var.op.name, "UNION") == 0
@@ -752,6 +755,7 @@ RDB_drop_expr(RDB_expression *exp)
         {
             int i;
 
+            free(exp->var.op.name);
             for (i = 0; i < exp->var.op.argc; i++)
                 RDB_drop_expr(exp->var.op.argv[i]);
             free(exp->var.op.argv);

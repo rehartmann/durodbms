@@ -113,11 +113,12 @@ Duro_dberror(Tcl_Interp *interp, RDB_transaction *txp, int err)
             (char *) NULL);
     if (errcode != NULL) {
         if (err == RDB_PREDICATE_VIOLATION && RDB_tx_errinfo(txp) != NULL) {
-            Tcl_SetErrorCode(interp, "Duro", errcode, (char *) RDB_strerror(err),
-                RDB_tx_errinfo(txp), NULL);
+            Tcl_SetErrorCode(interp, "Duro", errcode,
+                    (char *) RDB_strerror(err), RDB_tx_errinfo(txp),
+                    (char *) NULL);
         } else {
-            Tcl_SetErrorCode(interp, "Duro", errcode, (char *) RDB_strerror(err),
-                NULL);
+            Tcl_SetErrorCode(interp, "Duro", errcode,
+                    (char *) RDB_strerror(err), (char *) NULL);
         }
     }
 }    
@@ -274,7 +275,10 @@ Duro_add_table(Tcl_Interp *interp, TclState *statep, RDB_table *tbp,
     statep->ltable_uid++;
     entryp = Tcl_CreateHashEntry(&statep->ltables, name, &new);
     if (!new) {
-        Tcl_AppendResult(interp, "local table \"", name, " \"already exists");
+        Tcl_AppendResult(interp, "local table \"", name, "\" already exists",
+                (char *) NULL);
+        Tcl_SetErrorCode(interp, "Duro", "RDB_ELEMENT_EXISTS",
+                (char *) RDB_strerror(RDB_ELEMENT_EXISTS), (char *) NULL);
         return TCL_ERROR;
     }
 

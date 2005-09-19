@@ -68,13 +68,16 @@ duro::insert T4 {A 2 B 3} $tx
 
 # Create virtual tables
 
-# duro::table expr -global TU {T1 UNION T2} $tx
+duro::table expr -global TU {T1 UNION T2} $tx
 duro::table expr -global TM {T1 MINUS T2} $tx
 duro::table expr -global TI {T1 INTERSECT T2} $tx
 duro::table expr -global VT {T1 JOIN T3} $tx
 duro::table rename VT TJ $tx
 duro::table expr -global TR {T1 RENAME (K AS KN, S1 AS SN)} $tx
-if {![catch {duro::table expr -global TX {EXTEND T1 ADD (K*10 AS K0, IF K = 0 THEN "YES" ELSE 1 AS KIS1)} $tx}]} {
+if {![catch {
+    duro::table expr -global TX \
+            {EXTEND T1 ADD (K*10 AS K0, IF K = 0 THEN "YES" ELSE 1 AS KIS1)} $tx
+}]} {
     error "invalid EXTEND should fail, but succeeded"
 }
 if {[lindex $errorCode 1] != "RDB_TYPE_MISMATCH"} {
@@ -88,11 +91,34 @@ duro::table expr -global TP {(T1 WHERE K = 1) {K}} $tx
 duro::table expr -global TP2 {T1 {S1}} $tx
 duro::table expr -global TM2 {(T1 WHERE K = 1) MINUS (T2 WHERE K = 1)} $tx
 duro::table expr -global TI2 {(T1 WHERE K = 1) INTERSECT (T2 WHERE K = 1)} $tx
-# duro::table expr -global TU2 {(T1 WHERE K = 1) UNION (T2 WHERE K = 1)} $tx
 duro::table expr -global TJ2 {(T1 WHERE K = 2) JOIN (T3 WHERE K = 2)} $tx
 duro::table expr -global TS {T1 WHERE S1 > "Bla"} $tx
 duro::table expr -global TSM {SUMMARIZE T4 PER T4 { A }
         ADD (MIN(B) AS MIN_B, MAX(B) AS MAX_B)} $tx
+
+duro::table expr -global TS2 {T1 WHERE K = 1} $tx
+
+# Create table again - must fail
+if {![catch {
+    duro::table expr -global TS2 {T1 WHERE K = 1} $tx
+}]} {
+    error "creating TS2 a second time should fail, but succeeded"
+}
+if {[lindex $errorCode 1] != "RDB_ELEMENT_EXISTS"} {
+    error "Wrong error: $errorCode"
+}
+
+duro::table expr ts2 {T1 WHERE K = 1} $tx
+
+# Create table again - must fail
+if {![catch {
+    duro::table expr ts2 {T1 WHERE K = 1} $tx
+}]} {
+    error "creating ts2 a second time should fail, but succeeded"
+}
+if {[lindex $errorCode 1] != "RDB_ELEMENT_EXISTS"} {
+    error "Wrong error: $errorCode"
+}
 
 if {[duro::expr {TUPLE FROM TP} $tx] != {K 1}} {
     error "Tuple value should be {K 1}, but is not"
@@ -189,14 +215,6 @@ if {![duro::table contains TI $tpl $tx]} {
     error "Insert into TI was not successful."
 }
 
-# set tpl {K 4 S1 Buchara}
-
-# duro::insert TU $tpl $tx
-
-# if {![duro::table contains TU $tpl $tx]} {
-#     error "Insert into TU was not successful."
-# }
-
 set tpl {KN 5 SN Ballermann}
 
 duro::insert TR $tpl $tx
@@ -260,7 +278,7 @@ if {![tequal $tpl {K 4 S1 Blb}]} {
     error "Unexpected tuple value: $tpl"
 }
 
-# duro::table drop TU $tx
+duro::table drop TU $tx
 
 duro::table drop TX $tx
 
@@ -270,8 +288,7 @@ if {![catch {duro::table drop TX $tx}]} {
 }
 
 # Recreate TU
-
-# duro::table expr -global TU {T1 UNION T2} $tx
+duro::table expr -global TU {T1 UNION T2} $tx
 
 #
 # Check if persistent virtual tables can depend on named transient tables
@@ -317,6 +334,18 @@ if {[lindex $::errorCode 1] != "RDB_ATTRIBUTE_NOT_FOUND"} {
 
 duro::table drop LTL $tx
 duro::table drop LT $tx
+
+#
+# Check RDB_expr_type()
+#
+duro::table expr t {EXTEND TABLE_DEE ADD ((EXTEND TABLE_DEE ADD (1 AS N)) \
+        JOIN (EXTEND TABLE_DEE ADD (2 AS M)) AS R)} $tx
+
+duro::table drop t $tx
+
+# not supported yet
+# duro::table expr t {EXTEND TABLE_DEE ADD ((EXTEND TABLE_DEE ADD (1 AS N)) \
+        { N } AS R)} $tx
 
 duro::commit $tx
 

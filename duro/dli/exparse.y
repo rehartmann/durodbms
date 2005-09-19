@@ -20,7 +20,7 @@ RDB_table *
 _RDB_parse_expr_to_table(const RDB_expression *exp);
 
 RDB_expression *
-_RDB_parse_lookup_table(const RDB_expression *exp);
+_RDB_parse_lookup_table(RDB_expression *exp);
 
 static RDB_expression *
 table_dum_expr(void);
@@ -688,17 +688,18 @@ summary_type: TOK_SUM {
     ;
 
 wrap: expression TOK_WRAP '(' wrapping_list ')' {
+        /* use WRAP operator, when available */
         RDB_table *tbp, *restbp;
 
         tbp = _RDB_parse_expr_to_table($1);
         if (tbp == NULL)
         {
-            RDB_object *valp = RDB_expr_obj($1);
             RDB_object dstobj;
-
-            RDB_init_obj(&dstobj);
+            RDB_object *valp = RDB_expr_obj($1);
             if (valp == NULL)
                 YYERROR;
+
+            RDB_init_obj(&dstobj);
             _RDB_parse_ret = RDB_wrap_tuple(valp, $4.wrapc, $4.wrapv, &dstobj);
             if (_RDB_parse_ret != RDB_OK) {
                 RDB_destroy_obj(&dstobj);
@@ -708,6 +709,7 @@ wrap: expression TOK_WRAP '(' wrapping_list ')' {
             RDB_destroy_obj(&dstobj);
             if ($$ == NULL)
                 YYERROR;
+            RDB_drop_expr($1);
         } else {
             _RDB_parse_ret = RDB_wrap(tbp, $4.wrapc, $4.wrapv, &restbp);
             if (_RDB_parse_ret != RDB_OK) {
@@ -1497,24 +1499,32 @@ _RDB_parse_expr_to_table(const RDB_expression *exp)
     return tbp;
 }
 
+/*
+ * Check if exp refers to a table. If yes, destroy exp and return
+ * an expression that wraps the table. Otherwise, return exp.
+ */
 RDB_expression *
-_RDB_parse_lookup_table(const RDB_expression *exp)
+_RDB_parse_lookup_table(RDB_expression *exp)
 {
     if (exp->kind == RDB_EX_ATTR) {
         RDB_table *tbp;
 
         /* Try to find local table first */
         tbp = (*_RDB_parse_ltfp)(exp->var.attrname, _RDB_parse_arg);
-        if (tbp != NULL)
+        if (tbp != NULL) {
+            RDB_drop_expr(exp);
             return RDB_table_to_expr(tbp);
+        }
 
         /* Local table not found, try to find global table */
-        _RDB_parse_ret = RDB_get_table(exp->var.attrname, _RDB_parse_txp, &tbp);
-        if (_RDB_parse_ret == RDB_OK)
+        _RDB_parse_ret = RDB_get_table(exp->var.attrname, _RDB_parse_txp,
+                &tbp);
+        if (_RDB_parse_ret == RDB_OK) {
+            RDB_drop_expr(exp);
             return RDB_table_to_expr(tbp);
+        }
     }
-
-    return RDB_dup_expr(exp);
+    return exp;
 }
 
 static RDB_expression *
