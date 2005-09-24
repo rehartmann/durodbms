@@ -34,6 +34,58 @@ RDB_expr_is_const(const RDB_expression *exp)
 }
 
 static int
+wrap_type(const RDB_expression *exp, RDB_type **argtv, RDB_type **typp)
+{
+    int i, j;
+    int ret;
+    int wrapc;
+    RDB_wrapping *wrapv;
+
+    if (exp->var.op.argc < 1 || exp->var.op.argc %2 != 1)
+        return RDB_INVALID_ARGUMENT;
+
+    wrapc = exp->var.op.argc % 2;
+    if (wrapc > 0) {
+        wrapv = malloc(sizeof(RDB_wrapping) * wrapc);
+        if (wrapv == NULL)
+            return RDB_NO_MEMORY;
+    }
+    for (i = 0; i < wrapc; i++) {
+        wrapv[i].attrv = NULL;
+    }
+
+    for (i = 0; i < wrapc; i++) {
+        RDB_object *objp;
+
+        wrapv[i].attrc =  RDB_array_length(&exp->var.op.argv[i * 2 + 1]->var.obj);
+        wrapv[i].attrv = malloc(sizeof (char *) * wrapv[i].attrc);
+        for (j = 0; j < wrapv[i].attrc; j++) {
+            ret = RDB_array_get(&exp->var.op.argv[i * 2 + 1]->var.obj, (RDB_int) j,
+                                &objp);
+            if (ret != RDB_OK) {
+                goto cleanup;
+            }
+            wrapv[i].attrv[j] = RDB_obj_string(objp);
+        }        
+        wrapv[i].attrname = RDB_obj_string(&exp->var.op.argv[i * 2 + 2]->var.obj);
+    }
+
+    if (argtv[0]->kind == RDB_TP_RELATION) {
+        ret = RDB_wrap_relation_type(argtv[0], wrapc, wrapv, typp);
+    } else {
+        ret = RDB_wrap_tuple_type(argtv[0], wrapc, wrapv, typp);
+    }
+
+cleanup:
+    for (i = 0; i < wrapc; i++) {
+        free(wrapv[i].attrv);
+    }
+    if (wrapc > 0)
+        free(wrapv);
+    return ret;
+}
+
+static int
 expr_op_type(const RDB_expression *exp, const RDB_type *tuptyp,
         RDB_transaction *txp, RDB_type **typp)
 {
@@ -218,10 +270,38 @@ expr_op_type(const RDB_expression *exp, const RDB_type *tuptyp,
      * Handle relational operators
      */
     if (argtv[0] != NULL && argtv[0]->kind == RDB_TP_RELATION
-            && (strcmp(exp->var.op.name, "PROJECT") == 0
-                || strcmp(exp->var.op.name, "REMOVE") == 0)) {
+            && strcmp(exp->var.op.name, "PROJECT") == 0) {
+        char **attrv;
+
+        for (i = 1; i < exp->var.op.argc; i++) {
+            if (exp->var.op.argv[i]->kind != RDB_EX_OBJ
+                    || exp->var.op.argv[i]->var.obj.typ != &RDB_STRING)
+                return RDB_TYPE_MISMATCH;
+        }
+        attrv = malloc(sizeof (char *) * (exp->var.op.argc - 1));
+        if (attrv == NULL) {
+            free(argtv);
+            return RDB_NO_MEMORY;
+        }
+        for (i = 1; i < exp->var.op.argc; i++) {
+            attrv[i - 1] = RDB_obj_string(&exp->var.op.argv[i]->var.obj);
+        }
+        ret = RDB_project_relation_type(argtv[0], exp->var.op.argc - 1, attrv,
+                typp);
+        free(attrv);
+        free(argtv);
+        return ret;
+    }
+    if (argtv[0] != NULL && argtv[0]->kind == RDB_TP_RELATION
+            && strcmp(exp->var.op.name, "REMOVE") == 0) {
         free(argtv);
         return RDB_NOT_SUPPORTED; /* !! */
+    }
+    if (argtv[0] != NULL && argtv[0]->kind == RDB_TP_RELATION
+            && strcmp(exp->var.op.name, "WRAP") == 0) {
+        ret = wrap_type(exp, argtv, typp);
+        free(argtv);
+        return ret;
     }
     if (argtv[0] != NULL && argtv[0]->kind == RDB_TP_RELATION
             && strcmp(exp->var.op.name, "UNWRAP") == 0) {
@@ -265,7 +345,7 @@ expr_op_type(const RDB_expression *exp, const RDB_type *tuptyp,
     for (i = 0; i < exp->var.op.argc; i++) {
         if (argtv[i] == NULL) {
             free(argtv);
-            return RDB_INVALID_ARGUMENT;
+            return RDB_OPERATOR_NOT_FOUND;
         }
     }
 

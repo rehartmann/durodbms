@@ -343,9 +343,13 @@ duro::table expr t {EXTEND TABLE_DEE ADD ((EXTEND TABLE_DEE ADD (1 AS N)) \
 
 duro::table drop t $tx
 
-# not supported yet
-# duro::table expr t {EXTEND TABLE_DEE ADD ((EXTEND TABLE_DEE ADD (1 AS N)) \
+duro::table expr t {EXTEND TABLE_DEE ADD ((EXTEND TABLE_DEE ADD (1 AS N)) \
         { N } AS R)} $tx
+
+duro::table drop t $tx
+
+duro::table expr t {EXTEND TABLE_DEE
+        ADD (EXTEND TABLE_DEE ADD (1 AS N) WRAP ({ N } AS T) AS R) } $tx
 
 duro::commit $tx
 

@@ -7,13 +7,15 @@
 
 int yyparse(void);
 void yy_scan_string(const char *txt);
-RDB_table *_RDB_parse_expr_to_table(const RDB_expression *exp);
 
 RDB_transaction *_RDB_parse_txp;
 RDB_expression *_RDB_parse_resultp;
 int _RDB_parse_ret;
 RDB_ltablefn *_RDB_parse_ltfp;
 void *_RDB_parse_arg;
+
+RDB_expression *
+_RDB_parse_lookup_table(RDB_expression *);
 
 int yywrap(void) {
     return 1;
@@ -45,13 +47,7 @@ RDB_parse_expr(const char *txt, RDB_ltablefn *lt_fp, void *lt_arg,
 
     /* If the expression represents an attribute, try to get table */
     if (_RDB_parse_resultp->kind == RDB_EX_ATTR) {
-        RDB_table *tbp = _RDB_parse_expr_to_table(_RDB_parse_resultp);
-
-        if (tbp != NULL) {
-            *expp = RDB_table_to_expr(tbp);
-        } else {
-            *expp = _RDB_parse_resultp;
-        }
+        *expp = _RDB_parse_lookup_table(_RDB_parse_resultp);
     } else {
         *expp = _RDB_parse_resultp;
     }

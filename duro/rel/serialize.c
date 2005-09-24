@@ -139,8 +139,7 @@ serialize_obj(RDB_object *valp, int *posp, const RDB_object *argvalp)
                 return ret;
 
             RDB_init_hashtable_iter(&hiter, (RDB_hashtable *) &argvalp->var.tpl_tab);
-            while ((entryp = RDB_hashtable_next(&hiter)) != NULL)
-            {
+            while ((entryp = RDB_hashtable_next(&hiter)) != NULL) {
                 /* Write attribute name */
                 ret = serialize_str(valp, posp, entryp->key);
                 if (ret != RDB_OK)

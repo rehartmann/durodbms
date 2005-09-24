@@ -16,9 +16,6 @@ extern int _RDB_parse_ret;
 extern RDB_ltablefn *_RDB_parse_ltfp;
 extern void *_RDB_parse_arg;
 
-RDB_table *
-_RDB_parse_expr_to_table(const RDB_expression *exp);
-
 RDB_expression *
 _RDB_parse_lookup_table(RDB_expression *exp);
 
@@ -688,34 +685,71 @@ summary_type: TOK_SUM {
     ;
 
 wrap: expression TOK_WRAP '(' wrapping_list ')' {
-        /* use WRAP operator, when available */
-        RDB_table *tbp, *restbp;
+        int i, j;
 
-        tbp = _RDB_parse_expr_to_table($1);
-        if (tbp == NULL)
-        {
-            RDB_object dstobj;
-            RDB_object *valp = RDB_expr_obj($1);
-            if (valp == NULL)
-                YYERROR;
+        /* Empty object, used to create an expresion */
+        RDB_object eobj; 
 
-            RDB_init_obj(&dstobj);
-            _RDB_parse_ret = RDB_wrap_tuple(valp, $4.wrapc, $4.wrapv, &dstobj);
+        RDB_expression **argv = malloc(sizeof (RDB_expression *)
+                * ($4.wrapc * 2 + 1));
+        if (argv == NULL) {
+            _RDB_parse_ret = RDB_NO_MEMORY;
+            YYERROR;
+        }
+
+        argv[0] = _RDB_parse_lookup_table($1);
+        if (argv[0] == NULL) {
+            free(argv);
+            YYERROR;
+        }
+
+        RDB_init_obj(&eobj);
+        for (i = 0; i < $4.wrapc; i++) {
+            /* Create expression from object */
+            argv[i * 2 + 1] = RDB_obj_to_expr(&eobj);
+
+            _RDB_parse_ret =  RDB_set_array_length(
+                    RDB_expr_obj(argv[i * 2 + 1]), $4.wrapv[i].attrc);
             if (_RDB_parse_ret != RDB_OK) {
-                RDB_destroy_obj(&dstobj);
+                RDB_destroy_obj(&eobj);
                 YYERROR;
             }
-            $$ = RDB_obj_to_expr(&dstobj);
-            RDB_destroy_obj(&dstobj);
-            if ($$ == NULL)
-                YYERROR;
-            RDB_drop_expr($1);
-        } else {
-            _RDB_parse_ret = RDB_wrap(tbp, $4.wrapc, $4.wrapv, &restbp);
-            if (_RDB_parse_ret != RDB_OK) {
+            for (j = 0; j < $4.wrapv[i].attrc; j++) {
+                RDB_object strobj;
+
+                RDB_init_obj(&strobj);
+                _RDB_parse_ret = RDB_string_to_obj(&strobj,
+                        $4.wrapv[i].attrv[j]);
+                if (_RDB_parse_ret != RDB_OK) {
+                    /* !! */
+                    RDB_destroy_obj(&strobj);
+                    RDB_destroy_obj(&eobj);
+                    YYERROR;
+                }
+
+                _RDB_parse_ret = RDB_array_set(
+                        RDB_expr_obj(argv[i * 2 + 1]), (RDB_int) j,
+                        &strobj);
+                RDB_destroy_obj(&strobj);
+                if (_RDB_parse_ret != RDB_OK) {
+                    /* !! */
+                    RDB_destroy_obj(&eobj);
+                    YYERROR;
+                }
+            }
+            argv[i * 2 + 2] = RDB_string_to_expr($4.wrapv[i].attrname);
+            if (argv[i * 2 + 2] == NULL) {
+                /* !! */
+                RDB_destroy_obj(&eobj);
                 YYERROR;
             }
-            $$ = RDB_table_to_expr(restbp);
+        }
+        RDB_destroy_obj(&eobj);
+
+        $$ = RDB_ro_op("WRAP", $4.wrapc * 2 + 1, argv);
+        if ($$ == NULL) {
+            /* !! */
+            YYERROR;
         }
     }
     ;
@@ -1460,44 +1494,6 @@ opt_expression_list:
 
 RDB_table *
 RDB_get_ltable(void *arg);
-
-RDB_table *
-_RDB_parse_expr_to_table(const RDB_expression *exp)
-{
-    RDB_object val;
-    RDB_table *tbp;
-
-    if (exp->kind == RDB_EX_ATTR) {
-        /* Try to find local table first */
-        tbp = (*_RDB_parse_ltfp)(exp->var.attrname, _RDB_parse_arg);
-        if (tbp != NULL)
-            return tbp;
-
-        /* Local table not found, try to find global table */
-        _RDB_parse_ret = RDB_get_table(exp->var.attrname, _RDB_parse_txp, &tbp);
-        if (_RDB_parse_ret != RDB_OK)
-            return NULL;
-        return tbp;
-    }
-
-    RDB_init_obj(&val);
-    _RDB_parse_ret = RDB_evaluate((RDB_expression *) exp, NULL,
-            _RDB_parse_txp, &val);
-    if (_RDB_parse_ret != RDB_OK) {
-        RDB_destroy_obj(&val);
-        return NULL;
-    }
-
-    if (val.kind != RDB_OB_TABLE) {
-        _RDB_parse_ret = RDB_INVALID_ARGUMENT;
-        RDB_destroy_obj(&val);
-        return NULL;
-    }
-    tbp = val.var.tbp;
-    val.var.tbp = NULL;
-    RDB_destroy_obj(&val);
-    return tbp;
-}
 
 /*
  * Check if exp refers to a table. If yes, destroy exp and return
