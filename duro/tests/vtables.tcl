@@ -94,7 +94,7 @@ duro::table expr -global TI2 {(T1 WHERE K = 1) INTERSECT (T2 WHERE K = 1)} $tx
 duro::table expr -global TJ2 {(T1 WHERE K = 2) JOIN (T3 WHERE K = 2)} $tx
 duro::table expr -global TS {T1 WHERE S1 > "Bla"} $tx
 duro::table expr -global TSM {SUMMARIZE T4 PER T4 { A }
-        ADD (MIN(B) AS MIN_B, MAX(B) AS MAX_B)} $tx
+        ADD (MIN(B) AS MIN_B, MAX(B) AS MAX_B, COUNT AS CNT)} $tx
 
 duro::table expr -global TS2 {T1 WHERE K = 1} $tx
 
@@ -130,7 +130,7 @@ if {![tequal $tpl {K 2 S1 Blubb S2 B}]} {
 }
 
 set da [duro::array create TSM {A asc} $tx]
-checkarray $da {{A 1 MIN_B 1 MAX_B 2} {A 2 MIN_B 1 MAX_B 3}} $tx
+checkarray $da {{A 1 MIN_B 1 MAX_B 2 CNT 2} {A 2 MIN_B 1 MAX_B 3 CNT 2}} $tx
 duro::array drop $da
 
 if {![catch {duro::table expr -global TX2 {EXTEND T1 ADD (K*10 AS K)} $tx}]} {
@@ -190,6 +190,10 @@ duro::env close $dbenv
 set dbenv [duro::env open tests/dbenv]
 
 set tx [duro::begin $dbenv TEST]
+
+set da [duro::array create TSM {A asc} $tx]
+checkarray $da {{A 1 MIN_B 1 MAX_B 2 CNT 2} {A 2 MIN_B 1 MAX_B 3 CNT 2}} $tx
+duro::array drop $da
 
 if {![catch {duro::delete TP {S1 = "Bla"} $tx}]} {
     error "duro::delete on TP should fail, but succeeded"

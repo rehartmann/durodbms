@@ -3037,12 +3037,12 @@ the array is destroyed.
 #include &lt;rel/rdb.h&gt;
 
 int
-RDB_array_get(RDB_object *, RDB_int idx, RDB_object **tplpp);
+RDB_array_get(RDB_object *, RDB_int idx, RDB_object **objpp);
 </pre>
 
 <h3>Description</h3>
 
-<p>RDB_array_get stores a pointer to the tuple at index <var>idx</var>
+<p>RDB_array_get stores a pointer to the RDB_object at index <var>idx</var>
 at the location pointed to by <var>tplpp</var>. This pointer may become
 invalid after the next invocation of RDB_array_get.
 The pointer will become invalid when the array is destroyed.
@@ -3071,12 +3071,12 @@ operator.
 #include &lt;rel/rdb.h&gt;
 
 int
-RDB_array_set(RDB_object *, RDB_int idx, const RDB_object *tplp);
+RDB_array_set(RDB_object *, RDB_int idx, const RDB_object *objp);
 </pre>
 
 <h3>Description</h3>
 
-<p>RDB_array_set copies the tuple pointed to by tplp
+<p>RDB_array_set copies the RDB_object pointed to by tplp
 into the RDB_object at index <var>idx</var>.
 
 <p>RDB_array_set is not supported for arrays which have been created

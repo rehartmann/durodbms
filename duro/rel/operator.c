@@ -648,7 +648,7 @@ op_rename(const char *name, int argc, RDB_object *argv[],
 {
     int ret;
     int i;
-    RDB_table *vtbp;
+    RDB_table *tbp, *vtbp;
     int renc = (argc - 1) / 2;
     RDB_renaming *renv = malloc(sizeof(RDB_renaming) * renc);
     if (renv == NULL)
@@ -664,17 +664,24 @@ op_rename(const char *name, int argc, RDB_object *argv[],
         renv[i].to = RDB_obj_string(argv[2 + i * 2]);
     }
 
-    ret = RDB_rename(RDB_obj_table(argv[0]), renc, renv, &vtbp);
+    tbp = RDB_obj_table(argv[0]);
+    if (tbp != NULL) {
+        ret = RDB_rename(tbp, renc, renv, &vtbp);
+    } else {
+        ret = RDB_rename_tuple(argv[0], renc, renv, retvalp);
+    }
     free(renv);
     if (ret != RDB_OK)
         return ret;
-    RDB_table_to_obj(retvalp, vtbp);
+    if (tbp != NULL) {
+        RDB_table_to_obj(retvalp, vtbp);
 
-    /*
-     * Since the table is consumed by RDB_rename, prevent it
-     * from being deleted when argv[0] is destroyed.
-     */
-    argv[0]->var.tbp = NULL;
+        /*
+         * Since the table is consumed by RDB_rename, prevent it
+         * from being deleted when argv[0] is destroyed.
+         */
+        argv[0]->var.tbp = NULL;
+    }
 
     return RDB_OK;
 }

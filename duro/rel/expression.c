@@ -1032,16 +1032,12 @@ expv_to_addv(int addc, RDB_expression **expv, const RDB_object *tplp)
     if (addv == NULL)
         return NULL;
     for (i = 0; i < addc; i++) {
-        if (expv[i]->kind == RDB_EX_RO_OP
-                && strcmp(expv[i]->var.op.name, "COUNT") == 0) {
-            addv[i].op = RDB_COUNT;
-            addv[i].exp = NULL;
-            addv[i].name = NULL;
-        } else if (expv[i]->kind == RDB_EX_AGGREGATE) {
-            addv[i].op = expv[i]->var.op.op;
-            addv[i].exp = expr_resolve_attrs(expv[i]->var.op.argv[0], tplp);
-            addv[i].name = expv[i]->var.op.name;
+        addv[i].op = expv[i]->var.op.op;
+        if (addv[i].op != RDB_COUNT) {
+            addv[i].exp = expr_resolve_attrs(expv[i]->var.op.argv[0],
+                    tplp);
         }
+        addv[i].name = expv[i]->var.op.name;
     }
     return addv;
 }

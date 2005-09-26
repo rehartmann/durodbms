@@ -310,9 +310,11 @@ serialize_summarize(RDB_object *valp, int *posp, RDB_table *tbp)
         if (ret != RDB_OK)
             return ret;
 
-        ret = serialize_expr(valp, posp, tbp->var.summarize.addv[i].exp);
-        if (ret != RDB_OK)
-            return ret;
+        if (tbp->var.summarize.addv[i].op != RDB_COUNT) {
+            ret = serialize_expr(valp, posp, tbp->var.summarize.addv[i].exp);
+            if (ret != RDB_OK)
+                return ret;
+        }
 
         ret = serialize_str(valp, posp, tbp->var.summarize.addv[i].name);
         if (ret != RDB_OK)
@@ -1161,9 +1163,13 @@ deserialize_summarize(RDB_object *valp, int *posp, RDB_transaction *txp,
         if (ret < 0)
             goto error;
         addv[i].op = (RDB_aggregate_op)ret;
-        ret = deserialize_expr(valp, posp, txp, &addv[i].exp);
-        if (ret != RDB_OK)
-            goto error;
+        if (addv[i].op != RDB_COUNT) {
+            ret = deserialize_expr(valp, posp, txp, &addv[i].exp);
+            if (ret != RDB_OK)
+                goto error;
+        } else {
+            addv[i].exp = NULL;
+        }
         ret = deserialize_str(valp, posp, &addv[i].name);
         if (ret != RDB_OK)
             goto error;
