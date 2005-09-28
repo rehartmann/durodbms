@@ -12,7 +12,7 @@
 #include <assert.h>
 
 static RDB_bool
-exp_refers_target(const RDB_expression *exp,
+expr_refers_target(const RDB_expression *exp,
         int insc, const RDB_ma_insert insv[],
         int updc, const RDB_ma_update updv[],
         int delc, const RDB_ma_delete delv[],
@@ -35,7 +35,13 @@ exp_refers_target(const RDB_expression *exp,
             return RDB_TRUE;
     }
 
-    /* !! copyv */
+    for (i = 0; i < copyc; i++) {
+        if (exp->kind == RDB_EX_OBJ) {
+            RDB_table *tbp = RDB_obj_table(&exp->var.obj);
+            if (tbp != NULL && _RDB_expr_table_depend(exp, tbp))
+                return RDB_TRUE;
+        }
+    }
 
     return RDB_FALSE;
 }
@@ -1417,17 +1423,6 @@ copy_obj(RDB_object *dstvalp, const RDB_object *srcvalp, RDB_transaction *txp)
 } 
 
 static int
-find_ins_target(int insc, const RDB_ma_insert insv[], RDB_table *tbp, int start)
-{
-    int i = start;
-
-    while (i < insc && insv[i].tbp != tbp) {
-        i++;
-    }
-    return i < insc ? i : -1;
-}
-
-static int
 resolve_inserts(int insc, const RDB_ma_insert *insv, RDB_ma_insert **ninsvp,
         RDB_transaction *txp)
 {
@@ -1781,10 +1776,12 @@ RDB_multi_assign(int insc, const RDB_ma_insert insv[],
 
     /*
      * Check if the same target is assigned twice
+     * or if a target is used a source later
      */
     for (i = 0; i < ninsc; i++) {
-        if (find_ins_target(ninsc, ninsv, ninsv[i].tbp, i + 1) != -1) {
-            return RDB_INVALID_ARGUMENT;
+        for (j = i + 1; j < ninsc; j++) {
+            if (ninsv[i].tbp == ninsv[j].tbp)
+                return RDB_INVALID_ARGUMENT;
         }
         for (j = 0; j < nupdc; j++) {
             if (ninsv[i].tbp == nupdv[j].tbp)
@@ -1798,6 +1795,13 @@ RDB_multi_assign(int insc, const RDB_ma_insert insv[],
             if (copyv[j].dstp->kind == RDB_OB_TABLE
                     && insv[i].tbp == copyv[j].dstp->var.tbp)
                 return RDB_INVALID_ARGUMENT;
+
+            /*
+             * Check if a presviously modified table is source of a copy
+             */
+            if (copyv[j].srcp->kind == RDB_OB_TABLE
+                    && insv[i].tbp == copyv[j].srcp->var.tbp)
+                return RDB_NOT_SUPPORTED;
         }
     }
     for (i = 0; i < nupdc; i++) {
@@ -1813,6 +1817,9 @@ RDB_multi_assign(int insc, const RDB_ma_insert insv[],
             if (copyv[j].dstp->kind == RDB_OB_TABLE
                     && updv[i].tbp == copyv[j].dstp->var.tbp)
                 return RDB_INVALID_ARGUMENT;
+            if (copyv[j].srcp->kind == RDB_OB_TABLE
+                    && updv[i].tbp == copyv[j].srcp->var.tbp)
+                return RDB_NOT_SUPPORTED;
         }
     }
     for (i = 0; i < ndelc; i++) {
@@ -1824,22 +1831,25 @@ RDB_multi_assign(int insc, const RDB_ma_insert insv[],
             if (copyv[j].dstp->kind == RDB_OB_TABLE
                     && ndelv[i].tbp == copyv[j].dstp->var.tbp)
                 return RDB_INVALID_ARGUMENT;
+            if (copyv[j].srcp->kind == RDB_OB_TABLE
+                    && delv[i].tbp == copyv[j].srcp->var.tbp)
+                return RDB_NOT_SUPPORTED;
         }
     }
 
     for (i = 0; i < copyc; i++) {
         for (j = i + 1; j < copyc; j++) {
             if (copyv[j].dstp->kind == RDB_OB_TABLE
-                    && ndelv[i].tbp == copyv[j].dstp->var.tbp)
+                    && copyv[i].dstp->kind == RDB_OB_TABLE
+                    && copyv[i].dstp->var.tbp == copyv[j].dstp->var.tbp)
                 return RDB_INVALID_ARGUMENT;
+            if (copyv[j].srcp->kind == RDB_OB_TABLE
+                    && copyv[i].dstp->kind == RDB_OB_TABLE
+                    && copyv[j].srcp->kind == RDB_OB_TABLE
+                    && copyv[i].dstp->var.tbp == copyv[j].srcp->var.tbp)
+                return RDB_NOT_SUPPORTED;
         }
     }
-
-    /*
-     * Check for dependencies
-     */
-
-    /* ... */
 
     /*
      * Check constraints
@@ -1863,7 +1873,7 @@ RDB_multi_assign(int insc, const RDB_ma_insert insv[],
              * Check if constraint refers to assignment target
              */
             /* resolved inserts/updates/... */
-            if (exp_refers_target(constrp->exp, ninsc, ninsv, nupdc, nupdv,
+            if (expr_refers_target(constrp->exp, ninsc, ninsv, nupdc, nupdv,
                     ndelc, ndelv, copyc, copyv)) {
                 RDB_bool b;
 

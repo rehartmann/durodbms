@@ -50,6 +50,18 @@ duro::insert T1 {A 1 B Bla} $tx
 duro::insert T1 {A 2 B Ble} $tx
 duro::insert T2 {A 1 B Blo} $tx
 
+if {![catch {
+    duro::massign \
+            { copy T1 T2 } \
+            { copy T2 T1 } $tx
+}]} {
+    error "multiple assignment should fail, but succeeded"
+}
+set errcode [lindex $errorCode 1]
+if {$errcode != "RDB_NOT_SUPPORTED"} {
+    error "wrong error: $errcode"
+}
+
 duro::massign \
         {insert T3 {A 1 B Blu}} \
         {delete T1 {A=1}} \
