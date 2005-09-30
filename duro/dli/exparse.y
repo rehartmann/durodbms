@@ -1,4 +1,8 @@
-/* $Id$ */
+/* $Id$
+ *
+ * Copyright (C) 2004-2005 René Hartmann.
+ * See the file COPYING for redistribution information.
+ */
 
 %{
 #define YYDEBUG 1
@@ -139,28 +143,24 @@ expression: or_expression { _RDB_parse_resultp = $1; }
 project: expression '{' attribute_name_list '}' {
         int i;
         int argc = $3.expc + 1;
-        RDB_expression **argv = malloc(sizeof (RDB_expression *) * argc);
-
-        if (argv == NULL) {
-            _RDB_parse_ret = RDB_NO_MEMORY;
-            YYERROR;
-        }
+        RDB_expression *argv[DURO_MAX_LLEN + 1];
 
         argv[0] = _RDB_parse_lookup_table($1);
         if (argv[0] == NULL) {
+            for (i = 0; i < $3.expc; i++)
+                RDB_drop_expr($3.expv[i]);
             _RDB_parse_ret = RDB_NO_MEMORY;
             YYERROR;
         }
 
         for (i = 0; i < $3.expc; i++) {
             argv[i + 1] = $3.expv[i];
-            if (argv[i + 1] == NULL) {
-                _RDB_parse_ret = RDB_NO_MEMORY;
-                YYERROR;
-            }
         }
         $$ = RDB_ro_op("PROJECT", argc, argv);
         if ($$ == NULL) {
+            for (i = 0; i < argc; i++)
+                RDB_drop_expr(argv[i]);
+            free(argv);
             _RDB_parse_ret = RDB_NO_MEMORY;
             YYERROR;
         }
@@ -168,28 +168,24 @@ project: expression '{' attribute_name_list '}' {
     | expression '{' TOK_ALL TOK_BUT attribute_name_list '}' {
         int i;
         int argc = $5.expc + 1;
-        RDB_expression **argv = malloc(sizeof (RDB_expression *) * argc);
-
-        if (argv == NULL) {
-            _RDB_parse_ret = RDB_NO_MEMORY;
-            YYERROR;
-        }
+        RDB_expression *argv[DURO_MAX_LLEN + 1];
 
         argv[0] = _RDB_parse_lookup_table($1);
         if (argv[0] == NULL) {
+            for (i = 0; i < $5.expc; i++)
+                RDB_drop_expr($5.expv[i]);
             _RDB_parse_ret = RDB_NO_MEMORY;
             YYERROR;
         }
 
         for (i = 0; i < $5.expc; i++) {
             argv[i + 1] = $5.expv[i];
-            if (argv[i + 1] == NULL) {
-                _RDB_parse_ret = RDB_NO_MEMORY;
-                YYERROR;
-            }
         }
         $$ = RDB_ro_op("REMOVE", argc, argv);
         if ($$ == NULL) {
+            for (i = 0; i < argc; i++)
+                RDB_drop_expr(argv[i]);
+            free(argv);
             _RDB_parse_ret = RDB_NO_MEMORY;
             YYERROR;
         }
@@ -199,27 +195,28 @@ project: expression '{' attribute_name_list '}' {
 attribute_name_list: TOK_ID {
         $$.expc = 1;
         $$.expv[0] = RDB_string_to_expr($1->var.attrname);
+        RDB_drop_expr($1);
         if ($$.expv[0] == NULL) {
             _RDB_parse_ret = RDB_NO_MEMORY;
             YYERROR;
         }            
-        RDB_drop_expr($1);
     }
     | attribute_name_list ',' TOK_ID {
         int i;
 
         /* Copy old attributes */
         if ($1.expc >= DURO_MAX_LLEN)
-            YYERROR;
+            YYERROR; /* !! ret = RDB_LIMIT_EXCEEDED */
         for (i = 0; i < $1.expc; i++)
             $$.expv[i] = $1.expv[i];
         $$.expv[$1.expc] = RDB_string_to_expr($3->var.attrname);
+        RDB_drop_expr($3);
         if ($$.expv[0] == NULL) {
-            /* !! */
+            for (i = 0; i < $1.expc; i++)
+                RDB_drop_expr($1.expv[i]);
             _RDB_parse_ret = RDB_NO_MEMORY;
             YYERROR;
         }            
-        RDB_drop_expr($3);
         $$.expc = $1.expc + 1;
     }
     ;
@@ -230,6 +227,9 @@ select: expression TOK_WHERE or_expression {
         texp = _RDB_parse_lookup_table($1);
         if (texp == NULL)
         {
+            RDB_drop_expr($1);
+            RDB_drop_expr($3);
+            _RDB_parse_ret = RDB_NO_MEMORY;
             YYERROR;
         }
 
@@ -244,11 +244,13 @@ select: expression TOK_WHERE or_expression {
 
 rename: expression TOK_RENAME '(' renaming_list ')' {
         int i;
+        RDB_expression *argv[DURO_MAX_LLEN + 1];
         int argc = 1 + $4.expc;
         RDB_expression *exp = _RDB_parse_lookup_table($1);
-
-        RDB_expression **argv = malloc(argc * sizeof (RDB_expression *));
-        if (argv == NULL) {
+        if (exp == NULL) {
+            RDB_drop_expr($1);
+            for (i = 0; i < $4.expc; i++)
+                RDB_drop_expr($4.expv[i]);
             _RDB_parse_ret = RDB_NO_MEMORY;
             YYERROR;
         }
@@ -260,6 +262,8 @@ rename: expression TOK_RENAME '(' renaming_list ')' {
 
         $$ = RDB_ro_op("RENAME", argc, argv);
         if ($$ == NULL) {
+             for (i = 0; i < argc; i++)
+                 RDB_drop_expr(argv[i]);
             _RDB_parse_ret = RDB_NO_MEMORY;
             YYERROR;
         }
@@ -274,8 +278,13 @@ renaming_list: renaming {
         | renaming_list ',' renaming {
             int i;
 
-            if ($1.expc >= DURO_MAX_LLEN)
+            if ($1.expc >= DURO_MAX_LLEN) {
+                for (i = 0; i < $1.expc; i++)
+                    RDB_drop_expr($1.expv[i]);
+                for (i = 0; i < $3.expc; i++)
+                    RDB_drop_expr($3.expv[i]);
                 YYERROR;
+            }
             for (i = 0; i < $1.expc; i++) {
                 $$.expv[i] = $1.expv[i];
             }
@@ -312,6 +321,8 @@ relation: expression TOK_UNION primary_expression {
         tex1p = _RDB_parse_lookup_table($1);
         if (tex1p == NULL)
         {
+            RDB_drop_expr($1);
+            RDB_drop_expr($3);
             _RDB_parse_ret = RDB_NO_MEMORY;
             YYERROR;
         }
@@ -319,6 +330,8 @@ relation: expression TOK_UNION primary_expression {
         tex2p = _RDB_parse_lookup_table($3);
         if (tex2p == NULL)
         {
+            RDB_drop_expr(tex1p);
+            RDB_drop_expr($3);
             _RDB_parse_ret = RDB_NO_MEMORY;
             YYERROR;
         }
@@ -337,13 +350,16 @@ relation: expression TOK_UNION primary_expression {
         tex1p = _RDB_parse_lookup_table($1);
         if (tex1p == NULL)
         {
+            RDB_drop_expr($1);
+            RDB_drop_expr($3);
             _RDB_parse_ret = RDB_NO_MEMORY;
             YYERROR;
         }
 
         tex2p = _RDB_parse_lookup_table($3);
-        if (tex2p == NULL)
-        {
+        if (tex2p == NULL) {
+            RDB_drop_expr(tex1p);
+            RDB_drop_expr($3);
             _RDB_parse_ret = RDB_NO_MEMORY;
             YYERROR;
         }
@@ -360,15 +376,17 @@ relation: expression TOK_UNION primary_expression {
         RDB_expression *tex1p, *tex2p;
 
         tex1p = _RDB_parse_lookup_table($1);
-        if (tex1p == NULL)
-        {
+        if (tex1p == NULL) {
+            RDB_drop_expr($1);
+            RDB_drop_expr($3);
             _RDB_parse_ret = RDB_NO_MEMORY;
             YYERROR;
         }
 
         tex2p = _RDB_parse_lookup_table($3);
-        if (tex2p == NULL)
-        {
+        if (tex2p == NULL) {
+            RDB_drop_expr(tex1p);
+            RDB_drop_expr($3);
             _RDB_parse_ret = RDB_NO_MEMORY;
             YYERROR;
         }
@@ -387,13 +405,16 @@ relation: expression TOK_UNION primary_expression {
         tex1p = _RDB_parse_lookup_table($1);
         if (tex1p == NULL)
         {
+            RDB_drop_expr($1);
+            RDB_drop_expr($3);
             _RDB_parse_ret = RDB_NO_MEMORY;
             YYERROR;
         }
 
         tex2p = _RDB_parse_lookup_table($3);
-        if (tex2p == NULL)
-        {
+        if (tex2p == NULL) {
+            RDB_drop_expr(tex1p);
+            RDB_drop_expr($3);
             _RDB_parse_ret = RDB_NO_MEMORY;
             YYERROR;
         }
@@ -410,15 +431,14 @@ relation: expression TOK_UNION primary_expression {
 
 extend: TOK_EXTEND expression TOK_ADD '(' extend_add_list ')' {
         int i;
+        RDB_expression *argv[DURO_MAX_LLEN + 1];
         int argc = $5.expc + 1;
-        RDB_expression **argv = malloc(sizeof (RDB_expression *) * argc);
-        if (argv == NULL) {
-            _RDB_parse_ret = RDB_NO_MEMORY;
-            YYERROR;
-        }
 
         argv[0] = _RDB_parse_lookup_table($2);
         if (argv[0] == NULL) {
+            RDB_drop_expr($2);
+            for (i = 0; i < $5.expc; i++)
+                RDB_drop_expr($5.expv[i]);
             _RDB_parse_ret = RDB_NO_MEMORY;
             YYERROR;
         }
@@ -427,8 +447,9 @@ extend: TOK_EXTEND expression TOK_ADD '(' extend_add_list ')' {
         }
 
         $$ = RDB_ro_op("EXTEND", argc, argv);
-        free(argv);
         if ($$ == NULL) {
+            for (i = 0; i < argc; i++)
+                RDB_drop_expr(argv[i]);
             _RDB_parse_ret = RDB_NO_MEMORY;
             YYERROR;
         }
@@ -443,8 +464,15 @@ extend_add_list: extend_add {
     | extend_add_list ',' extend_add {
         int i;
 
-        if ($$.expc >= DURO_MAX_LLEN)
+        if ($$.expc >= DURO_MAX_LLEN) {
+            for (i = 0; i < $1.expc; i++) {
+                RDB_drop_expr($1.expv[i]);
+            }
+            for (i = 0; i < $3.expc; i++) {
+                RDB_drop_expr($3.expv[i]);
+            }
             YYERROR;
+        }
 
         /* Copy old attributes */
         for (i = 0; i < $1.expc; i++) {
@@ -475,14 +503,16 @@ summarize: TOK_SUMMARIZE expression TOK_PER expression
            TOK_ADD '(' summarize_add_list ')' {
         int i;
         int argc = $7.expc + 2;
-        RDB_expression **argv = malloc(sizeof (RDB_expression *) * argc);
-        if (argv == NULL) {
-            _RDB_parse_ret = RDB_NO_MEMORY;
-            YYERROR;
-        }
+        RDB_expression *argv[DURO_MAX_LLEN + 2];
+
         argv[0] = _RDB_parse_lookup_table($2);
         if (argv[0] == NULL)
         {
+            RDB_drop_expr($2);
+            RDB_drop_expr($4);
+            for (i = 0; i < $7.expc; i++) {
+                RDB_drop_expr($7.expv[i]);
+            }
             _RDB_parse_ret = RDB_NO_MEMORY;
             YYERROR;
         }
@@ -490,6 +520,11 @@ summarize: TOK_SUMMARIZE expression TOK_PER expression
         argv[1] = _RDB_parse_lookup_table($4);
         if (argv[1] == NULL)
         {
+            RDB_drop_expr(argv[0]);
+            RDB_drop_expr($4);
+            for (i = 0; i < $7.expc; i++) {
+                RDB_drop_expr($7.expv[i]);
+            }
             _RDB_parse_ret = RDB_NO_MEMORY;
             YYERROR;
         }
@@ -498,8 +533,10 @@ summarize: TOK_SUMMARIZE expression TOK_PER expression
             argv[i + 2] = $7.expv[i];
         }
         $$ = RDB_ro_op("SUMMARIZE", argc, argv);
-        free(argv);
         if ($$ == NULL) {
+            for (i = 0; i < argc; i++) {
+                RDB_drop_expr(argv[i]);
+            }
             _RDB_parse_ret = RDB_NO_MEMORY;
             YYERROR;
         }
@@ -513,6 +550,9 @@ sdivideby: expression TOK_DIVIDEBY expression
         tex1p = _RDB_parse_lookup_table($1);
         if (tex1p == NULL)
         {
+            RDB_drop_expr($1);
+            RDB_drop_expr($3);
+            RDB_drop_expr($5);
             _RDB_parse_ret = RDB_NO_MEMORY;
             YYERROR;
         }
@@ -520,6 +560,9 @@ sdivideby: expression TOK_DIVIDEBY expression
         tex2p = _RDB_parse_lookup_table($3);
         if (tex2p == NULL)
         {
+            RDB_drop_expr(tex1p);
+            RDB_drop_expr($3);
+            RDB_drop_expr($5);
             _RDB_parse_ret = RDB_NO_MEMORY;
             YYERROR;
         }
@@ -527,6 +570,9 @@ sdivideby: expression TOK_DIVIDEBY expression
         tex3p = _RDB_parse_lookup_table($5);
         if (tex3p == NULL)
         {
+            RDB_drop_expr(tex1p);
+            RDB_drop_expr(tex2p);
+            RDB_drop_expr($5);
             _RDB_parse_ret = RDB_NO_MEMORY;
             YYERROR;
         }
@@ -550,8 +596,11 @@ summarize_add_list: summarize_add {
     | summarize_add_list ',' summarize_add {
         int i;
 
-        if ($1.expc >= DURO_MAX_LLEN)
+        if ($1.expc >= DURO_MAX_LLEN) {
+            for (i = 0; i < $1.expc; i++)
+                RDB_drop_expr($1.expv[i]);
             YYERROR;
+        }
 
         /* Copy old elements */
         for (i = 0; i < $1.expc; i++) {
@@ -574,40 +623,65 @@ summarize_add: TOK_COUNT TOK_AS TOK_ID {
         }
 
         $$ = RDB_expr_aggregate(dummyexp, RDB_COUNT, $3->var.attrname);
+        if ($$ == NULL) {
+            RDB_drop_expr(dummyexp);
+        }
+        RDB_drop_expr($3);
     }
     | TOK_SUM '(' expression ')' TOK_AS TOK_ID {
         $$ = RDB_expr_sum($3, $6->var.attrname);
+        if ($$ == NULL) {
+            RDB_drop_expr($3);
+        }
+        RDB_drop_expr($6);
     }
     | TOK_AVG '(' expression ')' TOK_AS TOK_ID {
         $$ = RDB_expr_avg($3, $6->var.attrname);
+        if ($$ == NULL) {
+            RDB_drop_expr($3);
+        }
+        RDB_drop_expr($6);
     }
     | TOK_MAX '(' expression ')' TOK_AS TOK_ID {
         $$ = RDB_expr_max($3, $6->var.attrname);
+        if ($$ == NULL) {
+            RDB_drop_expr($3);
+        }
+        RDB_drop_expr($6);
     }
     | TOK_MIN '(' expression ')' TOK_AS TOK_ID {
         $$ = RDB_expr_min($3, $6->var.attrname);
+        if ($$ == NULL) {
+            RDB_drop_expr($3);
+        }
+        RDB_drop_expr($6);
     }
     | TOK_ALL '(' expression ')' TOK_AS TOK_ID {
         $$ = RDB_expr_all($3, $6->var.attrname);
+        if ($$ == NULL) {
+            RDB_drop_expr($3);
+        }
+        RDB_drop_expr($6);
     }
     | TOK_ANY '(' expression ')' TOK_AS TOK_ID {
         $$ = RDB_expr_any($3, $6->var.attrname);
+        if ($$ == NULL) {
+            RDB_drop_expr($3);
+        }
+        RDB_drop_expr($6);
     }
     ;
 
 wrap: expression TOK_WRAP '(' wrapping_list ')' {
         int i;
-
-        RDB_expression **argv = malloc(sizeof (RDB_expression *)
-                * ($4.expc + 1));
-        if (argv == NULL) {
-            _RDB_parse_ret = RDB_NO_MEMORY;
-            YYERROR;
-        }
+        RDB_expression *argv[DURO_MAX_LLEN + 1];
 
         argv[0] = _RDB_parse_lookup_table($1);
         if (argv[0] == NULL) {
-            free(argv);
+            RDB_drop_expr($1);
+            for (i = 0; i < $4.expc; i++)
+                RDB_drop_expr($4.expv[i]);
+            _RDB_parse_ret = RDB_NO_MEMORY;
             YYERROR;
         }
 
@@ -617,8 +691,10 @@ wrap: expression TOK_WRAP '(' wrapping_list ')' {
 
         $$ = RDB_ro_op("WRAP", $4.expc + 1, argv);
         if ($$ == NULL) {
+            for (i = 0; i < $4.expc + 1; i++) {
+                RDB_drop_expr(argv[i]);
+            }
             _RDB_parse_ret = RDB_NO_MEMORY;
-            /* !! */
             YYERROR;
         }
     }
@@ -632,8 +708,15 @@ wrapping_list: wrapping {
     | wrapping_list ',' wrapping {
         int i;
 
-        if ($1.expc >= DURO_MAX_LLEN)
+        if ($1.expc >= DURO_MAX_LLEN) {
+            for (i = 0; i < $1.expc + 1; i++) {
+                RDB_drop_expr($1.expv[i]);
+            }
+            for (i = 0; i < $3.expc + 1; i++) {
+                RDB_drop_expr($3.expv[i]);
+            }
             YYERROR;
+        }
 
         /* Copy old elements */
         for (i = 0; i < $1.expc; i++) {
@@ -659,6 +742,10 @@ wrapping: '{' attribute_name_list '}' TOK_AS TOK_ID {
         $$.expv[0] = RDB_obj_to_expr(&eobj);
         RDB_destroy_obj(&eobj);
         if ($$.expv[0] == NULL) {
+            for (i = 0; i < $2.expc; i++) {
+                RDB_drop_expr($2.expv[i]);
+            }
+            RDB_drop_expr($5);
             _RDB_parse_ret = RDB_NO_MEMORY;
             YYERROR;
         }
@@ -666,26 +753,37 @@ wrapping: '{' attribute_name_list '}' TOK_AS TOK_ID {
         _RDB_parse_ret = RDB_set_array_length(RDB_expr_obj($$.expv[0]),
                 (RDB_int) $2.expc);
         if (_RDB_parse_ret != RDB_OK) {
+            for (i = 0; i < $2.expc; i++) {
+                RDB_drop_expr($2.expv[i]);
+            }
+            RDB_drop_expr($5);
             RDB_drop_expr($$.expv[0]);
             YYERROR;
         }
 
         for (i = 0; i < $2.expc; i++) {
-            if (_RDB_parse_ret != RDB_OK) {
-                /* !! */
-                YYERROR;
-            }
             _RDB_parse_ret = RDB_array_set(RDB_expr_obj($$.expv[0]),
                     (RDB_int) i, RDB_expr_obj($2.expv[i]));
             if (_RDB_parse_ret != RDB_OK) {
-                /* !! */
+                for (i = 0; i < $2.expc; i++) {
+                    RDB_drop_expr($2.expv[i]);
+                }
+                RDB_drop_expr($5);
+                RDB_drop_expr($$.expv[0]);
                 YYERROR;
             }
         }
 
         $$.expv[1] = RDB_string_to_expr($5->var.attrname);
+        for (i = 0; i < $2.expc; i++) {
+            RDB_drop_expr($2.expv[i]);
+        }
         RDB_drop_expr($5);
-
+        if ($$.expv[1] == NULL) {
+            RDB_drop_expr($$.expv[0]);
+            _RDB_parse_ret = RDB_NO_MEMORY;
+            YYERROR;
+        }
         $$.expc = 2;
     }
     ;
@@ -693,28 +791,25 @@ wrapping: '{' attribute_name_list '}' TOK_AS TOK_ID {
 unwrap: expression TOK_UNWRAP '(' attribute_name_list ')' {
         int i;
         int argc = $4.expc + 1;
-        RDB_expression **argv = malloc(sizeof (RDB_expression *) * argc);
-
-        if (argv == NULL) {
-            _RDB_parse_ret = RDB_NO_MEMORY;
-            YYERROR;
-        }
+        RDB_expression *argv[DURO_MAX_LLEN + 1];
 
         argv[0] = _RDB_parse_lookup_table($1);
         if (argv[0] == NULL) {
+            RDB_drop_expr($1);
+            for (i = 0; i < $4.expc; i++)
+                RDB_drop_expr($4.expv[i]);
             _RDB_parse_ret = RDB_NO_MEMORY;
             YYERROR;
         }
 
         for (i = 0; i < $4.expc; i++) {
             argv[i + 1] = $4.expv[i];
-            if (argv[i + 1] == NULL) {
-                _RDB_parse_ret = RDB_NO_MEMORY;
-                YYERROR;
-            }
         }
         $$ = RDB_ro_op("UNWRAP", argc, argv);
         if ($$ == NULL) {
+            for (i = 0; i < argc; i++) {
+                RDB_drop_expr(argv[i]);
+            }
             _RDB_parse_ret = RDB_NO_MEMORY;
             YYERROR;
         }
@@ -724,22 +819,26 @@ unwrap: expression TOK_UNWRAP '(' attribute_name_list ')' {
 group: expression TOK_GROUP '{' attribute_name_list '}' TOK_AS TOK_ID {
         int i;
         int argc = $4.expc + 2;
-        RDB_expression **argv = malloc(sizeof (RDB_expression *) * argc);
+        RDB_expression *argv[DURO_MAX_LLEN + 2];
 
         argv[0] = _RDB_parse_lookup_table($1);
         if (argv[0] == NULL) {
+            RDB_drop_expr($1);
+            for (i = 0; i < $4.expc; i++)
+                RDB_drop_expr($4.expv[i]);
+            RDB_drop_expr($7);
             _RDB_parse_ret = RDB_NO_MEMORY;
             YYERROR;
         }
         for (i = 0; i < $4.expc; i++) {
             argv[1 + i] = $4.expv[i];
-            if (argv[1 + i] == NULL) {
-                _RDB_parse_ret = RDB_NO_MEMORY;
-                YYERROR;
-            }
         }
         argv[1 + $4.expc] = RDB_string_to_expr($7->var.attrname);
+        RDB_drop_expr($7);
         if (argv[1 + $4.expc] == NULL) {
+            RDB_drop_expr($1);
+            for (i = 0; i < $4.expc; i++)
+                RDB_drop_expr($4.expv[i]);
             _RDB_parse_ret = RDB_NO_MEMORY;
             YYERROR;
         }
@@ -747,23 +846,25 @@ group: expression TOK_GROUP '{' attribute_name_list '}' TOK_AS TOK_ID {
         if ($$ == NULL) {
             for (i = 0; i < argc; i++)
                 RDB_drop_expr(argv[i]);
-            free(argv);
             _RDB_parse_ret = RDB_NO_MEMORY;
             YYERROR;
         }
-        free(argv);
     }
     ;
 
 ungroup: expression TOK_UNGROUP TOK_ID {
         RDB_expression *texp = _RDB_parse_lookup_table($1);
         if (texp == NULL) {
+            RDB_drop_expr($1);
+            RDB_drop_expr($3);
             _RDB_parse_ret = RDB_NO_MEMORY;
             YYERROR;
         }
         $$ = RDB_ro_op_va("UNGROUP", texp,
                 RDB_string_to_expr($3->var.attrname), (RDB_expression *) NULL);
+        RDB_drop_expr($3);
         if ($$ == NULL) {
+            RDB_drop_expr(texp);
             _RDB_parse_ret = RDB_NO_MEMORY;
             YYERROR;
         }
@@ -774,6 +875,8 @@ or_expression: and_expression
     | or_expression TOK_OR and_expression {
         $$ = RDB_ro_op_va("OR", $1, $3, (RDB_expression *) NULL);
         if ($$ == NULL) {
+            RDB_drop_expr($1);
+            RDB_drop_expr($3);
             _RDB_parse_ret = RDB_NO_MEMORY;
             YYERROR;
         }
@@ -784,6 +887,8 @@ and_expression: not_expression
     | and_expression TOK_AND not_expression {
         $$ = RDB_ro_op_va("AND", $1, $3, (RDB_expression *) NULL);
         if ($$ == NULL) {
+            RDB_drop_expr($1);
+            RDB_drop_expr($3);
             _RDB_parse_ret = RDB_NO_MEMORY;
             YYERROR;
         }
@@ -794,6 +899,7 @@ not_expression: rel_expression
     | TOK_NOT rel_expression {
         $$ = RDB_ro_op_va("NOT", $2, (RDB_expression *) NULL);
         if ($$ == NULL) {
+            RDB_drop_expr($2);
             _RDB_parse_ret = RDB_NO_MEMORY;
             YYERROR;
         }
@@ -803,12 +909,17 @@ not_expression: rel_expression
 rel_expression: add_expression
     | add_expression '=' add_expression {
         $$ = RDB_ro_op_va("=", $1, $3, (RDB_expression *) NULL);
-        if ($$ == NULL)
+        if ($$ == NULL) {
+            RDB_drop_expr($1);
+            RDB_drop_expr($3);
             YYERROR;
+        }
     }
     | add_expression TOK_NE add_expression {
         $$ = RDB_ro_op_va("<>", $1, $3, (RDB_expression *) NULL);
         if ($$ == NULL) {
+            RDB_drop_expr($1);
+            RDB_drop_expr($3);
             _RDB_parse_ret = RDB_NO_MEMORY;
             YYERROR;
         }
@@ -816,6 +927,8 @@ rel_expression: add_expression
     | add_expression TOK_GE add_expression {
         $$ = RDB_ro_op_va(">=", $1, $3, (RDB_expression *) NULL);
         if ($$ == NULL) {
+            RDB_drop_expr($1);
+            RDB_drop_expr($3);
             _RDB_parse_ret = RDB_NO_MEMORY;
             YYERROR;
         }
@@ -823,6 +936,8 @@ rel_expression: add_expression
     | add_expression TOK_LE add_expression {
         $$ = RDB_ro_op_va("<=", $1, $3, (RDB_expression *) NULL);
         if ($$ == NULL) {
+            RDB_drop_expr($1);
+            RDB_drop_expr($3);
             _RDB_parse_ret = RDB_NO_MEMORY;
             YYERROR;
         }
@@ -830,6 +945,8 @@ rel_expression: add_expression
     | add_expression '>' add_expression {
         $$ = RDB_ro_op_va(">", $1, $3, (RDB_expression *) NULL);
         if ($$ == NULL) {
+            RDB_drop_expr($1);
+            RDB_drop_expr($3);
             _RDB_parse_ret = RDB_NO_MEMORY;
             YYERROR;
         }
@@ -837,16 +954,26 @@ rel_expression: add_expression
     | add_expression '<' add_expression {
         $$ = RDB_ro_op_va("<", $1, $3, (RDB_expression *) NULL);
         if ($$ == NULL) {
+            RDB_drop_expr($1);
+            RDB_drop_expr($3);
             _RDB_parse_ret = RDB_NO_MEMORY;
             YYERROR;
         }
     }
     | add_expression TOK_IN add_expression {
         /* If $1 is a name, try to find a table with that name */
-        RDB_expression *exp = _RDB_parse_lookup_table($1);;
+        RDB_expression *exp = _RDB_parse_lookup_table($1);
+        if (exp == NULL) {
+            RDB_drop_expr($1);
+            RDB_drop_expr($3);
+            _RDB_parse_ret = RDB_NO_MEMORY;
+            YYERROR;
+        }
 
         $$ = RDB_ro_op_va("IN", exp, $3, (RDB_expression *) NULL);
         if ($$ == NULL) {
+            RDB_drop_expr(exp);
+            RDB_drop_expr($3);
             _RDB_parse_ret = RDB_NO_MEMORY;
             YYERROR;
         }
@@ -854,6 +981,8 @@ rel_expression: add_expression
     | add_expression TOK_MATCHES add_expression {
         $$ = RDB_ro_op_va("MATCHES", $1, $3, (RDB_expression *) NULL);
         if ($$ == NULL) {
+            RDB_drop_expr($1);
+            RDB_drop_expr($3);
             _RDB_parse_ret = RDB_NO_MEMORY;
             YYERROR;
         }
@@ -863,18 +992,24 @@ rel_expression: add_expression
 
         ex1p = _RDB_parse_lookup_table($1);
         if (ex1p == NULL) {
+            RDB_drop_expr($1);
+            RDB_drop_expr($3);
            _RDB_parse_ret = RDB_NO_MEMORY;
            YYERROR;
         }
 
         ex2p = _RDB_parse_lookup_table($3);
         if (ex2p == NULL) {
+            RDB_drop_expr(ex1p);
+            RDB_drop_expr($3);
            _RDB_parse_ret = RDB_NO_MEMORY;
            YYERROR;
         }
 
         $$ = RDB_ro_op_va("SUBSET_OF", ex1p, ex2p, (RDB_expression *) NULL);
         if ($$ == NULL) {
+            RDB_drop_expr(ex1p);
+            RDB_drop_expr(ex2p);
             _RDB_parse_ret = RDB_NO_MEMORY;
             YYERROR;
         }
@@ -888,6 +1023,7 @@ add_expression: mul_expression
     | '-' mul_expression {
         $$ = RDB_ro_op_va("-", $2, (RDB_expression *) NULL);
         if ($$ == NULL) {
+            RDB_drop_expr($2);
             _RDB_parse_ret = RDB_NO_MEMORY;
             YYERROR;
         }
@@ -895,6 +1031,8 @@ add_expression: mul_expression
     | add_expression '+' mul_expression {
         $$ = RDB_ro_op_va("+", $1, $3, (RDB_expression *) NULL);
         if ($$ == NULL) {
+            RDB_drop_expr($1);
+            RDB_drop_expr($3);
             _RDB_parse_ret = RDB_NO_MEMORY;
             YYERROR;
         }
@@ -902,6 +1040,8 @@ add_expression: mul_expression
     | add_expression '-' mul_expression {
         $$ = RDB_ro_op_va("-", $1, $3, (RDB_expression *) NULL);
         if ($$ == NULL) {
+            RDB_drop_expr($1);
+            RDB_drop_expr($3);
             _RDB_parse_ret = RDB_NO_MEMORY;
             YYERROR;
         }
@@ -909,6 +1049,8 @@ add_expression: mul_expression
     | add_expression TOK_CONCAT mul_expression {
         $$ = RDB_ro_op_va("||", $1, $3, (RDB_expression *) NULL);
         if ($$ == NULL) {
+            RDB_drop_expr($1);
+            RDB_drop_expr($3);
             _RDB_parse_ret = RDB_NO_MEMORY;
             YYERROR;
         }
@@ -919,6 +1061,8 @@ mul_expression: primary_expression
     | mul_expression '*' primary_expression {
         $$ = RDB_ro_op_va("*", $1, $3, (RDB_expression *) NULL);
         if ($$ == NULL) {
+            RDB_drop_expr($1);
+            RDB_drop_expr($3);
             _RDB_parse_ret = RDB_NO_MEMORY;
             YYERROR;
         }
@@ -926,6 +1070,8 @@ mul_expression: primary_expression
     | mul_expression '/' primary_expression {
         $$ = RDB_ro_op_va("/", $1, $3, (RDB_expression *) NULL);
         if ($$ == NULL) {
+            RDB_drop_expr($1);
+            RDB_drop_expr($3);
             _RDB_parse_ret = RDB_NO_MEMORY;
             YYERROR;
         }
@@ -935,6 +1081,9 @@ mul_expression: primary_expression
 primary_expression: TOK_ID
     | primary_expression '.' TOK_ID {
         $$ = RDB_tuple_attr($1, $3->var.attrname);
+        RDB_drop_expr($3);
+        if ($$ == NULL)
+            RDB_drop_expr($1);
     }
     | literal
     | count_invocation
@@ -954,8 +1103,11 @@ extractor: TOK_TUPLE TOK_FROM expression {
         RDB_expression *texp;
 
         texp = _RDB_parse_lookup_table($3);
-        if (texp == NULL)
+        if (texp == NULL) {
+            RDB_drop_expr($3);
+            _RDB_parse_ret = RDB_NO_MEMORY;
             YYERROR;
+        }
 
         $$ = RDB_ro_op_va("TO_TUPLE", texp, (RDB_expression *) NULL);
         if ($$ == NULL) {
@@ -971,16 +1123,26 @@ ifthenelse: TOK_IF or_expression TOK_THEN add_expression TOK_ELSE add_expression
 
         ex1p = _RDB_parse_lookup_table($4);
         if (ex1p == NULL) {
+            RDB_drop_expr($2);
+            RDB_drop_expr($4);
+            RDB_drop_expr($6);
+            _RDB_parse_ret = RDB_NO_MEMORY;
             YYERROR;
         }
         ex2p = _RDB_parse_lookup_table($6);
         if (ex2p == NULL) {
+            RDB_drop_expr($2);
             RDB_drop_expr(ex1p);
+            RDB_drop_expr($6);
+            _RDB_parse_ret = RDB_NO_MEMORY;
             YYERROR;
         }
 
         $$ = RDB_ro_op_va("IF", $2, ex1p, ex2p, (RDB_expression *) NULL);
         if ($$ == NULL) {
+            RDB_drop_expr($2);
+            RDB_drop_expr(ex1p);
+            RDB_drop_expr(ex2p);
             _RDB_parse_ret = RDB_NO_MEMORY;
             YYERROR;
         }
@@ -989,35 +1151,51 @@ ifthenelse: TOK_IF or_expression TOK_THEN add_expression TOK_ELSE add_expression
 
 count_invocation: TOK_COUNT '(' expression ')' {
         RDB_expression *exp = _RDB_parse_lookup_table($3);
-
-        if (exp == NULL)
+        if (exp == NULL) {
+            RDB_drop_expr($3);
+            _RDB_parse_ret = RDB_NO_MEMORY;
             YYERROR;
+        }
 
         $$ = RDB_ro_op_va("COUNT", exp, NULL);
-        if ($$ == NULL)
+        if ($$ == NULL) {
+            RDB_drop_expr($3);
+            _RDB_parse_ret = RDB_NO_MEMORY;
             YYERROR;
+        }
     }
     ;
 
 sum_invocation: TOK_SUM '(' expression_list ')' {
+        int i;
+
         if ($3.expc == 0 || $3.expc > 2) {
+            for (i = 0; i < $3.expc; i++)
+                RDB_drop_expr($3.expv[i]);
+            _RDB_parse_ret = RDB_INVALID_ARGUMENT;
             YYERROR;
         } else {
             char *attrname = NULL;
             RDB_expression *texp = _RDB_parse_lookup_table($3.expv[0]);
-
             if (texp == NULL) {
+                for (i = 0; i < $3.expc; i++)
+                    RDB_drop_expr($3.expv[i]);
                 _RDB_parse_ret = RDB_NO_MEMORY;
                 YYERROR;
             }
 
             if ($3.expc == 2) {
-                if ($3.expv[1]->kind != RDB_EX_ATTR)
+                if ($3.expv[1]->kind != RDB_EX_ATTR) {
+                    RDB_drop_expr(texp);
+                    RDB_drop_expr($3.expv[1]);
+                    _RDB_parse_ret = RDB_INVALID_ARGUMENT;
                     YYERROR;
+                }
                 attrname = $3.expv[1]->var.attrname;
             }
 
             $$ = RDB_expr_sum(texp, attrname);
+            RDB_drop_expr($3.expv[1]);
             if ($$ == NULL) {
                 RDB_drop_expr(texp);
                 _RDB_parse_ret = RDB_NO_MEMORY;
@@ -1028,24 +1206,34 @@ sum_invocation: TOK_SUM '(' expression_list ')' {
     ;
 
 avg_invocation: TOK_AVG '(' expression_list ')' {
+        int i;
+
         if ($3.expc == 0 || $3.expc > 2) {
+            for (i = 0; i < $3.expc; i++)
+                RDB_drop_expr($3.expv[i]);
+            _RDB_parse_ret = RDB_INVALID_ARGUMENT;
             YYERROR;
         } else {
             char *attrname = NULL;
             RDB_expression *texp = _RDB_parse_lookup_table($3.expv[0]);
-
             if (texp == NULL) {
+                for (i = 0; i < $3.expc; i++)
+                    RDB_drop_expr($3.expv[i]);
                 _RDB_parse_ret = RDB_NO_MEMORY;
                 YYERROR;
             }
 
             if ($3.expc == 2) {
-                if ($3.expv[1]->kind != RDB_EX_ATTR)
+                if ($3.expv[1]->kind != RDB_EX_ATTR) {
+                    RDB_drop_expr(texp);
+                    RDB_drop_expr($3.expv[1]);
                     YYERROR;
+                }
                 attrname = $3.expv[1]->var.attrname;
             }
 
             $$ = RDB_expr_avg(texp, attrname);
+            RDB_drop_expr($3.expv[1]);
             if ($$ == NULL) {
                 RDB_drop_expr(texp);
                 _RDB_parse_ret = RDB_NO_MEMORY;
@@ -1056,24 +1244,35 @@ avg_invocation: TOK_AVG '(' expression_list ')' {
     ;
 
 max_invocation: TOK_MAX '(' expression_list ')' {
+        int i;
+
         if ($3.expc == 0 || $3.expc > 2) {
+            for (i = 0; i < $3.expc; i++)
+                RDB_drop_expr($3.expv[i]);
+            _RDB_parse_ret = RDB_INVALID_ARGUMENT;
             YYERROR;
         } else {
             char *attrname = NULL;
             RDB_expression *texp = _RDB_parse_lookup_table($3.expv[0]);
 
             if (texp == NULL) {
+                for (i = 0; i < $3.expc; i++)
+                    RDB_drop_expr($3.expv[i]);
                 _RDB_parse_ret = RDB_NO_MEMORY;
                 YYERROR;
             }
 
             if ($3.expc == 2) {
-                if ($3.expv[1]->kind != RDB_EX_ATTR)
+                if ($3.expv[1]->kind != RDB_EX_ATTR) {
+                    RDB_drop_expr(texp);
+                    RDB_drop_expr($3.expv[1]);                
                     YYERROR;
+                }
                 attrname = $3.expv[1]->var.attrname;
             }
 
             $$ = RDB_expr_max(texp, attrname);
+            RDB_drop_expr($3.expv[1]);
             if ($$ == NULL) {
                 RDB_drop_expr(texp);
                 _RDB_parse_ret = RDB_NO_MEMORY;
@@ -1084,24 +1283,35 @@ max_invocation: TOK_MAX '(' expression_list ')' {
     ;
 
 min_invocation: TOK_MIN '(' expression_list ')' {
+        int i;
+
         if ($3.expc == 0 || $3.expc > 2) {
+            for (i = 0; i < $3.expc; i++)
+                RDB_drop_expr($3.expv[i]);
+            _RDB_parse_ret = RDB_INVALID_ARGUMENT;
             YYERROR;
         } else {
             char *attrname = NULL;
             RDB_expression *texp = _RDB_parse_lookup_table($3.expv[0]);
 
             if (texp == NULL) {
+                for (i = 0; i < $3.expc; i++)
+                    RDB_drop_expr($3.expv[i]);
                 _RDB_parse_ret = RDB_NO_MEMORY;
                 YYERROR;
             }
 
             if ($3.expc == 2) {
-                if ($3.expv[1]->kind != RDB_EX_ATTR)
+                if ($3.expv[1]->kind != RDB_EX_ATTR) {
+                    RDB_drop_expr(texp);
+                    RDB_drop_expr($3.expv[1]);
                     YYERROR;
+                }
                 attrname = $3.expv[1]->var.attrname;
             }
 
             $$ = RDB_expr_min(texp, attrname);
+            RDB_drop_expr($3.expv[1]);
             if ($$ == NULL) {
                 RDB_drop_expr(texp);
                 _RDB_parse_ret = RDB_NO_MEMORY;
@@ -1112,24 +1322,35 @@ min_invocation: TOK_MIN '(' expression_list ')' {
     ;
 
 all_invocation: TOK_ALL '(' expression_list ')' {
+        int i;
+
         if ($3.expc == 0 || $3.expc > 2) {
+            for (i = 0; i < $3.expc; i++)
+                RDB_drop_expr($3.expv[i]);
+            _RDB_parse_ret = RDB_INVALID_ARGUMENT;
             YYERROR;
         } else {
             char *attrname = NULL;
             RDB_expression *texp = _RDB_parse_lookup_table($3.expv[0]);
 
             if (texp == NULL) {
+                for (i = 0; i < $3.expc; i++)
+                    RDB_drop_expr($3.expv[i]);
                 _RDB_parse_ret = RDB_NO_MEMORY;
                 YYERROR;
             }
 
             if ($3.expc == 2) {
-                if ($3.expv[1]->kind != RDB_EX_ATTR)
+                if ($3.expv[1]->kind != RDB_EX_ATTR) {
+                    RDB_drop_expr(texp);
+                    RDB_drop_expr($3.expv[1]);
                     YYERROR;
+                }
                 attrname = $3.expv[1]->var.attrname;
             }
 
             $$ = RDB_expr_all(texp, attrname);
+            RDB_drop_expr($3.expv[1]);
             if ($$ == NULL) {
                 RDB_drop_expr(texp);
                 _RDB_parse_ret = RDB_NO_MEMORY;
@@ -1140,24 +1361,35 @@ all_invocation: TOK_ALL '(' expression_list ')' {
     ;
 
 any_invocation: TOK_ANY '(' expression_list ')' {
+        int i;
+
         if ($3.expc == 0 || $3.expc > 2) {
+            for (i = 0; i < $3.expc; i++)
+                RDB_drop_expr($3.expv[i]);
+            _RDB_parse_ret = RDB_INVALID_ARGUMENT;
             YYERROR;
         } else {
             char *attrname = NULL;
             RDB_expression *texp = _RDB_parse_lookup_table($3.expv[0]);
 
             if (texp == NULL) {
+                for (i = 0; i < $3.expc; i++)
+                    RDB_drop_expr($3.expv[i]);
                 _RDB_parse_ret = RDB_NO_MEMORY;
                 YYERROR;
             }
 
             if ($3.expc == 2) {
-                if ($3.expv[1]->kind != RDB_EX_ATTR)
+                if ($3.expv[1]->kind != RDB_EX_ATTR) {
+                    RDB_drop_expr(texp);
+                    RDB_drop_expr($3.expv[1]);
                     YYERROR;
+                }
                 attrname = $3.expv[1]->var.attrname;
             }
 
             $$ = RDB_expr_any(texp, attrname);
+            RDB_drop_expr($3.expv[1]);
             if ($$ == NULL) {
                 RDB_drop_expr(texp);
                 _RDB_parse_ret = RDB_NO_MEMORY;
@@ -1169,6 +1401,7 @@ any_invocation: TOK_ANY '(' expression_list ')' {
 
 operator_invocation: TOK_ID '(' ')' {
         $$ = RDB_ro_op($1->var.attrname, 0, NULL);
+        RDB_drop_expr($1);
         if ($$ == NULL) {
             _RDB_parse_ret = RDB_NO_MEMORY;
             YYERROR;
@@ -1180,14 +1413,19 @@ operator_invocation: TOK_ID '(' ')' {
                 && strncmp($1->var.attrname, "THE_", 4) == 0) {
             /* THE_ operator - requires special treatment */
             $$ = RDB_expr_comp($3.expv[0], $1->var.attrname + 4);
-            if ($$ == NULL)
+            RDB_drop_expr($1);
+            if ($$ == NULL) {
+                RDB_drop_expr($3.expv[0]);
                 YYERROR;
+            }
         } else {
             int i;
 
             for (i = 0; i < $3.expc; i++) {
                 RDB_expression *exp = _RDB_parse_lookup_table($3.expv[i]);
                 if (exp == NULL) {
+                    for (i = 0; i < $3.expc; i++)
+                        RDB_drop_expr($3.expv[i]);
                     _RDB_parse_ret = RDB_NO_MEMORY;
                     YYERROR;
                 }
@@ -1196,6 +1434,8 @@ operator_invocation: TOK_ID '(' ')' {
 
             $$ = RDB_ro_op($1->var.attrname, $3.expc, $3.expv);
             if ($$ == NULL) {
+                for (i = 0; i < $3.expc; i++)
+                    RDB_drop_expr($3.expv[i]);
                 _RDB_parse_ret = RDB_NO_MEMORY;
                 YYERROR;
             }
@@ -1210,9 +1450,12 @@ expression_list: expression {
     | expression_list ',' expression {
         int i;
 
-        if ($1.expc >= DURO_MAX_LLEN)
+        if ($1.expc >= DURO_MAX_LLEN) {
+            for (i = 0; i < $1.expc; i++)
+                RDB_drop_expr($1.expv[i]);
+            RDB_drop_expr($3);
             YYERROR;
-
+        }
         for (i = 0; i < $1.expc; i++) {
             $$.expv[i] = $1.expv[i];
         }
@@ -1234,12 +1477,16 @@ literal: TOK_RELATION '{' expression_list '}' {
         if (tplp == NULL)
             YYERROR;
         if (tplp->kind != RDB_OB_TUPLE) {
+            for (i = 0; i < $3.expc; i++)
+                RDB_drop_expr($3.expv[i]);
             _RDB_parse_ret = RDB_TYPE_MISMATCH;
             YYERROR;
         }
         attrc = RDB_tuple_size(tplp);
         attrv = malloc(sizeof (RDB_attr) * attrc);
         if (attrv == NULL) {
+            for (i = 0; i < $3.expc; i++)
+                RDB_drop_expr($3.expv[i]);
             _RDB_parse_ret = RDB_NO_MEMORY;
             YYERROR;
         }
@@ -1251,43 +1498,60 @@ literal: TOK_RELATION '{' expression_list '}' {
 
             attrv[i].name = entryp->key;
             if (entryp->obj.typ == NULL) {
-                _RDB_parse_ret = RDB_NOT_SUPPORTED;
+                for (i = 0; i < $3.expc; i++)
+                    RDB_drop_expr($3.expv[i]);
                 free(attrv);
+                RDB_destroy_hashtable_iter(&hiter);        
+                _RDB_parse_ret = RDB_NOT_SUPPORTED;
                 YYERROR;
             }
             attrv[i].typ = entryp->obj.typ;
             attrv[i].defaultp = NULL;
         }
-        RDB_destroy_hashtable_iter(&hiter);        
+        RDB_destroy_hashtable_iter(&hiter);
 
         _RDB_parse_ret = RDB_create_table(NULL, RDB_FALSE, attrc, attrv, 0, NULL,
                 _RDB_parse_txp, &tbp);
         free(attrv);
         if (_RDB_parse_ret != RDB_OK) {
+            for (i = 0; i < $3.expc; i++)
+                RDB_drop_expr($3.expv[i]);
             YYERROR;
         }
 
         _RDB_parse_ret = RDB_insert(tbp, tplp, _RDB_parse_txp);
         if (_RDB_parse_ret != RDB_OK) {
+            for (i = 0; i < $3.expc; i++)
+                RDB_drop_expr($3.expv[i]);
             YYERROR;
         }
 
         for (i = 1; i < $3.expc; i++) {
             tplp = RDB_expr_obj($3.expv[i]);
-            if (tplp == NULL)
+            if (tplp == NULL) {
+                for (i = 0; i < $3.expc; i++)
+                    RDB_drop_expr($3.expv[i]);
                 YYERROR;
+            }
             if (tplp->kind != RDB_OB_TUPLE) {
+                for (i = 0; i < $3.expc; i++)
+                    RDB_drop_expr($3.expv[i]);
                 _RDB_parse_ret = RDB_TYPE_MISMATCH;
                 YYERROR;
             }
             _RDB_parse_ret = RDB_insert(tbp, tplp, _RDB_parse_txp);
             if (_RDB_parse_ret != RDB_OK) {
+                for (i = 0; i < $3.expc; i++)
+                    RDB_drop_expr($3.expv[i]);
                 YYERROR;
             }
         }
         RDB_init_obj(&obj);
         RDB_table_to_obj(&obj, tbp);
         $$ = RDB_obj_to_expr(&obj);
+
+        for (i = 0; i < $3.expc; i++)
+            RDB_drop_expr($3.expv[i]);
         RDB_destroy_obj(&obj);
     }
 /*     | TOK_RELATION '{' attribute_name_type_list '}'
@@ -1329,12 +1593,12 @@ literal: TOK_RELATION '{' expression_list '}' {
     } 
     | TOK_TUPLE '{' tuple_item_list '}' {
         $$ = $3;
-     } 
-     | TOK_LIT_STRING
-     | TOK_LIT_INTEGER
-     | TOK_LIT_FLOAT
-     | TOK_LIT_BOOLEAN
-     ;
+    } 
+    | TOK_LIT_STRING
+    | TOK_LIT_INTEGER
+    | TOK_LIT_FLOAT
+    | TOK_LIT_BOOLEAN
+    ;
 
 tuple_item_list: TOK_ID expression {
         RDB_object obj;
@@ -1342,29 +1606,45 @@ tuple_item_list: TOK_ID expression {
 
         RDB_init_obj(&obj);
         valp = RDB_expr_obj($2);
-        if (valp == NULL)
+        if (valp == NULL) {
+            RDB_drop_expr($1);
+            RDB_drop_expr($2);
             YYERROR;
+        }
         _RDB_parse_ret = RDB_tuple_set(&obj, $1->var.attrname, valp);
-        if (_RDB_parse_ret != RDB_OK)
+        RDB_drop_expr($1);
+        if (_RDB_parse_ret != RDB_OK) {
+            RDB_drop_expr($2);
             YYERROR;
+        }
 
         $$ = RDB_obj_to_expr(&obj);
         RDB_destroy_obj(&obj);
+        if ($$ == NULL) {
+             _RDB_parse_ret = RDB_NO_MEMORY;
+        }
     }
     | tuple_item_list ',' TOK_ID expression {
-        RDB_object obj;
-        RDB_object *valp;
-
-        RDB_init_obj(&obj);
-        valp = RDB_expr_obj($4);
-        if (valp == NULL)
+        RDB_object *valp = RDB_expr_obj($4);
+        if (valp == NULL) {
+            RDB_drop_expr($1);
+            RDB_drop_expr($3);
+            _RDB_parse_ret = RDB_TYPE_MISMATCH;
             YYERROR;
+        }
 
         $$ = RDB_obj_to_expr(RDB_expr_obj($1));
+        RDB_drop_expr($1);
+        if ($$ == NULL) {
+            RDB_drop_expr($3);
+            _RDB_parse_ret = RDB_NO_MEMORY;
+            YYERROR;
+        }
+            
         _RDB_parse_ret = RDB_tuple_set(RDB_expr_obj($$), $3->var.attrname, valp);
+        RDB_drop_expr($3);
         if (_RDB_parse_ret != RDB_OK)
             YYERROR;
-        RDB_destroy_obj(&obj);
     }
     ;
 

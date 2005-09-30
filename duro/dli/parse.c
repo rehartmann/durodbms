@@ -48,6 +48,10 @@ RDB_parse_expr(const char *txt, RDB_ltablefn *lt_fp, void *lt_arg,
     /* If the expression represents an attribute, try to get table */
     if (_RDB_parse_resultp->kind == RDB_EX_ATTR) {
         *expp = _RDB_parse_lookup_table(_RDB_parse_resultp);
+        if (*expp == NULL) {
+            RDB_drop_expr(_RDB_parse_resultp);
+            return RDB_NO_MEMORY;
+        }
     } else {
         *expp = _RDB_parse_resultp;
     }
