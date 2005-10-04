@@ -66,6 +66,11 @@ duro::operator create relop2 -updates {r1} {r1 {relation {A STRING}} \
     }
 } $tx
 
+# Create read-only operator w/o arguments
+duro::operator create zero -returns INTEGER {} {
+    return 0
+} $tx
+
 if {![tequal [duro::expr {tswap (TUPLE {A "a", B "b"})} $tx] {A b B a}]} {
     error "unexpected value of tswap()"
 }
@@ -112,11 +117,14 @@ if {$i != "X"} {
     error "global variable was modified by operator"
 }
 
-# Invoke read-only operator
 set v [duro::expr {concat("X", "Y")} $tx]
-
 if {![string equal $v XY]} {
    error "result is %s, should be %s" $v XY
+}
+
+set v [duro::expr {zero()} $tx]
+if {$v != 0} {
+    error "result of zero is $v"
 }
 
 # Destroy operators

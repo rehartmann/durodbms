@@ -1100,7 +1100,7 @@ RDB_call_ro_op(const char *name, int argc, RDB_object *argv[],
             return RDB_OK;
         }
     }
-    if (obj_is_table(argv[0]) && strcmp(name, "TO_TUPLE") == 0
+    if (argc >= 1 && obj_is_table(argv[0]) && strcmp(name, "TO_TUPLE") == 0
             && argc == 1) {
         return RDB_extract_tuple(RDB_obj_table(argv[0]), txp, retvalp);
     }
