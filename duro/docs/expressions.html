@@ -27,7 +27,7 @@ expression = or_expression | extractor | ifthenelse | relation | project
         | select | rename | extend | summarize | wrap | unwrap | group
         | ungroup | divideby.
 
-project = expression '{' [ALL BUT] id {',' id} '}'.
+project = expression '{' [ALL BUT] [id {',' id}] '}'.
 
 select = expression WHERE or_expression.
 
@@ -52,11 +52,11 @@ summary_type = SUM | AVG | MAX | MIN | ALL | ANY.
 
 wrap   = expression WRAP '(' wrapping {',' wrapping} ')'.
 
-wrapping = '{' id {',' id} '}' AS id.
+wrapping = '{' [id {',' id}] '}' AS id.
 
-unwrap = expression UNWRAP '(' id {',' id} ')'.
+unwrap = expression UNWRAP '(' [id {',' id}] ')'.
 
-group  = expression GROUP '{' id {',' id} '}' AS id.
+group  = expression GROUP '{' [id {',' id}] '}' AS id.
 
 ungroup = expression UNGROUP id.
 
@@ -94,14 +94,16 @@ ifthenelse = IF or_expression THEN add_expression ELSE add_expression.
 
 count_invocation = COUNT '(' expression ')'.
 
-aggregate_invocation = summary_type '(' expression_list ')'.
+aggregate_invocation = summary_type '(' ne_expression_list ')'.
 
 operator_invocation = 'THE_'id '(' expression ')'
-        | id '(' [expression_list] ')'.
+        | id '(' expression_list ')'.
 
 literal = string | integer | decimal | float | TRUE | FALSE
         | TUPLE '{' [tuple_item_list] '}'
-        | RELATION '{' expression_list '}' | TABLE_DEE | TABLE_DUM.
+        | RELATION '{' ne_expression_list '}' | TABLE_DEE | TABLE_DUM.
+
+ne_expression_list = | expression_list.
 
 expression_list = expression {',' expression}.
 

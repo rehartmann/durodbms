@@ -15,6 +15,9 @@ Changes for Duro 0.10
 
 - Read-only operators can access the current transaction if called from Tcl.
 
+- Changed expression grammar to allow empty attribute name lists and empty
+  expression lists.
+
 - Now supporting general relation-valued expressions.
 
 - Now supporting a user-defined comparison operator for user-defined types.

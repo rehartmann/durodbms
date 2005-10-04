@@ -105,9 +105,10 @@ enum {
         all_invocation any_invocation extractor tuple_item_list
         ifthenelse summarize_add
 
-%type <explist> expression_list attribute_name_list extend_add_list
-        extend_add renaming renaming_list summarize_add_list
-        wrapping wrapping_list
+%type <explist> expression_list ne_expression_list
+        ne_attribute_name_list attribute_name_list
+        extend_add_list extend_add
+        renaming renaming_list summarize_add_list wrapping wrapping_list
 
 %destructor {
     int i;
@@ -115,8 +116,11 @@ enum {
     for (i = 0; i < $$.expc; i++) {
         RDB_drop_expr($$.expv[i]);
     }
-} expression_list attribute_name_list extend_add_list extend_add
-        renaming renaming_list summarize_add_list
+} expression_list ne_expression_list
+        ne_attribute_name_list attribute_name_list
+        extend_add_list extend_add
+        renaming_list renaming
+        summarize_add_list wrapping wrapping_list
 
 %destructor {
     RDB_drop_expr($$);
@@ -192,7 +196,13 @@ project: expression '{' attribute_name_list '}' {
     }
     ;
 
-attribute_name_list: TOK_ID {
+attribute_name_list: /* empty */ {
+        $$.expc = 0;
+    }
+    | ne_attribute_name_list
+    ;
+
+ne_attribute_name_list: TOK_ID {
         $$.expc = 1;
         $$.expv[0] = RDB_string_to_expr($1->var.attrname);
         RDB_drop_expr($1);
@@ -201,7 +211,7 @@ attribute_name_list: TOK_ID {
             YYERROR;
         }            
     }
-    | attribute_name_list ',' TOK_ID {
+    | ne_attribute_name_list ',' TOK_ID {
         int i;
 
         /* Copy old attributes */
@@ -271,28 +281,28 @@ rename: expression TOK_RENAME '(' renaming_list ')' {
     ;
 
 renaming_list: renaming {
-            $$.expv[0] = $1.expv[0];
-            $$.expv[1] = $1.expv[1];
-            $$.expc = 2;
-        }
-        | renaming_list ',' renaming {
-            int i;
+        $$.expv[0] = $1.expv[0];
+        $$.expv[1] = $1.expv[1];
+        $$.expc = 2;
+    }
+    | renaming_list ',' renaming {
+        int i;
 
-            if ($1.expc >= DURO_MAX_LLEN) {
-                for (i = 0; i < $1.expc; i++)
-                    RDB_drop_expr($1.expv[i]);
-                for (i = 0; i < $3.expc; i++)
-                    RDB_drop_expr($3.expv[i]);
-                YYERROR;
-            }
-            for (i = 0; i < $1.expc; i++) {
-                $$.expv[i] = $1.expv[i];
-            }
-            $$.expv[$1.expc] = $3.expv[0];
-            $$.expv[$1.expc + 1] = $3.expv[1];
-            $$.expc = $1.expc + 2;
+        if ($1.expc >= DURO_MAX_LLEN) {
+            for (i = 0; i < $1.expc; i++)
+                RDB_drop_expr($1.expv[i]);
+            for (i = 0; i < $3.expc; i++)
+                RDB_drop_expr($3.expv[i]);
+            YYERROR;
         }
-        ;
+        for (i = 0; i < $1.expc; i++) {
+            $$.expv[i] = $1.expv[i];
+        }
+        $$.expv[$1.expc] = $3.expv[0];
+        $$.expv[$1.expc + 1] = $3.expv[1];
+        $$.expc = $1.expc + 2;
+    }
+    ;
 
 renaming: TOK_ID TOK_AS TOK_ID {
             $$.expv[0] = RDB_string_to_expr($1->var.attrname);
@@ -1166,10 +1176,10 @@ count_invocation: TOK_COUNT '(' expression ')' {
     }
     ;
 
-sum_invocation: TOK_SUM '(' expression_list ')' {
+sum_invocation: TOK_SUM '(' ne_expression_list ')' {
         int i;
 
-        if ($3.expc == 0 || $3.expc > 2) {
+        if ($3.expc > 2) {
             for (i = 0; i < $3.expc; i++)
                 RDB_drop_expr($3.expv[i]);
             _RDB_parse_ret = RDB_INVALID_ARGUMENT;
@@ -1205,10 +1215,10 @@ sum_invocation: TOK_SUM '(' expression_list ')' {
     }
     ;
 
-avg_invocation: TOK_AVG '(' expression_list ')' {
+avg_invocation: TOK_AVG '(' ne_expression_list ')' {
         int i;
 
-        if ($3.expc == 0 || $3.expc > 2) {
+        if ($3.expc > 2) {
             for (i = 0; i < $3.expc; i++)
                 RDB_drop_expr($3.expv[i]);
             _RDB_parse_ret = RDB_INVALID_ARGUMENT;
@@ -1243,10 +1253,10 @@ avg_invocation: TOK_AVG '(' expression_list ')' {
     }
     ;
 
-max_invocation: TOK_MAX '(' expression_list ')' {
+max_invocation: TOK_MAX '(' ne_expression_list ')' {
         int i;
 
-        if ($3.expc == 0 || $3.expc > 2) {
+        if ($3.expc > 2) {
             for (i = 0; i < $3.expc; i++)
                 RDB_drop_expr($3.expv[i]);
             _RDB_parse_ret = RDB_INVALID_ARGUMENT;
@@ -1282,10 +1292,10 @@ max_invocation: TOK_MAX '(' expression_list ')' {
     }
     ;
 
-min_invocation: TOK_MIN '(' expression_list ')' {
+min_invocation: TOK_MIN '(' ne_expression_list ')' {
         int i;
 
-        if ($3.expc == 0 || $3.expc > 2) {
+        if ($3.expc > 2) {
             for (i = 0; i < $3.expc; i++)
                 RDB_drop_expr($3.expv[i]);
             _RDB_parse_ret = RDB_INVALID_ARGUMENT;
@@ -1321,10 +1331,10 @@ min_invocation: TOK_MIN '(' expression_list ')' {
     }
     ;
 
-all_invocation: TOK_ALL '(' expression_list ')' {
+all_invocation: TOK_ALL '(' ne_expression_list ')' {
         int i;
 
-        if ($3.expc == 0 || $3.expc > 2) {
+        if ($3.expc > 2) {
             for (i = 0; i < $3.expc; i++)
                 RDB_drop_expr($3.expv[i]);
             _RDB_parse_ret = RDB_INVALID_ARGUMENT;
@@ -1360,10 +1370,10 @@ all_invocation: TOK_ALL '(' expression_list ')' {
     }
     ;
 
-any_invocation: TOK_ANY '(' expression_list ')' {
+any_invocation: TOK_ANY '(' ne_expression_list ')' {
         int i;
 
-        if ($3.expc == 0 || $3.expc > 2) {
+        if ($3.expc > 2) {
             for (i = 0; i < $3.expc; i++)
                 RDB_drop_expr($3.expv[i]);
             _RDB_parse_ret = RDB_INVALID_ARGUMENT;
@@ -1399,15 +1409,7 @@ any_invocation: TOK_ANY '(' expression_list ')' {
     }
     ;
 
-operator_invocation: TOK_ID '(' ')' {
-        $$ = RDB_ro_op($1->var.attrname, 0, NULL);
-        RDB_drop_expr($1);
-        if ($$ == NULL) {
-            _RDB_parse_ret = RDB_NO_MEMORY;
-            YYERROR;
-        }
-    }
-    | TOK_ID '(' expression_list ')' {
+operator_invocation: TOK_ID '(' expression_list ')' {
         if ($3.expc == 1
                 && strlen($1->var.attrname) > 4
                 && strncmp($1->var.attrname, "THE_", 4) == 0) {
@@ -1443,11 +1445,11 @@ operator_invocation: TOK_ID '(' ')' {
     }
     ;
 
-expression_list: expression {
+ne_expression_list: expression {
         $$.expc = 1;
         $$.expv[0] = $1;
     }
-    | expression_list ',' expression {
+    | ne_expression_list ',' expression {
         int i;
 
         if ($1.expc >= DURO_MAX_LLEN) {
@@ -1464,7 +1466,7 @@ expression_list: expression {
     }
     ;
 
-literal: TOK_RELATION '{' expression_list '}' {
+literal: TOK_RELATION '{' ne_expression_list '}' {
         int attrc;
         int i;
         RDB_attr *attrv;
@@ -1555,17 +1557,18 @@ literal: TOK_RELATION '{' expression_list '}' {
         RDB_destroy_obj(&obj);
     }
 /*     | TOK_RELATION '{' attribute_name_type_list '}'
-       '{' opt_expression_list '}' {
+       '{' expression_list '}' {
     }
     | TOK_RELATION '{' '}'
-       '{' opt_expression_list '}' {
+       '{' expression_list '}' {
     }
     */ | TOK_TABLE_DEE {
         RDB_object tpl;
         RDB_expression *exp = table_dum_expr();
-
-        if (exp == NULL)
+        if (exp == NULL) {
+            _RDB_parse_ret = RDB_NO_MEMORY;
             YYERROR;
+        }
 
         RDB_init_obj(&tpl);
         _RDB_parse_ret = RDB_insert(exp->var.obj.var.tbp, &tpl, _RDB_parse_txp);
@@ -1578,9 +1581,10 @@ literal: TOK_RELATION '{' expression_list '}' {
     }
     | TOK_TABLE_DUM {
         RDB_expression *exp = table_dum_expr();
-
-        if (exp == NULL)
+        if (exp == NULL) {
+            _RDB_parse_ret = RDB_NO_MEMORY;
             YYERROR;
+        }
         $$ = exp;
     }
     | TOK_TUPLE '{' '}' {
@@ -1663,12 +1667,14 @@ type: TOK_ID
     | TOK_TUPLE '{' attribute_name_type_list '}'
     | TOK_TUPLE '{' '}'
     ;
+*/
 
-opt_expression_list:
-    | expression_list
+expression_list: /* empty */ {
+        $$.expc = 0;
+    }
+    | ne_expression_list
     ;
 
-*/
 %%
 
 RDB_table *

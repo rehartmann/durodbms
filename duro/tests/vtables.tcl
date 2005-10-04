@@ -313,6 +313,11 @@ if {![catch {duro::table drop LT $tx}]} {
 }
 
 #
+# Check empty attribute list
+#
+duro::table expr -global TP3 {T1 {}} $tx
+
+#
 # Check invalid expressions
 #
 if {![catch {duro::table expr -global ES {T1 WHERE S1 = 2} $tx}]} {
