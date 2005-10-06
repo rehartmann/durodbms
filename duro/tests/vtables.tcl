@@ -360,6 +360,22 @@ duro::table drop t $tx
 duro::table expr t {EXTEND TABLE_DEE
         ADD (EXTEND TABLE_DEE ADD (1 AS N) WRAP ({ N } AS T) AS R) } $tx
 
+duro::table drop t $tx
+
+duro::table expr t {EXTEND TABLE_DEE
+        ADD (EXTEND TABLE_DEE ADD (1 AS N, 2 AS M) { ALL BUT N } AS R)} $tx
+
+set tpl [duro::expr {(TUPLE FROM t).R} $tx]
+if {$tpl != "{M 2}"} {
+    error "wrong tuple value: $tpl"
+}
+
+duro::table drop t $tx
+
+duro::table expr t {EXTEND TABLE_DEE
+        ADD (EXTEND TABLE_DEE ADD (1 AS N, 2 AS M)
+             GROUP { N, M } AS R AS R)} $tx
+
 duro::commit $tx
 
 # Close DB environment

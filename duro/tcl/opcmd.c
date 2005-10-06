@@ -41,7 +41,7 @@ operator_create_cmd(ClientData data, Tcl_Interp *interp, int objc,
         return TCL_ERROR;
     }
 
-    txstr = Tcl_GetStringFromObj(objv[7], NULL);
+    txstr = Tcl_GetString(objv[7]);
     entryp = Tcl_FindHashEntry(&statep->txs, txstr);
     if (entryp == NULL) {
         Tcl_AppendResult(interp, "unknown transaction: ", txstr, NULL);
@@ -151,7 +151,7 @@ operator_create_cmd(ClientData data, Tcl_Interp *interp, int objc,
             }
         }
 
-        ret = RDB_create_update_op(Tcl_GetStringFromObj(objv[2], NULL),
+        ret = RDB_create_update_op(Tcl_GetString(objv[2]),
                 argc, argtv, updv, "libdurotcl", "Duro_invoke_update_op",
                 txtp, (size_t) len, txp);
         Tcl_Free(updv);
@@ -163,9 +163,8 @@ operator_create_cmd(ClientData data, Tcl_Interp *interp, int objc,
             goto cleanup;
         }
 
-        ret = RDB_create_ro_op(Tcl_GetStringFromObj(objv[2], NULL),
-                 argc, argtv, rtyp, "libdurotcl", "Duro_invoke_ro_op",
-                 txtp, (size_t) len, txp);
+        ret = RDB_create_ro_op(Tcl_GetString(objv[2]), argc, argtv, rtyp,
+                "libdurotcl", "Duro_invoke_ro_op", txtp, (size_t) len, txp);
     }
     
     if (ret != RDB_OK) {
@@ -182,7 +181,8 @@ cleanup:
 }
 
 static int
-operator_drop_cmd(ClientData data, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[])
+operator_drop_cmd(ClientData data, Tcl_Interp *interp, int objc,
+        Tcl_Obj *CONST objv[])
 {
     int ret;
     char *txstr;
@@ -213,7 +213,8 @@ operator_drop_cmd(ClientData data, Tcl_Interp *interp, int objc, Tcl_Obj *CONST 
 }
 
 int
-Duro_operator_cmd(ClientData data, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[])
+Duro_operator_cmd(ClientData data, Tcl_Interp *interp, int objc,
+        Tcl_Obj *CONST objv[])
 {
     TclState *statep = (TclState *) data;
 
@@ -245,7 +246,8 @@ Duro_operator_cmd(ClientData data, Tcl_Interp *interp, int objc, Tcl_Obj *CONST 
 }
 
 int
-Duro_call_cmd(ClientData data, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[])
+Duro_call_cmd(ClientData data, Tcl_Interp *interp, int objc,
+        Tcl_Obj *CONST objv[])
 {
     int ret;
     int i;
@@ -263,7 +265,7 @@ Duro_call_cmd(ClientData data, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv
         return TCL_ERROR;
     }
 
-    txstr = Tcl_GetStringFromObj(objv[objc - 1], NULL);
+    txstr = Tcl_GetString(objv[objc - 1]);
     entryp = Tcl_FindHashEntry(&statep->txs, txstr);
     if (entryp == NULL) {
         Tcl_AppendResult(interp, "unknown transaction: ", txstr, NULL);
@@ -328,14 +330,14 @@ Duro_call_cmd(ClientData data, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv
             if (ret != TCL_OK) {
                 RDB_destroy_obj(argv[i]);
                 Tcl_Free((char *) argv[i]);
-                argv[i] = 0;
+                argv[i] = NULL;
                 ret = TCL_ERROR;
                 goto cleanup;
             }
         }
     }
 
-    ret = RDB_call_update_op(Tcl_GetStringFromObj(objv[1], NULL),
+    ret = RDB_call_update_op(Tcl_GetString(objv[1]),
             argc, argv, txp);
     if (ret != RDB_OK) {
         Duro_dberror(interp, txp, ret);

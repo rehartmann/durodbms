@@ -275,8 +275,10 @@ expr_op_type(const RDB_expression *exp, const RDB_type *tuptyp,
 
         for (i = 1; i < exp->var.op.argc; i++) {
             if (exp->var.op.argv[i]->kind != RDB_EX_OBJ
-                    || exp->var.op.argv[i]->var.obj.typ != &RDB_STRING)
+                    || exp->var.op.argv[i]->var.obj.typ != &RDB_STRING) {
+                free(argtv);
                 return RDB_TYPE_MISMATCH;
+            }
         }
         attrv = malloc(sizeof (char *) * (exp->var.op.argc - 1));
         if (attrv == NULL) {
@@ -294,8 +296,56 @@ expr_op_type(const RDB_expression *exp, const RDB_type *tuptyp,
     }
     if (argtv[0] != NULL && argtv[0]->kind == RDB_TP_RELATION
             && strcmp(exp->var.op.name, "REMOVE") == 0) {
+        int attrc;
+        int attri;
+        char **attrv;
+
+        for (i = 1; i < exp->var.op.argc; i++) {
+            if (exp->var.op.argv[i]->kind != RDB_EX_OBJ
+                    || exp->var.op.argv[i]->var.obj.typ != &RDB_STRING) {
+                free(argtv);
+                return RDB_TYPE_MISMATCH;
+            }
+
+            /* Check if attribute exists */
+            if (RDB_type_attr_type(argtv[0],
+                    RDB_obj_string(&exp->var.op.argv[i]->var.obj)) == NULL) {
+                free(argtv);
+                return RDB_ATTRIBUTE_NOT_FOUND;
+            }
+        }
+        attrc = argtv[0]->var.basetyp->var.tuple.attrc - exp->var.op.argc + 1;
+        attrv = malloc(sizeof (char *) * attrc);
+        if (attrv == NULL) {
+            free(argtv);
+            return RDB_NO_MEMORY;
+        }
+
+        /* Collect attributes which are not removed */
+        attri = 0;
+        for (i = 0; i < argtv[0]->var.basetyp->var.tuple.attrc; i++) {
+            int j = 1;
+            char *attrname = argtv[0]->var.basetyp->var.tuple.attrv[i].name;
+
+            while (j < exp->var.op.argc
+                    && strcmp(RDB_obj_string(&exp->var.op.argv[j]->var.obj),
+                              attrname) != 0)
+                j++;
+            if (j >= exp->var.op.argc) {
+                /* Attribute does not appear in arguments - add */
+                attrv[attri++] = attrname;
+            }
+        }
+        if (attri < attrc) {
+            free(argtv);
+            free(attrv);
+            return RDB_INVALID_ARGUMENT;
+        }
+        
+        ret = RDB_project_relation_type(argtv[0], attrc, attrv, typp);
+        free(attrv);
         free(argtv);
-        return RDB_NOT_SUPPORTED; /* !! */
+        return ret;
     }
     if (argtv[0] != NULL && argtv[0]->kind == RDB_TP_RELATION
             && strcmp(exp->var.op.name, "WRAP") == 0) {
@@ -310,8 +360,40 @@ expr_op_type(const RDB_expression *exp, const RDB_type *tuptyp,
     }
     if (argtv[0] != NULL && argtv[0]->kind == RDB_TP_RELATION
             && strcmp(exp->var.op.name, "GROUP") == 0) {
+        char **attrv;
+
+        if (exp->var.op.argc < 2) {
+            free(argtv);
+            return RDB_INVALID_ARGUMENT;
+        }
+
+        for (i = 1; i < exp->var.op.argc; i++) {
+            if (exp->var.op.argv[i]->kind != RDB_EX_OBJ
+                    || exp->var.op.argv[i]->var.obj.typ != &RDB_STRING) {
+                free(argtv);
+                return RDB_TYPE_MISMATCH;
+            }
+        }
+
+        if (exp->var.op.argc > 2) {
+            attrv = malloc(sizeof (char *) * (exp->var.op.argc - 2));
+            if (attrv == NULL) {
+                free(argtv);
+                return RDB_NO_MEMORY;
+            }
+        } else {
+            attrv = NULL;
+        }
+
+        for (i = 1; i < exp->var.op.argc - 1; i++) {
+            attrv[i - 1] = RDB_obj_string(&exp->var.op.argv[i]->var.obj);
+        }
+        ret = RDB_group_type(argtv[0], exp->var.op.argc - 2, attrv,
+                RDB_obj_string(&exp->var.op.argv[exp->var.op.argc - 1]->var.obj),
+                typp);
+        free(attrv);
         free(argtv);
-        return RDB_NOT_SUPPORTED; /* !! */
+        return ret;
     }
     if (argtv[0] != NULL && argtv[0]->kind == RDB_TP_RELATION
             && strcmp(exp->var.op.name, "UNGROUP") == 0) {
