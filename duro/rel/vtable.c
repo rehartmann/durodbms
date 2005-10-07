@@ -458,97 +458,6 @@ cleanup:
     return ret;
 }
 
-static int
-aggr_type(RDB_type *tuptyp, RDB_type *attrtyp, RDB_aggregate_op op,
-          RDB_type **resultpp)
-{
-    if (op == RDB_COUNT || op == RDB_COUNTD) {
-        *resultpp = &RDB_INTEGER;
-        return RDB_OK;
-    }
-
-    switch (op) {
-        /* only to avoid compiler warnings */
-        case RDB_COUNTD:
-        case RDB_COUNT:
-
-        case RDB_AVGD:
-        case RDB_AVG:
-            if (!RDB_type_is_numeric(attrtyp))
-                return RDB_TYPE_MISMATCH;
-            *resultpp = &RDB_RATIONAL;
-            break;
-        case RDB_SUM:
-        case RDB_SUMD:
-        case RDB_MAX:
-        case RDB_MIN:
-            if (!RDB_type_is_numeric(attrtyp))
-                return RDB_TYPE_MISMATCH;
-            *resultpp = attrtyp;
-            break;
-        case RDB_ALL:
-        case RDB_ANY:
-            if (attrtyp != &RDB_BOOLEAN)
-                return RDB_TYPE_MISMATCH;
-            *resultpp = &RDB_BOOLEAN;
-            break;
-     }
-     return RDB_OK;
-}
-
-static int
-summarize_type(RDB_type *tb1typ, RDB_type *tb2typ,
-        int addc, const RDB_summarize_add addv[],
-        int avgc, char **avgv, RDB_transaction *txp, RDB_type **newtypp)
-{
-    int i;
-    int ret;
-    int attrc = addc + avgc;
-    RDB_attr *attrv = malloc(sizeof (RDB_attr) * attrc);
-    if (attrv == NULL)
-        return RDB_NO_MEMORY;
-
-    for (i = 0; i < addc; i++) {
-        if (addv[i].op == RDB_COUNT) {
-            attrv[i].typ = &RDB_INTEGER;
-        } else {
-            RDB_type *typ;
-
-            ret = RDB_expr_type(addv[i].exp, tb1typ->var.basetyp, txp, &typ);
-            if (ret != RDB_OK)
-                goto error;
-            ret = aggr_type(tb1typ->var.basetyp, typ,
-                        addv[i].op, &attrv[i].typ);
-            if (ret != RDB_OK)
-                goto error;
-        }
-
-        attrv[i].name = addv[i].name;
-    }
-    for (i = 0; i < avgc; i++) {
-        attrv[addc + i].name = avgv[i];
-        attrv[addc + i].typ = &RDB_INTEGER;
-    }
-
-    *newtypp = malloc(sizeof (RDB_type));
-    if (*newtypp == NULL) {
-        ret = RDB_NO_MEMORY;
-        goto error;
-    }
-    
-    ret = RDB_extend_relation_type(tb2typ, attrc, attrv, newtypp);
-    if (ret != RDB_OK) {
-        goto error;
-    }
-
-    free(attrv);
-    return RDB_OK;
-
-error:
-    free(attrv);    
-    return ret;
-}
-
 int
 RDB_summarize(RDB_table *tb1p, RDB_table *tb2p, int addc,
         const RDB_summarize_add addv[], RDB_transaction *txp,
@@ -625,7 +534,7 @@ RDB_summarize(RDB_table *tb1p, RDB_table *tb2p, int addc,
         newtbp->var.summarize.addv[i].exp = addv[i].exp;
     }
 
-    ret = summarize_type(tb1p->typ, tb2p->typ, addc, addv, avgc, avgv, txp,
+    ret = RDB_summarize_type(tb1p->typ, tb2p->typ, addc, addv, avgc, avgv, txp,
             &newtbp->typ);
     if (ret != RDB_OK)
         goto error;

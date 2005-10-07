@@ -85,6 +85,77 @@ cleanup:
     return ret;
 }
 
+static RDB_expression *
+expr_resolve_attrs(const RDB_expression *exp, const RDB_object *tplp)
+{
+    RDB_object *objp;
+
+    switch (exp->kind) {
+        case RDB_EX_TUPLE_ATTR:
+            return RDB_tuple_attr(
+                    expr_resolve_attrs(exp->var.op.argv[0], tplp),
+                            exp->var.op.name);
+        case RDB_EX_GET_COMP:
+            return RDB_expr_comp(
+                    expr_resolve_attrs(exp->var.op.argv[0], tplp),
+                            exp->var.op.name);
+        case RDB_EX_RO_OP:
+        {
+            int i;
+            RDB_expression *newexp;
+            RDB_expression **argexpv = (RDB_expression **)
+                    malloc(sizeof (RDB_expression *) * exp->var.op.argc);
+
+            if (argexpv == NULL)
+                return NULL;
+
+            for (i = 0; i < exp->var.op.argc; i++) {
+                argexpv[i] = expr_resolve_attrs(exp->var.op.argv[i], tplp);
+                if (argexpv[i] == NULL)
+                    return NULL;
+            }
+            newexp = RDB_ro_op(exp->var.op.name, exp->var.op.argc, argexpv);
+            free(argexpv);
+            return newexp;
+        }
+        case RDB_EX_AGGREGATE:
+            return RDB_expr_aggregate(
+                    expr_resolve_attrs(exp->var.op.argv[0], tplp),
+                            exp->var.op.op, exp->var.op.name);
+        case RDB_EX_OBJ:
+            return RDB_obj_to_expr(&exp->var.obj);
+        case RDB_EX_ATTR:
+            if (tplp != NULL) {
+                objp = RDB_tuple_get(tplp, exp->var.attrname);
+                if (objp != NULL)
+                    return RDB_obj_to_expr(objp);
+            }
+            return RDB_expr_attr(exp->var.attrname);
+    }
+    abort();
+}
+
+static RDB_summarize_add *
+expv_to_addv(int addc, RDB_expression **expv, const RDB_object *tplp)
+{
+    int i;
+    RDB_summarize_add *addv = malloc(sizeof (RDB_summarize_add) * addc);
+    if (addv == NULL)
+        return NULL;
+
+    for (i = 0; i < addc; i++) {
+        addv[i].op = expv[i]->var.op.op;
+        if (addv[i].op != RDB_COUNT) {
+            addv[i].exp = expr_resolve_attrs(expv[i]->var.op.argv[0],
+                    tplp);
+        } else {
+            addv[i].exp = NULL;
+        }
+        addv[i].name = expv[i]->var.op.name;
+    }
+    return addv;
+}
+
 static int
 expr_op_type(const RDB_expression *exp, const RDB_type *tuptyp,
         RDB_transaction *txp, RDB_type **typp)
@@ -105,8 +176,7 @@ expr_op_type(const RDB_expression *exp, const RDB_type *tuptyp,
             return ret;
         return (*typp)->kind == RDB_TP_RELATION ? RDB_OK : RDB_TYPE_MISMATCH;
     }
-    if (exp->var.op.argc >= 1
-            && strcmp(exp->var.op.name, "EXTEND") == 0) {
+    if (exp->var.op.argc >= 1 && strcmp(exp->var.op.name, "EXTEND") == 0) {
         int attrc = (exp->var.op.argc - 1) / 2;
         RDB_attr *attrv;
 
@@ -197,11 +267,6 @@ expr_op_type(const RDB_expression *exp, const RDB_type *tuptyp,
         RDB_drop_type(tbtyp, NULL);
         return ret;
     }
-    if (exp->var.op.argc >= 2
-            && strcmp(exp->var.op.name, "SUMMARIZE") == 0) {
-        return RDB_NOT_SUPPORTED; /* !! */
-    }
-
     argtv = malloc(sizeof (RDB_type *) * exp->var.op.argc);
     if (argtv == NULL)
         return RDB_NO_MEMORY;
@@ -347,16 +412,68 @@ expr_op_type(const RDB_expression *exp, const RDB_type *tuptyp,
         free(argtv);
         return ret;
     }
+
+    if (exp->var.op.argc >= 2
+            && argtv[0] != NULL && argtv[0]->kind == RDB_TP_RELATION
+            && argtv[1] != NULL && argtv[1]->kind == RDB_TP_RELATION
+            && strcmp(exp->var.op.name, "SUMMARIZE") == 0) {
+        int addc = exp->var.op.argc - 2;
+        RDB_summarize_add *addv = expv_to_addv(addc, exp->var.op.argv + 2,
+                NULL);
+        if (addv == NULL) {
+            free(argtv);
+            return RDB_NO_MEMORY;
+        }
+
+        ret = RDB_summarize_type(argtv[0], argtv[1], addc, addv, 0, NULL,
+                txp, typp);
+        for (i = 0; i < addc; i++) {
+            if (addv[i].exp != NULL)
+                RDB_drop_expr(addv[i].exp);
+        }
+        free(addv);
+
+        return ret;
+    }
     if (argtv[0] != NULL && argtv[0]->kind == RDB_TP_RELATION
             && strcmp(exp->var.op.name, "WRAP") == 0) {
         ret = wrap_type(exp, argtv, typp);
         free(argtv);
         return ret;
     }
-    if (argtv[0] != NULL && argtv[0]->kind == RDB_TP_RELATION
+    if (exp->var.op.argc >= 1 && argtv[0] != NULL
+            && (argtv[0]->kind == RDB_TP_RELATION
+                || argtv[0]->kind == RDB_TP_TUPLE)
             && strcmp(exp->var.op.name, "UNWRAP") == 0) {
+        char **attrv;
+        int attrc = exp->var.op.argc - 1;
+
+        for (i = 1; i < exp->var.op.argc; i++) {
+            if (exp->var.op.argv[i]->kind != RDB_EX_OBJ
+                    || exp->var.op.argv[i]->var.obj.typ != &RDB_STRING) {
+                free(argtv);
+                return RDB_TYPE_MISMATCH;
+            }
+        }
+
+        attrv = malloc(attrc * sizeof (char *));
+        if (attrv == NULL) {
+            free(argtv);
+            return RDB_NO_MEMORY;
+        }
+        for (i = 0; i < attrc; i++) {
+            attrv[i] = RDB_obj_string(&exp->var.op.argv[i + 1]->var.obj);
+        }
+
+        if (argtv[0]->kind == RDB_TP_TUPLE) {
+            ret = RDB_unwrap_tuple_type(argtv[0], attrc, attrv, typp);
+        } else {
+            ret = RDB_unwrap_relation_type(argtv[0], attrc, attrv, typp);
+        }
+
+        free(attrv);
         free(argtv);
-        return RDB_NOT_SUPPORTED; /* !! */
+        return ret;
     }
     if (argtv[0] != NULL && argtv[0]->kind == RDB_TP_RELATION
             && strcmp(exp->var.op.name, "GROUP") == 0) {
@@ -395,10 +512,19 @@ expr_op_type(const RDB_expression *exp, const RDB_type *tuptyp,
         free(argtv);
         return ret;
     }
-    if (argtv[0] != NULL && argtv[0]->kind == RDB_TP_RELATION
+    if (exp->var.op.argc == 2
+            && argtv[0] != NULL && argtv[0]->kind == RDB_TP_RELATION
             && strcmp(exp->var.op.name, "UNGROUP") == 0) {
+        if (exp->var.op.argv[1]->kind != RDB_EX_OBJ
+                || exp->var.op.argv[1]->var.obj.typ != &RDB_STRING) {
+            free(argtv);
+            return RDB_TYPE_MISMATCH;
+        }
+
+        ret = RDB_ungroup_type(argtv[0],
+                RDB_obj_string(&exp->var.op.argv[1]->var.obj), typp);
         free(argtv);
-        return RDB_NOT_SUPPORTED; /* !! */
+        return ret;
     }
     if (exp->var.op.argc == 2
             && argtv[0] != NULL && argtv[0]->kind == RDB_TP_RELATION
@@ -938,56 +1064,6 @@ RDB_drop_expr(RDB_expression *exp)
     free(exp);
 }
 
-static RDB_expression *
-expr_resolve_attrs(const RDB_expression *exp, const RDB_object *tplp)
-{
-    RDB_object *objp;
-
-    switch (exp->kind) {
-        case RDB_EX_TUPLE_ATTR:
-            return RDB_tuple_attr(
-                    expr_resolve_attrs(exp->var.op.argv[0], tplp),
-                            exp->var.op.name);
-        case RDB_EX_GET_COMP:
-            return RDB_expr_comp(
-                    expr_resolve_attrs(exp->var.op.argv[0], tplp),
-                            exp->var.op.name);
-        case RDB_EX_RO_OP:
-        {
-            int i;
-            RDB_expression *newexp;
-            RDB_expression **argexpv = (RDB_expression **)
-                    malloc(sizeof (RDB_expression *) * exp->var.op.argc);
-
-            if (argexpv == NULL)
-                return NULL;
-
-            for (i = 0; i < exp->var.op.argc; i++) {
-                argexpv[i] = expr_resolve_attrs(exp->var.op.argv[i], tplp);
-                if (argexpv[i] == NULL)
-                    return NULL;
-            }
-            newexp = RDB_ro_op(exp->var.op.name, exp->var.op.argc, argexpv);
-            free(argexpv);
-            return newexp;
-        }
-        case RDB_EX_AGGREGATE:
-            return RDB_expr_aggregate(
-                    expr_resolve_attrs(exp->var.op.argv[0], tplp),
-                            exp->var.op.op, exp->var.op.name);
-        case RDB_EX_OBJ:
-            return RDB_obj_to_expr(&exp->var.obj);
-        case RDB_EX_ATTR:
-            if (tplp != NULL) {
-                objp = RDB_tuple_get(tplp, exp->var.attrname);
-                if (objp != NULL)
-                    return RDB_obj_to_expr(objp);
-            }
-            return RDB_expr_attr(exp->var.attrname);
-    }
-    abort();
-}
-
 static int
 evaluate_where(RDB_expression *exp, const RDB_object *tplp,
         RDB_transaction *txp, RDB_object *valp)
@@ -1104,24 +1180,6 @@ evaluate_extend(RDB_expression *exp, const RDB_object *tplp,
 
     RDB_destroy_obj(&tobj);
     return ret;
-}
-
-static RDB_summarize_add *
-expv_to_addv(int addc, RDB_expression **expv, const RDB_object *tplp)
-{
-    int i;
-    RDB_summarize_add *addv = malloc(sizeof (RDB_summarize_add) * addc);
-    if (addv == NULL)
-        return NULL;
-    for (i = 0; i < addc; i++) {
-        addv[i].op = expv[i]->var.op.op;
-        if (addv[i].op != RDB_COUNT) {
-            addv[i].exp = expr_resolve_attrs(expv[i]->var.op.argv[0],
-                    tplp);
-        }
-        addv[i].name = expv[i]->var.op.name;
-    }
-    return addv;
 }
 
 static int

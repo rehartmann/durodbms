@@ -300,12 +300,22 @@ RDB_rename_relation_type(const RDB_type *typ, int renc, const RDB_renaming renv[
         RDB_type **);
 
 int
+RDB_summarize_type(RDB_type *tb1typ, RDB_type *tb2typ,
+        int addc, const RDB_summarize_add addv[],
+        int avgc, char **avgv, RDB_transaction *txp,
+        RDB_type **newtypp);
+
+int
 RDB_wrap_tuple_type(const RDB_type *typ, int wrapc,
         const RDB_wrapping wrapv[], RDB_type **newtypp);
 
 int
 RDB_wrap_relation_type(const RDB_type *typ, int wrapc,
         const RDB_wrapping wrapv[], RDB_type **newtypp);
+
+int
+RDB_unwrap_tuple_type(const RDB_type *typ, int attrc, char *attrv[],
+        RDB_type **newtypp);
 
 int
 RDB_unwrap_relation_type(const RDB_type *typ, int attrc, char *attrv[],

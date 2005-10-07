@@ -376,6 +376,26 @@ duro::table expr t {EXTEND TABLE_DEE
         ADD (EXTEND TABLE_DEE ADD (1 AS N, 2 AS M)
              GROUP { N, M } AS R AS R)} $tx
 
+duro::table drop t $tx
+
+duro::table expr t {EXTEND TABLE_DEE
+        ADD (SUMMARIZE (EXTEND TABLE_DEE ADD (1 AS N))
+             PER TABLE_DEE ADD (COUNT AS C) AS R)} $tx
+
+duro::table drop t $tx
+
+duro::table expr t {EXTEND TABLE_DEE
+        ADD ((EXTEND TABLE_DEE ADD (1 AS N, 2 AS M)
+             GROUP { N, M } AS R) UNGROUP R AS R)} $tx
+
+duro::table drop t $tx
+
+duro::table expr t {EXTEND TABLE_DEE
+        ADD ((EXTEND TABLE_DEE ADD (1 AS N, 2 AS M)
+             WRAP ({ N, M } AS T)) UNWRAP (T) AS T)} $tx
+
+duro::table drop t $tx
+
 duro::commit $tx
 
 # Close DB environment
