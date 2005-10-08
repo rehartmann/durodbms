@@ -1648,6 +1648,8 @@ RDB_multi_assign(int insc, const RDB_ma_insert insv[],
     int ninsc;
     int nupdc;
     int ndelc;
+    RDB_transaction subtx;
+    RDB_transaction *atxp = NULL;
     RDB_ma_insert *ninsv = NULL;
     RDB_ma_update *nupdv = NULL;
     RDB_ma_delete *ndelv = NULL;
@@ -1686,28 +1688,20 @@ RDB_multi_assign(int insc, const RDB_ma_insert insv[],
      */
 
     for (i = 0; i < updc; i++) {
-        RDB_type *typ;
-
         if (updv[i].condp != NULL) {
-            ret = RDB_expr_type(updv[i].condp, updv[i].tbp->typ->var.basetyp,
-                    txp, &typ);
+            ret = _RDB_check_expr_type(updv[i].condp,
+                    updv[i].tbp->typ->var.basetyp, &RDB_BOOLEAN, txp);
             if (ret != RDB_OK)
                 return ret;
-            if (typ != &RDB_BOOLEAN)
-                return RDB_TYPE_MISMATCH;
         }
     }
 
     for (i = 0; i < delc; i++) {
-        RDB_type *typ;
-
         if (delv[i].condp != NULL) {
-            ret = RDB_expr_type(delv[i].condp, delv[i].tbp->typ->var.basetyp,
-                    txp, &typ);
+            ret = _RDB_check_expr_type(delv[i].condp,
+                    delv[i].tbp->typ->var.basetyp, &RDB_BOOLEAN, txp);
             if (ret != RDB_OK)
                 return ret;
-            if (typ != &RDB_BOOLEAN)
-                return RDB_TYPE_MISMATCH;
         }
     }
 
@@ -1718,17 +1712,14 @@ RDB_multi_assign(int insc, const RDB_ma_insert insv[],
         for (j = 0; j < updv[i].updc; j++) {
             RDB_attr *attrp = _RDB_tuple_type_attr(
                     updv[i].tbp->typ->var.basetyp, updv[i].updv[j].name);
-            RDB_type *typ;
-
             if (attrp == NULL)
                 return RDB_ATTRIBUTE_NOT_FOUND;
+
             if (RDB_type_is_scalar(attrp->typ)) {
-                ret = RDB_expr_type(updv[i].updv[j].exp,
-                        updv[i].tbp->typ->var.basetyp, txp, &typ);
+                ret = _RDB_check_expr_type(updv[i].updv[j].exp,
+                        updv[i].tbp->typ->var.basetyp, attrp->typ, txp);
                 if (ret != RDB_OK)
                     return ret;
-                if (!RDB_type_equals(typ, attrp->typ))
-                    return RDB_TYPE_MISMATCH;
             }
         }
     }
@@ -1910,23 +1901,34 @@ RDB_multi_assign(int insc, const RDB_ma_insert insv[],
     /*
      * Execute assignments
      */
+
+    /* Start subtransaction, if there is more than one assignment */
+    if (ninsc + nupdc + ndelc + copyc > 1) {
+        ret = RDB_begin_tx(&subtx, RDB_tx_db(txp), txp);
+        if (ret != RDB_OK)
+            goto cleanup;
+        atxp = &subtx;
+    } else {
+        atxp = txp;
+    }
+
     for (i = 0; i < ninsc; i++) {
         if (ninsv[i].tbp->kind == RDB_TB_REAL) {
-            ret = _RDB_insert_real(ninsv[i].tbp, ninsv[i].tplp, txp);
+            ret = _RDB_insert_real(ninsv[i].tbp, ninsv[i].tplp, atxp);
             if (ret != RDB_OK)
                 goto cleanup;
         }
     }
     for (i = 0; i < nupdc; i++) {
         if (nupdv[i].tbp->kind == RDB_TB_REAL) {
-            ret = do_update(&nupdv[i], txp);
+            ret = do_update(&nupdv[i], atxp);
             if (ret != RDB_OK)
                 goto cleanup;
         }
     }
     for (i = 0; i < ndelc; i++) {
         if (ndelv[i].tbp->kind == RDB_TB_REAL) {
-            ret = do_delete(&ndelv[i], txp);
+            ret = do_delete(&ndelv[i], atxp);
             if (ret != RDB_OK)
                 goto cleanup;
         }
@@ -1937,12 +1939,18 @@ RDB_multi_assign(int insc, const RDB_ma_insert insv[],
             ret = RDB_NOT_SUPPORTED;
             goto cleanup;
         }
-        ret = copy_obj(copyv[i].dstp, copyv[i].srcp, txp);
+        ret = copy_obj(copyv[i].dstp, copyv[i].srcp, atxp);
         if (ret != RDB_OK)
             goto cleanup;
     }
 
-    ret = RDB_OK;
+    /* Commit subtx, if it has been started */
+    if (atxp == &subtx) {
+        ret = RDB_commit(&subtx);
+        atxp = NULL;
+    } else {
+        ret = RDB_OK;
+    }
 
 cleanup:
     /*
@@ -1972,6 +1980,14 @@ cleanup:
             }
         }
         free(ndelv);
+    }
+
+    /* Abort subtx, if necessary */
+    if (ret != RDB_OK) {
+        if (atxp == &subtx) {
+            RDB_rollback(&subtx);
+        }
+        _RDB_handle_syserr(txp, ret);
     }
 
     return ret;

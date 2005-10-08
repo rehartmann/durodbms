@@ -120,7 +120,6 @@ RDB_select(RDB_table *tbp, RDB_expression *condp, RDB_transaction *txp,
         RDB_table **resultpp)
 {
     int ret;
-    RDB_type *typ;
 
     if (!RDB_tx_is_running(txp))
         return RDB_INVALID_TRANSACTION;
@@ -129,11 +128,9 @@ RDB_select(RDB_table *tbp, RDB_expression *condp, RDB_transaction *txp,
      * Check if condition is of type BOOLEAN
      */
     
-    ret = RDB_expr_type(condp, tbp->typ->var.basetyp, txp, &typ);
+    ret = _RDB_check_expr_type(condp, tbp->typ->var.basetyp, &RDB_BOOLEAN, txp);
     if (ret != RDB_OK)
         return ret;
-    if (typ != &RDB_BOOLEAN)
-        return RDB_TYPE_MISMATCH;
 
     return _RDB_select(tbp, condp, resultpp);
 }
@@ -333,8 +330,10 @@ _RDB_extend(RDB_table *tbp, int attrc, const RDB_virtual_attr attrv[],
         ret = RDB_NO_MEMORY;
         goto error;
     }
-    for (i = 0; i < attrc; i++)
+    for (i = 0; i < attrc; i++) {
         attrdefv[i].name = NULL;
+        attrdefv[i].typ = NULL;
+    }
     for (i = 0; i < attrc; i++) {
         newtbp->var.extend.attrv[i].name = RDB_dup_str(attrv[i].name);
         newtbp->var.extend.attrv[i].exp = attrv[i].exp;
@@ -352,8 +351,12 @@ _RDB_extend(RDB_table *tbp, int attrc, const RDB_virtual_attr attrv[],
     if (ret != RDB_OK)
         goto error;
 
-    for (i = 0; i < attrc; i++)
+    for (i = 0; i < attrc; i++) {
         free(attrdefv[i].name);
+        if (!RDB_type_is_scalar(attrdefv[i].typ)) {
+            RDB_drop_type(attrdefv[i].typ, NULL);
+        }
+    }
     free(attrdefv);
     return RDB_OK;
 
@@ -362,8 +365,13 @@ error:
         RDB_drop_type(newtbp->typ, NULL);
     free(newtbp);
     if (attrdefv != NULL) {
-        for (i = 0; i < attrc; i++)
+        for (i = 0; i < attrc; i++) {
             free(attrdefv[i].name);
+            if (attrdefv[i].typ != NULL
+                    && !RDB_type_is_scalar(attrdefv[i].typ)) {
+                RDB_drop_type(attrdefv[i].typ, NULL);
+            }
+        }
         free(attrdefv);
     }
     _RDB_handle_syserr(txp, ret);

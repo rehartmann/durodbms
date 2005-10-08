@@ -465,12 +465,20 @@ _RDB_obj_to_field(RDB_field *, RDB_object *);
 
 #define _RDB_pkey_len(tbp) ((tbp)->keyv[0].strc)
 
+/*
+ * Return the type of the expression.
+ * If the type is non-scalar, it must be managed by the caller.
+ */
 int
-RDB_expr_type(const RDB_expression *exp, const RDB_type *, RDB_transaction *,
+RDB_expr_type(const RDB_expression *, const RDB_type *, RDB_transaction *,
         RDB_type **);
 
 RDB_type *
 _RDB_tuple_type(const RDB_object *tplp);
+
+int
+_RDB_check_expr_type(const RDB_expression *exp, const RDB_type *tuptyp,
+        const RDB_type *checktyp, RDB_transaction *);
 
 int
 _RDB_check_type_constraint(RDB_object *valp, RDB_transaction *txp);

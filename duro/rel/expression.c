@@ -640,6 +640,24 @@ RDB_expr_type(const RDB_expression *exp, const RDB_type *tuptyp,
 }
 
 int
+_RDB_check_expr_type(const RDB_expression *exp, const RDB_type *tuptyp,
+        const RDB_type *checktyp, RDB_transaction *txp)
+{
+    RDB_type *typ;
+    int ret = RDB_expr_type(exp, tuptyp, txp, &typ);
+    if (ret != RDB_OK)
+        return ret;
+
+    ret = RDB_type_equals(typ, checktyp) ? RDB_OK : RDB_TYPE_MISMATCH;
+    if (!RDB_type_is_scalar(typ)) {
+        ret = RDB_drop_type(typ, NULL);
+        if (ret != RDB_OK)
+            return ret;
+    }
+    return ret;
+}
+
+int
 _RDB_expr_equals(const RDB_expression *ex1p, const RDB_expression *ex2p,
         RDB_transaction *txp, RDB_bool *resp)
 {

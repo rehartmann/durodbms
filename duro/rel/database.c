@@ -662,8 +662,6 @@ _RDB_create_table(const char *name, RDB_bool persistent,
         allkey.strc = attrc;
         allkey.strv = malloc(sizeof (char *) * attrc);
         if (allkey.strv == NULL) {
-            if (txp != NULL)
-                RDB_rollback_all(txp);
             return RDB_NO_MEMORY;
         }
         for (i = 0; i < attrc; i++)
@@ -891,7 +889,6 @@ RDB_set_table_name(RDB_table *tbp, const char *name, RDB_transaction *txp)
         free(tbp->name);
     tbp->name = RDB_dup_str(name);
     if (tbp->name == NULL) {
-        RDB_rollback_all(txp);
         return RDB_NO_MEMORY;
     }
 

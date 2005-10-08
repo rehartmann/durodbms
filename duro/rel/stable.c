@@ -680,7 +680,6 @@ RDB_create_table_index(const char *name, RDB_table *tbp, int idxcompc,
         tbp->stp->indexv = realloc(tbp->stp->indexv,
                 (tbp->stp->indexc + 1) * sizeof (_RDB_tbindex));
         if (tbp->stp->indexv == NULL) {
-            RDB_rollback_all(txp);
             return RDB_NO_MEMORY;
         }
 
@@ -688,7 +687,6 @@ RDB_create_table_index(const char *name, RDB_table *tbp, int idxcompc,
 
         indexp->name = RDB_dup_str(name);
         if (indexp->name == NULL) {
-            RDB_rollback_all(txp);
             return RDB_NO_MEMORY;
         }
 
@@ -696,14 +694,12 @@ RDB_create_table_index(const char *name, RDB_table *tbp, int idxcompc,
         indexp->attrv = malloc(sizeof (RDB_seq_item) * idxcompc);
         if (indexp->attrv == NULL) {
             free(indexp->name);
-            RDB_rollback_all(txp);
             return RDB_NO_MEMORY;
         }
 
         for (i = 0; i < idxcompc; i++) {
             indexp->attrv[i].attrname = RDB_dup_str(idxcompv[i].attrname);
             if (indexp->attrv[i].attrname == NULL) {
-                RDB_rollback_all(txp);
                 return RDB_NO_MEMORY;
             }
             indexp->attrv[i].asc = idxcompv[i].asc;

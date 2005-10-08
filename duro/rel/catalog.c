@@ -2097,7 +2097,6 @@ _RDB_cat_get_ro_op(const char *name, int argc, RDB_type *argtv[],
                    RDB_obj_to_expr(&typesobj)), (RDB_expression *) NULL);
     RDB_destroy_obj(&typesobj);
     if (exp == NULL) {
-        RDB_rollback_all(txp);
         return RDB_NO_MEMORY;
     }
     ret = RDB_select(txp->dbp->dbrootp->ro_ops_tbp, exp, txp, &vtbp);
@@ -2227,7 +2226,6 @@ _RDB_cat_get_upd_op(const char *name, int argc, RDB_type *argtv[],
                    RDB_obj_to_expr(&typesobj)), (RDB_expression *) NULL);
     RDB_destroy_obj(&typesobj);
     if (exp == NULL) {
-        RDB_rollback_all(txp);
         return RDB_NO_MEMORY;
     }
     ret = RDB_select(txp->dbp->dbrootp->upd_ops_tbp, exp, txp, &vtbp);

@@ -1107,7 +1107,6 @@ RDB_call_ro_op(const char *name, int argc, RDB_object *argv[],
 
     argtv = valv_to_typev(argc, argv);
     if (argtv == NULL) {
-        RDB_rollback_all(txp);
         return RDB_NO_MEMORY;
     }
 
@@ -1245,7 +1244,6 @@ RDB_call_update_op(const char *name, int argc, RDB_object *argv[],
 
     argtv = valv_to_typev(argc, argv);
     if (argtv == NULL) {
-        RDB_rollback_all(txp);
         return RDB_NO_MEMORY;
     }
     ret = _RDB_cat_get_upd_op(name, argc, argtv, txp, &op);
@@ -1282,7 +1280,6 @@ RDB_drop_op(const char *name, RDB_transaction *txp)
      */
     exp = RDB_eq(RDB_expr_attr("NAME"), RDB_string_to_expr(name));
     if (exp == NULL) {
-        RDB_rollback_all(txp);
         return RDB_NO_MEMORY;
     }
     ret = RDB_select(txp->dbp->dbrootp->ro_ops_tbp, exp, txp, &vtbp);
@@ -1310,14 +1307,13 @@ RDB_drop_op(const char *name, RDB_transaction *txp)
             _RDB_free_upd_ops(oldop);
         ret = RDB_hashmap_put(&txp->dbp->dbrootp->upd_opmap, name, op);
         if (ret != RDB_OK) {
-            RDB_rollback_all(txp);
+            _RDB_handle_syserr(txp, ret);
             return ret;
         }
         
         /* Delete all versions of update operator from the database */
         exp = RDB_eq(RDB_expr_attr("NAME"), RDB_string_to_expr(name));
         if (exp == NULL) {
-            RDB_rollback_all(txp);
             return RDB_NO_MEMORY;
         }
         ret = RDB_delete(txp->dbp->dbrootp->upd_ops_tbp, exp, txp);
@@ -1336,14 +1332,13 @@ RDB_drop_op(const char *name, RDB_transaction *txp)
             _RDB_free_ro_ops(oldop);
         ret = RDB_hashmap_put(&txp->dbp->dbrootp->ro_opmap, name, op);
         if (ret != RDB_OK) {
-            RDB_rollback_all(txp);
+            _RDB_handle_syserr(txp, ret);
             return ret;
         }
 
         /* Delete all versions of update operator from the database */
         exp = RDB_eq(RDB_expr_attr("NAME"), RDB_string_to_expr(name));
         if (exp == NULL) {
-            RDB_rollback_all(txp);
             return RDB_NO_MEMORY;
         }
         ret = RDB_delete(txp->dbp->dbrootp->ro_ops_tbp, exp, txp);

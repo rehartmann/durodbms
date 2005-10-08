@@ -32,9 +32,6 @@ _RDB_insert_real(RDB_table *tbp, const RDB_object *tplp,
 
     fvp = malloc(sizeof(RDB_field) * attrcount);
     if (fvp == NULL) {
-        if (txp != NULL) {
-            RDB_rollback_all(txp);
-        }
         ret = RDB_NO_MEMORY;
         goto cleanup;
     }

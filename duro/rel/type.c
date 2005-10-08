@@ -657,7 +657,6 @@ RDB_drop_type(RDB_type *typ, RDB_transaction *txp)
         wherep = RDB_ro_op_va("=", RDB_expr_attr("TYPENAME"),
                 RDB_string_to_expr(typ->name), (RDB_expression *) NULL);
         if (wherep == NULL) {
-            RDB_rollback_all(txp);
             return RDB_NO_MEMORY;
         }
         ret = RDB_delete(txp->dbp->dbrootp->types_tbp, wherep, txp);
@@ -1238,8 +1237,11 @@ RDB_summarize_type(RDB_type *tb1typ, RDB_type *tb2typ,
                 goto error;
             ret = aggr_type(tb1typ->var.basetyp, typ,
                         addv[i].op, &attrv[i].typ);
-            if (ret != RDB_OK)
+            if (ret != RDB_OK) {
+                if (!RDB_type_is_scalar(typ))
+                    RDB_drop_type(typ, NULL);
                 goto error;
+            }
         }
 
         attrv[i].name = addv[i].name;

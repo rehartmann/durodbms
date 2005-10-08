@@ -141,7 +141,6 @@ ungroup_contains(RDB_table *tbp, const RDB_object *tplp, RDB_transaction *txp)
             i++;
         }
         if (condp == NULL) {
-            RDB_rollback_all(txp);
             return RDB_NO_MEMORY;
         }
 
