@@ -719,8 +719,12 @@ RDB_create_table_index(const char *name, RDB_table *tbp, int idxcompc,
 error:
     _RDB_handle_syserr(txp, ret);
     if (tbp->stp != NULL) {
-        tbp->stp->indexv = realloc(tbp->stp->indexv,
-                (--tbp->stp->indexc) * sizeof (_RDB_tbindex)); /* !! */
+        /* Remove index entry */
+        void *ivp = realloc(tbp->stp->indexv,
+                (--tbp->stp->indexc) * sizeof (_RDB_tbindex));
+        if (ivp == NULL)
+            return RDB_NO_MEMORY;
+        tbp->stp->indexv = ivp;
     }
     return ret;
 }

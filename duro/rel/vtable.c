@@ -1175,6 +1175,21 @@ _RDB_dup_vtable(RDB_table *tbp)
     abort();
 }
 
+static RDB_bool
+renamings_equals(int renc, RDB_renaming renv1[], RDB_renaming renv2[])
+{
+    int i, ai;
+
+    for (i = 0; i < renc; i++) {
+        ai = _RDB_find_rename_from(renc, renv2, renv1[i].from);
+        if (ai == -1)
+            return RDB_FALSE;
+        if (strcmp(renv1[i].to, renv2[ai].to) != 0)
+            return RDB_FALSE;
+    }
+    return RDB_TRUE;
+}
+
 RDB_bool
 _RDB_table_def_equals(RDB_table *tb1p, RDB_table *tb2p, RDB_transaction *txp)
 {
@@ -1228,9 +1243,14 @@ _RDB_table_def_equals(RDB_table *tb1p, RDB_table *tb2p, RDB_transaction *txp)
             return (RDB_bool) (RDB_type_equals(tb1p->typ, tb2p->typ)
                     && _RDB_table_def_equals(tb1p->var.project.tbp,
                             tb2p->var.project.tbp, txp));
+        case RDB_TB_RENAME:
+            return (RDB_bool) (_RDB_table_def_equals(tb1p->var.rename.tbp,
+                            tb2p->var.rename.tbp, txp)
+                    && tb1p->var.rename.renc == tb2p->var.rename.renc
+                    && renamings_equals(tb1p->var.rename.renc,
+                            tb1p->var.rename.renv, tb2p->var.rename.renv));
         case RDB_TB_EXTEND:
         case RDB_TB_SUMMARIZE:
-        case RDB_TB_RENAME:
         case RDB_TB_WRAP:
         case RDB_TB_UNWRAP:
         case RDB_TB_GROUP:

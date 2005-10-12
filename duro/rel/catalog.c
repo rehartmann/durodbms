@@ -1356,7 +1356,6 @@ _RDB_cat_get_rtable(const char *name, RDB_transaction *txp, RDB_table **tbpp)
     int defvalc;
     int keyc;
     RDB_string_vec *keyv;
-    RDB_transaction tx;
     int indexc;
     _RDB_tbindex *indexv;
     char *recmapname = NULL;
@@ -1517,11 +1516,6 @@ _RDB_cat_get_rtable(const char *name, RDB_transaction *txp, RDB_table **tbpp)
         }
     }
 
-    /* Open table in a subtransaction (required by Berkeley DB) (!!) */
-    ret = RDB_begin_tx(&tx, txp->dbp, txp);
-    if (ret != RDB_OK)
-        goto error;
-
     ret = _RDB_new_rtable(name, RDB_TRUE, attrc, attrv, keyc, keyv, usr, tbpp);
     for (i = 0; i < keyc; i++) {
         for (j = 0; j < keyv[i].strc; j++)
@@ -1533,9 +1527,8 @@ _RDB_cat_get_rtable(const char *name, RDB_transaction *txp, RDB_table **tbpp)
         goto error;
     }
 
-    indexc = _RDB_cat_get_indexes(name, tx.dbp->dbrootp, &tx, &indexv);
+    indexc = _RDB_cat_get_indexes(name, txp->dbp->dbrootp, txp, &indexv);
     if (indexc < 0) {
-        RDB_rollback(&tx);
         ret = indexc;
         goto error;
     }
@@ -1545,17 +1538,11 @@ _RDB_cat_get_rtable(const char *name, RDB_transaction *txp, RDB_table **tbpp)
     }
     if (recmapname != NULL) {
         ret = _RDB_open_stored_table(*tbpp, txp->envp, recmapname,
-                indexc, indexv, &tx);
+                indexc, indexv, txp);
         if (ret != RDB_OK) {
-            RDB_rollback(&tx);
             goto error;
         }
     }
-
-    ret = RDB_commit(&tx);
-    if (ret != RDB_OK)
-        goto error;
-
     for (i = 0; i < attrc; i++) {
         free(attrv[i].name);
         if (attrv[i].defaultp != NULL) {

@@ -250,7 +250,7 @@ expr_op_type(const RDB_expression *exp, const RDB_type *tuptyp,
                 return RDB_INVALID_ARGUMENT;
             }
             renv[i].from = RDB_obj_string(&exp->var.op.argv[1 + i * 2]->var.obj);
-            renv[i].to = RDB_obj_string(&exp->var.op.argv[1 + i * 2]->var.obj);
+            renv[i].to = RDB_obj_string(&exp->var.op.argv[2 + i * 2]->var.obj);
         }
 
         switch (tbtyp->kind) {

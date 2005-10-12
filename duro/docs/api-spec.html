@@ -1258,7 +1258,17 @@ A pointer to the result table is stored at the location pointed to by
 
 <h3>Errors</h3>
 
-<p>The call may fail for a <a href="#syserr">system error</a>.
+<dl>
+<dt>RDB_ATTRIBUTE_NOT_FOUND
+<dd>One of the source attributes does not exist in the table specified by
+<var>tbp</var>.
+<dt>RDB_INVALID_ARGUMENT
+<dd>A source or destination attribute appears twice in <var>renv</var>.
+<dd>A destination attribute already exists in the table specified by
+<var>tbp</var>.
+</dl>
+
+<p>The call may also fail for a <a href="#syserr">system error</a>.
 
 <hr>
 

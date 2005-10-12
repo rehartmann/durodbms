@@ -1062,8 +1062,29 @@ RDB_rename_tuple_type(const RDB_type *typ, int renc, const RDB_renaming renv[],
         RDB_type **newtypp)
 {
     RDB_type *newtyp;
-    int i;
+    int i, j;
     int ret;
+
+    /*
+     * Check arguments
+     */
+    for (i = 0; i < renc; i++) {
+        /* Check if source attribute exists */
+        if (_RDB_tuple_type_attr(typ, renv[i].from) == NULL)
+            return RDB_ATTRIBUTE_NOT_FOUND;
+
+        /* Check if the dest attribute does not exist */
+        if (_RDB_tuple_type_attr(typ, renv[i].to) != NULL)
+            return RDB_INVALID_ARGUMENT;
+
+        for (j = i + 1; j < renc; j++) {
+            /* Check if source or dest appears twice */
+            if (strcmp(renv[i].from, renv[j].from) == 0
+                    || strcmp(renv[i].to, renv[j].to) == 0) {
+                return RDB_INVALID_ARGUMENT;
+            }
+        }
+    }
 
     newtyp = malloc(sizeof (RDB_type));
     if (newtyp == NULL)
