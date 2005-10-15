@@ -1254,9 +1254,13 @@ _RDB_table_def_equals(RDB_table *tb1p, RDB_table *tb2p, RDB_transaction *txp)
         case RDB_TB_WRAP:
         case RDB_TB_UNWRAP:
         case RDB_TB_GROUP:
-        case RDB_TB_UNGROUP:
             /* !! */
             return RDB_FALSE;
+        case RDB_TB_UNGROUP:
+            return (RDB_bool) (_RDB_table_def_equals(tb1p->var.ungroup.tbp,
+                            tb2p->var.ungroup.tbp, txp)
+                    && strcmp(tb1p->var.ungroup.attr, tb2p->var.ungroup.attr)
+                            == 0);
     }
     /* Must never be reached */
     abort();

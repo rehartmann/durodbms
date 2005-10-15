@@ -1315,7 +1315,7 @@ A pointer to the result table is stored at the location pointed to by
 #include &lt;rel/rdb.h&gt;
 
 int
-RDB_extend(RDB_table *, int attrc, const <a href="#virtual_attr">RDB_virtual_attr</a> attrv[],
+RDB_extend(RDB_table *tbp, int attrc, const <a href="#virtual_attr">RDB_virtual_attr</a> attrv[],
         RDB_transaction *txp, RDB_table **resultpp);
 </pre>
 
@@ -1343,7 +1343,14 @@ automatically dropped when the table is dropped.
 <dd><var>txp</var> does not point to a running transaction.
 <dt>RDB_INVALID_ARGUMENT
 <dd>An invalid attribute name has been specified.
-<dd>One of the additional attributes already exists in the original table.
+<dd>One of the additional attributes already exists in the table
+specified by <var>tbp</var>.
+<dt>RDB_NOT_FOUND
+<dd>One of the expressions in <var>attrv</var> does not carry type
+information.
+<dt>RDB_ATTRIBUTE_NOT_FOUND
+<dd>One of the expressions in <var>attr</var> contains an attribute
+which is does not exist in the table specified by <var>tbp</var>.
 </dl>
 
 <p>The call may also fail for a <a href="#syserr">system error</a>,
