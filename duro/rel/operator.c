@@ -18,7 +18,7 @@ int
 RDB_create_ro_op(const char *name, int argc, RDB_type *argtv[], RDB_type *rtyp,
                  const char *libname, const char *symname,
                  const void *iargp, size_t iarglen, 
-                 RDB_transaction *txp)
+                 RDB_exec_context *ecp, RDB_transaction *txp)
 {
     RDB_object tpl;
     RDB_object iarg;
@@ -43,14 +43,14 @@ RDB_create_ro_op(const char *name, int argc, RDB_type *argtv[], RDB_type *rtyp,
     RDB_init_obj(&tpl);
     RDB_init_obj(&rtypobj);
 
-    ret = RDB_tuple_set_string(&tpl, "NAME", name);
+    ret = RDB_tuple_set_string(&tpl, "NAME", name, ecp);
     if (ret != RDB_OK)
         goto cleanup;
 
-    ret = RDB_tuple_set_string(&tpl, "LIB", libname);
+    ret = RDB_tuple_set_string(&tpl, "LIB", libname, ecp);
     if (ret != RDB_OK)
         goto cleanup;
-    ret = RDB_tuple_set_string(&tpl, "SYMBOL", symname);
+    ret = RDB_tuple_set_string(&tpl, "SYMBOL", symname, ecp);
     if (ret != RDB_OK)
         goto cleanup;
 
@@ -60,35 +60,35 @@ RDB_create_ro_op(const char *name, int argc, RDB_type *argtv[], RDB_type *rtyp,
     RDB_init_obj(&iarg);
     ret = RDB_binary_set(&iarg, 0, iargp, iarglen);
     if (ret != RDB_OK) {
-        RDB_destroy_obj(&iarg);
+        RDB_destroy_obj(&iarg, ecp);
         goto cleanup;
     }
-    ret = RDB_tuple_set(&tpl, "IARG", &iarg);
-    RDB_destroy_obj(&iarg);
+    ret = RDB_tuple_set(&tpl, "IARG", &iarg, ecp);
+    RDB_destroy_obj(&iarg, ecp);
     if (ret != RDB_OK)
         goto cleanup;
 
     /* Set ARGTYPES to array of serialized argument types */
     RDB_init_obj(&typesobj);
-    ret = _RDB_make_typesobj(argc, argtv, &typesobj);
+    ret = _RDB_make_typesobj(argc, argtv, ecp, &typesobj);
     if (ret != RDB_OK) {
-        RDB_destroy_obj(&typesobj);
+        RDB_destroy_obj(&typesobj, ecp);
         goto cleanup;
     }
 
-    ret = RDB_tuple_set(&tpl, "ARGTYPES", &typesobj);
-    RDB_destroy_obj(&typesobj);
+    ret = RDB_tuple_set(&tpl, "ARGTYPES", &typesobj, ecp);
+    RDB_destroy_obj(&typesobj, ecp);
     if (ret != RDB_OK)
         goto cleanup;
 
-    ret = _RDB_type_to_obj(&rtypobj, rtyp);
+    ret = _RDB_type_to_obj(&rtypobj, rtyp, ecp);
     if (ret != RDB_OK)
         goto cleanup;
-    ret = RDB_tuple_set(&tpl, "RTYPE", &rtypobj);
+    ret = RDB_tuple_set(&tpl, "RTYPE", &rtypobj, ecp);
     if (ret != RDB_OK)
         goto cleanup;
 
-    ret = RDB_insert(txp->dbp->dbrootp->ro_ops_tbp, &tpl, txp);
+    ret = RDB_insert(txp->dbp->dbrootp->ro_ops_tbp, &tpl, ecp, txp);
     if (ret != RDB_OK)
         goto cleanup;
 
@@ -97,7 +97,7 @@ RDB_create_ro_op(const char *name, int argc, RDB_type *argtv[], RDB_type *rtyp,
             && argtv[0] == argtv[1] && !RDB_type_is_builtin(argtv[0])) {
         RDB_ro_op_desc *cmpop;
 
-        ret = _RDB_get_ro_op(name, argc, argtv, txp, &cmpop);
+        ret = _RDB_get_ro_op(name, argc, argtv, ecp, txp, &cmpop);
         if (ret != RDB_OK)
             goto cleanup;
         argtv[0]->comparep = cmpop->funcp;
@@ -107,8 +107,8 @@ RDB_create_ro_op(const char *name, int argc, RDB_type *argtv[], RDB_type *rtyp,
     }
 
 cleanup:
-    RDB_destroy_obj(&tpl);
-    RDB_destroy_obj(&rtypobj);
+    RDB_destroy_obj(&tpl, ecp);
+    RDB_destroy_obj(&rtypobj, ecp);
     return ret;
 }
 
@@ -116,7 +116,7 @@ int
 RDB_create_update_op(const char *name, int argc, RDB_type *argtv[],
                   RDB_bool updv[], const char *libname, const char *symname,
                   const void *iargp, size_t iarglen,
-                  RDB_transaction *txp)
+                  RDB_exec_context *ecp, RDB_transaction *txp)
 {
     RDB_object tpl;
     RDB_object iarg;
@@ -138,13 +138,13 @@ RDB_create_update_op(const char *name, int argc, RDB_type *argtv[],
     }
 
     RDB_init_obj(&tpl);
-    ret = RDB_tuple_set_string(&tpl, "NAME", name);
+    ret = RDB_tuple_set_string(&tpl, "NAME", name, ecp);
     if (ret != RDB_OK)
         goto cleanup;
-    RDB_tuple_set_string(&tpl, "LIB", libname);
+    RDB_tuple_set_string(&tpl, "LIB", libname, ecp);
     if (ret != RDB_OK)
         goto cleanup;
-    RDB_tuple_set_string(&tpl, "SYMBOL", symname);
+    RDB_tuple_set_string(&tpl, "SYMBOL", symname, ecp);
     if (ret != RDB_OK)
         goto cleanup;
 
@@ -154,114 +154,114 @@ RDB_create_update_op(const char *name, int argc, RDB_type *argtv[],
     RDB_init_obj(&iarg);
     ret = RDB_binary_set(&iarg, 0, iargp, iarglen);
     if (ret != RDB_OK) {
-        RDB_destroy_obj(&iarg);
+        RDB_destroy_obj(&iarg, ecp);
         goto cleanup;
     }
-    ret = RDB_tuple_set(&tpl, "IARG", &iarg);
-    RDB_destroy_obj(&iarg);
+    ret = RDB_tuple_set(&tpl, "IARG", &iarg, ecp);
+    RDB_destroy_obj(&iarg, ecp);
     if (ret != RDB_OK)
         goto cleanup;
 
     RDB_init_obj(&updvobj);
     RDB_init_obj(&updobj);
-    RDB_set_array_length(&updvobj, (RDB_int) argc);
+    RDB_set_array_length(&updvobj, (RDB_int) argc, ecp);
     for (i = 0; i < argc; i++) {
         RDB_bool_to_obj(&updobj, updv[i]);
-        ret = RDB_array_set(&updvobj, (RDB_int) i, &updobj);
+        ret = RDB_array_set(&updvobj, (RDB_int) i, &updobj, ecp);
         if (ret != RDB_OK) {
-            RDB_destroy_obj(&updvobj);
-            RDB_destroy_obj(&updobj);
+            RDB_destroy_obj(&updvobj, ecp);
+            RDB_destroy_obj(&updobj, ecp);
             goto cleanup;
         }
     }
-    ret = RDB_tuple_set(&tpl, "UPDV", &updvobj);
-    RDB_destroy_obj(&updvobj);
-    RDB_destroy_obj(&updobj);
+    ret = RDB_tuple_set(&tpl, "UPDV", &updvobj, ecp);
+    RDB_destroy_obj(&updvobj, ecp);
+    RDB_destroy_obj(&updobj, ecp);
     if (ret != RDB_OK)
         goto cleanup;
 
     /* Set ARGTYPES to array of serialized arg types */
     RDB_init_obj(&typesobj);
-    ret = _RDB_make_typesobj(argc, argtv, &typesobj);
+    ret = _RDB_make_typesobj(argc, argtv, ecp, &typesobj);
     if (ret != RDB_OK) {
-        RDB_destroy_obj(&typesobj);
+        RDB_destroy_obj(&typesobj, ecp);
         goto cleanup;
     }
     
-    ret = RDB_tuple_set(&tpl, "ARGTYPES", &typesobj);
-    RDB_destroy_obj(&typesobj);
+    ret = RDB_tuple_set(&tpl, "ARGTYPES", &typesobj, ecp);
+    RDB_destroy_obj(&typesobj, ecp);
     if (ret != RDB_OK)
         goto cleanup;
 
-    ret = RDB_insert(txp->dbp->dbrootp->upd_ops_tbp, &tpl, txp);
+    ret = RDB_insert(txp->dbp->dbrootp->upd_ops_tbp, &tpl, ecp, txp);
 
 cleanup:
-    RDB_destroy_obj(&tpl);
+    RDB_destroy_obj(&tpl, ecp);
     return ret;
 }
 
 static void
-free_ro_op(RDB_ro_op_desc *op) {
+free_ro_op(RDB_ro_op_desc *op, RDB_exec_context *ecp) {
     int i;
 
     free(op->name);
     if (op->argtv != NULL) {
         for (i = 0; i < op->argc; i++) {
             if (RDB_type_name(op->argtv[i]) == NULL)
-                RDB_drop_type(op->argtv[i], NULL);
+                RDB_drop_type(op->argtv[i], ecp, NULL);
         }
         free(op->argtv);
     }
     if (op->rtyp != NULL && RDB_type_name(op->rtyp) == NULL)
-        RDB_drop_type(op->rtyp, NULL);
+        RDB_drop_type(op->rtyp, ecp, NULL);
     if (op->modhdl != NULL) {
         /* Built-in operator */
         lt_dlclose(op->modhdl);
-        RDB_destroy_obj(&op->iarg);
+        RDB_destroy_obj(&op->iarg, ecp);
     }
     free(op);
 }
 
 void
-_RDB_free_ro_ops(RDB_ro_op_desc *op)
+_RDB_free_ro_ops(RDB_ro_op_desc *op, RDB_exec_context *ecp)
 {
     do {
         RDB_ro_op_desc *nextop = op->nextp;
-        free_ro_op(op);
+        free_ro_op(op, ecp);
         op = nextop;
     } while (op != NULL);
 }
 
 static void
-free_upd_op(RDB_upd_op *op) {
+free_upd_op(RDB_upd_op *op, RDB_exec_context *ecp) {
     int i;
 
     free(op->name);
     for (i = 0; i < op->argc; i++) {
         if (RDB_type_name(op->argtv[i]) == NULL)
-            RDB_drop_type(op->argtv[i], NULL);
+            RDB_drop_type(op->argtv[i], ecp, NULL);
     }
     free(op->argtv);
     free(op->updv);
     lt_dlclose(op->modhdl);
-    RDB_destroy_obj(&op->iarg);
+    RDB_destroy_obj(&op->iarg, ecp);
     free(op);
 }
 
 void
-_RDB_free_upd_ops(RDB_upd_op *op)
+_RDB_free_upd_ops(RDB_upd_op *op, RDB_exec_context *ecp)
 {
     do {
         RDB_upd_op *nextop = op->nextp;
-        free_upd_op(op);
+        free_upd_op(op, ecp);
         op = nextop;
     } while (op != NULL);
 }
 
 static int
 eq_bool(const char *name, int argc, RDB_object *argv[],
-        const void *iargp, size_t iarglen, RDB_transaction *txp,
-        RDB_object *retvalp)
+        const void *iargp, size_t iarglen, RDB_exec_context *ecp,
+        RDB_transaction *txp, RDB_object *retvalp)
 {
     RDB_bool_to_obj(retvalp,
             (RDB_bool) (argv[0]->var.bool_val == argv[1]->var.bool_val));
@@ -270,8 +270,8 @@ eq_bool(const char *name, int argc, RDB_object *argv[],
 
 static int
 eq_binary(const char *name, int argc, RDB_object *argv[],
-        const void *iargp, size_t iarglen, RDB_transaction *txp,
-        RDB_object *retvalp)
+        const void *iargp, size_t iarglen, RDB_exec_context *ecp,
+        RDB_transaction *txp, RDB_object *retvalp)
 {
     if (argv[0]->var.bin.len != argv[1]->var.bin.len)
         RDB_bool_to_obj(retvalp, RDB_FALSE);
@@ -286,15 +286,17 @@ eq_binary(const char *name, int argc, RDB_object *argv[],
 /* Default equality operator */
 static int
 obj_equals(const char *name, int argc, RDB_object *argv[],
-        const void *iargp, size_t iarglen, RDB_transaction *txp,
-        RDB_object *retvalp)
+        const void *iargp, size_t iarglen, RDB_exec_context *ecp,
+        RDB_transaction *txp, RDB_object *retvalp)
 {
     int ret;
     RDB_bool res;
     RDB_type *arep = NULL;
 
-    if (argv[0]->kind != argv[1]->kind)
-        return RDB_TYPE_MISMATCH;
+    if (argv[0]->kind != argv[1]->kind) {
+        RDB_raise_type_mismatch("", ecp);
+        return RDB_ERROR;
+    }
 
     /*
      * Check if there is a comparison function associated with the type
@@ -315,13 +317,13 @@ obj_equals(const char *name, int argc, RDB_object *argv[],
         RDB_init_obj(&retval);
         retval.typ = &RDB_INTEGER;
         ret = (*arep->comparep)("compare", 2, argv, arep->compare_iargp,
-                arep->compare_iarglen, txp, &retval);
+                arep->compare_iarglen, ecp, txp, &retval);
         if (ret != RDB_OK) {
-            RDB_destroy_obj(&retval);
+            RDB_destroy_obj(&retval, ecp);
             return ret;
         }
         RDB_bool_to_obj(retvalp, (RDB_bool) RDB_obj_int(&retval) == 0);
-        RDB_destroy_obj(&retval);
+        RDB_destroy_obj(&retval, ecp);
         return RDB_OK;
     }
 
@@ -329,30 +331,33 @@ obj_equals(const char *name, int argc, RDB_object *argv[],
         case RDB_OB_INITIAL:
             return RDB_INVALID_ARGUMENT;
         case RDB_OB_BOOL:
-            return eq_bool("=", 2, argv, NULL, 0, txp, retvalp);
+            return eq_bool("=", 2, argv, NULL, 0, ecp, txp, retvalp);
         case RDB_OB_INT:
         case RDB_OB_RATIONAL:
             /* Must not happen, because there must be a comparsion function */
             return RDB_INTERNAL;
         case RDB_OB_BIN:
-            return eq_binary("=", 2, argv, NULL, 0, txp, retvalp);
+            return eq_binary("=", 2, argv, NULL, 0, ecp, txp, retvalp);
         case RDB_OB_TUPLE:
-            ret = _RDB_tuple_equals(argv[0], argv[1], txp, &res);
+            ret = _RDB_tuple_equals(argv[0], argv[1], ecp, txp, &res);
             if (ret != RDB_OK)
                 return ret;
             RDB_bool_to_obj(retvalp, res);
             break;
         case RDB_OB_TABLE:
-            if (!RDB_type_equals(argv[0]->var.tbp->typ, argv[1]->var.tbp->typ))
-                return RDB_TYPE_MISMATCH;
-            ret = RDB_table_equals(argv[0]->var.tbp, argv[1]->var.tbp, NULL,
+            if (!RDB_type_equals(argv[0]->var.tbp->typ,
+                    argv[1]->var.tbp->typ)) {
+                RDB_raise_type_mismatch("", ecp);
+                return RDB_ERROR;
+            }
+            ret = RDB_table_equals(argv[0]->var.tbp, argv[1]->var.tbp, ecp, NULL,
                     &res);
             if (ret != RDB_OK)
                 return ret;
             RDB_bool_to_obj(retvalp, res);
             break;
         case RDB_OB_ARRAY:
-            ret = _RDB_array_equals(argv[0], argv[1], txp, &res);
+            ret = _RDB_array_equals(argv[0], argv[1], ecp, txp, &res);
             if (ret != RDB_OK)
                 return ret;
             RDB_bool_to_obj(retvalp, res);
@@ -363,9 +368,9 @@ obj_equals(const char *name, int argc, RDB_object *argv[],
 
 int
 obj_not_equals(const char *name, int argc, RDB_object *argv[],
-        const void *iargp, size_t iarglen, RDB_transaction *txp,
-        RDB_object *retvalp) {
-    int ret = obj_equals("=", 2, argv, NULL, 0, txp, retvalp);
+        const void *iargp, size_t iarglen, RDB_exec_context *ecp,
+        RDB_transaction *txp, RDB_object *retvalp) {
+    int ret = obj_equals("=", 2, argv, NULL, 0, ecp, txp, retvalp);
     if (ret != RDB_OK)
         return ret;
     retvalp->var.bool_val = (RDB_bool) !retvalp->var.bool_val;
@@ -451,7 +456,7 @@ get_ro_op(RDB_dbroot *dbrootp, const char *name,
 }
 
 static RDB_type **
-valv_to_typev(int valc, RDB_object **valv)
+valv_to_typev(int valc, RDB_object **valv, RDB_exec_context *ecp)
 {
     int i;
     RDB_type **typv = malloc(sizeof (RDB_type *) * valc);
@@ -460,7 +465,7 @@ valv_to_typev(int valc, RDB_object **valv)
         return NULL;
     for (i = 0; i < valc; i++) {
         if (valv[i]->kind == RDB_OB_TUPLE)
-            typv[i] = _RDB_tuple_type(valv[i]);
+            typv[i] = _RDB_tuple_type(valv[i], ecp);
         else
             typv[i] = RDB_obj_type(valv[i]);
     }
@@ -469,7 +474,8 @@ valv_to_typev(int valc, RDB_object **valv)
 
 int
 _RDB_get_ro_op(const char *name, int argc, RDB_type *argtv[],
-               RDB_transaction *txp, RDB_ro_op_desc **opp)
+               RDB_exec_context *ecp, RDB_transaction *txp,
+               RDB_ro_op_desc **opp)
 {
     int i;
     int ret;
@@ -525,8 +531,8 @@ _RDB_get_ro_op(const char *name, int argc, RDB_type *argtv[],
             op = new_ro_op("=", 2, &RDB_BOOLEAN, &obj_equals);
             if (op == NULL)
                 return RDB_NO_MEMORY;
-            op->argtv[0] = _RDB_dup_nonscalar_type(argtv[0]);
-            op->argtv[1] = _RDB_dup_nonscalar_type(argtv[1]);
+            op->argtv[0] = _RDB_dup_nonscalar_type(argtv[0], ecp);
+            op->argtv[1] = _RDB_dup_nonscalar_type(argtv[1], ecp);
             ret = put_ro_op(txp->dbp->dbrootp, op);
             if (ret != RDB_OK)
                 return ret;
@@ -537,8 +543,8 @@ _RDB_get_ro_op(const char *name, int argc, RDB_type *argtv[],
             op = new_ro_op("<>", 2, &RDB_BOOLEAN, &obj_not_equals);
             if (op == NULL)
                 return RDB_NO_MEMORY;
-            op->argtv[0] = _RDB_dup_nonscalar_type(argtv[0]);
-            op->argtv[1] = _RDB_dup_nonscalar_type(argtv[1]);
+            op->argtv[0] = _RDB_dup_nonscalar_type(argtv[0], ecp);
+            op->argtv[1] = _RDB_dup_nonscalar_type(argtv[1], ecp);
             ret = put_ro_op(txp->dbp->dbrootp, op);
             if (ret != RDB_OK)
                 return ret;
@@ -550,7 +556,7 @@ _RDB_get_ro_op(const char *name, int argc, RDB_type *argtv[],
     /*
      * Operator was not found in map, so read from catalog
      */
-    ret = _RDB_cat_get_ro_op(name, argc, argtv, txp, opp);
+    ret = _RDB_cat_get_ro_op(name, argc, argtv, ecp, txp, opp);
     if (ret != RDB_OK) {
         if (ret == RDB_NOT_FOUND)
             ret = typmismatch ? RDB_TYPE_MISMATCH : RDB_OPERATOR_NOT_FOUND;
@@ -560,7 +566,7 @@ _RDB_get_ro_op(const char *name, int argc, RDB_type *argtv[],
     /* Insert operator into map */
     ret = put_ro_op(txp->dbp->dbrootp, *opp);
     if (ret != RDB_OK) {
-        free_ro_op(*opp);
+        free_ro_op(*opp, ecp);
         return ret;
     }
 
@@ -568,7 +574,8 @@ _RDB_get_ro_op(const char *name, int argc, RDB_type *argtv[],
 }
 
 int
-_RDB_check_type_constraint(RDB_object *valp, RDB_transaction *txp)
+_RDB_check_type_constraint(RDB_object *valp, RDB_exec_context *ecp,
+        RDB_transaction *txp)
 {
     int ret;
 
@@ -579,14 +586,14 @@ _RDB_check_type_constraint(RDB_object *valp, RDB_transaction *txp)
         RDB_init_obj(&tpl);
 
         /* Set tuple attribute */
-        ret = RDB_tuple_set(&tpl, valp->typ->name, valp);
+        ret = RDB_tuple_set(&tpl, valp->typ->name, valp, ecp);
         if (ret != RDB_OK) {
-            RDB_destroy_obj(&tpl);
+            RDB_destroy_obj(&tpl, ecp);
             return ret;
         }
-        ret = RDB_evaluate_bool(valp->typ->var.scalar.constraintp, &tpl, txp,
-                &result);
-        RDB_destroy_obj(&tpl);
+        ret = RDB_evaluate_bool(valp->typ->var.scalar.constraintp, &tpl,
+                ecp, txp, &result);
+        RDB_destroy_obj(&tpl, ecp);
         if (ret != RDB_OK) {
             return ret;
         }
@@ -599,8 +606,8 @@ _RDB_check_type_constraint(RDB_object *valp, RDB_transaction *txp)
 
 static int
 neq_bool(const char *name, int argc, RDB_object *argv[],
-        const void *iargp, size_t iarglen, RDB_transaction *txp,
-        RDB_object *retvalp)
+        const void *iargp, size_t iarglen, RDB_exec_context *ecp,
+        RDB_transaction *txp, RDB_object *retvalp)
 {
     RDB_bool_to_obj(retvalp,
             (RDB_bool) (argv[0]->var.bool_val != argv[1]->var.bool_val));
@@ -609,8 +616,8 @@ neq_bool(const char *name, int argc, RDB_object *argv[],
 
 static int
 neq_binary(const char *name, int argc, RDB_object *argv[],
-        const void *iargp, size_t iarglen, RDB_transaction *txp,
-        RDB_object *retvalp)
+        const void *iargp, size_t iarglen, RDB_exec_context *ecp,
+        RDB_transaction *txp, RDB_object *retvalp)
 {
     if (argv[0]->var.bin.len != argv[1]->var.bin.len)
         RDB_bool_to_obj(retvalp, RDB_TRUE);
@@ -643,8 +650,8 @@ obj_is_scalar(RDB_object *objp)
 
 static int
 op_rename(const char *name, int argc, RDB_object *argv[],
-        const void *iargp, size_t iarglen, RDB_transaction *txp,
-        RDB_object *retvalp)
+        const void *iargp, size_t iarglen, RDB_exec_context *ecp,
+        RDB_transaction *txp, RDB_object *retvalp)
 {
     int ret;
     int i;
@@ -666,15 +673,16 @@ op_rename(const char *name, int argc, RDB_object *argv[],
 
     tbp = RDB_obj_table(argv[0]);
     if (tbp != NULL) {
-        ret = RDB_rename(tbp, renc, renv, &vtbp);
+        vtbp = RDB_rename(tbp, renc, renv, ecp);
+        ret = vtbp == NULL ? RDB_ERROR : RDB_OK;
     } else {
-        ret = RDB_rename_tuple(argv[0], renc, renv, retvalp);
+        ret = RDB_rename_tuple(argv[0], renc, renv, ecp, retvalp);
     }
     free(renv);
     if (ret != RDB_OK)
         return ret;
     if (tbp != NULL) {
-        RDB_table_to_obj(retvalp, vtbp);
+        RDB_table_to_obj(retvalp, vtbp, ecp);
 
         /*
          * Since the table is consumed by RDB_rename, prevent it
@@ -688,8 +696,8 @@ op_rename(const char *name, int argc, RDB_object *argv[],
 
 static int
 op_project(const char *name, int argc, RDB_object *argv[],
-        const void *iargp, size_t iarglen, RDB_transaction *txp,
-        RDB_object *retvalp)
+        const void *iargp, size_t iarglen, RDB_exec_context *ecp,
+        RDB_transaction *txp, RDB_object *retvalp)
 {
     int ret;
     int i;
@@ -704,15 +712,16 @@ op_project(const char *name, int argc, RDB_object *argv[],
 
     tbp = RDB_obj_table(argv[0]);
     if (tbp != NULL) {
-        ret = RDB_project(tbp, argc - 1, attrv, &vtbp);
+        vtbp = RDB_project(tbp, argc - 1, attrv, ecp);
+        ret = vtbp == NULL ? RDB_ERROR : RDB_OK;
     } else {
-        ret = RDB_project_tuple(argv[0], argc - 1, attrv, retvalp);
+        ret = RDB_project_tuple(argv[0], argc - 1, attrv, ecp, retvalp);
     }
     free(attrv);
     if (ret != RDB_OK)
         return ret;
     if (tbp != NULL) {
-        RDB_table_to_obj(retvalp, vtbp);
+        RDB_table_to_obj(retvalp, vtbp, ecp);
         argv[0]->var.tbp = NULL;
     }
     return RDB_OK;
@@ -720,8 +729,8 @@ op_project(const char *name, int argc, RDB_object *argv[],
 
 static int
 op_remove(const char *name, int argc, RDB_object *argv[],
-        const void *iargp, size_t iarglen, RDB_transaction *txp,
-        RDB_object *retvalp)
+        const void *iargp, size_t iarglen, RDB_exec_context *ecp,
+        RDB_transaction *txp, RDB_object *retvalp)
 {
     int ret;
     int i;
@@ -736,15 +745,16 @@ op_remove(const char *name, int argc, RDB_object *argv[],
 
     tbp = RDB_obj_table(argv[0]);
     if (tbp != NULL) {
-        ret = RDB_remove(tbp, argc - 1, attrv, &vtbp);
+        vtbp = RDB_remove(tbp, argc - 1, attrv, ecp);
+        ret = vtbp == NULL ? RDB_ERROR : RDB_OK;
     } else {
-        ret = RDB_remove_tuple(argv[0], argc - 1, attrv, retvalp);
+        ret = RDB_remove_tuple(argv[0], argc - 1, attrv, ecp, retvalp);
     }
     free(attrv);
     if (ret != RDB_OK)
         return ret;
     if (tbp != NULL) {
-        RDB_table_to_obj(retvalp, vtbp);
+        RDB_table_to_obj(retvalp, vtbp, ecp);
         argv[0]->var.tbp = NULL;
     }
     return RDB_OK;
@@ -752,8 +762,8 @@ op_remove(const char *name, int argc, RDB_object *argv[],
 
 static int
 op_wrap(const char *name, int argc, RDB_object *argv[],
-        const void *iargp, size_t iarglen, RDB_transaction *txp,
-        RDB_object *retvalp)
+        const void *iargp, size_t iarglen, RDB_exec_context *ecp,
+        RDB_transaction *txp, RDB_object *retvalp)
 {
     int ret;
     int i, j;
@@ -761,8 +771,10 @@ op_wrap(const char *name, int argc, RDB_object *argv[],
     int wrapc;
     RDB_wrapping *wrapv;
 
-    if (argc < 1 || argc %2 != 1)
-        return RDB_INVALID_ARGUMENT;
+    if (argc < 1 || argc %2 != 1) {
+        RDB_raise_invalid_argument("invalid number of arguments", ecp);
+        return RDB_ERROR;
+    }
 
     wrapc = argc % 2;
     if (wrapc > 0) {
@@ -777,11 +789,16 @@ op_wrap(const char *name, int argc, RDB_object *argv[],
     for (i = 0; i < wrapc; i++) {
         RDB_object *objp;
 
-        wrapv[i].attrc =  RDB_array_length(argv[i * 2 + 1]);
+        wrapv[i].attrc =  RDB_array_length(argv[i * 2 + 1], ecp);
         wrapv[i].attrv = malloc(sizeof (char *) * wrapv[i].attrc);
+        if (wrapv[i].attrv == NULL) {
+            RDB_raise_no_memory(ecp);
+            goto cleanup;
+        }
         for (j = 0; j < wrapv[i].attrc; j++) {
-            ret = RDB_array_get(argv[i * 2 + 1], (RDB_int) j, &objp);
-            if (ret != RDB_OK) {
+            objp = RDB_array_get(argv[i * 2 + 1], (RDB_int) j, ecp);
+            if (objp == NULL) {
+                ret = RDB_ERROR;
                 goto cleanup;
             }
             wrapv[i].attrv[j] = RDB_obj_string(objp);
@@ -791,14 +808,16 @@ op_wrap(const char *name, int argc, RDB_object *argv[],
 
     tbp = RDB_obj_table(argv[0]);
     if (tbp != NULL) {
-        ret = RDB_wrap(tbp, wrapc, wrapv, &vtbp);
+        vtbp = RDB_wrap(tbp, wrapc, wrapv, ecp);
+        if (vtbp == NULL)
+            goto cleanup;
     } else {
-        ret = RDB_wrap_tuple(argv[0], wrapc, wrapv, retvalp);
+        ret = RDB_wrap_tuple(argv[0], wrapc, wrapv, ecp, retvalp);
+        if (ret != RDB_OK)
+            goto cleanup;
     }
-    if (ret != RDB_OK)
-        goto cleanup;
     if (tbp != NULL) {
-        RDB_table_to_obj(retvalp, vtbp);
+        RDB_table_to_obj(retvalp, vtbp, ecp);
         argv[0]->var.tbp = NULL;
     }
 
@@ -809,13 +828,13 @@ cleanup:
     if (wrapc > 0)
         free(wrapv);
 
-    return ret;
+    return RDB_ERROR;
 }
 
 static int
 op_unwrap(const char *name, int argc, RDB_object *argv[],
-        const void *iargp, size_t iarglen, RDB_transaction *txp,
-        RDB_object *retvalp)
+        const void *iargp, size_t iarglen, RDB_exec_context *ecp,
+        RDB_transaction *txp, RDB_object *retvalp)
 {
     int ret;
     int i;
@@ -835,15 +854,16 @@ op_unwrap(const char *name, int argc, RDB_object *argv[],
 
     tbp = RDB_obj_table(argv[0]);
     if (tbp != NULL) {
-        ret = RDB_unwrap(tbp, argc - 1, attrv, &vtbp);
+        vtbp = RDB_unwrap(tbp, argc - 1, attrv, ecp);
+        ret = vtbp == NULL ? RDB_ERROR : RDB_OK;
     } else {
-        ret = RDB_unwrap_tuple(argv[0], argc - 1, attrv, retvalp);
+        ret = RDB_unwrap_tuple(argv[0], argc - 1, attrv, ecp, retvalp);
     }
     free(attrv);
     if (ret != RDB_OK)
         return ret;
     if (tbp != NULL) {
-        RDB_table_to_obj(retvalp, vtbp);
+        RDB_table_to_obj(retvalp, vtbp, ecp);
         argv[0]->var.tbp = NULL;
     }
     return RDB_OK;
@@ -851,10 +871,9 @@ op_unwrap(const char *name, int argc, RDB_object *argv[],
 
 static int
 op_group(const char *name, int argc, RDB_object *argv[],
-        const void *iargp, size_t iarglen, RDB_transaction *txp,
-        RDB_object *retvalp)
+        const void *iargp, size_t iarglen, RDB_exec_context *ecp,
+        RDB_transaction *txp, RDB_object *retvalp)
 {
-    int ret;
     int i;
     RDB_table *vtbp;
     char **attrv;
@@ -872,12 +891,12 @@ op_group(const char *name, int argc, RDB_object *argv[],
         attrv[i] = RDB_obj_string(argv[i + 1]);
     }
 
-    ret = RDB_group(RDB_obj_table(argv[0]), attrc, attrv,
-            RDB_obj_string(argv[argc - 1]), &vtbp);
+    vtbp = RDB_group(RDB_obj_table(argv[0]), attrc, attrv,
+            RDB_obj_string(argv[argc - 1]), ecp);
     free(attrv);
-    if (ret != RDB_OK)
-        return ret;
-    RDB_table_to_obj(retvalp, vtbp);
+    if (vtbp == NULL)
+        return RDB_ERROR;
+    RDB_table_to_obj(retvalp, vtbp, ecp);
     argv[0]->var.tbp = NULL;
 
     return RDB_OK;
@@ -885,16 +904,15 @@ op_group(const char *name, int argc, RDB_object *argv[],
 
 static int
 op_ungroup(const char *name, int argc, RDB_object *argv[],
-        const void *iargp, size_t iarglen, RDB_transaction *txp,
-        RDB_object *retvalp)
+        const void *iargp, size_t iarglen, RDB_exec_context *ecp,
+        RDB_transaction *txp, RDB_object *retvalp)
 {
-    int ret;
     RDB_table *vtbp;
 
-    ret = RDB_ungroup(RDB_obj_table(argv[0]), RDB_obj_string(argv[1]), &vtbp);
-    if (ret != RDB_OK)
-        return ret;
-    RDB_table_to_obj(retvalp, vtbp);
+    vtbp = RDB_ungroup(RDB_obj_table(argv[0]), RDB_obj_string(argv[1]), ecp);
+    if (vtbp == NULL)
+        return RDB_ERROR;
+    RDB_table_to_obj(retvalp, vtbp, ecp);
     argv[0]->var.tbp = NULL;
 
     return RDB_OK;
@@ -902,20 +920,19 @@ op_ungroup(const char *name, int argc, RDB_object *argv[],
 
 static int
 op_union(const char *name, int argc, RDB_object *argv[],
-        const void *iargp, size_t iarglen, RDB_transaction *txp,
-        RDB_object *retvalp)
+        const void *iargp, size_t iarglen, RDB_exec_context *ecp,
+        RDB_transaction *txp, RDB_object *retvalp)
 {
-    int ret;
     RDB_table *vtbp;
     
     if (argc != 2)
         return RDB_INVALID_ARGUMENT;
     
-    ret = RDB_union(RDB_obj_table(argv[0]), RDB_obj_table(argv[1]), &vtbp);
-    if (ret != RDB_OK)
-        return ret;
+    vtbp = RDB_union(RDB_obj_table(argv[0]), RDB_obj_table(argv[1]), ecp);
+    if (vtbp == NULL)
+        return RDB_ERROR;
 
-    RDB_table_to_obj(retvalp, vtbp);
+    RDB_table_to_obj(retvalp, vtbp, ecp);
     argv[0]->var.tbp = NULL;
     argv[1]->var.tbp = NULL;
     return RDB_OK;
@@ -923,20 +940,19 @@ op_union(const char *name, int argc, RDB_object *argv[],
 
 static int
 op_minus(const char *name, int argc, RDB_object *argv[],
-        const void *iargp, size_t iarglen, RDB_transaction *txp,
-        RDB_object *retvalp)
+        const void *iargp, size_t iarglen, RDB_exec_context *ecp,
+        RDB_transaction *txp, RDB_object *retvalp)
 {
-    int ret;
     RDB_table *vtbp;
     
     if (argc != 2)
         return RDB_INVALID_ARGUMENT;
     
-    ret = RDB_minus(RDB_obj_table(argv[0]), RDB_obj_table(argv[1]), &vtbp);
-    if (ret != RDB_OK)
-        return ret;
+    vtbp = RDB_minus(RDB_obj_table(argv[0]), RDB_obj_table(argv[1]), ecp);
+    if (vtbp == NULL)
+        return RDB_ERROR;
 
-    RDB_table_to_obj(retvalp, vtbp);
+    RDB_table_to_obj(retvalp, vtbp, ecp);
     argv[0]->var.tbp = NULL;
     argv[1]->var.tbp = NULL;
     return RDB_OK;
@@ -944,20 +960,19 @@ op_minus(const char *name, int argc, RDB_object *argv[],
 
 static int
 op_intersect(const char *name, int argc, RDB_object *argv[],
-        const void *iargp, size_t iarglen, RDB_transaction *txp,
-        RDB_object *retvalp)
+        const void *iargp, size_t iarglen, RDB_exec_context *ecp,
+        RDB_transaction *txp, RDB_object *retvalp)
 {
-    int ret;
     RDB_table *vtbp;
     
     if (argc != 2)
         return RDB_INVALID_ARGUMENT;
     
-    ret = RDB_intersect(RDB_obj_table(argv[0]), RDB_obj_table(argv[1]), &vtbp);
-    if (ret != RDB_OK)
-        return ret;
+    vtbp = RDB_intersect(RDB_obj_table(argv[0]), RDB_obj_table(argv[1]), ecp);
+    if (vtbp == NULL)
+        return RDB_ERROR;
 
-    RDB_table_to_obj(retvalp, vtbp);
+    RDB_table_to_obj(retvalp, vtbp, ecp);
     argv[0]->var.tbp = NULL;
     argv[1]->var.tbp = NULL;
     return RDB_OK;
@@ -965,8 +980,8 @@ op_intersect(const char *name, int argc, RDB_object *argv[],
 
 static int
 op_join(const char *name, int argc, RDB_object *argv[],
-        const void *iargp, size_t iarglen, RDB_transaction *txp,
-        RDB_object *retvalp)
+        const void *iargp, size_t iarglen, RDB_exec_context *ecp,
+        RDB_transaction *txp, RDB_object *retvalp)
 {
     int ret;
     RDB_table *tbp;
@@ -977,15 +992,16 @@ op_join(const char *name, int argc, RDB_object *argv[],
 
     tbp = RDB_obj_table(argv[0]);
     if (tbp != NULL) {    
-        ret = RDB_join(tbp, RDB_obj_table(argv[1]), &vtbp);
+        vtbp = RDB_join(tbp, RDB_obj_table(argv[1]), ecp);
+        ret = vtbp == NULL ? RDB_ERROR : RDB_OK;
     } else {
-        ret = RDB_join_tuples(argv[0], argv[1], txp, retvalp);
+        ret = RDB_join_tuples(argv[0], argv[1], ecp, txp, retvalp);
     }
     if (ret != RDB_OK)
         return ret;
 
     if (tbp != NULL) {
-        RDB_table_to_obj(retvalp, vtbp);
+        RDB_table_to_obj(retvalp, vtbp, ecp);
         argv[0]->var.tbp = NULL;
         argv[1]->var.tbp = NULL;
     }
@@ -994,21 +1010,20 @@ op_join(const char *name, int argc, RDB_object *argv[],
 
 static int
 op_divide(const char *name, int argc, RDB_object *argv[],
-        const void *iargp, size_t iarglen, RDB_transaction *txp,
-        RDB_object *retvalp)
+        const void *iargp, size_t iarglen, RDB_exec_context *ecp,
+        RDB_transaction *txp, RDB_object *retvalp)
 {
-    int ret;
     RDB_table *vtbp;
     
     if (argc != 3)
         return RDB_INVALID_ARGUMENT;
     
-    ret = RDB_sdivide(RDB_obj_table(argv[0]), RDB_obj_table(argv[1]),
-            RDB_obj_table(argv[2]), &vtbp);
-    if (ret != RDB_OK)
-        return ret;
+    vtbp = RDB_sdivide(RDB_obj_table(argv[0]), RDB_obj_table(argv[1]),
+            RDB_obj_table(argv[2]), ecp);
+    if (vtbp == NULL)
+        return RDB_ERROR;
 
-    RDB_table_to_obj(retvalp, vtbp);
+    RDB_table_to_obj(retvalp, vtbp, ecp);
     argv[0]->var.tbp = NULL;
     argv[1]->var.tbp = NULL;
     argv[2]->var.tbp = NULL;
@@ -1017,7 +1032,8 @@ op_divide(const char *name, int argc, RDB_object *argv[],
 
 int
 RDB_call_ro_op(const char *name, int argc, RDB_object *argv[],
-               RDB_transaction *txp, RDB_object *retvalp)
+               RDB_exec_context *ecp, RDB_transaction *txp,
+               RDB_object *retvalp)
 {
     RDB_ro_op_desc *op;
     int ret;
@@ -1032,9 +1048,9 @@ RDB_call_ro_op(const char *name, int argc, RDB_object *argv[],
      */
     if (argc == 2 && !obj_is_scalar(argv[0]) && !obj_is_scalar(argv[1])) {
         if (strcmp(name, "=") == 0)
-            return obj_equals(name, 2, argv, NULL, 0, txp, retvalp);
+            return obj_equals(name, 2, argv, NULL, 0, ecp, txp, retvalp);
         if (strcmp(name, "<>") == 0) {
-            ret = obj_equals(name, 2, argv, NULL, 0, txp, retvalp);
+            ret = obj_equals(name, 2, argv, NULL, 0, ecp, txp, retvalp);
             if (ret != RDB_OK)
                 return ret;
             retvalp->var.bool_val = (RDB_bool) !retvalp->var.bool_val;
@@ -1049,9 +1065,9 @@ RDB_call_ro_op(const char *name, int argc, RDB_object *argv[],
         if (argv[0]->typ != &RDB_BOOLEAN)
             return RDB_TYPE_MISMATCH;
         if (argv[0]->var.bool_val) {
-            ret = RDB_copy_obj(retvalp, argv[1]);
+            ret = RDB_copy_obj(retvalp, argv[1], ecp);
         } else {
-            ret = RDB_copy_obj(retvalp, argv[2]);
+            ret = RDB_copy_obj(retvalp, argv[2], ecp);
         }
         return ret;
     }
@@ -1063,7 +1079,7 @@ RDB_call_ro_op(const char *name, int argc, RDB_object *argv[],
         if (strcmp(name, "IS_EMPTY") == 0) {
             RDB_bool res;
 
-            ret = RDB_table_is_empty(argv[0]->var.tbp, txp, &res);
+            ret = RDB_table_is_empty(argv[0]->var.tbp, ecp, txp, &res);
             if (ret != RDB_OK)
                 return ret;
 
@@ -1071,7 +1087,7 @@ RDB_call_ro_op(const char *name, int argc, RDB_object *argv[],
             return RDB_OK;
         }
         if (strcmp(name, "COUNT") == 0) {
-            ret = RDB_cardinality(argv[0]->var.tbp, txp);
+            ret = RDB_cardinality(argv[0]->var.tbp, ecp, txp);
             if (ret < 0)
                 return ret;
 
@@ -1080,7 +1096,7 @@ RDB_call_ro_op(const char *name, int argc, RDB_object *argv[],
         }
     } else if (argc == 2 && obj_is_table(argv[1])) {
         if (strcmp(name, "IN") == 0) {
-            ret = RDB_table_contains(argv[1]->var.tbp, argv[0], txp);
+            ret = RDB_table_contains(argv[1]->var.tbp, argv[0], ecp, txp);
             if (ret == RDB_OK) {
                 RDB_bool_to_obj(retvalp, RDB_TRUE);
                 return RDB_OK;
@@ -1093,7 +1109,8 @@ RDB_call_ro_op(const char *name, int argc, RDB_object *argv[],
         } else if (strcmp(name, "SUBSET_OF") == 0) {
             RDB_bool res;
 
-            ret = RDB_subset(argv[0]->var.tbp, argv[1]->var.tbp, txp, &res);
+            ret = RDB_subset(argv[0]->var.tbp, argv[1]->var.tbp, ecp, txp,
+                    &res);
             if (ret != RDB_OK)
                 return ret;
             RDB_bool_to_obj(retvalp, res);
@@ -1102,32 +1119,18 @@ RDB_call_ro_op(const char *name, int argc, RDB_object *argv[],
     }
     if (argc >= 1 && obj_is_table(argv[0]) && strcmp(name, "TO_TUPLE") == 0
             && argc == 1) {
-        return RDB_extract_tuple(RDB_obj_table(argv[0]), txp, retvalp);
+        return RDB_extract_tuple(RDB_obj_table(argv[0]), ecp, txp, retvalp);
     }
 
-    argtv = valv_to_typev(argc, argv);
+    argtv = valv_to_typev(argc, argv, ecp);
     if (argtv == NULL) {
         return RDB_NO_MEMORY;
     }
 
-    /* If one of the types if NULL, return RDB_OPERATOR_NOT_FOUND
-    for (i = 0; i < argc; i++) {
-        if (argtv[i] == NULL) {
-            int j;
-
-            for (j = 0; j < argc; j++) {
-                if (argv[j] != NULL && argv[j]->kind == RDB_OB_TUPLE)
-                    RDB_drop_type(argtv[i], NULL);
-            }
-            return RDB_OPERATOR_NOT_FOUND;
-        }
-    }
-    */
-
-    ret = _RDB_get_ro_op(name, argc, argtv, txp, &op);
+    ret = _RDB_get_ro_op(name, argc, argtv, ecp, txp, &op);
     for (i = 0; i < argc; i++) {
         if (argv[i]->kind == RDB_OB_TUPLE)
-            RDB_drop_type(argtv[i], NULL);
+            RDB_drop_type(argtv[i], ecp, NULL);
     }
 
     free(argtv);
@@ -1142,16 +1145,16 @@ RDB_call_ro_op(const char *name, int argc, RDB_object *argv[],
     retvalp->typ = op->rtyp;
 
     ret = (*op->funcp)(name, argc, argv, op->iarg.var.bin.datap,
-            op->iarg.var.bin.len, txp, retvalp);
+            op->iarg.var.bin.len, ecp, txp, retvalp);
     if (ret != RDB_OK)
         goto error;
 
     /* Check type constraint if the operator is a selector */
     if (retvalp->typ != NULL &&_RDB_get_possrep(retvalp->typ, name) != NULL) {
-        ret = _RDB_check_type_constraint(retvalp, txp);
+        ret = _RDB_check_type_constraint(retvalp, ecp, txp);
         if (ret != RDB_OK) {
             /* Destroy illegal value */
-            RDB_destroy_obj(retvalp);
+            RDB_destroy_obj(retvalp, ecp);
             RDB_init_obj(retvalp);
             return ret;
         }
@@ -1166,7 +1169,7 @@ error:
 
 static RDB_upd_op *
 get_upd_op(const RDB_dbroot *dbrootp, const char *name,
-        int argc, RDB_type *argtv[])
+        int argc, RDB_type *argtv[], RDB_exec_context *ecp)
 {
     RDB_upd_op *op = RDB_hashmap_get(&dbrootp->upd_opmap, name);
 
@@ -1212,18 +1215,18 @@ put_upd_op(RDB_dbroot *dbrootp, RDB_upd_op *op)
 
 int
 _RDB_get_upd_op(const char *name, int argc, RDB_type *argtv[],
-               RDB_transaction *txp, RDB_upd_op **opp)
+                RDB_exec_context *ecp, RDB_transaction *txp, RDB_upd_op **opp)
 {
     int ret;
 
-    *opp = get_upd_op(txp->dbp->dbrootp, name, argc, argtv);
+    *opp = get_upd_op(txp->dbp->dbrootp, name, argc, argtv, ecp);
     if (*opp == NULL) {
-        ret = _RDB_cat_get_upd_op(name, argc, argtv, txp, opp);
+        ret = _RDB_cat_get_upd_op(name, argc, argtv, ecp, txp, opp);
         if (ret != RDB_OK)
             return ret == RDB_NOT_FOUND ? RDB_OPERATOR_NOT_FOUND : ret;
         ret = put_upd_op(txp->dbp->dbrootp, *opp);
         if (ret != RDB_OK) {
-            free_upd_op(*opp);
+            free_upd_op(*opp, ecp);
             return ret;
         }
     }
@@ -1232,7 +1235,7 @@ _RDB_get_upd_op(const char *name, int argc, RDB_type *argtv[],
 
 int
 RDB_call_update_op(const char *name, int argc, RDB_object *argv[],
-                   RDB_transaction *txp)
+                   RDB_exec_context *ecp, RDB_transaction *txp)
 {
     RDB_upd_op *op;
     RDB_type **argtv;
@@ -1242,14 +1245,14 @@ RDB_call_update_op(const char *name, int argc, RDB_object *argv[],
     if (!RDB_tx_is_running(txp))
         return RDB_INVALID_TRANSACTION;
 
-    argtv = valv_to_typev(argc, argv);
+    argtv = valv_to_typev(argc, argv, ecp);
     if (argtv == NULL) {
         return RDB_NO_MEMORY;
     }
-    ret = _RDB_cat_get_upd_op(name, argc, argtv, txp, &op);
+    ret = _RDB_cat_get_upd_op(name, argc, argtv, ecp, txp, &op);
     for (i = 0; i < argc; i++) {
         if (argv[i]->kind == RDB_OB_TUPLE)
-            RDB_drop_type(argtv[i], NULL);
+            RDB_drop_type(argtv[i], ecp, NULL);
     }
     free(argtv);
     if (ret != RDB_OK) {
@@ -1265,7 +1268,7 @@ RDB_call_update_op(const char *name, int argc, RDB_object *argv[],
 }
 
 int
-RDB_drop_op(const char *name, RDB_transaction *txp)
+RDB_drop_op(const char *name, RDB_exec_context *ecp, RDB_transaction *txp)
 {
     RDB_expression *exp;
     RDB_table *vtbp;
@@ -1282,16 +1285,16 @@ RDB_drop_op(const char *name, RDB_transaction *txp)
     if (exp == NULL) {
         return RDB_NO_MEMORY;
     }
-    ret = RDB_select(txp->dbp->dbrootp->ro_ops_tbp, exp, txp, &vtbp);
+    vtbp = RDB_select(txp->dbp->dbrootp->ro_ops_tbp, exp, ecp, txp);
+    if (vtbp == NULL) {
+        return RDB_ERROR;
+    }
+    ret = RDB_table_is_empty(vtbp, ecp, txp, &isempty);
     if (ret != RDB_OK) {
+        RDB_drop_table(vtbp, ecp, txp);
         return ret;
     }
-    ret = RDB_table_is_empty(vtbp, txp, &isempty);
-    if (ret != RDB_OK) {
-        RDB_drop_table(vtbp, txp);
-        return ret;
-    }
-    ret = RDB_drop_table(vtbp, txp);
+    ret = RDB_drop_table(vtbp, ecp, txp);
     if (ret != RDB_OK) {
         return ret;
     }
@@ -1304,7 +1307,7 @@ RDB_drop_op(const char *name, RDB_transaction *txp)
         /* Delete all versions of update operator from hashmap */
         oldop = RDB_hashmap_get(&txp->dbp->dbrootp->ro_opmap, name);
         if (oldop != NULL)
-            _RDB_free_upd_ops(oldop);
+            _RDB_free_upd_ops(oldop, ecp);
         ret = RDB_hashmap_put(&txp->dbp->dbrootp->upd_opmap, name, op);
         if (ret != RDB_OK) {
             _RDB_handle_syserr(txp, ret);
@@ -1316,8 +1319,8 @@ RDB_drop_op(const char *name, RDB_transaction *txp)
         if (exp == NULL) {
             return RDB_NO_MEMORY;
         }
-        ret = RDB_delete(txp->dbp->dbrootp->upd_ops_tbp, exp, txp);
-        RDB_drop_expr(exp);
+        ret = RDB_delete(txp->dbp->dbrootp->upd_ops_tbp, exp, ecp, txp);
+        RDB_drop_expr(exp, ecp);
         if (ret != RDB_OK) {
             return ret;
         }        
@@ -1329,7 +1332,7 @@ RDB_drop_op(const char *name, RDB_transaction *txp)
         /* Delete all versions of readonly operator from hashmap */
         oldop = RDB_hashmap_get(&txp->dbp->dbrootp->ro_opmap, name);
         if (oldop != NULL)
-            _RDB_free_ro_ops(oldop);
+            _RDB_free_ro_ops(oldop, ecp);
         ret = RDB_hashmap_put(&txp->dbp->dbrootp->ro_opmap, name, op);
         if (ret != RDB_OK) {
             _RDB_handle_syserr(txp, ret);
@@ -1341,9 +1344,9 @@ RDB_drop_op(const char *name, RDB_transaction *txp)
         if (exp == NULL) {
             return RDB_NO_MEMORY;
         }
-        ret = RDB_delete(txp->dbp->dbrootp->ro_ops_tbp, exp, txp);
+        ret = RDB_delete(txp->dbp->dbrootp->ro_ops_tbp, exp, ecp, txp);
         if (ret != RDB_OK) {
-            RDB_drop_expr(exp);
+            RDB_drop_expr(exp, ecp);
             _RDB_handle_syserr(txp, ret);
             return ret;
         }
@@ -1358,8 +1361,8 @@ RDB_drop_op(const char *name, RDB_transaction *txp)
 
 static int
 integer_rational(const char *name, int argc, RDB_object *argv[],
-        const void *iargp, size_t iarglen, RDB_transaction *txp,
-        RDB_object *retvalp)
+        const void *iargp, size_t iarglen, RDB_exec_context *ecp,
+        RDB_transaction *txp, RDB_object *retvalp)
 {
     RDB_int_to_obj(retvalp, (int) argv[0]->var.rational_val);
     return RDB_OK;
@@ -1367,8 +1370,8 @@ integer_rational(const char *name, int argc, RDB_object *argv[],
 
 static int
 integer_string(const char *name, int argc, RDB_object *argv[],
-        const void *iargp, size_t iarglen, RDB_transaction *txp,
-        RDB_object *retvalp)
+        const void *iargp, size_t iarglen, RDB_exec_context *ecp,
+        RDB_transaction *txp, RDB_object *retvalp)
 {
     char *endp;
 
@@ -1381,8 +1384,8 @@ integer_string(const char *name, int argc, RDB_object *argv[],
 
 static int
 rational_int(const char *name, int argc, RDB_object *argv[],
-        const void *iargp, size_t iarglen, RDB_transaction *txp,
-        RDB_object *retvalp)
+        const void *iargp, size_t iarglen, RDB_exec_context *ecp,
+        RDB_transaction *txp, RDB_object *retvalp)
 {
     RDB_rational_to_obj(retvalp, (RDB_rational) argv[0]->var.int_val);
     return RDB_OK;
@@ -1390,8 +1393,8 @@ rational_int(const char *name, int argc, RDB_object *argv[],
 
 static int
 rational_string(const char *name, int argc, RDB_object *argv[],
-        const void *iargp, size_t iarglen, RDB_transaction *txp,
-        RDB_object *retvalp)
+        const void *iargp, size_t iarglen, RDB_exec_context *ecp,
+        RDB_transaction *txp, RDB_object *retvalp)
 {
     char *endp;
 
@@ -1404,16 +1407,16 @@ rational_string(const char *name, int argc, RDB_object *argv[],
 
 static int
 string_obj(const char *name, int argc, RDB_object *argv[],
-        const void *iargp, size_t iarglen, RDB_transaction *txp,
-        RDB_object *retvalp)
+        const void *iargp, size_t iarglen, RDB_exec_context *ecp,
+        RDB_transaction *txp, RDB_object *retvalp)
 {
-    return RDB_obj_to_string(retvalp, argv[0]);
+    return RDB_obj_to_string(retvalp, argv[0], ecp);
 }
 
 static int
 length_string(const char *name, int argc, RDB_object *argv[],
-        const void *iargp, size_t iarglen, RDB_transaction *txp,
-        RDB_object *retvalp)
+        const void *iargp, size_t iarglen, RDB_exec_context *ecp,
+        RDB_transaction *txp, RDB_object *retvalp)
 {
     size_t len = mbstowcs(NULL, argv[0]->var.bin.datap, 0);
     if (len == -1)
@@ -1425,8 +1428,8 @@ length_string(const char *name, int argc, RDB_object *argv[],
 
 static int
 substring(const char *name, int argc, RDB_object *argv[],
-        const void *iargp, size_t iarglen, RDB_transaction *txp,
-        RDB_object *retvalp)
+        const void *iargp, size_t iarglen, RDB_exec_context *ecp,
+        RDB_transaction *txp, RDB_object *retvalp)
 {
     int start = argv[1]->var.int_val;
     int len = argv[2]->var.int_val;
@@ -1460,7 +1463,7 @@ substring(const char *name, int argc, RDB_object *argv[],
     if (bstart + blen >= argv[0]->var.bin.len)
         return RDB_INVALID_ARGUMENT;
 
-    RDB_destroy_obj(retvalp);
+    RDB_destroy_obj(retvalp, ecp);
     retvalp->typ = &RDB_STRING;
     retvalp->kind = RDB_OB_BIN;
     retvalp->var.bin.len = blen + 1;
@@ -1475,12 +1478,12 @@ substring(const char *name, int argc, RDB_object *argv[],
 
 static int
 concat(const char *name, int argc, RDB_object *argv[],
-        const void *iargp, size_t iarglen, RDB_transaction *txp,
-        RDB_object *retvalp)
+        const void *iargp, size_t iarglen, RDB_exec_context *ecp,
+        RDB_transaction *txp, RDB_object *retvalp)
 {
     size_t s1len = strlen(argv[0]->var.bin.datap);
 
-    RDB_destroy_obj(retvalp);
+    RDB_destroy_obj(retvalp, ecp);
     RDB_init_obj(retvalp);
     _RDB_set_obj_type(retvalp, &RDB_STRING);
     retvalp->var.bin.len = s1len + strlen(argv[1]->var.bin.datap) + 1;
@@ -1495,8 +1498,8 @@ concat(const char *name, int argc, RDB_object *argv[],
 
 static int
 matches(const char *name, int argc, RDB_object *argv[],
-        const void *iargp, size_t iarglen, RDB_transaction *txp,
-        RDB_object *retvalp)
+        const void *iargp, size_t iarglen, RDB_exec_context *ecp,
+        RDB_transaction *txp, RDB_object *retvalp)
 {
     regex_t reg;
     int ret;
@@ -1514,8 +1517,8 @@ matches(const char *name, int argc, RDB_object *argv[],
 
 static int
 and(const char *name, int argc, RDB_object *argv[],
-        const void *iargp, size_t iarglen, RDB_transaction *txp,
-        RDB_object *retvalp)
+        const void *iargp, size_t iarglen, RDB_exec_context *ecp,
+        RDB_transaction *txp, RDB_object *retvalp)
 {
     RDB_bool_to_obj(retvalp, (RDB_bool)
             argv[0]->var.bool_val && argv[1]->var.bool_val);
@@ -1524,8 +1527,8 @@ and(const char *name, int argc, RDB_object *argv[],
 
 static int
 or(const char *name, int argc, RDB_object *argv[],
-        const void *iargp, size_t iarglen, RDB_transaction *txp,
-        RDB_object *retvalp)
+        const void *iargp, size_t iarglen, RDB_exec_context *ecp,
+        RDB_transaction *txp, RDB_object *retvalp)
 {
     RDB_bool_to_obj(retvalp, (RDB_bool)
             argv[0]->var.bool_val || argv[1]->var.bool_val);
@@ -1534,8 +1537,8 @@ or(const char *name, int argc, RDB_object *argv[],
 
 static int
 not(const char *name, int argc, RDB_object *argv[],
-        const void *iargp, size_t iarglen, RDB_transaction *txp,
-        RDB_object *retvalp)
+        const void *iargp, size_t iarglen, RDB_exec_context *ecp,
+        RDB_transaction *txp, RDB_object *retvalp)
 {
     RDB_bool_to_obj(retvalp, (RDB_bool) !argv[0]->var.bool_val);
     return RDB_OK;
@@ -1543,84 +1546,85 @@ not(const char *name, int argc, RDB_object *argv[],
 
 static int
 lt(const char *name, int argc, RDB_object *argv[],
-        const void *iargp, size_t iarglen, RDB_transaction *txp,
-        RDB_object *retvalp)
+        const void *iargp, size_t iarglen, RDB_exec_context *ecp,
+        RDB_transaction *txp, RDB_object *retvalp)
 {
     RDB_object retval;
     int ret;
     
     RDB_init_obj(&retval);
-    ret = (*argv[0]->typ->comparep)("compare", 2, argv, NULL, 0, txp, &retval);
+    ret = (*argv[0]->typ->comparep)("compare", 2, argv, NULL, 0, ecp, txp, &retval);
     if (ret != RDB_OK) {
-        RDB_destroy_obj(&retval);
+        RDB_destroy_obj(&retval, ecp);
         return ret;
     }
     RDB_bool_to_obj(retvalp, RDB_obj_int(&retval) < 0);
-    RDB_destroy_obj(&retval);
+    RDB_destroy_obj(&retval, ecp);
     return RDB_OK;
 }
 
 static int
 let(const char *name, int argc, RDB_object *argv[],
-        const void *iargp, size_t iarglen, RDB_transaction *txp,
-        RDB_object *retvalp)
+        const void *iargp, size_t iarglen, RDB_exec_context *ecp,
+        RDB_transaction *txp, RDB_object *retvalp)
 {
     RDB_object retval;
     int ret;
     
     RDB_init_obj(&retval);
-    ret = (*argv[0]->typ->comparep)("compare", 2, argv, NULL, 0, txp, &retval);
+    ret = (*argv[0]->typ->comparep)("compare", 2, argv, NULL, 0, ecp, txp, &retval);
     if (ret != RDB_OK) {
-        RDB_destroy_obj(&retval);
+        RDB_destroy_obj(&retval, ecp);
         return ret;
     }
     RDB_bool_to_obj(retvalp, RDB_obj_int(&retval) <= 0);
-    RDB_destroy_obj(&retval);
+    RDB_destroy_obj(&retval, ecp);
     return RDB_OK;
 }
 
 static int
 gt(const char *name, int argc, RDB_object *argv[],
-        const void *iargp, size_t iarglen, RDB_transaction *txp,
-        RDB_object *retvalp)
+        const void *iargp, size_t iarglen, RDB_exec_context *ecp,
+        RDB_transaction *txp, RDB_object *retvalp)
 {
     RDB_object retval;
     int ret;
     
     RDB_init_obj(&retval);
-    ret = (*argv[0]->typ->comparep)("compare", 2, argv, NULL, 0, txp, &retval);
+    ret = (*argv[0]->typ->comparep)("compare", 2, argv, NULL, 0, ecp, txp, &retval);
     if (ret != RDB_OK) {
-        RDB_destroy_obj(&retval);
+        RDB_destroy_obj(&retval, ecp);
         return ret;
     }
     RDB_bool_to_obj(retvalp, RDB_obj_int(&retval) > 0);
-    RDB_destroy_obj(&retval);
+    RDB_destroy_obj(&retval, ecp);
     return RDB_OK;
 }
 
 static int
 get(const char *name, int argc, RDB_object *argv[],
-        const void *iargp, size_t iarglen, RDB_transaction *txp,
-        RDB_object *retvalp)
+        const void *iargp, size_t iarglen, RDB_exec_context *ecp,
+        RDB_transaction *txp, RDB_object *retvalp)
 {
     RDB_object retval;
     int ret;
     
     RDB_init_obj(&retval);
-    ret = (*argv[0]->typ->comparep)("compare", 2, argv, NULL, 0, txp, &retval);
+    ret = (*argv[0]->typ->comparep)("compare", 2, argv, NULL, 0, ecp, txp,
+            &retval);
     if (ret != RDB_OK) {
-        RDB_destroy_obj(&retval);
+        RDB_destroy_obj(&retval, ecp);
         return ret;
     }
     RDB_bool_to_obj(retvalp, RDB_obj_int(&retval) >= 0);
-    RDB_destroy_obj(&retval);
+    RDB_destroy_obj(&retval, ecp);
     return RDB_OK;
 }
 
 static int
 negate_int(const char *name, int argc, RDB_object *argv[],
-        const void *iargp, size_t iarglen, RDB_transaction *txp,
-        RDB_object *retvalp)
+        const void *iargp, size_t iarglen, RDB_exec_context *ecp,
+        RDB_transaction *txp, RDB_object *retvalp)
 {
     RDB_int_to_obj(retvalp, -argv[0]->var.int_val);
     return RDB_OK;
@@ -1628,8 +1632,8 @@ negate_int(const char *name, int argc, RDB_object *argv[],
 
 static int
 negate_rational(const char *name, int argc, RDB_object *argv[],
-        const void *iargp, size_t iarglen, RDB_transaction *txp,
-        RDB_object *retvalp)
+        const void *iargp, size_t iarglen, RDB_exec_context *ecp,
+        RDB_transaction *txp, RDB_object *retvalp)
 {
     RDB_rational_to_obj(retvalp, -argv[0]->var.rational_val);
     return RDB_OK;
@@ -1637,8 +1641,8 @@ negate_rational(const char *name, int argc, RDB_object *argv[],
 
 static int
 add_int(const char *name, int argc, RDB_object *argv[],
-        const void *iargp, size_t iarglen, RDB_transaction *txp,
-        RDB_object *retvalp)
+        const void *iargp, size_t iarglen, RDB_exec_context *ecp,
+        RDB_transaction *txp, RDB_object *retvalp)
 {
     RDB_int_to_obj(retvalp, argv[0]->var.int_val + argv[1]->var.int_val);
     return RDB_OK;
@@ -1646,8 +1650,8 @@ add_int(const char *name, int argc, RDB_object *argv[],
 
 static int
 add_rational(const char *name, int argc, RDB_object *argv[],
-        const void *iargp, size_t iarglen, RDB_transaction *txp,
-        RDB_object *retvalp)
+        const void *iargp, size_t iarglen, RDB_exec_context *ecp,
+        RDB_transaction *txp, RDB_object *retvalp)
 {
     RDB_rational_to_obj(retvalp,
             argv[0]->var.rational_val + argv[1]->var.rational_val);
@@ -1656,8 +1660,8 @@ add_rational(const char *name, int argc, RDB_object *argv[],
 
 static int
 subtract_int(const char *name, int argc, RDB_object *argv[],
-        const void *iargp, size_t iarglen, RDB_transaction *txp,
-        RDB_object *retvalp)
+        const void *iargp, size_t iarglen, RDB_exec_context *ecp,
+        RDB_transaction *txp, RDB_object *retvalp)
 {
     RDB_int_to_obj(retvalp, argv[0]->var.int_val - argv[1]->var.int_val);
     return RDB_OK;
@@ -1665,8 +1669,8 @@ subtract_int(const char *name, int argc, RDB_object *argv[],
 
 static int
 subtract_rational(const char *name, int argc, RDB_object *argv[],
-        const void *iargp, size_t iarglen, RDB_transaction *txp,
-        RDB_object *retvalp)
+        const void *iargp, size_t iarglen, RDB_exec_context *ecp,
+        RDB_transaction *txp, RDB_object *retvalp)
 {
     RDB_rational_to_obj(retvalp,
             argv[0]->var.rational_val - argv[1]->var.rational_val);
@@ -1675,8 +1679,8 @@ subtract_rational(const char *name, int argc, RDB_object *argv[],
 
 static int
 multiply_int(const char *name, int argc, RDB_object *argv[],
-        const void *iargp, size_t iarglen, RDB_transaction *txp,
-        RDB_object *retvalp)
+        const void *iargp, size_t iarglen, RDB_exec_context *ecp,
+        RDB_transaction *txp, RDB_object *retvalp)
 {
     RDB_int_to_obj(retvalp, argv[0]->var.int_val * argv[1]->var.int_val);
     return RDB_OK;
@@ -1684,8 +1688,8 @@ multiply_int(const char *name, int argc, RDB_object *argv[],
 
 static int
 multiply_rational(const char *name, int argc, RDB_object *argv[],
-        const void *iargp, size_t iarglen, RDB_transaction *txp,
-        RDB_object *retvalp)
+        const void *iargp, size_t iarglen, RDB_exec_context *ecp,
+        RDB_transaction *txp, RDB_object *retvalp)
 {
     RDB_rational_to_obj(retvalp,
             argv[0]->var.rational_val * argv[1]->var.rational_val);
@@ -1694,8 +1698,8 @@ multiply_rational(const char *name, int argc, RDB_object *argv[],
 
 static int
 divide_int(const char *name, int argc, RDB_object *argv[],
-        const void *iargp, size_t iarglen, RDB_transaction *txp,
-        RDB_object *retvalp)
+        const void *iargp, size_t iarglen, RDB_exec_context *ecp,
+        RDB_transaction *txp, RDB_object *retvalp)
 {
     if (argv[1]->var.int_val == 0)
         return RDB_INVALID_ARGUMENT;
@@ -1705,8 +1709,8 @@ divide_int(const char *name, int argc, RDB_object *argv[],
 
 static int
 divide_rational(const char *name, int argc, RDB_object *argv[],
-        const void *iargp, size_t iarglen, RDB_transaction *txp,
-        RDB_object *retvalp)
+        const void *iargp, size_t iarglen, RDB_exec_context *ecp,
+        RDB_transaction *txp, RDB_object *retvalp)
 {
     if (argv[1]->var.rational_val == 0.0)
         return RDB_INVALID_ARGUMENT;
@@ -2251,6 +2255,14 @@ _RDB_add_builtin_ops(RDB_dbroot *dbrootp)
         return ret;
 
     op = new_ro_op("UNGROUP", -1, NULL, &op_ungroup);
+    if (op == NULL)
+        return RDB_NO_MEMORY;
+
+    ret = put_ro_op(dbrootp, op);
+    if (ret != RDB_OK)
+        return ret;
+
+    op = new_ro_op("NOT_FOUND_ERROR", 0, &RDB_NOT_FOUND_ERROR, &_RDB_sys_select);
     if (op == NULL)
         return RDB_NO_MEMORY;
 

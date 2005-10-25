@@ -22,6 +22,10 @@ typedef struct {
     /* Local tables */
     Tcl_HashTable ltables;
     int ltable_uid;
+
+    /* Execution context */
+    RDB_exec_context ec;
+    RDB_exec_context *current_ecp;
 } TclState;
 
 /*
@@ -98,17 +102,17 @@ int
 Duro_tcl_rollback(RDB_transaction *, Tcl_HashEntry *entryp);
 
 int
-Duro_tcl_drop_ltable(table_entry *, Tcl_HashEntry *entryp);
+Duro_tcl_drop_ltable(table_entry *, Tcl_HashEntry *entryp, RDB_exec_context *);
 
 int
-Duro_tcl_drop_array(RDB_object *arrayp, Tcl_HashEntry *entryp);
+Duro_tcl_drop_array(RDB_object *arrayp, Tcl_HashEntry *entryp,
+        RDB_exec_context *);
 
 void
-Duro_dberror(Tcl_Interp *interp, RDB_transaction *, int err);
+Duro_dberror(Tcl_Interp *interp, RDB_exec_context *ecp, RDB_transaction *);
 
-int
-Duro_get_table(TclState *, Tcl_Interp *, const char *name, RDB_transaction *,
-        RDB_table **);
+RDB_table *
+Duro_get_table(TclState *, Tcl_Interp *, const char *name, RDB_transaction *);
 
 Tcl_Obj *
 Duro_tuple_to_list(Tcl_Interp *, const RDB_object *, RDB_transaction *);
@@ -117,18 +121,20 @@ RDB_table *
 Duro_get_ltable(const char *name, void *arg);
 
 Tcl_Obj *
-Duro_irep_to_tcl(Tcl_Interp *interp, const RDB_object *objp, RDB_transaction *);
+Duro_irep_to_tcl(Tcl_Interp *interp, const RDB_object *objp,
+        RDB_exec_context *, RDB_transaction *);
 
 Tcl_Obj *
-Duro_to_tcl(Tcl_Interp *interp, const RDB_object *objp, RDB_transaction *);
+Duro_to_tcl(Tcl_Interp *interp, const RDB_object *objp, RDB_exec_context *,
+        RDB_transaction *);
 
 int
 Duro_tcl_to_duro(Tcl_Interp *interp, Tcl_Obj *tobjp, RDB_type *typ,
-        RDB_object *objp, RDB_transaction *);
+        RDB_object *objp, RDB_exec_context *, RDB_transaction *);
 
-int
-Duro_get_type(Tcl_Obj *objp, Tcl_Interp *, RDB_transaction *,
-         RDB_type **typp);
+RDB_type *
+Duro_get_type(Tcl_Obj *objp, Tcl_Interp *, RDB_exec_context *,
+         RDB_transaction *);
 
 RDB_seq_item *
 Duro_tobj_to_seq_items(Tcl_Interp *interp, Tcl_Obj *tobjp, int *seqitcp,
@@ -141,12 +147,12 @@ int
 Duro_add_table(Tcl_Interp *interp, TclState *statep, RDB_table *tbp,
         const char *name, RDB_environment *envp);
 
-int
+RDB_expression *
 Duro_parse_expr_utf(Tcl_Interp *, const char *, void *,
-        RDB_transaction *, RDB_expression **expp);
+        RDB_exec_context *, RDB_transaction *);
 
-int
+RDB_table *
 Duro_parse_table_utf(Tcl_Interp *interp, const char *s, void *arg,
-        RDB_transaction *txp, RDB_table **tbpp);
+        RDB_exec_context *, RDB_transaction *);
 
 #endif

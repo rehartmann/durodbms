@@ -13,7 +13,7 @@
 
 int
 _RDB_insert_real(RDB_table *tbp, const RDB_object *tplp,
-                   RDB_transaction *txp)
+                 RDB_exec_context *ecp, RDB_transaction *txp)
 {
     int i;
     int ret;
@@ -24,7 +24,7 @@ _RDB_insert_real(RDB_table *tbp, const RDB_object *tplp,
     if (tbp->stp == NULL) {
         /* Create physical table */
         ret = _RDB_create_stored_table(tbp, txp != NULL ? txp->envp : NULL,
-                NULL, txp);
+                NULL, ecp, txp);
         if (ret != RDB_OK) {
             return ret;
         }
@@ -99,7 +99,7 @@ _RDB_insert_real(RDB_table *tbp, const RDB_object *tplp,
             valp->typ =  tuptyp->var.tuple.attrv[i].typ;
             /* !! check object kind against type? */
 
-        ret = _RDB_obj_to_field(&fvp[*fnop], valp);
+        ret = _RDB_obj_to_field(&fvp[*fnop], valp, ecp);
         if (ret != RDB_OK)
             goto cleanup;
     }
@@ -126,11 +126,12 @@ cleanup:
 }
 
 int
-RDB_insert(RDB_table *tbp, const RDB_object *tplp, RDB_transaction *txp)
+RDB_insert(RDB_table *tbp, const RDB_object *tplp, RDB_exec_context *ecp,
+           RDB_transaction *txp)
 {
     RDB_ma_insert ins;
 
     ins.tbp = tbp;
     ins.tplp = (RDB_object *) tplp;
-    return RDB_multi_assign(1, &ins, 0, NULL, 0, NULL, 0, NULL, txp);
+    return RDB_multi_assign(1, &ins, 0, NULL, 0, NULL, 0, NULL, ecp, txp);
 }

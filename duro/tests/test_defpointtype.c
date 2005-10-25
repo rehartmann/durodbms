@@ -24,7 +24,7 @@ RDB_possrep prv[] = {
 RDB_type *argtv[] = { &RDB_RATIONAL, &RDB_RATIONAL };
 
 int
-test_type(RDB_database *dbp)
+test_type(RDB_database *dbp, RDB_exec_context *ecp)
 {
     RDB_transaction tx;
     int ret;
@@ -40,20 +40,20 @@ test_type(RDB_database *dbp)
     }
 
     printf("Defining type\n");
-    ret = RDB_define_type("POINT", 2, prv, NULL, &tx);
+    ret = RDB_define_type("POINT", 2, prv, NULL, ecp, &tx);
     if (ret != RDB_OK) {
         RDB_rollback(&tx);
         return ret;
     }
 
     printf("Implementing type\n");
-    ret = RDB_implement_type("POINT", NULL, sizeof(i_point), &tx);
+    ret = RDB_implement_type("POINT", NULL, sizeof(i_point), ecp, &tx);
     if (ret != RDB_OK) {
         RDB_rollback(&tx);
         return ret;
     }
 
-    ret = RDB_get_type("POINT", &tx, &typ);
+    typ = RDB_get_type("POINT", ecp, &tx);
     if (ret != RDB_OK) {
         RDB_rollback(&tx);
         return ret;
@@ -63,14 +63,14 @@ test_type(RDB_database *dbp)
      * Create selectors
      */
     ret = RDB_create_ro_op("POINT", 2, argtv, typ, "libpoint", "POINT",
-            NULL, 0, &tx);
+            NULL, 0, ecp, &tx);
     if (ret != RDB_OK) {
         RDB_rollback(&tx);
         return ret;
     }
 
     ret = RDB_create_ro_op("POLAR", 2, argtv, typ, "libpoint", "POLAR",
-            NULL, 0, &tx);
+            NULL, 0, ecp, &tx);
     if (ret != RDB_OK) {
         RDB_rollback(&tx);
         return ret;
@@ -85,28 +85,28 @@ test_type(RDB_database *dbp)
     updv[1] = RDB_FALSE;
      
     ret = RDB_create_update_op("POINT_set_X", 2, updargtv, updv, "libpoint",
-            "POINT_set_X", NULL, 0, &tx);
+            "POINT_set_X", NULL, 0, ecp, &tx);
     if (ret != RDB_OK) {
         RDB_rollback(&tx);
         return ret;
     }
 
     ret = RDB_create_update_op("POINT_set_Y", 2, updargtv, updv, "libpoint",
-            "POINT_set_Y", NULL, 0, &tx);
+            "POINT_set_Y", NULL, 0, ecp, &tx);
     if (ret != RDB_OK) {
         RDB_rollback(&tx);
         return ret;
     }
 
     ret = RDB_create_update_op("POINT_set_THETA", 2, updargtv, updv, "libpoint",
-            "POINT_set_THETA", NULL, 0, &tx);
+            "POINT_set_THETA", NULL, 0, ecp, &tx);
     if (ret != RDB_OK) {
         RDB_rollback(&tx);
         return ret;
     }
 
     ret = RDB_create_update_op("POINT_set_LENGTH", 2, updargtv, updv, "libpoint",
-            "POINT_set_LENGTH", NULL, 0, &tx);
+            "POINT_set_LENGTH", NULL, 0, ecp, &tx);
     if (ret != RDB_OK) {
         RDB_rollback(&tx);
         return ret;
@@ -118,28 +118,28 @@ test_type(RDB_database *dbp)
     getargtv[0] = typ;
 
     ret = RDB_create_ro_op("POINT_get_X", 1, getargtv, &RDB_RATIONAL, "libpoint",
-            "POINT_get_X", NULL, 0, &tx);
+            "POINT_get_X", NULL, 0, ecp, &tx);
     if (ret != RDB_OK) {
         RDB_rollback(&tx);
         return ret;
     }
 
     ret = RDB_create_ro_op("POINT_get_Y", 1, getargtv, &RDB_RATIONAL, "libpoint",
-            "POINT_get_Y", NULL, 0, &tx);
+            "POINT_get_Y", NULL, 0, ecp, &tx);
     if (ret != RDB_OK) {
         RDB_rollback(&tx);
         return ret;
     }
 
     ret = RDB_create_ro_op("POINT_get_THETA", 1, getargtv, &RDB_RATIONAL, "libpoint",
-            "POINT_get_THETA", NULL, 0, &tx);
+            "POINT_get_THETA", NULL, 0, ecp, &tx);
     if (ret != RDB_OK) {
         RDB_rollback(&tx);
         return ret;
     }
 
     ret = RDB_create_ro_op("POINT_get_LENGTH", 1, getargtv, &RDB_RATIONAL, "libpoint",
-            "POINT_get_LENGTH", NULL, 0, &tx);
+            "POINT_get_LENGTH", NULL, 0, ecp, &tx);
     if (ret != RDB_OK) {
         RDB_rollback(&tx);
         return ret;
@@ -154,6 +154,7 @@ main(void)
     RDB_environment *envp;
     RDB_database *dbp;
     int ret;
+    RDB_exec_context ec;
     
     printf("Opening environment\n");
     ret = RDB_open_env("dbenv", &envp);
@@ -164,17 +165,21 @@ main(void)
 
     RDB_set_errfile(envp, stderr);
 
-    ret = RDB_get_db_from_env("TEST", envp, &dbp);
+    RDB_init_exec_context(&ec);
+    dbp = RDB_get_db_from_env("TEST", envp, &ec);
     if (ret != 0) {
         fprintf(stderr, "Error: %s\n", RDB_strerror(ret));
+        RDB_destroy_exec_context(&ec);
         return 1;
     }
 
-    ret = test_type(dbp);
+    ret = test_type(dbp, &ec);
     if (ret != RDB_OK) {
         fprintf(stderr, "Error: %s\n", RDB_strerror(ret));
+        RDB_destroy_exec_context(&ec);
         return 2;
     }
+    RDB_destroy_exec_context(&ec);
 
     printf ("Closing environment\n");
     ret = RDB_close_env(envp);

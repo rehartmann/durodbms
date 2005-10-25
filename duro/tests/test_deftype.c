@@ -6,7 +6,7 @@
 #include <stdio.h>
 
 int
-test_type(RDB_database *dbp)
+test_type(RDB_database *dbp, RDB_exec_context *ecp)
 {
     RDB_transaction tx;
     RDB_possrep pr;
@@ -27,20 +27,20 @@ test_type(RDB_database *dbp)
     pr.compc = 1;
     pr.compv = &comp;
     constraintp = RDB_ro_op_va("<",
-            RDB_expr_comp(RDB_expr_attr("TINYINT"), "TINYINT"),
+            RDB_expr_comp(RDB_expr_attr("TINYINT"), "TINYINT", ecp),
             RDB_int_to_expr(100), (RDB_expression *) NULL);
     if (constraintp == NULL) {
         return RDB_NO_MEMORY;
     }
-    ret = RDB_define_type("TINYINT", 1, &pr, constraintp, &tx);
+    ret = RDB_define_type("TINYINT", 1, &pr, constraintp, ecp, &tx);
     if (ret != RDB_OK) {
-        RDB_drop_expr(constraintp);
+        RDB_drop_expr(constraintp, ecp);
         RDB_rollback(&tx);
         return ret;
     }
 
     printf("Implementing type\n");
-    ret = RDB_implement_type("TINYINT", NULL, -1, &tx);
+    ret = RDB_implement_type("TINYINT", NULL, -1, ecp, &tx);
     if (ret != RDB_OK) {
         RDB_rollback(&tx);
         return ret;
@@ -59,6 +59,7 @@ main(void)
     RDB_environment *envp;
     RDB_database *dbp;
     int ret;
+    RDB_exec_context ec;
     
     printf("Opening environment\n");
     ret = RDB_open_env("dbenv", &envp);
@@ -69,17 +70,22 @@ main(void)
 
     RDB_set_errfile(envp, stderr);
 
-    ret = RDB_get_db_from_env("TEST", envp, &dbp);
-    if (ret != 0) {
-        fprintf(stderr, "Error: %s\n", RDB_strerror(ret));
+    RDB_init_exec_context(&ec);
+    dbp = RDB_get_db_from_env("TEST", envp, &ec);
+    if (dbp == NULL) {
+        /* !! */ fprintf(stderr, "Error: %s\n", RDB_strerror(ret));
+        RDB_destroy_exec_context(&ec);
         return 1;
     }
 
-    ret = test_type(dbp);
+    ret = test_type(dbp, &ec);
     if (ret != RDB_OK) {
         fprintf(stderr, "Error: %s\n", RDB_strerror(ret));
+        RDB_destroy_exec_context(&ec);
         return 2;
     }
+
+    RDB_destroy_exec_context(&ec);
 
     printf ("Closing environment\n");
     ret = RDB_close_env(envp);

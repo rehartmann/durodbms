@@ -11,7 +11,8 @@
 #include <string.h>
 
 static int
-project_contains(RDB_table *tbp, const RDB_object *tplp, RDB_transaction *txp)
+project_contains(RDB_table *tbp, const RDB_object *tplp, RDB_exec_context *ecp,
+        RDB_transaction *txp)
 {
     RDB_bool result;
     int ret;
@@ -20,7 +21,7 @@ project_contains(RDB_table *tbp, const RDB_object *tplp, RDB_transaction *txp)
     if (tpltyp->var.tuple.attrc ==
             tbp->var.project.tbp->typ->var.basetyp->var.tuple.attrc) {
         /* Null project */
-        return RDB_table_contains(tbp->var.project.tbp, tplp, txp);
+        return RDB_table_contains(tbp->var.project.tbp, tplp, ecp, txp);
     } else if (tpltyp->var.tuple.attrc > 0) {
         RDB_expression *condp;
         RDB_table *seltbp;
@@ -32,21 +33,22 @@ project_contains(RDB_table *tbp, const RDB_object *tplp, RDB_transaction *txp)
         if (objp == NULL)
             return RDB_INVALID_ARGUMENT;
         condp = RDB_ro_op_va("=", RDB_expr_attr(tpltyp->var.tuple.attrv[0].name),
-                RDB_obj_to_expr(objp), (RDB_expression *) NULL);
+                RDB_obj_to_expr(objp, ecp), (RDB_expression *) NULL);
         if (condp == NULL)
             return RDB_NO_MEMORY;
         for (i = 1; i < tpltyp->var.tuple.attrc; i++) {
             objp = RDB_tuple_get(tplp, tpltyp->var.tuple.attrv[i].name);
             if (objp == NULL) {
                 if (condp != NULL)
-                    RDB_drop_expr(condp);
+                    RDB_drop_expr(condp, ecp);
                 return RDB_INVALID_ARGUMENT;
             }
             
             condp = RDB_ro_op_va("AND", condp,
                     RDB_ro_op_va("=", RDB_expr_attr(
                             tpltyp->var.tuple.attrv[i].name),
-                            RDB_obj_to_expr(objp), (RDB_expression *) NULL),
+                            RDB_obj_to_expr(objp, ecp),
+                            (RDB_expression *) NULL),
                     (RDB_expression *) NULL);
             if (condp == NULL)
                 return RDB_NO_MEMORY;
@@ -55,22 +57,22 @@ project_contains(RDB_table *tbp, const RDB_object *tplp, RDB_transaction *txp)
             return RDB_NO_MEMORY;
 
         /* create selection table */
-        ret = RDB_select(tbp, condp, txp, &seltbp);
-        if (ret != RDB_OK) {
-            RDB_drop_expr(condp);
-            return ret;
+        seltbp = RDB_select(tbp, condp, ecp, txp);
+        if (seltbp == NULL) {
+            RDB_drop_expr(condp, ecp);
+            return RDB_ERROR;
         }
 
         /* check if selection is empty */
-        ret = RDB_table_is_empty(seltbp, txp, &result);
-        _RDB_free_table(seltbp);
+        ret = RDB_table_is_empty(seltbp, ecp, txp, &result);
+        _RDB_free_table(seltbp, ecp);
         if (ret != RDB_OK)
             return ret;
         return result ? RDB_NOT_FOUND : RDB_OK;
     } else {
         /* projection with no attributes */
 
-        ret = RDB_table_is_empty(tbp->var.project.tbp, txp, &result);
+        ret = RDB_table_is_empty(tbp->var.project.tbp, ecp, txp, &result);
         if (ret != RDB_OK)
             return ret;
         return result ? RDB_NOT_FOUND : RDB_OK;
@@ -78,26 +80,28 @@ project_contains(RDB_table *tbp, const RDB_object *tplp, RDB_transaction *txp)
 }
 
 static int
-rename_contains(RDB_table *tbp, const RDB_object *tplp, RDB_transaction *txp)
+rename_contains(RDB_table *tbp, const RDB_object *tplp, RDB_exec_context *ecp,
+        RDB_transaction *txp)
 {
     RDB_object tpl;
     int ret;
 
     RDB_init_obj(&tpl);
     ret = _RDB_invrename_tuple(tplp, tbp->var.rename.renc, tbp->var.rename.renv,
-            &tpl);
+            ecp, &tpl);
     if (ret != RDB_OK)
         goto cleanup;
 
-    ret = RDB_table_contains(tbp->var.rename.tbp, &tpl, txp);
+    ret = RDB_table_contains(tbp->var.rename.tbp, &tpl, ecp, txp);
 
 cleanup:
-    RDB_destroy_obj(&tpl);
+    RDB_destroy_obj(&tpl, ecp);
     return ret;
 }
 
 static int
-ungroup_contains(RDB_table *tbp, const RDB_object *tplp, RDB_transaction *txp)
+ungroup_contains(RDB_table *tbp, const RDB_object *tplp, RDB_exec_context *ecp,
+        RDB_transaction *txp)
 {
     int ret, ret2;
     RDB_object tpl;
@@ -120,20 +124,21 @@ ungroup_contains(RDB_table *tbp, const RDB_object *tplp, RDB_transaction *txp)
         if (objp == NULL)
             return RDB_INVALID_ARGUMENT;
         condp = RDB_ro_op_va("=", RDB_expr_attr(tpltyp->var.tuple.attrv[i++].name),
-                RDB_obj_to_expr(objp), (RDB_expression *) NULL);
+                RDB_obj_to_expr(objp, ecp), (RDB_expression *) NULL);
         while (i < tpltyp->var.tuple.attrc) {
             if (strcmp(tpltyp->var.tuple.attrv[i].name,
                           tbp->var.ungroup.attr) != 0) {
                 objp = RDB_tuple_get(tplp, tpltyp->var.tuple.attrv[i].name);
                 if (objp == NULL) {
                     if (condp != NULL)
-                        RDB_drop_expr(condp);
+                        RDB_drop_expr(condp, ecp);
                     return RDB_INVALID_ARGUMENT;
                 }
                 condp = RDB_ro_op_va("AND", condp,
                         RDB_ro_op_va("=",
                                 RDB_expr_attr(tpltyp->var.tuple.attrv[i].name),
-                                RDB_obj_to_expr(objp), (RDB_expression *) NULL),
+                                RDB_obj_to_expr(objp, ecp),
+                                (RDB_expression *) NULL),
                         (RDB_expression *) NULL);
                 if (condp == NULL)
                     return RDB_NO_MEMORY;
@@ -145,14 +150,14 @@ ungroup_contains(RDB_table *tbp, const RDB_object *tplp, RDB_transaction *txp)
         }
 
         /* create selection table */
-        ret = RDB_select(tbp->var.ungroup.tbp, condp, txp, &seltbp);
-        if (ret != RDB_OK) {
-            RDB_drop_expr(condp);
-            return ret;
+        seltbp = RDB_select(tbp->var.ungroup.tbp, condp, ecp, txp);
+        if (seltbp == NULL) {
+            RDB_drop_expr(condp, ecp);
+            return RDB_ERROR;
         }
-        ret = _RDB_table_qresult(seltbp, txp, &qrp);
+        ret = _RDB_table_qresult(seltbp, ecp, txp, &qrp);
         if (ret != RDB_OK) {
-            RDB_drop_table(seltbp, txp);
+            RDB_drop_table(seltbp, ecp, txp);
             _RDB_handle_syserr(txp, ret);
             return ret;
         }
@@ -160,7 +165,7 @@ ungroup_contains(RDB_table *tbp, const RDB_object *tplp, RDB_transaction *txp)
         /*
          * Only one attribute (the UNGROUPed attribute)
          */
-        ret = _RDB_table_qresult(tbp->var.ungroup.tbp, txp, &qrp);
+        ret = _RDB_table_qresult(tbp->var.ungroup.tbp, ecp, txp, &qrp);
         if (ret != RDB_OK) {
             _RDB_handle_syserr(txp, ret);
             return ret;
@@ -172,10 +177,10 @@ ungroup_contains(RDB_table *tbp, const RDB_object *tplp, RDB_transaction *txp)
      * UNGROUPed attribute.
      */
     RDB_init_obj(&tpl);
-    while ((ret = _RDB_next_tuple(qrp, &tpl, txp)) == RDB_OK) {
+    while ((ret = _RDB_next_tuple(qrp, &tpl, ecp, txp)) == RDB_OK) {
         /* The additional attributes in tpl are ignored */
         ret = RDB_table_contains(RDB_obj_table(RDB_tuple_get(&tpl,
-                tbp->var.ungroup.attr)), tplp, txp);
+                tbp->var.ungroup.attr)), tplp, ecp, txp);
         if (ret != RDB_NOT_FOUND) {
             /* Found or Error */
             break;
@@ -186,14 +191,14 @@ ungroup_contains(RDB_table *tbp, const RDB_object *tplp, RDB_transaction *txp)
         goto error;
     }
 
-    RDB_destroy_obj(&tpl);
-    ret2 = _RDB_drop_qresult(qrp, txp);
+    RDB_destroy_obj(&tpl, ecp);
+    ret2 = _RDB_drop_qresult(qrp, ecp, txp);
     if (ret2 != RDB_OK) {
         _RDB_handle_syserr(txp, ret2);
         return ret2;
     }    
     if (seltbp != NULL) {
-        ret2 = RDB_drop_table(seltbp, txp);
+        ret2 = RDB_drop_table(seltbp, ecp, txp);
         if (ret2 != RDB_OK) {
             _RDB_handle_syserr(txp, ret);
             return ret2;
@@ -202,15 +207,16 @@ ungroup_contains(RDB_table *tbp, const RDB_object *tplp, RDB_transaction *txp)
     return ret;
 
 error:
-    RDB_destroy_obj(&tpl);
-    _RDB_drop_qresult(qrp, txp);
+    RDB_destroy_obj(&tpl, ecp);
+    _RDB_drop_qresult(qrp, ecp, txp);
     if (seltbp != NULL)
-        RDB_drop_table(seltbp, txp);
+        RDB_drop_table(seltbp, ecp, txp);
     return ret;
 }
 
 static int
-wrap_contains(RDB_table *tbp, const RDB_object *tplp, RDB_transaction *txp)
+wrap_contains(RDB_table *tbp, const RDB_object *tplp, RDB_exec_context *ecp,
+        RDB_transaction *txp)
 {
     int ret;
     RDB_object tpl;
@@ -222,19 +228,20 @@ wrap_contains(RDB_table *tbp, const RDB_object *tplp, RDB_transaction *txp)
     RDB_init_obj(&tpl);
 
     ret = _RDB_invwrap_tuple(tplp, tbp->var.wrap.wrapc, tbp->var.wrap.wrapv,
-            &tpl);
+            ecp, &tpl);
     if (ret != RDB_OK) {
-        RDB_destroy_obj(&tpl);
+        RDB_destroy_obj(&tpl, ecp);
         return ret;
     }
 
-    ret = RDB_table_contains(tbp->var.wrap.tbp, &tpl, txp);
-    RDB_destroy_obj(&tpl);
+    ret = RDB_table_contains(tbp->var.wrap.tbp, &tpl, ecp, txp);
+    RDB_destroy_obj(&tpl, ecp);
     return ret;
 }
 
 static int
-unwrap_contains(RDB_table *tbp, const RDB_object *tplp, RDB_transaction *txp)
+unwrap_contains(RDB_table *tbp, const RDB_object *tplp, RDB_exec_context *ecp,
+        RDB_transaction *txp)
 {
     int ret;
     RDB_object tpl;
@@ -245,31 +252,34 @@ unwrap_contains(RDB_table *tbp, const RDB_object *tplp, RDB_transaction *txp)
 
     RDB_init_obj(&tpl);
     ret = _RDB_invunwrap_tuple(tplp, tbp->var.unwrap.attrc,
-            tbp->var.unwrap.attrv, tbp->var.unwrap.tbp->typ->var.basetyp, &tpl);
+            tbp->var.unwrap.attrv, tbp->var.unwrap.tbp->typ->var.basetyp,
+            ecp, &tpl);
     if (ret != RDB_OK) {
-        RDB_destroy_obj(&tpl);
+        RDB_destroy_obj(&tpl, ecp);
         return ret;
     }
 
-    ret = RDB_table_contains(tbp->var.unwrap.tbp, &tpl, txp);
-    RDB_destroy_obj(&tpl);
+    ret = RDB_table_contains(tbp->var.unwrap.tbp, &tpl, ecp, txp);
+    RDB_destroy_obj(&tpl, ecp);
     return ret;
 }
 
 static int
-sdivide_contains(RDB_table *tbp, const RDB_object *tplp, RDB_transaction *txp)
+sdivide_contains(RDB_table *tbp, const RDB_object *tplp, RDB_exec_context *ecp,
+        RDB_transaction *txp)
 {
     int ret;
 
-    ret = RDB_table_contains(tbp->var.sdivide.tb1p, tplp, txp);
+    ret = RDB_table_contains(tbp->var.sdivide.tb1p, tplp, ecp, txp);
     if (ret != RDB_OK)
         return ret;
 
-    return _RDB_sdivide_preserves(tbp, tplp, NULL, txp);
+    return _RDB_sdivide_preserves(tbp, tplp, NULL, ecp, txp);
 }
 
 static int
-stored_contains(RDB_table *tbp, const RDB_object *tplp, RDB_transaction *txp)
+stored_contains(RDB_table *tbp, const RDB_object *tplp, RDB_exec_context *ecp,
+        RDB_transaction *txp)
 {
     int i;
     int ret;
@@ -306,7 +316,7 @@ stored_contains(RDB_table *tbp, const RDB_object *tplp, RDB_transaction *txp)
                 || objp->kind == RDB_OB_TABLE)) {
             objp->typ = tpltyp->var.tuple.attrv[i].typ;
         }
-        ret = _RDB_obj_to_field(&fvp[fno], objp);
+        ret = _RDB_obj_to_field(&fvp[fno], objp, ecp);
         if (ret != RDB_OK) {
             free(fvp);
             return ret;
@@ -325,7 +335,8 @@ stored_contains(RDB_table *tbp, const RDB_object *tplp, RDB_transaction *txp)
 }
 
 int
-RDB_table_contains(RDB_table *tbp, const RDB_object *tplp, RDB_transaction *txp)
+RDB_table_contains(RDB_table *tbp, const RDB_object *tplp, RDB_exec_context *ecp,
+        RDB_transaction *txp)
 {
     int ret;
     RDB_bool b;
@@ -335,43 +346,43 @@ RDB_table_contains(RDB_table *tbp, const RDB_object *tplp, RDB_transaction *txp)
 
     switch (tbp->kind) {
         case RDB_TB_REAL:
-            return stored_contains(tbp, tplp, txp);
+            return stored_contains(tbp, tplp, ecp, txp);
         case RDB_TB_SELECT:
-            ret = RDB_evaluate_bool(tbp->var.select.exp, tplp, txp, &b);
+            ret = RDB_evaluate_bool(tbp->var.select.exp, tplp, ecp, txp, &b);
             if (ret != RDB_OK)
                 return ret;
             if (!b)
                 return RDB_NOT_FOUND;
-            return RDB_table_contains(tbp->var.select.tbp, tplp, txp);
+            return RDB_table_contains(tbp->var.select.tbp, tplp, ecp, txp);
         case RDB_TB_UNION:
-            ret = RDB_table_contains(tbp->var._union.tb1p, tplp, txp);
+            ret = RDB_table_contains(tbp->var._union.tb1p, tplp, ecp, txp);
             if (ret == RDB_OK)
                 return RDB_OK;
-            return RDB_table_contains(tbp->var._union.tb2p, tplp, txp);
+            return RDB_table_contains(tbp->var._union.tb2p, tplp, ecp, txp);
         case RDB_TB_MINUS:
-            ret = RDB_table_contains(tbp->var.minus.tb1p, tplp, txp);
+            ret = RDB_table_contains(tbp->var.minus.tb1p, tplp, ecp, txp);
             if (ret != RDB_OK)
                 return ret;
-            ret = RDB_table_contains(tbp->var.minus.tb2p, tplp, txp);
+            ret = RDB_table_contains(tbp->var.minus.tb2p, tplp, ecp, txp);
             if (ret == RDB_OK)
                 return RDB_NOT_FOUND;
             if (ret == RDB_NOT_FOUND)
                 return RDB_OK;
             return ret;
         case RDB_TB_INTERSECT:
-            ret = RDB_table_contains(tbp->var.intersect.tb1p, tplp, txp);
+            ret = RDB_table_contains(tbp->var.intersect.tb1p, tplp, ecp, txp);
             if (ret != RDB_OK)
                 return ret;
-            return RDB_table_contains(tbp->var.intersect.tb2p, tplp, txp);
+            return RDB_table_contains(tbp->var.intersect.tb2p, tplp, ecp, txp);
         case RDB_TB_JOIN:
-            ret = RDB_table_contains(tbp->var.join.tb1p, tplp, txp);
+            ret = RDB_table_contains(tbp->var.join.tb1p, tplp, ecp, txp);
             if (ret != RDB_OK)
                 return ret;
-            return RDB_table_contains(tbp->var.join.tb2p, tplp, txp);
+            return RDB_table_contains(tbp->var.join.tb2p, tplp, ecp, txp);
         case RDB_TB_EXTEND:
-            return RDB_table_contains(tbp->var.extend.tbp, tplp, txp);
+            return RDB_table_contains(tbp->var.extend.tbp, tplp, ecp, txp);
         case RDB_TB_PROJECT:
-            return project_contains(tbp, tplp, txp);
+            return project_contains(tbp, tplp, ecp, txp);
         case RDB_TB_SUMMARIZE:
         case RDB_TB_GROUP:
             /*
@@ -381,7 +392,7 @@ RDB_table_contains(RDB_table *tbp, const RDB_object *tplp, RDB_transaction *txp)
                 int ret2;
 
                 RDB_qresult *qrp;
-                ret = _RDB_table_qresult(tbp, txp, &qrp);
+                ret = _RDB_table_qresult(tbp, ecp, txp, &qrp);
                 if (ret != RDB_OK) {
                     RDB_errmsg(txp->dbp->dbrootp->envp,
                             "Unable to create qresult: %s", RDB_strerror(ret));
@@ -389,10 +400,10 @@ RDB_table_contains(RDB_table *tbp, const RDB_object *tplp, RDB_transaction *txp)
                     return ret;
                 }
 
-                ret2 = _RDB_qresult_contains(qrp, tplp, txp);
+                ret2 = _RDB_qresult_contains(qrp, tplp, ecp, txp);
                 if (ret2 != RDB_OK && ret2 != RDB_NOT_FOUND
                         && ret2 != RDB_INVALID_ARGUMENT) {
-                    _RDB_drop_qresult(qrp, txp);
+                    _RDB_drop_qresult(qrp, ecp, txp);
                     RDB_errmsg(txp->dbp->dbrootp->envp,
                             "_RDB_qresult_contains() failed: %s",
                             RDB_strerror(ret2));
@@ -400,7 +411,7 @@ RDB_table_contains(RDB_table *tbp, const RDB_object *tplp, RDB_transaction *txp)
                     return ret2;
                 }
 
-                ret = _RDB_drop_qresult(qrp, txp);
+                ret = _RDB_drop_qresult(qrp, ecp, txp);
                 if (ret != RDB_OK) {
                     RDB_errmsg(txp->dbp->dbrootp->envp,
                             "Unable to drop qresult: %s", RDB_strerror(ret));
@@ -410,15 +421,15 @@ RDB_table_contains(RDB_table *tbp, const RDB_object *tplp, RDB_transaction *txp)
                 return ret2;
             }
         case RDB_TB_UNGROUP:
-            return ungroup_contains(tbp, tplp, txp);
+            return ungroup_contains(tbp, tplp, ecp, txp);
         case RDB_TB_RENAME:
-            return rename_contains(tbp, tplp, txp);
+            return rename_contains(tbp, tplp, ecp, txp);
         case RDB_TB_WRAP:
-            return wrap_contains(tbp, tplp, txp);
+            return wrap_contains(tbp, tplp, ecp, txp);
         case RDB_TB_UNWRAP:
-            return unwrap_contains(tbp, tplp, txp);;
+            return unwrap_contains(tbp, tplp, ecp, txp);;
         case RDB_TB_SDIVIDE:
-            return sdivide_contains(tbp, tplp, txp);
+            return sdivide_contains(tbp, tplp, ecp, txp);
     }
     /* should never be reached */
     abort();

@@ -50,13 +50,13 @@ del_keys(RDB_table *tbp)
 }
 
 static int
-copy_type(RDB_table *dstp, const RDB_table *srcp)
+copy_type(RDB_table *dstp, const RDB_table *srcp, RDB_exec_context *ecp)
 {
-    RDB_type *typ = _RDB_dup_nonscalar_type(srcp->typ);
+    RDB_type *typ = _RDB_dup_nonscalar_type(srcp->typ, ecp);
     if (typ == NULL)
         return RDB_NO_MEMORY;
 
-    RDB_drop_type(dstp->typ, NULL);
+    RDB_drop_type(dstp->typ, ecp, NULL);
     dstp->typ = typ;
 
     return RDB_OK;
@@ -64,7 +64,7 @@ copy_type(RDB_table *dstp, const RDB_table *srcp)
 
 /* Only for binary operators */
 static int
-eliminate_child (RDB_expression *exp, const char *name)
+eliminate_child (RDB_expression *exp, const char *name, RDB_exec_context *ecp)
 {
     RDB_expression *hexp = exp->var.op.argv[0];
     int ret = alter_op(exp, name, 2);
@@ -76,15 +76,15 @@ eliminate_child (RDB_expression *exp, const char *name)
     free(hexp->var.op.name);
     free(hexp->var.op.argv);
     free(hexp);
-    ret = _RDB_transform_exp(exp->var.op.argv[0]);
+    ret = _RDB_transform_exp(exp->var.op.argv[0], ecp);
     if (ret != RDB_OK)
         return ret;
-    return _RDB_transform_exp(exp->var.op.argv[1]);
+    return _RDB_transform_exp(exp->var.op.argv[1], ecp);
 }
 
 /* Try to eliminate NOT operator */
 static int
-eliminate_not(RDB_expression *exp)
+eliminate_not(RDB_expression *exp, RDB_exec_context *ecp)
 {
     int ret;
     RDB_expression *hexp;
@@ -105,10 +105,10 @@ eliminate_not(RDB_expression *exp)
         if (ret != RDB_OK)
             return ret;
 
-        ret = eliminate_not(exp->var.op.argv[0]);
+        ret = eliminate_not(exp->var.op.argv[0], ecp);
         if (ret != RDB_OK)
             return ret;
-        return eliminate_not(exp->var.op.argv[1]);
+        return eliminate_not(exp->var.op.argv[1], ecp);
     }
     if (strcmp(exp->var.op.argv[0]->var.op.name, "OR") == 0) {
         hexp = RDB_ro_op("NOT", 1, &exp->var.op.argv[0]->var.op.argv[1]);
@@ -123,23 +123,23 @@ eliminate_not(RDB_expression *exp)
         if (ret != RDB_OK)
             return ret;
 
-        ret = eliminate_not(exp->var.op.argv[0]);
+        ret = eliminate_not(exp->var.op.argv[0], ecp);
         if (ret != RDB_OK)
             return ret;
-        return eliminate_not(exp->var.op.argv[1]);
+        return eliminate_not(exp->var.op.argv[1], ecp);
     }
     if (strcmp(exp->var.op.argv[0]->var.op.name, "=") == 0)
-        return eliminate_child(exp, "<>");
+        return eliminate_child(exp, "<>", ecp);
     if (strcmp(exp->var.op.argv[0]->var.op.name, "<>") == 0)
-        return eliminate_child(exp, "=");
+        return eliminate_child(exp, "=", ecp);
     if (strcmp(exp->var.op.argv[0]->var.op.name, "<") == 0)
-        return eliminate_child(exp, ">=");
+        return eliminate_child(exp, ">=", ecp);
     if (strcmp(exp->var.op.argv[0]->var.op.name, ">") == 0)
-        return eliminate_child(exp, "<=");
+        return eliminate_child(exp, "<=", ecp);
     if (strcmp(exp->var.op.argv[0]->var.op.name, "<=") == 0)
-        return eliminate_child(exp, ">");
+        return eliminate_child(exp, ">", ecp);
     if (strcmp(exp->var.op.argv[0]->var.op.name, ">=") == 0)
-        return eliminate_child(exp, "<");
+        return eliminate_child(exp, "<", ecp);
     if (strcmp(exp->var.op.argv[0]->var.op.name, "NOT") == 0) {
         hexp = exp->var.op.argv[0];
         memcpy(exp, hexp->var.op.argv[0], sizeof (RDB_expression));
@@ -149,14 +149,14 @@ eliminate_not(RDB_expression *exp)
         free(hexp->var.op.name);
         free(hexp->var.op.argv);
         free(hexp);
-        return _RDB_transform_exp(exp);
+        return _RDB_transform_exp(exp, ecp);
     }
 
-    return _RDB_transform_exp(exp->var.op.argv[0]);
+    return _RDB_transform_exp(exp->var.op.argv[0], ecp);
 }
 
 int
-_RDB_transform_exp(RDB_expression *exp)
+_RDB_transform_exp(RDB_expression *exp, RDB_exec_context *ecp)
 {
     int ret;
     int i;
@@ -165,10 +165,10 @@ _RDB_transform_exp(RDB_expression *exp)
         return RDB_OK;
 
     if (strcmp(exp->var.op.name, "NOT") == 0) {
-        return eliminate_not(exp);
+        return eliminate_not(exp, ecp);
     }
     for (i = 0; i < exp->var.op.argc; i++) {
-        ret = _RDB_transform_exp(exp->var.op.argv[i]);
+        ret = _RDB_transform_exp(exp->var.op.argv[i], ecp);
         if (ret != RDB_OK)
             return ret;
     }
@@ -177,12 +177,12 @@ _RDB_transform_exp(RDB_expression *exp)
 
 static RDB_bool
 exprs_compl(const RDB_expression *ex1p, const RDB_expression *ex2p,
-        RDB_transaction *txp, RDB_bool *resp)
+        RDB_exec_context *ecp, RDB_transaction *txp, RDB_bool *resp)
 {
     int ret;
 
     if (strcmp(ex2p->var.op.name, "NOT") == 0) {
-        ret = _RDB_expr_equals(ex1p, ex2p->var.op.argv[0], txp, resp);
+        ret = _RDB_expr_equals(ex1p, ex2p->var.op.argv[0], ecp, txp, resp);
         if (ret != RDB_OK)
             return ret;
         if (*resp)
@@ -190,7 +190,7 @@ exprs_compl(const RDB_expression *ex1p, const RDB_expression *ex2p,
     }
 
     if (strcmp(ex1p->var.op.name, "NOT") == 0) {
-        ret = _RDB_expr_equals(ex1p->var.op.argv[0], ex2p, txp, resp);
+        ret = _RDB_expr_equals(ex1p->var.op.argv[0], ex2p, ecp, txp, resp);
         if (ret != RDB_OK)
             return ret;
     }
@@ -198,17 +198,17 @@ exprs_compl(const RDB_expression *ex1p, const RDB_expression *ex2p,
 }
 
 static int
-transform_project(RDB_table *tbp, RDB_transaction *txp);
+transform_project(RDB_table *tbp, RDB_exec_context *ecp, RDB_transaction *txp);
 
 static int
-transform_union(RDB_table *tbp, RDB_transaction *txp)
+transform_union(RDB_table *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
 {
     int ret;
 
-    ret = _RDB_transform(tbp->var._union.tb1p, txp);
+    ret = _RDB_transform(tbp->var._union.tb1p, ecp, txp);
     if (ret != RDB_OK)
         return ret;
-    ret = _RDB_transform(tbp->var._union.tb2p, txp);
+    ret = _RDB_transform(tbp->var._union.tb2p, ecp, txp);
     if (ret != RDB_OK)
         return ret;
 
@@ -218,11 +218,11 @@ transform_union(RDB_table *tbp, RDB_transaction *txp)
         RDB_table *stb2p = tbp->var._union.tb2p->var.project.tbp;
         if (stb1p->kind == RDB_TB_SELECT && stb2p->kind == RDB_TB_SELECT
                 && _RDB_table_def_equals(stb1p->var.select.tbp,
-                        stb2p->var.select.tbp, txp)) {
+                        stb2p->var.select.tbp, ecp, txp)) {
             RDB_bool merge;
 
             ret = exprs_compl(stb1p->var.select.exp, stb2p->var.select.exp,
-                    txp, &merge);
+                    ecp, txp, &merge);
             if (ret != RDB_OK)
                 return ret;
             if (merge) {
@@ -233,17 +233,17 @@ transform_union(RDB_table *tbp, RDB_transaction *txp)
                  * by T { ... }
                  */
 
-                ret = RDB_drop_table(tbp->var._union.tb2p, NULL);
+                ret = RDB_drop_table(tbp->var._union.tb2p, ecp, NULL);
                 if (ret != RDB_OK)
                     return ret;
 
                 tbp->kind = RDB_TB_PROJECT;
                 tbp->var.project.indexp = NULL;
                 tbp->var.project.tbp = stb1p->var.select.tbp;
-                _RDB_free_table(htbp->var.project.tbp);
-                _RDB_free_table(htbp);
+                _RDB_free_table(htbp->var.project.tbp, ecp);
+                _RDB_free_table(htbp, ecp);
 
-                ret = transform_project(tbp, txp);
+                ret = transform_project(tbp, ecp, txp);
                 if (ret != RDB_OK)
                     return ret;
             }
@@ -253,13 +253,13 @@ transform_union(RDB_table *tbp, RDB_transaction *txp)
 }
 
 static int
-transform_select(RDB_table *tbp, RDB_transaction *txp)
+transform_select(RDB_table *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
 {
     int ret;
     RDB_expression *exp;
     RDB_table *chtbp = tbp->var.select.tbp;
 
-    ret = _RDB_transform(chtbp, txp);
+    ret = _RDB_transform(chtbp, ecp, txp);
     if (ret != RDB_OK)
         return ret;
 
@@ -282,7 +282,7 @@ transform_select(RDB_table *tbp, RDB_transaction *txp)
 
                 tbp->var.select.exp = exp;
                 tbp->var.select.tbp = chtbp->var.select.tbp;
-                _RDB_free_table(chtbp);
+                _RDB_free_table(chtbp, ecp);
                 chtbp = tbp->var.select.tbp;
                 break;
             }
@@ -291,7 +291,7 @@ transform_select(RDB_table *tbp, RDB_transaction *txp)
                 RDB_table *htbp = chtbp->var.minus.tb1p;
                 exp = tbp->var.select.exp;
 
-                ret = _RDB_transform(chtbp->var.minus.tb2p, txp);
+                ret = _RDB_transform(chtbp->var.minus.tb2p, ecp, txp);
                 if (ret != RDB_OK)
                     return ret;
 
@@ -318,14 +318,14 @@ transform_select(RDB_table *tbp, RDB_transaction *txp)
                 RDB_table *newtbp;
                 RDB_expression *ex2p;
                 RDB_table *htbp = chtbp->var._union.tb1p;
-                ex2p = RDB_dup_expr(tbp->var.select.exp);
+                ex2p = RDB_dup_expr(tbp->var.select.exp, ecp);
                 if (ex2p == NULL)
-                    return RDB_NO_MEMORY;
+                    return RDB_ERROR;
 
-                ret = _RDB_select(chtbp->var._union.tb2p, ex2p, &newtbp);
-                if (ret != RDB_OK) {
-                    RDB_drop_expr(ex2p);
-                    return ret;
+                newtbp = _RDB_select(chtbp->var._union.tb2p, ex2p, ecp);
+                if (newtbp == NULL) {
+                    RDB_drop_expr(ex2p, ecp);
+                    return RDB_ERROR;
                 }
 
                 exp = tbp->var.select.exp;
@@ -341,7 +341,7 @@ transform_select(RDB_table *tbp, RDB_transaction *txp)
                 /* Keys may have changed, so delete them */
                 del_keys(chtbp);
 
-                ret = transform_union(tbp, txp);
+                ret = transform_union(tbp, ecp, txp);
                 if (ret != RDB_OK)
                     return ret;
 
@@ -354,14 +354,14 @@ transform_select(RDB_table *tbp, RDB_transaction *txp)
                 RDB_table *newtbp;
                 RDB_expression *ex2p;
                 RDB_table *htbp = chtbp->var._union.tb1p;
-                ex2p = RDB_dup_expr(tbp->var.select.exp);
+                ex2p = RDB_dup_expr(tbp->var.select.exp, ecp);
                 if (ex2p == NULL)
                     return RDB_NO_MEMORY;
 
-                ret = _RDB_select(chtbp->var._union.tb2p, ex2p, &newtbp);
-                if (ret != RDB_OK) {
-                    RDB_drop_expr(ex2p);
-                    return ret;
+                newtbp = _RDB_select(chtbp->var._union.tb2p, ex2p, ecp);
+                if (newtbp == NULL) {
+                    RDB_drop_expr(ex2p, ecp);
+                    return RDB_ERROR;
                 }
 
                 exp = tbp->var.select.exp;
@@ -374,7 +374,7 @@ transform_select(RDB_table *tbp, RDB_transaction *txp)
                 chtbp->var.select.exp = exp;
                 chtbp->var.select.objpc = 0;
 
-                ret = transform_select(newtbp, txp);
+                ret = transform_select(newtbp, ecp, txp);
                 if (ret != RDB_OK)
                     return ret;
 
@@ -391,7 +391,7 @@ transform_select(RDB_table *tbp, RDB_transaction *txp)
 
                 exp = tbp->var.select.exp;
                 ret = _RDB_resolve_extend_expr(&exp, chtbp->var.extend.attrc,
-                        chtbp->var.extend.attrv);
+                        chtbp->var.extend.attrv, ecp);
                 if (ret != RDB_OK)
                     return ret;
 
@@ -404,7 +404,7 @@ transform_select(RDB_table *tbp, RDB_transaction *txp)
                 chtbp->var.select.exp = exp;
                 chtbp->var.select.objpc = 0;
 
-                ret = copy_type(chtbp, htbp);
+                ret = copy_type(chtbp, htbp, ecp);
                 if (ret != RDB_OK)
                      return ret;
 
@@ -433,7 +433,7 @@ transform_select(RDB_table *tbp, RDB_transaction *txp)
                 chtbp->var.select.exp = exp;
                 chtbp->var.select.objpc = 0;
 
-                ret = copy_type(chtbp, htbp);
+                ret = copy_type(chtbp, htbp, ecp);
                 if (ret != RDB_OK)
                      return ret;
 
@@ -447,13 +447,13 @@ transform_select(RDB_table *tbp, RDB_transaction *txp)
             case RDB_TB_JOIN:
             case RDB_TB_PROJECT:
             case RDB_TB_SUMMARIZE:
-                return _RDB_transform(chtbp, txp);
+                return _RDB_transform(chtbp, ecp, txp);
             case RDB_TB_WRAP:
             case RDB_TB_UNWRAP:
             case RDB_TB_GROUP:
             case RDB_TB_UNGROUP:
             case RDB_TB_SDIVIDE:
-                return _RDB_transform(chtbp, txp);
+                return _RDB_transform(chtbp, ecp, txp);
         }
     } while (tbp->kind == RDB_TB_SELECT);
 
@@ -461,7 +461,8 @@ transform_select(RDB_table *tbp, RDB_transaction *txp)
 }
 
 static int
-swap_project_union(RDB_table *tbp, RDB_table *chtbp, RDB_transaction *txp)
+swap_project_union(RDB_table *tbp, RDB_table *chtbp, RDB_exec_context *ecp,
+        RDB_transaction *txp)
 {
     int ret;
     int i;
@@ -478,10 +479,10 @@ swap_project_union(RDB_table *tbp, RDB_table *chtbp, RDB_transaction *txp)
     }
 
     /* Create new project table for child #2 */
-    ret = RDB_project(chtbp->var._union.tb2p, attrc, attrnamev, &newtbp);
-    if (ret != RDB_OK) {
+    newtbp = RDB_project(chtbp->var._union.tb2p, attrc, attrnamev, ecp);
+    if (newtbp == NULL) {
         free(attrnamev);
-        return ret;
+        return RDB_ERROR;
     }
 
     /* Alter parent */
@@ -493,27 +494,26 @@ swap_project_union(RDB_table *tbp, RDB_table *chtbp, RDB_transaction *txp)
     chtbp->kind = RDB_TB_PROJECT;
     chtbp->var.project.tbp = htbp;
     chtbp->var.project.indexp = NULL;
-    ret = RDB_project_relation_type(chtbp->typ, attrc, attrnamev, &newtyp);
+    newtyp = RDB_project_relation_type(chtbp->typ, attrc, attrnamev, ecp);
     free(attrnamev);
-    if (ret != RDB_OK) {
-        return ret;
+    if (newtyp == NULL) {
+        return RDB_ERROR;
     }
-    RDB_drop_type(chtbp->typ, NULL);
+    RDB_drop_type(chtbp->typ, ecp, NULL);
     chtbp->typ = newtyp;
     /* Infer keys for first child to set keyloss flag */
     return _RDB_infer_keys(chtbp);
 
-    ret = transform_union(tbp, txp);
+    ret = transform_union(tbp, ecp, txp);
     if (ret != RDB_OK)
         return ret;
 }
 
 /* Transforms PROJECT(RENAME) to RENAME(PROJECT) or PROJECT */
 static int
-swap_project_rename(RDB_table *tbp)
+swap_project_rename(RDB_table *tbp, RDB_exec_context *ecp)
 {
     int i, j;
-    int ret;
     RDB_type *newtyp;
     RDB_renaming *renv;
     char **attrnamev;
@@ -571,7 +571,7 @@ swap_project_rename(RDB_table *tbp)
         /* Remove child */
         free(renv);
         tbp->var.project.tbp = chtbp->var.rename.tbp;
-        _RDB_free_table(chtbp);
+        _RDB_free_table(chtbp, ecp);
     } else {
         /*
          * Swap parent and child
@@ -593,15 +593,16 @@ swap_project_rename(RDB_table *tbp)
         for (i = 0; i < nattrc; i++) {
             attrnamev[i] = tbp->typ->var.basetyp->var.tuple.attrv[i].name;
             for (j = 0; j < tbp->var.rename.renc
-                    && strcmp(attrnamev[i], tbp->var.rename.renv[j].to) != 0; j++);
+                    && strcmp(attrnamev[i], tbp->var.rename.renv[j].to) != 0;
+                 j++);
             if (j < tbp->var.rename.renc)
                 attrnamev[j] = tbp->var.rename.renv[j].from;
         }
-        ret = RDB_project_relation_type(htbp->typ, nattrc, attrnamev, &newtyp);
+        newtyp = RDB_project_relation_type(htbp->typ, nattrc, attrnamev, ecp);
         free(attrnamev);
-        if (ret != RDB_OK)
-            return ret;
-        RDB_drop_type(chtbp->typ, NULL);
+        if (newtyp == NULL)
+            return RDB_ERROR;
+        RDB_drop_type(chtbp->typ, ecp, NULL);
         chtbp->typ = newtyp;
     }
 
@@ -610,7 +611,7 @@ swap_project_rename(RDB_table *tbp)
 
 /* Transforms PROJECT(EXTEND) to EXTEND(PROJECT) or PROJECT */
 static int
-swap_project_extend(RDB_table *tbp)
+swap_project_extend(RDB_table *tbp, RDB_exec_context *ecp)
 {
     int i, j;
     int ret;
@@ -642,20 +643,21 @@ swap_project_extend(RDB_table *tbp)
                 for (i = 0; i < chtbp->var.extend.attrc; i++) {
                     free(extv[i].name);
                     if (extv[i].exp != NULL)
-                        RDB_drop_expr(extv[i].exp);
+                        RDB_drop_expr(extv[i].exp, ecp);
                 }
                 free(extv);
-                return RDB_NO_MEMORY;
+                RDB_raise_no_memory(ecp);
+                return RDB_ERROR;
             }
-            extv[j].exp = RDB_dup_expr(chtbp->var.extend.attrv[i].exp);
+            extv[j].exp = RDB_dup_expr(chtbp->var.extend.attrv[i].exp, ecp);
             if (extv[j].exp == NULL) {
                 for (i = 0; i < chtbp->var.extend.attrc; i++) {
                     free(extv[i].name);
                     if (extv[i].exp != NULL)
-                        RDB_drop_expr(extv[i].exp);
+                        RDB_drop_expr(extv[i].exp, ecp);
                 }
                 free(extv);
-                return RDB_NO_MEMORY;
+                return RDB_ERROR;
             }
             j++;
         }
@@ -664,7 +666,7 @@ swap_project_extend(RDB_table *tbp)
     /* Destroy virtual attributes of child */
     for (i = 0; i < chtbp->var.extend.attrc; i++) {
         free(chtbp->var.extend.attrv[i].name);
-        RDB_drop_expr(chtbp->var.extend.attrv[i].exp);
+        RDB_drop_expr(chtbp->var.extend.attrv[i].exp, ecp);
     }
     free(chtbp->var.extend.attrv);
 
@@ -672,7 +674,7 @@ swap_project_extend(RDB_table *tbp)
         /* Extend would be empty - remove child */
         free(extv);
         tbp->var.project.tbp = chtbp->var.extend.tbp;
-        _RDB_free_table(chtbp);
+        _RDB_free_table(chtbp, ecp);
     } else {
         int nattrc;
         int extc = j;
@@ -714,11 +716,11 @@ swap_project_extend(RDB_table *tbp)
             }
         }
 
-        ret = RDB_project_relation_type(htbp->typ, nattrc, attrnamev, &newtyp);
+        newtyp = RDB_project_relation_type(htbp->typ, nattrc, attrnamev, ecp);
         free(attrnamev);
         if (ret != RDB_OK)
             return ret;
-        RDB_drop_type(chtbp->typ, NULL);
+        RDB_drop_type(chtbp->typ, ecp, NULL);
         chtbp->typ = newtyp;
     }
 
@@ -729,7 +731,7 @@ swap_project_extend(RDB_table *tbp)
  * Transforms PROJECT(SELECT) to SELECT(PROJECT) or PROJECT(SELECT(PROJECT))
  */
 static int
-swap_project_select(RDB_table *tbp, RDB_table *chtbp)
+swap_project_select(RDB_table *tbp, RDB_table *chtbp, RDB_exec_context *ecp)
 {
     int i;
     int ret;
@@ -765,10 +767,10 @@ swap_project_select(RDB_table *tbp, RDB_table *chtbp)
         /*
          * Add project
          */
-        ret = RDB_project(chtbp->var.select.tbp, attrc, attrv, &ntbp);
+        ntbp = RDB_project(chtbp->var.select.tbp, attrc, attrv, ecp);
         free(attrv);
-        if (ret != RDB_OK) {
-            return ret;
+        if (ntbp == NULL) {
+            return RDB_ERROR;
         }
         chtbp->var.select.tbp = ntbp;
     } else {
@@ -780,7 +782,7 @@ swap_project_select(RDB_table *tbp, RDB_table *chtbp)
         free(attrv);        
         keyloss = tbp->var.project.keyloss;
 
-        ret = copy_type(chtbp, tbp);
+        ret = copy_type(chtbp, tbp, ecp);
         if (ret != RDB_OK)
             return ret;
 
@@ -799,14 +801,14 @@ swap_project_select(RDB_table *tbp, RDB_table *chtbp)
 }
 
 static int
-transform_project(RDB_table *tbp, RDB_transaction *txp)
+transform_project(RDB_table *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
 {
     int ret;
     RDB_table *chtbp;
 
     do {
         chtbp = tbp->var.project.tbp;
-        ret = _RDB_transform(chtbp, txp);
+        ret = _RDB_transform(chtbp, ecp, txp);
         if (ret != RDB_OK)
             return ret;
 
@@ -818,16 +820,16 @@ transform_project(RDB_table *tbp, RDB_transaction *txp)
                 tbp->var.project.tbp = chtbp->var.project.tbp;
                 tbp->var.project.keyloss = (RDB_bool) (tbp->var.project.keyloss
                         || chtbp->var.project.keyloss);
-                _RDB_free_table(chtbp);
+                _RDB_free_table(chtbp, ecp);
                 break;
             case RDB_TB_UNION:
-                ret = swap_project_union(tbp, chtbp, txp);
+                ret = swap_project_union(tbp, chtbp, ecp, txp);
                 if (ret != RDB_OK)
                     return ret;
                 tbp = chtbp;
                 break;
             case RDB_TB_RENAME:
-                ret = swap_project_rename(tbp);
+                ret = swap_project_rename(tbp, ecp);
                 if (ret != RDB_OK)
                     return ret;
                 if (tbp->kind == RDB_TB_PROJECT) {
@@ -839,7 +841,7 @@ transform_project(RDB_table *tbp, RDB_transaction *txp)
                 }
                 break;
             case RDB_TB_EXTEND:
-                ret = swap_project_extend(tbp);
+                ret = swap_project_extend(tbp, ecp);
                 if (ret != RDB_OK)
                     return ret;
                 if (tbp->kind == RDB_TB_PROJECT) {
@@ -851,11 +853,11 @@ transform_project(RDB_table *tbp, RDB_transaction *txp)
                 }
                 break;
             case RDB_TB_SELECT:
-                ret = swap_project_select(tbp, chtbp);
+                ret = swap_project_select(tbp, chtbp, ecp);
                 if (ret != RDB_OK)
                     return ret;
                 if (chtbp->kind == RDB_TB_SELECT) {
-                    return transform_select(chtbp, txp);
+                    return transform_select(chtbp, ecp, txp);
                 }
                 tbp = chtbp;
                 break;
@@ -868,14 +870,14 @@ transform_project(RDB_table *tbp, RDB_transaction *txp)
             case RDB_TB_SDIVIDE:
             case RDB_TB_GROUP:
             case RDB_TB_UNGROUP:
-                return _RDB_transform(chtbp, txp);
+                return _RDB_transform(chtbp, ecp, txp);
         }
     } while (tbp->kind == RDB_TB_PROJECT);
     return RDB_OK;
 }
 
 int
-_RDB_transform(RDB_table *tbp, RDB_transaction *txp)
+_RDB_transform(RDB_table *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
 {
     int ret;
 
@@ -883,88 +885,88 @@ _RDB_transform(RDB_table *tbp, RDB_transaction *txp)
         case RDB_TB_REAL:
             break;
         case RDB_TB_MINUS:
-            ret = _RDB_transform(tbp->var.minus.tb1p, txp);
+            ret = _RDB_transform(tbp->var.minus.tb1p, ecp, txp);
             if (ret != RDB_OK)
                 return ret;
-            ret = _RDB_transform(tbp->var.minus.tb2p, txp);
+            ret = _RDB_transform(tbp->var.minus.tb2p, ecp, txp);
             if (ret != RDB_OK)
                 return ret;
             break;
         case RDB_TB_UNION:
-            ret = transform_union(tbp, txp);
+            ret = transform_union(tbp, ecp, txp);
             break;
         case RDB_TB_INTERSECT:
-            ret = _RDB_transform(tbp->var.intersect.tb1p, txp);
+            ret = _RDB_transform(tbp->var.intersect.tb1p, ecp, txp);
             if (ret != RDB_OK)
                 return ret;
-            ret = _RDB_transform(tbp->var.intersect.tb2p, txp);
+            ret = _RDB_transform(tbp->var.intersect.tb2p, ecp, txp);
             if (ret != RDB_OK)
                 return ret;
             break;
         case RDB_TB_SELECT:
-            ret = transform_select(tbp, txp);
+            ret = transform_select(tbp, ecp, txp);
             if (ret != RDB_OK)
                 return ret;
             break;
         case RDB_TB_JOIN:
-            ret = _RDB_transform(tbp->var.join.tb1p, txp);
+            ret = _RDB_transform(tbp->var.join.tb1p, ecp, txp);
             if (ret != RDB_OK)
                 return ret;
-            ret = _RDB_transform(tbp->var.join.tb2p, txp);
+            ret = _RDB_transform(tbp->var.join.tb2p, ecp, txp);
             if (ret != RDB_OK)
                 return ret;
             break;
         case RDB_TB_EXTEND:
-            ret = _RDB_transform(tbp->var.extend.tbp, txp);
+            ret = _RDB_transform(tbp->var.extend.tbp, ecp, txp);
             if (ret != RDB_OK)
                 return ret;
             break;
         case RDB_TB_PROJECT:
-            ret = transform_project(tbp, txp);
+            ret = transform_project(tbp, ecp, txp);
             if (ret != RDB_OK)
                 return ret;
             break;
         case RDB_TB_SUMMARIZE:
-            ret = _RDB_transform(tbp->var.summarize.tb1p, txp);
+            ret = _RDB_transform(tbp->var.summarize.tb1p, ecp, txp);
             if (ret != RDB_OK)
                 return ret;
-            ret = _RDB_transform(tbp->var.summarize.tb2p, txp);
+            ret = _RDB_transform(tbp->var.summarize.tb2p, ecp, txp);
             if (ret != RDB_OK)
                 return ret;
             break;
         case RDB_TB_RENAME:
-            ret = _RDB_transform(tbp->var.rename.tbp, txp);
+            ret = _RDB_transform(tbp->var.rename.tbp, ecp, txp);
             if (ret != RDB_OK)
                 return ret;
             break;
         case RDB_TB_WRAP:
-            ret = _RDB_transform(tbp->var.wrap.tbp, txp);
+            ret = _RDB_transform(tbp->var.wrap.tbp, ecp, txp);
             if (ret != RDB_OK)
                 return ret;
             break;
         case RDB_TB_UNWRAP:
-            ret = _RDB_transform(tbp->var.unwrap.tbp, txp);
+            ret = _RDB_transform(tbp->var.unwrap.tbp, ecp, txp);
             if (ret != RDB_OK)
                 return ret;
             break;
         case RDB_TB_GROUP:
-            ret = _RDB_transform(tbp->var.group.tbp, txp);
+            ret = _RDB_transform(tbp->var.group.tbp, ecp, txp);
             if (ret != RDB_OK)
                 return ret;
             break;
         case RDB_TB_UNGROUP:
-            ret = _RDB_transform(tbp->var.ungroup.tbp, txp);
+            ret = _RDB_transform(tbp->var.ungroup.tbp, ecp, txp);
             if (ret != RDB_OK)
                 return ret;
             break;
         case RDB_TB_SDIVIDE:
-            ret = _RDB_transform(tbp->var.sdivide.tb1p, txp);
+            ret = _RDB_transform(tbp->var.sdivide.tb1p, ecp, txp);
             if (ret != RDB_OK)
                 return ret;
-            ret = _RDB_transform(tbp->var.sdivide.tb2p, txp);
+            ret = _RDB_transform(tbp->var.sdivide.tb2p, ecp, txp);
             if (ret != RDB_OK)
                 return ret;
-            ret = _RDB_transform(tbp->var.sdivide.tb3p, txp);
+            ret = _RDB_transform(tbp->var.sdivide.tb3p, ecp, txp);
             if (ret != RDB_OK)
                 return ret;
             break;

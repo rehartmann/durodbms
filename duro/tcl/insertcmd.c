@@ -35,18 +35,18 @@ Duro_insert_cmd(ClientData data, Tcl_Interp *interp, int objc,
     }
     txp = Tcl_GetHashValue(entryp);
 
-    ret = Duro_get_table(statep, interp, name, txp, &tbp);
-    if (ret != TCL_OK) {
+    tbp = Duro_get_table(statep, interp, name, txp);
+    if (tbp == NULL) {
         return TCL_ERROR;
     }
 
     RDB_init_obj(&tpl);
     ret = Duro_tcl_to_duro(interp, objv[2], RDB_table_type(tbp)->var.basetyp,
-            &tpl, txp);
+            &tpl, statep->current_ecp, txp);
     if (ret != TCL_OK) {
         goto cleanup;
     }
-    ret = RDB_insert(tbp, &tpl, txp);
+    ret = RDB_insert(tbp, &tpl, statep->current_ecp, txp);
     if (ret == RDB_OK) {
         ret = TCL_OK;
     } else {
@@ -55,12 +55,12 @@ Duro_insert_cmd(ClientData data, Tcl_Interp *interp, int objc,
          */
         Tcl_ResetResult(interp);
 
-        Duro_dberror(interp, txp, ret);
+        Duro_dberror(interp, statep->current_ecp, txp);
         ret = TCL_ERROR;
     }
 
 cleanup:
-    RDB_destroy_obj(&tpl);
+    RDB_destroy_obj(&tpl, statep->current_ecp);
 
     return ret;
 }

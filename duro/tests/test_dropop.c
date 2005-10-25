@@ -5,7 +5,7 @@
 #include <stdio.h>
 
 int
-test_callop(RDB_database *dbp)
+test_callop(RDB_database *dbp, RDB_exec_context *ecp)
 {
     RDB_transaction tx;
     int ret;
@@ -29,7 +29,7 @@ test_callop(RDB_database *dbp)
     argv[1] = &arg2;
 
     printf("Calling PLUS\n");
-    ret = RDB_call_ro_op("PLUS", 2, argv, &tx, &retval);
+    ret = RDB_call_ro_op("PLUS", 2, argv, ecp, &tx, &retval);
     if (ret != RDB_OK) {
         RDB_rollback(&tx);
         goto error;
@@ -38,7 +38,7 @@ test_callop(RDB_database *dbp)
     printf("Result value is %d\n", RDB_obj_int(&retval));
 
     printf("Calling ADD\n");
-    ret = RDB_call_update_op("ADD", 2, argv, &tx);
+    ret = RDB_call_update_op("ADD", 2, argv, ecp, &tx);
     if (ret != RDB_OK) {
         RDB_rollback(&tx);
         goto error;
@@ -49,16 +49,16 @@ test_callop(RDB_database *dbp)
     return RDB_commit(&tx);
 
 error:
-    RDB_destroy_obj(&arg1);
-    RDB_destroy_obj(&arg2);
-    RDB_destroy_obj(&retval);
+    RDB_destroy_obj(&arg1, ecp);
+    RDB_destroy_obj(&arg2, ecp);
+    RDB_destroy_obj(&retval, ecp);
 
     RDB_rollback(&tx);
-    return ret;
+    return RDB_ERROR;
 }
 
 int
-test_dropop(RDB_database *dbp)
+test_dropop(RDB_database *dbp, RDB_exec_context *ecp)
 {
     RDB_transaction tx;
     int ret;
@@ -70,14 +70,14 @@ test_dropop(RDB_database *dbp)
     }
 
     printf("Dropping PLUS\n");
-    ret = RDB_drop_op("PLUS", &tx);
+    ret = RDB_drop_op("PLUS", ecp, &tx);
     if (ret != RDB_OK) {
         RDB_rollback(&tx);
         return ret;
     }
 
     printf("Dropping ADD\n");
-    ret = RDB_drop_op("ADD", &tx);
+    ret = RDB_drop_op("ADD", ecp, &tx);
     if (ret != RDB_OK) {
         RDB_rollback(&tx);
         return ret;
@@ -91,6 +91,7 @@ main(void)
     RDB_environment *envp;
     RDB_database *dbp;
     int ret;
+    RDB_exec_context ec;
     
     printf("Opening environment\n");
     ret = RDB_open_env("dbenv", &envp);
@@ -100,25 +101,28 @@ main(void)
     }
 
     RDB_set_errfile(envp, stderr);
-
-    ret = RDB_get_db_from_env("TEST", envp, &dbp);
-    if (ret != 0) {
+    RDB_init_exec_context(&ec);
+    dbp = RDB_get_db_from_env("TEST", envp, &ec);
+    if (dbp == NULL) {
         fprintf(stderr, "Error: %s\n", RDB_strerror(ret));
+        RDB_destroy_exec_context(&ec);
         return 1;
     }
 
-    ret = test_dropop(dbp);
+    ret = test_dropop(dbp, &ec);
     if (ret != RDB_OK) {
         fprintf(stderr, "Error: %s\n", RDB_strerror(ret));
+        RDB_destroy_exec_context(&ec);
         return 2;
     }
 
-    ret = test_callop(dbp);
+    ret = test_callop(dbp, &ec);
     if (ret == RDB_OPERATOR_NOT_FOUND) {
         printf("Return code: not found - OK\n");
     } else {
         fprintf(stderr, "Wrong return code: %s\n", RDB_strerror(ret));
     }
+    RDB_destroy_exec_context(&ec);
 
     printf ("Closing environment\n");
     ret = RDB_close_env(envp);

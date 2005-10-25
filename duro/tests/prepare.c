@@ -26,7 +26,7 @@ RDB_attr dept_attrs[] = {
 char *dept_key_attrs[] = { "DEPTNO" };
 
 int
-create_tables(RDB_database *dbp)
+create_tables(RDB_database *dbp, RDB_exec_context *ecp)
 {
     RDB_transaction tx;
     RDB_table *tbp;
@@ -41,11 +41,11 @@ create_tables(RDB_database *dbp)
     }
 
     printf("Creating table EMPS1\n");
-    ret = RDB_create_table("EMPS1", RDB_TRUE, 4, emp_attrs, 2, emp_keyattrs,
-                           &tx, &tbp);
-    if (ret != RDB_OK) {
+    tbp = RDB_create_table("EMPS1", RDB_TRUE, 4, emp_attrs, 2, emp_keyattrs,
+                           ecp, &tx);
+    if (tbp == NULL) {
         RDB_rollback(&tx);
-        return ret;
+        return RDB_ERROR;
     }
 
     printf("Creating table EMPS2\n");
@@ -55,29 +55,28 @@ create_tables(RDB_database *dbp)
     RDB_rational_to_obj(&defval, 4000.0);
     emp_attrs[2].defaultp = &defval;
 
-    ret = RDB_create_table("EMPS2", RDB_TRUE, 4, emp_attrs, 2, emp_keyattrs,
-                           &tx, &tbp);
-    RDB_destroy_obj(&defval);
-    if (ret != RDB_OK) {
+    tbp = RDB_create_table("EMPS2", RDB_TRUE, 4, emp_attrs, 2, emp_keyattrs,
+                           ecp, &tx);
+    RDB_destroy_obj(&defval, ecp);
+    if (tbp == NULL) {
         RDB_rollback(&tx);
-        return ret;
+        return RDB_ERROR;
     }
 
     printf("Creating table DEPTS\n");
     key.strv = dept_key_attrs;
     key.strc = 1;
-    ret = RDB_create_table("DEPTS", RDB_TRUE, 2, dept_attrs, 1, &key, &tx, &tbp);
-    if (ret != RDB_OK) {
+    tbp = RDB_create_table("DEPTS", RDB_TRUE, 2, dept_attrs, 1, &key, ecp, &tx);
+    if (tbp == NULL) {
         RDB_rollback(&tx);
-        return ret;
+        return RDB_ERROR;
     }
 
-    ret = RDB_commit(&tx);
-    return ret;
+    return RDB_commit(&tx);
 }
 
 int
-fill_tables(RDB_database *dbp)
+fill_tables(RDB_database *dbp, RDB_exec_context *ecp)
 {
     int ret;
     RDB_object deptpl, emptpl;
@@ -92,16 +91,16 @@ fill_tables(RDB_database *dbp)
     RDB_init_obj(&emptpl);
     RDB_init_obj(&deptpl);
 
-    RDB_get_table("EMPS1", &tx, &tbp);
-    RDB_get_table("EMPS2", &tx, &tbp2);
-    RDB_get_table("DEPTS", &tx, &tbp3);
+    tbp = RDB_get_table("EMPS1", ecp, &tx);
+    tbp2 = RDB_get_table("EMPS2", ecp, &tx);
+    tbp3 = RDB_get_table("DEPTS", ecp, &tx);
 
     printf("Filling EMPS1\n");
 
     ret = RDB_tuple_set_int(&emptpl, "EMPNO", 1);
     if (ret != RDB_OK)
         goto error;
-    ret = RDB_tuple_set_string(&emptpl, "NAME", "Smith");
+    ret = RDB_tuple_set_string(&emptpl, "NAME", "Smith", ecp);
     if (ret != RDB_OK)
         goto error;
     ret = RDB_tuple_set_rational(&emptpl, "SALARY", (RDB_rational)4000.0);
@@ -111,7 +110,7 @@ fill_tables(RDB_database *dbp)
     if (ret != RDB_OK)
         goto error;
 
-    ret = RDB_insert(tbp, &emptpl, &tx);
+    ret = RDB_insert(tbp, &emptpl, ecp, &tx);
     if (ret != RDB_OK) {
         goto error;
     }
@@ -119,7 +118,7 @@ fill_tables(RDB_database *dbp)
     ret = RDB_tuple_set_int(&emptpl, "EMPNO", 2);
     if (ret != RDB_OK)
         goto error;
-    ret = RDB_tuple_set_string(&emptpl, "NAME", "Jones");
+    ret = RDB_tuple_set_string(&emptpl, "NAME", "Jones", ecp);
     if (ret != RDB_OK)
         goto error;
     ret = RDB_tuple_set_rational(&emptpl, "SALARY", (RDB_rational)4100.0);
@@ -129,27 +128,27 @@ fill_tables(RDB_database *dbp)
     if (ret != RDB_OK)
         goto error;
 
-    ret = RDB_insert(tbp, &emptpl, &tx);
+    ret = RDB_insert(tbp, &emptpl, ecp, &tx);
     if (ret != RDB_OK) {
         goto error;
     }
 
     printf("Filling EMPS2\n");
 
-    RDB_destroy_obj(&emptpl);
+    RDB_destroy_obj(&emptpl, ecp);
     RDB_init_obj(&emptpl);
 
     ret = RDB_tuple_set_int(&emptpl, "EMPNO", 1);
     if (ret != RDB_OK)
         goto error;
-    ret = RDB_tuple_set_string(&emptpl, "NAME", "Smith");
+    ret = RDB_tuple_set_string(&emptpl, "NAME", "Smith", ecp);
     if (ret != RDB_OK)
         goto error;
     ret = RDB_tuple_set_int(&emptpl, "DEPTNO", 1);
     if (ret != RDB_OK)
         goto error;
 
-    ret = RDB_insert(tbp2, &emptpl, &tx);
+    ret = RDB_insert(tbp2, &emptpl, ecp, &tx);
     if (ret != RDB_OK) {
         return ret;
     }
@@ -157,14 +156,14 @@ fill_tables(RDB_database *dbp)
     ret = RDB_tuple_set_int(&emptpl, "EMPNO", 3);
     if (ret != RDB_OK)
         goto error;
-    ret = RDB_tuple_set_string(&emptpl, "NAME", "Clarke");
+    ret = RDB_tuple_set_string(&emptpl, "NAME", "Clarke", ecp);
     if (ret != RDB_OK)
         goto error;
     ret = RDB_tuple_set_int(&emptpl, "DEPTNO", 2);
     if (ret != RDB_OK)
         goto error;
 
-    ret = RDB_insert(tbp2, &emptpl, &tx);
+    ret = RDB_insert(tbp2, &emptpl, ecp, &tx);
     if (ret != RDB_OK)
         goto error;
 
@@ -173,11 +172,11 @@ fill_tables(RDB_database *dbp)
     ret = RDB_tuple_set_int(&deptpl, "DEPTNO", 1);
     if (ret != RDB_OK)
         goto error;
-    ret = RDB_tuple_set_string(&deptpl, "DEPTNAME", "Dept. I");
+    ret = RDB_tuple_set_string(&deptpl, "DEPTNAME", "Dept. I", ecp);
     if (ret != RDB_OK)
         goto error;
 
-    ret = RDB_insert(tbp3, &deptpl, &tx);
+    ret = RDB_insert(tbp3, &deptpl, ecp, &tx);
     if (ret != RDB_OK) {
         goto error;
     }
@@ -185,34 +184,36 @@ fill_tables(RDB_database *dbp)
     ret = RDB_tuple_set_int(&deptpl, "DEPTNO", 2);
     if (ret != RDB_OK)
         goto error;
-    ret = RDB_tuple_set_string(&deptpl, "DEPTNAME", "Dept. II");
+    ret = RDB_tuple_set_string(&deptpl, "DEPTNAME", "Dept. II", ecp);
     if (ret != RDB_OK)
         goto error;
 
-    ret = RDB_insert(tbp3, &deptpl, &tx);
+    ret = RDB_insert(tbp3, &deptpl, ecp, &tx);
     if (ret != RDB_OK)
         goto error;
 
-    RDB_destroy_obj(&emptpl);
-    RDB_destroy_obj(&deptpl);
+    RDB_destroy_obj(&emptpl, ecp);
+    RDB_destroy_obj(&deptpl, ecp);
 
     return RDB_commit(&tx);
 
 error:
-    RDB_destroy_obj(&emptpl);
-    RDB_destroy_obj(&deptpl);
+    RDB_destroy_obj(&emptpl, ecp);
+    RDB_destroy_obj(&deptpl, ecp);
     
     RDB_rollback(&tx);
 
-    return ret;
+    return RDB_ERROR;
 }
 
 int
-main(void) {
+main(void)
+{
     RDB_environment *envp;
     RDB_database *dbp;
     int ret;
-    
+    RDB_exec_context ec;
+
     printf("Opening environment\n");
     ret = RDB_open_env("dbenv", &envp);
     if (ret != RDB_OK) {
@@ -221,23 +222,27 @@ main(void) {
     }
 
     RDB_set_errfile(envp, stderr);
+    RDB_init_exec_context(&ec);
 
     printf("Creating DB\n");
-    ret = RDB_create_db_from_env("TEST", envp, &dbp);
+    dbp = RDB_create_db_from_env("TEST", envp, &ec);
     if (ret != RDB_OK) {
         fprintf(stderr, "Error: %s\n", RDB_strerror(ret));
+        RDB_destroy_exec_context(&ec);
         return 1;
     }
 
-    ret = create_tables(dbp);
+    ret = create_tables(dbp, &ec);
     if (ret != RDB_OK) {
         fprintf(stderr, "Error: %s\n", RDB_strerror(ret));
+        RDB_destroy_exec_context(&ec);
         return 2;
     }
 
-    ret = fill_tables(dbp);
+    ret = fill_tables(dbp, &ec);
     if (ret != RDB_OK) {
         fprintf(stderr, "Error: %s\n", RDB_strerror(ret));
+        RDB_destroy_exec_context(&ec);
         return 2;
     }
 
@@ -245,8 +250,10 @@ main(void) {
     ret = RDB_close_env(envp);
     if (ret != RDB_OK) {
         fprintf(stderr, "Error: %s\n", RDB_strerror(ret));
+        RDB_destroy_exec_context(&ec);
         return 2;
     }
 
+    RDB_destroy_exec_context(&ec);
     return 0;
 }

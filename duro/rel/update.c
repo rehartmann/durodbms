@@ -28,17 +28,18 @@ is_keyattr(const char *attrname, RDB_table *tbp)
 
 static int
 upd_to_vals(int updc, const RDB_attr_update updv[],
-               RDB_object *tplp, RDB_object *valv, RDB_transaction *txp)
+            RDB_object *tplp, RDB_object *valv,
+            RDB_exec_context *ecp, RDB_transaction *txp)
 {
     int i, ret;
 
     for (i = 0; i < updc; i++) {
-        ret = RDB_evaluate(updv[i].exp, tplp, txp, &valv[i]);
+        ret = RDB_evaluate(updv[i].exp, tplp, ecp, txp, &valv[i]);
         if (ret != RDB_OK) {
             int j;
             
             for (j = 0; j < i; j++)
-                RDB_destroy_obj(&valv[i]);
+                RDB_destroy_obj(&valv[i], ecp);
             return ret;
         }
     }                
@@ -48,7 +49,7 @@ upd_to_vals(int updc, const RDB_attr_update updv[],
 static int
 update_stored_complex(RDB_table *tbp, RDB_expression *condp,
         int updc, const RDB_attr_update updv[],
-        RDB_transaction *txp)
+        RDB_exec_context *ecp, RDB_transaction *txp)
 {
     RDB_object tpl;
     int ret, ret2;
@@ -80,10 +81,12 @@ update_stored_complex(RDB_table *tbp, RDB_expression *condp,
      * a temporary table. For the temporary table, only one key is needed.
      */
 
-    ret = RDB_create_table_from_type(NULL, RDB_FALSE, tbp->typ,
-            1, tbp->keyv, &tx, &tmptbp);
-    if (ret != RDB_OK)
+    tmptbp = RDB_create_table_from_type(NULL, RDB_FALSE, tbp->typ,
+            1, tbp->keyv, ecp, &tx);
+    if (tmptbp == NULL) {
+        ret = RDB_ERROR;
         goto cleanup;
+    }
 
     ret = RDB_recmap_cursor(&curp, tbp->stp->recmapp, RDB_TRUE,
             tbp->is_persistent ? tx.txid : NULL);
@@ -107,14 +110,14 @@ update_stored_complex(RDB_table *tbp, RDB_expression *condp,
              * then update tuple attribute
              */
             RDB_init_obj(&val);
-            ret = RDB_tuple_set(&tpl, tpltyp->var.tuple.attrv[i].name, &val);
-            RDB_destroy_obj(&val);
+            ret = RDB_tuple_set(&tpl, tpltyp->var.tuple.attrv[i].name, &val, ecp);
+            RDB_destroy_obj(&val, ecp);
             if (ret != RDB_OK) {
                 goto cleanup;
             }            
             ret = RDB_irep_to_obj(
                     RDB_tuple_get(&tpl, tpltyp->var.tuple.attrv[i].name),
-                    tpltyp->var.tuple.attrv[i].typ, datap, len);
+                    tpltyp->var.tuple.attrv[i].typ, datap, len, ecp);
             if (ret != RDB_OK) {
                 goto cleanup;
             }
@@ -124,25 +127,25 @@ update_stored_complex(RDB_table *tbp, RDB_expression *condp,
         if (condp == NULL)
             b = RDB_TRUE;
         else {
-            ret = RDB_evaluate_bool(condp, &tpl, &tx, &b);
+            ret = RDB_evaluate_bool(condp, &tpl, ecp, &tx, &b);
             if (ret != RDB_OK) {
                 return ret;
             }
         }
         if (b) {
-            ret = upd_to_vals(updc, updv, &tpl, valv, &tx);
+            ret = upd_to_vals(updc, updv, &tpl, valv, ecp, &tx);
             if (ret != RDB_OK) {
                 goto cleanup;
             }
             for (i = 0; i < updc; i++) {
                 /* Update tuple */
-                ret = RDB_tuple_set(&tpl, updv[i].name, &valv[i]);
+                ret = RDB_tuple_set(&tpl, updv[i].name, &valv[i], ecp);
                 if (ret != RDB_OK)
                     goto cleanup;
             }
             
             /* Insert tuple into temporary table */
-            ret = RDB_insert(tmptbp, &tpl, &tx);
+            ret = RDB_insert(tmptbp, &tpl, ecp, &tx);
             if (ret != RDB_OK) {
                 goto cleanup;
             }
@@ -171,24 +174,25 @@ update_stored_complex(RDB_table *tbp, RDB_expression *condp,
                 goto cleanup;
             }
             RDB_init_obj(&val);
-            ret = RDB_tuple_set(&tpl, tpltyp->var.tuple.attrv[i].name, &val);
-            RDB_destroy_obj(&val);
+            ret = RDB_tuple_set(&tpl, tpltyp->var.tuple.attrv[i].name, &val,
+                    ecp);
+            RDB_destroy_obj(&val, ecp);
             if (ret != RDB_OK) {
                 goto cleanup;
             }
             ret = RDB_irep_to_obj(
                     RDB_tuple_get(&tpl, tpltyp->var.tuple.attrv[i].name),
-                    tpltyp->var.tuple.attrv[i].typ, datap, len);
+                    tpltyp->var.tuple.attrv[i].typ, datap, len, ecp);
             if (ret != RDB_OK) {
                 goto cleanup;
             }
         }
 
         /* Evaluate condition */
-        if (condp == NULL)
+        if (condp == NULL) {
             b = RDB_TRUE;
-        else {
-            ret = RDB_evaluate_bool(condp, &tpl, &tx, &b);
+        } else {
+            ret = RDB_evaluate_bool(condp, &tpl, ecp, &tx, &b);
             if (ret != RDB_OK) {
                 return ret;
             }
@@ -207,21 +211,21 @@ update_stored_complex(RDB_table *tbp, RDB_expression *condp,
     /*
      * Insert the records from the temporary table into the original table.
      */
-     ret = _RDB_move_tuples(tbp, tmptbp, &tx);
+     ret = _RDB_move_tuples(tbp, tmptbp, ecp, &tx);
 
 cleanup:
     free(valv);
 
     if (tmptbp != NULL)
-        RDB_drop_table(tmptbp, &tx);
+        RDB_drop_table(tmptbp, ecp, &tx);
     if (curp != NULL) {
         ret2 = RDB_destroy_cursor(curp);
         if (ret == RDB_OK)
             ret = ret2;
     }
     for (i = 0; i < updc; i++)
-        RDB_destroy_obj(&valv[i]);
-    ret2 = RDB_destroy_obj(&tpl);
+        RDB_destroy_obj(&valv[i], ecp);
+    ret2 = RDB_destroy_obj(&tpl, ecp);
     if (ret == RDB_OK)
         ret = ret2;
 
@@ -234,7 +238,8 @@ cleanup:
 
 static int
 update_stored_simple(RDB_table *tbp, RDB_expression *condp,
-        int updc, const RDB_attr_update updv[], RDB_transaction *txp)
+        int updc, const RDB_attr_update updv[], RDB_exec_context *ecp,
+        RDB_transaction *txp)
 {
     RDB_object tpl;
     int ret, ret2;
@@ -286,13 +291,14 @@ update_stored_simple(RDB_table *tbp, RDB_expression *condp,
             }
             RDB_init_obj(&val);
             ret = RDB_irep_to_obj(&val, tpltyp->var.tuple.attrv[i].typ,
-                              datap, len);
+                              datap, len, ecp);
             if (ret != RDB_OK) {
-                RDB_destroy_obj(&val);
+                RDB_destroy_obj(&val, ecp);
                 goto cleanup;
             }
-            ret = RDB_tuple_set(&tpl, tpltyp->var.tuple.attrv[i].name, &val);
-            RDB_destroy_obj(&val);
+            ret = RDB_tuple_set(&tpl, tpltyp->var.tuple.attrv[i].name, &val,
+                    ecp);
+            RDB_destroy_obj(&val, ecp);
             if (ret != RDB_OK) {
                 goto cleanup;
             }
@@ -300,7 +306,7 @@ update_stored_simple(RDB_table *tbp, RDB_expression *condp,
         
         /* Evaluate condition */
         if (condp != NULL) {
-            ret = RDB_evaluate_bool(condp, &tpl, &tx, &b);
+            ret = RDB_evaluate_bool(condp, &tpl, ecp, &tx, &b);
             if (ret != RDB_OK)
                 return ret;
         } else {
@@ -309,7 +315,7 @@ update_stored_simple(RDB_table *tbp, RDB_expression *condp,
 
         if (b) {
             /* Perform update */
-            ret = upd_to_vals(updc, updv, &tpl, valv, &tx);
+            ret = upd_to_vals(updc, updv, &tpl, valv, ecp, &tx);
             if (ret != RDB_OK) {
                 goto cleanup;
             }
@@ -326,7 +332,7 @@ update_stored_simple(RDB_table *tbp, RDB_expression *condp,
                 }
 
                 /* Get data */
-                ret = _RDB_obj_to_field(&fieldv[i], &valv[i]);
+                ret = _RDB_obj_to_field(&fieldv[i], &valv[i], ecp);
                 if (ret != RDB_OK)
                     goto cleanup;
             }
@@ -351,8 +357,8 @@ cleanup:
             ret = ret2;
     }
     for (i = 0; i < updc; i++)
-        RDB_destroy_obj(&valv[i]);
-    ret2 = RDB_destroy_obj(&tpl);
+        RDB_destroy_obj(&valv[i], ecp);
+    ret2 = RDB_destroy_obj(&tpl, ecp);
     if (ret == RDB_OK)
         ret = ret2;
 
@@ -365,7 +371,8 @@ cleanup:
 
 int
 _RDB_update_select_pindex(RDB_table *tbp, RDB_expression *condp,
-        int updc, const RDB_attr_update updv[], RDB_transaction *txp)
+        int updc, const RDB_attr_update updv[],
+        RDB_exec_context *ecp, RDB_transaction *txp)
 {
     RDB_object tpl;
     int ret;
@@ -397,7 +404,7 @@ _RDB_update_select_pindex(RDB_table *tbp, RDB_expression *condp,
 
     /* Convert to a field value */
     for (i = 0; i < objc; i++) {
-        ret = _RDB_obj_to_field(&fvv[i], tbp->var.select.objpv[i]);
+        ret = _RDB_obj_to_field(&fvv[i], tbp->var.select.objpv[i], ecp);
         if (ret != RDB_OK)
             goto cleanup;
     }
@@ -406,9 +413,9 @@ _RDB_update_select_pindex(RDB_table *tbp, RDB_expression *condp,
     RDB_init_obj(&tpl);
     ret = _RDB_get_by_uindex(tbp->var.select.tbp->var.project.tbp,
             tbp->var.select.objpv, indexp,
-            tbp->typ->var.basetyp, txp, &tpl);
+            tbp->typ->var.basetyp, ecp, txp, &tpl);
     if (ret != RDB_OK) {
-        RDB_destroy_obj(&tpl);
+        RDB_destroy_obj(&tpl, ecp);
         if (ret == RDB_NOT_FOUND)
             ret = RDB_OK;
         goto cleanup;
@@ -418,20 +425,20 @@ _RDB_update_select_pindex(RDB_table *tbp, RDB_expression *condp,
         /*
          * Check condition
          */
-        ret = RDB_evaluate_bool(condp, &tpl, txp, &b);
+        ret = RDB_evaluate_bool(condp, &tpl, ecp, txp, &b);
         if (ret != RDB_OK) {
-            RDB_destroy_obj(&tpl);
+            RDB_destroy_obj(&tpl, ecp);
             goto cleanup;
         }
 
         if (!b) {
-            RDB_destroy_obj(&tpl);
+            RDB_destroy_obj(&tpl, ecp);
             goto cleanup;
         }
     }
 
-    ret = upd_to_vals(updc, updv, &tpl, valv, txp);
-    RDB_destroy_obj(&tpl);
+    ret = upd_to_vals(updc, updv, &tpl, valv, ecp, txp);
+    RDB_destroy_obj(&tpl, ecp);
     if (ret != RDB_OK)
         goto cleanup;
 
@@ -446,7 +453,7 @@ _RDB_update_select_pindex(RDB_table *tbp, RDB_expression *condp,
             valv[i].typ = RDB_type_attr_type(
                     RDB_table_type(tbp->var.select.tbp), updv[i].name);
         }
-        ret = _RDB_obj_to_field(&fieldv[i], &valv[i]);
+        ret = _RDB_obj_to_field(&fieldv[i], &valv[i], ecp);
         if (ret != RDB_OK)
             goto cleanup;
     }
@@ -457,7 +464,7 @@ _RDB_update_select_pindex(RDB_table *tbp, RDB_expression *condp,
 
 cleanup:
     for (i = 0; i < updc; i++)
-        RDB_destroy_obj(&valv[i]);
+        RDB_destroy_obj(&valv[i], ecp);
     free(valv);
     free(fieldv);
     free(fvv);
@@ -467,7 +474,8 @@ cleanup:
 
 static int
 update_select_index_simple(RDB_table *tbp, RDB_expression *condp,
-        int updc, const RDB_attr_update updv[], RDB_transaction *txp)
+        int updc, const RDB_attr_update updv[],
+        RDB_exec_context *ecp, RDB_transaction *txp)
 {
     RDB_object tpl;
     RDB_transaction tx;
@@ -508,7 +516,7 @@ update_select_index_simple(RDB_table *tbp, RDB_expression *condp,
 
     /* Convert to a field value */
     for (i = 0; i < objc; i++) {
-        ret = _RDB_obj_to_field(&fv[i], tbp->var.select.objpv[i]);
+        ret = _RDB_obj_to_field(&fv[i], tbp->var.select.objpv[i], ecp);
         if (ret != RDB_OK)
             goto cleanup;
     }
@@ -532,22 +540,22 @@ update_select_index_simple(RDB_table *tbp, RDB_expression *condp,
         /* Read tuple */
         RDB_init_obj(&tpl);
         ret = _RDB_get_by_cursor(tbp->var.select.tbp->var.project.tbp, curp,
-                tbp->typ->var.basetyp, &tpl);
+                tbp->typ->var.basetyp, &tpl, ecp);
         if (ret != RDB_OK) {
-            RDB_destroy_obj(&tpl);
+            RDB_destroy_obj(&tpl, ecp);
             goto cleanup;
         }
 
         if (tbp->var.select.stopexp != NULL) {
             ret = RDB_evaluate_bool(tbp->var.select.stopexp, &tpl,
-                    txp, &b);
+                    ecp, txp, &b);
             if (ret != RDB_OK) {
-                RDB_destroy_obj(&tpl);
+                RDB_destroy_obj(&tpl, ecp);
                 goto cleanup;
             }
             if (!b) {
                 ret = RDB_OK;
-                RDB_destroy_obj(&tpl);
+                RDB_destroy_obj(&tpl, ecp);
                 goto cleanup;
             }
         }
@@ -556,23 +564,23 @@ update_select_index_simple(RDB_table *tbp, RDB_expression *condp,
             /*
              * Check condition
              */
-            ret = RDB_evaluate_bool(condp, &tpl, &tx, &upd);
+            ret = RDB_evaluate_bool(condp, &tpl, ecp, &tx, &upd);
             if (ret != RDB_OK) {
-                RDB_destroy_obj(&tpl);
+                RDB_destroy_obj(&tpl, ecp);
                 goto cleanup;
             }
         }
 
-        ret = RDB_evaluate_bool(tbp->var.select.exp, &tpl, &tx, &b);
+        ret = RDB_evaluate_bool(tbp->var.select.exp, &tpl, ecp, &tx, &b);
         if (ret != RDB_OK) {
-            RDB_destroy_obj(&tpl);
+            RDB_destroy_obj(&tpl, ecp);
             goto cleanup;
         }
         upd = (RDB_bool) (upd && b);
 
         if (upd) {
-            ret = upd_to_vals(updc, updv, &tpl, valv, &tx);
-            RDB_destroy_obj(&tpl);
+            ret = upd_to_vals(updc, updv, &tpl, valv, ecp, &tx);
+            RDB_destroy_obj(&tpl, ecp);
             if (ret != RDB_OK)
                 goto cleanup;
 
@@ -587,7 +595,7 @@ update_select_index_simple(RDB_table *tbp, RDB_expression *condp,
                     valv[i].typ = RDB_type_attr_type(
                             RDB_table_type(tbp->var.select.tbp), updv[i].name);
                 }
-                ret = _RDB_obj_to_field(&fieldv[i], &valv[i]);
+                ret = _RDB_obj_to_field(&fieldv[i], &valv[i], ecp);
                 if (ret != RDB_OK)
                     goto cleanup;
             }
@@ -596,7 +604,7 @@ update_select_index_simple(RDB_table *tbp, RDB_expression *condp,
             if (ret != RDB_OK)
                 goto cleanup;
         } else {
-            RDB_destroy_obj(&tpl);
+            RDB_destroy_obj(&tpl, ecp);
         }
         if (tbp->var.select.objpc == indexp->attrc
                 && tbp->var.select.all_eq)
@@ -618,7 +626,7 @@ cleanup:
     }
 
     for (i = 0; i < updc; i++) {
-        ret2 = RDB_destroy_obj(&valv[i]);
+        ret2 = RDB_destroy_obj(&valv[i], ecp);
         if (ret2 != RDB_OK && ret == RDB_OK)
             ret = ret2;
     }
@@ -635,7 +643,8 @@ cleanup:
 
 static int
 update_select_index_complex(RDB_table *tbp, RDB_expression *condp,
-        int updc, const RDB_attr_update updv[], RDB_transaction *txp)
+        int updc, const RDB_attr_update updv[],
+        RDB_exec_context *ecp, RDB_transaction *txp)
 {
     RDB_object tpl;
     RDB_transaction tx;
@@ -674,10 +683,12 @@ update_select_index_complex(RDB_table *tbp, RDB_expression *condp,
      * a temporary table. For the temporary table, only one key is needed.
      */
 
-    ret = RDB_create_table_from_type(NULL, RDB_FALSE, tbp->typ,
-            1, tbp->keyv, &tx, &tmptbp);
-    if (ret != RDB_OK)
+    tmptbp = RDB_create_table_from_type(NULL, RDB_FALSE, tbp->typ,
+            1, tbp->keyv, ecp, &tx);
+    if (tmptbp == NULL) {
+        ret = RDB_ERROR;
         goto cleanup;
+    }
 
     ret = RDB_index_cursor(&curp, indexp->idxp, RDB_TRUE,
             tbp->var.select.tbp->var.project.tbp->is_persistent ? tx.txid : NULL);
@@ -687,7 +698,7 @@ update_select_index_complex(RDB_table *tbp, RDB_expression *condp,
 
     /* Convert to a field value */
     for (i = 0; i < objc; i++) {
-        ret = _RDB_obj_to_field(&fv[i], tbp->var.select.objpv[i]);
+        ret = _RDB_obj_to_field(&fv[i], tbp->var.select.objpv[i], ecp);
         if (ret != RDB_OK)
             goto cleanup;
     }
@@ -712,22 +723,22 @@ update_select_index_complex(RDB_table *tbp, RDB_expression *condp,
         /* Read tuple */
         RDB_init_obj(&tpl);
         ret = _RDB_get_by_cursor(tbp->var.select.tbp->var.project.tbp, curp,
-                tbp->typ->var.basetyp, &tpl);
+                tbp->typ->var.basetyp, &tpl, ecp);
         if (ret != RDB_OK) {
-            RDB_destroy_obj(&tpl);
+            RDB_destroy_obj(&tpl, ecp);
             goto cleanup;
         }
 
         if (tbp->var.select.stopexp != NULL) {
             ret = RDB_evaluate_bool(tbp->var.select.stopexp, &tpl,
-                    txp, &b);
+                    ecp, txp, &b);
             if (ret != RDB_OK) {
-                RDB_destroy_obj(&tpl);
+                RDB_destroy_obj(&tpl, ecp);
                 goto cleanup;
             }
             if (!b) {
                 ret = RDB_OK;
-                RDB_destroy_obj(&tpl);
+                RDB_destroy_obj(&tpl, ecp);
                 goto cleanup;
             }
         }
@@ -736,34 +747,34 @@ update_select_index_complex(RDB_table *tbp, RDB_expression *condp,
             /*
              * Check condition
              */
-            ret = RDB_evaluate_bool(condp, &tpl, &tx, &upd);
+            ret = RDB_evaluate_bool(condp, &tpl, ecp, &tx, &upd);
             if (ret != RDB_OK) {
-                RDB_destroy_obj(&tpl);
+                RDB_destroy_obj(&tpl, ecp);
                 goto cleanup;
             }
         }
 
-        ret = RDB_evaluate_bool(tbp->var.select.exp, &tpl, &tx, &b);
+        ret = RDB_evaluate_bool(tbp->var.select.exp, &tpl, ecp, &tx, &b);
         if (ret != RDB_OK) {
-            RDB_destroy_obj(&tpl);
+            RDB_destroy_obj(&tpl, ecp);
             goto cleanup;
         }
         upd = (RDB_bool) (upd && b);
 
         if (upd) {
-            ret = upd_to_vals(updc, updv, &tpl, valv, &tx);
+            ret = upd_to_vals(updc, updv, &tpl, valv, ecp, &tx);
             if (ret != RDB_OK) {
                 goto cleanup;
             }
             for (i = 0; i < updc; i++) {
                 /* Update tuple */
-                ret = RDB_tuple_set(&tpl, updv[i].name, &valv[i]);
+                ret = RDB_tuple_set(&tpl, updv[i].name, &valv[i], ecp);
                 if (ret != RDB_OK)
                     goto cleanup;
             }
             
             /* Insert tuple into temporary table */
-            ret = RDB_insert(tmptbp, &tpl, &tx);
+            ret = RDB_insert(tmptbp, &tpl, ecp, &tx);
             if (ret != RDB_OK) {
                 goto cleanup;
             }
@@ -795,22 +806,22 @@ update_select_index_complex(RDB_table *tbp, RDB_expression *condp,
         /* Read tuple */
         RDB_init_obj(&tpl);
         ret = _RDB_get_by_cursor(tbp->var.select.tbp->var.project.tbp, curp,
-                tbp->typ->var.basetyp, &tpl);
+                tbp->typ->var.basetyp, &tpl, ecp);
         if (ret != RDB_OK) {
-            RDB_destroy_obj(&tpl);
+            RDB_destroy_obj(&tpl, ecp);
             goto cleanup;
         }
 
         if (tbp->var.select.stopexp != NULL) {
-            ret = RDB_evaluate_bool(tbp->var.select.stopexp, &tpl,
-                    txp, &b);
+            ret = RDB_evaluate_bool(tbp->var.select.stopexp, &tpl, ecp, txp,
+                    &b);
             if (ret != RDB_OK) {
-                RDB_destroy_obj(&tpl);
+                RDB_destroy_obj(&tpl, ecp);
                 goto cleanup;
             }
             if (!b) {
                 ret = RDB_OK;
-                RDB_destroy_obj(&tpl);
+                RDB_destroy_obj(&tpl, ecp);
                 goto cleanup;
             }
         }
@@ -819,16 +830,16 @@ update_select_index_complex(RDB_table *tbp, RDB_expression *condp,
             /*
              * Check condition
              */
-            ret = RDB_evaluate_bool(condp, &tpl, &tx, &upd);
+            ret = RDB_evaluate_bool(condp, &tpl, ecp, &tx, &upd);
             if (ret != RDB_OK) {
-                RDB_destroy_obj(&tpl);
+                RDB_destroy_obj(&tpl, ecp);
                 goto cleanup;
             }
         }
 
-        ret = RDB_evaluate_bool(tbp->var.select.exp, &tpl, &tx, &b);
+        ret = RDB_evaluate_bool(tbp->var.select.exp, &tpl, ecp, &tx, &b);
         if (ret != RDB_OK) {
-            RDB_destroy_obj(&tpl);
+            RDB_destroy_obj(&tpl, ecp);
             goto cleanup;
         }
         upd = (RDB_bool) (upd && b);
@@ -848,11 +859,12 @@ update_select_index_complex(RDB_table *tbp, RDB_expression *condp,
     /*
      * Insert the records from the temporary table into the original table.
      */
-     ret = _RDB_move_tuples(tbp->var.select.tbp->var.project.tbp, tmptbp, &tx);
+     ret = _RDB_move_tuples(tbp->var.select.tbp->var.project.tbp, tmptbp, ecp,
+                            &tx);
 
 cleanup:
     if (tmptbp != NULL)
-        RDB_drop_table(tmptbp, &tx);
+        RDB_drop_table(tmptbp, ecp, &tx);
 
     if (curp != NULL) {
         ret2 = RDB_destroy_cursor(curp);
@@ -861,7 +873,7 @@ cleanup:
     }
 
     for (i = 0; i < updc; i++) {
-        ret2 = RDB_destroy_obj(&valv[i]);
+        ret2 = RDB_destroy_obj(&valv[i], ecp);
         if (ret2 != RDB_OK && ret == RDB_OK)
             ret = ret2;
     }
@@ -904,20 +916,22 @@ upd_complex(RDB_table *tbp, int updc, const RDB_attr_update updv[])
 
 int
 _RDB_update_real(RDB_table *tbp, RDB_expression *condp, int updc,
-        const RDB_attr_update updv[], RDB_transaction *txp)
+        const RDB_attr_update updv[], RDB_exec_context *ecp,
+        RDB_transaction *txp)
 {
     if (tbp->stp == NULL)
         return RDB_OK;
 
     if (upd_complex(tbp, updc, updv)
             || (condp != NULL && _RDB_expr_refers(condp, tbp)))
-        return update_stored_complex(tbp, condp, updc, updv, txp);
-    return update_stored_simple(tbp, condp, updc, updv, txp);
+        return update_stored_complex(tbp, condp, updc, updv, ecp, txp);
+    return update_stored_simple(tbp, condp, updc, updv, ecp, txp);
 }
 
 int
 _RDB_update_select_index(RDB_table *tbp, RDB_expression *condp,
-        int updc, const RDB_attr_update updv[], RDB_transaction *txp)
+        int updc, const RDB_attr_update updv[],
+        RDB_exec_context *ecp, RDB_transaction *txp)
 {
     if (tbp->var.select.tbp->var.project.tbp->stp == NULL)
         return RDB_OK;
@@ -925,14 +939,15 @@ _RDB_update_select_index(RDB_table *tbp, RDB_expression *condp,
     if (upd_complex(tbp, updc, updv)
         || _RDB_expr_refers(tbp->var.select.exp, tbp->var.select.tbp)
         || (condp != NULL && _RDB_expr_refers(condp, tbp->var.select.tbp))) {
-        return update_select_index_complex(tbp, condp, updc, updv, txp);
+        return update_select_index_complex(tbp, condp, updc, updv, ecp, txp);
     }
-    return update_select_index_simple(tbp, condp, updc, updv, txp);
+    return update_select_index_simple(tbp, condp, updc, updv, ecp, txp);
 }
 
 int
 RDB_update(RDB_table *tbp, RDB_expression *condp, int updc,
-                const RDB_attr_update updv[], RDB_transaction *txp)
+           const RDB_attr_update updv[], RDB_exec_context *ecp,
+           RDB_transaction *txp)
 {
     RDB_ma_update upd;
 
@@ -940,5 +955,5 @@ RDB_update(RDB_table *tbp, RDB_expression *condp, int updc,
     upd.condp = condp;
     upd.updc = updc;
     upd.updv = (RDB_attr_update *) updv;
-    return RDB_multi_assign(0, NULL, 1, &upd, 0, NULL, 0, NULL, txp);
+    return RDB_multi_assign(0, NULL, 1, &upd, 0, NULL, 0, NULL, ecp, txp);
 }

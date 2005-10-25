@@ -29,18 +29,19 @@ list_to_ins(TclState *statep, Tcl_Interp *interp, Tcl_Obj *tobjp,
         return TCL_ERROR;
 
     /* Get destination table */
-    ret = Duro_get_table(statep, interp, dstname, txp, &insp->tbp);
-    if (ret != TCL_OK) {
-        return ret;
+    insp->tbp = Duro_get_table(statep, interp, dstname, txp);
+    if (insp->tbp == NULL) {
+        return TCL_ERROR;
     }
 
     insp->tplp = (RDB_object *) Tcl_Alloc(sizeof (RDB_object));
     RDB_init_obj(insp->tplp);
 
     ret = Duro_tcl_to_duro(interp, tobjpv[2],
-            RDB_table_type(insp->tbp)->var.basetyp, insp->tplp, txp);
+            RDB_table_type(insp->tbp)->var.basetyp, insp->tplp,
+            statep->current_ecp, txp);
     if (ret != TCL_OK) {
-        RDB_destroy_obj(insp->tplp);
+        RDB_destroy_obj(insp->tplp, statep->current_ecp);
         Tcl_Free((char *) insp->tplp);
         return ret;
     }
@@ -72,9 +73,9 @@ list_to_upd(TclState *statep, Tcl_Interp *interp, Tcl_Obj *tobjp,
         return TCL_ERROR;
 
     /* Get destination table */
-    ret = Duro_get_table(statep, interp, dstname, txp, &updp->tbp);
-    if (ret != TCL_OK) {
-        return ret;
+    updp->tbp = Duro_get_table(statep, interp, dstname, txp);
+    if (updp->tbp == NULL) {
+        return TCL_ERROR;
     }
 
     if (len % 2 == 1) {
@@ -83,9 +84,10 @@ list_to_upd(TclState *statep, Tcl_Interp *interp, Tcl_Obj *tobjp,
         if (exptxt == NULL)
             return TCL_ERROR;
 
-        ret = Duro_parse_expr_utf(interp, exptxt, statep, txp, &updp->condp);
-        if (ret != TCL_OK) {
-            return ret;
+        updp->condp = Duro_parse_expr_utf(interp, exptxt, statep,
+                statep->current_ecp, txp);
+        if (updp->condp == NULL) {
+            return TCL_ERROR;
         }
         firstai = 3;
     } else {
@@ -98,19 +100,19 @@ list_to_upd(TclState *statep, Tcl_Interp *interp, Tcl_Obj *tobjp,
             Tcl_Alloc(sizeof (RDB_attr_update) * updp->updc);
     for (i = 0; i < updp->updc; i++) {
         updp->updv[i].name = Tcl_GetString(tobjpv[firstai + i * 2]);
-        ret = Duro_parse_expr_utf(interp,
-                Tcl_GetString(tobjpv[firstai + i * 2 + 1]), statep, txp,
-                &updp->updv[i].exp);
-        if (ret != TCL_OK) {
+        updp->updv[i].exp = Duro_parse_expr_utf(interp,
+                Tcl_GetString(tobjpv[firstai + i * 2 + 1]), statep,
+                statep->current_ecp, txp);
+        if (updp->updv[i].exp == NULL) {
             int j;
 
             for (j = 0; j < i - 1; j++) {
-                RDB_drop_expr(updp->updv[j].exp);
+                RDB_drop_expr(updp->updv[j].exp, statep->current_ecp);
             }
             if (updp->condp != NULL) {
-                RDB_drop_expr(updp->condp);
+                RDB_drop_expr(updp->condp, statep->current_ecp);
             }
-            return ret;
+            return TCL_ERROR;
         }
     }
 
@@ -139,9 +141,9 @@ list_to_del(TclState *statep, Tcl_Interp *interp, Tcl_Obj *tobjp,
         return TCL_ERROR;
 
     /* Get destination table */
-    ret = Duro_get_table(statep, interp, dstname, txp, &delp->tbp);
-    if (ret != TCL_OK) {
-        return ret;
+    delp->tbp = Duro_get_table(statep, interp, dstname, txp);
+    if (delp->tbp == NULL) {
+        return TCL_ERROR;
     }
 
     if (len == 3) {
@@ -150,8 +152,9 @@ list_to_del(TclState *statep, Tcl_Interp *interp, Tcl_Obj *tobjp,
         if (exptxt == NULL)
             return TCL_ERROR;
 
-        ret = Duro_parse_expr_utf(interp, exptxt, statep, txp, &delp->condp);
-        if (ret != TCL_OK) {
+        delp->condp = Duro_parse_expr_utf(interp, exptxt, statep,
+                statep->current_ecp, txp);
+        if (delp->condp == NULL) {
             return ret;
         }
     } else {
@@ -183,9 +186,9 @@ list_to_copy(TclState *statep, Tcl_Interp *interp, Tcl_Obj *tobjp,
         return TCL_ERROR;
 
     /* Get destination table */
-    ret = Duro_get_table(statep, interp, dstname, txp, &dsttbp);
-    if (ret != TCL_OK) {
-        return ret;
+    dsttbp = Duro_get_table(statep, interp, dstname, txp);
+    if (dsttbp == NULL) {
+        return TCL_ERROR;
     }
 
     src = Tcl_GetString(tobjpv[2]);
@@ -194,9 +197,10 @@ list_to_copy(TclState *statep, Tcl_Interp *interp, Tcl_Obj *tobjp,
     }
 
     /* Parse source table expression */
-    ret = Duro_parse_table_utf(interp, src, statep, txp, &srctbp);
-    if (ret != TCL_OK) {
-        return ret;
+    srctbp = Duro_parse_table_utf(interp, src, statep, statep->current_ecp,
+            txp);
+    if (srctbp == NULL) {
+        return TCL_ERROR;
     }
 
     copyp->dstp = (RDB_object *) Tcl_Alloc(sizeof(RDB_object));
@@ -205,8 +209,8 @@ list_to_copy(TclState *statep, Tcl_Interp *interp, Tcl_Obj *tobjp,
     RDB_init_obj(copyp->dstp);
     RDB_init_obj(copyp->srcp);
 
-    RDB_table_to_obj(copyp->dstp, dsttbp);
-    RDB_table_to_obj(copyp->srcp, srctbp);
+    RDB_table_to_obj(copyp->dstp, dsttbp, statep->current_ecp);
+    RDB_table_to_obj(copyp->srcp, srctbp, statep->current_ecp);
 
     return TCL_OK;
 }
@@ -293,24 +297,24 @@ Duro_massign_cmd(ClientData data, Tcl_Interp *interp, int objc,
     }
 
     ret = RDB_multi_assign(insc, insv, updc, updv, delc, delv, copyc, copyv,
-            txp);
+            statep->current_ecp, txp);
     if (ret != RDB_OK) {
-        Duro_dberror(interp, txp, ret);
+        Duro_dberror(interp, statep->current_ecp, txp);
         ret = TCL_ERROR;
     }
 
 cleanup:
     for (i = 0; i < insc; i++) {
-        RDB_destroy_obj(insv[i].tplp);
+        RDB_destroy_obj(insv[i].tplp, statep->current_ecp);
         Tcl_Free((char *) insv[i].tplp);
     }
     Tcl_Free((char *) insv);
 
     for (i = 0; i < updc; i++) {
         if (updv[i].condp != NULL)
-            RDB_drop_expr(updv[i].condp);
+            RDB_drop_expr(updv[i].condp, statep->current_ecp);
         for (j = 0; j < updv[i].updc; j++) {
-            RDB_drop_expr(updv[i].updv[j].exp);
+            RDB_drop_expr(updv[i].updv[j].exp, statep->current_ecp);
         }
         Tcl_Free((char *) updv[i].updv);
     }
@@ -318,13 +322,13 @@ cleanup:
 
     for (i = 0; i < delc; i++) {
         if (delv[i].condp != NULL)
-            RDB_drop_expr(delv[i].condp);
+            RDB_drop_expr(delv[i].condp, statep->current_ecp);
     }
     Tcl_Free((char *) delv);
 
     for (i = 0; i < copyc; i++) {
-        RDB_destroy_obj(copyv[i].dstp);
-        RDB_destroy_obj(copyv[i].srcp);
+        RDB_destroy_obj(copyv[i].dstp, statep->current_ecp);
+        RDB_destroy_obj(copyv[i].srcp, statep->current_ecp);
         Tcl_Free((char *) copyv[i].dstp);
         Tcl_Free((char *) copyv[i].srcp);
     }

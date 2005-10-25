@@ -12,7 +12,6 @@
 static int
 db_create_cmd(TclState *statep, Tcl_Interp *interp, int argc, CONST char *argv[])
 {
-    int ret;
     Tcl_HashEntry *entryp;
     RDB_database *dbp;
     RDB_environment *envp;
@@ -30,9 +29,9 @@ db_create_cmd(TclState *statep, Tcl_Interp *interp, int argc, CONST char *argv[]
     }
     envp = Tcl_GetHashValue(entryp);
 
-    ret = RDB_create_db_from_env(argv[3], envp, &dbp);
-    if (ret != RDB_OK) {
-        Duro_dberror(interp, NULL, ret);
+    dbp = RDB_create_db_from_env(argv[3], envp, statep->current_ecp);
+    if (dbp == NULL) {
+        Duro_dberror(interp, statep->current_ecp, NULL);
         return TCL_ERROR;
     }
 
@@ -60,15 +59,15 @@ db_drop_cmd(TclState *statep, Tcl_Interp *interp, int argc, CONST char *argv[])
     }
     envp = Tcl_GetHashValue(entryp);
 
-    ret = RDB_get_db_from_env(argv[3], envp, &dbp);
-    if (ret != RDB_OK) {
-        Duro_dberror(interp, NULL, ret);
+    dbp = RDB_get_db_from_env(argv[3], envp, statep->current_ecp);
+    if (dbp == NULL) {
+        Duro_dberror(interp, statep->current_ecp, NULL);
         return TCL_ERROR;
     }
 
-    ret = RDB_drop_db(dbp);
+    ret = RDB_drop_db(dbp, statep->current_ecp);
     if (ret != RDB_OK) {
-        Duro_dberror(interp, NULL, ret);
+        Duro_dberror(interp, statep->current_ecp, NULL);
         return TCL_ERROR;
     }
 

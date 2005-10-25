@@ -13,7 +13,7 @@ RDB_string_vec utype_keyattrs[] = {
 RDB_type *tinyintp;
 
 int
-create_table(RDB_database *dbp)
+create_table(RDB_database *dbp, RDB_exec_context *ecp)
 {
     RDB_transaction tx;
     RDB_table *tbp;
@@ -27,30 +27,30 @@ create_table(RDB_database *dbp)
     }
 
     utype_attrs[0].name = "NUMBER";
-    ret = RDB_get_type("TINYINT", &tx, &tinyintp);
-    utype_attrs[0].typ = tinyintp;
-    if (ret != RDB_OK) {
+    tinyintp = RDB_get_type("TINYINT", ecp, &tx);
+    if (tinyintp == NULL) {
         RDB_rollback(&tx);
-        return ret;
+        return RDB_ERROR;
     }
+    
+    utype_attrs[0].typ = tinyintp;
     utype_attrs[0].defaultp = NULL;
 
     printf("Creating table UTYPETEST\n");
-    ret = RDB_create_table("UTYPETEST", RDB_TRUE, 1, utype_attrs,
-            1, utype_keyattrs, &tx, &tbp);
-    if (ret != RDB_OK) {
+    tbp = RDB_create_table("UTYPETEST", RDB_TRUE, 1, utype_attrs,
+            1, utype_keyattrs, ecp, &tx);
+    if (tbp == NULL) {
         RDB_rollback(&tx);
-        return ret;
+        return RDB_ERROR;
     }
     printf("Table %s created.\n", RDB_table_name(tbp));
 
     printf("End of transaction\n");
-    ret = RDB_commit(&tx);
-    return ret;
+    return RDB_commit(&tx);
 }
 
 int
-test_table(RDB_database *dbp)
+test_table(RDB_database *dbp, RDB_exec_context *ecp)
 {
     int ret;
     RDB_object tpl;
@@ -66,10 +66,10 @@ test_table(RDB_database *dbp)
         return ret;
     }
 
-    ret = RDB_get_table("UTYPETEST", &tx, &tbp);
+    tbp = RDB_get_table("UTYPETEST", ecp, &tx);
     if (ret != RDB_OK) {
         RDB_rollback(&tx);
-        return ret;
+        return RDB_ERROR;
     }
 
     RDB_init_obj(&tpl);
@@ -83,7 +83,7 @@ test_table(RDB_database *dbp)
         goto error;
     }
 
-    ret = RDB_insert(tbp, &tpl, &tx);
+    ret = RDB_insert(tbp, &tpl, ecp, &tx);
     if (ret != RDB_TYPE_MISMATCH) {
         fprintf(stderr, "Wrong return code: %s\n", RDB_strerror(ret));
         goto error;
@@ -95,7 +95,7 @@ test_table(RDB_database *dbp)
     RDB_int_to_obj(&ival, (RDB_int)200);
     ivalp = &ival;
 
-    ret = RDB_call_ro_op("TINYINT", 1, &ivalp, &tx, &tival);
+    ret = RDB_call_ro_op("TINYINT", 1, &ivalp, ecp, &tx, &tival);
     if (ret != RDB_TYPE_CONSTRAINT_VIOLATION) {
         fprintf(stderr, "Wrong return code: %s\n", RDB_strerror(ret));
         goto error;
@@ -107,7 +107,7 @@ test_table(RDB_database *dbp)
     RDB_int_to_obj(&ival, (RDB_int) 99);
     ivalp = &ival;
 
-    ret = RDB_call_ro_op("TINYINT", 1, &ivalp, &tx, &tival);
+    ret = RDB_call_ro_op("TINYINT", 1, &ivalp, ecp, &tx, &tival);
     if (ret != RDB_OK) {
         goto error;
     }
@@ -116,7 +116,7 @@ test_table(RDB_database *dbp)
      * Try to set tival to illegal value by calling the setter function
      */
     RDB_int_to_obj(&ival, 200);
-    ret = RDB_obj_set_comp(&tival, "TINYINT", &ival, &tx);
+    ret = RDB_obj_set_comp(&tival, "TINYINT", &ival, ecp, &tx);
     if (ret != RDB_TYPE_CONSTRAINT_VIOLATION) {
         fprintf(stderr, "Wrong return code: %s\n", RDB_strerror(ret));
         goto error;
@@ -126,7 +126,7 @@ test_table(RDB_database *dbp)
      * Call selector again
      */
     RDB_int_to_obj(&ival, 99);
-    ret = RDB_call_ro_op("TINYINT", 1, &ivalp, &tx, &tival);
+    ret = RDB_call_ro_op("TINYINT", 1, &ivalp, ecp, &tx, &tival);
     if (ret != RDB_OK) {
         goto error;
     }
@@ -134,45 +134,47 @@ test_table(RDB_database *dbp)
     /*
      * Call setter with valid value
      */
-    ret = RDB_obj_set_comp(&tival, "TINYINT", &ival, &tx);
+    ret = RDB_obj_set_comp(&tival, "TINYINT", &ival, ecp, &tx);
     if (ret != RDB_OK) {
         goto error;
     }
 
-    ret = RDB_tuple_set(&tpl, "NUMBER", &tival);
+    ret = RDB_tuple_set(&tpl, "NUMBER", &tival, ecp);
     if (ret != RDB_OK) {
         goto error;
     }
 
     printf("Inserting Tuple\n");
 
-    ret = RDB_insert(tbp, &tpl, &tx);
+    ret = RDB_insert(tbp, &tpl, ecp, &tx);
     if (ret != RDB_OK) {
         RDB_rollback(&tx);
         return ret;
     }
 
-    RDB_destroy_obj(&tpl);
-    RDB_destroy_obj(&ival);
-    RDB_destroy_obj(&tival);
+    RDB_destroy_obj(&tpl, ecp);
+    RDB_destroy_obj(&ival, ecp);
+    RDB_destroy_obj(&tival, ecp);
 
     printf("End of transaction\n");
     return RDB_commit(&tx);
+
 error:
-    RDB_destroy_obj(&tpl);
-    RDB_destroy_obj(&ival);
-    RDB_destroy_obj(&tival);
+    RDB_destroy_obj(&tpl, ecp);
+    RDB_destroy_obj(&ival, ecp);
+    RDB_destroy_obj(&tival, ecp);
 
     RDB_rollback(&tx);
-    return ret;
+    return RDB_ERROR;
 }
 
 int
-test_drop(RDB_database *dbp)
+test_drop(RDB_database *dbp, RDB_exec_context *ecp)
 {
     int ret;
     RDB_table *tbp;
     RDB_transaction tx;
+    RDB_object *errp;
 
     printf("Starting transaction\n");
     ret = RDB_begin_tx(&tx, dbp, NULL);
@@ -180,32 +182,39 @@ test_drop(RDB_database *dbp)
         return ret;
     }
 
-    ret = RDB_get_table("UTYPETEST", &tx, &tbp);
-    if (ret != RDB_OK) {
+    tbp = RDB_get_table("UTYPETEST", ecp, &tx);
+    if (tbp == NULL) {
         RDB_rollback(&tx);
         return ret;
     }
 
     printf("Dropping table %s\n", RDB_table_name(tbp));
-    ret = RDB_drop_table(tbp, &tx);
+    ret = RDB_drop_table(tbp, ecp, &tx);
     if (ret != RDB_OK) {
         RDB_rollback(&tx);
         return ret;
     }
 
     printf("Dropping type %s\n", RDB_type_name(tinyintp));
-    ret = RDB_drop_type(tinyintp, &tx);
+    ret = RDB_drop_type(tinyintp, ecp, &tx);
     if (ret != RDB_OK) {
         RDB_rollback(&tx);
         return ret;
     }
 
     printf("Trying to get type\n");
-    ret = RDB_get_type("TINYINT", &tx, &tinyintp);
-    if (ret != RDB_NOT_FOUND) {
-        fprintf(stderr, "Wrong return code: %s\n", RDB_strerror(ret));
+    tinyintp = RDB_get_type("TINYINT", ecp, &tx);
+    errp = RDB_get_err(ecp);
+    if (errp == NULL || RDB_obj_type(errp) != &RDB_NOT_FOUND_ERROR) {
+        char *errtypename = NULL;
+        if (errp != NULL && RDB_obj_type(errp) != NULL) {
+            errtypename = RDB_type_name(RDB_obj_type(errp));
+        }
+
+        fprintf(stderr, "Wrong error type: %s\n", errtypename != NULL ?
+                errtypename : "(null)");
         RDB_rollback(&tx);
-        return ret;
+        return RDB_ERROR;
     }
     printf("Return code: %s - OK\n", RDB_strerror(ret));
 
@@ -219,6 +228,7 @@ main(void)
     RDB_environment *dsp;
     RDB_database *dbp;
     int ret;
+    RDB_exec_context ec;
     
     printf("Opening environment\n");
     ret = RDB_open_env("dbenv", &dsp);
@@ -226,29 +236,36 @@ main(void)
         fprintf(stderr, "Error: %s\n", RDB_strerror(ret));
         return 1;
     }
-    ret = RDB_get_db_from_env("TEST", dsp, &dbp);
-    if (ret != 0) {
+
+    RDB_init_exec_context(&ec);
+    dbp = RDB_get_db_from_env("TEST", dsp, &ec);
+    if (dbp == NULL) {
         fprintf(stderr, "Error: %s\n", RDB_strerror(ret));
+        RDB_destroy_exec_context(&ec);
         return 1;
     }
 
-    ret = create_table(dbp);
+    ret = create_table(dbp, &ec);
     if (ret != RDB_OK) {
         fprintf(stderr, "Error: %s\n", RDB_strerror(ret));
+        RDB_destroy_exec_context(&ec);
         return 2;
     }
 
-    ret = test_table(dbp);
+    ret = test_table(dbp, &ec);
     if (ret != RDB_OK) {
         fprintf(stderr, "Error: %s\n", RDB_strerror(ret));
+        RDB_destroy_exec_context(&ec);
         return 2;
     }
 
-    ret = test_drop(dbp);
+    ret = test_drop(dbp, &ec);
     if (ret != RDB_OK) {
         fprintf(stderr, "Error: %s\n", RDB_strerror(ret));
+        RDB_destroy_exec_context(&ec);
         return 2;
     }
+    RDB_destroy_exec_context(&ec);
 
     printf ("Closing environment\n");
     ret = RDB_close_env(dsp);

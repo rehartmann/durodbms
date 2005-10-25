@@ -13,6 +13,7 @@ RDB_expression *_RDB_parse_resultp;
 int _RDB_parse_ret;
 RDB_ltablefn *_RDB_parse_ltfp;
 void *_RDB_parse_arg;
+RDB_exec_context *_RDB_parse_ecp;
 
 RDB_expression *
 _RDB_parse_lookup_table(RDB_expression *);
@@ -25,70 +26,73 @@ void yyerror(char *errtxt) {
     RDB_errmsg(_RDB_parse_txp->dbp->dbrootp->envp, "%s", errtxt);
 }
 
-int
+RDB_expression *
 RDB_parse_expr(const char *txt, RDB_ltablefn *lt_fp, void *lt_arg,
-        RDB_transaction *txp, RDB_expression **expp)
+        RDB_exec_context *ecp, RDB_transaction *txp)
 {
     int pret;
+    RDB_expression *exp;
 
     _RDB_parse_txp = txp;
     _RDB_parse_ret = RDB_OK;
     _RDB_parse_ltfp = lt_fp;
     _RDB_parse_arg = lt_arg;
+    _RDB_parse_ecp = ecp;
 
     yy_scan_string(txt);
     pret = yyparse();
     if (_RDB_parse_ret != RDB_OK) {
-        return _RDB_parse_ret;
+        return NULL;
     }
     if (pret > 0) {
-        return RDB_SYNTAX;
+        return /* RDB_SYNTAX */ NULL;
     }
 
     /* If the expression represents an attribute, try to get table */
     if (_RDB_parse_resultp->kind == RDB_EX_ATTR) {
-        *expp = _RDB_parse_lookup_table(_RDB_parse_resultp);
-        if (*expp == NULL) {
-            RDB_drop_expr(_RDB_parse_resultp);
-            return RDB_NO_MEMORY;
+        exp = _RDB_parse_lookup_table(_RDB_parse_resultp);
+        if (exp == NULL) {
+            RDB_drop_expr(_RDB_parse_resultp, ecp);
+            RDB_raise_no_memory(ecp);
+            return NULL;
         }
     } else {
-        *expp = _RDB_parse_resultp;
+        exp = _RDB_parse_resultp;
     }
-    return RDB_OK;
+    return exp;
 }
 
-int
+RDB_table *
 RDB_parse_table(const char *txt, RDB_ltablefn *lt_fp, void *lt_arg,
-        RDB_transaction *txp, RDB_table **tbpp)
+        RDB_exec_context *ecp, RDB_transaction *txp)
 {
     int ret;
-    RDB_expression *exp;
-
-    ret = RDB_parse_expr(txt, lt_fp, lt_arg, txp, &exp);
-    if (ret != RDB_OK)
-        return ret;
+    RDB_table *tbp;
+    RDB_expression *exp = RDB_parse_expr(txt, lt_fp, lt_arg, ecp, txp);
+    if (exp == NULL)
+        return NULL;
 
     if (exp->kind != RDB_EX_OBJ || exp->var.obj.kind != RDB_OB_TABLE) {
         RDB_object obj;
 
         RDB_init_obj(&obj);
-        ret = RDB_evaluate(exp, NULL, txp, &obj);
-        RDB_drop_expr(exp);
+        ret = RDB_evaluate(exp, NULL, ecp, txp, &obj);
+        RDB_drop_expr(exp, ecp);
         if (ret != RDB_OK) {
-            RDB_destroy_obj(&obj);
-            return ret;
+            RDB_destroy_obj(&obj, ecp);
+            return NULL;
         }
         if (obj.kind != RDB_OB_TABLE) {
-            RDB_destroy_obj(&obj);
-            return RDB_TYPE_MISMATCH;
+            RDB_destroy_obj(&obj, ecp);
+            RDB_raise_type_mismatch("no table", ecp);
+            return NULL;
         }
-        *tbpp = obj.var.tbp;
+        tbp = obj.var.tbp;
         obj.var.tbp = NULL;
-        RDB_destroy_obj(&obj);            
-        return RDB_OK;
+        RDB_destroy_obj(&obj, ecp);
+        return tbp;
     }
 
-    *tbpp = exp->var.obj.var.tbp;
-    return RDB_OK;
+    /* !! drop exp? */
+    return exp->var.obj.var.tbp;
 }

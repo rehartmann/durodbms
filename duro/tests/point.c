@@ -11,19 +11,18 @@
 
 int
 POINT(const char *name, int argc, RDB_object *compv[],
-        const void *iargp, size_t iarglen, RDB_transaction *txp,
-        RDB_object *valp)
+        const void *iargp, size_t iarglen, RDB_exec_context *ecp,
+        RDB_transaction *txp, RDB_object *valp)
 {
     i_point ipt;
-    RDB_type *typ;
-    int ret = RDB_get_type("POINT", txp, &typ);
-    if (ret != RDB_OK)
-        return ret;
+    RDB_type *typ = RDB_get_type("POINT", ecp, txp);
+    if (typ == NULL)
+        return RDB_ERROR;
 
     ipt.x = RDB_obj_rational(compv[0]);
     ipt.y = RDB_obj_rational(compv[1]);
 
-    return RDB_irep_to_obj(valp, typ, &ipt, sizeof ipt);
+    return RDB_irep_to_obj(valp, typ, &ipt, sizeof ipt, ecp);
 }
 
 int
@@ -78,20 +77,20 @@ POINT_get_Y(const char *name, int argc, RDB_object *argv[],
 
 int
 POLAR(const char *name, int argc, RDB_object *compv[], const void *iargp,
-        size_t iarglen, RDB_transaction *txp, RDB_object *valp)
+        size_t iarglen, RDB_exec_context *ecp, RDB_transaction *txp,
+        RDB_object *valp)
 {
     i_point ipt;
-    RDB_type *typ;
     double th = (double) RDB_obj_rational(compv[0]);
     double len = (double) RDB_obj_rational(compv[1]);
-    int ret = RDB_get_type("POINT", txp, &typ);
-    if (ret != RDB_OK)
-        return ret;
+    RDB_type *typ = RDB_get_type("POINT", ecp, txp);
+    if (typ == NULL)
+        return RDB_ERROR;
 
     ipt.x = cos(th) * len;
     ipt.y = sin(th) * len;
 
-    return RDB_irep_to_obj(valp, typ, &ipt, sizeof ipt);
+    return RDB_irep_to_obj(valp, typ, &ipt, sizeof ipt, ecp);
 }
 
 int

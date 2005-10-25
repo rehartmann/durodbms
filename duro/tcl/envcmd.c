@@ -23,7 +23,7 @@ Duro_tcl_close_env(TclState *statep, RDB_environment *envp, Tcl_HashEntry *entry
         tbep = Tcl_GetHashValue(entryp);
         if (tbep->envp == envp) {
             /* Drop table, delete entry and start from the beginning */
-            Duro_tcl_drop_ltable(tbep, entryp);
+            Duro_tcl_drop_ltable(tbep, entryp, statep->current_ecp);
             entryp = Tcl_FirstHashEntry(&statep->ltables, &search);
         } else {
             entryp = Tcl_NextHashEntry(&search);
@@ -91,7 +91,7 @@ Duro_env_cmd(ClientData data, Tcl_Interp *interp, int argc, CONST char *argv[])
 
         ret = RDB_open_env(argv[2], &envp);
         if (ret != RDB_OK) {
-            Duro_dberror(interp, NULL, ret);
+            /* !! Duro_dberror(interp, NULL, ret); */
             return TCL_ERROR;
         }
 
@@ -120,7 +120,7 @@ Duro_env_cmd(ClientData data, Tcl_Interp *interp, int argc, CONST char *argv[])
         envp = Tcl_GetHashValue(entryp);
         ret = Duro_tcl_close_env(statep, envp, entryp);
         if (ret != RDB_OK) {
-            Duro_dberror(interp, NULL, ret);
+            /* !! Duro_dberror(interp, NULL, ret); */
             return TCL_ERROR;
         }      
         return TCL_OK;
@@ -145,10 +145,10 @@ Duro_env_cmd(ClientData data, Tcl_Interp *interp, int argc, CONST char *argv[])
         envp = Tcl_GetHashValue(entryp);
 
         RDB_init_obj(&arr);
-        ret = RDB_get_dbs(envp, &arr);
+        ret = RDB_get_dbs(envp, &arr, statep->current_ecp);
         if (ret != RDB_OK) {
-            RDB_destroy_obj(&arr);
-            Duro_dberror(interp, NULL, ret);
+            RDB_destroy_obj(&arr, statep->current_ecp);
+            Duro_dberror(interp, statep->current_ecp, NULL);
             return TCL_ERROR;
         }      
 
@@ -157,7 +157,8 @@ Duro_env_cmd(ClientData data, Tcl_Interp *interp, int argc, CONST char *argv[])
             return TCL_ERROR;
 
         i = 0;
-        while ((ret = RDB_array_get(&arr, (RDB_int) i++, &dbnamep)) == RDB_OK) {
+        while ((dbnamep = RDB_array_get(&arr, (RDB_int) i++,
+                statep->current_ecp)) != NULL) {
             char *dbname = RDB_obj_string(dbnamep);
 
             ret = Tcl_ListObjAppendElement(interp, dblistp,
@@ -166,7 +167,7 @@ Duro_env_cmd(ClientData data, Tcl_Interp *interp, int argc, CONST char *argv[])
                 return ret;
         }
         if (ret != RDB_NOT_FOUND) {
-            Duro_dberror(interp, NULL, ret);
+            Duro_dberror(interp, statep->current_ecp, NULL);
             return TCL_ERROR;
         }
 

@@ -13,6 +13,7 @@
 #include <string.h>
 #include <stdio.h>
 #include <locale.h>
+#include <ctype.h>
 
 extern int yydebug;
 
@@ -30,7 +31,7 @@ duro_cleanup(ClientData data)
     entryp = Tcl_FirstHashEntry(&statep->arrays, &search);
     while (entryp != NULL) {
         arrayp = Tcl_GetHashValue(entryp);
-        Duro_tcl_drop_array(arrayp, entryp);
+        Duro_tcl_drop_array(arrayp, entryp, statep->current_ecp);
         entryp = Tcl_FirstHashEntry(&statep->arrays, &search);
     }
 
@@ -50,76 +51,24 @@ duro_cleanup(ClientData data)
         entryp = Tcl_FirstHashEntry(&statep->envs, &search);
     }
 
+    RDB_destroy_exec_context(&statep->ec);
+
     Tcl_Free((char *) statep);
 }
 
-static const char *
-errcode_str(int err)
-{
-    switch (err) {
-        case RDB_OK:
-            return "RDB_OK";
-
-        case RDB_NO_SPACE:
-            return "RDB_NO_SPACE";
-        case RDB_NO_MEMORY:
-            return "RDB_NO_MEMORY";
-        case RDB_SYSTEM_ERROR:
-            return "RDB_SYSTEM_ERROR";
-        case RDB_DEADLOCK:
-            return "RDB_DEADLOCK";
-        case RDB_INTERNAL:
-            return "RDB_INTERNAL";
-        case RDB_RESOURCE_NOT_FOUND:
-            return "RDB_RESOURCE_NOT_FOUND";
-
-        case RDB_INVALID_ARGUMENT:
-            return "RDB_INVALID_ARGUMENT";
-        case RDB_NOT_FOUND:
-            return "RDB_NOT_FOUND";
-        case RDB_INVALID_TRANSACTION:
-            return "RDB_INVALID_TRANSACTION";
-        case RDB_ELEMENT_EXISTS:
-            return "RDB_ELEMENT_EXISTS";
-        case RDB_TYPE_MISMATCH:
-            return "RDB_TYPE_MISMATCH";
-        case RDB_KEY_VIOLATION:
-            return "RDB_KEY_VIOLATION";
-        case RDB_PREDICATE_VIOLATION:
-            return "RDB_PREDICATE_VIOLATION";
-        case RDB_AGGREGATE_UNDEFINED:
-            return "RDB_AGGREGATE_UNDEFINED";
-        case RDB_TYPE_CONSTRAINT_VIOLATION:
-            return "RDB_TYPE_CONSTRAINT_VIOLATION";
-        case RDB_ATTRIBUTE_NOT_FOUND:
-            return "RDB_ATTRIBUTE_NOT_FOUND";
-        case RDB_OPERATOR_NOT_FOUND:
-            return "RDB_OPERATOR_NOT_FOUND";
-        case RDB_SYNTAX:
-            return "RDB_SYNTAX";
-
-        case RDB_NOT_SUPPORTED:
-            return "RDB_NOT_SUPPORTED";
-    }
-    return NULL;
-}
-
 void
-Duro_dberror(Tcl_Interp *interp, RDB_transaction *txp, int err)
+Duro_dberror(Tcl_Interp *interp, RDB_exec_context *ecp, RDB_transaction *txp)
 {
-    const char *errcode = errcode_str(err);
+    RDB_object *errp = RDB_get_err(ecp);
 
-    Tcl_AppendResult(interp, "database error: ", (char *) RDB_strerror(err),
-            (char *) NULL);
-    if (errcode != NULL) {
-        if (err == RDB_PREDICATE_VIOLATION && RDB_tx_errinfo(txp) != NULL) {
-            Tcl_SetErrorCode(interp, "Duro", errcode,
-                    (char *) RDB_strerror(err), RDB_tx_errinfo(txp),
+    if (errp != NULL) {
+        Tcl_AppendResult(interp, "database error: ",
+                (char *) RDB_type_name(RDB_obj_type(errp)), (char *) NULL); /* !! */
+        if (txp != NULL) {
+            Tcl_SetErrorCode(interp, "Duro",
+                    (char *) RDB_type_name(RDB_obj_type(errp)),
                     (char *) NULL);
-        } else {
-            Tcl_SetErrorCode(interp, "Duro", errcode,
-                    (char *) RDB_strerror(err), (char *) NULL);
-        }
+        } /* !! else */
     }
 }    
 
@@ -181,6 +130,9 @@ Duro_init_tcl(Tcl_Interp *interp, TclState **statepp)
             (ClientData)*statepp, NULL);
 
     Tcl_CreateExitHandler(duro_cleanup, (ClientData)*statepp);
+
+    RDB_init_exec_context(&(*statepp)->ec);
+    (*statepp)->current_ecp = &(*statepp)->ec;
 
     return Tcl_PkgProvide(interp, "duro", "0.10");
 }
@@ -292,7 +244,7 @@ Duro_add_table(Tcl_Interp *interp, TclState *statep, RDB_table *tbp,
 
 static int
 list_to_tuple(Tcl_Interp *interp, Tcl_Obj *tobjp, RDB_type *typ,
-        RDB_object *tplp, RDB_transaction *txp)
+        RDB_object *tplp, RDB_exec_context *ecp, RDB_transaction *txp)
 {
     int ret;
     int llen;
@@ -327,16 +279,16 @@ list_to_tuple(Tcl_Interp *interp, Tcl_Obj *tobjp, RDB_type *typ,
 
         /* Convert value to RDB_object and set tuple attribute */
         RDB_init_obj(&obj);
-        ret = Duro_tcl_to_duro(interp, valuep, attrtyp, &obj, txp);
+        ret = Duro_tcl_to_duro(interp, valuep, attrtyp, &obj, ecp, txp);
         if (ret != TCL_OK) {
-            RDB_destroy_obj(&obj);
+            RDB_destroy_obj(&obj, ecp);
             return ret;
         }
-        ret = RDB_tuple_set(tplp, attrname, &obj);
+        ret = RDB_tuple_set(tplp, attrname, &obj, ecp);
 
-        RDB_destroy_obj(&obj);
+        RDB_destroy_obj(&obj, ecp);
         if (ret != RDB_OK) {
-            Duro_dberror(interp, txp, ret);
+            Duro_dberror(interp, ecp, txp);
             return TCL_ERROR;
         }
     }
@@ -346,7 +298,7 @@ list_to_tuple(Tcl_Interp *interp, Tcl_Obj *tobjp, RDB_type *typ,
 
 static int
 list_to_array(Tcl_Interp *interp, Tcl_Obj *tobjp, RDB_type *typ,
-        RDB_object *arrp, RDB_transaction *txp)
+        RDB_object *arrp, RDB_exec_context *ecp, RDB_transaction *txp)
 {
     int ret;
     int llen;
@@ -356,9 +308,9 @@ list_to_array(Tcl_Interp *interp, Tcl_Obj *tobjp, RDB_type *typ,
     if (ret != TCL_OK)
         return ret;
 
-    ret = RDB_set_array_length(arrp, (RDB_int) llen);
+    ret = RDB_set_array_length(arrp, (RDB_int) llen, ecp);
     if (ret != RDB_OK) {
-        Duro_dberror(interp, txp, ret);
+        Duro_dberror(interp, ecp, txp);
         return TCL_OK;
     }
 
@@ -371,16 +323,16 @@ list_to_array(Tcl_Interp *interp, Tcl_Obj *tobjp, RDB_type *typ,
 
         /* Convert value to RDB_object and set tuple attribute */
         RDB_init_obj(&obj);
-        ret = Duro_tcl_to_duro(interp, valuep, typ->var.basetyp, &obj, txp);
+        ret = Duro_tcl_to_duro(interp, valuep, typ->var.basetyp, &obj, ecp, txp);
         if (ret != TCL_OK) {
-            RDB_destroy_obj(&obj);
+            RDB_destroy_obj(&obj, ecp);
             return ret;
         }
-        ret = RDB_array_set(arrp, (RDB_int) i, &obj);
+        ret = RDB_array_set(arrp, (RDB_int) i, &obj, ecp);
 
-        RDB_destroy_obj(&obj);
+        RDB_destroy_obj(&obj, ecp);
         if (ret != RDB_OK) {
-            Duro_dberror(interp, txp, ret);
+            Duro_dberror(interp, ecp, txp);
             return TCL_ERROR;
         }
     }
@@ -390,7 +342,7 @@ list_to_array(Tcl_Interp *interp, Tcl_Obj *tobjp, RDB_type *typ,
 
 static int
 list_to_table(Tcl_Interp *interp, Tcl_Obj *tobjp, RDB_type *typ,
-        RDB_table **tbpp, RDB_transaction *txp)
+        RDB_table **tbpp, RDB_exec_context *ecp, RDB_transaction *txp)
 {
     int ret;
     int i;
@@ -398,12 +350,12 @@ list_to_table(Tcl_Interp *interp, Tcl_Obj *tobjp, RDB_type *typ,
     Tcl_Obj *tplobjp;
     RDB_object tpl;
 
-    ret = RDB_create_table(NULL, RDB_FALSE,
+    *tbpp = RDB_create_table(NULL, RDB_FALSE,
                         typ->var.basetyp->var.tuple.attrc,
                         typ->var.basetyp->var.tuple.attrv,
-                        0, NULL, NULL, tbpp);
+                        0, NULL, ecp, NULL);
     if (ret != RDB_OK) {
-        Duro_dberror(interp, txp, ret);
+        Duro_dberror(interp, ecp, txp);
         return TCL_ERROR;
     }
 
@@ -415,27 +367,27 @@ list_to_table(Tcl_Interp *interp, Tcl_Obj *tobjp, RDB_type *typ,
     for (i = 0; i < llen; i++) {
         Tcl_ListObjIndex(interp, tobjp, i, &tplobjp);
 
-        ret = list_to_tuple(interp, tplobjp, typ->var.basetyp, &tpl, txp);
+        ret = list_to_tuple(interp, tplobjp, typ->var.basetyp, &tpl, ecp, txp);
         if (ret != TCL_OK) {
-            RDB_destroy_obj(&tpl);
+            RDB_destroy_obj(&tpl, ecp);
             return ret;
         }
 
-        ret = RDB_insert(*tbpp, &tpl, NULL);
+        ret = RDB_insert(*tbpp, &tpl, ecp, NULL);
         if (ret != RDB_OK) {
-            RDB_destroy_obj(&tpl);
-            Duro_dberror(interp, txp, ret);
+            RDB_destroy_obj(&tpl, ecp);
+            Duro_dberror(interp, ecp, txp);
             return TCL_ERROR;
         }
     }
-    RDB_destroy_obj(&tpl);   
+    RDB_destroy_obj(&tpl, ecp);
 
     return TCL_OK;
 }
 
 int
 Duro_tcl_to_duro(Tcl_Interp *interp, Tcl_Obj *tobjp, RDB_type *typ,
-        RDB_object *objp, RDB_transaction *txp)
+        RDB_object *objp, RDB_exec_context *ecp, RDB_transaction *txp)
 {
     int ret;
     RDB_table *tbp;
@@ -453,7 +405,7 @@ Duro_tcl_to_duro(Tcl_Interp *interp, Tcl_Obj *tobjp, RDB_type *typ,
             return ret;
         }
 
-        RDB_string_to_obj(objp, dst);
+        RDB_string_to_obj(objp, dst, ecp);
         Tcl_Free(dst);
         return TCL_OK;
     }
@@ -491,7 +443,7 @@ Duro_tcl_to_duro(Tcl_Interp *interp, Tcl_Obj *tobjp, RDB_type *typ,
             return TCL_ERROR;
         ret = RDB_binary_set(objp, 0, bp, (size_t) len);
         if (ret != RDB_OK) {
-            Duro_dberror(interp, txp, ret);
+            Duro_dberror(interp, ecp, txp);
             return TCL_ERROR;
         }
         return TCL_OK;
@@ -499,30 +451,30 @@ Duro_tcl_to_duro(Tcl_Interp *interp, Tcl_Obj *tobjp, RDB_type *typ,
     if (RDB_type_is_scalar(typ)) {
         RDB_expression *exp;
 
-        ret = RDB_parse_expr(Tcl_GetString(tobjp), NULL, NULL, txp, &exp);
-        if (ret != RDB_OK) {
-            Duro_dberror(interp, txp, ret);
+        exp = RDB_parse_expr(Tcl_GetString(tobjp), NULL, NULL, ecp, txp);
+        if (exp == NULL) {
+            Duro_dberror(interp, ecp, txp);
             return TCL_ERROR;
         }
-        ret = RDB_evaluate(exp, NULL, txp, objp);
-        RDB_drop_expr(exp);
+        ret = RDB_evaluate(exp, NULL, ecp, txp, objp);
+        RDB_drop_expr(exp, ecp);
         if (ret != RDB_OK) {
-            Duro_dberror(interp, txp, ret);
+            Duro_dberror(interp, ecp, txp);
             return TCL_ERROR;
         }
         return TCL_OK;
     }
     switch (typ->kind) {
         case RDB_TP_TUPLE:
-            return list_to_tuple(interp, tobjp, typ, objp, txp);
+            return list_to_tuple(interp, tobjp, typ, objp, ecp, txp);
         case RDB_TP_RELATION:
-            ret = list_to_table(interp, tobjp, typ, &tbp, txp);
+            ret = list_to_table(interp, tobjp, typ, &tbp, ecp, txp);
             if (ret != TCL_OK)
                 return ret;
-            RDB_table_to_obj(objp, tbp);
+            RDB_table_to_obj(objp, tbp, ecp);
             return TCL_OK;
         case RDB_TP_ARRAY:
-            return list_to_array(interp, tobjp, typ, objp, txp);
+            return list_to_array(interp, tobjp, typ, objp, ecp, txp);
         default: ;
     }
     Tcl_AppendResult(interp, "unsupported type: ", Tcl_GetString(tobjp),
@@ -532,15 +484,14 @@ Duro_tcl_to_duro(Tcl_Interp *interp, Tcl_Obj *tobjp, RDB_type *typ,
 
 static Tcl_Obj *
 array_to_list(Tcl_Interp *interp, RDB_object *arrayp,
-        RDB_transaction *txp)
+        RDB_exec_context *ecp, RDB_transaction *txp)
 {
     int i;
-    int ret;
     RDB_object *objp;
     Tcl_Obj *listobjp = Tcl_NewListObj(0, NULL);
 
-    for (i = 0; (ret = RDB_array_get(arrayp, i, &objp)) == RDB_OK; i++) {
-        Tcl_Obj *tobjp = Duro_to_tcl(interp, objp, txp);
+    for (i = 0; (objp = RDB_array_get(arrayp, i, ecp)) != NULL; i++) {
+        Tcl_Obj *tobjp = Duro_to_tcl(interp, objp, ecp, txp);
 
         if (tobjp == NULL) {
             return NULL;
@@ -552,7 +503,8 @@ array_to_list(Tcl_Interp *interp, RDB_object *arrayp,
 }
 
 static Tcl_Obj *
-table_to_list(Tcl_Interp *interp, RDB_table *tbp, RDB_transaction *txp)
+table_to_list(Tcl_Interp *interp, RDB_table *tbp, RDB_exec_context *ecp,
+        RDB_transaction *txp)
 {
     RDB_object arr;
     RDB_object *tplp;
@@ -561,41 +513,180 @@ table_to_list(Tcl_Interp *interp, RDB_table *tbp, RDB_transaction *txp)
     Tcl_Obj *listobjp = Tcl_NewListObj(0, NULL);
 
     RDB_init_obj(&arr);
-    ret = RDB_table_to_array(&arr, tbp, 0, NULL, txp);
+    ret = RDB_table_to_array(&arr, tbp, 0, NULL, ecp, txp);
     if (ret != RDB_OK) {
-        Duro_dberror(interp, txp, ret);
-        RDB_destroy_obj(&arr);
+        Duro_dberror(interp, ecp, txp);
+        RDB_destroy_obj(&arr, ecp);
         return NULL;
     }
 
     for (i = 0;
-         (ret = RDB_array_get(&arr, i, &tplp)) == RDB_OK;
+         (tplp = RDB_array_get(&arr, i, ecp)) != NULL;
          i++) {
         Tcl_ListObjAppendElement(interp, listobjp,
-                Duro_to_tcl(interp, tplp, txp));
+                Duro_to_tcl(interp, tplp, ecp, txp));
     }
+/* !!
     if (ret != RDB_NOT_FOUND) {
-        RDB_destroy_obj(&arr);
+        RDB_destroy_obj(&arr, ecp);
         if (RDB_is_syserr(ret))
             RDB_rollback_all(txp);
-        Duro_dberror(interp, txp, ret);
+        Duro_dberror(interp, ecp, txp);
         return NULL;
     }
-
-    ret = RDB_destroy_obj(&arr);
+*/
+    ret = RDB_destroy_obj(&arr, ecp);
     if (ret != RDB_OK) {
         if (RDB_is_syserr(ret))
             RDB_rollback_all(txp);
-        Duro_dberror(interp, txp, ret);
+        Duro_dberror(interp, ecp, txp);
         return NULL;
     }
 
     return listobjp;
 }
 
+RDB_table *
+Duro_get_table(TclState *statep, Tcl_Interp *interp, const char *name,
+          RDB_transaction *txp)
+{
+    RDB_table *tbp;
+    Tcl_HashEntry *entryp;
+
+    /*
+     * Search for transient table first
+     */
+    entryp = Tcl_FindHashEntry(&statep->ltables, name);
+    if (entryp != NULL) {
+        /* Found */
+        return ((table_entry *)Tcl_GetHashValue(entryp))->tablep;
+    }
+
+    /*
+     * Search for persistent table
+     */
+    tbp = RDB_get_table(name, statep->current_ecp, txp);
+    if (tbp == NULL) {
+        Tcl_AppendResult(interp, "Unknown table: ", name, NULL);
+        return NULL;
+    }
+/* !!
+    if (ret != RDB_OK) {
+        Duro_dberror(interp, ecp, txp);
+        return TCL_ERROR;
+    }
+*/
+    return tbp;
+}
+
+static RDB_bool
+contains_space(const char *s)
+{
+    for (; *s != '\0'; s++) {
+        if (isspace(*s)) {
+            return RDB_TRUE;
+        }
+    }
+    return RDB_FALSE;
+}    
+
+RDB_type *
+Duro_get_type(Tcl_Obj *objp, Tcl_Interp *interp, RDB_exec_context *ecp,
+        RDB_transaction *txp)
+{
+    int ret;
+    RDB_type *typ;
+
+    /*
+     * Check for a tuple or relation type by searching for whitespace
+     */
+    if (contains_space(Tcl_GetString(objp))) {
+        int llen;
+        int attrc;
+        int i;
+        RDB_attr *attrv;
+        Tcl_Obj *elemp;
+        RDB_bool istuple;
+
+        Tcl_ListObjLength(interp, objp, &llen);
+        if (llen == 0) {
+            Tcl_AppendResult(interp, "invalid type: ", Tcl_GetString(objp),
+                    NULL);
+            return NULL;
+        }
+
+        ret = Tcl_ListObjIndex(interp, objp, 0, &elemp);
+        if (ret != TCL_OK)
+            return NULL;
+
+        if (strcmp(Tcl_GetString(elemp), "tuple") == 0) {
+            istuple = RDB_TRUE;
+        } else if (strcmp(Tcl_GetString(elemp), "relation") == 0) {
+            istuple = RDB_FALSE;
+        } else {
+            Tcl_AppendResult(interp, "invalid type: ", Tcl_GetString(objp), NULL);
+            return NULL;
+        }
+
+        attrc = llen - 1;
+        attrv = malloc(attrc * sizeof (RDB_attr));
+        for (i = 0; i < attrc; i++) {
+            Tcl_Obj *elem2p;
+
+            Tcl_ListObjIndex(interp, objp, i + 1, &elemp);
+
+            /* Get attribute name and type */
+            Tcl_ListObjLength(interp, elemp, &llen);
+            if (llen != 2) {
+                Tcl_AppendResult(interp, "invalid attribute definition: ",
+                        Tcl_GetString(elemp), NULL);
+                free(attrv);
+                return NULL;
+            }
+
+            Tcl_ListObjIndex(interp, elemp, 0, &elem2p);
+            attrv[i].name = Tcl_GetString(elem2p);
+
+            Tcl_ListObjIndex(interp, elemp, 1, &elem2p);
+            attrv[i].typ = Duro_get_type(elem2p, interp, ecp, txp);
+            if (attrv[i].typ == NULL) {
+                free(attrv);
+                return NULL;
+            }
+            
+            attrv[i].defaultp = NULL;
+        }
+        if (istuple) {
+            typ = RDB_create_tuple_type(attrc, attrv, ecp);
+        } else {
+            typ = RDB_create_relation_type(attrc, attrv, ecp);
+        }
+        free(attrv);
+        if (typ == NULL) {
+            Duro_dberror(interp, ecp, txp);
+            return NULL;
+        }
+        return typ;
+    }
+
+    typ = RDB_get_type(Tcl_GetString(objp), ecp, txp);
+    if (typ == NULL) {
+/* !!
+        if (ret == RDB_NOT_FOUND) {
+            Tcl_AppendResult(interp, "invalid type \"", Tcl_GetString(objp),
+                             "\"", NULL);
+        } else {
+            Duro_dberror(interp, ecp, txp);
+        }
+*/
+        return NULL;
+    }
+    return typ;
+}
+
 static Tcl_Obj *
 tuple_to_list(Tcl_Interp *interp, const RDB_object *tplp,
-        RDB_transaction *txp)
+        RDB_exec_context *ecp, RDB_transaction *txp)
 {
     int i;
     char **namev;
@@ -610,7 +701,7 @@ tuple_to_list(Tcl_Interp *interp, const RDB_object *tplp,
     RDB_tuple_attr_names(tplp, namev);
     for (i = 0; i < attrcount; i++) {
         RDB_object *objp = RDB_tuple_get(tplp, namev[i]);
-        Tcl_Obj *tobjp = Duro_to_tcl(interp, objp, txp);
+        Tcl_Obj *tobjp = Duro_to_tcl(interp, objp, ecp, txp);
 
         if (tobjp == NULL) {
             Tcl_Free((char *) namev);
@@ -626,7 +717,7 @@ tuple_to_list(Tcl_Interp *interp, const RDB_object *tplp,
 
 Tcl_Obj *
 Duro_irep_to_tcl(Tcl_Interp *interp, const RDB_object *objp,
-        RDB_transaction *txp)
+        RDB_exec_context *ecp, RDB_transaction *txp)
 {
     int ret;
     RDB_type *typ = RDB_obj_type(objp);
@@ -662,13 +753,13 @@ Duro_irep_to_tcl(Tcl_Interp *interp, const RDB_object *objp,
         size_t len = RDB_binary_length(objp);
 
         if (len < 0) {
-            Duro_dberror(interp, txp, ret);
+            Duro_dberror(interp, ecp, txp);
             return NULL;
         }
 
         ret = RDB_binary_get(objp, 0, &datap, len, NULL);
         if (ret != RDB_OK) {
-            Duro_dberror(interp, txp, ret);
+            Duro_dberror(interp, ecp, txp);
             return NULL;
         }
 
@@ -676,29 +767,30 @@ Duro_irep_to_tcl(Tcl_Interp *interp, const RDB_object *objp,
         return tobjp;
     }
     if (objp->kind == RDB_OB_TUPLE || objp->kind == RDB_OB_INITIAL) {
-        return tuple_to_list(interp, objp, txp);
+        return tuple_to_list(interp, objp, ecp, txp);
     }
     if (objp->kind == RDB_OB_TABLE) {
-        return table_to_list(interp, RDB_obj_table(objp), txp);
+        return table_to_list(interp, RDB_obj_table(objp), ecp, txp);
     }
     if (objp->kind == RDB_OB_ARRAY) {
-        return array_to_list(interp, (RDB_object *) objp, txp);
+        return array_to_list(interp, (RDB_object *) objp, ecp, txp);
     }
     Tcl_SetResult(interp, "Unsupported type", TCL_STATIC);
     return NULL;
 }
 
 static Tcl_Obj *
-uobj_to_tobj(Tcl_Interp *interp, const RDB_object *objp, RDB_transaction *txp)
+uobj_to_tobj(Tcl_Interp *interp, const RDB_object *objp, RDB_exec_context *ecp,
+        RDB_transaction *txp)
 {
     int ret;
     RDB_object strobj;
 
     RDB_init_obj(&strobj);
-    ret = _RDB_obj_to_str(&strobj, objp, txp);
+    ret = _RDB_obj_to_str(&strobj, objp, ecp, txp);
     if (ret != RDB_OK) {
-        Duro_dberror(interp, txp, ret);
-        RDB_destroy_obj(&strobj);
+        Duro_dberror(interp, ecp, txp);
+        RDB_destroy_obj(&strobj, ecp);
         return NULL;
     }
     return Tcl_NewStringObj(RDB_obj_string(&strobj), strobj.var.bin.len - 1);
@@ -706,22 +798,23 @@ uobj_to_tobj(Tcl_Interp *interp, const RDB_object *objp, RDB_transaction *txp)
 
 Tcl_Obj *
 Duro_to_tcl(Tcl_Interp *interp, const RDB_object *objp,
-        RDB_transaction *txp)
+        RDB_exec_context *ecp, RDB_transaction *txp)
 {
     RDB_type *typ = RDB_obj_type(objp);
 
     if (typ != NULL && !RDB_type_is_builtin(typ) && RDB_type_is_scalar(typ)) {
-        return uobj_to_tobj(interp, objp, txp);
+        return uobj_to_tobj(interp, objp, ecp, txp);
     }
 
-    return Duro_irep_to_tcl(interp, objp, txp);
+    return Duro_irep_to_tcl(interp, objp, ecp, txp);
 }
 
-int
+RDB_expression *
 Duro_parse_expr_utf(Tcl_Interp *interp, const char *s, void *arg,
-        RDB_transaction *txp, RDB_expression **expp)
+        RDB_exec_context *ecp, RDB_transaction *txp)
 {
     int ret;
+    RDB_expression *exp;
     int srclen = strlen(s);
     int dstlen = (srclen + 1) * 2;
     char *dst = Tcl_Alloc(dstlen);
@@ -729,13 +822,13 @@ Duro_parse_expr_utf(Tcl_Interp *interp, const char *s, void *arg,
     ret = Tcl_UtfToExternal(interp, NULL, s, strlen(s), 0, NULL, dst, dstlen,
             NULL, NULL, NULL);
     if (ret != TCL_OK)
-        return ret;
+        return NULL;
 
-    ret = RDB_parse_expr(dst, Duro_get_ltable, arg, txp, expp);
+    exp = RDB_parse_expr(dst, Duro_get_ltable, arg, ecp, txp);
     Tcl_Free(dst);
-    if (ret != RDB_OK) {
-        Duro_dberror(interp, txp, ret);
-        return TCL_ERROR;
+    if (exp == NULL) {
+        Duro_dberror(interp, ecp, txp);
+        return NULL;
     }
-    return TCL_OK;
+    return exp;
 }

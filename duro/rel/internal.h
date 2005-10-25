@@ -149,53 +149,57 @@ _RDB_begin_tx(RDB_transaction *, RDB_environment *,
  * Using it from an application is possible, but violates RM proscription 7.
  */
 int
-_RDB_table_qresult(RDB_table *, RDB_transaction *, RDB_qresult **);
+_RDB_table_qresult(RDB_table *, RDB_exec_context *ecp, RDB_transaction *,
+        RDB_qresult **);
 
 int
 _RDB_index_qresult(RDB_table *, _RDB_tbindex *, RDB_transaction *,
         RDB_qresult **);
 
 int
-_RDB_sorter(RDB_table *tbp, RDB_qresult **qrespp, RDB_transaction *txp,
-            int seqitc, const RDB_seq_item seqitv[]);
+_RDB_sorter(RDB_table *tbp, RDB_qresult **qrespp, RDB_exec_context *,
+        RDB_transaction *, int seqitc, const RDB_seq_item seqitv[]);
 
 int
-_RDB_next_tuple(RDB_qresult *, RDB_object *, RDB_transaction *);
+_RDB_next_tuple(RDB_qresult *, RDB_object *, RDB_exec_context *,
+        RDB_transaction *);
 
 int
-_RDB_qresult_contains(RDB_qresult *, const RDB_object *, RDB_transaction *);
+_RDB_qresult_contains(RDB_qresult *, const RDB_object *, RDB_exec_context *,
+        RDB_transaction *);
 
 int
-_RDB_reset_qresult(RDB_qresult *, RDB_transaction *);
+_RDB_reset_qresult(RDB_qresult *, RDB_exec_context *, RDB_transaction *);
 
 int
 _RDB_get_by_uindex(RDB_table *tbp, RDB_object *objpv[], _RDB_tbindex *indexp,
-        RDB_type *, RDB_transaction *txp, RDB_object *tplp);
+        RDB_type *, RDB_exec_context *, RDB_transaction *, RDB_object *tplp);
 
 int
-_RDB_get_by_cursor(RDB_table *, RDB_cursor *, RDB_type *, RDB_object *);
+_RDB_get_by_cursor(RDB_table *, RDB_cursor *, RDB_type *, RDB_object *,
+        RDB_exec_context *);
 
 int
-_RDB_drop_qresult(RDB_qresult *, RDB_transaction *);
+_RDB_drop_qresult(RDB_qresult *, RDB_exec_context *, RDB_transaction *);
 
-int
+RDB_table *
 _RDB_new_rtable(const char *name, RDB_bool persistent,
                 int attrc, const RDB_attr heading[],
                 int keyc, const RDB_string_vec keyv[], RDB_bool usr,
-                RDB_table **tbpp);
+                RDB_exec_context *);
 
 int
-_RDB_drop_table(RDB_table *, RDB_bool);
+_RDB_drop_table(RDB_table *, RDB_bool, RDB_exec_context *);
 
 void
-_RDB_free_table(RDB_table *);
+_RDB_free_table(RDB_table *, RDB_exec_context *);
 
 void
 _RDB_free_tbindex(_RDB_tbindex *);
 
 int
 _RDB_create_stored_table(RDB_table *tbp, RDB_environment *envp,
-        const RDB_bool ascv[], RDB_transaction *txp);
+        const RDB_bool ascv[], RDB_exec_context *, RDB_transaction *txp);
 
 int
 _RDB_open_stored_table(RDB_table *tbp, RDB_environment *envp, const char *,
@@ -210,12 +214,11 @@ _RDB_close_stored_table(RDB_stored_table *);
 RDB_int *
 _RDB_field_no(RDB_stored_table *, const char *attrname);
 
-int
+RDB_table *
 _RDB_create_table(const char *name, RDB_bool persistent,
                 int attrc, const RDB_attr heading[],
                 int keyc, const RDB_string_vec keyv[],
-                RDB_transaction *txp,
-                RDB_table **tbpp);
+                RDB_exec_context *, RDB_transaction *);
 
 int
 _RDB_assoc_table_db(RDB_table *tbp, RDB_database *dbp);
@@ -228,23 +231,23 @@ _RDB_expr_refers_attr(const RDB_expression *, const char *attrname);
 
 int
 _RDB_expr_equals(const RDB_expression *, const RDB_expression *,
-        RDB_transaction *, RDB_bool *);
+        RDB_exec_context *, RDB_transaction *, RDB_bool *);
 
 /*
  * Extend the tuple type pointed to by typ by the attributes given by
  * attrv and return the new tuple type.
  */
-int
+RDB_type *
 RDB_extend_tuple_type(const RDB_type *typ, int attrc, RDB_attr attrv[],
-        RDB_type **);
+        RDB_exec_context *);
 
 /*
  * Extend the relation type pointed to by typ by the attributes given by
  * attrv and return the new relation type.
  */
-int
+RDB_type *
 RDB_extend_relation_type(const RDB_type *typ, int attrc, RDB_attr attrv[],
-        RDB_type **);
+        RDB_exec_context *);
 
 /*
  * Join the tuple types pointed to by typ1 and typ2 and store a pointer to
@@ -253,9 +256,9 @@ RDB_extend_relation_type(const RDB_type *typ, int attrc, RDB_attr attrv[],
  * If both types have an attribute with the same name but a different type,
  * RDB_TYPE_MISMATCH is returned.
  */
-int
+RDB_type *
 RDB_join_tuple_types(const RDB_type *typ1, const RDB_type *typ2,
-                     RDB_type **newtypp);
+        RDB_exec_context *);
 
 /*
  * Join the relation types pointed to by typ1 and typ2 and store a pointer to
@@ -264,13 +267,13 @@ RDB_join_tuple_types(const RDB_type *typ1, const RDB_type *typ2,
  * If both types have an attribute with the same name but a different type,
  * RDB_TYPE_MISMATCH is returned.
  */
-int
+RDB_type *
 RDB_join_relation_types(const RDB_type *typ1, const RDB_type *typ2,
-                     RDB_type **newtypp);
+                     RDB_exec_context *);
 
-int
+RDB_type *
 RDB_project_tuple_type(const RDB_type *typ, int attrc, char *attrv[],
-                          RDB_type **newtypp);
+                          RDB_exec_context *ecp);
 
 /*
  * Create a type that is a projection of the relation type pointed to by typ
@@ -279,60 +282,59 @@ RDB_project_tuple_type(const RDB_type *typ, int attrc, char *attrv[],
  * If one of the attributes in attrv is not found in the relation type,
  * RDB_INVALID_ARGUMENT is returned.
  */
-int
+RDB_type *
 RDB_project_relation_type(const RDB_type *typ, int attrc, char *attrv[],
-                          RDB_type **newtypp);
+                          RDB_exec_context *ecp);
 
 /*
  * Rename the attributes of the tuple type pointed to by typ according to renc
  * and renv return the new tuple type.
  */
-int
+RDB_type *
 RDB_rename_tuple_type(const RDB_type *typ, int renc, const RDB_renaming renv[],
-        RDB_type **);
+        RDB_exec_context *);
 
 /*
  * Rename the attributes of the relation type pointed to by typ according to renc
  * and renv return the new tuple type.
  */
-int
+RDB_type *
 RDB_rename_relation_type(const RDB_type *typ, int renc, const RDB_renaming renv[],
-        RDB_type **);
+        RDB_exec_context *);
 
-int
+RDB_type *
 RDB_summarize_type(RDB_type *tb1typ, RDB_type *tb2typ,
         int addc, const RDB_summarize_add addv[],
-        int avgc, char **avgv, RDB_transaction *txp,
-        RDB_type **newtypp);
+        int avgc, char **avgv, RDB_exec_context *ecp, RDB_transaction *txp);
 
-int
+RDB_type *
 RDB_wrap_tuple_type(const RDB_type *typ, int wrapc,
-        const RDB_wrapping wrapv[], RDB_type **newtypp);
+        const RDB_wrapping wrapv[], RDB_exec_context *ecp);
 
-int
+RDB_type *
 RDB_wrap_relation_type(const RDB_type *typ, int wrapc,
-        const RDB_wrapping wrapv[], RDB_type **newtypp);
+        const RDB_wrapping wrapv[], RDB_exec_context *ecp);
 
-int
+RDB_type *
 RDB_unwrap_tuple_type(const RDB_type *typ, int attrc, char *attrv[],
-        RDB_type **newtypp);
+        RDB_exec_context *);
 
-int
+RDB_type *
 RDB_unwrap_relation_type(const RDB_type *typ, int attrc, char *attrv[],
-        RDB_type **newtypp);
+        RDB_exec_context *);
 
-int
+RDB_type *
 RDB_group_type(RDB_type *typ, int attrc, char *attrv[], const char *gattr,
-        RDB_type **newtypp);
+        RDB_exec_context *);
 
-int
-RDB_ungroup_type(RDB_type *typ, const char *attr, RDB_type **newtypp);
+RDB_type *
+RDB_ungroup_type(RDB_type *typ, const char *attr, RDB_exec_context *);
 
 RDB_attr *
 _RDB_tuple_type_attr(const RDB_type *tuptyp, const char *attrname);
 
 RDB_type *
-_RDB_dup_nonscalar_type(RDB_type *typ);
+_RDB_dup_nonscalar_type(RDB_type *typ, RDB_exec_context *);
 
 RDB_bool
 _RDB_legal_name(const char *name);
@@ -344,11 +346,12 @@ int
 _RDB_del_index(RDB_transaction *, RDB_index *);
 
 int
-RDB_evaluate_bool(RDB_expression *, const RDB_object *tup, RDB_transaction *,
-                  RDB_bool *);
+RDB_evaluate_bool(RDB_expression *, const RDB_object *tup,
+        RDB_exec_context *ecp, RDB_transaction *, RDB_bool *);
 
 int
-RDB_evaluate(RDB_expression *, const RDB_object *, RDB_transaction *, RDB_object *);
+RDB_evaluate(RDB_expression *, const RDB_object *, RDB_exec_context *,
+             RDB_transaction *, RDB_object *);
 
 int
 _RDB_find_rename_from(int renc, const RDB_renaming renv[], const char *name);
@@ -374,14 +377,14 @@ RDB_bool
 _RDB_expr_expr_depend(const RDB_expression *, const RDB_expression *);
 
 RDB_expression *
-RDB_dup_expr(const RDB_expression *);
+RDB_dup_expr(const RDB_expression *, RDB_exec_context *);
 
 int
 _RDB_invrename_expr(RDB_expression *exp, int renc, const RDB_renaming renv[]);
 
 int
 _RDB_resolve_extend_expr(RDB_expression **expp, int attrc,
-        const RDB_virtual_attr attrv[]);
+        const RDB_virtual_attr attrv[], RDB_exec_context *);
 
 int
 _RDB_optimize_expr(RDB_expression *, RDB_transaction *);
@@ -391,48 +394,47 @@ _RDB_optimize_expr(RDB_expression *, RDB_transaction *);
  */
 
 int
-_RDB_copy_tuple(RDB_object *dstp, const RDB_object *srcp);
+_RDB_copy_tuple(RDB_object *dstp, const RDB_object *srcp, RDB_exec_context *);
 
 int
-_RDB_copy_array(RDB_object *dstp, const RDB_object *srcp);
+_RDB_copy_array(RDB_object *dstp, const RDB_object *srcp, RDB_exec_context *);
 
 int
-_RDB_array_equals(RDB_object *arr1p, RDB_object *arr2p, RDB_transaction *,
-        RDB_bool *);
+_RDB_array_equals(RDB_object *arr1p, RDB_object *arr2p, RDB_exec_context *,
+        RDB_transaction *, RDB_bool *);
 
 int
-_RDB_tuple_equals(const RDB_object *, const RDB_object *, RDB_transaction *,
-        RDB_bool *);
+_RDB_tuple_equals(const RDB_object *, const RDB_object *, RDB_exec_context *,
+        RDB_transaction *, RDB_bool *);
 
 int
 _RDB_invrename_tuple(const RDB_object *, int renc, const RDB_renaming renv[],
-                 RDB_object *restup);
+                 RDB_exec_context *, RDB_object *restup);
 
 int
 _RDB_invwrap_tuple(const RDB_object *tplp, int wrapc,
-        const RDB_wrapping wrapv[], RDB_object *restplp);
+        const RDB_wrapping wrapv[], RDB_exec_context *, RDB_object *restplp);
 
 int
 _RDB_invunwrap_tuple(const RDB_object *, int attrc, char *attrv[],
-        RDB_type *srctuptyp, RDB_object *restplp);
-
-
-RDB_table *
-_RDB_new_table(void);
+        RDB_type *srctuptyp, RDB_exec_context *, RDB_object *restplp);
 
 RDB_table *
-_RDB_dup_vtable(RDB_table *);
+_RDB_new_table(RDB_exec_context *);
 
-int
-_RDB_select(RDB_table *, RDB_expression *, RDB_table **);
+RDB_table *
+_RDB_dup_vtable(RDB_table *, RDB_exec_context *);
 
-int
+RDB_table *
+_RDB_select(RDB_table *, RDB_expression *, RDB_exec_context *);
+
+RDB_table *
 _RDB_extend(RDB_table *, int attrc, const RDB_virtual_attr attrv[],
-        RDB_transaction *, RDB_table **);
+        RDB_exec_context *, RDB_transaction *);
 
 int
 _RDB_sdivide_preserves(RDB_table *, const RDB_object *tplp, RDB_qresult *qr3p,
-        RDB_transaction *);
+        RDB_exec_context *, RDB_transaction *);
 
 RDB_possrep *
 _RDB_get_possrep(RDB_type *typ, const char *repname);
@@ -445,23 +447,24 @@ _RDB_set_obj_type(RDB_object *, RDB_type *);
 
 int
 _RDB_get_ro_op(const char *name, int argc, RDB_type *argtv[],
-               RDB_transaction *txp, RDB_ro_op_desc **opp);
+               RDB_exec_context *, RDB_transaction *txp, RDB_ro_op_desc **opp);
 
 int
 _RDB_get_upd_op(const char *name, int argc, RDB_type *argtv[],
-               RDB_transaction *txp, RDB_upd_op **opp);
+               RDB_exec_context *ecp, RDB_transaction *txp, RDB_upd_op **opp);
 
 void
-_RDB_free_ro_ops(RDB_ro_op_desc *op);
+_RDB_free_ro_ops(RDB_ro_op_desc *op, RDB_exec_context *);
 
 void
-_RDB_free_upd_ops(RDB_upd_op *op);
+_RDB_free_upd_ops(RDB_upd_op *op, RDB_exec_context *);
 
 int
-_RDB_move_tuples(RDB_table *dstp, RDB_table *srcp, RDB_transaction *);
+_RDB_move_tuples(RDB_table *dstp, RDB_table *srcp, RDB_exec_context *,
+        RDB_transaction *);
 
 int
-_RDB_obj_to_field(RDB_field *, RDB_object *);
+_RDB_obj_to_field(RDB_field *, RDB_object *, RDB_exec_context *);
 
 #define _RDB_pkey_len(tbp) ((tbp)->keyv[0].strc)
 
@@ -469,26 +472,27 @@ _RDB_obj_to_field(RDB_field *, RDB_object *);
  * Return the type of the expression.
  * If the type is non-scalar, it must be managed by the caller.
  */
-int
-RDB_expr_type(const RDB_expression *, const RDB_type *, RDB_transaction *,
-        RDB_type **);
+RDB_type *
+RDB_expr_type(const RDB_expression *, const RDB_type *, RDB_exec_context *,
+        RDB_transaction *);
 
 RDB_type *
-_RDB_tuple_type(const RDB_object *tplp);
+_RDB_tuple_type(const RDB_object *tplp, RDB_exec_context *);
 
 int
 _RDB_check_expr_type(const RDB_expression *exp, const RDB_type *tuptyp,
-        const RDB_type *checktyp, RDB_transaction *);
+        const RDB_type *checktyp, RDB_exec_context *, RDB_transaction *);
 
 int
-_RDB_check_type_constraint(RDB_object *valp, RDB_transaction *txp);
+_RDB_check_type_constraint(RDB_object *valp, RDB_exec_context *,
+        RDB_transaction *);
 
 int
 _RDB_constraint_count(RDB_dbroot *dbrootp);
 
 int
 _RDB_copy_obj(RDB_object *dstvalp, const RDB_object *srcvalp,
-        RDB_transaction *);
+        RDB_exec_context *, RDB_transaction *);
 
 int
 _RDB_open_table_index(RDB_table *tbp, _RDB_tbindex *indexp,
@@ -496,13 +500,13 @@ _RDB_open_table_index(RDB_table *tbp, _RDB_tbindex *indexp,
 
 int
 _RDB_optimize(RDB_table *tbp, int seqitc, const RDB_seq_item seqitv[],
-        RDB_transaction *, RDB_table **ntbpp);
+        RDB_exec_context *, RDB_transaction *, RDB_table **ntbpp);
 
 int
-_RDB_transform(RDB_table *tbp, RDB_transaction *);
+_RDB_transform(RDB_table *tbp, RDB_exec_context *, RDB_transaction *);
 
 int
-_RDB_transform_exp(RDB_expression *);
+_RDB_transform_exp(RDB_expression *, RDB_exec_context *);
 
 int
 _RDB_infer_keys(RDB_table *tbp);
@@ -510,8 +514,14 @@ _RDB_infer_keys(RDB_table *tbp);
 int
 _RDB_add_builtin_ops(RDB_dbroot *);
 
+/* !! */
 int
-_RDB_duprem(RDB_qresult *qrp);
+_RDB_sys_select(const char *name, int argc, RDB_object *argv[],
+        const void *iargp, size_t iarglen, RDB_exec_context *,
+        RDB_transaction *, RDB_object *retvalp);
+
+int
+_RDB_duprem(RDB_qresult *, RDB_exec_context *);
 
 RDB_object **
 _RDB_index_objpv(_RDB_tbindex *indexp, RDB_expression *exp, RDB_type *tbtyp,
@@ -528,36 +538,41 @@ RDB_expression *
 _RDB_attr_node(RDB_expression *exp, const char *attrname, char *opname);
 
 int
-_RDB_read_constraints(RDB_transaction *);
+_RDB_read_constraints(RDB_exec_context *, RDB_transaction *);
 
 int
-_RDB_check_constraints(const RDB_constraint *, RDB_transaction *);
+_RDB_check_constraints(const RDB_constraint *, RDB_exec_context *,
+        RDB_transaction *);
 
 int
-_RDB_insert_real(RDB_table *tbp, const RDB_object *tplp, RDB_transaction *);
+_RDB_insert_real(RDB_table *tbp, const RDB_object *tplp, RDB_exec_context *,
+        RDB_transaction *);
 
 int
 _RDB_update_real(RDB_table *tbp, RDB_expression *condp, int updc,
-        const RDB_attr_update updv[], RDB_transaction *);
+        const RDB_attr_update updv[], RDB_exec_context *, RDB_transaction *);
 
 int
 _RDB_update_select_pindex(RDB_table *, RDB_expression *,
-        int updc, const RDB_attr_update updv[], RDB_transaction *);
+        int updc, const RDB_attr_update updv[], RDB_exec_context *,
+        RDB_transaction *);
 
 int
 _RDB_update_select_index(RDB_table *, RDB_expression *,
-        int updc, const RDB_attr_update updv[], RDB_transaction *);
+        int updc, const RDB_attr_update updv[], RDB_exec_context *,
+        RDB_transaction *);
 
 int
-_RDB_delete_real(RDB_table *tbp, RDB_expression *condp, RDB_transaction *);
+_RDB_delete_real(RDB_table *tbp, RDB_expression *condp, RDB_exec_context *,
+        RDB_transaction *);
 
 int
 _RDB_delete_select_index(RDB_table *tbp, RDB_expression *condp,
-        RDB_transaction *);
+        RDB_exec_context *, RDB_transaction *);
 
 int
 _RDB_delete_select_uindex(RDB_table *tbp, RDB_expression *condp,
-        RDB_transaction *);
+        RDB_exec_context *, RDB_transaction *);
 
 void
 _RDB_handle_syserr(RDB_transaction *, int err);
@@ -566,9 +581,10 @@ int
 _RDB_set_tx_errinfo(RDB_transaction *, const char *errinfo);
 
 RDB_bool
-_RDB_table_def_equals(RDB_table *, RDB_table *, RDB_transaction *);
+_RDB_table_def_equals(RDB_table *, RDB_table *, RDB_exec_context *,
+        RDB_transaction *);
 
 void
-_RDB_print_table(RDB_table *, RDB_transaction *, FILE *);
+_RDB_print_table(RDB_table *, RDB_transaction *, FILE *, RDB_exec_context *);
 
 #endif

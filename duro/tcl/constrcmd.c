@@ -36,16 +36,17 @@ constraint_create_cmd(TclState *statep, Tcl_Interp *interp, int objc,
     }
     txp = Tcl_GetHashValue(entryp);
 
-    ret = Duro_parse_expr_utf(interp, Tcl_GetString(objv[3]), statep, txp,
-            &exp);
-    if (ret != TCL_OK) {
+    exp = Duro_parse_expr_utf(interp, Tcl_GetString(objv[3]), statep,
+            statep->current_ecp, txp);
+    if (exp == NULL) {
         return TCL_ERROR;
     }
 
-    ret = RDB_create_constraint(Tcl_GetString(objv[2]), exp, txp);
+    ret = RDB_create_constraint(Tcl_GetString(objv[2]), exp,
+            statep->current_ecp, txp);
     if (ret != RDB_OK) {
-        RDB_drop_expr(exp);
-        Duro_dberror(interp, txp, ret);
+        RDB_drop_expr(exp, statep->current_ecp);
+        Duro_dberror(interp, statep->current_ecp, txp);
         return TCL_ERROR;
     }
 
@@ -74,9 +75,10 @@ constraint_drop_cmd(TclState *statep, Tcl_Interp *interp, int objc,
     }
     txp = Tcl_GetHashValue(entryp);
 
-    ret = RDB_drop_constraint(Tcl_GetString(objv[2]), txp);
+    ret = RDB_drop_constraint(Tcl_GetString(objv[2]), statep->current_ecp,
+            txp);
     if (ret != RDB_OK) {
-        Duro_dberror(interp, txp, ret);
+        Duro_dberror(interp, statep->current_ecp, txp);
         return TCL_ERROR;
     }
 

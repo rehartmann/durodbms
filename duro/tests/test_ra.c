@@ -7,7 +7,7 @@
 char *projattrs1[] = { "NAME" };
 
 int
-test_ra(RDB_database *dbp)
+test_ra(RDB_database *dbp, RDB_exec_context *ecp)
 {
     RDB_transaction tx;
     RDB_table *tb1p, *tb2p, *vtbp;
@@ -22,55 +22,57 @@ test_ra(RDB_database *dbp)
         return ret;
     }
 
-    ret = RDB_get_table("EMPS1", &tx, &tb1p);
-    if (ret != RDB_OK) {
+    tb1p = RDB_get_table("EMPS1", ecp, &tx);
+    if (tb1p == NULL) {
         RDB_rollback(&tx);
-        return ret;
+        return RDB_ERROR;
     }
-    ret = RDB_get_table("EMPS2", &tx, &tb2p);
-    if (ret != RDB_OK) {
+    tb2p = RDB_get_table("EMPS2", ecp, &tx);
+    if (tb2p == NULL) {
         RDB_rollback(&tx);
-        return ret;
+        return RDB_ERROR;
     }
 
     printf("Creating intersection (EMPS1, EMPS2)\n");
-    ret = RDB_intersect(tb1p, tb2p, &vtbp);
-    if (ret != RDB_OK) {
+    vtbp = RDB_intersect(tb1p, tb2p, ecp);
+    if (vtbp == NULL) {
         RDB_rollback(&tx);
-        return ret;
+        return RDB_ERROR;
     }
 
     printf("Creating projection (NAME)\n");
 
-    ret = RDB_project(vtbp, 1, projattrs1, &vtbp);
-    if (ret != RDB_OK) {
-        RDB_drop_table(vtbp, &tx);
+    vtbp = RDB_project(vtbp, 1, projattrs1, ecp);
+    if (vtbp == NULL) {
+        RDB_drop_table(vtbp, ecp, &tx);
         RDB_commit(&tx);
-        return ret;
+        return RDB_ERROR;
     }
 
     RDB_init_obj(&array);
 
     printf("Converting virtual table to array\n");
-    ret = RDB_table_to_array(&array, vtbp, 0, NULL, &tx);
+    ret = RDB_table_to_array(&array, vtbp, 0, NULL, ecp, &tx);
     if (ret != RDB_OK) {
-        RDB_destroy_obj(&array);
+        RDB_destroy_obj(&array, ecp);
         RDB_commit(&tx);
         return ret;
     }
 
-    for (i = 0; (ret = RDB_array_get(&array, i, &tplp)) == RDB_OK; i++) {
+    for (i = 0; (tplp = RDB_array_get(&array, i, ecp)) != NULL; i++) {
         printf("NAME: %s\n", RDB_tuple_get_string(tplp, "NAME"));
     }
-    RDB_destroy_obj(&array);
+    RDB_destroy_obj(&array, ecp);
 
+/* !!
     if (ret != RDB_NOT_FOUND) {
         RDB_commit(&tx);
         return ret;
     }
+*/
 
     printf("Dropping virtual table\n");
-    RDB_drop_table(vtbp, &tx);
+    RDB_drop_table(vtbp, ecp, &tx);
 
     printf("End of transaction\n");
     return RDB_commit(&tx);
@@ -82,6 +84,7 @@ main(void)
     RDB_environment *dsp;
     RDB_database *dbp;
     int ret;
+    RDB_exec_context ec;
     
     printf("Opening environment\n");
     ret = RDB_open_env("dbenv", &dsp);
@@ -89,17 +92,21 @@ main(void)
         fprintf(stderr, "Error: %s\n", RDB_strerror(ret));
         return 1;
     }
-    ret = RDB_get_db_from_env("TEST", dsp, &dbp);
-    if (ret != 0) {
+
+    RDB_init_exec_context(&ec);
+    dbp = RDB_get_db_from_env("TEST", dsp, &ec);
+    if (dbp == NULL) {
         fprintf(stderr, "Error: %s\n", RDB_strerror(ret));
         return 1;
     }
 
-    ret = test_ra(dbp);
+    ret = test_ra(dbp, &ec);
     if (ret != RDB_OK) {
         fprintf(stderr, "Error: %s\n", RDB_strerror(ret));
+        RDB_destroy_exec_context(&ec);
         return 2;
     }
+    RDB_destroy_exec_context(&ec);
 
     printf ("Closing environment\n");
     ret = RDB_close_env(dsp);

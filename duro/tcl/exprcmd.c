@@ -34,24 +34,24 @@ Duro_expr_cmd(ClientData data, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv
     }
     txp = Tcl_GetHashValue(entryp);
 
-    ret = Duro_parse_expr_utf(interp, Tcl_GetString(objv[1]), statep, txp,
-            &exprp);
-    if (ret != TCL_OK) {
-        return ret;
+    exprp = Duro_parse_expr_utf(interp, Tcl_GetString(objv[1]), statep,
+            statep->current_ecp, txp);
+    if (exprp == NULL) {
+        return TCL_ERROR;
     }
 
     RDB_init_obj(&val);
-    ret = RDB_evaluate(exprp, NULL, txp, &val);
+    ret = RDB_evaluate(exprp, NULL, statep->current_ecp, txp, &val);
     if (ret != RDB_OK) {
-        RDB_drop_expr(exprp);
-        RDB_destroy_obj(&val);
-        Duro_dberror(interp, txp, ret);
+        RDB_drop_expr(exprp, statep->current_ecp);
+        RDB_destroy_obj(&val, statep->current_ecp);
+        Duro_dberror(interp, statep->current_ecp, txp);
         return TCL_ERROR;
     }
-    RDB_drop_expr(exprp);
+    RDB_drop_expr(exprp, statep->current_ecp);
 
-    tobjp = Duro_to_tcl(interp, &val, txp);
-    RDB_destroy_obj(&val);
+    tobjp = Duro_to_tcl(interp, &val, statep->current_ecp, txp);
+    RDB_destroy_obj(&val, statep->current_ecp);
     if (tobjp == NULL)
         return TCL_ERROR;
 

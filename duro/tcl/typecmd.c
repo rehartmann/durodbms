@@ -113,10 +113,10 @@ type_define_cmd(TclState *statep, Tcl_Interp *interp, int objc,
                 goto cleanup;
 
             repv[i].compv[j].name = Tcl_GetString(nameobjp);
-            ret = RDB_get_type(Tcl_GetString(typeobjp),
-                    txp, &repv[i].compv[j].typ);
-            if (ret != RDB_OK) {
-                Duro_dberror(interp, txp, ret);
+            repv[i].compv[j].typ = RDB_get_type(Tcl_GetString(typeobjp),
+                    statep->current_ecp, txp);
+            if (repv[i].compv[j].typ == NULL) {
+                Duro_dberror(interp, statep->current_ecp, txp);
                 ret = TCL_ERROR;
                 goto cleanup;
             }
@@ -125,17 +125,19 @@ type_define_cmd(TclState *statep, Tcl_Interp *interp, int objc,
 
     if (objc == 6) {
         /* Type constraint */
-        ret = Duro_parse_expr_utf(interp, Tcl_GetString(objv[4]),
-                statep, txp, &constraintp);
-        if (ret != TCL_OK) {
+        constraintp = Duro_parse_expr_utf(interp, Tcl_GetString(objv[4]),
+                statep, statep->current_ecp, txp);
+        if (constraintp == NULL) {
+            ret = TCL_ERROR;
             goto cleanup;
         }            
     }
 
-    ret = RDB_define_type(Tcl_GetString(objv[2]), repc, repv, constraintp, txp);
+    ret = RDB_define_type(Tcl_GetString(objv[2]), repc, repv, constraintp,
+            statep->current_ecp, txp);
     if (ret != RDB_OK) {
-        RDB_drop_expr(constraintp);
-        Duro_dberror(interp, txp, ret);
+        RDB_drop_expr(constraintp, statep->current_ecp);
+        Duro_dberror(interp, statep->current_ecp, txp);
         ret = TCL_ERROR;
         goto cleanup;
     }
@@ -177,15 +179,15 @@ type_drop_cmd(TclState *statep, Tcl_Interp *interp, int objc,
     }
     txp = Tcl_GetHashValue(entryp);
 
-    ret = RDB_get_type(name, txp, &typ);
-    if (ret != RDB_OK) {
-        Duro_dberror(interp, txp, ret);
+    typ = RDB_get_type(name, statep->current_ecp, txp);
+    if (typ == NULL) {
+        Duro_dberror(interp, statep->current_ecp, txp);
         return TCL_ERROR;
     }
 
-    ret = RDB_drop_type(typ, txp);
+    ret = RDB_drop_type(typ, statep->current_ecp, txp);
     if (ret != RDB_OK) {
-        Duro_dberror(interp, txp, ret);
+        Duro_dberror(interp, statep->current_ecp, txp);
         return TCL_ERROR;
     }
 
@@ -216,17 +218,17 @@ type_implement_cmd(TclState *statep, Tcl_Interp *interp, int objc,
     txp = Tcl_GetHashValue(entryp);
 
     if (objc == 5) {
-        ret = Duro_get_type(objv[3], interp, txp, &irep);
-        if (ret != TCL_OK)
-            return ret;
+        irep = Duro_get_type(objv[3], interp, statep->current_ecp, txp);
+        if (irep == NULL)
+            return TCL_ERROR;
     }
 
     ret = RDB_implement_type(Tcl_GetString(objv[2]), irep, (size_t)-1,
-            txp);
+            statep->current_ecp, txp);
     if (irep != NULL && !RDB_type_is_scalar(irep))
-        RDB_drop_type(irep, txp);
+        RDB_drop_type(irep, statep->current_ecp, txp);
     if (ret != RDB_OK) {
-        Duro_dberror(interp, txp, ret);
+        Duro_dberror(interp, statep->current_ecp, txp);
         return TCL_ERROR;
     }
 

@@ -79,16 +79,17 @@ provide_entry(RDB_object *tplp, const char *attrname, RDB_object **valpp)
 }
 
 int
-RDB_tuple_set(RDB_object *tplp, const char *attrname, const RDB_object *valp)
+RDB_tuple_set(RDB_object *tplp, const char *attrname, const RDB_object *valp,
+        RDB_exec_context *ecp)
 {
     RDB_object *dstvalp;
     int ret = provide_entry(tplp, attrname, &dstvalp);
     if (ret != RDB_OK)
         return ret;
 
-    RDB_destroy_obj(dstvalp);
+    RDB_destroy_obj(dstvalp, ecp);
     RDB_init_obj(dstvalp);
-    return RDB_copy_obj(dstvalp, valp);
+    return RDB_copy_obj(dstvalp, valp, ecp);
 }
 
 int
@@ -128,15 +129,15 @@ RDB_tuple_set_rational(RDB_object *tplp, const char *attrname, RDB_rational val)
 }
 
 int
-RDB_tuple_set_string(RDB_object *tplp, const char *attrname, const char *str)
+RDB_tuple_set_string(RDB_object *tplp, const char *attrname, const char *str,
+        RDB_exec_context *ecp)
 {
     RDB_object *dstvalp;
     int ret = provide_entry(tplp, attrname, &dstvalp);
     if (ret != RDB_OK)
         return ret;
 
-    return RDB_string_to_obj(dstvalp, str);
-    return RDB_OK;
+    return RDB_string_to_obj(dstvalp, str, ecp);
 }
 
 RDB_object *
@@ -203,7 +204,7 @@ RDB_tuple_attr_names(const RDB_object *tplp, char **namev)
 
 int
 RDB_project_tuple(const RDB_object *tplp, int attrc, char *attrv[],
-                 RDB_object *restplp)
+                 RDB_exec_context *ecp, RDB_object *restplp)
 {
     RDB_object *attrp;
     int i;
@@ -211,7 +212,7 @@ RDB_project_tuple(const RDB_object *tplp, int attrc, char *attrv[],
     if (tplp->kind != RDB_OB_TUPLE)
         return RDB_INVALID_ARGUMENT;
 
-    RDB_destroy_obj(restplp);
+    RDB_destroy_obj(restplp, ecp);
     RDB_init_obj(restplp);
 
     for (i = 0; i < attrc; i++) {
@@ -219,7 +220,7 @@ RDB_project_tuple(const RDB_object *tplp, int attrc, char *attrv[],
         if (attrp == NULL)
             return RDB_ATTRIBUTE_NOT_FOUND;
 
-        RDB_tuple_set(restplp, attrv[i], attrp);
+        RDB_tuple_set(restplp, attrv[i], attrp, ecp);
     }
 
     return RDB_OK;
@@ -227,7 +228,7 @@ RDB_project_tuple(const RDB_object *tplp, int attrc, char *attrv[],
 
 int
 RDB_remove_tuple(const RDB_object *tplp, int attrc, char *attrv[],
-                 RDB_object *restplp)
+                 RDB_exec_context *ecp, RDB_object *restplp)
 {
     RDB_hashtable_iter hiter;
     tuple_entry *entryp;
@@ -236,7 +237,7 @@ RDB_remove_tuple(const RDB_object *tplp, int attrc, char *attrv[],
     if (tplp->kind != RDB_OB_TUPLE)
         return RDB_INVALID_ARGUMENT;
 
-    RDB_destroy_obj(restplp);
+    RDB_destroy_obj(restplp, ecp);
     RDB_init_obj(restplp);
 
     RDB_init_hashtable_iter(&hiter, (RDB_hashtable *) &tplp->var.tpl_tab);
@@ -250,7 +251,7 @@ RDB_remove_tuple(const RDB_object *tplp, int attrc, char *attrv[],
         for (i = 0; i < attrc && strcmp(entryp->key, attrv[i]) != 0; i++);
         if (i >= attrc) {
             /* Not found, so copy attribute */
-            RDB_tuple_set(restplp, entryp->key, &entryp->obj);
+            RDB_tuple_set(restplp, entryp->key, &entryp->obj, ecp);
         }
     }
     RDB_destroy_hashtable_iter(&hiter);
@@ -260,10 +261,10 @@ RDB_remove_tuple(const RDB_object *tplp, int attrc, char *attrv[],
 
 int
 RDB_join_tuples(const RDB_object *tpl1p, const RDB_object *tpl2p,
-        RDB_transaction *txp, RDB_object *restplp)
+        RDB_exec_context *ecp, RDB_transaction *txp, RDB_object *restplp)
 {
     RDB_hashtable_iter hiter;
-    int ret = RDB_copy_obj(restplp, tpl1p);
+    int ret = RDB_copy_obj(restplp, tpl1p, ecp);
 
     if (ret != RDB_OK)
         return ret;
@@ -290,7 +291,7 @@ RDB_join_tuples(const RDB_object *tpl1p, const RDB_object *tpl2p,
              }
              
              /* Check attribute values for equality */
-             ret = RDB_obj_equals(dstattrp, &entryp->obj, txp, &b);
+             ret = RDB_obj_equals(dstattrp, &entryp->obj, ecp, txp, &b);
              if (ret != RDB_OK) {
                  RDB_destroy_hashtable_iter(&hiter);
                  return ret;
@@ -300,7 +301,7 @@ RDB_join_tuples(const RDB_object *tpl1p, const RDB_object *tpl2p,
                  return RDB_INVALID_ARGUMENT;
              }
         } else {
-             ret = RDB_tuple_set(restplp, entryp->key, &entryp->obj);
+             ret = RDB_tuple_set(restplp, entryp->key, &entryp->obj, ecp);
              if (ret != RDB_OK)
              {
                  RDB_destroy_hashtable_iter(&hiter);
@@ -314,7 +315,7 @@ RDB_join_tuples(const RDB_object *tpl1p, const RDB_object *tpl2p,
 
 int
 RDB_extend_tuple(RDB_object *tplp, int attrc, const RDB_virtual_attr attrv[],
-                RDB_transaction *txp)
+                RDB_exec_context *ecp, RDB_transaction *txp)
 {
     int i;
     int res;
@@ -322,18 +323,18 @@ RDB_extend_tuple(RDB_object *tplp, int attrc, const RDB_virtual_attr attrv[],
 
     for (i = 0; i < attrc; i++) {
         RDB_init_obj(&val);
-        res = RDB_evaluate(attrv[i].exp, tplp, txp, &val);
+        res = RDB_evaluate(attrv[i].exp, tplp, ecp, txp, &val);
         if (res != RDB_OK)
             return res;
-        RDB_tuple_set(tplp, attrv[i].name, &val);
-        RDB_destroy_obj(&val);
+        RDB_tuple_set(tplp, attrv[i].name, &val, ecp);
+        RDB_destroy_obj(&val, ecp);
     }
     return RDB_OK;
 }
 
 int
 RDB_rename_tuple(const RDB_object *tplp, int renc, const RDB_renaming renv[],
-                 RDB_object *restup)
+                 RDB_exec_context *ecp, RDB_object *restup)
 {
     RDB_hashtable_iter it;
     tuple_entry *entryp;
@@ -348,9 +349,9 @@ RDB_rename_tuple(const RDB_object *tplp, int renc, const RDB_renaming renv[],
         int ai = _RDB_find_rename_from(renc, renv, entryp->key);
 
         if (ai >= 0) {
-            ret = RDB_tuple_set(restup, renv[ai].to, &entryp->obj);
+            ret = RDB_tuple_set(restup, renv[ai].to, &entryp->obj, ecp);
         } else {
-            ret = RDB_tuple_set(restup, entryp->key, &entryp->obj);
+            ret = RDB_tuple_set(restup, entryp->key, &entryp->obj, ecp);
         }
 
         if (ret != RDB_OK) {
@@ -378,7 +379,7 @@ find_rename_to(int renc, const RDB_renaming renv[], const char *name)
 
 int
 _RDB_invrename_tuple(const RDB_object *tup, int renc, const RDB_renaming renv[],
-                 RDB_object *restup)
+                 RDB_exec_context *ecp, RDB_object *restup)
 {
     RDB_hashtable_iter it;
     tuple_entry *entryp;
@@ -393,9 +394,9 @@ _RDB_invrename_tuple(const RDB_object *tup, int renc, const RDB_renaming renv[],
         int ai = find_rename_to(renc, renv, entryp->key);
 
         if (ai >= 0) {
-            ret = RDB_tuple_set(restup, renv[ai].from, &entryp->obj);
+            ret = RDB_tuple_set(restup, renv[ai].from, &entryp->obj, ecp);
         } else {
-            ret = RDB_tuple_set(restup, entryp->key, &entryp->obj);
+            ret = RDB_tuple_set(restup, entryp->key, &entryp->obj, ecp);
         }
 
         if (ret != RDB_OK) {
@@ -414,7 +415,8 @@ _RDB_invrename_tuple(const RDB_object *tup, int renc, const RDB_renaming renv[],
  */
 int
 _RDB_invwrap_tuple(const RDB_object *tplp, int wrapc,
-        const RDB_wrapping wrapv[], RDB_object *restplp)
+        const RDB_wrapping wrapv[], RDB_exec_context *ecp,
+        RDB_object *restplp)
 {
     int i;
     int ret;
@@ -430,14 +432,14 @@ _RDB_invwrap_tuple(const RDB_object *tplp, int wrapc,
     for (i = 0; i < wrapc; i++)
         attrv[i] = wrapv[i].attrname;
 
-    ret = RDB_unwrap_tuple(tplp, wrapc, attrv, restplp);
+    ret = RDB_unwrap_tuple(tplp, wrapc, attrv, ecp, restplp);
     free(attrv);
     return ret;
 }
 
 int
 _RDB_invunwrap_tuple(const RDB_object *tplp, int attrc, char *attrv[],
-        RDB_type *srctuptyp, RDB_object *restplp)
+        RDB_type *srctuptyp, RDB_exec_context *ecp, RDB_object *restplp)
 {
     int ret;
     int i, j;
@@ -463,7 +465,7 @@ _RDB_invunwrap_tuple(const RDB_object *tplp, int attrc, char *attrv[],
         wrapv[i].attrname = attrv[i];        
     }
 
-    ret = RDB_wrap_tuple(tplp, attrc, wrapv, restplp);
+    ret = RDB_wrap_tuple(tplp, attrc, wrapv, ecp, restplp);
 
     for (i = 0; i < attrc; i++)
         free(wrapv[i].attrv);
@@ -473,7 +475,7 @@ _RDB_invunwrap_tuple(const RDB_object *tplp, int attrc, char *attrv[],
 
 /* Copy all attributes from one tuple to another. */
 int
-_RDB_copy_tuple(RDB_object *dstp, const RDB_object *srcp)
+_RDB_copy_tuple(RDB_object *dstp, const RDB_object *srcp, RDB_exec_context *ecp)
 {
     RDB_hashtable_iter it;
     tuple_entry *entryp;
@@ -487,7 +489,7 @@ _RDB_copy_tuple(RDB_object *dstp, const RDB_object *srcp)
     /* Copy attributes to tup */
     RDB_init_hashtable_iter(&it, (RDB_hashtable *)&srcp->var.tpl_tab);
     while ((entryp = RDB_hashtable_next(&it)) != NULL) {
-        int ret = RDB_tuple_set(dstp, entryp->key, &entryp->obj);
+        int ret = RDB_tuple_set(dstp, entryp->key, &entryp->obj, ecp);
 
         if (ret != RDB_OK) {
             RDB_destroy_hashtable_iter(&it);
@@ -502,7 +504,7 @@ _RDB_copy_tuple(RDB_object *dstp, const RDB_object *srcp)
 
 int
 RDB_wrap_tuple(const RDB_object *tplp, int wrapc, const RDB_wrapping wrapv[],
-               RDB_object *restplp)
+               RDB_exec_context *ecp, RDB_object *restplp)
 {
     int i, j;
     int ret;
@@ -518,23 +520,23 @@ RDB_wrap_tuple(const RDB_object *tplp, int wrapc, const RDB_wrapping wrapv[],
             RDB_object *attrp = RDB_tuple_get(tplp, wrapv[i].attrv[j]);
 
             if (attrp == NULL) {
-                RDB_destroy_obj(&tpl);
+                RDB_destroy_obj(&tpl, ecp);
                 return RDB_ATTRIBUTE_NOT_FOUND;
             }
 
-            ret = RDB_tuple_set(&tpl, wrapv[i].attrv[j], attrp);
+            ret = RDB_tuple_set(&tpl, wrapv[i].attrv[j], attrp, ecp);
             if (ret != RDB_OK) {
-                RDB_destroy_obj(&tpl);
+                RDB_destroy_obj(&tpl, ecp);
                 return ret;
             }
         }
-        RDB_tuple_set(restplp, wrapv[i].attrname, &tpl);
+        RDB_tuple_set(restplp, wrapv[i].attrname, &tpl, ecp);
         if (ret != RDB_OK) {
-            RDB_destroy_obj(&tpl);
+            RDB_destroy_obj(&tpl, ecp);
             return ret;
         }
     }
-    RDB_destroy_obj(&tpl);
+    RDB_destroy_obj(&tpl, ecp);
 
     /* Copy attributes which have not been wrapped */
     RDB_init_hashtable_iter(&it, (RDB_hashtable *)&tplp->var.tpl_tab);
@@ -546,7 +548,7 @@ RDB_wrap_tuple(const RDB_object *tplp, int wrapc, const RDB_wrapping wrapv[],
                 i++);
         if (i == wrapc) {
             /* Attribute not found, copy */
-            ret = RDB_tuple_set(restplp, entryp->key, &entryp->obj);
+            ret = RDB_tuple_set(restplp, entryp->key, &entryp->obj, ecp);
             if (ret != RDB_OK) {
                 RDB_destroy_hashtable_iter(&it);
                 return ret;
@@ -560,7 +562,7 @@ RDB_wrap_tuple(const RDB_object *tplp, int wrapc, const RDB_wrapping wrapv[],
 
 int
 RDB_unwrap_tuple(const RDB_object *tplp, int attrc, char *attrv[],
-        RDB_object *restplp)
+        RDB_exec_context *ecp, RDB_object *restplp)
 {
     int i;
     int ret;
@@ -575,7 +577,7 @@ RDB_unwrap_tuple(const RDB_object *tplp, int attrc, char *attrv[],
         if (wtplp->kind != RDB_OB_TUPLE)
             return RDB_INVALID_ARGUMENT;
 
-        ret = _RDB_copy_tuple(restplp, wtplp);
+        ret = _RDB_copy_tuple(restplp, wtplp, ecp);
         if (ret != RDB_OK)
             return ret;
     }
@@ -585,7 +587,7 @@ RDB_unwrap_tuple(const RDB_object *tplp, int attrc, char *attrv[],
     while ((entryp = RDB_hashtable_next(&it)) != NULL) {
         /* Copy attribute if it does not appear in attrv */
         if (RDB_find_str(attrc, attrv, entryp->key) == -1) {
-            ret = RDB_tuple_set(restplp, entryp->key, &entryp->obj);
+            ret = RDB_tuple_set(restplp, entryp->key, &entryp->obj, ecp);
             if (ret != RDB_OK) {
                 RDB_destroy_hashtable_iter(&it);
                 return ret;
@@ -599,7 +601,7 @@ RDB_unwrap_tuple(const RDB_object *tplp, int attrc, char *attrv[],
 
 int
 _RDB_tuple_equals(const RDB_object *tpl1p, const RDB_object *tpl2p,
-        RDB_transaction *txp, RDB_bool *resp)
+        RDB_exec_context *ecp, RDB_transaction *txp, RDB_bool *resp)
 {
     int ret;
     RDB_hashtable_iter hiter;
@@ -609,7 +611,7 @@ _RDB_tuple_equals(const RDB_object *tpl1p, const RDB_object *tpl2p,
     RDB_init_hashtable_iter(&hiter, (RDB_hashtable *) &tpl1p->var.tpl_tab);
     while ((entryp = RDB_hashtable_next(&hiter)) != NULL) {
         ret = RDB_obj_equals(&entryp->obj, RDB_tuple_get(tpl2p, entryp->key),
-                txp, &b);
+                ecp, txp, &b);
         if (ret != RDB_OK) {
             RDB_destroy_hashtable_iter(&it);
             return ret;
@@ -629,7 +631,7 @@ _RDB_tuple_equals(const RDB_object *tpl1p, const RDB_object *tpl2p,
  * Generate type from tuple
  */
 RDB_type *
-_RDB_tuple_type(const RDB_object *tplp)
+_RDB_tuple_type(const RDB_object *tplp, RDB_exec_context *ecp)
 {
     int i;
     tuple_entry *entryp;
@@ -655,7 +657,8 @@ _RDB_tuple_type(const RDB_object *tplp)
             if (entryp->obj.kind != RDB_OB_TUPLE) {
                 typ->var.tuple.attrv[i].typ = RDB_obj_type(&entryp->obj);
             } else {
-                typ->var.tuple.attrv[i].typ = _RDB_tuple_type(&entryp->obj);
+                typ->var.tuple.attrv[i].typ = _RDB_tuple_type(&entryp->obj,
+                        ecp);
             }
             typ->var.tuple.attrv[i].name = RDB_dup_str(entryp->key);
             if (typ->var.tuple.attrv[i].name == NULL) {
@@ -675,7 +678,7 @@ error:
             free(typ->var.tuple.attrv[i].name);
             if (typ->var.tuple.attrv[i].typ != NULL
                     && typ->var.tuple.attrv[i].typ->kind == RDB_TP_TUPLE)
-                RDB_drop_type(typ->var.tuple.attrv[i].typ, NULL);
+                RDB_drop_type(typ->var.tuple.attrv[i].typ, ecp, NULL);
         }
         free(typ->var.tuple.attrv);
     }

@@ -100,13 +100,16 @@ _RDB_put_field_no(RDB_stored_table *stp, const char *attrname, RDB_int fno)
     return ret;
 }
 
+/* !! */
+static RDB_exec_context *cmp_ecp = NULL;
+
 static int
 compare_field(const void *data1p, size_t len1, const void *data2p, size_t len2,
               RDB_environment *envp, void *arg)
 {
     RDB_object val1, val2, retval;
     RDB_object *valv[2];
-    int res;
+    int ret;
     RDB_type *typ = (RDB_type *)arg;
     RDB_transaction tx;
 
@@ -114,8 +117,8 @@ compare_field(const void *data1p, size_t len1, const void *data2p, size_t len2,
     RDB_init_obj(&val2);
     RDB_init_obj(&retval);
 
-    RDB_irep_to_obj(&val1, typ, data1p, len1);
-    RDB_irep_to_obj(&val2, typ, data2p, len2);
+    RDB_irep_to_obj(&val1, typ, data1p, len1, cmp_ecp);
+    RDB_irep_to_obj(&val2, typ, data2p, len2, cmp_ecp);
 
     valv[0] = &val1;
     valv[1] = &val2;
@@ -124,14 +127,14 @@ compare_field(const void *data1p, size_t len1, const void *data2p, size_t len2,
     tx.user_data = typ->tx_udata;
     retval.typ = &RDB_INTEGER;
     (*typ->comparep)("compare", 2, valv, typ->compare_iargp,
-            typ->compare_iarglen, &tx, &retval);
-    res = RDB_obj_int(&retval);
+            typ->compare_iarglen, cmp_ecp, &tx, &retval);
+    ret = RDB_obj_int(&retval);
 
-    RDB_destroy_obj(&val1);
-    RDB_destroy_obj(&val2);
-    RDB_destroy_obj(&retval);
+    RDB_destroy_obj(&val1, cmp_ecp);
+    RDB_destroy_obj(&val2, cmp_ecp);
+    RDB_destroy_obj(&retval, cmp_ecp);
 
-    return res;
+    return ret;
 }
 
 static int
@@ -195,7 +198,7 @@ cleanup:
  * Convert keys to indexes
  */
 static int
-keys_to_indexes(RDB_table *tbp, RDB_transaction *txp)
+keys_to_indexes(RDB_table *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
 {
     int i, j;
     int oindexc;
@@ -238,7 +241,7 @@ keys_to_indexes(RDB_table *tbp, RDB_transaction *txp)
                 ret = _RDB_cat_insert_index(tbp->stp->indexv[oindexc + i].name,
                         tbp->stp->indexv[oindexc + i].attrc,
                         tbp->stp->indexv[oindexc + i].attrv,
-                        RDB_TRUE, RDB_FALSE, tbp->name, txp);
+                        RDB_TRUE, RDB_FALSE, tbp->name, ecp, txp);
                 if (ret != RDB_OK)
                     return ret;
             }
@@ -423,7 +426,7 @@ str_equals(const void *e1p, const void *e2p, void *arg)
  */
 int
 _RDB_create_stored_table(RDB_table *tbp, RDB_environment *envp,
-        const RDB_bool ascv[], RDB_transaction *txp)
+        const RDB_bool ascv[], RDB_exec_context *ecp, RDB_transaction *txp)
 {
     int ret;
     int *flenv;
@@ -460,7 +463,7 @@ _RDB_create_stored_table(RDB_table *tbp, RDB_environment *envp,
     if (tbp->is_persistent && tbp->is_user) {
         /* Get indexes from catalog */
         tbp->stp->indexc = _RDB_cat_get_indexes(tbp->name, txp->dbp->dbrootp,
-                txp, &tbp->stp->indexv);
+                ecp, txp, &tbp->stp->indexv);
         if (tbp->stp->indexc < 0) {
             goto error;
         }
@@ -468,7 +471,7 @@ _RDB_create_stored_table(RDB_table *tbp, RDB_environment *envp,
         tbp->stp->indexc = 0;
     }
 
-    ret = keys_to_indexes(tbp, txp);
+    ret = keys_to_indexes(tbp, ecp, txp);
     if (ret != RDB_OK)
         return ret;
 
@@ -480,7 +483,7 @@ _RDB_create_stored_table(RDB_table *tbp, RDB_environment *envp,
      * If the table is a persistent user table, insert recmap into SYS_TABLE_RECMAP
      */
     if (tbp->is_persistent && tbp->is_user) {
-        ret = _RDB_cat_insert_table_recmap(tbp, tbp->name, txp);
+        ret = _RDB_cat_insert_table_recmap(tbp, tbp->name, ecp, txp);
         if (ret == RDB_KEY_VIOLATION) {
             /* Choose a different recmap name */
             int n = 0;
@@ -491,7 +494,7 @@ _RDB_create_stored_table(RDB_table *tbp, RDB_environment *envp,
             }
             do {
                 sprintf(rmname, "%s%d", tbp->name, ++n);
-                ret = _RDB_cat_insert_table_recmap(tbp, rmname, txp);
+                ret = _RDB_cat_insert_table_recmap(tbp, rmname, ecp, txp);
             } while (ret == RDB_KEY_VIOLATION && n <= 999);
         }
         if (ret != RDB_OK)
@@ -658,7 +661,8 @@ cleanup:
 
 int
 RDB_create_table_index(const char *name, RDB_table *tbp, int idxcompc,
-        const RDB_seq_item idxcompv[], int flags, RDB_transaction *txp)
+        const RDB_seq_item idxcompv[], int flags, RDB_exec_context *ecp,
+        RDB_transaction *txp)
 {
     int i;
     int ret;
@@ -671,7 +675,7 @@ RDB_create_table_index(const char *name, RDB_table *tbp, int idxcompc,
         /* Insert index into catalog */
         ret = _RDB_cat_insert_index(name, idxcompc, idxcompv,
                 (RDB_bool) (RDB_UNIQUE & flags),
-                (RDB_bool) (RDB_ORDERED & flags), tbp->name, txp);
+                (RDB_bool) (RDB_ORDERED & flags), tbp->name, ecp, txp);
         if (ret != RDB_OK)
             goto error;
     }

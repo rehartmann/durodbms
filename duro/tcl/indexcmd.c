@@ -33,21 +33,22 @@ index_create_cmd(TclState *statep, Tcl_Interp *interp, int objc,
     }
     txp = Tcl_GetHashValue(entryp);
 
-    ret = Duro_get_table(statep, interp, Tcl_GetString(objv[3]), txp, &tbp);
-    if (ret != TCL_OK) {
+    tbp = Duro_get_table(statep, interp, Tcl_GetString(objv[3]), txp);
+    if (tbp == NULL) {
         return TCL_ERROR;
     }
 
-    idxattrv = Duro_tobj_to_seq_items(interp, objv[4], &attrc, RDB_FALSE, &ordered);
+    idxattrv = Duro_tobj_to_seq_items(interp, objv[4], &attrc, RDB_FALSE,
+            &ordered);
     if (idxattrv == NULL) {
         return TCL_ERROR;
     }
 
     ret = RDB_create_table_index(Tcl_GetString(objv[2]), tbp, attrc,
-        idxattrv, ordered ? RDB_ORDERED : 0, txp);
+        idxattrv, ordered ? RDB_ORDERED : 0, statep->current_ecp, txp);
     free(idxattrv);
     if (ret != RDB_OK) {
-        Duro_dberror(interp, txp, ret);
+        Duro_dberror(interp, statep->current_ecp, txp);
         return TCL_ERROR;
     }
     return TCL_OK;
@@ -75,9 +76,10 @@ index_drop_cmd(TclState *statep, Tcl_Interp *interp, int objc,
     }
     txp = Tcl_GetHashValue(entryp);
 
-    ret = RDB_drop_table_index(Tcl_GetString(objv[2]), txp);
+    ret = RDB_drop_table_index(Tcl_GetString(objv[2]), statep->current_ecp,
+            txp);
     if (ret != RDB_OK) {
-        Duro_dberror(interp, txp, ret);
+        Duro_dberror(interp, statep->current_ecp, txp);
         return TCL_ERROR;
     }
 

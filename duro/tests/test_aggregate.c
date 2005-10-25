@@ -5,7 +5,7 @@
 #include <stdio.h>
 
 int
-test_aggregate(RDB_database *dbp)
+test_aggregate(RDB_database *dbp, RDB_exec_context *ecp)
 {
     RDB_transaction tx;
     RDB_table *tbp;
@@ -18,15 +18,15 @@ test_aggregate(RDB_database *dbp)
         return ret;
     }
 
-    ret = RDB_get_table("EMPS1", &tx, &tbp);
-    if (ret != RDB_OK) {
+    tbp = RDB_get_table("EMPS1", ecp, &tx);
+    if (tbp == NULL) {
         RDB_rollback(&tx);
-        return ret;
+        return RDB_ERROR;
     }
 
     printf("Creating aggregation COUNT ( EMPS1 )\n");
 
-    ret = RDB_cardinality(tbp, &tx);
+    ret = RDB_cardinality(tbp, ecp, &tx);
     if (ret < 0) {
         RDB_rollback(&tx);
         return ret;
@@ -36,7 +36,7 @@ test_aggregate(RDB_database *dbp)
 
     printf("Creating aggregation AVG ( EMPS1, SALARY )\n");
 
-    ret = RDB_avg(tbp, "SALARY", &tx, &avg);
+    ret = RDB_avg(tbp, "SALARY", ecp, &tx, &avg);
     if (ret != RDB_OK) {
         RDB_commit(&tx);
         return ret;
@@ -54,6 +54,7 @@ main(void)
     RDB_environment *dsp;
     RDB_database *dbp;
     int ret;
+    RDB_exec_context ec;
     
     printf("Opening environment\n");
     ret = RDB_open_env("dbenv", &dsp);
@@ -61,13 +62,16 @@ main(void)
         fprintf(stderr, "Error: %s\n", RDB_strerror(ret));
         return 1;
     }
-    ret = RDB_get_db_from_env("TEST", dsp, &dbp);
-    if (ret != 0) {
+
+    RDB_init_exec_context(&ec);
+
+    dbp = RDB_get_db_from_env("TEST", dsp, &ec);
+    if (dbp == NULL) {
         fprintf(stderr, "Error: %s\n", RDB_strerror(ret));
         return 1;
     }
 
-    ret = test_aggregate(dbp);
+    ret = test_aggregate(dbp, &ec);
     if (ret != RDB_OK) {
         fprintf(stderr, "Error: %s\n", RDB_strerror(ret));
         return 2;

@@ -40,17 +40,17 @@ Duro_update_cmd(ClientData data, Tcl_Interp *interp, int objc,
     }
     txp = Tcl_GetHashValue(entryp);
 
-    ret = Duro_get_table(statep, interp, name, txp, &tbp);
-    if (ret != TCL_OK) {
+    tbp = Duro_get_table(statep, interp, name, txp);
+    if (tbp == NULL) {
         return TCL_ERROR;
     }
 
     if (objc % 2 == 0) {
         /* Read where conditon */
-        ret = Duro_parse_expr_utf(interp, Tcl_GetString(objv[2]),
-                    statep, txp, &wherep);
-        if (ret != TCL_OK) {
-            return ret;
+        wherep = Duro_parse_expr_utf(interp, Tcl_GetString(objv[2]),
+                    statep, statep->current_ecp, txp);
+        if (wherep == NULL) {
+            return TCL_ERROR;
         }
         upd_arg_idx = 3;
     } else {
@@ -64,16 +64,17 @@ Duro_update_cmd(ClientData data, Tcl_Interp *interp, int objc,
         updv[i].exp = NULL;
     for (i = 0; i < updc; i++) {
         updv[i].name = Tcl_GetStringFromObj(objv[upd_arg_idx + i * 2], NULL);
-        ret = Duro_parse_expr_utf(interp,
+        updv[i].exp = Duro_parse_expr_utf(interp,
                 Tcl_GetString(objv[upd_arg_idx + i * 2 + 1]), statep,
-                txp, &updv[i].exp);
-        if (ret != TCL_OK) {
+                statep->current_ecp, txp);
+        if (updv[i].exp == NULL) {
+            ret = TCL_ERROR;
             goto cleanup;
         }
     }
-    ret = RDB_update(tbp, wherep, updc, updv, txp);
+    ret = RDB_update(tbp, wherep, updc, updv, statep->current_ecp, txp);
     if (ret != RDB_OK) {
-        Duro_dberror(interp, txp, ret);
+        Duro_dberror(interp, statep->current_ecp, txp);
         ret = TCL_ERROR;
         goto cleanup;
     }
@@ -83,7 +84,7 @@ Duro_update_cmd(ClientData data, Tcl_Interp *interp, int objc,
 cleanup:
     for (i = 0; i < updc; i++) {
         if (updv[i].exp != NULL)
-            RDB_drop_expr(updv[i].exp);
+            RDB_drop_expr(updv[i].exp, statep->current_ecp);
     }
     Tcl_Free((char *) updv);
     return ret;                    

@@ -13,7 +13,8 @@
 #include <string.h>
 
 static int
-init_summ_table(RDB_qresult *qresp, RDB_transaction *txp)
+init_summ_table(RDB_qresult *qresp, RDB_exec_context *ecp,
+        RDB_transaction *txp)
 {
     RDB_qresult *qrp;
     RDB_object tpl;
@@ -23,11 +24,11 @@ init_summ_table(RDB_qresult *qresp, RDB_transaction *txp)
      * Initialize table from table #2
      */
 
-    ret = _RDB_table_qresult(qresp->tbp->var.summarize.tb2p, txp, &qrp);
+    ret = _RDB_table_qresult(qresp->tbp->var.summarize.tb2p, ecp, txp, &qrp);
     if (ret != RDB_OK) {
         return ret;
     }
-    ret = _RDB_duprem(qrp);
+    ret = _RDB_duprem(qrp, ecp);
     if (ret != RDB_OK) {
         return ret;
     }
@@ -36,7 +37,7 @@ init_summ_table(RDB_qresult *qresp, RDB_transaction *txp)
     for(;;) {
         int i;
 
-        ret = _RDB_next_tuple(qrp, &tpl, txp);
+        ret = _RDB_next_tuple(qrp, &tpl, ecp, txp);
         if (ret != RDB_OK)
             break;
 
@@ -68,10 +69,10 @@ init_summ_table(RDB_qresult *qresp, RDB_transaction *txp)
                     break;
                 case RDB_SUM:
                 case RDB_SUMD:
-                    ret = RDB_expr_type(qresp->tbp->var.summarize.addv[i].exp,
+                    typ = RDB_expr_type(qresp->tbp->var.summarize.addv[i].exp,
                             qresp->tbp->var.summarize.tb1p->typ->var.basetyp,
-                            txp, &typ);
-                    if (ret != RDB_OK)
+                            ecp, txp);
+                    if (typ == NULL)
                         goto error;
                     if (typ == &RDB_INTEGER)
                         ret = RDB_tuple_set_int(&tpl, name, 0);
@@ -79,10 +80,10 @@ init_summ_table(RDB_qresult *qresp, RDB_transaction *txp)
                         ret = RDB_tuple_set_rational(&tpl, name, 0.0);
                     break;
                 case RDB_MAX:
-                    ret = RDB_expr_type(qresp->tbp->var.summarize.addv[i].exp,
+                    typ = RDB_expr_type(qresp->tbp->var.summarize.addv[i].exp,
                             qresp->tbp->var.summarize.tb1p->typ->var.basetyp,
-                            txp, &typ);
-                    if (ret != RDB_OK)
+                            ecp, txp);
+                    if (typ == NULL)
                         goto error;
                     if (typ == &RDB_INTEGER)
                         ret = RDB_tuple_set_int(&tpl, name, RDB_INT_MIN);
@@ -90,10 +91,10 @@ init_summ_table(RDB_qresult *qresp, RDB_transaction *txp)
                         ret = RDB_tuple_set_rational(&tpl, name, RDB_RATIONAL_MIN);
                     break;
                 case RDB_MIN:
-                    ret = RDB_expr_type(qresp->tbp->var.summarize.addv[i].exp,
+                    typ = RDB_expr_type(qresp->tbp->var.summarize.addv[i].exp,
                             qresp->tbp->var.summarize.tb1p->typ->var.basetyp,
-                            txp, &typ);
-                    if (ret != RDB_OK)
+                            ecp, txp);
+                    if (typ == NULL)
                         goto error;
                     if (typ == &RDB_INTEGER)
                         ret = RDB_tuple_set_int(&tpl, name, RDB_INT_MAX);
@@ -110,7 +111,7 @@ init_summ_table(RDB_qresult *qresp, RDB_transaction *txp)
             if (ret != RDB_OK)
                 goto error;
         } /* for */
-        ret = RDB_insert(qresp->matp, &tpl, txp);
+        ret = RDB_insert(qresp->matp, &tpl, ecp, txp);
         if (ret != RDB_OK)
             goto error;
     };
@@ -119,8 +120,8 @@ init_summ_table(RDB_qresult *qresp, RDB_transaction *txp)
         ret = RDB_OK;
 
 error:
-    RDB_destroy_obj(&tpl);
-    _RDB_drop_qresult(qrp, txp);
+    RDB_destroy_obj(&tpl, ecp);
+    _RDB_drop_qresult(qrp, ecp, txp);
 
     return ret;
 }
@@ -189,7 +190,7 @@ summ_step(struct _RDB_summval *svalp, const RDB_object *addvalp, RDB_aggregate_o
 }
 
 static int
-do_summarize(RDB_qresult *qresp, RDB_transaction *txp)
+do_summarize(RDB_qresult *qresp, RDB_exec_context *ecp, RDB_transaction *txp)
 {
     RDB_qresult *qrp;
     RDB_object tpl;
@@ -220,11 +221,11 @@ do_summarize(RDB_qresult *qresp, RDB_transaction *txp)
      * Iterate over table 1, modifying the materialized table
      */
 
-    ret = _RDB_table_qresult(qresp->tbp->var.summarize.tb1p, txp, &qrp);
+    ret = _RDB_table_qresult(qresp->tbp->var.summarize.tb1p, ecp, txp, &qrp);
     if (ret != RDB_OK) {
         return ret;
     }
-    ret = _RDB_duprem(qrp);
+    ret = _RDB_duprem(qrp, ecp);
     if (ret != RDB_OK) {
         return ret;
     }
@@ -234,14 +235,14 @@ do_summarize(RDB_qresult *qresp, RDB_transaction *txp)
     for (i = 0; i < addc; i++)
         RDB_init_obj(&svalv[i].val);
     do {
-        ret = _RDB_next_tuple(qrp, &tpl, txp);
+        ret = _RDB_next_tuple(qrp, &tpl, ecp, txp);
         if (ret == RDB_OK) {
             int ai;
 
             /* Build key */
             for (i = 0; i < keyfc; i++) {
                 ret = _RDB_obj_to_field(&keyfv[i],
-                        RDB_tuple_get(&tpl, qresp->tbp->keyv[0].strv[i]));
+                        RDB_tuple_get(&tpl, qresp->tbp->keyv[0].strv[i]), ecp);
                 if (ret != RDB_OK)
                     return ret;
             }
@@ -277,18 +278,19 @@ do_summarize(RDB_qresult *qresp, RDB_transaction *txp)
 
                     if (summp->op == RDB_COUNT) {
                         ret = RDB_irep_to_obj(&svalv[i].val, &RDB_INTEGER,
-                                nonkeyfv[i].datap, nonkeyfv[i].len);
+                                nonkeyfv[i].datap, nonkeyfv[i].len, ecp);
                     } else {
-                        ret = RDB_expr_type(summp->exp,
+                        typ = RDB_expr_type(summp->exp,
                                 qresp->tbp->var.summarize.tb1p->typ->var.basetyp,
-                                txp, &typ);
-                        if (ret != RDB_OK)
+                                ecp, txp);
+                        if (typ == NULL)
                             goto cleanup;
                         ret = RDB_irep_to_obj(&svalv[i].val, typ,
-                                nonkeyfv[i].datap, nonkeyfv[i].len);
+                                nonkeyfv[i].datap, nonkeyfv[i].len, ecp);
                         if (ret != RDB_OK)
                             goto cleanup;
-                        ret = RDB_evaluate(summp->exp, &tpl, txp, &addval);
+                        ret = RDB_evaluate(summp->exp, &tpl, ecp, txp,
+                                &addval);
                         if (ret != RDB_OK)
                             goto cleanup;
                         /* If it's AVG, get count */
@@ -299,7 +301,7 @@ do_summarize(RDB_qresult *qresp, RDB_transaction *txp)
                     }
                     summ_step(&svalv[i], &addval, summp->op);
 
-                    ret = _RDB_obj_to_field(&nonkeyfv[i], &svalv[i].val);
+                    ret = _RDB_obj_to_field(&nonkeyfv[i], &svalv[i].val, ecp);
                     if (ret != RDB_OK)
                         return ret;
 
@@ -324,11 +326,11 @@ do_summarize(RDB_qresult *qresp, RDB_transaction *txp)
         ret = RDB_OK;
 
 cleanup:
-    RDB_destroy_obj(&tpl);
-    RDB_destroy_obj(&addval);
+    RDB_destroy_obj(&tpl, ecp);
+    RDB_destroy_obj(&addval, ecp);
     for (i = 0; i < addc; i++)
-        RDB_destroy_obj(&svalv[i].val);
-    _RDB_drop_qresult(qrp, txp);
+        RDB_destroy_obj(&svalv[i].val, ecp);
+    _RDB_drop_qresult(qrp, ecp, txp);
     free(keyfv);
     free(nonkeyfv);
     free(svalv);
@@ -337,7 +339,7 @@ cleanup:
 }
 
 static int
-do_group(RDB_qresult *qrp, RDB_transaction *txp)
+do_group(RDB_qresult *qrp, RDB_exec_context *ecp, RDB_transaction *txp)
 {
     RDB_qresult *newqrp;
     RDB_object tpl;
@@ -361,23 +363,23 @@ do_group(RDB_qresult *qrp, RDB_transaction *txp)
      * Iterate over the original table, modifying the materialized table
      */
 
-    ret = _RDB_table_qresult(qrp->tbp->var.group.tbp, txp, &newqrp);
+    ret = _RDB_table_qresult(qrp->tbp->var.group.tbp, ecp, txp, &newqrp);
     if (ret != RDB_OK) {
         return ret;
     }
-    ret = _RDB_duprem(qrp);
+    ret = _RDB_duprem(qrp, ecp);
     if (ret != RDB_OK)
         return ret;
 
     RDB_init_obj(&tpl);
     RDB_init_obj(&gval);
     do {
-        ret = _RDB_next_tuple(newqrp, &tpl, txp);
+        ret = _RDB_next_tuple(newqrp, &tpl, ecp, txp);
         if (ret == RDB_OK) {
             /* Build key */
             for (i = 0; i < keyfc; i++) {
                 ret = _RDB_obj_to_field(&keyfv[i],
-                        RDB_tuple_get(&tpl, qrp->tbp->keyv[0].strv[i]));
+                        RDB_tuple_get(&tpl, qrp->tbp->keyv[0].strv[i]), ecp);
                 if (ret != RDB_OK)
                     goto cleanup;
             }
@@ -399,17 +401,18 @@ do_group(RDB_qresult *qrp, RDB_transaction *txp)
                  */
 
                 /* Get relation-valued attribute */
-                ret = RDB_irep_to_obj(&gval, greltyp, gfield.datap, gfield.len);
+                ret = RDB_irep_to_obj(&gval, greltyp, gfield.datap,
+                        gfield.len, ecp);
                 if (ret != RDB_OK)
                     goto cleanup;
 
                 /* Insert tuple (not-grouped attributes will be ignored) */
-                ret = RDB_insert(RDB_obj_table(&gval), &tpl, txp);
+                ret = RDB_insert(RDB_obj_table(&gval), &tpl, ecp, txp);
                 if (ret != RDB_OK)
                     goto cleanup;
 
                 /* Update materialized table */
-                ret = _RDB_obj_to_field(&gfield, &gval);
+                ret = _RDB_obj_to_field(&gfield, &gval, ecp);
                 if (ret != RDB_OK)
                     goto cleanup;
                 ret = RDB_update_rec(qrp->matp->stp->recmapp, keyfv,
@@ -422,27 +425,27 @@ do_group(RDB_qresult *qrp, RDB_transaction *txp)
                  */
                 RDB_table *gtbp;
 
-                ret = RDB_create_table(NULL, RDB_FALSE,
+                gtbp = RDB_create_table(NULL, RDB_FALSE,
                                greltyp->var.basetyp->var.tuple.attrc,
                                greltyp->var.basetyp->var.tuple.attrv,
-                               0, NULL, NULL, &gtbp);
-                if (ret != RDB_OK)
+                               0, NULL, ecp, NULL);
+                if (gtbp == NULL)
                     goto cleanup;
 
-                ret = RDB_insert(gtbp, &tpl, NULL);
+                ret = RDB_insert(gtbp, &tpl, ecp, NULL);
                 if (ret != RDB_OK)
                     goto cleanup;
 
                 /*
                  * Set then attribute first, then assign the table value to it
                  */
-                ret = RDB_tuple_set(&tpl, qrp->tbp->var.group.gattr, &gval);
+                ret = RDB_tuple_set(&tpl, qrp->tbp->var.group.gattr, &gval, ecp);
                 if (ret != RDB_OK)
                     goto cleanup;
                 RDB_table_to_obj(RDB_tuple_get(&tpl, qrp->tbp->var.group.gattr),
-                                 gtbp);
+                                 gtbp, ecp);
 
-                ret = RDB_insert(qrp->matp, &tpl, NULL);
+                ret = RDB_insert(qrp->matp, &tpl, ecp, NULL);
                 if (ret != RDB_OK)
                     goto cleanup;
             } else {
@@ -455,9 +458,9 @@ do_group(RDB_qresult *qrp, RDB_transaction *txp)
         ret = RDB_OK;
 
 cleanup:
-    RDB_destroy_obj(&tpl);
-    RDB_destroy_obj(&gval);
-    _RDB_drop_qresult(newqrp, txp);
+    RDB_destroy_obj(&tpl, ecp);
+    RDB_destroy_obj(&gval, ecp);
+    _RDB_drop_qresult(newqrp, ecp, txp);
     free(keyfv);
 
     return ret;
@@ -522,7 +525,8 @@ index_qresult(RDB_qresult *qrp, _RDB_tbindex *indexp,
 }
 
 static int
-select_index_qresult(RDB_qresult *qrp, RDB_transaction *txp)
+select_index_qresult(RDB_qresult *qrp, RDB_exec_context *ecp,
+        RDB_transaction *txp)
 {
     int ret;
     int i;
@@ -560,7 +564,7 @@ select_index_qresult(RDB_qresult *qrp, RDB_transaction *txp)
     }
 
     for (i = 0; i < qrp->tbp->var.select.objpc; i++) {
-        ret = _RDB_obj_to_field(&fv[i], qrp->tbp->var.select.objpv[i]);
+        ret = _RDB_obj_to_field(&fv[i], qrp->tbp->var.select.objpv[i], ecp);
         if (ret != RDB_OK) {
             free(fv);
             return ret;
@@ -586,7 +590,8 @@ select_index_qresult(RDB_qresult *qrp, RDB_transaction *txp)
 }
 
 static int
-summarize_qresult(RDB_qresult *qresp, RDB_transaction *txp)
+summarize_qresult(RDB_qresult *qresp, RDB_exec_context *ecp,
+        RDB_transaction *txp)
 {
     int ret;
     RDB_type *tpltyp = qresp->tbp->typ->var.basetyp;
@@ -599,30 +604,29 @@ summarize_qresult(RDB_qresult *qresp, RDB_transaction *txp)
     }
 
     /* create materialized table */
-    ret = _RDB_create_table(NULL, RDB_FALSE, tpltyp->var.tuple.attrc,
+    qresp->matp = _RDB_create_table(NULL, RDB_FALSE, tpltyp->var.tuple.attrc,
                         tpltyp->var.tuple.attrv,
-                        qresp->tbp->keyc, qresp->tbp->keyv,
-                        NULL, &qresp->matp);
-    if (ret != RDB_OK)
-        return ret;
+                        qresp->tbp->keyc, qresp->tbp->keyv, ecp, NULL);
+    if (qresp->matp == NULL)
+        return RDB_ERROR;
 
-    ret = init_summ_table(qresp, txp);
+    ret = init_summ_table(qresp, ecp, txp);
     if (ret != RDB_OK) {
-        RDB_drop_table(qresp->matp, txp);
+        RDB_drop_table(qresp->matp, ecp, txp);
         return ret;
     }
 
     /* summarize over table 1 */
-    ret = do_summarize(qresp, txp);
+    ret = do_summarize(qresp, ecp, txp);
     if (ret != RDB_OK) {
-        RDB_drop_table(qresp->matp, txp);
+        RDB_drop_table(qresp->matp, ecp, txp);
         return ret;
     }
 
     ret = stored_qresult(qresp, qresp->matp, txp);
 
     if (ret != RDB_OK) {
-        RDB_drop_table(qresp->matp, txp);
+        RDB_drop_table(qresp->matp, ecp, txp);
         return ret;
     }
 
@@ -630,7 +634,7 @@ summarize_qresult(RDB_qresult *qresp, RDB_transaction *txp)
 }
 
 static int
-group_qresult(RDB_qresult *qresp, RDB_transaction *txp)
+group_qresult(RDB_qresult *qresp, RDB_exec_context *ecp, RDB_transaction *txp)
 {
     RDB_type *tuptyp = qresp->tbp->typ->var.basetyp;
     int ret;
@@ -643,24 +647,23 @@ group_qresult(RDB_qresult *qresp, RDB_transaction *txp)
     }
 
     /* create materialized table */
-    ret = RDB_create_table(NULL, RDB_FALSE,
+    qresp->matp = RDB_create_table(NULL, RDB_FALSE,
                         tuptyp->var.tuple.attrc, tuptyp->var.tuple.attrv,
-                        qresp->tbp->keyc, qresp->tbp->keyv,
-                        NULL, &qresp->matp);
-    if (ret != RDB_OK)
-        return ret;
+                        qresp->tbp->keyc, qresp->tbp->keyv, ecp, NULL);
+    if (qresp->matp == NULL)
+        return RDB_ERROR;
 
     /* do the grouping */
-    ret = do_group(qresp, txp);
+    ret = do_group(qresp, ecp, txp);
     if (ret != RDB_OK) {
-        RDB_drop_table(qresp->matp, txp);
+        RDB_drop_table(qresp->matp, ecp, txp);
         return ret;
     }
 
     ret = stored_qresult(qresp, qresp->matp, txp);
 
     if (ret != RDB_OK) {
-        RDB_drop_table(qresp->matp, txp);
+        RDB_drop_table(qresp->matp, ecp, txp);
         return ret;
     }
 
@@ -668,14 +671,14 @@ group_qresult(RDB_qresult *qresp, RDB_transaction *txp)
 }
 
 static int
-join_qresult(RDB_qresult *qrp, RDB_transaction *txp)
+join_qresult(RDB_qresult *qrp, RDB_exec_context *ecp, RDB_transaction *txp)
 {
     int ret;
 
     qrp->uses_cursor = RDB_FALSE;
     qrp->matp = NULL;
     /* Create qresult for the first table */
-    ret = _RDB_table_qresult(qrp->tbp->var.join.tb1p, txp,
+    ret = _RDB_table_qresult(qrp->tbp->var.join.tb1p, ecp, txp,
             &qrp->var.virtual.qrp);
     if (ret != RDB_OK)
         return ret;
@@ -684,10 +687,10 @@ join_qresult(RDB_qresult *qrp, RDB_transaction *txp)
     if (qrp->tbp->var.join.tb2p->kind != RDB_TB_PROJECT
             || qrp->tbp->var.join.tb2p->var.project.indexp == NULL) {
         /* Create qresult for 2nd table */
-        ret = _RDB_table_qresult(qrp->tbp->var.join.tb2p, txp,
+        ret = _RDB_table_qresult(qrp->tbp->var.join.tb2p, ecp, txp,
                 &qrp->var.virtual.qr2p);
         if (ret != RDB_OK) {
-            _RDB_drop_qresult(qrp->var.virtual.qr2p, txp);
+            _RDB_drop_qresult(qrp->var.virtual.qr2p, ecp, txp);
             return ret;
         }
     } else if (!qrp->tbp->var.join.tb2p->var.project.indexp->unique) {
@@ -720,7 +723,8 @@ join_qresult(RDB_qresult *qrp, RDB_transaction *txp)
 }
 
 static int
-init_qresult(RDB_qresult *qrp, RDB_table *tbp, RDB_transaction *txp)
+init_qresult(RDB_qresult *qrp, RDB_table *tbp, RDB_exec_context *ecp,
+        RDB_transaction *txp)
 {
     int ret;
 
@@ -737,49 +741,49 @@ init_qresult(RDB_qresult *qrp, RDB_table *tbp, RDB_transaction *txp)
                 qrp->uses_cursor = RDB_FALSE;
                 qrp->matp = NULL;
                 qrp->var.virtual.qr2p = NULL;
-                ret = _RDB_table_qresult(tbp->var.select.tbp, txp,
+                ret = _RDB_table_qresult(tbp->var.select.tbp, ecp, txp,
                         &qrp->var.virtual.qrp);
             } else {
-                ret = select_index_qresult(qrp, txp);
+                ret = select_index_qresult(qrp, ecp, txp);
             }
             break;
         case RDB_TB_UNION:
             qrp->uses_cursor = RDB_FALSE;
             qrp->matp = NULL;
             qrp->var.virtual.qr2p = NULL;
-            ret = _RDB_table_qresult(tbp->var._union.tb1p, txp,
+            ret = _RDB_table_qresult(tbp->var._union.tb1p, ecp, txp,
                     &qrp->var.virtual.qrp);
             break;
         case RDB_TB_MINUS:
             qrp->uses_cursor = RDB_FALSE;
             qrp->var.virtual.qr2p = NULL;
             qrp->matp = NULL;
-            ret = _RDB_table_qresult(tbp->var.minus.tb1p, txp,
+            ret = _RDB_table_qresult(tbp->var.minus.tb1p, ecp, txp,
                     &qrp->var.virtual.qrp);
             if (ret != RDB_OK)
                 break;
-            ret = _RDB_table_qresult(tbp->var.minus.tb2p, txp,
+            ret = _RDB_table_qresult(tbp->var.minus.tb2p, ecp, txp,
                     &qrp->var.virtual.qr2p);
             break;
         case RDB_TB_INTERSECT:
             qrp->uses_cursor = RDB_FALSE;
             qrp->var.virtual.qr2p = NULL;
             qrp->matp = NULL;
-            ret = _RDB_table_qresult(tbp->var.intersect.tb1p, txp,
+            ret = _RDB_table_qresult(tbp->var.intersect.tb1p, ecp, txp,
                     &qrp->var.virtual.qrp);
             if (ret != RDB_OK)
                 break;
-            ret = _RDB_table_qresult(tbp->var.minus.tb2p, txp,
+            ret = _RDB_table_qresult(tbp->var.minus.tb2p, ecp, txp,
                     &qrp->var.virtual.qr2p);
             break;
         case RDB_TB_JOIN:
-            ret = join_qresult(qrp, txp);
+            ret = join_qresult(qrp, ecp, txp);
             break;
         case RDB_TB_EXTEND:
             qrp->uses_cursor = RDB_FALSE;
             qrp->var.virtual.qr2p = NULL;
             qrp->matp = NULL;
-            ret = _RDB_table_qresult(tbp->var.extend.tbp, txp,
+            ret = _RDB_table_qresult(tbp->var.extend.tbp, ecp, txp,
                     &qrp->var.virtual.qrp);
             break;
         case RDB_TB_PROJECT:
@@ -788,44 +792,44 @@ init_qresult(RDB_qresult *qrp, RDB_table *tbp, RDB_transaction *txp)
                 qrp->uses_cursor = RDB_FALSE;
                 qrp->var.virtual.qr2p = NULL;
                 qrp->matp = NULL;
-                ret = _RDB_table_qresult(tbp->var.project.tbp, txp,
+                ret = _RDB_table_qresult(tbp->var.project.tbp, ecp, txp,
                         &qrp->var.virtual.qrp);
             } else {
                 ret = index_qresult(qrp, tbp->var.project.indexp, txp);
             }
             break;
         case RDB_TB_SUMMARIZE:
-            ret = summarize_qresult(qrp, txp);
+            ret = summarize_qresult(qrp, ecp, txp);
             break;
         case RDB_TB_RENAME:
             qrp->uses_cursor = RDB_FALSE;
             qrp->var.virtual.qr2p = NULL;
             qrp->matp = NULL;
-            ret = _RDB_table_qresult(tbp->var.rename.tbp, txp,
+            ret = _RDB_table_qresult(tbp->var.rename.tbp, ecp, txp,
                     &qrp->var.virtual.qrp);
             break;
         case RDB_TB_WRAP:
             qrp->uses_cursor = RDB_FALSE;
             qrp->var.virtual.qr2p = NULL;
             qrp->matp = NULL;
-            ret = _RDB_table_qresult(tbp->var.wrap.tbp, txp,
+            ret = _RDB_table_qresult(tbp->var.wrap.tbp, ecp, txp,
                     &qrp->var.virtual.qrp);
             break;
         case RDB_TB_UNWRAP:
             qrp->uses_cursor = RDB_FALSE;
             qrp->var.virtual.qr2p = NULL;
             qrp->matp = NULL;
-            ret = _RDB_table_qresult(tbp->var.unwrap.tbp, txp,
+            ret = _RDB_table_qresult(tbp->var.unwrap.tbp, ecp, txp,
                     &qrp->var.virtual.qrp);
             break;
         case RDB_TB_GROUP:
-            ret = group_qresult(qrp, txp);
+            ret = group_qresult(qrp, ecp, txp);
             break;
         case RDB_TB_UNGROUP:
             qrp->uses_cursor = RDB_FALSE;
             qrp->var.virtual.qr2p = NULL;
             qrp->matp = NULL;
-            ret = _RDB_table_qresult(tbp->var.ungroup.tbp, txp,
+            ret = _RDB_table_qresult(tbp->var.ungroup.tbp, ecp, txp,
                     &qrp->var.virtual.qrp);
             qrp->var.virtual.tpl_valid = RDB_FALSE;
             break;
@@ -833,14 +837,14 @@ init_qresult(RDB_qresult *qrp, RDB_table *tbp, RDB_transaction *txp)
             qrp->uses_cursor = RDB_FALSE;
             qrp->matp = NULL;
             /* Create qresults for table #1 and table #3 */
-            ret = _RDB_table_qresult(tbp->var.sdivide.tb1p, txp,
+            ret = _RDB_table_qresult(tbp->var.sdivide.tb1p, ecp, txp,
                     &qrp->var.virtual.qrp);
             if (ret != RDB_OK)
                 break;
-            ret = _RDB_table_qresult(tbp->var.sdivide.tb3p, txp,
+            ret = _RDB_table_qresult(tbp->var.sdivide.tb3p, ecp, txp,
                     &qrp->var.virtual.qr2p);
             if (ret != RDB_OK) {
-                _RDB_drop_qresult(qrp->var.virtual.qr2p, txp);
+                _RDB_drop_qresult(qrp->var.virtual.qr2p, ecp, txp);
                 break;
             }
     }
@@ -891,10 +895,8 @@ qr_dups(RDB_table *tbp)
 }
 
 int
-_RDB_duprem(RDB_qresult *qrp)
+_RDB_duprem(RDB_qresult *qrp, RDB_exec_context *ecp)
 {
-    int ret;
-
     /*
      * Add duplicate remover only if the qresult may return duplicates
      */
@@ -910,26 +912,26 @@ _RDB_duprem(RDB_qresult *qrp)
             keyattrs.strv[i] = tuptyp->var.tuple.attrv[i].name;
 
         /* Create materialized (all-key) table */
-        ret = RDB_create_table(NULL, RDB_FALSE,
-                tuptyp->var.tuple.attrc,
-                tuptyp->var.tuple.attrv,
-                1, &keyattrs, NULL, &qrp->matp);
+        qrp->matp = RDB_create_table(NULL, RDB_FALSE,
+                tuptyp->var.tuple.attrc, tuptyp->var.tuple.attrv,
+                1, &keyattrs, ecp, NULL);
         free(keyattrs.strv);
-        if (ret != RDB_OK)
-            return ret;
+        if (qrp->matp == NULL)
+            return RDB_ERROR;
     }
     return RDB_OK;
 }
 
 int
-_RDB_table_qresult(RDB_table *tbp, RDB_transaction *txp, RDB_qresult **qrpp)
+_RDB_table_qresult(RDB_table *tbp, RDB_exec_context *ecp, RDB_transaction *txp,
+        RDB_qresult **qrpp)
 {
     int ret;
 
     *qrpp = malloc(sizeof (RDB_qresult));
     if (*qrpp == NULL)
         return RDB_NO_MEMORY;
-    ret = init_qresult(*qrpp, tbp, txp);
+    ret = init_qresult(*qrpp, tbp, ecp, txp);
     if (ret != RDB_OK)
         free(*qrpp);
     return ret;
@@ -956,8 +958,8 @@ print_mem_stat(RDB_environment *envp)
  * Creates a qresult which sorts a table.
  */
 int
-_RDB_sorter(RDB_table *tbp, RDB_qresult **qrespp, RDB_transaction *txp,
-            int seqitc, const RDB_seq_item seqitv[])
+_RDB_sorter(RDB_table *tbp, RDB_qresult **qrespp, RDB_exec_context *ecp,
+        RDB_transaction *txp, int seqitc, const RDB_seq_item seqitv[])
 {
     RDB_string_vec key;
     RDB_bool *ascv = NULL;
@@ -1000,15 +1002,14 @@ _RDB_sorter(RDB_table *tbp, RDB_qresult **qrespp, RDB_transaction *txp,
      * Create a sorted RDB_table
      */
 
-    ret = _RDB_new_rtable(NULL, RDB_FALSE,
+    qresp->matp = _RDB_new_rtable(NULL, RDB_FALSE,
             tbp->typ->var.basetyp->var.tuple.attrc,
-            tbp->typ->var.basetyp->var.tuple.attrv, 1, &key, RDB_TRUE,
-            &qresp->matp);
-    if (ret != RDB_OK)
-        goto error;
+            tbp->typ->var.basetyp->var.tuple.attrv, 1, &key, RDB_TRUE, ecp);
+    if (qresp->matp == NULL)
+        goto error; /* !! ret */
 
     ret = _RDB_create_stored_table(qresp->matp, txp->dbp->dbrootp->envp,
-            ascv, txp);
+            ascv, ecp, txp);
     if (ret != RDB_OK)
         goto error;
 
@@ -1016,7 +1017,7 @@ _RDB_sorter(RDB_table *tbp, RDB_qresult **qrespp, RDB_transaction *txp,
      * Copy tuples into the newly created RDB_table
      */
 
-    ret = _RDB_table_qresult(tbp, txp, &tmpqrp);
+    ret = _RDB_table_qresult(tbp, ecp, txp, &tmpqrp);
     if (ret != RDB_OK)
         goto error;
 
@@ -1024,7 +1025,7 @@ _RDB_sorter(RDB_table *tbp, RDB_qresult **qrespp, RDB_transaction *txp,
     oerrfp = RDB_get_errfn(envp, &errarg);
 
     RDB_init_obj(&tpl);
-    while ((ret = _RDB_next_tuple(tmpqrp, &tpl, txp)) == RDB_OK) {
+    while ((ret = _RDB_next_tuple(tmpqrp, &tpl, ecp, txp)) == RDB_OK) {
         /*
          * We don't want to see the error msg about duplicate data items,
          * so temporarily disable error logging
@@ -1032,20 +1033,20 @@ _RDB_sorter(RDB_table *tbp, RDB_qresult **qrespp, RDB_transaction *txp,
         RDB_set_errfile(envp, NULL);
         RDB_set_errfn(envp, NULL, NULL);
 
-        ret2 = RDB_insert(qresp->matp, &tpl, txp);
+        ret2 = RDB_insert(qresp->matp, &tpl, ecp, txp);
         /* Re-enable error logging */
         RDB_set_errfile(envp, oerrfilep);
         RDB_set_errfn(envp, oerrfp, errarg);
         if (ret2 != RDB_OK && ret2 != RDB_ELEMENT_EXISTS) {
-            RDB_destroy_obj(&tpl);
+            RDB_destroy_obj(&tpl, ecp);
             ret = ret2;
             goto error;
         }
     }
-    RDB_destroy_obj(&tpl);
+    RDB_destroy_obj(&tpl, ecp);
     if (ret != RDB_NOT_FOUND)
         goto error;
-    ret = _RDB_drop_qresult(tmpqrp, txp);
+    ret = _RDB_drop_qresult(tmpqrp, ecp, txp);
     if (ret != RDB_OK)
         goto error;
 
@@ -1065,7 +1066,7 @@ error:
     if (ascv != NULL)
         free(ascv);
     if (qresp->matp != NULL)
-        RDB_drop_table(qresp->matp, NULL);
+        RDB_drop_table(qresp->matp, ecp, NULL);
     free(qresp);
 
     return ret;
@@ -1073,7 +1074,7 @@ error:
 
 int
 _RDB_get_by_cursor(RDB_table *tbp, RDB_cursor *curp, RDB_type *tpltyp,
-        RDB_object *tplp)
+        RDB_object *tplp, RDB_exec_context *ecp)
 {
     int i;
     int ret;
@@ -1092,13 +1093,13 @@ _RDB_get_by_cursor(RDB_table *tbp, RDB_cursor *curp, RDB_type *tpltyp,
             return ret;
         }
         RDB_init_obj(&val);
-        ret = RDB_tuple_set(tplp, attrp->name, &val);
-        RDB_destroy_obj(&val);
+        ret = RDB_tuple_set(tplp, attrp->name, &val, ecp);
+        RDB_destroy_obj(&val, ecp);
         if (ret != RDB_OK) {
             return ret;
         }
         ret = RDB_irep_to_obj(RDB_tuple_get(tplp, attrp->name),
-                attrp->typ, datap, len);
+                attrp->typ, datap, len, ecp);
         if (ret != RDB_OK) {
             return ret;
         }
@@ -1108,7 +1109,8 @@ _RDB_get_by_cursor(RDB_table *tbp, RDB_cursor *curp, RDB_type *tpltyp,
 
 static int
 next_stored_tuple(RDB_qresult *qrp, RDB_table *tbp, RDB_object *tplp,
-        RDB_bool asc, RDB_bool dup, RDB_type *tpltyp)
+        RDB_bool asc, RDB_bool dup, RDB_type *tpltyp,
+        RDB_exec_context *ecp)
 {
     int ret;
 
@@ -1116,7 +1118,7 @@ next_stored_tuple(RDB_qresult *qrp, RDB_table *tbp, RDB_object *tplp,
         return RDB_NOT_FOUND;
 
     if (tplp != NULL) {
-        ret = _RDB_get_by_cursor(tbp, qrp->var.curp, tpltyp, tplp);
+        ret = _RDB_get_by_cursor(tbp, qrp->var.curp, tpltyp, tplp, ecp);
         if (ret != RDB_OK)
             return ret;
     }
@@ -1135,7 +1137,8 @@ next_stored_tuple(RDB_qresult *qrp, RDB_table *tbp, RDB_object *tplp,
 }
 
 static int
-next_ungroup_tuple(RDB_qresult *qrp, RDB_object *tplp, RDB_transaction *txp)
+next_ungroup_tuple(RDB_qresult *qrp, RDB_object *tplp, RDB_exec_context *ecp,
+        RDB_transaction *txp)
 {
     int ret;
     RDB_table *attrtbp;
@@ -1144,7 +1147,8 @@ next_ungroup_tuple(RDB_qresult *qrp, RDB_object *tplp, RDB_transaction *txp)
     /* If no tuple has been read, read first tuple */
     if (!qrp->var.virtual.tpl_valid) {
         RDB_init_obj(&qrp->var.virtual.tpl);
-        ret = _RDB_next_tuple(qrp->var.virtual.qrp, &qrp->var.virtual.tpl, txp);
+        ret = _RDB_next_tuple(qrp->var.virtual.qrp, &qrp->var.virtual.tpl,
+                ecp, txp);
         if (ret != RDB_OK)
             return ret;
         qrp->var.virtual.tpl_valid = RDB_TRUE;
@@ -1155,23 +1159,24 @@ next_ungroup_tuple(RDB_qresult *qrp, RDB_object *tplp, RDB_transaction *txp)
         attrtbp = RDB_tuple_get(&qrp->var.virtual.tpl,
                 qrp->tbp->var.ungroup.attr)->var.tbp;
 
-        ret = _RDB_table_qresult(attrtbp, txp, &qrp->var.virtual.qr2p);
+        ret = _RDB_table_qresult(attrtbp, ecp, txp, &qrp->var.virtual.qr2p);
         if (ret != RDB_OK)
             return ret;
     }
 
     /* Read next element of relation-valued attribute */
-    ret = _RDB_next_tuple(qrp->var.virtual.qr2p, tplp, txp);
+    ret = _RDB_next_tuple(qrp->var.virtual.qr2p, tplp, ecp, txp);
     while (ret == RDB_NOT_FOUND) {
         /* Destroy qresult over relation-valued attribute */
-        ret = _RDB_drop_qresult(qrp->var.virtual.qr2p, txp);
+        ret = _RDB_drop_qresult(qrp->var.virtual.qr2p, ecp, txp);
         qrp->var.virtual.qr2p = NULL;
         if (ret != RDB_OK) {
             return ret;
         }
 
         /* Read next tuple */
-        ret = _RDB_next_tuple(qrp->var.virtual.qrp, &qrp->var.virtual.tpl, txp);
+        ret = _RDB_next_tuple(qrp->var.virtual.qrp, &qrp->var.virtual.tpl,
+                ecp, txp);
         if (ret != RDB_OK) {
             return ret;
         }
@@ -1180,12 +1185,12 @@ next_ungroup_tuple(RDB_qresult *qrp, RDB_object *tplp, RDB_transaction *txp)
                 qrp->tbp->var.ungroup.attr)->var.tbp;
 
         /* Create qresult over relation-valued attribute */
-        ret = _RDB_table_qresult(attrtbp, txp, &qrp->var.virtual.qr2p);
+        ret = _RDB_table_qresult(attrtbp, ecp, txp, &qrp->var.virtual.qr2p);
         if (ret != RDB_OK) {
             return ret;
         }
 
-        ret = _RDB_next_tuple(qrp->var.virtual.qr2p, tplp, txp);
+        ret = _RDB_next_tuple(qrp->var.virtual.qr2p, tplp, ecp, txp);
     }
     if (ret != RDB_OK) {
         return ret;
@@ -1201,7 +1206,7 @@ next_ungroup_tuple(RDB_qresult *qrp, RDB_object *tplp, RDB_transaction *txp)
             break;
 
         if (strcmp(entryp->key, qrp->tbp->var.ungroup.attr) != 0)
-            RDB_tuple_set(tplp, entryp->key, &entryp->obj);
+            RDB_tuple_set(tplp, entryp->key, &entryp->obj, ecp);
     }
     RDB_destroy_hashtable_iter(&hiter);
 
@@ -1209,7 +1214,8 @@ next_ungroup_tuple(RDB_qresult *qrp, RDB_object *tplp, RDB_transaction *txp)
 }
 
 static int
-next_join_tuple(RDB_qresult *qrp, RDB_object *tplp, RDB_transaction *txp)
+next_join_tuple(RDB_qresult *qrp, RDB_object *tplp, RDB_exec_context *ecp,
+        RDB_transaction *txp)
 {
     int ret;
     int i;
@@ -1220,7 +1226,8 @@ next_join_tuple(RDB_qresult *qrp, RDB_object *tplp, RDB_transaction *txp)
     /* read first 'outer' tuple, if it's the first invocation */
     if (!qrp->var.virtual.tpl_valid) {
         RDB_init_obj(&qrp->var.virtual.tpl);
-        ret = _RDB_next_tuple(qrp->var.virtual.qrp, &qrp->var.virtual.tpl, txp);
+        ret = _RDB_next_tuple(qrp->var.virtual.qrp, &qrp->var.virtual.tpl,
+                ecp, txp);
         if (ret != RDB_OK)
             return ret;
         qrp->var.virtual.tpl_valid = RDB_TRUE;
@@ -1228,7 +1235,7 @@ next_join_tuple(RDB_qresult *qrp, RDB_object *tplp, RDB_transaction *txp)
         
     for (;;) {
         /* read next 'inner' tuple */
-        ret = _RDB_next_tuple(qrp->var.virtual.qr2p, tplp, txp);
+        ret = _RDB_next_tuple(qrp->var.virtual.qr2p, tplp, ecp, txp);
         if (ret != RDB_NOT_FOUND && ret != RDB_OK) {
             return ret;
         }
@@ -1249,7 +1256,7 @@ next_join_tuple(RDB_qresult *qrp, RDB_object *tplp, RDB_transaction *txp)
                         != NULL) {
                     ret = RDB_obj_equals(
                             RDB_tuple_get(&qrp->var.virtual.tpl, attrname),
-                            RDB_tuple_get(tplp, attrname), txp, &b);
+                            RDB_tuple_get(tplp, attrname), ecp, txp, &b);
                     if (ret != RDB_OK)
                         return ret;
                     if (!b)
@@ -1266,13 +1273,14 @@ next_join_tuple(RDB_qresult *qrp, RDB_object *tplp, RDB_transaction *txp)
         }
 
         /* reset nested qresult */
-        ret = _RDB_reset_qresult(qrp->var.virtual.qr2p, txp);
+        ret = _RDB_reset_qresult(qrp->var.virtual.qr2p, ecp, txp);
         if (ret != RDB_OK) {
             return ret;
         }
 
         /* read next 'outer' tuple */
-        ret = _RDB_next_tuple(qrp->var.virtual.qrp, &qrp->var.virtual.tpl, txp);
+        ret = _RDB_next_tuple(qrp->var.virtual.qrp, &qrp->var.virtual.tpl,
+                ecp, txp);
         if (ret != RDB_OK) {
             return ret;
         }
@@ -1282,7 +1290,7 @@ next_join_tuple(RDB_qresult *qrp, RDB_object *tplp, RDB_transaction *txp)
     for (i = 0; i < tpltyp1->var.tuple.attrc; i++) {
          ret = RDB_tuple_set(tplp, tpltyp1->var.tuple.attrv[i].name,
                        RDB_tuple_get(&qrp->var.virtual.tpl,
-                       tpltyp1->var.tuple.attrv[i].name));
+                       tpltyp1->var.tuple.attrv[i].name), ecp);
          if (ret != RDB_OK) {
              return ret;
          }
@@ -1293,7 +1301,7 @@ next_join_tuple(RDB_qresult *qrp, RDB_object *tplp, RDB_transaction *txp)
 
 static int
 seek_index_qresult(RDB_qresult *qrp, _RDB_tbindex *indexp,
-        const RDB_object *tplp)
+        const RDB_object *tplp, RDB_exec_context *ecp)
 {
     int i;
     int ret;
@@ -1304,7 +1312,7 @@ seek_index_qresult(RDB_qresult *qrp, _RDB_tbindex *indexp,
 
     for (i = 0; i < indexp->attrc; i++) {
         ret = _RDB_obj_to_field(&fv[i],
-                RDB_tuple_get(tplp, indexp->attrv[i].attrname));
+                RDB_tuple_get(tplp, indexp->attrv[i].attrname), ecp);
         if (ret != RDB_OK)
             goto cleanup;
     }
@@ -1323,7 +1331,8 @@ cleanup:
 }
 
 static int
-next_join_tuple_nuix(RDB_qresult *qrp, RDB_object *tplp, RDB_transaction *txp)
+next_join_tuple_nuix(RDB_qresult *qrp, RDB_object *tplp,
+        RDB_exec_context *ecp, RDB_transaction *txp)
 {
     int ret;
     int i;
@@ -1335,14 +1344,15 @@ next_join_tuple_nuix(RDB_qresult *qrp, RDB_object *tplp, RDB_transaction *txp)
     /* read first 'outer' tuple, if it's the first invocation */
     if (!qrp->var.virtual.tpl_valid) {
         RDB_init_obj(&qrp->var.virtual.tpl);
-        ret = _RDB_next_tuple(qrp->var.virtual.qrp, &qrp->var.virtual.tpl, txp);
+        ret = _RDB_next_tuple(qrp->var.virtual.qrp, &qrp->var.virtual.tpl,
+                ecp, txp);
         if (ret != RDB_OK)
             return ret;
         qrp->var.virtual.tpl_valid = RDB_TRUE;
 
         /* Set cursor position */
         ret = seek_index_qresult(qrp->var.virtual.qr2p, indexp,
-                &qrp->var.virtual.tpl);
+                &qrp->var.virtual.tpl, ecp);
         if (ret != RDB_OK)
             return ret;
     }
@@ -1351,7 +1361,7 @@ next_join_tuple_nuix(RDB_qresult *qrp, RDB_object *tplp, RDB_transaction *txp)
         /* read next 'inner' tuple */
         ret = next_stored_tuple(qrp->var.virtual.qr2p,
                 qrp->var.virtual.qr2p->tbp->var.project.tbp, tplp, RDB_TRUE,
-                RDB_TRUE, qrp->var.virtual.qr2p->tbp->typ->var.basetyp);
+                RDB_TRUE, qrp->var.virtual.qr2p->tbp->typ->var.basetyp, ecp);
         if (ret != RDB_NOT_FOUND && ret != RDB_OK) {
             return ret;
         }
@@ -1380,7 +1390,7 @@ next_join_tuple_nuix(RDB_qresult *qrp, RDB_object *tplp, RDB_transaction *txp)
                     if (j >= indexp->attrc) {
                         ret = RDB_obj_equals(RDB_tuple_get(
                                 &qrp->var.virtual.tpl, attrname),
-                                RDB_tuple_get(tplp, attrname), txp, &b);
+                                RDB_tuple_get(tplp, attrname), ecp, txp, &b);
                         if (ret != RDB_OK)
                             return ret;
                         if (!b)
@@ -1398,14 +1408,15 @@ next_join_tuple_nuix(RDB_qresult *qrp, RDB_object *tplp, RDB_transaction *txp)
         }
 
         /* read next 'outer' tuple */
-        ret = _RDB_next_tuple(qrp->var.virtual.qrp, &qrp->var.virtual.tpl, txp);
+        ret = _RDB_next_tuple(qrp->var.virtual.qrp, &qrp->var.virtual.tpl,
+                ecp, txp);
         if (ret != RDB_OK) {
             return ret;
         }
 
         /* reset cursor */
         ret = seek_index_qresult(qrp->var.virtual.qr2p, indexp,
-                &qrp->var.virtual.tpl);
+                &qrp->var.virtual.tpl, ecp);
         if (ret != RDB_OK)
             return ret;
     }
@@ -1414,7 +1425,7 @@ next_join_tuple_nuix(RDB_qresult *qrp, RDB_object *tplp, RDB_transaction *txp)
     for (i = 0; i < tpltyp1->var.tuple.attrc; i++) {
          ret = RDB_tuple_set(tplp, tpltyp1->var.tuple.attrv[i].name,
                        RDB_tuple_get(&qrp->var.virtual.tpl,
-                       tpltyp1->var.tuple.attrv[i].name));
+                       tpltyp1->var.tuple.attrv[i].name), ecp);
          if (ret != RDB_OK) {
              return ret;
          }
@@ -1424,7 +1435,8 @@ next_join_tuple_nuix(RDB_qresult *qrp, RDB_object *tplp, RDB_transaction *txp)
 }
 
 static int
-next_join_tuple_uix(RDB_qresult *qrp, RDB_object *tplp, RDB_transaction *txp)
+next_join_tuple_uix(RDB_qresult *qrp, RDB_object *tplp, RDB_exec_context *ecp,
+    RDB_transaction *txp)
 {
     int ret;
     int i;
@@ -1443,7 +1455,7 @@ next_join_tuple_uix(RDB_qresult *qrp, RDB_object *tplp, RDB_transaction *txp)
     do {
         match = RDB_TRUE;
     
-        ret = _RDB_next_tuple(qrp->var.virtual.qrp, tplp, txp);
+        ret = _RDB_next_tuple(qrp->var.virtual.qrp, tplp, ecp, txp);
         if (ret != RDB_OK)
             goto cleanup;
 
@@ -1452,7 +1464,7 @@ next_join_tuple_uix(RDB_qresult *qrp, RDB_object *tplp, RDB_transaction *txp)
         }
         ret = _RDB_get_by_uindex(qrp->tbp->var.join.tb2p->var.project.tbp,
                 objpv, indexp, qrp->tbp->var.join.tb2p->typ->var.basetyp,
-                txp, &tpl);
+                ecp, txp, &tpl);
         if (ret == RDB_NOT_FOUND) {
             match = RDB_FALSE;
             continue;
@@ -1470,7 +1482,7 @@ next_join_tuple_uix(RDB_qresult *qrp, RDB_object *tplp, RDB_transaction *txp)
                     == NULL) {
                 /* No, so copy it */
                 ret = RDB_tuple_set(tplp, attrname,
-                        RDB_tuple_get(&tpl, attrname));
+                        RDB_tuple_get(&tpl, attrname), ecp);
                 if (ret != RDB_OK)
                     return ret;
             } else {
@@ -1484,7 +1496,7 @@ next_join_tuple_uix(RDB_qresult *qrp, RDB_object *tplp, RDB_transaction *txp)
                         j++);
                 if (j >= indexp->attrc) {
                     ret = RDB_obj_equals(RDB_tuple_get(&tpl, attrname),
-                            RDB_tuple_get(tplp, attrname), txp, &match);
+                            RDB_tuple_get(tplp, attrname), ecp, txp, &match);
                     if (ret != RDB_OK)
                         goto cleanup;
                     if (!match)
@@ -1499,7 +1511,7 @@ next_join_tuple_uix(RDB_qresult *qrp, RDB_object *tplp, RDB_transaction *txp)
 cleanup:
     free(objpv);
 
-    RDB_destroy_obj(&tpl);
+    RDB_destroy_obj(&tpl, ecp);
 
     return ret;
 }
@@ -1511,8 +1523,8 @@ cleanup:
  */
 int
 _RDB_get_by_uindex(RDB_table *tbp, RDB_object *objpv[], _RDB_tbindex *indexp,
-        RDB_type *tpltyp, RDB_transaction *txp, RDB_object *tplp)
-
+        RDB_type *tpltyp, RDB_exec_context *ecp, RDB_transaction *txp,
+        RDB_object *tplp)
 {
     RDB_field *fv;
     RDB_field *resfv;
@@ -1532,7 +1544,7 @@ _RDB_get_by_uindex(RDB_table *tbp, RDB_object *objpv[], _RDB_tbindex *indexp,
      * Convert data to fields
      */    
     for (i = 0; i < keylen; i++) {
-        ret = _RDB_obj_to_field(&fv[i], objpv[i]);
+        ret = _RDB_obj_to_field(&fv[i], objpv[i], ecp);
         if (ret != RDB_OK)
             goto cleanup;
     }
@@ -1579,7 +1591,7 @@ _RDB_get_by_uindex(RDB_table *tbp, RDB_object *objpv[], _RDB_tbindex *indexp,
      * Set key attributes
      */
     for (i = 0; i < indexp->attrc; i++) {
-        ret = RDB_tuple_set(tplp, indexp->attrv[i].attrname, objpv[i]);
+        ret = RDB_tuple_set(tplp, indexp->attrv[i].attrname, objpv[i], ecp);
         if (ret != RDB_OK)
             return ret;
     }
@@ -1606,13 +1618,13 @@ _RDB_get_by_uindex(RDB_table *tbp, RDB_object *objpv[], _RDB_tbindex *indexp,
 
             RDB_init_obj(&val);
             ret = RDB_irep_to_obj(&val, tpltyp->var.tuple.attrv[i].typ,
-                    resfv[rfi].datap, resfv[rfi].len);
+                    resfv[rfi].datap, resfv[rfi].len, ecp);
             if (ret != RDB_OK) {
-                RDB_destroy_obj(&val);
+                RDB_destroy_obj(&val, ecp);
                 goto cleanup;
             }
-            ret = RDB_tuple_set(tplp, attrname, &val);
-            RDB_destroy_obj(&val);
+            ret = RDB_tuple_set(tplp, attrname, &val, ecp);
+            RDB_destroy_obj(&val, ecp);
             if (ret != RDB_OK)
                 goto cleanup;
         }
@@ -1626,7 +1638,8 @@ cleanup:
 }
 
 static int
-next_select_index(RDB_qresult *qrp, RDB_object *tplp, RDB_transaction *txp)
+next_select_index(RDB_qresult *qrp, RDB_object *tplp, RDB_exec_context *ecp,
+        RDB_transaction *txp)
 {
     int ret;
     _RDB_tbindex *indexp = qrp->tbp->var.select.tbp->var.project.indexp;
@@ -1634,7 +1647,7 @@ next_select_index(RDB_qresult *qrp, RDB_object *tplp, RDB_transaction *txp)
     if (indexp->unique) {
         ret = _RDB_get_by_uindex(qrp->tbp->var.select.tbp->var.project.tbp,
                 qrp->tbp->var.select.objpv, indexp,
-                qrp->tbp->typ->var.basetyp, txp, tplp);
+                qrp->tbp->typ->var.basetyp, ecp, txp, tplp);
         if (ret != RDB_OK)
             return ret;
 
@@ -1652,7 +1665,7 @@ next_select_index(RDB_qresult *qrp, RDB_object *tplp, RDB_transaction *txp)
             ret = next_stored_tuple(qrp,
                     qrp->tbp->var.select.tbp->var.project.tbp,
                     tplp, qrp->tbp->var.select.asc, dup,
-                    qrp->tbp->var.select.tbp->typ->var.basetyp);
+                    qrp->tbp->var.select.tbp->typ->var.basetyp, ecp);
             if (ret != RDB_OK)
                 return ret;
             if (qrp->tbp->var.select.all_eq)
@@ -1660,7 +1673,7 @@ next_select_index(RDB_qresult *qrp, RDB_object *tplp, RDB_transaction *txp)
             else {
                 if (qrp->tbp->var.select.stopexp != NULL) {
                     ret = RDB_evaluate_bool(qrp->tbp->var.select.stopexp, tplp,
-                            txp, &rtup);
+                            ecp, txp, &rtup);
                     if (ret != RDB_OK)
                         return ret;
                     if (!rtup) {
@@ -1671,7 +1684,7 @@ next_select_index(RDB_qresult *qrp, RDB_object *tplp, RDB_transaction *txp)
                 /*
                  * Check condition, because it could be an open start
                  */
-                ret = RDB_evaluate_bool(qrp->tbp->var.select.exp, tplp, txp,
+                ret = RDB_evaluate_bool(qrp->tbp->var.select.exp, tplp, ecp, txp,
                         &rtup);
                 if (ret != RDB_OK)
                     return ret;
@@ -1683,7 +1696,8 @@ next_select_index(RDB_qresult *qrp, RDB_object *tplp, RDB_transaction *txp)
 }
 
 static int
-next_project_tuple(RDB_qresult *qrp, RDB_object *tplp, RDB_transaction *txp)
+next_project_tuple(RDB_qresult *qrp, RDB_object *tplp, RDB_exec_context *ecp,
+        RDB_transaction *txp)
 {
     int i, ret;
     RDB_object *valp;
@@ -1693,7 +1707,7 @@ next_project_tuple(RDB_qresult *qrp, RDB_object *tplp, RDB_transaction *txp)
     if (qrp->uses_cursor) {
         if (tplp != NULL) {
             ret = _RDB_get_by_cursor(qrp->tbp->var.project.tbp, qrp->var.curp,
-                    tpltyp, tplp);
+                    tpltyp, tplp, ecp);
             if (ret != RDB_OK)
                 return ret;
         }
@@ -1707,9 +1721,9 @@ next_project_tuple(RDB_qresult *qrp, RDB_object *tplp, RDB_transaction *txp)
 
         RDB_init_obj(&tpl);
 
-        ret = _RDB_next_tuple(qrp->var.virtual.qrp, &tpl, txp);
+        ret = _RDB_next_tuple(qrp->var.virtual.qrp, &tpl, ecp, txp);
         if (ret != RDB_OK) {
-            RDB_destroy_obj(&tpl);
+            RDB_destroy_obj(&tpl, ecp);
             return ret;
         }
 
@@ -1719,71 +1733,74 @@ next_project_tuple(RDB_qresult *qrp, RDB_object *tplp, RDB_transaction *txp)
                 char *attrnamp = tpltyp->var.tuple.attrv[i].name;
 
                 valp = RDB_tuple_get(&tpl, attrnamp);
-                RDB_tuple_set(tplp, attrnamp, valp);
+                RDB_tuple_set(tplp, attrnamp, valp, ecp);
             }
         }
 
-        RDB_destroy_obj(&tpl);
+        RDB_destroy_obj(&tpl, ecp);
     }
     return RDB_OK;
 }
 
 static int
-next_rename_tuple(RDB_qresult *qrp, RDB_object *tplp, RDB_transaction *txp)
+next_rename_tuple(RDB_qresult *qrp, RDB_object *tplp, RDB_exec_context *ecp,
+        RDB_transaction *txp)
 {
     RDB_object tpl;
     int ret;
 
     RDB_init_obj(&tpl);
-    ret = _RDB_next_tuple(qrp->var.virtual.qrp, &tpl, txp);
+    ret = _RDB_next_tuple(qrp->var.virtual.qrp, &tpl, ecp, txp);
     if (ret != RDB_OK) {
-        RDB_destroy_obj(&tpl);
+        RDB_destroy_obj(&tpl, ecp);
         return ret;
     }
     ret = RDB_rename_tuple(&tpl, qrp->tbp->var.rename.renc,
-                           qrp->tbp->var.rename.renv, tplp);
-    RDB_destroy_obj(&tpl);
+                           qrp->tbp->var.rename.renv, ecp, tplp);
+    RDB_destroy_obj(&tpl, ecp);
     return ret;
 }
 
 static int
-next_wrap_tuple(RDB_qresult *qrp, RDB_object *tplp, RDB_transaction *txp)
+next_wrap_tuple(RDB_qresult *qrp, RDB_object *tplp, RDB_exec_context *ecp,
+        RDB_transaction *txp)
 {
     RDB_object tpl;
     int ret;
 
     RDB_init_obj(&tpl);
-    ret = _RDB_next_tuple(qrp->var.virtual.qrp, &tpl, txp);
+    ret = _RDB_next_tuple(qrp->var.virtual.qrp, &tpl, ecp, txp);
     if (ret != RDB_OK) {
-        RDB_destroy_obj(&tpl);
+        RDB_destroy_obj(&tpl, ecp);
         return ret;
     }
     ret = RDB_wrap_tuple(&tpl, qrp->tbp->var.wrap.wrapc,
-                           qrp->tbp->var.wrap.wrapv, tplp);
-    RDB_destroy_obj(&tpl);
+                           qrp->tbp->var.wrap.wrapv, ecp, tplp);
+    RDB_destroy_obj(&tpl, ecp);
     return ret;
 }
 
 static int
-next_unwrap_tuple(RDB_qresult *qrp, RDB_object *tplp, RDB_transaction *txp)
+next_unwrap_tuple(RDB_qresult *qrp, RDB_object *tplp, RDB_exec_context *ecp,
+        RDB_transaction *txp)
 {
     RDB_object tpl;
     int ret;
 
     RDB_init_obj(&tpl);
-    ret = _RDB_next_tuple(qrp->var.virtual.qrp, &tpl, txp);
+    ret = _RDB_next_tuple(qrp->var.virtual.qrp, &tpl, ecp, txp);
     if (ret != RDB_OK) {
-        RDB_destroy_obj(&tpl);
+        RDB_destroy_obj(&tpl, ecp);
         return ret;
     }
     ret = RDB_unwrap_tuple(&tpl, qrp->tbp->var.unwrap.attrc,
-                           qrp->tbp->var.unwrap.attrv, tplp);
-    RDB_destroy_obj(&tpl);
+                           qrp->tbp->var.unwrap.attrv, ecp, tplp);
+    RDB_destroy_obj(&tpl, ecp);
     return ret;
 }
 
 static int
-destroy_qresult(RDB_qresult *qrp, RDB_transaction *txp)
+destroy_qresult(RDB_qresult *qrp, RDB_exec_context *ecp, RDB_transaction *txp)
 {
     int ret;
 
@@ -1796,19 +1813,19 @@ destroy_qresult(RDB_qresult *qrp, RDB_transaction *txp)
     if (qrp->uses_cursor) {
         ret = RDB_destroy_cursor(qrp->var.curp);
     } else if (qrp->var.virtual.qrp != NULL) {
-        ret = _RDB_drop_qresult(qrp->var.virtual.qrp, txp);
+        ret = _RDB_drop_qresult(qrp->var.virtual.qrp, ecp, txp);
         if (qrp->var.virtual.qr2p != NULL)
-            _RDB_drop_qresult(qrp->var.virtual.qr2p, txp);
+            _RDB_drop_qresult(qrp->var.virtual.qr2p, ecp, txp);
         if (qrp->tbp->kind == RDB_TB_JOIN || qrp->tbp->kind == RDB_TB_UNGROUP) {
             if (qrp->var.virtual.tpl_valid)
-                RDB_destroy_obj(&qrp->var.virtual.tpl);
+                RDB_destroy_obj(&qrp->var.virtual.tpl, ecp);
         }
     } else {
         ret = RDB_OK;
     }
 
     if (qrp->matp != NULL)
-        RDB_drop_table(qrp->matp, txp);
+        RDB_drop_table(qrp->matp, ecp, txp);
     return ret;
 }
 
@@ -1821,7 +1838,7 @@ destroy_qresult(RDB_qresult *qrp, RDB_transaction *txp)
  */
 int
 _RDB_sdivide_preserves(RDB_table *tbp, const RDB_object *tplp,
-        RDB_qresult *qr3p, RDB_transaction *txp)
+        RDB_qresult *qr3p, RDB_exec_context *ecp, RDB_transaction *txp)
 {
     int ret;
     int i;
@@ -1834,7 +1851,7 @@ _RDB_sdivide_preserves(RDB_table *tbp, const RDB_object *tplp,
      * if not all the result tuples are an element of table 3
      */
 
-    ret = init_qresult(&qr, tbp->var.sdivide.tb2p, txp);
+    ret = init_qresult(&qr, tbp->var.sdivide.tb2p, ecp, txp);
     if (ret != RDB_OK) {
         return ret;
     }
@@ -1845,7 +1862,7 @@ _RDB_sdivide_preserves(RDB_table *tbp, const RDB_object *tplp,
 
         RDB_init_obj(&tpl2);
 
-        ret = _RDB_next_tuple(&qr, &tpl2, txp);
+        ret = _RDB_next_tuple(&qr, &tpl2, ecp, txp);
         if (ret != RDB_OK)
             break;
 
@@ -1859,10 +1876,10 @@ _RDB_sdivide_preserves(RDB_table *tbp, const RDB_object *tplp,
              if (dstobjp != NULL) {
                  RDB_bool b;
 
-                 ret = RDB_obj_equals(objp, dstobjp, txp, &b);
+                 ret = RDB_obj_equals(objp, dstobjp, ecp, txp, &b);
                  if (ret != RDB_OK) {
-                     destroy_qresult(&qr, txp);
-                     RDB_destroy_obj(&tpl2);
+                     destroy_qresult(&qr, ecp, txp);
+                     RDB_destroy_obj(&tpl2, ecp);
                      return ret;
                  }
                  if (!b) {                     
@@ -1871,10 +1888,10 @@ _RDB_sdivide_preserves(RDB_table *tbp, const RDB_object *tplp,
                  }
              } else {
                  ret = RDB_tuple_set(&tpl2,
-                         tb1tuptyp->var.tuple.attrv[i].name, objp);
+                         tb1tuptyp->var.tuple.attrv[i].name, objp, ecp);
                  if (ret != RDB_OK) {
-                     destroy_qresult(&qr, txp);
-                     RDB_destroy_obj(&tpl2);
+                     destroy_qresult(&qr, ecp, txp);
+                     RDB_destroy_obj(&tpl2, ecp);
                      return ret;
                  }
              }
@@ -1883,21 +1900,21 @@ _RDB_sdivide_preserves(RDB_table *tbp, const RDB_object *tplp,
             continue;
 
         if (qr3p != NULL)
-            ret = _RDB_qresult_contains(qr3p, &tpl2, txp);
+            ret = _RDB_qresult_contains(qr3p, &tpl2, ecp, txp);
         else
-            ret = RDB_table_contains(tbp->var.sdivide.tb3p, &tpl2, txp);
-        RDB_destroy_obj(&tpl2);
+            ret = RDB_table_contains(tbp->var.sdivide.tb3p, &tpl2, ecp, txp);
+        RDB_destroy_obj(&tpl2, ecp);
         if (ret != RDB_OK) {
             matchall = RDB_FALSE;
             break;
         }
     }
     if (ret != RDB_NOT_FOUND) {
-        destroy_qresult(&qr, txp);
+        destroy_qresult(&qr, ecp, txp);
         return ret;
     }
     
-    ret = destroy_qresult(&qr, txp);
+    ret = destroy_qresult(&qr, ecp, txp);
     if (ret != RDB_OK)
         return ret;
 
@@ -1905,18 +1922,19 @@ _RDB_sdivide_preserves(RDB_table *tbp, const RDB_object *tplp,
 }
 
 static int
-next_sdivide_tuple(RDB_qresult *qrp, RDB_object *tplp, RDB_transaction *txp)
+next_sdivide_tuple(RDB_qresult *qrp, RDB_object *tplp, RDB_exec_context *ecp,
+        RDB_transaction *txp)
 {
     int ret;
 
     do {
-        ret = _RDB_next_tuple(qrp->var.virtual.qrp, tplp, txp);
+        ret = _RDB_next_tuple(qrp->var.virtual.qrp, tplp, ecp, txp);
         if (ret != RDB_OK) {
             return ret;
         }
 
         ret = _RDB_sdivide_preserves(qrp->tbp, tplp, qrp->var.virtual.qr2p,
-                txp);
+                ecp, txp);
         if (ret != RDB_OK && ret != RDB_NOT_FOUND)
             return ret;
 
@@ -1926,16 +1944,17 @@ next_sdivide_tuple(RDB_qresult *qrp, RDB_object *tplp, RDB_transaction *txp)
 }
 
 static int
-next_select_tuple(RDB_qresult *qrp, RDB_object *tplp, RDB_transaction *txp)
+next_select_tuple(RDB_qresult *qrp, RDB_object *tplp, RDB_exec_context *ecp,
+        RDB_transaction *txp)
 {
     int ret;
     RDB_bool expres;
 
     do {
-        ret = _RDB_next_tuple(qrp->var.virtual.qrp, tplp, txp);
+        ret = _RDB_next_tuple(qrp->var.virtual.qrp, tplp, ecp, txp);
         if (ret != RDB_OK)
             break;
-        ret = RDB_evaluate_bool(qrp->tbp->var.select.exp, tplp, txp, &expres);
+        ret = RDB_evaluate_bool(qrp->tbp->var.select.exp, tplp, ecp, txp, &expres);
         if (ret != RDB_OK)
             break;
     } while (!expres);
@@ -1944,7 +1963,8 @@ next_select_tuple(RDB_qresult *qrp, RDB_object *tplp, RDB_transaction *txp)
 }
 
 int
-_RDB_next_tuple(RDB_qresult *qrp, RDB_object *tplp, RDB_transaction *txp)
+_RDB_next_tuple(RDB_qresult *qrp, RDB_object *tplp, RDB_exec_context *ecp,
+        RDB_transaction *txp)
 {
     int ret;
     RDB_table *tbp = qrp->tbp;
@@ -1955,47 +1975,50 @@ _RDB_next_tuple(RDB_qresult *qrp, RDB_object *tplp, RDB_transaction *txp)
     if (tbp == NULL) {
         /* It's a sorter */
         return next_stored_tuple(qrp, qrp->matp, tplp, RDB_TRUE, RDB_FALSE,
-                qrp->matp->typ->var.basetyp);
+                qrp->matp->typ->var.basetyp, ecp);
     }
 
     do {
         switch (tbp->kind) {
             case RDB_TB_REAL:
                 return next_stored_tuple(qrp, qrp->tbp, tplp, RDB_TRUE, RDB_FALSE,
-                        qrp->tbp->typ->var.basetyp);
+                        qrp->tbp->typ->var.basetyp, ecp);
             case RDB_TB_SELECT:
                 if (qrp->tbp->var.select.objpc > 0)
-                    ret = next_select_index(qrp, tplp, txp);
+                    ret = next_select_index(qrp, tplp, ecp, txp);
                 else
-                    ret = next_select_tuple(qrp, tplp, txp);
+                    ret = next_select_tuple(qrp, tplp, ecp, txp);
                 if (ret != RDB_OK)
                     return ret;                
                 break;
             case RDB_TB_UNION:
                 if (qrp->var.virtual.qr2p == NULL) {
-                    ret = _RDB_next_tuple(qrp->var.virtual.qrp, tplp, txp);
+                    ret = _RDB_next_tuple(qrp->var.virtual.qrp, tplp, ecp, txp);
                     if (ret == RDB_NOT_FOUND) {
                         /* switch to second table */
-                        ret = _RDB_table_qresult(tbp->var._union.tb2p, txp,
+                        ret = _RDB_table_qresult(tbp->var._union.tb2p, ecp, txp,
                                 &qrp->var.virtual.qr2p);
                         if (ret != RDB_OK)
                             return ret;
-                        ret = _RDB_next_tuple(qrp->var.virtual.qr2p, tplp, txp);
+                        ret = _RDB_next_tuple(qrp->var.virtual.qr2p, tplp, ecp,
+                                txp);
                         if (ret != RDB_OK)
                             return ret;
                     }
                 } else {
-                    ret = _RDB_next_tuple(qrp->var.virtual.qr2p, tplp, txp);
+                    ret = _RDB_next_tuple(qrp->var.virtual.qr2p, tplp, ecp,
+                            txp);
                     if (ret != RDB_OK)
                         return ret;
                 }
                 break;
             case RDB_TB_MINUS:
                 do {
-                    ret = _RDB_next_tuple(qrp->var.virtual.qrp, tplp, txp);
+                    ret = _RDB_next_tuple(qrp->var.virtual.qrp, tplp, ecp, txp);
                     if (ret != RDB_OK)
                         return ret;
-                    ret = _RDB_qresult_contains(qrp->var.virtual.qr2p, tplp, txp);
+                    ret = _RDB_qresult_contains(qrp->var.virtual.qr2p, tplp,
+                            ecp, txp);
                     if (ret != RDB_OK && ret != RDB_NOT_FOUND) {
                         return ret;
                     }
@@ -2003,10 +2026,11 @@ _RDB_next_tuple(RDB_qresult *qrp, RDB_object *tplp, RDB_transaction *txp)
                 break;
             case RDB_TB_INTERSECT:
                 do {
-                    ret = _RDB_next_tuple(qrp->var.virtual.qrp, tplp, txp);
+                    ret = _RDB_next_tuple(qrp->var.virtual.qrp, tplp, ecp, txp);
                     if (ret != RDB_OK)
                         return ret;
-                    ret = _RDB_qresult_contains(qrp->var.virtual.qr2p, tplp, txp);
+                    ret = _RDB_qresult_contains(qrp->var.virtual.qr2p, tplp,
+                            ecp, txp);
                     if (ret != RDB_OK && ret != RDB_NOT_FOUND) {
                         return ret;
                     }
@@ -2015,32 +2039,32 @@ _RDB_next_tuple(RDB_qresult *qrp, RDB_object *tplp, RDB_transaction *txp)
             case RDB_TB_JOIN:
                 if (tbp->var.join.tb2p->kind != RDB_TB_PROJECT
                         || tbp->var.join.tb2p->var.project.indexp == NULL) {
-                    ret = next_join_tuple(qrp, tplp, txp);
+                    ret = next_join_tuple(qrp, tplp, ecp, txp);
                     if (ret != RDB_OK)
                         return ret;
                     break;
                 }
                 if (tbp->var.join.tb2p->var.project.indexp->unique) {
-                    ret = next_join_tuple_uix(qrp, tplp, txp);
+                    ret = next_join_tuple_uix(qrp, tplp, ecp, txp);
                     if (ret != RDB_OK)
                         return ret;
                     break;
                 }
-                ret = next_join_tuple_nuix(qrp, tplp, txp);            
+                ret = next_join_tuple_nuix(qrp, tplp, ecp, txp);            
                 if (ret != RDB_OK)
                     return ret;
                 break;
             case RDB_TB_EXTEND:
-                ret = _RDB_next_tuple(qrp->var.virtual.qrp, tplp, txp);
+                ret = _RDB_next_tuple(qrp->var.virtual.qrp, tplp, ecp, txp);
                 if (ret != RDB_OK)
                     return ret;
                 ret = RDB_extend_tuple(tplp, tbp->var.extend.attrc,
-                         tbp->var.extend.attrv, txp);
+                         tbp->var.extend.attrv, ecp, txp);
                 if (ret != RDB_OK)
                     return ret;
                 break;
             case RDB_TB_PROJECT:
-                ret = next_project_tuple(qrp, tplp, txp);
+                ret = next_project_tuple(qrp, tplp, ecp, txp);
                 if (ret != RDB_OK)
                     return ret;
                 break;
@@ -2051,7 +2075,7 @@ _RDB_next_tuple(RDB_qresult *qrp, RDB_object *tplp, RDB_transaction *txp)
                     RDB_int count;
                 
                     ret = next_stored_tuple(qrp, qrp->matp, tplp, RDB_TRUE,
-                            RDB_FALSE, qrp->tbp->typ->var.basetyp);
+                            RDB_FALSE, qrp->tbp->typ->var.basetyp, ecp);
                     if (ret != RDB_OK)
                         return ret;
                     /* check AVG counts */
@@ -2072,33 +2096,33 @@ _RDB_next_tuple(RDB_qresult *qrp, RDB_object *tplp, RDB_transaction *txp)
                 }
                 break;
             case RDB_TB_RENAME:
-                ret = next_rename_tuple(qrp, tplp, txp);
+                ret = next_rename_tuple(qrp, tplp, ecp, txp);
                 if (ret != RDB_OK)
                     return ret;
                 break;
             case RDB_TB_WRAP:
-                ret = next_wrap_tuple(qrp, tplp, txp);
+                ret = next_wrap_tuple(qrp, tplp, ecp, txp);
                 if (ret != RDB_OK)
                     return ret;
                 break;
             case RDB_TB_UNWRAP:
-                ret = next_unwrap_tuple(qrp, tplp, txp);
+                ret = next_unwrap_tuple(qrp, tplp, ecp, txp);
                 if (ret != RDB_OK)
                     return ret;
                 break;
             case RDB_TB_GROUP:
                 ret = next_stored_tuple(qrp, qrp->matp, tplp, RDB_TRUE, RDB_FALSE,
-                        qrp->tbp->typ->var.basetyp);
+                        qrp->tbp->typ->var.basetyp, ecp);
                 if (ret != RDB_OK)
                     return ret;
                 break;
             case RDB_TB_UNGROUP:
-                ret = next_ungroup_tuple(qrp, tplp, txp);
+                ret = next_ungroup_tuple(qrp, tplp, ecp, txp);
                 if (ret != RDB_OK)
                     return ret;
                 break;
             case RDB_TB_SDIVIDE:
-                ret = next_sdivide_tuple(qrp, tplp, txp);
+                ret = next_sdivide_tuple(qrp, tplp, ecp, txp);
                 if (ret != RDB_OK)
                     return ret;
                 break;
@@ -2107,7 +2131,7 @@ _RDB_next_tuple(RDB_qresult *qrp, RDB_object *tplp, RDB_transaction *txp)
         /* Check for duplicate, if necessary */
         if (qrp->matp != NULL && tbp->kind != RDB_TB_SUMMARIZE
                 && tbp->kind != RDB_TB_GROUP) {
-            ret = _RDB_insert_real(qrp->matp, tplp, txp);
+            ret = _RDB_insert_real(qrp->matp, tplp, ecp, txp);
             if (ret != RDB_OK && ret != RDB_ELEMENT_EXISTS)
                 return ret;
         } else {
@@ -2118,7 +2142,7 @@ _RDB_next_tuple(RDB_qresult *qrp, RDB_object *tplp, RDB_transaction *txp)
 }
 
 int
-_RDB_reset_qresult(RDB_qresult *qrp, RDB_transaction *txp)
+_RDB_reset_qresult(RDB_qresult *qrp, RDB_exec_context *ecp, RDB_transaction *txp)
 {
     int ret;
     RDB_table *tbp = qrp->tbp;
@@ -2135,15 +2159,15 @@ _RDB_reset_qresult(RDB_qresult *qrp, RDB_transaction *txp)
         }
         return ret;
     }
-    ret = destroy_qresult(qrp, txp);
+    ret = destroy_qresult(qrp, ecp, txp);
     if (ret != RDB_OK)
         return ret;
-    return init_qresult(qrp, tbp, txp);
+    return init_qresult(qrp, tbp, ecp, txp);
 }
 
 int
 _RDB_qresult_contains(RDB_qresult *qrp, const RDB_object *tplp,
-                      RDB_transaction *txp)
+                      RDB_exec_context *ecp, RDB_transaction *txp)
 {
     int i;
     int ret;
@@ -2153,7 +2177,7 @@ _RDB_qresult_contains(RDB_qresult *qrp, const RDB_object *tplp,
     RDB_object tpl;
 
     if (qrp->tbp->kind != RDB_TB_SUMMARIZE && qrp->tbp->kind != RDB_TB_GROUP)
-        return RDB_table_contains(qrp->tbp, tplp, txp);
+        return RDB_table_contains(qrp->tbp, tplp, ecp, txp);
 
     /*
      * Check if the table contains the tuple by
@@ -2180,7 +2204,7 @@ _RDB_qresult_contains(RDB_qresult *qrp, const RDB_object *tplp,
     }
         
     ret = _RDB_get_by_uindex(qrp->matp, objpv, &qrp->matp->stp->indexv[0],
-            qrp->matp->typ->var.basetyp, txp, &tpl);
+            qrp->matp->typ->var.basetyp, ecp, txp, &tpl);
     if (ret != RDB_OK) /* handles RDB_NOT_FOUND too */
         goto error;
 
@@ -2190,7 +2214,7 @@ _RDB_qresult_contains(RDB_qresult *qrp, const RDB_object *tplp,
             char *attrname = qrp->tbp->var.summarize.addv[i].name;
 
             ret = RDB_obj_equals(RDB_tuple_get(tplp, attrname),
-                    RDB_tuple_get(&tpl, attrname), txp, &b);
+                    RDB_tuple_get(&tpl, attrname), ecp, txp, &b);
             if (ret != RDB_OK)
                 goto error;
             if (!b) {
@@ -2202,7 +2226,7 @@ _RDB_qresult_contains(RDB_qresult *qrp, const RDB_object *tplp,
         char *attrname = qrp->tbp->var.group.gattr;
 
         ret = RDB_obj_equals(RDB_tuple_get(tplp, attrname),
-                RDB_tuple_get(&tpl, attrname), txp, &b);
+                RDB_tuple_get(&tpl, attrname), ecp, txp, &b);
         if (ret != RDB_OK)
             goto error;
         if (!b) {
@@ -2214,16 +2238,17 @@ _RDB_qresult_contains(RDB_qresult *qrp, const RDB_object *tplp,
     ret = RDB_OK;
 
 error:
-    RDB_destroy_obj(&tpl);
+    RDB_destroy_obj(&tpl, ecp);
     free(objpv);
     
     return ret;
 }
 
 int
-_RDB_drop_qresult(RDB_qresult *qrp, RDB_transaction *txp)
+_RDB_drop_qresult(RDB_qresult *qrp, RDB_exec_context *ecp,
+        RDB_transaction *txp)
 {
-    int ret = destroy_qresult(qrp, txp);
+    int ret = destroy_qresult(qrp, ecp, txp);
 
     free(qrp);
 

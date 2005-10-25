@@ -9,12 +9,13 @@
 #include <string.h>
 
 int
-Duro_tcl_drop_array(RDB_object *arrayp, Tcl_HashEntry *entryp)
+Duro_tcl_drop_array(RDB_object *arrayp, Tcl_HashEntry *entryp,
+        RDB_exec_context *ecp)
 {
     int ret;
 
     Tcl_DeleteHashEntry(entryp);
-    ret = RDB_destroy_obj(arrayp);
+    ret = RDB_destroy_obj(arrayp, ecp);
     Tcl_Free((char *) arrayp);
     return ret;
 }
@@ -50,13 +51,14 @@ array_create_cmd(TclState *statep, Tcl_Interp *interp, int objc,
     txp = Tcl_GetHashValue(entryp);
 
     tbname = Tcl_GetStringFromObj(objv[2], NULL);
-    ret = Duro_get_table(statep, interp, tbname, txp, &tbp);
-    if (ret != TCL_OK) {
+    tbp = Duro_get_table(statep, interp, tbname, txp);
+    if (tbp == NULL) {
         return TCL_ERROR;
     }
 
     if (objc == 5) {
-        seqitv = Duro_tobj_to_seq_items(interp, objv[3], &seqitc, RDB_TRUE, &ordered);
+        seqitv = Duro_tobj_to_seq_items(interp, objv[3], &seqitc, RDB_TRUE,
+                &ordered);
         if (seqitv == NULL)
             return TCL_ERROR;
     }
@@ -64,11 +66,12 @@ array_create_cmd(TclState *statep, Tcl_Interp *interp, int objc,
     arrayp = (RDB_object *) Tcl_Alloc(sizeof (RDB_object));
     RDB_init_obj(arrayp);
 
-    ret = RDB_table_to_array(arrayp, tbp, seqitc, seqitv, txp);
+    ret = RDB_table_to_array(arrayp, tbp, seqitc, seqitv, statep->current_ecp,
+            txp);
     if (seqitv != NULL)
         Tcl_Free((char *) seqitv);
     if (ret != RDB_OK) {
-        Duro_dberror(interp, txp, ret);
+        Duro_dberror(interp, statep->current_ecp, txp);
         return TCL_ERROR;
     }
 
@@ -102,9 +105,9 @@ array_drop_cmd(TclState *statep, Tcl_Interp *interp, int objc,
         return TCL_ERROR;
     }
     arrayp = Tcl_GetHashValue(entryp);
-    ret = Duro_tcl_drop_array(arrayp, entryp);
+    ret = Duro_tcl_drop_array(arrayp, entryp, statep->current_ecp);
     if (ret != RDB_OK) {
-        Duro_dberror(interp, NULL, ret);
+        Duro_dberror(interp, statep->current_ecp, NULL);
         return TCL_ERROR;
     }      
 
@@ -150,13 +153,13 @@ array_index_cmd(TclState *statep, Tcl_Interp *interp, int objc,
     if (ret != TCL_OK)
         return ret;
 
-    ret = RDB_array_get(arrayp, (RDB_int) idx, &tplp);
-    if (ret != RDB_OK) {
-        Duro_dberror(interp, txp, ret);
+    tplp = RDB_array_get(arrayp, (RDB_int) idx, statep->current_ecp);
+    if (tplp == NULL) {
+        Duro_dberror(interp, statep->current_ecp, txp);
         return TCL_ERROR;
     }
 
-    listobjp = Duro_to_tcl(interp, tplp, txp);
+    listobjp = Duro_to_tcl(interp, tplp, statep->current_ecp, txp);
     if (listobjp == NULL)
         return TCL_ERROR;
 
@@ -200,9 +203,10 @@ array_foreach_cmd(TclState *statep, Tcl_Interp *interp, int objc,
     }
     arrayp = Tcl_GetHashValue(entryp);
 
-    for (i = 0; (ret = RDB_array_get(arrayp, i, &tplp)) == RDB_OK; i++) {
+    for (i = 0; (tplp = RDB_array_get(arrayp, i, statep->current_ecp))
+            != NULL; i++) {
         /* Set variable */
-        elemobjp = Duro_to_tcl(interp, tplp, txp);
+        elemobjp = Duro_to_tcl(interp, tplp, statep->current_ecp, txp);
         if (elemobjp == NULL)
             return TCL_ERROR;
         
@@ -214,7 +218,7 @@ array_foreach_cmd(TclState *statep, Tcl_Interp *interp, int objc,
             return ret;
     }
     if (ret != RDB_NOT_FOUND) {
-        Duro_dberror(interp, txp, ret);
+        Duro_dberror(interp, statep->current_ecp, txp);
         return TCL_ERROR;
     }
         
@@ -244,9 +248,9 @@ array_length_cmd(TclState *statep, Tcl_Interp *interp, int objc,
     }
     arrayp = Tcl_GetHashValue(entryp);
 
-    len = RDB_array_length(arrayp);
+    len = RDB_array_length(arrayp, statep->current_ecp);
     if (len < 0) {
-        Duro_dberror(interp, NULL, len);
+        Duro_dberror(interp, statep->current_ecp, NULL);
         return TCL_ERROR;
     }
 
@@ -295,26 +299,27 @@ array_set_cmd(TclState *statep, Tcl_Interp *interp, int objc,
     if (ret != TCL_OK)
         return ret;
 
-    ret = Duro_get_type(objv[5], interp, txp, &typ);
-    if (ret != TCL_OK)
-        return ret;
+    typ = Duro_get_type(objv[5], interp, statep->current_ecp, txp);
+    if (typ == NULL)
+        return TCL_ERROR;
 
     RDB_init_obj(&obj);
-    ret = Duro_tcl_to_duro(interp, objv[4], typ, &obj, txp);
+    ret = Duro_tcl_to_duro(interp, objv[4], typ, &obj, statep->current_ecp,
+            txp);
     if (ret != TCL_OK) {
-        RDB_destroy_obj(&obj);
+        RDB_destroy_obj(&obj, statep->current_ecp);
         return ret;
     }
 
-    ret = RDB_array_set(arrayp, (RDB_int) idx, &obj);
-    RDB_destroy_obj(&obj);
+    ret = RDB_array_set(arrayp, (RDB_int) idx, &obj, statep->current_ecp);
+    RDB_destroy_obj(&obj, statep->current_ecp);
     if (ret != RDB_OK) {
         /*
          * Must Rest Result, because Duro_tcl_to_duro may have invoked a script
          */
         Tcl_ResetResult(interp);
 
-        Duro_dberror(interp, txp, ret);
+        Duro_dberror(interp, statep->current_ecp, txp);
         return TCL_ERROR;
     }
 

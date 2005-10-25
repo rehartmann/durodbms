@@ -5,7 +5,7 @@
 #include <stdio.h>
 
 int
-test_insert(RDB_database *dbp)
+test_insert(RDB_database *dbp, RDB_exec_context *ecp)
 {
     RDB_transaction tx;
     RDB_table *tbp;
@@ -17,10 +17,10 @@ test_insert(RDB_database *dbp)
         return ret;
     }
 
-    ret = RDB_get_table("EMPS2", &tx, &tbp);
-    if (ret != RDB_OK) {
+    tbp = RDB_get_table("EMPS2", ecp, &tx);
+    if (tbp == NULL) {
         RDB_rollback(&tx);
-        return ret;
+        return RDB_ERROR;
     }
 
     RDB_init_obj(&tpl);
@@ -28,29 +28,30 @@ test_insert(RDB_database *dbp)
     ret = RDB_tuple_set_int(&tpl, "EMPNO", 4);
     if (ret != RDB_OK)
         goto error;
-    ret = RDB_tuple_set_string(&tpl, "NAME", "Taylor");
+    ret = RDB_tuple_set_string(&tpl, "NAME", "Taylor", ecp);
     if (ret != RDB_OK)
         goto error;
     ret = RDB_tuple_set_int(&tpl, "DEPTNO", 2);
     if (ret != RDB_OK)
         goto error;
 
-    ret = RDB_insert(tbp, &tpl, &tx);
+    ret = RDB_insert(tbp, &tpl, ecp, &tx);
     if (ret != RDB_OK) {
         RDB_rollback(&tx);
         return ret;
     }
 
-    RDB_destroy_obj(&tpl);
+    RDB_destroy_obj(&tpl, ecp);
     return RDB_commit(&tx);
 
 error:
+    RDB_destroy_obj(&tpl, ecp);
     RDB_rollback(&tx);
-    return ret;
+    return RDB_ERROR;
 }
 
 static int
-print_table(RDB_database *dbp)
+print_table(RDB_database *dbp, RDB_exec_context *ecp)
 {
     RDB_transaction tx;
     RDB_table *tbp;
@@ -68,34 +69,37 @@ print_table(RDB_database *dbp)
         return ret;
     }
 
-    ret = RDB_get_table("EMPS2", &tx, &tbp);
-    if (ret != RDB_OK) {
+    tbp = RDB_get_table("EMPS2", ecp, &tx);
+    if (tbp == NULL) {
         RDB_rollback(&tx);
-        return ret;
+        return RDB_ERROR;
     }
 
     RDB_init_obj(&array);
 
-    ret = RDB_table_to_array(&array, tbp, 2, sqv, &tx);
+    ret = RDB_table_to_array(&array, tbp, 2, sqv, ecp, &tx);
     if (ret != RDB_OK) {
         goto error;
     }
     
-    for (i = 0; (ret = RDB_array_get(&array, i, &tplp)) == RDB_OK; i++) {
+    for (i = 0; (tplp = RDB_array_get(&array, i, ecp)) != NULL; i++) {
         printf("EMPNO: %d\n", (int) RDB_tuple_get_int(tplp, "EMPNO"));
         printf("NAME: %s\n", RDB_tuple_get_string(tplp, "NAME"));
         printf("SALARY: %f\n", (double) RDB_tuple_get_rational(tplp, "SALARY"));
         printf("DEPTNO: %d\n", (int) RDB_tuple_get_int(tplp, "DEPTNO"));
     }
+/* !!
     if (ret != RDB_NOT_FOUND) {
         goto error;
     }
+*/
 
-    RDB_destroy_obj(&array);
+    RDB_destroy_obj(&array, ecp);
     
     return RDB_commit(&tx);
+
 error:
-    RDB_destroy_obj(&array);
+    RDB_destroy_obj(&array, ecp);
     RDB_rollback(&tx);
     
     return ret;
@@ -107,7 +111,8 @@ main(void)
     RDB_environment *envp;
     RDB_database *dbp;
     int ret;
-    
+    RDB_exec_context ec;
+
     printf("Opening environment\n");
     ret = RDB_open_env("dbenv", &envp);
     if (ret != 0) {
@@ -116,22 +121,25 @@ main(void)
     }
 
     RDB_set_errfile(envp, stderr);
-
-    ret = RDB_get_db_from_env("TEST", envp, &dbp);
-    if (ret != 0) {
+    RDB_init_exec_context(&ec);
+    dbp = RDB_get_db_from_env("TEST", envp, &ec);
+    if (dbp == NULL) {
         fprintf(stderr, "Error: %s\n", RDB_strerror(ret));
+        RDB_destroy_exec_context(&ec);
         return 1;
     }
 
-    ret = test_insert(dbp);
+    ret = test_insert(dbp, &ec);
     if (ret != RDB_OK) {
         fprintf(stderr, "Error: %s\n", RDB_strerror(ret));
+        RDB_destroy_exec_context(&ec);
         return 2;
     }
 
-    ret = print_table(dbp);
+    ret = print_table(dbp, &ec);
     if (ret != RDB_OK) {
         fprintf(stderr, "Error: %s\n", RDB_strerror(ret));
+        RDB_destroy_exec_context(&ec);
         return 2;
     }
 
@@ -139,8 +147,10 @@ main(void)
     ret = RDB_close_env(envp);
     if (ret != RDB_OK) {
         fprintf(stderr, "Error: %s\n", RDB_strerror(ret));
+        RDB_destroy_exec_context(&ec);
         return 2;
     }
+    RDB_destroy_exec_context(&ec);
 
     return 0;
 }

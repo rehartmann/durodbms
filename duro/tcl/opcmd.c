@@ -85,8 +85,9 @@ operator_create_cmd(ClientData data, Tcl_Interp *interp, int objc,
             goto cleanup;
         }
 
-        ret = Duro_get_type(typeobjp, interp, txp, &argtv[i]);
-        if (ret != TCL_OK) {
+        argtv[i] = Duro_get_type(typeobjp, interp, statep->current_ecp, txp);
+        if (argtv[i] == NULL) {
+            ret = TCL_ERROR;
             goto cleanup;
         }
     }
@@ -153,22 +154,22 @@ operator_create_cmd(ClientData data, Tcl_Interp *interp, int objc,
 
         ret = RDB_create_update_op(Tcl_GetString(objv[2]),
                 argc, argtv, updv, "libdurotcl", "Duro_invoke_update_op",
-                txtp, (size_t) len, txp);
+                txtp, (size_t) len, statep->current_ecp, txp);
         Tcl_Free(updv);
     } else {
-        RDB_type *rtyp;
-
-        ret = Duro_get_type(objv[4], interp, txp, &rtyp);
-        if (ret != TCL_OK) {
+        RDB_type *rtyp = Duro_get_type(objv[4], interp, statep->current_ecp,
+                txp);
+        if (rtyp == NULL) {
+            ret = TCL_ERROR;
             goto cleanup;
         }
 
         ret = RDB_create_ro_op(Tcl_GetString(objv[2]), argc, argtv, rtyp,
-                "libdurotcl", "Duro_invoke_ro_op", txtp, (size_t) len, txp);
-    }
-    
+                "libdurotcl", "Duro_invoke_ro_op", txtp, (size_t) len,
+                statep->current_ecp, txp);
+    }    
     if (ret != RDB_OK) {
-        Duro_dberror(interp, txp, ret);
+        Duro_dberror(interp, statep->current_ecp, txp);
         ret = TCL_ERROR;
         goto cleanup;
     }
@@ -203,9 +204,9 @@ operator_drop_cmd(ClientData data, Tcl_Interp *interp, int objc,
     }
     txp = Tcl_GetHashValue(entryp);
 
-    ret = RDB_drop_op(Tcl_GetString(objv[2]), txp);
+    ret = RDB_drop_op(Tcl_GetString(objv[2]), statep->current_ecp, txp);
     if (ret != RDB_OK) {
-        Duro_dberror(interp, txp, ret);
+        Duro_dberror(interp, statep->current_ecp, txp);
         return TCL_ERROR;
     }
 
@@ -277,15 +278,18 @@ Duro_call_cmd(ClientData data, Tcl_Interp *interp, int objc,
     argtv = (RDB_type **) Tcl_Alloc(sizeof (RDB_type *) * argc);
 
     for (i = 0; i < argc; i++) {
-        ret = Duro_get_type(objv[3 + i * 2], interp, txp, &argtv[i]);
-        if (ret != TCL_OK) {
+        argtv[i] = Duro_get_type(objv[3 + i * 2], interp, statep->current_ecp,
+                txp);
+        if (argtv[i] == NULL) {
+            ret = TCL_ERROR;
             goto cleanup;
         }
     }
 
-    ret = _RDB_get_upd_op(Tcl_GetString(objv[1]), argc, argtv, txp, &op);
+    ret = _RDB_get_upd_op(Tcl_GetString(objv[1]), argc, argtv,
+            statep->current_ecp, txp, &op);
     if (ret != RDB_OK) {
-        Duro_dberror(interp, txp, ret);
+        Duro_dberror(interp, statep->current_ecp, txp);
         ret = TCL_ERROR;
         goto cleanup;
     }
@@ -315,20 +319,20 @@ Duro_call_cmd(ClientData data, Tcl_Interp *interp, int objc,
             RDB_table *tbp;
 
             /* Updated relation argument - pass table */
-            ret = Duro_get_table(statep, interp, Tcl_GetString(valobjp), txp,
-                    &tbp);
-            if (ret != TCL_OK) {
-                RDB_destroy_obj(argv[i]);
+            tbp = Duro_get_table(statep, interp, Tcl_GetString(valobjp), txp);
+            if (tbp == NULL) {
+                RDB_destroy_obj(argv[i], statep->current_ecp);
                 Tcl_Free((char *) argv[i]);
                 argv[i] = 0;
                 ret = TCL_ERROR;
                 goto cleanup;
             }
-            RDB_table_to_obj(argv[i], tbp);
+            RDB_table_to_obj(argv[i], tbp, statep->current_ecp);
         } else {
-            ret = Duro_tcl_to_duro(interp, valobjp, argtv[i], argv[i], txp);
+            ret = Duro_tcl_to_duro(interp, valobjp, argtv[i], argv[i],
+                    statep->current_ecp, txp);
             if (ret != TCL_OK) {
-                RDB_destroy_obj(argv[i]);
+                RDB_destroy_obj(argv[i], statep->current_ecp);
                 Tcl_Free((char *) argv[i]);
                 argv[i] = NULL;
                 ret = TCL_ERROR;
@@ -338,17 +342,17 @@ Duro_call_cmd(ClientData data, Tcl_Interp *interp, int objc,
     }
 
     ret = RDB_call_update_op(Tcl_GetString(objv[1]),
-            argc, argv, txp);
+            argc, argv, statep->current_ecp, txp);
     if (ret != RDB_OK) {
-        Duro_dberror(interp, txp, ret);
+        Duro_dberror(interp, statep->current_ecp, txp);
         return TCL_ERROR;
     }
 
     /* Store updated values */
     for (i = 0; i < argc; i++) {
         if (op->updv[i]) {
-            Tcl_Obj *valobjp = Duro_to_tcl(interp, argv[i], txp);
-
+            Tcl_Obj *valobjp = Duro_to_tcl(interp, argv[i],
+                    statep->current_ecp, txp);
             if (valobjp == NULL) {
                 ret = TCL_ERROR;
                 goto cleanup;
@@ -363,7 +367,7 @@ cleanup:
     if (argv != NULL) {
         for (i = 0; i < argc; i++) {
             if (argv[i] != NULL) {
-                RDB_destroy_obj(argv[i]);
+                RDB_destroy_obj(argv[i], statep->current_ecp);
                 Tcl_Free((char *) argv[i]);
             }
         }
@@ -393,7 +397,7 @@ find_txid(RDB_transaction *txp, TclState *statep)
 int
 Duro_invoke_update_op(const char *name, int argc, RDB_object *argv[],
         RDB_bool updv[], const void *iargp, size_t iarglen,
-        RDB_transaction *txp)
+        RDB_exec_context *ecp, RDB_transaction *txp)
 {
     int ret;
     int i;
@@ -469,7 +473,7 @@ Duro_invoke_update_op(const char *name, int argc, RDB_object *argv[],
             if (RDB_table_name(tbp) == NULL) {
                 /* Only possible when it's a setter */
 
-                ret = RDB_set_table_name(tbp, "duro_t", txp);                
+                ret = RDB_set_table_name(tbp, "duro_t", ecp, txp);
                 if (ret != RDB_OK) {
                     Tcl_Free((char *) opargv);
                     return ret;
@@ -484,8 +488,9 @@ Duro_invoke_update_op(const char *name, int argc, RDB_object *argv[],
             opargv[i + 1] = Tcl_NewStringObj(RDB_table_name(tbp),
                     strlen(RDB_table_name(tbp)));
         } else {
-            Tcl_Obj *argtop = issetter && i == 0 ? Duro_irep_to_tcl(
-                    interp, argv[i], txp) : Duro_to_tcl(interp, argv[i], txp);
+            Tcl_Obj *argtop = issetter && i == 0 ?
+                    Duro_irep_to_tcl(interp, argv[i], ecp, txp)
+                    : Duro_to_tcl(interp, argv[i], ecp, txp);
 
             if (updv[i]) {
                 char buf[11];
@@ -548,7 +553,7 @@ Duro_invoke_update_op(const char *name, int argc, RDB_object *argv[],
                 convtyp = argtyp;
             }
 
-            ret = Duro_tcl_to_duro(interp, valobjp, convtyp, argv[i], txp);
+            ret = Duro_tcl_to_duro(interp, valobjp, convtyp, argv[i], ecp, txp);
             argv[i]->typ = argtyp;
 
             Tcl_UnsetVar(interp, Tcl_GetString(varnamep), 0);
@@ -575,7 +580,7 @@ is_compare (const char *name, int argc) {
 int
 Duro_invoke_ro_op(const char *name, int argc, RDB_object *argv[],
         const void *iargp, size_t iarglen,
-        RDB_transaction *txp, RDB_object *retvalp)
+        RDB_exec_context *ecp, RDB_transaction *txp, RDB_object *retvalp)
 {
     int ret;
     int i;
@@ -646,8 +651,8 @@ Duro_invoke_ro_op(const char *name, int argc, RDB_object *argv[],
         /* If the operator is a getter, pass actual rep */
         opargv[i + 1] = (is_getter(name, argc) && i == 0)
                 || is_compare(name, argc) ?
-                Duro_irep_to_tcl(interp, argv[i], txp)
-                : Duro_to_tcl(interp, argv[i], txp);
+                Duro_irep_to_tcl(interp, argv[i], ecp, txp)
+                : Duro_to_tcl(interp, argv[i], ecp, txp);
     }
 
     if (txtop != NULL) {
@@ -685,7 +690,7 @@ Duro_invoke_ro_op(const char *name, int argc, RDB_object *argv[],
         convtyp = rtyp;
     }
     ret = Duro_tcl_to_duro(interp, Tcl_GetObjResult(interp),
-            convtyp, retvalp, txp);
+            convtyp, retvalp, ecp, txp);
     if (rtyp->kind != RDB_TP_RELATION)
         retvalp->typ = rtyp;
     return ret == TCL_OK ? RDB_OK : RDB_INVALID_ARGUMENT;

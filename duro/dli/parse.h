@@ -12,12 +12,12 @@
 
 typedef RDB_table *RDB_ltablefn(const char *, void *);
 
-int
-RDB_parse_expr(const char *, RDB_ltablefn *, void *, RDB_transaction *,
-        RDB_expression **);
+RDB_expression *
+RDB_parse_expr(const char *, RDB_ltablefn *, void *, RDB_exec_context *,
+        RDB_transaction *);
 
-int
-RDB_parse_table(const char *, RDB_ltablefn *, void *, RDB_transaction *,
-        RDB_table **);
+RDB_table *
+RDB_parse_table(const char *, RDB_ltablefn *, void *, RDB_exec_context *,
+        RDB_transaction *);
 
 #endif
