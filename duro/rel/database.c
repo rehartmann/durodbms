@@ -820,6 +820,7 @@ RDB_get_table(const char *name, RDB_exec_context *ecp, RDB_transaction *txp)
 {
     RDB_table *tbp;
     RDB_database *dbp;
+    RDB_object *errp;
 
     /* Search table in all databases */
     dbp = txp->dbp->dbrootp->first_dbp;
@@ -835,8 +836,12 @@ RDB_get_table(const char *name, RDB_exec_context *ecp, RDB_transaction *txp)
     tbp = _RDB_cat_get_rtable(name, ecp, txp);
     if (tbp != NULL)
         return tbp;
-    if (RDB_obj_type(RDB_get_err(ecp)) != &RDB_NOT_FOUND_ERROR)
-        return NULL;
+    errp = RDB_get_err(ecp);
+    if (errp != NULL) {
+        if (RDB_obj_type(errp) != &RDB_NOT_FOUND_ERROR)
+            return NULL;
+        RDB_clear_err(ecp);
+    }
 
     return _RDB_cat_get_vtable(name, ecp, txp);
 }

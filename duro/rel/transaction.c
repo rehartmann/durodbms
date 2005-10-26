@@ -24,7 +24,7 @@ RDB_begin_tx(RDB_transaction *txp, RDB_database *dbp,
         RDB_transaction *parentp)
 {
     txp->dbp = dbp;
-    return _RDB_begin_tx(txp, txp->dbp->dbrootp->envp, parentp);
+    return _RDB_begin_tx(txp, dbp->dbrootp->envp, parentp);
 }
 
 int

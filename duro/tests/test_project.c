@@ -36,6 +36,7 @@ print_table1(RDB_table *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
     RDB_destroy_obj(&array, ecp);
     
     return RDB_OK;
+
 error:
     RDB_destroy_obj(&array, ecp);
     
@@ -71,6 +72,7 @@ print_table2(RDB_table *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
     RDB_destroy_obj(&array, ecp);
     
     return RDB_OK;
+
 error:
     RDB_destroy_obj(&array, ecp);
     
@@ -92,7 +94,7 @@ test_project(RDB_database *dbp, RDB_exec_context *ecp)
     }
 
     tbp = RDB_get_table("EMPS2", ecp, &tx);
-    if (ret != RDB_OK) {
+    if (tbp == NULL) {
         RDB_rollback(&tx);
         return RDB_ERROR;
     }
@@ -100,7 +102,7 @@ test_project(RDB_database *dbp, RDB_exec_context *ecp)
     printf("Creating projection (SALARY)\n");
 
     vtbp = RDB_project(tbp, 1, projattrs1, ecp);
-    if (vtbp != RDB_OK) {
+    if (vtbp == NULL) {
         RDB_rollback(&tx);
         return RDB_ERROR;
     }
@@ -133,7 +135,7 @@ test_project(RDB_database *dbp, RDB_exec_context *ecp)
     printf("Creating projection (EMPNO,NAME)\n");
 
     vtbp = RDB_project(tbp, 2, projattrs2, ecp);
-    if (ret != RDB_OK) {
+    if (vtbp == NULL) {
         RDB_rollback(&tx);
         return RDB_ERROR;
     }

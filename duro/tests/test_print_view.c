@@ -42,6 +42,7 @@ print_salary_view(RDB_database *dbp, RDB_exec_context *ecp)
         goto error;
     }
 */
+    RDB_clear_err(ecp);
 
     RDB_destroy_obj(&array, ecp);
     RDB_commit(&tx);
@@ -126,7 +127,7 @@ print_emps_view(RDB_database *dbp, RDB_exec_context *ecp)
     tmpvtbp = RDB_get_table("EMPS1S", ecp, &tx);
     if (tmpvtbp == NULL) {
         fprintf(stderr, "Error: %s\n", RDB_strerror(ret));
-        return 2;
+        return RDB_ERROR;
     }
 
     RDB_init_obj(&array);
@@ -145,15 +146,19 @@ print_emps_view(RDB_database *dbp, RDB_exec_context *ecp)
         b = RDB_tuple_get_bool(tplp, "HIGHSAL");
         printf("HIGHSAL: %s\n", b ? "TRUE" : "FALSE");
     }
+/* !!
     if (ret != RDB_NOT_FOUND) {
         goto error;
     }
+*/
+    RDB_clear_err(ecp);
 
     RDB_destroy_obj(&array, ecp);
     RDB_commit(&tx);
     return RDB_OK;
 
 error:
+    RDB_destroy_obj(&array, ecp);
     RDB_rollback(&tx);
     return RDB_ERROR;
 }
@@ -179,7 +184,7 @@ print_emps2_view(RDB_database *dbp, RDB_exec_context *ecp)
     tmpvtbp = RDB_get_table("EMPS1S2", ecp, &tx);
     if (tmpvtbp == NULL) {
         fprintf(stderr, "Error: %s\n", RDB_strerror(ret));
-        return 2;
+        return RDB_ERROR;
     }
 
     RDB_init_obj(&array);
@@ -204,9 +209,10 @@ print_emps2_view(RDB_database *dbp, RDB_exec_context *ecp)
     RDB_destroy_obj(&array, ecp);
     RDB_commit(&tx);
     return RDB_OK;
+
 error:
     RDB_rollback(&tx);
-    return ret;
+    return RDB_ERROR;
 }
 
 int

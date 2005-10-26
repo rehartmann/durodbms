@@ -1367,7 +1367,7 @@ _RDB_cat_get_rtable(const char *name, RDB_exec_context *ecp,
         RDB_transaction *txp)
 {
     RDB_expression *exprp;
-    RDB_table *tbp;
+    RDB_table *tbp = NULL;
     RDB_table *tmptb1p = NULL;
     RDB_table *tmptb2p = NULL;
     RDB_table *tmptb3p = NULL;
@@ -2023,9 +2023,14 @@ _RDB_cat_get_type(const char *name, RDB_exec_context *ecp,
         typ->compare_iarglen = cmpop->iarg.var.bin.len;
         typ->compare_iargp = cmpop->iarg.var.bin.datap;
         typ->tx_udata = txp->user_data;
-    } else if (ret != RDB_OPERATOR_NOT_FOUND
-            && ret != RDB_TYPE_MISMATCH) {
-        goto error;
+    } else {
+        RDB_object *errp = RDB_get_err(ecp);
+        if (errp != NULL /* !!
+                && RDB_obj_type(errp) != &RDB_OPERATOR_NOT_FOUND_ERROR */
+                && RDB_obj_type(errp) != &RDB_TYPE_MISMATCH_ERROR) {
+            goto error;
+        }
+        RDB_clear_err(ecp);
     }
 
     *typp = typ;

@@ -226,7 +226,7 @@ main(void)
 
     printf("Creating DB\n");
     dbp = RDB_create_db_from_env("TEST", envp, &ec);
-    if (ret != RDB_OK) {
+    if (dbp == NULL) {
         fprintf(stderr, "Error: %s\n", RDB_strerror(ret));
         RDB_destroy_exec_context(&ec);
         return 1;

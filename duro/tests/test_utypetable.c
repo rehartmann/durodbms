@@ -67,7 +67,7 @@ test_table(RDB_database *dbp, RDB_exec_context *ecp)
     }
 
     tbp = RDB_get_table("UTYPETEST", ecp, &tx);
-    if (ret != RDB_OK) {
+    if (tbp == NULL) {
         RDB_rollback(&tx);
         return RDB_ERROR;
     }

@@ -28,6 +28,7 @@ print_table(RDB_table *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
         goto error;
     }
 */
+    RDB_clear_err(ecp);
 
     RDB_destroy_obj(&array, ecp);
     
