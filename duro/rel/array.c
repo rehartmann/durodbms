@@ -178,11 +178,13 @@ RDB_array_get(RDB_object *arrp, RDB_int idx, RDB_exec_context *ecp)
     while (arrp->var.arr.pos < idx) {
         ret = next_tuple(arrp, RDB_FALSE, ecp);
         if (ret != RDB_OK) {
+/* !!
             if (RDB_is_syserr(ret)) {
                 _RDB_drop_qresult(arrp->var.arr.qrp, ecp, arrp->var.arr.txp);
                 arrp->var.arr.qrp = NULL;
                 _RDB_handle_syserr(arrp->var.arr.txp, ret);
             }
+*/
             return NULL;
         }
         ++arrp->var.arr.pos;
@@ -191,7 +193,7 @@ RDB_array_get(RDB_object *arrp, RDB_int idx, RDB_exec_context *ecp)
     /* Read next element */
     ret = next_tuple(arrp, RDB_TRUE, ecp);
     if (ret != RDB_OK) {
-        if (ret == RDB_NOT_FOUND) {
+        if (RDB_obj_type(RDB_get_err(ecp)) == &RDB_NOT_FOUND_ERROR) {
             arrp->var.arr.length = arrp->var.arr.pos;
             if (arrp->var.arr.tbp->kind == RDB_TB_REAL
                     && arrp->var.arr.tbp->stp != NULL) {
@@ -224,13 +226,14 @@ RDB_array_length(RDB_object *arrp, RDB_exec_context *ecp)
 
     if (arrp->var.arr.length == -1) {
         int i = arrp->var.arr.pos;
+        RDB_type *errtyp;
 
         while (RDB_array_get(arrp, (RDB_int) i, ecp) != NULL)
             i++;
-        /* !!
-        if (ret != RDB_NOT_FOUND)
-            return ret;
-        */
+        errtyp = RDB_obj_type(RDB_get_err(ecp));
+        if (errtyp != &RDB_NOT_FOUND_ERROR)
+            return RDB_ERROR;
+        RDB_clear_err(ecp);
     }
     return arrp->var.arr.length;
 }
@@ -288,8 +291,10 @@ RDB_array_set(RDB_object *arrp, RDB_int idx, const RDB_object *objp,
         return RDB_NOT_SUPPORTED;
     }
 
-    if (idx >= arrp->var.arr.length)
-        return RDB_NOT_FOUND;
+    if (idx >= arrp->var.arr.length) {
+        RDB_raise_not_found("index out of bounds", ecp);
+        return RDB_ERROR;
+    }
 
     return RDB_copy_obj(&arrp->var.arr.elemv[idx], objp, ecp);
 }

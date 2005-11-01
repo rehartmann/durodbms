@@ -59,6 +59,7 @@ test_table(RDB_database *dbp, RDB_exec_context *ecp)
     RDB_object ival;
     RDB_object tival;
     RDB_object *ivalp;
+    RDB_type *errtyp;
 
     printf("Starting transaction\n");
     ret = RDB_begin_tx(&tx, dbp, NULL);
@@ -84,10 +85,16 @@ test_table(RDB_database *dbp, RDB_exec_context *ecp)
     }
 
     ret = RDB_insert(tbp, &tpl, ecp, &tx);
-    if (ret != RDB_TYPE_MISMATCH) {
-        fprintf(stderr, "Wrong return code: %s\n", RDB_strerror(ret));
+    if (ret == RDB_OK) {
+        fprintf(stderr, "Insert should fail, but did not\n");
         goto error;
     }
+    errtyp = RDB_obj_type(RDB_get_err(ecp));
+    if (errtyp != &RDB_TYPE_MISMATCH_ERROR) {
+        fprintf(stderr, "Wrong error type: %s\n", RDB_type_name(errtyp));
+        goto error;
+    }
+    RDB_clear_err(ecp);
     printf("Return code: %s - OK\n", RDB_strerror(ret));
 
     printf("Trying to create TINYINT from INTEGER=200\n");
@@ -96,10 +103,16 @@ test_table(RDB_database *dbp, RDB_exec_context *ecp)
     ivalp = &ival;
 
     ret = RDB_call_ro_op("TINYINT", 1, &ivalp, ecp, &tx, &tival);
-    if (ret != RDB_TYPE_CONSTRAINT_VIOLATION) {
-        fprintf(stderr, "Wrong return code: %s\n", RDB_strerror(ret));
+    if (ret == RDB_OK) {
+        fprintf(stderr, "Operator call should fail, but did not\n");
         goto error;
     }
+    errtyp = RDB_obj_type(RDB_get_err(ecp));
+    if (errtyp != &RDB_TYPE_CONSTRAINT_VIOLATION_ERROR) {
+        fprintf(stderr, "Wrong error type1: %s\n", RDB_type_name(errtyp));
+        goto error;
+    }
+    RDB_clear_err(ecp);
     printf("Return code: %s - OK\n", RDB_strerror(ret));
 
     printf("Creating TINYINT from INTEGER=99\n");
@@ -117,10 +130,16 @@ test_table(RDB_database *dbp, RDB_exec_context *ecp)
      */
     RDB_int_to_obj(&ival, 200);
     ret = RDB_obj_set_comp(&tival, "TINYINT", &ival, ecp, &tx);
-    if (ret != RDB_TYPE_CONSTRAINT_VIOLATION) {
-        fprintf(stderr, "Wrong return code: %s\n", RDB_strerror(ret));
+    if (ret == RDB_OK) {
+        fprintf(stderr, "Setter call should fail, but did not\n");
         goto error;
     }
+    errtyp = RDB_obj_type(RDB_get_err(ecp));
+    if (errtyp != &RDB_TYPE_CONSTRAINT_VIOLATION_ERROR) {
+        fprintf(stderr, "Wrong error type2: %s\n", RDB_type_name(errtyp));
+        goto error;
+    }
+    RDB_clear_err(ecp);
 
     /*
      * Call selector again
@@ -174,7 +193,6 @@ test_drop(RDB_database *dbp, RDB_exec_context *ecp)
     int ret;
     RDB_table *tbp;
     RDB_transaction tx;
-    RDB_object *errp;
 
     printf("Starting transaction\n");
     ret = RDB_begin_tx(&tx, dbp, NULL);
@@ -204,17 +222,13 @@ test_drop(RDB_database *dbp, RDB_exec_context *ecp)
 
     printf("Trying to get type\n");
     tinyintp = RDB_get_type("TINYINT", ecp, &tx);
-    errp = RDB_get_err(ecp);
-    if (errp == NULL || RDB_obj_type(errp) != &RDB_NOT_FOUND_ERROR) {
-        char *errtypename = NULL;
-        if (errp != NULL && RDB_obj_type(errp) != NULL) {
-            errtypename = RDB_type_name(RDB_obj_type(errp));
+    if (tinyintp == NULL) {
+        RDB_type *errtyp = RDB_obj_type(RDB_get_err(ecp));
+        if (errtyp != &RDB_NOT_FOUND_ERROR) {
+            fprintf(stderr, "Wrong error type: %s\n", RDB_type_name(errtyp));
+            RDB_rollback(&tx);
+            return RDB_ERROR;
         }
-
-        fprintf(stderr, "Wrong error type: %s\n", errtypename != NULL ?
-                errtypename : "(null)");
-        RDB_rollback(&tx);
-        return RDB_ERROR;
     }
     printf("Return code: %s - OK\n", RDB_strerror(ret));
 

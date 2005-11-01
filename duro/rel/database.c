@@ -450,9 +450,9 @@ RDB_get_db_from_env(const char *name, RDB_environment *envp,
                     RDB_exec_context *ecp)
 {
     int ret;
-    RDB_database *dbp;
     RDB_transaction tx;
     RDB_object tpl;
+    RDB_database *dbp = NULL;
     RDB_dbroot *dbrootp = (RDB_dbroot *) RDB_env_private(envp);
     RDB_bool crdbroot = RDB_FALSE;
 
@@ -462,13 +462,13 @@ RDB_get_db_from_env(const char *name, RDB_environment *envp,
          * and create RDB_dbroot structure
          */
 
-        crdbroot = RDB_TRUE;
         _RDB_init_builtin_types();
         lt_dlinit();
         ret = create_dbroot(envp, RDB_FALSE, ecp, &dbrootp);
         if (ret != RDB_OK) {
             goto error;
         }
+        crdbroot = RDB_TRUE;
     }
 
     /* search the DB list for the database */
@@ -537,7 +537,9 @@ error:
         RDB_env_private(envp) = NULL;
     }
 
-    free_db(dbp);
+    if (dbp != NULL) {
+        free_db(dbp);
+    }
     lt_dlexit();
     return NULL;
 }

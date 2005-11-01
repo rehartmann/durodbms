@@ -199,11 +199,12 @@ _RDB_free_tbindex(_RDB_tbindex *);
 
 int
 _RDB_create_stored_table(RDB_table *tbp, RDB_environment *envp,
-        const RDB_bool ascv[], RDB_exec_context *, RDB_transaction *txp);
+        const RDB_bool ascv[], RDB_exec_context *, RDB_transaction *);
 
 int
 _RDB_open_stored_table(RDB_table *tbp, RDB_environment *envp, const char *,
-           int indexc, _RDB_tbindex *indexv, RDB_transaction *txp);
+           int indexc, _RDB_tbindex *indexv, RDB_exec_context *,
+           RDB_transaction *);
 
 int
 _RDB_delete_stored_table(RDB_stored_table *, RDB_transaction *);

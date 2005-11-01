@@ -287,7 +287,9 @@ RDB_join_tuples(const RDB_object *tpl1p, const RDB_object *tpl2p,
              if (typ != NULL && !RDB_type_equals(typ,
                      RDB_obj_type(&entryp->obj))) {
                  RDB_destroy_hashtable_iter(&hiter);
-                 return RDB_TYPE_MISMATCH;
+                 RDB_raise_type_mismatch("JOIN attribute types must be equal",
+                         ecp);
+                 return RDB_ERROR;
              }
              
              /* Check attribute values for equality */

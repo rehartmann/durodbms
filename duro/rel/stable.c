@@ -50,14 +50,14 @@ _RDB_close_stored_table(RDB_stored_table *stp)
     int ret;
 
     if (stp->indexc > 0) {
-        /* close secondary indexes */
+        /* Close secondary indexes */
         for (i = 0; i < stp->indexc; i++) {
             if (stp->indexv[i].idxp != NULL)
                 RDB_close_index(stp->indexv[i].idxp);
         }
     }
 
-    /* close recmap */
+    /* Close recmap */
     ret = RDB_close_recmap(stp->recmapp);
     if (ret != RDB_OK)
         return ret;
@@ -429,8 +429,8 @@ _RDB_create_stored_table(RDB_table *tbp, RDB_environment *envp,
         const RDB_bool ascv[], RDB_exec_context *ecp, RDB_transaction *txp)
 {
     int ret;
-    int *flenv;
     int flags;
+    int *flenv = NULL;
     char *rmname = NULL;
     RDB_compare_field *cmpv = NULL;
     int attrc = tbp->typ->var.basetyp->var.tuple.attrc;
@@ -535,7 +535,9 @@ _RDB_create_stored_table(RDB_table *tbp, RDB_environment *envp,
 
 error:
     /* clean up */
-    free(flenv);
+    if (flenv != NULL) {
+        free(flenv);
+    }
     free(cmpv);
     free(rmname);
 
@@ -547,7 +549,7 @@ error:
 
     if (txp != NULL)
         _RDB_handle_syserr(txp, ret);
-    return ret;
+    return RDB_ERROR;
 }
 
 /*
@@ -564,7 +566,7 @@ error:
 int
 _RDB_open_stored_table(RDB_table *tbp, RDB_environment *envp,
         const char *rmname, int indexc, _RDB_tbindex *indexv,
-        RDB_transaction *txp)
+        RDB_exec_context *ecp, RDB_transaction *txp)
 {
     int ret;
     int i;
@@ -597,8 +599,15 @@ _RDB_open_stored_table(RDB_table *tbp, RDB_environment *envp,
     ret = RDB_open_recmap(rmname, RDB_DATAFILE, envp,
             attrc, flenv, piattrc, txp != NULL ? txp->txid : NULL,
             &tbp->stp->recmapp);
-    if (ret != RDB_OK)
+    if (ret != RDB_OK) {
+        if (ret == RDB_NOT_FOUND) {
+            RDB_raise_not_found("table not found", ecp);
+        } else {
+            fprintf(stderr, "unhandled error\n"); /* !! */
+            abort();
+        }
         goto error;
+    }
 
     /* Open secondary indexes */
     for (i = 0; i < indexc; i++) {
@@ -626,7 +635,7 @@ error:
 
     if (txp != NULL)
         _RDB_handle_syserr(txp, ret);
-    return ret;
+    return RDB_ERROR;
 }
 
 int

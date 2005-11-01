@@ -268,8 +268,12 @@ insert_rtable(RDB_table *tbp, RDB_dbroot *dbrootp, RDB_exec_context *ecp,
             size_t len;
 
             if (!RDB_type_equals(tuptyp->var.tuple.attrv[i].defaultp->typ,
-                    tuptyp->var.tuple.attrv[i].typ))
-                return RDB_TYPE_MISMATCH;
+                    tuptyp->var.tuple.attrv[i].typ)) {
+                RDB_raise_type_mismatch(
+                        "Type of default value does not match attribute type",
+                        ecp);
+                return RDB_ERROR;
+            }
             
             ret = RDB_tuple_set_string(&tpl, "ATTRNAME", attrname, ecp);
             if (ret != RDB_OK) {
@@ -785,7 +789,7 @@ provide_systable(const char *name, int attrc, RDB_attr heading[],
                 NULL, ecp, txp);
     } else {
         ret = _RDB_open_stored_table(*tbpp, txp != NULL ? txp->envp : NULL,
-                name, -1, NULL, txp);
+                name, -1, NULL, ecp, txp);
     }
     if (ret != RDB_OK) {
         _RDB_drop_table(*tbpp, RDB_FALSE, ecp);
@@ -830,8 +834,10 @@ check_version_info(RDB_dbroot *dbrootp, RDB_exec_context *ecp,
     RDB_init_obj(&tpl);
     ret = RDB_extract_tuple(dbrootp->version_info_tbp, ecp, txp, &tpl);
     if (ret != RDB_OK) {
-        if (ret == RDB_NOT_FOUND)
-            ret = RDB_VERSION_MISMATCH;
+        if (RDB_obj_type(RDB_get_err(ecp)) == &RDB_NOT_FOUND_ERROR) {
+            /* RDB_clear_err(ecp);
+            ret = RDB_VERSION_MISMATCH; !! */
+        }
         goto cleanup;
     }
 
@@ -896,9 +902,11 @@ _RDB_open_systables(RDB_dbroot *dbrootp, RDB_exec_context *ecp,
         ret = provide_systable("SYS_TABLEATTRS", 4, table_attr_attrv,
                 1, table_attr_keyv, create, ecp, txp, dbrootp->envp,
                 &dbrootp->table_attr_tbp);
-        if (!create && ret == RDB_NOT_FOUND) {
+        if (!create && ret != RDB_OK
+                && RDB_obj_type(RDB_get_err(ecp)) == &RDB_NOT_FOUND_ERROR) {
             /* Table not found, so tables must be created */
             create = RDB_TRUE;
+            RDB_clear_err(ecp);
         } else {
             break;
         }
@@ -1566,7 +1574,7 @@ _RDB_cat_get_rtable(const char *name, RDB_exec_context *ecp,
     }
     if (recmapname != NULL) {
         ret = _RDB_open_stored_table(tbp, txp->envp, recmapname,
-                indexc, indexv, txp);
+                indexc, indexv, ecp, txp);
         if (ret != RDB_OK) {
             goto error;
         }
@@ -1942,7 +1950,7 @@ _RDB_cat_get_type(const char *name, RDB_exec_context *ecp,
     if (ret > 0) {
         typ->var.scalar.repv = malloc(ret * sizeof (RDB_possrep));
         if (typ->var.scalar.repv == NULL) {
-            ret = RDB_NO_MEMORY;
+            RDB_raise_no_memory(ecp);
             goto error;
         }
     }
@@ -2025,8 +2033,8 @@ _RDB_cat_get_type(const char *name, RDB_exec_context *ecp,
         typ->tx_udata = txp->user_data;
     } else {
         RDB_object *errp = RDB_get_err(ecp);
-        if (errp != NULL /* !!
-                && RDB_obj_type(errp) != &RDB_OPERATOR_NOT_FOUND_ERROR */
+        if (errp != NULL
+                && RDB_obj_type(errp) != &RDB_OPERATOR_NOT_FOUND_ERROR
                 && RDB_obj_type(errp) != &RDB_TYPE_MISMATCH_ERROR) {
             goto error;
         }

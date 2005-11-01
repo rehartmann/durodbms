@@ -79,7 +79,7 @@ test_union(RDB_database *dbp, RDB_exec_context *ecp)
     printf("Creating EMPS1 union EMPS2\n");
 
     vtbp = RDB_union(tbp2, tbp, ecp);
-    if (ret != RDB_OK) {
+    if (vtbp == NULL) {
         RDB_rollback(&tx);
         return RDB_ERROR;
     }

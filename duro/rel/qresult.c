@@ -116,14 +116,21 @@ init_summ_table(RDB_qresult *qresp, RDB_exec_context *ecp,
             goto error;
     };
 
-    if (ret == RDB_NOT_FOUND)
-        ret = RDB_OK;
+    if (ret != RDB_OK) {
+        if (RDB_obj_type(RDB_get_err(ecp)) != &RDB_NOT_FOUND_ERROR) {
+            goto error;
+        }
+        RDB_clear_err(ecp);
+    }
+
+    RDB_destroy_obj(&tpl, ecp);
+    return _RDB_drop_qresult(qrp, ecp, txp);
 
 error:
     RDB_destroy_obj(&tpl, ecp);
     _RDB_drop_qresult(qrp, ecp, txp);
 
-    return ret;
+    return RDB_ERROR;
 }
 
 struct _RDB_summval {
@@ -317,13 +324,16 @@ do_summarize(RDB_qresult *qresp, RDB_exec_context *ecp, RDB_transaction *txp)
                 if (ret != RDB_OK) {
                     goto cleanup;
                 }
-            } else if (ret != RDB_NOT_FOUND)
+            } else if (RDB_obj_type(RDB_get_err(ecp)) != &RDB_NOT_FOUND_ERROR) {
                 goto cleanup;
+            }
         }
     } while (ret == RDB_OK);
 
-    if (ret == RDB_NOT_FOUND)
+    if (RDB_obj_type(RDB_get_err(ecp)) == &RDB_NOT_FOUND_ERROR) {
+        RDB_clear_err(ecp);
         ret = RDB_OK;
+    }
 
 cleanup:
     RDB_destroy_obj(&tpl, ecp);
@@ -392,7 +402,8 @@ do_group(RDB_qresult *qrp, RDB_exec_context *ecp, RDB_transaction *txp)
                 ret = RDB_get_fields(qrp->matp->stp->recmapp, keyfv,
                         1, NULL, &gfield);
             } else {
-                ret = RDB_NOT_FOUND;
+                RDB_raise_not_found("", ecp);
+                ret = RDB_ERROR;
             }
             if (ret == RDB_OK) {
                 /*
@@ -1044,8 +1055,9 @@ _RDB_sorter(RDB_table *tbp, RDB_qresult **qrespp, RDB_exec_context *ecp,
         }
     }
     RDB_destroy_obj(&tpl, ecp);
-    if (ret != RDB_NOT_FOUND)
+    if (RDB_obj_type(RDB_get_err(ecp)) != &RDB_NOT_FOUND_ERROR) {
         goto error;
+    }
     ret = _RDB_drop_qresult(tmpqrp, ecp, txp);
     if (ret != RDB_OK)
         goto error;
@@ -1069,7 +1081,7 @@ error:
         RDB_drop_table(qresp->matp, ecp, NULL);
     free(qresp);
 
-    return ret;
+    return RDB_ERROR;
 }
 
 int
@@ -1114,8 +1126,10 @@ next_stored_tuple(RDB_qresult *qrp, RDB_table *tbp, RDB_object *tplp,
 {
     int ret;
 
-    if (qrp->endreached)
-        return RDB_NOT_FOUND;
+    if (qrp->endreached) {
+        RDB_raise_not_found("", ecp);
+        return RDB_ERROR;
+    }
 
     if (tplp != NULL) {
         ret = _RDB_get_by_cursor(tbp, qrp->var.curp, tpltyp, tplp, ecp);
@@ -1236,8 +1250,9 @@ next_join_tuple(RDB_qresult *qrp, RDB_object *tplp, RDB_exec_context *ecp,
     for (;;) {
         /* read next 'inner' tuple */
         ret = _RDB_next_tuple(qrp->var.virtual.qr2p, tplp, ecp, txp);
-        if (ret != RDB_NOT_FOUND && ret != RDB_OK) {
-            return ret;
+        if (ret != RDB_OK && RDB_obj_type(RDB_get_err(ecp))
+                != &RDB_NOT_FOUND_ERROR) {
+            return RDB_ERROR;
         }
         if (ret == RDB_OK) {
             /* Compare common attributes */
@@ -1270,6 +1285,8 @@ next_join_tuple(RDB_qresult *qrp, RDB_object *tplp, RDB_exec_context *ecp,
             if (iseq)
                 break;
             continue;
+        } else {
+            RDB_clear_err(ecp);
         }
 
         /* reset nested qresult */
@@ -1709,7 +1726,7 @@ next_project_tuple(RDB_qresult *qrp, RDB_object *tplp, RDB_exec_context *ecp,
             ret = _RDB_get_by_cursor(qrp->tbp->var.project.tbp, qrp->var.curp,
                     tpltyp, tplp, ecp);
             if (ret != RDB_OK)
-                return ret;
+                return ret; /* !! */
         }
         ret = RDB_cursor_next(qrp->var.curp, 0);
         if (ret == RDB_NOT_FOUND)
@@ -1969,8 +1986,10 @@ _RDB_next_tuple(RDB_qresult *qrp, RDB_object *tplp, RDB_exec_context *ecp,
     int ret;
     RDB_table *tbp = qrp->tbp;
 
-    if (qrp->endreached)
-        return RDB_NOT_FOUND;
+    if (qrp->endreached) {
+        RDB_raise_not_found("", ecp);
+        return RDB_ERROR;
+    }
 
     if (tbp == NULL) {
         /* It's a sorter */
@@ -1994,16 +2013,21 @@ _RDB_next_tuple(RDB_qresult *qrp, RDB_object *tplp, RDB_exec_context *ecp,
             case RDB_TB_UNION:
                 if (qrp->var.virtual.qr2p == NULL) {
                     ret = _RDB_next_tuple(qrp->var.virtual.qrp, tplp, ecp, txp);
-                    if (ret == RDB_NOT_FOUND) {
-                        /* switch to second table */
-                        ret = _RDB_table_qresult(tbp->var._union.tb2p, ecp, txp,
-                                &qrp->var.virtual.qr2p);
-                        if (ret != RDB_OK)
-                            return ret;
-                        ret = _RDB_next_tuple(qrp->var.virtual.qr2p, tplp, ecp,
-                                txp);
-                        if (ret != RDB_OK)
-                            return ret;
+                    if (ret != RDB_OK) {
+                        if (RDB_obj_type(RDB_get_err(ecp))
+                                == &RDB_NOT_FOUND_ERROR) {
+                            /* Switch to second table */
+                            ret = _RDB_table_qresult(tbp->var._union.tb2p,
+                                    ecp, txp, &qrp->var.virtual.qr2p);
+                            if (ret != RDB_OK)
+                                return ret;
+                            ret = _RDB_next_tuple(qrp->var.virtual.qr2p, tplp,
+                                    ecp, txp);
+                            if (ret != RDB_OK)
+                                return ret;
+                        } else {
+                            return RDB_ERROR;
+                        }
                     }
                 } else {
                     ret = _RDB_next_tuple(qrp->var.virtual.qr2p, tplp, ecp,

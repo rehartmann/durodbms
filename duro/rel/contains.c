@@ -307,7 +307,10 @@ stored_contains(RDB_table *tbp, const RDB_object *tplp, RDB_exec_context *ecp,
         if (objp->typ != NULL && !RDB_type_equals (RDB_obj_type(objp),
                 tpltyp->var.tuple.attrv[i].typ)) {
             free(fvp);
-            return RDB_TYPE_MISMATCH;
+            RDB_raise_type_mismatch(
+                    "tuple attribute type does not match table attribute type",
+                    ecp);
+            return RDB_ERROR;
         }
 
         /* Set type - needed for tuples */

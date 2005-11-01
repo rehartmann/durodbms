@@ -536,8 +536,11 @@ _RDB_copy_obj(RDB_object *dstvalp, const RDB_object *srcvalp,
 {
     int ret;
 
-    if (dstvalp->kind != RDB_OB_INITIAL && srcvalp->kind != dstvalp->kind)
-        return RDB_TYPE_MISMATCH;
+    if (dstvalp->kind != RDB_OB_INITIAL && srcvalp->kind != dstvalp->kind) {
+        RDB_raise_type_mismatch("source type does not match destination type",
+                ecp);
+        return RDB_ERROR;
+    }
 
     switch (srcvalp->kind) {
         case RDB_OB_INITIAL:
@@ -587,8 +590,10 @@ _RDB_copy_obj(RDB_object *dstvalp, const RDB_object *srcvalp,
                     return RDB_ERROR;
                 dstvalp->kind = RDB_OB_TABLE;
             } else {
-                if (dstvalp->kind != RDB_OB_TABLE)
-                    return RDB_TYPE_MISMATCH;
+                if (dstvalp->kind != RDB_OB_TABLE) {
+                    RDB_raise_type_mismatch("destination must be table", ecp);
+                    return RDB_ERROR;
+                }
                 ret = _RDB_delete_real(dstvalp->var.tbp, NULL, ecp,
                         dstvalp->var.tbp->is_persistent ? txp : NULL);
                 if (ret != RDB_OK)

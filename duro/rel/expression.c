@@ -298,8 +298,12 @@ expr_op_type(const RDB_expression *exp, const RDB_type *tuptyp,
     for (i = 0; i < exp->var.op.argc; i++) {
         argtv[i] = RDB_expr_type(exp->var.op.argv[i], tuptyp, ecp, txp);
         if (argtv[i] == NULL) {
-            free(argtv);
-            return NULL;
+            RDB_type *errtyp = RDB_obj_type(RDB_get_err(ecp));
+            if (errtyp != &RDB_NOT_FOUND_ERROR) {
+                free(argtv);
+                return NULL;
+            }
+            RDB_clear_err(ecp);
         }
     }
 
@@ -477,7 +481,9 @@ expr_op_type(const RDB_expression *exp, const RDB_type *tuptyp,
             if (exp->var.op.argv[i]->kind != RDB_EX_OBJ
                     || exp->var.op.argv[i]->var.obj.typ != &RDB_STRING) {
                 free(argtv);
-                return NULL /* !! RDB_TYPE_MISMATCH */;
+                RDB_raise_type_mismatch(
+                        "UNWRAP argument must be STRING", ecp);
+                return NULL;
             }
         }
 
@@ -580,7 +586,8 @@ expr_op_type(const RDB_expression *exp, const RDB_type *tuptyp,
     for (i = 0; i < exp->var.op.argc; i++) {
         if (argtv[i] == NULL) {
             free(argtv);
-            return NULL /* !! RDB_OPERATOR_NOT_FOUND */;
+            RDB_raise_operator_not_found("", ecp);
+            return NULL;
         }
     }
 
@@ -588,7 +595,7 @@ expr_op_type(const RDB_expression *exp, const RDB_type *tuptyp,
             argtv, ecp, txp, &op);
     free(argtv);
     if (ret != RDB_OK)
-        return NULL /* !! ret */;
+        return NULL;
     return op->rtyp;
 }
 
@@ -602,8 +609,10 @@ RDB_expr_type(const RDB_expression *exp, const RDB_type *tuptyp,
     switch (exp->kind) {
         case RDB_EX_OBJ:
             typ = RDB_obj_type(&exp->var.obj);
-            if (typ == NULL)
-                return /* !! RDB_NOT_FOUND */ NULL;
+            if (typ == NULL) {
+                RDB_raise_not_found("type not found", ecp);
+                return NULL;
+            }
 
             /*
              * Nonscalar types are managed by the caller, so
@@ -1115,8 +1124,10 @@ evaluate_where(RDB_expression *exp, const RDB_object *tplp,
     RDB_expression *wherep;
     int argc = exp->var.op.argc;
 
-    if (argc != 2)
-        return RDB_OPERATOR_NOT_FOUND;
+    if (argc != 2) {
+        RDB_raise_operator_not_found("", ecp);
+        return RDB_ERROR;
+    }
 
     RDB_init_obj(&tobj);
     ret = RDB_evaluate(exp->var.op.argv[0], tplp, ecp, txp, &tobj);
@@ -1126,6 +1137,7 @@ evaluate_where(RDB_expression *exp, const RDB_object *tplp,
     }
     if (tobj.kind != RDB_OB_TABLE) {
         RDB_destroy_obj(&tobj, ecp);
+        RDB_raise_type_mismatch("WHERE argument must be table", ecp);
         return RDB_TYPE_MISMATCH;
     }
 
@@ -1162,8 +1174,10 @@ evaluate_extend(RDB_expression *exp, const RDB_object *tplp,
     int argc = exp->var.op.argc;
     int attrc = (argc - 1) / 2;
 
-    if (argc < 1)
-        return RDB_OPERATOR_NOT_FOUND;
+    if (argc < 1) {
+        RDB_raise_operator_not_found("", ecp);
+        return RDB_ERROR;
+    }
 
     RDB_init_obj(&tobj);
     ret = RDB_evaluate(exp->var.op.argv[0], tplp, ecp, txp, &tobj);
@@ -1236,8 +1250,10 @@ evaluate_summarize(RDB_expression *exp, const RDB_object *tplp,
     int argc = exp->var.op.argc;
     int addc = argc - 2;
 
-    if (argc < 2)
-        return RDB_OPERATOR_NOT_FOUND;
+    if (argc < 2) {
+        RDB_raise_operator_not_found("", ecp);
+        return RDB_ERROR;
+    }
 
     RDB_init_obj(&t1obj);
     RDB_init_obj(&t2obj);
@@ -1403,7 +1419,8 @@ RDB_evaluate(RDB_expression *exp, const RDB_object *tplp, RDB_exec_context *ecp,
             }
             if (tpl.kind != RDB_OB_TUPLE) {
                 RDB_destroy_obj(&tpl, ecp);
-                return RDB_TYPE_MISMATCH;
+                RDB_raise_type_mismatch("", ecp);
+                return RDB_ERROR;
             }
                 
             attrp = RDB_tuple_get(&tpl, exp->var.op.name);
@@ -1458,7 +1475,9 @@ RDB_evaluate(RDB_expression *exp, const RDB_object *tplp, RDB_exec_context *ecp,
             }
             if (val.kind != RDB_OB_TABLE) {
                 RDB_destroy_obj(&val, ecp);
-                return RDB_TYPE_MISMATCH;
+                RDB_raise_type_mismatch("aggregate argument must be table",
+                        ecp);
+                return RDB_ERROR;
             }
             ret = aggregate(val.var.tbp, exp->var.op.op,
                     exp->var.op.name, ecp, txp, valp);
@@ -1488,7 +1507,8 @@ RDB_evaluate_bool(RDB_expression *exp, const RDB_object *tplp,
     }
     if (RDB_obj_type(&val) != &RDB_BOOLEAN) {
         RDB_destroy_obj(&val, ecp);
-        return RDB_TYPE_MISMATCH;
+        RDB_raise_type_mismatch("expression type must be BOOLEAN", ecp);
+        return RDB_ERROR;
     }
 
     *resp = val.var.bool_val;

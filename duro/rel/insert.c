@@ -64,32 +64,44 @@ _RDB_insert_real(RDB_table *tbp, const RDB_object *tplp,
                     goto cleanup;
                 case RDB_OB_INITIAL:
                     if (!RDB_type_is_scalar(attrtyp)) {
-                        ret = RDB_TYPE_MISMATCH;
+                        RDB_raise_type_mismatch("attribute type must be scalar",
+                                ecp);
+                        ret = RDB_ERROR;
                         goto cleanup;
                     }
                     break;
                 case RDB_OB_TUPLE:
                     if (attrtyp->kind != RDB_TP_TUPLE) {
-                        ret = RDB_TYPE_MISMATCH;
+                        RDB_raise_type_mismatch("attribute must be tuple",
+                                ecp);
+                        ret = RDB_ERROR;
                         goto cleanup;
                     }
                     break;
                 case RDB_OB_TABLE:
                     if (attrtyp->kind != RDB_TP_RELATION) {
-                        ret = RDB_TYPE_MISMATCH;
+                        RDB_raise_type_mismatch("attribute must be table",
+                                ecp);
+                        ret = RDB_ERROR;
                         goto cleanup;
                      }
                      break;
                 case RDB_OB_ARRAY:
                     if (attrtyp->kind != RDB_TP_ARRAY) {
-                        ret = RDB_TYPE_MISMATCH;
+                        RDB_raise_type_mismatch("attribute must be array",
+                                ecp);
+                        ret = RDB_ERROR;
                         goto cleanup;
                     }
                     break;
             }
         } else {
-            if (!RDB_type_equals(valp->typ, tuptyp->var.tuple.attrv[i].typ))
-                return RDB_TYPE_MISMATCH;
+            if (!RDB_type_equals(valp->typ, tuptyp->var.tuple.attrv[i].typ)) {
+                RDB_raise_type_mismatch(
+                        "tuple attribute type does not match table attribute type",
+                        ecp);
+                return RDB_ERROR;
+            }
         }
 
         /* Set type - needed for tuple and array attributes */

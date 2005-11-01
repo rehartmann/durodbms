@@ -25,6 +25,8 @@ RDB_type RDB_NOT_FOUND_ERROR;
 RDB_type RDB_INVALID_TRANSACTION_ERROR;
 RDB_type RDB_INVALID_ARGUMENT_ERROR;
 RDB_type RDB_TYPE_MISMATCH_ERROR;
+RDB_type RDB_TYPE_CONSTRAINT_VIOLATION_ERROR;
+RDB_type RDB_OPERATOR_NOT_FOUND_ERROR;
 
 static int
 compare_int(const char *name, int argc, RDB_object *argv[],
@@ -79,6 +81,22 @@ void _RDB_init_builtin_types(void)
         "TYPE_MISMATCH_ERROR",
         1,
         &type_mismatch_comp
+    };
+
+    static RDB_attr type_constraint_violation_comp = { "INFO", &RDB_STRING };
+
+    static RDB_possrep type_constraint_violation_rep = {
+        "TYPE_CONSTRAINT_VIOLATION_ERROR",
+        1,
+        &type_constraint_violation_comp
+    };
+
+    static RDB_attr operator_not_found_comp = { "INFO", &RDB_STRING };
+
+    static RDB_possrep operator_not_found_rep = {
+        "OPERATOR_NOT_FOUND_ERROR",
+        1,
+        &operator_not_found_comp
     };
 
     RDB_BOOLEAN.kind = RDB_TP_SCALAR;
@@ -154,6 +172,25 @@ void _RDB_init_builtin_types(void)
     RDB_TYPE_MISMATCH_ERROR.var.scalar.arep = &RDB_STRING;
     RDB_TYPE_MISMATCH_ERROR.var.scalar.constraintp = NULL;
     RDB_TYPE_MISMATCH_ERROR.comparep = NULL;
+
+    RDB_TYPE_CONSTRAINT_VIOLATION_ERROR.kind = RDB_TP_SCALAR;
+    RDB_TYPE_CONSTRAINT_VIOLATION_ERROR.ireplen = RDB_VARIABLE_LEN;
+    RDB_TYPE_CONSTRAINT_VIOLATION_ERROR.name = "TYPE_CONSTRAINT_VIOLATION_ERROR";
+    RDB_TYPE_CONSTRAINT_VIOLATION_ERROR.var.scalar.repc = 1;
+    RDB_TYPE_CONSTRAINT_VIOLATION_ERROR.var.scalar.repv =
+                &type_constraint_violation_rep;
+    RDB_TYPE_CONSTRAINT_VIOLATION_ERROR.var.scalar.arep = &RDB_STRING;
+    RDB_TYPE_CONSTRAINT_VIOLATION_ERROR.var.scalar.constraintp = NULL;
+    RDB_TYPE_CONSTRAINT_VIOLATION_ERROR.comparep = NULL;
+
+    RDB_OPERATOR_NOT_FOUND_ERROR.kind = RDB_TP_SCALAR;
+    RDB_OPERATOR_NOT_FOUND_ERROR.ireplen = RDB_VARIABLE_LEN;
+    RDB_OPERATOR_NOT_FOUND_ERROR.name = "OPERATOR_NOT_FOUND_ERROR";
+    RDB_OPERATOR_NOT_FOUND_ERROR.var.scalar.repc = 1;
+    RDB_OPERATOR_NOT_FOUND_ERROR.var.scalar.repv = &operator_not_found_rep;
+    RDB_OPERATOR_NOT_FOUND_ERROR.var.scalar.arep = &RDB_STRING;
+    RDB_OPERATOR_NOT_FOUND_ERROR.var.scalar.constraintp = NULL;
+    RDB_OPERATOR_NOT_FOUND_ERROR.comparep = NULL;
 }
 
 RDB_bool
@@ -538,8 +575,10 @@ _RDB_sys_select(const char *name, int argc, RDB_object *argv[],
     /* If *retvalp carries a value, it must match the type */
     if (retvalp->kind != RDB_OB_INITIAL
             && (retvalp->typ == NULL
-                || !RDB_type_equals(retvalp->typ, typ)))
-        return RDB_TYPE_MISMATCH;
+                || !RDB_type_equals(retvalp->typ, typ))) {
+        RDB_raise_type_mismatch("wrong selectot return type", ecp);
+        return RDB_ERROR;
+    }
 
     if (argc == 1) {
         /* Copy value */
@@ -912,7 +951,6 @@ RDB_join_tuple_types(const RDB_type *typ1, const RDB_type *typ2,
     RDB_type *newtyp;
     int attrc;
     int i, j;
-    int ret;
     
     /* Create new tuple type */
     newtyp = malloc(sizeof (RDB_type));
@@ -957,7 +995,8 @@ RDB_join_tuple_types(const RDB_type *typ1, const RDB_type *typ2,
                    the same type */
                 if (!RDB_type_equals(typ2->var.tuple.attrv[i].typ,
                         typ1->var.tuple.attrv[j].typ)) {
-                    ret = RDB_TYPE_MISMATCH; /* !! */
+                    RDB_raise_type_mismatch("JOIN attribute types do not match",
+                            ecp);
                     goto error;
                 }
                 break;

@@ -124,3 +124,41 @@ RDB_raise_type_mismatch(const char *info, RDB_exec_context *ecp)
     
     return errp;
 }
+
+RDB_object *
+RDB_raise_operator_not_found(const char *info, RDB_exec_context *ecp)
+{
+    int ret;
+    RDB_object *errp = RDB_raise_err(ecp);
+    if (errp == NULL)
+        return NULL;
+
+    /* Set value */
+    ret = RDB_string_to_obj(errp, info, ecp);
+    if (ret != RDB_OK)
+        return NULL;
+
+    /* Set type */
+    errp->typ = &RDB_OPERATOR_NOT_FOUND_ERROR;
+    
+    return errp;
+}
+
+RDB_object *
+RDB_raise_type_constraint_violation(const char *info, RDB_exec_context *ecp)
+{
+    int ret;
+    RDB_object *errp = RDB_raise_err(ecp);
+    if (errp == NULL)
+        return NULL;
+
+    /* Set value */
+    ret = RDB_string_to_obj(errp, info, ecp);
+    if (ret != RDB_OK)
+        return NULL;
+
+    /* Set type */
+    errp->typ = &RDB_TYPE_CONSTRAINT_VIOLATION_ERROR;
+    
+    return errp;
+}

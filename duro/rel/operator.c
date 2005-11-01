@@ -427,32 +427,38 @@ put_ro_op(RDB_dbroot *dbrootp, RDB_ro_op_desc *op)
     return RDB_OK;
 }
 
-static int
+static RDB_ro_op_desc *
 get_ro_op(RDB_dbroot *dbrootp, const char *name,
-        int argc, RDB_type *argtv[], RDB_ro_op_desc **ropp)
+        int argc, RDB_type *argtv[], RDB_exec_context *ecp)
 {
+    RDB_ro_op_desc *rop;
     RDB_bool pm = RDB_FALSE;
 
-    *ropp = RDB_hashmap_get(&dbrootp->ro_opmap, name);
+    rop = RDB_hashmap_get(&dbrootp->ro_opmap, name);
 
     /* Search for an operator with same signature */
-    while ((*ropp) != NULL) {
-        if ((*ropp)->argc == argc) {
+    while (rop != NULL) {
+        if (rop->argc == argc) {
             int i;
 
             pm = RDB_TRUE;
             for (i = 0; (i < argc)
-                    && RDB_type_equals((*ropp)->argtv[i], argtv[i]);
+                    && RDB_type_equals(rop->argtv[i], argtv[i]);
                  i++);
             if (i == argc) {
                 /* Found */
-                return RDB_OK;
+                return rop;
             }
         }
-        *ropp = (*ropp)->nextp;
+        rop = rop->nextp;
     }
 
-    return pm ? RDB_TYPE_MISMATCH : RDB_OPERATOR_NOT_FOUND;
+    if (pm) {
+        RDB_raise_type_mismatch("", ecp);
+    } else {
+        RDB_raise_operator_not_found("", ecp);
+    }
+    return NULL;
 }
 
 static RDB_type **
@@ -490,14 +496,22 @@ _RDB_get_ro_op(const char *name, int argc, RDB_type *argtv[],
     }
 
     if (!typnull) {
+        RDB_type *errtyp;
+
         /* Lookup operator in map */
-        ret = get_ro_op(txp->dbp->dbrootp, name, argc, argtv, opp);
-        if (ret != RDB_OPERATOR_NOT_FOUND && ret != RDB_TYPE_MISMATCH) {
-            return ret;
+        *opp = get_ro_op(txp->dbp->dbrootp, name, argc, argtv, ecp);
+        if (*opp != NULL)
+            return RDB_OK;
+
+        errtyp = RDB_obj_type(RDB_get_err(ecp));        
+        if (errtyp != &RDB_OPERATOR_NOT_FOUND_ERROR
+                && errtyp != &RDB_TYPE_MISMATCH_ERROR) {
+            return RDB_ERROR;
         }
-        if (ret == RDB_TYPE_MISMATCH) {
+        if (errtyp == &RDB_TYPE_MISMATCH_ERROR) {
             typmismatch = RDB_TRUE;
         }
+        RDB_clear_err(ecp);
     }
 
     /*
@@ -517,7 +531,8 @@ _RDB_get_ro_op(const char *name, int argc, RDB_type *argtv[],
      * was not found, return with failure
      */
     if (typnull) {
-        return RDB_OPERATOR_NOT_FOUND;
+        RDB_raise_operator_not_found("", ecp);
+        return RDB_ERROR;
     }
 
     /*
@@ -558,8 +573,13 @@ _RDB_get_ro_op(const char *name, int argc, RDB_type *argtv[],
      */
     ret = _RDB_cat_get_ro_op(name, argc, argtv, ecp, txp, opp);
     if (ret != RDB_OK) {
-        if (ret == RDB_NOT_FOUND)
-            ret = typmismatch ? RDB_TYPE_MISMATCH : RDB_OPERATOR_NOT_FOUND;
+        if (ret == RDB_NOT_FOUND) {
+            if (typmismatch) {
+                RDB_raise_type_mismatch("", ecp);
+            } else {
+                RDB_raise_operator_not_found("", ecp);
+            }
+        }
         return ret;
     }
     
@@ -598,7 +618,8 @@ _RDB_check_type_constraint(RDB_object *valp, RDB_exec_context *ecp,
             return ret;
         }
         if (!result) {
-            return RDB_TYPE_CONSTRAINT_VIOLATION;
+            RDB_raise_type_constraint_violation("", ecp);
+            return RDB_ERROR;
         }
     }
     return RDB_OK;
@@ -665,7 +686,8 @@ op_rename(const char *name, int argc, RDB_object *argv[],
         if (argv[1 + i]->typ != &RDB_STRING
                 || argv[2 + i]->typ != &RDB_STRING) {
             free(renv);
-            return RDB_TYPE_MISMATCH;
+            RDB_raise_type_mismatch("RENAME argument must be STRING", ecp);
+            return RDB_ERROR;
         }
         renv[i].from = RDB_obj_string(argv[1 + i * 2]);
         renv[i].to = RDB_obj_string(argv[2 + i * 2]);
@@ -1062,8 +1084,10 @@ RDB_call_ro_op(const char *name, int argc, RDB_object *argv[],
      * Handle IF-THEN-ELSE
      */
     if (strcmp(name, "IF") == 0 && argc == 3) {
-        if (argv[0]->typ != &RDB_BOOLEAN)
-            return RDB_TYPE_MISMATCH;
+        if (argv[0]->typ != &RDB_BOOLEAN) {
+            RDB_raise_type_mismatch("IF argument must be BOOLEAN", ecp);
+            return RDB_ERROR;
+        }
         if (argv[0]->var.bool_val) {
             ret = RDB_copy_obj(retvalp, argv[1], ecp);
         } else {

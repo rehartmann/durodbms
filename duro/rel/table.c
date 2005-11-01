@@ -641,8 +641,10 @@ RDB_max(RDB_table *tbp, const char *attrname, RDB_exec_context *ecp,
         resultp->var.int_val = RDB_INT_MIN;
     else if (attrtyp == &RDB_RATIONAL)
         resultp->var.rational_val = RDB_RATIONAL_MIN;
-    else
-        return RDB_TYPE_MISMATCH;
+    else {
+        RDB_raise_type_mismatch("argument must be numeric", ecp);
+        return RDB_ERROR;
+    }
 
     /*
      * Perform aggregation
@@ -708,8 +710,10 @@ RDB_min(RDB_table *tbp, const char *attrname, RDB_exec_context *ecp,
         resultp->var.int_val = RDB_INT_MIN;
     else if (attrtyp == &RDB_RATIONAL)
         resultp->var.rational_val = RDB_RATIONAL_MIN;
-    else
-        return RDB_TYPE_MISMATCH;
+    else {
+        RDB_raise_type_mismatch("argument must be numeric", ecp);
+        return RDB_ERROR;
+    }
 
     /*
      * Perform aggregation
@@ -775,8 +779,10 @@ RDB_sum(RDB_table *tbp, const char *attrname, RDB_exec_context *ecp,
         resultp->var.int_val = 0;
     else if (attrtyp == &RDB_RATIONAL)
         resultp->var.rational_val = 0.0;
-    else
-       return RDB_TYPE_MISMATCH;
+    else {
+        RDB_raise_type_mismatch("argument must be numeric", ecp);
+        return RDB_ERROR;
+    }
 
     /*
      * Perform aggregation
@@ -831,8 +837,10 @@ RDB_avg(RDB_table *tbp, const char *attrname, RDB_exec_context *ecp,
     if (attrtyp == NULL)
         return RDB_INVALID_ARGUMENT;
 
-    if (!RDB_type_is_numeric(attrtyp))
-        return RDB_TYPE_MISMATCH;
+    if (!RDB_type_is_numeric(attrtyp)) {
+        RDB_raise_type_mismatch("argument must be numeric", ecp);
+        return RDB_ERROR;
+    }
     count = 0;
 
     /*
@@ -878,6 +886,7 @@ RDB_extract_tuple(RDB_table *tbp, RDB_exec_context *ecp,
     RDB_qresult *qrp;
     RDB_object tpl;
     RDB_table *ntbp;
+    RDB_type *errtyp;
 
     ret = _RDB_optimize(tbp, 0, NULL, ecp, txp, &ntbp);
     if (ret != RDB_OK)
@@ -900,12 +909,16 @@ RDB_extract_tuple(RDB_table *tbp, RDB_exec_context *ecp,
 
     /* Check if there are more tuples */
     ret = _RDB_next_tuple(qrp, &tpl, ecp, txp);
-    if (ret != RDB_NOT_FOUND) {
-        if (ret == RDB_OK)
-            ret = RDB_INVALID_ARGUMENT;
+    if (ret == RDB_OK) {
+        RDB_raise_invalid_argument("table contains more than one tuple", ecp);
+        ret = RDB_ERROR;
         goto cleanup;
     }
-
+    errtyp = RDB_obj_type(RDB_get_err(ecp));
+    if (errtyp != &RDB_NOT_FOUND_ERROR) {
+        goto cleanup;
+    }
+    RDB_clear_err(ecp);
     ret = RDB_OK;
 
 cleanup:
@@ -1058,8 +1071,10 @@ RDB_subset(RDB_table *tb1p, RDB_table *tb2p, RDB_exec_context *ecp,
     RDB_object tpl;
     int ret;
 
-    if (!RDB_type_equals(tb1p->typ, tb2p->typ))
-        return RDB_TYPE_MISMATCH;
+    if (!RDB_type_equals(tb1p->typ, tb2p->typ)) {
+        RDB_raise_type_mismatch("argument types must be equal", ecp);
+        return RDB_ERROR;
+    }
 
     if (!RDB_tx_is_running(txp))
         return RDB_INVALID_TRANSACTION;
@@ -1112,8 +1127,10 @@ RDB_table_equals(RDB_table *tb1p, RDB_table *tb2p, RDB_exec_context *ecp,
     int cnt;
 
     /* Check if types of the two tables match */
-    if (!RDB_type_equals(tb1p->typ, tb2p->typ))
-        return RDB_TYPE_MISMATCH;
+    if (!RDB_type_equals(tb1p->typ, tb2p->typ)) {
+        RDB_raise_type_mismatch("argument types must be equal", ecp);
+        return RDB_ERROR;
+    }
 
     /*
      * Check if both tables have same cardinality
