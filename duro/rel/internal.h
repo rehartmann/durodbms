@@ -166,7 +166,7 @@ _RDB_next_tuple(RDB_qresult *, RDB_object *, RDB_exec_context *,
 
 int
 _RDB_qresult_contains(RDB_qresult *, const RDB_object *, RDB_exec_context *,
-        RDB_transaction *);
+        RDB_transaction *, RDB_bool *);
 
 int
 _RDB_reset_qresult(RDB_qresult *, RDB_exec_context *, RDB_transaction *);
@@ -435,7 +435,7 @@ _RDB_extend(RDB_table *, int attrc, const RDB_virtual_attr attrv[],
 
 int
 _RDB_sdivide_preserves(RDB_table *, const RDB_object *tplp, RDB_qresult *qr3p,
-        RDB_exec_context *, RDB_transaction *);
+        RDB_exec_context *, RDB_transaction *, RDB_bool *);
 
 RDB_possrep *
 _RDB_get_possrep(RDB_type *typ, const char *repname);

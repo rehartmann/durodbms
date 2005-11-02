@@ -3,8 +3,8 @@ Starting transaction
 Creating projection (SALARY)
 Converting projection table to array
 SALARY: 4000.000000
-Projection contains SALARY(4000.0): 0 OK
-Projection contains SALARY(4400.0): -201 data not found
+Projection contains SALARY(4000.0): yes
+Projection contains SALARY(4400.0): no
 Dropping projection
 Creating projection (EMPNO,NAME)
 Converting projection table to array

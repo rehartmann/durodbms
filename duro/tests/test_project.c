@@ -86,6 +86,7 @@ test_project(RDB_database *dbp, RDB_exec_context *ecp)
     RDB_table *tbp, *vtbp;
     RDB_object tpl;
     int ret;
+    RDB_bool b;
 
     printf("Starting transaction\n");
     ret = RDB_begin_tx(&tx, dbp, NULL);
@@ -112,19 +113,19 @@ test_project(RDB_database *dbp, RDB_exec_context *ecp)
 
     RDB_init_obj(&tpl);
     RDB_tuple_set_rational(&tpl, "SALARY", (RDB_rational)4000.0);
-    ret = RDB_table_contains(vtbp, &tpl, ecp, &tx);
-    printf("Projection contains SALARY(4000.0): %d %s\n", ret, RDB_strerror(ret));
-
-    if (ret != RDB_OK && ret != RDB_NOT_FOUND) {
+    ret = RDB_table_contains(vtbp, &tpl, ecp, &tx, &b);
+    if (ret != RDB_OK) {
         RDB_rollback(&tx);
         return ret;
     }
 
-    RDB_tuple_set_rational(&tpl, "SALARY", (RDB_rational)4400.0);
-    ret = RDB_table_contains(vtbp, &tpl, ecp, &tx);
-    printf("Projection contains SALARY(4400.0): %d %s\n", ret, RDB_strerror(ret));
+    printf("Projection contains SALARY(4000.0): %s\n", b ? "yes" : "no");
 
-    if (ret != RDB_OK && ret != RDB_NOT_FOUND) {
+    RDB_tuple_set_rational(&tpl, "SALARY", (RDB_rational)4400.0);
+    ret = RDB_table_contains(vtbp, &tpl, ecp, &tx, &b);
+    printf("Projection contains SALARY(4400.0): %s\n", b ? "yes" : "no");
+
+    if (ret != RDB_OK) {
         RDB_rollback(&tx);
         return ret;
     }

@@ -452,6 +452,7 @@ RDB_get_db_from_env(const char *name, RDB_environment *envp,
     int ret;
     RDB_transaction tx;
     RDB_object tpl;
+    RDB_bool b;
     RDB_database *dbp = NULL;
     RDB_dbroot *dbrootp = (RDB_dbroot *) RDB_env_private(envp);
     RDB_bool crdbroot = RDB_FALSE;
@@ -510,10 +511,16 @@ RDB_get_db_from_env(const char *name, RDB_environment *envp,
         goto error;
     }
 
-    ret = RDB_table_contains(dbrootp->dbtables_tbp, &tpl, ecp, &tx);
+    ret = RDB_table_contains(dbrootp->dbtables_tbp, &tpl, ecp, &tx, &b);
     if (ret != RDB_OK) {
         RDB_destroy_obj(&tpl, ecp);
         RDB_rollback(&tx);
+        goto error;
+    }
+    if (!b) {
+        RDB_destroy_obj(&tpl, ecp);
+        RDB_rollback(&tx);
+        RDB_raise_not_found("database not found", ecp);
         goto error;
     }
     RDB_destroy_obj(&tpl, ecp);

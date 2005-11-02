@@ -928,7 +928,7 @@ resolve_insert(const RDB_ma_insert *insp, insert_node **inslpp,
                RDB_exec_context *ecp, RDB_transaction *txp)
 {
     int ret, ret2;
-    RDB_bool b;
+    RDB_bool b, b2;
     RDB_ma_insert ins;
     RDB_object tpl;
 
@@ -954,19 +954,19 @@ resolve_insert(const RDB_ma_insert *insp, insert_node **inslpp,
             ins.tplp = insp->tplp;
             return resolve_insert(&ins, inslpp, ecp, txp);
         case RDB_TB_INTERSECT:
-            ret = RDB_table_contains(insp->tbp->var.intersect.tb1p, insp->tplp,
-                    ecp, txp);
-            if (ret != RDB_OK && ret != RDB_NOT_FOUND)
-                return ret;
-            ret2 = RDB_table_contains(insp->tbp->var.intersect.tb2p,
-                    insp->tplp, ecp, txp);
-            if (ret2 != RDB_OK && ret2 != RDB_NOT_FOUND)
-                return ret2;
+            if (RDB_table_contains(insp->tbp->var.intersect.tb1p, insp->tplp,
+                    ecp, txp, &b) != RDB_OK) {
+                return RDB_ERROR;
+            }
+            if (RDB_table_contains(insp->tbp->var.intersect.tb2p,
+                    insp->tplp, ecp, txp, &b2) != RDB_OK) {
+                return RDB_ERROR;
+            }
 
             /*
              * If both 'subtables' contain the tuple, the insert fails
              */
-            if (ret == RDB_OK && ret2 == RDB_OK)
+            if (b && b2)
                 return RDB_ELEMENT_EXISTS;
 
             /*
@@ -999,19 +999,19 @@ resolve_insert(const RDB_ma_insert *insp, insert_node **inslpp,
             }
             return RDB_OK;
         case RDB_TB_JOIN:
-            ret = RDB_table_contains(insp->tbp->var.join.tb1p, insp->tplp,
-                    ecp, txp);
-            if (ret != RDB_OK && ret != RDB_NOT_FOUND)
-                return ret;
-            ret2 = RDB_table_contains(insp->tbp->var.join.tb2p,
-                    insp->tplp, ecp, txp);
-            if (ret2 != RDB_OK && ret2 != RDB_NOT_FOUND)
-                return ret2;
+            if (RDB_table_contains(insp->tbp->var.join.tb1p, insp->tplp,
+                    ecp, txp, &b) != RDB_OK) {
+                return RDB_ERROR;
+            }
+            if (RDB_table_contains(insp->tbp->var.join.tb2p, insp->tplp,
+                    ecp, txp, &b2) != RDB_OK) {
+                return RDB_ERROR;
+            }
 
             /*
              * If both 'subtables' contain the tuple, the insert fails
              */
-            if (ret == RDB_OK && ret2 == RDB_OK)
+            if (b && b2)
                 return RDB_ELEMENT_EXISTS;
 
             /*

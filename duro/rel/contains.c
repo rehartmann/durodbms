@@ -12,16 +12,16 @@
 
 static int
 project_contains(RDB_table *tbp, const RDB_object *tplp, RDB_exec_context *ecp,
-        RDB_transaction *txp)
+        RDB_transaction *txp, RDB_bool *resultp)
 {
-    RDB_bool result;
     int ret;
     RDB_type *tpltyp = tbp->typ->var.basetyp;
 
     if (tpltyp->var.tuple.attrc ==
             tbp->var.project.tbp->typ->var.basetyp->var.tuple.attrc) {
         /* Null project */
-        return RDB_table_contains(tbp->var.project.tbp, tplp, ecp, txp);
+        return RDB_table_contains(tbp->var.project.tbp, tplp, ecp, txp,
+                resultp);
     } else if (tpltyp->var.tuple.attrc > 0) {
         RDB_expression *condp;
         RDB_table *seltbp;
@@ -64,24 +64,24 @@ project_contains(RDB_table *tbp, const RDB_object *tplp, RDB_exec_context *ecp,
         }
 
         /* check if selection is empty */
-        ret = RDB_table_is_empty(seltbp, ecp, txp, &result);
+        ret = RDB_table_is_empty(seltbp, ecp, txp, resultp);
         _RDB_free_table(seltbp, ecp);
         if (ret != RDB_OK)
             return ret;
-        return result ? RDB_NOT_FOUND : RDB_OK;
+        return RDB_OK;
     } else {
         /* projection with no attributes */
 
-        ret = RDB_table_is_empty(tbp->var.project.tbp, ecp, txp, &result);
+        ret = RDB_table_is_empty(tbp->var.project.tbp, ecp, txp, resultp);
         if (ret != RDB_OK)
             return ret;
-        return result ? RDB_NOT_FOUND : RDB_OK;
+        return RDB_OK;
     }
 }
 
 static int
 rename_contains(RDB_table *tbp, const RDB_object *tplp, RDB_exec_context *ecp,
-        RDB_transaction *txp)
+        RDB_transaction *txp, RDB_bool *resultp)
 {
     RDB_object tpl;
     int ret;
@@ -92,7 +92,7 @@ rename_contains(RDB_table *tbp, const RDB_object *tplp, RDB_exec_context *ecp,
     if (ret != RDB_OK)
         goto cleanup;
 
-    ret = RDB_table_contains(tbp->var.rename.tbp, &tpl, ecp, txp);
+    ret = RDB_table_contains(tbp->var.rename.tbp, &tpl, ecp, txp, resultp);
 
 cleanup:
     RDB_destroy_obj(&tpl, ecp);
@@ -101,7 +101,7 @@ cleanup:
 
 static int
 ungroup_contains(RDB_table *tbp, const RDB_object *tplp, RDB_exec_context *ecp,
-        RDB_transaction *txp)
+        RDB_transaction *txp, RDB_bool *resultp)
 {
     int ret, ret2;
     RDB_object tpl;
@@ -180,13 +180,13 @@ ungroup_contains(RDB_table *tbp, const RDB_object *tplp, RDB_exec_context *ecp,
     while ((ret = _RDB_next_tuple(qrp, &tpl, ecp, txp)) == RDB_OK) {
         /* The additional attributes in tpl are ignored */
         ret = RDB_table_contains(RDB_obj_table(RDB_tuple_get(&tpl,
-                tbp->var.ungroup.attr)), tplp, ecp, txp);
-        if (ret != RDB_NOT_FOUND) {
+                tbp->var.ungroup.attr)), tplp, ecp, txp, resultp);
+        if (ret != RDB_OK || *resultp) {
             /* Found or Error */
             break;
         }
     }
-    if (ret != RDB_OK && ret != RDB_NOT_FOUND) {
+    if (ret != RDB_OK) {
         _RDB_handle_syserr(txp, ret);
         goto error;
     }
@@ -216,7 +216,7 @@ error:
 
 static int
 wrap_contains(RDB_table *tbp, const RDB_object *tplp, RDB_exec_context *ecp,
-        RDB_transaction *txp)
+        RDB_transaction *txp, RDB_bool *resultp)
 {
     int ret;
     RDB_object tpl;
@@ -234,14 +234,14 @@ wrap_contains(RDB_table *tbp, const RDB_object *tplp, RDB_exec_context *ecp,
         return ret;
     }
 
-    ret = RDB_table_contains(tbp->var.wrap.tbp, &tpl, ecp, txp);
+    ret = RDB_table_contains(tbp->var.wrap.tbp, &tpl, ecp, txp, resultp);
     RDB_destroy_obj(&tpl, ecp);
     return ret;
 }
 
 static int
 unwrap_contains(RDB_table *tbp, const RDB_object *tplp, RDB_exec_context *ecp,
-        RDB_transaction *txp)
+        RDB_transaction *txp, RDB_bool *resultp)
 {
     int ret;
     RDB_object tpl;
@@ -259,27 +259,27 @@ unwrap_contains(RDB_table *tbp, const RDB_object *tplp, RDB_exec_context *ecp,
         return ret;
     }
 
-    ret = RDB_table_contains(tbp->var.unwrap.tbp, &tpl, ecp, txp);
+    ret = RDB_table_contains(tbp->var.unwrap.tbp, &tpl, ecp, txp, resultp);
     RDB_destroy_obj(&tpl, ecp);
     return ret;
 }
 
 static int
 sdivide_contains(RDB_table *tbp, const RDB_object *tplp, RDB_exec_context *ecp,
-        RDB_transaction *txp)
+        RDB_transaction *txp, RDB_bool *resultp)
 {
     int ret;
 
-    ret = RDB_table_contains(tbp->var.sdivide.tb1p, tplp, ecp, txp);
-    if (ret != RDB_OK)
+    ret = RDB_table_contains(tbp->var.sdivide.tb1p, tplp, ecp, txp, resultp);
+    if (ret != RDB_OK || !*resultp)
         return ret;
 
-    return _RDB_sdivide_preserves(tbp, tplp, NULL, ecp, txp);
+    return _RDB_sdivide_preserves(tbp, tplp, NULL, ecp, txp, resultp);
 }
 
 static int
 stored_contains(RDB_table *tbp, const RDB_object *tplp, RDB_exec_context *ecp,
-        RDB_transaction *txp)
+        RDB_transaction *txp, RDB_bool *resultp)
 {
     int i;
     int ret;
@@ -289,7 +289,8 @@ stored_contains(RDB_table *tbp, const RDB_object *tplp, RDB_exec_context *ecp,
 
     if (tbp->stp == NULL) {
         /* Physical table representation has not been created, so table is empty */
-        return RDB_NOT_FOUND;
+        *resultp = RDB_FALSE;
+        return RDB_OK;
     }
 
     fvp = malloc(sizeof(RDB_field) * attrcount);
@@ -330,6 +331,12 @@ stored_contains(RDB_table *tbp, const RDB_object *tplp, RDB_exec_context *ecp,
     ret = RDB_contains_rec(tbp->stp->recmapp, fvp,
             tbp->is_persistent ? txp->txid : NULL);
     free(fvp);
+    if (ret == RDB_OK) {
+        *resultp = RDB_TRUE;
+    } else if (ret == RDB_NOT_FOUND) {
+        *resultp = RDB_FALSE;
+        ret = RDB_OK;
+    } /* else !! */
     if (RDB_is_syserr(ret)) {
         RDB_errmsg(txp->dbp->dbrootp->envp, RDB_strerror(ret));
         _RDB_handle_syserr(txp, ret);
@@ -339,61 +346,76 @@ stored_contains(RDB_table *tbp, const RDB_object *tplp, RDB_exec_context *ecp,
 
 int
 RDB_table_contains(RDB_table *tbp, const RDB_object *tplp, RDB_exec_context *ecp,
-        RDB_transaction *txp)
+        RDB_transaction *txp, RDB_bool *resultp)
 {
     int ret;
-    RDB_bool b;
 
     if (txp != NULL && !RDB_tx_is_running(txp))
         return RDB_INVALID_TRANSACTION;
 
     switch (tbp->kind) {
         case RDB_TB_REAL:
-            return stored_contains(tbp, tplp, ecp, txp);
+            return stored_contains(tbp, tplp, ecp, txp, resultp);
         case RDB_TB_SELECT:
-            ret = RDB_evaluate_bool(tbp->var.select.exp, tplp, ecp, txp, &b);
+            ret = RDB_evaluate_bool(tbp->var.select.exp, tplp, ecp, txp,
+                    resultp);
             if (ret != RDB_OK)
                 return ret;
-            if (!b)
-                return RDB_NOT_FOUND;
-            return RDB_table_contains(tbp->var.select.tbp, tplp, ecp, txp);
+            if (!*resultp)
+                return RDB_OK;
+            return RDB_table_contains(tbp->var.select.tbp, tplp, ecp, txp,
+                    resultp);
         case RDB_TB_UNION:
-            ret = RDB_table_contains(tbp->var._union.tb1p, tplp, ecp, txp);
-            if (ret == RDB_OK)
+            ret = RDB_table_contains(tbp->var._union.tb1p, tplp, ecp, txp,
+                    resultp);
+            if (ret == RDB_OK && *resultp)
                 return RDB_OK;
-            return RDB_table_contains(tbp->var._union.tb2p, tplp, ecp, txp);
+            return RDB_table_contains(tbp->var._union.tb2p, tplp, ecp, txp,
+                    resultp);
         case RDB_TB_MINUS:
-            ret = RDB_table_contains(tbp->var.minus.tb1p, tplp, ecp, txp);
+            ret = RDB_table_contains(tbp->var.minus.tb1p, tplp, ecp, txp,
+                    resultp);
             if (ret != RDB_OK)
                 return ret;
-            ret = RDB_table_contains(tbp->var.minus.tb2p, tplp, ecp, txp);
-            if (ret == RDB_OK)
-                return RDB_NOT_FOUND;
-            if (ret == RDB_NOT_FOUND)
+            if (!*resultp)
                 return RDB_OK;
-            return ret;
+            ret = RDB_table_contains(tbp->var.minus.tb2p, tplp, ecp, txp,
+                    resultp);
+            if (ret != RDB_OK)
+                return RDB_ERROR;
+            *resultp = !*resultp;
+            return RDB_OK;
         case RDB_TB_INTERSECT:
-            ret = RDB_table_contains(tbp->var.intersect.tb1p, tplp, ecp, txp);
+            ret = RDB_table_contains(tbp->var.intersect.tb1p, tplp, ecp, txp,
+                    resultp);
             if (ret != RDB_OK)
-                return ret;
-            return RDB_table_contains(tbp->var.intersect.tb2p, tplp, ecp, txp);
+                return RDB_ERROR;
+            if (!*resultp) {
+                return RDB_OK;
+            }
+            return RDB_table_contains(tbp->var.intersect.tb2p, tplp, ecp, txp,
+                    resultp);
         case RDB_TB_JOIN:
-            ret = RDB_table_contains(tbp->var.join.tb1p, tplp, ecp, txp);
+            ret = RDB_table_contains(tbp->var.join.tb1p, tplp, ecp, txp,
+                    resultp);
             if (ret != RDB_OK)
-                return ret;
-            return RDB_table_contains(tbp->var.join.tb2p, tplp, ecp, txp);
+                return RDB_ERROR;
+            if (!*resultp) {
+                return RDB_OK;
+            }
+            return RDB_table_contains(tbp->var.join.tb2p, tplp, ecp, txp,
+                    resultp);
         case RDB_TB_EXTEND:
-            return RDB_table_contains(tbp->var.extend.tbp, tplp, ecp, txp);
+            return RDB_table_contains(tbp->var.extend.tbp, tplp, ecp, txp,
+                    resultp);
         case RDB_TB_PROJECT:
-            return project_contains(tbp, tplp, ecp, txp);
+            return project_contains(tbp, tplp, ecp, txp, resultp);
         case RDB_TB_SUMMARIZE:
         case RDB_TB_GROUP:
             /*
              * Create qresult and check if it contains the tuple
              */
             {
-                int ret2;
-
                 RDB_qresult *qrp;
                 ret = _RDB_table_qresult(tbp, ecp, txp, &qrp);
                 if (ret != RDB_OK) {
@@ -403,15 +425,14 @@ RDB_table_contains(RDB_table *tbp, const RDB_object *tplp, RDB_exec_context *ecp
                     return ret;
                 }
 
-                ret2 = _RDB_qresult_contains(qrp, tplp, ecp, txp);
-                if (ret2 != RDB_OK && ret2 != RDB_NOT_FOUND
-                        && ret2 != RDB_INVALID_ARGUMENT) {
+                ret = _RDB_qresult_contains(qrp, tplp, ecp, txp, resultp);
+                if (ret != RDB_OK) {
                     _RDB_drop_qresult(qrp, ecp, txp);
                     RDB_errmsg(txp->dbp->dbrootp->envp,
                             "_RDB_qresult_contains() failed: %s",
-                            RDB_strerror(ret2));
-                    _RDB_handle_syserr(txp, ret2);
-                    return ret2;
+                            RDB_strerror(ret));
+                    _RDB_handle_syserr(txp, ret);
+                    return RDB_ERROR;
                 }
 
                 ret = _RDB_drop_qresult(qrp, ecp, txp);
@@ -421,18 +442,18 @@ RDB_table_contains(RDB_table *tbp, const RDB_object *tplp, RDB_exec_context *ecp
                     _RDB_handle_syserr(txp, ret);
                     return ret;
                 }
-                return ret2;
+                return RDB_OK;
             }
         case RDB_TB_UNGROUP:
-            return ungroup_contains(tbp, tplp, ecp, txp);
+            return ungroup_contains(tbp, tplp, ecp, txp, resultp);
         case RDB_TB_RENAME:
-            return rename_contains(tbp, tplp, ecp, txp);
+            return rename_contains(tbp, tplp, ecp, txp, resultp);
         case RDB_TB_WRAP:
-            return wrap_contains(tbp, tplp, ecp, txp);
+            return wrap_contains(tbp, tplp, ecp, txp, resultp);
         case RDB_TB_UNWRAP:
-            return unwrap_contains(tbp, tplp, ecp, txp);;
+            return unwrap_contains(tbp, tplp, ecp, txp, resultp);
         case RDB_TB_SDIVIDE:
-            return sdivide_contains(tbp, tplp, ecp, txp);
+            return sdivide_contains(tbp, tplp, ecp, txp, resultp);
     }
     /* should never be reached */
     abort();

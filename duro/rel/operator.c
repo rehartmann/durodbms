@@ -1120,16 +1120,14 @@ RDB_call_ro_op(const char *name, int argc, RDB_object *argv[],
         }
     } else if (argc == 2 && obj_is_table(argv[1])) {
         if (strcmp(name, "IN") == 0) {
-            ret = RDB_table_contains(argv[1]->var.tbp, argv[0], ecp, txp);
-            if (ret == RDB_OK) {
-                RDB_bool_to_obj(retvalp, RDB_TRUE);
-                return RDB_OK;
-            } else if (ret == RDB_NOT_FOUND) {
-                RDB_bool_to_obj(retvalp, RDB_FALSE);
-                return RDB_OK;
-            } else {
+            RDB_bool b;
+
+            ret = RDB_table_contains(argv[1]->var.tbp, argv[0], ecp, txp, &b);
+            if (ret != RDB_OK)
                 return ret;
-            }
+
+            RDB_bool_to_obj(retvalp, b);
+            return RDB_OK;
         } else if (strcmp(name, "SUBSET_OF") == 0) {
             RDB_bool res;
 

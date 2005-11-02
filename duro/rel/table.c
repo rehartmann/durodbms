@@ -975,18 +975,23 @@ RDB_table_is_empty(RDB_table *tbp, RDB_exec_context *ecp,
 
     RDB_init_obj(&tpl);
 
-    ret = _RDB_next_tuple(qrp, &tpl, ecp, txp);
-    if (ret == RDB_OK)
+    /*
+     * Read first tuple
+     */
+    if (_RDB_next_tuple(qrp, &tpl, ecp, txp) != RDB_OK) {
+        if (RDB_obj_type(RDB_get_err(ecp)) != &RDB_NOT_FOUND_ERROR) {
+            RDB_destroy_obj(&tpl, ecp);
+            _RDB_drop_qresult(qrp, ecp, txp);
+            RDB_drop_table(ntbp, ecp, txp);
+            _RDB_handle_syserr(txp, ret);
+            return RDB_ERROR;
+        }
+        RDB_clear_err(ecp);
         *resultp = RDB_FALSE;
-    else if (ret == RDB_NOT_FOUND)
+    } else {
         *resultp = RDB_TRUE;
-    else {
-        RDB_destroy_obj(&tpl, ecp);
-        _RDB_drop_qresult(qrp, ecp, txp);
-        RDB_drop_table(ntbp, ecp, txp);
-        _RDB_handle_syserr(txp, ret);
-        return ret;
     }
+
     RDB_destroy_obj(&tpl, ecp);
     ret = _RDB_drop_qresult(qrp, ecp, txp);
     if (ret != RDB_OK) {
@@ -1089,16 +1094,15 @@ RDB_subset(RDB_table *tb1p, RDB_table *tb2p, RDB_exec_context *ecp,
 
     *resultp = RDB_TRUE;
     while ((ret = _RDB_next_tuple(qrp, &tpl, ecp, txp)) == RDB_OK) {
-        ret = RDB_table_contains(tb2p, &tpl, ecp, txp);
-        if (ret == RDB_NOT_FOUND) {
-            *resultp = RDB_FALSE;
-            break;
-        }
+        ret = RDB_table_contains(tb2p, &tpl, ecp, txp, resultp);
         if (ret != RDB_OK) {
             _RDB_handle_syserr(txp, ret);
             RDB_destroy_obj(&tpl, ecp);
             _RDB_drop_qresult(qrp, ecp, txp);
             goto error;
+        }
+        if (!*resultp) {
+            break;
         }
     }
 
@@ -1158,13 +1162,13 @@ RDB_table_equals(RDB_table *tb1p, RDB_table *tb2p, RDB_exec_context *ecp,
 
     RDB_init_obj(&tpl);
     while ((ret = _RDB_next_tuple(qrp, &tpl, ecp, txp)) == RDB_OK) {
-        ret = RDB_table_contains(tb2p, &tpl, ecp, txp);
-        if (ret == RDB_NOT_FOUND) {
-            *resp = RDB_FALSE;
+        ret = RDB_table_contains(tb2p, &tpl, ecp, txp, resp);
+        if (ret != RDB_OK) {
+            goto error;
+        }
+        if (!*resp) {
             RDB_destroy_obj(&tpl, ecp);
             return _RDB_drop_qresult(qrp, ecp, txp);
-        } else if (ret != RDB_OK) {
-            goto error;
         }
     }
 

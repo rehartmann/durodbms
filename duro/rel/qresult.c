@@ -1855,7 +1855,8 @@ destroy_qresult(RDB_qresult *qrp, RDB_exec_context *ecp, RDB_transaction *txp)
  */
 int
 _RDB_sdivide_preserves(RDB_table *tbp, const RDB_object *tplp,
-        RDB_qresult *qr3p, RDB_exec_context *ecp, RDB_transaction *txp)
+        RDB_qresult *qr3p, RDB_exec_context *ecp, RDB_transaction *txp,
+        RDB_bool *resultp)
 {
     int ret;
     int i;
@@ -1874,6 +1875,7 @@ _RDB_sdivide_preserves(RDB_table *tbp, const RDB_object *tplp,
     }
 
     for (;;) {
+        RDB_bool b;
         RDB_type *tb1tuptyp = tbp->var.sdivide.tb1p->typ->var.basetyp;
         RDB_bool match = RDB_TRUE;
 
@@ -1916,26 +1918,35 @@ _RDB_sdivide_preserves(RDB_table *tbp, const RDB_object *tplp,
         if (!match)
             continue;
 
-        if (qr3p != NULL)
-            ret = _RDB_qresult_contains(qr3p, &tpl2, ecp, txp);
-        else
-            ret = RDB_table_contains(tbp->var.sdivide.tb3p, &tpl2, ecp, txp);
+        if (qr3p != NULL) {
+            ret = _RDB_qresult_contains(qr3p, &tpl2, ecp, txp, &b);
+        } else {
+            ret = RDB_table_contains(tbp->var.sdivide.tb3p, &tpl2, ecp, txp,
+                    &b);
+        }
         RDB_destroy_obj(&tpl2, ecp);
-        if (ret != RDB_OK) {
+        if (ret != RDB_OK)
+            return RDB_ERROR;
+        if (!b) {
             matchall = RDB_FALSE;
             break;
         }
     }
-    if (ret != RDB_NOT_FOUND) {
+    if (ret != RDB_OK) {
         destroy_qresult(&qr, ecp, txp);
         return ret;
     }
+    if (RDB_obj_type(RDB_get_err(ecp)) != &RDB_NOT_FOUND_ERROR) {
+        return RDB_ERROR;
+    }
+    RDB_clear_err(ecp);
     
     ret = destroy_qresult(&qr, ecp, txp);
     if (ret != RDB_OK)
         return ret;
 
-    return matchall ? RDB_OK : RDB_NOT_FOUND;
+    *resultp = matchall;
+    return RDB_OK;
 }
 
 static int
@@ -1943,6 +1954,7 @@ next_sdivide_tuple(RDB_qresult *qrp, RDB_object *tplp, RDB_exec_context *ecp,
         RDB_transaction *txp)
 {
     int ret;
+    RDB_bool b;
 
     do {
         ret = _RDB_next_tuple(qrp->var.virtual.qrp, tplp, ecp, txp);
@@ -1951,11 +1963,10 @@ next_sdivide_tuple(RDB_qresult *qrp, RDB_object *tplp, RDB_exec_context *ecp,
         }
 
         ret = _RDB_sdivide_preserves(qrp->tbp, tplp, qrp->var.virtual.qr2p,
-                ecp, txp);
-        if (ret != RDB_OK && ret != RDB_NOT_FOUND)
+                ecp, txp, &b);
+        if (ret != RDB_OK)
             return ret;
-
-    } while (ret == RDB_NOT_FOUND);
+    } while (!b);
 
     return RDB_OK;
 }
@@ -1984,6 +1995,7 @@ _RDB_next_tuple(RDB_qresult *qrp, RDB_object *tplp, RDB_exec_context *ecp,
         RDB_transaction *txp)
 {
     int ret;
+    RDB_bool b;
     RDB_table *tbp = qrp->tbp;
 
     if (qrp->endreached) {
@@ -2042,11 +2054,11 @@ _RDB_next_tuple(RDB_qresult *qrp, RDB_object *tplp, RDB_exec_context *ecp,
                     if (ret != RDB_OK)
                         return ret;
                     ret = _RDB_qresult_contains(qrp->var.virtual.qr2p, tplp,
-                            ecp, txp);
-                    if (ret != RDB_OK && ret != RDB_NOT_FOUND) {
+                            ecp, txp, &b);
+                    if (ret != RDB_OK) {
                         return ret;
                     }
-                } while (ret == RDB_OK);
+                } while (b);
                 break;
             case RDB_TB_INTERSECT:
                 do {
@@ -2054,11 +2066,11 @@ _RDB_next_tuple(RDB_qresult *qrp, RDB_object *tplp, RDB_exec_context *ecp,
                     if (ret != RDB_OK)
                         return ret;
                     ret = _RDB_qresult_contains(qrp->var.virtual.qr2p, tplp,
-                            ecp, txp);
-                    if (ret != RDB_OK && ret != RDB_NOT_FOUND) {
+                            ecp, txp, &b);
+                    if (ret != RDB_OK) {
                         return ret;
                     }
-                } while (ret == RDB_NOT_FOUND);
+                } while (!b);
                 break;
             case RDB_TB_JOIN:
                 if (tbp->var.join.tb2p->kind != RDB_TB_PROJECT
@@ -2191,7 +2203,7 @@ _RDB_reset_qresult(RDB_qresult *qrp, RDB_exec_context *ecp, RDB_transaction *txp
 
 int
 _RDB_qresult_contains(RDB_qresult *qrp, const RDB_object *tplp,
-                      RDB_exec_context *ecp, RDB_transaction *txp)
+        RDB_exec_context *ecp, RDB_transaction *txp, RDB_bool *resultp)
 {
     int i;
     int ret;
@@ -2201,7 +2213,7 @@ _RDB_qresult_contains(RDB_qresult *qrp, const RDB_object *tplp,
     RDB_object tpl;
 
     if (qrp->tbp->kind != RDB_TB_SUMMARIZE && qrp->tbp->kind != RDB_TB_GROUP)
-        return RDB_table_contains(qrp->tbp, tplp, ecp, txp);
+        return RDB_table_contains(qrp->tbp, tplp, ecp, txp, resultp);
 
     /*
      * Check if the table contains the tuple by
@@ -2222,7 +2234,7 @@ _RDB_qresult_contains(RDB_qresult *qrp, const RDB_object *tplp,
 
         if (attrobjp == NULL) {
             ret = RDB_INVALID_ARGUMENT;
-            goto error;
+            goto cleanup;
         }
         objpv[i] = attrobjp;
     }
@@ -2230,7 +2242,7 @@ _RDB_qresult_contains(RDB_qresult *qrp, const RDB_object *tplp,
     ret = _RDB_get_by_uindex(qrp->matp, objpv, &qrp->matp->stp->indexv[0],
             qrp->matp->typ->var.basetyp, ecp, txp, &tpl);
     if (ret != RDB_OK) /* handles RDB_NOT_FOUND too */
-        goto error;
+        goto cleanup;
 
     if (qrp->tbp->kind == RDB_TB_SUMMARIZE) {
         /* compare ADD attributes */
@@ -2240,28 +2252,28 @@ _RDB_qresult_contains(RDB_qresult *qrp, const RDB_object *tplp,
             ret = RDB_obj_equals(RDB_tuple_get(tplp, attrname),
                     RDB_tuple_get(&tpl, attrname), ecp, txp, &b);
             if (ret != RDB_OK)
-                goto error;
+                goto cleanup;
             if (!b) {
                 ret = RDB_NOT_FOUND;
-                goto error;
+                goto cleanup;
             }
         }
     } else {
         char *attrname = qrp->tbp->var.group.gattr;
 
         ret = RDB_obj_equals(RDB_tuple_get(tplp, attrname),
-                RDB_tuple_get(&tpl, attrname), ecp, txp, &b);
-        if (ret != RDB_OK)
-            goto error;
-        if (!b) {
-            ret = RDB_NOT_FOUND;
-            goto error;
+                RDB_tuple_get(&tpl, attrname), ecp, txp, resultp);
+        if (ret != RDB_OK) {
+            goto cleanup;
+        }
+        if (!*resultp) {
+            goto cleanup;
         }
     }
 
     ret = RDB_OK;
 
-error:
+cleanup:
     RDB_destroy_obj(&tpl, ecp);
     free(objpv);
     

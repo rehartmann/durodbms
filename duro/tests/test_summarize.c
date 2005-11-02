@@ -50,6 +50,7 @@ check_contains(RDB_table *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
 {
     int ret;
     RDB_object tpl;
+    RDB_bool b;
 
     RDB_init_obj(&tpl);
     
@@ -59,28 +60,30 @@ check_contains(RDB_table *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
     RDB_tuple_set_rational(&tpl, "AVG_SALARY", 4050);
 
     printf("Calling RDB_table_contains()...");
-    ret = RDB_table_contains(tbp, &tpl, ecp, txp);
+    ret = RDB_table_contains(tbp, &tpl, ecp, txp, &b);
     
-    if (ret == RDB_OK) {
-        puts("Yes - OK");
-    } else if (ret == RDB_NOT_FOUND) {
-        puts("Not found");
-    } else {
+    if (ret != RDB_OK) {
         puts(RDB_strerror(ret));
         return ret;
+    }    
+    if (b) {
+        puts("Yes - OK");
+    } else {
+        puts("Not found");
     }
 
     RDB_tuple_set_rational(&tpl, "SUM_SALARY", 4100);
     printf("Calling RDB_table_contains()...");
-    ret = RDB_table_contains(tbp, &tpl, ecp, txp);
+    ret = RDB_table_contains(tbp, &tpl, ecp, txp, &b);
     
-    if (ret == RDB_OK) {
-        puts("Yes");
-    } else if (ret == RDB_NOT_FOUND) {
-        puts("Not found - OK");
-    } else {
+    if (ret != RDB_OK) {
         puts(RDB_strerror(ret));
         return ret;
+    }
+    if (b) {
+        puts("Yes - OK");
+    } else {
+        puts("Not found");
     }
 
     return RDB_OK;

@@ -661,15 +661,10 @@ RDB_avg(RDB_table *tbp, const char *attrname, RDB_exec_context *,
 /*
  * Check if the table pointed to by tbp contains the tuple
  * pointed to by tplp.
- *
- * Return value:
- * RDB_OK	the table contains the tuple
- * RDB_NOT_FOUND the table does not cointain the tuple
- * Other	a system error occured.
  */
 int
-RDB_table_contains(RDB_table *, const RDB_object *, RDB_exec_context *,
-        RDB_transaction *);
+RDB_table_contains(RDB_table *tbp, const RDB_object *tplp, RDB_exec_context *,
+        RDB_transaction *, RDB_bool *resultp);
 
 int
 RDB_table_equals(RDB_table *, RDB_table *, RDB_exec_context *,

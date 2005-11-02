@@ -51,6 +51,7 @@ test_rename(RDB_database *dbp, RDB_exec_context *ecp)
     RDB_table *tbp, *vtbp;
     RDB_object tpl;
     int ret;
+    RDB_bool b;
 
     printf("Starting transaction\n");
     ret = RDB_begin_tx(&tx, dbp, NULL);
@@ -89,10 +90,10 @@ test_rename(RDB_database *dbp, RDB_exec_context *ecp)
     if (ret != RDB_OK)
         goto error;
 
-    ret = RDB_table_contains(vtbp, &tpl, ecp, &tx);
+    ret = RDB_table_contains(vtbp, &tpl, ecp, &tx, &b);
     printf("Result of RDB_table_contains(): %d %s\n", ret, RDB_strerror(ret));
 
-    if (ret != RDB_OK && ret != RDB_NOT_FOUND) {
+    if (ret != RDB_OK) {
         goto error;
     }
 

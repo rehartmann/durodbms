@@ -406,6 +406,7 @@ table_contains_cmd(TclState *statep, Tcl_Interp *interp, int objc,
     int i;
     RDB_object tpl;
     RDB_type *typ;
+    RDB_bool b;
 
     if (objc != 5) {
         Tcl_WrongNumArgs(interp, 2, objv, "tablename tuple tx");
@@ -467,13 +468,10 @@ table_contains_cmd(TclState *statep, Tcl_Interp *interp, int objc,
         RDB_destroy_obj(&obj, statep->current_ecp);
     }
 
-    ret = RDB_table_contains(tbp, &tpl, statep->current_ecp, txp);
+    ret = RDB_table_contains(tbp, &tpl, statep->current_ecp, txp, &b);
     if (ret == RDB_OK) {
-        Tcl_SetObjResult(interp, Tcl_NewBooleanObj(1));
+        Tcl_SetObjResult(interp, Tcl_NewBooleanObj(b));
         ret = TCL_OK;        
-    } else if (ret == RDB_NOT_FOUND) {
-        Tcl_SetObjResult(interp, Tcl_NewBooleanObj(0));
-        ret = TCL_OK;
     } else {
         Duro_dberror(interp, statep->current_ecp, txp);
         ret = TCL_ERROR;
