@@ -207,8 +207,10 @@ RDB_drop_table_index(const char *name, RDB_exec_context *ecp,
     char *tbname;
     RDB_table *tbp;
 
-    if (!_RDB_legal_name(name))
-        return RDB_NOT_FOUND;
+    if (!_RDB_legal_name(name)) {
+        RDB_raise_not_found("invalid index name", ecp);
+        return RDB_ERROR;
+    }
 
     ret = _RDB_cat_index_tablename(name, &tbname, ecp, txp);
     if (ret != RDB_OK)
@@ -470,8 +472,10 @@ _RDB_move_tuples(RDB_table *dstp, RDB_table *srcp, RDB_exec_context *ecp,
             goto cleanup;
         }
     }
-    if (ret == RDB_NOT_FOUND)
+    if (RDB_obj_type(RDB_get_err(ecp)) == &RDB_NOT_FOUND_ERROR) {
+        RDB_clear_err(ecp);
         ret = RDB_OK;
+    }
 
 cleanup:
     _RDB_drop_qresult(qrp, ecp, txp);
@@ -882,7 +886,7 @@ int
 RDB_extract_tuple(RDB_table *tbp, RDB_exec_context *ecp,
         RDB_transaction *txp, RDB_object *tplp)
 {
-    int ret, ret2;
+    int ret;
     RDB_qresult *qrp;
     RDB_object tpl;
     RDB_table *ntbp;
@@ -919,22 +923,16 @@ RDB_extract_tuple(RDB_table *tbp, RDB_exec_context *ecp,
         goto cleanup;
     }
     RDB_clear_err(ecp);
-    ret = RDB_OK;
 
 cleanup:
     RDB_destroy_obj(&tpl, ecp);
 
-    ret2 = _RDB_drop_qresult(qrp, ecp, txp);
-    if (ret == RDB_OK)
-        ret = ret2;
+    _RDB_drop_qresult(qrp, ecp, txp);
     if (ntbp->kind != RDB_TB_REAL) {
-        ret2 = RDB_drop_table(ntbp, ecp, txp);
-        if (ret2 != RDB_OK)
-            ret = ret2;
+        RDB_drop_table(ntbp, ecp, txp);
     }
     _RDB_handle_syserr(txp, ret);
-    _RDB_handle_syserr(txp, ret2);
-    return ret;
+    return RDB_get_err(ecp) == NULL ? RDB_OK : RDB_ERROR;
 }
 
 int
@@ -1041,10 +1039,11 @@ RDB_cardinality(RDB_table *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
         count++;
     }
     RDB_destroy_obj(&tpl, ecp);
-    if (ret != RDB_NOT_FOUND) {
+    if (RDB_obj_type(RDB_get_err(ecp)) != &RDB_NOT_FOUND_ERROR) {
         _RDB_drop_qresult(qrp, ecp, txp);
         goto error;
     }
+    RDB_clear_err(ecp);
 
     ret = _RDB_drop_qresult(qrp, ecp, txp);
     if (ret != RDB_OK)

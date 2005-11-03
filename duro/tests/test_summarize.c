@@ -69,7 +69,7 @@ check_contains(RDB_table *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
     if (b) {
         puts("Yes - OK");
     } else {
-        puts("Not found");
+        puts("No");
     }
 
     RDB_tuple_set_rational(&tpl, "SUM_SALARY", 4100);
@@ -81,9 +81,9 @@ check_contains(RDB_table *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
         return ret;
     }
     if (b) {
-        puts("Yes - OK");
+        puts("Yes");
     } else {
-        puts("Not found");
+        puts("No - OK");
     }
 
     return RDB_OK;

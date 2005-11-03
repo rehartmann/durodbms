@@ -95,7 +95,7 @@ test_table(RDB_database *dbp, RDB_exec_context *ecp)
         goto error;
     }
     RDB_clear_err(ecp);
-    printf("Return code: %s - OK\n", RDB_strerror(ret));
+    printf("Error: type mismatch - OK\n");
 
     printf("Trying to create TINYINT from INTEGER=200\n");
 
@@ -109,11 +109,11 @@ test_table(RDB_database *dbp, RDB_exec_context *ecp)
     }
     errtyp = RDB_obj_type(RDB_get_err(ecp));
     if (errtyp != &RDB_TYPE_CONSTRAINT_VIOLATION_ERROR) {
-        fprintf(stderr, "Wrong error type1: %s\n", RDB_type_name(errtyp));
+        fprintf(stderr, "Wrong error type: %s\n", RDB_type_name(errtyp));
         goto error;
     }
     RDB_clear_err(ecp);
-    printf("Return code: %s - OK\n", RDB_strerror(ret));
+    printf("Error: type constraint violation - OK\n");
 
     printf("Creating TINYINT from INTEGER=99\n");
 
@@ -136,7 +136,7 @@ test_table(RDB_database *dbp, RDB_exec_context *ecp)
     }
     errtyp = RDB_obj_type(RDB_get_err(ecp));
     if (errtyp != &RDB_TYPE_CONSTRAINT_VIOLATION_ERROR) {
-        fprintf(stderr, "Wrong error type2: %s\n", RDB_type_name(errtyp));
+        fprintf(stderr, "Wrong error type: %s\n", RDB_type_name(errtyp));
         goto error;
     }
     RDB_clear_err(ecp);
@@ -230,7 +230,7 @@ test_drop(RDB_database *dbp, RDB_exec_context *ecp)
             return RDB_ERROR;
         }
     }
-    printf("Return code: %s - OK\n", RDB_strerror(ret));
+    printf("Error: not found - OK\n");
 
     printf("End of transaction\n");
     return RDB_commit(&tx);

@@ -1665,8 +1665,13 @@ next_select_index(RDB_qresult *qrp, RDB_object *tplp, RDB_exec_context *ecp,
         ret = _RDB_get_by_uindex(qrp->tbp->var.select.tbp->var.project.tbp,
                 qrp->tbp->var.select.objpv, indexp,
                 qrp->tbp->typ->var.basetyp, ecp, txp, tplp);
-        if (ret != RDB_OK)
-            return ret;
+        if (ret != RDB_OK) {
+            if (ret == RDB_NOT_FOUND) {
+                RDB_raise_not_found("no tuple", ecp);
+            }
+            /* !! handle other errs */
+            return RDB_ERROR;
+        }
 
         qrp->endreached = RDB_TRUE;
     } else {
@@ -2207,7 +2212,6 @@ _RDB_qresult_contains(RDB_qresult *qrp, const RDB_object *tplp,
 {
     int i;
     int ret;
-    RDB_bool b;
     RDB_object **objpv;
     int kattrc;
     RDB_object tpl;
@@ -2241,8 +2245,15 @@ _RDB_qresult_contains(RDB_qresult *qrp, const RDB_object *tplp,
         
     ret = _RDB_get_by_uindex(qrp->matp, objpv, &qrp->matp->stp->indexv[0],
             qrp->matp->typ->var.basetyp, ecp, txp, &tpl);
-    if (ret != RDB_OK) /* handles RDB_NOT_FOUND too */
+    if (ret != RDB_OK) {
+        if (ret == RDB_NOT_FOUND) {
+            *resultp = RDB_FALSE;
+            ret = RDB_OK;
+        } else {
+            /* !! raise error */
+        }
         goto cleanup;
+    }
 
     if (qrp->tbp->kind == RDB_TB_SUMMARIZE) {
         /* compare ADD attributes */
@@ -2250,11 +2261,8 @@ _RDB_qresult_contains(RDB_qresult *qrp, const RDB_object *tplp,
             char *attrname = qrp->tbp->var.summarize.addv[i].name;
 
             ret = RDB_obj_equals(RDB_tuple_get(tplp, attrname),
-                    RDB_tuple_get(&tpl, attrname), ecp, txp, &b);
-            if (ret != RDB_OK)
-                goto cleanup;
-            if (!b) {
-                ret = RDB_NOT_FOUND;
+                    RDB_tuple_get(&tpl, attrname), ecp, txp, resultp);
+            if (ret != RDB_OK || !*resultp) {
                 goto cleanup;
             }
         }
@@ -2266,7 +2274,7 @@ _RDB_qresult_contains(RDB_qresult *qrp, const RDB_object *tplp,
         if (ret != RDB_OK) {
             goto cleanup;
         }
-        if (!*resultp) {
+        if (!*resultp) { /* !! superfluous? */
             goto cleanup;
         }
     }

@@ -13,7 +13,7 @@ COUNT_EMPS: 2
 SUM_SALARY: 8100.000000
 AVG_SALARY: 4050.000000
 Calling RDB_table_contains()...Yes - OK
-Calling RDB_table_contains()...Not found - OK
+Calling RDB_table_contains()...No - OK
 Dropping summarize
 End of transaction
 Closing environment

@@ -571,16 +571,16 @@ _RDB_get_ro_op(const char *name, int argc, RDB_type *argtv[],
     /*
      * Operator was not found in map, so read from catalog
      */
-    ret = _RDB_cat_get_ro_op(name, argc, argtv, ecp, txp, opp);
-    if (ret != RDB_OK) {
-        if (ret == RDB_NOT_FOUND) {
+    if (_RDB_cat_get_ro_op(name, argc, argtv, ecp, txp, opp) != RDB_OK) {
+        if (RDB_obj_type(RDB_get_err(ecp)) == &RDB_NOT_FOUND_ERROR) {
+            RDB_clear_err(ecp);
             if (typmismatch) {
                 RDB_raise_type_mismatch("", ecp);
             } else {
                 RDB_raise_operator_not_found("", ecp);
             }
         }
-        return ret;
+        return RDB_ERROR;
     }
     
     /* Insert operator into map */
@@ -1327,7 +1327,7 @@ RDB_drop_op(const char *name, RDB_exec_context *ecp, RDB_transaction *txp)
         RDB_upd_op *op = NULL;
 
         /* Delete all versions of update operator from hashmap */
-        oldop = RDB_hashmap_get(&txp->dbp->dbrootp->ro_opmap, name);
+        oldop = RDB_hashmap_get(&txp->dbp->dbrootp->upd_opmap, name);
         if (oldop != NULL)
             _RDB_free_upd_ops(oldop, ecp);
         ret = RDB_hashmap_put(&txp->dbp->dbrootp->upd_opmap, name, op);
