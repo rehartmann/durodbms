@@ -601,7 +601,7 @@ delete_rtable(RDB_table *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
 {
     int ret;
     RDB_expression *exprp = RDB_eq(RDB_expr_attr("TABLENAME"),
-                   RDB_string_to_expr(tbp->name));
+            RDB_string_to_expr(tbp->name));
     if (exprp == NULL) {
         return RDB_NO_MEMORY;
     }

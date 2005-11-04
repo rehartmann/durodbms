@@ -117,7 +117,8 @@ main(void)
     }
 
     ret = test_callop(dbp, &ec);
-    if (ret == RDB_OPERATOR_NOT_FOUND) {
+    if (ret == RDB_ERROR
+            && RDB_obj_type(RDB_get_err(&ec)) == &RDB_OPERATOR_NOT_FOUND_ERROR) {
         printf("Return code: not found - OK\n");
     } else {
         fprintf(stderr, "Wrong return code: %s\n", RDB_strerror(ret));

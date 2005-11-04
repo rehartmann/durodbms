@@ -27,7 +27,8 @@ POINT(const char *name, int argc, RDB_object *compv[],
 
 int
 POINT_set_X(const char *name, int argc, RDB_object *argv[], RDB_bool updv[],
-        const void *iargp, size_t iarglen, RDB_transaction *txp)
+        const void *iargp, size_t iarglen, RDB_exec_context *ecp,
+        RDB_transaction *txp)
 {
     i_point *iptp = RDB_obj_irep(argv[0], NULL);
 
@@ -38,8 +39,8 @@ POINT_set_X(const char *name, int argc, RDB_object *argv[], RDB_bool updv[],
 
 int
 POINT_get_X(const char *name, int argc, RDB_object *argv[],
-        const void *iargp, size_t iarglen, RDB_transaction *txp,
-        RDB_object *valp)
+        const void *iargp, size_t iarglen, RDB_exec_context *ecp,
+        RDB_transaction *txp, RDB_object *valp)
 {
     i_point *iptp = RDB_obj_irep((RDB_object *) argv[0], NULL);
 
@@ -50,7 +51,8 @@ POINT_get_X(const char *name, int argc, RDB_object *argv[],
 
 int
 POINT_set_Y(const char *name, int argc, RDB_object *argv[], RDB_bool updv[],
-        const void *iargp, size_t iarglen, RDB_transaction *txp)
+        const void *iargp, size_t iarglen, RDB_exec_context *ecp,
+        RDB_transaction *txp)
 {
     i_point *iptp = RDB_obj_irep(argv[0], NULL);
 
@@ -61,8 +63,8 @@ POINT_set_Y(const char *name, int argc, RDB_object *argv[], RDB_bool updv[],
 
 int
 POINT_get_Y(const char *name, int argc, RDB_object *argv[],
-        const void *iargp, size_t iarglen, RDB_transaction *txp,
-        RDB_object *valp)
+        const void *iargp, size_t iarglen, RDB_exec_context *ecp,
+        RDB_transaction *txp, RDB_object *valp)
 {
     i_point *iptp = RDB_obj_irep((RDB_object *) argv[0], NULL);
 
@@ -95,7 +97,8 @@ POLAR(const char *name, int argc, RDB_object *compv[], const void *iargp,
 
 int
 POINT_set_THETA(const char *name, int argc, RDB_object *argv[], RDB_bool updv[],
-        const void *iargp, size_t iarglen, RDB_transaction *txp)
+        const void *iargp, size_t iarglen, RDB_exec_context *ecp,
+        RDB_transaction *txp)
 {
     i_point *iptp = RDB_obj_irep((RDB_object *) argv[0], NULL);
     double len = sqrt(iptp->x * iptp->x + iptp->y * iptp->y);
@@ -109,7 +112,8 @@ POINT_set_THETA(const char *name, int argc, RDB_object *argv[], RDB_bool updv[],
 
 int
 POINT_get_THETA(const char *name, int argc, RDB_object *argv[],
-        const void *iargp, size_t iarglen, RDB_transaction *txp, RDB_object *valp)
+        const void *iargp, size_t iarglen, RDB_exec_context *ecp,
+        RDB_transaction *txp, RDB_object *valp)
 {
     i_point *iptp = RDB_obj_irep((RDB_object *) argv[0], NULL);
 
@@ -121,7 +125,8 @@ POINT_get_THETA(const char *name, int argc, RDB_object *argv[],
 
 int
 POINT_set_LENGTH(const char *name, int argc, RDB_object *argv[], RDB_bool updv[],
-        const void *iargp, size_t iarglen, RDB_transaction *txp)
+        const void *iargp, size_t iarglen, RDB_exec_context *ecp,
+        RDB_transaction *txp)
 {
     i_point *iptp = RDB_obj_irep(argv[0], NULL);
     double len = (double) RDB_obj_rational(argv[1]);
@@ -135,7 +140,8 @@ POINT_set_LENGTH(const char *name, int argc, RDB_object *argv[], RDB_bool updv[]
 
 int
 POINT_get_LENGTH(const char *name, int argc, RDB_object *argv[],
-        const void *iargp, size_t iarglen, RDB_transaction *txp, RDB_object *valp)
+        const void *iargp, size_t iarglen, RDB_exec_context *ecp,
+        RDB_transaction *txp, RDB_object *valp)
 {
     i_point *iptp = RDB_obj_irep((RDB_object *) argv[0], NULL);
 

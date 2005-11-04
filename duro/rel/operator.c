@@ -1158,7 +1158,7 @@ RDB_call_ro_op(const char *name, int argc, RDB_object *argv[],
     free(argtv);
 
     if (ret != RDB_OK) {
-        if (ret == RDB_OPERATOR_NOT_FOUND)
+        if (RDB_obj_type(RDB_get_err(ecp)) == &RDB_OPERATOR_NOT_FOUND_ERROR)
             RDB_errmsg(RDB_tx_env(txp), "operator \"%s\" not found", name);
         goto error;
     }

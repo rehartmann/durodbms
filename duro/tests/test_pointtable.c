@@ -28,9 +28,9 @@ create_table(RDB_database *dbp, RDB_exec_context *ecp)
 
     utype_attrs[0].name = "POINT";
     pointtyp = RDB_get_type("POINT", ecp, &tx);
-    if (ret != RDB_OK) {
+    if (pointtyp == NULL) {
         RDB_rollback(&tx);
-        return ret;
+        return RDB_ERROR;
     }
     utype_attrs[0].typ = pointtyp;
     utype_attrs[0].defaultp = NULL;

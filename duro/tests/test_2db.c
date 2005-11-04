@@ -30,11 +30,11 @@ main(void) {
 
     printf("Creating DB\n");
     dbp = RDB_create_db_from_env("TEST2", envp, &ec);
-    if (ret != RDB_ELEMENT_EXISTS) { /* !! */
-        puts(RDB_strerror(ret));
+    if (dbp != NULL) {
         RDB_destroy_exec_context(&ec);
         return 1;
     }
+    /* !! check for RDB_ELEMENT_EXISTS_ERROR */
     puts("Element exists - OK");
     RDB_destroy_exec_context(&ec);
 

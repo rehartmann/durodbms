@@ -68,6 +68,7 @@ project_contains(RDB_table *tbp, const RDB_object *tplp, RDB_exec_context *ecp,
         _RDB_free_table(seltbp, ecp);
         if (ret != RDB_OK)
             return ret;
+        *resultp = !*resultp;
         return RDB_OK;
     } else {
         /* projection with no attributes */

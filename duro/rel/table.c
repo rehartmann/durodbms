@@ -953,8 +953,9 @@ RDB_table_is_empty(RDB_table *tbp, RDB_exec_context *ecp,
      */
 
     ptbp = RDB_project(tbp, 0, NULL, ecp);
-    if (ptbp == NULL)
-        return /* !! */ RDB_NO_MEMORY;
+    if (ptbp == NULL) {
+        RDB_raise_no_memory(ecp);
+    }
 
     ret = _RDB_optimize(ptbp, 0, NULL, ecp, txp, &ntbp);
 
@@ -985,9 +986,9 @@ RDB_table_is_empty(RDB_table *tbp, RDB_exec_context *ecp,
             return RDB_ERROR;
         }
         RDB_clear_err(ecp);
-        *resultp = RDB_FALSE;
-    } else {
         *resultp = RDB_TRUE;
+    } else {
+        *resultp = RDB_FALSE;
     }
 
     RDB_destroy_obj(&tpl, ecp);

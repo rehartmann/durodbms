@@ -90,12 +90,12 @@ obj_ilen(const RDB_object *objp, size_t *lenp, RDB_exec_context *ecp)
                 *lenp += len;
             }
             RDB_destroy_obj(&tpl, ecp);
-/* !!
-            if (ret != RDB_NOT_FOUND) {
+            if (RDB_obj_type(RDB_get_err(ecp)) == &RDB_NOT_FOUND_ERROR) {
+                RDB_clear_err(ecp);
+            } else {
                 _RDB_drop_qresult(qrp, ecp, NULL);
-                return ret;
+                return RDB_ERROR;
             }
-*/
             ret = _RDB_drop_qresult(qrp, ecp, NULL);
             if (ret != RDB_OK)
                 return ret;

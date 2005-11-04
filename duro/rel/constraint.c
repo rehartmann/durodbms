@@ -114,8 +114,12 @@ _RDB_read_constraints(RDB_exec_context *ecp, RDB_transaction *txp)
         constrp->nextp = dbrootp->first_constrp;
         dbrootp->first_constrp = constrp;
     }
-    if (ret == RDB_NOT_FOUND)
+    if (RDB_obj_type(RDB_get_err(ecp)) == &RDB_NOT_FOUND_ERROR) {
+        RDB_clear_err(ecp);
         ret = RDB_OK;
+    } else {
+        ret = RDB_ERROR;
+    }
 
 cleanup:
     RDB_destroy_obj(&constrs, ecp);
