@@ -167,7 +167,7 @@ table_create_cmd(TclState *statep, Tcl_Interp *interp, int objc,
     
     tbp = RDB_create_table(Tcl_GetStringFromObj(objv[objc - 4], NULL), persistent,
             attrc, attrv, keyc, keyv, statep->current_ecp, txp);
-    if (ret != RDB_OK) {
+    if (tbp == NULL) {
         Duro_dberror(interp, statep->current_ecp, txp);
         ret = TCL_ERROR;
         goto cleanup;

@@ -129,7 +129,7 @@ duro::table create T2 {
    {STRATTR3 STRING}
 } {{STRATTR1} {INTATTR STRATTR2}} $tx
 
-# duro::table rename T T2 $tx
+# !! duro::table rename T T2 $tx
 
 duro::commit $tx
 

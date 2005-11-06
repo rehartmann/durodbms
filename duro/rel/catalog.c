@@ -1456,7 +1456,7 @@ _RDB_cat_get_rtable(const char *name, RDB_exec_context *ecp,
         RDB_int fno;
 
         tplp = RDB_array_get(&arr, i, ecp);
-        if (ret != RDB_OK)
+        if (tplp == NULL)
             goto error;
         fno = RDB_tuple_get_int(tplp, "I_FNO");
         attrv[fno].name = RDB_dup_str(RDB_tuple_get_string(tplp, "ATTRNAME"));
@@ -1545,8 +1545,11 @@ _RDB_cat_get_rtable(const char *name, RDB_exec_context *ecp,
             goto error;
         }
         ret = RDB_extract_tuple(tmptb4p, ecp, txp, &tpl);
-        if (ret != RDB_OK && ret != RDB_NOT_FOUND) {
-            goto error;
+        if (ret != RDB_OK) {
+            if (RDB_obj_type(RDB_get_err(ecp)) != &RDB_NOT_FOUND_ERROR) {
+                goto error;
+            }
+            RDB_clear_err(ecp);
         }
         if (ret == RDB_OK) {
             recmapname = RDB_tuple_get_string(&tpl, "RECMAP");
