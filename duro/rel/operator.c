@@ -329,7 +329,8 @@ obj_equals(const char *name, int argc, RDB_object *argv[],
 
     switch (argv[0]->kind) {
         case RDB_OB_INITIAL:
-            return RDB_INVALID_ARGUMENT;
+            RDB_raise_invalid_argument("invalid argument to equality", ecp);
+            return RDB_ERROR;
         case RDB_OB_BOOL:
             return eq_bool("=", 2, argv, NULL, 0, ecp, txp, retvalp);
         case RDB_OB_INT:
@@ -863,8 +864,10 @@ op_unwrap(const char *name, int argc, RDB_object *argv[],
     RDB_table *tbp, *vtbp;
     char **attrv;
 
-    if (argc < 1)
-        return RDB_INVALID_ARGUMENT;
+    if (argc < 1) {
+        RDB_raise_invalid_argument("invalid argument to UNWRAP", ecp);
+        return RDB_ERROR;
+    }
     
     attrv = malloc(sizeof(char *) * (argc - 1));
     if (attrv == NULL)
@@ -901,8 +904,10 @@ op_group(const char *name, int argc, RDB_object *argv[],
     char **attrv;
     int attrc;
 
-    if (argc < 2)
-        return RDB_INVALID_ARGUMENT;
+    if (argc < 2) {
+        RDB_raise_invalid_argument("invalid argument to GROUP", ecp);
+        return RDB_ERROR;
+    }
 
     attrc = argc - 2;
     attrv = malloc(sizeof(char *) * attrc);
@@ -947,8 +952,10 @@ op_union(const char *name, int argc, RDB_object *argv[],
 {
     RDB_table *vtbp;
     
-    if (argc != 2)
-        return RDB_INVALID_ARGUMENT;
+    if (argc != 2) {
+        RDB_raise_invalid_argument("invalid argument to UNION", ecp);
+        return RDB_ERROR;
+    }
     
     vtbp = RDB_union(RDB_obj_table(argv[0]), RDB_obj_table(argv[1]), ecp);
     if (vtbp == NULL)
@@ -967,8 +974,10 @@ op_minus(const char *name, int argc, RDB_object *argv[],
 {
     RDB_table *vtbp;
     
-    if (argc != 2)
-        return RDB_INVALID_ARGUMENT;
+    if (argc != 2) {
+        RDB_raise_invalid_argument("invalid argument to MINUS", ecp);
+        return RDB_ERROR;
+    }
     
     vtbp = RDB_minus(RDB_obj_table(argv[0]), RDB_obj_table(argv[1]), ecp);
     if (vtbp == NULL)
@@ -987,8 +996,10 @@ op_intersect(const char *name, int argc, RDB_object *argv[],
 {
     RDB_table *vtbp;
     
-    if (argc != 2)
-        return RDB_INVALID_ARGUMENT;
+    if (argc != 2) {
+        RDB_raise_invalid_argument("invalid argument to INTERSECT", ecp);
+        return RDB_ERROR;
+    }
     
     vtbp = RDB_intersect(RDB_obj_table(argv[0]), RDB_obj_table(argv[1]), ecp);
     if (vtbp == NULL)
@@ -1009,8 +1020,10 @@ op_join(const char *name, int argc, RDB_object *argv[],
     RDB_table *tbp;
     RDB_table *vtbp;
     
-    if (argc != 2)
-        return RDB_INVALID_ARGUMENT;
+    if (argc != 2) {
+        RDB_raise_invalid_argument("invalid argument to JOIN", ecp);
+        return RDB_ERROR;
+    }
 
     tbp = RDB_obj_table(argv[0]);
     if (tbp != NULL) {    
@@ -1037,9 +1050,11 @@ op_divide(const char *name, int argc, RDB_object *argv[],
 {
     RDB_table *vtbp;
     
-    if (argc != 3)
-        return RDB_INVALID_ARGUMENT;
-    
+    if (argc != 3) {
+        RDB_raise_invalid_argument("invalid argument to DIVIDE", ecp);
+        return RDB_ERROR;
+    }
+
     vtbp = RDB_sdivide(RDB_obj_table(argv[0]), RDB_obj_table(argv[1]),
             RDB_obj_table(argv[2]), ecp);
     if (vtbp == NULL)
@@ -1399,8 +1414,10 @@ integer_string(const char *name, int argc, RDB_object *argv[],
 
     RDB_int_to_obj(retvalp, (RDB_int)
             strtol(argv[0]->var.bin.datap, &endp, 10));
-    if (*endp != '\0')
-        return RDB_INVALID_ARGUMENT;
+    if (*endp != '\0') {
+        RDB_raise_invalid_argument("conversion to INTEGER failed", ecp);
+        return RDB_ERROR;
+    }
     return RDB_OK;
 }
 
@@ -1422,8 +1439,10 @@ rational_string(const char *name, int argc, RDB_object *argv[],
 
     RDB_rational_to_obj(retvalp, (RDB_rational)
             strtod(argv[0]->var.bin.datap, &endp));
-    if (*endp != '\0')
-        return RDB_INVALID_ARGUMENT;
+    if (*endp != '\0') {
+        RDB_raise_invalid_argument("conversion to RATIONAL failed", ecp);
+        return RDB_ERROR;
+    }
     return RDB_OK;
 }
 
@@ -1441,8 +1460,10 @@ length_string(const char *name, int argc, RDB_object *argv[],
         RDB_transaction *txp, RDB_object *retvalp)
 {
     size_t len = mbstowcs(NULL, argv[0]->var.bin.datap, 0);
-    if (len == -1)
-        return RDB_INVALID_ARGUMENT;
+    if (len == -1) {
+        RDB_raise_invalid_argument("", ecp);
+        return RDB_ERROR;
+    }
 
     RDB_int_to_obj(retvalp, (RDB_int) len);
     return RDB_OK;
@@ -1460,30 +1481,40 @@ substring(const char *name, int argc, RDB_object *argv[],
     int bstart, blen;
 
     /* Operands must not be negative */
-    if (len < 0 || start < 0)
-        return RDB_INVALID_ARGUMENT;
+    if (len < 0 || start < 0) {
+        RDB_raise_invalid_argument("invalid SUBSTRING argument", ecp);
+        return RDB_ERROR;
+    }
 
     /* Find start of substring */
     bstart = 0;
     for (i = 0; i < start && bstart < argv[0]->var.bin.len - 1; i++) {
         cl = mblen(((char *) argv[0]->var.bin.datap) + bstart, 4);
-        if (cl == -1)
-            return RDB_INVALID_ARGUMENT;
+        if (cl == -1) {
+            RDB_raise_invalid_argument("invalid SUBSTRING argument", ecp);
+            return RDB_ERROR;
+        }
         bstart += cl;
     }
-    if (bstart >= argv[0]->var.bin.len - 1)
-        return RDB_INVALID_ARGUMENT;
+    if (bstart >= argv[0]->var.bin.len - 1) {
+        RDB_raise_invalid_argument("invalid SUBSTRING argument", ecp);
+        return RDB_ERROR;
+    }
 
     /* Find end of substring */
     blen = 0;
     for (i = 0; i < len && bstart + blen < argv[0]->var.bin.len; i++) {
         cl = mblen(((char *) argv[0]->var.bin.datap) + bstart + blen, 4);
-        if (cl == -1)
-            return RDB_INVALID_ARGUMENT;
+        if (cl == -1) {
+            RDB_raise_invalid_argument("invalid SUBSTRING argument", ecp);
+            return RDB_ERROR;
+        }
         blen += cl > 0 ? cl : 1;
     }
-    if (bstart + blen >= argv[0]->var.bin.len)
-        return RDB_INVALID_ARGUMENT;
+    if (bstart + blen >= argv[0]->var.bin.len) {
+        RDB_raise_invalid_argument("invalid SUBSTRING argument", ecp);
+        return RDB_ERROR;
+    }
 
     RDB_destroy_obj(retvalp, ecp);
     retvalp->typ = &RDB_STRING;
@@ -1528,7 +1559,8 @@ matches(const char *name, int argc, RDB_object *argv[],
 
     ret = regcomp(&reg, argv[1]->var.bin.datap, REG_NOSUB);
     if (ret != 0) {
-        return RDB_INVALID_ARGUMENT;
+        RDB_raise_invalid_argument("invalid regular expression", ecp);
+        return RDB_ERROR;
     }
     RDB_bool_to_obj(retvalp, (RDB_bool)
             (regexec(&reg, argv[0]->var.bin.datap, 0, NULL, 0) == 0));
@@ -1723,8 +1755,10 @@ divide_int(const char *name, int argc, RDB_object *argv[],
         const void *iargp, size_t iarglen, RDB_exec_context *ecp,
         RDB_transaction *txp, RDB_object *retvalp)
 {
-    if (argv[1]->var.int_val == 0)
-        return RDB_INVALID_ARGUMENT;
+    if (argv[1]->var.int_val == 0) {
+        RDB_raise_invalid_argument("division by zero", ecp);
+        return RDB_ERROR;
+    }
     RDB_int_to_obj(retvalp, argv[0]->var.int_val / argv[1]->var.int_val);
     return RDB_OK;
 }
@@ -1734,8 +1768,10 @@ divide_rational(const char *name, int argc, RDB_object *argv[],
         const void *iargp, size_t iarglen, RDB_exec_context *ecp,
         RDB_transaction *txp, RDB_object *retvalp)
 {
-    if (argv[1]->var.rational_val == 0.0)
-        return RDB_INVALID_ARGUMENT;
+    if (argv[1]->var.rational_val == 0.0) {
+        RDB_raise_invalid_argument("division by zero", ecp);
+        return RDB_ERROR;
+    }
     RDB_rational_to_obj(retvalp,
             argv[0]->var.rational_val / argv[1]->var.rational_val);
     return RDB_OK;

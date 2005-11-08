@@ -401,8 +401,10 @@ insert_vtable(RDB_table *tbp, RDB_dbroot *dbrootp, RDB_exec_context *ecp,
 
     ret = RDB_insert(dbrootp->vtables_tbp, &tpl, ecp, txp);
     if (ret != RDB_OK) {
-        if (ret == RDB_KEY_VIOLATION)
-            ret = RDB_ELEMENT_EXISTS;
+        if (ret == RDB_KEY_VIOLATION /* !! */) {
+            RDB_raise_element_exists("table already exists", ecp);
+            ret = RDB_ERROR;
+        }
         goto cleanup;
     }
 
@@ -556,8 +558,11 @@ _RDB_cat_insert(RDB_table *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
     if (tbp->kind == RDB_TB_REAL) {
         ret = insert_rtable(tbp, txp->dbp->dbrootp, ecp, txp);
         /* If the table already exists in the catalog, proceed */
-        if (ret != RDB_OK && ret != RDB_ELEMENT_EXISTS) {
-            return ret;
+        if (ret != RDB_OK) {
+            if (RDB_obj_type(RDB_get_err(ecp)) != &RDB_ELEMENT_EXISTS_ERROR) {
+                return RDB_ERROR;
+            }
+            RDB_clear_err(ecp);
         }
 
         /*
@@ -583,8 +588,11 @@ _RDB_cat_insert(RDB_table *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
     } else {
         ret = insert_vtable(tbp, txp->dbp->dbrootp, ecp, txp);
         /* If the table already exists in the catalog, proceed */
-        if (ret != RDB_OK && ret != RDB_ELEMENT_EXISTS) {
-            return ret;
+        if (ret != RDB_OK) {
+            if (RDB_obj_type(RDB_get_err(ecp)) != &RDB_ELEMENT_EXISTS_ERROR) {
+                return RDB_ERROR;
+            }
+            RDB_clear_err(ecp);
         }
     }
 
@@ -1117,7 +1125,8 @@ _RDB_cat_create_db(RDB_exec_context *ecp, RDB_transaction *txp)
 
     ret = _RDB_cat_insert(txp->dbp->dbrootp->table_attr_tbp, ecp, txp);
     if (ret != RDB_OK) {
-        if (ret == RDB_ELEMENT_EXISTS) {
+        if (RDB_obj_type(RDB_get_err(ecp)) == &RDB_ELEMENT_EXISTS_ERROR) {
+            RDB_clear_err(ecp);
             /*
              * The catalog table already exists, but not in this database,
              * so associate it with this database too
@@ -2405,8 +2414,10 @@ _RDB_cat_create_constraint(const char *name, RDB_expression *exp,
 
     ret = RDB_insert(RDB_tx_db(txp)->dbrootp->constraints_tbp, &tpl, ecp, txp);
     if (ret != RDB_OK) {
-        if (ret == RDB_KEY_VIOLATION)
-            ret = RDB_ELEMENT_EXISTS;
+        if (ret == RDB_KEY_VIOLATION) {
+            RDB_raise_element_exists("constraint already exists", ecp);
+            ret = RDB_ERROR;
+        }
         goto cleanup;
     }
 

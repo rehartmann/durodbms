@@ -127,10 +127,17 @@ _RDB_insert_real(RDB_table *tbp, const RDB_object *tplp,
     } else if (ret == RDB_KEY_VIOLATION) {
         /* check if the tuple is an element of the table */
         if (RDB_contains_rec(tbp->stp->recmapp, fvp,
-                tbp->is_persistent ? txp->txid : NULL) == RDB_OK)
-            ret = RDB_ELEMENT_EXISTS;
+                tbp->is_persistent ? txp->txid : NULL) == RDB_OK) {
+            RDB_raise_element_exists("tuple is already in table", ecp);
+            ret = RDB_ERROR;
+        } 
     }
-    tbp->stp->est_cardinality++;
+    if (ret != RDB_OK && ret != RDB_ERROR) {
+        _RDB_handle_errcode(ret, ecp);
+        ret = RDB_ERROR;
+    } else {
+        tbp->stp->est_cardinality++;
+    }
 
 cleanup:
     free(fvp);

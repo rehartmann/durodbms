@@ -26,6 +26,8 @@ Duro_expr_cmd(ClientData data, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv
         return TCL_ERROR;
     }
 
+    RDB_clear_err(statep->current_ecp);
+
     txstr = Tcl_GetStringFromObj(objv[2], NULL);
     entryp = Tcl_FindHashEntry(&statep->txs, txstr);
     if (entryp == NULL) {
@@ -45,7 +47,7 @@ Duro_expr_cmd(ClientData data, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv
     if (ret != RDB_OK) {
         RDB_drop_expr(exprp, statep->current_ecp);
         RDB_destroy_obj(&val, statep->current_ecp);
-        Duro_dberror(interp, statep->current_ecp, txp);
+        Duro_dberror(interp, RDB_get_err(statep->current_ecp), txp);
         return TCL_ERROR;
     }
     RDB_drop_expr(exprp, statep->current_ecp);

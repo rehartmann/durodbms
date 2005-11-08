@@ -966,8 +966,10 @@ resolve_insert(const RDB_ma_insert *insp, insert_node **inslpp,
             /*
              * If both 'subtables' contain the tuple, the insert fails
              */
-            if (b && b2)
-                return RDB_ELEMENT_EXISTS;
+            if (b && b2) {
+                RDB_raise_element_exists("tuple is already in table", ecp);
+                return RDB_ERROR;
+            }
 
             /*
              * Insert the tuple into the table(s) which do not contain it
@@ -1011,8 +1013,10 @@ resolve_insert(const RDB_ma_insert *insp, insert_node **inslpp,
             /*
              * If both 'subtables' contain the tuple, the insert fails
              */
-            if (b && b2)
-                return RDB_ELEMENT_EXISTS;
+            if (b && b2) {
+                RDB_raise_element_exists("tuple is already in table", ecp);
+                return RDB_ERROR;
+            }
 
             /*
              * Insert the tuple into the table(s) which do not contain it

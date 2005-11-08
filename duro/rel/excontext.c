@@ -1,5 +1,6 @@
 #include "rdb.h"
 #include <gen/hashmap.h>
+#include <errno.h>
 
 void
 RDB_init_exec_context(RDB_exec_context *ecp)
@@ -38,8 +39,10 @@ RDB_get_err(RDB_exec_context *ecp)
 void
 RDB_clear_err(RDB_exec_context *ecp)
 {
-    RDB_destroy_obj(&ecp->error, ecp);
-    ecp->error_active = RDB_FALSE;
+    if (ecp->error_active) {
+        RDB_destroy_obj(&ecp->error, ecp);
+        ecp->error_active = RDB_FALSE;
+    }
 }
 
 RDB_object *
@@ -87,23 +90,19 @@ RDB_object *
 RDB_raise_invalid_argument(const char *info, RDB_exec_context *ecp)
 {
     int ret;
-    RDB_object infoobj;
-    RDB_object *argp = &infoobj;
     RDB_object *errp = RDB_raise_err(ecp);
     if (errp == NULL)
         return NULL;
 
-    RDB_init_obj(&infoobj);
-    ret = RDB_string_to_obj(&infoobj, info, ecp);
-    if (ret != RDB_OK) {
-        RDB_destroy_obj(&infoobj, ecp);
+    /* Set value */
+    ret = RDB_string_to_obj(errp, info, ecp);
+    if (ret != RDB_OK)
         return NULL;
-    }
 
-    /* Call selector */
-    ret = RDB_call_ro_op("INVALID_ARGUMENT_ERROR", 1, &argp, ecp, NULL, errp);
-    RDB_destroy_obj(&infoobj, ecp);
-    return ret == RDB_OK ? errp : NULL;
+    /* Set type */
+    errp->typ = &RDB_INVALID_ARGUMENT_ERROR;
+    
+    return errp;
 }
 
 RDB_object *
@@ -161,4 +160,61 @@ RDB_raise_type_constraint_violation(const char *info, RDB_exec_context *ecp)
     errp->typ = &RDB_TYPE_CONSTRAINT_VIOLATION_ERROR;
     
     return errp;
+}
+
+RDB_object *
+RDB_raise_element_exists(const char *info, RDB_exec_context *ecp)
+{
+    int ret;
+    RDB_object *errp = RDB_raise_err(ecp);
+    if (errp == NULL)
+        return NULL;
+
+    /* Set value */
+    ret = RDB_string_to_obj(errp, info, ecp);
+    if (ret != RDB_OK)
+        return NULL;
+
+    /* Set type */
+    errp->typ = &RDB_ELEMENT_EXISTS_ERROR;
+    
+    return errp;
+}
+
+RDB_object *
+RDB_raise_key_violation(const char *info, RDB_exec_context *ecp)
+{
+    int ret;
+    RDB_object *errp = RDB_raise_err(ecp);
+    if (errp == NULL)
+        return NULL;
+
+    /* Set value */
+    ret = RDB_string_to_obj(errp, info, ecp);
+    if (ret != RDB_OK)
+        return NULL;
+
+    /* Set type */
+    errp->typ = &RDB_KEY_VIOLATION_ERROR;
+    
+    return errp;
+}
+
+void
+_RDB_handle_errcode(int errcode, RDB_exec_context *ecp)
+{
+    switch (errcode) {
+        case ENOMEM:
+            RDB_raise_no_memory(ecp);
+            break;
+        case RDB_KEY_VIOLATION:
+            RDB_raise_key_violation("", ecp);
+            break;
+        case RDB_ELEMENT_EXISTS:
+            RDB_raise_element_exists("", ecp);
+            break;
+        default:
+            fprintf(stderr, "unhandled error %d", errcode);
+            abort();
+    }
 }

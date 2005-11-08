@@ -48,7 +48,7 @@ index_create_cmd(TclState *statep, Tcl_Interp *interp, int objc,
         idxattrv, ordered ? RDB_ORDERED : 0, statep->current_ecp, txp);
     free(idxattrv);
     if (ret != RDB_OK) {
-        Duro_dberror(interp, statep->current_ecp, txp);
+        Duro_dberror(interp, RDB_get_err(statep->current_ecp), txp);
         return TCL_ERROR;
     }
     return TCL_OK;
@@ -79,7 +79,7 @@ index_drop_cmd(TclState *statep, Tcl_Interp *interp, int objc,
     ret = RDB_drop_table_index(Tcl_GetString(objv[2]), statep->current_ecp,
             txp);
     if (ret != RDB_OK) {
-        Duro_dberror(interp, statep->current_ecp, txp);
+        Duro_dberror(interp, RDB_get_err(statep->current_ecp), txp);
         return TCL_ERROR;
     }
 
@@ -108,6 +108,8 @@ Duro_index_cmd(ClientData data, Tcl_Interp *interp, int objc, Tcl_Obj *CONST obj
             != TCL_OK) {
         return TCL_ERROR;
     }
+
+    RDB_clear_err(statep->current_ecp);
 
     switch (index) {
         case create_ix:

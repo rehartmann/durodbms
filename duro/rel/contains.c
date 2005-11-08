@@ -30,8 +30,10 @@ project_contains(RDB_table *tbp, const RDB_object *tplp, RDB_exec_context *ecp,
 
         /* create where-condition */
         objp = RDB_tuple_get(tplp, tpltyp->var.tuple.attrv[0].name);
-        if (objp == NULL)
-            return RDB_INVALID_ARGUMENT;
+        if (objp == NULL) {
+            RDB_raise_invalid_argument("invalid attribute", ecp);
+            return RDB_ERROR;
+        }
         condp = RDB_ro_op_va("=", RDB_expr_attr(tpltyp->var.tuple.attrv[0].name),
                 RDB_obj_to_expr(objp, ecp), (RDB_expression *) NULL);
         if (condp == NULL)
@@ -41,7 +43,8 @@ project_contains(RDB_table *tbp, const RDB_object *tplp, RDB_exec_context *ecp,
             if (objp == NULL) {
                 if (condp != NULL)
                     RDB_drop_expr(condp, ecp);
-                return RDB_INVALID_ARGUMENT;
+                RDB_raise_invalid_argument("invalid attribute", ecp);
+                return RDB_ERROR;
             }
             
             condp = RDB_ro_op_va("AND", condp,
@@ -122,8 +125,10 @@ ungroup_contains(RDB_table *tbp, const RDB_object *tplp, RDB_exec_context *ecp,
                           tbp->var.ungroup.attr) == 0)
             i++;
         objp = RDB_tuple_get(tplp, tpltyp->var.tuple.attrv[i].name);
-        if (objp == NULL)
-            return RDB_INVALID_ARGUMENT;
+        if (objp == NULL) {
+            RDB_raise_invalid_argument("invalid attribute", ecp);
+            return RDB_ERROR;
+        }
         condp = RDB_ro_op_va("=", RDB_expr_attr(tpltyp->var.tuple.attrv[i++].name),
                 RDB_obj_to_expr(objp, ecp), (RDB_expression *) NULL);
         while (i < tpltyp->var.tuple.attrc) {
@@ -133,7 +138,8 @@ ungroup_contains(RDB_table *tbp, const RDB_object *tplp, RDB_exec_context *ecp,
                 if (objp == NULL) {
                     if (condp != NULL)
                         RDB_drop_expr(condp, ecp);
-                    return RDB_INVALID_ARGUMENT;
+                    RDB_raise_invalid_argument("invalid attribute", ecp);
+                    return RDB_ERROR;
                 }
                 condp = RDB_ro_op_va("AND", condp,
                         RDB_ro_op_va("=",
@@ -304,7 +310,8 @@ stored_contains(RDB_table *tbp, const RDB_object *tplp, RDB_exec_context *ecp,
         objp = RDB_tuple_get(tplp, tpltyp->var.tuple.attrv[i].name);
         if (objp == NULL) {
             free(fvp);
-            return RDB_INVALID_ARGUMENT;
+            RDB_raise_invalid_argument("invalid attribute", ecp);
+            return RDB_ERROR;
         }
         if (objp->typ != NULL && !RDB_type_equals (RDB_obj_type(objp),
                 tpltyp->var.tuple.attrv[i].typ)) {

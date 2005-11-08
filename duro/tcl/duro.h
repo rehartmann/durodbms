@@ -109,7 +109,7 @@ Duro_tcl_drop_array(RDB_object *arrayp, Tcl_HashEntry *entryp,
         RDB_exec_context *);
 
 void
-Duro_dberror(Tcl_Interp *interp, RDB_exec_context *ecp, RDB_transaction *);
+Duro_dberror(Tcl_Interp *interp, const RDB_object *errp, RDB_transaction *);
 
 RDB_table *
 Duro_get_table(TclState *, Tcl_Interp *, const char *name, RDB_transaction *);

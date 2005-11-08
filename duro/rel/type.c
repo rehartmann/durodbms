@@ -27,6 +27,8 @@ RDB_type RDB_INVALID_ARGUMENT_ERROR;
 RDB_type RDB_TYPE_MISMATCH_ERROR;
 RDB_type RDB_TYPE_CONSTRAINT_VIOLATION_ERROR;
 RDB_type RDB_OPERATOR_NOT_FOUND_ERROR;
+RDB_type RDB_ELEMENT_EXISTS_ERROR;
+RDB_type RDB_KEY_VIOLATION_ERROR;
 
 static int
 compare_int(const char *name, int argc, RDB_object *argv[],
@@ -97,6 +99,22 @@ void _RDB_init_builtin_types(void)
         "OPERATOR_NOT_FOUND_ERROR",
         1,
         &operator_not_found_comp
+    };
+
+    static RDB_attr element_exists_comp = { "INFO", &RDB_STRING };
+
+    static RDB_possrep element_exists_rep = {
+        "OPERATOR_NOT_FOUND_ERROR",
+        1,
+        &element_exists_comp
+    };
+
+    static RDB_attr key_violation_comp = { "INFO", &RDB_STRING };
+
+    static RDB_possrep key_violation_rep = {
+        "OPERATOR_NOT_FOUND_ERROR",
+        1,
+        &key_violation_comp
     };
 
     RDB_BOOLEAN.kind = RDB_TP_SCALAR;
@@ -191,6 +209,24 @@ void _RDB_init_builtin_types(void)
     RDB_OPERATOR_NOT_FOUND_ERROR.var.scalar.arep = &RDB_STRING;
     RDB_OPERATOR_NOT_FOUND_ERROR.var.scalar.constraintp = NULL;
     RDB_OPERATOR_NOT_FOUND_ERROR.comparep = NULL;
+
+    RDB_ELEMENT_EXISTS_ERROR.kind = RDB_TP_SCALAR;
+    RDB_ELEMENT_EXISTS_ERROR.ireplen = RDB_VARIABLE_LEN;
+    RDB_ELEMENT_EXISTS_ERROR.name = "ELEMENT_EXISTS_ERROR";
+    RDB_ELEMENT_EXISTS_ERROR.var.scalar.repc = 1;
+    RDB_ELEMENT_EXISTS_ERROR.var.scalar.repv = &element_exists_rep;
+    RDB_ELEMENT_EXISTS_ERROR.var.scalar.arep = &RDB_STRING;
+    RDB_ELEMENT_EXISTS_ERROR.var.scalar.constraintp = NULL;
+    RDB_ELEMENT_EXISTS_ERROR.comparep = NULL;
+
+    RDB_KEY_VIOLATION_ERROR.kind = RDB_TP_SCALAR;
+    RDB_KEY_VIOLATION_ERROR.ireplen = RDB_VARIABLE_LEN;
+    RDB_KEY_VIOLATION_ERROR.name = "KEY_VIOLATION_ERROR";
+    RDB_KEY_VIOLATION_ERROR.var.scalar.repc = 1;
+    RDB_KEY_VIOLATION_ERROR.var.scalar.repv = &key_violation_rep;
+    RDB_KEY_VIOLATION_ERROR.var.scalar.arep = &RDB_STRING;
+    RDB_KEY_VIOLATION_ERROR.var.scalar.constraintp = NULL;
+    RDB_KEY_VIOLATION_ERROR.comparep = NULL;
 }
 
 RDB_bool

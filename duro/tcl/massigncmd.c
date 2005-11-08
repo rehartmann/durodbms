@@ -240,8 +240,10 @@ Duro_massign_cmd(ClientData data, Tcl_Interp *interp, int objc,
         Tcl_WrongNumArgs(interp, 1, objv, "assignment ?assignment ...? txId");
         return TCL_ERROR;
     }
-    ac = objc - 2;
 
+    RDB_clear_err(statep->current_ecp);
+
+    ac = objc - 2;
     txstr = Tcl_GetStringFromObj(objv[objc - 1], NULL);
     entryp = Tcl_FindHashEntry(&statep->txs, txstr);
     if (entryp == NULL) {
@@ -299,7 +301,7 @@ Duro_massign_cmd(ClientData data, Tcl_Interp *interp, int objc,
     ret = RDB_multi_assign(insc, insv, updc, updv, delc, delv, copyc, copyv,
             statep->current_ecp, txp);
     if (ret != RDB_OK) {
-        Duro_dberror(interp, statep->current_ecp, txp);
+        Duro_dberror(interp, RDB_get_err(statep->current_ecp), txp);
         ret = TCL_ERROR;
     }
 

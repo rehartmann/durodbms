@@ -432,7 +432,8 @@ expr_op_type(const RDB_expression *exp, const RDB_type *tuptyp,
         if (attri < attrc) {
             free(argtv);
             free(attrv);
-            return NULL /* !! RDB_INVALID_ARGUMENT */;
+            RDB_raise_invalid_argument("invalid REMOVE argument", ecp);
+            return NULL;
         }
         
         typ = RDB_project_relation_type(argtv[0], attrc, attrv, ecp);
@@ -513,7 +514,8 @@ expr_op_type(const RDB_expression *exp, const RDB_type *tuptyp,
 
         if (exp->var.op.argc < 2) {
             free(argtv);
-            return /* !! RDB_INVALID_ARGUMENT */ NULL;
+            RDB_raise_invalid_argument("invalid GROUP argument", ecp);
+            return NULL;
         }
 
         for (i = 1; i < exp->var.op.argc; i++) {
@@ -1195,8 +1197,10 @@ evaluate_extend(RDB_expression *exp, const RDB_object *tplp,
             return RDB_NO_MEMORY;
         }
         if (exp->var.op.argv[2 + i * 2]->kind != RDB_EX_OBJ ||
-                exp->var.op.argv[2 + i * 2]->var.obj.typ != &RDB_STRING)
-            return RDB_INVALID_ARGUMENT;
+                exp->var.op.argv[2 + i * 2]->var.obj.typ != &RDB_STRING) {
+            RDB_raise_invalid_argument("invalid EXTEND argument", ecp);
+            return RDB_ERROR;
+        }
         attrv[i].name = RDB_obj_string(&exp->var.op.argv[2 + i * 2]->var.obj);
     }
 
@@ -1271,11 +1275,15 @@ evaluate_summarize(RDB_expression *exp, const RDB_object *tplp,
     }
 
     tb1p = RDB_obj_table(&t1obj);
-    if (tb1p == NULL)
-        return RDB_INVALID_ARGUMENT;
+    if (tb1p == NULL) {
+        RDB_raise_invalid_argument("invalid SUMMARIZE argument", ecp);
+        return RDB_ERROR;
+    }
     tb2p = RDB_obj_table(&t2obj);
-    if (tb2p == NULL)
-        return RDB_INVALID_ARGUMENT;
+    if (tb2p == NULL) {
+        RDB_raise_invalid_argument("invalid SUMMARIZE argument", ecp);
+        return RDB_ERROR;
+    }
     addv = expv_to_addv(addc, exp->var.op.argv + 2, tplp, ecp);
     if (addv == NULL)
         return RDB_NO_MEMORY;
@@ -1426,7 +1434,8 @@ RDB_evaluate(RDB_expression *exp, const RDB_object *tplp, RDB_exec_context *ecp,
             attrp = RDB_tuple_get(&tpl, exp->var.op.name);
             if (attrp == NULL) {
                 RDB_destroy_obj(&tpl, ecp);
-                return RDB_INVALID_ARGUMENT;
+                RDB_raise_invalid_argument("tuple attribute not found", ecp);
+                return RDB_ERROR;
             }
             ret = RDB_copy_obj(valp, attrp, ecp);
             if (ret != RDB_OK) {
@@ -1458,9 +1467,8 @@ RDB_evaluate(RDB_expression *exp, const RDB_object *tplp, RDB_exec_context *ecp,
                 if (srcp != NULL)
                     return RDB_copy_obj(valp, srcp, ecp);
             }
-            RDB_errmsg(RDB_db_env(RDB_tx_db(txp)), "attribute %s not found",
-                    exp->var.attrname);
-            return RDB_INVALID_ARGUMENT;
+            RDB_raise_invalid_argument("tuple attribute not found", ecp);
+            return RDB_ERROR;
         case RDB_EX_OBJ:
             return RDB_copy_obj(valp, &exp->var.obj, ecp);
         case RDB_EX_AGGREGATE:

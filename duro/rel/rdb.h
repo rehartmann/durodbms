@@ -1207,4 +1207,7 @@ RDB_raise_operator_not_found(const char *, RDB_exec_context *);
 RDB_object *
 RDB_raise_type_constraint_violation(const char *, RDB_exec_context *);
 
+RDB_object *
+RDB_raise_element_exists(const char *info, RDB_exec_context *);
+
 #endif

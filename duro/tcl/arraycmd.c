@@ -71,7 +71,7 @@ array_create_cmd(TclState *statep, Tcl_Interp *interp, int objc,
     if (seqitv != NULL)
         Tcl_Free((char *) seqitv);
     if (ret != RDB_OK) {
-        Duro_dberror(interp, statep->current_ecp, txp);
+        Duro_dberror(interp, RDB_get_err(statep->current_ecp), txp);
         return TCL_ERROR;
     }
 
@@ -107,7 +107,7 @@ array_drop_cmd(TclState *statep, Tcl_Interp *interp, int objc,
     arrayp = Tcl_GetHashValue(entryp);
     ret = Duro_tcl_drop_array(arrayp, entryp, statep->current_ecp);
     if (ret != RDB_OK) {
-        Duro_dberror(interp, statep->current_ecp, NULL);
+        Duro_dberror(interp, RDB_get_err(statep->current_ecp), NULL);
         return TCL_ERROR;
     }      
 
@@ -155,7 +155,7 @@ array_index_cmd(TclState *statep, Tcl_Interp *interp, int objc,
 
     tplp = RDB_array_get(arrayp, (RDB_int) idx, statep->current_ecp);
     if (tplp == NULL) {
-        Duro_dberror(interp, statep->current_ecp, txp);
+        Duro_dberror(interp, RDB_get_err(statep->current_ecp), txp);
         return TCL_ERROR;
     }
 
@@ -218,7 +218,7 @@ array_foreach_cmd(TclState *statep, Tcl_Interp *interp, int objc,
             return ret;
     }
     if (ret != RDB_NOT_FOUND) {
-        Duro_dberror(interp, statep->current_ecp, txp);
+        Duro_dberror(interp, RDB_get_err(statep->current_ecp), txp);
         return TCL_ERROR;
     }
         
@@ -250,7 +250,7 @@ array_length_cmd(TclState *statep, Tcl_Interp *interp, int objc,
 
     len = RDB_array_length(arrayp, statep->current_ecp);
     if (len < 0) {
-        Duro_dberror(interp, statep->current_ecp, NULL);
+        Duro_dberror(interp, RDB_get_err(statep->current_ecp), NULL);
         return TCL_ERROR;
     }
 
@@ -319,7 +319,7 @@ array_set_cmd(TclState *statep, Tcl_Interp *interp, int objc,
          */
         Tcl_ResetResult(interp);
 
-        Duro_dberror(interp, statep->current_ecp, txp);
+        Duro_dberror(interp, RDB_get_err(statep->current_ecp), txp);
         return TCL_ERROR;
     }
 
@@ -348,6 +348,8 @@ Duro_array_cmd(ClientData data, Tcl_Interp *interp, int objc, Tcl_Obj *CONST obj
             != RDB_OK) {
         return TCL_ERROR;
     }
+
+    RDB_clear_err(statep->current_ecp);
 
     switch (index) {
         case create_ix:

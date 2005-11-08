@@ -25,6 +25,8 @@ Duro_insert_cmd(ClientData data, Tcl_Interp *interp, int objc,
         return TCL_ERROR;
     }
 
+    RDB_clear_err(statep->current_ecp);
+
     name = Tcl_GetString(objv[1]);
 
     txstr = Tcl_GetString(objv[3]);
@@ -55,7 +57,7 @@ Duro_insert_cmd(ClientData data, Tcl_Interp *interp, int objc,
          */
         Tcl_ResetResult(interp);
 
-        Duro_dberror(interp, statep->current_ecp, txp);
+        Duro_dberror(interp, RDB_get_err(statep->current_ecp), txp);
         ret = TCL_ERROR;
     }
 

@@ -594,7 +594,6 @@ RDB_drop_db(RDB_database *dbp, RDB_exec_context *ecp)
     if (ret != RDB_OK) {
         RDB_drop_table(vtbp, ecp, &tx);
         RDB_drop_table(vtb2p, ecp, &tx);
-        /* !! ret */
         goto error;
     }
     
@@ -604,7 +603,7 @@ RDB_drop_db(RDB_database *dbp, RDB_exec_context *ecp)
         goto error;
     }
     if (!empty) {
-        ret = RDB_ELEMENT_EXISTS;
+        RDB_raise_element_exists("database is not empty", ecp);
         goto error;
     }
 

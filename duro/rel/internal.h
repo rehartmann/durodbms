@@ -576,6 +576,9 @@ _RDB_delete_select_uindex(RDB_table *tbp, RDB_expression *condp,
         RDB_exec_context *, RDB_transaction *);
 
 void
+_RDB_handle_errcode(int errcode, RDB_exec_context *);
+
+void
 _RDB_handle_syserr(RDB_transaction *, int err);
 
 int

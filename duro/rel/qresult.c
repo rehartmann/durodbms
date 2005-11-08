@@ -974,7 +974,7 @@ _RDB_sorter(RDB_table *tbp, RDB_qresult **qrespp, RDB_exec_context *ecp,
 {
     RDB_string_vec key;
     RDB_bool *ascv = NULL;
-    int ret, ret2;
+    int ret;
     int i;
     RDB_qresult *tmpqrp;
     RDB_object tpl;
@@ -1017,7 +1017,7 @@ _RDB_sorter(RDB_table *tbp, RDB_qresult **qrespp, RDB_exec_context *ecp,
             tbp->typ->var.basetyp->var.tuple.attrc,
             tbp->typ->var.basetyp->var.tuple.attrv, 1, &key, RDB_TRUE, ecp);
     if (qresp->matp == NULL)
-        goto error; /* !! ret */
+        goto error;
 
     ret = _RDB_create_stored_table(qresp->matp, txp->dbp->dbrootp->envp,
             ascv, ecp, txp);
@@ -1044,20 +1044,23 @@ _RDB_sorter(RDB_table *tbp, RDB_qresult **qrespp, RDB_exec_context *ecp,
         RDB_set_errfile(envp, NULL);
         RDB_set_errfn(envp, NULL, NULL);
 
-        ret2 = RDB_insert(qresp->matp, &tpl, ecp, txp);
+        ret = RDB_insert(qresp->matp, &tpl, ecp, txp);
         /* Re-enable error logging */
         RDB_set_errfile(envp, oerrfilep);
         RDB_set_errfn(envp, oerrfp, errarg);
-        if (ret2 != RDB_OK && ret2 != RDB_ELEMENT_EXISTS) {
-            RDB_destroy_obj(&tpl, ecp);
-            ret = ret2;
-            goto error;
+        if (ret != RDB_OK) {
+            if (RDB_obj_type(RDB_get_err(ecp)) != &RDB_ELEMENT_EXISTS_ERROR) {
+                RDB_destroy_obj(&tpl, ecp);
+                goto error;
+            }
+            RDB_clear_err(ecp);
         }
     }
     RDB_destroy_obj(&tpl, ecp);
     if (RDB_obj_type(RDB_get_err(ecp)) != &RDB_NOT_FOUND_ERROR) {
         goto error;
     }
+    RDB_clear_err(ecp);
     ret = _RDB_drop_qresult(tmpqrp, ecp, txp);
     if (ret != RDB_OK)
         goto error;
@@ -2015,6 +2018,7 @@ _RDB_next_tuple(RDB_qresult *qrp, RDB_object *tplp, RDB_exec_context *ecp,
     }
 
     do {
+        RDB_clear_err(ecp);
         switch (tbp->kind) {
             case RDB_TB_REAL:
                 return next_stored_tuple(qrp, qrp->tbp, tplp, RDB_TRUE, RDB_FALSE,
@@ -2173,12 +2177,15 @@ _RDB_next_tuple(RDB_qresult *qrp, RDB_object *tplp, RDB_exec_context *ecp,
         if (qrp->matp != NULL && tbp->kind != RDB_TB_SUMMARIZE
                 && tbp->kind != RDB_TB_GROUP) {
             ret = _RDB_insert_real(qrp->matp, tplp, ecp, txp);
-            if (ret != RDB_OK && ret != RDB_ELEMENT_EXISTS)
-                return ret;
+            if (ret != RDB_OK && RDB_obj_type(RDB_get_err(ecp))
+                    != &RDB_ELEMENT_EXISTS_ERROR) {
+                return RDB_ERROR;
+            }
         } else {
             ret = RDB_OK;
         }
-    } while (ret == RDB_ELEMENT_EXISTS);
+    } while (ret == RDB_ERROR && RDB_obj_type(RDB_get_err(ecp))
+            == &RDB_ELEMENT_EXISTS_ERROR);
     return RDB_OK;
 }
 
@@ -2246,11 +2253,10 @@ _RDB_qresult_contains(RDB_qresult *qrp, const RDB_object *tplp,
     ret = _RDB_get_by_uindex(qrp->matp, objpv, &qrp->matp->stp->indexv[0],
             qrp->matp->typ->var.basetyp, ecp, txp, &tpl);
     if (ret != RDB_OK) {
-        if (ret == RDB_NOT_FOUND) {
+        if (RDB_obj_type(RDB_get_err(ecp)) == &RDB_NOT_FOUND_ERROR) {
             *resultp = RDB_FALSE;
+            RDB_clear_err(ecp);
             ret = RDB_OK;
-        } else {
-            /* !! raise error */
         }
         goto cleanup;
     }

@@ -46,7 +46,7 @@ constraint_create_cmd(TclState *statep, Tcl_Interp *interp, int objc,
             statep->current_ecp, txp);
     if (ret != RDB_OK) {
         RDB_drop_expr(exp, statep->current_ecp);
-        Duro_dberror(interp, statep->current_ecp, txp);
+        Duro_dberror(interp, RDB_get_err(statep->current_ecp), txp);
         return TCL_ERROR;
     }
 
@@ -78,7 +78,7 @@ constraint_drop_cmd(TclState *statep, Tcl_Interp *interp, int objc,
     ret = RDB_drop_constraint(Tcl_GetString(objv[2]), statep->current_ecp,
             txp);
     if (ret != RDB_OK) {
-        Duro_dberror(interp, statep->current_ecp, txp);
+        Duro_dberror(interp, RDB_get_err(statep->current_ecp), txp);
         return TCL_ERROR;
     }
 
@@ -108,6 +108,8 @@ Duro_constraint_cmd(ClientData data, Tcl_Interp *interp, int objc,
             != TCL_OK) {
         return TCL_ERROR;
     }
+
+    RDB_clear_err(statep->current_ecp);
 
     switch (index) {
         case create_ix:

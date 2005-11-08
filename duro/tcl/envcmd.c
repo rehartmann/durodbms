@@ -79,6 +79,8 @@ Duro_env_cmd(ClientData data, Tcl_Interp *interp, int argc, CONST char *argv[])
         return TCL_ERROR;
     }
 
+    RDB_clear_err(statep->current_ecp);
+
     if (strcmp(argv[1], "open") == 0) {
         int new;
         char handle[20];
@@ -148,7 +150,7 @@ Duro_env_cmd(ClientData data, Tcl_Interp *interp, int argc, CONST char *argv[])
         ret = RDB_get_dbs(envp, &arr, statep->current_ecp);
         if (ret != RDB_OK) {
             RDB_destroy_obj(&arr, statep->current_ecp);
-            Duro_dberror(interp, statep->current_ecp, NULL);
+            Duro_dberror(interp, RDB_get_err(statep->current_ecp), NULL);
             return TCL_ERROR;
         }      
 
@@ -167,7 +169,7 @@ Duro_env_cmd(ClientData data, Tcl_Interp *interp, int argc, CONST char *argv[])
                 return ret;
         }
         if (ret != RDB_NOT_FOUND) {
-            Duro_dberror(interp, statep->current_ecp, NULL);
+            Duro_dberror(interp, RDB_get_err(statep->current_ecp), NULL);
             return TCL_ERROR;
         }
 

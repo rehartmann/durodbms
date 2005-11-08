@@ -65,13 +65,14 @@ test_table(RDB_database *dbp, RDB_exec_context *ecp)
 
     printf("Inserting tuple #2\n");
     ret = RDB_insert(tbp, &tpl, ecp, &tx);
-    if (ret != RDB_OK && ret != RDB_ELEMENT_EXISTS ) {
-        RDB_rollback(&tx);
-        RDB_destroy_obj(&tpl, ecp);
-        return ret;
+    if (ret != RDB_OK) {
+        if (RDB_obj_type(RDB_get_err(ecp)) != &RDB_ELEMENT_EXISTS_ERROR) {
+            RDB_destroy_obj(&tpl, ecp);
+            return RDB_ERROR;
+        }
+        printf("Error: element exists - OK\n");
+        RDB_clear_err(ecp);
     }
-    if (ret == RDB_ELEMENT_EXISTS)
-        printf("Error: element exists - OK\n");    
     RDB_destroy_obj(&tpl, ecp);
 
     printf("End of transaction\n");

@@ -44,10 +44,11 @@ test_keys(RDB_database *dbp, RDB_exec_context *ecp)
         goto error;
 
     ret = RDB_insert(tbp, &tpl, ecp, &tx);
-    if (ret == RDB_KEY_VIOLATION) {
+    if (ret == RDB_ERROR && RDB_obj_type(RDB_get_err(ecp))
+            == &RDB_KEY_VIOLATION_ERROR) {
         printf("Error: key violation - OK\n");
     } else {
-        printf("Error: %s\n", RDB_strerror(ret));
+        printf("Wrong result of RDB_insert()\n");
     }
 
     printf("Inserting tuple #2\n");
@@ -66,10 +67,11 @@ test_keys(RDB_database *dbp, RDB_exec_context *ecp)
         goto error;
 
     ret = RDB_insert(tbp, &tpl, ecp, &tx);
-    if (ret == RDB_KEY_VIOLATION) {
+    if (ret == RDB_ERROR && RDB_obj_type(RDB_get_err(ecp))
+            == &RDB_KEY_VIOLATION_ERROR) {
         printf("key violation - OK\n");
     } else {
-        printf("Error: %s\n", RDB_strerror(ret));
+        printf("Wrong result of RDB_insert()\n");
     }
     RDB_destroy_obj(&tpl, ecp);
 

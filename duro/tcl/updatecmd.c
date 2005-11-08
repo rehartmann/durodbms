@@ -30,6 +30,8 @@ Duro_update_cmd(ClientData data, Tcl_Interp *interp, int objc,
         return TCL_ERROR;
     }
 
+    RDB_clear_err(statep->current_ecp);
+
     name = Tcl_GetStringFromObj(objv[1], NULL);
 
     txstr = Tcl_GetStringFromObj(objv[objc - 1], NULL);
@@ -74,7 +76,7 @@ Duro_update_cmd(ClientData data, Tcl_Interp *interp, int objc,
     }
     ret = RDB_update(tbp, wherep, updc, updv, statep->current_ecp, txp);
     if (ret != RDB_OK) {
-        Duro_dberror(interp, statep->current_ecp, txp);
+        Duro_dberror(interp, RDB_get_err(statep->current_ecp), txp);
         ret = TCL_ERROR;
         goto cleanup;
     }

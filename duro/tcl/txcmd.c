@@ -46,7 +46,7 @@ Duro_begin_cmd(ClientData data, Tcl_Interp *interp, int argc, CONST char *argv[]
         /* Get database */
         dbp = RDB_get_db_from_env(argv[2], envp, statep->current_ecp);
         if (dbp == NULL) { 
-            Duro_dberror(interp, statep->current_ecp, txp);
+            Duro_dberror(interp, RDB_get_err(statep->current_ecp), txp);
             return TCL_ERROR;
         }
 
@@ -72,7 +72,7 @@ Duro_begin_cmd(ClientData data, Tcl_Interp *interp, int argc, CONST char *argv[]
     txp = (RDB_transaction *)Tcl_Alloc(sizeof (RDB_transaction));
     ret = RDB_begin_tx(txp, dbp, parentp);
     if (ret != RDB_OK) { 
-        Duro_dberror(interp, statep->current_ecp, txp);
+        Duro_dberror(interp, RDB_get_err(statep->current_ecp), txp);
         return TCL_ERROR;
     }        
 
@@ -115,7 +115,7 @@ Duro_commit_cmd(ClientData data, Tcl_Interp *interp, int argc, CONST char *argv[
     ret = RDB_commit(txp);
     Tcl_Free((char *) txp);
     if (ret != RDB_OK) { 
-        Duro_dberror(interp, statep->current_ecp, txp);
+        Duro_dberror(interp, RDB_get_err(statep->current_ecp), txp);
         return TCL_ERROR;
     }
     return RDB_OK;
@@ -135,6 +135,8 @@ Duro_rollback_cmd(ClientData data, Tcl_Interp *interp, int argc, CONST char *arg
         return TCL_ERROR;
     }
 
+    RDB_clear_err(statep->current_ecp);
+
     entryp = Tcl_FindHashEntry(&statep->txs, argv[1]);
     if (entryp == NULL) {
         Tcl_AppendResult(interp, "Unknown transaction: ", argv[1], NULL);
@@ -143,7 +145,7 @@ Duro_rollback_cmd(ClientData data, Tcl_Interp *interp, int argc, CONST char *arg
     txp = Tcl_GetHashValue(entryp);
     ret = Duro_tcl_rollback(txp, entryp);
     if (ret != RDB_OK) { 
-        Duro_dberror(interp, statep->current_ecp, txp);
+        Duro_dberror(interp, RDB_get_err(statep->current_ecp), txp);
         return TCL_ERROR;
     }
     return RDB_OK;
@@ -161,6 +163,8 @@ Duro_txdb_cmd(ClientData data, Tcl_Interp *interp, int argc, CONST char *argv[])
                 TCL_STATIC);
         return TCL_ERROR;
     }
+
+    RDB_clear_err(statep->current_ecp);
 
     entryp = Tcl_FindHashEntry(&statep->txs, argv[1]);
     if (entryp == NULL) {

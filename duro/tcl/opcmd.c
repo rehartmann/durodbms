@@ -31,6 +31,9 @@ operator_create_cmd(ClientData data, Tcl_Interp *interp, int objc,
                 "name [-returns rtype | -updates updlist] arglist body txId");
         return TCL_ERROR;
     }
+
+    RDB_clear_err(statep->current_ecp);
+
     if (strcmp (Tcl_GetString(objv[3]), "-updates") == 0) {
         update = RDB_TRUE;
     } else if (strcmp (Tcl_GetString(objv[3]), "-returns") == 0) {
@@ -169,7 +172,7 @@ operator_create_cmd(ClientData data, Tcl_Interp *interp, int objc,
                 statep->current_ecp, txp);
     }    
     if (ret != RDB_OK) {
-        Duro_dberror(interp, statep->current_ecp, txp);
+        Duro_dberror(interp, RDB_get_err(statep->current_ecp), txp);
         ret = TCL_ERROR;
         goto cleanup;
     }
@@ -206,7 +209,7 @@ operator_drop_cmd(ClientData data, Tcl_Interp *interp, int objc,
 
     ret = RDB_drop_op(Tcl_GetString(objv[2]), statep->current_ecp, txp);
     if (ret != RDB_OK) {
-        Duro_dberror(interp, statep->current_ecp, txp);
+        Duro_dberror(interp, RDB_get_err(statep->current_ecp), txp);
         return TCL_ERROR;
     }
 
@@ -289,7 +292,7 @@ Duro_call_cmd(ClientData data, Tcl_Interp *interp, int objc,
     ret = _RDB_get_upd_op(Tcl_GetString(objv[1]), argc, argtv,
             statep->current_ecp, txp, &op);
     if (ret != RDB_OK) {
-        Duro_dberror(interp, statep->current_ecp, txp);
+        Duro_dberror(interp, RDB_get_err(statep->current_ecp), txp);
         ret = TCL_ERROR;
         goto cleanup;
     }
@@ -344,7 +347,7 @@ Duro_call_cmd(ClientData data, Tcl_Interp *interp, int objc,
     ret = RDB_call_update_op(Tcl_GetString(objv[1]),
             argc, argv, statep->current_ecp, txp);
     if (ret != RDB_OK) {
-        Duro_dberror(interp, statep->current_ecp, txp);
+        Duro_dberror(interp, RDB_get_err(statep->current_ecp), txp);
         return TCL_ERROR;
     }
 

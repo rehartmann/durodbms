@@ -116,7 +116,7 @@ type_define_cmd(TclState *statep, Tcl_Interp *interp, int objc,
             repv[i].compv[j].typ = RDB_get_type(Tcl_GetString(typeobjp),
                     statep->current_ecp, txp);
             if (repv[i].compv[j].typ == NULL) {
-                Duro_dberror(interp, statep->current_ecp, txp);
+                Duro_dberror(interp, RDB_get_err(statep->current_ecp), txp);
                 ret = TCL_ERROR;
                 goto cleanup;
             }
@@ -137,7 +137,7 @@ type_define_cmd(TclState *statep, Tcl_Interp *interp, int objc,
             statep->current_ecp, txp);
     if (ret != RDB_OK) {
         RDB_drop_expr(constraintp, statep->current_ecp);
-        Duro_dberror(interp, statep->current_ecp, txp);
+        Duro_dberror(interp, RDB_get_err(statep->current_ecp), txp);
         ret = TCL_ERROR;
         goto cleanup;
     }
@@ -181,13 +181,13 @@ type_drop_cmd(TclState *statep, Tcl_Interp *interp, int objc,
 
     typ = RDB_get_type(name, statep->current_ecp, txp);
     if (typ == NULL) {
-        Duro_dberror(interp, statep->current_ecp, txp);
+        Duro_dberror(interp, RDB_get_err(statep->current_ecp), txp);
         return TCL_ERROR;
     }
 
     ret = RDB_drop_type(typ, statep->current_ecp, txp);
     if (ret != RDB_OK) {
-        Duro_dberror(interp, statep->current_ecp, txp);
+        Duro_dberror(interp, RDB_get_err(statep->current_ecp), txp);
         return TCL_ERROR;
     }
 
@@ -228,7 +228,7 @@ type_implement_cmd(TclState *statep, Tcl_Interp *interp, int objc,
     if (irep != NULL && !RDB_type_is_scalar(irep))
         RDB_drop_type(irep, statep->current_ecp, txp);
     if (ret != RDB_OK) {
-        Duro_dberror(interp, statep->current_ecp, txp);
+        Duro_dberror(interp, RDB_get_err(statep->current_ecp), txp);
         return TCL_ERROR;
     }
 
@@ -258,6 +258,8 @@ Duro_type_cmd(ClientData data, Tcl_Interp *interp,
             != TCL_OK) {
         return TCL_ERROR;
     }
+
+    RDB_clear_err(statep->current_ecp);
 
     switch (index) {
         case define_ix:

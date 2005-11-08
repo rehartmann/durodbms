@@ -31,7 +31,7 @@ db_create_cmd(TclState *statep, Tcl_Interp *interp, int argc, CONST char *argv[]
 
     dbp = RDB_create_db_from_env(argv[3], envp, statep->current_ecp);
     if (dbp == NULL) {
-        Duro_dberror(interp, statep->current_ecp, NULL);
+        Duro_dberror(interp, RDB_get_err(statep->current_ecp), NULL);
         return TCL_ERROR;
     }
 
@@ -61,13 +61,13 @@ db_drop_cmd(TclState *statep, Tcl_Interp *interp, int argc, CONST char *argv[])
 
     dbp = RDB_get_db_from_env(argv[3], envp, statep->current_ecp);
     if (dbp == NULL) {
-        Duro_dberror(interp, statep->current_ecp, NULL);
+        Duro_dberror(interp, RDB_get_err(statep->current_ecp), NULL);
         return TCL_ERROR;
     }
 
     ret = RDB_drop_db(dbp, statep->current_ecp);
     if (ret != RDB_OK) {
-        Duro_dberror(interp, statep->current_ecp, NULL);
+        Duro_dberror(interp, RDB_get_err(statep->current_ecp), NULL);
         return TCL_ERROR;
     }
 
@@ -84,6 +84,8 @@ Duro_db_cmd(ClientData data, Tcl_Interp *interp, int argc, CONST char *argv[])
                TCL_STATIC);
         return TCL_ERROR;
     }
+
+    RDB_clear_err(statep->current_ecp);
 
     if (strcmp (argv[1], "create") == 0) {
         return db_create_cmd(statep, interp, argc, argv);
