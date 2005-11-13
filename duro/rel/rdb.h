@@ -173,7 +173,7 @@ extern RDB_type RDB_NOT_SUPPORTED_ERROR;
 
 extern RDB_type RDB_NO_SPACE_ERROR;
 extern RDB_type RDB_NO_MEMORY_ERROR;
-extern RDB_type RDB_SYSTEM_ERROR_ERROR;
+extern RDB_type RDB_SYSTEM_ERROR;
 extern RDB_type RDB_DEADLOCK_ERROR;
 extern RDB_type RDB_INTERNAL_ERROR;
 extern RDB_type RDB_RESOURCE_NOT_FOUND_ERROR;
@@ -466,7 +466,7 @@ int
 RDB_drop_table(RDB_table *tbp, RDB_exec_context *, RDB_transaction *);
 
 int
-RDB_table_keys(RDB_table *, RDB_string_vec **keyvp);
+RDB_table_keys(RDB_table *, RDB_exec_context *, RDB_string_vec **keyvp);
 
 int
 RDB_set_table_name(RDB_table *tbp, const char *name, RDB_exec_context *,
@@ -542,13 +542,13 @@ RDB_commit(RDB_transaction *);
  * Abort the transaction pointed to by txp.
  *
  * Return RDB_OK on success. A return value other than RDB_OK indicates an error.
- * If the transaction is already committed or aborted, DB_INVALID_TRANSACTION
- * is returned.
+ * If the transaction is already committed or aborted, INVALID_TRANSACTION_ERROR
+ * is raised.
  * Note that a transaction may be aborted implicity by a database operation.
  * (see TTM, OO prescription 4)
  */
 int
-RDB_rollback(RDB_transaction *);
+RDB_rollback(RDB_exec_context *, RDB_transaction *);
 
 typedef struct {
     char *name;
@@ -1209,5 +1209,14 @@ RDB_raise_type_constraint_violation(const char *, RDB_exec_context *);
 
 RDB_object *
 RDB_raise_element_exists(const char *info, RDB_exec_context *);
+
+RDB_object *
+RDB_raise_not_supported(const char *info, RDB_exec_context *);
+
+RDB_object *
+RDB_raise_attribute_not_found(const char *info, RDB_exec_context *);
+
+RDB_object *
+RDB_raise_predicate_violation(const char *info, RDB_exec_context *);
 
 #endif

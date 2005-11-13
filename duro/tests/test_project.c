@@ -96,7 +96,7 @@ test_project(RDB_database *dbp, RDB_exec_context *ecp)
 
     tbp = RDB_get_table("EMPS2", ecp, &tx);
     if (tbp == NULL) {
-        RDB_rollback(&tx);
+        RDB_rollback(ecp, &tx);
         return RDB_ERROR;
     }
 
@@ -104,7 +104,7 @@ test_project(RDB_database *dbp, RDB_exec_context *ecp)
 
     vtbp = RDB_project(tbp, 1, projattrs1, ecp);
     if (vtbp == NULL) {
-        RDB_rollback(&tx);
+        RDB_rollback(ecp, &tx);
         return RDB_ERROR;
     }
 
@@ -115,7 +115,7 @@ test_project(RDB_database *dbp, RDB_exec_context *ecp)
     RDB_tuple_set_rational(&tpl, "SALARY", (RDB_rational)4000.0);
     ret = RDB_table_contains(vtbp, &tpl, ecp, &tx, &b);
     if (ret != RDB_OK) {
-        RDB_rollback(&tx);
+        RDB_rollback(ecp, &tx);
         return ret;
     }
 
@@ -126,7 +126,7 @@ test_project(RDB_database *dbp, RDB_exec_context *ecp)
     printf("Projection contains SALARY(4400.0): %s\n", b ? "yes" : "no");
 
     if (ret != RDB_OK) {
-        RDB_rollback(&tx);
+        RDB_rollback(ecp, &tx);
         return ret;
     }
 
@@ -137,14 +137,14 @@ test_project(RDB_database *dbp, RDB_exec_context *ecp)
 
     vtbp = RDB_project(tbp, 2, projattrs2, ecp);
     if (vtbp == NULL) {
-        RDB_rollback(&tx);
+        RDB_rollback(ecp, &tx);
         return RDB_ERROR;
     }
 
     printf("Converting projection table to array\n");
     ret = print_table2(vtbp, ecp, &tx);
     if (ret != RDB_OK) {
-        RDB_rollback(&tx);
+        RDB_rollback(ecp, &tx);
         return ret;
     } 
 
@@ -154,7 +154,7 @@ test_project(RDB_database *dbp, RDB_exec_context *ecp)
     printf("End of transaction\n");
 
     /* Test if rollback works after projection with keyloss */
-    return RDB_rollback(&tx);
+    return RDB_rollback(ecp, &tx);
 }
 
 int

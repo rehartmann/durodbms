@@ -61,7 +61,7 @@ test_rename(RDB_database *dbp, RDB_exec_context *ecp)
 
     tbp = RDB_get_table("EMPS1", ecp, &tx);
     if (ret != RDB_OK) {
-        RDB_rollback(&tx);
+        RDB_rollback(ecp, &tx);
         return ret;
     }
 
@@ -69,7 +69,7 @@ test_rename(RDB_database *dbp, RDB_exec_context *ecp)
 
     vtbp = RDB_rename(tbp, 2, renv, ecp);
     if (vtbp == NULL) {
-        RDB_rollback(&tx);
+        RDB_rollback(ecp, &tx);
         return RDB_ERROR;
     }
 
@@ -111,7 +111,7 @@ error:
     printf("Dropping rename\n");
     RDB_drop_table(vtbp, ecp, &tx);
 
-    RDB_rollback(&tx);
+    RDB_rollback(ecp, &tx);
     return RDB_ERROR;
 }
 

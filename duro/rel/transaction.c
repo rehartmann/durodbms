@@ -193,23 +193,29 @@ RDB_commit(RDB_transaction *txp)
 }
 
 int
-RDB_rollback(RDB_transaction *txp)
+RDB_rollback(RDB_exec_context *ecp, RDB_transaction *txp)
 {
     int ret;
 
-    if (txp->txid == NULL)
-        return RDB_INVALID_TRANSACTION;
+    if (txp->txid == NULL) {
+        RDB_raise_invalid_tx(ecp);
+        return RDB_ERROR;
+    }
 
     ret = txp->txid->abort(txp->txid);
     if (ret != 0) {
-        RDB_errmsg(txp->envp, "cannot abort tx: %s", RDB_strerror(ret));        
-        return RDB_convert_err(ret);
+        _RDB_handle_errcode(ret, ecp);
+        return RDB_ERROR;
     }
 
     /*
      * Delete recmap list
      */
     ret = close_storage(txp);
+    if (ret != RDB_OK) {
+        _RDB_handle_errcode(ret, ecp);
+        ret = RDB_ERROR;
+    }
 
     txp->txid = NULL;
     free(txp->errinfo);
@@ -218,12 +224,12 @@ RDB_rollback(RDB_transaction *txp)
 }
 
 int
-RDB_rollback_all(RDB_transaction *txp)
+RDB_rollback_all(RDB_exec_context *ecp, RDB_transaction *txp)
 {
     int ret;
 
     do {
-        ret = RDB_rollback(txp);
+        ret = RDB_rollback(ecp, txp);
         if (ret != RDB_OK)
             return ret;
         txp = txp->parentp;
@@ -270,6 +276,6 @@ void
 _RDB_handle_syserr(RDB_transaction *txp, int err)
 {
     if (err == RDB_DEADLOCK) {
-        RDB_rollback_all(txp);
+        RDB_rollback_all(NULL, txp); /* !! */
     }
 }

@@ -64,7 +64,7 @@ test_delete(RDB_database *dbp, RDB_exec_context *ecp)
             RDB_int_to_expr(1));
     ret = RDB_delete(tbp, exprp, ecp, &tx);
     if (ret != RDB_OK) {
-        RDB_rollback(&tx);
+        RDB_rollback(ecp, &tx);
         return ret;
     }
 
@@ -72,20 +72,20 @@ test_delete(RDB_database *dbp, RDB_exec_context *ecp)
 
     ret = print_table(tbp, ecp, &tx);
     if (ret != RDB_OK) {
-        RDB_rollback(&tx);
+        RDB_rollback(ecp, &tx);
         return ret;
     }
 
     printf("Deleting all tuples from EMPS1\n");
     ret = RDB_delete(tbp, NULL, ecp, &tx);
     if (ret != RDB_OK) {
-        RDB_rollback(&tx);
+        RDB_rollback(ecp, &tx);
         return ret;
     }
 
     ret = print_table(tbp, ecp, &tx);
     if (ret != RDB_OK) {
-        RDB_rollback(&tx);
+        RDB_rollback(ecp, &tx);
         return ret;
     }
 

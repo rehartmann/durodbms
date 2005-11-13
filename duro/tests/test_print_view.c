@@ -22,7 +22,7 @@ print_salary_view(RDB_database *dbp, RDB_exec_context *ecp)
     printf("Table SALARIES\n");
     tmpvtbp = RDB_get_table("SALARIES", ecp, &tx);
     if (tmpvtbp == NULL) {
-        RDB_rollback(&tx);
+        RDB_rollback(ecp, &tx);
         fprintf(stderr, "Error: %s\n", RDB_strerror(ret));
         return RDB_ERROR;
     }
@@ -50,7 +50,7 @@ print_salary_view(RDB_database *dbp, RDB_exec_context *ecp)
 
 error:
     RDB_destroy_obj(&array, ecp);
-    RDB_rollback(&tx);
+    RDB_rollback(ecp, &tx);
     return RDB_ERROR;
 }
 
@@ -74,7 +74,7 @@ print_emp_view(RDB_database *dbp, RDB_exec_context *ecp)
     printf("Table EMPS1H\n");
     tmpvtbp = RDB_get_table("EMPS1H", ecp, &tx);
     if (tmpvtbp == NULL) {
-        RDB_rollback(&tx);
+        RDB_rollback(ecp, &tx);
         fprintf(stderr, "Error: %s\n", RDB_strerror(ret));
         return RDB_ERROR;
     }
@@ -104,7 +104,7 @@ print_emp_view(RDB_database *dbp, RDB_exec_context *ecp)
 
 error:
     RDB_destroy_obj(&array, ecp);
-    RDB_rollback(&tx);
+    RDB_rollback(ecp, &tx);
     return RDB_ERROR;
 }
 
@@ -159,7 +159,7 @@ print_emps_view(RDB_database *dbp, RDB_exec_context *ecp)
 
 error:
     RDB_destroy_obj(&array, ecp);
-    RDB_rollback(&tx);
+    RDB_rollback(ecp, &tx);
     return RDB_ERROR;
 }
 
@@ -211,7 +211,7 @@ print_emps2_view(RDB_database *dbp, RDB_exec_context *ecp)
     return RDB_OK;
 
 error:
-    RDB_rollback(&tx);
+    RDB_rollback(ecp, &tx);
     return RDB_ERROR;
 }
 

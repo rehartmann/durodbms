@@ -209,16 +209,20 @@ RDB_project_tuple(const RDB_object *tplp, int attrc, char *attrv[],
     RDB_object *attrp;
     int i;
 
-    if (tplp->kind != RDB_OB_TUPLE)
-        return RDB_INVALID_ARGUMENT;
+    if (tplp->kind != RDB_OB_TUPLE) {
+        RDB_raise_invalid_argument("not a tuple", ecp);
+        return RDB_ERROR;
+    }
 
     RDB_destroy_obj(restplp, ecp);
     RDB_init_obj(restplp);
 
     for (i = 0; i < attrc; i++) {
         attrp = RDB_tuple_get(tplp, attrv[i]);
-        if (attrp == NULL)
-            return RDB_ATTRIBUTE_NOT_FOUND;
+        if (attrp == NULL) {
+            RDB_raise_attribute_not_found(attrv[i], ecp);
+            return RDB_ERROR;
+        }
 
         RDB_tuple_set(restplp, attrv[i], attrp, ecp);
     }
@@ -234,8 +238,10 @@ RDB_remove_tuple(const RDB_object *tplp, int attrc, char *attrv[],
     tuple_entry *entryp;
     int i;
 
-    if (tplp->kind != RDB_OB_TUPLE)
-        return RDB_INVALID_ARGUMENT;
+    if (tplp->kind != RDB_OB_TUPLE) {
+        RDB_raise_invalid_argument("not a tuple", ecp);
+        return RDB_ERROR;
+    }
 
     RDB_destroy_obj(restplp, ecp);
     RDB_init_obj(restplp);
@@ -300,14 +306,15 @@ RDB_join_tuples(const RDB_object *tpl1p, const RDB_object *tpl2p,
              }
              if (!b) {
                  RDB_destroy_hashtable_iter(&hiter);
-                 return RDB_INVALID_ARGUMENT;
+                 RDB_raise_invalid_argument("tuples do not match", ecp);
+                 return RDB_ERROR;
              }
         } else {
              ret = RDB_tuple_set(restplp, entryp->key, &entryp->obj, ecp);
              if (ret != RDB_OK)
              {
                  RDB_destroy_hashtable_iter(&hiter);
-                 return RDB_INVALID_ARGUMENT;
+                 return RDB_ERROR;
              }
         }
     }
@@ -341,8 +348,10 @@ RDB_rename_tuple(const RDB_object *tplp, int renc, const RDB_renaming renv[],
     RDB_hashtable_iter it;
     tuple_entry *entryp;
 
-    if (tplp->kind != RDB_OB_TUPLE)
-        return RDB_INVALID_ARGUMENT;
+    if (tplp->kind != RDB_OB_TUPLE) {
+        RDB_raise_invalid_argument("not a tuple", ecp);
+        return RDB_ERROR;
+    }
 
     /* Copy attributes to tplp */
     RDB_init_hashtable_iter(&it, (RDB_hashtable *)&tplp->var.tpl_tab);
@@ -386,8 +395,10 @@ _RDB_invrename_tuple(const RDB_object *tup, int renc, const RDB_renaming renv[],
     RDB_hashtable_iter it;
     tuple_entry *entryp;
 
-    if (tup->kind != RDB_OB_TUPLE)
-        return RDB_INVALID_ARGUMENT;
+    if (tup->kind != RDB_OB_TUPLE) {
+        RDB_raise_invalid_argument("not a tuple", ecp);
+        return RDB_ERROR;
+    }
 
     /* Copy attributes to tup */
     RDB_init_hashtable_iter(&it, (RDB_hashtable *)&tup->var.tpl_tab);
@@ -485,8 +496,10 @@ _RDB_copy_tuple(RDB_object *dstp, const RDB_object *srcp, RDB_exec_context *ecp)
     if (srcp->kind == RDB_OB_INITIAL)
         return RDB_OK;
 
-    if (srcp->kind != RDB_OB_TUPLE)
-        return RDB_INVALID_ARGUMENT;
+    if (srcp->kind != RDB_OB_TUPLE) {
+        RDB_raise_invalid_argument("not a tuple", ecp);
+        return RDB_ERROR;
+    }
 
     /* Copy attributes to tup */
     RDB_init_hashtable_iter(&it, (RDB_hashtable *)&srcp->var.tpl_tab);
@@ -523,7 +536,8 @@ RDB_wrap_tuple(const RDB_object *tplp, int wrapc, const RDB_wrapping wrapv[],
 
             if (attrp == NULL) {
                 RDB_destroy_obj(&tpl, ecp);
-                return RDB_ATTRIBUTE_NOT_FOUND;
+                RDB_raise_attribute_not_found(wrapv[i].attrv[j], ecp);
+                return RDB_ERROR;
             }
 
             ret = RDB_tuple_set(&tpl, wrapv[i].attrv[j], attrp, ecp);
@@ -574,10 +588,14 @@ RDB_unwrap_tuple(const RDB_object *tplp, int attrc, char *attrv[],
     for (i = 0; i < attrc; i++) {
         RDB_object *wtplp = RDB_tuple_get(tplp, attrv[i]);
 
-        if (wtplp == NULL)
-            return RDB_ATTRIBUTE_NOT_FOUND;
-        if (wtplp->kind != RDB_OB_TUPLE)
-            return RDB_INVALID_ARGUMENT;
+        if (wtplp == NULL) {
+            RDB_raise_attribute_not_found(attrv[i], ecp);
+            return RDB_ERROR;
+        }
+        if (wtplp->kind != RDB_OB_TUPLE) {
+            RDB_raise_invalid_argument("attribute is not tuple", ecp);
+            return RDB_ERROR;
+        }
 
         ret = _RDB_copy_tuple(restplp, wtplp, ecp);
         if (ret != RDB_OK)

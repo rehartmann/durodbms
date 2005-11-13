@@ -19,7 +19,7 @@ test_insert(RDB_database *dbp, RDB_exec_context *ecp)
 
     tbp = RDB_get_table("EMPS2", ecp, &tx);
     if (tbp == NULL) {
-        RDB_rollback(&tx);
+        RDB_rollback(ecp, &tx);
         return RDB_ERROR;
     }
 
@@ -37,7 +37,7 @@ test_insert(RDB_database *dbp, RDB_exec_context *ecp)
 
     ret = RDB_insert(tbp, &tpl, ecp, &tx);
     if (ret != RDB_OK) {
-        RDB_rollback(&tx);
+        RDB_rollback(ecp, &tx);
         return ret;
     }
 
@@ -46,7 +46,7 @@ test_insert(RDB_database *dbp, RDB_exec_context *ecp)
 
 error:
     RDB_destroy_obj(&tpl, ecp);
-    RDB_rollback(&tx);
+    RDB_rollback(ecp, &tx);
     return RDB_ERROR;
 }
 
@@ -71,7 +71,7 @@ print_table(RDB_database *dbp, RDB_exec_context *ecp)
 
     tbp = RDB_get_table("EMPS2", ecp, &tx);
     if (tbp == NULL) {
-        RDB_rollback(&tx);
+        RDB_rollback(ecp, &tx);
         return RDB_ERROR;
     }
 
@@ -100,7 +100,7 @@ print_table(RDB_database *dbp, RDB_exec_context *ecp)
 
 error:
     RDB_destroy_obj(&array, ecp);
-    RDB_rollback(&tx);
+    RDB_rollback(ecp, &tx);
     
     return ret;
 }

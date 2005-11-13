@@ -140,7 +140,7 @@ _RDB_new_rtable(const char *name, RDB_bool persistent,
                     heading[i].defaultp, ecp);
             if (ret != RDB_OK) {
                 RDB_drop_type(reltyp, ecp, NULL);
-                return NULL /* !! ret */;
+                return NULL;
             }                
         }
     }
@@ -181,14 +181,11 @@ _RDB_free_table(RDB_table *tbp, RDB_exec_context *ecp)
 }
 
 int
-RDB_table_keys(RDB_table *tbp, RDB_string_vec **keyvp)
+RDB_table_keys(RDB_table *tbp, RDB_exec_context *ecp, RDB_string_vec **keyvp)
 {
-    int ret;
-
     if (tbp->keyv == NULL) {
-        ret = _RDB_infer_keys(tbp);
-        if (ret != RDB_OK)
-            return ret;
+        if (_RDB_infer_keys(tbp, ecp) != RDB_OK)
+            return RDB_ERROR;
     }
 
     if (keyvp != NULL)
@@ -525,14 +522,18 @@ RDB_all(RDB_table *tbp, const char *attrname, RDB_exec_context *ecp,
 
     /* attrname may only be NULL if table is unary */
     if (attrname == NULL) {
-        if (tbp->typ->var.basetyp->var.tuple.attrc != 1)
-            return RDB_INVALID_ARGUMENT;
+        if (tbp->typ->var.basetyp->var.tuple.attrc != 1) {
+            RDB_raise_invalid_argument("attribute name is required", ecp);
+            return RDB_ERROR;
+        }
         attrname = tbp->typ->var.basetyp->var.tuple.attrv[0].name;
     }
 
     attrtyp = _RDB_tuple_type_attr(tbp->typ->var.basetyp, attrname)->typ;
-    if (attrtyp == NULL)
-        return RDB_ATTRIBUTE_NOT_FOUND;
+    if (attrtyp == NULL) {
+        RDB_raise_attribute_not_found(attrname, ecp);
+        return RDB_ERROR;
+    }
 
     /* initialize result */
     *resultp = RDB_TRUE;
@@ -555,13 +556,11 @@ RDB_all(RDB_table *tbp, const char *attrname, RDB_exec_context *ecp,
         if (!RDB_tuple_get_bool(tplp, attrname))
             *resultp = RDB_FALSE;
     }
-/* !!
-    if (ret != RDB_NOT_FOUND) {
+    if (RDB_obj_type(RDB_get_err(ecp)) != &RDB_NOT_FOUND_ERROR) {
         RDB_destroy_obj(&arr, ecp);
         _RDB_handle_syserr(txp, ret);
-        return ret;
+        return RDB_ERROR;
     }
-*/
     RDB_clear_err(ecp);
     return RDB_destroy_obj(&arr, ecp);
 }
@@ -578,14 +577,18 @@ RDB_any(RDB_table *tbp, const char *attrname, RDB_exec_context *ecp,
 
     /* attrname may only be NULL if table is unary */
     if (attrname == NULL) {
-        if (tbp->typ->var.basetyp->var.tuple.attrc != 1)
-            return RDB_INVALID_ARGUMENT;
+        if (tbp->typ->var.basetyp->var.tuple.attrc != 1) {
+            RDB_raise_invalid_argument("attribute name is required", ecp);
+            return RDB_ERROR;
+        }
         attrname = tbp->typ->var.basetyp->var.tuple.attrv[0].name;
     }
 
     attrtyp = _RDB_tuple_type_attr(tbp->typ->var.basetyp, attrname)->typ;
-    if (attrtyp == NULL)
-        return RDB_INVALID_ARGUMENT;
+    if (attrtyp == NULL) {
+        RDB_raise_attribute_not_found(attrname, ecp);
+        return RDB_ERROR;
+    }
 
     /* initialize result */
     *resultp = RDB_FALSE;
@@ -608,13 +611,12 @@ RDB_any(RDB_table *tbp, const char *attrname, RDB_exec_context *ecp,
         if (RDB_tuple_get_bool(tplp, attrname))
             *resultp = RDB_TRUE;
     }
-/* !!
-    if (ret != RDB_NOT_FOUND) {
+    if (RDB_obj_type(RDB_get_err(ecp)) != &RDB_NOT_FOUND_ERROR) {
         RDB_destroy_obj(&arr, ecp);
         _RDB_handle_syserr(txp, ret);
-        return ret;
+        return RDB_ERROR;
     }
-*/
+    RDB_clear_err(ecp);
     return RDB_destroy_obj(&arr, ecp);
 }
 
@@ -630,14 +632,18 @@ RDB_max(RDB_table *tbp, const char *attrname, RDB_exec_context *ecp,
 
     /* attrname may only be NULL if table is unary */
     if (attrname == NULL) {
-        if (tbp->typ->var.basetyp->var.tuple.attrc != 1)
-            return RDB_INVALID_ARGUMENT;
+        if (tbp->typ->var.basetyp->var.tuple.attrc != 1) {
+            RDB_raise_invalid_argument("attribute name is required", ecp);
+            return RDB_ERROR;
+        }
         attrname = tbp->typ->var.basetyp->var.tuple.attrv[0].name;
     }
 
     attrtyp = _RDB_tuple_type_attr(tbp->typ->var.basetyp, attrname)->typ;
-    if (attrtyp == NULL)
-        return RDB_INVALID_ARGUMENT;
+    if (attrtyp == NULL) {
+        RDB_raise_attribute_not_found(attrname, ecp);
+        return RDB_ERROR;
+    }
 
     _RDB_set_obj_type(resultp, attrtyp);
 
@@ -677,13 +683,12 @@ RDB_max(RDB_table *tbp, const char *attrname, RDB_exec_context *ecp,
                 resultp->var.rational_val = val;
         }
     }
-/* !!
-    if (ret != RDB_NOT_FOUND) {
+    if (RDB_obj_type(RDB_get_err(ecp)) != &RDB_NOT_FOUND_ERROR) {
         RDB_destroy_obj(&arr, ecp);
         _RDB_handle_syserr(txp, ret);
-        return ret;
+        return RDB_ERROR;
     }
-*/
+    RDB_clear_err(ecp);
     return RDB_destroy_obj(&arr, ecp);
 }
 
@@ -699,14 +704,18 @@ RDB_min(RDB_table *tbp, const char *attrname, RDB_exec_context *ecp,
 
     /* attrname may only be NULL if table is unary */
     if (attrname == NULL) {
-        if (tbp->typ->var.basetyp->var.tuple.attrc != 1)
-            return RDB_INVALID_ARGUMENT;
+        if (tbp->typ->var.basetyp->var.tuple.attrc != 1) {
+            RDB_raise_invalid_argument("attribute name is required", ecp);
+            return RDB_ERROR;
+        }
         attrname = tbp->typ->var.basetyp->var.tuple.attrv[0].name;
     }
 
     attrtyp = _RDB_tuple_type_attr(tbp->typ->var.basetyp, attrname)->typ;
-    if (attrtyp == NULL)
-        return RDB_INVALID_ARGUMENT;
+    if (attrtyp == NULL) {
+        RDB_raise_attribute_not_found(attrname, ecp);
+        return RDB_ERROR;
+    }
 
     _RDB_set_obj_type(resultp, attrtyp);
 
@@ -746,13 +755,12 @@ RDB_min(RDB_table *tbp, const char *attrname, RDB_exec_context *ecp,
                 resultp->var.rational_val = val;
         }
     }
-/* !!
-    if (ret != RDB_NOT_FOUND) {
+    if (RDB_obj_type(RDB_get_err(ecp)) != &RDB_NOT_FOUND_ERROR) {
         RDB_destroy_obj(&arr, ecp);
         _RDB_handle_syserr(txp, ret);
-        return ret;
+        return RDB_ERROR;
     }
-*/
+    RDB_clear_err(ecp);
     return RDB_destroy_obj(&arr, ecp);
 }
 
@@ -767,14 +775,18 @@ RDB_sum(RDB_table *tbp, const char *attrname, RDB_exec_context *ecp,
     int i;
 
     if (attrname == NULL) {
-        if (tbp->typ->var.basetyp->var.tuple.attrc != 1)
-            return RDB_INVALID_ARGUMENT;
+        if (tbp->typ->var.basetyp->var.tuple.attrc != 1) {
+            RDB_raise_invalid_argument("attribute name is required", ecp);
+            return RDB_ERROR;
+        }
         attrname = tbp->typ->var.basetyp->var.tuple.attrv[0].name;
     }
 
     attrtyp = _RDB_tuple_type_attr(tbp->typ->var.basetyp, attrname)->typ;
-    if (attrtyp == NULL)
-        return RDB_INVALID_ARGUMENT;
+    if (attrtyp == NULL) {
+        RDB_raise_attribute_not_found(attrname, ecp);
+        return RDB_ERROR;
+    }
 
     _RDB_set_obj_type(resultp, attrtyp);
 
@@ -809,13 +821,13 @@ RDB_sum(RDB_table *tbp, const char *attrname, RDB_exec_context *ecp,
             resultp->var.rational_val
                             += RDB_tuple_get_rational(tplp, attrname);
     }
-/* !!
-    if (ret != RDB_NOT_FOUND) {
+    if (RDB_obj_type(RDB_get_err(ecp)) != &RDB_NOT_FOUND_ERROR) {
         RDB_destroy_obj(&arr, ecp);
         _RDB_handle_syserr(txp, ret);
-        return ret;
+        return RDB_ERROR;
     }
-*/
+    RDB_clear_err(ecp);
+
     return RDB_destroy_obj(&arr, ecp);
 }
 
@@ -832,14 +844,18 @@ RDB_avg(RDB_table *tbp, const char *attrname, RDB_exec_context *ecp,
 
     /* attrname may only be NULL if table is unary */
     if (attrname == NULL) {
-        if (tbp->typ->var.basetyp->var.tuple.attrc != 1)
-            return RDB_INVALID_ARGUMENT;
+        if (tbp->typ->var.basetyp->var.tuple.attrc != 1) {
+            RDB_raise_invalid_argument("attribute name is required", ecp);
+            return RDB_ERROR;
+        }
         attrname = tbp->typ->var.basetyp->var.tuple.attrv[0].name;
     }
 
     attrtyp = _RDB_tuple_type_attr(tbp->typ->var.basetyp, attrname)->typ;
-    if (attrtyp == NULL)
-        return RDB_INVALID_ARGUMENT;
+    if (attrtyp == NULL) {
+        RDB_raise_attribute_not_found(attrname, ecp);
+        return RDB_ERROR;
+    }
 
     if (!RDB_type_is_numeric(attrtyp)) {
         RDB_raise_type_mismatch("argument must be numeric", ecp);
@@ -868,13 +884,13 @@ RDB_avg(RDB_table *tbp, const char *attrname, RDB_exec_context *ecp,
         else
             *resultp += RDB_tuple_get_rational(tplp, attrname);
     }
-/* !!
-    if (ret != RDB_NOT_FOUND) {
+    if (RDB_obj_type(RDB_get_err(ecp)) != &RDB_NOT_FOUND_ERROR) {
         RDB_destroy_obj(&arr, ecp);
         _RDB_handle_syserr(txp, ret);
-        return ret;
+        return RDB_ERROR;
     }
-*/
+    RDB_clear_err(ecp);
+
     if (count == 0)
         return RDB_AGGREGATE_UNDEFINED;
     *resultp /= count;
@@ -1107,9 +1123,12 @@ RDB_subset(RDB_table *tb1p, RDB_table *tb2p, RDB_exec_context *ecp,
     }
 
     RDB_destroy_obj(&tpl, ecp);
-    if (ret != RDB_NOT_FOUND && ret != RDB_OK) {
-        _RDB_drop_qresult(qrp, ecp, txp);
-        goto error;
+    if (ret != RDB_OK) {
+        if (RDB_obj_type(RDB_get_err(ecp)) != &RDB_NOT_FOUND_ERROR) {
+            _RDB_drop_qresult(qrp, ecp, txp);
+            goto error;
+        }
+        RDB_clear_err(ecp);
     }
     ret = _RDB_drop_qresult(qrp, ecp, txp);
     if (ret != RDB_OK)
@@ -1118,7 +1137,7 @@ RDB_subset(RDB_table *tb1p, RDB_table *tb2p, RDB_exec_context *ecp,
 
 error:
     _RDB_handle_syserr(txp, ret);
-    return ret;
+    return RDB_ERROR;
 }
 
 int

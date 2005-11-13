@@ -107,7 +107,7 @@ static int
 ungroup_contains(RDB_table *tbp, const RDB_object *tplp, RDB_exec_context *ecp,
         RDB_transaction *txp, RDB_bool *resultp)
 {
-    int ret, ret2;
+    int ret;
     RDB_object tpl;
     RDB_qresult *qrp;
     RDB_table *seltbp = NULL;
@@ -194,31 +194,30 @@ ungroup_contains(RDB_table *tbp, const RDB_object *tplp, RDB_exec_context *ecp,
         }
     }
     if (ret != RDB_OK) {
-        _RDB_handle_syserr(txp, ret);
-        goto error;
+        if (RDB_obj_type(RDB_get_err(ecp)) != &RDB_NOT_FOUND_ERROR) {
+            goto error;
+        }
+        *resultp = RDB_FALSE;
+        RDB_clear_err(ecp);
     }
 
     RDB_destroy_obj(&tpl, ecp);
-    ret2 = _RDB_drop_qresult(qrp, ecp, txp);
-    if (ret2 != RDB_OK) {
-        _RDB_handle_syserr(txp, ret2);
-        return ret2;
+    if (_RDB_drop_qresult(qrp, ecp, txp) != RDB_OK) {
+        return RDB_ERROR;
     }    
     if (seltbp != NULL) {
-        ret2 = RDB_drop_table(seltbp, ecp, txp);
-        if (ret2 != RDB_OK) {
-            _RDB_handle_syserr(txp, ret);
-            return ret2;
+        if (RDB_drop_table(seltbp, ecp, txp) != RDB_OK) {
+            return RDB_ERROR;
         }
     }
-    return ret;
+    return RDB_OK;
 
 error:
     RDB_destroy_obj(&tpl, ecp);
     _RDB_drop_qresult(qrp, ecp, txp);
     if (seltbp != NULL)
         RDB_drop_table(seltbp, ecp, txp);
-    return ret;
+    return RDB_ERROR;
 }
 
 static int
@@ -344,7 +343,9 @@ stored_contains(RDB_table *tbp, const RDB_object *tplp, RDB_exec_context *ecp,
     } else if (ret == RDB_NOT_FOUND) {
         *resultp = RDB_FALSE;
         ret = RDB_OK;
-    } /* else !! */
+    } else {
+        _RDB_handle_errcode(ret, ecp);
+    }
     if (RDB_is_syserr(ret)) {
         RDB_errmsg(txp->dbp->dbrootp->envp, RDB_strerror(ret));
         _RDB_handle_syserr(txp, ret);

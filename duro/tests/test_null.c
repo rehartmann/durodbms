@@ -24,7 +24,7 @@ create_table(RDB_database *dbp, RDB_exec_context *ecp)
     key.strc = 0;
     tbp = RDB_create_table("DEEDUM", RDB_TRUE, 0, NULL, 1, &key, ecp, &tx);
     if (ret != RDB_OK) {
-        RDB_rollback(&tx);
+        RDB_rollback(ecp, &tx);
         return RDB_ERROR;
     }
     printf("Table %s created.\n", RDB_table_name(tbp));
@@ -49,7 +49,7 @@ test_table(RDB_database *dbp, RDB_exec_context *ecp)
 
     tbp = RDB_get_table("DEEDUM", ecp, &tx);
     if (tbp == NULL) {
-        RDB_rollback(&tx);
+        RDB_rollback(ecp, &tx);
         return RDB_ERROR;
     }
 
@@ -58,7 +58,7 @@ test_table(RDB_database *dbp, RDB_exec_context *ecp)
     printf("Inserting tuple #1\n");
     ret = RDB_insert(tbp, &tpl, ecp, &tx);
     if (ret != RDB_OK) {
-        RDB_rollback(&tx);
+        RDB_rollback(ecp, &tx);
         RDB_destroy_obj(&tpl, ecp);
         return ret;
     }

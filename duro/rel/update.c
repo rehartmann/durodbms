@@ -12,13 +12,13 @@
 #include <string.h>
 
 static RDB_bool
-is_keyattr(const char *attrname, RDB_table *tbp)
+is_keyattr(const char *attrname, RDB_table *tbp, RDB_exec_context *ecp)
 {
     int i, j;
     int keyc;
     RDB_string_vec *keyv;
     
-    keyc = RDB_table_keys(tbp, &keyv);
+    keyc = RDB_table_keys(tbp, ecp, &keyv);
     for (i = 0; i < keyc; i++)
         for (j = 0; j < keyv[i].strc; j++)
             if (strcmp(attrname, keyv[i].strv[j]) == 0)
@@ -232,7 +232,7 @@ cleanup:
     if (ret == RDB_OK) {
         return RDB_commit(&tx);
     }
-    RDB_rollback(&tx);
+    RDB_rollback(ecp, &tx);
     return ret;
 }
 
@@ -368,7 +368,7 @@ cleanup:
     if (ret == RDB_OK) {
         return RDB_commit(&tx);
     }
-    RDB_rollback(&tx);
+    RDB_rollback(ecp, &tx);
     return ret;
 }
 
@@ -644,7 +644,7 @@ cleanup:
     if (ret == RDB_OK) {
         return RDB_commit(&tx);
     }
-    RDB_rollback(&tx);
+    RDB_rollback(ecp, &tx);
     return ret;
 }
 
@@ -891,12 +891,13 @@ cleanup:
     if (ret == RDB_OK) {
         return RDB_commit(&tx);
     }
-    RDB_rollback(&tx);
+    RDB_rollback(ecp, &tx);
     return ret;
 }
 
 static RDB_bool
-upd_complex(RDB_table *tbp, int updc, const RDB_attr_update updv[])
+upd_complex(RDB_table *tbp, int updc, const RDB_attr_update updv[],
+        RDB_exec_context *ecp)
 {
     int i;
 
@@ -906,7 +907,7 @@ upd_complex(RDB_table *tbp, int updc, const RDB_attr_update updv[])
 
     /* Check if a key attribute is updated */
     for (i = 0; i < updc; i++) {
-        if (is_keyattr(updv[i].name, tbp)) {
+        if (is_keyattr(updv[i].name, tbp, ecp)) {
             return RDB_TRUE;
         }
     }
@@ -929,7 +930,7 @@ _RDB_update_real(RDB_table *tbp, RDB_expression *condp, int updc,
     if (tbp->stp == NULL)
         return RDB_OK;
 
-    if (upd_complex(tbp, updc, updv)
+    if (upd_complex(tbp, updc, updv, ecp)
             || (condp != NULL && _RDB_expr_refers(condp, tbp)))
         return update_stored_complex(tbp, condp, updc, updv, ecp, txp);
     return update_stored_simple(tbp, condp, updc, updv, ecp, txp);
@@ -943,7 +944,7 @@ _RDB_update_select_index(RDB_table *tbp, RDB_expression *condp,
     if (tbp->var.select.tbp->var.project.tbp->stp == NULL)
         return RDB_OK;
 
-    if (upd_complex(tbp, updc, updv)
+    if (upd_complex(tbp, updc, updv, ecp)
         || _RDB_expr_refers(tbp->var.select.exp, tbp->var.select.tbp)
         || (condp != NULL && _RDB_expr_refers(condp, tbp->var.select.tbp))) {
         return update_select_index_complex(tbp, condp, updc, updv, ecp, txp);

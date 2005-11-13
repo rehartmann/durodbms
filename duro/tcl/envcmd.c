@@ -132,6 +132,7 @@ Duro_env_cmd(ClientData data, Tcl_Interp *interp, int argc, CONST char *argv[])
         Tcl_Obj *dblistp;
         RDB_object arr;
         RDB_object *dbnamep;
+        RDB_object *errp;
 
         if (argc != 3) {
             Tcl_SetResult(interp, "wrong # args: should be \"env dbs envId\"",
@@ -168,10 +169,12 @@ Duro_env_cmd(ClientData data, Tcl_Interp *interp, int argc, CONST char *argv[])
             if (ret != TCL_OK)
                 return ret;
         }
-        if (ret != RDB_NOT_FOUND) {
-            Duro_dberror(interp, RDB_get_err(statep->current_ecp), NULL);
+        errp = RDB_get_err(statep->current_ecp);
+        if (RDB_obj_type(errp) != &RDB_NOT_FOUND_ERROR) {
+            Duro_dberror(interp, errp, NULL);
             return TCL_ERROR;
         }
+        RDB_clear_err(statep->current_ecp);
 
         Tcl_SetObjResult(interp, dblistp);
 

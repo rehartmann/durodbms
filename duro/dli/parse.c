@@ -45,7 +45,8 @@ RDB_parse_expr(const char *txt, RDB_ltablefn *lt_fp, void *lt_arg,
         return NULL;
     }
     if (pret > 0) {
-        return /* RDB_SYNTAX */ NULL;
+        RDB_raise_invalid_argument("syntax error", ecp);
+        return NULL;
     }
 
     /* If the expression represents an attribute, try to get table */

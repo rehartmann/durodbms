@@ -31,7 +31,7 @@ test_callop(RDB_database *dbp, RDB_exec_context *ecp)
     printf("Calling PLUS\n");
     ret = RDB_call_ro_op("PLUS", 2, argv, ecp, &tx, &retval);
     if (ret != RDB_OK) {
-        RDB_rollback(&tx);
+        RDB_rollback(ecp, &tx);
         goto error;
     }
 
@@ -40,7 +40,7 @@ test_callop(RDB_database *dbp, RDB_exec_context *ecp)
     printf("Calling ADD\n");
     ret = RDB_call_update_op("ADD", 2, argv, ecp, &tx);
     if (ret != RDB_OK) {
-        RDB_rollback(&tx);
+        RDB_rollback(ecp, &tx);
         goto error;
     }
 
@@ -53,7 +53,7 @@ error:
     RDB_destroy_obj(&arg2, ecp);
     RDB_destroy_obj(&retval, ecp);
 
-    RDB_rollback(&tx);
+    RDB_rollback(ecp, &tx);
     return RDB_ERROR;
 }
 
@@ -72,14 +72,14 @@ test_dropop(RDB_database *dbp, RDB_exec_context *ecp)
     printf("Dropping PLUS\n");
     ret = RDB_drop_op("PLUS", ecp, &tx);
     if (ret != RDB_OK) {
-        RDB_rollback(&tx);
+        RDB_rollback(ecp, &tx);
         return ret;
     }
 
     printf("Dropping ADD\n");
     ret = RDB_drop_op("ADD", ecp, &tx);
     if (ret != RDB_OK) {
-        RDB_rollback(&tx);
+        RDB_rollback(ecp, &tx);
         return ret;
     }
     return RDB_commit(&tx);

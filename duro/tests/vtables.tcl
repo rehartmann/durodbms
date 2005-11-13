@@ -80,7 +80,7 @@ if {![catch {
 }]} {
     error "invalid EXTEND should fail, but succeeded"
 }
-if {[lindex $errorCode 1] != "RDB_TYPE_MISMATCH"} {
+if {![string match "TYPE_MISMATCH_ERROR(*)" [lindex $errorCode 1]]} {
     error "Wrong error: $errorCode"
 }
 
@@ -104,7 +104,7 @@ if {![catch {
 }]} {
     error "creating TS2 a second time should fail, but succeeded"
 }
-if {[lindex $errorCode 1] != "RDB_ELEMENT_EXISTS"} {
+if {![string match "ELEMENT_EXISTS_ERROR(*)" [lindex $errorCode 1]]} {
     error "Wrong error: $errorCode"
 }
 
@@ -136,7 +136,7 @@ duro::array drop $da
 if {![catch {duro::table expr -global TX2 {EXTEND T1 ADD (K*10 AS K)} $tx}]} {
     error "invalid EXTEND should fail, but succeeded"
 }
-if {[lindex $errorCode 1] != "RDB_INVALID_ARGUMENT"} {
+if {![string match "INVALID_ARGUMENT_ERROR(*)" [lindex $errorCode 1]]} {
     error "Wrong error: $errorCode"
 }
 
@@ -150,7 +150,7 @@ if {![catch {duro::update TP2 {K = 1} S1 {"Bli"} $tx}]} {
 }
 
 set code [lindex $errorCode 1]
-if {$code != "RDB_ATTRIBUTE_NOT_FOUND"} {
+if {![string match "ATTRIBUTE_NOT_FOUND_ERROR(*)" $code]} {
     error "wrong error code: $code"
 }
 
@@ -159,7 +159,7 @@ if {![catch {duro::update TP2 {S1 = "Bla"} K 3 $tx}]} {
 }
 
 set code [lindex $errorCode 1]
-if {$code != "RDB_ATTRIBUTE_NOT_FOUND"} {
+if {![string match "ATTRIBUTE_NOT_FOUND_ERROR(*)" $code]} {
     error "wrong error code: $code"
 }
 
@@ -168,7 +168,7 @@ if {![catch {duro::update TP2 {K = 1} S1 {"Blb"} $tx}]} {
 }
 
 set code [lindex $errorCode 1]
-if {$code != "RDB_ATTRIBUTE_NOT_FOUND"} {
+if {![string match "ATTRIBUTE_NOT_FOUND_ERROR(*)" $code]} {
     error "wrong error code: $code"
 }
 
@@ -177,7 +177,7 @@ if {![catch {duro::delete TP2 {K = 1} $tx}]} {
 }
 
 set code [lindex $errorCode 1]
-if {$code != "RDB_ATTRIBUTE_NOT_FOUND"} {
+if {![string match "ATTRIBUTE_NOT_FOUND_ERROR(*)" $code]} {
     error "wrong error code: $code"
 }
 
@@ -270,7 +270,7 @@ if {![tequal $tpl $stpl]} {
 if {![catch {duro::insert TS {K 4 S1 B} $tx}]} {
     error "Insertion into TS should fail, but succeeded"
 }
-if {[lindex $errorCode 1] != "RDB_PREDICATE_VIOLATION"} {
+if {![string match "PREDICATE_VIOLATION_ERROR(*)" [lindex $errorCode 1]]} {
     error "wrong errorCode: $errorCode"
 }
 
@@ -323,21 +323,21 @@ duro::table expr -global TP3 {T1 {}} $tx
 if {![catch {duro::table expr -global ES {T1 WHERE S1 = 2} $tx}]} {
     error "Table creation should fail, but succeded"
 }
-if {[lindex $::errorCode 1] != "RDB_TYPE_MISMATCH"} {
+if {![string match "TYPE_MISMATCH_ERROR(*)" [lindex $::errorCode 1]]} {
     error "Wrong error: $::errorCode"
 }
 
 if {![catch {duro::table expr -global ES {T1 WHERE S1 > 2} $tx}]} {
     error "Table creation should fail, but succeded"
 }
-if {[lindex $::errorCode 1] != "RDB_TYPE_MISMATCH"} {
+if {![string match "TYPE_MISMATCH_ERROR(*)" [lindex $::errorCode 1]]} {
     error "Wrong error: $::errorCode"
 }
 
 if {![catch {duro::table expr -global ES {T1 WHERE I > 2} $tx}]} {
     error "Table creation should fail, but succeded"
 }
-if {[lindex $::errorCode 1] != "RDB_ATTRIBUTE_NOT_FOUND"} {
+if {![string match "ATTRIBUTE_NOT_FOUND_ERROR(*)" [lindex $::errorCode 1]]} {
     error "Wrong error: $::errorCode"
 }
 

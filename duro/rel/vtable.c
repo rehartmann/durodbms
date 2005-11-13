@@ -345,6 +345,10 @@ _RDB_extend(RDB_table *tbp, int attrc, const RDB_virtual_attr attrv[],
     }
     for (i = 0; i < attrc; i++) {
         newtbp->var.extend.attrv[i].name = RDB_dup_str(attrv[i].name);
+        if (newtbp->var.extend.attrv[i].name == NULL) {
+            RDB_raise_no_memory(ecp);
+            goto error;
+        }
         newtbp->var.extend.attrv[i].exp = attrv[i].exp;
         attrdefv[i].name = RDB_dup_str(attrv[i].name);
         if (attrdefv[i].name == NULL) {
@@ -462,7 +466,9 @@ RDB_remove(RDB_table *tbp, int attrc, char *attrv[], RDB_exec_context *ecp)
         if (RDB_find_str(attrc, attrv, tuptyp->var.tuple.attrv[i].name) == -1) {
             if (j == baseattrc - attrc) {
                 /* Not-existing attribute in attrv */
-                ret = RDB_INVALID_ARGUMENT;
+                RDB_raise_attribute_not_found(tuptyp->var.tuple.attrv[i].name,
+                        ecp);
+                ret = RDB_ERROR;
                 goto cleanup;
             }
             resattrv[j++] = tuptyp->var.tuple.attrv[i].name;
@@ -781,7 +787,6 @@ RDB_table *
 RDB_group(RDB_table *tbp, int attrc, char *attrv[], const char *gattr,
         RDB_exec_context *ecp)
 {
-    int ret;
     int i;
     RDB_table *newtbp = _RDB_new_table(ecp);
     if (newtbp == NULL)
@@ -792,7 +797,7 @@ RDB_group(RDB_table *tbp, int attrc, char *attrv[], const char *gattr,
     newtbp->kind = RDB_TB_GROUP;
 
     newtbp->typ = RDB_group_type(tbp->typ, attrc, attrv, gattr, ecp);
-    if (ret != RDB_OK) {
+    if (newtbp->typ == NULL) {
         free(newtbp);
         return NULL;
     }
@@ -832,7 +837,7 @@ RDB_ungroup(RDB_table *tbp, const char *attr, RDB_exec_context *ecp)
     newtbp->kind = RDB_TB_UNGROUP;
 
     newtbp->typ = RDB_ungroup_type(tbp->typ, attr, ecp);
-    if (newtbp->typ != NULL) {
+    if (newtbp->typ == NULL) {
         free(newtbp);
         return NULL;
     }
@@ -1253,7 +1258,7 @@ _RDB_table_def_equals(RDB_table *tb1p, RDB_table *tb2p, RDB_exec_context *ecp,
 }
 
 static int
-infer_join_keys(RDB_table *tbp)
+infer_join_keys(RDB_table *tbp, RDB_exec_context *ecp)
 {
     int i, j, k;
     int keyc1, keyc2;
@@ -1261,10 +1266,10 @@ infer_join_keys(RDB_table *tbp)
     RDB_string_vec *keyv1, *keyv2;
     RDB_string_vec *newkeyv;
 
-    keyc1 = RDB_table_keys(tbp->var.join.tb1p, &keyv1);
+    keyc1 = RDB_table_keys(tbp->var.join.tb1p, ecp, &keyv1);
     if (keyc1 < 0)
         return keyc1;
-    keyc2 = RDB_table_keys(tbp->var.join.tb2p, &keyv2);
+    keyc2 = RDB_table_keys(tbp->var.join.tb2p, ecp, &keyv2);
     if (keyc2 < 0)
         return keyc2;
 
@@ -1310,7 +1315,7 @@ error:
 }
 
 static int
-infer_project_keys(RDB_table *tbp)
+infer_project_keys(RDB_table *tbp, RDB_exec_context *ecp)
 {
     int keyc;
     int newkeyc;
@@ -1318,7 +1323,7 @@ infer_project_keys(RDB_table *tbp)
     RDB_string_vec *newkeyv;
     RDB_bool *presv;
     
-    keyc = RDB_table_keys(tbp->var.project.tbp, &keyv);
+    keyc = RDB_table_keys(tbp->var.project.tbp, ecp, &keyv);
     if (keyc < 0)
         return keyc;
 
@@ -1368,7 +1373,7 @@ infer_project_keys(RDB_table *tbp)
 }
 
 static int
-infer_group_keys(RDB_table *tbp)
+infer_group_keys(RDB_table *tbp, RDB_exec_context *ecp)
 {
     int i, j;
     int newkeyc;
@@ -1379,12 +1384,16 @@ infer_group_keys(RDB_table *tbp)
      */    
     newkeyc = 1;
     newkeyv = malloc(sizeof(RDB_string_vec));
-    if (newkeyv == NULL)
-        return RDB_NO_MEMORY;
+    if (newkeyv == NULL) {
+        RDB_raise_no_memory(ecp);
+        return RDB_ERROR;
+    }
     newkeyv[0].strc = tbp->typ->var.basetyp->var.tuple.attrc - 1;
     newkeyv[0].strv = malloc(sizeof (char *) * newkeyv[0].strc);
-    if (newkeyv[0].strv == NULL)
-        return RDB_NO_MEMORY;
+    if (newkeyv[0].strv == NULL) {
+        RDB_raise_no_memory(ecp);
+        return RDB_ERROR;
+    }
 
     j = 0;
     for (i = 0; i < tbp->typ->var.basetyp->var.tuple.attrc; i++) {
@@ -1392,8 +1401,10 @@ infer_group_keys(RDB_table *tbp)
                 tbp->var.group.gattr) != 0) {
             newkeyv[0].strv[j] = RDB_dup_str(
                     tbp->typ->var.basetyp->var.tuple.attrv[i].name);
-            if (newkeyv[0].strv[j] == NULL)
-                return RDB_NO_MEMORY;
+            if (newkeyv[0].strv[j] == NULL) {
+                RDB_raise_no_memory(ecp);
+                return RDB_ERROR;
+            }
             j++;
         }
     }
@@ -1404,7 +1415,7 @@ infer_group_keys(RDB_table *tbp)
 }
 
 int
-_RDB_infer_keys(RDB_table *tbp)
+_RDB_infer_keys(RDB_table *tbp, RDB_exec_context *ecp)
 {
     int keyc;
     RDB_string_vec *keyv;
@@ -1412,15 +1423,18 @@ _RDB_infer_keys(RDB_table *tbp)
 
     switch (tbp->kind) {
         case RDB_TB_REAL:
-            return RDB_INVALID_ARGUMENT;
+            RDB_raise_invalid_argument("table is real", ecp);
+            return RDB_ERROR;
         case RDB_TB_SELECT:
             /* Copy keys */
-            keyc = RDB_table_keys(tbp->var.select.tbp, &keyv);
+            keyc = RDB_table_keys(tbp->var.select.tbp, ecp, &keyv);
             if (keyc < 0)
-                return keyc;
+                return RDB_ERROR;
             newkeyv = dup_keys(keyc, keyv);
-            if (newkeyv == NULL)
-                return RDB_NO_MEMORY;
+            if (newkeyv == NULL) {
+                RDB_raise_no_memory(ecp);
+                return RDB_ERROR;
+            }
             tbp->keyc = keyc;
             tbp->keyv = newkeyv;
             return RDB_OK;
@@ -1434,79 +1448,92 @@ _RDB_infer_keys(RDB_table *tbp)
              */
             newkeyv = all_key(tbp);
             if (newkeyv == NULL) {
-                return RDB_NO_MEMORY;
+                RDB_raise_no_memory(ecp);
+                return RDB_ERROR;
             }
             tbp->keyc = 1;
             tbp->keyv = newkeyv;
             return RDB_OK;
         case RDB_TB_MINUS:
             /* Copy keys */
-            keyc = RDB_table_keys(tbp->var.minus.tb1p, &keyv);
+            keyc = RDB_table_keys(tbp->var.minus.tb1p, ecp, &keyv);
             if (keyc < 0)
-                return keyc;
+                return RDB_ERROR;
             newkeyv = dup_keys(keyc, keyv);
-            if (newkeyv == NULL)
-                return RDB_NO_MEMORY;
+            if (newkeyv == NULL) {
+                RDB_raise_no_memory(ecp);
+                return RDB_ERROR;
+            }
             tbp->keyc = keyc;
             tbp->keyv = newkeyv;
             return RDB_OK;
         case RDB_TB_INTERSECT:
             /* Copy keys */
-            keyc = RDB_table_keys(tbp->var.intersect.tb1p, &keyv);
+            keyc = RDB_table_keys(tbp->var.intersect.tb1p, ecp, &keyv);
             if (keyc < 0)
-                return keyc;
+                return RDB_ERROR;
             newkeyv = dup_keys(keyc, keyv);
-            if (newkeyv == NULL)
-                return RDB_NO_MEMORY;
+            if (newkeyv == NULL) {
+                RDB_raise_no_memory(ecp);
+                return RDB_ERROR;
+            }
             tbp->keyc = keyc;
             tbp->keyv = newkeyv;
             return RDB_OK;
         case RDB_TB_JOIN:
-            return infer_join_keys(tbp);
+            return infer_join_keys(tbp, ecp);
         case RDB_TB_EXTEND:
             /* Copy keys */
-            keyc = RDB_table_keys(tbp->var.extend.tbp, &keyv);
+            keyc = RDB_table_keys(tbp->var.extend.tbp, ecp, &keyv);
             if (keyc < 0)
-                return keyc;
+                return RDB_ERROR;
             newkeyv = dup_keys(keyc, keyv);
-            if (newkeyv == NULL)
-                return RDB_NO_MEMORY;
+            if (newkeyv == NULL) {
+                RDB_raise_no_memory(ecp);
+                return RDB_ERROR;
+            }
             tbp->keyc = keyc;
             tbp->keyv = newkeyv;
             return RDB_OK;
         case RDB_TB_PROJECT:
-            return infer_project_keys(tbp);
+            return infer_project_keys(tbp, ecp);
         case RDB_TB_SUMMARIZE:
-            keyc = RDB_table_keys(tbp->var.summarize.tb2p, &keyv);
+            keyc = RDB_table_keys(tbp->var.summarize.tb2p, ecp, &keyv);
             if (keyc < 0)
-                return keyc;
+                return RDB_ERROR;
             newkeyv = dup_keys(keyc, keyv);
-            if (newkeyv == NULL)
-                return RDB_NO_MEMORY;
+            if (newkeyv == NULL) {
+                RDB_raise_no_memory(ecp);
+                return RDB_ERROR;
+            }
             tbp->keyc = keyc;
             tbp->keyv = newkeyv;
             return RDB_OK;
         case RDB_TB_RENAME:
-            keyc = RDB_table_keys(tbp->var.rename.tbp, &keyv);
+            keyc = RDB_table_keys(tbp->var.rename.tbp, ecp, &keyv);
             if (keyc < 0)
-                return keyc;
+                return RDB_ERROR;
             newkeyv = dup_rename_keys(keyc, keyv, tbp->var.rename.renc,
                     tbp->var.rename.renv);
-            if (newkeyv == NULL)
-                return RDB_NO_MEMORY;
+            if (newkeyv == NULL) {
+                RDB_raise_no_memory(ecp);
+                return RDB_ERROR;
+            }
             tbp->keyc = keyc;
             tbp->keyv = newkeyv;
             return RDB_OK;
         case RDB_TB_GROUP:
-            return infer_group_keys(tbp);
+            return infer_group_keys(tbp, ecp);
         case RDB_TB_SDIVIDE:
             /* Copy keys */
-            keyc = RDB_table_keys(tbp->var.sdivide.tb1p, &keyv);
+            keyc = RDB_table_keys(tbp->var.sdivide.tb1p, ecp, &keyv);
             if (keyc < 0)
-                return keyc;
+                return RDB_ERROR;
             newkeyv = dup_keys(keyc, keyv);
-            if (newkeyv == NULL)
-                return RDB_NO_MEMORY;
+            if (newkeyv == NULL) {
+                RDB_raise_no_memory(ecp);
+                return RDB_ERROR;
+            }
             tbp->keyc = keyc;
             tbp->keyv = newkeyv;
             return RDB_OK;

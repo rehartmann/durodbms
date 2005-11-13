@@ -403,7 +403,9 @@ expr_op_type(const RDB_expression *exp, const RDB_type *tuptyp,
             if (RDB_type_attr_type(argtv[0],
                     RDB_obj_string(&exp->var.op.argv[i]->var.obj)) == NULL) {
                 free(argtv);
-                return NULL /* !! RDB_ATTRIBUTE_NOT_FOUND */;
+                RDB_raise_attribute_not_found(
+                        RDB_obj_string(&exp->var.op.argv[i]->var.obj), ecp);
+                return NULL;
             }
         }
         attrc = argtv[0]->var.basetyp->var.tuple.attrc - exp->var.op.argc + 1;
@@ -522,7 +524,8 @@ expr_op_type(const RDB_expression *exp, const RDB_type *tuptyp,
             if (exp->var.op.argv[i]->kind != RDB_EX_OBJ
                     || exp->var.op.argv[i]->var.obj.typ != &RDB_STRING) {
                 free(argtv);
-                return NULL /* !! RDB_TYPE_MISMATCH */;
+                RDB_raise_type_mismatch("STRING attribute required", ecp);
+                return NULL;
             }
         }
 
@@ -628,8 +631,10 @@ RDB_expr_type(const RDB_expression *exp, const RDB_type *tuptyp,
             break;
         case RDB_EX_ATTR:
             attrp = _RDB_tuple_type_attr(tuptyp, exp->var.attrname);
-            if (attrp == NULL)
-                return NULL /* !! RDB_ATTRIBUTE_NOT_FOUND*/;
+            if (attrp == NULL) {
+                RDB_raise_attribute_not_found(exp->var.attrname, ecp);
+                return NULL;
+            }
             return attrp->typ;
         case RDB_EX_TUPLE_ATTR:
             typ = RDB_expr_type(exp->var.op.argv[0], tuptyp, ecp, txp);
@@ -641,8 +646,10 @@ RDB_expr_type(const RDB_expression *exp, const RDB_type *tuptyp,
             if (typ == NULL)
                 return typ;
             attrp = _RDB_get_icomp(typ, exp->var.op.name);
-            if (attrp == NULL)
-                return NULL /* !! RDB_NOT_FOUND */;
+            if (attrp == NULL) {
+                RDB_raise_invalid_argument("component not found", ecp);
+                return NULL;
+            }
             return attrp->typ;
         case RDB_EX_RO_OP:
             return expr_op_type(exp, tuptyp, ecp, txp);
@@ -673,13 +680,13 @@ _RDB_check_expr_type(const RDB_expression *exp, const RDB_type *tuptyp,
     int ret;
     RDB_type *typ = RDB_expr_type(exp, tuptyp, ecp, txp);
     if (typ == NULL)
-        return RDB_NOT_FOUND /* !! */;
+        return RDB_ERROR;
 
     ret = RDB_type_equals(typ, checktyp) ? RDB_OK : RDB_TYPE_MISMATCH;
     if (!RDB_type_is_scalar(typ)) {
         ret = RDB_drop_type(typ, ecp, NULL);
         if (ret != RDB_OK)
-            return ret;
+            return RDB_ERROR;
     }
     return ret;
 }

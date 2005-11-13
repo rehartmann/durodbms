@@ -10,6 +10,7 @@
 #include <gen/strfns.h>
 #include <stdlib.h>
 #include <string.h>
+#include <assert.h>
 
 static int
 alter_op(RDB_expression *exp, const char *name, int argc)
@@ -464,7 +465,6 @@ static int
 swap_project_union(RDB_table *tbp, RDB_table *chtbp, RDB_exec_context *ecp,
         RDB_transaction *txp)
 {
-    int ret;
     int i;
     RDB_table *newtbp;
     RDB_type *newtyp;
@@ -502,11 +502,10 @@ swap_project_union(RDB_table *tbp, RDB_table *chtbp, RDB_exec_context *ecp,
     RDB_drop_type(chtbp->typ, ecp, NULL);
     chtbp->typ = newtyp;
     /* Infer keys for first child to set keyloss flag */
-    return _RDB_infer_keys(chtbp);
+    if (_RDB_infer_keys(chtbp, ecp) != RDB_OK)
+        return RDB_ERROR;
 
-    ret = transform_union(tbp, ecp, txp);
-    if (ret != RDB_OK)
-        return ret;
+    return transform_union(tbp, ecp, txp);
 }
 
 /* Transforms PROJECT(RENAME) to RENAME(PROJECT) or PROJECT */
@@ -614,7 +613,6 @@ static int
 swap_project_extend(RDB_table *tbp, RDB_exec_context *ecp)
 {
     int i, j;
-    int ret;
     RDB_type *newtyp;
     RDB_virtual_attr *extv;
     char **attrnamev;
@@ -718,8 +716,8 @@ swap_project_extend(RDB_table *tbp, RDB_exec_context *ecp)
 
         newtyp = RDB_project_relation_type(htbp->typ, nattrc, attrnamev, ecp);
         free(attrnamev);
-        if (ret != RDB_OK)
-            return ret;
+        if (newtyp == NULL)
+            return RDB_ERROR;
         RDB_drop_type(chtbp->typ, ecp, NULL);
         chtbp->typ = newtyp;
     }
@@ -737,12 +735,15 @@ swap_project_select(RDB_table *tbp, RDB_table *chtbp, RDB_exec_context *ecp)
     int ret;
     int attrc;
     char **attrv = malloc(sizeof(char *)
-            * chtbp->var.select.tbp->typ->var.basetyp->var.tuple.attrc);
+            * chtbp->typ->var.basetyp->var.tuple.attrc);
     if (attrv == NULL)
         return RDB_NO_MEMORY;
 
+    assert(tbp->typ->var.basetyp->var.tuple.attrc
+            <= chtbp->typ->var.basetyp->var.tuple.attrc);
+
     /*
-     * Add attributes from parent
+     * Get attributes from parent
      */
     attrc = tbp->typ->var.basetyp->var.tuple.attrc;
     for (i = 0; i < attrc; i++) {
@@ -894,6 +895,8 @@ _RDB_transform(RDB_table *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
             break;
         case RDB_TB_UNION:
             ret = transform_union(tbp, ecp, txp);
+            if (ret != RDB_OK)
+                return ret;
             break;
         case RDB_TB_INTERSECT:
             ret = _RDB_transform(tbp->var.intersect.tb1p, ecp, txp);

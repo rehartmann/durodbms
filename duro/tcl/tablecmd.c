@@ -799,9 +799,9 @@ table_keys_cmd(TclState *statep, Tcl_Interp *interp, int objc,
     if (tbp == NULL) {
         return TCL_ERROR;
     }
-    keyc = RDB_table_keys(tbp, &keyv);
+    keyc = RDB_table_keys(tbp, statep->current_ecp, &keyv);
     if (keyc < 0) {
-        /* Duro_dberror(interp, txp, keyc); !! */
+        Duro_dberror(interp, RDB_get_err(statep->current_ecp), txp);
         return TCL_ERROR;
     }
 

@@ -21,12 +21,12 @@ create_view1(RDB_database *dbp, RDB_exec_context *ecp)
 
     tbp = RDB_get_table("EMPS1", ecp, &tx);
     if (tbp == NULL) {
-        RDB_rollback(&tx);
+        RDB_rollback(ecp, &tx);
         return RDB_ERROR;
     }
     tbp2 = RDB_get_table("EMPS2", ecp, &tx);
     if (ret != RDB_OK) {
-        RDB_rollback(&tx);
+        RDB_rollback(ecp, &tx);
         return ret;
     }
 
@@ -34,26 +34,26 @@ create_view1(RDB_database *dbp, RDB_exec_context *ecp)
 
     vtbp = RDB_union(tbp2, tbp, ecp);
     if (tbp == NULL) {
-        RDB_rollback(&tx);
+        RDB_rollback(ecp, &tx);
         return RDB_ERROR;
     }
 
     vtbp = RDB_project(vtbp, 1, projattrs, ecp);
     if (vtbp == NULL) {
         RDB_drop_table(vtbp, ecp, &tx);
-        RDB_rollback(&tx);
+        RDB_rollback(ecp, &tx);
         return RDB_ERROR;
     }
     
     printf("Making virtual table persistent as SALARIES\n");
     ret = RDB_set_table_name(vtbp, "SALARIES", ecp, &tx);
     if (ret != RDB_OK) {
-        RDB_rollback(&tx);
+        RDB_rollback(ecp, &tx);
         return ret;
     } 
     ret = RDB_add_table(vtbp, ecp, &tx);
     if (ret != RDB_OK) {
-        RDB_rollback(&tx);
+        RDB_rollback(ecp, &tx);
         return ret;
     } 
 
@@ -77,7 +77,7 @@ create_view2(RDB_database *dbp, RDB_exec_context *ecp)
 
     tbp = RDB_get_table("EMPS1", ecp, &tx);
     if (ret != RDB_OK) {
-        RDB_rollback(&tx);
+        RDB_rollback(ecp, &tx);
         return RDB_ERROR;
     }
 
@@ -94,19 +94,19 @@ create_view2(RDB_database *dbp, RDB_exec_context *ecp)
     vtbp = RDB_select(tbp, exprp, ecp, &tx);
     if (vtbp == NULL) {
         RDB_drop_expr(exprp, ecp);
-        RDB_rollback(&tx);
+        RDB_rollback(ecp, &tx);
         return RDB_ERROR;
     }
     
     printf("Making virtual table persistent as EMPS1H\n");
     ret = RDB_set_table_name(vtbp, "EMPS1H", ecp, &tx);
     if (ret != RDB_OK) {
-        RDB_rollback(&tx);
+        RDB_rollback(ecp, &tx);
         return ret;
     } 
     ret = RDB_add_table(vtbp, ecp, &tx);
     if (ret != RDB_OK) {
-        RDB_rollback(&tx);
+        RDB_rollback(ecp, &tx);
         return ret;
     } 
 
@@ -131,7 +131,7 @@ create_view3(RDB_database *dbp, RDB_exec_context *ecp)
 
     tbp = RDB_get_table("EMPS1", ecp, &tx);
     if (tbp == NULL) {
-        RDB_rollback(&tx);
+        RDB_rollback(ecp, &tx);
         return ret;
     }
 
@@ -150,19 +150,19 @@ create_view3(RDB_database *dbp, RDB_exec_context *ecp)
     vtbp = RDB_extend(tbp, 1, &vattr, ecp, &tx);
     if (vtbp == NULL) {
         RDB_drop_expr(exprp, ecp);
-        RDB_rollback(&tx);
+        RDB_rollback(ecp, &tx);
         return RDB_ERROR;
     }
     
     printf("Making virtual table persistent as EMPS1S\n");
     ret = RDB_set_table_name(vtbp, "EMPS1S", ecp, &tx);
     if (ret != RDB_OK) {
-        RDB_rollback(&tx);
+        RDB_rollback(ecp, &tx);
         return ret;
     } 
     ret = RDB_add_table(vtbp, ecp, &tx);
     if (ret != RDB_OK) {
-        RDB_rollback(&tx);
+        RDB_rollback(ecp, &tx);
         return ret;
     } 
 
@@ -189,7 +189,7 @@ create_view4(RDB_database *dbp, RDB_exec_context *ecp)
 
     tbp = RDB_get_table("EMPS1", ecp, &tx);
     if (tbp == NULL) {
-        RDB_rollback(&tx);
+        RDB_rollback(ecp, &tx);
         return RDB_ERROR;
     }
 
@@ -198,7 +198,7 @@ create_view4(RDB_database *dbp, RDB_exec_context *ecp)
 
     projtbp = RDB_project(tbp, 1, &projattr, ecp);
     if (projtbp == NULL) {
-        RDB_rollback(&tx);
+        RDB_rollback(ecp, &tx);
         return RDB_ERROR;
     }
 
@@ -208,7 +208,7 @@ create_view4(RDB_database *dbp, RDB_exec_context *ecp)
 
     vtbp = RDB_summarize(tbp, projtbp, 1, &add, ecp, &tx);
     if (ret != RDB_OK) {
-        RDB_rollback(&tx);
+        RDB_rollback(ecp, &tx);
         return ret;
     }
 
@@ -217,7 +217,7 @@ create_view4(RDB_database *dbp, RDB_exec_context *ecp)
 
     vtbp = RDB_rename(vtbp, 1, &ren, ecp);
     if (ret != RDB_OK) {
-        RDB_rollback(&tx);
+        RDB_rollback(ecp, &tx);
         return ret;
     }
 
@@ -225,12 +225,12 @@ create_view4(RDB_database *dbp, RDB_exec_context *ecp)
 
     ret = RDB_set_table_name(vtbp, "EMPS1S2", ecp, &tx);
     if (ret != RDB_OK) {
-        RDB_rollback(&tx);
+        RDB_rollback(ecp, &tx);
         return ret;
     } 
     ret = RDB_add_table(vtbp, ecp, &tx);
     if (ret != RDB_OK) {
-        RDB_rollback(&tx);
+        RDB_rollback(ecp, &tx);
         return ret;
     } 
 

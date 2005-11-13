@@ -55,12 +55,12 @@ test_minus(RDB_database *dbp, RDB_exec_context *ecp)
 
     tbp = RDB_get_table("EMPS1", ecp, &tx);
     if (tbp == NULL) {
-        RDB_rollback(&tx);
+        RDB_rollback(ecp, &tx);
         return RDB_ERROR;
     }
     tbp2 = RDB_get_table("EMPS2", ecp, &tx);
     if (tbp2 == NULL) {
-        RDB_rollback(&tx);
+        RDB_rollback(ecp, &tx);
         return RDB_ERROR;
     }
 
@@ -68,14 +68,14 @@ test_minus(RDB_database *dbp, RDB_exec_context *ecp)
 
     vtbp = RDB_minus(tbp, tbp2, ecp);
     if (vtbp == NULL) {
-        RDB_rollback(&tx);
+        RDB_rollback(ecp, &tx);
         return RDB_ERROR;
     }
 
     printf("converting minus table to array\n");
     ret = print_table(vtbp, ecp, &tx);
     if (ret != RDB_OK) {
-        RDB_rollback(&tx);
+        RDB_rollback(ecp, &tx);
         return ret;
     } 
     

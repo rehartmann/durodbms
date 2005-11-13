@@ -59,12 +59,8 @@ if {![catch {
 }
 
 set code [lindex $errorCode 1]
-if {$code != "RDB_PREDICATE_VIOLATION"} {
+if {![string match "PREDICATE_VIOLATION_ERROR(*C1*)" $code]} {
     error "wrong error code: $code"
-}
-set con [lindex $errorCode 3]
-if {$con != "C1"} {
-    error "wrong error constraint: $con"
 }
 
 # Must succeed
@@ -78,12 +74,8 @@ if {![catch {
 }
 
 set code [lindex $errorCode 1]
-if {$code != "RDB_PREDICATE_VIOLATION"} {
+if {![string match "PREDICATE_VIOLATION_ERROR(*C2*)" $code]} {
     error "wrong error code: $code"
-}
-set con [lindex $errorCode 3]
-if {$con != "C2"} {
-    error "wrong error constraint: $con"
 }
 
 # Must fail
@@ -94,12 +86,8 @@ if {![catch {
 }
 
 set code [lindex $errorCode 1]
-if {$code != "RDB_PREDICATE_VIOLATION"} {
+if {![string match "PREDICATE_VIOLATION_ERROR(*C1*)" $code]} {
     error "wrong error code: $code"
-}
-set con [lindex $errorCode 3]
-if {$con != "C1"} {
-    error "wrong error constraint: $con"
 }
 
 # Must fail
@@ -110,12 +98,8 @@ if {![catch {
 }
 
 set code [lindex $errorCode 1]
-if {$code != "RDB_PREDICATE_VIOLATION"} {
+if {![string match "PREDICATE_VIOLATION_ERROR(*C2*)" $code]} {
     error "wrong error code: $code"
-}
-set con [lindex $errorCode 3]
-if {$con != "C2"} {
-    error "wrong error constraint: $con"
 }
 
 duro::table create T3 {
@@ -145,12 +129,10 @@ if {![catch {
 }
 
 set code [lindex $errorCode 1]
-if {$code != "RDB_PREDICATE_VIOLATION"} {
+if {![string match "PREDICATE_VIOLATION_ERROR(*C3*)" $code]} {
     error "wrong error code: $code"
-}
-set con [lindex $errorCode 3]
-if {$con != "C3"} {
-    error "wrong error constraint: $con"
 }
 
 duro::commit $tx
+
+duro::env close $dbenv

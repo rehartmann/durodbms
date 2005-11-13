@@ -140,7 +140,8 @@ RDB_create_constraint(const char *name, RDB_expression *exp,
     if (ret != RDB_OK)
         return ret;
     if (!res) {
-        return RDB_PREDICATE_VIOLATION;
+        RDB_raise_predicate_violation(name, ecp);
+        return RDB_ERROR;
     }
 
     if (!RDB_tx_db(txp)->dbrootp->constraints_read) {
@@ -243,7 +244,8 @@ _RDB_check_constraints(const RDB_constraint *constrp, RDB_exec_context *ecp,
             return ret;
         }
         if (!b) {
-            return RDB_PREDICATE_VIOLATION;
+            RDB_raise_predicate_violation(constrp->name, ecp);
+            return RDB_ERROR;
         }
         constrp = constrp->nextp;
     }

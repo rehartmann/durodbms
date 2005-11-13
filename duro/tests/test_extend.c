@@ -33,7 +33,7 @@ print_extend(RDB_table *vtbp, RDB_exec_context *ecp, RDB_transaction *txp)
     }
     /* !!
     if (ret != RDB_NOT_FOUND) {
-        RDB_rollback(txp);
+        RDB_rollback(ecp, txp);
         goto error;
     }
     */
@@ -77,10 +77,13 @@ insert_extend(RDB_table *vtbp, RDB_exec_context *ecp, RDB_transaction *txp)
         goto error;
 
     ret = RDB_insert(vtbp, &tpl, ecp, txp);
-    if (ret == RDB_PREDICATE_VIOLATION) {
-        printf("Return code: %s - OK\n", RDB_strerror(ret));
-    } else {
-        printf("Error: %s\n", RDB_strerror(ret));
+    if (ret != RDB_OK) {
+        RDB_type *errtyp = RDB_obj_type(RDB_get_err(ecp));
+        if (errtyp == &RDB_PREDICATE_VIOLATION_ERROR) {
+            printf("Error: predicate violation - OK\n");
+        } else {
+            printf("Error: %s\n", errtyp->name);
+        }
     }
 
     printf("Inserting tuple #2\n");
@@ -179,13 +182,13 @@ test_extend(RDB_database *dbp, RDB_exec_context *ecp)
 
     printf("End of transaction\n");
     /* Abort transaction, since we don't want the update to be persistent */
-    return RDB_rollback(&tx);
+    return RDB_rollback(ecp, &tx);
 
 error:
     if (vtbp != NULL)
         RDB_drop_table(vtbp, ecp, &tx);
 
-    RDB_rollback(&tx);
+    RDB_rollback(ecp, &tx);
     return RDB_ERROR;
 }
 

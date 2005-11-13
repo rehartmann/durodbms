@@ -24,19 +24,19 @@ test_ra(RDB_database *dbp, RDB_exec_context *ecp)
 
     tb1p = RDB_get_table("EMPS1", ecp, &tx);
     if (tb1p == NULL) {
-        RDB_rollback(&tx);
+        RDB_rollback(ecp, &tx);
         return RDB_ERROR;
     }
     tb2p = RDB_get_table("EMPS2", ecp, &tx);
     if (tb2p == NULL) {
-        RDB_rollback(&tx);
+        RDB_rollback(ecp, &tx);
         return RDB_ERROR;
     }
 
     printf("Creating intersection (EMPS1, EMPS2)\n");
     vtbp = RDB_intersect(tb1p, tb2p, ecp);
     if (vtbp == NULL) {
-        RDB_rollback(&tx);
+        RDB_rollback(ecp, &tx);
         return RDB_ERROR;
     }
 

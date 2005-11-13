@@ -116,7 +116,7 @@ test_update(RDB_database *dbp, RDB_exec_context *ecp)
     return RDB_commit(&tx);
 
 error:
-    RDB_rollback(&tx);
+    RDB_rollback(ecp, &tx);
     return RDB_ERROR;
 }
 

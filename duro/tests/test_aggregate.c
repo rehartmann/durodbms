@@ -20,7 +20,7 @@ test_aggregate(RDB_database *dbp, RDB_exec_context *ecp)
 
     tbp = RDB_get_table("EMPS1", ecp, &tx);
     if (tbp == NULL) {
-        RDB_rollback(&tx);
+        RDB_rollback(ecp, &tx);
         return RDB_ERROR;
     }
 
@@ -28,7 +28,7 @@ test_aggregate(RDB_database *dbp, RDB_exec_context *ecp)
 
     ret = RDB_cardinality(tbp, ecp, &tx);
     if (ret < 0) {
-        RDB_rollback(&tx);
+        RDB_rollback(ecp, &tx);
         return ret;
     }
 

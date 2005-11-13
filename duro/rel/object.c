@@ -494,8 +494,11 @@ int
 _RDB_obj_to_field(RDB_field *fvp, RDB_object *objp, RDB_exec_context *ecp)
 {
     /* Global tables cannot be converted to field values */
-    if (objp->kind == RDB_OB_TABLE && objp->var.tbp->is_persistent)
-        return RDB_INVALID_ARGUMENT;
+    if (objp->kind == RDB_OB_TABLE && objp->var.tbp->is_persistent) {
+        RDB_raise_invalid_argument(
+                "global table cannot be used as field value", ecp);
+        return RDB_ERROR;
+    }
 
     fvp->datap = objp;
     fvp->copyfp = obj_to_irep;
@@ -783,8 +786,10 @@ RDB_obj_comp(const RDB_object *valp, const char *compname, RDB_object *compvalp,
 {
     int ret;
     
-    if (!RDB_type_is_scalar(valp->typ) || valp->typ->var.scalar.repc == 0)
-        return RDB_INVALID_ARGUMENT;
+    if (!RDB_type_is_scalar(valp->typ) || valp->typ->var.scalar.repc == 0) {
+        RDB_raise_invalid_argument("component not found", ecp);
+        return RDB_ERROR;
+    }
 
     if (valp->typ->var.scalar.sysimpl) {
         if (valp->typ->var.scalar.repv[0].compc == 1) {
@@ -810,8 +815,10 @@ RDB_obj_comp(const RDB_object *valp, const char *compname, RDB_object *compvalp,
         RDB_object *argv[1];
 
         opname = malloc(strlen(valp->typ->name) + strlen(compname) + 6);
-        if (opname == NULL)
-            return RDB_NO_MEMORY;
+        if (opname == NULL) {
+            RDB_raise_no_memory(ecp);
+            return RDB_ERROR;
+        }
 
         strcpy(opname, valp->typ->name);
         strcat(opname, "_get_");
@@ -1019,7 +1026,8 @@ RDB_obj_to_string(RDB_object *dstp, const RDB_object *srcp,
         if (ret != RDB_OK)
             return ret;
     } else {
-        return RDB_INVALID_ARGUMENT;
+        RDB_raise_invalid_argument("type cannot be converted to STRING", ecp);
+        return RDB_ERROR;
     }
     return RDB_OK;
 }

@@ -457,7 +457,7 @@ get_ro_op(RDB_dbroot *dbrootp, const char *name,
     if (pm) {
         RDB_raise_type_mismatch("", ecp);
     } else {
-        RDB_raise_operator_not_found("", ecp);
+        RDB_raise_operator_not_found(name, ecp);
     }
     return NULL;
 }
@@ -532,7 +532,7 @@ _RDB_get_ro_op(const char *name, int argc, RDB_type *argtv[],
      * was not found, return with failure
      */
     if (typnull) {
-        RDB_raise_operator_not_found("", ecp);
+        RDB_raise_operator_not_found(name, ecp);
         return RDB_ERROR;
     }
 
@@ -545,8 +545,10 @@ _RDB_get_ro_op(const char *name, int argc, RDB_type *argtv[],
 
         if (strcmp(name, "=") == 0) {
             op = new_ro_op("=", 2, &RDB_BOOLEAN, &obj_equals);
-            if (op == NULL)
-                return RDB_NO_MEMORY;
+            if (op == NULL) {
+                RDB_raise_no_memory(ecp);
+                return RDB_ERROR;
+            }
             op->argtv[0] = _RDB_dup_nonscalar_type(argtv[0], ecp);
             op->argtv[1] = _RDB_dup_nonscalar_type(argtv[1], ecp);
             ret = put_ro_op(txp->dbp->dbrootp, op);
@@ -557,8 +559,10 @@ _RDB_get_ro_op(const char *name, int argc, RDB_type *argtv[],
         }
         if (strcmp(name, "<>") == 0) {
             op = new_ro_op("<>", 2, &RDB_BOOLEAN, &obj_not_equals);
-            if (op == NULL)
-                return RDB_NO_MEMORY;
+            if (op == NULL) {
+                RDB_raise_no_memory(ecp);
+                return RDB_ERROR;
+            }
             op->argtv[0] = _RDB_dup_nonscalar_type(argtv[0], ecp);
             op->argtv[1] = _RDB_dup_nonscalar_type(argtv[1], ecp);
             ret = put_ro_op(txp->dbp->dbrootp, op);
@@ -578,7 +582,7 @@ _RDB_get_ro_op(const char *name, int argc, RDB_type *argtv[],
             if (typmismatch) {
                 RDB_raise_type_mismatch("", ecp);
             } else {
-                RDB_raise_operator_not_found("", ecp);
+                RDB_raise_operator_not_found(name, ecp);
             }
         }
         return RDB_ERROR;
@@ -680,8 +684,10 @@ op_rename(const char *name, int argc, RDB_object *argv[],
     RDB_table *tbp, *vtbp;
     int renc = (argc - 1) / 2;
     RDB_renaming *renv = malloc(sizeof(RDB_renaming) * renc);
-    if (renv == NULL)
-        return RDB_NO_MEMORY;
+    if (renv == NULL) {
+        RDB_raise_no_memory(ecp);
+        return RDB_ERROR;
+    }
 
     for (i = 0; i < renc; i++) {
         if (argv[1 + i]->typ != &RDB_STRING
@@ -726,8 +732,10 @@ op_project(const char *name, int argc, RDB_object *argv[],
     int i;
     RDB_table *tbp, *vtbp;
     char **attrv = malloc(sizeof(char *) * (argc - 1));
-    if (attrv == NULL)
-        return RDB_NO_MEMORY;
+    if (attrv == NULL) {
+        RDB_raise_no_memory(ecp);
+        return RDB_ERROR;
+    }
 
     for (i = 0; i < argc - 1; i++) {
         attrv[i] = RDB_obj_string(argv[i + 1]);
@@ -759,8 +767,10 @@ op_remove(const char *name, int argc, RDB_object *argv[],
     int i;
     RDB_table *tbp, *vtbp;
     char **attrv = malloc(sizeof(char *) * (argc - 1));
-    if (attrv == NULL)
-        return RDB_NO_MEMORY;
+    if (attrv == NULL) {
+        RDB_raise_no_memory(ecp);
+        return RDB_ERROR;
+    }
 
     for (i = 0; i < argc - 1; i++) {
         attrv[i] = RDB_obj_string(argv[i + 1]);
@@ -802,8 +812,10 @@ op_wrap(const char *name, int argc, RDB_object *argv[],
     wrapc = argc % 2;
     if (wrapc > 0) {
         wrapv = malloc(sizeof(RDB_wrapping) * wrapc);
-        if (wrapv == NULL)
-            return RDB_NO_MEMORY;
+        if (wrapv == NULL) {
+            RDB_raise_no_memory(ecp);
+            return RDB_ERROR;
+        }
     }
     for (i = 0; i < wrapc; i++) {
         wrapv[i].attrv = NULL;
@@ -816,6 +828,7 @@ op_wrap(const char *name, int argc, RDB_object *argv[],
         wrapv[i].attrv = malloc(sizeof (char *) * wrapv[i].attrc);
         if (wrapv[i].attrv == NULL) {
             RDB_raise_no_memory(ecp);
+            ret = RDB_ERROR;
             goto cleanup;
         }
         for (j = 0; j < wrapv[i].attrc; j++) {
@@ -832,8 +845,10 @@ op_wrap(const char *name, int argc, RDB_object *argv[],
     tbp = RDB_obj_table(argv[0]);
     if (tbp != NULL) {
         vtbp = RDB_wrap(tbp, wrapc, wrapv, ecp);
-        if (vtbp == NULL)
+        if (vtbp == NULL) {
+            ret = RDB_ERROR;
             goto cleanup;
+        }
     } else {
         ret = RDB_wrap_tuple(argv[0], wrapc, wrapv, ecp, retvalp);
         if (ret != RDB_OK)
@@ -843,6 +858,7 @@ op_wrap(const char *name, int argc, RDB_object *argv[],
         RDB_table_to_obj(retvalp, vtbp, ecp);
         argv[0]->var.tbp = NULL;
     }
+    ret = RDB_OK;
 
 cleanup:
     for (i = 0; i < wrapc; i++) {
@@ -851,7 +867,7 @@ cleanup:
     if (wrapc > 0)
         free(wrapv);
 
-    return RDB_ERROR;
+    return ret;
 }
 
 static int
@@ -870,8 +886,10 @@ op_unwrap(const char *name, int argc, RDB_object *argv[],
     }
     
     attrv = malloc(sizeof(char *) * (argc - 1));
-    if (attrv == NULL)
-        return RDB_NO_MEMORY;
+    if (attrv == NULL) {
+        RDB_raise_no_memory(ecp);
+        return RDB_ERROR;
+    }
 
     for (i = 0; i < argc - 1; i++) {
         attrv[i] = RDB_obj_string(argv[i + 1]);
@@ -911,8 +929,10 @@ op_group(const char *name, int argc, RDB_object *argv[],
 
     attrc = argc - 2;
     attrv = malloc(sizeof(char *) * attrc);
-    if (attrv == NULL)
-        return RDB_NO_MEMORY;
+    if (attrv == NULL) {
+        RDB_raise_no_memory(ecp);
+        return RDB_ERROR;
+    }
 
     for (i = 0; i < attrc; i++) {
         attrv[i] = RDB_obj_string(argv[i + 1]);
@@ -1161,7 +1181,8 @@ RDB_call_ro_op(const char *name, int argc, RDB_object *argv[],
 
     argtv = valv_to_typev(argc, argv, ecp);
     if (argtv == NULL) {
-        return RDB_NO_MEMORY;
+        RDB_raise_no_memory(ecp);
+        return RDB_ERROR;
     }
 
     ret = _RDB_get_ro_op(name, argc, argtv, ecp, txp, &op);
@@ -1173,8 +1194,6 @@ RDB_call_ro_op(const char *name, int argc, RDB_object *argv[],
     free(argtv);
 
     if (ret != RDB_OK) {
-        if (RDB_obj_type(RDB_get_err(ecp)) == &RDB_OPERATOR_NOT_FOUND_ERROR)
-            RDB_errmsg(RDB_tx_env(txp), "operator \"%s\" not found", name);
         goto error;
     }
 
@@ -1259,8 +1278,13 @@ _RDB_get_upd_op(const char *name, int argc, RDB_type *argtv[],
     *opp = get_upd_op(txp->dbp->dbrootp, name, argc, argtv, ecp);
     if (*opp == NULL) {
         ret = _RDB_cat_get_upd_op(name, argc, argtv, ecp, txp, opp);
-        if (ret != RDB_OK)
-            return ret == RDB_NOT_FOUND ? RDB_OPERATOR_NOT_FOUND : ret;
+        if (ret != RDB_OK) {
+            if (RDB_obj_type(RDB_get_err(ecp)) == &RDB_NOT_FOUND_ERROR) {
+                RDB_clear_err(ecp);
+                RDB_raise_operator_not_found(name, ecp);
+            }
+            return RDB_ERROR;
+        }
         ret = put_upd_op(txp->dbp->dbrootp, *opp);
         if (ret != RDB_OK) {
             free_upd_op(*opp, ecp);
@@ -1284,7 +1308,8 @@ RDB_call_update_op(const char *name, int argc, RDB_object *argv[],
 
     argtv = valv_to_typev(argc, argv, ecp);
     if (argtv == NULL) {
-        return RDB_NO_MEMORY;
+        RDB_raise_no_memory(ecp);
+        return RDB_ERROR;
     }
     ret = _RDB_cat_get_upd_op(name, argc, argtv, ecp, txp, &op);
     for (i = 0; i < argc; i++) {
@@ -1293,15 +1318,15 @@ RDB_call_update_op(const char *name, int argc, RDB_object *argv[],
     }
     free(argtv);
     if (ret != RDB_OK) {
-        if (ret == RDB_NOT_FOUND)
-            ret = RDB_OPERATOR_NOT_FOUND;
-        if (ret == RDB_OPERATOR_NOT_FOUND)
-            RDB_errmsg(RDB_tx_env(txp), "operator \"%s\" not found", name);
-        return ret;
+        if (RDB_obj_type(RDB_get_err(ecp)) == &RDB_OPERATOR_NOT_FOUND_ERROR) {
+            RDB_clear_err(ecp);
+            RDB_raise_operator_not_found(name, ecp);
+        }
+        return RDB_ERROR;
     }
 
     return (*op->funcp)(name, argc, argv, op->updv, op->iarg.var.bin.datap,
-            op->iarg.var.bin.len, txp);
+            op->iarg.var.bin.len, ecp, txp);
 }
 
 int
@@ -1320,7 +1345,8 @@ RDB_drop_op(const char *name, RDB_exec_context *ecp, RDB_transaction *txp)
      */
     exp = RDB_eq(RDB_expr_attr("NAME"), RDB_string_to_expr(name));
     if (exp == NULL) {
-        return RDB_NO_MEMORY;
+        RDB_raise_no_memory(ecp);
+        return RDB_ERROR;
     }
     vtbp = RDB_select(txp->dbp->dbrootp->ro_ops_tbp, exp, ecp, txp);
     if (vtbp == NULL) {
@@ -1354,7 +1380,8 @@ RDB_drop_op(const char *name, RDB_exec_context *ecp, RDB_transaction *txp)
         /* Delete all versions of update operator from the database */
         exp = RDB_eq(RDB_expr_attr("NAME"), RDB_string_to_expr(name));
         if (exp == NULL) {
-            return RDB_NO_MEMORY;
+            RDB_raise_no_memory(ecp);
+            return RDB_ERROR;
         }
         ret = RDB_delete(txp->dbp->dbrootp->upd_ops_tbp, exp, ecp, txp);
         RDB_drop_expr(exp, ecp);
@@ -1379,7 +1406,8 @@ RDB_drop_op(const char *name, RDB_exec_context *ecp, RDB_transaction *txp)
         /* Delete all versions of update operator from the database */
         exp = RDB_eq(RDB_expr_attr("NAME"), RDB_string_to_expr(name));
         if (exp == NULL) {
-            return RDB_NO_MEMORY;
+            RDB_raise_no_memory(ecp);
+            return RDB_ERROR;
         }
         ret = RDB_delete(txp->dbp->dbrootp->ro_ops_tbp, exp, ecp, txp);
         if (ret != RDB_OK) {
@@ -1521,8 +1549,10 @@ substring(const char *name, int argc, RDB_object *argv[],
     retvalp->kind = RDB_OB_BIN;
     retvalp->var.bin.len = blen + 1;
     retvalp->var.bin.datap = malloc(retvalp->var.bin.len);
-    if (retvalp->var.bin.datap == NULL)
-        return RDB_NO_MEMORY;
+    if (retvalp->var.bin.datap == NULL) {
+        RDB_raise_no_memory(ecp);
+        return RDB_ERROR;
+    }
     strncpy(retvalp->var.bin.datap, (char *) argv[0]->var.bin.datap
             + bstart, blen);
     ((char *) retvalp->var.bin.datap)[blen] = '\0';
@@ -1542,7 +1572,8 @@ concat(const char *name, int argc, RDB_object *argv[],
     retvalp->var.bin.len = s1len + strlen(argv[1]->var.bin.datap) + 1;
     retvalp->var.bin.datap = malloc(retvalp->var.bin.len);
     if (retvalp->var.bin.datap == NULL) {
-        return RDB_NO_MEMORY;
+        RDB_raise_no_memory(ecp);
+        return RDB_ERROR;
     }
     strcpy(retvalp->var.bin.datap, argv[0]->var.bin.datap);
     strcpy(((char *)retvalp->var.bin.datap) + s1len, argv[1]->var.bin.datap);
@@ -1777,15 +1808,18 @@ divide_rational(const char *name, int argc, RDB_object *argv[],
     return RDB_OK;
 }
 
+/* !! */
 int
-_RDB_add_builtin_ops(RDB_dbroot *dbrootp)
+_RDB_add_builtin_ops(RDB_dbroot *dbrootp, RDB_exec_context *ecp)
 {
     RDB_ro_op_desc *op;
     int ret;
 
     op = new_ro_op("INTEGER", 1, &RDB_INTEGER, &integer_rational);
-    if (op == NULL)
-        return RDB_NO_MEMORY;
+    if (op == NULL) {
+        RDB_raise_no_memory(ecp);
+        return RDB_ERROR;
+    }
     op->argtv[0] = &RDB_RATIONAL;
 
     ret = put_ro_op(dbrootp, op);
@@ -1793,8 +1827,10 @@ _RDB_add_builtin_ops(RDB_dbroot *dbrootp)
         return ret;
 
     op = new_ro_op("INTEGER", 1, &RDB_INTEGER, &integer_string);
-    if (op == NULL)
-        return RDB_NO_MEMORY;
+    if (op == NULL) {
+        RDB_raise_no_memory(ecp);
+        return RDB_ERROR;
+    }
     op->argtv[0] = &RDB_STRING;
 
     ret = put_ro_op(dbrootp, op);
@@ -1802,8 +1838,10 @@ _RDB_add_builtin_ops(RDB_dbroot *dbrootp)
         return ret;
 
     op = new_ro_op("RATIONAL", 1, &RDB_RATIONAL, &rational_int);
-    if (op == NULL)
-        return RDB_NO_MEMORY;
+    if (op == NULL) {
+        RDB_raise_no_memory(ecp);
+        return RDB_ERROR;
+    }
     op->argtv[0] = &RDB_INTEGER;
 
     ret = put_ro_op(dbrootp, op);
@@ -1811,8 +1849,10 @@ _RDB_add_builtin_ops(RDB_dbroot *dbrootp)
         return ret;
 
     op = new_ro_op("RATIONAL", 1, &RDB_RATIONAL, &rational_string);
-    if (op == NULL)
-        return RDB_NO_MEMORY;
+    if (op == NULL) {
+        RDB_raise_no_memory(ecp);
+        return RDB_ERROR;
+    }
     op->argtv[0] = &RDB_STRING;
 
     ret = put_ro_op(dbrootp, op);
@@ -1820,8 +1860,10 @@ _RDB_add_builtin_ops(RDB_dbroot *dbrootp)
         return ret;
 
     op = new_ro_op("STRING", 1, &RDB_STRING, &string_obj);
-    if (op == NULL)
-        return RDB_NO_MEMORY;
+    if (op == NULL) {
+        RDB_raise_no_memory(ecp);
+        return RDB_ERROR;
+    }
     op->argtv[0] = &RDB_INTEGER;
 
     ret = put_ro_op(dbrootp, op);
@@ -1829,8 +1871,10 @@ _RDB_add_builtin_ops(RDB_dbroot *dbrootp)
         return ret;
 
     op = new_ro_op("STRING", 1, &RDB_STRING, &string_obj);
-    if (op == NULL)
-        return RDB_NO_MEMORY;
+    if (op == NULL) {
+        RDB_raise_no_memory(ecp);
+        return RDB_ERROR;
+    }
     op->argtv[0] = &RDB_RATIONAL;
 
     ret = put_ro_op(dbrootp, op);
@@ -1838,8 +1882,10 @@ _RDB_add_builtin_ops(RDB_dbroot *dbrootp)
         return ret;
 
     op = new_ro_op("LENGTH", 1, &RDB_INTEGER, &length_string);
-    if (op == NULL)
-        return RDB_NO_MEMORY;
+    if (op == NULL) {
+        RDB_raise_no_memory(ecp);
+        return RDB_ERROR;
+    }
     op->argtv[0] = &RDB_STRING;
 
     ret = put_ro_op(dbrootp, op);
@@ -1847,8 +1893,10 @@ _RDB_add_builtin_ops(RDB_dbroot *dbrootp)
         return ret;
 
     op = new_ro_op("SUBSTRING", 3, &RDB_STRING, &substring);
-    if (op == NULL)
-        return RDB_NO_MEMORY;
+    if (op == NULL) {
+        RDB_raise_no_memory(ecp);
+        return RDB_ERROR;
+    }
     op->argtv[0] = &RDB_STRING;
     op->argtv[1] = &RDB_INTEGER;
     op->argtv[2] = &RDB_INTEGER;
@@ -1858,8 +1906,10 @@ _RDB_add_builtin_ops(RDB_dbroot *dbrootp)
         return ret;
 
     op = new_ro_op("||", 2, &RDB_STRING, &concat);
-    if (op == NULL)
-        return RDB_NO_MEMORY;
+    if (op == NULL) {
+        RDB_raise_no_memory(ecp);
+        return RDB_ERROR;
+    }
     op->argtv[0] = &RDB_STRING;
     op->argtv[1] = &RDB_STRING;
 
@@ -1868,8 +1918,10 @@ _RDB_add_builtin_ops(RDB_dbroot *dbrootp)
         return ret;
 
     op = new_ro_op("MATCHES", 2, &RDB_BOOLEAN, &matches);
-    if (op == NULL)
-        return RDB_NO_MEMORY;
+    if (op == NULL) {
+        RDB_raise_no_memory(ecp);
+        return RDB_ERROR;
+    }
     op->argtv[0] = &RDB_STRING;
     op->argtv[1] = &RDB_STRING;
 
@@ -1878,8 +1930,10 @@ _RDB_add_builtin_ops(RDB_dbroot *dbrootp)
         return ret;
 
     op = new_ro_op("AND", 2, &RDB_BOOLEAN, &and);
-    if (op == NULL)
-        return RDB_NO_MEMORY;
+    if (op == NULL) {
+        RDB_raise_no_memory(ecp);
+        return RDB_ERROR;
+    }
     op->argtv[0] = &RDB_BOOLEAN;
     op->argtv[1] = &RDB_BOOLEAN;
 
@@ -1888,8 +1942,10 @@ _RDB_add_builtin_ops(RDB_dbroot *dbrootp)
         return ret;
 
     op = new_ro_op("OR", 2, &RDB_BOOLEAN, &or);
-    if (op == NULL)
-        return RDB_NO_MEMORY;
+    if (op == NULL) {
+        RDB_raise_no_memory(ecp);
+        return RDB_ERROR;
+    }
     op->argtv[0] = &RDB_BOOLEAN;
     op->argtv[1] = &RDB_BOOLEAN;
 
@@ -1898,8 +1954,10 @@ _RDB_add_builtin_ops(RDB_dbroot *dbrootp)
         return ret;
 
     op = new_ro_op("NOT", 1, &RDB_BOOLEAN, &not);
-    if (op == NULL)
-        return RDB_NO_MEMORY;
+    if (op == NULL) {
+        RDB_raise_no_memory(ecp);
+        return RDB_ERROR;
+    }
     op->argtv[0] = &RDB_BOOLEAN;
 
     ret = put_ro_op(dbrootp, op);
@@ -1907,8 +1965,10 @@ _RDB_add_builtin_ops(RDB_dbroot *dbrootp)
         return ret;
 
     op = new_ro_op("<", 2, &RDB_BOOLEAN, &lt);
-    if (op == NULL)
-        return RDB_NO_MEMORY;
+    if (op == NULL) {
+        RDB_raise_no_memory(ecp);
+        return RDB_ERROR;
+    }
     op->argtv[0] = &RDB_INTEGER;
     op->argtv[1] = &RDB_INTEGER;
 
@@ -1917,8 +1977,10 @@ _RDB_add_builtin_ops(RDB_dbroot *dbrootp)
         return ret;
 
     op = new_ro_op("<", 2, &RDB_BOOLEAN, &lt);
-    if (op == NULL)
-        return RDB_NO_MEMORY;
+    if (op == NULL) {
+        RDB_raise_no_memory(ecp);
+        return RDB_ERROR;
+    }
     op->argtv[0] = &RDB_RATIONAL;
     op->argtv[1] = &RDB_RATIONAL;
 
@@ -1927,8 +1989,10 @@ _RDB_add_builtin_ops(RDB_dbroot *dbrootp)
         return ret;
 
     op = new_ro_op("<", 2, &RDB_BOOLEAN, &lt);
-    if (op == NULL)
-        return RDB_NO_MEMORY;
+    if (op == NULL) {
+        RDB_raise_no_memory(ecp);
+        return RDB_ERROR;
+    }
     op->argtv[0] = &RDB_STRING;
     op->argtv[1] = &RDB_STRING;
 
@@ -1937,8 +2001,10 @@ _RDB_add_builtin_ops(RDB_dbroot *dbrootp)
         return ret;
 
     op = new_ro_op("<=", 2, &RDB_BOOLEAN, &let);
-    if (op == NULL)
-        return RDB_NO_MEMORY;
+    if (op == NULL) {
+        RDB_raise_no_memory(ecp);
+        return RDB_ERROR;
+    }
     op->argtv[0] = &RDB_INTEGER;
     op->argtv[1] = &RDB_INTEGER;
 
@@ -1947,8 +2013,10 @@ _RDB_add_builtin_ops(RDB_dbroot *dbrootp)
         return ret;
 
     op = new_ro_op("<=", 2, &RDB_BOOLEAN, &let);
-    if (op == NULL)
-        return RDB_NO_MEMORY;
+    if (op == NULL) {
+        RDB_raise_no_memory(ecp);
+        return RDB_ERROR;
+    }
     op->argtv[0] = &RDB_RATIONAL;
     op->argtv[1] = &RDB_RATIONAL;
 
@@ -1957,8 +2025,10 @@ _RDB_add_builtin_ops(RDB_dbroot *dbrootp)
         return ret;
 
     op = new_ro_op("<=", 2, &RDB_BOOLEAN, &let);
-    if (op == NULL)
-        return RDB_NO_MEMORY;
+    if (op == NULL) {
+        RDB_raise_no_memory(ecp);
+        return RDB_ERROR;
+    }
     op->argtv[0] = &RDB_STRING;
     op->argtv[1] = &RDB_STRING;
 
@@ -1967,8 +2037,10 @@ _RDB_add_builtin_ops(RDB_dbroot *dbrootp)
         return ret;
 
     op = new_ro_op(">", 2, &RDB_BOOLEAN, &gt);
-    if (op == NULL)
-        return RDB_NO_MEMORY;
+    if (op == NULL) {
+        RDB_raise_no_memory(ecp);
+        return RDB_ERROR;
+    }
     op->argtv[0] = &RDB_INTEGER;
     op->argtv[1] = &RDB_INTEGER;
 
@@ -1977,8 +2049,10 @@ _RDB_add_builtin_ops(RDB_dbroot *dbrootp)
         return ret;
 
     op = new_ro_op(">", 2, &RDB_BOOLEAN, &gt);
-    if (op == NULL)
-        return RDB_NO_MEMORY;
+    if (op == NULL) {
+        RDB_raise_no_memory(ecp);
+        return RDB_ERROR;
+    }
     op->argtv[0] = &RDB_RATIONAL;
     op->argtv[1] = &RDB_RATIONAL;
 
@@ -1987,8 +2061,10 @@ _RDB_add_builtin_ops(RDB_dbroot *dbrootp)
         return ret;
 
     op = new_ro_op(">", 2, &RDB_BOOLEAN, &gt);
-    if (op == NULL)
-        return RDB_NO_MEMORY;
+    if (op == NULL) { 
+        RDB_raise_no_memory(ecp);
+        return RDB_ERROR;
+    }
     op->argtv[0] = &RDB_STRING;
     op->argtv[1] = &RDB_STRING;
 
@@ -1997,8 +2073,10 @@ _RDB_add_builtin_ops(RDB_dbroot *dbrootp)
         return ret;
 
     op = new_ro_op(">=", 2, &RDB_BOOLEAN, &get);
-    if (op == NULL)
-        return RDB_NO_MEMORY;
+    if (op == NULL) {
+        RDB_raise_no_memory(ecp);
+        return RDB_ERROR;
+    }
     op->argtv[0] = &RDB_INTEGER;
     op->argtv[1] = &RDB_INTEGER;
 
@@ -2007,8 +2085,10 @@ _RDB_add_builtin_ops(RDB_dbroot *dbrootp)
         return ret;
 
     op = new_ro_op(">=", 2, &RDB_BOOLEAN, &get);
-    if (op == NULL)
-        return RDB_NO_MEMORY;
+    if (op == NULL) {
+        RDB_raise_no_memory(ecp);
+        return RDB_ERROR;
+    }
     op->argtv[0] = &RDB_RATIONAL;
     op->argtv[1] = &RDB_RATIONAL;
 
@@ -2017,8 +2097,10 @@ _RDB_add_builtin_ops(RDB_dbroot *dbrootp)
         return ret;
 
     op = new_ro_op(">=", 2, &RDB_BOOLEAN, &get);
-    if (op == NULL)
-        return RDB_NO_MEMORY;
+    if (op == NULL) {
+        RDB_raise_no_memory(ecp);
+        return RDB_ERROR;
+    }
     op->argtv[0] = &RDB_STRING;
     op->argtv[1] = &RDB_STRING;
 
@@ -2027,18 +2109,24 @@ _RDB_add_builtin_ops(RDB_dbroot *dbrootp)
         return ret;
 
     op = new_ro_op("=", 2, &RDB_BOOLEAN, &eq_bool);
-    if (op == NULL)
-        return RDB_NO_MEMORY;
+    if (op == NULL) {
+        RDB_raise_no_memory(ecp);
+        return RDB_ERROR;
+    }
     op->argtv[0] = &RDB_BOOLEAN;
     op->argtv[1] = &RDB_BOOLEAN;
 
     ret = put_ro_op(dbrootp, op);
-    if (ret != RDB_OK)
-        return ret;
+    if (ret != RDB_OK) {
+        RDB_raise_no_memory(ecp);
+        return RDB_ERROR;
+    }
 
     op = new_ro_op("=", 2, &RDB_BOOLEAN, obj_equals);
-    if (op == NULL)
-        return RDB_NO_MEMORY;
+    if (op == NULL) {
+        RDB_raise_no_memory(ecp);
+        return RDB_ERROR;
+    }
     op->argtv[0] = &RDB_INTEGER;
     op->argtv[1] = &RDB_INTEGER;
 
@@ -2047,8 +2135,10 @@ _RDB_add_builtin_ops(RDB_dbroot *dbrootp)
         return ret;
 
     op = new_ro_op("=", 2, &RDB_BOOLEAN, obj_equals);
-    if (op == NULL)
-        return RDB_NO_MEMORY;
+    if (op == NULL) {
+        RDB_raise_no_memory(ecp);
+        return RDB_ERROR;
+    }
     op->argtv[0] = &RDB_RATIONAL;
     op->argtv[1] = &RDB_RATIONAL;
 
@@ -2057,8 +2147,10 @@ _RDB_add_builtin_ops(RDB_dbroot *dbrootp)
         return ret;
 
     op = new_ro_op("=", 2, &RDB_BOOLEAN, obj_equals);
-    if (op == NULL)
-        return RDB_NO_MEMORY;
+    if (op == NULL) {
+        RDB_raise_no_memory(ecp);
+        return RDB_ERROR;
+    }
     op->argtv[0] = &RDB_STRING;
     op->argtv[1] = &RDB_STRING;
 
@@ -2067,8 +2159,10 @@ _RDB_add_builtin_ops(RDB_dbroot *dbrootp)
         return ret;
 
     op = new_ro_op("=", 2, &RDB_BOOLEAN, &eq_binary);
-    if (op == NULL)
-        return RDB_NO_MEMORY;
+    if (op == NULL) {
+        RDB_raise_no_memory(ecp);
+        return RDB_ERROR;
+    }
     op->argtv[0] = &RDB_BINARY;
     op->argtv[1] = &RDB_BINARY;
 
@@ -2077,8 +2171,10 @@ _RDB_add_builtin_ops(RDB_dbroot *dbrootp)
         return ret;
 
     op = new_ro_op("<>", 2, &RDB_BOOLEAN, &neq_bool);
-    if (op == NULL)
-        return RDB_NO_MEMORY;
+    if (op == NULL) {
+        RDB_raise_no_memory(ecp);
+        return RDB_ERROR;
+    }
     op->argtv[0] = &RDB_BOOLEAN;
     op->argtv[1] = &RDB_BOOLEAN;
 
@@ -2087,8 +2183,10 @@ _RDB_add_builtin_ops(RDB_dbroot *dbrootp)
         return ret;
 
     op = new_ro_op("<>", 2, &RDB_BOOLEAN, &obj_not_equals);
-    if (op == NULL)
-        return RDB_NO_MEMORY;
+    if (op == NULL) {
+        RDB_raise_no_memory(ecp);
+        return RDB_ERROR;
+    }
     op->argtv[0] = &RDB_INTEGER;
     op->argtv[1] = &RDB_INTEGER;
 
@@ -2097,8 +2195,10 @@ _RDB_add_builtin_ops(RDB_dbroot *dbrootp)
         return ret;
 
     op = new_ro_op("<>", 2, &RDB_BOOLEAN, &obj_not_equals);
-    if (op == NULL)
-        return RDB_NO_MEMORY;
+    if (op == NULL) {
+        RDB_raise_no_memory(ecp);
+        return RDB_ERROR;
+    }
     op->argtv[0] = &RDB_RATIONAL;
     op->argtv[1] = &RDB_RATIONAL;
 
@@ -2107,8 +2207,10 @@ _RDB_add_builtin_ops(RDB_dbroot *dbrootp)
         return ret;
 
     op = new_ro_op("<>", 2, &RDB_BOOLEAN, &obj_not_equals);
-    if (op == NULL)
-        return RDB_NO_MEMORY;
+    if (op == NULL) {
+        RDB_raise_no_memory(ecp);
+        return RDB_ERROR;
+    }
     op->argtv[0] = &RDB_STRING;
     op->argtv[1] = &RDB_STRING;
 
@@ -2117,8 +2219,10 @@ _RDB_add_builtin_ops(RDB_dbroot *dbrootp)
         return ret;
 
     op = new_ro_op("<>", 2, &RDB_BOOLEAN, &neq_binary);
-    if (op == NULL)
-        return RDB_NO_MEMORY;
+    if (op == NULL) {
+        RDB_raise_no_memory(ecp);
+        return RDB_ERROR;
+    }
     op->argtv[0] = &RDB_BINARY;
     op->argtv[1] = &RDB_BINARY;
 
@@ -2127,8 +2231,10 @@ _RDB_add_builtin_ops(RDB_dbroot *dbrootp)
         return ret;
 
     op = new_ro_op("-", 1, &RDB_INTEGER, &negate_int);
-    if (op == NULL)
-        return RDB_NO_MEMORY;
+    if (op == NULL) {
+        RDB_raise_no_memory(ecp);
+        return RDB_ERROR;
+    }
     op->argtv[0] = &RDB_INTEGER;
 
     ret = put_ro_op(dbrootp, op);
@@ -2136,8 +2242,10 @@ _RDB_add_builtin_ops(RDB_dbroot *dbrootp)
         return ret;
 
     op = new_ro_op("-", 1, &RDB_RATIONAL, &negate_rational);
-    if (op == NULL)
-        return RDB_NO_MEMORY;
+    if (op == NULL) {
+        RDB_raise_no_memory(ecp);
+        return RDB_ERROR;
+    }
     op->argtv[0] = &RDB_RATIONAL;
 
     ret = put_ro_op(dbrootp, op);
@@ -2145,8 +2253,10 @@ _RDB_add_builtin_ops(RDB_dbroot *dbrootp)
         return ret;
 
     op = new_ro_op("+", 2, &RDB_INTEGER, &add_int);
-    if (op == NULL)
-        return RDB_NO_MEMORY;
+    if (op == NULL) {
+        RDB_raise_no_memory(ecp);
+        return RDB_ERROR;
+    }
     op->argtv[0] = &RDB_INTEGER;
     op->argtv[1] = &RDB_INTEGER;
 
@@ -2155,8 +2265,10 @@ _RDB_add_builtin_ops(RDB_dbroot *dbrootp)
         return ret;
 
     op = new_ro_op("+", 2, &RDB_RATIONAL, &add_rational);
-    if (op == NULL)
-        return RDB_NO_MEMORY;
+    if (op == NULL) {
+        RDB_raise_no_memory(ecp);
+        return RDB_ERROR;
+    }
     op->argtv[0] = &RDB_RATIONAL;
     op->argtv[1] = &RDB_RATIONAL;
 
@@ -2165,8 +2277,10 @@ _RDB_add_builtin_ops(RDB_dbroot *dbrootp)
         return ret;
 
     op = new_ro_op("-", 2, &RDB_INTEGER, &subtract_int);
-    if (op == NULL)
-        return RDB_NO_MEMORY;
+    if (op == NULL) {
+        RDB_raise_no_memory(ecp);
+        return RDB_ERROR;
+    }
     op->argtv[0] = &RDB_INTEGER;
     op->argtv[1] = &RDB_INTEGER;
 
@@ -2175,8 +2289,10 @@ _RDB_add_builtin_ops(RDB_dbroot *dbrootp)
         return ret;
 
     op = new_ro_op("-", 2, &RDB_RATIONAL, &subtract_rational);
-    if (op == NULL)
-        return RDB_NO_MEMORY;
+    if (op == NULL) {
+        RDB_raise_no_memory(ecp);
+        return RDB_ERROR;
+    }
     op->argtv[0] = &RDB_RATIONAL;
     op->argtv[1] = &RDB_RATIONAL;
 
@@ -2185,8 +2301,10 @@ _RDB_add_builtin_ops(RDB_dbroot *dbrootp)
         return ret;
 
     op = new_ro_op("*", 2, &RDB_INTEGER, &multiply_int);
-    if (op == NULL)
-        return RDB_NO_MEMORY;
+    if (op == NULL) {
+        RDB_raise_no_memory(ecp);
+        return RDB_ERROR;
+    }
     op->argtv[0] = &RDB_INTEGER;
     op->argtv[1] = &RDB_INTEGER;
 
@@ -2195,8 +2313,10 @@ _RDB_add_builtin_ops(RDB_dbroot *dbrootp)
         return ret;
 
     op = new_ro_op("*", 2, &RDB_RATIONAL, &multiply_rational);
-    if (op == NULL)
-        return RDB_NO_MEMORY;
+    if (op == NULL) {
+        RDB_raise_no_memory(ecp);
+        return RDB_ERROR;
+    }
     op->argtv[0] = &RDB_RATIONAL;
     op->argtv[1] = &RDB_RATIONAL;
 
@@ -2205,18 +2325,24 @@ _RDB_add_builtin_ops(RDB_dbroot *dbrootp)
         return ret;
 
     op = new_ro_op("/", 2, &RDB_INTEGER, &divide_int);
-    if (op == NULL)
-        return RDB_NO_MEMORY;
+    if (op == NULL) {
+        RDB_raise_no_memory(ecp);
+        return RDB_ERROR;
+    }
     op->argtv[0] = &RDB_INTEGER;
     op->argtv[1] = &RDB_INTEGER;
 
     ret = put_ro_op(dbrootp, op);
-    if (ret != RDB_OK)
-        return ret;
+    if (ret != RDB_OK) {
+        RDB_raise_no_memory(ecp);
+        return RDB_ERROR;
+    }
 
     op = new_ro_op("/", 2, &RDB_RATIONAL, &divide_rational);
-    if (op == NULL)
-        return RDB_NO_MEMORY;
+    if (op == NULL) {
+        RDB_raise_no_memory(ecp);
+        return RDB_ERROR;
+    }
     op->argtv[0] = &RDB_RATIONAL;
     op->argtv[1] = &RDB_RATIONAL;
 
@@ -2225,104 +2351,138 @@ _RDB_add_builtin_ops(RDB_dbroot *dbrootp)
         return ret;
 
     op = new_ro_op("RENAME", -1, NULL, &op_rename);
-    if (op == NULL)
-        return RDB_NO_MEMORY;
+    if (op == NULL) {
+        RDB_raise_no_memory(ecp);
+        return RDB_ERROR;
+    }
 
     ret = put_ro_op(dbrootp, op);
     if (ret != RDB_OK)
         return ret;
 
     op = new_ro_op("PROJECT", -1, NULL, &op_project);
-    if (op == NULL)
-        return RDB_NO_MEMORY;
+    if (op == NULL) {
+        RDB_raise_no_memory(ecp);
+        return RDB_ERROR;
+    }
 
     ret = put_ro_op(dbrootp, op);
     if (ret != RDB_OK)
         return ret;
 
     op = new_ro_op("REMOVE", -1, NULL, &op_remove);
-    if (op == NULL)
-        return RDB_NO_MEMORY;
+    if (op == NULL) {
+        RDB_raise_no_memory(ecp);
+        return RDB_ERROR;
+    }
 
     ret = put_ro_op(dbrootp, op);
     if (ret != RDB_OK)
         return ret;
 
     op = new_ro_op("WRAP", -1, NULL, &op_wrap);
-    if (op == NULL)
-        return RDB_NO_MEMORY;
+    if (op == NULL) {
+        RDB_raise_no_memory(ecp);
+        return RDB_ERROR;
+    }
 
     ret = put_ro_op(dbrootp, op);
     if (ret != RDB_OK)
         return ret;
 
     op = new_ro_op("UNWRAP", -1, NULL, &op_unwrap);
-    if (op == NULL)
-        return RDB_NO_MEMORY;
+    if (op == NULL) {
+        RDB_raise_no_memory(ecp);
+        return RDB_ERROR;
+    }
 
     ret = put_ro_op(dbrootp, op);
     if (ret != RDB_OK)
         return ret;
 
     op = new_ro_op("UNION", -1, NULL, &op_union);
-    if (op == NULL)
-        return RDB_NO_MEMORY;
+    if (op == NULL) {
+        RDB_raise_no_memory(ecp);
+        return RDB_ERROR;
+    }
 
     ret = put_ro_op(dbrootp, op);
     if (ret != RDB_OK)
         return ret;
 
     op = new_ro_op("MINUS", -1, NULL, &op_minus);
-    if (op == NULL)
-        return RDB_NO_MEMORY;
+    if (op == NULL) {
+        RDB_raise_no_memory(ecp);
+        return RDB_ERROR;
+    }
 
     ret = put_ro_op(dbrootp, op);
     if (ret != RDB_OK)
         return ret;
 
     op = new_ro_op("INTERSECT", -1, NULL, &op_intersect);
-    if (op == NULL)
-        return RDB_NO_MEMORY;
+    if (op == NULL) {
+        RDB_raise_no_memory(ecp);
+        return RDB_ERROR;
+    }
 
     ret = put_ro_op(dbrootp, op);
     if (ret != RDB_OK)
         return ret;
 
     op = new_ro_op("JOIN", -1, NULL, &op_join);
-    if (op == NULL)
-        return RDB_NO_MEMORY;
+    if (op == NULL) {
+        RDB_raise_no_memory(ecp);
+        return RDB_ERROR;
+    }
 
     ret = put_ro_op(dbrootp, op);
     if (ret != RDB_OK)
         return ret;
 
     op = new_ro_op("DIVIDE_BY_PER", -1, NULL, &op_divide);
-    if (op == NULL)
-        return RDB_NO_MEMORY;
+    if (op == NULL) {
+        RDB_raise_no_memory(ecp);
+        return RDB_ERROR;
+    }
 
     ret = put_ro_op(dbrootp, op);
     if (ret != RDB_OK)
         return ret;
 
     op = new_ro_op("GROUP", -1, NULL, &op_group);
-    if (op == NULL)
-        return RDB_NO_MEMORY;
+    if (op == NULL) {
+        RDB_raise_no_memory(ecp);
+        return RDB_ERROR;
+    }
 
     ret = put_ro_op(dbrootp, op);
     if (ret != RDB_OK)
         return ret;
 
     op = new_ro_op("UNGROUP", -1, NULL, &op_ungroup);
-    if (op == NULL)
-        return RDB_NO_MEMORY;
+    if (op == NULL) {
+        RDB_raise_no_memory(ecp);
+        return RDB_ERROR;
+    }
 
     ret = put_ro_op(dbrootp, op);
     if (ret != RDB_OK)
         return ret;
 
     op = new_ro_op("NOT_FOUND_ERROR", 0, &RDB_NOT_FOUND_ERROR, &_RDB_sys_select);
-    if (op == NULL)
-        return RDB_NO_MEMORY;
+    if (op == NULL) {
+        RDB_raise_no_memory(ecp);
+        return RDB_ERROR;
+    }
+
+    op = new_ro_op("OPERATOR_NOT_FOUND_ERROR", 0,
+            &RDB_OPERATOR_NOT_FOUND_ERROR, &_RDB_sys_select);
+    if (op == NULL) {
+        RDB_raise_no_memory(ecp);
+        return RDB_ERROR;
+    }
+    /* !! more selectors */
 
     ret = put_ro_op(dbrootp, op);
     if (ret != RDB_OK)

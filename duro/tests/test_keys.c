@@ -23,7 +23,7 @@ test_keys(RDB_database *dbp, RDB_exec_context *ecp)
 
     tbp = RDB_get_table("EMPS1", ecp, &tx);
     if (tbp == NULL) {
-        RDB_rollback(&tx);
+        RDB_rollback(ecp, &tx);
         RDB_destroy_obj(&tpl, ecp);
         return RDB_ERROR;
     }
@@ -79,7 +79,7 @@ test_keys(RDB_database *dbp, RDB_exec_context *ecp)
     return RDB_commit(&tx);
 
 error:
-    RDB_rollback(&tx);
+    RDB_rollback(ecp, &tx);
     RDB_destroy_obj(&tpl, ecp);
     return RDB_ERROR;
 }

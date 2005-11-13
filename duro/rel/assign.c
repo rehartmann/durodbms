@@ -307,7 +307,7 @@ replace_targets_real_ins(RDB_table *tbp, const RDB_ma_insert *insp,
 
         tb1p = RDB_create_table_from_type(NULL, RDB_FALSE, tbp->typ,
                 0, NULL, ecp, NULL);
-        if (tb1p != RDB_OK)
+        if (tb1p == NULL)
             return NULL;
         ret = RDB_insert(tb1p, insp->tplp, ecp, NULL);
         if (ret != RDB_OK)
@@ -830,7 +830,8 @@ check_extend_tuple(RDB_object *tplp, RDB_table *tbp, RDB_exec_context *ecp,
         
         valp = RDB_tuple_get(tplp, vattrp->name);
         if (valp == NULL) {
-            return RDB_INVALID_ARGUMENT;
+            RDB_raise_invalid_argument("invalid EXTEND attribute", ecp);
+            return RDB_ERROR;
         }
         RDB_init_obj(&val);
         ret = RDB_evaluate(vattrp->exp, tplp, ecp, txp, &val);
@@ -842,8 +843,10 @@ check_extend_tuple(RDB_object *tplp, RDB_table *tbp, RDB_exec_context *ecp,
         RDB_destroy_obj(&val, ecp);
         if (ret != RDB_OK)
             return ret;
-        if (!iseq)
-            return RDB_PREDICATE_VIOLATION;
+        if (!iseq) {
+            RDB_raise_predicate_violation("EXTEND predicate violation", ecp);
+            return RDB_ERROR;
+        }
     }
     return RDB_OK;
 }
@@ -927,7 +930,7 @@ static int
 resolve_insert(const RDB_ma_insert *insp, insert_node **inslpp,
                RDB_exec_context *ecp, RDB_transaction *txp)
 {
-    int ret, ret2;
+    int ret;
     RDB_bool b, b2;
     RDB_ma_insert ins;
     RDB_object tpl;
@@ -936,7 +939,7 @@ resolve_insert(const RDB_ma_insert *insp, insert_node **inslpp,
         case RDB_TB_REAL:
             *inslpp = new_insert_node(insp->tbp, insp->tplp, ecp);
             if (*inslpp == NULL)
-                return RDB_NO_MEMORY;
+                return RDB_ERROR;
             return RDB_OK;
         case RDB_TB_SELECT:
             ret = RDB_evaluate_bool(insp->tbp->var.select.exp, insp->tplp,
@@ -944,7 +947,9 @@ resolve_insert(const RDB_ma_insert *insp, insert_node **inslpp,
             if (ret != RDB_OK)
                 return ret;
             if (!b) {
-                return RDB_PREDICATE_VIOLATION;
+                RDB_raise_predicate_violation("SELECT predicate violation",
+                        ecp);
+                return RDB_ERROR;
             }
             ins.tbp = insp->tbp->var.select.tbp;
             ins.tplp = insp->tplp;
@@ -975,14 +980,14 @@ resolve_insert(const RDB_ma_insert *insp, insert_node **inslpp,
              * Insert the tuple into the table(s) which do not contain it
              */
             *inslpp = NULL;
-            if (ret == RDB_NOT_FOUND) {
+            if (!b) {
                 ins.tbp = insp->tbp->var.intersect.tb1p;
                 ins.tplp = insp->tplp;
                 ret = resolve_insert(&ins, inslpp, ecp, txp);
                 if (ret != RDB_OK)
-                    return ret;
+                    return RDB_ERROR;
             }
-            if (ret2 == RDB_NOT_FOUND) {
+            if (!b2) {
                 insert_node *hinsnp;
 
                 ins.tbp = insp->tbp->var.intersect.tb2p;
@@ -991,7 +996,7 @@ resolve_insert(const RDB_ma_insert *insp, insert_node **inslpp,
                 if (ret != RDB_OK) {
                     if (*inslpp != NULL)
                         del_inslist(*inslpp, ecp);
-                    return ret;
+                    return RDB_ERROR;
                 }
                 if (*inslpp == NULL) {
                     *inslpp = hinsnp;
@@ -1022,14 +1027,14 @@ resolve_insert(const RDB_ma_insert *insp, insert_node **inslpp,
              * Insert the tuple into the table(s) which do not contain it
              */
             *inslpp = NULL;
-            if (ret == RDB_NOT_FOUND) {
+            if (!b) {
                 ins.tbp = insp->tbp->var.join.tb1p;
                 ins.tplp = insp->tplp;
                 ret = resolve_insert(&ins, inslpp, ecp, txp);
                 if (ret != RDB_OK)
-                    return ret;
+                    return RDB_ERROR;
             }
-            if (ret2 == RDB_NOT_FOUND) {
+            if (!b2) {
                 insert_node *hinsnp;
 
                 ins.tbp = insp->tbp->var.join.tb2p;
@@ -1038,7 +1043,7 @@ resolve_insert(const RDB_ma_insert *insp, insert_node **inslpp,
                 if (ret != RDB_OK) {
                     if (*inslpp != NULL)
                         del_inslist(*inslpp, ecp);
-                    return ret;
+                    return RDB_ERROR;
                 }
                 if (*inslpp == NULL) {
                     *inslpp = hinsnp;
@@ -1101,7 +1106,9 @@ resolve_insert(const RDB_ma_insert *insp, insert_node **inslpp,
         case RDB_TB_GROUP:
         case RDB_TB_UNGROUP:
         case RDB_TB_SDIVIDE:
-            return RDB_NOT_SUPPORTED;
+            RDB_raise_not_supported(
+                    "Insert is not supported for this virtual table", ecp);
+            return RDB_ERROR;
     }
     abort();
 }
@@ -1140,7 +1147,7 @@ resolve_update(const RDB_ma_update *updp, update_node **updnpp,
         case RDB_TB_REAL:
             *updnpp = new_update_node(updp, ecp);
             if (*updnpp == NULL)
-                return RDB_NO_MEMORY;
+                return RDB_ERROR;
             return RDB_OK;
         case RDB_TB_SELECT:
             upd.tbp = updp->tbp->var.select.tbp;
@@ -1158,7 +1165,7 @@ resolve_update(const RDB_ma_update *updp, update_node **updnpp,
                             ecp);
                     if (updnp->upd.condp == NULL) {
                         del_updlist(*updnpp, ecp);
-                        return RDB_NO_MEMORY;
+                        return RDB_ERROR;
                     }
                 } else {
                     RDB_expression *ncondp;
@@ -1166,14 +1173,14 @@ resolve_update(const RDB_ma_update *updp, update_node **updnpp,
                             updp->tbp->var.select.exp, ecp);
                     if (hcondp == NULL) {
                         del_updlist(*updnpp, ecp);
-                        return RDB_NO_MEMORY;
+                        return RDB_ERROR;
                     }
                     ncondp = RDB_ro_op_va("AND", hcondp, updnp->upd.condp,
                             (RDB_expression *) NULL);
                     if (ncondp == NULL) {
                         RDB_drop_expr(hcondp, ecp);
                         del_updlist(*updnpp, ecp);
-                        return RDB_NO_MEMORY;
+                        return RDB_ERROR;
                     }                        
                     updnp->upd.condp = ncondp;
                 }
@@ -1188,7 +1195,9 @@ resolve_update(const RDB_ma_update *updp, update_node **updnpp,
             return resolve_update(&upd, updnpp, ecp, txp);
         default: ;            
     }
-    return RDB_NOT_SUPPORTED;
+    RDB_raise_not_supported(
+            "Update is not supported for this virtual table", ecp);
+    return RDB_ERROR;
 }
 
 static delete_node *
@@ -1223,7 +1232,7 @@ resolve_delete(const RDB_ma_delete *delp, delete_node **delnpp,
         case RDB_TB_REAL:
             *delnpp = new_delete_node(delp, ecp);
             if (*delnpp == NULL)
-                return RDB_NO_MEMORY;
+                return RDB_ERROR;
             return RDB_OK;
         case RDB_TB_SELECT:
             del.tbp = delp->tbp->var.select.tbp;
@@ -1239,7 +1248,7 @@ resolve_delete(const RDB_ma_delete *delp, delete_node **delnpp,
                             ecp);
                     if (delnp->del.condp == NULL) {
                         del_dellist(*delnpp, ecp);
-                        return RDB_NO_MEMORY;
+                        return RDB_ERROR;
                     }
                 } else {
                     RDB_expression *ncondp;
@@ -1247,14 +1256,14 @@ resolve_delete(const RDB_ma_delete *delp, delete_node **delnpp,
                             delp->tbp->var.select.exp, ecp);
                     if (hcondp == NULL) {
                         del_dellist(*delnpp, ecp);
-                        return RDB_NO_MEMORY;
+                        return RDB_ERROR;
                     }
                     ncondp = RDB_ro_op_va("AND", hcondp, delnp->del.condp,
                             (RDB_expression *) NULL);
                     if (ncondp == NULL) {
                         RDB_drop_expr(hcondp, ecp);
                         del_dellist(*delnpp, ecp);
-                        return RDB_NO_MEMORY;
+                        return RDB_ERROR;
                     }                        
                     delnp->del.condp = ncondp;
                 }
@@ -1318,7 +1327,9 @@ resolve_delete(const RDB_ma_delete *delp, delete_node **delnpp,
         case RDB_TB_GROUP:
         case RDB_TB_UNGROUP:
         case RDB_TB_SDIVIDE:
-            return RDB_NOT_SUPPORTED;
+            RDB_raise_not_supported(
+                    "Delete is not supported for this virtual table", ecp);
+            return RDB_ERROR;
     }
     abort();
 }
@@ -1393,9 +1404,11 @@ do_delete(const RDB_ma_delete *delp, RDB_exec_context *ecp,
     }
 
     ret = _RDB_optimize(tbp, 0, NULL, ecp, txp, &ntbp);
-
     /* drop select */
     _RDB_free_table(tbp, ecp);
+    if (ret != RDB_OK) {
+        return RDB_ERROR;
+    }
 
     if (ntbp->var.select.tbp->kind == RDB_TB_SELECT) {
         condp = ntbp->var.select.exp;
@@ -1723,8 +1736,10 @@ RDB_multi_assign(int insc, const RDB_ma_insert insv[],
         for (j = 0; j < updv[i].updc; j++) {
             RDB_attr *attrp = _RDB_tuple_type_attr(
                     updv[i].tbp->typ->var.basetyp, updv[i].updv[j].name);
-            if (attrp == NULL)
-                return RDB_ATTRIBUTE_NOT_FOUND;
+            if (attrp == NULL) {
+                RDB_raise_attribute_not_found(updv[i].updv[j].name, ecp);
+                return RDB_ERROR;
+            }
 
             if (RDB_type_is_scalar(attrp->typ)) {
                 ret = _RDB_check_expr_type(updv[i].updv[j].exp,
@@ -1805,8 +1820,11 @@ RDB_multi_assign(int insc, const RDB_ma_insert insv[],
              * Check if a presviously modified table is source of a copy
              */
             if (copyv[j].srcp->kind == RDB_OB_TABLE
-                    && insv[i].tbp == copyv[j].srcp->var.tbp)
-                return RDB_NOT_SUPPORTED;
+                    && insv[i].tbp == copyv[j].srcp->var.tbp) {
+                RDB_raise_not_supported(
+                        "Table is both source and target of assignment", ecp);
+                return RDB_ERROR;
+            }
         }
     }
     for (i = 0; i < nupdc; i++) {
@@ -1823,8 +1841,11 @@ RDB_multi_assign(int insc, const RDB_ma_insert insv[],
                     && updv[i].tbp == copyv[j].dstp->var.tbp)
                 return RDB_INVALID_ARGUMENT;
             if (copyv[j].srcp->kind == RDB_OB_TABLE
-                    && updv[i].tbp == copyv[j].srcp->var.tbp)
-                return RDB_NOT_SUPPORTED;
+                    && updv[i].tbp == copyv[j].srcp->var.tbp) {
+                RDB_raise_not_supported(
+                        "Table is both source and target of assignment", ecp);
+                return RDB_ERROR;
+            }
         }
     }
     for (i = 0; i < ndelc; i++) {
@@ -1837,8 +1858,11 @@ RDB_multi_assign(int insc, const RDB_ma_insert insv[],
                     && ndelv[i].tbp == copyv[j].dstp->var.tbp)
                 return RDB_INVALID_ARGUMENT;
             if (copyv[j].srcp->kind == RDB_OB_TABLE
-                    && delv[i].tbp == copyv[j].srcp->var.tbp)
-                return RDB_NOT_SUPPORTED;
+                    && delv[i].tbp == copyv[j].srcp->var.tbp) {
+                RDB_raise_not_supported(
+                        "Table is both source and target of assignment", ecp);
+                return RDB_ERROR;
+            }
         }
     }
 
@@ -1852,7 +1876,9 @@ RDB_multi_assign(int insc, const RDB_ma_insert insv[],
                     && copyv[i].dstp->kind == RDB_OB_TABLE
                     && copyv[j].srcp->kind == RDB_OB_TABLE
                     && copyv[i].dstp->var.tbp == copyv[j].srcp->var.tbp)
-                return RDB_NOT_SUPPORTED;
+                RDB_raise_not_supported(
+                        "Table is both source and target of assignment", ecp);
+                return RDB_ERROR;
         }
     }
 
@@ -1889,7 +1915,7 @@ RDB_multi_assign(int insc, const RDB_ma_insert insv[],
                         ninsc, ninsv, nupdc, nupdv, ndelc, ndelv,
                         copyc, copyv, ecp, txp);
                 if (newexp == NULL) {
-                    ret = RDB_NO_MEMORY;
+                    ret = RDB_ERROR;
                     goto cleanup;
                 }
                     
@@ -1901,10 +1927,11 @@ RDB_multi_assign(int insc, const RDB_ma_insert insv[],
                 if (ret != RDB_OK)
                     goto cleanup;
                 if (!b) {
-                    ret = _RDB_set_tx_errinfo(txp, constrp->name);
+                    ret = _RDB_set_tx_errinfo(txp, constrp->name); /* !! */
                     if (ret != RDB_OK)
                         goto cleanup;
-                    ret = RDB_PREDICATE_VIOLATION;                    
+                    RDB_raise_predicate_violation(constrp->name, ecp);
+                    ret = RDB_ERROR;
                     goto cleanup;
                 }
             }
@@ -1950,7 +1977,9 @@ RDB_multi_assign(int insc, const RDB_ma_insert insv[],
     for (i = 0; i < copyc; i++) {
         if (copyv[i].dstp->kind == RDB_OB_TABLE
                 && copyv[i].dstp->var.tbp->kind != RDB_TB_REAL) {
-            ret = RDB_NOT_SUPPORTED;
+            RDB_raise_not_supported(
+                    "Virtual table is copy destination", ecp);
+            ret = RDB_ERROR;
             goto cleanup;
         }
         ret = copy_obj(copyv[i].dstp, copyv[i].srcp, ecp, atxp);
@@ -1999,7 +2028,7 @@ cleanup:
     /* Abort subtx, if necessary */
     if (ret != RDB_OK) {
         if (atxp == &subtx) {
-            RDB_rollback(&subtx);
+            RDB_rollback(ecp, &subtx);
         }
         _RDB_handle_syserr(txp, ret);
     }

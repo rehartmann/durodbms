@@ -48,8 +48,8 @@ if {![catch {
     error "Insertion of tuple $tpl should fail, but succeeded"
 }
 set errcode [lindex $errorCode 1]
-if {$errcode != "RDB_TYPE_CONSTRAINT_VIOLATION"} {
-    error "Wrong error: $errcode
+if {![string match "TYPE_CONSTRAINT_VIOLATION_ERROR(*)" $errcode]} {
+    error "Wrong error: $errcode"
 }
 
 duro::table drop T1 $tx

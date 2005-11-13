@@ -99,7 +99,7 @@ int
 Duro_tcl_close_env(TclState *statep, RDB_environment *, Tcl_HashEntry *entryp);
 
 int
-Duro_tcl_rollback(RDB_transaction *, Tcl_HashEntry *entryp);
+Duro_tcl_rollback(Tcl_HashEntry *entryp, RDB_exec_context *, RDB_transaction *);
 
 int
 Duro_tcl_drop_ltable(table_entry *, Tcl_HashEntry *entryp, RDB_exec_context *);

@@ -35,14 +35,14 @@ test_type(RDB_database *dbp, RDB_exec_context *ecp)
     ret = RDB_define_type("TINYINT", 1, &pr, constraintp, ecp, &tx);
     if (ret != RDB_OK) {
         RDB_drop_expr(constraintp, ecp);
-        RDB_rollback(&tx);
+        RDB_rollback(ecp, &tx);
         return ret;
     }
 
     printf("Implementing type\n");
     ret = RDB_implement_type("TINYINT", NULL, -1, ecp, &tx);
     if (ret != RDB_OK) {
-        RDB_rollback(&tx);
+        RDB_rollback(ecp, &tx);
         return ret;
     }
 

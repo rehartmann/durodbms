@@ -109,7 +109,7 @@ typedef struct RDB_ro_op_desc {
 
 typedef int RDB_upd_op_func(const char *name, int argc, RDB_object *argv[],
         RDB_bool updv[], const void *iargp, size_t iarglen,
-        RDB_transaction *txp);
+        RDB_exec_context *, RDB_transaction *);
 
 typedef struct RDB_upd_op {
     char *name;
@@ -138,7 +138,7 @@ _RDB_init_builtin_types(void);
 
 /* Abort transaction and all parent transactions */
 int
-RDB_rollback_all(RDB_transaction *txp);
+RDB_rollback_all(RDB_exec_context *, RDB_transaction *);
 
 int
 _RDB_begin_tx(RDB_transaction *, RDB_environment *,
@@ -510,12 +510,11 @@ int
 _RDB_transform_exp(RDB_expression *, RDB_exec_context *);
 
 int
-_RDB_infer_keys(RDB_table *tbp);
+_RDB_infer_keys(RDB_table *tbp, RDB_exec_context *);
 
 int
-_RDB_add_builtin_ops(RDB_dbroot *);
+_RDB_add_builtin_ops(RDB_dbroot *, RDB_exec_context *);
 
-/* !! */
 int
 _RDB_sys_select(const char *name, int argc, RDB_object *argv[],
         const void *iargp, size_t iarglen, RDB_exec_context *,

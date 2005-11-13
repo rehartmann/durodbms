@@ -179,6 +179,7 @@ array_foreach_cmd(TclState *statep, Tcl_Interp *interp, int objc,
     RDB_object *arrayp;
     RDB_object *tplp;
     int i;
+    int len;
     Tcl_Obj *elemobjp;
 
     if (objc != 6) {
@@ -203,8 +204,19 @@ array_foreach_cmd(TclState *statep, Tcl_Interp *interp, int objc,
     }
     arrayp = Tcl_GetHashValue(entryp);
 
-    for (i = 0; (tplp = RDB_array_get(arrayp, i, statep->current_ecp))
-            != NULL; i++) {
+    len = RDB_array_length(arrayp, statep->current_ecp);
+    if (len == RDB_ERROR) {
+        Duro_dberror(interp, RDB_get_err(statep->current_ecp), txp);
+        return TCL_ERROR;
+    }
+
+    for (i = 0; i < len; i++) {
+        tplp = RDB_array_get(arrayp, i, statep->current_ecp);
+        if (tplp == NULL) {
+            Duro_dberror(interp, RDB_get_err(statep->current_ecp), txp);
+            return TCL_ERROR;
+        }
+
         /* Set variable */
         elemobjp = Duro_to_tcl(interp, tplp, statep->current_ecp, txp);
         if (elemobjp == NULL)
@@ -216,10 +228,6 @@ array_foreach_cmd(TclState *statep, Tcl_Interp *interp, int objc,
         ret = Tcl_EvalObjEx(interp, objv[4], 0);
         if (ret != TCL_OK)
             return ret;
-    }
-    if (ret != RDB_NOT_FOUND) {
-        Duro_dberror(interp, RDB_get_err(statep->current_ecp), txp);
-        return TCL_ERROR;
     }
         
     return TCL_OK;

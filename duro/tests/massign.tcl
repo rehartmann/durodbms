@@ -58,7 +58,7 @@ if {![catch {
     error "multiple assignment should fail, but succeeded"
 }
 set errcode [lindex $errorCode 1]
-if {$errcode != "RDB_NOT_SUPPORTED"} {
+if {![string match "NOT_SUPPORTED_ERROR(*)" $errcode]} {
     error "wrong error: $errcode"
 }
 

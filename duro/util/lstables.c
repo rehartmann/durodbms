@@ -112,11 +112,10 @@ print_tables(RDB_exec_context *ecp, RDB_transaction *txp, RDB_bool all,
     for (i = 0; (tplp = RDB_array_get(&array, i, ecp)) != NULL; i++) {
         printf(real ? "%s\n" : "%s*\n", RDB_tuple_get_string(tplp, "TABLENAME"));
     }
-/* !!
-    if (ret != RDB_NOT_FOUND) {
+    if (RDB_obj_type(RDB_get_err(ecp)) != &RDB_NOT_FOUND_ERROR) {
         goto error;
     }
-*/
+    RDB_clear_err(ecp);
 
     RDB_destroy_obj(&array, ecp);
 
@@ -172,7 +171,7 @@ main(int argc, char *argv[])
     ret = print_tables(&ec, &tx, all, RDB_TRUE);
     if (ret != RDB_OK) {
         fprintf(stderr, "lstables: %s\n", RDB_strerror(ret));
-        RDB_rollback(&tx);
+        RDB_rollback(&ec, &tx);
         RDB_destroy_exec_context(&ec);
         return 1;
     }
@@ -180,7 +179,7 @@ main(int argc, char *argv[])
     ret = print_tables(&ec, &tx, all, RDB_FALSE);
     if (ret != RDB_OK) {
         fprintf(stderr, "lstables: %s\n", RDB_strerror(ret));
-        RDB_rollback(&tx);
+        RDB_rollback(&ec, &tx);
         RDB_destroy_exec_context(&ec);
         return 1;
     }

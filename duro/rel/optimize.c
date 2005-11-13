@@ -478,7 +478,7 @@ replace_empty(RDB_table *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
     int ret;
 
     /* Check if there is a constraint that says the table is empty */
-    if (RDB_table_name(tbp) == NULL
+    if (RDB_table_name(tbp) == NULL && txp->dbp != NULL
             && RDB_hashtable_get(&txp->dbp->dbrootp->empty_tbtab, tbp, txp)
                     != NULL) {
         table_to_empty(tbp, ecp);

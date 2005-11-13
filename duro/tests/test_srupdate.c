@@ -39,7 +39,7 @@ create_table(RDB_database *dbp, RDB_exec_context *ecp)
     tbp = RDB_create_table("SRTEST", RDB_TRUE, 3, srtest_attrs,
             1, srtest_keyattrs, ecp, &tx);
     if (tbp == NULL) {
-        RDB_rollback(&tx);
+        RDB_rollback(ecp, &tx);
         return RDB_ERROR;
     }
     printf("Table %s created.\n", RDB_table_name(tbp));
@@ -54,7 +54,7 @@ create_table(RDB_database *dbp, RDB_exec_context *ecp)
         ret = RDB_insert(tbp, &tpl, ecp, &tx);
         if (ret != RDB_OK) {
             RDB_destroy_obj(&tpl, ecp);
-            RDB_rollback(&tx);
+            RDB_rollback(ecp, &tx);
             return ret;
         }
     }
@@ -80,7 +80,7 @@ test_update1(RDB_database *dbp, RDB_exec_context *ecp)
 
     tbp = RDB_get_table("SRTEST", ecp, &tx);
     if (tbp == NULL) {
-        RDB_rollback(&tx);
+        RDB_rollback(ecp, &tx);
         return RDB_ERROR;
     }
 
@@ -89,7 +89,7 @@ test_update1(RDB_database *dbp, RDB_exec_context *ecp)
     exp = RDB_int_to_expr(2);
     exp = RDB_ro_op_va("-", exp, RDB_expr_attr("NO"), (RDB_expression *) NULL);
     if (exp == NULL) {
-        RDB_rollback(&tx);
+        RDB_rollback(ecp, &tx);
         return RDB_NO_MEMORY;
     }
 
@@ -98,7 +98,7 @@ test_update1(RDB_database *dbp, RDB_exec_context *ecp)
 
     ret = RDB_update(tbp, NULL, 1, &upd, ecp, &tx);
     if (ret != RDB_OK) {
-        RDB_rollback(&tx);
+        RDB_rollback(ecp, &tx);
         return ret;
     }
 
@@ -122,7 +122,7 @@ test_update2(RDB_database *dbp, RDB_exec_context *ecp)
 
     tbp = RDB_get_table("SRTEST", ecp, &tx);
     if (tbp == NULL) {
-        RDB_rollback(&tx);
+        RDB_rollback(ecp, &tx);
         return RDB_ERROR;
     }
 
@@ -131,8 +131,8 @@ test_update2(RDB_database *dbp, RDB_exec_context *ecp)
     exp = RDB_expr_sum(RDB_table_to_expr(tbp, ecp), "COUNT");
     exp = RDB_ro_op_va("+", exp, RDB_int_to_expr(1), (RDB_expression *) NULL);
     if (exp == NULL) {
-        RDB_rollback(&tx);
-        return RDB_NO_MEMORY;
+        RDB_rollback(ecp, &tx);
+        return RDB_ERROR;
     }
 
     upd.name = "COUNT";
@@ -140,7 +140,7 @@ test_update2(RDB_database *dbp, RDB_exec_context *ecp)
 
     ret = RDB_update(tbp, NULL, 1, &upd, ecp, &tx);
     if (ret != RDB_OK) {
-        RDB_rollback(&tx);
+        RDB_rollback(ecp, &tx);
         return ret;
     }
 
@@ -167,7 +167,7 @@ test_print(RDB_database *dbp, RDB_exec_context *ecp)
 
     tbp = RDB_get_table("SRTEST", ecp, &tx);
     if (ret != RDB_OK) {
-        RDB_rollback(&tx);
+        RDB_rollback(ecp, &tx);
         return ret;
     }
 
@@ -176,7 +176,7 @@ test_print(RDB_database *dbp, RDB_exec_context *ecp)
     printf("Converting table to array\n");
     ret = RDB_table_to_array(&array, tbp, 1, noseqitv, ecp, &tx);
     if (ret != RDB_OK) {
-        RDB_rollback(&tx);
+        RDB_rollback(ecp, &tx);
         return ret;
     } 
 
@@ -186,12 +186,11 @@ test_print(RDB_database *dbp, RDB_exec_context *ecp)
                 (int)RDB_tuple_get_int(tplp, "COUNT"));
     }
     RDB_destroy_obj(&array, ecp);
-    /* !!
-    if (ret != RDB_NOT_FOUND) {
-        RDB_rollback(&tx);
-        return ret;
+    if (RDB_obj_type(RDB_get_err(ecp)) != &RDB_NOT_FOUND_ERROR) {
+        RDB_rollback(ecp, &tx);
+        return RDB_ERROR;
     }
-    */
+    RDB_clear_err(ecp);
 
     return RDB_commit(&tx);
 }

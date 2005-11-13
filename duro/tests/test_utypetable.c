@@ -29,7 +29,7 @@ create_table(RDB_database *dbp, RDB_exec_context *ecp)
     utype_attrs[0].name = "NUMBER";
     tinyintp = RDB_get_type("TINYINT", ecp, &tx);
     if (tinyintp == NULL) {
-        RDB_rollback(&tx);
+        RDB_rollback(ecp, &tx);
         return RDB_ERROR;
     }
     
@@ -40,7 +40,7 @@ create_table(RDB_database *dbp, RDB_exec_context *ecp)
     tbp = RDB_create_table("UTYPETEST", RDB_TRUE, 1, utype_attrs,
             1, utype_keyattrs, ecp, &tx);
     if (tbp == NULL) {
-        RDB_rollback(&tx);
+        RDB_rollback(ecp, &tx);
         return RDB_ERROR;
     }
     printf("Table %s created.\n", RDB_table_name(tbp));
@@ -69,7 +69,7 @@ test_table(RDB_database *dbp, RDB_exec_context *ecp)
 
     tbp = RDB_get_table("UTYPETEST", ecp, &tx);
     if (tbp == NULL) {
-        RDB_rollback(&tx);
+        RDB_rollback(ecp, &tx);
         return RDB_ERROR;
     }
 
@@ -167,7 +167,7 @@ test_table(RDB_database *dbp, RDB_exec_context *ecp)
 
     ret = RDB_insert(tbp, &tpl, ecp, &tx);
     if (ret != RDB_OK) {
-        RDB_rollback(&tx);
+        RDB_rollback(ecp, &tx);
         return ret;
     }
 
@@ -183,7 +183,7 @@ error:
     RDB_destroy_obj(&ival, ecp);
     RDB_destroy_obj(&tival, ecp);
 
-    RDB_rollback(&tx);
+    RDB_rollback(ecp, &tx);
     return RDB_ERROR;
 }
 
@@ -202,21 +202,21 @@ test_drop(RDB_database *dbp, RDB_exec_context *ecp)
 
     tbp = RDB_get_table("UTYPETEST", ecp, &tx);
     if (tbp == NULL) {
-        RDB_rollback(&tx);
+        RDB_rollback(ecp, &tx);
         return ret;
     }
 
     printf("Dropping table %s\n", RDB_table_name(tbp));
     ret = RDB_drop_table(tbp, ecp, &tx);
     if (ret != RDB_OK) {
-        RDB_rollback(&tx);
+        RDB_rollback(ecp, &tx);
         return ret;
     }
 
     printf("Dropping type %s\n", RDB_type_name(tinyintp));
     ret = RDB_drop_type(tinyintp, ecp, &tx);
     if (ret != RDB_OK) {
-        RDB_rollback(&tx);
+        RDB_rollback(ecp, &tx);
         return ret;
     }
 
@@ -226,7 +226,7 @@ test_drop(RDB_database *dbp, RDB_exec_context *ecp)
         RDB_type *errtyp = RDB_obj_type(RDB_get_err(ecp));
         if (errtyp != &RDB_NOT_FOUND_ERROR) {
             fprintf(stderr, "Wrong error type: %s\n", RDB_type_name(errtyp));
-            RDB_rollback(&tx);
+            RDB_rollback(ecp, &tx);
             return RDB_ERROR;
         }
     }

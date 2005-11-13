@@ -139,7 +139,7 @@ if {![catch {
     error "Operator invocation should fail, but succeded"
 }
 set errcode [lindex $::errorCode 1]
-if {$errcode != "RDB_OPERATOR_NOT_FOUND"} {
+if {![string match "OPERATOR_NOT_FOUND_ERROR(*)" $errcode]} {
     error "Wrong error code: $errcode"
 }
 

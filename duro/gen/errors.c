@@ -24,8 +24,6 @@ RDB_strerror(int err)
             return "out of secondary storage space";
         case RDB_NO_MEMORY:
             return "out of memory";
-        case RDB_SYSTEM_ERROR:
-            return "system error";
         case RDB_DEADLOCK:
             return "deadlock detected";
         case RDB_INTERNAL:
@@ -101,9 +99,6 @@ RDB_convert_err(int err)
         case DB_KEYEXIST:
             err = RDB_KEY_VIOLATION;
             break;
-        default:
-            if (err > 0)
-               err = RDB_SYSTEM_ERROR;
     }        
         
     return err;

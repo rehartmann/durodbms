@@ -677,8 +677,10 @@ RDB_create_table_index(const char *name, RDB_table *tbp, int idxcompc,
     int ret;
     _RDB_tbindex *indexp;
 
-    if (!_RDB_legal_name(name))
-        return RDB_INVALID_ARGUMENT;
+    if (!_RDB_legal_name(name)) {
+        RDB_raise_invalid_argument("invalid index name", ecp);
+        return RDB_ERROR;
+    }
 
     if (tbp->is_persistent) {
         /* Insert index into catalog */

@@ -488,8 +488,10 @@ serialize_rtable(RDB_object *valp, int *posp, RDB_table *tbp,
     if (tbp->is_persistent)
         return serialize_str(valp, posp, tbp->name != NULL ? tbp->name : "");
 
-    if (tbp->name != NULL)
-        return RDB_INVALID_ARGUMENT;
+    if (RDB_table_name(tbp) != NULL) {
+        RDB_raise_invalid_argument("cannot serialize named local table", ecp);
+        return RDB_ERROR;
+    }
 
     ret = serialize_str(valp, posp, "");
     if (ret != RDB_OK)

@@ -22,7 +22,7 @@ print_deptsx_view(RDB_database *dbp, RDB_exec_context *ecp)
     printf("Table DEPTSX\n");
     tmpvtbp = RDB_get_table("DEPTSX", ecp, &tx);
     if (tmpvtbp == NULL) {
-        RDB_rollback(&tx);
+        RDB_rollback(ecp, &tx);
         fprintf(stderr, "Error: %s\n", RDB_strerror(ret));
         return RDB_ERROR;
     }
@@ -50,7 +50,7 @@ print_deptsx_view(RDB_database *dbp, RDB_exec_context *ecp)
     return RDB_OK;
 
 error:
-    RDB_rollback(&tx);
+    RDB_rollback(ecp, &tx);
     return RDB_ERROR;
 }
 

@@ -61,7 +61,7 @@ RDB_table_to_array(RDB_object *arrp, RDB_table *tbp,
 
 error:
     _RDB_handle_syserr(arrp->var.arr.txp, ret);
-    return ret;
+    return RDB_ERROR;
 }
 
 /*
@@ -288,7 +288,8 @@ RDB_array_set(RDB_object *arrp, RDB_int idx, const RDB_object *objp,
         RDB_exec_context *ecp)
 {
     if (arrp->var.arr.tbp != NULL) {
-        return RDB_NOT_SUPPORTED;
+        RDB_raise_not_supported("setting array element is not permitted", ecp);
+        return RDB_ERROR;
     }
 
     if (idx >= arrp->var.arr.length) {
@@ -303,25 +304,24 @@ int
 _RDB_copy_array(RDB_object *dstp, const RDB_object *srcp,
         RDB_exec_context *ecp)
 {
-    int ret;
     int i;
     RDB_object *objp;
     int len = RDB_array_length((RDB_object *) srcp, ecp);
 
-    if (len == -1)
-        return RDB_NOT_SUPPORTED;
+    if (len == -1) {
+        RDB_raise_not_supported("invalid source array", ecp);
+        return RDB_ERROR;
+    }
 
-    ret = RDB_set_array_length(dstp, len, ecp);
-    if (ret != RDB_OK)
-        return ret;
+    if (RDB_set_array_length(dstp, len, ecp) != RDB_OK)
+        return RDB_ERROR;
 
     for (i = 0; i < len; i++) {
         objp = RDB_array_get((RDB_object *) srcp, (RDB_int) i, ecp);
-        if (ret != RDB_OK)
+        if (objp == NULL)
             return RDB_ERROR;
-        ret = RDB_array_set(dstp, (RDB_int) i, objp, ecp);
-        if (ret != RDB_OK)
-            return ret;
+        if (RDB_array_set(dstp, (RDB_int) i, objp, ecp) != RDB_OK)
+            return RDB_ERROR;
     }
 
     return RDB_OK;
@@ -337,24 +337,28 @@ _RDB_array_equals(RDB_object *arr1p, RDB_object *arr2p, RDB_exec_context *ecp,
 
     do {
         obj1p = RDB_array_get(arr1p, (RDB_int) i, ecp);
-        if (obj1p == NULL /* !! ret != RDB_OK && ret != RDB_NOT_FOUND */)
-            return RDB_ERROR;
+        if (obj1p == NULL) {
+            if (RDB_obj_type(RDB_get_err(ecp)) != &RDB_NOT_FOUND_ERROR)
+                return RDB_ERROR;
+            RDB_clear_err(ecp);
+        }
         obj2p = RDB_array_get(arr2p, (RDB_int) i, ecp);
-        if (obj2p == NULL /* !! ret2 != RDB_OK && ret2 != RDB_NOT_FOUND */)
-            return RDB_ERROR;
-/* !!
-        if (ret != ret2) {
+        if (obj2p == NULL) {
+            if (RDB_obj_type(RDB_get_err(ecp)) != &RDB_NOT_FOUND_ERROR)
+                return RDB_ERROR;
+            RDB_clear_err(ecp);
+        }
+        if ((obj1p == NULL && obj2p != NULL)
+                || (obj1p != NULL && obj2p == NULL)) {
             *resp = RDB_FALSE;
             return RDB_OK;
         }
-*/
-        /* At end of both arrays, which means they are equal */
-/*
-        if (ret == RDB_NOT_FOUND) {
+
+        if (obj1p == NULL) {
+            /* At end of both arrays, which means they are equal */
             *resp = RDB_TRUE;
             return RDB_OK;
         }
-*/
         i++;
         ret = RDB_obj_equals(obj1p, obj2p, ecp, txp, resp);
     } while (ret == RDB_OK && *resp);

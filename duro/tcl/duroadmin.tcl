@@ -192,8 +192,10 @@ proc add_tuples {arr tx rowcount} {
     .tableframe.table configure -rows [expr {$rowcount + 2}]
     for {set i 0} {$i < $rowcount} {incr i} {
         if {[catch {set tpl [duro::array index $arr $i $tx]} errmsg]} {
-            if {[llength $::errorCode] != 3
-                    || [lindex $::errorCode 1] != "RDB_NOT_FOUND"} {
+            if {[llength $::errorCode] != 2
+                    || ![string match "NOT_FOUND_ERROR(*)" \
+                            [lindex $::errorCode 1]]} {
+                puts $::errorCode
                 error $errmsg
             }
             break
@@ -252,6 +254,7 @@ proc show_table {} {
         catch {duro::array drop $arr}
         catch {duro::rollback $tx}
         tk_messageBox -type ok -title "Error" -message $msg -icon error
+        puts $::errorInfo
         return
     }
 

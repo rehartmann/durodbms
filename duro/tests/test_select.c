@@ -23,7 +23,7 @@ test_select(RDB_database *dbp, RDB_exec_context *ecp)
 
     tbp = RDB_get_table("EMPS1", ecp, &tx);
     if (tbp == NULL) {
-        RDB_rollback(&tx);
+        RDB_rollback(ecp, &tx);
         return RDB_ERROR;
     }
 
@@ -51,11 +51,10 @@ test_select(RDB_database *dbp, RDB_exec_context *ecp)
         printf("NAME: %s\n", RDB_tuple_get_string(tplp, "NAME"));
         printf("SALARY: %f\n", (double)RDB_tuple_get_rational(tplp, "SALARY"));
     }
-/* !!
-    if (ret != RDB_NOT_FOUND) {
+    if (RDB_obj_type(RDB_get_err(ecp)) != &RDB_NOT_FOUND_ERROR) {
         goto error;
     }
-*/
+    RDB_clear_err(ecp);
 
     RDB_destroy_obj(&array, ecp);
 
@@ -70,7 +69,7 @@ test_select(RDB_database *dbp, RDB_exec_context *ecp)
     
     vtbp = RDB_select(tbp, exprp, ecp, &tx);
     if (vtbp == NULL) {
-        RDB_rollback(&tx);
+        RDB_rollback(ecp, &tx);
         return RDB_ERROR;
     }
 
@@ -101,7 +100,7 @@ test_select(RDB_database *dbp, RDB_exec_context *ecp)
 
 error:
     RDB_destroy_obj(&array, ecp);
-    RDB_rollback(&tx);
+    RDB_rollback(ecp, &tx);
     return RDB_ERROR;
 }
 

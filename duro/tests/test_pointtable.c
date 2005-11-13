@@ -29,7 +29,7 @@ create_table(RDB_database *dbp, RDB_exec_context *ecp)
     utype_attrs[0].name = "POINT";
     pointtyp = RDB_get_type("POINT", ecp, &tx);
     if (pointtyp == NULL) {
-        RDB_rollback(&tx);
+        RDB_rollback(ecp, &tx);
         return RDB_ERROR;
     }
     utype_attrs[0].typ = pointtyp;
@@ -39,7 +39,7 @@ create_table(RDB_database *dbp, RDB_exec_context *ecp)
     tbp = RDB_create_table("POINTTEST", RDB_TRUE, 1, utype_attrs,
             1, upoint_keyattrs, ecp, &tx);
     if (tbp == NULL) {
-        RDB_rollback(&tx);
+        RDB_rollback(ecp, &tx);
         return RDB_ERROR;
     }
     printf("Table %s created.\n", RDB_table_name(tbp));
@@ -68,7 +68,7 @@ test_insert(RDB_database *dbp, RDB_exec_context *ecp)
 
     tbp = RDB_get_table("POINTTEST", ecp, &tx);
     if (tbp == NULL) {
-        RDB_rollback(&tx);
+        RDB_rollback(ecp, &tx);
         return RDB_ERROR;
     }
 
@@ -149,7 +149,7 @@ error:
     RDB_destroy_obj(&lenval, ecp);
     RDB_destroy_obj(&thval, ecp);
 
-    RDB_rollback(&tx);
+    RDB_rollback(ecp, &tx);
     return RDB_ERROR;
 }
 

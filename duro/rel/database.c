@@ -109,7 +109,7 @@ close_table(RDB_table *tbp, RDB_environment *envp, RDB_exec_context *ecp)
 }
 
 static int
-rm_db(RDB_database *dbp)
+rm_db(RDB_database *dbp, RDB_exec_context *ecp)
 {
     /* Remove database from list */
     if (dbp->dbrootp->first_dbp == dbp) {
@@ -119,8 +119,10 @@ rm_db(RDB_database *dbp)
         while (hdbp != NULL && hdbp->nextdbp != dbp) {
             hdbp = hdbp->nextdbp;
         }
-        if (hdbp == NULL)
-            return RDB_INVALID_ARGUMENT;
+        if (hdbp == NULL) {
+            RDB_raise_invalid_argument("invalid database", ecp);
+            return RDB_ERROR;
+        }
         hdbp->nextdbp = dbp->nextdbp;
     }
     return RDB_OK;
@@ -156,7 +158,7 @@ release_db(RDB_database *dbp, RDB_exec_context *ecp)
         }
     }
 
-    ret = rm_db(dbp);
+    ret = rm_db(dbp, ecp);
     if (ret != RDB_OK)
         return ret;
     
@@ -241,13 +243,15 @@ tb_equals(const void *tb1p, const void *tb2p, void *txp) {
 }
 
 static RDB_dbroot *
-new_dbroot(RDB_environment *envp)
+new_dbroot(RDB_environment *envp, RDB_exec_context *ecp)
 {
     int ret;
     RDB_dbroot *dbrootp = malloc(sizeof (RDB_dbroot));
 
-    if (dbrootp == NULL)
+    if (dbrootp == NULL) {         
+        RDB_raise_no_memory(ecp);
         return NULL;
+    }
     
     dbrootp->envp = envp;
     RDB_init_hashmap(&dbrootp->typemap, RDB_DFL_MAP_CAPACITY);
@@ -256,9 +260,18 @@ new_dbroot(RDB_environment *envp)
     RDB_init_hashtable(&dbrootp->empty_tbtab, RDB_DFL_MAP_CAPACITY,
             &hash_tb, &tb_equals);
 
-    ret = _RDB_add_builtin_ops(dbrootp);
+    ret = _RDB_add_builtin_ops(dbrootp, ecp);
     if (ret != RDB_OK)
         return NULL;
+
+    /*
+     * Put built-in types into type map
+     */
+    if (RDB_hashmap_put(&dbrootp->typemap, "OPERATOR_NOT_FOUND_ERROR",
+            &RDB_OPERATOR_NOT_FOUND_ERROR) != RDB_OK) {
+        RDB_raise_no_memory(ecp);
+        return NULL;
+    }
 
     dbrootp->first_dbp = NULL;
     dbrootp->first_constrp = NULL;
@@ -345,7 +358,7 @@ create_dbroot(RDB_environment *envp, RDB_bool newdb,
     /* Set cleanup function */
     RDB_set_env_closefn(envp, cleanup_env);
 
-    dbrootp = new_dbroot(envp);
+    dbrootp = new_dbroot(envp, ecp);
     if (dbrootp == NULL)
         return RDB_NO_MEMORY;
 
@@ -358,7 +371,7 @@ create_dbroot(RDB_environment *envp, RDB_bool newdb,
     sdb.dbrootp = dbrootp;
     ret = _RDB_open_systables(dbrootp, ecp, &tx);
     if (ret != RDB_OK) {
-        RDB_rollback(&tx);
+        RDB_rollback(ecp, &tx);
         goto error;
     }
 
@@ -423,7 +436,7 @@ RDB_create_db_from_env(const char *name, RDB_environment *envp,
 
     ret = _RDB_cat_create_db(ecp, &tx);
     if (ret != RDB_OK) {
-        RDB_rollback(&tx);
+        RDB_rollback(ecp, &tx);
         goto error;
     }
 
@@ -496,12 +509,12 @@ RDB_get_db_from_env(const char *name, RDB_environment *envp,
     RDB_init_obj(&tpl);
     ret = RDB_tuple_set_string(&tpl, "TABLENAME", "SYS_RTABLES", ecp);
     if (ret != RDB_OK) {
-        RDB_rollback(&tx);
+        RDB_rollback(ecp, &tx);
         goto error;
     }
     ret = RDB_tuple_set_string(&tpl, "DBNAME", name, ecp);
     if (ret != RDB_OK) {
-        RDB_rollback(&tx);
+        RDB_rollback(ecp, &tx);
         goto error;
     }
 
@@ -514,12 +527,12 @@ RDB_get_db_from_env(const char *name, RDB_environment *envp,
     ret = RDB_table_contains(dbrootp->dbtables_tbp, &tpl, ecp, &tx, &b);
     if (ret != RDB_OK) {
         RDB_destroy_obj(&tpl, ecp);
-        RDB_rollback(&tx);
+        RDB_rollback(ecp, &tx);
         goto error;
     }
     if (!b) {
         RDB_destroy_obj(&tpl, ecp);
-        RDB_rollback(&tx);
+        RDB_rollback(ecp, &tx);
         RDB_raise_not_found("database not found", ecp);
         goto error;
     }
@@ -653,7 +666,7 @@ RDB_drop_db(RDB_database *dbp, RDB_exec_context *ecp)
     return release_db(dbp, ecp);
 
 error:
-    RDB_rollback(&tx);
+    RDB_rollback(ecp, &tx);
     return RDB_ERROR;
 }
 
@@ -714,7 +727,7 @@ _RDB_create_table(const char *name, RDB_bool persistent,
         /* Insert table into catalog */
         ret = _RDB_cat_insert(tbp, ecp, &tx);
         if (ret != RDB_OK) {
-            RDB_rollback(&tx);
+            RDB_rollback(ecp, &tx);
             _RDB_free_table(tbp, ecp);
             _RDB_handle_syserr(txp, ret);
             return NULL;
@@ -903,8 +916,10 @@ RDB_set_table_name(RDB_table *tbp, const char *name, RDB_exec_context *ecp,
 {
     int ret;
 
-    if (!_RDB_legal_name(name))
-        return RDB_INVALID_ARGUMENT;
+    if (!_RDB_legal_name(name)) {
+        RDB_raise_invalid_argument("invalid table name", ecp);
+        return RDB_ERROR;
+    }
 
     /* !! should check if virtual tables depend on this table */
 
@@ -950,15 +965,22 @@ RDB_add_table(RDB_table *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
 {
     int ret;
 
-    if (tbp->name == NULL)
-        return RDB_INVALID_ARGUMENT;
+    if (tbp->name == NULL) {
+        RDB_raise_invalid_argument("missing table name", ecp);
+        return RDB_ERROR;
+    }
 
     /* Turning a local real table into a persistent table is not supported */
-    if (!tbp->is_persistent && tbp->kind == RDB_TB_REAL)
-        return RDB_NOT_SUPPORTED;
+    if (!tbp->is_persistent && tbp->kind == RDB_TB_REAL) {
+        RDB_raise_not_supported(
+                "operation not supported for local real tables", ecp);
+        return RDB_ERROR;
+    }
 
-    if (!RDB_tx_is_running(txp))
-        return RDB_INVALID_TRANSACTION;
+    if (!RDB_tx_is_running(txp)) {
+        RDB_raise_invalid_tx(ecp);
+        return RDB_ERROR;
+    }
 
     ret = _RDB_assoc_table_db(tbp, txp->dbp);
     if (ret != RDB_OK)
@@ -998,11 +1020,13 @@ RDB_get_dbs(RDB_environment *envp, RDB_object *arrp, RDB_exec_context *ecp)
     if (ret != RDB_OK) {
         return ret;
     }
+    tx.dbp = NULL;
 
     vtbp = RDB_project(dbrootp->dbtables_tbp, 1, attrname, ecp);
     if (vtbp == NULL) {
-        RDB_rollback(&tx);
-        return RDB_NO_MEMORY /* !! */;
+        RDB_rollback(ecp, &tx);
+        RDB_raise_no_memory(ecp);
+        return RDB_ERROR;
     }
 
     RDB_init_obj(&resarr);
@@ -1043,6 +1067,6 @@ cleanup:
     if (ret == RDB_OK)
         return RDB_commit(&tx);
 
-    RDB_rollback(&tx);
-    return ret;
+    RDB_rollback(ecp, &tx);
+    return RDB_ERROR;
 }

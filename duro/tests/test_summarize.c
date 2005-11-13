@@ -30,11 +30,10 @@ print_table(RDB_table *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
         printf("AVG_SALARY: %f\n",
                (double)RDB_tuple_get_rational(tplp, "AVG_SALARY"));
     }
-/* !!
-    if (ret != RDB_NOT_FOUND) {
+    if (RDB_obj_type(RDB_get_err(ecp)) != &RDB_NOT_FOUND_ERROR) {
         goto error;
     }
-*/
+    RDB_clear_err(ecp);
     RDB_destroy_obj(&array, ecp);
     
     return RDB_OK;
@@ -107,12 +106,12 @@ test_summarize(RDB_database *dbp, RDB_exec_context *ecp)
 
     tbp = RDB_get_table("EMPS1", ecp, &tx);
     if (tbp == NULL) {
-        RDB_rollback(&tx);
+        RDB_rollback(ecp, &tx);
         return RDB_ERROR;
     }
     tbp2 = RDB_get_table("EMPS2", ecp, &tx);
     if (tbp2 == NULL) {
-        RDB_rollback(&tx);
+        RDB_rollback(ecp, &tx);
         return RDB_ERROR;
     }
 
@@ -120,7 +119,7 @@ test_summarize(RDB_database *dbp, RDB_exec_context *ecp)
 
     untbp = RDB_union(tbp2, tbp, ecp);
     if (untbp == NULL) {
-        RDB_rollback(&tx);
+        RDB_rollback(ecp, &tx);
         return RDB_ERROR;
     }
 
@@ -129,7 +128,7 @@ test_summarize(RDB_database *dbp, RDB_exec_context *ecp)
      */
     ret = RDB_set_table_name(untbp, "UTABLE", ecp, &tx);
     if (ret != RDB_OK) {
-        RDB_rollback(&tx);
+        RDB_rollback(ecp, &tx);
         return ret;
     }
 
@@ -138,7 +137,7 @@ test_summarize(RDB_database *dbp, RDB_exec_context *ecp)
 
     projtbp = RDB_project(untbp, 1, &projattr, ecp);
     if (projtbp == NULL) {
-        RDB_rollback(&tx);
+        RDB_rollback(ecp, &tx);
         return RDB_ERROR;
     }
 
@@ -155,7 +154,7 @@ test_summarize(RDB_database *dbp, RDB_exec_context *ecp)
 
     vtbp = RDB_summarize(untbp, projtbp, 3, addv, ecp, &tx);
     if (vtbp == NULL) {
-        RDB_rollback(&tx);
+        RDB_rollback(ecp, &tx);
         return RDB_ERROR;
     }
 
@@ -163,13 +162,13 @@ test_summarize(RDB_database *dbp, RDB_exec_context *ecp)
     
     ret = print_table(vtbp, ecp, &tx);
     if (ret != RDB_OK) {
-        RDB_rollback(&tx);
+        RDB_rollback(ecp, &tx);
         return ret;
     } 
 
     ret = check_contains(vtbp, ecp, &tx);
     if (ret != RDB_OK) {
-        RDB_rollback(&tx);
+        RDB_rollback(ecp, &tx);
         return ret;
     } 
 

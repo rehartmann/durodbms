@@ -42,20 +42,20 @@ test_type(RDB_database *dbp, RDB_exec_context *ecp)
     printf("Defining type\n");
     ret = RDB_define_type("POINT", 2, prv, NULL, ecp, &tx);
     if (ret != RDB_OK) {
-        RDB_rollback(&tx);
+        RDB_rollback(ecp, &tx);
         return ret;
     }
 
     printf("Implementing type\n");
     ret = RDB_implement_type("POINT", NULL, sizeof(i_point), ecp, &tx);
     if (ret != RDB_OK) {
-        RDB_rollback(&tx);
+        RDB_rollback(ecp, &tx);
         return ret;
     }
 
     typ = RDB_get_type("POINT", ecp, &tx);
     if (ret != RDB_OK) {
-        RDB_rollback(&tx);
+        RDB_rollback(ecp, &tx);
         return ret;
     }
 
@@ -65,14 +65,14 @@ test_type(RDB_database *dbp, RDB_exec_context *ecp)
     ret = RDB_create_ro_op("POINT", 2, argtv, typ, "libpoint", "POINT",
             NULL, 0, ecp, &tx);
     if (ret != RDB_OK) {
-        RDB_rollback(&tx);
+        RDB_rollback(ecp, &tx);
         return ret;
     }
 
     ret = RDB_create_ro_op("POLAR", 2, argtv, typ, "libpoint", "POLAR",
             NULL, 0, ecp, &tx);
     if (ret != RDB_OK) {
-        RDB_rollback(&tx);
+        RDB_rollback(ecp, &tx);
         return ret;
     }
 
@@ -87,28 +87,28 @@ test_type(RDB_database *dbp, RDB_exec_context *ecp)
     ret = RDB_create_update_op("POINT_set_X", 2, updargtv, updv, "libpoint",
             "POINT_set_X", NULL, 0, ecp, &tx);
     if (ret != RDB_OK) {
-        RDB_rollback(&tx);
+        RDB_rollback(ecp, &tx);
         return ret;
     }
 
     ret = RDB_create_update_op("POINT_set_Y", 2, updargtv, updv, "libpoint",
             "POINT_set_Y", NULL, 0, ecp, &tx);
     if (ret != RDB_OK) {
-        RDB_rollback(&tx);
+        RDB_rollback(ecp, &tx);
         return ret;
     }
 
     ret = RDB_create_update_op("POINT_set_THETA", 2, updargtv, updv, "libpoint",
             "POINT_set_THETA", NULL, 0, ecp, &tx);
     if (ret != RDB_OK) {
-        RDB_rollback(&tx);
+        RDB_rollback(ecp, &tx);
         return ret;
     }
 
     ret = RDB_create_update_op("POINT_set_LENGTH", 2, updargtv, updv, "libpoint",
             "POINT_set_LENGTH", NULL, 0, ecp, &tx);
     if (ret != RDB_OK) {
-        RDB_rollback(&tx);
+        RDB_rollback(ecp, &tx);
         return ret;
     }
 
@@ -120,28 +120,28 @@ test_type(RDB_database *dbp, RDB_exec_context *ecp)
     ret = RDB_create_ro_op("POINT_get_X", 1, getargtv, &RDB_RATIONAL, "libpoint",
             "POINT_get_X", NULL, 0, ecp, &tx);
     if (ret != RDB_OK) {
-        RDB_rollback(&tx);
+        RDB_rollback(ecp, &tx);
         return ret;
     }
 
     ret = RDB_create_ro_op("POINT_get_Y", 1, getargtv, &RDB_RATIONAL, "libpoint",
             "POINT_get_Y", NULL, 0, ecp, &tx);
     if (ret != RDB_OK) {
-        RDB_rollback(&tx);
+        RDB_rollback(ecp, &tx);
         return ret;
     }
 
     ret = RDB_create_ro_op("POINT_get_THETA", 1, getargtv, &RDB_RATIONAL, "libpoint",
             "POINT_get_THETA", NULL, 0, ecp, &tx);
     if (ret != RDB_OK) {
-        RDB_rollback(&tx);
+        RDB_rollback(ecp, &tx);
         return ret;
     }
 
     ret = RDB_create_ro_op("POINT_get_LENGTH", 1, getargtv, &RDB_RATIONAL, "libpoint",
             "POINT_get_LENGTH", NULL, 0, ecp, &tx);
     if (ret != RDB_OK) {
-        RDB_rollback(&tx);
+        RDB_rollback(ecp, &tx);
         return ret;
     }
 

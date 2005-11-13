@@ -44,7 +44,7 @@ create_tables(RDB_database *dbp, RDB_exec_context *ecp)
     tbp = RDB_create_table("EMPS1", RDB_TRUE, 4, emp_attrs, 2, emp_keyattrs,
                            ecp, &tx);
     if (tbp == NULL) {
-        RDB_rollback(&tx);
+        RDB_rollback(ecp, &tx);
         return RDB_ERROR;
     }
 
@@ -59,7 +59,7 @@ create_tables(RDB_database *dbp, RDB_exec_context *ecp)
                            ecp, &tx);
     RDB_destroy_obj(&defval, ecp);
     if (tbp == NULL) {
-        RDB_rollback(&tx);
+        RDB_rollback(ecp, &tx);
         return RDB_ERROR;
     }
 
@@ -68,7 +68,7 @@ create_tables(RDB_database *dbp, RDB_exec_context *ecp)
     key.strc = 1;
     tbp = RDB_create_table("DEPTS", RDB_TRUE, 2, dept_attrs, 1, &key, ecp, &tx);
     if (tbp == NULL) {
-        RDB_rollback(&tx);
+        RDB_rollback(ecp, &tx);
         return RDB_ERROR;
     }
 
@@ -201,7 +201,7 @@ error:
     RDB_destroy_obj(&emptpl, ecp);
     RDB_destroy_obj(&deptpl, ecp);
     
-    RDB_rollback(&tx);
+    RDB_rollback(ecp, &tx);
 
     return RDB_ERROR;
 }

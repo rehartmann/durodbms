@@ -59,13 +59,13 @@ test_join(RDB_database *dbp, RDB_exec_context *ecp)
 
     tbp1 = RDB_get_table("EMPS1", ecp, &tx);
     if (tbp1 == NULL) {
-        RDB_rollback(&tx);
+        RDB_rollback(ecp, &tx);
         return RDB_ERROR;
     }
 
     tbp2 = RDB_get_table("DEPTS", ecp, &tx);
     if (tbp2 == NULL) {
-        RDB_rollback(&tx);
+        RDB_rollback(ecp, &tx);
         return RDB_ERROR;
     }
 
@@ -73,14 +73,14 @@ test_join(RDB_database *dbp, RDB_exec_context *ecp)
 
     vtbp = RDB_join(tbp1, tbp2, ecp);
     if (vtbp == NULL) {
-        RDB_rollback(&tx);
+        RDB_rollback(ecp, &tx);
         return RDB_ERROR;
     }
     
     printf("Converting joined table to array\n");
     ret = print_table(vtbp, ecp, &tx);
     if (ret != RDB_OK) {
-        RDB_rollback(&tx);
+        RDB_rollback(ecp, &tx);
         return ret;
     }
 

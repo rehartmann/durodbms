@@ -8,13 +8,14 @@
 #include "duro.h"
 #include <string.h>
 
-int
-Duro_tcl_rollback(RDB_transaction *txp, Tcl_HashEntry *entryp)
+int /* !! set Tcl return code */
+Duro_tcl_rollback(Tcl_HashEntry *entryp, RDB_exec_context *ecp,
+        RDB_transaction *txp)
 {
     int ret;
 
     Tcl_DeleteHashEntry(entryp);
-    ret = RDB_rollback(txp);
+    ret = RDB_rollback(ecp, txp);
     Tcl_Free((char *) txp);
     return ret;
 }
@@ -143,7 +144,7 @@ Duro_rollback_cmd(ClientData data, Tcl_Interp *interp, int argc, CONST char *arg
         return TCL_ERROR;
     }
     txp = Tcl_GetHashValue(entryp);
-    ret = Duro_tcl_rollback(txp, entryp);
+    ret = Duro_tcl_rollback(entryp, statep->current_ecp, txp);
     if (ret != RDB_OK) { 
         Duro_dberror(interp, RDB_get_err(statep->current_ecp), txp);
         return TCL_ERROR;

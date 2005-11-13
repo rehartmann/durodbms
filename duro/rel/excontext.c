@@ -67,137 +67,87 @@ RDB_raise_invalid_tx(RDB_exec_context *ecp)
     return errp;
 }
 
-RDB_object *
-RDB_raise_not_found(const char *info, RDB_exec_context *ecp)
+static RDB_object *
+raise_info_err(RDB_type *errtyp, const char *info, RDB_exec_context *ecp)
 {
-    int ret;
     RDB_object *errp = RDB_raise_err(ecp);
     if (errp == NULL)
         return NULL;
 
     /* Set value */
-    ret = RDB_string_to_obj(errp, info, ecp);
-    if (ret != RDB_OK)
+    if (RDB_string_to_obj(errp, info, ecp) != RDB_OK)
         return NULL;
 
     /* Set type */
-    errp->typ = &RDB_NOT_FOUND_ERROR;
-    
+    errp->typ = errtyp;
+
     return errp;
+}
+
+RDB_object *
+RDB_raise_not_found(const char *info, RDB_exec_context *ecp)
+{
+    return raise_info_err(&RDB_NOT_FOUND_ERROR, info, ecp);
 }
 
 RDB_object *
 RDB_raise_invalid_argument(const char *info, RDB_exec_context *ecp)
 {
-    int ret;
-    RDB_object *errp = RDB_raise_err(ecp);
-    if (errp == NULL)
-        return NULL;
-
-    /* Set value */
-    ret = RDB_string_to_obj(errp, info, ecp);
-    if (ret != RDB_OK)
-        return NULL;
-
-    /* Set type */
-    errp->typ = &RDB_INVALID_ARGUMENT_ERROR;
-    
-    return errp;
+    return raise_info_err(&RDB_INVALID_ARGUMENT_ERROR, info, ecp);
 }
 
 RDB_object *
 RDB_raise_type_mismatch(const char *info, RDB_exec_context *ecp)
 {
-    int ret;
-    RDB_object *errp = RDB_raise_err(ecp);
-    if (errp == NULL)
-        return NULL;
-
-    /* Set value */
-    ret = RDB_string_to_obj(errp, info, ecp);
-    if (ret != RDB_OK)
-        return NULL;
-
-    /* Set type */
-    errp->typ = &RDB_TYPE_MISMATCH_ERROR;
-    
-    return errp;
+    return raise_info_err(&RDB_TYPE_MISMATCH_ERROR, info, ecp);
 }
 
 RDB_object *
 RDB_raise_operator_not_found(const char *info, RDB_exec_context *ecp)
 {
-    int ret;
-    RDB_object *errp = RDB_raise_err(ecp);
-    if (errp == NULL)
-        return NULL;
-
-    /* Set value */
-    ret = RDB_string_to_obj(errp, info, ecp);
-    if (ret != RDB_OK)
-        return NULL;
-
-    /* Set type */
-    errp->typ = &RDB_OPERATOR_NOT_FOUND_ERROR;
-    
-    return errp;
+    return raise_info_err(&RDB_OPERATOR_NOT_FOUND_ERROR, info, ecp);
 }
 
 RDB_object *
 RDB_raise_type_constraint_violation(const char *info, RDB_exec_context *ecp)
 {
-    int ret;
-    RDB_object *errp = RDB_raise_err(ecp);
-    if (errp == NULL)
-        return NULL;
-
-    /* Set value */
-    ret = RDB_string_to_obj(errp, info, ecp);
-    if (ret != RDB_OK)
-        return NULL;
-
-    /* Set type */
-    errp->typ = &RDB_TYPE_CONSTRAINT_VIOLATION_ERROR;
-    
-    return errp;
+    return raise_info_err(&RDB_TYPE_CONSTRAINT_VIOLATION_ERROR, info, ecp);
 }
 
 RDB_object *
 RDB_raise_element_exists(const char *info, RDB_exec_context *ecp)
 {
-    int ret;
-    RDB_object *errp = RDB_raise_err(ecp);
-    if (errp == NULL)
-        return NULL;
-
-    /* Set value */
-    ret = RDB_string_to_obj(errp, info, ecp);
-    if (ret != RDB_OK)
-        return NULL;
-
-    /* Set type */
-    errp->typ = &RDB_ELEMENT_EXISTS_ERROR;
-    
-    return errp;
+    return raise_info_err(&RDB_ELEMENT_EXISTS_ERROR, info, ecp);
 }
 
 RDB_object *
 RDB_raise_key_violation(const char *info, RDB_exec_context *ecp)
 {
-    int ret;
-    RDB_object *errp = RDB_raise_err(ecp);
-    if (errp == NULL)
-        return NULL;
+    return raise_info_err(&RDB_KEY_VIOLATION_ERROR, info, ecp);
+}
 
-    /* Set value */
-    ret = RDB_string_to_obj(errp, info, ecp);
-    if (ret != RDB_OK)
-        return NULL;
+RDB_object *
+RDB_raise_not_supported(const char *info, RDB_exec_context *ecp)
+{
+    return raise_info_err(&RDB_NOT_SUPPORTED_ERROR, info, ecp);
+}
 
-    /* Set type */
-    errp->typ = &RDB_KEY_VIOLATION_ERROR;
-    
-    return errp;
+RDB_object *
+RDB_raise_attribute_not_found(const char *info, RDB_exec_context *ecp)
+{
+    return raise_info_err(&RDB_ATTRIBUTE_NOT_FOUND_ERROR, info, ecp);
+}
+
+RDB_object *
+RDB_raise_predicate_violation(const char *info, RDB_exec_context *ecp)
+{
+    return raise_info_err(&RDB_PREDICATE_VIOLATION_ERROR, info, ecp);
+}
+
+RDB_object *
+RDB_raise_system_error(const char *info, RDB_exec_context *ecp)
+{
+    return raise_info_err(&RDB_SYSTEM_ERROR, info, ecp);
 }
 
 void
@@ -213,8 +163,10 @@ _RDB_handle_errcode(int errcode, RDB_exec_context *ecp)
         case RDB_ELEMENT_EXISTS:
             RDB_raise_element_exists("", ecp);
             break;
+        case RDB_NOT_FOUND:
+            RDB_raise_not_found("", ecp);
+            break;
         default:
-            fprintf(stderr, "unhandled error %d", errcode);
-            abort();
+            RDB_raise_system_error(RDB_strerror(errcode), ecp);
     }
 }

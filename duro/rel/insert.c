@@ -32,7 +32,8 @@ _RDB_insert_real(RDB_table *tbp, const RDB_object *tplp,
 
     fvp = malloc(sizeof(RDB_field) * attrcount);
     if (fvp == NULL) {
-        ret = RDB_NO_MEMORY;
+        RDB_raise_no_memory(ecp);
+        ret = RDB_ERROR;
         goto cleanup;
     }
     for (i = 0; i < attrcount; i++) {
@@ -46,7 +47,8 @@ _RDB_insert_real(RDB_table *tbp, const RDB_object *tplp,
         if (valp == NULL) {
             valp = tuptyp->var.tuple.attrv[i].defaultp;
             if (valp == NULL) {
-                ret = RDB_INVALID_ARGUMENT;
+                RDB_raise_invalid_argument("missing default value", ecp);
+                ret = RDB_ERROR;
                 goto cleanup;
             }
         }
