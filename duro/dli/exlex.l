@@ -15,6 +15,8 @@
 #include <string.h>
 #include <math.h>
 
+extern RDB_exec_context *_RDB_parse_ecp;
+
 /*
  * Process escapes
  */
@@ -178,12 +180,12 @@ ELSE {
 }
 
 TRUE {
-    yylval = RDB_bool_to_expr(RDB_TRUE);
+    yylval = RDB_bool_to_expr(RDB_TRUE, _RDB_parse_ecp);
     return TOK_LIT_BOOLEAN;
 }
 
 FALSE {
-    yylval = RDB_bool_to_expr(RDB_FALSE);
+    yylval = RDB_bool_to_expr(RDB_FALSE, _RDB_parse_ecp);
     return TOK_LIT_BOOLEAN;
 }
 
@@ -228,7 +230,7 @@ TABLE_DUM {
 }
 
 [a-zA-Z][a-zA-Z0-9_#]* {
-    yylval = RDB_expr_attr(yytext);
+    yylval = RDB_expr_attr(yytext, _RDB_parse_ecp);
     return TOK_ID;
 }
 
@@ -240,7 +242,7 @@ TABLE_DUM {
      * Remove trailing "s
      */
     yytext[(strlen(yytext) - 1)] = '\0';
-    yylval = RDB_string_to_expr(yytext + 1);
+    yylval = RDB_string_to_expr(yytext + 1, _RDB_parse_ecp);
     return TOK_LIT_STRING;
 }
 
@@ -252,22 +254,22 @@ TABLE_DUM {
      * Remove trailing 's
      */
     yytext[(strlen(yytext) - 1)] = '\0';
-    yylval = RDB_string_to_expr(yytext + 1);
+    yylval = RDB_string_to_expr(yytext + 1, _RDB_parse_ecp);
     return TOK_LIT_STRING;
 }
 
 -?[0-9]+ {
-    yylval = RDB_int_to_expr((RDB_int) atoi(yytext));
+    yylval = RDB_int_to_expr((RDB_int) atoi(yytext), _RDB_parse_ecp);
     return TOK_LIT_INTEGER;
 }
 
 -?[0-9]+"."[0-9]+[Ee][0-9]+ {
-    yylval = RDB_rational_to_expr((RDB_rational) atof(yytext));
+    yylval = RDB_rational_to_expr((RDB_rational) atof(yytext), _RDB_parse_ecp);
     return TOK_LIT_FLOAT;
 }
 
 -?[0-9]+"."[0-9]+	{
-    yylval = RDB_rational_to_expr((RDB_rational) atof(yytext));
+    yylval = RDB_rational_to_expr((RDB_rational) atof(yytext), _RDB_parse_ecp);
     return TOK_LIT_FLOAT;
 }
 

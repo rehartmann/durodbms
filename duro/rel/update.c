@@ -64,11 +64,12 @@ update_stored_complex(RDB_table *tbp, RDB_expression *condp,
     RDB_object *valv = malloc(sizeof(RDB_object) * updc);
 
     if (valv == NULL) {
-        return RDB_NO_MEMORY;
+        RDB_raise_no_memory(ecp);
+        return RDB_ERROR;
     }
 
     /* Start subtransaction */
-    ret = RDB_begin_tx(&tx, RDB_tx_db(txp), txp);
+    ret = RDB_begin_tx(ecp, &tx, RDB_tx_db(txp), txp);
     if (ret != RDB_OK)
         return ret;
 
@@ -230,7 +231,7 @@ cleanup:
         ret = ret2;
 
     if (ret == RDB_OK) {
-        return RDB_commit(&tx);
+        return RDB_commit(ecp, &tx);
     }
     RDB_rollback(ecp, &tx);
     return ret;
@@ -261,7 +262,7 @@ update_stored_simple(RDB_table *tbp, RDB_expression *condp,
     }
 
     /* Start subtransaction */
-    ret = RDB_begin_tx(&tx, RDB_tx_db(txp), txp);
+    ret = RDB_begin_tx(ecp, &tx, RDB_tx_db(txp), txp);
     if (ret != RDB_OK)
         return ret;
 
@@ -366,7 +367,7 @@ cleanup:
         ret = ret2;
 
     if (ret == RDB_OK) {
-        return RDB_commit(&tx);
+        return RDB_commit(ecp, &tx);
     }
     RDB_rollback(ecp, &tx);
     return ret;
@@ -398,7 +399,8 @@ _RDB_update_select_pindex(RDB_table *tbp, RDB_expression *condp,
         free(fvv);
         free(valv);
         free(fieldv);
-        ret = RDB_NO_MEMORY;
+        RDB_raise_no_memory(ecp);
+        ret = RDB_ERROR;
         goto cleanup;
     }
 
@@ -500,11 +502,12 @@ update_select_index_simple(RDB_table *tbp, RDB_expression *condp,
         free(fv);
         free(valv);
         free(fieldv);
-        return RDB_NO_MEMORY;
+        RDB_raise_no_memory(ecp);
+        return RDB_ERROR;
     }
 
     /* Start subtransaction */
-    ret = RDB_begin_tx(&tx, RDB_tx_db(txp), txp);
+    ret = RDB_begin_tx(ecp, &tx, RDB_tx_db(txp), txp);
     if (ret != RDB_OK) {
         free(fv);
         free(valv);
@@ -642,7 +645,7 @@ cleanup:
     free(fv);
 
     if (ret == RDB_OK) {
-        return RDB_commit(&tx);
+        return RDB_commit(ecp, &tx);
     }
     RDB_rollback(ecp, &tx);
     return ret;
@@ -670,11 +673,12 @@ update_select_index_complex(RDB_table *tbp, RDB_expression *condp,
         free(fv);
         free(valv);
         free(fieldv);
-        return RDB_NO_MEMORY;
+        RDB_raise_no_memory(ecp);
+        return RDB_ERROR;
     }
 
     /* Start subtransaction */
-    ret = RDB_begin_tx(&tx, RDB_tx_db(txp), txp);
+    ret = RDB_begin_tx(ecp, &tx, RDB_tx_db(txp), txp);
     if (ret != RDB_OK) {
         free(fv);
         free(valv);
@@ -889,7 +893,7 @@ cleanup:
     free(fv);
 
     if (ret == RDB_OK) {
-        return RDB_commit(&tx);
+        return RDB_commit(ecp, &tx);
     }
     RDB_rollback(ecp, &tx);
     return ret;

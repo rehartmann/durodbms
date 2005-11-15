@@ -133,15 +133,15 @@ typedef struct _RDB_tbindex {
 
 /* Internal functions */
 
-void
-_RDB_init_builtin_types(void);
+int
+_RDB_init_builtin_types(RDB_exec_context *);
 
 /* Abort transaction and all parent transactions */
 int
 RDB_rollback_all(RDB_exec_context *, RDB_transaction *);
 
 int
-_RDB_begin_tx(RDB_transaction *, RDB_environment *,
+_RDB_begin_tx(RDB_exec_context *, RDB_transaction *, RDB_environment *,
         RDB_transaction *);
 
 /*
@@ -207,7 +207,7 @@ _RDB_open_stored_table(RDB_table *tbp, RDB_environment *envp, const char *,
            RDB_transaction *);
 
 int
-_RDB_delete_stored_table(RDB_stored_table *, RDB_transaction *);
+_RDB_delete_stored_table(RDB_stored_table *, RDB_exec_context *, RDB_transaction *);
 
 int
 _RDB_close_stored_table(RDB_stored_table *);
@@ -341,10 +341,10 @@ RDB_bool
 _RDB_legal_name(const char *name);
 
 int
-_RDB_del_recmap(RDB_transaction *, RDB_recmap *);
+_RDB_del_recmap(RDB_transaction *, RDB_recmap *, RDB_exec_context *);
 
 int
-_RDB_del_index(RDB_transaction *, RDB_index *);
+_RDB_del_index(RDB_transaction *, RDB_index *, RDB_exec_context *);
 
 int
 RDB_evaluate_bool(RDB_expression *, const RDB_object *tup,
@@ -358,15 +358,16 @@ int
 _RDB_find_rename_from(int renc, const RDB_renaming renv[], const char *name);
 
 RDB_expression *
-_RDB_create_unexpr(RDB_expression *arg, enum _RDB_expr_kind kind);
+_RDB_create_unexpr(RDB_expression *arg, enum _RDB_expr_kind kind,
+        RDB_exec_context *);
 
 RDB_expression *
 _RDB_create_binexpr(RDB_expression *arg1, RDB_expression *arg2,
-                    enum _RDB_expr_kind kind);
+                    enum _RDB_expr_kind kind, RDB_exec_context *);
 
 RDB_expression *
 RDB_expr_aggregate(RDB_expression *arg, RDB_aggregate_op op,
-        const char *attrname);
+        const char *attrname, RDB_exec_context *);
 
 RDB_bool
 _RDB_expr_refers(const RDB_expression *, RDB_table *);
@@ -381,7 +382,8 @@ RDB_expression *
 RDB_dup_expr(const RDB_expression *, RDB_exec_context *);
 
 int
-_RDB_invrename_expr(RDB_expression *exp, int renc, const RDB_renaming renv[]);
+_RDB_invrename_expr(RDB_expression *exp, int renc, const RDB_renaming renv[],
+        RDB_exec_context *);
 
 int
 _RDB_resolve_extend_expr(RDB_expression **expp, int attrc,
@@ -497,7 +499,7 @@ _RDB_copy_obj(RDB_object *dstvalp, const RDB_object *srcvalp,
 
 int
 _RDB_open_table_index(RDB_table *tbp, _RDB_tbindex *indexp,
-        RDB_environment *, RDB_transaction *txp);
+        RDB_environment *, RDB_exec_context *, RDB_transaction *);
 
 int
 _RDB_optimize(RDB_table *tbp, int seqitc, const RDB_seq_item seqitv[],
@@ -579,9 +581,6 @@ _RDB_handle_errcode(int errcode, RDB_exec_context *);
 
 void
 _RDB_handle_syserr(RDB_transaction *, int err);
-
-int
-_RDB_set_tx_errinfo(RDB_transaction *, const char *errinfo);
 
 RDB_bool
 _RDB_table_def_equals(RDB_table *, RDB_table *, RDB_exec_context *,

@@ -14,7 +14,7 @@ print_salary_view(RDB_database *dbp, RDB_exec_context *ecp)
     int ret;
     int i;
 
-    ret = RDB_begin_tx(&tx, dbp, NULL);
+    ret = RDB_begin_tx(ecp, &tx, dbp, NULL);
     if (ret != RDB_OK) {
         return ret;
     }
@@ -45,7 +45,7 @@ print_salary_view(RDB_database *dbp, RDB_exec_context *ecp)
     RDB_clear_err(ecp);
 
     RDB_destroy_obj(&array, ecp);
-    RDB_commit(&tx);
+    RDB_commit(ecp, &tx);
     return RDB_OK;
 
 error:
@@ -66,7 +66,7 @@ print_emp_view(RDB_database *dbp, RDB_exec_context *ecp)
     int ret;
     int i;
 
-    ret = RDB_begin_tx(&tx, dbp, NULL);
+    ret = RDB_begin_tx(ecp, &tx, dbp, NULL);
     if (ret != RDB_OK) {
         return ret;
     }
@@ -99,7 +99,7 @@ print_emp_view(RDB_database *dbp, RDB_exec_context *ecp)
     RDB_clear_err(ecp);
 
     RDB_destroy_obj(&array, ecp);
-    RDB_commit(&tx);
+    RDB_commit(ecp, &tx);
     return RDB_OK;
 
 error:
@@ -118,7 +118,7 @@ print_emps_view(RDB_database *dbp, RDB_exec_context *ecp)
     int ret;
     int i;
 
-    ret = RDB_begin_tx(&tx, dbp, NULL);
+    ret = RDB_begin_tx(ecp, &tx, dbp, NULL);
     if (ret != RDB_OK) {
         return ret;
     }
@@ -154,7 +154,7 @@ print_emps_view(RDB_database *dbp, RDB_exec_context *ecp)
     RDB_clear_err(ecp);
 
     RDB_destroy_obj(&array, ecp);
-    RDB_commit(&tx);
+    RDB_commit(ecp, &tx);
     return RDB_OK;
 
 error:
@@ -175,7 +175,7 @@ print_emps2_view(RDB_database *dbp, RDB_exec_context *ecp)
     int ret;
     int i;
 
-    ret = RDB_begin_tx(&tx, dbp, NULL);
+    ret = RDB_begin_tx(ecp, &tx, dbp, NULL);
     if (ret != RDB_OK) {
         return ret;
     }
@@ -207,7 +207,7 @@ print_emps2_view(RDB_database *dbp, RDB_exec_context *ecp)
     RDB_clear_err(ecp);
 
     RDB_destroy_obj(&array, ecp);
-    RDB_commit(&tx);
+    RDB_commit(ecp, &tx);
     return RDB_OK;
 
 error:

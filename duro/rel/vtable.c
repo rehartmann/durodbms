@@ -489,7 +489,6 @@ RDB_summarize(RDB_table *tb1p, RDB_table *tb2p, int addc,
 {
     RDB_table *newtbp;
     int i, ai;
-    int ret;
 
     if (!RDB_tx_is_running(txp)) {
         RDB_raise_invalid_tx(ecp);
@@ -538,9 +537,13 @@ RDB_summarize(RDB_table *tb1p, RDB_table *tb2p, int addc,
     for (i = 0; i < addc; i++) {
         switch (addv[i].op) {
             case RDB_COUNTD:
+                RDB_raise_not_supported("COUNTD not supported", ecp);
+                goto error;
             case RDB_SUMD:
+                RDB_raise_not_supported("SUMD not supported", ecp);
+                goto error;
             case RDB_AVGD:
-                ret = RDB_NOT_SUPPORTED;
+                RDB_raise_not_supported("AVGD not supported", ecp);
                 goto error;
             case RDB_AVG:
                 avgv[ai] = malloc(strlen(addv[i].name) + 3);
@@ -557,7 +560,7 @@ RDB_summarize(RDB_table *tb1p, RDB_table *tb2p, int addc,
         newtbp->var.summarize.addv[i].op = addv[i].op;
         newtbp->var.summarize.addv[i].name = RDB_dup_str(addv[i].name);
         if (newtbp->var.summarize.addv[i].name == NULL) {
-            ret = RDB_NO_MEMORY;
+            RDB_raise_no_memory(ecp);
             goto error;
         }
         newtbp->var.summarize.addv[i].exp = addv[i].exp;
@@ -759,7 +762,10 @@ RDB_sdivide(RDB_table *tb1p, RDB_table *tb2p, RDB_table *tb3p,
 
     if (!RDB_type_equals(typ, tb3p->typ)) {
         RDB_drop_type(typ, ecp, NULL);
-        return NULL /*!! RDB_NOT_SUPPORTED */;
+        RDB_raise_not_supported(
+            "argument #3 to SDIVIDE must be of the same type "
+            "as the join of arguments #1 and #2", ecp);
+        return NULL;
     }
     RDB_drop_type(typ, ecp, NULL);
 
@@ -1311,7 +1317,8 @@ error:
                 RDB_free_strvec(newkeyv[i].strc, newkeyv[i].strv);
         }
     }
-    return RDB_NO_MEMORY;
+    RDB_raise_no_memory(ecp);
+    return RDB_ERROR;
 }
 
 static int
@@ -1329,7 +1336,8 @@ infer_project_keys(RDB_table *tbp, RDB_exec_context *ecp)
 
     presv = malloc(sizeof(RDB_bool) * keyc);
     if (presv == NULL) {
-        return RDB_NO_MEMORY;
+        RDB_raise_no_memory(ecp);
+        return RDB_ERROR;
     }
     newkeyc = check_keyloss(tbp->var.project.tbp,
             tbp->typ->var.basetyp->var.tuple.attrc,
@@ -1340,7 +1348,8 @@ infer_project_keys(RDB_table *tbp, RDB_exec_context *ecp)
         newkeyc = 1;
         newkeyv = all_key(tbp);
         if (newkeyv == NULL) {
-            return RDB_NO_MEMORY;
+            RDB_raise_no_memory(ecp);
+            return RDB_ERROR;
         }
     } else {
         int i, j;
@@ -1348,7 +1357,8 @@ infer_project_keys(RDB_table *tbp, RDB_exec_context *ecp)
         /* Pick the keys which survived the projection */
         newkeyv = malloc(sizeof (RDB_string_vec) * newkeyc);
         if (newkeyv == NULL) {
-            return RDB_NO_MEMORY;
+            RDB_raise_no_memory(ecp);
+            return RDB_ERROR;
         }
 
         for (i = 0; i < newkeyc; i++) {
@@ -1360,8 +1370,10 @@ infer_project_keys(RDB_table *tbp, RDB_exec_context *ecp)
                 newkeyv[i].strc = keyv[j].strc;
                 newkeyv[i].strv = RDB_dup_strvec(keyv[j].strc,
                         keyv[j].strv);
-                if (newkeyv[i].strv == NULL)
-                    return RDB_NO_MEMORY;
+                if (newkeyv[i].strv == NULL) {
+                    RDB_raise_no_memory(ecp);
+                    return RDB_ERROR;
+                }
                 i++;
             }
         }

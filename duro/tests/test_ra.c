@@ -17,7 +17,7 @@ test_ra(RDB_database *dbp, RDB_exec_context *ecp)
     RDB_int i;
 
     printf("Starting transaction\n");
-    ret = RDB_begin_tx(&tx, dbp, NULL);
+    ret = RDB_begin_tx(ecp, &tx, dbp, NULL);
     if (ret != RDB_OK) {
         return ret;
     }
@@ -45,7 +45,7 @@ test_ra(RDB_database *dbp, RDB_exec_context *ecp)
     vtbp = RDB_project(vtbp, 1, projattrs1, ecp);
     if (vtbp == NULL) {
         RDB_drop_table(vtbp, ecp, &tx);
-        RDB_commit(&tx);
+        RDB_commit(ecp, &tx);
         return RDB_ERROR;
     }
 
@@ -55,7 +55,7 @@ test_ra(RDB_database *dbp, RDB_exec_context *ecp)
     ret = RDB_table_to_array(&array, vtbp, 0, NULL, ecp, &tx);
     if (ret != RDB_OK) {
         RDB_destroy_obj(&array, ecp);
-        RDB_commit(&tx);
+        RDB_commit(ecp, &tx);
         return ret;
     }
 
@@ -66,7 +66,7 @@ test_ra(RDB_database *dbp, RDB_exec_context *ecp)
 
 /* !!
     if (ret != RDB_NOT_FOUND) {
-        RDB_commit(&tx);
+        RDB_commit(ecp, &tx);
         return ret;
     }
 */
@@ -75,7 +75,7 @@ test_ra(RDB_database *dbp, RDB_exec_context *ecp)
     RDB_drop_table(vtbp, ecp, &tx);
 
     printf("End of transaction\n");
-    return RDB_commit(&tx);
+    return RDB_commit(ecp, &tx);
 }
 
 int

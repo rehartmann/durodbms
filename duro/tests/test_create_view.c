@@ -14,7 +14,7 @@ create_view1(RDB_database *dbp, RDB_exec_context *ecp)
     int ret;
 
     printf("Starting transaction\n");
-    ret = RDB_begin_tx(&tx, dbp, NULL);
+    ret = RDB_begin_tx(ecp, &tx, dbp, NULL);
     if (ret != RDB_OK) {
         return ret;
     }
@@ -58,7 +58,7 @@ create_view1(RDB_database *dbp, RDB_exec_context *ecp)
     } 
 
     printf("End of transaction\n");
-    return RDB_commit(&tx);
+    return RDB_commit(ecp, &tx);
 }
 
 int
@@ -70,7 +70,7 @@ create_view2(RDB_database *dbp, RDB_exec_context *ecp)
     int ret;
 
     printf("Starting transaction\n");
-    ret = RDB_begin_tx(&tx, dbp, NULL);
+    ret = RDB_begin_tx(ecp, &tx, dbp, NULL);
     if (ret != RDB_OK) {
         return ret;
     }
@@ -83,10 +83,10 @@ create_view2(RDB_database *dbp, RDB_exec_context *ecp)
 
     printf("Creating EMPS1 WHERE (SALARY > 4000)\n");
 
-    hexprp = RDB_expr_attr("SALARY");
+    hexprp = RDB_expr_attr("SALARY", ecp);
     if (hexprp == NULL)
         return RDB_NO_MEMORY;
-    exprp = RDB_ro_op_va(">", hexprp, RDB_rational_to_expr(4000.0),
+    exprp = RDB_ro_op_va(">", ecp, hexprp, RDB_rational_to_expr(4000.0, ecp),
             (RDB_expression *) NULL);
     if (exprp == NULL)
         return RDB_NO_MEMORY;
@@ -111,7 +111,7 @@ create_view2(RDB_database *dbp, RDB_exec_context *ecp)
     } 
 
     printf("End of transaction\n");
-    return RDB_commit(&tx);
+    return RDB_commit(ecp, &tx);
 }
 
 int
@@ -124,7 +124,7 @@ create_view3(RDB_database *dbp, RDB_exec_context *ecp)
     int ret;
 
     printf("Starting transaction\n");
-    ret = RDB_begin_tx(&tx, dbp, NULL);
+    ret = RDB_begin_tx(ecp, &tx, dbp, NULL);
     if (ret != RDB_OK) {
         return ret;
     }
@@ -137,10 +137,10 @@ create_view3(RDB_database *dbp, RDB_exec_context *ecp)
 
     printf("Creating EXTEND EMPS1 ADD (SALARY > 4000 AS HIGHSAL)\n");
 
-    exprp = RDB_expr_attr("SALARY");
+    exprp = RDB_expr_attr("SALARY", ecp);
     if (exprp == NULL)
         return RDB_ERROR;
-    exprp = RDB_ro_op_va(">", exprp, RDB_rational_to_expr(4000.0),
+    exprp = RDB_ro_op_va(">", ecp, exprp, RDB_rational_to_expr(4000.0, ecp),
             (RDB_expression *) NULL);
     if (exprp == NULL)
         return RDB_ERROR;
@@ -167,7 +167,7 @@ create_view3(RDB_database *dbp, RDB_exec_context *ecp)
     } 
 
     printf("End of transaction\n");
-    return RDB_commit(&tx);
+    return RDB_commit(ecp, &tx);
 }
 
 static char *projattr = "DEPTNO";
@@ -182,7 +182,7 @@ create_view4(RDB_database *dbp, RDB_exec_context *ecp)
     RDB_renaming ren;
 
     printf("Starting transaction\n");
-    ret = RDB_begin_tx(&tx, dbp, NULL);
+    ret = RDB_begin_tx(ecp, &tx, dbp, NULL);
     if (ret != RDB_OK) {
         return ret;
     }
@@ -203,7 +203,7 @@ create_view4(RDB_database *dbp, RDB_exec_context *ecp)
     }
 
     add.op = RDB_MAX;
-    add.exp = RDB_expr_attr("SALARY");
+    add.exp = RDB_expr_attr("SALARY", ecp);
     add.name = "MAX_SALARY";
 
     vtbp = RDB_summarize(tbp, projtbp, 1, &add, ecp, &tx);
@@ -235,7 +235,7 @@ create_view4(RDB_database *dbp, RDB_exec_context *ecp)
     } 
 
     printf("End of transaction\n");
-    return RDB_commit(&tx);
+    return RDB_commit(ecp, &tx);
 }
 
 int

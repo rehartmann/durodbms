@@ -50,7 +50,7 @@ test_delete(RDB_database *dbp, RDB_exec_context *ecp)
     RDB_expression *exprp;
 
     printf("Starting transaction\n");
-    ret = RDB_begin_tx(&tx, dbp, NULL);
+    ret = RDB_begin_tx(ecp, &tx, dbp, NULL);
     if (ret != RDB_OK) {
         return ret;
     }
@@ -60,8 +60,8 @@ test_delete(RDB_database *dbp, RDB_exec_context *ecp)
         return RDB_ERROR;
 
     printf("Deleting #1 from EMPS1\n");
-    exprp = RDB_eq(RDB_expr_attr("EMPNO"),
-            RDB_int_to_expr(1));
+    exprp = RDB_eq(RDB_expr_attr("EMPNO", ecp),
+            RDB_int_to_expr(1, ecp), ecp);
     ret = RDB_delete(tbp, exprp, ecp, &tx);
     if (ret != RDB_OK) {
         RDB_rollback(ecp, &tx);
@@ -90,7 +90,7 @@ test_delete(RDB_database *dbp, RDB_exec_context *ecp)
     }
 
     printf("End of transaction\n");
-    return RDB_commit(&tx);
+    return RDB_commit(ecp, &tx);
 }
 
 int

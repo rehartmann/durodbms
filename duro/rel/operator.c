@@ -27,18 +27,26 @@ RDB_create_ro_op(const char *name, int argc, RDB_type *argtv[], RDB_type *rtyp,
     int ret;
     int i;
 
-    if (!RDB_tx_is_running(txp))
-        return RDB_INVALID_TRANSACTION;
+    if (!RDB_tx_is_running(txp)) {
+        RDB_raise_invalid_tx(ecp);
+        return RDB_ERROR;
+    }
 
     /*
      * Array types are not supported as argument or return types
      */
     for (i = 0; i < argc; i++) {
-        if (argtv[i]->kind == RDB_TP_ARRAY)
-            return RDB_NOT_SUPPORTED;
+        if (argtv[i]->kind == RDB_TP_ARRAY) {
+            RDB_raise_not_supported(
+                    "array type not supported as argument type", ecp);
+            return RDB_ERROR;
+        }
     }
-    if (rtyp->kind == RDB_TP_ARRAY)
-        return RDB_NOT_SUPPORTED;
+    if (rtyp->kind == RDB_TP_ARRAY) {
+        RDB_raise_not_supported("array type not supported as return type",
+                ecp);
+        return RDB_ERROR;
+    }
 
     RDB_init_obj(&tpl);
     RDB_init_obj(&rtypobj);
@@ -58,7 +66,7 @@ RDB_create_ro_op(const char *name, int argc, RDB_type *argtv[], RDB_type *rtyp,
         iarglen = 0;
 
     RDB_init_obj(&iarg);
-    ret = RDB_binary_set(&iarg, 0, iargp, iarglen);
+    ret = RDB_binary_set(&iarg, 0, iargp, iarglen, ecp);
     if (ret != RDB_OK) {
         RDB_destroy_obj(&iarg, ecp);
         goto cleanup;
@@ -126,15 +134,20 @@ RDB_create_update_op(const char *name, int argc, RDB_type *argtv[],
     int i;
     int ret;
 
-    if (!RDB_tx_is_running(txp))
-        return RDB_INVALID_TRANSACTION;
+    if (!RDB_tx_is_running(txp)) {
+        RDB_raise_invalid_tx(ecp);
+        return RDB_ERROR;
+    }
 
     /*
      * Array types are not supported as argument types
      */
     for (i = 0; i < argc; i++) {
-        if (argtv[i]->kind == RDB_TP_ARRAY)
-            return RDB_NOT_SUPPORTED;
+        if (argtv[i]->kind == RDB_TP_ARRAY) {
+            RDB_raise_not_supported(
+                    "array type not supported as argument type", ecp);
+            return RDB_ERROR;
+         }
     }
 
     RDB_init_obj(&tpl);
@@ -152,7 +165,7 @@ RDB_create_update_op(const char *name, int argc, RDB_type *argtv[],
         iarglen = 0;
 
     RDB_init_obj(&iarg);
-    ret = RDB_binary_set(&iarg, 0, iargp, iarglen);
+    ret = RDB_binary_set(&iarg, 0, iargp, iarglen, ecp);
     if (ret != RDB_OK) {
         RDB_destroy_obj(&iarg, ecp);
         goto cleanup;
@@ -1097,8 +1110,10 @@ RDB_call_ro_op(const char *name, int argc, RDB_object *argv[],
     RDB_type **argtv;
     int i;
 
-    if (!RDB_tx_is_running(txp))
-        return RDB_INVALID_TRANSACTION;
+    if (!RDB_tx_is_running(txp)) {
+        RDB_raise_invalid_tx(ecp);
+        return RDB_ERROR;
+    }
 
     /*
      * Handle nonscalar comparison
@@ -1303,8 +1318,10 @@ RDB_call_update_op(const char *name, int argc, RDB_object *argv[],
     int ret;
     int i;
 
-    if (!RDB_tx_is_running(txp))
-        return RDB_INVALID_TRANSACTION;
+    if (!RDB_tx_is_running(txp)) {
+        RDB_raise_invalid_tx(ecp);
+        return RDB_ERROR;
+    }
 
     argtv = valv_to_typev(argc, argv, ecp);
     if (argtv == NULL) {
@@ -1337,13 +1354,15 @@ RDB_drop_op(const char *name, RDB_exec_context *ecp, RDB_transaction *txp)
     int ret;
     RDB_bool isempty;
 
-    if (!RDB_tx_is_running(txp))
-        return RDB_INVALID_TRANSACTION;
+    if (!RDB_tx_is_running(txp)) {
+        RDB_raise_invalid_tx(ecp);
+        return RDB_ERROR;
+    }
 
     /*
      * Check if it's a read-only operator
      */
-    exp = RDB_eq(RDB_expr_attr("NAME"), RDB_string_to_expr(name));
+    exp = RDB_eq(RDB_expr_attr("NAME", ecp), RDB_string_to_expr(name, ecp), ecp);
     if (exp == NULL) {
         RDB_raise_no_memory(ecp);
         return RDB_ERROR;
@@ -1378,7 +1397,7 @@ RDB_drop_op(const char *name, RDB_exec_context *ecp, RDB_transaction *txp)
         }
         
         /* Delete all versions of update operator from the database */
-        exp = RDB_eq(RDB_expr_attr("NAME"), RDB_string_to_expr(name));
+        exp = RDB_eq(RDB_expr_attr("NAME", ecp), RDB_string_to_expr(name, ecp), ecp);
         if (exp == NULL) {
             RDB_raise_no_memory(ecp);
             return RDB_ERROR;
@@ -1404,7 +1423,8 @@ RDB_drop_op(const char *name, RDB_exec_context *ecp, RDB_transaction *txp)
         }
 
         /* Delete all versions of update operator from the database */
-        exp = RDB_eq(RDB_expr_attr("NAME"), RDB_string_to_expr(name));
+        exp = RDB_eq(RDB_expr_attr("NAME", ecp), RDB_string_to_expr(name, ecp),
+               ecp);
         if (exp == NULL) {
             RDB_raise_no_memory(ecp);
             return RDB_ERROR;

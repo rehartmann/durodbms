@@ -71,7 +71,7 @@ Duro_begin_cmd(ClientData data, Tcl_Interp *interp, int argc, CONST char *argv[]
 
     /* Start transaction */
     txp = (RDB_transaction *)Tcl_Alloc(sizeof (RDB_transaction));
-    ret = RDB_begin_tx(txp, dbp, parentp);
+    ret = RDB_begin_tx(statep->current_ecp, txp, dbp, parentp);
     if (ret != RDB_OK) { 
         Duro_dberror(interp, RDB_get_err(statep->current_ecp), txp);
         return TCL_ERROR;
@@ -113,7 +113,7 @@ Duro_commit_cmd(ClientData data, Tcl_Interp *interp, int argc, CONST char *argv[
     }
     txp = Tcl_GetHashValue(entryp);
     Tcl_DeleteHashEntry(entryp);
-    ret = RDB_commit(txp);
+    ret = RDB_commit(statep->current_ecp, txp);
     Tcl_Free((char *) txp);
     if (ret != RDB_OK) { 
         Duro_dberror(interp, RDB_get_err(statep->current_ecp), txp);

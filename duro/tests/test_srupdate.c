@@ -30,7 +30,7 @@ create_table(RDB_database *dbp, RDB_exec_context *ecp)
     int i;
    
     printf("Starting transaction\n");
-    ret = RDB_begin_tx(&tx, dbp, NULL);
+    ret = RDB_begin_tx(ecp, &tx, dbp, NULL);
     if (ret != RDB_OK) {
         return ret;
     }
@@ -47,9 +47,9 @@ create_table(RDB_database *dbp, RDB_exec_context *ecp)
     RDB_init_obj(&tpl);
 
     for (i = 0; i < 3; i++) {
-        RDB_tuple_set_int(&tpl, "NO", (RDB_int) i);
-        RDB_tuple_set_int(&tpl, "O_NO", (RDB_int) i);
-        RDB_tuple_set_int(&tpl, "COUNT", (RDB_int) 0);
+        RDB_tuple_set_int(&tpl, "NO", (RDB_int) i, ecp);
+        RDB_tuple_set_int(&tpl, "O_NO", (RDB_int) i, ecp);
+        RDB_tuple_set_int(&tpl, "COUNT", (RDB_int) 0, ecp);
 
         ret = RDB_insert(tbp, &tpl, ecp, &tx);
         if (ret != RDB_OK) {
@@ -60,7 +60,7 @@ create_table(RDB_database *dbp, RDB_exec_context *ecp)
     }
 
     printf("End of transaction\n");
-    return RDB_commit(&tx);
+    return RDB_commit(ecp, &tx);
 }
 
 int
@@ -73,7 +73,7 @@ test_update1(RDB_database *dbp, RDB_exec_context *ecp)
     RDB_attr_update upd;
 
     printf("Starting transaction\n");
-    ret = RDB_begin_tx(&tx, dbp, NULL);
+    ret = RDB_begin_tx(ecp, &tx, dbp, NULL);
     if (ret != RDB_OK) {
         return ret;
     }
@@ -86,8 +86,9 @@ test_update1(RDB_database *dbp, RDB_exec_context *ecp)
 
     printf("Updating table\n");
 
-    exp = RDB_int_to_expr(2);
-    exp = RDB_ro_op_va("-", exp, RDB_expr_attr("NO"), (RDB_expression *) NULL);
+    exp = RDB_int_to_expr(2, ecp);
+    exp = RDB_ro_op_va("-", ecp, exp, RDB_expr_attr("NO", ecp),
+            (RDB_expression *) NULL);
     if (exp == NULL) {
         RDB_rollback(ecp, &tx);
         return RDB_NO_MEMORY;
@@ -102,7 +103,7 @@ test_update1(RDB_database *dbp, RDB_exec_context *ecp)
         return ret;
     }
 
-    return RDB_commit(&tx);
+    return RDB_commit(ecp, &tx);
 }
 
 int
@@ -115,7 +116,7 @@ test_update2(RDB_database *dbp, RDB_exec_context *ecp)
     RDB_attr_update upd;
 
     printf("Starting transaction\n");
-    ret = RDB_begin_tx(&tx, dbp, NULL);
+    ret = RDB_begin_tx(ecp, &tx, dbp, NULL);
     if (ret != RDB_OK) {
         return ret;
     }
@@ -128,8 +129,9 @@ test_update2(RDB_database *dbp, RDB_exec_context *ecp)
 
     printf("Updating table\n");
 
-    exp = RDB_expr_sum(RDB_table_to_expr(tbp, ecp), "COUNT");
-    exp = RDB_ro_op_va("+", exp, RDB_int_to_expr(1), (RDB_expression *) NULL);
+    exp = RDB_expr_sum(RDB_table_to_expr(tbp, ecp), "COUNT", ecp);
+    exp = RDB_ro_op_va("+", ecp, exp, RDB_int_to_expr(1, ecp),
+            (RDB_expression *) NULL);
     if (exp == NULL) {
         RDB_rollback(ecp, &tx);
         return RDB_ERROR;
@@ -144,7 +146,7 @@ test_update2(RDB_database *dbp, RDB_exec_context *ecp)
         return ret;
     }
 
-    return RDB_commit(&tx);
+    return RDB_commit(ecp, &tx);
 }
 
 RDB_seq_item noseqitv[] = { { "NO", RDB_TRUE } };
@@ -160,7 +162,7 @@ test_print(RDB_database *dbp, RDB_exec_context *ecp)
     int i;
 
     printf("Starting transaction\n");
-    ret = RDB_begin_tx(&tx, dbp, NULL);
+    ret = RDB_begin_tx(ecp, &tx, dbp, NULL);
     if (ret != RDB_OK) {
         return ret;
     }
@@ -192,7 +194,7 @@ test_print(RDB_database *dbp, RDB_exec_context *ecp)
     }
     RDB_clear_err(ecp);
 
-    return RDB_commit(&tx);
+    return RDB_commit(ecp, &tx);
 }
 
 int

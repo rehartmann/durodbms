@@ -21,7 +21,7 @@ create_table(RDB_database *dbp, RDB_exec_context *ecp)
     int ret;
    
     printf("Starting transaction\n");
-    ret = RDB_begin_tx(&tx, dbp, NULL);
+    ret = RDB_begin_tx(ecp, &tx, dbp, NULL);
     if (ret != RDB_OK) {
         return ret;
     }
@@ -46,7 +46,7 @@ create_table(RDB_database *dbp, RDB_exec_context *ecp)
     printf("Table %s created.\n", RDB_table_name(tbp));
 
     printf("End of transaction\n");
-    return RDB_commit(&tx);
+    return RDB_commit(ecp, &tx);
 }
 
 int
@@ -62,7 +62,7 @@ test_table(RDB_database *dbp, RDB_exec_context *ecp)
     RDB_type *errtyp;
 
     printf("Starting transaction\n");
-    ret = RDB_begin_tx(&tx, dbp, NULL);
+    ret = RDB_begin_tx(ecp, &tx, dbp, NULL);
     if (ret != RDB_OK) {
         return ret;
     }
@@ -79,7 +79,7 @@ test_table(RDB_database *dbp, RDB_exec_context *ecp)
 
     printf("Trying to insert tuple with INTEGER\n");
 
-    ret = RDB_tuple_set_int(&tpl, "NUMBER", 50);
+    ret = RDB_tuple_set_int(&tpl, "NUMBER", 50, ecp);
     if (ret != RDB_OK) {
         goto error;
     }
@@ -176,7 +176,7 @@ test_table(RDB_database *dbp, RDB_exec_context *ecp)
     RDB_destroy_obj(&tival, ecp);
 
     printf("End of transaction\n");
-    return RDB_commit(&tx);
+    return RDB_commit(ecp, &tx);
 
 error:
     RDB_destroy_obj(&tpl, ecp);
@@ -195,7 +195,7 @@ test_drop(RDB_database *dbp, RDB_exec_context *ecp)
     RDB_transaction tx;
 
     printf("Starting transaction\n");
-    ret = RDB_begin_tx(&tx, dbp, NULL);
+    ret = RDB_begin_tx(ecp, &tx, dbp, NULL);
     if (ret != RDB_OK) {
         return ret;
     }
@@ -233,7 +233,7 @@ test_drop(RDB_database *dbp, RDB_exec_context *ecp)
     printf("Error: not found - OK\n");
 
     printf("End of transaction\n");
-    return RDB_commit(&tx);
+    return RDB_commit(ecp, &tx);
 }
 
 int

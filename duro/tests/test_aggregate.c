@@ -13,7 +13,7 @@ test_aggregate(RDB_database *dbp, RDB_exec_context *ecp)
     int ret;
 
     printf("Starting transaction\n");
-    ret = RDB_begin_tx(&tx, dbp, NULL);
+    ret = RDB_begin_tx(ecp, &tx, dbp, NULL);
     if (ret != RDB_OK) {
         return ret;
     }
@@ -38,14 +38,14 @@ test_aggregate(RDB_database *dbp, RDB_exec_context *ecp)
 
     ret = RDB_avg(tbp, "SALARY", ecp, &tx, &avg);
     if (ret != RDB_OK) {
-        RDB_commit(&tx);
+        RDB_commit(ecp, &tx);
         return ret;
     }
 
     printf("Average is %f\n", (float)avg);
 
     printf("End of transaction\n");
-    return RDB_commit(&tx);
+    return RDB_commit(ecp, &tx);
 }
 
 int

@@ -12,8 +12,11 @@ int main(void)
     RDB_exec_context ec;
     RDB_object tpl;
 
-    _RDB_init_builtin_types();
     RDB_init_exec_context(&ec);
+    if (_RDB_init_builtin_types(&ec) != RDB_OK) {
+        fprintf(stderr, "error initializing built-in types\n");
+        return 2;
+    }
 
     RDB_init_obj(&tpl);
     RDB_destroy_obj(&tpl, &ec);
@@ -26,7 +29,7 @@ int main(void)
         RDB_destroy_exec_context(&ec);
         return 2;
     }
-    res = RDB_tuple_set_int(&tpl, "B", (RDB_int)4711);
+    res = RDB_tuple_set_int(&tpl, "B", (RDB_int)4711, &ec);
     if (res != RDB_OK) {
         fprintf(stderr, "Error %s\n", RDB_strerror(res));
         RDB_destroy_obj(&tpl, &ec);

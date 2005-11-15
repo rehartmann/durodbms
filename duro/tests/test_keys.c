@@ -15,7 +15,7 @@ test_keys(RDB_database *dbp, RDB_exec_context *ecp)
     RDB_init_obj(&tpl);    
 
     printf("Starting transaction\n");
-    ret = RDB_begin_tx(&tx, dbp, NULL);
+    ret = RDB_begin_tx(ecp, &tx, dbp, NULL);
     if (ret != RDB_OK) {
         RDB_destroy_obj(&tpl, ecp);
         return ret;
@@ -30,16 +30,16 @@ test_keys(RDB_database *dbp, RDB_exec_context *ecp)
 
     printf("Inserting tuple #1\n");
 
-    ret = RDB_tuple_set_int(&tpl, "EMPNO", 1);
+    ret = RDB_tuple_set_int(&tpl, "EMPNO", 1, ecp);
     if (ret != RDB_OK)
         goto error;
     ret = RDB_tuple_set_string(&tpl, "NAME", "Johnson", ecp);
     if (ret != RDB_OK)
         goto error;
-    ret = RDB_tuple_set_rational(&tpl, "SALARY", (RDB_rational)4000.0);
+    ret = RDB_tuple_set_rational(&tpl, "SALARY", (RDB_rational)4000.0, ecp);
     if (ret != RDB_OK)
         goto error;
-    ret = RDB_tuple_set_int(&tpl, "DEPTNO", 1);
+    ret = RDB_tuple_set_int(&tpl, "DEPTNO", 1, ecp);
     if (ret != RDB_OK)
         goto error;
 
@@ -53,16 +53,16 @@ test_keys(RDB_database *dbp, RDB_exec_context *ecp)
 
     printf("Inserting tuple #2\n");
 
-    ret = RDB_tuple_set_int(&tpl, "EMPNO", 3);
+    ret = RDB_tuple_set_int(&tpl, "EMPNO", 3, ecp);
     if (ret != RDB_OK)
         goto error;
     ret = RDB_tuple_set_string(&tpl, "NAME", "Smith", ecp);
     if (ret != RDB_OK)
         goto error;
-    ret = RDB_tuple_set_rational(&tpl, "SALARY", (RDB_rational)4000.0);
+    ret = RDB_tuple_set_rational(&tpl, "SALARY", (RDB_rational)4000.0, ecp);
     if (ret != RDB_OK)
         goto error;
-    ret = RDB_tuple_set_int(&tpl, "DEPTNO", 1);
+    ret = RDB_tuple_set_int(&tpl, "DEPTNO", 1, ecp);
     if (ret != RDB_OK)
         goto error;
 
@@ -76,7 +76,7 @@ test_keys(RDB_database *dbp, RDB_exec_context *ecp)
     RDB_destroy_obj(&tpl, ecp);
 
     printf("End of transaction\n");
-    return RDB_commit(&tx);
+    return RDB_commit(ecp, &tx);
 
 error:
     RDB_rollback(ecp, &tx);

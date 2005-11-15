@@ -50,7 +50,7 @@ test_update(RDB_database *dbp, RDB_exec_context *ecp)
     RDB_expression *exprp;
 
     printf("Starting transaction\n");
-    ret = RDB_begin_tx(&tx, dbp, NULL);
+    ret = RDB_begin_tx(ecp, &tx, dbp, NULL);
     if (ret != RDB_OK) {
         return ret;
     }
@@ -62,7 +62,7 @@ test_update(RDB_database *dbp, RDB_exec_context *ecp)
 
     printf("Updating table, setting SALARY to 4500\n");
     attrs[0].name = "SALARY";
-    attrs[0].exp = RDB_rational_to_expr(4500.0);
+    attrs[0].exp = RDB_rational_to_expr(4500.0, ecp);
     ret = RDB_update(tbp, NULL, 1, attrs, ecp, &tx);
     if (ret != RDB_OK) {
         goto error;
@@ -70,8 +70,8 @@ test_update(RDB_database *dbp, RDB_exec_context *ecp)
 
     printf("Updating table, setting EMPNO from 2 to 3\n");
     attrs[0].name = "EMPNO";
-    attrs[0].exp = RDB_int_to_expr(3);
-    exprp = RDB_eq(RDB_expr_attr("EMPNO"), RDB_int_to_expr(2));
+    attrs[0].exp = RDB_int_to_expr(3, ecp);
+    exprp = RDB_eq(RDB_expr_attr("EMPNO", ecp), RDB_int_to_expr(2, ecp), ecp);
     ret = RDB_update(tbp, exprp, 1, attrs, ecp, &tx);
     if (ret != RDB_OK) {
         goto error;
@@ -81,8 +81,8 @@ test_update(RDB_database *dbp, RDB_exec_context *ecp)
 
     printf("Updating table, setting NAME of no 1 to Smythe\n");
     attrs[0].name = "NAME";
-    attrs[0].exp = RDB_string_to_expr("Smythe");
-    exprp = RDB_eq(RDB_expr_attr("EMPNO"), RDB_int_to_expr(1));
+    attrs[0].exp = RDB_string_to_expr("Smythe", ecp);
+    exprp = RDB_eq(RDB_expr_attr("EMPNO", ecp), RDB_int_to_expr(1, ecp), ecp);
     ret = RDB_update(tbp, exprp, 1, attrs, ecp, &tx);
     if (ret != RDB_OK) {
         goto error;
@@ -92,13 +92,13 @@ test_update(RDB_database *dbp, RDB_exec_context *ecp)
 
     printf("Updating table, setting SALARY of no 3 to SALARY + 100\n");
     attrs[0].name = "SALARY";
-    attrs[0].exp = RDB_ro_op_va("+", RDB_rational_to_expr(100),
-            RDB_expr_attr("SALARY"), (RDB_expression *) NULL);
+    attrs[0].exp = RDB_ro_op_va("+", ecp, RDB_rational_to_expr(100, ecp),
+            RDB_expr_attr("SALARY", ecp), (RDB_expression *) NULL);
     if (attrs[0].exp == NULL) {
-        ret = RDB_NO_MEMORY;
+        ret = RDB_ERROR;
         goto error;
     }
-    exprp = RDB_eq(RDB_expr_attr("EMPNO"), RDB_int_to_expr(3));
+    exprp = RDB_eq(RDB_expr_attr("EMPNO", ecp), RDB_int_to_expr(3, ecp), ecp);
     ret = RDB_update(tbp, exprp, 1, attrs, ecp, &tx);
     if (ret != RDB_OK) {
         goto error;
@@ -113,7 +113,7 @@ test_update(RDB_database *dbp, RDB_exec_context *ecp)
     }
     
     printf("End of transaction\n");
-    return RDB_commit(&tx);
+    return RDB_commit(ecp, &tx);
 
 error:
     RDB_rollback(ecp, &tx);

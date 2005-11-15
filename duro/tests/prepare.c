@@ -34,7 +34,7 @@ create_tables(RDB_database *dbp, RDB_exec_context *ecp)
     RDB_object defval;
     int ret;
     
-    ret = RDB_begin_tx(&tx, dbp, NULL);
+    ret = RDB_begin_tx(ecp, &tx, dbp, NULL);
     if (ret != RDB_OK) {
         fprintf(stderr, "Error: %s\n", RDB_strerror(ret));
         return ret;
@@ -72,7 +72,7 @@ create_tables(RDB_database *dbp, RDB_exec_context *ecp)
         return RDB_ERROR;
     }
 
-    return RDB_commit(&tx);
+    return RDB_commit(ecp, &tx);
 }
 
 int
@@ -83,7 +83,7 @@ fill_tables(RDB_database *dbp, RDB_exec_context *ecp)
     RDB_transaction tx;
     RDB_table *tbp, *tbp2, *tbp3;
 
-    ret = RDB_begin_tx(&tx, dbp, NULL);
+    ret = RDB_begin_tx(ecp, &tx, dbp, NULL);
     if (ret != RDB_OK) {
         return ret;
     }
@@ -97,16 +97,16 @@ fill_tables(RDB_database *dbp, RDB_exec_context *ecp)
 
     printf("Filling EMPS1\n");
 
-    ret = RDB_tuple_set_int(&emptpl, "EMPNO", 1);
+    ret = RDB_tuple_set_int(&emptpl, "EMPNO", 1, ecp);
     if (ret != RDB_OK)
         goto error;
     ret = RDB_tuple_set_string(&emptpl, "NAME", "Smith", ecp);
     if (ret != RDB_OK)
         goto error;
-    ret = RDB_tuple_set_rational(&emptpl, "SALARY", (RDB_rational)4000.0);
+    ret = RDB_tuple_set_rational(&emptpl, "SALARY", (RDB_rational)4000.0, ecp);
     if (ret != RDB_OK)
         goto error;
-    ret = RDB_tuple_set_int(&emptpl, "DEPTNO", 1);
+    ret = RDB_tuple_set_int(&emptpl, "DEPTNO", 1, ecp);
     if (ret != RDB_OK)
         goto error;
 
@@ -115,16 +115,16 @@ fill_tables(RDB_database *dbp, RDB_exec_context *ecp)
         goto error;
     }
 
-    ret = RDB_tuple_set_int(&emptpl, "EMPNO", 2);
+    ret = RDB_tuple_set_int(&emptpl, "EMPNO", 2, ecp);
     if (ret != RDB_OK)
         goto error;
     ret = RDB_tuple_set_string(&emptpl, "NAME", "Jones", ecp);
     if (ret != RDB_OK)
         goto error;
-    ret = RDB_tuple_set_rational(&emptpl, "SALARY", (RDB_rational)4100.0);
+    ret = RDB_tuple_set_rational(&emptpl, "SALARY", (RDB_rational)4100.0, ecp);
     if (ret != RDB_OK)
         goto error;
-    ret = RDB_tuple_set_int(&emptpl, "DEPTNO", 2);
+    ret = RDB_tuple_set_int(&emptpl, "DEPTNO", 2, ecp);
     if (ret != RDB_OK)
         goto error;
 
@@ -138,13 +138,13 @@ fill_tables(RDB_database *dbp, RDB_exec_context *ecp)
     RDB_destroy_obj(&emptpl, ecp);
     RDB_init_obj(&emptpl);
 
-    ret = RDB_tuple_set_int(&emptpl, "EMPNO", 1);
+    ret = RDB_tuple_set_int(&emptpl, "EMPNO", 1, ecp);
     if (ret != RDB_OK)
         goto error;
     ret = RDB_tuple_set_string(&emptpl, "NAME", "Smith", ecp);
     if (ret != RDB_OK)
         goto error;
-    ret = RDB_tuple_set_int(&emptpl, "DEPTNO", 1);
+    ret = RDB_tuple_set_int(&emptpl, "DEPTNO", 1, ecp);
     if (ret != RDB_OK)
         goto error;
 
@@ -153,13 +153,13 @@ fill_tables(RDB_database *dbp, RDB_exec_context *ecp)
         return ret;
     }
 
-    ret = RDB_tuple_set_int(&emptpl, "EMPNO", 3);
+    ret = RDB_tuple_set_int(&emptpl, "EMPNO", 3, ecp);
     if (ret != RDB_OK)
         goto error;
     ret = RDB_tuple_set_string(&emptpl, "NAME", "Clarke", ecp);
     if (ret != RDB_OK)
         goto error;
-    ret = RDB_tuple_set_int(&emptpl, "DEPTNO", 2);
+    ret = RDB_tuple_set_int(&emptpl, "DEPTNO", 2, ecp);
     if (ret != RDB_OK)
         goto error;
 
@@ -169,7 +169,7 @@ fill_tables(RDB_database *dbp, RDB_exec_context *ecp)
 
     printf("Filling DEPTS\n");
 
-    ret = RDB_tuple_set_int(&deptpl, "DEPTNO", 1);
+    ret = RDB_tuple_set_int(&deptpl, "DEPTNO", 1, ecp);
     if (ret != RDB_OK)
         goto error;
     ret = RDB_tuple_set_string(&deptpl, "DEPTNAME", "Dept. I", ecp);
@@ -181,7 +181,7 @@ fill_tables(RDB_database *dbp, RDB_exec_context *ecp)
         goto error;
     }
 
-    ret = RDB_tuple_set_int(&deptpl, "DEPTNO", 2);
+    ret = RDB_tuple_set_int(&deptpl, "DEPTNO", 2, ecp);
     if (ret != RDB_OK)
         goto error;
     ret = RDB_tuple_set_string(&deptpl, "DEPTNAME", "Dept. II", ecp);
@@ -195,7 +195,7 @@ fill_tables(RDB_database *dbp, RDB_exec_context *ecp)
     RDB_destroy_obj(&emptpl, ecp);
     RDB_destroy_obj(&deptpl, ecp);
 
-    return RDB_commit(&tx);
+    return RDB_commit(ecp, &tx);
 
 error:
     RDB_destroy_obj(&emptpl, ecp);

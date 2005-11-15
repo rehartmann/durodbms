@@ -20,15 +20,15 @@ typedef struct RDB_ixlink {
 } RDB_ixlink;
 
 int
-RDB_begin_tx(RDB_transaction *txp, RDB_database *dbp,
+RDB_begin_tx(RDB_exec_context *ecp, RDB_transaction *txp, RDB_database *dbp,
         RDB_transaction *parentp)
 {
     txp->dbp = dbp;
-    return _RDB_begin_tx(txp, dbp->dbrootp->envp, parentp);
+    return _RDB_begin_tx(ecp, txp, dbp->dbrootp->envp, parentp);
 }
 
 int
-_RDB_begin_tx(RDB_transaction *txp, RDB_environment *envp,
+_RDB_begin_tx(RDB_exec_context *ecp, RDB_transaction *txp, RDB_environment *envp,
         RDB_transaction *parentp)
 {
     DB_TXN *partxid = parentp != NULL ? parentp->txid : NULL;
@@ -38,30 +38,12 @@ _RDB_begin_tx(RDB_transaction *txp, RDB_environment *envp,
     txp->envp = envp;
     ret = envp->envp->txn_begin(envp->envp, partxid, &txp->txid, 0);
     if (ret != 0) {
-        return ret;
+        RDB_raise_system("too many transactions", ecp);
+        return RDB_ERROR;
     }
     txp->delrmp = NULL;
     txp->delixp = NULL;
-    txp->errinfo = NULL;
     return RDB_OK;
-}
-
-int
-_RDB_set_tx_errinfo(RDB_transaction *txp, const char *errinfo)
-{
-    char *nerrinfo = RDB_dup_str(errinfo);
-    if (nerrinfo == NULL)
-        return RDB_NO_MEMORY;
-
-    free(txp->errinfo);
-    txp->errinfo = nerrinfo;
-    return RDB_OK;
-}
-
-char *
-RDB_tx_errinfo(const RDB_transaction *txp)
-{
-    return txp->errinfo;
 }
 
 static void
@@ -139,12 +121,14 @@ close_storage(RDB_transaction *txp)
 }
 
 int
-RDB_commit(RDB_transaction *txp)
+RDB_commit(RDB_exec_context *ecp, RDB_transaction *txp)
 {
     int ret;
 
-    if (txp->txid == NULL)
-        return RDB_INVALID_TRANSACTION;
+    if (txp->txid == NULL) {
+        RDB_raise_invalid_tx(ecp);
+        return RDB_ERROR;
+    }
 
     ret = txp->txid->commit(txp->txid, 0);
     if (ret != 0) {
@@ -187,7 +171,6 @@ RDB_commit(RDB_transaction *txp)
     }
 
     txp->txid = NULL;
-    free(txp->errinfo);
     
     return RDB_OK;
 }
@@ -218,7 +201,6 @@ RDB_rollback(RDB_exec_context *ecp, RDB_transaction *txp)
     }
 
     txp->txid = NULL;
-    free(txp->errinfo);
 
     return ret;
 }
@@ -245,12 +227,14 @@ RDB_tx_is_running(RDB_transaction *txp)
 }
 
 int
-_RDB_del_recmap(RDB_transaction *txp, RDB_recmap *rmp)
+_RDB_del_recmap(RDB_transaction *txp, RDB_recmap *rmp, RDB_exec_context *ecp)
 {
     RDB_rmlink *linkp = malloc(sizeof (RDB_rmlink));
 
-    if (linkp == NULL)
-        return RDB_NO_MEMORY;
+    if (linkp == NULL) {
+        RDB_raise_no_memory(ecp);
+        return RDB_ERROR;
+    }
     linkp->rmp = rmp;
     linkp->nextp = txp->delrmp;
     txp->delrmp = linkp;
@@ -259,12 +243,14 @@ _RDB_del_recmap(RDB_transaction *txp, RDB_recmap *rmp)
 }
 
 int
-_RDB_del_index(RDB_transaction *txp, RDB_index *ixp)
+_RDB_del_index(RDB_transaction *txp, RDB_index *ixp, RDB_exec_context *ecp)
 {
     RDB_ixlink *linkp = malloc(sizeof (RDB_ixlink));
 
-    if (linkp == NULL)
-        return RDB_NO_MEMORY;
+    if (linkp == NULL) {
+        RDB_raise_no_memory(ecp);
+        return RDB_ERROR;
+    }
     linkp->ixp = ixp;
     linkp->nextp = txp->delixp;
     txp->delixp = linkp;

@@ -21,7 +21,7 @@ create_table(RDB_database *dbp, RDB_exec_context *ecp)
     int ret;
    
     printf("Starting transaction\n");
-    ret = RDB_begin_tx(&tx, dbp, NULL);
+    ret = RDB_begin_tx(ecp, &tx, dbp, NULL);
     if (ret != RDB_OK) {
         return ret;
     }
@@ -45,7 +45,7 @@ create_table(RDB_database *dbp, RDB_exec_context *ecp)
     printf("Table %s created.\n", RDB_table_name(tbp));
 
     printf("End of transaction\n");
-    return RDB_commit(&tx);
+    return RDB_commit(ecp, &tx);
 }
 
 int
@@ -61,7 +61,7 @@ test_insert(RDB_database *dbp, RDB_exec_context *ecp)
     RDB_object *compv[2];
 
     printf("Starting transaction\n");
-    ret = RDB_begin_tx(&tx, dbp, NULL);
+    ret = RDB_begin_tx(ecp, &tx, dbp, NULL);
     if (ret != RDB_OK) {
         return ret;
     }
@@ -139,7 +139,7 @@ test_insert(RDB_database *dbp, RDB_exec_context *ecp)
     RDB_destroy_obj(&thval, ecp);
 
     printf("End of transaction\n");
-    return RDB_commit(&tx);
+    return RDB_commit(ecp, &tx);
 
 error:
     RDB_destroy_obj(&tpl, ecp);
@@ -169,7 +169,7 @@ test_query(RDB_database *dbp, RDB_exec_context *ecp)
     int i;
 
     printf("Starting transaction\n");
-    ret = RDB_begin_tx(&tx, dbp, NULL);
+    ret = RDB_begin_tx(ecp, &tx, dbp, NULL);
     if (ret != RDB_OK) {
         return ret;
     }
@@ -205,9 +205,9 @@ test_query(RDB_database *dbp, RDB_exec_context *ecp)
     RDB_clear_err(ecp);
     printf("Creating POINTTEST WHERE POINT.THE_X=1\n");
 
-    wherep = RDB_expr_attr("POINT");
+    wherep = RDB_expr_attr("POINT", ecp);
     wherep = RDB_expr_comp(wherep, "X", ecp);
-    wherep = RDB_eq(wherep, RDB_rational_to_expr(1.0));
+    wherep = RDB_eq(wherep, RDB_rational_to_expr(1.0, ecp), ecp);
 
     tmptbp = RDB_select(tbp, wherep, ecp, &tx);
     if (tmptbp == NULL)
@@ -246,14 +246,14 @@ test_query(RDB_database *dbp, RDB_exec_context *ecp)
 
     printf("Creating POINTTEST WHERE POINT=POINT(1,2)\n");
 
-    compv[0] = RDB_rational_to_expr(1.0);
-    compv[1] = RDB_rational_to_expr(2.0);
-    wherep = RDB_ro_op("POINT", 2, compv);
+    compv[0] = RDB_rational_to_expr(1.0, ecp);
+    compv[1] = RDB_rational_to_expr(2.0, ecp);
+    wherep = RDB_ro_op("POINT", 2, compv, ecp);
     if (wherep == NULL) {
-        ret = RDB_NO_MEMORY;
+        ret = RDB_ERROR;
         goto error;
     } 
-    wherep = RDB_eq(wherep, RDB_expr_attr("POINT"));
+    wherep = RDB_eq(wherep, RDB_expr_attr("POINT", ecp), ecp);
 
     tmptbp = RDB_select(tbp, wherep, ecp, &tx);
     if (tmptbp == NULL) {
@@ -300,7 +300,7 @@ test_query(RDB_database *dbp, RDB_exec_context *ecp)
         goto error;
     }
 
-    return RDB_commit(&tx);
+    return RDB_commit(ecp, &tx);
 
 error:
     RDB_destroy_obj(&xval, ecp);

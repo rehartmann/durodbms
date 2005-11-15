@@ -379,7 +379,6 @@ typedef struct RDB_transaction {
     struct RDB_transaction *parentp;
     struct RDB_rmlink *delrmp;
     struct RDB_ixlink *delixp;
-    char *errinfo;
 } RDB_transaction;
 
 /*
@@ -525,7 +524,7 @@ RDB_tx_errinfo(const RDB_transaction *);
  * Return RDB_OK on success. A return value other than RDB_OK indicates an error.
  */
 int
-RDB_begin_tx(RDB_transaction *txp, RDB_database *dbp,
+RDB_begin_tx(RDB_exec_context *ecp, RDB_transaction *txp, RDB_database *dbp,
         RDB_transaction *parent);
 
 /*
@@ -536,7 +535,7 @@ RDB_begin_tx(RDB_transaction *txp, RDB_database *dbp,
  * DB_INVALID_TRANSACTION is returned.
  */
 int
-RDB_commit(RDB_transaction *);
+RDB_commit(RDB_exec_context *, RDB_transaction *);
 
 /*
  * Abort the transaction pointed to by txp.
@@ -778,17 +777,20 @@ RDB_tuple_set(RDB_object *, const char *name, const RDB_object *,
         RDB_exec_context *);
 
 int
-RDB_tuple_set_bool(RDB_object *, const char *name, RDB_bool val);
+RDB_tuple_set_bool(RDB_object *, const char *name, RDB_bool val,
+        RDB_exec_context *);
 
 int
-RDB_tuple_set_int(RDB_object *, const char *name, RDB_int val);
+RDB_tuple_set_int(RDB_object *, const char *name, RDB_int val,
+        RDB_exec_context *);
 
 int
-RDB_tuple_set_rational(RDB_object *, const char *name, RDB_rational val);
+RDB_tuple_set_rational(RDB_object *, const char *name, RDB_rational val,
+        RDB_exec_context *);
 
 int
 RDB_tuple_set_string(RDB_object *, const char *name, const char *valp,
-RDB_exec_context *);
+        RDB_exec_context *);
 
 /*
  * Return a pointer to the tuple's value corresponding to name name.
@@ -1018,7 +1020,8 @@ RDB_obj_string(const RDB_object *valp);
  * The RDB_object must be of type BINARY or newly initialized.
  */
 int
-RDB_binary_set(RDB_object *, size_t pos, const void *srcp, size_t len);
+RDB_binary_set(RDB_object *, size_t pos, const void *srcp, size_t len,
+        RDB_exec_context *);
 
 /*
  * Obtain a pointer to len bytes from the RDB_object at position pos.
@@ -1041,25 +1044,25 @@ RDB_bool
 RDB_expr_is_const(const RDB_expression *);
 
 RDB_expression *
-RDB_bool_to_expr(RDB_bool);
+RDB_bool_to_expr(RDB_bool, RDB_exec_context *);
 
 RDB_expression *
-RDB_int_to_expr(RDB_int);
+RDB_int_to_expr(RDB_int, RDB_exec_context *);
 
 RDB_expression *
-RDB_rational_to_expr(RDB_rational);
+RDB_rational_to_expr(RDB_rational, RDB_exec_context *);
 
 RDB_expression *
-RDB_string_to_expr(const char *);
+RDB_string_to_expr(const char *, RDB_exec_context *);
 
 RDB_expression *
 RDB_obj_to_expr(const RDB_object *valp, RDB_exec_context *);
 
 RDB_expression *
-RDB_expr_attr(const char *attrname);
+RDB_expr_attr(const char *attrname, RDB_exec_context *);
 
 RDB_expression *
-RDB_eq(RDB_expression *, RDB_expression *);
+RDB_eq(RDB_expression *, RDB_expression *, RDB_exec_context *);
 
 /*
  * Create table-valued expression
@@ -1068,22 +1071,22 @@ RDB_expression *
 RDB_table_to_expr(RDB_table *, RDB_exec_context *);
 
 RDB_expression *
-RDB_expr_sum(RDB_expression *, const char *attrname);
+RDB_expr_sum(RDB_expression *, const char *attrname, RDB_exec_context *);
 
 RDB_expression *
-RDB_expr_avg(RDB_expression *, const char *attrname);
+RDB_expr_avg(RDB_expression *, const char *attrname, RDB_exec_context *);
 
 RDB_expression *
-RDB_expr_max(RDB_expression *, const char *attrname);
+RDB_expr_max(RDB_expression *, const char *attrname, RDB_exec_context *);
 
 RDB_expression *
-RDB_expr_min(RDB_expression *, const char *attrname);
+RDB_expr_min(RDB_expression *, const char *attrname, RDB_exec_context *);
 
 RDB_expression *
-RDB_expr_all(RDB_expression *, const char *attrname);
+RDB_expr_all(RDB_expression *, const char *attrname, RDB_exec_context *);
 
 RDB_expression *
-RDB_expr_any(RDB_expression *, const char *attrname);
+RDB_expr_any(RDB_expression *, const char *attrname, RDB_exec_context *);
 
 RDB_expression *
 RDB_tuple_attr(RDB_expression *, const char *attrname, RDB_exec_context *);
@@ -1092,10 +1095,10 @@ RDB_expression *
 RDB_expr_comp(RDB_expression *, const char *, RDB_exec_context *);
 
 RDB_expression *
-RDB_ro_op(const char *opname, int argc, RDB_expression *argv[]);
+RDB_ro_op(const char *opname, int argc, RDB_expression *argv[], RDB_exec_context *);
 
 RDB_expression *
-RDB_ro_op_va(const char *opname, RDB_expression *arg, ...
+RDB_ro_op_va(const char *opname, RDB_exec_context *, RDB_expression *arg, ...
         /* (RDB_expression *) NULL */ );
 
 /* Return address of encapsulated object, or NULL if not a value */
@@ -1218,5 +1221,11 @@ RDB_raise_attribute_not_found(const char *info, RDB_exec_context *);
 
 RDB_object *
 RDB_raise_predicate_violation(const char *info, RDB_exec_context *);
+
+RDB_object *
+RDB_raise_system(const char *info, RDB_exec_context *);
+
+RDB_object *
+RDB_raise_resource_not_found(const char *info, RDB_exec_context *);
 
 #endif

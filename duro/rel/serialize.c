@@ -18,14 +18,16 @@
  */
 
 static int
-reserve_space(RDB_object *valp, int pos, size_t n)
+reserve_space(RDB_object *valp, int pos, size_t n, RDB_exec_context *ecp)
 {
     while (valp->var.bin.len < pos + n) {
         int newlen = valp->var.bin.len * 2;
         void *newdatap = realloc(valp->var.bin.datap, newlen);
         
-        if (newdatap == NULL)
-            return RDB_NO_MEMORY;
+        if (newdatap == NULL) {
+            RDB_raise_no_memory(ecp);
+            return RDB_ERROR;
+        }
         valp->var.bin.len = newlen;
         valp->var.bin.datap = newdatap;
     }
@@ -34,12 +36,13 @@ reserve_space(RDB_object *valp, int pos, size_t n)
 }
 
 static int
-serialize_str(RDB_object *valp, int *posp, const char *str)
+serialize_str(RDB_object *valp, int *posp, const char *str,
+        RDB_exec_context *ecp)
 {
     int ret;
     size_t len = strlen(str);
 
-    ret = reserve_space(valp, *posp, len + sizeof len);
+    ret = reserve_space(valp, *posp, len + sizeof len, ecp);
     if (ret != RDB_OK)
         return ret;
     memcpy(((RDB_byte *) valp->var.bin.datap) + *posp, &len, sizeof len);
@@ -50,11 +53,11 @@ serialize_str(RDB_object *valp, int *posp, const char *str)
 }
 
 static int
-serialize_int(RDB_object *valp, int *posp, RDB_int v)
+serialize_int(RDB_object *valp, int *posp, RDB_int v, RDB_exec_context *ecp)
 {
     int ret;
 
-    ret = reserve_space(valp, *posp, sizeof v);
+    ret = reserve_space(valp, *posp, sizeof v, ecp);
     if (ret != RDB_OK)
         return ret;
     memcpy(((RDB_byte *) valp->var.bin.datap) + *posp, &v, sizeof v);
@@ -63,11 +66,11 @@ serialize_int(RDB_object *valp, int *posp, RDB_int v)
 }
 
 static int
-serialize_byte(RDB_object *valp, int *posp, RDB_byte b)
+serialize_byte(RDB_object *valp, int *posp, RDB_byte b, RDB_exec_context *ecp)
 {
     int ret;
 
-    ret = reserve_space(valp, *posp, 1);
+    ret = reserve_space(valp, *posp, 1, ecp);
     if (ret != RDB_OK)
         return ret;
     ((RDB_byte *) valp->var.bin.datap)[(*posp)++] = b;
@@ -75,31 +78,32 @@ serialize_byte(RDB_object *valp, int *posp, RDB_byte b)
 }
 
 static int
-serialize_type(RDB_object *valp, int *posp, const RDB_type *typ)
+serialize_type(RDB_object *valp, int *posp, const RDB_type *typ,
+        RDB_exec_context *ecp)
 {
     int ret;
     
-    ret = serialize_byte(valp, posp, (RDB_byte) typ->kind);
+    ret = serialize_byte(valp, posp, (RDB_byte) typ->kind, ecp);
     if (ret != RDB_OK)
         return ret;
 
     switch (typ->kind) {
         case RDB_TP_SCALAR:
-            return serialize_str(valp, posp, typ->name);
+            return serialize_str(valp, posp, typ->name, ecp);
         case RDB_TP_TUPLE:
         {
             int i;
 
-            ret = serialize_int(valp, posp, typ->var.tuple.attrc);
+            ret = serialize_int(valp, posp, typ->var.tuple.attrc, ecp);
             if (ret != RDB_OK)
                 return ret;
 
             for (i = 0; i < typ->var.tuple.attrc; i++) {
-                ret = serialize_str(valp, posp, typ->var.tuple.attrv[i].name);
+                ret = serialize_str(valp, posp, typ->var.tuple.attrv[i].name, ecp);
                 if (ret != RDB_OK)
                     return ret;
 
-                ret = serialize_type(valp, posp, typ->var.tuple.attrv[i].typ);
+                ret = serialize_type(valp, posp, typ->var.tuple.attrv[i].typ, ecp);
                 if (ret != RDB_OK)
                     return ret;
             }
@@ -107,7 +111,7 @@ serialize_type(RDB_object *valp, int *posp, const RDB_type *typ)
         }
         case RDB_TP_RELATION:
         case RDB_TP_ARRAY:
-            return serialize_type(valp, posp, typ->var.basetyp);
+            return serialize_type(valp, posp, typ->var.basetyp, ecp);
     }
     abort();
 }
@@ -123,7 +127,7 @@ serialize_obj(RDB_object *valp, int *posp, const RDB_object *argvalp,
     void *datap;
     int ret;
 
-    ret = serialize_byte(valp, posp, argvalp->kind);
+    ret = serialize_byte(valp, posp, argvalp->kind, ecp);
     if (ret != RDB_OK)
         return ret;
 
@@ -135,14 +139,14 @@ serialize_obj(RDB_object *valp, int *posp, const RDB_object *argvalp,
             tuple_entry *entryp;
             RDB_hashtable_iter hiter;
         
-            ret = serialize_int(valp, posp, RDB_tuple_size(argvalp));
+            ret = serialize_int(valp, posp, RDB_tuple_size(argvalp), ecp);
             if (ret != RDB_OK)
                 return ret;
 
             RDB_init_hashtable_iter(&hiter, (RDB_hashtable *) &argvalp->var.tpl_tab);
             while ((entryp = RDB_hashtable_next(&hiter)) != NULL) {
                 /* Write attribute name */
-                ret = serialize_str(valp, posp, entryp->key);
+                ret = serialize_str(valp, posp, entryp->key, ecp);
                 if (ret != RDB_OK)
                     return ret;
 
@@ -155,27 +159,28 @@ serialize_obj(RDB_object *valp, int *posp, const RDB_object *argvalp,
             return RDB_OK;
         }
         case RDB_OB_ARRAY:
-            return RDB_NOT_SUPPORTED;
+            RDB_raise_not_supported("cannot serialize array", ecp);
+            return RDB_ERROR;
         case RDB_OB_INITIAL:
             return RDB_OK;
         case RDB_OB_BOOL:
         case RDB_OB_INT:
         case RDB_OB_RATIONAL:
         case RDB_OB_BIN:
-            ret = serialize_type(valp, posp, argvalp->typ);
+            ret = serialize_type(valp, posp, argvalp->typ, ecp);
             if (ret != RDB_OK)
                 return ret;
 
             len = argvalp->typ->ireplen;
             if (len == RDB_VARIABLE_LEN) {
                 len = argvalp->var.bin.len;
-                ret = reserve_space(valp, *posp, len + sizeof len);
+                ret = reserve_space(valp, *posp, len + sizeof len, ecp);
                 if (ret != RDB_OK)
                     return ret;
                 memcpy(((RDB_byte *) valp->var.bin.datap) + *posp, &len, sizeof len);
                 *posp += sizeof len;
             } else {
-                ret = reserve_space(valp, *posp, len);
+                ret = reserve_space(valp, *posp, len, ecp);
                 if (ret != RDB_OK)
                     return ret;
             }
@@ -192,7 +197,7 @@ static int
 serialize_expr(RDB_object *valp, int *posp, const RDB_expression *exp,
         RDB_exec_context *ecp)
 {
-    int ret = serialize_byte(valp, posp, (RDB_byte)exp->kind);
+    int ret = serialize_byte(valp, posp, (RDB_byte)exp->kind, ecp);
     if (ret != RDB_OK)
         return ret;
 
@@ -200,29 +205,29 @@ serialize_expr(RDB_object *valp, int *posp, const RDB_expression *exp,
         case RDB_EX_OBJ:
             return serialize_obj(valp, posp, &exp->var.obj, ecp);
         case RDB_EX_ATTR:
-            return serialize_str(valp, posp, exp->var.attrname);
+            return serialize_str(valp, posp, exp->var.attrname, ecp);
         case RDB_EX_GET_COMP:
             ret = serialize_expr(valp, posp, exp->var.op.argv[0], ecp);
             if (ret != RDB_OK)
                 return ret;
-            return serialize_str(valp, posp, exp->var.op.name);
+            return serialize_str(valp, posp, exp->var.op.name, ecp);
         case RDB_EX_AGGREGATE:
             ret = serialize_expr(valp, posp, exp->var.op.argv[0], ecp);
             if (ret != RDB_OK)
                 return ret;
-            ret = serialize_byte(valp, posp, (RDB_byte) exp->var.op.op);
+            ret = serialize_byte(valp, posp, (RDB_byte) exp->var.op.op, ecp);
             if (ret != RDB_OK)
                 return ret;
-            return serialize_str(valp, posp, exp->var.op.name);
+            return serialize_str(valp, posp, exp->var.op.name, ecp);
         case RDB_EX_RO_OP:
         {
             int i;
             int argc = exp->var.op.argc;
 
-            ret = serialize_str(valp, posp, exp->var.op.name);
+            ret = serialize_str(valp, posp, exp->var.op.name, ecp);
             if (ret != RDB_OK)
                 return ret;
-            ret = serialize_int (valp, posp, argc);
+            ret = serialize_int (valp, posp, argc, ecp);
             if (ret != RDB_OK)
                 return ret;
             for (i = 0; i < argc; i++) {
@@ -236,7 +241,7 @@ serialize_expr(RDB_object *valp, int *posp, const RDB_expression *exp,
             ret = serialize_expr(valp, posp, exp->var.op.argv[0], ecp);
             if (ret != RDB_OK)
                 return ret;
-            return serialize_str(valp, posp, exp->var.op.name);
+            return serialize_str(valp, posp, exp->var.op.name, ecp);
     }
     /* should never be reached */
     abort();
@@ -254,11 +259,11 @@ serialize_project(RDB_object *valp, int *posp, RDB_table *tbp,
     if (ret != RDB_OK)
         return ret;
 
-    ret = serialize_int(valp, posp, tuptyp->var.tuple.attrc);
+    ret = serialize_int(valp, posp, tuptyp->var.tuple.attrc, ecp);
     if (ret != RDB_OK)
         return ret;
     for (i = 0; i < tuptyp->var.tuple.attrc; i++) {
-        ret = serialize_str(valp, posp, tuptyp->var.tuple.attrv[i].name);
+        ret = serialize_str(valp, posp, tuptyp->var.tuple.attrv[i].name, ecp);
         if (ret != RDB_OK)
             return ret;
     }
@@ -266,7 +271,8 @@ serialize_project(RDB_object *valp, int *posp, RDB_table *tbp,
 }      
 
 static int
-serialize_extend(RDB_object *valp, int *posp, RDB_table *tbp, RDB_exec_context *ecp)
+serialize_extend(RDB_object *valp, int *posp, RDB_table *tbp,
+        RDB_exec_context *ecp)
 {
     int i;
     int ret;
@@ -275,11 +281,11 @@ serialize_extend(RDB_object *valp, int *posp, RDB_table *tbp, RDB_exec_context *
     if (ret != RDB_OK)
         return ret;
 
-    ret = serialize_int(valp, posp, tbp->var.extend.attrc);
+    ret = serialize_int(valp, posp, tbp->var.extend.attrc, ecp);
     if (ret != RDB_OK)
         return ret;
     for (i = 0; i < tbp->var.extend.attrc; i++) {
-        ret = serialize_str(valp, posp, tbp->var.extend.attrv[i].name);
+        ret = serialize_str(valp, posp, tbp->var.extend.attrv[i].name, ecp);
         if (ret != RDB_OK)
             return ret;
         ret = serialize_expr(valp, posp, tbp->var.extend.attrv[i].exp, ecp);
@@ -304,13 +310,13 @@ serialize_summarize(RDB_object *valp, int *posp, RDB_table *tbp,
     if (ret != RDB_OK)
         return ret;
 
-    ret = serialize_int(valp, posp, tbp->var.summarize.addc);
+    ret = serialize_int(valp, posp, tbp->var.summarize.addc, ecp);
     if (ret != RDB_OK)
         return ret;
 
     for (i = 0; i < tbp->var.summarize.addc; i++) {
         ret = serialize_byte(valp, posp,
-                             (RDB_byte)tbp->var.summarize.addv[i].op);
+                             (RDB_byte)tbp->var.summarize.addv[i].op, ecp);
         if (ret != RDB_OK)
             return ret;
 
@@ -320,7 +326,7 @@ serialize_summarize(RDB_object *valp, int *posp, RDB_table *tbp,
                 return ret;
         }
 
-        ret = serialize_str(valp, posp, tbp->var.summarize.addv[i].name);
+        ret = serialize_str(valp, posp, tbp->var.summarize.addv[i].name, ecp);
         if (ret != RDB_OK)
             return ret;
     }
@@ -338,16 +344,16 @@ serialize_rename(RDB_object *valp, int *posp, RDB_table *tbp,
     if (ret != RDB_OK)
         return ret;
 
-    ret = serialize_int(valp, posp, tbp->var.rename.renc);
+    ret = serialize_int(valp, posp, tbp->var.rename.renc, ecp);
     if (ret != RDB_OK)
         return ret;
 
     for (i = 0; i < tbp->var.rename.renc; i++) {
-        ret = serialize_str(valp, posp, tbp->var.rename.renv[i].from);
+        ret = serialize_str(valp, posp, tbp->var.rename.renv[i].from, ecp);
         if (ret != RDB_OK)
             return ret;
 
-        ret = serialize_str(valp, posp, tbp->var.rename.renv[i].to);
+        ret = serialize_str(valp, posp, tbp->var.rename.renv[i].to, ecp);
         if (ret != RDB_OK)
             return ret;
     }
@@ -366,21 +372,21 @@ serialize_wrap(RDB_object *valp, int *posp, RDB_table *tbp,
     if (ret != RDB_OK)
         return ret;
 
-    ret = serialize_int(valp, posp, tbp->var.wrap.wrapc);
+    ret = serialize_int(valp, posp, tbp->var.wrap.wrapc, ecp);
     if (ret != RDB_OK)
         return ret;
 
     for (i = 0; i < tbp->var.wrap.wrapc; i++) {
-        ret = serialize_str(valp, posp, tbp->var.wrap.wrapv[i].attrname);
+        ret = serialize_str(valp, posp, tbp->var.wrap.wrapv[i].attrname, ecp);
         if (ret != RDB_OK)
             return ret;
 
-        ret = serialize_int(valp, posp, tbp->var.wrap.wrapv[i].attrc);
+        ret = serialize_int(valp, posp, tbp->var.wrap.wrapv[i].attrc, ecp);
         if (ret != RDB_OK)
             return ret;
 
         for (j = 0; j < tbp->var.wrap.wrapv[i].attrc; j++) {
-            ret = serialize_str(valp, posp, tbp->var.wrap.wrapv[i].attrv[j]);
+            ret = serialize_str(valp, posp, tbp->var.wrap.wrapv[i].attrv[j], ecp);
             if (ret != RDB_OK)
                 return ret;
         }
@@ -400,12 +406,12 @@ serialize_unwrap(RDB_object *valp, int *posp, RDB_table *tbp,
     if (ret != RDB_OK)
         return ret;
 
-    ret = serialize_int(valp, posp, tbp->var.unwrap.attrc);
+    ret = serialize_int(valp, posp, tbp->var.unwrap.attrc, ecp);
     if (ret != RDB_OK)
         return ret;
 
     for (i = 0; i < tbp->var.unwrap.attrc; i++) {
-        ret = serialize_str(valp, posp, tbp->var.unwrap.attrv[i]);
+        ret = serialize_str(valp, posp, tbp->var.unwrap.attrv[i], ecp);
         if (ret != RDB_OK)
             return ret;
     }
@@ -423,16 +429,16 @@ serialize_group(RDB_object *valp, int *posp, RDB_table *tbp,
     if (ret != RDB_OK)
         return ret;
 
-    ret = serialize_int(valp, posp, tbp->var.group.attrc);
+    ret = serialize_int(valp, posp, tbp->var.group.attrc, ecp);
     if (ret != RDB_OK)
         return ret;
 
     for (i = 0; i < tbp->var.group.attrc; i++) {
-        ret = serialize_str(valp, posp, tbp->var.group.attrv[i]);
+        ret = serialize_str(valp, posp, tbp->var.group.attrv[i], ecp);
         if (ret != RDB_OK)
             return ret;
     }
-    ret = serialize_str(valp, posp, tbp->var.group.gattr);
+    ret = serialize_str(valp, posp, tbp->var.group.gattr, ecp);
     if (ret != RDB_OK)
         return ret;
 
@@ -449,7 +455,7 @@ serialize_ungroup(RDB_object *valp, int *posp, RDB_table *tbp,
     if (ret != RDB_OK)
         return ret;
 
-    ret = serialize_str(valp, posp, tbp->var.ungroup.attr);
+    ret = serialize_str(valp, posp, tbp->var.ungroup.attr, ecp);
     if (ret != RDB_OK)
         return ret;
 
@@ -486,18 +492,18 @@ serialize_rtable(RDB_object *valp, int *posp, RDB_table *tbp,
     RDB_object *tplp;
 
     if (tbp->is_persistent)
-        return serialize_str(valp, posp, tbp->name != NULL ? tbp->name : "");
+        return serialize_str(valp, posp, tbp->name != NULL ? tbp->name : "", ecp);
 
     if (RDB_table_name(tbp) != NULL) {
         RDB_raise_invalid_argument("cannot serialize named local table", ecp);
         return RDB_ERROR;
     }
 
-    ret = serialize_str(valp, posp, "");
+    ret = serialize_str(valp, posp, "", ecp);
     if (ret != RDB_OK)
         return ret;
 
-    ret = serialize_type(valp, posp, RDB_table_type(tbp));
+    ret = serialize_type(valp, posp, RDB_table_type(tbp), ecp);
     if (ret != RDB_OK)
         return ret;
 
@@ -511,7 +517,7 @@ serialize_rtable(RDB_object *valp, int *posp, RDB_table *tbp,
         return len;
     }
 
-    ret = serialize_int(valp, posp, len);
+    ret = serialize_int(valp, posp, len, ecp);
     if (ret != RDB_OK) {
         RDB_destroy_obj(&arr, ecp);
         return ret;
@@ -535,7 +541,7 @@ static int
 serialize_table(RDB_object *valp, int *posp, RDB_table *tbp,
         RDB_exec_context *ecp)
 {
-    int ret = serialize_byte(valp, posp, (RDB_byte)tbp->kind);
+    int ret = serialize_byte(valp, posp, (RDB_byte)tbp->kind, ecp);
 
     if (ret != RDB_OK)
         return ret;
@@ -618,7 +624,8 @@ _RDB_table_to_obj(RDB_object *valp, RDB_table *tbp, RDB_exec_context *ecp)
     valp->var.bin.len = RDB_BUF_INITLEN;
     valp->var.bin.datap = malloc(RDB_BUF_INITLEN);
     if (valp->var.bin.datap == NULL) {
-        return RDB_NO_MEMORY;
+        RDB_raise_no_memory(ecp);
+        return RDB_ERROR;
     }
     pos = 0;
     ret = serialize_table(valp, &pos, tbp, ecp);
@@ -641,10 +648,11 @@ _RDB_type_to_obj(RDB_object *valp, const RDB_type *typ, RDB_exec_context *ecp)
     valp->var.bin.len = RDB_BUF_INITLEN;
     valp->var.bin.datap = malloc(RDB_BUF_INITLEN);
     if (valp->var.bin.datap == NULL) {
-        return RDB_NO_MEMORY;
+        RDB_raise_no_memory(ecp);
+        return RDB_ERROR;
     }
     pos = 0;
-    ret = serialize_type(valp, &pos, typ);
+    ret = serialize_type(valp, &pos, typ, ecp);
     if (ret != RDB_OK)
         return ret;
 
@@ -657,7 +665,6 @@ _RDB_expr_to_obj(RDB_object *valp, const RDB_expression *exp,
         RDB_exec_context *ecp)
 {
     int pos = 0;
-    int ret;
 
     RDB_destroy_obj(valp, ecp);
     valp->typ = &RDB_BINARY;
@@ -666,11 +673,12 @@ _RDB_expr_to_obj(RDB_object *valp, const RDB_expression *exp,
         valp->var.bin.len = RDB_BUF_INITLEN;
         valp->var.bin.datap = malloc(RDB_BUF_INITLEN);
         if (valp->var.bin.datap == NULL) {
-            return RDB_NO_MEMORY;
+            RDB_raise_no_memory(ecp);
+            return RDB_ERROR;
         }
-        ret = serialize_expr(valp, &pos, exp, ecp);
-        if (ret != RDB_OK)
-            return ret;
+        if (serialize_expr(valp, &pos, exp, ecp) != RDB_OK) {
+            return RDB_ERROR;
+        }
     } else {
         valp->var.bin.datap = NULL;
     }
@@ -680,19 +688,22 @@ _RDB_expr_to_obj(RDB_object *valp, const RDB_expression *exp,
 }
 
 static int
-deserialize_str(RDB_object *valp, int *posp, char **strp)
+deserialize_str(RDB_object *valp, int *posp, RDB_exec_context *ecp,
+        char **strp)
 {
     size_t len;
     
     if (*posp + sizeof (len) > valp->var.bin.len)
-        return RDB_INTERNAL;
+        return RDB_INTERNAL; /* !! */
     memcpy (&len, ((RDB_byte *)valp->var.bin.datap) + *posp, sizeof len);
     *posp += sizeof len;
     if (*posp + len > valp->var.bin.len)
         return RDB_INTERNAL;
     *strp = malloc(len + 1);
-    if (*strp == NULL)
-        return RDB_NO_MEMORY;
+    if (*strp == NULL) {
+        RDB_raise_no_memory(ecp);
+        return RDB_ERROR;
+    }
     memcpy(*strp, ((RDB_byte *)valp->var.bin.datap) + *posp, len);
     (*strp)[len] = '\0';
     *posp += len;
@@ -734,7 +745,7 @@ deserialize_type(RDB_object *valp, int *posp, RDB_exec_context *ecp,
 
     switch (kind) {
         case RDB_TP_SCALAR:
-            ret = deserialize_str(valp, posp, &namp);
+            ret = deserialize_str(valp, posp, ecp, &namp);
             if (ret != RDB_OK)
                 return ret;
             *typp = RDB_get_type(namp, ecp, txp);
@@ -747,8 +758,10 @@ deserialize_type(RDB_object *valp, int *posp, RDB_exec_context *ecp,
 
             ret = deserialize_int(valp, posp, &attrc);
             *typp = (RDB_type *) malloc(sizeof (RDB_type));
-            if (*typp == NULL)
-                return RDB_NO_MEMORY;
+            if (*typp == NULL) {
+                RDB_raise_no_memory(ecp);
+                return RDB_ERROR;
+            }
             (*typp)->name = NULL;
             (*typp)->kind = RDB_TP_TUPLE;
             (*typp)->ireplen = RDB_VARIABLE_LEN;
@@ -756,10 +769,11 @@ deserialize_type(RDB_object *valp, int *posp, RDB_exec_context *ecp,
             (*typp)->var.tuple.attrv = malloc(sizeof(RDB_attr) * attrc);
             if ((*typp)->var.tuple.attrv == NULL) {
                 free(*typp);
-                return RDB_NO_MEMORY;
+                RDB_raise_no_memory(ecp);
+                return RDB_ERROR;
             }
             for (i = 0; i < attrc; i++) {
-                ret = deserialize_str(valp, posp,
+                ret = deserialize_str(valp, posp, ecp,
                         &(*typp)->var.tuple.attrv[i].name);
                 if (ret != RDB_OK) {
                     free((*typp)->var.tuple.attrv);
@@ -779,8 +793,10 @@ deserialize_type(RDB_object *valp, int *posp, RDB_exec_context *ecp,
         case RDB_TP_RELATION:
         case RDB_TP_ARRAY:
             *typp = (RDB_type *) malloc(sizeof (RDB_type));
-            if (*typp == NULL)
-                return RDB_NO_MEMORY;
+            if (*typp == NULL) {
+                RDB_raise_no_memory(ecp);
+                return RDB_ERROR;
+            }
             (*typp)->name = NULL;
             (*typp)->kind = kind;
             (*typp)->ireplen = RDB_VARIABLE_LEN;
@@ -844,7 +860,7 @@ deserialize_obj(RDB_object *valp, int *posp, RDB_exec_context *ecp,
 
             RDB_init_obj(&attrobj);
             for (i = 0; i < size; i++) {
-                ret = deserialize_str(valp, posp, &attrname);
+                ret = deserialize_str(valp, posp, ecp, &attrname);
                 if (ret != RDB_OK) {
                     RDB_destroy_obj(&attrobj, ecp);
                     return ret;
@@ -865,7 +881,8 @@ deserialize_obj(RDB_object *valp, int *posp, RDB_exec_context *ecp,
             return RDB_destroy_obj(&attrobj, ecp);
         }
         case RDB_OB_ARRAY:
-            return RDB_NOT_SUPPORTED;
+            RDB_raise_not_supported("cannot deserialize array", ecp);
+            return RDB_ERROR;
         case RDB_OB_BOOL:
         case RDB_OB_INT:
         case RDB_OB_RATIONAL:
@@ -925,22 +942,24 @@ deserialize_expr(RDB_object *valp, int *posp, RDB_exec_context *ecp,
                }
                *expp = RDB_obj_to_expr(&val, ecp);
                RDB_destroy_obj(&val, ecp);
-               if (*expp == NULL)
-                   return RDB_NO_MEMORY;
+               if (*expp == NULL) {
+                   RDB_raise_no_memory(ecp);
+                   return RDB_ERROR;
+               }
             }
             break;
         case RDB_EX_ATTR:
             {
                 char *attrnamp;
             
-                ret = deserialize_str(valp, posp, &attrnamp);
+                ret = deserialize_str(valp, posp, ecp, &attrnamp);
                 if (ret != RDB_OK)
                     return ret;
 
-                *expp = RDB_expr_attr(attrnamp);
+                *expp = RDB_expr_attr(attrnamp, ecp);
                 free(attrnamp);
                 if (*expp == NULL)
-                    return RDB_NO_MEMORY;
+                    return RDB_ERROR;
             }
             break;
         case RDB_EX_GET_COMP:
@@ -950,18 +969,19 @@ deserialize_expr(RDB_object *valp, int *posp, RDB_exec_context *ecp,
             ret = deserialize_expr(valp, posp, ecp, txp, &ex1p);
             if (ret != RDB_OK)
                 return ret;
-            ret = deserialize_str(valp, posp, &name);
+            ret = deserialize_str(valp, posp, ecp, &name);
             if (ret != RDB_OK) {
                 RDB_drop_expr(ex1p, ecp);
                 return ret;
             }
-            *expp = _RDB_create_unexpr(ex1p, RDB_EX_GET_COMP);
+            *expp = _RDB_create_unexpr(ex1p, RDB_EX_GET_COMP, ecp);
             if (*expp == NULL)
-                return RDB_NO_MEMORY;
+                return RDB_ERROR;
             (*expp)->var.op.name = RDB_dup_str(name);
             if ((*expp)->var.op.name == NULL) {
                 RDB_drop_expr(*expp, ecp);
-                return RDB_NO_MEMORY;
+                RDB_raise_no_memory(ecp);
+                return RDB_ERROR;
             }
             break;
         }
@@ -972,7 +992,7 @@ deserialize_expr(RDB_object *valp, int *posp, RDB_exec_context *ecp,
             int i;
             RDB_expression **argv;
         
-            ret = deserialize_str(valp, posp, &name);
+            ret = deserialize_str(valp, posp, ecp, &name);
             if (ret != RDB_OK) {
                 return ret;
             }
@@ -982,19 +1002,21 @@ deserialize_expr(RDB_object *valp, int *posp, RDB_exec_context *ecp,
                 return ret;
 
             argv = malloc(argc * sizeof (RDB_expression *));
-            if (argv == NULL)
-                return RDB_NO_MEMORY;
+            if (argv == NULL) {
+                RDB_raise_no_memory(ecp);
+                return RDB_ERROR;
+            }
 
             for (i = 0; i < argc; i++) {
                 ret = deserialize_expr(valp, posp, ecp, txp, &argv[i]);
                 if (ret != RDB_OK) {
-                    return ret;
+                    return RDB_ERROR;
                 }
             }
-            *expp = RDB_ro_op(name, argc, argv);
+            *expp = RDB_ro_op(name, argc, argv, ecp);
             free(argv);
             if (*expp == NULL)
-                return RDB_NO_MEMORY;
+                return RDB_ERROR;
             break;
         }
         case RDB_EX_AGGREGATE:
@@ -1012,12 +1034,12 @@ deserialize_expr(RDB_object *valp, int *posp, RDB_exec_context *ecp,
                 return ret;
             op = (RDB_aggregate_op) ret;
 
-            ret = deserialize_str(valp, posp, &name);
+            ret = deserialize_str(valp, posp, ecp, &name);
             if (ret != RDB_OK) {
                 return ret;
             }
 
-            *expp = RDB_expr_aggregate(exp, op, name);
+            *expp = RDB_expr_aggregate(exp, op, name, ecp);
             if (*expp == NULL)
                 return ret;
             break;
@@ -1029,18 +1051,19 @@ deserialize_expr(RDB_object *valp, int *posp, RDB_exec_context *ecp,
             ret = deserialize_expr(valp, posp, ecp, txp, &ex1p);
             if (ret != RDB_OK)
                 return ret;
-            ret = deserialize_str(valp, posp, &name);
+            ret = deserialize_str(valp, posp, ecp, &name);
             if (ret != RDB_OK) {
                 RDB_drop_expr(ex1p, ecp);
                 return ret;
             }
-            *expp = _RDB_create_unexpr(ex1p, RDB_EX_TUPLE_ATTR);
+            *expp = _RDB_create_unexpr(ex1p, RDB_EX_TUPLE_ATTR, ecp);
             if (*expp == NULL)
-                return RDB_NO_MEMORY;
+                return RDB_ERROR;
             (*expp)->var.op.name = RDB_dup_str(name);
             if ((*expp)->var.op.name == NULL) {
+                RDB_raise_no_memory(ecp);
                 RDB_drop_expr(*expp, ecp);
-                return RDB_NO_MEMORY;
+                return RDB_ERROR;
             }
             break;
         }
@@ -1074,13 +1097,15 @@ deserialize_project(RDB_object *valp, int *posp, RDB_exec_context *ecp,
     if (ret != RDB_OK)
         return ret;
     av = malloc(ac * sizeof(char *));
-    if (av == NULL)
-        return RDB_NO_MEMORY;
+    if (av == NULL) {
+        RDB_raise_no_memory(ecp);
+        return RDB_ERROR;
+    }
 
     for (i = 0; i < ac; i++)
        av[i] = NULL;
     for (i = 0; i < ac; i++) {
-        ret = deserialize_str(valp, posp, av + i);
+        ret = deserialize_str(valp, posp, ecp, av + i);
         if (ret != RDB_OK)
             goto error;
     }
@@ -1109,14 +1134,16 @@ deserialize_extend(RDB_object *valp, int *posp, RDB_exec_context *ecp,
         return ret;
     ret = deserialize_int(valp, posp, &ac);
     av = malloc(ac * sizeof(RDB_virtual_attr));
-    if (av == NULL)
-        return RDB_NO_MEMORY;
+    if (av == NULL) {
+        RDB_raise_no_memory(ecp);
+        return RDB_ERROR;
+    }
 
     for (i = 0; i < ac; i++) {
         av[i].name = NULL;
     }
     for (i = 0; i < ac; i++) {
-        ret = deserialize_str(valp, posp, &av[i].name);
+        ret = deserialize_str(valp, posp, ecp, &av[i].name);
         if (ret != RDB_OK)
             goto error;
         ret = deserialize_expr(valp, posp, ecp, txp, &av[i].exp);
@@ -1164,8 +1191,10 @@ deserialize_summarize(RDB_object *valp, int *posp, RDB_exec_context *ecp,
         return ret;
 
     addv = malloc(addc * sizeof (RDB_summarize_add));
-    if (addv == NULL)
-        return RDB_NO_MEMORY;
+    if (addv == NULL) {
+        RDB_raise_no_memory(ecp);
+        return RDB_ERROR;
+    }
 
     for (i = 0; i < addc; i++) {
         addv[i].exp = NULL;
@@ -1184,7 +1213,7 @@ deserialize_summarize(RDB_object *valp, int *posp, RDB_exec_context *ecp,
         } else {
             addv[i].exp = NULL;
         }
-        ret = deserialize_str(valp, posp, &addv[i].name);
+        ret = deserialize_str(valp, posp, ecp, &addv[i].name);
         if (ret != RDB_OK)
             goto error;
     }
@@ -1237,8 +1266,10 @@ deserialize_rename(RDB_object *valp, int *posp, RDB_exec_context *ecp,
         return ret;
 
     renv = malloc(renc * sizeof (RDB_renaming));
-    if (renv == NULL)
-        return RDB_NO_MEMORY;
+    if (renv == NULL) {
+        RDB_raise_no_memory(ecp);
+        return RDB_ERROR;
+    }
 
     for (i = 0; i < renc; i++) {
         renv[i].from = NULL;
@@ -1246,16 +1277,21 @@ deserialize_rename(RDB_object *valp, int *posp, RDB_exec_context *ecp,
     }
 
     for (i = 0; i < renc; i++) {
-        ret = deserialize_str(valp, posp, &renv[i].from);
+        ret = deserialize_str(valp, posp, ecp, &renv[i].from);
         if (ret != RDB_OK)
             goto cleanup;
-        ret = deserialize_str(valp, posp, &renv[i].to);
+        ret = deserialize_str(valp, posp, ecp, &renv[i].to);
         if (ret != RDB_OK)
             goto cleanup;
     }
 
     *tbpp = RDB_rename(tbp, renc, renv, ecp);
-    /* !! */ ret = *tbpp == NULL ? RDB_NO_MEMORY : RDB_OK;
+    if (*tbpp == NULL) {
+        RDB_raise_no_memory(ecp);
+        ret = RDB_ERROR;
+    } else {
+        ret = RDB_OK;
+    }
 
 cleanup:
     if (ret != RDB_OK && RDB_table_name(tbp) == NULL)
@@ -1297,7 +1333,7 @@ deserialize_wrap(RDB_object *valp, int *posp, RDB_exec_context *ecp,
         wrapv[i].attrv = NULL;
     }
     for (i = 0; i < wrapc; i++) {
-        ret = deserialize_str(valp, posp, &wrapv[i].attrname);
+        ret = deserialize_str(valp, posp, ecp, &wrapv[i].attrname);
         if (ret != RDB_OK)
             goto cleanup;
 
@@ -1307,7 +1343,7 @@ deserialize_wrap(RDB_object *valp, int *posp, RDB_exec_context *ecp,
         for (j = 0; j < wrapv[i].attrc; j++)
             wrapv[j].attrv[j] = NULL;
         for (j = 0; j < wrapv[i].attrc; j++) {
-            ret = deserialize_str(valp, posp, &wrapv[i].attrv[j]);
+            ret = deserialize_str(valp, posp, ecp, &wrapv[i].attrv[j]);
             if (ret != RDB_OK)
                 goto cleanup;
         }
@@ -1352,21 +1388,28 @@ deserialize_unwrap(RDB_object *valp, int *posp, RDB_exec_context *ecp,
         return ret;
 
     attrv = malloc(attrc * sizeof (char *));
-    if (attrv == NULL)
-        return RDB_NO_MEMORY;
+    if (attrv == NULL) {
+        RDB_raise_no_memory(ecp);
+        return RDB_ERROR;
+    }
 
     for (i = 0; i < attrc; i++) {
         attrv[i] = NULL;
     }
 
     for (i = 0; i < attrc; i++) {
-        ret = deserialize_str(valp, posp, &attrv[i]);
+        ret = deserialize_str(valp, posp, ecp, &attrv[i]);
         if (ret != RDB_OK)
             goto cleanup;
     }
 
     *tbpp = RDB_unwrap(tbp, attrc, attrv, ecp);
-    /* !! */ ret = *tbpp == NULL ? RDB_NO_MEMORY : RDB_OK;
+    if (*tbpp == NULL) {
+        RDB_raise_no_memory(ecp);
+        ret = RDB_ERROR;
+    } else {
+        ret = RDB_OK;
+    }
 
 cleanup:
     if (ret != RDB_OK && RDB_table_name(tbp) == NULL)
@@ -1407,17 +1450,22 @@ deserialize_group(RDB_object *valp, int *posp, RDB_exec_context *ecp,
         attrv[i] = NULL;
 
     for (i = 0; i < attrc; i++) {
-        ret = deserialize_str(valp, posp, &attrv[i]);
+        ret = deserialize_str(valp, posp, ecp, &attrv[i]);
         if (ret != RDB_OK)
             goto cleanup;
     }
 
-    ret = deserialize_str(valp, posp, &gattr);
+    ret = deserialize_str(valp, posp, ecp, &gattr);
     if (ret != RDB_OK)
         goto cleanup;
 
     *tbpp = RDB_group(tbp, attrc, attrv, gattr, ecp);
-    /* !! */ ret = *tbpp == NULL ? RDB_NO_MEMORY : RDB_OK;
+    if (*tbpp == NULL) {
+        RDB_raise_no_memory(ecp);
+        ret = RDB_ERROR;
+    } else {
+        ret = RDB_OK;
+    }
 
 cleanup:
     if (ret != RDB_OK && RDB_table_name(tbp) == NULL)
@@ -1444,12 +1492,17 @@ deserialize_ungroup(RDB_object *valp, int *posp, RDB_exec_context *ecp,
     if (ret != RDB_OK)
         return ret;
 
-    ret = deserialize_str(valp, posp, &attrname);
+    ret = deserialize_str(valp, posp, ecp, &attrname);
     if (ret != RDB_OK)
         goto cleanup;
 
     *tbpp = RDB_ungroup(tbp, attrname, ecp);
-    /* !! */ ret = *tbpp == NULL ? RDB_NO_MEMORY : RDB_OK;
+    if (*tbpp == NULL) {
+        RDB_raise_no_memory(ecp);
+        ret = RDB_ERROR;
+    } else {
+        ret = RDB_OK;
+    }
 
 cleanup:
     if (ret != RDB_OK && RDB_table_name(tbp) == NULL)
@@ -1481,7 +1534,12 @@ deserialize_sdivide(RDB_object *valp, int *posp, RDB_exec_context *ecp,
         goto cleanup;
 
     *tbpp = RDB_sdivide(tb1p, tb2p, tb3p, ecp);
-    /* !! */ ret = *tbpp == NULL ? RDB_NO_MEMORY : RDB_OK;
+    if (*tbpp == NULL) {
+        RDB_raise_no_memory(ecp);
+        ret = RDB_ERROR;
+    } else {
+        ret = RDB_OK;
+    }
 
 cleanup:
     if (ret != RDB_OK) {
@@ -1516,7 +1574,7 @@ deserialize_rtable(RDB_object *valp, int *posp, RDB_exec_context *ecp,
     int i;
     RDB_object tpl;
 
-    ret = deserialize_str(valp, posp, &namp);
+    ret = deserialize_str(valp, posp, ecp, &namp);
     if (ret != RDB_OK)
         return ret;
     if (*namp != '\0') {
@@ -1586,7 +1644,11 @@ deserialize_table(RDB_object *valp, int *posp, RDB_exec_context *ecp,
             if (ret != RDB_OK)
                 return ret;
             *tbpp = RDB_union(tb1p, tb2p, ecp);
-            return *tbpp != NULL ? RDB_OK : RDB_NO_MEMORY; /* !! */
+            if (*tbpp == NULL) {
+                RDB_raise_no_memory(ecp);
+                return RDB_ERROR;
+            }
+            return RDB_OK;
         case RDB_TB_MINUS:
             ret = deserialize_table(valp, posp, ecp, txp, &tb1p);
             if (ret != RDB_OK)
@@ -1595,7 +1657,11 @@ deserialize_table(RDB_object *valp, int *posp, RDB_exec_context *ecp,
             if (ret != RDB_OK)
                 return ret;
             *tbpp = RDB_minus(tb1p, tb2p, ecp);
-            return *tbpp != NULL ? RDB_OK : RDB_NO_MEMORY; /* !! */
+            if (*tbpp == NULL) {
+                RDB_raise_no_memory(ecp);
+                return RDB_ERROR;
+            }
+            return RDB_OK;
         case RDB_TB_INTERSECT:
             ret = deserialize_table(valp, posp, ecp, txp, &tb1p);
             if (ret != RDB_OK)
@@ -1604,7 +1670,11 @@ deserialize_table(RDB_object *valp, int *posp, RDB_exec_context *ecp,
             if (ret != RDB_OK)
                 return ret;
             *tbpp =  RDB_intersect(tb1p, tb2p, ecp);
-            return *tbpp != NULL ? RDB_OK : RDB_NO_MEMORY; /* !! */
+            if (*tbpp == NULL) {
+                RDB_raise_no_memory(ecp);
+                return RDB_ERROR;
+            }
+            return RDB_OK;
         case RDB_TB_JOIN:
             ret = deserialize_table(valp, posp, ecp, txp, &tb1p);
             if (ret != RDB_OK)
@@ -1613,7 +1683,11 @@ deserialize_table(RDB_object *valp, int *posp, RDB_exec_context *ecp,
             if (ret != RDB_OK)
                 return ret;
             *tbpp = RDB_join(tb1p, tb2p, ecp);
-            return *tbpp != NULL ? RDB_OK : RDB_NO_MEMORY; /* !! */
+            if (*tbpp == NULL) {
+                RDB_raise_no_memory(ecp);
+                return RDB_ERROR;
+            }
+            return RDB_OK;
         case RDB_TB_EXTEND:
             return deserialize_extend(valp, posp, ecp, txp, tbpp);
         case RDB_TB_PROJECT:

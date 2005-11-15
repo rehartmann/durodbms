@@ -248,8 +248,10 @@ RDB_set_array_length(RDB_object *arrp, RDB_int len, RDB_exec_context *ecp)
         arrp->kind = RDB_OB_ARRAY;
 
         arrp->var.arr.elemv = malloc(sizeof(RDB_object) * len);
-        if (arrp->var.arr.elemv == NULL)
-            return RDB_NO_MEMORY;
+        if (arrp->var.arr.elemv == NULL) {
+            RDB_raise_no_memory(ecp);
+            return RDB_ERROR;
+        }
         for (i = 0; i < len; i++)
             RDB_init_obj(&arrp->var.arr.elemv[i]);
 
@@ -259,7 +261,9 @@ RDB_set_array_length(RDB_object *arrp, RDB_int len, RDB_exec_context *ecp)
         return RDB_OK;
     }
     if (arrp->var.arr.tbp != NULL) {
-        return RDB_NOT_SUPPORTED;
+        RDB_raise_not_supported(
+                "cannot set length of array created from table", ecp);
+        return RDB_ERROR;
     }
 
     if (len < arrp->var.arr.length) {

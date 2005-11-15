@@ -12,7 +12,7 @@ test_insert(RDB_database *dbp, RDB_exec_context *ecp)
     RDB_object tpl;
     int ret;
 
-    ret = RDB_begin_tx(&tx, dbp, NULL);
+    ret = RDB_begin_tx(ecp, &tx, dbp, NULL);
     if (ret != RDB_OK) {
         return ret;
     }
@@ -25,13 +25,13 @@ test_insert(RDB_database *dbp, RDB_exec_context *ecp)
 
     RDB_init_obj(&tpl);
 
-    ret = RDB_tuple_set_int(&tpl, "EMPNO", 4);
+    ret = RDB_tuple_set_int(&tpl, "EMPNO", 4, ecp);
     if (ret != RDB_OK)
         goto error;
     ret = RDB_tuple_set_string(&tpl, "NAME", "Taylor", ecp);
     if (ret != RDB_OK)
         goto error;
-    ret = RDB_tuple_set_int(&tpl, "DEPTNO", 2);
+    ret = RDB_tuple_set_int(&tpl, "DEPTNO", 2, ecp);
     if (ret != RDB_OK)
         goto error;
 
@@ -42,7 +42,7 @@ test_insert(RDB_database *dbp, RDB_exec_context *ecp)
     }
 
     RDB_destroy_obj(&tpl, ecp);
-    return RDB_commit(&tx);
+    return RDB_commit(ecp, &tx);
 
 error:
     RDB_destroy_obj(&tpl, ecp);
@@ -64,7 +64,7 @@ print_table(RDB_database *dbp, RDB_exec_context *ecp)
         { "NAME", RDB_FALSE }
     };
 
-    ret = RDB_begin_tx(&tx, dbp, NULL);
+    ret = RDB_begin_tx(ecp, &tx, dbp, NULL);
     if (ret != RDB_OK) {
         return ret;
     }
@@ -96,7 +96,7 @@ print_table(RDB_database *dbp, RDB_exec_context *ecp)
 
     RDB_destroy_obj(&array, ecp);
     
-    return RDB_commit(&tx);
+    return RDB_commit(ecp, &tx);
 
 error:
     RDB_destroy_obj(&array, ecp);

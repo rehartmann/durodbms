@@ -152,15 +152,17 @@ RDB_create_constraint(const char *name, RDB_expression *exp,
     }
 
     constrp = malloc(sizeof (RDB_constraint));
-    if (constrp == NULL)
-        return RDB_NO_MEMORY;
+    if (constrp == NULL) {
+        RDB_raise_no_memory(ecp);
+        return RDB_ERROR;
+    }
 
     constrp->exp = exp;
     add_empty_tb(constrp, ecp, txp);
 
     constrp->name = RDB_dup_str(name);
     if (constrp->name == NULL) {
-        ret = RDB_NO_MEMORY;
+        RDB_raise_no_memory(ecp);
         goto error;
     }
 
@@ -181,7 +183,7 @@ error:
     free(constrp);
 
     _RDB_handle_syserr(txp, ret);
-    return ret;
+    return RDB_ERROR;
 }
 
 int
@@ -221,9 +223,11 @@ RDB_drop_constraint(const char *name, RDB_exec_context *ecp,
     }
 
     /* Delete constraint from catalog */
-    condp = RDB_eq(RDB_expr_attr("CONSTRAINTNAME"), RDB_string_to_expr(name));
-    if (condp == NULL)
-        return RDB_NO_MEMORY;
+    condp = RDB_eq(RDB_expr_attr("CONSTRAINTNAME", ecp),
+            RDB_string_to_expr(name, ecp), ecp);
+    if (condp == NULL) {
+        return RDB_ERROR;
+    }
     ret = RDB_delete(dbrootp->constraints_tbp, condp, ecp, txp);
     RDB_drop_expr(condp, ecp);
 

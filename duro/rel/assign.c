@@ -350,7 +350,7 @@ replace_targets_real_upd(RDB_table *tbp, const RDB_ma_update *updp,
                         return NULL;
                     }
                     cond2p = tcondp;
-                    tcondp = RDB_ro_op_va("AND", ucondp, cond2p,
+                    tcondp = RDB_ro_op_va("AND", ecp, ucondp, cond2p,
                             (RDB_expression *) NULL);
                     if (tcondp == NULL) {
                         RDB_drop_expr(ucondp, ecp);
@@ -373,7 +373,7 @@ replace_targets_real_upd(RDB_table *tbp, const RDB_ma_update *updp,
                 RDB_drop_expr(ucondp, ecp);
                 return NULL;
             }
-            nucondp = RDB_ro_op_va("NOT", tcondp, (RDB_expression *) NULL);
+            nucondp = RDB_ro_op_va("NOT", ecp, tcondp, (RDB_expression *) NULL);
             if (nucondp == NULL) {
                 RDB_drop_expr(tcondp, ecp);
                 return NULL;
@@ -736,7 +736,8 @@ replace_targets(RDB_expression *exp,
                 if (argexpv[i] == NULL)
                     return NULL;
             }
-            newexp = RDB_ro_op(exp->var.op.name, exp->var.op.argc, argexpv);
+            newexp = RDB_ro_op(exp->var.op.name, exp->var.op.argc, argexpv,
+                    ecp);
             free(argexpv);
             return newexp;
         }
@@ -746,7 +747,7 @@ replace_targets(RDB_expression *exp,
             if (newexp == NULL)
                 return NULL;
             return RDB_expr_aggregate(newexp, exp->var.op.op,
-                    exp->var.op.name);
+                    exp->var.op.name, ecp);
         case RDB_EX_OBJ:
             if (exp->var.obj.kind == RDB_OB_TABLE) {
                 RDB_table *newtbp = replace_targets_tb(exp->var.obj.var.tbp,
@@ -758,7 +759,7 @@ replace_targets(RDB_expression *exp,
             }
             return RDB_obj_to_expr(&exp->var.obj, ecp);
         case RDB_EX_ATTR:
-            return RDB_expr_attr(exp->var.attrname);
+            return RDB_expr_attr(exp->var.attrname, ecp);
     }
     abort();
 }
@@ -1175,7 +1176,7 @@ resolve_update(const RDB_ma_update *updp, update_node **updnpp,
                         del_updlist(*updnpp, ecp);
                         return RDB_ERROR;
                     }
-                    ncondp = RDB_ro_op_va("AND", hcondp, updnp->upd.condp,
+                    ncondp = RDB_ro_op_va("AND", ecp, hcondp, updnp->upd.condp,
                             (RDB_expression *) NULL);
                     if (ncondp == NULL) {
                         RDB_drop_expr(hcondp, ecp);
@@ -1258,7 +1259,7 @@ resolve_delete(const RDB_ma_delete *delp, delete_node **delnpp,
                         del_dellist(*delnpp, ecp);
                         return RDB_ERROR;
                     }
-                    ncondp = RDB_ro_op_va("AND", hcondp, delnp->del.condp,
+                    ncondp = RDB_ro_op_va("AND", ecp, hcondp, delnp->del.condp,
                             (RDB_expression *) NULL);
                     if (ncondp == NULL) {
                         RDB_drop_expr(hcondp, ecp);
@@ -1289,10 +1290,10 @@ resolve_delete(const RDB_ma_delete *delp, delete_node **delnpp,
                 if (delnp->del.condp != NULL) {
                     ret = _RDB_invrename_expr(delnp->del.condp,
                             delp->tbp->var.rename.renc,
-                            delp->tbp->var.rename.renv);
+                            delp->tbp->var.rename.renv, ecp);
                     if (ret != RDB_OK) {
                         del_dellist(*delnpp, ecp);
-                        return ret;
+                        return RDB_ERROR;
                     }
                 }
                 delnp = delnp->nextp;
@@ -1704,7 +1705,8 @@ RDB_multi_assign(int insc, const RDB_ma_insert insv[],
     }
 
     if (need_tx && !RDB_tx_is_running(txp)) {
-        return RDB_INVALID_TRANSACTION;
+        RDB_raise_invalid_tx(ecp);
+        return RDB_ERROR;
     }
 
     /*
@@ -1800,21 +1802,29 @@ RDB_multi_assign(int insc, const RDB_ma_insert insv[],
      */
     for (i = 0; i < ninsc; i++) {
         for (j = i + 1; j < ninsc; j++) {
-            if (ninsv[i].tbp == ninsv[j].tbp)
-                return RDB_INVALID_ARGUMENT;
+            if (ninsv[i].tbp == ninsv[j].tbp) {
+                RDB_raise_invalid_argument("target is assigned twice", ecp);
+                return RDB_ERROR;
+            }
         }
         for (j = 0; j < nupdc; j++) {
-            if (ninsv[i].tbp == nupdv[j].tbp)
-                return RDB_INVALID_ARGUMENT;
+            if (ninsv[i].tbp == nupdv[j].tbp) {
+                RDB_raise_invalid_argument("target is assigned twice", ecp);
+                return RDB_ERROR;
+            }
         }
         for (j = 0; j < ndelc; j++) {
-            if (ninsv[i].tbp == ndelv[j].tbp)
-                return RDB_INVALID_ARGUMENT;
+            if (ninsv[i].tbp == ndelv[j].tbp) {
+                RDB_raise_invalid_argument("target is assigned twice", ecp);
+                return RDB_ERROR;
+            }
         }
         for (j = 0; j < copyc; j++) {
             if (copyv[j].dstp->kind == RDB_OB_TABLE
-                    && insv[i].tbp == copyv[j].dstp->var.tbp)
-                return RDB_INVALID_ARGUMENT;
+                    && insv[i].tbp == copyv[j].dstp->var.tbp) {
+                RDB_raise_invalid_argument("target is assigned twice", ecp);
+                return RDB_ERROR;
+            }
 
             /*
              * Check if a presviously modified table is source of a copy
@@ -1829,17 +1839,23 @@ RDB_multi_assign(int insc, const RDB_ma_insert insv[],
     }
     for (i = 0; i < nupdc; i++) {
         for (j = i + 1; j < updc; j++) {
-            if (nupdv[i].tbp == nupdv[j].tbp)
-                return RDB_INVALID_ARGUMENT;
+            if (nupdv[i].tbp == nupdv[j].tbp) {
+                RDB_raise_invalid_argument("target is assigned twice", ecp);
+                return RDB_ERROR;
+            }
         }
         for (j = 0; j < ndelc; j++) {
-            if (updv[i].tbp == ndelv[j].tbp)
-                return RDB_INVALID_ARGUMENT;
+            if (updv[i].tbp == ndelv[j].tbp) {
+                RDB_raise_invalid_argument("target is assigned twice", ecp);
+                return RDB_ERROR;
+            }
         }
         for (j = 0; j < copyc; j++) {
             if (copyv[j].dstp->kind == RDB_OB_TABLE
-                    && updv[i].tbp == copyv[j].dstp->var.tbp)
-                return RDB_INVALID_ARGUMENT;
+                    && updv[i].tbp == copyv[j].dstp->var.tbp) {
+                RDB_raise_invalid_argument("target is assigned twice", ecp);
+                return RDB_ERROR;
+            }
             if (copyv[j].srcp->kind == RDB_OB_TABLE
                     && updv[i].tbp == copyv[j].srcp->var.tbp) {
                 RDB_raise_not_supported(
@@ -1850,13 +1866,17 @@ RDB_multi_assign(int insc, const RDB_ma_insert insv[],
     }
     for (i = 0; i < ndelc; i++) {
         for (j = i + 1; j < ndelc; j++) {
-            if (ndelv[i].tbp == ndelv[j].tbp)
-                return RDB_INVALID_ARGUMENT;
+            if (ndelv[i].tbp == ndelv[j].tbp) {
+                RDB_raise_invalid_argument("target is assigned twice", ecp);
+                return RDB_ERROR;
+            }
         }
         for (j = 0; j < copyc; j++) {
             if (copyv[j].dstp->kind == RDB_OB_TABLE
-                    && ndelv[i].tbp == copyv[j].dstp->var.tbp)
-                return RDB_INVALID_ARGUMENT;
+                    && ndelv[i].tbp == copyv[j].dstp->var.tbp) {
+                RDB_raise_invalid_argument("target is assigned twice", ecp);
+                return RDB_ERROR;
+            }
             if (copyv[j].srcp->kind == RDB_OB_TABLE
                     && delv[i].tbp == copyv[j].srcp->var.tbp) {
                 RDB_raise_not_supported(
@@ -1870,8 +1890,10 @@ RDB_multi_assign(int insc, const RDB_ma_insert insv[],
         for (j = i + 1; j < copyc; j++) {
             if (copyv[j].dstp->kind == RDB_OB_TABLE
                     && copyv[i].dstp->kind == RDB_OB_TABLE
-                    && copyv[i].dstp->var.tbp == copyv[j].dstp->var.tbp)
-                return RDB_INVALID_ARGUMENT;
+                    && copyv[i].dstp->var.tbp == copyv[j].dstp->var.tbp) {
+                RDB_raise_invalid_argument("target is assigned twice", ecp);
+                return RDB_ERROR;
+            }
             if (copyv[j].srcp->kind == RDB_OB_TABLE
                     && copyv[i].dstp->kind == RDB_OB_TABLE
                     && copyv[j].srcp->kind == RDB_OB_TABLE
@@ -1927,9 +1949,6 @@ RDB_multi_assign(int insc, const RDB_ma_insert insv[],
                 if (ret != RDB_OK)
                     goto cleanup;
                 if (!b) {
-                    ret = _RDB_set_tx_errinfo(txp, constrp->name); /* !! */
-                    if (ret != RDB_OK)
-                        goto cleanup;
                     RDB_raise_predicate_violation(constrp->name, ecp);
                     ret = RDB_ERROR;
                     goto cleanup;
@@ -1945,7 +1964,7 @@ RDB_multi_assign(int insc, const RDB_ma_insert insv[],
 
     /* Start subtransaction, if there is more than one assignment */
     if (ninsc + nupdc + ndelc + copyc > 1) {
-        ret = RDB_begin_tx(&subtx, RDB_tx_db(txp), txp);
+        ret = RDB_begin_tx(ecp, &subtx, RDB_tx_db(txp), txp);
         if (ret != RDB_OK)
             goto cleanup;
         atxp = &subtx;
@@ -1989,7 +2008,7 @@ RDB_multi_assign(int insc, const RDB_ma_insert insv[],
 
     /* Commit subtx, if it has been started */
     if (atxp == &subtx) {
-        ret = RDB_commit(&subtx);
+        ret = RDB_commit(ecp, &subtx);
         atxp = NULL;
     } else {
         ret = RDB_OK;

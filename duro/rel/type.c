@@ -33,6 +33,7 @@ RDB_type RDB_NOT_SUPPORTED_ERROR;
 RDB_type RDB_ATTRIBUTE_NOT_FOUND_ERROR;
 RDB_type RDB_PREDICATE_VIOLATION_ERROR;
 RDB_type RDB_SYSTEM_ERROR;
+RDB_type RDB_RESOURCE_NOT_FOUND_ERROR;
 
 static int
 compare_int(const char *name, int argc, RDB_object *argv[],
@@ -71,8 +72,19 @@ compare_string(const char *name, int argc, RDB_object *argv[],
     return RDB_OK;
 }
 
-void _RDB_init_builtin_types(void)
+int
+_RDB_init_builtin_types(RDB_exec_context *ecp)
 {
+    static RDB_possrep no_memory_rep = {
+        "NO_MEMORY_ERROR",
+        0
+    };
+
+    static RDB_possrep invalid_transaction_rep = {
+        "INVALID_TRANSACTION_ERROR",
+        0
+    };
+
     static RDB_attr not_found_comp = { "INFO", &RDB_STRING };
 
     static RDB_possrep not_found_rep = {
@@ -161,6 +173,14 @@ void _RDB_init_builtin_types(void)
         &system_comp
     };
 
+    static RDB_attr resource_not_found_comp = { "INFO", &RDB_STRING };
+
+    static RDB_possrep resource_not_found_rep = {
+        "RESOURCE_NOT_FOUND",
+        1,
+        &resource_not_found_comp
+    };
+
     RDB_BOOLEAN.kind = RDB_TP_SCALAR;
     RDB_BOOLEAN.ireplen = 1;
     RDB_BOOLEAN.name = "BOOLEAN";
@@ -205,7 +225,11 @@ void _RDB_init_builtin_types(void)
     RDB_NO_MEMORY_ERROR.ireplen = RDB_VARIABLE_LEN;
     RDB_NO_MEMORY_ERROR.name = "NO_MEMORY_ERROR";
     RDB_NO_MEMORY_ERROR.var.scalar.repc = 0;
-    RDB_NO_MEMORY_ERROR.var.scalar.arep = NULL;
+    RDB_NOT_FOUND_ERROR.var.scalar.repv = &no_memory_rep;
+    RDB_NO_MEMORY_ERROR.var.scalar.arep = RDB_create_tuple_type(0, NULL, ecp);
+    if (RDB_NO_MEMORY_ERROR.var.scalar.arep == NULL) {
+        return RDB_ERROR;
+    }
     RDB_NO_MEMORY_ERROR.var.scalar.constraintp = NULL;
     RDB_NO_MEMORY_ERROR.comparep = NULL;
 
@@ -213,6 +237,11 @@ void _RDB_init_builtin_types(void)
     RDB_INVALID_TRANSACTION_ERROR.ireplen = RDB_VARIABLE_LEN;
     RDB_INVALID_TRANSACTION_ERROR.name = "INVALID_TRANSACTION_ERROR";
     RDB_INVALID_TRANSACTION_ERROR.var.scalar.repc = 0;
+    RDB_INVALID_TRANSACTION_ERROR.var.scalar.repv = &invalid_transaction_rep;
+    RDB_INVALID_TRANSACTION_ERROR.var.scalar.arep = RDB_create_tuple_type(0, NULL, ecp);
+    if (RDB_INVALID_TRANSACTION_ERROR.var.scalar.arep == NULL) {
+        return RDB_ERROR;
+    }
     RDB_INVALID_TRANSACTION_ERROR.var.scalar.arep = NULL;
     RDB_INVALID_TRANSACTION_ERROR.var.scalar.constraintp = NULL;
     RDB_INVALID_TRANSACTION_ERROR.comparep = NULL;
@@ -327,6 +356,18 @@ void _RDB_init_builtin_types(void)
     RDB_SYSTEM_ERROR.var.scalar.constraintp = NULL;
     RDB_SYSTEM_ERROR.var.scalar.sysimpl = RDB_TRUE;
     RDB_SYSTEM_ERROR.comparep = NULL;
+
+    RDB_RESOURCE_NOT_FOUND_ERROR.kind = RDB_TP_SCALAR;
+    RDB_RESOURCE_NOT_FOUND_ERROR.ireplen = RDB_VARIABLE_LEN;
+    RDB_RESOURCE_NOT_FOUND_ERROR.name = "RESOURCE_NOT_FOUND_ERROR";
+    RDB_RESOURCE_NOT_FOUND_ERROR.var.scalar.repc = 1;
+    RDB_RESOURCE_NOT_FOUND_ERROR.var.scalar.repv = &resource_not_found_rep;
+    RDB_RESOURCE_NOT_FOUND_ERROR.var.scalar.arep = &RDB_STRING;
+    RDB_RESOURCE_NOT_FOUND_ERROR.var.scalar.constraintp = NULL;
+    RDB_RESOURCE_NOT_FOUND_ERROR.var.scalar.sysimpl = RDB_TRUE;
+    RDB_RESOURCE_NOT_FOUND_ERROR.comparep = NULL;
+
+    return RDB_OK;
 }
 
 RDB_bool
@@ -596,9 +637,9 @@ RDB_define_type(const char *name, int repc, const RDB_possrep repv[],
     RDB_init_obj(&conval);
     RDB_init_obj(&typedata);
 
-    ret = RDB_binary_set(&typedata, 0, NULL, 0);
+    ret = RDB_binary_set(&typedata, 0, NULL, 0, ecp);
     if (ret != RDB_OK)
-        return ret;
+        return RDB_ERROR;
 
     /*
      * Insert tuple into SYS_TYPES
@@ -610,10 +651,10 @@ RDB_define_type(const char *name, int repc, const RDB_possrep repv[],
     ret = RDB_tuple_set(&tpl, "I_AREP_TYPE", &typedata, ecp);
     if (ret != RDB_OK)
         goto error;
-    ret = RDB_tuple_set_int(&tpl, "I_AREP_LEN", -2);
+    ret = RDB_tuple_set_int(&tpl, "I_AREP_LEN", -2, ecp);
     if (ret != RDB_OK)
         goto error;
-    ret = RDB_tuple_set_bool(&tpl, "I_SYSIMPL", RDB_FALSE);
+    ret = RDB_tuple_set_bool(&tpl, "I_SYSIMPL", RDB_FALSE, ecp);
     if (ret != RDB_OK)
         goto error;
 
@@ -658,7 +699,7 @@ RDB_define_type(const char *name, int repc, const RDB_possrep repv[],
                 }
                 cname = prname;
             }
-            ret = RDB_tuple_set_int(&tpl, "COMPNO", (RDB_int)j);
+            ret = RDB_tuple_set_int(&tpl, "COMPNO", (RDB_int)j, ecp);
             if (ret != RDB_OK)
                 goto error;
             ret = RDB_tuple_set_string(&tpl, "COMPNAME", cname, ecp);
@@ -812,32 +853,28 @@ RDB_implement_type(const char *name, RDB_type *arep, RDB_int areplen,
             return ret;
     }
 
-    exp = RDB_expr_attr("TYPENAME");
+    exp = RDB_expr_attr("TYPENAME", ecp);
     if (exp == NULL) {
-        RDB_raise_no_memory(ecp);
         return RDB_ERROR;
     }
-    wherep = RDB_ro_op_va("=", exp, RDB_string_to_expr(name),
+    wherep = RDB_ro_op_va("=", ecp, exp, RDB_string_to_expr(name, ecp),
             (RDB_expression *) NULL);
     if (wherep == NULL) {
         RDB_drop_expr(exp, ecp);
-        RDB_raise_no_memory(ecp);
         return RDB_ERROR;
     }    
 
     upd[0].exp = upd[1].exp = upd[2].exp = NULL;
 
     upd[0].name = "I_AREP_LEN";
-    upd[0].exp = RDB_int_to_expr(arep == NULL ? areplen : arep->ireplen);
+    upd[0].exp = RDB_int_to_expr(arep == NULL ? areplen : arep->ireplen, ecp);
     if (upd[0].exp == NULL) {
-        RDB_raise_no_memory(ecp);
         ret = RDB_ERROR;
         goto cleanup;
     }
     upd[1].name = "I_SYSIMPL";
-    upd[1].exp = RDB_bool_to_expr(sysimpl);
+    upd[1].exp = RDB_bool_to_expr(sysimpl, ecp);
     if (upd[1].exp == NULL) {
-        RDB_raise_no_memory(ecp);
         ret = RDB_ERROR;
         goto cleanup;
     }
@@ -912,10 +949,9 @@ RDB_drop_type(RDB_type *typ, RDB_exec_context *ecp, RDB_transaction *txp)
         }
 
         /* Delete type from database */
-        wherep = RDB_ro_op_va("=", RDB_expr_attr("TYPENAME"),
-                RDB_string_to_expr(typ->name), (RDB_expression *) NULL);
+        wherep = RDB_ro_op_va("=", ecp, RDB_expr_attr("TYPENAME", ecp),
+                RDB_string_to_expr(typ->name, ecp), (RDB_expression *) NULL);
         if (wherep == NULL) {
-            RDB_raise_no_memory(ecp);
             return RDB_ERROR;
         }
         ret = RDB_delete(txp->dbp->dbrootp->types_tbp, wherep, ecp, txp);
@@ -1484,20 +1520,26 @@ aggr_type(RDB_type *tuptyp, RDB_type *attrtyp, RDB_aggregate_op op,
 
         case RDB_AVGD:
         case RDB_AVG:
-            if (!RDB_type_is_numeric(attrtyp))
-                return NULL /* !! RDB_TYPE_MISMATCH */;
+            if (!RDB_type_is_numeric(attrtyp)) {
+                RDB_raise_type_mismatch("attribute type must be numeric", ecp);
+                return NULL;
+            }
             return &RDB_RATIONAL;
         case RDB_SUM:
         case RDB_SUMD:
         case RDB_MAX:
         case RDB_MIN:
-            if (!RDB_type_is_numeric(attrtyp))
-                return NULL; /* !! RDB_TYPE_MISMATCH; */
+            if (!RDB_type_is_numeric(attrtyp)) {
+                RDB_raise_type_mismatch("attribute type must be numeric", ecp);
+                return NULL;
+            }
             return attrtyp;
         case RDB_ALL:
         case RDB_ANY:
-            if (attrtyp != &RDB_BOOLEAN)
-                return NULL; /* !! RDB_TYPE_MISMATCH; */
+            if (attrtyp != &RDB_BOOLEAN) {
+                RDB_raise_type_mismatch("attribute type must be BOOLEAN", ecp);
+                return NULL;
+            }
             return &RDB_BOOLEAN;
      }
      /* Must never be reached */
@@ -1614,7 +1656,7 @@ RDB_wrap_tuple_type(const RDB_type *typ, int wrapc, const RDB_wrapping wrapv[],
         for (j = 0; j < wrapv[i].attrc; j++) {
             attrp = _RDB_tuple_type_attr(typ, wrapv[i].attrv[j]);
             if (attrp == NULL) {
-                ret = RDB_ATTRIBUTE_NOT_FOUND; /* !! */
+                RDB_raise_attribute_not_found(wrapv[i].attrv[j], ecp);
                 free(tuptyp->var.tuple.attrv);
                 free(tuptyp);
                 goto error;
@@ -1624,7 +1666,7 @@ RDB_wrap_tuple_type(const RDB_type *typ, int wrapc, const RDB_wrapping wrapv[],
             if (ret != RDB_OK) {
                 free(tuptyp->var.tuple.attrv);
                 free(tuptyp);
-                goto error; /* !! */
+                goto error;
             }
         }
         newtyp->var.tuple.attrv[i].name = RDB_dup_str(wrapv[i].attrname);
@@ -1708,7 +1750,7 @@ RDB_unwrap_tuple_type(const RDB_type *typ, int attrc, char *attrv[],
     for (i = 0; i < attrc; i++) {
         RDB_type *tuptyp = RDB_type_attr_type(typ, attrv[i]);
         if (tuptyp == NULL) {
-            ret = RDB_ATTRIBUTE_NOT_FOUND; /* !! */
+            RDB_raise_attribute_not_found(attrv[i], ecp);
             goto error;
         }
         if (tuptyp->kind != RDB_TP_TUPLE) {
@@ -1767,7 +1809,7 @@ RDB_unwrap_tuple_type(const RDB_type *typ, int attrc, char *attrv[],
     }
 
     if (k != nattrc) {
-        ret = RDB_INVALID_ARGUMENT; /* !! */
+        RDB_raise_invalid_argument("invalid UNWRAP", ecp);
         goto error;
     }
 
@@ -1834,7 +1876,8 @@ RDB_group_type(RDB_type *typ, int attrc, char *attrv[], const char *gattr,
         attrp = _RDB_tuple_type_attr(typ->var.basetyp, attrv[i]);
         if (attrp == NULL) {
             free(rtattrv);
-            return NULL /* !! RDB_ATTRIBUTE_NOT_FOUND */;
+            RDB_raise_attribute_not_found(attrv[i], ecp);
+            return NULL;
         }
         rtattrv[i].typ = attrp->typ;
         rtattrv[i].name = attrp->name;

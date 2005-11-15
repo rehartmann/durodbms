@@ -16,7 +16,7 @@ test_select(RDB_database *dbp, RDB_exec_context *ecp)
     RDB_int i;
 
     printf("Starting transaction\n");
-    ret = RDB_begin_tx(&tx, dbp, NULL);
+    ret = RDB_begin_tx(ecp, &tx, dbp, NULL);
     if (ret != RDB_OK) {
         return ret;
     }
@@ -31,7 +31,8 @@ test_select(RDB_database *dbp, RDB_exec_context *ecp)
 
     printf("Creating selection (name=\"Smith\")\n");
 
-    exprp = RDB_eq(RDB_expr_attr("NAME"), RDB_string_to_expr("Smith"));
+    exprp = RDB_eq(RDB_expr_attr("NAME", ecp), RDB_string_to_expr("Smith", ecp),
+            ecp);
     if (exprp == NULL)
         goto error;
     
@@ -65,7 +66,7 @@ test_select(RDB_database *dbp, RDB_exec_context *ecp)
 
     printf("Creating selection (EMPNO=1)\n");
 
-    exprp = RDB_eq(RDB_expr_attr("EMPNO"), RDB_int_to_expr(1));
+    exprp = RDB_eq(RDB_expr_attr("EMPNO", ecp), RDB_int_to_expr(1, ecp), ecp);
     
     vtbp = RDB_select(tbp, exprp, ecp, &tx);
     if (vtbp == NULL) {
@@ -96,7 +97,7 @@ test_select(RDB_database *dbp, RDB_exec_context *ecp)
     RDB_drop_table(vtbp, ecp, &tx);
 
     printf("End of transaction\n");
-    return RDB_commit(&tx);
+    return RDB_commit(ecp, &tx);
 
 error:
     RDB_destroy_obj(&array, ecp);

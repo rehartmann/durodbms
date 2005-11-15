@@ -10,7 +10,6 @@ void yy_scan_string(const char *txt);
 
 RDB_transaction *_RDB_parse_txp;
 RDB_expression *_RDB_parse_resultp;
-int _RDB_parse_ret;
 RDB_ltablefn *_RDB_parse_ltfp;
 void *_RDB_parse_arg;
 RDB_exec_context *_RDB_parse_ecp;
@@ -34,18 +33,16 @@ RDB_parse_expr(const char *txt, RDB_ltablefn *lt_fp, void *lt_arg,
     RDB_expression *exp;
 
     _RDB_parse_txp = txp;
-    _RDB_parse_ret = RDB_OK;
     _RDB_parse_ltfp = lt_fp;
     _RDB_parse_arg = lt_arg;
     _RDB_parse_ecp = ecp;
 
     yy_scan_string(txt);
     pret = yyparse();
-    if (_RDB_parse_ret != RDB_OK) {
-        return NULL;
-    }
-    if (pret > 0) {
-        RDB_raise_invalid_argument("syntax error", ecp);
+    if (pret != 0) {
+        if (RDB_get_err(ecp) == NULL) {
+            RDB_raise_invalid_argument("syntax error", ecp);
+        }
         return NULL;
     }
 

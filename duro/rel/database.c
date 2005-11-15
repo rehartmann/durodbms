@@ -359,10 +359,12 @@ create_dbroot(RDB_environment *envp, RDB_bool newdb,
     RDB_set_env_closefn(envp, cleanup_env);
 
     dbrootp = new_dbroot(envp, ecp);
-    if (dbrootp == NULL)
-        return RDB_NO_MEMORY;
+    if (dbrootp == NULL) {
+        RDB_raise_no_memory(ecp);
+        return RDB_ERROR;
+    }
 
-    ret = _RDB_begin_tx(&tx, envp, NULL);
+    ret = _RDB_begin_tx(ecp, &tx, envp, NULL);
     if (ret != RDB_OK) {
         goto error;
     }
@@ -375,7 +377,7 @@ create_dbroot(RDB_environment *envp, RDB_bool newdb,
         goto error;
     }
 
-    ret = RDB_commit(&tx);
+    ret = RDB_commit(ecp, &tx);
     if (ret != RDB_OK)
         goto error;
 
@@ -415,7 +417,9 @@ RDB_create_db_from_env(const char *name, RDB_environment *envp,
          * No dbroot found, initialize builtin types and libltdl
          * and create RDB_dbroot structure
          */
-        _RDB_init_builtin_types();
+        if (_RDB_init_builtin_types(ecp) != RDB_OK) {
+            goto error;
+        }
         ret = create_dbroot(envp, RDB_TRUE, ecp, &dbrootp);
         if (ret != RDB_OK) {
             goto error;
@@ -429,7 +433,7 @@ RDB_create_db_from_env(const char *name, RDB_environment *envp,
 
     dbp->dbrootp = dbrootp;
 
-    ret = RDB_begin_tx(&tx, dbp, NULL);
+    ret = RDB_begin_tx(ecp, &tx, dbp, NULL);
     if (ret != RDB_OK) {
         goto error;
     }
@@ -440,7 +444,7 @@ RDB_create_db_from_env(const char *name, RDB_environment *envp,
         goto error;
     }
 
-    ret = RDB_commit(&tx);
+    ret = RDB_commit(ecp, &tx);
     if (ret != RDB_OK) {
         goto error;
     }
@@ -476,7 +480,9 @@ RDB_get_db_from_env(const char *name, RDB_environment *envp,
          * and create RDB_dbroot structure
          */
 
-        _RDB_init_builtin_types();
+        if (_RDB_init_builtin_types(ecp) != RDB_OK) {
+            goto error;
+        }
         lt_dlinit();
         ret = create_dbroot(envp, RDB_FALSE, ecp, &dbrootp);
         if (ret != RDB_OK) {
@@ -496,7 +502,7 @@ RDB_get_db_from_env(const char *name, RDB_environment *envp,
      * Not found, read database from catalog
      */
 
-    ret = _RDB_begin_tx(&tx, envp, NULL);
+    ret = _RDB_begin_tx(ecp, &tx, envp, NULL);
     if (ret != RDB_OK) {
         goto error;
     }
@@ -538,7 +544,7 @@ RDB_get_db_from_env(const char *name, RDB_environment *envp,
     }
     RDB_destroy_obj(&tpl, ecp);
 
-    ret = RDB_commit(&tx);
+    ret = RDB_commit(ecp, &tx);
     if (ret != RDB_OK)
         return NULL;
     
@@ -573,16 +579,15 @@ RDB_drop_db(RDB_database *dbp, RDB_exec_context *ecp)
     RDB_table *vtbp, *vtb2p;
     RDB_bool empty;
 
-    ret = RDB_begin_tx(&tx, dbp, NULL);
+    ret = RDB_begin_tx(ecp, &tx, dbp, NULL);
     if (ret != RDB_OK)
         return ret;
 
     /*
      * Check if the database contains user tables
      */
-    exprp = RDB_expr_attr("IS_USER");
+    exprp = RDB_expr_attr("IS_USER", ecp);
     if (exprp == NULL) {
-        ret = RDB_NO_MEMORY;
         goto error;
     }
     vtbp = RDB_select(dbp->dbrootp->rtables_tbp, exprp, ecp, &tx);
@@ -590,10 +595,9 @@ RDB_drop_db(RDB_database *dbp, RDB_exec_context *ecp)
         RDB_drop_expr(exprp, ecp);
         goto error;
     }
-    exprp = RDB_eq(RDB_expr_attr("DBNAME"),
-                   RDB_string_to_expr(dbp->name));
+    exprp = RDB_eq(RDB_expr_attr("DBNAME", ecp),
+           RDB_string_to_expr(dbp->name, ecp), ecp);
     if (exprp == NULL) {
-        ret = RDB_NO_MEMORY;
         goto error;
     }
     vtb2p = RDB_select(dbp->dbrootp->dbtables_tbp, exprp, ecp, &tx);
@@ -624,10 +628,9 @@ RDB_drop_db(RDB_database *dbp, RDB_exec_context *ecp)
      * Check if the database exists
      */
 
-    exprp = RDB_eq(RDB_expr_attr("DBNAME"),
-                  RDB_string_to_expr(dbp->name));
+    exprp = RDB_eq(RDB_expr_attr("DBNAME", ecp),
+                  RDB_string_to_expr(dbp->name, ecp), ecp);
     if (exprp == NULL) {
-        ret = RDB_NO_MEMORY;
         goto error;
     }
 
@@ -641,16 +644,15 @@ RDB_drop_db(RDB_database *dbp, RDB_exec_context *ecp)
     if (ret != RDB_OK)
         goto error;
     if (empty) {
-        ret = RDB_NOT_FOUND;
+        RDB_raise_not_found("database not found", ecp);
         goto error;
     }
 
     /* Disassociate all tables from database */
 
-    exprp = RDB_eq(RDB_expr_attr("DBNAME"),
-                  RDB_string_to_expr(dbp->name));
+    exprp = RDB_eq(RDB_expr_attr("DBNAME", ecp),
+                  RDB_string_to_expr(dbp->name, ecp), ecp);
     if (exprp == NULL) {
-        ret = RDB_NO_MEMORY;
         goto error;
     }
 
@@ -659,7 +661,7 @@ RDB_drop_db(RDB_database *dbp, RDB_exec_context *ecp)
         goto error;
     }
 
-    ret = RDB_commit(&tx);
+    ret = RDB_commit(ecp, &tx);
     if (ret != RDB_OK)
         return ret;
 
@@ -708,7 +710,7 @@ _RDB_create_table(const char *name, RDB_bool persistent,
 
     if (txp != NULL) {
         /* Create subtransaction */
-        ret = RDB_begin_tx(&tx, txp->dbp, txp);
+        ret = RDB_begin_tx(ecp, &tx, txp->dbp, txp);
         if (ret != RDB_OK)
             return NULL;
     }
@@ -737,7 +739,7 @@ _RDB_create_table(const char *name, RDB_bool persistent,
     }
 
     if (txp != NULL) {
-         RDB_commit(&tx);
+         RDB_commit(ecp, &tx);
     }
     return tbp;
 }
@@ -876,8 +878,10 @@ RDB_drop_table(RDB_table *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
         RDB_database *dbp;
         RDB_dbroot *dbrootp;
 
-        if (!RDB_tx_is_running(txp))
-            return RDB_INVALID_TRANSACTION;
+        if (!RDB_tx_is_running(txp)) {
+            RDB_raise_invalid_tx(ecp);
+            return RDB_ERROR;
+        }
     
         /*
          * Remove table from all RDB_databases in list
@@ -902,7 +906,7 @@ RDB_drop_table(RDB_table *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
      * Delete recmap
      */
     if (tbp->stp != NULL) {
-        ret = _RDB_delete_stored_table(tbp->stp, txp);
+        ret = _RDB_delete_stored_table(tbp->stp, ecp, txp);
         if (ret != RDB_OK)
             return ret;
     }
@@ -954,7 +958,8 @@ RDB_set_table_name(RDB_table *tbp, const char *name, RDB_exec_context *ecp,
         free(tbp->name);
     tbp->name = RDB_dup_str(name);
     if (tbp->name == NULL) {
-        return RDB_NO_MEMORY;
+        RDB_raise_no_memory(ecp);
+        return RDB_ERROR;
     }
 
     return RDB_OK;
@@ -1008,15 +1013,17 @@ RDB_get_dbs(RDB_environment *envp, RDB_object *arrp, RDB_exec_context *ecp)
          * No dbroot found, initialize builtin types and libltdl
          * and create RDB_dbroot structure
          */
-        _RDB_init_builtin_types();
+        if (_RDB_init_builtin_types(ecp) != RDB_OK) {
+            return RDB_ERROR;
+        }
         ret = create_dbroot(envp, RDB_TRUE, ecp, &dbrootp);
         if (ret != RDB_OK) {
-            return ret;
+            return RDB_ERROR;
         }
         lt_dlinit();
     }
 
-    ret = _RDB_begin_tx(&tx, envp, NULL);
+    ret = _RDB_begin_tx(ecp, &tx, envp, NULL);
     if (ret != RDB_OK) {
         return ret;
     }
@@ -1065,7 +1072,7 @@ cleanup:
     RDB_destroy_obj(&resarr, ecp);
 
     if (ret == RDB_OK)
-        return RDB_commit(&tx);
+        return RDB_commit(ecp, &tx);
 
     RDB_rollback(ecp, &tx);
     return RDB_ERROR;

@@ -240,7 +240,7 @@ RDB_drop_table_index(const char *name, RDB_exec_context *ecp,
     xi = i;
 
     /* Destroy index */
-    ret = _RDB_del_index(txp, tbp->stp->indexv[i].idxp);
+    ret = _RDB_del_index(txp, tbp->stp->indexv[i].idxp, ecp);
     if (ret != RDB_OK)
         return ret;
 
@@ -961,8 +961,10 @@ RDB_table_is_empty(RDB_table *tbp, RDB_exec_context *ecp,
     RDB_table *ptbp;
     RDB_table *ntbp;
 
-    if (txp != NULL && !RDB_tx_is_running(txp))
-        return RDB_INVALID_TRANSACTION;
+    if (txp != NULL && !RDB_tx_is_running(txp)) {
+        RDB_raise_invalid_tx(ecp);
+        return RDB_ERROR;
+    }
 
     /*
      * Project all attributes away, then optimize
@@ -1024,8 +1026,10 @@ RDB_cardinality(RDB_table *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
     RDB_object tpl;
     RDB_table *ntbp;
 
-    if (txp != NULL && !RDB_tx_is_running(txp))
-        return RDB_INVALID_TRANSACTION;
+    if (txp != NULL && !RDB_tx_is_running(txp)) {
+        RDB_raise_invalid_tx(ecp);
+        return RDB_ERROR;
+    }
 
     ret = _RDB_optimize(tbp, 0, NULL, ecp, txp, &ntbp);
     if (ret != RDB_OK)
@@ -1097,8 +1101,10 @@ RDB_subset(RDB_table *tb1p, RDB_table *tb2p, RDB_exec_context *ecp,
         return RDB_ERROR;
     }
 
-    if (!RDB_tx_is_running(txp))
-        return RDB_INVALID_TRANSACTION;
+    if (!RDB_tx_is_running(txp)) {
+        RDB_raise_invalid_tx(ecp);
+        return RDB_ERROR;
+    }
 
     ret = _RDB_table_qresult(tb1p, ecp, txp, &qrp);
     if (ret != RDB_OK) {

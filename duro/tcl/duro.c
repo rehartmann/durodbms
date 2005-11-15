@@ -476,7 +476,7 @@ Duro_tcl_to_duro(Tcl_Interp *interp, Tcl_Obj *tobjp, RDB_type *typ,
         unsigned char *bp = Tcl_GetByteArrayFromObj(tobjp, &len);
         if (bp == NULL)
             return TCL_ERROR;
-        ret = RDB_binary_set(objp, 0, bp, (size_t) len);
+        ret = RDB_binary_set(objp, 0, bp, (size_t) len, ecp);
         if (ret != RDB_OK) {
             Duro_dberror(interp, RDB_get_err(ecp), txp);
             return TCL_ERROR;

@@ -41,7 +41,8 @@ init_tuple(RDB_object *tp)
 }
 
 int
-provide_entry(RDB_object *tplp, const char *attrname, RDB_object **valpp)
+provide_entry(RDB_object *tplp, const char *attrname, RDB_exec_context *ecp,
+        RDB_object **valpp)
 {
     int ret;
     tuple_entry sentry;
@@ -59,12 +60,15 @@ provide_entry(RDB_object *tplp, const char *attrname, RDB_object **valpp)
     } else {
         /* Insert new entry */
         entryp = malloc(sizeof(tuple_entry));
-        if (entryp == NULL)
-            return RDB_NO_MEMORY;
+        if (entryp == NULL) {
+            RDB_raise_no_memory(ecp);
+            return RDB_ERROR;
+        }
         entryp->key = RDB_dup_str(attrname);
         if (entryp->key == NULL) {
             free(entryp);
-            return RDB_NO_MEMORY;
+            RDB_raise_no_memory(ecp);
+            return RDB_ERROR;
         }
         ret = RDB_hashtable_put(&tplp->var.tpl_tab, entryp, NULL);
         if (ret != RDB_OK) {
@@ -83,9 +87,8 @@ RDB_tuple_set(RDB_object *tplp, const char *attrname, const RDB_object *valp,
         RDB_exec_context *ecp)
 {
     RDB_object *dstvalp;
-    int ret = provide_entry(tplp, attrname, &dstvalp);
-    if (ret != RDB_OK)
-        return ret;
+    if (provide_entry(tplp, attrname, ecp, &dstvalp) != RDB_OK)
+        return RDB_ERROR;
 
     RDB_destroy_obj(dstvalp, ecp);
     RDB_init_obj(dstvalp);
@@ -93,36 +96,36 @@ RDB_tuple_set(RDB_object *tplp, const char *attrname, const RDB_object *valp,
 }
 
 int
-RDB_tuple_set_bool(RDB_object *tplp, const char *attrname, RDB_bool val)
+RDB_tuple_set_bool(RDB_object *tplp, const char *attrname, RDB_bool val,
+        RDB_exec_context *ecp)
 {
     RDB_object *dstvalp;
-    int ret = provide_entry(tplp, attrname, &dstvalp);
-    if (ret != RDB_OK)
-        return ret;
+    if (provide_entry(tplp, attrname, ecp, &dstvalp) != RDB_OK)
+        return RDB_ERROR;
 
     RDB_bool_to_obj(dstvalp, val);
     return RDB_OK;
 } 
 
 int
-RDB_tuple_set_int(RDB_object *tplp, const char *attrname, RDB_int val)
+RDB_tuple_set_int(RDB_object *tplp, const char *attrname, RDB_int val,
+        RDB_exec_context *ecp)
 {
     RDB_object *dstvalp;
-    int ret = provide_entry(tplp, attrname, &dstvalp);
-    if (ret != RDB_OK)
-        return ret;
+    if (provide_entry(tplp, attrname, ecp, &dstvalp) != RDB_OK)
+        return RDB_ERROR;
 
     RDB_int_to_obj(dstvalp, val);
     return RDB_OK;
 }
 
 int
-RDB_tuple_set_rational(RDB_object *tplp, const char *attrname, RDB_rational val)
+RDB_tuple_set_rational(RDB_object *tplp, const char *attrname, RDB_rational val,
+        RDB_exec_context *ecp)
 {
     RDB_object *dstvalp;
-    int ret = provide_entry(tplp, attrname, &dstvalp);
-    if (ret != RDB_OK)
-        return ret;
+    if (provide_entry(tplp, attrname, ecp, &dstvalp) != RDB_OK)
+        return RDB_ERROR;
 
     RDB_rational_to_obj(dstvalp, val);
     return RDB_OK;
@@ -133,9 +136,8 @@ RDB_tuple_set_string(RDB_object *tplp, const char *attrname, const char *str,
         RDB_exec_context *ecp)
 {
     RDB_object *dstvalp;
-    int ret = provide_entry(tplp, attrname, &dstvalp);
-    if (ret != RDB_OK)
-        return ret;
+    if (provide_entry(tplp, attrname, ecp, &dstvalp) != RDB_OK)
+        return RDB_ERROR;
 
     return RDB_string_to_obj(dstvalp, str, ecp);
 }
@@ -435,8 +437,10 @@ _RDB_invwrap_tuple(const RDB_object *tplp, int wrapc,
     int ret;
     char **attrv = malloc(sizeof(char *) * wrapc);
 
-    if (attrv == NULL)
-        return RDB_NO_MEMORY;
+    if (attrv == NULL) {
+        RDB_raise_no_memory(ecp);
+        return RDB_ERROR;
+    }
 
     /*
      * Create unwrapped tuple
@@ -458,8 +462,10 @@ _RDB_invunwrap_tuple(const RDB_object *tplp, int attrc, char *attrv[],
     int i, j;
     RDB_wrapping *wrapv = malloc(sizeof(RDB_wrapping) * attrc);
     
-    if (wrapv == NULL)
-        return RDB_NO_MEMORY;
+    if (wrapv == NULL) {
+        RDB_raise_no_memory(ecp);
+        return RDB_ERROR;
+    }
 
     /*
      * Create wrapped tuple
@@ -470,8 +476,10 @@ _RDB_invunwrap_tuple(const RDB_object *tplp, int attrc, char *attrv[],
 
         wrapv[i].attrc = tuptyp->var.tuple.attrc;
         wrapv[i].attrv = malloc(sizeof(char *) * tuptyp->var.tuple.attrc);
-        if (wrapv[i].attrv == NULL)
-            return RDB_NO_MEMORY;
+        if (wrapv[i].attrv == NULL) {
+            RDB_raise_no_memory(ecp);
+            return RDB_ERROR;
+        }
         for (j = 0; j < wrapv[i].attrc; j++)
             wrapv[i].attrv[j] = tuptyp->var.tuple.attrv[j].name;
 

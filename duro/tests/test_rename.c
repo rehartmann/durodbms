@@ -54,7 +54,7 @@ test_rename(RDB_database *dbp, RDB_exec_context *ecp)
     RDB_bool b;
 
     printf("Starting transaction\n");
-    ret = RDB_begin_tx(&tx, dbp, NULL);
+    ret = RDB_begin_tx(ecp, &tx, dbp, NULL);
     if (ret != RDB_OK) {
         return ret;
     }
@@ -77,16 +77,16 @@ test_rename(RDB_database *dbp, RDB_exec_context *ecp)
     ret = print_table(vtbp, ecp, &tx);
 
     RDB_init_obj(&tpl);
-    ret = RDB_tuple_set_int(&tpl, "EMP#", 1);
+    ret = RDB_tuple_set_int(&tpl, "EMP#", 1, ecp);
     if (ret != RDB_OK)
         goto error;
     ret = RDB_tuple_set_string(&tpl, "NAME", "Smith", ecp);
     if (ret != RDB_OK)
         goto error;
-    ret = RDB_tuple_set_rational(&tpl, "SAL", (RDB_rational)4000.0);
+    ret = RDB_tuple_set_rational(&tpl, "SAL", (RDB_rational)4000.0, ecp);
     if (ret != RDB_OK)
         goto error;
-    ret = RDB_tuple_set_int(&tpl, "DEPTNO", 1);
+    ret = RDB_tuple_set_int(&tpl, "DEPTNO", 1, ecp);
     if (ret != RDB_OK)
         goto error;
 
@@ -103,7 +103,7 @@ test_rename(RDB_database *dbp, RDB_exec_context *ecp)
     RDB_drop_table(vtbp, ecp, &tx);
 
     printf("End of transaction\n");
-    return RDB_commit(&tx);
+    return RDB_commit(ecp, &tx);
 
 error:
     RDB_destroy_obj(&tpl, ecp);

@@ -23,7 +23,7 @@ test_defop(RDB_database *dbp, RDB_exec_context *ecp)
     int ret;
 
     printf("Starting transaction\n");
-    ret = RDB_begin_tx(&tx, dbp, NULL);
+    ret = RDB_begin_tx(ecp, &tx, dbp, NULL);
     if (ret != RDB_OK) {
         return ret;
     }
@@ -44,7 +44,7 @@ test_defop(RDB_database *dbp, RDB_exec_context *ecp)
         return ret;
     }
 
-    return RDB_commit(&tx);
+    return RDB_commit(ecp, &tx);
 }
 
 int

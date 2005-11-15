@@ -116,10 +116,8 @@ obj_ilen(const RDB_object *objp, size_t *lenp, RDB_exec_context *ecp)
                     return ret;
                 *lenp += len;
             }
-            /* !!
-            if (ret != RDB_NOT_FOUND)
-                return ret;
-            */
+            if (RDB_obj_type(RDB_get_err(ecp)) != &RDB_NOT_FOUND_ERROR)
+                return RDB_ERROR;
             RDB_clear_err(ecp);            
             return RDB_OK;
         }            
@@ -329,8 +327,10 @@ RDB_irep_to_obj(RDB_object *valp, RDB_type *typ, const void *datap, size_t len,
         case RDB_OB_BIN:
             valp->var.bin.len = len;
             valp->var.bin.datap = malloc(len);
-            if (valp->var.bin.datap == NULL)
-                return RDB_NO_MEMORY;
+            if (valp->var.bin.datap == NULL) {
+                RDB_raise_no_memory(ecp);
+                return RDB_ERROR;
+            }
             memcpy(valp->var.bin.datap, datap, len);
             break;
         case RDB_OB_TUPLE:
@@ -452,13 +452,11 @@ obj_to_irep(void *dstp, const void *srcp, size_t len)
                 bp += l;
             }
             RDB_destroy_obj(&tpl, &ec);
-/* !!
-            if (ret != RDB_NOT_FOUND) {
+            if (RDB_obj_type(RDB_get_err(&ec)) != &RDB_NOT_FOUND_ERROR) {
                 _RDB_drop_qresult(qrp, &ec, NULL);
                 RDB_destroy_exec_context(&ec);
                 return NULL;
             }
-*/
             ret = _RDB_drop_qresult(qrp, &ec, NULL);
             RDB_destroy_exec_context(&ec);
             if (ret != RDB_OK)
@@ -477,11 +475,10 @@ obj_to_irep(void *dstp, const void *srcp, size_t len)
                 elemp->typ = RDB_obj_type(objp)->var.basetyp;
                 bp = obj_to_len_irep(bp, elemp, elemp->typ, &ec);
             }
-            RDB_destroy_exec_context(&ec);
-/* !!
-            if (ret != RDB_NOT_FOUND)
+            if (RDB_obj_type(RDB_get_err(&ec)) != &RDB_NOT_FOUND_ERROR) {
                 return NULL;
-*/
+            }
+            RDB_destroy_exec_context(&ec);
             break;
         }
         default:
@@ -519,11 +516,13 @@ RDB_obj_equals(const RDB_object *val1p, const RDB_object *val2p,
     ret = RDB_call_ro_op("=", 2, argv, ecp, txp, &retval);
     if (ret != RDB_OK) {
         RDB_destroy_obj(&retval, ecp);
-/* !!
-        if (ret == RDB_NOT_FOUND)
-            ret = RDB_INTERNAL;
+/*
+        if (RDB_obj_type(RDB_get_err(ecp)) == &RDB_NOT_FOUND_ERROR) {
+            RDB_clear_err(ecp);
+            RDB_raise_internal(ecp);
+        }
 */
-        return ret;
+        return RDB_ERROR;
     }
     *resp = RDB_obj_bool(&retval);
     return RDB_destroy_obj(&retval, ecp);
@@ -580,8 +579,9 @@ _RDB_copy_obj(RDB_object *dstvalp, const RDB_object *srcvalp,
                 }
                 if (srcvalp->var.tbp->kind != RDB_TB_REAL) {
                     dstvalp->var.tbp = _RDB_dup_vtable(srcvalp->var.tbp, ecp);
-                    if (dstvalp->var.tbp == NULL)
-                        return RDB_NO_MEMORY;
+                    if (dstvalp->var.tbp == NULL) {
+                        return RDB_ERROR;
+                    }
                     dstvalp->kind = RDB_OB_TABLE;
                     return RDB_OK;
                 }
@@ -602,8 +602,10 @@ _RDB_copy_obj(RDB_object *dstvalp, const RDB_object *srcvalp,
                 if (ret != RDB_OK)
                     return ret;
             }
-            if (dstvalp->var.tbp->is_persistent && txp == NULL)
-                return RDB_INVALID_TRANSACTION;
+            if (dstvalp->var.tbp->is_persistent && txp == NULL) {
+                RDB_raise_invalid_tx(ecp);
+                return RDB_ERROR;
+            }
             return _RDB_move_tuples(dstvalp->var.tbp, srcvalp->var.tbp, ecp,
                             dstvalp->var.tbp->is_persistent ? txp : NULL);
         case RDB_OB_BIN:
@@ -613,8 +615,10 @@ _RDB_copy_obj(RDB_object *dstvalp, const RDB_object *srcvalp,
                 dstvalp->kind = srcvalp->kind;
             dstvalp->var.bin.len = srcvalp->var.bin.len;
             dstvalp->var.bin.datap = malloc(srcvalp->var.bin.len);
-            if (dstvalp->var.bin.datap == NULL)
-                return RDB_NO_MEMORY;
+            if (dstvalp->var.bin.datap == NULL) {
+                RDB_raise_no_memory(ecp);
+                return RDB_ERROR;
+            }
             memcpy(dstvalp->var.bin.datap, srcvalp->var.bin.datap,
                     srcvalp->var.bin.len);
             break;
@@ -755,8 +759,10 @@ RDB_string_to_obj(RDB_object *valp, const char *str, RDB_exec_context *ecp)
     void *datap;
     int len = strlen(str) + 1;
 
-    if(valp->kind != RDB_OB_INITIAL && valp->typ != &RDB_STRING)
-        return RDB_TYPE_MISMATCH; /* !! */
+    if (valp->kind != RDB_OB_INITIAL && valp->typ != &RDB_STRING) {
+        RDB_raise_type_mismatch("not a STRING", ecp);
+        return RDB_ERROR;
+    }
 
     if (valp->kind == RDB_OB_INITIAL) {
         datap = malloc(len);
@@ -785,7 +791,7 @@ RDB_obj_comp(const RDB_object *valp, const char *compname, RDB_object *compvalp,
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
     int ret;
-    
+
     if (!RDB_type_is_scalar(valp->typ) || valp->typ->var.scalar.repc == 0) {
         RDB_raise_invalid_argument("component not found", ecp);
         return RDB_ERROR;
@@ -799,8 +805,10 @@ RDB_obj_comp(const RDB_object *valp, const char *compname, RDB_object *compvalp,
             /* If *compvalp carries a value, it must match the type */
             if (compvalp->kind != RDB_OB_INITIAL
                      && (compvalp->typ == NULL
-                         || !RDB_type_equals(compvalp->typ, comptyp)))
-                return RDB_TYPE_MISMATCH;
+                         || !RDB_type_equals(compvalp->typ, comptyp))) {
+                RDB_raise_type_mismatch("invalid component type", ecp);
+                return RDB_ERROR;
+            }
             ret = _RDB_copy_obj(compvalp, valp, ecp, NULL);
             if (ret != RDB_OK)
                 return ret;
@@ -855,8 +863,10 @@ RDB_obj_set_comp(RDB_object *valp, const char *compname,
         RDB_object *argv[2];
 
         opname = malloc(strlen(valp->typ->name) + strlen(compname) + 6);
-        if (opname == NULL)
-            return RDB_NO_MEMORY;
+        if (opname == NULL) {
+            RDB_raise_no_memory(ecp);
+            return RDB_ERROR;
+        }
 
         strcpy(opname, valp->typ->name);
         strcat(opname, "_set_");
@@ -922,7 +932,8 @@ RDB_obj_string(const RDB_object *valp)
 }
 
 int
-RDB_binary_set(RDB_object *valp, size_t pos, const void *srcp, size_t len)
+RDB_binary_set(RDB_object *valp, size_t pos, const void *srcp, size_t len,
+        RDB_exec_context *ecp)
 {
     assert(valp->kind == RDB_OB_INITIAL || valp->typ == &RDB_BINARY);
 
@@ -931,8 +942,10 @@ RDB_binary_set(RDB_object *valp, size_t pos, const void *srcp, size_t len)
         valp->var.bin.len = pos + len;
         if (valp->var.bin.len > 0) {
             valp->var.bin.datap = malloc(valp->var.bin.len);
-            if (valp->var.bin.datap == NULL)
-                return RDB_NO_MEMORY;
+            if (valp->var.bin.datap == NULL) {
+                RDB_raise_no_memory(ecp);
+                return RDB_ERROR;
+            }
         }
         valp->typ = &RDB_BINARY;
         valp->kind = RDB_OB_BIN;
@@ -946,8 +959,10 @@ RDB_binary_set(RDB_object *valp, size_t pos, const void *srcp, size_t len)
             datap = realloc(valp->var.bin.datap, pos + len);
         else
             datap = malloc(pos + len);
-        if (datap == NULL)
-            return RDB_NO_MEMORY;
+        if (datap == NULL) {
+            RDB_raise_no_memory(ecp);
+            return RDB_ERROR;
+        }
         valp->var.bin.datap = datap;
         valp->var.bin.len = pos + len;
     }

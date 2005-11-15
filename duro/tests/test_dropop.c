@@ -14,7 +14,7 @@ test_callop(RDB_database *dbp, RDB_exec_context *ecp)
     RDB_object *argv[2];
 
     printf("Starting transaction\n");
-    ret = RDB_begin_tx(&tx, dbp, NULL);
+    ret = RDB_begin_tx(ecp, &tx, dbp, NULL);
     if (ret != RDB_OK) {
         return ret;
     }
@@ -46,7 +46,7 @@ test_callop(RDB_database *dbp, RDB_exec_context *ecp)
 
     printf("Value of arg #1 is %d\n", RDB_obj_int(&arg1));
 
-    return RDB_commit(&tx);
+    return RDB_commit(ecp, &tx);
 
 error:
     RDB_destroy_obj(&arg1, ecp);
@@ -64,7 +64,7 @@ test_dropop(RDB_database *dbp, RDB_exec_context *ecp)
     int ret;
 
     printf("Starting transaction\n");
-    ret = RDB_begin_tx(&tx, dbp, NULL);
+    ret = RDB_begin_tx(ecp, &tx, dbp, NULL);
     if (ret != RDB_OK) {
         return ret;
     }
@@ -82,7 +82,7 @@ test_dropop(RDB_database *dbp, RDB_exec_context *ecp)
         RDB_rollback(ecp, &tx);
         return ret;
     }
-    return RDB_commit(&tx);
+    return RDB_commit(ecp, &tx);
 }
 
 int

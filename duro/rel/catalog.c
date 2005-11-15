@@ -197,7 +197,7 @@ insert_rtable(RDB_table *tbp, RDB_dbroot *dbrootp, RDB_exec_context *ecp,
         RDB_destroy_obj(&tpl, ecp);
         return ret;
     }
-    ret = RDB_tuple_set_bool(&tpl, "IS_USER", tbp->is_user);
+    ret = RDB_tuple_set_bool(&tpl, "IS_USER", tbp->is_user, ecp);
     if (ret != RDB_OK) {
         RDB_destroy_obj(&tpl, ecp);
         return ret;
@@ -239,7 +239,7 @@ insert_rtable(RDB_table *tbp, RDB_dbroot *dbrootp, RDB_exec_context *ecp,
             RDB_destroy_obj(&tpl, ecp);
             return ret;
         }
-        ret = RDB_tuple_set_int(&tpl, "I_FNO", i);
+        ret = RDB_tuple_set_int(&tpl, "I_FNO", i, ecp);
         if (ret != RDB_OK) {
             RDB_destroy_obj(&tpl, ecp);
             return ret;
@@ -283,7 +283,7 @@ insert_rtable(RDB_table *tbp, RDB_dbroot *dbrootp, RDB_exec_context *ecp,
 
             RDB_init_obj(&binval);
             datap = RDB_obj_irep(tuptyp->var.tuple.attrv[i].defaultp, &len);
-            ret = RDB_binary_set(&binval, 0, datap, len);
+            ret = RDB_binary_set(&binval, 0, datap, len, ecp);
             if (ret != RDB_OK) {
                 RDB_destroy_obj(&tpl, ecp);
                 RDB_destroy_obj(&binval, ecp);
@@ -320,7 +320,7 @@ insert_rtable(RDB_table *tbp, RDB_dbroot *dbrootp, RDB_exec_context *ecp,
         RDB_object keysobj;
         RDB_string_vec *kap = &tbp->keyv[i];
 
-        ret = RDB_tuple_set_int(&tpl, "KEYNO", i);
+        ret = RDB_tuple_set_int(&tpl, "KEYNO", i, ecp);
         if (ret != RDB_OK)
             goto cleanup;
 
@@ -388,7 +388,7 @@ insert_vtable(RDB_table *tbp, RDB_dbroot *dbrootp, RDB_exec_context *ecp,
     if (ret != RDB_OK)
         goto cleanup;
 
-    ret = RDB_tuple_set_bool(&tpl, "IS_USER", RDB_TRUE);
+    ret = RDB_tuple_set_bool(&tpl, "IS_USER", RDB_TRUE, ecp);
     if (ret != RDB_OK)
         goto cleanup;
 
@@ -447,7 +447,7 @@ _RDB_cat_insert_index(const char *name, int attrc, const RDB_seq_item attrv[],
         ret = RDB_tuple_set_string(&attrtpl, "NAME", attrv[i].attrname, ecp);
         if (ret != RDB_OK)
             goto cleanup;
-        ret = RDB_tuple_set_bool(&attrtpl, "ASC", attrv[i].asc);
+        ret = RDB_tuple_set_bool(&attrtpl, "ASC", attrv[i].asc, ecp);
         if (ret != RDB_OK)
             goto cleanup;
         ret = RDB_array_set(&attrsarr, (RDB_int) i, &attrtpl, ecp);
@@ -458,11 +458,11 @@ _RDB_cat_insert_index(const char *name, int attrc, const RDB_seq_item attrv[],
     if (ret != RDB_OK)
         goto cleanup;   
 
-    ret = RDB_tuple_set_bool(&tpl, "UNIQUE", unique);
+    ret = RDB_tuple_set_bool(&tpl, "UNIQUE", unique, ecp);
     if (ret != RDB_OK)
         goto cleanup;   
 
-    ret = RDB_tuple_set_bool(&tpl, "ORDERED", ordered);
+    ret = RDB_tuple_set_bool(&tpl, "ORDERED", ordered, ecp);
     if (ret != RDB_OK)
         goto cleanup;   
 
@@ -506,10 +506,9 @@ _RDB_cat_index_tablename(const char *name, char **tbnamep,
     int ret;
     RDB_object tpl;
     RDB_table *vtbp;
-    RDB_expression *wherep = RDB_eq(RDB_expr_attr("NAME"),
-            RDB_string_to_expr(name));
+    RDB_expression *wherep = RDB_eq(RDB_expr_attr("NAME", ecp),
+            RDB_string_to_expr(name, ecp), ecp);
     if (wherep == NULL) {
-        RDB_raise_no_memory(ecp);
         return RDB_ERROR;
     }
 
@@ -541,10 +540,9 @@ _RDB_cat_delete_index(const char *name, RDB_exec_context *ecp,
         RDB_transaction *txp)
 {
     int ret;
-    RDB_expression *wherep = RDB_eq(RDB_expr_attr("NAME"),
-            RDB_string_to_expr(name));
+    RDB_expression *wherep = RDB_eq(RDB_expr_attr("NAME", ecp),
+            RDB_string_to_expr(name, ecp), ecp);
     if (wherep == NULL) {
-        RDB_raise_no_memory(ecp);
         return RDB_ERROR;
     }
 
@@ -614,10 +612,9 @@ static int
 delete_rtable(RDB_table *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
 {
     int ret;
-    RDB_expression *exprp = RDB_eq(RDB_expr_attr("TABLENAME"),
-            RDB_string_to_expr(tbp->name));
+    RDB_expression *exprp = RDB_eq(RDB_expr_attr("TABLENAME", ecp),
+            RDB_string_to_expr(tbp->name, ecp), ecp);
     if (exprp == NULL) {
-        RDB_raise_no_memory(ecp);
         return RDB_ERROR;
     }
     ret = RDB_delete(txp->dbp->dbrootp->rtables_tbp, exprp, ecp, txp);
@@ -657,10 +654,9 @@ static int
 delete_vtable(RDB_table *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
 {
     int ret;
-    RDB_expression *exprp = RDB_eq(RDB_expr_attr("TABLENAME"),
-                   RDB_string_to_expr(tbp->name));
+    RDB_expression *exprp = RDB_eq(RDB_expr_attr("TABLENAME", ecp),
+                   RDB_string_to_expr(tbp->name, ecp), ecp);
     if (exprp == NULL) {
-        RDB_raise_no_memory(ecp);
         return RDB_ERROR;
     }
     ret = RDB_delete(txp->dbp->dbrootp->vtables_tbp, exprp, ecp, txp);
@@ -697,11 +693,9 @@ _RDB_cat_get_indexes(const char *tablename, RDB_dbroot *dbrootp,
     int indexc;
     RDB_table *vtbp;
     RDB_object arr;
-    RDB_expression *wherep = RDB_eq(RDB_expr_attr("TABLENAME"),
-            RDB_string_to_expr(tablename));
-
+    RDB_expression *wherep = RDB_eq(RDB_expr_attr("TABLENAME", ecp),
+            RDB_string_to_expr(tablename, ecp), ecp);
     if (wherep == NULL) {
-        RDB_raise_no_memory(ecp);
         return RDB_ERROR;
     }
 
@@ -828,13 +822,13 @@ insert_version_info(RDB_dbroot *dbrootp, RDB_exec_context *ecp,
     RDB_object tpl;
 
     RDB_init_obj(&tpl);
-    ret = RDB_tuple_set_int(&tpl, "MAJOR_VERSION", MAJOR_VERSION);
+    ret = RDB_tuple_set_int(&tpl, "MAJOR_VERSION", MAJOR_VERSION, ecp);
     if (ret != RDB_OK)
         goto cleanup;
-    ret = RDB_tuple_set_int(&tpl, "MINOR_VERSION", MINOR_VERSION);
+    ret = RDB_tuple_set_int(&tpl, "MINOR_VERSION", MINOR_VERSION, ecp);
     if (ret != RDB_OK)
         goto cleanup;
-    ret = RDB_tuple_set_int(&tpl, "MICRO_VERSION", 0);
+    ret = RDB_tuple_set_int(&tpl, "MICRO_VERSION", 0, ecp);
     if (ret != RDB_OK)
         goto cleanup;
 
@@ -893,9 +887,10 @@ open_indexes(RDB_table *tbp, RDB_dbroot *dbrootp, RDB_exec_context *ecp,
     for (i = 0; i < indexc; i++) {
         char *p = strchr(indexv[i].name, '$');
         if (p == NULL || strcmp (p, "$0") != 0) {
-            ret = _RDB_open_table_index(tbp, &indexv[i], dbrootp->envp, txp);
+            ret = _RDB_open_table_index(tbp, &indexv[i], dbrootp->envp, ecp,
+                    txp);
             if (ret != RDB_OK)
-                return ret;
+                return RDB_ERROR;
         } else {
             indexv[i].idxp = NULL;
         }
@@ -1335,10 +1330,9 @@ get_keys(const char *name, RDB_exec_context *ecp, RDB_transaction *txp,
 
     RDB_init_obj(&arr);
     
-    wherep = RDB_eq(RDB_string_to_expr(name),
-            RDB_expr_attr("TABLENAME"));
+    wherep = RDB_eq(RDB_string_to_expr(name, ecp),
+            RDB_expr_attr("TABLENAME", ecp), ecp);
     if (wherep == NULL) {
-        RDB_raise_no_memory(ecp);
         return RDB_ERROR;
     }
 
@@ -1433,10 +1427,9 @@ _RDB_cat_get_rtable(const char *name, RDB_exec_context *ecp,
 
     /* !! Should check if table is from txp->dbp ... */
 
-    exprp = RDB_eq(RDB_expr_attr("TABLENAME"),
-            RDB_string_to_expr(name));
+    exprp = RDB_eq(RDB_expr_attr("TABLENAME", ecp),
+            RDB_string_to_expr(name, ecp), ecp);
     if (exprp == NULL) {
-        RDB_raise_no_memory(ecp);
         goto error;
     }
     tmptb1p = RDB_select(txp->dbp->dbrootp->rtables_tbp, exprp, ecp, txp);
@@ -1452,10 +1445,9 @@ _RDB_cat_get_rtable(const char *name, RDB_exec_context *ecp,
 
     usr = RDB_tuple_get_bool(&tpl, "IS_USER");
 
-    exprp = RDB_eq(RDB_expr_attr("TABLENAME"),
-            RDB_string_to_expr(name));
+    exprp = RDB_eq(RDB_expr_attr("TABLENAME", ecp),
+            RDB_string_to_expr(name, ecp), ecp);
     if (exprp == NULL) {
-        RDB_raise_no_memory(ecp);
         goto error;
     }
 
@@ -1508,9 +1500,9 @@ _RDB_cat_get_rtable(const char *name, RDB_exec_context *ecp,
      * Read default values
      */
 
-    exprp = RDB_eq(RDB_expr_attr("TABLENAME"), RDB_string_to_expr(name));
+    exprp = RDB_eq(RDB_expr_attr("TABLENAME", ecp),
+            RDB_string_to_expr(name, ecp), ecp);
     if (exprp == NULL) {
-        RDB_raise_no_memory(ecp);
         goto error;
     }
 
@@ -1563,10 +1555,9 @@ _RDB_cat_get_rtable(const char *name, RDB_exec_context *ecp,
          * Read recmap name from catalog, if it's user table.
          * For system tables, the recmap name is the table name.
          */
-        exprp = RDB_eq(RDB_expr_attr("TABLENAME"),
-                RDB_string_to_expr(name));
+        exprp = RDB_eq(RDB_expr_attr("TABLENAME", ecp),
+                RDB_string_to_expr(name, ecp), ecp);
         if (exprp == NULL) {
-            RDB_raise_no_memory(ecp);
             goto error;
         }
         tmptb4p = RDB_select(txp->dbp->dbrootp->table_recmap_tbp, exprp, ecp,
@@ -1684,9 +1675,9 @@ _RDB_cat_get_vtable(const char *name, RDB_exec_context *ecp,
     RDB_init_obj(&arr);
     RDB_init_obj(&tpl);
 
-    exprp = RDB_eq(RDB_expr_attr("TABLENAME"), RDB_string_to_expr(name));
+    exprp = RDB_eq(RDB_expr_attr("TABLENAME", ecp),
+            RDB_string_to_expr(name, ecp), ecp);
     if (exprp == NULL) {
-        RDB_raise_no_memory(ecp);
         goto error;
     }
     tmptbp = RDB_select(txp->dbp->dbrootp->vtables_tbp, exprp, ecp, txp);
@@ -1739,17 +1730,15 @@ _RDB_cat_rename_table(RDB_table *tbp, const char *name, RDB_exec_context *ecp,
 {
     int ret;
     RDB_attr_update upd;
-    RDB_expression *condp = RDB_eq(RDB_expr_attr("TABLENAME"),
-            RDB_string_to_expr(tbp->name));
+    RDB_expression *condp = RDB_eq(RDB_expr_attr("TABLENAME", ecp),
+            RDB_string_to_expr(tbp->name, ecp), ecp);
     if (condp == NULL) {
-        RDB_raise_no_memory(ecp);
         return RDB_ERROR;
     }
 
     upd.name = "TABLENAME";
-    upd.exp = RDB_string_to_expr(name);
+    upd.exp = RDB_string_to_expr(name, ecp);
     if (upd.exp == NULL) {
-        RDB_raise_no_memory(ecp);
         ret = RDB_ERROR;
         goto cleanup;
     }
@@ -1795,15 +1784,13 @@ types_query(const char *name, RDB_exec_context *ecp, RDB_transaction *txp,
     RDB_expression *exp;
     RDB_expression *wherep;
 
-    exp = RDB_expr_attr("TYPENAME");
+    exp = RDB_expr_attr("TYPENAME", ecp);
     if (exp == NULL) {
-        RDB_raise_no_memory(ecp);
         return RDB_ERROR;
     }
-    wherep = RDB_eq(exp, RDB_string_to_expr(name));
+    wherep = RDB_eq(exp, RDB_string_to_expr(name, ecp), ecp);
     if (wherep == NULL) {
         RDB_drop_expr(exp, ecp);
-        RDB_raise_no_memory(ecp);
         return RDB_ERROR;
     }
 
@@ -1831,14 +1818,12 @@ _RDB_possreps_query(const char *name, RDB_exec_context *ecp,
         return RDB_ERROR;
     }
 
-    exp = RDB_expr_attr("TYPENAME");
+    exp = RDB_expr_attr("TYPENAME", ecp);
     if (exp == NULL) {
-        RDB_raise_no_memory(ecp);
         goto error;
     }
-    hexp = RDB_eq(exp, RDB_string_to_expr(name));
+    hexp = RDB_eq(exp, RDB_string_to_expr(name, ecp), ecp);
     if (hexp == NULL) {
-        RDB_raise_no_memory(ecp);
         goto error;
     }
     exp = hexp;
@@ -1864,36 +1849,31 @@ _RDB_possrepcomps_query(const char *name, const char *possrepname,
     RDB_expression *exp, *ex2p;
     RDB_expression *wherep;
 
-    exp = RDB_expr_attr("TYPENAME");
+    exp = RDB_expr_attr("TYPENAME", ecp);
     if (exp == NULL) {
-        RDB_raise_no_memory(ecp);
         return RDB_ERROR;
     }
-    wherep = RDB_eq(exp, RDB_string_to_expr(name));
+    wherep = RDB_eq(exp, RDB_string_to_expr(name, ecp), ecp);
     if (wherep == NULL) {
         RDB_drop_expr(exp, ecp);
-        RDB_raise_no_memory(ecp);
         return RDB_ERROR;
     }
-    exp = RDB_expr_attr("POSSREPNAME");
+    exp = RDB_expr_attr("POSSREPNAME", ecp);
     if (exp == NULL) {
         RDB_drop_expr(wherep, ecp);
-        RDB_raise_no_memory(ecp);
         return RDB_ERROR;
     }
-    ex2p = RDB_eq(exp, RDB_string_to_expr(possrepname));
+    ex2p = RDB_eq(exp, RDB_string_to_expr(possrepname, ecp), ecp);
     if (ex2p == NULL) {
         RDB_drop_expr(exp, ecp);
         RDB_drop_expr(wherep, ecp);
-        RDB_raise_no_memory(ecp);
         return RDB_ERROR;
     }
     exp = wherep;
-    wherep = RDB_ro_op_va("AND", exp, ex2p, (RDB_expression *) NULL);
+    wherep = RDB_ro_op_va("AND", ecp, exp, ex2p, (RDB_expression *) NULL);
     if (wherep == NULL) {
         RDB_drop_expr(exp, ecp);
         RDB_drop_expr(ex2p, ecp);
-        RDB_raise_no_memory(ecp);
         return RDB_ERROR;
     }
     *tbpp = RDB_select(txp->dbp->dbrootp->possrepcomps_tbp, wherep, ecp, txp);
@@ -2170,13 +2150,12 @@ _RDB_cat_get_ro_op(const char *name, int argc, RDB_type *argtv[],
         return ret;
     }
 
-    exp = RDB_ro_op_va("AND", RDB_eq(RDB_expr_attr("NAME"),
-                   RDB_string_to_expr(name)),
-            RDB_eq(RDB_expr_attr("ARGTYPES"),
-                   RDB_obj_to_expr(&typesobj, ecp)), (RDB_expression *) NULL);
+    exp = RDB_ro_op_va("AND", ecp, RDB_eq(RDB_expr_attr("NAME", ecp),
+                   RDB_string_to_expr(name, ecp), ecp),
+            RDB_eq(RDB_expr_attr("ARGTYPES", ecp),
+                   RDB_obj_to_expr(&typesobj, ecp), ecp), (RDB_expression *) NULL);
     RDB_destroy_obj(&typesobj, ecp);
     if (exp == NULL) {
-        RDB_raise_no_memory(ecp);
         return RDB_ERROR;
     }
     vtbp = RDB_select(txp->dbp->dbrootp->ro_ops_tbp, exp, ecp, txp);
@@ -2241,7 +2220,7 @@ _RDB_cat_get_ro_op(const char *name, int argc, RDB_type *argtv[],
     if (op->modhdl == NULL) {
         RDB_errmsg(txp->dbp->dbrootp->envp, "Cannot open library \"%s\"",
                 libname);
-        ret = RDB_RESOURCE_NOT_FOUND;
+        RDB_raise_resource_not_found(libname, ecp);
         goto error;
     }
     symname = RDB_tuple_get_string(&tpl, "SYMBOL");
@@ -2249,7 +2228,7 @@ _RDB_cat_get_ro_op(const char *name, int argc, RDB_type *argtv[],
     if (op->funcp == NULL) {
         RDB_errmsg(txp->dbp->dbrootp->envp, "Symbol \"%s\" not found",
                 symname);
-        ret = RDB_RESOURCE_NOT_FOUND;
+        RDB_raise_resource_not_found(symname, ecp);
         goto error;
     }
 
@@ -2299,13 +2278,12 @@ _RDB_cat_get_upd_op(const char *name, int argc, RDB_type *argtv[],
         return ret;
     }
         
-    exp = RDB_ro_op_va("AND", RDB_eq(RDB_expr_attr("NAME"),
-                   RDB_string_to_expr(name)),
-            RDB_eq(RDB_expr_attr("ARGTYPES"),
-                   RDB_obj_to_expr(&typesobj, ecp)), (RDB_expression *) NULL);
+    exp = RDB_ro_op_va("AND", ecp, RDB_eq(RDB_expr_attr("NAME", ecp),
+                   RDB_string_to_expr(name, ecp), ecp),
+            RDB_eq(RDB_expr_attr("ARGTYPES", ecp),
+                   RDB_obj_to_expr(&typesobj, ecp), ecp), (RDB_expression *) NULL);
     RDB_destroy_obj(&typesobj, ecp);
     if (exp == NULL) {
-        RDB_raise_no_memory(ecp);
         return RDB_ERROR;
     }
     vtbp = RDB_select(txp->dbp->dbrootp->upd_ops_tbp, exp, ecp, txp);
@@ -2386,7 +2364,7 @@ _RDB_cat_get_upd_op(const char *name, int argc, RDB_type *argtv[],
     if (op->modhdl == NULL) {
         RDB_errmsg(txp->dbp->dbrootp->envp, "Cannot open library \"%s\"",
                 libname);
-        ret = RDB_RESOURCE_NOT_FOUND;
+        RDB_raise_resource_not_found(libname, ecp);
         goto error;
     }
     symname = RDB_tuple_get_string(&tpl, "SYMBOL");
@@ -2394,7 +2372,7 @@ _RDB_cat_get_upd_op(const char *name, int argc, RDB_type *argtv[],
     if (op->funcp == NULL) {
         RDB_errmsg(txp->dbp->dbrootp->envp, "Symbol \"%s\" not found",
                 symname);
-        ret = RDB_RESOURCE_NOT_FOUND;
+        RDB_raise_resource_not_found(libname, ecp);
         goto error;
     }
 

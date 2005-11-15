@@ -57,22 +57,23 @@ insert_extend(RDB_table *vtbp, RDB_exec_context *ecp, RDB_transaction *txp)
 
     printf("Inserting tuple #1\n");
 
-    ret = RDB_tuple_set_int(&tpl, "EMPNO", 3);
+    ret = RDB_tuple_set_int(&tpl, "EMPNO", 3, ecp);
     if (ret != RDB_OK)
         goto error;
     ret = RDB_tuple_set_string(&tpl, "NAME", "Johnson", ecp);
     if (ret != RDB_OK)
         goto error;
-    ret = RDB_tuple_set_rational(&tpl, "SALARY", (RDB_rational)4000.0);
+    ret = RDB_tuple_set_rational(&tpl, "SALARY", (RDB_rational)4000.0, ecp);
     if (ret != RDB_OK)
         goto error;
-    ret = RDB_tuple_set_int(&tpl, "DEPTNO", 1);
+    ret = RDB_tuple_set_int(&tpl, "DEPTNO", 1, ecp);
     if (ret != RDB_OK)
         goto error;
-    ret = RDB_tuple_set_rational(&tpl, "SALARY_AFTER_TAX", (RDB_rational)4200.0);
+    ret = RDB_tuple_set_rational(&tpl, "SALARY_AFTER_TAX",
+            (RDB_rational)4200.0, ecp);
     if (ret != RDB_OK)
         goto error;
-    ret = RDB_tuple_set_int(&tpl, "NAME_LEN", (RDB_int)7);
+    ret = RDB_tuple_set_int(&tpl, "NAME_LEN", (RDB_int)7, ecp);
     if (ret != RDB_OK)
         goto error;
 
@@ -88,22 +89,23 @@ insert_extend(RDB_table *vtbp, RDB_exec_context *ecp, RDB_transaction *txp)
 
     printf("Inserting tuple #2\n");
 
-    ret = RDB_tuple_set_int(&tpl, "EMPNO", 3);
+    ret = RDB_tuple_set_int(&tpl, "EMPNO", 3, ecp);
     if (ret != RDB_OK)
         goto error;
     ret = RDB_tuple_set_string(&tpl, "NAME", "Johnson", ecp);
     if (ret != RDB_OK)
         goto error;
-    ret = RDB_tuple_set_rational(&tpl, "SALARY", (RDB_rational)4000.0);
+    ret = RDB_tuple_set_rational(&tpl, "SALARY", (RDB_rational)4000.0, ecp);
     if (ret != RDB_OK)
         goto error;
-    ret = RDB_tuple_set_int(&tpl, "DEPTNO", 1);
+    ret = RDB_tuple_set_int(&tpl, "DEPTNO", 1, ecp);
     if (ret != RDB_OK)
         goto error;
-    ret = RDB_tuple_set_rational(&tpl, "SALARY_AFTER_TAX", (RDB_rational)-100.0);
+    ret = RDB_tuple_set_rational(&tpl, "SALARY_AFTER_TAX",
+            (RDB_rational)-100.0, ecp);
     if (ret != RDB_OK)
         goto error;
-    ret = RDB_tuple_set_int(&tpl, "NAME_LEN", (RDB_int)7);
+    ret = RDB_tuple_set_int(&tpl, "NAME_LEN", (RDB_int)7, ecp);
     if (ret != RDB_OK)
         goto error;
 
@@ -133,24 +135,24 @@ test_extend(RDB_database *dbp, RDB_exec_context *ecp)
     };
 
     printf("Starting transaction\n");
-    ret = RDB_begin_tx(&tx, dbp, NULL);
+    ret = RDB_begin_tx(ecp, &tx, dbp, NULL);
     if (ret != RDB_OK) {
         return ret;
     }
 
-    extend[0].exp = RDB_ro_op_va("-", RDB_expr_attr("SALARY"),
-            RDB_rational_to_expr(4100), (RDB_expression *) NULL);
+    extend[0].exp = RDB_ro_op_va("-", ecp, RDB_expr_attr("SALARY", ecp),
+            RDB_rational_to_expr(4100, ecp), (RDB_expression *) NULL);
     if (extend[0].exp == NULL)
-        return RDB_NO_MEMORY;
+        return RDB_ERROR;
 
-    exp = RDB_expr_attr("NAME");
+    exp = RDB_expr_attr("NAME", ecp);
     if (exp == NULL) {
-        ret = RDB_NO_MEMORY;
+        ret = RDB_ERROR;
         goto error;
     }
-    extend[1].exp = RDB_ro_op_va("LENGTH", exp, (RDB_expression *) NULL);
+    extend[1].exp = RDB_ro_op_va("LENGTH", ecp, exp, (RDB_expression *) NULL);
     if (extend[1].exp == NULL) {
-        ret = RDB_NO_MEMORY;
+        ret = RDB_ERROR;
         goto error;
     }
 

@@ -22,7 +22,8 @@ delete_by_uindex(RDB_table *tbp, RDB_object *objpv[], _RDB_tbindex *indexp,
 
     fv = malloc(sizeof (RDB_field) * keylen);
     if (fv == NULL) {
-        ret = RDB_NO_MEMORY;
+        RDB_raise_no_memory(ecp);
+        ret = RDB_ERROR;
         goto cleanup;
     }
     
@@ -201,7 +202,8 @@ _RDB_delete_select_index(RDB_table *tbp, RDB_expression *condp,
 
     fv = malloc(sizeof (RDB_field) * keylen);
     if (fv == NULL) {
-        ret = RDB_NO_MEMORY;
+        RDB_raise_no_memory(ecp);
+        ret = RDB_ERROR;
         goto cleanup;
     }
 

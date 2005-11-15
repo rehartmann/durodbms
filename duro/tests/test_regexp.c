@@ -16,7 +16,7 @@ test_regexp(RDB_database *dbp, RDB_exec_context *ecp)
     RDB_int i;
 
     printf("Starting transaction\n");
-    ret = RDB_begin_tx(&tx, dbp, NULL);
+    ret = RDB_begin_tx(ecp, &tx, dbp, NULL);
     if (ret != RDB_OK) {
         return ret;
     }
@@ -31,10 +31,10 @@ test_regexp(RDB_database *dbp, RDB_exec_context *ecp)
 
     printf("Creating selection (NAME regmatch \"o\")\n");
 
-    exprp = RDB_ro_op_va("MATCHES", RDB_expr_attr("NAME"),
-            RDB_string_to_expr("o"), (RDB_expression *) NULL);
+    exprp = RDB_ro_op_va("MATCHES", ecp, RDB_expr_attr("NAME", ecp),
+            RDB_string_to_expr("o", ecp), (RDB_expression *) NULL);
     if (exprp == NULL) {
-        ret = RDB_NO_MEMORY;
+        ret = RDB_ERROR;
         goto error;
     }
     
@@ -66,7 +66,7 @@ test_regexp(RDB_database *dbp, RDB_exec_context *ecp)
     RDB_drop_table(vtbp, ecp, &tx);
 
     printf("End of transaction\n");
-    return RDB_commit(&tx);
+    return RDB_commit(ecp, &tx);
 
 error:
     RDB_destroy_obj(&array, ecp);

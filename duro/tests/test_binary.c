@@ -3,7 +3,8 @@
 #include <rel/rdb.h>
 #include <stdio.h>
 
-int main(void)
+int
+main(void)
 {
     RDB_object val;
     void *bufp;
@@ -13,8 +14,8 @@ int main(void)
     RDB_init_exec_context(&ec);
     RDB_init_obj(&val);
 
-    RDB_binary_set(&val, 0, "ABCD", 4);
-    RDB_binary_set(&val, 4, "EFGH", 5);
+    RDB_binary_set(&val, 0, "ABCD", 4, &ec);
+    RDB_binary_set(&val, 4, "EFGH", 5, &ec);
 
     RDB_binary_get(&val, 0, &bufp, 9, &len);
 

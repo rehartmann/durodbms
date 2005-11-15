@@ -13,7 +13,7 @@ create_table(RDB_database *dbp, RDB_exec_context *ecp)
     int ret;
     
     printf("Starting transaction\n");
-    ret = RDB_begin_tx(&tx, dbp, NULL);
+    ret = RDB_begin_tx(ecp, &tx, dbp, NULL);
     if (ret != RDB_OK) {
         fprintf(stderr, "Error: %s\n", RDB_strerror(ret));
         return ret;
@@ -30,7 +30,7 @@ create_table(RDB_database *dbp, RDB_exec_context *ecp)
     printf("Table %s created.\n", RDB_table_name(tbp));
 
     printf("End of transaction\n");
-    return RDB_commit(&tx);
+    return RDB_commit(ecp, &tx);
 }
 
 int
@@ -42,7 +42,7 @@ test_table(RDB_database *dbp, RDB_exec_context *ecp)
     RDB_table *tbp;
 
     printf("Starting transaction\n");
-    ret = RDB_begin_tx(&tx, dbp, NULL);
+    ret = RDB_begin_tx(ecp, &tx, dbp, NULL);
     if (ret != RDB_OK) {
         return ret;
     }
@@ -76,7 +76,7 @@ test_table(RDB_database *dbp, RDB_exec_context *ecp)
     RDB_destroy_obj(&tpl, ecp);
 
     printf("End of transaction\n");
-    return RDB_commit(&tx);
+    return RDB_commit(ecp, &tx);
 }
 
 int

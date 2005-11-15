@@ -53,10 +53,10 @@ check_contains(RDB_table *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
 
     RDB_init_obj(&tpl);
     
-    RDB_tuple_set_int(&tpl, "DEPTNO", 2);
-    RDB_tuple_set_int(&tpl, "COUNT_EMPS", 2);
-    RDB_tuple_set_rational(&tpl, "SUM_SALARY", 8100);
-    RDB_tuple_set_rational(&tpl, "AVG_SALARY", 4050);
+    RDB_tuple_set_int(&tpl, "DEPTNO", 2, ecp);
+    RDB_tuple_set_int(&tpl, "COUNT_EMPS", 2, ecp);
+    RDB_tuple_set_rational(&tpl, "SUM_SALARY", 8100.0, ecp);
+    RDB_tuple_set_rational(&tpl, "AVG_SALARY", 4050.0, ecp);
 
     printf("Calling RDB_table_contains()...");
     ret = RDB_table_contains(tbp, &tpl, ecp, txp, &b);
@@ -71,7 +71,7 @@ check_contains(RDB_table *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
         puts("No");
     }
 
-    RDB_tuple_set_rational(&tpl, "SUM_SALARY", 4100);
+    RDB_tuple_set_rational(&tpl, "SUM_SALARY", 4100, ecp);
     printf("Calling RDB_table_contains()...");
     ret = RDB_table_contains(tbp, &tpl, ecp, txp, &b);
     
@@ -99,7 +99,7 @@ test_summarize(RDB_database *dbp, RDB_exec_context *ecp)
     RDB_summarize_add addv[3];
 
     printf("Starting transaction\n");
-    ret = RDB_begin_tx(&tx, dbp, NULL);
+    ret = RDB_begin_tx(ecp, &tx, dbp, NULL);
     if (ret != RDB_OK) {
         return ret;
     }
@@ -145,11 +145,11 @@ test_summarize(RDB_database *dbp, RDB_exec_context *ecp)
     addv[0].name = "COUNT_EMPS";
 
     addv[1].op = RDB_SUM;
-    addv[1].exp = RDB_expr_attr("SALARY");
+    addv[1].exp = RDB_expr_attr("SALARY", ecp);
     addv[1].name = "SUM_SALARY";
 
     addv[2].op = RDB_AVG;
-    addv[2].exp = RDB_expr_attr("SALARY");
+    addv[2].exp = RDB_expr_attr("SALARY", ecp);
     addv[2].name = "AVG_SALARY";
 
     vtbp = RDB_summarize(untbp, projtbp, 3, addv, ecp, &tx);
@@ -178,7 +178,7 @@ test_summarize(RDB_database *dbp, RDB_exec_context *ecp)
     RDB_drop_table(untbp, ecp, &tx);
 
     printf("End of transaction\n");
-    return RDB_commit(&tx);
+    return RDB_commit(ecp, &tx);
 }
 
 int

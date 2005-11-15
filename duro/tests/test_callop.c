@@ -24,7 +24,7 @@ test_callop(RDB_database *dbp, RDB_exec_context *ecp)
     RDB_object *argv[2];
 
     printf("Starting transaction\n");
-    ret = RDB_begin_tx(&tx, dbp, NULL);
+    ret = RDB_begin_tx(ecp, &tx, dbp, NULL);
     if (ret != RDB_OK) {
         return ret;
     }
@@ -56,7 +56,7 @@ test_callop(RDB_database *dbp, RDB_exec_context *ecp)
 
     printf("Value of arg #1 is %d\n", RDB_obj_int(&arg1));
 
-    return RDB_commit(&tx);
+    return RDB_commit(ecp, &tx);
 
 error:
     RDB_destroy_obj(&arg1, ecp);
@@ -77,7 +77,7 @@ test_useop(RDB_database *dbp, RDB_exec_context *ecp)
     int ret;
 
     printf("Starting transaction\n");
-    ret = RDB_begin_tx(&tx, dbp, NULL);
+    ret = RDB_begin_tx(ecp, &tx, dbp, NULL);
     if (ret != RDB_OK) {
         return ret;
     }
@@ -87,11 +87,11 @@ test_useop(RDB_database *dbp, RDB_exec_context *ecp)
         goto error;
     }
 
-    expv[0] = RDB_expr_attr("DEPTNO");
-    expv[1] = RDB_int_to_expr(100);
+    expv[0] = RDB_expr_attr("DEPTNO", ecp);
+    expv[1] = RDB_int_to_expr(100, ecp);
 
     extend.name = "XDEPTNO";
-    extend.exp = RDB_ro_op("PLUS", 2, expv);
+    extend.exp = RDB_ro_op("PLUS", 2, expv, ecp);
     if (extend.exp == NULL) {
         ret = RDB_NO_MEMORY;
         goto error;
@@ -114,7 +114,7 @@ test_useop(RDB_database *dbp, RDB_exec_context *ecp)
         goto error;
     }
 
-    return RDB_commit(&tx);
+    return RDB_commit(ecp, &tx);
 
 error:
     RDB_rollback(ecp, &tx);

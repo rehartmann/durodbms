@@ -34,10 +34,12 @@ project_contains(RDB_table *tbp, const RDB_object *tplp, RDB_exec_context *ecp,
             RDB_raise_invalid_argument("invalid attribute", ecp);
             return RDB_ERROR;
         }
-        condp = RDB_ro_op_va("=", RDB_expr_attr(tpltyp->var.tuple.attrv[0].name),
+        condp = RDB_ro_op_va("=", ecp,
+                RDB_expr_attr(tpltyp->var.tuple.attrv[0].name, ecp),
                 RDB_obj_to_expr(objp, ecp), (RDB_expression *) NULL);
-        if (condp == NULL)
-            return RDB_NO_MEMORY;
+        if (condp == NULL) {
+            return RDB_ERROR;
+        }
         for (i = 1; i < tpltyp->var.tuple.attrc; i++) {
             objp = RDB_tuple_get(tplp, tpltyp->var.tuple.attrv[i].name);
             if (objp == NULL) {
@@ -47,17 +49,19 @@ project_contains(RDB_table *tbp, const RDB_object *tplp, RDB_exec_context *ecp,
                 return RDB_ERROR;
             }
             
-            condp = RDB_ro_op_va("AND", condp,
-                    RDB_ro_op_va("=", RDB_expr_attr(
-                            tpltyp->var.tuple.attrv[i].name),
+            condp = RDB_ro_op_va("AND", ecp, condp,
+                    RDB_ro_op_va("=", ecp,
+                            RDB_expr_attr(tpltyp->var.tuple.attrv[i].name, ecp),
                             RDB_obj_to_expr(objp, ecp),
                             (RDB_expression *) NULL),
                     (RDB_expression *) NULL);
-            if (condp == NULL)
-                return RDB_NO_MEMORY;
+            if (condp == NULL) {
+                return RDB_ERROR;
+            }
         }
-        if (condp == NULL)
-            return RDB_NO_MEMORY;
+        if (condp == NULL) {
+            return RDB_ERROR;
+        }
 
         /* create selection table */
         seltbp = RDB_select(tbp, condp, ecp, txp);
@@ -129,7 +133,8 @@ ungroup_contains(RDB_table *tbp, const RDB_object *tplp, RDB_exec_context *ecp,
             RDB_raise_invalid_argument("invalid attribute", ecp);
             return RDB_ERROR;
         }
-        condp = RDB_ro_op_va("=", RDB_expr_attr(tpltyp->var.tuple.attrv[i++].name),
+        condp = RDB_ro_op_va("=", ecp,
+                RDB_expr_attr(tpltyp->var.tuple.attrv[i++].name, ecp),
                 RDB_obj_to_expr(objp, ecp), (RDB_expression *) NULL);
         while (i < tpltyp->var.tuple.attrc) {
             if (strcmp(tpltyp->var.tuple.attrv[i].name,
@@ -141,19 +146,21 @@ ungroup_contains(RDB_table *tbp, const RDB_object *tplp, RDB_exec_context *ecp,
                     RDB_raise_invalid_argument("invalid attribute", ecp);
                     return RDB_ERROR;
                 }
-                condp = RDB_ro_op_va("AND", condp,
-                        RDB_ro_op_va("=",
-                                RDB_expr_attr(tpltyp->var.tuple.attrv[i].name),
+                condp = RDB_ro_op_va("AND", ecp, condp,
+                        RDB_ro_op_va("=", ecp,
+                                RDB_expr_attr(tpltyp->var.tuple.attrv[i].name, ecp),
                                 RDB_obj_to_expr(objp, ecp),
                                 (RDB_expression *) NULL),
                         (RDB_expression *) NULL);
-                if (condp == NULL)
-                    return RDB_NO_MEMORY;
+                if (condp == NULL) {
+                    RDB_raise_no_memory(ecp);
+                    return RDB_ERROR;
+                }
             }
             i++;
         }
         if (condp == NULL) {
-            return RDB_NO_MEMORY;
+            return RDB_ERROR;
         }
 
         /* create selection table */
@@ -300,8 +307,10 @@ stored_contains(RDB_table *tbp, const RDB_object *tplp, RDB_exec_context *ecp,
     }
 
     fvp = malloc(sizeof(RDB_field) * attrcount);
-    if (fvp == NULL)
-        return RDB_NO_MEMORY;
+    if (fvp == NULL) {
+        RDB_raise_no_memory(ecp);
+        return RDB_ERROR;
+    }
     for (i = 0; i < attrcount; i++) {
         RDB_object *objp;
         int fno = *_RDB_field_no(tbp->stp, tpltyp->var.tuple.attrv[i].name);
@@ -359,8 +368,10 @@ RDB_table_contains(RDB_table *tbp, const RDB_object *tplp, RDB_exec_context *ecp
 {
     int ret;
 
-    if (txp != NULL && !RDB_tx_is_running(txp))
-        return RDB_INVALID_TRANSACTION;
+    if (txp != NULL && !RDB_tx_is_running(txp)) {
+        RDB_raise_invalid_tx(ecp);
+        return RDB_ERROR;
+    }
 
     switch (tbp->kind) {
         case RDB_TB_REAL:

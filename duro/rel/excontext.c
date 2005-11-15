@@ -145,9 +145,15 @@ RDB_raise_predicate_violation(const char *info, RDB_exec_context *ecp)
 }
 
 RDB_object *
-RDB_raise_system_error(const char *info, RDB_exec_context *ecp)
+RDB_raise_system(const char *info, RDB_exec_context *ecp)
 {
     return raise_info_err(&RDB_SYSTEM_ERROR, info, ecp);
+}
+
+RDB_object *
+RDB_raise_resource_not_found(const char *info, RDB_exec_context *ecp)
+{
+    return raise_info_err(&RDB_RESOURCE_NOT_FOUND_ERROR, info, ecp);
 }
 
 void
@@ -167,6 +173,6 @@ _RDB_handle_errcode(int errcode, RDB_exec_context *ecp)
             RDB_raise_not_found("", ecp);
             break;
         default:
-            RDB_raise_system_error(RDB_strerror(errcode), ecp);
+            RDB_raise_system(RDB_strerror(errcode), ecp);
     }
 }

@@ -73,16 +73,16 @@ print_tables(RDB_exec_context *ecp, RDB_transaction *txp, RDB_bool all,
     }
 
     db_tbp = RDB_get_table("SYS_DBTABLES", ecp, txp);
-    if (ret != RDB_OK) {
-        return ret;
+    if (db_tbp == NULL) {
+        return RDB_ERROR;
     } 
 
     RDB_init_obj(&array);
 
     if (all) {
-        condp = RDB_bool_to_expr(RDB_TRUE);
+        condp = RDB_bool_to_expr(RDB_TRUE, ecp);
     } else {
-        condp = RDB_expr_attr("IS_USER");
+        condp = RDB_expr_attr("IS_USER", ecp);
     }
     vtb1p = RDB_select(rt_tbp, condp, ecp, txp);
     if (vtb1p == NULL) {
@@ -90,8 +90,8 @@ print_tables(RDB_exec_context *ecp, RDB_transaction *txp, RDB_bool all,
         return RDB_ERROR;
     }
 
-    condp = RDB_eq(RDB_expr_attr("DBNAME"),
-                   RDB_string_to_expr(RDB_db_name(RDB_tx_db(txp))));
+    condp = RDB_eq(RDB_expr_attr("DBNAME", ecp),
+                   RDB_string_to_expr(RDB_db_name(RDB_tx_db(txp)), ecp), ecp);
     vtb2p = RDB_select(db_tbp, condp, ecp, txp);
     if (vtb2p == NULL) {
         RDB_drop_expr(condp, ecp);
@@ -161,7 +161,7 @@ main(int argc, char *argv[])
     if (argc == 1 && strcmp(argv[0], "-a") == 0)
         all = RDB_TRUE;
 
-    ret = RDB_begin_tx(&tx, dbp, NULL);
+    ret = RDB_begin_tx(&ec, &tx, dbp, NULL);
     if (ret != RDB_OK) {
         fprintf(stderr, "lstables: %s\n", RDB_strerror(ret));
         RDB_destroy_exec_context(&ec);
@@ -184,7 +184,7 @@ main(int argc, char *argv[])
         return 1;
     }
 
-    ret = RDB_commit(&tx);
+    ret = RDB_commit(&ec, &tx);
     if (ret != RDB_OK) {
         fprintf(stderr, "lstables: %s\n", RDB_strerror(ret));
         RDB_destroy_exec_context(&ec);

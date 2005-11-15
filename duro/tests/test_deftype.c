@@ -15,7 +15,7 @@ test_type(RDB_database *dbp, RDB_exec_context *ecp)
     int ret;
 
     printf("Starting transaction\n");
-    ret = RDB_begin_tx(&tx, dbp, NULL);
+    ret = RDB_begin_tx(ecp, &tx, dbp, NULL);
     if (ret != RDB_OK) {
         return ret;
     }
@@ -26,11 +26,11 @@ test_type(RDB_database *dbp, RDB_exec_context *ecp)
     pr.name = NULL;
     pr.compc = 1;
     pr.compv = &comp;
-    constraintp = RDB_ro_op_va("<",
-            RDB_expr_comp(RDB_expr_attr("TINYINT"), "TINYINT", ecp),
-            RDB_int_to_expr(100), (RDB_expression *) NULL);
+    constraintp = RDB_ro_op_va("<", ecp,
+            RDB_expr_comp(RDB_expr_attr("TINYINT", ecp), "TINYINT", ecp),
+            RDB_int_to_expr(100, ecp), (RDB_expression *) NULL);
     if (constraintp == NULL) {
-        return RDB_NO_MEMORY;
+        return RDB_ERROR;
     }
     ret = RDB_define_type("TINYINT", 1, &pr, constraintp, ecp, &tx);
     if (ret != RDB_OK) {
@@ -46,7 +46,7 @@ test_type(RDB_database *dbp, RDB_exec_context *ecp)
         return ret;
     }
 
-    ret = RDB_commit(&tx);
+    ret = RDB_commit(ecp, &tx);
     if (ret != RDB_OK) {
         return ret;
     }

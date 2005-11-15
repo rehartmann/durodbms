@@ -50,21 +50,22 @@ init_summ_table(RDB_qresult *qresp, RDB_exec_context *ecp,
             switch (qresp->tbp->var.summarize.addv[i].op) {
                 case RDB_COUNT:
                 case RDB_COUNTD:
-                    ret = RDB_tuple_set_int(&tpl, name, 0);
+                    ret = RDB_tuple_set_int(&tpl, name, 0, ecp);
                     break;
                 case RDB_AVG:
                 case RDB_AVGD:
-                    ret = RDB_tuple_set_rational(&tpl, name, 0);
+                    ret = RDB_tuple_set_rational(&tpl, name, 0, ecp);
                     if (ret != RDB_OK)
                        break;
                     cname = malloc(strlen(name) + 3);
                     if (cname == NULL) {
-                        ret = RDB_NO_MEMORY;
+                        RDB_raise_no_memory(ecp);
+                        ret = RDB_ERROR;
                         break;
                     }
                     strcpy(cname, name);
                     strcat(cname, AVG_COUNT_SUFFIX);
-                    ret = RDB_tuple_set_int(&tpl, cname, 0);
+                    ret = RDB_tuple_set_int(&tpl, cname, 0, ecp);
                     free(cname);
                     break;
                 case RDB_SUM:
@@ -75,9 +76,9 @@ init_summ_table(RDB_qresult *qresp, RDB_exec_context *ecp,
                     if (typ == NULL)
                         goto error;
                     if (typ == &RDB_INTEGER)
-                        ret = RDB_tuple_set_int(&tpl, name, 0);
+                        ret = RDB_tuple_set_int(&tpl, name, 0, ecp);
                     else
-                        ret = RDB_tuple_set_rational(&tpl, name, 0.0);
+                        ret = RDB_tuple_set_rational(&tpl, name, 0.0, ecp);
                     break;
                 case RDB_MAX:
                     typ = RDB_expr_type(qresp->tbp->var.summarize.addv[i].exp,
@@ -86,9 +87,10 @@ init_summ_table(RDB_qresult *qresp, RDB_exec_context *ecp,
                     if (typ == NULL)
                         goto error;
                     if (typ == &RDB_INTEGER)
-                        ret = RDB_tuple_set_int(&tpl, name, RDB_INT_MIN);
+                        ret = RDB_tuple_set_int(&tpl, name, RDB_INT_MIN, ecp);
                     else
-                        ret = RDB_tuple_set_rational(&tpl, name, RDB_RATIONAL_MIN);
+                        ret = RDB_tuple_set_rational(&tpl, name,
+                                RDB_RATIONAL_MIN, ecp);
                     break;
                 case RDB_MIN:
                     typ = RDB_expr_type(qresp->tbp->var.summarize.addv[i].exp,
@@ -97,15 +99,16 @@ init_summ_table(RDB_qresult *qresp, RDB_exec_context *ecp,
                     if (typ == NULL)
                         goto error;
                     if (typ == &RDB_INTEGER)
-                        ret = RDB_tuple_set_int(&tpl, name, RDB_INT_MAX);
+                        ret = RDB_tuple_set_int(&tpl, name, RDB_INT_MAX, ecp);
                     else
-                        ret = RDB_tuple_set_rational(&tpl, name, RDB_RATIONAL_MAX);
+                        ret = RDB_tuple_set_rational(&tpl, name,
+                                RDB_RATIONAL_MAX, ecp);
                     break;
                 case RDB_ALL:
-                    ret = RDB_tuple_set_bool(&tpl, name, RDB_TRUE);
+                    ret = RDB_tuple_set_bool(&tpl, name, RDB_TRUE, ecp);
                     break;
                 case RDB_ANY:
-                    ret = RDB_tuple_set_bool(&tpl, name, RDB_FALSE);
+                    ret = RDB_tuple_set_bool(&tpl, name, RDB_FALSE, ecp);
                     break;
             }
             if (ret != RDB_OK)
@@ -221,7 +224,8 @@ do_summarize(RDB_qresult *qresp, RDB_exec_context *ecp, RDB_transaction *txp)
         free(keyfv);
         free(nonkeyfv);
         free(svalv);
-        return RDB_NO_MEMORY;
+        RDB_raise_no_memory(ecp);
+        return RDB_ERROR;
     }
 
     /*
@@ -263,7 +267,8 @@ do_summarize(RDB_qresult *qresp, RDB_exec_context *ecp, RDB_transaction *txp)
                 if (qresp->tbp->var.summarize.addv[i].op == RDB_AVG) {
                     char *cattrname = malloc(strlen(attrname) + 3);
                     if (cattrname == NULL) {
-                        ret = RDB_NO_MEMORY;
+                        RDB_raise_no_memory(ecp);
+                        ret = RDB_ERROR;
                         goto cleanup;
                     }
                     strcpy(cattrname, attrname);
@@ -370,7 +375,8 @@ do_group(RDB_qresult *qrp, RDB_exec_context *ecp, RDB_transaction *txp)
 
     keyfv = malloc(sizeof (RDB_field) * keyfc);
     if (keyfv == NULL) {
-        return RDB_NO_MEMORY;
+        RDB_raise_no_memory(ecp);
+        return RDB_ERROR;
     }
 
     /*
@@ -566,8 +572,10 @@ select_index_qresult(RDB_qresult *qrp, RDB_exec_context *ecp,
 
     fv  = malloc(sizeof (RDB_field) * indexp->attrc);
 
-    if (fv == NULL)
-        return RDB_NO_MEMORY;
+    if (fv == NULL) {
+        RDB_raise_no_memory(ecp);
+        return RDB_ERROR;
+    }
 
     qrp->uses_cursor = RDB_TRUE;
     qrp->matp = NULL;
@@ -716,8 +724,10 @@ join_qresult(RDB_qresult *qrp, RDB_exec_context *ecp, RDB_transaction *txp)
     } else if (!qrp->tbp->var.join.tb2p->var.project.indexp->unique) {
         /* Create index qresult for 2nd table */
         qrp->var.virtual.qr2p = malloc(sizeof (RDB_qresult));
-        if (qrp->var.virtual.qr2p == NULL)
-            return RDB_NO_MEMORY;          
+        if (qrp->var.virtual.qr2p == NULL) {
+            RDB_raise_no_memory(ecp);
+            return RDB_ERROR;
+        }
         qrp->var.virtual.qr2p->tbp = qrp->tbp->var.join.tb2p;
         qrp->var.virtual.qr2p->endreached = RDB_FALSE;
         qrp->var.virtual.qr2p->matp = NULL;
@@ -953,8 +963,10 @@ _RDB_table_qresult(RDB_table *tbp, RDB_exec_context *ecp, RDB_transaction *txp,
     int ret;
 
     *qrpp = malloc(sizeof (RDB_qresult));
-    if (*qrpp == NULL)
-        return RDB_NO_MEMORY;
+    if (*qrpp == NULL) {
+        RDB_raise_no_memory(ecp);
+        return RDB_ERROR;
+    }
     ret = init_qresult(*qrpp, tbp, ecp, txp);
     if (ret != RDB_OK)
         free(*qrpp);
@@ -998,19 +1010,20 @@ _RDB_sorter(RDB_table *tbp, RDB_qresult **qrespp, RDB_exec_context *ecp,
     RDB_qresult *qresp = malloc(sizeof (RDB_qresult));
 
     if (qresp == NULL) {
-        return RDB_NO_MEMORY;
+        RDB_raise_no_memory(ecp);
+        return RDB_ERROR;
     }
 
     key.strc = seqitc;
     key.strv = malloc(sizeof (char *) * seqitc);
     if (key.strv == NULL) {
-        ret = RDB_NO_MEMORY;
+        RDB_raise_no_memory(ecp);
         goto error;
     }
 
     ascv = malloc(sizeof (RDB_bool) * seqitc);
     if (ascv == NULL) {
-        ret = RDB_NO_MEMORY;
+        RDB_raise_no_memory(ecp);
         goto error;
     }
 
@@ -1348,7 +1361,8 @@ seek_index_qresult(RDB_qresult *qrp, _RDB_tbindex *indexp,
     int ret;
     RDB_field *fv = malloc(sizeof (RDB_field) * indexp->attrc);
     if (fv == NULL) {
-        return RDB_NO_MEMORY;
+        RDB_raise_no_memory(ecp);
+        return RDB_ERROR;
     }
 
     for (i = 0; i < indexp->attrc; i++) {
@@ -1491,8 +1505,10 @@ next_join_tuple_uix(RDB_qresult *qrp, RDB_object *tplp, RDB_exec_context *ecp,
     _RDB_tbindex *indexp = qrp->tbp->var.join.tb2p->var.project.indexp;
 
     objpv = malloc(sizeof(RDB_object *) * indexp->attrc);
-    if (objpv == NULL)
-        return RDB_NO_MEMORY;
+    if (objpv == NULL) {
+        RDB_raise_no_memory(ecp);
+        return RDB_ERROR;
+    }
 
     RDB_init_obj(&tpl);
 
@@ -1580,7 +1596,8 @@ _RDB_get_by_uindex(RDB_table *tbp, RDB_object *objpv[], _RDB_tbindex *indexp,
             * (tpltyp->var.tuple.attrc - keylen));
     fv = malloc(sizeof (RDB_field) * keylen);
     if (fv == NULL || resfv == NULL) {
-        ret = RDB_NO_MEMORY;
+        RDB_raise_no_memory(ecp);
+        ret = RDB_ERROR;
         goto cleanup;
     }
 
@@ -2149,8 +2166,10 @@ _RDB_next_tuple(RDB_qresult *qrp, RDB_object *tplp, RDB_exec_context *ecp,
                         RDB_summarize_add *summp = &qrp->tbp->var.summarize.addv[i];
                         if (summp->op == RDB_AVG) {
                             cname = malloc(strlen(summp->name) + 3);
-                            if (cname == NULL)
-                                return RDB_NO_MEMORY;
+                            if (cname == NULL) {
+                                RDB_raise_no_memory(ecp);
+                                return RDB_ERROR;
+                            }
                             strcpy (cname, summp->name);
                             strcat (cname, AVG_COUNT_SUFFIX);
                             count = RDB_tuple_get_int(tplp, cname);
@@ -2256,8 +2275,10 @@ _RDB_qresult_contains(RDB_qresult *qrp, const RDB_object *tplp,
 
     kattrc = _RDB_pkey_len(qrp->tbp);
     objpv = malloc(sizeof (RDB_object *) * kattrc);
-    if (objpv == NULL)
-        return RDB_NO_MEMORY;
+    if (objpv == NULL) {
+        RDB_raise_no_memory(ecp);
+        return RDB_ERROR;
+    }
 
     RDB_init_obj(&tpl);
 

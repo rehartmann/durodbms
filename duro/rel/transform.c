@@ -13,21 +13,25 @@
 #include <assert.h>
 
 static int
-alter_op(RDB_expression *exp, const char *name, int argc)
+alter_op(RDB_expression *exp, const char *name, int argc, RDB_exec_context *ecp)
 {
     RDB_expression **argv;
     char *newname;
     
     newname = realloc(exp->var.op.name, strlen(name) + 1);
-    if (newname == NULL)
-        return RDB_NO_MEMORY;
+    if (newname == NULL) {
+        RDB_raise_no_memory(ecp);
+        return RDB_ERROR;
+    }
     strcpy(newname, name);
     exp->var.op.name = newname;
 
     if (argc != exp->var.op.argc) {
         argv = realloc(exp->var.op.argv, sizeof (RDB_expression *) * argc);
-        if (argv == NULL)
-            return RDB_NO_MEMORY;
+        if (argv == NULL) {
+            RDB_raise_no_memory(ecp);
+            return RDB_ERROR;
+        }
         exp->var.op.argc = argc;
         exp->var.op.argv = argv;
     }
@@ -54,8 +58,10 @@ static int
 copy_type(RDB_table *dstp, const RDB_table *srcp, RDB_exec_context *ecp)
 {
     RDB_type *typ = _RDB_dup_nonscalar_type(srcp->typ, ecp);
-    if (typ == NULL)
-        return RDB_NO_MEMORY;
+    if (typ == NULL) {
+        RDB_raise_no_memory(ecp);
+        return RDB_ERROR;
+    }
 
     RDB_drop_type(dstp->typ, ecp, NULL);
     dstp->typ = typ;
@@ -68,7 +74,7 @@ static int
 eliminate_child (RDB_expression *exp, const char *name, RDB_exec_context *ecp)
 {
     RDB_expression *hexp = exp->var.op.argv[0];
-    int ret = alter_op(exp, name, 2);
+    int ret = alter_op(exp, name, 2, ecp);
     if (ret != RDB_OK)
         return ret;
 
@@ -94,15 +100,15 @@ eliminate_not(RDB_expression *exp, RDB_exec_context *ecp)
         return RDB_OK;
 
     if (strcmp(exp->var.op.argv[0]->var.op.name, "AND") == 0) {
-        hexp = RDB_ro_op("NOT", 1, &exp->var.op.argv[0]->var.op.argv[1]);
+        hexp = RDB_ro_op("NOT", 1, &exp->var.op.argv[0]->var.op.argv[1], ecp);
         if (hexp == NULL)
-            return RDB_NO_MEMORY;
-        ret = alter_op(exp, "OR", 2);
+            return RDB_ERROR;
+        ret = alter_op(exp, "OR", 2, ecp);
         if (ret != RDB_OK)
             return ret;
         exp->var.op.argv[1] = hexp;
 
-        ret = alter_op(exp->var.op.argv[0], "NOT", 1);
+        ret = alter_op(exp->var.op.argv[0], "NOT", 1, ecp);
         if (ret != RDB_OK)
             return ret;
 
@@ -112,15 +118,15 @@ eliminate_not(RDB_expression *exp, RDB_exec_context *ecp)
         return eliminate_not(exp->var.op.argv[1], ecp);
     }
     if (strcmp(exp->var.op.argv[0]->var.op.name, "OR") == 0) {
-        hexp = RDB_ro_op("NOT", 1, &exp->var.op.argv[0]->var.op.argv[1]);
+        hexp = RDB_ro_op("NOT", 1, &exp->var.op.argv[0]->var.op.argv[1], ecp);
         if (hexp == NULL)
-            return RDB_NO_MEMORY;
-        ret = alter_op(exp, "AND", 2);
+            return RDB_ERROR;
+        ret = alter_op(exp, "AND", 2, ecp);
         if (ret != RDB_OK)
             return ret;
         exp->var.op.argv[1] = hexp;
 
-        ret = alter_op(exp->var.op.argv[0], "NOT", 1);
+        ret = alter_op(exp->var.op.argv[0], "NOT", 1, ecp);
         if (ret != RDB_OK)
             return ret;
 
@@ -277,9 +283,9 @@ transform_select(RDB_table *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
                  */
                 argv[0] = tbp->var.select.exp;
                 argv[1] = chtbp->var.select.exp;
-                exp = RDB_ro_op("AND", 2, argv);
+                exp = RDB_ro_op("AND", 2, argv, ecp);
                 if (exp == NULL)
-                    return RDB_NO_MEMORY;
+                    return RDB_ERROR;
 
                 tbp->var.select.exp = exp;
                 tbp->var.select.tbp = chtbp->var.select.tbp;
@@ -356,8 +362,10 @@ transform_select(RDB_table *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
                 RDB_expression *ex2p;
                 RDB_table *htbp = chtbp->var._union.tb1p;
                 ex2p = RDB_dup_expr(tbp->var.select.exp, ecp);
-                if (ex2p == NULL)
-                    return RDB_NO_MEMORY;
+                if (ex2p == NULL) {
+                    RDB_raise_no_memory(ecp);
+                    return RDB_ERROR;
+                }
 
                 newtbp = _RDB_select(chtbp->var._union.tb2p, ex2p, ecp);
                 if (newtbp == NULL) {
@@ -421,9 +429,9 @@ transform_select(RDB_table *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
                 RDB_table *htbp = chtbp->var.rename.tbp;
                 exp = tbp->var.select.exp;
                 ret = _RDB_invrename_expr(exp, chtbp->var.rename.renc,
-                        chtbp->var.rename.renv);
+                        chtbp->var.rename.renv, ecp);
                 if (ret != RDB_OK)
-                    return ret;
+                    return RDB_ERROR;
 
                 tbp->kind = RDB_TB_RENAME;
                 tbp->var.rename.renc = chtbp->var.rename.renc;
@@ -471,8 +479,10 @@ swap_project_union(RDB_table *tbp, RDB_table *chtbp, RDB_exec_context *ecp,
     RDB_table *htbp = chtbp->var._union.tb1p;
     int attrc = tbp->typ->var.basetyp->var.tuple.attrc;
     char **attrnamev = malloc(attrc * sizeof(char *));
-    if (attrnamev == NULL)
-        return RDB_NO_MEMORY;
+    if (attrnamev == NULL) {
+        RDB_raise_no_memory(ecp);
+        return RDB_ERROR;
+    }
 
     for (i = 0; i < attrc; i++) {
         attrnamev[i] = tbp->typ->var.basetyp->var.tuple.attrv[i].name;
@@ -524,8 +534,10 @@ swap_project_rename(RDB_table *tbp, RDB_exec_context *ecp)
      */
 
     renv = malloc(sizeof (RDB_renaming) * chtbp->var.rename.renc);
-    if (renv == NULL)
-        return RDB_NO_MEMORY;
+    if (renv == NULL) {
+        RDB_raise_no_memory(ecp);
+        return RDB_ERROR;
+    }
 
     for (i = 0; i < chtbp->var.rename.renc; i++) {
         renv[i].to = NULL;
@@ -544,7 +556,8 @@ swap_project_rename(RDB_table *tbp, RDB_exec_context *ecp)
                     free(renv[i].to);
                 }
                 free(renv);
-                return RDB_NO_MEMORY;
+                RDB_raise_no_memory(ecp);
+                return RDB_ERROR;
             }
             renv[j].to = RDB_dup_str(chtbp->var.rename.renv[i].to);
             if (renv[j].to == NULL) {
@@ -553,7 +566,8 @@ swap_project_rename(RDB_table *tbp, RDB_exec_context *ecp)
                     free(renv[i].to);
                 }
                 free(renv);
-                return RDB_NO_MEMORY;
+                RDB_raise_no_memory(ecp);
+                return RDB_ERROR;
             }
             j++;
         }
@@ -587,8 +601,10 @@ swap_project_rename(RDB_table *tbp, RDB_exec_context *ecp)
         chtbp->var.project.indexp = NULL;
 
         attrnamev = malloc(nattrc * sizeof(char *));
-        if (attrnamev == NULL)
-            return RDB_NO_MEMORY;
+        if (attrnamev == NULL) {
+            RDB_raise_no_memory(ecp);
+            return RDB_ERROR;
+        }
         for (i = 0; i < nattrc; i++) {
             attrnamev[i] = tbp->typ->var.basetyp->var.tuple.attrv[i].name;
             for (j = 0; j < tbp->var.rename.renc
@@ -623,8 +639,10 @@ swap_project_extend(RDB_table *tbp, RDB_exec_context *ecp)
      * Alter parent
      */
     extv = malloc(sizeof (RDB_virtual_attr) * chtbp->var.extend.attrc);
-    if (extv == NULL)
-        return RDB_NO_MEMORY;
+    if (extv == NULL) {
+        RDB_raise_no_memory(ecp);
+        return RDB_ERROR;
+    }
 
     for (i = 0; i < chtbp->var.extend.attrc; i++) {
         extv[i].name = NULL;
@@ -691,8 +709,10 @@ swap_project_extend(RDB_table *tbp, RDB_exec_context *ecp)
 
         attrnamev = malloc(chtbp->typ->var.basetyp->var.tuple.attrc
                 * sizeof(char *));
-        if (attrnamev == NULL)
-            return RDB_NO_MEMORY;
+        if (attrnamev == NULL) {
+            RDB_raise_no_memory(ecp);
+            return RDB_ERROR;
+        }
 
         /*
          * Get those attributes of the grandchild who appear in the parent
@@ -736,8 +756,10 @@ swap_project_select(RDB_table *tbp, RDB_table *chtbp, RDB_exec_context *ecp)
     int attrc;
     char **attrv = malloc(sizeof(char *)
             * chtbp->typ->var.basetyp->var.tuple.attrc);
-    if (attrv == NULL)
-        return RDB_NO_MEMORY;
+    if (attrv == NULL) {
+        RDB_raise_no_memory(ecp);
+        return RDB_ERROR;
+    }
 
     assert(tbp->typ->var.basetyp->var.tuple.attrc
             <= chtbp->typ->var.basetyp->var.tuple.attrc);
