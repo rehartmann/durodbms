@@ -947,7 +947,8 @@ RDB_set_table_name(RDB_table *tbp, const char *name, RDB_exec_context *ecp,
                     "cannot rename table in catalog: %s", RDB_strerror(ret));
             if (!RDB_is_syserr(ret)) {
                 /* Should not happen */
-                ret = RDB_INTERNAL;
+                RDB_raise_internal("cannot rename table", ecp);
+                return RDB_ERROR;
             }
             _RDB_handle_syserr(txp, ret);
             return ret;

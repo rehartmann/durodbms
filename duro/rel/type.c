@@ -34,6 +34,10 @@ RDB_type RDB_ATTRIBUTE_NOT_FOUND_ERROR;
 RDB_type RDB_PREDICATE_VIOLATION_ERROR;
 RDB_type RDB_SYSTEM_ERROR;
 RDB_type RDB_RESOURCE_NOT_FOUND_ERROR;
+RDB_type RDB_INTERNAL_ERROR;
+RDB_type RDB_LOCK_NOT_GRANTED_ERROR;
+RDB_type RDB_AGGREGATE_UNDEFINED_ERROR;
+RDB_type RDB_VERSION_MISMATCH_ERROR;
 
 static int
 compare_int(const char *name, int argc, RDB_object *argv[],
@@ -176,9 +180,32 @@ _RDB_init_builtin_types(RDB_exec_context *ecp)
     static RDB_attr resource_not_found_comp = { "INFO", &RDB_STRING };
 
     static RDB_possrep resource_not_found_rep = {
-        "RESOURCE_NOT_FOUND",
+        "RESOURCE_NOT_FOUND_ERROR",
         1,
         &resource_not_found_comp
+    };
+
+    static RDB_attr internal_comp = { "INFO", &RDB_STRING };
+
+    static RDB_possrep internal_rep = {
+        "INTERNAL_ERROR",
+        1,
+        &internal_comp
+    };
+
+    static RDB_possrep lock_not_granted_rep = {
+        "LOCK_NOT_GRANTED_ERROR",
+        0,
+    };
+
+    static RDB_possrep aggregate_undefined_rep = {
+        "AGGREGATE_UNDEFINED_ERROR",
+        0,
+    };
+
+    static RDB_possrep version_mismatch_rep = {
+        "VERSION_MISMATCH_ERROR",
+        0,
     };
 
     RDB_BOOLEAN.kind = RDB_TP_SCALAR;
@@ -366,6 +393,58 @@ _RDB_init_builtin_types(RDB_exec_context *ecp)
     RDB_RESOURCE_NOT_FOUND_ERROR.var.scalar.constraintp = NULL;
     RDB_RESOURCE_NOT_FOUND_ERROR.var.scalar.sysimpl = RDB_TRUE;
     RDB_RESOURCE_NOT_FOUND_ERROR.comparep = NULL;
+
+    RDB_INTERNAL_ERROR.kind = RDB_TP_SCALAR;
+    RDB_INTERNAL_ERROR.ireplen = RDB_VARIABLE_LEN;
+    RDB_INTERNAL_ERROR.name = "INTERNAL_ERROR";
+    RDB_INTERNAL_ERROR.var.scalar.repc = 1;
+    RDB_INTERNAL_ERROR.var.scalar.repv = &internal_rep;
+    RDB_INTERNAL_ERROR.var.scalar.arep = &RDB_STRING;
+    RDB_INTERNAL_ERROR.var.scalar.constraintp = NULL;
+    RDB_INTERNAL_ERROR.var.scalar.sysimpl = RDB_TRUE;
+    RDB_INTERNAL_ERROR.comparep = NULL;
+
+    RDB_LOCK_NOT_GRANTED_ERROR.kind = RDB_TP_SCALAR;
+    RDB_LOCK_NOT_GRANTED_ERROR.ireplen = RDB_VARIABLE_LEN;
+    RDB_LOCK_NOT_GRANTED_ERROR.name = "LOCK_NOT_GRANTED_ERROR";
+    RDB_LOCK_NOT_GRANTED_ERROR.var.scalar.repc = 1;
+    RDB_LOCK_NOT_GRANTED_ERROR.var.scalar.repv = &lock_not_granted_rep;
+    RDB_LOCK_NOT_GRANTED_ERROR.var.scalar.arep =
+            RDB_create_tuple_type(0, NULL, ecp);
+    if (RDB_LOCK_NOT_GRANTED_ERROR.var.scalar.arep == NULL) {
+        return RDB_ERROR;
+    }
+    RDB_LOCK_NOT_GRANTED_ERROR.var.scalar.constraintp = NULL;
+    RDB_LOCK_NOT_GRANTED_ERROR.var.scalar.sysimpl = RDB_TRUE;
+    RDB_LOCK_NOT_GRANTED_ERROR.comparep = NULL;
+
+    RDB_AGGREGATE_UNDEFINED_ERROR.kind = RDB_TP_SCALAR;
+    RDB_AGGREGATE_UNDEFINED_ERROR.ireplen = RDB_VARIABLE_LEN;
+    RDB_AGGREGATE_UNDEFINED_ERROR.name = "AGGREGATE_UNDEFINED_ERROR";
+    RDB_AGGREGATE_UNDEFINED_ERROR.var.scalar.repc = 1;
+    RDB_AGGREGATE_UNDEFINED_ERROR.var.scalar.repv = &aggregate_undefined_rep;
+    RDB_AGGREGATE_UNDEFINED_ERROR.var.scalar.arep =
+            RDB_create_tuple_type(0, NULL, ecp);
+    if (RDB_AGGREGATE_UNDEFINED_ERROR.var.scalar.arep == NULL) {
+        return RDB_ERROR;
+    }
+    RDB_AGGREGATE_UNDEFINED_ERROR.var.scalar.constraintp = NULL;
+    RDB_AGGREGATE_UNDEFINED_ERROR.var.scalar.sysimpl = RDB_TRUE;
+    RDB_AGGREGATE_UNDEFINED_ERROR.comparep = NULL;
+
+    RDB_VERSION_MISMATCH_ERROR.kind = RDB_TP_SCALAR;
+    RDB_VERSION_MISMATCH_ERROR.ireplen = RDB_VARIABLE_LEN;
+    RDB_VERSION_MISMATCH_ERROR.name = "VERSION_MISMATCH_ERROR";
+    RDB_VERSION_MISMATCH_ERROR.var.scalar.repc = 1;
+    RDB_VERSION_MISMATCH_ERROR.var.scalar.repv = &version_mismatch_rep;
+    RDB_VERSION_MISMATCH_ERROR.var.scalar.arep =
+            RDB_create_tuple_type(0, NULL, ecp);
+    if (RDB_VERSION_MISMATCH_ERROR.var.scalar.arep == NULL) {
+        return RDB_ERROR;
+    }
+    RDB_VERSION_MISMATCH_ERROR.var.scalar.constraintp = NULL;
+    RDB_VERSION_MISMATCH_ERROR.var.scalar.sysimpl = RDB_TRUE;
+    RDB_VERSION_MISMATCH_ERROR.comparep = NULL;
 
     return RDB_OK;
 }

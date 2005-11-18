@@ -851,15 +851,17 @@ check_version_info(RDB_dbroot *dbrootp, RDB_exec_context *ecp,
     ret = RDB_extract_tuple(dbrootp->version_info_tbp, ecp, txp, &tpl);
     if (ret != RDB_OK) {
         if (RDB_obj_type(RDB_get_err(ecp)) == &RDB_NOT_FOUND_ERROR) {
-            /* RDB_clear_err(ecp);
-            ret = RDB_VERSION_MISMATCH; !! */
+            RDB_clear_err(ecp);
+            RDB_raise_version_mismatch(ecp);
+            ret = RDB_ERROR;
         }
         goto cleanup;
     }
 
     if (RDB_tuple_get_int(&tpl, "MAJOR_VERSION") != MAJOR_VERSION
             || RDB_tuple_get_int(&tpl, "MINOR_VERSION") != MINOR_VERSION) {
-        ret = RDB_VERSION_MISMATCH;
+        RDB_raise_version_mismatch(ecp);
+        ret = RDB_ERROR;
     } else {
         ret = RDB_OK;
     }
@@ -1531,7 +1533,8 @@ _RDB_cat_get_rtable(const char *name, RDB_exec_context *ecp,
         for (i = 0; i < attrc && (strcmp(attrv[i].name, name) != 0); i++);
         if (i >= attrc) {
             /* Not found */
-            ret = RDB_INTERNAL;
+            RDB_raise_internal(
+                    "attribute not found while setting default value", ecp);
             goto error;
         }
         attrv[i].defaultp = malloc(sizeof (RDB_object));
@@ -2422,10 +2425,11 @@ _RDB_cat_create_constraint(const char *name, RDB_expression *exp,
 
     ret = RDB_insert(RDB_tx_db(txp)->dbrootp->constraints_tbp, &tpl, ecp, txp);
     if (ret != RDB_OK) {
-        if (ret == RDB_KEY_VIOLATION) {
+        if (RDB_obj_type(RDB_get_err(ecp)) == &RDB_KEY_VIOLATION_ERROR) {
+            RDB_clear_err(ecp);
             RDB_raise_element_exists("constraint already exists", ecp);
-            ret = RDB_ERROR;
         }
+        ret = RDB_ERROR;
         goto cleanup;
     }
 

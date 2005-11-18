@@ -4,6 +4,9 @@ Summary of Changes for Duro
 
 Changes for Duro 0.10
 
+- Redesigned the API, using scalar types for returning error information
+  instead of a numerical error code.
+
 - Added IF operator.
 
 - Dropped catalog table SYS_POSSREPS.

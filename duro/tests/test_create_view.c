@@ -85,11 +85,11 @@ create_view2(RDB_database *dbp, RDB_exec_context *ecp)
 
     hexprp = RDB_expr_attr("SALARY", ecp);
     if (hexprp == NULL)
-        return RDB_NO_MEMORY;
+        return RDB_ERROR;
     exprp = RDB_ro_op_va(">", ecp, hexprp, RDB_rational_to_expr(4000.0, ecp),
             (RDB_expression *) NULL);
     if (exprp == NULL)
-        return RDB_NO_MEMORY;
+        return RDB_ERROR;
 
     vtbp = RDB_select(tbp, exprp, ecp, &tx);
     if (vtbp == NULL) {

@@ -62,7 +62,8 @@ _RDB_insert_real(RDB_table *tbp, const RDB_object *tplp,
                 case RDB_OB_INT:
                 case RDB_OB_RATIONAL:
                 case RDB_OB_BIN:
-                    ret = RDB_INTERNAL;
+                    RDB_raise_internal("invalid tuple attribute", ecp);
+                    ret = RDB_ERROR;
                     goto cleanup;
                 case RDB_OB_INITIAL:
                     if (!RDB_type_is_scalar(attrtyp)) {

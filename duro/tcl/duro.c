@@ -264,8 +264,8 @@ Duro_add_table(Tcl_Interp *interp, TclState *statep, RDB_table *tbp,
     if (!new) {
         Tcl_AppendResult(interp, "local table \"", name, "\" already exists",
                 (char *) NULL);
-        Tcl_SetErrorCode(interp, "Duro", "RDB_ELEMENT_EXISTS",
-                (char *) RDB_strerror(RDB_ELEMENT_EXISTS), (char *) NULL);
+        Tcl_SetErrorCode(interp, "Duro",
+                "RDB_ELEMENT_EXISTS_ERROR(\"local table exists\")", (char *) NULL);
         return TCL_ERROR;
     }
 

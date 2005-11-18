@@ -91,7 +91,7 @@ test_update1(RDB_database *dbp, RDB_exec_context *ecp)
             (RDB_expression *) NULL);
     if (exp == NULL) {
         RDB_rollback(ecp, &tx);
-        return RDB_NO_MEMORY;
+        return RDB_ERROR;
     }
 
     upd.name = "NO";

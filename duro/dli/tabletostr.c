@@ -224,10 +224,8 @@ append_obj(RDB_object *objp, const RDB_object *srcp, RDB_exec_context *ecp,
              RDB_destroy_obj(&dst, ecp);
          }
          if (ret != RDB_OK) {
-             return ret;
+             return RDB_ERROR;
          }
-         if (ret != RDB_OK)
-             return ret;
     } else {
         switch (srcp->kind) {
             case RDB_OB_TUPLE:
@@ -241,7 +239,8 @@ append_obj(RDB_object *objp, const RDB_object *srcp, RDB_exec_context *ecp,
                     return ret;
                 break;
             default:
-                return RDB_NOT_SUPPORTED;
+                RDB_raise_not_supported("", ecp);
+                return RDB_ERROR;
         }
     }
     return RDB_OK;
@@ -401,16 +400,18 @@ append_table(RDB_object *objp, RDB_table *tbp, RDB_exec_context *ecp,
                 RDB_object arr;
                 RDB_object *tplp;
 
-                if (RDB_table_name(tbp) != NULL)
-                    return RDB_INVALID_ARGUMENT;
+                if (RDB_table_name(tbp) != NULL) {
+                    RDB_raise_invalid_argument("real table must be named", ecp);
+                    return RDB_ERROR;
+                }
                 ret = append_str(objp, "RELATION { ");
                 if (ret != RDB_OK)
-                    return ret;
+                    return RDB_ERROR;
 
                 RDB_init_obj(&arr);
                 ret = RDB_table_to_array(&arr, tbp, 0, NULL, ecp, NULL);
                 if (ret != RDB_OK)
-                    return ret;
+                    return RDB_ERROR;
 
                 for (i = 0;
                         (tplp = RDB_array_get(&arr, (RDB_int) i, ecp)) != NULL;

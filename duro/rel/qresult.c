@@ -2160,7 +2160,7 @@ _RDB_next_tuple(RDB_qresult *qrp, RDB_object *tplp, RDB_exec_context *ecp,
                     ret = next_stored_tuple(qrp, qrp->matp, tplp, RDB_TRUE,
                             RDB_FALSE, qrp->tbp->typ->var.basetyp, ecp);
                     if (ret != RDB_OK)
-                        return ret;
+                        return RDB_ERROR;
                     /* check AVG counts */
                     for (i = 0; i < qrp->tbp->var.summarize.addc; i++) {
                         RDB_summarize_add *summp = &qrp->tbp->var.summarize.addv[i];
@@ -2174,8 +2174,10 @@ _RDB_next_tuple(RDB_qresult *qrp, RDB_object *tplp, RDB_exec_context *ecp,
                             strcat (cname, AVG_COUNT_SUFFIX);
                             count = RDB_tuple_get_int(tplp, cname);
                             free(cname);
-                            if (count == 0)
-                                return RDB_AGGREGATE_UNDEFINED;
+                            if (count == 0) {
+                                RDB_raise_aggregate_undefined(ecp);
+                                return RDB_ERROR;
+                            }
                         }
                     }
                 }

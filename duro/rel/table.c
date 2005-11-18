@@ -228,14 +228,16 @@ RDB_drop_table_index(const char *name, RDB_exec_context *ecp,
         ret = _RDB_cat_get_indexes(tbp->name, txp->dbp->dbrootp, ecp, txp,
                 &tbp->stp->indexv);
         if (ret != RDB_OK)
-            return ret;
+            return RDB_ERROR;
 
         /* Search again */
         for (i = 0; i < tbp->stp->indexc
                 && strcmp(tbp->stp->indexv[i].name, name) != 0;
                 i++);
-        if (i >= tbp->stp->indexc)
-            return RDB_INTERNAL;
+        if (i >= tbp->stp->indexc) {
+            RDB_raise_internal("invalid index", ecp);
+            return RDB_ERROR;
+        }
     }        
     xi = i;
 
@@ -891,8 +893,10 @@ RDB_avg(RDB_table *tbp, const char *attrname, RDB_exec_context *ecp,
     }
     RDB_clear_err(ecp);
 
-    if (count == 0)
-        return RDB_AGGREGATE_UNDEFINED;
+    if (count == 0) {
+        RDB_raise_aggregate_undefined(ecp);
+        return RDB_ERROR;
+    }
     *resultp /= count;
 
     return RDB_destroy_obj(&arr, ecp);

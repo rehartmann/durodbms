@@ -156,6 +156,45 @@ RDB_raise_resource_not_found(const char *info, RDB_exec_context *ecp)
     return raise_info_err(&RDB_RESOURCE_NOT_FOUND_ERROR, info, ecp);
 }
 
+RDB_object *
+RDB_raise_internal(const char *info, RDB_exec_context *ecp)
+{
+    return raise_info_err(&RDB_INTERNAL_ERROR, info, ecp);
+}
+
+RDB_object *
+RDB_raise_lock_not_granted(RDB_exec_context *ecp)
+{
+    RDB_object *errp = RDB_raise_err(ecp);
+    if (errp == NULL)
+        return NULL;
+
+    errp->typ = &RDB_LOCK_NOT_GRANTED_ERROR;
+    return errp;
+}
+
+RDB_object *
+RDB_raise_aggregate_undefined(RDB_exec_context *ecp)
+{
+    RDB_object *errp = RDB_raise_err(ecp);
+    if (errp == NULL)
+        return NULL;
+
+    errp->typ = &RDB_AGGREGATE_UNDEFINED_ERROR;
+    return errp;
+}
+
+RDB_object *
+RDB_raise_version_mismatch(RDB_exec_context *ecp)
+{
+    RDB_object *errp = RDB_raise_err(ecp);
+    if (errp == NULL)
+        return NULL;
+
+    errp->typ = &RDB_VERSION_MISMATCH_ERROR;
+    return errp;
+}
+
 void
 _RDB_handle_errcode(int errcode, RDB_exec_context *ecp)
 {
@@ -171,6 +210,12 @@ _RDB_handle_errcode(int errcode, RDB_exec_context *ecp)
             break;
         case RDB_NOT_FOUND:
             RDB_raise_not_found("", ecp);
+            break;
+        case DB_LOCK_NOTGRANTED:
+            RDB_raise_lock_not_granted(ecp);
+            break;
+        case EINVAL:
+            RDB_raise_invalid_argument("", ecp);
             break;
         default:
             RDB_raise_system(RDB_strerror(errcode), ecp);

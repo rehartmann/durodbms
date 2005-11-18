@@ -8,6 +8,7 @@
 #include "cursor.h"
 #include <gen/errors.h>
 #include <string.h>
+#include <errno.h>
 
 static RDB_cursor *
 new_cursor(RDB_recmap *rmp, DB_TXN *txid, RDB_index *idxp)
@@ -123,10 +124,11 @@ RDB_cursor_set(RDB_cursor *curp, int fieldc, RDB_field fields[])
     
     /* Write record back */
 
-    if (keymodfd)
+    if (keymodfd) {
         /* Key modification is not supported */
-        return RDB_INVALID_ARGUMENT;
-        
+        return EINVAL;
+    }
+
     /* Key not modified, so write data only */
     ret = curp->cursorp->c_put(curp->cursorp,
                 &curp->current_key, &curp->current_data, DB_CURRENT);

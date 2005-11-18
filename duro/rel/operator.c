@@ -349,7 +349,8 @@ obj_equals(const char *name, int argc, RDB_object *argv[],
         case RDB_OB_INT:
         case RDB_OB_RATIONAL:
             /* Must not happen, because there must be a comparsion function */
-            return RDB_INTERNAL;
+            RDB_raise_internal("missing comparison function", ecp);
+            return RDB_ERROR;
         case RDB_OB_BIN:
             return eq_binary("=", 2, argv, NULL, 0, ecp, txp, retvalp);
         case RDB_OB_TUPLE:

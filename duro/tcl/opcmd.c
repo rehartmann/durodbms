@@ -424,28 +424,34 @@ Duro_invoke_update_op(const char *name, int argc, RDB_object *argv[],
     /* Get argument name list */
     ret = Tcl_ListObjIndex(interp, opdatap, 0, &namelistp);
     if (ret != TCL_OK) {
-        return RDB_INTERNAL;
+        RDB_raise_internal("invalid argument names", ecp);
+        return RDB_ERROR;
     }
 
     /* Add tx argument */
     ret = Tcl_ListObjAppendElement(interp, namelistp, Tcl_NewStringObj("tx", 2));
-    if (ret != TCL_OK)
-        return RDB_INTERNAL;
+    if (ret != TCL_OK) {
+        RDB_raise_internal("could not add tx", ecp);
+        return RDB_ERROR;
+    }
 
-    if (!Tcl_GetCommandInfo(interp, "duro::operator", &cmdinfo))
-        return RDB_INTERNAL;
+    if (!Tcl_GetCommandInfo(interp, "duro::operator", &cmdinfo)) {
+        RDB_raise_internal("could not get command info", ecp);
+        return RDB_ERROR;
+    }
 
     /* Find tx id */
     txtop = find_txid(txp, (TclState *) cmdinfo.objClientData);
     if (txtop == NULL) {
-        RDB_errmsg(envp, "transaction not found");
-        return RDB_INTERNAL;
+        RDB_raise_internal("transaction not found", ecp);
+        return RDB_ERROR;
     }
 
     /* Get body */
     ret = Tcl_ListObjIndex(interp, opdatap, 1, &bodytop);
     if (ret != TCL_OK) {
-        return RDB_INTERNAL;
+        RDB_raise_internal("could not get operator body", ecp);
+        return RDB_ERROR;
     }
 
     /*
@@ -458,7 +464,8 @@ Duro_invoke_update_op(const char *name, int argc, RDB_object *argv[],
     ret = Tcl_EvalObjv(interp, 4, procargv, 0);
     if (ret != TCL_OK) {
         RDB_errmsg(envp, "%s", Tcl_GetStringResult(interp));
-        return RDB_INTERNAL;
+        RDB_raise_internal("proc command failed", ecp);
+        return RDB_ERROR;
     }
 
     /*
@@ -485,7 +492,8 @@ Duro_invoke_update_op(const char *name, int argc, RDB_object *argv[],
                     tbp, "duro_t", envp);
                 if (ret != TCL_OK) {
                     Tcl_Free((char *) opargv);
-                    return RDB_INTERNAL;
+                    RDB_raise_internal("passing table arg failed", ecp);
+                    return RDB_ERROR;
                 }
             }
             opargv[i + 1] = Tcl_NewStringObj(RDB_table_name(tbp),
@@ -503,7 +511,8 @@ Duro_invoke_update_op(const char *name, int argc, RDB_object *argv[],
                 varnamep = Tcl_NewStringObj(buf, 10);
                 if (Tcl_ObjSetVar2(interp, varnamep, NULL, argtop, 0) == NULL) {
                     Tcl_Free((char *) opargv);
-                    return RDB_INTERNAL;
+                    RDB_raise_internal("passing arg failed", ecp);
+                    return RDB_ERROR;
                 }
                 opargv[i + 1] = varnamep;
             } else {
@@ -522,13 +531,14 @@ Duro_invoke_update_op(const char *name, int argc, RDB_object *argv[],
     switch (ret) {
         case TCL_ERROR:
             RDB_errmsg(envp, "%s", Tcl_GetStringResult(interp));
-            return RDB_INVALID_ARGUMENT;
+            RDB_raise_invalid_argument("invoking Tcl procedure failed", ecp);
+            return RDB_ERROR;
         case TCL_BREAK:
-            RDB_errmsg(envp, "invoked \"break\" outside of a loop");
-            return RDB_INVALID_ARGUMENT;
+            RDB_raise_invalid_argument("invoked \"break\" outside of a loop", ecp);
+            return RDB_ERROR;
         case TCL_CONTINUE:
-            RDB_errmsg(envp, "invoked \"continue\" outside of a loop");
-            return RDB_INVALID_ARGUMENT;
+            RDB_raise_invalid_argument("invoked \"continue\" outside of a loop", ecp);
+            return RDB_ERROR;
     }
 
     /* Store updated values */
@@ -562,7 +572,8 @@ Duro_invoke_update_op(const char *name, int argc, RDB_object *argv[],
             Tcl_UnsetVar(interp, Tcl_GetString(varnamep), 0);
 
             if (ret != TCL_OK) {
-                return RDB_INTERNAL;
+                RDB_raise_internal("storing updated arg failed", ecp);
+                return RDB_ERROR;
             }
         }
     }
@@ -608,7 +619,8 @@ Duro_invoke_ro_op(const char *name, int argc, RDB_object *argv[],
     /* Get argument name list */
     ret = Tcl_ListObjIndex(interp, opdatap, 0, &namelistp);
     if (ret != TCL_OK) {
-        return RDB_INTERNAL;
+        RDB_raise_internal("invalid argument names", ecp);
+        return RDB_ERROR;
     }
 
     if (Tcl_GetCommandInfo(interp, "duro::operator", &cmdinfo)) {
@@ -619,14 +631,17 @@ Duro_invoke_ro_op(const char *name, int argc, RDB_object *argv[],
     if (txtop != NULL) {
         /* Add tx argument */
         ret = Tcl_ListObjAppendElement(interp, namelistp, Tcl_NewStringObj("tx", 2));
-        if (ret != TCL_OK)
-            return RDB_INTERNAL;
+        if (ret != TCL_OK) {
+            RDB_raise_internal("could not add tx", ecp);
+            return RDB_ERROR;
+        }
     }
 
     /* Get body */
     ret = Tcl_ListObjIndex(interp, opdatap, 1, &bodytop);
     if (ret != TCL_OK) {
-        return RDB_INTERNAL;
+        RDB_raise_internal("could not get operator body", ecp);
+        return RDB_ERROR;
     }
 
     /*
@@ -639,7 +654,8 @@ Duro_invoke_ro_op(const char *name, int argc, RDB_object *argv[],
     ret = Tcl_EvalObjv(interp, 4, procargv, 0);
     if (ret != TCL_OK) {
         RDB_errmsg(envp, "%s", Tcl_GetStringResult(interp));
-        return RDB_INTERNAL;
+        RDB_raise_internal("proc command failed", ecp);
+        return RDB_ERROR;
     }
 
     /*
@@ -670,13 +686,16 @@ Duro_invoke_ro_op(const char *name, int argc, RDB_object *argv[],
     switch (ret) {
         case TCL_ERROR:
             RDB_errmsg(envp, "%s", Tcl_GetStringResult(interp));
-            return RDB_INVALID_ARGUMENT;
+            RDB_raise_invalid_argument("invoking Tcl procedure failed", ecp);
+            return RDB_ERROR;
         case TCL_BREAK:
-            RDB_errmsg(envp, "invoked \"break\" outside of a loop");
-            return RDB_INVALID_ARGUMENT;
+            RDB_raise_invalid_argument("invoked \"break\" outside of a loop",
+                    ecp);
+            return RDB_ERROR;
         case TCL_CONTINUE:
-            RDB_errmsg(envp, "invoked \"continue\" outside of a loop");
-            return RDB_INVALID_ARGUMENT;
+            RDB_raise_invalid_argument(
+                    "invoked \"continue\" outside of a loop", ecp);
+            return RDB_ERROR;
     }
 
     /*
@@ -696,5 +715,9 @@ Duro_invoke_ro_op(const char *name, int argc, RDB_object *argv[],
             convtyp, retvalp, ecp, txp);
     if (rtyp->kind != RDB_TP_RELATION)
         retvalp->typ = rtyp;
-    return ret == TCL_OK ? RDB_OK : RDB_INVALID_ARGUMENT;
+    if (ret != TCL_OK) {
+        RDB_raise_invalid_argument("converting return value failed", ecp);
+        return RDB_ERROR;
+    }
+    return RDB_OK;
 }

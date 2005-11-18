@@ -104,6 +104,7 @@ if {![catch {
 }]} {
     error "creating TS2 a second time should fail, but succeeded"
 }
+
 if {![string match "ELEMENT_EXISTS_ERROR(*)" [lindex $errorCode 1]]} {
     error "Wrong error: $errorCode"
 }
@@ -116,7 +117,8 @@ if {![catch {
 }]} {
     error "creating ts2 a second time should fail, but succeeded"
 }
-if {[lindex $errorCode 1] != "RDB_ELEMENT_EXISTS"} {
+set code [lindex $errorCode 1]
+if {![string match "RDB_ELEMENT_EXISTS_ERROR(*)" $code]} {
     error "Wrong error: $errorCode"
 }
 

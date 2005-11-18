@@ -505,7 +505,9 @@ _RDB_create_stored_table(RDB_table *tbp, RDB_environment *envp,
      */
     if (tbp->is_persistent && tbp->is_user) {
         ret = _RDB_cat_insert_table_recmap(tbp, tbp->name, ecp, txp);
-        if (ret == RDB_KEY_VIOLATION) {
+        if (ret == RDB_ERROR
+                && RDB_obj_type(RDB_get_err(ecp)) == &RDB_KEY_VIOLATION_ERROR) {
+            RDB_clear_err(ecp);
             /* Choose a different recmap name */
             int n = 0;
             rmname = malloc(strlen(tbp->name) + 4);
@@ -515,8 +517,11 @@ _RDB_create_stored_table(RDB_table *tbp, RDB_environment *envp,
             }
             do {
                 sprintf(rmname, "%s%d", tbp->name, ++n);
+                RDB_clear_err(ecp);
                 ret = _RDB_cat_insert_table_recmap(tbp, rmname, ecp, txp);
-            } while (ret == RDB_KEY_VIOLATION && n <= 999);
+            } while (ret != RDB_OK
+                    && RDB_obj_type(RDB_get_err(ecp)) == &RDB_KEY_VIOLATION_ERROR
+                    && n <= 999);
         }
         if (ret != RDB_OK)
             goto error;

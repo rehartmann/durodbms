@@ -1228,4 +1228,16 @@ RDB_raise_system(const char *info, RDB_exec_context *);
 RDB_object *
 RDB_raise_resource_not_found(const char *info, RDB_exec_context *);
 
+RDB_object *
+RDB_raise_internal(const char *info, RDB_exec_context *);
+
+RDB_object *
+RDB_raise_lock_not_granted(RDB_exec_context *);
+
+RDB_object *
+RDB_raise_aggregate_undefined(RDB_exec_context *);
+
+RDB_object *
+RDB_raise_version_mismatch(RDB_exec_context *);
+
 #endif
