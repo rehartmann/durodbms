@@ -182,7 +182,6 @@ error:
     free(constrp->name);
     free(constrp);
 
-    _RDB_handle_syserr(txp, ret);
     return RDB_ERROR;
 }
 
@@ -197,8 +196,10 @@ RDB_drop_constraint(const char *name, RDB_exec_context *ecp,
     if (dbrootp->constraints_read) {
         /* Delete constraint from list */
         RDB_constraint *constrp = dbrootp->first_constrp;
-        if (constrp == NULL)
-            return RDB_NOT_FOUND;
+        if (constrp == NULL) {
+            RDB_raise_not_found(name, ecp);
+            return RDB_ERROR;
+        }
 
         if (strcmp(constrp->name, name) == 0) {
             dbrootp->first_constrp = constrp->nextp;
@@ -212,8 +213,11 @@ RDB_drop_constraint(const char *name, RDB_exec_context *ecp,
                     && strcmp(constrp->nextp->name, name) !=0) {
                 constrp = constrp->nextp;
             }
-            if (constrp->nextp == NULL)
-                return RDB_NOT_FOUND;
+            if (constrp->nextp == NULL) {
+                 RDB_raise_not_found(name, ecp);
+                 return RDB_ERROR;
+             }
+
             hconstrp = constrp->nextp;
             constrp->nextp = constrp->nextp->nextp;
             RDB_drop_expr(hconstrp->exp, ecp);
@@ -231,7 +235,6 @@ RDB_drop_constraint(const char *name, RDB_exec_context *ecp,
     ret = RDB_delete(dbrootp->constraints_tbp, condp, ecp, txp);
     RDB_drop_expr(condp, ecp);
 
-    _RDB_handle_syserr(txp, ret);
     return ret;
 }
 

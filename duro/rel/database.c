@@ -731,7 +731,6 @@ _RDB_create_table(const char *name, RDB_bool persistent,
         if (ret != RDB_OK) {
             RDB_rollback(ecp, &tx);
             _RDB_free_table(tbp, ecp);
-            _RDB_handle_syserr(txp, ret);
             return NULL;
         }
 
@@ -944,14 +943,9 @@ RDB_set_table_name(RDB_table *tbp, const char *name, RDB_exec_context *ecp,
         ret = _RDB_cat_rename_table(tbp, name, ecp, txp);
         if (ret != RDB_OK) {
             RDB_errmsg(RDB_db_env(RDB_tx_db(txp)),
-                    "cannot rename table in catalog: %s", RDB_strerror(ret));
-            if (!RDB_is_syserr(ret)) {
-                /* Should not happen */
-                RDB_raise_internal("cannot rename table", ecp);
-                return RDB_ERROR;
-            }
-            _RDB_handle_syserr(txp, ret);
-            return ret;
+                    "cannot rename table in catalog: %s",
+                    RDB_obj_type(RDB_get_err(ecp)));
+            return RDB_ERROR;
         }
     }
     

@@ -121,24 +121,24 @@ _RDB_insert_real(RDB_table *tbp, const RDB_object *tplp,
 
     ret = RDB_insert_rec(tbp->stp->recmapp, fvp,
             tbp->is_persistent ? txp->txid : NULL);
-    if (RDB_is_syserr(ret)) {
-        if (txp != NULL) {
-            RDB_errmsg(txp->dbp->dbrootp->envp, "cannot insert record: %s",
-                    RDB_strerror(ret));
-            _RDB_handle_syserr(txp, ret);
-        }
-    } else if (ret == RDB_KEY_VIOLATION) {
+    if (ret == DB_KEYEXIST) {
         /* check if the tuple is an element of the table */
         if (RDB_contains_rec(tbp->stp->recmapp, fvp,
                 tbp->is_persistent ? txp->txid : NULL) == RDB_OK) {
             RDB_raise_element_exists("tuple is already in table", ecp);
-            ret = RDB_ERROR;
-        } 
-    }
-    if (ret != RDB_OK && ret != RDB_ERROR) {
-        _RDB_handle_errcode(ret, ecp);
+        } else {
+            _RDB_handle_errcode(ret, ecp, txp);
+        }
         ret = RDB_ERROR;
-    } else {
+    } else if (ret != RDB_OK) {
+        if (txp != NULL && (ret > 0 || ret < -1000)) {
+            RDB_errmsg(txp->dbp->dbrootp->envp, "cannot insert record: %s",
+                    db_strerror(ret));
+        }
+        _RDB_handle_errcode(ret, ecp, txp);
+        ret = RDB_ERROR;
+    }
+    if (ret == RDB_OK) {
         tbp->stp->est_cardinality++;
     }
 

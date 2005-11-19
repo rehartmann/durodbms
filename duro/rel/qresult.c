@@ -327,11 +327,11 @@ do_summarize(RDB_qresult *qresp, RDB_exec_context *ecp, RDB_transaction *txp)
                 ret = RDB_update_rec(qresp->matp->stp->recmapp, keyfv,
                         addc + avgc, nonkeyfv, NULL);
                 if (ret != RDB_OK) {
-                    _RDB_handle_errcode(ret, ecp);
+                    _RDB_handle_errcode(ret, ecp, txp);
                     goto cleanup;
                 }
             } else {
-                _RDB_handle_errcode(ret, ecp);
+                _RDB_handle_errcode(ret, ecp, txp);
                 if (RDB_obj_type(RDB_get_err(ecp)) != &RDB_NOT_FOUND_ERROR) {
                     goto cleanup;
                 }
@@ -411,7 +411,7 @@ do_group(RDB_qresult *qrp, RDB_exec_context *ecp, RDB_transaction *txp)
                 /* Try to read tuple of the materialized table */
                 ret = RDB_get_fields(qrp->matp->stp->recmapp, keyfv,
                         1, NULL, &gfield);
-                _RDB_handle_errcode(ret, ecp);
+                _RDB_handle_errcode(ret, ecp, txp);
             } else {
                 RDB_raise_not_found("", ecp);
                 ret = RDB_ERROR;
@@ -493,7 +493,8 @@ cleanup:
 }
 
 static int
-stored_qresult(RDB_qresult *qrp, RDB_table *tbp, RDB_transaction *txp)
+stored_qresult(RDB_qresult *qrp, RDB_table *tbp, RDB_exec_context *ecp,
+        RDB_transaction *txp)
 {
     int ret;
 
@@ -510,18 +511,23 @@ stored_qresult(RDB_qresult *qrp, RDB_table *tbp, RDB_transaction *txp)
     ret = RDB_recmap_cursor(&qrp->var.curp, tbp->stp->recmapp,
                     RDB_FALSE, tbp->is_persistent ? txp->txid : NULL);
     if (ret != RDB_OK) {
-        if (txp != NULL) {
+        if (txp != NULL && (ret > 0 || ret < -1000)) {
             RDB_errmsg(txp->dbp->dbrootp->envp, "cannot create cursor: %s",
-                    RDB_strerror(ret));
+                    db_strerror(ret));
         }
-        return ret;
+        _RDB_handle_errcode(ret, ecp, txp);
+        return RDB_ERROR;
     }
     ret = RDB_cursor_first(qrp->var.curp);
-    if (ret == RDB_NOT_FOUND) {
+    if (ret == DB_NOTFOUND) {
         qrp->endreached = RDB_TRUE;
-        ret = RDB_OK;
+        return RDB_OK;
     }
-    return ret;
+    if (ret != RDB_OK) {
+        _RDB_handle_errcode(ret, ecp, txp);
+        return RDB_ERROR;
+    }
+    return RDB_OK;
 }
 
 static int
@@ -536,14 +542,14 @@ index_qresult(RDB_qresult *qrp, _RDB_tbindex *indexp,
     ret = RDB_index_cursor(&qrp->var.curp, indexp->idxp, RDB_FALSE,
             txp != NULL ? txp->txid : NULL);
     if (ret != RDB_OK) {
-        if (txp != NULL) {
+        if (txp != NULL && (ret > 0 || ret < -1000)) {
             RDB_errmsg(txp->dbp->dbrootp->envp, "cannot create cursor: %s",
-                    RDB_strerror(ret));
+                    db_strerror(ret));
         }
         return ret;
     }
     ret = RDB_cursor_first(qrp->var.curp);
-    if (ret == RDB_NOT_FOUND) {
+    if (ret == DB_NOTFOUND) {
         qrp->endreached = RDB_TRUE;
         ret = RDB_OK;
     }
@@ -583,9 +589,9 @@ select_index_qresult(RDB_qresult *qrp, RDB_exec_context *ecp,
             RDB_FALSE, qrp->tbp->var.select.tbp->var.project.tbp->is_persistent ?
             txp->txid : NULL);
     if (ret != RDB_OK) {
-        if (txp != NULL) {
+        if (txp != NULL && (ret > 0 || ret < -1000)) {
             RDB_errmsg(txp->dbp->dbrootp->envp, "cannot create cursor: %s",
-                    RDB_strerror(ret));
+                    db_strerror(ret));
         }
         free(fv);
         return ret;
@@ -608,7 +614,7 @@ select_index_qresult(RDB_qresult *qrp, RDB_exec_context *ecp,
         flags = RDB_REC_RANGE;
 
     ret = RDB_cursor_seek(qrp->var.curp, qrp->tbp->var.select.objpc, fv, flags);
-    if (ret == RDB_NOT_FOUND) {
+    if (ret == DB_NOTFOUND) {
         qrp->endreached = RDB_TRUE;
         ret = RDB_OK;
     }
@@ -651,11 +657,10 @@ summarize_qresult(RDB_qresult *qresp, RDB_exec_context *ecp,
         return ret;
     }
 
-    ret = stored_qresult(qresp, qresp->matp, txp);
-
+    ret = stored_qresult(qresp, qresp->matp, ecp, txp);
     if (ret != RDB_OK) {
         RDB_drop_table(qresp->matp, ecp, txp);
-        return ret;
+        return RDB_ERROR;
     }
 
     return RDB_OK;
@@ -688,11 +693,10 @@ group_qresult(RDB_qresult *qresp, RDB_exec_context *ecp, RDB_transaction *txp)
         return ret;
     }
 
-    ret = stored_qresult(qresp, qresp->matp, txp);
-
+    ret = stored_qresult(qresp, qresp->matp, ecp, txp);
     if (ret != RDB_OK) {
         RDB_drop_table(qresp->matp, ecp, txp);
-        return ret;
+        return RDB_ERROR;
     }
 
     return RDB_OK;
@@ -740,9 +744,9 @@ join_qresult(RDB_qresult *qrp, RDB_exec_context *ecp, RDB_transaction *txp)
                         txp->txid : NULL);
         if (ret != RDB_OK) {
             free(qrp->var.virtual.qr2p);
-            if (txp != NULL) {
+            if (txp != NULL && (ret > 0 || ret < -1000)) {
                 RDB_errmsg(txp->dbp->dbrootp->envp, "cannot create cursor: %s",
-                        RDB_strerror(ret));
+                        db_strerror(ret));
             }
             return ret;
         }
@@ -764,7 +768,7 @@ init_qresult(RDB_qresult *qrp, RDB_table *tbp, RDB_exec_context *ecp,
 
     switch (tbp->kind) {
         case RDB_TB_REAL:
-            ret = stored_qresult(qrp, tbp, txp);
+            ret = stored_qresult(qrp, tbp, ecp, txp);
             break;
         case RDB_TB_SELECT:
             if (tbp->var.select.objpc == 0) {
@@ -982,7 +986,7 @@ print_mem_stat(RDB_environment *envp)
 
     ret = envp->envp->memp_stat(envp->envp, &statp, NULL, 0);
     if (ret != 0) {
-        fputs(RDB_strerror(ret), stderr);
+        fputs(db_strerror(ret), stderr);
         abort();
     }
     fprintf(stderr, "st_cache_miss = %d\n", statp->st_cache_miss);
@@ -1091,7 +1095,7 @@ _RDB_sorter(RDB_table *tbp, RDB_qresult **qrespp, RDB_exec_context *ecp,
     if (ret != RDB_OK)
         goto error;
 
-    ret = stored_qresult(qresp, qresp->matp, txp);
+    ret = stored_qresult(qresp, qresp->matp, ecp, txp);
     if (ret != RDB_OK)
         goto error;
 
@@ -1151,7 +1155,7 @@ _RDB_get_by_cursor(RDB_table *tbp, RDB_cursor *curp, RDB_type *tpltyp,
 static int
 next_stored_tuple(RDB_qresult *qrp, RDB_table *tbp, RDB_object *tplp,
         RDB_bool asc, RDB_bool dup, RDB_type *tpltyp,
-        RDB_exec_context *ecp)
+        RDB_exec_context *ecp, RDB_transaction *txp)
 {
     int ret;
 
@@ -1163,7 +1167,7 @@ next_stored_tuple(RDB_qresult *qrp, RDB_table *tbp, RDB_object *tplp,
     if (tplp != NULL) {
         ret = _RDB_get_by_cursor(tbp, qrp->var.curp, tpltyp, tplp, ecp);
         if (ret != RDB_OK) {
-            _RDB_handle_errcode(ret, ecp);
+            _RDB_handle_errcode(ret, ecp, txp);
             return RDB_ERROR;
         }
     }
@@ -1176,12 +1180,12 @@ next_stored_tuple(RDB_qresult *qrp, RDB_table *tbp, RDB_object *tplp,
         }
         ret = RDB_cursor_prev(qrp->var.curp);
     }
-    if (ret == RDB_NOT_FOUND) {
+    if (ret == DB_NOTFOUND) {
         qrp->endreached = RDB_TRUE;
         return RDB_OK;
     }
     if (ret != RDB_OK) {
-        _RDB_handle_errcode(ret, ecp);
+        _RDB_handle_errcode(ret, ecp, txp);
         return RDB_ERROR;
     }
     return RDB_OK;
@@ -1217,7 +1221,7 @@ next_ungroup_tuple(RDB_qresult *qrp, RDB_object *tplp, RDB_exec_context *ecp,
 
     /* Read next element of relation-valued attribute */
     ret = _RDB_next_tuple(qrp->var.virtual.qr2p, tplp, ecp, txp);
-    while (ret == RDB_NOT_FOUND) {
+    while (ret == DB_NOTFOUND) {
         /* Destroy qresult over relation-valued attribute */
         ret = _RDB_drop_qresult(qrp->var.virtual.qr2p, ecp, txp);
         qrp->var.virtual.qr2p = NULL;
@@ -1416,7 +1420,8 @@ next_join_tuple_nuix(RDB_qresult *qrp, RDB_object *tplp,
         /* read next 'inner' tuple */
         ret = next_stored_tuple(qrp->var.virtual.qr2p,
                 qrp->var.virtual.qr2p->tbp->var.project.tbp, tplp, RDB_TRUE,
-                RDB_TRUE, qrp->var.virtual.qr2p->tbp->typ->var.basetyp, ecp);
+                RDB_TRUE, qrp->var.virtual.qr2p->tbp->typ->var.basetyp, ecp,
+                txp);
         if (ret != RDB_OK) {
             if (RDB_obj_type(RDB_get_err(ecp)) != &RDB_NOT_FOUND_ERROR) {
                 return RDB_ERROR;
@@ -1525,7 +1530,7 @@ next_join_tuple_uix(RDB_qresult *qrp, RDB_object *tplp, RDB_exec_context *ecp,
         ret = _RDB_get_by_uindex(qrp->tbp->var.join.tb2p->var.project.tbp,
                 objpv, indexp, qrp->tbp->var.join.tb2p->typ->var.basetyp,
                 ecp, txp, &tpl);
-        if (ret == RDB_NOT_FOUND) {
+        if (ret == DB_NOTFOUND) {
             match = RDB_FALSE;
             continue;
         }
@@ -1710,7 +1715,7 @@ next_select_index(RDB_qresult *qrp, RDB_object *tplp, RDB_exec_context *ecp,
                 qrp->tbp->var.select.objpv, indexp,
                 qrp->tbp->typ->var.basetyp, ecp, txp, tplp);
         if (ret != RDB_OK) {
-            _RDB_handle_errcode(ret, ecp);
+            _RDB_handle_errcode(ret, ecp, txp);
             return RDB_ERROR;
         }
 
@@ -1728,7 +1733,7 @@ next_select_index(RDB_qresult *qrp, RDB_object *tplp, RDB_exec_context *ecp,
             ret = next_stored_tuple(qrp,
                     qrp->tbp->var.select.tbp->var.project.tbp,
                     tplp, qrp->tbp->var.select.asc, dup,
-                    qrp->tbp->var.select.tbp->typ->var.basetyp, ecp);
+                    qrp->tbp->var.select.tbp->typ->var.basetyp, ecp, txp);
             if (ret != RDB_OK)
                 return ret;
             if (qrp->tbp->var.select.all_eq)
@@ -1776,7 +1781,7 @@ next_project_tuple(RDB_qresult *qrp, RDB_object *tplp, RDB_exec_context *ecp,
                 return ret; /* !! */
         }
         ret = RDB_cursor_next(qrp->var.curp, 0);
-        if (ret == RDB_NOT_FOUND)
+        if (ret == DB_NOTFOUND)
             qrp->endreached = RDB_TRUE;
         else if (ret != RDB_OK)
             return ret;
@@ -2052,7 +2057,7 @@ _RDB_next_tuple(RDB_qresult *qrp, RDB_object *tplp, RDB_exec_context *ecp,
     if (tbp == NULL) {
         /* It's a sorter */
         return next_stored_tuple(qrp, qrp->matp, tplp, RDB_TRUE, RDB_FALSE,
-                qrp->matp->typ->var.basetyp, ecp);
+                qrp->matp->typ->var.basetyp, ecp, txp);
     }
 
     do {
@@ -2060,7 +2065,7 @@ _RDB_next_tuple(RDB_qresult *qrp, RDB_object *tplp, RDB_exec_context *ecp,
         switch (tbp->kind) {
             case RDB_TB_REAL:
                 return next_stored_tuple(qrp, qrp->tbp, tplp, RDB_TRUE, RDB_FALSE,
-                        qrp->tbp->typ->var.basetyp, ecp);
+                        qrp->tbp->typ->var.basetyp, ecp, txp);
             case RDB_TB_SELECT:
                 if (qrp->tbp->var.select.objpc > 0)
                     ret = next_select_index(qrp, tplp, ecp, txp);
@@ -2158,7 +2163,7 @@ _RDB_next_tuple(RDB_qresult *qrp, RDB_object *tplp, RDB_exec_context *ecp,
                     RDB_int count;
                 
                     ret = next_stored_tuple(qrp, qrp->matp, tplp, RDB_TRUE,
-                            RDB_FALSE, qrp->tbp->typ->var.basetyp, ecp);
+                            RDB_FALSE, qrp->tbp->typ->var.basetyp, ecp, txp);
                     if (ret != RDB_OK)
                         return RDB_ERROR;
                     /* check AVG counts */
@@ -2199,7 +2204,7 @@ _RDB_next_tuple(RDB_qresult *qrp, RDB_object *tplp, RDB_exec_context *ecp,
                 break;
             case RDB_TB_GROUP:
                 ret = next_stored_tuple(qrp, qrp->matp, tplp, RDB_TRUE, RDB_FALSE,
-                        qrp->tbp->typ->var.basetyp, ecp);
+                        qrp->tbp->typ->var.basetyp, ecp, txp);
                 if (ret != RDB_OK)
                     return ret;
                 break;
@@ -2241,7 +2246,7 @@ _RDB_reset_qresult(RDB_qresult *qrp, RDB_exec_context *ecp, RDB_transaction *txp
             || qrp->tbp->kind == RDB_TB_SUMMARIZE) {
         /* Sorter, stored table or SUMMARIZE PER - reset cursor */
         ret = RDB_cursor_first(qrp->var.curp);
-        if (ret == RDB_NOT_FOUND) {
+        if (ret == DB_NOTFOUND) {
             qrp->endreached = RDB_TRUE;
             ret = RDB_OK;
         } else {

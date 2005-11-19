@@ -6,9 +6,10 @@
  */
 
 #include "env.h"
-#include <gen/errors.h>
+#include <gen/types.h>
 #include <stdlib.h>
 #include <stdarg.h>
+#include <errno.h>
 
 int
 RDB_open_env(const char *path, RDB_environment **envpp)
@@ -18,7 +19,7 @@ RDB_open_env(const char *path, RDB_environment **envpp)
 
     envp = malloc(sizeof (RDB_environment));
     if (envp == NULL)
-       return RDB_NO_MEMORY;
+       return ENOMEM;
 
     envp->closefn = NULL;
     envp->errfilep = NULL;
@@ -30,7 +31,7 @@ RDB_open_env(const char *path, RDB_environment **envpp)
     ret = db_env_create(&envp->envp, 0);
     if (ret != 0) {
         free(envp);
-        return RDB_convert_err(ret);
+        return ret;
     }
 
     /* open DB environment */
@@ -40,14 +41,14 @@ RDB_open_env(const char *path, RDB_environment **envpp)
     if (ret != 0) {
         envp->envp->close(envp->envp, 0);
         free(envp);
-        return RDB_convert_err(ret);
+        return ret;
     }
 
     ret = envp->envp->set_flags(envp->envp, DB_TIME_NOTGRANTED, 1);
     if (ret != 0) {
         envp->envp->close(envp->envp, 0);
         free(envp);
-        return RDB_convert_err(ret);
+        return ret;
     }
     
     return RDB_OK;
@@ -62,7 +63,7 @@ RDB_close_env(RDB_environment *envp)
         (*envp->closefn)(envp);
     ret = envp->envp->close(envp->envp, 0);
     free(envp);
-    return RDB_convert_err(ret);
+    return ret;
 }
 
 void

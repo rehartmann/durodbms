@@ -1,4 +1,5 @@
 #include "rdb.h"
+#include "internal.h"
 #include <gen/hashmap.h>
 #include <errno.h>
 
@@ -195,29 +196,44 @@ RDB_raise_version_mismatch(RDB_exec_context *ecp)
     return errp;
 }
 
+RDB_object *
+RDB_raise_deadlock(RDB_exec_context *ecp)
+{
+    RDB_object *errp = RDB_raise_err(ecp);
+    if (errp == NULL)
+        return NULL;
+
+    errp->typ = &RDB_DEADLOCK_ERROR;
+    return errp;
+}
+
 void
-_RDB_handle_errcode(int errcode, RDB_exec_context *ecp)
+_RDB_handle_errcode(int errcode, RDB_exec_context *ecp, RDB_transaction *txp)
 {
     switch (errcode) {
         case ENOMEM:
             RDB_raise_no_memory(ecp);
             break;
-        case RDB_KEY_VIOLATION:
+        case EINVAL:
+            RDB_raise_invalid_argument("", ecp);
+            break;
+        case DB_KEYEXIST:
             RDB_raise_key_violation("", ecp);
             break;
         case RDB_ELEMENT_EXISTS:
             RDB_raise_element_exists("", ecp);
             break;
-        case RDB_NOT_FOUND:
+        case DB_NOTFOUND:
             RDB_raise_not_found("", ecp);
             break;
         case DB_LOCK_NOTGRANTED:
             RDB_raise_lock_not_granted(ecp);
             break;
-        case EINVAL:
-            RDB_raise_invalid_argument("", ecp);
+        case DB_LOCK_DEADLOCK:
+            RDB_rollback_all(ecp, txp);
+            RDB_raise_deadlock(ecp);
             break;
         default:
-            RDB_raise_system(RDB_strerror(errcode), ecp);
+            RDB_raise_system(db_strerror(errcode), ecp);
     }
 }

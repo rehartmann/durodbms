@@ -154,7 +154,7 @@ update_stored_complex(RDB_table *tbp, RDB_expression *condp,
         ret = RDB_cursor_next(curp, 0);
     };
 
-    if (ret != RDB_NOT_FOUND)
+    if (ret != DB_NOTFOUND)
         goto cleanup;
 
     /*
@@ -340,7 +340,7 @@ update_stored_simple(RDB_table *tbp, RDB_expression *condp,
             }
             ret = RDB_cursor_set(curp, updc, fieldv);
             if (ret != RDB_OK) {
-                _RDB_handle_errcode(ret, ecp);
+                _RDB_handle_errcode(ret, ecp, txp);
                 ret = RDB_ERROR;
                 goto cleanup;
             }
@@ -348,7 +348,7 @@ update_stored_simple(RDB_table *tbp, RDB_expression *condp,
         ret = RDB_cursor_next(curp, 0);
     };
 
-    if (ret == RDB_NOT_FOUND)
+    if (ret == DB_NOTFOUND)
         ret = RDB_OK;
 
 cleanup:
@@ -421,7 +421,7 @@ _RDB_update_select_pindex(RDB_table *tbp, RDB_expression *condp,
             tbp->typ->var.basetyp, ecp, txp, &tpl);
     if (ret != RDB_OK) {
         RDB_destroy_obj(&tpl, ecp);
-        if (ret == RDB_NOT_FOUND)
+        if (ret == DB_NOTFOUND)
             ret = RDB_OK;
         goto cleanup;
     }
@@ -467,7 +467,7 @@ _RDB_update_select_pindex(RDB_table *tbp, RDB_expression *condp,
             fvv, updc, fieldv, tbp->var.select.tbp->var.project.tbp->is_persistent ?
             txp->txid : NULL);
     if (ret != RDB_OK) {
-        _RDB_handle_errcode(ret, ecp);
+        _RDB_handle_errcode(ret, ecp, txp);
         ret = RDB_ERROR;
     }
 
@@ -538,7 +538,7 @@ update_select_index_simple(RDB_table *tbp, RDB_expression *condp,
         flags = 0;
 
     ret = RDB_cursor_seek(curp, tbp->var.select.objpc, fv, flags);
-    if (ret == RDB_NOT_FOUND) {
+    if (ret == DB_NOTFOUND) {
         ret = RDB_OK;
         goto cleanup;
     }
@@ -625,7 +625,7 @@ update_select_index_simple(RDB_table *tbp, RDB_expression *condp,
         ret = RDB_cursor_next(curp, flags);
     } while (ret == RDB_OK);
 
-    if (ret == RDB_NOT_FOUND)
+    if (ret == DB_NOTFOUND)
         ret = RDB_OK;
 
 cleanup:
@@ -722,7 +722,7 @@ update_select_index_complex(RDB_table *tbp, RDB_expression *condp,
 
     /* Set cursor position */
     ret = RDB_cursor_seek(curp, tbp->var.select.objpc, fv, flags);
-    if (ret == RDB_NOT_FOUND) {
+    if (ret == DB_NOTFOUND) {
         ret = RDB_OK;
         goto cleanup;
     }
@@ -805,7 +805,7 @@ update_select_index_complex(RDB_table *tbp, RDB_expression *condp,
 
     /* Reset cursor */
     ret = RDB_cursor_seek(curp, tbp->var.select.objpc, fv, flags);
-    if (ret == RDB_NOT_FOUND) {
+    if (ret == DB_NOTFOUND) {
         ret = RDB_OK;
         goto cleanup;
     }

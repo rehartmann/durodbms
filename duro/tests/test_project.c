@@ -168,21 +168,21 @@ main(void)
     printf("Opening environment\n");
     ret = RDB_open_env("dbenv", &envp);
     if (ret != 0) {
-        fprintf(stderr, "Error: %s\n", RDB_strerror(ret));
+        fprintf(stderr, "Error: %s\n", db_strerror(ret));
         return 1;
     }
 
     RDB_init_exec_context(&ec);
     dbp = RDB_get_db_from_env("TEST", envp, &ec);
     if (dbp == NULL) {
-        fprintf(stderr, "Error: %s\n", RDB_strerror(ret));
+        fprintf(stderr, "Error: %s\n", RDB_type_name(RDB_obj_type(RDB_get_err(&ec))));
         RDB_destroy_exec_context(&ec);
         return 1;
     }
 
     ret = test_project(dbp, &ec);
     if (ret != RDB_OK) {
-        fprintf(stderr, "Error: %s\n", RDB_strerror(ret));
+        fprintf(stderr, "Error: %s\n", RDB_type_name(RDB_obj_type(RDB_get_err(&ec))));
         RDB_destroy_exec_context(&ec);
         return 2;
     }
@@ -191,7 +191,7 @@ main(void)
     printf ("Closing environment\n");
     ret = RDB_close_env(envp);
     if (ret != RDB_OK) {
-        fprintf(stderr, "Error: %s\n", RDB_strerror(ret));
+        fprintf(stderr, "Error: %s\n", db_strerror(ret));
         return 2;
     }
 

@@ -310,7 +310,6 @@ _RDB_extend(RDB_table *tbp, int attrc, const RDB_virtual_attr attrv[],
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
     int i;
-    int ret;
     RDB_table *newtbp = NULL;
     RDB_attr *attrdefv = NULL;
 
@@ -387,7 +386,6 @@ error:
         }
         free(attrdefv);
     }
-    _RDB_handle_syserr(txp, ret);
     return NULL;
 }
 

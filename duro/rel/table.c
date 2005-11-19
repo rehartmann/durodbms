@@ -10,7 +10,6 @@
 #include "catalog.h"
 #include "internal.h"
 #include <gen/strfns.h>
-#include <gen/errors.h>
 #include <string.h>
 #include <dli/tabletostr.h>
 #include <stdio.h>
@@ -548,9 +547,8 @@ RDB_all(RDB_table *tbp, const char *attrname, RDB_exec_context *ecp,
 
     ret = RDB_table_to_array(&arr, tbp, 0, NULL, ecp, txp);
     if (ret != RDB_OK) {
-        _RDB_handle_syserr(txp, ret);
         RDB_destroy_obj(&arr, ecp);
-        return ret;
+        return RDB_ERROR;
     }
 
     i = 0;
@@ -560,7 +558,6 @@ RDB_all(RDB_table *tbp, const char *attrname, RDB_exec_context *ecp,
     }
     if (RDB_obj_type(RDB_get_err(ecp)) != &RDB_NOT_FOUND_ERROR) {
         RDB_destroy_obj(&arr, ecp);
-        _RDB_handle_syserr(txp, ret);
         return RDB_ERROR;
     }
     RDB_clear_err(ecp);
@@ -603,7 +600,6 @@ RDB_any(RDB_table *tbp, const char *attrname, RDB_exec_context *ecp,
 
     ret = RDB_table_to_array(&arr, tbp, 0, NULL, ecp, txp);
     if (ret != RDB_OK) {
-        _RDB_handle_syserr(txp, ret);
         RDB_destroy_obj(&arr, ecp);
         return ret;
     }
@@ -615,7 +611,6 @@ RDB_any(RDB_table *tbp, const char *attrname, RDB_exec_context *ecp,
     }
     if (RDB_obj_type(RDB_get_err(ecp)) != &RDB_NOT_FOUND_ERROR) {
         RDB_destroy_obj(&arr, ecp);
-        _RDB_handle_syserr(txp, ret);
         return RDB_ERROR;
     }
     RDB_clear_err(ecp);
@@ -666,7 +661,6 @@ RDB_max(RDB_table *tbp, const char *attrname, RDB_exec_context *ecp,
 
     ret = RDB_table_to_array(&arr, tbp, 0, NULL, ecp, txp);
     if (ret != RDB_OK) {
-        _RDB_handle_syserr(txp, ret);
         RDB_destroy_obj(&arr, ecp);
         return ret;
     }
@@ -687,7 +681,6 @@ RDB_max(RDB_table *tbp, const char *attrname, RDB_exec_context *ecp,
     }
     if (RDB_obj_type(RDB_get_err(ecp)) != &RDB_NOT_FOUND_ERROR) {
         RDB_destroy_obj(&arr, ecp);
-        _RDB_handle_syserr(txp, ret);
         return RDB_ERROR;
     }
     RDB_clear_err(ecp);
@@ -738,7 +731,6 @@ RDB_min(RDB_table *tbp, const char *attrname, RDB_exec_context *ecp,
 
     ret = RDB_table_to_array(&arr, tbp, 0, NULL, ecp, txp);
     if (ret != RDB_OK) {
-        _RDB_handle_syserr(txp, ret);
         RDB_destroy_obj(&arr, ecp);
         return ret;
     }
@@ -759,7 +751,6 @@ RDB_min(RDB_table *tbp, const char *attrname, RDB_exec_context *ecp,
     }
     if (RDB_obj_type(RDB_get_err(ecp)) != &RDB_NOT_FOUND_ERROR) {
         RDB_destroy_obj(&arr, ecp);
-        _RDB_handle_syserr(txp, ret);
         return RDB_ERROR;
     }
     RDB_clear_err(ecp);
@@ -810,7 +801,6 @@ RDB_sum(RDB_table *tbp, const char *attrname, RDB_exec_context *ecp,
 
     ret = RDB_table_to_array(&arr, tbp, 0, NULL, ecp, txp);
     if (ret != RDB_OK) {
-        _RDB_handle_syserr(txp, ret);
         RDB_destroy_obj(&arr, ecp);
         return ret;
     }
@@ -825,7 +815,6 @@ RDB_sum(RDB_table *tbp, const char *attrname, RDB_exec_context *ecp,
     }
     if (RDB_obj_type(RDB_get_err(ecp)) != &RDB_NOT_FOUND_ERROR) {
         RDB_destroy_obj(&arr, ecp);
-        _RDB_handle_syserr(txp, ret);
         return RDB_ERROR;
     }
     RDB_clear_err(ecp);
@@ -873,7 +862,6 @@ RDB_avg(RDB_table *tbp, const char *attrname, RDB_exec_context *ecp,
 
     ret = RDB_table_to_array(&arr, tbp, 0, NULL, ecp, txp);
     if (ret != RDB_OK) {
-        _RDB_handle_syserr(txp, ret);
         RDB_destroy_obj(&arr, ecp);
         return ret;
     }
@@ -888,7 +876,6 @@ RDB_avg(RDB_table *tbp, const char *attrname, RDB_exec_context *ecp,
     }
     if (RDB_obj_type(RDB_get_err(ecp)) != &RDB_NOT_FOUND_ERROR) {
         RDB_destroy_obj(&arr, ecp);
-        _RDB_handle_syserr(txp, ret);
         return RDB_ERROR;
     }
     RDB_clear_err(ecp);
@@ -920,7 +907,6 @@ RDB_extract_tuple(RDB_table *tbp, RDB_exec_context *ecp,
     if (ret != RDB_OK) {
         if (ntbp->kind != RDB_TB_REAL)
             RDB_drop_table(ntbp, ecp, txp);
-        _RDB_handle_syserr(txp, ret);
         return ret;
     }
 
@@ -951,7 +937,6 @@ cleanup:
     if (ntbp->kind != RDB_TB_REAL) {
         RDB_drop_table(ntbp, ecp, txp);
     }
-    _RDB_handle_syserr(txp, ret);
     return RDB_get_err(ecp) == NULL ? RDB_OK : RDB_ERROR;
 }
 
@@ -990,8 +975,7 @@ RDB_table_is_empty(RDB_table *tbp, RDB_exec_context *ecp,
     ret = _RDB_table_qresult(ntbp, ecp, txp, &qrp);
     if (ret != RDB_OK) {
         RDB_drop_table(ntbp, ecp, txp);
-        _RDB_handle_syserr(txp, ret);
-        return ret;
+        return RDB_ERROR;
     }
 
     RDB_init_obj(&tpl);
@@ -1004,7 +988,6 @@ RDB_table_is_empty(RDB_table *tbp, RDB_exec_context *ecp,
             RDB_destroy_obj(&tpl, ecp);
             _RDB_drop_qresult(qrp, ecp, txp);
             RDB_drop_table(ntbp, ecp, txp);
-            _RDB_handle_syserr(txp, ret);
             return RDB_ERROR;
         }
         RDB_clear_err(ecp);
@@ -1043,7 +1026,6 @@ RDB_cardinality(RDB_table *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
     if (ret != RDB_OK) {
         if (ntbp->kind != RDB_TB_REAL)
             RDB_drop_table(ntbp, ecp, txp);
-        _RDB_handle_syserr(txp, ret);
         return ret;
     }
 
@@ -1053,7 +1035,6 @@ RDB_cardinality(RDB_table *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
         if (ntbp->kind != RDB_TB_REAL)
             RDB_drop_table(ntbp, ecp, txp);
         _RDB_drop_qresult(qrp, ecp, txp);
-        _RDB_handle_syserr(txp, ret);
         return ret;
     }
 
@@ -1088,8 +1069,7 @@ RDB_cardinality(RDB_table *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
 error:
     if (ntbp->kind != RDB_TB_REAL)
         RDB_drop_table(ntbp, ecp, txp);
-     _RDB_handle_syserr(txp, ret);
-    return ret;
+    return RDB_ERROR;
 }
 
 int
@@ -1112,8 +1092,7 @@ RDB_subset(RDB_table *tb1p, RDB_table *tb2p, RDB_exec_context *ecp,
 
     ret = _RDB_table_qresult(tb1p, ecp, txp, &qrp);
     if (ret != RDB_OK) {
-        _RDB_handle_syserr(txp, ret);
-        return ret;
+        return RDB_ERROR;
     }
 
     RDB_init_obj(&tpl);
@@ -1122,7 +1101,6 @@ RDB_subset(RDB_table *tb1p, RDB_table *tb2p, RDB_exec_context *ecp,
     while ((ret = _RDB_next_tuple(qrp, &tpl, ecp, txp)) == RDB_OK) {
         ret = RDB_table_contains(tb2p, &tpl, ecp, txp, resultp);
         if (ret != RDB_OK) {
-            _RDB_handle_syserr(txp, ret);
             RDB_destroy_obj(&tpl, ecp);
             _RDB_drop_qresult(qrp, ecp, txp);
             goto error;
@@ -1146,7 +1124,6 @@ RDB_subset(RDB_table *tb1p, RDB_table *tb2p, RDB_exec_context *ecp,
     return RDB_OK;
 
 error:
-    _RDB_handle_syserr(txp, ret);
     return RDB_ERROR;
 }
 

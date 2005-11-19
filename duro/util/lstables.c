@@ -145,7 +145,8 @@ main(int argc, char *argv[])
     RDB_init_exec_context(&ec);
     ret = getargs(&ec, &argc, &argv, &envp, &dbp);
     if (ret != RDB_OK) {
-        fprintf(stderr, "lstables: %s\n", RDB_strerror(ret));
+        fprintf(stderr, "lstables: %s\n",
+                RDB_type_name(RDB_obj_type(RDB_get_err(&ec))));
         RDB_destroy_exec_context(&ec);
         return 2;
     }
@@ -163,14 +164,14 @@ main(int argc, char *argv[])
 
     ret = RDB_begin_tx(&ec, &tx, dbp, NULL);
     if (ret != RDB_OK) {
-        fprintf(stderr, "lstables: %s\n", RDB_strerror(ret));
+        fprintf(stderr, "lstables: %s\n", RDB_type_name(RDB_obj_type(RDB_get_err(&ec))));
         RDB_destroy_exec_context(&ec);
         return 1;
     }
     
     ret = print_tables(&ec, &tx, all, RDB_TRUE);
     if (ret != RDB_OK) {
-        fprintf(stderr, "lstables: %s\n", RDB_strerror(ret));
+        fprintf(stderr, "lstables: %s\n", RDB_type_name(RDB_obj_type(RDB_get_err(&ec))));
         RDB_rollback(&ec, &tx);
         RDB_destroy_exec_context(&ec);
         return 1;
@@ -178,7 +179,7 @@ main(int argc, char *argv[])
 
     ret = print_tables(&ec, &tx, all, RDB_FALSE);
     if (ret != RDB_OK) {
-        fprintf(stderr, "lstables: %s\n", RDB_strerror(ret));
+        fprintf(stderr, "lstables: %s\n", RDB_type_name(RDB_obj_type(RDB_get_err(&ec))));
         RDB_rollback(&ec, &tx);
         RDB_destroy_exec_context(&ec);
         return 1;
@@ -186,7 +187,7 @@ main(int argc, char *argv[])
 
     ret = RDB_commit(&ec, &tx);
     if (ret != RDB_OK) {
-        fprintf(stderr, "lstables: %s\n", RDB_strerror(ret));
+        fprintf(stderr, "lstables: %s\n", RDB_type_name(RDB_obj_type(RDB_get_err(&ec))));
         RDB_destroy_exec_context(&ec);
         return 1;
     }
@@ -194,7 +195,7 @@ main(int argc, char *argv[])
 
     ret = RDB_close_env(envp);
     if (ret != RDB_OK) {
-        fprintf(stderr, "lstables: %s\n", RDB_strerror(ret));
+        fprintf(stderr, "lstables: %s\n", RDB_type_name(RDB_obj_type(RDB_get_err(&ec))));
         return 1;
     }
     

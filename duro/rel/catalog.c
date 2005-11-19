@@ -1654,7 +1654,6 @@ error:
     if (tbp != NULL)
         _RDB_drop_table(tbp, RDB_FALSE, ecp);
 
-    _RDB_handle_syserr(txp, ret);
     return NULL;
 }
 
@@ -2148,9 +2147,8 @@ _RDB_cat_get_ro_op(const char *name, int argc, RDB_type *argtv[],
     RDB_init_obj(&typesobj);
     ret = _RDB_make_typesobj(argc, argtv, ecp, &typesobj);
     if (ret != RDB_OK) {
-        _RDB_handle_syserr(txp, ret);
         RDB_destroy_obj(&typesobj, ecp);
-        return ret;
+        return RDB_ERROR;
     }
 
     exp = RDB_ro_op_va("AND", ecp, RDB_eq(RDB_expr_attr("NAME", ecp),
@@ -2276,9 +2274,8 @@ _RDB_cat_get_upd_op(const char *name, int argc, RDB_type *argtv[],
     RDB_init_obj(&typesobj);
     ret = _RDB_make_typesobj(argc, argtv, ecp, &typesobj);
     if (ret != RDB_OK) {
-        _RDB_handle_syserr(txp, ret);
         RDB_destroy_obj(&typesobj, ecp);
-        return ret;
+        return RDB_ERROR;
     }
         
     exp = RDB_ro_op_va("AND", ecp, RDB_eq(RDB_expr_attr("NAME", ecp),

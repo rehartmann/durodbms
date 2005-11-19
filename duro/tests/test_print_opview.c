@@ -23,7 +23,6 @@ print_deptsx_view(RDB_database *dbp, RDB_exec_context *ecp)
     tmpvtbp = RDB_get_table("DEPTSX", ecp, &tx);
     if (tmpvtbp == NULL) {
         RDB_rollback(ecp, &tx);
-        fprintf(stderr, "Error: %s\n", RDB_strerror(ret));
         return RDB_ERROR;
     }
 
@@ -65,21 +64,21 @@ main(void)
     printf("Opening environment\n");
     ret = RDB_open_env("dbenv", &dsp);
     if (ret != RDB_OK) {
-        fprintf(stderr, "Error: %s\n", RDB_strerror(ret));
+        fprintf(stderr, "Error: %s\n", db_strerror(ret));
         return 1;
     }
 
     RDB_init_exec_context(&ec);
     dbp = RDB_get_db_from_env("TEST", dsp, &ec);
     if (dbp == NULL) {
-        fprintf(stderr, "Error: %s\n", RDB_strerror(ret));
+        fprintf(stderr, "Error: %s\n", RDB_type_name(RDB_obj_type(RDB_get_err(&ec))));
         RDB_destroy_exec_context(&ec);
         return 1;
     }
 
     ret = print_deptsx_view(dbp, &ec);
     if (ret != RDB_OK) {
-        fprintf(stderr, "Error: %s\n", RDB_strerror(ret));
+        fprintf(stderr, "Error: %s\n", RDB_type_name(RDB_obj_type(RDB_get_err(&ec))));
         RDB_destroy_exec_context(&ec);
         return 2;
     }
@@ -87,7 +86,7 @@ main(void)
 
     ret = RDB_close_env(dsp);
     if (ret != RDB_OK) {
-        fprintf(stderr, "Error: %s\n", RDB_strerror(ret));
+        fprintf(stderr, "Error: %s\n", db_strerror(ret));
         return 2;
     }
 

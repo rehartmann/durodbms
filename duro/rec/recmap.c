@@ -6,7 +6,6 @@
  */
 
 #include "recmap.h"
-#include <gen/errors.h>
 #include <gen/strfns.h>
 #include <stdlib.h>
 #include <string.h>
@@ -29,7 +28,7 @@ new_recmap(RDB_recmap **rmpp, const char *namp, const char *filenamp,
     RDB_recmap *rmp = malloc(sizeof(RDB_recmap));
 
     if (rmp == NULL)
-        return RDB_NO_MEMORY;
+        return ENOMEM;
 
     rmp->envp = envp;
     rmp->filenamp = NULL;
@@ -37,7 +36,7 @@ new_recmap(RDB_recmap **rmpp, const char *namp, const char *filenamp,
     if (namp != NULL) {
         rmp->namp = RDB_dup_str(namp);
         if (rmp->namp == NULL) {
-            ret = RDB_NO_MEMORY;
+            ret = ENOMEM;
             goto error;
         }
     } else {
@@ -47,7 +46,7 @@ new_recmap(RDB_recmap **rmpp, const char *namp, const char *filenamp,
     if (filenamp != NULL) {
         rmp->filenamp = RDB_dup_str(filenamp);
         if (rmp->filenamp == NULL) {
-            ret = RDB_NO_MEMORY;
+            ret = ENOMEM;
             goto error;
         }
     } else {
@@ -56,7 +55,7 @@ new_recmap(RDB_recmap **rmpp, const char *namp, const char *filenamp,
 
     rmp->fieldlens = malloc(sizeof(int) * fieldc);
     if (rmp->fieldlens == NULL) {
-        ret = RDB_NO_MEMORY;
+        ret = ENOMEM;
         goto error;
     }
 
@@ -91,7 +90,7 @@ error:
     free(rmp->filenamp);
     free(rmp->fieldlens);
     free(rmp);
-    return RDB_convert_err(ret);
+    return ret;
 }
 
 /*
@@ -176,7 +175,7 @@ RDB_create_recmap(const char *name, const char *filename,
     if ((ret = (*rmpp)->dbp->open((*rmpp)->dbp, txid, filename, name,
             RDB_ORDERED & flags ? DB_BTREE : DB_HASH, DB_CREATE, 0664)) != 0) {
         if (envp != NULL) {
-            RDB_errmsg(envp, "cannot create recmap: %s", RDB_strerror(ret));
+            RDB_errmsg(envp, "cannot create recmap: %s", db_strerror(ret));
         }
         goto error;
     }
@@ -185,7 +184,7 @@ RDB_create_recmap(const char *name, const char *filename,
 
 error:
     RDB_close_recmap(*rmpp);
-    return RDB_convert_err(ret);
+    return ret;
 }
 
 int
@@ -200,15 +199,13 @@ RDB_open_recmap(const char *name, const char *filename,
     ret = (*rmpp)->dbp->open((*rmpp)->dbp, 0, filename, name, DB_UNKNOWN,
             DB_AUTO_COMMIT, 0664);
     if (ret != 0) {
-        if (ret == ENOENT)
-            ret = RDB_NOT_FOUND;
         goto error;
     }
     return RDB_OK;
 
 error:
     RDB_close_recmap(*rmpp);
-    return RDB_convert_err(ret);
+    return ret;
 }
 
 int
@@ -220,7 +217,7 @@ RDB_close_recmap(RDB_recmap *rmp)
     free(rmp->fieldlens);
     free(rmp->cmpv);
     free(rmp);
-    return RDB_convert_err(ret);
+    return ret;
 }
 
 int
@@ -242,9 +239,9 @@ cleanup:
     free(rmp->fieldlens);
     free(rmp);
     if (ret != 0 && rmp->envp != NULL)
-        RDB_errmsg(rmp->envp, "cannot delete recmap: %s", RDB_strerror(ret));
+        RDB_errmsg(rmp->envp, "cannot delete recmap: %s", db_strerror(ret));
 
-    return RDB_convert_err(ret);
+    return ret;
 }
 
 static size_t
@@ -408,14 +405,14 @@ _RDB_fields_to_DBT(RDB_recmap *rmp, int fldc, const RDB_field fldv[],
     if (fldc - vfldc > 0) {
         fno = malloc((fldc - vfldc) * sizeof(int));
         if (fno == NULL || dbtp->data == NULL) {
-            ret = RDB_NO_MEMORY;
+            ret = ENOMEM;
             goto error;
         }
     }
     if (vfldc > 0) {
         vfno = malloc(vfldc *  sizeof(int));
         if (vfno == NULL) {
-            ret = RDB_NO_MEMORY;
+            ret = ENOMEM;
             free(fno);
             free(dbtp->data);
             goto error;
@@ -517,12 +514,12 @@ RDB_insert_rec(RDB_recmap *rmp, RDB_field flds[], DB_TXN *txid)
             rmp->dup_keys ? 0 : DB_NOOVERWRITE);
     if (ret == EINVAL) {
         /* Assume duplicate secondary index */
-        ret = RDB_KEY_VIOLATION;
+        ret = DB_KEYEXIST;
     }
     free(key.data);
     free(data.data);
 
-    return RDB_convert_err(ret);
+    return ret;
 }
 
 void
@@ -600,7 +597,7 @@ _RDB_update_rec(RDB_recmap *rmp, DBT *keyp, DBT *datap,
             del ? DB_NOOVERWRITE : 0);
     if (ret == EINVAL) {
         /* Assume duplicate secondary index */
-        return RDB_KEY_VIOLATION;
+        return DB_KEYEXIST;
     }
     if (ret == DB_KEYEXIST) {
         /* Possible key violation - check if the record already exists */
@@ -608,7 +605,7 @@ _RDB_update_rec(RDB_recmap *rmp, DBT *keyp, DBT *datap,
         if (ret == 0)
             return RDB_ELEMENT_EXISTS;
         if (ret == DB_NOTFOUND)
-            return RDB_KEY_VIOLATION;
+            return DB_KEYEXIST;
     }
     return ret;
 }
@@ -622,7 +619,7 @@ RDB_update_rec(RDB_recmap *rmp, RDB_field keyv[],
 
     ret = key_to_DBT(rmp, keyv, &key);
     if (ret != RDB_OK)
-        return RDB_convert_err(ret);
+        return ret;
     memset(&data, 0, sizeof (data));
     data.flags = DB_DBT_REALLOC;
 
@@ -637,11 +634,11 @@ cleanup:
     free(data.data);
 
     if (ret != RDB_OK && rmp->envp != NULL
-            && ret != RDB_ELEMENT_EXISTS && ret != RDB_KEY_VIOLATION) {
-        RDB_errmsg(rmp->envp, "cannot update record: %s", RDB_strerror(ret));
+            && ret != RDB_ELEMENT_EXISTS && ret != DB_KEYEXIST) {
+        RDB_errmsg(rmp->envp, "cannot update record: %s", db_strerror(ret));
     }
     
-    return RDB_convert_err(ret);
+    return ret;
 }
 
 int
@@ -654,11 +651,7 @@ RDB_delete_rec(RDB_recmap *rmp, RDB_field keyv[], DB_TXN *txid)
     if (ret != RDB_OK)
         return ret;
 
-    ret = rmp->dbp->del(rmp->dbp, txid, &key, 0);
-    if (ret != 0) {
-        return RDB_convert_err(ret);
-    }
-    return RDB_OK;
+    return rmp->dbp->del(rmp->dbp, txid, &key, 0);
 }
 
 int
@@ -699,7 +692,7 @@ RDB_get_fields(RDB_recmap *rmp, RDB_field keyv[], int fieldc, DB_TXN *txid,
 
     ret = rmp->dbp->get(rmp->dbp, txid, &key, &data, 0);
     if (ret != 0) {
-        return RDB_convert_err(ret);
+        return ret;
     }
 
     return _RDB_get_fields(rmp, &key, &data, fieldc, retfieldv);
@@ -718,5 +711,5 @@ RDB_contains_rec(RDB_recmap *rmp, RDB_field flds[], DB_TXN *txid)
     if (ret != RDB_OK)
         return ret;
 
-    return RDB_convert_err(rmp->dbp->get(rmp->dbp, txid, &key, &data, DB_GET_BOTH));
+    return rmp->dbp->get(rmp->dbp, txid, &key, &data, DB_GET_BOTH);
 }

@@ -19,4 +19,8 @@ typedef char RDB_bool;
 #define RDB_TRUE ((RDB_bool) 1)
 #define RDB_FALSE ((RDB_bool) 0)
 
+enum {
+    RDB_OK = 0,
+};
+
 #endif

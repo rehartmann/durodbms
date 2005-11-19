@@ -563,8 +563,6 @@ table_to_list(Tcl_Interp *interp, RDB_table *tbp, RDB_exec_context *ecp,
     }
     if (RDB_obj_type(RDB_get_err(ecp)) != &RDB_NOT_FOUND_ERROR) {
         RDB_destroy_obj(&arr, ecp);
-        if (RDB_is_syserr(ret))
-            RDB_rollback_all(ecp, txp);
         Duro_dberror(interp, RDB_get_err(ecp), txp);
         return NULL;
     }
@@ -572,8 +570,6 @@ table_to_list(Tcl_Interp *interp, RDB_table *tbp, RDB_exec_context *ecp,
 
     ret = RDB_destroy_obj(&arr, ecp);
     if (ret != RDB_OK) {
-        if (RDB_is_syserr(ret))
-            RDB_rollback_all(ecp, txp);
         Duro_dberror(interp, RDB_get_err(ecp), txp);
         return NULL;
     }
@@ -789,7 +785,7 @@ Duro_irep_to_tcl(Tcl_Interp *interp, const RDB_object *objp,
             return NULL;
         }
 
-        ret = RDB_binary_get(objp, 0, &datap, len, NULL);
+        ret = RDB_binary_get(objp, 0, len, ecp, &datap, NULL);
         if (ret != RDB_OK) {
             Duro_dberror(interp, RDB_get_err(ecp), txp);
             return NULL;

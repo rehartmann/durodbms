@@ -22,7 +22,6 @@ along with Duro; if not, write to the Free Software Foundation, Inc.,
 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 */
 
-#include <gen/errors.h>
 #include <rec/env.h>
 #include <rec/recmap.h>
 #include <gen/hashmap.h>
@@ -1027,8 +1026,8 @@ RDB_binary_set(RDB_object *, size_t pos, const void *srcp, size_t len,
  * Obtain a pointer to len bytes from the RDB_object at position pos.
  */
 int
-RDB_binary_get(const RDB_object *, size_t pos, void **pp, size_t len,
-        size_t *alenp);
+RDB_binary_get(const RDB_object *, size_t pos, size_t len,
+        RDB_exec_context *ecp, void **pp, size_t *alenp);
 
 size_t
 RDB_binary_length(const RDB_object *);

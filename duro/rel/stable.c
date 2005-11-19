@@ -12,8 +12,8 @@
 #include "catalog.h"
 #include "internal.h"
 #include <gen/strfns.h>
-#include <gen/errors.h>
 #include <string.h>
+#include <errno.h>
 
 /* name of the file in which the tables are physically stored */
 #define RDB_DATAFILE "rdata"
@@ -193,8 +193,11 @@ create_index(RDB_table *tbp, RDB_environment *envp, RDB_exec_context *ecp,
                   tbp->is_persistent ? RDB_DATAFILE : NULL,
                   envp, indexp->attrc, fieldv, cmpv, flags,
                   txp != NULL ? txp->txid : NULL, &indexp->idxp);
-    if (ret != RDB_OK)
+    if (ret != RDB_OK) {
+        _RDB_handle_errcode(ret, ecp, txp);
         indexp->idxp = NULL;
+        ret = RDB_ERROR;
+    }
 
 cleanup:
     free(fieldv);
@@ -573,8 +576,6 @@ error:
     free(tbp->stp);
     tbp->stp = NULL;
 
-    if (txp != NULL)
-        _RDB_handle_syserr(txp, ret);
     return RDB_ERROR;
 }
 
@@ -630,11 +631,10 @@ _RDB_open_stored_table(RDB_table *tbp, RDB_environment *envp,
             attrc, flenv, piattrc, txp != NULL ? txp->txid : NULL,
             &tbp->stp->recmapp);
     if (ret != RDB_OK) {
-        if (ret == RDB_NOT_FOUND) {
+        if (ret == ENOENT) {
             RDB_raise_not_found("table not found", ecp);
         } else {
-            fprintf(stderr, "unhandled error\n"); /* !! */
-            abort();
+            _RDB_handle_errcode(ret, ecp, txp);
         }
         goto error;
     }
@@ -663,8 +663,6 @@ error:
     RDB_destroy_hashtable(&tbp->stp->attrmap);
     free(tbp->stp);
 
-    if (txp != NULL)
-        _RDB_handle_syserr(txp, ret);
     return RDB_ERROR;
 }
 
@@ -768,7 +766,6 @@ RDB_create_table_index(const char *name, RDB_table *tbp, int idxcompc,
     return RDB_OK;
 
 error:
-    _RDB_handle_syserr(txp, ret);
     if (tbp->stp != NULL) {
         /* Remove index entry */
         void *ivp = realloc(tbp->stp->indexv,
@@ -801,7 +798,7 @@ _RDB_delete_stored_table(RDB_stored_table *stp, RDB_exec_context *ecp,
     } else {
         ret = RDB_delete_recmap(stp->recmapp, NULL);
         if (ret != RDB_OK) {
-            _RDB_handle_errcode(ret, ecp);
+            _RDB_handle_errcode(ret, ecp, txp);
             ret = RDB_ERROR;
         }
     }

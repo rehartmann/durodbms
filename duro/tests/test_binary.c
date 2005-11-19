@@ -17,7 +17,7 @@ main(void)
     RDB_binary_set(&val, 0, "ABCD", 4, &ec);
     RDB_binary_set(&val, 4, "EFGH", 5, &ec);
 
-    RDB_binary_get(&val, 0, &bufp, 9, &len);
+    RDB_binary_get(&val, 0, 9, &ec, &bufp, &len);
 
     printf("%s\n%d\n%d\n", (char *) bufp, (int) RDB_binary_length(&val),
             (int) len);

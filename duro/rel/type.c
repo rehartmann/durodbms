@@ -38,6 +38,7 @@ RDB_type RDB_INTERNAL_ERROR;
 RDB_type RDB_LOCK_NOT_GRANTED_ERROR;
 RDB_type RDB_AGGREGATE_UNDEFINED_ERROR;
 RDB_type RDB_VERSION_MISMATCH_ERROR;
+RDB_type RDB_DEADLOCK_ERROR;
 
 static int
 compare_int(const char *name, int argc, RDB_object *argv[],
@@ -205,6 +206,11 @@ _RDB_init_builtin_types(RDB_exec_context *ecp)
 
     static RDB_possrep version_mismatch_rep = {
         "VERSION_MISMATCH_ERROR",
+        0,
+    };
+
+    static RDB_possrep deadlock_rep = {
+        "DEADLOCK_ERROR",
         0,
     };
 
@@ -445,6 +451,20 @@ _RDB_init_builtin_types(RDB_exec_context *ecp)
     RDB_VERSION_MISMATCH_ERROR.var.scalar.constraintp = NULL;
     RDB_VERSION_MISMATCH_ERROR.var.scalar.sysimpl = RDB_TRUE;
     RDB_VERSION_MISMATCH_ERROR.comparep = NULL;
+
+    RDB_DEADLOCK_ERROR.kind = RDB_TP_SCALAR;
+    RDB_DEADLOCK_ERROR.ireplen = RDB_VARIABLE_LEN;
+    RDB_DEADLOCK_ERROR.name = "DEADLOCK_ERROR";
+    RDB_DEADLOCK_ERROR.var.scalar.repc = 1;
+    RDB_DEADLOCK_ERROR.var.scalar.repv = &deadlock_rep;
+    RDB_DEADLOCK_ERROR.var.scalar.arep =
+            RDB_create_tuple_type(0, NULL, ecp);
+    if (RDB_DEADLOCK_ERROR.var.scalar.arep == NULL) {
+        return RDB_ERROR;
+    }
+    RDB_DEADLOCK_ERROR.var.scalar.constraintp = NULL;
+    RDB_DEADLOCK_ERROR.var.scalar.sysimpl = RDB_TRUE;
+    RDB_DEADLOCK_ERROR.comparep = NULL;
 
     return RDB_OK;
 }
@@ -810,8 +830,6 @@ error:
     RDB_destroy_obj(&conval, ecp);    
     RDB_destroy_obj(&tpl, ecp);
 
-    _RDB_handle_syserr(txp, ret);
-
     return RDB_ERROR;
 }
 
@@ -985,8 +1003,6 @@ cleanup:
     }
     RDB_drop_expr(wherep, ecp);
 
-    _RDB_handle_syserr(txp, ret);
-
     return ret;
 }
 
@@ -1023,7 +1039,6 @@ RDB_drop_type(RDB_type *typ, RDB_exec_context *ecp, RDB_transaction *txp)
         /* Delete type from type table by puting a NULL pointer into it */
         ret = RDB_hashmap_put(&txp->dbp->dbrootp->typemap, typ->name, ntp);
         if (ret != RDB_OK) {
-            _RDB_handle_syserr(txp, ret);
             return RDB_ERROR;
         }
 

@@ -1235,8 +1235,7 @@ RDB_call_ro_op(const char *name, int argc, RDB_object *argv[],
     return RDB_OK;
 
 error:
-    _RDB_handle_syserr(txp, ret);
-    return ret;
+    return RDB_ERROR;
 }
 
 static RDB_upd_op *
@@ -1393,8 +1392,8 @@ RDB_drop_op(const char *name, RDB_exec_context *ecp, RDB_transaction *txp)
             _RDB_free_upd_ops(oldop, ecp);
         ret = RDB_hashmap_put(&txp->dbp->dbrootp->upd_opmap, name, op);
         if (ret != RDB_OK) {
-            _RDB_handle_syserr(txp, ret);
-            return ret;
+            _RDB_handle_errcode(ret, ecp, txp);
+            return RDB_ERROR;
         }
         
         /* Delete all versions of update operator from the database */
@@ -1419,8 +1418,8 @@ RDB_drop_op(const char *name, RDB_exec_context *ecp, RDB_transaction *txp)
             _RDB_free_ro_ops(oldop, ecp);
         ret = RDB_hashmap_put(&txp->dbp->dbrootp->ro_opmap, name, op);
         if (ret != RDB_OK) {
-            _RDB_handle_syserr(txp, ret);
-            return ret;
+            _RDB_handle_errcode(ret, ecp, txp);
+            return RDB_ERROR;
         }
 
         /* Delete all versions of update operator from the database */
@@ -1433,8 +1432,8 @@ RDB_drop_op(const char *name, RDB_exec_context *ecp, RDB_transaction *txp)
         ret = RDB_delete(txp->dbp->dbrootp->ro_ops_tbp, exp, ecp, txp);
         if (ret != RDB_OK) {
             RDB_drop_expr(exp, ecp);
-            _RDB_handle_syserr(txp, ret);
-            return ret;
+            _RDB_handle_errcode(ret, ecp, txp);
+            return RDB_ERROR;
         }
     }
 

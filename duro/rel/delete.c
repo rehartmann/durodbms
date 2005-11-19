@@ -74,7 +74,7 @@ _RDB_delete_real(RDB_table *tbp, RDB_expression *condp, RDB_exec_context *ecp,
     if (ret != RDB_OK)
         return ret;
     ret = RDB_cursor_first(curp);
-    if (ret == RDB_NOT_FOUND) {
+    if (ret == DB_NOTFOUND) {
         RDB_destroy_cursor(curp);
         return RDB_OK;
     }
@@ -118,8 +118,11 @@ _RDB_delete_real(RDB_table *tbp, RDB_expression *condp, RDB_exec_context *ecp,
         if (b) {
             ret = RDB_cursor_delete(curp);
             if (ret != RDB_OK) {
-                RDB_errmsg(txp->dbp->dbrootp->envp, "cannot delete record: %s",
-                        RDB_strerror(ret));
+                if (ret > 0 || ret < -1000) {
+                    RDB_errmsg(txp->dbp->dbrootp->envp,
+                            "cannot delete record: %s", db_strerror(ret));
+                }
+                _RDB_handle_errcode(ret, ecp, txp);
                 RDB_destroy_obj(&tpl, ecp);
                 goto error;
             }
@@ -127,7 +130,7 @@ _RDB_delete_real(RDB_table *tbp, RDB_expression *condp, RDB_exec_context *ecp,
         RDB_destroy_obj(&tpl, ecp);
         ret = RDB_cursor_next(curp, 0);
     } while (ret == RDB_OK);
-    if (ret != RDB_NOT_FOUND)
+    if (ret != DB_NOTFOUND)
         goto error;
     return RDB_destroy_cursor(curp);
 
@@ -170,7 +173,7 @@ _RDB_delete_select_uindex(RDB_table *tbp, RDB_expression *condp,
     ret = delete_by_uindex(tbp->var.select.tbp->var.project.tbp,
             tbp->var.select.objpv, tbp->var.select.tbp->var.project.indexp,
             ecp, txp);
-    if (ret == RDB_NOT_FOUND)
+    if (ret == DB_NOTFOUND)
         ret = RDB_OK;
 
 cleanup:
@@ -193,11 +196,12 @@ _RDB_delete_select_index(RDB_table *tbp, RDB_expression *condp,
             tbp->var.select.tbp->var.project.tbp->is_persistent ?
             txp->txid : NULL);
     if (ret != RDB_OK) {
-        if (txp != NULL) {
+        if (txp != NULL && (ret > 0 || ret < -1000)) {
             RDB_errmsg(txp->dbp->dbrootp->envp, "cannot create cursor: %s",
-                    RDB_strerror(ret));
+                    db_strerror(ret));
         }
-        return ret;
+        _RDB_handle_errcode(ret, ecp, txp);
+        return RDB_ERROR;
     }
 
     fv = malloc(sizeof (RDB_field) * keylen);
@@ -220,7 +224,7 @@ _RDB_delete_select_index(RDB_table *tbp, RDB_expression *condp,
         flags = 0;
 
     ret = RDB_cursor_seek(curp, tbp->var.select.objpc, fv, flags);
-    if (ret == RDB_NOT_FOUND) {
+    if (ret == DB_NOTFOUND) {
         ret = RDB_OK;
         goto cleanup;
     }
@@ -282,7 +286,7 @@ _RDB_delete_select_index(RDB_table *tbp, RDB_expression *condp,
         ret = RDB_cursor_next(curp, flags);
     } while (ret == RDB_OK);
 
-    if (ret == RDB_NOT_FOUND)
+    if (ret == DB_NOTFOUND)
         ret = RDB_OK;
 
 cleanup:

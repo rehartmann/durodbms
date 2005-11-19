@@ -60,7 +60,6 @@ RDB_table_to_array(RDB_object *arrp, RDB_table *tbp,
     return RDB_OK;
 
 error:
-    _RDB_handle_syserr(arrp->var.arr.txp, ret);
     return RDB_ERROR;
 }
 
@@ -178,13 +177,6 @@ RDB_array_get(RDB_object *arrp, RDB_int idx, RDB_exec_context *ecp)
     while (arrp->var.arr.pos < idx) {
         ret = next_tuple(arrp, RDB_FALSE, ecp);
         if (ret != RDB_OK) {
-/* !!
-            if (RDB_is_syserr(ret)) {
-                _RDB_drop_qresult(arrp->var.arr.qrp, ecp, arrp->var.arr.txp);
-                arrp->var.arr.qrp = NULL;
-                _RDB_handle_syserr(arrp->var.arr.txp, ret);
-            }
-*/
             return NULL;
         }
         ++arrp->var.arr.pos;
@@ -200,10 +192,6 @@ RDB_array_get(RDB_object *arrp, RDB_int idx, RDB_exec_context *ecp)
                 arrp->var.arr.tbp->stp->est_cardinality =
                         arrp->var.arr.length;
             }
-        } else if (RDB_is_syserr(ret)) {
-            _RDB_drop_qresult(arrp->var.arr.qrp, ecp, arrp->var.arr.txp);
-            arrp->var.arr.qrp = NULL;
-            _RDB_handle_syserr(arrp->var.arr.txp, ret);
         }
         return NULL;
     }

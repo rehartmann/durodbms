@@ -9,7 +9,6 @@
 #include "typeimpl.h"
 #include "internal.h"
 #include <gen/hashtabit.h>
-#include <gen/errors.h>
 #include <string.h>
 #include <assert.h>
 
@@ -692,11 +691,6 @@ RDB_destroy_obj(RDB_object *objp, RDB_exec_context *ecp)
             if (objp->var.arr.qrp != NULL) {
                 ret = _RDB_drop_qresult(objp->var.arr.qrp, ecp,
                         objp->var.arr.txp);
-
-                if (ret != RDB_OK) {
-                    if (objp->var.arr.txp != NULL)
-                        _RDB_handle_syserr(objp->var.arr.txp, ret);
-                }
             }
 
             /* Delete optimzed table copy (only if it's a virtual table) */
@@ -974,11 +968,13 @@ RDB_binary_set(RDB_object *valp, size_t pos, const void *srcp, size_t len,
 }
 
 int
-RDB_binary_get(const RDB_object *objp, size_t pos, void **pp, size_t len,
-        size_t *alenp)
+RDB_binary_get(const RDB_object *objp, size_t pos, size_t len,
+        RDB_exec_context *ecp, void **pp, size_t *alenp)
 {
-    if (pos > objp->var.bin.len)
-        return RDB_NOT_FOUND;
+    if (pos > objp->var.bin.len) {
+        RDB_raise_invalid_argument("index out of range", ecp);
+        return RDB_ERROR;
+    }
     if (alenp != NULL) {
         if (pos + len > objp->var.bin.len)
             *alenp = objp->var.bin.len - pos;

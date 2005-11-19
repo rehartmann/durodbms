@@ -22,7 +22,10 @@
 
 enum {
     RDB_UNIQUE = 1,
-    RDB_ORDERED = 2
+    RDB_ORDERED = 2,
+
+    RDB_ELEMENT_EXISTS = -200,
+    RDB_KEY_VIOLATION = -201
 };
 
 typedef struct {

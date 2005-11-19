@@ -62,8 +62,7 @@ check_contains(RDB_table *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
     ret = RDB_table_contains(tbp, &tpl, ecp, txp, &b);
     
     if (ret != RDB_OK) {
-        puts(RDB_strerror(ret));
-        return ret;
+        return RDB_ERROR;
     }    
     if (b) {
         puts("Yes - OK");
@@ -76,8 +75,7 @@ check_contains(RDB_table *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
     ret = RDB_table_contains(tbp, &tpl, ecp, txp, &b);
     
     if (ret != RDB_OK) {
-        puts(RDB_strerror(ret));
-        return ret;
+        return RDB_ERROR;
     }
     if (b) {
         puts("Yes");
@@ -192,21 +190,21 @@ main(void)
     printf("Opening environment\n");
     ret = RDB_open_env("dbenv", &dsp);
     if (ret != 0) {
-        fprintf(stderr, "Error: %s\n", RDB_strerror(ret));
+        fprintf(stderr, "Error: %s\n", db_strerror(ret));
         return 1;
     }
 
     RDB_init_exec_context(&ec);
     dbp = RDB_get_db_from_env("TEST", dsp, &ec);
     if (dbp == NULL) {
-        fprintf(stderr, "Error: %s\n", RDB_strerror(ret));
+        fprintf(stderr, "Error: %s\n", RDB_type_name(RDB_obj_type(RDB_get_err(&ec))));
         RDB_destroy_exec_context(&ec);
         return 1;
     }
 
     ret = test_summarize(dbp, &ec);
     if (ret != RDB_OK) {
-        fprintf(stderr, "Error: %s\n", RDB_strerror(ret));
+        fprintf(stderr, "Error: %s\n", RDB_type_name(RDB_obj_type(RDB_get_err(&ec))));
         RDB_destroy_exec_context(&ec);
         return 2;
     }
@@ -215,7 +213,7 @@ main(void)
     printf ("Closing environment\n");
     ret = RDB_close_env(dsp);
     if (ret != RDB_OK) {
-        fprintf(stderr, "Error: %s\n", RDB_strerror(ret));
+        fprintf(stderr, "Error: %s\n", db_strerror(ret));
         return 2;
     }
 

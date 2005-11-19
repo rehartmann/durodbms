@@ -7,6 +7,7 @@
 
 #include "tabletostr.h"
 #include <string.h>
+#include <errno.h>
 #include <rel/internal.h>
 #include <gen/hashtabit.h>
 
@@ -16,7 +17,7 @@ append_str(RDB_object *objp, const char *str)
     int len = objp->var.bin.len + strlen(str);
     char *nstr = realloc(objp->var.bin.datap, len);
     if (nstr == NULL)
-        return RDB_NO_MEMORY;
+        return ENOMEM;
 
     objp->var.bin.datap = nstr;
     strcpy(((char *)objp->var.bin.datap) + objp->var.bin.len - 1, str);
@@ -121,7 +122,7 @@ append_quoted_string(RDB_object *objp, const RDB_object *strp)
     char *qstr = malloc((strp->var.bin.len + 2) * 2);
 
     if (qstr == NULL)
-        return RDB_NO_MEMORY;
+        return ENOMEM;
 
     qstr[0] = '\"';
     qlen = 1;
@@ -431,11 +432,12 @@ append_table(RDB_object *objp, RDB_table *tbp, RDB_exec_context *ecp,
                     }
                 }
                 RDB_destroy_obj(&arr, ecp);
-                if (ret != RDB_NOT_FOUND)
-                    return ret;
+                if (RDB_obj_type(RDB_get_err(ecp)) != &RDB_NOT_FOUND_ERROR)
+                    return RDB_ERROR;
+                RDB_clear_err(ecp);
                 ret = append_str(objp, "}");
                 if (ret != RDB_OK)
-                    return ret;
+                    return RDB_ERROR;
             }
             break;
         }

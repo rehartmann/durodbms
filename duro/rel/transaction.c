@@ -132,8 +132,8 @@ RDB_commit(RDB_exec_context *ecp, RDB_transaction *txp)
 
     ret = txp->txid->commit(txp->txid, 0);
     if (ret != 0) {
-        RDB_errmsg(txp->envp, "cannot commit tx: %s", RDB_strerror(ret));
-        return RDB_convert_err(ret);
+        RDB_errmsg(txp->envp, "cannot commit tx: %s", db_strerror(ret));
+        return ret;
     }
 
     if (txp->parentp != NULL) {
@@ -187,7 +187,7 @@ RDB_rollback(RDB_exec_context *ecp, RDB_transaction *txp)
 
     ret = txp->txid->abort(txp->txid);
     if (ret != 0) {
-        _RDB_handle_errcode(ret, ecp);
+        _RDB_handle_errcode(ret, ecp, txp);
         return RDB_ERROR;
     }
 
@@ -196,7 +196,7 @@ RDB_rollback(RDB_exec_context *ecp, RDB_transaction *txp)
      */
     ret = close_storage(txp);
     if (ret != RDB_OK) {
-        _RDB_handle_errcode(ret, ecp);
+        _RDB_handle_errcode(ret, ecp, txp);
         ret = RDB_ERROR;
     }
 
@@ -256,12 +256,4 @@ _RDB_del_index(RDB_transaction *txp, RDB_index *ixp, RDB_exec_context *ecp)
     txp->delixp = linkp;
     
     return RDB_OK;
-}
-
-void
-_RDB_handle_syserr(RDB_transaction *txp, int err)
-{
-    if (err == RDB_DEADLOCK) {
-        RDB_rollback_all(NULL, txp); /* !! */
-    }
 }

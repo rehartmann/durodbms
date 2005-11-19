@@ -24,14 +24,14 @@ int main(void)
     RDB_init_obj(&tpl);
     res = RDB_tuple_set_string(&tpl, "A", "Aaa", &ec);
     if (res != RDB_OK) {
-        fprintf(stderr, "Error %s\n", RDB_strerror(res));
+        fprintf(stderr, "Error %s\n", RDB_type_name(RDB_obj_type(RDB_get_err(&ec))));
         RDB_destroy_obj(&tpl, &ec);
         RDB_destroy_exec_context(&ec);
         return 2;
     }
     res = RDB_tuple_set_int(&tpl, "B", (RDB_int)4711, &ec);
     if (res != RDB_OK) {
-        fprintf(stderr, "Error %s\n", RDB_strerror(res));
+        fprintf(stderr, "Error %s\n", RDB_type_name(RDB_obj_type(RDB_get_err(&ec))));
         RDB_destroy_obj(&tpl, &ec);
         RDB_destroy_exec_context(&ec);
         return 2;

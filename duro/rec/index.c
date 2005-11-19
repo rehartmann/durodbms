@@ -6,9 +6,9 @@
 /* $Id$ */
 
 #include "index.h"
-#include <gen/errors.h>
 #include <gen/strfns.h>
 #include <string.h>
+#include <errno.h>
 
 static int
 new_index(RDB_recmap *rmp, const char *name, const char *filename,
@@ -20,7 +20,7 @@ new_index(RDB_recmap *rmp, const char *name, const char *filename,
     RDB_index *ixp = malloc(sizeof (RDB_index));
 
     if (ixp == NULL) {
-        return RDB_NO_MEMORY;
+        return ENOMEM;
     }
     ixp->fieldv = NULL;
     ixp->rmp = rmp;
@@ -29,14 +29,14 @@ new_index(RDB_recmap *rmp, const char *name, const char *filename,
     if (name != NULL) {  
         ixp->namp = RDB_dup_str(name);
         if (ixp->namp == NULL) {
-            ret = RDB_NO_MEMORY;
+            ret = ENOMEM;
             goto error;
         }
     }
     if (filename != NULL) {
         ixp->filenamp = RDB_dup_str(filename);
         if (ixp->filenamp == NULL) {
-            ret = RDB_NO_MEMORY;
+            ret = ENOMEM;
             goto error;
         }
     }
@@ -44,7 +44,7 @@ new_index(RDB_recmap *rmp, const char *name, const char *filename,
     ixp->fieldc = fieldc;
     ixp->fieldv = malloc(fieldc * sizeof(int));
     if (ixp->fieldv == NULL) {
-        ret = RDB_NO_MEMORY;
+        ret = ENOMEM;
         goto error;
     }
     for (i = 0; i < fieldc; i++)
@@ -53,7 +53,6 @@ new_index(RDB_recmap *rmp, const char *name, const char *filename,
 
     ret = db_create(&ixp->dbp, envp->envp, 0);
     if (ret != 0) {
-        ret = RDB_convert_err(ret);
         goto error;
     }
 
@@ -79,7 +78,7 @@ make_skey(DB *dbp, const DBT *pkeyp, const DBT *pdatap, DBT *skeyp)
     
     fieldv = malloc (sizeof(RDB_field) * ixp->fieldc);
     if (fieldv == NULL)
-        return RDB_NO_MEMORY;
+        return ENOMEM;
 
     for (i = 0; i < ixp->fieldc; i++) {
         fieldv[i].no = ixp->fieldv[i];
@@ -224,8 +223,7 @@ RDB_create_index(RDB_recmap *rmp, const char *namp, const char *filenamp,
     ret = ixp->dbp->open(ixp->dbp, txid, filenamp, namp,
             RDB_ORDERED & flags ? DB_BTREE : DB_HASH, DB_CREATE, 0664);
     if (ret != 0) {
-        ret = RDB_convert_err(ret);
-        RDB_errmsg(envp, "cannot open index: %s", RDB_strerror(ret));
+        RDB_errmsg(envp, "cannot open index: %s", db_strerror(ret));
         goto error;
     }
 
@@ -235,7 +233,6 @@ RDB_create_index(RDB_recmap *rmp, const char *namp, const char *filenamp,
     /* associate the index DB with the recmap DB */
     ret = ixp->dbp->associate(rmp->dbp, txid, ixp->dbp, make_skey, DB_CREATE);
     if (ret != 0) {
-        ret = RDB_convert_err(ret);
         goto error;
     }
    
@@ -257,14 +254,14 @@ RDB_open_index(RDB_recmap *rmp, const char *namp, const char *filenamp,
 
     ret = new_index(rmp, namp, filenamp, envp, fieldc, fieldv, &ixp);
     if (ret != RDB_OK)
-        return RDB_convert_err(ret);
+        return ret;
 
     if (!(RDB_UNIQUE & flags))
         ixp->dbp->set_flags(ixp->dbp, DB_DUPSORT);
 
     ret = ixp->dbp->open(ixp->dbp, txid, filenamp, namp, DB_UNKNOWN, 0, 0664);
     if (ret != 0) {
-        ret = RDB_convert_err(ret);
+        ret = ret;
         goto error;
     }
 
@@ -274,7 +271,6 @@ RDB_open_index(RDB_recmap *rmp, const char *namp, const char *filenamp,
     /* associate the index DB with the recmap DB */
     ret = ixp->dbp->associate(rmp->dbp, txid, ixp->dbp, make_skey, 0);
     if (ret != 0) {
-        ret = RDB_convert_err(ret);
         goto error;
     }
 
@@ -294,7 +290,7 @@ RDB_close_index(RDB_index *ixp)
     free(ixp->filenamp);
     free(ixp->fieldv);
     free(ixp);
-    return RDB_convert_err(ret);
+    return ret;
 }
 
 RDB_bool
@@ -324,8 +320,8 @@ cleanup:
     free(ixp->cmpv);
     free(ixp);
     if (ret != 0)
-        RDB_errmsg(envp, "cannot delete index: %s", RDB_strerror(ret));
-    return RDB_convert_err(ret);
+        RDB_errmsg(envp, "cannot delete index: %s", db_strerror(ret));
+    return ret;
 }
 
 int
@@ -351,7 +347,7 @@ RDB_index_get_fields(RDB_index *ixp, RDB_field keyv[], int fieldc, DB_TXN *txid,
     /* Get primary key and data */
     ret = ixp->dbp->pget(ixp->dbp, txid, &key, &pkey, &data, 0);
     if (ret != 0) {
-        return RDB_convert_err(ret);
+        return ret;
     }
 
     /* Get field values */
@@ -390,10 +386,5 @@ RDB_index_delete_rec(RDB_index *ixp, RDB_field keyv[], DB_TXN *txid)
         return ret;
 
     /* Delete record */
-    ret = ixp->dbp->del(ixp->dbp, txid, &key, 0);
-    if (ret != 0) {
-        return RDB_convert_err(ret);
-    }
-
-    return RDB_OK;
+    return ixp->dbp->del(ixp->dbp, txid, &key, 0);
 }

@@ -24,11 +24,11 @@ print_table(RDB_table *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
         printf("NAME: %s\n", RDB_tuple_get_string(tplp, "NAME"));
         printf("SAL: %f\n", (double) RDB_tuple_get_rational(tplp, "SAL"));
     }
-/* !!
-    if (ret != RDB_NOT_FOUND) {
+    if (RDB_obj_type(RDB_get_err(ecp)) != &RDB_NOT_FOUND_ERROR) {
         goto error;
     }
-*/
+    RDB_clear_err(ecp);
+
     RDB_destroy_obj(&array, ecp);
     
     return RDB_OK;
@@ -91,11 +91,10 @@ test_rename(RDB_database *dbp, RDB_exec_context *ecp)
         goto error;
 
     ret = RDB_table_contains(vtbp, &tpl, ecp, &tx, &b);
-    printf("Result of RDB_table_contains(): %d %s\n", ret, RDB_strerror(ret));
-
     if (ret != RDB_OK) {
         goto error;
     }
+    printf("Result of RDB_table_contains(): %s\n", b ? "TRUE" : "FALSE");
 
     RDB_destroy_obj(&tpl, ecp);
 
@@ -126,21 +125,21 @@ main(void)
     printf("Opening environment\n");
     ret = RDB_open_env("dbenv", &dsp);
     if (ret != 0) {
-        fprintf(stderr, "Error: %s\n", RDB_strerror(ret));
+        fprintf(stderr, "Error: %s\n", db_strerror(ret));
         return 1;
     }
 
     RDB_init_exec_context(&ec);
     dbp = RDB_get_db_from_env("TEST", dsp, &ec);
     if (ret != 0) {
-        fprintf(stderr, "Error: %s\n", RDB_strerror(ret));
+        fprintf(stderr, "Error: %s\n", RDB_type_name(RDB_obj_type(RDB_get_err(&ec))));
         RDB_destroy_exec_context(&ec);
         return 1;
     }
 
     ret = test_rename(dbp, &ec);
     if (ret != RDB_OK) {
-        fprintf(stderr, "Error: %s\n", RDB_strerror(ret));
+        fprintf(stderr, "Error: %s\n", RDB_type_name(RDB_obj_type(RDB_get_err(&ec))));
         RDB_destroy_exec_context(&ec);
         return 2;
     }
@@ -149,7 +148,7 @@ main(void)
     printf ("Closing environment\n");
     ret = RDB_close_env(dsp);
     if (ret != RDB_OK) {
-        fprintf(stderr, "Error: %s\n", RDB_strerror(ret));
+        fprintf(stderr, "Error: %s\n", db_strerror(ret));
         return 2;
     }
 

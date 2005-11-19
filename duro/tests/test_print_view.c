@@ -23,7 +23,6 @@ print_salary_view(RDB_database *dbp, RDB_exec_context *ecp)
     tmpvtbp = RDB_get_table("SALARIES", ecp, &tx);
     if (tmpvtbp == NULL) {
         RDB_rollback(ecp, &tx);
-        fprintf(stderr, "Error: %s\n", RDB_strerror(ret));
         return RDB_ERROR;
     }
 
@@ -75,7 +74,6 @@ print_emp_view(RDB_database *dbp, RDB_exec_context *ecp)
     tmpvtbp = RDB_get_table("EMPS1H", ecp, &tx);
     if (tmpvtbp == NULL) {
         RDB_rollback(ecp, &tx);
-        fprintf(stderr, "Error: %s\n", RDB_strerror(ret));
         return RDB_ERROR;
     }
 
@@ -91,11 +89,9 @@ print_emp_view(RDB_database *dbp, RDB_exec_context *ecp)
         printf("NAME: %s\n", RDB_tuple_get_string(tplp, "NAME"));
         printf("SALARY: %f\n", (float)RDB_tuple_get_rational(tplp, "SALARY"));
     }
-/* !!
-    if (ret != RDB_NOT_FOUND) {
+    if (RDB_obj_type(RDB_get_err(ecp)) != &RDB_NOT_FOUND_ERROR) {
         goto error;
     }
-*/
     RDB_clear_err(ecp);
 
     RDB_destroy_obj(&array, ecp);
@@ -126,7 +122,6 @@ print_emps_view(RDB_database *dbp, RDB_exec_context *ecp)
     printf("Table EMPS1S\n");
     tmpvtbp = RDB_get_table("EMPS1S", ecp, &tx);
     if (tmpvtbp == NULL) {
-        fprintf(stderr, "Error: %s\n", RDB_strerror(ret));
         return RDB_ERROR;
     }
 
@@ -146,11 +141,9 @@ print_emps_view(RDB_database *dbp, RDB_exec_context *ecp)
         b = RDB_tuple_get_bool(tplp, "HIGHSAL");
         printf("HIGHSAL: %s\n", b ? "TRUE" : "FALSE");
     }
-/* !!
-    if (ret != RDB_NOT_FOUND) {
+    if (RDB_obj_type(RDB_get_err(ecp)) != &RDB_NOT_FOUND_ERROR) {
         goto error;
     }
-*/
     RDB_clear_err(ecp);
 
     RDB_destroy_obj(&array, ecp);
@@ -183,7 +176,6 @@ print_emps2_view(RDB_database *dbp, RDB_exec_context *ecp)
     printf("Table EMPS1S2\n");
     tmpvtbp = RDB_get_table("EMPS1S2", ecp, &tx);
     if (tmpvtbp == NULL) {
-        fprintf(stderr, "Error: %s\n", RDB_strerror(ret));
         return RDB_ERROR;
     }
 
@@ -199,11 +191,9 @@ print_emps2_view(RDB_database *dbp, RDB_exec_context *ecp)
         printf("MAX_SALARY: %f\n", (float) RDB_tuple_get_rational(tplp,
                 "MAX_SALARY"));
     }
-/* !!
-    if (ret != RDB_NOT_FOUND) {
+    if (RDB_obj_type(RDB_get_err(ecp)) != &RDB_NOT_FOUND_ERROR) {
         goto error;
     }
-*/
     RDB_clear_err(ecp);
 
     RDB_destroy_obj(&array, ecp);
@@ -226,42 +216,42 @@ main(void)
     printf("Opening environment\n");
     ret = RDB_open_env("dbenv", &dsp);
     if (ret != RDB_OK) {
-        fprintf(stderr, "Error: %s\n", RDB_strerror(ret));
+        fprintf(stderr, "Error: %s\n", db_strerror(ret));
         return 1;
     }
 
     RDB_init_exec_context(&ec);
     dbp = RDB_get_db_from_env("TEST", dsp, &ec);
     if (dbp == NULL) {
-        fprintf(stderr, "Error: %s\n", RDB_strerror(ret));
+        fprintf(stderr, "Error: %s\n", RDB_type_name(RDB_obj_type(RDB_get_err(&ec))));
         RDB_destroy_exec_context(&ec);
         return 1;
     }
 
     ret = print_salary_view(dbp, &ec);
     if (ret != RDB_OK) {
-        fprintf(stderr, "Error: %s\n", RDB_strerror(ret));
+        fprintf(stderr, "Error: %s\n", RDB_type_name(RDB_obj_type(RDB_get_err(&ec))));
         RDB_destroy_exec_context(&ec);
         return 2;
     }
 
     ret = print_emp_view(dbp, &ec);
     if (ret != RDB_OK) {
-        fprintf(stderr, "Error: %s\n", RDB_strerror(ret));
+        fprintf(stderr, "Error: %s\n", RDB_type_name(RDB_obj_type(RDB_get_err(&ec))));
         RDB_destroy_exec_context(&ec);
         return 2;
     }
 
     ret = print_emps_view(dbp, &ec);
     if (ret != RDB_OK) {
-        fprintf(stderr, "Error: %s\n", RDB_strerror(ret));
+        fprintf(stderr, "Error: %s\n", RDB_type_name(RDB_obj_type(RDB_get_err(&ec))));
         RDB_destroy_exec_context(&ec);
         return 2;
     }
 
     ret = print_emps2_view(dbp, &ec);
     if (ret != RDB_OK) {
-        fprintf(stderr, "Error: %s\n", RDB_strerror(ret));
+        fprintf(stderr, "Error: %s\n", RDB_type_name(RDB_obj_type(RDB_get_err(&ec))));
         RDB_destroy_exec_context(&ec);
         return 2;
     }
@@ -269,7 +259,7 @@ main(void)
 
     ret = RDB_close_env(dsp);
     if (ret != RDB_OK) {
-        fprintf(stderr, "Error: %s\n", RDB_strerror(ret));
+        fprintf(stderr, "Error: %s\n", db_strerror(ret));
         return 2;
     }
 

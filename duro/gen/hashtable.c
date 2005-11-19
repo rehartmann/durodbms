@@ -5,9 +5,9 @@
  * See the file COPYING for redistribution information.
  */
 
-#include <stdlib.h>
 #include "hashtable.h"
-#include <gen/errors.h>
+#include <stdlib.h>
+#include <errno.h>
 
 static void
 alloc_map(RDB_hashtable *hp) {
@@ -45,7 +45,7 @@ RDB_destroy_hashtable(RDB_hashtable *hp)
  *
  * Returns:
  *     RDB_OK        success
- *     RDB_NO_MEMORY insufficient memory
+ *     ENOMEM insufficient memory
  */
 int
 RDB_hashtable_put(RDB_hashtable *hp, void *entryp, void *arg)
@@ -56,7 +56,7 @@ RDB_hashtable_put(RDB_hashtable *hp, void *entryp, void *arg)
     if (hp->entries == NULL) {
         alloc_map(hp);
         if (hp->entries == NULL)
-            return RDB_NO_MEMORY;
+            return ENOMEM;
     }
 
     /* If fill ratio is at 80%, rehash */
@@ -69,7 +69,7 @@ RDB_hashtable_put(RDB_hashtable *hp, void *entryp, void *arg)
         hp->capacity *= 2;
         hp->entries = malloc(sizeof(void *) * hp->capacity);
         if (hp->entries == NULL)
-            return RDB_NO_MEMORY;
+            return ENOMEM;
 
         for (i = 0; i < hp->capacity; i++) {
             hp->entries[i] = NULL;

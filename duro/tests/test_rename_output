@@ -8,7 +8,7 @@ SAL: 4100.000000
 EMP#: 1
 NAME: Smith
 SAL: 4000.000000
-Result of RDB_table_contains(): 0 OK
+Result of RDB_table_contains(): TRUE
 Dropping rename
 End of transaction
 Closing environment

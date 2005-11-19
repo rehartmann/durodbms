@@ -2049,7 +2049,6 @@ cleanup:
         if (atxp == &subtx) {
             RDB_rollback(ecp, &subtx);
         }
-        _RDB_handle_syserr(txp, ret);
     }
 
     return ret;

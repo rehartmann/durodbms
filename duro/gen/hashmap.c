@@ -1,10 +1,11 @@
 /* $Id$ */
 
 #include "hashmap.h"
+#include "types.h"
 #include "hashtabit.h"
-#include "errors.h"
 #include "strfns.h"
 #include <string.h>
+#include <errno.h>
 
 static unsigned
 hash_str(const void *entryp, void *arg)
@@ -45,11 +46,11 @@ RDB_hashmap_put(RDB_hashmap *hp, const char *key, void *valp)
     } else {
         entryp = malloc(sizeof (RDB_kv_pair));
         if (entryp == NULL)
-            return RDB_NO_MEMORY;
+            return ENOMEM;
         entryp->key = RDB_dup_str(key);
         if (entryp->key == NULL) {
             free(entryp);
-            return RDB_NO_MEMORY;
+            return ENOMEM;
         }
         entryp->valuep = valp;
         ret = RDB_hashtable_put(&hp->tab, entryp, NULL);

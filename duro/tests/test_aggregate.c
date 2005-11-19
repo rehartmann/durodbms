@@ -29,7 +29,7 @@ test_aggregate(RDB_database *dbp, RDB_exec_context *ecp)
     ret = RDB_cardinality(tbp, ecp, &tx);
     if (ret < 0) {
         RDB_rollback(ecp, &tx);
-        return ret;
+        return RDB_ERROR;
     }
 
     printf("Count is %d\n", ret);
@@ -39,7 +39,7 @@ test_aggregate(RDB_database *dbp, RDB_exec_context *ecp)
     ret = RDB_avg(tbp, "SALARY", ecp, &tx, &avg);
     if (ret != RDB_OK) {
         RDB_commit(ecp, &tx);
-        return ret;
+        return RDB_ERROR;
     }
 
     printf("Average is %f\n", (float)avg);
@@ -59,7 +59,7 @@ main(void)
     printf("Opening environment\n");
     ret = RDB_open_env("dbenv", &dsp);
     if (ret != 0) {
-        fprintf(stderr, "Error: %s\n", RDB_strerror(ret));
+        fprintf(stderr, "Error: %s\n", db_strerror(ret));
         return 1;
     }
 
@@ -67,20 +67,20 @@ main(void)
 
     dbp = RDB_get_db_from_env("TEST", dsp, &ec);
     if (dbp == NULL) {
-        fprintf(stderr, "Error: %s\n", RDB_strerror(ret));
+        fprintf(stderr, "Error: %s\n", RDB_type_name(RDB_obj_type(RDB_get_err(&ec))));
         return 1;
     }
 
     ret = test_aggregate(dbp, &ec);
     if (ret != RDB_OK) {
-        fprintf(stderr, "Error: %s\n", RDB_strerror(ret));
+        fprintf(stderr, "Error: %s\n", RDB_type_name(RDB_obj_type(RDB_get_err(&ec))));
         return 2;
     }
 
     printf ("Closing environment\n");
     ret = RDB_close_env(dsp);
     if (ret != RDB_OK) {
-        fprintf(stderr, "Error: %s\n", RDB_strerror(ret));
+        fprintf(stderr, "Error: %s\n", db_strerror(ret));
         return 2;
     }
 
