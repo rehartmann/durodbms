@@ -680,7 +680,7 @@ mutate_minus(RDB_table *tbp, RDB_table **tbpv, int cap,
     if (tbc < cap && tbp->var.minus.tb1p->kind == RDB_TB_UNION) {
         ret = transform_minus_union(tbp, ecp, txp, &tbpv[tbc]);
         if (ret != RDB_OK)
-            return ret; /* !! */
+            return RDB_ERROR;
         tbc++;
         /* !! mutate_union */
     }

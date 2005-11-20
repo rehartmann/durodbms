@@ -133,7 +133,8 @@ RDB_commit(RDB_exec_context *ecp, RDB_transaction *txp)
     ret = txp->txid->commit(txp->txid, 0);
     if (ret != 0) {
         RDB_errmsg(txp->envp, "cannot commit tx: %s", db_strerror(ret));
-        return ret;
+        _RDB_handle_errcode(ret, ecp, txp);
+        return RDB_ERROR;
     }
 
     if (txp->parentp != NULL) {

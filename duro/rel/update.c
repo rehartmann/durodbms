@@ -164,6 +164,7 @@ update_stored_complex(RDB_table *tbp, RDB_expression *condp,
     /* Reset cursor */
     ret = RDB_cursor_first(curp);
     
+    _RDB_cmp_ecp = ecp;
     while (ret == RDB_OK) {
         for (i = 0; i < tpltyp->var.tuple.attrc; i++) {
             RDB_object val;
@@ -463,9 +464,11 @@ _RDB_update_select_pindex(RDB_table *tbp, RDB_expression *condp,
             goto cleanup;
     }
         
+    _RDB_cmp_ecp = ecp;
     ret = RDB_update_rec(tbp->var.select.tbp->var.project.tbp->stp->recmapp,
-            fvv, updc, fieldv, tbp->var.select.tbp->var.project.tbp->is_persistent ?
-            txp->txid : NULL);
+            fvv, updc, fieldv,
+            tbp->var.select.tbp->var.project.tbp->is_persistent ?
+                    txp->txid : NULL);
     if (ret != RDB_OK) {
         _RDB_handle_errcode(ret, ecp, txp);
         ret = RDB_ERROR;
@@ -543,6 +546,7 @@ update_select_index_simple(RDB_table *tbp, RDB_expression *condp,
         goto cleanup;
     }
 
+    _RDB_cmp_ecp = ecp;
     do {
         RDB_bool upd = RDB_TRUE;
         RDB_bool b;
@@ -550,7 +554,7 @@ update_select_index_simple(RDB_table *tbp, RDB_expression *condp,
         /* Read tuple */
         RDB_init_obj(&tpl);
         ret = _RDB_get_by_cursor(tbp->var.select.tbp->var.project.tbp, curp,
-                tbp->typ->var.basetyp, &tpl, ecp);
+                tbp->typ->var.basetyp, &tpl, ecp, txp);
         if (ret != RDB_OK) {
             RDB_destroy_obj(&tpl, ecp);
             goto cleanup;
@@ -610,9 +614,13 @@ update_select_index_simple(RDB_table *tbp, RDB_expression *condp,
                     goto cleanup;
             }
                 
+            _RDB_cmp_ecp = ecp;
             ret = RDB_cursor_update(curp, updc, fieldv);
-            if (ret != RDB_OK)
+            if (ret != RDB_OK) {
+                _RDB_handle_errcode(ret, ecp, txp);
+                ret = RDB_ERROR;
                 goto cleanup;
+            }
         } else {
             RDB_destroy_obj(&tpl, ecp);
         }
@@ -734,7 +742,7 @@ update_select_index_complex(RDB_table *tbp, RDB_expression *condp,
         /* Read tuple */
         RDB_init_obj(&tpl);
         ret = _RDB_get_by_cursor(tbp->var.select.tbp->var.project.tbp, curp,
-                tbp->typ->var.basetyp, &tpl, ecp);
+                tbp->typ->var.basetyp, &tpl, ecp, txp);
         if (ret != RDB_OK) {
             RDB_destroy_obj(&tpl, ecp);
             goto cleanup;
@@ -810,6 +818,7 @@ update_select_index_complex(RDB_table *tbp, RDB_expression *condp,
         goto cleanup;
     }
 
+    _RDB_cmp_ecp = ecp;
     do {
         RDB_bool upd = RDB_TRUE;
         RDB_bool b;
@@ -817,7 +826,7 @@ update_select_index_complex(RDB_table *tbp, RDB_expression *condp,
         /* Read tuple */
         RDB_init_obj(&tpl);
         ret = _RDB_get_by_cursor(tbp->var.select.tbp->var.project.tbp, curp,
-                tbp->typ->var.basetyp, &tpl, ecp);
+                tbp->typ->var.basetyp, &tpl, ecp, txp);
         if (ret != RDB_OK) {
             RDB_destroy_obj(&tpl, ecp);
             goto cleanup;

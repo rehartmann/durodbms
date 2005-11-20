@@ -207,6 +207,17 @@ RDB_raise_deadlock(RDB_exec_context *ecp)
     return errp;
 }
 
+RDB_object *
+RDB_raise_fatal(RDB_exec_context *ecp)
+{
+    RDB_object *errp = RDB_raise_err(ecp);
+    if (errp == NULL)
+        return NULL;
+
+    errp->typ = &RDB_FATAL_ERROR;
+    return errp;
+}
+
 void
 _RDB_handle_errcode(int errcode, RDB_exec_context *ecp, RDB_transaction *txp)
 {
@@ -233,7 +244,27 @@ _RDB_handle_errcode(int errcode, RDB_exec_context *ecp, RDB_transaction *txp)
             RDB_rollback_all(ecp, txp);
             RDB_raise_deadlock(ecp);
             break;
+        case DB_RUNRECOVERY:
+            RDB_raise_fatal(ecp);
+            break;
         default:
             RDB_raise_system(db_strerror(errcode), ecp);
     }
+}
+
+int
+RDB_ec_set_property(RDB_exec_context *ecp, const char *name, void *p)
+{
+    int ret = RDB_hashmap_put(&ecp->pmap, name, p);
+    if (ret != RDB_OK) {
+        _RDB_handle_errcode(ret, ecp, NULL);
+        return RDB_ERROR;
+    }
+    return RDB_OK;
+}
+
+void *
+RDB_ec_get_property(RDB_exec_context *ecp, const char *name)
+{
+    return RDB_hashmap_get(&ecp->pmap, name);
 }

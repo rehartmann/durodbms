@@ -33,6 +33,7 @@ delete_by_uindex(RDB_table *tbp, RDB_object *objpv[], _RDB_tbindex *indexp,
             goto cleanup;
     }
 
+    _RDB_cmp_ecp = ecp;
     if (indexp->idxp == NULL) {
         ret = RDB_delete_rec(tbp->stp->recmapp, fv,
                 tbp->is_persistent ? txp->txid : NULL);
@@ -79,6 +80,7 @@ _RDB_delete_real(RDB_table *tbp, RDB_expression *condp, RDB_exec_context *ecp,
         return RDB_OK;
     }
     
+    _RDB_cmp_ecp = ecp;
     do {
         RDB_init_obj(&tpl);
         if (condp != NULL) {
@@ -229,6 +231,7 @@ _RDB_delete_select_index(RDB_table *tbp, RDB_expression *condp,
         goto cleanup;
     }
 
+    _RDB_cmp_ecp = ecp;
     do {
         RDB_bool del = RDB_TRUE;
         RDB_bool b;
@@ -241,7 +244,7 @@ _RDB_delete_select_index(RDB_table *tbp, RDB_expression *condp,
          * Read tuple and check condition
          */
         ret = _RDB_get_by_cursor(tbp->var.select.tbp->var.project.tbp,
-                curp, tbp->typ->var.basetyp, &tpl, ecp);
+                curp, tbp->typ->var.basetyp, &tpl, ecp, txp);
         if (ret != RDB_OK) {
             RDB_destroy_obj(&tpl, ecp);
             goto cleanup;

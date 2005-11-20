@@ -131,6 +131,9 @@ typedef struct _RDB_tbindex {
     RDB_index *idxp;	/* NULL for the primary index */
 } _RDB_tbindex;
 
+/* Used to pass the execution context (not MT-safe */
+extern RDB_exec_context *_RDB_cmp_ecp;
+
 /* Internal functions */
 
 int
@@ -177,7 +180,7 @@ _RDB_get_by_uindex(RDB_table *tbp, RDB_object *objpv[], _RDB_tbindex *indexp,
 
 int
 _RDB_get_by_cursor(RDB_table *, RDB_cursor *, RDB_type *, RDB_object *,
-        RDB_exec_context *);
+        RDB_exec_context *, RDB_transaction *);
 
 int
 _RDB_drop_qresult(RDB_qresult *, RDB_exec_context *, RDB_transaction *);

@@ -412,9 +412,15 @@ Duro_invoke_update_op(const char *name, int argc, RDB_object *argv[],
     Tcl_Obj *procargv[5];
     Tcl_Obj **opargv;
     Tcl_CmdInfo cmdinfo;
+    TclState *statep;
+    RDB_exec_context *oldecp;
     RDB_environment *envp = RDB_tx_env(txp);
-    Tcl_Interp *interp = txp->user_data;
     int issetter = argc == 2 && strstr(name, "_set_") != NULL;
+    Tcl_Interp *interp = RDB_ec_get_property(ecp, "TCL_INTERP");
+    if (interp == NULL) {
+        RDB_raise_resource_not_found("Tcl interpreter not found", ecp);
+        return RDB_ERROR;
+    }
 
     nametop = Tcl_NewStringObj(name, strlen(name));
 
@@ -439,9 +445,10 @@ Duro_invoke_update_op(const char *name, int argc, RDB_object *argv[],
         RDB_raise_internal("could not get command info", ecp);
         return RDB_ERROR;
     }
+    statep = (TclState *) cmdinfo.objClientData;
 
     /* Find tx id */
-    txtop = find_txid(txp, (TclState *) cmdinfo.objClientData);
+    txtop = find_txid(txp, statep);
     if (txtop == NULL) {
         RDB_raise_internal("transaction not found", ecp);
         return RDB_ERROR;
@@ -486,10 +493,9 @@ Duro_invoke_update_op(const char *name, int argc, RDB_object *argv[],
                 ret = RDB_set_table_name(tbp, "duro_t", ecp, txp);
                 if (ret != RDB_OK) {
                     Tcl_Free((char *) opargv);
-                    return ret;
+                    return RDB_ERROR;
                 }
-                ret = Duro_add_table(interp, (TclState *)cmdinfo.objClientData,
-                    tbp, "duro_t", envp);
+                ret = Duro_add_table(interp, statep, tbp, "duro_t", envp);
                 if (ret != TCL_OK) {
                     Tcl_Free((char *) opargv);
                     RDB_raise_internal("passing table arg failed", ecp);
@@ -523,8 +529,14 @@ Duro_invoke_update_op(const char *name, int argc, RDB_object *argv[],
 
     opargv[argc + 1] = txtop;
 
+    /* Set execution context, store old one */
+    oldecp = statep->current_ecp;
+    statep->current_ecp = ecp;
+
     /* Execute operator by invoking the Tcl procedure just created */
     ret = Tcl_EvalObjv(interp, argc + 2, opargv, 0);
+
+    statep->current_ecp = oldecp;
 
     Tcl_Free((char *) opargv);
     
@@ -606,10 +618,16 @@ Duro_invoke_ro_op(const char *name, int argc, RDB_object *argv[],
     Tcl_Obj **opargv;
     RDB_type *convtyp;
     Tcl_CmdInfo cmdinfo;
+    TclState *statep;
+    RDB_exec_context *oldecp;
     Tcl_Obj *txtop = NULL;
     RDB_type *rtyp = RDB_obj_type(retvalp);
     RDB_environment *envp = RDB_tx_env(txp);
-    Tcl_Interp *interp = txp->user_data;
+    Tcl_Interp *interp = RDB_ec_get_property(ecp, "TCL_INTERP");
+    if (interp == NULL) {
+        RDB_raise_resource_not_found("Tcl interpreter not found", ecp);
+        return RDB_ERROR;
+    }
 
     nametop = Tcl_NewStringObj(name, strlen(name));
 
@@ -623,11 +641,14 @@ Duro_invoke_ro_op(const char *name, int argc, RDB_object *argv[],
         return RDB_ERROR;
     }
 
-    if (Tcl_GetCommandInfo(interp, "duro::operator", &cmdinfo)) {
-        /* Try to find tx id */
-        txtop = find_txid(txp, (TclState *) cmdinfo.objClientData);
+    if (!Tcl_GetCommandInfo(interp, "duro::operator", &cmdinfo)) {
+        RDB_raise_internal("could not get command info", ecp);
+        return RDB_ERROR;
     }
+    statep = (TclState *) cmdinfo.objClientData;
 
+    /* Try to find tx id */
+    txtop = find_txid(txp, statep);
     if (txtop != NULL) {
         /* Add tx argument */
         ret = Tcl_ListObjAppendElement(interp, namelistp, Tcl_NewStringObj("tx", 2));
@@ -678,8 +699,14 @@ Duro_invoke_ro_op(const char *name, int argc, RDB_object *argv[],
         opargv[argc + 1] = txtop;
     }
 
+    /* Set execution context, store old one */
+    oldecp = statep->current_ecp;
+    statep->current_ecp = ecp;
+
     /* Execute operator by invoking the Tcl procedure just created */
     ret = Tcl_EvalObjv(interp, txtop != NULL ? argc + 2 : argc + 1, opargv, 0);
+
+    statep->current_ecp = oldecp;
 
     Tcl_Free((char *) opargv);
     

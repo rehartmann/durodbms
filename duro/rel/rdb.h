@@ -116,7 +116,6 @@ typedef struct RDB_type {
     RDB_ro_op_func *comparep;
     size_t compare_iarglen;
     void *compare_iargp;
-    void *tx_udata;
 
     RDB_int ireplen;
 
@@ -167,9 +166,7 @@ extern RDB_type RDB_ATTRIBUTE_NOT_FOUND_ERROR;
 extern RDB_type RDB_OPERATOR_NOT_FOUND_ERROR;
 extern RDB_type RDB_VERSION_MISMATCH_ERROR;
 extern RDB_type RDB_SYNTAX_ERROR;
-
 extern RDB_type RDB_NOT_SUPPORTED_ERROR;
-
 extern RDB_type RDB_NO_SPACE_ERROR;
 extern RDB_type RDB_NO_MEMORY_ERROR;
 extern RDB_type RDB_SYSTEM_ERROR;
@@ -177,6 +174,7 @@ extern RDB_type RDB_DEADLOCK_ERROR;
 extern RDB_type RDB_INTERNAL_ERROR;
 extern RDB_type RDB_RESOURCE_NOT_FOUND_ERROR;
 extern RDB_type RDB_LOCK_NOT_GRANTED_ERROR;
+extern RDB_type RDB_FATAL_ERROR;
 
 enum _RDB_expr_kind {
     RDB_EX_OBJ,
@@ -1238,5 +1236,11 @@ RDB_raise_aggregate_undefined(RDB_exec_context *);
 
 RDB_object *
 RDB_raise_version_mismatch(RDB_exec_context *);
+
+int
+RDB_ec_set_property(RDB_exec_context *, const char *name, void *);
+
+void *
+RDB_ec_get_property(RDB_exec_context *, const char *name);
 
 #endif

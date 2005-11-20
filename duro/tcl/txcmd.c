@@ -8,7 +8,7 @@
 #include "duro.h"
 #include <string.h>
 
-int /* !! set Tcl return code */
+int
 Duro_tcl_rollback(Tcl_HashEntry *entryp, RDB_exec_context *ecp,
         RDB_transaction *txp)
 {

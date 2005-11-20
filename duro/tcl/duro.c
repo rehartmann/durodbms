@@ -80,10 +80,6 @@ Duro_dberror(Tcl_Interp *interp, const RDB_object *errp, RDB_transaction *txp)
                 Tcl_AppendResult(interp, ": ", RDB_obj_string(&info),
                         (char *) NULL);
             }            
-        } else {
-            fprintf(stderr, "error getting component: %s",
-                    RDB_type_name(RDB_obj_type(RDB_get_err(&ec))));
-            RDB_clear_err(&ec);
         }
 
         /*
@@ -168,6 +164,11 @@ Duro_init_tcl(Tcl_Interp *interp, TclState **statepp)
 
     RDB_init_exec_context(&(*statepp)->ec);
     (*statepp)->current_ecp = &(*statepp)->ec;
+    if (RDB_ec_set_property(&(*statepp)->ec, "TCL_INTERP", interp)
+            != RDB_OK) {
+        RDB_destroy_exec_context(&(*statepp)->ec);
+        return TCL_ERROR;
+    }
 
     return Tcl_PkgProvide(interp, "duro", "0.10");
 }

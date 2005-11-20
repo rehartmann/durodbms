@@ -39,6 +39,7 @@ RDB_type RDB_LOCK_NOT_GRANTED_ERROR;
 RDB_type RDB_AGGREGATE_UNDEFINED_ERROR;
 RDB_type RDB_VERSION_MISMATCH_ERROR;
 RDB_type RDB_DEADLOCK_ERROR;
+RDB_type RDB_FATAL_ERROR;
 
 static int
 compare_int(const char *name, int argc, RDB_object *argv[],
@@ -214,6 +215,11 @@ _RDB_init_builtin_types(RDB_exec_context *ecp)
         0,
     };
 
+    static RDB_possrep fatal_rep = {
+        "FATAL_ERROR",
+        0,
+    };
+
     RDB_BOOLEAN.kind = RDB_TP_SCALAR;
     RDB_BOOLEAN.ireplen = 1;
     RDB_BOOLEAN.name = "BOOLEAN";
@@ -261,6 +267,7 @@ _RDB_init_builtin_types(RDB_exec_context *ecp)
     RDB_NOT_FOUND_ERROR.var.scalar.repv = &no_memory_rep;
     RDB_NO_MEMORY_ERROR.var.scalar.arep = RDB_create_tuple_type(0, NULL, ecp);
     if (RDB_NO_MEMORY_ERROR.var.scalar.arep == NULL) {
+        RDB_raise_no_memory(ecp);
         return RDB_ERROR;
     }
     RDB_NO_MEMORY_ERROR.var.scalar.constraintp = NULL;
@@ -273,6 +280,7 @@ _RDB_init_builtin_types(RDB_exec_context *ecp)
     RDB_INVALID_TRANSACTION_ERROR.var.scalar.repv = &invalid_transaction_rep;
     RDB_INVALID_TRANSACTION_ERROR.var.scalar.arep = RDB_create_tuple_type(0, NULL, ecp);
     if (RDB_INVALID_TRANSACTION_ERROR.var.scalar.arep == NULL) {
+        RDB_raise_no_memory(ecp);
         return RDB_ERROR;
     }
     RDB_INVALID_TRANSACTION_ERROR.var.scalar.arep = NULL;
@@ -418,6 +426,7 @@ _RDB_init_builtin_types(RDB_exec_context *ecp)
     RDB_LOCK_NOT_GRANTED_ERROR.var.scalar.arep =
             RDB_create_tuple_type(0, NULL, ecp);
     if (RDB_LOCK_NOT_GRANTED_ERROR.var.scalar.arep == NULL) {
+        RDB_raise_no_memory(ecp);
         return RDB_ERROR;
     }
     RDB_LOCK_NOT_GRANTED_ERROR.var.scalar.constraintp = NULL;
@@ -432,6 +441,7 @@ _RDB_init_builtin_types(RDB_exec_context *ecp)
     RDB_AGGREGATE_UNDEFINED_ERROR.var.scalar.arep =
             RDB_create_tuple_type(0, NULL, ecp);
     if (RDB_AGGREGATE_UNDEFINED_ERROR.var.scalar.arep == NULL) {
+        RDB_raise_no_memory(ecp);
         return RDB_ERROR;
     }
     RDB_AGGREGATE_UNDEFINED_ERROR.var.scalar.constraintp = NULL;
@@ -446,6 +456,7 @@ _RDB_init_builtin_types(RDB_exec_context *ecp)
     RDB_VERSION_MISMATCH_ERROR.var.scalar.arep =
             RDB_create_tuple_type(0, NULL, ecp);
     if (RDB_VERSION_MISMATCH_ERROR.var.scalar.arep == NULL) {
+        RDB_raise_no_memory(ecp);
         return RDB_ERROR;
     }
     RDB_VERSION_MISMATCH_ERROR.var.scalar.constraintp = NULL;
@@ -460,11 +471,27 @@ _RDB_init_builtin_types(RDB_exec_context *ecp)
     RDB_DEADLOCK_ERROR.var.scalar.arep =
             RDB_create_tuple_type(0, NULL, ecp);
     if (RDB_DEADLOCK_ERROR.var.scalar.arep == NULL) {
+        RDB_raise_no_memory(ecp);
         return RDB_ERROR;
     }
     RDB_DEADLOCK_ERROR.var.scalar.constraintp = NULL;
     RDB_DEADLOCK_ERROR.var.scalar.sysimpl = RDB_TRUE;
     RDB_DEADLOCK_ERROR.comparep = NULL;
+
+    RDB_FATAL_ERROR.kind = RDB_TP_SCALAR;
+    RDB_FATAL_ERROR.ireplen = RDB_VARIABLE_LEN;
+    RDB_FATAL_ERROR.name = "FATAL_ERROR";
+    RDB_FATAL_ERROR.var.scalar.repc = 1;
+    RDB_FATAL_ERROR.var.scalar.repv = &fatal_rep;
+    RDB_FATAL_ERROR.var.scalar.arep =
+            RDB_create_tuple_type(0, NULL, ecp);
+    if (RDB_FATAL_ERROR.var.scalar.arep == NULL) {
+        RDB_raise_no_memory(ecp);
+        return RDB_ERROR;
+    }
+    RDB_FATAL_ERROR.var.scalar.constraintp = NULL;
+    RDB_FATAL_ERROR.var.scalar.sysimpl = RDB_TRUE;
+    RDB_FATAL_ERROR.comparep = NULL;
 
     return RDB_OK;
 }

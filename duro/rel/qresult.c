@@ -324,6 +324,7 @@ do_summarize(RDB_qresult *qresp, RDB_exec_context *ecp, RDB_transaction *txp)
                         nonkeyfv[svalv[i].fvidx].copyfp = memcpy;
                     }
                 }
+                _RDB_cmp_ecp = ecp;
                 ret = RDB_update_rec(qresp->matp->stp->recmapp, keyfv,
                         addc + avgc, nonkeyfv, NULL);
                 if (ret != RDB_OK) {
@@ -437,6 +438,7 @@ do_group(RDB_qresult *qrp, RDB_exec_context *ecp, RDB_transaction *txp)
                 ret = _RDB_obj_to_field(&gfield, &gval, ecp);
                 if (ret != RDB_OK)
                     goto cleanup;
+                _RDB_cmp_ecp = ecp;
                 ret = RDB_update_rec(qrp->matp->stp->recmapp, keyfv,
                         1, &gfield, NULL);
                 if (ret != RDB_OK)
@@ -1119,7 +1121,7 @@ error:
 
 int
 _RDB_get_by_cursor(RDB_table *tbp, RDB_cursor *curp, RDB_type *tpltyp,
-        RDB_object *tplp, RDB_exec_context *ecp)
+        RDB_object *tplp, RDB_exec_context *ecp, RDB_transaction *txp)
 {
     int i;
     int ret;
@@ -1135,18 +1137,19 @@ _RDB_get_by_cursor(RDB_table *tbp, RDB_cursor *curp, RDB_type *tpltyp,
         fno = *_RDB_field_no(tbp->stp, attrp->name);
         ret = RDB_cursor_get(curp, fno, &datap, &len);
         if (ret != RDB_OK) {
-            return ret;
+            _RDB_handle_errcode(ret, ecp, txp);
+            return RDB_ERROR;
         }
         RDB_init_obj(&val);
         ret = RDB_tuple_set(tplp, attrp->name, &val, ecp);
         RDB_destroy_obj(&val, ecp);
         if (ret != RDB_OK) {
-            return ret;
+            return RDB_ERROR;
         }
         ret = RDB_irep_to_obj(RDB_tuple_get(tplp, attrp->name),
                 attrp->typ, datap, len, ecp);
         if (ret != RDB_OK) {
-            return ret;
+            return RDB_ERROR;
         }
     }
     return RDB_OK;
@@ -1165,7 +1168,7 @@ next_stored_tuple(RDB_qresult *qrp, RDB_table *tbp, RDB_object *tplp,
     }
 
     if (tplp != NULL) {
-        ret = _RDB_get_by_cursor(tbp, qrp->var.curp, tpltyp, tplp, ecp);
+        ret = _RDB_get_by_cursor(tbp, qrp->var.curp, tpltyp, tplp, ecp, txp);
         if (ret != RDB_OK) {
             _RDB_handle_errcode(ret, ecp, txp);
             return RDB_ERROR;
@@ -1776,9 +1779,9 @@ next_project_tuple(RDB_qresult *qrp, RDB_object *tplp, RDB_exec_context *ecp,
     if (qrp->uses_cursor) {
         if (tplp != NULL) {
             ret = _RDB_get_by_cursor(qrp->tbp->var.project.tbp, qrp->var.curp,
-                    tpltyp, tplp, ecp);
+                    tpltyp, tplp, ecp, txp);
             if (ret != RDB_OK)
-                return ret; /* !! */
+                return RDB_ERROR;
         }
         ret = RDB_cursor_next(qrp->var.curp, 0);
         if (ret == DB_NOTFOUND)

@@ -341,6 +341,7 @@ stored_contains(RDB_table *tbp, const RDB_object *tplp, RDB_exec_context *ecp,
         }
     }
 
+    _RDB_cmp_ecp = ecp;
     /* Don't use tx if table is local */
     ret = RDB_contains_rec(tbp->stp->recmapp, fvp,
             tbp->is_persistent ? txp->txid : NULL);
@@ -352,6 +353,7 @@ stored_contains(RDB_table *tbp, const RDB_object *tplp, RDB_exec_context *ecp,
         ret = RDB_OK;
     } else {
         _RDB_handle_errcode(ret, ecp, txp);
+        ret = RDB_ERROR;
     }
     return ret;
 }

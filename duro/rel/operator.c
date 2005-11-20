@@ -111,7 +111,6 @@ RDB_create_ro_op(const char *name, int argc, RDB_type *argtv[], RDB_type *rtyp,
         argtv[0]->comparep = cmpop->funcp;
         argtv[0]->compare_iarglen = cmpop->iarg.var.bin.len;
         argtv[0]->compare_iargp = cmpop->iarg.var.bin.datap;
-        argtv[0]->tx_udata = txp->user_data;
     }
 
 cleanup:

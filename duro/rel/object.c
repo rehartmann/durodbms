@@ -809,7 +809,12 @@ RDB_obj_comp(const RDB_object *valp, const char *compname, RDB_object *compvalp,
             compvalp->typ = comptyp;
         } else {
             /* Actual rep is tuple */
-            ret = RDB_copy_obj(compvalp, RDB_tuple_get(valp, compname), ecp);
+            RDB_object *elemp = RDB_tuple_get(valp, compname);
+            if (elemp == NULL) {
+                RDB_raise_invalid_argument("component not found", ecp);
+                return RDB_ERROR;
+            }
+            ret = RDB_copy_obj(compvalp, elemp, ecp);
         }
     } else {
         /* Getter is implemented by user */

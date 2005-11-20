@@ -104,8 +104,7 @@ _RDB_put_field_no(RDB_stored_table *stp, const char *attrname,
     return ret;
 }
 
-/* !! */
-static RDB_exec_context *cmp_ecp = NULL;
+RDB_exec_context *_RDB_cmp_ecp;
 
 static int
 compare_field(const void *data1p, size_t len1, const void *data2p, size_t len2,
@@ -121,22 +120,21 @@ compare_field(const void *data1p, size_t len1, const void *data2p, size_t len2,
     RDB_init_obj(&val2);
     RDB_init_obj(&retval);
 
-    RDB_irep_to_obj(&val1, typ, data1p, len1, cmp_ecp);
-    RDB_irep_to_obj(&val2, typ, data2p, len2, cmp_ecp);
+    RDB_irep_to_obj(&val1, typ, data1p, len1, _RDB_cmp_ecp);
+    RDB_irep_to_obj(&val2, typ, data2p, len2, _RDB_cmp_ecp);
 
     valv[0] = &val1;
     valv[1] = &val2;
     tx.txid = NULL;
     tx.envp = envp;
-    tx.user_data = typ->tx_udata;
     retval.typ = &RDB_INTEGER;
     (*typ->comparep)("compare", 2, valv, typ->compare_iargp,
-            typ->compare_iarglen, cmp_ecp, &tx, &retval);
+            typ->compare_iarglen, _RDB_cmp_ecp, &tx, &retval);
     ret = RDB_obj_int(&retval);
 
-    RDB_destroy_obj(&val1, cmp_ecp);
-    RDB_destroy_obj(&val2, cmp_ecp);
-    RDB_destroy_obj(&retval, cmp_ecp);
+    RDB_destroy_obj(&val1, _RDB_cmp_ecp);
+    RDB_destroy_obj(&val2, _RDB_cmp_ecp);
+    RDB_destroy_obj(&retval, _RDB_cmp_ecp);
 
     return ret;
 }
@@ -571,8 +569,9 @@ error:
     free(rmname);
 
     RDB_destroy_hashtable(&tbp->stp->attrmap);
-    if (tbp->stp->recmapp != NULL)
+    if (tbp->stp->recmapp != NULL) {
         RDB_delete_recmap(tbp->stp->recmapp, txp != NULL ? txp->txid : NULL);
+    }
     free(tbp->stp);
     tbp->stp = NULL;
 

@@ -119,6 +119,7 @@ _RDB_insert_real(RDB_table *tbp, const RDB_object *tplp,
             goto cleanup;
     }
 
+    _RDB_cmp_ecp = ecp;
     ret = RDB_insert_rec(tbp->stp->recmapp, fvp,
             tbp->is_persistent ? txp->txid : NULL);
     if (ret == DB_KEYEXIST) {

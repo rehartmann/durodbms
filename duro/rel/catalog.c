@@ -2052,7 +2052,6 @@ _RDB_cat_get_type(const char *name, RDB_exec_context *ecp,
         typ->comparep = cmpop->funcp;
         typ->compare_iarglen = cmpop->iarg.var.bin.len;
         typ->compare_iargp = cmpop->iarg.var.bin.datap;
-        typ->tx_udata = txp->user_data;
     } else {
         RDB_object *errp = RDB_get_err(ecp);
         if (errp != NULL

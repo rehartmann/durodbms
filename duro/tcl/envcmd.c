@@ -93,7 +93,8 @@ Duro_env_cmd(ClientData data, Tcl_Interp *interp, int argc, CONST char *argv[])
 
         ret = RDB_open_env(argv[2], &envp);
         if (ret != RDB_OK) {
-            /* !! Duro_dberror(interp, NULL, ret); */
+            Tcl_AppendResult(interp, "database error: ", db_strerror(ret),
+                    (char *) NULL);
             return TCL_ERROR;
         }
 
@@ -122,7 +123,8 @@ Duro_env_cmd(ClientData data, Tcl_Interp *interp, int argc, CONST char *argv[])
         envp = Tcl_GetHashValue(entryp);
         ret = Duro_tcl_close_env(statep, envp, entryp);
         if (ret != RDB_OK) {
-            /* !! Duro_dberror(interp, NULL, ret); */
+            Tcl_AppendResult(interp, "database error: ", db_strerror(ret),
+                    (char *) NULL);
             return TCL_ERROR;
         }      
         return TCL_OK;
