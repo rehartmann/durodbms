@@ -89,7 +89,7 @@ RDB_create_ro_op(const char *name, int argc, RDB_type *argtv[], RDB_type *rtyp,
     if (ret != RDB_OK)
         goto cleanup;
 
-    ret = _RDB_type_to_obj(&rtypobj, rtyp, ecp);
+    ret = _RDB_type_to_binobj(&rtypobj, rtyp, ecp);
     if (ret != RDB_OK)
         goto cleanup;
     ret = RDB_tuple_set(&tpl, "RTYPE", &rtypobj, ecp);

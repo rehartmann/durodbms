@@ -785,7 +785,7 @@ RDB_define_type(const char *name, int repc, const RDB_possrep repv[],
         goto error;
 
     /* Store constraint in tuple */
-    ret = _RDB_expr_to_obj(&conval, constraintp, ecp);
+    ret = _RDB_expr_to_binobj(&conval, constraintp, ecp);
     if (ret != RDB_OK)
         goto error;
     ret = RDB_tuple_set(&tpl, "I_CONSTRAINT", &conval, ecp);
@@ -1004,7 +1004,7 @@ RDB_implement_type(const char *name, RDB_type *arep, RDB_int areplen,
     }
     if (arep != NULL) {
         RDB_init_obj(&typedata);
-        ret = _RDB_type_to_obj(&typedata, arep, ecp);
+        ret = _RDB_type_to_binobj(&typedata, arep, ecp);
         if (ret != RDB_OK) {
             RDB_destroy_obj(&typedata, ecp);
             goto cleanup;

@@ -10,24 +10,21 @@
 #include "rdb.h"
 
 int
-_RDB_table_to_obj(RDB_object *, RDB_table *, RDB_exec_context *);
+_RDB_vtable_to_binobj(RDB_object *, RDB_table *, RDB_exec_context *);
 
 int
-_RDB_expr_to_obj(RDB_object *, const RDB_expression *, RDB_exec_context *);
+_RDB_expr_to_binobj(RDB_object *, const RDB_expression *, RDB_exec_context *);
 
 int
-_RDB_type_to_obj(RDB_object *, const RDB_type *, RDB_exec_context *);
+_RDB_type_to_binobj(RDB_object *, const RDB_type *, RDB_exec_context *);
 
-int
-_RDB_deserialize_table(RDB_object *valp, RDB_exec_context *, RDB_transaction *,
-        RDB_table **tbpp);
+RDB_table *
+_RDB_binobj_to_vtable(RDB_object *valp, RDB_exec_context *, RDB_transaction *);
 
-int
-_RDB_deserialize_expr(RDB_object *valp, RDB_exec_context *, RDB_transaction *,
-                      RDB_expression **expp);
+RDB_expression *
+_RDB_binobj_to_expr(RDB_object *valp, RDB_exec_context *, RDB_transaction *);
 
-int
-_RDB_deserialize_type(RDB_object *valp, RDB_exec_context *, RDB_transaction *,
-                 RDB_type **typp);
+RDB_type *
+_RDB_binobj_to_type(RDB_object *valp, RDB_exec_context *, RDB_transaction *);
 
 #endif

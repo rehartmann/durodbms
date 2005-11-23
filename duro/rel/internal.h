@@ -452,6 +452,22 @@ void
 _RDB_set_obj_type(RDB_object *, RDB_type *);
 
 int
+_RDB_obj_ilen(const RDB_object *, size_t *, RDB_exec_context *);
+
+int
+_RDB_table_ilen(RDB_table *, size_t *, RDB_exec_context *);
+
+void
+_RDB_obj_to_irep(void *dstp, const RDB_object *, size_t);
+
+void
+_RDB_table_to_irep(void *dstp, RDB_table *, size_t);
+
+int
+_RDB_irep_to_table(RDB_table **tbpp, RDB_type *typ, const void *datap, size_t len,
+        RDB_exec_context *);
+
+int
 _RDB_get_ro_op(const char *name, int argc, RDB_type *argtv[],
                RDB_exec_context *, RDB_transaction *txp, RDB_ro_op_desc **opp);
 

@@ -670,6 +670,7 @@ _RDB_tuple_type(const RDB_object *tplp, RDB_exec_context *ecp)
 
     typ->kind = RDB_TP_TUPLE;
     typ->name = NULL;
+    typ->ireplen = RDB_VARIABLE_LEN;
     typ->var.tuple.attrc = RDB_tuple_size(tplp);
     if (typ->var.tuple.attrc > 0) {
         typ->var.tuple.attrv = malloc(sizeof(RDB_attr) * typ->var.tuple.attrc);

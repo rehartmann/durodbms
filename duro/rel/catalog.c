@@ -166,13 +166,13 @@ dbtables_insert(RDB_table *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
     if (ret != RDB_OK)
     {
         RDB_destroy_obj(&tpl, ecp);
-        return ret;
+        return RDB_ERROR;
     }
     ret = RDB_tuple_set_string(&tpl, "DBNAME", txp->dbp->name, ecp);
     if (ret != RDB_OK)
     {
         RDB_destroy_obj(&tpl, ecp);
-        return ret;
+        return RDB_ERROR;
     }
     ret = RDB_insert(txp->dbp->dbrootp->dbtables_tbp, &tpl, ecp, txp);
     RDB_destroy_obj(&tpl, ecp);
@@ -213,7 +213,7 @@ insert_rtable(RDB_table *tbp, RDB_dbroot *dbrootp, RDB_exec_context *ecp,
     ret = RDB_tuple_set_string(&tpl, "TABLENAME", tbp->name, ecp);
     if (ret != RDB_OK) {
         RDB_destroy_obj(&tpl, ecp);
-        return ret;
+        return RDB_ERROR;
     }
 
     for (i = 0; i < tuptyp->var.tuple.attrc; i++) {
@@ -221,17 +221,18 @@ insert_rtable(RDB_table *tbp, RDB_dbroot *dbrootp, RDB_exec_context *ecp,
         char *attrname = tuptyp->var.tuple.attrv[i].name;
 
         RDB_init_obj(&typedata);
-        ret = _RDB_type_to_obj(&typedata, tuptyp->var.tuple.attrv[i].typ, ecp);
+        ret = _RDB_type_to_binobj(&typedata, tuptyp->var.tuple.attrv[i].typ,
+                ecp);
         if (ret != RDB_OK) {
             RDB_destroy_obj(&typedata, ecp);
             RDB_destroy_obj(&tpl, ecp);
-            return ret;
+            return RDB_ERROR;
         }
         ret = RDB_tuple_set(&tpl, "TYPE", &typedata, ecp);
         RDB_destroy_obj(&typedata, ecp);
         if (ret != RDB_OK) {
             RDB_destroy_obj(&tpl, ecp);
-            return ret;
+            return RDB_ERROR;
         }
 
         ret = RDB_tuple_set_string(&tpl, "ATTRNAME", attrname, ecp);
@@ -257,7 +258,7 @@ insert_rtable(RDB_table *tbp, RDB_dbroot *dbrootp, RDB_exec_context *ecp,
     ret = RDB_tuple_set_string(&tpl, "TABLENAME", tbp->name, ecp);
     if (ret != RDB_OK) {
         RDB_destroy_obj(&tpl, ecp);
-        return ret;
+        return RDB_ERROR;
     }
 
     for (i = 0; i < tuptyp->var.tuple.attrc; i++) {
@@ -278,7 +279,7 @@ insert_rtable(RDB_table *tbp, RDB_dbroot *dbrootp, RDB_exec_context *ecp,
             ret = RDB_tuple_set_string(&tpl, "ATTRNAME", attrname, ecp);
             if (ret != RDB_OK) {
                 RDB_destroy_obj(&tpl, ecp);
-                return ret;
+                return RDB_ERROR;
             }
 
             RDB_init_obj(&binval);
@@ -287,20 +288,20 @@ insert_rtable(RDB_table *tbp, RDB_dbroot *dbrootp, RDB_exec_context *ecp,
             if (ret != RDB_OK) {
                 RDB_destroy_obj(&tpl, ecp);
                 RDB_destroy_obj(&binval, ecp);
-                return ret;
+                return RDB_ERROR;
             }
 
             ret = RDB_tuple_set(&tpl, "DEFAULT_VALUE", &binval, ecp);
             RDB_destroy_obj(&binval, ecp);
             if (ret != RDB_OK) {
                 RDB_destroy_obj(&tpl, ecp);
-                return ret;
+                return RDB_ERROR;
             }
 
             ret = RDB_insert(dbrootp->table_attr_defvals_tbp, &tpl, ecp, txp);
             if (ret != RDB_OK) {
                 RDB_destroy_obj(&tpl, ecp);
-                return ret;
+                return RDB_ERROR;
             }
         }
     }
@@ -392,7 +393,7 @@ insert_vtable(RDB_table *tbp, RDB_dbroot *dbrootp, RDB_exec_context *ecp,
     if (ret != RDB_OK)
         goto cleanup;
 
-    ret = _RDB_table_to_obj(&defval, tbp, ecp);
+    ret = _RDB_vtable_to_binobj(&defval, tbp, ecp);
     if (ret != RDB_OK)
         goto cleanup;
     ret = RDB_tuple_set(&tpl, "I_DEF", &defval, ecp);
@@ -523,7 +524,7 @@ _RDB_cat_index_tablename(const char *name, char **tbnamep,
     RDB_drop_table(vtbp, ecp, txp);
     if (ret != RDB_OK) {
         RDB_destroy_obj(&tpl, ecp);
-        return ret;
+        return RDB_ERROR;
     }
 
     *tbnamep = RDB_dup_str(RDB_tuple_get_string(&tpl, "TABLENAME"));
@@ -1491,8 +1492,8 @@ _RDB_cat_get_rtable(const char *name, RDB_exec_context *ecp,
         }
         typedatap = RDB_tuple_get(tplp, "TYPE");
 
-        ret = _RDB_deserialize_type(typedatap, ecp, txp, &attrv[fno].typ);
-        if (ret != RDB_OK)
+        attrv[fno].typ = _RDB_binobj_to_type(typedatap, ecp, txp);
+        if (attrv[fno].typ == NULL)
             goto error;
         
         attrv[fno].defaultp = NULL;
@@ -1698,8 +1699,8 @@ _RDB_cat_get_vtable(const char *name, RDB_exec_context *ecp,
     usr = RDB_tuple_get_bool(&tpl, "IS_USER");
 
     valp = RDB_tuple_get(&tpl, "I_DEF");
-    ret = _RDB_deserialize_table(valp, ecp, txp, &tbp);
-    if (ret != RDB_OK)
+    tbp = _RDB_binobj_to_vtable(valp, ecp, txp);
+    if (tbp == NULL)
         goto error;
     
     RDB_destroy_obj(&tpl, ecp);
@@ -1897,6 +1898,7 @@ _RDB_cat_get_type(const char *name, RDB_exec_context *ecp,
     RDB_object *tplp;
     RDB_object possreps;
     RDB_object comps;
+    RDB_object *cvalp;
     RDB_type *typ = NULL;
     RDB_object *typedatap;
     int ret, tret;
@@ -1930,8 +1932,8 @@ _RDB_cat_get_type(const char *name, RDB_exec_context *ecp,
 
     typedatap = RDB_tuple_get(&tpl, "I_AREP_TYPE");
     if (RDB_binary_length(typedatap) != 0) {   
-        ret = _RDB_deserialize_type(typedatap, ecp, txp, &typ->var.scalar.arep);
-        if (ret != RDB_OK)
+        typ->var.scalar.arep = _RDB_binobj_to_type(typedatap, ecp, txp);
+        if (typ->var.scalar.arep == NULL)
             goto error;
     } else {
         typ->var.scalar.arep = NULL;
@@ -1943,10 +1945,13 @@ _RDB_cat_get_type(const char *name, RDB_exec_context *ecp,
         goto error;
     }
 
-    ret = _RDB_deserialize_expr(RDB_tuple_get(&tpl, "I_CONSTRAINT"), ecp, txp,
-            &typ->var.scalar.constraintp);
-    if (ret != RDB_OK) {
-        goto error;
+    cvalp = RDB_tuple_get(&tpl, "I_CONSTRAINT");
+    if (RDB_binary_length(cvalp) > 0) {
+        typ->var.scalar.constraintp = _RDB_binobj_to_expr(cvalp, ecp, txp);
+        if (typ->var.scalar.constraintp == NULL)
+            goto error;
+    } else {
+        typ->var.scalar.constraintp = NULL;
     }
 
     typ->ireplen = RDB_tuple_get_int(&tpl, "I_AREP_LEN");
@@ -2115,7 +2120,7 @@ _RDB_make_typesobj(int argc, RDB_type *argtv[], RDB_exec_context *ecp,
     RDB_set_array_length(objp, argc, ecp);
     RDB_init_obj(&typeobj);
     for (i = 0; i < argc; i++) {
-        ret = _RDB_type_to_obj(&typeobj, argtv[i], ecp);
+        ret = _RDB_type_to_binobj(&typeobj, argtv[i], ecp);
         if (ret != RDB_OK) {
             RDB_destroy_obj(&typeobj, ecp);
             return ret;
@@ -2232,9 +2237,8 @@ _RDB_cat_get_ro_op(const char *name, int argc, RDB_type *argtv[],
         goto error;
     }
 
-    ret = _RDB_deserialize_type(RDB_tuple_get(&tpl, "RTYPE"), ecp, txp,
-            &op->rtyp);
-    if (ret != RDB_OK) {
+    op->rtyp = _RDB_binobj_to_type(RDB_tuple_get(&tpl, "RTYPE"), ecp, txp);
+    if (op->rtyp == NULL) {
         goto error;
     }
 
@@ -2412,7 +2416,7 @@ _RDB_cat_create_constraint(const char *name, RDB_expression *exp,
     if (ret != RDB_OK)
         goto cleanup;
 
-    ret = _RDB_expr_to_obj(&exprval, exp, ecp);
+    ret = _RDB_expr_to_binobj(&exprval, exp, ecp);
     if (ret != RDB_OK)
         goto cleanup;
     ret = RDB_tuple_set(&tpl, "I_EXPR", &exprval, ecp);

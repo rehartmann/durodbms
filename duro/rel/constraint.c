@@ -103,11 +103,12 @@ _RDB_read_constraints(RDB_exec_context *ecp, RDB_transaction *txp)
             ret = RDB_ERROR;
             goto cleanup;
         }
-        ret = _RDB_deserialize_expr(RDB_tuple_get(tplp, "I_EXPR"), ecp, txp,
-                &constrp->exp);
-        if (ret != RDB_OK) {
+        constrp->exp = _RDB_binobj_to_expr(RDB_tuple_get(tplp, "I_EXPR"), ecp,
+                txp);
+        if (constrp->exp == NULL) {
             free(constrp->name);
             free(constrp);
+            ret = RDB_ERROR;
             goto cleanup;
         }
         add_empty_tb(constrp, ecp, txp);

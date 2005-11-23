@@ -625,7 +625,7 @@ RDB_expr_type(const RDB_expression *exp, const RDB_type *tuptyp,
              * duplicate it
              */
             if (!RDB_type_is_scalar(typ)) {
-                typ = _RDB_dup_nonscalar_type(typ, ecp); /* !! must raise on error */
+                typ = _RDB_dup_nonscalar_type(typ, ecp);
                 if (typ == NULL)
                     return NULL;
             }
