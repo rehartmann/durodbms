@@ -537,6 +537,9 @@ int
 _RDB_add_builtin_ops(RDB_dbroot *, RDB_exec_context *);
 
 int
+_RDB_add_selector(RDB_dbroot *, RDB_type *, RDB_exec_context *);
+
+int
 _RDB_sys_select(const char *name, int argc, RDB_object *argv[],
         const void *iargp, size_t iarglen, RDB_exec_context *,
         RDB_transaction *, RDB_object *retvalp);

@@ -151,9 +151,12 @@ if {![catch {duro::update TP2 {K = 1} S1 {"Bli"} $tx}]} {
     error "duro::update should fail, but succeeded"
 }
 
-set code [lindex $errorCode 1]
-if {![string match "ATTRIBUTE_NOT_FOUND_ERROR(*)" $code]} {
-    error "wrong error code: $code"
+set err [lindex $errorCode 1]
+if {![string match "ATTRIBUTE_NOT_FOUND_ERROR(*)" $err]} {
+    error "wrong error code: $err"
+}
+if {![string match "*K*" [duro::expr THE_INFO($err) $tx]]} {
+    error "error info should contain attribute type, but does not"
 }
 
 if {![catch {duro::update TP2 {S1 = "Bla"} K 3 $tx}]} {

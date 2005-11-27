@@ -1129,7 +1129,7 @@ RDB_expr_comp(RDB_expression *arg, const char *compname,
 int
 RDB_drop_expr(RDB_expression *exp, RDB_exec_context *ecp)
 {
-    int ret;
+    int ret = RDB_OK;
 
     switch (exp->kind) {
         case RDB_EX_TUPLE_ATTR:
@@ -1158,7 +1158,6 @@ RDB_drop_expr(RDB_expression *exp, RDB_exec_context *ecp)
             break;
         case RDB_EX_ATTR:
             free(exp->var.attrname);
-            ret = RDB_OK;
             break;
     }
     free(exp);

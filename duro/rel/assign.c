@@ -1360,6 +1360,10 @@ do_update(const RDB_ma_update *updp, RDB_exec_context *ecp, RDB_transaction *txp
     /* drop select */
     _RDB_free_table(tbp, ecp);
 
+    if (ret != RDB_OK) {
+        return ret;
+    }
+
     if (ntbp->var.select.tbp->kind == RDB_TB_SELECT) {
         condp = ntbp->var.select.exp;
         dtbp = ntbp->var.select.tbp;
@@ -1405,8 +1409,10 @@ do_delete(const RDB_ma_delete *delp, RDB_exec_context *ecp,
     }
 
     ret = _RDB_optimize(tbp, 0, NULL, ecp, txp, &ntbp);
+
     /* drop select */
     _RDB_free_table(tbp, ecp);
+
     if (ret != RDB_OK) {
         return RDB_ERROR;
     }

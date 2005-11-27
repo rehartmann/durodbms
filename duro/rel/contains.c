@@ -59,9 +59,6 @@ project_contains(RDB_table *tbp, const RDB_object *tplp, RDB_exec_context *ecp,
                 return RDB_ERROR;
             }
         }
-        if (condp == NULL) {
-            return RDB_ERROR;
-        }
 
         /* create selection table */
         seltbp = RDB_select(tbp, condp, ecp, txp);

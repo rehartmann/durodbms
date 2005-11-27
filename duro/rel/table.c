@@ -173,7 +173,7 @@ _RDB_free_table(RDB_table *tbp, RDB_exec_context *ecp)
         free(tbp->keyv);
     }
 
-    RDB_drop_type(tbp->typ, ecp, NULL);
+    RDB_drop_type(tbp->typ, NULL, NULL);
     free(tbp->name);
     tbp->kind = -1; /* !! For debugging */
     free(tbp);
@@ -966,7 +966,7 @@ RDB_table_is_empty(RDB_table *tbp, RDB_exec_context *ecp,
 
     ret = _RDB_optimize(ptbp, 0, NULL, ecp, txp, &ntbp);
 
-    /* Remove project */
+    /* Remove projection */
     _RDB_free_table(ptbp, ecp);
 
     if (ret != RDB_OK)

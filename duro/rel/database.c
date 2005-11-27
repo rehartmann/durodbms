@@ -242,6 +242,26 @@ tb_equals(const void *tb1p, const void *tb2p, void *txp) {
     return ret;
 }
 
+static int
+add_type(RDB_dbroot *dbrootp, RDB_type *typ, RDB_exec_context *ecp)
+{
+    int ret = RDB_hashmap_put(&dbrootp->typemap, RDB_type_name(typ), typ);
+    if (ret != RDB_OK) {
+        _RDB_handle_errcode(ret, ecp, NULL);
+        return RDB_ERROR;
+    }
+    /*
+     * Add selector if the type has a possrep (applies to error types)
+     */
+    if (typ->var.scalar.repc == 1) {
+        ret = _RDB_add_selector(dbrootp, typ, ecp);
+        if (ret != RDB_OK) {
+            return RDB_ERROR;
+        }
+    }
+    return RDB_OK;
+}
+
 static RDB_dbroot *
 new_dbroot(RDB_environment *envp, RDB_exec_context *ecp)
 {
@@ -267,9 +287,95 @@ new_dbroot(RDB_environment *envp, RDB_exec_context *ecp)
     /*
      * Put built-in types into type map
      */
-    if (RDB_hashmap_put(&dbrootp->typemap, "OPERATOR_NOT_FOUND_ERROR",
-            &RDB_OPERATOR_NOT_FOUND_ERROR) != RDB_OK) {
-        RDB_raise_no_memory(ecp);
+    if (add_type(dbrootp, &RDB_BOOLEAN, ecp) != RDB_OK) {
+        return NULL;
+    }
+    if (add_type(dbrootp, &RDB_INTEGER, ecp) != RDB_OK) {
+        return NULL;
+    }
+    if (add_type(dbrootp, &RDB_RATIONAL, ecp) != RDB_OK) {
+        return NULL;
+    }
+    if (add_type(dbrootp, &RDB_STRING, ecp) != RDB_OK) {
+        return NULL;
+    }
+    if (add_type(dbrootp, &RDB_BINARY, ecp) != RDB_OK) {
+        return NULL;
+    }
+    if (add_type(dbrootp, &RDB_NO_MEMORY_ERROR, ecp) != RDB_OK) {
+        return NULL;
+    }
+    if (add_type(dbrootp, &RDB_NOT_FOUND_ERROR, ecp) != RDB_OK) {
+        return NULL;
+    }
+    if (add_type(dbrootp, &RDB_INVALID_TRANSACTION_ERROR,
+            ecp) != RDB_OK) {
+        return NULL;
+    }
+    if (add_type(dbrootp, &RDB_INVALID_ARGUMENT_ERROR,
+            ecp) != RDB_OK) {
+        return NULL;
+    }
+    if (add_type(dbrootp, &RDB_TYPE_MISMATCH_ERROR, ecp) != RDB_OK) {
+        return NULL;
+    }
+    if (add_type(dbrootp, &RDB_TYPE_CONSTRAINT_VIOLATION_ERROR,
+            ecp) != RDB_OK) {
+        return NULL;
+    }
+    if (add_type(dbrootp, &RDB_OPERATOR_NOT_FOUND_ERROR,
+            ecp) != RDB_OK) {
+        return NULL;
+    }
+    if (add_type(dbrootp, &RDB_ELEMENT_EXISTS_ERROR,
+            ecp) != RDB_OK) {
+        return NULL;
+    }
+    if (add_type(dbrootp, &RDB_KEY_VIOLATION_ERROR,
+            ecp) != RDB_OK) {
+        return NULL;
+    }
+    if (add_type(dbrootp, &RDB_NOT_SUPPORTED_ERROR,
+            ecp) != RDB_OK) {
+        return NULL;
+    }
+    if (add_type(dbrootp, &RDB_ATTRIBUTE_NOT_FOUND_ERROR,
+            ecp) != RDB_OK) {
+        return NULL;
+    }
+    if (add_type(dbrootp, &RDB_PREDICATE_VIOLATION_ERROR,
+            ecp) != RDB_OK) {
+        return NULL;
+    }
+    if (add_type(dbrootp, &RDB_SYSTEM_ERROR,
+            ecp) != RDB_OK) {
+        return NULL;
+    }
+    if (add_type(dbrootp, &RDB_RESOURCE_NOT_FOUND_ERROR,
+            ecp) != RDB_OK) {
+        return NULL;
+    }
+    if (add_type(dbrootp, &RDB_INTERNAL_ERROR,
+            ecp) != RDB_OK) {
+        return NULL;
+    }
+    if (add_type(dbrootp, &RDB_LOCK_NOT_GRANTED_ERROR,
+            ecp) != RDB_OK) {
+        return NULL;
+    }
+    if (add_type(dbrootp, &RDB_AGGREGATE_UNDEFINED_ERROR,
+            ecp) != RDB_OK) {
+        return NULL;
+    }
+    if (add_type(dbrootp, &RDB_VERSION_MISMATCH_ERROR,
+            ecp) != RDB_OK) {
+        return NULL;
+    }
+    if (add_type(dbrootp, &RDB_DEADLOCK_ERROR,
+            ecp) != RDB_OK) {
+        return NULL;
+    }
+    if (add_type(dbrootp, &RDB_FATAL_ERROR, ecp) != RDB_OK) {
         return NULL;
     }
 

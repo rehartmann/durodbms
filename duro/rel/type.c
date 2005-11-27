@@ -263,8 +263,8 @@ _RDB_init_builtin_types(RDB_exec_context *ecp)
     RDB_NO_MEMORY_ERROR.kind = RDB_TP_SCALAR;
     RDB_NO_MEMORY_ERROR.ireplen = RDB_VARIABLE_LEN;
     RDB_NO_MEMORY_ERROR.name = "NO_MEMORY_ERROR";
-    RDB_NO_MEMORY_ERROR.var.scalar.repc = 0;
-    RDB_NOT_FOUND_ERROR.var.scalar.repv = &no_memory_rep;
+    RDB_NO_MEMORY_ERROR.var.scalar.repc = 1;
+    RDB_NO_MEMORY_ERROR.var.scalar.repv = &no_memory_rep;
     RDB_NO_MEMORY_ERROR.var.scalar.arep = RDB_create_tuple_type(0, NULL, ecp);
     if (RDB_NO_MEMORY_ERROR.var.scalar.arep == NULL) {
         RDB_raise_no_memory(ecp);
@@ -276,7 +276,7 @@ _RDB_init_builtin_types(RDB_exec_context *ecp)
     RDB_INVALID_TRANSACTION_ERROR.kind = RDB_TP_SCALAR;
     RDB_INVALID_TRANSACTION_ERROR.ireplen = RDB_VARIABLE_LEN;
     RDB_INVALID_TRANSACTION_ERROR.name = "INVALID_TRANSACTION_ERROR";
-    RDB_INVALID_TRANSACTION_ERROR.var.scalar.repc = 0;
+    RDB_INVALID_TRANSACTION_ERROR.var.scalar.repc = 1;
     RDB_INVALID_TRANSACTION_ERROR.var.scalar.repv = &invalid_transaction_rep;
     RDB_INVALID_TRANSACTION_ERROR.var.scalar.arep = RDB_create_tuple_type(0, NULL, ecp);
     if (RDB_INVALID_TRANSACTION_ERROR.var.scalar.arep == NULL) {
@@ -706,35 +706,24 @@ RDB_get_type(const char *name, RDB_exec_context *ecp, RDB_transaction *txp)
     RDB_type *typ;
     int ret;
 
-    if (strcmp(name, "BOOLEAN") == 0) {
-        return &RDB_BOOLEAN;
-    }
-    if (strcmp(name, "INTEGER") == 0) {
-        return &RDB_INTEGER;
-    }
-    if (strcmp(name, "RATIONAL") == 0) {
-        return &RDB_RATIONAL;
-    }
-    if (strcmp(name, "STRING") == 0) {
-        return &RDB_STRING;
-    }
-    if (strcmp(name, "BINARY") == 0) {
-        return &RDB_BINARY;
-    }
-
     /*
-     * search for user defined type
+     * search type in type map
      */
-
     typ = RDB_hashmap_get(&txp->dbp->dbrootp->typemap, name);
     if (typ != NULL) {
         return typ;
     }
     
+    /*
+     * search type in catalog
+     */
     ret = _RDB_cat_get_type(name, ecp, txp, &typ);
     if (ret != RDB_OK)
         return NULL;
 
+    /*
+     * put type into type map
+     */
     ret = RDB_hashmap_put(&txp->dbp->dbrootp->typemap, name, typ);
     if (ret != RDB_OK) {
         RDB_raise_no_memory(ecp);
@@ -869,11 +858,6 @@ _RDB_sys_select(const char *name, int argc, RDB_object *argv[],
     RDB_type *typ = retvalp->typ;
     RDB_possrep *prp;
 
-/*
-    typ = RDB_get_type(name !! (char *) iargp, ecp, txp);
-    if (typ == NULL)
-        return RDB_ERROR;
-*/
     /* Find possrep */
     prp = _RDB_get_possrep(typ, name);
     if (prp == NULL) {
@@ -910,6 +894,27 @@ _RDB_sys_select(const char *name, int argc, RDB_object *argv[],
     return RDB_OK;
 }
 
+static int
+create_selector(RDB_type *typ, RDB_exec_context *ecp, RDB_transaction *txp)
+{
+    int i;
+    int ret;
+    int compc = typ->var.scalar.repv[0].compc;
+    RDB_type **argtv = malloc(sizeof(RDB_type *) * compc);
+    if (argtv == NULL) {
+        RDB_raise_no_memory(ecp);
+        return RDB_ERROR;
+    }
+
+    for (i = 0; i < compc; i++)
+        argtv[i] = typ->var.scalar.repv[0].compv[i].typ;
+    ret = RDB_create_ro_op(typ->var.scalar.repv[0].name, compc, argtv, typ,
+            "libduro", "_RDB_sys_select", typ->name, strlen(typ->name) + 1,
+            ecp, txp);
+    free(argtv);
+    return ret;
+}
+
 int
 RDB_implement_type(const char *name, RDB_type *arep, RDB_int areplen,
         RDB_exec_context *ecp, RDB_transaction *txp)
@@ -932,9 +937,7 @@ RDB_implement_type(const char *name, RDB_type *arep, RDB_int areplen,
          * by the system
          */
         RDB_type *typ;
-        RDB_type **argtv;
         int compc;
-        int i;
 
         typ = RDB_get_type(name, ecp, txp);
         if (typ == NULL)
@@ -961,20 +964,9 @@ RDB_implement_type(const char *name, RDB_type *arep, RDB_int areplen,
         typ->var.scalar.sysimpl = sysimpl;
         typ->ireplen = arep->ireplen;
 
-        /* Create selector */
-        argtv = malloc(sizeof(RDB_type *) * compc);
-        if (argtv == NULL) {
-            RDB_raise_no_memory(ecp);
-            return RDB_ERROR;
-        }
-        for (i = 0; i < compc; i++)
-            argtv[i] = typ->var.scalar.repv[0].compv[i].typ;
-        ret = RDB_create_ro_op(typ->var.scalar.repv[0].name, compc, argtv, typ,
-                "libduro", "_RDB_sys_select", typ->name, strlen(typ->name) + 1,
-                ecp, txp);
-        free(argtv);
+        ret = create_selector(typ, ecp, txp);
         if (ret != RDB_OK)
-            return ret;
+            return RDB_ERROR;
     }
 
     exp = RDB_expr_attr("TYPENAME", ecp);
@@ -1043,7 +1035,7 @@ RDB_drop_type(RDB_type *typ, RDB_exec_context *ecp, RDB_transaction *txp)
         return RDB_ERROR;
     }
 
-    if (typ->name != NULL) {
+    if (RDB_type_is_scalar(typ)) {
         RDB_expression *wherep;
         RDB_type *ntp = NULL;
 
