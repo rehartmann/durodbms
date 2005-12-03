@@ -10,6 +10,7 @@
 #include "internal.h"
 #include <string.h>
 
+#ifdef NIXDA
 static int
 project_contains(RDB_table *tbp, const RDB_object *tplp, RDB_exec_context *ecp,
         RDB_transaction *txp, RDB_bool *resultp)
@@ -355,16 +356,35 @@ stored_contains(RDB_table *tbp, const RDB_object *tplp, RDB_exec_context *ecp,
     return ret;
 }
 
+#endif
 int
 RDB_table_contains(RDB_table *tbp, const RDB_object *tplp, RDB_exec_context *ecp,
         RDB_transaction *txp, RDB_bool *resultp)
 {
-    int ret;
+    int i;
 
     if (txp != NULL && !RDB_tx_is_running(txp)) {
         RDB_raise_invalid_tx(ecp);
         return RDB_ERROR;
     }
+
+    /*
+     * Check if tuple contains all attributes
+     */
+    for (i = 0; i < tbp->typ->var.basetyp->var.tuple.attrc; i++) {
+        char *attrname = tbp->typ->var.basetyp->var.tuple.attrv[i].name;
+
+        if (strchr(attrname, '$') == NULL
+                && RDB_tuple_get(tplp, attrname) == NULL) {
+            RDB_raise_invalid_argument("incomplete tuple", ecp);
+            return RDB_ERROR;
+        }
+    }
+
+    return _RDB_matching_tuple(tbp, tplp, ecp, txp, resultp);
+}
+
+#ifdef NIXDA
 
     switch (tbp->kind) {
         case RDB_TB_REAL:
@@ -398,6 +418,10 @@ RDB_table_contains(RDB_table *tbp, const RDB_object *tplp, RDB_exec_context *ecp
                 return RDB_ERROR;
             *resultp = !*resultp;
             return RDB_OK;
+        case RDB_TB_SEMIMINUS:
+            /* !! */
+            RDB_raise_internal("contains() must be redesigned", ecp);
+            return RDB_ERROR;
         case RDB_TB_INTERSECT:
             ret = RDB_table_contains(tbp->var.intersect.tb1p, tplp, ecp, txp,
                     resultp);
@@ -470,3 +494,4 @@ RDB_table_contains(RDB_table *tbp, const RDB_object *tplp, RDB_exec_context *ecp
     /* should never be reached */
     abort();
 }
+#endif

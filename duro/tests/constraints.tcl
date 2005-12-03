@@ -36,7 +36,7 @@ duro::table create T2 {
 duro::constraint create C1 {IS_EMPTY(T2 WHERE C>100)} $tx
 
 # Create foreign key constraint
-duro::constraint create C2 {IS_EMPTY((T1 {B}) MINUS (T2 {B}))} $tx
+duro::constraint create C2 {IS_EMPTY(T1 SEMIMINUS T2)} $tx
 
 duro::commit $tx
 

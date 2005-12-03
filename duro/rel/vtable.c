@@ -208,13 +208,17 @@ RDB_union(RDB_table *tb1p, RDB_table *tb2p, RDB_exec_context *ecp)
 RDB_table *
 RDB_minus(RDB_table *tb1p, RDB_table *tb2p, RDB_exec_context *ecp)
 {
-    RDB_table *newtbp;
     if (!RDB_type_equals(tb1p->typ, tb2p->typ)) {
         RDB_raise_type_mismatch("MINUS tables must match", ecp);
         return NULL;
     }
+    return RDB_semiminus(tb1p, tb2p, ecp);
+}
 
-    newtbp = _RDB_new_table(ecp);
+RDB_table *
+RDB_semiminus(RDB_table *tb1p, RDB_table *tb2p, RDB_exec_context *ecp)
+{
+    RDB_table *newtbp = _RDB_new_table(ecp);
     if (newtbp == NULL) {
         return NULL;
     }
@@ -227,11 +231,11 @@ RDB_minus(RDB_table *tb1p, RDB_table *tb2p, RDB_exec_context *ecp)
         return NULL;
     }
 
-    newtbp->kind = RDB_TB_MINUS;
+    newtbp->kind = RDB_TB_SEMIMINUS;
     newtbp->is_user = RDB_TRUE;
     newtbp->is_persistent = RDB_FALSE;
-    newtbp->var.minus.tb1p = tb1p;
-    newtbp->var.minus.tb2p = tb2p;
+    newtbp->var.semiminus.tb1p = tb1p;
+    newtbp->var.semiminus.tb2p = tb2p;
 
     return newtbp;
 }
@@ -1055,17 +1059,17 @@ _RDB_dup_vtable(RDB_table *tbp, RDB_exec_context *ecp)
                 return NULL;
             }
             return RDB_union(tb1p, tb2p, ecp);
-        case RDB_TB_MINUS:
-            tb1p = _RDB_dup_vtable(tbp->var.minus.tb1p, ecp);
+        case RDB_TB_SEMIMINUS:
+            tb1p = _RDB_dup_vtable(tbp->var.semiminus.tb1p, ecp);
             if (tb1p == NULL)
                 return NULL;
-            tb2p = _RDB_dup_vtable(tbp->var.minus.tb2p, ecp);
+            tb2p = _RDB_dup_vtable(tbp->var.semiminus.tb2p, ecp);
             if (tb2p == NULL) {
                  if (tb1p->kind != RDB_TB_REAL)
                     RDB_drop_table(tb1p, ecp, NULL);
                 return NULL;
             }
-            return RDB_minus(tb1p, tb2p, ecp);
+            return RDB_semiminus(tb1p, tb2p, ecp);
         case RDB_TB_INTERSECT:
             tb1p = _RDB_dup_vtable(tbp->var.intersect.tb1p, ecp);
             if (tb1p == NULL)
@@ -1212,11 +1216,11 @@ _RDB_table_def_equals(RDB_table *tb1p, RDB_table *tb2p, RDB_exec_context *ecp,
                     tb2p->var._union.tb1p, ecp, txp)
                     && _RDB_table_def_equals(tb1p->var._union.tb2p,
                     tb2p->var._union.tb2p, ecp, txp));
-        case RDB_TB_MINUS:
-            return (RDB_bool) (_RDB_table_def_equals(tb1p->var.minus.tb1p,
-                    tb2p->var.minus.tb1p, ecp, txp)
-                    && _RDB_table_def_equals(tb1p->var.minus.tb2p,
-                    tb2p->var.minus.tb2p, ecp, txp));
+        case RDB_TB_SEMIMINUS:
+            return (RDB_bool) (_RDB_table_def_equals(tb1p->var.semiminus.tb1p,
+                    tb2p->var.semiminus.tb1p, ecp, txp)
+                    && _RDB_table_def_equals(tb1p->var.semiminus.tb2p,
+                    tb2p->var.semiminus.tb2p, ecp, txp));
         case RDB_TB_INTERSECT:
             return (RDB_bool) (_RDB_table_def_equals(tb1p->var.intersect.tb1p,
                     tb2p->var.intersect.tb1p, ecp, txp)
@@ -1464,9 +1468,9 @@ _RDB_infer_keys(RDB_table *tbp, RDB_exec_context *ecp)
             tbp->keyc = 1;
             tbp->keyv = newkeyv;
             return RDB_OK;
-        case RDB_TB_MINUS:
+        case RDB_TB_SEMIMINUS:
             /* Copy keys */
-            keyc = RDB_table_keys(tbp->var.minus.tb1p, ecp, &keyv);
+            keyc = RDB_table_keys(tbp->var.semiminus.tb1p, ecp, &keyv);
             if (keyc < 0)
                 return RDB_ERROR;
             newkeyv = dup_keys(keyc, keyv);
@@ -1568,10 +1572,10 @@ _RDB_table_refers(RDB_table *srctbp, RDB_table *dsttbp)
             if (_RDB_table_refers(srctbp->var._union.tb1p, dsttbp))
                 return RDB_TRUE;
             return _RDB_table_refers(srctbp->var._union.tb2p, dsttbp);
-        case RDB_TB_MINUS:
-            if (_RDB_table_refers(srctbp->var.minus.tb1p, dsttbp))
+        case RDB_TB_SEMIMINUS:
+            if (_RDB_table_refers(srctbp->var.semiminus.tb1p, dsttbp))
                 return RDB_TRUE;
-            return _RDB_table_refers(srctbp->var.minus.tb2p, dsttbp);
+            return _RDB_table_refers(srctbp->var.semiminus.tb2p, dsttbp);
         case RDB_TB_INTERSECT:
             if (_RDB_table_refers(srctbp->var.intersect.tb1p, dsttbp))
                 return RDB_TRUE;

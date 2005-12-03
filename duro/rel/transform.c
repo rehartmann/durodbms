@@ -293,20 +293,20 @@ transform_select(RDB_table *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
                 chtbp = tbp->var.select.tbp;
                 break;
             }
-            case RDB_TB_MINUS:
+            case RDB_TB_SEMIMINUS:
             {
-                RDB_table *htbp = chtbp->var.minus.tb1p;
+                RDB_table *htbp = chtbp->var.semiminus.tb1p;
                 exp = tbp->var.select.exp;
 
-                ret = _RDB_transform(chtbp->var.minus.tb2p, ecp, txp);
+                ret = _RDB_transform(chtbp->var.semiminus.tb2p, ecp, txp);
                 if (ret != RDB_OK)
                     return ret;
 
-                tbp->kind = RDB_TB_MINUS;
+                tbp->kind = RDB_TB_SEMIMINUS;
                 tbp->keyc = chtbp->keyc;
                 tbp->keyv = chtbp->keyv;
-                tbp->var.minus.tb1p = chtbp;
-                tbp->var.minus.tb2p = chtbp->var.minus.tb2p;
+                tbp->var.semiminus.tb1p = chtbp;
+                tbp->var.semiminus.tb2p = chtbp->var.semiminus.tb2p;
 
                 chtbp->kind = RDB_TB_SELECT;
                 chtbp->var.select.tbp = htbp;
@@ -884,7 +884,7 @@ transform_project(RDB_table *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
                 }
                 tbp = chtbp;
                 break;
-            case RDB_TB_MINUS:
+            case RDB_TB_SEMIMINUS:
             case RDB_TB_INTERSECT:
             case RDB_TB_JOIN:
             case RDB_TB_SUMMARIZE:
@@ -907,11 +907,11 @@ _RDB_transform(RDB_table *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
     switch (tbp->kind) {
         case RDB_TB_REAL:
             break;
-        case RDB_TB_MINUS:
-            ret = _RDB_transform(tbp->var.minus.tb1p, ecp, txp);
+        case RDB_TB_SEMIMINUS:
+            ret = _RDB_transform(tbp->var.semiminus.tb1p, ecp, txp);
             if (ret != RDB_OK)
                 return ret;
-            ret = _RDB_transform(tbp->var.minus.tb2p, ecp, txp);
+            ret = _RDB_transform(tbp->var.semiminus.tb2p, ecp, txp);
             if (ret != RDB_OK)
                 return ret;
             break;

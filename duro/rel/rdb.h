@@ -233,7 +233,7 @@ enum _RDB_tb_kind {
     RDB_TB_REAL,
     RDB_TB_SELECT,
     RDB_TB_UNION,
-    RDB_TB_MINUS,
+    RDB_TB_SEMIMINUS,
     RDB_TB_INTERSECT,
     RDB_TB_JOIN,
     RDB_TB_EXTEND,
@@ -244,7 +244,7 @@ enum _RDB_tb_kind {
     RDB_TB_UNWRAP,
     RDB_TB_SDIVIDE,
     RDB_TB_GROUP,
-    RDB_TB_UNGROUP
+    RDB_TB_UNGROUP,
 };
 
 typedef struct {
@@ -296,7 +296,7 @@ typedef struct RDB_table {
         struct {
             struct RDB_table *tb1p;
             struct RDB_table *tb2p;
-        } minus;
+        } semiminus;
         struct {
             struct RDB_table *tb1p;
             struct RDB_table *tb2p;
@@ -589,7 +589,7 @@ RDB_update(RDB_table *, RDB_expression *, int attrc,
  * If condp is NULL, all tuples will be deleted.
  *
  * Deleting records from virtual relvars is currently only supported for
- * MINUS, UNION, and INTERSECT.
+ * UNION and INTERSECT.
  */
 int
 RDB_delete(RDB_table *tbp, RDB_expression *condp, RDB_exec_context *,
@@ -712,6 +712,9 @@ RDB_union(RDB_table *, RDB_table *, RDB_exec_context *);
 
 RDB_table *
 RDB_minus(RDB_table *, RDB_table *, RDB_exec_context *);
+
+RDB_table *
+RDB_semiminus(RDB_table *, RDB_table *, RDB_exec_context *);
 
 RDB_table *
 RDB_intersect(RDB_table *, RDB_table *, RDB_exec_context *);

@@ -576,6 +576,7 @@ expr_op_type(const RDB_expression *exp, const RDB_type *tuptyp,
     if (argtv[0] != NULL && argtv[0]->kind == RDB_TP_RELATION
             && (strcmp(exp->var.op.name, "UNION") == 0
                 || strcmp(exp->var.op.name, "MINUS") == 0
+                || strcmp(exp->var.op.name, "SEMIMINUS") == 0
                 || strcmp(exp->var.op.name, "INTERSECT") == 0
                 || strcmp(exp->var.op.name, "DIVIDE_BY_PER") == 0)) {
         typ = argtv[0];
@@ -1740,10 +1741,10 @@ _RDB_expr_table_depend(const RDB_expression *exp, RDB_table *tbp)
             if (_RDB_expr_table_depend(exp, tbp->var._union.tb1p))
                 return RDB_TRUE;
             return _RDB_expr_table_depend(exp, tbp->var._union.tb2p);
-        case RDB_TB_MINUS:
-            if (_RDB_expr_table_depend(exp, tbp->var.minus.tb1p))
+        case RDB_TB_SEMIMINUS:
+            if (_RDB_expr_table_depend(exp, tbp->var.semiminus.tb1p))
                 return RDB_TRUE;
-            return _RDB_expr_table_depend(exp, tbp->var.minus.tb2p);
+            return _RDB_expr_table_depend(exp, tbp->var.semiminus.tb2p);
         case RDB_TB_INTERSECT:
             if (_RDB_expr_table_depend(exp, tbp->var.intersect.tb1p))
                 return RDB_TRUE;

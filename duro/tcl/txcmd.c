@@ -47,7 +47,7 @@ Duro_begin_cmd(ClientData data, Tcl_Interp *interp, int argc, CONST char *argv[]
         /* Get database */
         dbp = RDB_get_db_from_env(argv[2], envp, statep->current_ecp);
         if (dbp == NULL) { 
-            Duro_dberror(interp, RDB_get_err(statep->current_ecp), txp);
+            Duro_dberror(interp, RDB_get_err(statep->current_ecp), NULL);
             return TCL_ERROR;
         }
 
@@ -73,7 +73,7 @@ Duro_begin_cmd(ClientData data, Tcl_Interp *interp, int argc, CONST char *argv[]
     txp = (RDB_transaction *)Tcl_Alloc(sizeof (RDB_transaction));
     ret = RDB_begin_tx(statep->current_ecp, txp, dbp, parentp);
     if (ret != RDB_OK) { 
-        Duro_dberror(interp, RDB_get_err(statep->current_ecp), txp);
+        Duro_dberror(interp, RDB_get_err(statep->current_ecp), NULL);
         return TCL_ERROR;
     }        
 

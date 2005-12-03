@@ -296,12 +296,12 @@ _RDB_drop_table(RDB_table *tbp, RDB_bool rec, RDB_exec_context *ecp)
                     return ret;
             }
             break;
-        case RDB_TB_MINUS:
+        case RDB_TB_SEMIMINUS:
             if (rec) {
-                ret = drop_anon_table(tbp->var.minus.tb1p, ecp);
+                ret = drop_anon_table(tbp->var.semiminus.tb1p, ecp);
                 if (ret != RDB_OK)
                     return ret;
-                ret = drop_anon_table(tbp->var.minus.tb2p, ecp);
+                ret = drop_anon_table(tbp->var.semiminus.tb2p, ecp);
                 if (ret != RDB_OK)
                     return ret;
             }
@@ -1202,8 +1202,8 @@ _RDB_sortindex (RDB_table *tbp)
             return _RDB_sortindex(tbp->var.select.tbp);
         case RDB_TB_UNION:
             return NULL;
-        case RDB_TB_MINUS:
-            return _RDB_sortindex(tbp->var.minus.tb1p);
+        case RDB_TB_SEMIMINUS:
+            return _RDB_sortindex(tbp->var.semiminus.tb1p);
         case RDB_TB_INTERSECT:
             return _RDB_sortindex(tbp->var.intersect.tb1p);
         case RDB_TB_JOIN:

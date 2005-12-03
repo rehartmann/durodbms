@@ -475,17 +475,17 @@ append_table(RDB_object *objp, RDB_table *tbp, RDB_exec_context *ecp,
             if (ret != RDB_OK)
                 return ret;
             break;
-        case RDB_TB_MINUS:
+        case RDB_TB_SEMIMINUS:
             ret = append_str(objp, "(");
             if (ret != RDB_OK)
                 return ret;
-            ret = append_table(objp, tbp->var.minus.tb1p, ecp, txp, options);
+            ret = append_table(objp, tbp->var.semiminus.tb1p, ecp, txp, options);
             if (ret != RDB_OK)
                 return ret;
-            ret = append_str(objp, ") MINUS (");
+            ret = append_str(objp, ") SEMIMINUS (");
             if (ret != RDB_OK)
                 return ret;
-            ret = append_table(objp, tbp->var.minus.tb2p, ecp, txp, options);
+            ret = append_table(objp, tbp->var.semiminus.tb2p, ecp, txp, options);
             if (ret != RDB_OK)
                 return ret;
             ret = append_str(objp, ")");

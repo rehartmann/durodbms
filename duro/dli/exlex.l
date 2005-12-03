@@ -79,6 +79,10 @@ MINUS {
     return TOK_MINUS;
 }
 
+SEMIMINUS {
+    return TOK_SEMIMINUS;
+}
+
 JOIN {
     return TOK_JOIN;
 }

@@ -790,16 +790,12 @@ init_qresult(RDB_qresult *qrp, RDB_table *tbp, RDB_exec_context *ecp,
             ret = _RDB_table_qresult(tbp->var._union.tb1p, ecp, txp,
                     &qrp->var.virtual.qrp);
             break;
-        case RDB_TB_MINUS:
+        case RDB_TB_SEMIMINUS:
             qrp->uses_cursor = RDB_FALSE;
             qrp->var.virtual.qr2p = NULL;
             qrp->matp = NULL;
-            ret = _RDB_table_qresult(tbp->var.minus.tb1p, ecp, txp,
+            ret = _RDB_table_qresult(tbp->var.semiminus.tb1p, ecp, txp,
                     &qrp->var.virtual.qrp);
-            if (ret != RDB_OK)
-                break;
-            ret = _RDB_table_qresult(tbp->var.minus.tb2p, ecp, txp,
-                    &qrp->var.virtual.qr2p);
             break;
         case RDB_TB_INTERSECT:
             qrp->uses_cursor = RDB_FALSE;
@@ -809,7 +805,7 @@ init_qresult(RDB_qresult *qrp, RDB_table *tbp, RDB_exec_context *ecp,
                     &qrp->var.virtual.qrp);
             if (ret != RDB_OK)
                 break;
-            ret = _RDB_table_qresult(tbp->var.minus.tb2p, ecp, txp,
+            ret = _RDB_table_qresult(tbp->var.intersect.tb2p, ecp, txp,
                     &qrp->var.virtual.qr2p);
             break;
         case RDB_TB_JOIN:
@@ -897,8 +893,8 @@ qr_dups(RDB_table *tbp, RDB_exec_context *ecp)
             return qr_dups(tbp->var.select.tbp, ecp);
         case RDB_TB_UNION:
             return RDB_TRUE;
-        case RDB_TB_MINUS:
-            return qr_dups(tbp->var.minus.tb1p, ecp);
+        case RDB_TB_SEMIMINUS:
+            return qr_dups(tbp->var.semiminus.tb1p, ecp);
         case RDB_TB_INTERSECT:
             return qr_dups(tbp->var.intersect.tb1p, ecp);
         case RDB_TB_JOIN:
@@ -1578,7 +1574,6 @@ next_join_tuple_uix(RDB_qresult *qrp, RDB_object *tplp, RDB_exec_context *ecp,
 
 cleanup:
     free(objpv);
-
     RDB_destroy_obj(&tpl, ecp);
 
     return ret;
@@ -1595,15 +1590,22 @@ _RDB_get_by_uindex(RDB_table *tbp, RDB_object *objpv[], _RDB_tbindex *indexp,
         RDB_object *tplp)
 {
     RDB_field *fv;
-    RDB_field *resfv;
+    RDB_field *resfv = NULL;
     int i;
     int ret;
     int keylen = indexp->attrc;
+    int resfc = tpltyp->var.tuple.attrc - keylen;
 
-    resfv = malloc(sizeof (RDB_field)
-            * (tpltyp->var.tuple.attrc - keylen));
+    if (resfc > 0) {
+        resfv = malloc(sizeof (RDB_field) * resfc);
+        if (resfv == NULL) {
+            RDB_raise_no_memory(ecp);
+            ret = RDB_ERROR;
+            goto cleanup;
+        }
+    }
     fv = malloc(sizeof (RDB_field) * keylen);
-    if (fv == NULL || resfv == NULL) {
+    if (fv == NULL) {
         RDB_raise_no_memory(ecp);
         ret = RDB_ERROR;
         goto cleanup;
@@ -1630,8 +1632,7 @@ _RDB_get_by_uindex(RDB_table *tbp, RDB_object *objpv[], _RDB_tbindex *indexp,
             if (fno >= keylen)
                 resfv[rfi++].no = fno;
         }
-        ret = RDB_get_fields(tbp->stp->recmapp, fv,
-                             tpltyp->var.tuple.attrc - keylen,
+        ret = RDB_get_fields(tbp->stp->recmapp, fv, resfc,
                              tbp->is_persistent ? txp->txid : NULL, resfv);
     } else {
         int rfi = 0;
@@ -1647,8 +1648,7 @@ _RDB_get_by_uindex(RDB_table *tbp, RDB_object *objpv[], _RDB_tbindex *indexp,
             if (j >= keylen)
                 resfv[rfi++].no = fno;
         }
-        ret = RDB_index_get_fields(indexp->idxp, fv,
-                             tpltyp->var.tuple.attrc - keylen,
+        ret = RDB_index_get_fields(indexp->idxp, fv, resfc,
                              tbp->is_persistent ? txp->txid : NULL, resfv);
     }
     
@@ -1903,8 +1903,8 @@ destroy_qresult(RDB_qresult *qrp, RDB_exec_context *ecp, RDB_transaction *txp)
 
 /*
  * Given T1 DIVIDE T2 BY T3, tplp representing a tuple from T1.
- * Return RDB_OK if the tuple is an element of the result,
- * RDB_NOT_FOUND if not.
+ * Strore RDB_TRUE in *resultp if the tuple is an element of the result,
+ * RDB_FALSE if not.
  * If qr2p is not NULL, it points to a RDB_qresult containing
  * the tuples from T3.
  */
@@ -2103,15 +2103,15 @@ _RDB_next_tuple(RDB_qresult *qrp, RDB_object *tplp, RDB_exec_context *ecp,
                         return ret;
                 }
                 break;
-            case RDB_TB_MINUS:
+            case RDB_TB_SEMIMINUS:
                 do {
                     ret = _RDB_next_tuple(qrp->var.virtual.qrp, tplp, ecp, txp);
                     if (ret != RDB_OK)
-                        return ret;
-                    ret = _RDB_qresult_contains(qrp->var.virtual.qr2p, tplp,
-                            ecp, txp, &b);
+                        return RDB_ERROR;
+                    ret = _RDB_matching_tuple(tbp->var.semiminus.tb2p,
+                            tplp, ecp, txp, &b);
                     if (ret != RDB_OK) {
-                        return ret;
+                        return RDB_ERROR;
                     }
                 } while (b);
                 break;

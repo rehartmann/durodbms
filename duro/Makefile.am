@@ -63,7 +63,7 @@ libduro_la_SOURCES = gen/hashmap.c gen/hashmapit.c gen/strfns.c \
         rel/insert.c rel/contains.c rel/transaction.c rel/delete.c \
         rel/tuple.c rel/type.c rel/object.c rel/catalog.c rel/optimize.c \
         rel/transform.c rel/constraint.c rel/assign.c rel/excontext.c \
-        rel/catalog.h \
+        rel/catalog.h rel/match.c \
         dli/exparse.y dli/exlex.l dli/parse.c dli/tabletostr.c \
         dli/tabletostr.h 
 

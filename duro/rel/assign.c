@@ -545,19 +545,19 @@ replace_targets_tb(RDB_table *tbp,
             if (tbp == NULL)
                 return NULL;
             return tbp;
-        case RDB_TB_MINUS:
-            tb1p = replace_targets_tb(tbp->var.minus.tb1p, insc, insv,
+        case RDB_TB_SEMIMINUS:
+            tb1p = replace_targets_tb(tbp->var.semiminus.tb1p, insc, insv,
                     updc, updv, delc, delv, copyc, copyv, ecp, txp);
             if (tb1p == NULL)
                 return NULL;
-            tb2p = replace_targets_tb(tbp->var.minus.tb2p, insc, insv,
+            tb2p = replace_targets_tb(tbp->var.semiminus.tb2p, insc, insv,
                     updc, updv, delc, delv, copyc, copyv, ecp, txp);
             if (tb2p == NULL) {
                  if (tb1p->kind != RDB_TB_REAL)
                     RDB_drop_table(tb1p, ecp, NULL);
                 return NULL;
             }
-            tbp = RDB_minus(tb1p, tb2p, ecp);
+            tbp = RDB_semiminus(tb1p, tb2p, ecp);
             if (tbp == NULL)
                 return NULL;
             return tbp;
@@ -1102,13 +1102,13 @@ resolve_insert(const RDB_ma_insert *insp, insert_node **inslpp,
             RDB_destroy_obj(&tpl, ecp);
             return ret;
         case RDB_TB_UNION:
-        case RDB_TB_MINUS:
+        case RDB_TB_SEMIMINUS:
         case RDB_TB_SUMMARIZE:
         case RDB_TB_GROUP:
         case RDB_TB_UNGROUP:
         case RDB_TB_SDIVIDE:
             RDB_raise_not_supported(
-                    "Insert is not supported for this virtual table", ecp);
+                    "Insert is not supported for this kind of table", ecp);
             return RDB_ERROR;
     }
     abort();
@@ -1275,10 +1275,6 @@ resolve_delete(const RDB_ma_delete *delp, delete_node **delnpp,
             del.tbp = delp->tbp->var.project.tbp;
             del.condp = delp->condp;
             return resolve_delete(&del, delnpp, ecp, txp);
-        case RDB_TB_MINUS:
-            del.tbp = delp->tbp->var.minus.tb1p;
-            del.condp = delp->condp;
-            return resolve_delete(&del, delnpp, ecp, txp);
         case RDB_TB_RENAME:
             del.tbp = delp->tbp->var.rename.tbp;
             del.condp = delp->condp;
@@ -1319,6 +1315,7 @@ resolve_delete(const RDB_ma_delete *delp, delete_node **delnpp,
                 delnp = delnp->nextp;
             }
             return RDB_OK;
+        case RDB_TB_SEMIMINUS:
         case RDB_TB_UNION:
         case RDB_TB_JOIN:
         case RDB_TB_INTERSECT:

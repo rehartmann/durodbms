@@ -655,6 +655,36 @@ _RDB_tuple_equals(const RDB_object *tpl1p, const RDB_object *tpl2p,
     return RDB_OK;
 }
 
+int
+_RDB_tuple_matches(const RDB_object *tpl1p, const RDB_object *tpl2p,
+        RDB_exec_context *ecp, RDB_transaction *txp, RDB_bool *resp)
+{
+    int ret;
+    RDB_hashtable_iter hiter;
+    tuple_entry *entryp;
+    RDB_bool b;
+
+    RDB_init_hashtable_iter(&hiter, (RDB_hashtable *) &tpl1p->var.tpl_tab);
+    while ((entryp = RDB_hashtable_next(&hiter)) != NULL) {
+        RDB_object *attrp = RDB_tuple_get(tpl2p, entryp->key);
+        if (attrp != NULL) {
+            ret = RDB_obj_equals(&entryp->obj, attrp, ecp, txp, &b);
+            if (ret != RDB_OK) {
+                RDB_destroy_hashtable_iter(&it);
+                return ret;
+            }
+            if (!b) {
+                RDB_destroy_hashtable_iter(&it);
+                *resp = RDB_FALSE;
+                return RDB_OK;
+            }
+        }
+    }
+    RDB_destroy_hashtable_iter(&it);
+    *resp = RDB_TRUE;
+    return RDB_OK;
+}
+
 /*
  * Generate type from tuple
  */

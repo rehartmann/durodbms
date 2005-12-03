@@ -168,6 +168,10 @@ _RDB_next_tuple(RDB_qresult *, RDB_object *, RDB_exec_context *,
         RDB_transaction *);
 
 int
+_RDB_matching_tuple(RDB_table *, const RDB_object *tplp, RDB_exec_context *,
+        RDB_transaction *, RDB_bool *resultp);
+
+int
 _RDB_qresult_contains(RDB_qresult *, const RDB_object *, RDB_exec_context *,
         RDB_transaction *, RDB_bool *);
 
@@ -412,6 +416,10 @@ _RDB_array_equals(RDB_object *arr1p, RDB_object *arr2p, RDB_exec_context *,
 int
 _RDB_tuple_equals(const RDB_object *, const RDB_object *, RDB_exec_context *,
         RDB_transaction *, RDB_bool *);
+
+int
+_RDB_tuple_matches(const RDB_object *tpl1p, const RDB_object *tpl2p,
+        RDB_exec_context *ecp, RDB_transaction *txp, RDB_bool *resp);
 
 int
 _RDB_invrename_tuple(const RDB_object *, int renc, const RDB_renaming renv[],

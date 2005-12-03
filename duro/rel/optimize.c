@@ -282,8 +282,8 @@ table_cost(RDB_table *tbp)
     switch (tbp->kind) {
         case RDB_TB_REAL:
             return 0;
-        case RDB_TB_MINUS:
-            return table_cost(tbp->var.minus.tb1p); /* !! */
+        case RDB_TB_SEMIMINUS:
+            return table_cost(tbp->var.semiminus.tb1p); /* !! */
         case RDB_TB_UNION:
             return table_cost(tbp->var._union.tb1p)
                 + table_cost(tbp->var._union.tb2p);
@@ -472,12 +472,12 @@ table_to_empty(RDB_table *tbp, RDB_exec_context *ecp)
             }
             tbp->kind = RDB_TB_REAL;
             break;
-        case RDB_TB_MINUS:
-            if (!tbp->var.minus.tb1p->is_persistent) {
-                RDB_drop_table(tbp->var.minus.tb1p, ecp, NULL);
+        case RDB_TB_SEMIMINUS:
+            if (!tbp->var.semiminus.tb1p->is_persistent) {
+                RDB_drop_table(tbp->var.semiminus.tb1p, ecp, NULL);
             }
-            if (!tbp->var.minus.tb2p->is_persistent) {
-                RDB_drop_table(tbp->var.minus.tb2p, ecp, NULL);
+            if (!tbp->var.semiminus.tb2p->is_persistent) {
+                RDB_drop_table(tbp->var.semiminus.tb2p, ecp, NULL);
             }
             tbp->kind = RDB_TB_REAL;
             break;
@@ -500,11 +500,11 @@ replace_empty(RDB_table *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
     switch (tbp->kind) {
         case RDB_TB_REAL:
             break;
-        case RDB_TB_MINUS:
-            ret = replace_empty(tbp->var.minus.tb1p, ecp, txp);
+        case RDB_TB_SEMIMINUS:
+            ret = replace_empty(tbp->var.semiminus.tb1p, ecp, txp);
             if (ret != RDB_OK)
                 return ret;
-            ret = replace_empty(tbp->var.minus.tb2p, ecp, txp);
+            ret = replace_empty(tbp->var.semiminus.tb2p, ecp, txp);
             if (ret != RDB_OK)
                 return ret;
             break;
@@ -597,43 +597,43 @@ replace_empty(RDB_table *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
 }
 
 static int
-transform_minus_union(RDB_table *tbp, RDB_exec_context *ecp,
+transform_semiminus_union(RDB_table *tbp, RDB_exec_context *ecp,
         RDB_transaction *txp, RDB_table **restbpp)
 {
     int ret;
     RDB_table *tb1p, *tb2p, *tb3p, *tb4p;
 
-    tb1p = _RDB_dup_vtable(tbp->var.minus.tb1p->var._union.tb1p, ecp);
+    tb1p = _RDB_dup_vtable(tbp->var.semiminus.tb1p->var._union.tb1p, ecp);
     if (tb1p == NULL) {
         return RDB_ERROR;
     }
 
-    tb2p = _RDB_dup_vtable(tbp->var.minus.tb2p, ecp);
+    tb2p = _RDB_dup_vtable(tbp->var.semiminus.tb2p, ecp);
     if (tb2p == NULL) {
         RDB_drop_table (tb1p, ecp, NULL);
         return RDB_ERROR;
     }
 
-    tb3p = RDB_minus(tb1p, tb2p, ecp);
+    tb3p = RDB_semiminus(tb1p, tb2p, ecp);
     if (tb3p == NULL) {
         RDB_drop_table(tb1p, ecp, NULL);
         RDB_drop_table(tb2p, ecp, NULL);
         return RDB_ERROR;
     }
 
-    tb1p = _RDB_dup_vtable(tbp->var.minus.tb1p->var._union.tb2p, ecp);
+    tb1p = _RDB_dup_vtable(tbp->var.semiminus.tb1p->var._union.tb2p, ecp);
     if (tb1p == NULL) {
         RDB_drop_table(tb3p, ecp, NULL);
         return RDB_ERROR;
     }
-    tb2p = _RDB_dup_vtable(tbp->var.minus.tb2p, ecp);
+    tb2p = _RDB_dup_vtable(tbp->var.semiminus.tb2p, ecp);
     if (tb2p == NULL) {
         RDB_drop_table(tb1p, ecp, NULL);
         RDB_drop_table(tb3p, ecp, NULL);
         return RDB_ERROR;
     }
 
-    tb4p = RDB_minus(tb1p, tb2p, ecp);
+    tb4p = RDB_semiminus(tb1p, tb2p, ecp);
     if (tb4p == NULL) {
         RDB_drop_table(tb1p, ecp, NULL);
         RDB_drop_table(tb2p, ecp, NULL);
@@ -656,29 +656,29 @@ transform_minus_union(RDB_table *tbp, RDB_exec_context *ecp,
 }
 
 static int
-mutate_minus(RDB_table *tbp, RDB_table **tbpv, int cap,
+mutate_semiminus(RDB_table *tbp, RDB_table **tbpv, int cap,
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
     int tbc;
     int i;
     int ret;
 
-    tbc = mutate(tbp->var.minus.tb1p, tbpv, cap, ecp, txp);
+    tbc = mutate(tbp->var.semiminus.tb1p, tbpv, cap, ecp, txp);
     if (tbc < 0)
         return tbc;
     for (i = 0; i < tbc; i++) {
         RDB_table *ntbp;
-        RDB_table *otbp = _RDB_dup_vtable(tbp->var.minus.tb2p, ecp);
+        RDB_table *otbp = _RDB_dup_vtable(tbp->var.semiminus.tb2p, ecp);
         if (otbp == NULL)
             return RDB_ERROR;
 
-        ntbp = RDB_minus(tbpv[i], otbp, ecp);
+        ntbp = RDB_semiminus(tbpv[i], otbp, ecp);
         if (ntbp == NULL)
             return RDB_ERROR;
         tbpv[i] = ntbp;
     }
-    if (tbc < cap && tbp->var.minus.tb1p->kind == RDB_TB_UNION) {
-        ret = transform_minus_union(tbp, ecp, txp, &tbpv[tbc]);
+    if (tbc < cap && tbp->var.semiminus.tb1p->kind == RDB_TB_UNION) {
+        ret = transform_semiminus_union(tbp, ecp, txp, &tbpv[tbc]);
         if (ret != RDB_OK)
             return RDB_ERROR;
         tbc++;
@@ -1127,8 +1127,8 @@ mutate(RDB_table *tbp, RDB_table **tbpv, int cap, RDB_exec_context *ecp,
             return 0;
         case RDB_TB_UNION:
             return mutate_union(tbp, tbpv, cap, ecp, txp);
-        case RDB_TB_MINUS:
-            return mutate_minus(tbp, tbpv, cap, ecp, txp);
+        case RDB_TB_SEMIMINUS:
+            return mutate_semiminus(tbp, tbpv, cap, ecp, txp);
         case RDB_TB_INTERSECT:
             return mutate_intersect(tbp, tbpv, cap, ecp, txp);
         case RDB_TB_SELECT:
@@ -1220,24 +1220,24 @@ add_project(RDB_table *tbp, RDB_exec_context *ecp)
     switch (tbp->kind) {
         case RDB_TB_REAL:
             break;
-        case RDB_TB_MINUS:
-            if (tbp->var.minus.tb1p->kind == RDB_TB_REAL) {
-                ptbp = null_project(tbp->var.minus.tb1p, ecp);
+        case RDB_TB_SEMIMINUS:
+            if (tbp->var.semiminus.tb1p->kind == RDB_TB_REAL) {
+                ptbp = null_project(tbp->var.semiminus.tb1p, ecp);
                 if (ptbp == NULL)
                     return RDB_ERROR;
-                tbp->var.minus.tb1p = ptbp;
+                tbp->var.semiminus.tb1p = ptbp;
             } else {
-                ret = add_project(tbp->var.minus.tb1p, ecp);
+                ret = add_project(tbp->var.semiminus.tb1p, ecp);
                 if (ret != RDB_OK)
                     return ret;
             }
-            if (tbp->var.minus.tb2p->kind == RDB_TB_REAL) {
-                ptbp = null_project(tbp->var.minus.tb2p, ecp);
+            if (tbp->var.semiminus.tb2p->kind == RDB_TB_REAL) {
+                ptbp = null_project(tbp->var.semiminus.tb2p, ecp);
                 if (ptbp == NULL)
                     return RDB_ERROR;
-                tbp->var.minus.tb2p = ptbp;
+                tbp->var.semiminus.tb2p = ptbp;
             } else {
-                ret = add_project(tbp->var.minus.tb2p, ecp);
+                ret = add_project(tbp->var.semiminus.tb2p, ecp);
                 if (ret != RDB_OK)
                     return ret;
             }

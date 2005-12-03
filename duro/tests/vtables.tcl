@@ -256,7 +256,7 @@ set da [duro::array create TR {KN asc} $tx]
 checkarray $da {{KN 2 SN Blubb} {KN 3 SN Blu}} $tx
 duro::array drop $da
 
-duro::delete TM {K = 5} $tx
+# duro::delete TM {K = 5} $tx
 
 set tpl [duro::expr {TUPLE FROM TM} $tx]
 set stpl {K 2 S1 Blubb}

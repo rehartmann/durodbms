@@ -542,11 +542,11 @@ serialize_vtable(RDB_object *valp, int *posp, RDB_table *tbp,
             if (ret != RDB_OK)
                 return ret;
             return RDB_OK;
-        case RDB_TB_MINUS:
-            ret = serialize_table(valp, posp, tbp->var.minus.tb1p, ecp);
+        case RDB_TB_SEMIMINUS:
+            ret = serialize_table(valp, posp, tbp->var.semiminus.tb1p, ecp);
             if (ret != RDB_OK)
                 return ret;
-            ret = serialize_table(valp, posp, tbp->var.minus.tb2p, ecp);
+            ret = serialize_table(valp, posp, tbp->var.semiminus.tb2p, ecp);
             if (ret != RDB_OK)
                 return ret;
             return RDB_OK;
@@ -1548,14 +1548,14 @@ deserialize_vtable(RDB_object *valp, int *posp, RDB_exec_context *ecp,
             if (tb2p == NULL)
                 return NULL;
             return RDB_union(tb1p, tb2p, ecp);
-        case RDB_TB_MINUS:
+        case RDB_TB_SEMIMINUS:
             tb1p = deserialize_table(valp, posp, ecp, txp);
             if (tb1p == NULL)
                 return NULL;
             tb2p = deserialize_table(valp, posp, ecp, txp);
             if (tb2p == NULL)
                 return NULL;
-            return RDB_minus(tb1p, tb2p, ecp);
+            return RDB_semiminus(tb1p, tb2p, ecp);
         case RDB_TB_INTERSECT:
             tb1p = deserialize_table(valp, posp, ecp, txp);
             if (tb1p == NULL)

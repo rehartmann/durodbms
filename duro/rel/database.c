@@ -665,6 +665,7 @@ RDB_get_db_from_env(const char *name, RDB_environment *envp,
 
 error:
     if (crdbroot) {
+        close_systables(dbrootp, ecp);
         free_dbroot(dbrootp, ecp);
         RDB_env_private(envp) = NULL;
     }
