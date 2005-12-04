@@ -797,16 +797,12 @@ init_qresult(RDB_qresult *qrp, RDB_table *tbp, RDB_exec_context *ecp,
             ret = _RDB_table_qresult(tbp->var.semiminus.tb1p, ecp, txp,
                     &qrp->var.virtual.qrp);
             break;
-        case RDB_TB_INTERSECT:
+        case RDB_TB_SEMIJOIN:
             qrp->uses_cursor = RDB_FALSE;
             qrp->var.virtual.qr2p = NULL;
             qrp->matp = NULL;
-            ret = _RDB_table_qresult(tbp->var.intersect.tb1p, ecp, txp,
+            ret = _RDB_table_qresult(tbp->var.semijoin.tb1p, ecp, txp,
                     &qrp->var.virtual.qrp);
-            if (ret != RDB_OK)
-                break;
-            ret = _RDB_table_qresult(tbp->var.intersect.tb2p, ecp, txp,
-                    &qrp->var.virtual.qr2p);
             break;
         case RDB_TB_JOIN:
             ret = join_qresult(qrp, ecp, txp);
@@ -895,8 +891,8 @@ qr_dups(RDB_table *tbp, RDB_exec_context *ecp)
             return RDB_TRUE;
         case RDB_TB_SEMIMINUS:
             return qr_dups(tbp->var.semiminus.tb1p, ecp);
-        case RDB_TB_INTERSECT:
-            return qr_dups(tbp->var.intersect.tb1p, ecp);
+        case RDB_TB_SEMIJOIN:
+            return qr_dups(tbp->var.semijoin.tb1p, ecp);
         case RDB_TB_JOIN:
             return (RDB_bool) (qr_dups(tbp->var.join.tb1p, ecp)
                     || qr_dups(tbp->var.join.tb2p, ecp));
@@ -2115,15 +2111,15 @@ _RDB_next_tuple(RDB_qresult *qrp, RDB_object *tplp, RDB_exec_context *ecp,
                     }
                 } while (b);
                 break;
-            case RDB_TB_INTERSECT:
+            case RDB_TB_SEMIJOIN:
                 do {
                     ret = _RDB_next_tuple(qrp->var.virtual.qrp, tplp, ecp, txp);
                     if (ret != RDB_OK)
-                        return ret;
-                    ret = _RDB_qresult_contains(qrp->var.virtual.qr2p, tplp,
-                            ecp, txp, &b);
+                        return RDB_ERROR;
+                    ret = _RDB_matching_tuple(tbp->var.semijoin.tb2p,
+                            tplp, ecp, txp, &b);
                     if (ret != RDB_OK) {
-                        return ret;
+                        return RDB_ERROR;
                     }
                 } while (!b);
                 break;

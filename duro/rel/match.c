@@ -164,7 +164,7 @@ _RDB_matching_tuple(RDB_table *tbp, const RDB_object *tplp, RDB_exec_context *ec
        case RDB_TB_SELECT:
        case RDB_TB_UNION:
        case RDB_TB_SEMIMINUS:
-       case RDB_TB_INTERSECT:
+       case RDB_TB_SEMIJOIN:
        case RDB_TB_JOIN:
        case RDB_TB_EXTEND:
        case RDB_TB_SUMMARIZE:

@@ -356,7 +356,7 @@ transform_select(RDB_table *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
                 chtbp = tbp->var.select.tbp;
                 break;
             }
-            case RDB_TB_INTERSECT:
+            case RDB_TB_SEMIJOIN:
             {
                 RDB_table *newtbp;
                 RDB_expression *ex2p;
@@ -375,9 +375,9 @@ transform_select(RDB_table *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
 
                 exp = tbp->var.select.exp;
 
-                tbp->kind = RDB_TB_INTERSECT;
-                tbp->var._union.tb1p = chtbp;
-                tbp->var._union.tb2p = newtbp;
+                tbp->kind = RDB_TB_SEMIJOIN;
+                tbp->var.semijoin.tb1p = chtbp;
+                tbp->var.semijoin.tb2p = newtbp;
                 chtbp->kind = RDB_TB_SELECT;
                 chtbp->var.select.tbp = htbp;
                 chtbp->var.select.exp = exp;
@@ -885,7 +885,7 @@ transform_project(RDB_table *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
                 tbp = chtbp;
                 break;
             case RDB_TB_SEMIMINUS:
-            case RDB_TB_INTERSECT:
+            case RDB_TB_SEMIJOIN:
             case RDB_TB_JOIN:
             case RDB_TB_SUMMARIZE:
             case RDB_TB_WRAP:
@@ -920,11 +920,11 @@ _RDB_transform(RDB_table *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
             if (ret != RDB_OK)
                 return ret;
             break;
-        case RDB_TB_INTERSECT:
-            ret = _RDB_transform(tbp->var.intersect.tb1p, ecp, txp);
+        case RDB_TB_SEMIJOIN:
+            ret = _RDB_transform(tbp->var.semijoin.tb1p, ecp, txp);
             if (ret != RDB_OK)
                 return ret;
-            ret = _RDB_transform(tbp->var.intersect.tb2p, ecp, txp);
+            ret = _RDB_transform(tbp->var.semijoin.tb2p, ecp, txp);
             if (ret != RDB_OK)
                 return ret;
             break;

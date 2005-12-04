@@ -1074,6 +1074,28 @@ op_intersect(const char *name, int argc, RDB_object *argv[],
 }
 
 static int
+op_semijoin(const char *name, int argc, RDB_object *argv[],
+        const void *iargp, size_t iarglen, RDB_exec_context *ecp,
+        RDB_transaction *txp, RDB_object *retvalp)
+{
+    RDB_table *vtbp;
+    
+    if (argc != 2) {
+        RDB_raise_invalid_argument("SEMIJOIN requires two arguments", ecp);
+        return RDB_ERROR;
+    }
+    
+    vtbp = RDB_semijoin(RDB_obj_table(argv[0]), RDB_obj_table(argv[1]), ecp);
+    if (vtbp == NULL)
+        return RDB_ERROR;
+
+    RDB_table_to_obj(retvalp, vtbp, ecp);
+    argv[0]->var.tbp = NULL;
+    argv[1]->var.tbp = NULL;
+    return RDB_OK;
+}
+
+static int
 op_join(const char *name, int argc, RDB_object *argv[],
         const void *iargp, size_t iarglen, RDB_exec_context *ecp,
         RDB_transaction *txp, RDB_object *retvalp)
@@ -2478,6 +2500,16 @@ _RDB_add_builtin_ops(RDB_dbroot *dbrootp, RDB_exec_context *ecp)
         return ret;
 
     op = new_ro_op("INTERSECT", -1, NULL, &op_intersect, ecp);
+    if (op == NULL) {
+        RDB_raise_no_memory(ecp);
+        return RDB_ERROR;
+    }
+
+    ret = put_ro_op(dbrootp, op, ecp);
+    if (ret != RDB_OK)
+        return ret;
+
+    op = new_ro_op("SEMIJOIN", -1, NULL, &op_semijoin, ecp);
     if (op == NULL) {
         RDB_raise_no_memory(ecp);
         return RDB_ERROR;

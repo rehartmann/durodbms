@@ -287,8 +287,8 @@ table_cost(RDB_table *tbp)
         case RDB_TB_UNION:
             return table_cost(tbp->var._union.tb1p)
                 + table_cost(tbp->var._union.tb2p);
-        case RDB_TB_INTERSECT:
-            return table_cost(tbp->var.intersect.tb1p);
+        case RDB_TB_SEMIJOIN:
+            return table_cost(tbp->var.semijoin.tb1p); /* !! */
         case RDB_TB_SELECT:
             if (tbp->var.select.objpc == 0)
                 return table_cost(tbp->var.select.tbp);
@@ -516,11 +516,11 @@ replace_empty(RDB_table *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
             if (ret != RDB_OK)
                 return ret;
             break;
-        case RDB_TB_INTERSECT:
-            ret = replace_empty(tbp->var.intersect.tb1p, ecp, txp);
+        case RDB_TB_SEMIJOIN:
+            ret = replace_empty(tbp->var.semijoin.tb1p, ecp, txp);
             if (ret != RDB_OK)
                 return ret;
-            ret = replace_empty(tbp->var.intersect.tb2p, ecp, txp);
+            ret = replace_empty(tbp->var.semijoin.tb2p, ecp, txp);
             if (ret != RDB_OK)
                 return ret;
             break;
@@ -688,36 +688,36 @@ mutate_semiminus(RDB_table *tbp, RDB_table **tbpv, int cap,
 }
 
 static int
-mutate_intersect(RDB_table *tbp, RDB_table **tbpv, int cap,
+mutate_semijoin(RDB_table *tbp, RDB_table **tbpv, int cap,
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
     int tbc1, tbc2;
     int i;
 
-    tbc1 = mutate(tbp->var.intersect.tb1p, tbpv, cap, ecp, txp);
+    tbc1 = mutate(tbp->var.semijoin.tb1p, tbpv, cap, ecp, txp);
     if (tbc1 < 0)
         return tbc1;
     for (i = 0; i < tbc1; i++) {
         RDB_table *ntbp;
-        RDB_table *otbp = _RDB_dup_vtable(tbp->var.intersect.tb2p, ecp);
+        RDB_table *otbp = _RDB_dup_vtable(tbp->var.semijoin.tb2p, ecp);
         if (otbp == NULL)
             return RDB_ERROR;
 
-        ntbp = RDB_intersect(tbpv[i], otbp, ecp);
+        ntbp = RDB_semijoin(tbpv[i], otbp, ecp);
         if (ntbp == NULL)
             return RDB_ERROR;
         tbpv[i] = ntbp;
     }
-    tbc2 = mutate(tbp->var.intersect.tb2p, &tbpv[tbc1], cap - tbc1, ecp, txp);
+    tbc2 = mutate(tbp->var.semijoin.tb2p, &tbpv[tbc1], cap - tbc1, ecp, txp);
     if (tbc2 < 0)
         return tbc2;
     for (i = tbc1; i < tbc1 + tbc2; i++) {
         RDB_table *ntbp;
-        RDB_table *otbp = _RDB_dup_vtable(tbp->var.intersect.tb1p, ecp);
+        RDB_table *otbp = _RDB_dup_vtable(tbp->var.semijoin.tb1p, ecp);
         if (otbp == NULL)
             return RDB_ERROR;
 
-        ntbp = RDB_intersect(tbpv[i], otbp, ecp);
+        ntbp = RDB_semijoin(otbp, tbpv[i], ecp);
         if (ntbp == NULL)
             return RDB_ERROR;
         tbpv[i] = ntbp;
@@ -1129,8 +1129,8 @@ mutate(RDB_table *tbp, RDB_table **tbpv, int cap, RDB_exec_context *ecp,
             return mutate_union(tbp, tbpv, cap, ecp, txp);
         case RDB_TB_SEMIMINUS:
             return mutate_semiminus(tbp, tbpv, cap, ecp, txp);
-        case RDB_TB_INTERSECT:
-            return mutate_intersect(tbp, tbpv, cap, ecp, txp);
+        case RDB_TB_SEMIJOIN:
+            return mutate_semijoin(tbp, tbpv, cap, ecp, txp);
         case RDB_TB_SELECT:
             /* Select over index is not further optimized */
             if (tbp->var.select.tbp->kind != RDB_TB_PROJECT
@@ -1264,24 +1264,24 @@ add_project(RDB_table *tbp, RDB_exec_context *ecp)
                     return ret;
             }
             break;
-        case RDB_TB_INTERSECT:
-            if (tbp->var.intersect.tb1p->kind == RDB_TB_REAL) {
-                ptbp = null_project(tbp->var.intersect.tb1p, ecp);
+        case RDB_TB_SEMIJOIN:
+            if (tbp->var.semijoin.tb1p->kind == RDB_TB_REAL) {
+                ptbp = null_project(tbp->var.semijoin.tb1p, ecp);
                 if (ptbp == NULL)
                     return RDB_ERROR;
-                tbp->var.intersect.tb1p = ptbp;
+                tbp->var.semijoin.tb1p = ptbp;
             } else {
-                ret = add_project(tbp->var.intersect.tb1p, ecp);
+                ret = add_project(tbp->var.semijoin.tb1p, ecp);
                 if (ret != RDB_OK)
                     return ret;
             }
-            if (tbp->var.intersect.tb2p->kind == RDB_TB_REAL) {
-                ptbp = null_project(tbp->var.intersect.tb2p, ecp);
+            if (tbp->var.semijoin.tb2p->kind == RDB_TB_REAL) {
+                ptbp = null_project(tbp->var.semijoin.tb2p, ecp);
                 if (ptbp == NULL)
                     return RDB_ERROR;
-                tbp->var.intersect.tb2p = ptbp;
+                tbp->var.semijoin.tb2p = ptbp;
             } else {
-                ret = add_project(tbp->var.intersect.tb2p, ecp);
+                ret = add_project(tbp->var.semijoin.tb2p, ecp);
                 if (ret != RDB_OK)
                     return ret;
             }

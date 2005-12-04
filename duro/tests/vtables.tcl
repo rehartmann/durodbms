@@ -50,9 +50,13 @@ duro::insert T1 {K 1 S1 Bla} $tx
 
 duro::insert T1 {K 2 S1 Blubb} $tx
 
+duro::insert T1 {K 3 S1 Blu} $tx
+
 duro::insert T2 {K 1 S1 Bla} $tx
 
 duro::insert T2 {K 2 S1 Blipp} $tx
+
+duro::insert T2 {K 3 S1 Blu} $tx
 
 duro::insert T3 {K 1 S2 A} $tx
 
@@ -95,6 +99,8 @@ duro::table expr -global TJ2 {(T1 WHERE K = 2) JOIN (T3 WHERE K = 2)} $tx
 duro::table expr -global TS {T1 WHERE S1 > "Bla"} $tx
 duro::table expr -global TSM {SUMMARIZE T4 PER T4 { A }
         ADD (MIN(B) AS MIN_B, MAX(B) AS MAX_B, COUNT AS CNT)} $tx
+duro::table expr -global TSMN {T1 SEMIMINUS T3} $tx
+duro::table expr -global TSJ {T1 SEMIJOIN T3} $tx
 
 duro::table expr -global TS2 {T1 WHERE K = 1} $tx
 
@@ -204,6 +210,14 @@ if {![catch {duro::delete TP {S1 = "Bla"} $tx}]} {
     error "duro::delete on TP should fail, but succeeded"
 }
 
+set da [duro::array create TSMN {K asc} $tx]
+checkarray $da {{K 3 S1 Blu}} $tx
+duro::array drop $da
+
+set da [duro::array create TSJ {K asc} $tx]
+checkarray $da {{K 1 S1 Bla} {K 2 S1 Blubb}} $tx
+duro::array drop $da
+
 set tpl {K 0 S1 Bold S2 Z}
 
 duro::insert TJ $tpl $tx
@@ -215,14 +229,6 @@ if {![duro::table contains TJ $tpl $tx]} {
 set da [duro::array create TJ {K asc S1 asc} $tx]
 checkarray $da {{K 0 S1 Bold S2 Z} {K 1 S1 Bla S2 A} {K 2 S1 Blubb S2 B}} $tx
 duro::array drop $da
-
-set tpl {K 3 S1 Blu}
-
-duro::insert TI $tpl $tx
-
-if {![duro::table contains TI $tpl $tx]} {
-    error "Insert into TI was not successful."
-}
 
 set tpl {KN 5 SN Ballermann}
 

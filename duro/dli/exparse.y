@@ -38,7 +38,7 @@ enum {
 
 %}
 
-%expect 12
+%expect 14
 
 %union {
     RDB_expression *exp;
@@ -58,6 +58,7 @@ enum {
 %token TOK_INTERSECT
 %token TOK_MINUS
 %token TOK_SEMIMINUS
+%token TOK_SEMIJOIN
 %token TOK_JOIN
 %token TOK_FROM
 %token TOK_TUPLE
@@ -409,6 +410,31 @@ relation: expression TOK_UNION primary_expression {
         }
 
         $$ = RDB_ro_op_va("SEMIMINUS", _RDB_parse_ecp, tex1p, tex2p,
+                (RDB_expression *) NULL);
+        if ($$ == NULL) {
+            RDB_drop_expr(tex1p, _RDB_parse_ecp);
+            RDB_drop_expr(tex2p, _RDB_parse_ecp);
+            YYERROR;
+        }
+    }
+    | expression TOK_SEMIJOIN primary_expression {
+        RDB_expression *tex1p, *tex2p;
+
+        tex1p = _RDB_parse_lookup_table($1);
+        if (tex1p == NULL) {
+            RDB_drop_expr($1, _RDB_parse_ecp);
+            RDB_drop_expr($3, _RDB_parse_ecp);
+            YYERROR;
+        }
+
+        tex2p = _RDB_parse_lookup_table($3);
+        if (tex2p == NULL) {
+            RDB_drop_expr(tex1p, _RDB_parse_ecp);
+            RDB_drop_expr($3, _RDB_parse_ecp);
+            YYERROR;
+        }
+
+        $$ = RDB_ro_op_va("SEMIJOIN", _RDB_parse_ecp, tex1p, tex2p,
                 (RDB_expression *) NULL);
         if ($$ == NULL) {
             RDB_drop_expr(tex1p, _RDB_parse_ecp);

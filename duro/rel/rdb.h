@@ -234,7 +234,7 @@ enum _RDB_tb_kind {
     RDB_TB_SELECT,
     RDB_TB_UNION,
     RDB_TB_SEMIMINUS,
-    RDB_TB_INTERSECT,
+    RDB_TB_SEMIJOIN,
     RDB_TB_JOIN,
     RDB_TB_EXTEND,
     RDB_TB_PROJECT,
@@ -300,7 +300,7 @@ typedef struct RDB_table {
         struct {
             struct RDB_table *tb1p;
             struct RDB_table *tb2p;
-        } intersect;
+        } semijoin;
         struct {
             struct RDB_table *tb1p;
             struct RDB_table *tb2p;
@@ -718,6 +718,9 @@ RDB_semiminus(RDB_table *, RDB_table *, RDB_exec_context *);
 
 RDB_table *
 RDB_intersect(RDB_table *, RDB_table *, RDB_exec_context *);
+
+RDB_table *
+RDB_semijoin(RDB_table *, RDB_table *, RDB_exec_context *);
 
 /* Create a table which is a natural join of the two tables. */
 RDB_table *

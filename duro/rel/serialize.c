@@ -550,11 +550,11 @@ serialize_vtable(RDB_object *valp, int *posp, RDB_table *tbp,
             if (ret != RDB_OK)
                 return ret;
             return RDB_OK;
-        case RDB_TB_INTERSECT:
-            ret = serialize_table(valp, posp, tbp->var.intersect.tb1p, ecp);
+        case RDB_TB_SEMIJOIN:
+            ret = serialize_table(valp, posp, tbp->var.semijoin.tb1p, ecp);
             if (ret != RDB_OK)
                 return ret;
-            ret = serialize_table(valp, posp, tbp->var.intersect.tb2p, ecp);
+            ret = serialize_table(valp, posp, tbp->var.semijoin.tb2p, ecp);
             if (ret != RDB_OK)
                 return ret;
             return RDB_OK;
@@ -1556,14 +1556,14 @@ deserialize_vtable(RDB_object *valp, int *posp, RDB_exec_context *ecp,
             if (tb2p == NULL)
                 return NULL;
             return RDB_semiminus(tb1p, tb2p, ecp);
-        case RDB_TB_INTERSECT:
+        case RDB_TB_SEMIJOIN:
             tb1p = deserialize_table(valp, posp, ecp, txp);
             if (tb1p == NULL)
                 return NULL;
             tb2p = deserialize_table(valp, posp, ecp, txp);
             if (tb2p == NULL)
                 return NULL;
-            return RDB_intersect(tb1p, tb2p, ecp);
+            return RDB_semijoin(tb1p, tb2p, ecp);
         case RDB_TB_JOIN:
             tb1p = deserialize_table(valp, posp, ecp, txp);
             if (tb1p == NULL)

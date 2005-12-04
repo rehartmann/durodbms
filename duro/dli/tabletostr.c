@@ -492,17 +492,17 @@ append_table(RDB_object *objp, RDB_table *tbp, RDB_exec_context *ecp,
             if (ret != RDB_OK)
                 return ret;
             break;
-        case RDB_TB_INTERSECT:
+        case RDB_TB_SEMIJOIN:
             ret = append_str(objp, "(");
             if (ret != RDB_OK)
                 return ret;
-            ret = append_table(objp, tbp->var.intersect.tb1p, ecp, txp, options);
+            ret = append_table(objp, tbp->var.semijoin.tb1p, ecp, txp, options);
             if (ret != RDB_OK)
                 return ret;
-            ret = append_str(objp, ") INTERSECT (");
+            ret = append_str(objp, ") SEMIJOIN (");
             if (ret != RDB_OK)
                 return ret;
-            ret = append_table(objp, tbp->var.intersect.tb2p, ecp, txp, options);
+            ret = append_table(objp, tbp->var.semijoin.tb2p, ecp, txp, options);
             if (ret != RDB_OK)
                 return ret;
             ret = append_str(objp, ")");

@@ -107,13 +107,6 @@ duro::table create T3 {
    {B INTEGER}
 } {{A}} $tx
 
-duro::table create T4 {
-   {A INTEGER}
-   {B INTEGER}
-} {{A}} $tx
-
-duro::table expr T5 {T3 INTERSECT T4} $tx
-
 duro::insert T3 {A 1 B 1} $tx
 duro::insert T3 {A 2 B 1} $tx
 
@@ -123,7 +116,7 @@ duro::update T3 {A = 1} B 2 $tx
 
 # Must fail
 if {![catch {
-    duro::insert T5 {A 3 B 3} $tx
+    duro::insert T3 {A 3 B 3} $tx
 }]} {
     error "insert should have failed, but succeded"
 }

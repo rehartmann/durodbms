@@ -241,33 +241,38 @@ RDB_semiminus(RDB_table *tb1p, RDB_table *tb2p, RDB_exec_context *ecp)
 }
 
 RDB_table *
-RDB_intersect(RDB_table *tb1p, RDB_table *tb2p, RDB_exec_context *ecp)
+RDB_semijoin(RDB_table *tb1p, RDB_table *tb2p, RDB_exec_context *ecp)
 {
-    RDB_table *newtbp;
-
-    if (!RDB_type_equals(tb1p->typ, tb2p->typ)) {
-        RDB_raise_type_mismatch("INTERSECT tables must match", ecp);
+    RDB_table *newtbp = _RDB_new_table(ecp);
+    if (newtbp == NULL) {
         return NULL;
     }
-
-    newtbp = _RDB_new_table(ecp);
-    if (newtbp == NULL)
-        return NULL;
 
     /* Create type */
     newtbp->typ = _RDB_dup_nonscalar_type(tb1p->typ, ecp);
     if (newtbp->typ == NULL) {
+        free(newtbp);
+        RDB_raise_no_memory(ecp);
         return NULL;
     }
 
-    newtbp->kind = RDB_TB_INTERSECT;
+    newtbp->kind = RDB_TB_SEMIJOIN;
     newtbp->is_user = RDB_TRUE;
     newtbp->is_persistent = RDB_FALSE;
-    newtbp->var.intersect.tb1p = tb1p;
-    newtbp->var.intersect.tb2p = tb2p;
-    newtbp->name = NULL;
+    newtbp->var.semijoin.tb1p = tb1p;
+    newtbp->var.semijoin.tb2p = tb2p;
 
     return newtbp;
+}
+
+RDB_table *
+RDB_intersect(RDB_table *tb1p, RDB_table *tb2p, RDB_exec_context *ecp)
+{
+    if (!RDB_type_equals(tb1p->typ, tb2p->typ)) {
+        RDB_raise_type_mismatch("INTERSECT tables must match", ecp);
+        return NULL;
+    }
+    return RDB_semijoin(tb1p, tb2p, ecp);
 }
 
 RDB_table *
@@ -1070,17 +1075,17 @@ _RDB_dup_vtable(RDB_table *tbp, RDB_exec_context *ecp)
                 return NULL;
             }
             return RDB_semiminus(tb1p, tb2p, ecp);
-        case RDB_TB_INTERSECT:
-            tb1p = _RDB_dup_vtable(tbp->var.intersect.tb1p, ecp);
+        case RDB_TB_SEMIJOIN:
+            tb1p = _RDB_dup_vtable(tbp->var.semijoin.tb1p, ecp);
             if (tb1p == NULL)
                 return NULL;
-            tb2p = _RDB_dup_vtable(tbp->var.intersect.tb2p, ecp);
+            tb2p = _RDB_dup_vtable(tbp->var.semijoin.tb2p, ecp);
             if (tb2p == NULL) {
                  if (tb1p->kind != RDB_TB_REAL)
                     RDB_drop_table(tb1p, ecp, NULL);
                 return NULL;
             }
-            return RDB_intersect(tb1p, tb2p, ecp);
+            return RDB_semijoin(tb1p, tb2p, ecp);
         case RDB_TB_JOIN:
             tb1p = _RDB_dup_vtable(tbp->var.join.tb1p, ecp);
             if (tb1p == NULL)
@@ -1221,11 +1226,11 @@ _RDB_table_def_equals(RDB_table *tb1p, RDB_table *tb2p, RDB_exec_context *ecp,
                     tb2p->var.semiminus.tb1p, ecp, txp)
                     && _RDB_table_def_equals(tb1p->var.semiminus.tb2p,
                     tb2p->var.semiminus.tb2p, ecp, txp));
-        case RDB_TB_INTERSECT:
-            return (RDB_bool) (_RDB_table_def_equals(tb1p->var.intersect.tb1p,
-                    tb2p->var.intersect.tb1p, ecp, txp)
-                    && _RDB_table_def_equals(tb1p->var.intersect.tb2p,
-                    tb2p->var.intersect.tb2p, ecp, txp));
+        case RDB_TB_SEMIJOIN:
+            return (RDB_bool) (_RDB_table_def_equals(tb1p->var.semijoin.tb1p,
+                    tb2p->var.semijoin.tb1p, ecp, txp)
+                    && _RDB_table_def_equals(tb1p->var.semijoin.tb2p,
+                    tb2p->var.semijoin.tb2p, ecp, txp));
         case RDB_TB_JOIN:
             return (RDB_bool) (_RDB_table_def_equals(tb1p->var.join.tb1p,
                     tb2p->var.join.tb1p, ecp, txp)
@@ -1481,9 +1486,9 @@ _RDB_infer_keys(RDB_table *tbp, RDB_exec_context *ecp)
             tbp->keyc = keyc;
             tbp->keyv = newkeyv;
             return RDB_OK;
-        case RDB_TB_INTERSECT:
+        case RDB_TB_SEMIJOIN:
             /* Copy keys */
-            keyc = RDB_table_keys(tbp->var.intersect.tb1p, ecp, &keyv);
+            keyc = RDB_table_keys(tbp->var.semijoin.tb1p, ecp, &keyv);
             if (keyc < 0)
                 return RDB_ERROR;
             newkeyv = dup_keys(keyc, keyv);
@@ -1576,10 +1581,10 @@ _RDB_table_refers(RDB_table *srctbp, RDB_table *dsttbp)
             if (_RDB_table_refers(srctbp->var.semiminus.tb1p, dsttbp))
                 return RDB_TRUE;
             return _RDB_table_refers(srctbp->var.semiminus.tb2p, dsttbp);
-        case RDB_TB_INTERSECT:
-            if (_RDB_table_refers(srctbp->var.intersect.tb1p, dsttbp))
+        case RDB_TB_SEMIJOIN:
+            if (_RDB_table_refers(srctbp->var.semijoin.tb1p, dsttbp))
                 return RDB_TRUE;
-            return _RDB_table_refers(srctbp->var.intersect.tb2p, dsttbp);
+            return _RDB_table_refers(srctbp->var.semijoin.tb2p, dsttbp);
         case RDB_TB_JOIN:
             if (_RDB_table_refers(srctbp->var.join.tb1p, dsttbp))
                 return RDB_TRUE;

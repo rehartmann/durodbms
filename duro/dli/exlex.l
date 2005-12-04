@@ -83,6 +83,10 @@ SEMIMINUS {
     return TOK_SEMIMINUS;
 }
 
+SEMIJOIN {
+    return TOK_SEMIJOIN;
+}
+
 JOIN {
     return TOK_JOIN;
 }

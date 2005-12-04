@@ -561,12 +561,12 @@ replace_targets_tb(RDB_table *tbp,
             if (tbp == NULL)
                 return NULL;
             return tbp;
-        case RDB_TB_INTERSECT:
-            tb1p = replace_targets_tb(tbp->var.intersect.tb1p, insc, insv,
+        case RDB_TB_SEMIJOIN:
+            tb1p = replace_targets_tb(tbp->var.semijoin.tb1p, insc, insv,
                     updc, updv, delc, delv, copyc, copyv, ecp, txp);
             if (tb1p == NULL)
                 return NULL;
-            tb2p = replace_targets_tb(tbp->var.intersect.tb2p, insc, insv,
+            tb2p = replace_targets_tb(tbp->var.semijoin.tb2p, insc, insv,
                     updc, updv, delc, delv, copyc, copyv, ecp, txp);
             if (tb2p == NULL) {
                  if (tb1p->kind != RDB_TB_REAL)
@@ -959,53 +959,6 @@ resolve_insert(const RDB_ma_insert *insp, insert_node **inslpp,
             ins.tbp = insp->tbp->var.project.tbp;
             ins.tplp = insp->tplp;
             return resolve_insert(&ins, inslpp, ecp, txp);
-        case RDB_TB_INTERSECT:
-            if (RDB_table_contains(insp->tbp->var.intersect.tb1p, insp->tplp,
-                    ecp, txp, &b) != RDB_OK) {
-                return RDB_ERROR;
-            }
-            if (RDB_table_contains(insp->tbp->var.intersect.tb2p,
-                    insp->tplp, ecp, txp, &b2) != RDB_OK) {
-                return RDB_ERROR;
-            }
-
-            /*
-             * If both 'subtables' contain the tuple, the insert fails
-             */
-            if (b && b2) {
-                RDB_raise_element_exists("tuple is already in table", ecp);
-                return RDB_ERROR;
-            }
-
-            /*
-             * Insert the tuple into the table(s) which do not contain it
-             */
-            *inslpp = NULL;
-            if (!b) {
-                ins.tbp = insp->tbp->var.intersect.tb1p;
-                ins.tplp = insp->tplp;
-                ret = resolve_insert(&ins, inslpp, ecp, txp);
-                if (ret != RDB_OK)
-                    return RDB_ERROR;
-            }
-            if (!b2) {
-                insert_node *hinsnp;
-
-                ins.tbp = insp->tbp->var.intersect.tb2p;
-                ins.tplp = insp->tplp;
-                ret = resolve_insert(&ins, &hinsnp, ecp, txp);
-                if (ret != RDB_OK) {
-                    if (*inslpp != NULL)
-                        del_inslist(*inslpp, ecp);
-                    return RDB_ERROR;
-                }
-                if (*inslpp == NULL) {
-                    *inslpp = hinsnp;
-                } else {
-                    concat_inslists(inslpp, hinsnp);
-                }
-            }
-            return RDB_OK;
         case RDB_TB_JOIN:
             if (RDB_table_contains(insp->tbp->var.join.tb1p, insp->tplp,
                     ecp, txp, &b) != RDB_OK) {
@@ -1103,6 +1056,7 @@ resolve_insert(const RDB_ma_insert *insp, insert_node **inslpp,
             return ret;
         case RDB_TB_UNION:
         case RDB_TB_SEMIMINUS:
+        case RDB_TB_SEMIJOIN:
         case RDB_TB_SUMMARIZE:
         case RDB_TB_GROUP:
         case RDB_TB_UNGROUP:
@@ -1316,9 +1270,9 @@ resolve_delete(const RDB_ma_delete *delp, delete_node **delnpp,
             }
             return RDB_OK;
         case RDB_TB_SEMIMINUS:
+        case RDB_TB_SEMIJOIN:
         case RDB_TB_UNION:
         case RDB_TB_JOIN:
-        case RDB_TB_INTERSECT:
         case RDB_TB_SUMMARIZE:
         case RDB_TB_WRAP:
         case RDB_TB_UNWRAP:
