@@ -16,8 +16,8 @@ matching_ts(RDB_table *tbp, const RDB_object *tplp, RDB_exec_context *ecp,
     RDB_object tpl;
     RDB_qresult *qrp;
 
-    ret = _RDB_table_qresult(tbp, ecp, txp, &qrp);
-    if (ret != RDB_OK)
+    qrp = _RDB_table_qresult(tbp, ecp, txp);
+    if (qrp == NULL)
         return RDB_ERROR;
 
     RDB_init_obj(&tpl);

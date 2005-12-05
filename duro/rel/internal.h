@@ -151,9 +151,8 @@ _RDB_begin_tx(RDB_exec_context *, RDB_transaction *, RDB_environment *,
  * Iterator over the tuples of a RDB_table. Used internally.
  * Using it from an application is possible, but violates RM proscription 7.
  */
-int
-_RDB_table_qresult(RDB_table *, RDB_exec_context *ecp, RDB_transaction *,
-        RDB_qresult **);
+RDB_qresult *
+_RDB_table_qresult(RDB_table *, RDB_exec_context *ecp, RDB_transaction *);
 
 int
 _RDB_index_qresult(RDB_table *, _RDB_tbindex *, RDB_transaction *,

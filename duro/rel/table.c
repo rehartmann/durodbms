@@ -455,9 +455,9 @@ _RDB_move_tuples(RDB_table *dstp, RDB_table *srcp, RDB_exec_context *ecp,
     /*
      * Copy all tuples from source table to destination table
      */
-    ret = _RDB_table_qresult(srcp, ecp, txp, &qrp);
-    if (ret != RDB_OK)
-        return ret;
+    qrp = _RDB_table_qresult(srcp, ecp, txp);
+    if (qrp == NULL)
+        return RDB_ERROR;
 
     RDB_init_obj(&tpl);
 
@@ -903,11 +903,11 @@ RDB_extract_tuple(RDB_table *tbp, RDB_exec_context *ecp,
     if (ret != RDB_OK)
         return ret;
 
-    ret = _RDB_table_qresult(ntbp, ecp, txp, &qrp);
-    if (ret != RDB_OK) {
+    qrp = _RDB_table_qresult(ntbp, ecp, txp);
+    if (qrp == NULL) {
         if (ntbp->kind != RDB_TB_REAL)
             RDB_drop_table(ntbp, ecp, txp);
-        return ret;
+        return RDB_ERROR;
     }
 
     RDB_init_obj(&tpl);
@@ -972,8 +972,8 @@ RDB_table_is_empty(RDB_table *tbp, RDB_exec_context *ecp,
     if (ret != RDB_OK)
         return ret;
 
-    ret = _RDB_table_qresult(ntbp, ecp, txp, &qrp);
-    if (ret != RDB_OK) {
+    qrp = _RDB_table_qresult(ntbp, ecp, txp);
+    if (qrp == NULL) {
         RDB_drop_table(ntbp, ecp, txp);
         return RDB_ERROR;
     }
@@ -1022,11 +1022,11 @@ RDB_cardinality(RDB_table *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
     if (ret != RDB_OK)
         return ret;
 
-    ret = _RDB_table_qresult(ntbp, ecp, txp, &qrp);
-    if (ret != RDB_OK) {
+    qrp = _RDB_table_qresult(ntbp, ecp, txp);
+    if (qrp == NULL) {
         if (ntbp->kind != RDB_TB_REAL)
             RDB_drop_table(ntbp, ecp, txp);
-        return ret;
+        return RDB_ERROR;
     }
 
     /* Duplicates must be removed */
@@ -1090,8 +1090,8 @@ RDB_subset(RDB_table *tb1p, RDB_table *tb2p, RDB_exec_context *ecp,
         return RDB_ERROR;
     }
 
-    ret = _RDB_table_qresult(tb1p, ecp, txp, &qrp);
-    if (ret != RDB_OK) {
+    qrp = _RDB_table_qresult(tb1p, ecp, txp);
+    if (qrp == NULL) {
         return RDB_ERROR;
     }
 
@@ -1162,9 +1162,9 @@ RDB_table_equals(RDB_table *tb1p, RDB_table *tb2p, RDB_exec_context *ecp,
      * (The implementation is quite inefficient if table #2
      * is a SUMMARIZE PER or GROUP table)
      */
-    ret = _RDB_table_qresult(tb1p, ecp, txp, &qrp);
-    if (ret != RDB_OK)
-        return ret;
+    qrp = _RDB_table_qresult(tb1p, ecp, txp);
+    if (qrp == NULL)
+        return RDB_ERROR;
 
     RDB_init_obj(&tpl);
     while ((ret = _RDB_next_tuple(qrp, &tpl, ecp, txp)) == RDB_OK) {

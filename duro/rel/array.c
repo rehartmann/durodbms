@@ -19,11 +19,11 @@ RDB_table_to_array(RDB_object *arrp, RDB_table *tbp,
 
     ret = RDB_destroy_obj(arrp, ecp);
     if (ret != RDB_OK)
-        goto error;
+        return RDB_ERROR;
 
     ret = _RDB_optimize(tbp, seqitc, seqitv, ecp, txp, &ntbp);
     if (ret != RDB_OK)
-        goto error;
+        return RDB_ERROR;
 
     arrp->kind = RDB_OB_ARRAY;
     arrp->var.arr.tbp = ntbp;
@@ -45,10 +45,9 @@ RDB_table_to_array(RDB_object *arrp, RDB_table *tbp,
         }
     }
     if (arrp->var.arr.qrp == NULL) {
-        ret = _RDB_table_qresult(arrp->var.arr.tbp, ecp, arrp->var.arr.txp,
-                &arrp->var.arr.qrp);
-        if (ret != RDB_OK) {
-            arrp->var.arr.qrp = NULL;
+        arrp->var.arr.qrp = _RDB_table_qresult(arrp->var.arr.tbp, ecp,
+                arrp->var.arr.txp);
+        if (arrp->var.arr.qrp == NULL) {
             goto error;
         }
         /* Add duplicate remover, if necessary */
@@ -60,6 +59,7 @@ RDB_table_to_array(RDB_object *arrp, RDB_table *tbp,
     return RDB_OK;
 
 error:
+    RDB_drop_table(arrp->var.arr.tbp, ecp, txp);
     return RDB_ERROR;
 }
 

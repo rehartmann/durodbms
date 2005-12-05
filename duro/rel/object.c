@@ -41,8 +41,8 @@ _RDB_table_ilen(RDB_table *tbp, size_t *lenp, RDB_exec_context *ecp)
     RDB_object tpl;
     RDB_qresult *qrp;
 
-    ret = _RDB_table_qresult(tbp, ecp, NULL, &qrp);
-    if (ret != RDB_OK)
+    qrp = _RDB_table_qresult(tbp, ecp, NULL);
+    if (qrp == NULL)
         return RDB_ERROR;
 
     RDB_init_obj(&tpl);
@@ -405,8 +405,8 @@ _RDB_table_to_irep(void *dstp, RDB_table *tbp, size_t len)
 
     RDB_init_exec_context(&ec);
 
-    ret = _RDB_table_qresult(tbp, &ec, NULL, &qrp);
-    if (ret != RDB_OK) {
+    qrp = _RDB_table_qresult(tbp, &ec, NULL);
+    if (qrp == NULL) {
         RDB_destroy_exec_context(&ec);
         return;
     }

@@ -24,9 +24,9 @@ init_summ_table(RDB_qresult *qresp, RDB_exec_context *ecp,
      * Initialize table from table #2
      */
 
-    ret = _RDB_table_qresult(qresp->tbp->var.summarize.tb2p, ecp, txp, &qrp);
-    if (ret != RDB_OK) {
-        return ret;
+    qrp = _RDB_table_qresult(qresp->tbp->var.summarize.tb2p, ecp, txp);
+    if (qrp == NULL) {
+        return RDB_ERROR;
     }
     ret = _RDB_duprem(qrp, ecp);
     if (ret != RDB_OK) {
@@ -232,9 +232,9 @@ do_summarize(RDB_qresult *qresp, RDB_exec_context *ecp, RDB_transaction *txp)
      * Iterate over table 1, modifying the materialized table
      */
 
-    ret = _RDB_table_qresult(qresp->tbp->var.summarize.tb1p, ecp, txp, &qrp);
-    if (ret != RDB_OK) {
-        return ret;
+    qrp = _RDB_table_qresult(qresp->tbp->var.summarize.tb1p, ecp, txp);
+    if (qrp == NULL) {
+        return RDB_ERROR;
     }
     ret = _RDB_duprem(qrp, ecp);
     if (ret != RDB_OK) {
@@ -384,9 +384,9 @@ do_group(RDB_qresult *qrp, RDB_exec_context *ecp, RDB_transaction *txp)
      * Iterate over the original table, modifying the materialized table
      */
 
-    ret = _RDB_table_qresult(qrp->tbp->var.group.tbp, ecp, txp, &newqrp);
-    if (ret != RDB_OK) {
-        return ret;
+    newqrp = _RDB_table_qresult(qrp->tbp->var.group.tbp, ecp, txp);
+    if (newqrp == NULL) {
+        return RDB_ERROR;
     }
     ret = _RDB_duprem(qrp, ecp);
     if (ret != RDB_OK)
@@ -712,19 +712,18 @@ join_qresult(RDB_qresult *qrp, RDB_exec_context *ecp, RDB_transaction *txp)
     qrp->uses_cursor = RDB_FALSE;
     qrp->matp = NULL;
     /* Create qresult for the first table */
-    ret = _RDB_table_qresult(qrp->tbp->var.join.tb1p, ecp, txp,
-            &qrp->var.virtual.qrp);
-    if (ret != RDB_OK)
-        return ret;
+    qrp->var.virtual.qrp = _RDB_table_qresult(qrp->tbp->var.join.tb1p, ecp, txp);
+    if (qrp->var.virtual.qrp == NULL)
+        return RDB_ERROR;
 
     qrp->var.virtual.tpl_valid = RDB_FALSE;
     if (qrp->tbp->var.join.tb2p->kind != RDB_TB_PROJECT
             || qrp->tbp->var.join.tb2p->var.project.indexp == NULL) {
         /* Create qresult for 2nd table */
-        ret = _RDB_table_qresult(qrp->tbp->var.join.tb2p, ecp, txp,
-                &qrp->var.virtual.qr2p);
-        if (ret != RDB_OK) {
-            _RDB_drop_qresult(qrp->var.virtual.qr2p, ecp, txp);
+        qrp->var.virtual.qr2p = _RDB_table_qresult(qrp->tbp->var.join.tb2p,
+                ecp, txp);
+        if (qrp->var.virtual.qr2p == NULL) {
+            _RDB_drop_qresult(qrp->var.virtual.qrp, ecp, txp);
             return ret;
         }
     } else if (!qrp->tbp->var.join.tb2p->var.project.indexp->unique) {
@@ -762,121 +761,119 @@ static int
 init_qresult(RDB_qresult *qrp, RDB_table *tbp, RDB_exec_context *ecp,
         RDB_transaction *txp)
 {
-    int ret;
-
     qrp->tbp = tbp;
     qrp->endreached = RDB_FALSE;
     qrp->matp = NULL;
 
     switch (tbp->kind) {
         case RDB_TB_REAL:
-            ret = stored_qresult(qrp, tbp, ecp, txp);
-            break;
+            return stored_qresult(qrp, tbp, ecp, txp);
         case RDB_TB_SELECT:
             if (tbp->var.select.objpc == 0) {
                 qrp->uses_cursor = RDB_FALSE;
                 qrp->matp = NULL;
                 qrp->var.virtual.qr2p = NULL;
-                ret = _RDB_table_qresult(tbp->var.select.tbp, ecp, txp,
-                        &qrp->var.virtual.qrp);
+                qrp->var.virtual.qrp = _RDB_table_qresult(tbp->var.select.tbp,
+                        ecp, txp);
+                return qrp->var.virtual.qrp != NULL ? RDB_OK : RDB_ERROR;                    
             } else {
-                ret = select_index_qresult(qrp, ecp, txp);
+                return select_index_qresult(qrp, ecp, txp);
             }
-            break;
         case RDB_TB_UNION:
             qrp->uses_cursor = RDB_FALSE;
             qrp->matp = NULL;
             qrp->var.virtual.qr2p = NULL;
-            ret = _RDB_table_qresult(tbp->var._union.tb1p, ecp, txp,
-                    &qrp->var.virtual.qrp);
-            break;
+            qrp->var.virtual.qrp = _RDB_table_qresult(tbp->var._union.tb1p,
+                    ecp, txp);
+            return qrp->var.virtual.qrp != NULL ? RDB_OK : RDB_ERROR;                    
         case RDB_TB_SEMIMINUS:
             qrp->uses_cursor = RDB_FALSE;
             qrp->var.virtual.qr2p = NULL;
             qrp->matp = NULL;
-            ret = _RDB_table_qresult(tbp->var.semiminus.tb1p, ecp, txp,
-                    &qrp->var.virtual.qrp);
-            break;
+            qrp->var.virtual.qrp = _RDB_table_qresult(tbp->var.semiminus.tb1p,
+                    ecp, txp);
+            return qrp->var.virtual.qrp != NULL ? RDB_OK : RDB_ERROR;                    
         case RDB_TB_SEMIJOIN:
             qrp->uses_cursor = RDB_FALSE;
             qrp->var.virtual.qr2p = NULL;
             qrp->matp = NULL;
-            ret = _RDB_table_qresult(tbp->var.semijoin.tb1p, ecp, txp,
-                    &qrp->var.virtual.qrp);
-            break;
+            qrp->var.virtual.qrp = _RDB_table_qresult(tbp->var.semijoin.tb1p,
+                    ecp, txp);
+            return qrp->var.virtual.qrp != NULL ? RDB_OK : RDB_ERROR;                    
         case RDB_TB_JOIN:
-            ret = join_qresult(qrp, ecp, txp);
-            break;
+            return join_qresult(qrp, ecp, txp);
         case RDB_TB_EXTEND:
             qrp->uses_cursor = RDB_FALSE;
             qrp->var.virtual.qr2p = NULL;
             qrp->matp = NULL;
-            ret = _RDB_table_qresult(tbp->var.extend.tbp, ecp, txp,
-                    &qrp->var.virtual.qrp);
-            break;
+            qrp->var.virtual.qrp = _RDB_table_qresult(tbp->var.extend.tbp,
+                    ecp, txp);
+            return qrp->var.virtual.qrp != NULL ? RDB_OK : RDB_ERROR;                    
         case RDB_TB_PROJECT:
             if (tbp->var.project.indexp == NULL
                     || tbp->var.project.indexp->idxp == NULL) {
                 qrp->uses_cursor = RDB_FALSE;
                 qrp->var.virtual.qr2p = NULL;
                 qrp->matp = NULL;
-                ret = _RDB_table_qresult(tbp->var.project.tbp, ecp, txp,
-                        &qrp->var.virtual.qrp);
+                qrp->var.virtual.qrp = _RDB_table_qresult(tbp->var.project.tbp,
+                        ecp, txp);
+                return qrp->var.virtual.qrp != NULL ? RDB_OK : RDB_ERROR;                    
             } else {
-                ret = index_qresult(qrp, tbp->var.project.indexp, txp);
+                return index_qresult(qrp, tbp->var.project.indexp, txp);
             }
-            break;
         case RDB_TB_SUMMARIZE:
-            ret = summarize_qresult(qrp, ecp, txp);
-            break;
+            return summarize_qresult(qrp, ecp, txp);
         case RDB_TB_RENAME:
             qrp->uses_cursor = RDB_FALSE;
             qrp->var.virtual.qr2p = NULL;
             qrp->matp = NULL;
-            ret = _RDB_table_qresult(tbp->var.rename.tbp, ecp, txp,
-                    &qrp->var.virtual.qrp);
-            break;
+            qrp->var.virtual.qrp = _RDB_table_qresult(tbp->var.rename.tbp,
+                    ecp, txp);
+            return qrp->var.virtual.qrp != NULL ? RDB_OK : RDB_ERROR;                    
         case RDB_TB_WRAP:
             qrp->uses_cursor = RDB_FALSE;
             qrp->var.virtual.qr2p = NULL;
             qrp->matp = NULL;
-            ret = _RDB_table_qresult(tbp->var.wrap.tbp, ecp, txp,
-                    &qrp->var.virtual.qrp);
-            break;
+            qrp->var.virtual.qrp = _RDB_table_qresult(tbp->var.wrap.tbp,
+                    ecp, txp);
+            return qrp->var.virtual.qrp != NULL ? RDB_OK : RDB_ERROR;                    
         case RDB_TB_UNWRAP:
             qrp->uses_cursor = RDB_FALSE;
             qrp->var.virtual.qr2p = NULL;
             qrp->matp = NULL;
-            ret = _RDB_table_qresult(tbp->var.unwrap.tbp, ecp, txp,
-                    &qrp->var.virtual.qrp);
-            break;
+            qrp->var.virtual.qrp = _RDB_table_qresult(tbp->var.unwrap.tbp,
+                    ecp, txp);
+            return qrp->var.virtual.qrp != NULL ? RDB_OK : RDB_ERROR;                    
         case RDB_TB_GROUP:
-            ret = group_qresult(qrp, ecp, txp);
-            break;
+            return group_qresult(qrp, ecp, txp);
         case RDB_TB_UNGROUP:
             qrp->uses_cursor = RDB_FALSE;
             qrp->var.virtual.qr2p = NULL;
             qrp->matp = NULL;
-            ret = _RDB_table_qresult(tbp->var.ungroup.tbp, ecp, txp,
-                    &qrp->var.virtual.qrp);
+            qrp->var.virtual.qrp = _RDB_table_qresult(tbp->var.ungroup.tbp,
+                    ecp, txp);
+            if (qrp->var.virtual.qrp == NULL) {
+                return RDB_ERROR;
+            }
             qrp->var.virtual.tpl_valid = RDB_FALSE;
-            break;
+            return RDB_OK;
         case RDB_TB_SDIVIDE:
             qrp->uses_cursor = RDB_FALSE;
             qrp->matp = NULL;
             /* Create qresults for table #1 and table #3 */
-            ret = _RDB_table_qresult(tbp->var.sdivide.tb1p, ecp, txp,
-                    &qrp->var.virtual.qrp);
-            if (ret != RDB_OK)
-                break;
-            ret = _RDB_table_qresult(tbp->var.sdivide.tb3p, ecp, txp,
-                    &qrp->var.virtual.qr2p);
-            if (ret != RDB_OK) {
-                _RDB_drop_qresult(qrp->var.virtual.qr2p, ecp, txp);
-                break;
+            qrp->var.virtual.qrp = _RDB_table_qresult(tbp->var.sdivide.tb1p,
+                    ecp, txp);
+            if (qrp->var.virtual.qrp == NULL)
+                return RDB_ERROR;
+            qrp->var.virtual.qr2p = _RDB_table_qresult(tbp->var.sdivide.tb3p,
+                    ecp, txp);
+            if (qrp->var.virtual.qr2p == NULL) {
+                _RDB_drop_qresult(qrp->var.virtual.qrp, ecp, txp);
+                return RDB_ERROR;
             }
+            return RDB_OK;
     }
-    return ret;
+    abort();
 }
 
 static RDB_bool
@@ -954,21 +951,21 @@ _RDB_duprem(RDB_qresult *qrp, RDB_exec_context *ecp)
     return RDB_OK;
 }
 
-int
-_RDB_table_qresult(RDB_table *tbp, RDB_exec_context *ecp, RDB_transaction *txp,
-        RDB_qresult **qrpp)
+RDB_qresult *
+_RDB_table_qresult(RDB_table *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
 {
-    int ret;
+    RDB_qresult *qrp;
 
-    *qrpp = malloc(sizeof (RDB_qresult));
-    if (*qrpp == NULL) {
+    qrp = malloc(sizeof (RDB_qresult));
+    if (qrp == NULL) {
         RDB_raise_no_memory(ecp);
-        return RDB_ERROR;
+        return NULL;
     }
-    ret = init_qresult(*qrpp, tbp, ecp, txp);
-    if (ret != RDB_OK)
-        free(*qrpp);
-    return ret;
+    if (init_qresult(qrp, tbp, ecp, txp) != RDB_OK) {
+        free(qrp);
+        return NULL;
+    }
+    return qrp;
 }
 
 /*
@@ -1052,8 +1049,8 @@ _RDB_sorter(RDB_table *tbp, RDB_qresult **qrespp, RDB_exec_context *ecp,
      * Copy tuples into the newly created RDB_table
      */
 
-    ret = _RDB_table_qresult(tbp, ecp, txp, &tmpqrp);
-    if (ret != RDB_OK)
+    tmpqrp = _RDB_table_qresult(tbp, ecp, txp);
+    if (tmpqrp == NULL)
         goto error;
 
     oerrfilep = RDB_get_errfile(envp);
@@ -1209,9 +1206,9 @@ next_ungroup_tuple(RDB_qresult *qrp, RDB_object *tplp, RDB_exec_context *ecp,
         attrtbp = RDB_tuple_get(&qrp->var.virtual.tpl,
                 qrp->tbp->var.ungroup.attr)->var.tbp;
 
-        ret = _RDB_table_qresult(attrtbp, ecp, txp, &qrp->var.virtual.qr2p);
-        if (ret != RDB_OK)
-            return ret;
+        qrp->var.virtual.qr2p = _RDB_table_qresult(attrtbp, ecp, txp);
+        if (qrp->var.virtual.qr2p == NULL)
+            return RDB_ERROR;
     }
 
     /* Read next element of relation-valued attribute */
@@ -1235,9 +1232,9 @@ next_ungroup_tuple(RDB_qresult *qrp, RDB_object *tplp, RDB_exec_context *ecp,
                 qrp->tbp->var.ungroup.attr)->var.tbp;
 
         /* Create qresult over relation-valued attribute */
-        ret = _RDB_table_qresult(attrtbp, ecp, txp, &qrp->var.virtual.qr2p);
-        if (ret != RDB_OK) {
-            return ret;
+        qrp->var.virtual.qr2p = _RDB_table_qresult(attrtbp, ecp, txp);
+        if (qrp->var.virtual.qr2p == NULL) {
+            return RDB_ERROR;
         }
 
         ret = _RDB_next_tuple(qrp->var.virtual.qr2p, tplp, ecp, txp);
@@ -2080,14 +2077,14 @@ _RDB_next_tuple(RDB_qresult *qrp, RDB_object *tplp, RDB_exec_context *ecp,
                         if (RDB_obj_type(RDB_get_err(ecp))
                                 == &RDB_NOT_FOUND_ERROR) {
                             /* Switch to second table */
-                            ret = _RDB_table_qresult(tbp->var._union.tb2p,
-                                    ecp, txp, &qrp->var.virtual.qr2p);
-                            if (ret != RDB_OK)
-                                return ret;
+                            qrp->var.virtual.qr2p = _RDB_table_qresult(
+                                    tbp->var._union.tb2p, ecp, txp);
+                            if (qrp->var.virtual.qr2p == NULL)
+                                return RDB_ERROR;
                             ret = _RDB_next_tuple(qrp->var.virtual.qr2p, tplp,
                                     ecp, txp);
                             if (ret != RDB_OK)
-                                return ret;
+                                return RDB_ERROR;
                         } else {
                             return RDB_ERROR;
                         }
