@@ -152,29 +152,30 @@ extern RDB_type RDB_STRING;
 extern RDB_type RDB_BINARY;
 
 /* Error types */
-extern RDB_type RDB_NO_MEMORY_ERROR;
-extern RDB_type RDB_NOT_FOUND_ERROR;
 extern RDB_type RDB_INVALID_TRANSACTION_ERROR;
 extern RDB_type RDB_INVALID_ARGUMENT_ERROR;
-extern RDB_type RDB_ELEMENT_EXISTS_ERROR;
 extern RDB_type RDB_TYPE_MISMATCH_ERROR;
+extern RDB_type RDB_NOT_FOUND_ERROR;
+extern RDB_type RDB_OPERATOR_NOT_FOUND_ERROR;
+extern RDB_type RDB_ATTRIBUTE_NOT_FOUND_ERROR;
+extern RDB_type RDB_ELEMENT_EXISTS_ERROR;
+extern RDB_type RDB_TYPE_CONSTRAINT_VIOLATION_ERROR;
 extern RDB_type RDB_KEY_VIOLATION_ERROR;
 extern RDB_type RDB_PREDICATE_VIOLATION_ERROR;
 extern RDB_type RDB_AGGREGATE_UNDEFINED_ERROR;
-extern RDB_type RDB_TYPE_CONSTRAINT_VIOLATION_ERROR;
-extern RDB_type RDB_ATTRIBUTE_NOT_FOUND_ERROR;
-extern RDB_type RDB_OPERATOR_NOT_FOUND_ERROR;
 extern RDB_type RDB_VERSION_MISMATCH_ERROR;
-extern RDB_type RDB_SYNTAX_ERROR;
 extern RDB_type RDB_NOT_SUPPORTED_ERROR;
-extern RDB_type RDB_NO_SPACE_ERROR;
+
 extern RDB_type RDB_NO_MEMORY_ERROR;
-extern RDB_type RDB_SYSTEM_ERROR;
-extern RDB_type RDB_DEADLOCK_ERROR;
-extern RDB_type RDB_INTERNAL_ERROR;
-extern RDB_type RDB_RESOURCE_NOT_FOUND_ERROR;
 extern RDB_type RDB_LOCK_NOT_GRANTED_ERROR;
+extern RDB_type RDB_DEADLOCK_ERROR;
+extern RDB_type RDB_RESOURCE_NOT_FOUND_ERROR;
+extern RDB_type RDB_INTERNAL_ERROR;
 extern RDB_type RDB_FATAL_ERROR;
+extern RDB_type RDB_SYSTEM_ERROR;
+extern RDB_type RDB_NO_SPACE_ERROR;
+
+extern RDB_type RDB_SYNTAX_ERROR;
 
 enum _RDB_expr_kind {
     RDB_EX_OBJ,
@@ -390,7 +391,7 @@ RDB_db_env(RDB_database *);
  * Create a database with name name in the environment pointed to
  * by envp. Store a pointer to the newly created RDB_database structure
  * in dbpp.
- * Return RDB_OK on success. A return other than RDB_OK indicates an error.
+ * Return a pointer to the database on success, or NULL pn error.
  */
 RDB_database *
 RDB_create_db_from_env(const char *name, RDB_environment *envp,
@@ -398,9 +399,8 @@ RDB_create_db_from_env(const char *name, RDB_environment *envp,
 
 /*
  * Get the database with name name in the environment pointed to
- * by envp. Store a pointer to the newly created RDB_database structure
- * in dbpp.
- * Return RDB_OK on success. A return value other than RDB_OK indicates an error.
+ * by envp. Return a pointer to the newly created RDB_database structure
+ * on success, or NULL on error.
  */
 RDB_database *
 RDB_get_db_from_env(const char *name, RDB_environment *, RDB_exec_context *ecp);
@@ -691,7 +691,7 @@ int
 RDB_table_is_empty(RDB_table *, RDB_exec_context *, RDB_transaction *,
         RDB_bool *resultp);
 
-int
+RDB_int
 RDB_cardinality(RDB_table *tbp, RDB_exec_context *, RDB_transaction *txp);
 
 /*
@@ -841,7 +841,7 @@ RDB_join_tuples(const RDB_object *, const RDB_object *, RDB_exec_context *,
 
 int
 RDB_rename_tuple(const RDB_object *, int renc, const RDB_renaming renv[],
-                 RDB_exec_context *, RDB_object *restup);
+                 RDB_exec_context *, RDB_object *restplp);
 
 int
 RDB_wrap_tuple(const RDB_object *tplp, int wrapc, const RDB_wrapping wrapv[],

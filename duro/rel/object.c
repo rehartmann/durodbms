@@ -524,12 +524,6 @@ RDB_obj_equals(const RDB_object *val1p, const RDB_object *val2p,
     ret = RDB_call_ro_op("=", 2, argv, ecp, txp, &retval);
     if (ret != RDB_OK) {
         RDB_destroy_obj(&retval, ecp);
-/*
-        if (RDB_obj_type(RDB_get_err(ecp)) == &RDB_NOT_FOUND_ERROR) {
-            RDB_clear_err(ecp);
-            RDB_raise_internal(ecp);
-        }
-*/
         return RDB_ERROR;
     }
     *resp = RDB_obj_bool(&retval);
@@ -706,7 +700,7 @@ RDB_destroy_obj(RDB_object *objp, RDB_exec_context *ecp)
             if (objp->var.arr.tbp->kind != RDB_TB_REAL) {
                 ret = RDB_drop_table(objp->var.arr.tbp, ecp, NULL);
                 if (ret != RDB_OK)
-                    return ret;
+                    return RDB_ERROR;
             }
 
             if (objp->var.arr.tplp != NULL) {
@@ -714,7 +708,7 @@ RDB_destroy_obj(RDB_object *objp, RDB_exec_context *ecp)
                 free(objp->var.arr.tplp);
             }
             if (ret != RDB_OK)
-                return ret;
+                return RDB_ERROR;
             return ret2;
         }
         case RDB_OB_TABLE:

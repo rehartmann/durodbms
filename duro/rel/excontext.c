@@ -23,8 +23,10 @@ RDB_object *
 RDB_raise_err(RDB_exec_context *ecp)
 {
     if (ecp->error_active) {
-        /* Don't overwrite existing error */
-        return NULL;
+        /* Replace existing error */
+        if (RDB_destroy_obj(&ecp->error, ecp) != RDB_OK) {
+            return NULL;
+        }
     }
     RDB_init_obj(&ecp->error);
     ecp->error_active = RDB_TRUE;
@@ -69,14 +71,14 @@ RDB_raise_invalid_tx(RDB_exec_context *ecp)
 }
 
 static RDB_object *
-raise_info_err(RDB_type *errtyp, const char *info, RDB_exec_context *ecp)
+raise_msg_err(RDB_type *errtyp, const char *msg, RDB_exec_context *ecp)
 {
     RDB_object *errp = RDB_raise_err(ecp);
     if (errp == NULL)
         return NULL;
 
     /* Set value */
-    if (RDB_string_to_obj(errp, info, ecp) != RDB_OK)
+    if (RDB_string_to_obj(errp, msg, ecp) != RDB_OK)
         return NULL;
 
     /* Set type */
@@ -86,81 +88,81 @@ raise_info_err(RDB_type *errtyp, const char *info, RDB_exec_context *ecp)
 }
 
 RDB_object *
-RDB_raise_not_found(const char *info, RDB_exec_context *ecp)
+RDB_raise_not_found(const char *msg, RDB_exec_context *ecp)
 {
-    return raise_info_err(&RDB_NOT_FOUND_ERROR, info, ecp);
+    return raise_msg_err(&RDB_NOT_FOUND_ERROR, msg, ecp);
 }
 
 RDB_object *
-RDB_raise_invalid_argument(const char *info, RDB_exec_context *ecp)
+RDB_raise_invalid_argument(const char *msg, RDB_exec_context *ecp)
 {
-    return raise_info_err(&RDB_INVALID_ARGUMENT_ERROR, info, ecp);
+    return raise_msg_err(&RDB_INVALID_ARGUMENT_ERROR, msg, ecp);
 }
 
 RDB_object *
-RDB_raise_type_mismatch(const char *info, RDB_exec_context *ecp)
+RDB_raise_type_mismatch(const char *msg, RDB_exec_context *ecp)
 {
-    return raise_info_err(&RDB_TYPE_MISMATCH_ERROR, info, ecp);
+    return raise_msg_err(&RDB_TYPE_MISMATCH_ERROR, msg, ecp);
 }
 
 RDB_object *
-RDB_raise_operator_not_found(const char *info, RDB_exec_context *ecp)
+RDB_raise_operator_not_found(const char *msg, RDB_exec_context *ecp)
 {
-    return raise_info_err(&RDB_OPERATOR_NOT_FOUND_ERROR, info, ecp);
+    return raise_msg_err(&RDB_OPERATOR_NOT_FOUND_ERROR, msg, ecp);
 }
 
 RDB_object *
-RDB_raise_type_constraint_violation(const char *info, RDB_exec_context *ecp)
+RDB_raise_type_constraint_violation(const char *msg, RDB_exec_context *ecp)
 {
-    return raise_info_err(&RDB_TYPE_CONSTRAINT_VIOLATION_ERROR, info, ecp);
+    return raise_msg_err(&RDB_TYPE_CONSTRAINT_VIOLATION_ERROR, msg, ecp);
 }
 
 RDB_object *
-RDB_raise_element_exists(const char *info, RDB_exec_context *ecp)
+RDB_raise_element_exists(const char *msg, RDB_exec_context *ecp)
 {
-    return raise_info_err(&RDB_ELEMENT_EXISTS_ERROR, info, ecp);
+    return raise_msg_err(&RDB_ELEMENT_EXISTS_ERROR, msg, ecp);
 }
 
 RDB_object *
-RDB_raise_key_violation(const char *info, RDB_exec_context *ecp)
+RDB_raise_key_violation(const char *msg, RDB_exec_context *ecp)
 {
-    return raise_info_err(&RDB_KEY_VIOLATION_ERROR, info, ecp);
+    return raise_msg_err(&RDB_KEY_VIOLATION_ERROR, msg, ecp);
 }
 
 RDB_object *
-RDB_raise_not_supported(const char *info, RDB_exec_context *ecp)
+RDB_raise_not_supported(const char *msg, RDB_exec_context *ecp)
 {
-    return raise_info_err(&RDB_NOT_SUPPORTED_ERROR, info, ecp);
+    return raise_msg_err(&RDB_NOT_SUPPORTED_ERROR, msg, ecp);
 }
 
 RDB_object *
-RDB_raise_attribute_not_found(const char *info, RDB_exec_context *ecp)
+RDB_raise_attribute_not_found(const char *msg, RDB_exec_context *ecp)
 {
-    return raise_info_err(&RDB_ATTRIBUTE_NOT_FOUND_ERROR, info, ecp);
+    return raise_msg_err(&RDB_ATTRIBUTE_NOT_FOUND_ERROR, msg, ecp);
 }
 
 RDB_object *
-RDB_raise_predicate_violation(const char *info, RDB_exec_context *ecp)
+RDB_raise_predicate_violation(const char *msg, RDB_exec_context *ecp)
 {
-    return raise_info_err(&RDB_PREDICATE_VIOLATION_ERROR, info, ecp);
+    return raise_msg_err(&RDB_PREDICATE_VIOLATION_ERROR, msg, ecp);
 }
 
 RDB_object *
-RDB_raise_system(const char *info, RDB_exec_context *ecp)
+RDB_raise_system(const char *msg, RDB_exec_context *ecp)
 {
-    return raise_info_err(&RDB_SYSTEM_ERROR, info, ecp);
+    return raise_msg_err(&RDB_SYSTEM_ERROR, msg, ecp);
 }
 
 RDB_object *
-RDB_raise_resource_not_found(const char *info, RDB_exec_context *ecp)
+RDB_raise_resource_not_found(const char *msg, RDB_exec_context *ecp)
 {
-    return raise_info_err(&RDB_RESOURCE_NOT_FOUND_ERROR, info, ecp);
+    return raise_msg_err(&RDB_RESOURCE_NOT_FOUND_ERROR, msg, ecp);
 }
 
 RDB_object *
-RDB_raise_internal(const char *info, RDB_exec_context *ecp)
+RDB_raise_internal(const char *msg, RDB_exec_context *ecp)
 {
-    return raise_info_err(&RDB_INTERNAL_ERROR, info, ecp);
+    return raise_msg_err(&RDB_INTERNAL_ERROR, msg, ecp);
 }
 
 RDB_object *

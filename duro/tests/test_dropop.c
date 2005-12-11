@@ -31,7 +31,6 @@ test_callop(RDB_database *dbp, RDB_exec_context *ecp)
     printf("Calling PLUS\n");
     ret = RDB_call_ro_op("PLUS", 2, argv, ecp, &tx, &retval);
     if (ret != RDB_OK) {
-        RDB_rollback(ecp, &tx);
         goto error;
     }
 
@@ -40,7 +39,6 @@ test_callop(RDB_database *dbp, RDB_exec_context *ecp)
     printf("Calling ADD\n");
     ret = RDB_call_update_op("ADD", 2, argv, ecp, &tx);
     if (ret != RDB_OK) {
-        RDB_rollback(ecp, &tx);
         goto error;
     }
 

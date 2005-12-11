@@ -1004,11 +1004,11 @@ RDB_table_is_empty(RDB_table *tbp, RDB_exec_context *ecp,
     return RDB_drop_table(ntbp, ecp, txp);
 }
 
-int
+RDB_int
 RDB_cardinality(RDB_table *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
 {
     int ret;
-    int count;
+    RDB_int count;
     RDB_qresult *qrp;
     RDB_object tpl;
     RDB_table *ntbp;

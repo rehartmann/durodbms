@@ -4,6 +4,12 @@ Summary of Changes for Duro
 
 Changes for Duro 0.10
 
+- Added option --without-tcl to configure.
+
+- RDB_cardinality() returns an RDB_int.
+
+- Added SEMIMINUS and SEMIJOIN.
+
 - Redesigned the API, using scalar types for returning error information
   instead of a numerical error code.
 

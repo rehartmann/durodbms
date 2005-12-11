@@ -20,26 +20,26 @@ RDB_type RDB_RATIONAL;
 RDB_type RDB_STRING;
 RDB_type RDB_BINARY;
 
-RDB_type RDB_NO_MEMORY_ERROR;
-RDB_type RDB_NOT_FOUND_ERROR;
 RDB_type RDB_INVALID_TRANSACTION_ERROR;
 RDB_type RDB_INVALID_ARGUMENT_ERROR;
 RDB_type RDB_TYPE_MISMATCH_ERROR;
-RDB_type RDB_TYPE_CONSTRAINT_VIOLATION_ERROR;
+RDB_type RDB_NOT_FOUND_ERROR;
 RDB_type RDB_OPERATOR_NOT_FOUND_ERROR;
-RDB_type RDB_ELEMENT_EXISTS_ERROR;
-RDB_type RDB_KEY_VIOLATION_ERROR;
-RDB_type RDB_NOT_SUPPORTED_ERROR;
 RDB_type RDB_ATTRIBUTE_NOT_FOUND_ERROR;
+RDB_type RDB_ELEMENT_EXISTS_ERROR;
+RDB_type RDB_TYPE_CONSTRAINT_VIOLATION_ERROR;
+RDB_type RDB_KEY_VIOLATION_ERROR;
 RDB_type RDB_PREDICATE_VIOLATION_ERROR;
-RDB_type RDB_SYSTEM_ERROR;
-RDB_type RDB_RESOURCE_NOT_FOUND_ERROR;
-RDB_type RDB_INTERNAL_ERROR;
-RDB_type RDB_LOCK_NOT_GRANTED_ERROR;
 RDB_type RDB_AGGREGATE_UNDEFINED_ERROR;
 RDB_type RDB_VERSION_MISMATCH_ERROR;
+RDB_type RDB_NOT_SUPPORTED_ERROR;
+RDB_type RDB_NO_MEMORY_ERROR;
+RDB_type RDB_LOCK_NOT_GRANTED_ERROR;
 RDB_type RDB_DEADLOCK_ERROR;
+RDB_type RDB_RESOURCE_NOT_FOUND_ERROR;
+RDB_type RDB_INTERNAL_ERROR;
 RDB_type RDB_FATAL_ERROR;
+RDB_type RDB_SYSTEM_ERROR;
 
 static int
 compare_int(const char *name, int argc, RDB_object *argv[],
@@ -91,7 +91,7 @@ _RDB_init_builtin_types(RDB_exec_context *ecp)
         0
     };
 
-    static RDB_attr not_found_comp = { "INFO", &RDB_STRING };
+    static RDB_attr not_found_comp = { "MSG", &RDB_STRING };
 
     static RDB_possrep not_found_rep = {
         "NOT_FOUND_ERROR",
@@ -99,7 +99,7 @@ _RDB_init_builtin_types(RDB_exec_context *ecp)
         &not_found_comp
     };
 
-    static RDB_attr type_mismatch_comp = { "INFO", &RDB_STRING };
+    static RDB_attr type_mismatch_comp = { "MSG", &RDB_STRING };
 
     static RDB_possrep type_mismatch_rep = {
         "TYPE_MISMATCH_ERROR",
@@ -107,7 +107,7 @@ _RDB_init_builtin_types(RDB_exec_context *ecp)
         &type_mismatch_comp
     };
 
-    static RDB_attr invalid_argument_comp = { "INFO", &RDB_STRING };
+    static RDB_attr invalid_argument_comp = { "MSG", &RDB_STRING };
 
     static RDB_possrep invalid_argument_rep = {
         "INVALID_ARGUMENT_ERROR",
@@ -115,7 +115,7 @@ _RDB_init_builtin_types(RDB_exec_context *ecp)
         &invalid_argument_comp
     };
 
-    static RDB_attr type_constraint_violation_comp = { "INFO", &RDB_STRING };
+    static RDB_attr type_constraint_violation_comp = { "MSG", &RDB_STRING };
 
     static RDB_possrep type_constraint_violation_rep = {
         "TYPE_CONSTRAINT_VIOLATION_ERROR",
@@ -123,7 +123,7 @@ _RDB_init_builtin_types(RDB_exec_context *ecp)
         &type_constraint_violation_comp
     };
 
-    static RDB_attr operator_not_found_comp = { "INFO", &RDB_STRING };
+    static RDB_attr operator_not_found_comp = { "MSG", &RDB_STRING };
 
     static RDB_possrep operator_not_found_rep = {
         "OPERATOR_NOT_FOUND_ERROR",
@@ -131,7 +131,7 @@ _RDB_init_builtin_types(RDB_exec_context *ecp)
         &operator_not_found_comp
     };
 
-    static RDB_attr element_exists_comp = { "INFO", &RDB_STRING };
+    static RDB_attr element_exists_comp = { "MSG", &RDB_STRING };
 
     static RDB_possrep element_exists_rep = {
         "ELEMENT_EXISTS_ERROR",
@@ -139,7 +139,7 @@ _RDB_init_builtin_types(RDB_exec_context *ecp)
         &element_exists_comp
     };
 
-    static RDB_attr key_violation_comp = { "INFO", &RDB_STRING };
+    static RDB_attr key_violation_comp = { "MSG", &RDB_STRING };
 
     static RDB_possrep key_violation_rep = {
         "KEY_VIOLATION_ERROR",
@@ -147,7 +147,7 @@ _RDB_init_builtin_types(RDB_exec_context *ecp)
         &key_violation_comp
     };
 
-    static RDB_attr not_supported_comp = { "INFO", &RDB_STRING };
+    static RDB_attr not_supported_comp = { "MSG", &RDB_STRING };
 
     static RDB_possrep not_supported_rep = {
         "NOT_SUPPORTED_ERROR",
@@ -155,7 +155,7 @@ _RDB_init_builtin_types(RDB_exec_context *ecp)
         &not_supported_comp
     };
 
-    static RDB_attr attribute_not_found_comp = { "INFO", &RDB_STRING };
+    static RDB_attr attribute_not_found_comp = { "MSG", &RDB_STRING };
 
     static RDB_possrep attribute_not_found_rep = {
         "ATTRIBUTE_NOT_FOUND_ERROR",
@@ -163,7 +163,7 @@ _RDB_init_builtin_types(RDB_exec_context *ecp)
         &attribute_not_found_comp
     };
 
-    static RDB_attr predicate_violation_comp = { "INFO", &RDB_STRING };
+    static RDB_attr predicate_violation_comp = { "MSG", &RDB_STRING };
 
     static RDB_possrep predicate_violation_rep = {
         "PREDICATE_VIOLATION_ERROR",
@@ -171,7 +171,7 @@ _RDB_init_builtin_types(RDB_exec_context *ecp)
         &predicate_violation_comp
     };
 
-    static RDB_attr system_comp = { "INFO", &RDB_STRING };
+    static RDB_attr system_comp = { "MSG", &RDB_STRING };
 
     static RDB_possrep system_rep = {
         "SYSTEM_ERROR",
@@ -179,7 +179,7 @@ _RDB_init_builtin_types(RDB_exec_context *ecp)
         &system_comp
     };
 
-    static RDB_attr resource_not_found_comp = { "INFO", &RDB_STRING };
+    static RDB_attr resource_not_found_comp = { "MSG", &RDB_STRING };
 
     static RDB_possrep resource_not_found_rep = {
         "RESOURCE_NOT_FOUND_ERROR",
@@ -187,7 +187,7 @@ _RDB_init_builtin_types(RDB_exec_context *ecp)
         &resource_not_found_comp
     };
 
-    static RDB_attr internal_comp = { "INFO", &RDB_STRING };
+    static RDB_attr internal_comp = { "MSG", &RDB_STRING };
 
     static RDB_possrep internal_rep = {
         "INTERNAL_ERROR",

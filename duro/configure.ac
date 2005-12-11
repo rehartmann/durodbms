@@ -22,5 +22,14 @@ AC_PROG_LEX
 # Checks for libltdl.
 AC_CHECK_LIB([ltdl], [lt_dlinit])
 
+AC_ARG_WITH(tcl,
+[  --with-tcl   with Tcl support],
+[case "${withval}" in
+  yes) tcl=true ;;
+  no)  tcl=false ;;
+  *) AC_MSG_ERROR(bad value ${tcl} for --with-tcl) ;;
+esac],[tcl=true])
+AM_CONDITIONAL(WITH_TCL, test x$tcl = xtrue)
+
 AC_CONFIG_FILES([Makefile])
 AC_OUTPUT

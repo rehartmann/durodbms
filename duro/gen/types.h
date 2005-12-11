@@ -20,7 +20,7 @@ typedef char RDB_bool;
 #define RDB_FALSE ((RDB_bool) 0)
 
 enum {
-    RDB_OK = 0,
+    RDB_OK = 0
 };
 
 #endif

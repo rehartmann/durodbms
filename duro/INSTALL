@@ -1,5 +1,5 @@
-Installation procedure for Duro
-===============================
+Installation procedure for Duro on Linux/Unix
+=============================================
 
 Duro uses automake and autoconf to build itself. Type:
 

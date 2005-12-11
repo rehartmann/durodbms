@@ -5,23 +5,37 @@ BDB_HOME = /usr/local/BerkeleyDB.4.3
 
 AM_YFLAGS = -d
 
+if WITH_TCL
 dist_bin_SCRIPTS = tcl/duroadmin.tcl tcl/durodump.tcl
+endif
+
+if WITH_TCL
+TCLLIBRARIES = libdurotcl.la
+else
+TCLLIBRARIES =
+endif
 
 # Shared libs for testing are listed here too, because check_LTLIBRARIES does
 # not work
-lib_LTLIBRARIES = libduro.la libdurotcl.la \
+lib_LTLIBRARIES = libduro.la $(TCLLIBRARIES) \
         tests/libpoint.la tests/libplus.la
 
 htmldir = $(prefix)
 
-nobase_dist_html_DATA = docs/api-spec.html docs/relnotes.html \
-docs/expressions.html docs/utils.html docs/tcl/index.html \
+if WITH_TCL
+TCLHTML = docs/tcl/index.html \
 docs/tcl/array.html docs/tcl/begin.html docs/tcl/call.html \
 docs/tcl/commit.html docs/tcl/db.html docs/tcl/delete.html \
 docs/tcl/env.html docs/tcl/expr.html docs/tcl/insert.html \
 docs/tcl/operator.html docs/tcl/ptable.html docs/tcl/rollback.html \
 docs/tcl/txdb.html docs/tcl/table.html docs/tcl/update.html \
 docs/tcl/type.html docs/tcl/indexcmd.html docs/tcl/dberror.html
+else
+TCLHTML =
+endif
+
+nobase_dist_html_DATA = docs/api-spec.html docs/relnotes.html \
+docs/expressions.html docs/utils.html $(TCLHTML)
 
 check_PROGRAMS = tests/prepare tests/test_aggregate tests/test_binary \
 tests/test_create_view tests/test_defpointtype tests/test_deftype \
@@ -72,15 +86,22 @@ nobase_include_HEADERS = gen/hashmap.h gen/hashmapit.h \
         rec/cursor.h rec/env.h rec/index.h rec/recmap.h \
         rel/rdb.h rel/typeimpl.h dli/parse.h
 
+if WITH_TCL
 libdurotcl_la_SOURCES = tcl/duro.c tcl/duro.h tcl/envcmd.c tcl/txcmd.c \
         tcl/tablecmd.c tcl/dbcmd.c tcl/arraycmd.c tcl/opcmd.c tcl/exprcmd.c \
         tcl/typecmd.c tcl/indexcmd.c tcl/insertcmd.c tcl/updatecmd.c \
         tcl/constrcmd.c tcl/massigncmd.c
+endif
 
+if WITH_TCL
 libdurotcl_la_LIBADD = -L$(BDB_HOME)/lib libduro.la -ldb
+endif
 
 pkglibdir = $(prefix)/lib
+
+if WITH_TCL
 dist_pkglib_DATA = tcl/util.tcl
+endif
 
 INCLUDES = -I$(top_srcdir) -I$(BDB_HOME)/include
 
@@ -105,7 +126,9 @@ install-exec-hook:
 	rm $(DESTDIR)$(prefix)/lib/libplus.*
 
 # Install Tcl package
+if WITH_TCL
 install-data-hook:
 	LD_LIBRARY_PATH=$(BDB_HOME)/lib;export LD_LIBRARY_PATH; \
                 echo pkg_mkIndex $(DESTDIR)$(prefix)/lib \
                 libdurotcl.so util.tcl | tclsh
+endif

@@ -20,6 +20,7 @@
 <li><a href="#cardinality">RDB_cardinality</a>
 <li><a href="#copy_table">RDB_copy_table</a>
 <li><a href="#create_table">RDB_create_table</a>
+<li><a href="#create_table">RDB_create_table_from_type</a>
 <li><a href="#delete">RDB_delete</a>
 <li><a href="#drop_table">RDB_drop_table</a>
 <li><a href="#extend">RDB_extend</a>
@@ -210,7 +211,7 @@
 <li><a href="#drop_table_index">RDB_drop_table_index</a>
 </ul>
 
-<h3>Error handling functions</h3>
+<h3>Execution context functions</h3>
 
 <ul>
 <li><a href="#strerror">RDB_strerror</a>
@@ -220,8 +221,10 @@
 <h3>Expression parsing functions</h3>
 
 <ul>
-<li><a href="#parse_expr">RDB_parse_expr</a>
-<li><a href="#parse_expr">RDB_parse_table</a>
+<li><a href="#init_exec_context">RDB_init_exec_context</a>
+<li><a href="#destroy_exec_context">RDB_destroy_exec_context</a>
+<li><a href="#raise_err">RDB_raise_err</a>
+<li><a href="#clear_err">RDB_clear_err</a>
 </ul>
 
 <h3>C structures and definitions</h3>
@@ -233,10 +236,14 @@
 <li><a href="#wrapping">RDB_wrapping</a>
 <li><a href="#possrep">RDB_possrep</a>
 <li><a href="#aggregate_op">RDB_aggregate_op</a>
-<li><a href="#syserr">System errors</a>
 </ul>
 
-<h3><a href="#built-in-types">Built-in types</a></h3>
+<h3>Built-in types</h3>
+
+<ul>
+<li><a href="#data-types">Basic data types</a>
+<li><a href="#error-types">Error types</a>
+</ul>
 
 <h3><a href="#builtin-ops">Built-in operators</a></h3>
 
@@ -281,19 +288,26 @@ typedef struct {
     char **strv;
 } RDB_string_vec;
 
-int
+RDB_table *
 RDB_create_table(const char *name, RDB_bool global,
                  int attrc, const <a href="#attr">RDB_attr</a> attrv[],
                  int keyc, const RDB_string_vec keyv[],
-                 RDB_transaction *txp, RDB_table **tbpp);
+                 RDB_exec_context *ecp, RDB_transaction *txp);
+
+RDB_table *
+RDB_create_table_from_type(const char *name, RDB_bool global,
+                RDB_type *reltyp,
+                int keyc, const RDB_string_vec keyv[],
+                RDB_exec_context *ecp, RDB_transaction *txp);
 </pre>
 
 <h3>Description</h3>
 
-<p>RDB_create_table creates a table with name <var>name</var> under the control of
-the transaction pointed to by <var>txp</var>.
-A pointer to the newly created RDB_table structure
-will be stored at the location pointed to by <var>tbpp</var>.
+<p><strong>RDB_create_table</strong> creates a table with name <var>name</var>
+under the control of the transaction pointed to by <var>txp</var>
+and returns a pointer to the newly created RDB_table structure.
+
+<p>If an error occurs, an error value is left in <var>ecp</var>.
 
 <p>If <var>global</var> is RDB_FALSE, a local (transient) table will be created.
 In this case, <var>name</var> may be NULL.
@@ -327,24 +341,30 @@ the names of the key attributes.
 <p>At least one candidate key must be specified.
 A candidate key may not be a subset of another.
 If a single candidate key is specified, that key
-may be empty (not contain any attribute).
+may be empty (not contain any attributes).
 
 <p>Passing a <var>keyv</var> of NULL is equivalent to specifiying a single key
 which consists of all attributes, that is, the table will become all-key.
 
+<p><strong>RDB_create_table_from_type</strong> acts like
+<strong>RDB_create_table</strong>, except that it takes
+a RDB_type argument instead of attribute arguments.
+<var>reltyp</var> must be a relation type.
+
 <h3>Return value</h3>
 
-<p>On success, RDB_OK is returned. On failure, an error code is returned.
+<p>On success, a pointer to the newly created table is returned.
+If an error occurred, NULL is returned.
 
 <h3>Errors</h3>
 
 <dl>
-<dt>RDB_INVALID_TRANSACTION
+<dt>RDB_INVALID_TRANSACTION_ERROR
 <dd><var>txp</var> does not point to a running transaction.
-<dt>RDB_TYPE_MISMATCH
+<dt>RDB_TYPE_MISMATCH_ERROR
 <dd>The type of a default value does not match the type of the corresponding
 attribute.
-<dt>RDB_INVALID_ARGUMENT
+<dt>RDB_INVALID_ARGUMENT_ERROR
 <dd>One or more of the arguments are incorrect. For example, a key attribute
 does not appear in <var>attrv</var>, etc.
 </dl>
@@ -359,27 +379,28 @@ in which case the transaction may be implicitly rolled back.
 <pre>
 #include &lt;rel/rdb.h&gt;
 
-int
-RDB_get_table(const char *name, RDB_transaction *txp, RDB_table **tbpp);
+RDB_table *
+RDB_get_table(const char *name, RDB_exec_context *ecp, RDB_transaction *txp);
 </pre>
 
 <h3>Description</h3>
 
 <p>RDB_get_table looks up the global table with name <var>name</var>
 in the environment of the database the transaction
-specified by <var>txp</var> interacts with and stores a pointer to a
-RDB_table structure in <var>tbpp</var>.
+specified by <var>txp</var> interacts with and returns a pointer to it.
+
+<p>If an error occurs, an error value is left in <var>ecp</var>.
 
 <h3>Return value</h3>
 
-<p>On success, RDB_OK is returned. On failure, an error code is returned.
+<p>A pointer to the table, or NULL if an error occured.
 
 <h3>Errors</h3>
 
 <dl>
-<dt>RDB_INVALID_TRANSACTION
+<dt>RDB_INVALID_TRANSACTION_ERROR
 <dd><var>txp</var> does not point to a running transaction.
-<dt>RDB_NOT_FOUND
+<dt>RDB_NOT_FOUND_ERROR
 <dd>A table with the name <var>name</var> could not be found.
 </dl>
 
@@ -394,7 +415,7 @@ in which case the transaction may be implicitly rolled back.
 #include &lt;rel/rdb.h&gt;
 
 int
-RDB_drop_table(RDB_table *tbp, RDB_transaction *txp);
+RDB_drop_table(RDB_table *tbp, RDB_exec_context *ecp, RDB_transaction *txp);
 </pre>
 
 <h3>Description</h3>
@@ -403,16 +424,18 @@ RDB_drop_table(RDB_table *tbp, RDB_transaction *txp);
 and frees all resources associated with that table.
 If the table is virtual, its unnamed child tables are also deleted.
 
+<p>If an error occurs, an error value is left in <var>ecp</var>.
+
 <p>If the table is local, <var>txp</var> may be NULL.
 
 <h3>Return value</h3>
 
-<p>On success, RDB_OK is returned. On failure, an error code is returned.
+<p>On success, RDB_OK is returned. On failure, RDB_ERROR is returned.
 
 <h3>Errors</h3>
 
 <dl>
-<dt>RDB_INVALID_TRANSACTION
+<dt>RDB_INVALID_TRANSACTION_ERROR
 <dd>The table is global (persistent) and <var>txp</var>
 does not point to a running transaction.
 </dl>
@@ -467,23 +490,26 @@ specified by <var>tbp</var>.
 #include &lt;rel/rdb.h&gt;
 
 int
-RDB_set_table_name(RDB_table *tbp, const char *name, RDB_transaction *txp);
+RDB_set_table_name(RDB_table *tbp, const char *name,
+        RDB_exec_context *ecp, RDB_transaction *txp);
 </pre>
 
 <h3>Description</h3>
 
 <p>RDB_set_table_name sets the name of the table to <var>name</var>.
 
+<p>If an error occurs, an error value is left in <var>ecp</var>.
+
 <h3>Return value</h3>
 
-<p>On success, RDB_OK is returned. On failure, an error code is returned.
+<p>On success, RDB_OK is returned. On failure, RDB_ERROR is returned.
 
 <h3>Errors</h3>
 
 <dl>
-<dt>RDB_INVALID_TRANSACTION
+<dt>RDB_INVALID_TRANSACTION_ERROR
 <dd><var>txp</var> does not point to a running transaction.
-<dt>RDB_INVALID_ARGUMENT
+<dt>RDB_INVALID_ARGUMENT_ERROR
 <dd><var>name</var> is not a valid table name.
 </dl>
 
@@ -498,7 +524,8 @@ in which case the transaction may be implicitly rolled back.
 #include &lt;rel/rdb.h&gt;
 
 int
-RDB_subset(RDB_table *tb1p, RDB_table *tb2p, RDB_transaction *txp, RDB_bool *resultp);
+RDB_subset(RDB_table *tb1p, RDB_table *tb2p, RDB_exec_context *ecp, RDB_transaction *txp,
+        RDB_bool *resultp);
 </pre>
 
 <h3>Description</h3>
@@ -514,11 +541,11 @@ location pointed to by <var>resultp</var>.
 <h3>Errors</h3>
 
 <dl>
-<dt>RDB_INVALID_TRANSACTION
+<dt>RDB_INVALID_TRANSACTION_ERROR
 <dd><var>txp</var> does not point to a running transaction.
-<dt>RDB_TYPE_MISMATCH
+<dt>RDB_TYPE_MISMATCH_ERROR
 <dd>The types of the two tables differ.
-<dt>RDB_OPERATOR_NOT_FOUND
+<dt>RDB_OPERATOR_NOT_FOUND_ERROR
 <dd>The definition of one of the tables
 refers to a non-existing operator.
 </dl>
@@ -534,7 +561,7 @@ in which case the transaction may be implicitly rolled back.
 #include &lt;rel/rdb.h&gt;
 
 int
-RDB_add_table(RDB_table *tbp, RDB_transaction *txp);
+RDB_add_table(RDB_table *tbp, RDB_exec_context *ecp, RDB_transaction *txp);
 </pre>
 
 <h3>Description</h3>
@@ -556,13 +583,13 @@ database the transaction specified by <var>txp</var> interacts with.
 <h3>Errors</h3>
 
 <dl>
-<dt>RDB_INVALID_TRANSACTION
+<dt>RDB_INVALID_TRANSACTION_ERROR
 <dd><var>txp</var> does not point to a running transaction.
-<dt>RDB_INVALID_ARGUMENT
+<dt>RDB_INVALID_ARGUMENT_ERROR
 <dd>The table does not have a name.
-<dt>RDB_ELEMENT_EXISTS
+<dt>RDB_ELEMENT_EXIST_ERROR
 <dd>The table is already associated with the database.
-<dt>RDB_NOT_SUPPORTED
+<dt>RDB_NOT_SUPPORTED_ERROR
 <dd>The table is a local real table.
 </dl>
 
@@ -577,7 +604,7 @@ in which case the transaction may be implicitly rolled back.
 #include &lt;rel/rdb.h&gt;
 
 int
-RDB_remove_table(RDB_table *tbp, RDB_transaction *txp);
+RDB_remove_table(RDB_table *tbp, RDB_exec_context *ecp, RDB_transaction *txp);
 </pre>
 
 <h3>Description</h3>
@@ -594,9 +621,9 @@ database the transaction specified by <var>txp</var> interacts with.
 <h3>Errors</h3>
 
 <dl>
-<dt>RDB_INVALID_TRANSACTION
+<dt>RDB_INVALID_TRANSACTION_ERROR
 <dd><var>txp</var> does not point to a running transaction.
-<dt>RDB_INVALID_ARGUMENT
+<dt>RDB_INVALID_ARGUMENT_ERROR
 <dd>The table does not belong to the database the transaction interacts
 with.
 </dl>
@@ -616,31 +643,32 @@ in which case the transaction may be implicitly rolled back.
 #include &lt;rel/rdb.h&gt;
 
 int
-RDB_table_contains(RDB_table *tbp, const RDB_object *tplp, RDB_transaction *txp);
+RDB_table_contains(RDB_table *tbp, const RDB_object *tplp, RDB_exec_context *ecp,
+        RDB_transaction *txp, RDB_bool *resultp);
 </pre>
 
 <h3>Description</h3>
 
 <p>RDB_table_contains checks if the tuple specified by <var>tplp</var>
-is an element of the table specified by <var>tbp</var>.
+is an element of the table specified by <var>tbp</var>
+and stores the result at the location pointed to by <var>resultp</var>.
 
 <h3>Return value</h3>
 
-<p>If the tuple is an element of the table, RDB_OK is returned.
-If the tuple is not an element of the table, RDB_NOT_FOUND is returned.
-On failure, an error code different from RDB_NOT_FOUND returned.
+<p>On success, RDB_OK is returned.
+If an error occured, RDB_ERROR is returned.
 
 <h3>Errors</h3>
 
 <dl>
-<dt>RDB_INVALID_TRANSACTION
+<dt>RDB_INVALID_TRANSACTION_ERROR
 <dd><var>txp</var> does not point to a running transaction.
-<dt>RDB_INVALID_ARGUMENT
+<dt>RDB_INVALID_ARGUMENT_ERROR
 <dd>A table attribute is missing in the tuple.
-<dt>RDB_TYPE_MISMATCH
+<dt>RDB_TYPE_MISMATCH_ERROR
 <dd>The type of a tuple attribute does not match the type of the
 corresponding table attribute.
-<dt>RDB_OPERATOR_NOT_FOUND
+<dt>RDB_OPERATOR_NOT_FOUND_ERROR
 <dd>The definition of the table specified by <var>tbp</var>
 refers to a non-existing operator.
 </dl>
@@ -669,11 +697,11 @@ location pointed to by <var>resultp</var>.
 <h3>Errors</h3>
 
 <dl>
-<dt>RDB_INVALID_TRANSACTION
+<dt>RDB_INVALID_TRANSACTION_ERROR
 <dd><var>txp</var> does not point to a running transaction.
-<dt>RDB_TYPE_MISMATCH
+<dt>RDB_TYPE_MISMATCH_ERROR
 <dd>The types of the two tables differ.
-<dt>RDB_OPERATOR_NOT_FOUND
+<dt>RDB_OPERATOR_NOT_FOUND_ERROR
 <dd>The definition of one of the tables
 refers to a non-existing operator.
 </dl>
@@ -686,7 +714,7 @@ refers to a non-existing operator.
 #include &lt;rel/rdb.h&gt;
 
 int
-RDB_all(RDB_table *tbp, const char *attrname, RDB_transaction *txp,
+RDB_all(RDB_table *tbp, const char *attrname, RDB_exec_context *ecp, RDB_transaction *txp,
         RDB_bool *resultp);
 </pre>
 
@@ -705,11 +733,11 @@ and stores the result at the location pointed to by <var>resultp</var>.
 <h3>Errors</h3>
 
 <dl>
-<dt>RDB_INVALID_TRANSACTION
+<dt>RDB_INVALID_TRANSACTION_ERROR
 <dd><var>txp</var> does not point to a running transaction.
-<dt>RDB_ATTRIBUTE_NOT_FOUND
+<dt>RDB_ATTRIBUTE_NOT_FOUND_ERROR
 <dd>The table does not have an attribute <var>attrname</var>.
-<dt>RDB_TYPE_MISMATCH
+<dt>RDB_TYPE_MISMATCH_ERROR
 <dd>The type of the attribute is not BOOLEAN.
 </dl>
 
@@ -724,7 +752,7 @@ in which case the transaction may be implicitly rolled back.
 #include &lt;rel/rdb.h&gt;
 
 int
-RDB_any(RDB_table *tbp, const char *attrname, RDB_transaction *txp,
+RDB_any(RDB_table *tbp, const char *attrname, RDB_exec_context *ecp, RDB_transaction *txp,
         RDB_bool *resultp);
 </pre>
 
@@ -745,11 +773,11 @@ type BOOLEAN.
 <h3>Errors</h3>
 
 <dl>
-<dt>RDB_INVALID_TRANSACTION
+<dt>RDB_INVALID_TRANSACTION_ERROR
 <dd><var>txp</var> does not point to a running transaction.
-<dt>RDB_ATTRIBUTE_NOT_FOUND
+<dt>RDB_ATTRIBUTE_NOT_FOUND_ERROR
 <dd>The table does not have an attribute <var>attrname</var>.
-<dt>RDB_TYPE_MISMATCH
+<dt>RDB_TYPE_MISMATCH_ERROR
 <dd>The type of the attribute is not BOOLEAN.
 </dl>
 
@@ -764,7 +792,7 @@ in which case the transaction may be implicitly rolled back.
 #include &lt;rel/rdb.h&gt;
 
 int
-RDB_avg(RDB_table *tbp, const char *attrname, RDB_transaction *txp,
+RDB_avg(RDB_table *tbp, const char *attrname, RDB_exec_context *ecp, RDB_transaction *txp,
         RDB_rational *resultp);
 </pre>
 
@@ -784,13 +812,13 @@ pointed to by <var>resultp</var>.
 <h3>Errors</h3>
 
 <dl>
-<dt>RDB_INVALID_TRANSACTION
+<dt>RDB_INVALID_TRANSACTION_ERROR
 <dd><var>txp</var> does not point to a running transaction.
-<dt>RDB_ATTRIBUTE_NOT_FOUND
+<dt>RDB_ATTRIBUTE_NOT_FOUND_ERROR
 <dd>The table does not have an attribute <var>attrname</var>.
-<dt>RDB_TYPE_MISMATCH
+<dt>RDB_TYPE_MISMATCH_ERROR
 <dd>The type of the attribute is not numeric.
-<dt>RDB_AGGREGATE_UNDEFINED
+<dt>RDB_AGGREGATE_UNDEFINED_ERROR
 <dd>The table is empty.
 </dl>
 
@@ -804,8 +832,8 @@ in which case the transaction may be implicitly rolled back.
 <pre>
 #include &lt;rel/rdb.h&gt;
 
-int
-RDB_cardinality(RDB_table *tbp, RDB_transaction *txp);
+RDB_int
+RDB_cardinality(RDB_table *tbp, RDB_exec_context *ecp, RDB_transaction *txp);
 </pre>
 
 <h3>Description</h3>
@@ -816,14 +844,15 @@ the table pointed to by <var>tbp</var>.
 <h3>Return value</h3>
 
 <p>On success, the number of tuples is returned.
-On failure, an error code lower than zero is returned.
+On failure, (RDB_int)RDB_ERROR is returned.
+(RDB_int)RDB_ERROR is guaranteed to be lower than zero.
 
 <h3>Errors</h3>
 
 <dl>
-<dt>RDB_INVALID_TRANSACTION
+<dt>RDB_INVALID_TRANSACTION_ERROR
 <dd><var>txp</var> does not point to a running transaction.
-<dt>RDB_OPERATOR_NOT_FOUND
+<dt>RDB_OPERATOR_NOT_FOUND_ERROR
 <dd>The definition of the table specified by <var>tbp</var>
 refers to a non-existing operator.
 </dl>
@@ -839,7 +868,7 @@ in which case the transaction may be implicitly rolled back.
 #include &lt;rel/rdb.h&gt;
 
 int
-RDB_max(RDB_table *tbp, const char *attrname, RDB_transaction *txp,
+RDB_max(RDB_table *tbp, const char *attrname, RDB_exec_context *ecp, RDB_transaction *txp,
         RDB_object *resultp);
 </pre>
 
@@ -859,11 +888,11 @@ and the result is of the same type as the attribute.
 <h3>Errors</h3>
 
 <dl>
-<dt>RDB_INVALID_TRANSACTION
+<dt>RDB_INVALID_TRANSACTION_ERROR
 <dd><var>txp</var> does not point to a running transaction.
-<dt>RDB_ATTRIBUTE_NOT_FOUND
+<dt>RDB_ATTRIBUTE_NOT_FOUND_ERROR
 <dd>The table does not have an attribute <var>attrname</var>.
-<dt>RDB_TYPE_MISMATCH
+<dt>RDB_TYPE_MISMATCH_ERROR
 <dd>The type of the attribute is not numeric.
 </dl>
 
@@ -878,7 +907,7 @@ in which case the transaction may be implicitly rolled back.
 #include &lt;rel/rdb.h&gt;
 
 int
-RDB_min(RDB_table *tbp, const char *attrname, RDB_transaction *txp,
+RDB_min(RDB_table *tbp, const char *attrname, RDB_exec_context *ecp, RDB_transaction *txp,
         RDB_object *resultp);
 </pre>
 
@@ -898,11 +927,11 @@ and the result is of the same type as the attribute.
 <h3>Errors</h3>
 
 <dl>
-<dt>RDB_INVALID_TRANSACTION
+<dt>RDB_INVALID_TRANSACTION_ERROR
 <dd><var>txp</var> does not point to a running transaction.
-<dt>RDB_ATTRIBUTE_NOT_FOUND
+<dt>RDB_ATTRIBUTE_NOT_FOUND_ERROR
 <dd>The table does not have an attribute <var>attrname</var>.
-<dt>RDB_TYPE_MISMATCH
+<dt>RDB_TYPE_MISMATCH_ERROR
 <dd>The type of the attribute is not numeric.
 </dl>
 
@@ -917,7 +946,7 @@ in which case the transaction may be implicitly rolled back.
 #include &lt;rel/rdb.h&gt;
 
 int
-RDB_sum(RDB_table *tbp, const char *attrname, RDB_transaction *txp,
+RDB_sum(RDB_table *tbp, const char *attrname, RDB_exec_context *ecp, RDB_transaction *txp,
         RDB_object *resultp);
 </pre>
 
@@ -937,11 +966,11 @@ and the result is of the same type as the attribute.
 <h3>Errors</h3>
 
 <dl>
-<dt>RDB_INVALID_TRANSACTION
+<dt>RDB_INVALID_TRANSACTION_ERROR
 <dd><var>txp</var> does not point to a running transaction.
-<dt>RDB_ATTRIBUTE_NOT_FOUND
+<dt>RDB_ATTRIBUTE_NOT_FOUND_ERROR
 <dd>The table does not have an attribute <var>attrname</var>.
-<dt>RDB_TYPE_MISMATCH
+<dt>RDB_TYPE_MISMATCH_ERROR
 <dd>The type of the attribute is not numeric.
 </dl>
 
@@ -956,7 +985,7 @@ in which case the transaction may be implicitly rolled back.
 #include &lt;rel/rdb.h&gt;
 
 int
-RDB_table_is_empty(RDB_table *tbp, RDB_transaction *txp, RDB_bool *resultp);
+RDB_table_is_empty(RDB_table *tbp, RDB_exec_context *ecp, RDB_transaction *txp, RDB_bool *resultp);
 </pre>
 
 <h3>Description</h3>
@@ -972,9 +1001,9 @@ the check at the location pointed to by <var>resultp</var>.
 <h3>Errors</h3>
 
 <dl>
-<dt>RDB_INVALID_TRANSACTION
+<dt>RDB_INVALID_TRANSACTION_ERROR
 <dd><var>txp</var> does not point to a running transaction.
-<dt>RDB_OPERATOR_NOT_FOUND
+<dt>RDB_OPERATOR_NOT_FOUND_ERROR
 <dd>The definition of the table specified by <var>tbp</var>
 refers to a non-existing operator.
 </dl>
@@ -990,7 +1019,7 @@ in which case the transaction may be implicitly rolled back.
 #include &lt;rel/rdb.h&gt;
 
 int
-RDB_insert(RDB_table *tbp, const RDB_object *tplp, RDB_transaction *txp);
+RDB_insert(RDB_table *tbp, const RDB_object *tplp, RDB_exec_context *ecp, RDB_transaction *txp);
 </pre>
 
 <h3>Description</h3>
@@ -1009,26 +1038,26 @@ On failure, an error code is returned.
 <h3>Errors</h3>
 
 <dl>
-<dt>RDB_INVALID_TRANSACTION
+<dt>RDB_INVALID_TRANSACTION_ERROR
 <dd><var>txp</var> does not point to a running transaction.
-<dt>RDB_INVALID_ARGUMENT
+<dt>RDB_INVALID_ARGUMENT_ERROR
 <dd>A table attribute is missing in the tuple and no default value
 was specified for that attribute.
-<dt>RDB_ELEMENT_EXISTS
+<dt>RDB_ELEMENT_EXIST_ERROR
 <dd>The tuple was already an element of the table.
-<dt>RDB_KEY_VIOLATION
+<dt>RDB_KEY_VIOLATION_ERROR
 <dd>Inserting the tuple would result in a table which contains
 a key value twice.
-<dt>RDB_PREDICATE_VIOLATION
+<dt>RDB_PREDICATE_VIOLATION_ERROR
 <dd>Inserting the tuple would result in a table which violates its
 predicate.
-<dt>RDB_TYPE_MISMATCH
+<dt>RDB_TYPE_MISMATCH_ERROR
 <dd>The type of a tuple attribute does not match the type of the
 corresponding table attribute.
-<dt>RDB_OPERATOR_NOT_FOUND
+<dt>RDB_OPERATOR_NOT_FOUND_ERROR
 <dd>The definition of the table specified by <var>tbp</var>
 refers to a non-existing operator.
-<dt>RDB_NOT_SUPPORTED
+<dt>RDB_NOT_SUPPORTED_ERROR
 <dd>RDB_insert is not supported for this type of table.
 </dl>
 
@@ -1049,7 +1078,7 @@ typedef struct {
 
 int
 RDB_update(RDB_table *tbp, RDB_expression *exp, int updc,
-        const RDB_attr_update updv[], RDB_transaction *txp);
+        const RDB_attr_update updv[], RDB_exec_context *ecp, RDB_transaction *txp);
 </pre>
 
 <h3>Description</h3>
@@ -1071,31 +1100,31 @@ obtained by evaluating the expression specified by the field exp.
 <h3>Errors</h3>
 
 <dl>
-<dt>RDB_INVALID_TRANSACTION
+<dt>RDB_INVALID_TRANSACTION_ERROR
 <dd><var>txp</var> does not point to a running transaction.
 
-<dt>RDB_ATTRIBUTE_NOT_FOUND
+<dt>RDB_ATTRIBUTE_NOT_FOUND_ERROR
 <dd>One of the attributes in <var>updv</var> does not exist in the table.
 <dd>One of the expressions specified in <var>updv</var> refers to an attribute
 which does not exist in the table.
 
-<dt>RDB_ELEMENT_EXISTS
+<dt>RDB_ELEMENT_EXIST_ERROR
 <dd>The update operation would update a tuple so that it would be equal
 to a tuple which is already an element of the table.
 
-<dt>RDB_KEY_VIOLATION
+<dt>RDB_KEY_VIOLATION_ERROR
 <dd>The update operation would result in a table which contains
 a key value twice.
 
-<dt>RDB_PREDICATE_VIOLATION
+<dt>RDB_PREDICATE_VIOLATION_ERROR
 <dd>The update operation would result in a table which violates its
 predicate.
 
-<dt>RDB_TYPE_MISMATCH
+<dt>RDB_TYPE_MISMATCH_ERROR
 <dd>The type of one of the expressions in <var>updv</var> is not the same
 as the type of the corresponding table attribute.
 
-<dt>RDB_OPERATOR_NOT_FOUND
+<dt>RDB_OPERATOR_NOT_FOUND_ERROR
 <dd>The definition of the table specified by <var>tbp</var>
 refers to a non-existing operator.
 <dd>The expression specified by <var>exp</var>
@@ -1103,7 +1132,7 @@ refers to a non-existing operator.
 <dd>One of the expressions specified in <var>updv</var>
 refers to a non-existing operator.
 
-<dt>RDB_NOT_SUPPORTED
+<dt>RDB_NOT_SUPPORTED_ERROR
 <dd>RDB_update is not supported for this type of table.
 </dl>
 
@@ -1118,7 +1147,7 @@ in which case the transaction may be implicitly rolled back.
 #include &lt;rel/rdb.h&gt;
 
 int
-RDB_delete(RDB_table *tbp, RDB_expression *exp, RDB_transaction *txp);
+RDB_delete(RDB_table *tbp, RDB_expression *exp, RDB_exec_context *ecp, RDB_transaction *txp);
 </pre>
 
 <h3>Description</h3>
@@ -1137,19 +1166,19 @@ a JOIN, SUMMARIZE, WRAP, UNWRAP, GROUP, UNGROUP, or DIVIDEBY PER.
 <h3>Errors</h3>
 
 <dl>
-<dt>RDB_INVALID_TRANSACTION
+<dt>RDB_INVALID_TRANSACTION_ERROR
 <dd><var>txp</var> does not point to a running transaction.
-<dt>RDB_INVALID_ARGUMENT
+<dt>RDB_INVALID_ARGUMENT_ERROR
 <dd><var>exp</var> refers to an attribute which does not exist in the table.
-<dt>RDB_PREDICATE_VIOLATION
+<dt>RDB_PREDICATE_VIOLATION_ERROR
 <dd>Deleting the tuples would result in a table which violates its
 predicate.
-<dt>RDB_OPERATOR_NOT_FOUND
+<dt>RDB_OPERATOR_NOT_FOUND_ERROR
 <dd>The definition of the table specified by <var>tbp</var>
 refers to a non-existing operator.
 <dd>The expression specified by <var>exp</var>
 refers to a non-existing operator.
-<dt>RDB_NOT_SUPPORTED
+<dt>RDB_NOT_SUPPORTED_ERROR
 <dd>RDB_delete is not supported for this type of table.
 </dl>
 
@@ -1164,7 +1193,7 @@ in which case the transaction may be implicitly rolled back.
 #include &lt;rel/rdb.h&gt;
 
 int
-RDB_extract_tuple(RDB_table *tbp, RDB_transaction *txp, RDB_object *tplp);
+RDB_extract_tuple(RDB_table *tbp, RDB_exec_context *ecp, RDB_transaction *txp, RDB_object *tplp);
 </pre>
 
 <h3>Description</h3>
@@ -1180,13 +1209,13 @@ and the tuple value of the variable pointed to by <var>tplp</var> is undefined.
 <h3>Errors</h3>
 
 <dl>
-<dt>RDB_INVALID_TRANSACTION
+<dt>RDB_INVALID_TRANSACTION_ERROR
 <dd><var>txp</var> does not point to a running transaction.
-<dt>RDB_NOT_FOUND
+<dt>RDB_NOT_FOUND_ERROR
 <dd>The table is empty.
-<dt>RDB_INVALID_ARGUMENT
+<dt>RDB_INVALID_ARGUMENT_ERROR
 <dd>The table contains more than one tuple.
-<dt>RDB_OPERATOR_NOT_FOUND
+<dt>RDB_OPERATOR_NOT_FOUND_ERROR
 <dd>The definition of the table specified by <var>tbp</var>
 refers to a non-existing operator.
 </dl>
@@ -1202,7 +1231,7 @@ in which case the transaction may be implicitly rolled back.
 #include &lt;rel/rdb.h&gt;
 
 int
-RDB_copy_table(RDB_table *dstp, RDB_table *srcp, RDB_transaction *txp);
+RDB_copy_table(RDB_table *dstp, RDB_table *srcp, RDB_exec_context *ecp, RDB_transaction *txp);
 </pre>
 
 <h3>Description</h3>
@@ -1218,11 +1247,11 @@ The two tables must be of the same type.
 <h3>Errors</h3>
 
 <dl>
-<dt>RDB_INVALID_TRANSACTION
+<dt>RDB_INVALID_TRANSACTION_ERROR
 <dd><var>txp</var> does not point to a running transaction.
-<dt>RDB_TYPE_MISMATCH
+<dt>RDB_TYPE_MISMATCH_ERROR
 <dd>The types of the two tables differ.
-<dt>RDB_OPERATOR_NOT_FOUND
+<dt>RDB_OPERATOR_NOT_FOUND_ERROR
 <dd>The definition of the table specified by <var>srcp</var>
 refers to a non-existing operator.
 </dl>
@@ -1237,9 +1266,9 @@ in which case the transaction may be implicitly rolled back.
 <pre>
 #include &lt;rel/rdb.h&gt;
 
-int
+RDB_table *
 RDB_rename(RDB_table *tbp, int renc, const <a href="#renaming">RDB_renaming</a> renv[],
-           RDB_table **resultpp);
+           RDB_exec_context *ecp, );
 </pre>
 
 <h3>Description</h3>
@@ -1259,10 +1288,10 @@ A pointer to the result table is stored at the location pointed to by
 <h3>Errors</h3>
 
 <dl>
-<dt>RDB_ATTRIBUTE_NOT_FOUND
+<dt>RDB_ATTRIBUTE_NOT_FOUND_ERROR
 <dd>One of the source attributes does not exist in the table specified by
 <var>tbp</var>.
-<dt>RDB_INVALID_ARGUMENT
+<dt>RDB_INVALID_ARGUMENT_ERROR
 <dd>A source or destination attribute appears twice in <var>renv</var>.
 <dd>A destination attribute already exists in the table specified by
 <var>tbp</var>.
@@ -1277,9 +1306,8 @@ A pointer to the result table is stored at the location pointed to by
 <pre>
 #include &lt;rel/rdb.h&gt;
 
-int
-RDB_select(RDB_table *tbp, RDB_expression *exp, RDB_transaction *txp,
-           RDB_table **resultpp);
+RDB_table *
+RDB_select(RDB_table *tbp, RDB_expression *exp, RDB_exec_context *ecp, RDB_transaction *txp);
 </pre>
 
 <h3>Description</h3>
@@ -1297,11 +1325,11 @@ A pointer to the result table is stored at the location pointed to by
 <h3>Errors</h3>
 
 <dl>
-<dt>RDB_INVALID_TRANSACTION
+<dt>RDB_INVALID_TRANSACTION_ERROR
 <dd><var>txp</var> does not point to a running transaction.
-<dt>RDB_TYPE_MISMATCH
+<dt>RDB_TYPE_MISMATCH_ERROR
 <dd>The condition is not of type BOOLEAN.
-<dt>RDB_ATTRIBUTE_NOT_FOUND
+<dt>RDB_ATTRIBUTE_NOT_FOUND_ERROR
 <dd>The condition refers to an attribute which is not present in the table.
 </dl>
 
@@ -1314,9 +1342,9 @@ A pointer to the result table is stored at the location pointed to by
 <pre>
 #include &lt;rel/rdb.h&gt;
 
-int
+RDB_table *
 RDB_extend(RDB_table *tbp, int attrc, const <a href="#virtual_attr">RDB_virtual_attr</a> attrv[],
-        RDB_transaction *txp, RDB_table **resultpp);
+        RDB_exec_context *ecp, RDB_transaction *txp);
 </pre>
 
 <h3>Description</h3>
@@ -1339,16 +1367,16 @@ automatically dropped when the table is dropped.
 <h3>Errors</h3>
 
 <dl>
-<dt>RDB_INVALID_TRANSACTION
+<dt>RDB_INVALID_TRANSACTION_ERROR
 <dd><var>txp</var> does not point to a running transaction.
-<dt>RDB_INVALID_ARGUMENT
+<dt>RDB_INVALID_ARGUMENT_ERROR
 <dd>An invalid attribute name has been specified.
 <dd>One of the additional attributes already exists in the table
 specified by <var>tbp</var>.
-<dt>RDB_NOT_FOUND
+<dt>RDB_NOT_FOUND_ERROR
 <dd>One of the expressions in <var>attrv</var> does not carry type
 information.
-<dt>RDB_ATTRIBUTE_NOT_FOUND
+<dt>RDB_ATTRIBUTE_NOT_FOUND_ERROR
 <dd>One of the expressions in <var>attr</var> contains an attribute
 which is does not exist in the table specified by <var>tbp</var>.
 </dl>
@@ -1363,8 +1391,8 @@ in which case the transaction may be implicitly rolled back.
 <pre>
 #include &lt;rel/rdb.h&gt;
 
-int
-RDB_project(RDB_table *, int attrc, char *attrv[], RDB_table **resultpp);
+RDB_table *
+RDB_project(RDB_table *, int attrc, char *attrv[], RDB_exec_context *ecp);
 </pre>
 
 <h3>Description</h3>
@@ -1382,7 +1410,7 @@ and <var>attrv</var>.
 <h3>Errors</h3>
 
 <dl>
-<dt>RDB_ATTRIBUTE_NOT_FOUND
+<dt>RDB_ATTRIBUTE_NOT_FOUND_ERROR
 <dd>One of the attributes specified by <var>attrv</var> is not an attribute
 of the original table.
 </dl>
@@ -1396,8 +1424,8 @@ of the original table.
 <pre>
 #include &lt;rel/rdb.h&gt;
 
-int
-RDB_remove(RDB_table *, int attrc, char *attrv[], RDB_table **resultpp);
+RDB_table *
+RDB_remove(RDB_table *, int attrc, char *attrv[], RDB_exec_context *ecp);
 </pre>
 
 <h3>Description</h3>
@@ -1415,7 +1443,7 @@ specified by <var>attrc</var> and <var>attrv</var>.
 <h3>Errors</h3>
 
 <dl>
-<dt>RDB_ATTRIBUTE_NOT_FOUND
+<dt>RDB_ATTRIBUTE_NOT_FOUND_ERROR
 <dd>One of the attributes specified by <var>attrv</var> is not an attribute
 of the original table.
 </dl>
@@ -1429,8 +1457,8 @@ of the original table.
 <pre>
 #include &lt;rel/rdb.h&gt;
 
-int
-RDB_join(RDB_table *tb1p, RDB_table *tb2p, RDB_table **resultpp);
+RDB_table *
+RDB_join(RDB_table *tb1p, RDB_table *tb2p, RDB_exec_context *ecp);
 </pre>
 
 <h3>Description</h3>
@@ -1448,7 +1476,7 @@ a cartesian product.
 <h3>Errors</h3>
 
 <dl>
-<dt>RDB_TYPE_MISMATCH
+<dt>RDB_TYPE_MISMATCH_ERROR
 <dd>The two tables have an attribute with the same name, but with
 different types.
 </dl>
@@ -1462,8 +1490,8 @@ different types.
 <pre>
 #include &lt;rel/rdb.h&gt;
 
-int
-RDB_union(RDB_table *, RDB_table *, RDB_table **resultpp);
+RDB_table *
+RDB_union(RDB_table *, RDB_table *, RDB_exec_context *ecp);
 </pre>
 
 <h3>Description</h3>
@@ -1480,7 +1508,7 @@ new RDB_table is stored in <var>resultpp</var>.
 <h3>Errors</h3>
 
 <dl>
-<dt>RDB_TYPE_MISMATCH
+<dt>RDB_TYPE_MISMATCH_ERROR
 <dd>The types of the two tables differ.
 </dl>
 
@@ -1493,8 +1521,8 @@ new RDB_table is stored in <var>resultpp</var>.
 <pre>
 #include &lt;rel/rdb.h&gt;
 
-int
-RDB_intersect(RDB_table *, RDB_table *, RDB_table **resultpp);
+RDB_table *
+RDB_intersect(RDB_table *, RDB_table *, RDB_exec_context *ecp);
 </pre>
 
 <h3>Description</h3>
@@ -1510,7 +1538,7 @@ it contains the tuples which both tables contain.
 <h3>Errors</h3>
 
 <dl>
-<dt>RDB_TYPE_MISMATCH
+<dt>RDB_TYPE_MISMATCH_ERROR
 <dd>The types of the two tables differ.
 </dl>
 
@@ -1523,8 +1551,8 @@ it contains the tuples which both tables contain.
 <pre>
 #include &lt;rel/rdb.h&gt;
 
-int
-RDB_minus(RDB_table *, RDB_table *, RDB_table **resultpp);
+RDB_table *
+RDB_minus(RDB_table *, RDB_table *, RDB_exec_context *ecp);
 </pre>
 
 <h3>Description</h3>
@@ -1541,7 +1569,7 @@ except those which the second table contains.
 <h3>Errors</h3>
 
 <dl>
-<dt>RDB_TYPE_MISMATCH
+<dt>RDB_TYPE_MISMATCH_ERROR
 <dd>The types of the two tables differ.
 </dl>
 
@@ -1581,7 +1609,7 @@ RDB_multi_assign(int insc, const RDB_ma_insert insv[],
         int updc, const RDB_ma_update updv[],
         int delc, const RDB_ma_delete delv[],
         int copyc, const RDB_ma_copy copyv[],
-        RDB_transaction *txp);
+        RDB_exec_context *ecp, RDB_transaction *txp);
 </pre>
 
 <h3>Description</h3>
@@ -1595,8 +1623,8 @@ RDB_multi_assign(int insc, const RDB_ma_insert insv[],
 <pre>
 #include &lt;rel/rdb.h&gt;
 
-int
-RDB_sdivide(RDB_table *, RDB_table *, RDB_table *, RDB_table **resultpp);
+RDB_table *
+RDB_sdivide(RDB_table *, RDB_table *, RDB_table *, RDB_exec_context *ecp);
 </pre>
 
 <h3>Description</h3>
@@ -1613,10 +1641,10 @@ result of a small divide of the three tables.
 <h3>Errors</h3>
 
 <dl>
-<dt>RDB_TYPE_MISMATCH
+<dt>RDB_TYPE_MISMATCH_ERROR
 <dd>Table #1 and table #2 have an attribute with the same name, but a
 different type.
-<dt>RDB_NOT_SUPPORTED
+<dt>RDB_NOT_SUPPORTED_ERROR
 <dd>Table #3 is not of the same type as the join of table #1 and table #2.
 </dl>
 
@@ -1627,9 +1655,9 @@ different type.
 <pre>
 #include &lt;rel/rdb.h&gt;
 
-int
+RDB_table *
 RDB_gdivide(RDB_table *, RDB_table *, RDB_table *, RDB_table *,
-           RDB_table **resultpp);
+           RDB_exec_context *ecp);
 </pre>
 
 <h3>Description</h3>
@@ -1658,10 +1686,10 @@ typedef struct {
     char *name;
 } RDB_summarize_add;
 
-int
+RDB_table *
 RDB_summarize(RDB_table *tb1p, RDB_table *tb2p, int addc,
-              const RDB_summarize_add addv[], RDB_transaction *txp,
-              RDB_table **resultpp);
+              const RDB_summarize_add addv[], RDB_exec_context *ecp,
+              RDB_transaction *txp);
 </pre>
 
 <h3>Description</h3>
@@ -1683,9 +1711,9 @@ A pointer to the result table is stored in resultpp.
 <h3>Errors</h3>
 
 <dl>
-<dt>RDB_INVALID_TRANSACTION
+<dt>RDB_INVALID_TRANSACTION_ERROR
 <dd><var>txp</var> does not point to a running transaction.
-<dt>RDB_NOT_SUPPORTED
+<dt>RDB_NOT_SUPPORTED_ERROR
 <dd>The field op of one of the elements of <var>addv</var>
 is COUNTD, SUMD, or AVGD.
 </dl>
@@ -1699,9 +1727,9 @@ is COUNTD, SUMD, or AVGD.
 <pre>
 #include &lt;rel/rdb.h&gt;
 
-int
+RDB_table *
 RDB_wrap(RDB_table *tbp, int wrapc, const <a href="#wrapping">RDB_wrapping</a> wrapv[],
-         RDB_table **resultpp);
+         RDB_exec_context *ecp);
 </pre>
 
 <h3>Description</h3>
@@ -1716,7 +1744,7 @@ relational WRAP operator.
 <h3>Errors</h3>
 
 <dl>
-<dt>RDB_ATTRIBUTE_NOT_FOUND
+<dt>RDB_ATTRIBUTE_NOT_FOUND_ERROR
 <dd>An attribute specified by wrapv[i].attrv does not exist.
 </dl>
 
@@ -1727,8 +1755,8 @@ relational WRAP operator.
 <pre>
 #include &lt;rel/rdb.h&gt;
 
-int
-RDB_unwrap(RDB_table *, int attrc, char *attrv[], RDB_table **);
+RDB_table *
+RDB_unwrap(RDB_table *, int attrc, char *attrv[], RDB_exec_context *ecp);
 </pre>
 
 <h3>Description</h3>
@@ -1743,9 +1771,9 @@ relational UNWRAP operator.
 <h3>Errors</h3>
 
 <dl>
-<dt>RDB_ATTRIBUTE_NOT_FOUND
+<dt>RDB_ATTRIBUTE_NOT_FOUND_ERROR
 <dd>An attribute specified by <var>attrv</var> does not exist.
-<dt>RDB_INVALID_ARGUMENT
+<dt>RDB_INVALID_ARGUMENT_ERROR
 <dd>An attribute specified by <var>attrv</var> is not tuple-typed.
 </dl>
 
@@ -1756,9 +1784,9 @@ relational UNWRAP operator.
 <pre>
 #include &lt;rel/rdb.h&gt;
 
-int
+RDB_table *
 RDB_group(RDB_table *, int attrc, char *attrv[], const char *gattr,
-         RDB_table **resultpp);
+         RDB_exec_context *ecp);
 </pre>
 
 <h3>Description</h3>
@@ -1775,9 +1803,9 @@ and <var>attrv</var> are grouped into a relation-valued attribute
 <h3>Errors</h3>
 
 <dl>
-<dt>RDB_ATTRIBUTE_NOT_FOUND
+<dt>RDB_ATTRIBUTE_NOT_FOUND_ERROR
 <dd>An attribute specified by <var>attrv</var> does not exist.
-<dt>RDB_INVALID_ARGUMENT
+<dt>RDB_INVALID_ARGUMENT_ERROR
 <dd>The attribute <var>gattr</var> already appears in the table,
 but not in <var>attrv</var>.
 </dl>
@@ -1789,8 +1817,8 @@ but not in <var>attrv</var>.
 <pre>
 #include &lt;rel/rdb.h&gt;
 
-int
-RDB_ungroup(RDB_table *, const char *attr, RDB_table **resultpp);
+RDB_table *
+RDB_ungroup(RDB_table *, const char *attr, RDB_exec_context *ecp);
 </pre>
 
 <h3>Description</h3>
@@ -1805,9 +1833,9 @@ relational UNGROUP operator.
 <h3>Errors</h3>
 
 <dl>
-<dt>RDB_ATTRIBUTE_NOT_FOUND
+<dt>RDB_ATTRIBUTE_NOT_FOUND_ERROR
 <dd>The attribute <var>attr</var> does not exist.
-<dt>RDB_INVALID_ARGUMENT
+<dt>RDB_INVALID_ARGUMENT_ERROR
 <dd>The attribute <var>attr</var> is not relation-typed.
 <dd>A sub-attribute of <var>attr</var> clashes with a table attribute.
 </dl>
@@ -1821,7 +1849,7 @@ relational UNGROUP operator.
 
 int
 RDB_join_tuples(const RDB_object *tpl1p, const RDB_object *tpl2p,
-                RDB_transaction *txp, RDB_object *restplp);
+                RDB_exec_context *ecp, RDB_transaction *txp, RDB_object *restplp);
 </pre>
 
 <h3>Description</h3>
@@ -1836,10 +1864,10 @@ of the two tuples specified by <var>tpl1p</var> and <var>tpl2p</var>.
 <h3>Errors</h3>
 
 <dl>
-<dt>RDB_TYPE_MISMATCH
+<dt>RDB_TYPE_MISMATCH_ERROR
 <dd>The two tuples have an attribute with the same name, but with
 different types.
-<dt>RDB_INVALID_ARGUMENT
+<dt>RDB_INVALID_ARGUMENT_ERROR
 <dd>The two tuples have an attribute with the same name, but with
 different values.
 </dl>
@@ -1855,7 +1883,7 @@ different values.
 
 int
 RDB_project_tuple(const RDB_object *, int attrc, char *attrv[],
-                  RDB_object *restplp);
+                  RDB_exec_context *ecp, RDB_object *restplp);
 </pre>
 
 <h3>Description</h3>
@@ -1870,7 +1898,7 @@ specified by <var>attrc</var> and <var>attrv</var>.
 <h3>Errors</h3>
 
 <dl>
-<dt>RDB_ATTRIBUTE_NOT_FOUND
+<dt>RDB_ATTRIBUTE_NOT_FOUND_ERROR
 <dd>One of the attributes specified by <var>attrv</var> is not an attribute
 of the original tuple.
 </dl>
@@ -1885,7 +1913,7 @@ of the original tuple.
 #include &lt;rel/rdb.h&gt;
 
 int
-RDB_tuple_set(RDB_object *tplp, const char *name, const RDB_object *valp);
+RDB_tuple_set(RDB_object *tplp, const char *name, const RDB_object *valp, RDB_exec_context *ecp);
 </pre>
 
 <h3>Description</h3>
@@ -1910,7 +1938,7 @@ variable specified by <var>tplp</var> to the value specified by
 #include &lt;rel/rdb.h&gt;
 
 int
-RDB_tuple_set_bool(RDB_object *tplp, const char *name, RDB_bool val);
+RDB_tuple_set_bool(RDB_object *tplp, const char *name, RDB_bool val, RDB_exec_context *ecp);
 </pre>
 
 <h3>Description</h3>
@@ -1935,7 +1963,7 @@ variable specified by <var>tplp</var> to the boolean value specified by
 #include &lt;rel/rdb.h&gt;
 
 int
-RDB_tuple_set_int(RDB_object *tplp, const char *name, RDB_int val);
+RDB_tuple_set_int(RDB_object *tplp, const char *name, RDB_int val, RDB_exec_context *ecp);
 </pre>
 
 <h3>Description</h3>
@@ -1960,7 +1988,7 @@ variable specified by <var>tplp</var> to the integer value specified by
 #include &lt;rel/rdb.h&gt;
 
 int
-RDB_tuple_set_rational(RDB_object *tplp, const char *name, RDB_rational val);
+RDB_tuple_set_rational(RDB_object *tplp, const char *name, RDB_rational val, RDB_exec_context *ecp);
 </pre>
 
 <h3>Description</h3>
@@ -1985,7 +2013,7 @@ variable specified by <var>tplp</var> to the rational value specified by
 #include &lt;rel/rdb.h&gt;
 
 int
-RDB_tuple_set_string(RDB_object *tplp, const char *name, const char *str);
+RDB_tuple_set_string(RDB_object *tplp, const char *name, const char *str, RDB_exec_context *ecp);
 </pre>
 
 <h3>Description</h3>
@@ -2161,7 +2189,7 @@ type STRING.
 
 int
 RDB_extend_tuple(RDB_object *tplp, int attrc, const <a href="#virtual_attr">RDB_virtual_attr</a> attrv[],
-                 RDB_transaction *txp);
+                 RDB_exec_context *ecp, RDB_transaction *txp);
 </pre>
 
 <h3>Description</h3>
@@ -2176,12 +2204,12 @@ by the attributes specified by <var>attrc</var> and <var>attrv</var>.
 <h3>Errors</h3>
 
 <dl>
-<dt>RDB_ATTRIBUTE_NOT_FOUND
+<dt>RDB_ATTRIBUTE_NOT_FOUND_ERROR
 <dd>One of the expressions specified in <var>updv</var> refers to an attribute
 which does not exist in the tuple.
-<dt>RDB_INVALID_ARGUMENT
+<dt>RDB_INVALID_ARGUMENT_ERROR
 <dd>One of the additional attributes already exists in the original table.
-<dt>RDB_OPERATOR_NOT_FOUND
+<dt>RDB_OPERATOR_NOT_FOUND_ERROR
 <dd>One of the expressions specified in <var>updv</var> refers to an
 operator which does not exist.
 </dl>
@@ -2197,7 +2225,7 @@ operator which does not exist.
 
 int
 RDB_rename_tuple(const RDB_object *, int renc, const <a href="#renaming">RDB_renaming</a> renv[],
-                 RDB_object *restplp);
+                 RDB_exec_context *ecp, RDB_object *restplp);
 </pre>
 
 <h3>Description</h3>
@@ -2223,7 +2251,7 @@ specified by <var>renc</var> and <var>renv</var>.
 
 int
 RDB_wrap_tuple(const RDB_object *tplp, int wrapc, const <a href="#wrapping">RDB_wrapping</a> wrapv[],
-               RDB_object *restplp);
+               RDB_exec_context *ecp, RDB_object *restplp);
 </pre>
 
 <h3>Description</h3>
@@ -2239,7 +2267,7 @@ RDB_wrap_tuple(const RDB_object *tplp, int wrapc, const <a href="#wrapping">RDB_
 <h3>Errors</h3>
 
 <dl>
-<dt>RDB_ATTRIBUTE_NOT_FOUND
+<dt>RDB_ATTRIBUTE_NOT_FOUND_ERROR
 <dd>One or more of the attributes specified by wrapv[i].attrv does not
 exist.
 </dl>
@@ -2253,7 +2281,7 @@ exist.
 
 int
 RDB_unwrap_tuple(const RDB_object *tplp, int attrc, const char *attrv[],
-        RDB_object *restplp);
+        RDB_exec_context *ecp, RDB_object *restplp);
 </pre>
 
 <h3>Description</h3>
@@ -2269,9 +2297,9 @@ RDB_unwrap_tuple(const RDB_object *tplp, int attrc, const char *attrv[],
 <h3>Errors</h3>
 
 <dl>
-<dt>RDB_ATTRIBUTE_NOT_FOUND
+<dt>RDB_ATTRIBUTE_NOT_FOUND_ERROR
 <dd>An attribute specified by attrv does not exist.
-<dt>RDB_INVALID_ARGUMENT
+<dt>RDB_INVALID_ARGUMENT_ERROR
 <dd>An attribute specified by attrv is not tuple-typed.
 </dl>
 
@@ -2300,7 +2328,7 @@ operation can be performed on a RDB_object variable.
 #include &lt;rel/rdb.h&gt;
 
 int
-RDB_destroy_obj(RDB_object *valp);
+RDB_destroy_obj(RDB_object *valp, RDB_exec_context *ecp);
 </pre>
 
 <h3>Description</h3>
@@ -2320,8 +2348,8 @@ variable.
 #include &lt;rel/rdb.h&gt;
 
 int
-RDB_obj_equals(const RDB_object *, const RDB_object *, RDB_transaction *txp,
-               RDB_bool *resp);
+RDB_obj_equals(const RDB_object *, const RDB_object *, RDB_exec_context *ecp,
+        RDB_transaction *txp, RDB_bool *resp);
 </pre>
 
 <h3>Description</h3>
@@ -2341,7 +2369,7 @@ and stores the result in the variable pointed to by <var>resp</var>.
 #include &lt;rel/rdb.h&gt;
 
 int
-RDB_copy_obj(RDB_object *dstvalp, const RDB_object *srcvalp);
+RDB_copy_obj(RDB_object *dstvalp, const RDB_object *srcvalp, RDB_exec_context *ecp);
 </pre>
 
 <h3>Description</h3>
@@ -2359,7 +2387,7 @@ as the destination.
 <h3>Errors</h3>
 
 <dl>
-<dt>RDB_TYPE_MISMATCH
+<dt>RDB_TYPE_MISMATCH_ERROR
 <dd>The RDB_object specified by <var>dstvalp</var> is not newly initialized
 and its type does not match the type of the RDB_object specified by
 <var>srcvalp</var>.
@@ -2438,7 +2466,7 @@ RATIONAL.
 #include &lt;rel/rdb.h&gt;
 
 int
-RDB_string_to_obj(RDB_object *valp, const char *str);
+RDB_string_to_obj(RDB_object *valp, const char *str, RDB_exec_context *ecp);
 </pre>
 
 <h3>Description</h3>
@@ -2565,7 +2593,7 @@ does not wrap a table.
 #include &lt;rel/rdb.h&gt;
 
 void
-RDB_table_to_obj(RDB_object *objp, RDB_table *tbp);
+RDB_table_to_obj(RDB_object *objp, RDB_table *tbp, RDB_exec_context *ecp);
 
 </pre>
 
@@ -2583,7 +2611,7 @@ the RDB_object pointed to by <var>objp</var>.
 
 int
 RDB_obj_comp(const RDB_object *valp, const char *compname,
-             RDB_object *comp, RDB_transaction *txp);
+             RDB_object *comp, RDB_exec_context *ecp, RDB_transaction *txp);
 </pre>
 
 <h3>Description</h3>
@@ -2599,10 +2627,10 @@ to the variable pointed to by <var>comp</var>.
 <h3>Errors</h3>
 
 <dl>
-<dt>RDB_INVALID_ARGUMENT
+<dt>RDB_INVALID_ARGUMENT_ERROR
 <dd>The type of the variable pointed to by <var>valp</var> ist not
 a scalar user-defined type.
-<dt>RDB_OPERATOR_NOT_FOUND
+<dt>RDB_OPERATOR_NOT_FOUND_ERROR
 <dd>The getter method for component <var>compname</var> has not been created.
 </dl>
 
@@ -2620,7 +2648,7 @@ user-provided getter function.
 
 int
 RDB_obj_set_comp(RDB_object *valp, const char *compname,
-                 const RDB_object *comp, RDB_transaction *txp);
+                 const RDB_object *comp, RDB_exec_context *ecp, RDB_transaction *txp);
 </pre>
 
 <h3>Description</h3>
@@ -2644,7 +2672,7 @@ to the value of the variable pointed to by <var>comp</var>.
 #include &lt;rel/rdb.h&gt;
 
 int
-RDB_binary_set(RDB_object *, size_t pos, const void *srcp, size_t len);
+RDB_binary_set(RDB_object *, size_t pos, const void *srcp, size_t len, RDB_exec_context *ecp);
 </pre>
 
 <h3>Description</h3>
@@ -2670,7 +2698,8 @@ or to a RDB_object of type BINARY.
 #include &lt;rel/rdb.h&gt;
 
 int
-RDB_binary_get(const RDB_object *, size_t pos, void **pp, size_t len, size_t *alenp);
+RDB_binary_get(const RDB_object *, size_t pos, RDB_exec_context *ecp,
+        void **pp, size_t len, size_t *alenp);
 </pre>
 
 <h3>Description</h3>
@@ -2748,24 +2777,25 @@ which use a built-in type or a byte array as actual representation.
 <pre>
 #include &lt;rel/rdb.h&gt;
 
-int
-RDB_create_db_from_env(const char *name, RDB_environment *envp, RDB_database **dbpp);
+RDB_database *
+RDB_create_db_from_env(const char *name, RDB_environment *envp, RDB_exec_context *ecp);
 </pre>
 
 <h3>Description</h3>
 
 <p>RDB_create_db_from_env creates a database from a database environment.
+If an error occurs, an error value is left in <var>ecp</var>.
 
 <h3>Return value</h3>
 
-<p>On success, RDB_OK is returned. On failure, an error code is returned.
+<p>A pointer to the newly created database, or NULL if an error occured.
 
 <h3>Errors</h3>
 
 <dl>
-<dt>RDB_ELEMENT_EXISTS
+<dt>RDB_ELEMENT_EXIST_ERROR
 <dd>A database with the name <var>name</var> already exixts.
-<dt>RDB_VERSION_MISMATCH
+<dt>RDB_VERSION_MISMATCH_ERROR
 <dd>The version number stored in the catalog does not match
 the version of the library.
 </dl>
@@ -2779,26 +2809,27 @@ the version of the library.
 <pre>
 #include &lt;rel/rdb.h&gt;
 
-int
-RDB_get_db_from_env(const char *name, RDB_environment *envp, RDB_database **dbpp);
+RDB_database *
+RDB_get_db_from_env(const char *name, RDB_environment *envp, RDB_exec_context *ecp);
 </pre>
 
 <h3>Description</h3>
 
 <p>RDB_get_db_from_env obtains a pointer to the database with name
-<var>name</var> in the environment specified by <var>envp</var>
-and stores this pointer at the location pointed to by <var>dbpp</var>.
+<var>name</var> in the environment specified by <var>envp</var>.
+If an error occurs, an error value is left in <var>ecp</var>.
 
 <h3>Return value</h3>
 
-<p>On success, RDB_OK is returned. On failure, an error code is returned.
+<p>On success, a pointer to the database is returned. If an error occured, NULL is
+returned.
 
 <h3>Errors</h3>
 
 <dl>
-<dt>RDB_NOT_FOUND
+<dt>RDB_NOT_FOUND_ERROR
 <dd>A database with the name <var>name</var> could not be found.
-<dt>RDB_VERSION_MISMATCH
+<dt>RDB_VERSION_MISMATCH_ERROR
 <dd>The version number stored in the catalog does not match
 the version of the library.
 </dl>
@@ -2813,13 +2844,16 @@ the version of the library.
 #include &lt;rel/rdb.h&gt;
 
 int
-RDB_drop_db(RDB_database *dbp);
+RDB_drop_db(RDB_database *dbp, RDB_exec_context *ecp);
 </pre>
 
 <h3>Description</h3>
 
 <p>RDB_drop_db deletes the database specified by <var>dbp</var>.
 The database must be empty.
+
+<p>If an error occurs, an error value is left in <var>ecp</var>.
+
 
 <h3>Return value</h3>
 
@@ -2828,9 +2862,9 @@ The database must be empty.
 <h3>Errors</h3>
 
 <dl>
-<dt>RDB_NOT_FOUND
+<dt>RDB_NOT_FOUND_ERROR
 <dd>The database was not found.
-<dt>RDB_ELEMENT_EXISTS
+<dt>RDB_ELEMENT_EXISTS_ERROR
 <dd>The database is not empty.
 </dl>
 
@@ -2884,7 +2918,7 @@ specified by <var>dbp</var>.
 #include &lt;rel/rdb.h&gt;
 
 int
-RDB_begin_tx(RDB_transaction *txp, RDB_database *dbp,
+RDB_begin_tx(RDB_exec_context *ecp, RDB_transaction *txp, RDB_database *dbp,
         RDB_transaction *parentp);
 </pre>
 
@@ -2908,7 +2942,7 @@ a subtransaction of the transaction specified by <var>parentp</var>.
 #include &lt;rel/rdb.h&gt;
 
 int
-RDB_commit(RDB_transaction *txp);
+RDB_commit(RDB_exec_context *ecp, RDB_transaction *txp);
 </pre>
 
 <h3>Description</h3>
@@ -2922,7 +2956,7 @@ RDB_commit(RDB_transaction *txp);
 <h3>Errors</h3>
 
 <dl>
-<dt>RDB_INVALID_TRANSACTION
+<dt>RDB_INVALID_TRANSACTION_ERROR
 <dd><var>txp</var> does not point to a running transaction.
 </dl>
 
@@ -2936,7 +2970,7 @@ RDB_commit(RDB_transaction *txp);
 #include &lt;rel/rdb.h&gt;
 
 int
-RDB_rollback(RDB_transaction *txp);
+RDB_rollback(RDB_exec_context *ecp, RDB_transaction *txp);
 </pre>
 
 <h3>Description</h3>
@@ -2951,7 +2985,7 @@ and rolls back all changes made by this transaction and its subtransactions.
 <h3>Errors</h3>
 
 <dl>
-<dt>RDB_INVALID_TRANSACTION
+<dt>RDB_INVALID_TRANSACTION_ERROR
 <dd><var>txp</var> does not point to a running transaction.
 </dl>
 
@@ -3012,7 +3046,7 @@ typedef struct {
 int
 RDB_table_to_array(RDB_object *arrp, RDB_table *tbp,
                    int seqitc, const RDB_seq_item seqitv[],
-                   RDB_transaction *txp);
+                   RDB_exec_context *ecp, RDB_transaction *txp);
 </pre>
 
 <h3>Description</h3>
@@ -3028,9 +3062,9 @@ is specified by <var>seqitv</var>.
 <h3>Errors</h3>
 
 <dl>
-<dt>RDB_INVALID_TRANSACTION
+<dt>RDB_INVALID_TRANSACTION_ERROR
 <dd><var>txp</var> does not point to a running transaction.
-<dt>RDB_OPERATOR_NOT_FOUND
+<dt>RDB_OPERATOR_NOT_FOUND_ERROR
 <dd>The definition of the table specified by <var>tbp</var>
 refers to a non-existing operator.
 </dl>
@@ -3053,8 +3087,8 @@ the array is destroyed.
 <pre>
 #include &lt;rel/rdb.h&gt;
 
-int
-RDB_array_get(RDB_object *, RDB_int idx, RDB_object **objpp);
+RDB_object *
+RDB_array_get(RDB_object *, RDB_int idx, RDB_exec_context *ecp);
 </pre>
 
 <h3>Description</h3>
@@ -3071,9 +3105,9 @@ The pointer will become invalid when the array is destroyed.
 <h3>Errors</h3>
 
 <dl>
-<dt>RDB_NOT_FOUND
+<dt>RDB_NOT_FOUND_ERROR
 <dd><var>idx</var> exceeds the array length.
-<dt>RDB_OPERATOR_NOT_FOUND
+<dt>RDB_OPERATOR_NOT_FOUND_ERROR
 <dd>The array was created from a table which refers to a non-existing
 operator.
 </dl>
@@ -3088,7 +3122,7 @@ operator.
 #include &lt;rel/rdb.h&gt;
 
 int
-RDB_array_set(RDB_object *, RDB_int idx, const RDB_object *objp);
+RDB_array_set(RDB_object *, RDB_int idx, const RDB_object *objp, RDB_exec_context *ecp);
 </pre>
 
 <h3>Description</h3>
@@ -3106,9 +3140,9 @@ using RDB_table_to_array.
 <h3>Errors</h3>
 
 <dl>
-<dt>RDB_NOT_FOUND
+<dt>RDB_NOT_FOUND_ERROR
 <dd><var>idx</var> exceeds the array length.
-<dt>RDB_NOT_SUPPORTED
+<dt>RDB_NOT_SUPPORTED_ERROR
 <dd>The table has been created using RDB_table_to_array.
 </dl>
 
@@ -3137,7 +3171,7 @@ indicates an error.
 <h3>Errors</h3>
 
 <dl>
-<dt>RDB_OPERATOR_NOT_FOUND
+<dt>RDB_OPERATOR_NOT_FOUND_ERROR
 <dd>The array was created from a table which refers to a non-existing
 operator.
 </dl>
@@ -3152,7 +3186,7 @@ operator.
 #include &lt;rel/rdb.h&gt;
 
 int
-RDB_set_array_length(RDB_object *arrp, RDB_int len);
+RDB_set_array_length(RDB_object *arrp, RDB_int len, RDB_exec_context *ecp);
 </pre>
 
 <h3>Description</h3>
@@ -3170,7 +3204,7 @@ using RDB_table_to_array.
 <h3>Errors</h3>
 
 <dl>
-<dt>RDB_NOT_SUPPORTED
+<dt>RDB_NOT_SUPPORTED_ERROR
 <dd>The array has been created using RDB_table_to_array.
 </dl>
 
@@ -3203,7 +3237,7 @@ RDB_expr_is_const(const RDB_expression *);
 #include &lt;rel/rdb.h&gt;
 
 RDB_expression *
-RDB_bool_to_expr(RDB_bool);
+RDB_bool_to_expr(RDB_bool, RDB_exec_context *ecp);
 </pre>
 
 <h3>Description</h3>
@@ -3223,7 +3257,7 @@ failed.
 #include &lt;rel/rdb.h&gt;
 
 RDB_expression *
-RDB_int_to_expr(RDB_int);
+RDB_int_to_expr(RDB_int, RDB_exec_context *ecp);
 </pre>
 
 <h3>Description</h3>
@@ -3243,7 +3277,7 @@ failed.
 #include &lt;rel/rdb.h&gt;
 
 RDB_expression *
-RDB_rational_to_expr(RDB_rational);
+RDB_rational_to_expr(RDB_rational, RDB_exec_context *ecp);
 </pre>
 
 <h3>Description</h3>
@@ -3263,7 +3297,7 @@ failed.
 #include &lt;rel/rdb.h&gt;
 
 RDB_expression *
-RDB_string_to_expr(const char *);
+RDB_string_to_expr(const char *, RDB_exec_context *ecp);
 </pre>
 
 <h3>Description</h3>
@@ -3283,7 +3317,7 @@ failed.
 #include &lt;rel/rdb.h&gt;
 
 RDB_expression *
-RDB_obj_to_expr(const RDB_object *valp);
+RDB_obj_to_expr(const RDB_object *valp, RDB_exec_context *ecp);
 </pre>
 
 <h3>Description</h3>
@@ -3303,7 +3337,7 @@ failed.
 #include &lt;rel/rdb.h&gt;
 
 RDB_expression *
-RDB_expr_attr(const char *attrname);
+RDB_expr_attr(const char *attrname, RDB_exec_context *ecp);
 </pre>
 
 <h3>Description</h3>
@@ -3323,7 +3357,7 @@ failed.
 #include &lt;rel/rdb.h&gt;
 
 RDB_expression *
-RDB_eq(RDB_expression *, RDB_expression *);
+RDB_eq(RDB_expression *, RDB_expression *, RDB_exec_context *ecp);
 </pre>
 
 <h3>Description</h3>
@@ -3344,7 +3378,7 @@ failed.
 #include &lt;rel/rdb.h&gt;
 
 RDB_expression *
-RDB_table_to_expr(RDB_table *);
+RDB_table_to_expr(RDB_table *, RDB_exec_context *ecp);
 </pre>
 
 <h3>Description</h3>
@@ -3364,7 +3398,7 @@ failed.
 #include &lt;rel/rdb.h&gt;
 
 RDB_expression *
-RDB_tuple_attr(RDB_expression *, const char *attrname);
+RDB_tuple_attr(RDB_expression *, const char *attrname, RDB_exec_context *ecp);
 </pre>
 
 <h3>Description</h3>
@@ -3385,7 +3419,7 @@ failed.
 #include &lt;rel/rdb.h&gt;
 
 RDB_expression *
-RDB_expr_any(RDB_expression *, const char *attrname);
+RDB_expr_any(RDB_expression *, const char *attrname, RDB_exec_context *ecp);
 </pre>
 
 <h3>Description</h3>
@@ -3406,7 +3440,7 @@ failed.
 #include &lt;rel/rdb.h&gt;
 
 RDB_expression *
-RDB_expr_all(RDB_expression *, const char *attrname);
+RDB_expr_all(RDB_expression *, const char *attrname, RDB_exec_context *ecp);
 </pre>
 
 <h3>Description</h3>
@@ -3427,7 +3461,7 @@ failed.
 #include &lt;rel/rdb.h&gt;
 
 RDB_expression *
-RDB_expr_avg(RDB_expression *, const char *attrname);
+RDB_expr_avg(RDB_expression *, const char *attrname, RDB_exec_context *ecp);
 </pre>
 
 <h3>Description</h3>
@@ -3448,7 +3482,7 @@ failed.
 #include &lt;rel/rdb.h&gt;
 
 RDB_expression *
-RDB_expr_max(RDB_expression *, const char *attrname);
+RDB_expr_max(RDB_expression *, const char *attrname, RDB_exec_context *ecp);
 </pre>
 
 <h3>Description</h3>
@@ -3469,7 +3503,7 @@ failed.
 #include &lt;rel/rdb.h&gt;
 
 RDB_expression *
-RDB_expr_min(RDB_expression *, const char *attrname);
+RDB_expr_min(RDB_expression *, const char *attrname, RDB_exec_context *ecp);
 </pre>
 
 <h3>Description</h3>
@@ -3490,7 +3524,7 @@ failed.
 #include &lt;rel/rdb.h&gt;
 
 RDB_expression *
-RDB_expr_sum(RDB_expression *, const char *attrname);
+RDB_expr_sum(RDB_expression *, const char *attrname, RDB_exec_context *ecp);
 </pre>
 
 <h3>Description</h3>
@@ -3511,7 +3545,7 @@ failed.
 #include &lt;rel/rdb.h&gt;
 
 RDB_expression *
-RDB_expr_comp(RDB_expression *arg, const char *compname);
+RDB_expr_comp(RDB_expression *arg, const char *compname, RDB_exec_context *ecp);
 </pre>
 
 <h3>Description</h3>
@@ -3532,7 +3566,7 @@ failed.
 #include &lt;rel/rdb.h&gt;
 
 RDB_expression *
-RDB_ro_op(const char *opname, int argc, RDB_expression *argv[]);
+RDB_ro_op(const char *opname, int argc, RDB_expression *argv[], RDB_exec_context *ecp);
 </pre>
 
 <h3>Description</h3>
@@ -3554,7 +3588,7 @@ NULL is returned.
 #include &lt;rel/rdb.h&gt;
 
 RDB_expression *
-RDB_ro_op_va(const char *opname, RDB_expression *arg, ... /* (RDB_expression *) NULL */ );
+RDB_ro_op_va(const char *opname, RDB_exec_context *ecp, RDB_expression *arg, ... /* (RDB_expression *) NULL */ );
 </pre>
 
 <h3>Description</h3>
@@ -3576,8 +3610,8 @@ NULL is returned.
 <pre>
 #include &lt;rel/rdb.h&gt;
 
-void
-RDB_drop_expr(RDB_expression *exp);
+int
+RDB_drop_expr(RDB_expression *exp, RDB_exec_context *ecp);
 </pre>
 
 <h3>Description</h3>
@@ -3587,7 +3621,11 @@ RDB_drop_expr(RDB_expression *exp);
 
 <h3>Return value</h3>
 
+<p>RDB_OK on success, RDB_ERROR on failure.
+
 <h3>Errors</h3>
+
+<p>The call may fail for a <a href="#syserr">system error</a>.
 
 <hr>
 
@@ -3598,7 +3636,7 @@ RDB_drop_expr(RDB_expression *exp);
 
 int
 RDB_define_type(const char *name, int repc, const <a href="#possrep">RDB_possrep</a> repv[],
-                RDB_expression *constraintp, RDB_transaction *txp);
+                RDB_expression *constraintp, RDB_exec_context *ecp, RDB_transaction *txp);
 </pre>
 
 <h3>Description</h3>
@@ -3619,9 +3657,9 @@ as an attribute with the same name as the type.
 <h3>Errors</h3>
 
 <dl>
-<dt>RDB_INVALID_TRANSACTION
+<dt>RDB_INVALID_TRANSACTION_ERROR
 <dd><var>txp</var> does not point to a running transaction.
-<dt>RDB_ELEMENT_EXISTS
+<dt>RDB_ELEMENT_EXIST_ERROR
 <dd>There is already a type with name <var>name</var>.
 </dl>
 
@@ -3636,7 +3674,8 @@ in which case the transaction may be implicitly rolled back.
 #include &lt;rel/typeimpl.h&gt;
 
 int
-RDB_implement_type(const char *name, RDB_type *arep, RDB_int areplen, RDB_transaction *txp);
+RDB_implement_type(const char *name, RDB_type *arep, RDB_int areplen,
+        RDB_exec_context *ecp, RDB_transaction *txp);
 </pre>
 
 <h3>Description</h3>
@@ -3689,11 +3728,11 @@ the component.
 <h3>Errors</h3>
 
 <dl>
-<dt>RDB_INVALID_TRANSACTION
+<dt>RDB_INVALID_TRANSACTION_ERROR
 <dd><var>txp</var> does not point to a running transaction.
-<dt>RDB_NOT_FOUND
+<dt>RDB_NOT_FOUND_ERROR
 <dd>The type has not been previously defined.
-<dt>RDB_INVALID_ARGUMENT
+<dt>RDB_INVALID_ARGUMENT_ERROR
 <dd><var>arep</var> is NULL and <var>areplen</var> is -1,
 and the type was defined with more than one possible representation.
 </dl>
@@ -3708,8 +3747,8 @@ in which case the transaction may be implicitly rolled back.
 <pre>
 #include &lt;rel/rdb.h&gt;
 
-int
-RDB_create_tuple_type(int attrc, const <a href="#attr">RDB_attr</a> attrv[], RDB_type **typp);
+RDB_type *
+RDB_create_tuple_type(int attrc, const <a href="#attr">RDB_attr</a> attrv[], RDB_exec_context *ecp);
 </pre>
 
 <h3>Description</h3>
@@ -3726,7 +3765,7 @@ The fields defaultp and options of RDB_attr are ignored.
 <h3>Errors</h3>
 
 <dl>
-<dt>RDB_INVALID_ARGUMENT
+<dt>RDB_INVALID_ARGUMENT_ERROR
 <dd><var>attrv</var> contains two attributes with the same name.
 </dl>
 
@@ -3750,7 +3789,7 @@ The base type is specified by <var>typ</var>.
 
 <h3>Return value</h3>
 
-<p>The new array type, or NULL if the creation failed.
+<p>The new array type, or NULL if the creation failed du to lack of memory.
 
 <hr>
 
@@ -3759,8 +3798,9 @@ The base type is specified by <var>typ</var>.
 <pre>
 #include &lt;rel/rdb.h&gt;
 
-int
-RDB_create_relation_type(int attrc, const <a href="#attr">RDB_attr</a> attrv[], RDB_type **typp);
+RDB_type *
+RDB_create_relation_type(int attrc, const <a href="#attr">RDB_attr</a> attrv[],
+        RDB_exec_context *ecp);
 </pre>
 
 <h3>Description</h3>
@@ -3772,12 +3812,12 @@ The fields defaultp and options of RDB_attr are ignored.
 
 <h3>Return value</h3>
 
-<p>On success, RDB_OK is returned. Any other return value indicates an error.
+<p>On success, RDB_OK is returned. On failure, RDB_ERROR is returned.
 
 <h3>Errors</h3>
 
 <dl>
-<dt>RDB_INVALID_ARGUMENT
+<dt>RDB_INVALID_ARGUMENT_ERROR
 <dd><var>attrv</var> contains two attributes with the same name.
 </dl>
 
@@ -3790,8 +3830,8 @@ The fields defaultp and options of RDB_attr are ignored.
 <pre>
 #include &lt;rel/rdb.h&gt;
 
-int
-RDB_get_type(const char *name, RDB_transaction *, RDB_type **typp);
+RDB_type *
+RDB_get_type(const char *name, RDB_transaction *, RDB_exec_context *ecp);
 </pre>
 
 <h3>Description</h3>
@@ -3807,9 +3847,9 @@ and stores that pointer at the location pointed to by <var>typp</var>.
 <h3>Errors</h3>
 
 <dl>
-<dt>RDB_INVALID_TRANSACTION
+<dt>RDB_INVALID_TRANSACTION_ERROR
 <dd><var>txp</var> does not point to a running transaction.
-<dt>RDB_NOT_FOUND
+<dt>RDB_NOT_FOUND_ERROR
 <dd>A type with the name <var>name</var> could not be found.
 </dl>
 
@@ -3824,7 +3864,7 @@ in which case the transaction may be implicitly rolled back.
 #include &lt;rel/rdb.h&gt;
 
 void
-RDB_drop_type(RDB_type *typ, RDB_transaction *txp);
+RDB_drop_type(RDB_type *typ, RDB_exec_context *ecp, RDB_transaction *txp);
 </pre>
 
 <h3>Description</h3>
@@ -3842,9 +3882,9 @@ RDB_drop_type(RDB_type *typ, RDB_transaction *txp);
 <h3>Errors</h3>
 
 <dl>
-<dt>RDB_INVALID_TRANSACTION
+<dt>RDB_INVALID_TRANSACTION_ERROR
 <dd><var>txp</var> does not point to a running transaction.
-<dt>RDB_INVALID_ARGUMENT
+<dt>RDB_INVALID_ARGUMENT_ERROR
 <dd>The type is a builtin type.
 </dl>
 
@@ -3908,8 +3948,6 @@ RDB_type_is_numeric(const RDB_type *);
 
 <p>RDB_TRUE if the type is INTEGER or RATIONAL, RDB_FALSE otherwise.
 
-<h3>Return value</h3>
-
 <hr>
 
 <h2 id="type_equals">RDB_type_equals</h2>
@@ -3942,7 +3980,7 @@ int
 RDB_create_ro_op(const char *name, int argc, RDB_type *argtv[], RDB_type *rtyp,
                  const char *libname, const char *sym,
                  const void *iargp, size_t iarglen,
-                 RDB_transaction *txp);
+                 RDB_exec_context *ecp, RDB_transaction *txp);
 </pre>
 
 <h3>Description</h3>
@@ -3958,7 +3996,7 @@ The argument types are specified by <var>argc</var> and <var>argtv</var>.
 <pre>
 int
 &lt;sym&gt;(const char *name, int argc, RDB_object *argv[],
-          const void *iargp, size_t iarglen, RDB_transaction *txp,
+          const void *iargp, size_t iarglen, RDB_exec_context *ecp, RDB_transaction *txp,
           RDB_object *retvalp)
 </pre>
 
@@ -3967,7 +4005,9 @@ and the arguments are passed through <var>argc</var> and <var>argv</var>.
 
 <p>The function specified by <var>sym</var> must store the result at the
 location specified by <var>retvalp</var> and return RDB_OK.
-It can indicate an error condition by returning an error code.
+It can indicate an error condition by leaving an error in *<var>ecp</var>
+(see <a href="#raise_err">RDB_raise_err</a>)
+and returning an RDB_ERROR.
 
 <p>If <var>iargp</var> is not NULL, it must point to a byte block
 of length <var>iarglen</var> which will be passed to the function
@@ -3985,11 +4025,11 @@ This can be used to pass code to an interpreter function.
 <h3>Errors</h3>
 
 <dl>
-<dt>RDB_INVALID_TRANSACTION
+<dt>RDB_INVALID_TRANSACTION_ERROR
 <dd><var>txp</var> does not point to a running transaction.
-<dt>RDB_ELEMENT_EXISTS
+<dt>RDB_ELEMENT_EXIST_ERROR
 <dd>A read-only operator with this name and signature does already exist.
-<dt>RDB_NOT_SUPPORTED
+<dt>RDB_NOT_SUPPORTED_ERROR
 <dd>One of the argument types or the return type is an array type.
 </dl>
 
@@ -4007,7 +4047,7 @@ int
 RDB_create_update_op(const char *name, int argc, RDB_type *argtv[],
                   RDB_bool upd[], const char *libname, const char *sym,
                   const void *iargp, size_t iarglen,
-                  RDB_transaction *txp);
+                  RDB_exec_context *ecp, RDB_transaction *txp);
 </pre>
 
 <h3>Description</h3>
@@ -4027,7 +4067,8 @@ is updated by the operator.
 <pre>
 int
 &lt;sym&gt;(const char *name, int argc, RDB_object *argv[],
-        RDB_bool updv[], const void *iargp, size_t iarglen, RDB_transaction *txp)
+        RDB_bool updv[], const void *iargp, size_t iarglen,
+        RDB_exec_context *ecp, RDB_transaction *txp)
 
 </pre>
 
@@ -4035,7 +4076,9 @@ int
 and the arguments are passed through <var>argc</var> and <var>argv</var>.
 
 <p>On success, the function specified by <var>sym</var> must return RDB_OK.
-It can indicate an error condition by returning an error code.
+It can indicate an error condition by leaving an error in *<var>ecp</var>
+(see <a href="#raise_err">RDB_raise_err</a>)
+and returning an RDB_ERROR.
 
 <p>If <var>iargp</var> is not NULL, it must point to a byte block
 of length <var>iarglen</var> which will be passed to the function
@@ -4053,11 +4096,11 @@ This can be used to pass code to an interpreter function.
 <h3>Errors</h3>
 
 <dl>
-<dt>RDB_INVALID_TRANSACTION
+<dt>RDB_INVALID_TRANSACTION_ERROR
 <dd><var>txp</var> does not point to a running transaction.
-<dt>RDB_ELEMENT_EXISTS
+<dt>RDB_ELEMENT_EXIST_ERROR
 <dd>An update operator with this name and signature does already exist.
-<dt>RDB_NOT_SUPPORTED
+<dt>RDB_NOT_SUPPORTED_ERROR
 <dd>One of the argument types is an array type.
 </dl>
 
@@ -4073,7 +4116,7 @@ in which case the transaction may be implicitly rolled back.
 
 int
 RDB_call_ro_op(const char *name, int argc, RDB_object *argv[],
-               RDB_transaction *txp, RDB_object *retvalp);
+               RDB_exec_context *ecp, RDB_transaction *txp, RDB_object *retvalp);
 </pre>
 
 <h3>Description</h3>
@@ -4091,12 +4134,12 @@ passing the arguments in <var>argc</var> and <var>argv</var>.
 <h3>Errors</h3>
 
 <dl>
-<dt>RDB_INVALID_TRANSACTION
+<dt>RDB_INVALID_TRANSACTION_ERROR
 <dd><var>txp</var> does not point to a running transaction.
-<dt>RDB_OPERATOR_NOT_FOUND
+<dt>RDB_OPERATOR_NOT_FOUND_ERROR
 <dd>A read-only operator that matches the name and argument types could not be
 found.
-<dt>RDB_TYPE_MISMATCH
+<dt>RDB_TYPE_MISMATCH_ERROR
 <dd>A read-only operator that matches <var>name</var> could be found,
 but it does not match the argument types.
 </dl>
@@ -4116,7 +4159,7 @@ in which case the transaction may be implicitly rolled back.
 
 int
 RDB_call_update_op(const char *name, int argc, RDB_object *argv[],
-                RDB_transaction *txp);
+                RDB_exec_context *ecp, RDB_transaction *txp);
 </pre>
 
 <h3>Description</h3>
@@ -4131,9 +4174,9 @@ passing the arguments in <var>argc</var> and <var>argv</var>.
 <h3>Errors</h3>
 
 <dl>
-<dt>RDB_INVALID_TRANSACTION
+<dt>RDB_INVALID_TRANSACTION_ERROR
 <dd><var>txp</var> does not point to a running transaction.
-<dt>RDB_OPERATOR_NOT_FOUND
+<dt>RDB_OPERATOR_NOT_FOUND_ERROR
 <dd>An update operator that matches the name and arguments could not be
 found.
 </dl>
@@ -4152,7 +4195,7 @@ in which case the transaction may be implicitly rolled back.
 #include &lt;rel/rdb.h&gt;
 
 int
-RDB_drop_op(const char *name, RDB_transaction *txp);
+RDB_drop_op(const char *name, RDB_exec_context *ecp, RDB_transaction *txp);
 </pre>
 
 <h3>Description</h3>
@@ -4167,9 +4210,9 @@ from the database. This affects all overloaded versions.
 <h3>Errors</h3>
 
 <dl>
-<dt>RDB_INVALID_TRANSACTION
+<dt>RDB_INVALID_TRANSACTION_ERROR
 <dd><var>txp</var> does not point to a running transaction.
-<dt>RDB_NOT_FOUND
+<dt>RDB_NOT_FOUND_ERROR
 <dd>An operator with the specified name could not be found.
 </dl>
 
@@ -4185,7 +4228,7 @@ in which case the transaction may be implicitly rolled back.
 
 int
 RDB_create_constraint(const char *name, RDB_expression *constrp,
-                      RDB_transaction *txp);
+                      RDB_exec_context *ecp, RDB_transaction *txp);
 </pre>
 
 <h3>Description</h3>
@@ -4200,11 +4243,11 @@ on the database the transaction specified by <var>txp</var> interacts with.
 <h3>Errors</h3>
 
 <dl>
-<dt>RDB_INVALID_TRANSACTION
+<dt>RDB_INVALID_TRANSACTION_ERROR
 <dd><var>txp</var> does not point to a running transaction.
-<dt>RDB_TYPE_MISMATCH
+<dt>RDB_TYPE_MISMATCH_ERROR
 <dd>The expression specified by <var>constrp</var> is not of type BOOLEAN.
-<dt>RDB_PREDICATE_VIOLATION
+<dt>RDB_PREDICATE_VIOLATION_ERROR
 <dd>The expression specified by <var>constrp</var> is not satisfied.
 </dl>
 
@@ -4219,7 +4262,7 @@ in which case the transaction may be implicitly rolled back.
 #include &lt;rel/rdb.h&gt;
 
 int
-RDB_drop_constraint(const char *name, RDB_transaction *txp);
+RDB_drop_constraint(const char *name, RDB_exec_context *ecp, RDB_transaction *txp);
 </pre>
 
 <h3>Description</h3>
@@ -4233,9 +4276,9 @@ RDB_drop_constraint(const char *name, RDB_transaction *txp);
 <h3>Errors</h3>
 
 <dl>
-<dt>RDB_INVALID_TRANSACTION
+<dt>RDB_INVALID_TRANSACTION_ERROR
 <dd><var>txp</var> does not point to a running transaction.
-<dt>RDB_NOT_FOUND
+<dt>RDB_NOT_FOUND_ERROR
 <dd>A constraint with the name <var>name</var> could not be found.
 </dl>
 
@@ -4388,7 +4431,8 @@ passed to the function.
 
 int
 RDB_create_table_index(const char *name, RDB_table *tbp, int idxcompc,
-                       const RDB_seq_item idxcompv[], int flags, RDB_transaction *txp);
+                       const RDB_seq_item idxcompv[], int flags,
+                       RDB_exec_context *ecp, RDB_transaction *txp);
 </pre>
 
 <h3>Description</h3>
@@ -4407,11 +4451,11 @@ If <var>flags</var> is RDB_ORDERED, a B-tree index is created.
 <h3>Errors</h3>
 
 <dl>
-<dt>RDB_INVALID_ARGUMENT
+<dt>RDB_INVALID_ARGUMENT_ERROR
 <dd><var>name</var> is not a valid index name.
-<dt>RDB_ELEMENT_EXISTS
+<dt>RDB_ELEMENT_EXIST_ERROR
 <dd>An index with name <var>name</var> already exists.
-<dt>RDB_ATTRIBUTE_NOT_FOUND
+<dt>RDB_ATTRIBUTE_NOT_FOUND_ERROR
 <dd>An attribute specified by <var>idxcompv</var> does not appear in the
 table.
 </dl>
@@ -4427,7 +4471,7 @@ in which case the transaction may be implicitly rolled back.
 #include &lt;rel/rdb.h&gt;
 
 int
-RDB_drop_table_index(const char *name, RDB_transaction *txp);
+RDB_drop_table_index(const char *name, RDB_exec_context *ecp, RDB_transaction *txp);
 </pre>
 
 <h3>Description</h3>
@@ -4441,53 +4485,12 @@ RDB_drop_table_index(const char *name, RDB_transaction *txp);
 <h3>Errors</h3>
 
 <dl>
-<dt>RDB_NOT_FOUND
+<dt>RDB_NOT_FOUND_ERROR
 <dd>An index with name <var>name</var> does not exist.
 </dl>
 
 <p>The call may also fail for a <a href="#syserr">system error</a>,
 in which case the transaction may be implicitly rolled back.
-
-<hr>
-
-<h2 id="strerror">RDB_strerror</h2>
-
-<pre>
-#include &lt;rel/rdb.h&gt;
-
-const char *
-RDB_strerror(int err);
-</pre>
-
-<h3>Description</h3>
-
-<p>Returns a string describing the Duro error code passed in the
-argument <var>err</var>.
-
-<h3>Return value</h3>
-
-<p>Returns the appropriate description string, or a message
-"unkown error" if the error code is unkown.
-
-<hr>
-
-<h2 id="is_syserr">RDB_is_syserr</h2>
-
-<pre>
-#include &lt;rel/rdb.h&gt;
-
-int
-RDB_is_syserr(int err);
-</pre>
-
-<h3>Description</h3>
-
-<p>Checks whether <var>err</var> represents a system error.
-
-<h3>Return value</h3>
-
-<p>The value returned is nonzero if <var>err</var> represents a system error,
-and zero if it does not.
 
 <hr>
 
@@ -4499,13 +4502,13 @@ RDB_parse_table</h2>
 
 typedef RDB_table *RDB_ltablefn(const char *, void *);
 
-int
-RDB_parse_expr(const char *exprtxt, RDB_ltablefn *ltfnp, void *arg, RDB_transaction *,
-        RDB_expression **);
+RDB_expression *
+RDB_parse_expr(const char *exprtxt, RDB_ltablefn *ltfnp, void *arg,
+        RDB_exec_context *ecp, RDB_transaction *);
 
-int
-RDB_parse_table(const char *exprtxt, RDB_ltablefn *ltfnp, void *arg, RDB_transaction *,
-        RDB_table **);
+RDB_table *
+RDB_parse_table(const char *exprtxt, RDB_ltablefn *ltfnp, void *arg,
+        RDB_exec_context *ecp, RDB_transaction *);
 </pre>
 
 <h3>Description</h3>
@@ -4517,13 +4520,13 @@ The function is invoked with the table name and <var>arg</var> as
 arguments. It must return a pointer to the table or NULL if the table was
 not found.
 
-<p>RDB_parse_expr converts an expression into a RDB_expression.
+<p><strong>RDB_parse_expr</strong> converts an expression into a RDB_expression.
 
-<p>RDB_parse_table converts an expression into a virtual table.
+<p><strong>RDB_parse_table</strong> converts an expression into a virtual table.
 
 <h3>Return value</h3>
 
-<p>On success, RDB_OK is returned. On failure, an error code is returned.
+<p>On success, RDB_OK is returned. On failure, RDB_ERROR is returned.
 
 <h3>Notes</h3>
 
@@ -4601,28 +4604,9 @@ typedef enum {
 
 <hr>
 
-<h2 id="syserr">System errors</h2>
+<h2>Built-in types</h2>
 
-<dl>
-<dt>RDB_NO_SPACE
-<dd>Insufficient disk space.
-<dt>RDB_NO_MEMORY
-<dd>Insufficient memory.
-<dt>RDB_DEADLOCK
-<dd>A deadlock condition was detected.
-<dt>RDB_LOCK_NOT_GRANTED
-<dd>A lock was requested but could not be granted.
-<dt>RDB_INTERNAL
-<dd>Internal error.
-<dt>RDB_RESOURCE_NOT_FOUND
-<dd>A system resource, usually a file, could not be found.
-<dt>RDB_SYSTEM_ERROR
-<dd>Unspecified system error.
-</dl>
-
-<hr>
-
-<h2 id="built-in-types">Built-in types</h2>
+<h3 id="data-types">Basic data types</h3>
 
 <table border="1" summary="Built-in types">
 <tr><th>Name<th>RDB_type variable<th>C type
@@ -4632,6 +4616,29 @@ typedef enum {
 <tr><td>STRING<td>RDB_STRING<td>char *
 <tr><td>BINARY<td>RDB_BINARY<td>&nbsp;-
 </table>
+
+<h3>Error types</h3>
+
+<h4 id="syserr">System errors</h4>
+
+<dl>
+<dt>RDB_NO_SPACE_ERROR
+<dd>Insufficient disk space.
+<dt>RDB_NO_MEMORY_ERROR
+<dd>Insufficient memory.
+<dt>RDB_LOCK_NOT_GRANTED_ERROR
+<dd>A lock was requested but could not be granted.
+<dt>RDB_DEADLOCK_ERROR
+<dd>A deadlock condition was detected.
+<dt>RDB_RESOURCE_NOT_FOUND_ERROR
+<dd>A system resource, usually a file, could not be found.
+<dt>RDB_INTERNAL_ERROR
+<dd>Internal error.
+<dt>RDB_FATAL_ERROR
+<dd>Fatal error. This means that future calls will most likely fail.
+<dt>RDB_SYSTEM_ERROR_ERROR
+<dd>Unspecified system error.
+</dl>
 
 <h2 id="builtin-ops">Built-in operators</h2>
 
@@ -4824,7 +4831,7 @@ If the operands are strings, the strings will be compared using strcoll().
 <h4>Errors</h4>
 
 <dl>
-<dt>INVALID_ARGUMENT
+<dt>INVALID_ARGUMENT_ERROR
 <dd>The divisor is zero.
 </dl>
 
@@ -4905,7 +4912,7 @@ START.
 <h4>Errors</h4>
 
 <dl>
-<dt>INVALID_ARGUMENT
+<dt>INVALID_ARGUMENT_ERROR
 <dd>START is negative, or START + LENGTH is greater than LENGTH(S).
 </dl>
 
