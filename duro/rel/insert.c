@@ -23,10 +23,9 @@ _RDB_insert_real(RDB_table *tbp, const RDB_object *tplp,
 
     if (tbp->stp == NULL) {
         /* Create physical table */
-        ret = _RDB_create_stored_table(tbp, txp != NULL ? txp->envp : NULL,
-                NULL, ecp, txp);
-        if (ret != RDB_OK) {
-            return ret;
+        if (_RDB_create_stored_table(tbp, txp != NULL ? txp->envp : NULL,
+                NULL, ecp, txp) != RDB_OK) {
+            return RDB_ERROR;
         }
     }
 
@@ -103,20 +102,23 @@ _RDB_insert_real(RDB_table *tbp, const RDB_object *tplp,
                 RDB_raise_type_mismatch(
                         "tuple attribute type does not match table attribute type",
                         ecp);
-                return RDB_ERROR;
+                ret = RDB_ERROR;
+                goto cleanup;
             }
         }
 
         /* Set type - needed for tuple and array attributes */
         if (valp->typ == NULL
                 && (valp->kind == RDB_OB_TUPLE
-                 || valp->kind == RDB_OB_ARRAY))
+                 || valp->kind == RDB_OB_ARRAY)) {
             valp->typ =  tuptyp->var.tuple.attrv[i].typ;
             /* !! check object kind against type? */
+        }
 
-        ret = _RDB_obj_to_field(&fvp[*fnop], valp, ecp);
-        if (ret != RDB_OK)
+        if (_RDB_obj_to_field(&fvp[*fnop], valp, ecp) != RDB_OK) {
+            ret = RDB_ERROR;
             goto cleanup;
+        }
     }
 
     _RDB_cmp_ecp = ecp;
@@ -153,8 +155,12 @@ RDB_insert(RDB_table *tbp, const RDB_object *tplp, RDB_exec_context *ecp,
            RDB_transaction *txp)
 {
     RDB_ma_insert ins;
+    RDB_int count;
 
     ins.tbp = tbp;
     ins.tplp = (RDB_object *) tplp;
-    return RDB_multi_assign(1, &ins, 0, NULL, 0, NULL, 0, NULL, ecp, txp);
+    count = RDB_multi_assign(1, &ins, 0, NULL, 0, NULL, 0, NULL, ecp, txp);
+    if (count == RDB_ERROR)
+        return RDB_ERROR;
+    return RDB_OK;
 }

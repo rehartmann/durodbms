@@ -579,29 +579,29 @@ int
 _RDB_insert_real(RDB_table *tbp, const RDB_object *tplp, RDB_exec_context *,
         RDB_transaction *);
 
-int
+RDB_int
 _RDB_update_real(RDB_table *tbp, RDB_expression *condp, int updc,
         const RDB_attr_update updv[], RDB_exec_context *, RDB_transaction *);
 
-int
+RDB_int
 _RDB_update_select_pindex(RDB_table *, RDB_expression *,
         int updc, const RDB_attr_update updv[], RDB_exec_context *,
         RDB_transaction *);
 
-int
+RDB_int
 _RDB_update_select_index(RDB_table *, RDB_expression *,
         int updc, const RDB_attr_update updv[], RDB_exec_context *,
         RDB_transaction *);
 
-int
+RDB_int
 _RDB_delete_real(RDB_table *tbp, RDB_expression *condp, RDB_exec_context *,
         RDB_transaction *);
 
-int
+RDB_int
 _RDB_delete_select_index(RDB_table *tbp, RDB_expression *condp,
         RDB_exec_context *, RDB_transaction *);
 
-int
+RDB_int
 _RDB_delete_select_uindex(RDB_table *tbp, RDB_expression *condp,
         RDB_exec_context *, RDB_transaction *);
 

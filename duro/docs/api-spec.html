@@ -41,6 +41,8 @@
 <li><a href="#remove_table">RDB_remove_table</a>
 <li><a href="#sdivide">RDB_sdivide</a>
 <li><a href="#select">RDB_select</a>
+<li><a href="#semijoin">RDB_semijoin</a>
+<li><a href="#semiminus">RDB_semiminus</a>
 <li><a href="#set_table_name">RDB_set_table_name</a>
 <li><a href="#subset">RDB_subset</a>
 <li><a href="#sum">RDB_sum</a>
@@ -1076,7 +1078,7 @@ typedef struct {
     RDB_expression *exp;
 } RDB_attr_update;
 
-int
+RDB_int
 RDB_update(RDB_table *tbp, RDB_expression *exp, int updc,
         const RDB_attr_update updv[], RDB_exec_context *ecp, RDB_transaction *txp);
 </pre>
@@ -1095,7 +1097,10 @@ obtained by evaluating the expression specified by the field exp.
 
 <h3>Return value</h3>
 
-<p>On success, RDB_OK is returned. On failure, an error code is returned.
+<p>The number of updated tuples in real tables if the call was successful.
+A call which did not modify any tuple because no tuple matched the condition
+is considered a successful call and returns zero.
+If an error occured, RDB_ERROR is returned.
 
 <h3>Errors</h3>
 
@@ -1146,7 +1151,7 @@ in which case the transaction may be implicitly rolled back.
 <pre>
 #include &lt;rel/rdb.h&gt;
 
-int
+RDB_int
 RDB_delete(RDB_table *tbp, RDB_expression *exp, RDB_exec_context *ecp, RDB_transaction *txp);
 </pre>
 
@@ -1161,7 +1166,10 @@ a JOIN, SUMMARIZE, WRAP, UNWRAP, GROUP, UNGROUP, or DIVIDEBY PER.
 
 <h3>Return value</h3>
 
-<p>On success, RDB_OK is returned. On failure, an error code is returned.
+<p>The number of deleted tuples, if no error occured.
+A call which did not delete any tuple because no tuple matched the condition
+is considered a successful call and returns zero.
+If an error occured, RDB_ERROR is returned.
 
 <h3>Errors</h3>
 
@@ -1557,7 +1565,7 @@ RDB_minus(RDB_table *, RDB_table *, RDB_exec_context *ecp);
 
 <h3>Description</h3>
 
-<p>RDB_intersect creates a local (transient) virtual table which is the
+<p>RDB_minus creates a local (transient) virtual table which is the
 result of a relational MINUS of the two tables, that is,
 it contains the tuples from the first table,
 except those which the second table contains.
@@ -1574,6 +1582,54 @@ except those which the second table contains.
 </dl>
 
 <p>The call may also fail for a <a href="#syserr">system error</a>.
+
+<hr>
+
+<h2 id="semijoin">RDB_semijoin</h2>
+
+<pre>
+#include &lt;rel/rdb.h&gt;
+
+RDB_table *
+RDB_semijoin(RDB_table *, RDB_table *, RDB_exec_context *ecp);
+</pre>
+
+<h3>Description</h3>
+
+<p>RDB_semijoin creates a local (transient) virtual table which is the
+result of a relational SEMIJOIN of the two tables.
+
+<h3>Return value</h3>
+
+<p>On success, RDB_OK is returned. On failure, an error code is returned.
+
+<h3>Errors</h3>
+
+<p>The call may fail for a <a href="#syserr">system error</a>.
+
+<hr>
+
+<h2 id="semiminus">RDB_semiminus</h2>
+
+<pre>
+#include &lt;rel/rdb.h&gt;
+
+RDB_table *
+RDB_semiminus(RDB_table *, RDB_table *, RDB_exec_context *ecp);
+</pre>
+
+<h3>Description</h3>
+
+<p>RDB_semiminus creates a local (transient) virtual table which is the
+result of a relational SEMIMINUS of the two tables.
+
+<h3>Return value</h3>
+
+<p>On success, RDB_OK is returned. On failure, an error code is returned.
+
+<h3>Errors</h3>
+
+<p>The call may fail for a <a href="#syserr">system error</a>.
 
 <hr>
 
@@ -1604,7 +1660,7 @@ typedef struct {
     RDB_object *srcp;
 } RDB_ma_copy;
 
-int
+RDB_int
 RDB_multi_assign(int insc, const RDB_ma_insert insv[],
         int updc, const RDB_ma_update updv[],
         int delc, const RDB_ma_delete delv[],

@@ -236,7 +236,7 @@ RDB_drop_constraint(const char *name, RDB_exec_context *ecp,
     ret = RDB_delete(dbrootp->constraints_tbp, condp, ecp, txp);
     RDB_drop_expr(condp, ecp);
 
-    return ret;
+    return ret == RDB_ERROR ? RDB_ERROR : RDB_OK;
 }
 
 int

@@ -98,7 +98,7 @@ test_update1(RDB_database *dbp, RDB_exec_context *ecp)
     upd.exp = exp;
 
     ret = RDB_update(tbp, NULL, 1, &upd, ecp, &tx);
-    if (ret != RDB_OK) {
+    if (ret == RDB_ERROR) {
         RDB_rollback(ecp, &tx);
         return ret;
     }
@@ -141,7 +141,7 @@ test_update2(RDB_database *dbp, RDB_exec_context *ecp)
     upd.exp = exp;
 
     ret = RDB_update(tbp, NULL, 1, &upd, ecp, &tx);
-    if (ret != RDB_OK) {
+    if (ret == RDB_ERROR) {
         RDB_rollback(ecp, &tx);
         return ret;
     }

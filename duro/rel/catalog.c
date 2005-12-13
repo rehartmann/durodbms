@@ -549,7 +549,9 @@ _RDB_cat_delete_index(const char *name, RDB_exec_context *ecp,
 
     ret = RDB_delete(txp->dbp->dbrootp->indexes_tbp, wherep, ecp, txp);
     RDB_drop_expr(wherep, ecp);
-    return ret;
+    if (ret == RDB_ERROR)
+        return RDB_ERROR;
+    return RDB_OK;
 }
 
 int
@@ -619,35 +621,35 @@ delete_rtable(RDB_table *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
         return RDB_ERROR;
     }
     ret = RDB_delete(txp->dbp->dbrootp->rtables_tbp, exprp, ecp, txp);
-    if (ret != RDB_OK)
+    if (ret == RDB_ERROR)
         goto cleanup;
 
     ret = RDB_delete(txp->dbp->dbrootp->table_recmap_tbp, exprp, ecp, txp);
-    if (ret != RDB_OK)
+    if (ret == RDB_ERROR)
         goto cleanup;
 
     ret = RDB_delete(txp->dbp->dbrootp->table_attr_tbp, exprp, ecp, txp);
-    if (ret != RDB_OK)
+    if (ret == RDB_ERROR)
         goto cleanup;
 
     ret = RDB_delete(txp->dbp->dbrootp->table_attr_defvals_tbp, exprp, ecp,
             txp);
-    if (ret != RDB_OK)
+    if (ret == RDB_ERROR)
         goto cleanup;
 
     ret = RDB_delete(txp->dbp->dbrootp->keys_tbp, exprp, ecp, txp);
-    if (ret != RDB_OK)
+    if (ret == RDB_ERROR)
         goto cleanup;
 
     ret = RDB_delete(txp->dbp->dbrootp->indexes_tbp, exprp, ecp, txp);
-    if (ret != RDB_OK)
+    if (ret == RDB_ERROR)
         goto cleanup;
 
     ret = RDB_delete(txp->dbp->dbrootp->dbtables_tbp, exprp, ecp, txp);
 
 cleanup:
     RDB_drop_expr(exprp, ecp);
-    return ret;
+    return ret == RDB_ERROR ? RDB_ERROR : RDB_OK;
 }
 
 /* Delete a virtual table from the catalog */
@@ -661,7 +663,7 @@ delete_vtable(RDB_table *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
         return RDB_ERROR;
     }
     ret = RDB_delete(txp->dbp->dbrootp->vtables_tbp, exprp, ecp, txp);
-    if (ret != RDB_OK)
+    if (ret == RDB_ERROR)
         goto cleanup;
 
     ret = RDB_delete(txp->dbp->dbrootp->dbtables_tbp, exprp, ecp, txp);
@@ -669,7 +671,7 @@ delete_vtable(RDB_table *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
 cleanup:
     RDB_drop_expr(exprp, ecp);
 
-    return ret;
+    return ret == RDB_ERROR ? RDB_ERROR : RDB_OK;
 }
 
 int
@@ -1748,28 +1750,28 @@ _RDB_cat_rename_table(RDB_table *tbp, const char *name, RDB_exec_context *ecp,
 
     if (tbp->kind == RDB_TB_REAL) {
         ret = RDB_update(txp->dbp->dbrootp->rtables_tbp, condp, 1, &upd, ecp, txp);
-        if (ret != RDB_OK)
+        if (ret == RDB_ERROR)
             goto cleanup;
         ret = RDB_update(txp->dbp->dbrootp->table_attr_tbp, condp, 1, &upd, ecp, txp);
-        if (ret != RDB_OK)
+        if (ret == RDB_ERROR)
             goto cleanup;
         ret = RDB_update(txp->dbp->dbrootp->table_attr_defvals_tbp, condp,
                 1, &upd, ecp, txp);
-        if (ret != RDB_OK)
+        if (ret == RDB_ERROR)
             goto cleanup;
         ret = RDB_update(txp->dbp->dbrootp->keys_tbp, condp, 1, &upd, ecp, txp);
-        if (ret != RDB_OK)
+        if (ret == RDB_ERROR)
             goto cleanup;
         ret = RDB_update(txp->dbp->dbrootp->indexes_tbp, condp, 1, &upd, ecp, txp);
-        if (ret != RDB_OK)
+        if (ret == RDB_ERROR)
             goto cleanup;
     } else {
         ret = RDB_update(txp->dbp->dbrootp->vtables_tbp, condp, 1, &upd, ecp, txp);
-        if (ret != RDB_OK)
+        if (ret == RDB_ERROR)
             goto cleanup;
     }
     ret = RDB_update(txp->dbp->dbrootp->table_recmap_tbp, condp, 1, &upd, ecp, txp);
-    if (ret != RDB_OK)
+    if (ret == RDB_ERROR)
         goto cleanup;
     ret = RDB_update(txp->dbp->dbrootp->dbtables_tbp, condp, 1, &upd, ecp, txp);
 
@@ -1777,7 +1779,7 @@ cleanup:
     RDB_drop_expr(condp, ecp);
     if (upd.exp != NULL)
         RDB_drop_expr(upd.exp, ecp);
-    return ret;
+    return ret == RDB_ERROR ? RDB_ERROR : RDB_OK;
 }
 
 static int

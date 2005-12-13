@@ -1454,8 +1454,8 @@ RDB_drop_op(const char *name, RDB_exec_context *ecp, RDB_transaction *txp)
         }
         ret = RDB_delete(txp->dbp->dbrootp->upd_ops_tbp, exp, ecp, txp);
         RDB_drop_expr(exp, ecp);
-        if (ret != RDB_OK) {
-            return ret;
+        if (ret == RDB_ERROR) {
+            return RDB_ERROR;
         }        
     } else {
         /* It's a read-only operator */
@@ -1480,7 +1480,7 @@ RDB_drop_op(const char *name, RDB_exec_context *ecp, RDB_transaction *txp)
             return RDB_ERROR;
         }
         ret = RDB_delete(txp->dbp->dbrootp->ro_ops_tbp, exp, ecp, txp);
-        if (ret != RDB_OK) {
+        if (ret == RDB_ERROR) {
             RDB_drop_expr(exp, ecp);
             _RDB_handle_errcode(ret, ecp, txp);
             return RDB_ERROR;

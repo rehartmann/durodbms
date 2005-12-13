@@ -46,7 +46,11 @@ if {![catch {
 }
 
 # Update nonkey attribute
-duro::update T1 STRATTR {STRATTR || "x"} $tx
+set cnt [duro::update T1 STRATTR {STRATTR || "x"} $tx]
+
+if {$cnt != 1} {
+    error "update returned $cnt instead of 1"
+}
 
 # Update key attribute
 duro::update T1 INTATTR {INTATTR + 1} $tx
@@ -99,7 +103,11 @@ duro::rollback $tx
 set tx [duro::begin $dbenv TEST]
 
 # Remove tuple by non-key attribute
-duro::delete T1 {STRATTR = "Bla"} $tx
+set cnt [duro::delete T1 {STRATTR = "Bla"} $tx]
+
+if {$cnt != 1} {
+    error "$cnt deleted tuples reported, should be 1"
+}
 
 set tpl [duro::expr {TUPLE FROM T1} $tx]
 if {![tequal $tpl {INTATTR 2 STRATTR Blax}]} {
@@ -248,7 +256,11 @@ if {![tequal $tpl $stpl]} {
 # Delete by secondary key
 
 # Tuple must not be deleted
-duro::delete T2 {INTATTR = 2 AND STRATTR2 = "Blo"} $tx
+set cnt [duro::delete T2 {INTATTR = 2 AND STRATTR2 = "Blo"} $tx]
+
+if {$cnt != 0} {
+    error "$cnt deleted tuples reported, should be 0"
+}
 
 set cnt [duro::expr {COUNT (T2)} $tx]
 if {$cnt != 1} {

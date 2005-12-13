@@ -11,6 +11,7 @@ int
 Duro_update_cmd(ClientData data, Tcl_Interp *interp, int objc,
         Tcl_Obj *CONST objv[])
 {
+    RDB_int count;
     int ret;
     int i;
     char *name;
@@ -22,6 +23,7 @@ Duro_update_cmd(ClientData data, Tcl_Interp *interp, int objc,
     RDB_attr_update *updv;
     RDB_expression *wherep;
     int upd_arg_idx;
+    Tcl_Obj *restobjp;
     TclState *statep = (TclState *) data;
 
     if (objc < 4) {
@@ -74,13 +76,20 @@ Duro_update_cmd(ClientData data, Tcl_Interp *interp, int objc,
             goto cleanup;
         }
     }
-    ret = RDB_update(tbp, wherep, updc, updv, statep->current_ecp, txp);
-    if (ret != RDB_OK) {
+    count = RDB_update(tbp, wherep, updc, updv, statep->current_ecp, txp);
+    if (count == RDB_ERROR) {
         Duro_dberror(interp, RDB_get_err(statep->current_ecp), txp);
         ret = TCL_ERROR;
         goto cleanup;
     }
 
+    restobjp = Tcl_NewIntObj(count);
+    if (restobjp == NULL) {
+        ret = TCL_ERROR;
+        goto cleanup;
+    }
+
+    Tcl_SetObjResult(interp, restobjp);
     ret = TCL_OK;
 
 cleanup:

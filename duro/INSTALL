@@ -19,3 +19,7 @@ with libpthread. This can be specified by when running configure:
 Berkeley DB is assumed to be located in /usr/local/BerkeleyDB.4.3.
 If Berkeley DB is located in a different directory, set the BDB_HOME
 environment variable and use the -e option of make.
+
+To build Duro without Tcl support, pass --without-tcl to configure.
+Note that since most tests depend on Durotcl, 'make check' will not
+work in this case. Duroadmin will not be available too.

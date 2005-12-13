@@ -219,6 +219,7 @@ int
 Duro_massign_cmd(ClientData data, Tcl_Interp *interp, int objc,
         Tcl_Obj *CONST objv[])
 {
+    RDB_int count;
     int ret;
     int i, j;
     char *txstr;
@@ -298,11 +299,13 @@ Duro_massign_cmd(ClientData data, Tcl_Interp *interp, int objc,
         }
     }
 
-    ret = RDB_multi_assign(insc, insv, updc, updv, delc, delv, copyc, copyv,
+    count = RDB_multi_assign(insc, insv, updc, updv, delc, delv, copyc, copyv,
             statep->current_ecp, txp);
-    if (ret != RDB_OK) {
+    if (count == RDB_ERROR) {
         Duro_dberror(interp, RDB_get_err(statep->current_ecp), txp);
         ret = TCL_ERROR;
+    } else {
+        ret = TCL_OK;
     }
 
 cleanup:

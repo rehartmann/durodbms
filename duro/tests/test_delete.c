@@ -63,7 +63,7 @@ test_delete(RDB_database *dbp, RDB_exec_context *ecp)
     exprp = RDB_eq(RDB_expr_attr("EMPNO", ecp),
             RDB_int_to_expr(1, ecp), ecp);
     ret = RDB_delete(tbp, exprp, ecp, &tx);
-    if (ret != RDB_OK) {
+    if (ret == RDB_ERROR) {
         RDB_rollback(ecp, &tx);
         return ret;
     }
@@ -78,7 +78,7 @@ test_delete(RDB_database *dbp, RDB_exec_context *ecp)
 
     printf("Deleting all tuples from EMPS1\n");
     ret = RDB_delete(tbp, NULL, ecp, &tx);
-    if (ret != RDB_OK) {
+    if (ret == RDB_ERROR) {
         RDB_rollback(ecp, &tx);
         return ret;
     }

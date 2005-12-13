@@ -764,7 +764,7 @@ RDB_drop_db(RDB_database *dbp, RDB_exec_context *ecp)
     }
 
     ret = RDB_delete(dbp->dbrootp->dbtables_tbp, exprp, ecp, &tx);
-    if (ret != RDB_OK) {
+    if (ret == RDB_ERROR) {
         goto error;
     }
 

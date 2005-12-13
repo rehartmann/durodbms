@@ -11,10 +11,11 @@
 #include <gen/strfns.h>
 #include <string.h>
 
-static int
+static RDB_int
 delete_by_uindex(RDB_table *tbp, RDB_object *objpv[], _RDB_tbindex *indexp,
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
+    RDB_int rcount;
     RDB_field *fv;
     int i;
     int ret;
@@ -23,14 +24,16 @@ delete_by_uindex(RDB_table *tbp, RDB_object *objpv[], _RDB_tbindex *indexp,
     fv = malloc(sizeof (RDB_field) * keylen);
     if (fv == NULL) {
         RDB_raise_no_memory(ecp);
-        ret = RDB_ERROR;
+        rcount = RDB_ERROR;
         goto cleanup;
     }
     
     for (i = 0; i < keylen; i++) {
         ret = _RDB_obj_to_field(&fv[i], objpv[i], ecp);
-        if (ret != RDB_OK)
+        if (ret != RDB_OK) {
+            rcount = RDB_ERROR;
             goto cleanup;
+        }
     }
 
     _RDB_cmp_ecp = ecp;
@@ -41,21 +44,28 @@ delete_by_uindex(RDB_table *tbp, RDB_object *objpv[], _RDB_tbindex *indexp,
         ret = RDB_index_delete_rec(indexp->idxp, fv,
                 tbp->is_persistent ? txp->txid : NULL);
     }
-    if (ret != RDB_OK) {
-        goto cleanup;
+    switch (ret) {
+        case RDB_OK:
+            rcount = 1;
+            break;
+        case DB_NOTFOUND:
+            rcount = 0;
+            break;
+        default:
+            _RDB_handle_errcode(ret, ecp, txp);
+            rcount = RDB_ERROR;
     }
-
-    ret = RDB_OK;
 
 cleanup:
     free(fv);
-    return ret;
+    return rcount;
 }
 
-int
+RDB_int
 _RDB_delete_real(RDB_table *tbp, RDB_expression *condp, RDB_exec_context *ecp,
         RDB_transaction *txp)
 {
+    RDB_int rcount;
     int ret;
     int i;
     RDB_cursor *curp;
@@ -67,21 +77,20 @@ _RDB_delete_real(RDB_table *tbp, RDB_expression *condp, RDB_exec_context *ecp,
 
     if (tbp->stp == NULL) {
         /* Physical table representation has not been created, so table is empty */
-        return RDB_OK;
+        return 0;
     }
 
     ret = RDB_recmap_cursor(&curp, tbp->stp->recmapp, RDB_TRUE,
             tbp->is_persistent ? txp->txid : NULL);
-    if (ret != RDB_OK)
-        return ret;
-    ret = RDB_cursor_first(curp);
-    if (ret == DB_NOTFOUND) {
-        RDB_destroy_cursor(curp);
-        return RDB_OK;
+    if (ret != RDB_OK) {
+        _RDB_handle_errcode(ret, ecp, txp);
+        return RDB_ERROR;
     }
+    ret = RDB_cursor_first(curp);
     
     _RDB_cmp_ecp = ecp;
-    do {
+    rcount = 0;
+    while (ret == RDB_OK) {
         RDB_init_obj(&tpl);
         if (condp != NULL) {
             for (i = 0; i < tpltyp->var.tuple.attrc; i++) {
@@ -90,8 +99,9 @@ _RDB_delete_real(RDB_table *tbp, RDB_expression *condp, RDB_exec_context *ecp,
                 ret = RDB_cursor_get(curp,
                         *_RDB_field_no(tbp->stp, tpltyp->var.tuple.attrv[i].name),
                         &datap, &len);
-                if (ret != 0) {
+                if (ret != RDB_OK) {
                    RDB_destroy_obj(&tpl, ecp);
+                   _RDB_handle_errcode(ret, ecp, txp);
                    goto error;
                 }
                 RDB_init_obj(&val);
@@ -111,8 +121,7 @@ _RDB_delete_real(RDB_table *tbp, RDB_expression *condp, RDB_exec_context *ecp,
                 }
             }
 
-            ret = RDB_evaluate_bool(condp, &tpl, ecp, txp, &b);
-            if (ret != RDB_OK)
+            if (RDB_evaluate_bool(condp, &tpl, ecp, txp, &b) != RDB_OK)
                  goto error;
         } else {
             b = RDB_TRUE;
@@ -128,23 +137,34 @@ _RDB_delete_real(RDB_table *tbp, RDB_expression *condp, RDB_exec_context *ecp,
                 RDB_destroy_obj(&tpl, ecp);
                 goto error;
             }
+            rcount++;
         }
         RDB_destroy_obj(&tpl, ecp);
         ret = RDB_cursor_next(curp, 0);
-    } while (ret == RDB_OK);
-    if (ret != DB_NOTFOUND)
+    };
+    if (ret != DB_NOTFOUND) {
+        _RDB_handle_errcode(ret, ecp, txp);
         goto error;
-    return RDB_destroy_cursor(curp);
+    }
+
+    if (RDB_destroy_cursor(curp) != RDB_OK) {
+        _RDB_handle_errcode(ret, ecp, txp);
+        curp = NULL;
+        goto error;
+    }
+    return rcount;
 
 error:
-    RDB_destroy_cursor(curp);
-    return ret;
+    if (curp != NULL)
+        RDB_destroy_cursor(curp);
+    return RDB_ERROR;
 }  
 
-int
+RDB_int
 _RDB_delete_select_uindex(RDB_table *tbp, RDB_expression *condp,
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
+    RDB_int rcount;
     int ret;
 
     if (condp != NULL) {
@@ -156,37 +176,38 @@ _RDB_delete_select_uindex(RDB_table *tbp, RDB_expression *condp,
         /*
          * Read tuple and check condition
          */
-        ret = _RDB_get_by_uindex(tbp->var.select.tbp->var.project.tbp,
+        if (_RDB_get_by_uindex(tbp->var.select.tbp->var.project.tbp,
                 tbp->var.select.objpv, tbp->var.select.tbp->var.project.indexp,
-                tbp->typ->var.basetyp, ecp, txp, &tpl);
-        if (ret != RDB_OK) {
+                tbp->typ->var.basetyp, ecp, txp, &tpl) != RDB_OK) {
             RDB_destroy_obj(&tpl, ecp);
+            rcount = RDB_ERROR;
             goto cleanup;
         }
         ret = RDB_evaluate_bool(condp, &tpl, ecp, txp, &b);
         RDB_destroy_obj(&tpl, ecp);
-        if (ret != RDB_OK)
+        if (ret != RDB_OK) {
+            rcount = RDB_ERROR;
             goto cleanup;
+        }
 
         if (!b)
-            return RDB_OK;
+            return 0;
     }
 
-    ret = delete_by_uindex(tbp->var.select.tbp->var.project.tbp,
+    rcount = delete_by_uindex(tbp->var.select.tbp->var.project.tbp,
             tbp->var.select.objpv, tbp->var.select.tbp->var.project.indexp,
             ecp, txp);
-    if (ret == DB_NOTFOUND)
-        ret = RDB_OK;
 
 cleanup:
-    return ret;
+    return rcount;
 }
 
-int
+RDB_int
 _RDB_delete_select_index(RDB_table *tbp, RDB_expression *condp,
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
-    int ret, ret2;
+    RDB_int rcount;
+    int ret;
     int i;
     int flags;
     RDB_cursor *curp = NULL;
@@ -209,14 +230,15 @@ _RDB_delete_select_index(RDB_table *tbp, RDB_expression *condp,
     fv = malloc(sizeof (RDB_field) * keylen);
     if (fv == NULL) {
         RDB_raise_no_memory(ecp);
-        ret = RDB_ERROR;
+        rcount = RDB_ERROR;
         goto cleanup;
     }
 
     for (i = 0; i < keylen; i++) {
-        ret =_RDB_obj_to_field(&fv[i], tbp->var.select.objpv[i], ecp);
-        if (ret != RDB_OK)
+        if (_RDB_obj_to_field(&fv[i], tbp->var.select.objpv[i], ecp) != RDB_OK) {
+            rcount = RDB_ERROR;
             goto cleanup;
+        }
     }
 
     if (tbp->var.select.objpc != indexp->attrc
@@ -227,11 +249,12 @@ _RDB_delete_select_index(RDB_table *tbp, RDB_expression *condp,
 
     ret = RDB_cursor_seek(curp, tbp->var.select.objpc, fv, flags);
     if (ret == DB_NOTFOUND) {
-        ret = RDB_OK;
+        rcount = 0;
         goto cleanup;
     }
 
     _RDB_cmp_ecp = ecp;
+    rcount = 0;
     do {
         RDB_bool del = RDB_TRUE;
         RDB_bool b;
@@ -247,6 +270,7 @@ _RDB_delete_select_index(RDB_table *tbp, RDB_expression *condp,
                 curp, tbp->typ->var.basetyp, &tpl, ecp, txp);
         if (ret != RDB_OK) {
             RDB_destroy_obj(&tpl, ecp);
+            rcount = RDB_ERROR;
             goto cleanup;
         }
         if (tbp->var.select.stopexp != NULL) {
@@ -254,10 +278,10 @@ _RDB_delete_select_index(RDB_table *tbp, RDB_expression *condp,
                     ecp, txp, &b);
             if (ret != RDB_OK) {
                 RDB_destroy_obj(&tpl, ecp);
+                rcount = RDB_ERROR;
                 goto cleanup;
             }
             if (!b) {
-                ret = RDB_OK;
                 RDB_destroy_obj(&tpl, ecp);
                 goto cleanup;
             }
@@ -266,19 +290,26 @@ _RDB_delete_select_index(RDB_table *tbp, RDB_expression *condp,
             ret = RDB_evaluate_bool(condp, &tpl, ecp, txp, &del);
             if (ret != RDB_OK) {
                 RDB_destroy_obj(&tpl, ecp);
+                ret = RDB_ERROR;
                 goto cleanup;
             }
         }
         ret = RDB_evaluate_bool(tbp->var.select.exp, &tpl, ecp, txp, &b);
         RDB_destroy_obj(&tpl, ecp);
-        if (ret != RDB_OK)
+        if (ret != RDB_OK) {
+            rcount = RDB_ERROR;
             goto cleanup;
+        }
         del = (RDB_bool) (del && b);
 
         if (del) {
             ret = RDB_cursor_delete(curp);
-            if (ret != RDB_OK)
+            if (ret != RDB_OK) {
+                _RDB_handle_errcode(ret, ecp, txp);
+                rcount = RDB_ERROR;
                 goto cleanup;
+            }
+            rcount++;
         }
 
         if (tbp->var.select.objpc == indexp->attrc
@@ -289,20 +320,24 @@ _RDB_delete_select_index(RDB_table *tbp, RDB_expression *condp,
         ret = RDB_cursor_next(curp, flags);
     } while (ret == RDB_OK);
 
-    if (ret == DB_NOTFOUND)
-        ret = RDB_OK;
+    if (ret != DB_NOTFOUND) {
+        _RDB_handle_errcode(ret, ecp, txp);
+        rcount = RDB_ERROR;
+    }
 
 cleanup:
     if (curp != NULL) {
-        ret2 = RDB_destroy_cursor(curp);
-        if (ret2 != RDB_OK && ret == RDB_OK)
-            ret = ret2;
+        ret = RDB_destroy_cursor(curp);
+        if (ret != RDB_OK && rcount != RDB_ERROR) {
+            _RDB_handle_errcode(ret, ecp, txp);
+            rcount = RDB_ERROR;
+        }
     }
     free(fv);
-    return ret;
+    return rcount;
 }
 
-int
+RDB_int
 RDB_delete(RDB_table *tbp, RDB_expression *condp, RDB_exec_context *ecp,
         RDB_transaction *txp)
 {

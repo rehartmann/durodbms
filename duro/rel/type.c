@@ -1014,6 +1014,8 @@ RDB_implement_type(const char *name, RDB_type *arep, RDB_int areplen,
 
     ret = RDB_update(txp->dbp->dbrootp->types_tbp, wherep,
             arep != NULL ? 3 : 2, upd, ecp, txp);
+    if (ret != RDB_ERROR)
+        ret = RDB_OK;
 
 cleanup:    
     for (i = 0; i < 3; i++) {
@@ -1068,13 +1070,13 @@ RDB_drop_type(RDB_type *typ, RDB_exec_context *ecp, RDB_transaction *txp)
             return RDB_ERROR;
         }
         ret = RDB_delete(txp->dbp->dbrootp->types_tbp, wherep, ecp, txp);
-        if (ret != RDB_OK) {
+        if (ret == RDB_ERROR) {
             RDB_drop_expr(wherep, ecp);
             return RDB_ERROR;
         }
         ret = RDB_delete(txp->dbp->dbrootp->possrepcomps_tbp, wherep, ecp,
                 txp);
-        if (ret != RDB_OK) {
+        if (ret == RDB_ERROR) {
             RDB_drop_expr(wherep, ecp);
             return ret;
         }

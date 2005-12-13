@@ -578,7 +578,7 @@ RDB_insert(RDB_table *tbp, const RDB_object *tplp, RDB_exec_context *,
  *
  * If condp is NULL, all tuples will be updated.
  */
-int
+RDB_int
 RDB_update(RDB_table *, RDB_expression *, int attrc,
         const RDB_attr_update updv[], RDB_exec_context *, RDB_transaction *);
 
@@ -591,7 +591,7 @@ RDB_update(RDB_table *, RDB_expression *, int attrc,
  * Deleting records from virtual relvars is currently only supported for
  * UNION and INTERSECT.
  */
-int
+RDB_int
 RDB_delete(RDB_table *tbp, RDB_expression *condp, RDB_exec_context *,
         RDB_transaction *);
 
@@ -1170,7 +1170,7 @@ typedef struct {
     RDB_object *srcp;
 } RDB_ma_copy;
 
-int
+RDB_int
 RDB_multi_assign(int insc, const RDB_ma_insert insv[],
         int updc, const RDB_ma_update updv[],
         int delc, const RDB_ma_delete delv[],

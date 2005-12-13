@@ -796,7 +796,12 @@ RDB_obj_comp(const RDB_object *valp, const char *compname, RDB_object *compvalp,
 
     if (valp->typ->var.scalar.sysimpl) {
         if (valp->typ->var.scalar.repv[0].compc == 1) {
-            /* Actual rep is type of the only component */
+            /* Actual rep is type of the only component - check component name */
+            if (strcmp(compname, valp->typ->var.scalar.repv[0].compv[0].name)
+                    != 0) {
+                RDB_raise_invalid_argument("component not found", ecp);
+                return RDB_ERROR;
+            }            
             RDB_type *comptyp = valp->typ->var.scalar.repv[0].compv[0].typ;
 
             /* If *compvalp carries a value, it must match the type */

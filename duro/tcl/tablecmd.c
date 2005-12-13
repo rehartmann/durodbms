@@ -343,13 +343,14 @@ table_drop_cmd(TclState *statep, Tcl_Interp *interp, int objc,
 int
 Duro_delete_cmd(ClientData data, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[])
 {
-    int ret;
+    RDB_int count;
     char *name;
     char *txstr;
     Tcl_HashEntry *entryp;
     RDB_transaction *txp;
     RDB_table *tbp;
     RDB_expression *wherep;
+    Tcl_Obj *restobjp;
     TclState *statep = (TclState *) data;
 
     if (objc < 3 || objc > 4) {
@@ -383,11 +384,17 @@ Duro_delete_cmd(ClientData data, Tcl_Interp *interp, int objc, Tcl_Obj *CONST ob
         wherep = NULL;
     }
 
-    ret = RDB_delete(tbp, wherep, statep->current_ecp, txp);
-    if (ret != RDB_OK) {
+    count = RDB_delete(tbp, wherep, statep->current_ecp, txp);
+    if (count == RDB_ERROR) {
         Duro_dberror(interp, RDB_get_err(statep->current_ecp), txp);
         return TCL_ERROR;
     }
+    restobjp = Tcl_NewIntObj(count);
+    if (restobjp == NULL) {
+        return TCL_ERROR;
+    }
+
+    Tcl_SetObjResult(interp, restobjp);
 
     return TCL_OK;
 }

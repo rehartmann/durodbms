@@ -1286,12 +1286,13 @@ resolve_delete(const RDB_ma_delete *delp, delete_node **delnpp,
     abort();
 }
 
-static int
+static RDB_int
 do_update(const RDB_ma_update *updp, RDB_exec_context *ecp, RDB_transaction *txp)
 {
     int ret;
     RDB_table *tbp, *ntbp, *dtbp;
     RDB_expression *condp;
+    RDB_int rcount;
 
     if (updp->tbp->kind == RDB_TB_REAL && updp->condp == NULL) {
         return _RDB_update_real(updp->tbp, NULL, updp->updc, updp->updv,
@@ -1312,7 +1313,7 @@ do_update(const RDB_ma_update *updp, RDB_exec_context *ecp, RDB_transaction *txp
     _RDB_free_table(tbp, ecp);
 
     if (ret != RDB_OK) {
-        return ret;
+        return RDB_ERROR;
     }
 
     if (ntbp->var.select.tbp->kind == RDB_TB_SELECT) {
@@ -1325,25 +1326,26 @@ do_update(const RDB_ma_update *updp, RDB_exec_context *ecp, RDB_transaction *txp
 
     if (dtbp->var.select.tbp->var.project.indexp != NULL) {
         if (dtbp->var.select.tbp->var.project.indexp->idxp == NULL) {
-            ret = _RDB_update_select_pindex(dtbp, condp,
+            rcount = _RDB_update_select_pindex(dtbp, condp,
                     updp->updc, updp->updv, ecp, txp);
         } else {
-            ret = _RDB_update_select_index(dtbp, condp,
+            rcount = _RDB_update_select_index(dtbp, condp,
                     updp->updc, updp->updv, ecp, txp);
         }
     } else {
-        ret = _RDB_update_real(ntbp->var.select.tbp->var.project.tbp,
+        rcount = _RDB_update_real(ntbp->var.select.tbp->var.project.tbp,
                 ntbp->var.select.exp, updp->updc, updp->updv, ecp, txp);
     }
     RDB_drop_table(ntbp, ecp, NULL);
-    return ret;
+    return rcount;
 }
 
-static int
+static RDB_int
 do_delete(const RDB_ma_delete *delp, RDB_exec_context *ecp,
         RDB_transaction *txp)
 {
     int ret;
+    RDB_int rcount;
     RDB_table *tbp, *ntbp, *dtbp;
     RDB_expression *condp;
 
@@ -1378,16 +1380,16 @@ do_delete(const RDB_ma_delete *delp, RDB_exec_context *ecp,
 
     if (dtbp->var.select.tbp->var.project.indexp != NULL) {
         if (dtbp->var.select.tbp->var.project.indexp->unique) {
-            ret = _RDB_delete_select_uindex(dtbp, condp, ecp, txp);
+            rcount = _RDB_delete_select_uindex(dtbp, condp, ecp, txp);
         } else {
-            ret = _RDB_delete_select_index(dtbp, condp, ecp, txp);
+            rcount = _RDB_delete_select_index(dtbp, condp, ecp, txp);
         }
     } else {
-        ret = _RDB_delete_real(ntbp->var.select.tbp->var.project.tbp,
+        rcount = _RDB_delete_real(ntbp->var.select.tbp->var.project.tbp,
                 ntbp->var.select.exp, ecp, txp);
     }
     RDB_drop_table(ntbp, ecp, NULL);
-    return ret;
+    return rcount;
 }
 
 static int
@@ -1617,7 +1619,7 @@ cleanup:
     return ret;
 }
 
-int
+RDB_int
 RDB_multi_assign(int insc, const RDB_ma_insert insv[],
         int updc, const RDB_ma_update updv[],
         int delc, const RDB_ma_delete delv[],
@@ -1625,18 +1627,17 @@ RDB_multi_assign(int insc, const RDB_ma_insert insv[],
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
     int i, j;
-    int ret;
+    RDB_int rcount, cnt;
     RDB_dbroot *dbrootp;
     int ninsc;
     int nupdc;
     int ndelc;
+    RDB_bool need_tx;
     RDB_transaction subtx;
     RDB_transaction *atxp = NULL;
     RDB_ma_insert *ninsv = NULL;
     RDB_ma_update *nupdv = NULL;
     RDB_ma_delete *ndelv = NULL;
-
-    RDB_bool need_tx;
 
     /*
      * A running transaction is required for:
@@ -1672,19 +1673,21 @@ RDB_multi_assign(int insc, const RDB_ma_insert insv[],
 
     for (i = 0; i < updc; i++) {
         if (updv[i].condp != NULL) {
-            ret = _RDB_check_expr_type(updv[i].condp,
-                    updv[i].tbp->typ->var.basetyp, &RDB_BOOLEAN, ecp, txp);
-            if (ret != RDB_OK)
-                return ret;
+            if (_RDB_check_expr_type(updv[i].condp,
+                    updv[i].tbp->typ->var.basetyp,
+                    &RDB_BOOLEAN, ecp, txp) != RDB_OK) {
+                return RDB_ERROR;
+            }
         }
     }
 
     for (i = 0; i < delc; i++) {
         if (delv[i].condp != NULL) {
-            ret = _RDB_check_expr_type(delv[i].condp,
-                    delv[i].tbp->typ->var.basetyp, &RDB_BOOLEAN, ecp, txp);
-            if (ret != RDB_OK)
-                return ret;
+            if (_RDB_check_expr_type(delv[i].condp,
+                    delv[i].tbp->typ->var.basetyp,
+                    &RDB_BOOLEAN, ecp, txp) != RDB_OK) {
+                return RDB_ERROR;
+            }
         }
     }
 
@@ -1701,10 +1704,11 @@ RDB_multi_assign(int insc, const RDB_ma_insert insv[],
             }
 
             if (RDB_type_is_scalar(attrp->typ)) {
-                ret = _RDB_check_expr_type(updv[i].updv[j].exp,
-                        updv[i].tbp->typ->var.basetyp, attrp->typ, ecp, txp);
-                if (ret != RDB_OK)
-                    return ret;
+                if (_RDB_check_expr_type(updv[i].updv[j].exp,
+                        updv[i].tbp->typ->var.basetyp, attrp->typ,
+                        ecp, txp) != RDB_OK) {
+                    return RDB_ERROR;
+                }
             }
         }
     }
@@ -1733,22 +1737,22 @@ RDB_multi_assign(int insc, const RDB_ma_insert insv[],
      */
 
     ninsc = resolve_inserts(insc, insv, &ninsv, ecp, txp);
-    if (ninsc < 0) {
-        ret = ninsc;
+    if (ninsc == RDB_ERROR) {
+        rcount = RDB_ERROR;
         ninsv = NULL;
         goto cleanup;
     }
 
     nupdc = resolve_updates(updc, updv, &nupdv, ecp, txp);
-    if (nupdc < 0) {
-        ret = nupdc;
+    if (nupdc == RDB_ERROR) {
+        rcount = RDB_ERROR;
         nupdv = NULL;
         goto cleanup;
     }
 
     ndelc = resolve_deletes(delc, delv, &ndelv, ecp, txp);
-    if (ndelc < 0) {
-        ret = ndelc;
+    if (ndelc == RDB_ERROR) {
+        rcount = RDB_ERROR;
         ndelv = NULL;
         goto cleanup;
     }
@@ -1761,26 +1765,30 @@ RDB_multi_assign(int insc, const RDB_ma_insert insv[],
         for (j = i + 1; j < ninsc; j++) {
             if (ninsv[i].tbp == ninsv[j].tbp) {
                 RDB_raise_invalid_argument("target is assigned twice", ecp);
-                return RDB_ERROR;
+                rcount = RDB_ERROR;
+                goto cleanup;
             }
         }
         for (j = 0; j < nupdc; j++) {
             if (ninsv[i].tbp == nupdv[j].tbp) {
                 RDB_raise_invalid_argument("target is assigned twice", ecp);
-                return RDB_ERROR;
+                rcount = RDB_ERROR;
+                goto cleanup;
             }
         }
         for (j = 0; j < ndelc; j++) {
             if (ninsv[i].tbp == ndelv[j].tbp) {
                 RDB_raise_invalid_argument("target is assigned twice", ecp);
-                return RDB_ERROR;
+                rcount = RDB_ERROR;
+                goto cleanup;
             }
         }
         for (j = 0; j < copyc; j++) {
             if (copyv[j].dstp->kind == RDB_OB_TABLE
                     && insv[i].tbp == copyv[j].dstp->var.tbp) {
                 RDB_raise_invalid_argument("target is assigned twice", ecp);
-                return RDB_ERROR;
+                rcount = RDB_ERROR;
+                goto cleanup;
             }
 
             /*
@@ -1790,7 +1798,8 @@ RDB_multi_assign(int insc, const RDB_ma_insert insv[],
                     && insv[i].tbp == copyv[j].srcp->var.tbp) {
                 RDB_raise_not_supported(
                         "Table is both source and target of assignment", ecp);
-                return RDB_ERROR;
+                rcount = RDB_ERROR;
+                goto cleanup;
             }
         }
     }
@@ -1798,26 +1807,30 @@ RDB_multi_assign(int insc, const RDB_ma_insert insv[],
         for (j = i + 1; j < updc; j++) {
             if (nupdv[i].tbp == nupdv[j].tbp) {
                 RDB_raise_invalid_argument("target is assigned twice", ecp);
-                return RDB_ERROR;
+                rcount = RDB_ERROR;
+                goto cleanup;
             }
         }
         for (j = 0; j < ndelc; j++) {
             if (updv[i].tbp == ndelv[j].tbp) {
                 RDB_raise_invalid_argument("target is assigned twice", ecp);
-                return RDB_ERROR;
+                rcount = RDB_ERROR;
+                goto cleanup;
             }
         }
         for (j = 0; j < copyc; j++) {
             if (copyv[j].dstp->kind == RDB_OB_TABLE
                     && updv[i].tbp == copyv[j].dstp->var.tbp) {
                 RDB_raise_invalid_argument("target is assigned twice", ecp);
-                return RDB_ERROR;
+                rcount = RDB_ERROR;
+                goto cleanup;
             }
             if (copyv[j].srcp->kind == RDB_OB_TABLE
                     && updv[i].tbp == copyv[j].srcp->var.tbp) {
                 RDB_raise_not_supported(
                         "Table is both source and target of assignment", ecp);
-                return RDB_ERROR;
+                rcount = RDB_ERROR;
+                goto cleanup;
             }
         }
     }
@@ -1825,20 +1838,23 @@ RDB_multi_assign(int insc, const RDB_ma_insert insv[],
         for (j = i + 1; j < ndelc; j++) {
             if (ndelv[i].tbp == ndelv[j].tbp) {
                 RDB_raise_invalid_argument("target is assigned twice", ecp);
-                return RDB_ERROR;
+                rcount = RDB_ERROR;
+                goto cleanup;
             }
         }
         for (j = 0; j < copyc; j++) {
             if (copyv[j].dstp->kind == RDB_OB_TABLE
                     && ndelv[i].tbp == copyv[j].dstp->var.tbp) {
                 RDB_raise_invalid_argument("target is assigned twice", ecp);
-                return RDB_ERROR;
+                rcount = RDB_ERROR;
+                goto cleanup;
             }
             if (copyv[j].srcp->kind == RDB_OB_TABLE
                     && delv[i].tbp == copyv[j].srcp->var.tbp) {
                 RDB_raise_not_supported(
                         "Table is both source and target of assignment", ecp);
-                return RDB_ERROR;
+                rcount = RDB_ERROR;
+                goto cleanup;
             }
         }
     }
@@ -1849,7 +1865,8 @@ RDB_multi_assign(int insc, const RDB_ma_insert insv[],
                     && copyv[i].dstp->kind == RDB_OB_TABLE
                     && copyv[i].dstp->var.tbp == copyv[j].dstp->var.tbp) {
                 RDB_raise_invalid_argument("target is assigned twice", ecp);
-                return RDB_ERROR;
+                rcount = RDB_ERROR;
+                goto cleanup;
             }
             if (copyv[j].srcp->kind == RDB_OB_TABLE
                     && copyv[i].dstp->kind == RDB_OB_TABLE
@@ -1857,7 +1874,8 @@ RDB_multi_assign(int insc, const RDB_ma_insert insv[],
                     && copyv[i].dstp->var.tbp == copyv[j].srcp->var.tbp)
                 RDB_raise_not_supported(
                         "Table is both source and target of assignment", ecp);
-                return RDB_ERROR;
+                rcount = RDB_ERROR;
+                goto cleanup;
         }
     }
 
@@ -1870,8 +1888,8 @@ RDB_multi_assign(int insc, const RDB_ma_insert insv[],
         dbrootp = RDB_tx_db(txp)->dbrootp;
 
         if (!dbrootp->constraints_read) {
-            ret = _RDB_read_constraints(ecp, txp);
-            if (ret != RDB_OK) {
+            if (_RDB_read_constraints(ecp, txp) != RDB_OK) {
+                rcount = RDB_ERROR;
                 goto cleanup;
             }
             dbrootp->constraints_read = RDB_TRUE;
@@ -1879,9 +1897,11 @@ RDB_multi_assign(int insc, const RDB_ma_insert insv[],
 
         constrp = dbrootp->first_constrp;
         while (constrp != NULL) {
+            int ret;
             /*
              * Check if constraint refers to assignment target
              */
+
             /* resolved inserts/updates/... */
             if (expr_refers_target(constrp->exp, ninsc, ninsv, nupdc, nupdv,
                     ndelc, ndelv, copyc, copyv)) {
@@ -1894,7 +1914,7 @@ RDB_multi_assign(int insc, const RDB_ma_insert insv[],
                         ninsc, ninsv, nupdc, nupdv, ndelc, ndelv,
                         copyc, copyv, ecp, txp);
                 if (newexp == NULL) {
-                    ret = RDB_ERROR;
+                    rcount = RDB_ERROR;
                     goto cleanup;
                 }
                     
@@ -1903,11 +1923,13 @@ RDB_multi_assign(int insc, const RDB_ma_insert insv[],
                  */
                 ret = RDB_evaluate_bool(newexp, NULL, ecp, txp, &b);
                 RDB_drop_expr(newexp, ecp);
-                if (ret != RDB_OK)
+                if (ret != RDB_OK) {
+                    rcount = RDB_ERROR;
                     goto cleanup;
+                }
                 if (!b) {
                     RDB_raise_predicate_violation(constrp->name, ecp);
-                    ret = RDB_ERROR;
+                    rcount = RDB_ERROR;
                     goto cleanup;
                 }
             }
@@ -1921,33 +1943,44 @@ RDB_multi_assign(int insc, const RDB_ma_insert insv[],
 
     /* Start subtransaction, if there is more than one assignment */
     if (ninsc + nupdc + ndelc + copyc > 1) {
-        ret = RDB_begin_tx(ecp, &subtx, RDB_tx_db(txp), txp);
-        if (ret != RDB_OK)
+        if (RDB_begin_tx(ecp, &subtx, RDB_tx_db(txp), txp) != RDB_OK) {
+            rcount = RDB_ERROR;
             goto cleanup;
+        }
         atxp = &subtx;
     } else {
         atxp = txp;
     }
 
+    rcount = 0;
     for (i = 0; i < ninsc; i++) {
         if (ninsv[i].tbp->kind == RDB_TB_REAL) {
-            ret = _RDB_insert_real(ninsv[i].tbp, ninsv[i].tplp, ecp, atxp);
-            if (ret != RDB_OK)
+            if (_RDB_insert_real(ninsv[i].tbp, ninsv[i].tplp, ecp, atxp)
+                    != RDB_OK) {
+                rcount = RDB_ERROR;
                 goto cleanup;
+            }
+            rcount++;
         }
     }
     for (i = 0; i < nupdc; i++) {
         if (nupdv[i].tbp->kind == RDB_TB_REAL) {
-            ret = do_update(&nupdv[i], ecp, atxp);
-            if (ret != RDB_OK)
+            cnt = do_update(&nupdv[i], ecp, atxp);
+            if (cnt == RDB_ERROR) {
+                rcount = RDB_ERROR;
                 goto cleanup;
+            }
+            rcount += cnt;
         }
     }
     for (i = 0; i < ndelc; i++) {
         if (ndelv[i].tbp->kind == RDB_TB_REAL) {
-            ret = do_delete(&ndelv[i], ecp, atxp);
-            if (ret != RDB_OK)
+            cnt = do_delete(&ndelv[i], ecp, atxp);
+            if (cnt == RDB_ERROR) {
+                rcount = RDB_ERROR;
                 goto cleanup;
+            }
+            rcount += cnt;
         }
     }
     for (i = 0; i < copyc; i++) {
@@ -1955,20 +1988,20 @@ RDB_multi_assign(int insc, const RDB_ma_insert insv[],
                 && copyv[i].dstp->var.tbp->kind != RDB_TB_REAL) {
             RDB_raise_not_supported(
                     "Virtual table is copy destination", ecp);
-            ret = RDB_ERROR;
+            rcount = RDB_ERROR;
             goto cleanup;
         }
-        ret = copy_obj(copyv[i].dstp, copyv[i].srcp, ecp, atxp);
-        if (ret != RDB_OK)
+        if (copy_obj(copyv[i].dstp, copyv[i].srcp, ecp, atxp) != RDB_OK) {
+            rcount = RDB_ERROR;
             goto cleanup;
+        }
     }
 
     /* Commit subtx, if it has been started */
     if (atxp == &subtx) {
-        ret = RDB_commit(ecp, &subtx);
+        if (RDB_commit(ecp, &subtx) != RDB_OK)
+            rcount = RDB_ERROR;
         atxp = NULL;
-    } else {
-        ret = RDB_OK;
     }
 
 cleanup:
@@ -2002,11 +2035,11 @@ cleanup:
     }
 
     /* Abort subtx, if necessary */
-    if (ret != RDB_OK) {
+    if (rcount == RDB_ERROR) {
         if (atxp == &subtx) {
             RDB_rollback(ecp, &subtx);
         }
     }
 
-    return ret;
+    return rcount;
 }
