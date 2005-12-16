@@ -637,7 +637,8 @@ RDB_copy_obj(RDB_object *dstvalp, const RDB_object *srcvalp,
     cpy.dstp = dstvalp;
     cpy.srcp = (RDB_object *) srcvalp;
 
-    return RDB_multi_assign(0, NULL, 0, NULL, 0, NULL, 1, &cpy, ecp, NULL);
+    return RDB_multi_assign(0, NULL, 0, NULL, 0, NULL, 1, &cpy, ecp, NULL)
+            != RDB_ERROR ? RDB_OK : RDB_ERROR ;
 } 
 
 void

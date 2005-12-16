@@ -8,7 +8,6 @@
 #include "rdb.h"
 #include "typeimpl.h"
 #include "internal.h"
-#include "catalog.h"
 #include "serialize.h"
 #include <gen/strfns.h>
 #include <string.h>
@@ -81,6 +80,8 @@ compare_string(const char *name, int argc, RDB_object *argv[],
 int
 _RDB_init_builtin_types(RDB_exec_context *ecp)
 {
+    static RDB_bool initialized = RDB_FALSE;
+
     static RDB_possrep no_memory_rep = {
         "NO_MEMORY_ERROR",
         0
@@ -219,6 +220,11 @@ _RDB_init_builtin_types(RDB_exec_context *ecp)
         "FATAL_ERROR",
         0,
     };
+
+    if (initialized) {
+        return RDB_OK;
+    }
+    initialized = RDB_TRUE;
 
     RDB_BOOLEAN.kind = RDB_TP_SCALAR;
     RDB_BOOLEAN.ireplen = 1;
@@ -699,38 +705,6 @@ free_type(RDB_type *typ, RDB_exec_context *ecp)
     typ->kind = (enum _RDB_tp_kind) -1;
     free(typ);
 }    
-
-RDB_type *
-RDB_get_type(const char *name, RDB_exec_context *ecp, RDB_transaction *txp)
-{
-    RDB_type *typ;
-    int ret;
-
-    /*
-     * search type in type map
-     */
-    typ = RDB_hashmap_get(&txp->dbp->dbrootp->typemap, name);
-    if (typ != NULL) {
-        return typ;
-    }
-    
-    /*
-     * search type in catalog
-     */
-    ret = _RDB_cat_get_type(name, ecp, txp, &typ);
-    if (ret != RDB_OK)
-        return NULL;
-
-    /*
-     * put type into type map
-     */
-    ret = RDB_hashmap_put(&txp->dbp->dbrootp->typemap, name, typ);
-    if (ret != RDB_OK) {
-        RDB_raise_no_memory(ecp);
-        return NULL;
-    }
-    return typ;
-}
 
 int
 RDB_define_type(const char *name, int repc, const RDB_possrep repv[],

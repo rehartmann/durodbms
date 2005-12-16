@@ -1995,6 +1995,7 @@ RDB_multi_assign(int insc, const RDB_ma_insert insv[],
             rcount = RDB_ERROR;
             goto cleanup;
         }
+        rcount++;
     }
 
     /* Commit subtx, if it has been started */

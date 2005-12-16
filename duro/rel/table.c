@@ -431,8 +431,7 @@ _RDB_drop_table(RDB_table *tbp, RDB_bool rec, RDB_exec_context *ecp)
 }
 
 /*
- * Return the length (in bytes) of the internal representation
- * of the type pointed to by typ.
+ * Return the type of the table tbp.
  */
 RDB_type *
 RDB_table_type(const RDB_table *tbp)

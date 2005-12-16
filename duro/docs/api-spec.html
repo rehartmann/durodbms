@@ -1100,7 +1100,7 @@ obtained by evaluating the expression specified by the field exp.
 <p>The number of updated tuples in real tables if the call was successful.
 A call which did not modify any tuple because no tuple matched the condition
 is considered a successful call and returns zero.
-If an error occured, RDB_ERROR is returned.
+If an error occured, (RDB_int)RDB_ERROR is returned.
 
 <h3>Errors</h3>
 
@@ -1169,7 +1169,7 @@ a JOIN, SUMMARIZE, WRAP, UNWRAP, GROUP, UNGROUP, or DIVIDEBY PER.
 <p>The number of deleted tuples, if no error occured.
 A call which did not delete any tuple because no tuple matched the condition
 is considered a successful call and returns zero.
-If an error occured, RDB_ERROR is returned.
+If an error occured, (RDB_int)RDB_ERROR is returned.
 
 <h3>Errors</h3>
 

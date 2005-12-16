@@ -4,6 +4,9 @@ Summary of Changes for Duro
 
 Changes for Duro 0.10
 
+- RDB_update() and RDB_delete return the number of tuples updated or
+  deleted, respectively.
+
 - Added option --without-tcl to configure.
 
 - RDB_cardinality() returns an RDB_int.

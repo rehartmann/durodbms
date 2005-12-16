@@ -1966,12 +1966,8 @@ _RDB_sdivide_preserves(RDB_table *tbp, const RDB_object *tplp,
         if (!match)
             continue;
 
-        if (qr3p != NULL) {
-            ret = _RDB_qresult_contains(qr3p, &tpl2, ecp, txp, &b);
-        } else {
-            ret = RDB_table_contains(tbp->var.sdivide.tb3p, &tpl2, ecp, txp,
+        ret = RDB_table_contains(tbp->var.sdivide.tb3p, &tpl2, ecp, txp,
                     &b);
-        }
         RDB_destroy_obj(&tpl2, ecp);
         if (ret != RDB_OK)
             return RDB_ERROR;
@@ -2254,90 +2250,6 @@ _RDB_reset_qresult(RDB_qresult *qrp, RDB_exec_context *ecp, RDB_transaction *txp
     if (ret != RDB_OK)
         return ret;
     return init_qresult(qrp, tbp, ecp, txp);
-}
-
-int
-_RDB_qresult_contains(RDB_qresult *qrp, const RDB_object *tplp,
-        RDB_exec_context *ecp, RDB_transaction *txp, RDB_bool *resultp)
-{
-    int i;
-    int ret;
-    RDB_object **objpv;
-    int kattrc;
-    RDB_object tpl;
-
-    if (qrp->tbp->kind != RDB_TB_SUMMARIZE && qrp->tbp->kind != RDB_TB_GROUP)
-        return RDB_table_contains(qrp->tbp, tplp, ecp, txp, resultp);
-
-    /*
-     * Check if the table contains the tuple by
-     * getting the non-key attributes and comparing them.
-     * (RDB_recmap_contains() cannot be used in all cases because
-     * of the additional count attributes for AVG).
-     */
-
-    kattrc = _RDB_pkey_len(qrp->tbp);
-    objpv = malloc(sizeof (RDB_object *) * kattrc);
-    if (objpv == NULL) {
-        RDB_raise_no_memory(ecp);
-        return RDB_ERROR;
-    }
-
-    RDB_init_obj(&tpl);
-
-    for (i = 0; i < kattrc; i++) {
-        RDB_object *attrobjp = RDB_tuple_get(tplp, qrp->matp->keyv[0].strv[i]);
-
-        if (attrobjp == NULL) {
-            RDB_raise_invalid_argument("invalid key", ecp);
-            ret = RDB_ERROR;
-            goto cleanup;
-        }
-        objpv[i] = attrobjp;
-    }
-        
-    ret = _RDB_get_by_uindex(qrp->matp, objpv, &qrp->matp->stp->indexv[0],
-            qrp->matp->typ->var.basetyp, ecp, txp, &tpl);
-    if (ret != RDB_OK) {
-        if (RDB_obj_type(RDB_get_err(ecp)) == &RDB_NOT_FOUND_ERROR) {
-            *resultp = RDB_FALSE;
-            RDB_clear_err(ecp);
-            ret = RDB_OK;
-        }
-        goto cleanup;
-    }
-
-    if (qrp->tbp->kind == RDB_TB_SUMMARIZE) {
-        /* compare ADD attributes */
-        for (i = 0; i < qrp->tbp->var.summarize.addc; i++) {
-            char *attrname = qrp->tbp->var.summarize.addv[i].name;
-
-            ret = RDB_obj_equals(RDB_tuple_get(tplp, attrname),
-                    RDB_tuple_get(&tpl, attrname), ecp, txp, resultp);
-            if (ret != RDB_OK || !*resultp) {
-                goto cleanup;
-            }
-        }
-    } else {
-        char *attrname = qrp->tbp->var.group.gattr;
-
-        ret = RDB_obj_equals(RDB_tuple_get(tplp, attrname),
-                RDB_tuple_get(&tpl, attrname), ecp, txp, resultp);
-        if (ret != RDB_OK) {
-            goto cleanup;
-        }
-        if (!*resultp) { /* !! superfluous? */
-            goto cleanup;
-        }
-    }
-
-    ret = RDB_OK;
-
-cleanup:
-    RDB_destroy_obj(&tpl, ecp);
-    free(objpv);
-    
-    return ret;
 }
 
 int

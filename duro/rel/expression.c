@@ -207,9 +207,15 @@ expr_op_type(const RDB_expression *exp, const RDB_type *tuptyp,
             attrv[i].typ = RDB_expr_type(exp->var.op.argv[1 + i * 2], tuptyp,
                     ecp, txp);
             if (attrv[i].typ == NULL) {
+                int j;
+
                 free(attrv);
                 RDB_drop_type(tbtyp, ecp, NULL);
-                /* !! ggf. drop attrv[...].typ */
+                for (j = 0; i < j; j++) {
+                    if (!RDB_type_is_scalar(attrv[j].typ)) {
+                        RDB_drop_type(attrv[j].typ, ecp, NULL);
+                    }
+                }
                 return NULL;
             }
             if (exp->var.op.argv[2 + i * 2]->kind != RDB_EX_OBJ ||
@@ -607,6 +613,10 @@ expr_op_type(const RDB_expression *exp, const RDB_type *tuptyp,
     return op->rtyp;
 }
 
+/*
+ * Returns the type of an expression.
+ * If a nonscalar type is returned, it must be managed by the caller.
+ */
 RDB_type *
 RDB_expr_type(const RDB_expression *exp, const RDB_type *tuptyp,
         RDB_exec_context *ecp, RDB_transaction *txp)
@@ -618,7 +628,7 @@ RDB_expr_type(const RDB_expression *exp, const RDB_type *tuptyp,
         case RDB_EX_OBJ:
             typ = RDB_obj_type(&exp->var.obj);
             if (typ == NULL) {
-                RDB_raise_not_found("type not found", ecp);
+                RDB_raise_not_found("type not found", ecp); /* !! */
                 return NULL;
             }
 
@@ -667,9 +677,11 @@ RDB_expr_type(const RDB_expression *exp, const RDB_type *tuptyp,
                 default:
                     attrp = _RDB_tuple_type_attr(
                             exp->var.op.argv[0]->var.obj.var.tbp->typ->var.basetyp,
-                            exp->var.op.name); /* !! must raise on error */
-                    if (attrp == NULL)
+                            exp->var.op.name);
+                    if (attrp == NULL) {
+                        RDB_raise_attribute_not_found(exp->var.attrname, ecp);
                         return NULL;
+                    }
                     return attrp->typ;
             }
     }

@@ -1179,3 +1179,35 @@ cleanup:
     RDB_rollback(ecp, &tx);
     return RDB_ERROR;
 }
+
+RDB_type *
+RDB_get_type(const char *name, RDB_exec_context *ecp, RDB_transaction *txp)
+{
+    RDB_type *typ;
+    int ret;
+
+    /*
+     * search type in type map
+     */
+    typ = RDB_hashmap_get(&txp->dbp->dbrootp->typemap, name);
+    if (typ != NULL) {
+        return typ;
+    }
+    
+    /*
+     * search type in catalog
+     */
+    ret = _RDB_cat_get_type(name, ecp, txp, &typ);
+    if (ret != RDB_OK)
+        return NULL;
+
+    /*
+     * put type into type map
+     */
+    ret = RDB_hashmap_put(&txp->dbp->dbrootp->typemap, name, typ);
+    if (ret != RDB_OK) {
+        RDB_raise_no_memory(ecp);
+        return NULL;
+    }
+    return typ;
+}
