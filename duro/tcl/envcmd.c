@@ -44,8 +44,8 @@ dberror(const char *msg, void *arg)
     Tcl_Obj *objv[2];
     Tcl_Interp *interp = (Tcl_Interp *)arg;
 
-    objv[0] = Tcl_NewStringObj("dberror", strlen("dberror"));
-    objv[1] = Tcl_NewStringObj(msg, strlen(msg));
+    objv[0] = Tcl_NewStringObj("dberror", -1);
+    objv[1] = Tcl_NewStringObj(msg, -1);
 
     /* 
      * Required, otherwise the program crashes when the "dberror" command
@@ -167,7 +167,7 @@ Duro_env_cmd(ClientData data, Tcl_Interp *interp, int argc, CONST char *argv[])
             char *dbname = RDB_obj_string(dbnamep);
 
             ret = Tcl_ListObjAppendElement(interp, dblistp,
-                    Tcl_NewStringObj(dbname, strlen(dbname)));
+                    Tcl_NewStringObj(dbname, -1));
             if (ret != TCL_OK)
                 return ret;
         }

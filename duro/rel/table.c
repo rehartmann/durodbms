@@ -909,6 +909,15 @@ RDB_extract_tuple(RDB_table *tbp, RDB_exec_context *ecp,
         return RDB_ERROR;
     }
 
+    /* Duplicates must be removed */
+    ret = _RDB_duprem(qrp, ecp);
+    if (ret != RDB_OK) {
+        if (ntbp->kind != RDB_TB_REAL)
+            RDB_drop_table(ntbp, ecp, txp);
+        _RDB_drop_qresult(qrp, ecp, txp);
+        return RDB_ERROR;
+    }
+
     RDB_init_obj(&tpl);
 
     /* Get tuple */

@@ -190,6 +190,20 @@ if {[duro::expr {TUPLE FROM WH} $tx] != "SCATTR Bla"} {
     error "SCATTR should be \"Bla\", but is not"
 }
 
+duro::table expr XT2 {EXTEND T2 ADD (TUPLE {A 1, B "b"} AS TATTR)} $tx
+set tpl [duro::expr {(TUPLE FROM XT2).TATTR} $tx]
+if {![tequal $tpl {A 1 B b}]} {
+    error "Wrong value of TATTR"
+}
+
+# Must fail, because XT2 depends on T2
+if {![catch {
+    duro::table drop T2 $tx
+}]} {
+    error "dropping T2 should fail, but succeeded"
+}
+duro::table drop XT2 $tx
+
 # Drop tables
 duro::table drop S $tx
 duro::table drop UW $tx

@@ -9,6 +9,8 @@ exec tclsh "$0"
 
 load .libs/libdurotcl.so
 
+source tests/testutil.tcl
+
 # Create DB environment
 file delete -force tests/dbenv
 file mkdir tests/dbenv
@@ -80,6 +82,13 @@ if {![duro::table contains T1 $tpl $tx]} {
 }
 
 duro::insert T1 {SCATTR 3 RLATTR {}} $tx
+
+duro::table expr W1 {T1 WHERE (TUPLE {A 1, B "x"} IN RLATTR)} $tx
+
+set cnt [duro::expr {COUNT ((TUPLE FROM W1).RLATTR)} $tx]
+if {$cnt != 2} {
+    error "wrong # of attributes: $cnt"
+}
 
 set v [duro::expr {(TUPLE FROM S1).SCATTR} $tx]
 
@@ -194,6 +203,15 @@ if {$ta(B) != 2 || $ta(C) != "d"} {
 set cnt [duro::expr {COUNT((TUPLE FROM ((G1 WHERE A = "a") {BC})).BC)} $tx]
 if {$cnt != 2} {
     error "Incorrect cardinality of BC: $cnt"
+}
+
+duro::table expr X1 {EXTEND T3
+        ADD (RELATION { TUPLE {A 1, B "b"} } AS RLATTR)} $tx
+
+set tpl [duro::expr {TUPLE FROM ((TUPLE FROM (X1 { RLATTR })).RLATTR)} $tx]
+
+if {![tequal $tpl {A 1 B b}]} {
+    error "Wrong result from X1: $tpl"
 }
 
 duro::commit $tx

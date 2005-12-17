@@ -536,9 +536,11 @@ RDB_subset(RDB_table *tb1p, RDB_table *tb2p, RDB_exec_context *ecp, RDB_transact
 of the table specified by <var>tb2p</var> and stores the result at the
 location pointed to by <var>resultp</var>.
 
+<p>If an error occurs, an error value is left in <var>*ecp</var>.
+
 <h3>Return value</h3>
 
-<p>On success, RDB_OK is returned. On failure, an error code is returned.
+<p>RDB_OK on success, RDB_ERROR if an error occured.
 
 <h3>Errors</h3>
 
@@ -571,6 +573,8 @@ RDB_add_table(RDB_table *tbp, RDB_exec_context *ecp, RDB_transaction *txp);
 <p>RDB_add_table adds the table specified by <var>tbp</var> to the
 database the transaction specified by <var>txp</var> interacts with.
 
+<p>If an error occurs, an error value is left in <var>*ecp</var>.
+
 <p>If the table is a local (transient) table, it is made global
 (persistent).
 
@@ -580,7 +584,7 @@ database the transaction specified by <var>txp</var> interacts with.
 
 <h3>Return value</h3>
 
-<p>On success, RDB_OK is returned. On failure, an error code is returned.
+<p>RDB_OK on success, RDB_ERROR if an error occured.
 
 <h3>Errors</h3>
 
@@ -614,11 +618,13 @@ RDB_remove_table(RDB_table *tbp, RDB_exec_context *ecp, RDB_transaction *txp);
 <p>RDB_remove_table removes the table specified by <var>tbp</var> from the
 database the transaction specified by <var>txp</var> interacts with.
 
+<p>If an error occurs, an error value is left in <var>*ecp</var>.
+
 <p>If the table is a global table, it is made local.
 
 <h3>Return value</h3>
 
-<p>On success, RDB_OK is returned. On failure, an error code is returned.
+<p>RDB_OK on success, RDB_ERROR if an error occured.
 
 <h3>Errors</h3>
 
@@ -655,6 +661,8 @@ RDB_table_contains(RDB_table *tbp, const RDB_object *tplp, RDB_exec_context *ecp
 is an element of the table specified by <var>tbp</var>
 and stores the result at the location pointed to by <var>resultp</var>.
 
+<p>If an error occurs, an error value is left in <var>*ecp</var>.
+
 <h3>Return value</h3>
 
 <p>On success, RDB_OK is returned.
@@ -686,15 +694,18 @@ in which case the transaction may be implicitly rolled back.
 #include &lt;rel/rdb.h&gt;
 
 int
-RDB_table_equals(RDB_table *tb1p, RDB_table *tb2p, RDB_transaction *txp, RDB_bool *resultp);
+RDB_table_equals(RDB_table *tb1p, RDB_table *tb2p, RDB_exec_context *ecp,
+        RDB_transaction *txp, RDB_bool *resultp);
 </pre>
 
 <p>RDB_table_equals checks two tables for equality and stores the result at the
 location pointed to by <var>resultp</var>.
 
+<p>If an error occurs, an error value is left in <var>*ecp</var>.
+
 <h3>Return value</h3>
 
-<p>On success, RDB_OK is returned. On failure, an error code is returned.
+<p>RDB_OK on success, RDB_ERROR if an error occured.
 
 <h3>Errors</h3>
 
@@ -726,11 +737,13 @@ RDB_all(RDB_table *tbp, const char *attrname, RDB_exec_context *ecp, RDB_transac
 <var>attrname</var> of the table specified by <var>tbp</var>
 and stores the result at the location pointed to by <var>resultp</var>.
 
+<p>If an error occurs, an error value is left in <var>*ecp</var>.
+
 <p>The attribute <var>attrname</var> must be of type BOOLEAN.
 
 <h3>Return value</h3>
 
-<p>On success, RDB_OK is returned. On failure, an error code is returned.
+<p>RDB_OK on success, RDB_ERROR if an error occured.
 
 <h3>Errors</h3>
 
@@ -765,12 +778,14 @@ RDB_any(RDB_table *tbp, const char *attrname, RDB_exec_context *ecp, RDB_transac
 and stores the result at the location
 pointed to by <var>resultp</var>.
 
+<p>If an error occurs, an error value is left in <var>*ecp</var>.
+
 <p>The attribute <var>attrname</var> must be of
 type BOOLEAN.
 
 <h3>Return value</h3>
 
-<p>On success, RDB_OK is returned. On failure, an error code is returned.
+<p>RDB_OK on success, RDB_ERROR if an error occured.
 
 <h3>Errors</h3>
 
@@ -805,11 +820,13 @@ RDB_avg(RDB_table *tbp, const char *attrname, RDB_exec_context *ecp, RDB_transac
 and stores the result at the location
 pointed to by <var>resultp</var>.
 
+<p>If an error occurs, an error value is left in <var>*ecp</var>.
+
 <p>The attribute <var>attrname</var> must be numeric.
 
 <h3>Return value</h3>
 
-<p>On success, RDB_OK is returned. On failure, an error code is returned.
+<p>RDB_OK on success, RDB_ERROR if an error occured.
 
 <h3>Errors</h3>
 
@@ -842,6 +859,8 @@ RDB_cardinality(RDB_table *tbp, RDB_exec_context *ecp, RDB_transaction *txp);
 
 <p>RDB_cardinality returns the number of tuples in
 the table pointed to by <var>tbp</var>.
+
+<p>If an error occurs, an error value is left in <var>*ecp</var>.
 
 <h3>Return value</h3>
 
@@ -880,12 +899,14 @@ RDB_max(RDB_table *tbp, const char *attrname, RDB_exec_context *ecp, RDB_transac
 <var>attrname</var> of the table specified by <var>tbp</var>
 and stores the result at the location pointed to by <var>resultp</var>.
 
+<p>If an error occurs, an error value is left in <var>*ecp</var>.
+
 <p>The attribute <var>attrname</var> must be numeric
 and the result is of the same type as the attribute.
 
 <h3>Return value</h3>
 
-<p>On success, RDB_OK is returned. On failure, an error code is returned.
+<p>RDB_OK on success, RDB_ERROR if an error occured.
 
 <h3>Errors</h3>
 
@@ -919,12 +940,14 @@ RDB_min(RDB_table *tbp, const char *attrname, RDB_exec_context *ecp, RDB_transac
 <var>attrname</var> of the table specified by <var>tbp</var>
 and stores the result at the location pointed to by <var>resultp</var>.
 
+<p>If an error occurs, an error value is left in <var>*ecp</var>.
+
 <p>The attribute <var>attrname</var> must be numeric
 and the result is of the same type as the attribute.
 
 <h3>Return value</h3>
 
-<p>On success, RDB_OK is returned. On failure, an error code is returned.
+<p>RDB_OK on success, RDB_ERROR if an error occured.
 
 <h3>Errors</h3>
 
@@ -958,12 +981,14 @@ RDB_sum(RDB_table *tbp, const char *attrname, RDB_exec_context *ecp, RDB_transac
 <var>attrname</var> of the table pointed to by <var>tbp</var>
 and stores the result at the location pointed to by <var>resultp</var>.
 
+<p>If an error occurs, an error value is left in <var>*ecp</var>.
+
 <p>The attribute <var>attrname</var> must be numeric
 and the result is of the same type as the attribute.
 
 <h3>Return value</h3>
 
-<p>On success, RDB_OK is returned. On failure, an error code is returned.
+<p>RDB_OK on success, RDB_ERROR if an error occured.
 
 <h3>Errors</h3>
 
@@ -996,9 +1021,11 @@ RDB_table_is_empty(RDB_table *tbp, RDB_exec_context *ecp, RDB_transaction *txp, 
 is empty and stores the result of
 the check at the location pointed to by <var>resultp</var>.
 
+<p>If an error occurs, an error value is left in <var>*ecp</var>.
+
 <h3>Return value</h3>
 
-<p>On success, RDB_OK is returned. On failure, an error code is returned.
+<p>RDB_OK on success, RDB_ERROR if an error occured.
 
 <h3>Errors</h3>
 
@@ -1029,13 +1056,15 @@ RDB_insert(RDB_table *tbp, const RDB_object *tplp, RDB_exec_context *ecp, RDB_tr
 <p>RDB_insert inserts the tuple specified by <var>tplp</var>
 into the table specified by <var>tbp</var>.
 
+<p>If an error occurs, an error value is left in <var>*ecp</var>.
+
 <p>Currently, RDB_insert is not supported for virtual tables which are the result
-of a UNION, MINUS, SUMMARIZE, DIVIDEBY PER, GROUP, or UNGROUP.
+of a UNION, MINUS, SEMIMINUS, INTERSECT, SEMIJOIN, MINUS, SUMMARIZE, DIVIDEBY PER,
+GROUP, or UNGROUP.
  
 <h3>Return value</h3>
 
-<p>If the insert was successful, RDB_OK is returned.
-On failure, an error code is returned.
+<p>RDB_OK on success, RDB_ERROR if an error occured.
 
 <h3>Errors</h3>
 
@@ -1089,11 +1118,14 @@ RDB_update(RDB_table *tbp, RDB_expression *exp, int updc,
 for which the expression specified by <var>exp</var> evaluates to true.
 If <var>exp</var> is NULL, all tuples are updated.
 
+<p>If an error occurs, an error value is left in <var>*ecp</var>.
+
 <p>The attributes to be updated are specified by the <var>updv</var> array.
 The attribute specified by the field name is set to the value
 obtained by evaluating the expression specified by the field exp.
 
-<p>Currently, RDB_update is not supported for virtual tables except select.
+<p>Currently, RDB_update is not supported for virtual tables except select
+and project.
 
 <h3>Return value</h3>
 
@@ -1161,8 +1193,11 @@ RDB_delete(RDB_table *tbp, RDB_expression *exp, RDB_exec_context *ecp, RDB_trans
 for which the expression specified by <var>exp</var> evaluates to true.
 If <var>exp</var> is NULL, all tuples are deleted.
 
+<p>If an error occurs, an error value is left in <var>*ecp</var>.
+
 <p>Currently, RDB_delete is not supported for virtual tables which are the result of
-a JOIN, SUMMARIZE, WRAP, UNWRAP, GROUP, UNGROUP, or DIVIDEBY PER.
+a JOIN, MINUS, SEMIMINUS, UNION, INTERSECT, SEMIJOIN, SUMMARIZE, WRAP, UNWRAP,
+GROUP, UNGROUP, or DIVIDEBY PER.
 
 <h3>Return value</h3>
 
@@ -1209,10 +1244,12 @@ RDB_extract_tuple(RDB_table *tbp, RDB_exec_context *ecp, RDB_transaction *txp, R
 <p>RDB_extract_tuple extracts a single tuple from a table which contains
 only one tuple and stores its value in the variable pointed to by <var>tplp</var>.
 
+<p>If an error occurs, the tuple value of the variable pointed to by <var>tplp</var>
+is undefined and an error value is left in <var>*ecp</var>.
+
 <h3>Return value</h3>
 
-<p>On success, RDB_OK is returned. On failure, an error code is returned
-and the tuple value of the variable pointed to by <var>tplp</var> is undefined.
+<p>RDB_OK on success, RDB_ERROR if an error occured.
 
 <h3>Errors</h3>
 
@@ -1248,9 +1285,11 @@ RDB_copy_table(RDB_table *dstp, RDB_table *srcp, RDB_exec_context *ecp, RDB_tran
 by <var>srcp</var> to the value of the table specified by <var>dstp</var>.
 The two tables must be of the same type.
 
+<p>If an error occurs, an error value is left in <var>*ecp</var>.
+
 <h3>Return value</h3>
 
-<p>On success, RDB_OK is returned. On failure, an error code is returned.
+<p>RDB_OK on success, RDB_ERROR if an error occured.
 
 <h3>Errors</h3>
 
@@ -1286,12 +1325,14 @@ RENAME operator on the table specified by <var>tbp</var>.
 A pointer to the result table is stored at the location pointed to by
 <var>resultpp</var>.
 
+<p>If an error occurs, an error value is left in <var>*ecp</var>.
+
 <p>The attributes to be renamed are specified by the arguments
 <var>renc</var> and <var>renv</var>.
 
 <h3>Return value</h3>
 
-<p>On success, RDB_OK is returned. On failure, an error code is returned.
+<p>A pointer to the result table on success, or NULL if an error occured.
 
 <h3>Errors</h3>
 
@@ -1326,9 +1367,11 @@ condition specified by <var>exp</var> evaluates to true.
 A pointer to the result table is stored at the location pointed to by
 <var>resultpp</var>.
 
+<p>If an error occurs, an error value is left in <var>*ecp</var>.
+
 <h3>Return value</h3>
 
-<p>On success, RDB_OK is returned. On failure, an error code is returned.
+<p>A pointer to the result table on success, or NULL if an error occured.
 
 <h3>Errors</h3>
 
@@ -1360,6 +1403,8 @@ RDB_extend(RDB_table *tbp, int attrc, const <a href="#virtual_attr">RDB_virtual_
 <p>RDB_extend creates a local (transient) virtual table which is the result of a relational
 EXTEND operator on the table specified by <var>tbp</var>.
 
+<p>If an error occurs, an error value is left in <var>*ecp</var>.
+
 <p>The new table will have <var>attrc</var> additional attributes.
 The values of these attributes are obtained by evaluating the
 exp fields of the elements of <var>attrv</var>.
@@ -1370,7 +1415,7 @@ automatically dropped when the table is dropped.
 
 <h3>Return value</h3>
 
-<p>On success, RDB_OK is returned. On failure, an error code is returned.
+<p>A pointer to the result table on success, or NULL if an error occured.
 
 <h3>Errors</h3>
 
@@ -1411,9 +1456,11 @@ by <var>tbp</var>.
 <p>The attributes of the new table are specified by <var>attrc</var>
 and <var>attrv</var>.
 
+<p>If an error occurs, an error value is left in <var>*ecp</var>.
+
 <h3>Return value</h3>
 
-<p>On success, RDB_OK is returned. On failure, an error code is returned.
+<p>A pointer to the result table on success, or NULL if an error occured.
 
 <h3>Errors</h3>
 
@@ -1444,9 +1491,11 @@ by <var>tbp</var>.
 <p>The new table has the attributes of the original table except those
 specified by <var>attrc</var> and <var>attrv</var>.
 
+<p>If an error occurs, an error value is left in <var>*ecp</var>.
+
 <h3>Return value</h3>
 
-<p>On success, RDB_OK is returned. On failure, an error code is returned.
+<p>A pointer to the result table on success, or NULL if an error occured.
 
 <h3>Errors</h3>
 
@@ -1477,9 +1526,11 @@ of the two tables specified by <var>tb1p</var> and <var>tb2p</var>.
 <p>If the two tables have no common attribute, the result becomes
 a cartesian product.
 
+<p>If an error occurs, an error value is left in <var>*ecp</var>.
+
 <h3>Return value</h3>
 
-<p>On success, RDB_OK is returned. On failure, an error code is returned.
+<p>A pointer to the result table on success, or NULL if an error occured.
 
 <h3>Errors</h3>
 
@@ -1509,9 +1560,11 @@ result of a relational UNION of the two tables, that is,
 it contains the tuples from both tables. A pointer to the
 new RDB_table is stored in <var>resultpp</var>.
 
+<p>If an error occurs, an error value is left in <var>*ecp</var>.
+
 <h3>Return value</h3>
 
-<p>On success, RDB_OK is returned. On failure, an error code is returned.
+<p>A pointer to the result table on success, or NULL if an error occured.
 
 <h3>Errors</h3>
 
@@ -1539,9 +1592,11 @@ RDB_intersect(RDB_table *, RDB_table *, RDB_exec_context *ecp);
 result of a relational INTERSECT of the two tables, that is,
 it contains the tuples which both tables contain.
 
+<p>If an error occurs, an error value is left in <var>*ecp</var>.
+
 <h3>Return value</h3>
 
-<p>On success, RDB_OK is returned. On failure, an error code is returned.
+<p>A pointer to the result table on success, or NULL if an error occured.
 
 <h3>Errors</h3>
 
@@ -1570,9 +1625,11 @@ result of a relational MINUS of the two tables, that is,
 it contains the tuples from the first table,
 except those which the second table contains.
 
+<p>If an error occurs, an error value is left in <var>*ecp</var>.
+
 <h3>Return value</h3>
 
-<p>On success, RDB_OK is returned. On failure, an error code is returned.
+<p>A pointer to the result table on success, or NULL if an error occured.
 
 <h3>Errors</h3>
 
@@ -1599,9 +1656,11 @@ RDB_semijoin(RDB_table *, RDB_table *, RDB_exec_context *ecp);
 <p>RDB_semijoin creates a local (transient) virtual table which is the
 result of a relational SEMIJOIN of the two tables.
 
+<p>If an error occurs, an error value is left in <var>*ecp</var>.
+
 <h3>Return value</h3>
 
-<p>On success, RDB_OK is returned. On failure, an error code is returned.
+<p>A pointer to the result table on success, or NULL if an error occured.
 
 <h3>Errors</h3>
 
@@ -1625,11 +1684,11 @@ result of a relational SEMIMINUS of the two tables.
 
 <h3>Return value</h3>
 
-<p>On success, RDB_OK is returned. On failure, an error code is returned.
+<p>A pointer to the result table on success, or NULL if an error occured.
 
 <h3>Errors</h3>
 
-<p>The call may fail for a <a href="#syserr">system error</a>.
+<p>A pointer to the result table on success, or NULL if an error occured.
 
 <hr>
 
@@ -1690,9 +1749,11 @@ result of a small divide of the three tables.
 
 <p>Table #3 must be of the same type as the join of table #1 and table #2.
 
+<p>If an error occurs, an error value is left in <var>*ecp</var>.
+
 <h3>Return value</h3>
 
-<p>On success, RDB_OK is returned. On failure, an error code is returned.
+<p>A pointer to the result table on success, or NULL if an error occured.
 
 <h3>Errors</h3>
 
@@ -1721,9 +1782,11 @@ RDB_gdivide(RDB_table *, RDB_table *, RDB_table *, RDB_table *,
 <p>RDB_gdivide creates a local (transient) virtual table which is the
 result of a great divide of the four tables.
 
+<p>If an error occurs, an error value is left in <var>*ecp</var>.
+
 <h3>Return value</h3>
 
-<p>On success, RDB_OK is returned. On failure, an error code is returned.
+<p>A pointer to the result table on success, or NULL if an error occured.
 
 <h3>Notes</h3>
 
@@ -1758,11 +1821,13 @@ A pointer to the result table is stored in resultpp.
 
 <p>The two argument tables must not share an unnamed child table.
 
+<p>If an error occurs, an error value is left in <var>*ecp</var>.
+
 <p>Currently, COUNTD, SUMD, and AVGD are not supported.
 
 <h3>Return value</h3>
 
-<p>On success, RDB_OK is returned. On failure, an error code is returned.
+<p>A pointer to the result table on success, or NULL if an error occured.
 
 <h3>Errors</h3>
 
@@ -1793,9 +1858,11 @@ RDB_wrap(RDB_table *tbp, int wrapc, const <a href="#wrapping">RDB_wrapping</a> w
 <p>RDB_wrap creates a local (transient) virtual table which is the result of a
 relational WRAP operator.
 
+<p>If an error occurs, an error value is left in <var>*ecp</var>.
+
 <h3>Return value</h3>
 
-<p>On success, RDB_OK is returned. On failure, an error code is returned.
+<p>A pointer to the result table on success, or NULL if an error occured.
 
 <h3>Errors</h3>
 
@@ -1820,9 +1887,11 @@ RDB_unwrap(RDB_table *, int attrc, char *attrv[], RDB_exec_context *ecp);
 <p>RDB_unwrap creates a local (transient) virtual table which is the result of a
 relational UNWRAP operator.
 
+<p>If an error occurs, an error value is left in <var>*ecp</var>.
+
 <h3>Return value</h3>
 
-<p>On success, RDB_OK is returned. On failure, an error code is returned.
+<p>A pointer to the result table on success, or NULL if an error occured.
 
 <h3>Errors</h3>
 
@@ -1854,7 +1923,9 @@ and <var>attrv</var> are grouped into a relation-valued attribute
 
 <h3>Return value</h3>
 
-<p>On success, RDB_OK is returned. On failure, an error code is returned.
+<p>A pointer to the result table on success, or NULL if an error occured.
+
+<p>If an error occurs, an error value is left in <var>*ecp</var>.
 
 <h3>Errors</h3>
 
@@ -1882,9 +1953,11 @@ RDB_ungroup(RDB_table *, const char *attr, RDB_exec_context *ecp);
 <p>RDB_ungroup creates a local (transient) virtual table which is the result of a
 relational UNGROUP operator.
 
+<p>If an error occurs, an error value is left in <var>*ecp</var>.
+
 <h3>Return value</h3>
 
-<p>On success, RDB_OK is returned. On failure, an error code is returned.
+<p>A pointer to the result table on success, or NULL if an error occured.
 
 <h3>Errors</h3>
 
@@ -1913,9 +1986,11 @@ RDB_join_tuples(const RDB_object *tpl1p, const RDB_object *tpl2p,
 <p>RDB_join_tuples creates a tuple which contains the attributes
 of the two tuples specified by <var>tpl1p</var> and <var>tpl2p</var>.
 
+<p>If an error occurs, an error value is left in <var>*ecp</var>.
+
 <h3>Return value</h3>
 
-<p>On success, RDB_OK is returned. On failure, an error code is returned.
+<p>RDB_OK on success, RDB_ERROR if an error occured.
 
 <h3>Errors</h3>
 
@@ -1947,9 +2022,11 @@ RDB_project_tuple(const RDB_object *, int attrc, char *attrv[],
 <p>RDB_project_tuple creates a tuple which contains only the attributes
 specified by <var>attrc</var> and <var>attrv</var>.
 
+<p>If an error occurs, an error value is left in <var>*ecp</var>.
+
 <h3>Return value</h3>
 
-<p>On success, RDB_OK is returned. On failure, an error code is returned.
+<p>RDB_OK on success, RDB_ERROR if an error occured.
 
 <h3>Errors</h3>
 
@@ -1978,9 +2055,11 @@ RDB_tuple_set(RDB_object *tplp, const char *name, const RDB_object *valp, RDB_ex
 variable specified by <var>tplp</var> to the value specified by
 <var>valp</var>.
 
+<p>If an error occurs, an error value is left in <var>*ecp</var>.
+
 <h3>Return value</h3>
 
-<p>On success, RDB_OK is returned. On failure, an error code is returned.
+<p>RDB_OK on success, RDB_ERROR if an error occured.
 
 <h3>Errors</h3>
 
@@ -2003,9 +2082,11 @@ RDB_tuple_set_bool(RDB_object *tplp, const char *name, RDB_bool val, RDB_exec_co
 variable specified by <var>tplp</var> to the boolean value specified by
 <var>val</var>.
 
+<p>If an error occurs, an error value is left in <var>*ecp</var>.
+
 <h3>Return value</h3>
 
-<p>On success, RDB_OK is returned. On failure, an error code is returned.
+<p>RDB_OK on success, RDB_ERROR if an error occured.
 
 <h3>Errors</h3>
 
@@ -2028,9 +2109,11 @@ RDB_tuple_set_int(RDB_object *tplp, const char *name, RDB_int val, RDB_exec_cont
 variable specified by <var>tplp</var> to the integer value specified by
 <var>val</var>.
 
+<p>If an error occurs, an error value is left in <var>*ecp</var>.
+
 <h3>Return value</h3>
 
-<p>On success, RDB_OK is returned. On failure, an error code is returned.
+<p>RDB_OK on success, RDB_ERROR if an error occured.
 
 <h3>Errors</h3>
 
@@ -2053,9 +2136,11 @@ RDB_tuple_set_rational(RDB_object *tplp, const char *name, RDB_rational val, RDB
 variable specified by <var>tplp</var> to the rational value specified by
 <var>val</var>.
 
+<p>If an error occurs, an error value is left in <var>*ecp</var>.
+
 <h3>Return value</h3>
 
-<p>On success, RDB_OK is returned. On failure, an error code is returned.
+<p>RDB_OK on success, RDB_ERROR if an error occured.
 
 <h3>Errors</h3>
 
@@ -2078,9 +2163,11 @@ RDB_tuple_set_string(RDB_object *tplp, const char *name, const char *str, RDB_ex
 variable specified by <var>tplp</var> to the string value specified by
 <var>str</var>.
 
+<p>If an error occurs, an error value is left in <var>*ecp</var>.
+
 <h3>Return value</h3>
 
-<p>On success, RDB_OK is returned. On failure, an error code is returned.
+<p>RDB_OK on success, RDB_ERROR if an error occured.
 
 <h3>Errors</h3>
 
@@ -2253,9 +2340,11 @@ RDB_extend_tuple(RDB_object *tplp, int attrc, const <a href="#virtual_attr">RDB_
 <p>RDB_extend_tuple extends the tuple specified by <var>tplp</var>
 by the attributes specified by <var>attrc</var> and <var>attrv</var>.
 
+<p>If an error occurs, an error value is left in <var>*ecp</var>.
+
 <h3>Return value</h3>
 
-<p>On success, RDB_OK is returned. On failure, an error code is returned.
+<p>RDB_OK on success, RDB_ERROR if an error occured.
 
 <h3>Errors</h3>
 
@@ -2290,9 +2379,11 @@ RDB_rename_tuple(const RDB_object *, int renc, const <a href="#renaming">RDB_ren
 to the tuple specified by <var>restplp</var>, renaming the attributes
 specified by <var>renc</var> and <var>renv</var>.
 
+<p>If an error occurs, an error value is left in <var>*ecp</var>.
+
 <h3>Return value</h3>
 
-<p>On success, RDB_OK is returned. On failure, an error code is returned.
+<p>RDB_OK on success, RDB_ERROR if an error occured.
 
 <h3>Errors</h3>
 
@@ -2316,9 +2407,11 @@ RDB_wrap_tuple(const RDB_object *tplp, int wrapc, const <a href="#wrapping">RDB_
 <var>tplp</var> and stores the result in the variable pointed to by
 <var>restplp</var>.
 
+<p>If an error occurs, an error value is left in <var>*ecp</var>.
+
 <h3>Return value</h3>
 
-<p>On success, RDB_OK is returned. On failure, an error code is returned.
+<p>RDB_OK on success, RDB_ERROR if an error occured.
 
 <h3>Errors</h3>
 
@@ -2346,9 +2439,11 @@ RDB_unwrap_tuple(const RDB_object *tplp, int attrc, const char *attrv[],
 <var>tplp</var> and stores the result in the variable pointed to by
 <var>restplp</var>.
 
+<p>If an error occurs, an error value is left in <var>*ecp</var>.
+
 <h3>Return value</h3>
 
-<p>On success, RDB_OK is returned. On failure, an error code is returned.
+<p>RDB_OK on success, RDB_ERROR if an error occured.
 
 <h3>Errors</h3>
 
@@ -2394,7 +2489,7 @@ variable.
 
 <h3>Return value</h3>
 
-<p>On success, RDB_OK is returned. On failure, an error code is returned.
+<p>A pointer to the result table on success, or NULL if an error occured.
 
 <hr>
 
@@ -2413,9 +2508,11 @@ RDB_obj_equals(const RDB_object *, const RDB_object *, RDB_exec_context *ecp,
 <p>RDB_obj_equals checks two RDB_object variables for equality
 and stores the result in the variable pointed to by <var>resp</var>.
 
+<p>If an error occurs, an error value is left in <var>*ecp</var>.
+
 <h3>Return value</h3>
 
-<p>On success, RDB_OK is returned. On failure, an error code is returned.
+<p>RDB_OK on success, RDB_ERROR if an error occured.
 
 <hr>
 
@@ -2436,9 +2533,11 @@ by <var>srcvalp</var> to the RDB_object pointed to by <var>dstvalp</var>.
 <p>The source RDB_object must either be newly initialized or of the same type
 as the destination.
 
+<p>If an error occurs, an error value is left in <var>*ecp</var>.
+
 <h3>Return value</h3>
 
-<p>On success, RDB_OK is returned. On failure, an error code is returned.
+<p>RDB_OK on success, RDB_ERROR if an error occured.
 
 <h3>Errors</h3>
 
@@ -2535,7 +2634,7 @@ STRING.
 
 <h3>Return value</h3>
 
-<p>On success, RDB_OK is returned. On failure, an error code is returned.
+<p>RDB_OK on success, RDB_ERROR if an error occured.
 
 <hr>
 
@@ -2658,6 +2757,8 @@ RDB_table_to_obj(RDB_object *objp, RDB_table *tbp, RDB_exec_context *ecp);
 <p>RDB_table_to_obj wraps the table specified by <var>tbp</var> into
 the RDB_object pointed to by <var>objp</var>.
 
+<p>If an error occurs, an error value is left in <var>*ecp</var>.
+
 <hr>
 
 <h2 id="obj_comp">RDB_obj_comp</h2>
@@ -2676,9 +2777,11 @@ RDB_obj_comp(const RDB_object *valp, const char *compname,
 of a possible representation of the variable pointed to by <var>valp</var>
 to the variable pointed to by <var>comp</var>.
 
+<p>If an error occurs, an error value is left in <var>*ecp</var>.
+
 <h3>Return value</h3>
 
-<p>On success, RDB_OK is returned. On failure, an error code is returned.
+<p>RDB_OK on success, RDB_ERROR if an error occured.
 
 <h3>Errors</h3>
 
@@ -2690,7 +2793,7 @@ a scalar user-defined type.
 <dd>The getter method for component <var>compname</var> has not been created.
 </dl>
 
-<p>RDB_obj_comp may also return an error code returned by a
+<p>RDB_obj_comp may also raise an error raised by a
 user-provided getter function.
 
 <p>The call may also fail for a <a href="#syserr">system error</a>.
@@ -2716,9 +2819,11 @@ to the value of the variable pointed to by <var>comp</var>.
 <p>The RDB_object must be of a type which has a component
 <var>compname</var>.
 
+<p>If an error occurs, an error value is left in <var>*ecp</var>.
+
 <h3>Return value</h3>
 
-<p>On success, RDB_OK is returned. On failure, an error code is returned.
+<p>RDB_OK on success, RDB_ERROR if an error occured.
 
 <hr>
 
@@ -2738,9 +2843,11 @@ the position <var>pos</var> in the RDB_object pointed to by <var>valp</var>.
 <var>valp</var> must point either to a new initialized RDB_object
 or to a RDB_object of type BINARY.
 
+<p>If an error occurs, an error value is left in <var>*ecp</var>.
+
 <h3>Return value</h3>
 
-<p>On success, RDB_OK is returned. On failure, an error code is returned.
+<p>RDB_OK on success, RDB_ERROR if an error occured.
 
 <h3>Errors</h3>
 
@@ -2773,7 +2880,7 @@ at the location pointed to by <var>alenp</var>.
 
 <h3>Return value</h3>
 
-<p>On success, RDB_OK is returned. On failure, an error code is returned.
+<p>RDB_OK on success, RDB_ERROR if an error occured.
 
 <h3>Errors</h3>
 
@@ -2910,10 +3017,9 @@ The database must be empty.
 
 <p>If an error occurs, an error value is left in <var>ecp</var>.
 
-
 <h3>Return value</h3>
 
-<p>On success, RDB_OK is returned. On failure, an error code is returned.
+<p>RDB_OK on success, RDB_ERROR if an error occured.
 
 <h3>Errors</h3>
 
@@ -2988,7 +3094,7 @@ a subtransaction of the transaction specified by <var>parentp</var>.
 
 <h3>Return value</h3>
 
-<p>On success, RDB_OK is returned. On failure, an error code is returned.
+<p>RDB_OK on success, RDB_ERROR if an error occured.
 
 <hr>
 
@@ -3007,7 +3113,7 @@ RDB_commit(RDB_exec_context *ecp, RDB_transaction *txp);
 
 <h3>Return value</h3>
 
-<p>On success, RDB_OK is returned. On failure, an error code is returned.
+<p>RDB_OK on success, RDB_ERROR if an error occured.
 
 <h3>Errors</h3>
 
@@ -3036,7 +3142,7 @@ and rolls back all changes made by this transaction and its subtransactions.
 
 <h3>Return value</h3>
 
-<p>On success, RDB_OK is returned. On failure, an error code is returned.
+<p>RDB_OK on success, RDB_ERROR if an error occured.
 
 <h3>Errors</h3>
 
@@ -3156,7 +3262,7 @@ The pointer will become invalid when the array is destroyed.
 
 <h3>Return value</h3>
 
-<p>On success, RDB_OK is returned. On failure, an error code is returned.
+<p>RDB_OK on success, RDB_ERROR if an error occured.
 
 <h3>Errors</h3>
 
@@ -3191,7 +3297,7 @@ using RDB_table_to_array.
 
 <h3>Return value</h3>
 
-<p>On success, RDB_OK is returned. On failure, an error code is returned.
+<p>RDB_OK on success, RDB_ERROR if an error occured.
 
 <h3>Errors</h3>
 
@@ -3255,7 +3361,7 @@ using RDB_table_to_array.
 
 <h3>Return value</h3>
 
-<p>On success, RDB_OK is returned. On failure, an error code is returned.
+<p>RDB_OK on success, RDB_ERROR if an error occured.
 
 <h3>Errors</h3>
 
@@ -3708,7 +3814,7 @@ as an attribute with the same name as the type.
 
 <h3>Return value</h3>
 
-<p>On success, RDB_OK is returned. On failure, an error code is returned.
+<p>RDB_OK on success, RDB_ERROR if an error occured.
 
 <h3>Errors</h3>
 
@@ -4076,7 +4182,7 @@ This can be used to pass code to an interpreter function.
 
 <h3>Return value</h3>
 
-<p>On success, RDB_OK is returned. On failure, an error code is returned.
+<p>RDB_OK on success, RDB_ERROR if an error occured.
 
 <h3>Errors</h3>
 
@@ -4147,7 +4253,7 @@ This can be used to pass code to an interpreter function.
 
 <h3>Return value</h3>
 
-<p>On success, RDB_OK is returned. On failure, an error code is returned.
+<p>RDB_OK on success, RDB_ERROR if an error occured.
 
 <h3>Errors</h3>
 
@@ -4185,7 +4291,7 @@ passing the arguments in <var>argc</var> and <var>argv</var>.
 
 <h3>Return value</h3>
 
-<p>On success, RDB_OK is returned. On failure, an error code is returned.
+<p>RDB_OK on success, RDB_ERROR if an error occured.
 
 <h3>Errors</h3>
 
@@ -4200,8 +4306,8 @@ found.
 but it does not match the argument types.
 </dl>
 
-<p>If the user-supplied function which implements the function returns an
-error code, this code is returned.
+<p>If the user-supplied function which implements the function raises an
+error, this error is returned in *ecp.
 
 <p>The call may also fail for a <a href="#syserr">system error</a>,
 in which case the transaction may be implicitly rolled back.
@@ -4225,7 +4331,7 @@ passing the arguments in <var>argc</var> and <var>argv</var>.
 
 <h3>Return value</h3>
 
-<p>On success, RDB_OK is returned. On failure, an error code is returned.
+<p>RDB_OK on success, RDB_ERROR if an error occured.
 
 <h3>Errors</h3>
 
@@ -4237,8 +4343,8 @@ passing the arguments in <var>argc</var> and <var>argv</var>.
 found.
 </dl>
 
-<p>If the user-supplied function which implements the operator returns an
-error code, this code is returned.
+<p>If the user-supplied function which implements the operator raises an
+error, this error is returned in *ecp.
 
 <p>The call may also fail for a <a href="#syserr">system error</a>,
 in which case the transaction may be implicitly rolled back.
@@ -4261,7 +4367,7 @@ from the database. This affects all overloaded versions.
 
 <h3>Return value</h3>
 
-<p>On success, RDB_OK is returned. On failure, an error code is returned.
+<p>RDB_OK on success, RDB_ERROR if an error occured.
 
 <h3>Errors</h3>
 
@@ -4294,7 +4400,7 @@ on the database the transaction specified by <var>txp</var> interacts with.
 
 <h3>Return value</h3>
 
-<p>On success, RDB_OK is returned. On failure, an error code is returned.
+<p>RDB_OK on success, RDB_ERROR if an error occured.
 
 <h3>Errors</h3>
 
@@ -4327,7 +4433,7 @@ RDB_drop_constraint(const char *name, RDB_exec_context *ecp, RDB_transaction *tx
 
 <h3>Return value</h3>
 
-<p>On success, RDB_OK is returned. On failure, an error code is returned.
+<p>RDB_OK on success, RDB_ERROR if an error occured.
 
 <h3>Errors</h3>
 
@@ -4368,17 +4474,7 @@ to RDB_open_env.
 
 <h3>Errors</h3>
 
-<dl>
-<dt>RDB_RESOURCE_NOT_FOUND
-<dd>The resource specified by <var>path</var> could not be found.
-</dl>
-
-<p>The call may also fail for a <a href="#syserr">system error</a>
-different from RDB_RESOURCE_NOT_FOUND.
-
-<h3>Return value</h3>
-
-<h3>Errors</h3>
+<p>See the documentation of the Berkeley function DB->open for details.
 
 <hr>
 
@@ -4402,7 +4498,7 @@ RDB_close_env(RDB_environment *envp);
 
 <h3>Errors</h3>
 
-<p>The call may fail for a <a href="#syserr">system error</a>
+<p>See the documentation of the Berkeley function DB->open for details.
 
 <hr>
 
@@ -4502,7 +4598,7 @@ If <var>flags</var> is RDB_ORDERED, a B-tree index is created.
 
 <h3>Return value</h3>
 
-<p>On success, RDB_OK is returned. On failure, an error code is returned.
+<p>RDB_OK on success, RDB_ERROR if an error occured.
 
 <h3>Errors</h3>
 
@@ -4536,7 +4632,7 @@ RDB_drop_table_index(const char *name, RDB_exec_context *ecp, RDB_transaction *t
 
 <h3>Return value</h3>
 
-<p>On success, RDB_OK is returned. On failure, an error code is returned.
+<p>RDB_OK on success, RDB_ERROR if an error occured.
 
 <h3>Errors</h3>
 

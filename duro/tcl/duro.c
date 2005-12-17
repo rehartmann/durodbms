@@ -86,7 +86,7 @@ Duro_dberror(Tcl_Interp *interp, const RDB_object *errp, RDB_transaction *txp)
          * Convert error to Tutorial D rep
          */
 
-        tobjv[0] = Tcl_NewStringObj("DURO", 4);
+        tobjv[0] = Tcl_NewStringObj("DURO", -1);
         tobjv[1] = Duro_to_tcl(interp, errp, &ec, txp);
         if (tobjv[0] != NULL && tobjv[1] != NULL) {
             Tcl_Obj *terrcodep = Tcl_NewListObj(2, tobjv);
@@ -738,7 +738,7 @@ tuple_to_list(Tcl_Interp *interp, const RDB_object *tplp,
         }
 
         Tcl_ListObjAppendElement(interp, listobjp,
-                Tcl_NewStringObj(namev[i], strlen(namev[i])));
+                Tcl_NewStringObj(namev[i], -1));
         Tcl_ListObjAppendElement(interp, listobjp, tobjp);
     }
     return listobjp;
@@ -762,7 +762,7 @@ Duro_irep_to_tcl(Tcl_Interp *interp, const RDB_object *objp,
                 dst, dstlen, NULL, NULL, NULL);
         if (ret != TCL_OK)
             return NULL;
-        robjp = Tcl_NewStringObj(dst, strlen(dst));
+        robjp = Tcl_NewStringObj(dst, -1);
         Tcl_Free(dst);
         return robjp;
     }

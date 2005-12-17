@@ -390,7 +390,7 @@ find_txid(RDB_transaction *txp, TclState *statep)
     while (entryp != NULL) {
         if ((RDB_transaction *) Tcl_GetHashValue(entryp) == txp) {
             char *txid = Tcl_GetHashKey(&statep->txs, entryp);
-            return Tcl_NewStringObj(txid, strlen(txid));
+            return Tcl_NewStringObj(txid, -1);
         }
         entryp = Tcl_NextHashEntry(&search);
     }
@@ -422,7 +422,7 @@ Duro_invoke_update_op(const char *name, int argc, RDB_object *argv[],
         return RDB_ERROR;
     }
 
-    nametop = Tcl_NewStringObj(name, strlen(name));
+    nametop = Tcl_NewStringObj(name, -1);
 
     /* Get operator data (arg names + body) */
     opdatap = Tcl_NewStringObj((CONST char *) iargp, iarglen);
@@ -435,7 +435,7 @@ Duro_invoke_update_op(const char *name, int argc, RDB_object *argv[],
     }
 
     /* Add tx argument */
-    ret = Tcl_ListObjAppendElement(interp, namelistp, Tcl_NewStringObj("tx", 2));
+    ret = Tcl_ListObjAppendElement(interp, namelistp, Tcl_NewStringObj("tx", -1));
     if (ret != TCL_OK) {
         RDB_raise_internal("could not add tx", ecp);
         return RDB_ERROR;
@@ -464,7 +464,7 @@ Duro_invoke_update_op(const char *name, int argc, RDB_object *argv[],
     /*
      * Create a command by executing the 'proc' command
      */
-    procargv[0] = Tcl_NewStringObj("proc", 4);
+    procargv[0] = Tcl_NewStringObj("proc", -1);
     procargv[1] = nametop;
     procargv[2] = namelistp;
     procargv[3] = bodytop;
@@ -502,8 +502,7 @@ Duro_invoke_update_op(const char *name, int argc, RDB_object *argv[],
                     return RDB_ERROR;
                 }
             }
-            opargv[i + 1] = Tcl_NewStringObj(RDB_table_name(tbp),
-                    strlen(RDB_table_name(tbp)));
+            opargv[i + 1] = Tcl_NewStringObj(RDB_table_name(tbp), -1);
         } else {
             Tcl_Obj *argtop = issetter && i == 0 ?
                     Duro_irep_to_tcl(interp, argv[i], ecp, txp)
@@ -629,7 +628,7 @@ Duro_invoke_ro_op(const char *name, int argc, RDB_object *argv[],
         return RDB_ERROR;
     }
 
-    nametop = Tcl_NewStringObj(name, strlen(name));
+    nametop = Tcl_NewStringObj(name, -1);
 
     /* Get operator data (arg names + body) */
     opdatap = Tcl_NewStringObj((CONST char *) iargp, iarglen);
@@ -651,7 +650,7 @@ Duro_invoke_ro_op(const char *name, int argc, RDB_object *argv[],
     txtop = find_txid(txp, statep);
     if (txtop != NULL) {
         /* Add tx argument */
-        ret = Tcl_ListObjAppendElement(interp, namelistp, Tcl_NewStringObj("tx", 2));
+        ret = Tcl_ListObjAppendElement(interp, namelistp, Tcl_NewStringObj("tx", -1));
         if (ret != TCL_OK) {
             RDB_raise_internal("could not add tx", ecp);
             return RDB_ERROR;
@@ -668,7 +667,7 @@ Duro_invoke_ro_op(const char *name, int argc, RDB_object *argv[],
     /*
      * Create a command by executing the 'proc' comand
      */
-    procargv[0] = Tcl_NewStringObj("proc", 4);
+    procargv[0] = Tcl_NewStringObj("proc", -1);
     procargv[1] = nametop;
     procargv[2] = namelistp;
     procargv[3] = bodytop;

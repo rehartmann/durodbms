@@ -305,7 +305,14 @@ expr_op_type(const RDB_expression *exp, const RDB_type *tuptyp,
         argtv[i] = RDB_expr_type(exp->var.op.argv[i], tuptyp, ecp, txp);
         if (argtv[i] == NULL) {
             RDB_type *errtyp = RDB_obj_type(RDB_get_err(ecp));
-            if (errtyp != &RDB_NOT_FOUND_ERROR) {
+            if (errtyp != &RDB_INVALID_ARGUMENT_ERROR) {
+                int j;
+
+                for (j = 0; j < i; j++) {
+                    if (!RDB_type_is_scalar(argtv[j])) {
+                        RDB_drop_type(argtv[j], ecp, NULL);
+                    }
+                }
                 free(argtv);
                 return NULL;
             }
@@ -628,7 +635,10 @@ RDB_expr_type(const RDB_expression *exp, const RDB_type *tuptyp,
         case RDB_EX_OBJ:
             typ = RDB_obj_type(&exp->var.obj);
             if (typ == NULL) {
-                RDB_raise_not_found("type not found", ecp); /* !! */
+                if (exp->var.obj.kind == RDB_OB_TUPLE) {
+                    return _RDB_tuple_type(&exp->var.obj, ecp);
+                }
+                RDB_raise_invalid_argument("type information not available", ecp);
                 return NULL;
             }
 

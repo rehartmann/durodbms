@@ -284,6 +284,7 @@ table_drop_cmd(TclState *statep, Tcl_Interp *interp, int objc,
     Tcl_HashEntry *entryp;
     RDB_transaction *txp;
     RDB_table *tbp;
+    Tcl_HashSearch search;
 
     if (objc != 4) {
         Tcl_WrongNumArgs(interp, 2, objv, "tablename tx");
@@ -304,6 +305,22 @@ table_drop_cmd(TclState *statep, Tcl_Interp *interp, int objc,
         return TCL_ERROR;
     }
 
+
+    /*
+     * Check if there is another local table which depends on this table
+     */
+    entryp = Tcl_FirstHashEntry(&statep->ltables, &search);
+    while (entryp != NULL) {
+        table_entry *iep = (table_entry *) Tcl_GetHashValue(entryp);
+
+        if (iep->tablep != tbp && _RDB_table_refers(iep->tablep, tbp)) {
+            Tcl_AppendResult(interp, "Cannot drop table ", tbp->name,
+                    ": ", iep->tablep->name, " depends on it", NULL);
+            return TCL_ERROR;
+        }
+        entryp = Tcl_NextHashEntry(&search);
+    }
+
     if (tbp->is_persistent) {
         ret = RDB_drop_table(tbp, statep->current_ecp, txp);
         if (ret != RDB_OK) {
@@ -311,22 +328,6 @@ table_drop_cmd(TclState *statep, Tcl_Interp *interp, int objc,
             return TCL_ERROR;
         }
     } else {
-        Tcl_HashSearch search;
-
-        /*
-         * Check if there is another local table which depends on this table
-         */
-        entryp = Tcl_FirstHashEntry(&statep->ltables, &search);
-        while (entryp != NULL) {
-            table_entry *iep = (table_entry *) Tcl_GetHashValue(entryp);
-
-            if (iep->tablep != tbp && _RDB_table_refers(iep->tablep, tbp)) {
-                Tcl_AppendResult(interp, "Cannot drop table ", tbp->name,
-                        ": ", iep->tablep->name, " depends on it", NULL);
-                return TCL_ERROR;
-            }
-            entryp = Tcl_NextHashEntry(&search);
-        }
 
         entryp = Tcl_FindHashEntry(&statep->ltables, name);
         ret = Duro_tcl_drop_ltable((table_entry *)Tcl_GetHashValue(entryp),
@@ -539,20 +540,19 @@ type_to_tobj(Tcl_Interp *interp, const RDB_type *typ)
     Tcl_Obj *typobjp;
 
     if (RDB_type_is_scalar(typ))
-        return Tcl_NewStringObj(RDB_type_name(typ), strlen(RDB_type_name(typ)));
+        return Tcl_NewStringObj(RDB_type_name(typ), -1);
     switch (typ->kind) {
         case RDB_TP_TUPLE:
             listobjp = Tcl_NewListObj(0, NULL);
             if (listobjp == NULL)
                 return NULL;
             Tcl_ListObjAppendElement(interp, listobjp,
-                    Tcl_NewStringObj("tuple", 5));
+                    Tcl_NewStringObj("tuple", -1));
             for (i = 0; i < typ->var.tuple.attrc; i++) {
                 Tcl_Obj *attrobjp = Tcl_NewListObj(0, NULL);
 
                 Tcl_ListObjAppendElement(interp, attrobjp,
-                        Tcl_NewStringObj(typ->var.tuple.attrv[i].name,
-                                strlen(typ->var.tuple.attrv[i].name)));
+                        Tcl_NewStringObj(typ->var.tuple.attrv[i].name, -1));
                 typobjp = type_to_tobj(interp, typ->var.tuple.attrv[i].typ);
                 if (typobjp == NULL)
                     return NULL;
@@ -566,13 +566,12 @@ type_to_tobj(Tcl_Interp *interp, const RDB_type *typ)
             if (listobjp == NULL)
                 return NULL;
             Tcl_ListObjAppendElement(interp, listobjp,
-                    Tcl_NewStringObj("relation", 8));
+                    Tcl_NewStringObj("relation", -1));
             for (i = 0; i < tpltyp->var.tuple.attrc; i++) {
                 Tcl_Obj *attrobjp = Tcl_NewListObj(0, NULL);
 
                 Tcl_ListObjAppendElement(interp, attrobjp,
-                        Tcl_NewStringObj(tpltyp->var.tuple.attrv[i].name,
-                                strlen(tpltyp->var.tuple.attrv[i].name)));
+                        Tcl_NewStringObj(tpltyp->var.tuple.attrv[i].name, -1));
                 typobjp = type_to_tobj(interp, tpltyp->var.tuple.attrv[i].typ);
                 if (typobjp == NULL)
                     return NULL;
@@ -585,7 +584,7 @@ type_to_tobj(Tcl_Interp *interp, const RDB_type *typ)
             if (listobjp == NULL)
                 return NULL;
             Tcl_ListObjAppendElement(interp, listobjp,
-                    Tcl_NewStringObj("array", 5));
+                    Tcl_NewStringObj("array", -1));
             typobjp = type_to_tobj(interp, typ->var.basetyp);
             if (typobjp == NULL)
                 return NULL;
@@ -638,7 +637,7 @@ table_attrs_cmd(TclState *statep, Tcl_Interp *interp, int objc,
         char *name = tuptyp->var.tuple.attrv[i].name;
 
         ret = Tcl_ListObjAppendElement(interp, sublistobjp,
-                Tcl_NewStringObj(name, strlen(name)));
+                Tcl_NewStringObj(name, -1));
         if (ret != TCL_OK)
             return ret;
         typobjp = type_to_tobj(interp, tuptyp->var.tuple.attrv[i].typ);
@@ -818,7 +817,7 @@ table_keys_cmd(TclState *statep, Tcl_Interp *interp, int objc,
 
         for (j = 0; j < keyv[i].strc; j++) {
             ret = Tcl_ListObjAppendElement(interp, ilistobjp,
-               Tcl_NewStringObj(keyv[i].strv[j], strlen(keyv[i].strv[j])));
+               Tcl_NewStringObj(keyv[i].strv[j], -1));
             if (ret != TCL_OK)
                 return ret;
         }

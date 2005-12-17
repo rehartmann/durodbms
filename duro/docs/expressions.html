@@ -36,7 +36,9 @@ rename = expression RENAME '(' id AS id {',' id AS id} ')'.
 relation = expression UNION primary_expression
         | expression INTERSECT primary_expression
         | expression MINUS primary_expression
-        | expression JOIN primary_expression.
+        | expression SEMIMINUS primary_expression
+        | expression JOIN primary_expression
+        | expression SEMIJOIN primary_expression.
 
 extend = EXTEND expression ADD '(' expression AS id
         {',' expression AS id} ')'.
@@ -103,9 +105,9 @@ literal = string | integer | decimal | float | TRUE | FALSE
         | TUPLE '{' [tuple_item_list] '}'
         | RELATION '{' ne_expression_list '}' | TABLE_DEE | TABLE_DUM.
 
-ne_expression_list = | expression_list.
+expression_list = [expression_list].
 
-expression_list = expression {',' expression}.
+ne_expression_list = expression {',' expression}.
 
 tuple_item_list = id expression {',' id expression}.
 
