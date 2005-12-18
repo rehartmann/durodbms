@@ -70,12 +70,12 @@
 <li><a href="#tuple_get">RDB_tuple_get</a>
 <li><a href="#tuple_get_bool">RDB_tuple_get_bool</a>
 <li><a href="#tuple_get_int">RDB_tuple_get_int</a>
-<li><a href="#tuple_get_rational">RDB_tuple_get_rational</a>
+<li><a href="#tuple_get_double">RDB_tuple_get_double</a>
 <li><a href="#tuple_get_string">RDB_tuple_get_string</a>
 <li><a href="#tuple_set">RDB_tuple_set</a>
 <li><a href="#tuple_set_bool">RDB_tuple_set_bool</a>
 <li><a href="#tuple_set_int">RDB_tuple_set_int</a>
-<li><a href="#tuple_set_rational">RDB_tuple_set_rational</a>
+<li><a href="#tuple_set_double">RDB_tuple_set_double</a>
 <li><a href="#tuple_set_string">RDB_tuple_set_string</a>
 <li><a href="#tuple_size">RDB_tuple_size</a>
 <li><a href="#unwrap_tuple">RDB_unwrap_tuple</a>
@@ -95,10 +95,10 @@
 <li><a href="#obj_comp">RDB_obj_comp</a>
 <li><a href="#obj_equals">RDB_obj_equals</a>
 <li><a href="#obj_int">RDB_obj_int</a>
-<li><a href="#obj_rational">RDB_obj_rational</a>
+<li><a href="#obj_double">RDB_obj_double</a>
 <li><a href="#bool_to_obj">RDB_bool_to_obj</a>
 <li><a href="#int_to_obj">RDB_int_to_obj</a>
-<li><a href="#rational_to_obj">RDB_rational_to_obj</a>
+<li><a href="#double_to_obj">RDB_double_to_obj</a>
 <li><a href="#string_to_obj">RDB_string_to_obj</a>
 <li><a href="#obj_set_comp">RDB_obj_set_comp</a>
 <li><a href="#obj_string">RDB_obj_string</a>
@@ -143,7 +143,7 @@
 <li><a href="#expr_is_const">RDB_expr_is_const</a>
 <li><a href="#bool_to_expr">RDB_bool_to_expr</a>
 <li><a href="#int_to_expr">RDB_int_to_expr</a>
-<li><a href="#rational_to_expr">RDB_rational_to_expr</a>
+<li><a href="#double_to_expr">RDB_double_to_expr</a>
 <li><a href="#string_to_expr">RDB_string_to_expr</a>
 <li><a href="#obj_to_expr">RDB_obj_to_expr</a>
 <li><a href="#expr_attr">RDB_expr_attr</a>
@@ -269,7 +269,7 @@
 <li><a href="#op_substring">SUBSTRING</a>
 <li><a href="#op_matches">MATCHES</a>
 <li><a href="#op_integer">INTEGER</a>
-<li><a href="#op_rational">RATIONAL</a>
+<li><a href="#op_double">DOUBLE</a>
 <li><a href="#op_string">STRING</a>
 <li><a href="#op_is_empty">IS_EMPTY</a>
 <li><a href="#op_count">COUNT</a>
@@ -737,6 +737,9 @@ RDB_all(RDB_table *tbp, const char *attrname, RDB_exec_context *ecp, RDB_transac
 <var>attrname</var> of the table specified by <var>tbp</var>
 and stores the result at the location pointed to by <var>resultp</var>.
 
+<p>If the table has only one attribute, <var>attrname</var>
+may be NULL.
+
 <p>If an error occurs, an error value is left in <var>*ecp</var>.
 
 <p>The attribute <var>attrname</var> must be of type BOOLEAN.
@@ -754,6 +757,9 @@ and stores the result at the location pointed to by <var>resultp</var>.
 <dd>The table does not have an attribute <var>attrname</var>.
 <dt>RDB_TYPE_MISMATCH_ERROR
 <dd>The type of the attribute is not BOOLEAN.
+<dt>RDB_INVALID_ARGUMENT_ERROR
+<dd><var>attrname</var> is NULL and the table has more than one
+attribute.
 </dl>
 
 <p>The call may also fail for a <a href="#syserr">system error</a>,
@@ -778,6 +784,9 @@ RDB_any(RDB_table *tbp, const char *attrname, RDB_exec_context *ecp, RDB_transac
 and stores the result at the location
 pointed to by <var>resultp</var>.
 
+<p>If the table has only one attribute, <var>attrname</var>
+may be NULL.
+
 <p>If an error occurs, an error value is left in <var>*ecp</var>.
 
 <p>The attribute <var>attrname</var> must be of
@@ -796,6 +805,9 @@ type BOOLEAN.
 <dd>The table does not have an attribute <var>attrname</var>.
 <dt>RDB_TYPE_MISMATCH_ERROR
 <dd>The type of the attribute is not BOOLEAN.
+<dt>RDB_INVALID_ARGUMENT_ERROR
+<dd><var>attrname</var> is NULL and the table has more than one
+attribute.
 </dl>
 
 <p>The call may also fail for a <a href="#syserr">system error</a>,
@@ -810,7 +822,7 @@ in which case the transaction may be implicitly rolled back.
 
 int
 RDB_avg(RDB_table *tbp, const char *attrname, RDB_exec_context *ecp, RDB_transaction *txp,
-        RDB_rational *resultp);
+        RDB_double *resultp);
 </pre>
 
 <h3>Description</h3>
@@ -819,6 +831,9 @@ RDB_avg(RDB_table *tbp, const char *attrname, RDB_exec_context *ecp, RDB_transac
 <var>attrname</var> of the table specified by <var>tbp</var>
 and stores the result at the location
 pointed to by <var>resultp</var>.
+
+<p>If the table has only one attribute, <var>attrname</var>
+may be NULL.
 
 <p>If an error occurs, an error value is left in <var>*ecp</var>.
 
@@ -837,6 +852,9 @@ pointed to by <var>resultp</var>.
 <dd>The table does not have an attribute <var>attrname</var>.
 <dt>RDB_TYPE_MISMATCH_ERROR
 <dd>The type of the attribute is not numeric.
+<dt>RDB_INVALID_ARGUMENT_ERROR
+<dd><var>attrname</var> is NULL and the table has more than one
+attribute.
 <dt>RDB_AGGREGATE_UNDEFINED_ERROR
 <dd>The table is empty.
 </dl>
@@ -899,6 +917,9 @@ RDB_max(RDB_table *tbp, const char *attrname, RDB_exec_context *ecp, RDB_transac
 <var>attrname</var> of the table specified by <var>tbp</var>
 and stores the result at the location pointed to by <var>resultp</var>.
 
+<p>If the table has only one attribute, <var>attrname</var>
+may be NULL.
+
 <p>If an error occurs, an error value is left in <var>*ecp</var>.
 
 <p>The attribute <var>attrname</var> must be numeric
@@ -917,6 +938,9 @@ and the result is of the same type as the attribute.
 <dd>The table does not have an attribute <var>attrname</var>.
 <dt>RDB_TYPE_MISMATCH_ERROR
 <dd>The type of the attribute is not numeric.
+<dt>RDB_INVALID_ARGUMENT_ERROR
+<dd><var>attrname</var> is NULL and the table has more than one
+attribute.
 </dl>
 
 <p>The call may also fail for a <a href="#syserr">system error</a>,
@@ -940,6 +964,9 @@ RDB_min(RDB_table *tbp, const char *attrname, RDB_exec_context *ecp, RDB_transac
 <var>attrname</var> of the table specified by <var>tbp</var>
 and stores the result at the location pointed to by <var>resultp</var>.
 
+<p>If the table has only one attribute, <var>attrname</var>
+may be NULL.
+
 <p>If an error occurs, an error value is left in <var>*ecp</var>.
 
 <p>The attribute <var>attrname</var> must be numeric
@@ -958,6 +985,9 @@ and the result is of the same type as the attribute.
 <dd>The table does not have an attribute <var>attrname</var>.
 <dt>RDB_TYPE_MISMATCH_ERROR
 <dd>The type of the attribute is not numeric.
+<dt>RDB_INVALID_ARGUMENT_ERROR
+<dd><var>attrname</var> is NULL and the table has more than one
+attribute.
 </dl>
 
 <p>The call may also fail for a <a href="#syserr">system error</a>,
@@ -981,6 +1011,9 @@ RDB_sum(RDB_table *tbp, const char *attrname, RDB_exec_context *ecp, RDB_transac
 <var>attrname</var> of the table pointed to by <var>tbp</var>
 and stores the result at the location pointed to by <var>resultp</var>.
 
+<p>If the table has only one attribute, <var>attrname</var>
+may be NULL.
+
 <p>If an error occurs, an error value is left in <var>*ecp</var>.
 
 <p>The attribute <var>attrname</var> must be numeric
@@ -999,6 +1032,9 @@ and the result is of the same type as the attribute.
 <dd>The table does not have an attribute <var>attrname</var>.
 <dt>RDB_TYPE_MISMATCH_ERROR
 <dd>The type of the attribute is not numeric.
+<dt>RDB_INVALID_ARGUMENT_ERROR
+<dd><var>attrname</var> is NULL and the table has more than one
+attribute.
 </dl>
 
 <p>The call may also fail for a <a href="#syserr">system error</a>,
@@ -2121,19 +2157,19 @@ variable specified by <var>tplp</var> to the integer value specified by
 
 <hr>
 
-<h2 id="tuple_set_rational">RDB_tuple_set_rational</h2>
+<h2 id="tuple_set_double">RDB_tuple_set_double</h2>
 
 <pre>
 #include &lt;rel/rdb.h&gt;
 
 int
-RDB_tuple_set_rational(RDB_object *tplp, const char *name, RDB_rational val, RDB_exec_context *ecp);
+RDB_tuple_set_double(RDB_object *tplp, const char *name, RDB_double val, RDB_exec_context *ecp);
 </pre>
 
 <h3>Description</h3>
 
 <p>RDB_tuple_set_int sets the attribute <var>name</var> of the tuple
-variable specified by <var>tplp</var> to the rational value specified by
+variable specified by <var>tplp</var> to the double value specified by
 <var>val</var>.
 
 <p>If an error occurs, an error value is left in <var>*ecp</var>.
@@ -2283,20 +2319,20 @@ type INTEGER.
 
 <hr>
 
-<h2 id="tuple_get_rational">RDB_tuple_get_rational</h2>
+<h2 id="tuple_get_double">RDB_tuple_get_double</h2>
 
 <pre>
 #include &lt;rel/rdb.h&gt;
 
-RDB_rational
-RDB_tuple_get_rational(const RDB_object *, const char *name);
+RDB_double
+RDB_tuple_get_double(const RDB_object *, const char *name);
 </pre>
 
 <h3>Description</h3>
 
-<p>RDB_tuple_get_rational returns the value of attribute <var>name</var>
-as a RDB_rational. The attribute must exist and it must be of
-type RATIONAL.
+<p>RDB_tuple_get_double returns the value of attribute <var>name</var>
+as a RDB_double. The attribute must exist and it must be of
+type DOUBLE.
 
 <h3>Return value</h3>
 
@@ -2596,22 +2632,22 @@ INTEGER.
 
 <hr>
 
-<h2 id="rational_to_obj">RDB_rational_to_obj</h2>
+<h2 id="double_to_obj">RDB_double_to_obj</h2>
 
 <pre>
 #include &lt;rel/rdb.h&gt;
 
 void
-RDB_rational_to_obj(RDB_object *valp, RDB_rational v);
+RDB_double_to_obj(RDB_object *valp, RDB_double v);
 </pre>
 
 <h3>Description</h3>
 
-<p>RDB_rational_to_obj sets the RDB_object pointed to by <var>valp</var>
-to the rational value specified by <var>v</var>.
+<p>RDB_double_to_obj sets the RDB_object pointed to by <var>valp</var>
+to the double value specified by <var>v</var>.
 
 <p>The RDB_object must either be newly initialized or of type
-RATIONAL.
+DOUBLE.
 
 <hr>
 
@@ -2680,20 +2716,20 @@ INTEGER.
 
 <hr>
 
-<h2 id="obj_rational">RDB_obj_rational</h2>
+<h2 id="obj_double">RDB_obj_double</h2>
 
 <pre>
 #include &lt;rel/rdb.h&gt;
 
-RDB_rational
-RDB_obj_rational(const RDB_object *valp);
+RDB_double
+RDB_obj_double(const RDB_object *valp);
 </pre>
 
 <h3>Description</h3>
 
-<p>RDB_obj_rational returns the value of the RDB_object pointed to by
-<var>valp</var> as a RDB_rational. The RDB_object must be of type
-RATIONAL.
+<p>RDB_obj_double returns the value of the RDB_object pointed to by
+<var>valp</var> as a RDB_double. The RDB_object must be of type
+DOUBLE.
 
 <h3>Return value</h3>
 
@@ -3433,18 +3469,18 @@ failed.
 
 <hr>
 
-<h2 id="rational_to_expr">RDB_rational_to_expr</h2>
+<h2 id="double_to_expr">RDB_double_to_expr</h2>
 
 <pre>
 #include &lt;rel/rdb.h&gt;
 
 RDB_expression *
-RDB_rational_to_expr(RDB_rational, RDB_exec_context *ecp);
+RDB_double_to_expr(RDB_double, RDB_exec_context *ecp);
 </pre>
 
 <h3>Description</h3>
 
-<p>RDB_rational_to_expr creates a constant expression of type RATIONAL.
+<p>RDB_double_to_expr creates a constant expression of type DOUBLE.
 
 <h3>Return value</h3>
 
@@ -4108,7 +4144,7 @@ RDB_type_is_numeric(const RDB_type *);
 
 <h3>Return value</h3>
 
-<p>RDB_TRUE if the type is INTEGER or RATIONAL, RDB_FALSE otherwise.
+<p>RDB_TRUE if the type is INTEGER or DOUBLE, RDB_FALSE otherwise.
 
 <hr>
 
@@ -4764,7 +4800,7 @@ typedef enum {
 <tr><th>Name<th>RDB_type variable<th>C type
 <tr><td>BOOLEAN<td>RDB_BOOLEAN<td>RDB_bool
 <tr><td>INTEGER<td>RDB_INTEGER<td>RDB_int
-<tr><td>RATIONAL<td>RDB_RATIONAL<td>RDB_rational
+<tr><td>DOUBLE<td>RDB_DOUBLE<td>RDB_double
 <tr><td>STRING<td>RDB_STRING<td>char *
 <tr><td>BINARY<td>RDB_BINARY<td>&nbsp;-
 </table>
@@ -4830,7 +4866,7 @@ The arguments must be of the same type.
 
 <p>OPERATOR &lt; (INTEGER, INTEGER) RETURNS BOOLEAN;
 
-<p>OPERATOR &lt; (RATIONAL, RATIONAL) RETURNS BOOLEAN;
+<p>OPERATOR &lt; (DOUBLE, DOUBLE) RETURNS BOOLEAN;
 
 <p>OPERATOR &lt; (STRING, STRING) RETURNS BOOLEAN;
 
@@ -4849,7 +4885,7 @@ If the operands are strings, the strings will be compared using strcoll().
 
 <p>OPERATOR &lt;= (INTEGER, INTEGER) RETURNS BOOLEAN;
 
-<p>OPERATOR &lt;= (RATIONAL, RATIONAL) RETURNS BOOLEAN;
+<p>OPERATOR &lt;= (DOUBLE, DOUBLE) RETURNS BOOLEAN;
 
 <p>OPERATOR &lt;= (STRING, STRING) RETURNS BOOLEAN;
 
@@ -4868,7 +4904,7 @@ If the operands are strings, the strings will be compared using strcoll().
 
 <p>OPERATOR &gt; (INTEGER, INTEGER) RETURNS BOOLEAN;
 
-<p>OPERATOR &gt; (RATIONAL, RATIONAL) RETURNS BOOLEAN;
+<p>OPERATOR &gt; (DOUBLE, DOUBLE) RETURNS BOOLEAN;
 
 <p>OPERATOR &gt; (STRING, STRING) RETURNS BOOLEAN;
 
@@ -4887,7 +4923,7 @@ If the operands are strings, the strings will be compared using strcoll().
 
 <p>OPERATOR &gt;= (INTEGER, INTEGER) RETURNS BOOLEAN;
 
-<p>OPERATOR &gt;= (RATIONAL, RATIONAL) RETURNS BOOLEAN;
+<p>OPERATOR &gt;= (DOUBLE, DOUBLE) RETURNS BOOLEAN;
 
 <p>OPERATOR &gt;= (STRING, STRING) RETURNS BOOLEAN;
 
@@ -4906,7 +4942,7 @@ If the operands are strings, the strings will be compared using strcoll().
 
 <p>OPERATOR + (INTEGER, INTEGER) RETURNS INTEGER;
 
-<p>OPERATOR + (RATIONAL, RATIONAL) RETURNS RATIONAL;
+<p>OPERATOR + (DOUBLE, DOUBLE) RETURNS DOUBLE;
 
 <h4>Description</h4>
 
@@ -4922,7 +4958,7 @@ If the operands are strings, the strings will be compared using strcoll().
 
 <p>OPERATOR - (INTEGER) RETURNS INTEGER;
 
-<p>OPERATOR - (RATIONAL) RETURNS RATIONAL;
+<p>OPERATOR - (DOUBLE) RETURNS DOUBLE;
 
 <h4>Description</h4>
 
@@ -4938,7 +4974,7 @@ If the operands are strings, the strings will be compared using strcoll().
 
 <p>OPERATOR - (INTEGER, INTEGER) RETURNS INTEGER;
 
-<p>OPERATOR - (RATIONAL, RATIONAL) RETURNS RATIONAL;
+<p>OPERATOR - (DOUBLE, DOUBLE) RETURNS DOUBLE;
 
 <h4>Description</h4>
 
@@ -4954,7 +4990,7 @@ If the operands are strings, the strings will be compared using strcoll().
 
 <p>OPERATOR * (INTEGER, INTEGER) RETURNS INTEGER;;
 
-<p>OPERATOR * (RATIONAL, RATIONAL) RETURNS RATIONAL;
+<p>OPERATOR * (DOUBLE, DOUBLE) RETURNS DOUBLE;
 
 <h4>Description</h4>
 
@@ -4970,7 +5006,7 @@ If the operands are strings, the strings will be compared using strcoll().
 
 <p>OPERATOR / (INTEGER, INTEGER) RETURNS INTEGER;
 
-<p>OPERATOR / (RATIONAL, RATIONAL) RETURNS RATIONAL;
+<p>OPERATOR / (DOUBLE, DOUBLE) RETURNS DOUBLE;
 
 <h4>Description</h4>
 
@@ -5086,7 +5122,7 @@ START.
 
 <h3 id="op_integer">OPERATOR INTEGER</h3>
 
-<p>OPERATOR INTEGER (RATIONAL) RETURNS INTEGER;
+<p>OPERATOR INTEGER (DOUBLE) RETURNS INTEGER;
 
 <p>OPERATOR INTEGER (STRING) RETURNS INTEGER;
 
@@ -5100,19 +5136,19 @@ START.
 
 <hr>
 
-<h3 id="op_rational">OPERATOR RATIONAL</h3>
+<h3 id="op_double">OPERATOR DOUBLE</h3>
 
-<p>OPERATOR RATIONAL (INTEGER) RETURNS RATIONAL;
+<p>OPERATOR DOUBLE (INTEGER) RETURNS DOUBLE;
 
-<p>OPERATOR RATIONAL (STRING) RETURNS INTEGER;
+<p>OPERATOR DOUBLE (STRING) RETURNS INTEGER;
 
 <h4>Description</h4>
 
-<p>Converts the operand to RATIONAL.
+<p>Converts the operand to DOUBLE.
 
 <h4>Return value</h4>
 
-<p>The operand, converted to RATIONAL.
+<p>The operand, converted to DOUBLE.
 
 <hr>
 
@@ -5120,7 +5156,7 @@ START.
 
 <p>OPERATOR STRING (INTEGER) RETURNS STRING;
 
-<p>OPERATOR STRING (RATIONAL) RETURNS STRING;
+<p>OPERATOR STRING (DOUBLE) RETURNS STRING;
 
 <h4>Description</h4>
 

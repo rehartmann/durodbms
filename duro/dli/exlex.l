@@ -272,12 +272,12 @@ TABLE_DUM {
 }
 
 -?[0-9]+"."[0-9]+[Ee][0-9]+ {
-    yylval = RDB_rational_to_expr((RDB_rational) atof(yytext), _RDB_parse_ecp);
+    yylval = RDB_double_to_expr((RDB_double) atof(yytext), _RDB_parse_ecp);
     return TOK_LIT_FLOAT;
 }
 
 -?[0-9]+"."[0-9]+	{
-    yylval = RDB_rational_to_expr((RDB_rational) atof(yytext), _RDB_parse_ecp);
+    yylval = RDB_double_to_expr((RDB_double) atof(yytext), _RDB_parse_ecp);
     return TOK_LIT_FLOAT;
 }
 

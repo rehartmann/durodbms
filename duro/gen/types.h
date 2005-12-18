@@ -7,14 +7,14 @@
 #include <float.h>
 
 typedef int RDB_int;
-typedef double RDB_rational;
+typedef double RDB_double;
 typedef unsigned char RDB_byte;
 typedef char RDB_bool;
 
 #define RDB_INT_MAX INT_MAX
 #define RDB_INT_MIN INT_MIN
-#define RDB_RATIONAL_MAX DBL_MAX
-#define RDB_RATIONAL_MIN DBL_MIN
+#define RDB_DOUBLE_MAX DBL_MAX
+#define RDB_DOUBLE_MIN DBL_MIN
 
 #define RDB_TRUE ((RDB_bool) 1)
 #define RDB_FALSE ((RDB_bool) 0)
