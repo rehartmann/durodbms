@@ -36,7 +36,7 @@ test_keys(RDB_database *dbp, RDB_exec_context *ecp)
     ret = RDB_tuple_set_string(&tpl, "NAME", "Johnson", ecp);
     if (ret != RDB_OK)
         goto error;
-    ret = RDB_tuple_set_rational(&tpl, "SALARY", (RDB_rational)4000.0, ecp);
+    ret = RDB_tuple_set_double(&tpl, "SALARY", (RDB_double)4000.0, ecp);
     if (ret != RDB_OK)
         goto error;
     ret = RDB_tuple_set_int(&tpl, "DEPTNO", 1, ecp);
@@ -59,7 +59,7 @@ test_keys(RDB_database *dbp, RDB_exec_context *ecp)
     ret = RDB_tuple_set_string(&tpl, "NAME", "Smith", ecp);
     if (ret != RDB_OK)
         goto error;
-    ret = RDB_tuple_set_rational(&tpl, "SALARY", (RDB_rational)4000.0, ecp);
+    ret = RDB_tuple_set_double(&tpl, "SALARY", (RDB_double)4000.0, ecp);
     if (ret != RDB_OK)
         goto error;
     ret = RDB_tuple_set_int(&tpl, "DEPTNO", 1, ecp);

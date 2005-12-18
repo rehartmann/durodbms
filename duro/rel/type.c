@@ -15,7 +15,7 @@
 
 RDB_type RDB_BOOLEAN;
 RDB_type RDB_INTEGER;
-RDB_type RDB_RATIONAL;
+RDB_type RDB_DOUBLE;
 RDB_type RDB_STRING;
 RDB_type RDB_BINARY;
 
@@ -50,15 +50,15 @@ compare_int(const char *name, int argc, RDB_object *argv[],
 }
 
 static int
-compare_rational(const char *name, int argc, RDB_object *argv[],
+compare_double(const char *name, int argc, RDB_object *argv[],
         const void *iargp, size_t iarglen, RDB_exec_context *ecp,
         RDB_transaction *txp, RDB_object *retvalp)
 {
     RDB_int res;
 
-    if (argv[0]->var.rational_val < argv[1]->var.rational_val) {
+    if (argv[0]->var.double_val < argv[1]->var.double_val) {
         res = -1;
-    } else if (argv[0]->var.rational_val > argv[1]->var.rational_val) {
+    } else if (argv[0]->var.double_val > argv[1]->var.double_val) {
         res = 1;
     } else {
         res = 0;
@@ -250,13 +250,13 @@ _RDB_init_builtin_types(RDB_exec_context *ecp)
     RDB_INTEGER.var.scalar.constraintp = NULL;
     RDB_INTEGER.comparep = &compare_int;
 
-    RDB_RATIONAL.kind = RDB_TP_SCALAR;
-    RDB_RATIONAL.ireplen = sizeof (RDB_rational);
-    RDB_RATIONAL.name = "RATIONAL";
-    RDB_RATIONAL.var.scalar.repc = 0;
-    RDB_RATIONAL.var.scalar.arep = NULL;
-    RDB_RATIONAL.var.scalar.constraintp = NULL;
-    RDB_RATIONAL.comparep = &compare_rational;
+    RDB_DOUBLE.kind = RDB_TP_SCALAR;
+    RDB_DOUBLE.ireplen = sizeof (RDB_double);
+    RDB_DOUBLE.name = "DOUBLE";
+    RDB_DOUBLE.var.scalar.repc = 0;
+    RDB_DOUBLE.var.scalar.arep = NULL;
+    RDB_DOUBLE.var.scalar.constraintp = NULL;
+    RDB_DOUBLE.comparep = &compare_double;
 
     RDB_BINARY.kind = RDB_TP_SCALAR;
     RDB_BINARY.ireplen = RDB_VARIABLE_LEN;
@@ -504,7 +504,7 @@ _RDB_init_builtin_types(RDB_exec_context *ecp)
 
 RDB_bool
 RDB_type_is_numeric(const RDB_type *typ) {
-    return (RDB_bool)(typ == &RDB_INTEGER || typ == &RDB_RATIONAL);
+    return (RDB_bool)(typ == &RDB_INTEGER || typ == &RDB_DOUBLE);
 }
 
 RDB_type *
@@ -646,7 +646,7 @@ RDB_bool
 RDB_type_is_builtin(const RDB_type *typ)
 {
     return (RDB_bool) ((typ == &RDB_BOOLEAN) || (typ == &RDB_INTEGER)
-            || (typ == &RDB_RATIONAL) || (typ == &RDB_STRING)
+            || (typ == &RDB_DOUBLE) || (typ == &RDB_STRING)
             || (typ == &RDB_BINARY));
 }
 
@@ -1613,7 +1613,7 @@ aggr_type(RDB_type *tuptyp, RDB_type *attrtyp, RDB_aggregate_op op,
                 RDB_raise_type_mismatch("attribute type must be numeric", ecp);
                 return NULL;
             }
-            return &RDB_RATIONAL;
+            return &RDB_DOUBLE;
         case RDB_SUM:
         case RDB_SUMD:
         case RDB_MAX:

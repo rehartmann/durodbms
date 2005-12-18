@@ -645,8 +645,8 @@ RDB_max(RDB_table *tbp, const char *attrname, RDB_exec_context *ecp,
 
     if (attrtyp == &RDB_INTEGER)
         resultp->var.int_val = RDB_INT_MIN;
-    else if (attrtyp == &RDB_RATIONAL)
-        resultp->var.rational_val = RDB_RATIONAL_MIN;
+    else if (attrtyp == &RDB_DOUBLE)
+        resultp->var.double_val = RDB_DOUBLE_MIN;
     else {
         RDB_raise_type_mismatch("argument must be numeric", ecp);
         return RDB_ERROR;
@@ -672,10 +672,10 @@ RDB_max(RDB_table *tbp, const char *attrname, RDB_exec_context *ecp,
             if (val > resultp->var.int_val)
                  resultp->var.int_val = val;
         } else {
-            RDB_rational val = RDB_tuple_get_rational(tplp, attrname);
+            RDB_double val = RDB_tuple_get_double(tplp, attrname);
              
-            if (val > resultp->var.rational_val)
-                resultp->var.rational_val = val;
+            if (val > resultp->var.double_val)
+                resultp->var.double_val = val;
         }
     }
     if (RDB_obj_type(RDB_get_err(ecp)) != &RDB_NOT_FOUND_ERROR) {
@@ -715,8 +715,8 @@ RDB_min(RDB_table *tbp, const char *attrname, RDB_exec_context *ecp,
 
     if (attrtyp == &RDB_INTEGER)
         resultp->var.int_val = RDB_INT_MIN;
-    else if (attrtyp == &RDB_RATIONAL)
-        resultp->var.rational_val = RDB_RATIONAL_MIN;
+    else if (attrtyp == &RDB_DOUBLE)
+        resultp->var.double_val = RDB_DOUBLE_MIN;
     else {
         RDB_raise_type_mismatch("argument must be numeric", ecp);
         return RDB_ERROR;
@@ -742,10 +742,10 @@ RDB_min(RDB_table *tbp, const char *attrname, RDB_exec_context *ecp,
             if (val < resultp->var.int_val)
                  resultp->var.int_val = val;
         } else {
-            RDB_rational val = RDB_tuple_get_rational(tplp, attrname);
+            RDB_double val = RDB_tuple_get_double(tplp, attrname);
              
-            if (val < resultp->var.rational_val)
-                resultp->var.rational_val = val;
+            if (val < resultp->var.double_val)
+                resultp->var.double_val = val;
         }
     }
     if (RDB_obj_type(RDB_get_err(ecp)) != &RDB_NOT_FOUND_ERROR) {
@@ -785,8 +785,8 @@ RDB_sum(RDB_table *tbp, const char *attrname, RDB_exec_context *ecp,
     /* initialize result */
     if (attrtyp == &RDB_INTEGER)
         resultp->var.int_val = 0;
-    else if (attrtyp == &RDB_RATIONAL)
-        resultp->var.rational_val = 0.0;
+    else if (attrtyp == &RDB_DOUBLE)
+        resultp->var.double_val = 0.0;
     else {
         RDB_raise_type_mismatch("argument must be numeric", ecp);
         return RDB_ERROR;
@@ -809,8 +809,8 @@ RDB_sum(RDB_table *tbp, const char *attrname, RDB_exec_context *ecp,
         if (attrtyp == &RDB_INTEGER)
             resultp->var.int_val += RDB_tuple_get_int(tplp, attrname);
         else
-            resultp->var.rational_val
-                            += RDB_tuple_get_rational(tplp, attrname);
+            resultp->var.double_val
+                            += RDB_tuple_get_double(tplp, attrname);
     }
     if (RDB_obj_type(RDB_get_err(ecp)) != &RDB_NOT_FOUND_ERROR) {
         RDB_destroy_obj(&arr, ecp);
@@ -823,7 +823,7 @@ RDB_sum(RDB_table *tbp, const char *attrname, RDB_exec_context *ecp,
 
 int
 RDB_avg(RDB_table *tbp, const char *attrname, RDB_exec_context *ecp,
-        RDB_transaction *txp, RDB_rational *resultp)
+        RDB_transaction *txp, RDB_double *resultp)
 {
     RDB_type *attrtyp;
     RDB_object arr;
@@ -871,7 +871,7 @@ RDB_avg(RDB_table *tbp, const char *attrname, RDB_exec_context *ecp,
         if (attrtyp == &RDB_INTEGER)
             *resultp += RDB_tuple_get_int(tplp, attrname);
         else
-            *resultp += RDB_tuple_get_rational(tplp, attrname);
+            *resultp += RDB_tuple_get_double(tplp, attrname);
     }
     if (RDB_obj_type(RDB_get_err(ecp)) != &RDB_NOT_FOUND_ERROR) {
         RDB_destroy_obj(&arr, ecp);

@@ -80,8 +80,8 @@ test_insert(RDB_database *dbp, RDB_exec_context *ecp)
     RDB_init_obj(&lenval);
     RDB_init_obj(&thval);
 
-    RDB_rational_to_obj(&xval, 1.0);
-    RDB_rational_to_obj(&yval, 2.0);
+    RDB_double_to_obj(&xval, 1.0);
+    RDB_double_to_obj(&yval, 2.0);
 
     printf("Invoking selector POINT(1,2)\n");
 
@@ -115,7 +115,7 @@ test_insert(RDB_database *dbp, RDB_exec_context *ecp)
 
     printf("Doubling LENGTH\n");
 
-    RDB_rational_to_obj(&lenval, RDB_obj_rational(&lenval) * 2.0);
+    RDB_double_to_obj(&lenval, RDB_obj_double(&lenval) * 2.0);
 
     RDB_obj_set_comp(&pval, "LENGTH", &lenval, ecp, &tx);
 
@@ -195,8 +195,8 @@ test_query(RDB_database *dbp, RDB_exec_context *ecp)
         ret = RDB_obj_comp(pvalp, "X", &xval, ecp, &tx);
         ret = RDB_obj_comp(pvalp, "Y", &yval, ecp, &tx);
 
-        printf("X=%f, Y=%f\n", (float)RDB_obj_rational(&xval),
-                (float)RDB_obj_rational(&yval));
+        printf("X=%f, Y=%f\n", (float)RDB_obj_double(&xval),
+                (float)RDB_obj_double(&yval));
     }
 /* !!
     if (ret != RDB_NOT_FOUND)
@@ -207,7 +207,7 @@ test_query(RDB_database *dbp, RDB_exec_context *ecp)
 
     wherep = RDB_expr_attr("POINT", ecp);
     wherep = RDB_expr_comp(wherep, "X", ecp);
-    wherep = RDB_eq(wherep, RDB_rational_to_expr(1.0, ecp), ecp);
+    wherep = RDB_eq(wherep, RDB_double_to_expr(1.0, ecp), ecp);
 
     tmptbp = RDB_select(tbp, wherep, ecp, &tx);
     if (tmptbp == NULL)
@@ -231,8 +231,8 @@ test_query(RDB_database *dbp, RDB_exec_context *ecp)
             goto error;
         } 
 
-        printf("X=%f, Y=%f\n", (float)RDB_obj_rational(&xval),
-                (float)RDB_obj_rational(&yval));
+        printf("X=%f, Y=%f\n", (float)RDB_obj_double(&xval),
+                (float)RDB_obj_double(&yval));
     }
 /* !!
     if (ret != RDB_NOT_FOUND)
@@ -246,8 +246,8 @@ test_query(RDB_database *dbp, RDB_exec_context *ecp)
 
     printf("Creating POINTTEST WHERE POINT=POINT(1,2)\n");
 
-    compv[0] = RDB_rational_to_expr(1.0, ecp);
-    compv[1] = RDB_rational_to_expr(2.0, ecp);
+    compv[0] = RDB_double_to_expr(1.0, ecp);
+    compv[1] = RDB_double_to_expr(2.0, ecp);
     wherep = RDB_ro_op("POINT", 2, compv, ecp);
     if (wherep == NULL) {
         ret = RDB_ERROR;
@@ -280,8 +280,8 @@ test_query(RDB_database *dbp, RDB_exec_context *ecp)
             goto error;
         } 
 
-        printf("X=%f, Y=%f\n", (float)RDB_obj_rational(&xval),
-                (float)RDB_obj_rational(&yval));
+        printf("X=%f, Y=%f\n", (float)RDB_obj_double(&xval),
+                (float)RDB_obj_double(&yval));
     }
 /* !!
     if (ret != RDB_NOT_FOUND)

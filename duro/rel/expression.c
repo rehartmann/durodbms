@@ -682,7 +682,7 @@ RDB_expr_type(const RDB_expression *exp, const RDB_type *tuptyp,
                     return &RDB_INTEGER;
                     break;
                 case RDB_AVG:
-                    return &RDB_RATIONAL;
+                    return &RDB_DOUBLE;
                     break;
                 default:
                     attrp = _RDB_tuple_type_attr(
@@ -824,7 +824,7 @@ RDB_int_to_expr(RDB_int v, RDB_exec_context *ecp)
 }
 
 RDB_expression *
-RDB_rational_to_expr(RDB_rational v, RDB_exec_context *ecp)
+RDB_double_to_expr(RDB_double v, RDB_exec_context *ecp)
 {
     RDB_expression *exp = malloc(sizeof (RDB_expression));
     
@@ -834,9 +834,9 @@ RDB_rational_to_expr(RDB_rational v, RDB_exec_context *ecp)
     }
         
     exp->kind = RDB_EX_OBJ;
-    exp->var.obj.typ = &RDB_RATIONAL;
-    exp->var.obj.kind = RDB_OB_RATIONAL;
-    exp->var.obj.var.rational_val = v;
+    exp->var.obj.typ = &RDB_DOUBLE;
+    exp->var.obj.kind = RDB_OB_DOUBLE;
+    exp->var.obj.var.double_val = v;
 
     return exp;
 }
@@ -1448,7 +1448,7 @@ aggregate(RDB_table *tbp, RDB_aggregate_op op, const char *attrname,
           RDB_exec_context *ecp, RDB_transaction *txp, RDB_object *resultp)
 {
     int ret;
-    RDB_rational avg;
+    RDB_double avg;
     RDB_bool b;
 
     switch(op) {
@@ -1464,7 +1464,7 @@ aggregate(RDB_table *tbp, RDB_aggregate_op op, const char *attrname,
             ret = RDB_avg(tbp, attrname, ecp, txp, &avg);
             if (ret != RDB_OK)
                 return ret;
-            RDB_rational_to_obj(resultp, avg);
+            RDB_double_to_obj(resultp, avg);
             return RDB_OK;
         case RDB_MAX:
             return RDB_max(tbp, attrname, ecp, txp, resultp);

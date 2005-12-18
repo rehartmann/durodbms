@@ -24,7 +24,7 @@ print_table1(RDB_table *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
     }
     
     for (i = 0; (tplp = RDB_array_get(&array, i, ecp)) != NULL; i++) {
-        printf("SALARY: %f\n", (float)RDB_tuple_get_rational(tplp, "SALARY"));
+        printf("SALARY: %f\n", (float)RDB_tuple_get_double(tplp, "SALARY"));
     }
 /* !!
     if (ret != RDB_NOT_FOUND) {
@@ -112,7 +112,7 @@ test_project(RDB_database *dbp, RDB_exec_context *ecp)
     ret = print_table1(vtbp, ecp, &tx);
 
     RDB_init_obj(&tpl);
-    RDB_tuple_set_rational(&tpl, "SALARY", (RDB_rational)4000.0, ecp);
+    RDB_tuple_set_double(&tpl, "SALARY", (RDB_double)4000.0, ecp);
     ret = RDB_table_contains(vtbp, &tpl, ecp, &tx, &b);
     if (ret != RDB_OK) {
         RDB_rollback(ecp, &tx);
@@ -121,7 +121,7 @@ test_project(RDB_database *dbp, RDB_exec_context *ecp)
 
     printf("Projection contains SALARY(4000.0): %s\n", b ? "yes" : "no");
 
-    RDB_tuple_set_rational(&tpl, "SALARY", (RDB_rational)4400.0, ecp);
+    RDB_tuple_set_double(&tpl, "SALARY", (RDB_double)4400.0, ecp);
     ret = RDB_table_contains(vtbp, &tpl, ecp, &tx, &b);
     printf("Projection contains SALARY(4400.0): %s\n", b ? "yes" : "no");
 

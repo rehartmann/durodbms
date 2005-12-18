@@ -346,7 +346,7 @@ obj_equals(const char *name, int argc, RDB_object *argv[],
         case RDB_OB_BOOL:
             return eq_bool("=", 2, argv, NULL, 0, ecp, txp, retvalp);
         case RDB_OB_INT:
-        case RDB_OB_RATIONAL:
+        case RDB_OB_DOUBLE:
             /* Must not happen, because there must be a comparsion function */
             RDB_raise_internal("missing comparison function", ecp);
             return RDB_ERROR;
@@ -1495,11 +1495,11 @@ RDB_drop_op(const char *name, RDB_exec_context *ecp, RDB_transaction *txp)
  */
 
 static int
-integer_rational(const char *name, int argc, RDB_object *argv[],
+integer_double(const char *name, int argc, RDB_object *argv[],
         const void *iargp, size_t iarglen, RDB_exec_context *ecp,
         RDB_transaction *txp, RDB_object *retvalp)
 {
-    RDB_int_to_obj(retvalp, (int) argv[0]->var.rational_val);
+    RDB_int_to_obj(retvalp, (int) argv[0]->var.double_val);
     return RDB_OK;
 }
 
@@ -1520,25 +1520,25 @@ integer_string(const char *name, int argc, RDB_object *argv[],
 }
 
 static int
-rational_int(const char *name, int argc, RDB_object *argv[],
+double_int(const char *name, int argc, RDB_object *argv[],
         const void *iargp, size_t iarglen, RDB_exec_context *ecp,
         RDB_transaction *txp, RDB_object *retvalp)
 {
-    RDB_rational_to_obj(retvalp, (RDB_rational) argv[0]->var.int_val);
+    RDB_double_to_obj(retvalp, (RDB_double) argv[0]->var.int_val);
     return RDB_OK;
 }
 
 static int
-rational_string(const char *name, int argc, RDB_object *argv[],
+double_string(const char *name, int argc, RDB_object *argv[],
         const void *iargp, size_t iarglen, RDB_exec_context *ecp,
         RDB_transaction *txp, RDB_object *retvalp)
 {
     char *endp;
 
-    RDB_rational_to_obj(retvalp, (RDB_rational)
+    RDB_double_to_obj(retvalp, (RDB_double)
             strtod(argv[0]->var.bin.datap, &endp));
     if (*endp != '\0') {
-        RDB_raise_invalid_argument("conversion to RATIONAL failed", ecp);
+        RDB_raise_invalid_argument("conversion to DOUBLE failed", ecp);
         return RDB_ERROR;
     }
     return RDB_OK;
@@ -1786,11 +1786,11 @@ negate_int(const char *name, int argc, RDB_object *argv[],
 }
 
 static int
-negate_rational(const char *name, int argc, RDB_object *argv[],
+negate_double(const char *name, int argc, RDB_object *argv[],
         const void *iargp, size_t iarglen, RDB_exec_context *ecp,
         RDB_transaction *txp, RDB_object *retvalp)
 {
-    RDB_rational_to_obj(retvalp, -argv[0]->var.rational_val);
+    RDB_double_to_obj(retvalp, -argv[0]->var.double_val);
     return RDB_OK;
 }
 
@@ -1804,12 +1804,12 @@ add_int(const char *name, int argc, RDB_object *argv[],
 }
 
 static int
-add_rational(const char *name, int argc, RDB_object *argv[],
+add_double(const char *name, int argc, RDB_object *argv[],
         const void *iargp, size_t iarglen, RDB_exec_context *ecp,
         RDB_transaction *txp, RDB_object *retvalp)
 {
-    RDB_rational_to_obj(retvalp,
-            argv[0]->var.rational_val + argv[1]->var.rational_val);
+    RDB_double_to_obj(retvalp,
+            argv[0]->var.double_val + argv[1]->var.double_val);
     return RDB_OK;
 }
 
@@ -1823,12 +1823,12 @@ subtract_int(const char *name, int argc, RDB_object *argv[],
 }
 
 static int
-subtract_rational(const char *name, int argc, RDB_object *argv[],
+subtract_double(const char *name, int argc, RDB_object *argv[],
         const void *iargp, size_t iarglen, RDB_exec_context *ecp,
         RDB_transaction *txp, RDB_object *retvalp)
 {
-    RDB_rational_to_obj(retvalp,
-            argv[0]->var.rational_val - argv[1]->var.rational_val);
+    RDB_double_to_obj(retvalp,
+            argv[0]->var.double_val - argv[1]->var.double_val);
     return RDB_OK;
 }
 
@@ -1842,12 +1842,12 @@ multiply_int(const char *name, int argc, RDB_object *argv[],
 }
 
 static int
-multiply_rational(const char *name, int argc, RDB_object *argv[],
+multiply_double(const char *name, int argc, RDB_object *argv[],
         const void *iargp, size_t iarglen, RDB_exec_context *ecp,
         RDB_transaction *txp, RDB_object *retvalp)
 {
-    RDB_rational_to_obj(retvalp,
-            argv[0]->var.rational_val * argv[1]->var.rational_val);
+    RDB_double_to_obj(retvalp,
+            argv[0]->var.double_val * argv[1]->var.double_val);
     return RDB_OK;
 }
 
@@ -1865,16 +1865,16 @@ divide_int(const char *name, int argc, RDB_object *argv[],
 }
 
 static int
-divide_rational(const char *name, int argc, RDB_object *argv[],
+divide_double(const char *name, int argc, RDB_object *argv[],
         const void *iargp, size_t iarglen, RDB_exec_context *ecp,
         RDB_transaction *txp, RDB_object *retvalp)
 {
-    if (argv[1]->var.rational_val == 0.0) {
+    if (argv[1]->var.double_val == 0.0) {
         RDB_raise_invalid_argument("division by zero", ecp);
         return RDB_ERROR;
     }
-    RDB_rational_to_obj(retvalp,
-            argv[0]->var.rational_val / argv[1]->var.rational_val);
+    RDB_double_to_obj(retvalp,
+            argv[0]->var.double_val / argv[1]->var.double_val);
     return RDB_OK;
 }
 
@@ -1884,12 +1884,12 @@ _RDB_add_builtin_ops(RDB_dbroot *dbrootp, RDB_exec_context *ecp)
     RDB_ro_op_desc *op;
     int ret;
 
-    op = new_ro_op("INTEGER", 1, &RDB_INTEGER, &integer_rational, ecp);
+    op = new_ro_op("INTEGER", 1, &RDB_INTEGER, &integer_double, ecp);
     if (op == NULL) {
         RDB_raise_no_memory(ecp);
         return RDB_ERROR;
     }
-    op->argtv[0] = &RDB_RATIONAL;
+    op->argtv[0] = &RDB_DOUBLE;
 
     ret = put_ro_op(dbrootp, op, ecp);
     if (ret != RDB_OK)
@@ -1906,7 +1906,7 @@ _RDB_add_builtin_ops(RDB_dbroot *dbrootp, RDB_exec_context *ecp)
     if (ret != RDB_OK)
         return ret;
 
-    op = new_ro_op("RATIONAL", 1, &RDB_RATIONAL, &rational_int, ecp);
+    op = new_ro_op("DOUBLE", 1, &RDB_DOUBLE, &double_int, ecp);
     if (op == NULL) {
         RDB_raise_no_memory(ecp);
         return RDB_ERROR;
@@ -1917,7 +1917,7 @@ _RDB_add_builtin_ops(RDB_dbroot *dbrootp, RDB_exec_context *ecp)
     if (ret != RDB_OK)
         return ret;
 
-    op = new_ro_op("RATIONAL", 1, &RDB_RATIONAL, &rational_string, ecp);
+    op = new_ro_op("DOUBLE", 1, &RDB_DOUBLE, &double_string, ecp);
     if (op == NULL) {
         RDB_raise_no_memory(ecp);
         return RDB_ERROR;
@@ -1944,7 +1944,7 @@ _RDB_add_builtin_ops(RDB_dbroot *dbrootp, RDB_exec_context *ecp)
         RDB_raise_no_memory(ecp);
         return RDB_ERROR;
     }
-    op->argtv[0] = &RDB_RATIONAL;
+    op->argtv[0] = &RDB_DOUBLE;
 
     ret = put_ro_op(dbrootp, op, ecp);
     if (ret != RDB_OK)
@@ -2050,8 +2050,8 @@ _RDB_add_builtin_ops(RDB_dbroot *dbrootp, RDB_exec_context *ecp)
         RDB_raise_no_memory(ecp);
         return RDB_ERROR;
     }
-    op->argtv[0] = &RDB_RATIONAL;
-    op->argtv[1] = &RDB_RATIONAL;
+    op->argtv[0] = &RDB_DOUBLE;
+    op->argtv[1] = &RDB_DOUBLE;
 
     ret = put_ro_op(dbrootp, op, ecp);
     if (ret != RDB_OK)
@@ -2086,8 +2086,8 @@ _RDB_add_builtin_ops(RDB_dbroot *dbrootp, RDB_exec_context *ecp)
         RDB_raise_no_memory(ecp);
         return RDB_ERROR;
     }
-    op->argtv[0] = &RDB_RATIONAL;
-    op->argtv[1] = &RDB_RATIONAL;
+    op->argtv[0] = &RDB_DOUBLE;
+    op->argtv[1] = &RDB_DOUBLE;
 
     ret = put_ro_op(dbrootp, op, ecp);
     if (ret != RDB_OK)
@@ -2122,8 +2122,8 @@ _RDB_add_builtin_ops(RDB_dbroot *dbrootp, RDB_exec_context *ecp)
         RDB_raise_no_memory(ecp);
         return RDB_ERROR;
     }
-    op->argtv[0] = &RDB_RATIONAL;
-    op->argtv[1] = &RDB_RATIONAL;
+    op->argtv[0] = &RDB_DOUBLE;
+    op->argtv[1] = &RDB_DOUBLE;
 
     ret = put_ro_op(dbrootp, op, ecp);
     if (ret != RDB_OK)
@@ -2158,8 +2158,8 @@ _RDB_add_builtin_ops(RDB_dbroot *dbrootp, RDB_exec_context *ecp)
         RDB_raise_no_memory(ecp);
         return RDB_ERROR;
     }
-    op->argtv[0] = &RDB_RATIONAL;
-    op->argtv[1] = &RDB_RATIONAL;
+    op->argtv[0] = &RDB_DOUBLE;
+    op->argtv[1] = &RDB_DOUBLE;
 
     ret = put_ro_op(dbrootp, op, ecp);
     if (ret != RDB_OK)
@@ -2208,8 +2208,8 @@ _RDB_add_builtin_ops(RDB_dbroot *dbrootp, RDB_exec_context *ecp)
         RDB_raise_no_memory(ecp);
         return RDB_ERROR;
     }
-    op->argtv[0] = &RDB_RATIONAL;
-    op->argtv[1] = &RDB_RATIONAL;
+    op->argtv[0] = &RDB_DOUBLE;
+    op->argtv[1] = &RDB_DOUBLE;
 
     ret = put_ro_op(dbrootp, op, ecp);
     if (ret != RDB_OK)
@@ -2268,8 +2268,8 @@ _RDB_add_builtin_ops(RDB_dbroot *dbrootp, RDB_exec_context *ecp)
         RDB_raise_no_memory(ecp);
         return RDB_ERROR;
     }
-    op->argtv[0] = &RDB_RATIONAL;
-    op->argtv[1] = &RDB_RATIONAL;
+    op->argtv[0] = &RDB_DOUBLE;
+    op->argtv[1] = &RDB_DOUBLE;
 
     ret = put_ro_op(dbrootp, op, ecp);
     if (ret != RDB_OK)
@@ -2310,12 +2310,12 @@ _RDB_add_builtin_ops(RDB_dbroot *dbrootp, RDB_exec_context *ecp)
     if (ret != RDB_OK)
         return ret;
 
-    op = new_ro_op("-", 1, &RDB_RATIONAL, &negate_rational, ecp);
+    op = new_ro_op("-", 1, &RDB_DOUBLE, &negate_double, ecp);
     if (op == NULL) {
         RDB_raise_no_memory(ecp);
         return RDB_ERROR;
     }
-    op->argtv[0] = &RDB_RATIONAL;
+    op->argtv[0] = &RDB_DOUBLE;
 
     ret = put_ro_op(dbrootp, op, ecp);
     if (ret != RDB_OK)
@@ -2333,13 +2333,13 @@ _RDB_add_builtin_ops(RDB_dbroot *dbrootp, RDB_exec_context *ecp)
     if (ret != RDB_OK)
         return ret;
 
-    op = new_ro_op("+", 2, &RDB_RATIONAL, &add_rational, ecp);
+    op = new_ro_op("+", 2, &RDB_DOUBLE, &add_double, ecp);
     if (op == NULL) {
         RDB_raise_no_memory(ecp);
         return RDB_ERROR;
     }
-    op->argtv[0] = &RDB_RATIONAL;
-    op->argtv[1] = &RDB_RATIONAL;
+    op->argtv[0] = &RDB_DOUBLE;
+    op->argtv[1] = &RDB_DOUBLE;
 
     ret = put_ro_op(dbrootp, op, ecp);
     if (ret != RDB_OK)
@@ -2357,13 +2357,13 @@ _RDB_add_builtin_ops(RDB_dbroot *dbrootp, RDB_exec_context *ecp)
     if (ret != RDB_OK)
         return ret;
 
-    op = new_ro_op("-", 2, &RDB_RATIONAL, &subtract_rational, ecp);
+    op = new_ro_op("-", 2, &RDB_DOUBLE, &subtract_double, ecp);
     if (op == NULL) {
         RDB_raise_no_memory(ecp);
         return RDB_ERROR;
     }
-    op->argtv[0] = &RDB_RATIONAL;
-    op->argtv[1] = &RDB_RATIONAL;
+    op->argtv[0] = &RDB_DOUBLE;
+    op->argtv[1] = &RDB_DOUBLE;
 
     ret = put_ro_op(dbrootp, op, ecp);
     if (ret != RDB_OK)
@@ -2381,13 +2381,13 @@ _RDB_add_builtin_ops(RDB_dbroot *dbrootp, RDB_exec_context *ecp)
     if (ret != RDB_OK)
         return ret;
 
-    op = new_ro_op("*", 2, &RDB_RATIONAL, &multiply_rational, ecp);
+    op = new_ro_op("*", 2, &RDB_DOUBLE, &multiply_double, ecp);
     if (op == NULL) {
         RDB_raise_no_memory(ecp);
         return RDB_ERROR;
     }
-    op->argtv[0] = &RDB_RATIONAL;
-    op->argtv[1] = &RDB_RATIONAL;
+    op->argtv[0] = &RDB_DOUBLE;
+    op->argtv[1] = &RDB_DOUBLE;
 
     ret = put_ro_op(dbrootp, op, ecp);
     if (ret != RDB_OK)
@@ -2407,13 +2407,13 @@ _RDB_add_builtin_ops(RDB_dbroot *dbrootp, RDB_exec_context *ecp)
         return RDB_ERROR;
     }
 
-    op = new_ro_op("/", 2, &RDB_RATIONAL, &divide_rational, ecp);
+    op = new_ro_op("/", 2, &RDB_DOUBLE, &divide_double, ecp);
     if (op == NULL) {
         RDB_raise_no_memory(ecp);
         return RDB_ERROR;
     }
-    op->argtv[0] = &RDB_RATIONAL;
-    op->argtv[1] = &RDB_RATIONAL;
+    op->argtv[0] = &RDB_DOUBLE;
+    op->argtv[1] = &RDB_DOUBLE;
 
     ret = put_ro_op(dbrootp, op, ecp);
     if (ret != RDB_OK)

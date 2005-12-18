@@ -86,7 +86,7 @@ create_view2(RDB_database *dbp, RDB_exec_context *ecp)
     hexprp = RDB_expr_attr("SALARY", ecp);
     if (hexprp == NULL)
         return RDB_ERROR;
-    exprp = RDB_ro_op_va(">", ecp, hexprp, RDB_rational_to_expr(4000.0, ecp),
+    exprp = RDB_ro_op_va(">", ecp, hexprp, RDB_double_to_expr(4000.0, ecp),
             (RDB_expression *) NULL);
     if (exprp == NULL)
         return RDB_ERROR;
@@ -140,7 +140,7 @@ create_view3(RDB_database *dbp, RDB_exec_context *ecp)
     exprp = RDB_expr_attr("SALARY", ecp);
     if (exprp == NULL)
         return RDB_ERROR;
-    exprp = RDB_ro_op_va(">", ecp, exprp, RDB_rational_to_expr(4000.0, ecp),
+    exprp = RDB_ro_op_va(">", ecp, exprp, RDB_double_to_expr(4000.0, ecp),
             (RDB_expression *) NULL);
     if (exprp == NULL)
         return RDB_ERROR;

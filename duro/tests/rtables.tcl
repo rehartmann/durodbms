@@ -305,7 +305,7 @@ set tx [duro::begin $dbenv TEST]
 # Create table
 duro::table create T {
    {A INTEGER}
-   {B RATIONAL}
+   {B DOUBLE}
 } {{A}} $tx
 
 duro::table rename T T3 $tx

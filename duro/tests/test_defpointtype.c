@@ -7,13 +7,13 @@
 #include <stdio.h>
 
 RDB_attr pointcompv[] = {
-    { "X", &RDB_RATIONAL, NULL, 0 },
-    { "Y", &RDB_RATIONAL, NULL, 0 }
+    { "X", &RDB_DOUBLE, NULL, 0 },
+    { "Y", &RDB_DOUBLE, NULL, 0 }
 };
 
 RDB_attr polarcompv[] = {
-    { "THETA", &RDB_RATIONAL, NULL, 0 },
-    { "LENGTH", &RDB_RATIONAL, NULL, 0 }
+    { "THETA", &RDB_DOUBLE, NULL, 0 },
+    { "LENGTH", &RDB_DOUBLE, NULL, 0 }
 };
 
 RDB_possrep prv[] = {
@@ -21,7 +21,7 @@ RDB_possrep prv[] = {
     { "POLAR", 2, polarcompv }
 };
 
-RDB_type *argtv[] = { &RDB_RATIONAL, &RDB_RATIONAL };
+RDB_type *argtv[] = { &RDB_DOUBLE, &RDB_DOUBLE };
 
 int
 test_type(RDB_database *dbp, RDB_exec_context *ecp)
@@ -80,7 +80,7 @@ test_type(RDB_database *dbp, RDB_exec_context *ecp)
      * Create setters
      */
     updargtv[0] = typ;
-    updargtv[1] = &RDB_RATIONAL;
+    updargtv[1] = &RDB_DOUBLE;
     updv[0] = RDB_TRUE;
     updv[1] = RDB_FALSE;
      
@@ -117,28 +117,28 @@ test_type(RDB_database *dbp, RDB_exec_context *ecp)
      */
     getargtv[0] = typ;
 
-    ret = RDB_create_ro_op("POINT_get_X", 1, getargtv, &RDB_RATIONAL, "libpoint",
+    ret = RDB_create_ro_op("POINT_get_X", 1, getargtv, &RDB_DOUBLE, "libpoint",
             "POINT_get_X", NULL, 0, ecp, &tx);
     if (ret != RDB_OK) {
         RDB_rollback(ecp, &tx);
         return ret;
     }
 
-    ret = RDB_create_ro_op("POINT_get_Y", 1, getargtv, &RDB_RATIONAL, "libpoint",
+    ret = RDB_create_ro_op("POINT_get_Y", 1, getargtv, &RDB_DOUBLE, "libpoint",
             "POINT_get_Y", NULL, 0, ecp, &tx);
     if (ret != RDB_OK) {
         RDB_rollback(ecp, &tx);
         return ret;
     }
 
-    ret = RDB_create_ro_op("POINT_get_THETA", 1, getargtv, &RDB_RATIONAL, "libpoint",
+    ret = RDB_create_ro_op("POINT_get_THETA", 1, getargtv, &RDB_DOUBLE, "libpoint",
             "POINT_get_THETA", NULL, 0, ecp, &tx);
     if (ret != RDB_OK) {
         RDB_rollback(ecp, &tx);
         return ret;
     }
 
-    ret = RDB_create_ro_op("POINT_get_LENGTH", 1, getargtv, &RDB_RATIONAL, "libpoint",
+    ret = RDB_create_ro_op("POINT_get_LENGTH", 1, getargtv, &RDB_DOUBLE, "libpoint",
             "POINT_get_LENGTH", NULL, 0, ecp, &tx);
     if (ret != RDB_OK) {
         RDB_rollback(ecp, &tx);

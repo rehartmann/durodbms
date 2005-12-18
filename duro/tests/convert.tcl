@@ -25,7 +25,7 @@ set tx [duro::begin $dbenv TEST]
 # Create real table
 duro::table create T1 {
    {A INTEGER}
-   {B RATIONAL}
+   {B DOUBLE}
    {C STRING}
 } {{A}} $tx
 
@@ -33,9 +33,9 @@ duro::table create T1 {
 duro::insert T1 {A 1 B 2.0 C 03} $tx
 
 duro::table expr -global X {EXTEND T1 ADD (
-        A AS A_I, RATIONAL(A) * 1.1 AS A_R, "S" || STRING(A) AS A_S,
+        A AS A_I, DOUBLE(A) * 1.1 AS A_R, "S" || STRING(A) AS A_S,
         INTEGER(B) AS B_I, B * 1.1 AS B_R, "S" || STRING(B) AS B_S,
-        INTEGER(C) AS C_I, RATIONAL(C) * 1.1 AS C_R, "S" || C AS C_S)
+        INTEGER(C) AS C_I, DOUBLE(C) * 1.1 AS C_R, "S" || C AS C_S)
 } $tx
 
 duro::commit $tx

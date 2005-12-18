@@ -6,8 +6,8 @@
 
 /* Internal/actual representation of type POINT */
 typedef struct {
-    RDB_rational x;
-    RDB_rational y;
+    RDB_double x;
+    RDB_double y;
 } i_point;
 
 #endif

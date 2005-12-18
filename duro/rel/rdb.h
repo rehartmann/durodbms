@@ -43,7 +43,7 @@ enum _RDB_obj_kind {
     RDB_OB_INITIAL,
     RDB_OB_BOOL,
     RDB_OB_INT,
-    RDB_OB_RATIONAL,
+    RDB_OB_DOUBLE,
     RDB_OB_BIN,
     RDB_OB_TABLE,
     RDB_OB_TUPLE,
@@ -61,7 +61,7 @@ typedef struct RDB_object {
     union {
         RDB_bool bool_val;
         RDB_int int_val;
-        RDB_rational rational_val;
+        RDB_double double_val;
         struct {
             void *datap;
             size_t len;
@@ -147,7 +147,7 @@ typedef struct RDB_type {
 
 extern RDB_type RDB_BOOLEAN;
 extern RDB_type RDB_INTEGER;
-extern RDB_type RDB_RATIONAL;
+extern RDB_type RDB_DOUBLE;
 extern RDB_type RDB_STRING;
 extern RDB_type RDB_BINARY;
 
@@ -603,31 +603,7 @@ RDB_copy_table(RDB_table *dstp, RDB_table *srcp, RDB_exec_context *,
         RDB_transaction *);
 
 /*
- * !! Needs rewriting
- *
- * Aggregate operation.
- * op may be RDB_COUNT, RDB_SUM, RDB_AVG, RDB_MAX, RDB_MIN, RDB_ALL, or RDB_ANY.
- * attrname may be NULL if op is RDB_COUNT or the table is unary.
- * If op is RDB_COUNT, the result value is of type RDB_INTEGER.
- * If op is RDB_AVG, the result value is of type RDB_RATIONAL.
- * Otherwise, it is of the same type as the table attribute.
- *
- * Errors:
- * RDB_TYPE_MISMATCH
- *       op is RDB_COUNT, RDB_SUM, RDB_AVG, RDB_MAX, or RDB_MIN
- *       and the attribute is non-numeric.
- *
- *       op is ALL or ANY and the attribute is not of type RDB_BOOLEAN.
- *
- *       op is not one of the above.
- *
- * RDB_INVALID_ARGUMENT
- *       op is not of a permissible value (see above).
- *
- *       attrname is NULL while op is not RDB_COUNT and the table is not unary.
- *
- * Other values
- *       A database error occured.
+ * Aggregate operators.
  */
 
 int
@@ -652,7 +628,7 @@ RDB_sum(RDB_table *tbp, const char *attrname, RDB_exec_context *,
 
 int
 RDB_avg(RDB_table *tbp, const char *attrname, RDB_exec_context *,
-        RDB_transaction *txp, RDB_rational *resultp);
+        RDB_transaction *txp, RDB_double *resultp);
 
 /*
  * Check if the table pointed to by tbp contains the tuple
@@ -788,7 +764,7 @@ RDB_tuple_set_int(RDB_object *, const char *name, RDB_int val,
         RDB_exec_context *);
 
 int
-RDB_tuple_set_rational(RDB_object *, const char *name, RDB_rational val,
+RDB_tuple_set_double(RDB_object *, const char *name, RDB_double val,
         RDB_exec_context *);
 
 int
@@ -811,8 +787,8 @@ RDB_tuple_get_bool(const RDB_object *, const char *name);
 RDB_int
 RDB_tuple_get_int(const RDB_object *, const char *name);
 
-RDB_rational
-RDB_tuple_get_rational(const RDB_object *, const char *name);
+RDB_double
+RDB_tuple_get_double(const RDB_object *, const char *name);
 
 RDB_int
 RDB_tuple_size(const RDB_object *);
@@ -982,7 +958,7 @@ void
 RDB_int_to_obj(RDB_object *valp, RDB_int v);
 
 void
-RDB_rational_to_obj(RDB_object *valp, RDB_rational v);
+RDB_double_to_obj(RDB_object *valp, RDB_double v);
 
 int
 RDB_string_to_obj(RDB_object *valp, const char *str, RDB_exec_context *);
@@ -1012,8 +988,8 @@ RDB_obj_bool(const RDB_object *valp);
 RDB_int
 RDB_obj_int(const RDB_object *valp);
 
-RDB_rational
-RDB_obj_rational(const RDB_object *valp);
+RDB_double
+RDB_obj_double(const RDB_object *valp);
 
 char *
 RDB_obj_string(const RDB_object *valp);
@@ -1053,7 +1029,7 @@ RDB_expression *
 RDB_int_to_expr(RDB_int, RDB_exec_context *);
 
 RDB_expression *
-RDB_rational_to_expr(RDB_rational, RDB_exec_context *);
+RDB_double_to_expr(RDB_double, RDB_exec_context *);
 
 RDB_expression *
 RDB_string_to_expr(const char *, RDB_exec_context *);

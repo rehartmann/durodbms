@@ -26,9 +26,9 @@ print_table(RDB_table *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
         printf("COUNT_EMPS: %d\n",
                (int) RDB_tuple_get_int(tplp, "COUNT_EMPS"));
         printf("SUM_SALARY: %f\n",
-               (double)RDB_tuple_get_rational(tplp, "SUM_SALARY"));
+               (double)RDB_tuple_get_double(tplp, "SUM_SALARY"));
         printf("AVG_SALARY: %f\n",
-               (double)RDB_tuple_get_rational(tplp, "AVG_SALARY"));
+               (double)RDB_tuple_get_double(tplp, "AVG_SALARY"));
     }
     if (RDB_obj_type(RDB_get_err(ecp)) != &RDB_NOT_FOUND_ERROR) {
         goto error;
@@ -55,8 +55,8 @@ check_contains(RDB_table *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
     
     RDB_tuple_set_int(&tpl, "DEPTNO", 2, ecp);
     RDB_tuple_set_int(&tpl, "COUNT_EMPS", 2, ecp);
-    RDB_tuple_set_rational(&tpl, "SUM_SALARY", 8100.0, ecp);
-    RDB_tuple_set_rational(&tpl, "AVG_SALARY", 4050.0, ecp);
+    RDB_tuple_set_double(&tpl, "SUM_SALARY", 8100.0, ecp);
+    RDB_tuple_set_double(&tpl, "AVG_SALARY", 4050.0, ecp);
 
     printf("Calling RDB_table_contains()...");
     ret = RDB_table_contains(tbp, &tpl, ecp, txp, &b);
@@ -70,7 +70,7 @@ check_contains(RDB_table *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
         puts("No");
     }
 
-    RDB_tuple_set_rational(&tpl, "SUM_SALARY", 4100, ecp);
+    RDB_tuple_set_double(&tpl, "SUM_SALARY", 4100, ecp);
     printf("Calling RDB_table_contains()...");
     ret = RDB_table_contains(tbp, &tpl, ecp, txp, &b);
     

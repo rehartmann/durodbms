@@ -54,7 +54,7 @@ init_summ_table(RDB_qresult *qresp, RDB_exec_context *ecp,
                     break;
                 case RDB_AVG:
                 case RDB_AVGD:
-                    ret = RDB_tuple_set_rational(&tpl, name, 0, ecp);
+                    ret = RDB_tuple_set_double(&tpl, name, 0, ecp);
                     if (ret != RDB_OK)
                        break;
                     cname = malloc(strlen(name) + 3);
@@ -78,7 +78,7 @@ init_summ_table(RDB_qresult *qresp, RDB_exec_context *ecp,
                     if (typ == &RDB_INTEGER)
                         ret = RDB_tuple_set_int(&tpl, name, 0, ecp);
                     else
-                        ret = RDB_tuple_set_rational(&tpl, name, 0.0, ecp);
+                        ret = RDB_tuple_set_double(&tpl, name, 0.0, ecp);
                     break;
                 case RDB_MAX:
                     typ = RDB_expr_type(qresp->tbp->var.summarize.addv[i].exp,
@@ -89,8 +89,8 @@ init_summ_table(RDB_qresult *qresp, RDB_exec_context *ecp,
                     if (typ == &RDB_INTEGER)
                         ret = RDB_tuple_set_int(&tpl, name, RDB_INT_MIN, ecp);
                     else
-                        ret = RDB_tuple_set_rational(&tpl, name,
-                                RDB_RATIONAL_MIN, ecp);
+                        ret = RDB_tuple_set_double(&tpl, name,
+                                RDB_DOUBLE_MIN, ecp);
                     break;
                 case RDB_MIN:
                     typ = RDB_expr_type(qresp->tbp->var.summarize.addv[i].exp,
@@ -101,8 +101,8 @@ init_summ_table(RDB_qresult *qresp, RDB_exec_context *ecp,
                     if (typ == &RDB_INTEGER)
                         ret = RDB_tuple_set_int(&tpl, name, RDB_INT_MAX, ecp);
                     else
-                        ret = RDB_tuple_set_rational(&tpl, name,
-                                RDB_RATIONAL_MAX, ecp);
+                        ret = RDB_tuple_set_double(&tpl, name,
+                                RDB_DOUBLE_MAX, ecp);
                     break;
                 case RDB_ALL:
                     ret = RDB_tuple_set_bool(&tpl, name, RDB_TRUE, ecp);
@@ -154,9 +154,9 @@ summ_step(struct _RDB_summval *svalp, const RDB_object *addvalp, RDB_aggregate_o
         case RDB_COUNTD:
             break;
         case RDB_AVG:
-                svalp->val.var.rational_val =
-                        (svalp->val.var.rational_val * svalp->count
-                        + addvalp->var.rational_val)
+                svalp->val.var.double_val =
+                        (svalp->val.var.double_val * svalp->count
+                        + addvalp->var.double_val)
                         / (svalp->count + 1);
                 svalp->count++;
             break;
@@ -166,7 +166,7 @@ summ_step(struct _RDB_summval *svalp, const RDB_object *addvalp, RDB_aggregate_o
             if (svalp->val.typ == &RDB_INTEGER)
                 svalp->val.var.int_val += addvalp->var.int_val;
             else
-                svalp->val.var.rational_val += addvalp->var.rational_val;
+                svalp->val.var.double_val += addvalp->var.double_val;
             break;
         case RDB_SUMD:
             break;
@@ -175,8 +175,8 @@ summ_step(struct _RDB_summval *svalp, const RDB_object *addvalp, RDB_aggregate_o
                 if (addvalp->var.int_val > svalp->val.var.int_val)
                     svalp->val.var.int_val = addvalp->var.int_val;
             } else {
-                if (addvalp->var.rational_val > svalp->val.var.rational_val)
-                    svalp->val.var.rational_val = addvalp->var.rational_val;
+                if (addvalp->var.double_val > svalp->val.var.double_val)
+                    svalp->val.var.double_val = addvalp->var.double_val;
             }
             break;
         case RDB_MIN:
@@ -184,8 +184,8 @@ summ_step(struct _RDB_summval *svalp, const RDB_object *addvalp, RDB_aggregate_o
                 if (addvalp->var.int_val < svalp->val.var.int_val)
                     svalp->val.var.int_val = addvalp->var.int_val;
             } else {
-                if (addvalp->var.rational_val < svalp->val.var.rational_val)
-                    svalp->val.var.rational_val = addvalp->var.rational_val;
+                if (addvalp->var.double_val < svalp->val.var.double_val)
+                    svalp->val.var.double_val = addvalp->var.double_val;
             }
             break;
         case RDB_ANY:

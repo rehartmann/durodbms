@@ -38,7 +38,7 @@ print_table(RDB_table *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
         printf("EMPNO: %d\n", (int) RDB_tuple_get_int(tplp, "EMPNO"));
         printf("NAME: %s\n", RDB_tuple_get_string(tplp, "NAME"));
         printf("DEPTNO: %d\n", (int) RDB_tuple_get_int(tplp, "DEPTNO"));
-        printf("SALARY: %f\n", (float) RDB_tuple_get_rational(tplp, "SALARY"));
+        printf("SALARY: %f\n", (float) RDB_tuple_get_double(tplp, "SALARY"));
     }
 
     RDB_destroy_obj(&array, ecp);

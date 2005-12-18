@@ -50,7 +50,7 @@ test_select(RDB_database *dbp, RDB_exec_context *ecp)
     for (i = 0; (tplp = RDB_array_get(&array, i, ecp)) != NULL; i++) {
         printf("EMPNO: %d\n", (int)RDB_tuple_get_int(tplp, "EMPNO"));
         printf("NAME: %s\n", RDB_tuple_get_string(tplp, "NAME"));
-        printf("SALARY: %f\n", (double)RDB_tuple_get_rational(tplp, "SALARY"));
+        printf("SALARY: %f\n", (double)RDB_tuple_get_double(tplp, "SALARY"));
     }
     if (RDB_obj_type(RDB_get_err(ecp)) != &RDB_NOT_FOUND_ERROR) {
         goto error;
@@ -83,7 +83,7 @@ test_select(RDB_database *dbp, RDB_exec_context *ecp)
     for (i = 0; (tplp = RDB_array_get(&array, i, ecp)) != NULL; i++) {
         printf("EMPNO: %d\n", (int)RDB_tuple_get_int(tplp, "EMPNO"));
         printf("NAME: %s\n", RDB_tuple_get_string(tplp, "NAME"));
-        printf("SALARY: %f\n", (double)RDB_tuple_get_rational(tplp, "SALARY"));
+        printf("SALARY: %f\n", (double)RDB_tuple_get_double(tplp, "SALARY"));
     }
 /* !!
     if (ret != RDB_NOT_FOUND) {

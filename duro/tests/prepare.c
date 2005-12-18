@@ -6,7 +6,7 @@
 RDB_attr emp_attrs[] = {
     {"EMPNO", &RDB_INTEGER, NULL, 0 },
     {"NAME", &RDB_STRING, NULL, 0 },
-    {"SALARY", &RDB_RATIONAL, NULL, 0 },
+    {"SALARY", &RDB_DOUBLE, NULL, 0 },
     {"DEPTNO", &RDB_INTEGER, NULL, 0 }
 };
 
@@ -52,7 +52,7 @@ create_tables(RDB_database *dbp, RDB_exec_context *ecp)
     
     /* Set default value for SALARY */
     RDB_init_obj(&defval);
-    RDB_rational_to_obj(&defval, 4000.0);
+    RDB_double_to_obj(&defval, 4000.0);
     emp_attrs[2].defaultp = &defval;
 
     tbp = RDB_create_table("EMPS2", RDB_TRUE, 4, emp_attrs, 2, emp_keyattrs,
@@ -103,7 +103,7 @@ fill_tables(RDB_database *dbp, RDB_exec_context *ecp)
     ret = RDB_tuple_set_string(&emptpl, "NAME", "Smith", ecp);
     if (ret != RDB_OK)
         goto error;
-    ret = RDB_tuple_set_rational(&emptpl, "SALARY", (RDB_rational)4000.0, ecp);
+    ret = RDB_tuple_set_double(&emptpl, "SALARY", (RDB_double)4000.0, ecp);
     if (ret != RDB_OK)
         goto error;
     ret = RDB_tuple_set_int(&emptpl, "DEPTNO", 1, ecp);
@@ -121,7 +121,7 @@ fill_tables(RDB_database *dbp, RDB_exec_context *ecp)
     ret = RDB_tuple_set_string(&emptpl, "NAME", "Jones", ecp);
     if (ret != RDB_OK)
         goto error;
-    ret = RDB_tuple_set_rational(&emptpl, "SALARY", (RDB_rational)4100.0, ecp);
+    ret = RDB_tuple_set_double(&emptpl, "SALARY", (RDB_double)4100.0, ecp);
     if (ret != RDB_OK)
         goto error;
     ret = RDB_tuple_set_int(&emptpl, "DEPTNO", 2, ecp);

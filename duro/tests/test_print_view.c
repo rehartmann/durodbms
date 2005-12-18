@@ -34,7 +34,7 @@ print_salary_view(RDB_database *dbp, RDB_exec_context *ecp)
     }
     
     for (i = 0; (tplp = RDB_array_get(&array, i, ecp)) != NULL; i++) {
-        printf("SALARY: %f\n", (float)RDB_tuple_get_rational(tplp, "SALARY"));
+        printf("SALARY: %f\n", (float)RDB_tuple_get_double(tplp, "SALARY"));
     }
 /* !!
     if (ret != RDB_NOT_FOUND) {
@@ -87,7 +87,7 @@ print_emp_view(RDB_database *dbp, RDB_exec_context *ecp)
     for (i = 0; (tplp = RDB_array_get(&array, i, ecp)) != NULL; i++) {
         printf("EMPNO: %d\n", (int) RDB_tuple_get_int(tplp, "EMPNO"));
         printf("NAME: %s\n", RDB_tuple_get_string(tplp, "NAME"));
-        printf("SALARY: %f\n", (float)RDB_tuple_get_rational(tplp, "SALARY"));
+        printf("SALARY: %f\n", (float)RDB_tuple_get_double(tplp, "SALARY"));
     }
     if (RDB_obj_type(RDB_get_err(ecp)) != &RDB_NOT_FOUND_ERROR) {
         goto error;
@@ -137,7 +137,7 @@ print_emps_view(RDB_database *dbp, RDB_exec_context *ecp)
     
         printf("EMPNO: %d\n", (int) RDB_tuple_get_int(tplp, "EMPNO"));
         printf("NAME: %s\n", RDB_tuple_get_string(tplp, "NAME"));
-        printf("SALARY: %f\n", (float) RDB_tuple_get_rational(tplp, "SALARY"));
+        printf("SALARY: %f\n", (float) RDB_tuple_get_double(tplp, "SALARY"));
         b = RDB_tuple_get_bool(tplp, "HIGHSAL");
         printf("HIGHSAL: %s\n", b ? "TRUE" : "FALSE");
     }
@@ -188,7 +188,7 @@ print_emps2_view(RDB_database *dbp, RDB_exec_context *ecp)
 
     for (i = 0; (tplp = RDB_array_get(&array, i, ecp)) != NULL; i++) {
         printf("DEPARTMENT: %d\n", (int) RDB_tuple_get_int(tplp, "DEPARTMENT"));
-        printf("MAX_SALARY: %f\n", (float) RDB_tuple_get_rational(tplp,
+        printf("MAX_SALARY: %f\n", (float) RDB_tuple_get_double(tplp,
                 "MAX_SALARY"));
     }
     if (RDB_obj_type(RDB_get_err(ecp)) != &RDB_NOT_FOUND_ERROR) {

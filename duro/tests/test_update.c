@@ -24,7 +24,7 @@ print_table(RDB_table *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
     for (i = 0; (tplp = RDB_array_get(&array, i, ecp)) != NULL; i++) {
         printf("EMPNO: %d\n", (int) RDB_tuple_get_int(tplp, "EMPNO"));
         printf("NAME: %s\n", RDB_tuple_get_string(tplp, "NAME"));
-        printf("SALARY: %f\n", (double) RDB_tuple_get_rational(tplp, "SALARY"));
+        printf("SALARY: %f\n", (double) RDB_tuple_get_double(tplp, "SALARY"));
     }
 /* !!
     if (ret != RDB_NOT_FOUND) {
@@ -62,7 +62,7 @@ test_update(RDB_database *dbp, RDB_exec_context *ecp)
 
     printf("Updating table, setting SALARY to 4500\n");
     attrs[0].name = "SALARY";
-    attrs[0].exp = RDB_rational_to_expr(4500.0, ecp);
+    attrs[0].exp = RDB_double_to_expr(4500.0, ecp);
     ret = RDB_update(tbp, NULL, 1, attrs, ecp, &tx);
     if (ret == RDB_ERROR) {
         goto error;
@@ -92,7 +92,7 @@ test_update(RDB_database *dbp, RDB_exec_context *ecp)
 
     printf("Updating table, setting SALARY of no 3 to SALARY + 100\n");
     attrs[0].name = "SALARY";
-    attrs[0].exp = RDB_ro_op_va("+", ecp, RDB_rational_to_expr(100, ecp),
+    attrs[0].exp = RDB_ro_op_va("+", ecp, RDB_double_to_expr(100, ecp),
             RDB_expr_attr("SALARY", ecp), (RDB_expression *) NULL);
     if (attrs[0].exp == NULL) {
         ret = RDB_ERROR;

@@ -26,8 +26,8 @@ RDB_obj_irep(RDB_object *valp, size_t *lenp)
             return &valp->var.bool_val;
         case RDB_OB_INT:
             return &valp->var.int_val;
-        case RDB_OB_RATIONAL:
-            return &valp->var.rational_val;
+        case RDB_OB_DOUBLE:
+            return &valp->var.double_val;
         default:
             return valp->var.bin.datap;
     }
@@ -141,8 +141,8 @@ val_kind(const RDB_type *typ)
                 return RDB_OB_BOOL;
             if (typ == &RDB_INTEGER)
                 return RDB_OB_INT;
-            if (typ == &RDB_RATIONAL)
-                return RDB_OB_RATIONAL;
+            if (typ == &RDB_DOUBLE)
+                return RDB_OB_DOUBLE;
             if (typ->var.scalar.arep != NULL)
                 return val_kind(typ->var.scalar.arep);
             return RDB_OB_BIN;
@@ -324,8 +324,8 @@ RDB_irep_to_obj(RDB_object *valp, RDB_type *typ, const void *datap, size_t len,
         case RDB_OB_INT:
             memcpy(&valp->var.int_val, datap, sizeof (RDB_int));
             break;
-        case RDB_OB_RATIONAL:
-            memcpy(&valp->var.rational_val, datap, sizeof (RDB_rational));
+        case RDB_OB_DOUBLE:
+            memcpy(&valp->var.double_val, datap, sizeof (RDB_double));
             break;
         case RDB_OB_BIN:
             valp->var.bin.len = len;
@@ -446,8 +446,8 @@ _RDB_obj_to_irep(void *dstp, const RDB_object *objp, size_t len)
         case RDB_OB_INT:
             memcpy(bp, &objp->var.int_val, sizeof (RDB_int));
             break;
-        case RDB_OB_RATIONAL:
-            memcpy(bp, &objp->var.rational_val, sizeof (RDB_rational));
+        case RDB_OB_DOUBLE:
+            memcpy(bp, &objp->var.double_val, sizeof (RDB_double));
             break;
         case RDB_OB_TUPLE:
         {
@@ -557,9 +557,9 @@ _RDB_copy_obj(RDB_object *dstvalp, const RDB_object *srcvalp,
             dstvalp->kind = srcvalp->kind;
             dstvalp->var.int_val = srcvalp->var.int_val;
             break;
-        case RDB_OB_RATIONAL:
+        case RDB_OB_DOUBLE:
             dstvalp->kind = srcvalp->kind;
-            dstvalp->var.rational_val = srcvalp->var.rational_val;
+            dstvalp->var.double_val = srcvalp->var.double_val;
             break;
         case RDB_OB_TUPLE:
             return _RDB_copy_tuple(dstvalp, srcvalp, ecp);
@@ -655,7 +655,7 @@ RDB_destroy_obj(RDB_object *objp, RDB_exec_context *ecp)
         case RDB_OB_INITIAL:
         case RDB_OB_BOOL:
         case RDB_OB_INT:
-        case RDB_OB_RATIONAL:
+        case RDB_OB_DOUBLE:
             break;
         case RDB_OB_BIN:
             if (objp->var.bin.len > 0)
@@ -742,13 +742,13 @@ RDB_int_to_obj(RDB_object *valp, RDB_int v)
 }
 
 void
-RDB_rational_to_obj(RDB_object *valp, RDB_rational v)
+RDB_double_to_obj(RDB_object *valp, RDB_double v)
 {
-    assert(valp->kind == RDB_OB_INITIAL || valp->typ == &RDB_RATIONAL);
+    assert(valp->kind == RDB_OB_INITIAL || valp->typ == &RDB_DOUBLE);
 
-    valp->typ = &RDB_RATIONAL;
-    valp->kind = RDB_OB_RATIONAL;
-    valp->var.rational_val = v;
+    valp->typ = &RDB_DOUBLE;
+    valp->kind = RDB_OB_DOUBLE;
+    valp->var.double_val = v;
 }
 
 int
@@ -927,10 +927,10 @@ RDB_obj_int(const RDB_object *valp)
     return valp->var.int_val;
 }
 
-RDB_rational
-RDB_obj_rational(const RDB_object *valp)
+RDB_double
+RDB_obj_double(const RDB_object *valp)
 {
-    return valp->var.rational_val;
+    return valp->var.double_val;
 }
 
 char *
@@ -1041,8 +1041,8 @@ RDB_obj_to_string(RDB_object *dstp, const RDB_object *srcp,
                 ecp);
         if (ret != RDB_OK)
             return ret;
-    } else if (srcp->typ == &RDB_RATIONAL) {
-        sprintf(buf, "%g", RDB_obj_rational(srcp));
+    } else if (srcp->typ == &RDB_DOUBLE) {
+        sprintf(buf, "%g", RDB_obj_double(srcp));
         ret = RDB_string_to_obj(dstp, buf, ecp);
         if (ret != RDB_OK)
             return ret;

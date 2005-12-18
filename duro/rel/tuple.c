@@ -120,14 +120,14 @@ RDB_tuple_set_int(RDB_object *tplp, const char *attrname, RDB_int val,
 }
 
 int
-RDB_tuple_set_rational(RDB_object *tplp, const char *attrname, RDB_rational val,
+RDB_tuple_set_double(RDB_object *tplp, const char *attrname, RDB_double val,
         RDB_exec_context *ecp)
 {
     RDB_object *dstvalp;
     if (provide_entry(tplp, attrname, ecp, &dstvalp) != RDB_OK)
         return RDB_ERROR;
 
-    RDB_rational_to_obj(dstvalp, val);
+    RDB_double_to_obj(dstvalp, val);
     return RDB_OK;
 }
 
@@ -170,10 +170,10 @@ RDB_tuple_get_int(const RDB_object *tplp, const char *attrname)
     return ((RDB_object *) RDB_tuple_get(tplp, attrname))->var.int_val;
 }
 
-RDB_rational
-RDB_tuple_get_rational(const RDB_object *tplp, const char *attrname)
+RDB_double
+RDB_tuple_get_double(const RDB_object *tplp, const char *attrname)
 {
-    return ((RDB_object *) RDB_tuple_get(tplp, attrname))->var.rational_val;
+    return ((RDB_object *) RDB_tuple_get(tplp, attrname))->var.double_val;
 }
 
 char *
