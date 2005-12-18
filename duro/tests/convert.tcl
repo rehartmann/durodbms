@@ -35,7 +35,8 @@ duro::insert T1 {A 1 B 2.0 C 03} $tx
 duro::table expr -global X {EXTEND T1 ADD (
         A AS A_I, DOUBLE(A) * 1.1 AS A_R, "S" || STRING(A) AS A_S,
         INTEGER(B) AS B_I, B * 1.1 AS B_R, "S" || STRING(B) AS B_S,
-        INTEGER(C) AS C_I, DOUBLE(C) * 1.1 AS C_R, "S" || C AS C_S)
+        INTEGER(C) AS C_I, DOUBLE(C) * 1.1 AS C_R, "S" || C AS C_S,
+        FLOAT(B) AS B_F)
 } $tx
 
 duro::commit $tx
@@ -51,7 +52,7 @@ set tx [duro::begin $dbenv TEST]
 set tpl [duro::expr {TUPLE FROM X} $tx]
 
 set stpl {A 1 B 2.0 C 03 A_I 1 A_R 1.1 A_S S1 B_I 2 B_R 2.2 B_S S2
-        C_I 3 C_R 3.3 C_S S03}
+        C_I 3 C_R 3.3 C_S S03 B_F 2.0}
 if {![tequal $tpl $stpl]} {
     error "Tuple should be $tpl, but is $stpl"
 }

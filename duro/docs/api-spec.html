@@ -70,11 +70,13 @@
 <li><a href="#tuple_get">RDB_tuple_get</a>
 <li><a href="#tuple_get_bool">RDB_tuple_get_bool</a>
 <li><a href="#tuple_get_int">RDB_tuple_get_int</a>
+<li><a href="#tuple_get_float">RDB_tuple_get_float</a>
 <li><a href="#tuple_get_double">RDB_tuple_get_double</a>
 <li><a href="#tuple_get_string">RDB_tuple_get_string</a>
 <li><a href="#tuple_set">RDB_tuple_set</a>
 <li><a href="#tuple_set_bool">RDB_tuple_set_bool</a>
 <li><a href="#tuple_set_int">RDB_tuple_set_int</a>
+<li><a href="#tuple_set_float">RDB_tuple_set_float</a>
 <li><a href="#tuple_set_double">RDB_tuple_set_double</a>
 <li><a href="#tuple_set_string">RDB_tuple_set_string</a>
 <li><a href="#tuple_size">RDB_tuple_size</a>
@@ -95,9 +97,11 @@
 <li><a href="#obj_comp">RDB_obj_comp</a>
 <li><a href="#obj_equals">RDB_obj_equals</a>
 <li><a href="#obj_int">RDB_obj_int</a>
+<li><a href="#obj_float">RDB_obj_float</a>
 <li><a href="#obj_double">RDB_obj_double</a>
 <li><a href="#bool_to_obj">RDB_bool_to_obj</a>
 <li><a href="#int_to_obj">RDB_int_to_obj</a>
+<li><a href="#float_to_obj">RDB_float_to_obj</a>
 <li><a href="#double_to_obj">RDB_double_to_obj</a>
 <li><a href="#string_to_obj">RDB_string_to_obj</a>
 <li><a href="#obj_set_comp">RDB_obj_set_comp</a>
@@ -269,6 +273,7 @@
 <li><a href="#op_substring">SUBSTRING</a>
 <li><a href="#op_matches">MATCHES</a>
 <li><a href="#op_integer">INTEGER</a>
+<li><a href="#op_double">FLOAT</a>
 <li><a href="#op_double">DOUBLE</a>
 <li><a href="#op_string">STRING</a>
 <li><a href="#op_is_empty">IS_EMPTY</a>
@@ -2157,6 +2162,33 @@ variable specified by <var>tplp</var> to the integer value specified by
 
 <hr>
 
+<h2 id="tuple_set_float">RDB_tuple_set_float</h2>
+
+<pre>
+#include &lt;rel/rdb.h&gt;
+
+int
+RDB_tuple_set_float(RDB_object *tplp, const char *name, RDB_float val, RDB_exec_context *ecp);
+</pre>
+
+<h3>Description</h3>
+
+<p>RDB_tuple_set_int sets the attribute <var>name</var> of the tuple
+variable specified by <var>tplp</var> to the value specified by
+<var>val</var>.
+
+<p>If an error occurs, an error value is left in <var>*ecp</var>.
+
+<h3>Return value</h3>
+
+<p>RDB_OK on success, RDB_ERROR if an error occured.
+
+<h3>Errors</h3>
+
+<p>The call may fail for a <a href="#syserr">system error</a>.
+
+<hr>
+
 <h2 id="tuple_set_double">RDB_tuple_set_double</h2>
 
 <pre>
@@ -2169,7 +2201,7 @@ RDB_tuple_set_double(RDB_object *tplp, const char *name, RDB_double val, RDB_exe
 <h3>Description</h3>
 
 <p>RDB_tuple_set_int sets the attribute <var>name</var> of the tuple
-variable specified by <var>tplp</var> to the double value specified by
+variable specified by <var>tplp</var> to the value specified by
 <var>val</var>.
 
 <p>If an error occurs, an error value is left in <var>*ecp</var>.
@@ -2312,6 +2344,27 @@ RDB_tuple_get_int(const RDB_object *, const char *name);
 <p>RDB_tuple_get_int returns the value of attribute <var>name</var>
 as a RDB_int. The attribute must exist and it must be of
 type INTEGER.
+
+<h3>Return value</h3>
+
+<p>The attribute value.
+
+<hr>
+
+<h2 id="tuple_get_float">RDB_tuple_get_float</h2>
+
+<pre>
+#include &lt;rel/rdb.h&gt;
+
+RDB_float
+RDB_tuple_get_float(const RDB_object *, const char *name);
+</pre>
+
+<h3>Description</h3>
+
+<p>RDB_tuple_get_double returns the value of attribute <var>name</var>
+as a RDB_float. The attribute must exist and it must be of
+type FLOAT.
 
 <h3>Return value</h3>
 
@@ -2632,6 +2685,23 @@ INTEGER.
 
 <hr>
 
+<h2 id="float_to_obj">RDB_float_to_obj</h2>
+
+<pre>
+#include &lt;rel/rdb.h&gt;
+
+void
+RDB_float_to_obj(RDB_object *valp, RDB_float v);
+</pre>
+
+<h3>Description</h3>
+
+<p>RDB_float_to_obj sets the RDB_object pointed to by <var>valp</var>
+to the RDB_float value specified by <var>v</var>.
+
+<p>The RDB_object must either be newly initialized or of type
+FLOAT.
+
 <h2 id="double_to_obj">RDB_double_to_obj</h2>
 
 <pre>
@@ -2644,7 +2714,7 @@ RDB_double_to_obj(RDB_object *valp, RDB_double v);
 <h3>Description</h3>
 
 <p>RDB_double_to_obj sets the RDB_object pointed to by <var>valp</var>
-to the double value specified by <var>v</var>.
+to the RDB_double value specified by <var>v</var>.
 
 <p>The RDB_object must either be newly initialized or of type
 DOUBLE.
@@ -2709,6 +2779,27 @@ RDB_obj_int(const RDB_object *valp);
 <p>RDB_obj_int returns the value of the RDB_object pointed to by
 <var>valp</var> as a RDB_int. The RDB_object must be of type
 INTEGER.
+
+<h3>Return value</h3>
+
+<p>The value of the RDB_object.
+
+<hr>
+
+<h2 id="obj_float">RDB_obj_float</h2>
+
+<pre>
+#include &lt;rel/rdb.h&gt;
+
+RDB_float
+RDB_obj_float(const RDB_object *valp);
+</pre>
+
+<h3>Description</h3>
+
+<p>RDB_obj_float returns the value of the RDB_object pointed to by
+<var>valp</var> as a RDB_float. The RDB_object must be of type
+FLOAT.
 
 <h3>Return value</h3>
 
@@ -3475,6 +3566,26 @@ failed.
 #include &lt;rel/rdb.h&gt;
 
 RDB_expression *
+RDB_float_to_expr(RDB_float, RDB_exec_context *ecp);
+</pre>
+
+<h3>Description</h3>
+
+<p>RDB_float_to_expr creates a constant expression of type FLOAT.
+
+<h3>Return value</h3>
+
+<p>A pointer to the newly created expression, of NULL if the creation
+failed.
+
+<hr>
+
+<h2 id="double_to_expr">RDB_double_to_expr</h2>
+
+<pre>
+#include &lt;rel/rdb.h&gt;
+
+RDB_expression *
 RDB_double_to_expr(RDB_double, RDB_exec_context *ecp);
 </pre>
 
@@ -4144,7 +4255,7 @@ RDB_type_is_numeric(const RDB_type *);
 
 <h3>Return value</h3>
 
-<p>RDB_TRUE if the type is INTEGER or DOUBLE, RDB_FALSE otherwise.
+<p>RDB_TRUE if the type is INTEGER, FLOAT, or DOUBLE, RDB_FALSE otherwise.
 
 <hr>
 
@@ -4800,6 +4911,7 @@ typedef enum {
 <tr><th>Name<th>RDB_type variable<th>C type
 <tr><td>BOOLEAN<td>RDB_BOOLEAN<td>RDB_bool
 <tr><td>INTEGER<td>RDB_INTEGER<td>RDB_int
+<tr><td>FLOAT<td>RDB_FLOAT<td>RDB_float
 <tr><td>DOUBLE<td>RDB_DOUBLE<td>RDB_double
 <tr><td>STRING<td>RDB_STRING<td>char *
 <tr><td>BINARY<td>RDB_BINARY<td>&nbsp;-
@@ -4866,6 +4978,8 @@ The arguments must be of the same type.
 
 <p>OPERATOR &lt; (INTEGER, INTEGER) RETURNS BOOLEAN;
 
+<p>OPERATOR &lt; (FLOAT, FLOAT) RETURNS BOOLEAN;
+
 <p>OPERATOR &lt; (DOUBLE, DOUBLE) RETURNS BOOLEAN;
 
 <p>OPERATOR &lt; (STRING, STRING) RETURNS BOOLEAN;
@@ -4884,6 +4998,8 @@ If the operands are strings, the strings will be compared using strcoll().
 <h3 id="op_lte">OPERATOR &lt;=</h3>
 
 <p>OPERATOR &lt;= (INTEGER, INTEGER) RETURNS BOOLEAN;
+
+<p>OPERATOR &lt;= (FLOAT, FLOAT) RETURNS BOOLEAN;
 
 <p>OPERATOR &lt;= (DOUBLE, DOUBLE) RETURNS BOOLEAN;
 
@@ -4904,6 +5020,8 @@ If the operands are strings, the strings will be compared using strcoll().
 
 <p>OPERATOR &gt; (INTEGER, INTEGER) RETURNS BOOLEAN;
 
+<p>OPERATOR &gt; (FLOAT, FLOAT) RETURNS BOOLEAN;
+
 <p>OPERATOR &gt; (DOUBLE, DOUBLE) RETURNS BOOLEAN;
 
 <p>OPERATOR &gt; (STRING, STRING) RETURNS BOOLEAN;
@@ -4922,6 +5040,8 @@ If the operands are strings, the strings will be compared using strcoll().
 <h3 id="op_gte">OPERATOR &gt;=</h3>
 
 <p>OPERATOR &gt;= (INTEGER, INTEGER) RETURNS BOOLEAN;
+
+<p>OPERATOR &gt;= (FLOAT, FLOAT) RETURNS BOOLEAN;
 
 <p>OPERATOR &gt;= (DOUBLE, DOUBLE) RETURNS BOOLEAN;
 
@@ -4942,6 +5062,8 @@ If the operands are strings, the strings will be compared using strcoll().
 
 <p>OPERATOR + (INTEGER, INTEGER) RETURNS INTEGER;
 
+<p>OPERATOR + (FLOAT, FLOAT) RETURNS FLOAT;
+
 <p>OPERATOR + (DOUBLE, DOUBLE) RETURNS DOUBLE;
 
 <h4>Description</h4>
@@ -4957,6 +5079,8 @@ If the operands are strings, the strings will be compared using strcoll().
 <h3 id="op_uminus">OPERATOR - (unary)</h3>
 
 <p>OPERATOR - (INTEGER) RETURNS INTEGER;
+
+<p>OPERATOR - (FLOAT) RETURNS FLOAT;
 
 <p>OPERATOR - (DOUBLE) RETURNS DOUBLE;
 
@@ -4974,6 +5098,8 @@ If the operands are strings, the strings will be compared using strcoll().
 
 <p>OPERATOR - (INTEGER, INTEGER) RETURNS INTEGER;
 
+<p>OPERATOR - (FLOAT, FLOAT) RETURNS FLOAT;
+
 <p>OPERATOR - (DOUBLE, DOUBLE) RETURNS DOUBLE;
 
 <h4>Description</h4>
@@ -4990,6 +5116,8 @@ If the operands are strings, the strings will be compared using strcoll().
 
 <p>OPERATOR * (INTEGER, INTEGER) RETURNS INTEGER;;
 
+<p>OPERATOR * (FLOAT, FLOAT) RETURNS FLOAT;
+
 <p>OPERATOR * (DOUBLE, DOUBLE) RETURNS DOUBLE;
 
 <h4>Description</h4>
@@ -5005,6 +5133,8 @@ If the operands are strings, the strings will be compared using strcoll().
 <h3 id="op_div">OPERATOR /</h3>
 
 <p>OPERATOR / (INTEGER, INTEGER) RETURNS INTEGER;
+
+<p>OPERATOR / (FLOAT, FLOAT) RETURNS FLOAT;
 
 <p>OPERATOR / (DOUBLE, DOUBLE) RETURNS DOUBLE;
 
@@ -5124,6 +5254,8 @@ START.
 
 <p>OPERATOR INTEGER (DOUBLE) RETURNS INTEGER;
 
+<p>OPERATOR INTEGER (FLOAT) RETURNS INTEGER;
+
 <p>OPERATOR INTEGER (STRING) RETURNS INTEGER;
 
 <h4>Description</h4>
@@ -5136,11 +5268,31 @@ START.
 
 <hr>
 
+<h3 id="op_double">OPERATOR FLOAT</h3>
+
+<p>OPERATOR FLOAT (INTEGER) RETURNS FLOAT;
+
+<p>OPERATOR FLOAT (DOUBLE) RETURNS FLOAT;
+
+<p>OPERATOR FLOAT (STRING) RETURNS FLOAT;
+
+<h4>Description</h4>
+
+<p>Converts the operand to FLOAT.
+
+<h4>Return value</h4>
+
+<p>The operand, converted to FLOAT.
+
+<hr>
+
 <h3 id="op_double">OPERATOR DOUBLE</h3>
 
 <p>OPERATOR DOUBLE (INTEGER) RETURNS DOUBLE;
 
-<p>OPERATOR DOUBLE (STRING) RETURNS INTEGER;
+<p>OPERATOR DOUBLE (FLOAT) RETURNS DOUBLE;
+
+<p>OPERATOR DOUBLE (STRING) RETURNS DOUBLE;
 
 <h4>Description</h4>
 
@@ -5155,6 +5307,8 @@ START.
 <h3 id="op_string">OPERATOR STRING</h3>
 
 <p>OPERATOR STRING (INTEGER) RETURNS STRING;
+
+<p>OPERATOR STRING (FLOAT) RETURNS STRING;
 
 <p>OPERATOR STRING (DOUBLE) RETURNS STRING;
 

@@ -454,6 +454,15 @@ Duro_tcl_to_duro(Tcl_Interp *interp, Tcl_Obj *tobjp, RDB_type *typ,
         RDB_int_to_obj(objp, (RDB_int) val);
         return TCL_OK;
     }
+    if (typ == &RDB_FLOAT) {
+        double val;
+
+        ret = Tcl_GetDoubleFromObj(interp, tobjp, &val);
+        if (ret != TCL_OK)
+            return ret;
+        RDB_float_to_obj(objp, (RDB_float) val);
+        return TCL_OK;
+    }
     if (typ == &RDB_DOUBLE) {
         double val;
 
@@ -769,6 +778,9 @@ Duro_irep_to_tcl(Tcl_Interp *interp, const RDB_object *objp,
     if (typ == &RDB_INTEGER) {
         return Tcl_NewIntObj((int) RDB_obj_int(objp));
     }
+    if (typ == &RDB_FLOAT) {
+        return Tcl_NewDoubleObj((double) RDB_obj_float(objp));
+    }
     if (typ == &RDB_DOUBLE) {
         return Tcl_NewDoubleObj((double) RDB_obj_double(objp));
     }
@@ -804,7 +816,7 @@ Duro_irep_to_tcl(Tcl_Interp *interp, const RDB_object *objp,
     if (objp->kind == RDB_OB_ARRAY) {
         return array_to_list(interp, (RDB_object *) objp, ecp, txp);
     }
-    Tcl_SetResult(interp, "Unsupported type", TCL_STATIC);
+    Tcl_SetResult(interp, "unsupported type", TCL_STATIC);
     return NULL;
 }
 

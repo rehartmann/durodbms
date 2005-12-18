@@ -824,6 +824,24 @@ RDB_int_to_expr(RDB_int v, RDB_exec_context *ecp)
 }
 
 RDB_expression *
+RDB_float_to_expr(RDB_float v, RDB_exec_context *ecp)
+{
+    RDB_expression *exp = malloc(sizeof (RDB_expression));
+    
+    if (exp == NULL) {
+        RDB_raise_no_memory(ecp);
+        return NULL;
+    }
+        
+    exp->kind = RDB_EX_OBJ;
+    exp->var.obj.typ = &RDB_FLOAT;
+    exp->var.obj.kind = RDB_OB_FLOAT;
+    exp->var.obj.var.float_val = v;
+
+    return exp;
+}
+
+RDB_expression *
 RDB_double_to_expr(RDB_double v, RDB_exec_context *ecp)
 {
     RDB_expression *exp = malloc(sizeof (RDB_expression));

@@ -43,6 +43,7 @@ enum _RDB_obj_kind {
     RDB_OB_INITIAL,
     RDB_OB_BOOL,
     RDB_OB_INT,
+    RDB_OB_FLOAT,
     RDB_OB_DOUBLE,
     RDB_OB_BIN,
     RDB_OB_TABLE,
@@ -61,6 +62,7 @@ typedef struct RDB_object {
     union {
         RDB_bool bool_val;
         RDB_int int_val;
+        RDB_float float_val;
         RDB_double double_val;
         struct {
             void *datap;
@@ -147,6 +149,7 @@ typedef struct RDB_type {
 
 extern RDB_type RDB_BOOLEAN;
 extern RDB_type RDB_INTEGER;
+extern RDB_type RDB_FLOAT;
 extern RDB_type RDB_DOUBLE;
 extern RDB_type RDB_STRING;
 extern RDB_type RDB_BINARY;
@@ -764,6 +767,10 @@ RDB_tuple_set_int(RDB_object *, const char *name, RDB_int val,
         RDB_exec_context *);
 
 int
+RDB_tuple_set_float(RDB_object *, const char *name, RDB_float val,
+        RDB_exec_context *);
+
+int
 RDB_tuple_set_double(RDB_object *, const char *name, RDB_double val,
         RDB_exec_context *);
 
@@ -786,6 +793,9 @@ RDB_tuple_get_bool(const RDB_object *, const char *name);
 
 RDB_int
 RDB_tuple_get_int(const RDB_object *, const char *name);
+
+RDB_float
+RDB_tuple_get_float(const RDB_object *, const char *name);
 
 RDB_double
 RDB_tuple_get_double(const RDB_object *, const char *name);
@@ -958,6 +968,9 @@ void
 RDB_int_to_obj(RDB_object *valp, RDB_int v);
 
 void
+RDB_float_to_obj(RDB_object *valp, RDB_float v);
+
+void
 RDB_double_to_obj(RDB_object *valp, RDB_double v);
 
 int
@@ -987,6 +1000,9 @@ RDB_obj_bool(const RDB_object *valp);
 
 RDB_int
 RDB_obj_int(const RDB_object *valp);
+
+RDB_float
+RDB_obj_float(const RDB_object *valp);
 
 RDB_double
 RDB_obj_double(const RDB_object *valp);
@@ -1027,6 +1043,9 @@ RDB_bool_to_expr(RDB_bool, RDB_exec_context *);
 
 RDB_expression *
 RDB_int_to_expr(RDB_int, RDB_exec_context *);
+
+RDB_expression *
+RDB_float_to_expr(RDB_float, RDB_exec_context *);
 
 RDB_expression *
 RDB_double_to_expr(RDB_double, RDB_exec_context *);

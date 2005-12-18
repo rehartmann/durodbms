@@ -15,6 +15,7 @@
 
 RDB_type RDB_BOOLEAN;
 RDB_type RDB_INTEGER;
+RDB_type RDB_FLOAT;
 RDB_type RDB_DOUBLE;
 RDB_type RDB_STRING;
 RDB_type RDB_BINARY;
@@ -249,6 +250,14 @@ _RDB_init_builtin_types(RDB_exec_context *ecp)
     RDB_INTEGER.var.scalar.arep = NULL;
     RDB_INTEGER.var.scalar.constraintp = NULL;
     RDB_INTEGER.comparep = &compare_int;
+
+    RDB_FLOAT.kind = RDB_TP_SCALAR;
+    RDB_FLOAT.ireplen = sizeof (RDB_float);
+    RDB_FLOAT.name = "FLOAT";
+    RDB_FLOAT.var.scalar.repc = 0;
+    RDB_FLOAT.var.scalar.arep = NULL;
+    RDB_FLOAT.var.scalar.constraintp = NULL;
+    RDB_FLOAT.comparep = &compare_double;
 
     RDB_DOUBLE.kind = RDB_TP_SCALAR;
     RDB_DOUBLE.ireplen = sizeof (RDB_double);
@@ -504,7 +513,8 @@ _RDB_init_builtin_types(RDB_exec_context *ecp)
 
 RDB_bool
 RDB_type_is_numeric(const RDB_type *typ) {
-    return (RDB_bool)(typ == &RDB_INTEGER || typ == &RDB_DOUBLE);
+    return (RDB_bool)(typ == &RDB_INTEGER || typ == &RDB_FLOAT
+            || typ == &RDB_DOUBLE);
 }
 
 RDB_type *
@@ -646,8 +656,8 @@ RDB_bool
 RDB_type_is_builtin(const RDB_type *typ)
 {
     return (RDB_bool) ((typ == &RDB_BOOLEAN) || (typ == &RDB_INTEGER)
-            || (typ == &RDB_DOUBLE) || (typ == &RDB_STRING)
-            || (typ == &RDB_BINARY));
+            || (typ == &RDB_FLOAT) || (typ == &RDB_DOUBLE)
+            || (typ == &RDB_STRING) || (typ == &RDB_BINARY));
 }
 
 RDB_bool

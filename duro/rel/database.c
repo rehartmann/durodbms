@@ -293,6 +293,9 @@ new_dbroot(RDB_environment *envp, RDB_exec_context *ecp)
     if (add_type(dbrootp, &RDB_INTEGER, ecp) != RDB_OK) {
         return NULL;
     }
+    if (add_type(dbrootp, &RDB_FLOAT, ecp) != RDB_OK) {
+        return NULL;
+    }
     if (add_type(dbrootp, &RDB_DOUBLE, ecp) != RDB_OK) {
         return NULL;
     }

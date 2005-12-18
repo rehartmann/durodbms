@@ -4,6 +4,8 @@ Summary of Changes for Duro
 
 Changes for Duro 0.10
 
+- Replaced RDB_RATIONAL by RDB_FLOAT and RDB_DOUBLE.
+
 - RDB_update() and RDB_delete return the number of tuples updated or
   deleted, respectively.
 

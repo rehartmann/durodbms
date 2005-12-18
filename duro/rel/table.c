@@ -645,6 +645,8 @@ RDB_max(RDB_table *tbp, const char *attrname, RDB_exec_context *ecp,
 
     if (attrtyp == &RDB_INTEGER)
         resultp->var.int_val = RDB_INT_MIN;
+    else if (attrtyp == &RDB_FLOAT)
+        resultp->var.float_val = RDB_FLOAT_MIN;
     else if (attrtyp == &RDB_DOUBLE)
         resultp->var.double_val = RDB_DOUBLE_MIN;
     else {
@@ -715,6 +717,8 @@ RDB_min(RDB_table *tbp, const char *attrname, RDB_exec_context *ecp,
 
     if (attrtyp == &RDB_INTEGER)
         resultp->var.int_val = RDB_INT_MIN;
+    else if (attrtyp == &RDB_FLOAT)
+        resultp->var.double_val = RDB_FLOAT_MIN;
     else if (attrtyp == &RDB_DOUBLE)
         resultp->var.double_val = RDB_DOUBLE_MIN;
     else {
@@ -785,6 +789,8 @@ RDB_sum(RDB_table *tbp, const char *attrname, RDB_exec_context *ecp,
     /* initialize result */
     if (attrtyp == &RDB_INTEGER)
         resultp->var.int_val = 0;
+    else if (attrtyp == &RDB_FLOAT)
+        resultp->var.float_val = 0.0;
     else if (attrtyp == &RDB_DOUBLE)
         resultp->var.double_val = 0.0;
     else {

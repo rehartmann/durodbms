@@ -120,6 +120,18 @@ RDB_tuple_set_int(RDB_object *tplp, const char *attrname, RDB_int val,
 }
 
 int
+RDB_tuple_set_float(RDB_object *tplp, const char *attrname, RDB_float val,
+        RDB_exec_context *ecp)
+{
+    RDB_object *dstvalp;
+    if (provide_entry(tplp, attrname, ecp, &dstvalp) != RDB_OK)
+        return RDB_ERROR;
+
+    RDB_float_to_obj(dstvalp, val);
+    return RDB_OK;
+}
+
+int
 RDB_tuple_set_double(RDB_object *tplp, const char *attrname, RDB_double val,
         RDB_exec_context *ecp)
 {

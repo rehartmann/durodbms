@@ -59,6 +59,7 @@ _RDB_insert_real(RDB_table *tbp, const RDB_object *tplp,
             switch (valp->kind) {
                 case RDB_OB_BOOL:
                 case RDB_OB_INT:
+                case RDB_OB_FLOAT:
                 case RDB_OB_DOUBLE:
                 case RDB_OB_BIN:
                     RDB_raise_internal("invalid tuple attribute", ecp);

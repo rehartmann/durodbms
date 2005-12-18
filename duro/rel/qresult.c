@@ -88,9 +88,13 @@ init_summ_table(RDB_qresult *qresp, RDB_exec_context *ecp,
                         goto error;
                     if (typ == &RDB_INTEGER)
                         ret = RDB_tuple_set_int(&tpl, name, RDB_INT_MIN, ecp);
-                    else
+                    else if (typ == &RDB_FLOAT) {
+                        ret = RDB_tuple_set_float(&tpl, name,
+                                RDB_FLOAT_MIN, ecp);
+                    } else {
                         ret = RDB_tuple_set_double(&tpl, name,
                                 RDB_DOUBLE_MIN, ecp);
+                    }
                     break;
                 case RDB_MIN:
                     typ = RDB_expr_type(qresp->tbp->var.summarize.addv[i].exp,
@@ -100,9 +104,13 @@ init_summ_table(RDB_qresult *qresp, RDB_exec_context *ecp,
                         goto error;
                     if (typ == &RDB_INTEGER)
                         ret = RDB_tuple_set_int(&tpl, name, RDB_INT_MAX, ecp);
-                    else
+                    else if (typ == &RDB_FLOAT) {
+                        ret = RDB_tuple_set_float(&tpl, name,
+                                RDB_FLOAT_MAX, ecp);
+                    } else {
                         ret = RDB_tuple_set_double(&tpl, name,
                                 RDB_DOUBLE_MAX, ecp);
+                    }
                     break;
                 case RDB_ALL:
                     ret = RDB_tuple_set_bool(&tpl, name, RDB_TRUE, ecp);

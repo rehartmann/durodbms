@@ -305,7 +305,8 @@ set tx [duro::begin $dbenv TEST]
 # Create table
 duro::table create T {
    {A INTEGER}
-   {B DOUBLE}
+   {B FLOAT}
+   {C DOUBLE 1.0}
 } {{A}} $tx
 
 duro::table rename T T3 $tx
@@ -323,7 +324,7 @@ duro::insert T3 {A 1 B 1.0} $tx
 duro::insert T3 {A 2 B 2.0} $tx
 duro::insert T3 {A 3 B 3.0} $tx
 duro::insert T3 {A 4 B 4.0} $tx
-duro::insert T3 {A 5 B 5.0} $tx
+duro::insert T3 {A 5 B 5.0 C 2.0} $tx
 
 # Update must fail
 if {![catch {
@@ -333,8 +334,8 @@ if {![catch {
 }
 
 set a [duro::array create T3 {A asc} $tx]
-checkarray $a {{A 1 B 1.0} {A 2 B 2.0} {A 3 B 3.0} {A 4 B 4.0}
-        {A 5 B 5.0}} $tx
+checkarray $a {{A 1 B 1.0 C 1.0} {A 2 B 2.0 C 1.0} {A 3 B 3.0 C 1.0}
+        {A 4 B 4.0 C 1.0} {A 5 B 5.0 C 2.0}} $tx
 duro::array drop $a
 
 #
