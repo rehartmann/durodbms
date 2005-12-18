@@ -51,6 +51,24 @@ compare_int(const char *name, int argc, RDB_object *argv[],
 }
 
 static int
+compare_float(const char *name, int argc, RDB_object *argv[],
+        const void *iargp, size_t iarglen, RDB_exec_context *ecp,
+        RDB_transaction *txp, RDB_object *retvalp)
+{
+    RDB_int res;
+
+    if (argv[0]->var.float_val < argv[1]->var.float_val) {
+        res = -1;
+    } else if (argv[0]->var.float_val > argv[1]->var.float_val) {
+        res = 1;
+    } else {
+        res = 0;
+    }
+    RDB_int_to_obj(retvalp, res);
+    return RDB_OK;
+}
+
+static int
 compare_double(const char *name, int argc, RDB_object *argv[],
         const void *iargp, size_t iarglen, RDB_exec_context *ecp,
         RDB_transaction *txp, RDB_object *retvalp)
@@ -257,7 +275,7 @@ _RDB_init_builtin_types(RDB_exec_context *ecp)
     RDB_FLOAT.var.scalar.repc = 0;
     RDB_FLOAT.var.scalar.arep = NULL;
     RDB_FLOAT.var.scalar.constraintp = NULL;
-    RDB_FLOAT.comparep = &compare_double;
+    RDB_FLOAT.comparep = &compare_float;
 
     RDB_DOUBLE.kind = RDB_TP_SCALAR;
     RDB_DOUBLE.ireplen = sizeof (RDB_double);

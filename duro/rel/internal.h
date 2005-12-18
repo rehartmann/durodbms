@@ -482,6 +482,33 @@ int
 _RDB_get_upd_op(const char *name, int argc, RDB_type *argtv[],
                RDB_exec_context *ecp, RDB_transaction *txp, RDB_upd_op **opp);
 
+RDB_ro_op_desc *
+_RDB_new_ro_op(const char *name, int argc, RDB_type *rtyp, RDB_ro_op_func *funcp,
+        RDB_exec_context *);
+
+int
+_RDB_eq_bool(const char *name, int argc, RDB_object *argv[],
+        const void *iargp, size_t iarglen, RDB_exec_context *ecp,
+        RDB_transaction *txp, RDB_object *retvalp);
+
+int
+_RDB_obj_equals(const char *name, int argc, RDB_object *argv[],
+        const void *iargp, size_t iarglen, RDB_exec_context *,
+        RDB_transaction *, RDB_object *retvalp);
+
+int
+_RDB_eq_binary(const char *name, int argc, RDB_object *argv[],
+        const void *iargp, size_t iarglen, RDB_exec_context *,
+        RDB_transaction *, RDB_object *retvalp);
+
+int
+_RDB_obj_not_equals(const char *name, int argc, RDB_object *argv[],
+        const void *iargp, size_t iarglen, RDB_exec_context *,
+        RDB_transaction *, RDB_object *retvalp);
+
+int
+_RDB_put_ro_op(RDB_dbroot *dbrootp, RDB_ro_op_desc *op, RDB_exec_context *);
+
 void
 _RDB_free_ro_ops(RDB_ro_op_desc *op, RDB_exec_context *);
 
