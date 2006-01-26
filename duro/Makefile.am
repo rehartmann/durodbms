@@ -1,7 +1,7 @@
 # $Id$
 
 # Default directory where Berkeley DB is installed
-BDB_HOME = /usr/local/BerkeleyDB.4.3
+BDB_HOME = /usr/local/BerkeleyDB.4.4
 
 AM_YFLAGS = -d
 

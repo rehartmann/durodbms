@@ -220,18 +220,39 @@
 <h3>Execution context functions</h3>
 
 <ul>
-<li><a href="#strerror">RDB_strerror</a>
-<li><a href="#is_syserr">RDB_is_syserr</a>
+<li><a href="#init_exec_context">RDB_init_exec_context</a>
+<li><a href="#destroy_exec_context">RDB_destroy_exec_context</a>
+<li><a href="#raise_err">RDB_raise_err</a>
+<li><a href="#get_err">RDB_get_err</a>
+<li><a href="#clear_err">RDB_clear_err</a>
+<li><a href="#raise_no_memory">RDB_raise_no_memory</a>
+<li><a href="#raise_no_memory">RDB_raise_invalid_argument</a> 
+<li><a href="#raise_no_memory">RDB_raise_invalid_tx</a>
+<li><a href="#raise_no_memory">RDB_raise_not_found</a> 
+<li><a href="#raise_no_memory">RDB_raise_type_mismatch</a> 
+<li><a href="#raise_no_memory">RDB_raise_operator_not_found</a> 
+<li><a href="#raise_no_memory">RDB_raise_type_constraint_violation</a> 
+<li><a href="#raise_no_memory">RDB_raise_element_exists</a> 
+<li><a href="#raise_no_memory">RDB_raise_not_supported</a> 
+<li><a href="#raise_no_memory">RDB_raise_attribute_not_found</a> 
+<li><a href="#raise_no_memory">RDB_raise_predicate_violation</a> 
+<li><a href="#raise_no_memory">RDB_raise_system</a> 
+<li><a href="#raise_no_memory">RDB_raise_resource_not_found</a> 
+<li><a href="#raise_no_memory">RDB_raise_internal</a> 
+<li><a href="#raise_no_memory">RDB_raise_lock_not_granted</a>
+<li><a href="#raise_no_memory">RDB_raise_aggregate_undefined</a>
+<li><a href="#raise_no_memory">RDB_raise_version_mismatch</a>
+<li><a href="#ec_set_property">RDB_ec_set_property</a>
+<li><a href="#ec_get_property">RDB_ec_get_property</a>
 </ul>
 
 <h3>Expression parsing functions</h3>
 
 <ul>
-<li><a href="#init_exec_context">RDB_init_exec_context</a>
-<li><a href="#destroy_exec_context">RDB_destroy_exec_context</a>
-<li><a href="#raise_err">RDB_raise_err</a>
-<li><a href="#clear_err">RDB_clear_err</a>
+<li><a href="#parse_expr">RDB_parse_expr</a>
+<li><a href="#parse_expr">RDB_parse_table</a>
 </ul>
+
 
 <h3>C structures and definitions</h3>
 
@@ -273,7 +294,7 @@
 <li><a href="#op_substring">SUBSTRING</a>
 <li><a href="#op_matches">MATCHES</a>
 <li><a href="#op_integer">INTEGER</a>
-<li><a href="#op_double">FLOAT</a>
+<li><a href="#op_float">FLOAT</a>
 <li><a href="#op_double">DOUBLE</a>
 <li><a href="#op_string">STRING</a>
 <li><a href="#op_is_empty">IS_EMPTY</a>
@@ -1770,7 +1791,73 @@ RDB_multi_assign(int insc, const RDB_ma_insert insv[],
 
 <h3>Description</h3>
 
-<p>...
+<p><strong>RDB_multi_assign</strong> performs a number of insert, update, delete,
+and copy operations in a single call.
+
+<p>For each of the RDB_ma_insert elements given by <var>insc</var> and <var>insv</var>,
+the tuple *<var>insv</var>[i]->tplp is inserted into *<var>insv</var>[i]->tbp.
+
+<p>For each of the RDB_ma_update elements given by <var>updc</var> and <var>updv</var>,
+the attributes given by <var>updv</var>[i]->updc and <var>updv</var>[i]->updv
+of the tuples of *<var>updv</var>[i]->tbp for which *<var>updv</var>[i]->condp
+evaluates to RDB_TRUE are updated.
+
+<p>For each of the RDB_ma_delete elements given by <var>delc</var> and <var>delv</var>,
+the tuples for which *<var>delv</var>[i]->condp evaluates to RDB_TRUE
+are deleted from *<var>delv</var>[i]->tbp.
+
+<p>For each of the RDB_ma_copy elements given by <var>copyc</var> and <var>copyv</var>,
+*<var>copyv</var>[i]->scrp is copied to *<var>copyv</var>[i]->dstp.
+
+<p>A <strong>RDB_multi_assign</strong> call is atomic with respect to
+constraint checking; a constraint violation error can only occur
+if the result of <em>all</em> operations violate a constraint.
+
+<p>A table may not appear twice as a target in the arguments to
+<strong>RDB_multi_assign</strong>, and it may not appear
+both as a source and a target.
+
+<p>This means that an assignment like the following:</p>
+
+<code>
+UPDATE S WHERE S# = S#('S2') STATUS := 15;
+UPDATE S WHERE S# = S#('S3') STATUS := 25;
+</code>
+
+<p>(taken from <cite>TTM</cite>, chapter 6)
+cannot be performed directly. It can, however, be converted to a
+form like the following:</p>
+
+<code>
+UPDATE S WHERE (S# = S#('S2')) OR (S# = S#('S3'))
+        STATUS := IF (S# = S#('S2')) THEN 15 ELSE 25;
+</code>
+
+<h3>Return value</h3>
+
+<p>On success, the number of tuples inserted, deleted, and updated due to
+<var>insc</var>, <var>insv</var>, <var>updc</var>, <var>updv</var>,
+<var>delc</var> and <var>delv</var> arguments,
+plus <var>objc</var>. If an error occured, (RDB_int) RDB_ERROR is returned.
+
+<h3>Errors</h3>
+
+<dl>
+<dt>RDB_INVALID_TRANSACTION_ERROR
+<dd>... <var>txp</var> does not point to a running transaction.
+<dt>RDB_INVALID_ARGUMENT_ERROR
+<dd>A table appears twice as a target.
+<dt>RDB_NOT_SUPPORTED_ERROR
+<dd>A table is both source and target.
+<dd>A virtual table appears as a target in <var>copyv</var>.
+<dt>RDB_PREDICATE_VIOLATION_ERROR
+<dd>A constraint has been violated.
+</dl>
+
+<p>The errors that can be raised by <a href="#insert">RDB_insert</a>,
+<a href="#update">RDB_update</a>, <a href="#delete">RDB_delete</a> and <a
+href="#copy">RDB_copy_obj</a>  
+can also be raised.
 
 <hr>
 
@@ -2556,7 +2643,7 @@ RDB_init_obj(RDB_object *valp);
 
 <h3>Description</h3>
 
-<p>RDB_init_obj initializes the variable pointed to by
+<p>RDB_init_obj initializes the RDB_object structure pointed to by
 <var>valp</var>. RDB_init_obj must be called before any other
 operation can be performed on a RDB_object variable.
 
@@ -2573,7 +2660,7 @@ RDB_destroy_obj(RDB_object *valp, RDB_exec_context *ecp);
 
 <h3>Description</h3>
 
-<p>RDB_destroy_obj frees all resources associated with a RDB_obj
+<p>RDB_destroy_obj frees all resources associated with a RDB_object
 variable.
 
 <h3>Return value</h3>
@@ -3560,7 +3647,7 @@ failed.
 
 <hr>
 
-<h2 id="double_to_expr">RDB_double_to_expr</h2>
+<h2 id="float_to_expr">RDB_float_to_expr</h2>
 
 <pre>
 #include &lt;rel/rdb.h&gt;
@@ -3881,13 +3968,13 @@ RDB_ro_op(const char *opname, int argc, RDB_expression *argv[], RDB_exec_context
 <h3>Description</h3>
 
 <p>RDB_ro_op creates an expression which represents the invocation
-of a user-defined operator.
+of a readonly operator.
 
 <h3>Return value</h3>
 
 <p>On success, a pointer to the newly created expression is returned.
 If the expression could not be created due to insufficient memory,
-NULL is returned.
+NULL is returned and an error is left in *<var>ecp</var>.
 
 <hr>
 
@@ -3910,7 +3997,7 @@ list, delimited by a NULL.
 
 <p>On success, a pointer to the newly created expression is returned.
 If the expression could not be created due to insufficient memory,
-NULL is returned.
+NULL is returned and an error is left in *<var>ecp</var>.
 
 <hr>
 
@@ -4793,6 +4880,147 @@ in which case the transaction may be implicitly rolled back.
 
 <hr>
 
+<h2 id="init_exec_context">RDB_init_exec_context</h2>
+
+<pre>
+#include &lt;rel/rdb.h&gt;
+
+void
+RDB_init_exec_context(RDB_exec_context *ecp);
+</pre>
+
+<h3>Description</h3>
+
+<p>RDB_init_exec_context initializes the RDB_exec_context structure given by
+<var>ecp</var>. RDB_init_exec_context must be called before any other
+operation can be performed on a RDB_exec_context structure.
+
+<hr>
+
+<h2 id="destroy_exec_context">RDB_destroy_exec_context</h2>
+
+<pre>
+#include &lt;rel/rdb.h&gt;
+
+void
+RDB_destroy_exec_context(RDB_exec_context *ecp);
+</pre>
+
+<h3>Description</h3>
+
+<p>RDB_destroy_exec_context frees all resources associated with a
+RDB_exec_context.
+
+<hr>
+
+<h2 id="raise_err">RDB_raise_err</h2>
+
+<pre>
+#include &lt;rel/rdb.h&gt;
+
+RDB_object *
+RDB_raise_err(RDB_exec_context *);
+</pre>
+
+<h3>Description</h3>
+
+<p><strong>RDB_raise_err</strong> arranges for a RDB_object structure
+to be the error associated with the RDB_exec_context given by
+<var>ecp</var>. A previously raised error is overwritten. 
+The RDB_object is in the same state as after a call to
+RDB_init_obj. It is the caller's responsibility to assign a value
+to the RDB_object, for example, by calling a selector.
+
+<h3>Return value</h3>
+
+<p>A pointer to the error, or NULL if the call fails.
+
+<h3>Errors</h3>
+
+<p>The call my fail and return NULL if an error was already
+associated with the RDB_exec_context and destroying this error
+failed.
+
+<hr>
+
+<h2 id="get_err">RDB_get_err</h2>
+
+<pre>
+#include &lt;rel/rdb.h&gt;
+
+RDB_object *
+RDB_get_err(RDB_exec_context *);
+</pre>
+
+<h3>Description</h3>
+
+<p>Returns the error associated with the RDB_exec_context given by
+<var>ecp</var>.
+
+<h3>Return value</h3>
+
+<p>A pointer to the error associated with the RDB_exec_context, or NULL
+if no error has been raised.
+
+<hr>
+
+<h2 id="clear_err">RDB_clear_err</h2>
+
+<pre>
+#include &lt;rel/rdb.h&gt;
+
+void
+RDB_clear_err(RDB_exec_context *);
+</pre>
+
+<h3>Description</h3>
+
+<p>RDB_clear_err clears the error associated with the RDB_exec_context given by
+<var>ecp</var>, freing all resources associated with it.
+Subsequent calls calls to RDB_get_err will return NULL.
+
+<hr>
+
+<h2 id="ec_set_property">RDB_ec_set_property</h2>
+
+<pre>
+#include &lt;rel/rdb.h&gt;
+
+int
+RDB_ec_set_property(RDB_exec_context *, const char *name, void *value);
+</pre>
+
+<h3>Description</h3>
+
+<p><strong>RDB_ec_set_property</strong> sets the property <var>name</var>
+of the RDB_exec_context given by <var>ecp</var> to <var>value</var>.
+
+<h3>Return value</h3>
+
+<p>RDB_OK on success, RDB_ERROR on failure.
+
+<hr>
+
+<h2 id="ec_get_property">RDB_ec_get_property</h2>
+
+<pre>
+#include &lt;rel/rdb.h&gt;
+
+void *
+RDB_ec_get_property(RDB_exec_context *, const char *name);
+</pre>
+
+<h3>Description</h3>
+
+<p><strong>RDB_ec_get_property</strong> returns the property <var>name</var>
+of the RDB_exec_context given by <var>ecp</var>.
+
+<h3>Return value</h3>
+
+<p>The property.
+
+<hr>
+
 <h2 id="parse_expr">RDB_parse_expr<br>
 RDB_parse_table</h2>
 
@@ -5191,7 +5419,7 @@ If the operands are strings, the strings will be compared using strcoll().
 
 <h4>Description</h4>
 
-<p>The string concatenation operator
+<p>The string concatenation operator.
 
 <h4>Return value</h4>
 
@@ -5268,7 +5496,7 @@ START.
 
 <hr>
 
-<h3 id="op_double">OPERATOR FLOAT</h3>
+<h3 id="op_float">OPERATOR FLOAT</h3>
 
 <p>OPERATOR FLOAT (INTEGER) RETURNS FLOAT;
 
