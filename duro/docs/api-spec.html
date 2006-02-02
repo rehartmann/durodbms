@@ -4981,6 +4981,77 @@ Subsequent calls calls to RDB_get_err will return NULL.
 
 <hr>
 
+<h2 id="#raise_no_memory">RDB_raise_no_memory, RDB_raise_invalid_argument,
+RDB_raise_invalid_tx, RDB_raise_not_found,
+RDB_raise_type_mismatch, RDB_raise_operator_not_found,
+RDB_raise_type_constraint_violation, RDB_raise_element_exists,
+RDB_raise_not_supported, RDB_raise_attribute_not_found,
+RDB_raise_predicate_violation, RDB_raise_system,
+RDB_raise_resource_not_found, RDB_raise_internal,
+RDB_raise_lock_not_granted, RDB_raise_aggregate_undefined,
+RDB_raise_version_mismatch</h2>
+
+<pre>
+#include &lt;rel/rdb.h&gt;
+
+RDB_object *
+RDB_raise_no_memory(RDB_exec_context *);
+
+RDB_object *
+RDB_raise_invalid_tx(RDB_exec_context *);
+
+RDB_object *
+RDB_raise_invalid_argument(const char *, RDB_exec_context *);
+
+RDB_object *
+RDB_raise_not_found(const char *, RDB_exec_context *);
+
+RDB_object *
+RDB_raise_type_mismatch(const char *, RDB_exec_context *);
+
+RDB_object *
+RDB_raise_operator_not_found(const char *, RDB_exec_context *);
+
+RDB_object *
+RDB_raise_type_constraint_violation(const char *, RDB_exec_context *);
+
+RDB_object *
+RDB_raise_element_exists(const char *info, RDB_exec_context *);
+
+RDB_object *
+RDB_raise_not_supported(const char *info, RDB_exec_context *);
+
+RDB_object *
+RDB_raise_attribute_not_found(const char *info, RDB_exec_context *);
+
+RDB_object *
+RDB_raise_predicate_violation(const char *info, RDB_exec_context *);
+
+RDB_object *
+RDB_raise_system(const char *info, RDB_exec_context *);
+
+RDB_object *
+RDB_raise_resource_not_found(const char *info, RDB_exec_context *);
+
+RDB_object *
+RDB_raise_internal(const char *info, RDB_exec_context *);
+
+RDB_object *
+RDB_raise_lock_not_granted(RDB_exec_context *);
+
+RDB_object *
+RDB_raise_aggregate_undefined(RDB_exec_context *);
+
+RDB_object *
+RDB_raise_version_mismatch(RDB_exec_context *);
+</pre>
+
+<h3>Description</h3>
+
+<p>The functions shown above raise system-provided errors.
+
+<hr>
+
 <h2 id="ec_set_property">RDB_ec_set_property</h2>
 
 <pre>
@@ -5145,28 +5216,82 @@ typedef enum {
 <tr><td>BINARY<td>RDB_BINARY<td>&nbsp;-
 </table>
 
-<h3>Error types</h3>
+<h3 id="error-types">Error types</h3>
+
+<p>Since version 0.10, Duro errors are scalar types.
+They are shown below in Tutorial D notation.
+
+<pre>
+TYPE INVALID_TRANSACTION_ERROR POSSREP { };
+
+TYPE INVALID_ARGUMENT_ERROR POSSREP { STRING MSG };
+
+TYPE TYPE_MISMATCH_ERROR POSSREP { STRING MSG };
+
+TYPE NOT_FOUND_ERROR POSSREP { STRING MSG };
+
+TYPE OPERATOR_NOT_FOUND_ERROR POSSREP { STRING MSG };
+
+TYPE ATTRIBUTE_NOT_FOUND_ERROR POSSREP { STRING MSG };
+
+TYPE ELEMENT_EXISTS_ERROR POSSREP { STRING MSG };
+
+TYPE TYPE_CONSTRAINT_VIOLATION_ERROR POSSREP { STRING MSG };
+
+TYPE KEY_VIOLATION_ERROR { STRING MSG };
+
+TYPE PREDICATE_VIOLATION_ERROR { STRING MSG };
+
+TYPE AGGREGATE_UNDEFINED_ERROR { };
+
+TYPE VERSION_MISMATCH_ERROR { };
+
+TYPE NOT_SUPPORTED_ERROR { STRING MSG };
+</pre>
 
 <h4 id="syserr">System errors</h4>
 
-<dl>
-<dt>RDB_NO_SPACE_ERROR
-<dd>Insufficient disk space.
-<dt>RDB_NO_MEMORY_ERROR
-<dd>Insufficient memory.
-<dt>RDB_LOCK_NOT_GRANTED_ERROR
-<dd>A lock was requested but could not be granted.
-<dt>RDB_DEADLOCK_ERROR
-<dd>A deadlock condition was detected.
-<dt>RDB_RESOURCE_NOT_FOUND_ERROR
-<dd>A system resource, usually a file, could not be found.
-<dt>RDB_INTERNAL_ERROR
-<dd>Internal error.
-<dt>RDB_FATAL_ERROR
-<dd>Fatal error. This means that future calls will most likely fail.
-<dt>RDB_SYSTEM_ERROR_ERROR
-<dd>Unspecified system error.
-</dl>
+<pre>
+TYPE NO_MEMORY_ERROR POSSREP {  };
+</pre>
+
+<p>Insufficient memory.
+
+<pre>
+TYPE SYSTEM_ERROR POSSREP { MSG STRING };
+</pre>
+
+<p>Unspecified system error.
+
+<pre>
+TYPE LOCK_NOT_GRANTED_ERROR POSSREP { };
+</pre>
+
+<p>A lock was requested but could not be granted.
+
+<pre>
+TYPE DEADLOCK_ERROR POSSREP { };
+</pre>
+
+<p>A deadlock condition was detected.
+
+<pre>
+TYPE RESOURCE_NOT_FOUND_ERROR POSSREP { MSG STRING };
+</pre>
+
+<p>A system resource, usually a file, could not be found.
+
+<pre>
+TYPE INTERNAL_ERROR POSSREP { MSG STRING };
+</pre>
+
+<p>Internal error.
+
+<pre>
+TYPE FATAL_ERROR POSSREP { };
+</pre>
+
+<p>Fatal error. This means that future calls will most likely fail.
 
 <h2 id="builtin-ops">Built-in operators</h2>
 

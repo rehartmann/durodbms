@@ -154,7 +154,9 @@ extern RDB_type RDB_DOUBLE;
 extern RDB_type RDB_STRING;
 extern RDB_type RDB_BINARY;
 
-/* Error types */
+/*
+ * Error types
+ */
 extern RDB_type RDB_INVALID_TRANSACTION_ERROR;
 extern RDB_type RDB_INVALID_ARGUMENT_ERROR;
 extern RDB_type RDB_TYPE_MISMATCH_ERROR;
@@ -176,7 +178,6 @@ extern RDB_type RDB_RESOURCE_NOT_FOUND_ERROR;
 extern RDB_type RDB_INTERNAL_ERROR;
 extern RDB_type RDB_FATAL_ERROR;
 extern RDB_type RDB_SYSTEM_ERROR;
-extern RDB_type RDB_NO_SPACE_ERROR;
 
 extern RDB_type RDB_SYNTAX_ERROR;
 
