@@ -88,6 +88,20 @@ if {![tequal $tpl {A 1 B b}]} {
     error "invalid value of T4"
 }
 
+duro::table create -local TT1 {
+   {A INTEGER}
+   {B STRING}
+} {{A}} $tx
+
+duro::massign {copy TT1 T1} $tx
+
+duro::table create -local TT2 {
+   {A INTEGER}
+   {B STRING}
+} {{A}} $tx
+
+duro::massign {copy TT2 TT1} $tx
+
 duro::commit $tx
 
 duro::env close $dbenv

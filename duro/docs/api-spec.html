@@ -1132,7 +1132,8 @@ GROUP, or UNGROUP.
 
 <dl>
 <dt>RDB_INVALID_TRANSACTION_ERROR
-<dd><var>txp</var> does not point to a running transaction.
+<dd>The table given by <var>tbp</var> is global and <var>txp</var>
+does not point to a running transaction.
 <dt>RDB_INVALID_ARGUMENT_ERROR
 <dd>A table attribute is missing in the tuple and no default value
 was specified for that attribute.
@@ -1346,6 +1347,8 @@ RDB_copy_table(RDB_table *dstp, RDB_table *srcp, RDB_exec_context *ecp, RDB_tran
 <p>RDB_copy_table assigns the table specified
 by <var>srcp</var> to the value of the table specified by <var>dstp</var>.
 The two tables must be of the same type.
+
+<p>Currently, virtual target tables are not supported.
 
 <p>If an error occurs, an error value is left in <var>*ecp</var>.
 
@@ -1833,6 +1836,18 @@ UPDATE S WHERE (S# = S#('S2')) OR (S# = S#('S3'))
         STATUS := IF (S# = S#('S2')) THEN 15 ELSE 25;
 </code>
 
+<p>The restrictions of <a href="#insert">RDB_insert</a>, <a
+href="#update">RDB_update</a>, <a href="#delete">RDB_delete</a>,
+and <a href="#copy_obj">RDB_copy_obj</a>
+regarding virtual target tables apply to RDB_multi_assign,
+too.
+
+<p><var>txp</var> must point to a running transaction execpt
+if (1) no update or delete is specified, (2) only
+inserts into local tables are specified, and (3)
+there is no copy operation with an existing table as a target
+which involves a global table as source or target.
+
 <h3>Return value</h3>
 
 <p>On success, the number of tuples inserted, deleted, and updated due to
@@ -1844,7 +1859,8 @@ plus <var>objc</var>. If an error occured, (RDB_int) RDB_ERROR is returned.
 
 <dl>
 <dt>RDB_INVALID_TRANSACTION_ERROR
-<dd>... <var>txp</var> does not point to a running transaction.
+<dd><var>txp</var> must point to a running transaction (see above)
+but does not.
 <dt>RDB_INVALID_ARGUMENT_ERROR
 <dd>A table appears twice as a target.
 <dt>RDB_NOT_SUPPORTED_ERROR
@@ -1856,7 +1872,7 @@ plus <var>objc</var>. If an error occured, (RDB_int) RDB_ERROR is returned.
 
 <p>The errors that can be raised by <a href="#insert">RDB_insert</a>,
 <a href="#update">RDB_update</a>, <a href="#delete">RDB_delete</a> and <a
-href="#copy">RDB_copy_obj</a>  
+href="#copy_obj">RDB_copy_obj</a>  
 can also be raised.
 
 <hr>
@@ -2708,6 +2724,25 @@ by <var>srcvalp</var> to the RDB_object pointed to by <var>dstvalp</var>.
 
 <p>The source RDB_object must either be newly initialized or of the same type
 as the destination.
+
+<p>If the target is newly initialized, then the following two cases
+are handled in a special way:
+
+<p>(1) If the source holds a named table, the target will refer to the same
+table after the call.
+
+<p>(2) If the source holds an unnamed virtual table, the virtual table
+is duplicated.
+
+<p>If both the source and the target hold a table, the tuples
+are copied from the source to the target. In this case, both tables
+must be local, because otherwise a transaction would be required.
+<a href="#copy_table">RDB_copy_table</a> or
+<a href="#multi_assign">RDB_multi_assign</a> can be used to copy
+global tables.
+
+<p>Currently, RDB_copy_obj is not supported for targets which hold
+a virtual table.
 
 <p>If an error occurs, an error value is left in <var>*ecp</var>.
 
@@ -4981,7 +5016,7 @@ Subsequent calls calls to RDB_get_err will return NULL.
 
 <hr>
 
-<h2 id="#raise_no_memory">RDB_raise_no_memory, RDB_raise_invalid_argument,
+<h2 id="raise_no_memory">RDB_raise_no_memory, RDB_raise_invalid_argument,
 RDB_raise_invalid_tx, RDB_raise_not_found,
 RDB_raise_type_mismatch, RDB_raise_operator_not_found,
 RDB_raise_type_constraint_violation, RDB_raise_element_exists,

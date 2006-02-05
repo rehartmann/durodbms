@@ -1619,6 +1619,15 @@ cleanup:
     return ret;
 }
 
+static RDB_bool copy_needs_tx(const RDB_object *dstp, const RDB_object *srcp)
+{
+    if (RDB_obj_table(dstp) == NULL)
+        return RDB_FALSE;
+    return (RDB_bool) (RDB_obj_table(dstp)->is_persistent
+            || (RDB_obj_table(srcp) != NULL
+                    && RDB_obj_table(srcp)->is_persistent));
+}
+
 RDB_int
 RDB_multi_assign(int insc, const RDB_ma_insert insv[],
         int updc, const RDB_ma_update updv[],
@@ -1642,16 +1651,15 @@ RDB_multi_assign(int insc, const RDB_ma_insert insv[],
     /*
      * A running transaction is required for:
      * - updates
-     * - deletes, except deletes of transient tables without a condition
-     * - copying persistent tables
+     * - deletes
+     * - copying persistent tables (except if the target is newly initialized)
      * - inserts into persistent tables
      */
     if (updc > 0 || delc > 0) {
         need_tx = RDB_TRUE;
     } else {
         for (i = 0;
-             i < copyc && (RDB_obj_table(copyv[i].dstp) == NULL
-                           || !RDB_obj_table(copyv[i].dstp)->is_persistent);
+             i < copyc && !copy_needs_tx(copyv[i].dstp, copyv[i].dstp);
              i++);
         need_tx = (RDB_bool) (i < copyc);
         if (!need_tx) {

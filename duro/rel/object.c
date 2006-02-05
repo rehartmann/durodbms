@@ -241,7 +241,7 @@ _RDB_irep_to_table(RDB_table **tbpp, RDB_type *typ, const void *datap, size_t le
             RDB_destroy_obj(&tpl, ecp);
             return l;
         }
-        ret = RDB_insert(*tbpp, &tpl, ecp, NULL);
+        ret = _RDB_insert_real(*tbpp, &tpl, ecp, NULL);
         if (ret != RDB_OK) {
             RDB_destroy_obj(&tpl, ecp);
             return ret;
@@ -581,7 +581,7 @@ _RDB_copy_obj(RDB_object *dstvalp, const RDB_object *srcvalp,
             return _RDB_copy_array(dstvalp, srcvalp, ecp);
         case RDB_OB_TABLE:
             /*
-             * If the target is unititialized, then:
+             * If the target is newly initialized, then:
              * If the source is a named table, do not copy the table
              * but make the target refer to the source table.
              * If the source is an unnamed virtual table, duplicate
@@ -623,7 +623,8 @@ _RDB_copy_obj(RDB_object *dstvalp, const RDB_object *srcvalp,
                 return RDB_ERROR;
             }
             return _RDB_move_tuples(dstvalp->var.tbp, srcvalp->var.tbp, ecp,
-                            dstvalp->var.tbp->is_persistent ? txp : NULL);
+                    srcvalp->var.tbp->is_persistent
+                    || dstvalp->var.tbp->is_persistent ? txp : NULL);
         case RDB_OB_BIN:
             if (dstvalp->kind == RDB_OB_BIN)
                 free(dstvalp->var.bin.datap);
