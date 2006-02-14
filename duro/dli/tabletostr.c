@@ -260,8 +260,8 @@ append_ex(RDB_object *objp, const RDB_expression *exp, RDB_exec_context *ecp,
              if (ret != RDB_OK)
                  return ret;
             break;
-        case RDB_EX_ATTR:
-             ret = append_str(objp, exp->var.attrname);
+        case RDB_EX_VAR:
+             ret = append_str(objp, exp->var.varname);
              if (ret != RDB_OK)
                  return ret;
             break;

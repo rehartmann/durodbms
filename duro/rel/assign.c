@@ -758,8 +758,8 @@ replace_targets(RDB_expression *exp,
                 return RDB_table_to_expr(newtbp, ecp);
             }
             return RDB_obj_to_expr(&exp->var.obj, ecp);
-        case RDB_EX_ATTR:
-            return RDB_expr_attr(exp->var.attrname, ecp);
+        case RDB_EX_VAR:
+            return RDB_expr_var(exp->var.varname, ecp);
     }
     abort();
 }

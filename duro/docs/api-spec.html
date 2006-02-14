@@ -150,7 +150,7 @@
 <li><a href="#double_to_expr">RDB_double_to_expr</a>
 <li><a href="#string_to_expr">RDB_string_to_expr</a>
 <li><a href="#obj_to_expr">RDB_obj_to_expr</a>
-<li><a href="#expr_attr">RDB_expr_attr</a>
+<li><a href="#expr_var">RDB_expr_var</a>
 <li><a href="#eq">RDB_eq</a>
 <li><a href="#expr_any">RDB_expr_any</a>
 <li><a href="#expr_all">RDB_expr_all</a>
@@ -3762,18 +3762,18 @@ failed.
 
 <hr>
 
-<h2 id="expr_attr">RDB_expr_attr</h2>
+<h2 id="expr_var">RDB_expr_var</h2>
 
 <pre>
 #include &lt;rel/rdb.h&gt;
 
 RDB_expression *
-RDB_expr_attr(const char *attrname, RDB_exec_context *ecp);
+RDB_expr_var(const char *attrname, RDB_exec_context *ecp);
 </pre>
 
 <h3>Description</h3>
 
-<p>RDB_expr_attr creates an expression that represents an attribute.
+<p>RDB_expr_var creates an expression that refers to a variable.
 
 <h3>Return value</h3>
 

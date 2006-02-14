@@ -971,7 +971,7 @@ RDB_implement_type(const char *name, RDB_type *arep, RDB_int areplen,
             return RDB_ERROR;
     }
 
-    exp = RDB_expr_attr("TYPENAME", ecp);
+    exp = RDB_expr_var("TYPENAME", ecp);
     if (exp == NULL) {
         return RDB_ERROR;
     }
@@ -1066,7 +1066,7 @@ RDB_drop_type(RDB_type *typ, RDB_exec_context *ecp, RDB_transaction *txp)
         }
 
         /* Delete type from database */
-        wherep = RDB_ro_op_va("=", ecp, RDB_expr_attr("TYPENAME", ecp),
+        wherep = RDB_ro_op_va("=", ecp, RDB_expr_var("TYPENAME", ecp),
                 RDB_string_to_expr(typ->name, ecp), (RDB_expression *) NULL);
         if (wherep == NULL) {
             return RDB_ERROR;

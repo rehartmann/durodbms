@@ -71,7 +71,7 @@ test_update(RDB_database *dbp, RDB_exec_context *ecp)
     printf("Updating table, setting EMPNO from 2 to 3\n");
     attrs[0].name = "EMPNO";
     attrs[0].exp = RDB_int_to_expr(3, ecp);
-    exprp = RDB_eq(RDB_expr_attr("EMPNO", ecp), RDB_int_to_expr(2, ecp), ecp);
+    exprp = RDB_eq(RDB_expr_var("EMPNO", ecp), RDB_int_to_expr(2, ecp), ecp);
     ret = RDB_update(tbp, exprp, 1, attrs, ecp, &tx);
     if (ret == RDB_ERROR) {
         goto error;
@@ -82,7 +82,7 @@ test_update(RDB_database *dbp, RDB_exec_context *ecp)
     printf("Updating table, setting NAME of no 1 to Smythe\n");
     attrs[0].name = "NAME";
     attrs[0].exp = RDB_string_to_expr("Smythe", ecp);
-    exprp = RDB_eq(RDB_expr_attr("EMPNO", ecp), RDB_int_to_expr(1, ecp), ecp);
+    exprp = RDB_eq(RDB_expr_var("EMPNO", ecp), RDB_int_to_expr(1, ecp), ecp);
     ret = RDB_update(tbp, exprp, 1, attrs, ecp, &tx);
     if (ret == RDB_ERROR) {
         goto error;
@@ -93,12 +93,12 @@ test_update(RDB_database *dbp, RDB_exec_context *ecp)
     printf("Updating table, setting SALARY of no 3 to SALARY + 100\n");
     attrs[0].name = "SALARY";
     attrs[0].exp = RDB_ro_op_va("+", ecp, RDB_double_to_expr(100, ecp),
-            RDB_expr_attr("SALARY", ecp), (RDB_expression *) NULL);
+            RDB_expr_var("SALARY", ecp), (RDB_expression *) NULL);
     if (attrs[0].exp == NULL) {
         ret = RDB_ERROR;
         goto error;
     }
-    exprp = RDB_eq(RDB_expr_attr("EMPNO", ecp), RDB_int_to_expr(3, ecp), ecp);
+    exprp = RDB_eq(RDB_expr_var("EMPNO", ecp), RDB_int_to_expr(3, ecp), ecp);
     ret = RDB_update(tbp, exprp, 1, attrs, ecp, &tx);
     if (ret == RDB_ERROR) {
         goto error;

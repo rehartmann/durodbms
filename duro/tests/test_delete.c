@@ -60,7 +60,7 @@ test_delete(RDB_database *dbp, RDB_exec_context *ecp)
         return RDB_ERROR;
 
     printf("Deleting #1 from EMPS1\n");
-    exprp = RDB_eq(RDB_expr_attr("EMPNO", ecp),
+    exprp = RDB_eq(RDB_expr_var("EMPNO", ecp),
             RDB_int_to_expr(1, ecp), ecp);
     ret = RDB_delete(tbp, exprp, ecp, &tx);
     if (ret == RDB_ERROR) {

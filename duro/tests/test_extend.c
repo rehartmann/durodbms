@@ -140,12 +140,12 @@ test_extend(RDB_database *dbp, RDB_exec_context *ecp)
         return ret;
     }
 
-    extend[0].exp = RDB_ro_op_va("-", ecp, RDB_expr_attr("SALARY", ecp),
+    extend[0].exp = RDB_ro_op_va("-", ecp, RDB_expr_var("SALARY", ecp),
             RDB_double_to_expr(4100, ecp), (RDB_expression *) NULL);
     if (extend[0].exp == NULL)
         return RDB_ERROR;
 
-    exp = RDB_expr_attr("NAME", ecp);
+    exp = RDB_expr_var("NAME", ecp);
     if (exp == NULL) {
         ret = RDB_ERROR;
         goto error;

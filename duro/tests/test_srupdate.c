@@ -87,7 +87,7 @@ test_update1(RDB_database *dbp, RDB_exec_context *ecp)
     printf("Updating table\n");
 
     exp = RDB_int_to_expr(2, ecp);
-    exp = RDB_ro_op_va("-", ecp, exp, RDB_expr_attr("NO", ecp),
+    exp = RDB_ro_op_va("-", ecp, exp, RDB_expr_var("NO", ecp),
             (RDB_expression *) NULL);
     if (exp == NULL) {
         RDB_rollback(ecp, &tx);

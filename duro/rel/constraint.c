@@ -228,7 +228,7 @@ RDB_drop_constraint(const char *name, RDB_exec_context *ecp,
     }
 
     /* Delete constraint from catalog */
-    condp = RDB_eq(RDB_expr_attr("CONSTRAINTNAME", ecp),
+    condp = RDB_eq(RDB_expr_var("CONSTRAINTNAME", ecp),
             RDB_string_to_expr(name, ecp), ecp);
     if (condp == NULL) {
         return RDB_ERROR;

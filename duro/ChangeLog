@@ -42,6 +42,8 @@ Changes for Duro 0.10
 
 - Implemented RDB_create_constraint() and RDB_drop_constraint().
 
+- Replaced RDB_expr_attr() by RDB_exp_var().
+
 - A call failing for a system error no longer always results in
   an implicit rollback.
 

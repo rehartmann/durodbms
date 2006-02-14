@@ -130,13 +130,13 @@ expr_resolve_attrs(const RDB_expression *exp, const RDB_object *tplp,
                             exp->var.op.op, exp->var.op.name, ecp);
         case RDB_EX_OBJ:
             return RDB_obj_to_expr(&exp->var.obj, ecp);
-        case RDB_EX_ATTR:
+        case RDB_EX_VAR:
             if (tplp != NULL) {
-                objp = RDB_tuple_get(tplp, exp->var.attrname);
+                objp = RDB_tuple_get(tplp, exp->var.varname);
                 if (objp != NULL)
                     return RDB_obj_to_expr(objp, ecp);
             }
-            return RDB_expr_attr(exp->var.attrname, ecp);
+            return RDB_expr_var(exp->var.varname, ecp);
     }
     abort();
 }
@@ -652,10 +652,10 @@ RDB_expr_type(const RDB_expression *exp, const RDB_type *tuptyp,
                     return NULL;
             }
             break;
-        case RDB_EX_ATTR:
-            attrp = _RDB_tuple_type_attr(tuptyp, exp->var.attrname);
+        case RDB_EX_VAR:
+            attrp = _RDB_tuple_type_attr(tuptyp, exp->var.varname);
             if (attrp == NULL) {
-                RDB_raise_attribute_not_found(exp->var.attrname, ecp);
+                RDB_raise_attribute_not_found(exp->var.varname, ecp);
                 return NULL;
             }
             return attrp->typ;
@@ -689,7 +689,7 @@ RDB_expr_type(const RDB_expression *exp, const RDB_type *tuptyp,
                             exp->var.op.argv[0]->var.obj.var.tbp->typ->var.basetyp,
                             exp->var.op.name);
                     if (attrp == NULL) {
-                        RDB_raise_attribute_not_found(exp->var.attrname, ecp);
+                        RDB_raise_attribute_not_found(exp->var.varname, ecp);
                         return NULL;
                     }
                     return attrp->typ;
@@ -737,9 +737,9 @@ _RDB_expr_equals(const RDB_expression *ex1p, const RDB_expression *ex2p,
         case RDB_EX_OBJ:
             return RDB_obj_equals(&ex1p->var.obj, &ex2p->var.obj, ecp, txp,
                     resp);
-        case RDB_EX_ATTR:
+        case RDB_EX_VAR:
             *resp = (RDB_bool)
-                    (strcmp (ex1p->var.attrname, ex2p->var.attrname) == 0);
+                    (strcmp (ex1p->var.varname, ex2p->var.varname) == 0);
             break;
         case RDB_EX_TUPLE_ATTR:
         case RDB_EX_GET_COMP:
@@ -903,7 +903,7 @@ RDB_obj_to_expr(const RDB_object *valp, RDB_exec_context *ecp)
 }    
 
 RDB_expression *
-RDB_expr_attr(const char *attrname, RDB_exec_context *ecp)
+RDB_expr_var(const char *attrname, RDB_exec_context *ecp)
 {
     RDB_expression *exp = malloc(sizeof (RDB_expression));
     
@@ -911,9 +911,9 @@ RDB_expr_attr(const char *attrname, RDB_exec_context *ecp)
         return NULL;
     }
         
-    exp->kind = RDB_EX_ATTR;
-    exp->var.attrname = RDB_dup_str(attrname);
-    if (exp->var.attrname == NULL) {
+    exp->kind = RDB_EX_VAR;
+    exp->var.varname = RDB_dup_str(attrname);
+    if (exp->var.varname == NULL) {
         RDB_raise_no_memory(ecp);
         free(exp);
         return NULL;
@@ -1198,8 +1198,8 @@ RDB_drop_expr(RDB_expression *exp, RDB_exec_context *ecp)
         case RDB_EX_OBJ:
             ret = RDB_destroy_obj(&exp->var.obj, ecp);
             break;
-        case RDB_EX_ATTR:
-            free(exp->var.attrname);
+        case RDB_EX_VAR:
+            free(exp->var.varname);
             break;
     }
     free(exp);
@@ -1533,7 +1533,7 @@ RDB_evaluate(RDB_expression *exp, const RDB_object *tplp, RDB_exec_context *ecp,
             attrp = RDB_tuple_get(&tpl, exp->var.op.name);
             if (attrp == NULL) {
                 RDB_destroy_obj(&tpl, ecp);
-                RDB_raise_invalid_argument("tuple attribute not found", ecp);
+                RDB_raise_attribute_not_found(exp->var.op.name, ecp);
                 return RDB_ERROR;
             }
             ret = RDB_copy_obj(valp, attrp, ecp);
@@ -1560,13 +1560,13 @@ RDB_evaluate(RDB_expression *exp, const RDB_object *tplp, RDB_exec_context *ecp,
         }
         case RDB_EX_RO_OP:
             return evaluate_ro_op(exp, tplp, ecp, txp, valp);
-        case RDB_EX_ATTR:
+        case RDB_EX_VAR:
             if (tplp != NULL) {
-                RDB_object *srcp = RDB_tuple_get(tplp, exp->var.attrname);
+                RDB_object *srcp = RDB_tuple_get(tplp, exp->var.varname);
                 if (srcp != NULL)
                     return RDB_copy_obj(valp, srcp, ecp);
             }
-            RDB_raise_invalid_argument("tuple attribute not found", ecp);
+            RDB_raise_attribute_not_found(exp->var.varname, ecp);
             return RDB_ERROR;
         case RDB_EX_OBJ:
             return RDB_copy_obj(valp, &exp->var.obj, ecp);
@@ -1666,8 +1666,8 @@ RDB_dup_expr(const RDB_expression *exp, RDB_exec_context *ecp)
                     exp->var.op.name, ecp);
         case RDB_EX_OBJ:
             return RDB_obj_to_expr(&exp->var.obj, ecp);
-        case RDB_EX_ATTR:
-            return RDB_expr_attr(exp->var.attrname, ecp);
+        case RDB_EX_VAR:
+            return RDB_expr_var(exp->var.varname, ecp);
     }
     abort();
 }
@@ -1680,7 +1680,7 @@ _RDB_expr_expr_depend(const RDB_expression *ex1p, const RDB_expression *ex2p)
             if (ex1p->var.obj.kind == RDB_OB_TABLE)
                 return _RDB_expr_table_depend(ex2p, ex1p->var.obj.var.tbp);
             return RDB_FALSE;
-        case RDB_EX_ATTR:
+        case RDB_EX_VAR:
             return RDB_FALSE;
         case RDB_EX_TUPLE_ATTR:
         case RDB_EX_GET_COMP:
@@ -1713,7 +1713,7 @@ _RDB_expr_refers(const RDB_expression *exp, RDB_table *tbp)
             if (exp->var.obj.kind == RDB_OB_TABLE)
                 return _RDB_table_refers(exp->var.obj.var.tbp, tbp);
             return RDB_FALSE;
-        case RDB_EX_ATTR:
+        case RDB_EX_VAR:
             return RDB_FALSE;
         case RDB_EX_TUPLE_ATTR:
         case RDB_EX_GET_COMP:
@@ -1741,8 +1741,8 @@ _RDB_expr_refers_attr(const RDB_expression *exp, const char *attrname)
     switch (exp->kind) {
         case RDB_EX_OBJ:
             return RDB_FALSE;
-        case RDB_EX_ATTR:
-            return (RDB_bool) (strcmp(exp->var.attrname, attrname) == 0);
+        case RDB_EX_VAR:
+            return (RDB_bool) (strcmp(exp->var.varname, attrname) == 0);
         case RDB_EX_TUPLE_ATTR:
         case RDB_EX_GET_COMP:
             return _RDB_expr_refers_attr(exp->var.op.argv[0], attrname);
@@ -1860,15 +1860,15 @@ _RDB_invrename_expr(RDB_expression *exp, int renc, const RDB_renaming renv[],
         case RDB_EX_AGGREGATE:
         case RDB_EX_OBJ:
             return RDB_OK;
-        case RDB_EX_ATTR:
+        case RDB_EX_VAR:
             /* Search attribute name in renv[].to */
             for (i = 0;
-                    i < renc && strcmp(renv[i].to, exp->var.attrname) != 0;
+                    i < renc && strcmp(renv[i].to, exp->var.varname) != 0;
                     i++);
 
             /* If found, replace it */
             if (i < renc) {
-                char *name = realloc(exp->var.attrname,
+                char *name = realloc(exp->var.varname,
                         strlen(renv[i].from) + 1);
 
                 if (name == NULL) {
@@ -1877,7 +1877,7 @@ _RDB_invrename_expr(RDB_expression *exp, int renc, const RDB_renaming renv[],
                 }
 
                 strcpy(name, renv[i].from);
-                exp->var.attrname = name;
+                exp->var.varname = name;
             }
             return RDB_OK;
     }
@@ -1907,10 +1907,10 @@ _RDB_resolve_extend_expr(RDB_expression **expp, int attrc,
         case RDB_EX_AGGREGATE:
         case RDB_EX_OBJ:
             return RDB_OK;
-        case RDB_EX_ATTR:
+        case RDB_EX_VAR:
             /* Search attribute name in attrv[].name */
             for (i = 0;
-                    i < attrc && strcmp(attrv[i].name, (*expp)->var.attrname) != 0;
+                    i < attrc && strcmp(attrv[i].name, (*expp)->var.varname) != 0;
                     i++);
 
             /* If found, replace attribute by expression */
@@ -1929,11 +1929,11 @@ _RDB_resolve_extend_expr(RDB_expression **expp, int attrc,
 }
 
 static RDB_bool
-expr_attr(RDB_expression *exp, const char *attrname, char *opname)
+expr_var(RDB_expression *exp, const char *attrname, char *opname)
 {
     if (exp->kind == RDB_EX_RO_OP && strcmp(exp->var.op.name, opname) == 0) {
-        if (exp->var.op.argv[0]->kind == RDB_EX_ATTR
-                && strcmp(exp->var.op.argv[0]->var.attrname, attrname) == 0
+        if (exp->var.op.argv[0]->kind == RDB_EX_VAR
+                && strcmp(exp->var.op.argv[0]->var.varname, attrname) == 0
                 && exp->var.op.argv[1]->kind == RDB_EX_OBJ)
             return RDB_TRUE;
     }
@@ -1945,11 +1945,11 @@ _RDB_attr_node(RDB_expression *exp, const char *attrname, char *opname)
 {
     while (exp->kind == RDB_EX_RO_OP
             && strcmp (exp->var.op.name, "AND") == 0) {
-        if (expr_attr(exp->var.op.argv[1], attrname, opname))
+        if (expr_var(exp->var.op.argv[1], attrname, opname))
             return exp;
         exp = exp->var.op.argv[0];
     }
-    if (expr_attr(exp, attrname, opname))
+    if (expr_var(exp, attrname, opname))
         return exp;
     return NULL;
 }

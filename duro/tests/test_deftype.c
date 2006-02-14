@@ -27,7 +27,7 @@ test_type(RDB_database *dbp, RDB_exec_context *ecp)
     pr.compc = 1;
     pr.compv = &comp;
     constraintp = RDB_ro_op_va("<", ecp,
-            RDB_expr_comp(RDB_expr_attr("TINYINT", ecp), "TINYINT", ecp),
+            RDB_expr_comp(RDB_expr_var("TINYINT", ecp), "TINYINT", ecp),
             RDB_int_to_expr(100, ecp), (RDB_expression *) NULL);
     if (constraintp == NULL) {
         return RDB_ERROR;

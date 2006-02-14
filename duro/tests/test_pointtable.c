@@ -205,7 +205,7 @@ test_query(RDB_database *dbp, RDB_exec_context *ecp)
     RDB_clear_err(ecp);
     printf("Creating POINTTEST WHERE POINT.THE_X=1\n");
 
-    wherep = RDB_expr_attr("POINT", ecp);
+    wherep = RDB_expr_var("POINT", ecp);
     wherep = RDB_expr_comp(wherep, "X", ecp);
     wherep = RDB_eq(wherep, RDB_double_to_expr(1.0, ecp), ecp);
 
@@ -253,7 +253,7 @@ test_query(RDB_database *dbp, RDB_exec_context *ecp)
         ret = RDB_ERROR;
         goto error;
     } 
-    wherep = RDB_eq(wherep, RDB_expr_attr("POINT", ecp), ecp);
+    wherep = RDB_eq(wherep, RDB_expr_var("POINT", ecp), ecp);
 
     tmptbp = RDB_select(tbp, wherep, ecp, &tx);
     if (tmptbp == NULL) {

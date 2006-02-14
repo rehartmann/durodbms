@@ -184,7 +184,7 @@ extern RDB_type RDB_SYNTAX_ERROR;
 enum _RDB_expr_kind {
     RDB_EX_OBJ,
 
-    RDB_EX_ATTR,
+    RDB_EX_VAR,
 
     RDB_EX_AGGREGATE,
     RDB_EX_TUPLE_ATTR,
@@ -201,7 +201,7 @@ typedef struct RDB_expression {
     /* internal */
     enum _RDB_expr_kind kind;
     union {
-        char *attrname;
+        char *varname;
         RDB_object obj;
         struct {
             int argc;
@@ -1058,7 +1058,7 @@ RDB_expression *
 RDB_obj_to_expr(const RDB_object *valp, RDB_exec_context *);
 
 RDB_expression *
-RDB_expr_attr(const char *attrname, RDB_exec_context *);
+RDB_expr_var(const char *varname, RDB_exec_context *);
 
 RDB_expression *
 RDB_eq(RDB_expression *, RDB_expression *, RDB_exec_context *);

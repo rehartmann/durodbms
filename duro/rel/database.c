@@ -696,7 +696,7 @@ RDB_drop_db(RDB_database *dbp, RDB_exec_context *ecp)
     /*
      * Check if the database contains user tables
      */
-    exprp = RDB_expr_attr("IS_USER", ecp);
+    exprp = RDB_expr_var("IS_USER", ecp);
     if (exprp == NULL) {
         goto error;
     }
@@ -705,7 +705,7 @@ RDB_drop_db(RDB_database *dbp, RDB_exec_context *ecp)
         RDB_drop_expr(exprp, ecp);
         goto error;
     }
-    exprp = RDB_eq(RDB_expr_attr("DBNAME", ecp),
+    exprp = RDB_eq(RDB_expr_var("DBNAME", ecp),
            RDB_string_to_expr(dbp->name, ecp), ecp);
     if (exprp == NULL) {
         goto error;
@@ -738,7 +738,7 @@ RDB_drop_db(RDB_database *dbp, RDB_exec_context *ecp)
      * Check if the database exists
      */
 
-    exprp = RDB_eq(RDB_expr_attr("DBNAME", ecp),
+    exprp = RDB_eq(RDB_expr_var("DBNAME", ecp),
                   RDB_string_to_expr(dbp->name, ecp), ecp);
     if (exprp == NULL) {
         goto error;
@@ -760,7 +760,7 @@ RDB_drop_db(RDB_database *dbp, RDB_exec_context *ecp)
 
     /* Disassociate all tables from database */
 
-    exprp = RDB_eq(RDB_expr_attr("DBNAME", ecp),
+    exprp = RDB_eq(RDB_expr_var("DBNAME", ecp),
                   RDB_string_to_expr(dbp->name, ecp), ecp);
     if (exprp == NULL) {
         goto error;

@@ -202,7 +202,7 @@ attribute_name_list: /* empty */ {
 
 ne_attribute_name_list: TOK_ID {
         $$.expc = 1;
-        $$.expv[0] = RDB_string_to_expr($1->var.attrname, _RDB_parse_ecp);
+        $$.expv[0] = RDB_string_to_expr($1->var.varname, _RDB_parse_ecp);
         RDB_drop_expr($1, _RDB_parse_ecp);
         if ($$.expv[0] == NULL) {
             YYERROR;
@@ -216,7 +216,7 @@ ne_attribute_name_list: TOK_ID {
             YYERROR; /* !! ret = RDB_LIMIT_EXCEEDED */
         for (i = 0; i < $1.expc; i++)
             $$.expv[i] = $1.expv[i];
-        $$.expv[$1.expc] = RDB_string_to_expr($3->var.attrname, _RDB_parse_ecp);
+        $$.expv[$1.expc] = RDB_string_to_expr($3->var.varname, _RDB_parse_ecp);
         RDB_drop_expr($3, _RDB_parse_ecp);
         if ($$.expv[0] == NULL) {
             for (i = 0; i < $1.expc; i++)
@@ -298,8 +298,8 @@ renaming_list: renaming {
     ;
 
 renaming: TOK_ID TOK_AS TOK_ID {
-            $$.expv[0] = RDB_string_to_expr($1->var.attrname, _RDB_parse_ecp);
-            $$.expv[1] = RDB_string_to_expr($3->var.attrname, _RDB_parse_ecp);
+            $$.expv[0] = RDB_string_to_expr($1->var.varname, _RDB_parse_ecp);
+            $$.expv[1] = RDB_string_to_expr($3->var.varname, _RDB_parse_ecp);
             RDB_drop_expr($1, _RDB_parse_ecp);
             RDB_drop_expr($3, _RDB_parse_ecp);
             if ($$.expv[0] == NULL || $$.expv[1] == NULL) {
@@ -527,7 +527,7 @@ extend_add_list: extend_add {
 
 extend_add: expression TOK_AS TOK_ID {
         $$.expv[0] = $1;
-        $$.expv[1] = RDB_string_to_expr($3->var.attrname, _RDB_parse_ecp);
+        $$.expv[1] = RDB_string_to_expr($3->var.varname, _RDB_parse_ecp);
         RDB_drop_expr($3, _RDB_parse_ecp);
         if ($$.expv[1] == NULL) {
             RDB_drop_expr($1, _RDB_parse_ecp);
@@ -651,49 +651,49 @@ summarize_add: TOK_COUNT TOK_AS TOK_ID {
             YYERROR;
         }
 
-        $$ = RDB_expr_aggregate(dummyexp, RDB_COUNT, $3->var.attrname, _RDB_parse_ecp);
+        $$ = RDB_expr_aggregate(dummyexp, RDB_COUNT, $3->var.varname, _RDB_parse_ecp);
         if ($$ == NULL) {
             RDB_drop_expr(dummyexp, _RDB_parse_ecp);
         }
         RDB_drop_expr($3, _RDB_parse_ecp);
     }
     | TOK_SUM '(' expression ')' TOK_AS TOK_ID {
-        $$ = RDB_expr_sum($3, $6->var.attrname, _RDB_parse_ecp);
+        $$ = RDB_expr_sum($3, $6->var.varname, _RDB_parse_ecp);
         if ($$ == NULL) {
             RDB_drop_expr($3, _RDB_parse_ecp);
         }
         RDB_drop_expr($6, _RDB_parse_ecp);
     }
     | TOK_AVG '(' expression ')' TOK_AS TOK_ID {
-        $$ = RDB_expr_avg($3, $6->var.attrname, _RDB_parse_ecp);
+        $$ = RDB_expr_avg($3, $6->var.varname, _RDB_parse_ecp);
         if ($$ == NULL) {
             RDB_drop_expr($3, _RDB_parse_ecp);
         }
         RDB_drop_expr($6, _RDB_parse_ecp);
     }
     | TOK_MAX '(' expression ')' TOK_AS TOK_ID {
-        $$ = RDB_expr_max($3, $6->var.attrname, _RDB_parse_ecp);
+        $$ = RDB_expr_max($3, $6->var.varname, _RDB_parse_ecp);
         if ($$ == NULL) {
             RDB_drop_expr($3, _RDB_parse_ecp);
         }
         RDB_drop_expr($6, _RDB_parse_ecp);
     }
     | TOK_MIN '(' expression ')' TOK_AS TOK_ID {
-        $$ = RDB_expr_min($3, $6->var.attrname, _RDB_parse_ecp);
+        $$ = RDB_expr_min($3, $6->var.varname, _RDB_parse_ecp);
         if ($$ == NULL) {
             RDB_drop_expr($3, _RDB_parse_ecp);
         }
         RDB_drop_expr($6, _RDB_parse_ecp);
     }
     | TOK_ALL '(' expression ')' TOK_AS TOK_ID {
-        $$ = RDB_expr_all($3, $6->var.attrname, _RDB_parse_ecp);
+        $$ = RDB_expr_all($3, $6->var.varname, _RDB_parse_ecp);
         if ($$ == NULL) {
             RDB_drop_expr($3, _RDB_parse_ecp);
         }
         RDB_drop_expr($6, _RDB_parse_ecp);
     }
     | TOK_ANY '(' expression ')' TOK_AS TOK_ID {
-        $$ = RDB_expr_any($3, $6->var.attrname, _RDB_parse_ecp);
+        $$ = RDB_expr_any($3, $6->var.varname, _RDB_parse_ecp);
         if ($$ == NULL) {
             RDB_drop_expr($3, _RDB_parse_ecp);
         }
@@ -799,7 +799,7 @@ wrapping: '{' attribute_name_list '}' TOK_AS TOK_ID {
             }
         }
 
-        $$.expv[1] = RDB_string_to_expr($5->var.attrname, _RDB_parse_ecp);
+        $$.expv[1] = RDB_string_to_expr($5->var.varname, _RDB_parse_ecp);
         for (i = 0; i < $2.expc; i++) {
             RDB_drop_expr($2.expv[i], _RDB_parse_ecp);
         }
@@ -854,7 +854,7 @@ group: expression TOK_GROUP '{' attribute_name_list '}' TOK_AS TOK_ID {
         for (i = 0; i < $4.expc; i++) {
             argv[1 + i] = $4.expv[i];
         }
-        argv[1 + $4.expc] = RDB_string_to_expr($7->var.attrname, _RDB_parse_ecp);
+        argv[1 + $4.expc] = RDB_string_to_expr($7->var.varname, _RDB_parse_ecp);
         RDB_drop_expr($7, _RDB_parse_ecp);
         if (argv[1 + $4.expc] == NULL) {
             RDB_drop_expr($1, _RDB_parse_ecp);
@@ -879,7 +879,7 @@ ungroup: expression TOK_UNGROUP TOK_ID {
             YYERROR;
         }
         $$ = RDB_ro_op_va("UNGROUP", _RDB_parse_ecp, texp,
-                RDB_string_to_expr($3->var.attrname, _RDB_parse_ecp),
+                RDB_string_to_expr($3->var.varname, _RDB_parse_ecp),
                 (RDB_expression *) NULL);
         RDB_drop_expr($3, _RDB_parse_ecp);
         if ($$ == NULL) {
@@ -1079,7 +1079,7 @@ mul_expression: primary_expression
 
 primary_expression: TOK_ID
     | primary_expression '.' TOK_ID {
-        $$ = RDB_tuple_attr($1, $3->var.attrname, _RDB_parse_ecp);
+        $$ = RDB_tuple_attr($1, $3->var.varname, _RDB_parse_ecp);
         RDB_drop_expr($3, _RDB_parse_ecp);
         if ($$ == NULL)
             RDB_drop_expr($1, _RDB_parse_ecp);
@@ -1168,7 +1168,7 @@ sum_invocation: TOK_SUM '(' ne_expression_list ')' {
                     _RDB_parse_ecp);
             YYERROR;
         } else {
-            char *attrname = NULL;
+            char *varname = NULL;
             RDB_expression *texp = _RDB_parse_lookup_table($3.expv[0]);
             if (texp == NULL) {
                 for (i = 0; i < $3.expc; i++)
@@ -1177,17 +1177,17 @@ sum_invocation: TOK_SUM '(' ne_expression_list ')' {
             }
 
             if ($3.expc == 2) {
-                if ($3.expv[1]->kind != RDB_EX_ATTR) {
+                if ($3.expv[1]->kind != RDB_EX_VAR) {
                     RDB_drop_expr(texp, _RDB_parse_ecp);
                     RDB_drop_expr($3.expv[1], _RDB_parse_ecp);
                     RDB_raise_invalid_argument("invalid SUM arguments",
                             _RDB_parse_ecp);
                     YYERROR;
                 }
-                attrname = $3.expv[1]->var.attrname;
+                varname = $3.expv[1]->var.varname;
             }
 
-            $$ = RDB_expr_sum(texp, attrname, _RDB_parse_ecp);
+            $$ = RDB_expr_sum(texp, varname, _RDB_parse_ecp);
             RDB_drop_expr($3.expv[1], _RDB_parse_ecp);
             if ($$ == NULL) {
                 RDB_drop_expr(texp, _RDB_parse_ecp);
@@ -1208,7 +1208,7 @@ avg_invocation: TOK_AVG '(' ne_expression_list ')' {
                    _RDB_parse_ecp);
             YYERROR;
         } else {
-            char *attrname = NULL;
+            char *varname = NULL;
             RDB_expression *texp = _RDB_parse_lookup_table($3.expv[0]);
             if (texp == NULL) {
                 for (i = 0; i < $3.expc; i++)
@@ -1217,17 +1217,17 @@ avg_invocation: TOK_AVG '(' ne_expression_list ')' {
             }
 
             if ($3.expc == 2) {
-                if ($3.expv[1]->kind != RDB_EX_ATTR) {
+                if ($3.expv[1]->kind != RDB_EX_VAR) {
                     RDB_drop_expr(texp, _RDB_parse_ecp);
                     RDB_drop_expr($3.expv[1], _RDB_parse_ecp);
                     RDB_raise_invalid_argument("invalid AVG arguments",
                            _RDB_parse_ecp);
                     YYERROR;
                 }
-                attrname = $3.expv[1]->var.attrname;
+                varname = $3.expv[1]->var.varname;
             }
 
-            $$ = RDB_expr_avg(texp, attrname, _RDB_parse_ecp);
+            $$ = RDB_expr_avg(texp, varname, _RDB_parse_ecp);
             RDB_drop_expr($3.expv[1], _RDB_parse_ecp);
             if ($$ == NULL) {
                 RDB_drop_expr(texp, _RDB_parse_ecp);
@@ -1247,7 +1247,7 @@ max_invocation: TOK_MAX '(' ne_expression_list ')' {
                    _RDB_parse_ecp);
             YYERROR;
         } else {
-            char *attrname = NULL;
+            char *varname = NULL;
             RDB_expression *texp = _RDB_parse_lookup_table($3.expv[0]);
 
             if (texp == NULL) {
@@ -1257,17 +1257,17 @@ max_invocation: TOK_MAX '(' ne_expression_list ')' {
             }
 
             if ($3.expc == 2) {
-                if ($3.expv[1]->kind != RDB_EX_ATTR) {
+                if ($3.expv[1]->kind != RDB_EX_VAR) {
                     RDB_drop_expr(texp, _RDB_parse_ecp);
                     RDB_drop_expr($3.expv[1], _RDB_parse_ecp);
                     RDB_raise_invalid_argument("invalid MAX arguments",
                            _RDB_parse_ecp);
                     YYERROR;
                 }
-                attrname = $3.expv[1]->var.attrname;
+                varname = $3.expv[1]->var.varname;
             }
 
-            $$ = RDB_expr_max(texp, attrname, _RDB_parse_ecp);
+            $$ = RDB_expr_max(texp, varname, _RDB_parse_ecp);
             RDB_drop_expr($3.expv[1], _RDB_parse_ecp);
             if ($$ == NULL) {
                 RDB_drop_expr(texp, _RDB_parse_ecp);
@@ -1287,7 +1287,7 @@ min_invocation: TOK_MIN '(' ne_expression_list ')' {
                    _RDB_parse_ecp);
             YYERROR;
         } else {
-            char *attrname = NULL;
+            char *varname = NULL;
             RDB_expression *texp = _RDB_parse_lookup_table($3.expv[0]);
 
             if (texp == NULL) {
@@ -1297,17 +1297,17 @@ min_invocation: TOK_MIN '(' ne_expression_list ')' {
             }
 
             if ($3.expc == 2) {
-                if ($3.expv[1]->kind != RDB_EX_ATTR) {
+                if ($3.expv[1]->kind != RDB_EX_VAR) {
                     RDB_drop_expr(texp, _RDB_parse_ecp);
                     RDB_drop_expr($3.expv[1], _RDB_parse_ecp);
                     RDB_raise_invalid_argument("invalid MIN arguments",
                            _RDB_parse_ecp);
                     YYERROR;
                 }
-                attrname = $3.expv[1]->var.attrname;
+                varname = $3.expv[1]->var.varname;
             }
 
-            $$ = RDB_expr_min(texp, attrname, _RDB_parse_ecp);
+            $$ = RDB_expr_min(texp, varname, _RDB_parse_ecp);
             RDB_drop_expr($3.expv[1], _RDB_parse_ecp);
             if ($$ == NULL) {
                 RDB_drop_expr(texp, _RDB_parse_ecp);
@@ -1327,7 +1327,7 @@ all_invocation: TOK_ALL '(' ne_expression_list ')' {
                    _RDB_parse_ecp);
             YYERROR;
         } else {
-            char *attrname = NULL;
+            char *varname = NULL;
             RDB_expression *texp = _RDB_parse_lookup_table($3.expv[0]);
 
             if (texp == NULL) {
@@ -1337,17 +1337,17 @@ all_invocation: TOK_ALL '(' ne_expression_list ')' {
             }
 
             if ($3.expc == 2) {
-                if ($3.expv[1]->kind != RDB_EX_ATTR) {
+                if ($3.expv[1]->kind != RDB_EX_VAR) {
                     RDB_drop_expr(texp, _RDB_parse_ecp);
                     RDB_drop_expr($3.expv[1], _RDB_parse_ecp);
                     RDB_raise_invalid_argument("invalid ALL arguments",
                            _RDB_parse_ecp);
                     YYERROR;
                 }
-                attrname = $3.expv[1]->var.attrname;
+                varname = $3.expv[1]->var.varname;
             }
 
-            $$ = RDB_expr_all(texp, attrname, _RDB_parse_ecp);
+            $$ = RDB_expr_all(texp, varname, _RDB_parse_ecp);
             RDB_drop_expr($3.expv[1], _RDB_parse_ecp);
             if ($$ == NULL) {
                 RDB_drop_expr(texp, _RDB_parse_ecp);
@@ -1367,7 +1367,7 @@ any_invocation: TOK_ANY '(' ne_expression_list ')' {
                    _RDB_parse_ecp);
             YYERROR;
         } else {
-            char *attrname = NULL;
+            char *varname = NULL;
             RDB_expression *texp = _RDB_parse_lookup_table($3.expv[0]);
 
             if (texp == NULL) {
@@ -1377,17 +1377,17 @@ any_invocation: TOK_ANY '(' ne_expression_list ')' {
             }
 
             if ($3.expc == 2) {
-                if ($3.expv[1]->kind != RDB_EX_ATTR) {
+                if ($3.expv[1]->kind != RDB_EX_VAR) {
                     RDB_drop_expr(texp, _RDB_parse_ecp);
                     RDB_drop_expr($3.expv[1], _RDB_parse_ecp);
                     RDB_raise_invalid_argument("invalid ANY arguments",
                            _RDB_parse_ecp);
                     YYERROR;
                 }
-                attrname = $3.expv[1]->var.attrname;
+                varname = $3.expv[1]->var.varname;
             }
 
-            $$ = RDB_expr_any(texp, attrname, _RDB_parse_ecp);
+            $$ = RDB_expr_any(texp, varname, _RDB_parse_ecp);
             RDB_drop_expr($3.expv[1], _RDB_parse_ecp);
             if ($$ == NULL) {
                 RDB_drop_expr(texp, _RDB_parse_ecp);
@@ -1399,10 +1399,10 @@ any_invocation: TOK_ANY '(' ne_expression_list ')' {
 
 operator_invocation: TOK_ID '(' expression_list ')' {
         if ($3.expc == 1
-                && strlen($1->var.attrname) > 4
-                && strncmp($1->var.attrname, "THE_", 4) == 0) {
+                && strlen($1->var.varname) > 4
+                && strncmp($1->var.varname, "THE_", 4) == 0) {
             /* THE_ operator - requires special treatment */
-            $$ = RDB_expr_comp($3.expv[0], $1->var.attrname + 4,
+            $$ = RDB_expr_comp($3.expv[0], $1->var.varname + 4,
                     _RDB_parse_ecp);
             RDB_drop_expr($1, _RDB_parse_ecp);
             if ($$ == NULL) {
@@ -1422,7 +1422,7 @@ operator_invocation: TOK_ID '(' expression_list ')' {
                 $3.expv[i] = exp;
             }
 
-            $$ = RDB_ro_op($1->var.attrname, $3.expc, $3.expv, _RDB_parse_ecp);
+            $$ = RDB_ro_op($1->var.varname, $3.expc, $3.expv, _RDB_parse_ecp);
             if ($$ == NULL) {
                 for (i = 0; i < $3.expc; i++)
                     RDB_drop_expr($3.expv[i], _RDB_parse_ecp);
@@ -1602,7 +1602,7 @@ tuple_item_list: TOK_ID expression {
             RDB_drop_expr($2, _RDB_parse_ecp);
             YYERROR;
         }
-        ret = RDB_tuple_set(&obj, $1->var.attrname, valp,
+        ret = RDB_tuple_set(&obj, $1->var.varname, valp,
                 _RDB_parse_ecp);
         RDB_drop_expr($1, _RDB_parse_ecp);
         if (ret != RDB_OK) {
@@ -1633,7 +1633,7 @@ tuple_item_list: TOK_ID expression {
             YYERROR;
         }
             
-        ret = RDB_tuple_set(RDB_expr_obj($$), $3->var.attrname,
+        ret = RDB_tuple_set(RDB_expr_obj($$), $3->var.varname,
                 valp, _RDB_parse_ecp);
         RDB_drop_expr($3, _RDB_parse_ecp);
         if (ret != RDB_OK)
@@ -1676,18 +1676,18 @@ RDB_get_ltable(void *arg);
 RDB_expression *
 _RDB_parse_lookup_table(RDB_expression *exp)
 {
-    if (exp->kind == RDB_EX_ATTR) {
+    if (exp->kind == RDB_EX_VAR) {
         RDB_table *tbp;
 
         /* Try to find local table first */
-        tbp = (*_RDB_parse_ltfp)(exp->var.attrname, _RDB_parse_arg);
+        tbp = (*_RDB_parse_ltfp)(exp->var.varname, _RDB_parse_arg);
         if (tbp != NULL) {
             RDB_drop_expr(exp, _RDB_parse_ecp);
             return RDB_table_to_expr(tbp, _RDB_parse_ecp);
         }
 
         /* Local table not found, try to find global table */
-        tbp = RDB_get_table(exp->var.attrname, _RDB_parse_ecp,
+        tbp = RDB_get_table(exp->var.varname, _RDB_parse_ecp,
                 _RDB_parse_txp);
         if (tbp != NULL) {
             RDB_drop_expr(exp, _RDB_parse_ecp);

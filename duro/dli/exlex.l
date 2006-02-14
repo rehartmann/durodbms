@@ -238,7 +238,7 @@ TABLE_DUM {
 }
 
 [a-zA-Z][a-zA-Z0-9_#]* {
-    yylval = RDB_expr_attr(yytext, _RDB_parse_ecp);
+    yylval = RDB_expr_var(yytext, _RDB_parse_ecp);
     return TOK_ID;
 }
 

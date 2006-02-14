@@ -207,8 +207,8 @@ serialize_expr(RDB_object *valp, int *posp, const RDB_expression *exp,
     switch(exp->kind) {
         case RDB_EX_OBJ:
             return serialize_obj(valp, posp, &exp->var.obj, ecp);
-        case RDB_EX_ATTR:
-            return serialize_str(valp, posp, exp->var.attrname, ecp);
+        case RDB_EX_VAR:
+            return serialize_str(valp, posp, exp->var.varname, ecp);
         case RDB_EX_GET_COMP:
             ret = serialize_expr(valp, posp, exp->var.op.argv[0], ecp);
             if (ret != RDB_OK)
@@ -929,7 +929,7 @@ deserialize_expr(RDB_object *valp, int *posp, RDB_exec_context *ecp,
                }
             }
             break;
-        case RDB_EX_ATTR:
+        case RDB_EX_VAR:
             {
                 char *attrnamp;
             
@@ -937,7 +937,7 @@ deserialize_expr(RDB_object *valp, int *posp, RDB_exec_context *ecp,
                 if (ret != RDB_OK)
                     return ret;
 
-                *expp = RDB_expr_attr(attrnamp, ecp);
+                *expp = RDB_expr_var(attrnamp, ecp);
                 free(attrnamp);
                 if (*expp == NULL)
                     return RDB_ERROR;

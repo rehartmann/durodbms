@@ -82,7 +82,7 @@ print_tables(RDB_exec_context *ecp, RDB_transaction *txp, RDB_bool all,
     if (all) {
         condp = RDB_bool_to_expr(RDB_TRUE, ecp);
     } else {
-        condp = RDB_expr_attr("IS_USER", ecp);
+        condp = RDB_expr_var("IS_USER", ecp);
     }
     vtb1p = RDB_select(rt_tbp, condp, ecp, txp);
     if (vtb1p == NULL) {
@@ -90,7 +90,7 @@ print_tables(RDB_exec_context *ecp, RDB_transaction *txp, RDB_bool all,
         return RDB_ERROR;
     }
 
-    condp = RDB_eq(RDB_expr_attr("DBNAME", ecp),
+    condp = RDB_eq(RDB_expr_var("DBNAME", ecp),
                    RDB_string_to_expr(RDB_db_name(RDB_tx_db(txp)), ecp), ecp);
     vtb2p = RDB_select(db_tbp, condp, ecp, txp);
     if (vtb2p == NULL) {

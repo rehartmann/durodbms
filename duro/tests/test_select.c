@@ -31,7 +31,7 @@ test_select(RDB_database *dbp, RDB_exec_context *ecp)
 
     printf("Creating selection (name=\"Smith\")\n");
 
-    exprp = RDB_eq(RDB_expr_attr("NAME", ecp), RDB_string_to_expr("Smith", ecp),
+    exprp = RDB_eq(RDB_expr_var("NAME", ecp), RDB_string_to_expr("Smith", ecp),
             ecp);
     if (exprp == NULL)
         goto error;
@@ -66,7 +66,7 @@ test_select(RDB_database *dbp, RDB_exec_context *ecp)
 
     printf("Creating selection (EMPNO=1)\n");
 
-    exprp = RDB_eq(RDB_expr_attr("EMPNO", ecp), RDB_int_to_expr(1, ecp), ecp);
+    exprp = RDB_eq(RDB_expr_var("EMPNO", ecp), RDB_int_to_expr(1, ecp), ecp);
     
     vtbp = RDB_select(tbp, exprp, ecp, &tx);
     if (vtbp == NULL) {

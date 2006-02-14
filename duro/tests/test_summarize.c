@@ -143,11 +143,11 @@ test_summarize(RDB_database *dbp, RDB_exec_context *ecp)
     addv[0].name = "COUNT_EMPS";
 
     addv[1].op = RDB_SUM;
-    addv[1].exp = RDB_expr_attr("SALARY", ecp);
+    addv[1].exp = RDB_expr_var("SALARY", ecp);
     addv[1].name = "SUM_SALARY";
 
     addv[2].op = RDB_AVG;
-    addv[2].exp = RDB_expr_attr("SALARY", ecp);
+    addv[2].exp = RDB_expr_var("SALARY", ecp);
     addv[2].name = "AVG_SALARY";
 
     vtbp = RDB_summarize(untbp, projtbp, 3, addv, ecp, &tx);

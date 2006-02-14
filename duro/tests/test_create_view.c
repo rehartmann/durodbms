@@ -83,7 +83,7 @@ create_view2(RDB_database *dbp, RDB_exec_context *ecp)
 
     printf("Creating EMPS1 WHERE (SALARY > 4000)\n");
 
-    hexprp = RDB_expr_attr("SALARY", ecp);
+    hexprp = RDB_expr_var("SALARY", ecp);
     if (hexprp == NULL)
         return RDB_ERROR;
     exprp = RDB_ro_op_va(">", ecp, hexprp, RDB_double_to_expr(4000.0, ecp),
@@ -137,7 +137,7 @@ create_view3(RDB_database *dbp, RDB_exec_context *ecp)
 
     printf("Creating EXTEND EMPS1 ADD (SALARY > 4000 AS HIGHSAL)\n");
 
-    exprp = RDB_expr_attr("SALARY", ecp);
+    exprp = RDB_expr_var("SALARY", ecp);
     if (exprp == NULL)
         return RDB_ERROR;
     exprp = RDB_ro_op_va(">", ecp, exprp, RDB_double_to_expr(4000.0, ecp),
@@ -203,7 +203,7 @@ create_view4(RDB_database *dbp, RDB_exec_context *ecp)
     }
 
     add.op = RDB_MAX;
-    add.exp = RDB_expr_attr("SALARY", ecp);
+    add.exp = RDB_expr_var("SALARY", ecp);
     add.name = "MAX_SALARY";
 
     vtbp = RDB_summarize(tbp, projtbp, 1, &add, ecp, &tx);
