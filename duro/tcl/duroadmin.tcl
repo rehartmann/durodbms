@@ -195,7 +195,6 @@ proc add_tuples {arr tx rowcount} {
             if {[llength $::errorCode] != 2
                     || ![string match "NOT_FOUND_ERROR(*)" \
                             [lindex $::errorCode 1]]} {
-                puts $::errorCode
                 error $errmsg
             }
             break
