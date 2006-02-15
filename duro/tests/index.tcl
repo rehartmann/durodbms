@@ -54,7 +54,7 @@ duro::insert T2 {B Blubb C X E c} $tx
 duro::table expr t {T1 WHERE B="Bla"} $tx
 
 # Check if IX1 is used
-set plan [duro::table showplan t $tx]
+set plan [duro::table getplan t $tx]
 if {![string match "*INDEX IX1*" $plan]} {
     error "IX1 should be used, but is not"
 }

@@ -717,7 +717,7 @@ table_def_cmd(TclState *statep, Tcl_Interp *interp, int objc,
 }
 
 static int
-table_showplan_cmd(TclState *statep, Tcl_Interp *interp, int objc,
+table_getplan_cmd(TclState *statep, Tcl_Interp *interp, int objc,
         Tcl_Obj *CONST objv[])
 {
     int ret;
@@ -914,11 +914,11 @@ Duro_table_cmd(ClientData data, Tcl_Interp *interp, int objc, Tcl_Obj *CONST obj
 
     const char *sub_cmds[] = {
         "create", "drop", "expr", "contains", "add", "attrs", "keys", "rename",
-        "def", "showplan", NULL
+        "def", "getplan", NULL
     };
     enum table_ix {
         create_ix, drop_ix, expr_ix, contains_ix, add_ix, attrs_ix, keys_ix,
-        rename_ix, def_ix, showplan_ix
+        rename_ix, def_ix, getplan_ix
     };
     int index;
 
@@ -953,8 +953,8 @@ Duro_table_cmd(ClientData data, Tcl_Interp *interp, int objc, Tcl_Obj *CONST obj
             return table_rename_cmd(statep, interp, objc, objv);
         case def_ix:
             return table_def_cmd(statep, interp, objc, objv);
-        case showplan_ix:
-            return table_showplan_cmd(statep, interp, objc, objv);
+        case getplan_ix:
+            return table_getplan_cmd(statep, interp, objc, objv);
     }
     return TCL_ERROR;
 }

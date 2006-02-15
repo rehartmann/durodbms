@@ -112,7 +112,7 @@ duro::table expr t {T2 WHERE NOT(A<>1 OR B<>2)} $tx
 set tpl [duro::expr {TUPLE FROM t} $tx]
 
 # Check if primary key is used
-set plan [duro::table showplan t $tx]
+set plan [duro::table getplan t $tx]
 if {![string match "*INDEX T2\$0*" $plan]} {
     error "primary index should be used, but is not"
 }

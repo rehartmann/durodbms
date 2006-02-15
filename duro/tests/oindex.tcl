@@ -48,7 +48,7 @@ duro::table drop t $tx
 
 duro::table expr t {T1 WHERE B >= "Blab" AND B < "Blubb" } $tx
 
-set plan [duro::table showplan t $tx]
+set plan [duro::table getplan t $tx]
 if {![string match "*IX1*" $plan]} {
     error "IX1 should be used, but is not"
 }
@@ -64,7 +64,7 @@ duro::table drop t $tx
 
 duro::table expr t {T1 WHERE B > "Blb" } $tx
 
-set plan [duro::table showplan t $tx]
+set plan [duro::table getplan t $tx]
 if {![string match "*IX1*" $plan]} {
     error "IX1 should be used, but is not"
 }
