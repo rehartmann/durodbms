@@ -1,0 +1,21 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN"
+"http://www.w3.org/TR/html4/strict.dtd">
+<html lang="en">
+<head>
+<title>Durotcl - errorCode</title>
+<body>
+
+<h2>Durotcl - errorCode</h2>
+
+<p>If a Durotcl command fails for a Duro error, the global Tcl variable
+<strong>errorCode</strong> is set to a list
+of the format {<strong>DURO</strong> <em>error</em>}.
+
+<p>If a transaction was available when the error occured, <em>error</em>
+is the error value as a Tutorial D literal. Otherwise, it is the name
+of the error type. See the error types section in the Duro API
+specification for a list of system-provided error types.
+
+<p>$Id$
+
+</html>
