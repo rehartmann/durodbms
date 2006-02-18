@@ -25,6 +25,10 @@ add_empty_tb(RDB_constraint *constrp, RDB_exec_context *ecp,
         RDB_transaction *txp)
 {
     int ret;
+    struct _RDB_tx_and_ec te;
+
+    te.txp = txp;
+    te.ecp = ecp;
 
     if (constrp->exp->kind == RDB_EX_RO_OP
             && constrp->exp->var.op.argc == 1
@@ -58,8 +62,9 @@ add_empty_tb(RDB_constraint *constrp, RDB_exec_context *ecp,
         } else {
             ctbp = ptbp;
         }
+
         ret = RDB_hashtable_put(&txp->dbp->dbrootp->empty_tbtab,
-                ctbp, txp);
+                ctbp, &te);
         if (ret != RDB_OK) {
             RDB_drop_table(ctbp, ecp, NULL);
             return ret;

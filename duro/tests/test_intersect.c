@@ -23,11 +23,9 @@ print_table(RDB_table *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
         printf("EMPNO: %d\n", (int) RDB_tuple_get_int(tplp, "EMPNO"));
         printf("NAME: %s\n", RDB_tuple_get_string(tplp, "NAME"));
     }
-/* !!
-    if (ret != RDB_NOT_FOUND) {
+    if (RDB_obj_type(RDB_get_err(ecp)) != &RDB_NOT_FOUND_ERROR) {
         goto error;
     }
-*/
     RDB_clear_err(ecp);
 
     RDB_destroy_obj(&array, ecp);

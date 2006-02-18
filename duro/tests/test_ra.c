@@ -64,12 +64,10 @@ test_ra(RDB_database *dbp, RDB_exec_context *ecp)
     }
     RDB_destroy_obj(&array, ecp);
 
-/* !!
-    if (ret != RDB_NOT_FOUND) {
+    if (RDB_obj_type(RDB_get_err(ecp)) != &RDB_NOT_FOUND_ERROR) {
         RDB_commit(ecp, &tx);
-        return ret;
+        return RDB_ERROR;
     }
-*/
 
     printf("Dropping virtual table\n");
     RDB_drop_table(vtbp, ecp, &tx);

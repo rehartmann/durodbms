@@ -489,10 +489,14 @@ static int
 replace_empty(RDB_table *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
 {
     int ret;
+    struct _RDB_tx_and_ec te;
+
+    te.txp = txp;
+    te.ecp = ecp;
 
     /* Check if there is a constraint that says the table is empty */
     if (RDB_table_name(tbp) == NULL && txp->dbp != NULL
-            && RDB_hashtable_get(&txp->dbp->dbrootp->empty_tbtab, tbp, txp)
+            && RDB_hashtable_get(&txp->dbp->dbrootp->empty_tbtab, tbp, &te)
                     != NULL) {
         table_to_empty(tbp, ecp);
     }

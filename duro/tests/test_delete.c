@@ -25,10 +25,9 @@ print_table(RDB_table *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
         printf("NAME: %s\n", RDB_tuple_get_string(tplp, "NAME"));
         printf("SALARY: %f\n", (double) RDB_tuple_get_double(tplp, "SALARY"));
     }
-    /* !!
-    if (ret != RDB_NOT_FOUND) {
+    if (RDB_obj_type(RDB_get_err(ecp)) != &RDB_NOT_FOUND_ERROR) {
         goto error;
-    }*/
+    }
     RDB_clear_err(ecp);
 
     RDB_destroy_obj(&array, ecp);
@@ -38,7 +37,7 @@ print_table(RDB_table *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
 error:
     RDB_destroy_obj(&array, ecp);
     
-    return ret;
+    return RDB_ERROR;
 }
 
 int

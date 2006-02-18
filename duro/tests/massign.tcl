@@ -102,6 +102,36 @@ duro::table create -local TT2 {
 
 duro::massign {copy TT2 TT1} $tx
 
+#
+# Test multiple assignments together with constraints
+#
+
+duro::delete T1 $tx
+
+duro::delete T2 $tx
+
+duro::constraint create C1 {COUNT(T1) = COUNT(T2)} $tx
+
+# Must fail
+
+if {![catch {
+    duro::massign {insert T1 {A 1 B Blu}} $tx
+}]} {
+    error "insert into T1 should fail, but succeeded"
+}
+set errcode [lindex $errorCode 1]
+if {![string match "PREDICATE_VIOLATION*C1*" $errcode]} {
+    error "wrong error: $errcode"
+}
+
+# Must succeed
+duro::massign {insert T1 {A 1 B Blu}} {insert T2 {A 1 B Blu}} $tx
+
+set count [duro::expr {COUNT(T1)} $tx]
+if {$count != 1} {
+    error "cadiality of T1 should be 1, but is $count"
+}
+
 duro::commit $tx
 
 duro::env close $dbenv

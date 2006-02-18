@@ -38,11 +38,10 @@ print_deptsx_view(RDB_database *dbp, RDB_exec_context *ecp)
         printf("DEPTNAME: %s\n", RDB_tuple_get_string(tplp, "DEPTNAME"));
         printf("XDEPTNO: %d\n", (int)RDB_tuple_get_int(tplp, "XDEPTNO"));
     }
-/* !!
-    if (ret != RDB_NOT_FOUND) {
+    if (RDB_obj_type(RDB_get_err(ecp)) != &RDB_NOT_FOUND_ERROR) {
         goto error;
     }
-*/
+    RDB_clear_err(ecp);
 
     RDB_destroy_obj(&array, ecp);
     RDB_commit(ecp, &tx);

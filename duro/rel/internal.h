@@ -131,6 +131,11 @@ typedef struct _RDB_tbindex {
     RDB_index *idxp;	/* NULL for the primary index */
 } _RDB_tbindex;
 
+struct _RDB_tx_and_ec {
+    RDB_transaction *txp;
+    RDB_exec_context *ecp;
+};
+
 /* Used to pass the execution context (not MT-safe */
 extern RDB_exec_context *_RDB_cmp_ecp;
 

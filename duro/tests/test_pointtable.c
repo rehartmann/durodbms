@@ -198,10 +198,9 @@ test_query(RDB_database *dbp, RDB_exec_context *ecp)
         printf("X=%f, Y=%f\n", (float)RDB_obj_double(&xval),
                 (float)RDB_obj_double(&yval));
     }
-/* !!
-    if (ret != RDB_NOT_FOUND)
+    if (RDB_obj_type(RDB_get_err(ecp)) != &RDB_NOT_FOUND_ERROR) {
         goto error;
-*/
+    }
     RDB_clear_err(ecp);
     printf("Creating POINTTEST WHERE POINT.THE_X=1\n");
 
@@ -234,10 +233,9 @@ test_query(RDB_database *dbp, RDB_exec_context *ecp)
         printf("X=%f, Y=%f\n", (float)RDB_obj_double(&xval),
                 (float)RDB_obj_double(&yval));
     }
-/* !!
-    if (ret != RDB_NOT_FOUND)
+    if (RDB_obj_type(RDB_get_err(ecp)) != &RDB_NOT_FOUND_ERROR) {
         goto error;
-*/
+    }
     RDB_clear_err(ecp);
 
     RDB_destroy_obj(&array, ecp);
@@ -283,10 +281,9 @@ test_query(RDB_database *dbp, RDB_exec_context *ecp)
         printf("X=%f, Y=%f\n", (float)RDB_obj_double(&xval),
                 (float)RDB_obj_double(&yval));
     }
-/* !!
-    if (ret != RDB_NOT_FOUND)
+    if (RDB_obj_type(RDB_get_err(ecp)) != &RDB_NOT_FOUND_ERROR) {
         goto error;
-*/
+    }
     RDB_clear_err(ecp);
 
     RDB_destroy_obj(&xval, ecp);
@@ -311,7 +308,7 @@ error:
     if (tmptbp != NULL)
         RDB_drop_table(tmptbp, ecp, &tx);
 
-    return ret;
+    return RDB_ERROR;
 }
 
 int

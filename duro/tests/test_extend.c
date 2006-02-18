@@ -31,12 +31,9 @@ print_extend(RDB_table *vtbp, RDB_exec_context *ecp, RDB_transaction *txp)
                 (float)RDB_tuple_get_double(tplp, "SALARY_AFTER_TAX"));
         printf("NAME_LEN: %d\n", (int)RDB_tuple_get_int(tplp, "NAME_LEN"));
     }
-    /* !!
-    if (ret != RDB_NOT_FOUND) {
-        RDB_rollback(ecp, txp);
+    if (RDB_obj_type(RDB_get_err(ecp)) != &RDB_NOT_FOUND_ERROR) {
         goto error;
     }
-    */
     RDB_clear_err(ecp);
 
     RDB_destroy_obj(&array, ecp);

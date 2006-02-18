@@ -54,11 +54,9 @@ test_regexp(RDB_database *dbp, RDB_exec_context *ecp)
         printf("NAME: %s\n", RDB_tuple_get_string(tplp, "NAME"));
         printf("SALARY: %f\n", (double) RDB_tuple_get_double(tplp, "SALARY"));
     }
-/* !!
-    if (ret != RDB_NOT_FOUND) {
+    if (RDB_obj_type(RDB_get_err(ecp)) != &RDB_NOT_FOUND_ERROR) {
         goto error;
     }
-*/
 
     RDB_destroy_obj(&array, ecp);
 

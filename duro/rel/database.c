@@ -231,14 +231,12 @@ hash_tb(const void *tbp, void *arg) {
 }
 
 static RDB_bool
-tb_equals(const void *tb1p, const void *tb2p, void *txp) {
+tb_equals(const void *tb1p, const void *tb2p, void *argp) {
     int ret;
-    RDB_exec_context ec;
+    struct _RDB_tx_and_ec *tep = (struct _RDB_tx_and_ec *) argp;
 
-    RDB_init_exec_context(&ec); /* !! pass ec through struct arg */
     ret = _RDB_table_def_equals((RDB_table *) tb1p, (RDB_table *) tb2p,
-            &ec, (RDB_transaction *) txp);
-    RDB_destroy_exec_context(&ec);
+            tep->ecp, tep->txp);
     return ret;
 }
 
