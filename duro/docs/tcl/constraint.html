@@ -1,0 +1,38 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN"
+"http://www.w3.org/TR/html4/strict.dtd">
+<html lang="en">
+<head>
+<title>Durotcl commands - constraint</title>
+<body>
+
+<h2>Name</h2>
+
+<p>duro::constraint - create and delete table and database constraints
+
+<h2>Synopsis</h2>
+
+<p><b>duro::constraint</b> arg ?arg ...?
+
+<h2>Description</h2>
+
+<dl>
+<dt><b>duro::constraint create</b> <var>name</var> <var>expression</var>
+<var>txId</var>
+<dd>
+<p>Creates the constraint <var>name</var> defined as <var>expression</var>
+under the control of the transaction <var>txId</var>.
+
+<dt><b>duro::constraint drop</b> <var>name</var> <var>txId</var>
+<dd>
+<p>Deletes the constraint <var>name</var> under the control of
+the transaction <var>txId</var>.
+
+</dl>
+
+<h2>See Also</h2>
+
+<p><a href="../expressions.html">Expressions</a>
+
+<p>$Id$
+
+</html>
