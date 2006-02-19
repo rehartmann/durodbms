@@ -3,7 +3,7 @@
 exec wish "$0" ${1+"$@"}
 
 # Duroadmin - GUI administration tool for Duro.
-# Copyright (C) 2004, 2005 René Hartmann.
+# Copyright (C) 2004-2006 René Hartmann.
 # See the file COPYING for redistribution information.
 
 # $Id$
@@ -98,7 +98,7 @@ proc open_env_path {envpath} {
         tk_messageBox -type ok -title "Error" -message $msg -icon error
         return
     }
-    wm title . "$envpath - Duroadmin"
+    wm title . "[file tail $envpath] - Duroadmin"
 
     # Add new entries
     foreach i $dbs {
@@ -169,14 +169,19 @@ proc close_env {} {
 
 proc clear_bottom_row {} {
     set rowcount [.tableframe.table cget -rows]
-    for {set i 0} {$i < [llength $::tableattrs]} {incr i} {
+    set colcount [llength $::tableattrs]
+    if {$colcount == 0} {
+        set colcount 1
+    }
+    
+    for {set i 0} {$i < $colcount} {incr i} {
         .tableframe.table set [expr {$rowcount - 1}],$i ""
     }
 }
 
 proc set_row {row tpl} {
-    array set ta $tpl
     for {set j 0} {$j < [llength $::tableattrs]} {incr j} {
+        array set ta $tpl
         set attrname [lindex $::tableattrs $j]
         set s $ta($attrname)
         if {![string is print $s]} {
@@ -185,6 +190,9 @@ proc set_row {row tpl} {
             set s [expr {$s ?  "TRUE" : "FALSE"}]
         }
         .tableframe.table set $row,$j $s
+    }
+    if {$::tableattrs == {}} {
+        .tableframe.table set $row,0 ""
     }
 }
 
@@ -234,12 +242,20 @@ proc show_table {} {
 
         .tableframe.table configure -state normal
         pack propagate . 0
-        .tableframe.table configure -cols [llength $::tableattrs] -colwidth 16
+        set cols [llength $::tableattrs]
+        if {$cols == 0} {
+            set cols 1
+        }
+        .tableframe.table configure -cols $cols -colwidth 16
         .tableframe.table configure -rows 2
 
         # Set table heading
-        for {set i 0} {$i < [llength $::tableattrs]} {incr i} {
-            .tableframe.table set 0,$i [lindex $::tableattrs $i]
+        if {$::tableattrs != {}} {
+            for {set i 0} {$i < [llength $::tableattrs]} {incr i} {
+                .tableframe.table set 0,$i [lindex $::tableattrs $i]
+            }
+        } else {
+            .tableframe.table set 0,0 ""
         }
 
         # Set values - # of rows displayed is limited to the value
@@ -253,7 +269,6 @@ proc show_table {} {
         catch {duro::array drop $arr}
         catch {duro::rollback $tx}
         tk_messageBox -type ok -title "Error" -message $msg -icon error
-        puts $::errorInfo
         return
     }
 
@@ -849,6 +864,9 @@ proc update_tuple {row} {
 }
 
 proc update_row {} {
+    if {$::tableattrs == {}} {
+        .tableframe.table set active ""
+    }
     scan [.tableframe.table index active] %d,%d row col
     set rowcount [.tableframe.table cget -rows]
 
@@ -878,7 +896,13 @@ proc del_row {} {
     # Delete tuple from DB table
     if {[catch {
         set tx [duro::begin $::dbenv $::db]
-        duro::delete $table [eq_exp $row] $tx
+        set eqexp [eq_exp $row]
+        if {$eqexp == ""} {
+            # Table is nullary
+            duro::delete $table $tx
+        } else {
+           duro::delete $table [eq_exp $row] $tx
+        }
         duro::commit $tx
     } msg]} {
         catch {duro::rollback $tx}
@@ -999,7 +1023,7 @@ proc about {} {
     set ::newtablename ""
 
     label .about.l1 -text "Duroadmin"
-    label .about.l2 -text "Duro $::duro_version, (C) 2003-2005 Rene Hartmann"
+    label .about.l2 -text "Duro $::duro_version, (C) 2003-2006 Rene Hartmann"
 
     frame .about.buttons
     button .about.buttons.ok -text OK -command {destroy .about}

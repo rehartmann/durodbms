@@ -95,6 +95,12 @@ Duro_env_cmd(ClientData data, Tcl_Interp *interp, int argc, CONST char *argv[])
         if (ret != RDB_OK) {
             Tcl_AppendResult(interp, "database error: ", db_strerror(ret),
                     (char *) NULL);
+
+            /* If it is a POSIX error, set errorCode */
+            if (strerror(ret) != NULL) {
+                Tcl_SetErrno(ret);
+                Tcl_PosixError(interp);
+            }
             return TCL_ERROR;
         }
 
@@ -125,6 +131,11 @@ Duro_env_cmd(ClientData data, Tcl_Interp *interp, int argc, CONST char *argv[])
         if (ret != RDB_OK) {
             Tcl_AppendResult(interp, "database error: ", db_strerror(ret),
                     (char *) NULL);
+            /* If it is a POSIX error, set errorCode */
+            if (strerror(ret) != NULL) {
+                Tcl_SetErrno(ret);
+                Tcl_PosixError(interp);
+            }
             return TCL_ERROR;
         }      
         return TCL_OK;
