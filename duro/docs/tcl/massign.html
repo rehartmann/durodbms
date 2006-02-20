@@ -1,0 +1,43 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN"
+"http://www.w3.org/TR/html4/strict.dtd">
+<html lang="en">
+<head>
+<title>Durotcl commands - massign</title>
+<body>
+
+<h2>Name</h2>
+
+duro::massign - multiple assignment
+
+<h2>Synopsis</h2>
+
+<p><b>duro::massign</b> <var>assignment</var> ?<var>assignment</var> ...?
+<var>txId</var>
+
+<pre>
+assignment ::= {insert <var>tablename tuple</var>}
+	| {update <var>tablename</var> ?<var>whereExpression</var>?
+                <var>attrname expression</var> ?<var>attrname expression</var> ...?}
+        | {delete <var>tablename</var> ?<var>whereExpression</var>?}
+        | {copy <var>destTablename</var> <var>srcTablename</var>}
+</pre>
+
+<h2>Description</h2>
+
+<p>Performs a number of insert, update, delete, and copy operations in 
+a single call. The operations are specified by arguments which are Tcl
+lists.
+
+<p>For a description of the insert, update and delete arguments, see the respective
+single-operation commands.
+
+<p>A copy argument will result in the table <var>srcTablename</var> being copied
+to <var>destTablename</var>. Both tables must be of the same type.
+
+<h2>See Also</h2>
+
+<p><a href="../expressions.html">Expressions</a>
+
+<p>$Id$
+
+</html>
