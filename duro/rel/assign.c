@@ -1767,7 +1767,7 @@ RDB_multi_assign(int insc, const RDB_ma_insert insv[],
 
     /*
      * Check if the same target is assigned twice
-     * or if a target is used a source later
+     * or if a target is used as source later
      */
     for (i = 0; i < ninsc; i++) {
         for (j = i + 1; j < ninsc; j++) {

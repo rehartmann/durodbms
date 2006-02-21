@@ -1818,7 +1818,7 @@ if the result of <em>all</em> operations violate a constraint.
 
 <p>A table may not appear twice as a target in the arguments to
 <strong>RDB_multi_assign</strong>, and it may not appear
-both as a source and a target.
+as a source if it appears as a target in a previous assignment.
 
 <p>This means that an assignment like the following:</p>
 

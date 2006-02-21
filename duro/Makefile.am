@@ -30,7 +30,7 @@ docs/tcl/env.html docs/tcl/expr.html docs/tcl/insert.html \
 docs/tcl/operator.html docs/tcl/ptable.html docs/tcl/rollback.html \
 docs/tcl/txdb.html docs/tcl/table.html docs/tcl/update.html \
 docs/tcl/type.html docs/tcl/indexcmd.html docs/tcl/dberror.html \
-docs/tcl/errorCode.html
+docs/tcl/constraint.html docs/tcl/massign.html docs/tcl/errorCode.html
 else
 TCLHTML =
 endif
