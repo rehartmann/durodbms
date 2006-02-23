@@ -481,7 +481,8 @@ _RDB_obj_to_irep(void *dstp, const RDB_object *objp, size_t len)
             break;
         }
         case RDB_OB_TABLE:
-            return _RDB_table_to_irep(dstp, objp->var.tbp, len);
+            _RDB_table_to_irep(dstp, objp->var.tbp, len);
+            break;
         case RDB_OB_ARRAY:
         {
             RDB_object *elemp;
@@ -823,13 +824,15 @@ RDB_obj_comp(const RDB_object *valp, const char *compname, RDB_object *compvalp,
 
     if (valp->typ->var.scalar.sysimpl) {
         if (valp->typ->var.scalar.repv[0].compc == 1) {
+            RDB_type *comptyp;
+
             /* Actual rep is type of the only component - check component name */
             if (strcmp(compname, valp->typ->var.scalar.repv[0].compv[0].name)
                     != 0) {
                 RDB_raise_invalid_argument("component not found", ecp);
                 return RDB_ERROR;
             }            
-            RDB_type *comptyp = valp->typ->var.scalar.repv[0].compv[0].typ;
+            comptyp = valp->typ->var.scalar.repv[0].compv[0].typ;
 
             /* If *compvalp carries a value, it must match the type */
             if (compvalp->kind != RDB_OB_INITIAL

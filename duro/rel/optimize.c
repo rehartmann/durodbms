@@ -375,6 +375,7 @@ mutate_select(RDB_table *tbp, RDB_table **tbpv, int cap, RDB_exec_context *ecp,
 {
     int i;
     int ret;
+    int tbc;
     RDB_table *ctbp = tbp->var.select.tbp;
 
     ret = _RDB_transform_exp(tbp->var.select.exp, ecp);
@@ -387,7 +388,7 @@ mutate_select(RDB_table *tbp, RDB_table **tbpv, int cap, RDB_exec_context *ecp,
         unbalance_and(tbp->var.select.exp);
     }
 
-    int tbc = mutate(ctbp, tbpv, cap, ecp, txp);
+    tbc = mutate(ctbp, tbpv, cap, ecp, txp);
     if (tbc < 0)
         return tbc;
 

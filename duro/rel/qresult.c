@@ -732,7 +732,7 @@ join_qresult(RDB_qresult *qrp, RDB_exec_context *ecp, RDB_transaction *txp)
                 ecp, txp);
         if (qrp->var.virtual.qr2p == NULL) {
             _RDB_drop_qresult(qrp->var.virtual.qrp, ecp, txp);
-            return ret;
+            return RDB_ERROR;
         }
     } else if (!qrp->tbp->var.join.tb2p->var.project.indexp->unique) {
         /* Create index qresult for 2nd table */

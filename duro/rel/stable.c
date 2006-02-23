@@ -70,9 +70,10 @@ RDB_int *
 _RDB_field_no(RDB_stored_table *stp, const char *attrname)
 {
     _RDB_attrmap_entry entry;
+    _RDB_attrmap_entry *entryp;
 
     entry.key = (char *) attrname;
-    _RDB_attrmap_entry *entryp = RDB_hashtable_get(&stp->attrmap, &entry,
+    entryp = RDB_hashtable_get(&stp->attrmap, &entry,
             NULL);
     return entryp != NULL ? &entryp->fno : NULL;
 }
@@ -508,9 +509,10 @@ _RDB_create_stored_table(RDB_table *tbp, RDB_environment *envp,
         ret = _RDB_cat_insert_table_recmap(tbp, tbp->name, ecp, txp);
         if (ret == RDB_ERROR
                 && RDB_obj_type(RDB_get_err(ecp)) == &RDB_KEY_VIOLATION_ERROR) {
+            int n = 0;
+
             RDB_clear_err(ecp);
             /* Choose a different recmap name */
-            int n = 0;
             rmname = malloc(strlen(tbp->name) + 4);
             if (rmname == NULL) {
                 RDB_raise_no_memory(ecp);

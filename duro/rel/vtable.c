@@ -497,14 +497,14 @@ RDB_summarize(RDB_table *tb1p, RDB_table *tb2p, int addc,
     RDB_table *newtbp;
     int i, ai;
 
+    /* Additional (internal) attribute for each AVG */
+    int avgc;
+    char **avgv;
+
     if (!RDB_tx_is_running(txp)) {
         RDB_raise_invalid_tx(ecp);
         return NULL;
     }
-
-    /* Additional (internal) attribute for each AVG */
-    int avgc;
-    char **avgv;
 
     newtbp = _RDB_new_table(ecp);
     if (newtbp == NULL)
