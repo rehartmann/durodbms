@@ -8,7 +8,7 @@ exec wish "$0" ${1+"$@"}
 
 # $Id$
 
-set duro_version 0.10
+set duro_version 0.11
 
 package require -exact duro $duro_version
 package require Tktable
@@ -26,12 +26,21 @@ package require Tktable
 #
 
 #
-# Write log msg into error log window
+# Read log msgs from log file and write them into error log window
 #
-proc dberror {msg} {
+proc read_log {} {
+    # Do nothing if the window is not mapped
+    if {[wm state .errlog] != "normal"} {
+        return
+    }
+
+    set data [read $::errf]
     .errlog.msgs configure -state normal
-    .errlog.msgs insert end $msg\n
+    .errlog.msgs insert end $data
     .errlog.msgs configure -state disabled
+
+    # Read data again in 5 seconds
+    after 5000 read_log
 }
 
 #
@@ -90,6 +99,7 @@ proc add_db {newdb} {
 proc open_env_path {envpath} {
     if {[catch {
         set ::dbenv [duro::env open $envpath]
+        duro::env seterrfile $::dbenv $::errfile
         .mbar.file entryconfigure Close* -state normal
 
         # Get databases
@@ -140,6 +150,7 @@ proc create_env {} {
         }
 
         set ::dbenv [duro::env open $envpath]
+        duro::env seterrfile $::dbenv $::errfile
     } msg]} {
         tk_messageBox -type ok -title "Error" -message $msg -icon error
         return
@@ -1037,6 +1048,12 @@ proc about {} {
     destroy .about
 }
 
+proc quit {} {
+    close $::errf
+    file delete $::errfile
+    exit
+}
+
 set duroadmin(initrows) 20
 set dbenv ""
 set ltables {}
@@ -1053,7 +1070,7 @@ menu .mbar.file
 .mbar.file add command -label "Close Environment" -command close_env \
         -state disabled
 .mbar.file add separator
-.mbar.file add command -label Quit -command exit
+.mbar.file add command -label Quit -command quit
 
 menu .mbar.view
 .mbar add cascade -label View -menu .mbar.view -underline 0
@@ -1128,6 +1145,8 @@ toplevel .errlog
 wm withdraw .errlog
 wm title .errlog "Error Log"
 wm protocol .errlog WM_DELETE_WINDOW { wm withdraw .errlog }
+wm group .errlog .
+bind .errlog <Map> { if {"%W" == ".errlog"} {read_log} }
 
 text .errlog.msgs -state disabled
 pack .errlog.msgs
@@ -1136,6 +1155,18 @@ if {$argc > 1} {
     puts stderr "duroadmin: too many arguments"
     exit 1
 }
+
+# Open log file (use temporary file)
+if {$tcl_platform(platform) == "unix"} {
+    set tmpdir /tmp
+} else {
+    set tmpdir [pwd]
+}
+catch {set tmpdir $env(TMP)}
+catch {set tmpdir $env(TEMP)}
+catch {set tmpdir $env(TMPDIR)}
+set errfile [file join $tmpdir "da[pid]"]
+set ::errf [open $errfile w+]
 
 if {$argc == 1} {
     open_env_path [lindex $argv 0]

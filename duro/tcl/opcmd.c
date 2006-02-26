@@ -411,6 +411,7 @@ Duro_invoke_update_op(const char *name, int argc, RDB_object *argv[],
     Tcl_Obj *txtop;
     Tcl_Obj *procargv[5];
     Tcl_Obj **opargv;
+    Tcl_Obj *msgobjp;
     Tcl_CmdInfo cmdinfo;
     TclState *statep;
     RDB_exec_context *oldecp;
@@ -463,15 +464,25 @@ Duro_invoke_update_op(const char *name, int argc, RDB_object *argv[],
 
     /*
      * Create a command by executing the 'proc' command
+     * Increase reference counters before passing strings
+     * to Tcl_EvalObjv().
      */
     procargv[0] = Tcl_NewStringObj("proc", -1);
+    Tcl_IncrRefCount(procargv[0]);
     procargv[1] = nametop;
+    Tcl_IncrRefCount(nametop);
     procargv[2] = namelistp;
     procargv[3] = bodytop;
+
     ret = Tcl_EvalObjv(interp, 4, procargv, 0);
+
+    Tcl_DecrRefCount(procargv[0]);
+
     if (ret != TCL_OK) {
-        RDB_errmsg(envp, "%s", Tcl_GetStringResult(interp));
-        RDB_raise_internal("proc command failed", ecp);
+        Tcl_DecrRefCount(nametop);
+        msgobjp = Tcl_NewStringObj("proc command failed: ", -1);
+        Tcl_AppendObjToObj(msgobjp, Tcl_GetObjResult(interp));
+        RDB_raise_internal(Tcl_GetString(msgobjp), ecp);
         return RDB_ERROR;
     }
 
@@ -493,12 +504,14 @@ Duro_invoke_update_op(const char *name, int argc, RDB_object *argv[],
                 ret = RDB_set_table_name(tbp, "duro_t", ecp, txp);
                 if (ret != RDB_OK) {
                     Tcl_Free((char *) opargv);
+                    Tcl_DecrRefCount(nametop);
                     return RDB_ERROR;
                 }
                 ret = Duro_add_table(interp, statep, tbp, "duro_t", envp);
                 if (ret != TCL_OK) {
                     Tcl_Free((char *) opargv);
                     RDB_raise_internal("passing table arg failed", ecp);
+                    Tcl_DecrRefCount(nametop);
                     return RDB_ERROR;
                 }
             }
@@ -517,6 +530,7 @@ Duro_invoke_update_op(const char *name, int argc, RDB_object *argv[],
                 if (Tcl_ObjSetVar2(interp, varnamep, NULL, argtop, 0) == NULL) {
                     Tcl_Free((char *) opargv);
                     RDB_raise_internal("passing arg failed", ecp);
+                    Tcl_DecrRefCount(nametop);
                     return RDB_ERROR;
                 }
                 opargv[i + 1] = varnamep;
@@ -535,14 +549,17 @@ Duro_invoke_update_op(const char *name, int argc, RDB_object *argv[],
     /* Execute operator by invoking the Tcl procedure just created */
     ret = Tcl_EvalObjv(interp, argc + 2, opargv, 0);
 
+    Tcl_DecrRefCount(nametop);
+
     statep->current_ecp = oldecp;
 
     Tcl_Free((char *) opargv);
     
     switch (ret) {
         case TCL_ERROR:
-            RDB_errmsg(envp, "%s", Tcl_GetStringResult(interp));
-            RDB_raise_invalid_argument("invoking Tcl procedure failed", ecp);
+            msgobjp  = Tcl_NewStringObj("invoking Tcl procedure failed: ", -1);
+            Tcl_AppendObjToObj(msgobjp, Tcl_GetObjResult(interp));
+            RDB_raise_invalid_argument(Tcl_GetString(msgobjp), ecp);
             return RDB_ERROR;
         case TCL_BREAK:
             RDB_raise_invalid_argument("invoked \"break\" outside of a loop", ecp);
@@ -619,9 +636,9 @@ Duro_invoke_ro_op(const char *name, int argc, RDB_object *argv[],
     Tcl_CmdInfo cmdinfo;
     TclState *statep;
     RDB_exec_context *oldecp;
+    Tcl_Obj *msgobjp;
     Tcl_Obj *txtop = NULL;
     RDB_type *rtyp = RDB_obj_type(retvalp);
-    RDB_environment *envp = RDB_tx_env(txp);
     Tcl_Interp *interp = RDB_ec_get_property(ecp, "TCL_INTERP");
     if (interp == NULL) {
         RDB_raise_resource_not_found("Tcl interpreter not found", ecp);
@@ -665,16 +682,26 @@ Duro_invoke_ro_op(const char *name, int argc, RDB_object *argv[],
     }
 
     /*
-     * Create a command by executing the 'proc' comand
+     * Create a command by executing the 'proc' command
+     * Increase reference counters before passing strings
+     * to Tcl_EvalObjv().
      */
     procargv[0] = Tcl_NewStringObj("proc", -1);
+    Tcl_IncrRefCount(procargv[0]);
     procargv[1] = nametop;
+    Tcl_IncrRefCount(nametop);
     procargv[2] = namelistp;
     procargv[3] = bodytop;
+
     ret = Tcl_EvalObjv(interp, 4, procargv, 0);
+
+    Tcl_DecrRefCount(procargv[0]);
+
     if (ret != TCL_OK) {
-        RDB_errmsg(envp, "%s", Tcl_GetStringResult(interp));
-        RDB_raise_internal("proc command failed", ecp);
+        Tcl_DecrRefCount(nametop);
+        msgobjp = Tcl_NewStringObj("proc command failed: ", -1);
+        Tcl_AppendObjToObj(msgobjp, Tcl_GetObjResult(interp));
+        RDB_raise_internal(Tcl_GetString(msgobjp), ecp);
         return RDB_ERROR;
     }
 
@@ -705,14 +732,16 @@ Duro_invoke_ro_op(const char *name, int argc, RDB_object *argv[],
     /* Execute operator by invoking the Tcl procedure just created */
     ret = Tcl_EvalObjv(interp, txtop != NULL ? argc + 2 : argc + 1, opargv, 0);
 
+    Tcl_DecrRefCount(nametop);
+    Tcl_Free((char *) opargv);
+
     statep->current_ecp = oldecp;
 
-    Tcl_Free((char *) opargv);
-    
     switch (ret) {
         case TCL_ERROR:
-            RDB_errmsg(envp, "%s", Tcl_GetStringResult(interp));
-            RDB_raise_invalid_argument("invoking Tcl procedure failed", ecp);
+            msgobjp  = Tcl_NewStringObj("invoking Tcl procedure failed: ", -1);
+            Tcl_AppendObjToObj(msgobjp, Tcl_GetObjResult(interp));
+            RDB_raise_invalid_argument(Tcl_GetString(msgobjp), ecp);
             return RDB_ERROR;
         case TCL_BREAK:
             RDB_raise_invalid_argument("invoked \"break\" outside of a loop",

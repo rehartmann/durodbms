@@ -1,14 +1,17 @@
 /*
- * Copyright (C) 2003, 2004 René Hartmann.
+ * $Id$ 
+ *
+ * Copyright (C) 2003-2006 René Hartmann.
  * See the file COPYING for redistribution information.
  */
-
-/* $Id$ */
 
 #include "cursor.h"
 #include <string.h>
 #include <errno.h>
 
+/*
+ * Allocate and initialize a RDB_cursor structure.
+ */
 static RDB_cursor *
 new_cursor(RDB_recmap *rmp, DB_TXN *txid, RDB_index *idxp)
 {
@@ -44,10 +47,6 @@ RDB_recmap_cursor(RDB_cursor **curpp, RDB_recmap *rmp, RDB_bool wr,
     ret = rmp->dbp->cursor(rmp->dbp, txid, &curp->cursorp, 0);
     if (ret != 0) {
         free(curp);
-        if (rmp->envp != NULL) {
-            RDB_errmsg(rmp->envp, "cannot create cursor: %s",
-                    db_strerror(ret));
-        }
         return ret;
     }
     *curpp = curp;
@@ -66,10 +65,6 @@ RDB_index_cursor(RDB_cursor **curpp, RDB_index *idxp, RDB_bool wr,
     ret = idxp->dbp->cursor(idxp->dbp, txid, &curp->cursorp, 0);
     if (ret != 0) {
         free(curp);        
-        if (curp->recmapp->envp != NULL) {
-            RDB_errmsg(curp->recmapp->envp, "cannot create index cursor: %s",
-                    db_strerror(ret));
-        }
         return ret;
     }
     *curpp = curp;
@@ -156,11 +151,6 @@ RDB_cursor_update(RDB_cursor *curp, int fieldc, const RDB_field fieldv[])
 
     ret = _RDB_update_rec(curp->recmapp, &pkey, &data, fieldc, fieldv,
             curp->txid);
-    if (ret != RDB_OK && curp->recmapp->envp != NULL
-            && ret != RDB_ELEMENT_EXISTS && ret != DB_KEYEXIST) {
-        RDB_errmsg(curp->recmapp->envp, "cannot update record: %s",
-                db_strerror(ret));
-    }
 
 cleanup:
     return ret;

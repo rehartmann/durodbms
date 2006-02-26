@@ -221,7 +221,7 @@ main(void)
         return 1;
     }
 
-    RDB_set_errfile(envp, stderr);
+    RDB_bdb_env(envp)->set_errfile(RDB_bdb_env(envp), stderr);
     RDB_init_exec_context(&ec);
 
     printf("Creating DB\n");

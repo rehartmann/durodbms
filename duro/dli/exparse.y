@@ -40,6 +40,8 @@ enum {
 
 %expect 14
 
+%error-verbose
+
 %union {
     RDB_expression *exp;
     struct {

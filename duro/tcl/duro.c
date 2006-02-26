@@ -61,7 +61,9 @@ Duro_dberror(Tcl_Interp *interp, const RDB_object *errp, RDB_transaction *txp)
 {
     char *typename = RDB_type_name(RDB_obj_type(errp));
 
-    Tcl_AppendResult(interp, "database error: ", typename, (char *) NULL);
+    Tcl_ResetResult(interp);
+    Tcl_AppendResult(interp, "database error: ",
+            typename != NULL ? typename : "" , (char *) NULL);
 
     if (txp != NULL) {
         RDB_object info;
@@ -170,7 +172,7 @@ Duro_init_tcl(Tcl_Interp *interp, TclState **statepp)
         return TCL_ERROR;
     }
 
-    return Tcl_PkgProvide(interp, "duro", "0.10");
+    return Tcl_PkgProvide(interp, "duro", "0.11");
 }
 
 int

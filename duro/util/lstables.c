@@ -157,7 +157,7 @@ main(int argc, char *argv[])
         return 1;
     }
 
-    RDB_set_errfile(envp, stderr);
+    RDB_bdb_env(envp)->set_errfile(RDB_bdb_env(envp), stderr);
 
     if (argc == 1 && strcmp(argv[0], "-a") == 0)
         all = RDB_TRUE;

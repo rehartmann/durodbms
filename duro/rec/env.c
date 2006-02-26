@@ -22,8 +22,6 @@ RDB_open_env(const char *path, RDB_environment **envpp)
        return ENOMEM;
 
     envp->closefn = NULL;
-    envp->errfilep = NULL;
-    envp->errfn = NULL;
     envp->user_data = NULL;
 
     /* create environment handle */
@@ -70,69 +68,6 @@ void
 RDB_set_env_closefn(RDB_environment *envp, void (*fn)(struct RDB_environment *))
 {
     envp->closefn = fn;
-}
-
-void
-RDB_set_errfile(RDB_environment *envp, FILE *errfile)
-{
-    envp->errfilep = errfile;
-    envp->envp->set_errfile(envp->envp, errfile);
-}
-
-FILE *
-RDB_get_errfile(RDB_environment *envp)
-{
-    return envp->errfilep;
-}
-
-static void
-dberrfn(const DB_ENV *dbenv, const char *errpfx, const char *msg)
-{
-    RDB_environment *envp = dbenv->app_private;
-
-    (*envp->errfn)(msg, envp->errfn_arg);
-}
-
-void
-RDB_set_errfn(RDB_environment *envp, RDB_errfn *errfn, void *arg)
-{
-    envp->errfn = errfn;
-    envp->errfn_arg = arg;
-
-    envp->envp->app_private = envp;
-    envp->envp->set_errcall(envp->envp, errfn != NULL ? &dberrfn : NULL);
-}
-
-RDB_errfn *
-RDB_get_errfn(RDB_environment *envp, void **argp)
-{
-    if (argp != NULL)
-        *argp = envp->errfn_arg;
-    return envp->errfn;
-}
-
-void
-RDB_errmsg(RDB_environment *envp, const char *format, ...)
-{
-    if (envp->errfilep != NULL) {
-        va_list ap;
-
-        va_start(ap,format);
-        vfprintf(envp->errfilep, format, ap);
-        va_end(ap);
-        fputs("\n", envp->errfilep);
-        fflush(envp->errfilep);
-    }
-    if (envp->errfn != NULL) {
-        char buf[1024];
-
-        va_list ap;
-
-        va_start(ap,format);
-        vsnprintf(buf, sizeof (buf), format, ap);
-        va_end(ap);
-        (*envp->errfn)(buf, envp->errfn_arg);
-    }
 }
 
 DB_ENV *

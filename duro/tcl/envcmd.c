@@ -13,6 +13,8 @@ Duro_tcl_close_env(TclState *statep, RDB_environment *envp, Tcl_HashEntry *entry
 {
     Tcl_HashSearch search;
     table_entry *tbep;
+    FILE *errfp;
+    DB_ENV *bdb_envp = RDB_bdb_env(envp);
 
     Tcl_DeleteHashEntry(entryp);
 
@@ -30,39 +32,12 @@ Duro_tcl_close_env(TclState *statep, RDB_environment *envp, Tcl_HashEntry *entry
         }
     }
 
+    bdb_envp->get_errfile(bdb_envp, &errfp);
+    if (errfp != NULL) {
+        fclose(errfp);
+    }
+
     return RDB_close_env(envp);
-}
-
-/*
- * Invoke command "dberror" with the error message as argument.
- * If this fails, write the message to standard error.
- */
-static void
-dberror(const char *msg, void *arg)
-{
-    int ret;
-    Tcl_Obj *objv[2];
-    Tcl_Interp *interp = (Tcl_Interp *)arg;
-
-    objv[0] = Tcl_NewStringObj("dberror", -1);
-    objv[1] = Tcl_NewStringObj(msg, -1);
-
-    /* 
-     * Required, otherwise the program crashes when the "dberror" command
-     * does not exist
-     */
-    Tcl_IncrRefCount(objv[0]);
-    Tcl_IncrRefCount(objv[1]);
-
-    ret = Tcl_EvalObjv(interp, 2, objv, 0);
-    if (ret == TCL_ERROR)
-        fprintf(stderr, "%s\n", msg);
-
-    Tcl_DecrRefCount(objv[0]);
-    Tcl_DecrRefCount(objv[1]);
-
-    /* Ignore result of Tcl command evaluation */
-    Tcl_ResetResult(interp);
 }
 
 int
@@ -108,8 +83,6 @@ Duro_env_cmd(ClientData data, Tcl_Interp *interp, int argc, CONST char *argv[])
         sprintf(handle, "env%d", statep->env_uid);
         entryp = Tcl_CreateHashEntry(&statep->envs, handle, &new);
         Tcl_SetHashValue(entryp, (ClientData)envp);
-
-        RDB_set_errfn(envp, &dberror, interp);
 
         Tcl_SetStringObj(Tcl_GetObjResult(interp), handle, -1);
         return TCL_OK;
@@ -191,6 +164,37 @@ Duro_env_cmd(ClientData data, Tcl_Interp *interp, int argc, CONST char *argv[])
 
         Tcl_SetObjResult(interp, dblistp);
 
+        return TCL_OK;
+    }
+    if (strcmp(argv[1], "seterrfile") == 0) {
+        DB_ENV *bdb_envp;
+        FILE *fp;
+
+        if (argc != 4) {
+            Tcl_SetResult(interp,
+                    "wrong # args: should be \"env errfile envId errfile\"",
+                    TCL_STATIC);
+            return TCL_ERROR;
+        }
+
+        entryp = Tcl_FindHashEntry(&statep->envs, argv[2]);
+        if (entryp == NULL) {
+            Tcl_AppendResult(interp, "Unknown environment: ", argv[2], NULL);
+            return TCL_ERROR;
+        }
+        envp = Tcl_GetHashValue(entryp);
+        
+        fp = fopen(argv[3], "a");
+        if (fp == NULL) {
+            char *errstr = (char *) Tcl_ErrnoMsg(Tcl_GetErrno());
+            if (errstr != NULL) {
+                Tcl_SetResult(interp, errstr, TCL_STATIC);
+                Tcl_PosixError(interp);
+            }
+            return TCL_ERROR;
+        }
+        bdb_envp = RDB_bdb_env(envp);
+        bdb_envp->set_errfile(bdb_envp, fp);
         return TCL_OK;
     }
     Tcl_AppendResult(interp, "Bad option: ", argv[1], NULL);

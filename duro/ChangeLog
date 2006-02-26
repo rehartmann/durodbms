@@ -2,6 +2,13 @@ $Id$
 
 Summary of Changes for Duro
 
+Changes for Duro 0.11
+
+- Removed RDB_set_errfile(), RDB_get_errfile(), RDB_set_errfn(),
+  and RDB_get_errfn().
+
+- Durotcl: Added duro::env seterrfile. dberror is no longer called.
+
 Changes for Duro 0.10
 
 - Replaced RDB_RATIONAL by RDB_FLOAT and RDB_DOUBLE.

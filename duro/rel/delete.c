@@ -129,10 +129,6 @@ _RDB_delete_real(RDB_table *tbp, RDB_expression *condp, RDB_exec_context *ecp,
         if (b) {
             ret = RDB_cursor_delete(curp);
             if (ret != RDB_OK) {
-                if (ret > 0 || ret < -1000) {
-                    RDB_errmsg(txp->dbp->dbrootp->envp,
-                            "cannot delete record: %s", db_strerror(ret));
-                }
                 _RDB_handle_errcode(ret, ecp, txp);
                 RDB_destroy_obj(&tpl, ecp);
                 goto error;
@@ -219,10 +215,6 @@ _RDB_delete_select_index(RDB_table *tbp, RDB_expression *condp,
             tbp->var.select.tbp->var.project.tbp->is_persistent ?
             txp->txid : NULL);
     if (ret != RDB_OK) {
-        if (txp != NULL && (ret > 0 || ret < -1000)) {
-            RDB_errmsg(txp->dbp->dbrootp->envp, "cannot create cursor: %s",
-                    db_strerror(ret));
-        }
         _RDB_handle_errcode(ret, ecp, txp);
         return RDB_ERROR;
     }

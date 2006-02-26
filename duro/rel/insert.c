@@ -135,10 +135,6 @@ _RDB_insert_real(RDB_table *tbp, const RDB_object *tplp,
         }
         ret = RDB_ERROR;
     } else if (ret != RDB_OK) {
-        if (txp != NULL && (ret > 0 || ret < -1000)) {
-            RDB_errmsg(txp->dbp->dbrootp->envp, "cannot insert record: %s",
-                    db_strerror(ret));
-        }
         _RDB_handle_errcode(ret, ecp, txp);
         ret = RDB_ERROR;
     }

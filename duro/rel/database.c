@@ -1050,9 +1050,6 @@ RDB_set_table_name(RDB_table *tbp, const char *name, RDB_exec_context *ecp,
         /* Update catalog */
         ret = _RDB_cat_rename_table(tbp, name, ecp, txp);
         if (ret != RDB_OK) {
-            RDB_errmsg(RDB_db_env(RDB_tx_db(txp)),
-                    "cannot rename table in catalog: %s",
-                    RDB_obj_type(RDB_get_err(ecp)));
             return RDB_ERROR;
         }
     }

@@ -28,10 +28,6 @@ duro::table create T {
    {S1 STRING}
 } {{K}} $tx
 
-# Suppress error msgs
-proc dberror {msg} {
-} 
-
 if {![catch {duro::table expr TU {T UNION T UNION } $tx} msg]} {
     error "creating TU should fail, but succeeded"
 }

@@ -521,10 +521,6 @@ stored_qresult(RDB_qresult *qrp, RDB_table *tbp, RDB_exec_context *ecp,
     ret = RDB_recmap_cursor(&qrp->var.curp, tbp->stp->recmapp,
                     RDB_FALSE, tbp->is_persistent ? txp->txid : NULL);
     if (ret != RDB_OK) {
-        if (txp != NULL && (ret > 0 || ret < -1000)) {
-            RDB_errmsg(txp->dbp->dbrootp->envp, "cannot create cursor: %s",
-                    db_strerror(ret));
-        }
         _RDB_handle_errcode(ret, ecp, txp);
         return RDB_ERROR;
     }
@@ -552,10 +548,6 @@ index_qresult(RDB_qresult *qrp, _RDB_tbindex *indexp,
     ret = RDB_index_cursor(&qrp->var.curp, indexp->idxp, RDB_FALSE,
             txp != NULL ? txp->txid : NULL);
     if (ret != RDB_OK) {
-        if (txp != NULL && (ret > 0 || ret < -1000)) {
-            RDB_errmsg(txp->dbp->dbrootp->envp, "cannot create cursor: %s",
-                    db_strerror(ret));
-        }
         return ret;
     }
     ret = RDB_cursor_first(qrp->var.curp);
@@ -599,12 +591,9 @@ select_index_qresult(RDB_qresult *qrp, RDB_exec_context *ecp,
             RDB_FALSE, qrp->tbp->var.select.tbp->var.project.tbp->is_persistent ?
             txp->txid : NULL);
     if (ret != RDB_OK) {
-        if (txp != NULL && (ret > 0 || ret < -1000)) {
-            RDB_errmsg(txp->dbp->dbrootp->envp, "cannot create cursor: %s",
-                    db_strerror(ret));
-        }
         free(fv);
-        return ret;
+        _RDB_handle_errcode(ret, ecp, txp);
+        return RDB_ERROR;
     }
 
     for (i = 0; i < qrp->tbp->var.select.objpc; i++) {
@@ -753,10 +742,7 @@ join_qresult(RDB_qresult *qrp, RDB_exec_context *ecp, RDB_transaction *txp)
                         txp->txid : NULL);
         if (ret != RDB_OK) {
             free(qrp->var.virtual.qr2p);
-            if (txp != NULL && (ret > 0 || ret < -1000)) {
-                RDB_errmsg(txp->dbp->dbrootp->envp, "cannot create cursor: %s",
-                        db_strerror(ret));
-            }
+            _RDB_handle_errcode(ret, ecp, txp);
             return ret;
         }
     } else {
@@ -1006,10 +992,6 @@ _RDB_sorter(RDB_table *tbp, RDB_qresult **qrespp, RDB_exec_context *ecp,
     int i;
     RDB_qresult *tmpqrp;
     RDB_object tpl;
-    FILE *oerrfilep;
-    RDB_errfn *oerrfp;
-    void *errarg;
-    RDB_environment *envp = RDB_db_env(RDB_tx_db(txp));
     RDB_qresult *qresp = malloc(sizeof (RDB_qresult));
 
     if (qresp == NULL) {
@@ -1061,22 +1043,14 @@ _RDB_sorter(RDB_table *tbp, RDB_qresult **qrespp, RDB_exec_context *ecp,
     if (tmpqrp == NULL)
         goto error;
 
-    oerrfilep = RDB_get_errfile(envp);
-    oerrfp = RDB_get_errfn(envp, &errarg);
-
+    /*
+     * The duplicate elimination can produce a error message
+     * "Duplicate data items are not supported with sorted data"
+     * in the error log. This is expected behaviour.
+     */
     RDB_init_obj(&tpl);
     while ((ret = _RDB_next_tuple(tmpqrp, &tpl, ecp, txp)) == RDB_OK) {
-        /*
-         * We don't want to see the error msg about duplicate data items,
-         * so temporarily disable error logging
-         */
-        RDB_set_errfile(envp, NULL);
-        RDB_set_errfn(envp, NULL, NULL);
-
         ret = RDB_insert(qresp->matp, &tpl, ecp, txp);
-        /* Re-enable error logging */
-        RDB_set_errfile(envp, oerrfilep);
-        RDB_set_errfn(envp, oerrfp, errarg);
         if (ret != RDB_OK) {
             if (RDB_obj_type(RDB_get_err(ecp)) != &RDB_ELEMENT_EXISTS_ERROR) {
                 RDB_destroy_obj(&tpl, ecp);

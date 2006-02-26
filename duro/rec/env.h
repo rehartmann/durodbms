@@ -9,16 +9,12 @@
  */
 
 #include <db.h>
-#include <stdio.h>
 
 typedef void (RDB_errfn)(const char *msg, void *arg);
 
 typedef struct RDB_environment {
     DB_ENV *envp;
     void (*closefn)(struct RDB_environment *);
-    FILE *errfilep;
-    RDB_errfn *errfn;
-    void *errfn_arg;
     void *user_data;
 } RDB_environment;
 
@@ -47,21 +43,6 @@ RDB_close_env(RDB_environment *envp);
 
 void
 RDB_set_env_closefn(RDB_environment *, void (*)(struct RDB_environment *));
-
-void
-RDB_set_errfile(RDB_environment *, FILE *errfile);
-
-FILE *
-RDB_get_errfile(RDB_environment *);
-
-void
-RDB_set_errfn(RDB_environment *, RDB_errfn *, void *arg);
-
-RDB_errfn *
-RDB_get_errfn(RDB_environment *, void **argp);
-
-void
-RDB_errmsg(RDB_environment *, const char *format, ...);
 
 DB_ENV *
 RDB_bdb_env(RDB_environment *);

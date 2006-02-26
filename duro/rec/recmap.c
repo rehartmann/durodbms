@@ -1,7 +1,7 @@
 /*
  * $Id$
  * 
- * Copyright (C) 2003-2005 René Hartmann.
+ * Copyright (C) 2003-2006 René Hartmann.
  * See the file COPYING for redistribution information.
  */
 
@@ -174,9 +174,6 @@ RDB_create_recmap(const char *name, const char *filename,
     /* Create BDB database */
     if ((ret = (*rmpp)->dbp->open((*rmpp)->dbp, txid, filename, name,
             RDB_ORDERED & flags ? DB_BTREE : DB_HASH, DB_CREATE, 0664)) != 0) {
-        if (envp != NULL) {
-            RDB_errmsg(envp, "cannot create recmap: %s", db_strerror(ret));
-        }
         goto error;
     }
 
@@ -238,8 +235,6 @@ cleanup:
     free(rmp->filenamp);
     free(rmp->fieldlens);
     free(rmp);
-    if (ret != 0 && rmp->envp != NULL)
-        RDB_errmsg(rmp->envp, "cannot delete recmap: %s", db_strerror(ret));
 
     return ret;
 }
@@ -633,11 +628,6 @@ cleanup:
     free(key.data);
     free(data.data);
 
-    if (ret != RDB_OK && rmp->envp != NULL
-            && ret != RDB_ELEMENT_EXISTS && ret != DB_KEYEXIST) {
-        RDB_errmsg(rmp->envp, "cannot update record: %s", db_strerror(ret));
-    }
-    
     return ret;
 }
 

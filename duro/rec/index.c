@@ -1,9 +1,9 @@
 /*
- * Copyright (C) 2004 René Hartmann.
+ * $Id$
+ *
+ * Copyright (C) 2004-2006 René Hartmann.
  * See the file COPYING for redistribution information.
  */
-
-/* $Id$ */
 
 #include "index.h"
 #include <gen/strfns.h>
@@ -223,7 +223,6 @@ RDB_create_index(RDB_recmap *rmp, const char *namp, const char *filenamp,
     ret = ixp->dbp->open(ixp->dbp, txid, filenamp, namp,
             RDB_ORDERED & flags ? DB_BTREE : DB_HASH, DB_CREATE, 0664);
     if (ret != 0) {
-        RDB_errmsg(envp, "cannot open index: %s", db_strerror(ret));
         goto error;
     }
 
@@ -319,8 +318,7 @@ cleanup:
     free(ixp->fieldv);
     free(ixp->cmpv);
     free(ixp);
-    if (ret != 0)
-        RDB_errmsg(envp, "cannot delete index: %s", db_strerror(ret));
+
     return ret;
 }
 

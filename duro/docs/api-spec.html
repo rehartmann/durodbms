@@ -2,11 +2,11 @@
 "http://www.w3.org/TR/html4/strict.dtd">
 <html lang="en">
 <head>
-<title>Duro 0.10 API specification</title>
+<title>Duro 0.11 API specification</title>
 <body>
 <h1>Duro API specification</h1>
 
-<p>Version 0.10
+<p>Version 0.11
 
 <h2>Contents</h2>
 
@@ -204,10 +204,6 @@
 <ul>
 <li><a href="#open_env">RDB_open_env</a>
 <li><a href="#close_env">RDB_close_env</a>
-<li><a href="#get_errfile">RDB_get_errfile</a>
-<li><a href="#get_errfn">RDB_get_errfn</a>
-<li><a href="#set_errfile">RDB_set_errfile</a>
-<li><a href="#set_errfn">RDB_set_errfn</a>
 </ul>
 
 <h3>Index functions</h3>
@@ -4768,80 +4764,6 @@ RDB_close_env(RDB_environment *envp);
 <h3>Errors</h3>
 
 <p>See the documentation of the Berkeley function DB_ENV->close for details.
-
-<hr>
-
-<h2 id="get_errfile">RDB_get_errfile</h2>
-
-<pre>
-#include &lt;rel/rdb.h&gt;
-
-FILE *
-RDB_get_errfile(RDB_environment *);
-</pre>
-
-<h3>Description</h3>
-
-<p>RDB_get_errfile returns the FILE * which has been set using
-<a href="#set_errfile">RDB_set_errfile</a>.
-
-<h3>Return value</h3>
-
-<p>The FILE * or NULL if no FILE * has been set.
-
-<hr>
-
-<h2 id="get_errfn">RDB_get_errfn</h2>
-
-<pre>
-#include &lt;rel/rdb.h&gt;
-
-RDB_errfn *
-RDB_get_errfn(RDB_environment *, void **argp);
-
-</pre>
-
-<h3>Description</h3>
-
-<p>RDB_get_errfn returns the error reporting function which has been set using
-<a href="#set_errfn">RDB_set_errfn</a> and stores the argument
-passed to RDB_set_errfn at the location pointed to by <var>argp</var>.
-
-<h3>Return value</h3>
-
-<p>A pointer to the error reporting function or NULL if no error reporting
-function has been set.
-
-<hr>
-
-<h2 id="set_errfile">RDB_set_errfile</h2>
-
-<pre>
-#include &lt;rel/rdb.h&gt;
-
-void
-RDB_set_errfile(RDB_environment *, FILE *errfile);
-</pre>
-
-<h3>Description</h3>
-
-<p>RDB_set_errfile sets a C library FILE * to be used for error messages.
-
-<hr>
-
-<h2 id="set_errfn">RDB_set_errfn</h2>
-
-<pre>
-#include &lt;rel/rdb.h&gt;
-
-void
-RDB_set_errfn(RDB_environment *envp, void (*errfn)(const char *msg, void *arg), void *arg);
-</pre>
-
-<h3>Description</h3>
-
-<p>RDB_set_errfn sets an error reporting function, together with an argument which is
-passed to the function.
 
 <hr>
 

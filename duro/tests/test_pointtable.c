@@ -334,7 +334,7 @@ main(void)
         return 1;
     }
 
-    RDB_set_errfile(envp, stderr);
+    RDB_bdb_env(envp)->set_errfile(RDB_bdb_env(envp), stderr);
 
     ret = create_table(dbp, &ec);
     if (ret != RDB_OK) {

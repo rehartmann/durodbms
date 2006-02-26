@@ -22,7 +22,7 @@ int yywrap(void) {
 }
 
 void yyerror(char *errtxt) {
-    RDB_errmsg(_RDB_parse_txp->dbp->dbrootp->envp, "%s", errtxt);
+    RDB_raise_invalid_argument(errtxt, _RDB_parse_ecp);
 }
 
 RDB_expression *
@@ -41,7 +41,7 @@ RDB_parse_expr(const char *txt, RDB_ltablefn *lt_fp, void *lt_arg,
     pret = yyparse();
     if (pret != 0) {
         if (RDB_get_err(ecp) == NULL) {
-            RDB_raise_invalid_argument("syntax error", ecp);
+            RDB_raise_invalid_argument("parse error", ecp);
         }
         return NULL;
     }
