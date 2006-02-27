@@ -1,7 +1,7 @@
 /*
  * $Id$
  *
- * Copyright (C) 2005 René Hartmann.
+ * Copyright (C) 2005-2006 René Hartmann.
  * See the file COPYING for redistribution information.
  */
 
@@ -1767,7 +1767,7 @@ RDB_multi_assign(int insc, const RDB_ma_insert insv[],
 
     /*
      * Check if the same target is assigned twice
-     * or if a target is used as source later
+     * or if there is a later assignment that depends on a target
      */
     for (i = 0; i < ninsc; i++) {
         for (j = i + 1; j < ninsc; j++) {
@@ -1783,10 +1783,22 @@ RDB_multi_assign(int insc, const RDB_ma_insert insv[],
                 rcount = RDB_ERROR;
                 goto cleanup;
             }
+            if (nupdv[j].condp != NULL
+                    && _RDB_expr_refers(nupdv[j].condp, ninsv[i].tbp)) {
+                RDB_raise_not_supported("update condition depends on target", ecp);
+                rcount = RDB_ERROR;
+                goto cleanup;
+            }
         }
         for (j = 0; j < ndelc; j++) {
             if (ninsv[i].tbp == ndelv[j].tbp) {
                 RDB_raise_invalid_argument("target is assigned twice", ecp);
+                rcount = RDB_ERROR;
+                goto cleanup;
+            }
+            if (ndelv[j].condp != NULL
+                    && _RDB_expr_refers(ndelv[j].condp, ninsv[i].tbp)) {
+                RDB_raise_not_supported("delete condition depends on target", ecp);
                 rcount = RDB_ERROR;
                 goto cleanup;
             }
@@ -1803,7 +1815,7 @@ RDB_multi_assign(int insc, const RDB_ma_insert insv[],
              * Check if a presviously modified table is source of a copy
              */
             if (copyv[j].srcp->kind == RDB_OB_TABLE
-                    && insv[i].tbp == copyv[j].srcp->var.tbp) {
+                    && _RDB_table_refers(copyv[j].srcp->var.tbp, insv[i].tbp)) {
                 RDB_raise_not_supported(
                         "Table is both source and target of assignment", ecp);
                 rcount = RDB_ERROR;
@@ -1818,10 +1830,22 @@ RDB_multi_assign(int insc, const RDB_ma_insert insv[],
                 rcount = RDB_ERROR;
                 goto cleanup;
             }
+            if (nupdv[j].condp != NULL
+                    && _RDB_expr_refers(nupdv[j].condp, nupdv[i].tbp)) {
+                RDB_raise_not_supported("update condition depends on target", ecp);
+                rcount = RDB_ERROR;
+                goto cleanup;
+            }
         }
         for (j = 0; j < ndelc; j++) {
             if (updv[i].tbp == ndelv[j].tbp) {
                 RDB_raise_invalid_argument("target is assigned twice", ecp);
+                rcount = RDB_ERROR;
+                goto cleanup;
+            }
+            if (ndelv[j].condp != NULL
+                    && _RDB_expr_refers(ndelv[j].condp, nupdv[i].tbp)) {
+                RDB_raise_not_supported("delete condition depends on target", ecp);
                 rcount = RDB_ERROR;
                 goto cleanup;
             }
@@ -1834,7 +1858,7 @@ RDB_multi_assign(int insc, const RDB_ma_insert insv[],
                 goto cleanup;
             }
             if (copyv[j].srcp->kind == RDB_OB_TABLE
-                    && updv[i].tbp == copyv[j].srcp->var.tbp) {
+                    && _RDB_table_refers(copyv[j].srcp->var.tbp, updv[i].tbp)) {
                 RDB_raise_not_supported(
                         "Table is both source and target of assignment", ecp);
                 rcount = RDB_ERROR;
@@ -1849,6 +1873,12 @@ RDB_multi_assign(int insc, const RDB_ma_insert insv[],
                 rcount = RDB_ERROR;
                 goto cleanup;
             }
+            if (ndelv[j].condp != NULL
+                    && _RDB_expr_refers(ndelv[j].condp, ndelv[i].tbp)) {
+                RDB_raise_not_supported("delete condition depends on target", ecp);
+                rcount = RDB_ERROR;
+                goto cleanup;
+            }
         }
         for (j = 0; j < copyc; j++) {
             if (copyv[j].dstp->kind == RDB_OB_TABLE
@@ -1858,7 +1888,7 @@ RDB_multi_assign(int insc, const RDB_ma_insert insv[],
                 goto cleanup;
             }
             if (copyv[j].srcp->kind == RDB_OB_TABLE
-                    && delv[i].tbp == copyv[j].srcp->var.tbp) {
+                    && _RDB_table_refers(copyv[j].srcp->var.tbp, delv[i].tbp)) {
                 RDB_raise_not_supported(
                         "Table is both source and target of assignment", ecp);
                 rcount = RDB_ERROR;
@@ -1879,11 +1909,12 @@ RDB_multi_assign(int insc, const RDB_ma_insert insv[],
             if (copyv[j].srcp->kind == RDB_OB_TABLE
                     && copyv[i].dstp->kind == RDB_OB_TABLE
                     && copyv[j].srcp->kind == RDB_OB_TABLE
-                    && copyv[i].dstp->var.tbp == copyv[j].srcp->var.tbp)
+                    && _RDB_table_refers(copyv[j].srcp->var.tbp, copyv[i].dstp->var.tbp)) {
                 RDB_raise_not_supported(
                         "Table is both source and target of assignment", ecp);
                 rcount = RDB_ERROR;
                 goto cleanup;
+            }
         }
     }
 

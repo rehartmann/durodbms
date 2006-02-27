@@ -616,8 +616,8 @@ _RDB_copy_obj(RDB_object *dstvalp, const RDB_object *srcvalp,
                 }
                 ret = _RDB_delete_real(dstvalp->var.tbp, NULL, ecp,
                         dstvalp->var.tbp->is_persistent ? txp : NULL);
-                if (ret != RDB_OK)
-                    return ret;
+                if (ret < 0)
+                    return RDB_ERROR;
             }
             if (dstvalp->var.tbp->is_persistent && txp == NULL) {
                 RDB_raise_invalid_tx(ecp);

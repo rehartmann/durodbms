@@ -62,6 +62,20 @@ if {![string match "NOT_SUPPORTED_ERROR(*)" $errcode]} {
     error "wrong error: $errcode"
 }
 
+duro::table expr -local TU {T1 UNION T2} $tx
+
+if {![catch {
+    duro::massign \
+            { copy T1 T2 } \
+            { copy T2 TU } $tx
+}]} {
+    error "multiple assignment should fail, but succeeded"
+}
+set errcode [lindex $errorCode 1]
+if {![string match "NOT_SUPPORTED_ERROR(*)" $errcode]} {
+    error "wrong error: $errcode"
+}
+
 duro::massign \
         {insert T3 {A 1 B Blu}} \
         {delete T1 {A=1}} \

@@ -113,8 +113,6 @@ main(void)
         return 1;
     }
 
-    RDB_bdb_env(envp)->set_errfile(RDB_bdb_env(envp), stderr);
-
     RDB_init_exec_context(&ec);
     dbp = RDB_get_db_from_env("TEST", envp, &ec);
     if (dbp == NULL) {
