@@ -1,7 +1,7 @@
 /*
  * $Id$
  *
- * Copyright (C) 2003-2005 René Hartmann.
+ * Copyright (C) 2003-2006 René Hartmann.
  * See the file COPYING for redistribution information.
  */
 
@@ -186,6 +186,12 @@ RDB_double
 RDB_tuple_get_double(const RDB_object *tplp, const char *attrname)
 {
     return ((RDB_object *) RDB_tuple_get(tplp, attrname))->var.double_val;
+}
+
+RDB_float
+RDB_tuple_get_float(const RDB_object *tplp, const char *attrname)
+{
+    return ((RDB_object *) RDB_tuple_get(tplp, attrname))->var.float_val;
 }
 
 char *

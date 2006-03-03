@@ -395,11 +395,19 @@ _RDB_fields_to_DBT(RDB_recmap *rmp, int fldc, const RDB_field fldv[],
             vfldc++;
         }
     }
-  
-    dbtp->data = malloc(dbtp->size);
+
+    if (dbtp->size > 0) {  
+        dbtp->data = malloc(dbtp->size);
+        if (dbtp->data == NULL) {
+            ret = ENOMEM;
+            goto error;
+        }
+    } else {
+        dbtp->data = NULL;
+    }
     if (fldc - vfldc > 0) {
         fno = malloc((fldc - vfldc) * sizeof(int));
-        if (fno == NULL || dbtp->data == NULL) {
+        if (fno == NULL) {
             ret = ENOMEM;
             goto error;
         }
@@ -408,8 +416,6 @@ _RDB_fields_to_DBT(RDB_recmap *rmp, int fldc, const RDB_field fldv[],
         vfno = malloc(vfldc *  sizeof(int));
         if (vfno == NULL) {
             ret = ENOMEM;
-            free(fno);
-            free(dbtp->data);
             goto error;
         }
     }

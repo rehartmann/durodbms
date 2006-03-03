@@ -525,7 +525,7 @@ Duro_invoke_update_op(const char *name, int argc, RDB_object *argv[],
                 char buf[11];
                 Tcl_Obj *varnamep;
 
-                snprintf(buf, 11, "duro_%05d", i);
+                sprintf(buf, "duro_%05d", i);
                 varnamep = Tcl_NewStringObj(buf, 10);
                 if (Tcl_ObjSetVar2(interp, varnamep, NULL, argtop, 0) == NULL) {
                     Tcl_Free((char *) opargv);
@@ -578,7 +578,7 @@ Duro_invoke_update_op(const char *name, int argc, RDB_object *argv[],
             char buf[11];
             Tcl_Obj *varnamep;
 
-            snprintf(buf, 11, "duro_%05d", i);
+            sprintf(buf, "duro_%05d", i);
             varnamep = Tcl_NewStringObj(buf, 10);
 
             valobjp = Tcl_ObjGetVar2(interp, varnamep, NULL, 0);

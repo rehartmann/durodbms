@@ -74,9 +74,14 @@ RDB_index_cursor(RDB_cursor **curpp, RDB_index *idxp, RDB_bool wr,
 int
 RDB_destroy_cursor(RDB_cursor *curp)
 {
+    int ret;
+
     free(curp->current_key.data);
     free(curp->current_data.data);
-    return curp->cursorp->c_close(curp->cursorp);
+
+    ret = curp->cursorp->c_close(curp->cursorp);
+    free(curp);
+    return ret;
 }
 
 int

@@ -331,7 +331,7 @@ RDB_create_table_from_type(const char *name, RDB_bool global,
 under the control of the transaction pointed to by <var>txp</var>
 and returns a pointer to the newly created RDB_table structure.
 
-<p>If an error occurs, an error value is left in <var>ecp</var>.
+<p>If an error occurs, an error value is left in *<var>ecp</var>.
 
 <p>If <var>global</var> is RDB_FALSE, a local (transient) table will be created.
 In this case, <var>name</var> may be NULL.
@@ -413,7 +413,7 @@ RDB_get_table(const char *name, RDB_exec_context *ecp, RDB_transaction *txp);
 in the environment of the database the transaction
 specified by <var>txp</var> interacts with and returns a pointer to it.
 
-<p>If an error occurs, an error value is left in <var>ecp</var>.
+<p>If an error occurs, an error value is left in *<var>ecp</var>.
 
 <h3>Return value</h3>
 
@@ -448,7 +448,7 @@ RDB_drop_table(RDB_table *tbp, RDB_exec_context *ecp, RDB_transaction *txp);
 and frees all resources associated with that table.
 If the table is virtual, its unnamed child tables are also deleted.
 
-<p>If an error occurs, an error value is left in <var>ecp</var>.
+<p>If an error occurs, an error value is left in *<var>ecp</var>.
 
 <p>If the table is local, <var>txp</var> may be NULL.
 
@@ -522,7 +522,7 @@ RDB_set_table_name(RDB_table *tbp, const char *name,
 
 <p>RDB_set_table_name sets the name of the table to <var>name</var>.
 
-<p>If an error occurs, an error value is left in <var>ecp</var>.
+<p>If an error occurs, an error value is left in *<var>ecp</var>.
 
 <h3>Return value</h3>
 
@@ -558,7 +558,7 @@ RDB_subset(RDB_table *tb1p, RDB_table *tb2p, RDB_exec_context *ecp, RDB_transact
 of the table specified by <var>tb2p</var> and stores the result at the
 location pointed to by <var>resultp</var>.
 
-<p>If an error occurs, an error value is left in <var>*ecp</var>.
+<p>If an error occurs, an error value is left in *<var>ecp</var>.
 
 <h3>Return value</h3>
 
@@ -595,7 +595,7 @@ RDB_add_table(RDB_table *tbp, RDB_exec_context *ecp, RDB_transaction *txp);
 <p>RDB_add_table adds the table specified by <var>tbp</var> to the
 database the transaction specified by <var>txp</var> interacts with.
 
-<p>If an error occurs, an error value is left in <var>*ecp</var>.
+<p>If an error occurs, an error value is left in *<var>ecp</var>.
 
 <p>If the table is a local (transient) table, it is made global
 (persistent).
@@ -640,7 +640,7 @@ RDB_remove_table(RDB_table *tbp, RDB_exec_context *ecp, RDB_transaction *txp);
 <p>RDB_remove_table removes the table specified by <var>tbp</var> from the
 database the transaction specified by <var>txp</var> interacts with.
 
-<p>If an error occurs, an error value is left in <var>*ecp</var>.
+<p>If an error occurs, an error value is left in *<var>ecp</var>.
 
 <p>If the table is a global table, it is made local.
 
@@ -683,7 +683,7 @@ RDB_table_contains(RDB_table *tbp, const RDB_object *tplp, RDB_exec_context *ecp
 is an element of the table specified by <var>tbp</var>
 and stores the result at the location pointed to by <var>resultp</var>.
 
-<p>If an error occurs, an error value is left in <var>*ecp</var>.
+<p>If an error occurs, an error value is left in *<var>ecp</var>.
 
 <h3>Return value</h3>
 
@@ -723,7 +723,7 @@ RDB_table_equals(RDB_table *tb1p, RDB_table *tb2p, RDB_exec_context *ecp,
 <p>RDB_table_equals checks two tables for equality and stores the result at the
 location pointed to by <var>resultp</var>.
 
-<p>If an error occurs, an error value is left in <var>*ecp</var>.
+<p>If an error occurs, an error value is left in *<var>ecp</var>.
 
 <h3>Return value</h3>
 
@@ -762,7 +762,7 @@ and stores the result at the location pointed to by <var>resultp</var>.
 <p>If the table has only one attribute, <var>attrname</var>
 may be NULL.
 
-<p>If an error occurs, an error value is left in <var>*ecp</var>.
+<p>If an error occurs, an error value is left in *<var>ecp</var>.
 
 <p>The attribute <var>attrname</var> must be of type BOOLEAN.
 
@@ -809,7 +809,7 @@ pointed to by <var>resultp</var>.
 <p>If the table has only one attribute, <var>attrname</var>
 may be NULL.
 
-<p>If an error occurs, an error value is left in <var>*ecp</var>.
+<p>If an error occurs, an error value is left in *<var>ecp</var>.
 
 <p>The attribute <var>attrname</var> must be of
 type BOOLEAN.
@@ -857,7 +857,7 @@ pointed to by <var>resultp</var>.
 <p>If the table has only one attribute, <var>attrname</var>
 may be NULL.
 
-<p>If an error occurs, an error value is left in <var>*ecp</var>.
+<p>If an error occurs, an error value is left in *<var>ecp</var>.
 
 <p>The attribute <var>attrname</var> must be numeric.
 
@@ -900,7 +900,7 @@ RDB_cardinality(RDB_table *tbp, RDB_exec_context *ecp, RDB_transaction *txp);
 <p>RDB_cardinality returns the number of tuples in
 the table pointed to by <var>tbp</var>.
 
-<p>If an error occurs, an error value is left in <var>*ecp</var>.
+<p>If an error occurs, an error value is left in *<var>ecp</var>.
 
 <h3>Return value</h3>
 
@@ -942,7 +942,7 @@ and stores the result at the location pointed to by <var>resultp</var>.
 <p>If the table has only one attribute, <var>attrname</var>
 may be NULL.
 
-<p>If an error occurs, an error value is left in <var>*ecp</var>.
+<p>If an error occurs, an error value is left in *<var>ecp</var>.
 
 <p>The attribute <var>attrname</var> must be numeric
 and the result is of the same type as the attribute.
@@ -989,7 +989,7 @@ and stores the result at the location pointed to by <var>resultp</var>.
 <p>If the table has only one attribute, <var>attrname</var>
 may be NULL.
 
-<p>If an error occurs, an error value is left in <var>*ecp</var>.
+<p>If an error occurs, an error value is left in *<var>ecp</var>.
 
 <p>The attribute <var>attrname</var> must be numeric
 and the result is of the same type as the attribute.
@@ -1036,7 +1036,7 @@ and stores the result at the location pointed to by <var>resultp</var>.
 <p>If the table has only one attribute, <var>attrname</var>
 may be NULL.
 
-<p>If an error occurs, an error value is left in <var>*ecp</var>.
+<p>If an error occurs, an error value is left in *<var>ecp</var>.
 
 <p>The attribute <var>attrname</var> must be numeric
 and the result is of the same type as the attribute.
@@ -1079,7 +1079,7 @@ RDB_table_is_empty(RDB_table *tbp, RDB_exec_context *ecp, RDB_transaction *txp, 
 is empty and stores the result of
 the check at the location pointed to by <var>resultp</var>.
 
-<p>If an error occurs, an error value is left in <var>*ecp</var>.
+<p>If an error occurs, an error value is left in *<var>ecp</var>.
 
 <h3>Return value</h3>
 
@@ -1114,7 +1114,7 @@ RDB_insert(RDB_table *tbp, const RDB_object *tplp, RDB_exec_context *ecp, RDB_tr
 <p>RDB_insert inserts the tuple specified by <var>tplp</var>
 into the table specified by <var>tbp</var>.
 
-<p>If an error occurs, an error value is left in <var>*ecp</var>.
+<p>If an error occurs, an error value is left in *<var>ecp</var>.
 
 <p>Currently, RDB_insert is not supported for virtual tables which are the result
 of a UNION, MINUS, SEMIMINUS, INTERSECT, SEMIJOIN, MINUS, SUMMARIZE, DIVIDEBY PER,
@@ -1177,7 +1177,7 @@ RDB_update(RDB_table *tbp, RDB_expression *exp, int updc,
 for which the expression specified by <var>exp</var> evaluates to true.
 If <var>exp</var> is NULL, all tuples are updated.
 
-<p>If an error occurs, an error value is left in <var>*ecp</var>.
+<p>If an error occurs, an error value is left in *<var>ecp</var>.
 
 <p>The attributes to be updated are specified by the <var>updv</var> array.
 The attribute specified by the field name is set to the value
@@ -1252,7 +1252,7 @@ RDB_delete(RDB_table *tbp, RDB_expression *exp, RDB_exec_context *ecp, RDB_trans
 for which the expression specified by <var>exp</var> evaluates to true.
 If <var>exp</var> is NULL, all tuples are deleted.
 
-<p>If an error occurs, an error value is left in <var>*ecp</var>.
+<p>If an error occurs, an error value is left in *<var>ecp</var>.
 
 <p>Currently, RDB_delete is not supported for virtual tables which are the result of
 a JOIN, MINUS, SEMIMINUS, UNION, INTERSECT, SEMIJOIN, SUMMARIZE, WRAP, UNWRAP,
@@ -1304,7 +1304,7 @@ RDB_extract_tuple(RDB_table *tbp, RDB_exec_context *ecp, RDB_transaction *txp, R
 only one tuple and stores its value in the variable pointed to by <var>tplp</var>.
 
 <p>If an error occurs, the tuple value of the variable pointed to by <var>tplp</var>
-is undefined and an error value is left in <var>*ecp</var>.
+is undefined and an error value is left in *<var>ecp</var>.
 
 <h3>Return value</h3>
 
@@ -1346,7 +1346,7 @@ The two tables must be of the same type.
 
 <p>Currently, virtual target tables are not supported.
 
-<p>If an error occurs, an error value is left in <var>*ecp</var>.
+<p>If an error occurs, an error value is left in *<var>ecp</var>.
 
 <h3>Return value</h3>
 
@@ -1386,7 +1386,7 @@ RENAME operator on the table specified by <var>tbp</var>.
 A pointer to the result table is stored at the location pointed to by
 <var>resultpp</var>.
 
-<p>If an error occurs, an error value is left in <var>*ecp</var>.
+<p>If an error occurs, an error value is left in *<var>ecp</var>.
 
 <p>The attributes to be renamed are specified by the arguments
 <var>renc</var> and <var>renv</var>.
@@ -1428,7 +1428,7 @@ condition specified by <var>exp</var> evaluates to true.
 A pointer to the result table is stored at the location pointed to by
 <var>resultpp</var>.
 
-<p>If an error occurs, an error value is left in <var>*ecp</var>.
+<p>If an error occurs, an error value is left in *<var>ecp</var>.
 
 <h3>Return value</h3>
 
@@ -1464,7 +1464,7 @@ RDB_extend(RDB_table *tbp, int attrc, const <a href="#virtual_attr">RDB_virtual_
 <p>RDB_extend creates a local (transient) virtual table which is the result of a relational
 EXTEND operator on the table specified by <var>tbp</var>.
 
-<p>If an error occurs, an error value is left in <var>*ecp</var>.
+<p>If an error occurs, an error value is left in *<var>ecp</var>.
 
 <p>The new table will have <var>attrc</var> additional attributes.
 The values of these attributes are obtained by evaluating the
@@ -1517,7 +1517,7 @@ by <var>tbp</var>.
 <p>The attributes of the new table are specified by <var>attrc</var>
 and <var>attrv</var>.
 
-<p>If an error occurs, an error value is left in <var>*ecp</var>.
+<p>If an error occurs, an error value is left in *<var>ecp</var>.
 
 <h3>Return value</h3>
 
@@ -1552,7 +1552,7 @@ by <var>tbp</var>.
 <p>The new table has the attributes of the original table except those
 specified by <var>attrc</var> and <var>attrv</var>.
 
-<p>If an error occurs, an error value is left in <var>*ecp</var>.
+<p>If an error occurs, an error value is left in *<var>ecp</var>.
 
 <h3>Return value</h3>
 
@@ -1587,7 +1587,7 @@ of the two tables specified by <var>tb1p</var> and <var>tb2p</var>.
 <p>If the two tables have no common attribute, the result becomes
 a cartesian product.
 
-<p>If an error occurs, an error value is left in <var>*ecp</var>.
+<p>If an error occurs, an error value is left in *<var>ecp</var>.
 
 <h3>Return value</h3>
 
@@ -1621,7 +1621,7 @@ result of a relational UNION of the two tables, that is,
 it contains the tuples from both tables. A pointer to the
 new RDB_table is stored in <var>resultpp</var>.
 
-<p>If an error occurs, an error value is left in <var>*ecp</var>.
+<p>If an error occurs, an error value is left in *<var>ecp</var>.
 
 <h3>Return value</h3>
 
@@ -1653,7 +1653,7 @@ RDB_intersect(RDB_table *, RDB_table *, RDB_exec_context *ecp);
 result of a relational INTERSECT of the two tables, that is,
 it contains the tuples which both tables contain.
 
-<p>If an error occurs, an error value is left in <var>*ecp</var>.
+<p>If an error occurs, an error value is left in *<var>ecp</var>.
 
 <h3>Return value</h3>
 
@@ -1686,7 +1686,7 @@ result of a relational MINUS of the two tables, that is,
 it contains the tuples from the first table,
 except those which the second table contains.
 
-<p>If an error occurs, an error value is left in <var>*ecp</var>.
+<p>If an error occurs, an error value is left in *<var>ecp</var>.
 
 <h3>Return value</h3>
 
@@ -1717,7 +1717,7 @@ RDB_semijoin(RDB_table *, RDB_table *, RDB_exec_context *ecp);
 <p>RDB_semijoin creates a local (transient) virtual table which is the
 result of a relational SEMIJOIN of the two tables.
 
-<p>If an error occurs, an error value is left in <var>*ecp</var>.
+<p>If an error occurs, an error value is left in *<var>ecp</var>.
 
 <h3>Return value</h3>
 
@@ -1889,7 +1889,7 @@ result of a small divide of the three tables.
 
 <p>Table #3 must be of the same type as the join of table #1 and table #2.
 
-<p>If an error occurs, an error value is left in <var>*ecp</var>.
+<p>If an error occurs, an error value is left in *<var>ecp</var>.
 
 <h3>Return value</h3>
 
@@ -1922,7 +1922,7 @@ RDB_gdivide(RDB_table *, RDB_table *, RDB_table *, RDB_table *,
 <p>RDB_gdivide creates a local (transient) virtual table which is the
 result of a great divide of the four tables.
 
-<p>If an error occurs, an error value is left in <var>*ecp</var>.
+<p>If an error occurs, an error value is left in *<var>ecp</var>.
 
 <h3>Return value</h3>
 
@@ -1961,7 +1961,7 @@ A pointer to the result table is stored in resultpp.
 
 <p>The two argument tables must not share an unnamed child table.
 
-<p>If an error occurs, an error value is left in <var>*ecp</var>.
+<p>If an error occurs, an error value is left in *<var>ecp</var>.
 
 <p>Currently, COUNTD, SUMD, and AVGD are not supported.
 
@@ -1998,7 +1998,7 @@ RDB_wrap(RDB_table *tbp, int wrapc, const <a href="#wrapping">RDB_wrapping</a> w
 <p>RDB_wrap creates a local (transient) virtual table which is the result of a
 relational WRAP operator.
 
-<p>If an error occurs, an error value is left in <var>*ecp</var>.
+<p>If an error occurs, an error value is left in *<var>ecp</var>.
 
 <h3>Return value</h3>
 
@@ -2027,7 +2027,7 @@ RDB_unwrap(RDB_table *, int attrc, char *attrv[], RDB_exec_context *ecp);
 <p>RDB_unwrap creates a local (transient) virtual table which is the result of a
 relational UNWRAP operator.
 
-<p>If an error occurs, an error value is left in <var>*ecp</var>.
+<p>If an error occurs, an error value is left in *<var>ecp</var>.
 
 <h3>Return value</h3>
 
@@ -2065,7 +2065,7 @@ and <var>attrv</var> are grouped into a relation-valued attribute
 
 <p>A pointer to the result table on success, or NULL if an error occured.
 
-<p>If an error occurs, an error value is left in <var>*ecp</var>.
+<p>If an error occurs, an error value is left in *<var>ecp</var>.
 
 <h3>Errors</h3>
 
@@ -2093,7 +2093,7 @@ RDB_ungroup(RDB_table *, const char *attr, RDB_exec_context *ecp);
 <p>RDB_ungroup creates a local (transient) virtual table which is the result of a
 relational UNGROUP operator.
 
-<p>If an error occurs, an error value is left in <var>*ecp</var>.
+<p>If an error occurs, an error value is left in *<var>ecp</var>.
 
 <h3>Return value</h3>
 
@@ -2126,7 +2126,7 @@ RDB_join_tuples(const RDB_object *tpl1p, const RDB_object *tpl2p,
 <p>RDB_join_tuples creates a tuple which contains the attributes
 of the two tuples specified by <var>tpl1p</var> and <var>tpl2p</var>.
 
-<p>If an error occurs, an error value is left in <var>*ecp</var>.
+<p>If an error occurs, an error value is left in *<var>ecp</var>.
 
 <h3>Return value</h3>
 
@@ -2162,7 +2162,7 @@ RDB_project_tuple(const RDB_object *, int attrc, char *attrv[],
 <p>RDB_project_tuple creates a tuple which contains only the attributes
 specified by <var>attrc</var> and <var>attrv</var>.
 
-<p>If an error occurs, an error value is left in <var>*ecp</var>.
+<p>If an error occurs, an error value is left in *<var>ecp</var>.
 
 <h3>Return value</h3>
 
@@ -2195,7 +2195,7 @@ RDB_tuple_set(RDB_object *tplp, const char *name, const RDB_object *valp, RDB_ex
 variable specified by <var>tplp</var> to the value specified by
 <var>valp</var>.
 
-<p>If an error occurs, an error value is left in <var>*ecp</var>.
+<p>If an error occurs, an error value is left in *<var>ecp</var>.
 
 <h3>Return value</h3>
 
@@ -2222,7 +2222,7 @@ RDB_tuple_set_bool(RDB_object *tplp, const char *name, RDB_bool val, RDB_exec_co
 variable specified by <var>tplp</var> to the boolean value specified by
 <var>val</var>.
 
-<p>If an error occurs, an error value is left in <var>*ecp</var>.
+<p>If an error occurs, an error value is left in *<var>ecp</var>.
 
 <h3>Return value</h3>
 
@@ -2249,7 +2249,7 @@ RDB_tuple_set_int(RDB_object *tplp, const char *name, RDB_int val, RDB_exec_cont
 variable specified by <var>tplp</var> to the integer value specified by
 <var>val</var>.
 
-<p>If an error occurs, an error value is left in <var>*ecp</var>.
+<p>If an error occurs, an error value is left in *<var>ecp</var>.
 
 <h3>Return value</h3>
 
@@ -2276,7 +2276,7 @@ RDB_tuple_set_float(RDB_object *tplp, const char *name, RDB_float val, RDB_exec_
 variable specified by <var>tplp</var> to the value specified by
 <var>val</var>.
 
-<p>If an error occurs, an error value is left in <var>*ecp</var>.
+<p>If an error occurs, an error value is left in *<var>ecp</var>.
 
 <h3>Return value</h3>
 
@@ -2303,7 +2303,7 @@ RDB_tuple_set_double(RDB_object *tplp, const char *name, RDB_double val, RDB_exe
 variable specified by <var>tplp</var> to the value specified by
 <var>val</var>.
 
-<p>If an error occurs, an error value is left in <var>*ecp</var>.
+<p>If an error occurs, an error value is left in *<var>ecp</var>.
 
 <h3>Return value</h3>
 
@@ -2330,7 +2330,7 @@ RDB_tuple_set_string(RDB_object *tplp, const char *name, const char *str, RDB_ex
 variable specified by <var>tplp</var> to the string value specified by
 <var>str</var>.
 
-<p>If an error occurs, an error value is left in <var>*ecp</var>.
+<p>If an error occurs, an error value is left in *<var>ecp</var>.
 
 <h3>Return value</h3>
 
@@ -2528,7 +2528,7 @@ RDB_extend_tuple(RDB_object *tplp, int attrc, const <a href="#virtual_attr">RDB_
 <p>RDB_extend_tuple extends the tuple specified by <var>tplp</var>
 by the attributes specified by <var>attrc</var> and <var>attrv</var>.
 
-<p>If an error occurs, an error value is left in <var>*ecp</var>.
+<p>If an error occurs, an error value is left in *<var>ecp</var>.
 
 <h3>Return value</h3>
 
@@ -2567,7 +2567,7 @@ RDB_rename_tuple(const RDB_object *, int renc, const <a href="#renaming">RDB_ren
 to the tuple specified by <var>restplp</var>, renaming the attributes
 specified by <var>renc</var> and <var>renv</var>.
 
-<p>If an error occurs, an error value is left in <var>*ecp</var>.
+<p>If an error occurs, an error value is left in *<var>ecp</var>.
 
 <h3>Return value</h3>
 
@@ -2595,7 +2595,7 @@ RDB_wrap_tuple(const RDB_object *tplp, int wrapc, const <a href="#wrapping">RDB_
 <var>tplp</var> and stores the result in the variable pointed to by
 <var>restplp</var>.
 
-<p>If an error occurs, an error value is left in <var>*ecp</var>.
+<p>If an error occurs, an error value is left in *<var>ecp</var>.
 
 <h3>Return value</h3>
 
@@ -2627,7 +2627,7 @@ RDB_unwrap_tuple(const RDB_object *tplp, int attrc, const char *attrv[],
 <var>tplp</var> and stores the result in the variable pointed to by
 <var>restplp</var>.
 
-<p>If an error occurs, an error value is left in <var>*ecp</var>.
+<p>If an error occurs, an error value is left in *<var>ecp</var>.
 
 <h3>Return value</h3>
 
@@ -2696,7 +2696,7 @@ RDB_obj_equals(const RDB_object *, const RDB_object *, RDB_exec_context *ecp,
 <p>RDB_obj_equals checks two RDB_object variables for equality
 and stores the result in the variable pointed to by <var>resp</var>.
 
-<p>If an error occurs, an error value is left in <var>*ecp</var>.
+<p>If an error occurs, an error value is left in *<var>ecp</var>.
 
 <h3>Return value</h3>
 
@@ -2740,7 +2740,7 @@ global tables.
 <p>Currently, RDB_copy_obj is not supported for targets which hold
 a virtual table.
 
-<p>If an error occurs, an error value is left in <var>*ecp</var>.
+<p>If an error occurs, an error value is left in *<var>ecp</var>.
 
 <h3>Return value</h3>
 
@@ -3002,7 +3002,7 @@ RDB_table_to_obj(RDB_object *objp, RDB_table *tbp, RDB_exec_context *ecp);
 <p>RDB_table_to_obj wraps the table specified by <var>tbp</var> into
 the RDB_object pointed to by <var>objp</var>.
 
-<p>If an error occurs, an error value is left in <var>*ecp</var>.
+<p>If an error occurs, an error value is left in *<var>ecp</var>.
 
 <hr>
 
@@ -3022,7 +3022,7 @@ RDB_obj_comp(const RDB_object *valp, const char *compname,
 of a possible representation of the variable pointed to by <var>valp</var>
 to the variable pointed to by <var>comp</var>.
 
-<p>If an error occurs, an error value is left in <var>*ecp</var>.
+<p>If an error occurs, an error value is left in *<var>ecp</var>.
 
 <h3>Return value</h3>
 
@@ -3064,7 +3064,7 @@ to the value of the variable pointed to by <var>comp</var>.
 <p>The RDB_object must be of a type which has a component
 <var>compname</var>.
 
-<p>If an error occurs, an error value is left in <var>*ecp</var>.
+<p>If an error occurs, an error value is left in *<var>ecp</var>.
 
 <h3>Return value</h3>
 
@@ -3088,7 +3088,7 @@ the position <var>pos</var> in the RDB_object pointed to by <var>valp</var>.
 <var>valp</var> must point either to a new initialized RDB_object
 or to a RDB_object of type BINARY.
 
-<p>If an error occurs, an error value is left in <var>*ecp</var>.
+<p>If an error occurs, an error value is left in *<var>ecp</var>.
 
 <h3>Return value</h3>
 
@@ -4434,7 +4434,7 @@ and the arguments are passed through <var>argc</var> and <var>argv</var>.
 location specified by <var>retvalp</var> and return RDB_OK.
 It can indicate an error condition by leaving an error in *<var>ecp</var>
 (see <a href="#raise_err">RDB_raise_err</a>)
-and returning an RDB_ERROR.
+and returning RDB_ERROR.
 
 <p>If <var>iargp</var> is not NULL, it must point to a byte block
 of length <var>iarglen</var> which will be passed to the function
@@ -4504,8 +4504,8 @@ and the arguments are passed through <var>argc</var> and <var>argv</var>.
 
 <p>On success, the function specified by <var>sym</var> must return RDB_OK.
 It can indicate an error condition by leaving an error in *<var>ecp</var>
-(see <a href="#raise_err">RDB_raise_err</a>)
-and returning an RDB_ERROR.
+(see <a href="#raise_err">RDB_raise_err</a> and related functions)
+and returning RDB_ERROR.
 
 <p>If <var>iargp</var> is not NULL, it must point to a byte block
 of length <var>iarglen</var> which will be passed to the function
@@ -4881,12 +4881,14 @@ RDB_raise_err(RDB_exec_context *);
 
 <h3>Description</h3>
 
-<p><strong>RDB_raise_err</strong> arranges for a RDB_object structure
-to be the error associated with the RDB_exec_context given by
-<var>ecp</var>. A previously raised error is overwritten. 
-The RDB_object is in the same state as after a call to
-RDB_init_obj. It is the caller's responsibility to assign a value
-to the RDB_object, for example, by calling a selector.
+<p><strong>RDB_raise_err</strong> initializes a RDB_object structure,
+makes it the error associated with the RDB_exec_context given
+by <var>ecp</var>, and returns a pointer to it.
+A previously raised error is overwritten. 
+After RDB_raise_err() has been called succssfully, the RDB_object is in the
+same state as after a call to RDB_init_obj(). It is the caller's
+responsibility to assign a value to the RDB_object,
+for example, by calling a selector.
 
 <h3>Return value</h3>
 
@@ -5040,12 +5042,12 @@ RDB_ec_get_property(RDB_exec_context *, const char *name);
 
 <h3>Description</h3>
 
-<p><strong>RDB_ec_get_property</strong> returns the property <var>name</var>
+<p><strong>RDB_ec_get_property</strong> returns the value of the property <var>name</var>
 of the RDB_exec_context given by <var>ecp</var>.
 
 <h3>Return value</h3>
 
-<p>The property.
+<p>The property value.
 
 <hr>
 
@@ -5181,29 +5183,29 @@ They are shown below in Tutorial D notation.
 <pre>
 TYPE INVALID_TRANSACTION_ERROR POSSREP { };
 
-TYPE INVALID_ARGUMENT_ERROR POSSREP { STRING MSG };
+TYPE INVALID_ARGUMENT_ERROR POSSREP { MSG STRING };
 
-TYPE TYPE_MISMATCH_ERROR POSSREP { STRING MSG };
+TYPE TYPE_MISMATCH_ERROR POSSREP { MSG STRING };
 
-TYPE NOT_FOUND_ERROR POSSREP { STRING MSG };
+TYPE NOT_FOUND_ERROR POSSREP { MSG STRING };
 
-TYPE OPERATOR_NOT_FOUND_ERROR POSSREP { STRING MSG };
+TYPE OPERATOR_NOT_FOUND_ERROR POSSREP { MSG STRING };
 
-TYPE ATTRIBUTE_NOT_FOUND_ERROR POSSREP { STRING MSG };
+TYPE ATTRIBUTE_NOT_FOUND_ERROR POSSREP { MSG STRING };
 
-TYPE ELEMENT_EXISTS_ERROR POSSREP { STRING MSG };
+TYPE ELEMENT_EXISTS_ERROR POSSREP { MSG STRING };
 
-TYPE TYPE_CONSTRAINT_VIOLATION_ERROR POSSREP { STRING MSG };
+TYPE TYPE_CONSTRAINT_VIOLATION_ERROR POSSREP { MSG STRING };
 
-TYPE KEY_VIOLATION_ERROR { STRING MSG };
+TYPE KEY_VIOLATION_ERROR { MSG STRING };
 
-TYPE PREDICATE_VIOLATION_ERROR { STRING MSG };
+TYPE PREDICATE_VIOLATION_ERROR { MSG STRING };
 
 TYPE AGGREGATE_UNDEFINED_ERROR { };
 
 TYPE VERSION_MISMATCH_ERROR { };
 
-TYPE NOT_SUPPORTED_ERROR { STRING MSG };
+TYPE NOT_SUPPORTED_ERROR { MSG STRING };
 </pre>
 
 <h4 id="syserr">System errors</h4>

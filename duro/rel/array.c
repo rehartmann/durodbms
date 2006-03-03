@@ -108,7 +108,7 @@ RDB_array_get(RDB_object *arrp, RDB_int idx, RDB_exec_context *ecp)
     }
 
     /* If the element is in buffer, return it */
-    if (idx < arrp->var.arr.elemc && idx < arrp->var.arr.pos) {
+    if (idx < arrp->var.arr.pos && idx < arrp->var.arr.elemc) {
         return &arrp->var.arr.elemv[idx];
     }
 

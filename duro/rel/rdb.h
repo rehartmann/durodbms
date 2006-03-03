@@ -513,9 +513,6 @@ RDB_get_type(const char *name, RDB_exec_context *, RDB_transaction *);
 RDB_bool
 RDB_tx_is_running(RDB_transaction *txp);
 
-char *
-RDB_tx_errinfo(const RDB_transaction *);
-
 /*
  * Start the transaction pointed to by txp.
  * The transaction will be associated to the database pointed to by dbp.

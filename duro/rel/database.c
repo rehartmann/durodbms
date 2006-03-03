@@ -147,16 +147,23 @@ release_db(RDB_database *dbp, RDB_exec_context *ecp)
     /* Close all user tables */
     tbcount = RDB_hashmap_size(&dbp->tbmap);
     tbnames = malloc(sizeof(char *) * tbcount);
+    if (tbnames == NULL) {
+        RDB_raise_no_memory(ecp);
+        return RDB_ERROR;
+    }
+
     RDB_hashmap_keys(&dbp->tbmap, tbnames);
     for (i = 0; i < tbcount; i++) {
         tbp = RDB_hashmap_get(&dbp->tbmap, tbnames[i]);
         if (tbp != NULL && tbp->is_user) {
             ret = close_table(tbp, dbp->dbrootp->envp, ecp);
-            if (ret != RDB_OK)
+            if (ret != RDB_OK) {
+                free(tbnames);
                 return ret;
-
+            }
         }
     }
+    free(tbnames);
 
     ret = rm_db(dbp, ecp);
     if (ret != RDB_OK)

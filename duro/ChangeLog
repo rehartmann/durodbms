@@ -9,7 +9,7 @@ Changes for Duro 0.11
 
 - Durotcl: Added duro::env seterrfile. dberror is no longer called.
 
-- Fixed bugs in RDB_multi_assign().
+- Bugfixes.
 
 Changes for Duro 0.10
 
