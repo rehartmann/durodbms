@@ -32,6 +32,17 @@ RDB_open_env(const char *path, RDB_environment **envpp)
         return ret;
     }
 
+    /*
+     * Configure alloc, realloc, and free explicity
+     * because on Windows Bekekey DB may use a different heap
+     */
+    ret = envp->envp->set_alloc(envp->envp, malloc, realloc, free);
+    if (ret != 0) {
+        envp->envp->close(envp->envp, 0);
+        free(envp);
+        return ret;
+    }
+
     /* open DB environment */
     ret = envp->envp->open(envp->envp, path,
             DB_INIT_LOCK | DB_INIT_LOG | DB_INIT_MPOOL | DB_INIT_TXN | DB_CREATE,

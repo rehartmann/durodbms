@@ -1264,6 +1264,10 @@ _RDB_add_builtin_ops(RDB_dbroot *dbrootp, RDB_exec_context *ecp)
     op->argtv[0] = &RDB_FLOAT;
     op->argtv[1] = &RDB_FLOAT;
 
+    ret = _RDB_put_ro_op(dbrootp, op, ecp);
+    if (ret != RDB_OK)
+        return ret;
+
     op = _RDB_new_ro_op("<=", 2, &RDB_BOOLEAN, &let, ecp);
     if (op == NULL) {
         RDB_raise_no_memory(ecp);

@@ -29,6 +29,16 @@ RDB_init_hashmap(RDB_hashmap *hp, int capacity)
 void
 RDB_destroy_hashmap(RDB_hashmap *hp)
 {
+    RDB_kv_pair *entryp;
+    RDB_hashtable_iter hiter;
+
+    RDB_init_hashtable_iter(&hiter, (RDB_hashtable *) &hp->tab);
+    while ((entryp = RDB_hashtable_next(&hiter)) != NULL) {
+        free(entryp->key);
+        free(entryp);
+    }
+    RDB_destroy_hashtable_iter(&hiter);
+
     RDB_destroy_hashtable(&hp->tab);
 }
 

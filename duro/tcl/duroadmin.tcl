@@ -106,6 +106,7 @@ proc open_env_path {envpath} {
         set dbs [duro::env dbs $::dbenv]
     } msg]} {
         tk_messageBox -type ok -title "Error" -message $msg -icon error
+        set ::dbenv ""
         return
     }
     wm title . "[file tail $envpath] - Duroadmin"
@@ -1049,8 +1050,12 @@ proc about {} {
 }
 
 proc quit {} {
+    if {$::dbenv != ""} {
+        duro::env close $::dbenv
+    }
+
     close $::errf
-    file delete $::errfile
+    catch {file delete $::errfile}
     exit
 }
 
@@ -1140,6 +1145,8 @@ grid rowconfigure .tableframe 0 -weight 1
 
 bind .tables <<ListboxSelect>> show_table
 bind .tableframe.table <Return> update_row
+
+wm protocol . WM_DELETE_WINDOW quit
 
 toplevel .errlog
 wm withdraw .errlog

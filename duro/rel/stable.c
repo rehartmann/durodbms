@@ -1,7 +1,7 @@
 /*
  * $Id$
  *
- * Copyright (C) 2005 René Hartmann.
+ * Copyright (C) 2005-2006 René Hartmann.
  * See the file COPYING for redistribution information.
  *
  * Functions for physical storage of tables
@@ -12,6 +12,7 @@
 #include "catalog.h"
 #include "internal.h"
 #include <gen/strfns.h>
+#include <gen/hashmapit.h>
 #include <string.h>
 #include <errno.h>
 
@@ -33,14 +34,25 @@ void
 free_stored_table(RDB_stored_table *stp)
 {
     int i;
+    RDB_hashtable_iter hiter;
+    _RDB_attrmap_entry *entryp;
+
+    RDB_init_hashtable_iter(&hiter, &stp->attrmap);
+    while ((entryp = RDB_hashtable_next(&hiter)) != NULL) {
+        free(entryp->key);
+        free(entryp);
+    }
+    RDB_destroy_hashtable_iter(&hiter);
 
     RDB_destroy_hashtable(&stp->attrmap);
+
     if (stp->indexc > 0) {
         for (i = 0; i < stp->indexc; i++) {
             _RDB_free_tbindex(&stp->indexv[i]);
         }
         free(stp->indexv);
     }
+    free(stp);
 }
 
 int
@@ -449,6 +461,8 @@ _RDB_create_stored_table(RDB_table *tbp, RDB_environment *envp,
 {
     int ret;
     int flags;
+    RDB_hashtable_iter hiter;
+    _RDB_attrmap_entry *entryp;
     int *flenv = NULL;
     char *rmname = NULL;
     RDB_compare_field *cmpv = NULL;
@@ -570,7 +584,15 @@ error:
     free(cmpv);
     free(rmname);
 
+    RDB_init_hashtable_iter(&hiter, &tbp->stp->attrmap);
+    while ((entryp = RDB_hashtable_next(&hiter)) != NULL) {
+        free(entryp->key);
+        free(entryp);
+    }
+    RDB_destroy_hashtable_iter(&hiter);
+
     RDB_destroy_hashtable(&tbp->stp->attrmap);
+
     if (tbp->stp->recmapp != NULL) {
         RDB_delete_recmap(tbp->stp->recmapp, txp != NULL ? txp->txid : NULL);
     }
@@ -599,6 +621,8 @@ _RDB_open_stored_table(RDB_table *tbp, RDB_environment *envp,
     int ret;
     int i;
     int *flenv;
+    RDB_hashtable_iter hiter;
+    _RDB_attrmap_entry *entryp;
     RDB_compare_field *cmpv = NULL;
     int attrc = tbp->typ->var.basetyp->var.tuple.attrc;
     int piattrc = tbp->keyv[0].strc;
@@ -660,6 +684,13 @@ error:
     /* clean up */
     free(flenv);
     free(cmpv);
+
+    RDB_init_hashtable_iter(&hiter, &tbp->stp->attrmap);
+    while ((entryp = RDB_hashtable_next(&hiter)) != NULL) {
+        free(entryp->key);
+        free(entryp);
+    }
+    RDB_destroy_hashtable_iter(&hiter);
 
     RDB_destroy_hashtable(&tbp->stp->attrmap);
     free(tbp->stp);
