@@ -238,6 +238,7 @@
 <li><a href="#raise_no_memory">RDB_raise_lock_not_granted</a>
 <li><a href="#raise_no_memory">RDB_raise_aggregate_undefined</a>
 <li><a href="#raise_no_memory">RDB_raise_version_mismatch</a>
+<li><a href="#raise_no_memory">RDB_raise_syntax</a> 
 <li><a href="#ec_set_property">RDB_ec_set_property</a>
 <li><a href="#ec_get_property">RDB_ec_get_property</a>
 </ul>
@@ -417,7 +418,7 @@ specified by <var>txp</var> interacts with and returns a pointer to it.
 
 <h3>Return value</h3>
 
-<p>A pointer to the table, or NULL if an error occured.
+<p>A pointer to the table, or NULL if an error occurred.
 
 <h3>Errors</h3>
 
@@ -562,7 +563,7 @@ location pointed to by <var>resultp</var>.
 
 <h3>Return value</h3>
 
-<p>RDB_OK on success, RDB_ERROR if an error occured.
+<p>RDB_OK on success, RDB_ERROR if an error occurred.
 
 <h3>Errors</h3>
 
@@ -606,7 +607,7 @@ database the transaction specified by <var>txp</var> interacts with.
 
 <h3>Return value</h3>
 
-<p>RDB_OK on success, RDB_ERROR if an error occured.
+<p>RDB_OK on success, RDB_ERROR if an error occurred.
 
 <h3>Errors</h3>
 
@@ -646,7 +647,7 @@ database the transaction specified by <var>txp</var> interacts with.
 
 <h3>Return value</h3>
 
-<p>RDB_OK on success, RDB_ERROR if an error occured.
+<p>RDB_OK on success, RDB_ERROR if an error occurred.
 
 <h3>Errors</h3>
 
@@ -688,7 +689,7 @@ and stores the result at the location pointed to by <var>resultp</var>.
 <h3>Return value</h3>
 
 <p>On success, RDB_OK is returned.
-If an error occured, RDB_ERROR is returned.
+If an error occurred, RDB_ERROR is returned.
 
 <h3>Errors</h3>
 
@@ -727,7 +728,7 @@ location pointed to by <var>resultp</var>.
 
 <h3>Return value</h3>
 
-<p>RDB_OK on success, RDB_ERROR if an error occured.
+<p>RDB_OK on success, RDB_ERROR if an error occurred.
 
 <h3>Errors</h3>
 
@@ -768,7 +769,7 @@ may be NULL.
 
 <h3>Return value</h3>
 
-<p>RDB_OK on success, RDB_ERROR if an error occured.
+<p>RDB_OK on success, RDB_ERROR if an error occurred.
 
 <h3>Errors</h3>
 
@@ -816,7 +817,7 @@ type BOOLEAN.
 
 <h3>Return value</h3>
 
-<p>RDB_OK on success, RDB_ERROR if an error occured.
+<p>RDB_OK on success, RDB_ERROR if an error occurred.
 
 <h3>Errors</h3>
 
@@ -863,7 +864,7 @@ may be NULL.
 
 <h3>Return value</h3>
 
-<p>RDB_OK on success, RDB_ERROR if an error occured.
+<p>RDB_OK on success, RDB_ERROR if an error occurred.
 
 <h3>Errors</h3>
 
@@ -949,7 +950,7 @@ and the result is of the same type as the attribute.
 
 <h3>Return value</h3>
 
-<p>RDB_OK on success, RDB_ERROR if an error occured.
+<p>RDB_OK on success, RDB_ERROR if an error occurred.
 
 <h3>Errors</h3>
 
@@ -996,7 +997,7 @@ and the result is of the same type as the attribute.
 
 <h3>Return value</h3>
 
-<p>RDB_OK on success, RDB_ERROR if an error occured.
+<p>RDB_OK on success, RDB_ERROR if an error occurred.
 
 <h3>Errors</h3>
 
@@ -1043,7 +1044,7 @@ and the result is of the same type as the attribute.
 
 <h3>Return value</h3>
 
-<p>RDB_OK on success, RDB_ERROR if an error occured.
+<p>RDB_OK on success, RDB_ERROR if an error occurred.
 
 <h3>Errors</h3>
 
@@ -1083,7 +1084,7 @@ the check at the location pointed to by <var>resultp</var>.
 
 <h3>Return value</h3>
 
-<p>RDB_OK on success, RDB_ERROR if an error occured.
+<p>RDB_OK on success, RDB_ERROR if an error occurred.
 
 <h3>Errors</h3>
 
@@ -1122,7 +1123,7 @@ GROUP, or UNGROUP.
  
 <h3>Return value</h3>
 
-<p>RDB_OK on success, RDB_ERROR if an error occured.
+<p>RDB_OK on success, RDB_ERROR if an error occurred.
 
 <h3>Errors</h3>
 
@@ -1191,7 +1192,7 @@ and project.
 <p>The number of updated tuples in real tables if the call was successful.
 A call which did not modify any tuple because no tuple matched the condition
 is considered a successful call and returns zero.
-If an error occured, (RDB_int)RDB_ERROR is returned.
+If an error occurred, (RDB_int)RDB_ERROR is returned.
 
 <h3>Errors</h3>
 
@@ -1260,10 +1261,10 @@ GROUP, UNGROUP, or DIVIDEBY PER.
 
 <h3>Return value</h3>
 
-<p>The number of deleted tuples, if no error occured.
+<p>The number of deleted tuples, if no error occurred.
 A call which did not delete any tuple because no tuple matched the condition
 is considered a successful call and returns zero.
-If an error occured, (RDB_int)RDB_ERROR is returned.
+If an error occurred, (RDB_int)RDB_ERROR is returned.
 
 <h3>Errors</h3>
 
@@ -1308,7 +1309,7 @@ is undefined and an error value is left in *<var>ecp</var>.
 
 <h3>Return value</h3>
 
-<p>RDB_OK on success, RDB_ERROR if an error occured.
+<p>RDB_OK on success, RDB_ERROR if an error occurred.
 
 <h3>Errors</h3>
 
@@ -1350,7 +1351,7 @@ The two tables must be of the same type.
 
 <h3>Return value</h3>
 
-<p>RDB_OK on success, RDB_ERROR if an error occured.
+<p>RDB_OK on success, RDB_ERROR if an error occurred.
 
 <h3>Errors</h3>
 
@@ -1393,7 +1394,7 @@ A pointer to the result table is stored at the location pointed to by
 
 <h3>Return value</h3>
 
-<p>A pointer to the result table on success, or NULL if an error occured.
+<p>A pointer to the result table on success, or NULL if an error occurred.
 
 <h3>Errors</h3>
 
@@ -1432,7 +1433,7 @@ A pointer to the result table is stored at the location pointed to by
 
 <h3>Return value</h3>
 
-<p>A pointer to the result table on success, or NULL if an error occured.
+<p>A pointer to the result table on success, or NULL if an error occurred.
 
 <h3>Errors</h3>
 
@@ -1476,7 +1477,7 @@ automatically dropped when the table is dropped.
 
 <h3>Return value</h3>
 
-<p>A pointer to the result table on success, or NULL if an error occured.
+<p>A pointer to the result table on success, or NULL if an error occurred.
 
 <h3>Errors</h3>
 
@@ -1521,7 +1522,7 @@ and <var>attrv</var>.
 
 <h3>Return value</h3>
 
-<p>A pointer to the result table on success, or NULL if an error occured.
+<p>A pointer to the result table on success, or NULL if an error occurred.
 
 <h3>Errors</h3>
 
@@ -1556,7 +1557,7 @@ specified by <var>attrc</var> and <var>attrv</var>.
 
 <h3>Return value</h3>
 
-<p>A pointer to the result table on success, or NULL if an error occured.
+<p>A pointer to the result table on success, or NULL if an error occurred.
 
 <h3>Errors</h3>
 
@@ -1591,7 +1592,7 @@ a cartesian product.
 
 <h3>Return value</h3>
 
-<p>A pointer to the result table on success, or NULL if an error occured.
+<p>A pointer to the result table on success, or NULL if an error occurred.
 
 <h3>Errors</h3>
 
@@ -1625,7 +1626,7 @@ new RDB_table is stored in <var>resultpp</var>.
 
 <h3>Return value</h3>
 
-<p>A pointer to the result table on success, or NULL if an error occured.
+<p>A pointer to the result table on success, or NULL if an error occurred.
 
 <h3>Errors</h3>
 
@@ -1657,7 +1658,7 @@ it contains the tuples which both tables contain.
 
 <h3>Return value</h3>
 
-<p>A pointer to the result table on success, or NULL if an error occured.
+<p>A pointer to the result table on success, or NULL if an error occurred.
 
 <h3>Errors</h3>
 
@@ -1690,7 +1691,7 @@ except those which the second table contains.
 
 <h3>Return value</h3>
 
-<p>A pointer to the result table on success, or NULL if an error occured.
+<p>A pointer to the result table on success, or NULL if an error occurred.
 
 <h3>Errors</h3>
 
@@ -1721,7 +1722,7 @@ result of a relational SEMIJOIN of the two tables.
 
 <h3>Return value</h3>
 
-<p>A pointer to the result table on success, or NULL if an error occured.
+<p>A pointer to the result table on success, or NULL if an error occurred.
 
 <h3>Errors</h3>
 
@@ -1745,11 +1746,11 @@ result of a relational SEMIMINUS of the two tables.
 
 <h3>Return value</h3>
 
-<p>A pointer to the result table on success, or NULL if an error occured.
+<p>A pointer to the result table on success, or NULL if an error occurred.
 
 <h3>Errors</h3>
 
-<p>A pointer to the result table on success, or NULL if an error occured.
+<p>A pointer to the result table on success, or NULL if an error occurred.
 
 <hr>
 
@@ -1849,7 +1850,7 @@ which involves a global table as source or target.
 <p>On success, the number of tuples inserted, deleted, and updated due to
 <var>insc</var>, <var>insv</var>, <var>updc</var>, <var>updv</var>,
 <var>delc</var> and <var>delv</var> arguments,
-plus <var>objc</var>. If an error occured, (RDB_int) RDB_ERROR is returned.
+plus <var>objc</var>. If an error occurred, (RDB_int) RDB_ERROR is returned.
 
 <h3>Errors</h3>
 
@@ -1893,7 +1894,7 @@ result of a small divide of the three tables.
 
 <h3>Return value</h3>
 
-<p>A pointer to the result table on success, or NULL if an error occured.
+<p>A pointer to the result table on success, or NULL if an error occurred.
 
 <h3>Errors</h3>
 
@@ -1926,7 +1927,7 @@ result of a great divide of the four tables.
 
 <h3>Return value</h3>
 
-<p>A pointer to the result table on success, or NULL if an error occured.
+<p>A pointer to the result table on success, or NULL if an error occurred.
 
 <h3>Notes</h3>
 
@@ -1967,7 +1968,7 @@ A pointer to the result table is stored in resultpp.
 
 <h3>Return value</h3>
 
-<p>A pointer to the result table on success, or NULL if an error occured.
+<p>A pointer to the result table on success, or NULL if an error occurred.
 
 <h3>Errors</h3>
 
@@ -2002,7 +2003,7 @@ relational WRAP operator.
 
 <h3>Return value</h3>
 
-<p>A pointer to the result table on success, or NULL if an error occured.
+<p>A pointer to the result table on success, or NULL if an error occurred.
 
 <h3>Errors</h3>
 
@@ -2031,7 +2032,7 @@ relational UNWRAP operator.
 
 <h3>Return value</h3>
 
-<p>A pointer to the result table on success, or NULL if an error occured.
+<p>A pointer to the result table on success, or NULL if an error occurred.
 
 <h3>Errors</h3>
 
@@ -2063,7 +2064,7 @@ and <var>attrv</var> are grouped into a relation-valued attribute
 
 <h3>Return value</h3>
 
-<p>A pointer to the result table on success, or NULL if an error occured.
+<p>A pointer to the result table on success, or NULL if an error occurred.
 
 <p>If an error occurs, an error value is left in *<var>ecp</var>.
 
@@ -2097,7 +2098,7 @@ relational UNGROUP operator.
 
 <h3>Return value</h3>
 
-<p>A pointer to the result table on success, or NULL if an error occured.
+<p>A pointer to the result table on success, or NULL if an error occurred.
 
 <h3>Errors</h3>
 
@@ -2130,7 +2131,7 @@ of the two tuples specified by <var>tpl1p</var> and <var>tpl2p</var>.
 
 <h3>Return value</h3>
 
-<p>RDB_OK on success, RDB_ERROR if an error occured.
+<p>RDB_OK on success, RDB_ERROR if an error occurred.
 
 <h3>Errors</h3>
 
@@ -2166,7 +2167,7 @@ specified by <var>attrc</var> and <var>attrv</var>.
 
 <h3>Return value</h3>
 
-<p>RDB_OK on success, RDB_ERROR if an error occured.
+<p>RDB_OK on success, RDB_ERROR if an error occurred.
 
 <h3>Errors</h3>
 
@@ -2199,7 +2200,7 @@ variable specified by <var>tplp</var> to the value specified by
 
 <h3>Return value</h3>
 
-<p>RDB_OK on success, RDB_ERROR if an error occured.
+<p>RDB_OK on success, RDB_ERROR if an error occurred.
 
 <h3>Errors</h3>
 
@@ -2226,7 +2227,7 @@ variable specified by <var>tplp</var> to the boolean value specified by
 
 <h3>Return value</h3>
 
-<p>RDB_OK on success, RDB_ERROR if an error occured.
+<p>RDB_OK on success, RDB_ERROR if an error occurred.
 
 <h3>Errors</h3>
 
@@ -2253,7 +2254,7 @@ variable specified by <var>tplp</var> to the integer value specified by
 
 <h3>Return value</h3>
 
-<p>RDB_OK on success, RDB_ERROR if an error occured.
+<p>RDB_OK on success, RDB_ERROR if an error occurred.
 
 <h3>Errors</h3>
 
@@ -2280,7 +2281,7 @@ variable specified by <var>tplp</var> to the value specified by
 
 <h3>Return value</h3>
 
-<p>RDB_OK on success, RDB_ERROR if an error occured.
+<p>RDB_OK on success, RDB_ERROR if an error occurred.
 
 <h3>Errors</h3>
 
@@ -2307,7 +2308,7 @@ variable specified by <var>tplp</var> to the value specified by
 
 <h3>Return value</h3>
 
-<p>RDB_OK on success, RDB_ERROR if an error occured.
+<p>RDB_OK on success, RDB_ERROR if an error occurred.
 
 <h3>Errors</h3>
 
@@ -2334,7 +2335,7 @@ variable specified by <var>tplp</var> to the string value specified by
 
 <h3>Return value</h3>
 
-<p>RDB_OK on success, RDB_ERROR if an error occured.
+<p>RDB_OK on success, RDB_ERROR if an error occurred.
 
 <h3>Errors</h3>
 
@@ -2532,7 +2533,7 @@ by the attributes specified by <var>attrc</var> and <var>attrv</var>.
 
 <h3>Return value</h3>
 
-<p>RDB_OK on success, RDB_ERROR if an error occured.
+<p>RDB_OK on success, RDB_ERROR if an error occurred.
 
 <h3>Errors</h3>
 
@@ -2571,7 +2572,7 @@ specified by <var>renc</var> and <var>renv</var>.
 
 <h3>Return value</h3>
 
-<p>RDB_OK on success, RDB_ERROR if an error occured.
+<p>RDB_OK on success, RDB_ERROR if an error occurred.
 
 <h3>Errors</h3>
 
@@ -2599,7 +2600,7 @@ RDB_wrap_tuple(const RDB_object *tplp, int wrapc, const <a href="#wrapping">RDB_
 
 <h3>Return value</h3>
 
-<p>RDB_OK on success, RDB_ERROR if an error occured.
+<p>RDB_OK on success, RDB_ERROR if an error occurred.
 
 <h3>Errors</h3>
 
@@ -2631,7 +2632,7 @@ RDB_unwrap_tuple(const RDB_object *tplp, int attrc, const char *attrv[],
 
 <h3>Return value</h3>
 
-<p>RDB_OK on success, RDB_ERROR if an error occured.
+<p>RDB_OK on success, RDB_ERROR if an error occurred.
 
 <h3>Errors</h3>
 
@@ -2677,7 +2678,7 @@ variable.
 
 <h3>Return value</h3>
 
-<p>A pointer to the result table on success, or NULL if an error occured.
+<p>A pointer to the result table on success, or NULL if an error occurred.
 
 <hr>
 
@@ -2700,7 +2701,7 @@ and stores the result in the variable pointed to by <var>resp</var>.
 
 <h3>Return value</h3>
 
-<p>RDB_OK on success, RDB_ERROR if an error occured.
+<p>RDB_OK on success, RDB_ERROR if an error occurred.
 
 <hr>
 
@@ -2744,7 +2745,7 @@ a virtual table.
 
 <h3>Return value</h3>
 
-<p>RDB_OK on success, RDB_ERROR if an error occured.
+<p>RDB_OK on success, RDB_ERROR if an error occurred.
 
 <h3>Errors</h3>
 
@@ -2858,7 +2859,7 @@ STRING.
 
 <h3>Return value</h3>
 
-<p>RDB_OK on success, RDB_ERROR if an error occured.
+<p>RDB_OK on success, RDB_ERROR if an error occurred.
 
 <hr>
 
@@ -3026,7 +3027,7 @@ to the variable pointed to by <var>comp</var>.
 
 <h3>Return value</h3>
 
-<p>RDB_OK on success, RDB_ERROR if an error occured.
+<p>RDB_OK on success, RDB_ERROR if an error occurred.
 
 <h3>Errors</h3>
 
@@ -3068,7 +3069,7 @@ to the value of the variable pointed to by <var>comp</var>.
 
 <h3>Return value</h3>
 
-<p>RDB_OK on success, RDB_ERROR if an error occured.
+<p>RDB_OK on success, RDB_ERROR if an error occurred.
 
 <hr>
 
@@ -3092,7 +3093,7 @@ or to a RDB_object of type BINARY.
 
 <h3>Return value</h3>
 
-<p>RDB_OK on success, RDB_ERROR if an error occured.
+<p>RDB_OK on success, RDB_ERROR if an error occurred.
 
 <h3>Errors</h3>
 
@@ -3125,7 +3126,7 @@ at the location pointed to by <var>alenp</var>.
 
 <h3>Return value</h3>
 
-<p>RDB_OK on success, RDB_ERROR if an error occured.
+<p>RDB_OK on success, RDB_ERROR if an error occurred.
 
 <h3>Errors</h3>
 
@@ -3196,7 +3197,7 @@ If an error occurs, an error value is left in <var>ecp</var>.
 
 <h3>Return value</h3>
 
-<p>A pointer to the newly created database, or NULL if an error occured.
+<p>A pointer to the newly created database, or NULL if an error occurred.
 
 <h3>Errors</h3>
 
@@ -3229,7 +3230,7 @@ If an error occurs, an error value is left in <var>ecp</var>.
 
 <h3>Return value</h3>
 
-<p>On success, a pointer to the database is returned. If an error occured, NULL is
+<p>On success, a pointer to the database is returned. If an error occurred, NULL is
 returned.
 
 <h3>Errors</h3>
@@ -3264,7 +3265,7 @@ The database must be empty.
 
 <h3>Return value</h3>
 
-<p>RDB_OK on success, RDB_ERROR if an error occured.
+<p>RDB_OK on success, RDB_ERROR if an error occurred.
 
 <h3>Errors</h3>
 
@@ -3339,7 +3340,7 @@ a subtransaction of the transaction specified by <var>parentp</var>.
 
 <h3>Return value</h3>
 
-<p>RDB_OK on success, RDB_ERROR if an error occured.
+<p>RDB_OK on success, RDB_ERROR if an error occurred.
 
 <hr>
 
@@ -3358,7 +3359,7 @@ RDB_commit(RDB_exec_context *ecp, RDB_transaction *txp);
 
 <h3>Return value</h3>
 
-<p>RDB_OK on success, RDB_ERROR if an error occured.
+<p>RDB_OK on success, RDB_ERROR if an error occurred.
 
 <h3>Errors</h3>
 
@@ -3387,7 +3388,7 @@ and rolls back all changes made by this transaction and its subtransactions.
 
 <h3>Return value</h3>
 
-<p>RDB_OK on success, RDB_ERROR if an error occured.
+<p>RDB_OK on success, RDB_ERROR if an error occurred.
 
 <h3>Errors</h3>
 
@@ -3507,7 +3508,7 @@ The pointer will become invalid when the array is destroyed.
 
 <h3>Return value</h3>
 
-<p>RDB_OK on success, RDB_ERROR if an error occured.
+<p>RDB_OK on success, RDB_ERROR if an error occurred.
 
 <h3>Errors</h3>
 
@@ -3542,7 +3543,7 @@ using RDB_table_to_array.
 
 <h3>Return value</h3>
 
-<p>RDB_OK on success, RDB_ERROR if an error occured.
+<p>RDB_OK on success, RDB_ERROR if an error occurred.
 
 <h3>Errors</h3>
 
@@ -3606,7 +3607,7 @@ using RDB_table_to_array.
 
 <h3>Return value</h3>
 
-<p>RDB_OK on success, RDB_ERROR if an error occured.
+<p>RDB_OK on success, RDB_ERROR if an error occurred.
 
 <h3>Errors</h3>
 
@@ -4079,7 +4080,7 @@ as an attribute with the same name as the type.
 
 <h3>Return value</h3>
 
-<p>RDB_OK on success, RDB_ERROR if an error occured.
+<p>RDB_OK on success, RDB_ERROR if an error occurred.
 
 <h3>Errors</h3>
 
@@ -4447,7 +4448,7 @@ This can be used to pass code to an interpreter function.
 
 <h3>Return value</h3>
 
-<p>RDB_OK on success, RDB_ERROR if an error occured.
+<p>RDB_OK on success, RDB_ERROR if an error occurred.
 
 <h3>Errors</h3>
 
@@ -4518,7 +4519,7 @@ This can be used to pass code to an interpreter function.
 
 <h3>Return value</h3>
 
-<p>RDB_OK on success, RDB_ERROR if an error occured.
+<p>RDB_OK on success, RDB_ERROR if an error occurred.
 
 <h3>Errors</h3>
 
@@ -4556,7 +4557,7 @@ passing the arguments in <var>argc</var> and <var>argv</var>.
 
 <h3>Return value</h3>
 
-<p>RDB_OK on success, RDB_ERROR if an error occured.
+<p>RDB_OK on success, RDB_ERROR if an error occurred.
 
 <h3>Errors</h3>
 
@@ -4596,7 +4597,7 @@ passing the arguments in <var>argc</var> and <var>argv</var>.
 
 <h3>Return value</h3>
 
-<p>RDB_OK on success, RDB_ERROR if an error occured.
+<p>RDB_OK on success, RDB_ERROR if an error occurred.
 
 <h3>Errors</h3>
 
@@ -4632,7 +4633,7 @@ from the database. This affects all overloaded versions.
 
 <h3>Return value</h3>
 
-<p>RDB_OK on success, RDB_ERROR if an error occured.
+<p>RDB_OK on success, RDB_ERROR if an error occurred.
 
 <h3>Errors</h3>
 
@@ -4665,7 +4666,7 @@ on the database the transaction specified by <var>txp</var> interacts with.
 
 <h3>Return value</h3>
 
-<p>RDB_OK on success, RDB_ERROR if an error occured.
+<p>RDB_OK on success, RDB_ERROR if an error occurred.
 
 <h3>Errors</h3>
 
@@ -4698,7 +4699,7 @@ RDB_drop_constraint(const char *name, RDB_exec_context *ecp, RDB_transaction *tx
 
 <h3>Return value</h3>
 
-<p>RDB_OK on success, RDB_ERROR if an error occured.
+<p>RDB_OK on success, RDB_ERROR if an error occurred.
 
 <h3>Errors</h3>
 
@@ -4789,7 +4790,7 @@ If <var>flags</var> is RDB_ORDERED, a B-tree index is created.
 
 <h3>Return value</h3>
 
-<p>RDB_OK on success, RDB_ERROR if an error occured.
+<p>RDB_OK on success, RDB_ERROR if an error occurred.
 
 <h3>Errors</h3>
 
@@ -4823,7 +4824,7 @@ RDB_drop_table_index(const char *name, RDB_exec_context *ecp, RDB_transaction *t
 
 <h3>Return value</h3>
 
-<p>RDB_OK on success, RDB_ERROR if an error occured.
+<p>RDB_OK on success, RDB_ERROR if an error occurred.
 
 <h3>Errors</h3>
 
@@ -4948,7 +4949,7 @@ RDB_raise_not_supported, RDB_raise_attribute_not_found,
 RDB_raise_predicate_violation, RDB_raise_system,
 RDB_raise_resource_not_found, RDB_raise_internal,
 RDB_raise_lock_not_granted, RDB_raise_aggregate_undefined,
-RDB_raise_version_mismatch</h2>
+RDB_raise_version_mismatch, RDB_raise_syntax</h2>
 
 <pre>
 #include &lt;rel/rdb.h&gt;
@@ -4975,25 +4976,25 @@ RDB_object *
 RDB_raise_type_constraint_violation(const char *, RDB_exec_context *);
 
 RDB_object *
-RDB_raise_element_exists(const char *info, RDB_exec_context *);
+RDB_raise_element_exists(const char *msg, RDB_exec_context *);
 
 RDB_object *
-RDB_raise_not_supported(const char *info, RDB_exec_context *);
+RDB_raise_not_supported(const char *msg, RDB_exec_context *);
 
 RDB_object *
-RDB_raise_attribute_not_found(const char *info, RDB_exec_context *);
+RDB_raise_attribute_not_found(const char *msg, RDB_exec_context *);
 
 RDB_object *
-RDB_raise_predicate_violation(const char *info, RDB_exec_context *);
+RDB_raise_predicate_violation(const char *msg, RDB_exec_context *);
 
 RDB_object *
-RDB_raise_system(const char *info, RDB_exec_context *);
+RDB_raise_system(const char *msg, RDB_exec_context *);
 
 RDB_object *
-RDB_raise_resource_not_found(const char *info, RDB_exec_context *);
+RDB_raise_resource_not_found(const char *msg, RDB_exec_context *);
 
 RDB_object *
-RDB_raise_internal(const char *info, RDB_exec_context *);
+RDB_raise_internal(const char *msg, RDB_exec_context *);
 
 RDB_object *
 RDB_raise_lock_not_granted(RDB_exec_context *);
@@ -5003,6 +5004,10 @@ RDB_raise_aggregate_undefined(RDB_exec_context *);
 
 RDB_object *
 RDB_raise_version_mismatch(RDB_exec_context *);
+
+RDB_object *
+RDB_raise_syntax(const char *msg, RDB_exec_context *);
+
 </pre>
 
 <h3>Description</h3>
@@ -5084,6 +5089,20 @@ not found.
 <h3>Return value</h3>
 
 <p>On success, RDB_OK is returned. On failure, RDB_ERROR is returned.
+
+<h3>Errors</h3>
+
+<dl>
+<dt>RDB_SYNTAX_ERROR
+<dd>A syntax error occurred during parsing.
+<dt>RDB_TYPE_MISMATCH
+<dd>Raised by <strong>RDB_parse_table</strong> if the type of
+the expression is not a relation type.
+</dl>
+
+<p>The call may also fail for a <a href="#syserr">system error</a>,
+in which case the transaction may be implicitly rolled back.
+
 
 <h3>Notes</h3>
 
@@ -5206,6 +5225,8 @@ TYPE AGGREGATE_UNDEFINED_ERROR { };
 TYPE VERSION_MISMATCH_ERROR { };
 
 TYPE NOT_SUPPORTED_ERROR { MSG STRING };
+
+TYPE SYNTAX_ERROR POSSREP { MSG STRING };
 </pre>
 
 <h4 id="syserr">System errors</h4>

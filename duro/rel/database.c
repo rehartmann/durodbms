@@ -386,6 +386,9 @@ new_dbroot(RDB_environment *envp, RDB_exec_context *ecp)
     if (add_type(dbrootp, &RDB_FATAL_ERROR, ecp) != RDB_OK) {
         return NULL;
     }
+    if (add_type(dbrootp, &RDB_SYNTAX_ERROR, ecp) != RDB_OK) {
+        return NULL;
+    }
 
     dbrootp->first_dbp = NULL;
     dbrootp->first_constrp = NULL;

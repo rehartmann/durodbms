@@ -1242,6 +1242,9 @@ RDB_raise_aggregate_undefined(RDB_exec_context *);
 RDB_object *
 RDB_raise_version_mismatch(RDB_exec_context *);
 
+RDB_object *
+RDB_raise_syntax(const char *, RDB_exec_context *);
+
 int
 RDB_ec_set_property(RDB_exec_context *, const char *name, void *);
 

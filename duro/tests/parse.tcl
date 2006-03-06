@@ -32,19 +32,19 @@ if {![catch {duro::table expr TU {T UNION T UNION } $tx} msg]} {
     error "creating TU should fail, but succeeded"
 }
 
-# set errcode [lindex $errorCode 1]
-# if {$errcode != "RDB_SYNTAX"} {
-#     error "wrong error: $errcode"
-# }
+set errcode [lindex $errorCode 1]
+if {![string match "SYNTAX_ERROR(*)" $errcode]} {
+    error "wrong error: $errcode"
+}
 
 if {![catch {duro::table expr TX {EXTEND T { K } ADD (2*K AS K2} $tx} msg]} {
     error "creating TX should fail, but succeeded"
 }
 
-# set errcode [lindex $errorCode 1]
-# if {$errcode != "RDB_SYNTAX"} {
-#     error "wrong error: $errcode"
-# }
+set errcode [lindex $errorCode 1]
+if {![string match "SYNTAX_ERROR(*)" $errcode]} {
+    error "wrong error: $errcode"
+}
 
 if {![catch {duro::table expr TX {EXTEND T { K } ADD (2*X AS K2)} $tx} msg]} {
     error "creating TX should fail, but succeeded"

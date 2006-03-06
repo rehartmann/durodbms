@@ -220,6 +220,12 @@ RDB_raise_fatal(RDB_exec_context *ecp)
     return errp;
 }
 
+RDB_object *
+RDB_raise_syntax(const char *msg, RDB_exec_context *ecp)
+{
+    return raise_msg_err(&RDB_SYNTAX_ERROR, msg, ecp);
+}
+
 void
 _RDB_handle_errcode(int errcode, RDB_exec_context *ecp, RDB_transaction *txp)
 {

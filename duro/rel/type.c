@@ -41,6 +41,8 @@ RDB_type RDB_INTERNAL_ERROR;
 RDB_type RDB_FATAL_ERROR;
 RDB_type RDB_SYSTEM_ERROR;
 
+RDB_type RDB_SYNTAX_ERROR;
+
 static int
 compare_int(const char *name, int argc, RDB_object *argv[],
         const void *iargp, size_t iarglen, RDB_exec_context *ecp,
@@ -238,6 +240,14 @@ _RDB_init_builtin_types(RDB_exec_context *ecp)
     static RDB_possrep fatal_rep = {
         "FATAL_ERROR",
         0,
+    };
+
+    static RDB_attr syntax_comp = { "MSG", &RDB_STRING };
+
+    static RDB_possrep syntax_rep = {
+        "SYNTAX_ERROR",
+        1,
+        &syntax_comp
     };
 
     if (initialized) {
@@ -525,6 +535,16 @@ _RDB_init_builtin_types(RDB_exec_context *ecp)
     RDB_FATAL_ERROR.var.scalar.constraintp = NULL;
     RDB_FATAL_ERROR.var.scalar.sysimpl = RDB_TRUE;
     RDB_FATAL_ERROR.comparep = NULL;
+
+    RDB_SYNTAX_ERROR.kind = RDB_TP_SCALAR;
+    RDB_SYNTAX_ERROR.ireplen = RDB_VARIABLE_LEN;
+    RDB_SYNTAX_ERROR.name = "SYNTAX_ERROR";
+    RDB_SYNTAX_ERROR.var.scalar.repc = 1;
+    RDB_SYNTAX_ERROR.var.scalar.repv = &syntax_rep;
+    RDB_SYNTAX_ERROR.var.scalar.arep = &RDB_STRING;
+    RDB_SYNTAX_ERROR.var.scalar.constraintp = NULL;
+    RDB_SYNTAX_ERROR.var.scalar.sysimpl = RDB_TRUE;
+    RDB_SYNTAX_ERROR.comparep = NULL;
 
     return RDB_OK;
 }
