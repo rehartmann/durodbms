@@ -56,7 +56,7 @@ free_stored_table(RDB_stored_table *stp)
 }
 
 int
-_RDB_close_stored_table(RDB_stored_table *stp)
+_RDB_close_stored_table(RDB_stored_table *stp, RDB_exec_context *ecp)
 {
     int i;
     int ret;
@@ -71,10 +71,11 @@ _RDB_close_stored_table(RDB_stored_table *stp)
 
     /* Close recmap */
     ret = RDB_close_recmap(stp->recmapp);
-    if (ret != RDB_OK)
-        return ret;
-
     free_stored_table(stp);
+    if (ret != 0) {
+        _RDB_handle_errcode(ret, ecp, NULL);
+        return RDB_ERROR;
+    }
     return RDB_OK;
 }
 
@@ -319,7 +320,8 @@ create_indexes(RDB_table *tbp, RDB_environment *envp, RDB_exec_context *ecp,
     return RDB_OK;
 }
 
-static int replen(const RDB_type *typ) {
+static int replen(const RDB_type *typ)
+{
     switch(typ->kind) {
         case RDB_TP_TUPLE:
         {

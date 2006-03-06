@@ -221,7 +221,7 @@ int
 _RDB_delete_stored_table(RDB_stored_table *, RDB_exec_context *, RDB_transaction *);
 
 int
-_RDB_close_stored_table(RDB_stored_table *);
+_RDB_close_stored_table(RDB_stored_table *, RDB_exec_context *);
 
 RDB_int *
 _RDB_field_no(RDB_stored_table *, const char *attrname);

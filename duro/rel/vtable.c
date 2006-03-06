@@ -1,7 +1,7 @@
 /*
  * $Id$
  *
- * Copyright (C) 2004-2005 René Hartmann.
+ * Copyright (C) 2004-2006 René Hartmann.
  * See the file COPYING for redistribution information.
  */
 
@@ -16,7 +16,8 @@
 #include <string.h>
 
 static RDB_string_vec *
-dup_keys(int keyc, RDB_string_vec *keyv) {
+dup_keys(int keyc, RDB_string_vec *keyv)
+{
     RDB_string_vec *newkeyv;
     int i;
 

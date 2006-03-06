@@ -249,7 +249,9 @@ _RDB_handle_errcode(int errcode, RDB_exec_context *ecp, RDB_transaction *txp)
             RDB_raise_lock_not_granted(ecp);
             break;
         case DB_LOCK_DEADLOCK:
-            RDB_rollback_all(ecp, txp);
+            if (txp != NULL) {
+                RDB_rollback_all(ecp, txp);
+            }
             RDB_raise_deadlock(ecp);
             break;
         case DB_RUNRECOVERY:

@@ -1,7 +1,7 @@
 /*
  * $Id$
  *
- * Copyright (C) 2003-2005 René Hartmann.
+ * Copyright (C) 2003-2006 René Hartmann.
  * See the file COPYING for redistribution information.
  */
 
@@ -89,9 +89,9 @@ close_table(RDB_table *tbp, RDB_environment *envp, RDB_exec_context *ecp)
     RDB_database *dbp;
 
     if (tbp->stp != NULL) {
-        ret = _RDB_close_stored_table(tbp->stp);
+        ret = _RDB_close_stored_table(tbp->stp, ecp);
         if (ret != RDB_OK)
-            return ret;
+            return RDB_ERROR;
     }
 
     /*
@@ -233,12 +233,14 @@ cleanup_env(RDB_environment *envp)
 }
 
 static unsigned
-hash_tb(const void *tbp, void *arg) {
+hash_tb(const void *tbp, void *arg)
+{
     return ((RDB_table *) tbp)->kind;
 }
 
 static RDB_bool
-tb_equals(const void *tb1p, const void *tb2p, void *argp) {
+tb_equals(const void *tb1p, const void *tb2p, void *argp)
+{
     int ret;
     struct _RDB_tx_and_ec *tep = (struct _RDB_tx_and_ec *) argp;
 
