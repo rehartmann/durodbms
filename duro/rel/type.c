@@ -704,6 +704,19 @@ RDB_type_is_scalar(const RDB_type *typ)
     return (typ->kind == RDB_TP_SCALAR);
 }
 
+RDB_attr *
+RDB_type_attrs(RDB_type *typ, int *attrc)
+{
+    if (typ->kind == RDB_TP_RELATION) {
+        typ = typ->var.basetyp;
+    }
+    if (typ->kind != RDB_TP_TUPLE) {
+        return NULL;
+    }
+    *attrc = typ->var.tuple.attrc;
+    return typ->var.tuple.attrv;
+}
+
 static void
 free_type(RDB_type *typ, RDB_exec_context *ecp)
 {

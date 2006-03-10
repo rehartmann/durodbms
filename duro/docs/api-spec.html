@@ -176,6 +176,7 @@
 <li><a href="#create_tuple_type">RDB_create_tuple_type</a>
 <li><a href="#get_type">RDB_get_type</a>
 <li><a href="#drop_type">RDB_drop_type</a>
+<li><a href="#type_attrs">RDB_type_attrs</a>
 <li><a href="#type_name">RDB_type_name</a>
 <li><a href="#type_is_scalar">RDB_type_is_scalar</a>
 <li><a href="#type_is_numeric">RDB_type_is_numeric</a>
@@ -3033,8 +3034,8 @@ to the variable pointed to by <var>comp</var>.
 
 <dl>
 <dt>RDB_INVALID_ARGUMENT_ERROR
-<dd>The type of the variable pointed to by <var>valp</var> ist not
-a scalar user-defined type.
+<dd>The type of *<var>valp</var> is not scalar, or it does not
+have a possible representation with a component <var>compname</var>.
 <dt>RDB_OPERATOR_NOT_FOUND_ERROR
 <dd>The getter method for component <var>compname</var> has not been created.
 </dl>
@@ -4318,6 +4319,30 @@ RDB_drop_type(RDB_type *typ, RDB_exec_context *ecp, RDB_transaction *txp);
 
 <p>The call may also fail for a <a href="#syserr">system error</a>,
 in which case the transaction may be implicitly rolled back.
+
+<hr>
+
+<h2 id="type_attrs">RDB_type_attrs</h2>
+
+<pre>
+#include &lt;rel/rdb.h&gt;
+
+RDB_attr *
+RDB_type_attrs(RDB_type *typ, int *attrcp);
+</pre>
+
+<h3>Description</h3>
+
+<p>RDB_type_attrs returns a pointer to an array of
+<a href="#attr">RDB_attr</a> structures
+describing the attributes of the tuple or relation type
+specified by *<var>typ</var> and stores the number of attributes in
+*<var>attrcp</var>.
+
+<h3>Return value</h3>
+
+<p>A pointer to an array of RDB_attr structures or NULL if the type
+is not a tuple or relation type.
 
 <hr>
 

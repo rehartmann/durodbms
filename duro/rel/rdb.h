@@ -922,6 +922,9 @@ RDB_type_is_builtin(const RDB_type *);
 RDB_bool
 RDB_type_is_scalar(const RDB_type *);
 
+RDB_attr *
+RDB_type_attrs(RDB_type *, int *);
+
 /*
  * Return RDB_TRUE if the two types are equal
  * or RDB_FALSE if they are not .

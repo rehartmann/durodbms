@@ -536,24 +536,26 @@ type_to_tobj(Tcl_Interp *interp, const RDB_type *typ)
 {
     Tcl_Obj *listobjp;
     int i;
-    RDB_type *tpltyp;
     Tcl_Obj *typobjp;
+    int attrc;
+    RDB_attr *attrv;
 
     if (RDB_type_is_scalar(typ))
         return Tcl_NewStringObj(RDB_type_name(typ), -1);
     switch (typ->kind) {
         case RDB_TP_TUPLE:
+            attrv = RDB_type_attrs((RDB_type *) typ, &attrc);
             listobjp = Tcl_NewListObj(0, NULL);
             if (listobjp == NULL)
                 return NULL;
             Tcl_ListObjAppendElement(interp, listobjp,
                     Tcl_NewStringObj("tuple", -1));
-            for (i = 0; i < typ->var.tuple.attrc; i++) {
+            for (i = 0; i < attrc; i++) {
                 Tcl_Obj *attrobjp = Tcl_NewListObj(0, NULL);
 
                 Tcl_ListObjAppendElement(interp, attrobjp,
-                        Tcl_NewStringObj(typ->var.tuple.attrv[i].name, -1));
-                typobjp = type_to_tobj(interp, typ->var.tuple.attrv[i].typ);
+                        Tcl_NewStringObj(attrv[i].name, -1));
+                typobjp = type_to_tobj(interp, attrv[i].typ);
                 if (typobjp == NULL)
                     return NULL;
                 Tcl_ListObjAppendElement(interp, attrobjp, typobjp);
@@ -561,18 +563,18 @@ type_to_tobj(Tcl_Interp *interp, const RDB_type *typ)
             }
             break;
         case RDB_TP_RELATION:
-            tpltyp = typ->var.basetyp;
+            attrv = RDB_type_attrs((RDB_type *) typ, &attrc);
             listobjp = Tcl_NewListObj(0, NULL);
             if (listobjp == NULL)
                 return NULL;
             Tcl_ListObjAppendElement(interp, listobjp,
                     Tcl_NewStringObj("relation", -1));
-            for (i = 0; i < tpltyp->var.tuple.attrc; i++) {
+            for (i = 0; i < attrc; i++) {
                 Tcl_Obj *attrobjp = Tcl_NewListObj(0, NULL);
 
                 Tcl_ListObjAppendElement(interp, attrobjp,
-                        Tcl_NewStringObj(tpltyp->var.tuple.attrv[i].name, -1));
-                typobjp = type_to_tobj(interp, tpltyp->var.tuple.attrv[i].typ);
+                        Tcl_NewStringObj(attrv[i].name, -1));
+                typobjp = type_to_tobj(interp, attrv[i].typ);
                 if (typobjp == NULL)
                     return NULL;
                 Tcl_ListObjAppendElement(interp, attrobjp, typobjp);
@@ -607,8 +609,9 @@ table_attrs_cmd(TclState *statep, Tcl_Interp *interp, int objc,
     Tcl_HashEntry *entryp;
     RDB_transaction *txp;
     RDB_table *tbp;
-    RDB_type *tuptyp;
     Tcl_Obj *listobjp;
+    int attrc;
+    RDB_attr *attrv;
 
     if (objc != 4) {
         Tcl_WrongNumArgs(interp, 2, objv, "tablename tx");
@@ -628,19 +631,19 @@ table_attrs_cmd(TclState *statep, Tcl_Interp *interp, int objc,
     if (tbp == NULL) {
         return TCL_ERROR;
     }
-    tuptyp = RDB_table_type(tbp)->var.basetyp;
 
     listobjp = Tcl_NewListObj(0, NULL);
-    for (i = 0; i < tuptyp->var.tuple.attrc; i++) {
+    attrv = RDB_type_attrs(RDB_table_type(tbp), &attrc);
+    for (i = 0; i < attrc; i++) {
         Tcl_Obj *typobjp;
         Tcl_Obj *sublistobjp = Tcl_NewListObj(0, NULL);
-        char *name = tuptyp->var.tuple.attrv[i].name;
+        char *name = attrv[i].name;
 
         ret = Tcl_ListObjAppendElement(interp, sublistobjp,
                 Tcl_NewStringObj(name, -1));
         if (ret != TCL_OK)
             return ret;
-        typobjp = type_to_tobj(interp, tuptyp->var.tuple.attrv[i].typ);
+        typobjp = type_to_tobj(interp, attrv[i].typ);
         if (typobjp == NULL)
             return TCL_ERROR;
         ret = Tcl_ListObjAppendElement(interp, sublistobjp, typobjp);
@@ -648,9 +651,9 @@ table_attrs_cmd(TclState *statep, Tcl_Interp *interp, int objc,
             return ret;
 
         /* If there is a default value, add it to sublist */
-        if (tuptyp->var.tuple.attrv[i].defaultp != NULL) {
+        if (attrv[i].defaultp != NULL) {
             Tcl_Obj *defp = Duro_to_tcl(interp,
-                    tuptyp->var.tuple.attrv[i].defaultp, statep->current_ecp,
+                    attrv[i].defaultp, statep->current_ecp,
                     txp);
             if (defp == NULL)
                 return TCL_ERROR;

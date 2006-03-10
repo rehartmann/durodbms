@@ -387,10 +387,13 @@ list_to_table(Tcl_Interp *interp, Tcl_Obj *tobjp, RDB_type *typ,
     int llen;
     Tcl_Obj *tplobjp;
     RDB_object tpl;
+    int attrc;
+    RDB_attr *attrv = RDB_type_attrs(typ, &attrc);
+    
+    if (attrv == NULL)
+        return TCL_ERROR;
 
-    *tbpp = RDB_create_table(NULL, RDB_FALSE,
-                        typ->var.basetyp->var.tuple.attrc,
-                        typ->var.basetyp->var.tuple.attrv,
+    *tbpp = RDB_create_table(NULL, RDB_FALSE, attrc, attrv,
                         0, NULL, ecp, NULL);
     if (*tbpp == NULL) {
         Duro_dberror(interp, RDB_get_err(ecp), txp);

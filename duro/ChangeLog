@@ -4,6 +4,8 @@ Summary of Changes for Duro
 
 Changes for Duro 0.11
 
+- Added RDB_type_attrs().
+
 - Removed RDB_set_errfile(), RDB_get_errfile(), RDB_set_errfn(),
   and RDB_get_errfn().
 
