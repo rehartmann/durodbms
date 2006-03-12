@@ -755,6 +755,7 @@ tuple_to_list(Tcl_Interp *interp, const RDB_object *tplp,
                 Tcl_NewStringObj(namev[i], -1));
         Tcl_ListObjAppendElement(interp, listobjp, tobjp);
     }
+    Tcl_Free((char *) namev);
     return listobjp;
 }
 
@@ -831,6 +832,7 @@ uobj_to_tobj(Tcl_Interp *interp, const RDB_object *objp, RDB_exec_context *ecp,
 {
     int ret;
     RDB_object strobj;
+    Tcl_Obj *tobjp;
 
     RDB_init_obj(&strobj);
     ret = _RDB_obj_to_str(&strobj, objp, ecp, txp);
@@ -839,7 +841,9 @@ uobj_to_tobj(Tcl_Interp *interp, const RDB_object *objp, RDB_exec_context *ecp,
         RDB_destroy_obj(&strobj, ecp);
         return NULL;
     }
-    return Tcl_NewStringObj(RDB_obj_string(&strobj), strobj.var.bin.len - 1);
+    tobjp = Tcl_NewStringObj(RDB_obj_string(&strobj), -1);
+    RDB_destroy_obj(&strobj, ecp);
+    return tobjp;
 }
 
 Tcl_Obj *
@@ -848,7 +852,7 @@ Duro_to_tcl(Tcl_Interp *interp, const RDB_object *objp,
 {
     RDB_type *typ = RDB_obj_type(objp);
 
-    if (typ != NULL && !RDB_type_is_builtin(typ) && RDB_type_is_scalar(typ)) {
+    if (typ != NULL && RDB_type_is_scalar(typ) && typ->var.scalar.repc > 0) {
         return uobj_to_tobj(interp, objp, ecp, txp);
     }
 

@@ -208,7 +208,7 @@ append_obj(RDB_object *objp, const RDB_object *srcp, RDB_exec_context *ecp,
     RDB_type *typ = RDB_obj_type(srcp);
 
     if (typ != NULL && RDB_type_is_scalar(typ)) {
-         if (!RDB_type_is_builtin(srcp->typ))
+         if (srcp->typ->var.scalar.repc > 0)
              ret = append_utype_obj(objp, srcp, ecp, txp);
          else if (srcp->typ == &RDB_STRING)
              ret = append_quoted_string(objp, srcp);
@@ -816,7 +816,7 @@ _RDB_obj_to_str(RDB_object *dstp, const RDB_object *srcp,
 
     ret = RDB_string_to_obj(dstp, "", ecp);
     if (ret != RDB_OK)
-        return ret;
+        return RDB_ERROR;
 
     return append_obj(dstp, srcp, ecp, txp);
 }

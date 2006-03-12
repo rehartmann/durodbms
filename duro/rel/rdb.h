@@ -130,6 +130,7 @@ typedef struct RDB_type {
         struct {
             int repc;
             RDB_possrep *repv;
+            RDB_bool builtin;
 
             /* RDB_TRUE if selector/getters/setters are provided by the system */
             RDB_bool sysimpl; 
@@ -907,13 +908,6 @@ RDB_drop_type(RDB_type *, RDB_exec_context *, RDB_transaction *);
  */
 char *
 RDB_type_name(const RDB_type *);
-
-/*
- * Return RDB_TRUE if the type pointed to by typ is a bultin type,
- * or RDB_FALSE if it's a user type.
- */
-RDB_bool
-RDB_type_is_builtin(const RDB_type *);
 
 /*
  * Return RDB_TRUE if the type pointed to by typ is a scalar type,

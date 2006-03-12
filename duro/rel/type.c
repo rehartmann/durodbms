@@ -256,6 +256,7 @@ _RDB_init_builtin_types(RDB_exec_context *ecp)
     initialized = RDB_TRUE;
 
     RDB_BOOLEAN.kind = RDB_TP_SCALAR;
+    RDB_BOOLEAN.var.scalar.builtin = RDB_TRUE;
     RDB_BOOLEAN.ireplen = 1;
     RDB_BOOLEAN.name = "BOOLEAN";
     RDB_BOOLEAN.var.scalar.repc = 0;
@@ -264,6 +265,7 @@ _RDB_init_builtin_types(RDB_exec_context *ecp)
     RDB_BOOLEAN.comparep = NULL;
 
     RDB_STRING.kind = RDB_TP_SCALAR;
+    RDB_STRING.var.scalar.builtin = RDB_TRUE;
     RDB_STRING.ireplen = RDB_VARIABLE_LEN;
     RDB_STRING.name = "STRING";
     RDB_STRING.var.scalar.repc = 0;
@@ -272,6 +274,7 @@ _RDB_init_builtin_types(RDB_exec_context *ecp)
     RDB_STRING.comparep = &compare_string;
 
     RDB_INTEGER.kind = RDB_TP_SCALAR;
+    RDB_INTEGER.var.scalar.builtin = RDB_TRUE;
     RDB_INTEGER.ireplen = sizeof (RDB_int);
     RDB_INTEGER.name = "INTEGER";
     RDB_INTEGER.var.scalar.repc = 0;
@@ -280,6 +283,7 @@ _RDB_init_builtin_types(RDB_exec_context *ecp)
     RDB_INTEGER.comparep = &compare_int;
 
     RDB_FLOAT.kind = RDB_TP_SCALAR;
+    RDB_FLOAT.var.scalar.builtin = RDB_TRUE;
     RDB_FLOAT.ireplen = sizeof (RDB_float);
     RDB_FLOAT.name = "FLOAT";
     RDB_FLOAT.var.scalar.repc = 0;
@@ -288,6 +292,7 @@ _RDB_init_builtin_types(RDB_exec_context *ecp)
     RDB_FLOAT.comparep = &compare_float;
 
     RDB_DOUBLE.kind = RDB_TP_SCALAR;
+    RDB_DOUBLE.var.scalar.builtin = RDB_TRUE;
     RDB_DOUBLE.ireplen = sizeof (RDB_double);
     RDB_DOUBLE.name = "DOUBLE";
     RDB_DOUBLE.var.scalar.repc = 0;
@@ -296,6 +301,7 @@ _RDB_init_builtin_types(RDB_exec_context *ecp)
     RDB_DOUBLE.comparep = &compare_double;
 
     RDB_BINARY.kind = RDB_TP_SCALAR;
+    RDB_BINARY.var.scalar.builtin = RDB_TRUE;
     RDB_BINARY.ireplen = RDB_VARIABLE_LEN;
     RDB_BINARY.name = "BINARY";
     RDB_BINARY.var.scalar.repc = 0;
@@ -304,6 +310,7 @@ _RDB_init_builtin_types(RDB_exec_context *ecp)
     RDB_BINARY.comparep = NULL;
 
     RDB_NO_MEMORY_ERROR.kind = RDB_TP_SCALAR;
+    RDB_NO_MEMORY_ERROR.var.scalar.builtin = RDB_TRUE;
     RDB_NO_MEMORY_ERROR.ireplen = RDB_VARIABLE_LEN;
     RDB_NO_MEMORY_ERROR.name = "NO_MEMORY_ERROR";
     RDB_NO_MEMORY_ERROR.var.scalar.repc = 1;
@@ -317,6 +324,7 @@ _RDB_init_builtin_types(RDB_exec_context *ecp)
     RDB_NO_MEMORY_ERROR.comparep = NULL;
 
     RDB_INVALID_TRANSACTION_ERROR.kind = RDB_TP_SCALAR;
+    RDB_INVALID_TRANSACTION_ERROR.var.scalar.builtin = RDB_TRUE;
     RDB_INVALID_TRANSACTION_ERROR.ireplen = RDB_VARIABLE_LEN;
     RDB_INVALID_TRANSACTION_ERROR.name = "INVALID_TRANSACTION_ERROR";
     RDB_INVALID_TRANSACTION_ERROR.var.scalar.repc = 1;
@@ -331,6 +339,7 @@ _RDB_init_builtin_types(RDB_exec_context *ecp)
     RDB_INVALID_TRANSACTION_ERROR.comparep = NULL;
 
     RDB_NOT_FOUND_ERROR.kind = RDB_TP_SCALAR;
+    RDB_NOT_FOUND_ERROR.var.scalar.builtin = RDB_TRUE;
     RDB_NOT_FOUND_ERROR.ireplen = RDB_VARIABLE_LEN;
     RDB_NOT_FOUND_ERROR.name = "NOT_FOUND_ERROR";
     RDB_NOT_FOUND_ERROR.var.scalar.repc = 1;
@@ -341,6 +350,7 @@ _RDB_init_builtin_types(RDB_exec_context *ecp)
     RDB_NOT_FOUND_ERROR.comparep = NULL;
 
     RDB_INVALID_ARGUMENT_ERROR.kind = RDB_TP_SCALAR;
+    RDB_INVALID_ARGUMENT_ERROR.var.scalar.builtin = RDB_TRUE;
     RDB_INVALID_ARGUMENT_ERROR.ireplen = RDB_VARIABLE_LEN;
     RDB_INVALID_ARGUMENT_ERROR.name = "INVALID_ARGUMENT_ERROR";
     RDB_INVALID_ARGUMENT_ERROR.var.scalar.repc = 1;
@@ -351,6 +361,7 @@ _RDB_init_builtin_types(RDB_exec_context *ecp)
     RDB_INVALID_ARGUMENT_ERROR.comparep = NULL;
 
     RDB_TYPE_MISMATCH_ERROR.kind = RDB_TP_SCALAR;
+    RDB_TYPE_MISMATCH_ERROR.var.scalar.builtin = RDB_TRUE;
     RDB_TYPE_MISMATCH_ERROR.ireplen = RDB_VARIABLE_LEN;
     RDB_TYPE_MISMATCH_ERROR.name = "TYPE_MISMATCH_ERROR";
     RDB_TYPE_MISMATCH_ERROR.var.scalar.repc = 1;
@@ -361,6 +372,7 @@ _RDB_init_builtin_types(RDB_exec_context *ecp)
     RDB_TYPE_MISMATCH_ERROR.comparep = NULL;
 
     RDB_TYPE_CONSTRAINT_VIOLATION_ERROR.kind = RDB_TP_SCALAR;
+    RDB_TYPE_CONSTRAINT_VIOLATION_ERROR.var.scalar.builtin = RDB_TRUE;
     RDB_TYPE_CONSTRAINT_VIOLATION_ERROR.ireplen = RDB_VARIABLE_LEN;
     RDB_TYPE_CONSTRAINT_VIOLATION_ERROR.name = "TYPE_CONSTRAINT_VIOLATION_ERROR";
     RDB_TYPE_CONSTRAINT_VIOLATION_ERROR.var.scalar.repc = 1;
@@ -372,6 +384,7 @@ _RDB_init_builtin_types(RDB_exec_context *ecp)
     RDB_TYPE_CONSTRAINT_VIOLATION_ERROR.comparep = NULL;
 
     RDB_OPERATOR_NOT_FOUND_ERROR.kind = RDB_TP_SCALAR;
+    RDB_OPERATOR_NOT_FOUND_ERROR.var.scalar.builtin = RDB_TRUE;
     RDB_OPERATOR_NOT_FOUND_ERROR.ireplen = RDB_VARIABLE_LEN;
     RDB_OPERATOR_NOT_FOUND_ERROR.name = "OPERATOR_NOT_FOUND_ERROR";
     RDB_OPERATOR_NOT_FOUND_ERROR.var.scalar.repc = 1;
@@ -382,6 +395,7 @@ _RDB_init_builtin_types(RDB_exec_context *ecp)
     RDB_OPERATOR_NOT_FOUND_ERROR.comparep = NULL;
 
     RDB_ELEMENT_EXISTS_ERROR.kind = RDB_TP_SCALAR;
+    RDB_ELEMENT_EXISTS_ERROR.var.scalar.builtin = RDB_TRUE;
     RDB_ELEMENT_EXISTS_ERROR.ireplen = RDB_VARIABLE_LEN;
     RDB_ELEMENT_EXISTS_ERROR.name = "ELEMENT_EXISTS_ERROR";
     RDB_ELEMENT_EXISTS_ERROR.var.scalar.repc = 1;
@@ -392,6 +406,7 @@ _RDB_init_builtin_types(RDB_exec_context *ecp)
     RDB_ELEMENT_EXISTS_ERROR.comparep = NULL;
 
     RDB_KEY_VIOLATION_ERROR.kind = RDB_TP_SCALAR;
+    RDB_KEY_VIOLATION_ERROR.var.scalar.builtin = RDB_TRUE;
     RDB_KEY_VIOLATION_ERROR.ireplen = RDB_VARIABLE_LEN;
     RDB_KEY_VIOLATION_ERROR.name = "KEY_VIOLATION_ERROR";
     RDB_KEY_VIOLATION_ERROR.var.scalar.repc = 1;
@@ -402,6 +417,7 @@ _RDB_init_builtin_types(RDB_exec_context *ecp)
     RDB_KEY_VIOLATION_ERROR.comparep = NULL;
 
     RDB_NOT_SUPPORTED_ERROR.kind = RDB_TP_SCALAR;
+    RDB_NOT_SUPPORTED_ERROR.var.scalar.builtin = RDB_TRUE;
     RDB_NOT_SUPPORTED_ERROR.ireplen = RDB_VARIABLE_LEN;
     RDB_NOT_SUPPORTED_ERROR.name = "NOT_SUPPORTED_ERROR";
     RDB_NOT_SUPPORTED_ERROR.var.scalar.repc = 1;
@@ -412,6 +428,7 @@ _RDB_init_builtin_types(RDB_exec_context *ecp)
     RDB_NOT_SUPPORTED_ERROR.comparep = NULL;
 
     RDB_ATTRIBUTE_NOT_FOUND_ERROR.kind = RDB_TP_SCALAR;
+    RDB_ATTRIBUTE_NOT_FOUND_ERROR.var.scalar.builtin = RDB_TRUE;
     RDB_ATTRIBUTE_NOT_FOUND_ERROR.ireplen = RDB_VARIABLE_LEN;
     RDB_ATTRIBUTE_NOT_FOUND_ERROR.name = "ATTRIBUTE_NOT_FOUND_ERROR";
     RDB_ATTRIBUTE_NOT_FOUND_ERROR.var.scalar.repc = 1;
@@ -422,6 +439,7 @@ _RDB_init_builtin_types(RDB_exec_context *ecp)
     RDB_ATTRIBUTE_NOT_FOUND_ERROR.comparep = NULL;
 
     RDB_PREDICATE_VIOLATION_ERROR.kind = RDB_TP_SCALAR;
+    RDB_PREDICATE_VIOLATION_ERROR.var.scalar.builtin = RDB_TRUE;
     RDB_PREDICATE_VIOLATION_ERROR.ireplen = RDB_VARIABLE_LEN;
     RDB_PREDICATE_VIOLATION_ERROR.name = "PREDICATE_VIOLATION_ERROR";
     RDB_PREDICATE_VIOLATION_ERROR.var.scalar.repc = 1;
@@ -432,6 +450,7 @@ _RDB_init_builtin_types(RDB_exec_context *ecp)
     RDB_PREDICATE_VIOLATION_ERROR.comparep = NULL;
 
     RDB_SYSTEM_ERROR.kind = RDB_TP_SCALAR;
+    RDB_SYSTEM_ERROR.var.scalar.builtin = RDB_TRUE;
     RDB_SYSTEM_ERROR.ireplen = RDB_VARIABLE_LEN;
     RDB_SYSTEM_ERROR.name = "SYSTEM_ERROR";
     RDB_SYSTEM_ERROR.var.scalar.repc = 1;
@@ -442,6 +461,7 @@ _RDB_init_builtin_types(RDB_exec_context *ecp)
     RDB_SYSTEM_ERROR.comparep = NULL;
 
     RDB_RESOURCE_NOT_FOUND_ERROR.kind = RDB_TP_SCALAR;
+    RDB_RESOURCE_NOT_FOUND_ERROR.var.scalar.builtin = RDB_TRUE;
     RDB_RESOURCE_NOT_FOUND_ERROR.ireplen = RDB_VARIABLE_LEN;
     RDB_RESOURCE_NOT_FOUND_ERROR.name = "RESOURCE_NOT_FOUND_ERROR";
     RDB_RESOURCE_NOT_FOUND_ERROR.var.scalar.repc = 1;
@@ -452,6 +472,7 @@ _RDB_init_builtin_types(RDB_exec_context *ecp)
     RDB_RESOURCE_NOT_FOUND_ERROR.comparep = NULL;
 
     RDB_INTERNAL_ERROR.kind = RDB_TP_SCALAR;
+    RDB_INTERNAL_ERROR.var.scalar.builtin = RDB_TRUE;
     RDB_INTERNAL_ERROR.ireplen = RDB_VARIABLE_LEN;
     RDB_INTERNAL_ERROR.name = "INTERNAL_ERROR";
     RDB_INTERNAL_ERROR.var.scalar.repc = 1;
@@ -462,6 +483,7 @@ _RDB_init_builtin_types(RDB_exec_context *ecp)
     RDB_INTERNAL_ERROR.comparep = NULL;
 
     RDB_LOCK_NOT_GRANTED_ERROR.kind = RDB_TP_SCALAR;
+    RDB_LOCK_NOT_GRANTED_ERROR.var.scalar.builtin = RDB_TRUE;
     RDB_LOCK_NOT_GRANTED_ERROR.ireplen = RDB_VARIABLE_LEN;
     RDB_LOCK_NOT_GRANTED_ERROR.name = "LOCK_NOT_GRANTED_ERROR";
     RDB_LOCK_NOT_GRANTED_ERROR.var.scalar.repc = 1;
@@ -477,6 +499,7 @@ _RDB_init_builtin_types(RDB_exec_context *ecp)
     RDB_LOCK_NOT_GRANTED_ERROR.comparep = NULL;
 
     RDB_AGGREGATE_UNDEFINED_ERROR.kind = RDB_TP_SCALAR;
+    RDB_AGGREGATE_UNDEFINED_ERROR.var.scalar.builtin = RDB_TRUE;
     RDB_AGGREGATE_UNDEFINED_ERROR.ireplen = RDB_VARIABLE_LEN;
     RDB_AGGREGATE_UNDEFINED_ERROR.name = "AGGREGATE_UNDEFINED_ERROR";
     RDB_AGGREGATE_UNDEFINED_ERROR.var.scalar.repc = 1;
@@ -492,6 +515,7 @@ _RDB_init_builtin_types(RDB_exec_context *ecp)
     RDB_AGGREGATE_UNDEFINED_ERROR.comparep = NULL;
 
     RDB_VERSION_MISMATCH_ERROR.kind = RDB_TP_SCALAR;
+    RDB_VERSION_MISMATCH_ERROR.var.scalar.builtin = RDB_TRUE;
     RDB_VERSION_MISMATCH_ERROR.ireplen = RDB_VARIABLE_LEN;
     RDB_VERSION_MISMATCH_ERROR.name = "VERSION_MISMATCH_ERROR";
     RDB_VERSION_MISMATCH_ERROR.var.scalar.repc = 1;
@@ -507,6 +531,7 @@ _RDB_init_builtin_types(RDB_exec_context *ecp)
     RDB_VERSION_MISMATCH_ERROR.comparep = NULL;
 
     RDB_DEADLOCK_ERROR.kind = RDB_TP_SCALAR;
+    RDB_DEADLOCK_ERROR.var.scalar.builtin = RDB_TRUE;
     RDB_DEADLOCK_ERROR.ireplen = RDB_VARIABLE_LEN;
     RDB_DEADLOCK_ERROR.name = "DEADLOCK_ERROR";
     RDB_DEADLOCK_ERROR.var.scalar.repc = 1;
@@ -522,6 +547,7 @@ _RDB_init_builtin_types(RDB_exec_context *ecp)
     RDB_DEADLOCK_ERROR.comparep = NULL;
 
     RDB_FATAL_ERROR.kind = RDB_TP_SCALAR;
+    RDB_FATAL_ERROR.var.scalar.builtin = RDB_TRUE;
     RDB_FATAL_ERROR.ireplen = RDB_VARIABLE_LEN;
     RDB_FATAL_ERROR.name = "FATAL_ERROR";
     RDB_FATAL_ERROR.var.scalar.repc = 1;
@@ -537,6 +563,7 @@ _RDB_init_builtin_types(RDB_exec_context *ecp)
     RDB_FATAL_ERROR.comparep = NULL;
 
     RDB_SYNTAX_ERROR.kind = RDB_TP_SCALAR;
+    RDB_SYNTAX_ERROR.var.scalar.builtin = RDB_TRUE;
     RDB_SYNTAX_ERROR.ireplen = RDB_VARIABLE_LEN;
     RDB_SYNTAX_ERROR.name = "SYNTAX_ERROR";
     RDB_SYNTAX_ERROR.var.scalar.repc = 1;
@@ -688,14 +715,6 @@ RDB_create_array_type(RDB_type *basetyp)
     typ->var.basetyp = basetyp;
 
     return typ;
-}
-
-RDB_bool
-RDB_type_is_builtin(const RDB_type *typ)
-{
-    return (RDB_bool) ((typ == &RDB_BOOLEAN) || (typ == &RDB_INTEGER)
-            || (typ == &RDB_FLOAT) || (typ == &RDB_DOUBLE)
-            || (typ == &RDB_STRING) || (typ == &RDB_BINARY));
 }
 
 RDB_bool
@@ -1067,7 +1086,7 @@ RDB_drop_type(RDB_type *typ, RDB_exec_context *ecp, RDB_transaction *txp)
 {
     int ret;
 
-    if (RDB_type_is_builtin(typ)) {
+    if (typ->kind == RDB_TP_SCALAR && typ->var.scalar.builtin) {
         RDB_raise_invalid_argument("attempt to drop built-in type", ecp);
         return RDB_ERROR;
     }

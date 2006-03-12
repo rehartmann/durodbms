@@ -1959,6 +1959,7 @@ _RDB_cat_get_type(const char *name, RDB_exec_context *ecp,
     typ->ireplen = RDB_tuple_get_int(&tpl, "I_AREP_LEN");
     typ->var.scalar.sysimpl = RDB_tuple_get_bool(&tpl, "I_SYSIMPL");
     typ->var.scalar.repc = 0;
+    typ->var.scalar.builtin = RDB_FALSE;
 
     /*
      * Get possrep info from SYS_POSSREPS

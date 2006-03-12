@@ -101,7 +101,9 @@ RDB_create_ro_op(const char *name, int argc, RDB_type *argtv[], RDB_type *rtyp,
 
     /* Check if it's a comparison operator */
     if (strcmp(name, "compare") == 0 && argc == 2
-            && argtv[0] == argtv[1] && !RDB_type_is_builtin(argtv[0])) {
+            && argtv[0] == argtv[1]
+            && (argtv[0]->kind != RDB_TP_SCALAR
+                    || !argtv[0]->var.scalar.builtin)) {
         RDB_ro_op_desc *cmpop;
 
         ret = _RDB_get_ro_op(name, argc, argtv, ecp, txp, &cmpop);
@@ -460,7 +462,7 @@ get_ro_op(RDB_dbroot *dbrootp, const char *name,
 
     /* Search for an operator with same signature */
     while (rop != NULL) {
-        if (rop->argc == argc) {
+        if (rop->argtv != NULL && rop->argc == argc) {
             int i;
 
             pm = RDB_TRUE;

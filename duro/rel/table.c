@@ -210,9 +210,10 @@ RDB_drop_table_index(const char *name, RDB_exec_context *ecp,
 
     ret = _RDB_cat_index_tablename(name, &tbname, ecp, txp);
     if (ret != RDB_OK)
-        return ret;
+        return RDB_ERROR;
 
     tbp = RDB_get_table(tbname, ecp, txp);
+    free(tbname);
     if (tbp == NULL)
         return RDB_ERROR;
 

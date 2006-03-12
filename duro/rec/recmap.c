@@ -152,10 +152,10 @@ RDB_create_recmap(const char *name, const char *filename,
         return ret;
 
     if (cmpv != NULL) {
-        (*rmpp)->cmpv = malloc(sizeof (RDB_compare_field) * fieldc);
+        (*rmpp)->cmpv = malloc(sizeof (RDB_compare_field) * keyfieldc);
         if ((*rmpp)->cmpv == NULL)
             goto error;
-        for (i = 0; i < fieldc; i++) {
+        for (i = 0; i < keyfieldc; i++) {
             (*rmpp)->cmpv[i].comparep = cmpv[i].comparep;
             (*rmpp)->cmpv[i].arg = cmpv[i].arg;
             (*rmpp)->cmpv[i].asc = cmpv[i].asc;
@@ -647,7 +647,9 @@ RDB_delete_rec(RDB_recmap *rmp, RDB_field keyv[], DB_TXN *txid)
     if (ret != RDB_OK)
         return ret;
 
-    return rmp->dbp->del(rmp->dbp, txid, &key, 0);
+    ret = rmp->dbp->del(rmp->dbp, txid, &key, 0);
+    free(key.data);
+    return ret;
 }
 
 int
@@ -688,10 +690,13 @@ RDB_get_fields(RDB_recmap *rmp, RDB_field keyv[], int fieldc, DB_TXN *txid,
 
     ret = rmp->dbp->get(rmp->dbp, txid, &key, &data, 0);
     if (ret != 0) {
+        free(key.data);
         return ret;
     }
 
-    return _RDB_get_fields(rmp, &key, &data, fieldc, retfieldv);
+    ret = _RDB_get_fields(rmp, &key, &data, fieldc, retfieldv);
+    free(key.data);
+    return ret;
 }
 
 int
@@ -704,8 +709,14 @@ RDB_contains_rec(RDB_recmap *rmp, RDB_field flds[], DB_TXN *txid)
     if (ret != RDB_OK)
         return ret;
     ret = data_to_DBT(rmp, flds, &data);
-    if (ret != RDB_OK)
+    if (ret != RDB_OK) {
+        free(data.data);
         return ret;
+    }
+    data.flags = DB_DBT_REALLOC;
 
-    return rmp->dbp->get(rmp->dbp, txid, &key, &data, DB_GET_BOTH);
+    ret = rmp->dbp->get(rmp->dbp, txid, &key, &data, DB_GET_BOTH);
+    free(key.data);
+    free(data.data);
+    return ret;
 }
