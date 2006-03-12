@@ -916,15 +916,6 @@ RDB_extract_tuple(RDB_table *tbp, RDB_exec_context *ecp,
         return RDB_ERROR;
     }
 
-    /* Duplicates must be removed */
-    ret = _RDB_duprem(qrp, ecp);
-    if (ret != RDB_OK) {
-        if (ntbp->kind != RDB_TB_REAL)
-            RDB_drop_table(ntbp, ecp, txp);
-        _RDB_drop_qresult(qrp, ecp, txp);
-        return RDB_ERROR;
-    }
-
     RDB_init_obj(&tpl);
 
     /* Get tuple */
@@ -933,17 +924,29 @@ RDB_extract_tuple(RDB_table *tbp, RDB_exec_context *ecp,
         goto cleanup;
 
     /* Check if there are more tuples */
-    ret = _RDB_next_tuple(qrp, &tpl, ecp, txp);
-    if (ret == RDB_OK) {
-        RDB_raise_invalid_argument("table contains more than one tuple", ecp);
-        ret = RDB_ERROR;
-        goto cleanup;
+    for(;;) {
+        RDB_bool is_equal;
+    
+        ret = _RDB_next_tuple(qrp, &tpl, ecp, txp);
+        if (ret != RDB_OK) {
+            errtyp = RDB_obj_type(RDB_get_err(ecp));
+            if (errtyp == &RDB_NOT_FOUND_ERROR) {
+                RDB_clear_err(ecp);
+                ret = RDB_OK;
+            }
+            break;
+        }
+
+        ret = _RDB_tuple_equals(tplp, &tpl, ecp, txp, &is_equal);
+        if (ret != RDB_OK)
+            goto cleanup;
+
+        if (!is_equal) {
+            RDB_raise_invalid_argument("table contains more than one tuple", ecp);
+            ret = RDB_ERROR;
+            goto cleanup;
+        }
     }
-    errtyp = RDB_obj_type(RDB_get_err(ecp));
-    if (errtyp != &RDB_NOT_FOUND_ERROR) {
-        goto cleanup;
-    }
-    RDB_clear_err(ecp);
 
 cleanup:
     RDB_destroy_obj(&tpl, ecp);

@@ -1706,7 +1706,6 @@ next_select_index(RDB_qresult *qrp, RDB_object *tplp, RDB_exec_context *ecp,
                 && qrp->tbp->var.select.all_eq)
             dup = RDB_TRUE;
 
-        tplp->typ = qrp->tbp->typ->var.basetyp;
         do {
             ret = next_stored_tuple(qrp,
                     qrp->tbp->var.select.tbp->var.project.tbp,
