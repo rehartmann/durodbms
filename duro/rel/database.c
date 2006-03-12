@@ -135,35 +135,69 @@ free_db(RDB_database *dbp) {
     free(dbp);
 }
 
+/* Check if there is a table this table depends on */
+static RDB_bool
+table_refs(RDB_database *dbp, RDB_table *tbp)
+{
+    RDB_hashmap_iter it;
+    RDB_table *rtbp;
+    char *keyp;
+    void *datap;
+
+    RDB_init_hashmap_iter(&it, &dbp->tbmap);
+
+    do {
+        datap = RDB_hashmap_next(&it, &keyp);
+        if (keyp == NULL) {
+            RDB_destroy_hashmap_iter(&it);
+            return RDB_FALSE;
+        }
+
+        rtbp = datap != NULL ? (RDB_table *) datap : NULL;
+    } while (rtbp == NULL || (tbp == rtbp) || !_RDB_table_refers(rtbp, tbp));
+    RDB_destroy_hashmap_iter(&it);
+    return RDB_TRUE;
+}
+
+/* Get a user table which no other table depends on */
+static RDB_table *
+find_del_table(RDB_database *dbp)
+{
+    RDB_hashmap_iter it;
+    RDB_table *tbp;
+    void *datap;
+    char *keyp;
+
+    RDB_init_hashmap_iter(&it, &dbp->tbmap);
+
+    do {
+        datap = RDB_hashmap_next(&it, &keyp);
+        if (keyp == NULL) {
+            RDB_destroy_hashmap_iter(&it);
+            return NULL;
+        }
+
+        tbp = (RDB_table *) datap;
+    } while (tbp == NULL || !tbp->is_user || table_refs(dbp, tbp));
+    RDB_destroy_hashmap_iter(&it);
+    return tbp;
+}
+
 static int
 release_db(RDB_database *dbp, RDB_exec_context *ecp)
 {
     int ret;
-    int i;
     RDB_table *tbp;
-    int tbcount;
-    char **tbnames;
 
-    /* Close all user tables */
-    tbcount = RDB_hashmap_size(&dbp->tbmap);
-    tbnames = malloc(sizeof(char *) * tbcount);
-    if (tbnames == NULL) {
-        RDB_raise_no_memory(ecp);
-        return RDB_ERROR;
+    /*
+     * Close all user tables
+     */
+    
+    while ((tbp = find_del_table(dbp)) != NULL) {
+        ret = close_table(tbp, dbp->dbrootp->envp, ecp);
+        if (ret != RDB_OK)
+            return RDB_ERROR;
     }
-
-    RDB_hashmap_keys(&dbp->tbmap, tbnames);
-    for (i = 0; i < tbcount; i++) {
-        tbp = RDB_hashmap_get(&dbp->tbmap, tbnames[i]);
-        if (tbp != NULL && tbp->is_user) {
-            ret = close_table(tbp, dbp->dbrootp->envp, ecp);
-            if (ret != RDB_OK) {
-                free(tbnames);
-                return ret;
-            }
-        }
-    }
-    free(tbnames);
 
     ret = rm_db(dbp, ecp);
     if (ret != RDB_OK)

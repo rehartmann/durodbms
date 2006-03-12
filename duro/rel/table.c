@@ -13,6 +13,7 @@
 #include <string.h>
 #include <dli/tabletostr.h>
 #include <stdio.h>
+#include <assert.h>
 
 void
 _RDB_print_table(RDB_table *tbp, RDB_transaction *txp, FILE *fp,
@@ -155,6 +156,8 @@ _RDB_new_rtable(const char *name, RDB_bool persistent,
 static int
 drop_anon_table(RDB_table *tbp, RDB_exec_context *ecp)
 {
+    assert((tbp->kind >= RDB_TB_REAL) && (tbp->kind <= RDB_TB_UNGROUP));
+
     if (RDB_table_name(tbp) == NULL)
         return RDB_drop_table(tbp, ecp, NULL);
     return RDB_OK;

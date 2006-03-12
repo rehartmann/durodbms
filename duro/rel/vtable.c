@@ -1600,7 +1600,9 @@ _RDB_table_refers(RDB_table *srctbp, RDB_table *dsttbp)
             return _RDB_table_refers(srctbp->var.project.tbp, dsttbp);
         case RDB_TB_SUMMARIZE:
             for (i = 0; i < srctbp->var.summarize.addc; i++) {
-                if (_RDB_expr_refers(srctbp->var.summarize.addv[i].exp, dsttbp))
+                if (srctbp->var.summarize.addv[i].exp != NULL
+                        && _RDB_expr_refers(srctbp->var.summarize.addv[i].exp,
+                                dsttbp))
                     return RDB_TRUE;
             }
             if (_RDB_table_refers(srctbp->var.summarize.tb1p, dsttbp))

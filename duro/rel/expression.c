@@ -336,13 +336,16 @@ expr_op_type(const RDB_expression *exp, const RDB_type *tuptyp,
      * Handle IF-THEN-ELSE
      */
     if (strcmp(exp->var.op.name, "IF") == 0 && exp->var.op.argc == 3) {
+        RDB_type *arg2typ;
+    
         if (argtv[0] != &RDB_BOOLEAN || !RDB_type_equals(argtv[1], argtv[2])) {
             free(argtv);
             RDB_raise_type_mismatch("IF requires BOOLEAN arguments", ecp);
             return NULL;
         }
+        arg2typ = argtv[1];
         free(argtv);
-        return _RDB_dup_nonscalar_type(argtv[1], ecp);
+        return _RDB_dup_nonscalar_type(arg2typ, ecp);
     }
 
     /*

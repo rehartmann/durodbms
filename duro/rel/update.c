@@ -253,8 +253,6 @@ update_stored_complex(RDB_table *tbp, RDB_expression *condp,
     }
 
 cleanup:
-    free(valv);
-
     if (tmptbp != NULL)
         RDB_drop_table(tmptbp, ecp, &tx);
     if (curp != NULL) {
@@ -266,6 +264,8 @@ cleanup:
     }
     for (i = 0; i < updc; i++)
         RDB_destroy_obj(&valv[i], ecp);
+    free(valv);
+
     if (RDB_destroy_obj(&tpl, ecp) != RDB_OK) {
         rcount = RDB_ERROR;
     }
@@ -409,7 +409,6 @@ update_stored_simple(RDB_table *tbp, RDB_expression *condp,
      }
 
 cleanup:
-    free(valv);
     free(fieldv);
 
     if (curp != NULL) {
@@ -421,6 +420,8 @@ cleanup:
     }
     for (i = 0; i < updc; i++)
         RDB_destroy_obj(&valv[i], ecp);
+    free(valv);
+
     ret = RDB_destroy_obj(&tpl, ecp);
     if (ret != RDB_OK) {
         _RDB_handle_errcode(ret, ecp, txp);
