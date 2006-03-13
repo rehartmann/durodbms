@@ -170,7 +170,14 @@ RDB_create_recmap(const char *name, const char *filename,
         /* Allow duplicate keys */
         (*rmpp)->dbp->set_flags((*rmpp)->dbp, DB_DUPSORT);
     }
-       
+
+    if (envp == NULL) {
+        ret = (*rmpp)->dbp->set_alloc((*rmpp)->dbp, malloc, realloc, free);
+        if (ret != 0) {
+            goto error;
+        }
+    }
+
     /* Create BDB database */
     if ((ret = (*rmpp)->dbp->open((*rmpp)->dbp, txid, filename, name,
             RDB_ORDERED & flags ? DB_BTREE : DB_HASH, DB_CREATE, 0664)) != 0) {
@@ -193,6 +200,14 @@ RDB_open_recmap(const char *name, const char *filename,
             fieldc, fieldlenv, keyfieldc, RDB_UNIQUE);
     if (ret != RDB_OK)
        return ret;
+
+    if (envp == NULL) {
+        ret = (*rmpp)->dbp->set_alloc((*rmpp)->dbp, malloc, realloc, free);
+        if (ret != 0) {
+            goto error;
+        }
+    }
+
     ret = (*rmpp)->dbp->open((*rmpp)->dbp, 0, filename, name, DB_UNKNOWN,
             DB_AUTO_COMMIT, 0664);
     if (ret != 0) {

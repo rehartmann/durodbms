@@ -3,28 +3,6 @@
 #include <rel/rdb.h>
 #include <stdio.h>
 
-RDB_attr emp_attrs[] = {
-    {"EMPNO", &RDB_INTEGER, NULL, 0 },
-    {"NAME", &RDB_STRING, NULL, 0 },
-    {"SALARY", &RDB_DOUBLE, NULL, 0 },
-    {"DEPTNO", &RDB_INTEGER, NULL, 0 }
-};
-
-char *emp_keyattrs1[] = { "EMPNO" };
-char *emp_keyattrs2[] = { "NAME" };
-
-RDB_string_vec emp_keyattrs[] = {
-    { 1, emp_keyattrs1 },
-    { 1, emp_keyattrs2 }
-};
-
-RDB_attr dept_attrs[] = {
-    {"DEPTNO", &RDB_INTEGER, NULL, 0 },
-    {"DEPTNAME", &RDB_STRING, NULL, 0 }
-};
-
-char *dept_key_attrs[] = { "DEPTNO" };
-
 int
 create_tables(RDB_database *dbp, RDB_exec_context *ecp)
 {
@@ -34,6 +12,28 @@ create_tables(RDB_database *dbp, RDB_exec_context *ecp)
     RDB_object defval;
     int ret;
     
+    RDB_attr emp_attrs[] = {
+        {"EMPNO", &RDB_INTEGER, NULL, 0 },
+        {"NAME", &RDB_STRING, NULL, 0 },
+        {"SALARY", &RDB_DOUBLE, NULL, 0 },
+        {"DEPTNO", &RDB_INTEGER, NULL, 0 }
+    };
+
+    char *emp_keyattrs1[] = { "EMPNO" };
+    char *emp_keyattrs2[] = { "NAME" };
+
+    RDB_string_vec emp_keyattrs[] = {
+        { 1, emp_keyattrs1 },
+        { 1, emp_keyattrs2 }
+    };
+
+    RDB_attr dept_attrs[] = {
+        {"DEPTNO", &RDB_INTEGER, NULL, 0 },
+        {"DEPTNAME", &RDB_STRING, NULL, 0 }
+    };
+
+    char *dept_key_attrs[] = { "DEPTNO" };
+
     ret = RDB_begin_tx(ecp, &tx, dbp, NULL);
     if (ret != RDB_OK) {
         fprintf(stderr, "Error: %s\n", RDB_type_name(RDB_obj_type(RDB_get_err(ecp))));

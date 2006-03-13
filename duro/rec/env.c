@@ -1,7 +1,7 @@
 /*
  * $Id$
  *
- * Copyright (C) 2003-2005 René Hartmann.
+ * Copyright (C) 2003-2006 René Hartmann.
  * See the file COPYING for redistribution information.
  */
 
@@ -34,7 +34,7 @@ RDB_open_env(const char *path, RDB_environment **envpp)
 
     /*
      * Configure alloc, realloc, and free explicity
-     * because on Windows Bekekey DB may use a different heap
+     * because on Windows Berkeley DB may use a different heap
      */
     ret = envp->envp->set_alloc(envp->envp, malloc, realloc, free);
     if (ret != 0) {

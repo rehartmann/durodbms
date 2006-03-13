@@ -4,23 +4,23 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-RDB_type *plusargtv[] = {
-    &RDB_INTEGER,
-    &RDB_INTEGER
-};
-
-RDB_type *addargtv[] = {
-    &RDB_INTEGER,
-    &RDB_INTEGER
-};
-
-RDB_bool updv[] = { RDB_TRUE, RDB_FALSE };
-
 int
 test_defop(RDB_database *dbp, RDB_exec_context *ecp)
 {
     RDB_transaction tx;
     int ret;
+
+    RDB_type *plusargtv[] = {
+        &RDB_INTEGER,
+        &RDB_INTEGER
+    };
+
+    RDB_type *addargtv[] = {
+        &RDB_INTEGER,
+        &RDB_INTEGER
+    };
+
+    RDB_bool updv[] = { RDB_TRUE, RDB_FALSE };
 
     printf("Starting transaction\n");
     ret = RDB_begin_tx(ecp, &tx, dbp, NULL);
