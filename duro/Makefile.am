@@ -35,7 +35,7 @@ else
 TCLHTML =
 endif
 
-nobase_dist_html_DATA = docs/api-spec.html docs/relnotes.html \
+nobase_dist_html_DATA = docs/api-spec.html \
 docs/expressions.html docs/utils.html $(TCLHTML)
 
 check_PROGRAMS = tests/prepare tests/test_aggregate tests/test_binary \

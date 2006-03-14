@@ -4,16 +4,6 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-RDB_type *plusargtv[] = {
-    &RDB_INTEGER,
-    &RDB_INTEGER
-};
-
-RDB_type *addargtv[] = {
-    &RDB_INTEGER,
-    &RDB_INTEGER
-};
-
 int
 test_callop(RDB_database *dbp, RDB_exec_context *ecp)
 {
@@ -41,7 +31,6 @@ test_callop(RDB_database *dbp, RDB_exec_context *ecp)
     printf("Calling PLUS\n");
     ret = RDB_call_ro_op("PLUS", 2, argv, ecp, &tx, &retval);
     if (ret != RDB_OK) {
-        RDB_rollback(ecp, &tx);
         goto error;
     }
 
@@ -50,7 +39,6 @@ test_callop(RDB_database *dbp, RDB_exec_context *ecp)
     printf("Calling ADD\n");
     ret = RDB_call_update_op("ADD", 2, argv, ecp, &tx);
     if (ret != RDB_OK) {
-        RDB_rollback(ecp, &tx);
         goto error;
     }
 

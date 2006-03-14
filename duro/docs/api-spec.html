@@ -372,6 +372,9 @@ may be empty (not contain any attributes).
 <p>Passing a <var>keyv</var> of NULL is equivalent to specifiying a single key
 which consists of all attributes, that is, the table will become all-key.
 
+<p>To enforce the key constraints, Duro creates a unique hash index
+for each key.
+
 <p><strong>RDB_create_table_from_type</strong> acts like
 <strong>RDB_create_table</strong>, except that it takes
 a RDB_type argument instead of attribute arguments.
@@ -3339,9 +3342,15 @@ database specified by <var>dbp</var>.
 <p>If <var>parentp</var> is not NULL, the new transaction is
 a subtransaction of the transaction specified by <var>parentp</var>.
 
+<p>The execution of a parent transaction is suspended while a child
+transaction executes. It is an error to perform an operation under
+the control of a transaction which has a running child transaction.
+
 <h3>Return value</h3>
 
 <p>RDB_OK on success, RDB_ERROR if an error occurred.
+
+<p>The call may fail for a <a href="#syserr">system error</a>.
 
 <hr>
 
@@ -3465,6 +3474,7 @@ all tuples from the table specified by <var>tbp</var>.
 If <var>seqitc</var> is zero, the order of the tuples is undefined.
 If <var>seqitc</var> is greater than zero, the order of the tuples
 is specified by <var>seqitv</var>.
+
 
 <h3>Return value</h3>
 
@@ -4444,6 +4454,8 @@ The argument types are specified by <var>argc</var> and <var>argtv</var>.
 <p>To execute the operator, Duro will execute the function specified by
 <var>sym</var> from the library specified by <var>libname</var>.
 
+<p>The name of the library must be passed without the file extension.
+
 <p>This function must have the following signature:
 
 <pre>
@@ -4514,6 +4526,8 @@ is updated by the operator.
 
 <p>To execute the operator, Duro will execute the function specified by
 <var>sym</var> from the library specified by <var>libname</var>.
+
+<p>The name of the library must be passed without the file extension.
 
 <p>This function must have the following signature:
 
@@ -4812,6 +4826,11 @@ specified by <var>idxcompc</var> and <var>idxcompv</var>.
 The <var>flags</var> argument must be either 0 or RDB_ORDERED.
 If <var>flags</var> is 0, a hash index is created.
 If <var>flags</var> is RDB_ORDERED, a B-tree index is created.
+
+<p>Functions which read tuples from a table (like
+<a href="#table_to_array">RDB_table_to_array</a>
+and <a href="#extract_tuple">RDB_extract_tuple</a>) try to use available
+indexes in order to perform faster.
 
 <h3>Return value</h3>
 
