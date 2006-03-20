@@ -82,7 +82,7 @@ table_create_cmd(TclState *statep, Tcl_Interp *interp, int objc,
         return TCL_ERROR;
     }
 
-    txstr = Tcl_GetStringFromObj(objv[objc - 1], NULL);
+    txstr = Tcl_GetString(objv[objc - 1]);
     entryp = Tcl_FindHashEntry(&statep->txs, txstr);
     if (entryp == NULL) {
         Tcl_AppendResult(interp, "Unknown transaction: ", txstr, NULL);
@@ -119,9 +119,13 @@ table_create_cmd(TclState *statep, Tcl_Interp *interp, int objc,
             goto cleanup;
         }
         
-        Tcl_ListObjIndex(interp, attrobjp, 0, &nameobjp);
-        Tcl_ListObjIndex(interp, attrobjp, 1, &typeobjp);
-        attrv[i].name = RDB_dup_str(Tcl_GetStringFromObj(nameobjp, NULL));
+        ret = Tcl_ListObjIndex(interp, attrobjp, 0, &nameobjp);
+        if (ret != TCL_OK)
+            goto cleanup;
+        ret = Tcl_ListObjIndex(interp, attrobjp, 1, &typeobjp);
+        if (ret != TCL_OK)
+            goto cleanup;
+        attrv[i].name = Tcl_GetString(nameobjp);
         attrv[i].typ = Duro_get_type(typeobjp, interp, statep->current_ecp,
                 txp);
         if (attrv[i].typ == NULL) {
@@ -161,11 +165,11 @@ table_create_cmd(TclState *statep, Tcl_Interp *interp, int objc,
         keyv[i].strv = (char **) Tcl_Alloc(sizeof (char *) * keyv[i].strc);
         for (j = 0; j < keyv[i].strc; j++) {
             Tcl_ListObjIndex(interp, keyobjp, j, &keyattrobjp);
-            keyv[i].strv[j] = RDB_dup_str(Tcl_GetStringFromObj(keyattrobjp, NULL));
+            keyv[i].strv[j] = Tcl_GetString(keyattrobjp);
         }
     }
     
-    tbp = RDB_create_table(Tcl_GetStringFromObj(objv[objc - 4], NULL), persistent,
+    tbp = RDB_create_table(Tcl_GetString(objv[objc - 4]), persistent,
             attrc, attrv, keyc, keyv, statep->current_ecp, txp);
     if (tbp == NULL) {
         Duro_dberror(interp, RDB_get_err(statep->current_ecp), txp);
@@ -185,7 +189,6 @@ table_create_cmd(TclState *statep, Tcl_Interp *interp, int objc,
 cleanup:
     if (attrv != NULL) {
         for (i = 0; i < attrc; i++) {
-            free(attrv[i].name);
             if (attrv[i].defaultp != NULL) {
                 RDB_destroy_obj(attrv[i].defaultp, statep->current_ecp);
                 Tcl_Free((char *) attrv[i].defaultp);
@@ -195,8 +198,6 @@ cleanup:
     }
     if (keyv != NULL) {
         for (i = 0; i < keyc; i++) {
-            for (j = 0; j < keyv[i].strc; j++)
-                free(keyv[i].strv[j]);
             Tcl_Free((char *) keyv[i].strv);
         }
         Tcl_Free((char *) keyv);
@@ -233,7 +234,7 @@ table_expr_cmd(TclState *statep, Tcl_Interp *interp, int objc,
         return TCL_ERROR;
     }
 
-    txstr = Tcl_GetStringFromObj(objv[objc - 1], NULL);
+    txstr = Tcl_GetString(objv[objc - 1]);
     entryp = Tcl_FindHashEntry(&statep->txs, txstr);
     if (entryp == NULL) {
         Tcl_AppendResult(interp, "Unknown transaction: ", txstr, NULL);
@@ -247,7 +248,7 @@ table_expr_cmd(TclState *statep, Tcl_Interp *interp, int objc,
         return TCL_ERROR;
     }
 
-    ret = RDB_set_table_name(tbp, Tcl_GetStringFromObj(objv[objc - 3], NULL),
+    ret = RDB_set_table_name(tbp, Tcl_GetString(objv[objc - 3]),
             statep->current_ecp, txp);
     if (ret != RDB_OK) {
         RDB_drop_table(tbp, statep->current_ecp, txp);
@@ -291,8 +292,8 @@ table_drop_cmd(TclState *statep, Tcl_Interp *interp, int objc,
         return TCL_ERROR;
     }
 
-    name = Tcl_GetStringFromObj(objv[2], NULL);
-    txstr = Tcl_GetStringFromObj(objv[3], NULL);
+    name = Tcl_GetString(objv[2]);
+    txstr = Tcl_GetString(objv[3]);
     entryp = Tcl_FindHashEntry(&statep->txs, txstr);
     if (entryp == NULL) {
         Tcl_AppendResult(interp, "Unknown transaction: ", txstr, NULL);
@@ -359,9 +360,9 @@ Duro_delete_cmd(ClientData data, Tcl_Interp *interp, int objc, Tcl_Obj *CONST ob
         return TCL_ERROR;
     }
 
-    name = Tcl_GetStringFromObj(objv[1], NULL);
+    name = Tcl_GetString(objv[1]);
 
-    txstr = Tcl_GetStringFromObj(objv[objc - 1], NULL);
+    txstr = Tcl_GetString(objv[objc - 1]);
     entryp = Tcl_FindHashEntry(&statep->txs, txstr);
     if (entryp == NULL) {
         Tcl_AppendResult(interp, "Unknown transaction: ", txstr, NULL);
@@ -421,9 +422,9 @@ table_contains_cmd(TclState *statep, Tcl_Interp *interp, int objc,
         return TCL_ERROR;
     }
 
-    name = Tcl_GetStringFromObj(objv[2], NULL);
+    name = Tcl_GetString(objv[2]);
 
-    txstr = Tcl_GetStringFromObj(objv[4], NULL);
+    txstr = Tcl_GetString(objv[4]);
     entryp = Tcl_FindHashEntry(&statep->txs, txstr);
     if (entryp == NULL) {
         Tcl_AppendResult(interp, "Unknown transaction: ", txstr, NULL);
@@ -454,7 +455,7 @@ table_contains_cmd(TclState *statep, Tcl_Interp *interp, int objc,
         RDB_init_obj(&obj);
 
         Tcl_ListObjIndex(interp, objv[3], i, &nameobjp);
-        attrname = Tcl_GetStringFromObj(nameobjp, NULL);
+        attrname = Tcl_GetString(nameobjp);
         attrtyp = RDB_type_attr_type(typ, attrname);
         if (attrtyp == NULL) {
             Tcl_AppendResult(interp, "invalid attribute: ", attrname, NULL);
@@ -509,7 +510,7 @@ table_add_cmd(TclState *statep, Tcl_Interp *interp, int objc,
 
     name = Tcl_GetString(objv[2]);
 
-    txstr = Tcl_GetStringFromObj(objv[3], NULL);
+    txstr = Tcl_GetString(objv[3]);
     entryp = Tcl_FindHashEntry(&statep->txs, txstr);
     if (entryp == NULL) {
         Tcl_AppendResult(interp, "Unknown transaction: ", txstr, NULL);
