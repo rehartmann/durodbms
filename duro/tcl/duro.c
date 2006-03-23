@@ -674,7 +674,7 @@ Duro_get_type(Tcl_Obj *objp, Tcl_Interp *interp, RDB_exec_context *ecp,
         }
 
         attrc = llen - 1;
-        attrv = malloc(attrc * sizeof (RDB_attr));
+        attrv = (RDB_attr *) Tcl_Alloc(attrc * sizeof (RDB_attr));
         for (i = 0; i < attrc; i++) {
             Tcl_Obj *elem2p;
 
@@ -685,7 +685,7 @@ Duro_get_type(Tcl_Obj *objp, Tcl_Interp *interp, RDB_exec_context *ecp,
             if (llen != 2) {
                 Tcl_AppendResult(interp, "invalid attribute definition: ",
                         Tcl_GetString(elemp), NULL);
-                free(attrv);
+                Tcl_Free((char *) attrv);
                 return NULL;
             }
 
@@ -695,7 +695,7 @@ Duro_get_type(Tcl_Obj *objp, Tcl_Interp *interp, RDB_exec_context *ecp,
             Tcl_ListObjIndex(interp, elemp, 1, &elem2p);
             attrv[i].typ = Duro_get_type(elem2p, interp, ecp, txp);
             if (attrv[i].typ == NULL) {
-                free(attrv);
+                Tcl_Free((char *) attrv);
                 return NULL;
             }
             
@@ -706,7 +706,7 @@ Duro_get_type(Tcl_Obj *objp, Tcl_Interp *interp, RDB_exec_context *ecp,
         } else {
             typ = RDB_create_relation_type(attrc, attrv, ecp);
         }
-        free(attrv);
+        Tcl_Free((char *) attrv);
         if (typ == NULL) {
             Duro_dberror(interp, RDB_get_err(ecp), txp);
             return NULL;

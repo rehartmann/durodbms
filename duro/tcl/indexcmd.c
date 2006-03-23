@@ -46,7 +46,7 @@ index_create_cmd(TclState *statep, Tcl_Interp *interp, int objc,
 
     ret = RDB_create_table_index(Tcl_GetString(objv[2]), tbp, attrc,
         idxattrv, ordered ? RDB_ORDERED : 0, statep->current_ecp, txp);
-    free(idxattrv);
+    Tcl_Free((char *) idxattrv);
     if (ret != RDB_OK) {
         Duro_dberror(interp, RDB_get_err(statep->current_ecp), txp);
         return TCL_ERROR;

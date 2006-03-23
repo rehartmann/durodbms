@@ -2224,16 +2224,24 @@ _RDB_cat_get_ro_op(const char *name, int argc, RDB_type *argtv[],
     if (ret != RDB_OK)
         goto error;
     libname = RDB_tuple_get_string(&tpl, "LIB");
-    op->modhdl = lt_dlopenext(libname);
-    if (op->modhdl == NULL) {
-        RDB_raise_resource_not_found(libname, ecp);
-        goto error;
+    if (libname[0] != '\0') {
+        op->modhdl = lt_dlopenext(libname);
+        if (op->modhdl == NULL) {
+            RDB_raise_resource_not_found(libname, ecp);
+            goto error;
+        }
+    } else {
+        op->modhdl = NULL;
     }
     symname = RDB_tuple_get_string(&tpl, "SYMBOL");
-    op->funcp = (RDB_ro_op_func *) lt_dlsym(op->modhdl, symname);
-    if (op->funcp == NULL) {
-        RDB_raise_resource_not_found(symname, ecp);
-        goto error;
+    if (strcmp(symname, "_RDB_sys_select") == 0) {
+        op->funcp = &_RDB_sys_select;
+    } else {
+        op->funcp = (RDB_ro_op_func *) lt_dlsym(op->modhdl, symname);
+        if (op->funcp == NULL) {
+            RDB_raise_resource_not_found(symname, ecp);
+            goto error;
+        }
     }
 
     op->rtyp = _RDB_binobj_to_type(RDB_tuple_get(&tpl, "RTYPE"), ecp, txp);

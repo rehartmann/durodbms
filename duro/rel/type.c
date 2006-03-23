@@ -923,7 +923,7 @@ _RDB_sys_select(const char *name, int argc, RDB_object *argv[],
     if (retvalp->kind != RDB_OB_INITIAL
             && (retvalp->typ == NULL
                 || !RDB_type_equals(retvalp->typ, typ))) {
-        RDB_raise_type_mismatch("wrong selectot ret urn type", ecp);
+        RDB_raise_type_mismatch("invalid selector return type", ecp);
         return RDB_ERROR;
     }
 
@@ -963,7 +963,7 @@ create_selector(RDB_type *typ, RDB_exec_context *ecp, RDB_transaction *txp)
     for (i = 0; i < compc; i++)
         argtv[i] = typ->var.scalar.repv[0].compv[i].typ;
     ret = RDB_create_ro_op(typ->var.scalar.repv[0].name, compc, argtv, typ,
-            "libduro", "_RDB_sys_select", typ->name, strlen(typ->name) + 1,
+            "", "_RDB_sys_select", typ->name, strlen(typ->name) + 1,
             ecp, txp);
     free(argtv);
     return ret;
