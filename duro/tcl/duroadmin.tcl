@@ -1035,12 +1035,15 @@ proc about {} {
     set ::newtablename ""
 
     label .about.l1 -text "Duroadmin"
-    label .about.l2 -text "Duro $::duro_version, (C) 2003-2006 Rene Hartmann"
+    text .about.t -width 40 -height 3
+    .about.t insert end "Duro $::duro_version, (C) 2003-2006 René Hartmann."
+    .about.t insert end "\n\nDuro comes with ABSOLUTELY NO WARRANTY."
+    .about.t configure -state disabled
 
     frame .about.buttons
     button .about.buttons.ok -text OK -command {destroy .about}
 
-    pack .about.l1 .about.l2 -side top -anchor w -padx 10 -pady 10
+    pack .about.l1 .about.t -side top -anchor w -padx 10 -pady 10
     pack .about.buttons -side bottom
     pack .about.buttons.ok -side left
 
