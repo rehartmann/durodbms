@@ -105,7 +105,7 @@ literal = string | integer | decimal | float | TRUE | FALSE
         | TUPLE '{' [tuple_item_list] '}'
         | RELATION '{' ne_expression_list '}' | TABLE_DEE | TABLE_DUM.
 
-expression_list = [expression_list].
+expression_list = [ne_expression_list].
 
 ne_expression_list = expression {',' expression}.
 
