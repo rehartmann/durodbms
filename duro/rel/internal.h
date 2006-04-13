@@ -21,6 +21,115 @@ enum {
     RDB_DFL_MAP_CAPACITY = 37
 };
 
+struct RDB_table {
+    /* internal */
+    RDB_type *typ;
+    RDB_bool is_user;
+    RDB_bool is_persistent;
+    enum _RDB_tb_kind kind;
+    char *name;
+    int keyc;
+
+    /*
+     * Candidate keys. NULL if table is virtual and the keys have not been
+     * inferred.
+     */
+    RDB_string_vec *keyv;
+
+    union {
+        struct {
+            /*
+             * If indexp != NULL, tbp must point to a projection, which in
+             * turn must point to a real table.
+             */
+            struct RDB_table *tbp;
+            RDB_expression *exp;
+
+            /* Only used if indexp != NULL */
+            RDB_object **objpv;
+            int objpc;
+            RDB_bool asc;
+            RDB_bool all_eq;
+            RDB_expression *stopexp;
+        } select;
+        struct {
+            struct RDB_table *tb1p;
+            struct RDB_table *tb2p;
+        } _union;
+        struct {
+            struct RDB_table *tb1p;
+            struct RDB_table *tb2p;
+        } semiminus;
+        struct {
+            struct RDB_table *tb1p;
+            struct RDB_table *tb2p;
+        } semijoin;
+        struct {
+            struct RDB_table *tb1p;
+            struct RDB_table *tb2p;
+        } join;
+        struct {
+            struct RDB_table *tbp;
+            int attrc;
+            RDB_virtual_attr *attrv;
+        } extend;
+        struct {
+            struct RDB_table *tbp;
+            RDB_bool keyloss;
+            struct _RDB_tbindex *indexp;
+        } project;
+        struct {
+            struct RDB_table *tb1p;
+            struct RDB_table *tb2p;
+            int addc;
+            RDB_summarize_add *addv;
+        } summarize;
+        struct {
+            struct RDB_table *tbp;
+            int renc;
+            RDB_renaming *renv;
+        } rename;
+        struct {
+            struct RDB_table *tbp;
+            int wrapc;
+            RDB_wrapping *wrapv;
+        } wrap;
+        struct {
+            struct RDB_table *tbp;
+            int attrc;
+            char **attrv;            
+        } unwrap;
+        struct {
+            struct RDB_table *tb1p;
+            struct RDB_table *tb2p;
+            struct RDB_table *tb3p;
+        } sdivide;
+        struct {
+            struct RDB_table *tbp;
+            int attrc;
+            char **attrv;
+            char *gattr;
+        } group;
+        struct {
+            struct RDB_table *tbp;
+            char *attr;
+        } ungroup;
+    } var;
+    struct RDB_stored_table *stp;
+};
+
+struct RDB_database {
+    /* internal */
+
+    char *name;
+    RDB_hashmap tbmap;
+    
+    /* pointer to next DB in environment */
+    struct RDB_database *nextdbp;
+
+    struct RDB_dbroot *dbrootp;
+};
+
 typedef struct {
     char *key;
     RDB_object obj;

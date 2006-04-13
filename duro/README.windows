@@ -14,7 +14,7 @@ The following software is required for running Duro:
 - GNU Libtool
 - Tcl 8.1 or later
 
-Add the directories where respective DLLs are located to PATH,
+Add the directories where the respective DLLs are located to PATH,
 together with the 'bin' subdirectory of the Duro root directory.
 
 Duro 0.11 has been tested under Linux/x86 and Windows XP with Berkeley

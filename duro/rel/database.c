@@ -17,6 +17,12 @@
 #include <stdio.h>
 #include <ctype.h>
 
+char *
+RDB_db_name(RDB_database *dbp)
+{
+    return dbp->name;
+}
+
 RDB_environment *
 RDB_db_env(RDB_database *dbp)
 {

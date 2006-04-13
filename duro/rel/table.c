@@ -434,9 +434,12 @@ _RDB_drop_table(RDB_table *tbp, RDB_bool rec, RDB_exec_context *ecp)
     return RDB_OK;
 }
 
-/*
- * Return the type of the table tbp.
- */
+char *
+RDB_table_name(RDB_table *tbp)
+{
+    return tbp->name;
+}
+
 RDB_type *
 RDB_table_type(const RDB_table *tbp)
 {
