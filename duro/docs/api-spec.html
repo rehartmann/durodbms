@@ -304,6 +304,51 @@
 
 <hr>
 
+<h2 id="add_table">RDB_add_table</h2>
+
+<pre>
+#include &lt;rel/rdb.h&gt;
+
+int
+RDB_add_table(RDB_table *tbp, RDB_exec_context *ecp, RDB_transaction *txp);
+</pre>
+
+<h3>Description</h3>
+
+<p>RDB_add_table adds the table specified by <var>tbp</var> to the
+database the transaction specified by <var>txp</var> interacts with.
+
+<p>If an error occurs, an error value is left in *<var>ecp</var>.
+
+<p>If the table is a local (transient) table, it is made global
+(persistent).
+
+<p>The table must have a name.
+
+<p>Currently, RDB_add_table is not supported for local real tables.
+
+<h3>Return value</h3>
+
+<p>RDB_OK on success, RDB_ERROR if an error occurred.
+
+<h3>Errors</h3>
+
+<dl>
+<dt>RDB_INVALID_TRANSACTION_ERROR
+<dd><var>txp</var> does not point to a running transaction.
+<dt>RDB_INVALID_ARGUMENT_ERROR
+<dd>The table does not have a name.
+<dt>RDB_ELEMENT_EXIST_ERROR
+<dd>The table is already associated with the database.
+<dt>RDB_NOT_SUPPORTED_ERROR
+<dd>The table is a local real table.
+</dl>
+
+<p>The call may also fail for a <a href="#syserr">system error</a>,
+in which case the transaction may be implicitly rolled back.
+
+<hr>
+
 <h2 id="create_table">RDB_create_table</h2>
 
 <pre>
@@ -378,7 +423,7 @@ for each key.
 <p><strong>RDB_create_table_from_type</strong> acts like
 <strong>RDB_create_table</strong>, except that it takes
 a RDB_type argument instead of attribute arguments.
-<var>reltyp</var> must be a relation type.
+*<var>reltyp</var> must be a relation type.
 
 <h3>Return value</h3>
 
@@ -579,51 +624,6 @@ location pointed to by <var>resultp</var>.
 <dt>RDB_OPERATOR_NOT_FOUND_ERROR
 <dd>The definition of one of the tables
 refers to a non-existing operator.
-</dl>
-
-<p>The call may also fail for a <a href="#syserr">system error</a>,
-in which case the transaction may be implicitly rolled back.
-
-<hr>
-
-<h2 id="add_table">RDB_add_table</h2>
-
-<pre>
-#include &lt;rel/rdb.h&gt;
-
-int
-RDB_add_table(RDB_table *tbp, RDB_exec_context *ecp, RDB_transaction *txp);
-</pre>
-
-<h3>Description</h3>
-
-<p>RDB_add_table adds the table specified by <var>tbp</var> to the
-database the transaction specified by <var>txp</var> interacts with.
-
-<p>If an error occurs, an error value is left in *<var>ecp</var>.
-
-<p>If the table is a local (transient) table, it is made global
-(persistent).
-
-<p>The table must have a name.
-
-<p>Currently, RDB_add_table is not supported for local real tables.
-
-<h3>Return value</h3>
-
-<p>RDB_OK on success, RDB_ERROR if an error occurred.
-
-<h3>Errors</h3>
-
-<dl>
-<dt>RDB_INVALID_TRANSACTION_ERROR
-<dd><var>txp</var> does not point to a running transaction.
-<dt>RDB_INVALID_ARGUMENT_ERROR
-<dd>The table does not have a name.
-<dt>RDB_ELEMENT_EXIST_ERROR
-<dd>The table is already associated with the database.
-<dt>RDB_NOT_SUPPORTED_ERROR
-<dd>The table is a local real table.
 </dl>
 
 <p>The call may also fail for a <a href="#syserr">system error</a>,
