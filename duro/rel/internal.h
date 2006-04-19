@@ -21,8 +21,51 @@ enum {
     RDB_DFL_MAP_CAPACITY = 37
 };
 
-struct RDB_table {
+enum _RDB_expr_kind {
+    RDB_EX_OBJ,
+
+    RDB_EX_VAR,
+
+    RDB_EX_AGGREGATE,
+    RDB_EX_TUPLE_ATTR,
+    RDB_EX_GET_COMP,
+    RDB_EX_RO_OP
+};
+
+struct RDB_expression {
     /* internal */
+    enum _RDB_expr_kind kind;
+    union {
+        char *varname;
+        RDB_object obj;
+        struct {
+            int argc;
+            struct RDB_expression **argv;
+            char *name;
+            RDB_aggregate_op op; /* only for RDB_EX_AGGREGATE */
+        } op;
+    } var;
+};
+
+enum _RDB_tb_kind {
+    RDB_TB_REAL,
+    RDB_TB_SELECT,
+    RDB_TB_UNION,
+    RDB_TB_SEMIMINUS,
+    RDB_TB_SEMIJOIN,
+    RDB_TB_JOIN,
+    RDB_TB_EXTEND,
+    RDB_TB_PROJECT,
+    RDB_TB_SUMMARIZE,
+    RDB_TB_RENAME,
+    RDB_TB_WRAP,
+    RDB_TB_UNWRAP,
+    RDB_TB_SDIVIDE,
+    RDB_TB_GROUP,
+    RDB_TB_UNGROUP,
+};
+
+struct RDB_table {
     RDB_type *typ;
     RDB_bool is_user;
     RDB_bool is_persistent;
@@ -38,14 +81,10 @@ struct RDB_table {
 
     union {
         struct {
-            /*
-             * If indexp != NULL, tbp must point to a projection, which in
-             * turn must point to a real table.
-             */
             struct RDB_table *tbp;
             RDB_expression *exp;
 
-            /* Only used if indexp != NULL */
+            /* Only used if the child's indexp != NULL */
             RDB_object **objpv;
             int objpc;
             RDB_bool asc;
@@ -119,8 +158,6 @@ struct RDB_table {
 };
 
 struct RDB_database {
-    /* internal */
-
     char *name;
     RDB_hashmap tbmap;
     

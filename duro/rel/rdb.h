@@ -111,6 +111,8 @@ enum _RDB_tp_kind {
     RDB_TP_ARRAY
 };
 
+typedef struct RDB_expression RDB_expression;
+
 typedef struct RDB_type {
     /* internal */
     char *name;
@@ -141,7 +143,7 @@ typedef struct RDB_type {
                Otherwise NULL. */
             struct RDB_type *arep; 
 
-            struct RDB_expression *constraintp;
+            RDB_expression *constraintp;
         } scalar;
     } var;
 } RDB_type;
@@ -190,37 +192,6 @@ _RDB_EXTERN_VAR RDB_type RDB_SYSTEM_ERROR;
 
 _RDB_EXTERN_VAR RDB_type RDB_SYNTAX_ERROR;
 
-enum _RDB_expr_kind {
-    RDB_EX_OBJ,
-
-    RDB_EX_VAR,
-
-    RDB_EX_AGGREGATE,
-    RDB_EX_TUPLE_ATTR,
-    RDB_EX_GET_COMP,
-    RDB_EX_RO_OP
-};
-
-typedef enum {
-    RDB_COUNT, RDB_SUM, RDB_AVG, RDB_MAX, RDB_MIN, RDB_ALL, RDB_ANY,
-    RDB_COUNTD, RDB_SUMD, RDB_AVGD
-} RDB_aggregate_op;
-
-typedef struct RDB_expression {
-    /* internal */
-    enum _RDB_expr_kind kind;
-    union {
-        char *varname;
-        RDB_object obj;
-        struct {
-            int argc;
-            struct RDB_expression **argv;
-            char *name;
-            RDB_aggregate_op op; /* only for RDB_EX_AGGREGATE */
-        } op;
-    } var;
-} RDB_expression;
-
 typedef struct {
     char *name;
     RDB_expression *exp;
@@ -230,6 +201,11 @@ typedef struct {
     int strc;
     char **strv;
 } RDB_string_vec;
+
+typedef enum {
+    RDB_COUNT, RDB_SUM, RDB_AVG, RDB_MAX, RDB_MIN, RDB_ALL, RDB_ANY,
+    RDB_COUNTD, RDB_SUMD, RDB_AVGD
+} RDB_aggregate_op;
 
 typedef struct {
     RDB_aggregate_op op;
@@ -241,25 +217,6 @@ typedef struct {
     char *from;
     char *to;
 } RDB_renaming;
-
-/* internal */
-enum _RDB_tb_kind {
-    RDB_TB_REAL,
-    RDB_TB_SELECT,
-    RDB_TB_UNION,
-    RDB_TB_SEMIMINUS,
-    RDB_TB_SEMIJOIN,
-    RDB_TB_JOIN,
-    RDB_TB_EXTEND,
-    RDB_TB_PROJECT,
-    RDB_TB_SUMMARIZE,
-    RDB_TB_RENAME,
-    RDB_TB_WRAP,
-    RDB_TB_UNWRAP,
-    RDB_TB_SDIVIDE,
-    RDB_TB_GROUP,
-    RDB_TB_UNGROUP,
-};
 
 typedef struct {
     int attrc;
