@@ -12,7 +12,6 @@
 #include <rec/cursor.h>
 #include <gen/hashtable.h>
 #include <ltdl.h>
-#include <stdio.h>
 
 #define AVG_COUNT_SUFFIX "$C"
 
