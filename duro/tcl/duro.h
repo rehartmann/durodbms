@@ -33,7 +33,7 @@ typedef struct {
  * so the tables belonging to an environment can be identified
  */ 
 typedef struct {
-    RDB_table *tablep;
+    RDB_object *tablep;
     RDB_environment *envp;
 } table_entry;
 
@@ -111,13 +111,13 @@ Duro_tcl_drop_array(RDB_object *arrayp, Tcl_HashEntry *entryp,
 void
 Duro_dberror(Tcl_Interp *interp, const RDB_object *errp, RDB_transaction *);
 
-RDB_table *
+RDB_object *
 Duro_get_table(TclState *, Tcl_Interp *, const char *name, RDB_transaction *);
 
 Tcl_Obj *
 Duro_tuple_to_list(Tcl_Interp *, const RDB_object *, RDB_transaction *);
 
-RDB_table *
+RDB_object *
 Duro_get_ltable(const char *name, void *arg);
 
 Tcl_Obj *
@@ -144,14 +144,14 @@ int
 Duro_init_tcl(Tcl_Interp *, TclState **);
 
 int
-Duro_add_table(Tcl_Interp *interp, TclState *statep, RDB_table *tbp,
+Duro_add_table(Tcl_Interp *interp, TclState *statep, RDB_object *tbp,
         const char *name, RDB_environment *envp);
 
 RDB_expression *
 Duro_parse_expr_utf(Tcl_Interp *, const char *, void *,
         RDB_exec_context *, RDB_transaction *);
 
-RDB_table *
+RDB_object *
 Duro_parse_table_utf(Tcl_Interp *interp, const char *s, void *arg,
         RDB_exec_context *, RDB_transaction *);
 

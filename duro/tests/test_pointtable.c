@@ -3,6 +3,7 @@
 #include <rel/rdb.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <assert.h>
 
 char *upoint_keyattrs1[] = { "POINT" };
 
@@ -16,7 +17,7 @@ int
 create_table(RDB_database *dbp, RDB_exec_context *ecp)
 {
     RDB_transaction tx;
-    RDB_table *tbp;
+    RDB_object*tbp;
     RDB_attr utype_attrs[2];
     int ret;
    
@@ -54,7 +55,7 @@ test_insert(RDB_database *dbp, RDB_exec_context *ecp)
     int ret;
     RDB_object tpl;
     RDB_transaction tx;
-    RDB_table *tbp;
+    RDB_object*tbp;
     RDB_object xval, yval;
     RDB_object pval;
     RDB_object lenval, thval;
@@ -158,9 +159,9 @@ test_query(RDB_database *dbp, RDB_exec_context *ecp)
 {
     RDB_object *tplp;
     RDB_transaction tx;
-    RDB_table *tbp;
-    RDB_table *tmptbp = NULL;
-    RDB_expression *wherep;
+    RDB_object *tbp;
+    RDB_object *tmptbp = NULL;
+    RDB_expression *exp, *argp, *wherep;
     RDB_expression *compv[2];
     RDB_object array;
     RDB_object xval;
@@ -202,15 +203,23 @@ test_query(RDB_database *dbp, RDB_exec_context *ecp)
         goto error;
     }
     RDB_clear_err(ecp);
-    printf("Creating POINTTEST WHERE POINT.THE_X=1\n");
+
+    exp = RDB_ro_op("WHERE", 2, NULL, ecp);
+    if (exp == NULL)
+        goto error;
+    
+    argp = RDB_table_ref_to_expr(tbp, ecp);
+    if (argp == NULL)
+        goto error;
+    RDB_add_arg(exp, argp);
 
     wherep = RDB_expr_var("POINT", ecp);
     wherep = RDB_expr_comp(wherep, "X", ecp);
     wherep = RDB_eq(wherep, RDB_double_to_expr(1.0, ecp), ecp);
+    RDB_add_arg(exp, wherep);
 
-    tmptbp = RDB_select(tbp, wherep, ecp, &tx);
-    if (tmptbp == NULL)
-        goto error;
+    tmptbp = RDB_expr_to_vtable(exp, ecp, &tx);
+    assert(tmptbp != NULL);
 
     printf("Converting selection table to array\n");
     ret = RDB_table_to_array(&array, tmptbp, 0, NULL, ecp, &tx);
@@ -244,19 +253,28 @@ test_query(RDB_database *dbp, RDB_exec_context *ecp)
 
     printf("Creating POINTTEST WHERE POINT=POINT(1,2)\n");
 
+    exp = RDB_ro_op("WHERE", 2, NULL, ecp);
+    if (exp == NULL)
+        goto error;
+
+    argp = RDB_table_ref_to_expr(tbp, ecp);
+    if (argp == NULL)
+        goto error;
+    RDB_add_arg(exp, argp);
+
     compv[0] = RDB_double_to_expr(1.0, ecp);
     compv[1] = RDB_double_to_expr(2.0, ecp);
     wherep = RDB_ro_op("POINT", 2, compv, ecp);
     if (wherep == NULL) {
-        ret = RDB_ERROR;
         goto error;
     } 
     wherep = RDB_eq(wherep, RDB_expr_var("POINT", ecp), ecp);
+    RDB_add_arg(exp, wherep);
 
-    tmptbp = RDB_select(tbp, wherep, ecp, &tx);
+    tmptbp = RDB_expr_to_vtable(exp, ecp, &tx);
     if (tmptbp == NULL) {
         goto error;
-    } 
+    }
 
     RDB_init_obj(&array);
 

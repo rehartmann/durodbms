@@ -16,7 +16,7 @@ Duro_insert_cmd(ClientData data, Tcl_Interp *interp, int objc,
     char *txstr;
     Tcl_HashEntry *entryp;
     RDB_transaction *txp;
-    RDB_table *tbp;
+    RDB_object *tbp;
     RDB_object tpl;
     TclState *statep = (TclState *) data;
 
@@ -43,7 +43,7 @@ Duro_insert_cmd(ClientData data, Tcl_Interp *interp, int objc,
     }
 
     RDB_init_obj(&tpl);
-    ret = Duro_tcl_to_duro(interp, objv[2], RDB_table_type(tbp)->var.basetyp,
+    ret = Duro_tcl_to_duro(interp, objv[2], RDB_obj_type(tbp)->var.basetyp,
             &tpl, statep->current_ecp, txp);
     if (ret != TCL_OK) {
         goto cleanup;

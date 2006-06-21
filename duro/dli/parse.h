@@ -10,13 +10,13 @@
 
 #include <rel/rdb.h>
 
-typedef RDB_table *RDB_ltablefn(const char *, void *);
+typedef RDB_object *RDB_ltablefn(const char *, void *);
 
 RDB_expression *
 RDB_parse_expr(const char *, RDB_ltablefn *, void *, RDB_exec_context *,
         RDB_transaction *);
 
-RDB_table *
+RDB_object *
 RDB_parse_table(const char *, RDB_ltablefn *, void *, RDB_exec_context *,
         RDB_transaction *);
 

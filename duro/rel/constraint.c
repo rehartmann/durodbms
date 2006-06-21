@@ -33,40 +33,41 @@ add_empty_tb(RDB_constraint *constrp, RDB_exec_context *ecp,
     if (constrp->exp->kind == RDB_EX_RO_OP
             && constrp->exp->var.op.argc == 1
             && strcmp(constrp->exp->var.op.name, "IS_EMPTY") == 0) {
-        RDB_object resobj;
-        RDB_table *ptbp, *ctbp;
+        RDB_object *ptbp;
+        RDB_expression *pexp;
+        RDB_expression *argexp = RDB_dup_expr(constrp->exp->var.op.argv[0],
+                NULL);
+        if (argexp == NULL)
+            return RDB_ERROR;
 
-        RDB_init_obj(&resobj);
-        ret = RDB_evaluate(constrp->exp->var.op.argv[0], NULL, ecp, txp,
-                &resobj);
-        if (ret != RDB_OK) {
-            RDB_destroy_obj(&resobj, ecp);
-            return ret;
+        pexp = RDB_ro_op_va("PROJECT", ecp, argexp, (RDB_expression *) NULL);
+        if (pexp == NULL) {
+            RDB_drop_expr(argexp, ecp);
+            return RDB_ERROR;
         }
-        ptbp = RDB_project(RDB_obj_table(&resobj), 0, NULL, ecp);
-        if (ret != RDB_OK) {
-            RDB_destroy_obj(&resobj, ecp);
-            return ret;
-        }
-        resobj.var.tbp = NULL;
-        RDB_destroy_obj(&resobj, ecp);
 
-        ret = _RDB_transform(ptbp, ecp, txp);
+        ret = _RDB_transform(pexp, ecp, txp);
         if (ret != RDB_OK) {
             RDB_drop_table(ptbp, ecp, NULL);
-            return ret;
+            return RDB_ERROR;
         }
+/* !!
         if (ptbp->kind == RDB_TB_PROJECT) {
             ctbp = ptbp->var.project.tbp;
             _RDB_free_table(ptbp, ecp);
         } else {
             ctbp = ptbp;
         }
-
+*/
+        ptbp = _RDB_expr_to_vtable(pexp, ecp, txp);
+        if (ptbp != NULL) {
+            RDB_drop_expr(pexp, ecp);
+            return ret;
+        }
         ret = RDB_hashtable_put(&txp->dbp->dbrootp->empty_tbtab,
-                ctbp, &te);
+                ptbp, &te);
         if (ret != RDB_OK) {
-            RDB_drop_table(ctbp, ecp, NULL);
+            RDB_drop_table(ptbp, ecp, NULL);
             return ret;
         }
     }

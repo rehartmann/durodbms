@@ -13,7 +13,6 @@ Starting transaction
 Converting table to array
 X=1.000000, Y=2.000000
 X=2.000000, Y=4.000000
-Creating POINTTEST WHERE POINT.THE_X=1
 Converting selection table to array
 X=1.000000, Y=2.000000
 Creating POINTTEST WHERE POINT=POINT(1,2)

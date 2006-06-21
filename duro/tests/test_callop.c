@@ -59,8 +59,8 @@ int
 test_useop(RDB_database *dbp, RDB_exec_context *ecp)
 {
     RDB_transaction tx;
-    RDB_table *tbp, *vtbp;
-    RDB_virtual_attr extend;
+    RDB_object *tbp, *vtbp;
+    RDB_expression *exp, *argp;
     RDB_expression *expv[2];
     int ret;
 
@@ -78,13 +78,30 @@ test_useop(RDB_database *dbp, RDB_exec_context *ecp)
     expv[0] = RDB_expr_var("DEPTNO", ecp);
     expv[1] = RDB_int_to_expr(100, ecp);
 
-    extend.name = "XDEPTNO";
-    extend.exp = RDB_ro_op("PLUS", 2, expv, ecp);
-    if (extend.exp == NULL) {
+    exp = RDB_ro_op("EXTEND", 3, NULL, ecp);
+    if (exp == NULL)
+        goto error;
+
+    argp = RDB_table_ref_to_expr(tbp, ecp);
+    if (argp == NULL) {
+        RDB_drop_expr(exp, ecp);
         goto error;
     }
+    RDB_add_arg(exp, argp);
+    argp = RDB_ro_op("PLUS", 2, expv, ecp);
+    if (argp == NULL) {
+        RDB_drop_expr(exp, ecp);
+        goto error;
+    }
+    RDB_add_arg(exp, argp);
+    argp = RDB_string_to_expr("XDEPTNO", ecp);
+    if (argp == NULL) {
+        RDB_drop_expr(exp, ecp);
+        goto error;
+    }
+    RDB_add_arg(exp, argp);
 
-    vtbp = RDB_extend(tbp, 1, &extend, ecp, &tx);
+    vtbp = RDB_expr_to_vtable(exp, ecp, &tx);
     if (vtbp == NULL) {
         goto error;
     }

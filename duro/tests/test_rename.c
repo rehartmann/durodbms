@@ -5,7 +5,7 @@
 #include <stdio.h>
 
 static int
-print_table(RDB_table *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
+print_table(RDB_object *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
 {
     int ret;
     RDB_object *tplp;
@@ -39,16 +39,12 @@ error:
     return RDB_ERROR;
 }
 
-RDB_renaming renv[] = {
-    { "SALARY", "SAL" },
-    { "EMPNO", "EMP#" }
-};
-
 int
 test_rename(RDB_database *dbp, RDB_exec_context *ecp)
 {
     RDB_transaction tx;
-    RDB_table *tbp, *vtbp;
+    RDB_expression *exp, *argp;
+    RDB_object *tbp, *vtbp;
     RDB_object tpl;
     int ret;
     RDB_bool b;
@@ -60,15 +56,58 @@ test_rename(RDB_database *dbp, RDB_exec_context *ecp)
     }
 
     tbp = RDB_get_table("EMPS1", ecp, &tx);
-    if (ret != RDB_OK) {
+    if (tbp == NULL) {
         RDB_rollback(ecp, &tx);
-        return ret;
+        return RDB_ERROR;
     }
 
     printf("Creating EMPS1 RENAME (SALARY AS SAL, EMPNO AS EMP#)\n");
 
-    vtbp = RDB_rename(tbp, 2, renv, ecp);
+    exp = RDB_ro_op("RENAME", 5, NULL, ecp);
+    if (exp == NULL) {
+        RDB_rollback(ecp, &tx);
+    	return RDB_ERROR;
+    }
+
+    argp = RDB_table_ref_to_expr(tbp, ecp);
+    if (argp == NULL) {
+    	RDB_drop_expr(exp, ecp);
+    	RDB_rollback(ecp, &tx);
+    	return RDB_ERROR;
+    }
+    RDB_add_arg(exp, argp);
+    argp = RDB_string_to_expr("SALARY", ecp);
+    if (argp == NULL) {
+    	RDB_drop_expr(exp, ecp);
+    	RDB_rollback(ecp, &tx);
+    	return RDB_ERROR;
+    }
+    RDB_add_arg(exp, argp);
+    argp = RDB_string_to_expr("SAL", ecp);
+    if (argp == NULL) {
+    	RDB_drop_expr(exp, ecp);
+    	RDB_rollback(ecp, &tx);
+    	return RDB_ERROR;
+    }
+    RDB_add_arg(exp, argp);
+    argp = RDB_string_to_expr("EMPNO", ecp);
+    if (argp == NULL) {
+    	RDB_drop_expr(exp, ecp);
+    	RDB_rollback(ecp, &tx);
+    	return RDB_ERROR;
+    }
+    RDB_add_arg(exp, argp);
+    argp = RDB_string_to_expr("EMP#", ecp);
+    if (argp == NULL) {
+    	RDB_drop_expr(exp, ecp);
+    	RDB_rollback(ecp, &tx);
+    	return RDB_ERROR;
+    }
+    RDB_add_arg(exp, argp);
+
+    vtbp = RDB_expr_to_vtable(exp, ecp, &tx);
     if (vtbp == NULL) {
+    	RDB_drop_expr(exp, ecp);
         RDB_rollback(ecp, &tx);
         return RDB_ERROR;
     }

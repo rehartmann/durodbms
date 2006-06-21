@@ -11,7 +11,7 @@
 #include <string.h>
 
 int
-RDB_table_contains(RDB_table *tbp, const RDB_object *tplp, RDB_exec_context *ecp,
+RDB_table_contains(RDB_object *tbp, const RDB_object *tplp, RDB_exec_context *ecp,
         RDB_transaction *txp, RDB_bool *resultp)
 {
     int i;

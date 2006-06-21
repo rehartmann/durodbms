@@ -12,7 +12,6 @@
 int
 Duro_expr_cmd(ClientData data, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[])
 {
-    int ret;
     char *txstr;
     RDB_transaction *txp;
     Tcl_HashEntry *entryp;
@@ -43,8 +42,7 @@ Duro_expr_cmd(ClientData data, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv
     }
 
     RDB_init_obj(&val);
-    ret = RDB_evaluate(exprp, NULL, statep->current_ecp, txp, &val);
-    if (ret != RDB_OK) {
+    if (RDB_evaluate(exprp, NULL, statep->current_ecp, txp, &val) != RDB_OK) {
         RDB_drop_expr(exprp, statep->current_ecp);
         RDB_destroy_obj(&val, statep->current_ecp);
         Duro_dberror(interp, RDB_get_err(statep->current_ecp), txp);

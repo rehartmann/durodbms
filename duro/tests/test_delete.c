@@ -5,7 +5,7 @@
 #include <stdio.h>
 
 static int
-print_table(RDB_table *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
+print_table(RDB_object *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
 {
     int ret;
     RDB_object *tplp;
@@ -45,7 +45,7 @@ test_delete(RDB_database *dbp, RDB_exec_context *ecp)
 {
     int ret;
     RDB_transaction tx;
-    RDB_table *tbp;
+    RDB_object *tbp;
     RDB_expression *exprp;
 
     printf("Starting transaction\n");

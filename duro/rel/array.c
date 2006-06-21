@@ -9,57 +9,59 @@
 #include "internal.h"
 
 int
-RDB_table_to_array(RDB_object *arrp, RDB_table *tbp,
+RDB_table_to_array(RDB_object *arrp, RDB_object *tbp,
                    int seqitc, const RDB_seq_item seqitv[],
                    RDB_exec_context *ecp, RDB_transaction *txp)
 {
     int ret;
-    RDB_table *ntbp;
+    RDB_object *ntbp;
+    RDB_qresult *qrp = NULL;
     _RDB_tbindex *indexp = NULL;
 
     ret = RDB_destroy_obj(arrp, ecp);
     if (ret != RDB_OK)
         return RDB_ERROR;
+    RDB_init_obj(arrp);
 
     ret = _RDB_optimize(tbp, seqitc, seqitv, ecp, txp, &ntbp);
     if (ret != RDB_OK)
         return RDB_ERROR;
 
-    arrp->kind = RDB_OB_ARRAY;
-    arrp->var.arr.tbp = ntbp;
-    arrp->var.arr.txp = txp;
-    arrp->var.arr.qrp = NULL;
-    arrp->var.arr.length = -1;
-    arrp->var.arr.tplp = NULL;
-    arrp->var.arr.elemv = NULL;
-    arrp->var.arr.pos = 0;
-
     if (seqitc > 0) {
-        indexp = _RDB_sortindex(arrp->var.arr.tbp);
+        indexp = _RDB_sortindex(ntbp);
         if (indexp == NULL || !_RDB_index_sorts(indexp, seqitc, seqitv)) {
             /* Create sorter */
-            ret = _RDB_sorter(arrp->var.arr.tbp, &arrp->var.arr.qrp, ecp, txp,
-                    seqitc, seqitv);
+            ret = _RDB_sorter(ntbp, &qrp, ecp, txp, seqitc, seqitv);
             if (ret != RDB_OK)
                 goto error;
         }
     }
-    if (arrp->var.arr.qrp == NULL) {
-        arrp->var.arr.qrp = _RDB_table_qresult(arrp->var.arr.tbp, ecp,
-                arrp->var.arr.txp);
-        if (arrp->var.arr.qrp == NULL) {
+    if (qrp == NULL) {
+        qrp = _RDB_table_qresult(ntbp, ecp, txp);
+        if (qrp == NULL) {
             goto error;
         }
         /* Add duplicate remover, if necessary */
-        ret = _RDB_duprem(arrp->var.arr.qrp, ecp);
+        ret = _RDB_duprem(qrp, ecp, txp);
         if (ret != RDB_OK)
             goto error;
     }
     
+    arrp->kind = RDB_OB_ARRAY;
+    arrp->var.arr.tbp = ntbp;
+    arrp->var.arr.txp = txp;
+    arrp->var.arr.length = -1;
+    arrp->var.arr.tplp = NULL;
+    arrp->var.arr.elemv = NULL;
+    arrp->var.arr.pos = 0;
+    arrp->var.arr.qrp = qrp;
+
     return RDB_OK;
 
 error:
-    RDB_drop_table(arrp->var.arr.tbp, ecp, txp);
+    RDB_drop_table(ntbp, ecp, txp);
+    if (qrp != NULL)
+        _RDB_drop_qresult(qrp, ecp, txp);
     return RDB_ERROR;
 }
 
@@ -187,9 +189,8 @@ RDB_array_get(RDB_object *arrp, RDB_int idx, RDB_exec_context *ecp)
     if (ret != RDB_OK) {
         if (RDB_obj_type(RDB_get_err(ecp)) == &RDB_NOT_FOUND_ERROR) {
             arrp->var.arr.length = arrp->var.arr.pos;
-            if (arrp->var.arr.tbp->kind == RDB_TB_REAL
-                    && arrp->var.arr.tbp->stp != NULL) {
-                arrp->var.arr.tbp->stp->est_cardinality =
+            if (arrp->var.arr.tbp->var.tb.stp != NULL) {
+                arrp->var.arr.tbp->var.tb.stp->est_cardinality =
                         arrp->var.arr.length;
             }
         }

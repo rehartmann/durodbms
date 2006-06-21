@@ -12,7 +12,7 @@
 #include <string.h>
 
 int
-_RDB_insert_real(RDB_table *tbp, const RDB_object *tplp,
+_RDB_insert_real(RDB_object *tbp, const RDB_object *tplp,
                  RDB_exec_context *ecp, RDB_transaction *txp)
 {
     int i;
@@ -21,7 +21,7 @@ _RDB_insert_real(RDB_table *tbp, const RDB_object *tplp,
     RDB_type *tuptyp = tbp->typ->var.basetyp;
     int attrcount = tuptyp->var.tuple.attrc;
 
-    if (tbp->stp == NULL) {
+    if (tbp->var.tb.stp == NULL) {
         /* Create physical table */
         if (_RDB_create_stored_table(tbp, txp != NULL ? txp->envp : NULL,
                 NULL, ecp, txp) != RDB_OK) {
@@ -39,7 +39,7 @@ _RDB_insert_real(RDB_table *tbp, const RDB_object *tplp,
         int *fnop;
         RDB_object *valp;
         
-        fnop = _RDB_field_no(tbp->stp, tuptyp->var.tuple.attrv[i].name);
+        fnop = _RDB_field_no(tbp->var.tb.stp, tuptyp->var.tuple.attrv[i].name);
         valp = RDB_tuple_get(tplp, tuptyp->var.tuple.attrv[i].name);
 
         /* If there is no value, check if there is a default */
@@ -123,12 +123,12 @@ _RDB_insert_real(RDB_table *tbp, const RDB_object *tplp,
     }
 
     _RDB_cmp_ecp = ecp;
-    ret = RDB_insert_rec(tbp->stp->recmapp, fvp,
-            tbp->is_persistent ? txp->txid : NULL);
+    ret = RDB_insert_rec(tbp->var.tb.stp->recmapp, fvp,
+            tbp->var.tb.is_persistent ? txp->txid : NULL);
     if (ret == DB_KEYEXIST) {
         /* check if the tuple is an element of the table */
-        if (RDB_contains_rec(tbp->stp->recmapp, fvp,
-                tbp->is_persistent ? txp->txid : NULL) == RDB_OK) {
+        if (RDB_contains_rec(tbp->var.tb.stp->recmapp, fvp,
+                tbp->var.tb.is_persistent ? txp->txid : NULL) == RDB_OK) {
             RDB_raise_element_exists("tuple is already in table", ecp);
         } else {
             _RDB_handle_errcode(ret, ecp, txp);
@@ -139,7 +139,7 @@ _RDB_insert_real(RDB_table *tbp, const RDB_object *tplp,
         ret = RDB_ERROR;
     }
     if (ret == RDB_OK) {
-        tbp->stp->est_cardinality++;
+        tbp->var.tb.stp->est_cardinality++;
     }
 
 cleanup:
@@ -148,7 +148,7 @@ cleanup:
 }
 
 int
-RDB_insert(RDB_table *tbp, const RDB_object *tplp, RDB_exec_context *ecp,
+RDB_insert(RDB_object *tbp, const RDB_object *tplp, RDB_exec_context *ecp,
            RDB_transaction *txp)
 {
     RDB_ma_insert ins;

@@ -10,7 +10,8 @@ int
 test_ra(RDB_database *dbp, RDB_exec_context *ecp)
 {
     RDB_transaction tx;
-    RDB_table *tb1p, *tb2p, *vtbp;
+    RDB_expression *exp, *argp;
+    RDB_object *tb1p, *tb2p, *vtbp;
     RDB_object array;
     RDB_object *tplp;
     int ret;
@@ -34,18 +35,49 @@ test_ra(RDB_database *dbp, RDB_exec_context *ecp)
     }
 
     printf("Creating intersection (EMPS1, EMPS2)\n");
-    vtbp = RDB_intersect(tb1p, tb2p, ecp);
-    if (vtbp == NULL) {
+
+    exp = RDB_ro_op("INTERSECT", 2, NULL, ecp);
+    if (exp == NULL) {
         RDB_rollback(ecp, &tx);
         return RDB_ERROR;
     }
 
+    argp = RDB_table_ref_to_expr(tb1p, ecp);
+    if (argp == NULL) {
+        RDB_rollback(ecp, &tx);
+        return RDB_ERROR;
+    }
+    RDB_add_arg(exp, argp);
+
+    argp = RDB_table_ref_to_expr(tb2p, ecp);
+    if (argp == NULL) {
+        RDB_rollback(ecp, &tx);
+        return RDB_ERROR;
+    }
+    RDB_add_arg(exp, argp);
+    
+    argp = exp;
+
     printf("Creating projection (NAME)\n");
 
-    vtbp = RDB_project(vtbp, 1, projattrs1, ecp);
+    exp = RDB_ro_op("PROJECT", 2, NULL, ecp);
+    if (exp == NULL) {
+        RDB_rollback(ecp, &tx);
+        return RDB_ERROR;
+    }
+    RDB_add_arg(exp, argp);
+    
+    argp = RDB_string_to_expr("NAME", ecp);
+    if (argp == NULL) {
+        RDB_rollback(ecp, &tx);
+        return RDB_ERROR;
+    }
+    RDB_add_arg(exp, argp);    
+
+    vtbp = RDB_expr_to_vtable(exp, ecp, &tx);
     if (vtbp == NULL) {
-        RDB_drop_table(vtbp, ecp, &tx);
-        RDB_commit(ecp, &tx);
+        RDB_drop_expr(exp, ecp);
+        RDB_rollback(ecp, &tx);
         return RDB_ERROR;
     }
 

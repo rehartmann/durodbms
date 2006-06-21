@@ -3,16 +3,16 @@
 #include <rel/rdb.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <assert.h>
 
 int
 print_salary_view(RDB_database *dbp, RDB_exec_context *ecp)
 {
     RDB_transaction tx;
-    RDB_table *tmpvtbp;
-    RDB_object *tplp;
+    RDB_object *tmpvtbp;
     RDB_object array;
+    RDB_double d1, d2;
     int ret;
-    int i;
 
     ret = RDB_begin_tx(ecp, &tx, dbp, NULL);
     if (ret != RDB_OK) {
@@ -32,14 +32,13 @@ print_salary_view(RDB_database *dbp, RDB_exec_context *ecp)
     if (ret != RDB_OK) {
         goto error;
     }
+
+    assert(RDB_array_length(&array, ecp) == 2);
     
-    for (i = 0; (tplp = RDB_array_get(&array, i, ecp)) != NULL; i++) {
-        printf("SALARY: %f\n", (float)RDB_tuple_get_double(tplp, "SALARY"));
-    }
-    if (RDB_obj_type(RDB_get_err(ecp)) != &RDB_NOT_FOUND_ERROR) {
-        goto error;
-    }
-    RDB_clear_err(ecp);
+    d1 = RDB_tuple_get_double(RDB_array_get(&array, 0, ecp), "SALARY");
+    d2 = RDB_tuple_get_double(RDB_array_get(&array, 1, ecp), "SALARY");
+    
+    assert ((d1 == 4000.0 && d2 == 4100.0) || (d1 == 4100.0 && d2 == 4000.0));
 
     RDB_destroy_obj(&array, ecp);
     RDB_commit(ecp, &tx);
@@ -57,7 +56,7 @@ int
 print_emp_view(RDB_database *dbp, RDB_exec_context *ecp)
 {
     RDB_transaction tx;
-    RDB_table *tmpvtbp;
+    RDB_object *tmpvtbp;
     RDB_object *tplp;
     RDB_object array;
     int ret;
@@ -81,7 +80,7 @@ print_emp_view(RDB_database *dbp, RDB_exec_context *ecp)
     if (ret != RDB_OK) {
         goto error;
     }
-    
+
     for (i = 0; (tplp = RDB_array_get(&array, i, ecp)) != NULL; i++) {
         printf("EMPNO: %d\n", (int) RDB_tuple_get_int(tplp, "EMPNO"));
         printf("NAME: %s\n", RDB_tuple_get_string(tplp, "NAME"));
@@ -106,7 +105,7 @@ int
 print_emps_view(RDB_database *dbp, RDB_exec_context *ecp)
 {
     RDB_transaction tx;
-    RDB_table *tmpvtbp;
+    RDB_object *tmpvtbp;
     RDB_object *tplp;
     RDB_object array;
     int ret;
@@ -160,7 +159,7 @@ int
 print_emps2_view(RDB_database *dbp, RDB_exec_context *ecp)
 {
     RDB_transaction tx;
-    RDB_table *tmpvtbp;
+    RDB_object *tmpvtbp;
     RDB_object *tplp;
     RDB_object array;
     int ret;

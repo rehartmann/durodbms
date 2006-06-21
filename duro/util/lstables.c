@@ -59,12 +59,12 @@ print_tables(RDB_exec_context *ecp, RDB_transaction *txp, RDB_bool all,
         RDB_bool real)
 {
     int ret;
-    RDB_table *rt_tbp, *db_tbp;
-    RDB_table *vtb1p = NULL;
-    RDB_table *vtb2p = NULL;
+    RDB_object *rt_tbp, *db_tbp;
+    RDB_object *vtbp = NULL;
     RDB_object array;
     RDB_object *tplp;
-    RDB_expression *condp = NULL;
+    RDB_expression *exp = NULL;
+    RDB_expression *texp, *argp;
     RDB_int i;
 
     rt_tbp = RDB_get_table(real ? "SYS_RTABLES" : "SYS_VTABLES", ecp, txp);
@@ -79,32 +79,49 @@ print_tables(RDB_exec_context *ecp, RDB_transaction *txp, RDB_bool all,
 
     RDB_init_obj(&array);
 
+    exp = RDB_ro_op("JOIN", 2, NULL, ecp);
+    if (exp == NULL)
+        goto error;
+
+    texp = RDB_ro_op("WHERE", 2, NULL, ecp);
+    if (texp == NULL)
+        goto error;
+    RDB_add_arg(exp, texp);
+
+    argp = RDB_table_ref_to_expr(rt_tbp, ecp);
+    if (argp == NULL)
+        goto error;
+    RDB_add_arg(texp, argp);
+
     if (all) {
-        condp = RDB_bool_to_expr(RDB_TRUE, ecp);
+        argp = RDB_bool_to_expr(RDB_TRUE, ecp);
     } else {
-        condp = RDB_expr_var("IS_USER", ecp);
+        argp = RDB_expr_var("IS_USER", ecp);
     }
-    vtb1p = RDB_select(rt_tbp, condp, ecp, txp);
-    if (vtb1p == NULL) {
-        RDB_drop_expr(condp, ecp);
-        return RDB_ERROR;
-    }
+    if (argp == NULL)
+        goto error;
+    RDB_add_arg(texp, argp);
 
-    condp = RDB_eq(RDB_expr_var("DBNAME", ecp),
+    texp = RDB_ro_op("WHERE", 2, NULL, ecp);
+    if (texp == NULL)
+        goto error;
+    RDB_add_arg(exp, texp);
+
+    argp = RDB_table_ref_to_expr(db_tbp, ecp);
+    if (argp == NULL)
+        goto error;
+    RDB_add_arg(texp, argp);
+
+    argp = RDB_eq(RDB_expr_var("DBNAME", ecp),
                    RDB_string_to_expr(RDB_db_name(RDB_tx_db(txp)), ecp), ecp);
-    vtb2p = RDB_select(db_tbp, condp, ecp, txp);
-    if (vtb2p == NULL) {
-        RDB_drop_expr(condp, ecp);
+    RDB_add_arg(texp, argp);
+
+    vtbp = RDB_expr_to_vtable(exp, ecp, txp);
+    if (vtbp == NULL) {
         goto error;
     }
 
-    vtb1p = RDB_join(vtb1p, vtb2p, ecp);
-    if (vtb1p == NULL) {
-        goto error;
-    }
-    vtb2p = NULL;
-
-    ret = RDB_table_to_array(&array, vtb1p, 0, NULL, ecp, txp);
+    ret = RDB_table_to_array(&array, vtbp, 0, NULL, ecp, txp);
     if (ret != RDB_OK) {
         goto error;
     } 
@@ -119,16 +136,14 @@ print_tables(RDB_exec_context *ecp, RDB_transaction *txp, RDB_bool all,
 
     RDB_destroy_obj(&array, ecp);
 
-    RDB_drop_table(vtb1p, ecp, txp);
+    RDB_drop_table(vtbp, ecp, txp);
 
     return RDB_OK;
 
 error:
     RDB_destroy_obj(&array, ecp);
-    if (vtb1p != NULL)
-        RDB_drop_table(vtb1p, ecp, txp);
-    if (vtb2p != NULL)
-        RDB_drop_table(vtb2p, ecp, txp);
+    if (vtbp != NULL)
+        RDB_drop_table(vtbp, ecp, txp);
     return RDB_ERROR;
 }
 

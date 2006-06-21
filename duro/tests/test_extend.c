@@ -5,7 +5,7 @@
 #include <stdio.h>
 
 int
-print_extend(RDB_table *vtbp, RDB_exec_context *ecp, RDB_transaction *txp)
+print_extend(RDB_object *vtbp, RDB_exec_context *ecp, RDB_transaction *txp)
 {
     RDB_object array;
     RDB_object *tplp;
@@ -45,7 +45,7 @@ error:
 }
 
 int
-insert_extend(RDB_table *vtbp, RDB_exec_context *ecp, RDB_transaction *txp)
+insert_extend(RDB_object *vtbp, RDB_exec_context *ecp, RDB_transaction *txp)
 {
     RDB_object tpl;
     int ret;
@@ -83,6 +83,7 @@ insert_extend(RDB_table *vtbp, RDB_exec_context *ecp, RDB_transaction *txp)
             printf("Error: %s\n", errtyp->name);
         }
     }
+    RDB_clear_err(ecp);
 
     printf("Inserting tuple #2\n");
 
@@ -122,35 +123,15 @@ int
 test_extend(RDB_database *dbp, RDB_exec_context *ecp)
 {
     RDB_transaction tx;
-    RDB_table *tbp;
-    RDB_expression *exp;
+    RDB_object *tbp;
+    RDB_expression *exp, *texp, *argp;
     int ret;
-    RDB_table *vtbp = NULL;
-    RDB_virtual_attr extend[] = {
-        { "SALARY_AFTER_TAX", NULL },
-        { "NAME_LEN", NULL }
-    };
+    RDB_object *vtbp = NULL;
 
     printf("Starting transaction\n");
     ret = RDB_begin_tx(ecp, &tx, dbp, NULL);
     if (ret != RDB_OK) {
         return ret;
-    }
-
-    extend[0].exp = RDB_ro_op_va("-", ecp, RDB_expr_var("SALARY", ecp),
-            RDB_double_to_expr(4100, ecp), (RDB_expression *) NULL);
-    if (extend[0].exp == NULL)
-        return RDB_ERROR;
-
-    exp = RDB_expr_var("NAME", ecp);
-    if (exp == NULL) {
-        ret = RDB_ERROR;
-        goto error;
-    }
-    extend[1].exp = RDB_ro_op_va("LENGTH", ecp, exp, (RDB_expression *) NULL);
-    if (extend[1].exp == NULL) {
-        ret = RDB_ERROR;
-        goto error;
     }
 
     tbp = RDB_get_table("EMPS1", ecp, &tx);
@@ -160,8 +141,56 @@ test_extend(RDB_database *dbp, RDB_exec_context *ecp)
 
     printf("Extending EMPS1 (SALARY_AFTER_TAX,NAME_LEN)\n");
 
-    vtbp = RDB_extend(tbp, 2, extend, ecp, &tx);
+    exp = RDB_ro_op("EXTEND", 5, NULL, ecp);
+    if (exp == NULL)
+        goto error;
+
+    argp = RDB_table_ref_to_expr(tbp, ecp);
+    if (argp == NULL) {
+        RDB_drop_expr(exp, ecp);
+        goto error;
+    }
+    RDB_add_arg(exp, argp);
+
+    argp = RDB_ro_op_va("-", ecp, RDB_expr_var("SALARY", ecp),
+            RDB_double_to_expr(4100, ecp), (RDB_expression *) NULL);
+    if (argp == NULL) {
+        RDB_drop_expr(exp, ecp);
+        goto error;
+    }
+    RDB_add_arg(exp, argp);
+
+    argp = RDB_string_to_expr("SALARY_AFTER_TAX", ecp);
+    if (argp == NULL) {
+        RDB_drop_expr(exp, ecp);
+        goto error;
+    }
+    RDB_add_arg(exp, argp);
+
+    texp = RDB_ro_op("LENGTH", 1, NULL, ecp);
+    if (texp == NULL) {
+        RDB_drop_expr(exp, ecp);
+        goto error;
+    }
+    RDB_add_arg(exp, texp);
+
+    argp = RDB_expr_var("NAME", ecp);
+    if (argp == NULL) {
+        RDB_drop_expr(exp, ecp);
+        goto error;
+    }
+    RDB_add_arg(texp, argp);
+
+    argp = RDB_string_to_expr("NAME_LEN", ecp);
+    if (argp == NULL) {
+        RDB_drop_expr(exp, ecp);
+        goto error;
+    }
+    RDB_add_arg(exp, argp);
+
+    vtbp = RDB_expr_to_vtable(exp, ecp, &tx);
     if (vtbp == NULL) {
+        RDB_drop_expr(exp, ecp);
         goto error;
     }
 

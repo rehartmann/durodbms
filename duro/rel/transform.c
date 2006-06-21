@@ -12,6 +12,7 @@
 #include <string.h>
 #include <assert.h>
 
+#ifdef NIX
 static int
 alter_op(RDB_expression *exp, const char *name, int argc, RDB_exec_context *ecp)
 {
@@ -40,7 +41,7 @@ alter_op(RDB_expression *exp, const char *name, int argc, RDB_exec_context *ecp)
 }
 
 static void
-del_keys(RDB_table *tbp)
+del_keys(RDB_object *tbp)
 {
     int i;
 
@@ -55,7 +56,7 @@ del_keys(RDB_table *tbp)
 }
 
 static int
-copy_type(RDB_table *dstp, const RDB_table *srcp, RDB_exec_context *ecp)
+copy_type(RDB_object *dstp, const RDB_object *srcp, RDB_exec_context *ecp)
 {
     RDB_type *typ = _RDB_dup_nonscalar_type(srcp->typ, ecp);
     if (typ == NULL) {
@@ -161,10 +162,12 @@ eliminate_not(RDB_expression *exp, RDB_exec_context *ecp)
 
     return _RDB_transform_exp(exp->var.op.argv[0], ecp);
 }
+#endif
 
 int
-_RDB_transform_exp(RDB_expression *exp, RDB_exec_context *ecp)
+_RDB_transform(RDB_expression *exp, RDB_exec_context *ecp, RDB_transaction *txp)
 {
+#ifdef NIX
     int ret;
     int i;
 
@@ -179,9 +182,11 @@ _RDB_transform_exp(RDB_expression *exp, RDB_exec_context *ecp)
         if (ret != RDB_OK)
             return ret;
     }
+#endif
     return RDB_OK;
 }
 
+#ifdef NIX
 static RDB_bool
 exprs_compl(const RDB_expression *ex1p, const RDB_expression *ex2p,
         RDB_exec_context *ecp, RDB_transaction *txp, RDB_bool *resp)
@@ -205,10 +210,10 @@ exprs_compl(const RDB_expression *ex1p, const RDB_expression *ex2p,
 }
 
 static int
-transform_project(RDB_table *tbp, RDB_exec_context *ecp, RDB_transaction *txp);
+transform_project(RDB_object *tbp, RDB_exec_context *ecp, RDB_transaction *txp);
 
 static int
-transform_union(RDB_table *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
+transform_union(RDB_object *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
 {
     int ret;
 
@@ -221,8 +226,8 @@ transform_union(RDB_table *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
 
     if (tbp->var._union.tb1p->kind == RDB_TB_PROJECT
             && tbp->var._union.tb2p->kind == RDB_TB_PROJECT) {
-        RDB_table *stb1p = tbp->var._union.tb1p->var.project.tbp;
-        RDB_table *stb2p = tbp->var._union.tb2p->var.project.tbp;
+        RDB_object *stb1p = tbp->var._union.tb1p->var.project.tbp;
+        RDB_object *stb2p = tbp->var._union.tb2p->var.project.tbp;
         if (stb1p->kind == RDB_TB_SELECT && stb2p->kind == RDB_TB_SELECT
                 && _RDB_table_def_equals(stb1p->var.select.tbp,
                         stb2p->var.select.tbp, ecp, txp)) {
@@ -233,7 +238,7 @@ transform_union(RDB_table *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
             if (ret != RDB_OK)
                 return ret;
             if (merge) {
-                RDB_table *htbp = tbp->var._union.tb1p;
+                RDB_object *htbp = tbp->var._union.tb1p;
 
                 /*
                  * Replace UNION((T WHERE C) { ... }, (T WHERE NOT C) { ... })
@@ -260,11 +265,11 @@ transform_union(RDB_table *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
 }
 
 static int
-transform_select(RDB_table *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
+transform_select(RDB_object *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
 {
     int ret;
     RDB_expression *exp;
-    RDB_table *chtbp = tbp->var.select.tbp;
+    RDB_object *chtbp = tbp->var.select.tbp;
 
     ret = _RDB_transform(chtbp, ecp, txp);
     if (ret != RDB_OK)
@@ -295,7 +300,7 @@ transform_select(RDB_table *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
             }
             case RDB_TB_SEMIMINUS:
             {
-                RDB_table *htbp = chtbp->var.semiminus.tb1p;
+                RDB_object *htbp = chtbp->var.semiminus.tb1p;
                 exp = tbp->var.select.exp;
 
                 ret = _RDB_transform(chtbp->var.semiminus.tb2p, ecp, txp);
@@ -322,9 +327,9 @@ transform_select(RDB_table *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
             }
             case RDB_TB_UNION:
             {
-                RDB_table *newtbp;
+                RDB_object *newtbp;
                 RDB_expression *ex2p;
-                RDB_table *htbp = chtbp->var._union.tb1p;
+                RDB_object *htbp = chtbp->var._union.tb1p;
                 ex2p = RDB_dup_expr(tbp->var.select.exp, ecp);
                 if (ex2p == NULL)
                     return RDB_ERROR;
@@ -358,9 +363,9 @@ transform_select(RDB_table *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
             }
             case RDB_TB_SEMIJOIN:
             {
-                RDB_table *newtbp;
+                RDB_object *newtbp;
                 RDB_expression *ex2p;
-                RDB_table *htbp = chtbp->var._union.tb1p;
+                RDB_object *htbp = chtbp->var._union.tb1p;
                 ex2p = RDB_dup_expr(tbp->var.select.exp, ecp);
                 if (ex2p == NULL) {
                     RDB_raise_no_memory(ecp);
@@ -396,7 +401,7 @@ transform_select(RDB_table *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
             }
             case RDB_TB_EXTEND:
             {
-                RDB_table *htbp = chtbp->var.extend.tbp;
+                RDB_object *htbp = chtbp->var.extend.tbp;
 
                 exp = tbp->var.select.exp;
                 ret = _RDB_resolve_extend_expr(&exp, chtbp->var.extend.attrc,
@@ -426,7 +431,7 @@ transform_select(RDB_table *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
             }
             case RDB_TB_RENAME:
             {
-                RDB_table *htbp = chtbp->var.rename.tbp;
+                RDB_object *htbp = chtbp->var.rename.tbp;
                 exp = tbp->var.select.exp;
                 ret = _RDB_invrename_expr(exp, chtbp->var.rename.renc,
                         chtbp->var.rename.renv, ecp);
@@ -470,13 +475,13 @@ transform_select(RDB_table *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
 }
 
 static int
-swap_project_union(RDB_table *tbp, RDB_table *chtbp, RDB_exec_context *ecp,
+swap_project_union(RDB_object *tbp, RDB_object *chtbp, RDB_exec_context *ecp,
         RDB_transaction *txp)
 {
     int i;
-    RDB_table *newtbp;
+    RDB_object *newtbp;
     RDB_type *newtyp;
-    RDB_table *htbp = chtbp->var._union.tb1p;
+    RDB_object *htbp = chtbp->var._union.tb1p;
     int attrc = tbp->typ->var.basetyp->var.tuple.attrc;
     char **attrnamev = malloc(attrc * sizeof(char *));
     if (attrnamev == NULL) {
@@ -520,14 +525,14 @@ swap_project_union(RDB_table *tbp, RDB_table *chtbp, RDB_exec_context *ecp,
 
 /* Transforms PROJECT(RENAME) to RENAME(PROJECT) or PROJECT */
 static int
-swap_project_rename(RDB_table *tbp, RDB_exec_context *ecp)
+swap_project_rename(RDB_object *tbp, RDB_exec_context *ecp)
 {
     int i, j;
     RDB_type *newtyp;
     RDB_renaming *renv;
     char **attrnamev;
-    RDB_table *chtbp = tbp->var.project.tbp;
-    RDB_table *htbp = chtbp->var.rename.tbp;
+    RDB_object *chtbp = tbp->var.project.tbp;
+    RDB_object *htbp = chtbp->var.rename.tbp;
 
     /*
      * Alter parent
@@ -626,14 +631,14 @@ swap_project_rename(RDB_table *tbp, RDB_exec_context *ecp)
 
 /* Transforms PROJECT(EXTEND) to EXTEND(PROJECT) or PROJECT */
 static int
-swap_project_extend(RDB_table *tbp, RDB_exec_context *ecp)
+swap_project_extend(RDB_object *tbp, RDB_exec_context *ecp)
 {
     int i, j;
     RDB_type *newtyp;
     RDB_virtual_attr *extv;
     char **attrnamev;
-    RDB_table *chtbp = tbp->var.project.tbp;
-    RDB_table *htbp = chtbp->var.extend.tbp;
+    RDB_object *chtbp = tbp->var.project.tbp;
+    RDB_object *htbp = chtbp->var.extend.tbp;
 
     /*
      * Alter parent
@@ -749,7 +754,7 @@ swap_project_extend(RDB_table *tbp, RDB_exec_context *ecp)
  * Transforms PROJECT(SELECT) to SELECT(PROJECT) or PROJECT(SELECT(PROJECT))
  */
 static int
-swap_project_select(RDB_table *tbp, RDB_table *chtbp, RDB_exec_context *ecp)
+swap_project_select(RDB_object *tbp, RDB_object *chtbp, RDB_exec_context *ecp)
 {
     int i;
     int ret;
@@ -785,7 +790,7 @@ swap_project_select(RDB_table *tbp, RDB_table *chtbp, RDB_exec_context *ecp)
         }
     }
     if (attrc > tbp->typ->var.basetyp->var.tuple.attrc) {
-        RDB_table *ntbp;
+        RDB_object *ntbp;
 
         /*
          * Add project
@@ -824,10 +829,10 @@ swap_project_select(RDB_table *tbp, RDB_table *chtbp, RDB_exec_context *ecp)
 }
 
 static int
-transform_project(RDB_table *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
+transform_project(RDB_object *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
 {
     int ret;
-    RDB_table *chtbp;
+    RDB_object *chtbp;
 
     do {
         chtbp = tbp->var.project.tbp;
@@ -900,7 +905,7 @@ transform_project(RDB_table *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
 }
 
 int
-_RDB_transform(RDB_table *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
+_RDB_transform(RDB_object *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
 {
     int ret;
 
@@ -999,3 +1004,4 @@ _RDB_transform(RDB_table *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
 
     return RDB_OK;
 }
+#endif

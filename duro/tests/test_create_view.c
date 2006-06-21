@@ -3,6 +3,7 @@
 #include <rel/rdb.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <assert.h>
 
 char *projattrs[] = { "SALARY" };
 
@@ -10,7 +11,8 @@ int
 create_view1(RDB_database *dbp, RDB_exec_context *ecp)
 {
     RDB_transaction tx;
-    RDB_table *tbp, *tbp2, *vtbp;
+    RDB_expression *exp, *texp, *argp;
+    RDB_object *tbp, *tbp2, *vtbp;
     int ret;
 
     printf("Starting transaction\n");
@@ -25,22 +27,46 @@ create_view1(RDB_database *dbp, RDB_exec_context *ecp)
         return RDB_ERROR;
     }
     tbp2 = RDB_get_table("EMPS2", ecp, &tx);
-    if (ret != RDB_OK) {
+    if (tbp2 == NULL) {
         RDB_rollback(ecp, &tx);
         return ret;
     }
 
     printf("Creating (EMPS1 union EMPS2) { SALARY }\n");
 
-    vtbp = RDB_union(tbp2, tbp, ecp);
-    if (tbp == NULL) {
+    exp = RDB_ro_op("PROJECT", 2, NULL, ecp);
+    if (exp == NULL) {
         RDB_rollback(ecp, &tx);
         return RDB_ERROR;
     }
+    texp = RDB_ro_op("UNION", 2, NULL, ecp);
+    if (exp == NULL) {
+        RDB_rollback(ecp, &tx);
+        return RDB_ERROR;
+    }
+    RDB_add_arg(exp, texp);
+    argp = RDB_table_ref_to_expr(tbp, ecp);
+    if (exp == NULL) {
+        RDB_rollback(ecp, &tx);
+        return RDB_ERROR;
+    }
+    RDB_add_arg(texp, argp);
+    argp = RDB_table_ref_to_expr(tbp2, ecp);
+    if (exp == NULL) {
+        RDB_rollback(ecp, &tx);
+        return RDB_ERROR;
+    }
+    RDB_add_arg(texp, argp);
+    argp = RDB_string_to_expr("SALARY", ecp);
+    if (exp == NULL) {
+        RDB_rollback(ecp, &tx);
+        return RDB_ERROR;
+    }
+    RDB_add_arg(exp, argp);
 
-    vtbp = RDB_project(vtbp, 1, projattrs, ecp);
+    vtbp = RDB_expr_to_vtable(exp, ecp, &tx);
     if (vtbp == NULL) {
-        RDB_drop_table(vtbp, ecp, &tx);
+        RDB_drop_expr(exp, ecp);
         RDB_rollback(ecp, &tx);
         return RDB_ERROR;
     }
@@ -65,8 +91,8 @@ int
 create_view2(RDB_database *dbp, RDB_exec_context *ecp)
 {
     RDB_transaction tx;
-    RDB_table *tbp, *vtbp;
-    RDB_expression *exprp, *hexprp;
+    RDB_object *tbp, *vtbp;
+    RDB_expression *exp, *argp, *hexprp;
     int ret;
 
     printf("Starting transaction\n");
@@ -83,21 +109,28 @@ create_view2(RDB_database *dbp, RDB_exec_context *ecp)
 
     printf("Creating EMPS1 WHERE (SALARY > 4000)\n");
 
+    exp = RDB_ro_op("WHERE", 2, NULL, ecp);
+    if (exp == NULL)
+        return RDB_ERROR;
+    argp = RDB_table_ref_to_expr(tbp, ecp);
+    if (argp == NULL)
+        return RDB_ERROR;
+    RDB_add_arg(exp, argp);
+
     hexprp = RDB_expr_var("SALARY", ecp);
     if (hexprp == NULL)
         return RDB_ERROR;
-    exprp = RDB_ro_op_va(">", ecp, hexprp, RDB_double_to_expr(4000.0, ecp),
+    argp = RDB_ro_op_va(">", ecp, hexprp, RDB_double_to_expr(4000.0, ecp),
             (RDB_expression *) NULL);
-    if (exprp == NULL)
-        return RDB_ERROR;
+    RDB_add_arg(exp, argp);
 
-    vtbp = RDB_select(tbp, exprp, ecp, &tx);
+    vtbp = RDB_expr_to_vtable(exp, ecp, &tx);
     if (vtbp == NULL) {
-        RDB_drop_expr(exprp, ecp);
+        RDB_drop_expr(exp, ecp);
         RDB_rollback(ecp, &tx);
         return RDB_ERROR;
     }
-    
+
     printf("Making virtual table persistent as EMPS1H\n");
     ret = RDB_set_table_name(vtbp, "EMPS1H", ecp, &tx);
     if (ret != RDB_OK) {
@@ -118,9 +151,8 @@ int
 create_view3(RDB_database *dbp, RDB_exec_context *ecp)
 {
     RDB_transaction tx;
-    RDB_table *tbp, *vtbp;
-    RDB_expression *exprp;
-    RDB_virtual_attr vattr;
+    RDB_object *tbp, *vtbp;
+    RDB_expression *exprp, *exp, *argp;
     int ret;
 
     printf("Starting transaction\n");
@@ -137,6 +169,14 @@ create_view3(RDB_database *dbp, RDB_exec_context *ecp)
 
     printf("Creating EXTEND EMPS1 ADD (SALARY > 4000 AS HIGHSAL)\n");
 
+    exp = RDB_ro_op("EXTEND", 3, NULL, ecp);
+    if (exp == NULL)
+        return RDB_ERROR;
+
+    argp = RDB_table_ref_to_expr(tbp, ecp);
+    if (argp == NULL)
+        return RDB_ERROR;
+    RDB_add_arg(exp, argp); 
     exprp = RDB_expr_var("SALARY", ecp);
     if (exprp == NULL)
         return RDB_ERROR;
@@ -144,12 +184,15 @@ create_view3(RDB_database *dbp, RDB_exec_context *ecp)
             (RDB_expression *) NULL);
     if (exprp == NULL)
         return RDB_ERROR;
+    RDB_add_arg(exp, exprp);
+    argp = RDB_string_to_expr("HIGHSAL", ecp);
+    if (argp == NULL)
+        return RDB_ERROR;
+    RDB_add_arg(exp, argp);
 
-    vattr.name = "HIGHSAL";
-    vattr.exp = exprp;
-    vtbp = RDB_extend(tbp, 1, &vattr, ecp, &tx);
+    vtbp = RDB_expr_to_vtable(exp, ecp, &tx);
     if (vtbp == NULL) {
-        RDB_drop_expr(exprp, ecp);
+        RDB_drop_expr(exp, ecp);
         RDB_rollback(ecp, &tx);
         return RDB_ERROR;
     }
@@ -170,16 +213,13 @@ create_view3(RDB_database *dbp, RDB_exec_context *ecp)
     return RDB_commit(ecp, &tx);
 }
 
-static char *projattr = "DEPTNO";
-
 int
 create_view4(RDB_database *dbp, RDB_exec_context *ecp)
 {
     RDB_transaction tx;
-    RDB_table *tbp, *vtbp, *projtbp;
+    RDB_expression *exp, *sexp, *texp, *argp;
+    RDB_object *tbp, *vtbp;
     int ret;
-    RDB_summarize_add add;
-    RDB_renaming ren;
 
     printf("Starting transaction\n");
     ret = RDB_begin_tx(ecp, &tx, dbp, NULL);
@@ -196,46 +236,93 @@ create_view4(RDB_database *dbp, RDB_exec_context *ecp)
     printf("Creating ( SUMMARIZE EMPS1 PER ( EMPS1 { DEPTNO } )"
            " ADD MAX (SALARY) AS MAX_SALARY ) RENAME DEPTNO AS DEPARTMENT\n");
 
-    projtbp = RDB_project(tbp, 1, &projattr, ecp);
-    if (projtbp == NULL) {
+    exp = RDB_ro_op("RENAME", 3, NULL, ecp);
+    if (exp == NULL) {
         RDB_rollback(ecp, &tx);
         return RDB_ERROR;
     }
 
-    add.op = RDB_MAX;
-    add.exp = RDB_expr_var("SALARY", ecp);
-    add.name = "MAX_SALARY";
-
-    vtbp = RDB_summarize(tbp, projtbp, 1, &add, ecp, &tx);
-    if (ret != RDB_OK) {
+    sexp = RDB_ro_op("SUMMARIZE", 4, NULL, ecp);
+    if (sexp == NULL) {
         RDB_rollback(ecp, &tx);
-        return ret;
+        return RDB_ERROR;
     }
+    RDB_add_arg(exp, sexp);
 
-    ren.from = "DEPTNO";
-    ren.to = "DEPARTMENT";
-
-    vtbp = RDB_rename(vtbp, 1, &ren, ecp);
-    if (ret != RDB_OK) {
+    argp = RDB_table_ref_to_expr(tbp, ecp);
+    if (argp == NULL) {
         RDB_rollback(ecp, &tx);
-        return ret;
+        return RDB_ERROR;
     }
+    RDB_add_arg(sexp, argp);
+
+    texp = RDB_ro_op("PROJECT", 2, NULL, ecp);
+    if (texp == NULL) {
+        RDB_rollback(ecp, &tx);
+        return RDB_ERROR;
+    }
+    RDB_add_arg(sexp, texp);
+
+    argp = RDB_table_ref_to_expr(tbp, ecp);
+    if (argp == NULL) {
+        RDB_rollback(ecp, &tx);
+        return RDB_ERROR;
+    }
+    RDB_add_arg(texp, argp);
+
+    argp = RDB_string_to_expr("DEPTNO", ecp);
+    if (argp == NULL) {
+        RDB_rollback(ecp, &tx);
+        return RDB_ERROR;
+    }
+    RDB_add_arg(texp, argp);
+
+    texp = RDB_ro_op("MAX", 1, NULL, ecp);
+    if (texp == NULL) {
+        RDB_rollback(ecp, &tx);
+        return RDB_ERROR;
+    }
+    RDB_add_arg(sexp, texp);
+
+    argp = RDB_expr_var("SALARY", ecp);
+    if (argp == NULL) {
+        RDB_rollback(ecp, &tx);
+        return RDB_ERROR;
+    }
+    RDB_add_arg(texp, argp);
+
+    argp = RDB_string_to_expr("MAX_SALARY", ecp);
+    if (argp == NULL) {
+        RDB_rollback(ecp, &tx);
+        return RDB_ERROR;
+    }
+    RDB_add_arg(sexp, argp);
+
+    argp = RDB_string_to_expr("DEPTNO", ecp);
+    if (argp == NULL) {
+        RDB_rollback(ecp, &tx);
+        return RDB_ERROR;
+    }
+    RDB_add_arg(exp, argp);
+
+    argp = RDB_string_to_expr("DEPARTMENT", ecp);
+    if (argp == NULL) {
+        RDB_rollback(ecp, &tx);
+        return RDB_ERROR;
+    }
+    RDB_add_arg(exp, argp);
+
+    vtbp = RDB_expr_to_vtable(exp, ecp, &tx);
+    assert(vtbp != NULL);
 
     printf("Making virtual table persistent as EMPS1S2\n");
 
-    ret = RDB_set_table_name(vtbp, "EMPS1S2", ecp, &tx);
-    if (ret != RDB_OK) {
-        RDB_rollback(ecp, &tx);
-        return ret;
-    } 
-    ret = RDB_add_table(vtbp, ecp, &tx);
-    if (ret != RDB_OK) {
-        RDB_rollback(ecp, &tx);
-        return ret;
-    } 
+    assert(RDB_set_table_name(vtbp, "EMPS1S2", ecp, &tx) == RDB_OK);
+    assert(RDB_add_table(vtbp, ecp, &tx) == RDB_OK);
 
     printf("End of transaction\n");
-    return RDB_commit(ecp, &tx);
+    assert(RDB_commit(ecp, &tx) == RDB_OK);
+    return RDB_OK;
 }
 
 int

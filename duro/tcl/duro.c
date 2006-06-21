@@ -185,7 +185,7 @@ Durotcl_Init(Tcl_Interp *interp)
     return Duro_init_tcl(interp, &statep);
 }
 
-RDB_table *
+RDB_object *
 Duro_get_ltable(const char *name, void *arg)
 {
     TclState *statep = (TclState *)arg;
@@ -255,7 +255,7 @@ Duro_tobj_to_seq_items(Tcl_Interp *interp, Tcl_Obj *tobjp, int *seqitcp,
 }
 
 int
-Duro_add_table(Tcl_Interp *interp, TclState *statep, RDB_table *tbp,
+Duro_add_table(Tcl_Interp *interp, TclState *statep, RDB_object *tbp,
         const char *name, RDB_environment *envp)
 {
     int new;
@@ -380,7 +380,7 @@ list_to_array(Tcl_Interp *interp, Tcl_Obj *tobjp, RDB_type *typ,
 
 static int
 list_to_table(Tcl_Interp *interp, Tcl_Obj *tobjp, RDB_type *typ,
-        RDB_table **tbpp, RDB_exec_context *ecp, RDB_transaction *txp)
+        RDB_object *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
 {
     int ret;
     int i;
@@ -389,20 +389,28 @@ list_to_table(Tcl_Interp *interp, Tcl_Obj *tobjp, RDB_type *typ,
     RDB_object tpl;
     int attrc;
     RDB_attr *attrv = RDB_type_attrs(typ, &attrc);
-    
+
     if (attrv == NULL)
         return TCL_ERROR;
 
-    *tbpp = RDB_create_table(NULL, RDB_FALSE, attrc, attrv,
-                        0, NULL, ecp, NULL);
-    if (*tbpp == NULL) {
+    /* Duplicate type, as the typ argument is not consumed */
+    typ = _RDB_dup_nonscalar_type(typ, ecp);
+    if (typ == NULL) {
         Duro_dberror(interp, RDB_get_err(ecp), txp);
+        return TCL_ERROR;
+    }
+       
+    if (RDB_init_table(tbp, NULL, typ, 0, NULL, ecp) != RDB_OK) {
+        Duro_dberror(interp, RDB_get_err(ecp), txp);
+        RDB_drop_type(typ, ecp, NULL);
         return TCL_ERROR;
     }
 
     ret = Tcl_ListObjLength(interp, tobjp, &llen);
-    if (ret != TCL_OK)
+    if (ret != TCL_OK) {
+        RDB_destroy_obj(tbp, ecp);
         return ret;
+    }
 
     RDB_init_obj(&tpl);
     for (i = 0; i < llen; i++) {
@@ -411,13 +419,14 @@ list_to_table(Tcl_Interp *interp, Tcl_Obj *tobjp, RDB_type *typ,
         ret = list_to_tuple(interp, tplobjp, typ->var.basetyp, &tpl, ecp, txp);
         if (ret != TCL_OK) {
             RDB_destroy_obj(&tpl, ecp);
+            RDB_destroy_obj(tbp, ecp);
             return ret;
         }
 
-        ret = RDB_insert(*tbpp, &tpl, ecp, NULL);
-        if (ret != RDB_OK) {
-            RDB_destroy_obj(&tpl, ecp);
+        if (RDB_insert(tbp, &tpl, ecp, NULL) != RDB_OK) {
             Duro_dberror(interp, RDB_get_err(ecp), txp);
+            RDB_destroy_obj(&tpl, ecp);
+            RDB_destroy_obj(tbp, ecp);
             return TCL_ERROR;
         }
     }
@@ -431,7 +440,6 @@ Duro_tcl_to_duro(Tcl_Interp *interp, Tcl_Obj *tobjp, RDB_type *typ,
         RDB_object *objp, RDB_exec_context *ecp, RDB_transaction *txp)
 {
     int ret;
-    RDB_table *tbp;
 
     if (typ == &RDB_STRING) {
         /* Convert from UTF */
@@ -518,10 +526,9 @@ Duro_tcl_to_duro(Tcl_Interp *interp, Tcl_Obj *tobjp, RDB_type *typ,
         case RDB_TP_TUPLE:
             return list_to_tuple(interp, tobjp, typ, objp, ecp, txp);
         case RDB_TP_RELATION:
-            ret = list_to_table(interp, tobjp, typ, &tbp, ecp, txp);
+            ret = list_to_table(interp, tobjp, typ, objp, ecp, txp);
             if (ret != TCL_OK)
                 return ret;
-            RDB_table_to_obj(objp, tbp, ecp);
             return TCL_OK;
         case RDB_TP_ARRAY:
             return list_to_array(interp, tobjp, typ, objp, ecp, txp);
@@ -553,7 +560,7 @@ array_to_list(Tcl_Interp *interp, RDB_object *arrayp,
 }
 
 static Tcl_Obj *
-table_to_list(Tcl_Interp *interp, RDB_table *tbp, RDB_exec_context *ecp,
+table_to_list(Tcl_Interp *interp, RDB_object *tbp, RDB_exec_context *ecp,
         RDB_transaction *txp)
 {
     RDB_object arr;
@@ -592,11 +599,11 @@ table_to_list(Tcl_Interp *interp, RDB_table *tbp, RDB_exec_context *ecp,
     return listobjp;
 }
 
-RDB_table *
+RDB_object *
 Duro_get_table(TclState *statep, Tcl_Interp *interp, const char *name,
           RDB_transaction *txp)
 {
-    RDB_table *tbp;
+    RDB_object *tbp;
     Tcl_HashEntry *entryp;
 
     /*
@@ -615,7 +622,7 @@ Duro_get_table(TclState *statep, Tcl_Interp *interp, const char *name,
     if (tbp == NULL) {
         if (RDB_obj_type(RDB_get_err(statep->current_ecp))
                 == &RDB_NOT_FOUND_ERROR) {
-            Tcl_AppendResult(interp, "Unknown table: ", name, NULL);
+            Tcl_AppendResult(interp, "unknown table: ", name, NULL);
         } else {
             Duro_dberror(interp, RDB_get_err(statep->current_ecp), txp);
         }
@@ -817,7 +824,7 @@ Duro_irep_to_tcl(Tcl_Interp *interp, const RDB_object *objp,
         return tuple_to_list(interp, objp, ecp, txp);
     }
     if (objp->kind == RDB_OB_TABLE) {
-        return table_to_list(interp, RDB_obj_table(objp), ecp, txp);
+        return table_to_list(interp, (RDB_object *) objp, ecp, txp);
     }
     if (objp->kind == RDB_OB_ARRAY) {
         return array_to_list(interp, (RDB_object *) objp, ecp, txp);
@@ -835,7 +842,7 @@ uobj_to_tobj(Tcl_Interp *interp, const RDB_object *objp, RDB_exec_context *ecp,
     Tcl_Obj *tobjp;
 
     RDB_init_obj(&strobj);
-    ret = _RDB_obj_to_str(&strobj, objp, ecp, txp);
+    ret = _RDB_obj_to_str(&strobj, objp, ecp, txp, 0);
     if (ret != RDB_OK) {
         Duro_dberror(interp, RDB_get_err(ecp), txp);
         RDB_destroy_obj(&strobj, ecp);

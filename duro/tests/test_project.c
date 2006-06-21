@@ -4,12 +4,8 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-char *projattrs1[] = { "SALARY" };
-
-char *projattrs2[] = { "EMPNO", "NAME" };
-
 static int
-print_table1(RDB_table *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
+print_table1(RDB_object *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
 {
     int ret;
     RDB_object *tplp;
@@ -42,7 +38,7 @@ error:
 }
 
 static int
-print_table2(RDB_table *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
+print_table2(RDB_object *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
 {
     int ret;
     RDB_object *tplp;
@@ -79,7 +75,8 @@ int
 test_project(RDB_database *dbp, RDB_exec_context *ecp)
 {
     RDB_transaction tx;
-    RDB_table *tbp, *vtbp;
+    RDB_expression *exp, *argp;
+    RDB_object *tbp, *vtbp;
     RDB_object tpl;
     int ret;
     RDB_bool b;
@@ -98,8 +95,31 @@ test_project(RDB_database *dbp, RDB_exec_context *ecp)
 
     printf("Creating projection (SALARY)\n");
 
-    vtbp = RDB_project(tbp, 1, projattrs1, ecp);
+    exp = RDB_ro_op("PROJECT", 2, NULL, ecp);
+    if (exp == NULL) {
+        RDB_rollback(ecp, &tx);
+        return RDB_ERROR;
+    }
+
+    argp = RDB_table_ref_to_expr(tbp, ecp);
+    if (argp == NULL) {
+        RDB_drop_expr(exp, ecp);
+        RDB_rollback(ecp, &tx);
+        return RDB_ERROR;
+    }
+    RDB_add_arg(exp, argp);
+
+    argp = RDB_string_to_expr("SALARY", ecp);
+    if (argp == NULL) {
+        RDB_drop_expr(exp, ecp);
+        RDB_rollback(ecp, &tx);
+        return RDB_ERROR;
+    }
+    RDB_add_arg(exp, argp);    
+
+    vtbp = RDB_expr_to_vtable(exp, ecp, &tx);
     if (vtbp == NULL) {
+        RDB_drop_expr(exp, ecp);
         RDB_rollback(ecp, &tx);
         return RDB_ERROR;
     }
@@ -131,8 +151,39 @@ test_project(RDB_database *dbp, RDB_exec_context *ecp)
 
     printf("Creating projection (EMPNO,NAME)\n");
 
-    vtbp = RDB_project(tbp, 2, projattrs2, ecp);
+    exp = RDB_ro_op("PROJECT", 3, NULL, ecp);
+    if (exp == NULL) {
+        RDB_rollback(ecp, &tx);
+        return RDB_ERROR;
+    }
+
+    argp = RDB_table_ref_to_expr(tbp, ecp);
+    if (argp == NULL) {
+        RDB_drop_expr(exp, ecp);
+        RDB_rollback(ecp, &tx);
+        return RDB_ERROR;
+    }
+    RDB_add_arg(exp, argp);
+
+    argp = RDB_string_to_expr("EMPNO", ecp);
+    if (argp == NULL) {
+        RDB_drop_expr(exp, ecp);
+        RDB_rollback(ecp, &tx);
+        return RDB_ERROR;
+    }
+    RDB_add_arg(exp, argp);    
+
+    argp = RDB_string_to_expr("NAME", ecp);
+    if (argp == NULL) {
+        RDB_drop_expr(exp, ecp);
+        RDB_rollback(ecp, &tx);
+        return RDB_ERROR;
+    }
+    RDB_add_arg(exp, argp);    
+
+    vtbp = RDB_expr_to_vtable(exp, ecp, &tx);
     if (vtbp == NULL) {
+        RDB_drop_expr(exp, ecp);
         RDB_rollback(ecp, &tx);
         return RDB_ERROR;
     }

@@ -8,17 +8,17 @@ int
 test_regexp(RDB_database *dbp, RDB_exec_context *ecp)
 {
     RDB_transaction tx;
-    RDB_table *tbp, *vtbp;
+    RDB_object *tbp, *vtbp;
     RDB_object array;
     RDB_object *tplp;
-    RDB_expression *exprp;
+    RDB_expression *exp, *argp;
     int ret;
     RDB_int i;
 
     printf("Starting transaction\n");
     ret = RDB_begin_tx(ecp, &tx, dbp, NULL);
     if (ret != RDB_OK) {
-        return ret;
+        return RDB_ERROR;
     }
 
     tbp = RDB_get_table("EMPS1", ecp, &tx);
@@ -31,14 +31,25 @@ test_regexp(RDB_database *dbp, RDB_exec_context *ecp)
 
     printf("Creating selection (NAME regmatch \"o\")\n");
 
-    exprp = RDB_ro_op_va("MATCHES", ecp, RDB_expr_var("NAME", ecp),
-            RDB_string_to_expr("o", ecp), (RDB_expression *) NULL);
-    if (exprp == NULL) {
-        ret = RDB_ERROR;
+    exp = RDB_ro_op("WHERE", 2, NULL, ecp);
+    if (exp == NULL) {
         goto error;
     }
     
-    vtbp = RDB_select(tbp, exprp, ecp, &tx);
+    argp = RDB_table_ref_to_expr(tbp, ecp);
+    if (argp == NULL) {
+        goto error;
+    }
+    RDB_add_arg(exp, argp);
+
+    argp = RDB_ro_op_va("MATCHES", ecp, RDB_expr_var("NAME", ecp),
+            RDB_string_to_expr("o", ecp), (RDB_expression *) NULL);
+    if (argp == NULL) {
+        goto error;
+    }
+    RDB_add_arg(exp, argp);
+    
+    vtbp = RDB_expr_to_vtable(exp, ecp, &tx);
     if (vtbp == NULL) {
         goto error;
     }

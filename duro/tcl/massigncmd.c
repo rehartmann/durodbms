@@ -38,7 +38,7 @@ list_to_ins(TclState *statep, Tcl_Interp *interp, Tcl_Obj *tobjp,
     RDB_init_obj(insp->tplp);
 
     ret = Duro_tcl_to_duro(interp, tobjpv[2],
-            RDB_table_type(insp->tbp)->var.basetyp, insp->tplp,
+            RDB_obj_type(insp->tbp)->var.basetyp, insp->tplp,
             statep->current_ecp, txp);
     if (ret != TCL_OK) {
         RDB_destroy_obj(insp->tplp, statep->current_ecp);
@@ -171,7 +171,7 @@ list_to_copy(TclState *statep, Tcl_Interp *interp, Tcl_Obj *tobjp,
     int len;
     Tcl_Obj **tobjpv;
     char *dstname, *src;
-    RDB_table *dsttbp, *srctbp;
+    RDB_object *dsttbp, *srctbp;
     int ret = Tcl_ListObjGetElements(interp, tobjp, &len, &tobjpv);
     if (ret != TCL_OK)
         return ret;
@@ -203,14 +203,8 @@ list_to_copy(TclState *statep, Tcl_Interp *interp, Tcl_Obj *tobjp,
         return TCL_ERROR;
     }
 
-    copyp->dstp = (RDB_object *) Tcl_Alloc(sizeof(RDB_object));
-    copyp->srcp = (RDB_object *) Tcl_Alloc(sizeof(RDB_object));
-
-    RDB_init_obj(copyp->dstp);
-    RDB_init_obj(copyp->srcp);
-
-    RDB_table_to_obj(copyp->dstp, dsttbp, statep->current_ecp);
-    RDB_table_to_obj(copyp->srcp, srctbp, statep->current_ecp);
+    copyp->dstp = dsttbp;
+    copyp->srcp = srctbp;
 
     return TCL_OK;
 }
@@ -332,10 +326,13 @@ cleanup:
     Tcl_Free((char *) delv);
 
     for (i = 0; i < copyc; i++) {
+        /*
         RDB_destroy_obj(copyv[i].dstp, statep->current_ecp);
-        RDB_destroy_obj(copyv[i].srcp, statep->current_ecp);
         Tcl_Free((char *) copyv[i].dstp);
-        Tcl_Free((char *) copyv[i].srcp);
+        */
+        if (RDB_table_name(copyv[i].srcp) == NULL) {
+            RDB_drop_table(copyv[i].srcp, statep->current_ecp, NULL);
+        }
     }
     Tcl_Free((char *) copyv);
 

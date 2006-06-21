@@ -12,12 +12,12 @@
 #include <gen/strfns.h>
 #include <string.h>
 
-RDB_table *
+RDB_object *
 Duro_parse_table_utf(Tcl_Interp *interp, const char *s, void *arg,
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
     int ret;
-    RDB_table *tbp;
+    RDB_object *tbp;
     int srclen = strlen(s);
     int dstlen = (srclen + 1) * 2;
     char *dst = Tcl_Alloc(dstlen);
@@ -59,7 +59,7 @@ table_create_cmd(TclState *statep, Tcl_Interp *interp, int objc,
     char *txstr;
     RDB_transaction *txp;
     Tcl_HashEntry *entryp;
-    RDB_table *tbp;
+    RDB_object *tbp;
     RDB_attr *attrv = NULL;
     RDB_string_vec *keyv = NULL;
     RDB_bool persistent = RDB_TRUE;
@@ -215,7 +215,7 @@ table_expr_cmd(TclState *statep, Tcl_Interp *interp, int objc,
     char *txstr;
     RDB_transaction *txp;
     Tcl_HashEntry *entryp;
-    RDB_table *tbp;
+    RDB_object *tbp;
     RDB_bool persistent = RDB_FALSE;
 
     if (objc == 6) {
@@ -259,8 +259,9 @@ table_expr_cmd(TclState *statep, Tcl_Interp *interp, int objc,
     if (persistent) {
         ret = RDB_add_table(tbp, statep->current_ecp, txp);
         if (ret != RDB_OK) {
-            RDB_drop_table(tbp, statep->current_ecp, txp);
             Duro_dberror(interp, RDB_get_err(statep->current_ecp), txp);
+            RDB_clear_err(statep->current_ecp);
+            RDB_drop_table(tbp, statep->current_ecp, txp);
             return TCL_ERROR;
         }            
     } else {
@@ -284,7 +285,7 @@ table_drop_cmd(TclState *statep, Tcl_Interp *interp, int objc,
     char *txstr;
     Tcl_HashEntry *entryp;
     RDB_transaction *txp;
-    RDB_table *tbp;
+    RDB_object *tbp;
     Tcl_HashSearch search;
 
     if (objc != 4) {
@@ -315,14 +316,14 @@ table_drop_cmd(TclState *statep, Tcl_Interp *interp, int objc,
         table_entry *iep = (table_entry *) Tcl_GetHashValue(entryp);
 
         if (iep->tablep != tbp && _RDB_table_refers(iep->tablep, tbp)) {
-            Tcl_AppendResult(interp, "Cannot drop table ", tbp->name,
-                    ": ", iep->tablep->name, " depends on it", NULL);
+            Tcl_AppendResult(interp, "Cannot drop table ", RDB_table_name(tbp),
+                    ": ", RDB_table_name(iep->tablep), " depends on it", NULL);
             return TCL_ERROR;
         }
         entryp = Tcl_NextHashEntry(&search);
     }
 
-    if (tbp->is_persistent) {
+    if (RDB_table_is_persistent(tbp)) {
         ret = RDB_drop_table(tbp, statep->current_ecp, txp);
         if (ret != RDB_OK) {
             Duro_dberror(interp, RDB_get_err(statep->current_ecp), txp);
@@ -331,7 +332,7 @@ table_drop_cmd(TclState *statep, Tcl_Interp *interp, int objc,
     } else {
 
         entryp = Tcl_FindHashEntry(&statep->ltables, name);
-        ret = Duro_tcl_drop_ltable((table_entry *)Tcl_GetHashValue(entryp),
+        ret = Duro_tcl_drop_ltable((table_entry *) Tcl_GetHashValue(entryp),
                 entryp, statep->current_ecp);
         if (ret != RDB_OK) {
             Duro_dberror(interp, RDB_get_err(statep->current_ecp), txp);
@@ -350,7 +351,7 @@ Duro_delete_cmd(ClientData data, Tcl_Interp *interp, int objc, Tcl_Obj *CONST ob
     char *txstr;
     Tcl_HashEntry *entryp;
     RDB_transaction *txp;
-    RDB_table *tbp;
+    RDB_object *tbp;
     RDB_expression *wherep;
     Tcl_Obj *restobjp;
     TclState *statep = (TclState *) data;
@@ -369,6 +370,8 @@ Duro_delete_cmd(ClientData data, Tcl_Interp *interp, int objc, Tcl_Obj *CONST ob
         return TCL_ERROR;
     }
     txp = Tcl_GetHashValue(entryp);
+
+    RDB_clear_err(statep->current_ecp);
 
     tbp = Duro_get_table(statep, interp, name, txp);
     if (tbp == NULL) {
@@ -410,7 +413,7 @@ table_contains_cmd(TclState *statep, Tcl_Interp *interp, int objc,
     char *txstr;
     Tcl_HashEntry *entryp;
     RDB_transaction *txp;
-    RDB_table *tbp;
+    RDB_object *tbp;
     int attrcount;
     int i;
     RDB_object tpl;
@@ -436,7 +439,7 @@ table_contains_cmd(TclState *statep, Tcl_Interp *interp, int objc,
     if (tbp == NULL) {
         return TCL_ERROR;
     }
-    typ = RDB_table_type(tbp);
+    typ = RDB_obj_type(tbp);
 
     Tcl_ListObjLength(interp, objv[3], &attrcount);
     if (attrcount % 2 != 0) {
@@ -501,7 +504,7 @@ table_add_cmd(TclState *statep, Tcl_Interp *interp, int objc,
     char *txstr;
     Tcl_HashEntry *entryp;
     RDB_transaction *txp;
-    RDB_table *tbp;
+    RDB_object *tbp;
 
     if (objc != 4) {
         Tcl_WrongNumArgs(interp, 2, objv, "tablename tx");
@@ -609,7 +612,7 @@ table_attrs_cmd(TclState *statep, Tcl_Interp *interp, int objc,
     char *txstr;
     Tcl_HashEntry *entryp;
     RDB_transaction *txp;
-    RDB_table *tbp;
+    RDB_object *tbp;
     Tcl_Obj *listobjp;
     int attrc;
     RDB_attr *attrv;
@@ -634,7 +637,7 @@ table_attrs_cmd(TclState *statep, Tcl_Interp *interp, int objc,
     }
 
     listobjp = Tcl_NewListObj(0, NULL);
-    attrv = RDB_type_attrs(RDB_table_type(tbp), &attrc);
+    attrv = RDB_type_attrs(RDB_obj_type(tbp), &attrc);
     for (i = 0; i < attrc; i++) {
         Tcl_Obj *typobjp;
         Tcl_Obj *sublistobjp = Tcl_NewListObj(0, NULL);
@@ -681,7 +684,7 @@ table_def_cmd(TclState *statep, Tcl_Interp *interp, int objc,
     char *txstr;
     Tcl_HashEntry *entryp;
     RDB_transaction *txp;
-    RDB_table *tbp;
+    RDB_object *tbp;
     RDB_object defobj;
     Tcl_Obj *deftobjp;
 
@@ -705,7 +708,7 @@ table_def_cmd(TclState *statep, Tcl_Interp *interp, int objc,
     }
 
     RDB_init_obj(&defobj);
-    ret = _RDB_table_to_str(&defobj, tbp, statep->current_ecp, txp, 0);
+    ret = _RDB_obj_to_str(&defobj, tbp, statep->current_ecp, txp, 0);
     if (ret != RDB_OK) {
         RDB_destroy_obj(&defobj, statep->current_ecp);
         Duro_dberror(interp, RDB_get_err(statep->current_ecp), txp);
@@ -729,7 +732,7 @@ table_getplan_cmd(TclState *statep, Tcl_Interp *interp, int objc,
     char *txstr;
     Tcl_HashEntry *entryp;
     RDB_transaction *txp;
-    RDB_table *tbp, *ntbp;
+    RDB_object *tbp, *ntbp;
     RDB_object defobj;
     Tcl_Obj *deftobjp;
 
@@ -758,7 +761,7 @@ table_getplan_cmd(TclState *statep, Tcl_Interp *interp, int objc,
         return TCL_ERROR;
     }
     RDB_init_obj(&defobj);
-    ret = _RDB_table_to_str(&defobj, ntbp, statep->current_ecp, txp,
+    ret = _RDB_obj_to_str(&defobj, ntbp, statep->current_ecp, txp,
             RDB_SHOW_INDEX);
     if (RDB_table_name(ntbp) == NULL)
         RDB_drop_table(ntbp, statep->current_ecp, txp);
@@ -786,7 +789,7 @@ table_keys_cmd(TclState *statep, Tcl_Interp *interp, int objc,
     char *txstr;
     Tcl_HashEntry *entryp;
     RDB_transaction *txp;
-    RDB_table *tbp;
+    RDB_object *tbp;
     int keyc;
     RDB_string_vec *keyv;
     Tcl_Obj *listobjp;
@@ -844,7 +847,7 @@ table_rename_cmd(TclState *statep, Tcl_Interp *interp, int objc,
     char *txstr;
     Tcl_HashEntry *entryp;
     RDB_transaction *txp;
-    RDB_table *tbp;
+    RDB_object *tbp;
 
     if (objc != 5) {
         Tcl_WrongNumArgs(interp, 2, objv, "tablename newname tx");
@@ -866,7 +869,7 @@ table_rename_cmd(TclState *statep, Tcl_Interp *interp, int objc,
         return TCL_ERROR;
     }
 
-    if (tbp->is_persistent) {
+    if (RDB_table_is_persistent(tbp)) {
         ret = RDB_set_table_name(tbp, newname, statep->current_ecp, txp);
         if (ret != RDB_OK) {
             Duro_dberror(interp, RDB_get_err(statep->current_ecp), txp);
@@ -884,8 +887,8 @@ table_rename_cmd(TclState *statep, Tcl_Interp *interp, int objc,
             table_entry *iep = (table_entry *) Tcl_GetHashValue(entryp);
 
             if (iep->tablep != tbp && _RDB_table_refers(iep->tablep, tbp)) {
-                Tcl_AppendResult(interp, "Cannot rename table ", tbp->name,
-                        ": ", iep->tablep->name, " depends on it", NULL);
+                Tcl_AppendResult(interp, "Cannot rename table ", RDB_table_name(tbp),
+                        ": ", RDB_table_name(iep->tablep), " depends on it", NULL);
                 return TCL_ERROR;
             }
             entryp = Tcl_NextHashEntry(&search);

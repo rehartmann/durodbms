@@ -12,10 +12,10 @@
 #include "internal.h"
 
 int
-_RDB_cat_insert(RDB_table *, RDB_exec_context *, RDB_transaction *);
+_RDB_cat_insert(RDB_object *, RDB_exec_context *, RDB_transaction *);
 
 int
-_RDB_cat_delete(RDB_table *, RDB_exec_context *, RDB_transaction *);
+_RDB_cat_delete(RDB_object *, RDB_exec_context *, RDB_transaction *);
 
 int
 _RDB_open_systables(RDB_dbroot *, RDB_exec_context *, RDB_transaction *);
@@ -25,20 +25,20 @@ _RDB_cat_create_db(RDB_exec_context *, RDB_transaction *);
 
 int
 _RDB_possreps_query(const char *name, RDB_exec_context *, RDB_transaction *txp,
-        RDB_table **tbpp);
+        RDB_object **tbpp);
 
 int
 _RDB_possrepcomps_query(const char *name, const char *possrepname,
-        RDB_exec_context *, RDB_transaction *txp, RDB_table **tbpp);
+        RDB_exec_context *, RDB_transaction *txp, RDB_object **tbpp);
 
-RDB_table *
+RDB_object *
 _RDB_cat_get_rtable(const char *, RDB_exec_context *, RDB_transaction *);
 
-RDB_table *
+RDB_object *
 _RDB_cat_get_vtable(const char *, RDB_exec_context *, RDB_transaction *);
 
 int
-_RDB_cat_rename_table(RDB_table *, const char *, RDB_exec_context *,
+_RDB_cat_rename_table(RDB_object *, const char *, RDB_exec_context *,
         RDB_transaction *);
 
 int
@@ -58,7 +58,7 @@ _RDB_cat_get_upd_op(const char *name, int argc, RDB_type *argtv[],
         RDB_exec_context *, RDB_transaction *txp, RDB_upd_op **opp);
 
 int
-_RDB_cat_insert_table_recmap(RDB_table *tbp, const char *rmname,
+_RDB_cat_insert_table_recmap(RDB_object *tbp, const char *rmname,
         RDB_exec_context *, RDB_transaction *txp);
 
 int

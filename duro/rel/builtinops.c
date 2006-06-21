@@ -1,7 +1,7 @@
 /*
  * $Id$
  *
- * Copyright (C) 2005 René Hartmann.
+ * Copyright (C) 2005-2006 René Hartmann.
  * See the file COPYING for redistribution information.
  */
 
@@ -39,16 +39,130 @@ neq_binary(const char *name, int argc, RDB_object *argv[],
     return RDB_OK;
 }
 
+static int 
+op_vtable(const char *name, int argc, RDB_object *argv[],
+        RDB_exec_context *ecp, RDB_transaction *txp, RDB_object *retvalp)
+{
+    int i;
+    RDB_type *argtyp;
+    RDB_object *vtbp;
+    RDB_ma_copy cpy;
+    RDB_expression *argexp;    
+    RDB_expression *exp;
+
+    /*
+     * Convert arguments to expressions
+     */
+    exp = RDB_ro_op(name, argc, NULL, ecp);
+    if (exp == NULL)
+        return RDB_ERROR;
+
+    for (i = 0; i < argc; i++) {
+        argtyp = RDB_obj_type(argv[i]);
+        if (argtyp != NULL && argtyp->kind == RDB_TP_RELATION) {
+            argexp = RDB_table_ref_to_expr(argv[i], ecp);
+        } else {
+            argexp = RDB_obj_to_expr(argv[i], ecp);
+        }
+        if (argexp == NULL) {
+            RDB_drop_expr(exp, ecp);
+            return RDB_ERROR;
+        }        
+        RDB_add_arg(exp, argexp);
+    }
+
+    /*
+     * Create virtual table
+     */
+    vtbp = RDB_expr_to_vtable(exp, ecp, txp);
+    if (vtbp == NULL) {
+        RDB_drop_expr(exp, ecp);
+        return RDB_ERROR;
+    }
+
+    /*
+     * Copy table
+     */        
+    cpy.dstp = retvalp;
+    cpy.srcp = vtbp;
+    
+    if (RDB_multi_assign(0, NULL, 0, NULL, 0, NULL, 1, &cpy, ecp, txp)
+            == RDB_ERROR) {
+        RDB_drop_table(vtbp, ecp, txp);
+        return RDB_ERROR;
+    }
+    return RDB_drop_table(vtbp, ecp, txp);
+}
+
+static int
+op_vtable_wrapfn(const char *name, int argc, RDB_object *argv[],
+        const void *iargp, size_t iarglen, RDB_exec_context *ecp,
+        RDB_transaction *txp, RDB_object *retvalp)
+{
+    return op_vtable(name, argc, argv, ecp, txp, retvalp);
+}
+
+static int
+op_project(const char *name, int argc, RDB_object *argv[],
+        const void *iargp, size_t iarglen, RDB_exec_context *ecp,
+        RDB_transaction *txp, RDB_object *retvalp)
+{
+    int i;
+
+    if (argv[0]->kind == RDB_OB_TABLE)
+        return op_vtable(name, argc, argv, ecp, txp, retvalp);
+
+    for (i = 1; i < argc; i++) {
+        char *attrname = RDB_obj_string(argv[i]);
+
+        if (RDB_tuple_set(retvalp, attrname,
+                RDB_tuple_get(argv[0], attrname), ecp) != RDB_OK)
+            return RDB_ERROR;
+    }
+    return RDB_OK;
+}
+
+static int
+op_remove(const char *name, int argc, RDB_object *argv[],
+        const void *iargp, size_t iarglen, RDB_exec_context *ecp,
+        RDB_transaction *txp, RDB_object *retvalp)
+{
+    int i;
+    int ret;
+    char **attrv;
+
+    if (argv[0]->kind == RDB_OB_TABLE)
+        return op_vtable(name, argc, argv, ecp, txp, retvalp);
+
+    attrv = malloc(sizeof (char *) * (argc - 1));
+    if (attrv == NULL) {
+        RDB_raise_no_memory(ecp);
+        return RDB_ERROR;
+    }
+
+    for (i = 0; i < argc - 1; i++) {
+        attrv[i] = RDB_obj_string(argv[i + 1]);
+    }
+
+    ret = RDB_remove_tuple(argv[0], argc - 1, attrv, ecp, retvalp);
+    free(attrv);
+    return ret;
+}
+
 static int
 op_rename(const char *name, int argc, RDB_object *argv[],
         const void *iargp, size_t iarglen, RDB_exec_context *ecp,
         RDB_transaction *txp, RDB_object *retvalp)
 {
-    int ret;
     int i;
-    RDB_table *tbp, *vtbp;
+    int ret;
     int renc = (argc - 1) / 2;
-    RDB_renaming *renv = malloc(sizeof(RDB_renaming) * renc);
+    RDB_renaming *renv;
+
+    if (argv[0]->kind == RDB_OB_TABLE)
+        return op_vtable(name, argc, argv, ecp, txp, retvalp);
+
+    renv = malloc(sizeof(RDB_renaming) * renc);
     if (renv == NULL) {
         RDB_raise_no_memory(ecp);
         return RDB_ERROR;
@@ -65,97 +179,25 @@ op_rename(const char *name, int argc, RDB_object *argv[],
         renv[i].to = RDB_obj_string(argv[2 + i * 2]);
     }
 
-    tbp = RDB_obj_table(argv[0]);
-    if (tbp != NULL) {
-        vtbp = RDB_rename(tbp, renc, renv, ecp);
-        ret = vtbp == NULL ? RDB_ERROR : RDB_OK;
-    } else {
-        ret = RDB_rename_tuple(argv[0], renc, renv, ecp, retvalp);
-    }
+    ret = RDB_rename_tuple(argv[0], renc, renv, ecp, retvalp);
     free(renv);
-    if (ret != RDB_OK)
-        return ret;
-    if (tbp != NULL) {
-        RDB_table_to_obj(retvalp, vtbp, ecp);
-
-        /*
-         * Since the table is consumed by RDB_rename, prevent it
-         * from being deleted when argv[0] is destroyed.
-         */
-        argv[0]->var.tbp = NULL;
-    }
-
-    return RDB_OK;
+    return ret;
 }
 
 static int
-op_project(const char *name, int argc, RDB_object *argv[],
+op_join(const char *name, int argc, RDB_object *argv[],
         const void *iargp, size_t iarglen, RDB_exec_context *ecp,
         RDB_transaction *txp, RDB_object *retvalp)
-{
-    int ret;
-    int i;
-    RDB_table *tbp, *vtbp;
-    char **attrv = malloc(sizeof(char *) * (argc - 1));
-    if (attrv == NULL) {
-        RDB_raise_no_memory(ecp);
+{    
+    if (argc != 2) {
+        RDB_raise_invalid_argument("invalid argument to JOIN", ecp);
         return RDB_ERROR;
     }
 
-    for (i = 0; i < argc - 1; i++) {
-        attrv[i] = RDB_obj_string(argv[i + 1]);
-    }
+    if (argv[0]->kind == RDB_OB_TABLE)
+        return op_vtable(name, argc, argv, ecp, txp, retvalp);
 
-    tbp = RDB_obj_table(argv[0]);
-    if (tbp != NULL) {
-        vtbp = RDB_project(tbp, argc - 1, attrv, ecp);
-        ret = vtbp == NULL ? RDB_ERROR : RDB_OK;
-    } else {
-        ret = RDB_project_tuple(argv[0], argc - 1, attrv, ecp, retvalp);
-    }
-    free(attrv);
-    if (ret != RDB_OK)
-        return ret;
-    if (tbp != NULL) {
-        RDB_table_to_obj(retvalp, vtbp, ecp);
-        argv[0]->var.tbp = NULL;
-    }
-    return RDB_OK;
-}
-
-static int
-op_remove(const char *name, int argc, RDB_object *argv[],
-        const void *iargp, size_t iarglen, RDB_exec_context *ecp,
-        RDB_transaction *txp, RDB_object *retvalp)
-{
-    int ret;
-    int i;
-    RDB_table *tbp, *vtbp;
-    char **attrv = malloc(sizeof(char *) * (argc - 1));
-    if (attrv == NULL) {
-        RDB_raise_no_memory(ecp);
-        return RDB_ERROR;
-    }
-
-    for (i = 0; i < argc - 1; i++) {
-        attrv[i] = RDB_obj_string(argv[i + 1]);
-    }
-
-    tbp = RDB_obj_table(argv[0]);
-    if (tbp != NULL) {
-        vtbp = RDB_remove(tbp, argc - 1, attrv, ecp);
-        ret = vtbp == NULL ? RDB_ERROR : RDB_OK;
-    } else {
-        ret = RDB_remove_tuple(argv[0], argc - 1, attrv, ecp, retvalp);
-    }
-    free(attrv);
-    if (ret != RDB_OK)
-        return ret;
-    if (tbp != NULL) {
-        RDB_table_to_obj(retvalp, vtbp, ecp);
-        argv[0]->var.tbp = NULL;
-    }
-    return RDB_OK;
+    return RDB_join_tuples(argv[0], argv[1], ecp, txp, retvalp);
 }
 
 static int
@@ -165,9 +207,11 @@ op_wrap(const char *name, int argc, RDB_object *argv[],
 {
     int ret;
     int i, j;
-    RDB_table *tbp, *vtbp;
     int wrapc;
     RDB_wrapping *wrapv;
+
+    if (argv[0]->kind == RDB_OB_TABLE)
+        return op_vtable(name, argc, argv, ecp, txp, retvalp);
 
     if (argc < 1 || argc %2 != 1) {
         RDB_raise_invalid_argument("invalid number of arguments", ecp);
@@ -207,23 +251,7 @@ op_wrap(const char *name, int argc, RDB_object *argv[],
         wrapv[i].attrname = RDB_obj_string(argv[i * 2 + 2]);
     }
 
-    tbp = RDB_obj_table(argv[0]);
-    if (tbp != NULL) {
-        vtbp = RDB_wrap(tbp, wrapc, wrapv, ecp);
-        if (vtbp == NULL) {
-            ret = RDB_ERROR;
-            goto cleanup;
-        }
-    } else {
-        ret = RDB_wrap_tuple(argv[0], wrapc, wrapv, ecp, retvalp);
-        if (ret != RDB_OK)
-            goto cleanup;
-    }
-    if (tbp != NULL) {
-        RDB_table_to_obj(retvalp, vtbp, ecp);
-        argv[0]->var.tbp = NULL;
-    }
-    ret = RDB_OK;
+    ret = RDB_wrap_tuple(argv[0], wrapc, wrapv, ecp, retvalp);
 
 cleanup:
     for (i = 0; i < wrapc; i++) {
@@ -242,7 +270,6 @@ op_unwrap(const char *name, int argc, RDB_object *argv[],
 {
     int ret;
     int i;
-    RDB_table *tbp, *vtbp;
     char **attrv;
 
     if (argc < 1) {
@@ -250,6 +277,9 @@ op_unwrap(const char *name, int argc, RDB_object *argv[],
         return RDB_ERROR;
     }
     
+    if (argv[0]->kind == RDB_OB_TABLE)
+        return op_vtable(name, argc, argv, ecp, txp, retvalp);
+
     attrv = malloc(sizeof(char *) * (argc - 1));
     if (attrv == NULL) {
         RDB_raise_no_memory(ecp);
@@ -260,30 +290,19 @@ op_unwrap(const char *name, int argc, RDB_object *argv[],
         attrv[i] = RDB_obj_string(argv[i + 1]);
     }
 
-    tbp = RDB_obj_table(argv[0]);
-    if (tbp != NULL) {
-        vtbp = RDB_unwrap(tbp, argc - 1, attrv, ecp);
-        ret = vtbp == NULL ? RDB_ERROR : RDB_OK;
-    } else {
-        ret = RDB_unwrap_tuple(argv[0], argc - 1, attrv, ecp, retvalp);
-    }
+    ret = RDB_unwrap_tuple(argv[0], argc - 1, attrv, ecp, retvalp);
     free(attrv);
-    if (ret != RDB_OK)
-        return ret;
-    if (tbp != NULL) {
-        RDB_table_to_obj(retvalp, vtbp, ecp);
-        argv[0]->var.tbp = NULL;
-    }
-    return RDB_OK;
+    return ret;
 }
 
+#ifdef REMOVED
 static int
 op_group(const char *name, int argc, RDB_object *argv[],
         const void *iargp, size_t iarglen, RDB_exec_context *ecp,
         RDB_transaction *txp, RDB_object *retvalp)
 {
     int i;
-    RDB_table *vtbp;
+    RDB_object *vtbp;
     char **attrv;
     int attrc;
 
@@ -319,7 +338,7 @@ op_ungroup(const char *name, int argc, RDB_object *argv[],
         const void *iargp, size_t iarglen, RDB_exec_context *ecp,
         RDB_transaction *txp, RDB_object *retvalp)
 {
-    RDB_table *vtbp;
+    RDB_object *vtbp;
 
     vtbp = RDB_ungroup(RDB_obj_table(argv[0]), RDB_obj_string(argv[1]), ecp);
     if (vtbp == NULL)
@@ -335,7 +354,7 @@ op_union(const char *name, int argc, RDB_object *argv[],
         const void *iargp, size_t iarglen, RDB_exec_context *ecp,
         RDB_transaction *txp, RDB_object *retvalp)
 {
-    RDB_table *vtbp;
+    RDB_object *vtbp;
     
     if (argc != 2) {
         RDB_raise_invalid_argument("invalid argument to UNION", ecp);
@@ -357,7 +376,7 @@ op_minus(const char *name, int argc, RDB_object *argv[],
         const void *iargp, size_t iarglen, RDB_exec_context *ecp,
         RDB_transaction *txp, RDB_object *retvalp)
 {
-    RDB_table *vtbp;
+    RDB_object *vtbp;
     
     if (argc != 2) {
         RDB_raise_invalid_argument("invalid argument to MINUS", ecp);
@@ -379,7 +398,7 @@ op_semiminus(const char *name, int argc, RDB_object *argv[],
         const void *iargp, size_t iarglen, RDB_exec_context *ecp,
         RDB_transaction *txp, RDB_object *retvalp)
 {
-    RDB_table *vtbp;
+    RDB_object *vtbp;
     
     if (argc != 2) {
         RDB_raise_invalid_argument("invalid argument to SEMIMINUS", ecp);
@@ -401,7 +420,7 @@ op_intersect(const char *name, int argc, RDB_object *argv[],
         const void *iargp, size_t iarglen, RDB_exec_context *ecp,
         RDB_transaction *txp, RDB_object *retvalp)
 {
-    RDB_table *vtbp;
+    RDB_object *vtbp;
     
     if (argc != 2) {
         RDB_raise_invalid_argument("invalid argument to INTERSECT", ecp);
@@ -423,7 +442,7 @@ op_semijoin(const char *name, int argc, RDB_object *argv[],
         const void *iargp, size_t iarglen, RDB_exec_context *ecp,
         RDB_transaction *txp, RDB_object *retvalp)
 {
-    RDB_table *vtbp;
+    RDB_object *vtbp;
     
     if (argc != 2) {
         RDB_raise_invalid_argument("SEMIJOIN requires two arguments", ecp);
@@ -441,43 +460,11 @@ op_semijoin(const char *name, int argc, RDB_object *argv[],
 }
 
 static int
-op_join(const char *name, int argc, RDB_object *argv[],
-        const void *iargp, size_t iarglen, RDB_exec_context *ecp,
-        RDB_transaction *txp, RDB_object *retvalp)
-{
-    int ret;
-    RDB_table *tbp;
-    RDB_table *vtbp;
-    
-    if (argc != 2) {
-        RDB_raise_invalid_argument("invalid argument to JOIN", ecp);
-        return RDB_ERROR;
-    }
-
-    tbp = RDB_obj_table(argv[0]);
-    if (tbp != NULL) {    
-        vtbp = RDB_join(tbp, RDB_obj_table(argv[1]), ecp);
-        ret = vtbp == NULL ? RDB_ERROR : RDB_OK;
-    } else {
-        ret = RDB_join_tuples(argv[0], argv[1], ecp, txp, retvalp);
-    }
-    if (ret != RDB_OK)
-        return ret;
-
-    if (tbp != NULL) {
-        RDB_table_to_obj(retvalp, vtbp, ecp);
-        argv[0]->var.tbp = NULL;
-        argv[1]->var.tbp = NULL;
-    }
-    return RDB_OK;
-}
-
-static int
 op_divide(const char *name, int argc, RDB_object *argv[],
         const void *iargp, size_t iarglen, RDB_exec_context *ecp,
         RDB_transaction *txp, RDB_object *retvalp)
 {
-    RDB_table *vtbp;
+    RDB_object *vtbp;
     
     if (argc != 3) {
         RDB_raise_invalid_argument("invalid argument to DIVIDE", ecp);
@@ -495,6 +482,7 @@ op_divide(const char *name, int argc, RDB_object *argv[],
     argv[2]->var.tbp = NULL;
     return RDB_OK;
 }
+#endif
 
 static int
 integer_float(const char *name, int argc, RDB_object *argv[],
@@ -1709,6 +1697,24 @@ _RDB_add_builtin_ops(RDB_dbroot *dbrootp, RDB_exec_context *ecp)
     op->argtv[0] = &RDB_DOUBLE;
     op->argtv[1] = &RDB_DOUBLE;
 
+    if (_RDB_put_ro_op(dbrootp, op, ecp) != RDB_OK)
+        return RDB_ERROR;
+
+    op = _RDB_new_ro_op("PROJECT", -1, NULL, &op_project, ecp);
+    if (op == NULL) {
+        RDB_raise_no_memory(ecp);
+        return RDB_ERROR;
+    }
+
+    if (_RDB_put_ro_op(dbrootp, op, ecp) != RDB_OK)
+        return RDB_ERROR;
+
+    op = _RDB_new_ro_op("REMOVE", -1, NULL, &op_remove, ecp);
+    if (op == NULL) {
+        RDB_raise_no_memory(ecp);
+        return RDB_ERROR;
+    }
+
     ret = _RDB_put_ro_op(dbrootp, op, ecp);
     if (ret != RDB_OK)
         return ret;
@@ -1723,17 +1729,7 @@ _RDB_add_builtin_ops(RDB_dbroot *dbrootp, RDB_exec_context *ecp)
     if (ret != RDB_OK)
         return ret;
 
-    op = _RDB_new_ro_op("PROJECT", -1, NULL, &op_project, ecp);
-    if (op == NULL) {
-        RDB_raise_no_memory(ecp);
-        return RDB_ERROR;
-    }
-
-    ret = _RDB_put_ro_op(dbrootp, op, ecp);
-    if (ret != RDB_OK)
-        return ret;
-
-    op = _RDB_new_ro_op("REMOVE", -1, NULL, &op_remove, ecp);
+    op = _RDB_new_ro_op("JOIN", -1, NULL, &op_join, ecp);
     if (op == NULL) {
         RDB_raise_no_memory(ecp);
         return RDB_ERROR;
@@ -1763,7 +1759,7 @@ _RDB_add_builtin_ops(RDB_dbroot *dbrootp, RDB_exec_context *ecp)
     if (ret != RDB_OK)
         return ret;
 
-    op = _RDB_new_ro_op("UNION", -1, NULL, &op_union, ecp);
+    op = _RDB_new_ro_op("UNION", -1, NULL, &op_vtable_wrapfn, ecp);
     if (op == NULL) {
         RDB_raise_no_memory(ecp);
         return RDB_ERROR;
@@ -1773,7 +1769,7 @@ _RDB_add_builtin_ops(RDB_dbroot *dbrootp, RDB_exec_context *ecp)
     if (ret != RDB_OK)
         return ret;
 
-    op = _RDB_new_ro_op("MINUS", -1, NULL, &op_minus, ecp);
+    op = _RDB_new_ro_op("MINUS", -1, NULL, &op_vtable_wrapfn, ecp);
     if (op == NULL) {
         RDB_raise_no_memory(ecp);
         return RDB_ERROR;
@@ -1783,7 +1779,7 @@ _RDB_add_builtin_ops(RDB_dbroot *dbrootp, RDB_exec_context *ecp)
     if (ret != RDB_OK)
         return ret;
 
-    op = _RDB_new_ro_op("SEMIMINUS", -1, NULL, &op_semiminus, ecp);
+    op = _RDB_new_ro_op("SEMIMINUS", -1, NULL, &op_vtable_wrapfn, ecp);
     if (op == NULL) {
         RDB_raise_no_memory(ecp);
         return RDB_ERROR;
@@ -1793,7 +1789,7 @@ _RDB_add_builtin_ops(RDB_dbroot *dbrootp, RDB_exec_context *ecp)
     if (ret != RDB_OK)
         return ret;
 
-    op = _RDB_new_ro_op("INTERSECT", -1, NULL, &op_intersect, ecp);
+    op = _RDB_new_ro_op("INTERSECT", -1, NULL, &op_vtable_wrapfn, ecp);
     if (op == NULL) {
         RDB_raise_no_memory(ecp);
         return RDB_ERROR;
@@ -1803,7 +1799,7 @@ _RDB_add_builtin_ops(RDB_dbroot *dbrootp, RDB_exec_context *ecp)
     if (ret != RDB_OK)
         return ret;
 
-    op = _RDB_new_ro_op("SEMIJOIN", -1, NULL, &op_semijoin, ecp);
+    op = _RDB_new_ro_op("SEMIJOIN", -1, NULL, &op_vtable_wrapfn, ecp);
     if (op == NULL) {
         RDB_raise_no_memory(ecp);
         return RDB_ERROR;
@@ -1813,7 +1809,7 @@ _RDB_add_builtin_ops(RDB_dbroot *dbrootp, RDB_exec_context *ecp)
     if (ret != RDB_OK)
         return ret;
 
-    op = _RDB_new_ro_op("JOIN", -1, NULL, &op_join, ecp);
+    op = _RDB_new_ro_op("DIVIDE_BY_PER", -1, NULL, &op_vtable_wrapfn, ecp);
     if (op == NULL) {
         RDB_raise_no_memory(ecp);
         return RDB_ERROR;
@@ -1823,7 +1819,7 @@ _RDB_add_builtin_ops(RDB_dbroot *dbrootp, RDB_exec_context *ecp)
     if (ret != RDB_OK)
         return ret;
 
-    op = _RDB_new_ro_op("DIVIDE_BY_PER", -1, NULL, &op_divide, ecp);
+    op = _RDB_new_ro_op("GROUP", -1, NULL, &op_vtable_wrapfn, ecp);
     if (op == NULL) {
         RDB_raise_no_memory(ecp);
         return RDB_ERROR;
@@ -1833,17 +1829,7 @@ _RDB_add_builtin_ops(RDB_dbroot *dbrootp, RDB_exec_context *ecp)
     if (ret != RDB_OK)
         return ret;
 
-    op = _RDB_new_ro_op("GROUP", -1, NULL, &op_group, ecp);
-    if (op == NULL) {
-        RDB_raise_no_memory(ecp);
-        return RDB_ERROR;
-    }
-
-    ret = _RDB_put_ro_op(dbrootp, op, ecp);
-    if (ret != RDB_OK)
-        return ret;
-
-    op = _RDB_new_ro_op("UNGROUP", -1, NULL, &op_ungroup, ecp);
+    op = _RDB_new_ro_op("UNGROUP", -1, NULL, &op_vtable_wrapfn, ecp);
     if (op == NULL) {
         RDB_raise_no_memory(ecp);
         return RDB_ERROR;

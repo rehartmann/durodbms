@@ -11,8 +11,9 @@
 #include <gen/strfns.h>
 #include <string.h>
 
+#ifdef NIX
 static RDB_int
-delete_by_uindex(RDB_table *tbp, RDB_object *objpv[], _RDB_tbindex *indexp,
+delete_by_uindex(RDB_object *tbp, RDB_object *objpv[], _RDB_tbindex *indexp,
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
     RDB_int rcount;
@@ -38,11 +39,11 @@ delete_by_uindex(RDB_table *tbp, RDB_object *objpv[], _RDB_tbindex *indexp,
 
     _RDB_cmp_ecp = ecp;
     if (indexp->idxp == NULL) {
-        ret = RDB_delete_rec(tbp->stp->recmapp, fv,
-                tbp->is_persistent ? txp->txid : NULL);
+        ret = RDB_delete_rec(tbp->var.tb.stp->recmapp, fv,
+                tbp->var.tb.is_persistent ? txp->txid : NULL);
     } else {
         ret = RDB_index_delete_rec(indexp->idxp, fv,
-                tbp->is_persistent ? txp->txid : NULL);
+                tbp->var.tb.is_persistent ? txp->txid : NULL);
     }
     switch (ret) {
         case RDB_OK:
@@ -60,9 +61,10 @@ cleanup:
     free(fv);
     return rcount;
 }
+#endif
 
 RDB_int
-_RDB_delete_real(RDB_table *tbp, RDB_expression *condp, RDB_exec_context *ecp,
+_RDB_delete_real(RDB_object *tbp, RDB_expression *condp, RDB_exec_context *ecp,
         RDB_transaction *txp)
 {
     RDB_int rcount;
@@ -75,13 +77,13 @@ _RDB_delete_real(RDB_table *tbp, RDB_expression *condp, RDB_exec_context *ecp,
     RDB_bool b;
     RDB_type *tpltyp = tbp->typ->var.basetyp;
 
-    if (tbp->stp == NULL) {
+    if (tbp->var.tb.stp == NULL) {
         /* Physical table representation has not been created, so table is empty */
         return 0;
     }
 
-    ret = RDB_recmap_cursor(&curp, tbp->stp->recmapp, RDB_TRUE,
-            tbp->is_persistent ? txp->txid : NULL);
+    ret = RDB_recmap_cursor(&curp, tbp->var.tb.stp->recmapp, RDB_TRUE,
+            tbp->var.tb.is_persistent ? txp->txid : NULL);
     if (ret != RDB_OK) {
         _RDB_handle_errcode(ret, ecp, txp);
         return RDB_ERROR;
@@ -97,7 +99,7 @@ _RDB_delete_real(RDB_table *tbp, RDB_expression *condp, RDB_exec_context *ecp,
                 RDB_object val;
 
                 ret = RDB_cursor_get(curp,
-                        *_RDB_field_no(tbp->stp, tpltyp->var.tuple.attrv[i].name),
+                        *_RDB_field_no(tbp->var.tb.stp, tpltyp->var.tuple.attrv[i].name),
                         &datap, &len);
                 if (ret != RDB_OK) {
                    RDB_destroy_obj(&tpl, ecp);
@@ -154,10 +156,11 @@ error:
     if (curp != NULL)
         RDB_destroy_cursor(curp);
     return RDB_ERROR;
-}  
+}
 
+#ifdef NIX
 RDB_int
-_RDB_delete_select_uindex(RDB_table *tbp, RDB_expression *condp,
+_RDB_delete_select_uindex(RDB_object *tbp, RDB_expression *condp,
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
     RDB_int rcount;
@@ -199,7 +202,7 @@ cleanup:
 }
 
 RDB_int
-_RDB_delete_select_index(RDB_table *tbp, RDB_expression *condp,
+_RDB_delete_select_index(RDB_object *tbp, RDB_expression *condp,
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
     RDB_int rcount;
@@ -212,7 +215,7 @@ _RDB_delete_select_index(RDB_table *tbp, RDB_expression *condp,
     int keylen = indexp->attrc;
 
     ret = RDB_index_cursor(&curp, indexp->idxp, RDB_TRUE,
-            tbp->var.select.tbp->var.project.tbp->is_persistent ?
+            tbp->var.select.tbp->var.project.tbp->var.tb.is_persistent ?
             txp->txid : NULL);
     if (ret != RDB_OK) {
         _RDB_handle_errcode(ret, ecp, txp);
@@ -328,9 +331,10 @@ cleanup:
     free(fv);
     return rcount;
 }
+#endif
 
 RDB_int
-RDB_delete(RDB_table *tbp, RDB_expression *condp, RDB_exec_context *ecp,
+RDB_delete(RDB_object *tbp, RDB_expression *condp, RDB_exec_context *ecp,
         RDB_transaction *txp)
 {
     RDB_ma_delete del;

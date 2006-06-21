@@ -1,7 +1,7 @@
 /*
  * $Id$
  *
- * Copyright (C) 2003-2005 René Hartmann.
+ * Copyright (C) 2003-2006 René Hartmann.
  * See the file COPYING for redistribution information.
  */
 
@@ -689,7 +689,7 @@ RDB_create_relation_type(int attrc, const RDB_attr attrv[],
         RDB_raise_no_memory(ecp);
         return NULL;
     }
-    
+
     typ->name = NULL;
     typ->kind = RDB_TP_RELATION;
     typ->ireplen = RDB_VARIABLE_LEN;
@@ -702,12 +702,13 @@ RDB_create_relation_type(int attrc, const RDB_attr attrv[],
 }
 
 RDB_type *
-RDB_create_array_type(RDB_type *basetyp)
+RDB_create_array_type(RDB_type *basetyp, RDB_exec_context *ecp)
 {
-    RDB_type *typ = malloc(sizeof (RDB_type));
-    
-    if (typ == NULL)
+    RDB_type *typ = malloc(sizeof (RDB_type));    
+    if (typ == NULL) {
+        RDB_raise_no_memory(ecp);
         return NULL;
+    }
     
     typ->name = NULL;
     typ->kind = RDB_TP_ARRAY;
@@ -1146,7 +1147,7 @@ RDB_type_equals(const RDB_type *typ1, const RDB_type *typ2)
         return RDB_TRUE;
     if (typ1->kind != typ2->kind)
         return RDB_FALSE;
-    
+
     /* If the two types both have a name, they are equal iff their name
      * is equal */
     if (typ1->name != NULL && typ2->name != NULL)
@@ -1422,13 +1423,13 @@ RDB_join_relation_types(const RDB_type *typ1, const RDB_type *typ2,
 /* Return a pointer to the RDB_attr strcuture of the attribute with name attrname in the tuple
    type pointed to by tutyp. */
 RDB_attr *
-_RDB_tuple_type_attr(const RDB_type *tuptyp, const char *attrname)
+_RDB_tuple_type_attr(const RDB_type *tpltyp, const char *attrname)
 {
     int i;
     
-    for (i = 0; i < tuptyp->var.tuple.attrc; i++) {
-        if (strcmp(tuptyp->var.tuple.attrv[i].name, attrname) == 0)
-            return &tuptyp->var.tuple.attrv[i];
+    for (i = 0; i < tpltyp->var.tuple.attrc; i++) {
+        if (strcmp(tpltyp->var.tuple.attrv[i].name, attrname) == 0)
+            return &tpltyp->var.tuple.attrv[i];
     }
     /* not found */
     return NULL;
@@ -1674,80 +1675,76 @@ copy_attr(RDB_attr *dstp, const RDB_attr *srcp, RDB_exec_context *ecp)
     return RDB_OK;
 }
 
-RDB_type *
-aggr_type(RDB_type *tuptyp, RDB_type *attrtyp, RDB_aggregate_op op,
-          RDB_exec_context *ecp)
+static RDB_type *
+aggr_type(const RDB_expression *exp, const RDB_type *tpltyp,
+        RDB_exec_context *ecp, RDB_transaction *txp)
 {
-    if (op == RDB_COUNT || op == RDB_COUNTD) {
-        return &RDB_INTEGER;
+    if (exp->kind != RDB_EX_RO_OP) {
+        RDB_raise_invalid_argument("invalid summarize argument", ecp);
+        return RDB_OK;
     }
 
-    switch (op) {
-        /* only to avoid compiler warnings */
-        case RDB_COUNTD:
-        case RDB_COUNT:
-
-        case RDB_AVGD:
-        case RDB_AVG:
-            if (!RDB_type_is_numeric(attrtyp)) {
-                RDB_raise_type_mismatch("attribute type must be numeric", ecp);
-                return NULL;
-            }
-            return &RDB_DOUBLE;
-        case RDB_SUM:
-        case RDB_SUMD:
-        case RDB_MAX:
-        case RDB_MIN:
-            if (!RDB_type_is_numeric(attrtyp)) {
-                RDB_raise_type_mismatch("attribute type must be numeric", ecp);
-                return NULL;
-            }
-            return attrtyp;
-        case RDB_ALL:
-        case RDB_ANY:
-            if (attrtyp != &RDB_BOOLEAN) {
-                RDB_raise_type_mismatch("attribute type must be BOOLEAN", ecp);
-                return NULL;
-            }
-            return &RDB_BOOLEAN;
-     }
-     /* Must never be reached */
-     abort();
-}
+    if (strcmp(exp->var.op.name, "COUNT") == 0) {
+        return &RDB_INTEGER;
+    } else if (strcmp(exp->var.op.name, "AVG") == 0) {
+        return &RDB_DOUBLE;
+    } else if (strcmp(exp->var.op.name, "SUM") == 0
+            || strcmp(exp->var.op.name, "MAX") == 0
+            || strcmp(exp->var.op.name, "MIN") == 0) {
+        if (exp->var.op.argc != 1) {
+            RDB_raise_invalid_argument("invalid number of aggregate arguments", ecp);
+            return NULL;
+        }
+        return RDB_expr_type(exp->var.op.argv[0], tpltyp, ecp, txp);
+    } else if (strcmp(exp->var.op.name, "ANY") == 0
+            || strcmp(exp->var.op.name, "ALL") == 0) {
+        return &RDB_BOOLEAN;
+    }
+    RDB_raise_operator_not_found(exp->var.op.name, ecp);
+    return NULL;
+}    
 
 RDB_type *
-RDB_summarize_type(RDB_type *tb1typ, RDB_type *tb2typ,
-        int addc, const RDB_summarize_add addv[],
+RDB_summarize_type(int expc, RDB_expression **expv,
         int avgc, char **avgv, RDB_exec_context *ecp, RDB_transaction *txp)
 {
     int i;
     RDB_type *newtyp;
+    RDB_attr *attrv;
+    int addc = (expc - 2) / 2;
     int attrc = addc + avgc;
-    RDB_attr *attrv = malloc(sizeof (RDB_attr) * attrc);
+    RDB_type *tb1typ = RDB_expr_type(expv[0], NULL, ecp, txp);
+    if (tb1typ == NULL)
+        return NULL;
+    RDB_type *tb2typ = RDB_expr_type(expv[1], NULL, ecp, txp);
+    if (tb2typ == NULL)
+        return NULL; /* !! memory */
+    
+    if (tb2typ->kind != RDB_TP_RELATION) {
+        RDB_raise_invalid_argument("relation type required", ecp);
+        return NULL;
+    }
+
+    attrv = malloc(sizeof (RDB_attr) * attrc);
     if (attrv == NULL) {
         RDB_raise_no_memory(ecp);
         return NULL;
     }
 
     for (i = 0; i < addc; i++) {
-        if (addv[i].op == RDB_COUNT) {
-            attrv[i].typ = &RDB_INTEGER;
-        } else {
-            RDB_type *typ;
-
-            typ = RDB_expr_type(addv[i].exp, tb1typ->var.basetyp, ecp, txp);
-            if (typ == NULL)
-                goto error;
-            attrv[i].typ = aggr_type(tb1typ->var.basetyp, typ, addv[i].op,
-                    ecp);
-            if (attrv[i].typ == NULL) {
-                if (!RDB_type_is_scalar(typ))
-                    RDB_drop_type(typ, ecp, NULL);
-                goto error;
-            }
+        attrv[i].typ = aggr_type(expv[2 + i * 2], tb1typ->var.basetyp,
+                ecp, txp);
+        if (attrv[i].typ == NULL)
+            goto error;
+        if (expv[3 + i * 2]->kind != RDB_EX_OBJ) {
+            RDB_raise_invalid_argument("invalid SUMMARIZE argument", ecp);
+            goto error;
         }
-
-        attrv[i].name = addv[i].name;
+        attrv[i].name = RDB_obj_string(&expv[3 + i * 2]->var.obj);
+        if (attrv[i].name == NULL) {
+            RDB_raise_invalid_argument("invalid SUMMARIZE argument", ecp);
+            goto error;
+        }
     }
     for (i = 0; i < avgc; i++) {
         attrv[addc + i].name = avgv[i];

@@ -8,7 +8,7 @@ int
 create_table(RDB_database *dbp, RDB_exec_context *ecp)
 {
     RDB_transaction tx;
-    RDB_table *tbp;
+    RDB_object *tbp;
     RDB_string_vec key;
     int ret;
     
@@ -38,7 +38,7 @@ test_table(RDB_database *dbp, RDB_exec_context *ecp)
     int ret;
     RDB_object tpl;
     RDB_transaction tx;
-    RDB_table *tbp;
+    RDB_object *tbp;
 
     printf("Starting transaction\n");
     ret = RDB_begin_tx(ecp, &tx, dbp, NULL);

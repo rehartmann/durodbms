@@ -11,34 +11,98 @@
 #include "internal.h"
 #include <gen/strfns.h>
 #include <string.h>
-#include <dli/tabletostr.h>
-#include <stdio.h>
-#include <assert.h>
 
-void
-_RDB_print_table(RDB_table *tbp, RDB_transaction *txp, FILE *fp,
-        RDB_exec_context *ecp)
+int
+_RDB_init_table(RDB_object *tbp, const char *name, RDB_bool persistent,
+        RDB_type *reltyp, int keyc, const RDB_string_vec keyv[], RDB_bool usr,
+        RDB_expression *exp, RDB_exec_context *ecp)
 {
-    RDB_object obj;
+    int i;
+    RDB_string_vec allkey; /* Used if keyv is NULL */
+    int attrc = reltyp->var.basetyp->var.tuple.attrc;
 
-    RDB_init_obj(&obj);
-    _RDB_table_to_str(&obj, tbp, ecp, txp, RDB_SHOW_INDEX);
-    fputs(RDB_obj_string(&obj), fp);
-    RDB_destroy_obj(&obj, ecp);
+    tbp->kind = RDB_OB_TABLE;
+    tbp->var.tb.is_user = usr;
+    tbp->var.tb.is_persistent = persistent;
+    tbp->var.tb.keyv = NULL;
+    tbp->var.tb.stp = NULL;
+
+    if (name != NULL) {
+        tbp->var.tb.name = RDB_dup_str(name);
+        if (tbp->var.tb.name == NULL) {
+            RDB_raise_no_memory(ecp);
+            goto error;
+        }
+    } else {
+    	tbp->var.tb.name = NULL;
+    }
+
+     allkey.strv = NULL;
+     if (keyv == NULL) {
+        /* Create key for all-key table */
+        allkey.strc = attrc;
+        allkey.strv = malloc(sizeof (char *) * attrc);
+        if (allkey.strv == NULL) {
+            RDB_raise_no_memory(ecp);
+            goto error;
+        }
+        for (i = 0; i < attrc; i++)
+            allkey.strv[i] = reltyp->var.basetyp->var.tuple.attrv[i].name;
+        keyc = 1;
+        keyv = &allkey;
+    }
+
+    /* Copy candidate keys */
+    tbp->var.tb.keyc = keyc;
+    tbp->var.tb.keyv = malloc(sizeof(RDB_attr) * keyc);
+    if (tbp->var.tb.keyv == NULL) {
+        RDB_raise_no_memory(ecp);
+        goto error;
+    }
+    for (i = 0; i < keyc; i++) {
+        tbp->var.tb.keyv[i].strv = NULL;
+    }
+    for (i = 0; i < keyc; i++) {
+        tbp->var.tb.keyv[i].strc = keyv[i].strc;
+        tbp->var.tb.keyv[i].strv = RDB_dup_strvec(keyv[i].strc, keyv[i].strv);
+        if (tbp->var.tb.keyv[i].strv == NULL) {
+            RDB_raise_no_memory(ecp);
+            goto error;
+        }
+    }
+    tbp->var.tb.exp = exp;
+
+    tbp->typ = reltyp;
+
+    free(allkey.strv);
+
+    return RDB_OK;
+
+error:
+    /* Clean up */
+    if (tbp != NULL) {
+        free(tbp->var.tb.name);
+        if (tbp->var.tb.keyv != NULL) {
+	        for (i = 0; i < keyc; i++) {
+	            if (tbp->var.tb.keyv[i].strv != NULL) {
+	                RDB_free_strvec(tbp->var.tb.keyv[i].strc,
+	                        tbp->var.tb.keyv[i].strv);
+	            }
+	        }
+        }
+        free(tbp->var.tb.keyv);
+    }
+    free(allkey.strv);
+    return RDB_ERROR;
 }
 
-RDB_table *
-_RDB_new_table(RDB_exec_context *ecp)
+int
+RDB_init_table(RDB_object *tbp, const char *name,
+        RDB_type *reltyp, int keyc, const RDB_string_vec keyv[],
+        RDB_exec_context *ecp)
 {
-    RDB_table *tbp = malloc(sizeof (RDB_table));
-    if (tbp == NULL) {
-        RDB_raise_no_memory(ecp);
-        return NULL;
-    }
-    tbp->name = NULL;
-    tbp->keyv = NULL;
-    tbp->stp = NULL;
-    return tbp;
+    return _RDB_init_table(tbp, name, RDB_FALSE, reltyp, keyc, keyv,
+            RDB_TRUE, NULL, ecp);
 }
 
 /*
@@ -46,72 +110,30 @@ _RDB_new_table(RDB_exec_context *ecp)
  * and does not insert the table into the catalog.
  * reltyp is consumed on success (must not be freed by caller).
  */
-static RDB_table *
+static RDB_object *
 new_rtable(const char *name, RDB_bool persistent,
            RDB_type *reltyp,
            int keyc, const RDB_string_vec keyv[], RDB_bool usr,
            RDB_exec_context *ecp)
 {
-    int i;
-    RDB_table *tbp = _RDB_new_table(ecp);
+	int ret;
+    RDB_object *tbp = _RDB_new_obj(ecp);
     if (tbp == NULL)
         return NULL;
 
-    tbp->is_user = usr;
-    tbp->is_persistent = persistent;
-
-    tbp->kind = RDB_TB_REAL;
-
-    if (name != NULL) {
-        tbp->name = RDB_dup_str(name);
-        if (tbp->name == NULL) {
-            RDB_raise_no_memory(ecp);
-            goto error;
-        }
+    ret = _RDB_init_table(tbp, name, persistent, reltyp, keyc, keyv, usr,
+            NULL, ecp);
+    if (ret != RDB_OK) {
+    	free(tbp);
+    	return NULL;
     }
-
-    /* copy candidate keys */
-    tbp->keyc = keyc;
-    tbp->keyv = malloc(sizeof(RDB_attr) * keyc);
-    if (tbp->keyv == NULL) {
-        RDB_raise_no_memory(ecp);
-        goto error;
-    }
-    for (i = 0; i < keyc; i++) {
-        tbp->keyv[i].strv = NULL;
-    }
-    for (i = 0; i < keyc; i++) {
-        tbp->keyv[i].strc = keyv[i].strc;
-        tbp->keyv[i].strv = RDB_dup_strvec(keyv[i].strc, keyv[i].strv);
-        if (tbp->keyv[i].strv == NULL) {
-            RDB_raise_no_memory(ecp);
-            goto error;
-        }
-    }
-
-    tbp->typ = reltyp;
-
     return tbp;
-
-error:
-    /* clean up */
-    if (tbp != NULL) {
-        free(tbp->name);
-        for (i = 0; i < keyc; i++) {
-            if (tbp->keyv[i].strv != NULL) {
-                RDB_free_strvec(tbp->keyv[i].strc, tbp->keyv[i].strv);
-            }
-        }
-        free(tbp->keyv);
-        free(tbp);
-    }
-    return NULL;
 }
 
 /*
  * Like new_rtable(), but uses attrc and heading instead of reltype.
  */
-RDB_table *
+RDB_object *
 _RDB_new_rtable(const char *name, RDB_bool persistent,
                 int attrc, const RDB_attr heading[],
                 int keyc, const RDB_string_vec keyv[], RDB_bool usr,
@@ -119,7 +141,7 @@ _RDB_new_rtable(const char *name, RDB_bool persistent,
 {
     int ret;
     int i;
-    RDB_table *tbp;
+    RDB_object *tbp;
     RDB_type *reltyp = RDB_create_relation_type(attrc, heading, ecp);
     if (reltyp == NULL) {
         return NULL;
@@ -153,47 +175,18 @@ _RDB_new_rtable(const char *name, RDB_bool persistent,
     return tbp;
 }
 
-static int
-drop_anon_table(RDB_table *tbp, RDB_exec_context *ecp)
-{
-    assert((tbp->kind >= RDB_TB_REAL) && (tbp->kind <= RDB_TB_UNGROUP));
-
-    if (RDB_table_name(tbp) == NULL)
-        return RDB_drop_table(tbp, ecp, NULL);
-    return RDB_OK;
-}
-
-void
-_RDB_free_table(RDB_table *tbp, RDB_exec_context *ecp)
-{
-    int i;
-
-    if (tbp->keyv != NULL) {
-        /* Delete candidate keys */
-        for (i = 0; i < tbp->keyc; i++) {
-            RDB_free_strvec(tbp->keyv[i].strc, tbp->keyv[i].strv);
-        }
-        free(tbp->keyv);
-    }
-
-    RDB_drop_type(tbp->typ, NULL, NULL);
-    free(tbp->name);
-    tbp->kind = -1; /* !! For debugging */
-    free(tbp);
-}
-
 int
-RDB_table_keys(RDB_table *tbp, RDB_exec_context *ecp, RDB_string_vec **keyvp)
+RDB_table_keys(RDB_object *tbp, RDB_exec_context *ecp, RDB_string_vec **keyvp)
 {
-    if (tbp->keyv == NULL) {
-        if (_RDB_infer_keys(tbp, ecp) != RDB_OK)
+    if (tbp->var.tb.keyv == NULL) {
+        if (_RDB_infer_keys(tbp->var.tb.exp, ecp, &tbp->var.tb.keyv) != RDB_OK)
             return RDB_ERROR;
     }
 
     if (keyvp != NULL)
-        *keyvp = tbp->keyv;
+        *keyvp = tbp->var.tb.keyv;
         
-    return tbp->keyc;
+    return tbp->var.tb.keyc;
 }
 
 int
@@ -204,7 +197,7 @@ RDB_drop_table_index(const char *name, RDB_exec_context *ecp,
     int i;
     int xi;
     char *tbname;
-    RDB_table *tbp;
+    RDB_object *tbp;
 
     if (!_RDB_legal_name(name)) {
         RDB_raise_not_found("invalid index name", ecp);
@@ -220,24 +213,24 @@ RDB_drop_table_index(const char *name, RDB_exec_context *ecp,
     if (tbp == NULL)
         return RDB_ERROR;
 
-    for (i = 0; i < tbp->stp->indexc
-            && strcmp(tbp->stp->indexv[i].name, name) != 0;
+    for (i = 0; i < tbp->var.tb.stp->indexc
+            && strcmp(tbp->var.tb.stp->indexv[i].name, name) != 0;
             i++);
-    if (i >= tbp->stp->indexc) {
+    if (i >= tbp->var.tb.stp->indexc) {
         /* Index not found, so reread indexes */
-        for (i = 0; i < tbp->stp->indexc; i++)
-            _RDB_free_tbindex(&tbp->stp->indexv[i]);
-        free(tbp->stp->indexv);
-        ret = _RDB_cat_get_indexes(tbp->name, txp->dbp->dbrootp, ecp, txp,
-                &tbp->stp->indexv);
+        for (i = 0; i < tbp->var.tb.stp->indexc; i++)
+            _RDB_free_tbindex(&tbp->var.tb.stp->indexv[i]);
+        free(tbp->var.tb.stp->indexv);
+        ret = _RDB_cat_get_indexes(tbp->var.tb.name, txp->dbp->dbrootp, ecp, txp,
+                &tbp->var.tb.stp->indexv);
         if (ret != RDB_OK)
             return RDB_ERROR;
 
         /* Search again */
-        for (i = 0; i < tbp->stp->indexc
-                && strcmp(tbp->stp->indexv[i].name, name) != 0;
+        for (i = 0; i < tbp->var.tb.stp->indexc
+                && strcmp(tbp->var.tb.stp->indexv[i].name, name) != 0;
                 i++);
-        if (i >= tbp->stp->indexc) {
+        if (i >= tbp->var.tb.stp->indexc) {
             RDB_raise_internal("invalid index", ecp);
             return RDB_ERROR;
         }
@@ -245,7 +238,7 @@ RDB_drop_table_index(const char *name, RDB_exec_context *ecp,
     xi = i;
 
     /* Destroy index */
-    ret = _RDB_del_index(txp, tbp->stp->indexv[i].idxp, ecp);
+    ret = _RDB_del_index(txp, tbp->var.tb.stp->indexv[i].idxp, ecp);
     if (ret != RDB_OK)
         return ret;
 
@@ -258,192 +251,23 @@ RDB_drop_table_index(const char *name, RDB_exec_context *ecp,
      * Delete index entry
      */
 
-    _RDB_free_tbindex(&tbp->stp->indexv[xi]);
+    _RDB_free_tbindex(&tbp->var.tb.stp->indexv[xi]);
 
-    tbp->stp->indexc--;
-    for (i = xi; i < tbp->stp->indexc; i++) {
-        tbp->stp->indexv[i] = tbp->stp->indexv[i + 1];
+    tbp->var.tb.stp->indexc--;
+    for (i = xi; i < tbp->var.tb.stp->indexc; i++) {
+        tbp->var.tb.stp->indexv[i] = tbp->var.tb.stp->indexv[i + 1];
     }
 
-    realloc(tbp->stp->indexv,
-            sizeof(_RDB_tbindex) * tbp->stp->indexc);
+    realloc(tbp->var.tb.stp->indexv,
+            sizeof(_RDB_tbindex) * tbp->var.tb.stp->indexc);
 
-    return RDB_OK;
-}
-
-int
-_RDB_drop_table(RDB_table *tbp, RDB_bool rec, RDB_exec_context *ecp)
-{
-    int i;
-    int ret;
-
-    switch (tbp->kind) {
-        case RDB_TB_REAL:
-            break;
-        case RDB_TB_SELECT:
-            if (tbp->var.select.objpc > 0)
-                free(tbp->var.select.objpv);
-            RDB_drop_expr(tbp->var.select.exp, ecp);
-            if (rec) {
-                ret = drop_anon_table(tbp->var.select.tbp, ecp);
-                if (ret != RDB_OK)
-                    return ret;
-            }
-            break;
-        case RDB_TB_UNION:
-            if (rec) {
-                ret = drop_anon_table(tbp->var._union.tb1p, ecp);
-                if (ret != RDB_OK)
-                    return ret;
-                ret = drop_anon_table(tbp->var._union.tb2p, ecp);
-                if (ret != RDB_OK)
-                    return ret;
-            }
-            break;
-        case RDB_TB_SEMIMINUS:
-            if (rec) {
-                ret = drop_anon_table(tbp->var.semiminus.tb1p, ecp);
-                if (ret != RDB_OK)
-                    return ret;
-                ret = drop_anon_table(tbp->var.semiminus.tb2p, ecp);
-                if (ret != RDB_OK)
-                    return ret;
-            }
-            break;
-        case RDB_TB_SEMIJOIN:
-            if (rec) {
-                ret = drop_anon_table(tbp->var.semijoin.tb1p, ecp);
-                if (ret != RDB_OK)
-                    return ret;
-                ret = drop_anon_table(tbp->var.semijoin.tb2p, ecp);
-                if (ret != RDB_OK)
-                    return ret;
-            }
-            break;
-        case RDB_TB_JOIN:
-            if (rec) {
-                ret = drop_anon_table(tbp->var.join.tb1p, ecp);
-                if (ret != RDB_OK)
-                    return ret;
-                ret = drop_anon_table(tbp->var.join.tb2p, ecp);
-                if (ret != RDB_OK)
-                    return ret;
-            }
-            break;
-        case RDB_TB_EXTEND:
-            if (rec) {
-                ret = drop_anon_table(tbp->var.extend.tbp, ecp);
-                if (ret != RDB_OK)
-                    return ret;
-            }
-            for (i = 0; i < tbp->var.extend.attrc; i++) {
-                free(tbp->var.extend.attrv[i].name);
-                RDB_drop_expr(tbp->var.extend.attrv[i].exp, ecp);
-            }
-            break;
-        case RDB_TB_PROJECT:
-            if (rec) {
-                ret = drop_anon_table(tbp->var.project.tbp, ecp);
-                if (ret != RDB_OK)
-                    return ret;
-            }
-            break;
-        case RDB_TB_RENAME:
-            if (rec) {
-                ret = drop_anon_table(tbp->var.rename.tbp, ecp);
-                if (ret != RDB_OK)
-                    return ret;
-            }
-            for (i = 0; i < tbp->var.rename.renc; i++) {
-                free(tbp->var.rename.renv[i].from);
-                free(tbp->var.rename.renv[i].to);
-            }
-            break;
-        case RDB_TB_SUMMARIZE:
-            if (rec) {
-                ret = drop_anon_table(tbp->var.summarize.tb1p, ecp);
-                if (ret != RDB_OK)
-                    return ret;
-                ret = drop_anon_table(tbp->var.summarize.tb2p, ecp);
-                if (ret != RDB_OK)
-                    return ret;
-            }
-            for (i = 0; i < tbp->var.summarize.addc; i++) {
-                if (tbp->var.summarize.addv[i].op != RDB_COUNT
-                        && tbp->var.summarize.addv[i].op != RDB_COUNTD)
-                    RDB_drop_expr(tbp->var.summarize.addv[i].exp, ecp);
-                free(tbp->var.summarize.addv[i].name);
-            }
-            break;
-        case RDB_TB_WRAP:
-            if (rec) {
-                ret = drop_anon_table(tbp->var.wrap.tbp, ecp);
-                if (ret != RDB_OK)
-                    return ret;
-            }
-            for (i = 0; i < tbp->var.wrap.wrapc; i++) {
-                free(tbp->var.wrap.wrapv[i].attrname);
-                RDB_free_strvec(tbp->var.wrap.wrapv[i].attrc,
-                        tbp->var.wrap.wrapv[i].attrv);
-            }
-            break;
-        case RDB_TB_UNWRAP:
-            if (rec) {
-                ret = drop_anon_table(tbp->var.unwrap.tbp, ecp);
-                if (ret != RDB_OK)
-                    return ret;
-            }
-            RDB_free_strvec(tbp->var.unwrap.attrc, tbp->var.unwrap.attrv);
-            break;
-        case RDB_TB_SDIVIDE:
-            if (rec) {
-                ret = drop_anon_table(tbp->var.sdivide.tb1p, ecp);
-                if (ret != RDB_OK)
-                    return ret;
-                ret = drop_anon_table(tbp->var.sdivide.tb2p, ecp);
-                if (ret != RDB_OK)
-                    return ret;
-                ret = drop_anon_table(tbp->var.sdivide.tb3p, ecp);
-                if (ret != RDB_OK)
-                    return ret;
-            }
-            break;
-        case RDB_TB_GROUP:
-            if (rec) {
-                ret = drop_anon_table(tbp->var.group.tbp, ecp);
-                if (ret != RDB_OK)
-                    return ret;
-            }
-            for (i = 0; i < tbp->var.group.attrc; i++) {
-                free(tbp->var.group.attrv[i]);
-            }
-            free(tbp->var.group.gattr);
-            break;
-        case RDB_TB_UNGROUP:
-            if (rec) {
-                ret = drop_anon_table(tbp->var.ungroup.tbp, ecp);
-                if (ret != RDB_OK)
-                    return ret;
-            }
-            free(tbp->var.ungroup.attr);
-            break;
-        default:
-            abort();
-    }
-    _RDB_free_table(tbp, ecp);
     return RDB_OK;
 }
 
 char *
-RDB_table_name(RDB_table *tbp)
+RDB_table_name(const RDB_object *tbp)
 {
-    return tbp->name;
-}
-
-RDB_type *
-RDB_table_type(const RDB_table *tbp)
-{
-    return tbp->typ;
+    return tbp->var.tb.name;
 }
 
 /*
@@ -451,24 +275,30 @@ RDB_table_type(const RDB_table *tbp)
  * The destination table must be a real table.
  */
 int
-_RDB_move_tuples(RDB_table *dstp, RDB_table *srcp, RDB_exec_context *ecp,
+_RDB_move_tuples(RDB_object *dstp, RDB_object *srcp, RDB_exec_context *ecp,
         RDB_transaction *txp)
 {
-    RDB_qresult *qrp = NULL;
+    RDB_qresult *qrp;
     RDB_object tpl;
     int ret;
 
     /*
      * Copy all tuples from source table to destination table
      */
+
     qrp = _RDB_table_qresult(srcp, ecp, txp);
     if (qrp == NULL)
+        return RDB_ERROR;
+
+    /* Eliminate duplicates */
+    ret = _RDB_duprem(qrp, ecp, txp);
+    if (ret != RDB_OK)
         return RDB_ERROR;
 
     RDB_init_obj(&tpl);
 
     while ((ret = _RDB_next_tuple(qrp, &tpl, ecp, txp)) == RDB_OK) {
-        if (dstp->kind == RDB_TB_REAL && !dstp->is_persistent)
+        if (!dstp->var.tb.is_persistent)
             ret = _RDB_insert_real(dstp, &tpl, ecp, NULL);
         else
             ret = _RDB_insert_real(dstp, &tpl, ecp, txp);
@@ -488,37 +318,19 @@ cleanup:
 }
 
 int
-RDB_copy_table(RDB_table *dstp, RDB_table *srcp, RDB_exec_context *ecp,
+RDB_copy_table(RDB_object *dstp, RDB_object *srcp, RDB_exec_context *ecp,
         RDB_transaction *txp)
 {
-    int ret;
     RDB_ma_copy cpy;
-    RDB_object srcobj, dstobj;
 
-    RDB_init_obj(&dstobj);
-    RDB_table_to_obj(&dstobj, dstp, ecp);
-    RDB_init_obj(&srcobj);
-    RDB_table_to_obj(&srcobj, srcp, ecp);
+    cpy.dstp = dstp;
+    cpy.srcp = srcp;
 
-    cpy.dstp = &dstobj;
-    cpy.srcp = &srcobj;
-
-    ret = RDB_multi_assign(0, NULL, 0, NULL, 0, NULL, 1, &cpy, ecp, txp);
-
-    /*
-     * Destroy the objects, but not the tables
-     */
-
-    dstobj.var.tbp = NULL;
-    srcobj.var.tbp = NULL;
-    RDB_destroy_obj(&dstobj, ecp);
-    RDB_destroy_obj(&srcobj, ecp);
-
-    return ret;
+    return RDB_multi_assign(0, NULL, 0, NULL, 0, NULL, 1, &cpy, ecp, txp);
 }
 
 int
-RDB_all(RDB_table *tbp, const char *attrname, RDB_exec_context *ecp,
+RDB_all(RDB_object *tbp, const char *attrname, RDB_exec_context *ecp,
         RDB_transaction *txp, RDB_bool *resultp)
 {
     RDB_type *attrtyp;
@@ -571,7 +383,7 @@ RDB_all(RDB_table *tbp, const char *attrname, RDB_exec_context *ecp,
 }
 
 int
-RDB_any(RDB_table *tbp, const char *attrname, RDB_exec_context *ecp,
+RDB_any(RDB_object *tbp, const char *attrname, RDB_exec_context *ecp,
         RDB_transaction *txp, RDB_bool *resultp)
 {
     RDB_type *attrtyp;
@@ -624,7 +436,7 @@ RDB_any(RDB_table *tbp, const char *attrname, RDB_exec_context *ecp,
 }
 
 int
-RDB_max(RDB_table *tbp, const char *attrname, RDB_exec_context *ecp,
+RDB_max(RDB_object *tbp, const char *attrname, RDB_exec_context *ecp,
        RDB_transaction *txp, RDB_object *resultp)
 {
     RDB_type *attrtyp;
@@ -696,7 +508,7 @@ RDB_max(RDB_table *tbp, const char *attrname, RDB_exec_context *ecp,
 }
 
 int
-RDB_min(RDB_table *tbp, const char *attrname, RDB_exec_context *ecp,
+RDB_min(RDB_object *tbp, const char *attrname, RDB_exec_context *ecp,
         RDB_transaction *txp, RDB_object *resultp)
 {
     RDB_type *attrtyp;
@@ -768,7 +580,7 @@ RDB_min(RDB_table *tbp, const char *attrname, RDB_exec_context *ecp,
 }
 
 int
-RDB_sum(RDB_table *tbp, const char *attrname, RDB_exec_context *ecp,
+RDB_sum(RDB_object *tbp, const char *attrname, RDB_exec_context *ecp,
         RDB_transaction *txp, RDB_object *resultp)
 {
     RDB_type *attrtyp;
@@ -835,7 +647,7 @@ RDB_sum(RDB_table *tbp, const char *attrname, RDB_exec_context *ecp,
 }
 
 int
-RDB_avg(RDB_table *tbp, const char *attrname, RDB_exec_context *ecp,
+RDB_avg(RDB_object *tbp, const char *attrname, RDB_exec_context *ecp,
         RDB_transaction *txp, RDB_double *resultp)
 {
     RDB_type *attrtyp;
@@ -902,13 +714,13 @@ RDB_avg(RDB_table *tbp, const char *attrname, RDB_exec_context *ecp,
 }
 
 int
-RDB_extract_tuple(RDB_table *tbp, RDB_exec_context *ecp,
+RDB_extract_tuple(RDB_object *tbp, RDB_exec_context *ecp,
         RDB_transaction *txp, RDB_object *tplp)
 {
     int ret;
     RDB_qresult *qrp;
     RDB_object tpl;
-    RDB_table *ntbp;
+    RDB_object *ntbp;
     RDB_type *errtyp;
 
     ret = _RDB_optimize(tbp, 0, NULL, ecp, txp, &ntbp);
@@ -917,7 +729,7 @@ RDB_extract_tuple(RDB_table *tbp, RDB_exec_context *ecp,
 
     qrp = _RDB_table_qresult(ntbp, ecp, txp);
     if (qrp == NULL) {
-        if (ntbp->kind != RDB_TB_REAL)
+        if (ntbp->var.tb.exp != NULL)
             RDB_drop_table(ntbp, ecp, txp);
         return RDB_ERROR;
     }
@@ -958,21 +770,28 @@ cleanup:
     RDB_destroy_obj(&tpl, ecp);
 
     _RDB_drop_qresult(qrp, ecp, txp);
-    if (ntbp->kind != RDB_TB_REAL) {
+    if (ntbp->var.tb.exp != NULL) {
         RDB_drop_table(ntbp, ecp, txp);
     }
     return RDB_get_err(ecp) == NULL ? RDB_OK : RDB_ERROR;
 }
 
+RDB_bool
+RDB_table_is_persistent(const RDB_object *tbp)
+{
+	return tbp->var.tb.is_persistent;
+}
+
 int
-RDB_table_is_empty(RDB_table *tbp, RDB_exec_context *ecp,
+RDB_table_is_empty(RDB_object *tbp, RDB_exec_context *ecp,
         RDB_transaction *txp, RDB_bool *resultp)
 {
     int ret;
     RDB_qresult *qrp;
     RDB_object tpl;
-    RDB_table *ptbp;
-    RDB_table *ntbp;
+    RDB_object *ptbp;
+    RDB_object *ntbp;
+    RDB_expression *exp;
 
     if (txp != NULL && !RDB_tx_is_running(txp)) {
         RDB_raise_invalid_tx(ecp);
@@ -982,16 +801,21 @@ RDB_table_is_empty(RDB_table *tbp, RDB_exec_context *ecp,
     /*
      * Project all attributes away, then optimize
      */
+    exp = RDB_ro_op_va("PROJECT", ecp, RDB_table_ref_to_expr(tbp, ecp),
+            (RDB_expression *) NULL);
+    if (exp == NULL)
+    	return RDB_ERROR;
 
-    ptbp = RDB_project(tbp, 0, NULL, ecp);
+    ptbp = RDB_expr_to_vtable(exp, ecp, txp);
     if (ptbp == NULL) {
-        RDB_raise_no_memory(ecp);
+    	RDB_drop_expr(exp, ecp);
+        return RDB_ERROR;
     }
 
     ret = _RDB_optimize(ptbp, 0, NULL, ecp, txp, &ntbp);
 
-    /* Remove projection */
-    _RDB_free_table(ptbp, ecp);
+    /* !! Remove projection
+    _RDB_free_obj(ptbp, ecp); */
 
     if (ret != RDB_OK)
         return ret;
@@ -1025,17 +849,17 @@ RDB_table_is_empty(RDB_table *tbp, RDB_exec_context *ecp,
     if (ret != RDB_OK) {
         return ret;
     }
-    return RDB_drop_table(ntbp, ecp, txp);
+    return /* !! RDB_drop_table(ntbp, ecp, txp); */ RDB_OK;
 }
 
 RDB_int
-RDB_cardinality(RDB_table *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
+RDB_cardinality(RDB_object *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
 {
     int ret;
     RDB_int count;
     RDB_qresult *qrp;
     RDB_object tpl;
-    RDB_table *ntbp;
+    RDB_object *ntbp;
 
     if (txp != NULL && !RDB_tx_is_running(txp)) {
         RDB_raise_invalid_tx(ecp);
@@ -1048,15 +872,15 @@ RDB_cardinality(RDB_table *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
 
     qrp = _RDB_table_qresult(ntbp, ecp, txp);
     if (qrp == NULL) {
-        if (ntbp->kind != RDB_TB_REAL)
+        if (ntbp->var.tb.exp != NULL)
             RDB_drop_table(ntbp, ecp, txp);
         return RDB_ERROR;
     }
 
     /* Duplicates must be removed */
-    ret = _RDB_duprem(qrp, ecp);
+    ret = _RDB_duprem(qrp, ecp, txp);
     if (ret != RDB_OK) {
-        if (ntbp->kind != RDB_TB_REAL)
+        if (ntbp->var.tb.exp != NULL)
             RDB_drop_table(ntbp, ecp, txp);
         _RDB_drop_qresult(qrp, ecp, txp);
         return ret;
@@ -1079,25 +903,25 @@ RDB_cardinality(RDB_table *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
     if (ret != RDB_OK)
         goto error;
 
-    if (ntbp->kind != RDB_TB_REAL) {
+    if (ntbp->var.tb.exp != NULL) {
         ret = RDB_drop_table(ntbp, ecp, txp);
         if (ret != RDB_OK)
             return ret;
     }
 
-    if (tbp->stp != NULL)
-        tbp->stp->est_cardinality = count;
+    if (tbp->var.tb.stp != NULL)
+        tbp->var.tb.stp->est_cardinality = count;
 
     return count;
 
 error:
-    if (ntbp->kind != RDB_TB_REAL)
+    if (ntbp->var.tb.exp != NULL)
         RDB_drop_table(ntbp, ecp, txp);
     return RDB_ERROR;
 }
 
 int
-RDB_subset(RDB_table *tb1p, RDB_table *tb2p, RDB_exec_context *ecp,
+RDB_subset(RDB_object *tb1p, RDB_object *tb2p, RDB_exec_context *ecp,
         RDB_transaction *txp, RDB_bool *resultp)
 {
     RDB_qresult *qrp;
@@ -1152,7 +976,7 @@ error:
 }
 
 int
-RDB_table_equals(RDB_table *tb1p, RDB_table *tb2p, RDB_exec_context *ecp,
+_RDB_table_equals(RDB_object *tb1p, RDB_object *tb2p, RDB_exec_context *ecp,
         RDB_transaction *txp, RDB_bool *resp)
 {
     int ret;
@@ -1217,8 +1041,10 @@ error:
  * a table qresult, return the index, otherwise NULL.
  */
 struct _RDB_tbindex *
-_RDB_sortindex (RDB_table *tbp)
+_RDB_sortindex (RDB_object *tbp)
 {
+#ifdef NIX
+!!
     switch (tbp->kind) {
         case RDB_TB_REAL:
             return NULL;
@@ -1252,4 +1078,6 @@ _RDB_sortindex (RDB_table *tbp)
             return NULL; /* !! */
     }
     abort();
+#endif
+    return NULL;
 }

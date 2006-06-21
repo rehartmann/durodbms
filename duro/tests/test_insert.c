@@ -8,7 +8,7 @@ int
 test_insert(RDB_database *dbp, RDB_exec_context *ecp)
 {
     RDB_transaction tx;
-    RDB_table *tbp;
+    RDB_object *tbp;
     RDB_object tpl;
     int ret;
 
@@ -54,7 +54,7 @@ static int
 print_table(RDB_database *dbp, RDB_exec_context *ecp)
 {
     RDB_transaction tx;
-    RDB_table *tbp;
+    RDB_object *tbp;
     RDB_object *tplp;
     RDB_object array;
     RDB_int i;

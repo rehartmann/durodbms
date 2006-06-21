@@ -220,11 +220,13 @@ duro::array drop $da
 
 set tpl {K 0 S1 Bold S2 Z}
 
-duro::insert TJ $tpl $tx
+# !! duro::insert TJ $tpl $tx
 
-if {![duro::table contains TJ $tpl $tx]} {
-    error "Insert into TJ was not successful."
-}
+# if {![duro::table contains TJ $tpl $tx]} {
+#     error "Insert into TJ was not successful."
+# }
+duro::insert T1 {K 0 S1 Bold} $tx
+duro::insert T3 {K 0 S2 Z} $tx
 
 set da [duro::array create TJ {K asc S1 asc} $tx]
 checkarray $da {{K 0 S1 Bold S2 Z} {K 1 S1 Bla S2 A} {K 2 S1 Blubb S2 B}} $tx

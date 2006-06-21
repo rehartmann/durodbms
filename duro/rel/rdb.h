@@ -1,9 +1,9 @@
 #ifndef RDB_RDB_H
 #define RDB_RDB_H
 
-/* $Id$ */
-
 /*
+$Id$
+
 This file is part of Duro, a relational database library.
 Copyright (C) 2003-2006 René Hartmann.
 
@@ -51,7 +51,12 @@ enum _RDB_obj_kind {
     RDB_OB_ARRAY
 };
 
-typedef struct RDB_table RDB_table;
+typedef struct {
+    int strc;
+    char **strv;
+} RDB_string_vec;
+
+typedef struct RDB_expression RDB_expression;
 
 /*
  * A RDB_object structure carries a value of an arbitrary type,
@@ -70,10 +75,26 @@ typedef struct RDB_object {
             void *datap;
             size_t len;
         } bin;
-        RDB_table *tbp;
+        struct {
+            RDB_bool is_user;
+            RDB_bool is_persistent;
+            char *name;
+
+            /*
+             * Candidate keys. NULL if table is virtual and the keys have not been
+             * inferred.
+             */
+            int keyc;
+            RDB_string_vec *keyv;
+            
+            /* NULL if it's a real table */
+            RDB_expression *exp;
+
+            struct RDB_stored_table *stp;
+        } tb;
         RDB_hashtable tpl_tab;
         struct {
-            RDB_table *tbp;
+            struct RDB_object *tbp;
             struct RDB_transaction *txp;
             struct RDB_qresult *qrp;
 
@@ -110,8 +131,6 @@ enum _RDB_tp_kind {
     RDB_TP_RELATION,
     RDB_TP_ARRAY
 };
-
-typedef struct RDB_expression RDB_expression;
 
 typedef struct RDB_type {
     /* internal */
@@ -196,11 +215,6 @@ typedef struct {
     char *name;
     RDB_expression *exp;
 } RDB_virtual_attr;
-
-typedef struct {
-    int strc;
-    char **strv;
-} RDB_string_vec;
 
 typedef enum {
     RDB_COUNT, RDB_SUM, RDB_AVG, RDB_MAX, RDB_MIN, RDB_ALL, RDB_ANY,
@@ -299,24 +313,28 @@ typedef struct RDB_attr {
  *
  * Return RDB_OK on success. A return value other than RDB_OK indicates an error.
  */
-RDB_table *
+RDB_object *
 RDB_create_table(const char *name, RDB_bool persistent,
         int attrc, const RDB_attr attrv[],
         int keyc, const RDB_string_vec keyv[],
         RDB_exec_context *, RDB_transaction *);
 
-RDB_table *
+RDB_object *
 RDB_create_table_from_type(const char *name, RDB_bool persistent,
                 RDB_type *reltyp,
                 int keyc, const RDB_string_vec keyv[],
                 RDB_exec_context *, RDB_transaction *);
 
+int
+RDB_init_table(RDB_object *tbp, const char *name, RDB_type *reltyp,
+        int keyc, const RDB_string_vec keyv[],  RDB_exec_context *ecp);
+
 /*
  * Lookup the table with name name from the database pointed to by dbp.
- * Store a pointer to a RDB_table structure in tbpp.
+ * Store a pointer to a RDB_object structure in tbpp.
  * Return RDB_OK on success, RDB_NOT_FOUND if the table could not be found.
  */
-RDB_table *
+RDB_object *
 RDB_get_table(const char *name, RDB_exec_context *, RDB_transaction *);
 
 /*
@@ -326,13 +344,16 @@ RDB_get_table(const char *name, RDB_exec_context *, RDB_transaction *);
  * Return RDB_OK on success. A return value other than RDB_OK indicates an error.
  */
 int
-RDB_drop_table(RDB_table *tbp, RDB_exec_context *, RDB_transaction *);
+RDB_drop_table(RDB_object *tbp, RDB_exec_context *, RDB_transaction *);
 
 int
-RDB_table_keys(RDB_table *, RDB_exec_context *, RDB_string_vec **keyvp);
+RDB_table_keys(RDB_object *, RDB_exec_context *, RDB_string_vec **keyvp);
+
+char *
+RDB_table_name(const RDB_object *);
 
 int
-RDB_set_table_name(RDB_table *tbp, const char *name, RDB_exec_context *,
+RDB_set_table_name(RDB_object *tbp, const char *name, RDB_exec_context *,
         RDB_transaction *);
 
 /*
@@ -340,10 +361,10 @@ RDB_set_table_name(RDB_table *tbp, const char *name, RDB_exec_context *,
  * The table must be named.
  */
 int
-RDB_add_table(RDB_table *, RDB_exec_context *, RDB_transaction *);
+RDB_add_table(RDB_object *, RDB_exec_context *, RDB_transaction *);
 
 int
-RDB_create_table_index(const char *name, RDB_table *tbp, int idxcompc,
+RDB_create_table_index(const char *name, RDB_object *tbp, int idxcompc,
         const RDB_seq_item idxcompv[], int flags, RDB_exec_context *,
         RDB_transaction *);
 
@@ -415,22 +436,13 @@ typedef struct {
     RDB_expression *exp;
 } RDB_attr_update;
 
-char *
-RDB_table_name(RDB_table *);
-
-/*
- * Return the type of the table tbp.
- */
-RDB_type *
-RDB_table_type(const RDB_table *);
-
 /*
  * Insert the tuple pointed to by tplp into the table pointed to by tbp.
  * All attributes of the table for which a default attribute is not provided
  * must be set. Other tuple attributes are ignored.
  */
 int
-RDB_insert(RDB_table *tbp, const RDB_object *tplp, RDB_exec_context *,
+RDB_insert(RDB_object *tbp, const RDB_object *tplp, RDB_exec_context *,
         RDB_transaction *);
 
 /*
@@ -440,7 +452,7 @@ RDB_insert(RDB_table *tbp, const RDB_object *tplp, RDB_exec_context *,
  * If condp is NULL, all tuples will be updated.
  */
 RDB_int
-RDB_update(RDB_table *, RDB_expression *, int attrc,
+RDB_update(RDB_object *, RDB_expression *, int attrc,
         const RDB_attr_update updv[], RDB_exec_context *, RDB_transaction *);
 
 /*
@@ -453,14 +465,14 @@ RDB_update(RDB_table *, RDB_expression *, int attrc,
  * UNION and INTERSECT.
  */
 RDB_int
-RDB_delete(RDB_table *tbp, RDB_expression *condp, RDB_exec_context *,
+RDB_delete(RDB_object *tbp, RDB_expression *condp, RDB_exec_context *,
         RDB_transaction *);
 
 /*
  * Assign table srcp to table dstp.
  */
 int
-RDB_copy_table(RDB_table *dstp, RDB_table *srcp, RDB_exec_context *,
+RDB_copy_table(RDB_object *dstp, RDB_object *srcp, RDB_exec_context *,
         RDB_transaction *);
 
 /*
@@ -468,27 +480,27 @@ RDB_copy_table(RDB_table *dstp, RDB_table *srcp, RDB_exec_context *,
  */
 
 int
-RDB_max(RDB_table *tbp, const char *attrname, RDB_exec_context *,
+RDB_max(RDB_object *tbp, const char *attrname, RDB_exec_context *,
         RDB_transaction *txp, RDB_object *resultp);
 
 int
-RDB_min(RDB_table *tbp, const char *attrname, RDB_exec_context *,
+RDB_min(RDB_object *tbp, const char *attrname, RDB_exec_context *,
         RDB_transaction *txp, RDB_object *resultp);
 
 int
-RDB_all(RDB_table *tbp, const char *attrname, RDB_exec_context *,
+RDB_all(RDB_object *tbp, const char *attrname, RDB_exec_context *,
         RDB_transaction *txp, RDB_bool *resultp);
 
 int
-RDB_any(RDB_table *tbp, const char *attrname, RDB_exec_context *,
+RDB_any(RDB_object *tbp, const char *attrname, RDB_exec_context *,
         RDB_transaction *txp, RDB_bool *resultp);
 
 int
-RDB_sum(RDB_table *tbp, const char *attrname, RDB_exec_context *,
+RDB_sum(RDB_object *tbp, const char *attrname, RDB_exec_context *,
         RDB_transaction *txp, RDB_object *resultp);
 
 int
-RDB_avg(RDB_table *tbp, const char *attrname, RDB_exec_context *,
+RDB_avg(RDB_object *tbp, const char *attrname, RDB_exec_context *,
         RDB_transaction *txp, RDB_double *resultp);
 
 /*
@@ -496,15 +508,11 @@ RDB_avg(RDB_table *tbp, const char *attrname, RDB_exec_context *,
  * pointed to by tplp.
  */
 int
-RDB_table_contains(RDB_table *tbp, const RDB_object *tplp, RDB_exec_context *,
+RDB_table_contains(RDB_object *tbp, const RDB_object *tplp, RDB_exec_context *,
         RDB_transaction *, RDB_bool *resultp);
 
 int
-RDB_table_equals(RDB_table *, RDB_table *, RDB_exec_context *,
-        RDB_transaction *, RDB_bool *);
-
-int
-RDB_subset(RDB_table *tb1p, RDB_table *tb2p, RDB_exec_context *,
+RDB_subset(RDB_object *tb1p, RDB_object *tb2p, RDB_exec_context *,
         RDB_transaction *, RDB_bool *resultp);
 
 /*
@@ -517,95 +525,28 @@ RDB_subset(RDB_table *tb1p, RDB_table *tb2p, RDB_exec_context *,
  * RDB_INVALID_ARGUMENT the table contains more than one tuple.
  */
 int
-RDB_extract_tuple(RDB_table *, RDB_exec_context *, RDB_transaction *,
+RDB_extract_tuple(RDB_object *, RDB_exec_context *, RDB_transaction *,
         RDB_object *);
+
+RDB_bool
+RDB_table_is_persistent(const RDB_object *);
 
 /*
  * Store RDB_TRUE in the location pointed to by resultp if the table
  * is nonempty, RDB_FALSE otherwise.
  */
 int
-RDB_table_is_empty(RDB_table *, RDB_exec_context *, RDB_transaction *,
+RDB_table_is_empty(RDB_object *, RDB_exec_context *, RDB_transaction *,
         RDB_bool *resultp);
 
 RDB_int
-RDB_cardinality(RDB_table *tbp, RDB_exec_context *, RDB_transaction *txp);
+RDB_cardinality(RDB_object *tbp, RDB_exec_context *, RDB_transaction *);
 
 /*
- * The following functions create virtual relvars.
- * The created relvar will have no name and be transient.
+ * Create a virtual relvars from an expression.
  */
- 
-/*
- * Create a selection table. The resulting table will take
- * reponsibility for the expression.
- */
-RDB_table *
-RDB_select(RDB_table *, RDB_expression *, RDB_exec_context *,
-        RDB_transaction *);
-
-RDB_table *
-RDB_union(RDB_table *, RDB_table *, RDB_exec_context *);
-
-RDB_table *
-RDB_minus(RDB_table *, RDB_table *, RDB_exec_context *);
-
-RDB_table *
-RDB_semiminus(RDB_table *, RDB_table *, RDB_exec_context *);
-
-RDB_table *
-RDB_intersect(RDB_table *, RDB_table *, RDB_exec_context *);
-
-RDB_table *
-RDB_semijoin(RDB_table *, RDB_table *, RDB_exec_context *);
-
-/* Create a table which is a natural join of the two tables. */
-RDB_table *
-RDB_join(RDB_table *, RDB_table *, RDB_exec_context *);
-
-/* Create a table which is the result of a EXTEND operation.
- * The table created takes resposibility for the RDB_expressions
- *  passed through attrv.
- */
-RDB_table *
-RDB_extend(RDB_table *, int attrc, const RDB_virtual_attr attrv[],
-        RDB_exec_context *, RDB_transaction *);
-
-RDB_table *
-RDB_project(RDB_table *, int attrc, char *attrv[], RDB_exec_context *);
-
-RDB_table *
-RDB_remove(RDB_table *, int attrc, char *attrv[], RDB_exec_context *);
-
-/*
- * Create a table which is the result of a SUMMARIZE PER operation.
- * The table created takes resposibility for the RDB_expressions
- * passed through addv.
- */
-RDB_table *
-RDB_summarize(RDB_table *, RDB_table *, int addc,
-        const RDB_summarize_add addv[], RDB_exec_context *, RDB_transaction *);
-
-RDB_table *
-RDB_rename(RDB_table *tbp, int renc, const RDB_renaming renv[],
-           RDB_exec_context *ecp);
-
-RDB_table *
-RDB_wrap(RDB_table *tbp, int wrapc, const RDB_wrapping wrapv[],
-         RDB_exec_context *);
-
-RDB_table *
-RDB_unwrap(RDB_table *tbp, int attrc, char *attrv[], RDB_exec_context *ecp);
-
-RDB_table *
-RDB_sdivide(RDB_table *, RDB_table *, RDB_table *, RDB_exec_context *ecp);
-
-RDB_table *
-RDB_group(RDB_table *, int attrc, char *attrv[], const char *gattr,
-        RDB_exec_context *);
-
-RDB_table *
-RDB_ungroup(RDB_table *, const char *, RDB_exec_context *);
+RDB_object *
+RDB_expr_to_vtable(RDB_expression *, RDB_exec_context *, RDB_transaction *);
 
 /*
  * Functions for creation/destruction of tuples and reading/modifying attributes.
@@ -680,6 +621,10 @@ RDB_extend_tuple(RDB_object *, int attrc, const RDB_virtual_attr attrv[],
                  RDB_exec_context *, RDB_transaction *);
 
 int
+RDB_add_tuple(RDB_object *, const RDB_object *,
+        RDB_exec_context *ecp, RDB_transaction *);
+
+int
 RDB_join_tuples(const RDB_object *, const RDB_object *, RDB_exec_context *,
         RDB_transaction *, RDB_object *);
 
@@ -696,7 +641,7 @@ RDB_unwrap_tuple(const RDB_object *tplp, int attrc, char *attrv[],
         RDB_exec_context *, RDB_object *restplp);
 
 /*
- * Convert a RDB_table to a RDB_object and store the array in
+ * Convert a RDB_object to a RDB_object and store the array in
  * the location pointed to by arrpp.
  * Specifying the order of the elements by seqitc and seqitv
  * is currently not supported - the only permissible
@@ -704,7 +649,7 @@ RDB_unwrap_tuple(const RDB_object *tplp, int attrc, char *attrv[],
  * The array becomes invalid when the transaction ends.
  */
 int
-RDB_table_to_array(RDB_object *arrp, RDB_table *, 
+RDB_table_to_array(RDB_object *arrp, RDB_object *, 
                    int seqitc, const RDB_seq_item seqitv[],
                    RDB_exec_context *, RDB_transaction *);
 
@@ -746,7 +691,7 @@ RDB_create_relation_type(int attrc, const RDB_attr attrv[],
         RDB_exec_context *);
 
 RDB_type *
-RDB_create_array_type(RDB_type *);
+RDB_create_array_type(RDB_type *, RDB_exec_context *);
 
 /*
  * Drop a type.
@@ -787,7 +732,7 @@ RDB_type *
 RDB_type_attr_type(const RDB_type *, const char *);
 
 /*
- * Return RDB_TRUE if the two types are equal
+ * Return RDB_TRUE if the two RDB_objects are equal
  * or RDB_FALSE if they are not.
  */
 int
@@ -838,16 +783,10 @@ int
 RDB_obj_comp(const RDB_object *valp, const char *compname,
                    RDB_object *comp, RDB_exec_context *, RDB_transaction *);
 
-void
-RDB_table_to_obj(RDB_object *valp, RDB_table *tbp, RDB_exec_context *ecp);
-
 int
 RDB_obj_set_comp(RDB_object *valp, const char *compname,
                  const RDB_object *comp, RDB_exec_context *,
                  RDB_transaction *);
-
-RDB_table *
-RDB_obj_table(const RDB_object *objp);
 
 RDB_bool
 RDB_obj_bool(const RDB_object *valp);
@@ -911,34 +850,13 @@ RDB_expression *
 RDB_obj_to_expr(const RDB_object *valp, RDB_exec_context *);
 
 RDB_expression *
+RDB_table_ref_to_expr(RDB_object *tbp, RDB_exec_context *);
+
+RDB_expression *
 RDB_expr_var(const char *varname, RDB_exec_context *);
 
 RDB_expression *
 RDB_eq(RDB_expression *, RDB_expression *, RDB_exec_context *);
-
-/*
- * Create table-valued expression
- */
-RDB_expression *
-RDB_table_to_expr(RDB_table *, RDB_exec_context *);
-
-RDB_expression *
-RDB_expr_sum(RDB_expression *, const char *attrname, RDB_exec_context *);
-
-RDB_expression *
-RDB_expr_avg(RDB_expression *, const char *attrname, RDB_exec_context *);
-
-RDB_expression *
-RDB_expr_max(RDB_expression *, const char *attrname, RDB_exec_context *);
-
-RDB_expression *
-RDB_expr_min(RDB_expression *, const char *attrname, RDB_exec_context *);
-
-RDB_expression *
-RDB_expr_all(RDB_expression *, const char *attrname, RDB_exec_context *);
-
-RDB_expression *
-RDB_expr_any(RDB_expression *, const char *attrname, RDB_exec_context *);
 
 RDB_expression *
 RDB_tuple_attr(RDB_expression *, const char *attrname, RDB_exec_context *);
@@ -948,6 +866,9 @@ RDB_expr_comp(RDB_expression *, const char *, RDB_exec_context *);
 
 RDB_expression *
 RDB_ro_op(const char *opname, int argc, RDB_expression *argv[], RDB_exec_context *);
+
+void
+RDB_add_arg(RDB_expression *exp, RDB_expression *argp);
 
 RDB_expression *
 RDB_ro_op_va(const char *opname, RDB_exec_context *, RDB_expression *arg, ...
@@ -998,19 +919,19 @@ RDB_drop_constraint(const char *name, RDB_exec_context *,
         RDB_transaction *);
 
 typedef struct {
-    RDB_table *tbp;
+    RDB_object *tbp;
     RDB_object *tplp;
 } RDB_ma_insert;
 
 typedef struct {
-    RDB_table *tbp;
+    RDB_object *tbp;
     RDB_expression *condp;
     int updc;
     RDB_attr_update *updv;
 } RDB_ma_update;
 
 typedef struct {
-    RDB_table *tbp;
+    RDB_object *tbp;
     RDB_expression *condp;
 } RDB_ma_delete;
 

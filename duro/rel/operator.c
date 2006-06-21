@@ -1,7 +1,7 @@
 /*
  * $Id$
  *
- * Copyright (C) 2004, 2005 René Hartmann.
+ * Copyright (C) 2004-2006 René Hartmann.
  * See the file COPYING for redistribution information.
  */
 
@@ -313,12 +313,12 @@ _RDB_obj_equals(const char *name, int argc, RDB_object *argv[],
 
     /*
      * Check if there is a comparison function associated with the type
+     * (
      */
-    if (argv[0]->typ != NULL) {
+    if (argv[0]->typ != NULL && RDB_type_is_scalar(argv[0]->typ)) {
         if (argv[0]->typ->comparep != NULL) {
             arep = argv[0]->typ;
-        } else if (argv[0]->typ->kind == RDB_TP_SCALAR
-                && argv[0]->typ->var.scalar.arep != NULL) {
+        } else if (argv[0]->typ->var.scalar.arep != NULL) {
             arep = argv[0]->typ->var.scalar.arep;
         }
     }
@@ -361,13 +361,11 @@ _RDB_obj_equals(const char *name, int argc, RDB_object *argv[],
             RDB_bool_to_obj(retvalp, res);
             break;
         case RDB_OB_TABLE:
-            if (!RDB_type_equals(argv[0]->var.tbp->typ,
-                    argv[1]->var.tbp->typ)) {
+            if (!RDB_type_equals(argv[0]->typ, argv[1]->typ)) {
                 RDB_raise_type_mismatch("", ecp);
                 return RDB_ERROR;
             }
-            ret = RDB_table_equals(argv[0]->var.tbp, argv[1]->var.tbp, ecp, NULL,
-                    &res);
+            ret = _RDB_table_equals(argv[0], argv[1], ecp, NULL, &res);
             if (ret != RDB_OK)
                 return ret;
             RDB_bool_to_obj(retvalp, res);
@@ -725,7 +723,7 @@ RDB_call_ro_op(const char *name, int argc, RDB_object *argv[],
         if (strcmp(name, "IS_EMPTY") == 0) {
             RDB_bool res;
 
-            ret = RDB_table_is_empty(argv[0]->var.tbp, ecp, txp, &res);
+            ret = RDB_table_is_empty(argv[0], ecp, txp, &res);
             if (ret != RDB_OK)
                 return ret;
 
@@ -733,7 +731,7 @@ RDB_call_ro_op(const char *name, int argc, RDB_object *argv[],
             return RDB_OK;
         }
         if (strcmp(name, "COUNT") == 0) {
-            ret = RDB_cardinality(argv[0]->var.tbp, ecp, txp);
+            ret = RDB_cardinality(argv[0], ecp, txp);
             if (ret < 0)
                 return ret;
 
@@ -744,17 +742,17 @@ RDB_call_ro_op(const char *name, int argc, RDB_object *argv[],
         if (strcmp(name, "IN") == 0) {
             RDB_bool b;
 
-            ret = RDB_table_contains(argv[1]->var.tbp, argv[0], ecp, txp, &b);
+            ret = RDB_table_contains(argv[1], argv[0], ecp, txp, &b);
             if (ret != RDB_OK)
                 return ret;
 
             RDB_bool_to_obj(retvalp, b);
             return RDB_OK;
-        } else if (strcmp(name, "SUBSET_OF") == 0) {
+        }
+        if (strcmp(name, "SUBSET_OF") == 0) {
             RDB_bool res;
 
-            ret = RDB_subset(argv[0]->var.tbp, argv[1]->var.tbp, ecp, txp,
-                    &res);
+            ret = RDB_subset(argv[0], argv[1], ecp, txp, &res);
             if (ret != RDB_OK)
                 return ret;
             RDB_bool_to_obj(retvalp, res);
@@ -763,7 +761,7 @@ RDB_call_ro_op(const char *name, int argc, RDB_object *argv[],
     }
     if (argc >= 1 && obj_is_table(argv[0]) && strcmp(name, "TO_TUPLE") == 0
             && argc == 1) {
-        return RDB_extract_tuple(RDB_obj_table(argv[0]), ecp, txp, retvalp);
+        return RDB_extract_tuple(argv[0], ecp, txp, retvalp);
     }
 
     argtv = valv_to_typev(argc, argv, ecp);
@@ -799,7 +797,7 @@ RDB_call_ro_op(const char *name, int argc, RDB_object *argv[],
             /* Destroy illegal value */
             RDB_destroy_obj(retvalp, ecp);
             RDB_init_obj(retvalp);
-            return ret;
+            return RDB_ERROR;
         }
     }
 
@@ -921,7 +919,7 @@ int
 RDB_drop_op(const char *name, RDB_exec_context *ecp, RDB_transaction *txp)
 {
     RDB_expression *exp;
-    RDB_table *vtbp;
+    RDB_object *vtbp;
     int ret;
     RDB_bool isempty;
 
@@ -933,13 +931,15 @@ RDB_drop_op(const char *name, RDB_exec_context *ecp, RDB_transaction *txp)
     /*
      * Check if it's a read-only operator
      */
-    exp = RDB_eq(RDB_expr_var("NAME", ecp), RDB_string_to_expr(name, ecp), ecp);
-    if (exp == NULL) {
-        RDB_raise_no_memory(ecp);
+    exp = RDB_ro_op_va("WHERE", ecp,
+            RDB_table_ref_to_expr(txp->dbp->dbrootp->ro_ops_tbp, ecp),
+            RDB_eq(RDB_expr_var("NAME", ecp), RDB_string_to_expr(name, ecp), ecp),
+            (RDB_expression *) NULL);
+    if (exp == NULL)
         return RDB_ERROR;
-    }
-    vtbp = RDB_select(txp->dbp->dbrootp->ro_ops_tbp, exp, ecp, txp);
+    vtbp = RDB_expr_to_vtable(exp, ecp, txp);
     if (vtbp == NULL) {
+    	RDB_drop_expr(exp, ecp);
         return RDB_ERROR;
     }
     ret = RDB_table_is_empty(vtbp, ecp, txp, &isempty);

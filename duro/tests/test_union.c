@@ -3,9 +3,10 @@
 #include <rel/rdb.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <assert.h>
 
 static int
-print_table(RDB_table *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
+print_table(RDB_object *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
 {
     int ret;
     RDB_object *tplp;
@@ -55,7 +56,8 @@ int
 test_union(RDB_database *dbp, RDB_exec_context *ecp)
 {
     RDB_transaction tx;
-    RDB_table *tbp, *tbp2, *vtbp;
+    RDB_expression *exp, *argp;
+    RDB_object *tbp, *tbp2, *vtbp;
     int ret;
 
     printf("Starting transaction\n");
@@ -78,11 +80,19 @@ test_union(RDB_database *dbp, RDB_exec_context *ecp)
 
     printf("Creating EMPS1 union EMPS2\n");
 
-    vtbp = RDB_union(tbp2, tbp, ecp);
-    if (vtbp == NULL) {
-        RDB_rollback(ecp, &tx);
-        return RDB_ERROR;
-    }
+    exp = RDB_ro_op("UNION", 2, NULL, ecp);
+    assert(exp != NULL);
+    
+    argp = RDB_table_ref_to_expr(tbp2, ecp);
+    assert(argp != NULL);
+    RDB_add_arg(exp, argp);
+
+    argp = RDB_table_ref_to_expr(tbp, ecp);
+    assert(argp != NULL);
+    RDB_add_arg(exp, argp);
+
+    vtbp = RDB_expr_to_vtable(exp, ecp, &tx);
+    assert(vtbp != NULL);
     
     printf("converting union table to array\n");
     ret = print_table(vtbp, ecp, &tx);

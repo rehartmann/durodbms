@@ -3,6 +3,7 @@
 #include <rel/rdb.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <assert.h>
 
 char *utype_keyattrs1[] = { "NUMBER" };
 
@@ -16,7 +17,7 @@ int
 create_table(RDB_database *dbp, RDB_exec_context *ecp)
 {
     RDB_transaction tx;
-    RDB_table *tbp;
+    RDB_object *tbp;
     RDB_attr utype_attrs[2];
     int ret;
    
@@ -55,7 +56,7 @@ test_table(RDB_database *dbp, RDB_exec_context *ecp)
     int ret;
     RDB_object tpl;
     RDB_transaction tx;
-    RDB_table *tbp;
+    RDB_object *tbp;
     RDB_object ival;
     RDB_object tival;
     RDB_object *ivalp;
@@ -85,10 +86,8 @@ test_table(RDB_database *dbp, RDB_exec_context *ecp)
     }
 
     ret = RDB_insert(tbp, &tpl, ecp, &tx);
-    if (ret == RDB_OK) {
-        fprintf(stderr, "Insert should fail, but did not\n");
-        goto error;
-    }
+    assert(ret != RDB_OK);
+
     errtyp = RDB_obj_type(RDB_get_err(ecp));
     if (errtyp != &RDB_TYPE_MISMATCH_ERROR) {
         fprintf(stderr, "Wrong error type: %s\n", RDB_type_name(errtyp));
@@ -191,7 +190,7 @@ int
 test_drop(RDB_database *dbp, RDB_exec_context *ecp)
 {
     int ret;
-    RDB_table *tbp;
+    RDB_object *tbp;
     RDB_transaction tx;
 
     printf("Starting transaction\n");

@@ -8,7 +8,7 @@ int
 test_aggregate(RDB_database *dbp, RDB_exec_context *ecp)
 {
     RDB_transaction tx;
-    RDB_table *tbp;
+    RDB_object *tbp;
     RDB_double avg;
     int ret;
 

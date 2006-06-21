@@ -18,7 +18,7 @@ Duro_update_cmd(ClientData data, Tcl_Interp *interp, int objc,
     char *txstr;
     Tcl_HashEntry *entryp;
     RDB_transaction *txp;
-    RDB_table *tbp;
+    RDB_object *tbp;
     int updc;
     RDB_attr_update *updv;
     RDB_expression *wherep;

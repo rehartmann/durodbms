@@ -1,7 +1,7 @@
 /*
  * $Id$
  *
- * Copyright (C) 2003-2005 René Hartmann.
+ * Copyright (C) 2003-2006 René Hartmann.
  * See the file COPYING for redistribution information.
  */
 
@@ -12,7 +12,7 @@
 #include <string.h>
 
 static RDB_bool
-is_keyattr(const char *attrname, RDB_table *tbp, RDB_exec_context *ecp)
+is_keyattr(const char *attrname, RDB_object *tbp, RDB_exec_context *ecp)
 {
     int i, j;
     int keyc;
@@ -47,7 +47,7 @@ upd_to_vals(int updc, const RDB_attr_update updv[],
 }
 
 static RDB_int
-update_stored_complex(RDB_table *tbp, RDB_expression *condp,
+update_stored_complex(RDB_object *tbp, RDB_expression *condp,
         int updc, const RDB_attr_update updv[],
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
@@ -59,7 +59,7 @@ update_stored_complex(RDB_table *tbp, RDB_expression *condp,
     size_t len;
     RDB_bool b;
     RDB_transaction tx;
-    RDB_table *tmptbp = NULL;
+    RDB_object *tmptbp = NULL;
     RDB_type *tpltyp = tbp->typ->var.basetyp;
     RDB_cursor *curp = NULL;
     RDB_object *valv = malloc(sizeof(RDB_object) * updc);
@@ -84,14 +84,14 @@ update_stored_complex(RDB_table *tbp, RDB_expression *condp,
      */
 
     tmptbp = RDB_create_table_from_type(NULL, RDB_FALSE, tbp->typ,
-            1, tbp->keyv, ecp, &tx);
+            1, tbp->var.tb.keyv, ecp, &tx);
     if (tmptbp == NULL) {
         rcount = RDB_ERROR;
         goto cleanup;
     }
 
-    if (RDB_recmap_cursor(&curp, tbp->stp->recmapp, RDB_TRUE,
-            tbp->is_persistent ? tx.txid : NULL) != RDB_OK) {
+    if (RDB_recmap_cursor(&curp, tbp->var.tb.stp->recmapp, RDB_TRUE,
+            tbp->var.tb.is_persistent ? tx.txid : NULL) != RDB_OK) {
         rcount = RDB_ERROR;
         goto cleanup;
     }
@@ -103,7 +103,7 @@ update_stored_complex(RDB_table *tbp, RDB_expression *condp,
             RDB_object *attrobjp;
 
             ret = RDB_cursor_get(curp,
-                    *_RDB_field_no(tbp->stp, tpltyp->var.tuple.attrv[i].name),
+                    *_RDB_field_no(tbp->var.tb.stp, tpltyp->var.tuple.attrv[i].name),
                     &datap, &len);
             if (ret != RDB_OK) {
                 _RDB_handle_errcode(ret, ecp, &tx);
@@ -187,7 +187,7 @@ update_stored_complex(RDB_table *tbp, RDB_expression *condp,
             RDB_object val;
 
             ret = RDB_cursor_get(curp,
-                    *_RDB_field_no(tbp->stp, tpltyp->var.tuple.attrv[i].name),
+                    *_RDB_field_no(tbp->var.tb.stp, tpltyp->var.tuple.attrv[i].name),
                     &datap, &len);
             if (ret != RDB_OK) {
                 _RDB_handle_errcode(ret, ecp, &tx);
@@ -281,7 +281,7 @@ cleanup:
 }
 
 static RDB_int
-update_stored_simple(RDB_table *tbp, RDB_expression *condp,
+update_stored_simple(RDB_object *tbp, RDB_expression *condp,
         int updc, const RDB_attr_update updv[], RDB_exec_context *ecp,
         RDB_transaction *txp)
 {
@@ -318,8 +318,8 @@ update_stored_simple(RDB_table *tbp, RDB_expression *condp,
      * Iterator over the records and update them if the select expression
      * evaluates to true.
      */
-    ret = RDB_recmap_cursor(&curp, tbp->stp->recmapp, RDB_TRUE,
-            tbp->is_persistent ? tx.txid : NULL);
+    ret = RDB_recmap_cursor(&curp, tbp->var.tb.stp->recmapp, RDB_TRUE,
+            tbp->var.tb.is_persistent ? tx.txid : NULL);
     if (ret != RDB_OK) {
         _RDB_handle_errcode(ret, ecp, &tx);
         rcount = RDB_ERROR;
@@ -334,7 +334,7 @@ update_stored_simple(RDB_table *tbp, RDB_expression *condp,
             RDB_object val;
 
             ret = RDB_cursor_get(curp,
-                    *_RDB_field_no(tbp->stp, tpltyp->var.tuple.attrv[i].name),
+                    *_RDB_field_no(tbp->var.tb.stp, tpltyp->var.tuple.attrv[i].name),
                     &datap, &len);
             if (ret != RDB_OK) {
                 _RDB_handle_errcode(ret, ecp, &tx);
@@ -376,13 +376,13 @@ update_stored_simple(RDB_table *tbp, RDB_expression *condp,
             }
             for (i = 0; i < updc; i++) {
                 /* Get field number from map */
-                fieldv[i].no = *_RDB_field_no(tbp->stp, updv[i].name);
+                fieldv[i].no = *_RDB_field_no(tbp->var.tb.stp, updv[i].name);
 
                 /* Set type - needed for tuple and array attributes */
                 if (valv[i].typ == NULL
                         && (valv[i].kind == RDB_OB_TUPLE
                          || valv[i].kind == RDB_OB_ARRAY)) {
-                    valv[i].typ = RDB_type_attr_type(RDB_table_type(tbp),
+                    valv[i].typ = RDB_type_attr_type(RDB_obj_type(tbp),
                             updv[i].name);
                 }
 
@@ -438,8 +438,9 @@ cleanup:
     return rcount;
 }
 
+#ifdef NIX
 RDB_int
-_RDB_update_select_pindex(RDB_table *tbp, RDB_expression *condp,
+_RDB_update_select_pindex(RDB_object *tbp, RDB_expression *condp,
         int updc, const RDB_attr_update updv[],
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
@@ -454,7 +455,7 @@ _RDB_update_select_pindex(RDB_table *tbp, RDB_expression *condp,
     RDB_object *valv;
     RDB_field *fieldv;
 
-    if (tbp->var.select.tbp->var.project.tbp->stp == NULL)
+    if (tbp->var.select.tbp->var.project.tbp->var.tb.stp == NULL)
         return 0;
 
     fvv = malloc(sizeof(RDB_field) * objc);
@@ -523,7 +524,7 @@ _RDB_update_select_pindex(RDB_table *tbp, RDB_expression *condp,
 
     for (i = 0; i < updc; i++) {
         fieldv[i].no = *_RDB_field_no(
-                 tbp->var.select.tbp->var.project.tbp->stp, updv[i].name);
+                 tbp->var.select.tbp->var.project.tbp->var.tb.stp, updv[i].name);
          
         /* Set type - needed for tuple and array attributes */
         if (valv[i].typ == NULL
@@ -539,7 +540,7 @@ _RDB_update_select_pindex(RDB_table *tbp, RDB_expression *condp,
     }
         
     _RDB_cmp_ecp = ecp;
-    ret = RDB_update_rec(tbp->var.select.tbp->var.project.tbp->stp->recmapp,
+    ret = RDB_update_rec(tbp->var.select.tbp->var.project.tbp->var.tb.stp->recmapp,
             fvv, updc, fieldv,
             tbp->var.select.tbp->var.project.tbp->is_persistent ?
                     txp->txid : NULL);
@@ -561,7 +562,7 @@ cleanup:
 }
 
 static RDB_int
-update_select_index_simple(RDB_table *tbp, RDB_expression *condp,
+update_select_index_simple(RDB_object *tbp, RDB_expression *condp,
         int updc, const RDB_attr_update updv[],
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
@@ -686,7 +687,7 @@ update_select_index_simple(RDB_table *tbp, RDB_expression *condp,
 
             for (i = 0; i < updc; i++) {
                 fieldv[i].no = *_RDB_field_no(
-                        tbp->var.select.tbp->var.project.tbp->stp, updv[i].name);
+                        tbp->var.select.tbp->var.project.tbp->var.tb.stp, updv[i].name);
                  
                 /* Set type - needed for tuple and array attributes */
                 if (valv[i].typ == NULL
@@ -762,7 +763,7 @@ cleanup:
 }
 
 static RDB_int
-update_select_index_complex(RDB_table *tbp, RDB_expression *condp,
+update_select_index_complex(RDB_object *tbp, RDB_expression *condp,
         int updc, const RDB_attr_update updv[],
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
@@ -772,7 +773,7 @@ update_select_index_complex(RDB_table *tbp, RDB_expression *condp,
     int ret;
     int i;
     int flags;
-    RDB_table *tmptbp = NULL;
+    RDB_object *tmptbp = NULL;
     _RDB_tbindex *indexp = tbp->var.select.tbp->var.project.indexp;
     int objc = indexp->attrc;
     RDB_cursor *curp = NULL;
@@ -806,7 +807,7 @@ update_select_index_complex(RDB_table *tbp, RDB_expression *condp,
      */
 
     tmptbp = RDB_create_table_from_type(NULL, RDB_FALSE, tbp->typ,
-            1, tbp->keyv, ecp, &tx);
+            1, tbp->var.tb.keyv, ecp, &tx);
     if (tmptbp == NULL) {
         rcount = RDB_ERROR;
         goto cleanup;
@@ -1053,9 +1054,10 @@ cleanup:
     }
     return rcount;
 }
+#endif
 
 static RDB_bool
-upd_complex(RDB_table *tbp, int updc, const RDB_attr_update updv[],
+upd_complex(RDB_object *tbp, int updc, const RDB_attr_update updv[],
         RDB_exec_context *ecp)
 {
     int i;
@@ -1082,11 +1084,11 @@ upd_complex(RDB_table *tbp, int updc, const RDB_attr_update updv[],
 }
 
 RDB_int
-_RDB_update_real(RDB_table *tbp, RDB_expression *condp, int updc,
+_RDB_update_real(RDB_object *tbp, RDB_expression *condp, int updc,
         const RDB_attr_update updv[], RDB_exec_context *ecp,
         RDB_transaction *txp)
 {
-    if (tbp->stp == NULL)
+    if (tbp->var.tb.stp == NULL)
         return RDB_OK;
 
     if (upd_complex(tbp, updc, updv, ecp)
@@ -1095,12 +1097,13 @@ _RDB_update_real(RDB_table *tbp, RDB_expression *condp, int updc,
     return update_stored_simple(tbp, condp, updc, updv, ecp, txp);
 }
 
+#ifdef NIX
 RDB_int
-_RDB_update_select_index(RDB_table *tbp, RDB_expression *condp,
+_RDB_update_select_index(RDB_object *tbp, RDB_expression *condp,
         int updc, const RDB_attr_update updv[],
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
-    if (tbp->var.select.tbp->var.project.tbp->stp == NULL)
+    if (tbp->var.select.tbp->var.project.tbp->var.tb.stp == NULL)
         return 0;
 
     if (upd_complex(tbp, updc, updv, ecp)
@@ -1110,9 +1113,10 @@ _RDB_update_select_index(RDB_table *tbp, RDB_expression *condp,
     }
     return update_select_index_simple(tbp, condp, updc, updv, ecp, txp);
 }
+#endif
 
 RDB_int
-RDB_update(RDB_table *tbp, RDB_expression *condp, int updc,
+RDB_update(RDB_object *tbp, RDB_expression *condp, int updc,
            const RDB_attr_update updv[], RDB_exec_context *ecp,
            RDB_transaction *txp)
 {

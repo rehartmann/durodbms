@@ -10,19 +10,16 @@
 #include "rdb.h"
 
 int
-_RDB_vtable_to_binobj(RDB_object *, RDB_table *, RDB_exec_context *);
-
-int
 _RDB_expr_to_binobj(RDB_object *, const RDB_expression *, RDB_exec_context *);
 
 int
 _RDB_type_to_binobj(RDB_object *, const RDB_type *, RDB_exec_context *);
 
-RDB_table *
-_RDB_binobj_to_vtable(RDB_object *valp, RDB_exec_context *, RDB_transaction *);
-
 RDB_expression *
 _RDB_binobj_to_expr(RDB_object *valp, RDB_exec_context *, RDB_transaction *);
+
+RDB_object *
+_RDB_binobj_to_vtable(RDB_object *valp, RDB_exec_context *, RDB_transaction *);
 
 RDB_type *
 _RDB_binobj_to_type(RDB_object *valp, RDB_exec_context *, RDB_transaction *);

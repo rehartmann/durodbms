@@ -8,10 +8,10 @@ int
 test_select(RDB_database *dbp, RDB_exec_context *ecp)
 {
     RDB_transaction tx;
-    RDB_table *tbp, *vtbp;
+    RDB_object *tbp, *vtbp;
     RDB_object array;
     RDB_object *tplp;
-    RDB_expression *exprp;
+    RDB_expression *exp, *argp;
     int ret;
     RDB_int i;
 
@@ -31,12 +31,22 @@ test_select(RDB_database *dbp, RDB_exec_context *ecp)
 
     printf("Creating selection (name=\"Smith\")\n");
 
-    exprp = RDB_eq(RDB_expr_var("NAME", ecp), RDB_string_to_expr("Smith", ecp),
-            ecp);
-    if (exprp == NULL)
+    exp = RDB_ro_op("WHERE", 2, NULL, ecp);
+    if (exp == NULL)
         goto error;
-    
-    vtbp = RDB_select(tbp, exprp, ecp, &tx);
+
+    argp = RDB_table_ref_to_expr(tbp, ecp);
+    if (argp == NULL)
+        goto error;
+    RDB_add_arg(exp, argp);
+
+    argp = RDB_eq(RDB_expr_var("NAME", ecp), RDB_string_to_expr("Smith", ecp),
+            ecp);
+    if (argp == NULL)
+        goto error;
+    RDB_add_arg(exp, argp);
+
+    vtbp = RDB_expr_to_vtable(exp, ecp, &tx);
     if (vtbp == NULL) {
         goto error;
     }
@@ -66,9 +76,21 @@ test_select(RDB_database *dbp, RDB_exec_context *ecp)
 
     printf("Creating selection (EMPNO=1)\n");
 
-    exprp = RDB_eq(RDB_expr_var("EMPNO", ecp), RDB_int_to_expr(1, ecp), ecp);
+    exp = RDB_ro_op("WHERE", 2, NULL, ecp);
+    if (exp == NULL)
+        goto error;
+
+    argp = RDB_table_ref_to_expr(tbp, ecp);
+    if (argp == NULL)
+        goto error;
+    RDB_add_arg(exp, argp);
+
+    argp = RDB_eq(RDB_expr_var("EMPNO", ecp), RDB_int_to_expr(1, ecp), ecp);
+    if (argp == NULL)
+        goto error;
+    RDB_add_arg(exp, argp);
     
-    vtbp = RDB_select(tbp, exprp, ecp, &tx);
+    vtbp = RDB_expr_to_vtable(exp, ecp, &tx);
     if (vtbp == NULL) {
         RDB_rollback(ecp, &tx);
         return RDB_ERROR;

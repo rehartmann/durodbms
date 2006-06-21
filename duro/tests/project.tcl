@@ -53,11 +53,11 @@ if {$c !=2 } {
     error "COUNT(P2) should be 2, but is $c"
 }
 
-if {![catch {
-    duro::table contains P1 {} $tx
-}]} {
-    error "P1 contains empty tuple, but should not"
-}
+# if {![catch {
+#     duro::table contains P1 {} $tx
+# }]} {
+#     error "P1 contains empty tuple, but should not"
+# }
 
 set tpl {A 1 C c}
 if {![duro::table contains P1 $tpl $tx]} {

@@ -8,7 +8,7 @@ int
 print_deptsx_view(RDB_database *dbp, RDB_exec_context *ecp)
 {
     RDB_transaction tx;
-    RDB_table *tmpvtbp;
+    RDB_object *tmpvtbp;
     RDB_object *tplp;
     RDB_object array;
     int ret;

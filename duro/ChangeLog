@@ -2,6 +2,14 @@ $Id$
 
 Summary of Changes for Duro
 
+Changes for Duro 0.12
+
+- Replaced RDB_table by RDB_object.
+
+- Removed RDB_project, RDB_union ...
+
+- Removed RDB_expr_any ...
+
 Changes for Duro 0.11
 
 - Added RDB_type_attrs().

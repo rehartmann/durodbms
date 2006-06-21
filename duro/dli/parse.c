@@ -60,37 +60,45 @@ RDB_parse_expr(const char *txt, RDB_ltablefn *lt_fp, void *lt_arg,
     return exp;
 }
 
-RDB_table *
+RDB_object *
 RDB_parse_table(const char *txt, RDB_ltablefn *lt_fp, void *lt_arg,
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
-    int ret;
-    RDB_table *tbp;
+    RDB_object *tbp;
     RDB_expression *exp = RDB_parse_expr(txt, lt_fp, lt_arg, ecp, txp);
     if (exp == NULL)
         return NULL;
 
-    if (exp->kind != RDB_EX_OBJ || exp->var.obj.kind != RDB_OB_TABLE) {
-        RDB_object obj;
-
-        RDB_init_obj(&obj);
-        ret = RDB_evaluate(exp, NULL, ecp, txp, &obj);
-        RDB_drop_expr(exp, ecp);
-        if (ret != RDB_OK) {
-            RDB_destroy_obj(&obj, ecp);
+    tbp = RDB_expr_obj(exp);
+    if (tbp == NULL) {
+        tbp = RDB_expr_to_vtable(exp, ecp, txp);
+        if (tbp == NULL) {
+            RDB_drop_expr(exp, ecp);
             return NULL;
         }
-        if (obj.kind != RDB_OB_TABLE) {
-            RDB_destroy_obj(&obj, ecp);
-            RDB_raise_type_mismatch("no table", ecp);
-            return NULL;
-        }
-        tbp = obj.var.tbp;
-        obj.var.tbp = NULL;
-        RDB_destroy_obj(&obj, ecp);
         return tbp;
     }
-
-    /* !! drop exp? */
-    return exp->var.obj.var.tbp;
+    if (tbp->kind != RDB_OB_TABLE) {        
+        RDB_raise_type_mismatch("no table", ecp);
+        return NULL;
+    }
+    if (exp->kind == RDB_EX_OBJ) {
+        /* Make a copy of the table */
+        RDB_type *typ = _RDB_dup_nonscalar_type(tbp->typ, ecp);
+        if (typ == NULL)
+            return NULL;
+        
+        tbp = RDB_create_table_from_type(NULL, RDB_FALSE, typ,
+                0, NULL, ecp, NULL);
+        if (tbp == NULL) {
+            RDB_drop_type(typ, ecp, NULL);
+            return NULL;
+        }
+        if (_RDB_move_tuples(tbp, RDB_expr_obj(exp), ecp, NULL) != RDB_OK) {
+            RDB_drop_table(tbp, ecp, NULL);
+            return NULL;
+        }
+    }
+    RDB_drop_expr(exp, ecp);
+    return tbp;
 }

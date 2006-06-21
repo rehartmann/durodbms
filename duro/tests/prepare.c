@@ -7,7 +7,7 @@ int
 create_tables(RDB_database *dbp, RDB_exec_context *ecp)
 {
     RDB_transaction tx;
-    RDB_table *tbp;
+    RDB_object *tbp;
     RDB_string_vec key;
     RDB_object defval;
     int ret;
@@ -81,7 +81,7 @@ fill_tables(RDB_database *dbp, RDB_exec_context *ecp)
     int ret;
     RDB_object deptpl, emptpl;
     RDB_transaction tx;
-    RDB_table *tbp, *tbp2, *tbp3;
+    RDB_object *tbp, *tbp2, *tbp3;
 
     ret = RDB_begin_tx(ecp, &tx, dbp, NULL);
     if (ret != RDB_OK) {

@@ -7,6 +7,7 @@
 #include <rel/rdb.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <assert.h>
 
 RDB_attr srtest_attrs[] = {
     { "NO", &RDB_INTEGER, NULL, 0 },
@@ -24,7 +25,7 @@ int
 create_table(RDB_database *dbp, RDB_exec_context *ecp)
 {
     RDB_transaction tx;
-    RDB_table *tbp;
+    RDB_object *tbp;
     RDB_object tpl;
     int ret;
     int i;
@@ -68,7 +69,7 @@ test_update1(RDB_database *dbp, RDB_exec_context *ecp)
 {
     int ret;
     RDB_transaction tx;
-    RDB_table *tbp;
+    RDB_object *tbp;
     RDB_expression *exp;
     RDB_attr_update upd;
 
@@ -111,8 +112,8 @@ test_update2(RDB_database *dbp, RDB_exec_context *ecp)
 {
     int ret;
     RDB_transaction tx;
-    RDB_table *tbp;
-    RDB_expression *exp;
+    RDB_object *tbp;
+    RDB_expression *exp, *argp;
     RDB_attr_update upd;
 
     printf("Starting transaction\n");
@@ -129,7 +130,15 @@ test_update2(RDB_database *dbp, RDB_exec_context *ecp)
 
     printf("Updating table\n");
 
-    exp = RDB_expr_sum(RDB_table_to_expr(tbp, ecp), "COUNT", ecp);
+    exp = RDB_ro_op("SUM", 2, NULL, ecp);
+    assert(exp != NULL);
+    argp = RDB_table_ref_to_expr(tbp, ecp);
+    assert(argp != NULL);
+    RDB_add_arg(exp, argp);
+    argp = RDB_expr_var("COUNT", ecp);
+    assert(argp != NULL);
+    RDB_add_arg(exp, argp);
+
     exp = RDB_ro_op_va("+", ecp, exp, RDB_int_to_expr(1, ecp),
             (RDB_expression *) NULL);
     if (exp == NULL) {
@@ -143,7 +152,7 @@ test_update2(RDB_database *dbp, RDB_exec_context *ecp)
     ret = RDB_update(tbp, NULL, 1, &upd, ecp, &tx);
     if (ret == RDB_ERROR) {
         RDB_rollback(ecp, &tx);
-        return ret;
+        return RDB_ERROR;
     }
 
     return RDB_commit(ecp, &tx);
@@ -155,7 +164,7 @@ int
 test_print(RDB_database *dbp, RDB_exec_context *ecp)
 {
     RDB_transaction tx;
-    RDB_table *tbp;
+    RDB_object *tbp;
     RDB_object array;
     RDB_object *tplp;
     int ret;

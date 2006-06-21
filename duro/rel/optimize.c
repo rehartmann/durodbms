@@ -12,6 +12,31 @@
 #include <stdlib.h>
 #include <math.h>
 
+RDB_bool
+_RDB_index_sorts(struct _RDB_tbindex *indexp, int seqitc, const RDB_seq_item seqitv[])
+{
+    int i;
+/*
+    if (indexp->unique)
+        return RDB_TRUE;
+*/
+    if (indexp->idxp == NULL || !RDB_index_is_ordered(indexp->idxp)
+            || indexp->attrc < seqitc)
+        return RDB_FALSE;
+
+    for (i = 0; i < seqitc; i++) {
+        if (strcmp(indexp->attrv[i].attrname, seqitv[i].attrname) != 0
+                || indexp->attrv[i].asc != seqitv[i].asc)
+            return RDB_FALSE;
+    }
+    return RDB_TRUE;
+}
+
+enum {
+    tbpv_cap = 256
+};
+
+#ifdef NIX
 static RDB_bool is_and(RDB_expression *exp) {
     return (RDB_bool) exp->kind == RDB_EX_RO_OP
             && strcmp (exp->var.op.name, "AND") == 0;
@@ -82,7 +107,7 @@ attrv_covers_index(int attrc, char *attrv[], _RDB_tbindex *indexp)
 }
 
 static int
-move_node(RDB_table *tbp, RDB_expression **dstpp, RDB_expression *nodep,
+move_node(RDB_object *tbp, RDB_expression **dstpp, RDB_expression *nodep,
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
     RDB_expression *prevp;
@@ -152,7 +177,7 @@ move_node(RDB_table *tbp, RDB_expression **dstpp, RDB_expression *nodep,
  * the selection into a selection which uses the index.
  */
 static int
-split_by_index(RDB_table *tbp, _RDB_tbindex *indexp, RDB_exec_context *ecp,
+split_by_index(RDB_object *tbp, _RDB_tbindex *indexp, RDB_exec_context *ecp,
         RDB_transaction *txp)
 {
     int i;
@@ -237,7 +262,7 @@ split_by_index(RDB_table *tbp, _RDB_tbindex *indexp, RDB_exec_context *ecp,
     }
 
     if (tbp->var.select.exp != NULL) {
-        RDB_table *sitbp;
+        RDB_object *sitbp;
 
         /*
          * Split table into two
@@ -272,7 +297,7 @@ split_by_index(RDB_table *tbp, _RDB_tbindex *indexp, RDB_exec_context *ecp,
 }
 
 static unsigned
-table_cost(RDB_table *tbp)
+table_cost(RDB_object *tbp)
 {
     _RDB_tbindex *indexp;
 
@@ -337,16 +362,16 @@ table_cost(RDB_table *tbp)
 }
 
 static int
-mutate(RDB_table *tbp, RDB_table **tbpv, int cap, RDB_exec_context *,
+mutate(RDB_object *tbp, RDB_object **tbpv, int cap, RDB_exec_context *,
         RDB_transaction *);
 
 /*
  * Add "null project" parent
  */
-static RDB_table *
-null_project(RDB_table *tbp, RDB_exec_context *ecp)
+static RDB_object *
+null_project(RDB_object *tbp, RDB_exec_context *ecp)
 {
-    RDB_table *ptbp = _RDB_new_table(ecp);
+    RDB_object *ptbp = _RDB_new_table(ecp);
     if (tbp == NULL)
         return NULL;
 
@@ -370,13 +395,13 @@ null_project(RDB_table *tbp, RDB_exec_context *ecp)
 }
 
 static int
-mutate_select(RDB_table *tbp, RDB_table **tbpv, int cap, RDB_exec_context *ecp,
+mutate_select(RDB_object *tbp, RDB_object **tbpv, int cap, RDB_exec_context *ecp,
         RDB_transaction *txp)
 {
     int i;
     int ret;
     int tbc;
-    RDB_table *ctbp = tbp->var.select.tbp;
+    RDB_object *ctbp = tbp->var.select.tbp;
 
     ret = _RDB_transform_exp(tbp->var.select.exp, ecp);
     if (ret != RDB_OK)
@@ -393,7 +418,7 @@ mutate_select(RDB_table *tbp, RDB_table **tbpv, int cap, RDB_exec_context *ecp,
         return tbc;
 
     for (i = 0; i < tbc; i++) {
-        RDB_table *ntbp;
+        RDB_object *ntbp;
         RDB_expression *exp = RDB_dup_expr(tbp->var.select.exp, ecp);
         if (exp == NULL)
             return RDB_ERROR;
@@ -422,7 +447,7 @@ mutate_select(RDB_table *tbp, RDB_table **tbpv, int cap, RDB_exec_context *ecp,
 }
 
 static int
-mutate_union(RDB_table *tbp, RDB_table **tbpv, int cap,
+mutate_union(RDB_object *tbp, RDB_object **tbpv, int cap,
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
     int tbc1, tbc2;
@@ -432,8 +457,8 @@ mutate_union(RDB_table *tbp, RDB_table **tbpv, int cap,
     if (tbc1 < 0)
         return tbc1;
     for (i = 0; i < tbc1; i++) {
-        RDB_table *ntbp;
-        RDB_table *otbp = _RDB_dup_vtable(tbp->var._union.tb2p, ecp);
+        RDB_object *ntbp;
+        RDB_object *otbp = _RDB_dup_vtable(tbp->var._union.tb2p, ecp);
         if (otbp == NULL) {
             return RDB_ERROR;
         }
@@ -447,8 +472,8 @@ mutate_union(RDB_table *tbp, RDB_table **tbpv, int cap,
     if (tbc2 < 0)
         return tbc2;
     for (i = tbc1; i < tbc1 + tbc2; i++) {
-        RDB_table *ntbp;
-        RDB_table *otbp = _RDB_dup_vtable(tbp->var._union.tb1p, ecp);
+        RDB_object *ntbp;
+        RDB_object *otbp = _RDB_dup_vtable(tbp->var._union.tb1p, ecp);
         if (otbp == NULL) {
             return RDB_ERROR;
         }
@@ -460,11 +485,12 @@ mutate_union(RDB_table *tbp, RDB_table **tbpv, int cap,
     }
     return tbc1 + tbc2;
 }
+#endif
 
 static void
-table_to_empty(RDB_table *tbp, RDB_exec_context *ecp)
+table_to_empty(RDB_expression *exp, RDB_exec_context *ecp)
 {
-    /* !! other kinds of tables */
+    /* !!
     switch (tbp->kind) {
         case RDB_TB_SELECT:
             RDB_drop_expr(tbp->var.select.exp, ecp);
@@ -484,129 +510,42 @@ table_to_empty(RDB_table *tbp, RDB_exec_context *ecp)
             break;
         default: ;
     }
+    */
 }
 
 static int
-replace_empty(RDB_table *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
+replace_empty(RDB_expression *exp, RDB_exec_context *ecp, RDB_transaction *txp)
 {
-    int ret;
+	int ret;
     struct _RDB_tx_and_ec te;
 
     te.txp = txp;
     te.ecp = ecp;
 
     /* Check if there is a constraint that says the table is empty */
-    if (RDB_table_name(tbp) == NULL && txp->dbp != NULL
-            && RDB_hashtable_get(&txp->dbp->dbrootp->empty_tbtab, tbp, &te)
-                    != NULL) {
-        table_to_empty(tbp, ecp);
+    if (txp->dbp != NULL
+            && RDB_hashtable_get(&txp->dbp->dbrootp->empty_tbtab,
+                    exp, &te) != NULL) {
+            table_to_empty(exp, ecp);
+    } else if (exp->kind == RDB_EX_RO_OP) {
+    	int i;
+    	
+    	for (i = 0; i < exp->var.op.argc; i++) {
+            ret = replace_empty(exp->var.op.argv[0], ecp, txp);
+            if (ret != RDB_OK)
+                return ret;
+    	}
     }
-
-    switch (tbp->kind) {
-        case RDB_TB_REAL:
-            break;
-        case RDB_TB_SEMIMINUS:
-            ret = replace_empty(tbp->var.semiminus.tb1p, ecp, txp);
-            if (ret != RDB_OK)
-                return ret;
-            ret = replace_empty(tbp->var.semiminus.tb2p, ecp, txp);
-            if (ret != RDB_OK)
-                return ret;
-            break;
-        case RDB_TB_UNION:
-            ret = replace_empty(tbp->var._union.tb1p, ecp, txp);
-            if (ret != RDB_OK)
-                return ret;
-            ret = replace_empty(tbp->var._union.tb2p, ecp, txp);
-            if (ret != RDB_OK)
-                return ret;
-            break;
-        case RDB_TB_SEMIJOIN:
-            ret = replace_empty(tbp->var.semijoin.tb1p, ecp, txp);
-            if (ret != RDB_OK)
-                return ret;
-            ret = replace_empty(tbp->var.semijoin.tb2p, ecp, txp);
-            if (ret != RDB_OK)
-                return ret;
-            break;
-        case RDB_TB_SELECT:
-            ret = replace_empty(tbp->var.select.tbp, ecp, txp);
-            if (ret != RDB_OK)
-                return ret;
-            break;
-        case RDB_TB_JOIN:
-            ret = replace_empty(tbp->var.join.tb1p, ecp, txp);
-            if (ret != RDB_OK)
-                return ret;
-            ret = replace_empty(tbp->var.join.tb2p, ecp, txp);
-            if (ret != RDB_OK)
-                return ret;
-            break;
-        case RDB_TB_EXTEND:
-            ret = replace_empty(tbp->var.extend.tbp, ecp, txp);
-            if (ret != RDB_OK)
-                return ret;
-            break;
-        case RDB_TB_PROJECT:
-            ret = replace_empty(tbp->var.project.tbp, ecp, txp);
-            if (ret != RDB_OK)
-                return ret;
-            break;
-        case RDB_TB_SUMMARIZE:
-            ret = replace_empty(tbp->var.summarize.tb1p, ecp, txp);
-            if (ret != RDB_OK)
-                return ret;
-            ret = replace_empty(tbp->var.summarize.tb2p, ecp, txp);
-            if (ret != RDB_OK)
-                return ret;
-            break;
-        case RDB_TB_RENAME:
-            ret = replace_empty(tbp->var.rename.tbp, ecp, txp);
-            if (ret != RDB_OK)
-                return ret;
-            break;
-        case RDB_TB_WRAP:
-            ret = replace_empty(tbp->var.wrap.tbp, ecp, txp);
-            if (ret != RDB_OK)
-                return ret;
-            break;
-        case RDB_TB_UNWRAP:
-            ret = replace_empty(tbp->var.unwrap.tbp, ecp, txp);
-            if (ret != RDB_OK)
-                return ret;
-            break;
-        case RDB_TB_GROUP:
-            ret = replace_empty(tbp->var.group.tbp, ecp, txp);
-            if (ret != RDB_OK)
-                return ret;
-            break;
-        case RDB_TB_UNGROUP:
-            ret = replace_empty(tbp->var.ungroup.tbp, ecp, txp);
-            if (ret != RDB_OK)
-                return ret;
-            break;
-        case RDB_TB_SDIVIDE:
-            ret = replace_empty(tbp->var.sdivide.tb1p, ecp, txp);
-            if (ret != RDB_OK)
-                return ret;
-            ret = replace_empty(tbp->var.sdivide.tb2p, ecp, txp);
-            if (ret != RDB_OK)
-                return ret;
-            ret = replace_empty(tbp->var.sdivide.tb3p, ecp, txp);
-            if (ret != RDB_OK)
-                return ret;
-            break;
-    }
-
     return RDB_OK;
 }
 
+#ifdef NIX
 static int
-transform_semiminus_union(RDB_table *tbp, RDB_exec_context *ecp,
-        RDB_transaction *txp, RDB_table **restbpp)
+transform_semiminus_union(RDB_object *tbp, RDB_exec_context *ecp,
+        RDB_transaction *txp, RDB_object **restbpp)
 {
     int ret;
-    RDB_table *tb1p, *tb2p, *tb3p, *tb4p;
+    RDB_object *tb1p, *tb2p, *tb3p, *tb4p;
 
     tb1p = _RDB_dup_vtable(tbp->var.semiminus.tb1p->var._union.tb1p, ecp);
     if (tb1p == NULL) {
@@ -661,7 +600,7 @@ transform_semiminus_union(RDB_table *tbp, RDB_exec_context *ecp,
 }
 
 static int
-mutate_semiminus(RDB_table *tbp, RDB_table **tbpv, int cap,
+mutate_semiminus(RDB_object *tbp, RDB_object **tbpv, int cap,
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
     int tbc;
@@ -672,8 +611,8 @@ mutate_semiminus(RDB_table *tbp, RDB_table **tbpv, int cap,
     if (tbc < 0)
         return tbc;
     for (i = 0; i < tbc; i++) {
-        RDB_table *ntbp;
-        RDB_table *otbp = _RDB_dup_vtable(tbp->var.semiminus.tb2p, ecp);
+        RDB_object *ntbp;
+        RDB_object *otbp = _RDB_dup_vtable(tbp->var.semiminus.tb2p, ecp);
         if (otbp == NULL)
             return RDB_ERROR;
 
@@ -693,7 +632,7 @@ mutate_semiminus(RDB_table *tbp, RDB_table **tbpv, int cap,
 }
 
 static int
-mutate_semijoin(RDB_table *tbp, RDB_table **tbpv, int cap,
+mutate_semijoin(RDB_object *tbp, RDB_object **tbpv, int cap,
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
     int tbc1, tbc2;
@@ -703,8 +642,8 @@ mutate_semijoin(RDB_table *tbp, RDB_table **tbpv, int cap,
     if (tbc1 < 0)
         return tbc1;
     for (i = 0; i < tbc1; i++) {
-        RDB_table *ntbp;
-        RDB_table *otbp = _RDB_dup_vtable(tbp->var.semijoin.tb2p, ecp);
+        RDB_object *ntbp;
+        RDB_object *otbp = _RDB_dup_vtable(tbp->var.semijoin.tb2p, ecp);
         if (otbp == NULL)
             return RDB_ERROR;
 
@@ -717,8 +656,8 @@ mutate_semijoin(RDB_table *tbp, RDB_table **tbpv, int cap,
     if (tbc2 < 0)
         return tbc2;
     for (i = tbc1; i < tbc1 + tbc2; i++) {
-        RDB_table *ntbp;
-        RDB_table *otbp = _RDB_dup_vtable(tbp->var.semijoin.tb1p, ecp);
+        RDB_object *ntbp;
+        RDB_object *otbp = _RDB_dup_vtable(tbp->var.semijoin.tb1p, ecp);
         if (otbp == NULL)
             return RDB_ERROR;
 
@@ -731,7 +670,7 @@ mutate_semijoin(RDB_table *tbp, RDB_table **tbpv, int cap,
 }
 
 static int
-mutate_rename(RDB_table *tbp, RDB_table **tbpv, int cap, RDB_exec_context *ecp,
+mutate_rename(RDB_object *tbp, RDB_object **tbpv, int cap, RDB_exec_context *ecp,
         RDB_transaction *txp)
 {
     int tbc;
@@ -741,7 +680,7 @@ mutate_rename(RDB_table *tbp, RDB_table **tbpv, int cap, RDB_exec_context *ecp,
     if (tbc < 0)
         return tbc;
     for (i = 0; i < tbc; i++) {
-        RDB_table *ntbp;
+        RDB_object *ntbp;
 
         ntbp = RDB_rename(tbpv[i], tbp->var.rename.renc, tbp->var.rename.renv,
                 ecp);
@@ -753,7 +692,7 @@ mutate_rename(RDB_table *tbp, RDB_table **tbpv, int cap, RDB_exec_context *ecp,
 }
 
 static int
-mutate_extend(RDB_table *tbp, RDB_table **tbpv, int cap,
+mutate_extend(RDB_object *tbp, RDB_object **tbpv, int cap,
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
     int tbc;
@@ -774,7 +713,7 @@ mutate_extend(RDB_table *tbp, RDB_table **tbpv, int cap,
         extv[i].name = tbp->var.extend.attrv[i].name;
 
     for (i = 0; i < tbc; i++) {
-        RDB_table *ntbp;
+        RDB_object *ntbp;
 
         for (j = 0; j < tbp->var.extend.attrc; j++) {
             extv[j].exp = RDB_dup_expr(tbp->var.extend.attrv[j].exp, ecp);
@@ -795,7 +734,7 @@ mutate_extend(RDB_table *tbp, RDB_table **tbpv, int cap,
 }
 
 static int
-mutate_summarize(RDB_table *tbp, RDB_table **tbpv, int cap,
+mutate_summarize(RDB_object *tbp, RDB_object **tbpv, int cap,
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
     int tbc;
@@ -817,8 +756,8 @@ mutate_summarize(RDB_table *tbp, RDB_table **tbpv, int cap,
     }
 
     for (i = 0; i < tbc; i++) {
-        RDB_table *ntbp;
-        RDB_table *otbp = _RDB_dup_vtable(tbp->var.summarize.tb2p, ecp);
+        RDB_object *ntbp;
+        RDB_object *otbp = _RDB_dup_vtable(tbp->var.summarize.tb2p, ecp);
         if (otbp == NULL) {
             free(addv);
             return RDB_ERROR;
@@ -849,7 +788,7 @@ mutate_summarize(RDB_table *tbp, RDB_table **tbpv, int cap,
 }
 
 static int
-mutate_project(RDB_table *tbp, RDB_table **tbpv, int cap,
+mutate_project(RDB_object *tbp, RDB_object **tbpv, int cap,
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
     int tbc;
@@ -862,7 +801,7 @@ mutate_project(RDB_table *tbp, RDB_table **tbpv, int cap,
         tbc = tbp->var.project.tbp->stp->indexc;
         for (i = 0; i < tbc; i++) {
             _RDB_tbindex *indexp = &tbp->var.project.tbp->stp->indexv[i];
-            RDB_table *ptbp = _RDB_dup_vtable(tbp, ecp);
+            RDB_object *ptbp = _RDB_dup_vtable(tbp, ecp);
             if (ptbp == NULL)
                 return RDB_ERROR;
             ptbp->var.project.indexp = indexp;
@@ -882,7 +821,7 @@ mutate_project(RDB_table *tbp, RDB_table **tbpv, int cap,
             namev[i] = tbp->typ->var.basetyp->var.tuple.attrv[i].name;
 
         for (i = 0; i < tbc; i++) {
-            RDB_table *ntbp;
+            RDB_object *ntbp;
 
             ntbp = RDB_project(tbpv[i], tbp->typ->var.basetyp->var.tuple.attrc,
                     namev, ecp);
@@ -916,7 +855,7 @@ common_attrs(RDB_type *tpltyp1, RDB_type *tpltyp2, char **cmattrv)
 }
 
 static int
-mutate_join(RDB_table *tbp, RDB_table **tbpv, int cap,
+mutate_join(RDB_object *tbp, RDB_object **tbpv, int cap,
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
     int tbc1, tbc2, tbc;
@@ -940,7 +879,7 @@ mutate_join(RDB_table *tbp, RDB_table **tbpv, int cap,
     }
     tbc = 0;
     for (i = 0; i < tbc1; i++) {
-        RDB_table *ntbp;
+        RDB_object *ntbp;
 
         /*
          * Take project with index only if the index covers the
@@ -950,7 +889,7 @@ mutate_join(RDB_table *tbp, RDB_table **tbpv, int cap,
                 || tbpv[i]->var.project.indexp == NULL
                 || attrv_covers_index(cmattrc, cmattrv,
                         tbpv[i]->var.project.indexp)) {
-            RDB_table *otbp = _RDB_dup_vtable(tbp->var.join.tb2p, ecp);
+            RDB_object *otbp = _RDB_dup_vtable(tbp->var.join.tb2p, ecp);
             if (otbp == NULL) {
                 free(cmattrv);
                 return RDB_ERROR;
@@ -972,13 +911,13 @@ mutate_join(RDB_table *tbp, RDB_table **tbpv, int cap,
     }
     tbc = 0;
     for (i = tbc1; i < tbc1 + tbc2; i++) {
-        RDB_table *ntbp;
+        RDB_object *ntbp;
 
         if (tbpv[i]->kind != RDB_TB_PROJECT
                 || tbpv[i]->var.project.indexp == NULL
                 || attrv_covers_index(cmattrc, cmattrv,
                         tbpv[i]->var.project.indexp)) {
-            RDB_table *otbp = _RDB_dup_vtable(tbp->var.join.tb1p, ecp);
+            RDB_object *otbp = _RDB_dup_vtable(tbp->var.join.tb1p, ecp);
             if (otbp == NULL) {
                 free(cmattrv);
                 return RDB_ERROR;
@@ -998,7 +937,7 @@ mutate_join(RDB_table *tbp, RDB_table **tbpv, int cap,
 }
 
 static int
-mutate_wrap(RDB_table *tbp, RDB_table **tbpv, int cap,
+mutate_wrap(RDB_object *tbp, RDB_object **tbpv, int cap,
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
     int tbc;
@@ -1008,7 +947,7 @@ mutate_wrap(RDB_table *tbp, RDB_table **tbpv, int cap,
     if (tbc < 0)
         return tbc;
     for (i = 0; i < tbc; i++) {
-        RDB_table *ntbp;
+        RDB_object *ntbp;
 
         ntbp = RDB_wrap(tbpv[i], tbp->var.wrap.wrapc, tbp->var.wrap.wrapv, ecp);
         if (ntbp == NULL)
@@ -1019,7 +958,7 @@ mutate_wrap(RDB_table *tbp, RDB_table **tbpv, int cap,
 }
 
 static int
-mutate_unwrap(RDB_table *tbp, RDB_table **tbpv, int cap,
+mutate_unwrap(RDB_object *tbp, RDB_object **tbpv, int cap,
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
     int tbc;
@@ -1029,7 +968,7 @@ mutate_unwrap(RDB_table *tbp, RDB_table **tbpv, int cap,
     if (tbc < 0)
         return tbc;
     for (i = 0; i < tbc; i++) {
-        RDB_table *ntbp;
+        RDB_object *ntbp;
 
         ntbp = RDB_unwrap(tbpv[i], tbp->var.unwrap.attrc, tbp->var.unwrap.attrv,
                 ecp);
@@ -1041,7 +980,7 @@ mutate_unwrap(RDB_table *tbp, RDB_table **tbpv, int cap,
 }
 
 static int
-mutate_group(RDB_table *tbp, RDB_table **tbpv, int cap,
+mutate_group(RDB_object *tbp, RDB_object **tbpv, int cap,
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
     int tbc;
@@ -1051,7 +990,7 @@ mutate_group(RDB_table *tbp, RDB_table **tbpv, int cap,
     if (tbc < 0)
         return tbc;
     for (i = 0; i < tbc; i++) {
-        RDB_table *ntbp;
+        RDB_object *ntbp;
 
         ntbp = RDB_group(tbpv[i], tbp->var.group.attrc, tbp->var.group.attrv,
                 tbp->var.group.gattr, ecp);
@@ -1063,7 +1002,7 @@ mutate_group(RDB_table *tbp, RDB_table **tbpv, int cap,
 }
 
 static int
-mutate_ungroup(RDB_table *tbp, RDB_table **tbpv, int cap,
+mutate_ungroup(RDB_object *tbp, RDB_object **tbpv, int cap,
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
     int tbc;
@@ -1073,7 +1012,7 @@ mutate_ungroup(RDB_table *tbp, RDB_table **tbpv, int cap,
     if (tbc < 0)
         return tbc;
     for (i = 0; i < tbc; i++) {
-        RDB_table *ntbp;
+        RDB_object *ntbp;
 
         ntbp = RDB_ungroup(tbpv[i], tbp->var.ungroup.attr, ecp);
         if (ntbp == NULL)
@@ -1084,7 +1023,7 @@ mutate_ungroup(RDB_table *tbp, RDB_table **tbpv, int cap,
 }
 
 static int
-mutate_sdivide(RDB_table *tbp, RDB_table **tbpv, int cap,
+mutate_sdivide(RDB_object *tbp, RDB_object **tbpv, int cap,
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
     int tbc1, tbc2;
@@ -1094,9 +1033,9 @@ mutate_sdivide(RDB_table *tbp, RDB_table **tbpv, int cap,
     if (tbc1 < 0)
         return tbc1;
     for (i = 0; i < tbc1; i++) {
-        RDB_table *ntbp;
-        RDB_table *otb1p = _RDB_dup_vtable(tbp->var.sdivide.tb2p, ecp);
-        RDB_table *otb2p = _RDB_dup_vtable(tbp->var.sdivide.tb3p, ecp);
+        RDB_object *ntbp;
+        RDB_object *otb1p = _RDB_dup_vtable(tbp->var.sdivide.tb2p, ecp);
+        RDB_object *otb2p = _RDB_dup_vtable(tbp->var.sdivide.tb3p, ecp);
         if (otb1p == NULL || otb2p == NULL)
             return RDB_ERROR;
 
@@ -1109,9 +1048,9 @@ mutate_sdivide(RDB_table *tbp, RDB_table **tbpv, int cap,
     if (tbc2 < 0)
         return tbc2;
     for (i = tbc1; i < tbc1 + tbc2; i++) {
-        RDB_table *ntbp;
-        RDB_table *otb1p = _RDB_dup_vtable(tbp->var.sdivide.tb1p, ecp);
-        RDB_table *otb2p = _RDB_dup_vtable(tbp->var.sdivide.tb3p, ecp);
+        RDB_object *ntbp;
+        RDB_object *otb1p = _RDB_dup_vtable(tbp->var.sdivide.tb1p, ecp);
+        RDB_object *otb2p = _RDB_dup_vtable(tbp->var.sdivide.tb3p, ecp);
         if (otb1p == NULL || otb2p == NULL)
             return RDB_ERROR;
 
@@ -1124,7 +1063,7 @@ mutate_sdivide(RDB_table *tbp, RDB_table **tbpv, int cap,
 }
 
 static int
-mutate(RDB_table *tbp, RDB_table **tbpv, int cap, RDB_exec_context *ecp,
+mutate(RDB_object *tbp, RDB_object **tbpv, int cap, RDB_exec_context *ecp,
         RDB_transaction *txp)
 {
     switch (tbp->kind) {
@@ -1166,36 +1105,12 @@ mutate(RDB_table *tbp, RDB_table **tbpv, int cap, RDB_exec_context *ecp,
     return 0;
 }
 
-enum {
-    tbpv_cap = 256
-};
-
-RDB_bool
-_RDB_index_sorts(struct _RDB_tbindex *indexp, int seqitc, const RDB_seq_item seqitv[])
-{
-    int i;
-/*
-    if (indexp->unique)
-        return RDB_TRUE;
-*/
-    if (indexp->idxp == NULL || !RDB_index_is_ordered(indexp->idxp)
-            || indexp->attrc < seqitc)
-        return RDB_FALSE;
-
-    for (i = 0; i < seqitc; i++) {
-        if (strcmp(indexp->attrv[i].attrname, seqitv[i].attrname) != 0
-                || indexp->attrv[i].asc != seqitv[i].asc)
-            return RDB_FALSE;
-    }
-    return RDB_TRUE;
-}
-
 /*
  * Estimate cost for reading all tuples of the table in the order
  * specified by seqitc/seqitv.
  */
 static unsigned
-sorted_table_cost(RDB_table *tbp, int seqitc,
+sorted_table_cost(RDB_object *tbp, int seqitc,
         const RDB_seq_item seqitv[])
 {
     int cost = table_cost(tbp);
@@ -1217,9 +1132,9 @@ sorted_table_cost(RDB_table *tbp, int seqitc,
 }
 
 static int
-add_project(RDB_table *tbp, RDB_exec_context *ecp)
+add_project(RDB_object *tbp, RDB_exec_context *ecp)
 {
-    RDB_table *ptbp;
+    RDB_object *ptbp;
     int ret;
 
     switch (tbp->kind) {
@@ -1441,53 +1356,56 @@ add_project(RDB_table *tbp, RDB_exec_context *ecp)
     }
     return RDB_OK;
 }
+#endif
 
 int
-_RDB_optimize(RDB_table *tbp, int seqitc, const RDB_seq_item seqitv[],
-        RDB_exec_context *ecp, RDB_transaction *txp, RDB_table **ntbpp)
+_RDB_optimize(RDB_object *tbp, int seqitc, const RDB_seq_item seqitv[],
+        RDB_exec_context *ecp, RDB_transaction *txp, RDB_object **ntbpp)
 {
     int ret;
     int i;
 
-    if (tbp->kind == RDB_TB_REAL) {
-        if (seqitc > 0 && tbp->stp != NULL) {
+    if (tbp->var.tb.exp == NULL) {
+        if (seqitc > 0 && tbp->var.tb.stp != NULL) {
             /*
              * Check if an index can be used for sorting
              */
 
-            for (i = 0; i < tbp->stp->indexc
-                    && !_RDB_index_sorts(&tbp->stp->indexv[i],
+            for (i = 0; i < tbp->var.tb.stp->indexc
+                    && !_RDB_index_sorts(&tbp->var.tb.stp->indexv[i],
                             seqitc, seqitv);
                     i++);
-            /* If yes, create projection */
+            /* If yes, create projection !!
             if (i < tbp->stp->indexc) {
-                RDB_table *ptbp = null_project(tbp, ecp);
+                RDB_object *ptbp = null_project(tbp, ecp);
                 if (ptbp == NULL)
                     return RDB_ERROR;
                 ptbp->var.project.indexp = &tbp->stp->indexv[i];
                 tbp = ptbp;
             }
+            */
         }
         *ntbpp = tbp;
     } else {
-        RDB_table *ntbp;
+        RDB_expression *nexp;
+/*
         unsigned obestcost, bestcost;
         int bestn;
         int tbc;
-        RDB_table *tbpv[tbpv_cap];
-
+        RDB_object *tbpv[tbpv_cap];
+*/
         /*
          * Make a copy of the table, so it can be transformed freely
          */
-        ntbp = _RDB_dup_vtable(tbp, ecp);
-        if (ntbp == NULL)
+        nexp = RDB_dup_expr(tbp->var.tb.exp, ecp);
+        if (nexp == NULL)
             return RDB_ERROR;
 
         /*
          * Algebraic optimization
          */
 
-        ret = _RDB_transform(ntbp, ecp, txp);
+        ret = _RDB_transform(nexp, ecp, txp);
         if (ret != RDB_OK)
             return ret;
 
@@ -1496,7 +1414,7 @@ _RDB_optimize(RDB_table *tbp, int seqitc, const RDB_seq_item seqitv[],
          * by a constraint
          */
         if (RDB_tx_db(txp) != NULL) {
-            ret = replace_empty(ntbp, ecp, txp);
+            ret = replace_empty(nexp, ecp, txp);
             if (ret != RDB_OK)
                 return ret;
         }
@@ -1505,8 +1423,9 @@ _RDB_optimize(RDB_table *tbp, int seqitc, const RDB_seq_item seqitv[],
          * Add a project table above real tables
          * to prepare for indexes
          */
-        
-        ret = add_project(ntbp, ecp);
+
+#ifdef NIX
+        ret = add_project(nexp, ecp);
         if (ret != RDB_OK)
             return ret;
 
@@ -1514,11 +1433,11 @@ _RDB_optimize(RDB_table *tbp, int seqitc, const RDB_seq_item seqitv[],
          * Try to find cheapest table
          */
 
-        bestcost = sorted_table_cost(ntbp, seqitc, seqitv);
+        bestcost = sorted_table_cost(nexp, seqitc, seqitv);
         do {
             obestcost = bestcost;
 
-            tbc = mutate(ntbp, tbpv, tbpv_cap, ecp, txp);
+            tbc = mutate(nexp, tbpv, tbpv_cap, ecp, txp);
             if (tbc < 0)
                 return tbc;
 
@@ -1536,8 +1455,8 @@ _RDB_optimize(RDB_table *tbp, int seqitc, const RDB_seq_item seqitv[],
                 for (i = 0; i < tbc; i++)
                     RDB_drop_table(tbpv[i], ecp, txp);
             } else {
-                RDB_drop_table(ntbp, ecp, txp);
-                ntbp = tbpv[bestn];
+                RDB_drop_expr(nexp, ecp);
+                nexp = tbpv[bestn];
                 for (i = 0; i < tbc; i++) {
                     if (i != bestn)
                         RDB_drop_table(tbpv[i], ecp, txp);
@@ -1545,7 +1464,17 @@ _RDB_optimize(RDB_table *tbp, int seqitc, const RDB_seq_item seqitv[],
             }
         } while (bestcost < obestcost);
         *ntbpp = ntbp;
+        #endif
+        *ntbpp = RDB_expr_to_vtable(nexp, ecp, txp);
     }
 
     return RDB_OK;
+}
+
+RDB_expression *
+_RDB_optimize_expr(RDB_expression *exp, int seqitc, const RDB_seq_item seqitv[],
+        RDB_exec_context *ecp, RDB_transaction *txp)
+{
+    /* !! */
+    return RDB_dup_expr(exp, ecp);
 }

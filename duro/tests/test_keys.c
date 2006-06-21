@@ -8,7 +8,7 @@ int
 test_keys(RDB_database *dbp, RDB_exec_context *ecp)
 {
     RDB_transaction tx;
-    RDB_table *tbp;
+    RDB_object *tbp;
     RDB_object tpl;
     int ret;
 
@@ -50,6 +50,7 @@ test_keys(RDB_database *dbp, RDB_exec_context *ecp)
     } else {
         printf("Wrong result of RDB_insert()\n");
     }
+    RDB_clear_err(ecp);
 
     printf("Inserting tuple #2\n");
 

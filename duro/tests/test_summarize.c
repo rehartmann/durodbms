@@ -3,11 +3,12 @@
 #include <rel/rdb.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <assert.h>
 
 RDB_seq_item depseqitv[] = { { "DEPTNO", RDB_TRUE } };
 
 static int
-print_table(RDB_table *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
+print_table(RDB_object *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
 {
     int ret;
     RDB_object *tplp;
@@ -45,7 +46,7 @@ error:
 }
 
 static int
-check_contains(RDB_table *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
+check_contains(RDB_object *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
 {
     int ret;
     RDB_object tpl;
@@ -86,15 +87,13 @@ check_contains(RDB_table *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
     return RDB_OK;
 }
 
-static char *projattr = "DEPTNO";
-
 int
 test_summarize(RDB_database *dbp, RDB_exec_context *ecp)
 {
     RDB_transaction tx;
-    RDB_table *tbp, *tbp2, *vtbp, *untbp, *projtbp;
+    RDB_expression *exp, *texp, *argp;
+    RDB_object *tbp, *tbp2, *vtbp, *untbp;
     int ret;
-    RDB_summarize_add addv[3];
 
     printf("Starting transaction\n");
     ret = RDB_begin_tx(ecp, &tx, dbp, NULL);
@@ -115,11 +114,19 @@ test_summarize(RDB_database *dbp, RDB_exec_context *ecp)
 
     printf("Creating EMPS1 union EMPS2\n");
 
-    untbp = RDB_union(tbp2, tbp, ecp);
-    if (untbp == NULL) {
-        RDB_rollback(ecp, &tx);
-        return RDB_ERROR;
-    }
+    exp = RDB_ro_op("UNION", 2, NULL, ecp);
+    assert(exp != NULL);
+
+    argp = RDB_table_ref_to_expr(tbp, ecp);
+    assert(argp != NULL);
+    RDB_add_arg(exp, argp);
+
+    argp = RDB_table_ref_to_expr(tbp2, ecp);    
+    assert(argp != NULL);
+    RDB_add_arg(exp, argp);
+    
+    untbp = RDB_expr_to_vtable(exp, ecp, &tx);
+    assert(untbp != NULL);
 
     /* Give the table a name, because both arguments of SUMMARIZE
      * must not share an unnamed table.
@@ -133,24 +140,55 @@ test_summarize(RDB_database *dbp, RDB_exec_context *ecp)
     printf("Summarizing union PER { DEPTNO } ADD COUNT AS COUNT_EMPS,\n");
     printf("    SUM(SALARY) AS SUM_SALARY, AVG(SALARY) AS AVG_SALARY\n");
 
-    projtbp = RDB_project(untbp, 1, &projattr, ecp);
-    if (projtbp == NULL) {
-        RDB_rollback(ecp, &tx);
-        return RDB_ERROR;
-    }
+    exp = RDB_ro_op("SUMMARIZE", 8, NULL, ecp);
+    assert(exp != NULL);
 
-    addv[0].op = RDB_COUNT;
-    addv[0].name = "COUNT_EMPS";
+    RDB_add_arg(exp, RDB_table_ref_to_expr(untbp, ecp));
 
-    addv[1].op = RDB_SUM;
-    addv[1].exp = RDB_expr_var("SALARY", ecp);
-    addv[1].name = "SUM_SALARY";
+    texp = RDB_ro_op("PROJECT", 2, NULL, ecp);
+    assert(texp != NULL);
 
-    addv[2].op = RDB_AVG;
-    addv[2].exp = RDB_expr_var("SALARY", ecp);
-    addv[2].name = "AVG_SALARY";
+    argp = RDB_table_ref_to_expr(untbp, ecp);
+    assert(argp != NULL);
+    RDB_add_arg(texp, argp);
 
-    vtbp = RDB_summarize(untbp, projtbp, 3, addv, ecp, &tx);
+    argp = RDB_string_to_expr("DEPTNO", ecp);
+    assert(argp != NULL);
+    RDB_add_arg(texp, argp);
+
+    RDB_add_arg(exp, texp);
+    
+    argp = RDB_ro_op("COUNT", 0, NULL, ecp);
+    assert(argp != NULL);
+    RDB_add_arg(exp, argp);
+    
+    argp = RDB_string_to_expr("COUNT_EMPS", ecp);
+    assert(argp != NULL);
+    RDB_add_arg(exp, argp);
+    
+    argp = RDB_ro_op("SUM", 1, NULL, ecp);
+    assert(argp != NULL);
+    RDB_add_arg(exp, argp);
+    
+    RDB_add_arg(argp, RDB_expr_var("SALARY", ecp));
+    
+    argp = RDB_string_to_expr("SUM_SALARY", ecp);
+    assert(argp != NULL);
+    RDB_add_arg(exp, argp);
+
+    argp = RDB_ro_op("AVG", 1, NULL, ecp);
+    assert(argp != NULL);
+    RDB_add_arg(exp, argp);
+    
+    RDB_add_arg(argp, RDB_expr_var("SALARY", ecp));
+    
+    argp = RDB_string_to_expr("AVG_SALARY", ecp);
+    assert(argp != NULL);
+    RDB_add_arg(exp, argp);
+
+    vtbp = RDB_expr_to_vtable(exp, ecp, &tx);
+    assert(vtbp != NULL);
+
     if (vtbp == NULL) {
         RDB_rollback(ecp, &tx);
         return RDB_ERROR;

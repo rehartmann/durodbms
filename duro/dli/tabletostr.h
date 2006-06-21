@@ -4,23 +4,24 @@
 /*
  * $Id$
  *
- * Copyright (C) 2004, 2005 René Hartmann.
+ * Copyright (C) 2004-2006 René Hartmann.
  * See the file COPYING for redistribution information.
  */
 
 #include <rel/rdb.h>
+#include <stdio.h>
 
 enum {
     RDB_SHOW_INDEX = 1
 };
 
 int
-_RDB_table_to_str(RDB_object *objp, RDB_table *tbp, RDB_exec_context *,
-        RDB_transaction *, int options);
+_RDB_print_obj(RDB_object *objp, RDB_transaction *, FILE *,
+        RDB_exec_context *);
 
 int
 _RDB_obj_to_str(RDB_object *dstp, const RDB_object *srcp,
-        RDB_exec_context *, RDB_transaction *);
+        RDB_exec_context *, RDB_transaction *, int options);
 
 int
 _RDB_expr_to_str(RDB_object *dstp, const RDB_expression *exp,

@@ -1,3 +1,10 @@
+/*
+ * $Id$
+ *
+ * Copyright (C) 2005-2006 René Hartmann.
+ * See the file COPYING for redistribution information.
+ */
+
 #include "rdb.h"
 #include "internal.h"
 #include <gen/hashmap.h>

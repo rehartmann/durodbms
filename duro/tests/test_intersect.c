@@ -5,7 +5,7 @@
 #include <stdio.h>
 
 static int
-print_table(RDB_table *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
+print_table(RDB_object *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
 {
     int ret;
     RDB_object *tplp;
@@ -42,7 +42,8 @@ int
 test_intersect(RDB_database *dbp, RDB_exec_context *ecp)
 {
     RDB_transaction tx;
-    RDB_table *tbp, *tbp2, *vtbp;
+    RDB_expression *exp, *argp;
+    RDB_object *tbp, *tbp2, *vtbp;
     int ret;
 
     printf("Starting transaction\n");
@@ -64,8 +65,31 @@ test_intersect(RDB_database *dbp, RDB_exec_context *ecp)
 
     printf("Creating EMPS1 intersect EMPS2\n");
 
-    vtbp = RDB_intersect(tbp2, tbp, ecp);
+    exp = RDB_ro_op("INTERSECT", 2, NULL, ecp);
+    if (exp == NULL) {
+        RDB_rollback(ecp, &tx);
+        return RDB_ERROR;
+    }
+
+    argp = RDB_table_ref_to_expr(tbp, ecp);
+    if (argp == NULL) {
+        RDB_drop_expr(exp, ecp);
+        RDB_rollback(ecp, &tx);
+        return RDB_ERROR;
+    }
+    RDB_add_arg(exp, argp);
+
+    argp = RDB_table_ref_to_expr(tbp2, ecp);
+    if (argp == NULL) {
+        RDB_drop_expr(exp, ecp);
+        RDB_rollback(ecp, &tx);
+        return RDB_ERROR;
+    }
+    RDB_add_arg(exp, argp);
+
+    vtbp = RDB_expr_to_vtable(exp, ecp, &tx);
     if (vtbp == NULL) {
+        RDB_drop_expr(exp, ecp);
         RDB_rollback(ecp, &tx);
         return RDB_ERROR;
     }

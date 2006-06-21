@@ -29,7 +29,7 @@ array_create_cmd(TclState *statep, Tcl_Interp *interp, int objc,
     char *txstr;
     RDB_transaction *txp;
     Tcl_HashEntry *entryp;
-    RDB_table *tbp;
+    RDB_object *tbp;
     RDB_object *arrayp;
     int new;
     char handle[20];
