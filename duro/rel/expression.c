@@ -353,7 +353,7 @@ expr_op_type(const RDB_expression *exp, const RDB_type *tpltyp,
     int ret;
     RDB_type *typ;
     RDB_ro_op_desc *op;
-    RDB_type *tbtyp;
+    RDB_type *reltyp;
     RDB_type **argtv;
 
     /*
@@ -362,6 +362,7 @@ expr_op_type(const RDB_expression *exp, const RDB_type *tpltyp,
     if (exp->var.op.argc == 2
             && strcmp(exp->var.op.name, "WHERE") == 0) {
         RDB_type *condtyp;
+        RDB_type *jtyp;
 
         typ = RDB_expr_type(exp->var.op.argv[0], tpltyp, ecp, txp);
         if (typ == NULL)
@@ -371,14 +372,26 @@ expr_op_type(const RDB_expression *exp, const RDB_type *tpltyp,
             return NULL;
         }
 
-        condtyp = RDB_expr_type(exp->var.op.argv[1], typ->var.basetyp,
-                ecp, txp);
-        if (condtyp == NULL)
+        if (tpltyp != NULL) {
+            jtyp = RDB_join_tuple_types(tpltyp, typ->var.basetyp, ecp);
+            if (jtyp == NULL) {
+                RDB_drop_type(typ, ecp, NULL);
+                return NULL;
+            }
+        }
+
+        condtyp = RDB_expr_type(exp->var.op.argv[1],
+                tpltyp == NULL ? typ->var.basetyp : jtyp, ecp, txp);
+        if (tpltyp != NULL)
+            RDB_drop_type(jtyp, ecp, NULL);
+        if (condtyp == NULL) {
+            RDB_drop_type(typ, ecp, NULL);
             return NULL;
+        }
 
         if (condtyp != &RDB_BOOLEAN) {
             RDB_raise_type_mismatch("WHERE requires BOOLEAN argument", ecp);
-            /* !! */
+            RDB_drop_type(typ, ecp, NULL);
             return NULL;
         }
         return typ;
@@ -388,14 +401,28 @@ expr_op_type(const RDB_expression *exp, const RDB_type *tpltyp,
     }
 
     /* Aggregate operators */
-    if (strcmp(exp->var.op.name, "COUNT") == 0)
+    if (strcmp(exp->var.op.name, "COUNT") == 0) {
+        RDB_bool isrel;
+        
+        reltyp = RDB_expr_type(exp->var.op.argv[0], tpltyp, ecp, txp);
+        if (reltyp == NULL) {
+            return NULL;
+        }
+        isrel = (RDB_bool) (reltyp->kind == RDB_TP_RELATION);
+        if (!RDB_type_is_scalar(reltyp)) {
+            RDB_drop_type(reltyp, ecp, NULL);
+        }
+        if (!isrel)
+            return NULL;
         return &RDB_INTEGER;
-    if (strcmp(exp->var.op.name, "AVG") == 0)
+    }
+    if (strcmp(exp->var.op.name, "AVG") == 0) {
+        /* !! check */
         return &RDB_DOUBLE;
+    }
     if (strcmp(exp->var.op.name, "SUM") == 0
             || strcmp(exp->var.op.name, "MAX") == 0
             || strcmp(exp->var.op.name, "MIN") == 0) {
-        RDB_type *reltyp;
         RDB_attr *attrp;
 
         if (exp->var.op.argc != 2) {
@@ -430,15 +457,15 @@ expr_op_type(const RDB_expression *exp, const RDB_type *tpltyp,
         int renc = (exp->var.op.argc - 1) / 2;
         RDB_renaming *renv = NULL;
 
-        tbtyp = RDB_expr_type(exp->var.op.argv[0], tpltyp, ecp, txp);
-        if (tbtyp == NULL) {
+        reltyp = RDB_expr_type(exp->var.op.argv[0], tpltyp, ecp, txp);
+        if (reltyp == NULL) {
             return NULL;
         }
         
         if (renc > 0) {
             renv = malloc(sizeof (RDB_renaming) * renc);
             if (renv == NULL) {
-                RDB_drop_type(tbtyp, ecp, NULL);
+                RDB_drop_type(reltyp, ecp, NULL);
                 RDB_raise_no_memory(ecp);
                 return NULL;
             }
@@ -448,13 +475,13 @@ expr_op_type(const RDB_expression *exp, const RDB_type *tpltyp,
             if (exp->var.op.argv[1 + i * 2]->kind != RDB_EX_OBJ ||
                     exp->var.op.argv[1 + i * 2]->var.obj.typ != &RDB_STRING) {
                 free(renv);
-                RDB_drop_type(tbtyp, ecp, NULL);
+                RDB_drop_type(reltyp, ecp, NULL);
                 RDB_raise_invalid_argument("STRING argument required", ecp);
                 return NULL;
             }
             if (exp->var.op.argv[2 + i * 2]->kind != RDB_EX_OBJ ||
                     exp->var.op.argv[2 + i * 2]->var.obj.typ != &RDB_STRING) {
-                RDB_drop_type(tbtyp, ecp, NULL);
+                RDB_drop_type(reltyp, ecp, NULL);
                 RDB_raise_invalid_argument("STRING argument required", ecp);
                 return NULL;
             }
@@ -462,12 +489,12 @@ expr_op_type(const RDB_expression *exp, const RDB_type *tpltyp,
             renv[i].to = RDB_obj_string(&exp->var.op.argv[2 + i * 2]->var.obj);
         }
 
-        switch (tbtyp->kind) {
+        switch (reltyp->kind) {
             case RDB_TP_RELATION:
-                typ = RDB_rename_relation_type(tbtyp, renc, renv, ecp);
+                typ = RDB_rename_relation_type(reltyp, renc, renv, ecp);
                 break;
             case RDB_TP_TUPLE:
-                typ = RDB_rename_tuple_type(tbtyp, renc, renv, ecp);
+                typ = RDB_rename_tuple_type(reltyp, renc, renv, ecp);
                 break;
             default:
                 RDB_raise_invalid_argument(
@@ -475,7 +502,7 @@ expr_op_type(const RDB_expression *exp, const RDB_type *tpltyp,
                 typ = NULL;
         }
         free(renv);
-        RDB_drop_type(tbtyp, ecp, NULL);
+        RDB_drop_type(reltyp, ecp, NULL);
         return typ;
     }
     if (exp->var.op.argc >= 2 && (exp->var.op.argc % 2) == 0
@@ -754,7 +781,7 @@ RDB_expr_type(const RDB_expression *exp, const RDB_type *tuptyp,
                 RDB_raise_attribute_not_found(exp->var.varname, ecp);
                 return NULL;
             }
-            return attrp->typ;
+            return _RDB_dup_nonscalar_type(attrp->typ, ecp);
         case RDB_EX_TUPLE_ATTR:
             typ = RDB_expr_type(exp->var.op.argv[0], tuptyp, ecp, txp);
             if (typ == NULL)
@@ -1227,206 +1254,44 @@ RDB_drop_expr(RDB_expression *exp, RDB_exec_context *ecp)
     return ret;
 }
 
-#ifdef REMOVED
 static int
-evaluate_where(RDB_expression *exp, const RDB_object *tplp,
-        RDB_exec_context *ecp, RDB_transaction *txp, RDB_object *valp)
-{
-    int ret;
-    RDB_object tobj;
-    RDB_object *vtbp;
-    RDB_expression *wherep;
-    int argc = exp->var.op.argc;
-
-    if (argc != 2) {
-        RDB_raise_operator_not_found("", ecp);
-        return RDB_ERROR;
-    }
-
-    RDB_init_obj(&tobj);
-    ret = RDB_evaluate(exp->var.op.argv[0], tplp, ecp, txp, &tobj);
-    if (ret != RDB_OK) {
-        RDB_destroy_obj(&tobj, ecp);
-        return ret;
-    }
-    if (tobj.kind != RDB_OB_TABLE) {
-        RDB_destroy_obj(&tobj, ecp);
-        RDB_raise_type_mismatch("WHERE argument must be table", ecp);
-        return RDB_ERROR;
-    }
-
-    wherep = expr_resolve_attrs(exp->var.op.argv[1], tplp, ecp);
-    if (wherep == NULL) {
-        RDB_destroy_obj(&tobj, ecp);
-        return RDB_ERROR;
-    }
-
-    vtbp = RDB_select(RDB_obj_table(&tobj), wherep, ecp, txp);
-    if (vtbp == NULL) {
-        RDB_drop_expr(wherep, ecp);
-        RDB_destroy_obj(&tobj, ecp);
-        return RDB_ERROR;
-    }
-
-    RDB_table_to_obj(valp, vtbp, ecp);
-    tobj.var.tbp = NULL;
-    RDB_destroy_obj(&tobj, ecp);
-
-    return RDB_OK;  
-}
-
-static int
-evaluate_extend(RDB_expression *exp, const RDB_object *tplp,
+evaluate_vt(RDB_expression *exp, const RDB_object *tplp,
         RDB_exec_context *ecp, RDB_transaction *txp, RDB_object *valp)
 {
     int ret;
     int i;
-    RDB_object tobj;
-    RDB_object *tbp;
+    RDB_expression *nexp;
     RDB_object *vtbp;
-    RDB_virtual_attr *attrv;
     int argc = exp->var.op.argc;
-    int attrc = (argc - 1) / 2;
 
-    if (argc < 1) {
-        RDB_raise_operator_not_found("", ecp);
+    /*
+     * Build expression with variables replaced using *tplp
+     */
+
+    nexp = RDB_ro_op(exp->var.op.name, argc, NULL, ecp);
+    if (nexp == NULL)
+        return RDB_ERROR;
+    
+    for (i = 0; i < argc; i++) {
+        RDB_expression *argexp = expr_resolve_attrs(exp->var.op.argv[i],
+                tplp, ecp);
+        if (nexp == NULL) {
+            RDB_drop_expr(nexp, ecp);
+            return RDB_ERROR;
+        }
+        RDB_add_arg(nexp, argexp);
+    }
+
+    vtbp = RDB_expr_to_vtable(nexp, ecp, txp);
+    if (vtbp == NULL) {
+        RDB_drop_expr(nexp, ecp);
         return RDB_ERROR;
     }
 
-    RDB_init_obj(&tobj);
-    ret = RDB_evaluate(exp->var.op.argv[0], tplp, ecp, txp, &tobj);
-    if (ret != RDB_OK) {
-        RDB_destroy_obj(&tobj, ecp);
-        return ret;
-    }
-    attrv = malloc(sizeof (RDB_virtual_attr) * attrc);
-    if (attrv == NULL) {
-        RDB_raise_no_memory(ecp);
-        return RDB_ERROR;
-    }
-    for (i = 0; i < attrc; i++) {
-        attrv[i].exp = expr_resolve_attrs(exp->var.op.argv[1 + i * 2], tplp, ecp);
-        if (attrv[i].exp == NULL) {
-            free(attrv);
-            RDB_raise_no_memory(ecp);
-            return RDB_ERROR;
-        }
-        if (exp->var.op.argv[2 + i * 2]->kind != RDB_EX_OBJ ||
-                exp->var.op.argv[2 + i * 2]->var.obj.typ != &RDB_STRING) {
-            RDB_raise_invalid_argument("invalid EXTEND argument", ecp);
-            return RDB_ERROR;
-        }
-        attrv[i].name = RDB_obj_string(&exp->var.op.argv[2 + i * 2]->var.obj);
-    }
-
-    tbp = RDB_obj_table(&tobj);
-    if (tbp != NULL) {
-        vtbp = RDB_extend(tbp, attrc, attrv, ecp, txp);
-        if (vtbp == NULL) {
-            for (i = 0; i < attrc; i++) {
-                RDB_drop_expr(attrv[i].exp, ecp);
-            }
-            free(attrv);
-            RDB_destroy_obj(&tobj, ecp);
-            return RDB_ERROR;
-        }
-        free(attrv);
-        RDB_table_to_obj(valp, vtbp, ecp);
-        tobj.var.tbp = NULL;
-    } else {
-        if (tobj.kind != RDB_OB_TUPLE) {
-            RDB_destroy_obj(&tobj, ecp);
-            free(attrv);
-            RDB_raise_type_mismatch("EXTEND argument must be tuple or relation",
-                    ecp);
-            return RDB_ERROR;
-        }
-
-        ret = RDB_extend_tuple(&tobj, attrc, attrv, ecp, txp);
-        for (i = 0; i < attrc; i++) {
-            RDB_drop_expr(attrv[i].exp, ecp);
-        }
-        free(attrv);
-        if (ret != RDB_OK) {
-            RDB_destroy_obj(&tobj, ecp);
-            return ret;
-        }
-        ret = RDB_copy_obj(valp, &tobj, ecp);
-    }
-
-    RDB_destroy_obj(&tobj, ecp);
+    ret = _RDB_copy_obj(valp, vtbp, ecp, txp);
+    RDB_drop_table(vtbp, ecp, txp);
     return ret;
 }
-
-static int
-evaluate_summarize(RDB_expression *exp, const RDB_object *tplp,
-        RDB_exec_context *ecp, RDB_transaction *txp, RDB_object *valp)
-{
-    int ret;
-    int i;
-    RDB_object t1obj, t2obj;
-    RDB_object *tb1p, *tb2p;
-    RDB_object *vtbp;
-    RDB_summarize_add *addv;
-    int argc = exp->var.op.argc;
-    int addc = argc - 2;
-
-    if (argc < 2) {
-        RDB_raise_operator_not_found("", ecp);
-        return RDB_ERROR;
-    }
-
-    RDB_init_obj(&t1obj);
-    RDB_init_obj(&t2obj);
-    ret = RDB_evaluate(exp->var.op.argv[0], tplp, ecp, txp, &t1obj);
-    if (ret != RDB_OK) {
-        RDB_destroy_obj(&t1obj, ecp);
-        RDB_destroy_obj(&t2obj, ecp);
-        return ret;
-    }
-    ret = RDB_evaluate(exp->var.op.argv[1], tplp, ecp, txp, &t2obj);
-    if (ret != RDB_OK) {
-        RDB_destroy_obj(&t1obj, ecp);
-        RDB_destroy_obj(&t2obj, ecp);
-        return ret;
-    }
-
-    tb1p = RDB_obj_table(&t1obj);
-    if (tb1p == NULL) {
-        RDB_raise_invalid_argument("invalid SUMMARIZE argument", ecp);
-        return RDB_ERROR;
-    }
-    tb2p = RDB_obj_table(&t2obj);
-    if (tb2p == NULL) {
-        RDB_raise_invalid_argument("invalid SUMMARIZE argument", ecp);
-        return RDB_ERROR;
-    }
-    addv = expv_to_addv(addc, exp->var.op.argv + 2, tplp, ecp);
-    if (addv == NULL) {
-        RDB_raise_no_memory(ecp);
-        return RDB_ERROR;
-    }
-    vtbp = RDB_summarize(tb1p, tb2p, addc, addv, ecp, txp);
-    if (vtbp == NULL) {
-        for (i = 0; i < addc; i++) {
-            if (addv[i].exp != NULL)
-                RDB_drop_expr(addv[i].exp, ecp);
-        }
-        free(addv);
-        RDB_destroy_obj(&t1obj, ecp);
-        RDB_destroy_obj(&t2obj, ecp);
-        return RDB_ERROR;
-    }
-    free(addv);
-    RDB_table_to_obj(valp, vtbp, ecp);
-    t1obj.var.tbp = NULL;
-    t2obj.var.tbp = NULL;
-
-    RDB_destroy_obj(&t1obj, ecp);
-    RDB_destroy_obj(&t2obj, ecp);
-    return RDB_OK;
-}
-#endif
 
 static int
 evaluate_ro_op(RDB_expression *exp, const RDB_object *tplp,
@@ -1451,15 +1316,7 @@ evaluate_ro_op(RDB_expression *exp, const RDB_object *tplp,
         if (typ->kind == RDB_TP_RELATION) {
             RDB_drop_type(typ, ecp, NULL);
 
-            exp = RDB_dup_expr(exp, ecp);
-            if (exp == NULL)
-                return RDB_ERROR;
-            tbp = RDB_expr_to_vtable(exp, ecp, txp);
-            if (tbp == NULL)
-                return RDB_ERROR;
-            ret = _RDB_copy_obj(valp, tbp, ecp, txp);
-            RDB_drop_table(tbp, ecp, txp);
-            return ret;
+            return evaluate_vt(exp, tplp, ecp, txp, valp);
         } else if (typ->kind == RDB_TP_TUPLE) {
             int attrc = (exp->var.op.argc - 1) / 2;
             RDB_virtual_attr *attrv;
@@ -1498,17 +1355,7 @@ evaluate_ro_op(RDB_expression *exp, const RDB_object *tplp,
 
     if (strcmp(exp->var.op.name, "WHERE") == 0
             || strcmp(exp->var.op.name, "SUMMARIZE") == 0) {
-        texp = RDB_dup_expr(exp, ecp);
-        if (texp == NULL)
-            return RDB_ERROR;
-        tbp = RDB_expr_to_vtable(texp, ecp, txp);
-        if (tbp == NULL) {
-            RDB_drop_expr(texp, ecp);
-            return RDB_ERROR;
-        }
-        ret = _RDB_copy_obj(valp, tbp, ecp, txp);
-        RDB_drop_table(tbp, ecp, txp);
-        return ret;
+        return evaluate_vt(exp, tplp, ecp, txp, valp);
     }
 
     if (strcmp(exp->var.op.name, "SUM") == 0) {

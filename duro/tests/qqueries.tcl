@@ -30,7 +30,7 @@ duro::table create T1 {
    {WEIGHT INTEGER}
 } {{ID}} $tx
 
-# Create vitual table with WEIGHT_RANK attribute
+# Create virtual table with WEIGHT_RANK attribute
 
 duro::table expr V1 {EXTEND T1 ADD (
         COUNT(T1 RENAME (WEIGHT AS W) WHERE W < WEIGHT)
