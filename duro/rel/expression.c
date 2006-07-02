@@ -127,20 +127,20 @@ expr_resolve_attrs(const RDB_expression *exp, const RDB_object *tplp,
         case RDB_EX_RO_OP:
         {
             int i;
-            RDB_expression *newexp;
-            RDB_expression **argexpv = (RDB_expression **)
-                    malloc(sizeof (RDB_expression *) * exp->var.op.argc);
-
-            if (argexpv == NULL)
+            RDB_expression *newexp = RDB_ro_op(exp->var.op.name,
+                    exp->var.op.argc, NULL, ecp);
+            if (newexp == NULL)
                 return NULL;
 
             for (i = 0; i < exp->var.op.argc; i++) {
-                argexpv[i] = expr_resolve_attrs(exp->var.op.argv[i], tplp, ecp);
-                if (argexpv[i] == NULL)
+                RDB_expression *argexp = expr_resolve_attrs(
+                        exp->var.op.argv[i], tplp, ecp);
+                if (argexp == NULL) {
+                    RDB_drop_expr(newexp, ecp);
                     return NULL;
+                }
+                RDB_add_arg(newexp, argexp);
             }
-            newexp = RDB_ro_op(exp->var.op.name, exp->var.op.argc, argexpv, ecp);
-            free(argexpv);
             return newexp;
         }
         case RDB_EX_OBJ:
@@ -417,7 +417,41 @@ expr_op_type(const RDB_expression *exp, const RDB_type *tpltyp,
         return &RDB_INTEGER;
     }
     if (strcmp(exp->var.op.name, "AVG") == 0) {
-        /* !! check */
+        RDB_attr *attrp;
+
+        if (exp->var.op.argc != 2) {
+            RDB_raise_invalid_argument("invalid number of aggregate arguments",
+                    ecp);
+            return NULL;
+        }
+        if (exp->var.op.argv[1]->kind != RDB_EX_VAR) {
+            RDB_raise_invalid_argument("invalid aggregate", ecp);
+            return NULL;
+        }
+        reltyp = RDB_expr_type(exp->var.op.argv[0], tpltyp, ecp, txp);
+        if (reltyp == NULL)
+            return NULL;
+        if (reltyp->kind != RDB_TP_RELATION) {
+            RDB_drop_type(reltyp, ecp, NULL);
+            RDB_raise_invalid_argument("aggregate requires relation argument",
+                    ecp);
+            return NULL;
+        }
+        attrp = _RDB_tuple_type_attr(reltyp->var.basetyp,
+               exp->var.op.argv[1]->var.varname);
+        if (attrp == NULL) {
+            RDB_drop_type(reltyp, ecp, NULL);
+            RDB_raise_attribute_not_found(exp->var.op.argv[1]->var.varname,
+                    ecp);
+            return NULL;
+        }
+        if (attrp->typ != &RDB_INTEGER && attrp->typ != &RDB_FLOAT
+                && attrp->typ != &RDB_DOUBLE) {
+            RDB_drop_type(reltyp, ecp, NULL);
+            RDB_raise_type_mismatch("invalid attribute type", ecp);
+            return NULL;
+        }
+        RDB_drop_type(reltyp, ecp, NULL);
         return &RDB_DOUBLE;
     }
     if (strcmp(exp->var.op.name, "SUM") == 0
@@ -437,9 +471,16 @@ expr_op_type(const RDB_expression *exp, const RDB_type *tpltyp,
         reltyp = RDB_expr_type(exp->var.op.argv[0], tpltyp, ecp, txp);
         if (reltyp == NULL)
             return NULL;
+        if (reltyp->kind != RDB_TP_RELATION) {
+            RDB_drop_type(reltyp, ecp, NULL);
+            RDB_raise_invalid_argument("aggregate requires relation argument",
+                    ecp);
+            return NULL;
+        }
         attrp = _RDB_tuple_type_attr(reltyp->var.basetyp,
                exp->var.op.argv[1]->var.varname);
         if (attrp == NULL) {
+            RDB_drop_type(reltyp, ecp, NULL);
             RDB_raise_attribute_not_found(exp->var.op.argv[1]->var.varname,
                     ecp);
             return NULL;
@@ -526,11 +567,13 @@ expr_op_type(const RDB_expression *exp, const RDB_type *tpltyp,
     }
 
     for (i = 0; i < exp->var.op.argc; i++) {
-        argtv[i] = RDB_expr_type(exp->var.op.argv[i], tpltyp, ecp, txp);
-        if (argtv[i] == NULL) {
-            RDB_type *errtyp = RDB_obj_type(RDB_get_err(ecp));
-            if (errtyp != &RDB_INVALID_ARGUMENT_ERROR) {
-                /* !! could be a true error */
+        if (exp->var.op.argv[i]->kind == RDB_EX_OBJ
+                    && (exp->var.op.argv[i]->var.obj.kind == RDB_OB_TUPLE
+                     || exp->var.op.argv[i]->var.obj.kind == RDB_OB_ARRAY)) {
+            argtv[i] = NULL;
+        } else {
+            argtv[i] = RDB_expr_type(exp->var.op.argv[i], tpltyp, ecp, txp);
+            if (argtv[i] == NULL) {
                 int j;
 
                 for (j = 0; j < i; j++) {
@@ -541,7 +584,6 @@ expr_op_type(const RDB_expression *exp, const RDB_type *tpltyp,
                 free(argtv);
                 return NULL;
             }
-            RDB_clear_err(ecp);
         }
     }
 
@@ -1259,29 +1301,11 @@ evaluate_vt(RDB_expression *exp, const RDB_object *tplp,
         RDB_exec_context *ecp, RDB_transaction *txp, RDB_object *valp)
 {
     int ret;
-    int i;
-    RDB_expression *nexp;
     RDB_object *vtbp;
-    int argc = exp->var.op.argc;
-
-    /*
-     * Build expression with variables replaced using *tplp
-     */
-
-    nexp = RDB_ro_op(exp->var.op.name, argc, NULL, ecp);
+    RDB_expression *nexp = expr_resolve_attrs(exp, tplp, ecp);
     if (nexp == NULL)
         return RDB_ERROR;
     
-    for (i = 0; i < argc; i++) {
-        RDB_expression *argexp = expr_resolve_attrs(exp->var.op.argv[i],
-                tplp, ecp);
-        if (nexp == NULL) {
-            RDB_drop_expr(nexp, ecp);
-            return RDB_ERROR;
-        }
-        RDB_add_arg(nexp, argexp);
-    }
-
     vtbp = RDB_expr_to_vtable(nexp, ecp, txp);
     if (vtbp == NULL) {
         RDB_drop_expr(nexp, ecp);
