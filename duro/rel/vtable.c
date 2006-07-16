@@ -28,27 +28,25 @@ RDB_object *
 _RDB_expr_to_vtable(RDB_expression *exp, RDB_exec_context *ecp,
         RDB_transaction *txp)
 {
-    RDB_object *newtbp = _RDB_new_obj(ecp);
-    if (newtbp == NULL)
+    RDB_type *tbtyp;
+    RDB_object *tbp = _RDB_new_obj(ecp);
+    if (tbp == NULL)
         return NULL;
 
-    newtbp->kind = RDB_OB_TABLE;
-
     /* Create type */
-    newtbp->typ = RDB_expr_type(exp, NULL, ecp, txp);
-    if (newtbp->typ == NULL) {
-        free(newtbp);
+    tbtyp = RDB_expr_type(exp, NULL, ecp, txp);
+    if (tbtyp == NULL) {
+        _RDB_free_obj(tbp, ecp);
         return NULL;
     }
 
-    newtbp->var.tb.is_user = RDB_TRUE;
-    newtbp->var.tb.is_persistent = RDB_FALSE;
-    newtbp->var.tb.keyv = NULL;
-    newtbp->var.tb.exp = exp;
-    newtbp->var.tb.stp = NULL;
-    newtbp->var.tb.name = NULL;
-
-    return newtbp;
+    if (_RDB_init_table(tbp, NULL, RDB_FALSE, 
+            tbtyp, 0, NULL, RDB_TRUE, exp, ecp) != RDB_OK) {
+        RDB_drop_type(tbtyp, ecp, NULL);
+        _RDB_free_obj(tbp, ecp);
+        return NULL;
+    }
+    return tbp;
 }
 
 #ifdef NIX

@@ -1,7 +1,7 @@
 /*
  * $Id$
  *
- * Copyright (C) 2004, 2005 René Hartmann.
+ * Copyright (C) 2004-2006 René Hartmann.
  * See the file COPYING for redistribution information.
  */
 
@@ -13,13 +13,11 @@
 #include <math.h>
 
 RDB_bool
-_RDB_index_sorts(struct _RDB_tbindex *indexp, int seqitc, const RDB_seq_item seqitv[])
+_RDB_index_sorts(struct _RDB_tbindex *indexp, int seqitc,
+        const RDB_seq_item seqitv[])
 {
     int i;
-/*
-    if (indexp->unique)
-        return RDB_TRUE;
-*/
+
     if (indexp->idxp == NULL || !RDB_index_is_ordered(indexp->idxp)
             || indexp->attrc < seqitc)
         return RDB_FALSE;
@@ -36,7 +34,6 @@ enum {
     tbpv_cap = 256
 };
 
-#ifdef NIX
 static RDB_bool is_and(RDB_expression *exp) {
     return (RDB_bool) exp->kind == RDB_EX_RO_OP
             && strcmp (exp->var.op.name, "AND") == 0;
@@ -76,6 +73,7 @@ unbalance_and(RDB_expression *exp)
     }
 }
 
+#ifdef REMOVED
 /*
  * Check if the expression covers all index attributes.
  */
@@ -107,7 +105,7 @@ attrv_covers_index(int attrc, char *attrv[], _RDB_tbindex *indexp)
 }
 
 static int
-move_node(RDB_object *tbp, RDB_expression **dstpp, RDB_expression *nodep,
+move_node(RDB_expression *texp, RDB_expression **dstpp, RDB_expression *nodep,
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
     RDB_expression *prevp;
@@ -117,10 +115,10 @@ move_node(RDB_object *tbp, RDB_expression **dstpp, RDB_expression *nodep,
      */
 
     /* Get previous node */
-    if (nodep == tbp->var.select.exp) {
+    if (nodep == texp->var.op.argv[1]) {
         prevp = NULL;
     } else {
-        prevp = tbp->var.select.exp;
+        prevp = texp->var.op.argv[1];
         while (prevp->var.op.argv[0] != nodep)
             prevp = prevp->var.op.argv[0];
     }
@@ -135,12 +133,12 @@ move_node(RDB_object *tbp, RDB_expression **dstpp, RDB_expression *nodep,
                 return RDB_ERROR;
         }
         if (prevp == NULL) {
-            tbp->var.select.exp = NULL;
+            texp->var.op.argv[1] = NULL;
         } else {
-            if (prevp == tbp->var.select.exp) {
-                tbp->var.select.exp = prevp->var.op.argv[1];
+            if (prevp == texp->var.op.argv[1]) {
+                texp->var.op.argv[1] = prevp->var.op.argv[1];
             } else {
-                RDB_expression *pprevp = tbp->var.select.exp;
+                RDB_expression *pprevp = texp->var.op.argv[1];
 
                 while (pprevp->var.op.argv[0] != prevp)
                     pprevp = pprevp->var.op.argv[0];
@@ -160,7 +158,7 @@ move_node(RDB_object *tbp, RDB_expression **dstpp, RDB_expression *nodep,
                 return RDB_ERROR;
         }
         if (prevp == NULL)
-            tbp->var.select.exp = nodep->var.op.argv[0];
+            texp->var.op.argv[1] = nodep->var.op.argv[0];
         else
             prevp->var.op.argv[0] = nodep->var.op.argv[0];
         free(nodep->var.op.name);
@@ -171,13 +169,13 @@ move_node(RDB_object *tbp, RDB_expression **dstpp, RDB_expression *nodep,
 }
 
 /*
- * Split a selection into two: one that uses the index specified by indexp
+ * Split a WHERE expression into two: one that uses the index specified by indexp
  * (the child) and one which does not (the parent)
- * If the parent condition simple becomes true, simply convert
+ * If the parent condition becomes TRUE, simply convert
  * the selection into a selection which uses the index.
  */
 static int
-split_by_index(RDB_object *tbp, _RDB_tbindex *indexp, RDB_exec_context *ecp,
+split_by_index(RDB_expression *texp, _RDB_tbindex *indexp, RDB_exec_context *ecp,
         RDB_transaction *txp)
 {
     int i;
@@ -187,25 +185,25 @@ split_by_index(RDB_object *tbp, _RDB_tbindex *indexp, RDB_exec_context *ecp,
     RDB_bool asc = RDB_TRUE;
     RDB_bool all_eq = RDB_TRUE;
     int objpc = 0;
-    RDB_object **objpv;
+/*    RDB_object **objpv; */
 
     for (i = 0; i < indexp->attrc && all_eq; i++) {
         RDB_expression *attrexp;
 
         if (indexp->idxp != NULL && RDB_index_is_ordered(indexp->idxp)) {
-            nodep = _RDB_attr_node(tbp->var.select.exp,
+            nodep = _RDB_attr_node(texp->var.op.argv[1],
                     indexp->attrv[i].attrname, "=");
             if (nodep == NULL) {
-                nodep = _RDB_attr_node(tbp->var.select.exp,
+                nodep = _RDB_attr_node(texp->var.op.argv[1],
                         indexp->attrv[i].attrname, ">=");
                 if (nodep == NULL) {
-                    nodep = _RDB_attr_node(tbp->var.select.exp,
+                    nodep = _RDB_attr_node(texp->var.op.argv[1],
                             indexp->attrv[i].attrname, ">");
                     if (nodep == NULL) {
-                        nodep = _RDB_attr_node(tbp->var.select.exp,
+                        nodep = _RDB_attr_node(texp->var.op.argv[1],
                                 indexp->attrv[i].attrname, "<=");
                         if (nodep == NULL) {
-                            nodep = _RDB_attr_node(tbp->var.select.exp,
+                            nodep = _RDB_attr_node(texp->var.op.argv[1],
                                     indexp->attrv[i].attrname, "<");
                             if (nodep == NULL)
                                 break;
@@ -214,17 +212,17 @@ split_by_index(RDB_object *tbp, _RDB_tbindex *indexp, RDB_exec_context *ecp,
                 }
                 if (strcmp(nodep->var.op.name, ">=") == 0
                         || strcmp(nodep->var.op.name, ">") == 0) {
-                    stopexp = _RDB_attr_node(tbp->var.select.exp,
+                    stopexp = _RDB_attr_node(texp->var.op.argv[1],
                             indexp->attrv[i].attrname, "<=");
                     if (stopexp == NULL) {
-                        stopexp = _RDB_attr_node(tbp->var.select.exp,
+                        stopexp = _RDB_attr_node(texp->var.op.argv[1],
                                 indexp->attrv[i].attrname, "<");
                     }
                     if (stopexp != NULL) {
                         attrexp = stopexp;
                         if (is_and(attrexp))
                             attrexp = attrexp->var.op.argv[1];
-                        if (move_node(tbp, &ixexp, stopexp, ecp, txp) != RDB_OK)
+                        if (move_node(texp, &ixexp, stopexp, ecp, txp) != RDB_OK)
                             return RDB_ERROR;
                         stopexp = attrexp;
                     }
@@ -232,7 +230,7 @@ split_by_index(RDB_object *tbp, _RDB_tbindex *indexp, RDB_exec_context *ecp,
                 all_eq = RDB_FALSE;
             }
         } else {
-            nodep = _RDB_attr_node(tbp->var.select.exp,
+            nodep = _RDB_attr_node(texp->var.op.argv[1],
                     indexp->attrv[i].attrname, "=");
         }
         attrexp = nodep;
@@ -250,19 +248,21 @@ split_by_index(RDB_object *tbp, _RDB_tbindex *indexp, RDB_exec_context *ecp,
                 asc = (RDB_bool) !indexp->attrv[i].asc;
         }
         
-        if (move_node(tbp, &ixexp, nodep, ecp, txp) != RDB_OK)
+        if (move_node(texp, &ixexp, nodep, ecp, txp) != RDB_OK)
             return RDB_ERROR;
     }
 
+/* !!
     objpv = _RDB_index_objpv(indexp, ixexp, tbp->typ,
             objpc, all_eq, asc);
     if (objpv == NULL) {
         RDB_raise_no_memory(ecp);
         return RDB_ERROR;
     }
+*/
 
-    if (tbp->var.select.exp != NULL) {
-        RDB_object *sitbp;
+    if (texp->var.op.argv[1] != NULL) {
+        RDB_expression *sitexp;
 
         /*
          * Split table into two
@@ -272,48 +272,68 @@ split_by_index(RDB_object *tbp, _RDB_tbindex *indexp, RDB_exec_context *ecp,
             if (ixexp == NULL)
                 return RDB_ERROR;
         }
-        sitbp = RDB_select(tbp->var.select.tbp, ixexp, ecp, txp);
-        if (sitbp == NULL)
+        sitexp = RDB_ro_op("WHERE", 2, NULL, ecp);
+        if (sitexp == NULL)
             return RDB_ERROR;
-
+        RDB_add_arg(sitexp, texp->var.op.argv[0]);
+        RDB_add_arg(sitexp, ixexp);
+        
+/* !!
         sitbp->var.select.objpv = objpv;
         sitbp->var.select.objpc = objpc;
         sitbp->var.select.asc = asc;
         sitbp->var.select.all_eq = all_eq;
         sitbp->var.select.stopexp = stopexp;
         tbp->var.select.tbp = sitbp;
+*/
     } else {
         /*
          * Convert table to index select
          */
+/* !!
         tbp->var.select.objpv = objpv;
         tbp->var.select.objpc = objpc;
         tbp->var.select.asc = asc;
         tbp->var.select.all_eq = all_eq;
         tbp->var.select.exp = ixexp;
         tbp->var.select.stopexp = stopexp;
+*/
     }
     return RDB_OK;
 }
+#endif
 
 static unsigned
-table_cost(RDB_object *tbp)
+table_cost(RDB_expression *texp)
 {
-    _RDB_tbindex *indexp;
+    /* _RDB_tbindex *indexp; */
 
-    if (tbp->stp != NULL)
-        return tbp->stp->est_cardinality;
+    if (texp->kind == RDB_EX_TBP)
+        return texp->var.tbp->var.tb.stp != NULL ?
+                texp->var.tbp->var.tb.stp->est_cardinality : 0;
 
-    switch (tbp->kind) {
-        case RDB_TB_REAL:
-            return 0;
-        case RDB_TB_SEMIMINUS:
-            return table_cost(tbp->var.semiminus.tb1p); /* !! */
-        case RDB_TB_UNION:
-            return table_cost(tbp->var._union.tb1p)
-                + table_cost(tbp->var._union.tb2p);
-        case RDB_TB_SEMIJOIN:
-            return table_cost(tbp->var.semijoin.tb1p); /* !! */
+    if (texp->kind == RDB_EX_OBJ)
+        return texp->var.obj.var.tb.stp->est_cardinality;
+
+    if (strcmp(texp->var.op.name, "SEMIMINUS") == 0)
+        return table_cost(texp->var.op.argv[0]); /* !! */
+
+    if (strcmp(texp->var.op.name, "MINUS") == 0)
+        return table_cost(texp->var.op.argv[0]); /* !! */
+
+    if (strcmp(texp->var.op.name, "UNION") == 0)
+        return table_cost(texp->var.op.argv[0])
+                + table_cost(texp->var.op.argv[1]);
+
+    if (strcmp(texp->var.op.name, "SEMIJOIN") == 0)
+        return table_cost(texp->var.op.argv[0]); /* !! */
+
+    if (strcmp(texp->var.op.name, "INTERSECT") == 0)
+        return table_cost(texp->var.op.argv[0]); /* !! */
+
+    if (strcmp(texp->var.op.name, "WHERE") == 0)
+        return table_cost(texp->var.op.argv[0]);
+/* !!
         case RDB_TB_SELECT:
             if (tbp->var.select.objpc == 0)
                 return table_cost(tbp->var.select.tbp);
@@ -324,8 +344,12 @@ table_cost(RDB_object *tbp)
                 return 2;
             if (!RDB_index_is_ordered(indexp->idxp))
                 return 3;
-            return 4; /* !! */
-        case RDB_TB_JOIN:
+            return 4;
+*/
+    if (strcmp(texp->var.op.name, "JOIN") == 0)
+        return table_cost(texp->var.op.argv[0])
+                * table_cost(texp->var.op.argv[1]);
+/* !!
             if (tbp->var.join.tb2p->kind != RDB_TB_PROJECT
                     || tbp->var.join.tb2p->var.project.indexp == NULL)
                 return table_cost(tbp->var.join.tb1p)
@@ -338,33 +362,29 @@ table_cost(RDB_object *tbp)
             if (!RDB_index_is_ordered(indexp->idxp))
                 return table_cost(tbp->var.join.tb1p) * 3;
             return table_cost(tbp->var.join.tb1p) * 4;
-        case RDB_TB_EXTEND:
-            return table_cost (tbp->var.extend.tbp);
-        case RDB_TB_PROJECT:
-            return table_cost(tbp->var.project.tbp);
-        case RDB_TB_SUMMARIZE:
-            return table_cost(tbp->var.summarize.tb1p);
-        case RDB_TB_RENAME:
-            return table_cost(tbp->var.rename.tbp);
-        case RDB_TB_WRAP:
-            return table_cost(tbp->var.wrap.tbp);
-        case RDB_TB_UNWRAP:
-            return table_cost(tbp->var.unwrap.tbp);
-        case RDB_TB_GROUP:
-            return table_cost(tbp->var.group.tbp);
-        case RDB_TB_UNGROUP:
-            return table_cost(tbp->var.ungroup.tbp);
-        case RDB_TB_SDIVIDE:
-            return table_cost(tbp->var.sdivide.tb1p)
-                    * table_cost(tbp->var.sdivide.tb2p); /* !! */
+*/
+    if (strcmp(texp->var.op.name, "EXTEND") == 0
+             || strcmp(texp->var.op.name, "PROJECT") == 0
+             || strcmp(texp->var.op.name, "REMOVE") == 0
+             || strcmp(texp->var.op.name, "SUMMARIZE") == 0
+             || strcmp(texp->var.op.name, "RENAME") == 0
+             || strcmp(texp->var.op.name, "WRAP") == 0
+             || strcmp(texp->var.op.name, "UNWRAP") == 0
+             || strcmp(texp->var.op.name, "GROUP") == 0
+             || strcmp(texp->var.op.name, "UNGROUP") == 0)
+        return table_cost(texp->var.op.argv[0]);
+    if (strcmp(texp->var.op.name, "DIVIDE_BY_PER") == 0) {
+        return table_cost(texp->var.op.argv[0])
+                * table_cost(texp->var.op.argv[1]); /* !! */
     }
     abort();
 }
 
 static int
-mutate(RDB_object *tbp, RDB_object **tbpv, int cap, RDB_exec_context *,
+mutate(RDB_expression *texp, RDB_expression **tbpv, int cap, RDB_exec_context *,
         RDB_transaction *);
 
+#ifdef REMOVED
 /*
  * Add "null project" parent
  */
@@ -393,46 +413,48 @@ null_project(RDB_object *tbp, RDB_exec_context *ecp)
     }
     return ptbp;
 }
+#endif
 
 static int
-mutate_select(RDB_object *tbp, RDB_object **tbpv, int cap, RDB_exec_context *ecp,
-        RDB_transaction *txp)
+mutate_where(RDB_expression *texp, RDB_expression **tbpv, int cap,
+        RDB_exec_context *ecp, RDB_transaction *txp)
 {
     int i;
-    int ret;
     int tbc;
-    RDB_object *ctbp = tbp->var.select.tbp;
+    RDB_expression *cexp = texp->var.op.argv[0];
 
-    ret = _RDB_transform_exp(tbp->var.select.exp, ecp);
-    if (ret != RDB_OK)
-        return ret;
+    if (_RDB_transform(texp->var.op.argv[1], ecp, txp) != RDB_OK)
+        return RDB_ERROR;
 
-    if (ctbp->kind == RDB_TB_PROJECT
-            && ctbp->var.project.tbp->kind == RDB_TB_REAL) {
+    if (cexp->kind == RDB_EX_RO_OP
+            && strcmp(cexp->var.op.name, "PROJECT") == 0
+            && cexp->var.op.argv[0]->kind == RDB_EX_TBP) {
         /* Convert condition into 'unbalanced' form */
-        unbalance_and(tbp->var.select.exp);
+        unbalance_and(texp->var.op.argv[1]);
     }
 
-    tbc = mutate(ctbp, tbpv, cap, ecp, txp);
+    tbc = mutate(cexp, tbpv, cap, ecp, txp);
     if (tbc < 0)
         return tbc;
 
     for (i = 0; i < tbc; i++) {
-        RDB_object *ntbp;
-        RDB_expression *exp = RDB_dup_expr(tbp->var.select.exp, ecp);
+        RDB_expression *nexp;
+        RDB_expression *exp = RDB_dup_expr(exp->var.op.argv[1], ecp);
         if (exp == NULL)
             return RDB_ERROR;
 
-        ntbp = RDB_select(tbpv[i], exp, ecp, txp);
-        if (ntbp == NULL) {
+        nexp = RDB_ro_op("WHERE", 2, NULL, ecp);
+        if (nexp == NULL) {
             RDB_drop_expr(exp, ecp);
             return RDB_ERROR;
         }
+        RDB_add_arg(nexp, tbpv[i]);
+        RDB_add_arg(nexp, exp);
+/* !!
         if (tbpv[i]->kind == RDB_TB_PROJECT
                 && tbpv[i]->var.project.indexp != NULL)
         {
             _RDB_tbindex *indexp = tbpv[i]->var.project.indexp;
-
             if ((indexp->idxp != NULL && RDB_index_is_ordered(indexp->idxp))
                     || expr_covers_index(tbp->var.select.exp, indexp)
                             == indexp->attrc) {
@@ -441,51 +463,103 @@ mutate_select(RDB_object *tbp, RDB_object **tbpv, int cap, RDB_exec_context *ecp
                     return ret;
             }
         }
-        tbpv[i] = ntbp;
+*/
+        tbpv[i] = nexp;
     }
     return tbc;
 }
 
+/*
+ * Copy expression, making a copy of virtual tables
+ */
+static RDB_expression *
+dup_expr_vt(const RDB_expression *exp, RDB_exec_context *ecp)
+{
+    RDB_expression *newexp;
+
+    switch (exp->kind) {
+        case RDB_EX_TUPLE_ATTR:
+            newexp = dup_expr_vt(exp->var.op.argv[0], ecp);
+            if (newexp == NULL)
+                return NULL;
+            return RDB_tuple_attr(newexp, exp->var.op.name, ecp);
+        case RDB_EX_GET_COMP:
+            newexp = dup_expr_vt(exp->var.op.argv[0], ecp);
+            if (newexp == NULL)
+                return NULL;
+            return RDB_expr_comp(newexp, exp->var.op.name, ecp);
+        case RDB_EX_RO_OP:
+        {
+            int i;
+            RDB_expression **argexpv = (RDB_expression **)
+                    malloc(sizeof (RDB_expression *) * exp->var.op.argc);
+
+            if (argexpv == NULL)
+                return NULL;
+
+            for (i = 0; i < exp->var.op.argc; i++) {
+                argexpv[i] = dup_expr_vt(exp->var.op.argv[i], ecp);
+                if (argexpv[i] == NULL)
+                    return NULL;
+            }
+            newexp = RDB_ro_op(exp->var.op.name, exp->var.op.argc, argexpv,
+                    ecp);
+            free(argexpv);
+            return newexp;
+        }
+        case RDB_EX_OBJ:
+            return RDB_obj_to_expr(&exp->var.obj, ecp);
+        case RDB_EX_TBP:
+            if (exp->var.tbp->var.tb.exp == NULL)
+                return RDB_table_ref_to_expr(exp->var.tbp, ecp);
+            return dup_expr_vt(exp->var.tbp->var.tb.exp, ecp);
+        case RDB_EX_VAR:
+            return RDB_expr_var(exp->var.varname, ecp);
+    }
+    abort();
+}
+
 static int
-mutate_union(RDB_object *tbp, RDB_object **tbpv, int cap,
+mutate_vt(RDB_expression *texp, int nargc, RDB_expression **tbpv, int cap,
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
-    int tbc1, tbc2;
-    int i;
+    int i, j, k;
+    int ntbc;
+    int otbc = 0;
 
-    tbc1 = mutate(tbp->var._union.tb1p, tbpv, cap, ecp, txp);
-    if (tbc1 < 0)
-        return tbc1;
-    for (i = 0; i < tbc1; i++) {
-        RDB_object *ntbp;
-        RDB_object *otbp = _RDB_dup_vtable(tbp->var._union.tb2p, ecp);
-        if (otbp == NULL) {
-            return RDB_ERROR;
+    for (j = 0; j < nargc; j++) {
+        ntbc = mutate(texp->var.op.argv[j], &tbpv[otbc], cap - otbc, ecp, txp);
+        if (ntbc < 0)
+            return ntbc;
+        for (i = otbc; i < otbc + ntbc; i++) {
+            RDB_expression *nexp = RDB_ro_op(texp->var.op.name,
+                    texp->var.op.argc, NULL, ecp);
+            if (nexp == NULL)
+                return RDB_ERROR;
+
+            for (k = 0; k < texp->var.op.argc; k++) {
+                if (k == j) {
+                    RDB_add_arg(nexp, tbpv[i]);
+                } else {
+                    RDB_expression *otexp = dup_expr_vt(texp->var.op.argv[k], ecp);
+                    if (otexp == NULL)
+                        return RDB_ERROR;
+                    RDB_add_arg(nexp, otexp);
+                }
+            }
+            tbpv[i] = nexp;
         }
-
-        ntbp = RDB_union(tbpv[i], otbp, ecp);
-        if (ntbp == NULL)
-            return RDB_ERROR;
-        tbpv[i] = ntbp;
+        otbc += ntbc;
     }
-    tbc2 = mutate(tbp->var._union.tb2p, &tbpv[tbc1], cap - tbc1, ecp, txp);
-    if (tbc2 < 0)
-        return tbc2;
-    for (i = tbc1; i < tbc1 + tbc2; i++) {
-        RDB_object *ntbp;
-        RDB_object *otbp = _RDB_dup_vtable(tbp->var._union.tb1p, ecp);
-        if (otbp == NULL) {
-            return RDB_ERROR;
-        }
-
-        ntbp = RDB_union(otbp, tbpv[i], ecp);
-        if (ntbp == NULL)
-            return RDB_ERROR;
-        tbpv[i] = ntbp;
-    }
-    return tbc1 + tbc2;
+    return otbc;
 }
-#endif
+
+static int
+mutate_full_vt(RDB_expression *texp, RDB_expression **tbpv, int cap,
+        RDB_exec_context *ecp, RDB_transaction *txp)
+{
+    return mutate_vt(texp, texp->var.op.argc, tbpv, cap, ecp, txp);
+}
 
 static void
 table_to_empty(RDB_expression *exp, RDB_exec_context *ecp)
@@ -539,7 +613,7 @@ replace_empty(RDB_expression *exp, RDB_exec_context *ecp, RDB_transaction *txp)
     return RDB_OK;
 }
 
-#ifdef NIX
+#ifdef REMOVED
 static int
 transform_semiminus_union(RDB_object *tbp, RDB_exec_context *ecp,
         RDB_transaction *txp, RDB_object **restbpp)
@@ -600,7 +674,7 @@ transform_semiminus_union(RDB_object *tbp, RDB_exec_context *ecp,
 }
 
 static int
-mutate_semiminus(RDB_object *tbp, RDB_object **tbpv, int cap,
+mutate_semiminus(RDB_expression *texp, RDB_object **tbpv, int cap,
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
     int tbc;
@@ -632,7 +706,7 @@ mutate_semiminus(RDB_object *tbp, RDB_object **tbpv, int cap,
 }
 
 static int
-mutate_semijoin(RDB_object *tbp, RDB_object **tbpv, int cap,
+mutate_semijoin(RDB_expression *texp, RDB_object **tbpv, int cap,
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
     int tbc1, tbc2;
@@ -692,14 +766,14 @@ mutate_rename(RDB_object *tbp, RDB_object **tbpv, int cap, RDB_exec_context *ecp
 }
 
 static int
-mutate_extend(RDB_object *tbp, RDB_object **tbpv, int cap,
+mutate_extend(RDB_expression *texp, RDB_object **tbpv, int cap,
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
     int tbc;
     int i, j;
     RDB_virtual_attr *extv;
 
-    tbc = mutate(tbp->var.extend.tbp, tbpv, cap, ecp, txp);
+    tbc = mutate(tbp->var.op.argv[0], tbpv, cap, ecp, txp);
     if (tbc < 0)
         return tbc;
 
@@ -734,14 +808,14 @@ mutate_extend(RDB_object *tbp, RDB_object **tbpv, int cap,
 }
 
 static int
-mutate_summarize(RDB_object *tbp, RDB_object **tbpv, int cap,
+mutate_summarize(RDB_expression *texp, RDB_object **tbpv, int cap,
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
     int tbc;
     int i, j;
     RDB_summarize_add *addv;
 
-    tbc = mutate(tbp->var.summarize.tb1p, tbpv, cap, ecp, txp);
+    tbc = mutate(tbp->var.op.argv[0], tbpv, cap, ecp, txp);
     if (tbc < 0)
         return tbc;
 
@@ -788,7 +862,7 @@ mutate_summarize(RDB_object *tbp, RDB_object **tbpv, int cap,
 }
 
 static int
-mutate_project(RDB_object *tbp, RDB_object **tbpv, int cap,
+mutate_project(RDB_expression *texp, RDB_object **tbpv, int cap,
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
     int tbc;
@@ -808,7 +882,7 @@ mutate_project(RDB_object *tbp, RDB_object **tbpv, int cap,
             tbpv[i] = ptbp;
         }
     } else {            
-        tbc = mutate(tbp->var.project.tbp, tbpv, cap, ecp, txp);
+        tbc = mutate(texp->var.op.argv[0], tbpv, cap, ecp, txp);
         if (tbc < 0)
             return tbc;
 
@@ -855,7 +929,7 @@ common_attrs(RDB_type *tpltyp1, RDB_type *tpltyp2, char **cmattrv)
 }
 
 static int
-mutate_join(RDB_object *tbp, RDB_object **tbpv, int cap,
+mutate_join(RDB_expression *texp, RDB_object **tbpv, int cap,
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
     int tbc1, tbc2, tbc;
@@ -872,7 +946,7 @@ mutate_join(RDB_object *tbp, RDB_object **tbpv, int cap,
     cmattrc = common_attrs(tbp->var.join.tb1p->typ->var.basetyp,
             tbp->var.join.tb2p->typ->var.basetyp, cmattrv);
 
-    tbc1 = mutate(tbp->var.join.tb1p, tbpv, cap, ecp, txp);
+    tbc1 = mutate(texp->var.op.argv[0], tbpv, cap, ecp, txp);
     if (tbc1 < 0) {
         free(cmattrv);
         return tbc1;
@@ -904,7 +978,7 @@ mutate_join(RDB_object *tbp, RDB_object **tbpv, int cap,
         }
     }
     tbc1 = tbc;
-    tbc2 = mutate(tbp->var.join.tb2p, &tbpv[tbc1], cap - tbc1, ecp, txp);
+    tbc2 = mutate(tbp->var.op.argv[1], &tbpv[tbc1], cap - tbc1, ecp, txp);
     if (tbc2 < 0) {
         free(cmattrv);
         return tbc2;
@@ -1061,11 +1135,42 @@ mutate_sdivide(RDB_object *tbp, RDB_object **tbpv, int cap,
     }
     return tbc1 + tbc2;
 }
+#endif
 
 static int
-mutate(RDB_object *tbp, RDB_object **tbpv, int cap, RDB_exec_context *ecp,
+mutate(RDB_expression *texp, RDB_expression **tbpv, int cap, RDB_exec_context *ecp,
         RDB_transaction *txp)
 {
+    if (texp->kind != RDB_EX_RO_OP)
+        return 0;
+
+    if (strcmp(texp->var.op.name, "WHERE") == 0) {
+        return mutate_where(texp, tbpv, cap, ecp, txp);
+    }
+
+    if (strcmp(texp->var.op.name, "UNION") == 0
+            || strcmp(texp->var.op.name, "MINUS") == 0
+            || strcmp(texp->var.op.name, "SEMIMINUS") == 0
+            || strcmp(texp->var.op.name, "INTERSECT") == 0
+            || strcmp(texp->var.op.name, "SEMIJOIN") == 0
+            || strcmp(texp->var.op.name, "JOIN") == 0) {
+        return mutate_full_vt(texp, tbpv, cap, ecp, txp);
+    }
+    if (strcmp(texp->var.op.name, "EXTEND") == 0
+            || strcmp(texp->var.op.name, "PROJECT") == 0
+            || strcmp(texp->var.op.name, "REMOVE") == 0
+            || strcmp(texp->var.op.name, "RENAME") == 0
+            || strcmp(texp->var.op.name, "SUMMARIZE") == 0
+            || strcmp(texp->var.op.name, "WRAP") == 0
+            || strcmp(texp->var.op.name, "UNWRAP") == 0
+            || strcmp(texp->var.op.name, "GROUP") == 0
+            || strcmp(texp->var.op.name, "UNGROUP") == 0) {
+        return mutate_vt(texp, 1, tbpv, cap, ecp, txp);
+    }
+    if (strcmp(texp->var.op.name, "DIVIDE_BY_PER") == 0) {
+        return mutate_vt(texp, 2, tbpv, cap, ecp, txp);
+    }
+#ifdef REMOVED    
     switch (tbp->kind) {
         case RDB_TB_REAL:
             return 0;
@@ -1102,6 +1207,7 @@ mutate(RDB_object *tbp, RDB_object **tbpv, int cap, RDB_exec_context *ecp,
         case RDB_TB_SDIVIDE:
             return mutate_sdivide(tbp, tbpv, cap, ecp, txp);
     }
+#endif
     return 0;
 }
 
@@ -1110,11 +1216,12 @@ mutate(RDB_object *tbp, RDB_object **tbpv, int cap, RDB_exec_context *ecp,
  * specified by seqitc/seqitv.
  */
 static unsigned
-sorted_table_cost(RDB_object *tbp, int seqitc,
+sorted_table_cost(RDB_expression *texp, int seqitc,
         const RDB_seq_item seqitv[])
 {
-    int cost = table_cost(tbp);
+    int cost = table_cost(texp);
 
+#ifdef REMOVED
     /* Check if the index must be sorted */
     if (seqitc > 0) {
         _RDB_tbindex *indexp = _RDB_sortindex(tbp);
@@ -1127,10 +1234,12 @@ sorted_table_cost(RDB_object *tbp, int seqitc,
             cost += scost;
         }
     }
+#endif
 
     return cost;
 }
 
+#ifdef REMOVED
 static int
 add_project(RDB_object *tbp, RDB_exec_context *ecp)
 {
@@ -1362,7 +1471,6 @@ int
 _RDB_optimize(RDB_object *tbp, int seqitc, const RDB_seq_item seqitv[],
         RDB_exec_context *ecp, RDB_transaction *txp, RDB_object **ntbpp)
 {
-    int ret;
     int i;
 
     if (tbp->var.tb.exp == NULL) {
@@ -1387,94 +1495,96 @@ _RDB_optimize(RDB_object *tbp, int seqitc, const RDB_seq_item seqitv[],
         }
         *ntbpp = tbp;
     } else {
-        RDB_expression *nexp;
-/*
-        unsigned obestcost, bestcost;
-        int bestn;
-        int tbc;
-        RDB_object *tbpv[tbpv_cap];
-*/
-        /*
-         * Make a copy of the table, so it can be transformed freely
-         */
-        nexp = RDB_dup_expr(tbp->var.tb.exp, ecp);
+        RDB_expression *nexp = _RDB_optimize_expr(tbp->var.tb.exp,
+                seqitc, seqitv, ecp, txp);
         if (nexp == NULL)
             return RDB_ERROR;
-
-        /*
-         * Algebraic optimization
-         */
-
-        ret = _RDB_transform(nexp, ecp, txp);
-        if (ret != RDB_OK)
-            return ret;
-
-        /*
-         * Replace tables which are declared to be empty
-         * by a constraint
-         */
-        if (RDB_tx_db(txp) != NULL) {
-            ret = replace_empty(nexp, ecp, txp);
-            if (ret != RDB_OK)
-                return ret;
-        }
-
-        /*
-         * Add a project table above real tables
-         * to prepare for indexes
-         */
-
-#ifdef NIX
-        ret = add_project(nexp, ecp);
-        if (ret != RDB_OK)
-            return ret;
-
-        /*
-         * Try to find cheapest table
-         */
-
-        bestcost = sorted_table_cost(nexp, seqitc, seqitv);
-        do {
-            obestcost = bestcost;
-
-            tbc = mutate(nexp, tbpv, tbpv_cap, ecp, txp);
-            if (tbc < 0)
-                return tbc;
-
-            bestn = -1;
-
-            for (i = 0; i < tbc; i++) {
-                int cost = sorted_table_cost(tbpv[i], seqitc, seqitv);
-
-                if (cost < bestcost) {
-                    bestcost = cost;
-                    bestn = i;
-                }
-            }
-            if (bestn == -1) {
-                for (i = 0; i < tbc; i++)
-                    RDB_drop_table(tbpv[i], ecp, txp);
-            } else {
-                RDB_drop_expr(nexp, ecp);
-                nexp = tbpv[bestn];
-                for (i = 0; i < tbc; i++) {
-                    if (i != bestn)
-                        RDB_drop_table(tbpv[i], ecp, txp);
-                }
-            }
-        } while (bestcost < obestcost);
-        *ntbpp = ntbp;
-        #endif
         *ntbpp = RDB_expr_to_vtable(nexp, ecp, txp);
+        if (*ntbpp == NULL)
+            return RDB_ERROR;
     }
 
     return RDB_OK;
 }
 
 RDB_expression *
-_RDB_optimize_expr(RDB_expression *exp, int seqitc, const RDB_seq_item seqitv[],
+_RDB_optimize_expr(RDB_expression *texp, int seqitc, const RDB_seq_item seqitv[],
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
-    /* !! */
-    return RDB_dup_expr(exp, ecp);
+    int i;
+    RDB_expression *nexp;
+    unsigned obestcost, bestcost;
+    int bestn;
+    int tbc;
+    RDB_expression *texpv[tbpv_cap];
+
+    /*
+     * Make a copy of the table, so it can be transformed freely
+     */
+    nexp = dup_expr_vt(texp, ecp);
+    if (nexp == NULL)
+        return NULL;
+
+    /*
+     * Algebraic optimization
+     */
+
+    if (_RDB_transform(nexp, ecp, txp) != RDB_OK)
+        return NULL;
+
+    /*
+     * Replace tables which are declared to be empty
+     * by a constraint
+     */
+    if (RDB_tx_db(txp) != NULL) {
+        if (replace_empty(nexp, ecp, txp) != RDB_OK)
+            return NULL;
+    }
+
+    /*
+     * Add a project table above real tables
+     * to prepare for indexes
+     */
+
+#ifdef REMOVED
+        ret = add_project(nexp, ecp);
+        if (ret != RDB_OK)
+            return ret;
+#endif
+
+    /*
+     * Try to find cheapest table
+     */
+
+    bestcost = sorted_table_cost(nexp, seqitc, seqitv);
+    do {
+        obestcost = bestcost;
+
+        tbc = mutate(nexp, texpv, tbpv_cap, ecp, txp);
+        if (tbc < 0)
+            return NULL;
+
+        bestn = -1;
+
+        for (i = 0; i < tbc; i++) {
+            int cost = sorted_table_cost(texpv[i], seqitc, seqitv);
+
+            if (cost < bestcost) {
+                bestcost = cost;
+                bestn = i;
+            }
+        }
+        if (bestn == -1) {
+            for (i = 0; i < tbc; i++)
+                RDB_drop_expr(texpv[i], ecp);
+        } else {
+            RDB_drop_expr(nexp, ecp);
+            nexp = texpv[bestn];
+            for (i = 0; i < tbc; i++) {
+                if (i != bestn)
+                    RDB_drop_expr(texpv[i], ecp);
+            }
+        }
+    } while (bestcost < obestcost);
+    return nexp;
 }

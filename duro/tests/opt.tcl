@@ -60,8 +60,8 @@ duro::insert T3 {A 2 B 2 C 3} $tx
 
 duro::insert T4 {A 1 B 3 C 3} $tx
 
-set tpl [duro::expr {TUPLE FROM (T1 WHERE A=1 AND B=1)} $tx]
-set stpl {A 1 B 1}
+set tpl [duro::expr {TUPLE FROM (T1 WHERE A=1 AND B=1 {A})} $tx]
+set stpl {A 1}
 if {![tequal $tpl $stpl]} {
     error "Tuple should be $stpl, but is $tpl"
 }

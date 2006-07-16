@@ -148,11 +148,9 @@ expr_resolve_attrs(const RDB_expression *exp, const RDB_object *tplp,
         case RDB_EX_TBP:
             return RDB_table_ref_to_expr(exp->var.tbp, ecp);
         case RDB_EX_VAR:
-            if (tplp != NULL) {
-                objp = RDB_tuple_get(tplp, exp->var.varname);
-                if (objp != NULL)
-                    return RDB_obj_to_expr(objp, ecp);
-            }
+            objp = RDB_tuple_get(tplp, exp->var.varname);
+            if (objp != NULL)
+                return RDB_obj_to_expr(objp, ecp);
             return RDB_expr_var(exp->var.varname, ecp);
     }
     abort();
@@ -1300,12 +1298,26 @@ static int
 evaluate_vt(RDB_expression *exp, const RDB_object *tplp,
         RDB_exec_context *ecp, RDB_transaction *txp, RDB_object *valp)
 {
-    int ret;
-    RDB_object *vtbp;
-    RDB_expression *nexp = expr_resolve_attrs(exp, tplp, ecp);
+    RDB_type *tbtyp;
+    RDB_expression *nexp = tplp != NULL ? expr_resolve_attrs(exp, tplp, ecp)
+            : RDB_dup_expr(exp, ecp);
     if (nexp == NULL)
         return RDB_ERROR;
-    
+
+    tbtyp = RDB_expr_type(nexp, NULL, ecp, txp);
+    if (tbtyp == NULL) {
+        RDB_drop_expr(nexp, ecp);
+        return RDB_ERROR;
+    }
+
+    if (_RDB_init_table(valp, NULL, RDB_FALSE, 
+            tbtyp, 0, NULL, RDB_TRUE, nexp, ecp) != RDB_OK) {
+        RDB_drop_type(tbtyp, ecp, NULL);
+        RDB_drop_expr(nexp, ecp);
+        return RDB_ERROR;
+    }
+
+/* !!
     vtbp = RDB_expr_to_vtable(nexp, ecp, txp);
     if (vtbp == NULL) {
         RDB_drop_expr(nexp, ecp);
@@ -1314,7 +1326,8 @@ evaluate_vt(RDB_expression *exp, const RDB_object *tplp,
 
     ret = _RDB_copy_obj(valp, vtbp, ecp, txp);
     RDB_drop_table(vtbp, ecp, txp);
-    return ret;
+*/
+    return RDB_OK;
 }
 
 static int
@@ -1329,11 +1342,16 @@ evaluate_ro_op(RDB_expression *exp, const RDB_object *tplp,
     RDB_object *valv = NULL;
     int argc = exp->var.op.argc;
 
+    if (strcmp(exp->var.op.name, "TO_TUPLE") == 0) {
+        int k = 0;
+        
+        k = k * 2;
+    }
+
     /*
-     * Special treatment for WHERE and EXTEND, and SUMMARIZE,
-     * because some arguments must be an expressions and
-     * must therefore not be evaluated
+     * Special treatment of relational operators
      */
+
     if (strcmp(exp->var.op.name, "EXTEND") == 0) {
         RDB_type *typ = RDB_expr_type(exp->var.op.argv[0], NULL, ecp, txp);
         
@@ -1341,7 +1359,8 @@ evaluate_ro_op(RDB_expression *exp, const RDB_object *tplp,
             RDB_drop_type(typ, ecp, NULL);
 
             return evaluate_vt(exp, tplp, ecp, txp, valp);
-        } else if (typ->kind == RDB_TP_TUPLE) {
+        }
+        else if (typ->kind == RDB_TP_TUPLE) {
             int attrc = (exp->var.op.argc - 1) / 2;
             RDB_virtual_attr *attrv;
 
@@ -1380,6 +1399,19 @@ evaluate_ro_op(RDB_expression *exp, const RDB_object *tplp,
     if (strcmp(exp->var.op.name, "WHERE") == 0
             || strcmp(exp->var.op.name, "SUMMARIZE") == 0) {
         return evaluate_vt(exp, tplp, ecp, txp, valp);
+    }
+
+    if (strcmp(exp->var.op.name, "PROJECT") == 0) {
+        RDB_type *typ = RDB_expr_type(exp->var.op.argv[0], NULL, ecp, txp);
+        
+        if (typ->kind == RDB_TP_RELATION) {
+            RDB_drop_type(typ, ecp, NULL);
+
+            return evaluate_vt(exp, tplp, ecp, txp, valp);
+        }
+        if (!RDB_type_is_scalar(typ)) {
+            RDB_drop_type(typ, ecp, NULL);
+        }
     }
 
     if (strcmp(exp->var.op.name, "SUM") == 0) {
@@ -1723,7 +1755,6 @@ _RDB_expr_refers(const RDB_expression *exp, const RDB_object *tbp)
     abort();
 }
 
-#ifdef NIX
 RDB_bool
 _RDB_expr_refers_attr(const RDB_expression *exp, const char *attrname)
 {
@@ -1746,13 +1777,10 @@ _RDB_expr_refers_attr(const RDB_expression *exp, const char *attrname)
             }            
             return RDB_FALSE;
         }
-        case RDB_EX_AGGREGATE:
-            return (RDB_bool) (strcmp(exp->var.op.name, attrname) == 0);
     }
     /* Should never be reached */
     abort();
 }
-#endif
 
 /*
  * Check if there is some table which both exp and tbp depend on
@@ -1813,7 +1841,6 @@ _RDB_invrename_expr(RDB_expression *exp, RDB_expression *texp,
             if (i < renc) {
                 char *from = RDB_obj_string(&texp->var.op.argv[1 + i * 2]->var.obj);
                 char *name = realloc(exp->var.varname, strlen(from) + 1);
-
                 if (name == NULL) {
                     RDB_raise_no_memory(ecp);
                     return RDB_ERROR;
