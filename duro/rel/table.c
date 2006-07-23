@@ -1036,6 +1036,36 @@ error:
     return ret;
 }
 
+struct _RDB_tbindex *
+expr_sortindex (RDB_expression *exp)
+{
+    if (exp->kind == RDB_EX_TBP) {
+        if (exp->var.tbref.tbp->var.tb.exp != NULL)
+            return expr_sortindex(exp->var.tbref.tbp->var.tb.exp);
+        return exp->var.tbref.indexp;
+    }
+    if (exp->kind != RDB_EX_RO_OP)
+        return NULL;
+    if (strcmp(exp->var.op.name, "WHERE") == 0) {
+        return expr_sortindex(exp->var.op.argv[0]);
+    }
+    if (strcmp(exp->var.op.name, "PROJECT") == 0) {
+        return expr_sortindex(exp->var.op.argv[0]);
+    }
+    if (strcmp(exp->var.op.name, "SEMIMINUS") == 0
+            || strcmp(exp->var.op.name, "MINUS") == 0
+            || strcmp(exp->var.op.name, "SEMIJOIN") == 0
+            || strcmp(exp->var.op.name, "INTERSECT") == 0
+            || strcmp(exp->var.op.name, "JOIN") == 0
+            || strcmp(exp->var.op.name, "EXTEND") == 0
+            || strcmp(exp->var.op.name, "SDIVIDE") == 0) {
+        return expr_sortindex(exp->var.op.argv[0]);
+    }
+    /* !! RENAME, SUMMARIZE, WRAP, UNWRAP, GROUP, UNGROUP */
+
+    return NULL;
+}
+
 /*
  * If the tuples are sorted by an ordered index when read using
  * a table qresult, return the index, otherwise NULL.
@@ -1043,41 +1073,9 @@ error:
 struct _RDB_tbindex *
 _RDB_sortindex (RDB_object *tbp)
 {
-#ifdef NIX
-!!
-    switch (tbp->kind) {
-        case RDB_TB_REAL:
-            return NULL;
-        case RDB_TB_SELECT:
-            return _RDB_sortindex(tbp->var.select.tbp);
-        case RDB_TB_UNION:
-            return NULL;
-        case RDB_TB_SEMIMINUS:
-            return _RDB_sortindex(tbp->var.semiminus.tb1p);
-        case RDB_TB_SEMIJOIN:
-            return _RDB_sortindex(tbp->var.semijoin.tb1p);
-        case RDB_TB_JOIN:
-            return _RDB_sortindex(tbp->var.join.tb1p);
-        case RDB_TB_EXTEND:
-            return _RDB_sortindex(tbp->var.extend.tbp);
-        case RDB_TB_PROJECT:
-            return tbp->var.project.indexp;
-        case RDB_TB_RENAME:
-            return NULL; /* !! */
-        case RDB_TB_SUMMARIZE:
-            return NULL; /* !! */
-        case RDB_TB_WRAP:
-            return NULL; /* !! */
-        case RDB_TB_UNWRAP:
-            return NULL; /* !! */
-        case RDB_TB_SDIVIDE:
-            return _RDB_sortindex(tbp->var.sdivide.tb1p);
-        case RDB_TB_GROUP:
-            return NULL; /* !! */
-        case RDB_TB_UNGROUP:
-            return NULL; /* !! */
-    }
-    abort();
-#endif
-    return NULL;
+    if (tbp->kind != RDB_OB_TABLE)
+        return NULL;
+    if (tbp->var.tb.exp == NULL)
+        return NULL;
+    return expr_sortindex(tbp->var.tb.exp);
 }

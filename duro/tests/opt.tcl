@@ -87,8 +87,9 @@ if {![tequal $tpl {A 1 B 2 C 3}]} {
 }
 
 set tpl [duro::expr {TUPLE FROM (T2 {A, B}) WHERE A=1 AND B=2} $tx]
-if {![tequal $tpl {A 1 B 2}]} {
-    error "Invalid tuple value: $tpl"
+set stpl {A 1 B 2}
+if {![tequal $tpl $stpl]} {
+    error "Invalid tuple value: $tpl, should be $stpl"
 }
 
 set tpl [duro::expr {TUPLE FROM ((((T2 WHERE A=1) INTERSECT T4) UNION T3)
@@ -114,7 +115,7 @@ set tpl [duro::expr {TUPLE FROM t} $tx]
 # Check if primary key is used
 set plan [duro::table getplan t $tx]
 if {![string match "*INDEX T2\$0*" $plan]} {
-    error "primary index should be used, but is not"
+    error "primary index should be used, but is not: $plan"
 }
 
 duro::table drop t $tx

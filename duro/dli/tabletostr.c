@@ -246,9 +246,17 @@ append_ex(RDB_object *objp, const RDB_expression *exp, RDB_exec_context *ecp,
                  return ret;
             break;
         case RDB_EX_TBP:
-            ret = append_table(objp, exp->var.tbp, ecp, txp, options);
+            ret = append_table(objp, exp->var.tbref.tbp, ecp, txp, options);
             if (ret != RDB_OK)
                  return ret;
+            if (exp->var.tbref.indexp != NULL) {
+                ret = append_str(objp, " INDEX ");
+                if (ret != RDB_OK)
+                    return ret;
+                ret = append_str(objp, exp->var.tbref.indexp->name);
+                if (ret != RDB_OK)
+                    return ret;
+            }            
             break;            
         case RDB_EX_VAR:
              ret = append_str(objp, exp->var.varname);

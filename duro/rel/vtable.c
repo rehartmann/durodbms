@@ -1154,8 +1154,8 @@ _RDB_index_objpv(_RDB_tbindex *indexp, RDB_expression *exp, RDB_type *tbtyp,
         if (attrexp->var.op.argv[1]->var.obj.typ == NULL
                 && (attrexp->var.op.argv[1]->var.obj.kind == RDB_OB_TUPLE
                 || attrexp->var.op.argv[1]->var.obj.kind == RDB_OB_ARRAY))
-            attrexp->var.op.argv[1]->var.obj.typ =
-                    RDB_type_attr_type(tbtyp, indexp->attrv[i].attrname);
+            attrexp->var.op.argv[1]->var.obj.typ = _RDB_dup_nonscalar_type(
+                    RDB_type_attr_type(tbtyp, indexp->attrv[i].attrname), NULL /*!!*/);
 
         objpv[i] = &attrexp->var.op.argv[1]->var.obj;       
     }

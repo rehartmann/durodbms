@@ -146,7 +146,7 @@ expr_resolve_attrs(const RDB_expression *exp, const RDB_object *tplp,
         case RDB_EX_OBJ:
             return RDB_obj_to_expr(&exp->var.obj, ecp);
         case RDB_EX_TBP:
-            return RDB_table_ref_to_expr(exp->var.tbp, ecp);
+            return RDB_table_ref_to_expr(exp->var.tbref.tbp, ecp);
         case RDB_EX_VAR:
             objp = RDB_tuple_get(tplp, exp->var.varname);
             if (objp != NULL)
@@ -810,7 +810,7 @@ RDB_expr_type(const RDB_expression *exp, const RDB_type *tuptyp,
             break;
         case RDB_EX_TBP:
             return _RDB_dup_nonscalar_type(
-                    RDB_obj_type(exp->var.tbp), ecp);
+                    RDB_obj_type(exp->var.tbref.tbp), ecp);
         case RDB_EX_VAR:
             if (tuptyp == NULL) {
                 RDB_raise_invalid_argument("tuple type required", ecp);
@@ -883,7 +883,7 @@ _RDB_expr_equals(const RDB_expression *ex1p, const RDB_expression *ex2p,
             return RDB_obj_equals(&ex1p->var.obj, &ex2p->var.obj, ecp, txp,
                     resp);
         case RDB_EX_TBP:
-            return RDB_obj_equals(ex1p->var.tbp, ex2p->var.tbp, ecp, txp,
+            return RDB_obj_equals(ex1p->var.tbref.tbp, ex2p->var.tbref.tbp, ecp, txp,
                     resp);
         case RDB_EX_VAR:
             *resp = (RDB_bool)
@@ -1049,7 +1049,8 @@ RDB_table_ref_to_expr(RDB_object *tbp, RDB_exec_context *ecp)
     }
     
     exp->kind = RDB_EX_TBP;
-    exp->var.tbp = tbp;
+    exp->var.tbref.tbp = tbp;
+    exp->var.tbref.indexp = NULL;
     return exp;
 }
 
@@ -1169,6 +1170,8 @@ RDB_ro_op(const char *opname, int argc, RDB_expression *argv[],
            exp->var.op.argv[i] = NULL;
     }
 
+    exp->var.op.optinfo.objpc = 0;
+
     return exp;
 }
 
@@ -1260,7 +1263,7 @@ RDB_drop_expr(RDB_expression *exp, RDB_exec_context *ecp)
 
     switch (exp->kind) {
         case RDB_EX_OBJ:
-            /* The expression takes responsibility for non-scalar types*/
+            /* The expression takes responsibility for non-scalar types */
             if (exp->var.obj.typ != NULL
                     && !RDB_type_is_scalar(exp->var.obj.typ)
                     && exp->var.obj.kind != RDB_OB_TABLE)
@@ -1342,12 +1345,6 @@ evaluate_ro_op(RDB_expression *exp, const RDB_object *tplp,
     RDB_object *valv = NULL;
     int argc = exp->var.op.argc;
 
-    if (strcmp(exp->var.op.name, "TO_TUPLE") == 0) {
-        int k = 0;
-        
-        k = k * 2;
-    }
-
     /*
      * Special treatment of relational operators
      */
@@ -1397,11 +1394,24 @@ evaluate_ro_op(RDB_expression *exp, const RDB_object *tplp,
     }
 
     if (strcmp(exp->var.op.name, "WHERE") == 0
-            || strcmp(exp->var.op.name, "SUMMARIZE") == 0) {
+            || strcmp(exp->var.op.name, "SUMMARIZE") == 0
+            || strcmp(exp->var.op.name, "MINUS") == 0
+            || strcmp(exp->var.op.name, "SEMIMINUS") == 0
+            || strcmp(exp->var.op.name, "INTERSECT") == 0
+            || strcmp(exp->var.op.name, "SEMIJOIN") == 0
+            || strcmp(exp->var.op.name, "UNION") == 0
+            || strcmp(exp->var.op.name, "DIVIDE_BY_PER") == 0
+            || strcmp(exp->var.op.name, "GROUP") == 0
+            || strcmp(exp->var.op.name, "UNGROUP") == 0) {
         return evaluate_vt(exp, tplp, ecp, txp, valp);
     }
 
-    if (strcmp(exp->var.op.name, "PROJECT") == 0) {
+    if (strcmp(exp->var.op.name, "PROJECT") == 0
+            || strcmp(exp->var.op.name, "REMOVE") == 0
+            || strcmp(exp->var.op.name, "RENAME") == 0
+            || strcmp(exp->var.op.name, "WRAP") == 0
+            || strcmp(exp->var.op.name, "UNWRAP") == 0
+            || strcmp(exp->var.op.name, "JOIN") == 0) {
         RDB_type *typ = RDB_expr_type(exp->var.op.argv[0], NULL, ecp, txp);
         
         if (typ->kind == RDB_TP_RELATION) {
@@ -1438,7 +1448,7 @@ evaluate_ro_op(RDB_expression *exp, const RDB_object *tplp,
         RDB_drop_table(tbp, ecp, NULL);
         return ret;
     }
-/*
+/* !!
     if (strcmp(opname, "AVG") == 0) {
         ret = RDB_avg(tbp, attrname, ecp, txp, &avg);
         if (ret != RDB_OK)
@@ -1485,7 +1495,7 @@ evaluate_ro_op(RDB_expression *exp, const RDB_object *tplp,
                 valpv[i] = &exp->var.op.argv[i]->var.obj;
                 break;
             case RDB_EX_TBP:
-                valpv[i] = exp->var.op.argv[i]->var.tbp;
+                valpv[i] = exp->var.op.argv[i]->var.tbref.tbp;
                 break;
             default:
                 valpv[i] = &valv[i];
@@ -1624,7 +1634,7 @@ RDB_evaluate(RDB_expression *exp, const RDB_object *tplp,
         case RDB_EX_OBJ:
             return RDB_copy_obj(valp, &exp->var.obj, ecp);
         case RDB_EX_TBP:
-            return _RDB_copy_obj(valp, exp->var.tbp, ecp, txp);
+            return _RDB_copy_obj(valp, exp->var.tbref.tbp, ecp, txp);
     }
     /* Should never be reached */
     abort();
@@ -1692,7 +1702,7 @@ RDB_dup_expr(const RDB_expression *exp, RDB_exec_context *ecp)
         case RDB_EX_OBJ:
             return RDB_obj_to_expr(&exp->var.obj, ecp);
         case RDB_EX_TBP:
-            return RDB_table_ref_to_expr(exp->var.tbp, ecp);
+            return RDB_table_ref_to_expr(exp->var.tbref.tbp, ecp);
         case RDB_EX_VAR:
             return RDB_expr_var(exp->var.varname, ecp);
     }
@@ -1706,7 +1716,7 @@ _RDB_expr_expr_depend(const RDB_expression *ex1p, const RDB_expression *ex2p)
         case RDB_EX_OBJ:
             return RDB_FALSE;
         case RDB_EX_TBP:
-            return _RDB_expr_table_depend(ex2p, ex1p->var.tbp);
+            return _RDB_expr_table_depend(ex2p, ex1p->var.tbref.tbp);
         case RDB_EX_VAR:
             return RDB_FALSE;
         case RDB_EX_TUPLE_ATTR:
@@ -1734,7 +1744,7 @@ _RDB_expr_refers(const RDB_expression *exp, const RDB_object *tbp)
         case RDB_EX_OBJ:
             return RDB_FALSE;
         case RDB_EX_TBP:
-            return _RDB_table_refers(exp->var.tbp, tbp);
+            return _RDB_table_refers(exp->var.tbref.tbp, tbp);
         case RDB_EX_VAR:
             return RDB_FALSE;
         case RDB_EX_TUPLE_ATTR:
@@ -1800,7 +1810,7 @@ RDB_expr_obj(RDB_expression *exp)
         case RDB_EX_OBJ:
             return &exp->var.obj;
         case RDB_EX_TBP:
-            return exp->var.tbp;
+            return exp->var.tbref.tbp;
         default: ;
     }
     return NULL;

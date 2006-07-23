@@ -205,7 +205,7 @@ serialize_expr(RDB_object *valp, int *posp, const RDB_expression *exp,
         case RDB_EX_OBJ:
             return serialize_obj(valp, posp, &exp->var.obj, ecp);
         case RDB_EX_TBP:
-            return serialize_table(valp, posp, exp->var.tbp, ecp);
+            return serialize_table(valp, posp, exp->var.tbref.tbp, ecp);
         case RDB_EX_VAR:
             return serialize_str(valp, posp, exp->var.varname, ecp);
         case RDB_EX_GET_COMP:

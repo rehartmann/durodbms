@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2005 René Hartmann.
+ * Copyright (C) 2005-2006 René Hartmann.
  * See the file COPYING for redistribution information.
  */
 
@@ -8,6 +8,7 @@
 #include "rdb.h"
 #include "internal.h"
 #include "assert.h"
+#include <dli/tabletostr.h>
 
 static int
 qr_matching_tuple(RDB_qresult *qrp, const RDB_object *tplp,
@@ -52,7 +53,7 @@ _RDB_expr_matching_tuple(RDB_expression *exp, const RDB_object *tplp,
         return _RDB_matching_tuple(&exp->var.obj, tplp, ecp, txp, resultp);
     }
     if (exp->kind == RDB_EX_TBP) {
-        return _RDB_matching_tuple(exp->var.tbp, tplp, ecp, txp, resultp);
+        return _RDB_matching_tuple(exp->var.tbref.tbp, tplp, ecp, txp, resultp);
     }
     
     qrp = _RDB_expr_qresult(exp, ecp, txp);
@@ -138,9 +139,12 @@ stored_matching(RDB_object *tbp, const RDB_object *tplp, RDB_exec_context *ecp,
     RDB_init_obj(&tpl);
     ret = _RDB_get_by_uindex(tbp, objpv, indexp, tbp->typ->var.basetyp, ecp,
             txp, &tpl);
-    if (ret == DB_NOTFOUND) {
-        *resultp = RDB_FALSE;
-        ret = RDB_OK;
+    if (ret == RDB_ERROR) {
+        if (RDB_obj_type(RDB_get_err(ecp)) == &RDB_NOT_FOUND_ERROR) {
+            RDB_clear_err(ecp);
+            *resultp = RDB_FALSE;
+            ret = RDB_OK;
+        }
         goto cleanup;
     }
     if (ret != RDB_OK) {

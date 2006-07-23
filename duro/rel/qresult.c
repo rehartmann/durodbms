@@ -243,6 +243,7 @@ init_stored_qresult(RDB_qresult *qrp, RDB_object *tbp, RDB_exec_context *ecp,
     int ret;
 
     qrp->nested = RDB_FALSE;
+    qrp->exp = NULL;
     qrp->var.stored.tbp = tbp;
     if (tbp->var.tb.stp == NULL) {
         /*
@@ -721,6 +722,104 @@ group_qresult(RDB_qresult *qrp, RDB_exec_context *ecp, RDB_transaction *txp)
 }
 
 static int
+init_index_qresult(RDB_qresult *qrp, RDB_object *tbp, _RDB_tbindex *indexp,
+        RDB_exec_context *ecp, RDB_transaction *txp)
+{
+    int ret;
+
+    /* !! delay after first call to _RDB_qresult_next()? */
+    qrp->nested = RDB_FALSE;
+    qrp->exp = NULL;
+    qrp->var.stored.tbp = tbp;
+    qrp->matp = NULL;
+    ret = RDB_index_cursor(&qrp->var.stored.curp, indexp->idxp, RDB_FALSE,
+            txp != NULL ? txp->txid : NULL);
+    if (ret != RDB_OK) {
+        _RDB_handle_errcode(ret, ecp, txp);
+        return RDB_ERROR;
+    }
+    ret = RDB_cursor_first(qrp->var.stored.curp);
+    if (ret == DB_NOTFOUND) {
+        qrp->endreached = RDB_TRUE;
+        return RDB_OK;
+    }
+    if (ret != RDB_OK) {
+        _RDB_handle_errcode(ret, ecp, txp);
+        return RDB_ERROR;
+    }
+    return RDB_OK;
+}
+
+static int
+init_where_index_qresult(RDB_qresult *qrp, RDB_expression *texp,
+        _RDB_tbindex *indexp, RDB_exec_context *ecp, RDB_transaction *txp)
+{
+    int ret;
+    int i;
+    RDB_field *fv;
+    int flags = 0;
+
+    qrp->nested = RDB_FALSE;
+    qrp->exp = texp;
+    qrp->matp = NULL;
+    if (texp->var.op.argv[0]->kind == RDB_EX_TBP) {
+        qrp->var.stored.tbp = texp->var.op.argv[0]->var.tbref.tbp;
+    } else {
+        qrp->var.stored.tbp = texp->var.op.argv[0]->var.op.argv[0]
+                ->var.tbref.tbp;
+    }
+
+    fv = malloc(sizeof (RDB_field) * indexp->attrc);
+
+    if (fv == NULL) {
+        RDB_raise_no_memory(ecp);
+        return RDB_ERROR;
+    }
+
+    for (i = 0; i < texp->var.op.optinfo.objpc; i++) {
+        ret = _RDB_obj_to_field(&fv[i], texp->var.op.optinfo.objpv[i], ecp);
+        if (ret != RDB_OK) {
+            free(fv);
+            return RDB_ERROR;
+        }
+    }
+    for (i = texp->var.op.optinfo.objpc; i < indexp->attrc;
+            i++) {
+        fv[i].len = 0;
+    }
+
+    if (indexp->unique) {
+        qrp->var.stored.curp = NULL;
+        return RDB_OK;
+    }
+    ret = RDB_index_cursor(&qrp->var.stored.curp, indexp->idxp, RDB_FALSE,
+            qrp->var.stored.tbp->var.tb.is_persistent ? txp->txid : NULL);
+    if (ret != RDB_OK) {
+        free(fv);
+        _RDB_handle_errcode(ret, ecp, txp);
+        return RDB_ERROR;
+    }
+
+    if (texp->var.op.optinfo.objpc != indexp->attrc
+            || !texp->var.op.optinfo.all_eq)
+        flags = RDB_REC_RANGE;
+
+    ret = RDB_cursor_seek(qrp->var.stored.curp, texp->var.op.optinfo.objpc,
+            fv, flags);
+    if (ret == DB_NOTFOUND) {
+        qrp->endreached = RDB_TRUE;
+        ret = RDB_OK;
+    }
+
+    free(fv);
+    if (ret != RDB_OK) {
+        _RDB_handle_errcode(ret, ecp, txp);
+        return RDB_ERROR;
+    }
+    return RDB_OK;
+}
+
+static int
 init_expr_qresult(RDB_qresult *qrp, RDB_expression *exp, RDB_exec_context *ecp,
         RDB_transaction *txp)
 {
@@ -728,7 +827,10 @@ init_expr_qresult(RDB_qresult *qrp, RDB_expression *exp, RDB_exec_context *ecp,
 		return init_qresult(qrp, &exp->var.obj, ecp, txp);
 	}
 	if (exp->kind == RDB_EX_TBP) {
-		return init_qresult(qrp, exp->var.tbp, ecp, txp);
+        if (exp->var.tbref.indexp != NULL)
+		    return init_index_qresult(qrp, exp->var.tbref.tbp,
+                    exp->var.tbref.indexp, ecp, txp);
+        return init_qresult(qrp, exp->var.tbref.tbp, ecp, txp);
 	}
 	if (exp->kind != RDB_EX_RO_OP) {
     	RDB_raise_invalid_argument(
@@ -736,9 +838,23 @@ init_expr_qresult(RDB_qresult *qrp, RDB_expression *exp, RDB_exec_context *ecp,
     	return RDB_ERROR;
 	}
 
-	qrp->exp = exp;
+    qrp->exp = exp;
     qrp->endreached = RDB_FALSE;
     qrp->matp = NULL;
+
+    if (strcmp(exp->var.op.name, "WHERE") == 0
+        && exp->var.op.optinfo.objpc > 0) {
+        /* Check for index */
+        _RDB_tbindex *indexp;
+        if (exp->var.op.argv[0]->kind == RDB_EX_TBP) {
+            indexp = exp->var.op.argv[0]->var.tbref.indexp;
+        } else if (exp->var.op.argv[0]->kind == RDB_EX_RO_OP
+                && strcmp (exp->var.op.argv[0]->var.op.name, "PROJECT") == 0
+                && exp->var.op.argv[0]->var.op.argv[0]->kind == RDB_EX_TBP) {
+            indexp = exp->var.op.argv[0]->var.op.argv[0]->var.tbref.indexp;
+        }
+        return init_where_index_qresult(qrp, exp, indexp, ecp, txp);
+    }        
 
 	if ((strcmp(exp->var.op.name, "WHERE") == 0)
             || (strcmp(exp->var.op.name, "PROJECT") == 0)
@@ -805,93 +921,7 @@ _RDB_expr_qresult(RDB_expression *exp, RDB_exec_context *ecp,
     return qrp;
 }
 
-#ifdef NIX
-static int
-index_qresult(RDB_qresult *qrp, _RDB_tbindex *indexp,
-        RDB_transaction *txp)
-{
-    int ret;
-
-    /* !! delay after first call to _RDB_qresult_next()? */
-    qrp->nested = RDB_FALSE;
-    qrp->matp = NULL;
-    ret = RDB_index_cursor(&qrp->var.curp, indexp->idxp, RDB_FALSE,
-            txp != NULL ? txp->txid : NULL);
-    if (ret != RDB_OK) {
-        return RDB_ERROR;
-    }
-    ret = RDB_cursor_first(qrp->var.curp);
-    if (ret == DB_NOTFOUND) {
-        qrp->endreached = RDB_TRUE;
-        ret = RDB_OK;
-    }
-    return ret;
-}
-
-static int
-select_index_qresult(RDB_qresult *qrp, RDB_exec_context *ecp,
-        RDB_transaction *txp)
-{
-    int ret;
-    int i;
-    RDB_field *fv;
-    int flags = 0;
-    _RDB_tbindex *indexp = qrp->tbp->var.select.tbp->var.project.indexp;
-
-    /*
-     * If the index is unique, there is nothing to do
-     */
-    if (indexp->unique) {
-        qrp->nested = RDB_TRUE;
-        qrp->matp = NULL;
-        qrp->var.children.qrp = NULL;
-        return RDB_OK;
-    }
-
-    fv  = malloc(sizeof (RDB_field) * indexp->attrc);
-
-    if (fv == NULL) {
-        RDB_raise_no_memory(ecp);
-        return RDB_ERROR;
-    }
-
-    qrp->nested = RDB_FALSE;
-    qrp->matp = NULL;
-    ret = RDB_index_cursor(&qrp->var.curp, indexp->idxp,
-            RDB_FALSE, qrp->tbp->var.select.tbp->var.project.tbp->is_persistent ?
-            txp->txid : NULL);
-    if (ret != RDB_OK) {
-        free(fv);
-        _RDB_handle_errcode(ret, ecp, txp);
-        return RDB_ERROR;
-    }
-
-    for (i = 0; i < qrp->tbp->var.select.objpc; i++) {
-        ret = _RDB_obj_to_field(&fv[i], qrp->tbp->var.select.objpv[i], ecp);
-        if (ret != RDB_OK) {
-            free(fv);
-            return RDB_ERROR;
-        }
-    }
-    for (i = qrp->tbp->var.select.objpc; i < indexp->attrc;
-            i++) {
-        fv[i].len = 0;
-    }
-
-    if (qrp->tbp->var.select.objpc != indexp->attrc
-            || !qrp->tbp->var.select.all_eq)
-        flags = RDB_REC_RANGE;
-
-    ret = RDB_cursor_seek(qrp->var.curp, qrp->tbp->var.select.objpc, fv, flags);
-    if (ret == DB_NOTFOUND) {
-        qrp->endreached = RDB_TRUE;
-        ret = RDB_OK;
-    }
-
-    free(fv);
-    return ret;
-}
-
+#ifdef REMOVED
 static int
 join_qresult(RDB_qresult *qrp, RDB_exec_context *ecp, RDB_transaction *txp)
 {
@@ -966,7 +996,7 @@ expr_dups(RDB_expression *exp, RDB_exec_context *ecp,
         return RDB_OK;
     }
     if (exp->kind == RDB_EX_TBP) {
-        exp = exp->var.tbp->var.tb.exp;
+        exp = exp->var.tbref.tbp->var.tb.exp;
         if (exp == NULL) {
             *resp = RDB_FALSE;
             return RDB_OK;
@@ -1101,7 +1131,6 @@ _RDB_sorter(RDB_object *tbp, RDB_qresult **qrpp, RDB_exec_context *ecp,
     RDB_qresult *tmpqrp;
     RDB_object tpl;
     RDB_qresult *qrp = malloc(sizeof (RDB_qresult));
-
     if (qrp == NULL) {
         RDB_raise_no_memory(ecp);
         return RDB_ERROR;
@@ -1120,6 +1149,7 @@ _RDB_sorter(RDB_object *tbp, RDB_qresult **qrpp, RDB_exec_context *ecp,
         goto error;
     }
 
+    qrp->nested = RDB_FALSE;
     qrp->var.stored.tbp = NULL;
     qrp->endreached = RDB_FALSE;
 
@@ -1776,10 +1806,12 @@ _RDB_get_by_uindex(RDB_object *tbp, RDB_object *objpv[], _RDB_tbindex *indexp,
                 resfv[rfi++].no = fno;
         }
         ret = RDB_index_get_fields(indexp->idxp, fv, resfc,
-                             tbp->var.tb.is_persistent ? txp->txid : NULL, resfv);
+                tbp->var.tb.is_persistent ? txp->txid : NULL, resfv);
     }
-    
+
     if (ret != RDB_OK) {
+        _RDB_handle_errcode(ret, ecp, txp);
+        ret = RDB_ERROR;
         goto cleanup;
     }
 
@@ -1884,67 +1916,78 @@ next_project_tuple(RDB_qresult *qrp, RDB_object *tplp, RDB_exec_context *ecp,
     return RDB_OK;
 }
 
-#ifdef NIX
 static int
-next_select_index(RDB_qresult *qrp, RDB_object *tplp, RDB_exec_context *ecp,
-        RDB_transaction *txp)
+next_where_index(RDB_qresult *qrp, RDB_object *tplp,
+        RDB_exec_context *ecp, RDB_transaction *txp)
 {
     int ret;
-    _RDB_tbindex *indexp = qrp->tbp->var.select.tbp->var.project.indexp;
+    _RDB_tbindex *indexp;
+    RDB_type *tpltyp;
+    RDB_type *reltyp = NULL;
 
-    if (indexp->unique) {
-        ret = _RDB_get_by_uindex(qrp->tbp->var.select.tbp->var.project.tbp,
-                qrp->tbp->var.select.objpv, indexp,
-                qrp->tbp->typ->var.basetyp, ecp, txp, tplp);
+    if (qrp->exp->var.op.argv[0]->kind == RDB_EX_TBP) {
+        indexp = qrp->exp->var.op.argv[0]->var.tbref.indexp;
+        tpltyp = qrp->var.stored.tbp->typ->var.basetyp;
+    } else {
+        indexp = qrp->exp->var.op.argv[0]->var.op.argv[0]->var.tbref.indexp;
+        reltyp = RDB_expr_type(qrp->exp->var.op.argv[0], NULL, ecp, txp); /* !! free */
+        if (reltyp == NULL)
+            return RDB_ERROR;
+        tpltyp = reltyp->var.basetyp;
+    }
+
+    if (qrp->var.stored.curp == NULL) {
+        ret = _RDB_get_by_uindex(qrp->var.stored.tbp,
+                qrp->exp->var.op.optinfo.objpv, indexp,
+                tpltyp, ecp, txp, tplp);
         if (ret != RDB_OK) {
-            _RDB_handle_errcode(ret, ecp, txp);
             return RDB_ERROR;
         }
 
         qrp->endreached = RDB_TRUE;
-    } else {
-        RDB_bool rtup;
-        RDB_bool dup = RDB_FALSE;
+        return RDB_OK;
+    }
 
-        if (qrp->tbp->var.select.objpc == indexp->attrc
-                && qrp->tbp->var.select.all_eq)
-            dup = RDB_TRUE;
+    RDB_bool rtup;
+    RDB_bool dup = RDB_FALSE;
 
-        do {
-            ret = next_stored_tuple(qrp,
-                    qrp->tbp->var.select.tbp->var.project.tbp,
-                    tplp, qrp->tbp->var.select.asc, dup,
-                    qrp->tbp->var.select.tbp->typ->var.basetyp, ecp, txp);
-            if (ret != RDB_OK)
-                return RDB_ERROR;
-            if (qrp->tbp->var.select.all_eq)
-                rtup = RDB_TRUE;
-            else {
-                if (qrp->tbp->var.select.stopexp != NULL) {
-                    ret = RDB_evaluate_bool(qrp->tbp->var.select.stopexp, tplp,
-                            ecp, txp, &rtup);
-                    if (ret != RDB_OK)
-                        return RDB_ERROR;
-                    if (!rtup) {
-                        qrp->endreached = RDB_TRUE;
-                        RDB_raise_not_found("", ecp);
-                        return RDB_ERROR;
-                    }
-                }
-                /*
-                 * Check condition, because it could be an open start
-                 */
-                ret = RDB_evaluate_bool(qrp->tbp->var.select.exp, tplp, ecp, txp,
-                        &rtup);
+    if (qrp->exp->var.op.optinfo.objpc == indexp->attrc
+            && qrp->exp->var.op.optinfo.all_eq)
+        dup = RDB_TRUE;
+
+    do {
+        ret = next_stored_tuple(qrp, qrp->var.stored.tbp, tplp,
+                qrp->exp->var.op.optinfo.asc, dup, tpltyp, ecp, txp);
+        if (ret != RDB_OK)
+            return RDB_ERROR;
+        if (qrp->exp->var.op.optinfo.all_eq)
+            rtup = RDB_TRUE;
+        else {
+            if (qrp->exp->var.op.optinfo.stopexp != NULL) {
+                ret = RDB_evaluate_bool(qrp->exp->var.op.optinfo.stopexp, tplp,
+                        ecp, txp, &rtup);
                 if (ret != RDB_OK)
                     return RDB_ERROR;
+                if (!rtup) {
+                    qrp->endreached = RDB_TRUE;
+                    RDB_raise_not_found("", ecp);
+                    return RDB_ERROR;
+                }
             }
-        } while (!rtup);
-    }
+            /*
+             * Check condition, because it could be an open start
+             */
+            ret = RDB_evaluate_bool(qrp->exp->var.op.argv[1], tplp, ecp, txp,
+                    &rtup);
+            if (ret != RDB_OK)
+                return RDB_ERROR;
+        }
+    } while (!rtup);
 
     return RDB_OK;
 }
 
+#ifdef REMOVED
 static int
 next_rename_tuple(RDB_qresult *qrp, RDB_object *tplp, RDB_exec_context *ecp,
         RDB_transaction *txp)
@@ -2263,7 +2306,7 @@ next_sdivide_tuple(RDB_qresult *qrp, RDB_object *tplp, RDB_exec_context *ecp,
 }
 
 static int
-next_select_tuple(RDB_qresult *qrp, RDB_object *tplp, RDB_exec_context *ecp,
+next_where_tuple(RDB_qresult *qrp, RDB_object *tplp, RDB_exec_context *ecp,
         RDB_transaction *txp)
 {
     int ret;
@@ -2440,18 +2483,22 @@ _RDB_next_tuple(RDB_qresult *qrp, RDB_object *tplp, RDB_exec_context *ecp,
     }
 
     if (!qrp->nested) {
-        RDB_type *tpltyp;
     	RDB_object *tbp = qrp->var.stored.tbp;
 	    if (tbp == NULL) {
 	        /* It's a sorter */
 	        return next_stored_tuple(qrp, qrp->matp, tplp, RDB_TRUE, RDB_FALSE,
 	                qrp->matp->typ->var.basetyp, ecp, txp);
 	    }
-        tpltyp = qrp->var.stored.tbp->typ->kind == RDB_TP_RELATION ?
+        if (qrp->exp != NULL && qrp->exp->kind == RDB_EX_RO_OP
+                && strcmp(qrp->exp->var.op.name, "WHERE") == 0) {
+            return next_where_index(qrp, tplp, ecp, txp);
+        } else {
+            RDB_type *tpltyp = qrp->var.stored.tbp->typ->kind == RDB_TP_RELATION ?
                 qrp->var.stored.tbp->typ->var.basetyp
                 : qrp->var.stored.tbp->typ->var.scalar.arep->var.basetyp;
-        return next_stored_tuple(qrp, qrp->var.stored.tbp, tplp, RDB_TRUE,
-                RDB_FALSE, tpltyp, ecp, txp);
+            return next_stored_tuple(qrp, qrp->var.stored.tbp, tplp, RDB_TRUE,
+                    RDB_FALSE, tpltyp, ecp, txp);
+        }
     }
     exp = qrp->exp;
     if (exp->kind != RDB_EX_RO_OP) {
@@ -2464,7 +2511,7 @@ _RDB_next_tuple(RDB_qresult *qrp, RDB_object *tplp, RDB_exec_context *ecp,
         /* ELEMENT_EXISTS can be active */
         RDB_clear_err(ecp);
         if (strcmp(exp->var.op.name, "WHERE") == 0) {
-            if (next_select_tuple(qrp, tplp, ecp, txp) != RDB_OK)
+            if (next_where_tuple(qrp, tplp, ecp, txp) != RDB_OK)
                 return RDB_ERROR;
         } else if (strcmp(exp->var.op.name, "PROJECT") == 0) {
             if (next_project_tuple(qrp, tplp, ecp, txp) != RDB_OK)
@@ -2536,8 +2583,8 @@ _RDB_next_tuple(RDB_qresult *qrp, RDB_object *tplp, RDB_exec_context *ecp,
         RDB_clear_err(ecp);
         switch (tbp->kind) {
             case RDB_TB_REAL:
-                return next_stored_tuple(qrp, qrp->var.stored.tbp, tplp, RDB_TRUE, RDB_FALSE,
-                        qrp->tbp->typ->var.basetyp, ecp, txp);
+                return next_stored_tuple(qrp, qrp->var.stored.tbp, tplp,
+                        RDB_TRUE, RDB_FALSE, qrp->tbp->typ->var.basetyp, ecp, txp);
             case RDB_TB_SELECT:
                 if (qrp->tbp->var.select.objpc > 0)
                     ret = next_select_index(qrp, tplp, ecp, txp);

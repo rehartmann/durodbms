@@ -32,16 +32,27 @@ enum _RDB_expr_kind {
 };
 
 struct RDB_expression {
-    /* internal */
     enum _RDB_expr_kind kind;
     union {
         char *varname;
         RDB_object obj;
-        RDB_object *tbp;
+        struct {
+            RDB_object *tbp;
+            struct _RDB_tbindex *indexp;
+        } tbref;
         struct {
             int argc;
             struct RDB_expression **argv;
             char *name;
+            struct {
+                int objpc;
+
+                /* The following fields are only valid if optinfo > 0 */
+                RDB_object **objpv;
+                RDB_bool asc;
+                RDB_bool all_eq;
+                RDB_expression *stopexp;
+            } optinfo;
         } op;
     } var;
 };
@@ -110,15 +121,21 @@ typedef struct RDB_stored_table {
 } RDB_stored_table;
 
 typedef struct RDB_qresult {
+    /* May be NULL */
     RDB_expression *exp;
     RDB_bool nested;
     union {
         struct {
-            RDB_object *tbp; /* NULL for sorter */
+            /* May be a descendant of *exp, NULL for sorter */
+            RDB_object *tbp;
+
+            /* NULL if a unique index is used */
             RDB_cursor *curp;
         } stored;
         struct {
             struct RDB_qresult *qrp;
+
+            /* Only for some operators, may be NULL */
             struct RDB_qresult *qr2p;
             
             /* only used for join and ungroup */

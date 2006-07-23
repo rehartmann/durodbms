@@ -70,6 +70,12 @@ duro::insert T4 {A 2 B 1} $tx
 
 duro::insert T4 {A 2 B 3} $tx
 
+set tpl [duro::expr {TUPLE FROM (T1 MINUS (T1 WHERE K <> 1))} $tx]
+set stpl {K 1 S1 Bla}
+if {![tequal $tpl $stpl]} {
+    error "Invalid tuple value: $tpl, should be $stpl"
+}
+
 # Create virtual tables
 
 duro::table expr -global TU {T1 UNION T2} $tx
@@ -128,8 +134,9 @@ if {![string match "RDB_ELEMENT_EXISTS_ERROR(*)" $code]} {
     error "Wrong error: $errorCode"
 }
 
-if {[duro::expr {TUPLE FROM TP} $tx] != {K 1}} {
-    error "Tuple value should be {K 1}, but is not"
+set tpl [duro::expr {TUPLE FROM TP} $tx]
+if {$tpl != {K 1}} {
+    error "Tuple value should be {K 1}, but is $tpl"
 }
 
 set tpl [duro::expr {TUPLE FROM TJ2} $tx]

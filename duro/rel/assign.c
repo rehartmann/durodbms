@@ -360,12 +360,12 @@ replace_targets(RDB_expression *exp,
         case RDB_EX_OBJ:
             return RDB_obj_to_expr(&exp->var.obj, ecp);
         case RDB_EX_TBP:
-            if (exp->var.tbp->var.tb.exp == NULL) {
-                return replace_targets_real(exp->var.tbp,
+            if (exp->var.tbref.tbp->var.tb.exp == NULL) {
+                return replace_targets_real(exp->var.tbref.tbp,
                             insc, insv, updc, updv, delc, delv,
                             copyc, copyv, ecp, txp);
             }
-          	return replace_targets(exp->var.tbp->var.tb.exp, insc, insv,
+          	return replace_targets(exp->var.tbref.tbp->var.tb.exp, insc, insv,
                     updc, updv, delc, delv, copyc, copyv, ecp, txp);
         case RDB_EX_VAR:
             return RDB_expr_var(exp->var.varname, ecp);
@@ -548,7 +548,7 @@ resolve_insert_expr(RDB_expression *exp, const RDB_object *tplp,
 
     switch (exp->kind) {
         case RDB_EX_TBP:
-            return resolve_insert(exp->var.tbp, tplp, insnpp, ecp, txp);
+            return resolve_insert(exp->var.tbref.tbp, tplp, insnpp, ecp, txp);
         case RDB_EX_OBJ:
             return resolve_insert(&exp->var.obj, tplp, insnpp, ecp, txp);
         case RDB_EX_RO_OP:
@@ -817,7 +817,7 @@ resolve_delete_expr(RDB_expression *exp, RDB_expression *condp,
 
     switch (exp->kind) {
         case RDB_EX_TBP:
-            return resolve_delete(exp->var.tbp, condp, delnpp, ecp, txp);
+            return resolve_delete(exp->var.tbref.tbp, condp, delnpp, ecp, txp);
         case RDB_EX_OBJ:
             return resolve_delete(&exp->var.obj, condp, delnpp, ecp, txp);
         case RDB_EX_RO_OP:
@@ -1056,12 +1056,12 @@ do_update(const RDB_ma_update *updp, RDB_exec_context *ecp, RDB_transaction *txp
         return RDB_ERROR;
 
     if (nexp->kind == RDB_EX_TBP) {
-        return _RDB_update_real(nexp->var.tbp, NULL, updp->updc, updp->updv,
+        return _RDB_update_real(nexp->var.tbref.tbp, NULL, updp->updc, updp->updv,
                 ecp, txp);
     }
     if (nexp->kind == RDB_EX_RO_OP && strcmp (nexp->var.op.name, "WHERE") == 0
             && nexp->var.op.argv[0]->kind == RDB_EX_TBP) {
-        return _RDB_update_real(nexp->var.op.argv[0]->var.tbp,
+        return _RDB_update_real(nexp->var.op.argv[0]->var.tbref.tbp,
                 nexp->var.op.argv[1], updp->updc, updp->updv, ecp, txp);
     }
     RDB_raise_not_supported("Unsupported update", ecp);
@@ -1133,11 +1133,11 @@ do_delete(const RDB_ma_delete *delp, RDB_exec_context *ecp,
 
     /* !! drop select */
     if (nexp->kind == RDB_EX_TBP) {
-        return _RDB_delete_real(nexp->var.tbp, NULL, ecp, txp);
+        return _RDB_delete_real(nexp->var.tbref.tbp, NULL, ecp, txp);
     }
     if (nexp->kind == RDB_EX_RO_OP && strcmp (nexp->var.op.name, "WHERE") == 0
             && nexp->var.op.argv[0]->kind == RDB_EX_TBP) {
-        return _RDB_delete_real(nexp->var.op.argv[0]->var.tbp,
+        return _RDB_delete_real(nexp->var.op.argv[0]->var.tbref.tbp,
                 nexp->var.op.argv[1], ecp, txp);
     }
     RDB_raise_not_supported("Unsupported delete", ecp);
