@@ -3,6 +3,7 @@
 #include <rel/rdb.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <assert.h>
 
 static int
 print_table(RDB_object *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
@@ -49,7 +50,6 @@ test_rename(RDB_database *dbp, RDB_exec_context *ecp)
     int ret;
     RDB_bool b;
 
-    printf("Starting transaction\n");
     ret = RDB_begin_tx(ecp, &tx, dbp, NULL);
     if (ret != RDB_OK) {
         return ret;
@@ -61,7 +61,7 @@ test_rename(RDB_database *dbp, RDB_exec_context *ecp)
         return RDB_ERROR;
     }
 
-    printf("Creating EMPS1 RENAME (SALARY AS SAL, EMPNO AS EMP#)\n");
+    /* Creating EMPS1 RENAME (SALARY AS SAL, EMPNO AS EMP#) */
 
     exp = RDB_ro_op("RENAME", 5, NULL, ecp);
     if (exp == NULL) {
@@ -112,7 +112,6 @@ test_rename(RDB_database *dbp, RDB_exec_context *ecp)
         return RDB_ERROR;
     }
 
-    printf("Printing renaming table\n");
     ret = print_table(vtbp, ecp, &tx);
 
     RDB_init_obj(&tpl);
@@ -133,20 +132,17 @@ test_rename(RDB_database *dbp, RDB_exec_context *ecp)
     if (ret != RDB_OK) {
         goto error;
     }
-    printf("Result of RDB_table_contains(): %s\n", b ? "TRUE" : "FALSE");
+    assert(b);
 
     RDB_destroy_obj(&tpl, ecp);
 
-    printf("Dropping rename\n");
     RDB_drop_table(vtbp, ecp, &tx);
 
-    printf("End of transaction\n");
     return RDB_commit(ecp, &tx);
 
 error:
     RDB_destroy_obj(&tpl, ecp);
 
-    printf("Dropping rename\n");
     RDB_drop_table(vtbp, ecp, &tx);
 
     RDB_rollback(ecp, &tx);
@@ -161,7 +157,6 @@ main(void)
     int ret;
     RDB_exec_context ec;
     
-    printf("Opening environment\n");
     ret = RDB_open_env("dbenv", &dsp);
     if (ret != 0) {
         fprintf(stderr, "Error: %s\n", db_strerror(ret));
@@ -184,7 +179,6 @@ main(void)
     }
 
     RDB_destroy_exec_context(&ec);
-    printf ("Closing environment\n");
     ret = RDB_close_env(dsp);
     if (ret != RDB_OK) {
         fprintf(stderr, "Error: %s\n", db_strerror(ret));

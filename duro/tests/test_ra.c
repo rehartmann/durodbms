@@ -17,7 +17,6 @@ test_ra(RDB_database *dbp, RDB_exec_context *ecp)
     int ret;
     RDB_int i;
 
-    printf("Starting transaction\n");
     ret = RDB_begin_tx(ecp, &tx, dbp, NULL);
     if (ret != RDB_OK) {
         return ret;
@@ -33,8 +32,6 @@ test_ra(RDB_database *dbp, RDB_exec_context *ecp)
         RDB_rollback(ecp, &tx);
         return RDB_ERROR;
     }
-
-    printf("Creating intersection (EMPS1, EMPS2)\n");
 
     exp = RDB_ro_op("INTERSECT", 2, NULL, ecp);
     if (exp == NULL) {
@@ -57,8 +54,6 @@ test_ra(RDB_database *dbp, RDB_exec_context *ecp)
     RDB_add_arg(exp, argp);
     
     argp = exp;
-
-    printf("Creating projection (NAME)\n");
 
     exp = RDB_ro_op("PROJECT", 2, NULL, ecp);
     if (exp == NULL) {
@@ -83,7 +78,6 @@ test_ra(RDB_database *dbp, RDB_exec_context *ecp)
 
     RDB_init_obj(&array);
 
-    printf("Converting virtual table to array\n");
     ret = RDB_table_to_array(&array, vtbp, 0, NULL, ecp, &tx);
     if (ret != RDB_OK) {
         RDB_destroy_obj(&array, ecp);
@@ -101,10 +95,8 @@ test_ra(RDB_database *dbp, RDB_exec_context *ecp)
         return RDB_ERROR;
     }
 
-    printf("Dropping virtual table\n");
     RDB_drop_table(vtbp, ecp, &tx);
 
-    printf("End of transaction\n");
     return RDB_commit(ecp, &tx);
 }
 
@@ -116,7 +108,6 @@ main(void)
     int ret;
     RDB_exec_context ec;
     
-    printf("Opening environment\n");
     ret = RDB_open_env("dbenv", &dsp);
     if (ret != 0) {
         fprintf(stderr, "Error: %s\n", db_strerror(ret));
@@ -138,7 +129,6 @@ main(void)
     }
     RDB_destroy_exec_context(&ec);
 
-    printf ("Closing environment\n");
     ret = RDB_close_env(dsp);
     if (ret != RDB_OK) {
         fprintf(stderr, "Error: %s\n", db_strerror(ret));

@@ -15,7 +15,6 @@ create_view1(RDB_database *dbp, RDB_exec_context *ecp)
     RDB_object *tbp, *tbp2, *vtbp;
     int ret;
 
-    printf("Starting transaction\n");
     ret = RDB_begin_tx(ecp, &tx, dbp, NULL);
     if (ret != RDB_OK) {
         return ret;
@@ -31,8 +30,6 @@ create_view1(RDB_database *dbp, RDB_exec_context *ecp)
         RDB_rollback(ecp, &tx);
         return ret;
     }
-
-    printf("Creating (EMPS1 union EMPS2) { SALARY }\n");
 
     exp = RDB_ro_op("PROJECT", 2, NULL, ecp);
     if (exp == NULL) {
@@ -71,7 +68,6 @@ create_view1(RDB_database *dbp, RDB_exec_context *ecp)
         return RDB_ERROR;
     }
     
-    printf("Making virtual table persistent as SALARIES\n");
     ret = RDB_set_table_name(vtbp, "SALARIES", ecp, &tx);
     if (ret != RDB_OK) {
         RDB_rollback(ecp, &tx);
@@ -83,7 +79,6 @@ create_view1(RDB_database *dbp, RDB_exec_context *ecp)
         return ret;
     } 
 
-    printf("End of transaction\n");
     return RDB_commit(ecp, &tx);
 }
 
@@ -95,7 +90,6 @@ create_view2(RDB_database *dbp, RDB_exec_context *ecp)
     RDB_expression *exp, *argp, *hexprp;
     int ret;
 
-    printf("Starting transaction\n");
     ret = RDB_begin_tx(ecp, &tx, dbp, NULL);
     if (ret != RDB_OK) {
         return ret;
@@ -106,8 +100,6 @@ create_view2(RDB_database *dbp, RDB_exec_context *ecp)
         RDB_rollback(ecp, &tx);
         return RDB_ERROR;
     }
-
-    printf("Creating EMPS1 WHERE (SALARY > 4000)\n");
 
     exp = RDB_ro_op("WHERE", 2, NULL, ecp);
     if (exp == NULL)
@@ -131,7 +123,6 @@ create_view2(RDB_database *dbp, RDB_exec_context *ecp)
         return RDB_ERROR;
     }
 
-    printf("Making virtual table persistent as EMPS1H\n");
     ret = RDB_set_table_name(vtbp, "EMPS1H", ecp, &tx);
     if (ret != RDB_OK) {
         RDB_rollback(ecp, &tx);
@@ -143,7 +134,6 @@ create_view2(RDB_database *dbp, RDB_exec_context *ecp)
         return ret;
     } 
 
-    printf("End of transaction\n");
     return RDB_commit(ecp, &tx);
 }
 
@@ -155,7 +145,6 @@ create_view3(RDB_database *dbp, RDB_exec_context *ecp)
     RDB_expression *exprp, *exp, *argp;
     int ret;
 
-    printf("Starting transaction\n");
     ret = RDB_begin_tx(ecp, &tx, dbp, NULL);
     if (ret != RDB_OK) {
         return ret;
@@ -166,8 +155,6 @@ create_view3(RDB_database *dbp, RDB_exec_context *ecp)
         RDB_rollback(ecp, &tx);
         return ret;
     }
-
-    printf("Creating EXTEND EMPS1 ADD (SALARY > 4000 AS HIGHSAL)\n");
 
     exp = RDB_ro_op("EXTEND", 3, NULL, ecp);
     if (exp == NULL)
@@ -197,7 +184,6 @@ create_view3(RDB_database *dbp, RDB_exec_context *ecp)
         return RDB_ERROR;
     }
     
-    printf("Making virtual table persistent as EMPS1S\n");
     ret = RDB_set_table_name(vtbp, "EMPS1S", ecp, &tx);
     if (ret != RDB_OK) {
         RDB_rollback(ecp, &tx);
@@ -209,7 +195,6 @@ create_view3(RDB_database *dbp, RDB_exec_context *ecp)
         return ret;
     } 
 
-    printf("End of transaction\n");
     return RDB_commit(ecp, &tx);
 }
 
@@ -221,7 +206,6 @@ create_view4(RDB_database *dbp, RDB_exec_context *ecp)
     RDB_object *tbp, *vtbp;
     int ret;
 
-    printf("Starting transaction\n");
     ret = RDB_begin_tx(ecp, &tx, dbp, NULL);
     if (ret != RDB_OK) {
         return ret;
@@ -233,8 +217,10 @@ create_view4(RDB_database *dbp, RDB_exec_context *ecp)
         return RDB_ERROR;
     }
 
-    printf("Creating ( SUMMARIZE EMPS1 PER ( EMPS1 { DEPTNO } )"
-           " ADD MAX (SALARY) AS MAX_SALARY ) RENAME DEPTNO AS DEPARTMENT\n");
+    /*
+     * Creating ( SUMMARIZE EMPS1 PER ( EMPS1 { DEPTNO } )
+     * ADD MAX (SALARY) AS MAX_SALARY ) RENAME DEPTNO AS DEPARTMENT
+     */
 
     exp = RDB_ro_op("RENAME", 3, NULL, ecp);
     if (exp == NULL) {
@@ -315,12 +301,9 @@ create_view4(RDB_database *dbp, RDB_exec_context *ecp)
     vtbp = RDB_expr_to_vtable(exp, ecp, &tx);
     assert(vtbp != NULL);
 
-    printf("Making virtual table persistent as EMPS1S2\n");
-
     assert(RDB_set_table_name(vtbp, "EMPS1S2", ecp, &tx) == RDB_OK);
     assert(RDB_add_table(vtbp, ecp, &tx) == RDB_OK);
 
-    printf("End of transaction\n");
     assert(RDB_commit(ecp, &tx) == RDB_OK);
     return RDB_OK;
 }

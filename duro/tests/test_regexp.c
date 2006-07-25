@@ -15,7 +15,6 @@ test_regexp(RDB_database *dbp, RDB_exec_context *ecp)
     int ret;
     RDB_int i;
 
-    printf("Starting transaction\n");
     ret = RDB_begin_tx(ecp, &tx, dbp, NULL);
     if (ret != RDB_OK) {
         return RDB_ERROR;
@@ -29,7 +28,7 @@ test_regexp(RDB_database *dbp, RDB_exec_context *ecp)
 
     RDB_init_obj(&array);
 
-    printf("Creating selection (NAME regmatch \"o\")\n");
+    /* Creating selection (NAME regmatch "o") */
 
     exp = RDB_ro_op("WHERE", 2, NULL, ecp);
     if (exp == NULL) {
@@ -54,7 +53,6 @@ test_regexp(RDB_database *dbp, RDB_exec_context *ecp)
         goto error;
     }
 
-    printf("Converting selection table to array\n");
     ret = RDB_table_to_array(&array, vtbp, 0, NULL, ecp, &tx);
     if (ret != RDB_OK) {
         goto error;
@@ -71,10 +69,8 @@ test_regexp(RDB_database *dbp, RDB_exec_context *ecp)
 
     RDB_destroy_obj(&array, ecp);
 
-    printf("Dropping selection\n");
     RDB_drop_table(vtbp, ecp, &tx);
 
-    printf("End of transaction\n");
     return RDB_commit(ecp, &tx);
 
 error:
@@ -91,7 +87,6 @@ main(void)
     int ret;
     RDB_exec_context ec;
     
-    printf("Opening environment\n");
     ret = RDB_open_env("dbenv", &dsp);
     if (ret != 0) {
         fprintf(stderr, "Error: %s\n", db_strerror(ret));
@@ -113,7 +108,6 @@ main(void)
         return 2;
     }
 
-    printf ("Closing environment\n");
     ret = RDB_close_env(dsp);
     if (ret != RDB_OK) {
         fprintf(stderr, "Error: %s\n", db_strerror(ret));

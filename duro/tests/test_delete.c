@@ -14,7 +14,6 @@ print_table(RDB_object *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
 
     RDB_init_obj(&array);
 
-    printf("converting table to array\n");
     ret = RDB_table_to_array(&array, tbp, 0, NULL, ecp, txp);
     if (ret != RDB_OK) {
         goto error;
@@ -48,7 +47,6 @@ test_delete(RDB_database *dbp, RDB_exec_context *ecp)
     RDB_object *tbp;
     RDB_expression *exprp;
 
-    printf("Starting transaction\n");
     ret = RDB_begin_tx(ecp, &tx, dbp, NULL);
     if (ret != RDB_OK) {
         return ret;
@@ -58,7 +56,7 @@ test_delete(RDB_database *dbp, RDB_exec_context *ecp)
     if (tbp == NULL)
         return RDB_ERROR;
 
-    printf("Deleting #1 from EMPS1\n");
+    /* Deleting #1 from EMPS1 */
     exprp = RDB_eq(RDB_expr_var("EMPNO", ecp),
             RDB_int_to_expr(1, ecp), ecp);
     ret = RDB_delete(tbp, exprp, ecp, &tx);
@@ -75,7 +73,7 @@ test_delete(RDB_database *dbp, RDB_exec_context *ecp)
         return ret;
     }
 
-    printf("Deleting all tuples from EMPS1\n");
+    /* Deleting all tuples from EMPS1 */
     ret = RDB_delete(tbp, NULL, ecp, &tx);
     if (ret == RDB_ERROR) {
         RDB_rollback(ecp, &tx);
@@ -88,7 +86,6 @@ test_delete(RDB_database *dbp, RDB_exec_context *ecp)
         return ret;
     }
 
-    printf("End of transaction\n");
     return RDB_commit(ecp, &tx);
 }
 
@@ -100,7 +97,6 @@ main(void)
     int ret;
     RDB_exec_context ec;
     
-    printf("Opening environment\n");
     ret = RDB_open_env("dbenv", &dsp);
     if (ret != 0) {
         fprintf(stderr, "Error: %s\n", db_strerror(ret));
@@ -123,7 +119,6 @@ main(void)
     }
     RDB_destroy_exec_context(&ec);
 
-    printf ("Closing environment\n");
     ret = RDB_close_env(dsp);
     if (ret != RDB_OK) {
         fprintf(stderr, "Error: %s\n", db_strerror(ret));

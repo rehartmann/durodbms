@@ -3,6 +3,7 @@
 #include <rel/rdb.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <assert.h>
 
 int
 create_table(RDB_database *dbp, RDB_exec_context *ecp)
@@ -12,13 +13,11 @@ create_table(RDB_database *dbp, RDB_exec_context *ecp)
     RDB_string_vec key;
     int ret;
     
-    printf("Starting transaction\n");
     ret = RDB_begin_tx(ecp, &tx, dbp, NULL);
     if (ret != RDB_OK) {
         return ret;
     }
 
-    printf("Creating table DEEDUM\n");
     key.strv = NULL;
     key.strc = 0;
     tbp = RDB_create_table("DEEDUM", RDB_TRUE, 0, NULL, 1, &key, ecp, &tx);
@@ -26,9 +25,7 @@ create_table(RDB_database *dbp, RDB_exec_context *ecp)
         RDB_rollback(ecp, &tx);
         return RDB_ERROR;
     }
-    printf("Table %s created.\n", RDB_table_name(tbp));
 
-    printf("End of transaction\n");
     return RDB_commit(ecp, &tx);
 }
 
@@ -40,7 +37,6 @@ test_table(RDB_database *dbp, RDB_exec_context *ecp)
     RDB_transaction tx;
     RDB_object *tbp;
 
-    printf("Starting transaction\n");
     ret = RDB_begin_tx(ecp, &tx, dbp, NULL);
     if (ret != RDB_OK) {
         return ret;
@@ -54,7 +50,7 @@ test_table(RDB_database *dbp, RDB_exec_context *ecp)
 
     RDB_init_obj(&tpl);
 
-    printf("Inserting tuple #1\n");
+    /* Inserting tuple #1 */
     ret = RDB_insert(tbp, &tpl, ecp, &tx);
     if (ret != RDB_OK) {
         RDB_rollback(ecp, &tx);
@@ -62,19 +58,12 @@ test_table(RDB_database *dbp, RDB_exec_context *ecp)
         return ret;
     }
 
-    printf("Inserting tuple #2\n");
+    /* Inserting tuple #2 */
     ret = RDB_insert(tbp, &tpl, ecp, &tx);
-    if (ret != RDB_OK) {
-        if (RDB_obj_type(RDB_get_err(ecp)) != &RDB_ELEMENT_EXISTS_ERROR) {
-            RDB_destroy_obj(&tpl, ecp);
-            return RDB_ERROR;
-        }
-        printf("Error: element exists - OK\n");
-        RDB_clear_err(ecp);
-    }
+    assert(ret == RDB_ERROR && RDB_obj_type(RDB_get_err(ecp)) == &RDB_ELEMENT_EXISTS_ERROR);
+    RDB_clear_err(ecp);
     RDB_destroy_obj(&tpl, ecp);
 
-    printf("End of transaction\n");
     return RDB_commit(ecp, &tx);
 }
 
@@ -86,7 +75,6 @@ main(void)
     int ret;
     RDB_exec_context ec;
     
-    printf("Opening environment\n");
     ret = RDB_open_env("dbenv", &dsp);
     if (ret != 0) {
         fprintf(stderr, "Error: %s\n", db_strerror(ret));
@@ -116,7 +104,6 @@ main(void)
     }
     RDB_destroy_exec_context(&ec);
 
-    printf ("Closing environment\n");
     ret = RDB_close_env(dsp);
     if (ret != RDB_OK) {
         fprintf(stderr, "Error: %s\n", db_strerror(ret));

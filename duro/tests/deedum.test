@@ -1,0 +1,44 @@
+#!/bin/sh
+# Execute tclsh from the user's PATH \
+exec tclsh "$0" ${1+"$@"}
+
+# $Id$
+
+package require tcltest 2.2
+eval ::tcltest::configure $argv
+namespace import ::tcltest::*
+
+test deedum {TABLE_DEE and TABLE_DUM} -body {
+	load [configure -testdir]/../.libs/libdurotcl.so
+	source [configure -testdir]/testutil.tcl
+
+	# Create DB environment dir
+	set envdir [makeDirectory dbenv]
+	file delete -force $envdir/*
+
+	set dbenv [duro::env open $envdir]
+	
+	# Create Database
+	duro::db create $dbenv TEST
+	
+	set tx [duro::begin $dbenv TEST]
+	
+	duro::table expr tdee TABLE_DEE $tx
+	
+	if {[duro::expr {TUPLE FROM tdee} $tx] != ""} {
+	    error "Incorrect TABLE_DEE value"
+	}
+	
+	duro::table expr tdum TABLE_DUM $tx
+	
+	if {[duro::expr COUNT(tdum) $tx] != 0} {
+	    error "TABLE_DUM is not empty"
+	}
+	
+	duro::commit $tx
+	
+	# Close DB environment
+	duro::env close $dbenv
+}
+
+cleanupTests

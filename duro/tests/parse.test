@@ -1,0 +1,68 @@
+#!/bin/sh
+# Execute tclsh from the user's PATH \
+exec tclsh "$0" ${1+"$@"}
+
+# $Id$
+#
+# Test handling of syntax errors
+#
+
+package require tcltest 2.2
+eval ::tcltest::configure $argv
+namespace import ::tcltest::*
+
+test parse {parser} -body {
+	load [configure -testdir]/../.libs/libdurotcl.so
+	source [configure -testdir]/testutil.tcl
+
+	# Create DB environment dir
+	set envdir [makeDirectory dbenv]
+	file delete -force $envdir/*
+
+	set dbenv [duro::env open $envdir]
+	
+	# Create Database
+	duro::db create $dbenv TEST
+	
+	set tx [duro::begin $dbenv TEST]
+	
+	# Create real tables
+	duro::table create T {
+	   {K INTEGER}
+	   {S1 STRING}
+	} {{K}} $tx
+	
+	if {![catch {duro::table expr TU {T UNION T UNION } $tx} msg]} {
+	    error "creating TU should fail, but succeeded"
+	}
+	
+	set errcode [lindex $errorCode 1]
+	if {![string match "SYNTAX_ERROR(*)" $errcode]} {
+	    error "wrong error: $errcode"
+	}
+	
+	if {![catch {duro::table expr TX {EXTEND T { K } ADD (2*K AS K2} $tx} msg]} {
+	    error "creating TX should fail, but succeeded"
+	}
+	
+	set errcode [lindex $errorCode 1]
+	if {![string match "SYNTAX_ERROR(*)" $errcode]} {
+	    error "wrong error: $errcode"
+	}
+	
+	if {![catch {duro::table expr TX {EXTEND T { K } ADD (2*X AS K2)} $tx} msg]} {
+	    error "creating TX should fail, but succeeded"
+	}
+	
+	set errcode [lindex $errorCode 1]
+	if {![string match "ATTRIBUTE_NOT_FOUND_ERROR(*)" $errcode]} {
+	    error "wrong error: $errcode"
+	}
+	
+	duro::commit $tx
+	
+	# Close DB environment
+	duro::env close $dbenv
+}
+
+cleanupTests

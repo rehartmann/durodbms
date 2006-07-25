@@ -21,7 +21,6 @@ create_table(RDB_database *dbp, RDB_exec_context *ecp)
     RDB_attr utype_attrs[2];
     int ret;
    
-    printf("Starting transaction\n");
     ret = RDB_begin_tx(ecp, &tx, dbp, NULL);
     if (ret != RDB_OK) {
         return ret;
@@ -37,16 +36,10 @@ create_table(RDB_database *dbp, RDB_exec_context *ecp)
     utype_attrs[0].typ = tinyintp;
     utype_attrs[0].defaultp = NULL;
 
-    printf("Creating table UTYPETEST\n");
     tbp = RDB_create_table("UTYPETEST", RDB_TRUE, 1, utype_attrs,
             1, utype_keyattrs, ecp, &tx);
-    if (tbp == NULL) {
-        RDB_rollback(ecp, &tx);
-        return RDB_ERROR;
-    }
-    printf("Table %s created.\n", RDB_table_name(tbp));
+    assert(tbp != NULL);
 
-    printf("End of transaction\n");
     return RDB_commit(ecp, &tx);
 }
 
@@ -60,9 +53,7 @@ test_table(RDB_database *dbp, RDB_exec_context *ecp)
     RDB_object ival;
     RDB_object tival;
     RDB_object *ivalp;
-    RDB_type *errtyp;
 
-    printf("Starting transaction\n");
     ret = RDB_begin_tx(ecp, &tx, dbp, NULL);
     if (ret != RDB_OK) {
         return ret;
@@ -78,8 +69,6 @@ test_table(RDB_database *dbp, RDB_exec_context *ecp)
     RDB_init_obj(&ival);
     RDB_init_obj(&tival);
 
-    printf("Trying to insert tuple with INTEGER\n");
-
     ret = RDB_tuple_set_int(&tpl, "NUMBER", 50, ecp);
     if (ret != RDB_OK) {
         goto error;
@@ -88,33 +77,16 @@ test_table(RDB_database *dbp, RDB_exec_context *ecp)
     ret = RDB_insert(tbp, &tpl, ecp, &tx);
     assert(ret != RDB_OK);
 
-    errtyp = RDB_obj_type(RDB_get_err(ecp));
-    if (errtyp != &RDB_TYPE_MISMATCH_ERROR) {
-        fprintf(stderr, "Wrong error type: %s\n", RDB_type_name(errtyp));
-        goto error;
-    }
+    assert(RDB_obj_type(RDB_get_err(ecp)) == &RDB_TYPE_MISMATCH_ERROR);
     RDB_clear_err(ecp);
-    printf("Error: type mismatch - OK\n");
-
-    printf("Trying to create TINYINT from INTEGER=200\n");
 
     RDB_int_to_obj(&ival, (RDB_int)200);
     ivalp = &ival;
 
     ret = RDB_call_ro_op("TINYINT", 1, &ivalp, ecp, &tx, &tival);
-    if (ret == RDB_OK) {
-        fprintf(stderr, "Operator call should fail, but did not\n");
-        goto error;
-    }
-    errtyp = RDB_obj_type(RDB_get_err(ecp));
-    if (errtyp != &RDB_TYPE_CONSTRAINT_VIOLATION_ERROR) {
-        fprintf(stderr, "Wrong error type: %s\n", RDB_type_name(errtyp));
-        goto error;
-    }
+    assert(ret != RDB_OK);
+    assert(RDB_obj_type(RDB_get_err(ecp)) == &RDB_TYPE_CONSTRAINT_VIOLATION_ERROR);
     RDB_clear_err(ecp);
-    printf("Error: type constraint violation - OK\n");
-
-    printf("Creating TINYINT from INTEGER=99\n");
 
     RDB_int_to_obj(&ival, (RDB_int) 99);
     ivalp = &ival;
@@ -129,15 +101,8 @@ test_table(RDB_database *dbp, RDB_exec_context *ecp)
      */
     RDB_int_to_obj(&ival, 200);
     ret = RDB_obj_set_comp(&tival, "TINYINT", &ival, ecp, &tx);
-    if (ret == RDB_OK) {
-        fprintf(stderr, "Setter call should fail, but did not\n");
-        goto error;
-    }
-    errtyp = RDB_obj_type(RDB_get_err(ecp));
-    if (errtyp != &RDB_TYPE_CONSTRAINT_VIOLATION_ERROR) {
-        fprintf(stderr, "Wrong error type: %s\n", RDB_type_name(errtyp));
-        goto error;
-    }
+    assert(ret != RDB_OK);
+    assert(RDB_obj_type(RDB_get_err(ecp)) == &RDB_TYPE_CONSTRAINT_VIOLATION_ERROR);
     RDB_clear_err(ecp);
 
     /*
@@ -162,8 +127,6 @@ test_table(RDB_database *dbp, RDB_exec_context *ecp)
         goto error;
     }
 
-    printf("Inserting Tuple\n");
-
     ret = RDB_insert(tbp, &tpl, ecp, &tx);
     if (ret != RDB_OK) {
         RDB_rollback(ecp, &tx);
@@ -174,7 +137,6 @@ test_table(RDB_database *dbp, RDB_exec_context *ecp)
     RDB_destroy_obj(&ival, ecp);
     RDB_destroy_obj(&tival, ecp);
 
-    printf("End of transaction\n");
     return RDB_commit(ecp, &tx);
 
 error:
@@ -193,7 +155,6 @@ test_drop(RDB_database *dbp, RDB_exec_context *ecp)
     RDB_object *tbp;
     RDB_transaction tx;
 
-    printf("Starting transaction\n");
     ret = RDB_begin_tx(ecp, &tx, dbp, NULL);
     if (ret != RDB_OK) {
         return ret;
@@ -205,33 +166,23 @@ test_drop(RDB_database *dbp, RDB_exec_context *ecp)
         return ret;
     }
 
-    printf("Dropping table %s\n", RDB_table_name(tbp));
     ret = RDB_drop_table(tbp, ecp, &tx);
     if (ret != RDB_OK) {
         RDB_rollback(ecp, &tx);
         return ret;
     }
 
-    printf("Dropping type %s\n", RDB_type_name(tinyintp));
     ret = RDB_drop_type(tinyintp, ecp, &tx);
     if (ret != RDB_OK) {
         RDB_rollback(ecp, &tx);
         return ret;
     }
 
-    printf("Trying to get type\n");
     tinyintp = RDB_get_type("TINYINT", ecp, &tx);
-    if (tinyintp == NULL) {
-        RDB_type *errtyp = RDB_obj_type(RDB_get_err(ecp));
-        if (errtyp != &RDB_NOT_FOUND_ERROR) {
-            fprintf(stderr, "Wrong error type: %s\n", RDB_type_name(errtyp));
-            RDB_rollback(ecp, &tx);
-            return RDB_ERROR;
-        }
-    }
-    printf("Error: not found - OK\n");
+    assert(tinyintp == NULL);
+    assert(RDB_obj_type(RDB_get_err(ecp)) == &RDB_NOT_FOUND_ERROR);
+    RDB_clear_err(ecp);
 
-    printf("End of transaction\n");
     return RDB_commit(ecp, &tx);
 }
 
@@ -243,7 +194,6 @@ main(void)
     int ret;
     RDB_exec_context ec;
     
-    printf("Opening environment\n");
     ret = RDB_open_env("dbenv", &dsp);
     if (ret != 0) {
         fprintf(stderr, "Error: %s\n", RDB_type_name(RDB_obj_type(RDB_get_err(&ec))));
@@ -280,7 +230,6 @@ main(void)
     }
     RDB_destroy_exec_context(&ec);
 
-    printf ("Closing environment\n");
     ret = RDB_close_env(dsp);
     if (ret != RDB_OK) {
         fprintf(stderr, "Error: %s\n", RDB_type_name(RDB_obj_type(RDB_get_err(&ec))));

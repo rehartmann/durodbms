@@ -2,6 +2,7 @@
 
 #include <rel/rdb.h>
 #include <stdio.h>
+#include <assert.h>
 
 int
 main(void)
@@ -11,7 +12,6 @@ main(void)
     int ret;
     RDB_exec_context ec;
     
-    printf("Opening environment\n");
     ret = RDB_open_env("dbenv", &envp);
     if (ret != RDB_OK) {
         fprintf(stderr, "Error: %s\n", db_strerror(ret));
@@ -21,7 +21,6 @@ main(void)
     RDB_bdb_env(envp)->set_errfile(RDB_bdb_env(envp), stderr);
 
     RDB_init_exec_context(&ec);
-    printf("Creating DB\n");
     dbp = RDB_create_db_from_env("TEST2", envp, &ec);
     if (dbp == NULL) {
         fprintf(stderr, "Error: %s\n",
@@ -30,18 +29,14 @@ main(void)
         return 1;
     }
 
-    printf("Creating DB\n");
     dbp = RDB_create_db_from_env("TEST2", envp, &ec);
     if (dbp != NULL) {
         RDB_destroy_exec_context(&ec);
         return 1;
     }
-    if (RDB_obj_type(RDB_get_err(&ec)) == &RDB_ELEMENT_EXISTS_ERROR) {
-        puts("Element exists - OK");
-    }
+    assert(RDB_obj_type(RDB_get_err(&ec)) == &RDB_ELEMENT_EXISTS_ERROR);
     RDB_destroy_exec_context(&ec);
 
-    printf ("Closing environment\n");
     ret = RDB_close_env(envp);
     if (ret != RDB_OK) {
         fprintf(stderr, "Error: %s\n", db_strerror(ret));

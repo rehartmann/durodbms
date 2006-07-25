@@ -3,6 +3,7 @@
 #include <rel/rdb.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <assert.h>
 
 static int
 print_table(RDB_object *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
@@ -23,11 +24,7 @@ print_table(RDB_object *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
         printf("EMPNO: %d\n", (int) RDB_tuple_get_int(tplp, "EMPNO"));
         printf("NAME: %s\n", RDB_tuple_get_string(tplp, "NAME"));
     }
-/*
-    if (ret != RDB_NOT_FOUND) {
-        goto error;
-    }
-*/
+    assert(RDB_obj_type(RDB_get_err(ecp)) == &RDB_NOT_FOUND_ERROR);
     RDB_clear_err(ecp);
 
     RDB_destroy_obj(&array, ecp);
@@ -48,7 +45,6 @@ test_minus(RDB_database *dbp, RDB_exec_context *ecp)
     RDB_object *tbp, *tbp2, *vtbp;
     int ret;
 
-    printf("Starting transaction\n");
     ret = RDB_begin_tx(ecp, &tx, dbp, NULL);
     if (ret != RDB_OK) {
         return ret;
@@ -64,8 +60,6 @@ test_minus(RDB_database *dbp, RDB_exec_context *ecp)
         RDB_rollback(ecp, &tx);
         return RDB_ERROR;
     }
-
-    printf("Creating EMPS1 minus EMPS2\n");
 
     exp = RDB_ro_op("MINUS", 2, NULL, ecp);
     if (exp == NULL) {
@@ -96,17 +90,14 @@ test_minus(RDB_database *dbp, RDB_exec_context *ecp)
         return RDB_ERROR;
     }
 
-    printf("converting minus table to array\n");
     ret = print_table(vtbp, ecp, &tx);
     if (ret != RDB_OK) {
         RDB_rollback(ecp, &tx);
         return ret;
     } 
     
-    printf("Dropping minus\n");
     RDB_drop_table(vtbp, ecp, &tx);
 
-    printf("End of transaction\n");
     return RDB_commit(ecp, &tx);
 }
 
@@ -118,7 +109,6 @@ main(void)
     int ret;
     RDB_exec_context ec;
     
-    printf("Opening environment\n");
     ret = RDB_open_env("dbenv", &dsp);
     if (ret != 0) {
         fprintf(stderr, "Error: %s\n", db_strerror(ret));
@@ -141,7 +131,6 @@ main(void)
     }
     RDB_destroy_exec_context(&ec);
     
-    printf ("Closing environment\n");
     ret = RDB_close_env(dsp);
     if (ret != RDB_OK) {
         fprintf(stderr, "Error: %s\n", db_strerror(ret));

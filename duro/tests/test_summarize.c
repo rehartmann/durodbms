@@ -59,30 +59,18 @@ check_contains(RDB_object *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
     RDB_tuple_set_double(&tpl, "SUM_SALARY", 8100.0, ecp);
     RDB_tuple_set_double(&tpl, "AVG_SALARY", 4050.0, ecp);
 
-    printf("Calling RDB_table_contains()...");
-    ret = RDB_table_contains(tbp, &tpl, ecp, txp, &b);
-    
+    ret = RDB_table_contains(tbp, &tpl, ecp, txp, &b);    
     if (ret != RDB_OK) {
         return RDB_ERROR;
-    }    
-    if (b) {
-        puts("Yes - OK");
-    } else {
-        puts("No");
     }
+    assert(b);
 
     RDB_tuple_set_double(&tpl, "SUM_SALARY", 4100, ecp);
-    printf("Calling RDB_table_contains()...");
-    ret = RDB_table_contains(tbp, &tpl, ecp, txp, &b);
-    
+    ret = RDB_table_contains(tbp, &tpl, ecp, txp, &b);    
     if (ret != RDB_OK) {
         return RDB_ERROR;
     }
-    if (b) {
-        puts("Yes");
-    } else {
-        puts("No - OK");
-    }
+    assert(!b);
 
     return RDB_OK;
 }
@@ -95,7 +83,6 @@ test_summarize(RDB_database *dbp, RDB_exec_context *ecp)
     RDB_object *tbp, *tbp2, *vtbp, *untbp;
     int ret;
 
-    printf("Starting transaction\n");
     ret = RDB_begin_tx(ecp, &tx, dbp, NULL);
     if (ret != RDB_OK) {
         return ret;
@@ -111,8 +98,6 @@ test_summarize(RDB_database *dbp, RDB_exec_context *ecp)
         RDB_rollback(ecp, &tx);
         return RDB_ERROR;
     }
-
-    printf("Creating EMPS1 union EMPS2\n");
 
     exp = RDB_ro_op("UNION", 2, NULL, ecp);
     assert(exp != NULL);
@@ -137,8 +122,10 @@ test_summarize(RDB_database *dbp, RDB_exec_context *ecp)
         return ret;
     }
 
-    printf("Summarizing union PER { DEPTNO } ADD COUNT AS COUNT_EMPS,\n");
-    printf("    SUM(SALARY) AS SUM_SALARY, AVG(SALARY) AS AVG_SALARY\n");
+    /*
+     * Summarizing union PER { DEPTNO } ADD COUNT AS COUNT_EMPS
+     * SUM(SALARY) AS SUM_SALARY, AVG(SALARY) AS AVG_SALARY
+     */
 
     exp = RDB_ro_op("SUMMARIZE", 8, NULL, ecp);
     assert(exp != NULL);
@@ -194,8 +181,6 @@ test_summarize(RDB_database *dbp, RDB_exec_context *ecp)
         return RDB_ERROR;
     }
 
-    printf("Printing table\n");
-    
     ret = print_table(vtbp, ecp, &tx);
     if (ret != RDB_OK) {
         RDB_rollback(ecp, &tx);
@@ -208,12 +193,10 @@ test_summarize(RDB_database *dbp, RDB_exec_context *ecp)
         return ret;
     } 
 
-    printf("Dropping summarize\n");
     RDB_drop_table(vtbp, ecp, &tx);
 
     RDB_drop_table(untbp, ecp, &tx);
 
-    printf("End of transaction\n");
     return RDB_commit(ecp, &tx);
 }
 
@@ -225,7 +208,6 @@ main(void)
     int ret;
     RDB_exec_context ec;
     
-    printf("Opening environment\n");
     ret = RDB_open_env("dbenv", &dsp);
     if (ret != 0) {
         fprintf(stderr, "Error: %s\n", db_strerror(ret));
@@ -248,7 +230,6 @@ main(void)
     }
     RDB_destroy_exec_context(&ec);
 
-    printf ("Closing environment\n");
     ret = RDB_close_env(dsp);
     if (ret != RDB_OK) {
         fprintf(stderr, "Error: %s\n", db_strerror(ret));

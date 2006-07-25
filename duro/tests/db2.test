@@ -1,0 +1,68 @@
+#!/bin/sh
+# Execute tclsh from the user's PATH \
+exec tclsh "$0" ${1+"$@"}
+
+# $Id$
+#
+# Test adding real table to a second database
+#
+
+package require tcltest 2.2
+eval ::tcltest::configure $argv
+namespace import ::tcltest::*
+
+test db2 {two databases} -body {
+	load [configure -testdir]/../.libs/libdurotcl.so
+	source [configure -testdir]/testutil.tcl
+
+	# Create DB environment dir
+	set envdir [makeDirectory dbenv]
+	file delete -force $envdir/*
+
+	set dbenv [duro::env open $envdir]
+	
+	# Create Databases
+	duro::db create $dbenv TEST1
+	duro::db create $dbenv TEST2
+	
+	# Create table
+	set tx [duro::begin $dbenv TEST1]
+	duro::table create T1 {
+	   {INTATTR INTEGER}
+	   {STRATTR STRING}
+	} {{INTATTR}} $tx
+	
+	duro::commit $tx
+	
+	# Add table to database #2
+	set tx [duro::begin $dbenv TEST2]
+	duro::table add T1 $tx
+	
+	duro::commit $tx
+	
+	# Close DB environment
+	duro::env close $dbenv
+	
+	# Reopen DB environment
+	set dbenv [duro::env open $envdir]
+	
+	set tx [duro::begin $dbenv TEST1]
+	
+	duro::table expr T {(SYS_DBTABLES WHERE TABLENAME="T1") {DBNAME}} $tx
+	if {![duro::table contains T {DBNAME TEST2} $tx]} {
+	    error "Table T1 should be in database TEST2, but is not"
+	}
+	duro::table drop T $tx
+	
+	# Drop table
+	duro::table drop T1 $tx
+	
+	duro::commit $tx
+	
+	# Drop databases
+	
+	duro::db drop $dbenv TEST1
+	duro::db drop $dbenv TEST2
+}
+
+cleanupTests

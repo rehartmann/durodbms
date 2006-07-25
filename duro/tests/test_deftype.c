@@ -14,13 +14,11 @@ test_type(RDB_database *dbp, RDB_exec_context *ecp)
     RDB_attr comp;
     int ret;
 
-    printf("Starting transaction\n");
     ret = RDB_begin_tx(ecp, &tx, dbp, NULL);
     if (ret != RDB_OK) {
         return ret;
     }
 
-    printf("Defining type\n");
     comp.name = NULL;
     comp.typ = &RDB_INTEGER;
     pr.name = NULL;
@@ -39,7 +37,6 @@ test_type(RDB_database *dbp, RDB_exec_context *ecp)
         return ret;
     }
 
-    printf("Implementing type\n");
     ret = RDB_implement_type("TINYINT", NULL, -1, ecp, &tx);
     if (ret != RDB_OK) {
         RDB_rollback(ecp, &tx);
@@ -61,7 +58,6 @@ main(void)
     int ret;
     RDB_exec_context ec;
     
-    printf("Opening environment\n");
     ret = RDB_open_env("dbenv", &envp);
     if (ret != 0) {
         fprintf(stderr, "Error: %s\n", db_strerror(ret));
@@ -89,7 +85,6 @@ main(void)
 
     RDB_destroy_exec_context(&ec);
 
-    printf ("Closing environment\n");
     ret = RDB_close_env(envp);
     if (ret != RDB_OK) {
         fprintf(stderr, "Error: %s\n", db_strerror(ret));

@@ -112,7 +112,6 @@ main(void)
     int ret;
     RDB_exec_context ec;
 
-    printf("Opening environment\n");
     ret = RDB_open_env("dbenv", &envp);
     if (ret != 0) {
         fprintf(stderr, "Error: %s\n", db_strerror(ret));
@@ -142,7 +141,6 @@ main(void)
         return 2;
     }
 
-    printf ("Closing environment\n");
     ret = RDB_close_env(envp);
     if (ret != RDB_OK) {
         fprintf(stderr, "Error: %s\n", db_strerror(ret));

@@ -1,0 +1,138 @@
+#!/bin/sh
+# Execute tclsh from the user's PATH \
+exec tclsh "$0"
+
+# $Id$
+#
+# Test constraints
+#
+
+package require tcltest 2.2
+eval ::tcltest::configure $argv
+namespace import ::tcltest::*
+
+test constraints {table and database constraints} -body {
+	load [configure -testdir]/../.libs/libdurotcl.so
+	source [configure -testdir]/testutil.tcl
+
+	# Create DB environment dir
+	set envdir [makeDirectory dbenv]
+	file delete -force $envdir/*
+
+	set dbenv [duro::env open $envdir]
+	
+	# Create Database
+	duro::db create $dbenv TEST
+	
+	set tx [duro::begin $dbenv TEST]
+	
+	duro::table create T1 {
+	   {A INTEGER}
+	   {B INTEGER}
+	} {{A}} $tx
+	
+	duro::table create T2 {
+	   {B INTEGER}
+	   {C INTEGER}
+	} {{B}} $tx
+	
+	# Create 'tuple' constraint
+	duro::constraint create C1 {IS_EMPTY(T2 WHERE C>100)} $tx
+	
+	# Create foreign key constraint
+	duro::constraint create C2 {IS_EMPTY(T1 SEMIMINUS T2)} $tx
+	
+	duro::commit $tx
+	
+	# Close DB environment
+	duro::env close $dbenv
+	
+	# Reopen DB environment
+	set dbenv [duro::env open $envdir]
+	
+	set tx [duro::begin $dbenv TEST]
+	
+	# Must succeed
+	duro::insert T2 {B 1 C 1} $tx
+	
+	# Must fail
+	if {![catch {
+	    duro::insert T2 {B 2 C 200} $tx
+	}]} {
+	    error "insert should have failed, but succeded"
+	}
+	
+	set code [lindex $errorCode 1]
+	if {![string match "PREDICATE_VIOLATION_ERROR(*C1*)" $code]} {
+	    error "wrong error code: $code"
+	}
+	
+	# Must succeed
+	duro::insert T1 {A 1 B 1} $tx
+	
+	# Must fail
+	if {![catch {
+	    duro::insert T1 {A 2 B 2} $tx
+	}]} {
+	    error "insert should have failed, but succeded"
+	}
+	
+	set code [lindex $errorCode 1]
+	if {![string match "PREDICATE_VIOLATION_ERROR(*C2*)" $code]} {
+	    error "wrong error code: $code"
+	}
+	
+	# Must fail
+	if {![catch {
+	    duro::update T2 {B = 1} C 200 $tx
+	}]} {
+	    error "update should have failed, but succeded"
+	}
+	
+	set code [lindex $errorCode 1]
+	if {![string match "PREDICATE_VIOLATION_ERROR(*C1*)" $code]} {
+	    error "wrong error code: $code"
+	}
+	
+	# Must fail
+	if {![catch {
+	    duro::delete T2 {B = 1} $tx
+	}]} {
+	    error "delete should have failed, but succeded"
+	}
+	
+	set code [lindex $errorCode 1]
+	if {![string match "PREDICATE_VIOLATION_ERROR(*C2*)" $code]} {
+	    error "wrong error code: $code"
+	}
+	
+	duro::table create T3 {
+	   {A INTEGER}
+	   {B INTEGER}
+	} {{A}} $tx
+	
+	duro::insert T3 {A 1 B 1} $tx
+	duro::insert T3 {A 2 B 1} $tx
+	
+	duro::constraint create C3 {SUM(T3, B) < 4} $tx
+	
+	duro::update T3 {A = 1} B 2 $tx
+	
+	# Must fail
+	if {![catch {
+	    duro::insert T3 {A 3 B 3} $tx
+	}]} {
+	    error "insert should have failed, but succeded"
+	}
+	
+	set code [lindex $errorCode 1]
+	if {![string match "PREDICATE_VIOLATION_ERROR(*C3*)" $code]} {
+	    error "wrong error code: $code"
+	}
+	
+	duro::commit $tx
+	
+	duro::env close $dbenv
+}
+
+cleanupTests

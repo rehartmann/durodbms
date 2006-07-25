@@ -3,6 +3,7 @@
 #include <rel/rdb.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <assert.h>
 
 int
 test_aggregate(RDB_database *dbp, RDB_exec_context *ecp)
@@ -12,7 +13,6 @@ test_aggregate(RDB_database *dbp, RDB_exec_context *ecp)
     RDB_double avg;
     int ret;
 
-    printf("Starting transaction\n");
     ret = RDB_begin_tx(ecp, &tx, dbp, NULL);
     if (ret != RDB_OK) {
         return ret;
@@ -24,17 +24,11 @@ test_aggregate(RDB_database *dbp, RDB_exec_context *ecp)
         return RDB_ERROR;
     }
 
-    printf("Creating aggregation COUNT ( EMPS1 )\n");
+    /* Creating aggregation COUNT ( EMPS1 ) */
 
-    ret = RDB_cardinality(tbp, ecp, &tx);
-    if (ret < 0) {
-        RDB_rollback(ecp, &tx);
-        return RDB_ERROR;
-    }
+    assert(RDB_cardinality(tbp, ecp, &tx) == 2);
 
-    printf("Count is %d\n", ret);
-
-    printf("Creating aggregation AVG ( EMPS1, SALARY )\n");
+    /* Creating aggregation AVG ( EMPS1, SALARY ) */
 
     ret = RDB_avg(tbp, "SALARY", ecp, &tx, &avg);
     if (ret != RDB_OK) {
@@ -42,9 +36,8 @@ test_aggregate(RDB_database *dbp, RDB_exec_context *ecp)
         return RDB_ERROR;
     }
 
-    printf("Average is %f\n", (float)avg);
+    assert(avg == 4050.0);
 
-    printf("End of transaction\n");
     return RDB_commit(ecp, &tx);
 }
 
@@ -56,7 +49,6 @@ main(void)
     int ret;
     RDB_exec_context ec;
     
-    printf("Opening environment\n");
     ret = RDB_open_env("dbenv", &dsp);
     if (ret != 0) {
         fprintf(stderr, "Error: %s\n", db_strerror(ret));
@@ -77,7 +69,6 @@ main(void)
         return 2;
     }
 
-    printf ("Closing environment\n");
     ret = RDB_close_env(dsp);
     if (ret != RDB_OK) {
         fprintf(stderr, "Error: %s\n", db_strerror(ret));

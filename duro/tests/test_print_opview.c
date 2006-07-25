@@ -3,6 +3,8 @@
 #include <rel/rdb.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <string.h>
+#include <assert.h>
 
 int
 print_deptsx_view(RDB_database *dbp, RDB_exec_context *ecp)
@@ -12,14 +14,12 @@ print_deptsx_view(RDB_database *dbp, RDB_exec_context *ecp)
     RDB_object *tplp;
     RDB_object array;
     int ret;
-    int i;
 
     ret = RDB_begin_tx(ecp, &tx, dbp, NULL);
     if (ret != RDB_OK) {
         return ret;
     }
 
-    printf("Table DEPTSX\n");
     tmpvtbp = RDB_get_table("DEPTSX", ecp, &tx);
     if (tmpvtbp == NULL) {
         RDB_rollback(ecp, &tx);
@@ -33,14 +33,19 @@ print_deptsx_view(RDB_database *dbp, RDB_exec_context *ecp)
         goto error;
     }
     
-    for (i = 0; (tplp = RDB_array_get(&array, i, ecp)) != NULL; i++) {
-        printf("DEPTNO: %d\n", (int)RDB_tuple_get_int(tplp, "DEPTNO"));
-        printf("DEPTNAME: %s\n", RDB_tuple_get_string(tplp, "DEPTNAME"));
-        printf("XDEPTNO: %d\n", (int)RDB_tuple_get_int(tplp, "XDEPTNO"));
-    }
-    if (RDB_obj_type(RDB_get_err(ecp)) != &RDB_NOT_FOUND_ERROR) {
-        goto error;
-    }
+    tplp = RDB_array_get(&array, 0, ecp);
+    assert(RDB_tuple_get_int(tplp, "DEPTNO") == 2);
+    assert(strcmp(RDB_tuple_get_string(tplp, "DEPTNAME"), "Dept. II") == 0);
+    assert(RDB_tuple_get_int(tplp, "XDEPTNO") == 102);
+
+    tplp = RDB_array_get(&array, 1, ecp);
+    assert(RDB_tuple_get_int(tplp, "DEPTNO") == 1);
+    assert(strcmp(RDB_tuple_get_string(tplp, "DEPTNAME"), "Dept. I") == 0);
+    assert(RDB_tuple_get_int(tplp, "XDEPTNO") == 101);
+
+    assert(RDB_array_get(&array, 2, ecp) == NULL);
+    assert(RDB_obj_type(RDB_get_err(ecp)) == &RDB_NOT_FOUND_ERROR);
+ 
     RDB_clear_err(ecp);
 
     RDB_destroy_obj(&array, ecp);
@@ -60,7 +65,6 @@ main(void)
     int ret;
     RDB_exec_context ec;
     
-    printf("Opening environment\n");
     ret = RDB_open_env("dbenv", &dsp);
     if (ret != RDB_OK) {
         fprintf(stderr, "Error: %s\n", db_strerror(ret));

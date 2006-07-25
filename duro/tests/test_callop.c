@@ -3,6 +3,7 @@
 #include <rel/rdb.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <assert.h>
 
 int
 test_callop(RDB_database *dbp, RDB_exec_context *ecp)
@@ -13,7 +14,6 @@ test_callop(RDB_database *dbp, RDB_exec_context *ecp)
     RDB_object retval;
     RDB_object *argv[2];
 
-    printf("Starting transaction\n");
     ret = RDB_begin_tx(ecp, &tx, dbp, NULL);
     if (ret != RDB_OK) {
         return ret;
@@ -28,21 +28,17 @@ test_callop(RDB_database *dbp, RDB_exec_context *ecp)
     argv[0] = &arg1;
     argv[1] = &arg2;
 
-    printf("Calling PLUS\n");
     ret = RDB_call_ro_op("PLUS", 2, argv, ecp, &tx, &retval);
     if (ret != RDB_OK) {
         goto error;
     }
+    assert(RDB_obj_int(&retval) == 4);
 
-    printf("Result value is %d\n", RDB_obj_int(&retval));
-
-    printf("Calling ADD\n");
     ret = RDB_call_update_op("ADD", 2, argv, ecp, &tx);
     if (ret != RDB_OK) {
         goto error;
     }
-
-    printf("Value of arg #1 is %d\n", RDB_obj_int(&arg1));
+    assert(RDB_obj_int(&arg1) == 4);
 
     return RDB_commit(ecp, &tx);
 
@@ -64,7 +60,6 @@ test_useop(RDB_database *dbp, RDB_exec_context *ecp)
     RDB_expression *expv[2];
     int ret;
 
-    printf("Starting transaction\n");
     ret = RDB_begin_tx(ecp, &tx, dbp, NULL);
     if (ret != RDB_OK) {
         return ret;
@@ -106,7 +101,7 @@ test_useop(RDB_database *dbp, RDB_exec_context *ecp)
         goto error;
     }
 
-    printf("Making vtable persistent\n");
+    /* Making vtable persistent */
 
     ret = RDB_set_table_name(vtbp, "DEPTSX", ecp, &tx);
     if (ret != RDB_OK) {
@@ -133,7 +128,6 @@ main(void)
     int ret;
     RDB_exec_context ec;
     
-    printf("Opening environment\n");
     ret = RDB_open_env("dbenv", &envp);
     if (ret != 0) {
         fprintf(stderr, "Error: %s\n", db_strerror(ret));
@@ -164,7 +158,6 @@ main(void)
     }
     RDB_destroy_exec_context(&ec);
 
-    printf ("Closing environment\n");
     ret = RDB_close_env(envp);
     if (ret != RDB_OK) {
         fprintf(stderr, "Error: %s\n", db_strerror(ret));

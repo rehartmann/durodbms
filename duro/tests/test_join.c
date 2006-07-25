@@ -51,7 +51,6 @@ test_join(RDB_database *dbp, RDB_exec_context *ecp)
     RDB_object *tbp1, *tbp2, *vtbp;
     int ret;
 
-    printf("Starting transaction\n");
     ret = RDB_begin_tx(ecp, &tx, dbp, NULL);
     if (ret != RDB_OK) {
         return ret;
@@ -68,8 +67,6 @@ test_join(RDB_database *dbp, RDB_exec_context *ecp)
         RDB_rollback(ecp, &tx);
         return RDB_ERROR;
     }
-
-    printf("Joining EMPS1 with DEPTS\n");
 
     exp = RDB_ro_op("JOIN", 2, NULL, ecp);
     if (exp == NULL) {
@@ -100,17 +97,14 @@ test_join(RDB_database *dbp, RDB_exec_context *ecp)
         return RDB_ERROR;
     }
     
-    printf("Converting joined table to array\n");
     ret = print_table(vtbp, ecp, &tx);
     if (ret != RDB_OK) {
         RDB_rollback(ecp, &tx);
         return ret;
     }
 
-    printf("Dropping join\n");
     assert(RDB_drop_table(vtbp, ecp, &tx) == RDB_OK);
 
-    printf("End of transaction\n");
     return RDB_commit(ecp, &tx);
 }
 
@@ -122,7 +116,6 @@ main(void)
     int ret;
     RDB_exec_context ec;
     
-    printf("Opening environment\n");
     ret = RDB_open_env("dbenv", &dsp);
     if (ret != 0) {
         fprintf(stderr, "Error: %s\n", db_strerror(ret));
@@ -144,7 +137,6 @@ main(void)
     }
     RDB_destroy_exec_context(&ec);
     
-    printf ("Closing environment\n");
     ret = RDB_close_env(dsp);
     if (ret != RDB_OK) {
         fprintf(stderr, "Error: %s\n", db_strerror(ret));

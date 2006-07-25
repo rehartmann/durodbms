@@ -3,6 +3,7 @@
 #include <rel/rdb.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <assert.h>
 
 static int
 print_table1(RDB_object *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
@@ -81,7 +82,6 @@ test_project(RDB_database *dbp, RDB_exec_context *ecp)
     int ret;
     RDB_bool b;
 
-    printf("Starting transaction\n");
     ret = RDB_begin_tx(ecp, &tx, dbp, NULL);
     if (ret != RDB_OK) {
         return ret;
@@ -92,8 +92,6 @@ test_project(RDB_database *dbp, RDB_exec_context *ecp)
         RDB_rollback(ecp, &tx);
         return RDB_ERROR;
     }
-
-    printf("Creating projection (SALARY)\n");
 
     exp = RDB_ro_op("PROJECT", 2, NULL, ecp);
     if (exp == NULL) {
@@ -124,32 +122,19 @@ test_project(RDB_database *dbp, RDB_exec_context *ecp)
         return RDB_ERROR;
     }
 
-    printf("Converting projection table to array\n");
     ret = print_table1(vtbp, ecp, &tx);
 
     RDB_init_obj(&tpl);
     RDB_tuple_set_double(&tpl, "SALARY", (RDB_double)4000.0, ecp);
-    ret = RDB_table_contains(vtbp, &tpl, ecp, &tx, &b);
-    if (ret != RDB_OK) {
-        RDB_rollback(ecp, &tx);
-        return ret;
-    }
+    assert(RDB_table_contains(vtbp, &tpl, ecp, &tx, &b) == RDB_OK);
 
-    printf("Projection contains SALARY(4000.0): %s\n", b ? "yes" : "no");
+    assert(b);
 
     RDB_tuple_set_double(&tpl, "SALARY", (RDB_double)4400.0, ecp);
-    ret = RDB_table_contains(vtbp, &tpl, ecp, &tx, &b);
-    printf("Projection contains SALARY(4400.0): %s\n", b ? "yes" : "no");
+    assert(RDB_table_contains(vtbp, &tpl, ecp, &tx, &b) == RDB_OK);
+    assert(!b);
 
-    if (ret != RDB_OK) {
-        RDB_rollback(ecp, &tx);
-        return ret;
-    }
-
-    printf("Dropping projection\n");
     RDB_drop_table(vtbp, ecp, &tx);
-
-    printf("Creating projection (EMPNO,NAME)\n");
 
     exp = RDB_ro_op("PROJECT", 3, NULL, ecp);
     if (exp == NULL) {
@@ -188,17 +173,13 @@ test_project(RDB_database *dbp, RDB_exec_context *ecp)
         return RDB_ERROR;
     }
 
-    printf("Converting projection table to array\n");
     ret = print_table2(vtbp, ecp, &tx);
     if (ret != RDB_OK) {
         RDB_rollback(ecp, &tx);
         return ret;
     } 
 
-    printf("Dropping projection\n");
     RDB_drop_table(vtbp, ecp, &tx);
-
-    printf("End of transaction\n");
 
     /* Test if rollback works after projection with keyloss */
     return RDB_rollback(ecp, &tx);
@@ -212,7 +193,6 @@ main(void)
     int ret;
     RDB_exec_context ec;
 
-    printf("Opening environment\n");
     ret = RDB_open_env("dbenv", &envp);
     if (ret != 0) {
         fprintf(stderr, "Error: %s\n", db_strerror(ret));
@@ -235,7 +215,6 @@ main(void)
     }
     RDB_destroy_exec_context(&ec);
 
-    printf ("Closing environment\n");
     ret = RDB_close_env(envp);
     if (ret != RDB_OK) {
         fprintf(stderr, "Error: %s\n", db_strerror(ret));

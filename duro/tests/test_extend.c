@@ -3,6 +3,7 @@
 #include <rel/rdb.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <assert.h>
 
 int
 print_extend(RDB_object *vtbp, RDB_exec_context *ecp, RDB_transaction *txp)
@@ -52,8 +53,6 @@ insert_extend(RDB_object *vtbp, RDB_exec_context *ecp, RDB_transaction *txp)
 
     RDB_init_obj(&tpl);    
 
-    printf("Inserting tuple #1\n");
-
     ret = RDB_tuple_set_int(&tpl, "EMPNO", 3, ecp);
     if (ret != RDB_OK)
         goto error;
@@ -77,15 +76,9 @@ insert_extend(RDB_object *vtbp, RDB_exec_context *ecp, RDB_transaction *txp)
     ret = RDB_insert(vtbp, &tpl, ecp, txp);
     if (ret != RDB_OK) {
         RDB_type *errtyp = RDB_obj_type(RDB_get_err(ecp));
-        if (errtyp == &RDB_PREDICATE_VIOLATION_ERROR) {
-            printf("Error: predicate violation - OK\n");
-        } else {
-            printf("Error: %s\n", errtyp->name);
-        }
+        assert(errtyp == &RDB_PREDICATE_VIOLATION_ERROR);
     }
     RDB_clear_err(ecp);
-
-    printf("Inserting tuple #2\n");
 
     ret = RDB_tuple_set_int(&tpl, "EMPNO", 3, ecp);
     if (ret != RDB_OK)
@@ -128,7 +121,6 @@ test_extend(RDB_database *dbp, RDB_exec_context *ecp)
     int ret;
     RDB_object *vtbp = NULL;
 
-    printf("Starting transaction\n");
     ret = RDB_begin_tx(ecp, &tx, dbp, NULL);
     if (ret != RDB_OK) {
         return ret;
@@ -138,8 +130,6 @@ test_extend(RDB_database *dbp, RDB_exec_context *ecp)
     if (tbp == NULL) {
         goto error;
     }
-
-    printf("Extending EMPS1 (SALARY_AFTER_TAX,NAME_LEN)\n");
 
     exp = RDB_ro_op("EXTEND", 5, NULL, ecp);
     if (exp == NULL)
@@ -194,7 +184,6 @@ test_extend(RDB_database *dbp, RDB_exec_context *ecp)
         goto error;
     }
 
-    printf("Converting extended table to array\n");
     ret = print_extend(vtbp, ecp, &tx);
     if (ret != RDB_OK) {
         goto error;
@@ -205,10 +194,8 @@ test_extend(RDB_database *dbp, RDB_exec_context *ecp)
         goto error;
     }
 
-    printf("Dropping extension\n");
     RDB_drop_table(vtbp, ecp, &tx);
 
-    printf("End of transaction\n");
     /* Abort transaction, since we don't want the update to be persistent */
     return RDB_rollback(ecp, &tx);
 
@@ -228,7 +215,6 @@ main(void)
     int ret;
     RDB_exec_context ec;
     
-    printf("Opening environment\n");
     ret = RDB_open_env("dbenv", &envp);
     if (ret != 0) {
         fprintf(stderr, "Error: %s\n", db_strerror(ret));
@@ -251,7 +237,6 @@ main(void)
     }
     RDB_destroy_exec_context(&ec);
 
-    printf ("Closing environment\n");
     ret = RDB_close_env(envp);
     if (ret != RDB_OK) {
         fprintf(stderr, "Error: %s\n", db_strerror(ret));
@@ -261,7 +246,6 @@ main(void)
     return 0;
 
 error:
-    printf ("Closing environment\n");
     RDB_destroy_exec_context(&ec);
     RDB_close_env(envp);
     return 2;

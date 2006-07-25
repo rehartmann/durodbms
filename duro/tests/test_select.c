@@ -15,7 +15,6 @@ test_select(RDB_database *dbp, RDB_exec_context *ecp)
     int ret;
     RDB_int i;
 
-    printf("Starting transaction\n");
     ret = RDB_begin_tx(ecp, &tx, dbp, NULL);
     if (ret != RDB_OK) {
         return ret;
@@ -28,8 +27,6 @@ test_select(RDB_database *dbp, RDB_exec_context *ecp)
     }
 
     RDB_init_obj(&array);
-
-    printf("Creating selection (name=\"Smith\")\n");
 
     exp = RDB_ro_op("WHERE", 2, NULL, ecp);
     if (exp == NULL)
@@ -51,7 +48,6 @@ test_select(RDB_database *dbp, RDB_exec_context *ecp)
         goto error;
     }
 
-    printf("Converting selection table to array\n");
     ret = RDB_table_to_array(&array, vtbp, 0, NULL, ecp, &tx);
     if (ret != RDB_OK) {
         goto error;
@@ -69,12 +65,9 @@ test_select(RDB_database *dbp, RDB_exec_context *ecp)
 
     RDB_destroy_obj(&array, ecp);
 
-    printf("Dropping selection\n");
     RDB_drop_table(vtbp, ecp, &tx);
 
     RDB_init_obj(&array);
-
-    printf("Creating selection (EMPNO=1)\n");
 
     exp = RDB_ro_op("WHERE", 2, NULL, ecp);
     if (exp == NULL)
@@ -96,7 +89,6 @@ test_select(RDB_database *dbp, RDB_exec_context *ecp)
         return RDB_ERROR;
     }
 
-    printf("Converting selection table to array\n");
     ret = RDB_table_to_array(&array, vtbp, 0, NULL, ecp, &tx);
     if (ret != RDB_OK) {
         goto error;
@@ -113,10 +105,8 @@ test_select(RDB_database *dbp, RDB_exec_context *ecp)
 
     RDB_destroy_obj(&array, ecp);
 
-    printf("Dropping selection\n");
     RDB_drop_table(vtbp, ecp, &tx);
 
-    printf("End of transaction\n");
     return RDB_commit(ecp, &tx);
 
 error:
@@ -133,7 +123,6 @@ main(void)
     int ret;
     RDB_exec_context ec;
     
-    printf("Opening environment\n");
     ret = RDB_open_env("dbenv", &envp);
     if (ret != 0) {
         fprintf(stderr, "Error: %s\n", db_strerror(ret));
@@ -157,7 +146,6 @@ main(void)
     }
     RDB_destroy_exec_context(&ec);
 
-    printf ("Closing environment\n");
     ret = RDB_close_env(envp);
     if (ret != RDB_OK) {
         fprintf(stderr, "Error: %s\n", db_strerror(ret));

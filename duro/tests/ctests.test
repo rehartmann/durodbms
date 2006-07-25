@@ -1,0 +1,200 @@
+#!/bin/sh
+# Execute tclsh from the user's PATH \
+exec tclsh "$0" ${1+"$@"}
+
+package require tcltest 2.2
+eval ::tcltest::configure $argv
+namespace import ::tcltest::*
+
+set SETUP {cd [configure -testdir]; file delete -force dbenv; file mkdir dbenv; exec ./prepare}
+
+test map {hashmap}  -body {
+    exec [configure -testdir]/maptest
+}
+
+test tuple {tuples} -body {
+    exec [configure -testdir]/tupletest
+} -result {A -> Aaa
+B -> 4711}
+
+test lstables {list all tables} -setup $SETUP -body {
+	exec ../util/lstables -e dbenv -d TEST | sort
+} -result {DEPTS
+EMPS1
+EMPS2}
+
+test where {WHERE operator}  -setup $SETUP -body {
+	exec ./test_select
+} -result {EMPNO: 1
+NAME: Smith
+SALARY: 4000.000000
+EMPNO: 1
+NAME: Smith
+SALARY: 4000.000000}
+
+test minus {MINUS operator}  -setup $SETUP -body {
+	exec ./test_minus
+} -result {EMPNO: 2
+NAME: Jones}
+
+test intersect {INTERSECT operator}  -setup $SETUP -body {
+	exec ./test_intersect
+} -result {EMPNO: 1
+NAME: Smith}
+
+test extend {EXTEND operator}  -setup $SETUP -body {
+	exec ./test_extend
+} -result {EMPNO: 1
+NAME: Smith
+SALARY: 4000.000000
+SALARY_AFTER_TAX: -100.000000
+NAME_LEN: 5
+EMPNO: 2
+NAME: Jones
+SALARY: 4100.000000
+SALARY_AFTER_TAX: 0.000000
+NAME_LEN: 5}
+
+test join {JOIN operator} -setup $SETUP -body {
+	exec ./test_join
+} -result {EMPNO: 1
+NAME: Smith
+DEPTNO: 1
+DEPTNAME: Dept. I
+EMPNO: 2
+NAME: Jones
+DEPTNO: 2
+DEPTNAME: Dept. II}
+
+test ra {relational algebra} -setup $SETUP -body {
+	exec ./test_ra
+} -result {NAME: Smith}
+
+test view {views} -setup $SETUP -body {
+	exec ./test_create_view
+	exec ./test_print_view
+} -result {Table SALARIES
+Table EMPS1H
+EMPNO: 2
+NAME: Jones
+SALARY: 4100.000000
+Table EMPS1S
+EMPNO: 1
+NAME: Smith
+SALARY: 4000.000000
+HIGHSAL: FALSE
+EMPNO: 2
+NAME: Jones
+SALARY: 4100.000000
+HIGHSAL: TRUE
+Table EMPS1S2
+DEPARTMENT: 1
+MAX_SALARY: 4000.000000
+DEPARTMENT: 2
+MAX_SALARY: 4100.000000}
+
+test keys {keys} -setup $SETUP -body {
+	exec ./test_keys
+}
+
+test project {project} -setup $SETUP -body {
+    exec ./test_project
+} -result {SALARY: 4000.000000
+EMPNO: 1
+NAME: Smith
+EMPNO: 3
+NAME: Clarke}
+
+test summarize {SUMMARIZE PER operator} -setup $SETUP -body {
+   exec ./test_summarize
+} -result {DEPTNO: 1
+COUNT_EMPS: 1
+SUM_SALARY: 4000.000000
+AVG_SALARY: 4000.000000
+DEPTNO: 2
+COUNT_EMPS: 2
+SUM_SALARY: 8100.000000
+AVG_SALARY: 4050.000000}
+
+test rename {RENAME operator} -setup $SETUP -body {
+    exec ./test_rename
+} -result {EMP#: 2
+NAME: Jones
+SAL: 4100.000000
+EMP#: 1
+NAME: Smith
+SAL: 4000.000000}
+
+test regexp {} -setup $SETUP -body {
+    exec ./test_regexp
+} -result {EMPNO: 2
+NAME: Jones
+SALARY: 4100.000000}
+
+test aggregate {aggregate operators} -setup $SETUP -body {
+    exec ./test_aggregate
+}
+
+test srupdate {complex update} -setup $SETUP -body {
+    exec ./test_srupdate
+} -result {NO=0, O_NO=2, COUNT=1
+NO=1, O_NO=1, COUNT=1
+NO=2, O_NO=0, COUNT=1}
+
+test insert {insert} -setup $SETUP -body {
+    exec ./test_insert
+} -result {EMPNO: 1
+NAME: Smith
+SALARY: 4000.000000
+DEPTNO: 1
+EMPNO: 4
+NAME: Taylor
+SALARY: 4000.000000
+DEPTNO: 2
+EMPNO: 3
+NAME: Clarke
+SALARY: 4000.000000
+DEPTNO: 2}
+
+test update_delete {update and delete} -setup $SETUP -body {
+    exec ./test_update
+    exec ./test_delete
+} -result {EMPNO: 3
+NAME: Jones
+SALARY: 4600.000000}
+
+test null {nullary table} -setup $SETUP -body {
+    exec ./test_null
+}
+
+test binary {type BINARY} -setup $SETUP -body {
+    exec ./test_binary
+} -result {ABCDEFGH
+9
+9}
+
+test tinyint {user-defined type TINYINT} -setup $SETUP -body {
+    exec ./test_deftype
+    exec ./test_utypetable
+}
+
+test point {user-defined type POINT} -setup $SETUP -body {
+    exec ./test_defpointtype
+    exec ./test_pointtable
+} -result {X=1.000000, Y=2.000000
+X=2.000000, Y=4.000000
+X=1.000000, Y=2.000000
+X=1.000000, Y=2.000000}
+
+test 2db {two databases} -setup $SETUP -body {
+	exec ./test_2db
+}
+
+test op {user-defined operators} -setup $SETUP -body {
+    exec ./test_defop
+    exec ./test_callop
+    exec ./test_print_opview
+    exec ./test_dropop
+}
+
+cleanupTests

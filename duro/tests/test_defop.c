@@ -22,13 +22,11 @@ test_defop(RDB_database *dbp, RDB_exec_context *ecp)
 
     RDB_bool updv[] = { RDB_TRUE, RDB_FALSE };
 
-    printf("Starting transaction\n");
     ret = RDB_begin_tx(ecp, &tx, dbp, NULL);
     if (ret != RDB_OK) {
         return ret;
     }
 
-    printf("Defining PLUS\n");
     ret = RDB_create_ro_op("PLUS", 2, plusargtv, &RDB_INTEGER, "libplus",
             "RDBU_plus", NULL, 0, ecp, &tx);
     if (ret != RDB_OK) {
@@ -36,7 +34,6 @@ test_defop(RDB_database *dbp, RDB_exec_context *ecp)
         return ret;
     }
 
-    printf("Defining ADD\n");
     ret = RDB_create_update_op("ADD", 2, addargtv, updv, "libplus", "RDBU_add",
             NULL, 0, ecp, &tx);
     if (ret != RDB_OK) {
@@ -55,7 +52,6 @@ main(void)
     int ret;
     RDB_exec_context ec;
     
-    printf("Opening environment\n");
     ret = RDB_open_env("dbenv", &envp);
     if (ret != 0) {
         fprintf(stderr, "Error: %s\n", db_strerror(ret));
@@ -79,7 +75,6 @@ main(void)
     }
     RDB_destroy_exec_context(&ec);
 
-    printf ("Closing environment\n");
     ret = RDB_close_env(envp);
     if (ret != RDB_OK) {
         fprintf(stderr, "Error: %s\n", db_strerror(ret));

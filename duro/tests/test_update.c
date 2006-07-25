@@ -3,6 +3,8 @@
 #include <rel/rdb.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <string.h>
+#include <assert.h>
 
 static int
 print_table(RDB_object *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
@@ -10,7 +12,6 @@ print_table(RDB_object *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
     int ret;
     RDB_object *tplp;
     RDB_object array;
-    RDB_int i;
 
     static const RDB_seq_item seq = { "EMPNO", RDB_TRUE };
 
@@ -21,14 +22,17 @@ print_table(RDB_object *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
         goto error;
     }
     
-    for (i = 0; (tplp = RDB_array_get(&array, i, ecp)) != NULL; i++) {
-        printf("EMPNO: %d\n", (int) RDB_tuple_get_int(tplp, "EMPNO"));
-        printf("NAME: %s\n", RDB_tuple_get_string(tplp, "NAME"));
-        printf("SALARY: %f\n", (double) RDB_tuple_get_double(tplp, "SALARY"));
-    }
-    if (RDB_obj_type(RDB_get_err(ecp)) != &RDB_NOT_FOUND_ERROR) {
-        goto error;
-    }
+    tplp = RDB_array_get(&array, 0, ecp);
+    assert(RDB_tuple_get_int(tplp, "EMPNO") == 1);
+    assert(strcmp(RDB_tuple_get_string(tplp, "NAME"), "Smythe") == 0);
+    assert(RDB_tuple_get_double(tplp, "SALARY") == 4500.0);
+
+    tplp = RDB_array_get(&array, 1, ecp);
+    assert(RDB_tuple_get_int(tplp, "EMPNO") == 3);
+    assert(strcmp(RDB_tuple_get_string(tplp, "NAME"), "Jones") == 0);
+    assert(RDB_tuple_get_double(tplp, "SALARY") == 4600.0);
+
+    assert(RDB_array_get(&array, 2, ecp) == NULL && RDB_obj_type(RDB_get_err(ecp)) == &RDB_NOT_FOUND_ERROR);
 
     return RDB_destroy_obj(&array, ecp);
 
@@ -47,7 +51,6 @@ test_update(RDB_database *dbp, RDB_exec_context *ecp)
     RDB_attr_update attrs[1];
     RDB_expression *exprp;
 
-    printf("Starting transaction\n");
     ret = RDB_begin_tx(ecp, &tx, dbp, NULL);
     if (ret != RDB_OK) {
         return ret;
@@ -58,7 +61,7 @@ test_update(RDB_database *dbp, RDB_exec_context *ecp)
         goto error;
     }
 
-    printf("Updating table, setting SALARY to 4500\n");
+    /* Updating table, setting SALARY to 4500 */
     attrs[0].name = "SALARY";
     attrs[0].exp = RDB_double_to_expr(4500.0, ecp);
     ret = RDB_update(tbp, NULL, 1, attrs, ecp, &tx);
@@ -66,7 +69,7 @@ test_update(RDB_database *dbp, RDB_exec_context *ecp)
         goto error;
     }
 
-    printf("Updating table, setting EMPNO from 2 to 3\n");
+    /* Updating table, setting EMPNO from 2 to 3 */
     attrs[0].name = "EMPNO";
     attrs[0].exp = RDB_int_to_expr(3, ecp);
     exprp = RDB_eq(RDB_expr_var("EMPNO", ecp), RDB_int_to_expr(2, ecp), ecp);
@@ -77,7 +80,7 @@ test_update(RDB_database *dbp, RDB_exec_context *ecp)
 
     RDB_drop_expr(exprp, ecp);
 
-    printf("Updating table, setting NAME of no 1 to Smythe\n");
+    /* Updating table, setting NAME of no 1 to Smythe */
     attrs[0].name = "NAME";
     attrs[0].exp = RDB_string_to_expr("Smythe", ecp);
     exprp = RDB_eq(RDB_expr_var("EMPNO", ecp), RDB_int_to_expr(1, ecp), ecp);
@@ -88,7 +91,7 @@ test_update(RDB_database *dbp, RDB_exec_context *ecp)
 
     RDB_drop_expr(exprp, ecp);
 
-    printf("Updating table, setting SALARY of no 3 to SALARY + 100\n");
+    /* Updating table, setting SALARY of no 3 to SALARY + 100 */
     attrs[0].name = "SALARY";
     attrs[0].exp = RDB_ro_op_va("+", ecp, RDB_double_to_expr(100, ecp),
             RDB_expr_var("SALARY", ecp), (RDB_expression *) NULL);
@@ -104,13 +107,12 @@ test_update(RDB_database *dbp, RDB_exec_context *ecp)
 
     RDB_drop_expr(exprp, ecp);
 
-    printf("Converting table to array\n");
+    /* Converting table to array */
     ret = print_table(tbp, ecp, &tx);
     if (ret != RDB_OK) {
         goto error;
     }
     
-    printf("End of transaction\n");
     return RDB_commit(ecp, &tx);
 
 error:
@@ -126,7 +128,6 @@ main(void)
     int ret;
     RDB_exec_context ec;
     
-    printf("Opening environment\n");
     ret = RDB_open_env("dbenv", &dsp);
     if (ret != RDB_OK) {
         fprintf(stderr, "Error: %s\n", db_strerror(ret));
@@ -149,7 +150,6 @@ main(void)
     }
     RDB_destroy_exec_context(&ec);
     
-    printf ("Closing environment\n");
     ret = RDB_close_env(dsp);
     if (ret != RDB_OK) {
         fprintf(stderr, "Error: %s\n", db_strerror(ret));

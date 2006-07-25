@@ -3,6 +3,7 @@
 #include <rel/rdb.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <assert.h>
 
 int
 test_keys(RDB_database *dbp, RDB_exec_context *ecp)
@@ -14,7 +15,6 @@ test_keys(RDB_database *dbp, RDB_exec_context *ecp)
 
     RDB_init_obj(&tpl);    
 
-    printf("Starting transaction\n");
     ret = RDB_begin_tx(ecp, &tx, dbp, NULL);
     if (ret != RDB_OK) {
         RDB_destroy_obj(&tpl, ecp);
@@ -27,8 +27,6 @@ test_keys(RDB_database *dbp, RDB_exec_context *ecp)
         RDB_destroy_obj(&tpl, ecp);
         return RDB_ERROR;
     }
-
-    printf("Inserting tuple #1\n");
 
     ret = RDB_tuple_set_int(&tpl, "EMPNO", 1, ecp);
     if (ret != RDB_OK)
@@ -44,15 +42,8 @@ test_keys(RDB_database *dbp, RDB_exec_context *ecp)
         goto error;
 
     ret = RDB_insert(tbp, &tpl, ecp, &tx);
-    if (ret == RDB_ERROR && RDB_obj_type(RDB_get_err(ecp))
-            == &RDB_KEY_VIOLATION_ERROR) {
-        printf("Error: key violation - OK\n");
-    } else {
-        printf("Wrong result of RDB_insert()\n");
-    }
+    assert(ret == RDB_ERROR && RDB_obj_type(RDB_get_err(ecp)) == &RDB_KEY_VIOLATION_ERROR);
     RDB_clear_err(ecp);
-
-    printf("Inserting tuple #2\n");
 
     ret = RDB_tuple_set_int(&tpl, "EMPNO", 3, ecp);
     if (ret != RDB_OK)
@@ -68,15 +59,10 @@ test_keys(RDB_database *dbp, RDB_exec_context *ecp)
         goto error;
 
     ret = RDB_insert(tbp, &tpl, ecp, &tx);
-    if (ret == RDB_ERROR && RDB_obj_type(RDB_get_err(ecp))
-            == &RDB_KEY_VIOLATION_ERROR) {
-        printf("key violation - OK\n");
-    } else {
-        printf("Wrong result of RDB_insert()\n");
-    }
+    assert(ret == RDB_ERROR && RDB_obj_type(RDB_get_err(ecp)) == &RDB_KEY_VIOLATION_ERROR);
+    RDB_clear_err(ecp);
     RDB_destroy_obj(&tpl, ecp);
 
-    printf("End of transaction\n");
     return RDB_commit(ecp, &tx);
 
 error:
@@ -93,7 +79,6 @@ main(void)
     int ret;
     RDB_exec_context ec;
     
-    printf("Opening environment\n");
     ret = RDB_open_env("dbenv", &envp);
     if (ret != 0) {
         fprintf(stderr, "Error: %s\n", db_strerror(ret));
@@ -115,7 +100,6 @@ main(void)
     }
     RDB_destroy_exec_context(&ec);
     
-    printf ("Closing environment\n");
     ret = RDB_close_env(envp);
     if (ret != RDB_OK) {
         fprintf(stderr, "Error: %s\n", db_strerror(ret));

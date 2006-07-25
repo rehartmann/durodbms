@@ -30,20 +30,17 @@ create_table(RDB_database *dbp, RDB_exec_context *ecp)
     int ret;
     int i;
    
-    printf("Starting transaction\n");
     ret = RDB_begin_tx(ecp, &tx, dbp, NULL);
     if (ret != RDB_OK) {
         return ret;
     }
 
-    printf("Creating table SRTEST\n");
     tbp = RDB_create_table("SRTEST", RDB_TRUE, 3, srtest_attrs,
             1, srtest_keyattrs, ecp, &tx);
     if (tbp == NULL) {
         RDB_rollback(ecp, &tx);
         return RDB_ERROR;
     }
-    printf("Table %s created.\n", RDB_table_name(tbp));
 
     RDB_init_obj(&tpl);
 
@@ -60,7 +57,6 @@ create_table(RDB_database *dbp, RDB_exec_context *ecp)
         }
     }
 
-    printf("End of transaction\n");
     return RDB_commit(ecp, &tx);
 }
 
@@ -73,7 +69,6 @@ test_update1(RDB_database *dbp, RDB_exec_context *ecp)
     RDB_expression *exp;
     RDB_attr_update upd;
 
-    printf("Starting transaction\n");
     ret = RDB_begin_tx(ecp, &tx, dbp, NULL);
     if (ret != RDB_OK) {
         return ret;
@@ -84,8 +79,6 @@ test_update1(RDB_database *dbp, RDB_exec_context *ecp)
         RDB_rollback(ecp, &tx);
         return RDB_ERROR;
     }
-
-    printf("Updating table\n");
 
     exp = RDB_int_to_expr(2, ecp);
     exp = RDB_ro_op_va("-", ecp, exp, RDB_expr_var("NO", ecp),
@@ -116,7 +109,6 @@ test_update2(RDB_database *dbp, RDB_exec_context *ecp)
     RDB_expression *exp, *argp;
     RDB_attr_update upd;
 
-    printf("Starting transaction\n");
     ret = RDB_begin_tx(ecp, &tx, dbp, NULL);
     if (ret != RDB_OK) {
         return ret;
@@ -127,8 +119,6 @@ test_update2(RDB_database *dbp, RDB_exec_context *ecp)
         RDB_rollback(ecp, &tx);
         return RDB_ERROR;
     }
-
-    printf("Updating table\n");
 
     exp = RDB_ro_op("SUM", 2, NULL, ecp);
     assert(exp != NULL);
@@ -170,7 +160,6 @@ test_print(RDB_database *dbp, RDB_exec_context *ecp)
     int ret;
     int i;
 
-    printf("Starting transaction\n");
     ret = RDB_begin_tx(ecp, &tx, dbp, NULL);
     if (ret != RDB_OK) {
         return ret;
@@ -184,7 +173,6 @@ test_print(RDB_database *dbp, RDB_exec_context *ecp)
 
     RDB_init_obj(&array);
 
-    printf("Converting table to array\n");
     ret = RDB_table_to_array(&array, tbp, 1, noseqitv, ecp, &tx);
     if (ret != RDB_OK) {
         RDB_rollback(ecp, &tx);
@@ -214,7 +202,6 @@ main(void)
     int ret;
     RDB_exec_context ec;
     
-    printf("Opening environment\n");
     ret = RDB_open_env("dbenv", &dsp);
     if (ret != 0) {
         fprintf(stderr, "Error: %s\n", db_strerror(ret));
@@ -258,7 +245,6 @@ main(void)
     }
     RDB_destroy_exec_context(&ec);
 
-    printf ("Closing environment\n");
     ret = RDB_close_env(dsp);
     if (ret != RDB_OK) {
         fprintf(stderr, "Error: %s\n", db_strerror(ret));

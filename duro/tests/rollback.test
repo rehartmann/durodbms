@@ -1,0 +1,58 @@
+#!/bin/sh
+# Execute tclsh from the user's PATH \
+exec tclsh "$0" ${1+"$@"}
+
+# $Id$
+#
+# Test rollback
+#
+
+package require tcltest 2.2
+eval ::tcltest::configure $argv
+namespace import ::tcltest::*
+
+test rollback {rollback} -body {
+	load [configure -testdir]/../.libs/libdurotcl.so
+	source [configure -testdir]/testutil.tcl
+
+	# Create DB environment dir
+	set envdir [makeDirectory dbenv]
+	file delete -force $envdir/*
+
+	set dbenv [duro::env open $envdir]
+	
+	# Create Database
+	duro::db create $dbenv TEST
+	
+	set tx [duro::begin $dbenv TEST]
+	
+	# Create table
+	duro::table create T {
+	   {A STRING}
+	   {B STRING}
+	} {{A}} $tx
+	
+	duro::index create TIX T {B asc} $tx
+	
+	duro::commit $tx
+	
+	duro::env close $dbenv
+	
+	set dbenv [duro::env open $envdir]
+	
+	set tx [duro::begin $dbenv TEST]
+	
+	duro::expr {IS_EMPTY(T)} $tx
+	
+	duro::rollback $tx
+	
+	set tx [duro::begin $dbenv TEST]
+	
+	duro::expr {IS_EMPTY(T)} $tx
+	
+	duro::commit $tx
+	
+	duro::env close $dbenv
+}
+
+cleanupTests
