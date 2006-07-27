@@ -172,7 +172,7 @@ Duro_init_tcl(Tcl_Interp *interp, TclState **statepp)
         return TCL_ERROR;
     }
 
-    return Tcl_PkgProvide(interp, "duro", "0.11");
+    return Tcl_PkgProvide(interp, "duro", "0.12");
 }
 
 int
