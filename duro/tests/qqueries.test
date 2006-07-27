@@ -12,13 +12,12 @@ eval ::tcltest::configure $argv
 namespace import ::tcltest::*
 
 test qqueries {quota queries} -body {
-	load [configure -testdir]/../.libs/libdurotcl.so
+	load [configure -testdir]/../libdurotcl.so
 	source [configure -testdir]/testutil.tcl
 	source [configure -testdir]/../tcl/util.tcl
 
 	# Create DB environment dir
 	set envdir [makeDirectory dbenv]
-	file delete -force $envdir/*
 
 	set dbenv [duro::env open $envdir]
 	

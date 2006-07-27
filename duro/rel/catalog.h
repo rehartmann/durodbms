@@ -24,7 +24,7 @@ int
 _RDB_cat_create_db(RDB_exec_context *, RDB_transaction *);
 
 int
-_RDB_possreps_query(const char *name, RDB_exec_context *, RDB_transaction *txp,
+_RDB_possreps_query(const char *name, RDB_exec_context *, RDB_transaction *,
         RDB_object **tbpp);
 
 int

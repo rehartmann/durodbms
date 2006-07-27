@@ -12,12 +12,11 @@ eval ::tcltest::configure $argv
 namespace import ::tcltest::*
 
 test opt {optimizer} -body {
-	load [configure -testdir]/../.libs/libdurotcl.so
+	load [configure -testdir]/../libdurotcl.so
 	source [configure -testdir]/testutil.tcl
 
 	# Create DB environment dir
 	set envdir [makeDirectory dbenv]
-	file delete -force $envdir/*
 
 	set dbenv [duro::env open $envdir]
 	

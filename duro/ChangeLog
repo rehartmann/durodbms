@@ -4,6 +4,10 @@ Summary of Changes for Duro
 
 Changes for Duro 0.12
 
+- Replaced GNU Autotools by SCons.
+
+- Using tcltest for testing.
+
 - Replaced RDB_table by RDB_object.
 
 - Removed RDB_project, RDB_union ...

@@ -22,10 +22,10 @@ enum {
  */
 
 static RDB_attr table_attr_attrv[] = {
-            { "ATTRNAME", &RDB_STRING, NULL, 0 },
-            { "TABLENAME", &RDB_STRING, NULL, 0 },
-            { "TYPE", &RDB_BINARY, NULL, 0 },
-            { "I_FNO", &RDB_INTEGER, NULL, 0 } };
+        { "ATTRNAME", &RDB_STRING, NULL, 0 },
+        { "TABLENAME", &RDB_STRING, NULL, 0 },
+        { "TYPE", &RDB_BINARY, NULL, 0 },
+        { "I_FNO", &RDB_INTEGER, NULL, 0 } };
 static char *table_attr_keyattrv[] = { "ATTRNAME", "TABLENAME" };
 static RDB_string_vec table_attr_keyv[] = { { 2, table_attr_keyattrv } };
 

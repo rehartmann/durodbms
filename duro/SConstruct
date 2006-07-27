@@ -1,0 +1,112 @@
+#
+# SCons build file for Duro
+#
+# $Id$
+#
+
+installdir = '/usr/local/duro.0.12'
+
+bdbhome = '/usr/local/BerkeleyDB.4.4'
+
+env = Environment(CCFLAGS = '-g -Wall -Werror',
+	CPPPATH = ['.', ''.join([bdbhome, '/include'])],
+    LIBPATH = [''.join([bdbhome, '/lib']), '.'],
+    LIBS = ['duro', 'db', 'ltdl', 'm'])
+
+libduro = env.SharedLibrary('duro', ['gen/hashmap.c', 'gen/hashmapit.c', 'gen/strfns.c',
+    'gen/hashtable.c', 'gen/hashtabit.c',
+    'rec/cursor.c', 'rec/env.c', 'rec/index.c', 'rec/recmap.c',
+    'rel/array.c', 'rel/database.c', 'rel/operator.c',
+    'rel/builtinops.c', 'rel/expression.c', 'rel/qresult.c',
+    'rel/serialize.c', 'rel/table.c', 'rel/stable.c', 'rel/vtable.c',
+    'rel/update.c', 'rel/insert.c', 'rel/contains.c', 'rel/transaction.c',
+    'rel/delete.c', 'rel/tuple.c', 'rel/type.c', 'rel/object.c',
+    'rel/catalog.c', 'rel/optimize.c', 'rel/transform.c',
+    'rel/constraint.c', 'rel/assign.c', 'rel/excontext.c',
+    'rel/match.c',
+    'dli/exparse.y', 'dli/exlex.l', 'dli/parse.c', 'dli/tabletostr.c'],
+    LIBS=['db', 'ltdl'])
+
+libdurotcl = env.SharedLibrary('durotcl', ['tcl/duro.c', 'tcl/envcmd.c',
+	'tcl/txcmd.c', 'tcl/tablecmd.c', 'tcl/dbcmd.c', 'tcl/arraycmd.c',
+	'tcl/opcmd.c', 'tcl/exprcmd.c', 'tcl/typecmd.c', 'tcl/indexcmd.c',
+	'tcl/insertcmd.c', 'tcl/updatecmd.c', 'tcl/constrcmd.c',
+	'tcl/massigncmd.c'],
+	RPATH = ''.join([installdir, '/lib']))
+
+Default(libduro)
+Default(libdurotcl)
+
+env.Program('util/lstables.c')
+env.Program('tests/tupletest.c')
+env.Program('tests/maptest.c')
+env.Program('tests/prepare.c')
+env.Program('tests/test_aggregate.c')
+env.Program('tests/test_binary.c')
+env.Program('tests/test_create_view.c')
+env.Program('tests/test_defpointtype.c')
+env.Program('tests/test_deftype.c')
+env.Program('tests/test_delete.c')
+env.Program('tests/test_extend.c')
+env.Program('tests/test_intersect.c')
+env.Program('tests/test_join.c')
+env.Program('tests/test_keys.c')
+env.Program('tests/test_minus.c')
+env.Program('tests/test_null.c')
+env.Program('tests/test_pointtable.c')
+env.Program('tests/test_print_view.c')
+env.Program('tests/test_project.c')
+env.Program('tests/test_ra.c')
+env.Program('tests/test_regexp.c')
+env.Program('tests/test_rename.c')
+env.Program('tests/test_select.c')
+env.Program('tests/test_summarize.c')
+env.Program('tests/test_update.c')
+env.Program('tests/test_utypetable.c')
+env.Program('tests/test_defpointtype.c')
+env.Program('tests/test_pointtable.c')
+env.Program('tests/test_srupdate.c')
+env.Program('tests/test_insert.c')
+env.Program('tests/test_2db.c')
+env.Program('tests/test_defop.c')
+env.Program('tests/test_callop.c')
+env.Program('tests/test_print_opview.c')
+env.Program('tests/test_dropop.c')
+
+env.SharedLibrary('tests/point.c')
+env.SharedLibrary('tests/plus.c')
+
+env.Alias('install', installdir)
+
+env.Install(''.join([installdir, '/include/gen']),
+	Split('gen/hashmap.h gen/hashmapit.h gen/hashtable.h '
+        'gen/hashtabit.h gen/strfns.h gen/types.h'))
+env.Install(''.join([installdir, '/include/rec']),
+    Split('rec/cursor.h rec/env.h rec/index.h rec/recmap.h'))
+env.Install(''.join([installdir, '/include/rel']),
+    Split('rel/rdb.h rel/typeimpl.h dli/parse.h'))
+env.Install(''.join([installdir, '/bin']),
+	['tcl/duroadmin.tcl', 'tcl/durodump.tcl'])
+
+env.Install(''.join([installdir, '/lib']), libduro)
+dst_libdurotcl = env.Install(''.join([installdir, '/lib']), libdurotcl)
+dst_utiltcl = env.Install(''.join([installdir, '/lib']), 'tcl/util.tcl')
+
+env.Command(''.join([installdir, '/lib/pkgIndex.tcl']),
+	[dst_libdurotcl, dst_utiltcl],
+	''.join(['LD_LIBRARY_PATH=', bdbhome, '/lib;export LD_LIBRARY_PATH; '
+	'echo pkg_mkIndex ', installdir, '/lib '
+	'libdurotcl.so util.tcl | tclsh']))
+
+env.Install(''.join([installdir, '/docs']),
+	['docs/api-spec.html', 'docs/expressions.html', 'docs/utils.html'])
+
+env.Install(''.join([installdir, '/docs/tcl']),
+	Split('docs/tcl/index.html docs/tcl/array.html '
+		'docs/tcl/begin.html docs/tcl/call.html '
+		'docs/tcl/commit.html docs/tcl/db.html docs/tcl/delete.html '
+		'docs/tcl/env.html docs/tcl/expr.html docs/tcl/insert.html '
+		'docs/tcl/operator.html docs/tcl/ptable.html docs/tcl/rollback.html '
+		'docs/tcl/txdb.html docs/tcl/table.html docs/tcl/update.html '
+		'docs/tcl/type.html docs/tcl/indexcmd.html docs/tcl/constraint.html '
+		'docs/tcl/massign.html docs/tcl/errorCode.html'))

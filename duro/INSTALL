@@ -1,25 +1,23 @@
 Installation procedure for Duro on Linux/POSIX systems
 ======================================================
 
-Duro uses automake and autoconf to build itself. Type:
+Duro uses SCons (www.scons.org) to build itself. Type:
 
-./configure
-make
-make check    (optional)
-make install
+scons
+tests/all.tcl (optional)
+scons install
 
 To compile Duro, you need GNU Libtool, Berkeley DB 4.3,
 and Tcl 8.1 or later.
 
 Depending on the system, it may be necessary to use link Duro applications
-with libpthread. This can be specified by when running configure:
+with libpthread.
 
-./configure LIBS=-lpthread
+
 
 Berkeley DB is assumed to be located in /usr/local/BerkeleyDB.4.4.
-If Berkeley DB is located in a different directory, set the BDB_HOME
-environment variable and use the -e option of make.
+If Berkeley DB is located in a different directory, ...
 
-To build Duro without Tcl support, pass --without-tcl to configure.
-Note that since most tests depend on Durotcl, 'make check' will not
-work in this case. Duroadmin and Durodump will not be available either.
+To build Duro without Tcl support, ...
+Note that since most tests depend on Durotcl, running the tests will not
+be possible in this case. Duroadmin and Durodump will not be available either.
