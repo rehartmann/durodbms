@@ -60,7 +60,6 @@ test_union(RDB_database *dbp, RDB_exec_context *ecp)
     RDB_object *tbp, *tbp2, *vtbp;
     int ret;
 
-    printf("Starting transaction\n");
     ret = RDB_begin_tx(ecp, &tx, dbp, NULL);
     if (ret != RDB_OK) {
         return ret;
@@ -78,8 +77,6 @@ test_union(RDB_database *dbp, RDB_exec_context *ecp)
         return RDB_ERROR;
     }
 
-    printf("Creating EMPS1 union EMPS2\n");
-
     exp = RDB_ro_op("UNION", 2, NULL, ecp);
     assert(exp != NULL);
     
@@ -94,17 +91,14 @@ test_union(RDB_database *dbp, RDB_exec_context *ecp)
     vtbp = RDB_expr_to_vtable(exp, ecp, &tx);
     assert(vtbp != NULL);
     
-    printf("converting union table to array\n");
     ret = print_table(vtbp, ecp, &tx);
     if (ret != RDB_OK) {
         RDB_rollback(ecp, &tx);
         return ret;
     } 
 
-    printf("Dropping union\n");
     RDB_drop_table(vtbp, ecp, &tx);
 
-    printf("End of transaction\n");
     return RDB_commit(ecp, &tx);
 }
 
@@ -116,7 +110,6 @@ main(void)
     int ret;
     RDB_exec_context ec;
     
-    printf("Opening environment\n");
     ret = RDB_open_env("dbenv", &envp);
     if (ret != 0) {
         fprintf(stderr, "Error: %s\n", db_strerror(ret));
@@ -138,7 +131,6 @@ main(void)
     }
     RDB_destroy_exec_context(&ec);
     
-    printf ("Closing environment\n");
     ret = RDB_close_env(envp);
     if (ret != RDB_OK) {
         fprintf(stderr, "Error: %s\n", db_strerror(ret));
