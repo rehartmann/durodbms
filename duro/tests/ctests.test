@@ -6,10 +6,8 @@ package require tcltest 2.2
 eval ::tcltest::configure $argv
 namespace import ::tcltest::*
 
-set oldldpath $env(LD_LIBRARY_PATH)
-
 proc setldpath {} {
-	set ::env(LD_LIBRARY_PATH) $::oldldpath:[configure -testdir]/..
+	set ::env(LD_LIBRARY_PATH) [configure -testdir]:[configure -testdir]/..
 }
 
 set SETUP {setldpath; catch {removeDirectory dbenv}; makeDirectory dbenv; cd [configure -tmpdir]; exec [configure -testdir]/prepare}

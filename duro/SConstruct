@@ -5,13 +5,14 @@
 #
 
 installdir = '/usr/local/duro.0.12'
-
 bdbhome = '/usr/local/BerkeleyDB.4.4'
 
 env = Environment(CCFLAGS = '-g -Wall -Werror',
-	CPPPATH = ['.', ''.join([bdbhome, '/include'])],
+    CPPPATH = ['.', ''.join([bdbhome, '/include'])],
     LIBPATH = [''.join([bdbhome, '/lib']), '.'],
-    LIBS = ['duro', 'db', 'ltdl', 'm'])
+    LIBS = ['duro', 'db', 'ltdl', 'm'],
+    YACCFLAGS = '-d',
+    RPATH = [''.join([installdir, '/lib']), ''.join([bdbhome, '/lib'])])
 
 libduro = env.SharedLibrary('duro', ['gen/hashmap.c', 'gen/hashmapit.c', 'gen/strfns.c',
     'gen/hashtable.c', 'gen/hashtabit.c',
@@ -32,49 +33,51 @@ libdurotcl = env.SharedLibrary('durotcl', ['tcl/duro.c', 'tcl/envcmd.c',
 	'tcl/opcmd.c', 'tcl/exprcmd.c', 'tcl/typecmd.c', 'tcl/indexcmd.c',
 	'tcl/insertcmd.c', 'tcl/updatecmd.c', 'tcl/constrcmd.c',
 	'tcl/massigncmd.c'],
-	RPATH = ''.join([installdir, '/lib']))
+	)
 
 Default(libduro)
 Default(libdurotcl)
 
-env.Program('util/lstables.c')
-env.Program('tests/tupletest.c')
-env.Program('tests/maptest.c')
-env.Program('tests/prepare.c')
-env.Program('tests/test_aggregate.c')
-env.Program('tests/test_binary.c')
-env.Program('tests/test_create_view.c')
-env.Program('tests/test_defpointtype.c')
-env.Program('tests/test_deftype.c')
-env.Program('tests/test_delete.c')
-env.Program('tests/test_extend.c')
-env.Program('tests/test_intersect.c')
-env.Program('tests/test_join.c')
-env.Program('tests/test_keys.c')
-env.Program('tests/test_minus.c')
-env.Program('tests/test_null.c')
-env.Program('tests/test_pointtable.c')
-env.Program('tests/test_print_view.c')
-env.Program('tests/test_project.c')
-env.Program('tests/test_ra.c')
-env.Program('tests/test_regexp.c')
-env.Program('tests/test_rename.c')
-env.Program('tests/test_select.c')
-env.Program('tests/test_summarize.c')
-env.Program('tests/test_update.c')
-env.Program('tests/test_utypetable.c')
-env.Program('tests/test_defpointtype.c')
-env.Program('tests/test_pointtable.c')
-env.Program('tests/test_srupdate.c')
-env.Program('tests/test_insert.c')
-env.Program('tests/test_2db.c')
-env.Program('tests/test_defop.c')
-env.Program('tests/test_callop.c')
-env.Program('tests/test_print_opview.c')
-env.Program('tests/test_dropop.c')
+testenv = env.Copy(RPATH = [''.join([bdbhome, '/lib'])])
 
-env.SharedLibrary('tests/point.c')
-env.SharedLibrary('tests/plus.c')
+testenv.Program('util/lstables.c')
+testenv.Program('tests/tupletest.c')
+testenv.Program('tests/maptest.c')
+testenv.Program('tests/prepare.c')
+testenv.Program('tests/test_aggregate.c')
+testenv.Program('tests/test_binary.c')
+testenv.Program('tests/test_create_view.c')
+testenv.Program('tests/test_defpointtype.c')
+testenv.Program('tests/test_deftype.c')
+testenv.Program('tests/test_delete.c')
+testenv.Program('tests/test_extend.c')
+testenv.Program('tests/test_intersect.c')
+testenv.Program('tests/test_join.c')
+testenv.Program('tests/test_keys.c')
+testenv.Program('tests/test_minus.c')
+testenv.Program('tests/test_null.c')
+testenv.Program('tests/test_pointtable.c')
+testenv.Program('tests/test_print_view.c')
+testenv.Program('tests/test_project.c')
+testenv.Program('tests/test_ra.c')
+testenv.Program('tests/test_regexp.c')
+testenv.Program('tests/test_rename.c')
+testenv.Program('tests/test_select.c')
+testenv.Program('tests/test_summarize.c')
+testenv.Program('tests/test_update.c')
+testenv.Program('tests/test_utypetable.c')
+testenv.Program('tests/test_defpointtype.c')
+testenv.Program('tests/test_pointtable.c')
+testenv.Program('tests/test_srupdate.c')
+testenv.Program('tests/test_insert.c')
+testenv.Program('tests/test_2db.c')
+testenv.Program('tests/test_defop.c')
+testenv.Program('tests/test_callop.c')
+testenv.Program('tests/test_print_opview.c')
+testenv.Program('tests/test_dropop.c')
+
+testenv.SharedLibrary('tests/point.c')
+testenv.SharedLibrary('tests/plus.c')
 
 env.Alias('install', installdir)
 
@@ -94,8 +97,7 @@ dst_utiltcl = env.Install(''.join([installdir, '/lib']), 'tcl/util.tcl')
 
 env.Command(''.join([installdir, '/lib/pkgIndex.tcl']),
 	[dst_libdurotcl, dst_utiltcl],
-	''.join(['LD_LIBRARY_PATH=', bdbhome, '/lib;export LD_LIBRARY_PATH; '
-	'echo pkg_mkIndex ', installdir, '/lib '
+	''.join(['echo pkg_mkIndex ', installdir, '/lib '
 	'libdurotcl.so util.tcl | tclsh']))
 
 env.Install(''.join([installdir, '/docs']),
