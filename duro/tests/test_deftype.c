@@ -24,12 +24,14 @@ test_type(RDB_database *dbp, RDB_exec_context *ecp)
     pr.name = NULL;
     pr.compc = 1;
     pr.compv = &comp;
-    constraintp = RDB_ro_op_va("<", ecp,
-            RDB_expr_comp(RDB_expr_var("TINYINT", ecp), "TINYINT", ecp),
-            RDB_int_to_expr(100, ecp), (RDB_expression *) NULL);
+    constraintp = RDB_ro_op("<", 2, ecp);
     if (constraintp == NULL) {
         return RDB_ERROR;
     }
+    RDB_add_arg(constraintp,
+            RDB_expr_comp(RDB_expr_var("TINYINT", ecp), "TINYINT", ecp));
+    RDB_add_arg(constraintp, RDB_int_to_expr(100, ecp));
+
     ret = RDB_define_type("TINYINT", 1, &pr, constraintp, ecp, &tx);
     if (ret != RDB_OK) {
         RDB_drop_expr(constraintp, ecp);

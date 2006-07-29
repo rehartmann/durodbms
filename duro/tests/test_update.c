@@ -93,12 +93,13 @@ test_update(RDB_database *dbp, RDB_exec_context *ecp)
 
     /* Updating table, setting SALARY of no 3 to SALARY + 100 */
     attrs[0].name = "SALARY";
-    attrs[0].exp = RDB_ro_op_va("+", ecp, RDB_double_to_expr(100, ecp),
-            RDB_expr_var("SALARY", ecp), (RDB_expression *) NULL);
+    attrs[0].exp = RDB_ro_op("+", 2, ecp);
     if (attrs[0].exp == NULL) {
         ret = RDB_ERROR;
         goto error;
     }
+    RDB_add_arg(attrs[0].exp, RDB_double_to_expr(100, ecp));
+    RDB_add_arg(attrs[0].exp, RDB_expr_var("SALARY", ecp));
     exprp = RDB_eq(RDB_expr_var("EMPNO", ecp), RDB_int_to_expr(3, ecp), ecp);
     ret = RDB_update(tbp, exprp, 1, attrs, ecp, &tx);
     if (ret == RDB_ERROR) {

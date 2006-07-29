@@ -53,7 +53,7 @@ op_vtable(const char *name, int argc, RDB_object *argv[],
     /*
      * Convert arguments to expressions
      */
-    exp = RDB_ro_op(name, argc, NULL, ecp);
+    exp = RDB_ro_op(name, argc, ecp);
     if (exp == NULL)
         return RDB_ERROR;
 

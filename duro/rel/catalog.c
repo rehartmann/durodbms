@@ -507,14 +507,24 @@ _RDB_cat_index_tablename(const char *name, char **tbnamep,
     int ret;
     RDB_object tpl;
     RDB_object *vtbp;
-    RDB_expression *exp = RDB_ro_op_va("WHERE", ecp,
-            RDB_table_ref_to_expr(txp->dbp->dbrootp->indexes_tbp, ecp),
-            RDB_eq(RDB_expr_var("NAME", ecp),
-                    RDB_string_to_expr(name, ecp), ecp),
-            (RDB_expression *) NULL);            
+    RDB_expression *argp;
+    RDB_expression *exp = RDB_ro_op("WHERE", 2, ecp);
     if (exp == NULL) {
         return RDB_ERROR;
     }
+    argp = RDB_table_ref_to_expr(txp->dbp->dbrootp->indexes_tbp, ecp);
+    if (argp == NULL) {
+        RDB_drop_expr(exp, ecp);
+        return RDB_ERROR;
+    }
+    RDB_add_arg(exp, argp);
+    argp = RDB_eq(RDB_expr_var("NAME", ecp), RDB_string_to_expr(name, ecp),
+            ecp);
+    if (argp == NULL) {
+        RDB_drop_expr(exp, ecp);
+        return RDB_ERROR;
+    }
+    RDB_add_arg(exp, argp);
 
     vtbp = RDB_expr_to_vtable(exp, ecp, txp);
     if (vtbp == NULL) {
@@ -699,14 +709,24 @@ _RDB_cat_get_indexes(const char *tablename, RDB_dbroot *dbrootp,
     int indexc;
     RDB_object *vtbp;
     RDB_object arr;
-    RDB_expression *exp = RDB_ro_op_va("WHERE", ecp,
-            RDB_table_ref_to_expr(dbrootp->indexes_tbp, ecp),
-            RDB_eq(RDB_expr_var("TABLENAME", ecp),
-                    RDB_string_to_expr(tablename, ecp), ecp),
-            (RDB_expression *) NULL);
+    RDB_expression *argp;
+    RDB_expression *exp = RDB_ro_op("WHERE", 2, ecp);
     if (exp == NULL) {
         return RDB_ERROR;
     }
+    argp = RDB_table_ref_to_expr(dbrootp->indexes_tbp, ecp);
+    if (argp == NULL) {
+        RDB_drop_expr(exp, ecp);
+        return RDB_ERROR;
+    }
+    RDB_add_arg(exp, argp);
+    argp = RDB_eq(RDB_expr_var("TABLENAME", ecp),
+            RDB_string_to_expr(tablename, ecp), ecp);
+    if (argp == NULL) {
+        RDB_drop_expr(exp, ecp);
+        return RDB_ERROR;
+    }
+    RDB_add_arg(exp, argp);
 
     vtbp = RDB_expr_to_vtable(exp, ecp, txp);
     if (vtbp == NULL) {
@@ -1326,7 +1346,7 @@ static int
 get_keys(const char *name, RDB_exec_context *ecp, RDB_transaction *txp,
          int *keycp, RDB_string_vec **keyvp)
 {
-    RDB_expression *exp;
+    RDB_expression *exp, *argp;
     RDB_object *vtbp;
     RDB_object arr;
     RDB_object *tplp;
@@ -1335,16 +1355,23 @@ get_keys(const char *name, RDB_exec_context *ecp, RDB_transaction *txp,
 
     *keyvp = NULL;
 
-    RDB_init_obj(&arr);
-    
-    exp = RDB_ro_op_va("WHERE", ecp,
-            RDB_table_ref_to_expr(txp->dbp->dbrootp->keys_tbp, ecp),
-            RDB_eq(RDB_string_to_expr(name, ecp),
-                    RDB_expr_var("TABLENAME", ecp), ecp),
-            (RDB_expression *) NULL);
+    exp = RDB_ro_op("WHERE", 2, ecp);
     if (exp == NULL) {
         return RDB_ERROR;
     }
+    argp = RDB_table_ref_to_expr(txp->dbp->dbrootp->keys_tbp, ecp);
+    if (argp == NULL) {
+        RDB_drop_expr(exp, ecp);
+        return RDB_ERROR;
+    }
+    RDB_add_arg(exp, argp);
+    argp = RDB_eq(RDB_string_to_expr(name, ecp),
+            RDB_expr_var("TABLENAME", ecp), ecp);
+    if (argp == NULL) {
+        RDB_drop_expr(exp, ecp);
+        return RDB_ERROR;
+    }
+    RDB_add_arg(exp, argp);
 
     vtbp = RDB_expr_to_vtable(exp, ecp, txp);
     if (vtbp == NULL) {
@@ -1352,6 +1379,8 @@ get_keys(const char *name, RDB_exec_context *ecp, RDB_transaction *txp,
         return RDB_ERROR;
     }
 
+    RDB_init_obj(&arr);
+    
     ret = RDB_table_to_array(&arr, vtbp, 0, NULL, ecp, txp);
     if (ret != RDB_OK)
         goto error;
@@ -1408,7 +1437,7 @@ RDB_object *
 _RDB_cat_get_rtable(const char *name, RDB_exec_context *ecp,
         RDB_transaction *txp)
 {
-    RDB_expression *exp;
+    RDB_expression *exp, *argp;
     RDB_object *tbp = NULL;
     RDB_object *tmptb1p = NULL;
     RDB_object *tmptb2p = NULL;
@@ -1436,14 +1465,24 @@ _RDB_cat_get_rtable(const char *name, RDB_exec_context *ecp,
 
     /* !! Should check if table is from txp->dbp ... */
 
-    exp = RDB_ro_op_va("WHERE", ecp,
-            RDB_table_ref_to_expr(txp->dbp->dbrootp->rtables_tbp, ecp),
-            RDB_eq(RDB_expr_var("TABLENAME", ecp),
-                    RDB_string_to_expr(name, ecp), ecp),
-            (RDB_expression *) NULL);
+    exp = RDB_ro_op("WHERE", 2, ecp);
     if (exp == NULL) {
         goto error;
     }
+    argp = RDB_table_ref_to_expr(txp->dbp->dbrootp->rtables_tbp, ecp);
+    if (argp == NULL) {
+        RDB_drop_expr(exp, ecp);
+        goto error;
+    }
+    RDB_add_arg(exp, argp);
+    argp = RDB_eq(RDB_expr_var("TABLENAME", ecp),
+            RDB_string_to_expr(name, ecp), ecp);
+    if (argp == NULL) {
+        RDB_drop_expr(exp, ecp);
+        goto error;
+    }
+    RDB_add_arg(exp, argp);
+
     tmptb1p = RDB_expr_to_vtable(exp, ecp, txp);
     if (tmptb1p == NULL) {
         RDB_drop_expr(exp, ecp);
@@ -1461,14 +1500,23 @@ _RDB_cat_get_rtable(const char *name, RDB_exec_context *ecp,
      * Read attribute names and types
      */
 
-    exp = RDB_ro_op_va("WHERE", ecp,
-            RDB_table_ref_to_expr(txp->dbp->dbrootp->table_attr_tbp, ecp),
-            RDB_eq(RDB_expr_var("TABLENAME", ecp),
-                RDB_string_to_expr(name, ecp), ecp),
-                (RDB_expression *) NULL);
+    exp = RDB_ro_op("WHERE", 2, ecp);
     if (exp == NULL) {
         goto error;
     }
+    argp = RDB_table_ref_to_expr(txp->dbp->dbrootp->table_attr_tbp, ecp);
+    if (argp == NULL) {
+        RDB_drop_expr(exp, ecp);
+        goto error;
+    }
+    RDB_add_arg(exp, argp);
+    argp = RDB_eq(RDB_expr_var("TABLENAME", ecp),
+            RDB_string_to_expr(name, ecp), ecp);
+    if (argp == NULL) {
+        RDB_drop_expr(exp, ecp);
+        goto error;
+    }
+    RDB_add_arg(exp, argp);
 
     tmptb2p = RDB_expr_to_vtable(exp, ecp, txp);
     if (tmptb2p == NULL)
@@ -1515,14 +1563,24 @@ _RDB_cat_get_rtable(const char *name, RDB_exec_context *ecp,
      * Read default values
      */
 
-    exp = RDB_ro_op_va("WHERE", ecp,
-            RDB_table_ref_to_expr(txp->dbp->dbrootp->table_attr_defvals_tbp, ecp),
-            RDB_eq(RDB_expr_var("TABLENAME", ecp),
-                    RDB_string_to_expr(name, ecp), ecp),
-            (RDB_expression *) NULL);
+    exp = RDB_ro_op("WHERE", 2, ecp);
     if (exp == NULL) {
         goto error;
     }
+    argp = RDB_table_ref_to_expr(txp->dbp->dbrootp->table_attr_defvals_tbp,
+            ecp);
+    if (argp == NULL) {
+        RDB_drop_expr(exp, ecp);
+        goto error;
+    }
+    RDB_add_arg(exp, argp);
+    argp = RDB_eq(RDB_expr_var("TABLENAME", ecp),
+            RDB_string_to_expr(name, ecp), ecp);
+    if (argp == NULL) {
+        RDB_drop_expr(exp, ecp);
+        goto error;
+    }
+    RDB_add_arg(exp, argp);
 
     tmptb3p = RDB_expr_to_vtable(exp, ecp, txp);
     if (tmptb3p == NULL)
@@ -1573,14 +1631,24 @@ _RDB_cat_get_rtable(const char *name, RDB_exec_context *ecp,
          * Read recmap name from catalog, if it's user table.
          * For system tables, the recmap name is the table name.
          */
-        exp = RDB_ro_op_va("WHERE", ecp,
-                RDB_table_ref_to_expr(txp->dbp->dbrootp->table_recmap_tbp, ecp),
-                RDB_eq(RDB_expr_var("TABLENAME", ecp),
-                        RDB_string_to_expr(name, ecp), ecp),
-                (RDB_expression *) NULL);
+        exp = RDB_ro_op("WHERE", 2, ecp);
         if (exp == NULL) {
             goto error;
         }
+        argp = RDB_table_ref_to_expr(txp->dbp->dbrootp->table_recmap_tbp, ecp);
+        if (argp == NULL) {
+            RDB_drop_expr(exp, ecp);
+            goto error;
+        }
+        RDB_add_arg(exp, argp);
+        argp = RDB_eq(RDB_expr_var("TABLENAME", ecp),
+                RDB_string_to_expr(name, ecp), ecp);
+        if (argp == NULL) {
+            RDB_drop_expr(exp, ecp);
+            goto error;
+        }
+        RDB_add_arg(exp, argp);
+
         tmptb4p = RDB_expr_to_vtable(exp, ecp, txp);
         if (tmptb4p == NULL) {
             RDB_drop_expr(exp, ecp);
@@ -1679,7 +1747,7 @@ _RDB_cat_get_vtable(const char *name, RDB_exec_context *ecp,
         RDB_transaction *txp)
 {
     RDB_object *tbp;
-    RDB_expression *exp;
+    RDB_expression *exp, *argp;
     RDB_object *tmptbp = NULL;
     RDB_object tpl;
     RDB_object arr;
@@ -1694,14 +1762,25 @@ _RDB_cat_get_vtable(const char *name, RDB_exec_context *ecp,
     RDB_init_obj(&arr);
     RDB_init_obj(&tpl);
 
-    exp = RDB_ro_op_va("WHERE", ecp,
-            RDB_table_ref_to_expr(txp->dbp->dbrootp->vtables_tbp, ecp),
-            RDB_eq(RDB_expr_var("TABLENAME", ecp),
-                    RDB_string_to_expr(name, ecp), ecp),
-            (RDB_expression *) NULL);
+    exp = RDB_ro_op("WHERE", 2, ecp);
     if (exp == NULL) {
         goto error;
     }
+    argp = RDB_table_ref_to_expr(txp->dbp->dbrootp->vtables_tbp, ecp);
+    if (argp == NULL) {
+        RDB_drop_expr(exp, ecp);
+        goto error;
+    }
+    RDB_add_arg(exp, argp);
+
+    argp = RDB_eq(RDB_expr_var("TABLENAME", ecp),
+            RDB_string_to_expr(name, ecp), ecp);
+    if (argp == NULL) {
+        RDB_drop_expr(exp, ecp);
+        goto error;
+    }
+    RDB_add_arg(exp, argp);
+
     tmptbp = RDB_expr_to_vtable(exp, ecp, txp);
     if (tmptbp == NULL) {
         RDB_drop_expr(exp, ecp);
@@ -1803,21 +1882,31 @@ static int
 types_query(const char *name, RDB_exec_context *ecp, RDB_transaction *txp,
         RDB_object **tbpp)
 {
-    RDB_expression *exp;
+    RDB_expression *exp, *argp;
 
-    exp = RDB_ro_op_va("WHERE", ecp,
-            RDB_table_ref_to_expr(txp->dbp->dbrootp->types_tbp, ecp),
-            RDB_eq(RDB_expr_var("TYPENAME", ecp),
-                    RDB_string_to_expr(name, ecp), ecp),
-            (RDB_expression *) NULL);
+    exp = RDB_ro_op("WHERE", 2, ecp);
     if (exp == NULL) {
         return RDB_ERROR;
     }
 
+    argp = RDB_table_ref_to_expr(txp->dbp->dbrootp->types_tbp, ecp);
+    if (argp == NULL) {
+        RDB_drop_expr(exp, ecp);
+        return RDB_ERROR;
+    }
+    RDB_add_arg(exp, argp);
+    argp = RDB_eq(RDB_expr_var("TYPENAME", ecp),
+                    RDB_string_to_expr(name, ecp), ecp);
+    if (argp == NULL) {
+        RDB_drop_expr(exp, ecp);
+        return RDB_ERROR;
+    }
+    RDB_add_arg(exp, argp);
+
     *tbpp = RDB_expr_to_vtable(exp, ecp, txp);
     if (*tbpp == NULL) {
-         RDB_drop_expr(exp, ecp);
-         return RDB_ERROR;
+        RDB_drop_expr(exp, ecp);
+        return RDB_ERROR;
     }
     return RDB_OK;
 }
@@ -1826,21 +1915,44 @@ int
 _RDB_possreps_query(const char *name, RDB_exec_context *ecp,
         RDB_transaction *txp, RDB_object **tbpp)
 {
-    RDB_expression *exp;
+    RDB_expression *exp, *argp;
 
-    exp = RDB_ro_op_va("PROJECT", ecp,
-            RDB_table_ref_to_expr(txp->dbp->dbrootp->possrepcomps_tbp, ecp),
-            RDB_string_to_expr("TYPENAME", ecp),
-            RDB_string_to_expr("POSSREPNAME", ecp),
-            (RDB_expression *) NULL);
+    exp = RDB_ro_op("PROJECT", 3, ecp);
     if (exp == NULL)
     	return RDB_ERROR;
-    exp = RDB_ro_op_va("WHERE", ecp, exp,
-            RDB_eq(RDB_expr_var("TYPENAME", ecp),
-                    RDB_string_to_expr(name, ecp), ecp),
-            (RDB_expression *) NULL);
-    if (exp == NULL)
-    	return RDB_ERROR;
+    argp = RDB_table_ref_to_expr(txp->dbp->dbrootp->possrepcomps_tbp, ecp);
+    if (argp == NULL) {
+        RDB_drop_expr(exp, ecp);
+        return RDB_ERROR;
+    }
+    RDB_add_arg(exp, argp);
+    argp = RDB_string_to_expr("TYPENAME", ecp);
+    if (argp == NULL) {
+        RDB_drop_expr(exp, ecp);
+        return RDB_ERROR;
+    }
+    RDB_add_arg(exp, argp);
+    argp = RDB_string_to_expr("POSSREPNAME", ecp);
+    if (argp == NULL) {
+        RDB_drop_expr(exp, ecp);
+        return RDB_ERROR;
+    }
+    RDB_add_arg(exp, argp);
+
+    argp = exp;
+    exp = RDB_ro_op("WHERE", 2, ecp);
+    if (exp == NULL) {
+        RDB_drop_expr(argp, ecp);        
+        return RDB_ERROR;
+    }
+    RDB_add_arg(exp, argp);
+    argp = RDB_eq(RDB_expr_var("TYPENAME", ecp),
+            RDB_string_to_expr(name, ecp), ecp);
+    if (argp == NULL) {
+        RDB_drop_expr(exp, ecp);
+        return RDB_ERROR;
+    }
+    RDB_add_arg(exp, argp);
 
     *tbpp = RDB_expr_to_vtable(exp, ecp, txp);
     if (*tbpp == NULL) {
@@ -1853,22 +1965,41 @@ int
 _RDB_possrepcomps_query(const char *name, const char *possrepname,
         RDB_exec_context *ecp, RDB_transaction *txp, RDB_object **tbpp)
 {
-    RDB_expression *exp = RDB_ro_op_va("AND", ecp,
-            RDB_eq(RDB_expr_var("TYPENAME", ecp),
-                    RDB_string_to_expr(name, ecp), ecp),
-            RDB_eq(RDB_expr_var("POSSREPNAME", ecp),
-                    RDB_string_to_expr(possrepname, ecp), ecp),
-            (RDB_expression *) NULL);
+    RDB_expression *argp, *wexp;
+    RDB_expression *exp = RDB_ro_op("AND", 2, ecp);
     if (exp == NULL) {
         return RDB_ERROR;
     }
-    exp = RDB_ro_op_va("WHERE", ecp,
-            RDB_table_ref_to_expr(txp->dbp->dbrootp->possrepcomps_tbp, ecp),
-            exp, (RDB_expression *) NULL);
-    if (exp == NULL) {
+    argp = RDB_eq(RDB_expr_var("TYPENAME", ecp),
+            RDB_string_to_expr(name, ecp), ecp);
+    if (argp == NULL) {
+        RDB_drop_expr(exp, ecp);
         return RDB_ERROR;
     }
-    *tbpp = RDB_expr_to_vtable(exp, ecp, txp);
+    RDB_add_arg(exp, argp);
+    argp = RDB_eq(RDB_expr_var("POSSREPNAME", ecp),
+            RDB_string_to_expr(possrepname, ecp), ecp);
+    if (argp == NULL) {
+        RDB_drop_expr(exp, ecp);        
+        return RDB_ERROR;
+    }
+    RDB_add_arg(exp, argp);
+
+    wexp = RDB_ro_op("WHERE", 2, ecp);
+    if (wexp == NULL) {
+        RDB_drop_expr(exp, ecp);        
+        return RDB_ERROR;
+    }
+    argp = RDB_table_ref_to_expr(txp->dbp->dbrootp->possrepcomps_tbp, ecp);
+    if (argp == NULL) {
+        RDB_drop_expr(wexp, ecp);
+        RDB_drop_expr(exp, ecp);
+        return RDB_ERROR;
+    }
+    RDB_add_arg(wexp, argp);
+    RDB_add_arg(wexp, exp);
+
+    *tbpp = RDB_expr_to_vtable(wexp, ecp, txp);
     if (*tbpp == NULL) {
         RDB_drop_expr(exp, ecp);
         return RDB_ERROR;
@@ -2129,7 +2260,7 @@ int
 _RDB_cat_get_ro_op(const char *name, int argc, RDB_type *argtv[],
         RDB_exec_context *ecp, RDB_transaction *txp, RDB_ro_op_desc **opp)
 {
-    RDB_expression *exp;
+    RDB_expression *exp, *wexp, *argp;
     RDB_object *vtbp;
     RDB_object tpl;
     RDB_object typesobj;
@@ -2145,22 +2276,43 @@ _RDB_cat_get_ro_op(const char *name, int argc, RDB_type *argtv[],
         return RDB_ERROR;
     }
 
-    exp = RDB_ro_op_va("AND", ecp, RDB_eq(RDB_expr_var("NAME", ecp),
-                   RDB_string_to_expr(name, ecp), ecp),
-            RDB_eq(RDB_expr_var("ARGTYPES", ecp),
-                   RDB_obj_to_expr(&typesobj, ecp), ecp), (RDB_expression *) NULL);
+    exp = RDB_ro_op("AND", 2, ecp);
+    if (exp == NULL) {
+        RDB_destroy_obj(&typesobj, ecp);
+        return RDB_ERROR;
+    }
+    argp = RDB_eq(RDB_expr_var("NAME", ecp),
+            RDB_string_to_expr(name, ecp), ecp);
+    if (argp == NULL) {
+        RDB_drop_expr(exp, ecp);
+        RDB_destroy_obj(&typesobj, ecp);
+        return RDB_ERROR;
+    }
+    RDB_add_arg(exp, argp);
+    argp = RDB_eq(RDB_expr_var("ARGTYPES", ecp),
+            RDB_obj_to_expr(&typesobj, ecp), ecp);
     RDB_destroy_obj(&typesobj, ecp);
-    if (exp == NULL) {
+    if (argp == NULL) {
+        RDB_drop_expr(exp, ecp);
         return RDB_ERROR;
     }
-    exp = RDB_ro_op_va("WHERE", ecp,
-            RDB_table_ref_to_expr(txp->dbp->dbrootp->ro_ops_tbp, ecp),
-            exp, (RDB_expression *) NULL);
-    if (exp == NULL) {
+    RDB_add_arg(exp, argp);
+
+    wexp = RDB_ro_op("WHERE", 2, ecp);
+    if (wexp == NULL) {
+        RDB_drop_expr(exp, ecp);
         return RDB_ERROR;
     }
+    argp = RDB_table_ref_to_expr(txp->dbp->dbrootp->ro_ops_tbp, ecp);
+    if (argp == NULL) {
+        RDB_drop_expr(wexp, ecp);
+        RDB_drop_expr(exp, ecp);
+        return RDB_ERROR;
+    }
+    RDB_add_arg(wexp, argp);
+    RDB_add_arg(wexp, exp);
             
-    vtbp = RDB_expr_to_vtable(exp, ecp, txp);
+    vtbp = RDB_expr_to_vtable(wexp, ecp, txp);
     if (vtbp == NULL) {
         RDB_drop_expr(exp, ecp);
         return RDB_ERROR;
@@ -2265,7 +2417,7 @@ int
 _RDB_cat_get_upd_op(const char *name, int argc, RDB_type *argtv[],
         RDB_exec_context *ecp, RDB_transaction *txp, RDB_upd_op **opp)
 {
-    RDB_expression *exp;
+    RDB_expression *exp, *wexp, *argp;
     RDB_object *vtbp;
     RDB_object tpl;
     RDB_object typesobj;
@@ -2282,21 +2434,43 @@ _RDB_cat_get_upd_op(const char *name, int argc, RDB_type *argtv[],
         return RDB_ERROR;
     }
         
-    exp = RDB_ro_op_va("AND", ecp, RDB_eq(RDB_expr_var("NAME", ecp),
-                   RDB_string_to_expr(name, ecp), ecp),
-            RDB_eq(RDB_expr_var("ARGTYPES", ecp),
-                   RDB_obj_to_expr(&typesobj, ecp), ecp), (RDB_expression *) NULL);
+    exp = RDB_ro_op("AND", 2, ecp);
+    if (exp == NULL) {
+        RDB_destroy_obj(&typesobj, ecp);
+        return RDB_ERROR;
+    }
+    argp = RDB_eq(RDB_expr_var("NAME", ecp),
+            RDB_string_to_expr(name, ecp), ecp);
+    if (argp == NULL) {
+        RDB_drop_expr(exp, ecp);
+        RDB_destroy_obj(&typesobj, ecp);
+        return RDB_ERROR;
+    }
+    RDB_add_arg(exp, argp);
+    argp = RDB_eq(RDB_expr_var("ARGTYPES", ecp),
+                   RDB_obj_to_expr(&typesobj, ecp), ecp);
     RDB_destroy_obj(&typesobj, ecp);
-    if (exp == NULL) {
+    if (argp == NULL) {
+        RDB_drop_expr(exp, ecp);
         return RDB_ERROR;
     }
-    exp = RDB_ro_op_va("WHERE", ecp,
-            RDB_table_ref_to_expr(txp->dbp->dbrootp->upd_ops_tbp, ecp),
-            exp, (RDB_expression *) NULL);
-    if (exp == NULL) {
+    RDB_add_arg(exp, argp);
+
+    wexp = RDB_ro_op("WHERE", 2, ecp);
+    if (wexp == NULL) {
+        RDB_drop_expr(exp, ecp);
         return RDB_ERROR;
     }
-    vtbp = RDB_expr_to_vtable(exp, ecp, txp);
+    argp = RDB_table_ref_to_expr(txp->dbp->dbrootp->upd_ops_tbp, ecp);
+    if (argp == NULL) {
+        RDB_drop_expr(wexp, ecp);
+        RDB_drop_expr(exp, ecp);
+        return RDB_ERROR;
+    }
+    RDB_add_arg(wexp, argp);
+    RDB_add_arg(wexp, exp);
+
+    vtbp = RDB_expr_to_vtable(wexp, ecp, txp);
     if (vtbp == NULL) {
         RDB_drop_expr(exp, ecp);
         return RDB_ERROR;

@@ -80,13 +80,13 @@ test_update1(RDB_database *dbp, RDB_exec_context *ecp)
         return RDB_ERROR;
     }
 
-    exp = RDB_int_to_expr(2, ecp);
-    exp = RDB_ro_op_va("-", ecp, exp, RDB_expr_var("NO", ecp),
-            (RDB_expression *) NULL);
+    exp = RDB_ro_op("-", 2, ecp);
     if (exp == NULL) {
         RDB_rollback(ecp, &tx);
         return RDB_ERROR;
     }
+    RDB_add_arg(exp, RDB_int_to_expr(2, ecp));
+    RDB_add_arg(exp, RDB_expr_var("NO", ecp));
 
     upd.name = "NO";
     upd.exp = exp;
@@ -106,7 +106,7 @@ test_update2(RDB_database *dbp, RDB_exec_context *ecp)
     int ret;
     RDB_transaction tx;
     RDB_object *tbp;
-    RDB_expression *exp, *argp;
+    RDB_expression *exp, *argp, *condp;
     RDB_attr_update upd;
 
     ret = RDB_begin_tx(ecp, &tx, dbp, NULL);
@@ -120,7 +120,7 @@ test_update2(RDB_database *dbp, RDB_exec_context *ecp)
         return RDB_ERROR;
     }
 
-    exp = RDB_ro_op("SUM", 2, NULL, ecp);
+    exp = RDB_ro_op("SUM", 2, ecp);
     assert(exp != NULL);
     argp = RDB_table_ref_to_expr(tbp, ecp);
     assert(argp != NULL);
@@ -129,15 +129,16 @@ test_update2(RDB_database *dbp, RDB_exec_context *ecp)
     assert(argp != NULL);
     RDB_add_arg(exp, argp);
 
-    exp = RDB_ro_op_va("+", ecp, exp, RDB_int_to_expr(1, ecp),
-            (RDB_expression *) NULL);
-    if (exp == NULL) {
+    condp = RDB_ro_op("+", 2, ecp);
+    if (condp == NULL) {
         RDB_rollback(ecp, &tx);
         return RDB_ERROR;
     }
+    RDB_add_arg(condp, exp);
+    RDB_add_arg(condp, RDB_int_to_expr(1, ecp));
 
     upd.name = "COUNT";
-    upd.exp = exp;
+    upd.exp = condp;
 
     ret = RDB_update(tbp, NULL, 1, &upd, ecp, &tx);
     if (ret == RDB_ERROR) {

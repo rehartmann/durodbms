@@ -4,6 +4,8 @@ Summary of Changes for Duro
 
 Changes for Duro 0.12
 
+- Changed interface for creating read-only operator expressions.
+
 - Replaced GNU Autotools by SCons.
 
 - Using tcltest for testing.

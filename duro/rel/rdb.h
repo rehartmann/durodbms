@@ -865,14 +865,10 @@ RDB_expression *
 RDB_expr_comp(RDB_expression *, const char *, RDB_exec_context *);
 
 RDB_expression *
-RDB_ro_op(const char *opname, int argc, RDB_expression *argv[], RDB_exec_context *);
+RDB_ro_op(const char *opname, int argc, RDB_exec_context *);
 
 void
 RDB_add_arg(RDB_expression *exp, RDB_expression *argp);
-
-RDB_expression *
-RDB_ro_op_va(const char *opname, RDB_exec_context *, RDB_expression *arg, ...
-        /* (RDB_expression *) NULL */ );
 
 /* Return address of encapsulated object, or NULL if not a value */
 RDB_object *

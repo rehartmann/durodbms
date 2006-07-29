@@ -40,11 +40,12 @@ add_empty_tb(RDB_constraint *constrp, RDB_exec_context *ecp,
         if (argexp == NULL)
             return RDB_ERROR;
 
-        pexp = RDB_ro_op_va("PROJECT", ecp, argexp, (RDB_expression *) NULL);
+        pexp = RDB_ro_op("PROJECT", 1, ecp);
         if (pexp == NULL) {
             RDB_drop_expr(argexp, ecp);
             return RDB_ERROR;
         }
+        RDB_add_arg(pexp, argexp);
 
         ret = _RDB_transform(pexp, ecp, txp);
         if (ret != RDB_OK) {

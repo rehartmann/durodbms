@@ -669,7 +669,6 @@ deserialize_expr(RDB_object *valp, int *posp, RDB_exec_context *ecp,
             char *name;
             int argc;
             int i;
-            RDB_expression **argv;
         
             ret = deserialize_str(valp, posp, ecp, &name);
             if (ret != RDB_OK) {
@@ -680,22 +679,18 @@ deserialize_expr(RDB_object *valp, int *posp, RDB_exec_context *ecp,
             if (ret != RDB_OK)
                 return ret;
 
-            argv = malloc(argc * sizeof (RDB_expression *));
-            if (argv == NULL) {
-                RDB_raise_no_memory(ecp);
+            *expp = RDB_ro_op(name, argc, ecp);
+            if (*expp == NULL)
                 return RDB_ERROR;
-            }
-
             for (i = 0; i < argc; i++) {
-                ret = deserialize_expr(valp, posp, ecp, txp, &argv[i]);
+                RDB_expression *argp;
+
+                ret = deserialize_expr(valp, posp, ecp, txp, &argp);
                 if (ret != RDB_OK) {
                     return RDB_ERROR;
                 }
+                RDB_add_arg(*expp, argp);
             }
-            *expp = RDB_ro_op(name, argc, argv, ecp);
-            free(argv);
-            if (*expp == NULL)
-                return RDB_ERROR;
             break;
         }
         case RDB_EX_TUPLE_ATTR:

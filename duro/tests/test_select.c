@@ -28,7 +28,7 @@ test_select(RDB_database *dbp, RDB_exec_context *ecp)
 
     RDB_init_obj(&array);
 
-    exp = RDB_ro_op("WHERE", 2, NULL, ecp);
+    exp = RDB_ro_op("WHERE", 2, ecp);
     if (exp == NULL)
         goto error;
 
@@ -69,7 +69,7 @@ test_select(RDB_database *dbp, RDB_exec_context *ecp)
 
     RDB_init_obj(&array);
 
-    exp = RDB_ro_op("WHERE", 2, NULL, ecp);
+    exp = RDB_ro_op("WHERE", 2, ecp);
     if (exp == NULL)
         goto error;
 

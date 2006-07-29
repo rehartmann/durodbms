@@ -918,7 +918,7 @@ RDB_call_update_op(const char *name, int argc, RDB_object *argv[],
 int
 RDB_drop_op(const char *name, RDB_exec_context *ecp, RDB_transaction *txp)
 {
-    RDB_expression *exp;
+    RDB_expression *exp, *argp;
     RDB_object *vtbp;
     int ret;
     RDB_bool isempty;
@@ -931,12 +931,23 @@ RDB_drop_op(const char *name, RDB_exec_context *ecp, RDB_transaction *txp)
     /*
      * Check if it's a read-only operator
      */
-    exp = RDB_ro_op_va("WHERE", ecp,
-            RDB_table_ref_to_expr(txp->dbp->dbrootp->ro_ops_tbp, ecp),
-            RDB_eq(RDB_expr_var("NAME", ecp), RDB_string_to_expr(name, ecp), ecp),
-            (RDB_expression *) NULL);
+    exp = RDB_ro_op("WHERE", 2, ecp);
     if (exp == NULL)
         return RDB_ERROR;
+    argp = RDB_table_ref_to_expr(txp->dbp->dbrootp->ro_ops_tbp, ecp);
+    if (argp == NULL) {
+        RDB_drop_expr(exp, ecp);
+        return RDB_ERROR;
+    }
+    RDB_add_arg(exp, argp);
+    argp = RDB_eq(RDB_expr_var("NAME", ecp), RDB_string_to_expr(name, ecp),
+            ecp);
+    if (argp == NULL) {
+        RDB_drop_expr(exp, ecp);
+        return RDB_ERROR;
+    }
+    RDB_add_arg(exp, argp);
+    
     vtbp = RDB_expr_to_vtable(exp, ecp, txp);
     if (vtbp == NULL) {
     	RDB_drop_expr(exp, ecp);

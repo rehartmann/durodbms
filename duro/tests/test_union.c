@@ -77,7 +77,7 @@ test_union(RDB_database *dbp, RDB_exec_context *ecp)
         return RDB_ERROR;
     }
 
-    exp = RDB_ro_op("UNION", 2, NULL, ecp);
+    exp = RDB_ro_op("UNION", 2, ecp);
     assert(exp != NULL);
     
     argp = RDB_table_ref_to_expr(tbp2, ecp);

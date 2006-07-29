@@ -791,7 +791,7 @@ RDB_table_is_empty(RDB_object *tbp, RDB_exec_context *ecp,
     RDB_object tpl;
     RDB_object *ptbp;
     RDB_object *ntbp;
-    RDB_expression *exp;
+    RDB_expression *exp, *argp;
 
     if (txp != NULL && !RDB_tx_is_running(txp)) {
         RDB_raise_invalid_tx(ecp);
@@ -801,10 +801,15 @@ RDB_table_is_empty(RDB_object *tbp, RDB_exec_context *ecp,
     /*
      * Project all attributes away, then optimize
      */
-    exp = RDB_ro_op_va("PROJECT", ecp, RDB_table_ref_to_expr(tbp, ecp),
-            (RDB_expression *) NULL);
+    exp = RDB_ro_op("PROJECT", 1, ecp);
     if (exp == NULL)
     	return RDB_ERROR;
+    argp = RDB_table_ref_to_expr(tbp, ecp);
+    if (argp == NULL) {
+        RDB_drop_expr(argp, ecp);        
+        return RDB_ERROR;
+    }
+    RDB_add_arg(exp, argp);
 
     ptbp = RDB_expr_to_vtable(exp, ecp, txp);
     if (ptbp == NULL) {

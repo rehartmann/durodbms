@@ -974,7 +974,7 @@ int
 RDB_implement_type(const char *name, RDB_type *arep, RDB_int areplen,
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
-    RDB_expression *exp, *wherep;
+    RDB_expression *exp, *wherep, *argp;
     RDB_attr_update upd[3];
     RDB_object typedata;
     int ret;
@@ -1028,12 +1028,18 @@ RDB_implement_type(const char *name, RDB_type *arep, RDB_int areplen,
     if (exp == NULL) {
         return RDB_ERROR;
     }
-    wherep = RDB_ro_op_va("=", ecp, exp, RDB_string_to_expr(name, ecp),
-            (RDB_expression *) NULL);
+    wherep = RDB_ro_op("=", 2, ecp);
     if (wherep == NULL) {
         RDB_drop_expr(exp, ecp);
         return RDB_ERROR;
-    }    
+    }
+    RDB_add_arg(wherep, exp);
+    argp = RDB_string_to_expr(name, ecp);
+    if (argp == NULL) {
+        RDB_drop_expr(exp, ecp);
+        return RDB_ERROR;
+    }
+    RDB_add_arg(wherep, argp);
 
     upd[0].exp = upd[1].exp = upd[2].exp = NULL;
 
@@ -1093,7 +1099,7 @@ RDB_drop_type(RDB_type *typ, RDB_exec_context *ecp, RDB_transaction *txp)
     }
 
     if (RDB_type_is_scalar(typ)) {
-        RDB_expression *wherep;
+        RDB_expression *wherep, *argp;
         RDB_type *ntp = NULL;
 
         if (!RDB_tx_is_running(txp)) {
@@ -1119,11 +1125,23 @@ RDB_drop_type(RDB_type *typ, RDB_exec_context *ecp, RDB_transaction *txp)
         }
 
         /* Delete type from database */
-        wherep = RDB_ro_op_va("=", ecp, RDB_expr_var("TYPENAME", ecp),
-                RDB_string_to_expr(typ->name, ecp), (RDB_expression *) NULL);
+        wherep = RDB_ro_op("=", 2, ecp);
         if (wherep == NULL) {
             return RDB_ERROR;
         }
+        argp = RDB_expr_var("TYPENAME", ecp);
+        if (argp == NULL) {
+            RDB_drop_expr(wherep, ecp);
+            return RDB_ERROR;
+        }        
+        RDB_add_arg(wherep, argp);
+        argp = RDB_string_to_expr(typ->name, ecp);
+        if (argp == NULL) {
+            RDB_drop_expr(wherep, ecp);
+            return RDB_ERROR;
+        }        
+        RDB_add_arg(wherep, argp);
+
         ret = RDB_delete(txp->dbp->dbrootp->types_tbp, wherep, ecp, txp);
         if (ret == RDB_ERROR) {
             RDB_drop_expr(wherep, ecp);

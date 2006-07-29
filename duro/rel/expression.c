@@ -128,7 +128,7 @@ expr_resolve_attrs(const RDB_expression *exp, const RDB_object *tplp,
         {
             int i;
             RDB_expression *newexp = RDB_ro_op(exp->var.op.name,
-                    exp->var.op.argc, NULL, ecp);
+                    exp->var.op.argc, ecp);
             if (newexp == NULL)
                 return NULL;
 
@@ -1132,8 +1132,7 @@ _RDB_create_binexpr(RDB_expression *arg1, RDB_expression *arg2,
 }
 
 RDB_expression *
-RDB_ro_op(const char *opname, int argc, RDB_expression *argv[],
-        RDB_exec_context *ecp)
+RDB_ro_op(const char *opname, int argc, RDB_exec_context *ecp)
 {
     RDB_expression *exp;
     int i;
@@ -1148,27 +1147,22 @@ RDB_ro_op(const char *opname, int argc, RDB_expression *argv[],
     
     exp->var.op.name = RDB_dup_str(opname);
     if (exp->var.op.name == NULL) {
-        RDB_raise_no_memory(ecp);
         free(exp);
+        RDB_raise_no_memory(ecp);
+        return NULL;
+    }
+
+    exp->var.op.argv = malloc(sizeof(RDB_expression *) * argc);
+    if (exp->var.op.argv == NULL) {
+        free(exp);
+        free(exp->var.op.name);
+        RDB_raise_no_memory(ecp);
         return NULL;
     }
 
     exp->var.op.argc = argc;
-    exp->var.op.argv = malloc(argc * sizeof(RDB_expression *));
-    if (exp->var.op.argv == NULL) {
-        RDB_raise_no_memory(ecp);
-        free(exp->var.op.name);
-        free(exp);
-        return NULL;
-    }
-
-    if (argv != NULL) {
-        for (i = 0; i < argc; i++)
-           exp->var.op.argv[i] = argv[i];
-    } else {
-        for (i = 0; i < argc; i++)
-           exp->var.op.argv[i] = NULL;
-    }
+    for (i = 0; i < argc; i++)
+       exp->var.op.argv[i] = NULL;
 
     exp->var.op.optinfo.objpc = 0;
 
@@ -1178,25 +1172,6 @@ RDB_ro_op(const char *opname, int argc, RDB_expression *argv[],
 enum {
     EXPV_LEN = 64
 };
-
-RDB_expression *
-RDB_ro_op_va(const char *opname, RDB_exec_context *ecp,
-        RDB_expression *arg, ... /* (RDB_expression *) NULL */ )
-{
-    va_list ap;
-    RDB_expression *argv[EXPV_LEN];
-    int argc = 0;
-
-    va_start(ap, arg);
-    while (arg != NULL) {
-        if (argc >= EXPV_LEN)
-            return NULL;
-        argv[argc++] = arg;
-        arg = va_arg(ap, RDB_expression *);
-    }
-    va_end(ap);
-    return RDB_ro_op(opname, argc, argv, ecp);
-}
 
 void
 RDB_add_arg(RDB_expression *exp, RDB_expression *argp)
@@ -1211,11 +1186,13 @@ RDB_add_arg(RDB_expression *exp, RDB_expression *argp)
 RDB_expression *
 RDB_eq(RDB_expression *arg1, RDB_expression *arg2, RDB_exec_context *ecp)
 {
-    RDB_expression *argv[2];
+    RDB_expression *exp = RDB_ro_op("=", 2, ecp);
+    if (exp == NULL)
+        return NULL;
 
-    argv[0] = arg1;
-    argv[1] = arg2;
-    return RDB_ro_op("=", 2, argv, ecp);
+    RDB_add_arg(exp, arg1);
+    RDB_add_arg(exp, arg2);
+    return exp;
 }
 
 RDB_expression *
@@ -1683,20 +1660,17 @@ RDB_dup_expr(const RDB_expression *exp, RDB_exec_context *ecp)
         case RDB_EX_RO_OP:
         {
             int i;
-            RDB_expression **argexpv = (RDB_expression **)
-                    malloc(sizeof (RDB_expression *) * exp->var.op.argc);
+            RDB_expression *argp;
 
-            if (argexpv == NULL)
+            newexp = RDB_ro_op(exp->var.op.name, exp->var.op.argc, ecp);
+            if (newexp == NULL)
                 return NULL;
-
             for (i = 0; i < exp->var.op.argc; i++) {
-                argexpv[i] = RDB_dup_expr(exp->var.op.argv[i], ecp);
-                if (argexpv[i] == NULL)
+                argp = RDB_dup_expr(exp->var.op.argv[i], ecp);
+                if (argp == NULL)
                     return NULL;
+                RDB_add_arg(newexp, argp);
             }
-            newexp = RDB_ro_op(exp->var.op.name, exp->var.op.argc, argexpv,
-                    ecp);
-            free(argexpv);
             return newexp;
         }
         case RDB_EX_OBJ:

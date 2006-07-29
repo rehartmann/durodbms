@@ -31,12 +31,12 @@ create_view1(RDB_database *dbp, RDB_exec_context *ecp)
         return ret;
     }
 
-    exp = RDB_ro_op("PROJECT", 2, NULL, ecp);
+    exp = RDB_ro_op("PROJECT", 2, ecp);
     if (exp == NULL) {
         RDB_rollback(ecp, &tx);
         return RDB_ERROR;
     }
-    texp = RDB_ro_op("UNION", 2, NULL, ecp);
+    texp = RDB_ro_op("UNION", 2, ecp);
     if (exp == NULL) {
         RDB_rollback(ecp, &tx);
         return RDB_ERROR;
@@ -101,7 +101,7 @@ create_view2(RDB_database *dbp, RDB_exec_context *ecp)
         return RDB_ERROR;
     }
 
-    exp = RDB_ro_op("WHERE", 2, NULL, ecp);
+    exp = RDB_ro_op("WHERE", 2, ecp);
     if (exp == NULL)
         return RDB_ERROR;
     argp = RDB_table_ref_to_expr(tbp, ecp);
@@ -112,8 +112,9 @@ create_view2(RDB_database *dbp, RDB_exec_context *ecp)
     hexprp = RDB_expr_var("SALARY", ecp);
     if (hexprp == NULL)
         return RDB_ERROR;
-    argp = RDB_ro_op_va(">", ecp, hexprp, RDB_double_to_expr(4000.0, ecp),
-            (RDB_expression *) NULL);
+    argp = RDB_ro_op(">", 2, ecp);
+    RDB_add_arg(argp, hexprp);
+    RDB_add_arg(argp, RDB_double_to_expr(4000.0, ecp)); /* !! */
     RDB_add_arg(exp, argp);
 
     vtbp = RDB_expr_to_vtable(exp, ecp, &tx);
@@ -156,7 +157,7 @@ create_view3(RDB_database *dbp, RDB_exec_context *ecp)
         return ret;
     }
 
-    exp = RDB_ro_op("EXTEND", 3, NULL, ecp);
+    exp = RDB_ro_op("EXTEND", 3, ecp);
     if (exp == NULL)
         return RDB_ERROR;
 
@@ -164,13 +165,11 @@ create_view3(RDB_database *dbp, RDB_exec_context *ecp)
     if (argp == NULL)
         return RDB_ERROR;
     RDB_add_arg(exp, argp); 
-    exprp = RDB_expr_var("SALARY", ecp);
+    exprp = RDB_ro_op(">", 2, ecp);
     if (exprp == NULL)
         return RDB_ERROR;
-    exprp = RDB_ro_op_va(">", ecp, exprp, RDB_double_to_expr(4000.0, ecp),
-            (RDB_expression *) NULL);
-    if (exprp == NULL)
-        return RDB_ERROR;
+    RDB_add_arg(exprp, RDB_expr_var("SALARY", ecp));
+    RDB_add_arg(exprp, RDB_double_to_expr(4000.0, ecp));
     RDB_add_arg(exp, exprp);
     argp = RDB_string_to_expr("HIGHSAL", ecp);
     if (argp == NULL)
@@ -222,13 +221,13 @@ create_view4(RDB_database *dbp, RDB_exec_context *ecp)
      * ADD MAX (SALARY) AS MAX_SALARY ) RENAME DEPTNO AS DEPARTMENT
      */
 
-    exp = RDB_ro_op("RENAME", 3, NULL, ecp);
+    exp = RDB_ro_op("RENAME", 3, ecp);
     if (exp == NULL) {
         RDB_rollback(ecp, &tx);
         return RDB_ERROR;
     }
 
-    sexp = RDB_ro_op("SUMMARIZE", 4, NULL, ecp);
+    sexp = RDB_ro_op("SUMMARIZE", 4, ecp);
     if (sexp == NULL) {
         RDB_rollback(ecp, &tx);
         return RDB_ERROR;
@@ -242,7 +241,7 @@ create_view4(RDB_database *dbp, RDB_exec_context *ecp)
     }
     RDB_add_arg(sexp, argp);
 
-    texp = RDB_ro_op("PROJECT", 2, NULL, ecp);
+    texp = RDB_ro_op("PROJECT", 2, ecp);
     if (texp == NULL) {
         RDB_rollback(ecp, &tx);
         return RDB_ERROR;
@@ -263,7 +262,7 @@ create_view4(RDB_database *dbp, RDB_exec_context *ecp)
     }
     RDB_add_arg(texp, argp);
 
-    texp = RDB_ro_op("MAX", 1, NULL, ecp);
+    texp = RDB_ro_op("MAX", 1, ecp);
     if (texp == NULL) {
         RDB_rollback(ecp, &tx);
         return RDB_ERROR;

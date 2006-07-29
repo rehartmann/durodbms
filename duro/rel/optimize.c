@@ -128,10 +128,12 @@ move_node(RDB_expression *texp, RDB_expression **dstpp, RDB_expression *nodep,
         if (*dstpp == NULL)
             *dstpp = nodep;
         else {
-            *dstpp = RDB_ro_op_va("AND", ecp, *dstpp, nodep,
-                    (RDB_expression *) NULL);
-            if (*dstpp == NULL)
+            RDB_expression *exp = RDB_ro_op("AND", 2, ecp);
+            if (exp == NULL)
                 return RDB_ERROR;
+            RDB_add_arg(exp, *dstpp);
+            RDB_add_arg(exp, nodep);
+            *dstpp = exp;
         }
         if (prevp == NULL) {
             texp->var.op.argv[1] = NULL;
@@ -153,10 +155,12 @@ move_node(RDB_expression *texp, RDB_expression **dstpp, RDB_expression *nodep,
         if (*dstpp == NULL)
             *dstpp = nodep->var.op.argv[1];
         else {
-            *dstpp = RDB_ro_op_va("AND", ecp, *dstpp, nodep->var.op.argv[1],
-                    (RDB_expression *) NULL);
-            if (*dstpp == NULL)
+            RDB_expression *exp = RDB_ro_op("AND", 2, ecp);
+            if (exp == NULL)
                 return RDB_ERROR;
+            RDB_add_arg(exp, *dstpp);
+            RDB_add_arg(exp, nodep->var.op.argv[1]);
+            *dstpp = exp;
         }
         if (prevp == NULL)
             texp->var.op.argv[1] = nodep->var.op.argv[0];
@@ -277,7 +281,7 @@ split_by_index(RDB_expression *texp, _RDB_tbindex *indexp,
             if (ixexp == NULL)
                 return RDB_ERROR;
         }
-        sitexp = RDB_ro_op("WHERE", 2, NULL, ecp);
+        sitexp = RDB_ro_op("WHERE", 2, ecp);
         if (sitexp == NULL)
             return RDB_ERROR;
         RDB_add_arg(sitexp, texp->var.op.argv[0]);
@@ -445,7 +449,7 @@ mutate_where(RDB_expression *texp, RDB_expression **tbpv, int cap,
         if (exp == NULL)
             return RDB_ERROR;
 
-        nexp = RDB_ro_op("WHERE", 2, NULL, ecp);
+        nexp = RDB_ro_op("WHERE", 2, ecp);
         if (nexp == NULL) {
             RDB_drop_expr(exp, ecp);
             return RDB_ERROR;
@@ -502,20 +506,15 @@ dup_expr_vt(const RDB_expression *exp, RDB_exec_context *ecp)
         case RDB_EX_RO_OP:
         {
             int i;
-            RDB_expression **argexpv = (RDB_expression **)
-                    malloc(sizeof (RDB_expression *) * exp->var.op.argc);
 
-            if (argexpv == NULL)
-                return NULL;
-
-            for (i = 0; i < exp->var.op.argc; i++) {
-                argexpv[i] = dup_expr_vt(exp->var.op.argv[i], ecp);
-                if (argexpv[i] == NULL)
-                    return NULL;
-            }
-            newexp = RDB_ro_op(exp->var.op.name, exp->var.op.argc, argexpv,
+            newexp = RDB_ro_op(exp->var.op.name, exp->var.op.argc,
                     ecp);
-            free(argexpv);
+            for (i = 0; i < exp->var.op.argc; i++) {
+                RDB_expression *argp = dup_expr_vt(exp->var.op.argv[i], ecp);
+                if (argp == NULL)
+                    return NULL;
+                RDB_add_arg(newexp, argp);
+            }
             return newexp;
         }
         case RDB_EX_OBJ:
@@ -544,7 +543,7 @@ mutate_vt(RDB_expression *texp, int nargc, RDB_expression **tbpv, int cap,
             return ntbc;
         for (i = otbc; i < otbc + ntbc; i++) {
             RDB_expression *nexp = RDB_ro_op(texp->var.op.name,
-                    texp->var.op.argc, NULL, ecp);
+                    texp->var.op.argc, ecp);
             if (nexp == NULL)
                 return RDB_ERROR;
 

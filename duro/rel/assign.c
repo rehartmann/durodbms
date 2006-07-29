@@ -81,55 +81,61 @@ replace_updattrs(RDB_expression *exp, int updc, RDB_attr_update updv[],
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
     int i;
-    RDB_expression *rexp;
+    RDB_expression *rexp, *hexp;
     RDB_expression **expv;
 
     /*
      * Add 'updated' attributes
      */
 
-    expv = malloc(sizeof(RDB_expression *) * (updc * 2 + 1));
-    if (expv == NULL)
-        return NULL;
-    expv[0] = exp;
-    for (i = 0; i < updc; i++) {
-    	expv[1 + i * 2] = NULL;
-        expv[2 + i * 2] = NULL;
-    }
-    for (i = 0; i < updc; i++) {
-    	expv[1 + i * 2] = RDB_dup_expr(updv[i].exp, ecp);
-        if (expv[1 + i * 2] == NULL)
-            goto cleanup;
-        expv[2 + i * 2] = prefixed_string_expr(updv[i].name, ecp);
-        if (expv[2 + i * 2] == NULL)
-            goto cleanup;
-    }
-    rexp = RDB_ro_op("EXTEND", 1 + updc * 2, expv, ecp);
+    rexp = RDB_ro_op("EXTEND", 1 + updc * 2, ecp);
     if (rexp == NULL)
         goto cleanup;
+    RDB_add_arg(rexp, exp);
+    for (i = 0; i < updc; i++) {
+        hexp = RDB_dup_expr(updv[i].exp, ecp);
+        if (hexp == NULL)
+            goto cleanup;
+        RDB_add_arg(rexp, hexp);
+        hexp = prefixed_string_expr(updv[i].name, ecp);
+        if (hexp == NULL)
+            goto cleanup;
+        RDB_add_arg(rexp, hexp);
+    }
 
     /*
      * Remove old attributes
      */
-    expv[0] = rexp;
-    for (i = 0; i < updc; i++) {
-        expv[1 + i] = RDB_string_to_expr(updv[i].name, ecp);
-        if (expv[1 + i] == NULL)
-            goto cleanup;
-    }
-    rexp = RDB_ro_op("REMOVE", updc + 1, expv, ecp);
+    hexp = rexp;
+    rexp = RDB_ro_op("REMOVE", updc + 1, ecp);
     if (rexp == NULL)
         goto cleanup;
+    RDB_add_arg(rexp, hexp);
+    for (i = 0; i < updc; i++) {
+        hexp = RDB_string_to_expr(updv[i].name, ecp);
+        if (hexp == NULL)
+            goto cleanup;
+        RDB_add_arg(rexp, hexp);
+    }
 
     /*
      * Rename new attributes
      */
-    expv[0] = rexp;
+    hexp = rexp;
+    rexp = RDB_ro_op("RENAME", 1 + updc * 2, ecp);
+    if (rexp == NULL)
+        goto cleanup;
+    RDB_add_arg(rexp, hexp);
     for (i = 0; i < updc; i++) {
-    	expv[1 + i * 2] = prefixed_string_expr(updv[i].name, ecp);
-        expv[2 + i * 2] = RDB_string_to_expr(updv[i].name, ecp);
+        hexp = prefixed_string_expr(updv[i].name, ecp);
+        if (hexp == NULL)
+            goto cleanup;
+        RDB_add_arg(rexp, hexp);
+        hexp = RDB_string_to_expr(updv[i].name, ecp);
+        if (hexp == NULL)
+            goto cleanup;
+        RDB_add_arg(rexp, hexp);
     }
-    rexp = RDB_ro_op("RENAME", 1 + updc * 2, expv, ecp);
 
 cleanup:
     free(expv);
@@ -144,7 +150,7 @@ replace_targets_real_ins(RDB_object *tbp, const RDB_ma_insert *insp,
     int ret;
 
     if (insp->tbp == tbp) {
-    	RDB_expression *exp;
+    	RDB_expression *exp, *argp;
         RDB_object *tb1p;
 
         tb1p = RDB_create_table_from_type(NULL, RDB_FALSE, tbp->typ,
@@ -154,13 +160,25 @@ replace_targets_real_ins(RDB_object *tbp, const RDB_ma_insert *insp,
         ret = RDB_insert(tb1p, insp->tplp, ecp, NULL);
         if (ret != RDB_OK)
             return NULL;
-        exp = RDB_ro_op_va("UNION", ecp, RDB_table_ref_to_expr(tbp, ecp),
-                RDB_table_ref_to_expr(tb1p, ecp),
-                (RDB_expression *) NULL);
+        exp = RDB_ro_op("UNION", 2, ecp);
         if (exp == NULL) {
             RDB_drop_table(tb1p, ecp, NULL);
             return NULL;
         }
+        argp =  RDB_table_ref_to_expr(tbp, ecp);
+        if (argp == NULL) {
+            RDB_drop_table(tb1p, ecp, NULL);
+            RDB_drop_expr(exp, ecp);
+            return NULL;
+        }
+        RDB_add_arg(exp, argp);
+        argp = RDB_table_ref_to_expr(tb1p, ecp);
+        if (argp == NULL) {
+            RDB_drop_table(tb1p, ecp, NULL);
+            RDB_drop_expr(exp, ecp);
+            return NULL;
+        }
+        RDB_add_arg(exp, argp);
         return exp;
     }
     return RDB_table_ref_to_expr(tbp, ecp);
@@ -196,13 +214,14 @@ replace_targets_real_upd(RDB_object *tbp, const RDB_ma_update *updp,
                         return NULL;
                     }
                     cond2p = tcondp;
-                    tcondp = RDB_ro_op_va("AND", ecp, ucondp, cond2p,
-                            (RDB_expression *) NULL);
+                    tcondp = RDB_ro_op("AND", 2, ecp);
                     if (tcondp == NULL) {
                         RDB_drop_expr(ucondp, ecp);
                         RDB_drop_expr(cond2p, ecp);
                         return NULL;
                     }
+                    RDB_add_arg(tcondp, ucondp);
+                    RDB_add_arg(tcondp, cond2p);
                     ucondp = tcondp;
                 }
             } else {
@@ -219,27 +238,30 @@ replace_targets_real_upd(RDB_object *tbp, const RDB_ma_update *updp,
                 RDB_drop_expr(ucondp, ecp);
                 return NULL;
             }
-            nucondp = RDB_ro_op_va("NOT", ecp, tcondp, (RDB_expression *) NULL);
+            nucondp = RDB_ro_op("NOT", 1, ecp);
             if (nucondp == NULL) {
                 RDB_drop_expr(tcondp, ecp);
                 return NULL;
             }
+            RDB_add_arg(nucondp, tcondp);
 
             /*
              * Create selections and merge them by 'union'
              */
 
-            uexp = RDB_ro_op_va("WHERE", ecp,
-                    RDB_table_ref_to_expr(tbp, ecp), ucondp, (RDB_expression *) NULL);
+            uexp = RDB_ro_op("WHERE", 2, ecp);
             if (uexp == NULL) {
                 return NULL;
             }
+            RDB_add_arg(uexp, RDB_table_ref_to_expr(tbp, ecp));
+            RDB_add_arg(uexp, ucondp);
 
-            nuexp = RDB_ro_op_va("WHERE", ecp,
-                    RDB_table_ref_to_expr(tbp, ecp), nucondp, (RDB_expression *) NULL);
+            nuexp = RDB_ro_op("WHERE", 2, ecp);
             if (nuexp == NULL) {
                 return NULL;
             }
+            RDB_add_arg(nuexp, RDB_table_ref_to_expr(tbp, ecp));
+            RDB_add_arg(nuexp, nucondp);
 
             exp = replace_updattrs(uexp, updp->updc, updp->updv, ecp, txp);
             if (tbp == NULL) {
@@ -247,10 +269,12 @@ replace_targets_real_upd(RDB_object *tbp, const RDB_ma_update *updp,
             }
             uexp = exp;
                 
-            exp = RDB_ro_op_va("UNION", ecp, uexp, nuexp, (RDB_expression *) NULL);
+            exp = RDB_ro_op("UNION", 2, ecp);
             if (exp == NULL) {
                 return NULL;
             }
+            RDB_add_arg(exp, uexp);
+            RDB_add_arg(exp, nuexp);
         }
     }
     return exp;
@@ -282,13 +306,38 @@ replace_targets_real(RDB_object *tbp,
     for (i = 0; i < delc; i++) {
         if (delv[i].tbp == tbp) {
             if (delv[i].condp != NULL) {
-	        	return RDB_ro_op_va("MINUS", ecp,
-	        	        RDB_table_ref_to_expr(tbp, ecp),
-	        	        RDB_ro_op_va("WHERE", ecp,
-	        	                RDB_table_ref_to_expr(tbp, ecp),
-	        	                RDB_dup_expr(delv[i].condp, ecp),
-	        	                (RDB_expression *) NULL),
-	        	        (RDB_expression *) NULL);
+                RDB_expression *argp, *wexp;
+                RDB_expression *exp = RDB_ro_op("MINUS", 2, ecp);
+                if (exp == NULL)
+                    return NULL;
+                argp = RDB_table_ref_to_expr(tbp, ecp);
+                if (argp == NULL) {
+                    RDB_drop_expr(exp, ecp);
+                    return NULL;
+                }
+                RDB_add_arg(exp, argp);
+
+                wexp = RDB_ro_op("WHERE", 2, ecp);
+                if (wexp == NULL) {
+                    RDB_drop_expr(exp, ecp);
+                    return NULL;
+                }
+                argp = RDB_table_ref_to_expr(tbp, ecp);
+                if (argp == NULL) {
+                    RDB_drop_expr(exp, ecp);
+                    RDB_drop_expr(wexp, ecp);
+                    return NULL;
+                }
+                RDB_add_arg(wexp, argp);
+                argp = RDB_dup_expr(delv[i].condp, ecp);
+                if (argp == NULL) {
+                    RDB_drop_expr(exp, ecp);
+                    RDB_drop_expr(wexp, ecp);
+                    return NULL;
+                }
+                RDB_add_arg(wexp, argp);
+
+                RDB_add_arg(exp, wexp);
             }                
             /* Expression is NULL - table will become empty */
             tb1p = RDB_create_table_from_type(NULL, RDB_FALSE, tbp->typ,
@@ -339,22 +388,17 @@ replace_targets(RDB_expression *exp,
         case RDB_EX_RO_OP:
         {
             int i;
-            RDB_expression **argexpv = (RDB_expression **)
-                    malloc(sizeof (RDB_expression *) * exp->var.op.argc);
+            RDB_expression *hexp;
 
-            if (argexpv == NULL)
-                return NULL;
-
+            newexp = RDB_ro_op(exp->var.op.name, exp->var.op.argc, ecp);
             for (i = 0; i < exp->var.op.argc; i++) {
-                argexpv[i] = replace_targets(exp->var.op.argv[i],
+                hexp = replace_targets(exp->var.op.argv[i],
                         insc, insv, updc, updv, delc, delv,
                         copyc, copyv, ecp, txp);
-                if (argexpv[i] == NULL)
+                if (hexp == NULL)
                     return NULL;
+                RDB_add_arg(newexp, hexp);
             }
-            newexp = RDB_ro_op(exp->var.op.name, exp->var.op.argc, argexpv,
-                    ecp);
-            free(argexpv);
             return newexp;
         }
         case RDB_EX_OBJ:
@@ -848,13 +892,14 @@ resolve_delete_expr(RDB_expression *exp, RDB_expression *condp,
                     del_dellist(delnp, ecp);
                     return RDB_ERROR;
                 }
-                ncondp = RDB_ro_op_va("AND", ecp, hcondp, delnp->del.condp,
-                        (RDB_expression *) NULL);
+                ncondp = RDB_ro_op("AND", 2, ecp);
                 if (ncondp == NULL) {
                     RDB_drop_expr(hcondp, ecp);
                     del_dellist(delnp, ecp);
                     return RDB_ERROR;
-                }                        
+                }
+                RDB_add_arg(ncondp, hcondp);
+                RDB_add_arg(ncondp, delnp->del.condp);
                 delnp->del.condp = ncondp;
             }
             delnp = delnp->nextp;
@@ -1042,7 +1087,7 @@ do_update(const RDB_ma_update *updp, RDB_exec_context *ecp, RDB_transaction *txp
         /*
          * Build WHERE expression
          */
-        exp = RDB_ro_op("WHERE", 2, NULL, ecp);
+        exp = RDB_ro_op("WHERE", 2, ecp);
         if (exp == NULL)
             return RDB_ERROR;
         RDB_add_arg(exp, tbexp);
@@ -1118,7 +1163,7 @@ do_delete(const RDB_ma_delete *delp, RDB_exec_context *ecp,
     }
 
     if (delp->condp != NULL) {
-        exp = RDB_ro_op("WHERE", 2, NULL, ecp);
+        exp = RDB_ro_op("WHERE", 2, ecp);
         if (exp == NULL)
             return RDB_ERROR;
         RDB_add_arg(exp, tbexp);

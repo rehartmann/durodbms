@@ -30,7 +30,7 @@ test_regexp(RDB_database *dbp, RDB_exec_context *ecp)
 
     /* Creating selection (NAME regmatch "o") */
 
-    exp = RDB_ro_op("WHERE", 2, NULL, ecp);
+    exp = RDB_ro_op("WHERE", 2, ecp);
     if (exp == NULL) {
         goto error;
     }
@@ -41,11 +41,12 @@ test_regexp(RDB_database *dbp, RDB_exec_context *ecp)
     }
     RDB_add_arg(exp, argp);
 
-    argp = RDB_ro_op_va("MATCHES", ecp, RDB_expr_var("NAME", ecp),
-            RDB_string_to_expr("o", ecp), (RDB_expression *) NULL);
+    argp = RDB_ro_op("MATCHES", 2, ecp);
     if (argp == NULL) {
         goto error;
     }
+    RDB_add_arg(argp, RDB_expr_var("NAME", ecp));
+    RDB_add_arg(argp, RDB_string_to_expr("o", ecp));
     RDB_add_arg(exp, argp);
     
     vtbp = RDB_expr_to_vtable(exp, ecp, &tx);

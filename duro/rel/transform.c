@@ -103,9 +103,10 @@ eliminate_not(RDB_expression *exp, RDB_exec_context *ecp, RDB_transaction *txp)
         return RDB_OK;
 
     if (strcmp(exp->var.op.argv[0]->var.op.name, "AND") == 0) {
-        hexp = RDB_ro_op("NOT", 1, &exp->var.op.argv[0]->var.op.argv[1], ecp);
+        hexp = RDB_ro_op("NOT", 1, ecp);
         if (hexp == NULL)
             return RDB_ERROR;
+        RDB_add_arg(hexp, exp->var.op.argv[0]->var.op.argv[1]);
         ret = alter_op(exp, "OR", 2, ecp);
         if (ret != RDB_OK)
             return ret;
@@ -121,9 +122,10 @@ eliminate_not(RDB_expression *exp, RDB_exec_context *ecp, RDB_transaction *txp)
         return eliminate_not(exp->var.op.argv[1], ecp, txp);
     }
     if (strcmp(exp->var.op.argv[0]->var.op.name, "OR") == 0) {
-        hexp = RDB_ro_op("NOT", 1, &exp->var.op.argv[0]->var.op.argv[1], ecp);
+        hexp = RDB_ro_op("NOT", 1, ecp);
         if (hexp == NULL)
             return RDB_ERROR;
+        RDB_add_arg(hexp, exp->var.op.argv[0]->var.op.argv[1]);
         ret = alter_op(exp, "AND", 2, ecp);
         if (ret != RDB_OK)
             return ret;
@@ -252,7 +254,7 @@ transform_where(RDB_expression *exp, RDB_exec_context *ecp,
             /*
              * Merge WHERE expressions
              */
-            RDB_expression *condp = RDB_ro_op("AND", 2, NULL, ecp);
+            RDB_expression *condp = RDB_ro_op("AND", 2, ecp);
             if (condp == NULL)
                 return RDB_ERROR;
             RDB_add_arg(condp, exp->var.op.argv[1]);
@@ -292,7 +294,7 @@ transform_where(RDB_expression *exp, RDB_exec_context *ecp,
             if (condp == NULL)
                 return RDB_ERROR;
 
-            wexp = RDB_ro_op("WHERE", 2, NULL, ecp);
+            wexp = RDB_ro_op("WHERE", 2, ecp);
             if (wexp == NULL) {
                 RDB_drop_expr(condp, ecp);
                 return RDB_ERROR;
@@ -383,7 +385,7 @@ swap_project_union(RDB_expression *exp, RDB_expression *chexp,
     /*
      * Create new project table for child #2
      */
-    nexp = RDB_ro_op("PROJECT", exp->var.op.argc, NULL, ecp);
+    nexp = RDB_ro_op("PROJECT", exp->var.op.argc, ecp);
     if (nexp == NULL) {
         return RDB_ERROR;
     }
@@ -635,7 +637,7 @@ swap_project_where(RDB_expression *exp, RDB_expression *chexp,
          * Add project
          */
         RDB_expression *argp;
-        RDB_expression *nexp = RDB_ro_op("PROJECT", attrc + 1, NULL, ecp);
+        RDB_expression *nexp = RDB_ro_op("PROJECT", attrc + 1, ecp);
         if (nexp == NULL)
             return RDB_ERROR;
 

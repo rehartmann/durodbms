@@ -117,7 +117,7 @@ test_extend(RDB_database *dbp, RDB_exec_context *ecp)
 {
     RDB_transaction tx;
     RDB_object *tbp;
-    RDB_expression *exp, *texp, *argp;
+    RDB_expression *exp, *texp, *mexp, *argp;
     int ret;
     RDB_object *vtbp = NULL;
 
@@ -131,7 +131,7 @@ test_extend(RDB_database *dbp, RDB_exec_context *ecp)
         goto error;
     }
 
-    exp = RDB_ro_op("EXTEND", 5, NULL, ecp);
+    exp = RDB_ro_op("EXTEND", 5, ecp);
     if (exp == NULL)
         goto error;
 
@@ -142,13 +142,16 @@ test_extend(RDB_database *dbp, RDB_exec_context *ecp)
     }
     RDB_add_arg(exp, argp);
 
-    argp = RDB_ro_op_va("-", ecp, RDB_expr_var("SALARY", ecp),
-            RDB_double_to_expr(4100, ecp), (RDB_expression *) NULL);
-    if (argp == NULL) {
-        RDB_drop_expr(exp, ecp);
-        goto error;
-    }
-    RDB_add_arg(exp, argp);
+    mexp = RDB_ro_op("-", 2, ecp);
+    assert(mexp != NULL);
+    argp = RDB_expr_var("SALARY", ecp);
+    assert(argp != NULL);
+    RDB_add_arg(mexp, argp);
+    argp = RDB_double_to_expr(4100, ecp);
+    assert(argp != NULL);
+    RDB_add_arg(mexp, argp);
+
+    RDB_add_arg(exp, mexp);
 
     argp = RDB_string_to_expr("SALARY_AFTER_TAX", ecp);
     if (argp == NULL) {
@@ -157,7 +160,7 @@ test_extend(RDB_database *dbp, RDB_exec_context *ecp)
     }
     RDB_add_arg(exp, argp);
 
-    texp = RDB_ro_op("LENGTH", 1, NULL, ecp);
+    texp = RDB_ro_op("LENGTH", 1, ecp);
     if (texp == NULL) {
         RDB_drop_expr(exp, ecp);
         goto error;

@@ -747,10 +747,13 @@ user_tables_vt(RDB_database *dbp, RDB_exec_context *ecp, RDB_transaction *txp)
     if (ex2p == NULL) {
         goto error;
     }
-    ex3p = RDB_ro_op_va("WHERE", ecp, ex1p, ex2p, (RDB_expression *) NULL);
+    ex3p = RDB_ro_op("WHERE", 2, ecp);
     if (ex3p == NULL) {
         goto error;
     }
+    RDB_add_arg(ex3p, ex1p);
+    RDB_add_arg(ex3p, ex2p);
+
     ex2p = NULL;
     ex1p = RDB_expr_var("DBNAME", ecp);
     if (ex1p == NULL) {
@@ -768,13 +771,17 @@ user_tables_vt(RDB_database *dbp, RDB_exec_context *ecp, RDB_transaction *txp)
     ex1p = RDB_table_ref_to_expr(dbp->dbrootp->dbtables_tbp, ecp);
     if (ex1p == NULL)
         goto error;
-    ex2p = RDB_ro_op_va("WHERE", ecp, ex1p, ex4p, (RDB_expression *) NULL);
+    ex2p = RDB_ro_op("WHERE", 2, ecp);
     if (ex2p == NULL)
         goto error;
+    RDB_add_arg(ex2p, ex1p);
+    RDB_add_arg(ex2p, ex4p);
     ex4p = NULL;
-    ex1p = RDB_ro_op_va("JOIN", ecp, ex2p, ex3p, (RDB_expression *) NULL);
+    ex1p = RDB_ro_op("JOIN", 2, ecp);
     if (ex1p == NULL)
         goto error;
+    RDB_add_arg(ex1p, ex2p);
+    RDB_add_arg(ex1p, ex3p);
     ex2p = NULL;
     ex3p = NULL;
 
@@ -820,9 +827,11 @@ db_exists_vt(RDB_database *dbp, RDB_exec_context *ecp, RDB_transaction *txp)
     if (ex1p == NULL)
         goto error;
 
-    ex2p = RDB_ro_op_va("WHERE", ecp, ex1p, ex3p, (RDB_expression *) NULL);
+    ex2p = RDB_ro_op("WHERE", 2, ecp);
     if (ex2p == NULL)
         goto error;
+    RDB_add_arg(ex2p, ex1p);
+    RDB_add_arg(ex2p, ex3p);
     ex1p = NULL;
     ex3p = NULL;
 
@@ -1227,9 +1236,11 @@ db_names_tb(RDB_object *dbtables_tbp, RDB_exec_context *ecp, RDB_transaction *tx
     if (ex2p == NULL)
         return NULL;
 
-    ex3p = RDB_ro_op_va("PROJECT", ecp, ex1p, ex2p, (RDB_expression *) NULL);
+    ex3p = RDB_ro_op("PROJECT", 2, ecp);
     if (ex3p == NULL)
         goto error;
+    RDB_add_arg(ex3p, ex1p);
+    RDB_add_arg(ex3p, ex2p);
     ex1p = NULL;
     ex2p = NULL;
     vtbp = RDB_expr_to_vtable(ex3p, ecp, txp);
