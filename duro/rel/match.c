@@ -162,7 +162,7 @@ cleanup:
     return ret;   
 }
 
-#ifdef NIX
+#ifdef REMOVED
 static int
 project_matching(RDB_object *tbp, const RDB_object *tplp, RDB_exec_context *ecp,
         RDB_transaction *txp, RDB_bool *resultp)

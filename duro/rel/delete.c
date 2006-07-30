@@ -1,7 +1,7 @@
 /*
  * $Id$
  *
- * Copyright (C) 2004-2005 René Hartmann.
+ * Copyright (C) 2004-2006 René Hartmann.
  * See the file COPYING for redistribution information.
  */
 
@@ -11,7 +11,7 @@
 #include <gen/strfns.h>
 #include <string.h>
 
-#ifdef NIX
+#ifdef REMOVED
 static RDB_int
 delete_by_uindex(RDB_object *tbp, RDB_object *objpv[], _RDB_tbindex *indexp,
         RDB_exec_context *ecp, RDB_transaction *txp)
@@ -158,7 +158,7 @@ error:
     return RDB_ERROR;
 }
 
-#ifdef NIX
+#ifdef REMOVED
 RDB_int
 _RDB_delete_select_uindex(RDB_object *tbp, RDB_expression *condp,
         RDB_exec_context *ecp, RDB_transaction *txp)

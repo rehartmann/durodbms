@@ -742,7 +742,7 @@ _RDB_binobj_to_vtable(RDB_object *valp, RDB_exec_context *ecp,
     if (ret != RDB_OK)
         return NULL;
 
-    return _RDB_expr_to_vtable(exp, ecp, txp);
+    return RDB_expr_to_vtable(exp, ecp, txp);
 }
 
 RDB_object *
@@ -803,5 +803,5 @@ deserialize_table(RDB_object *valp, int *posp, RDB_exec_context *ecp,
     if (ret != RDB_OK)
         return NULL;
     
-    return _RDB_expr_to_vtable(exp, ecp, txp);
+    return RDB_expr_to_vtable(exp, ecp, txp);
 }

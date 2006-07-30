@@ -438,7 +438,7 @@ cleanup:
     return rcount;
 }
 
-#ifdef NIX
+#ifdef REMOVED
 RDB_int
 _RDB_update_select_pindex(RDB_object *tbp, RDB_expression *condp,
         int updc, const RDB_attr_update updv[],
@@ -1097,7 +1097,7 @@ _RDB_update_real(RDB_object *tbp, RDB_expression *condp, int updc,
     return update_stored_simple(tbp, condp, updc, updv, ecp, txp);
 }
 
-#ifdef NIX
+#ifdef REMOVED
 RDB_int
 _RDB_update_select_index(RDB_object *tbp, RDB_expression *condp,
         int updc, const RDB_attr_update updv[],

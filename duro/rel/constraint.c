@@ -60,7 +60,7 @@ add_empty_tb(RDB_constraint *constrp, RDB_exec_context *ecp,
             ctbp = ptbp;
         }
 */
-        ptbp = _RDB_expr_to_vtable(pexp, ecp, txp);
+        ptbp = RDB_expr_to_vtable(pexp, ecp, txp);
         if (ptbp != NULL) {
             RDB_drop_expr(pexp, ecp);
             return ret;

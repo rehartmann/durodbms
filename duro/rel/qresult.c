@@ -398,6 +398,8 @@ summarize_qresult(RDB_qresult *qrp, RDB_exec_context *ecp,
     RDB_type *tb1typ, *tb2typ, *reltyp;
     RDB_expression *sexp = qrp->exp;
 
+    qrp->nested = RDB_FALSE;
+
     /* !! memory */
     tb1typ = RDB_expr_type(sexp->var.op.argv[0], NULL, ecp, txp);
     if (tb1typ == NULL)
@@ -690,6 +692,8 @@ group_qresult(RDB_qresult *qrp, RDB_exec_context *ecp, RDB_transaction *txp)
     if (reltyp == NULL)
         return RDB_ERROR;
 
+    qrp->nested = RDB_FALSE;
+
     /* Need keys */
     keyc = _RDB_infer_keys(qrp->exp, ecp, &keyv); /* !! */
     if (keyc == RDB_ERROR) {
@@ -920,58 +924,6 @@ _RDB_expr_qresult(RDB_expression *exp, RDB_exec_context *ecp,
     }
     return qrp;
 }
-
-#ifdef REMOVED
-static int
-join_qresult(RDB_qresult *qrp, RDB_exec_context *ecp, RDB_transaction *txp)
-{
-    int ret;
-
-    qrp->nested = RDB_TRUE;
-    qrp->matp = NULL;
-    /* Create qresult for the first table */
-    qrp->var.children.qrp = _RDB_table_qresult(qrp->tbp->var.join.tb1p, ecp, txp);
-    if (qrp->var.children.qrp == NULL)
-        return RDB_ERROR;
-
-    qrp->var.children.tpl_valid = RDB_FALSE;
-    if (qrp->tbp->var.join.tb2p->kind != RDB_TB_PROJECT
-            || qrp->tbp->var.join.tb2p->var.project.indexp == NULL) {
-        /* Create qresult for 2nd table */
-        qrp->var.children.qr2p = _RDB_table_qresult(qrp->tbp->var.join.tb2p,
-                ecp, txp);
-        if (qrp->var.children.qr2p == NULL) {
-            _RDB_drop_qresult(qrp->var.children.qrp, ecp, txp);
-            return RDB_ERROR;
-        }
-    } else if (!qrp->tbp->var.join.tb2p->var.project.indexp->unique) {
-        /* Create index qresult for 2nd table */
-        qrp->var.children.qr2p = malloc(sizeof (RDB_qresult));
-        if (qrp->var.children.qr2p == NULL) {
-            RDB_raise_no_memory(ecp);
-            return RDB_ERROR;
-        }
-        qrp->var.children.qr2p->tbp = qrp->tbp->var.join.tb2p;
-        qrp->var.children.qr2p->endreached = RDB_FALSE;
-        qrp->var.children.qr2p->matp = NULL;
-
-        qrp->var.children.qr2p->nested = RDB_FALSE;
-        qrp->var.children.qr2p->matp = NULL;
-        ret = RDB_index_cursor(&qrp->var.children.qr2p->var.curp,
-                qrp->tbp->var.join.tb2p->var.project.indexp->idxp, RDB_FALSE,
-                qrp->tbp->var.join.tb2p->var.project.tbp->is_persistent ?
-                        txp->txid : NULL);
-        if (ret != RDB_OK) {
-            free(qrp->var.children.qr2p);
-            _RDB_handle_errcode(ret, ecp, txp);
-            return RDB_ERROR;
-        }
-    } else {
-        qrp->var.children.qr2p = NULL;
-    }
-    return RDB_OK;
-}
-#endif
 
 static int
 init_qresult(RDB_qresult *qrp, RDB_object *tbp, RDB_exec_context *ecp,
@@ -1987,27 +1939,6 @@ next_where_index(RDB_qresult *qrp, RDB_object *tplp,
     return RDB_OK;
 }
 
-#ifdef REMOVED
-static int
-next_rename_tuple(RDB_qresult *qrp, RDB_object *tplp, RDB_exec_context *ecp,
-        RDB_transaction *txp)
-{
-    RDB_object tpl;
-    int ret;
-
-    RDB_init_obj(&tpl);
-    ret = _RDB_next_tuple(qrp->var.children.qrp, &tpl, ecp, txp);
-    if (ret != RDB_OK) {
-        RDB_destroy_obj(&tpl, ecp);
-        return RDB_ERROR;
-    }
-    ret = RDB_rename_tuple(&tpl, qrp->tbp->var.rename.renc,
-                           qrp->tbp->var.rename.renv, ecp, tplp);
-    RDB_destroy_obj(&tpl, ecp);
-    return ret;
-}
-#endif
-
 static int
 find_str(RDB_object *arrp, const char *str, RDB_exec_context *ecp)
 {
@@ -2577,175 +2508,6 @@ _RDB_next_tuple(RDB_qresult *qrp, RDB_object *tplp, RDB_exec_context *ecp,
     } while (ret == RDB_ERROR && RDB_obj_type(RDB_get_err(ecp))
             == &RDB_ELEMENT_EXISTS_ERROR);
     return RDB_OK;
-
-#ifdef REMOVED
-    do {
-        RDB_clear_err(ecp);
-        switch (tbp->kind) {
-            case RDB_TB_REAL:
-                return next_stored_tuple(qrp, qrp->var.stored.tbp, tplp,
-                        RDB_TRUE, RDB_FALSE, qrp->tbp->typ->var.basetyp, ecp, txp);
-            case RDB_TB_SELECT:
-                if (qrp->tbp->var.select.objpc > 0)
-                    ret = next_select_index(qrp, tplp, ecp, txp);
-                else
-                    ret = next_select_tuple(qrp, tplp, ecp, txp);
-                if (ret != RDB_OK)
-                    return RDB_ERROR;                
-                break;
-            case RDB_TB_UNION:
-                if (qrp->var.children.qr2p == NULL) {
-                    ret = _RDB_next_tuple(qrp->var.children.qrp, tplp, ecp, txp);
-                    if (ret != RDB_OK) {
-                        if (RDB_obj_type(RDB_get_err(ecp))
-                                == &RDB_NOT_FOUND_ERROR) {
-                            /* Switch to second table */
-                            qrp->var.children.qr2p = _RDB_table_qresult(
-                                    tbp->var._union.tb2p, ecp, txp);
-                            if (qrp->var.children.qr2p == NULL)
-                                return RDB_ERROR;
-                            ret = _RDB_next_tuple(qrp->var.children.qr2p, tplp,
-                                    ecp, txp);
-                            if (ret != RDB_OK)
-                                return RDB_ERROR;
-                        } else {
-                            return RDB_ERROR;
-                        }
-                    }
-                } else {
-                    ret = _RDB_next_tuple(qrp->var.children.qr2p, tplp, ecp,
-                            txp);
-                    if (ret != RDB_OK)
-                        return RDB_ERROR;
-                }
-                break;
-            case RDB_TB_SEMIMINUS:
-                do {
-                    ret = _RDB_next_tuple(qrp->var.children.qrp, tplp, ecp, txp);
-                    if (ret != RDB_OK)
-                        return RDB_ERROR;
-                    ret = _RDB_matching_tuple(tbp->var.semiminus.tb2p,
-                            tplp, ecp, txp, &b);
-                    if (ret != RDB_OK) {
-                        return RDB_ERROR;
-                    }
-                } while (b);
-                break;
-            case RDB_TB_SEMIJOIN:
-                do {
-                    ret = _RDB_next_tuple(qrp->var.children.qrp, tplp, ecp, txp);
-                    if (ret != RDB_OK)
-                        return RDB_ERROR;
-                    ret = _RDB_matching_tuple(tbp->var.semijoin.tb2p,
-                            tplp, ecp, txp, &b);
-                    if (ret != RDB_OK) {
-                        return RDB_ERROR;
-                    }
-                } while (!b);
-                break;
-            case RDB_TB_JOIN:
-                if (tbp->var.join.tb2p->kind != RDB_TB_PROJECT
-                        || tbp->var.join.tb2p->var.project.indexp == NULL) {
-                    ret = next_join_tuple(qrp, tplp, ecp, txp);
-                    if (ret != RDB_OK)
-                        return RDB_ERROR;
-                    break;
-                }
-                if (tbp->var.join.tb2p->var.project.indexp->unique) {
-                    ret = next_join_tuple_uix(qrp, tplp, ecp, txp);
-                    if (ret != RDB_OK)
-                        return RDB_ERROR;
-                    break;
-                }
-                ret = next_join_tuple_nuix(qrp, tplp, ecp, txp);            
-                if (ret != RDB_OK)
-                    return RDB_ERROR;
-                break;
-            case RDB_TB_EXTEND:
-                ret = _RDB_next_tuple(qrp->var.children.qrp, tplp, ecp, txp);
-                if (ret != RDB_OK)
-                    return RDB_ERROR;
-                ret = RDB_extend_tuple(tplp, tbp->var.extend.attrc,
-                         tbp->var.extend.attrv, ecp, txp);
-                if (ret != RDB_OK)
-                    return RDB_ERROR;
-                break;
-            case RDB_TB_PROJECT:
-                ret = next_project_tuple(qrp, tplp, ecp, txp);
-                if (ret != RDB_OK)
-                    return RDB_ERROR;
-                break;
-            case RDB_TB_SUMMARIZE:
-                {
-                    int i;
-                    char *cname;
-                    RDB_int count;
-                
-                    ret = next_stored_tuple(qrp, qrp->matp, tplp, RDB_TRUE,
-                            RDB_FALSE, qrp->tbp->typ->var.basetyp, ecp, txp);
-                    if (ret != RDB_OK)
-                        return RDB_ERROR;
-                    /* check AVG counts */
-                    for (i = 0; i < qrp->tbp->var.summarize.addc; i++) {
-                        RDB_summarize_add *summp = &qrp->tbp->var.summarize.addv[i];
-                        if (summp->op == RDB_AVG) {
-                            count = RDB_tuple_get_int(tplp, AVG_COUNT);
-                            if (count == 0) {
-                                RDB_raise_aggregate_undefined(ecp);
-                                return RDB_ERROR;
-                            }
-                        }
-                    }
-                }
-                break;
-            case RDB_TB_RENAME:
-                ret = next_rename_tuple(qrp, tplp, ecp, txp);
-                if (ret != RDB_OK)
-                    return RDB_ERROR;
-                break;
-            case RDB_TB_WRAP:
-                ret = next_wrap_tuple(qrp, tplp, ecp, txp);
-                if (ret != RDB_OK)
-                    return RDB_ERROR;
-                break;
-            case RDB_TB_UNWRAP:
-                ret = next_unwrap_tuple(qrp, tplp, ecp, txp);
-                if (ret != RDB_OK)
-                    return RDB_ERROR;
-                break;
-            case RDB_TB_GROUP:
-                ret = next_stored_tuple(qrp, qrp->matp, tplp, RDB_TRUE, RDB_FALSE,
-                        qrp->tbp->typ->var.basetyp, ecp, txp);
-                if (ret != RDB_OK)
-                    return RDB_ERROR;
-                break;
-            case RDB_TB_UNGROUP:
-                ret = next_ungroup_tuple(qrp, tplp, ecp, txp);
-                if (ret != RDB_OK)
-                    return RDB_ERROR;
-                break;
-            case RDB_TB_SDIVIDE:
-                ret = next_sdivide_tuple(qrp, tplp, ecp, txp);
-                if (ret != RDB_OK)
-                    return RDB_ERROR;
-                break;
-        }
-
-        /* Check for duplicate, if necessary */
-        if (qrp->matp != NULL && tbp->kind != RDB_TB_SUMMARIZE
-                && tbp->kind != RDB_TB_GROUP) {
-            ret = _RDB_insert_real(qrp->matp, tplp, ecp, txp);
-            if (ret != RDB_OK && RDB_obj_type(RDB_get_err(ecp))
-                    != &RDB_ELEMENT_EXISTS_ERROR) {
-                return RDB_ERROR;
-            }
-        } else {
-            ret = RDB_OK;
-        }
-    } while (ret == RDB_ERROR && RDB_obj_type(RDB_get_err(ecp))
-            == &RDB_ELEMENT_EXISTS_ERROR);
-    return RDB_OK;
-#endif
 }
 
 int

@@ -428,9 +428,6 @@ int
 RDB_evaluate_bool(RDB_expression *, const RDB_object *tup,
         RDB_exec_context *ecp, RDB_transaction *, RDB_bool *);
 
-RDB_object *
-_RDB_expr_to_vtable(RDB_expression *, RDB_exec_context *, RDB_transaction *);
-
 int
 RDB_evaluate(RDB_expression *, const RDB_object *, RDB_exec_context *,
              RDB_transaction *, RDB_object *);

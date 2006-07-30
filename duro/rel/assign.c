@@ -770,7 +770,7 @@ resolve_update(const RDB_ma_update *updp, update_node **updnpp,
     RDB_raise_not_supported("resolve_update mit virtueller Tabelle", ecp);
     return RDB_ERROR;
 
-#ifdef NIX
+#ifdef REMOVED
     switch (updp->tbp->kind) {
         case RDB_TB_REAL:
             *updnpp = new_update_node(updp, ecp);
@@ -961,110 +961,6 @@ resolve_delete(RDB_object *tbp, RDB_expression *condp, delete_node **delnpp,
 	}
 
     return resolve_delete_expr(tbp->var.tb.exp, condp, delnpp, ecp, txp);
-
-#ifdef NIX
-    switch (delp->tbp->kind) {
-        case RDB_TB_REAL:
-            *delnpp = new_delete_node(delp, ecp);
-            if (*delnpp == NULL)
-                return RDB_ERROR;
-            return RDB_OK;
-        case RDB_TB_SELECT:
-            del.tbp = delp->tbp->var.select.tbp;
-            del.condp = delp->condp;
-            ret = resolve_delete(&del, delnpp, ecp, txp);
-            if (ret != RDB_OK)
-                return ret;
-
-            delnp = *delnpp;
-            while (delnp != NULL) {
-                if (delnp->del.condp == NULL) {
-                    delnp->del.condp = RDB_dup_expr(delp->tbp->var.select.exp,
-                            ecp);
-                    if (delnp->del.condp == NULL) {
-                        del_dellist(*delnpp, ecp);
-                        return RDB_ERROR;
-                    }
-                } else {
-                    RDB_expression *ncondp;
-                    RDB_expression *hcondp = RDB_dup_expr(
-                            delp->tbp->var.select.exp, ecp);
-                    if (hcondp == NULL) {
-                        del_dellist(*delnpp, ecp);
-                        return RDB_ERROR;
-                    }
-                    ncondp = RDB_ro_op_va("AND", ecp, hcondp, delnp->del.condp,
-                            (RDB_expression *) NULL);
-                    if (ncondp == NULL) {
-                        RDB_drop_expr(hcondp, ecp);
-                        del_dellist(*delnpp, ecp);
-                        return RDB_ERROR;
-                    }                        
-                    delnp->del.condp = ncondp;
-                }
-                delnp = delnp->nextp;
-            }
-            return RDB_OK;
-        case RDB_TB_PROJECT:
-            del.tbp = delp->tbp->var.project.tbp;
-            del.condp = delp->condp;
-            return resolve_delete(&del, delnpp, ecp, txp);
-        case RDB_TB_RENAME:
-            del.tbp = delp->tbp->var.rename.tbp;
-            del.condp = delp->condp;
-            ret = resolve_delete(&del, delnpp, ecp, txp);
-            if (ret != RDB_OK)
-                return ret;
-            delnp = *delnpp;
-            while (delnp != NULL) {
-                if (delnp->del.condp != NULL) {
-                    ret = _RDB_invrename_expr(delnp->del.condp,
-                            delp->tbp->var.rename.renc,
-                            delp->tbp->var.rename.renv, ecp);
-                    if (ret != RDB_OK) {
-                        del_dellist(*delnpp, ecp);
-                        return RDB_ERROR;
-                    }
-                }
-                delnp = delnp->nextp;
-            }
-            return RDB_OK;
-        case RDB_TB_EXTEND:
-            del.tbp = delp->tbp->var.extend.tbp;
-            del.condp = delp->condp;
-            ret = resolve_delete(&del, delnpp, ecp, txp);
-            if (ret != RDB_OK)
-                return ret;
-            delnp = *delnpp;
-            while (delnp != NULL) {
-                if (delnp->del.condp != NULL) {
-                    ret = _RDB_resolve_extend_expr(&delnp->del.condp,
-                            delp->tbp->var.extend.attrc,
-                            delp->tbp->var.extend.attrv, ecp);
-                    if (ret != RDB_OK) {
-                        del_dellist(*delnpp, ecp);
-                        return ret;
-                    }
-                }
-                delnp = delnp->nextp;
-            }
-            return RDB_OK;
-        case RDB_TB_SEMIMINUS:
-        case RDB_TB_SEMIJOIN:
-        case RDB_TB_UNION:
-        case RDB_TB_JOIN:
-        case RDB_TB_SUMMARIZE:
-        case RDB_TB_WRAP:
-        case RDB_TB_UNWRAP:
-        case RDB_TB_GROUP:
-        case RDB_TB_UNGROUP:
-        case RDB_TB_SDIVIDE:
-            RDB_raise_not_supported(
-                    "Delete is not supported for this virtual table", ecp);
-            return RDB_ERROR;
-    }
-    abort();
-#endif
 }
 
 static RDB_int
@@ -1112,7 +1008,7 @@ do_update(const RDB_ma_update *updp, RDB_exec_context *ecp, RDB_transaction *txp
     RDB_raise_not_supported("Unsupported update", ecp);
     return RDB_ERROR;
 
-#ifdef NIX
+#ifdef REMOVED
     /* !! drop select */
     _RDB_free_table(tbp, ecp);
 
@@ -1176,7 +1072,7 @@ do_delete(const RDB_ma_delete *delp, RDB_exec_context *ecp,
     if (nexp == NULL)
         return RDB_ERROR;
 
-    /* !! drop select */
+    /* !! drop select - index delete */
     if (nexp->kind == RDB_EX_TBP) {
         return _RDB_delete_real(nexp->var.tbref.tbp, NULL, ecp, txp);
     }
