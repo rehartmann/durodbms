@@ -1699,7 +1699,7 @@ aggr_type(const RDB_expression *exp, const RDB_type *tpltyp,
 {
     if (exp->kind != RDB_EX_RO_OP) {
         RDB_raise_invalid_argument("invalid summarize argument", ecp);
-        return RDB_OK;
+        return NULL;
     }
 
     if (strcmp(exp->var.op.name, "COUNT") == 0) {
@@ -1727,14 +1727,14 @@ RDB_summarize_type(int expc, RDB_expression **expv,
         int avgc, char **avgv, RDB_exec_context *ecp, RDB_transaction *txp)
 {
     int i;
-    RDB_type *newtyp;
+    RDB_type *newtyp, *tb1typ, *tb2typ;
     RDB_attr *attrv;
     int addc = (expc - 2) / 2;
     int attrc = addc + avgc;
-    RDB_type *tb1typ = RDB_expr_type(expv[0], NULL, ecp, txp);
+    tb1typ = RDB_expr_type(expv[0], NULL, ecp, txp);
     if (tb1typ == NULL)
         return NULL;
-    RDB_type *tb2typ = RDB_expr_type(expv[1], NULL, ecp, txp);
+    tb2typ = RDB_expr_type(expv[1], NULL, ecp, txp);
     if (tb2typ == NULL)
         return NULL; /* !! memory */
     

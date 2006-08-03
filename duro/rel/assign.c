@@ -82,7 +82,6 @@ replace_updattrs(RDB_expression *exp, int updc, RDB_attr_update updv[],
 {
     int i;
     RDB_expression *rexp, *hexp;
-    RDB_expression **expv;
 
     /*
      * Add 'updated' attributes
@@ -90,7 +89,7 @@ replace_updattrs(RDB_expression *exp, int updc, RDB_attr_update updv[],
 
     rexp = RDB_ro_op("EXTEND", 1 + updc * 2, ecp);
     if (rexp == NULL)
-        goto cleanup;
+        return NULL;
     RDB_add_arg(rexp, exp);
     for (i = 0; i < updc; i++) {
         hexp = RDB_dup_expr(updv[i].exp, ecp);
@@ -138,7 +137,7 @@ replace_updattrs(RDB_expression *exp, int updc, RDB_attr_update updv[],
     }
 
 cleanup:
-    free(expv);
+    /* !! */
 
     return rexp;
 }

@@ -1874,8 +1874,10 @@ next_where_index(RDB_qresult *qrp, RDB_object *tplp,
 {
     int ret;
     _RDB_tbindex *indexp;
+    RDB_bool rtup;
     RDB_type *tpltyp;
     RDB_type *reltyp = NULL;
+    RDB_bool dup = RDB_FALSE;
 
     if (qrp->exp->var.op.argv[0]->kind == RDB_EX_TBP) {
         indexp = qrp->exp->var.op.argv[0]->var.tbref.indexp;
@@ -1899,9 +1901,6 @@ next_where_index(RDB_qresult *qrp, RDB_object *tplp,
         qrp->endreached = RDB_TRUE;
         return RDB_OK;
     }
-
-    RDB_bool rtup;
-    RDB_bool dup = RDB_FALSE;
 
     if (qrp->exp->var.op.optinfo.objpc == indexp->attrc
             && qrp->exp->var.op.optinfo.all_eq)
@@ -1978,6 +1977,8 @@ wrap_tuple(const RDB_object *tplp, RDB_expression *exp,
 
     /* Wrap attributes */
     for (i = 0; i < wrapc; i++) {
+        char *wrattrname;
+        RDB_object *attrp;
         char *attrname = RDB_obj_string(&exp->var.op.argv[2 + 2 * i]->var.obj);
         RDB_int len = RDB_array_length(&exp->var.op.argv[1 + 2 * i]->var.obj,
                 ecp);
@@ -1992,9 +1993,9 @@ wrap_tuple(const RDB_object *tplp, RDB_expression *exp,
                 RDB_destroy_obj(&tpl, ecp);
                 return RDB_ERROR;                
             }
-            char *wrattrname = RDB_obj_string(objp);
+            wrattrname = RDB_obj_string(objp);
 
-            RDB_object *attrp = RDB_tuple_get(tplp, wrattrname);
+            attrp = RDB_tuple_get(tplp, wrattrname);
 
             if (attrp == NULL) {
                 RDB_destroy_obj(&tpl, ecp);

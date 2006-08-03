@@ -4,18 +4,24 @@
 # $Id$
 #
 
+import os
+
 installdir = '/usr/local/duro.0.12'
 bdbhome = '/usr/local/BerkeleyDB.4.4'
 
-env = Environment(CCFLAGS = '-g -Wall -Werror',
-    CPPPATH = ['.', ''.join([bdbhome, '/include'])],
-    LIBPATH = [''.join([bdbhome, '/lib']), '.'],
-    LIBS = ['duro', 'db', 'ltdl', 'm'],
-    YACCFLAGS = '-d',
-    RPATH = [''.join([installdir, '/lib']), ''.join([bdbhome, '/lib'])])
+env = Environment(ENV = os.environ)
 
-libduro = env.SharedLibrary('duro', ['gen/hashmap.c', 'gen/hashmapit.c', 'gen/strfns.c',
-    'gen/hashtable.c', 'gen/hashtabit.c',
+env.Replace(CPPPATH = ['.', bdbhome + '/include'])
+env.Replace(LIBPATH = ['.', bdbhome + '/lib'])
+env.Replace(LIBS = ['duro', 'db', 'ltdl', 'm'])
+env.Replace(YACCFLAGS = '-d')
+env.Replace(RPATH = [installdir + '/lib', bdbhome + '/lib'])
+
+if (os.environ.has_key('CFLAGS')):
+    env.Replace(CCFLAGS = os.environ['CFLAGS'])
+
+libduro = env.SharedLibrary('duro', ['gen/hashmap.c', 'gen/hashmapit.c',
+    'gen/strfns.c', 'gen/hashtable.c', 'gen/hashtabit.c',
     'rec/cursor.c', 'rec/env.c', 'rec/index.c', 'rec/recmap.c',
     'rel/array.c', 'rel/database.c', 'rel/operator.c',
     'rel/builtinops.c', 'rel/expression.c', 'rel/qresult.c',
@@ -38,7 +44,7 @@ libdurotcl = env.SharedLibrary('durotcl', ['tcl/duro.c', 'tcl/envcmd.c',
 Default(libduro)
 Default(libdurotcl)
 
-testenv = env.Copy(RPATH = [''.join([bdbhome, '/lib'])])
+testenv = env.Copy(RPATH = [bdbhome + '/lib'])
 
 testenv.Program('util/lstables.c')
 testenv.Program('tests/tupletest.c')
@@ -82,29 +88,35 @@ testenv.SharedLibrary('tests/plus.c')
 
 env.Alias('install', installdir)
 
-env.Install(''.join([installdir, '/include/gen']),
+env.Install(installdir + '/include/gen',
 	Split('gen/hashmap.h gen/hashmapit.h gen/hashtable.h '
         'gen/hashtabit.h gen/strfns.h gen/types.h'))
-env.Install(''.join([installdir, '/include/rec']),
+env.Install(installdir + '/include/rec',
     Split('rec/cursor.h rec/env.h rec/index.h rec/recmap.h'))
-env.Install(''.join([installdir, '/include/rel']),
+env.Install(installdir + '/include/rel',
     Split('rel/rdb.h rel/typeimpl.h dli/parse.h'))
-env.Install(''.join([installdir, '/bin']),
+env.Install(installdir + '/bin',
 	['tcl/duroadmin.tcl', 'tcl/durodump.tcl'])
 
-env.Install(''.join([installdir, '/lib']), libduro)
-dst_libdurotcl = env.Install(''.join([installdir, '/lib']), libdurotcl)
-dst_utiltcl = env.Install(''.join([installdir, '/lib']), 'tcl/util.tcl')
+env.Install(installdir + '/lib', libduro)
+dst_libdurotcl = env.Install(installdir + '/lib', libdurotcl)
+dst_utiltcl = env.Install(installdir + '/lib', 'tcl/util.tcl')
 
-env.Command(''.join([installdir, '/lib/pkgIndex.tcl']),
-	[dst_libdurotcl, dst_utiltcl],
-	''.join(['echo pkg_mkIndex ', installdir, '/lib '
-	'libdurotcl.so util.tcl | tclsh']))
+def writetmp(target, source, env):
+    # build the target from the 'XXX' construction variable
+    open(target[0], 'w').write(env['XXX'])
+    return 0
 
-env.Install(''.join([installdir, '/docs']),
+env.Command(installdir + '/lib/pkgIndex.tcl',
+        [dst_libdurotcl, dst_utiltcl],
+        [open('.tmp.tcl', 'w').write('pkg_mkIndex ' + installdir + '/lib '
+                + libdurotcl[0].path + ' util.tcl'),
+        'tclsh .tmp.tcl'])
+
+env.Install(installdir + '/docs',
 	['docs/api-spec.html', 'docs/expressions.html', 'docs/utils.html'])
 
-env.Install(''.join([installdir, '/docs/tcl']),
+env.Install(installdir + '/docs/tcl',
 	Split('docs/tcl/index.html docs/tcl/array.html '
 		'docs/tcl/begin.html docs/tcl/call.html '
 		'docs/tcl/commit.html docs/tcl/db.html docs/tcl/delete.html '

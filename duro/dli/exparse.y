@@ -195,6 +195,7 @@ project: expression '{' attribute_name_list '}' {
                 RDB_drop_expr($5.expv[i], _RDB_parse_ecp);
             YYERROR;
         }
+        RDB_add_arg($$, texp);
         for (i = 0; i < $5.expc; i++) {
             RDB_add_arg($$, $5.expv[i]);
         }
@@ -912,12 +913,12 @@ group: expression TOK_GROUP '{' attribute_name_list '}' TOK_AS TOK_ID {
             RDB_drop_expr($7, _RDB_parse_ecp);
             YYERROR;
         }
-        RDB_drop_expr($7, _RDB_parse_ecp);
         $$ = RDB_ro_op("GROUP", argc, _RDB_parse_ecp);
         if ($$ == NULL) {
             RDB_drop_expr(texp, _RDB_parse_ecp);
             for (i = 0; i < $4.expc; i++)
                 RDB_drop_expr($4.expv[i], _RDB_parse_ecp);
+            RDB_drop_expr($7, _RDB_parse_ecp);
             YYERROR;
         }
         RDB_add_arg($$, texp);
@@ -925,6 +926,7 @@ group: expression TOK_GROUP '{' attribute_name_list '}' TOK_AS TOK_ID {
             RDB_add_arg($$, $4.expv[i]);
         }
         lexp = RDB_string_to_expr($7->var.varname, _RDB_parse_ecp);
+        RDB_drop_expr($7, _RDB_parse_ecp);
         if (lexp == NULL) {
             YYERROR;
         }
@@ -1134,6 +1136,8 @@ add_expression: mul_expression
             RDB_drop_expr($3, _RDB_parse_ecp);
             YYERROR;
         }
+        RDB_add_arg($$, $1);
+        RDB_add_arg($$, $3);
     }
     | add_expression TOK_CONCAT mul_expression {
         $$ = RDB_ro_op("||", 2, _RDB_parse_ecp);
@@ -1227,13 +1231,14 @@ ifthenelse: TOK_IF or_expression TOK_THEN add_expression TOK_ELSE add_expression
             YYERROR;
         }
 
-        $$ = RDB_ro_op("IF", 2, _RDB_parse_ecp);
+        $$ = RDB_ro_op("IF", 3, _RDB_parse_ecp);
         if ($$ == NULL) {
             RDB_drop_expr($2, _RDB_parse_ecp);
             RDB_drop_expr(ex1p, _RDB_parse_ecp);
             RDB_drop_expr(ex2p, _RDB_parse_ecp);
             YYERROR;
         }
+        RDB_add_arg($$, $2);
         RDB_add_arg($$, ex1p);
         RDB_add_arg($$, ex2p);
     }
