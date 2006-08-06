@@ -27,7 +27,6 @@ along with Duro; if not, write to the Free Software Foundation, Inc.,
 #include <gen/hashmap.h>
 #include <gen/hashtable.h>
 #include <gen/types.h>
-#include <stdlib.h>
 
 enum {
     RDB_ERROR = -1
@@ -270,9 +269,8 @@ RDB_db_env(RDB_database *);
 
 /*
  * Create a database with name name in the environment pointed to
- * by envp. Store a pointer to the newly created RDB_database structure
- * in dbpp.
- * Return a pointer to the database on success, or NULL pn error.
+ * by envp.
+ * Return a pointer to the database on success, or NULL on error.
  */
 RDB_database *
 RDB_create_db_from_env(const char *name, RDB_environment *envp,
@@ -303,15 +301,14 @@ typedef struct RDB_attr {
 
 /*
  * Create a table with name name in the database associated with the transaction
- * pointed to by txp. Store a pointer to the newly created RDB_table structure
- * in tbpp.
+ * pointed to by txp.
  * If persistent is RDB_FALSE, create a transient table. In this case,
  * name may be NULL.
  * The attributes are specified by attrc and heading.
  * The candidate keys are specified by keyc and keyv.
  * At least one candidate key must be specified.
  *
- * Return RDB_OK on success. A return value other than RDB_OK indicates an error.
+ * Return a pointer to the newly created table on success, or NULL on error.
  */
 RDB_object *
 RDB_create_table(const char *name, RDB_bool persistent,
@@ -331,8 +328,8 @@ RDB_init_table(RDB_object *tbp, const char *name, RDB_type *reltyp,
 
 /*
  * Lookup the table with name name from the database pointed to by dbp.
- * Store a pointer to a RDB_object structure in tbpp.
- * Return RDB_OK on success, RDB_NOT_FOUND if the table could not be found.
+ * Return a pointer to a RDB_object structure on success, or NULL
+ * if the table could not be found.
  */
 RDB_object *
 RDB_get_table(const char *name, RDB_exec_context *, RDB_transaction *);
@@ -378,8 +375,8 @@ RDB_define_type(const char *name, int repc, const RDB_possrep repv[],
 
 /*
  * Lookup the type with name name from the database pointed to by dbp.
- * Store a pointer to a RDB_type structure in typp.
- * Return RDB_OK on success, RDB_NOT_FOUND if the table could not be found.
+ * Return a pointer to a RDB_type structure on success, or NULL
+ * if the table could not be found.
  */
 RDB_type *
 RDB_get_type(const char *name, RDB_exec_context *, RDB_transaction *);
@@ -519,10 +516,10 @@ RDB_subset(RDB_object *tb1p, RDB_object *tb2p, RDB_exec_context *,
  * Extract a tuple from the table. The table must contain
  * exactly one tuple.
  *
- * Return value:
- * RDB_OK	the tuple has been successfully extracted.
- * RDB_NOT_FOUND the table is empty.
- * RDB_INVALID_ARGUMENT the table contains more than one tuple.
+ * Returns RDB_OK if the tuple has been successfully extracted,
+ * Returns RDB_ERROR and raises RDB_NOT_FOUND_ERROR if the table is empty.
+ * Returns RDB_ERROR and raises RDB_INVALID_ARGUMENT_ERROR the table contains
+ * more than one tuple.
  */
 int
 RDB_extract_tuple(RDB_object *, RDB_exec_context *, RDB_transaction *,
@@ -543,7 +540,7 @@ RDB_int
 RDB_cardinality(RDB_object *tbp, RDB_exec_context *, RDB_transaction *);
 
 /*
- * Create a virtual relvars from an expression.
+ * Create a virtual relvar from an expression.
  */
 RDB_object *
 RDB_expr_to_vtable(RDB_expression *, RDB_exec_context *, RDB_transaction *);
@@ -732,7 +729,7 @@ RDB_type *
 RDB_type_attr_type(const RDB_type *, const char *);
 
 /*
- * Return RDB_TRUE if the two RDB_objects are equal
+ * Stores RDB_TRUE in the result if the two RDB_objects are equal
  * or RDB_FALSE if they are not.
  */
 int

@@ -1,0 +1,4 @@
+LIBRARY durotcl
+; $Id$
+EXPORTS
+    Durotcl_Init

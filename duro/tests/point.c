@@ -6,8 +6,12 @@
 #include <tests/point.h>
 
 /*
- * Selector, setters, and getter for POINT
+ * Defines selector, setters, and getters for type POINT
  */
+
+#ifndef M_PI_2
+#define M_PI_2 (1.57079632679489661923)
+#endif
 
 int
 POINT(const char *name, int argc, RDB_object *compv[],
