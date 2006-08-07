@@ -1,0 +1,92 @@
+#!/bin/sh
+# Execute tclsh from the user's PATH \
+exec tclsh "$0" ${1+"$@"}
+
+# $Id$
+#
+# Test aggregate operators
+#
+
+package require tcltest 2.2
+eval ::tcltest::configure $argv
+namespace import ::tcltest::*
+
+test aggregate {real tables} -body {
+    load [configure -testdir]/../libdurotcl.so
+    source [configure -testdir]/testutil.tcl
+
+    # Create DB environment dir
+    set envdir [makeDirectory dbenv]
+
+    set dbenv [duro::env open $envdir]
+	
+    # Create Database
+    duro::db create $dbenv TEST
+	
+    set tx [duro::begin $dbenv TEST]
+	
+    # Create table
+    duro::table create T {
+       {A INTEGER}
+       {B BOOLEAN}
+    } {{A}} $tx
+
+    duro::insert T {A 1 B FALSE} $tx
+    duro::insert T {A 2 B TRUE} $tx
+
+    set v [duro::expr {COUNT(T)} $tx]
+    if {$v != 2} {
+        error "invalid COUNT: $v"
+    }
+
+    set v [duro::expr {SUM(T, A)} $tx]
+    if {$v != 3} {
+        error "invalid COUNT: $v"
+    }
+
+    set v [duro::expr {AVG(T, A)} $tx]
+    if {$v != 1.5} {
+        error "invalid AVG: $v"
+    }
+
+    set v [duro::expr {MIN(T, A)} $tx]
+    if {$v != 1} {
+        error "invalid MIN: $v"
+    }
+
+    set v [duro::expr {MAX(T, A)} $tx]
+    if {$v != 2} {
+        error "invalid MAX: $v"
+    }
+
+    if {![catch {duro::expr {ANY(T, A)} $tx}]} {
+        error "invalid ANY should fail, but succeeded"
+    }
+    if {![string match "TYPE_MISMATCH_ERROR(*)" [lindex $errorCode 1]]} {
+        error "Wrong error from ANY: $errorCode"
+    }
+
+    if {![catch {duro::expr {ALL(T, A)} $tx}]} {
+        error "invalid ALL should fail, but succeeded"
+    }
+    if {![string match "TYPE_MISMATCH_ERROR(*)" [lindex $errorCode 1]]} {
+        error "Wrong error from ALL: $errorCode"
+    }
+
+    set v [duro::expr {ANY(T, B)} $tx]
+    if {!$v} {
+        error "invalid ANY: $v"
+    }
+
+    set v [duro::expr {ALL(T, B)} $tx]
+    if {$v} {
+        error "invalid ALL: $v"
+    }
+
+    duro::commit $tx
+	
+    # Close DB environment
+    duro::env close $dbenv
+}
+
+cleanupTests

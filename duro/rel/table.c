@@ -1,7 +1,7 @@
 /*
  * $Id$
  *
- * Copyright (C) 2003-2005 René Hartmann.
+ * Copyright (C) 2003-2006 René Hartmann.
  * See the file COPYING for redistribution information.
  */
 
@@ -353,6 +353,10 @@ RDB_all(RDB_object *tbp, const char *attrname, RDB_exec_context *ecp,
         RDB_raise_attribute_not_found(attrname, ecp);
         return RDB_ERROR;
     }
+    if (attrtyp != &RDB_BOOLEAN) {
+        RDB_raise_type_mismatch("attribute type must be BOOLEAN", ecp);
+        return RDB_ERROR;
+    }
 
     /* initialize result */
     *resultp = RDB_TRUE;
@@ -404,6 +408,10 @@ RDB_any(RDB_object *tbp, const char *attrname, RDB_exec_context *ecp,
     attrtyp = _RDB_tuple_type_attr(tbp->typ->var.basetyp, attrname)->typ;
     if (attrtyp == NULL) {
         RDB_raise_attribute_not_found(attrname, ecp);
+        return RDB_ERROR;
+    }
+    if (attrtyp != &RDB_BOOLEAN) {
+        RDB_raise_type_mismatch("attribute type must be BOOLEAN", ecp);
         return RDB_ERROR;
     }
 
@@ -535,11 +543,11 @@ RDB_min(RDB_object *tbp, const char *attrname, RDB_exec_context *ecp,
     _RDB_set_obj_type(resultp, attrtyp);
 
     if (attrtyp == &RDB_INTEGER)
-        resultp->var.int_val = RDB_INT_MIN;
+        resultp->var.int_val = RDB_INT_MAX;
     else if (attrtyp == &RDB_FLOAT)
-        resultp->var.double_val = RDB_FLOAT_MIN;
+        resultp->var.double_val = RDB_FLOAT_MAX;
     else if (attrtyp == &RDB_DOUBLE)
-        resultp->var.double_val = RDB_DOUBLE_MIN;
+        resultp->var.double_val = RDB_DOUBLE_MAX;
     else {
         RDB_raise_type_mismatch("argument must be numeric", ecp);
         return RDB_ERROR;
@@ -691,6 +699,7 @@ RDB_avg(RDB_object *tbp, const char *attrname, RDB_exec_context *ecp,
     }
 
     i = 0;
+    *resultp = 0.0;
     while ((tplp = RDB_array_get(&arr, (RDB_int) i++, ecp)) != NULL) {
         count++;
         if (attrtyp == &RDB_INTEGER)

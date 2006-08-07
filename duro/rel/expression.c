@@ -1310,13 +1310,44 @@ evaluate_vt(RDB_expression *exp, const RDB_object *tplp,
     return RDB_OK;
 }
 
+static RDB_object *
+process_aggr_args(RDB_expression *exp, RDB_exec_context *ecp,
+        RDB_transaction *txp)
+{
+    RDB_object *tbp;
+    RDB_expression *texp;
+
+    if (exp->var.op.argc != 2) {
+        RDB_raise_invalid_argument("invalid number of aggregate arguments",
+                ecp);
+        return NULL;
+    }
+
+    if (exp->var.op.argv[1]->kind != RDB_EX_VAR) {
+        RDB_raise_invalid_argument("invalid aggregate argument #2",
+                ecp);
+        RDB_drop_table(tbp, ecp, NULL);
+        return NULL;
+    }
+
+    texp = RDB_dup_expr(exp->var.op.argv[0], ecp);
+    if (texp == NULL)
+        return NULL;
+
+    tbp = RDB_expr_to_vtable(texp, ecp, txp);
+    if (tbp == NULL) {
+        RDB_drop_expr(texp, ecp);
+        return NULL;
+    }
+    return tbp;
+}
+
 static int
 evaluate_ro_op(RDB_expression *exp, const RDB_object *tplp,
         RDB_exec_context *ecp, RDB_transaction *txp, RDB_object *valp)
 {
     int ret;
     int i;
-    RDB_expression *texp;
     RDB_object *tbp;
     RDB_object **valpv;
     RDB_object *valv = NULL;
@@ -1402,56 +1433,68 @@ evaluate_ro_op(RDB_expression *exp, const RDB_object *tplp,
     }
 
     if (strcmp(exp->var.op.name, "SUM") == 0) {
-        if (argc != 2) {
-            RDB_raise_invalid_argument("invalid number of arguments to SUM",
-                    ecp);
+        tbp = process_aggr_args(exp, ecp, txp);
+        if (tbp == NULL)
             return RDB_ERROR;
-        }
-        texp = RDB_dup_expr(exp->var.op.argv[0], ecp);
-        if (exp == NULL)
-            return RDB_ERROR;
-        tbp = RDB_expr_to_vtable(texp, ecp, txp);
-        if (tbp == NULL) {
-            RDB_drop_expr(texp, ecp);
-            return RDB_ERROR;
-        }
-        if (exp->var.op.argv[1]->kind != RDB_EX_VAR) {
-            RDB_raise_invalid_argument("invalid argument #2 to SUM",
-                    ecp);
-            RDB_drop_table(tbp, ecp, NULL);
-            return RDB_ERROR;
-        }
         ret = RDB_sum(tbp, exp->var.op.argv[1]->var.varname, ecp, txp, valp);
         RDB_drop_table(tbp, ecp, NULL);
         return ret;
     }
-/* !!
-    if (strcmp(opname, "AVG") == 0) {
-        ret = RDB_avg(tbp, attrname, ecp, txp, &avg);
-        if (ret != RDB_OK)
-            return ret;
-        RDB_double_to_obj(resultp, avg);
-        return RDB_OK;
+    if (strcmp(exp->var.op.name, "AVG") ==  0) {
+        RDB_double res;
+
+        tbp = process_aggr_args(exp, ecp, txp);
+        if (tbp == NULL)
+            return RDB_ERROR;
+        ret = RDB_avg(tbp, exp->var.op.argv[1]->var.varname, ecp, txp, &res);
+        RDB_drop_table(tbp, ecp, NULL);
+        if (ret == RDB_OK) {
+            RDB_double_to_obj(valp, res);
+        }
+        return ret;
     }
-    if (strcmp(opname, "MAX") == 0)
-        return RDB_max(tbp, attrname, ecp, txp, resultp);
-    if (strcmp(opname, "MIN") == 0)
-        return RDB_min(tbp, attrname, ecp, txp, resultp);
-    if (strcmp(opname, "ALL") == 0) {
-        ret = RDB_all(tbp, attrname, ecp, txp, &b);
-        if (ret != RDB_OK)
-            return ret;
-        RDB_bool_to_obj(resultp, b);
-        return RDB_OK;
+    if (strcmp(exp->var.op.name, "MIN") ==  0) {
+        tbp = process_aggr_args(exp, ecp, txp);
+        if (tbp == NULL)
+            return RDB_ERROR;
+        ret = RDB_min(tbp, exp->var.op.argv[1]->var.varname, ecp, txp, valp);
+        RDB_drop_table(tbp, ecp, NULL);
+        return ret;
     }
-    if (strcmp(opname, "ANY") == 0) {
-        ret = RDB_any(tbp, attrname, ecp, txp, &b);
-        if (ret != RDB_OK)
-            return ret;
-        RDB_bool_to_obj(resultp, b);
-        return RDB_OK;
+    if (strcmp(exp->var.op.name, "MAX") ==  0) {
+        tbp = process_aggr_args(exp, ecp, txp);
+        if (tbp == NULL)
+            return RDB_ERROR;
+        ret = RDB_max(tbp, exp->var.op.argv[1]->var.varname, ecp, txp, valp);
+        RDB_drop_table(tbp, ecp, NULL);
+        return ret;
     }
-*/
+    if (strcmp(exp->var.op.name, "ALL") ==  0) {
+        RDB_bool res;
+
+        tbp = process_aggr_args(exp, ecp, txp);
+        if (tbp == NULL)
+            return RDB_ERROR;
+        ret = RDB_all(tbp, exp->var.op.argv[1]->var.varname, ecp, txp, &res);
+        RDB_drop_table(tbp, ecp, NULL);
+        if (ret == RDB_OK) {
+            RDB_bool_to_obj(valp, res);
+        }
+        return ret;
+    }
+    if (strcmp(exp->var.op.name, "ANY") ==  0) {
+        RDB_bool res;
+
+        tbp = process_aggr_args(exp, ecp, txp);
+        if (tbp == NULL)
+            return RDB_ERROR;
+        ret = RDB_any(tbp, exp->var.op.argv[1]->var.varname, ecp, txp, &res);
+        RDB_drop_table(tbp, ecp, NULL);
+        if (ret == RDB_OK) {
+            RDB_bool_to_obj(valp, res);
+        }
+        return ret;
+    }
     valpv = malloc(argc * sizeof (RDB_object *));
     if (valpv == NULL) {
         RDB_raise_no_memory(ecp);
@@ -1498,54 +1541,6 @@ cleanup:
     free(valpv);
     return ret;
 }
-
-#ifdef REMOVED
-static int
-aggregate(RDB_object *tbp, const char *opname, const char *attrname,
-          RDB_exec_context *ecp, RDB_transaction *txp, RDB_object *resultp)
-{
-    int ret;
-    RDB_double avg;
-    RDB_bool b;
-
-    if (strcmp(opname, "COUNT") == 0) {
-        ret = RDB_cardinality(tbp, ecp, txp);
-        if (ret < 0)
-            return ret;
-        RDB_int_to_obj(resultp, ret);
-        return RDB_OK;
-    }
-    if (strcmp(opname, "SUM") == 0)
-        return RDB_sum(tbp, attrname, ecp, txp, resultp);
-    if (strcmp(opname, "AVG") == 0) {
-        ret = RDB_avg(tbp, attrname, ecp, txp, &avg);
-        if (ret != RDB_OK)
-            return ret;
-        RDB_double_to_obj(resultp, avg);
-        return RDB_OK;
-    }
-    if (strcmp(opname, "MAX") == 0)
-        return RDB_max(tbp, attrname, ecp, txp, resultp);
-    if (strcmp(opname, "MIN") == 0)
-        return RDB_min(tbp, attrname, ecp, txp, resultp);
-    if (strcmp(opname, "ALL") == 0) {
-        ret = RDB_all(tbp, attrname, ecp, txp, &b);
-        if (ret != RDB_OK)
-            return ret;
-        RDB_bool_to_obj(resultp, b);
-        return RDB_OK;
-    }
-    if (strcmp(opname, "ANY") == 0) {
-        ret = RDB_any(tbp, attrname, ecp, txp, &b);
-        if (ret != RDB_OK)
-            return ret;
-        RDB_bool_to_obj(resultp, b);
-        return RDB_OK;
-    }
-    RDB_raise_operator_not_found(opname, ecp);
-    return RDB_ERROR;
-}
-#endif
 
 int
 RDB_evaluate(RDB_expression *exp, const RDB_object *tplp,
