@@ -41,7 +41,7 @@ test aggregate {real tables} -body {
 
     set v [duro::expr {SUM(T, A)} $tx]
     if {$v != 3} {
-        error "invalid COUNT: $v"
+        error "invalid SUM: $v"
     }
 
     set v [duro::expr {AVG(T, A)} $tx]
