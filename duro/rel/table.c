@@ -178,8 +178,11 @@ _RDB_new_rtable(const char *name, RDB_bool persistent,
 int
 RDB_table_keys(RDB_object *tbp, RDB_exec_context *ecp, RDB_string_vec **keyvp)
 {
+    RDB_bool freekey;
+
     if (tbp->var.tb.keyv == NULL) {
-        if (_RDB_infer_keys(tbp->var.tb.exp, ecp, &tbp->var.tb.keyv) != RDB_OK)
+        if (_RDB_infer_keys(tbp->var.tb.exp, ecp, &tbp->var.tb.keyv,
+                &freekey /* !! */) != RDB_OK)
             return RDB_ERROR;
     }
 
@@ -450,7 +453,6 @@ RDB_max(RDB_object *tbp, const char *attrname, RDB_exec_context *ecp,
     RDB_type *attrtyp;
     RDB_object arr;
     RDB_object *tplp;
-    int ret;
     int i;
 
     /* attrname may only be NULL if table is unary */
@@ -487,10 +489,9 @@ RDB_max(RDB_object *tbp, const char *attrname, RDB_exec_context *ecp,
 
     RDB_init_obj(&arr);
 
-    ret = RDB_table_to_array(&arr, tbp, 0, NULL, ecp, txp);
-    if (ret != RDB_OK) {
+    if (RDB_table_to_array(&arr, tbp, 0, NULL, ecp, txp) != RDB_OK) {
         RDB_destroy_obj(&arr, ecp);
-        return ret;
+        return RDB_ERROR;
     }
 
     i = 0;

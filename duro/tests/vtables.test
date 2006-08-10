@@ -96,7 +96,13 @@ test vtables {virtual tables} -body {
 	if {![string match "TYPE_MISMATCH_ERROR(*)" [lindex $errorCode 1]]} {
 	    error "Wrong error: $errorCode"
 	}
-	
+
+    # Involves freeing a key
+    set cnt [duro::expr {COUNT(TJ {K, S1})} $tx]
+    if {$cnt != 2} {
+        error "COUNT is $cnt"
+    }
+
 	duro::table expr -global TX {EXTEND T1 ADD (K*10 AS K0, IF K = 0 THEN "YES" ELSE
 	"NO" AS KIS1)} $tx
 	

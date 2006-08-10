@@ -625,7 +625,13 @@ _RDB_open_table_index(RDB_object *tbp, _RDB_tbindex *indexp,
         RDB_environment *, RDB_exec_context *, RDB_transaction *);
 
 int
-_RDB_infer_keys(RDB_expression *exp, RDB_exec_context *, RDB_string_vec **);
+_RDB_infer_keys(RDB_expression *exp, RDB_exec_context *, RDB_string_vec **,
+        RDB_bool *caller_must_freep);
+
+int
+_RDB_check_project_keyloss(RDB_expression *exp,
+        int keyc, RDB_string_vec *keyv, RDB_bool presv[],
+        RDB_exec_context *ecp);
 
 int
 _RDB_add_builtin_ops(RDB_dbroot *, RDB_exec_context *);

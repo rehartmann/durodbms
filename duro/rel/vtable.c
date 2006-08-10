@@ -60,30 +60,41 @@ _RDB_table_def_equals(RDB_object *tb1p, RDB_object *tb2p, RDB_exec_context *ecp,
     return res;
 }
 
-static int
-check_keyloss(RDB_expression *exp, int attrc, RDB_attr attrv[], RDB_bool presv[],
+/*
+ * Determine which keys are preserved by the projection.
+ *
+ * exp      a PROJECT expression
+ * presv    output - a boolean vector indicating which keys are preserved.
+ *          May be NULL.
+ */
+int
+_RDB_check_project_keyloss(RDB_expression *exp,
+        int keyc, RDB_string_vec *keyv, RDB_bool presv[],
         RDB_exec_context *ecp)
 {
     int i, j, k;
     int count = 0;
-    RDB_string_vec *keyv;
-    int keyc = _RDB_infer_keys(exp, ecp, &keyv); /* !! memory? */
-    if (keyc == RDB_ERROR)
-        return RDB_ERROR;
+    RDB_bool pres;
 
     for (i = 0; i < keyc; i++) {
         for (j = 0; j < keyv[i].strc; j++) {
-            /* Search for key attribute in attrv */
+            /* Search for key attribute in projection attrs */
             for (k = 0;
-                 (k < attrc) && (strcmp(keyv[i].strv[j], attrv[k].name) != 0);
+                 (k < exp->var.op.argc - 1)
+                        && (strcmp(keyv[i].strv[j],
+                            RDB_obj_string(&exp->var.op.argv[k + 1]->var.obj)) != 0);
                  k++);
             /* If not found, exit loop */
-            if (k >= attrc)
+            if (k >= exp->var.op.argc - 1)
                 break;
         }
         /* If the loop didn't terminate prematurely, the key is preserved */
-        presv[i] = (RDB_bool) (j >= keyv[i].strc);
-        if (presv[i])
+        pres = (RDB_bool) (j >= keyv[i].strc);
+
+        if (presv != NULL) {
+            presv[i] = pres;
+        }
+        if (pres)
             count++;
     }
     return count;
@@ -132,11 +143,12 @@ infer_join_keys(RDB_expression *exp, RDB_exec_context *ecp,
     int newkeyc;
     RDB_string_vec *keyv1, *keyv2;
     RDB_string_vec *newkeyv;
+    RDB_bool free1, free2;
 
-    keyc1 = _RDB_infer_keys(exp->var.op.argv[0], ecp, &keyv1);
+    keyc1 = _RDB_infer_keys(exp->var.op.argv[0], ecp, &keyv1, &free1 /* !! */);
     if (keyc1 < 0)
         return keyc1;
-    keyc2 = _RDB_infer_keys(exp->var.op.argv[0], ecp, &keyv2);
+    keyc2 = _RDB_infer_keys(exp->var.op.argv[0], ecp, &keyv2, &free2 /* !! */);
     if (keyc2 < 0)
         return keyc2;
 
@@ -183,17 +195,15 @@ error:
 
 static int
 infer_project_keys(RDB_expression *exp, RDB_exec_context *ecp,
-        RDB_string_vec **keyvp)
+        RDB_string_vec **keyvp, RDB_bool *caller_must_freep)
 {
     int keyc;
     int newkeyc;
     RDB_string_vec *keyv;
     RDB_string_vec *newkeyv;
     RDB_bool *presv;
-    RDB_bool keyloss;
-    RDB_type *tbtyp = RDB_expr_type(exp, NULL, ecp, NULL);
-    
-    keyc = _RDB_infer_keys(exp->var.op.argv[0], ecp, &keyv);
+
+    keyc = _RDB_infer_keys(exp->var.op.argv[0], ecp, &keyv, caller_must_freep);
     if (keyc < 0)
         return keyc;
 
@@ -202,11 +212,8 @@ infer_project_keys(RDB_expression *exp, RDB_exec_context *ecp,
         RDB_raise_no_memory(ecp);
         return RDB_ERROR;
     }
-    newkeyc = check_keyloss(exp->var.op.argv[0],
-            tbtyp->var.basetyp->var.tuple.attrc,
-            tbtyp->var.basetyp->var.tuple.attrv, presv, ecp);
-    keyloss = (RDB_bool) (newkeyc == 0);
-    if (keyloss) {
+    newkeyc = _RDB_check_project_keyloss(exp, keyc, keyv, presv, ecp);
+    if (newkeyc == 0) {
         /* Table is all-key */
         newkeyc = 1;
         newkeyv = all_key(exp, ecp);
@@ -243,6 +250,7 @@ infer_project_keys(RDB_expression *exp, RDB_exec_context *ecp,
     }
     free(presv);
     *keyvp = newkeyv;
+    *caller_must_freep = RDB_TRUE;
     return keyc;
 }
 
@@ -289,14 +297,32 @@ infer_group_keys(RDB_expression *exp, RDB_exec_context *ecp,
 
 int
 _RDB_infer_keys(RDB_expression *exp, RDB_exec_context *ecp,
-       RDB_string_vec **keyvp)
+       RDB_string_vec **keyvp, RDB_bool *caller_must_freep)
 {
+    switch (exp->kind) {
+        case RDB_EX_OBJ:
+            *caller_must_freep = RDB_FALSE;
+            return RDB_table_keys(&exp->var.obj, ecp, keyvp);
+        case RDB_EX_TBP:
+            *caller_must_freep = RDB_FALSE;
+            return RDB_table_keys(exp->var.tbref.tbp, ecp, keyvp);
+        case RDB_EX_RO_OP:
+            break;
+        case RDB_EX_VAR:
+        case RDB_EX_TUPLE_ATTR:
+        case RDB_EX_GET_COMP:
+            RDB_raise_invalid_argument("Expression is not a table", ecp);
+            return RDB_ERROR;            
+    }
+    
     if ((strcmp(exp->var.op.name, "WHERE") == 0)
             || (strcmp(exp->var.op.name, "SEMIMINUS") == 0)
             || (strcmp(exp->var.op.name, "SEMIJOIN") == 0)
+            || (strcmp(exp->var.op.name, "INTERSECT") == 0)
             || (strcmp(exp->var.op.name, "EXTEND") == 0)
             || (strcmp(exp->var.op.name, "SDIVIDE") == 0)) {
-        return _RDB_infer_keys(exp->var.op.argv[0], ecp, keyvp);
+        return _RDB_infer_keys(exp->var.op.argv[0], ecp, keyvp,
+                caller_must_freep);
     }
     if ((strcmp(exp->var.op.name, "UNION") == 0)
             || (strcmp(exp->var.op.name, "WRAP") == 0)
@@ -307,19 +333,23 @@ _RDB_infer_keys(RDB_expression *exp, RDB_exec_context *ecp,
             RDB_raise_no_memory(ecp);
             return RDB_ERROR;
         }
+        *caller_must_freep = RDB_TRUE;
         return 1;
     }
     if (strcmp(exp->var.op.name, "JOIN") == 0) {
+        *caller_must_freep = RDB_TRUE;
     	return infer_join_keys(exp, ecp, keyvp);
     }
     if (strcmp(exp->var.op.name, "PROJECT") == 0) {
-    	return infer_project_keys(exp, ecp, keyvp);
+    	return infer_project_keys(exp, ecp, keyvp, caller_must_freep);
     }
+    /* !! REMOVE */
+
     if (strcmp(exp->var.op.name, "SUMMARIZE") == 0) {
-        return _RDB_infer_keys(exp->var.op.argv[1], ecp, keyvp);
+        return _RDB_infer_keys(exp->var.op.argv[1], ecp, keyvp, caller_must_freep);
     }
     if (strcmp(exp->var.op.name, "RENAME") == 0) {
-        int keyc = _RDB_infer_keys(exp->var.op.argv[0], ecp, keyvp);
+        int keyc = _RDB_infer_keys(exp->var.op.argv[0], ecp, keyvp, caller_must_freep);
         /* !!
             newkeyv = dup_rename_keys(keyc, keyv, tbp->var.rename.renc,
                     tbp->var.rename.renv);
@@ -332,10 +362,12 @@ _RDB_infer_keys(RDB_expression *exp, RDB_exec_context *ecp,
         return keyc;
     }
     if (strcmp(exp->var.op.name, "GROUP") == 0) {
+        *caller_must_freep = RDB_TRUE;
         return infer_group_keys(exp, ecp, keyvp);
     }
-    /* Must never be reached */
-    abort();
+
+    RDB_raise_invalid_argument(exp->var.op.name, ecp);
+    return RDB_ERROR;            
 }
 
 RDB_bool

@@ -688,6 +688,7 @@ group_qresult(RDB_qresult *qrp, RDB_exec_context *ecp, RDB_transaction *txp)
     int ret;
     RDB_string_vec *keyv;
     int keyc;
+    RDB_bool freekey;
     RDB_type *reltyp = RDB_expr_type(qrp->exp, NULL, ecp, txp);
     if (reltyp == NULL)
         return RDB_ERROR;
@@ -695,7 +696,7 @@ group_qresult(RDB_qresult *qrp, RDB_exec_context *ecp, RDB_transaction *txp)
     qrp->nested = RDB_FALSE;
 
     /* Need keys */
-    keyc = _RDB_infer_keys(qrp->exp, ecp, &keyv); /* !! */
+    keyc = _RDB_infer_keys(qrp->exp, ecp, &keyv, &freekey); /* !! */
     if (keyc == RDB_ERROR) {
         RDB_drop_type(reltyp, ecp, NULL);
         return RDB_ERROR;
@@ -939,8 +940,7 @@ init_qresult(RDB_qresult *qrp, RDB_object *tbp, RDB_exec_context *ecp,
 }
 
 static int
-expr_dups(RDB_expression *exp, RDB_exec_context *ecp,
-        RDB_bool *resp)
+expr_dups(RDB_expression *exp, RDB_exec_context *ecp, RDB_bool *resp)
 {
     if (exp->kind == RDB_EX_OBJ) {
         assert(exp->var.obj.kind == RDB_OB_TABLE && exp->var.obj.var.tb.exp == NULL);
@@ -982,15 +982,37 @@ expr_dups(RDB_expression *exp, RDB_exec_context *ecp,
         if (*resp)
             return RDB_OK;
     } else if (strcmp(exp->var.op.name, "PROJECT") == 0) {
-#ifdef REMOVED
-        case RDB_TB_PROJECT:
-            if (tbp->keyv == NULL) {
-                /* Get keys and set keyloss flag */
-                RDB_table_keys(tbp, ecp, NULL);
+        int i;
+        int keyc, newkeyc;
+        RDB_string_vec *keyv;
+        RDB_bool freekey;
+
+        if (expr_dups(exp->var.op.argv[0], ecp, resp) != RDB_OK)
+            return RDB_ERROR;
+        if (*resp)
+            return RDB_OK;
+
+        keyc = _RDB_infer_keys(exp->var.op.argv[0], ecp, &keyv, &freekey);
+        if (keyc == RDB_ERROR)
+            return RDB_ERROR;
+
+        newkeyc = _RDB_check_project_keyloss(exp, keyc, keyv, NULL, ecp);
+        if (newkeyc == RDB_ERROR) {
+            if (freekey) {
+                for (i = 0; i < keyc; i++) {
+                    RDB_free_strvec(keyv[i].strc, keyv[i].strv);
+                }
+                free(keyv);
             }
-            return tbp->var.project.keyloss;
-#endif
-        *resp = RDB_TRUE;
+            return RDB_ERROR;
+        }
+        *resp = (RDB_bool) (newkeyc == 0);
+        if (freekey) {
+            for (i = 0; i < keyc; i++) {
+                 RDB_free_strvec(keyv[i].strc, keyv[i].strv);
+            }
+            free(keyv);
+        }
         return RDB_OK;
     }
     *resp = RDB_FALSE;
