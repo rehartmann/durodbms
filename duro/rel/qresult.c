@@ -24,6 +24,8 @@ _RDB_expr_qresult(RDB_expression *exp, RDB_exec_context *,
 static int
 join_qresult(RDB_qresult *qrp, RDB_exec_context *ecp, RDB_transaction *txp)
 {
+    RDB_expression *arg2p;
+    
     /* Create qresult for the first table */   
     qrp->nested = RDB_TRUE;
     qrp->var.children.qrp = _RDB_expr_qresult(qrp->exp->var.op.argv[0],
@@ -33,12 +35,17 @@ join_qresult(RDB_qresult *qrp, RDB_exec_context *ecp, RDB_transaction *txp)
 
     qrp->var.children.tpl_valid = RDB_FALSE;
 
-    /* Create qresult for 2nd table */
-    qrp->var.children.qr2p = _RDB_expr_qresult(qrp->exp->var.op.argv[1],
-            ecp, txp);
-    if (qrp->var.children.qr2p == NULL) {
-        _RDB_drop_qresult(qrp->var.children.qrp, ecp, txp);
-        return RDB_ERROR;
+    /* Create qresult for 2nd table, except if the primary index is used */
+    arg2p = qrp->exp->var.op.argv[1];
+    if (arg2p->kind != RDB_EX_TBP || arg2p->var.tbref.indexp == NULL
+            || !arg2p->var.tbref.indexp->unique) {
+        qrp->var.children.qr2p = _RDB_expr_qresult(arg2p, ecp, txp);
+        if (qrp->var.children.qr2p == NULL) {
+            _RDB_drop_qresult(qrp->var.children.qrp, ecp, txp);
+            return RDB_ERROR;
+        }
+    } else {
+        qrp->var.children.qr2p = NULL;
     }
     return RDB_OK;
 }
@@ -1362,10 +1369,10 @@ next_join_tuple(RDB_qresult *qrp, RDB_object *tplp, RDB_exec_context *ecp,
     /* read first 'outer' tuple, if it's the first invocation */
     if (!qrp->var.children.tpl_valid) {
         RDB_init_obj(&qrp->var.children.tpl);
-        ret = _RDB_next_tuple(qrp->var.children.qrp, &qrp->var.children.tpl,
-                ecp, txp);
-        if (ret != RDB_OK)
+        if (_RDB_next_tuple(qrp->var.children.qrp, &qrp->var.children.tpl,
+                ecp, txp) != RDB_OK) {
             return RDB_ERROR;
+        }
         qrp->var.children.tpl_valid = RDB_TRUE;
     }
 
@@ -1485,7 +1492,6 @@ next_unwrap_tuple(RDB_qresult *qrp, RDB_object *tplp, RDB_exec_context *ecp,
     return RDB_OK;
 }
 
-#ifdef REMOVED
 static int
 seek_index_qresult(RDB_qresult *qrp, _RDB_tbindex *indexp,
         const RDB_object *tplp, RDB_exec_context *ecp)
@@ -1523,11 +1529,7 @@ next_join_tuple_nuix(RDB_qresult *qrp, RDB_object *tplp,
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
     int ret;
-    int i;
-    _RDB_tbindex *indexp = qrp->tbp->var.join.tb2p->var.project.indexp;
-
-    /* tuple type of first ('outer') table */
-    RDB_type *tpltyp1 = qrp->tbp->var.join.tb1p->typ->var.basetyp;
+    _RDB_tbindex *indexp = qrp->exp->var.op.argv[1]->var.tbref.indexp;
 
     /* read first 'outer' tuple, if it's the first invocation */
     if (!qrp->var.children.tpl_valid) {
@@ -1544,57 +1546,34 @@ next_join_tuple_nuix(RDB_qresult *qrp, RDB_object *tplp,
         if (ret != RDB_OK)
             return RDB_ERROR;
     }
-        
+
+    RDB_destroy_obj(tplp, ecp);
+    RDB_init_obj(tplp);
+
     for (;;) {
         /* read next 'inner' tuple */
         ret = next_stored_tuple(qrp->var.children.qr2p,
-                qrp->var.children.qr2p->tbp->var.project.tbp, tplp, RDB_TRUE,
-                RDB_TRUE, qrp->var.children.qr2p->tbp->typ->var.basetyp, ecp,
-                txp);
+                qrp->var.children.qr2p->var.stored.tbp, tplp, RDB_TRUE, RDB_TRUE,
+                qrp->var.children.qr2p->var.stored.tbp->typ->var.basetyp,
+                ecp, txp);
         if (ret != RDB_OK) {
             if (RDB_obj_type(RDB_get_err(ecp)) != &RDB_NOT_FOUND_ERROR) {
                 return RDB_ERROR;
             }
             RDB_clear_err(ecp);
-        }
-        if (ret == RDB_OK) {
-            /* Compare common attributes */
-            RDB_bool iseq = RDB_TRUE;
-            RDB_type *tpltyp = qrp->tbp->var.join.tb1p->typ->var.basetyp;
-
-            /*
-             * If the values of the common attributes are not equal,
-             * skip to next tuple
-             */
-            for (i = 0; (i < tpltyp->var.tuple.attrc) && iseq; i++) {
-                RDB_bool b;
-                char *attrname = tpltyp->var.tuple.attrv[i].name;
-
-                if (RDB_type_attr_type(qrp->tbp->var.join.tb2p->typ, attrname)
-                        != NULL) {
-                    int j;
-
-                    /* Don't compare index attributes */
-                    for (j = 0;
-                         j < indexp->attrc && strcmp(attrname,
-                                 indexp->attrv[j].attrname) != 0;
-                         j++);
-                    if (j >= indexp->attrc) {
-                        ret = RDB_obj_equals(RDB_tuple_get(
-                                &qrp->var.children.tpl, attrname),
-                                RDB_tuple_get(tplp, attrname), ecp, txp, &b);
-                        if (ret != RDB_OK)
-                            return RDB_ERROR;
-                        if (!b)
-                            iseq = RDB_FALSE;
-                    }
-                }
+        } else {
+            RDB_bool match;
+            
+            if (_RDB_tuple_matches(tplp, &qrp->var.children.tpl, ecp, txp,
+                    &match) != RDB_OK) {
+                return RDB_ERROR;
             }
 
-            /* If common attributes are equal, leave the loop,
+            /* 
+             * If common attributes are equal, leave the loop,
              * otherwise read next tuple
              */
-            if (iseq)
+            if (match)
                 break;
             continue;
         }
@@ -1614,16 +1593,7 @@ next_join_tuple_nuix(RDB_qresult *qrp, RDB_object *tplp,
     }
     
     /* join the two tuples into tplp */
-    for (i = 0; i < tpltyp1->var.tuple.attrc; i++) {
-         ret = RDB_tuple_set(tplp, tpltyp1->var.tuple.attrv[i].name,
-                       RDB_tuple_get(&qrp->var.children.tpl,
-                       tpltyp1->var.tuple.attrv[i].name), ecp);
-         if (ret != RDB_OK) {
-             return RDB_ERROR;
-         }
-    }
-
-    return RDB_OK;
+    return RDB_add_tuple(tplp, &qrp->var.children.tpl, ecp, txp);
 }
 
 static int
@@ -1632,11 +1602,10 @@ next_join_tuple_uix(RDB_qresult *qrp, RDB_object *tplp, RDB_exec_context *ecp,
 {
     int ret;
     int i;
-    RDB_bool match;
     RDB_object tpl;
-    RDB_type *tpltyp;
     RDB_object **objpv;
-    _RDB_tbindex *indexp = qrp->tbp->var.join.tb2p->var.project.indexp;
+    RDB_bool match;
+    _RDB_tbindex *indexp = qrp->exp->var.op.argv[1]->var.tbref.indexp;
 
     objpv = malloc(sizeof(RDB_object *) * indexp->attrc);
     if (objpv == NULL) {
@@ -1644,11 +1613,12 @@ next_join_tuple_uix(RDB_qresult *qrp, RDB_object *tplp, RDB_exec_context *ecp,
         return RDB_ERROR;
     }
 
+    RDB_destroy_obj(tplp, ecp);
+    RDB_init_obj(tplp);
+
     RDB_init_obj(&tpl);
 
     do {
-        match = RDB_TRUE;
-    
         ret = _RDB_next_tuple(qrp->var.children.qrp, tplp, ecp, txp);
         if (ret != RDB_OK)
             goto cleanup;
@@ -1656,51 +1626,21 @@ next_join_tuple_uix(RDB_qresult *qrp, RDB_object *tplp, RDB_exec_context *ecp,
         for (i = 0; i < indexp->attrc; i++) {
             objpv[i] = RDB_tuple_get(tplp, indexp->attrv[i].attrname);
         }
-        ret = _RDB_get_by_uindex(qrp->tbp->var.join.tb2p->var.project.tbp,
-                objpv, indexp, qrp->tbp->var.join.tb2p->typ->var.basetyp,
+        ret = _RDB_get_by_uindex(qrp->exp->var.op.argv[1]->var.tbref.tbp,
+                objpv, indexp,
+                qrp->exp->var.op.argv[1]->var.tbref.tbp->typ->var.basetyp,
                 ecp, txp, &tpl);
         if (ret == DB_NOTFOUND) {
-            match = RDB_FALSE;
             continue;
         }
         if (ret != RDB_OK)
             goto cleanup;
 
-        tpltyp = qrp->tbp->var.join.tb2p->typ->var.basetyp;
-        for (i = 0; i < tpltyp->var.tuple.attrc;
-                i++) {
-            char *attrname = tpltyp->var.tuple.attrv[i].name;
-
-            /* Check if the attribute appears in both tables */
-            if (RDB_type_attr_type(qrp->tbp->var.join.tb1p->typ, attrname)
-                    == NULL) {
-                /* No, so copy it */
-                ret = RDB_tuple_set(tplp, attrname,
-                        RDB_tuple_get(&tpl, attrname), ecp);
-                if (ret != RDB_OK)
-                    return RDB_ERROR;
-            } else {
-                /* Yes, so compare attribute values if the attribute
-                 * doesn't appear in the index
-                 */
-                int j;
-
-                for (j = 0; j < indexp->attrc
-                        && strcmp(indexp->attrv[j].attrname, attrname) != 0;
-                        j++);
-                if (j >= indexp->attrc) {
-                    ret = RDB_obj_equals(RDB_tuple_get(&tpl, attrname),
-                            RDB_tuple_get(tplp, attrname), ecp, txp, &match);
-                    if (ret != RDB_OK)
-                        goto cleanup;
-                    if (!match)
-                        break;
-                }
-            }
-        }
+        if (_RDB_tuple_matches(tplp, &tpl, ecp, txp, &match) != RDB_OK)
+            goto cleanup;
     } while (!match);
 
-    ret = RDB_OK;
+    ret = RDB_add_tuple(tplp, &tpl, ecp, txp);
 
 cleanup:
     free(objpv);
@@ -1708,12 +1648,11 @@ cleanup:
 
     return ret;
 }
-#endif
 
 /*
  * Read a tuple from a table using the unique index given by indexp,
  * using the values given by objpv as a key.
- * Read only the attributes in tpltyp.
+ * Read only the attributes in tpltyp. !! DB_NOTFOUND?
  */
 int
 _RDB_get_by_uindex(RDB_object *tbp, RDB_object *objpv[], _RDB_tbindex *indexp,
@@ -2475,7 +2414,17 @@ _RDB_next_tuple(RDB_qresult *qrp, RDB_object *tplp, RDB_exec_context *ecp,
             if (ret != RDB_OK)
                 return RDB_ERROR;
         } else if (strcmp(exp->var.op.name, "JOIN") == 0) {
-            ret = next_join_tuple(qrp, tplp, ecp, txp);
+            if (exp->var.op.argv[1]->kind == RDB_EX_TBP
+                    && exp->var.op.argv[1]->var.tbref.indexp != NULL) {
+                _RDB_tbindex *indexp = exp->var.op.argv[1]->var.tbref.indexp;
+                if (indexp->unique) {
+                    ret = next_join_tuple_uix(qrp, tplp, ecp, txp);
+                } else {
+                    ret = next_join_tuple_nuix(qrp, tplp, ecp, txp);
+                }
+            } else {
+                ret = next_join_tuple(qrp, tplp, ecp, txp);
+            }
             if (ret != RDB_OK)
                 return RDB_ERROR;
         } else if ((strcmp(exp->var.op.name, "MINUS") == 0)

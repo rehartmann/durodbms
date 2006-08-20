@@ -4,43 +4,35 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <assert.h>
+#include <string.h>
 
 RDB_seq_item empseqitv[] = { { "EMPNO", RDB_TRUE } };
 
-static int
-print_table(RDB_object *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
+static void
+check_table(RDB_object *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
 {
-    int ret;
     RDB_object *tplp;
     RDB_object array;
-    RDB_int i;
 
     RDB_init_obj(&array);
 
-    ret = RDB_table_to_array(&array, tbp, 1, empseqitv, ecp, txp);
-    if (ret != RDB_OK) {
-        goto error;
-    }
-    
-    for (i = 0; (tplp = RDB_array_get(&array, i, ecp)) != NULL; i++) {
-        printf("EMPNO: %d\n", (int) RDB_tuple_get_int(tplp, "EMPNO"));
-        printf("NAME: %s\n", RDB_tuple_get_string(tplp, "NAME"));
-        printf("DEPTNO: %d\n", (int) RDB_tuple_get_int(tplp, "DEPTNO"));
-        printf("DEPTNAME: %s\n", RDB_tuple_get_string(tplp, "DEPTNAME"));
-    }
-    if (RDB_obj_type(RDB_get_err(ecp)) != &RDB_NOT_FOUND_ERROR) {
-        goto error;
-    }
-    RDB_clear_err(ecp);
+    assert(RDB_table_to_array(&array, tbp, 1, empseqitv, ecp, txp) == RDB_OK);
 
-    RDB_destroy_obj(&array, ecp);
-    
-    return RDB_OK;
+    assert(RDB_array_length(&array, ecp) == 2);
 
-error:
-    RDB_destroy_obj(&array, ecp);
-    
-    return RDB_ERROR;
+    tplp = RDB_array_get(&array, 0, ecp);
+    assert(RDB_tuple_get_int(tplp, "EMPNO") == 1);
+    assert(strcmp(RDB_tuple_get_string(tplp, "NAME"), "Smith") == 0);
+    assert(RDB_tuple_get_int(tplp, "DEPTNO") == 1);
+    assert(strcmp(RDB_tuple_get_string(tplp, "DEPTNAME"), "Dept. I") == 0);
+
+    tplp = RDB_array_get(&array, 1, ecp);
+    assert(RDB_tuple_get_int(tplp, "EMPNO") == 2);
+    assert(strcmp(RDB_tuple_get_string(tplp, "NAME"), "Jones") == 0);
+    assert(RDB_tuple_get_int(tplp, "DEPTNO") == 2);
+    assert(strcmp(RDB_tuple_get_string(tplp, "DEPTNAME"), "Dept. II") == 0);    
+
+    assert(RDB_destroy_obj(&array, ecp) == RDB_OK);
 }
 
 int
@@ -97,11 +89,7 @@ test_join(RDB_database *dbp, RDB_exec_context *ecp)
         return RDB_ERROR;
     }
     
-    ret = print_table(vtbp, ecp, &tx);
-    if (ret != RDB_OK) {
-        RDB_rollback(ecp, &tx);
-        return ret;
-    }
+    check_table(vtbp, ecp, &tx);
 
     assert(RDB_drop_table(vtbp, ecp, &tx) == RDB_OK);
 

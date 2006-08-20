@@ -75,15 +75,8 @@ SALARY_AFTER_TAX: 0.000000
 NAME_LEN: 5}
 
 test join {JOIN operator} -setup $SETUP -body {
-	exec [configure -testdir]/test_join
-} -result {EMPNO: 1
-NAME: Smith
-DEPTNO: 1
-DEPTNAME: Dept. I
-EMPNO: 2
-NAME: Jones
-DEPTNO: 2
-DEPTNAME: Dept. II}
+	exec [configure -testdir]/test_join >@ stdout
+}
 
 test ra {relational algebra} -setup $SETUP -body {
 	exec [configure -testdir]/test_ra

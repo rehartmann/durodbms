@@ -44,8 +44,6 @@ test index {indexes} -body {
 	    error "Index creation should fail, but succeeded"
 	}
 	
-	duro::index create IX2 T1 {C -} $tx
-	
 	duro::insert T1 {A 1 B Bli C X} $tx
 	duro::insert T1 {A 2 B Bla C Y} $tx
 	duro::insert T1 {A 3 B Bla C X} $tx
@@ -56,7 +54,7 @@ test index {indexes} -body {
 	duro::insert T2 {B Blubb C X E c} $tx
 	
 	duro::table expr t {T1 WHERE B="Bla"} $tx
-	
+
 	# Check if IX1 is used
 	set plan [duro::table getplan t $tx]
 	if {![string match "*INDEX IX1*" $plan]} {
@@ -77,22 +75,40 @@ test index {indexes} -body {
 	}
 	
 	set tpl [duro::array index $ta 1 $tx]
-	set stpl {A 3 B Bla C X D x}
+    set stpl {A 3 B Bla C X D x}
 	if {![tequal $tpl $stpl]} {
 	    error "Tuple should be $stpl, but is $tpl"
 	}
 	
 	duro::array drop $ta
-	duro::table drop t $tx
+    duro::table drop t $tx
 	
-	duro::table expr t {T1 JOIN T2} $tx
+	duro::table expr t {T2 JOIN T1} $tx
+
+	# Check if IX1 is used
+    set plan [duro::table getplan t $tx]
+    if {![string match "*INDEX IX1*" $plan]} {
+       error "IX1 should be used, but is not"
+    }
+
 	set ta [duro::array create t {A asc} $tx]
 	checkarray $ta {{A 1 B Bli C X D x E a} {A 2 B Bla C Y D x E b}} $tx
 	duro::array drop $ta
 	duro::table drop t $tx
-	
+
+	duro::table expr t {T1 JOIN T2} $tx
+    set plan [duro::table getplan t $tx]
+    if {![string match "*INDEX IX1*" $plan]} {
+       error "IX1 should be used, but is not"
+    }
+
+	set ta [duro::array create t {A asc} $tx]
+	checkarray $ta {{A 1 B Bli C X D x E a} {A 2 B Bla C Y D x E b}} $tx
+	duro::array drop $ta
+	duro::table drop t $tx
+
 	duro::commit $tx
-	
+
 	duro::env close $dbenv
 	
 	set dbenv [duro::env open $envdir]
@@ -104,7 +120,7 @@ test index {indexes} -body {
 	if {![tequal $tpl $stpl]} {
 	    error "Tuple should be $stpl, but is $tpl"
 	}
-	
+
 	set tpl [duro::expr {TUPLE FROM (T1 WHERE A=4 AND B="Blubb")} $tx]
 	set stpl {A 4 B Blubb C Y D x}
 	if {![tequal $tpl $stpl]} {
