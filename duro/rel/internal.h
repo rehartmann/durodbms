@@ -47,7 +47,7 @@ struct RDB_expression {
             struct {
                 int objpc;
 
-                /* The following fields are only valid if optinfo > 0 */
+                /* The following fields are only valid if objpc > 0 */
                 RDB_object **objpv;
                 RDB_bool asc;
                 RDB_bool all_eq;
@@ -677,12 +677,7 @@ _RDB_update_real(RDB_object *tbp, RDB_expression *condp, int updc,
         const RDB_attr_update updv[], RDB_exec_context *, RDB_transaction *);
 
 RDB_int
-_RDB_update_select_pindex(RDB_object *, RDB_expression *,
-        int updc, const RDB_attr_update updv[], RDB_exec_context *,
-        RDB_transaction *);
-
-RDB_int
-_RDB_update_select_index(RDB_object *, RDB_expression *,
+_RDB_update_where_index(RDB_expression *, RDB_expression *,
         int updc, const RDB_attr_update updv[], RDB_exec_context *,
         RDB_transaction *);
 
@@ -691,11 +686,7 @@ _RDB_delete_real(RDB_object *tbp, RDB_expression *condp, RDB_exec_context *,
         RDB_transaction *);
 
 RDB_int
-_RDB_delete_select_index(RDB_object *tbp, RDB_expression *condp,
-        RDB_exec_context *, RDB_transaction *);
-
-RDB_int
-_RDB_delete_select_uindex(RDB_object *tbp, RDB_expression *condp,
+_RDB_delete_where_index(RDB_expression *texp, RDB_expression *condp,
         RDB_exec_context *, RDB_transaction *);
 
 void

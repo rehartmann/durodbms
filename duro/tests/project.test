@@ -12,97 +12,100 @@ eval ::tcltest::configure $argv
 namespace import ::tcltest::*
 
 test ltables {transient tables} -body {
-	load [configure -testdir]/../libdurotcl.so
-	source [configure -testdir]/testutil.tcl
+    load [configure -testdir]/../libdurotcl.so
+    source [configure -testdir]/testutil.tcl
 
-	# Create DB environment dir
-	set envdir [makeDirectory dbenv]
+    # Create DB environment dir
+    set envdir [makeDirectory dbenv]
 
-	set dbenv [duro::env open $envdir]
-	
-	# Create Database
-	duro::db create $dbenv TEST
-	
-	set tx [duro::begin $dbenv TEST]
-	
-	# Create real table
-	duro::table create R {
-	   {A INTEGER}
-	   {B STRING yo}
-	   {C STRING}
-	} {{A}} $tx
-	
-	# Create project tables
-	duro::table expr -global P1 {R {ALL BUT B}} $tx
-	duro::table expr -global P2 {R {B}} $tx
-	
-	# Insert tuple into real table
-	duro::insert R {A 1 B Bla C c} $tx
-	duro::insert R {A 2 B Blubb C d} $tx
-	duro::insert R {A 3 B Blubb C e} $tx
-	
-	duro::commit $tx
-	
-	# Close DB environment
-	duro::env close $dbenv
-	
-	# Reopen DB environment
-	set dbenv [duro::env open $envdir]
-	
-	set tx [duro::begin $dbenv TEST]
-	
-	set c [duro::expr {COUNT(P2)} $tx]
-	if {$c !=2 } {
-	    error "COUNT(P2) should be 2, but is $c"
-	}
-	
-	# if {![catch {
-	#     duro::table contains P1 {} $tx
-	# }]} {
-	#     error "P1 contains empty tuple, but should not"
-	# }
-	
-	set tpl {A 1 C c}
-	if {![duro::table contains P1 $tpl $tx]} {
-	    error "P1 does not contain $tpl, but should"
-	}
-	
-	set tpl {A 1 C d}
-	if {[duro::table contains P1 $tpl $tx]} {
-	    error "P1 contains $tpl, but should not"
-	}
-	
-	# Insert tuple into virtual table
-	duro::insert P1 {A 4 C f} $tx
-	
-	# Update table
-	duro::update R {A = 4} A 5 $tx
-	
-	set a [duro::array create R {A asc} $tx]
-	
-	checkarray $a { {A 1 B Bla C c} {A 2 B Blubb C d}
-	       {A 3 B Blubb C e} {A 5 B yo C f} } $tx
-	
-	duro::array drop $a
-	
-	set a [duro::array create P1 {A asc} $tx]
-	
-	checkarray $a { {A 1 C c} {A 2 C d} {A 3 C e} {A 5 C f} } $tx
-	
-	duro::array drop $a
-	
-	set a [duro::array create P2 {B desc} $tx]
-	
-	checkarray $a { {B yo} {B Blubb} {B Bla} } $tx
-	
-	duro::array drop $a
-	
-	# Drop tables
-	duro::table drop P1 $tx
-	duro::table drop P2 $tx
-	duro::table drop R $tx
-	
-	duro::commit $tx
+    set dbenv [duro::env open $envdir]
+    
+    # Create Database
+    duro::db create $dbenv TEST
+    
+    set tx [duro::begin $dbenv TEST]
+    
+    # Create real table
+    duro::table create R {
+       {A INTEGER}
+       {B STRING yo}
+       {C STRING}
+    } {{A}} $tx
+    
+    # Create project tables
+    duro::table expr -global P1 {R {ALL BUT B}} $tx
+    duro::table expr -global P2 {R {B}} $tx
+    
+    # Insert tuple into real table
+    duro::insert R {A 1 B Bla C c} $tx
+    duro::insert R {A 2 B Blubb C d} $tx
+    duro::insert R {A 3 B Blubb C e} $tx
+    
+    duro::commit $tx
+    
+    # Close DB environment
+    duro::env close $dbenv
+    
+    # Reopen DB environment
+    set dbenv [duro::env open $envdir]
+    
+    set tx [duro::begin $dbenv TEST]
+    
+    set c [duro::expr {COUNT(P2)} $tx]
+    if {$c !=2 } {
+        error "COUNT(P2) should be 2, but is $c"
+    }
+
+    if {![catch {
+        duro::table contains P1 {} $tx
+    }]} {
+        error "P1 contains empty tuple, but should not"
+    }
+    
+    set tpl {A 1 C c}
+    if {![duro::table contains P1 $tpl $tx]} {
+        error "P1 does not contain $tpl, but should"
+    }
+    
+    set tpl {A 1 C d}
+    if {[duro::table contains P1 $tpl $tx]} {
+        error "P1 contains $tpl, but should not"
+    }
+    
+    # Insert tuple into virtual table
+    duro::insert P1 {A 4 C f} $tx
+    
+    # Update table
+    duro::update R {A = 4} A 5 $tx
+    
+    set a [duro::array create R {A asc} $tx]
+    
+    checkarray $a { {A 1 B Bla C c} {A 2 B Blubb C d}
+           {A 3 B Blubb C e} {A 5 B yo C f} } $tx
+    
+    duro::array drop $a
+    
+    set a [duro::array create P1 {A asc} $tx]
+    
+    checkarray $a { {A 1 C c} {A 2 C d} {A 3 C e} {A 5 C f} } $tx
+    
+    duro::array drop $a
+    
+    set a [duro::array create P2 {B desc} $tx]
+    
+    checkarray $a { {B yo} {B Blubb} {B Bla} } $tx
+    
+    duro::array drop $a
+
+    # Update projection
+    duro::update P2 B {"yi"} $tx
+
+    # Drop tables
+    duro::table drop P1 $tx
+    duro::table drop P2 $tx
+    duro::table drop R $tx
+    
+    duro::commit $tx
 }
 
 cleanupTests

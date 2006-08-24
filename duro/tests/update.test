@@ -1,0 +1,102 @@
+#!/bin/sh
+# Execute tclsh from the user's PATH \
+exec tclsh "$0" ${1+"$@"}
+
+# $Id$
+#
+# Test update
+#
+
+package require tcltest 2.2
+eval ::tcltest::configure $argv
+namespace import ::tcltest::*
+
+test update_keyindex {real tables} -body {
+    load [configure -testdir]/../libdurotcl.so
+    source [configure -testdir]/testutil.tcl
+
+    # Create DB environment dir
+    set envdir [makeDirectory dbenv]
+
+    set dbenv [duro::env open $envdir]
+    
+    # Create Database
+    duro::db create $dbenv TEST
+    
+    set tx [duro::begin $dbenv TEST]
+    
+    # Create table
+    duro::table create T {
+       {S1 STRING}
+       {I INTEGER}
+       {S2 STRING}
+       {S3 STRING}
+    } {{S1} {I S2}} $tx
+
+    # Need several tuples, otherwise the optimizer
+    # will not use the index
+    duro::insert T {I 1 S1 Bla S2 Bli S3 Blubb} $tx
+    duro::insert T {I 2 S1 Blb S2 Bli S3 Blubb} $tx
+    duro::insert T {I 3 S1 Blc S2 Bli S3 Blubb} $tx
+
+    duro::update T {I = 1 AND S2 = "Bli"} S3 {"Yo"} $tx
+    set stpl {I 1 S1 Bla S2 Bli S3 Yo}
+    set tpl [duro::expr {TUPLE FROM (T WHERE S1="Bla")} $tx]
+    if {![tequal $tpl $stpl]} {
+        error "Tuple should be $stpl, but is $tpl"
+    }
+
+    duro::table drop T $tx
+
+    duro::commit $tx
+
+    duro::db drop $dbenv TEST
+    
+    duro::env close $dbenv
+}
+
+test update_oindex {real tables} -body {
+    load [configure -testdir]/../libdurotcl.so
+    source [configure -testdir]/testutil.tcl
+
+    # Create DB environment dir
+    set envdir [makeDirectory dbenv]
+
+    set dbenv [duro::env open $envdir]
+    
+    # Create Database
+    duro::db create $dbenv TEST
+    
+    set tx [duro::begin $dbenv TEST]
+    
+    # Create table
+    duro::table create T {
+       {S1 STRING}
+       {S2 STRING}
+       {S3 STRING}
+       {S4 STRING}
+    } {{S1}} $tx
+
+    duro::index create IX T {S2 asc} $tx
+
+    # Need several tuples, otherwise the optimizer
+    # will not use the index
+    duro::insert T {S1 Bla S2 Blx S3 x S4 a} $tx
+    duro::insert T {S1 Blb S2 Bly S3 y S4 a} $tx
+    duro::insert T {S1 Blc S2 Blz S3 y S4 a} $tx
+    duro::insert T {S1 Bld S2 Blz S3 y S4 a} $tx
+    duro::insert T {S1 Ble S2 Blz S3 y S4 a} $tx
+
+    duro::update T {S2 <= "Bly" AND S3 = "y"} S4 {"b"} $tx
+    set stpl {S1 Blb S2 Bly S3 y S4 b}
+    set tpl [duro::expr {TUPLE FROM (T WHERE S1="Blb")} $tx]
+    if {![tequal $tpl $stpl]} {
+        error "Tuple should be $stpl, but is $tpl"
+    }
+
+    duro::commit $tx
+    
+    duro::env close $dbenv
+}
+
+cleanupTests

@@ -280,6 +280,7 @@ split_by_index(RDB_expression *texp, _RDB_tbindex *indexp,
             if (ixexp == NULL)
                 return RDB_ERROR;
         }
+
         sitexp = RDB_ro_op("WHERE", 2, ecp);
         if (sitexp == NULL)
             return RDB_ERROR;
@@ -291,6 +292,8 @@ split_by_index(RDB_expression *texp, _RDB_tbindex *indexp,
         sitexp->var.op.optinfo.asc = asc;
         sitexp->var.op.optinfo.all_eq = all_eq;
         sitexp->var.op.optinfo.stopexp = stopexp;
+
+        texp->var.op.argv[0] = sitexp;
     } else {
         /*
          * Convert table to index select
@@ -431,8 +434,7 @@ mutate_where(RDB_expression *texp, RDB_expression **tbpv, int cap,
         {
             _RDB_tbindex *indexp = tbpv[i]->var.tbref.indexp;
             if ((indexp->idxp != NULL && RDB_index_is_ordered(indexp->idxp))
-                    || expr_covers_index(exp, indexp)
-                            == indexp->attrc) {
+                    || expr_covers_index(exp, indexp) == indexp->attrc) {
                 if (split_by_index(nexp, indexp, ecp, txp) != RDB_OK)
                     return RDB_ERROR;
             }

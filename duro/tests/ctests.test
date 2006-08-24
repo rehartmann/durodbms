@@ -6,29 +6,25 @@ package require tcltest 2.2
 eval ::tcltest::configure $argv
 namespace import ::tcltest::*
 
-proc setldpath {} {
-	set ::env(LD_LIBRARY_PATH) [configure -testdir]:[configure -testdir]/..
-}
+set SETUP {catch {removeDirectory dbenv}; makeDirectory dbenv; cd [configure -tmpdir]; exec [configure -testdir]/prepare}
 
-set SETUP {setldpath; catch {removeDirectory dbenv}; makeDirectory dbenv; cd [configure -tmpdir]; exec [configure -testdir]/prepare}
-
-test map {hashmap} -setup {setldpath} -body {
+test map {hashmap} -body {
     exec [configure -testdir]/maptest
 }
 
-test tuple {tuples} -setup {setldpath} -body {
+test tuple {tuples} -body {
     exec [configure -testdir]/tupletest
 } -result {A -> Aaa
 B -> 4711}
 
 test lstables {list all tables} -setup $SETUP -body {
-	exec [configure -testdir]/../util/lstables -e dbenv -d TEST | sort
+    exec [configure -testdir]/../util/lstables -e dbenv -d TEST | sort
 } -result {DEPTS
 EMPS1
 EMPS2}
 
 test where {WHERE operator}  -setup $SETUP -body {
-	exec [configure -testdir]/test_select
+    exec [configure -testdir]/test_select
 } -result {EMPNO: 1
 NAME: Smith
 SALARY: 4000.000000
@@ -37,7 +33,7 @@ NAME: Smith
 SALARY: 4000.000000}
 
 test union {UNION operator}  -setup $SETUP -body {
-	exec [configure -testdir]/test_union
+    exec [configure -testdir]/test_union
 } -result {EMPNO: 1
 NAME: Smith
 DEPTNO: 1
@@ -52,17 +48,17 @@ DEPTNO: 2
 SALARY: 4000.000000}
 
 test minus {MINUS operator}  -setup $SETUP -body {
-	exec [configure -testdir]/test_minus
+    exec [configure -testdir]/test_minus
 } -result {EMPNO: 2
 NAME: Jones}
 
 test intersect {INTERSECT operator}  -setup $SETUP -body {
-	exec [configure -testdir]/test_intersect
+    exec [configure -testdir]/test_intersect
 } -result {EMPNO: 1
 NAME: Smith}
 
 test extend {EXTEND operator}  -setup $SETUP -body {
-	exec [configure -testdir]/test_extend
+    exec [configure -testdir]/test_extend
 } -result {EMPNO: 1
 NAME: Smith
 SALARY: 4000.000000
@@ -75,16 +71,16 @@ SALARY_AFTER_TAX: 0.000000
 NAME_LEN: 5}
 
 test join {JOIN operator} -setup $SETUP -body {
-	exec [configure -testdir]/test_join >@ stdout
+    exec [configure -testdir]/test_join >@ stdout
 }
 
 test ra {relational algebra} -setup $SETUP -body {
-	exec [configure -testdir]/test_ra
+    exec [configure -testdir]/test_ra
 } -result {NAME: Smith}
 
 test view {views} -setup $SETUP -body {
-	exec [configure -testdir]/test_create_view
-	exec [configure -testdir]/test_print_view
+    exec [configure -testdir]/test_create_view
+    exec [configure -testdir]/test_print_view
 } -result {Table SALARIES
 Table EMPS1H
 EMPNO: 2
@@ -106,7 +102,7 @@ DEPARTMENT: 2
 MAX_SALARY: 4100.000000}
 
 test keys {keys} -setup $SETUP -body {
-	exec [configure -testdir]/test_keys
+    exec [configure -testdir]/test_keys
 }
 
 test project {project} -setup $SETUP -body {
@@ -199,7 +195,7 @@ X=1.000000, Y=2.000000
 X=1.000000, Y=2.000000}
 
 test 2db {two databases} -setup $SETUP -body {
-	exec [configure -testdir]/test_2db
+    exec [configure -testdir]/test_2db
 }
 
 test op {user-defined operators} -setup $SETUP -body {

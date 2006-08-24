@@ -15,9 +15,9 @@ bdbhome = '/usr/local/BerkeleyDB.4.4'
 env = Environment(ENV = os.environ)
 
 if env['PLATFORM'] == 'win32':
-	installdir = 'C:/duro'
+    installdir = 'C:/duro'
 else:
-	installdir = '/usr/local/duro.0.12'
+    installdir = '/usr/local/duro.0.12'
 
 env.Replace(CPPPATH = ['.', bdbhome + '/include'])
 env.Replace(LIBPATH = ['.', bdbhome + '/lib'])
@@ -25,11 +25,11 @@ env.Replace(YACCFLAGS = '-d')
 env.Replace(RPATH = [installdir + '/lib', bdbhome + '/lib'])
 
 if env['PLATFORM'] == 'win32':
-	env.Replace(LIBS = ['duro', 'libdb44', 'libltdl'])
-	durolibs = ['libdb44', 'libltdl', 'libregex']
+    env.Replace(LIBS = ['duro', 'libdb44', 'libltdl'])
+    durolibs = ['libdb44', 'libltdl', 'libregex']
 else:
-	env.Replace(LIBS = ['duro', 'db', 'ltdl', 'm'])
-	durolibs = ['db', 'ltdl']
+    env.Replace(LIBS = ['duro', 'db', 'ltdl', 'm'])
+    durolibs = ['db', 'ltdl']
 
 if (os.environ.has_key('CFLAGS')):
     env.Replace(CCFLAGS = os.environ['CFLAGS'])
@@ -55,10 +55,10 @@ durosrc = ['gen/hashmap.c', 'gen/hashmapit.c',
     'dli/exparse.c', 'dli/exlex.c', 'dli/parse.c', 'dli/tabletostr.c']
 
 if env['PLATFORM'] == 'win32':
-	durosrc.append('duro.def')
-	duroccflags = '/DNO_DLL_IMPORT'
+    durosrc.append('duro.def')
+    duroccflags = '/DNO_DLL_IMPORT'
 else:
-	duroccflags = env['CCFLAGS']
+    duroccflags = env['CCFLAGS']
 
 libduro = env.SharedLibrary('duro', durosrc,
     LIBS = durolibs, CCFLAGS = duroccflags)
@@ -68,16 +68,16 @@ libduro = env.SharedLibrary('duro', durosrc,
 #
 
 durotclsrc = ['tcl/duro.c', 'tcl/envcmd.c',
-	'tcl/txcmd.c', 'tcl/tablecmd.c', 'tcl/dbcmd.c', 'tcl/arraycmd.c',
-	'tcl/opcmd.c', 'tcl/exprcmd.c', 'tcl/typecmd.c', 'tcl/indexcmd.c',
-	'tcl/insertcmd.c', 'tcl/updatecmd.c', 'tcl/constrcmd.c',
-	'tcl/massigncmd.c']
+        'tcl/txcmd.c', 'tcl/tablecmd.c', 'tcl/dbcmd.c', 'tcl/arraycmd.c',
+        'tcl/opcmd.c', 'tcl/exprcmd.c', 'tcl/typecmd.c', 'tcl/indexcmd.c',
+        'tcl/insertcmd.c', 'tcl/updatecmd.c', 'tcl/constrcmd.c',
+        'tcl/massigncmd.c']
 
 libdurotcllibs = ['duro']
 
 if env['PLATFORM'] == 'win32':
-	durotclsrc.append('durotcl.def')
-	libdurotcllibs += ['tcl84', 'libdb44']
+        durotclsrc.append('durotcl.def')
+        libdurotcllibs += ['tcl84', 'libdb44']
 
 libdurotcl = env.SharedLibrary('durotcl', durotclsrc, LIBS = libdurotcllibs)
 
@@ -141,14 +141,14 @@ testenv.SharedLibrary('tests/plus.c')
 env.Alias('install', installdir)
 
 env.Install(installdir + '/include/gen',
-	Split('gen/hashmap.h gen/hashmapit.h gen/hashtable.h '
+        Split('gen/hashmap.h gen/hashmapit.h gen/hashtable.h '
         'gen/hashtabit.h gen/strfns.h gen/types.h'))
 env.Install(installdir + '/include/rec',
     Split('rec/cursor.h rec/env.h rec/index.h rec/recmap.h'))
 env.Install(installdir + '/include/rel',
     Split('rel/rdb.h rel/typeimpl.h dli/parse.h'))
 env.Install(installdir + '/bin',
-	['tcl/duroadmin.tcl', 'tcl/durodump.tcl'])
+        ['tcl/duroadmin.tcl', 'tcl/durodump.tcl'])
 
 env.Install(installdir + '/lib', libduro)
 dst_libdurotcl = env.Install(installdir + '/lib', libdurotcl)
@@ -161,14 +161,19 @@ env.Command(installdir + '/lib/pkgIndex.tcl',
         'tclsh .tmp.tcl'])
 
 env.Install(installdir + '/docs',
-	['docs/api-spec.html', 'docs/expressions.html', 'docs/utils.html'])
+        ['docs/api-spec.html', 'docs/expressions.html', 'docs/utils.html'])
 
 env.Install(installdir + '/docs/tcl',
-	Split('docs/tcl/index.html docs/tcl/array.html '
-		'docs/tcl/begin.html docs/tcl/call.html '
-		'docs/tcl/commit.html docs/tcl/db.html docs/tcl/delete.html '
-		'docs/tcl/env.html docs/tcl/expr.html docs/tcl/insert.html '
-		'docs/tcl/operator.html docs/tcl/ptable.html docs/tcl/rollback.html '
-		'docs/tcl/txdb.html docs/tcl/table.html docs/tcl/update.html '
-		'docs/tcl/type.html docs/tcl/indexcmd.html docs/tcl/constraint.html '
-		'docs/tcl/massign.html docs/tcl/errorCode.html'))
+        Split('docs/tcl/index.html docs/tcl/array.html '
+                'docs/tcl/begin.html docs/tcl/call.html '
+                'docs/tcl/commit.html docs/tcl/db.html docs/tcl/delete.html '
+                'docs/tcl/env.html docs/tcl/expr.html docs/tcl/insert.html '
+                'docs/tcl/operator.html docs/tcl/ptable.html docs/tcl/rollback.html '
+                'docs/tcl/txdb.html docs/tcl/table.html docs/tcl/update.html '
+                'docs/tcl/type.html docs/tcl/indexcmd.html docs/tcl/constraint.html '
+                'docs/tcl/massign.html docs/tcl/errorCode.html'))
+
+check = env.Command('tests/passed', [libduro, libdurotcl],
+        "tests/all.tcl -verbose '{pass error}'")
+
+env.Alias('check', check)

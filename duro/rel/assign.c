@@ -615,56 +615,6 @@ resolve_insert_expr(RDB_expression *exp, const RDB_object *tplp,
     if (strcmp(exp->var.op.name, "PROJECT") == 0) {
         return resolve_insert_expr(exp->var.op.argv[0], tplp, insnpp, ecp, txp);
     }
-#ifdef REMOVED
-    if (strcmp(exp->var.op.name, "JOIN") == 0) {
-        if (RDB_table_contains(insp->tbp->var.join.tb1p, insp->tplp,
-                ecp, txp, &b) != RDB_OK) {
-            return RDB_ERROR;
-        }
-        if (RDB_table_contains(insp->tbp->var.join.tb2p, insp->tplp,
-                ecp, txp, &b2) != RDB_OK) {
-            return RDB_ERROR;
-        }
-
-        /*
-         * If both 'subtables' contain the tuple, the insert fails
-         */
-        if (b && b2) {
-            RDB_raise_element_exists("tuple is already in table", ecp);
-            return RDB_ERROR;
-        }
-
-        /*
-         * Insert the tuple into the table(s) which do not contain it
-         */
-        *inslpp = NULL;
-        if (!b) {
-            ins.tbp = insp->tbp->var.join.tb1p;
-            ins.tplp = insp->tplp;
-            ret = resolve_insert(tbp, tplp, inslpp, ecp, txp);
-            if (ret != RDB_OK)
-                return RDB_ERROR;
-        }
-        if (!b2) {
-            insert_node *hinsnp;
-
-            ins.tbp = insp->tbp->var.join.tb2p;
-            ins.tplp = insp->tplp;
-            ret = resolve_insert(&ins, &hinsnp, ecp, txp);
-            if (ret != RDB_OK) {
-                if (*inslpp != NULL)
-                    del_inslist(*inslpp, ecp);
-                return RDB_ERROR;
-            }
-            if (*inslpp == NULL) {
-                *inslpp = hinsnp;
-            } else {
-                concat_inslists(inslpp, hinsnp);
-            }
-        }
-        return RDB_OK;
-    }
-#endif
     if (strcmp(exp->var.op.name, "RENAME") == 0) {
         RDB_object tpl;
 
@@ -729,103 +679,73 @@ resolve_insert(RDB_object *tbp, const RDB_object *tplp, insert_node **insnpp,
     return resolve_insert_expr(tbp->var.tb.exp, tplp, insnpp, ecp, txp);
 }
 
+static int
+resolve_update(RDB_object *tbp, RDB_expression *condp,
+        int updc, RDB_attr_update *updv, update_node **updnpp,
+        RDB_exec_context *ecp, RDB_transaction *txp);
+
 static update_node *
-new_update_node(const RDB_ma_update *updp, RDB_exec_context *ecp)
+new_update_node(RDB_object *tbp, RDB_expression *condp,
+        int updc, RDB_attr_update *updv, RDB_exec_context *ecp)
 {
     update_node *nupdnp = malloc(sizeof (update_node));
     if (nupdnp == NULL)
         return NULL;
-    if (updp->condp == NULL) {
+    if (condp == NULL) {
         nupdnp->upd.condp = NULL;
     } else {
-        nupdnp->upd.condp = RDB_dup_expr(updp->condp, ecp);
+        nupdnp->upd.condp = RDB_dup_expr(condp, ecp);
         if (nupdnp->upd.condp == NULL) {
             free(nupdnp);
             return NULL;
         }
     }
-    nupdnp->upd.tbp = updp->tbp;
-    nupdnp->upd.updc = updp->updc;
-    nupdnp->upd.updv = updp->updv;
+    nupdnp->upd.tbp = tbp;
+    nupdnp->upd.updc = updc;
+    nupdnp->upd.updv = updv;
     nupdnp->nextp = NULL;
     return nupdnp;
 }
 
 static int
-resolve_update(const RDB_ma_update *updp, update_node **updnpp,
-               RDB_exec_context *ecp, RDB_transaction *txp)
+resolve_update_expr(RDB_expression *texp, RDB_expression *condp,
+    int updc, RDB_attr_update *updv, update_node **updnpp,
+    RDB_exec_context *ecp, RDB_transaction *txp)
 {
-/*
-    RDB_ma_update upd;
-    update_node *updnp;
-    int ret;
-*/
-   	if (updp->tbp->var.tb.exp == NULL) {
-       *updnpp = new_update_node(updp, ecp);
-       if (*updnpp == NULL)
-            return RDB_ERROR;
-       return RDB_OK;
+    if (texp->kind == RDB_EX_TBP) {
+        return resolve_update(texp->var.tbref.tbp, condp, updc, updv,
+                updnpp, ecp, txp);
     }
-    RDB_raise_not_supported("resolve_update mit virtueller Tabelle", ecp);
-    return RDB_ERROR;
 
-#ifdef REMOVED
-    switch (updp->tbp->kind) {
-        case RDB_TB_REAL:
-            *updnpp = new_update_node(updp, ecp);
-            if (*updnpp == NULL)
-                return RDB_ERROR;
-            return RDB_OK;
-        case RDB_TB_SELECT:
-            upd.tbp = updp->tbp->var.select.tbp;
-            upd.condp = updp->condp;
-            upd.updc = updp->updc;
-            upd.updv = updp->updv;
-            ret = resolve_update(&upd, updnpp, ecp, txp);
-            if (ret != RDB_OK)
-                return ret;
-
-            updnp = *updnpp;
-            while (updnp != NULL) {
-                if (updnp->upd.condp == NULL) {
-                    updnp->upd.condp = RDB_dup_expr(updp->tbp->var.select.exp,
-                            ecp);
-                    if (updnp->upd.condp == NULL) {
-                        del_updlist(*updnpp, ecp);
-                        return RDB_ERROR;
-                    }
-                } else {
-                    RDB_expression *ncondp;
-                    RDB_expression *hcondp = RDB_dup_expr(
-                            updp->tbp->var.select.exp, ecp);
-                    if (hcondp == NULL) {
-                        del_updlist(*updnpp, ecp);
-                        return RDB_ERROR;
-                    }
-                    ncondp = RDB_ro_op_va("AND", ecp, hcondp, updnp->upd.condp,
-                            (RDB_expression *) NULL);
-                    if (ncondp == NULL) {
-                        RDB_drop_expr(hcondp, ecp);
-                        del_updlist(*updnpp, ecp);
-                        return RDB_ERROR;
-                    }                        
-                    updnp->upd.condp = ncondp;
-                }
-                updnp = updnp->nextp;
-            }
-            return RDB_OK;
-        case RDB_TB_PROJECT:
-            upd.tbp = updp->tbp->var.project.tbp;
-            upd.condp = updp->condp;
-            upd.updc = updp->updc;
-            upd.updv = updp->updv;
-            return resolve_update(&upd, updnpp, ecp, txp);
-        default: ;            
+    if (texp->kind != RDB_EX_RO_OP) {
+        RDB_raise_not_supported("tried to update invalid virtual table", ecp);
+        return RDB_ERROR;
     }
+
+    if (strcmp(texp->var.op.name, "PROJECT") == 0) {
+        return resolve_update_expr(texp->var.op.argv[0],
+                condp, updc, updv, updnpp, ecp, txp);
+    }
+
     RDB_raise_not_supported(
             "Update is not supported for this virtual table", ecp);
-    return RDB_ERROR;
-#endif
+    return RDB_ERROR;   
+}
+
+static int
+resolve_update(RDB_object *tbp, RDB_expression *condp,
+        int updc, RDB_attr_update *updv, update_node **updnpp,
+        RDB_exec_context *ecp, RDB_transaction *txp)
+{
+    RDB_expression *exp = tbp->var.tb.exp;
+
+   	if (exp == NULL) {
+        *updnpp = new_update_node(tbp, condp, updc, updv, ecp);
+        if (*updnpp == NULL)
+            return RDB_ERROR;
+        return RDB_OK;
+    }
+    return resolve_update_expr(exp, condp, updc, updv, updnpp, ecp, txp);
 }
 
 static delete_node *
@@ -999,45 +919,27 @@ do_update(const RDB_ma_update *updp, RDB_exec_context *ecp, RDB_transaction *txp
         return _RDB_update_real(nexp->var.tbref.tbp, NULL, updp->updc, updp->updv,
                 ecp, txp);
     }
-    if (nexp->kind == RDB_EX_RO_OP && strcmp (nexp->var.op.name, "WHERE") == 0
-            && nexp->var.op.argv[0]->kind == RDB_EX_TBP) {
-        return _RDB_update_real(nexp->var.op.argv[0]->var.tbref.tbp,
-                nexp->var.op.argv[1], updp->updc, updp->updv, ecp, txp);
+    if (nexp->kind == RDB_EX_RO_OP && strcmp (nexp->var.op.name, "WHERE") == 0) {
+        if (nexp->var.op.optinfo.objpc > 0) {
+            return _RDB_update_where_index(nexp, NULL, updp->updc, updp->updv,
+                    ecp, txp);
+        }
+
+        if (nexp->var.op.argv[0]->kind == RDB_EX_RO_OP
+                && strcmp(nexp->var.op.argv[0]->var.op.name, "WHERE") == 0
+                && nexp->var.op.argv[0]->var.op.optinfo.objpc > 0) {
+            return _RDB_update_where_index(nexp->var.op.argv[0],
+                    nexp->var.op.argv[1], updp->updc, updp->updv,
+                    ecp, txp);
+        }
+
+        if (nexp->var.op.argv[0]->kind == RDB_EX_TBP) {
+            return _RDB_update_real(nexp->var.op.argv[0]->var.tbref.tbp,
+                    nexp->var.op.argv[1], updp->updc, updp->updv, ecp, txp);
+        }
     }
     RDB_raise_not_supported("Unsupported update", ecp);
     return RDB_ERROR;
-
-#ifdef REMOVED
-    /* !! drop select */
-    _RDB_free_table(tbp, ecp);
-
-    if (ret != RDB_OK) {
-        return RDB_ERROR;
-    }
-
-    if (ntbp->var.select.tbp->kind == RDB_TB_SELECT) {
-        condp = ntbp->var.select.exp;
-        dtbp = ntbp->var.select.tbp;
-    } else {
-        condp = NULL;
-        dtbp = ntbp;
-    }
-
-    if (dtbp->var.select.tbp->var.project.indexp != NULL) {
-        if (dtbp->var.select.tbp->var.project.indexp->idxp == NULL) {
-            rcount = _RDB_update_select_pindex(dtbp, condp,
-                    updp->updc, updp->updv, ecp, txp);
-        } else {
-            rcount = _RDB_update_select_index(dtbp, condp,
-                    updp->updc, updp->updv, ecp, txp);
-        }
-    } else {
-        rcount = _RDB_update_real(ntbp->var.select.tbp->var.project.tbp,
-                ntbp->var.select.exp, updp->updc, updp->updv, ecp, txp);
-    }
-    RDB_drop_table(ntbp, ecp, NULL);
-    return rcount;
-#endif
 }
 
 static RDB_int
@@ -1071,57 +973,28 @@ do_delete(const RDB_ma_delete *delp, RDB_exec_context *ecp,
     if (nexp == NULL)
         return RDB_ERROR;
 
-    /* !! drop select - index delete */
     if (nexp->kind == RDB_EX_TBP) {
         return _RDB_delete_real(nexp->var.tbref.tbp, NULL, ecp, txp);
     }
-    if (nexp->kind == RDB_EX_RO_OP && strcmp (nexp->var.op.name, "WHERE") == 0
-            && nexp->var.op.argv[0]->kind == RDB_EX_TBP) {
-        return _RDB_delete_real(nexp->var.op.argv[0]->var.tbref.tbp,
-                nexp->var.op.argv[1], ecp, txp);
+    if (nexp->kind == RDB_EX_RO_OP && strcmp (nexp->var.op.name, "WHERE") == 0) {
+        if (nexp->var.op.optinfo.objpc > 0) {
+            return _RDB_delete_where_index(nexp, NULL, ecp, txp);
+        }
+
+        if (nexp->var.op.argv[0]->kind == RDB_EX_RO_OP
+                && strcmp(nexp->var.op.argv[0]->var.op.name, "WHERE") == 0
+                && nexp->var.op.argv[0]->var.op.optinfo.objpc > 0) {
+            return _RDB_delete_where_index(nexp->var.op.argv[0],
+                    nexp->var.op.argv[1], ecp, txp);
+        }
+
+        if (nexp->var.op.argv[0]->kind == RDB_EX_TBP) {
+            return _RDB_delete_real(nexp->var.op.argv[0]->var.tbref.tbp,
+                    nexp->var.op.argv[1], ecp, txp);
+        }
     }
     RDB_raise_not_supported("Unsupported delete", ecp);
     return RDB_ERROR;
-
-#ifdef REMOVED
-    if (delp->condp != NULL) {
-        tbp = _RDB_select(delp->tbp, delp->condp, ecp);
-        if (tbp == NULL)
-            return RDB_ERROR;
-    } else {
-        tbp = delp->tbp;
-    }
-
-    ret = _RDB_optimize(tbp, 0, NULL, ecp, txp, &ntbp);
-
-    /* drop select */
-    _RDB_free_table(tbp, ecp);
-
-    if (ret != RDB_OK) {
-        return RDB_ERROR;
-    }
-
-    if (ntbp->var.select.tbp->kind == RDB_TB_SELECT) {
-        condp = ntbp->var.select.exp;
-        dtbp = ntbp->var.select.tbp;
-    } else {
-        condp = NULL;
-        dtbp = ntbp;
-    }
-
-    if (dtbp->var.select.tbp->var.project.indexp != NULL) {
-        if (dtbp->var.select.tbp->var.project.indexp->unique) {
-            rcount = _RDB_delete_select_uindex(dtbp, condp, ecp, txp);
-        } else {
-            rcount = _RDB_delete_select_index(dtbp, condp, ecp, txp);
-        }
-    } else {
-        rcount = _RDB_delete_real(ntbp->var.select.tbp->var.project.tbp,
-                ntbp->var.select.exp, ecp, txp);
-    }
-    RDB_drop_table(ntbp, ecp, NULL);
-    return rcount;
-#endif
 }
 
 static int
@@ -1223,7 +1096,8 @@ resolve_updates(int updc, const RDB_ma_update *updv, RDB_ma_update **nupdvp,
     for (i = 0; i < updc; i++) {
         if (updv[i].tbp->var.tb.exp != NULL) {
             /* Convert virtual table updates to real table updates */
-            ret = resolve_update(&updv[i], &updnp, ecp, txp);
+            ret = resolve_update(updv[i].tbp, updv[i].condp,
+                    updv[i].updc, updv[i].updv, &updnp, ecp, txp);
             if (ret != RDB_OK)
                 goto cleanup;
 

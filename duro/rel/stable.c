@@ -749,8 +749,8 @@ RDB_create_table_index(const char *name, RDB_object *tbp, int idxcompc,
     if (tbp->var.tb.is_persistent) {
         /* Insert index into catalog */
         ret = _RDB_cat_insert_index(name, idxcompc, idxcompv,
-                (RDB_bool) (RDB_UNIQUE & flags),
-                (RDB_bool) (RDB_ORDERED & flags), RDB_table_name(tbp),
+                (RDB_bool) ((RDB_UNIQUE & flags) != 0),
+                (RDB_bool) ((RDB_ORDERED & flags) != 0), RDB_table_name(tbp),
                 ecp, txp);
         if (ret != RDB_OK)
             goto error;

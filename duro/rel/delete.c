@@ -11,7 +11,6 @@
 #include <gen/strfns.h>
 #include <string.h>
 
-#ifdef REMOVED
 static RDB_int
 delete_by_uindex(RDB_object *tbp, RDB_object *objpv[], _RDB_tbindex *indexp,
         RDB_exec_context *ecp, RDB_transaction *txp)
@@ -61,7 +60,6 @@ cleanup:
     free(fv);
     return rcount;
 }
-#endif
 
 RDB_int
 _RDB_delete_real(RDB_object *tbp, RDB_expression *condp, RDB_exec_context *ecp,
@@ -158,13 +156,20 @@ error:
     return RDB_ERROR;
 }
 
-#ifdef REMOVED
-RDB_int
-_RDB_delete_select_uindex(RDB_object *tbp, RDB_expression *condp,
+static RDB_int
+delete_where_uindex(RDB_expression *texp, RDB_expression *condp,
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
     RDB_int rcount;
     int ret;
+    RDB_expression *refexp;
+
+    if (texp->var.op.argv[0]->kind == RDB_EX_TBP) {
+        refexp = texp->var.op.argv[0];
+    } else {
+        /* child is projection */
+        refexp = texp->var.op.argv[0]->var.op.argv[0];
+    }
 
     if (condp != NULL) {
         RDB_object tpl;
@@ -175,9 +180,10 @@ _RDB_delete_select_uindex(RDB_object *tbp, RDB_expression *condp,
         /*
          * Read tuple and check condition
          */
-        if (_RDB_get_by_uindex(tbp->var.select.tbp->var.project.tbp,
-                tbp->var.select.objpv, tbp->var.select.tbp->var.project.indexp,
-                tbp->typ->var.basetyp, ecp, txp, &tpl) != RDB_OK) {
+        if (_RDB_get_by_uindex(refexp->var.tbref.tbp,
+                texp->var.op.optinfo.objpv, refexp->var.tbref.indexp,
+                refexp->var.tbref.tbp->typ->var.basetyp, ecp, txp, &tpl)
+                    != RDB_OK) {
             RDB_destroy_obj(&tpl, ecp);
             rcount = RDB_ERROR;
             goto cleanup;
@@ -193,16 +199,16 @@ _RDB_delete_select_uindex(RDB_object *tbp, RDB_expression *condp,
             return 0;
     }
 
-    rcount = delete_by_uindex(tbp->var.select.tbp->var.project.tbp,
-            tbp->var.select.objpv, tbp->var.select.tbp->var.project.indexp,
+    rcount = delete_by_uindex(refexp->var.tbref.tbp,
+            texp->var.op.optinfo.objpv, refexp->var.tbref.indexp,
             ecp, txp);
 
 cleanup:
     return rcount;
 }
 
-RDB_int
-_RDB_delete_select_index(RDB_object *tbp, RDB_expression *condp,
+static RDB_int
+delete_where_nuindex(RDB_expression *texp, RDB_expression *condp,
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
     RDB_int rcount;
@@ -211,11 +217,22 @@ _RDB_delete_select_index(RDB_object *tbp, RDB_expression *condp,
     int flags;
     RDB_cursor *curp = NULL;
     RDB_field *fv = NULL;
-    _RDB_tbindex *indexp = tbp->var.select.tbp->var.project.indexp;
-    int keylen = indexp->attrc;
+    RDB_expression *refexp;
+    _RDB_tbindex *indexp;
+    int keylen;
+
+    if (texp->var.op.argv[0]->kind == RDB_EX_TBP) {
+        refexp = texp->var.op.argv[0];
+    } else {
+        /* child is projection */
+        refexp = texp->var.op.argv[0]->var.op.argv[0];
+    }
+
+    indexp = refexp->var.tbref.indexp;
+    keylen = indexp->attrc;
 
     ret = RDB_index_cursor(&curp, indexp->idxp, RDB_TRUE,
-            tbp->var.select.tbp->var.project.tbp->var.tb.is_persistent ?
+            refexp->var.tbref.tbp->var.tb.is_persistent ?
             txp->txid : NULL);
     if (ret != RDB_OK) {
         _RDB_handle_errcode(ret, ecp, txp);
@@ -230,19 +247,20 @@ _RDB_delete_select_index(RDB_object *tbp, RDB_expression *condp,
     }
 
     for (i = 0; i < keylen; i++) {
-        if (_RDB_obj_to_field(&fv[i], tbp->var.select.objpv[i], ecp) != RDB_OK) {
+        if (_RDB_obj_to_field(&fv[i], texp->var.op.optinfo.objpv[i], ecp)
+                != RDB_OK) {
             rcount = RDB_ERROR;
             goto cleanup;
         }
     }
 
-    if (tbp->var.select.objpc != indexp->attrc
-            || !tbp->var.select.all_eq)
+    if (texp->var.op.optinfo.objpc != indexp->attrc
+            || !texp->var.op.optinfo.all_eq)
         flags = RDB_REC_RANGE;
     else
         flags = 0;
 
-    ret = RDB_cursor_seek(curp, tbp->var.select.objpc, fv, flags);
+    ret = RDB_cursor_seek(curp, texp->var.op.optinfo.objpc, fv, flags);
     if (ret == DB_NOTFOUND) {
         rcount = 0;
         goto cleanup;
@@ -261,15 +279,15 @@ _RDB_delete_select_index(RDB_object *tbp, RDB_expression *condp,
         /*
          * Read tuple and check condition
          */
-        ret = _RDB_get_by_cursor(tbp->var.select.tbp->var.project.tbp,
-                curp, tbp->typ->var.basetyp, &tpl, ecp, txp);
+        ret = _RDB_get_by_cursor(refexp->var.tbref.tbp,
+                curp, refexp->var.tbref.tbp->typ->var.basetyp, &tpl, ecp, txp);
         if (ret != RDB_OK) {
             RDB_destroy_obj(&tpl, ecp);
             rcount = RDB_ERROR;
             goto cleanup;
         }
-        if (tbp->var.select.stopexp != NULL) {
-            ret = RDB_evaluate_bool(tbp->var.select.stopexp, &tpl,
+        if (texp->var.op.optinfo.stopexp != NULL) {
+            ret = RDB_evaluate_bool(texp->var.op.optinfo.stopexp, &tpl,
                     ecp, txp, &b);
             if (ret != RDB_OK) {
                 RDB_destroy_obj(&tpl, ecp);
@@ -289,7 +307,7 @@ _RDB_delete_select_index(RDB_object *tbp, RDB_expression *condp,
                 goto cleanup;
             }
         }
-        ret = RDB_evaluate_bool(tbp->var.select.exp, &tpl, ecp, txp, &b);
+        ret = RDB_evaluate_bool(texp->var.op.argv[1], &tpl, ecp, txp, &b);
         RDB_destroy_obj(&tpl, ecp);
         if (ret != RDB_OK) {
             rcount = RDB_ERROR;
@@ -307,8 +325,8 @@ _RDB_delete_select_index(RDB_object *tbp, RDB_expression *condp,
             rcount++;
         }
 
-        if (tbp->var.select.objpc == indexp->attrc
-                && tbp->var.select.all_eq)
+        if (texp->var.op.optinfo.objpc == indexp->attrc
+                && texp->var.op.optinfo.all_eq)
             flags = RDB_REC_DUP;
         else
             flags = 0;
@@ -331,7 +349,25 @@ cleanup:
     free(fv);
     return rcount;
 }
-#endif
+
+RDB_int
+_RDB_delete_where_index(RDB_expression *texp, RDB_expression *condp,
+        RDB_exec_context *ecp, RDB_transaction *txp)
+{
+    RDB_expression *refexp;
+
+    if (texp->var.op.argv[0]->kind == RDB_EX_TBP) {
+        refexp = texp->var.op.argv[0];
+    } else {
+        /* child is projection */
+        refexp = texp->var.op.argv[0]->var.op.argv[0];
+    }
+
+    if (refexp->var.tbref.indexp->unique) {
+        return delete_where_uindex(texp, condp, ecp, txp);
+    }
+    return delete_where_nuindex(texp, condp, ecp, txp);
+}
 
 RDB_int
 RDB_delete(RDB_object *tbp, RDB_expression *condp, RDB_exec_context *ecp,
