@@ -1,11 +1,11 @@
 /*
  * $Id$
  *
- * Copyright (C) 2003-2005 René Hartmann.
+ * Copyright (C) 2003-2006 René Hartmann.
  * See the file COPYING for redistribution information.
  */
 
-#include "rdb.h"
+#include "insert.h"
 #include "typeimpl.h"
 #include "internal.h"
 #include <gen/strfns.h>
@@ -145,19 +145,4 @@ _RDB_insert_real(RDB_object *tbp, const RDB_object *tplp,
 cleanup:
     free(fvp);
     return ret;
-}
-
-int
-RDB_insert(RDB_object *tbp, const RDB_object *tplp, RDB_exec_context *ecp,
-           RDB_transaction *txp)
-{
-    RDB_ma_insert ins;
-    RDB_int count;
-
-    ins.tbp = tbp;
-    ins.tplp = (RDB_object *) tplp;
-    count = RDB_multi_assign(1, &ins, 0, NULL, 0, NULL, 0, NULL, ecp, txp);
-    if (count == RDB_ERROR)
-        return RDB_ERROR;
-    return RDB_OK;
 }

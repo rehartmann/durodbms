@@ -94,45 +94,45 @@ Default(libdurotcl)
 
 testenv = env.Copy(RPATH = [bdbhome + '/lib'])
 
-testenv.Program('util/lstables.c')
-testenv.Program('tests/tupletest.c')
-testenv.Program('tests/maptest.c')
-testenv.Program('tests/prepare.c')
-testenv.Program('tests/test_aggregate.c')
-testenv.Program('tests/test_binary.c')
-testenv.Program('tests/test_create_view.c')
-testenv.Program('tests/test_defpointtype.c')
-testenv.Program('tests/test_deftype.c')
-testenv.Program('tests/test_delete.c')
-testenv.Program('tests/test_extend.c')
-testenv.Program('tests/test_union.c')
-testenv.Program('tests/test_minus.c')
-testenv.Program('tests/test_intersect.c')
-testenv.Program('tests/test_join.c')
-testenv.Program('tests/test_keys.c')
-testenv.Program('tests/test_null.c')
-testenv.Program('tests/test_pointtable.c')
-testenv.Program('tests/test_print_view.c')
-testenv.Program('tests/test_project.c')
-testenv.Program('tests/test_ra.c')
-testenv.Program('tests/test_regexp.c')
-testenv.Program('tests/test_rename.c')
-testenv.Program('tests/test_select.c')
-testenv.Program('tests/test_summarize.c')
-testenv.Program('tests/test_update.c')
-testenv.Program('tests/test_utypetable.c')
-testenv.Program('tests/test_defpointtype.c')
-testenv.Program('tests/test_pointtable.c')
-testenv.Program('tests/test_srupdate.c')
-testenv.Program('tests/test_insert.c')
-testenv.Program('tests/test_2db.c')
-testenv.Program('tests/test_defop.c')
-testenv.Program('tests/test_callop.c')
-testenv.Program('tests/test_print_opview.c')
-testenv.Program('tests/test_dropop.c')
+testbins = [testenv.Program('util/lstables.c'),
+    testenv.Program('tests/tupletest.c'),
+    testenv.Program('tests/maptest.c'),
+    testenv.Program('tests/prepare.c'),
+    testenv.Program('tests/test_aggregate.c'),
+    testenv.Program('tests/test_binary.c'),
+    testenv.Program('tests/test_create_view.c'),
+    testenv.Program('tests/test_defpointtype.c'),
+    testenv.Program('tests/test_deftype.c'),
+    testenv.Program('tests/test_delete.c'),
+    testenv.Program('tests/test_extend.c'),
+    testenv.Program('tests/test_union.c'),
+    testenv.Program('tests/test_minus.c'),
+    testenv.Program('tests/test_intersect.c'),
+    testenv.Program('tests/test_join.c'),
+    testenv.Program('tests/test_keys.c'),
+    testenv.Program('tests/test_null.c'),
+    testenv.Program('tests/test_pointtable.c'),
+    testenv.Program('tests/test_print_view.c'),
+    testenv.Program('tests/test_project.c'),
+    testenv.Program('tests/test_ra.c'),
+    testenv.Program('tests/test_regexp.c'),
+    testenv.Program('tests/test_rename.c'),
+    testenv.Program('tests/test_select.c'),
+    testenv.Program('tests/test_summarize.c'),
+    testenv.Program('tests/test_update.c'),
+    testenv.Program('tests/test_utypetable.c'),
+    testenv.Program('tests/test_defpointtype.c'),
+    testenv.Program('tests/test_pointtable.c'),
+    testenv.Program('tests/test_srupdate.c'),
+    testenv.Program('tests/test_insert.c'),
+    testenv.Program('tests/test_2db.c'),
+    testenv.Program('tests/test_defop.c'),
+    testenv.Program('tests/test_callop.c'),
+    testenv.Program('tests/test_print_opview.c'),
+    testenv.Program('tests/test_dropop.c'),
 
-testenv.SharedLibrary('tests/point.c')
-testenv.SharedLibrary('tests/plus.c')
+    testenv.SharedLibrary('tests/point.c'),
+    testenv.SharedLibrary('tests/plus.c')]
 
 #
 # Installation
@@ -173,7 +173,7 @@ env.Install(installdir + '/docs/tcl',
                 'docs/tcl/type.html docs/tcl/indexcmd.html docs/tcl/constraint.html '
                 'docs/tcl/massign.html docs/tcl/errorCode.html'))
 
-check = env.Command('tests/passed', [libduro, libdurotcl],
+check = env.Command('tests/passed', [libduro, libdurotcl, testbins],
         "tests/all.tcl -verbose '{pass error}'")
 
 env.Alias('check', check)

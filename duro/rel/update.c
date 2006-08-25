@@ -5,8 +5,10 @@
  * See the file COPYING for redistribution information.
  */
 
-#include "rdb.h"
+#include "update.h"
 #include "typeimpl.h"
+#include "qresult.h"
+#include "insert.h"
 #include "internal.h"
 #include <gen/strfns.h>
 #include <string.h>
@@ -1146,18 +1148,4 @@ _RDB_update_where_index(RDB_expression *texp, RDB_expression *condp,
         return update_where_index_complex(texp, condp, updc, updv, ecp, txp);
     }
     return update_where_index_simple(texp, condp, updc, updv, ecp, txp);
-}
-
-RDB_int
-RDB_update(RDB_object *tbp, RDB_expression *condp, int updc,
-           const RDB_attr_update updv[], RDB_exec_context *ecp,
-           RDB_transaction *txp)
-{
-    RDB_ma_update upd;
-
-    upd.tbp = tbp;
-    upd.condp = condp;
-    upd.updc = updc;
-    upd.updv = (RDB_attr_update *) updv;
-    return RDB_multi_assign(0, NULL, 1, &upd, 0, NULL, 0, NULL, ecp, txp);
 }

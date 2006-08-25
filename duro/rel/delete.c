@@ -5,9 +5,10 @@
  * See the file COPYING for redistribution information.
  */
 
-#include "rdb.h"
+#include "delete.h"
 #include "typeimpl.h"
 #include "internal.h"
+#include "qresult.h"
 #include <gen/strfns.h>
 #include <string.h>
 
@@ -367,15 +368,4 @@ _RDB_delete_where_index(RDB_expression *texp, RDB_expression *condp,
         return delete_where_uindex(texp, condp, ecp, txp);
     }
     return delete_where_nuindex(texp, condp, ecp, txp);
-}
-
-RDB_int
-RDB_delete(RDB_object *tbp, RDB_expression *condp, RDB_exec_context *ecp,
-        RDB_transaction *txp)
-{
-    RDB_ma_delete del;
-
-    del.tbp = tbp;
-    del.condp = condp;
-    return RDB_multi_assign(0, NULL, 0, NULL, 1, &del, 0, NULL, ecp, txp);
 }

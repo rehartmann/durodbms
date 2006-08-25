@@ -7,6 +7,7 @@
 
 #include "catalog.h"
 #include "typeimpl.h"
+#include "insert.h"
 #include "internal.h"
 #include "serialize.h"
 #include <gen/strfns.h>

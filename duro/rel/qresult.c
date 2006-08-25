@@ -5,7 +5,8 @@
  * See the file COPYING for redistribution information.
  */
 
-#include "rdb.h"
+#include "qresult.h"
+#include "insert.h"
 #include "internal.h"
 #include "typeimpl.h"
 #include <gen/hashtabit.h>

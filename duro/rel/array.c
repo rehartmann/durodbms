@@ -6,6 +6,7 @@
  */
 
 #include "rdb.h"
+#include "qresult.h"
 #include "internal.h"
 
 int

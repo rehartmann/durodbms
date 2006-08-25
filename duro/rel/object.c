@@ -13,6 +13,10 @@
 #include <string.h>
 #include <assert.h>
 
+#include "qresult.h"
+#include "delete.h"
+#include "insert.h"
+
 RDB_object *
 _RDB_new_obj(RDB_exec_context *ecp)
 {
@@ -56,6 +60,7 @@ RDB_obj_irep(RDB_object *valp, size_t *lenp)
     }
 }
 
+/* !! really belongs into table.c */
 static int
 table_ilen(const RDB_object *tbp, size_t *lenp, RDB_exec_context *ecp)
 {

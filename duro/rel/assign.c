@@ -3,9 +3,14 @@
  *
  * Copyright (C) 2005-2006 René Hartmann.
  * See the file COPYING for redistribution information.
+ * 
+ * Functions for assignment operations (insert, update, delete, copy)
  */
 
 #include "rdb.h"
+#include "update.h"
+#include "delete.h"
+#include "insert.h"
 #include "internal.h"
 #include <gen/strfns.h>
 #include <string.h>
@@ -1688,4 +1693,44 @@ cleanup:
     }
 
     return rcount;
+}
+
+int
+RDB_insert(RDB_object *tbp, const RDB_object *tplp, RDB_exec_context *ecp,
+           RDB_transaction *txp)
+{
+    RDB_ma_insert ins;
+    RDB_int count;
+
+    ins.tbp = tbp;
+    ins.tplp = (RDB_object *) tplp;
+    count = RDB_multi_assign(1, &ins, 0, NULL, 0, NULL, 0, NULL, ecp, txp);
+    if (count == RDB_ERROR)
+        return RDB_ERROR;
+    return RDB_OK;
+}
+
+RDB_int
+RDB_update(RDB_object *tbp, RDB_expression *condp, int updc,
+           const RDB_attr_update updv[], RDB_exec_context *ecp,
+           RDB_transaction *txp)
+{
+    RDB_ma_update upd;
+
+    upd.tbp = tbp;
+    upd.condp = condp;
+    upd.updc = updc;
+    upd.updv = (RDB_attr_update *) updv;
+    return RDB_multi_assign(0, NULL, 1, &upd, 0, NULL, 0, NULL, ecp, txp);
+}
+
+RDB_int
+RDB_delete(RDB_object *tbp, RDB_expression *condp, RDB_exec_context *ecp,
+        RDB_transaction *txp)
+{
+    RDB_ma_delete del;
+
+    del.tbp = tbp;
+    del.condp = condp;
+    return RDB_multi_assign(0, NULL, 0, NULL, 1, &del, 0, NULL, ecp, txp);
 }

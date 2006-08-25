@@ -7,7 +7,8 @@
 
 #include "rdb.h"
 #include "internal.h"
-#include "assert.h"
+#include "qresult.h"
+#include <assert.h>
 #include <dli/tabletostr.h>
 
 static int

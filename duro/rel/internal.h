@@ -120,37 +120,6 @@ typedef struct RDB_stored_table {
     int est_cardinality; /* estimated cardinality (from statistics) */
 } RDB_stored_table;
 
-typedef struct RDB_qresult {
-    /* May be NULL */
-    RDB_expression *exp;
-    RDB_bool nested;
-    union {
-        struct {
-            /* May be a descendant of *exp, NULL for sorter */
-            RDB_object *tbp;
-
-            /* NULL if a unique index is used */
-            RDB_cursor *curp;
-        } stored;
-        struct {
-            struct RDB_qresult *qrp;
-
-            /* Only for some operators, may be NULL */
-            struct RDB_qresult *qr2p;
-            
-            /* only used for join and ungroup */
-            RDB_object tpl;
-            RDB_bool tpl_valid;
-        } children;
-    } var;
-    RDB_bool endreached;
- 
-    /*
-     * 'materialized' table, needed for SUMMARIZE PER and sorting.
-     */
-    RDB_object *matp;
-} RDB_qresult;
-
 typedef struct RDB_ro_op_desc {
     char *name;
     int argc;
@@ -207,28 +176,6 @@ int
 _RDB_begin_tx(RDB_exec_context *, RDB_transaction *, RDB_environment *,
         RDB_transaction *);
 
-/*
- * Iterator over the tuples of a RDB_object. Used internally.
- * Using it from an application is possible, but violates RM proscription 7.
- */
-RDB_qresult *
-_RDB_table_qresult(RDB_object *, RDB_exec_context *, RDB_transaction *);
-
-RDB_qresult *
-_RDB_expr_qresult(RDB_expression *, RDB_exec_context *, RDB_transaction *);
-
-int
-_RDB_index_qresult(RDB_object *, _RDB_tbindex *, RDB_transaction *,
-        RDB_qresult **);
-
-int
-_RDB_sorter(RDB_object *tbp, RDB_qresult **qrespp, RDB_exec_context *,
-        RDB_transaction *, int seqitc, const RDB_seq_item seqitv[]);
-
-int
-_RDB_next_tuple(RDB_qresult *, RDB_object *, RDB_exec_context *,
-        RDB_transaction *);
-
 int
 _RDB_matching_tuple(RDB_object *, const RDB_object *tplp, RDB_exec_context *,
         RDB_transaction *, RDB_bool *resultp);
@@ -236,24 +183,6 @@ _RDB_matching_tuple(RDB_object *, const RDB_object *tplp, RDB_exec_context *,
 int
 _RDB_expr_matching_tuple(RDB_expression *exp, const RDB_object *tplp,
         RDB_exec_context *ecp, RDB_transaction *txp, RDB_bool *resultp);
-
-int
-_RDB_qresult_contains(RDB_qresult *, const RDB_object *, RDB_exec_context *,
-        RDB_transaction *, RDB_bool *);
-
-int
-_RDB_reset_qresult(RDB_qresult *, RDB_exec_context *, RDB_transaction *);
-
-int
-_RDB_get_by_uindex(RDB_object *tbp, RDB_object *objpv[], _RDB_tbindex *indexp,
-        RDB_type *, RDB_exec_context *, RDB_transaction *, RDB_object *tplp);
-
-int
-_RDB_get_by_cursor(RDB_object *, RDB_cursor *, RDB_type *, RDB_object *,
-        RDB_exec_context *, RDB_transaction *);
-
-int
-_RDB_drop_qresult(RDB_qresult *, RDB_exec_context *, RDB_transaction *);
 
 RDB_object *
 _RDB_new_obj(RDB_exec_context *ecp);
@@ -521,10 +450,6 @@ int
 _RDB_optimize(RDB_object *, int seqitc, const RDB_seq_item seqitv[],
         RDB_exec_context *, RDB_transaction *, RDB_object **);
 
-int
-_RDB_sdivide_preserves(RDB_expression *, const RDB_object *tplp, RDB_qresult *qr3p,
-        RDB_exec_context *, RDB_transaction *, RDB_bool *);
-
 RDB_possrep *
 _RDB_get_possrep(RDB_type *typ, const char *repname);
 
@@ -644,9 +569,6 @@ _RDB_sys_select(const char *name, int argc, RDB_object *argv[],
         const void *iargp, size_t iarglen, RDB_exec_context *,
         RDB_transaction *, RDB_object *retvalp);
 
-int
-_RDB_duprem(RDB_qresult *, RDB_exec_context *, RDB_transaction *);
-
 RDB_object **
 _RDB_index_objpv(_RDB_tbindex *indexp, RDB_expression *exp, RDB_type *tbtyp,
         int objpc, RDB_bool all_eq, RDB_bool asc);
@@ -667,27 +589,6 @@ _RDB_read_constraints(RDB_exec_context *, RDB_transaction *);
 int
 _RDB_check_constraints(const RDB_constraint *, RDB_exec_context *,
         RDB_transaction *);
-
-int
-_RDB_insert_real(RDB_object *tbp, const RDB_object *tplp, RDB_exec_context *,
-        RDB_transaction *);
-
-RDB_int
-_RDB_update_real(RDB_object *tbp, RDB_expression *condp, int updc,
-        const RDB_attr_update updv[], RDB_exec_context *, RDB_transaction *);
-
-RDB_int
-_RDB_update_where_index(RDB_expression *, RDB_expression *,
-        int updc, const RDB_attr_update updv[], RDB_exec_context *,
-        RDB_transaction *);
-
-RDB_int
-_RDB_delete_real(RDB_object *tbp, RDB_expression *condp, RDB_exec_context *,
-        RDB_transaction *);
-
-RDB_int
-_RDB_delete_where_index(RDB_expression *texp, RDB_expression *condp,
-        RDB_exec_context *, RDB_transaction *);
 
 void
 _RDB_handle_errcode(int errcode, RDB_exec_context *, RDB_transaction *);

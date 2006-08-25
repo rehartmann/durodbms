@@ -8,6 +8,8 @@
 #include "rdb.h"
 #include "typeimpl.h"
 #include "catalog.h"
+#include "qresult.h"
+#include "insert.h"
 #include "internal.h"
 #include <gen/strfns.h>
 #include <string.h>
