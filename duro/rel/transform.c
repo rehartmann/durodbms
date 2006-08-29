@@ -172,6 +172,7 @@ exprs_compl(const RDB_expression *ex1p, const RDB_expression *ex2p,
         RDB_exec_context *ecp, RDB_transaction *txp, RDB_bool *resp)
 {
     int ret;
+    *resp = RDB_FALSE;
 
     if (strcmp(ex2p->var.op.name, "NOT") == 0) {
         ret = _RDB_expr_equals(ex1p, ex2p->var.op.argv[0], ecp, txp, resp);
@@ -219,6 +220,7 @@ transform_union(RDB_expression *exp, RDB_exec_context *ecp, RDB_transaction *txp
 
                 free(exp->var.op.name);
                 exp->var.op.name = exp->var.op.argv[0]->var.op.name;
+                exp->var.op.argc = exp->var.op.argv[0]->var.op.argc;
                 exp->var.op.argv[0] = exp->var.op.argv[0]->var.op.argv[0];
                 for (i = 1; i < exp->var.op.argc; i++)
                     exp->var.op.argv[i] = exp->var.op.argv[0]->var.op.argv[i];
@@ -426,11 +428,11 @@ swap_project_union(RDB_expression *exp, RDB_expression *chexp,
     return RDB_OK;
 }
 
+#ifdef REMOVED
 /* Transforms PROJECT(RENAME) to RENAME(PROJECT) or PROJECT */
 static int
 swap_project_rename(RDB_expression *exp, RDB_exec_context *ecp)
 {
-#ifdef REMOVED
     int i, j;
     RDB_type *newtyp;
     RDB_renaming *renv;
@@ -531,10 +533,10 @@ swap_project_rename(RDB_expression *exp, RDB_exec_context *ecp)
     }
 
     return RDB_OK;
-#endif
     RDB_raise_not_supported("swap_project_rename", ecp);
     return RDB_ERROR;
 }
+#endif
 
 static RDB_expression *
 proj_attr(const RDB_expression *exp, const char *attrname)
@@ -716,6 +718,7 @@ transform_project(RDB_expression *exp, RDB_exec_context *ecp,
                 return transform_where(chexp, ecp, txp);
             }
             exp = chexp;
+#ifdef REMOVED
         } else if (strcmp(chexp->var.op.name, "RENAME") == 0) {
             if (swap_project_rename(exp, ecp) != RDB_OK)
                 return RDB_ERROR;
@@ -723,6 +726,7 @@ transform_project(RDB_expression *exp, RDB_exec_context *ecp,
                 /* Rename and project have been swapped */
                 exp = chexp;
             }
+#endif
         } else if (strcmp(chexp->var.op.name, "EXTEND") == 0) {
             if (swap_project_extend(exp, ecp) != RDB_OK)
                 return RDB_ERROR;
@@ -737,6 +741,32 @@ transform_project(RDB_expression *exp, RDB_exec_context *ecp,
         }
     } while (exp->kind == RDB_EX_RO_OP
             && strcmp(exp->var.op.name, "PROJECT") == 0);
+    return RDB_OK;
+}
+
+static int
+transform_is_empty(RDB_expression *exp, RDB_exec_context *ecp,
+        RDB_transaction *txp)
+{
+   RDB_expression *chexp = exp->var.op.argv[0];
+    
+   if (_RDB_transform(chexp, ecp, txp) != RDB_OK)
+       return RDB_ERROR;
+
+    /* Add projection, if not already present */
+    if (chexp->kind != RDB_EX_RO_OP || strcmp(chexp->var.op.name, "PROJECT") != 0
+            || chexp->var.op.argc > 1) {
+        RDB_expression *pexp = RDB_ro_op("PROJECT", 1, ecp);
+        if (pexp == NULL)
+            return RDB_ERROR;
+
+        RDB_add_arg(pexp, chexp);
+
+        exp->var.op.argv[0] = pexp;
+
+        return transform_project(pexp, ecp, txp);
+    }
+
     return RDB_OK;
 }
 
@@ -769,112 +799,9 @@ _RDB_transform(RDB_expression *exp, RDB_exec_context *ecp, RDB_transaction *txp)
     if (strcmp(exp->var.op.name, "WHERE") == 0) {
         return transform_where(exp, ecp, txp);
     }
-    
-    return RDB_OK;
-}
-
-#ifdef REMOVED
-static int
-transform_project(RDB_object *tbp, RDB_exec_context *ecp, RDB_transaction *txp);
-
-int
-_RDB_transform(RDB_object *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
-{
-    int ret;
-
-    switch (tbp->kind) {
-        case RDB_TB_REAL:
-            break;
-        case RDB_TB_SEMIMINUS:
-            ret = _RDB_transform(tbp->var.semiminus.tb1p, ecp, txp);
-            if (ret != RDB_OK)
-                return ret;
-            ret = _RDB_transform(tbp->var.semiminus.tb2p, ecp, txp);
-            if (ret != RDB_OK)
-                return ret;
-            break;
-        case RDB_TB_UNION:
-            ret = transform_union(tbp, ecp, txp);
-            if (ret != RDB_OK)
-                return ret;
-            break;
-        case RDB_TB_SEMIJOIN:
-            ret = _RDB_transform(tbp->var.semijoin.tb1p, ecp, txp);
-            if (ret != RDB_OK)
-                return ret;
-            ret = _RDB_transform(tbp->var.semijoin.tb2p, ecp, txp);
-            if (ret != RDB_OK)
-                return ret;
-            break;
-        case RDB_TB_SELECT:
-            ret = transform_select(tbp, ecp, txp);
-            if (ret != RDB_OK)
-                return ret;
-            break;
-        case RDB_TB_JOIN:
-            ret = _RDB_transform(tbp->var.join.tb1p, ecp, txp);
-            if (ret != RDB_OK)
-                return ret;
-            ret = _RDB_transform(tbp->var.join.tb2p, ecp, txp);
-            if (ret != RDB_OK)
-                return ret;
-            break;
-        case RDB_TB_EXTEND:
-            ret = _RDB_transform(tbp->var.extend.tbp, ecp, txp);
-            if (ret != RDB_OK)
-                return ret;
-            break;
-        case RDB_TB_PROJECT:
-            ret = transform_project(tbp, ecp, txp);
-            if (ret != RDB_OK)
-                return ret;
-            break;
-        case RDB_TB_SUMMARIZE:
-            ret = _RDB_transform(tbp->var.summarize.tb1p, ecp, txp);
-            if (ret != RDB_OK)
-                return ret;
-            ret = _RDB_transform(tbp->var.summarize.tb2p, ecp, txp);
-            if (ret != RDB_OK)
-                return ret;
-            break;
-        case RDB_TB_RENAME:
-            ret = _RDB_transform(tbp->var.rename.tbp, ecp, txp);
-            if (ret != RDB_OK)
-                return ret;
-            break;
-        case RDB_TB_WRAP:
-            ret = _RDB_transform(tbp->var.wrap.tbp, ecp, txp);
-            if (ret != RDB_OK)
-                return ret;
-            break;
-        case RDB_TB_UNWRAP:
-            ret = _RDB_transform(tbp->var.unwrap.tbp, ecp, txp);
-            if (ret != RDB_OK)
-                return ret;
-            break;
-        case RDB_TB_GROUP:
-            ret = _RDB_transform(tbp->var.group.tbp, ecp, txp);
-            if (ret != RDB_OK)
-                return ret;
-            break;
-        case RDB_TB_UNGROUP:
-            ret = _RDB_transform(tbp->var.ungroup.tbp, ecp, txp);
-            if (ret != RDB_OK)
-                return ret;
-            break;
-        case RDB_TB_SDIVIDE:
-            ret = _RDB_transform(tbp->var.sdivide.tb1p, ecp, txp);
-            if (ret != RDB_OK)
-                return ret;
-            ret = _RDB_transform(tbp->var.sdivide.tb2p, ecp, txp);
-            if (ret != RDB_OK)
-                return ret;
-            ret = _RDB_transform(tbp->var.sdivide.tb3p, ecp, txp);
-            if (ret != RDB_OK)
-                return ret;
-            break;
+    if (strcmp(exp->var.op.name, "IS_EMPTY") == 0) {
+        return transform_is_empty(exp, ecp, txp);
     }
 
     return RDB_OK;
 }
-#endif

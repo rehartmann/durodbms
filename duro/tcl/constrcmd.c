@@ -6,9 +6,7 @@
  */
 
 #include "duro.h"
-#include <rel/internal.h>
 #include <dli/parse.h>
-#include <dli/tabletostr.h>
 #include <gen/strfns.h>
 #include <string.h>
 #include <ctype.h>

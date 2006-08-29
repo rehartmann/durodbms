@@ -798,12 +798,9 @@ int
 RDB_table_is_empty(RDB_object *tbp, RDB_exec_context *ecp,
         RDB_transaction *txp, RDB_bool *resultp)
 {
-    int ret;
     RDB_qresult *qrp;
     RDB_object tpl;
-    RDB_object *ptbp;
-    RDB_object *ntbp;
-    RDB_expression *exp, *argp;
+    RDB_expression *exp, *argp, *nexp;
 
     if (txp != NULL && !RDB_tx_is_running(txp)) {
         RDB_raise_invalid_tx(ecp);
@@ -818,28 +815,24 @@ RDB_table_is_empty(RDB_object *tbp, RDB_exec_context *ecp,
     	return RDB_ERROR;
     argp = RDB_table_ref_to_expr(tbp, ecp);
     if (argp == NULL) {
-        RDB_drop_expr(argp, ecp);        
+        RDB_drop_expr(exp, ecp);
+        RDB_drop_expr(argp, ecp);
         return RDB_ERROR;
     }
     RDB_add_arg(exp, argp);
 
-    ptbp = RDB_expr_to_vtable(exp, ecp, txp);
-    if (ptbp == NULL) {
-    	RDB_drop_expr(exp, ecp);
+    nexp = _RDB_optimize_expr(exp, 0, NULL, ecp, txp);
+
+    /* Remove projection */
+    RDB_drop_expr(exp, ecp);
+
+    if (nexp == NULL) {
         return RDB_ERROR;
     }
 
-    ret = _RDB_optimize(ptbp, 0, NULL, ecp, txp, &ntbp);
-
-    /* !! Remove projection
-    _RDB_free_obj(ptbp, ecp); */
-
-    if (ret != RDB_OK)
-        return ret;
-
-    qrp = _RDB_table_qresult(ntbp, ecp, txp);
+    qrp = _RDB_expr_qresult(nexp, ecp, txp);
     if (qrp == NULL) {
-        RDB_drop_table(ntbp, ecp, txp);
+        RDB_drop_expr(nexp, ecp);
         return RDB_ERROR;
     }
 
@@ -852,7 +845,7 @@ RDB_table_is_empty(RDB_object *tbp, RDB_exec_context *ecp,
         if (RDB_obj_type(RDB_get_err(ecp)) != &RDB_NOT_FOUND_ERROR) {
             RDB_destroy_obj(&tpl, ecp);
             _RDB_drop_qresult(qrp, ecp, txp);
-            RDB_drop_table(ntbp, ecp, txp);
+            RDB_drop_expr(nexp, ecp);
             return RDB_ERROR;
         }
         RDB_clear_err(ecp);
@@ -862,11 +855,10 @@ RDB_table_is_empty(RDB_object *tbp, RDB_exec_context *ecp,
     }
 
     RDB_destroy_obj(&tpl, ecp);
-    ret = _RDB_drop_qresult(qrp, ecp, txp);
-    if (ret != RDB_OK) {
-        return ret;
+    if (_RDB_drop_qresult(qrp, ecp, txp) != RDB_OK) {
+        return RDB_ERROR;
     }
-    return /* !! RDB_drop_table(ntbp, ecp, txp); */ RDB_OK;
+    return RDB_drop_expr(nexp, ecp);
 }
 
 RDB_int
@@ -883,9 +875,8 @@ RDB_cardinality(RDB_object *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
         return RDB_ERROR;
     }
 
-    ret = _RDB_optimize(tbp, 0, NULL, ecp, txp, &ntbp);
-    if (ret != RDB_OK)
-        return ret;
+    if (_RDB_optimize(tbp, 0, NULL, ecp, txp, &ntbp) != RDB_OK)
+        return RDB_ERROR;
 
     qrp = _RDB_table_qresult(ntbp, ecp, txp);
     if (qrp == NULL) {
@@ -900,7 +891,7 @@ RDB_cardinality(RDB_object *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
         if (ntbp->var.tb.exp != NULL)
             RDB_drop_table(ntbp, ecp, txp);
         _RDB_drop_qresult(qrp, ecp, txp);
-        return ret;
+        return RDB_ERROR;
     }
 
     RDB_init_obj(&tpl);
@@ -921,9 +912,8 @@ RDB_cardinality(RDB_object *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
         goto error;
 
     if (ntbp->var.tb.exp != NULL) {
-        ret = RDB_drop_table(ntbp, ecp, txp);
-        if (ret != RDB_OK)
-            return ret;
+        if (RDB_drop_table(ntbp, ecp, txp) != RDB_OK)
+            return RDB_ERROR;
     }
 
     if (tbp->var.tb.stp != NULL)

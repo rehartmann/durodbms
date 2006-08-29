@@ -1,11 +1,10 @@
 /*
  * $Id$
  *
- * Copyright (C) 2005 René Hartmann.
+ * Copyright (C) 2005-2006 René Hartmann.
  * See the file COPYING for redistribution information.
- */
-
-/*
+ *
+ *
  * Functions for declarative integrity constraints
  */
 
@@ -15,6 +14,8 @@
 #include "serialize.h"
 #include <gen/strfns.h>
 #include <string.h>
+
+#include <dli/tabletostr.h>
 
 /*
  * If the constraint is of the form IS_EMPTY(table), add table to
@@ -33,43 +34,22 @@ add_empty_tb(RDB_constraint *constrp, RDB_exec_context *ecp,
     if (constrp->exp->kind == RDB_EX_RO_OP
             && constrp->exp->var.op.argc == 1
             && strcmp(constrp->exp->var.op.name, "IS_EMPTY") == 0) {
-        RDB_object *ptbp;
-        RDB_expression *pexp;
-        RDB_expression *argexp = RDB_dup_expr(constrp->exp->var.op.argv[0],
-                NULL);
-        if (argexp == NULL)
+        RDB_expression *exp;
+        RDB_expression *oexp = constrp->exp->var.op.argv[0];
+        if (oexp->kind == RDB_EX_RO_OP
+                && strcmp(oexp->var.op.name, "PROJECT") == 0) {
+            oexp = oexp->var.op.argv[0];
+        }
+        exp = RDB_dup_expr(oexp, ecp);
+        if (exp == NULL)
             return RDB_ERROR;
 
-        pexp = RDB_ro_op("PROJECT", 1, ecp);
-        if (pexp == NULL) {
-            RDB_drop_expr(argexp, ecp);
-            return RDB_ERROR;
-        }
-        RDB_add_arg(pexp, argexp);
-
-        ret = _RDB_transform(pexp, ecp, txp);
-        if (ret != RDB_OK) {
-            RDB_drop_table(ptbp, ecp, NULL);
-            return RDB_ERROR;
-        }
-/* !!
-        if (ptbp->kind == RDB_TB_PROJECT) {
-            ctbp = ptbp->var.project.tbp;
-            _RDB_free_table(ptbp, ecp);
-        } else {
-            ctbp = ptbp;
-        }
-*/
-        ptbp = RDB_expr_to_vtable(pexp, ecp, txp);
-        if (ptbp != NULL) {
-            RDB_drop_expr(pexp, ecp);
-            return ret;
-        }
         ret = RDB_hashtable_put(&txp->dbp->dbrootp->empty_tbtab,
-                ptbp, &te);
+                exp, &te);
         if (ret != RDB_OK) {
-            RDB_drop_table(ptbp, ecp, NULL);
-            return ret;
+            RDB_drop_expr(exp, ecp);
+            _RDB_handle_errcode(ret, ecp, txp);
+            return RDB_ERROR;
         }
     }
     return RDB_OK;
@@ -118,7 +98,10 @@ _RDB_read_constraints(RDB_exec_context *ecp, RDB_transaction *txp)
             ret = RDB_ERROR;
             goto cleanup;
         }
-        add_empty_tb(constrp, ecp, txp);
+        if (add_empty_tb(constrp, ecp, txp) != RDB_OK) {
+            ret = RDB_ERROR;
+            goto cleanup;
+        }
         constrp->nextp = dbrootp->first_constrp;
         dbrootp->first_constrp = constrp;
     }
@@ -162,6 +145,10 @@ RDB_create_constraint(const char *name, RDB_expression *exp,
     constrp = malloc(sizeof (RDB_constraint));
     if (constrp == NULL) {
         RDB_raise_no_memory(ecp);
+        return RDB_ERROR;
+    }
+
+    if (_RDB_transform(exp, ecp, txp) != RDB_OK) {
         return RDB_ERROR;
     }
 

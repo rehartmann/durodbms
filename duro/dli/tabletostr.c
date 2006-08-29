@@ -12,13 +12,13 @@
 #include <gen/hashtabit.h>
 
 int
-_RDB_print_obj(RDB_object *objp, RDB_transaction *txp, FILE *fp,
-        RDB_exec_context *ecp)
+_RDB_print_expr(RDB_expression *exp, FILE *fp,
+        RDB_exec_context *ecp, RDB_transaction *txp)
 {
     RDB_object dstobj;
 
     RDB_init_obj(&dstobj);
-    if (_RDB_obj_to_str(&dstobj, objp, ecp, txp, RDB_SHOW_INDEX) != RDB_OK)
+    if (_RDB_expr_to_str(&dstobj, exp, ecp, txp, RDB_SHOW_INDEX) != RDB_OK)
         return RDB_ERROR;
     fputs(RDB_obj_string(&dstobj), fp);
     return RDB_destroy_obj(&dstobj, ecp);
@@ -55,36 +55,46 @@ append_tuple(RDB_object *objp, const RDB_object *tplp, RDB_exec_context *ecp,
     tuple_entry *entryp;
     RDB_bool start = RDB_TRUE;
 
-    ret = append_str(objp, "TUPLE { ");
-    if (ret != RDB_OK)
-        return ret;
+    if (append_str(objp, "TUPLE { ") != RDB_OK) {
+        RDB_raise_no_memory(ecp);
+        return RDB_ERROR;
+    }
 
-    RDB_init_hashtable_iter(&hiter, (RDB_hashtable *) &tplp->var.tpl_tab);
-    for (;;) {
-        /* Get next attribute */
-        entryp = RDB_hashtable_next(&hiter);
-        if (entryp == NULL)
-            break;
-
-        if (start) {
-            start = RDB_FALSE;
-        } else {
-            ret = append_str(objp, ", ");
+    /* Tuple can be empty */
+    if (tplp->kind != RDB_OB_INITIAL) {
+        RDB_init_hashtable_iter(&hiter, (RDB_hashtable *) &tplp->var.tpl_tab);
+        for (;;) {
+            /* Get next attribute */
+            entryp = RDB_hashtable_next(&hiter);
+            if (entryp == NULL)
+                break;
+    
+            if (start) {
+                start = RDB_FALSE;
+            } else {
+                ret = append_str(objp, ", ");
+                if (ret != RDB_OK) {
+                    RDB_raise_no_memory(ecp);
+                    goto error;
+                }
+            }
+    
+            ret = append_str(objp, entryp->key);
+            if (ret != RDB_OK) {
+                RDB_raise_no_memory(ecp);
+                goto error;
+            }
+    
+            ret = append_str(objp, " ");
+            if (ret != RDB_OK) {
+                RDB_raise_no_memory(ecp);
+                goto error;
+            }
+    
+            ret = append_obj(objp, &entryp->obj, ecp, txp, 0);
             if (ret != RDB_OK)
                 goto error;
         }
-
-        ret = append_str(objp, entryp->key);
-        if (ret != RDB_OK)
-            goto error;
-
-        ret = append_str(objp, " ");
-        if (ret != RDB_OK)
-            goto error;
-
-        ret = append_obj(objp, &entryp->obj, ecp, txp, 0);
-        if (ret != RDB_OK)
-            goto error;
     }
     ret = append_str(objp, " }");
     if (ret != RDB_OK)
@@ -94,8 +104,9 @@ append_tuple(RDB_object *objp, const RDB_object *tplp, RDB_exec_context *ecp,
     return RDB_OK;
 
 error:
-    RDB_destroy_hashtable_iter(&hiter);
-    return ret;
+    if (objp->kind != RDB_OB_INITIAL)
+        RDB_destroy_hashtable_iter(&hiter);
+    return RDB_ERROR;
 }
 
 static int
@@ -443,7 +454,7 @@ _RDB_obj_to_str(RDB_object *dstp, const RDB_object *srcp,
 
 int
 _RDB_expr_to_str(RDB_object *dstp, const RDB_expression *exp,
-        RDB_exec_context *ecp, RDB_transaction *txp)
+        RDB_exec_context *ecp, RDB_transaction *txp, int options)
 {
     int ret;
 
@@ -451,5 +462,5 @@ _RDB_expr_to_str(RDB_object *dstp, const RDB_expression *exp,
     if (ret != RDB_OK)
         return ret;
 
-    return append_ex(dstp, exp, ecp, txp, 0);
+    return append_ex(dstp, exp, ecp, txp, options);
 }

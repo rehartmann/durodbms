@@ -241,7 +241,7 @@ cleanup_env(RDB_environment *envp)
     RDB_database *dbp;
     RDB_database *nextdbp;
     RDB_hashtable_iter tit;
-    RDB_object *etbp;
+    RDB_expression *eexp;
     RDB_exec_context ec;
 
     if (dbrootp == NULL)
@@ -251,10 +251,8 @@ cleanup_env(RDB_environment *envp)
 
     /* Destroy tables used in IS_EMPTY constraints */
     RDB_init_hashtable_iter(&tit, &dbrootp->empty_tbtab);
-    while ((etbp = RDB_hashtable_next(&tit)) != NULL) {
-        if (RDB_table_name(etbp) == NULL) {
-            RDB_drop_table(etbp, &ec, NULL);
-        }
+    while ((eexp = RDB_hashtable_next(&tit)) != NULL) {
+        RDB_drop_expr(eexp, &ec);
     }
     RDB_destroy_hashtable_iter(&tit);
 
@@ -274,20 +272,20 @@ cleanup_env(RDB_environment *envp)
 }
 
 static unsigned
-hash_tb(const void *tbp, void *arg)
+hash_exp(const void *exp, void *arg)
 {
-    return ((RDB_object *) tbp)->kind;
+    return ((RDB_expression *) exp)->kind; /* !! */
 }
 
 static RDB_bool
-tb_equals(const void *tb1p, const void *tb2p, void *argp)
+exp_equals(const void *ex1p, const void *ex2p, void *argp)
 {
-    int ret;
+    RDB_bool res;
     struct _RDB_tx_and_ec *tep = (struct _RDB_tx_and_ec *) argp;
 
-    ret = _RDB_table_def_equals((RDB_object *) tb1p, (RDB_object *) tb2p,
-            tep->ecp, tep->txp);
-    return ret;
+    _RDB_expr_equals((RDB_expression *) ex1p, (RDB_expression *) ex2p,
+            tep->ecp, tep->txp, &res);
+    return res;
 }
 
 static int
@@ -326,7 +324,7 @@ new_dbroot(RDB_environment *envp, RDB_exec_context *ecp)
     RDB_init_hashmap(&dbrootp->ro_opmap, RDB_DFL_MAP_CAPACITY);
     RDB_init_hashmap(&dbrootp->upd_opmap, RDB_DFL_MAP_CAPACITY);
     RDB_init_hashtable(&dbrootp->empty_tbtab, RDB_DFL_MAP_CAPACITY,
-            &hash_tb, &tb_equals);
+            &hash_exp, &exp_equals);
 
     ret = _RDB_add_builtin_ops(dbrootp, ecp);
     if (ret != RDB_OK)

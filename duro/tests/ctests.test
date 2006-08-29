@@ -184,6 +184,7 @@ test binary {type BINARY} -setup $SETUP -body {
 test tinyint {user-defined type TINYINT} -setup $SETUP -body {
     exec [configure -testdir]/test_deftype
     exec [configure -testdir]/test_utypetable
+    return {}
 }
 
 test point {user-defined type POINT} -setup $SETUP -body {
@@ -203,6 +204,7 @@ test op {user-defined operators} -setup $SETUP -body {
     exec [configure -testdir]/test_callop
     exec [configure -testdir]/test_print_opview
     exec [configure -testdir]/test_dropop
+    return {}
 }
 
 cleanupTests

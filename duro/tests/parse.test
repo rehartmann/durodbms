@@ -11,57 +11,61 @@ package require tcltest 2.2
 eval ::tcltest::configure $argv
 namespace import ::tcltest::*
 
-test parse {parser} -body {
-	load [configure -testdir]/../libdurotcl.so
-	source [configure -testdir]/testutil.tcl
+set SETUP {
+    set scriptdir [file dirname [info script]]
+    load $scriptdir/../libdurotcl.so
+    source $scriptdir/testutil.tcl
 
-	# Create DB environment dir
-	set envdir [makeDirectory dbenv]
+    # Create DB environment dir, ensure it's empty
+    removeDirectory dbenv
+    makeDirectory dbenv
+}
 
-	set dbenv [duro::env open $envdir]
-	
-	# Create Database
-	duro::db create $dbenv TEST
-	
-	set tx [duro::begin $dbenv TEST]
-	
-	# Create real tables
-	duro::table create T {
-	   {K INTEGER}
-	   {S1 STRING}
-	} {{K}} $tx
-	
-	if {![catch {duro::table expr TU {T UNION T UNION } $tx} msg]} {
-	    error "creating TU should fail, but succeeded"
-	}
-	
-	set errcode [lindex $errorCode 1]
-	if {![string match "SYNTAX_ERROR(*)" $errcode]} {
-	    error "wrong error: $errcode"
-	}
-	
-	if {![catch {duro::table expr TX {EXTEND T { K } ADD (2*K AS K2} $tx} msg]} {
-	    error "creating TX should fail, but succeeded"
-	}
-	
-	set errcode [lindex $errorCode 1]
-	if {![string match "SYNTAX_ERROR(*)" $errcode]} {
-	    error "wrong error: $errcode"
-	}
-	
-	if {![catch {duro::table expr TX {EXTEND T { K } ADD (2*X AS K2)} $tx} msg]} {
-	    error "creating TX should fail, but succeeded"
-	}
-	
-	set errcode [lindex $errorCode 1]
-	if {![string match "ATTRIBUTE_NOT_FOUND_ERROR(*)" $errcode]} {
-	    error "wrong error: $errcode"
-	}
-	
-	duro::commit $tx
-	
-	# Close DB environment
-	duro::env close $dbenv
+test parse {parser} -setup $SETUP -body {
+    set dbenv [duro::env open [configure -tmpdir]/dbenv]
+    
+    # Create Database
+    duro::db create $dbenv TEST
+    
+    set tx [duro::begin $dbenv TEST]
+    
+    # Create real tables
+    duro::table create T {
+       {K INTEGER}
+       {S1 STRING}
+    } {{K}} $tx
+    
+    if {![catch {duro::table expr TU {T UNION T UNION } $tx} msg]} {
+        error "creating TU should fail, but succeeded"
+    }
+    
+    set errcode [lindex $errorCode 1]
+    if {![string match "SYNTAX_ERROR(*)" $errcode]} {
+        error "wrong error: $errcode"
+    }
+    
+    if {![catch {duro::table expr TX {EXTEND T { K } ADD (2*K AS K2} $tx} msg]} {
+        error "creating TX should fail, but succeeded"
+    }
+    
+    set errcode [lindex $errorCode 1]
+    if {![string match "SYNTAX_ERROR(*)" $errcode]} {
+        error "wrong error: $errcode"
+    }
+    
+    if {![catch {duro::table expr TX {EXTEND T { K } ADD (2*X AS K2)} $tx} msg]} {
+        error "creating TX should fail, but succeeded"
+    }
+    
+    set errcode [lindex $errorCode 1]
+    if {![string match "ATTRIBUTE_NOT_FOUND_ERROR(*)" $errcode]} {
+        error "wrong error: $errcode"
+    }
+    
+    duro::commit $tx
+    
+    # Close DB environment
+    duro::env close $dbenv
 }
 
 cleanupTests

@@ -23,7 +23,7 @@ set SETUP {
 
 test update_keyindex {real tables} -setup $SETUP -body {
     set dbenv [duro::env open [configure -tmpdir]/dbenv]
-    
+
     # Create Database
     duro::db create $dbenv TEST
     

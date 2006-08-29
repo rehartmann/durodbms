@@ -10,7 +10,6 @@
 #include "catalog.h"
 #include <gen/strfns.h>
 #include <string.h>
-#include <stdarg.h>
 
 RDB_bool
 RDB_expr_is_const(const RDB_expression *exp)
@@ -157,13 +156,13 @@ expr_resolve_attrs(const RDB_expression *exp, const RDB_object *tplp,
 }
 
 RDB_type *
-project_type(const RDB_expression *exp, RDB_exec_context *ecp,
-        RDB_transaction *txp)
+project_type(const RDB_expression *exp, const RDB_type *tpltyp,
+        RDB_exec_context *ecp, RDB_transaction *txp)
 {
     int i;
     char **attrv;
     RDB_type *typ;
-    RDB_type *arg1typ = RDB_expr_type(exp->var.op.argv[0], NULL, ecp, txp);
+    RDB_type *arg1typ = RDB_expr_type(exp->var.op.argv[0], tpltyp, ecp, txp);
     if (arg1typ == NULL)
         return NULL;
 
@@ -553,7 +552,7 @@ expr_op_type(const RDB_expression *exp, const RDB_type *tpltyp,
         return wrap_type(exp, ecp, txp);
     }
     if (strcmp(exp->var.op.name, "PROJECT") == 0) {
-        return project_type(exp, ecp, txp);
+        return project_type(exp, tpltyp, ecp, txp);
     }
     if (strcmp(exp->var.op.name, "REMOVE") == 0) {
         return remove_type(exp, ecp, txp);
@@ -883,6 +882,11 @@ _RDB_expr_equals(const RDB_expression *ex1p, const RDB_expression *ex2p,
             return RDB_obj_equals(&ex1p->var.obj, &ex2p->var.obj, ecp, txp,
                     resp);
         case RDB_EX_TBP:
+            if (ex1p->var.tbref.tbp->var.tb.is_persistent
+                    || ex2p->var.tbref.tbp->var.tb.is_persistent) {
+                *resp = (RDB_bool) (ex1p->var.tbref.tbp == ex2p->var.tbref.tbp);
+                return RDB_OK;
+            }
             return RDB_obj_equals(ex1p->var.tbref.tbp, ex2p->var.tbref.tbp, ecp, txp,
                     resp);
         case RDB_EX_VAR:
@@ -894,7 +898,7 @@ _RDB_expr_equals(const RDB_expression *ex1p, const RDB_expression *ex2p,
             ret = _RDB_expr_equals(ex1p->var.op.argv[0], ex2p->var.op.argv[0],
                     ecp, txp, resp);
             if (ret != RDB_OK)
-                return ret;
+                return RDB_ERROR;
             *resp = (RDB_bool)
                     (strcmp (ex1p->var.op.name, ex2p->var.op.name) == 0);
             break;
@@ -908,7 +912,7 @@ _RDB_expr_equals(const RDB_expression *ex1p, const RDB_expression *ex2p,
                 ret = _RDB_expr_equals(ex1p->var.op.argv[i],
                         ex2p->var.op.argv[i], ecp, txp, resp);
                 if (ret != RDB_OK)
-                    return ret;
+                    return RDB_ERROR;
                 if (!*resp)
                     return RDB_OK;
             }
@@ -1232,9 +1236,12 @@ RDB_expr_comp(RDB_expression *arg, const char *compname,
     return exp;
 }
 
-/* Destroy the expression and all subexpressions */
-int
-RDB_drop_expr(RDB_expression *exp, RDB_exec_context *ecp)
+/*
+ * Destroy the expression and its subexpressions, but don't
+ * free the memory.
+ */
+static int
+destroy_expr(RDB_expression *exp, RDB_exec_context *ecp)
 {
     int ret = RDB_OK;
 
@@ -1270,43 +1277,34 @@ RDB_drop_expr(RDB_expression *exp, RDB_exec_context *ecp)
             free(exp->var.varname);
             break;
     }
+    return ret;
+}
+
+/* Destroy the expression and all subexpressions */
+int
+RDB_drop_expr(RDB_expression *exp, RDB_exec_context *ecp)
+{
+    int ret = destroy_expr(exp, ecp);
     free(exp);
     return ret;
 }
 
+/*
+ * Convert an expression to a virtual table.
+ */
 static int
 evaluate_vt(RDB_expression *exp, const RDB_object *tplp,
-        RDB_exec_context *ecp, RDB_transaction *txp, RDB_object *valp)
+        RDB_exec_context *ecp, RDB_transaction *txp, RDB_object *retvalp)
 {
-    RDB_type *tbtyp;
     RDB_expression *nexp = tplp != NULL ? expr_resolve_attrs(exp, tplp, ecp)
             : RDB_dup_expr(exp, ecp);
     if (nexp == NULL)
         return RDB_ERROR;
 
-    tbtyp = RDB_expr_type(nexp, NULL, ecp, txp);
-    if (tbtyp == NULL) {
+    if (_RDB_vtexp_to_obj(nexp, ecp, txp, retvalp) != RDB_OK) {
         RDB_drop_expr(nexp, ecp);
         return RDB_ERROR;
     }
-
-    if (_RDB_init_table(valp, NULL, RDB_FALSE, 
-            tbtyp, 0, NULL, RDB_TRUE, nexp, ecp) != RDB_OK) {
-        RDB_drop_type(tbtyp, ecp, NULL);
-        RDB_drop_expr(nexp, ecp);
-        return RDB_ERROR;
-    }
-
-/* !!
-    vtbp = RDB_expr_to_vtable(nexp, ecp, txp);
-    if (vtbp == NULL) {
-        RDB_drop_expr(nexp, ecp);
-        return RDB_ERROR;
-    }
-
-    ret = _RDB_copy_obj(valp, vtbp, ecp, txp);
-    RDB_drop_table(vtbp, ecp, txp);
-*/
     return RDB_OK;
 }
 
@@ -1359,13 +1357,14 @@ evaluate_ro_op(RDB_expression *exp, const RDB_object *tplp,
 
     if (strcmp(exp->var.op.name, "EXTEND") == 0) {
         RDB_type *typ = RDB_expr_type(exp->var.op.argv[0], NULL, ecp, txp);
+        if (typ == NULL)
+            return RDB_ERROR;
         
         if (typ->kind == RDB_TP_RELATION) {
             RDB_drop_type(typ, ecp, NULL);
 
             return evaluate_vt(exp, tplp, ecp, txp, valp);
-        }
-        else if (typ->kind == RDB_TP_TUPLE) {
+        } else if (typ->kind == RDB_TP_TUPLE) {
             int attrc = (exp->var.op.argc - 1) / 2;
             RDB_virtual_attr *attrv;
 
@@ -1414,6 +1413,7 @@ evaluate_ro_op(RDB_expression *exp, const RDB_object *tplp,
         return evaluate_vt(exp, tplp, ecp, txp, valp);
     }
 
+/*
     if (strcmp(exp->var.op.name, "PROJECT") == 0
             || strcmp(exp->var.op.name, "REMOVE") == 0
             || strcmp(exp->var.op.name, "RENAME") == 0
@@ -1421,6 +1421,8 @@ evaluate_ro_op(RDB_expression *exp, const RDB_object *tplp,
             || strcmp(exp->var.op.name, "UNWRAP") == 0
             || strcmp(exp->var.op.name, "JOIN") == 0) {
         RDB_type *typ = RDB_expr_type(exp->var.op.argv[0], NULL, ecp, txp);
+        if (typ == NULL)
+            return RDB_ERROR;
         
         if (typ->kind == RDB_TP_RELATION) {
             RDB_drop_type(typ, ecp, NULL);
@@ -1431,7 +1433,7 @@ evaluate_ro_op(RDB_expression *exp, const RDB_object *tplp,
             RDB_drop_type(typ, ecp, NULL);
         }
     }
-
+*/
     if (strcmp(exp->var.op.name, "SUM") == 0) {
         tbp = process_aggr_args(exp, ecp, txp);
         if (tbp == NULL)
@@ -1904,4 +1906,32 @@ _RDB_attr_node(RDB_expression *exp, const char *attrname, char *opname)
     if (expr_var(exp, attrname, opname))
         return exp;
     return NULL;
+}
+
+/*
+ * Convert the expression into a reference to an empty table
+ */
+int
+_RDB_expr_to_empty_table(RDB_expression *exp, RDB_exec_context *ecp,
+        RDB_transaction *txp)
+{
+    RDB_object *tbp;
+    RDB_type *typ = RDB_expr_type(exp, NULL, ecp, txp);
+    if (typ == NULL)
+        return RDB_ERROR;
+
+    tbp = RDB_create_table_from_type(NULL, RDB_FALSE, typ, 0, NULL, ecp, txp);
+    RDB_drop_type(typ, ecp, NULL);
+    if (tbp == NULL)
+        return RDB_ERROR;
+
+    if (destroy_expr(exp, ecp) != RDB_OK) {
+        RDB_drop_table(tbp, ecp, txp);
+        return RDB_ERROR;
+    }
+
+    exp->kind = RDB_EX_TBP;
+    exp->var.tbref.tbp = tbp;
+    exp->var.tbref.indexp = NULL;
+    return RDB_OK;
 }

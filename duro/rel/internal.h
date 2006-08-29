@@ -395,6 +395,10 @@ int
 _RDB_resolve_extend_expr(RDB_expression **expp, RDB_expression *texp,
         RDB_exec_context *);
 
+int
+_RDB_expr_to_empty_table(RDB_expression *exp, RDB_exec_context *ecp,
+        RDB_transaction *txp);
+
 RDB_expression *
 _RDB_optimize_expr(RDB_expression *, int seqitc, const RDB_seq_item seqitv[],
         RDB_exec_context *, RDB_transaction *);
@@ -439,12 +443,9 @@ _RDB_invunwrap_tuple(const RDB_object *, RDB_expression *,
 RDB_object *
 _RDB_dup_vtable(RDB_object *, RDB_exec_context *);
 
-RDB_object *
-_RDB_select(RDB_object *, RDB_expression *, RDB_exec_context *);
-
-RDB_object *
-_RDB_extend(RDB_object *, int attrc, const RDB_virtual_attr attrv[],
-        RDB_exec_context *, RDB_transaction *);
+int
+_RDB_vtexp_to_obj(RDB_expression *exp, RDB_exec_context *ecp,
+        RDB_transaction *txp, RDB_object *tbp);
 
 int
 _RDB_optimize(RDB_object *, int seqitc, const RDB_seq_item seqitv[],
@@ -592,9 +593,5 @@ _RDB_check_constraints(const RDB_constraint *, RDB_exec_context *,
 
 void
 _RDB_handle_errcode(int errcode, RDB_exec_context *, RDB_transaction *);
-
-RDB_bool
-_RDB_table_def_equals(RDB_object *, RDB_object *, RDB_exec_context *,
-        RDB_transaction *);
 
 #endif

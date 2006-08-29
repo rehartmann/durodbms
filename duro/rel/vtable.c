@@ -3,9 +3,8 @@
  *
  * Copyright (C) 2004-2006 René Hartmann.
  * See the file COPYING for redistribution information.
- */
-
-/*
+ *
+ *
  * Functions for virtual tables
  */
 
@@ -15,49 +14,41 @@
 #include <gen/strfns.h>
 #include <string.h>
 
-RDB_object *
-RDB_expr_to_vtable(RDB_expression *exp, RDB_exec_context *ecp,
-        RDB_transaction *txp)
+/*
+ * Turn *strobjp into a virtual table defined by exp.
+ */
+int
+_RDB_vtexp_to_obj(RDB_expression *exp, RDB_exec_context *ecp,
+        RDB_transaction *txp, RDB_object *tbp)
 {
-    RDB_type *tbtyp;
-    RDB_object *tbp = _RDB_new_obj(ecp);
-    if (tbp == NULL)
-        return NULL;
-
     /* Create type */
-    tbtyp = RDB_expr_type(exp, NULL, ecp, txp);
+    RDB_type *tbtyp = RDB_expr_type(exp, NULL, ecp, txp);
     if (tbtyp == NULL) {
-        _RDB_free_obj(tbp, ecp);
-        return NULL;
+        return RDB_ERROR;
     }
 
     if (_RDB_init_table(tbp, NULL, RDB_FALSE, 
             tbtyp, 0, NULL, RDB_TRUE, exp, ecp) != RDB_OK) {
         RDB_drop_type(tbtyp, ecp, NULL);
+        return RDB_ERROR;
+    }
+    return RDB_OK;
+}
+
+RDB_object *
+RDB_expr_to_vtable(RDB_expression *exp, RDB_exec_context *ecp,
+        RDB_transaction *txp)
+{
+    RDB_object *tbp = _RDB_new_obj(ecp);
+    if (tbp == NULL)
+        return NULL;
+
+    if (_RDB_vtexp_to_obj(exp, ecp, txp, tbp) != RDB_OK) {
         _RDB_free_obj(tbp, ecp);
         return NULL;
     }
+
     return tbp;
-}
-
-RDB_bool
-_RDB_table_def_equals(RDB_object *tb1p, RDB_object *tb2p, RDB_exec_context *ecp,
-        RDB_transaction *txp)
-{
-	int ret;
-	RDB_bool res;
-	
-    if (tb1p == tb2p)
-        return RDB_TRUE;
-
-    if (tb1p->var.tb.exp == NULL || tb2p->var.tb.exp == NULL)
-        return RDB_FALSE;
-
-    ret = _RDB_expr_equals(tb1p->var.tb.exp,
-                    tb2p->var.tb.exp, ecp, txp, &res);
-    if (ret != RDB_OK)
-       return RDB_FALSE;
-    return res;
 }
 
 /*

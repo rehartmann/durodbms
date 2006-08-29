@@ -318,7 +318,8 @@ table_cost(RDB_expression *texp)
                 texp->var.tbref.tbp->var.tb.stp->est_cardinality : 0;
 
     if (texp->kind == RDB_EX_OBJ)
-        return texp->var.obj.var.tb.stp->est_cardinality;
+        return texp->var.obj.var.tb.stp != NULL ?
+                texp->var.obj.var.tb.stp->est_cardinality : 0;
 
     if (strcmp(texp->var.op.name, "SEMIMINUS") == 0)
         return table_cost(texp->var.op.argv[0]); /* !! */
@@ -542,36 +543,9 @@ mutate_full_vt(RDB_expression *texp, RDB_expression **tbpv, int cap,
     return mutate_vt(texp, texp->var.op.argc, tbpv, cap, ecp, txp);
 }
 
-static void
-table_to_empty(RDB_expression *exp, RDB_exec_context *ecp)
-{
-    /* !!
-    switch (tbp->kind) {
-        case RDB_TB_SELECT:
-            RDB_drop_expr(tbp->var.select.exp, ecp);
-            if (!tbp->var.select.tbp->is_persistent) {
-                RDB_drop_table(tbp->var.select.tbp, ecp, NULL);
-            }
-            tbp->kind = RDB_TB_REAL;
-            break;
-        case RDB_TB_SEMIMINUS:
-            if (!tbp->var.semiminus.tb1p->is_persistent) {
-                RDB_drop_table(tbp->var.semiminus.tb1p, ecp, NULL);
-            }
-            if (!tbp->var.semiminus.tb2p->is_persistent) {
-                RDB_drop_table(tbp->var.semiminus.tb2p, ecp, NULL);
-            }
-            tbp->kind = RDB_TB_REAL;
-            break;
-        default: ;
-    }
-    */
-}
-
 static int
 replace_empty(RDB_expression *exp, RDB_exec_context *ecp, RDB_transaction *txp)
 {
-	int ret;
     struct _RDB_tx_and_ec te;
 
     te.txp = txp;
@@ -581,312 +555,103 @@ replace_empty(RDB_expression *exp, RDB_exec_context *ecp, RDB_transaction *txp)
     if (txp->dbp != NULL
             && RDB_hashtable_get(&txp->dbp->dbrootp->empty_tbtab,
                     exp, &te) != NULL) {
-            table_to_empty(exp, ecp);
+        return _RDB_expr_to_empty_table(exp, ecp, txp);
     } else if (exp->kind == RDB_EX_RO_OP) {
-    	int i;
-    	
-    	for (i = 0; i < exp->var.op.argc; i++) {
-            ret = replace_empty(exp->var.op.argv[0], ecp, txp);
-            if (ret != RDB_OK)
-                return ret;
+        int i;
+
+        for (i = 0; i < exp->var.op.argc; i++) {
+            if (replace_empty(exp->var.op.argv[i], ecp, txp) != RDB_OK)
+                return RDB_ERROR;
     	}
     }
     return RDB_OK;
 }
 
-#ifdef REMOVED
-static int
-transform_semiminus_union(RDB_object *tbp, RDB_exec_context *ecp,
-        RDB_transaction *txp, RDB_object **restbpp)
+static RDB_expression *
+transform_semiminus_union(RDB_expression *texp, RDB_exec_context *ecp,
+        RDB_transaction *txp)
 {
     int ret;
-    RDB_object *tb1p, *tb2p, *tb3p, *tb4p;
+    RDB_expression *ex1p, *ex2p, *ex3p, *ex4p;
+    RDB_expression *resexp;
 
-    tb1p = _RDB_dup_vtable(tbp->var.semiminus.tb1p->var._union.tb1p, ecp);
-    if (tb1p == NULL) {
-        return RDB_ERROR;
-    }
-
-    tb2p = _RDB_dup_vtable(tbp->var.semiminus.tb2p, ecp);
-    if (tb2p == NULL) {
-        RDB_drop_table (tb1p, ecp, NULL);
-        return RDB_ERROR;
+    ex1p = RDB_dup_expr(texp->var.op.argv[0]->var.op.argv[0], ecp);
+    if (ex1p == NULL) {
+        return NULL;
     }
 
-    tb3p = RDB_semiminus(tb1p, tb2p, ecp);
-    if (tb3p == NULL) {
-        RDB_drop_table(tb1p, ecp, NULL);
-        RDB_drop_table(tb2p, ecp, NULL);
-        return RDB_ERROR;
+    ex2p = RDB_dup_expr(texp->var.op.argv[1], ecp);
+    if (ex2p == NULL) {
+        RDB_drop_expr(ex1p, ecp);
+        return NULL;
     }
 
-    tb1p = _RDB_dup_vtable(tbp->var.semiminus.tb1p->var._union.tb2p, ecp);
-    if (tb1p == NULL) {
-        RDB_drop_table(tb3p, ecp, NULL);
-        return RDB_ERROR;
+    ex3p = RDB_ro_op("SEMIMINUS", 2, ecp);
+    if (ex3p == NULL) {
+        RDB_drop_expr(ex1p, ecp);
+        RDB_drop_expr(ex2p, ecp);
+        return NULL;
     }
-    tb2p = _RDB_dup_vtable(tbp->var.semiminus.tb2p, ecp);
-    if (tb2p == NULL) {
-        RDB_drop_table(tb1p, ecp, NULL);
-        RDB_drop_table(tb3p, ecp, NULL);
-        return RDB_ERROR;
+    RDB_add_arg(ex3p, ex1p);
+    RDB_add_arg(ex3p, ex2p);
+
+    ex1p = RDB_dup_expr(texp->var.op.argv[0]->var.op.argv[1], ecp);
+    if (ex1p == NULL) {
+        RDB_drop_expr(ex3p, ecp);
+        return NULL;
     }
 
-    tb4p = RDB_semiminus(tb1p, tb2p, ecp);
-    if (tb4p == NULL) {
-        RDB_drop_table(tb1p, ecp, NULL);
-        RDB_drop_table(tb2p, ecp, NULL);
-        RDB_drop_table(tb3p, ecp, NULL);        
-        return RDB_ERROR;
+    ex2p = RDB_dup_expr(texp->var.op.argv[1], ecp);
+    if (ex2p == NULL) {
+        RDB_drop_expr(ex1p, ecp);
+        RDB_drop_expr(ex3p, ecp);
+        return NULL;
     }
 
-    *restbpp = RDB_union(tb3p, tb4p, ecp);
-    if (*restbpp == NULL) {
-        RDB_drop_table(tb3p, ecp, NULL);
-        RDB_drop_table(tb4p, ecp, NULL);
-        return RDB_ERROR;
+    ex4p = RDB_ro_op("SEMIMINUS", 2, ecp);
+    if (ex4p == NULL) {
+        RDB_drop_expr(ex1p, ecp);
+        RDB_drop_expr(ex2p, ecp);
+        RDB_drop_expr(ex3p, ecp);
+        return NULL;
     }
-    ret = replace_empty(*restbpp, ecp, txp);
+    RDB_add_arg(ex4p, ex1p);
+    RDB_add_arg(ex4p, ex2p);
+
+    resexp = RDB_ro_op("UNION", 2, ecp);
+    if (resexp == NULL) {
+        RDB_drop_expr(ex3p, ecp);
+        RDB_drop_expr(ex4p, ecp);
+        return NULL;
+    }
+    RDB_add_arg(resexp, ex3p);
+    RDB_add_arg(resexp, ex4p);
+
+    ret = replace_empty(resexp, ecp, txp);
     if (ret != RDB_OK) {
-        RDB_drop_table(*restbpp, ecp, NULL);
-        return ret;
+        RDB_drop_expr(resexp, ecp);
+        return NULL;
     }
-    return RDB_OK;
+    return resexp;
 }
 
 static int
-mutate_semiminus(RDB_expression *texp, RDB_object **tbpv, int cap,
+mutate_semiminus(RDB_expression *texp, RDB_expression **tbpv, int cap,
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
-    int tbc;
-    int i;
-    int ret;
-
-    tbc = mutate(tbp->var.semiminus.tb1p, tbpv, cap, ecp, txp);
+    int tbc = mutate_full_vt(texp, tbpv, cap, ecp, txp);
     if (tbc < 0)
-        return tbc;
-    for (i = 0; i < tbc; i++) {
-        RDB_object *ntbp;
-        RDB_object *otbp = _RDB_dup_vtable(tbp->var.semiminus.tb2p, ecp);
-        if (otbp == NULL)
-            return RDB_ERROR;
+        return RDB_ERROR;
 
-        ntbp = RDB_semiminus(tbpv[i], otbp, ecp);
-        if (ntbp == NULL)
-            return RDB_ERROR;
-        tbpv[i] = ntbp;
-    }
-    if (tbc < cap && tbp->var.semiminus.tb1p->kind == RDB_TB_UNION) {
-        ret = transform_semiminus_union(tbp, ecp, txp, &tbpv[tbc]);
-        if (ret != RDB_OK)
+    if (tbc < cap && texp->var.op.argv[0]->kind == RDB_EX_RO_OP
+            && strcmp(texp->var.op.argv[0]->var.op.name, "UNION") == 0) {
+        tbpv[tbc] = transform_semiminus_union(texp, ecp, txp);
+        if (tbpv[tbc] == NULL)
             return RDB_ERROR;
         tbc++;
-        /* !! mutate_union */
     }
     return tbc;
 }
-
-static int
-mutate_semijoin(RDB_expression *texp, RDB_object **tbpv, int cap,
-        RDB_exec_context *ecp, RDB_transaction *txp)
-{
-    int tbc1, tbc2;
-    int i;
-
-    tbc1 = mutate(tbp->var.semijoin.tb1p, tbpv, cap, ecp, txp);
-    if (tbc1 < 0)
-        return tbc1;
-    for (i = 0; i < tbc1; i++) {
-        RDB_object *ntbp;
-        RDB_object *otbp = _RDB_dup_vtable(tbp->var.semijoin.tb2p, ecp);
-        if (otbp == NULL)
-            return RDB_ERROR;
-
-        ntbp = RDB_semijoin(tbpv[i], otbp, ecp);
-        if (ntbp == NULL)
-            return RDB_ERROR;
-        tbpv[i] = ntbp;
-    }
-    tbc2 = mutate(tbp->var.semijoin.tb2p, &tbpv[tbc1], cap - tbc1, ecp, txp);
-    if (tbc2 < 0)
-        return tbc2;
-    for (i = tbc1; i < tbc1 + tbc2; i++) {
-        RDB_object *ntbp;
-        RDB_object *otbp = _RDB_dup_vtable(tbp->var.semijoin.tb1p, ecp);
-        if (otbp == NULL)
-            return RDB_ERROR;
-
-        ntbp = RDB_semijoin(otbp, tbpv[i], ecp);
-        if (ntbp == NULL)
-            return RDB_ERROR;
-        tbpv[i] = ntbp;
-    }
-    return tbc1 + tbc2;
-}
-
-static int
-mutate_extend(RDB_expression *texp, RDB_object **tbpv, int cap,
-        RDB_exec_context *ecp, RDB_transaction *txp)
-{
-    int tbc;
-    int i, j;
-    RDB_virtual_attr *extv;
-
-    tbc = mutate(tbp->var.op.argv[0], tbpv, cap, ecp, txp);
-    if (tbc < 0)
-        return tbc;
-
-    extv = malloc(sizeof (RDB_virtual_attr)
-            * tbp->var.extend.attrc);
-    if (extv == NULL) {
-        RDB_raise_no_memory(ecp);
-        return RDB_ERROR;
-    }
-    for (i = 0; i < tbp->var.extend.attrc; i++)
-        extv[i].name = tbp->var.extend.attrv[i].name;
-
-    for (i = 0; i < tbc; i++) {
-        RDB_object *ntbp;
-
-        for (j = 0; j < tbp->var.extend.attrc; j++) {
-            extv[j].exp = RDB_dup_expr(tbp->var.extend.attrv[j].exp, ecp);
-            if (extv[j].exp == NULL)
-                return RDB_ERROR;
-        }
-        ntbp = _RDB_extend(tbpv[i], tbp->var.extend.attrc, extv, ecp, txp);
-        if (ntbp == NULL) {
-            for (j = 0; j < tbp->var.extend.attrc; j++)
-                RDB_drop_expr(extv[j].exp, ecp);
-            free(extv);
-            return RDB_ERROR;
-        }
-        tbpv[i] = ntbp;
-    }
-    free(extv);
-    return tbc;
-}
-
-static int
-mutate_summarize(RDB_expression *texp, RDB_object **tbpv, int cap,
-        RDB_exec_context *ecp, RDB_transaction *txp)
-{
-    int tbc;
-    int i, j;
-    RDB_summarize_add *addv;
-
-    tbc = mutate(tbp->var.op.argv[0], tbpv, cap, ecp, txp);
-    if (tbc < 0)
-        return tbc;
-
-    addv = malloc(sizeof (RDB_summarize_add) * tbp->var.summarize.addc);
-    if (addv == NULL) {
-        RDB_raise_no_memory(ecp);
-        return RDB_ERROR;
-    }
-    for (i = 0; i < tbp->var.summarize.addc; i++) {
-        addv[i].op = tbp->var.summarize.addv[i].op;
-        addv[i].name = tbp->var.summarize.addv[i].name;
-    }
-
-    for (i = 0; i < tbc; i++) {
-        RDB_object *ntbp;
-        RDB_object *otbp = _RDB_dup_vtable(tbp->var.summarize.tb2p, ecp);
-        if (otbp == NULL) {
-            free(addv);
-            return RDB_ERROR;
-        }
-
-        for (j = 0; j < tbp->var.summarize.addc; j++) {
-            if (tbp->var.summarize.addv[j].exp != NULL) {
-                addv[j].exp = RDB_dup_expr(tbp->var.summarize.addv[j].exp, ecp);
-                if (addv[j].exp == NULL)
-                    return RDB_ERROR;
-            } else {
-                addv[j].exp = NULL;
-            }
-        }
-
-        ntbp = RDB_summarize(tbpv[i], otbp, tbp->var.summarize.addc, addv,
-                ecp, txp);
-        if (ntbp == NULL) {
-            for (j = 0; j < tbp->var.summarize.addc; j++)
-                RDB_drop_expr(addv[j].exp, ecp);
-            free(addv);
-            return RDB_ERROR;
-        }
-        tbpv[i] = ntbp;
-    }
-    free(addv);
-    return tbc;
-}
-
-static int
-mutate_project(RDB_expression *texp, RDB_object **tbpv, int cap,
-        RDB_exec_context *ecp, RDB_transaction *txp)
-{
-    int tbc;
-    int i;
-    char **namev;
-
-    if (tbp->var.project.tbp->kind == RDB_TB_REAL
-            && tbp->var.project.tbp->stp != NULL
-            && tbp->var.project.tbp->stp->indexc > 0) {
-        tbc = tbp->var.project.tbp->stp->indexc;
-        for (i = 0; i < tbc; i++) {
-            _RDB_tbindex *indexp = &tbp->var.project.tbp->stp->indexv[i];
-            RDB_object *ptbp = _RDB_dup_vtable(tbp, ecp);
-            if (ptbp == NULL)
-                return RDB_ERROR;
-            ptbp->var.project.indexp = indexp;
-            tbpv[i] = ptbp;
-        }
-    } else {
-        tbc = mutate(texp->var.op.argv[0], tbpv, cap, ecp, txp);
-        if (tbc < 0)
-            return tbc;
-
-        namev = malloc(sizeof (char *) * tbp->typ->var.basetyp->var.tuple.attrc);
-        if (namev == NULL) {
-            RDB_raise_no_memory(ecp);
-            return RDB_ERROR;
-        }
-        for (i = 0; i < tbp->typ->var.basetyp->var.tuple.attrc; i++)
-            namev[i] = tbp->typ->var.basetyp->var.tuple.attrv[i].name;
-
-        for (i = 0; i < tbc; i++) {
-            RDB_object *ntbp;
-
-            ntbp = RDB_project(tbpv[i], tbp->typ->var.basetyp->var.tuple.attrc,
-                    namev, ecp);
-            if (ntbp == NULL) {
-                free(namev);
-                return RDB_ERROR;
-            }
-            tbpv[i] = ntbp;
-        }
-        free(namev);
-    }
-    return tbc;
-}
-
-static int
-common_attrs(RDB_type *tpltyp1, RDB_type *tpltyp2, char **cmattrv)
-{
-    int i, j;
-    int cattrc = 0;
-
-    for (i = 0; i < tpltyp1->var.tuple.attrc; i++) {
-        for (j = 0;
-             j < tpltyp2->var.tuple.attrc
-                     && strcmp(tpltyp1->var.tuple.attrv[i].name,
-                     tpltyp2->var.tuple.attrv[j].name) != 0;
-             j++);
-        if (j < tpltyp2->var.tuple.attrc)
-            cmattrv[cattrc++] = tpltyp1->var.tuple.attrv[i].name;
-    }
-    return cattrc;
-}
-#endif
 
 static int
 index_joins(RDB_expression *otexp, RDB_expression *itexp, 
@@ -1013,9 +778,12 @@ mutate(RDB_expression *texp, RDB_expression **tbpv, int cap, RDB_exec_context *e
         return mutate_join(texp, tbpv, cap, ecp, txp);
     }
 
+    if (strcmp(texp->var.op.name, "SEMIMINUS") == 0) {
+        return mutate_semiminus(texp, tbpv, cap, ecp, txp);       
+    }
+
     if (strcmp(texp->var.op.name, "UNION") == 0
             || strcmp(texp->var.op.name, "MINUS") == 0
-            || strcmp(texp->var.op.name, "SEMIMINUS") == 0
             || strcmp(texp->var.op.name, "INTERSECT") == 0
             || strcmp(texp->var.op.name, "SEMIJOIN") == 0
             || strcmp(texp->var.op.name, "JOIN") == 0) {

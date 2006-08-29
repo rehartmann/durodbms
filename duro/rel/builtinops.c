@@ -44,10 +44,7 @@ op_vtable(const char *name, int argc, RDB_object *argv[],
         RDB_exec_context *ecp, RDB_transaction *txp, RDB_object *retvalp)
 {
     int i;
-    RDB_type *argtyp;
-    RDB_object *vtbp;
-    RDB_ma_copy cpy;
-    RDB_expression *argexp;    
+    RDB_expression *argexp;
     RDB_expression *exp;
 
     /*
@@ -58,40 +55,32 @@ op_vtable(const char *name, int argc, RDB_object *argv[],
         return RDB_ERROR;
 
     for (i = 0; i < argc; i++) {
-        argtyp = RDB_obj_type(argv[i]);
-        if (argtyp != NULL && argtyp->kind == RDB_TP_RELATION) {
-            argexp = RDB_table_ref_to_expr(argv[i], ecp);
+        if (argv[i]->kind == RDB_OB_TABLE) {
+            if (argv[i]->var.tb.is_persistent) {
+                argexp = RDB_table_ref_to_expr(argv[i], ecp);
+            } else if (argv[i]->var.tb.exp != NULL) {
+                argexp = RDB_dup_expr(argv[i]->var.tb.exp, ecp);
+            } else {
+                argexp = RDB_obj_to_expr(argv[i], ecp);
+            }
         } else {
             argexp = RDB_obj_to_expr(argv[i], ecp);
         }
         if (argexp == NULL) {
             RDB_drop_expr(exp, ecp);
             return RDB_ERROR;
-        }        
+        }
         RDB_add_arg(exp, argexp);
     }
 
     /*
      * Create virtual table
      */
-    vtbp = RDB_expr_to_vtable(exp, ecp, txp);
-    if (vtbp == NULL) {
+    if (_RDB_vtexp_to_obj(exp, ecp, txp, retvalp) != RDB_OK) {
         RDB_drop_expr(exp, ecp);
         return RDB_ERROR;
     }
-
-    /*
-     * Copy table
-     */        
-    cpy.dstp = retvalp;
-    cpy.srcp = vtbp;
-    
-    if (RDB_multi_assign(0, NULL, 0, NULL, 0, NULL, 1, &cpy, ecp, txp)
-            == RDB_ERROR) {
-        RDB_drop_table(vtbp, ecp, txp);
-        return RDB_ERROR;
-    }
-    return RDB_drop_table(vtbp, ecp, txp);
+    return RDB_OK;
 }
 
 static int
