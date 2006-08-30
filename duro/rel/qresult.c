@@ -741,6 +741,7 @@ init_index_qresult(RDB_qresult *qrp, RDB_object *tbp, _RDB_tbindex *indexp,
     int ret;
 
     /* !! delay after first call to _RDB_qresult_next()? */
+    qrp->endreached = RDB_FALSE;
     qrp->nested = RDB_FALSE;
     qrp->exp = NULL;
     qrp->var.stored.tbp = tbp;
@@ -1103,7 +1104,7 @@ print_mem_stat(RDB_environment *envp)
  * Creates a qresult which sorts a table.
  */
 int
-_RDB_sorter(RDB_object *tbp, RDB_qresult **qrpp, RDB_exec_context *ecp,
+_RDB_sorter(RDB_expression *texp, RDB_qresult **qrpp, RDB_exec_context *ecp,
         RDB_transaction *txp, int seqitc, const RDB_seq_item seqitv[])
 {
     RDB_string_vec key;
@@ -1112,6 +1113,7 @@ _RDB_sorter(RDB_object *tbp, RDB_qresult **qrpp, RDB_exec_context *ecp,
     int i;
     RDB_qresult *tmpqrp;
     RDB_object tpl;
+    RDB_type *typ = NULL;
     RDB_qresult *qrp = malloc(sizeof (RDB_qresult));
     if (qrp == NULL) {
         RDB_raise_no_memory(ecp);
@@ -1144,9 +1146,13 @@ _RDB_sorter(RDB_object *tbp, RDB_qresult **qrpp, RDB_exec_context *ecp,
      * Create a sorted RDB_table
      */
 
+    typ = RDB_expr_type(texp, NULL, ecp, txp);
+    if (typ == NULL)
+        goto error;
+
     qrp->matp = _RDB_new_rtable(NULL, RDB_FALSE,
-            tbp->typ->var.basetyp->var.tuple.attrc,
-            tbp->typ->var.basetyp->var.tuple.attrv, 1, &key, RDB_TRUE, ecp);
+            typ->var.basetyp->var.tuple.attrc,
+            typ->var.basetyp->var.tuple.attrv, 1, &key, RDB_TRUE, ecp);
     if (qrp->matp == NULL)
         goto error;
 
@@ -1159,7 +1165,7 @@ _RDB_sorter(RDB_object *tbp, RDB_qresult **qrpp, RDB_exec_context *ecp,
      * Copy tuples into the newly created RDB_table
      */
 
-    tmpqrp = _RDB_table_qresult(tbp, ecp, txp);
+    tmpqrp = _RDB_expr_qresult(texp, ecp, txp);
     if (tmpqrp == NULL)
         goto error;
 
@@ -1196,7 +1202,7 @@ _RDB_sorter(RDB_object *tbp, RDB_qresult **qrpp, RDB_exec_context *ecp,
     free(ascv);
 
     *qrpp = qrp;
-    return RDB_OK;
+    return RDB_drop_type(typ, ecp, NULL);
 
 error:
     if (key.strv != NULL)
@@ -1206,6 +1212,7 @@ error:
     if (qrp->matp != NULL)
         RDB_drop_table(qrp->matp, ecp, NULL);
     free(qrp);
+    RDB_drop_type(typ, ecp, NULL);
 
     return RDB_ERROR;
 }

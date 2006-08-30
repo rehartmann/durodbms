@@ -61,7 +61,7 @@ _RDB_index_qresult(RDB_object *, struct _RDB_tbindex *, RDB_transaction *,
         RDB_qresult **);
 
 int
-_RDB_sorter(RDB_object *tbp, RDB_qresult **qrespp, RDB_exec_context *,
+_RDB_sorter(RDB_expression *, RDB_qresult **qrespp, RDB_exec_context *,
         RDB_transaction *, int seqitc, const RDB_seq_item seqitv[]);
 
 int

@@ -93,7 +93,7 @@ typedef struct RDB_object {
         } tb;
         RDB_hashtable tpl_tab;
         struct {
-            struct RDB_object *tbp;
+            struct RDB_expression *texp;
             struct RDB_transaction *txp;
             struct RDB_qresult *qrp;
 

@@ -447,9 +447,9 @@ int
 _RDB_vtexp_to_obj(RDB_expression *exp, RDB_exec_context *ecp,
         RDB_transaction *txp, RDB_object *tbp);
 
-int
+RDB_expression *
 _RDB_optimize(RDB_object *, int seqitc, const RDB_seq_item seqitv[],
-        RDB_exec_context *, RDB_transaction *, RDB_object **);
+        RDB_exec_context *, RDB_transaction *);
 
 RDB_possrep *
 _RDB_get_possrep(RDB_type *typ, const char *repname);
@@ -575,7 +575,7 @@ _RDB_index_objpv(_RDB_tbindex *indexp, RDB_expression *exp, RDB_type *tbtyp,
         int objpc, RDB_bool all_eq, RDB_bool asc);
 
 _RDB_tbindex *
-_RDB_sortindex (RDB_object *tbp);
+_RDB_expr_sortindex (RDB_expression *);
 
 RDB_bool
 _RDB_index_sorts(struct _RDB_tbindex *indexp, int seqitc,

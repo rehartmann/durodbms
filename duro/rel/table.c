@@ -732,17 +732,14 @@ RDB_extract_tuple(RDB_object *tbp, RDB_exec_context *ecp,
     int ret;
     RDB_qresult *qrp;
     RDB_object tpl;
-    RDB_object *ntbp;
     RDB_type *errtyp;
+    RDB_expression *texp = _RDB_optimize(tbp, 0, NULL, ecp, txp);
+    if (texp == NULL)
+        return RDB_ERROR;
 
-    ret = _RDB_optimize(tbp, 0, NULL, ecp, txp, &ntbp);
-    if (ret != RDB_OK)
-        return ret;
-
-    qrp = _RDB_table_qresult(ntbp, ecp, txp);
+    qrp = _RDB_expr_qresult(texp, ecp, txp);
     if (qrp == NULL) {
-        if (ntbp->var.tb.exp != NULL)
-            RDB_drop_table(ntbp, ecp, txp);
+        RDB_drop_expr(texp, ecp);
         return RDB_ERROR;
     }
 
@@ -782,9 +779,7 @@ cleanup:
     RDB_destroy_obj(&tpl, ecp);
 
     _RDB_drop_qresult(qrp, ecp, txp);
-    if (ntbp->var.tb.exp != NULL) {
-        RDB_drop_table(ntbp, ecp, txp);
-    }
+    RDB_drop_expr(texp, ecp);
     return RDB_get_err(ecp) == NULL ? RDB_OK : RDB_ERROR;
 }
 
@@ -868,28 +863,27 @@ RDB_cardinality(RDB_object *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
     RDB_int count;
     RDB_qresult *qrp;
     RDB_object tpl;
-    RDB_object *ntbp;
+    RDB_expression *texp;
 
     if (txp != NULL && !RDB_tx_is_running(txp)) {
         RDB_raise_invalid_tx(ecp);
         return RDB_ERROR;
     }
 
-    if (_RDB_optimize(tbp, 0, NULL, ecp, txp, &ntbp) != RDB_OK)
+    texp = _RDB_optimize(tbp, 0, NULL, ecp, txp);
+    if (texp == NULL)
         return RDB_ERROR;
 
-    qrp = _RDB_table_qresult(ntbp, ecp, txp);
+    qrp = _RDB_expr_qresult(texp, ecp, txp);
     if (qrp == NULL) {
-        if (ntbp->var.tb.exp != NULL)
-            RDB_drop_table(ntbp, ecp, txp);
+        RDB_drop_expr(texp, ecp);
         return RDB_ERROR;
     }
 
     /* Duplicates must be removed */
     ret = _RDB_duprem(qrp, ecp, txp);
     if (ret != RDB_OK) {
-        if (ntbp->var.tb.exp != NULL)
-            RDB_drop_table(ntbp, ecp, txp);
+        RDB_drop_expr(texp, ecp);
         _RDB_drop_qresult(qrp, ecp, txp);
         return RDB_ERROR;
     }
@@ -911,19 +905,17 @@ RDB_cardinality(RDB_object *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
     if (ret != RDB_OK)
         goto error;
 
-    if (ntbp->var.tb.exp != NULL) {
-        if (RDB_drop_table(ntbp, ecp, txp) != RDB_OK)
-            return RDB_ERROR;
-    }
+    if (texp->kind == RDB_EX_TBP
+            && texp->var.tbref.tbp->var.tb.stp != NULL)
+        texp->var.tbref.tbp->var.tb.stp->est_cardinality = count;
 
-    if (tbp->var.tb.stp != NULL)
-        tbp->var.tb.stp->est_cardinality = count;
+    if (RDB_drop_expr(texp, ecp) != RDB_OK)
+        return RDB_ERROR;
 
     return count;
 
 error:
-    if (ntbp->var.tb.exp != NULL)
-        RDB_drop_table(ntbp, ecp, txp);
+    RDB_drop_expr(texp, ecp);
     return RDB_ERROR;
 }
 
@@ -1043,21 +1035,25 @@ error:
     return ret;
 }
 
-struct _RDB_tbindex *
-expr_sortindex (RDB_expression *exp)
+/*
+ * If the tuples are sorted by an ordered index when read using
+ * a table qresult, return the index, otherwise NULL.
+ */
+_RDB_tbindex *
+_RDB_expr_sortindex (RDB_expression *exp)
 {
     if (exp->kind == RDB_EX_TBP) {
         if (exp->var.tbref.tbp->var.tb.exp != NULL)
-            return expr_sortindex(exp->var.tbref.tbp->var.tb.exp);
+            return _RDB_expr_sortindex(exp->var.tbref.tbp->var.tb.exp);
         return exp->var.tbref.indexp;
     }
     if (exp->kind != RDB_EX_RO_OP)
         return NULL;
     if (strcmp(exp->var.op.name, "WHERE") == 0) {
-        return expr_sortindex(exp->var.op.argv[0]);
+        return _RDB_expr_sortindex(exp->var.op.argv[0]);
     }
     if (strcmp(exp->var.op.name, "PROJECT") == 0) {
-        return expr_sortindex(exp->var.op.argv[0]);
+        return _RDB_expr_sortindex(exp->var.op.argv[0]);
     }
     if (strcmp(exp->var.op.name, "SEMIMINUS") == 0
             || strcmp(exp->var.op.name, "MINUS") == 0
@@ -1066,23 +1062,9 @@ expr_sortindex (RDB_expression *exp)
             || strcmp(exp->var.op.name, "JOIN") == 0
             || strcmp(exp->var.op.name, "EXTEND") == 0
             || strcmp(exp->var.op.name, "SDIVIDE") == 0) {
-        return expr_sortindex(exp->var.op.argv[0]);
+        return _RDB_expr_sortindex(exp->var.op.argv[0]);
     }
     /* !! RENAME, SUMMARIZE, WRAP, UNWRAP, GROUP, UNGROUP */
 
     return NULL;
-}
-
-/*
- * If the tuples are sorted by an ordered index when read using
- * a table qresult, return the index, otherwise NULL.
- */
-struct _RDB_tbindex *
-_RDB_sortindex (RDB_object *tbp)
-{
-    if (tbp->kind != RDB_OB_TABLE)
-        return NULL;
-    if (tbp->var.tb.exp == NULL)
-        return NULL;
-    return expr_sortindex(tbp->var.tb.exp);
 }

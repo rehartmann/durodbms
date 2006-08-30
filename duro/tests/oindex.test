@@ -11,15 +11,19 @@ package require tcltest 2.2
 eval ::tcltest::configure $argv
 namespace import ::tcltest::*
 
-test oindex {ordered indexes} -body {
-    load [configure -testdir]/../libdurotcl.so
-    source [configure -testdir]/testutil.tcl
+set SETUP {
+    set scriptdir [file dirname [info script]]
+    load $scriptdir/../libdurotcl.so
+    source $scriptdir/testutil.tcl
 
-    # Create DB environment dir
-    set envdir [makeDirectory dbenv]
+    # Create DB environment dir, ensure it's empty
+    removeDirectory dbenv
+    makeDirectory dbenv
+}
 
-    set dbenv [duro::env open $envdir]
-    
+test oindex {ordered indexes} -setup $SETUP -body {
+    set dbenv [duro::env open [configure -tmpdir]/dbenv]
+
     # Create Database
     duro::db create $dbenv TEST
     
@@ -103,14 +107,14 @@ test oindex {ordered indexes} -body {
             {A 5 B Blubb C Y D x}} $tx
     
     duro::array drop $a
-    
+
     duro::delete T1 {B > "Blb" AND B < "Blubb"} $tx
-    
+
     set a [duro::array create T1 {A asc} $tx]
-    
+
     checkarray $a {{A 1 B Blb C Y D u} {A 2 B Blb C Y D u}
             {A 3 B Bla C X D x} {A 5 B Blubb C Y D x}} $tx
-    
+
     duro::array drop $a
     
     #
@@ -118,12 +122,12 @@ test oindex {ordered indexes} -body {
     #
     
     duro::update T1 {A = 2} B {"Ble"} $tx
-    
+
     set a [duro::array create T1 {B asc} $tx]
     
     checkarray $a {{A 3 B Bla C X D x} {A 1 B Blb C Y D u} {A 2 B Ble C Y D u}
             {A 5 B Blubb C Y D x}} $tx
-    
+
     duro::array drop $a
     
     duro::table expr v {T1 WHERE A > 1} $tx

@@ -15,7 +15,7 @@ RDB_table_to_array(RDB_object *arrp, RDB_object *tbp,
                    RDB_exec_context *ecp, RDB_transaction *txp)
 {
     int ret;
-    RDB_object *ntbp;
+    RDB_expression *texp;
     RDB_qresult *qrp = NULL;
     _RDB_tbindex *indexp = NULL;
 
@@ -24,21 +24,21 @@ RDB_table_to_array(RDB_object *arrp, RDB_object *tbp,
         return RDB_ERROR;
     RDB_init_obj(arrp);
 
-    ret = _RDB_optimize(tbp, seqitc, seqitv, ecp, txp, &ntbp);
-    if (ret != RDB_OK)
+    texp = _RDB_optimize(tbp, seqitc, seqitv, ecp, txp);
+    if (texp == NULL)
         return RDB_ERROR;
 
     if (seqitc > 0) {
-        indexp = _RDB_sortindex(ntbp);
+        indexp = _RDB_expr_sortindex(texp);
         if (indexp == NULL || !_RDB_index_sorts(indexp, seqitc, seqitv)) {
             /* Create sorter */
-            ret = _RDB_sorter(ntbp, &qrp, ecp, txp, seqitc, seqitv);
+            ret = _RDB_sorter(texp, &qrp, ecp, txp, seqitc, seqitv);
             if (ret != RDB_OK)
                 goto error;
         }
     }
     if (qrp == NULL) {
-        qrp = _RDB_table_qresult(ntbp, ecp, txp);
+        qrp = _RDB_expr_qresult(texp, ecp, txp);
         if (qrp == NULL) {
             goto error;
         }
@@ -47,9 +47,9 @@ RDB_table_to_array(RDB_object *arrp, RDB_object *tbp,
         if (ret != RDB_OK)
             goto error;
     }
-    
+
     arrp->kind = RDB_OB_ARRAY;
-    arrp->var.arr.tbp = ntbp;
+    arrp->var.arr.texp = texp;
     arrp->var.arr.txp = txp;
     arrp->var.arr.length = -1;
     arrp->var.arr.tplp = NULL;
@@ -60,9 +60,9 @@ RDB_table_to_array(RDB_object *arrp, RDB_object *tbp,
     return RDB_OK;
 
 error:
-    RDB_drop_table(ntbp, ecp, txp);
     if (qrp != NULL)
         _RDB_drop_qresult(qrp, ecp, txp);
+    RDB_drop_expr(texp, ecp);
     return RDB_ERROR;
 }
 
@@ -106,7 +106,7 @@ RDB_array_get(RDB_object *arrp, RDB_int idx, RDB_exec_context *ecp)
         return NULL;
     }
 
-    if (arrp->var.arr.tbp == NULL) {
+    if (arrp->var.arr.texp == NULL) {
         return &arrp->var.arr.elemv[idx];
     }
 
@@ -190,8 +190,9 @@ RDB_array_get(RDB_object *arrp, RDB_int idx, RDB_exec_context *ecp)
     if (ret != RDB_OK) {
         if (RDB_obj_type(RDB_get_err(ecp)) == &RDB_NOT_FOUND_ERROR) {
             arrp->var.arr.length = arrp->var.arr.pos;
-            if (arrp->var.arr.tbp->var.tb.stp != NULL) {
-                arrp->var.arr.tbp->var.tb.stp->est_cardinality =
+            if (arrp->var.arr.texp->kind == RDB_EX_TBP
+                    && arrp->var.arr.texp->var.tbref.tbp->var.tb.stp != NULL) {
+                arrp->var.arr.texp->var.tbref.tbp->var.tb.stp->est_cardinality =
                         arrp->var.arr.length;
             }
         }
@@ -245,12 +246,12 @@ RDB_set_array_length(RDB_object *arrp, RDB_int len, RDB_exec_context *ecp)
         for (i = 0; i < len; i++)
             RDB_init_obj(&arrp->var.arr.elemv[i]);
 
-        arrp->var.arr.tbp = NULL;
+        arrp->var.arr.texp = NULL;
         arrp->var.arr.length = arrp->var.arr.elemc = len;
         
         return RDB_OK;
     }
-    if (arrp->var.arr.tbp != NULL) {
+    if (arrp->var.arr.texp != NULL) {
         RDB_raise_not_supported(
                 "cannot set length of array created from table", ecp);
         return RDB_ERROR;
@@ -281,7 +282,7 @@ int
 RDB_array_set(RDB_object *arrp, RDB_int idx, const RDB_object *objp,
         RDB_exec_context *ecp)
 {
-    if (arrp->var.arr.tbp != NULL) {
+    if (arrp->var.arr.texp != NULL) {
         RDB_raise_not_supported("setting array element is not permitted", ecp);
         return RDB_ERROR;
     }

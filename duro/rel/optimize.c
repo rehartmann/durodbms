@@ -816,10 +816,9 @@ sorted_table_cost(RDB_expression *texp, int seqitc,
 {
     int cost = table_cost(texp);
 
-#ifdef REMOVED
     /* Check if the index must be sorted */
     if (seqitc > 0) {
-        _RDB_tbindex *indexp = _RDB_sortindex(tbp);
+        _RDB_tbindex *indexp = _RDB_expr_sortindex(texp);
         if (indexp == NULL || !_RDB_index_sorts(indexp, seqitc, seqitv))
         {
             int scost = (((double) cost) /* !! * log10(cost) */ / 7);
@@ -829,14 +828,13 @@ sorted_table_cost(RDB_expression *texp, int seqitc,
             cost += scost;
         }
     }
-#endif
 
     return cost;
 }
 
-int
+RDB_expression *
 _RDB_optimize(RDB_object *tbp, int seqitc, const RDB_seq_item seqitv[],
-        RDB_exec_context *ecp, RDB_transaction *txp, RDB_object **ntbpp)
+        RDB_exec_context *ecp, RDB_transaction *txp)
 {
     int i;
     RDB_expression *nexp;
@@ -855,26 +853,14 @@ _RDB_optimize(RDB_object *tbp, int seqitc, const RDB_seq_item seqitv[],
             if (i < tbp->var.tb.stp->indexc) {
                 nexp = RDB_table_ref_to_expr(tbp, ecp);
                 if (nexp == NULL)
-                    return RDB_ERROR;
+                    return NULL;
                 nexp->var.tbref.indexp = &tbp->var.tb.stp->indexv[i];
-                *ntbpp = RDB_expr_to_vtable(nexp, ecp, txp);
-                if (*ntbpp == NULL)
-                    return RDB_ERROR;
-                return RDB_OK;
+                return nexp;
             }
         }
-        *ntbpp = tbp;
-    } else {
-        nexp = _RDB_optimize_expr(tbp->var.tb.exp,
-                seqitc, seqitv, ecp, txp);
-        if (nexp == NULL)
-            return RDB_ERROR;
-        *ntbpp = RDB_expr_to_vtable(nexp, ecp, txp);
-        if (*ntbpp == NULL)
-            return RDB_ERROR;
+        return RDB_table_ref_to_expr(tbp, ecp);
     }
-
-    return RDB_OK;
+    return _RDB_optimize_expr(tbp->var.tb.exp, seqitc, seqitv, ecp, txp);
 }
 
 RDB_expression *

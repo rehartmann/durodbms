@@ -732,7 +732,8 @@ table_getplan_cmd(TclState *statep, Tcl_Interp *interp, int objc,
     char *txstr;
     Tcl_HashEntry *entryp;
     RDB_transaction *txp;
-    RDB_object *tbp, *ntbp;
+    RDB_object *tbp;
+    RDB_expression *texp;
     RDB_object defobj;
     Tcl_Obj *deftobjp;
 
@@ -755,16 +756,15 @@ table_getplan_cmd(TclState *statep, Tcl_Interp *interp, int objc,
         return TCL_ERROR;
     }
 
-    ret = _RDB_optimize(tbp, 0, NULL, statep->current_ecp, txp, &ntbp);
-    if (ret != RDB_OK) {
+    texp = _RDB_optimize(tbp, 0, NULL, statep->current_ecp, txp);
+    if (texp == NULL) {
         Duro_dberror(interp, RDB_get_err(statep->current_ecp), txp);
         return TCL_ERROR;
     }
     RDB_init_obj(&defobj);
-    ret = _RDB_obj_to_str(&defobj, ntbp, statep->current_ecp, txp,
+    ret = _RDB_expr_to_str(&defobj, texp, statep->current_ecp, txp,
             RDB_SHOW_INDEX);
-    if (RDB_table_name(ntbp) == NULL)
-        RDB_drop_table(ntbp, statep->current_ecp, txp);
+    RDB_drop_expr(texp, statep->current_ecp);
     if (ret != RDB_OK) {
         RDB_destroy_obj(&defobj, statep->current_ecp);
         Duro_dberror(interp, RDB_get_err(statep->current_ecp), txp);
