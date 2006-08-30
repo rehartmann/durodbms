@@ -1,13 +1,15 @@
 /*
  * Copyright (C) 2005-2006 René Hartmann.
  * See the file COPYING for redistribution information.
+ *
+ *
+ * $Id$
  */
-
-/* $Id$ */
 
 #include "rdb.h"
 #include "internal.h"
 #include "qresult.h"
+#include <string.h>
 #include <assert.h>
 #include <dli/tabletostr.h>
 
@@ -39,6 +41,35 @@ qr_matching_tuple(RDB_qresult *qrp, const RDB_object *tplp,
     return RDB_destroy_obj(&tpl, ecp);
 }
 
+static int
+project_matching(RDB_expression *texp, const RDB_object *tplp, RDB_exec_context *ecp,
+        RDB_transaction *txp, RDB_bool *resultp)
+{
+    int i;
+    RDB_object tpl;
+
+    /*
+     * Pick attributes which are attributes of the table
+     */
+    RDB_init_obj(&tpl);
+    for (i = 0; i < texp->var.op.argc - 1; i++) {
+        char *attrname = RDB_obj_string(&texp->var.op.argv[i + 1]->var.obj);
+        RDB_object *attrp = RDB_tuple_get(tplp, attrname);
+        if (attrp != NULL) {
+            if (RDB_tuple_set(&tpl, attrname, attrp, ecp) != RDB_OK) {
+                RDB_destroy_obj(&tpl, ecp);
+                return RDB_ERROR;
+            }
+        }
+    }
+    if (_RDB_expr_matching_tuple(texp->var.op.argv[0], &tpl, ecp, txp, resultp)
+            != RDB_OK) {
+        RDB_destroy_obj(&tpl, ecp);
+        return RDB_ERROR;
+    }
+    return RDB_destroy_obj(&tpl, ecp);
+}
+
 /*
  * Check if one of the tuples in *exp matches *tplp
  * (The expression must be relation-valued)
@@ -55,6 +86,9 @@ _RDB_expr_matching_tuple(RDB_expression *exp, const RDB_object *tplp,
     }
     if (exp->kind == RDB_EX_TBP) {
         return _RDB_matching_tuple(exp->var.tbref.tbp, tplp, ecp, txp, resultp);
+    }
+    if (exp->kind == RDB_EX_RO_OP && strcmp (exp->var.op.name, "PROJECT") == 0) {
+        return project_matching(exp, tplp, ecp, txp, resultp);
     }
     
     qrp = _RDB_expr_qresult(exp, ecp, txp);
@@ -162,39 +196,6 @@ cleanup:
     RDB_destroy_obj(&tpl, ecp);
     return ret;   
 }
-
-#ifdef REMOVED
-static int
-project_matching(RDB_object *tbp, const RDB_object *tplp, RDB_exec_context *ecp,
-        RDB_transaction *txp, RDB_bool *resultp)
-{
-    int i;
-    int ret;
-    RDB_object tpl;
-    RDB_type *tpltyp = tbp->var.project.tbp->typ->var.basetyp;
-
-    /*
-     * Pick attributes which are attributes of the table
-     */
-    RDB_init_obj(&tpl);
-    for (i = 0; i < tpltyp->var.tuple.attrc; i++) {
-        char *attrname = tpltyp->var.tuple.attrv[i].name;
-        RDB_object *attrp = RDB_tuple_get(tplp, attrname);
-        if (attrp != NULL) {
-            if (RDB_tuple_set(&tpl, attrname, attrp, ecp) != RDB_OK) {
-                RDB_destroy_obj(&tpl, ecp);
-                return RDB_ERROR;
-            }
-        }
-    }
-    ret = _RDB_matching_tuple(tbp->var.project.tbp, &tpl, ecp, txp, resultp);
-    if (ret != RDB_OK) {
-        RDB_destroy_obj(&tpl, ecp);
-        return RDB_ERROR;
-    }
-    return RDB_destroy_obj(&tpl, ecp);
-}
-#endif
 
 int
 _RDB_matching_tuple(RDB_object *tbp, const RDB_object *tplp, RDB_exec_context *ecp,
