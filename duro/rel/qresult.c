@@ -403,24 +403,27 @@ summarize_qresult(RDB_qresult *qrp, RDB_exec_context *ecp,
     int i;
     RDB_bool hasavg;
     RDB_string_vec key;
-    RDB_type *tb1typ, *tb2typ, *reltyp;
+    RDB_type *tb1typ;
+    RDB_type *tb2typ = NULL;
+    RDB_type *reltyp = NULL;
     RDB_expression *sexp = qrp->exp;
+
+    key.strv = NULL;
 
     qrp->nested = RDB_FALSE;
 
-    /* !! memory */
     tb1typ = RDB_expr_type(sexp->var.op.argv[0], NULL, ecp, txp);
     if (tb1typ == NULL)
         return RDB_ERROR;
 
     tb2typ = RDB_expr_type(sexp->var.op.argv[1], NULL, ecp, txp);
     if (tb2typ == NULL)
-        return RDB_ERROR;
+        goto error;
     
     reltyp = RDB_summarize_type(sexp->var.op.argc, sexp->var.op.argv,
             0, NULL, ecp, txp);
     if (reltyp == NULL)
-        return RDB_ERROR;
+        goto error;
 
     /* If AVG, extend tuple type by count */
     hasavg = RDB_FALSE;
@@ -434,9 +437,13 @@ summarize_qresult(RDB_qresult *qrp, RDB_exec_context *ecp,
                 attrc * sizeof (RDB_attr));
         if (attrv == NULL) {
             RDB_raise_no_memory(ecp);
-            return RDB_ERROR;
+            goto error;
         }
-        attrv[attrc - 1].name = AVG_COUNT; /* !! */
+        attrv[attrc - 1].name = RDB_dup_str(AVG_COUNT);
+        if (attrv[attrc - 1].name == NULL) {
+            RDB_raise_no_memory(ecp);
+            goto error;
+        }
         attrv[attrc - 1].typ = &RDB_INTEGER;
         attrv[attrc - 1].defaultp = NULL;
         reltyp->var.basetyp->var.tuple.attrc = attrc;
@@ -448,7 +455,7 @@ summarize_qresult(RDB_qresult *qrp, RDB_exec_context *ecp,
     key.strv = malloc(sizeof (char *) * key.strc);
     if (key.strv == NULL) {
         RDB_raise_no_memory(ecp);
-        return RDB_ERROR;
+        goto error;
     }
     for (i = 0; i < key.strc; i++) {
         key.strv[0] = tb2typ->var.basetyp->var.tuple.attrv[i].name;
@@ -460,25 +467,38 @@ summarize_qresult(RDB_qresult *qrp, RDB_exec_context *ecp,
             reltyp->var.basetyp->var.tuple.attrv,
             1, &key, ecp, NULL);
     if (qrp->matp == NULL)
-        return RDB_ERROR;
+        goto error;
 
     if (init_summ_table(qrp, tb1typ, hasavg, ecp, txp) != RDB_OK) {
         RDB_drop_table(qrp->matp, ecp, txp);
-        return RDB_ERROR;
+        goto error;
     }
 
     /* summarize over table 1 */
     if (do_summarize(qrp, tb1typ, hasavg, ecp, txp) != RDB_OK) {
         RDB_drop_table(qrp->matp, ecp, txp);
-        return RDB_ERROR;
+        goto error;
     }
 
     if (init_stored_qresult(qrp, qrp->matp, ecp, txp) != RDB_OK) {
         RDB_drop_table(qrp->matp, ecp, txp);
-        return RDB_ERROR;
+        goto error;
     }
 
+    free(key.strv);
+    RDB_drop_type(tb1typ, ecp, NULL);
+    RDB_drop_type(tb2typ, ecp, NULL);
+    RDB_drop_type(reltyp, ecp, NULL);
     return RDB_OK;
+
+error:
+    free(key.strv);
+    RDB_drop_type(tb1typ, ecp, NULL);
+    if (tb2typ != NULL)
+        RDB_drop_type(tb2typ, ecp, NULL);
+    if (reltyp != NULL)
+        RDB_drop_type(reltyp, ecp, NULL);
+    return RDB_ERROR;
 }
 
 static int

@@ -39,38 +39,6 @@ alter_op(RDB_expression *exp, const char *name, int argc, RDB_exec_context *ecp)
     return RDB_OK;
 }
 
-#ifdef REMOVED
-static void
-del_keys(RDB_object *tbp)
-{
-    int i;
-
-    if (tbp->keyv != NULL) {
-        /* Delete candidate keys */
-        for (i = 0; i < tbp->keyc; i++) {
-            RDB_free_strvec(tbp->keyv[i].strc, tbp->keyv[i].strv);
-        }
-        free(tbp->keyv);
-        tbp->keyv = NULL;
-    }
-}
-
-static int
-copy_type(RDB_object *dstp, const RDB_object *srcp, RDB_exec_context *ecp)
-{
-    RDB_type *typ = _RDB_dup_nonscalar_type(srcp->typ, ecp);
-    if (typ == NULL) {
-        RDB_raise_no_memory(ecp);
-        return RDB_ERROR;
-    }
-
-    RDB_drop_type(dstp->typ, ecp, NULL);
-    dstp->typ = typ;
-
-    return RDB_OK;
-}
-#endif
-
 /* Only for binary operators */
 static int
 eliminate_child (RDB_expression *exp, const char *name, RDB_exec_context *ecp,
@@ -428,116 +396,6 @@ swap_project_union(RDB_expression *exp, RDB_expression *chexp,
     return RDB_OK;
 }
 
-#ifdef REMOVED
-/* Transforms PROJECT(RENAME) to RENAME(PROJECT) or PROJECT */
-static int
-swap_project_rename(RDB_expression *exp, RDB_exec_context *ecp)
-{
-    int i, j;
-    RDB_type *newtyp;
-    RDB_renaming *renv;
-    char **attrnamev;
-    RDB_object *chtbp = tbp->var.project.tbp;
-    RDB_object *htbp = chtbp->var.rename.tbp;
-
-    /*
-     * Alter parent
-     */
-
-    renv = malloc(sizeof (RDB_renaming) * chtbp->var.rename.renc);
-    if (renv == NULL) {
-        RDB_raise_no_memory(ecp);
-        return RDB_ERROR;
-    }
-
-    for (i = 0; i < chtbp->var.rename.renc; i++) {
-        renv[i].to = NULL;
-        renv[i].from = NULL;
-    }
-
-    /* Take renamings whose dest appear in the parent */
-    j = 0;
-    for (i = 0; i < chtbp->var.rename.renc; i++) {
-        if (_RDB_tuple_type_attr(tbp->typ->var.basetyp,
-                chtbp->var.rename.renv[i].to) != NULL) {
-            renv[j].from = RDB_dup_str(chtbp->var.rename.renv[i].from);
-            if (renv[j].from == NULL) {
-                for (i = 0; i < chtbp->var.rename.renc; i++) {
-                    free(renv[i].from);
-                    free(renv[i].to);
-                }
-                free(renv);
-                RDB_raise_no_memory(ecp);
-                return RDB_ERROR;
-            }
-            renv[j].to = RDB_dup_str(chtbp->var.rename.renv[i].to);
-            if (renv[j].to == NULL) {
-                for (i = 0; i < chtbp->var.rename.renc; i++) {
-                    free(renv[i].from);
-                    free(renv[i].to);
-                }
-                free(renv);
-                RDB_raise_no_memory(ecp);
-                return RDB_ERROR;
-            }
-            j++;
-        }
-    }
-
-    /* Destroy renamings of child */
-    for (i = 0; i < chtbp->var.rename.renc; i++) {
-        free(chtbp->var.rename.renv[i].from);
-        free(chtbp->var.rename.renv[i].to);
-    }
-    free(chtbp->var.rename.renv);
-
-    if (j == 0) {
-        /* Remove child */
-        free(renv);
-        tbp->var.project.tbp = chtbp->var.rename.tbp;
-        _RDB_free_table(chtbp, ecp);
-    } else {
-        /*
-         * Swap parent and child
-         */
-        int nattrc = tbp->typ->var.basetyp->var.tuple.attrc;
-
-        tbp->kind = RDB_TB_RENAME;
-        tbp->var.rename.tbp = chtbp;
-        tbp->var.rename.renc = j;
-        tbp->var.rename.renv = renv;
-
-        chtbp->kind = RDB_TB_PROJECT;
-        chtbp->var.project.tbp = htbp;
-        chtbp->var.project.indexp = NULL;
-
-        attrnamev = malloc(nattrc * sizeof(char *));
-        if (attrnamev == NULL) {
-            RDB_raise_no_memory(ecp);
-            return RDB_ERROR;
-        }
-        for (i = 0; i < nattrc; i++) {
-            attrnamev[i] = tbp->typ->var.basetyp->var.tuple.attrv[i].name;
-            for (j = 0; j < tbp->var.rename.renc
-                    && strcmp(attrnamev[i], tbp->var.rename.renv[j].to) != 0;
-                 j++);
-            if (j < tbp->var.rename.renc)
-                attrnamev[j] = tbp->var.rename.renv[j].from;
-        }
-        newtyp = RDB_project_relation_type(htbp->typ, nattrc, attrnamev, ecp);
-        free(attrnamev);
-        if (newtyp == NULL)
-            return RDB_ERROR;
-        RDB_drop_type(chtbp->typ, ecp, NULL);
-        chtbp->typ = newtyp;
-    }
-
-    return RDB_OK;
-    RDB_raise_not_supported("swap_project_rename", ecp);
-    return RDB_ERROR;
-}
-#endif
-
 static RDB_expression *
 proj_attr(const RDB_expression *exp, const char *attrname)
 {
@@ -549,6 +407,99 @@ proj_attr(const RDB_expression *exp, const char *attrname)
             return exp->var.op.argv[i];
     }
     return NULL;
+}
+
+static int
+transform_project(RDB_expression *, RDB_exec_context *, RDB_transaction *);
+
+/* Transforms PROJECT(RENAME) to RENAME(PROJECT) or PROJECT */
+static int
+swap_project_rename(RDB_expression *texp, RDB_exec_context *ecp,
+        RDB_transaction *txp)
+{
+    int si, di;
+    int i, j;
+    int argc;
+    RDB_expression **argv;
+    char *opname;
+    RDB_expression *chtexp = texp->var.op.argv[0];
+
+    /*
+     * Alter parent by removing renamings which become obsolete
+     * because of the projection
+     */
+
+    /* Remove renamings whose dest does not appear in the parent */
+    di = 1;
+    for (si = 1; si + 1 < chtexp->var.op.argc; si += 2) {
+        if (proj_attr(texp, RDB_obj_string(&chtexp->var.op.argv[si + 1]->var.obj))
+                == NULL) {
+            RDB_drop_expr(chtexp->var.op.argv[si], ecp);
+            RDB_drop_expr(chtexp->var.op.argv[si + 1], ecp);
+        } else {
+            if (di < si) {
+                chtexp->var.op.argv[di] = chtexp->var.op.argv[si];
+                chtexp->var.op.argv[di + 1] = chtexp->var.op.argv[si + 1];
+            }
+            di += 2;
+        }
+    }
+    if (di < si) {
+        chtexp->var.op.argc = di;
+        if (di > 1) {
+            chtexp->var.op.argv = realloc(chtexp->var.op.argv,
+                    di * sizeof(RDB_expression *));
+        } else {
+            /*
+             * Remove child
+             */
+            texp->var.op.argv[0] = chtexp->var.op.argv[0];
+            free(chtexp->var.op.name);
+            for (i = 1; i < chtexp->var.op.argc; i++)
+                RDB_drop_expr(chtexp->var.op.argv[i], ecp);
+            free(chtexp->var.op.argv);
+            free(chtexp);
+
+            return transform_project(texp, ecp, txp);
+        }
+    }
+
+    /*
+     * Swap parent and child
+     */
+
+    /* Change project attributes */
+    for (i = 1; i < texp->var.op.argc; i++) {
+        j = 1;
+        while (j + 1 < chtexp->var.op.argc
+                && strcmp(RDB_obj_string(&chtexp->var.op.argv[j + 1]->var.obj),
+                        RDB_obj_string(&texp->var.op.argv[i]->var.obj)) != 0) {
+            j += 2;
+        }
+        if (j + 1 < chtexp->var.op.argc) {
+            if (RDB_string_to_obj(&texp->var.op.argv[i]->var.obj,
+                    RDB_obj_string(&chtexp->var.op.argv[j]->var.obj),
+                    ecp) != RDB_OK) {
+                return RDB_ERROR;
+            }
+        }
+    }
+
+    argc = texp->var.op.argc;
+    argv = texp->var.op.argv;
+    opname = texp->var.op.name;
+
+    texp->var.op.argc = chtexp->var.op.argc;
+    texp->var.op.argv = chtexp->var.op.argv;
+    texp->var.op.name = chtexp->var.op.name;
+    chtexp->var.op.argc = argc;
+    chtexp->var.op.argv = argv;
+    chtexp->var.op.name = opname;
+
+    chtexp->var.op.argv[0] = texp->var.op.argv[0];
+    texp->var.op.argv[0] = chtexp;
+
+    return transform_project(chtexp, ecp, txp); 
 }
 
 /* Transforms PROJECT(EXTEND) to EXTEND(PROJECT) or PROJECT */
@@ -718,15 +669,9 @@ transform_project(RDB_expression *exp, RDB_exec_context *ecp,
                 return transform_where(chexp, ecp, txp);
             }
             exp = chexp;
-#ifdef REMOVED
         } else if (strcmp(chexp->var.op.name, "RENAME") == 0) {
-            if (swap_project_rename(exp, ecp) != RDB_OK)
+            if (swap_project_rename(exp, ecp, txp) != RDB_OK)
                 return RDB_ERROR;
-            if (strcmp(exp->var.op.name, "PROJECT") != 0) {
-                /* Rename and project have been swapped */
-                exp = chexp;
-            }
-#endif
         } else if (strcmp(chexp->var.op.name, "EXTEND") == 0) {
             if (swap_project_extend(exp, ecp) != RDB_OK)
                 return RDB_ERROR;
