@@ -594,8 +594,10 @@ expr_op_type(const RDB_expression *exp, const RDB_type *tpltyp,
                     || strcmp(exp->var.op.name, "<>") == 0)) {
         if (argtv[0] != NULL && argtv[1] != NULL
                 && !RDB_type_equals(argtv[0], argtv[1])) {
-            RDB_raise_type_mismatch("Argument types do not match", ecp);
-            free(argtv); /* !! */
+            RDB_raise_type_mismatch("argument types do not match", ecp);
+            RDB_drop_type(argtv[0], ecp, NULL);
+            RDB_drop_type(argtv[1], ecp, NULL);
+            free(argtv);
             return NULL;
         }
         free(argtv);
@@ -1268,8 +1270,12 @@ destroy_expr(RDB_expression *exp, RDB_exec_context *ecp)
             int i;
 
             free(exp->var.op.name);
-            for (i = 0; i < exp->var.op.argc; i++)
-                ret = RDB_drop_expr(exp->var.op.argv[i], ecp);
+            for (i = 0; i < exp->var.op.argc; i++) {
+                if (exp->var.op.argv[i] != NULL) {
+                    if (RDB_drop_expr(exp->var.op.argv[i], ecp) != RDB_OK)
+                        return RDB_ERROR;
+                }
+            }
             free(exp->var.op.argv);
             break;
         }

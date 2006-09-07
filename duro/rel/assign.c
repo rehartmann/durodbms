@@ -4,7 +4,8 @@
  * Copyright (C) 2005-2006 René Hartmann.
  * See the file COPYING for redistribution information.
  * 
- * Functions for assignment operations (insert, update, delete, copy)
+ * Functions for assignment operations (insert, update, delete, copy),
+ * including multiple assignment and DB/table constraint checking
  */
 
 #include "rdb.h"
@@ -86,65 +87,68 @@ replace_updattrs(RDB_expression *exp, int updc, RDB_attr_update updv[],
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
     int i;
-    RDB_expression *rexp, *hexp;
+    RDB_expression *rexp, *xexp, *hexp;
 
     /*
      * Add 'updated' attributes
      */
 
-    rexp = RDB_ro_op("EXTEND", 1 + updc * 2, ecp);
+    rexp = xexp = RDB_ro_op("EXTEND", 1 + updc * 2, ecp);
     if (rexp == NULL)
         return NULL;
     RDB_add_arg(rexp, exp);
     for (i = 0; i < updc; i++) {
         hexp = RDB_dup_expr(updv[i].exp, ecp);
         if (hexp == NULL)
-            goto cleanup;
+            goto error;
         RDB_add_arg(rexp, hexp);
         hexp = prefixed_string_expr(updv[i].name, ecp);
         if (hexp == NULL)
-            goto cleanup;
+            goto error;
         RDB_add_arg(rexp, hexp);
     }
 
     /*
      * Remove old attributes
      */
-    hexp = rexp;
-    rexp = RDB_ro_op("REMOVE", updc + 1, ecp);
-    if (rexp == NULL)
-        goto cleanup;
-    RDB_add_arg(rexp, hexp);
+    hexp = RDB_ro_op("REMOVE", updc + 1, ecp);
+    if (hexp == NULL)
+        goto error;
+    RDB_add_arg(hexp, rexp);
+    rexp = hexp;
     for (i = 0; i < updc; i++) {
         hexp = RDB_string_to_expr(updv[i].name, ecp);
         if (hexp == NULL)
-            goto cleanup;
+            goto error;
         RDB_add_arg(rexp, hexp);
     }
 
     /*
      * Rename new attributes
      */
-    hexp = rexp;
-    rexp = RDB_ro_op("RENAME", 1 + updc * 2, ecp);
-    if (rexp == NULL)
-        goto cleanup;
-    RDB_add_arg(rexp, hexp);
+    hexp = RDB_ro_op("RENAME", 1 + updc * 2, ecp);
+    if (hexp == NULL)
+        goto error;
+    RDB_add_arg(hexp, rexp);
+    rexp = hexp;
     for (i = 0; i < updc; i++) {
         hexp = prefixed_string_expr(updv[i].name, ecp);
         if (hexp == NULL)
-            goto cleanup;
+            goto error;
         RDB_add_arg(rexp, hexp);
         hexp = RDB_string_to_expr(updv[i].name, ecp);
         if (hexp == NULL)
-            goto cleanup;
+            goto error;
         RDB_add_arg(rexp, hexp);
     }
-
-cleanup:
-    /* !! */
-
     return rexp;
+
+error:
+    /* Prevent exp from being dropped */
+    xexp->var.op.argv[0] = NULL;
+
+    RDB_drop_expr(rexp, ecp);
+    return NULL;
 }
 
 static RDB_expression *
@@ -152,136 +156,111 @@ replace_targets_real_ins(RDB_object *tbp, const RDB_ma_insert *insp,
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
     int ret;
+	RDB_expression *exp, *argp;
+    RDB_object *tb1p;
 
-    if (insp->tbp == tbp) {
-    	RDB_expression *exp, *argp;
-        RDB_object *tb1p;
-
-        tb1p = RDB_create_table_from_type(NULL, RDB_FALSE, tbp->typ,
-                0, NULL, ecp, NULL);
-        if (tb1p == NULL)
-            return NULL;
-        ret = RDB_insert(tb1p, insp->tplp, ecp, NULL);
-        if (ret != RDB_OK)
-            return NULL;
-        exp = RDB_ro_op("UNION", 2, ecp);
-        if (exp == NULL) {
-            RDB_drop_table(tb1p, ecp, NULL);
-            return NULL;
-        }
-        argp =  RDB_table_ref_to_expr(tbp, ecp);
-        if (argp == NULL) {
-            RDB_drop_table(tb1p, ecp, NULL);
-            RDB_drop_expr(exp, ecp);
-            return NULL;
-        }
-        RDB_add_arg(exp, argp);
-        argp = RDB_table_ref_to_expr(tb1p, ecp);
-        if (argp == NULL) {
-            RDB_drop_table(tb1p, ecp, NULL);
-            RDB_drop_expr(exp, ecp);
-            return NULL;
-        }
-        RDB_add_arg(exp, argp);
-        return exp;
+    tb1p = RDB_create_table_from_type(NULL, RDB_FALSE, tbp->typ,
+            0, NULL, ecp, NULL);
+    if (tb1p == NULL)
+        return NULL;
+    ret = RDB_insert(tb1p, insp->tplp, ecp, NULL);
+    if (ret != RDB_OK)
+        return NULL;
+    exp = RDB_ro_op("UNION", 2, ecp);
+    if (exp == NULL) {
+        RDB_drop_table(tb1p, ecp, NULL);
+        return NULL;
     }
-    return RDB_table_ref_to_expr(tbp, ecp);
+    argp =  RDB_table_ref_to_expr(tbp, ecp);
+    if (argp == NULL) {
+        RDB_drop_table(tb1p, ecp, NULL);
+        RDB_drop_expr(exp, ecp);
+        return NULL;
+    }
+    RDB_add_arg(exp, argp);
+    argp = RDB_table_ref_to_expr(tb1p, ecp);
+    if (argp == NULL) {
+        RDB_drop_table(tb1p, ecp, NULL);
+        RDB_drop_expr(exp, ecp);
+        return NULL;
+    }
+    RDB_add_arg(exp, argp);
+    return exp;
 }
 
 static RDB_expression *
 replace_targets_real_upd(RDB_object *tbp, const RDB_ma_update *updp,
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
-	RDB_expression *exp;
-    RDB_expression *cond2p = NULL;
-    RDB_object *utbp = updp->tbp;
+   RDB_expression *exp;
+   RDB_expression *wexp, *condp, *ncondp, *refexp;
+   RDB_expression *uexp = NULL;
 
-    if (utbp == tbp) {
-        if (updp->condp == NULL && cond2p == NULL) {
-            return replace_updattrs(RDB_table_ref_to_expr(tbp, ecp),
-                    updp->updc, updp->updv, ecp, txp);
-        } else {
-            RDB_expression *ucondp, *nucondp, *tcondp;
-            RDB_expression *uexp, *nuexp;
-
-            /*
-             * Create condition for the updated part
-             */
-            if (updp->condp != NULL) {
-                ucondp = RDB_dup_expr(updp->condp, ecp);
-                if (ucondp == NULL)
-                    return NULL;
-                if (cond2p != NULL) {
-                    tcondp = RDB_dup_expr(cond2p, ecp);
-                    if (tcondp == NULL) {
-                        RDB_drop_expr(cond2p, ecp);
-                        return NULL;
-                    }
-                    cond2p = tcondp;
-                    tcondp = RDB_ro_op("AND", 2, ecp);
-                    if (tcondp == NULL) {
-                        RDB_drop_expr(ucondp, ecp);
-                        RDB_drop_expr(cond2p, ecp);
-                        return NULL;
-                    }
-                    RDB_add_arg(tcondp, ucondp);
-                    RDB_add_arg(tcondp, cond2p);
-                    ucondp = tcondp;
-                }
-            } else {
-                ucondp = RDB_dup_expr(cond2p, ecp);
-                if (ucondp == NULL)
-                    return NULL;
-            }
-
-            /*
-             * Create condition for not updated part
-             */
-            tcondp = RDB_dup_expr(ucondp, ecp);
-            if (tcondp == NULL) {
-                RDB_drop_expr(ucondp, ecp);
-                return NULL;
-            }
-            nucondp = RDB_ro_op("NOT", 1, ecp);
-            if (nucondp == NULL) {
-                RDB_drop_expr(tcondp, ecp);
-                return NULL;
-            }
-            RDB_add_arg(nucondp, tcondp);
-
-            /*
-             * Create selections and merge them by 'union'
-             */
-
-            uexp = RDB_ro_op("WHERE", 2, ecp);
-            if (uexp == NULL) {
-                return NULL;
-            }
-            RDB_add_arg(uexp, RDB_table_ref_to_expr(tbp, ecp));
-            RDB_add_arg(uexp, ucondp);
-
-            nuexp = RDB_ro_op("WHERE", 2, ecp);
-            if (nuexp == NULL) {
-                return NULL;
-            }
-            RDB_add_arg(nuexp, RDB_table_ref_to_expr(tbp, ecp));
-            RDB_add_arg(nuexp, nucondp);
-
-            exp = replace_updattrs(uexp, updp->updc, updp->updv, ecp, txp);
-            if (tbp == NULL) {
-                return NULL;
-            }
-            uexp = exp;
-                
-            exp = RDB_ro_op("UNION", 2, ecp);
-            if (exp == NULL) {
-                return NULL;
-            }
-            RDB_add_arg(exp, uexp);
-            RDB_add_arg(exp, nuexp);
-        }
+    if (updp->condp == NULL) {
+        return replace_updattrs(RDB_table_ref_to_expr(tbp, ecp),
+                updp->updc, updp->updv, ecp, txp);
     }
+
+    exp = RDB_ro_op("UNION", 2, ecp);
+    if (exp == NULL) {
+        return NULL;
+    }
+
+    uexp = RDB_ro_op("WHERE", 2, ecp);
+    if (uexp == NULL) {
+        goto error;
+    }
+
+    refexp = RDB_table_ref_to_expr(tbp, ecp);
+    if (refexp == NULL) {
+        goto error;
+    }
+    RDB_add_arg(uexp, refexp);
+
+    condp = RDB_dup_expr(updp->condp, ecp);
+    if (condp == NULL)
+        return NULL;
+    RDB_add_arg(uexp, condp);
+
+    wexp = replace_updattrs(uexp, updp->updc, updp->updv, ecp, txp);
+    if (wexp == NULL) {
+        goto error;
+    }
+    uexp = NULL;
+    RDB_add_arg(exp, wexp);
+
+    wexp = RDB_ro_op("WHERE", 2, ecp);
+    if (wexp == NULL) {
+        goto error;
+    }
+    RDB_add_arg(exp, wexp);
+
+    /* !! transient table is dropped? */
+    refexp = RDB_table_ref_to_expr(tbp, ecp);
+    if (refexp == NULL) {
+        goto error;
+    }
+    RDB_add_arg(wexp, refexp);
+
+    ncondp = RDB_ro_op("NOT", 1, ecp);
+    if (ncondp == NULL) {
+        goto error;
+    }
+    RDB_add_arg(wexp, ncondp);
+
+    condp = RDB_dup_expr(updp->condp, ecp);
+    if (condp == NULL)
+        goto error;
+    RDB_add_arg(ncondp, condp);        
+
     return exp;
+
+error:
+    RDB_drop_expr(exp, ecp);
+    if (uexp != NULL)
+        RDB_drop_expr(uexp, ecp);
+
+    return NULL;
 }
 
 static RDB_expression *
@@ -605,13 +584,13 @@ resolve_insert_expr(RDB_expression *exp, const RDB_object *tplp,
             RDB_raise_invalid_argument("invalid target table", ecp);
             return RDB_ERROR;
     }
-    
+
     if (strcmp(exp->var.op.name, "WHERE") == 0) {
         ret = RDB_evaluate_bool(exp->var.op.argv[1], tplp, ecp, txp, &b);
         if (ret != RDB_OK)
             return RDB_ERROR;
         if (!b) {
-            RDB_raise_predicate_violation("SELECT predicate violation",
+            RDB_raise_predicate_violation("WHERE predicate violation",
                     ecp);
             return RDB_ERROR;
         }

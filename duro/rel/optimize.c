@@ -39,6 +39,141 @@ static RDB_bool is_and(RDB_expression *exp) {
             && strcmp (exp->var.op.name, "AND") == 0;
 }
 
+static int
+alter_op(RDB_expression *exp, const char *name, int argc, RDB_exec_context *ecp)
+{
+    RDB_expression **argv;
+    char *newname;
+    
+    newname = realloc(exp->var.op.name, strlen(name) + 1);
+    if (newname == NULL) {
+        RDB_raise_no_memory(ecp);
+        return RDB_ERROR;
+    }
+    strcpy(newname, name);
+    exp->var.op.name = newname;
+
+    if (argc != exp->var.op.argc) {
+        argv = realloc(exp->var.op.argv, sizeof (RDB_expression *) * argc);
+        if (argv == NULL) {
+            RDB_raise_no_memory(ecp);
+            return RDB_ERROR;
+        }
+        exp->var.op.argc = argc;
+        exp->var.op.argv = argv;
+    }
+
+    return RDB_OK;
+}
+
+/* Only for binary operators */
+static int
+eliminate_child (RDB_expression *exp, const char *name, RDB_exec_context *ecp,
+        RDB_transaction *txp)
+{
+    RDB_expression *hexp = exp->var.op.argv[0];
+    int ret = alter_op(exp, name, 2, ecp);
+    if (ret != RDB_OK)
+        return ret;
+
+    exp->var.op.argv[0] = hexp->var.op.argv[0];
+    exp->var.op.argv[1] = hexp->var.op.argv[1];
+    free(hexp->var.op.name);
+    free(hexp->var.op.argv);
+    free(hexp);
+    ret = _RDB_transform(exp->var.op.argv[0], ecp, txp);
+    if (ret != RDB_OK)
+        return ret;
+    return _RDB_transform(exp->var.op.argv[1], ecp, txp);
+}
+
+/* Try to eliminate NOT operator */
+static int
+eliminate_not(RDB_expression *exp, RDB_exec_context *ecp, RDB_transaction *txp)
+{
+    int ret;
+    int i;
+    RDB_expression *hexp;
+
+    if (exp->kind != RDB_EX_RO_OP)
+        return RDB_OK;
+
+    if (strcmp(exp->var.op.name, "NOT") != 0) {
+        for (i = 0; i < exp->var.op.argc; i++) {
+            if (eliminate_not(exp->var.op.argv[i], ecp, txp) != RDB_OK)
+                return RDB_ERROR;
+        }
+        return RDB_OK;
+    }
+
+    if (exp->var.op.argv[0]->kind != RDB_EX_RO_OP)
+        return RDB_OK;
+
+    if (strcmp(exp->var.op.argv[0]->var.op.name, "AND") == 0) {
+        hexp = RDB_ro_op("NOT", 1, ecp);
+        if (hexp == NULL)
+            return RDB_ERROR;
+        RDB_add_arg(hexp, exp->var.op.argv[0]->var.op.argv[1]);
+        ret = alter_op(exp, "OR", 2, ecp);
+        if (ret != RDB_OK)
+            return ret;
+        exp->var.op.argv[1] = hexp;
+
+        ret = alter_op(exp->var.op.argv[0], "NOT", 1, ecp);
+        if (ret != RDB_OK)
+            return ret;
+
+        ret = eliminate_not(exp->var.op.argv[0], ecp, txp);
+        if (ret != RDB_OK)
+            return ret;
+        return eliminate_not(exp->var.op.argv[1], ecp, txp);
+    }
+    if (strcmp(exp->var.op.argv[0]->var.op.name, "OR") == 0) {
+        hexp = RDB_ro_op("NOT", 1, ecp);
+        if (hexp == NULL)
+            return RDB_ERROR;
+        RDB_add_arg(hexp, exp->var.op.argv[0]->var.op.argv[1]);
+        ret = alter_op(exp, "AND", 2, ecp);
+        if (ret != RDB_OK)
+            return ret;
+        exp->var.op.argv[1] = hexp;
+
+        ret = alter_op(exp->var.op.argv[0], "NOT", 1, ecp);
+        if (ret != RDB_OK)
+            return ret;
+
+        ret = eliminate_not(exp->var.op.argv[0], ecp, txp);
+        if (ret != RDB_OK)
+            return ret;
+        return eliminate_not(exp->var.op.argv[1], ecp, txp);
+    }
+    if (strcmp(exp->var.op.argv[0]->var.op.name, "=") == 0)
+        return eliminate_child(exp, "<>", ecp, txp);
+    if (strcmp(exp->var.op.argv[0]->var.op.name, "<>") == 0)
+        return eliminate_child(exp, "=", ecp, txp);
+    if (strcmp(exp->var.op.argv[0]->var.op.name, "<") == 0)
+        return eliminate_child(exp, ">=", ecp, txp);
+    if (strcmp(exp->var.op.argv[0]->var.op.name, ">") == 0)
+        return eliminate_child(exp, "<=", ecp, txp);
+    if (strcmp(exp->var.op.argv[0]->var.op.name, "<=") == 0)
+        return eliminate_child(exp, ">", ecp, txp);
+    if (strcmp(exp->var.op.argv[0]->var.op.name, ">=") == 0)
+        return eliminate_child(exp, "<", ecp, txp);
+    if (strcmp(exp->var.op.argv[0]->var.op.name, "NOT") == 0) {
+        hexp = exp->var.op.argv[0];
+        memcpy(exp, hexp->var.op.argv[0], sizeof (RDB_expression));
+        free(hexp->var.op.argv[0]->var.op.name);
+        free(hexp->var.op.argv[0]->var.op.argv);
+        free(hexp->var.op.argv[0]);
+        free(hexp->var.op.name);
+        free(hexp->var.op.argv);
+        free(hexp);
+        return eliminate_not(exp->var.op.argv[0], ecp, txp);;
+    }
+
+    return eliminate_not(exp->var.op.argv[0], ecp, txp);
+}
+
 static void
 unbalance_and(RDB_expression *exp)
 {
@@ -396,16 +531,17 @@ mutate_where(RDB_expression *texp, RDB_expression **tbpv, int cap,
     int i;
     int tbc;
     RDB_expression *chexp = texp->var.op.argv[0];
-
-    if (_RDB_transform(chexp, ecp, txp) != RDB_OK)
-        return RDB_ERROR;
+    RDB_expression *condp = texp->var.op.argv[1];
 
     if (chexp->kind == RDB_EX_TBP
         || (chexp->kind == RDB_EX_RO_OP
             && strcmp(chexp->var.op.name, "PROJECT") == 0
             && chexp->var.op.argv[0]->kind == RDB_EX_TBP)) {
+        if (eliminate_not(condp, ecp, txp) != RDB_OK)
+            return RDB_ERROR;
+
         /* Convert condition into 'unbalanced' form */
-        unbalance_and(texp->var.op.argv[1]);
+        unbalance_and(condp);
     }
 
     tbc = mutate(chexp, tbpv, cap, ecp, txp);
@@ -414,7 +550,7 @@ mutate_where(RDB_expression *texp, RDB_expression **tbpv, int cap,
 
     for (i = 0; i < tbc; i++) {
         RDB_expression *nexp;
-        RDB_expression *exp = RDB_dup_expr(texp->var.op.argv[1], ecp);
+        RDB_expression *exp = RDB_dup_expr(condp, ecp);
         if (exp == NULL)
             return RDB_ERROR;
 
