@@ -119,7 +119,7 @@ typedef struct {
 } RDB_exec_context;
 
 typedef int RDB_ro_op_func(const char *name, int argc, RDB_object *argv[],
-        const void *iargp, size_t iarglen, RDB_exec_context *ecp,
+        const void *iargp, size_t iarglen, RDB_exec_context *,
         struct RDB_transaction *txp,
         RDB_object *retvalp);
 
@@ -221,12 +221,6 @@ typedef enum {
 } RDB_aggregate_op;
 
 typedef struct {
-    RDB_aggregate_op op;
-    RDB_expression *exp;
-    char *name;
-} RDB_summarize_add;
-
-typedef struct {
     char *from;
     char *to;
 } RDB_renaming;
@@ -274,7 +268,7 @@ RDB_db_env(RDB_database *);
  */
 RDB_database *
 RDB_create_db_from_env(const char *name, RDB_environment *envp,
-        RDB_exec_context *ecp);
+        RDB_exec_context *);
 
 /*
  * Get the database with name name in the environment pointed to
@@ -282,7 +276,7 @@ RDB_create_db_from_env(const char *name, RDB_environment *envp,
  * on success, or NULL on error.
  */
 RDB_database *
-RDB_get_db_from_env(const char *name, RDB_environment *, RDB_exec_context *ecp);
+RDB_get_db_from_env(const char *name, RDB_environment *, RDB_exec_context *);
 
 /*
  * Drop the database with name dbname.
@@ -324,7 +318,7 @@ RDB_create_table_from_type(const char *name, RDB_bool persistent,
 
 int
 RDB_init_table(RDB_object *tbp, const char *name, RDB_type *reltyp,
-        int keyc, const RDB_string_vec keyv[],  RDB_exec_context *ecp);
+        int keyc, const RDB_string_vec keyv[], RDB_exec_context *);
 
 /*
  * Lookup the table with name name from the database pointed to by dbp.
@@ -403,7 +397,7 @@ RDB_tx_is_running(RDB_transaction *txp);
  * Return RDB_OK on success. A return value other than RDB_OK indicates an error.
  */
 int
-RDB_begin_tx(RDB_exec_context *ecp, RDB_transaction *txp, RDB_database *dbp,
+RDB_begin_tx(RDB_exec_context *, RDB_transaction *txp, RDB_database *dbp,
         RDB_transaction *parent);
 
 /*
@@ -619,7 +613,7 @@ RDB_extend_tuple(RDB_object *, int attrc, const RDB_virtual_attr attrv[],
 
 int
 RDB_add_tuple(RDB_object *, const RDB_object *,
-        RDB_exec_context *ecp, RDB_transaction *);
+        RDB_exec_context *, RDB_transaction *);
 
 int
 RDB_join_tuples(const RDB_object *, const RDB_object *, RDB_exec_context *,
@@ -813,7 +807,7 @@ RDB_binary_set(RDB_object *, size_t pos, const void *srcp, size_t len,
  */
 int
 RDB_binary_get(const RDB_object *, size_t pos, size_t len,
-        RDB_exec_context *ecp, void **pp, size_t *alenp);
+        RDB_exec_context *, void **pp, size_t *alenp);
 
 size_t
 RDB_binary_length(const RDB_object *);
@@ -881,13 +875,13 @@ int
 RDB_create_ro_op(const char *name, int argc, RDB_type *argtv[], RDB_type *rtyp,
                  const char *libname, const char *symname,
                  const void *iargp, size_t iarglen, 
-                 RDB_exec_context *ecp, RDB_transaction *txp);
+                 RDB_exec_context *, RDB_transaction *txp);
 
 int
 RDB_create_update_op(const char *name, int argc, RDB_type *argtv[],
                   RDB_bool upd[], const char *libname, const char *symname,
                   const void *iargp, size_t iarglen,
-                  RDB_exec_context *ecp, RDB_transaction *txp);
+                  RDB_exec_context *, RDB_transaction *txp);
 
 int
 RDB_call_ro_op(const char *name, int argc, RDB_object *argv[],
@@ -941,10 +935,10 @@ RDB_multi_assign(int insc, const RDB_ma_insert insv[],
         RDB_exec_context *, RDB_transaction *);
 
 void
-RDB_init_exec_context(RDB_exec_context *ecp);
+RDB_init_exec_context(RDB_exec_context *);
 
 void
-RDB_destroy_exec_context(RDB_exec_context *ecp);
+RDB_destroy_exec_context(RDB_exec_context *);
 
 RDB_object *
 RDB_raise_err(RDB_exec_context *);

@@ -598,6 +598,7 @@ _RDB_get_ro_op(const char *name, int argc, RDB_type *argtv[],
      * Operator was not found in map, so read from catalog
      */
     if (_RDB_cat_get_ro_op(name, argc, argtv, ecp, txp, opp) != RDB_OK) {
+        _RDB_cat_get_ro_op(name, argc, argtv, ecp, txp, opp);
         if (RDB_obj_type(RDB_get_err(ecp)) == &RDB_NOT_FOUND_ERROR) {
             RDB_clear_err(ecp);
             if (typmismatch) {
@@ -608,7 +609,7 @@ _RDB_get_ro_op(const char *name, int argc, RDB_type *argtv[],
         }
         return RDB_ERROR;
     }
-    
+
     /* Insert operator into map */
     ret = _RDB_put_ro_op(txp->dbp->dbrootp, *opp, ecp);
     if (ret != RDB_OK) {

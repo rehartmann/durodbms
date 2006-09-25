@@ -11,14 +11,18 @@ package require tcltest 2.2
 eval ::tcltest::configure $argv
 namespace import ::tcltest::*
 
-test vtables {virtual tables} -body {
-    load [configure -testdir]/../libdurotcl.so
-    source [configure -testdir]/testutil.tcl
+set SETUP {
+    set scriptdir [file dirname [info script]]
+    load $scriptdir/../libdurotcl.so
+    source $scriptdir/testutil.tcl
 
-    # Create DB environment dir
-    set envdir [makeDirectory dbenv]
+    # Create DB environment dir, ensure it's empty
+    removeDirectory dbenv
+    makeDirectory dbenv
+}
 
-    set dbenv [duro::env open $envdir]
+test vtables {virtual tables} -setup $SETUP -body {
+    set dbenv [duro::env open [configure -tmpdir]/dbenv]
     
     # Create Database
     duro::db create $dbenv TEST
@@ -214,7 +218,7 @@ test vtables {virtual tables} -body {
     duro::env close $dbenv
     
     # Reopen DB environment
-    set dbenv [duro::env open $envdir]
+    set dbenv [duro::env open [configure -tmpdir]/dbenv]
     
     set tx [duro::begin $dbenv TEST]
     
@@ -372,13 +376,13 @@ test vtables {virtual tables} -body {
     
     duro::table drop LTL $tx
     duro::table drop LT $tx
-    
+
     #
     # Check RDB_expr_type()
     #
     duro::table expr t {EXTEND TABLE_DEE ADD ((EXTEND TABLE_DEE ADD (1 AS N)) \
             JOIN (EXTEND TABLE_DEE ADD (2 AS M)) AS R)} $tx
-    
+
     duro::table drop t $tx
     
     duro::table expr t {EXTEND TABLE_DEE ADD ((EXTEND TABLE_DEE ADD (1 AS N)) \

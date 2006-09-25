@@ -15,7 +15,7 @@
 #include <string.h>
 
 /*
- * Turn *strobjp into a virtual table defined by exp.
+ * Turn *tbp into a virtual table defined by exp.
  */
 int
 _RDB_vtexp_to_obj(RDB_expression *exp, RDB_exec_context *ecp,
@@ -39,9 +39,18 @@ RDB_object *
 RDB_expr_to_vtable(RDB_expression *exp, RDB_exec_context *ecp,
         RDB_transaction *txp)
 {
-    RDB_object *tbp = _RDB_new_obj(ecp);
-    if (tbp == NULL)
+    RDB_object *tbp;
+
+    if (!RDB_tx_is_running(txp)) {
+        RDB_raise_invalid_tx(ecp);
         return NULL;
+    }
+
+    tbp = _RDB_new_obj(ecp);
+    if (tbp == NULL) {
+        RDB_raise_no_memory(ecp);
+        return NULL;
+    }
 
     if (_RDB_vtexp_to_obj(exp, ecp, txp, tbp) != RDB_OK) {
         _RDB_free_obj(tbp, ecp);

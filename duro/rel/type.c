@@ -1720,33 +1720,43 @@ aggr_type(const RDB_expression *exp, const RDB_type *tpltyp,
     }
     RDB_raise_operator_not_found(exp->var.op.name, ecp);
     return NULL;
-}    
+}
 
 RDB_type *
 RDB_summarize_type(int expc, RDB_expression **expv,
         int avgc, char **avgv, RDB_exec_context *ecp, RDB_transaction *txp)
 {
     int i;
-    RDB_type *newtyp, *tb1typ, *tb2typ;
-    RDB_attr *attrv;
-    int addc = (expc - 2) / 2;
-    int attrc = addc + avgc;
+    RDB_type *newtyp;
+    int addc, attrc;
+    RDB_attr *attrv = NULL;
+    RDB_type *tb1typ = NULL;
+    RDB_type *tb2typ = NULL;
+
+    if (expc < 2 || (expc % 2) != 0) {
+        RDB_raise_invalid_argument("invalid number of arguments", ecp);
+        return NULL;
+    }
+
+    addc = (expc - 2) / 2;
+    attrc = addc + avgc;
+
     tb1typ = RDB_expr_type(expv[0], NULL, ecp, txp);
     if (tb1typ == NULL)
         return NULL;
     tb2typ = RDB_expr_type(expv[1], NULL, ecp, txp);
     if (tb2typ == NULL)
-        return NULL; /* !! memory */
-    
+        goto error;
+   
     if (tb2typ->kind != RDB_TP_RELATION) {
         RDB_raise_invalid_argument("relation type required", ecp);
-        return NULL;
+        goto error;
     }
 
     attrv = malloc(sizeof (RDB_attr) * attrc);
     if (attrv == NULL) {
         RDB_raise_no_memory(ecp);
-        return NULL;
+        goto error;
     }
 
     for (i = 0; i < addc; i++) {
@@ -1778,6 +1788,10 @@ RDB_summarize_type(int expc, RDB_expression **expv,
     return newtyp;
 
 error:
+    if (!RDB_type_is_scalar(tb1typ))
+        RDB_drop_type(tb1typ, ecp, NULL);
+    if (!RDB_type_is_scalar(tb2typ))
+        RDB_drop_type(tb2typ, ecp, NULL);
     free(attrv);    
     return NULL;
 }
@@ -1816,6 +1830,7 @@ RDB_wrap_tuple_type(const RDB_type *typ, int wrapc, const RDB_wrapping wrapv[],
     for (i = 0; i < attrc; i++) {
         newtyp->var.tuple.attrv[i].name = NULL;
         newtyp->var.tuple.attrv[i].typ = NULL;
+        newtyp->var.tuple.attrv[i].defaultp = NULL;
     }
 
     /*
@@ -1853,9 +1868,8 @@ RDB_wrap_tuple_type(const RDB_type *typ, int wrapc, const RDB_wrapping wrapv[],
                 goto error;
             }
         }
-        newtyp->var.tuple.attrv[i].name = RDB_dup_str(wrapv[i].attrname);
-        newtyp->var.tuple.attrv[i].typ = tuptyp;        
-        newtyp->var.tuple.attrv[i].defaultp = NULL;
+        newtyp->var.tuple.attrv[i].name = RDB_dup_str(wrapv[i].attrname); /* !! */
+        newtyp->var.tuple.attrv[i].typ = tuptyp;
     }
 
     /*
@@ -2169,7 +2183,7 @@ RDB_ungroup_type(RDB_type *typ, const char *attr, RDB_exec_context *ecp)
         return NULL;
     }
     if (relattrp->typ->kind != RDB_TP_RELATION) {
-        RDB_raise_invalid_argument("not a relation", ecp);
+        RDB_raise_invalid_argument("attribute is not a relation", ecp);
         return NULL;
     }
 
