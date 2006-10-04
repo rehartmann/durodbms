@@ -55,6 +55,7 @@ struct RDB_expression {
             } optinfo;
         } op;
     } var;
+    RDB_type *typ; /* NULL if the type has not been determined */
 };
 
 struct RDB_database {
@@ -522,17 +523,17 @@ _RDB_obj_to_field(RDB_field *, RDB_object *, RDB_exec_context *);
 
 /*
  * Return the type of the expression.
- * If the type is non-scalar, it must be managed by the caller.
+ * If the type is non-scalar, it is managed by the expression.
  */
 RDB_type *
-RDB_expr_type(const RDB_expression *, const RDB_type *, RDB_exec_context *,
+RDB_expr_type(RDB_expression *, const RDB_type *, RDB_exec_context *,
         RDB_transaction *);
 
 RDB_type *
 _RDB_tuple_type(const RDB_object *tplp, RDB_exec_context *);
 
 int
-_RDB_check_expr_type(const RDB_expression *exp, const RDB_type *tuptyp,
+_RDB_check_expr_type(RDB_expression *exp, const RDB_type *tuptyp,
         const RDB_type *checktyp, RDB_exec_context *, RDB_transaction *);
 
 int
@@ -553,6 +554,9 @@ _RDB_open_table_index(RDB_object *tbp, _RDB_tbindex *indexp,
 int
 _RDB_infer_keys(RDB_expression *exp, RDB_exec_context *, RDB_string_vec **,
         RDB_bool *caller_must_freep);
+
+void
+_RDB_free_keys(int keyc, RDB_string_vec *keyv);
 
 int
 _RDB_check_project_keyloss(RDB_expression *exp,

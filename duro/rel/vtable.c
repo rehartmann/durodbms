@@ -27,9 +27,12 @@ _RDB_vtexp_to_obj(RDB_expression *exp, RDB_exec_context *ecp,
         return RDB_ERROR;
     }
 
+    tbtyp = _RDB_dup_nonscalar_type(tbtyp, ecp);
+    if (tbtyp == NULL)
+        return RDB_ERROR;
+
     if (_RDB_init_table(tbp, NULL, RDB_FALSE, 
             tbtyp, 0, NULL, RDB_TRUE, exp, ecp) != RDB_OK) {
-        RDB_drop_type(tbtyp, ecp, NULL);
         return RDB_ERROR;
     }
     return RDB_OK;
@@ -145,10 +148,10 @@ infer_join_keys(RDB_expression *exp, RDB_exec_context *ecp,
     RDB_string_vec *newkeyv;
     RDB_bool free1, free2;
 
-    keyc1 = _RDB_infer_keys(exp->var.op.argv[0], ecp, &keyv1, &free1 /* !! */);
+    keyc1 = _RDB_infer_keys(exp->var.op.argv[0], ecp, &keyv1, &free1);
     if (keyc1 < 0)
         return keyc1;
-    keyc2 = _RDB_infer_keys(exp->var.op.argv[0], ecp, &keyv2, &free2 /* !! */);
+    keyc2 = _RDB_infer_keys(exp->var.op.argv[0], ecp, &keyv2, &free2);
     if (keyc2 < 0)
         return keyc2;
 
@@ -180,6 +183,10 @@ infer_join_keys(RDB_expression *exp, RDB_exec_context *ecp,
         }
     }
     *keyvp = newkeyv;
+    if (free1)
+        _RDB_free_keys(keyc1, keyv1);
+    if (free2)
+        _RDB_free_keys(keyc2, keyv2);
     return newkeyc;
 
 error:
@@ -189,6 +196,10 @@ error:
                 RDB_free_strvec(newkeyv[i].strc, newkeyv[i].strv);
         }
     }
+    if (free1)
+        _RDB_free_keys(keyc1, keyv1);
+    if (free2)
+        _RDB_free_keys(keyc2, keyv2);
     RDB_raise_no_memory(ecp);
     return RDB_ERROR;
 }
@@ -202,8 +213,9 @@ infer_project_keys(RDB_expression *exp, RDB_exec_context *ecp,
     RDB_string_vec *keyv;
     RDB_string_vec *newkeyv;
     RDB_bool *presv;
+    RDB_bool freekeys;
 
-    keyc = _RDB_infer_keys(exp->var.op.argv[0], ecp, &keyv, caller_must_freep);
+    keyc = _RDB_infer_keys(exp->var.op.argv[0], ecp, &keyv, &freekeys);
     if (keyc < 0)
         return keyc;
 
@@ -221,6 +233,11 @@ infer_project_keys(RDB_expression *exp, RDB_exec_context *ecp,
             RDB_raise_no_memory(ecp);
             return RDB_ERROR;
         }
+    } else if (newkeyc == keyc) {
+        /* The keys remained intact */
+        *caller_must_freep = freekeys;
+        *keyvp = keyv;
+        return keyc;
     } else {
         int i, j;
 
@@ -249,6 +266,8 @@ infer_project_keys(RDB_expression *exp, RDB_exec_context *ecp,
         }
     }
     free(presv);
+    if (freekeys)
+        _RDB_free_keys(keyc, keyv);
     *keyvp = newkeyv;
     *caller_must_freep = RDB_TRUE;
     return keyc;
@@ -280,7 +299,7 @@ infer_group_keys(RDB_expression *exp, RDB_exec_context *ecp,
     j = 0;
     for (i = 0; i < tbtyp->var.basetyp->var.tuple.attrc; i++) {
         if (strcmp(tbtyp->var.basetyp->var.tuple.attrv[i].name,
-                RDB_obj_string(&exp->var.op.argv[1]->var.obj)) != 0) {
+                RDB_obj_string(&exp->var.op.argv[exp->var.op.argc - 1]->var.obj)) != 0) {
             newkeyv[0].strv[j] = RDB_dup_str(
                     tbtyp->var.basetyp->var.tuple.attrv[i].name);
             if (newkeyv[0].strv[j] == NULL) {
@@ -346,7 +365,8 @@ _RDB_infer_keys(RDB_expression *exp, RDB_exec_context *ecp,
     /* !! REMOVE */
 
     if (strcmp(exp->var.op.name, "SUMMARIZE") == 0) {
-        return _RDB_infer_keys(exp->var.op.argv[1], ecp, keyvp, caller_must_freep);
+        return _RDB_infer_keys(exp->var.op.argv[1], ecp, keyvp,
+                caller_must_freep);
     }
     if (strcmp(exp->var.op.name, "RENAME") == 0) {
         int keyc = _RDB_infer_keys(exp->var.op.argv[0], ecp, keyvp, caller_must_freep);
@@ -414,7 +434,11 @@ _RDB_index_objpv(_RDB_tbindex *indexp, RDB_expression *exp, RDB_type *tbtyp,
                 && (attrexp->var.op.argv[1]->var.obj.kind == RDB_OB_TUPLE
                 || attrexp->var.op.argv[1]->var.obj.kind == RDB_OB_ARRAY))
             attrexp->var.op.argv[1]->var.obj.typ = _RDB_dup_nonscalar_type(
-                    RDB_type_attr_type(tbtyp, indexp->attrv[i].attrname), NULL /*!!*/);
+                    RDB_type_attr_type(tbtyp, indexp->attrv[i].attrname), NULL);
+            if (attrexp == NULL) {
+                /* !! */
+                return NULL;
+            }
 
         objpv[i] = &attrexp->var.op.argv[1]->var.obj;       
     }

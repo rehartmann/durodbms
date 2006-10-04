@@ -31,7 +31,7 @@ exprs_compl(const RDB_expression *ex1p, const RDB_expression *ex2p,
                 != RDB_OK)
             return RDB_ERROR;
     }
-    return RDB_OK; 
+    return RDB_OK;
 }
 
 static int
@@ -126,6 +126,7 @@ transform_where(RDB_expression *exp, RDB_exec_context *ecp,
              * WHERE(SEMIMINUS( -> SEMIMINUS(WHERE(
              * Same for MINUS, SEMIJOIN
              */
+
             if (_RDB_transform(chexp->var.op.argv[1], ecp, txp) != RDB_OK)
                 return RDB_ERROR;
 
@@ -165,6 +166,15 @@ transform_where(RDB_expression *exp, RDB_exec_context *ecp,
 
             return _RDB_transform(chexp, ecp, txp);
         } else if (strcmp(chexp->var.op.name, "EXTEND") == 0) {
+            if (exp->typ != NULL) {
+                RDB_drop_type(exp->typ, ecp, NULL);
+                exp->typ = NULL;
+            }
+            if (chexp->typ != NULL) {
+                RDB_drop_type(chexp->typ, ecp, NULL);
+                chexp->typ = NULL;
+            }
+
             /*
              * WHERE(EXTEND( -> EXTEND(WHERE(
              */
@@ -201,8 +211,17 @@ transform_where(RDB_expression *exp, RDB_exec_context *ecp,
                 RDB_clear_err(ecp);
                 return RDB_OK;
             }
+
+            RDB_drop_type(exp->typ, ecp, NULL);
+            exp->typ = NULL;
+
             if (_RDB_invrename_expr(exp->var.op.argv[1], chexp, ecp) != RDB_OK)
                 return RDB_ERROR;
+
+            if (chexp->typ != NULL) {
+                RDB_drop_type(chexp->typ, ecp, NULL);
+                chexp->typ = NULL;
+            }
 
             hname = chexp->var.op.name;
             chexp->var.op.name = exp->var.op.name;
@@ -218,7 +237,7 @@ transform_where(RDB_expression *exp, RDB_exec_context *ecp,
             hexp = chexp->var.op.argv[0];
             chexp->var.op.argv[0] = exp->var.op.argv[0];
             exp->var.op.argv[0] = hexp;
-            
+
             exp = chexp;
         } else {
             return _RDB_transform(chexp, ecp, txp);
@@ -252,6 +271,15 @@ swap_project_union(RDB_expression *exp, RDB_expression *chexp,
             return RDB_ERROR;
         }
         RDB_add_arg(nexp, nargp);
+    }
+
+    if (exp->typ != NULL) {
+        RDB_drop_type(exp->typ, ecp, NULL);
+        exp->typ = NULL;
+    }
+    if (chexp->typ != NULL) {
+        RDB_drop_type(chexp->typ, ecp, NULL);
+        chexp->typ = NULL;
     }
 
     /*
@@ -365,6 +393,15 @@ swap_project_rename(RDB_expression *texp, RDB_exec_context *ecp,
         }
     }
 
+    if (texp->typ != NULL) {
+        RDB_drop_type(texp->typ, ecp, NULL);
+        texp->typ = NULL;
+    }
+    if (chtexp->typ != NULL) {
+        RDB_drop_type(chtexp->typ, ecp, NULL);
+        chtexp->typ = NULL;
+    }
+
     argc = texp->var.op.argc;
     argv = texp->var.op.argv;
     opname = texp->var.op.name;
@@ -428,6 +465,10 @@ transform_project_extend(RDB_expression *exp, RDB_exec_context *ecp,
     }
     chexp->var.op.argv = expv;
     chexp->var.op.argc = expc;
+    if (chexp->typ != NULL) {
+        RDB_drop_type(chexp->typ, ecp, NULL);
+        chexp->typ = NULL;
+    }
 
     return _RDB_transform(chexp, ecp, txp);
 }
@@ -448,7 +489,6 @@ swap_project_where(RDB_expression *exp, RDB_expression *chexp,
 
     attrv = malloc(sizeof(char *) * chtyp->var.basetyp->var.tuple.attrc);
     if (attrv == NULL) {
-        RDB_drop_type(chtyp, ecp, NULL);
         RDB_raise_no_memory(ecp);
         return RDB_ERROR;
     }
@@ -473,6 +513,7 @@ swap_project_where(RDB_expression *exp, RDB_expression *chexp,
             attrv[attrc++] = attrname;
         }
     }
+
     if (attrc > exp->var.op.argc - 1) {
         /*
          * Add project
@@ -501,6 +542,13 @@ swap_project_where(RDB_expression *exp, RDB_expression *chexp,
 
         free(attrv);
 
+        if (exp->typ != NULL) {
+            RDB_drop_type(exp->typ, ecp, NULL);
+            exp->typ = NULL;
+        }
+        RDB_drop_type(chexp->typ, ecp, NULL);
+        chexp->typ = NULL;
+
         /*
          * Swap WHERE and project
          */
@@ -514,7 +562,7 @@ swap_project_where(RDB_expression *exp, RDB_expression *chexp,
         exp->var.op.argv = chexp->var.op.argv;
         chexp->var.op.argc = hargc;
         chexp->var.op.argv = hargv;
-         
+
         chexp->var.op.argv[0] = exp->var.op.argv[0];
         exp->var.op.argv[0] = chexp;        
     }
@@ -538,6 +586,7 @@ transform_project(RDB_expression *exp, RDB_exec_context *ecp,
 
         if (chexp->kind != RDB_EX_RO_OP)
             return RDB_OK;
+
         if (strcmp(chexp->var.op.name, "PROJECT") == 0) {
             /* Merge projects by eliminating the child */
             exp->var.op.argv[0] = chexp->var.op.argv[0];
@@ -598,13 +647,11 @@ transform_remove(RDB_expression *exp, RDB_exec_context *ecp,
     attrc = typ->var.basetyp->var.tuple.attrc;
     argv = realloc(exp->var.op.argv, sizeof(RDB_expression *) * (attrc + 1));
     if (argv == NULL) {
-        RDB_drop_type(typ, ecp, NULL);
         RDB_raise_no_memory(ecp);
         return RDB_ERROR;
     }
     opname = realloc(exp->var.op.name, 8);
     if (opname == NULL) {
-        RDB_drop_type(typ, ecp, NULL);
         RDB_raise_no_memory(ecp);
         return RDB_ERROR;
     }
@@ -624,7 +671,6 @@ transform_remove(RDB_expression *exp, RDB_exec_context *ecp,
     exp->var.op.argc = attrc + 1;
     exp->var.op.argv = argv;
 
-    RDB_drop_type(typ, ecp, NULL);
     return transform_project(exp, ecp, txp);
 }
 

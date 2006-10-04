@@ -783,7 +783,7 @@ _RDB_cat_get_indexes(const char *tablename, RDB_dbroot *dbrootp,
                 ret = RDB_ERROR;
                 goto cleanup;
             }
-            
+
             for (j = 0; j < indexp->attrc; j++) {
                 RDB_object *attrtplp;                
 

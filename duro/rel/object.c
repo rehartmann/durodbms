@@ -684,12 +684,23 @@ RDB_init_obj(RDB_object *valp)
     valp->typ = NULL;
 }
 
+/*
+ * Delete candidate keys
+ */
+void
+_RDB_free_keys(int keyc, RDB_string_vec *keyv)
+{
+    int i;
+
+    for (i = 0; i < keyc; i++) {
+        RDB_free_strvec(keyv[i].strc, keyv[i].strv);
+    }
+    free(keyv);
+}
+
 int
 RDB_destroy_obj(RDB_object *objp, RDB_exec_context *ecp)
 {
-	int ret;
-	int i;
-
     switch (objp->kind) {
         case RDB_OB_INITIAL:
         case RDB_OB_BOOL:
@@ -753,12 +764,7 @@ RDB_destroy_obj(RDB_object *objp, RDB_exec_context *ecp)
         }
         case RDB_OB_TABLE:
             if (objp->var.tb.keyv != NULL) {
-                /* Delete candidate keys */
-                for (i = 0; i < objp->var.tb.keyc; i++) {
-                    RDB_free_strvec(objp->var.tb.keyv[i].strc,
-                            objp->var.tb.keyv[i].strv);
-                }
-                free(objp->var.tb.keyv);
+                _RDB_free_keys(objp->var.tb.keyc, objp->var.tb.keyv);
             }
 
             /* It may be a scalar type with a relation actual rep */ 
@@ -768,8 +774,7 @@ RDB_destroy_obj(RDB_object *objp, RDB_exec_context *ecp)
             free(objp->var.tb.name);
             
             if (objp->var.tb.exp != NULL) {
-                ret = RDB_drop_expr(objp->var.tb.exp, ecp);
-                if (ret != RDB_OK)
+                if (RDB_drop_expr(objp->var.tb.exp, ecp) != RDB_OK)
                     return RDB_ERROR;
             }
 
@@ -777,11 +782,10 @@ RDB_destroy_obj(RDB_object *objp, RDB_exec_context *ecp)
              * Delete recmap, if any
              */
             if (objp->var.tb.stp != NULL) {
-                ret = _RDB_delete_stored_table(objp->var.tb.stp, ecp, NULL);
-                if (ret != RDB_OK)
+                if (_RDB_delete_stored_table(objp->var.tb.stp, ecp, NULL)
+                        != RDB_OK)
                     return RDB_ERROR;
             }
-
             break;
     }
     return RDB_OK;

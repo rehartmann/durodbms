@@ -1788,10 +1788,6 @@ RDB_summarize_type(int expc, RDB_expression **expv,
     return newtyp;
 
 error:
-    if (!RDB_type_is_scalar(tb1typ))
-        RDB_drop_type(tb1typ, ecp, NULL);
-    if (!RDB_type_is_scalar(tb2typ))
-        RDB_drop_type(tb2typ, ecp, NULL);
     free(attrv);    
     return NULL;
 }

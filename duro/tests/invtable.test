@@ -11,14 +11,18 @@ package require tcltest 2.2
 eval ::tcltest::configure $argv
 namespace import ::tcltest::*
 
-test invtable {invalid table definitions} -body {
-	load [configure -testdir]/../libdurotcl.so
-	source [configure -testdir]/testutil.tcl
+set SETUP {
+    set scriptdir [file dirname [info script]]
+    load $scriptdir/../libdurotcl.so
+    source $scriptdir/testutil.tcl
 
-	# Create DB environment dir
-	set envdir [makeDirectory dbenv]
+    # Create DB environment dir, ensure it's empty
+    removeDirectory dbenv
+    makeDirectory dbenv
+}
 
-	set dbenv [duro::env open $envdir]
+test invtable {invalid table definitions} -setup $SETUP -body {
+    set dbenv [duro::env open [configure -tmpdir]/dbenv]
 	
 	# Create Database
 	duro::db create $dbenv TEST

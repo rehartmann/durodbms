@@ -14,13 +14,11 @@ RDB_table_to_array(RDB_object *arrp, RDB_object *tbp,
                    int seqitc, const RDB_seq_item seqitv[],
                    RDB_exec_context *ecp, RDB_transaction *txp)
 {
-    int ret;
     RDB_expression *texp;
     RDB_qresult *qrp = NULL;
     _RDB_tbindex *indexp = NULL;
 
-    ret = RDB_destroy_obj(arrp, ecp);
-    if (ret != RDB_OK)
+    if (RDB_destroy_obj(arrp, ecp) != RDB_OK)
         return RDB_ERROR;
     RDB_init_obj(arrp);
 
@@ -32,8 +30,7 @@ RDB_table_to_array(RDB_object *arrp, RDB_object *tbp,
         indexp = _RDB_expr_sortindex(texp);
         if (indexp == NULL || !_RDB_index_sorts(indexp, seqitc, seqitv)) {
             /* Create sorter */
-            ret = _RDB_sorter(texp, &qrp, ecp, txp, seqitc, seqitv);
-            if (ret != RDB_OK)
+            if (_RDB_sorter(texp, &qrp, ecp, txp, seqitc, seqitv) != RDB_OK)
                 goto error;
         }
     }
@@ -43,8 +40,7 @@ RDB_table_to_array(RDB_object *arrp, RDB_object *tbp,
             goto error;
         }
         /* Add duplicate remover, if necessary */
-        ret = _RDB_duprem(qrp, ecp, txp);
-        if (ret != RDB_OK)
+        if (_RDB_duprem(qrp, ecp, txp) != RDB_OK)
             goto error;
     }
 

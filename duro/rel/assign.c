@@ -596,7 +596,8 @@ resolve_insert_expr(RDB_expression *exp, const RDB_object *tplp,
         }
         return resolve_insert_expr(exp->var.op.argv[0], tplp, insnpp, ecp, txp);
     }
-    if (strcmp(exp->var.op.name, "PROJECT") == 0) {
+    if (strcmp(exp->var.op.name, "PROJECT") == 0
+        || strcmp(exp->var.op.name, "REMOVE") == 0) {
         return resolve_insert_expr(exp->var.op.argv[0], tplp, insnpp, ecp, txp);
     }
     if (strcmp(exp->var.op.name, "RENAME") == 0) {

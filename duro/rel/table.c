@@ -84,15 +84,8 @@ error:
     /* Clean up */
     if (tbp != NULL) {
         free(tbp->var.tb.name);
-        if (tbp->var.tb.keyv != NULL) {
-	        for (i = 0; i < keyc; i++) {
-	            if (tbp->var.tb.keyv[i].strv != NULL) {
-	                RDB_free_strvec(tbp->var.tb.keyv[i].strc,
-	                        tbp->var.tb.keyv[i].strv);
-	            }
-	        }
-        }
-        free(tbp->var.tb.keyv);
+        if (tbp->var.tb.keyv != NULL)
+            _RDB_free_keys(tbp->var.tb.keyc, tbp->var.tb.keyv);
     }
     free(allkey.strv);
     return RDB_ERROR;
@@ -283,22 +276,23 @@ int
 _RDB_move_tuples(RDB_object *dstp, RDB_object *srcp, RDB_exec_context *ecp,
         RDB_transaction *txp)
 {
-    RDB_qresult *qrp;
     RDB_object tpl;
     int ret;
-
-    /*
-     * Copy all tuples from source table to destination table
-     */
-
-    qrp = _RDB_table_qresult(srcp, ecp, txp);
-    if (qrp == NULL)
+    RDB_qresult *qrp = NULL;
+    RDB_expression *texp = _RDB_optimize(srcp, 0, NULL, ecp, txp);
+    if (texp == NULL)
         return RDB_ERROR;
 
-    /* Eliminate duplicates */
+    qrp = _RDB_expr_qresult(texp, ecp, txp);
+    if (qrp == NULL) {
+        ret = RDB_ERROR;
+        goto cleanup;
+    }
+
+    /* Eliminate duplicates, if necessary */
     ret = _RDB_duprem(qrp, ecp, txp);
     if (ret != RDB_OK)
-        return RDB_ERROR;
+        goto cleanup;
 
     RDB_init_obj(&tpl);
 
@@ -317,7 +311,9 @@ _RDB_move_tuples(RDB_object *dstp, RDB_object *srcp, RDB_exec_context *ecp,
     }
 
 cleanup:
-    _RDB_drop_qresult(qrp, ecp, txp);
+    if (qrp != NULL)
+        _RDB_drop_qresult(qrp, ecp, txp);
+    RDB_drop_expr(texp, ecp);
     RDB_destroy_obj(&tpl, ecp);
     return ret;
 }

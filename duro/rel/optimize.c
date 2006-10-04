@@ -812,20 +812,17 @@ index_joins(RDB_expression *otexp, RDB_expression *itexp,
             RDB_expression *arg1p, *ntexp;
             RDB_expression *refargp = RDB_table_ref_to_expr(tbp, ecp);
             if (refargp == NULL) {
-                RDB_drop_type(ottyp, ecp, NULL);
                 return RDB_ERROR;
             }
 
             refargp->var.tbref.indexp = &tbp->var.tb.stp->indexv[i];
             ntexp = RDB_ro_op("JOIN", 2, ecp);
             if (ntexp == NULL) {
-                RDB_drop_type(ottyp, ecp, NULL);
                 return RDB_ERROR;
             }
 
             arg1p = RDB_dup_expr(otexp, ecp);
             if (arg1p == NULL) {
-                RDB_drop_type(ottyp, ecp, NULL);
                 RDB_drop_expr(ntexp, ecp);
                 return RDB_ERROR;
             }
@@ -836,7 +833,6 @@ index_joins(RDB_expression *otexp, RDB_expression *itexp,
         }
     }
 
-    RDB_drop_type(ottyp, ecp, NULL);
     return tbc;
 }
 
@@ -1023,6 +1019,12 @@ _RDB_optimize_expr(RDB_expression *texp, int seqitc, const RDB_seq_item seqitv[]
 
     if (_RDB_transform(nexp, ecp, txp) != RDB_OK)
         return NULL;
+
+    /*
+     * If no tx, optimization ends here
+     */
+    if (txp == NULL)
+        return nexp;
 
     /*
      * Replace tables which are declared to be empty

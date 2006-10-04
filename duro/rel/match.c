@@ -80,6 +80,7 @@ _RDB_expr_matching_tuple(RDB_expression *exp, const RDB_object *tplp,
 {
     int ret;
     RDB_qresult *qrp;
+    RDB_expression *texp;
 
     if (exp->kind == RDB_EX_OBJ) {
         return _RDB_matching_tuple(&exp->var.obj, tplp, ecp, txp, resultp);
@@ -90,17 +91,27 @@ _RDB_expr_matching_tuple(RDB_expression *exp, const RDB_object *tplp,
     if (exp->kind == RDB_EX_RO_OP && strcmp (exp->var.op.name, "PROJECT") == 0) {
         return project_matching(exp, tplp, ecp, txp, resultp);
     }
-    
-    qrp = _RDB_expr_qresult(exp, ecp, txp);
-    if (qrp == NULL)
+
+    texp = _RDB_optimize_expr(exp, 0, NULL, ecp, txp);
+    if (texp == NULL)
         return RDB_ERROR;
+    
+    qrp = _RDB_expr_qresult(texp, ecp, txp);
+    if (qrp == NULL)
+        goto error;
 
     ret = qr_matching_tuple(qrp, tplp, ecp, txp, resultp);
     if (ret != RDB_OK) {
-        _RDB_drop_qresult(qrp, ecp, txp);
-        return ret;
+        goto error;
     }
-    return _RDB_drop_qresult(qrp, ecp, txp);
+    _RDB_drop_qresult(qrp, ecp, txp);
+    return RDB_drop_expr(texp, ecp);
+
+error:
+    if (qrp != NULL)
+        _RDB_drop_qresult(qrp, ecp, txp);
+    RDB_drop_expr(texp, ecp);
+    return RDB_ERROR;
 }
 
 /*
