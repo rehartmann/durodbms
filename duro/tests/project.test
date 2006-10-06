@@ -11,15 +11,19 @@ package require tcltest 2.2
 eval ::tcltest::configure $argv
 namespace import ::tcltest::*
 
-test ltables {transient tables} -body {
-    load [configure -testdir]/../libdurotcl.so
-    source [configure -testdir]/testutil.tcl
+set SETUP {
+    set scriptdir [file dirname [info script]]
+    load $scriptdir/../libdurotcl.so
+    source $scriptdir/testutil.tcl
 
-    # Create DB environment dir
-    set envdir [makeDirectory dbenv]
+    # Create DB environment dir, ensure it's empty
+    removeDirectory dbenv
+    makeDirectory dbenv
+}
 
-    set dbenv [duro::env open $envdir]
-    
+test ptables {projection tables} -setup $SETUP -body {
+    set dbenv [duro::env open [configure -tmpdir]/dbenv]
+
     # Create Database
     duro::db create $dbenv TEST
     
@@ -49,7 +53,7 @@ test ltables {transient tables} -body {
     duro::env close $dbenv
     
     # Reopen DB environment
-    set dbenv [duro::env open $envdir]
+    set dbenv [duro::env open [configure -tmpdir]/dbenv]
     
     set tx [duro::begin $dbenv TEST]
     

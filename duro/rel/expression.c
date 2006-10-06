@@ -857,29 +857,15 @@ RDB_expr_type(RDB_expression *exp, const RDB_type *tuptyp,
 
     switch (exp->kind) {
         case RDB_EX_OBJ:
-            exp->typ = RDB_obj_type(&exp->var.obj);
-            if (exp->typ == NULL) {
-                if (exp->var.obj.kind == RDB_OB_TUPLE) {
-                    return _RDB_tuple_type(&exp->var.obj, ecp);
-                }
-                RDB_raise_invalid_argument("type information not available",
-                        ecp);
-                return NULL;
-            }
-
-            /*
-             * Nonscalar types are managed by the caller, so
-             * duplicate it
-             */
-            if (!RDB_type_is_scalar(exp->typ)) {
-                exp->typ = _RDB_dup_nonscalar_type(exp->typ, ecp);
-                if (exp->typ == NULL)
-                    return NULL;
+            /* Get type from RDB_object */
+            typ = RDB_obj_type(&exp->var.obj);
+            if (typ == NULL) {
+                /* No type available - generate type from tuple */
+                exp->typ = typ = _RDB_tuple_type(&exp->var.obj, ecp);
             }
             break;
         case RDB_EX_TBP:
-            exp->typ = _RDB_dup_nonscalar_type(
-                    RDB_obj_type(exp->var.tbref.tbp), ecp);
+            typ = RDB_obj_type(exp->var.tbref.tbp);
             break;
         case RDB_EX_VAR:
             if (tuptyp == NULL) {
@@ -891,7 +877,7 @@ RDB_expr_type(RDB_expression *exp, const RDB_type *tuptyp,
                 RDB_raise_attribute_not_found(exp->var.varname, ecp);
                 return NULL;
             }
-            exp->typ = _RDB_dup_nonscalar_type(attrp->typ, ecp);
+            exp->typ = typ = _RDB_dup_nonscalar_type(attrp->typ, ecp);
             break;
         case RDB_EX_TUPLE_ATTR:
             typ = RDB_expr_type(exp->var.op.argv[0], tuptyp, ecp, txp);
@@ -902,7 +888,6 @@ RDB_expr_type(RDB_expression *exp, const RDB_type *tuptyp,
                 RDB_raise_attribute_not_found(exp->var.varname, ecp);
                 return NULL;
             }
-            exp->typ = _RDB_dup_nonscalar_type(typ, ecp);
             break;
         case RDB_EX_GET_COMP:
             typ = RDB_expr_type(exp->var.op.argv[0], tuptyp, ecp, txp);
@@ -913,13 +898,13 @@ RDB_expr_type(RDB_expression *exp, const RDB_type *tuptyp,
                 RDB_raise_invalid_argument("component not found", ecp);
                 return NULL;
             }
-            exp->typ = _RDB_dup_nonscalar_type(attrp->typ, ecp); /* !! */
+            typ = attrp->typ;
             break;
         case RDB_EX_RO_OP:
-            exp->typ = expr_op_type(exp, tuptyp, ecp, txp);
+            exp->typ = typ = expr_op_type(exp, tuptyp, ecp, txp);
             break;
     }
-    return exp->typ;
+    return typ;
 }
 
 int

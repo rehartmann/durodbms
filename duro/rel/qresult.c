@@ -501,6 +501,7 @@ sdivide_qresult(RDB_qresult *qrp, RDB_exec_context *ecp,
         RDB_transaction *txp)
 {
     qrp->nested = RDB_TRUE;
+    qrp->var.children.tpl_valid = RDB_FALSE;
 
     /* Create qresults for table #1 and table #3 */
     qrp->var.children.qrp = _RDB_expr_qresult(qrp->exp->var.op.argv[0],
@@ -836,18 +837,20 @@ init_expr_qresult(RDB_qresult *qrp, RDB_expression *exp, RDB_exec_context *ecp,
     if (strcmp(exp->var.op.name, "PROJECT") == 0) {
         RDB_expression *texp = exp->var.op.argv[0];
         
+        qrp->var.children.tpl_valid = RDB_FALSE;
         if (texp->kind == RDB_EX_TBP
                 && texp->var.tbref.tbp->kind == RDB_OB_TABLE
                 && texp->var.tbref.tbp->var.tb.stp != NULL) {
-            /* printf("Hey, project über stored table!\n"); */
+            if (init_stored_qresult(qrp, texp->var.tbref.tbp, ecp, txp) != RDB_OK)
+                return RDB_ERROR;
+            qrp->exp = exp; /* !! */
+        } else {
+            qrp->nested = RDB_TRUE;
+            qrp->var.children.qrp = _RDB_expr_qresult(exp->var.op.argv[0], ecp, txp);
+            if (qrp->var.children.qrp == NULL)
+                return RDB_ERROR;
+            qrp->var.children.qr2p = NULL;
         }
-
-        qrp->nested = RDB_TRUE;
-        qrp->var.children.tpl_valid = RDB_FALSE;
-        qrp->var.children.qrp = _RDB_expr_qresult(exp->var.op.argv[0], ecp, txp);
-        if (qrp->var.children.qrp == NULL)
-            return RDB_ERROR;
-        qrp->var.children.qr2p = NULL;
         return RDB_OK;        
     }
 	if ((strcmp(exp->var.op.name, "WHERE") == 0)
@@ -992,7 +995,7 @@ expr_dups(RDB_expression *exp, RDB_exec_context *ecp, RDB_bool *resp)
 static int
 qr_dups(RDB_qresult *qrp, RDB_exec_context *ecp, RDB_bool *resp)
 {
-    if (!qrp->nested) {
+    if (qrp->exp == NULL) {
         *resp = RDB_FALSE;
         return RDB_OK;
     }
@@ -1751,13 +1754,12 @@ next_project_tuple(RDB_qresult *qrp, RDB_object *tplp, RDB_exec_context *ecp,
 {
     int i, ret;
     RDB_object *valp;
-            
+
     /* Get tuple */
-    /*
     if (!qrp->nested) {
         if (tplp != NULL) {
-            ret = _RDB_get_by_cursor(qrp->var.stored.tbp->var.project.tbp, qrp->var.stored.curp,
-                    qrp->var.stored.tbp->typ->var.basetyp, tplp, ecp, txp);
+            ret = _RDB_get_by_cursor(qrp->var.stored.tbp, qrp->var.stored.curp,
+                    RDB_expr_type(qrp->exp, NULL, ecp, txp)->var.basetyp, tplp, ecp, txp);
             if (ret != RDB_OK)
                 return RDB_ERROR;
         }
@@ -1767,7 +1769,6 @@ next_project_tuple(RDB_qresult *qrp, RDB_object *tplp, RDB_exec_context *ecp,
         else if (ret != RDB_OK)
             return RDB_ERROR;
     } else {
-    */
         RDB_object tpl;
 
         RDB_init_obj(&tpl);
@@ -1790,9 +1791,7 @@ next_project_tuple(RDB_qresult *qrp, RDB_object *tplp, RDB_exec_context *ecp,
         }
 
         RDB_destroy_obj(&tpl, ecp);
-/*
     }
-*/
     return RDB_OK;
 }
 
@@ -2341,9 +2340,11 @@ _RDB_next_tuple(RDB_qresult *qrp, RDB_object *tplp, RDB_exec_context *ecp,
 	        return next_stored_tuple(qrp, qrp->matp, tplp, RDB_TRUE, RDB_FALSE,
 	                qrp->matp->typ->var.basetyp, ecp, txp);
 	    }
-        if (qrp->exp != NULL && qrp->exp->kind == RDB_EX_RO_OP
-                && strcmp(qrp->exp->var.op.name, "WHERE") == 0) {
-            return next_where_index(qrp, tplp, ecp, txp);
+        if (qrp->exp != NULL) {
+            if (qrp->exp->kind == RDB_EX_RO_OP
+                    && strcmp(qrp->exp->var.op.name, "WHERE") == 0) {
+                return next_where_index(qrp, tplp, ecp, txp);
+            }
         } else {
             RDB_type *tpltyp = qrp->var.stored.tbp->typ->kind == RDB_TP_RELATION ?
                 qrp->var.stored.tbp->typ->var.basetyp
@@ -2362,6 +2363,12 @@ _RDB_next_tuple(RDB_qresult *qrp, RDB_object *tplp, RDB_exec_context *ecp,
     do {
         /* ELEMENT_EXISTS can be active */
         RDB_clear_err(ecp);
+
+        if (qrp->endreached) {
+            RDB_raise_not_found("", ecp);
+            return RDB_ERROR;
+        }
+
         if (strcmp(exp->var.op.name, "WHERE") == 0) {
             if (next_where_tuple(qrp, tplp, ecp, txp) != RDB_OK)
                 return RDB_ERROR;
