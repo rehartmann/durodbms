@@ -101,6 +101,30 @@ test vtables {virtual tables} -setup $SETUP -body {
         error "Wrong error: $errorCode"
     }
 
+    # Empty RENAME
+    duro::table expr -local TER {T1 RENAME ()} $tx
+    set tpl [duro::expr {TUPLE FROM TER WHERE K=1} $tx]
+    if {![tequal $tpl {K 1 S1 Bla}]} {
+        error "Invalid tuple value: $tpl"
+    }
+    duro::table drop TER $tx
+
+    # Empty EXTEND
+    duro::table expr -local TEX {EXTEND T1 ADD ()} $tx
+    set tpl [duro::expr {TUPLE FROM TEX WHERE K=2} $tx]
+    if {![tequal $tpl {K 2 S1 Blubb}]} {
+        error "Invalid tuple value: $tpl"
+    }
+    duro::table drop TEX $tx
+
+    # Empty SUMMARIZE PER
+    duro::table expr -local TES {SUMMARIZE T1 PER T1 { K } ADD ()} $tx
+    set v [duro::expr {(TUPLE FROM TES WHERE K=3).K} $tx]
+    if {$v != 3} {
+        error "Invalid attribute value: $tpl"
+    }
+    duro::table drop TES $tx
+
     # Involves freeing a key
     set cnt [duro::expr {COUNT(TJ {K, S1})} $tx]
     if {$cnt != 2} {
@@ -117,7 +141,7 @@ test vtables {virtual tables} -setup $SETUP -body {
     duro::table expr -global TJ2 {(T1 WHERE K = 2) JOIN (T3 WHERE K = 2)} $tx
     duro::table expr -global TS {T1 WHERE S1 > "Bla"} $tx
     duro::table expr -global TSM {SUMMARIZE T4 PER T4 { A }
-            ADD (MIN(B) AS MIN_B, MAX(B) AS MAX_B, COUNT AS CNT)} $tx
+            ADD (MIN(B) AS MIN_B, MAX(B) AS MAX_B, COUNT() AS CNT)} $tx
     duro::table expr -global TSMN {T1 SEMIMINUS T3} $tx
     duro::table expr -global TSJ {T1 SEMIJOIN T3} $tx
 
@@ -413,7 +437,7 @@ test vtables {virtual tables} -setup $SETUP -body {
     
     duro::table expr t {EXTEND TABLE_DEE
             ADD (SUMMARIZE (EXTEND TABLE_DEE ADD (1 AS N))
-                 PER TABLE_DEE ADD (COUNT AS C) AS R)} $tx
+                 PER TABLE_DEE ADD (COUNT() AS C) AS R)} $tx
     
     duro::table drop t $tx
     

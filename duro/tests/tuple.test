@@ -5,7 +5,7 @@ exec tclsh "$0" ${1+"$@"}
 # $Id$
 #
 # Test create, insert, update, UNWRAP on table with tuple attribute
-# Test tuple project, EXTEND, JOIN, WRAP, and UNWRAP
+# Test project, EXTEND, JOIN, WRAP, and UNWRAP
 
 package require tcltest 2.2
 eval ::tcltest::configure $argv
@@ -146,7 +146,15 @@ test tuple {tuple-valued attribrutes} -setup $SETUP -body {
 	if {![tequal $tpl {IATTR 1 SATTR a}]} {
 	    error "Invalid value of (TUPLE FROM WR).A: $tpl"
 	}
-	
+
+    # Empty WRAP
+    duro::table expr -local TEW {T2 WRAP ()} $tx
+    set tpl [duro::expr {TUPLE FROM TEW} $tx]
+    if {![tequal $tpl {SATTR a IATTR 1}]} {
+        error "Invalid tuple value: $tpl"
+    }
+    duro::table drop TEW $tx
+
 	#
 	# Test tuple operations
 	#

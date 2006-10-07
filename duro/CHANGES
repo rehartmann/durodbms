@@ -12,9 +12,12 @@ Changes for Duro 0.12
 
 - Replaced RDB_table by RDB_object.
 
-- Removed RDB_project, RDB_union ...
+- Removed RDB_project, RDB_union, etc.
 
-- Removed RDB_expr_any ...
+- Removed RDB_expr_any, RDB_expr_all, etc.
+
+- Changes to expression syntax for better conformance with TTH, third
+  edition.
 
 Changes for Duro 0.11
 

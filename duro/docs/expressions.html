@@ -4,17 +4,19 @@
 <head>
 <title>Duro expression syntax</title>
 <body>
-<h2>Duro 0.11 expression syntax</h2>
+<h2>Duro 0.12 expression syntax</h2>
 
 <p>The language for Duro expressions is a subset of Tutorial D, as defined
-in <cite>TTM</cite>, with a few differences:
+in <cite>TTM</cite>, third edition, with a few differences:
 
 <ol>
-<li>Parentheses in RENAME, EXTEND, SUMMARIZE PER, WRAP, and UNWRAP are mandatory.
 <li>Duro uses a dot ('.') operator for tuple attribute extraction, instead of FROM.
 <li>Duro supports a MATCHES operator which performs regular expression matching.
-<li>Duro uses the keyword SUBSET_OF for the subset operator.
+<li>Duro uses the keyword SUBSET_OF for the subset operator
+and IN for the element-of operator.
 <li>Duro supports both single ("'") and double quotes ('"') as delimiters in string literals.
+<li>GROUP and UNGROUP only support single grouping and ungrouping, as in
+the second edition of TTM.
 </ol>
 
 <h3>Duro expression syntax (EBNF notation)</h3>
@@ -28,7 +30,7 @@ project = expression '{' [ALL BUT] [id {',' id}] '}'.
 
 select = expression WHERE or_expression.
 
-rename = expression RENAME '(' id AS id {',' id AS id} ')'.
+rename = expression RENAME '(' [id AS id {',' id AS id}] ')'.
 
 relation = expression UNION primary_expression
         | expression INTERSECT primary_expression
@@ -37,19 +39,18 @@ relation = expression UNION primary_expression
         | expression JOIN primary_expression
         | expression SEMIJOIN primary_expression.
 
-extend = EXTEND expression ADD '(' expression AS id
-        {',' expression AS id} ')'.
+extend = EXTEND expression ADD '(' [expression AS id {',' expression AS id}] ')'.
 
 summarize = SUMMARIZE expression PER expression
-           ADD '(' summary AS id {',' summary AS id} ')'.
+           ADD '(' [summary AS id {',' summary AS id}] ')'.
 
 divideby = expression DIVIDEBY expression PER primary_expression.
 
-summary = COUNT | summary_type '(' expression ')'.
+summary = COUNT '(' ')' | summary_type '(' expression ')'.
 
 summary_type = SUM | AVG | MAX | MIN | ALL | ANY.
 
-wrap   = expression WRAP '(' wrapping {',' wrapping} ')'.
+wrap   = expression WRAP '(' [wrapping {',' wrapping}] ')'.
 
 wrapping = '{' [id {',' id}] '}' AS id.
 

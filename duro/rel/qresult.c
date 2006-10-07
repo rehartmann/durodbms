@@ -1970,7 +1970,6 @@ wrap_tuple(const RDB_object *tplp, RDB_expression *exp,
                 RDB_destroy_hashtable_iter(&it);
                 return RDB_ERROR;
             }
-            break;
         }
     }
     RDB_destroy_hashtable_iter(&it);

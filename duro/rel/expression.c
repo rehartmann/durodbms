@@ -46,7 +46,7 @@ wrap_type(const RDB_expression *exp, RDB_type **argtv,
         return NULL;
     }
 
-    wrapc = exp->var.op.argc % 2;
+    wrapc = (exp->var.op.argc - 1) / 2;
     if (wrapc > 0) {
         wrapv = malloc(sizeof(RDB_wrapping) * wrapc);
         if (wrapv == NULL) {
