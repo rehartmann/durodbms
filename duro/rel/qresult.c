@@ -2325,7 +2325,6 @@ int
 _RDB_next_tuple(RDB_qresult *qrp, RDB_object *tplp, RDB_exec_context *ecp,
         RDB_transaction *txp)
 {
-	RDB_expression *exp;
 	int ret;
 
     if (qrp->endreached) {
@@ -2333,28 +2332,20 @@ _RDB_next_tuple(RDB_qresult *qrp, RDB_object *tplp, RDB_exec_context *ecp,
         return RDB_ERROR;
     }
 
-    if (!qrp->nested) {
-    	RDB_object *tbp = qrp->var.stored.tbp;
-	    if (tbp == NULL) {
+    if (qrp->exp == NULL) {
+	    if (qrp->var.stored.tbp == NULL) {
 	        /* It's a sorter */
 	        return next_stored_tuple(qrp, qrp->matp, tplp, RDB_TRUE, RDB_FALSE,
 	                qrp->matp->typ->var.basetyp, ecp, txp);
 	    }
-        if (qrp->exp != NULL) {
-            if (qrp->exp->kind == RDB_EX_RO_OP
-                    && strcmp(qrp->exp->var.op.name, "WHERE") == 0) {
-                return next_where_index(qrp, tplp, ecp, txp);
-            }
-        } else {
-            RDB_type *tpltyp = qrp->var.stored.tbp->typ->kind == RDB_TP_RELATION ?
+        RDB_type *tpltyp = qrp->var.stored.tbp->typ->kind == RDB_TP_RELATION ?
                 qrp->var.stored.tbp->typ->var.basetyp
                 : qrp->var.stored.tbp->typ->var.scalar.arep->var.basetyp;
-            return next_stored_tuple(qrp, qrp->var.stored.tbp, tplp, RDB_TRUE,
-                    RDB_FALSE, tpltyp, ecp, txp);
-        }
+        return next_stored_tuple(qrp, qrp->var.stored.tbp, tplp, RDB_TRUE,
+                RDB_FALSE, tpltyp, ecp, txp);
     }
-    exp = qrp->exp;
-    if (exp->kind != RDB_EX_RO_OP) {
+
+    if (qrp->exp->kind != RDB_EX_RO_OP) {
     	RDB_raise_internal("invalid qresult: table ist virtual, but no operator",
     	        ecp);
     	return RDB_ERROR;
@@ -2369,20 +2360,25 @@ _RDB_next_tuple(RDB_qresult *qrp, RDB_object *tplp, RDB_exec_context *ecp,
             return RDB_ERROR;
         }
 
-        if (strcmp(exp->var.op.name, "WHERE") == 0) {
-            if (next_where_tuple(qrp, tplp, ecp, txp) != RDB_OK)
-                return RDB_ERROR;
-        } else if (strcmp(exp->var.op.name, "PROJECT") == 0) {
+        if (strcmp(qrp->exp->var.op.name, "WHERE") == 0) {
+            if (qrp->nested) {
+                if (next_where_tuple(qrp, tplp, ecp, txp) != RDB_OK)
+                    return RDB_ERROR;
+            } else {
+                if (next_where_index(qrp, tplp, ecp, txp) != RDB_OK)
+                    return RDB_ERROR;
+            }                
+        } else if (strcmp(qrp->exp->var.op.name, "PROJECT") == 0) {
             if (next_project_tuple(qrp, tplp, ecp, txp) != RDB_OK)
                 return RDB_ERROR;
-        } else if (strcmp(exp->var.op.name, "RENAME") == 0) {
+        } else if (strcmp(qrp->exp->var.op.name, "RENAME") == 0) {
             ret = next_rename_tuple(qrp, tplp, ecp, txp);
             if (ret != RDB_OK)
                 return RDB_ERROR;
-        } else if (strcmp(exp->var.op.name, "JOIN") == 0) {
-            if (exp->var.op.argv[1]->kind == RDB_EX_TBP
-                    && exp->var.op.argv[1]->var.tbref.indexp != NULL) {
-                _RDB_tbindex *indexp = exp->var.op.argv[1]->var.tbref.indexp;
+        } else if (strcmp(qrp->exp->var.op.name, "JOIN") == 0) {
+            if (qrp->exp->var.op.argv[1]->kind == RDB_EX_TBP
+                    && qrp->exp->var.op.argv[1]->var.tbref.indexp != NULL) {
+                _RDB_tbindex *indexp = qrp->exp->var.op.argv[1]->var.tbref.indexp;
                 if (indexp->unique) {
                     ret = next_join_tuple_uix(qrp, tplp, ecp, txp);
                 } else {
@@ -2393,40 +2389,40 @@ _RDB_next_tuple(RDB_qresult *qrp, RDB_object *tplp, RDB_exec_context *ecp,
             }
             if (ret != RDB_OK)
                 return RDB_ERROR;
-        } else if ((strcmp(exp->var.op.name, "MINUS") == 0)
-                || (strcmp(exp->var.op.name, "SEMIMINUS") == 0)) {
+        } else if ((strcmp(qrp->exp->var.op.name, "MINUS") == 0)
+                || (strcmp(qrp->exp->var.op.name, "SEMIMINUS") == 0)) {
             if (next_semiminus_tuple(qrp, tplp, ecp, txp) != RDB_OK)
                 return RDB_ERROR;
-        } else if (strcmp(exp->var.op.name, "UNION") == 0) {
+        } else if (strcmp(qrp->exp->var.op.name, "UNION") == 0) {
             ret = next_union_tuple(qrp, tplp, ecp, txp);
             if (ret != RDB_OK)
                 return RDB_ERROR;
-        } else if ((strcmp(exp->var.op.name, "INTERSECT") == 0)
-                || (strcmp(exp->var.op.name, "SEMIJOIN") == 0)) {
+        } else if ((strcmp(qrp->exp->var.op.name, "INTERSECT") == 0)
+                || (strcmp(qrp->exp->var.op.name, "SEMIJOIN") == 0)) {
             ret = next_semijoin_tuple(qrp, tplp, ecp, txp);
             if (ret != RDB_OK)
                 return RDB_ERROR;
-        } else if (strcmp(exp->var.op.name, "EXTEND") == 0) {
+        } else if (strcmp(qrp->exp->var.op.name, "EXTEND") == 0) {
             ret = next_extend_tuple(qrp, tplp, ecp, txp);
             if (ret != RDB_OK)
                 return RDB_ERROR;
-        } else if (strcmp(exp->var.op.name, "WRAP") == 0) {
+        } else if (strcmp(qrp->exp->var.op.name, "WRAP") == 0) {
             ret = next_wrap_tuple(qrp, tplp, ecp, txp);
             if (ret != RDB_OK)
                 return RDB_ERROR;
-        } else if (strcmp(exp->var.op.name, "UNWRAP") == 0) {
+        } else if (strcmp(qrp->exp->var.op.name, "UNWRAP") == 0) {
             ret = next_unwrap_tuple(qrp, tplp, ecp, txp);
             if (ret != RDB_OK)
                 return RDB_ERROR;
-        } else if (strcmp(exp->var.op.name, "DIVIDE_BY_PER") == 0) {
+        } else if (strcmp(qrp->exp->var.op.name, "DIVIDE_BY_PER") == 0) {
             ret = next_sdivide_tuple(qrp, tplp, ecp, txp);
             if (ret != RDB_OK)
                 return RDB_ERROR;
-        } else if (strcmp(exp->var.op.name, "UNGROUP") == 0) {
+        } else if (strcmp(qrp->exp->var.op.name, "UNGROUP") == 0) {
             if (next_ungroup_tuple(qrp, tplp, ecp, txp) != RDB_OK)
                 return RDB_ERROR;
         } else {
-            RDB_raise_internal(exp->var.op.name, ecp);
+            RDB_raise_internal(qrp->exp->var.op.name, ecp);
             return RDB_ERROR;
         }
 

@@ -859,14 +859,14 @@ RDB_expr_type(RDB_expression *exp, const RDB_type *tuptyp,
         case RDB_EX_OBJ:
             /* Get type from RDB_object */
             typ = RDB_obj_type(&exp->var.obj);
-            if (typ == NULL) {
-                /* No type available - generate type from tuple */
-                exp->typ = typ = _RDB_tuple_type(&exp->var.obj, ecp);
-            }
-            break;
+            if (typ != NULL)
+                return typ;
+
+            /* No type available - generate type from tuple */
+            exp->typ = _RDB_tuple_type(&exp->var.obj, ecp);
+            return exp->typ;
         case RDB_EX_TBP:
-            typ = RDB_obj_type(exp->var.tbref.tbp);
-            break;
+            return RDB_obj_type(exp->var.tbref.tbp);
         case RDB_EX_VAR:
             if (tuptyp == NULL) {
                 RDB_raise_invalid_argument("tuple type required", ecp);
@@ -877,8 +877,8 @@ RDB_expr_type(RDB_expression *exp, const RDB_type *tuptyp,
                 RDB_raise_attribute_not_found(exp->var.varname, ecp);
                 return NULL;
             }
-            exp->typ = typ = _RDB_dup_nonscalar_type(attrp->typ, ecp);
-            break;
+            exp->typ = _RDB_dup_nonscalar_type(attrp->typ, ecp);
+            return exp->typ;
         case RDB_EX_TUPLE_ATTR:
             typ = RDB_expr_type(exp->var.op.argv[0], tuptyp, ecp, txp);
             if (typ == NULL)
@@ -888,7 +888,7 @@ RDB_expr_type(RDB_expression *exp, const RDB_type *tuptyp,
                 RDB_raise_attribute_not_found(exp->var.varname, ecp);
                 return NULL;
             }
-            break;
+            return typ;
         case RDB_EX_GET_COMP:
             typ = RDB_expr_type(exp->var.op.argv[0], tuptyp, ecp, txp);
             if (typ == NULL)
@@ -898,13 +898,12 @@ RDB_expr_type(RDB_expression *exp, const RDB_type *tuptyp,
                 RDB_raise_invalid_argument("component not found", ecp);
                 return NULL;
             }
-            typ = attrp->typ;
-            break;
+            return attrp->typ;
         case RDB_EX_RO_OP:
-            exp->typ = typ = expr_op_type(exp, tuptyp, ecp, txp);
-            break;
+            exp->typ = expr_op_type(exp, tuptyp, ecp, txp);
+            return exp->typ;
     }
-    return typ;
+    abort();
 }
 
 int
