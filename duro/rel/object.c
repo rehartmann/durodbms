@@ -259,9 +259,8 @@ _RDB_irep_to_table(RDB_object *tbp, RDB_type *typ, const void *datap, size_t len
     	RDB_drop_type(tbtyp, ecp, NULL);
         return RDB_ERROR;
     }
-    ret = _RDB_init_table(tbp, NULL, RDB_FALSE,
-            tbtyp, 0, NULL, RDB_FALSE, NULL, ecp);
-    if (ret != RDB_OK) {
+    if (_RDB_init_table(tbp, NULL, RDB_FALSE,
+            tbtyp, 0, NULL, RDB_FALSE, NULL, ecp) != RDB_OK) {
         return RDB_ERROR;
     }
 

@@ -2195,14 +2195,11 @@ next_rename_tuple(RDB_qresult *qrp, RDB_object *tplp, RDB_exec_context *ecp,
     RDB_init_hashtable_iter(&it, (RDB_hashtable *) &tpl.var.tpl_tab);
     while ((entryp = RDB_hashtable_next(&it)) != NULL) {
         /* Search for attribute in rename arguments */
-        int i = 1;
-        while (i < exp->var.op.argc
-                && strcmp(RDB_obj_string(&exp->var.op.argv[i]->var.obj), entryp->key) != 0) {
-            i += 2;
-        }
-        if (i < exp->var.op.argc) {
+        char *nattrname = _RDB_rename_attr(entryp->key, exp);
+
+        if (nattrname != NULL) {
             /* Found - copy and rename attribute */
-            ret = RDB_tuple_set(tplp, RDB_obj_string(&exp->var.op.argv[i + 1]->var.obj), &entryp->obj, ecp);
+            ret = RDB_tuple_set(tplp, nattrname, &entryp->obj, ecp);
         } else {
             /* Not found - copy only */
             ret = RDB_tuple_set(tplp, entryp->key, &entryp->obj, ecp);

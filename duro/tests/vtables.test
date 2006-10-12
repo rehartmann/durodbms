@@ -82,9 +82,9 @@ test vtables {virtual tables} -setup $SETUP -body {
     if {![tequal $tpl $stpl]} {
         error "Invalid tuple value: $tpl, should be $stpl"
     }
-    
+
     # Create virtual tables
-    
+
     duro::table expr -global TU {T1 UNION T2} $tx
     duro::table expr -global TM {T1 MINUS T2} $tx
     duro::table expr -global TI {T1 INTERSECT T2} $tx
@@ -99,6 +99,14 @@ test vtables {virtual tables} -setup $SETUP -body {
     }
     if {![string match "TYPE_MISMATCH_ERROR(*)" [lindex $errorCode 1]]} {
         error "Wrong error: $errorCode"
+    }
+
+    # Check getting keys
+    duro::table keys TU $tx
+    duro::table keys TM $tx
+    set k [duro::table keys TR $tx]
+    if {$k != {KN}} {
+        error "KN has wrong key: $k"
     }
 
     # Empty RENAME

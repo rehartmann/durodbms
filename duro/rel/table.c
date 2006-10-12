@@ -14,6 +14,12 @@
 #include <gen/strfns.h>
 #include <string.h>
 
+static RDB_string_vec *
+dup_keyv(int keyc, const RDB_string_vec keyv[])
+{
+    return _RDB_dup_rename_keys(keyc, keyv, NULL);
+}
+
 int
 _RDB_init_table(RDB_object *tbp, const char *name, RDB_bool persistent,
         RDB_type *reltyp, int keyc, const RDB_string_vec keyv[], RDB_bool usr,
@@ -39,38 +45,32 @@ _RDB_init_table(RDB_object *tbp, const char *name, RDB_bool persistent,
     	tbp->var.tb.name = NULL;
     }
 
-     allkey.strv = NULL;
-     if (keyv == NULL) {
-        /* Create key for all-key table */
-        allkey.strc = attrc;
-        allkey.strv = malloc(sizeof (char *) * attrc);
-        if (allkey.strv == NULL) {
-            RDB_raise_no_memory(ecp);
-            goto error;
+    allkey.strv = NULL;
+    if (exp != NULL) {
+        /* Key is inferred from exp 'on demand' */
+        tbp->var.tb.keyv = NULL;
+    } else {
+        if (keyv == NULL) {
+            /* Create key for all-key table */
+            allkey.strc = attrc;
+            allkey.strv = malloc(sizeof (char *) * attrc);
+            if (allkey.strv == NULL) {
+                RDB_raise_no_memory(ecp);
+                goto error;
+            }
+            for (i = 0; i < attrc; i++)
+                allkey.strv[i] = reltyp->var.basetyp->var.tuple.attrv[i].name;
+            keyc = 1;
+            keyv = &allkey;
         }
-        for (i = 0; i < attrc; i++)
-            allkey.strv[i] = reltyp->var.basetyp->var.tuple.attrv[i].name;
-        keyc = 1;
-        keyv = &allkey;
-    }
 
-    /* Copy candidate keys */
-    tbp->var.tb.keyc = keyc;
-    tbp->var.tb.keyv = malloc(sizeof(RDB_attr) * keyc);
-    if (tbp->var.tb.keyv == NULL) {
-        RDB_raise_no_memory(ecp);
-        goto error;
-    }
-    for (i = 0; i < keyc; i++) {
-        tbp->var.tb.keyv[i].strv = NULL;
-    }
-    for (i = 0; i < keyc; i++) {
-        tbp->var.tb.keyv[i].strc = keyv[i].strc;
-        tbp->var.tb.keyv[i].strv = RDB_dup_strvec(keyv[i].strc, keyv[i].strv);
-        if (tbp->var.tb.keyv[i].strv == NULL) {
+        /* Copy candidate keys */
+        tbp->var.tb.keyv = dup_keyv(keyc, keyv);
+        if (tbp->var.tb.keyv == NULL) {
             RDB_raise_no_memory(ecp);
             goto error;
         }
+        tbp->var.tb.keyc = keyc;
     }
     tbp->var.tb.exp = exp;
 
@@ -176,14 +176,27 @@ RDB_table_keys(RDB_object *tbp, RDB_exec_context *ecp, RDB_string_vec **keyvp)
     RDB_bool freekey;
 
     if (tbp->var.tb.keyv == NULL) {
-        if (_RDB_infer_keys(tbp->var.tb.exp, ecp, &tbp->var.tb.keyv,
-                &freekey /* !! */) != RDB_OK)
+        int keyc;
+        RDB_string_vec *keyv;
+
+        keyc = _RDB_infer_keys(tbp->var.tb.exp, ecp, &keyv, &freekey);
+        if (keyc == RDB_ERROR)
             return RDB_ERROR;
+        if (freekey) {
+            tbp->var.tb.keyv = keyv;
+        } else {
+            tbp->var.tb.keyv = dup_keyv(keyc, keyv);
+            if (tbp->var.tb.keyv == NULL) {
+                RDB_raise_no_memory(ecp);
+                return RDB_ERROR;
+            }
+        }
+        tbp->var.tb.keyc = keyc;
     }
 
     if (keyvp != NULL)
         *keyvp = tbp->var.tb.keyv;
-        
+
     return tbp->var.tb.keyc;
 }
 

@@ -314,6 +314,72 @@ infer_group_keys(RDB_expression *exp, RDB_exec_context *ecp,
     return 1;
 }
 
+char *
+_RDB_rename_attr(const char *srcname, RDB_expression *exp)
+{
+    /* Search for attribute in rename arguments */
+    int i = 1;
+    while (i < exp->var.op.argc
+            && strcmp(RDB_obj_string(&exp->var.op.argv[i]->var.obj), srcname) != 0) {
+        i += 2;
+    }
+    if (i < exp->var.op.argc) {
+        /* Found - return new attribute name */
+        return RDB_obj_string(&exp->var.op.argv[i + 1]->var.obj);
+    }
+    return NULL;   
+}
+
+RDB_string_vec *
+_RDB_dup_rename_keys(int keyc, const RDB_string_vec keyv[], RDB_expression *texp)
+{
+    int i, j;
+
+    RDB_string_vec *nkeyv = malloc(sizeof(RDB_attr) * keyc);
+    if (keyv == NULL) {
+        return NULL;
+    }
+    for (i = 0; i < keyc; i++) {
+        nkeyv[i].strv = NULL;
+    }
+    for (i = 0; i < keyc; i++) {
+        nkeyv[i].strc = keyv[i].strc;
+        nkeyv[i].strv = malloc(sizeof(char *) * keyv[i].strc);
+        if (nkeyv[i].strv == NULL)
+            goto error;
+        for (j = 0; j < keyv[i].strc; j++)
+            nkeyv[i].strv[j] = NULL;
+        for (j = 0; j < keyv[i].strc; j++) {
+            char *nattrname = NULL;
+            
+            if (texp != NULL) {
+                /* If exp is not NULL, rename attributes */
+                nattrname = _RDB_rename_attr(keyv[i].strv[j], texp);
+            }
+
+            if (nattrname != NULL) {
+                nkeyv[i].strv[j] = RDB_dup_str(nattrname);
+            } else {
+                nkeyv[i].strv[j] = RDB_dup_str(keyv[i].strv[j]);
+            }
+            if (nkeyv[i].strv[j] == NULL) {
+                goto error;
+            }
+        }
+    }
+    return nkeyv;
+
+error:
+    for (i = 0; i < keyc; i++) {
+        if (nkeyv[i].strv != NULL) {
+            for (j = 0; j < nkeyv[i].strc; j++)
+                free(nkeyv[i].strv[j]);
+        }
+    }
+    free(nkeyv);
+    return NULL;
+}
+
 int
 _RDB_infer_keys(RDB_expression *exp, RDB_exec_context *ecp,
        RDB_string_vec **keyvp, RDB_bool *caller_must_freep)
@@ -335,6 +401,7 @@ _RDB_infer_keys(RDB_expression *exp, RDB_exec_context *ecp,
     }
     
     if ((strcmp(exp->var.op.name, "WHERE") == 0)
+            || (strcmp(exp->var.op.name, "MINUS") == 0)
             || (strcmp(exp->var.op.name, "SEMIMINUS") == 0)
             || (strcmp(exp->var.op.name, "SEMIJOIN") == 0)
             || (strcmp(exp->var.op.name, "INTERSECT") == 0)
@@ -342,18 +409,6 @@ _RDB_infer_keys(RDB_expression *exp, RDB_exec_context *ecp,
             || (strcmp(exp->var.op.name, "SDIVIDE") == 0)) {
         return _RDB_infer_keys(exp->var.op.argv[0], ecp, keyvp,
                 caller_must_freep);
-    }
-    if ((strcmp(exp->var.op.name, "UNION") == 0)
-            || (strcmp(exp->var.op.name, "WRAP") == 0)
-            || (strcmp(exp->var.op.name, "UNWRAP") == 0)
-            || (strcmp(exp->var.op.name, "UNGROUP") == 0)) {
-        *keyvp = all_key(exp, ecp);
-        if (*keyvp == NULL) {
-            RDB_raise_no_memory(ecp);
-            return RDB_ERROR;
-        }
-        *caller_must_freep = RDB_TRUE;
-        return 1;
     }
     if (strcmp(exp->var.op.name, "JOIN") == 0) {
         *caller_must_freep = RDB_TRUE;
@@ -369,16 +424,19 @@ _RDB_infer_keys(RDB_expression *exp, RDB_exec_context *ecp,
                 caller_must_freep);
     }
     if (strcmp(exp->var.op.name, "RENAME") == 0) {
-        int keyc = _RDB_infer_keys(exp->var.op.argv[0], ecp, keyvp, caller_must_freep);
-        /* !!
-            newkeyv = dup_rename_keys(keyc, keyv, tbp->var.rename.renc,
-                    tbp->var.rename.renv);
-            if (newkeyv == NULL) {
-                RDB_raise_no_memory(ecp);
-                return RDB_ERROR;
-            }
-            *keyvp = newkeyv;
-        */
+        RDB_bool freekey;
+        int keyc = _RDB_infer_keys(exp->var.op.argv[0], ecp, keyvp, &freekey);
+        if (keyc == RDB_ERROR)
+            return RDB_ERROR;
+
+        *keyvp = _RDB_dup_rename_keys(keyc, *keyvp, exp);
+        if (*keyvp == NULL) {
+            RDB_raise_no_memory(ecp);
+            return RDB_ERROR;
+        }
+        if (freekey) {
+            _RDB_free_keys(keyc, *keyvp);
+        }
         return keyc;
     }
     if (strcmp(exp->var.op.name, "GROUP") == 0) {
@@ -386,8 +444,16 @@ _RDB_infer_keys(RDB_expression *exp, RDB_exec_context *ecp,
         return infer_group_keys(exp, ecp, keyvp);
     }
 
-    RDB_raise_invalid_argument(exp->var.op.name, ecp);
-    return RDB_ERROR;            
+    /*
+     * For all other relational operators, assume all-key table
+     */
+    *keyvp = all_key(exp, ecp);
+    if (*keyvp == NULL) {
+        RDB_raise_no_memory(ecp);
+        return RDB_ERROR;
+    }
+    *caller_must_freep = RDB_TRUE;
+    return 1;
 }
 
 RDB_bool

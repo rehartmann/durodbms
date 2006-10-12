@@ -339,6 +339,12 @@ RDB_group_type(RDB_type *typ, int attrc, char *attrv[], const char *gattr,
 RDB_type *
 RDB_ungroup_type(RDB_type *typ, const char *attr, RDB_exec_context *);
 
+RDB_string_vec *
+_RDB_dup_rename_keys(int keyc, const RDB_string_vec keyv[], RDB_expression *);
+
+char *
+_RDB_rename_attr(const char *srcname, RDB_expression *);
+
 RDB_attr *
 _RDB_tuple_type_attr(const RDB_type *tuptyp, const char *attrname);
 

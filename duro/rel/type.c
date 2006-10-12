@@ -1864,7 +1864,10 @@ RDB_wrap_tuple_type(const RDB_type *typ, int wrapc, const RDB_wrapping wrapv[],
                 goto error;
             }
         }
-        newtyp->var.tuple.attrv[i].name = RDB_dup_str(wrapv[i].attrname); /* !! */
+        newtyp->var.tuple.attrv[i].name = RDB_dup_str(wrapv[i].attrname);
+        if (newtyp->var.tuple.attrv[i].name == NULL)
+            goto error;
+
         newtyp->var.tuple.attrv[i].typ = tuptyp;
     }
 
