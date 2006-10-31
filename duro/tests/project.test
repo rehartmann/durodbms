@@ -40,13 +40,18 @@ test ptables {projection tables} -setup $SETUP -body {
     duro::table expr -global P1 {R {ALL BUT B}} $tx
     duro::table expr -global P2 {R {B}} $tx
 
+    set k [duro::table keys P1 $tx]
+    if {$k != {A}} {
+        error "P1 has wrong keys: $k"
+    }
+
     # Insert tuple into real table
     duro::insert R {A 1 B Bla C c} $tx
     duro::insert R {A 2 B Blubb C d} $tx
     duro::insert R {A 3 B Blubb C e} $tx
 
     set r [duro::expr P1 $tx]
-    
+
     duro::commit $tx
     
     # Close DB environment

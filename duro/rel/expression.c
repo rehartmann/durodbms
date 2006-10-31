@@ -6,9 +6,11 @@
  */
 
 #include "rdb.h"
+#include "transform.h"
 #include "internal.h"
 #include "catalog.h"
 #include <gen/strfns.h>
+
 #include <string.h>
 
 RDB_bool
@@ -317,89 +319,6 @@ project_type(const RDB_expression *exp, RDB_type *argtv[],
 }
 
 static RDB_type *
-remove_type(const RDB_expression *exp, RDB_type *argtv[],
-        RDB_exec_context *ecp, RDB_transaction *txp)
-{
-    int i;
-    int attrc;
-    int attri;
-    char **attrv;
-    RDB_type *typ;
-    RDB_type *tpltyp;
-
-    if (exp->var.op.argc == 0) {
-        RDB_raise_invalid_argument("invalid number of arguments", ecp);
-        return NULL;
-    }
-
-    if (argtv[0] == NULL) {
-        RDB_raise_invalid_argument("Invalid PROJECT argument", ecp);
-        return NULL;
-    }
-
-    for (i = 1; i < exp->var.op.argc; i++) {
-        if (!expr_is_string(exp->var.op.argv[i])) {
-            RDB_raise_type_mismatch("REMOVE requires STRING arguments",
-                    ecp);
-            return NULL;
-        }
-
-        /* Check if attribute exists */
-        if (RDB_type_attr_type(argtv[0],
-                RDB_obj_string(&exp->var.op.argv[i]->var.obj)) == NULL) {
-            RDB_raise_attribute_not_found(
-                    RDB_obj_string(&exp->var.op.argv[i]->var.obj), ecp);
-            return NULL;
-        }
-    }
-    
-    if (argtv[0]->kind == RDB_TP_RELATION) {
-        tpltyp = argtv[0]->var.basetyp;
-    } else if (argtv[0]->kind == RDB_TP_TUPLE) {
-        tpltyp = argtv[0];
-    } else {
-        RDB_raise_invalid_argument("invalid REMOVE argument", ecp);
-        return NULL;
-    }
-    
-    attrc = tpltyp->var.tuple.attrc - exp->var.op.argc + 1;
-    attrv = malloc(sizeof (char *) * attrc);
-    if (attrv == NULL) {
-        RDB_raise_no_memory(ecp);
-        return NULL;
-    }
-
-    /* Collect attributes which are not removed */
-    attri = 0;
-    for (i = 0; i < tpltyp->var.tuple.attrc; i++) {
-        int j = 1;
-        char *attrname = tpltyp->var.tuple.attrv[i].name;
-
-        while (j < exp->var.op.argc
-                && strcmp(RDB_obj_string(&exp->var.op.argv[j]->var.obj),
-                          attrname) != 0)
-            j++;
-        if (j >= exp->var.op.argc) {
-            /* Attribute does not appear in arguments - add */
-            attrv[attri++] = attrname;
-        }
-    }
-    if (attri < attrc) {
-        free(attrv);
-        RDB_raise_invalid_argument("invalid REMOVE argument", ecp);
-        return NULL;
-    }
-    
-    if (argtv[0]->kind == RDB_TP_RELATION) {
-        typ = RDB_project_relation_type(argtv[0], attrc, attrv, ecp);
-    } else {
-        typ = RDB_project_tuple_type(argtv[0], attrc, attrv, ecp);
-    }
-    free(attrv);
-    return typ;
-}
-
-static RDB_type *
 unwrap_type(const RDB_expression *exp, RDB_type *argtv[],
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
@@ -551,14 +470,14 @@ rename_type(const RDB_expression *exp, RDB_type **argtv,
 }
 
 static RDB_type *
-expr_op_type(const RDB_expression *exp, const RDB_type *tpltyp,
+expr_op_type(RDB_expression *exp, const RDB_type *tpltyp,
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
     int i;
     int ret;
     RDB_type *typ;
     RDB_ro_op_desc *op;
-    RDB_type **argtv;
+    RDB_type **argtv = NULL;
     int argc = exp->var.op.argc;
 
     /*
@@ -572,6 +491,11 @@ expr_op_type(const RDB_expression *exp, const RDB_type *tpltyp,
     }
     if (strcmp(exp->var.op.name, "SUMMARIZE") == 0) {
         return RDB_summarize_type(argc, exp->var.op.argv, 0, NULL, ecp, txp);
+    }
+
+    if (strcmp(exp->var.op.name, "REMOVE") == 0) {
+        if (_RDB_remove_to_project(exp, ecp, txp) != RDB_OK)
+            goto error;
     }
 
     /*
@@ -671,8 +595,6 @@ expr_op_type(const RDB_expression *exp, const RDB_type *tpltyp,
         typ = wrap_type(exp, argtv, ecp, txp);
     } else if (strcmp(exp->var.op.name, "PROJECT") == 0) {
         typ = project_type(exp, argtv, ecp, txp);
-    } else if (strcmp(exp->var.op.name, "REMOVE") == 0) {
-        typ = remove_type(exp, argtv, ecp, txp);
     } else if (exp->var.op.argc == 2
             && (argtv[0] == NULL || !RDB_type_is_scalar(argtv[0]))
             && (argtv[1] == NULL || !RDB_type_is_scalar(argtv[1]))

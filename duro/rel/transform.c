@@ -5,9 +5,11 @@
  * See the file COPYING for redistribution information.
  */
 
+#include "transform.h"
 #include "rdb.h"
 #include "internal.h"
 #include <gen/strfns.h>
+
 #include <stdlib.h>
 #include <string.h>
 #include <assert.h>
@@ -625,52 +627,119 @@ transform_project(RDB_expression *exp, RDB_exec_context *ecp,
 }
 
 /*
- * Transform REMOVE into PROJECT
+ * Convert REMOVE into PROJECT
  */
-static int
-transform_remove(RDB_expression *exp, RDB_exec_context *ecp,
+int
+_RDB_remove_to_project(RDB_expression *exp, RDB_exec_context *ecp,
         RDB_transaction *txp)
 {
     RDB_expression **argv;
     int attrc;
-    int i;
-    RDB_expression *attrexp;
+    int i, j, ai;
     char *opname;
-    RDB_type *typ = RDB_expr_type(exp, NULL, ecp, txp);
-    if (typ == NULL)
+    RDB_type *chtyp;
+    RDB_type *tpltyp;
+
+    if (exp->var.op.argc < 1) {
+        RDB_raise_invalid_argument("invalid number of REMOVE arguments", ecp);
         return RDB_ERROR;
+    }
 
     for (i = 1; i < exp->var.op.argc; i++) {
-        RDB_drop_expr(exp->var.op.argv[i], ecp);
-    }
-    exp->var.op.argc = 1; /* for the error case */
-    attrc = typ->var.basetyp->var.tuple.attrc;
-    argv = realloc(exp->var.op.argv, sizeof(RDB_expression *) * (attrc + 1));
-    if (argv == NULL) {
-        RDB_raise_no_memory(ecp);
+        if (exp->var.op.argv[i]->kind != RDB_EX_OBJ
+                || exp->var.op.argv[i]->var.obj.typ != &RDB_STRING) {
+            RDB_raise_type_mismatch("STRING argument required for REMOVE", ecp);
+            return RDB_ERROR;
+        }
+    }                
+
+    chtyp = RDB_expr_type(exp->var.op.argv[0], NULL, ecp, txp);
+    if (chtyp == NULL)
+        return RDB_ERROR;
+    if (chtyp->kind == RDB_TP_RELATION) {
+        tpltyp = chtyp->var.basetyp;
+    } else if (chtyp->kind == RDB_TP_TUPLE) {
+        tpltyp = chtyp;
+    } else {
+        RDB_raise_type_mismatch("invalid type of REMOVE argument", ecp);
         return RDB_ERROR;
     }
+
+    ai = 1;
+    attrc = tpltyp->var.tuple.attrc - exp->var.op.argc + 1;
+    if (attrc < 0) {
+        RDB_raise_invalid_argument("invalid number of REMOVE arguments", ecp);
+        goto error;
+    }
+
+    argv = malloc((attrc + 1) * sizeof (RDB_expression *));
+    if (argv == NULL) {
+        RDB_raise_no_memory(ecp);
+        goto error;
+    }        
+
+    argv[0] = exp->var.op.argv[0];
+
+    for (i = 0; i < tpltyp->var.tuple.attrc; i++) {
+        j = 1;
+        while (j < exp->var.op.argc
+                && strcmp(RDB_obj_string(&exp->var.op.argv[j]->var.obj),
+                        tpltyp->var.tuple.attrv[i].name) != 0)
+            j++;
+        if (j >= exp->var.op.argc) {
+            /* Not found - take attribute */
+
+            if (ai >= attrc + 1) {
+                RDB_raise_invalid_argument("invalid REMOVE arguments", ecp);
+                goto error;
+            }
+
+            argv[ai] = RDB_string_to_expr(tpltyp->var.tuple.attrv[i].name, ecp);
+            if (argv[ai] == NULL)
+                goto error;
+            ai++;
+        }
+    }
+    if (ai != attrc + 1) {
+        RDB_raise_invalid_argument("invalid REMOVE arguments", ecp);
+        goto error;
+    }
+
     opname = realloc(exp->var.op.name, 8);
     if (opname == NULL) {
         RDB_raise_no_memory(ecp);
-        return RDB_ERROR;
+        goto error;
     }
     strcpy(opname, "PROJECT");
     exp->var.op.name = opname;
 
-    for (i = 0; i < attrc; i++) {
-        attrexp = RDB_string_to_expr(typ->var.basetyp->var.tuple.attrv[i].name,
-                ecp);
-        if (attrexp == NULL) {
-            RDB_drop_type(typ, ecp, NULL);
-            return RDB_ERROR;
-        }
-        argv[i + 1] = attrexp;
+    for (i = 1; i < exp->var.op.argc; i++) {
+        RDB_drop_expr(exp->var.op.argv[i], ecp);
     }
+    free(exp->var.op.argv);
 
     exp->var.op.argc = attrc + 1;
     exp->var.op.argv = argv;
 
+    return RDB_OK;
+
+error:
+    if (argv != NULL) {
+        for (i = 1; i < ai; i++) {
+            RDB_drop_expr(argv[i], ecp);
+        }
+    }
+    return RDB_ERROR;
+}
+
+/*
+ * Transform REMOVE
+ */
+static int
+transform_remove(RDB_expression *exp, RDB_exec_context *ecp, RDB_transaction *txp)
+{
+    if (_RDB_remove_to_project(exp, ecp, txp) != RDB_OK)
+        return RDB_ERROR;
     return transform_project(exp, ecp, txp);
 }
 
@@ -678,9 +747,9 @@ static int
 transform_is_empty(RDB_expression *exp, RDB_exec_context *ecp,
         RDB_transaction *txp)
 {
-   RDB_expression *chexp = exp->var.op.argv[0];
+    RDB_expression *chexp = exp->var.op.argv[0];
     
-   if (_RDB_transform(chexp, ecp, txp) != RDB_OK)
+    if (_RDB_transform(chexp, ecp, txp) != RDB_OK)
        return RDB_ERROR;
 
     /* Add projection, if not already present */

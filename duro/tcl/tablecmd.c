@@ -6,10 +6,12 @@
  */
 
 #include "duro.h"
+#include <rel/optimize.h>
 #include <rel/internal.h>
 #include <dli/parse.h>
 #include <dli/tabletostr.h>
 #include <gen/strfns.h>
+
 #include <string.h>
 
 RDB_object *

@@ -5,8 +5,10 @@
  * See the file COPYING for redistribution information.
  */
 
-#include "rdb.h"
+#include "optimize.h"
+#include "transform.h"
 #include "internal.h"
+
 #include <gen/strfns.h>
 #include <string.h>
 #include <stdlib.h>
@@ -81,9 +83,8 @@ eliminate_child (RDB_expression *exp, const char *name, RDB_exec_context *ecp,
     free(hexp->var.op.name);
     free(hexp->var.op.argv);
     free(hexp);
-    ret = _RDB_transform(exp->var.op.argv[0], ecp, txp);
-    if (ret != RDB_OK)
-        return ret;
+    if (_RDB_transform(exp->var.op.argv[0], ecp, txp) != RDB_OK)
+        return RDB_ERROR;
     return _RDB_transform(exp->var.op.argv[1], ecp, txp);
 }
 

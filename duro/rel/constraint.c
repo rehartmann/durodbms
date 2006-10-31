@@ -9,6 +9,7 @@
  */
 
 #include "rdb.h"
+#include "transform.h"
 #include "internal.h"
 #include "catalog.h"
 #include "serialize.h"

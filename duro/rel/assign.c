@@ -12,6 +12,7 @@
 #include "update.h"
 #include "delete.h"
 #include "insert.h"
+#include "optimize.h"
 #include "internal.h"
 #include <gen/strfns.h>
 #include <string.h>

@@ -5,7 +5,7 @@
 #include <stdio.h>
 #include <assert.h>
 
-int
+void
 test_keys(RDB_database *dbp, RDB_exec_context *ecp)
 {
     RDB_transaction tx;
@@ -16,59 +16,37 @@ test_keys(RDB_database *dbp, RDB_exec_context *ecp)
     RDB_init_obj(&tpl);    
 
     ret = RDB_begin_tx(ecp, &tx, dbp, NULL);
-    if (ret != RDB_OK) {
-        RDB_destroy_obj(&tpl, ecp);
-        return ret;
-    }
+    assert(ret == RDB_OK);
 
     tbp = RDB_get_table("EMPS1", ecp, &tx);
-    if (tbp == NULL) {
-        RDB_rollback(ecp, &tx);
-        RDB_destroy_obj(&tpl, ecp);
-        return RDB_ERROR;
-    }
-
+    assert(tbp != NULL);
     ret = RDB_tuple_set_int(&tpl, "EMPNO", 1, ecp);
-    if (ret != RDB_OK)
-        goto error;
+    assert(ret == RDB_OK);
     ret = RDB_tuple_set_string(&tpl, "NAME", "Johnson", ecp);
-    if (ret != RDB_OK)
-        goto error;
+    assert(ret == RDB_OK);
     ret = RDB_tuple_set_double(&tpl, "SALARY", (RDB_double)4000.0, ecp);
-    if (ret != RDB_OK)
-        goto error;
+    assert(ret == RDB_OK);
     ret = RDB_tuple_set_int(&tpl, "DEPTNO", 1, ecp);
-    if (ret != RDB_OK)
-        goto error;
+    assert(ret == RDB_OK);
 
     ret = RDB_insert(tbp, &tpl, ecp, &tx);
     assert(ret == RDB_ERROR && RDB_obj_type(RDB_get_err(ecp)) == &RDB_KEY_VIOLATION_ERROR);
     RDB_clear_err(ecp);
 
     ret = RDB_tuple_set_int(&tpl, "EMPNO", 3, ecp);
-    if (ret != RDB_OK)
-        goto error;
+    assert(ret == RDB_OK);
     ret = RDB_tuple_set_string(&tpl, "NAME", "Smith", ecp);
-    if (ret != RDB_OK)
-        goto error;
+    assert(ret == RDB_OK);
     ret = RDB_tuple_set_double(&tpl, "SALARY", (RDB_double)4000.0, ecp);
-    if (ret != RDB_OK)
-        goto error;
+    assert(ret == RDB_OK);
     ret = RDB_tuple_set_int(&tpl, "DEPTNO", 1, ecp);
-    if (ret != RDB_OK)
-        goto error;
+    assert(ret == RDB_OK);
 
     ret = RDB_insert(tbp, &tpl, ecp, &tx);
     assert(ret == RDB_ERROR && RDB_obj_type(RDB_get_err(ecp)) == &RDB_KEY_VIOLATION_ERROR);
+    RDB_destroy_obj(&tpl, ecp);
     RDB_clear_err(ecp);
-    RDB_destroy_obj(&tpl, ecp);
-
-    return RDB_commit(ecp, &tx);
-
-error:
-    RDB_rollback(ecp, &tx);
-    RDB_destroy_obj(&tpl, ecp);
-    return RDB_ERROR;
+    assert(RDB_commit(ecp, &tx) == RDB_OK);
 }
 
 int
@@ -92,12 +70,7 @@ main(void)
         return 1;
     }
 
-    ret = test_keys(dbp, &ec);
-    if (ret != RDB_OK) {
-        fprintf(stderr, "Error: %s\n", RDB_type_name(RDB_obj_type(RDB_get_err(&ec))));
-        RDB_destroy_exec_context(&ec);
-        return 2;
-    }
+    test_keys(dbp, &ec);
     RDB_destroy_exec_context(&ec);
     
     ret = RDB_close_env(envp);

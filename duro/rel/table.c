@@ -10,7 +10,9 @@
 #include "catalog.h"
 #include "qresult.h"
 #include "insert.h"
+#include "optimize.h"
 #include "internal.h"
+
 #include <gen/strfns.h>
 #include <string.h>
 

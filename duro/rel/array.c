@@ -8,6 +8,7 @@
 #include "rdb.h"
 #include "qresult.h"
 #include "internal.h"
+#include "optimize.h"
 
 int
 RDB_table_to_array(RDB_object *arrp, RDB_object *tbp,

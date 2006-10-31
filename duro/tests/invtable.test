@@ -99,6 +99,12 @@ test invtable {invalid table definitions} -setup $SETUP -body {
 	}]} {
 	    error "Creation of table X should fail, but succeeded"
 	}
+
+	if {![catch {
+	    duro::table expr P {T {ALL BUT A, A}} $tx
+	}]} {
+	    error "Creation of table P should fail, but succeeded"
+	}
 	
 	duro::rollback $tx
 	

@@ -399,7 +399,7 @@ _RDB_infer_keys(RDB_expression *exp, RDB_exec_context *ecp,
             RDB_raise_invalid_argument("Expression is not a table", ecp);
             return RDB_ERROR;            
     }
-    
+
     if ((strcmp(exp->var.op.name, "WHERE") == 0)
             || (strcmp(exp->var.op.name, "MINUS") == 0)
             || (strcmp(exp->var.op.name, "SEMIMINUS") == 0)
@@ -417,8 +417,6 @@ _RDB_infer_keys(RDB_expression *exp, RDB_exec_context *ecp,
     if (strcmp(exp->var.op.name, "PROJECT") == 0) {
     	return infer_project_keys(exp, ecp, keyvp, caller_must_freep);
     }
-    /* !! REMOVE */
-
     if (strcmp(exp->var.op.name, "SUMMARIZE") == 0) {
         return _RDB_infer_keys(exp->var.op.argv[1], ecp, keyvp,
                 caller_must_freep);

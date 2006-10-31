@@ -7,8 +7,10 @@
  */
 
 #include "rdb.h"
-#include "internal.h"
 #include "qresult.h"
+#include "optimize.h"
+#include "internal.h"
+
 #include <string.h>
 #include <assert.h>
 #include <dli/tabletostr.h>

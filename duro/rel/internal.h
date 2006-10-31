@@ -406,13 +406,6 @@ int
 _RDB_expr_to_empty_table(RDB_expression *exp, RDB_exec_context *ecp,
         RDB_transaction *txp);
 
-RDB_expression *
-_RDB_optimize_expr(RDB_expression *, int seqitc, const RDB_seq_item seqitv[],
-        RDB_exec_context *, RDB_transaction *);
-
-int
-_RDB_transform(RDB_expression *exp, RDB_exec_context *, RDB_transaction *);
-
 /*
  * Internal tuple functions
  */
@@ -453,10 +446,6 @@ _RDB_dup_vtable(RDB_object *, RDB_exec_context *);
 int
 _RDB_vtexp_to_obj(RDB_expression *exp, RDB_exec_context *ecp,
         RDB_transaction *txp, RDB_object *tbp);
-
-RDB_expression *
-_RDB_optimize(RDB_object *, int seqitc, const RDB_seq_item seqitv[],
-        RDB_exec_context *, RDB_transaction *);
 
 RDB_possrep *
 _RDB_get_possrep(RDB_type *typ, const char *repname);
@@ -586,10 +575,6 @@ _RDB_index_objpv(_RDB_tbindex *indexp, RDB_expression *exp, RDB_type *tbtyp,
 
 _RDB_tbindex *
 _RDB_expr_sortindex (RDB_expression *);
-
-RDB_bool
-_RDB_index_sorts(struct _RDB_tbindex *indexp, int seqitc,
-        const RDB_seq_item seqitv[]);
 
 RDB_expression *
 _RDB_attr_node(RDB_expression *exp, const char *attrname, char *opname);
