@@ -242,8 +242,8 @@ irep_to_tuple(RDB_object *tplp, RDB_type *typ, const void *datap,
     return len;
 }
 
-int
-_RDB_irep_to_table(RDB_object *tbp, RDB_type *typ, const void *datap, size_t len,
+static int
+irep_to_table(RDB_object *tbp, RDB_type *typ, const void *datap, size_t len,
         RDB_exec_context *ecp)
 {
     int ret;
@@ -381,7 +381,7 @@ RDB_irep_to_obj(RDB_object *valp, RDB_type *typ, const void *datap, size_t len,
             return ret;
         case RDB_OB_TABLE:
         {
-            if (_RDB_irep_to_table(valp, typ, datap, len, ecp) != RDB_OK)
+            if (irep_to_table(valp, typ, datap, len, ecp) != RDB_OK)
                 return RDB_ERROR;
             if (RDB_type_is_scalar(typ))
                 valp->typ = typ;

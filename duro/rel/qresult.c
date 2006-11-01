@@ -1139,7 +1139,7 @@ _RDB_sorter(RDB_expression *texp, RDB_qresult **qrpp, RDB_exec_context *ecp,
      */
     RDB_init_obj(&tpl);
     while ((ret = _RDB_next_tuple(tmpqrp, &tpl, ecp, txp)) == RDB_OK) {
-        ret = RDB_insert(qrp->matp, &tpl, ecp, txp);
+        ret = RDB_insert(qrp->matp, &tpl, ecp, NULL);
         if (ret != RDB_OK) {
             if (RDB_obj_type(RDB_get_err(ecp)) != &RDB_ELEMENT_EXISTS_ERROR) {
                 RDB_destroy_obj(&tpl, ecp);
@@ -1153,9 +1153,17 @@ _RDB_sorter(RDB_expression *texp, RDB_qresult **qrpp, RDB_exec_context *ecp,
         goto error;
     }
     RDB_clear_err(ecp);
+
     ret = _RDB_drop_qresult(tmpqrp, ecp, txp);
     if (ret != RDB_OK)
         goto error;
+
+/* !!
+    if (qrp->matp != NULL) {
+        RDB_drop_table(qrp->matp, ecp, NULL);
+        exit(0);
+    }
+*/
 
     ret = init_stored_qresult(qrp, qrp->matp, ecp, txp);
     if (ret != RDB_OK)

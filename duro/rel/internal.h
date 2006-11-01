@@ -463,10 +463,6 @@ void
 _RDB_obj_to_irep(void *dstp, const RDB_object *, size_t);
 
 int
-_RDB_irep_to_table(RDB_object *tbp, RDB_type *typ, const void *datap, size_t len,
-        RDB_exec_context *);
-
-int
 _RDB_get_ro_op(const char *name, int argc, RDB_type *argtv[],
                RDB_exec_context *, RDB_transaction *txp, RDB_ro_op_desc **opp);
 

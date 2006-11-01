@@ -64,6 +64,9 @@ test rel {relation-valued attributes} -setup $SETUP -body {
     
     duro::table expr -global S1 {T1 WHERE RLATTR = RELATION {
             TUPLE {A 1, B "x"}, TUPLE {A 2, B "y"}}} $tx
+
+    duro::table expr -global W1 {T1 WHERE RLATTR = RELATION {
+            TUPLE {A 1, B "x"}, TUPLE {A 2, B "y"}}} $tx
     
     duro::commit $tx
     
@@ -89,10 +92,15 @@ test rel {relation-valued attributes} -setup $SETUP -body {
     }
     
     duro::insert T1 {SCATTR 3 RLATTR {}} $tx
+
+    set v [duro::expr {(TUPLE FROM W1).SCATTR} $tx]
+    if {$v != 2} {
+        error "wrong result from W1: $v"
+    }
     
-    duro::table expr W1 {T1 WHERE (TUPLE {A 1, B "x"} IN RLATTR)} $tx
-    
-    set cnt [duro::expr {COUNT ((TUPLE FROM W1).RLATTR)} $tx]
+    duro::table expr W2 {T1 WHERE (TUPLE {A 1, B "x"} IN RLATTR)} $tx
+
+    set cnt [duro::expr {COUNT ((TUPLE FROM W2).RLATTR)} $tx]
     if {$cnt != 2} {
         error "wrong # of attributes: $cnt"
     }

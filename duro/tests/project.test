@@ -101,7 +101,7 @@ test ptables {projection tables} -setup $SETUP -body {
     checkarray $a { {A 1 C c} {A 2 C d} {A 3 C e} {A 5 C f} } $tx
     
     duro::array drop $a
-    
+
     set a [duro::array create P2 {B desc} $tx]
     
     checkarray $a { {B yo} {B Blubb} {B Bla} } $tx

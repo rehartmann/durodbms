@@ -13,10 +13,6 @@
 #include <string.h>
 #include <assert.h>
 
-enum {
-    TABLE = 127
-};
-
 /*
  * Functions for serializing/deserializing - needed for
  * persistent virtual tables (aka views)
@@ -144,16 +140,10 @@ serialize_obj(RDB_object *valp, int *posp, const RDB_object *argvalp,
     RDB_bool crtpltyp = RDB_FALSE;
     RDB_type *typ = RDB_obj_type(argvalp);
 
-/*
-    if (typ != NULL && typ->kind == RDB_TP_RELATION) {
-        abort();
-        if (serialize_byte(valp, posp, (RDB_byte) TABLE, ecp)
-                != RDB_OK) {
-            return RDB_ERROR;
-        }
-        return serialize_table(valp, posp, (RDB_object *) argvalp, ecp);
+    if (argvalp->kind == RDB_OB_TABLE && RDB_table_name(argvalp) != NULL) {
+        RDB_raise_invalid_argument("cannot serialize named local table", ecp);
+        return RDB_ERROR;
     }
-        */
 
     if (typ == NULL) {
         assert(argvalp->kind == RDB_OB_TUPLE);
@@ -242,40 +232,6 @@ serialize_expr(RDB_object *valp, int *posp, const RDB_expression *exp,
 }
 
 static int
-serialize_rtable(RDB_object *valp, int *posp, RDB_object *tbp,
-        RDB_exec_context *ecp)
-{
-    int ret;
-    RDB_int len;
-
-    if (RDB_table_name(tbp) != NULL) {
-        RDB_raise_invalid_argument("cannot serialize named local table", ecp);
-        return RDB_ERROR;
-    }
-
-    ret = serialize_type(valp, posp, RDB_obj_type(tbp), ecp);
-    if (ret != RDB_OK)
-        return ret;
-
-    /*
-     * Store size
-     */
-    if (_RDB_obj_ilen(tbp, &len, ecp) != RDB_OK) {
-        return RDB_ERROR;
-    }
-    if (serialize_size_t(valp, posp, len, ecp) != RDB_OK) {
-        return RDB_ERROR;
-    }
-
-    if (reserve_space(valp, *posp, len, ecp) != RDB_OK)
-        return RDB_ERROR;
-
-    _RDB_obj_to_irep(((RDB_byte *) valp->var.bin.datap) + *posp, tbp, len);
-    *posp += len;
-    return RDB_OK;
-}
-
-static int
 serialize_table(RDB_object *valp, int *posp, RDB_object *tbp,
         RDB_exec_context *ecp)
 {
@@ -285,9 +241,9 @@ serialize_table(RDB_object *valp, int *posp, RDB_object *tbp,
         return RDB_ERROR;
 
     if (tbp->var.tb.exp == NULL) {
-        if (serialize_byte(valp, posp, (RDB_byte)1, ecp) != RDB_OK)
+        if (serialize_byte(valp, posp, (RDB_byte) 1, ecp) != RDB_OK)
             return RDB_ERROR;
-        return serialize_rtable(valp, posp, tbp, ecp);
+        return serialize_obj(valp, posp, tbp, ecp);
     }
     if (serialize_byte(valp, posp, (RDB_byte) 0, ecp) != RDB_OK)
         return RDB_ERROR;
@@ -543,24 +499,6 @@ deserialize_obj(RDB_object *valp, int *posp, RDB_exec_context *ecp,
     size_t len;
     int ret;
 
-    ret = deserialize_byte(valp, posp, ecp);
-    if (ret < 0)
-        return ret;
-
-    if (ret == TABLE) {
-        abort(); /*
-        RDB_object *tbp;
-        tbp = deserialize_table(valp, posp, ecp, txp);
-        if (tbp == NULL)
-            return RDB_ERROR;
-        RDB_table_to_obj(argvalp, tbp, ecp);
-        return RDB_OK;
-        */
-    }
-
-    /* 1 byte back */
-    (*posp)--;
-
     typ = deserialize_type(valp, posp, ecp, txp);
     if (typ == NULL)
         return RDB_ERROR;
@@ -749,30 +687,15 @@ RDB_object *
 deserialize_rtable(RDB_object *valp, int *posp, RDB_exec_context *ecp,
         RDB_transaction *txp)
 {
-    RDB_type *typ;
-    RDB_int len;
     int ret;
-    RDB_object *tbp;
-
-    typ = deserialize_type(valp, posp, ecp, txp);
-    if (typ == NULL)
-        return NULL;
-
-    if (deserialize_size_t(valp, posp, ecp, &len) != RDB_OK)
-        return NULL;
-
-    tbp = _RDB_new_obj(ecp);
+    RDB_object *tbp = _RDB_new_obj(ecp);
     if (tbp == NULL)
         return NULL;
 
-    ret = _RDB_irep_to_table(tbp, typ,
-            ((RDB_byte *)valp->var.bin.datap) + *posp, len, ecp);
-    if (ret != RDB_OK) {
-    	free(tbp);
-        return NULL;
-    }
-    *posp += len;
-    return tbp;
+     ret = deserialize_obj(valp, posp, ecp, txp, tbp);
+     if (ret != RDB_OK)
+         return NULL;
+     return tbp;
 }
 
 static RDB_object *

@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <assert.h>
+#include <rel/qresult.h>
 
 static int
 print_table(RDB_object *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
@@ -109,7 +110,7 @@ main(void)
     RDB_database *dbp;
     int ret;
     RDB_exec_context ec;
-    
+
     ret = RDB_open_env("dbenv", &envp);
     if (ret != 0) {
         fprintf(stderr, "Error: %s\n", db_strerror(ret));
