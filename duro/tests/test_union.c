@@ -4,56 +4,57 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <assert.h>
+#include <string.h>
 #include <rel/qresult.h>
 
-static int
+static void
 print_table(RDB_object *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
 {
     int ret;
     RDB_object *tplp;
     RDB_object array;
-    RDB_int i;
-    int len;
     RDB_seq_item sq;
 
     RDB_init_obj(&array);
 
     /* Test sorting too */
     sq.attrname = "NAME";
-    sq.asc = RDB_TRUE;
+    sq.asc = RDB_FALSE;
 
     ret = RDB_table_to_array(&array, tbp, 1, &sq, ecp, txp);
-    if (ret != RDB_OK) {
-        goto error;
-    }
+    assert(ret == RDB_OK);
 
-    ret = RDB_array_length(&array, ecp);
-    if (ret < 0)
-        goto error;
+    assert(RDB_array_length(&array, ecp) == 3);
 
-    len = ret;
-    for (i = len - 1; i >= 0; i--) {
-        tplp = RDB_array_get(&array, i, ecp);
-        if (tplp == NULL) {
-            goto error;
-        }
-        printf("EMPNO: %d\n", (int) RDB_tuple_get_int(tplp, "EMPNO"));
-        printf("NAME: %s\n", RDB_tuple_get_string(tplp, "NAME"));
-        printf("DEPTNO: %d\n", (int) RDB_tuple_get_int(tplp, "DEPTNO"));
-        printf("SALARY: %f\n", (float) RDB_tuple_get_double(tplp, "SALARY"));
-    }
+    tplp = RDB_array_get(&array, 0, ecp);
+    assert(tplp != NULL);
 
-    RDB_destroy_obj(&array, ecp);
-    
-    return RDB_OK;
+    ret = RDB_tuple_get_int(tplp, "EMPNO");
+    assert(ret == 1);
+    assert(strcmp(RDB_tuple_get_string(tplp, "NAME"), "Smith") == 0);
+    assert(RDB_tuple_get_int(tplp, "DEPTNO") == 1);
+    assert(RDB_tuple_get_double(tplp, "SALARY") == 4000.0);
 
-error:
-    RDB_destroy_obj(&array, ecp);
-    
-    return RDB_ERROR;
+    tplp = RDB_array_get(&array, 1, ecp);
+    assert(tplp != NULL);
+
+    assert(RDB_tuple_get_int(tplp, "EMPNO") == 2);
+    assert(strcmp(RDB_tuple_get_string(tplp, "NAME"), "Jones") == 0);
+    assert(RDB_tuple_get_int(tplp, "DEPTNO") == 2);
+    assert(RDB_tuple_get_double(tplp, "SALARY") == 4100.0);
+
+    tplp = RDB_array_get(&array, 2, ecp);
+    assert(tplp != NULL);
+
+    assert(RDB_tuple_get_int(tplp, "EMPNO") == 3);
+    assert(strcmp(RDB_tuple_get_string(tplp, "NAME"), "Clarke") == 0);
+    assert(RDB_tuple_get_int(tplp, "DEPTNO") == 2);
+    assert(RDB_tuple_get_double(tplp, "SALARY") == 4000.0);
+
+    assert(RDB_destroy_obj(&array, ecp) == RDB_OK);
 }
 
-int
+void
 test_union(RDB_database *dbp, RDB_exec_context *ecp)
 {
     RDB_transaction tx;
@@ -62,21 +63,13 @@ test_union(RDB_database *dbp, RDB_exec_context *ecp)
     int ret;
 
     ret = RDB_begin_tx(ecp, &tx, dbp, NULL);
-    if (ret != RDB_OK) {
-        return ret;
-    }
+    assert(ret == RDB_OK);
 
     tbp = RDB_get_table("EMPS1", ecp, &tx);
-    if (tbp == NULL) {
-        RDB_rollback(ecp, &tx);
-        return RDB_ERROR;
-    }
+    assert(tbp != NULL);
 
     tbp2 = RDB_get_table("EMPS2", ecp, &tx);
-    if (ret != RDB_OK) {
-        RDB_rollback(ecp, &tx);
-        return RDB_ERROR;
-    }
+    assert(tbp2 != NULL);
 
     exp = RDB_ro_op("UNION", 2, ecp);
     assert(exp != NULL);
@@ -92,15 +85,11 @@ test_union(RDB_database *dbp, RDB_exec_context *ecp)
     vtbp = RDB_expr_to_vtable(exp, ecp, &tx);
     assert(vtbp != NULL);
     
-    ret = print_table(vtbp, ecp, &tx);
-    if (ret != RDB_OK) {
-        RDB_rollback(ecp, &tx);
-        return ret;
-    } 
+    print_table(vtbp, ecp, &tx);
 
     RDB_drop_table(vtbp, ecp, &tx);
 
-    return RDB_commit(ecp, &tx);
+    assert(RDB_commit(ecp, &tx) == RDB_OK);
 }
 
 int
@@ -124,12 +113,8 @@ main(void)
         return 1;
     }
 
-    ret = test_union(dbp, &ec);
-    if (ret != RDB_OK) {
-        fprintf(stderr, "Error: %s\n", RDB_type_name(RDB_obj_type(RDB_get_err(&ec))));
-        RDB_destroy_exec_context(&ec);
-        return 2;
-    }
+    test_union(dbp, &ec);
+
     RDB_destroy_exec_context(&ec);
     
     ret = RDB_close_env(envp);

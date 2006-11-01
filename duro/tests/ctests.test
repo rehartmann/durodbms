@@ -34,18 +34,7 @@ SALARY: 4000.000000}
 
 test union {UNION operator}  -setup $SETUP -body {
     exec [configure -testdir]/test_union
-} -result {EMPNO: 1
-NAME: Smith
-DEPTNO: 1
-SALARY: 4000.000000
-EMPNO: 2
-NAME: Jones
-DEPTNO: 2
-SALARY: 4100.000000
-EMPNO: 3
-NAME: Clarke
-DEPTNO: 2
-SALARY: 4000.000000}
+}
 
 test minus {MINUS operator}  -setup $SETUP -body {
     exec [configure -testdir]/test_minus
