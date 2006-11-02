@@ -129,11 +129,12 @@ serialize_type(RDB_object *valp, int *posp, const RDB_type *typ,
     abort();
 }
 
+/*
+ * Serialize transient RDB_objects.
+ * (All except persistent virtual or persistent tables)
+ */
 static int
-serialize_table(RDB_object *valp, int *posp, RDB_object *tbp, RDB_exec_context *);
-
-static int
-serialize_obj(RDB_object *valp, int *posp, const RDB_object *argvalp,
+serialize_trobj(RDB_object *valp, int *posp, const RDB_object *argvalp,
         RDB_exec_context *ecp)
 {
     size_t len;
@@ -184,6 +185,9 @@ serialize_obj(RDB_object *valp, int *posp, const RDB_object *argvalp,
 }
 
 static int
+serialize_table(RDB_object *valp, int *posp, RDB_object *tbp, RDB_exec_context *);
+
+static int
 serialize_expr(RDB_object *valp, int *posp, const RDB_expression *exp,
         RDB_exec_context *ecp)
 {
@@ -193,7 +197,7 @@ serialize_expr(RDB_object *valp, int *posp, const RDB_expression *exp,
 
     switch(exp->kind) {
         case RDB_EX_OBJ:
-            return serialize_obj(valp, posp, &exp->var.obj, ecp);
+            return serialize_trobj(valp, posp, &exp->var.obj, ecp);
         case RDB_EX_TBP:
             return serialize_table(valp, posp, exp->var.tbref.tbp, ecp);
         case RDB_EX_VAR:
@@ -243,7 +247,7 @@ serialize_table(RDB_object *valp, int *posp, RDB_object *tbp,
     if (tbp->var.tb.exp == NULL) {
         if (serialize_byte(valp, posp, (RDB_byte) 1, ecp) != RDB_OK)
             return RDB_ERROR;
-        return serialize_obj(valp, posp, tbp, ecp);
+        return serialize_trobj(valp, posp, tbp, ecp);
     }
     if (serialize_byte(valp, posp, (RDB_byte) 0, ecp) != RDB_OK)
         return RDB_ERROR;
@@ -492,7 +496,7 @@ deserialize_table(RDB_object *valp, int *posp, RDB_exec_context *ecp,
         RDB_transaction *txp);
 
 static int
-deserialize_obj(RDB_object *valp, int *posp, RDB_exec_context *ecp,
+deserialize_trobj(RDB_object *valp, int *posp, RDB_exec_context *ecp,
         RDB_transaction *txp, RDB_object *argvalp)
 {
     RDB_type *typ;
@@ -543,7 +547,7 @@ deserialize_expr(RDB_object *valp, int *posp, RDB_exec_context *ecp,
                RDB_object val;
 
                RDB_init_obj(&val);
-               ret = deserialize_obj(valp, posp, ecp, txp, &val);
+               ret = deserialize_trobj(valp, posp, ecp, txp, &val);
                if (ret != RDB_OK) {
                    RDB_destroy_obj(&val, ecp);
                    return ret;
@@ -692,7 +696,7 @@ deserialize_rtable(RDB_object *valp, int *posp, RDB_exec_context *ecp,
     if (tbp == NULL)
         return NULL;
 
-     ret = deserialize_obj(valp, posp, ecp, txp, tbp);
+     ret = deserialize_trobj(valp, posp, ecp, txp, tbp);
      if (ret != RDB_OK)
          return NULL;
      return tbp;
