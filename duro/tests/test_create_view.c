@@ -7,7 +7,7 @@
 
 char *projattrs[] = { "SALARY" };
 
-int
+void
 create_view1(RDB_database *dbp, RDB_exec_context *ecp)
 {
     RDB_transaction tx;
@@ -16,188 +16,120 @@ create_view1(RDB_database *dbp, RDB_exec_context *ecp)
     int ret;
 
     ret = RDB_begin_tx(ecp, &tx, dbp, NULL);
-    if (ret != RDB_OK) {
-        return ret;
-    }
+    assert(ret == RDB_OK);
 
     tbp = RDB_get_table("EMPS1", ecp, &tx);
-    if (tbp == NULL) {
-        RDB_rollback(ecp, &tx);
-        return RDB_ERROR;
-    }
+    assert(tbp != NULL);
     tbp2 = RDB_get_table("EMPS2", ecp, &tx);
-    if (tbp2 == NULL) {
-        RDB_rollback(ecp, &tx);
-        return ret;
-    }
+    assert(tbp2 != NULL);
 
     exp = RDB_ro_op("PROJECT", 2, ecp);
-    if (exp == NULL) {
-        RDB_rollback(ecp, &tx);
-        return RDB_ERROR;
-    }
+    assert(exp != NULL);
     texp = RDB_ro_op("UNION", 2, ecp);
-    if (exp == NULL) {
-        RDB_rollback(ecp, &tx);
-        return RDB_ERROR;
-    }
+    assert(texp != NULL);
     RDB_add_arg(exp, texp);
     argp = RDB_table_ref_to_expr(tbp, ecp);
-    if (exp == NULL) {
-        RDB_rollback(ecp, &tx);
-        return RDB_ERROR;
-    }
+    assert(argp != NULL);
     RDB_add_arg(texp, argp);
     argp = RDB_table_ref_to_expr(tbp2, ecp);
-    if (exp == NULL) {
-        RDB_rollback(ecp, &tx);
-        return RDB_ERROR;
-    }
+    assert(argp != NULL);
     RDB_add_arg(texp, argp);
     argp = RDB_string_to_expr("SALARY", ecp);
-    if (exp == NULL) {
-        RDB_rollback(ecp, &tx);
-        return RDB_ERROR;
-    }
+    assert(argp != NULL);
     RDB_add_arg(exp, argp);
 
     vtbp = RDB_expr_to_vtable(exp, ecp, &tx);
-    if (vtbp == NULL) {
-        RDB_drop_expr(exp, ecp);
-        RDB_rollback(ecp, &tx);
-        return RDB_ERROR;
-    }
+    assert(vtbp != NULL);
     
     ret = RDB_set_table_name(vtbp, "SALARIES", ecp, &tx);
-    if (ret != RDB_OK) {
-        RDB_rollback(ecp, &tx);
-        return ret;
-    } 
+    assert(ret == RDB_OK);
     ret = RDB_add_table(vtbp, ecp, &tx);
-    if (ret != RDB_OK) {
-        RDB_rollback(ecp, &tx);
-        return ret;
-    } 
+    assert(ret == RDB_OK);
 
-    return RDB_commit(ecp, &tx);
+    assert(RDB_commit(ecp, &tx) == RDB_OK);
 }
 
-int
+void
 create_view2(RDB_database *dbp, RDB_exec_context *ecp)
 {
     RDB_transaction tx;
     RDB_object *tbp, *vtbp;
-    RDB_expression *exp, *argp, *hexprp;
+    RDB_expression *exp, *argp, *hexp;
     int ret;
 
     ret = RDB_begin_tx(ecp, &tx, dbp, NULL);
-    if (ret != RDB_OK) {
-        return ret;
-    }
+    assert(ret == RDB_OK);
 
     tbp = RDB_get_table("EMPS1", ecp, &tx);
-    if (ret != RDB_OK) {
-        RDB_rollback(ecp, &tx);
-        return RDB_ERROR;
-    }
+    assert(ret == RDB_OK);
 
     exp = RDB_ro_op("WHERE", 2, ecp);
-    if (exp == NULL)
-        return RDB_ERROR;
+    assert(exp != NULL);
     argp = RDB_table_ref_to_expr(tbp, ecp);
-    if (argp == NULL)
-        return RDB_ERROR;
+    assert(argp != NULL);
     RDB_add_arg(exp, argp);
 
-    hexprp = RDB_expr_var("SALARY", ecp);
-    if (hexprp == NULL)
-        return RDB_ERROR;
+    hexp = RDB_expr_var("SALARY", ecp);
+    assert(hexp != NULL);
     argp = RDB_ro_op(">", 2, ecp);
-    RDB_add_arg(argp, hexprp);
-    RDB_add_arg(argp, RDB_double_to_expr(4000.0, ecp)); /* !! */
+    RDB_add_arg(argp, hexp);
+    hexp = RDB_double_to_expr(4000.0, ecp);
+    assert(hexp != NULL);
+    RDB_add_arg(argp, hexp);
     RDB_add_arg(exp, argp);
 
     vtbp = RDB_expr_to_vtable(exp, ecp, &tx);
-    if (vtbp == NULL) {
-        RDB_drop_expr(exp, ecp);
-        RDB_rollback(ecp, &tx);
-        return RDB_ERROR;
-    }
+    assert(vtbp != NULL);
 
     ret = RDB_set_table_name(vtbp, "EMPS1H", ecp, &tx);
-    if (ret != RDB_OK) {
-        RDB_rollback(ecp, &tx);
-        return ret;
-    } 
+    assert(ret == RDB_OK);
     ret = RDB_add_table(vtbp, ecp, &tx);
-    if (ret != RDB_OK) {
-        RDB_rollback(ecp, &tx);
-        return ret;
-    } 
+    assert(ret == RDB_OK);
 
-    return RDB_commit(ecp, &tx);
+    assert(RDB_commit(ecp, &tx) == RDB_OK);
 }
 
-int
+void
 create_view3(RDB_database *dbp, RDB_exec_context *ecp)
 {
     RDB_transaction tx;
     RDB_object *tbp, *vtbp;
-    RDB_expression *exprp, *exp, *argp;
+    RDB_expression *hexp, *exp, *argp;
     int ret;
 
     ret = RDB_begin_tx(ecp, &tx, dbp, NULL);
-    if (ret != RDB_OK) {
-        return ret;
-    }
+    assert(ret == RDB_OK);
 
     tbp = RDB_get_table("EMPS1", ecp, &tx);
-    if (tbp == NULL) {
-        RDB_rollback(ecp, &tx);
-        return ret;
-    }
+    assert(tbp != NULL);
 
     exp = RDB_ro_op("EXTEND", 3, ecp);
-    if (exp == NULL)
-        return RDB_ERROR;
+    assert(exp != NULL);
 
     argp = RDB_table_ref_to_expr(tbp, ecp);
-    if (argp == NULL)
-        return RDB_ERROR;
+    assert(argp != NULL);
     RDB_add_arg(exp, argp); 
-    exprp = RDB_ro_op(">", 2, ecp);
-    if (exprp == NULL)
-        return RDB_ERROR;
-    RDB_add_arg(exprp, RDB_expr_var("SALARY", ecp));
-    RDB_add_arg(exprp, RDB_double_to_expr(4000.0, ecp));
-    RDB_add_arg(exp, exprp);
+    hexp = RDB_ro_op(">", 2, ecp);
+    assert(hexp != NULL);
+    RDB_add_arg(hexp, RDB_expr_var("SALARY", ecp));
+    RDB_add_arg(hexp, RDB_double_to_expr(4000.0, ecp));
+    RDB_add_arg(exp, hexp);
     argp = RDB_string_to_expr("HIGHSAL", ecp);
-    if (argp == NULL)
-        return RDB_ERROR;
+    assert(argp != NULL);
     RDB_add_arg(exp, argp);
 
     vtbp = RDB_expr_to_vtable(exp, ecp, &tx);
-    if (vtbp == NULL) {
-        RDB_drop_expr(exp, ecp);
-        RDB_rollback(ecp, &tx);
-        return RDB_ERROR;
-    }
+    assert(vtbp != NULL);
     
     ret = RDB_set_table_name(vtbp, "EMPS1S", ecp, &tx);
-    if (ret != RDB_OK) {
-        RDB_rollback(ecp, &tx);
-        return ret;
-    } 
+    assert(ret == RDB_OK);
     ret = RDB_add_table(vtbp, ecp, &tx);
-    if (ret != RDB_OK) {
-        RDB_rollback(ecp, &tx);
-        return ret;
-    } 
+    assert(ret == RDB_OK);
 
-    return RDB_commit(ecp, &tx);
+    assert(RDB_commit(ecp, &tx) == RDB_OK);
 }
 
-int
+void
 create_view4(RDB_database *dbp, RDB_exec_context *ecp)
 {
     RDB_transaction tx;
@@ -206,15 +138,10 @@ create_view4(RDB_database *dbp, RDB_exec_context *ecp)
     int ret;
 
     ret = RDB_begin_tx(ecp, &tx, dbp, NULL);
-    if (ret != RDB_OK) {
-        return ret;
-    }
+    assert(ret == RDB_OK);
 
     tbp = RDB_get_table("EMPS1", ecp, &tx);
-    if (tbp == NULL) {
-        RDB_rollback(ecp, &tx);
-        return RDB_ERROR;
-    }
+    assert(tbp != NULL);
 
     /*
      * Creating ( SUMMARIZE EMPS1 PER ( EMPS1 { DEPTNO } )
@@ -222,79 +149,46 @@ create_view4(RDB_database *dbp, RDB_exec_context *ecp)
      */
 
     exp = RDB_ro_op("RENAME", 3, ecp);
-    if (exp == NULL) {
-        RDB_rollback(ecp, &tx);
-        return RDB_ERROR;
-    }
+    assert(exp != NULL);
 
     sexp = RDB_ro_op("SUMMARIZE", 4, ecp);
-    if (sexp == NULL) {
-        RDB_rollback(ecp, &tx);
-        return RDB_ERROR;
-    }
+    assert(sexp != NULL);
     RDB_add_arg(exp, sexp);
 
     argp = RDB_table_ref_to_expr(tbp, ecp);
-    if (argp == NULL) {
-        RDB_rollback(ecp, &tx);
-        return RDB_ERROR;
-    }
+    assert(argp != NULL);
     RDB_add_arg(sexp, argp);
 
     texp = RDB_ro_op("PROJECT", 2, ecp);
-    if (texp == NULL) {
-        RDB_rollback(ecp, &tx);
-        return RDB_ERROR;
-    }
+    assert(texp != NULL);
     RDB_add_arg(sexp, texp);
 
     argp = RDB_table_ref_to_expr(tbp, ecp);
-    if (argp == NULL) {
-        RDB_rollback(ecp, &tx);
-        return RDB_ERROR;
-    }
+    assert(argp != NULL);
     RDB_add_arg(texp, argp);
 
     argp = RDB_string_to_expr("DEPTNO", ecp);
-    if (argp == NULL) {
-        RDB_rollback(ecp, &tx);
-        return RDB_ERROR;
-    }
+    assert(argp != NULL);
     RDB_add_arg(texp, argp);
 
     texp = RDB_ro_op("MAX", 1, ecp);
-    if (texp == NULL) {
-        RDB_rollback(ecp, &tx);
-        return RDB_ERROR;
-    }
+    assert(texp != NULL);
     RDB_add_arg(sexp, texp);
 
     argp = RDB_expr_var("SALARY", ecp);
-    if (argp == NULL) {
-        RDB_rollback(ecp, &tx);
-        return RDB_ERROR;
-    }
+    assert(argp != NULL);
     RDB_add_arg(texp, argp);
 
     argp = RDB_string_to_expr("MAX_SALARY", ecp);
-    if (argp == NULL) {
-        RDB_rollback(ecp, &tx);
-        return RDB_ERROR;
-    }
+    assert(argp != NULL);
     RDB_add_arg(sexp, argp);
 
     argp = RDB_string_to_expr("DEPTNO", ecp);
-    if (argp == NULL) {
-        RDB_rollback(ecp, &tx);
-        return RDB_ERROR;
-    }
+    assert(argp != NULL);
     RDB_add_arg(exp, argp);
 
     argp = RDB_string_to_expr("DEPARTMENT", ecp);
-    if (argp == NULL) {
-        RDB_rollback(ecp, &tx);
-        return RDB_ERROR;
-    }
+    assert(argp != NULL);
     RDB_add_arg(exp, argp);
 
     vtbp = RDB_expr_to_vtable(exp, ecp, &tx);
@@ -304,7 +198,6 @@ create_view4(RDB_database *dbp, RDB_exec_context *ecp)
     assert(RDB_add_table(vtbp, ecp, &tx) == RDB_OK);
 
     assert(RDB_commit(ecp, &tx) == RDB_OK);
-    return RDB_OK;
 }
 
 int
@@ -329,33 +222,13 @@ main(void)
         return 1;
     }
 
-    ret = create_view1(dbp, &ec);
-    if (ret != RDB_OK) {
-        fprintf(stderr, "Error: %s\n", RDB_type_name(RDB_obj_type(RDB_get_err(&ec))));
-        RDB_destroy_exec_context(&ec);
-        return 2;
-    }
+    create_view1(dbp, &ec);
 
-    ret = create_view2(dbp, &ec);
-    if (ret != RDB_OK) {
-        fprintf(stderr, "Error: %s\n", RDB_type_name(RDB_obj_type(RDB_get_err(&ec))));
-        RDB_destroy_exec_context(&ec);
-        return 2;
-    }
+    create_view2(dbp, &ec);
 
-    ret = create_view3(dbp, &ec);
-    if (ret != RDB_OK) {
-        fprintf(stderr, "Error: %s\n", RDB_type_name(RDB_obj_type(RDB_get_err(&ec))));
-        RDB_destroy_exec_context(&ec);
-        return 2;
-    }
+    create_view3(dbp, &ec);
 
-    ret = create_view4(dbp, &ec);
-    if (ret != RDB_OK) {
-        fprintf(stderr, "Error: %s\n", RDB_type_name(RDB_obj_type(RDB_get_err(&ec))));
-        RDB_destroy_exec_context(&ec);
-        return 2;
-    }
+    create_view4(dbp, &ec);
 
     RDB_destroy_exec_context(&ec);
 
