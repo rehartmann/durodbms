@@ -11,15 +11,10 @@ package require tcltest 2.2
 eval ::tcltest::configure $argv
 namespace import ::tcltest::*
 
-test index {indexes} -body {
-    load [configure -testdir]/../libdurotcl.so
-    source [configure -testdir]/testutil.tcl
+source [file dirname [info script]]/setup.tcl
 
-    # Create DB environment dir
-    removeDirectory dbenv
-    set envdir [makeDirectory dbenv]
-
-    set dbenv [duro::env open $envdir]
+test index {indexes} -setup $SETUP -body {
+    set dbenv [duro::env open [configure -tmpdir]/dbenv]
     
     # Create Database
     duro::db create $dbenv TEST
@@ -112,7 +107,7 @@ test index {indexes} -body {
 
     duro::env close $dbenv
     
-    set dbenv [duro::env open $envdir]
+    set dbenv [duro::env open [configure -tmpdir]/dbenv]
     
     set tx [duro::begin $dbenv TEST]
     
@@ -185,7 +180,7 @@ test index {indexes} -body {
     
     duro::env close $dbenv
     
-    set dbenv [duro::env open $envdir]
+    set dbenv [duro::env open [configure -tmpdir]/dbenv]
     
     set tx [duro::begin $dbenv TEST]
     

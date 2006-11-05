@@ -11,61 +11,53 @@ package require tcltest 2.2
 eval ::tcltest::configure $argv
 namespace import ::tcltest::*
 
-set SETUP {
-    set scriptdir [file dirname [info script]]
-    load $scriptdir/../libdurotcl.so
-    source $scriptdir/testutil.tcl
-
-    # Create DB environment dir, ensure it's empty
-    removeDirectory dbenv
-    makeDirectory dbenv
-}
+source [file dirname [info script]]/setup.tcl
 
 test string {string functions} -setup $SETUP -body {
     set dbenv [duro::env open [configure -tmpdir]/dbenv]
 
-	# Create Database
-	duro::db create $dbenv TEST
-	
-	set tx [duro::begin $dbenv TEST]
-	
-	set len [duro::expr {LENGTH("Ab-")} $tx]
-	if {$len != 3} {
-	    error "wrong string length: $len"
-	}
-	
-	set str [duro::expr {"\"\t\\"} $tx]
-	if {$str != "\"\t\\"} {
-	    error "wrong string value: $str"
-	}
-	
-	set str [duro::expr {SUBSTRING("ABC-.+abc", 2, 3)} $tx]
-	if {$str != "C-."} {
-	    error "wrong string value: $str"
-	}
-	
-	set str [duro::expr {SUBSTRING('ABC-.+ab', 2, 6)} $tx]
-	if {$str != "C-.+ab"} {
-	    error "wrong string value: $str"
-	}
-	
-	set str [duro::expr {SUBSTRING("ABC-.+ab", 0, 8)} $tx]
-	if {$str != "ABC-.+ab"} {
-	    error "wrong string value: $str"
-	}
-	
-	if {![catch {[duro::expr {SUBSTRING("ABC-.+ab", 2, 7)} $tx]}]} {
-	    error "should have failed"
-	}
-	
-	if {![catch {[duro::expr {SUBSTRING("ABC-.+ab", 0, 9)} $tx]}]} {
-	    error "should have failed"
-	}
-	
-	duro::commit $tx
-	
-	# Close DB environment
-	duro::env close $dbenv
+    # Create Database
+    duro::db create $dbenv TEST
+    
+    set tx [duro::begin $dbenv TEST]
+    
+    set len [duro::expr {LENGTH("Ab-")} $tx]
+    if {$len != 3} {
+        error "wrong string length: $len"
+    }
+    
+    set str [duro::expr {"\"\t\\"} $tx]
+    if {$str != "\"\t\\"} {
+        error "wrong string value: $str"
+    }
+    
+    set str [duro::expr {SUBSTRING("ABC-.+abc", 2, 3)} $tx]
+    if {$str != "C-."} {
+        error "wrong string value: $str"
+    }
+    
+    set str [duro::expr {SUBSTRING('ABC-.+ab', 2, 6)} $tx]
+    if {$str != "C-.+ab"} {
+        error "wrong string value: $str"
+    }
+    
+    set str [duro::expr {SUBSTRING("ABC-.+ab", 0, 8)} $tx]
+    if {$str != "ABC-.+ab"} {
+        error "wrong string value: $str"
+    }
+    
+    if {![catch {[duro::expr {SUBSTRING("ABC-.+ab", 2, 7)} $tx]}]} {
+        error "should have failed"
+    }
+    
+    if {![catch {[duro::expr {SUBSTRING("ABC-.+ab", 0, 9)} $tx]}]} {
+        error "should have failed"
+    }
+    
+    duro::commit $tx
+    
+    # Close DB environment
+    duro::env close $dbenv
 }
 
 cleanupTests

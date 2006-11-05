@@ -11,51 +11,43 @@ package require tcltest 2.2
 eval ::tcltest::configure $argv
 namespace import ::tcltest::*
 
-set SETUP {
-    set scriptdir [file dirname [info script]]
-    load $scriptdir/../libdurotcl.so
-    source $scriptdir/testutil.tcl
-
-    # Create DB environment dir, ensure it's empty
-    removeDirectory dbenv
-    makeDirectory dbenv
-}
+source [file dirname [info script]]/setup.tcl
 
 test qqueries {quota queries} -setup $SETUP -body {
     set dbenv [duro::env open [configure -tmpdir]/dbenv]
-	
-	# Create Database
-	duro::db create $dbenv TEST
-	
-	set tx [duro::begin $dbenv TEST]
-	
-	# Create table
-	duro::table create T1 {
-	   {ID INTEGER}
-	   {WEIGHT INTEGER}
-	} {{ID}} $tx
-	
-	# Create virtual table with WEIGHT_RANK attribute
-	
-	duro::table expr V1 {EXTEND T1 ADD (
-	        COUNT(T1 RENAME (WEIGHT AS W) WHERE W < WEIGHT)
-	        AS WEIGHT_RANK)} $tx
-	
-	duro::table expr V2 {V1 WHERE WEIGHT_RANK <= 1 { ID, WEIGHT } } $tx
-	
-	# Insert tuples
-	duro::insert T1 {ID 1 WEIGHT 7} $tx
-	duro::insert T1 {ID 2 WEIGHT 7} $tx
-	duro::insert T1 {ID 3 WEIGHT 5} $tx
-	duro::insert T1 {ID 4 WEIGHT 20} $tx
-	
-	set da [duro::array create V2 {WEIGHT asc ID asc} $tx]
-	checkarray $da {{ID 3 WEIGHT 5} {ID 1 WEIGHT 7} {ID 2 WEIGHT 7}} $tx
-	duro::array drop $da
-	
-	duro::commit $tx
-	
-	duro::env close $dbenv
+    
+    # Create Database
+    duro::db create $dbenv TEST
+    
+    set tx [duro::begin $dbenv TEST]
+    
+    # Create table
+    duro::table create T1 {
+       {ID INTEGER}
+       {WEIGHT INTEGER}
+    } {{ID}} $tx
+    
+    # Create virtual table with WEIGHT_RANK attribute
+    
+    duro::table expr V1 {EXTEND T1 ADD (
+            COUNT(T1 RENAME (WEIGHT AS W) WHERE W < WEIGHT)
+            AS WEIGHT_RANK)} $tx
+    
+    duro::table expr V2 {V1 WHERE WEIGHT_RANK <= 1 { ID, WEIGHT } } $tx
+    
+    # Insert tuples
+    duro::insert T1 {ID 1 WEIGHT 7} $tx
+    duro::insert T1 {ID 2 WEIGHT 7} $tx
+    duro::insert T1 {ID 3 WEIGHT 5} $tx
+    duro::insert T1 {ID 4 WEIGHT 20} $tx
+    
+    set da [duro::array create V2 {WEIGHT asc ID asc} $tx]
+    checkarray $da {{ID 3 WEIGHT 5} {ID 1 WEIGHT 7} {ID 2 WEIGHT 7}} $tx
+    duro::array drop $da
+    
+    duro::commit $tx
+    
+    duro::env close $dbenv
 }
 
 cleanupTests

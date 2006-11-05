@@ -10,9 +10,9 @@
 #include <assert.h>
 
 RDB_attr srtest_attrs[] = {
-    { "NO", &RDB_INTEGER, NULL, 0 },
-    { "O_NO", &RDB_INTEGER, NULL, 0 },
-    { "COUNT", &RDB_INTEGER, NULL, 0 }
+    { "NO", NULL, NULL, 0 },
+    { "O_NO", NULL, NULL, 0 },
+    { "COUNT", NULL, NULL, 0 }
 };
 
 char *srtest_keys[] = { "NO" };
@@ -21,7 +21,7 @@ RDB_string_vec srtest_keyattrs[] = {
     { 1, srtest_keys }
 };
 
-int
+static void
 create_table(RDB_database *dbp, RDB_exec_context *ecp)
 {
     RDB_transaction tx;
@@ -29,18 +29,17 @@ create_table(RDB_database *dbp, RDB_exec_context *ecp)
     RDB_object tpl;
     int ret;
     int i;
+
+    srtest_attrs[0].typ = &RDB_INTEGER;
+    srtest_attrs[1].typ = &RDB_INTEGER;
+    srtest_attrs[2].typ = &RDB_INTEGER;
    
     ret = RDB_begin_tx(ecp, &tx, dbp, NULL);
-    if (ret != RDB_OK) {
-        return ret;
-    }
+    assert(ret == RDB_OK);
 
     tbp = RDB_create_table("SRTEST", RDB_TRUE, 3, srtest_attrs,
             1, srtest_keyattrs, ecp, &tx);
-    if (tbp == NULL) {
-        RDB_rollback(ecp, &tx);
-        return RDB_ERROR;
-    }
+    assert(tbp != NULL);
 
     RDB_init_obj(&tpl);
 
@@ -50,17 +49,13 @@ create_table(RDB_database *dbp, RDB_exec_context *ecp)
         RDB_tuple_set_int(&tpl, "COUNT", (RDB_int) 0, ecp);
 
         ret = RDB_insert(tbp, &tpl, ecp, &tx);
-        if (ret != RDB_OK) {
-            RDB_destroy_obj(&tpl, ecp);
-            RDB_rollback(ecp, &tx);
-            return ret;
-        }
+        assert(ret == RDB_OK);
     }
 
-    return RDB_commit(ecp, &tx);
+    assert(RDB_commit(ecp, &tx) == RDB_OK);
 }
 
-int
+static void
 test_update1(RDB_database *dbp, RDB_exec_context *ecp)
 {
     int ret;
@@ -70,21 +65,14 @@ test_update1(RDB_database *dbp, RDB_exec_context *ecp)
     RDB_attr_update upd;
 
     ret = RDB_begin_tx(ecp, &tx, dbp, NULL);
-    if (ret != RDB_OK) {
-        return ret;
-    }
+    assert(ret == RDB_OK);
 
     tbp = RDB_get_table("SRTEST", ecp, &tx);
-    if (tbp == NULL) {
-        RDB_rollback(ecp, &tx);
-        return RDB_ERROR;
-    }
+    assert(tbp != NULL);
 
     exp = RDB_ro_op("-", 2, ecp);
-    if (exp == NULL) {
-        RDB_rollback(ecp, &tx);
-        return RDB_ERROR;
-    }
+    assert(exp != NULL);
+
     RDB_add_arg(exp, RDB_int_to_expr(2, ecp));
     RDB_add_arg(exp, RDB_expr_var("NO", ecp));
 
@@ -92,15 +80,12 @@ test_update1(RDB_database *dbp, RDB_exec_context *ecp)
     upd.exp = exp;
 
     ret = RDB_update(tbp, NULL, 1, &upd, ecp, &tx);
-    if (ret == RDB_ERROR) {
-        RDB_rollback(ecp, &tx);
-        return ret;
-    }
+    assert(ret != RDB_ERROR);
 
-    return RDB_commit(ecp, &tx);
+    assert(RDB_commit(ecp, &tx) == RDB_OK);
 }
 
-int
+static void
 test_update2(RDB_database *dbp, RDB_exec_context *ecp)
 {
     int ret;
@@ -110,15 +95,10 @@ test_update2(RDB_database *dbp, RDB_exec_context *ecp)
     RDB_attr_update upd;
 
     ret = RDB_begin_tx(ecp, &tx, dbp, NULL);
-    if (ret != RDB_OK) {
-        return ret;
-    }
+    assert(ret == RDB_OK);
 
     tbp = RDB_get_table("SRTEST", ecp, &tx);
-    if (tbp == NULL) {
-        RDB_rollback(ecp, &tx);
-        return RDB_ERROR;
-    }
+    assert(tbp != NULL);
 
     exp = RDB_ro_op("SUM", 2, ecp);
     assert(exp != NULL);
@@ -130,10 +110,8 @@ test_update2(RDB_database *dbp, RDB_exec_context *ecp)
     RDB_add_arg(exp, argp);
 
     condp = RDB_ro_op("+", 2, ecp);
-    if (condp == NULL) {
-        RDB_rollback(ecp, &tx);
-        return RDB_ERROR;
-    }
+    assert(condp != NULL);
+
     RDB_add_arg(condp, exp);
     RDB_add_arg(condp, RDB_int_to_expr(1, ecp));
 
@@ -141,17 +119,14 @@ test_update2(RDB_database *dbp, RDB_exec_context *ecp)
     upd.exp = condp;
 
     ret = RDB_update(tbp, NULL, 1, &upd, ecp, &tx);
-    if (ret == RDB_ERROR) {
-        RDB_rollback(ecp, &tx);
-        return RDB_ERROR;
-    }
+    assert(ret != RDB_ERROR);
 
-    return RDB_commit(ecp, &tx);
+    assert(RDB_commit(ecp, &tx) == RDB_OK);
 }
 
 RDB_seq_item noseqitv[] = { { "NO", RDB_TRUE } };
 
-int
+static void
 test_print(RDB_database *dbp, RDB_exec_context *ecp)
 {
     RDB_transaction tx;
@@ -162,23 +137,15 @@ test_print(RDB_database *dbp, RDB_exec_context *ecp)
     int i;
 
     ret = RDB_begin_tx(ecp, &tx, dbp, NULL);
-    if (ret != RDB_OK) {
-        return ret;
-    }
+    assert(ret == RDB_OK);
 
     tbp = RDB_get_table("SRTEST", ecp, &tx);
-    if (ret != RDB_OK) {
-        RDB_rollback(ecp, &tx);
-        return ret;
-    }
+    assert(tbp != NULL);
 
     RDB_init_obj(&array);
 
     ret = RDB_table_to_array(&array, tbp, 1, noseqitv, ecp, &tx);
-    if (ret != RDB_OK) {
-        RDB_rollback(ecp, &tx);
-        return ret;
-    } 
+    assert(ret == RDB_OK);
 
     for (i = 0; (tplp = RDB_array_get(&array, i, ecp)) != NULL; i++) {
         printf("NO=%d, O_NO=%d, COUNT=%d\n", (int)RDB_tuple_get_int(tplp, "NO"),
@@ -186,13 +153,10 @@ test_print(RDB_database *dbp, RDB_exec_context *ecp)
                 (int)RDB_tuple_get_int(tplp, "COUNT"));
     }
     RDB_destroy_obj(&array, ecp);
-    if (RDB_obj_type(RDB_get_err(ecp)) != &RDB_NOT_FOUND_ERROR) {
-        RDB_rollback(ecp, &tx);
-        return RDB_ERROR;
-    }
+    assert(RDB_obj_type(RDB_get_err(ecp)) == &RDB_NOT_FOUND_ERROR);
     RDB_clear_err(ecp);
 
-    return RDB_commit(ecp, &tx);
+    assert(RDB_commit(ecp, &tx) == RDB_OK);
 }
 
 int
@@ -217,33 +181,14 @@ main(void)
         return 1;
     }
 
-    ret = create_table(dbp, &ec);
-    if (ret != RDB_OK) {
-        fprintf(stderr, "Error: %s\n", RDB_type_name(RDB_obj_type(RDB_get_err(&ec))));
-        RDB_destroy_exec_context(&ec);
-        return 2;
-    }
+    create_table(dbp, &ec);
 
-    ret = test_update1(dbp, &ec);
-    if (ret != RDB_OK) {
-        fprintf(stderr, "Error: %s\n", RDB_type_name(RDB_obj_type(RDB_get_err(&ec))));
-        RDB_destroy_exec_context(&ec);
-        return 2;
-    }
+    test_update1(dbp, &ec);
 
-    ret = test_update2(dbp, &ec);
-    if (ret != RDB_OK) {
-        fprintf(stderr, "Error: %s\n", RDB_type_name(RDB_obj_type(RDB_get_err(&ec))));
-        RDB_destroy_exec_context(&ec);
-        return 2;
-    }
+    test_update2(dbp, &ec);
 
-    ret = test_print(dbp, &ec);
-    if (ret != RDB_OK) {
-        fprintf(stderr, "Error: %s\n", RDB_type_name(RDB_obj_type(RDB_get_err(&ec))));
-        RDB_destroy_exec_context(&ec);
-        return 2;
-    }
+    test_print(dbp, &ec);
+
     RDB_destroy_exec_context(&ec);
 
     ret = RDB_close_env(dsp);

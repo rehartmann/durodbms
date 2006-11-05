@@ -12,12 +12,18 @@ import os
 
 bdbhome = '/usr/local/BerkeleyDB.4.4'
 
+release = '0.12'
+
 env = Environment(ENV = os.environ)
 
 if env['PLATFORM'] == 'win32':
-    installdir = 'C:/duro'
+    default_prefix = 'C:'
 else:
-    installdir = '/usr/local/duro.0.12'
+    default_prefix = '/usr/local'
+
+prefix = ARGUMENTS.get('prefix', default_prefix)
+
+installdir = prefix + '/duro.' + release
 
 env.Replace(CPPPATH = ['.', bdbhome + '/include'])
 env.Replace(LIBPATH = ['.', bdbhome + '/lib'])
@@ -34,6 +40,8 @@ else:
 if (os.environ.has_key('CFLAGS')):
     env.Replace(CCFLAGS = os.environ['CFLAGS'])
 
+env.Replace(TARFLAGS = '-c -z')
+
 #
 # Duro core library
 #
@@ -42,17 +50,17 @@ CFile('dli/exparse.c', 'dli/exparse.y')
 CFile('dli/exlex.c', 'dli/exlex.l')
 
 durosrc = ['gen/hashmap.c', 'gen/hashmapit.c',
-    'gen/strfns.c', 'gen/hashtable.c', 'gen/hashtabit.c',
-    'rec/cursor.c', 'rec/env.c', 'rec/index.c', 'rec/recmap.c',
-    'rel/array.c', 'rel/database.c', 'rel/operator.c',
-    'rel/builtinops.c', 'rel/expression.c', 'rel/qresult.c',
-    'rel/serialize.c', 'rel/table.c', 'rel/stable.c', 'rel/vtable.c',
-    'rel/update.c', 'rel/insert.c', 'rel/contains.c', 'rel/transaction.c',
-    'rel/delete.c', 'rel/tuple.c', 'rel/type.c', 'rel/object.c',
-    'rel/catalog.c', 'rel/optimize.c', 'rel/transform.c',
-    'rel/constraint.c', 'rel/assign.c', 'rel/excontext.c',
-    'rel/match.c',
-    'dli/exparse.c', 'dli/exlex.c', 'dli/parse.c', 'dli/tabletostr.c']
+        'gen/strfns.c', 'gen/hashtable.c', 'gen/hashtabit.c',
+        'rec/cursor.c', 'rec/env.c', 'rec/index.c', 'rec/recmap.c',
+        'rel/array.c', 'rel/database.c', 'rel/operator.c',
+        'rel/builtinops.c', 'rel/expression.c', 'rel/qresult.c',
+        'rel/serialize.c', 'rel/table.c', 'rel/stable.c', 'rel/vtable.c',
+        'rel/update.c', 'rel/insert.c', 'rel/contains.c', 'rel/transaction.c',
+        'rel/delete.c', 'rel/tuple.c', 'rel/type.c', 'rel/object.c',
+        'rel/catalog.c', 'rel/optimize.c', 'rel/transform.c',
+        'rel/constraint.c', 'rel/assign.c', 'rel/excontext.c',
+        'rel/match.c',
+        'dli/exparse.c', 'dli/exlex.c', 'dli/parse.c', 'dli/tabletostr.c']
 
 if env['PLATFORM'] == 'win32':
     durosrc.append('duro.def')
@@ -61,7 +69,7 @@ else:
     duroccflags = env['CCFLAGS']
 
 libduro = env.SharedLibrary('duro', durosrc,
-    LIBS = durolibs, CCFLAGS = duroccflags)
+        LIBS = durolibs, CCFLAGS = duroccflags)
 
 #
 # Tcl interface
@@ -76,8 +84,8 @@ durotclsrc = ['tcl/duro.c', 'tcl/envcmd.c',
 libdurotcllibs = ['duro']
 
 if env['PLATFORM'] == 'win32':
-        durotclsrc.append('durotcl.def')
-        libdurotcllibs += ['tcl84', 'libdb44']
+    durotclsrc.append('durotcl.def')
+    libdurotcllibs += ['tcl84', 'libdb44']
 
 libdurotcl = env.SharedLibrary('durotcl', durotclsrc, LIBS = libdurotcllibs)
 
@@ -94,61 +102,66 @@ Default(libdurotcl)
 
 testenv = env.Copy(RPATH = [bdbhome + '/lib'])
 
-testbins = [testenv.Program('util/lstables.c'),
-    testenv.Program('tests/tupletest.c'),
-    testenv.Program('tests/maptest.c'),
-    testenv.Program('tests/prepare.c'),
-    testenv.Program('tests/test_aggregate.c'),
-    testenv.Program('tests/test_binary.c'),
-    testenv.Program('tests/test_create_view.c'),
-    testenv.Program('tests/test_defpointtype.c'),
-    testenv.Program('tests/test_deftype.c'),
-    testenv.Program('tests/test_delete.c'),
-    testenv.Program('tests/test_extend.c'),
-    testenv.Program('tests/test_union.c'),
-    testenv.Program('tests/test_minus.c'),
-    testenv.Program('tests/test_intersect.c'),
-    testenv.Program('tests/test_join.c'),
-    testenv.Program('tests/test_keys.c'),
-    testenv.Program('tests/test_null.c'),
-    testenv.Program('tests/test_pointtable.c'),
-    testenv.Program('tests/test_print_view.c'),
-    testenv.Program('tests/test_project.c'),
-    testenv.Program('tests/test_ra.c'),
-    testenv.Program('tests/test_regexp.c'),
-    testenv.Program('tests/test_rename.c'),
-    testenv.Program('tests/test_select.c'),
-    testenv.Program('tests/test_summarize.c'),
-    testenv.Program('tests/test_update.c'),
-    testenv.Program('tests/test_utypetable.c'),
-    testenv.Program('tests/test_defpointtype.c'),
-    testenv.Program('tests/test_pointtable.c'),
-    testenv.Program('tests/test_srupdate.c'),
-    testenv.Program('tests/test_insert.c'),
-    testenv.Program('tests/test_2db.c'),
-    testenv.Program('tests/test_defop.c'),
-    testenv.Program('tests/test_callop.c'),
-    testenv.Program('tests/test_print_opview.c'),
-    testenv.Program('tests/test_dropop.c'),
+testsrc = Split('util/lstables.c tests/tupletest.c '
+        'tests/maptest.c tests/prepare.c tests/test_aggregate.c '
+        'tests/test_binary.c tests/test_create_view.c '
+        'tests/test_defpointtype.c tests/test_deftype.c '
+        'tests/test_delete.c tests/test_extend.c '
+        'tests/test_union.c tests/test_minus.c '
+        'tests/test_intersect.c tests/test_join.c '
+        'tests/test_keys.c tests/test_null.c '
+        'tests/test_pointtable.c tests/test_print_view.c '
+        'tests/test_project.c tests/test_ra.c '
+        'tests/test_regexp.c tests/test_rename.c tests/test_select.c '
+        'tests/test_summarize.c tests/test_update.c tests/test_utypetable.c '
+        'tests/test_pointtable.c tests/test_srupdate.c '
+        'tests/test_insert.c tests/test_2db.c '
+        'tests/test_defop.c tests/test_callop.c '
+        'tests/test_print_opview.c tests/test_dropop.c')
 
-    testenv.SharedLibrary('tests/point.c'),
-    testenv.SharedLibrary('tests/plus.c')]
+testlibsrc = ['tests/point.c', 'tests/plus.c']
+
+testbins = []
+for s in testsrc:
+    testbins.append(testenv.Program(s))
+for s in testlibsrc:
+    testbins.append(testenv.SharedLibrary(s))
+
+test_scripts = Split('tests/aggr.test tests/constraints.test tests/convert.test '
+        'tests/ctests.test tests/db2.test tests/deedum.test tests/index.test '
+        'tests/invtable.test tests/ltables.test tests/massign.test '
+        'tests/oindex.test tests/operator.test tests/opt.test '
+        'tests/parse.test tests/project.test tests/qqueries.test '
+        'tests/rel.test tests/rollback.test tests/rtables.test '
+        'tests/sdivide.test tests/string.test tests/subset.test '
+        'tests/tuple.test tests/update.test tests/utype.test '
+        'tests/vtables.test tests/all.tcl tests/testutil.tcl tests/setup.tcl')
 
 #
 # Installation
 #
 
+gen_hdrs = Split('gen/hashmap.h gen/hashmapit.h gen/hashtable.h '
+        'gen/hashtabit.h gen/strfns.h gen/types.h')
+rec_hdrs = Split('rec/cursor.h rec/env.h rec/index.h rec/recmap.h')
+rel_hdrs = Split('rel/rdb.h rel/typeimpl.h')
+rel_ihdrs = Split('rel/catalog.h rel/delete.h rel/serialize.h '
+        'rel/insert.h rel/transform.h rel/internal.h '
+        'rel/optimize.h rel/update.h rel/qresult.h')
+dli_hdrs = ['dli/parse.h']
+dli_ihdrs = ['dli/exparse.h', 'dli/tabletostr.h']
+durotcl_hdrs = ['tcl/duro.h']
+testlib_hdrs = ['tests/point.h']
+
+tcltools = ['tcl/duroadmin.tcl', 'tcl/durodump.tcl']
+
 env.Alias('install', installdir)
 
-env.Install(installdir + '/include/gen',
-        Split('gen/hashmap.h gen/hashmapit.h gen/hashtable.h '
-        'gen/hashtabit.h gen/strfns.h gen/types.h'))
-env.Install(installdir + '/include/rec',
-    Split('rec/cursor.h rec/env.h rec/index.h rec/recmap.h'))
-env.Install(installdir + '/include/rel',
-    Split('rel/rdb.h rel/typeimpl.h dli/parse.h'))
-env.Install(installdir + '/bin',
-        ['tcl/duroadmin.tcl', 'tcl/durodump.tcl'])
+env.Install(installdir + '/include/gen', gen_hdrs)
+env.Install(installdir + '/include/rec', rec_hdrs)
+env.Install(installdir + '/include/rel', rel_hdrs)
+env.Install(installdir + '/include/dli', dli_hdrs)
+env.Install(installdir + '/bin', tcltools)
 
 env.Install(installdir + '/lib', libduro)
 dst_libdurotcl = env.Install(installdir + '/lib', libdurotcl)
@@ -160,20 +173,53 @@ env.Command(installdir + '/lib/pkgIndex.tcl',
                 + libdurotcl[0].path + ' util.tcl'),
         'tclsh .tmp.tcl'])
 
-env.Install(installdir + '/docs',
-        ['docs/api-spec.html', 'docs/expressions.html', 'docs/utils.html'])
+durodocs = ['docs/api-spec.html', 'docs/expressions.html', 'docs/utils.html']
 
-env.Install(installdir + '/docs/tcl',
-        Split('docs/tcl/index.html docs/tcl/array.html '
-                'docs/tcl/begin.html docs/tcl/call.html '
-                'docs/tcl/commit.html docs/tcl/db.html docs/tcl/delete.html '
-                'docs/tcl/env.html docs/tcl/expr.html docs/tcl/insert.html '
-                'docs/tcl/operator.html docs/tcl/ptable.html docs/tcl/rollback.html '
-                'docs/tcl/txdb.html docs/tcl/table.html docs/tcl/update.html '
-                'docs/tcl/type.html docs/tcl/indexcmd.html docs/tcl/constraint.html '
-                'docs/tcl/massign.html docs/tcl/errorCode.html'))
+durotcldocs = Split('docs/tcl/index.html docs/tcl/array.html '
+        'docs/tcl/begin.html docs/tcl/call.html '
+        'docs/tcl/commit.html docs/tcl/db.html docs/tcl/delete.html '
+        'docs/tcl/env.html docs/tcl/expr.html docs/tcl/insert.html '
+        'docs/tcl/operator.html docs/tcl/ptable.html docs/tcl/rollback.html '
+        'docs/tcl/txdb.html docs/tcl/table.html docs/tcl/update.html '
+        'docs/tcl/type.html docs/tcl/indexcmd.html docs/tcl/constraint.html '
+        'docs/tcl/massign.html docs/tcl/errorCode.html')
+
+env.Install(installdir + '/docs', durodocs)
+
+env.Install(installdir + '/docs/tcl', durotcldocs)
 
 check = env.Command('tests/passed', [libduro, libdurotcl, testbins],
-        "tests/all.tcl -verbose '{pass error}'")
+        'tests/all.tcl -verbose "{pass error}"',
+        ENV = {'LIBDUROTCL' : str(libdurotcl[0]), 'PATH' : os.environ['PATH']})
 
 env.Alias('check', check)
+
+#
+# Distribution tarfile
+#
+
+disttar = 'duro-' + release + '.tar.gz'
+
+env.Tar(disttar, 'SConstruct')
+env.Tar(disttar, durosrc)
+env.Tar(disttar, durotclsrc)
+env.Tar(disttar, durodocs)
+env.Tar(disttar, durotcldocs)
+env.Tar(disttar, durotcl_hdrs)
+env.Tar(disttar, testsrc)
+env.Tar(disttar, testlibsrc)
+env.Tar(disttar, gen_hdrs)
+env.Tar(disttar, rec_hdrs)
+env.Tar(disttar, rel_hdrs)
+env.Tar(disttar, rel_ihdrs)
+env.Tar(disttar, dli_hdrs)
+env.Tar(disttar, dli_ihdrs)
+env.Tar(disttar, testlib_hdrs)
+env.Tar(disttar, test_scripts)
+env.Tar(disttar, tcltools)
+env.Tar(disttar, ['dli/exparse.y', 'dli/exlex.l'])
+env.Tar(disttar, 'tcl/util.tcl')
+env.Tar(disttar, 'dli/exparse.y')
+env.Tar(disttar, 'dli/exlex.l')
+
+env.Alias('dist', disttar)

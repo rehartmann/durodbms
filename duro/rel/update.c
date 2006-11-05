@@ -582,6 +582,9 @@ update_where_index_simple(RDB_expression *texp, RDB_expression *condp,
     RDB_expression *refexp;
     _RDB_tbindex *indexp;
     int objc;
+    RDB_field *fv;
+    RDB_object *valv;
+    RDB_field *fieldv;
     RDB_cursor *curp = NULL;
 
     if (texp->var.op.argv[0]->kind == RDB_EX_TBP) {
@@ -592,9 +595,9 @@ update_where_index_simple(RDB_expression *texp, RDB_expression *condp,
     }
     objc = refexp->var.tbref.indexp->attrc;
 
-    RDB_field *fv = malloc(sizeof(RDB_field) * objc);
-    RDB_object *valv = malloc(sizeof(RDB_object) * updc);
-    RDB_field *fieldv = malloc(sizeof(RDB_field) * updc);
+    fv = malloc(sizeof(RDB_field) * objc);
+    valv = malloc(sizeof(RDB_object) * updc);
+    fieldv = malloc(sizeof(RDB_field) * updc);
 
     if (fv == NULL || valv == NULL || fieldv == NULL) {
         free(fv);

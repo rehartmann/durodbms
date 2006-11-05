@@ -13,116 +13,108 @@ package require tcltest 2.2
 eval ::tcltest::configure $argv
 namespace import ::tcltest::*
 
-set SETUP {
-    set scriptdir [file dirname [info script]]
-    load $scriptdir/../libdurotcl.so
-    source $scriptdir/testutil.tcl
-
-    # Create DB environment dir, ensure it's empty
-    removeDirectory dbenv
-    makeDirectory dbenv
-}
+source [file dirname [info script]]/setup.tcl
 
 test sdivide {DIVIDE BY PER} -setup $SETUP -body {
     set dbenv [duro::env open [configure -tmpdir]/dbenv]
-	
-	# Create Database
-	duro::db create $dbenv TEST
-	
-	set tx [duro::begin $dbenv TEST]
-	
-	# Create tables
-	
-	duro::table create S {
-	    {SNO STRING}
-	} {{SNO}} $tx
-	
-	duro::table create P {
-	    {PNO STRING}
-	} {{PNO}} $tx
-	
-	duro::table create SP {
-	    {SNO STRING}
-	    {PNO STRING}
-	} {{SNO PNO}} $tx
-	
-	duro::table expr -global DIV {S DIVIDEBY P PER SP} $tx
-	
-	duro::insert S {SNO S1} $tx
-	duro::insert S {SNO S2} $tx
-	duro::insert S {SNO S3} $tx
-	duro::insert S {SNO S4} $tx
-	duro::insert S {SNO S5} $tx
-	
-	duro::insert P {PNO P1} $tx
-	
-	duro::insert SP {SNO S1 PNO P1} $tx
-	duro::insert SP {SNO S1 PNO P2} $tx
-	duro::insert SP {SNO S1 PNO P3} $tx
-	duro::insert SP {SNO S1 PNO P4} $tx
-	duro::insert SP {SNO S1 PNO P5} $tx
-	duro::insert SP {SNO S1 PNO P6} $tx
-	duro::insert SP {SNO S2 PNO P1} $tx
-	duro::insert SP {SNO S2 PNO P2} $tx
-	duro::insert SP {SNO S3 PNO P2} $tx
-	duro::insert SP {SNO S4 PNO P2} $tx
-	duro::insert SP {SNO S4 PNO P4} $tx
-	duro::insert SP {SNO S4 PNO P5} $tx
-	
-	duro::commit $tx
-	
-	# Close DB environment
-	duro::env close $dbenv
-	
-	# Reopen DB environment
-	set dbenv [duro::env open [configure -tmpdir]/dbenv]
 
-	set tx [duro::begin $dbenv TEST]
-	
-	set a [duro::array create DIV {SNO asc} $tx]
-	checkarray $a { {SNO S1} {SNO S2} } $tx
-	duro::array drop $a
-	
-	duro::delete P {PNO = "P1"} $tx
-	duro::insert P {PNO P2} $tx
-	duro::insert P {PNO P4} $tx
-	
-	set a [duro::array create DIV {SNO asc} $tx]
-	checkarray $a { {SNO S1} {SNO S4} } $tx
-	duro::array drop $a
-	
-	duro::insert P {PNO P1} $tx 
-	duro::insert P {PNO P3} $tx
-	duro::insert P {PNO P5} $tx
-	duro::insert P {PNO P6} $tx
-	
-	set a [duro::array create DIV $tx]
-	checkarray $a { {SNO S1} } $tx
-	duro::array drop $a
-	
-	set r [duro::table contains DIV {SNO S1} $tx]
-	if {!$r} {
-	    error "Result of DIVIDE does not contain {SNO S1}, but should"
-	}
-	
-	set r [duro::table contains DIV {SNO S2} $tx]
-	if {$r} {
-	    error "Result of DIVIDE contains {SNO S2}, but should not"
-	}
-	
-	set r [duro::table contains DIV {SNO S22} $tx]
-	if {$r} {
-	    error "Result of DIVIDE contains {SNO S22}, but should not"
-	}
-	
-	# Drop tables
-	
-	duro::table drop DIV $tx
-	duro::table drop S $tx
-	duro::table drop P $tx
-	duro::table drop SP $tx
-	
-	duro::commit $tx
+    # Create Database
+    duro::db create $dbenv TEST
+    
+    set tx [duro::begin $dbenv TEST]
+    
+    # Create tables
+    
+    duro::table create S {
+        {SNO STRING}
+    } {{SNO}} $tx
+    
+    duro::table create P {
+       {PNO STRING}
+    } {{PNO}} $tx
+   
+    duro::table create SP {
+        {SNO STRING}
+        {PNO STRING}
+    } {{SNO PNO}} $tx
+   
+    duro::table expr -global DIV {S DIVIDEBY P PER SP} $tx
+   
+    duro::insert S {SNO S1} $tx
+    duro::insert S {SNO S2} $tx
+    duro::insert S {SNO S3} $tx
+    duro::insert S {SNO S4} $tx
+    duro::insert S {SNO S5} $tx
+   
+    duro::insert P {PNO P1} $tx
+   
+    duro::insert SP {SNO S1 PNO P1} $tx
+    duro::insert SP {SNO S1 PNO P2} $tx
+    duro::insert SP {SNO S1 PNO P3} $tx
+    duro::insert SP {SNO S1 PNO P4} $tx
+    duro::insert SP {SNO S1 PNO P5} $tx
+    duro::insert SP {SNO S1 PNO P6} $tx
+    duro::insert SP {SNO S2 PNO P1} $tx
+    duro::insert SP {SNO S2 PNO P2} $tx
+    duro::insert SP {SNO S3 PNO P2} $tx
+    duro::insert SP {SNO S4 PNO P2} $tx
+    duro::insert SP {SNO S4 PNO P4} $tx
+    duro::insert SP {SNO S4 PNO P5} $tx
+    
+    duro::commit $tx
+    
+    # Close DB environment
+    duro::env close $dbenv
+    
+    # Reopen DB environment
+    set dbenv [duro::env open [configure -tmpdir]/dbenv]
+
+    set tx [duro::begin $dbenv TEST]
+    
+    set a [duro::array create DIV {SNO asc} $tx]
+    checkarray $a { {SNO S1} {SNO S2} } $tx
+    duro::array drop $a
+    
+    duro::delete P {PNO = "P1"} $tx
+    duro::insert P {PNO P2} $tx
+    duro::insert P {PNO P4} $tx
+    
+    set a [duro::array create DIV {SNO asc} $tx]
+    checkarray $a { {SNO S1} {SNO S4} } $tx
+    duro::array drop $a
+    
+    duro::insert P {PNO P1} $tx 
+    duro::insert P {PNO P3} $tx
+    duro::insert P {PNO P5} $tx
+    duro::insert P {PNO P6} $tx
+    
+    set a [duro::array create DIV $tx]
+    checkarray $a { {SNO S1} } $tx
+    duro::array drop $a
+    
+    set r [duro::table contains DIV {SNO S1} $tx]
+    if {!$r} {
+        error "Result of DIVIDE does not contain {SNO S1}, but should"
+    }
+   
+    set r [duro::table contains DIV {SNO S2} $tx]
+    if {$r} {
+        error "Result of DIVIDE contains {SNO S2}, but should not"
+    }
+   
+    set r [duro::table contains DIV {SNO S22} $tx]
+    if {$r} {
+        error "Result of DIVIDE contains {SNO S22}, but should not"
+    }
+   
+    # Drop tables
+   
+    duro::table drop DIV $tx
+    duro::table drop S $tx
+    duro::table drop P $tx
+    duro::table drop SP $tx
+   
+    duro::commit $tx
 }
 
 cleanupTests

@@ -7,15 +7,7 @@ exec tclsh "$0" ${1+"$@"}
 # Test tables with relation-valued attribute, GROUP and UNGROUP.
 #
 
-set SETUP {
-    set scriptdir [file dirname [info script]]
-    load $scriptdir/../libdurotcl.so
-    source $scriptdir/testutil.tcl
-
-    # Create DB environment dir, ensure it's empty
-    removeDirectory dbenv
-    makeDirectory dbenv
-}
+source [file dirname [info script]]/setup.tcl
 
 package require tcltest 2.2
 eval ::tcltest::configure $argv

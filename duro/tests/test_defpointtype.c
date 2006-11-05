@@ -7,21 +7,19 @@
 #include <stdio.h>
 
 RDB_attr pointcompv[] = {
-    { "X", &RDB_DOUBLE, NULL, 0 },
-    { "Y", &RDB_DOUBLE, NULL, 0 }
+    { "X", NULL, NULL, 0 },
+    { "Y", NULL, NULL, 0 }
 };
 
 RDB_attr polarcompv[] = {
-    { "THETA", &RDB_DOUBLE, NULL, 0 },
-    { "LENGTH", &RDB_DOUBLE, NULL, 0 }
+    { "THETA", NULL, NULL, 0 },
+    { "LENGTH", NULL, NULL, 0 }
 };
 
 RDB_possrep prv[] = {
     { "POINT", 2, pointcompv },
     { "POLAR", 2, polarcompv }
 };
-
-RDB_type *argtv[] = { &RDB_DOUBLE, &RDB_DOUBLE };
 
 int
 test_type(RDB_database *dbp, RDB_exec_context *ecp)
@@ -32,6 +30,16 @@ test_type(RDB_database *dbp, RDB_exec_context *ecp)
     RDB_type *updargtv[2];
     RDB_bool updv[2];
     RDB_type *getargtv[1];
+    RDB_type *argtv[2];
+
+    argtv[0] = &RDB_DOUBLE;
+    argtv[1] = &RDB_DOUBLE;
+
+    pointcompv[0].typ = &RDB_DOUBLE;
+    pointcompv[1].typ = &RDB_DOUBLE;
+
+    polarcompv[0].typ = &RDB_DOUBLE;
+    polarcompv[1].typ = &RDB_DOUBLE;
 
     ret = RDB_begin_tx(ecp, &tx, dbp, NULL);
     if (ret != RDB_OK) {

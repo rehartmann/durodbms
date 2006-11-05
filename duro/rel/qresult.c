@@ -2337,12 +2337,13 @@ _RDB_next_tuple(RDB_qresult *qrp, RDB_object *tplp, RDB_exec_context *ecp,
     }
 
     if (qrp->exp == NULL) {
-	    if (qrp->var.stored.tbp == NULL) {
-	        /* It's a sorter */
-	        return next_stored_tuple(qrp, qrp->matp, tplp, RDB_TRUE, RDB_FALSE,
-	                qrp->matp->typ->var.basetyp, ecp, txp);
-	    }
-        RDB_type *tpltyp = qrp->var.stored.tbp->typ->kind == RDB_TP_RELATION ?
+        RDB_type *tpltyp;
+        if (qrp->var.stored.tbp == NULL) {
+            /* It's a sorter */
+	    return next_stored_tuple(qrp, qrp->matp, tplp, RDB_TRUE, RDB_FALSE,
+                    qrp->matp->typ->var.basetyp, ecp, txp);
+	}
+        tpltyp = qrp->var.stored.tbp->typ->kind == RDB_TP_RELATION ?
                 qrp->var.stored.tbp->typ->var.basetyp
                 : qrp->var.stored.tbp->typ->var.scalar.arep->var.basetyp;
         return next_stored_tuple(qrp, qrp->var.stored.tbp, tplp, RDB_TRUE,
