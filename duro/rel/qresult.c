@@ -245,13 +245,13 @@ cleanup:
 }
 
 static int
-init_stored_qresult(RDB_qresult *qrp, RDB_object *tbp, RDB_exec_context *ecp,
-        RDB_transaction *txp)
+init_stored_qresult(RDB_qresult *qrp, RDB_object *tbp, RDB_expression *exp,
+        RDB_exec_context *ecp, RDB_transaction *txp)
 {
     int ret;
 
     qrp->nested = RDB_FALSE;
-    qrp->exp = NULL;
+    qrp->exp = exp;
     qrp->var.stored.tbp = tbp;
     if (tbp->var.tb.stp == NULL) {
         /*
@@ -480,7 +480,7 @@ summarize_qresult(RDB_qresult *qrp, RDB_exec_context *ecp,
         goto error;
     }
 
-    if (init_stored_qresult(qrp, qrp->matp, ecp, txp) != RDB_OK) {
+    if (init_stored_qresult(qrp, qrp->matp, NULL, ecp, txp) != RDB_OK) {
         RDB_drop_table(qrp->matp, ecp, txp);
         goto error;
     }
@@ -690,7 +690,7 @@ group_qresult(RDB_qresult *qrp, RDB_exec_context *ecp, RDB_transaction *txp)
         return RDB_ERROR;
     }
 
-    if (init_stored_qresult(qrp, qrp->matp, ecp, txp) != RDB_OK) {
+    if (init_stored_qresult(qrp, qrp->matp, NULL, ecp, txp) != RDB_OK) {
         RDB_drop_table(qrp->matp, ecp, txp);
         return RDB_ERROR;
     }
@@ -801,27 +801,27 @@ static int
 init_expr_qresult(RDB_qresult *qrp, RDB_expression *exp, RDB_exec_context *ecp,
         RDB_transaction *txp)
 {
-	if (exp->kind == RDB_EX_OBJ) {
-		return init_qresult(qrp, &exp->var.obj, ecp, txp);
-	}
-	if (exp->kind == RDB_EX_TBP) {
+    if (exp->kind == RDB_EX_OBJ) {
+        return init_qresult(qrp, &exp->var.obj, ecp, txp);
+    }
+    if (exp->kind == RDB_EX_TBP) {
         if (exp->var.tbref.indexp != NULL)
-		    return init_index_qresult(qrp, exp->var.tbref.tbp,
+            return init_index_qresult(qrp, exp->var.tbref.tbp,
                     exp->var.tbref.indexp, ecp, txp);
         return init_qresult(qrp, exp->var.tbref.tbp, ecp, txp);
-	}
-	if (exp->kind != RDB_EX_RO_OP) {
-    	RDB_raise_invalid_argument(
+    }
+    if (exp->kind != RDB_EX_RO_OP) {
+        RDB_raise_invalid_argument(
                 "invalid expression, must be object or operator", ecp);
-    	return RDB_ERROR;
-	}
+        return RDB_ERROR;
+    }
 
     qrp->exp = exp;
     qrp->endreached = RDB_FALSE;
     qrp->matp = NULL;
 
     if (strcmp(exp->var.op.name, "WHERE") == 0
-        && exp->var.op.optinfo.objpc > 0) {
+            && exp->var.op.optinfo.objpc > 0) {
         /* Check for index */
         _RDB_tbindex *indexp;
         if (exp->var.op.argv[0]->kind == RDB_EX_TBP) {
@@ -841,9 +841,10 @@ init_expr_qresult(RDB_qresult *qrp, RDB_expression *exp, RDB_exec_context *ecp,
         if (texp->kind == RDB_EX_TBP
                 && texp->var.tbref.tbp->kind == RDB_OB_TABLE
                 && texp->var.tbref.tbp->var.tb.stp != NULL) {
-            if (init_stored_qresult(qrp, texp->var.tbref.tbp, ecp, txp) != RDB_OK)
+            if (init_stored_qresult(qrp, texp->var.tbref.tbp, exp, ecp, txp)
+                    != RDB_OK) {
                 return RDB_ERROR;
-            qrp->exp = exp; /* !! */
+            }
         } else {
             qrp->nested = RDB_TRUE;
             qrp->var.children.qrp = _RDB_expr_qresult(exp->var.op.argv[0], ecp, txp);
@@ -853,7 +854,7 @@ init_expr_qresult(RDB_qresult *qrp, RDB_expression *exp, RDB_exec_context *ecp,
         }
         return RDB_OK;        
     }
-	if ((strcmp(exp->var.op.name, "WHERE") == 0)
+    if ((strcmp(exp->var.op.name, "WHERE") == 0)
             || (strcmp(exp->var.op.name, "UNION") == 0)
             || (strcmp(exp->var.op.name, "MINUS") == 0)
             || (strcmp(exp->var.op.name, "SEMIMINUS") == 0)
@@ -871,7 +872,7 @@ init_expr_qresult(RDB_qresult *qrp, RDB_expression *exp, RDB_exec_context *ecp,
             return RDB_ERROR;
         qrp->var.children.qr2p = NULL;
         return RDB_OK;        
-	}
+    }
     if (strcmp(exp->var.op.name, "GROUP") == 0) {
         return group_qresult(qrp, ecp, txp);
     }
@@ -884,8 +885,8 @@ init_expr_qresult(RDB_qresult *qrp, RDB_expression *exp, RDB_exec_context *ecp,
     if (strcmp(exp->var.op.name, "DIVIDE_BY_PER") == 0) {
         return sdivide_qresult(qrp, ecp, txp);
     }    
-   	RDB_raise_operator_not_found(exp->var.op.name, ecp);
-  	return RDB_ERROR;
+       RDB_raise_operator_not_found(exp->var.op.name, ecp);
+      return RDB_ERROR;
 }
 
 RDB_qresult *
@@ -914,7 +915,7 @@ init_qresult(RDB_qresult *qrp, RDB_object *tbp, RDB_exec_context *ecp,
     qrp->matp = NULL;
 
     if (tbp->var.tb.exp == NULL) {
-    	return init_stored_qresult(qrp, tbp, ecp, txp);
+        return init_stored_qresult(qrp, tbp, NULL, ecp, txp);
     }
     return init_expr_qresult(qrp, tbp->var.tb.exp, ecp, txp);
 }
@@ -1158,14 +1159,7 @@ _RDB_sorter(RDB_expression *texp, RDB_qresult **qrpp, RDB_exec_context *ecp,
     if (ret != RDB_OK)
         goto error;
 
-/* !!
-    if (qrp->matp != NULL) {
-        RDB_drop_table(qrp->matp, ecp, NULL);
-        exit(0);
-    }
-*/
-
-    ret = init_stored_qresult(qrp, qrp->matp, ecp, txp);
+    ret = init_stored_qresult(qrp, qrp->matp, NULL, ecp, txp);
     if (ret != RDB_OK)
         goto error;
 
