@@ -10,6 +10,7 @@
 #include "typeimpl.h"
 #include "serialize.h"
 #include "catalog.h"
+#include <dli/tabletostr.h>
 #include <gen/hashmapit.h>
 #include <gen/hashtabit.h>
 #include <gen/strfns.h>
@@ -987,7 +988,22 @@ RDB_create_table(const char *name, RDB_bool persistent,
 
     for (i = 0; i < attrc; i++) {
         if (!_RDB_legal_name(attrv[i].name)) {
-            RDB_raise_invalid_argument("invalid attribute name", ecp);
+            RDB_object str;
+        
+            RDB_init_obj(&str);
+            if (RDB_string_to_obj(&str, "invalid attribute name: ", ecp)
+                    != RDB_OK) {
+                RDB_destroy_obj(&str, ecp);
+                return NULL;
+            }
+
+            if (RDB_append_string(&str, attrv[i].name, ecp) != RDB_OK) {
+                RDB_destroy_obj(&str, ecp);
+                return NULL;
+            }
+
+            RDB_raise_invalid_argument(RDB_obj_string(&str), ecp);
+            RDB_destroy_obj(&str, ecp);            
             return NULL;
         }
     }

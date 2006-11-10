@@ -30,13 +30,28 @@ test invtable {invalid table definitions} -setup $SETUP -body {
            {A INTEGER}
        } {{A}} $tx
     }]} {
-       error "Creation of table \"T 1\" should fail, but succeeded"
+        error "table creation should fail, but succeeded"
     }
-    
+    if {![string match INVALID_ARGUMENT_ERROR* [lindex $::errorCode 1]]} {
+        error "unexpected errorCode: $::errorCode"
+    }
+
     if {![catch {
         duro::table drop "T 1" $tx
     }]} {
-        error "Table \"T 1\" should not exist, but does"
+        error "table \"T 1\" should not exist, but does"
+    }
+
+    if {![catch {
+        duro::table create T1 {
+            {A INTEGER}
+            {{A B} INTEGER}
+        } {{A}} $tx
+    }]} {
+        error "table creation should fail, but succeeded"
+    }
+    if {![string match {INVALID_ARGUMENT_ERROR*A B*} [lindex $::errorCode 1]]} {
+        error "invalid errorCode: $::errorCode"
     }
     
     if {![catch {
@@ -45,13 +60,13 @@ test invtable {invalid table definitions} -setup $SETUP -body {
             {A STRING}
         } {{A}} $tx
     }]} {
-        error "Creation of table T1 should fail, but succeeded"
+        error "creation of table T1 should fail, but succeeded"
     }
     
     if {![catch {
         duro::table drop T1 $tx
     }]} {
-        error "Table T1 should not exist, but does"
+        error "table T1 should not exist, but does"
     }
     
     if {![catch {
@@ -60,13 +75,13 @@ test invtable {invalid table definitions} -setup $SETUP -body {
            {A2 STRING}
         } {{A1 A1}} $tx
     }]} {
-        error "Creation of table T2 should fail, but succeeded"
+        error "creation of table T2 should fail, but succeeded"
     }
     
     if {![catch {
         duro::table drop T2 $tx
     }]} {
-        error "Table T2 should not exist, but does"
+        error "table T2 should not exist, but does"
     }
     
     if {![catch {
@@ -75,13 +90,13 @@ test invtable {invalid table definitions} -setup $SETUP -body {
            {A2 STRING}
         } {{A1} {A1 A2}} $tx
     }]} {
-        error "Creation of table T3 should fail, but succeeded"
+        error "creation of table T3 should fail, but succeeded"
     }
     
     if {![catch {
         duro::table drop T3 $tx
     }]} {
-        error "Table T3 should not exist, but does"
+        error "table T3 should not exist, but does"
     }
     
     duro::table create T {{A INTEGER}} {{A}} $tx
@@ -89,13 +104,13 @@ test invtable {invalid table definitions} -setup $SETUP -body {
     if {![catch {
         duro::table expr X {EXTEND T ADD (C AS B)} $tx
     }]} {
-        error "Creation of table X should fail, but succeeded"
+        error "creation of table X should fail, but succeeded"
     }
 
     if {![catch {
         duro::table expr P {T {ALL BUT A, A}} $tx
     }]} {
-        error "Creation of table P should fail, but succeeded"
+        error "creation of table P should fail, but succeeded"
     }
     
     duro::rollback $tx

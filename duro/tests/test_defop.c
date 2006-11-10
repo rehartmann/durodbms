@@ -3,8 +3,15 @@
 #include <rel/rdb.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <assert.h>
 
-int
+#ifdef _WIN32
+#define SHLIB "plus"
+#else
+#define SHLIB "libplus"
+#endif
+
+void
 test_defop(RDB_database *dbp, RDB_exec_context *ecp)
 {
     RDB_transaction tx;
@@ -23,25 +30,17 @@ test_defop(RDB_database *dbp, RDB_exec_context *ecp)
     RDB_bool updv[] = { RDB_TRUE, RDB_FALSE };
 
     ret = RDB_begin_tx(ecp, &tx, dbp, NULL);
-    if (ret != RDB_OK) {
-        return ret;
-    }
+    assert(ret == RDB_OK);
 
-    ret = RDB_create_ro_op("PLUS", 2, plusargtv, &RDB_INTEGER, "libplus",
+    ret = RDB_create_ro_op("PLUS", 2, plusargtv, &RDB_INTEGER, SHLIB,
             "RDBU_plus", NULL, 0, ecp, &tx);
-    if (ret != RDB_OK) {
-        RDB_rollback(ecp, &tx);
-        return ret;
-    }
+    assert(ret == RDB_OK);
 
-    ret = RDB_create_update_op("ADD", 2, addargtv, updv, "libplus", "RDBU_add",
+    ret = RDB_create_update_op("ADD", 2, addargtv, updv, SHLIB, "RDBU_add",
             NULL, 0, ecp, &tx);
-    if (ret != RDB_OK) {
-        RDB_rollback(ecp, &tx);
-        return ret;
-    }
+    assert(ret == RDB_OK);
 
-    return RDB_commit(ecp, &tx);
+    assert(RDB_commit(ecp, &tx) == RDB_OK);
 }
 
 int
@@ -67,12 +66,7 @@ main(void)
         return 1;
     }
 
-    ret = test_defop(dbp, &ec);
-    if (ret != RDB_OK) {
-        fprintf(stderr, "Error: %s\n", RDB_type_name(RDB_obj_type(RDB_get_err(&ec))));
-        RDB_destroy_exec_context(&ec);
-        return 2;
-    }
+    test_defop(dbp, &ec);
     RDB_destroy_exec_context(&ec);
 
     ret = RDB_close_env(envp);

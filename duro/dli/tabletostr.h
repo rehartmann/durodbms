@@ -16,6 +16,10 @@ enum {
 };
 
 int
+RDB_print_obj(const RDB_object *, FILE *,
+        RDB_exec_context *, RDB_transaction *);
+
+int
 _RDB_print_expr(RDB_expression *, FILE *,
         RDB_exec_context *, RDB_transaction *);
 
@@ -26,5 +30,8 @@ _RDB_obj_to_str(RDB_object *dstp, const RDB_object *srcp,
 int
 _RDB_expr_to_str(RDB_object *dstp, const RDB_expression *exp,
         RDB_exec_context *, RDB_transaction *, int options);
+
+int
+RDB_append_string(RDB_object *objp, const char *str, RDB_exec_context *);
 
 #endif

@@ -1,4 +1,5 @@
 LIBRARY durotcl
-; $Id$
 EXPORTS
     Durotcl_Init
+    Duro_invoke_ro_op
+    Duro_invoke_update_op

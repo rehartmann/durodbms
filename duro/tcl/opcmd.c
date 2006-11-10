@@ -156,7 +156,13 @@ operator_create_cmd(ClientData data, Tcl_Interp *interp, int objc,
         }
 
         ret = RDB_create_update_op(Tcl_GetString(objv[2]),
-                argc, argtv, updv, "libdurotcl", "Duro_invoke_update_op",
+                argc, argtv, updv,
+#ifdef _WIN32
+                "durotcl",
+#else
+                "libdurotcl",
+#endif
+                "Duro_invoke_update_op",
                 txtp, (size_t) len, statep->current_ecp, txp);
         Tcl_Free(updv);
     } else {
@@ -168,7 +174,12 @@ operator_create_cmd(ClientData data, Tcl_Interp *interp, int objc,
         }
 
         ret = RDB_create_ro_op(Tcl_GetString(objv[2]), argc, argtv, rtyp,
-                "libdurotcl", "Duro_invoke_ro_op", txtp, (size_t) len,
+#ifdef _WIN32
+                "durotcl",
+#else
+                "libdurotcl",
+#endif
+                 "Duro_invoke_ro_op", txtp, (size_t) len,
                 statep->current_ecp, txp);
     }    
     if (ret != RDB_OK) {

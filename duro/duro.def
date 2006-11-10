@@ -193,3 +193,6 @@ _RDB_expr_to_str
 RDB_table_ref_to_expr
 RDB_add_arg
 _RDB_init_builtin_types
+RDB_print_obj
+RDB_obj_irep
+RDB_irep_to_obj

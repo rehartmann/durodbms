@@ -63,13 +63,13 @@ durosrc = ['gen/hashmap.c', 'gen/hashmapit.c',
         'dli/exparse.c', 'dli/exlex.c', 'dli/parse.c', 'dli/tabletostr.c']
 
 if env['PLATFORM'] == 'win32':
-    durosrc.append('duro.def')
     duroccflags = '/DNO_DLL_IMPORT'
+    libduro = env.SharedLibrary('duro', durosrc + ['duro.def'],
+            LIBS = durolibs, CCFLAGS = duroccflags)
 else:
     duroccflags = env['CCFLAGS']
-
-libduro = env.SharedLibrary('duro', durosrc,
-        LIBS = durolibs, CCFLAGS = duroccflags)
+    libduro = env.SharedLibrary('duro', durosrc,
+            LIBS = durolibs, CCFLAGS = duroccflags)
 
 #
 # Tcl interface
@@ -84,10 +84,12 @@ durotclsrc = ['tcl/duro.c', 'tcl/envcmd.c',
 libdurotcllibs = ['duro']
 
 if env['PLATFORM'] == 'win32':
-    durotclsrc.append('durotcl.def')
     libdurotcllibs += ['tcl84', 'libdb44']
-
-libdurotcl = env.SharedLibrary('durotcl', durotclsrc, LIBS = libdurotcllibs)
+    libdurotcl = env.SharedLibrary('durotcl', durotclsrc + ['durotcl.def'],
+            LIBS = libdurotcllibs)
+else:
+    libdurotcl = env.SharedLibrary('durotcl', durotclsrc,
+            LIBS = libdurotcllibs)
 
 #
 # Defaults
@@ -114,18 +116,26 @@ testsrc = Split('util/lstables.c tests/tupletest.c '
         'tests/test_project.c tests/test_ra.c '
         'tests/test_regexp.c tests/test_rename.c tests/test_select.c '
         'tests/test_summarize.c tests/test_update.c tests/test_utypetable.c '
-        'tests/test_pointtable.c tests/test_srupdate.c '
-        'tests/test_insert.c tests/test_2db.c '
+        'tests/test_srupdate.c tests/test_insert.c tests/test_2db.c '
         'tests/test_defop.c tests/test_callop.c '
         'tests/test_print_opview.c tests/test_dropop.c')
 
-testlibsrc = ['tests/point.c', 'tests/plus.c']
+testlibsrc = ['tests/point.c', 'tests/point.def', 'tests/plus.c',
+        'tests/plus.def']
 
 testbins = []
 for s in testsrc:
     testbins.append(testenv.Program(s))
-for s in testlibsrc:
-    testbins.append(testenv.SharedLibrary(s))
+
+if env['PLATFORM'] == 'win32':
+    testbins.append(testenv.SharedLibrary(['tests/point.c', 'tests/point.def']))
+else:
+    testbins.append(testenv.SharedLibrary(['tests/point.c']))
+
+if env['PLATFORM'] == 'win32':
+    testbins.append(testenv.SharedLibrary(['tests/plus.c', 'tests/plus.def']))
+else:
+    testbins.append(testenv.SharedLibrary(['tests/plus.c']))
 
 test_scripts = Split('tests/aggr.test tests/constraints.test tests/convert.test '
         'tests/ctests.test tests/db2.test tests/deedum.test tests/index.test '
@@ -163,7 +173,11 @@ env.Install(installdir + '/include/rel', rel_hdrs)
 env.Install(installdir + '/include/dli', dli_hdrs)
 env.Install(installdir + '/bin', tcltools)
 
-env.Install(installdir + '/lib', libduro)
+if env['PLATFORM'] == 'win32':
+    env.Install(installdir + '/bin', libduro)
+else:
+    env.Install(installdir + '/lib', libduro)
+
 dst_libdurotcl = env.Install(installdir + '/lib', libdurotcl)
 dst_utiltcl = env.Install(installdir + '/lib', 'tcl/util.tcl')
 
@@ -189,7 +203,7 @@ env.Install(installdir + '/docs', durodocs)
 env.Install(installdir + '/docs/tcl', durotcldocs)
 
 check = env.Command('tests/passed', [libduro, libdurotcl, testbins],
-        'tests/all.tcl -verbose "{pass error}"',
+        'tclsh tests/all.tcl -verbose "{pass error}"',
         ENV = {'LIBDUROTCL' : str(libdurotcl[0]), 'PATH' : os.environ['PATH']})
 
 env.Alias('check', check)
@@ -205,6 +219,7 @@ env.Tar(disttar, durosrc)
 env.Tar(disttar, durotclsrc)
 env.Tar(disttar, durodocs)
 env.Tar(disttar, durotcldocs)
+env.Tar(disttar, ['duro.def', 'durotcl.def'])
 env.Tar(disttar, durotcl_hdrs)
 env.Tar(disttar, testsrc)
 env.Tar(disttar, testlibsrc)

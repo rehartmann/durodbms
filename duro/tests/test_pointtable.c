@@ -1,6 +1,7 @@
 /* $Id$ */
 
 #include <rel/rdb.h>
+#include <dli/tabletostr.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <assert.h>
@@ -13,7 +14,7 @@ RDB_string_vec upoint_keyattrs[] = {
 
 RDB_type *pointtyp;
 
-int
+void
 create_table(RDB_database *dbp, RDB_exec_context *ecp)
 {
     RDB_transaction tx;
@@ -22,51 +23,38 @@ create_table(RDB_database *dbp, RDB_exec_context *ecp)
     int ret;
    
     ret = RDB_begin_tx(ecp, &tx, dbp, NULL);
-    if (ret != RDB_OK) {
-        return ret;
-    }
+    assert(ret == RDB_OK);
 
     utype_attrs[0].name = "POINT";
     pointtyp = RDB_get_type("POINT", ecp, &tx);
-    if (pointtyp == NULL) {
-        RDB_rollback(ecp, &tx);
-        return RDB_ERROR;
-    }
+    assert(pointtyp != NULL);
     utype_attrs[0].typ = pointtyp;
     utype_attrs[0].defaultp = NULL;
 
     tbp = RDB_create_table("POINTTEST", RDB_TRUE, 1, utype_attrs,
             1, upoint_keyattrs, ecp, &tx);
-    if (tbp == NULL) {
-        RDB_rollback(ecp, &tx);
-        return RDB_ERROR;
-    }
+    assert(tbp != NULL);
 
-    return RDB_commit(ecp, &tx);
+    assert(RDB_commit(ecp, &tx) == RDB_OK);
 }
 
-int
+void
 test_insert(RDB_database *dbp, RDB_exec_context *ecp)
 {
     int ret;
     RDB_object tpl;
     RDB_transaction tx;
-    RDB_object*tbp;
+    RDB_object *tbp;
     RDB_object xval, yval;
     RDB_object pval;
     RDB_object lenval, thval;
     RDB_object *compv[2];
 
     ret = RDB_begin_tx(ecp, &tx, dbp, NULL);
-    if (ret != RDB_OK) {
-        return ret;
-    }
+    assert(ret == RDB_OK);
 
     tbp = RDB_get_table("POINTTEST", ecp, &tx);
-    if (tbp == NULL) {
-        RDB_rollback(ecp, &tx);
-        return RDB_ERROR;
-    }
+    assert(tbp != NULL);
 
     RDB_init_obj(&tpl);
 
@@ -82,42 +70,36 @@ test_insert(RDB_database *dbp, RDB_exec_context *ecp)
     compv[0] = &xval;
     compv[1] = &yval;
     ret = RDB_call_ro_op("POINT", 2, compv, ecp, &tx, &pval);
-    if (ret != RDB_OK)
-        goto error;
+    if (ret != RDB_OK) {
+        fprintf(stderr, "Error at %s:%d: ", __FILE__, __LINE__);
+        RDB_print_obj(RDB_get_err(ecp), stderr, ecp, &tx);
+        fputs("\n", stderr);
+        abort();
+    }
+
+    assert(ret == RDB_OK);
 
     ret = RDB_tuple_set(&tpl, "POINT", &pval, ecp);
-    if (ret != RDB_OK) {
-        goto error;
-    }
+    assert(ret == RDB_OK);
 
     ret = RDB_insert(tbp, &tpl, ecp, &tx);
-    if (ret != RDB_OK) {
-        goto error;
-    }
+    assert(ret == RDB_OK);
 
     ret = RDB_obj_comp(&pval, "THETA", &thval, ecp, &tx);
-    if (ret != RDB_OK) {
-        goto error;
-    }
+    assert(ret == RDB_OK);
 
     ret = RDB_obj_comp(&pval, "LENGTH", &lenval, ecp, &tx);
-    if (ret != RDB_OK) {
-        goto error;
-    }
+    assert(ret == RDB_OK);
 
     RDB_double_to_obj(&lenval, RDB_obj_double(&lenval) * 2.0);
 
     RDB_obj_set_comp(&pval, "LENGTH", &lenval, ecp, &tx);
 
     ret = RDB_tuple_set(&tpl, "POINT", &pval, ecp);
-    if (ret != RDB_OK) {
-        goto error;
-    }
+    assert(ret == RDB_OK);
 
     ret = RDB_insert(tbp, &tpl, ecp, &tx);
-    if (ret != RDB_OK) {
-        goto error;
-    }
+    assert(ret == RDB_OK);
 
     RDB_destroy_obj(&tpl, ecp);
     RDB_destroy_obj(&xval, ecp);
@@ -126,21 +108,10 @@ test_insert(RDB_database *dbp, RDB_exec_context *ecp)
     RDB_destroy_obj(&lenval, ecp);
     RDB_destroy_obj(&thval, ecp);
 
-    return RDB_commit(ecp, &tx);
-
-error:
-    RDB_destroy_obj(&tpl, ecp);
-    RDB_destroy_obj(&xval, ecp);
-    RDB_destroy_obj(&yval, ecp);
-    RDB_destroy_obj(&pval, ecp);
-    RDB_destroy_obj(&lenval, ecp);
-    RDB_destroy_obj(&thval, ecp);
-
-    RDB_rollback(ecp, &tx);
-    return RDB_ERROR;
+    assert(RDB_commit(ecp, &tx) == RDB_OK);
 }
 
-int
+void
 test_query(RDB_database *dbp, RDB_exec_context *ecp)
 {
     RDB_object *tplp;
@@ -156,45 +127,37 @@ test_query(RDB_database *dbp, RDB_exec_context *ecp)
     int i;
 
     ret = RDB_begin_tx(ecp, &tx, dbp, NULL);
-    if (ret != RDB_OK) {
-        return ret;
-    }
+    assert(ret == RDB_OK);
 
     RDB_init_obj(&array);
     RDB_init_obj(&xval);
     RDB_init_obj(&yval);
 
     tbp = RDB_get_table("POINTTEST", ecp, &tx);
-    if (tbp == NULL) {
-        goto error;
-    }
+    assert(tbp != NULL);
 
     ret = RDB_table_to_array(&array, tbp, 0, NULL, ecp, &tx);
-    if (ret != RDB_OK) {
-        goto error;
-    } 
- 
+    assert(ret == RDB_OK);
+
     for (i = 0; (tplp = RDB_array_get(&array, i, ecp)) != NULL; i++) {
         RDB_object *pvalp = RDB_tuple_get(tplp, "POINT");
 
         ret = RDB_obj_comp(pvalp, "X", &xval, ecp, &tx);
+        assert(ret == RDB_OK);
         ret = RDB_obj_comp(pvalp, "Y", &yval, ecp, &tx);
+        assert(ret == RDB_OK);
 
         printf("X=%f, Y=%f\n", (float)RDB_obj_double(&xval),
                 (float)RDB_obj_double(&yval));
     }
-    if (RDB_obj_type(RDB_get_err(ecp)) != &RDB_NOT_FOUND_ERROR) {
-        goto error;
-    }
+    assert(RDB_obj_type(RDB_get_err(ecp)) == &RDB_NOT_FOUND_ERROR);
     RDB_clear_err(ecp);
 
     exp = RDB_ro_op("WHERE", 2, ecp);
-    if (exp == NULL)
-        goto error;
+    assert(exp != NULL);
     
     argp = RDB_table_ref_to_expr(tbp, ecp);
-    if (argp == NULL)
-        goto error;
+    assert(argp != NULL);
     RDB_add_arg(exp, argp);
 
     wherep = RDB_expr_var("POINT", ecp);
@@ -206,28 +169,20 @@ test_query(RDB_database *dbp, RDB_exec_context *ecp)
     assert(tmptbp != NULL);
 
     ret = RDB_table_to_array(&array, tmptbp, 0, NULL, ecp, &tx);
-    if (ret != RDB_OK) {
-        goto error;
-    } 
+    assert(ret == RDB_OK);
 
     for (i = 0; (tplp = RDB_array_get(&array, i, ecp)) != NULL; i++) {
         RDB_object *pvalp = RDB_tuple_get(tplp, "POINT");
 
         ret = RDB_obj_comp(pvalp, "X", &xval, ecp, &tx);
-        if (ret != RDB_OK) {
-            goto error;
-        } 
+        assert(ret == RDB_OK);
         ret = RDB_obj_comp(pvalp, "Y", &yval, ecp, &tx);
-        if (ret != RDB_OK) {
-            goto error;
-        } 
+        assert(ret == RDB_OK);
 
         printf("X=%f, Y=%f\n", (float)RDB_obj_double(&xval),
                 (float)RDB_obj_double(&yval));
     }
-    if (RDB_obj_type(RDB_get_err(ecp)) != &RDB_NOT_FOUND_ERROR) {
-        goto error;
-    }
+    assert(RDB_obj_type(RDB_get_err(ecp)) == &RDB_NOT_FOUND_ERROR);
     RDB_clear_err(ecp);
 
     RDB_destroy_obj(&array, ecp);
@@ -237,55 +192,42 @@ test_query(RDB_database *dbp, RDB_exec_context *ecp)
     /* Creating POINTTEST WHERE POINT=POINT(1,2) */
 
     exp = RDB_ro_op("WHERE", 2, ecp);
-    if (exp == NULL)
-        goto error;
+    assert(exp != NULL);
 
     argp = RDB_table_ref_to_expr(tbp, ecp);
-    if (argp == NULL)
-        goto error;
+    assert(argp != NULL);
     RDB_add_arg(exp, argp);
 
     compv[0] = RDB_double_to_expr(1.0, ecp);
     compv[1] = RDB_double_to_expr(2.0, ecp);
     wherep = RDB_ro_op("POINT", 2, ecp);
-    if (wherep == NULL) {
-        goto error;
-    }
+    assert(wherep != NULL);
+
     RDB_add_arg(wherep, compv[0]);
     RDB_add_arg(wherep, compv[1]);
     wherep = RDB_eq(wherep, RDB_expr_var("POINT", ecp), ecp);
     RDB_add_arg(exp, wherep);
 
     tmptbp = RDB_expr_to_vtable(exp, ecp, &tx);
-    if (tmptbp == NULL) {
-        goto error;
-    }
+    assert(tmptbp != NULL);
 
     RDB_init_obj(&array);
 
     ret = RDB_table_to_array(&array, tmptbp, 0, NULL, ecp, &tx);
-    if (ret != RDB_OK) {
-        goto error;
-    } 
+    assert(ret == RDB_OK);
 
     for (i = 0; (tplp = RDB_array_get(&array, i, ecp)) != NULL; i++) {
         RDB_object *pvalp = RDB_tuple_get(tplp, "POINT");
 
         ret = RDB_obj_comp(pvalp, "X", &xval, ecp, &tx);
-        if (ret != RDB_OK) {
-            goto error;
-        } 
+        assert(ret == RDB_OK);
         ret = RDB_obj_comp(pvalp, "Y", &yval, ecp, &tx);
-        if (ret != RDB_OK) {
-            goto error;
-        } 
+        assert(ret == RDB_OK);
 
         printf("X=%f, Y=%f\n", (float)RDB_obj_double(&xval),
                 (float)RDB_obj_double(&yval));
     }
-    if (RDB_obj_type(RDB_get_err(ecp)) != &RDB_NOT_FOUND_ERROR) {
-        goto error;
-    }
+    assert(RDB_obj_type(RDB_get_err(ecp)) == &RDB_NOT_FOUND_ERROR);
     RDB_clear_err(ecp);
 
     RDB_destroy_obj(&xval, ecp);
@@ -294,23 +236,9 @@ test_query(RDB_database *dbp, RDB_exec_context *ecp)
     RDB_destroy_obj(&array, ecp);
 
     ret = RDB_drop_table(tmptbp, ecp, &tx);
-    if (ret != RDB_OK) {
-        tmptbp = NULL;
-        goto error;
-    }
+    assert(ret == RDB_OK);
 
-    return RDB_commit(ecp, &tx);
-
-error:
-    RDB_destroy_obj(&xval, ecp);
-    RDB_destroy_obj(&yval, ecp);
-
-    RDB_destroy_obj(&array, ecp);
-
-    if (tmptbp != NULL)
-        RDB_drop_table(tmptbp, ecp, &tx);
-
-    return RDB_ERROR;
+    assert(RDB_commit(ecp, &tx) == RDB_OK);
 }
 
 int
@@ -329,7 +257,7 @@ main(void)
 
     RDB_init_exec_context(&ec);
     dbp = RDB_get_db_from_env("TEST", envp, &ec);
-    if (ret != 0) {
+    if (dbp == NULL) {
         fprintf(stderr, "Error: %s\n", RDB_type_name(RDB_obj_type(RDB_get_err(&ec))));
         RDB_destroy_exec_context(&ec);
         return 1;
@@ -337,26 +265,11 @@ main(void)
 
     RDB_bdb_env(envp)->set_errfile(RDB_bdb_env(envp), stderr);
 
-    ret = create_table(dbp, &ec);
-    if (ret != RDB_OK) {
-        fprintf(stderr, "Error: %s\n", db_strerror(ret));
-        RDB_destroy_exec_context(&ec);
-        return 2;
-    }
+    create_table(dbp, &ec);
 
-    ret = test_insert(dbp, &ec);
-    if (ret != RDB_OK) {
-        fprintf(stderr, "Error: %s\n", RDB_type_name(RDB_obj_type(RDB_get_err(&ec))));
-        RDB_destroy_exec_context(&ec);
-        return 2;
-    }
+    test_insert(dbp, &ec);
 
-    ret = test_query(dbp, &ec);
-    if (ret != RDB_OK) {
-        fprintf(stderr, "Error: %s\n", RDB_type_name(RDB_obj_type(RDB_get_err(&ec))));
-        RDB_destroy_exec_context(&ec);
-        return 2;
-    }
+    test_query(dbp, &ec);
     RDB_destroy_exec_context(&ec);
 
     ret = RDB_close_env(envp);

@@ -23,11 +23,13 @@ _RDB_expr_qresult(RDB_expression *exp, RDB_exec_context *,
         RDB_transaction *);
 
 static int
-join_qresult(RDB_qresult *qrp, RDB_exec_context *ecp, RDB_transaction *txp)
+join_qresult(RDB_qresult *qrp, RDB_expression *exp,
+        RDB_exec_context *ecp, RDB_transaction *txp)
 {
     RDB_expression *arg2p;
     
     /* Create qresult for the first table */   
+    qrp->exp = exp;
     qrp->nested = RDB_TRUE;
     qrp->var.children.qrp = _RDB_expr_qresult(qrp->exp->var.op.argv[0],
             ecp, txp);
@@ -250,8 +252,8 @@ init_stored_qresult(RDB_qresult *qrp, RDB_object *tbp, RDB_expression *exp,
 {
     int ret;
 
-    qrp->nested = RDB_FALSE;
     qrp->exp = exp;
+    qrp->nested = RDB_FALSE;
     qrp->var.stored.tbp = tbp;
     if (tbp->var.tb.stp == NULL) {
         /*
@@ -397,7 +399,7 @@ error:
 }
 
 static int
-summarize_qresult(RDB_qresult *qrp, RDB_exec_context *ecp,
+summarize_qresult(RDB_qresult *qrp, RDB_expression *exp, RDB_exec_context *ecp,
         RDB_transaction *txp)
 {
     int i;
@@ -406,29 +408,29 @@ summarize_qresult(RDB_qresult *qrp, RDB_exec_context *ecp,
     RDB_type *tb1typ;
     RDB_type *tb2typ = NULL;
     RDB_type *reltyp = NULL;
-    RDB_expression *sexp = qrp->exp;
 
     key.strv = NULL;
 
+    qrp->exp = exp;
     qrp->nested = RDB_FALSE;
 
-    tb1typ = RDB_expr_type(sexp->var.op.argv[0], NULL, ecp, txp);
+    tb1typ = RDB_expr_type(exp->var.op.argv[0], NULL, ecp, txp);
     if (tb1typ == NULL)
         return RDB_ERROR;
 
-    tb2typ = RDB_expr_type(sexp->var.op.argv[1], NULL, ecp, txp);
+    tb2typ = RDB_expr_type(exp->var.op.argv[1], NULL, ecp, txp);
     if (tb2typ == NULL)
         goto error;
     
-    reltyp = RDB_summarize_type(sexp->var.op.argc, sexp->var.op.argv,
+    reltyp = RDB_summarize_type(exp->var.op.argc, exp->var.op.argv,
             0, NULL, ecp, txp);
     if (reltyp == NULL)
         goto error;
 
     /* If AVG, extend tuple type by count */
     hasavg = RDB_FALSE;
-    for (i = 2; i < sexp->var.op.argc && !hasavg; i += 2) {
-         if (strcmp(sexp->var.op.argv[i]->var.op.name, "AVG") == 0)
+    for (i = 2; i < exp->var.op.argc && !hasavg; i += 2) {
+         if (strcmp(exp->var.op.argv[i]->var.op.name, "AVG") == 0)
             hasavg = RDB_TRUE;
     }
     if (hasavg) {
@@ -497,9 +499,10 @@ error:
 }
 
 static int
-sdivide_qresult(RDB_qresult *qrp, RDB_exec_context *ecp,
+sdivide_qresult(RDB_qresult *qrp, RDB_expression *exp, RDB_exec_context *ecp,
         RDB_transaction *txp)
 {
+    qrp->exp = exp;
     qrp->nested = RDB_TRUE;
     qrp->var.children.tpl_valid = RDB_FALSE;
 
@@ -658,19 +661,21 @@ cleanup:
 }
 
 static int
-group_qresult(RDB_qresult *qrp, RDB_exec_context *ecp, RDB_transaction *txp)
+group_qresult(RDB_qresult *qrp, RDB_expression *exp, RDB_exec_context *ecp,
+        RDB_transaction *txp)
 {
     RDB_string_vec *keyv;
     int keyc;
     RDB_bool freekeys;
-    RDB_type *reltyp = RDB_expr_type(qrp->exp, NULL, ecp, txp);
+    RDB_type *reltyp = RDB_expr_type(exp, NULL, ecp, txp);
     if (reltyp == NULL)
         return RDB_ERROR;
 
+    qrp->exp = exp;
     qrp->nested = RDB_FALSE;
 
     /* Need keys */
-    keyc = _RDB_infer_keys(qrp->exp, ecp, &keyv, &freekeys);
+    keyc = _RDB_infer_keys(exp, ecp, &keyv, &freekeys);
     if (keyc == RDB_ERROR) {
         return RDB_ERROR;
     }
@@ -706,8 +711,8 @@ init_index_qresult(RDB_qresult *qrp, RDB_object *tbp, _RDB_tbindex *indexp,
 
     /* !! delay after first call to _RDB_qresult_next()? */
     qrp->endreached = RDB_FALSE;
-    qrp->nested = RDB_FALSE;
     qrp->exp = NULL;
+    qrp->nested = RDB_FALSE;
     qrp->var.stored.tbp = tbp;
     qrp->matp = NULL;
     ret = RDB_index_cursor(&qrp->var.stored.curp, indexp->idxp, RDB_FALSE,
@@ -737,8 +742,8 @@ init_where_index_qresult(RDB_qresult *qrp, RDB_expression *texp,
     RDB_field *fv;
     int flags = 0;
 
-    qrp->nested = RDB_FALSE;
     qrp->exp = texp;
+    qrp->nested = RDB_FALSE;
     qrp->matp = NULL;
     if (texp->var.op.argv[0]->kind == RDB_EX_TBP) {
         qrp->var.stored.tbp = texp->var.op.argv[0]->var.tbref.tbp;
@@ -748,7 +753,6 @@ init_where_index_qresult(RDB_qresult *qrp, RDB_expression *texp,
     }
 
     fv = malloc(sizeof (RDB_field) * indexp->attrc);
-
     if (fv == NULL) {
         RDB_raise_no_memory(ecp);
         return RDB_ERROR;
@@ -816,7 +820,6 @@ init_expr_qresult(RDB_qresult *qrp, RDB_expression *exp, RDB_exec_context *ecp,
         return RDB_ERROR;
     }
 
-    qrp->exp = exp;
     qrp->endreached = RDB_FALSE;
     qrp->matp = NULL;
 
@@ -846,6 +849,7 @@ init_expr_qresult(RDB_qresult *qrp, RDB_expression *exp, RDB_exec_context *ecp,
                 return RDB_ERROR;
             }
         } else {
+            qrp->exp = exp;
             qrp->nested = RDB_TRUE;
             qrp->var.children.qrp = _RDB_expr_qresult(exp->var.op.argv[0], ecp, txp);
             if (qrp->var.children.qrp == NULL)
@@ -865,6 +869,7 @@ init_expr_qresult(RDB_qresult *qrp, RDB_expression *exp, RDB_exec_context *ecp,
             || (strcmp(exp->var.op.name, "WRAP") == 0)
             || (strcmp(exp->var.op.name, "UNWRAP") == 0)
             || (strcmp(exp->var.op.name, "UNGROUP") == 0)) {
+        qrp->exp = exp;
         qrp->nested = RDB_TRUE;
         qrp->var.children.tpl_valid = RDB_FALSE;
         qrp->var.children.qrp = _RDB_expr_qresult(exp->var.op.argv[0], ecp, txp);
@@ -874,19 +879,19 @@ init_expr_qresult(RDB_qresult *qrp, RDB_expression *exp, RDB_exec_context *ecp,
         return RDB_OK;        
     }
     if (strcmp(exp->var.op.name, "GROUP") == 0) {
-        return group_qresult(qrp, ecp, txp);
+        return group_qresult(qrp, exp, ecp, txp);
     }
     if (strcmp(exp->var.op.name, "JOIN") == 0) {
-        return join_qresult(qrp, ecp, txp);
+        return join_qresult(qrp, exp, ecp, txp);
     }
     if (strcmp(exp->var.op.name, "SUMMARIZE") == 0) {
-        return summarize_qresult(qrp, ecp, txp);
+        return summarize_qresult(qrp, exp, ecp, txp);
     }    
     if (strcmp(exp->var.op.name, "DIVIDE_BY_PER") == 0) {
-        return sdivide_qresult(qrp, ecp, txp);
+        return sdivide_qresult(qrp, exp, ecp, txp);
     }    
-       RDB_raise_operator_not_found(exp->var.op.name, ecp);
-      return RDB_ERROR;
+    RDB_raise_operator_not_found(exp->var.op.name, ecp);
+    return RDB_ERROR;
 }
 
 RDB_qresult *
