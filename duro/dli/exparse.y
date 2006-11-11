@@ -1777,7 +1777,7 @@ _RDB_parse_lookup_table(RDB_expression *exp)
         tbp = (*_RDB_parse_ltfp)(exp->var.varname, _RDB_parse_arg);
         if (tbp != NULL) {
             RDB_drop_expr(exp, _RDB_parse_ecp);
-            return RDB_table_ref_to_expr(tbp, _RDB_parse_ecp);
+            return RDB_table_ref(tbp, _RDB_parse_ecp);
         }
 
         /* Local table not found, try to find global table */
@@ -1785,7 +1785,7 @@ _RDB_parse_lookup_table(RDB_expression *exp)
                 _RDB_parse_txp);
         if (tbp != NULL) {
             RDB_drop_expr(exp, _RDB_parse_ecp);
-            return RDB_table_ref_to_expr(tbp, _RDB_parse_ecp);
+            return RDB_table_ref(tbp, _RDB_parse_ecp);
         }
     }
     return exp;
