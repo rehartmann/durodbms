@@ -68,6 +68,7 @@
 <h3>Scalar and generic functions</h3>
 
 <ul>
+<li><a href="#append_string">RDB_append_string</a>
 <li><a href="#binary_get">RDB_binary_get</a>
 <li><a href="#binary_set">RDB_binary_set</a>
 <li><a href="#binary_length">RDB_binary_length</a>
@@ -2440,6 +2441,31 @@ the position <var>pos</var> in the RDB_object pointed to by <var>valp</var>.
 or to a RDB_object of type BINARY.
 
 <p>If an error occurs, an error value is left in *<var>ecp</var>.
+
+<h3>Return value</h3>
+
+<p>RDB_OK on success, RDB_ERROR if an error occurred.
+
+<h3>Errors</h3>
+
+<p>The call may fail for a <a href="#syserr">system error</a>.
+
+<hr>
+
+<h2 id="append_string">RDB_append_string</h2>
+
+<pre>
+#include &lt;rel/rdb.h&gt;
+
+int
+RDB_append_string(RDB_object *objp, const char *str, RDB_exec_context *ecp);
+</pre>
+
+<h3>Description</h3>
+
+<p>Appends the string <var>str</var> to *<var>objp</var>.
+
+<p>*<var>objp</var> must be of type STRING.
 
 <h3>Return value</h3>
 

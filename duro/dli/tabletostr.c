@@ -37,22 +37,6 @@ _RDB_print_expr(RDB_expression *exp, FILE *fp,
     return RDB_destroy_obj(&dstobj, ecp);
 }
 
-int
-RDB_append_string(RDB_object *objp, const char *str, RDB_exec_context *ecp)
-{
-    int len = objp->var.bin.len + strlen(str);
-    char *nstr = realloc(objp->var.bin.datap, len);
-    if (nstr == NULL) {
-        RDB_raise_no_memory(ecp);
-        return RDB_ERROR;
-    }
-
-    objp->var.bin.datap = nstr;
-    strcpy(((char *)objp->var.bin.datap) + objp->var.bin.len - 1, str);
-    objp->var.bin.len = len;
-    return RDB_OK;
-}
-
 static int
 append_obj(RDB_object *objp, const RDB_object *srcp, RDB_exec_context *,
         RDB_transaction *, int options);

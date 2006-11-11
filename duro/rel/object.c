@@ -864,6 +864,22 @@ RDB_string_to_obj(RDB_object *valp, const char *str, RDB_exec_context *ecp)
 }
 
 int
+RDB_append_string(RDB_object *objp, const char *str, RDB_exec_context *ecp)
+{
+    int len = objp->var.bin.len + strlen(str);
+    char *nstr = realloc(objp->var.bin.datap, len);
+    if (nstr == NULL) {
+        RDB_raise_no_memory(ecp);
+        return RDB_ERROR;
+    }
+
+    objp->var.bin.datap = nstr;
+    strcpy(((char *)objp->var.bin.datap) + objp->var.bin.len - 1, str);
+    objp->var.bin.len = len;
+    return RDB_OK;
+}
+
+int
 RDB_obj_comp(const RDB_object *valp, const char *compname, RDB_object *compvalp,
         RDB_exec_context *ecp, RDB_transaction *txp)
 {

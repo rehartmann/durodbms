@@ -453,9 +453,6 @@ _RDB_get_possrep(RDB_type *typ, const char *repname);
 RDB_attr *
 _RDB_get_icomp(RDB_type *, const char *compname);
 
-void
-_RDB_set_obj_type(RDB_object *, RDB_type *);
-
 int
 _RDB_obj_ilen(const RDB_object *, size_t *, RDB_exec_context *);
 

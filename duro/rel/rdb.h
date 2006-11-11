@@ -771,6 +771,9 @@ RDB_obj_to_string(RDB_object *dstp, const RDB_object *srcp,
         RDB_exec_context *);
 
 int
+RDB_append_string(RDB_object *, const char *, RDB_exec_context *);
+
+int
 RDB_obj_comp(const RDB_object *valp, const char *compname,
                    RDB_object *comp, RDB_exec_context *, RDB_transaction *);
 

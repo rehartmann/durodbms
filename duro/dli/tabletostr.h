@@ -31,7 +31,4 @@ int
 _RDB_expr_to_str(RDB_object *dstp, const RDB_expression *exp,
         RDB_exec_context *, RDB_transaction *, int options);
 
-int
-RDB_append_string(RDB_object *objp, const char *str, RDB_exec_context *);
-
 #endif
