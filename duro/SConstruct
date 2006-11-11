@@ -46,8 +46,9 @@ env.Replace(TARFLAGS = '-c -z')
 # Duro core library
 #
 
-CFile('dli/exparse.c', 'dli/exparse.y')
-CFile('dli/exlex.c', 'dli/exlex.l')
+if env.has_key('YACC'):
+    CFile('dli/exparse.c', 'dli/exparse.y')
+    CFile('dli/exlex.c', 'dli/exlex.l')
 
 durosrc = ['gen/hashmap.c', 'gen/hashmapit.c',
         'gen/strfns.c', 'gen/hashtable.c', 'gen/hashtabit.c',
@@ -212,29 +213,30 @@ env.Alias('check', check)
 # Distribution tarfile
 #
 
-disttar = 'duro-' + release + '.tar.gz'
+if env.has_key('TAR'):
+    disttar = 'duro-' + release + '.tar.gz'
 
-env.Tar(disttar, 'SConstruct')
-env.Tar(disttar, durosrc)
-env.Tar(disttar, durotclsrc)
-env.Tar(disttar, durodocs)
-env.Tar(disttar, durotcldocs)
-env.Tar(disttar, ['duro.def', 'durotcl.def'])
-env.Tar(disttar, durotcl_hdrs)
-env.Tar(disttar, testsrc)
-env.Tar(disttar, testlibsrc)
-env.Tar(disttar, gen_hdrs)
-env.Tar(disttar, rec_hdrs)
-env.Tar(disttar, rel_hdrs)
-env.Tar(disttar, rel_ihdrs)
-env.Tar(disttar, dli_hdrs)
-env.Tar(disttar, dli_ihdrs)
-env.Tar(disttar, testlib_hdrs)
-env.Tar(disttar, test_scripts)
-env.Tar(disttar, tcltools)
-env.Tar(disttar, ['dli/exparse.y', 'dli/exlex.l'])
-env.Tar(disttar, 'tcl/util.tcl')
-env.Tar(disttar, 'dli/exparse.y')
-env.Tar(disttar, 'dli/exlex.l')
+    env.Tar(disttar, 'SConstruct')
+    env.Tar(disttar, durosrc)
+    env.Tar(disttar, durotclsrc)
+    env.Tar(disttar, durodocs)
+    env.Tar(disttar, durotcldocs)
+    env.Tar(disttar, ['duro.def', 'durotcl.def'])
+    env.Tar(disttar, durotcl_hdrs)
+    env.Tar(disttar, testsrc)
+    env.Tar(disttar, testlibsrc)
+    env.Tar(disttar, gen_hdrs)
+    env.Tar(disttar, rec_hdrs)
+    env.Tar(disttar, rel_hdrs)
+    env.Tar(disttar, rel_ihdrs)
+    env.Tar(disttar, dli_hdrs)
+    env.Tar(disttar, dli_ihdrs)
+    env.Tar(disttar, testlib_hdrs)
+    env.Tar(disttar, test_scripts)
+    env.Tar(disttar, tcltools)
+    env.Tar(disttar, ['dli/exparse.y', 'dli/exlex.l'])
+    env.Tar(disttar, 'tcl/util.tcl')
+    env.Tar(disttar, 'dli/exparse.y')
+    env.Tar(disttar, 'dli/exlex.l')
 
-env.Alias('dist', disttar)
+    env.Alias('dist', disttar)

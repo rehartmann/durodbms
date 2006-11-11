@@ -190,7 +190,7 @@ RDB_destroy_hashmap
 RDB_hashmap_get
 RDB_hashmap_put
 _RDB_expr_to_str
-RDB_table_ref_to_expr
+RDB_table_ref
 RDB_add_arg
 _RDB_init_builtin_types
 RDB_print_obj
