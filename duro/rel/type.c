@@ -659,6 +659,7 @@ RDB_create_tuple_type(int attrc, const RDB_attr attrv[],
             goto error;
         }
         tuptyp->var.tuple.attrv[i].defaultp = NULL;
+        tuptyp->var.tuple.attrv[i].options = 0;
     }
     tuptyp->var.tuple.attrc = attrc;
 
@@ -1269,6 +1270,7 @@ RDB_extend_tuple_type(const RDB_type *typ, int attrc, RDB_attr attrv[],
             goto error;
         }
         newtyp->var.tuple.attrv[i].defaultp = NULL;
+        newtyp->var.tuple.attrv[i].options = 0;
     }
     for (i = 0; i < attrc; i++) {
         /*
@@ -1291,6 +1293,7 @@ RDB_extend_tuple_type(const RDB_type *typ, int attrc, RDB_attr attrv[],
             goto error;
         }
         newtyp->var.tuple.attrv[typ->var.tuple.attrc + i].defaultp = NULL;
+        newtyp->var.tuple.attrv[typ->var.tuple.attrc + i].options = 0;
     }
     return newtyp;
 
@@ -1367,6 +1370,7 @@ RDB_join_tuple_types(const RDB_type *typ1, const RDB_type *typ2,
         if (newtyp->var.tuple.attrv[i].typ == NULL)
             goto error;
         newtyp->var.tuple.attrv[i].defaultp = NULL;
+        newtyp->var.tuple.attrv[i].options = 0;
     }
     attrc = typ1->var.tuple.attrc;
 
@@ -1395,6 +1399,7 @@ RDB_join_tuple_types(const RDB_type *typ1, const RDB_type *typ2,
             if (newtyp->var.tuple.attrv[attrc].typ == NULL)
                 goto error;
             newtyp->var.tuple.attrv[attrc].defaultp = NULL;
+            newtyp->var.tuple.attrv[attrc].options = 0;
             attrc++;
         }
     }
@@ -1497,6 +1502,7 @@ RDB_project_tuple_type(const RDB_type *typ, int attrc, char *attrv[],
             goto error;
 
         tuptyp->var.tuple.attrv[i].defaultp = NULL;
+        tuptyp->var.tuple.attrv[i].options = 0;
     }
 
     return tuptyp;
@@ -1611,6 +1617,7 @@ RDB_rename_tuple_type(const RDB_type *typ, int renc, const RDB_renaming renv[],
             goto error;
         }
         newtyp->var.tuple.attrv[i].defaultp = NULL;
+        newtyp->var.tuple.attrv[i].options = 0;
      }
      return newtyp;
 
@@ -1690,6 +1697,7 @@ copy_attr(RDB_attr *dstp, const RDB_attr *srcp, RDB_exec_context *ecp)
         return RDB_ERROR;
     }
     dstp->defaultp = NULL;
+    dstp->options = 0;
     return RDB_OK;
 }
 
@@ -1827,6 +1835,7 @@ RDB_wrap_tuple_type(const RDB_type *typ, int wrapc, const RDB_wrapping wrapv[],
         newtyp->var.tuple.attrv[i].name = NULL;
         newtyp->var.tuple.attrv[i].typ = NULL;
         newtyp->var.tuple.attrv[i].defaultp = NULL;
+        newtyp->var.tuple.attrv[i].options = 0;
     }
 
     /*
@@ -2127,6 +2136,7 @@ RDB_group_type(RDB_type *typ, int attrc, char *attrv[], const char *gattr,
                 goto error;
             }
             tuptyp->var.tuple.attrv[j].defaultp = NULL;
+            tuptyp->var.tuple.attrv[j].options = 0;
             j++;
         }
     }
@@ -2137,6 +2147,7 @@ RDB_group_type(RDB_type *typ, int attrc, char *attrv[], const char *gattr,
         goto error;
     }
     tuptyp->var.tuple.attrv[j].defaultp = NULL;
+    tuptyp->var.tuple.attrv[j].options = 0;
 
     /*
      * Create relation type

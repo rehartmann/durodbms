@@ -448,6 +448,7 @@ summarize_qresult(RDB_qresult *qrp, RDB_expression *exp, RDB_exec_context *ecp,
         }
         attrv[attrc - 1].typ = &RDB_INTEGER;
         attrv[attrc - 1].defaultp = NULL;
+        attrv[attrc - 1].options = 0;
         reltyp->var.basetyp->var.tuple.attrc = attrc;
         reltyp->var.basetyp->var.tuple.attrv = attrv;
     }

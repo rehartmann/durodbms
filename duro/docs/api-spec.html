@@ -404,7 +404,8 @@ attributes are specified by the elements of <var>attrv</var>.
 <dd>If not NULL, this field must point to a RDB_object variable that specifies
 the default value for the attribute.
 <dt>options
-<dd>This field is currently ignored.
+<dd>This field is currently ignored. It should be set to zero
+for compatibility with future versions of Duro.
 </dl>
 
 <p>The table will have <var>keyc</var> candidate keys. The <var>keyv</var>

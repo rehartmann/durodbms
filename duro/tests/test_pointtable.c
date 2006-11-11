@@ -30,6 +30,7 @@ create_table(RDB_database *dbp, RDB_exec_context *ecp)
     assert(pointtyp != NULL);
     utype_attrs[0].typ = pointtyp;
     utype_attrs[0].defaultp = NULL;
+    utype_attrs[0].options = 0;
 
     tbp = RDB_create_table("POINTTEST", RDB_TRUE, 1, utype_attrs,
             1, upoint_keyattrs, ecp, &tx);

@@ -328,6 +328,7 @@ insert_rtable(RDB_object *tbp, RDB_dbroot *dbrootp, RDB_exec_context *ecp,
         keysattr.name = "KEY";
         keysattr.typ = &RDB_STRING;
         keysattr.defaultp = NULL;
+        keysattr.options = 0;
         keystbp = RDB_create_table(NULL, RDB_FALSE, 1, &keysattr, 0, NULL,
                 ecp, txp);
         if (keystbp == NULL) {
@@ -1558,6 +1559,7 @@ _RDB_cat_get_rtable(const char *name, RDB_exec_context *ecp,
             goto error;
         
         attrv[fno].defaultp = NULL;
+        attrv[fno].options = 0;
     }
 
     /*
