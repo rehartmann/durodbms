@@ -887,7 +887,7 @@ init_expr_qresult(RDB_qresult *qrp, RDB_expression *exp, RDB_exec_context *ecp,
     if (strcmp(exp->var.op.name, "SUMMARIZE") == 0) {
         return summarize_qresult(qrp, exp, ecp, txp);
     }    
-    if (strcmp(exp->var.op.name, "DIVIDE_BY_PER") == 0) {
+    if (strcmp(exp->var.op.name, "DIVIDE") == 0) {
         return sdivide_qresult(qrp, exp, ecp, txp);
     }    
     RDB_raise_operator_not_found(exp->var.op.name, ecp);
@@ -953,7 +953,7 @@ expr_dups(RDB_expression *exp, RDB_exec_context *ecp, RDB_bool *resp)
             || strcmp(exp->var.op.name, "WRAP") == 0
             || strcmp(exp->var.op.name, "UNWRAP") == 0
             || strcmp(exp->var.op.name, "UNGROUP") == 0
-            || strcmp(exp->var.op.name, "SDIVIDE") == 0) {
+            || strcmp(exp->var.op.name, "DIVIDE") == 0) {
         return expr_dups(exp->var.op.argv[0], ecp, resp);
     } else if (strcmp(exp->var.op.name, "UNION") == 0) {
         *resp = RDB_TRUE;
@@ -2418,7 +2418,7 @@ _RDB_next_tuple(RDB_qresult *qrp, RDB_object *tplp, RDB_exec_context *ecp,
             ret = next_unwrap_tuple(qrp, tplp, ecp, txp);
             if (ret != RDB_OK)
                 return RDB_ERROR;
-        } else if (strcmp(qrp->exp->var.op.name, "DIVIDE_BY_PER") == 0) {
+        } else if (strcmp(qrp->exp->var.op.name, "DIVIDE") == 0) {
             ret = next_sdivide_tuple(qrp, tplp, ecp, txp);
             if (ret != RDB_OK)
                 return RDB_ERROR;

@@ -1609,7 +1609,7 @@ _RDB_add_builtin_ops(RDB_dbroot *dbrootp, RDB_exec_context *ecp)
     if (ret != RDB_OK)
         return ret;
 
-    op = _RDB_new_ro_op("DIVIDE_BY_PER", -1, NULL, &op_vtable_wrapfn, ecp);
+    op = _RDB_new_ro_op("DIVIDE", -1, NULL, &op_vtable_wrapfn, ecp);
     if (op == NULL) {
         RDB_raise_no_memory(ecp);
         return RDB_ERROR;

@@ -406,7 +406,7 @@ _RDB_infer_keys(RDB_expression *exp, RDB_exec_context *ecp,
             || (strcmp(exp->var.op.name, "SEMIJOIN") == 0)
             || (strcmp(exp->var.op.name, "INTERSECT") == 0)
             || (strcmp(exp->var.op.name, "EXTEND") == 0)
-            || (strcmp(exp->var.op.name, "SDIVIDE") == 0)) {
+            || (strcmp(exp->var.op.name, "DIVIDE") == 0)) {
         return _RDB_infer_keys(exp->var.op.argv[0], ecp, keyvp,
                 caller_must_freep);
     }

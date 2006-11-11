@@ -514,7 +514,7 @@ table_cost(RDB_expression *texp)
              || strcmp(texp->var.op.name, "GROUP") == 0
              || strcmp(texp->var.op.name, "UNGROUP") == 0)
         return table_cost(texp->var.op.argv[0]);
-    if (strcmp(texp->var.op.name, "DIVIDE_BY_PER") == 0) {
+    if (strcmp(texp->var.op.name, "DIVIDE") == 0) {
         return table_cost(texp->var.op.argv[0])
                 * table_cost(texp->var.op.argv[1]); /* !! */
     }
@@ -933,7 +933,7 @@ mutate(RDB_expression *texp, RDB_expression **tbpv, int cap, RDB_exec_context *e
             || strcmp(texp->var.op.name, "UNGROUP") == 0) {
         return mutate_vt(texp, 1, tbpv, cap, ecp, txp);
     }
-    if (strcmp(texp->var.op.name, "DIVIDE_BY_PER") == 0) {
+    if (strcmp(texp->var.op.name, "DIVIDE") == 0) {
         return mutate_vt(texp, 2, tbpv, cap, ecp, txp);
     }
     return 0;

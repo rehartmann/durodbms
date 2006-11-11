@@ -708,7 +708,7 @@ expr_op_type(RDB_expression *exp, const RDB_type *tpltyp,
             goto error;
         free(argtv);
         return typ;
-    } else if (strcmp(exp->var.op.name, "DIVIDE_BY_PER") == 0) {
+    } else if (strcmp(exp->var.op.name, "DIVIDE") == 0) {
         if (exp->var.op.argc != 3 || argtv[0] == NULL
                 || argtv[1] == NULL || argtv[2] == NULL) {
             RDB_raise_invalid_argument("invalid DIVIDE",
@@ -1378,7 +1378,7 @@ evaluate_ro_op(RDB_expression *exp, const RDB_object *tplp,
             || strcmp(exp->var.op.name, "INTERSECT") == 0
             || strcmp(exp->var.op.name, "SEMIJOIN") == 0
             || strcmp(exp->var.op.name, "UNION") == 0
-            || strcmp(exp->var.op.name, "DIVIDE_BY_PER") == 0
+            || strcmp(exp->var.op.name, "DIVIDE") == 0
             || strcmp(exp->var.op.name, "GROUP") == 0
             || strcmp(exp->var.op.name, "UNGROUP") == 0) {
         return evaluate_vt(exp, tplp, ecp, txp, valp);

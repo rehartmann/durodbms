@@ -1072,7 +1072,7 @@ _RDB_expr_sortindex (RDB_expression *exp)
             || strcmp(exp->var.op.name, "INTERSECT") == 0
             || strcmp(exp->var.op.name, "JOIN") == 0
             || strcmp(exp->var.op.name, "EXTEND") == 0
-            || strcmp(exp->var.op.name, "SDIVIDE") == 0) {
+            || strcmp(exp->var.op.name, "DIVIDE") == 0) {
         return _RDB_expr_sortindex(exp->var.op.argv[0]);
     }
     /* !! RENAME, SUMMARIZE, WRAP, UNWRAP, GROUP, UNGROUP */

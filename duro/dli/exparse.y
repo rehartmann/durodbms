@@ -770,7 +770,7 @@ sdivideby: expression TOK_DIVIDEBY expression
             YYERROR;
         }
 
-        $$ = RDB_ro_op("DIVIDE_BY_PER", 3, _RDB_parse_ecp);
+        $$ = RDB_ro_op("DIVIDE", 3, _RDB_parse_ecp);
         if ($$ == NULL) {
             RDB_drop_expr(tex1p, _RDB_parse_ecp);
             RDB_drop_expr(tex2p, _RDB_parse_ecp);
