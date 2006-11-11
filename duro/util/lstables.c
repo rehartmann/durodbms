@@ -88,7 +88,7 @@ print_tables(RDB_exec_context *ecp, RDB_transaction *txp, RDB_bool all,
         goto error;
     RDB_add_arg(exp, texp);
 
-    argp = RDB_table_ref_to_expr(rt_tbp, ecp);
+    argp = RDB_table_ref(rt_tbp, ecp);
     if (argp == NULL)
         goto error;
     RDB_add_arg(texp, argp);
@@ -107,7 +107,7 @@ print_tables(RDB_exec_context *ecp, RDB_transaction *txp, RDB_bool all,
         goto error;
     RDB_add_arg(exp, texp);
 
-    argp = RDB_table_ref_to_expr(db_tbp, ecp);
+    argp = RDB_table_ref(db_tbp, ecp);
     if (argp == NULL)
         goto error;
     RDB_add_arg(texp, argp);

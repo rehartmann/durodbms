@@ -39,14 +39,14 @@ test_ra(RDB_database *dbp, RDB_exec_context *ecp)
         return RDB_ERROR;
     }
 
-    argp = RDB_table_ref_to_expr(tb1p, ecp);
+    argp = RDB_table_ref(tb1p, ecp);
     if (argp == NULL) {
         RDB_rollback(ecp, &tx);
         return RDB_ERROR;
     }
     RDB_add_arg(exp, argp);
 
-    argp = RDB_table_ref_to_expr(tb2p, ecp);
+    argp = RDB_table_ref(tb2p, ecp);
     if (argp == NULL) {
         RDB_rollback(ecp, &tx);
         return RDB_ERROR;

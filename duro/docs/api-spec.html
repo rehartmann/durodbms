@@ -130,6 +130,7 @@
 <li><a href="#int_to_expr">RDB_int_to_expr</a>
 <li><a href="#double_to_expr">RDB_double_to_expr</a>
 <li><a href="#string_to_expr">RDB_string_to_expr</a>
+<li><a href="#table_ref">RDB_table_ref</a>
 <li><a href="#obj_to_expr">RDB_obj_to_expr</a>
 <li><a href="#expr_var">RDB_expr_var</a>
 <li><a href="#eq">RDB_eq</a>
@@ -3109,6 +3110,26 @@ RDB_string_to_expr(const char *, RDB_exec_context *ecp);
 <h3>Description</h3>
 
 <p>RDB_string_to_expr creates a constant expression of type STRING.
+
+<h3>Return value</h3>
+
+<p>A pointer to the newly created expression, of NULL if the creation
+failed.
+
+<hr>
+
+<h2 id="table_ref">RDB_table_ref</h2>
+
+<pre>
+#include &lt;rel/rdb.h&gt;
+
+RDB_expression *
+RDB_table_ref(RDB_object *tbp, RDB_exec_context *);
+</pre>
+
+<h3>Description</h3>
+
+<p>RDB_table_ref creates an expression which refers to a table.
 
 <h3>Return value</h3>
 

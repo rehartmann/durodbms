@@ -35,7 +35,7 @@ test_regexp(RDB_database *dbp, RDB_exec_context *ecp)
         goto error;
     }
     
-    argp = RDB_table_ref_to_expr(tbp, ecp);
+    argp = RDB_table_ref(tbp, ecp);
     if (argp == NULL) {
         goto error;
     }

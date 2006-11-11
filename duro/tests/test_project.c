@@ -99,7 +99,7 @@ test_project(RDB_database *dbp, RDB_exec_context *ecp)
         return RDB_ERROR;
     }
 
-    argp = RDB_table_ref_to_expr(tbp, ecp);
+    argp = RDB_table_ref(tbp, ecp);
     if (argp == NULL) {
         RDB_drop_expr(exp, ecp);
         RDB_rollback(ecp, &tx);
@@ -142,7 +142,7 @@ test_project(RDB_database *dbp, RDB_exec_context *ecp)
         return RDB_ERROR;
     }
 
-    argp = RDB_table_ref_to_expr(tbp, ecp);
+    argp = RDB_table_ref(tbp, ecp);
     if (argp == NULL) {
         RDB_drop_expr(exp, ecp);
         RDB_rollback(ecp, &tx);

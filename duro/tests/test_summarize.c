@@ -102,11 +102,11 @@ test_summarize(RDB_database *dbp, RDB_exec_context *ecp)
     exp = RDB_ro_op("UNION", 2, ecp);
     assert(exp != NULL);
 
-    argp = RDB_table_ref_to_expr(tbp, ecp);
+    argp = RDB_table_ref(tbp, ecp);
     assert(argp != NULL);
     RDB_add_arg(exp, argp);
 
-    argp = RDB_table_ref_to_expr(tbp2, ecp);    
+    argp = RDB_table_ref(tbp2, ecp);    
     assert(argp != NULL);
     RDB_add_arg(exp, argp);
     
@@ -130,12 +130,12 @@ test_summarize(RDB_database *dbp, RDB_exec_context *ecp)
     exp = RDB_ro_op("SUMMARIZE", 8, ecp);
     assert(exp != NULL);
 
-    RDB_add_arg(exp, RDB_table_ref_to_expr(untbp, ecp));
+    RDB_add_arg(exp, RDB_table_ref(untbp, ecp));
 
     texp = RDB_ro_op("PROJECT", 2, ecp);
     assert(texp != NULL);
 
-    argp = RDB_table_ref_to_expr(untbp, ecp);
+    argp = RDB_table_ref(untbp, ecp);
     assert(argp != NULL);
     RDB_add_arg(texp, argp);
 

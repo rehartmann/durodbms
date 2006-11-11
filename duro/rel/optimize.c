@@ -630,7 +630,7 @@ dup_expr_vt(const RDB_expression *exp, RDB_exec_context *ecp)
             return RDB_obj_to_expr(&exp->var.obj, ecp);
         case RDB_EX_TBP:
             if (exp->var.tbref.tbp->var.tb.exp == NULL)
-                return RDB_table_ref_to_expr(exp->var.tbref.tbp, ecp);
+                return RDB_table_ref(exp->var.tbref.tbp, ecp);
             return dup_expr_vt(exp->var.tbref.tbp->var.tb.exp, ecp);
         case RDB_EX_VAR:
             return RDB_expr_var(exp->var.varname, ecp);
@@ -811,7 +811,7 @@ index_joins(RDB_expression *otexp, RDB_expression *itexp,
     for (i = 0; i < tbp->var.tb.stp->indexc && tbc < cap; i++) {
         if (table_covers_index(ottyp, &tbp->var.tb.stp->indexv[i])) {
             RDB_expression *arg1p, *ntexp;
-            RDB_expression *refargp = RDB_table_ref_to_expr(tbp, ecp);
+            RDB_expression *refargp = RDB_table_ref(tbp, ecp);
             if (refargp == NULL) {
                 return RDB_ERROR;
             }
@@ -879,7 +879,7 @@ mutate_tbref(RDB_expression *texp, RDB_expression **tbpv, int cap,
 
         for (i = 0; i < tbc; i++) {
             _RDB_tbindex *indexp = &texp->var.tbref.tbp->var.tb.stp->indexv[i];
-            RDB_expression *tiexp = RDB_table_ref_to_expr(
+            RDB_expression *tiexp = RDB_table_ref(
                     texp->var.tbref.tbp, ecp);
             if (tiexp == NULL)
                 return RDB_ERROR;
@@ -984,14 +984,14 @@ _RDB_optimize(RDB_object *tbp, int seqitc, const RDB_seq_item seqitv[],
                     i++);
             /* If yes, create reference */
             if (i < tbp->var.tb.stp->indexc) {
-                nexp = RDB_table_ref_to_expr(tbp, ecp);
+                nexp = RDB_table_ref(tbp, ecp);
                 if (nexp == NULL)
                     return NULL;
                 nexp->var.tbref.indexp = &tbp->var.tb.stp->indexv[i];
                 return nexp;
             }
         }
-        return RDB_table_ref_to_expr(tbp, ecp);
+        return RDB_table_ref(tbp, ecp);
     }
     return _RDB_optimize_expr(tbp->var.tb.exp, seqitc, seqitv, ecp, txp);
 }

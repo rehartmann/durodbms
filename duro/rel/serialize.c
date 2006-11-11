@@ -564,7 +564,7 @@ deserialize_expr(RDB_object *valp, int *posp, RDB_exec_context *ecp,
                	RDB_object *tbp = deserialize_table(valp, posp, ecp, txp);
                	if (tbp == NULL)
                	    return RDB_ERROR;
-               	*expp = RDB_table_ref_to_expr(tbp, ecp);
+               	*expp = RDB_table_ref(tbp, ecp);
                	if (*expp == NULL)
                	    return RDB_ERROR;
             }

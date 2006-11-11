@@ -841,7 +841,7 @@ RDB_expression *
 RDB_obj_to_expr(const RDB_object *valp, RDB_exec_context *);
 
 RDB_expression *
-RDB_table_ref_to_expr(RDB_object *tbp, RDB_exec_context *);
+RDB_table_ref(RDB_object *tbp, RDB_exec_context *);
 
 RDB_expression *
 RDB_expr_var(const char *varname, RDB_exec_context *);

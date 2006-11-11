@@ -28,10 +28,10 @@ create_view1(RDB_database *dbp, RDB_exec_context *ecp)
     texp = RDB_ro_op("UNION", 2, ecp);
     assert(texp != NULL);
     RDB_add_arg(exp, texp);
-    argp = RDB_table_ref_to_expr(tbp, ecp);
+    argp = RDB_table_ref(tbp, ecp);
     assert(argp != NULL);
     RDB_add_arg(texp, argp);
-    argp = RDB_table_ref_to_expr(tbp2, ecp);
+    argp = RDB_table_ref(tbp2, ecp);
     assert(argp != NULL);
     RDB_add_arg(texp, argp);
     argp = RDB_string_to_expr("SALARY", ecp);
@@ -65,7 +65,7 @@ create_view2(RDB_database *dbp, RDB_exec_context *ecp)
 
     exp = RDB_ro_op("WHERE", 2, ecp);
     assert(exp != NULL);
-    argp = RDB_table_ref_to_expr(tbp, ecp);
+    argp = RDB_table_ref(tbp, ecp);
     assert(argp != NULL);
     RDB_add_arg(exp, argp);
 
@@ -106,7 +106,7 @@ create_view3(RDB_database *dbp, RDB_exec_context *ecp)
     exp = RDB_ro_op("EXTEND", 3, ecp);
     assert(exp != NULL);
 
-    argp = RDB_table_ref_to_expr(tbp, ecp);
+    argp = RDB_table_ref(tbp, ecp);
     assert(argp != NULL);
     RDB_add_arg(exp, argp); 
     hexp = RDB_ro_op(">", 2, ecp);
@@ -155,7 +155,7 @@ create_view4(RDB_database *dbp, RDB_exec_context *ecp)
     assert(sexp != NULL);
     RDB_add_arg(exp, sexp);
 
-    argp = RDB_table_ref_to_expr(tbp, ecp);
+    argp = RDB_table_ref(tbp, ecp);
     assert(argp != NULL);
     RDB_add_arg(sexp, argp);
 
@@ -163,7 +163,7 @@ create_view4(RDB_database *dbp, RDB_exec_context *ecp)
     assert(texp != NULL);
     RDB_add_arg(sexp, texp);
 
-    argp = RDB_table_ref_to_expr(tbp, ecp);
+    argp = RDB_table_ref(tbp, ecp);
     assert(argp != NULL);
     RDB_add_arg(texp, argp);
 

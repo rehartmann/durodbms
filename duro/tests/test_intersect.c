@@ -68,7 +68,7 @@ test_intersect(RDB_database *dbp, RDB_exec_context *ecp)
         return RDB_ERROR;
     }
 
-    argp = RDB_table_ref_to_expr(tbp, ecp);
+    argp = RDB_table_ref(tbp, ecp);
     if (argp == NULL) {
         RDB_drop_expr(exp, ecp);
         RDB_rollback(ecp, &tx);
@@ -76,7 +76,7 @@ test_intersect(RDB_database *dbp, RDB_exec_context *ecp)
     }
     RDB_add_arg(exp, argp);
 
-    argp = RDB_table_ref_to_expr(tbp2, ecp);
+    argp = RDB_table_ref(tbp2, ecp);
     if (argp == NULL) {
         RDB_drop_expr(exp, ecp);
         RDB_rollback(ecp, &tx);

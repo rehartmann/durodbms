@@ -819,7 +819,7 @@ RDB_table_is_empty(RDB_object *tbp, RDB_exec_context *ecp,
     exp = RDB_ro_op("PROJECT", 1, ecp);
     if (exp == NULL)
     	return RDB_ERROR;
-    argp = RDB_table_ref_to_expr(tbp, ecp);
+    argp = RDB_table_ref(tbp, ecp);
     if (argp == NULL) {
         RDB_drop_expr(exp, ecp);
         RDB_drop_expr(argp, ecp);

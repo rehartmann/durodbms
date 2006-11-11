@@ -32,7 +32,7 @@ test_select(RDB_database *dbp, RDB_exec_context *ecp)
     if (exp == NULL)
         goto error;
 
-    argp = RDB_table_ref_to_expr(tbp, ecp);
+    argp = RDB_table_ref(tbp, ecp);
     if (argp == NULL)
         goto error;
     RDB_add_arg(exp, argp);
@@ -73,7 +73,7 @@ test_select(RDB_database *dbp, RDB_exec_context *ecp)
     if (exp == NULL)
         goto error;
 
-    argp = RDB_table_ref_to_expr(tbp, ecp);
+    argp = RDB_table_ref(tbp, ecp);
     if (argp == NULL)
         goto error;
     RDB_add_arg(exp, argp);

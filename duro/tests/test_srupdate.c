@@ -102,7 +102,7 @@ test_update2(RDB_database *dbp, RDB_exec_context *ecp)
 
     exp = RDB_ro_op("SUM", 2, ecp);
     assert(exp != NULL);
-    argp = RDB_table_ref_to_expr(tbp, ecp);
+    argp = RDB_table_ref(tbp, ecp);
     assert(argp != NULL);
     RDB_add_arg(exp, argp);
     argp = RDB_expr_var("COUNT", ecp);

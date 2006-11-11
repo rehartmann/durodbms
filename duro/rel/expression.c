@@ -138,7 +138,7 @@ expr_resolve_attrs(const RDB_expression *exp, const RDB_object *tplp,
         case RDB_EX_OBJ:
             return RDB_obj_to_expr(&exp->var.obj, ecp);
         case RDB_EX_TBP:
-            return RDB_table_ref_to_expr(exp->var.tbref.tbp, ecp);
+            return RDB_table_ref(exp->var.tbref.tbp, ecp);
         case RDB_EX_VAR:
             objp = RDB_tuple_get(tplp, exp->var.varname);
             if (objp != NULL)
@@ -1017,7 +1017,7 @@ RDB_obj_to_expr(const RDB_object *valp, RDB_exec_context *ecp)
 }    
 
 RDB_expression *
-RDB_table_ref_to_expr(RDB_object *tbp, RDB_exec_context *ecp)
+RDB_table_ref(RDB_object *tbp, RDB_exec_context *ecp)
 {
     RDB_expression *exp = new_expr(ecp);
     if (exp == NULL) {
@@ -1623,7 +1623,7 @@ RDB_dup_expr(const RDB_expression *exp, RDB_exec_context *ecp)
         case RDB_EX_OBJ:
             return RDB_obj_to_expr(&exp->var.obj, ecp);
         case RDB_EX_TBP:
-            return RDB_table_ref_to_expr(exp->var.tbref.tbp, ecp);
+            return RDB_table_ref(exp->var.tbref.tbp, ecp);
         case RDB_EX_VAR:
             return RDB_expr_var(exp->var.varname, ecp);
     }

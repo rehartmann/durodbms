@@ -739,7 +739,7 @@ user_tables_vt(RDB_database *dbp, RDB_exec_context *ecp, RDB_transaction *txp)
     RDB_expression *ex3p = NULL;
     RDB_expression *ex4p = NULL;
 
-    ex1p = RDB_table_ref_to_expr(dbp->dbrootp->rtables_tbp, ecp);
+    ex1p = RDB_table_ref(dbp->dbrootp->rtables_tbp, ecp);
     if (ex1p == NULL)
         goto error;
     ex2p = RDB_expr_var("IS_USER", ecp);
@@ -767,7 +767,7 @@ user_tables_vt(RDB_database *dbp, RDB_exec_context *ecp, RDB_transaction *txp)
         goto error;
     }
     ex2p = NULL;
-    ex1p = RDB_table_ref_to_expr(dbp->dbrootp->dbtables_tbp, ecp);
+    ex1p = RDB_table_ref(dbp->dbrootp->dbtables_tbp, ecp);
     if (ex1p == NULL)
         goto error;
     ex2p = RDB_ro_op("WHERE", 2, ecp);
@@ -822,7 +822,7 @@ db_exists_vt(RDB_database *dbp, RDB_exec_context *ecp, RDB_transaction *txp)
         goto error;
 
     ex2p = NULL;
-    ex1p = RDB_table_ref_to_expr(dbp->dbrootp->dbtables_tbp, ecp);
+    ex1p = RDB_table_ref(dbp->dbrootp->dbtables_tbp, ecp);
     if (ex1p == NULL)
         goto error;
 
@@ -1243,7 +1243,7 @@ db_names_tb(RDB_object *dbtables_tbp, RDB_exec_context *ecp, RDB_transaction *tx
 	RDB_expression *ex3p = NULL;
 	RDB_object *vtbp;
 
-    ex1p = RDB_table_ref_to_expr(dbtables_tbp, ecp);
+    ex1p = RDB_table_ref(dbtables_tbp, ecp);
     if (ex1p == NULL)
         return NULL;
     ex2p = RDB_string_to_expr("DBNAME", ecp);

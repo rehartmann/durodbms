@@ -935,7 +935,7 @@ RDB_drop_op(const char *name, RDB_exec_context *ecp, RDB_transaction *txp)
     exp = RDB_ro_op("WHERE", 2, ecp);
     if (exp == NULL)
         return RDB_ERROR;
-    argp = RDB_table_ref_to_expr(txp->dbp->dbrootp->ro_ops_tbp, ecp);
+    argp = RDB_table_ref(txp->dbp->dbrootp->ro_ops_tbp, ecp);
     if (argp == NULL) {
         RDB_drop_expr(exp, ecp);
         return RDB_ERROR;

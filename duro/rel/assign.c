@@ -172,14 +172,14 @@ replace_targets_real_ins(RDB_object *tbp, const RDB_ma_insert *insp,
         RDB_drop_table(tb1p, ecp, NULL);
         return NULL;
     }
-    argp =  RDB_table_ref_to_expr(tbp, ecp);
+    argp =  RDB_table_ref(tbp, ecp);
     if (argp == NULL) {
         RDB_drop_table(tb1p, ecp, NULL);
         RDB_drop_expr(exp, ecp);
         return NULL;
     }
     RDB_add_arg(exp, argp);
-    argp = RDB_table_ref_to_expr(tb1p, ecp);
+    argp = RDB_table_ref(tb1p, ecp);
     if (argp == NULL) {
         RDB_drop_table(tb1p, ecp, NULL);
         RDB_drop_expr(exp, ecp);
@@ -198,7 +198,7 @@ replace_targets_real_upd(RDB_object *tbp, const RDB_ma_update *updp,
    RDB_expression *uexp = NULL;
 
     if (updp->condp == NULL) {
-        return replace_updattrs(RDB_table_ref_to_expr(tbp, ecp),
+        return replace_updattrs(RDB_table_ref(tbp, ecp),
                 updp->updc, updp->updv, ecp, txp);
     }
 
@@ -212,7 +212,7 @@ replace_targets_real_upd(RDB_object *tbp, const RDB_ma_update *updp,
         goto error;
     }
 
-    refexp = RDB_table_ref_to_expr(tbp, ecp);
+    refexp = RDB_table_ref(tbp, ecp);
     if (refexp == NULL) {
         goto error;
     }
@@ -237,7 +237,7 @@ replace_targets_real_upd(RDB_object *tbp, const RDB_ma_update *updp,
     RDB_add_arg(exp, wexp);
 
     /* !! transient table is dropped? */
-    refexp = RDB_table_ref_to_expr(tbp, ecp);
+    refexp = RDB_table_ref(tbp, ecp);
     if (refexp == NULL) {
         goto error;
     }
@@ -294,7 +294,7 @@ replace_targets_real(RDB_object *tbp,
                 RDB_expression *exp = RDB_ro_op("MINUS", 2, ecp);
                 if (exp == NULL)
                     return NULL;
-                argp = RDB_table_ref_to_expr(tbp, ecp);
+                argp = RDB_table_ref(tbp, ecp);
                 if (argp == NULL) {
                     RDB_drop_expr(exp, ecp);
                     return NULL;
@@ -306,7 +306,7 @@ replace_targets_real(RDB_object *tbp,
                     RDB_drop_expr(exp, ecp);
                     return NULL;
                 }
-                argp = RDB_table_ref_to_expr(tbp, ecp);
+                argp = RDB_table_ref(tbp, ecp);
                 if (argp == NULL) {
                     RDB_drop_expr(exp, ecp);
                     RDB_drop_expr(wexp, ecp);
@@ -328,7 +328,7 @@ replace_targets_real(RDB_object *tbp,
                     0, NULL, ecp, NULL);
             if (tb1p == NULL)
                 return NULL;
-            return RDB_table_ref_to_expr(tb1p, ecp);
+            return RDB_table_ref(tb1p, ecp);
         }
     }
 
@@ -339,7 +339,7 @@ replace_targets_real(RDB_object *tbp,
         }
     }
 
-    return RDB_table_ref_to_expr(tbp, ecp);
+    return RDB_table_ref(tbp, ecp);
 }
 
 /*
@@ -879,7 +879,7 @@ do_update(const RDB_ma_update *updp, RDB_exec_context *ecp, RDB_transaction *txp
     }
     tbexp = updp->tbp->var.tb.exp;
     if (tbexp == NULL) {
-        tbexp = RDB_table_ref_to_expr(updp->tbp, ecp);
+        tbexp = RDB_table_ref(updp->tbp, ecp);
         if (tbexp == NULL)
             return RDB_ERROR;
     }
@@ -940,7 +940,7 @@ do_delete(const RDB_ma_delete *delp, RDB_exec_context *ecp,
 
     tbexp = delp->tbp->var.tb.exp;
     if (tbexp == NULL) {
-        tbexp = RDB_table_ref_to_expr(delp->tbp, ecp);
+        tbexp = RDB_table_ref(delp->tbp, ecp);
         if (tbexp == NULL)
             return RDB_ERROR;
     }
