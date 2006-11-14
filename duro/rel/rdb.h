@@ -427,34 +427,14 @@ typedef struct {
     RDB_expression *exp;
 } RDB_attr_update;
 
-/*
- * Insert the tuple pointed to by tplp into the table pointed to by tbp.
- * All attributes of the table for which a default attribute is not provided
- * must be set. Other tuple attributes are ignored.
- */
 int
 RDB_insert(RDB_object *tbp, const RDB_object *tplp, RDB_exec_context *,
         RDB_transaction *);
 
-/*
- * Update the tuple which satisfy the condition pointed to by condp.
- * RDB_update() is currently not supported for virtual relvars.
- *
- * If condp is NULL, all tuples will be updated.
- */
 RDB_int
 RDB_update(RDB_object *, RDB_expression *, int attrc,
         const RDB_attr_update updv[], RDB_exec_context *, RDB_transaction *);
 
-/*
- * Delete the tuple for which the expression pointedto by condp
- * evaluates to true from the table pointed to by tbp.
- * 
- * If condp is NULL, all tuples will be deleted.
- *
- * Deleting records from virtual relvars is currently only supported for
- * UNION and INTERSECT.
- */
 RDB_int
 RDB_delete(RDB_object *tbp, RDB_expression *condp, RDB_exec_context *,
         RDB_transaction *);

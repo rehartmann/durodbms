@@ -1370,19 +1370,19 @@ in which case the transaction may be implicitly rolled back.
 #include &lt;rel/rdb.h&gt;
 
 typedef struct {
-    RDB_table *tbp;
+    RDB_object *tbp;
     RDB_object *tplp;
 } RDB_ma_insert;
 
 typedef struct {
-    RDB_table *tbp;
+    RDB_object *tbp;
     RDB_expression *condp;
     int updc;
     RDB_attr_update *updv;
 } RDB_ma_update;
 
 typedef struct {
-    RDB_table *tbp;
+    RDB_object *tbp;
     RDB_expression *condp;
 } RDB_ma_delete;
 
@@ -2834,7 +2834,7 @@ typedef struct {
 } RDB_seq_item;
 
 int
-RDB_table_to_array(RDB_object *arrp, RDB_table *tbp,
+RDB_table_to_array(RDB_object *arrp, RDB_object *tbp,
                    int seqitc, const RDB_seq_item seqitv[],
                    RDB_exec_context *ecp, RDB_transaction *txp);
 </pre>
@@ -3218,26 +3218,6 @@ RDB_eq(RDB_expression *, RDB_expression *, RDB_exec_context *ecp);
 
 <p>RDB_eq creates an expression that represents an "is equal" operator.
 If one of the arguments is NULL, NULL is returned.
-
-<h3>Return value</h3>
-
-<p>A pointer to the newly created expression, of NULL if the creation
-failed.
-
-<hr>
-
-<h2 id="table_to_expr">RDB_table_to_expr</h2>
-
-<pre>
-#include &lt;rel/rdb.h&gt;
-
-RDB_expression *
-RDB_table_to_expr(RDB_table *, RDB_exec_context *ecp);
-</pre>
-
-<h3>Description</h3>
-
-<p>RDB_table_to_expr creates an expression that represents a table.
 
 <h3>Return value</h3>
 
@@ -4212,7 +4192,7 @@ RDB_close_env(RDB_environment *envp);
 #include &lt;rel/rdb.h&gt;
 
 int
-RDB_create_table_index(const char *name, RDB_table *tbp, int idxcompc,
+RDB_create_table_index(const char *name, RDB_object *tbp, int idxcompc,
                        const RDB_seq_item idxcompv[], int flags,
                        RDB_exec_context *ecp, RDB_transaction *txp);
 </pre>
@@ -4505,13 +4485,13 @@ RDB_parse_table</h2>
 <pre>
 #include &lt;dli/parse.h&gt;
 
-typedef RDB_table *RDB_ltablefn(const char *, void *);
+typedef RDB_object *RDB_ltablefn(const char *, void *);
 
 RDB_expression *
 RDB_parse_expr(const char *exprtxt, RDB_ltablefn *ltfnp, void *arg,
         RDB_exec_context *ecp, RDB_transaction *);
 
-RDB_table *
+RDB_object *
 RDB_parse_table(const char *exprtxt, RDB_ltablefn *ltfnp, void *arg,
         RDB_exec_context *ecp, RDB_transaction *);
 </pre>

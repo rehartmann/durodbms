@@ -100,14 +100,16 @@ operator_invocation = 'THE_'id '(' expression ')'
         | id '(' expression_list ')'.
 
 literal = string | integer | decimal | float | TRUE | FALSE
-        | TUPLE '{' [tuple_item_list] '}'
+        | TUPLE '{' tuple_item_list '}'
         | RELATION '{' ne_expression_list '}' | TABLE_DEE | TABLE_DUM.
+
+tuple_item_list = [ne_tuple_item_list].
 
 expression_list = [ne_expression_list].
 
 ne_expression_list = expression {',' expression}.
 
-tuple_item_list = id expression {',' id expression}.
+ne_tuple_item_list = id expression {',' id expression}.
 
 string = '"'{char_lit}'"' | "'"{char_lit}"'".
 

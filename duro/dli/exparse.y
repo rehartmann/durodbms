@@ -106,7 +106,7 @@ enum {
         not_expression primary_expression rel_expression add_expression
         mul_expression literal operator_invocation count_invocation
         sum_invocation avg_invocation min_invocation max_invocation
-        all_invocation any_invocation extractor tuple_item_list
+        all_invocation any_invocation extractor ne_tuple_item_list
         ifthenelse
 
 %type <explist> expression_list ne_expression_list
@@ -1590,7 +1590,7 @@ literal: TOK_RELATION '{' ne_expression_list '}' {
             for (i = 0; i < $3.expc; i++)
                 RDB_drop_expr($3.expv[i], _RDB_parse_ecp);
             YYERROR;
-        }            
+        }
 
         if (RDB_init_table(RDB_expr_obj($$), NULL, reltyp, 0, NULL,
                 _RDB_parse_ecp) != RDB_OK) {
@@ -1598,7 +1598,7 @@ literal: TOK_RELATION '{' ne_expression_list '}' {
             for (i = 0; i < $3.expc; i++)
                 RDB_drop_expr($3.expv[i], _RDB_parse_ecp);
             YYERROR;
-        }            
+        }
 
         if (RDB_insert(RDB_expr_obj($$), tplp, _RDB_parse_ecp, _RDB_parse_txp)
                 != RDB_OK) {
@@ -1675,7 +1675,7 @@ literal: TOK_RELATION '{' ne_expression_list '}' {
         $$ = RDB_obj_to_expr(&obj, _RDB_parse_ecp);
         RDB_destroy_obj(&obj, _RDB_parse_ecp);
     } 
-    | TOK_TUPLE '{' tuple_item_list '}' {
+    | TOK_TUPLE '{' ne_tuple_item_list '}' {
         $$ = $3;
     } 
     | TOK_LIT_STRING
@@ -1684,7 +1684,7 @@ literal: TOK_RELATION '{' ne_expression_list '}' {
     | TOK_LIT_BOOLEAN
     ;
 
-tuple_item_list: TOK_ID expression {
+ne_tuple_item_list: TOK_ID expression {
         RDB_object obj;
         RDB_object *valp;
         int ret;
@@ -1710,7 +1710,7 @@ tuple_item_list: TOK_ID expression {
              YYERROR;
         }
     }
-    | tuple_item_list ',' TOK_ID expression {
+    | ne_tuple_item_list ',' TOK_ID expression {
         int ret;
         RDB_object *valp = RDB_expr_obj($4);
         if (valp == NULL) {

@@ -154,6 +154,7 @@ SALARY: 4000.000000
 DEPTNO: 2}
 
 test update_delete {update and delete} -setup $SETUP -body {
+    exec [configure -testdir]/test_lupdate
     exec [configure -testdir]/test_update
     exec [configure -testdir]/test_delete
 } -result {EMPNO: 3

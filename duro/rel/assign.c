@@ -236,7 +236,10 @@ replace_targets_real_upd(RDB_object *tbp, const RDB_ma_update *updp,
     }
     RDB_add_arg(exp, wexp);
 
-    /* !! transient table is dropped? */
+    /*
+     * *tbp cannot be transient, because a transient table must not
+     * appear in both a target and a constraint (it would have to be copied)
+     */
     refexp = RDB_table_ref(tbp, ecp);
     if (refexp == NULL) {
         goto error;

@@ -6,8 +6,8 @@
 #include <string.h>
 #include <assert.h>
 
-static int
-print_table(RDB_object *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
+static void
+check_table(RDB_object *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
 {
     int ret;
     RDB_object *tplp;
@@ -18,10 +18,8 @@ print_table(RDB_object *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
     RDB_init_obj(&array);
 
     ret = RDB_table_to_array(&array, tbp, 1, &seq, ecp, txp);
-    if (ret != RDB_OK) {
-        goto error;
-    }
-    
+    assert(ret == RDB_OK);
+
     tplp = RDB_array_get(&array, 0, ecp);
     assert(RDB_tuple_get_int(tplp, "EMPNO") == 1);
     assert(strcmp(RDB_tuple_get_string(tplp, "NAME"), "Smythe") == 0);
@@ -34,12 +32,7 @@ print_table(RDB_object *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
 
     assert(RDB_array_get(&array, 2, ecp) == NULL && RDB_obj_type(RDB_get_err(ecp)) == &RDB_NOT_FOUND_ERROR);
 
-    return RDB_destroy_obj(&array, ecp);
-
-error:
-    RDB_destroy_obj(&array, ecp);
-    
-    return RDB_ERROR;
+    assert(RDB_destroy_obj(&array, ecp) == RDB_OK);
 }
 
 int
@@ -52,14 +45,10 @@ test_update(RDB_database *dbp, RDB_exec_context *ecp)
     RDB_expression *exprp;
 
     ret = RDB_begin_tx(ecp, &tx, dbp, NULL);
-    if (ret != RDB_OK) {
-        return ret;
-    }
+    assert (ret == RDB_OK);
 
     tbp = RDB_get_table("EMPS1", ecp, &tx);
-    if (tbp == NULL) {
-        goto error;
-    }
+    assert(tbp != NULL);
 
     /* Updating table, setting SALARY to 4500 */
     attrs[0].name = "SALARY";
@@ -109,11 +98,8 @@ test_update(RDB_database *dbp, RDB_exec_context *ecp)
     RDB_drop_expr(exprp, ecp);
 
     /* Converting table to array */
-    ret = print_table(tbp, ecp, &tx);
-    if (ret != RDB_OK) {
-        goto error;
-    }
-    
+    check_table(tbp, ecp, &tx);
+
     return RDB_commit(ecp, &tx);
 
 error:

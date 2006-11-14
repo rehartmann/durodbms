@@ -308,8 +308,10 @@ array_set_cmd(TclState *statep, Tcl_Interp *interp, int objc,
         return ret;
 
     typ = Duro_get_type(objv[5], interp, statep->current_ecp, txp);
-    if (typ == NULL)
+    if (typ == NULL) {
+        Duro_dberror(interp, RDB_get_err(statep->current_ecp), txp);
         return TCL_ERROR;
+    }
 
     RDB_init_obj(&obj);
     ret = Duro_tcl_to_duro(interp, objv[4], typ, &obj, statep->current_ecp,
@@ -323,7 +325,7 @@ array_set_cmd(TclState *statep, Tcl_Interp *interp, int objc,
     RDB_destroy_obj(&obj, statep->current_ecp);
     if (ret != RDB_OK) {
         /*
-         * Must Rest Result, because Duro_tcl_to_duro may have invoked a script
+         * Must reset Result, because Duro_tcl_to_duro may have invoked a script
          */
         Tcl_ResetResult(interp);
 
