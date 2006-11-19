@@ -6,7 +6,11 @@
 #include <rel/internal.h>
 
 int yyparse(void);
-void yy_scan_string(const char *txt);
+
+typedef struct yy_buffer_state *YY_BUFFER_STATE;
+
+YY_BUFFER_STATE yy_scan_string(const char *txt);
+void yy_delete_buffer(YY_BUFFER_STATE);
 
 RDB_transaction *_RDB_parse_txp;
 RDB_expression *_RDB_parse_resultp;
@@ -17,11 +21,13 @@ RDB_exec_context *_RDB_parse_ecp;
 RDB_expression *
 _RDB_parse_lookup_table(RDB_expression *);
 
-int yywrap(void) {
+int yywrap(void)
+{
     return 1;
 }
 
-void yyerror(char *errtxt) {
+void yyerror(char *errtxt)
+{
     RDB_raise_syntax(errtxt, _RDB_parse_ecp);
 }
 
@@ -31,14 +37,16 @@ RDB_parse_expr(const char *txt, RDB_ltablefn *lt_fp, void *lt_arg,
 {
     int pret;
     RDB_expression *exp;
+    YY_BUFFER_STATE buf;
 
     _RDB_parse_txp = txp;
     _RDB_parse_ltfp = lt_fp;
     _RDB_parse_arg = lt_arg;
     _RDB_parse_ecp = ecp;
 
-    yy_scan_string(txt);
+    buf = yy_scan_string(txt);
     pret = yyparse();
+    yy_delete_buffer(buf);
     if (pret != 0) {
         if (RDB_get_err(ecp) == NULL) {
             RDB_raise_internal("parse error", ecp);
@@ -78,8 +86,8 @@ RDB_parse_table(const char *txt, RDB_ltablefn *lt_fp, void *lt_arg,
         }
         return tbp;
     }
-    if (tbp->kind != RDB_OB_TABLE) {        
-        RDB_raise_type_mismatch("no table", ecp);
+    if (tbp->kind != RDB_OB_TABLE) {
+        RDB_raise_type_mismatch("not a table", ecp);
         return NULL;
     }
     if (exp->kind == RDB_EX_OBJ) {
@@ -87,7 +95,7 @@ RDB_parse_table(const char *txt, RDB_ltablefn *lt_fp, void *lt_arg,
         RDB_type *typ = _RDB_dup_nonscalar_type(tbp->typ, ecp);
         if (typ == NULL)
             return NULL;
-        
+
         tbp = RDB_create_table_from_type(NULL, RDB_FALSE, typ,
                 0, NULL, ecp, NULL);
         if (tbp == NULL) {

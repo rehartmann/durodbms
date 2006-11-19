@@ -753,6 +753,23 @@ init_where_index_qresult(RDB_qresult *qrp, RDB_expression *texp,
                 ->var.tbref.tbp;
     }
 
+    if (indexp->unique) {
+        qrp->var.stored.curp = NULL;
+        return RDB_OK;
+    }
+
+    ret = RDB_index_cursor(&qrp->var.stored.curp, indexp->idxp, RDB_FALSE,
+            qrp->var.stored.tbp->var.tb.is_persistent ? txp->txid : NULL);
+    if (ret != RDB_OK) {
+        _RDB_handle_errcode(ret, ecp, txp);
+        return RDB_ERROR;
+    }
+
+    if (texp->var.op.optinfo.objpc != indexp->attrc
+            || !texp->var.op.optinfo.all_eq) {
+        flags = RDB_REC_RANGE;
+    }
+
     fv = malloc(sizeof (RDB_field) * indexp->attrc);
     if (fv == NULL) {
         RDB_raise_no_memory(ecp);
@@ -766,26 +783,6 @@ init_where_index_qresult(RDB_qresult *qrp, RDB_expression *texp,
             return RDB_ERROR;
         }
     }
-    for (i = texp->var.op.optinfo.objpc; i < indexp->attrc;
-            i++) {
-        fv[i].len = 0;
-    }
-
-    if (indexp->unique) {
-        qrp->var.stored.curp = NULL;
-        return RDB_OK;
-    }
-    ret = RDB_index_cursor(&qrp->var.stored.curp, indexp->idxp, RDB_FALSE,
-            qrp->var.stored.tbp->var.tb.is_persistent ? txp->txid : NULL);
-    if (ret != RDB_OK) {
-        free(fv);
-        _RDB_handle_errcode(ret, ecp, txp);
-        return RDB_ERROR;
-    }
-
-    if (texp->var.op.optinfo.objpc != indexp->attrc
-            || !texp->var.op.optinfo.all_eq)
-        flags = RDB_REC_RANGE;
 
     ret = RDB_cursor_seek(qrp->var.stored.curp, texp->var.op.optinfo.objpc,
             fv, flags);

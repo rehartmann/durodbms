@@ -80,6 +80,13 @@ test update_oindex {real tables} -setup $SETUP -body {
         error "Tuple should be $stpl, but is $tpl"
     }
 
+    duro::update T S4 {"x"} $tx
+
+    set v [duro::expr {(TUPLE FROM T {S4}).S4} $tx]
+    if {![string equal $v x]} {
+        error "Attribute S4 should be x, but is $v"
+    }
+
     duro::commit $tx
     
     duro::env close $dbenv

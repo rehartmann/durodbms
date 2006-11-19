@@ -1,8 +1,8 @@
-	README for Duro 0.11
+	README for Duro 0.12
 
 $Id$
 
-This directory contains release 0.11 of Duro, a relational database library.
+This directory contains release 0.12 of Duro, a relational database library.
 
 The following software is required for compiling and running Duro:
 
@@ -11,23 +11,21 @@ The following software is required for compiling and running Duro:
 - GNU Libtool
 - Tcl 8.1 or later
 
-Duro 0.11 has been tested under Linux/x86 and Windows XP with Berkeley
+Duro 0.12 has been tested under Linux/x86 and Windows XP with Berkeley
 DB 4.4 and Tcl 8.4.
 
 To learn about how to use Duro, see the documentation in the 'docs'
 subdirectory. Example code can be found in the 'tests' subdirectory
 of the build directory.
 
-By default, Duro is installed in the directory /usr/local/duro.0.11.
+By default, Duro is installed in the directory /usr/local/duro.0.12.
 
 When Duro is installed, the Tcl interface is installed as a package in
 the 'lib' subdirectory. The simplest way to make it available to application
 scripts is to add this subdirectory to TCLLIBPATH, e.g.:
 
-    TCLLIBPATH=/usr/local/duro.0.11/lib
+    TCLLIBPATH=/usr/local/duro.0.12/lib
     export TCLLIBPATH
-
-The Berkeley DB library directory must be added to LD_LIBRARY_PATH.
 
 To run Duroadmin, run duroadmin.tcl from the 'bin' subdirectory
 after setting TCLLIBPATH as described above. Duroadmin requires

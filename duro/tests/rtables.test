@@ -98,29 +98,29 @@ test rtables {real tables} -setup $SETUP -body {
     }
     
     duro::rollback $tx
-    
+
     set tx [duro::begin $dbenv TEST]
-    
+
     # Remove tuple by non-key attribute
     set cnt [duro::delete T1 {STRATTR = "Bla"} $tx]
     
     if {$cnt != 1} {
         error "$cnt deleted tuples reported, should be 1"
     }
-    
+
     set tpl [duro::expr {TUPLE FROM T1} $tx]
     if {![tequal $tpl {INTATTR 2 STRATTR Blax}]} {
         error "wrong value of TUPLE FROM T1"
     }
-    
+
     # Remove tuple
     duro::delete T1 $tx
-    
+
     # Check if table is empty
     if {![duro::expr {IS_EMPTY (T1)} $tx]} {
         error "Table should be empty, but is not"
     }
-    
+
     # Drop table
     duro::table drop T1 $tx
     

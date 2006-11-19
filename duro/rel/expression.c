@@ -1242,6 +1242,8 @@ destroy_expr(RDB_expression *exp, RDB_exec_context *ecp)
                 }
             }
             free(exp->var.op.argv);
+            if (exp->var.op.optinfo.objpc > 0)
+                free(exp->var.op.optinfo.objpv);
             break;
         }
         case RDB_EX_VAR:

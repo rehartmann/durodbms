@@ -249,6 +249,7 @@ cleanup:
     free(rmp->namp);
     free(rmp->filenamp);
     free(rmp->fieldlens);
+    free(rmp->cmpv);
     free(rmp);
 
     return ret;

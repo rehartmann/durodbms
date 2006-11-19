@@ -898,7 +898,7 @@ RDB_call_update_op(const char *name, int argc, RDB_object *argv[],
         RDB_raise_no_memory(ecp);
         return RDB_ERROR;
     }
-    ret = _RDB_cat_get_upd_op(name, argc, argtv, ecp, txp, &op);
+    ret = _RDB_get_upd_op(name, argc, argtv, ecp, txp, &op);
     for (i = 0; i < argc; i++) {
         if (argv[i]->kind == RDB_OB_TUPLE)
             RDB_drop_type(argtv[i], ecp, NULL);

@@ -13,7 +13,7 @@ test_keys(RDB_database *dbp, RDB_exec_context *ecp)
     RDB_object tpl;
     int ret;
 
-    RDB_init_obj(&tpl);    
+    RDB_init_obj(&tpl);
 
     ret = RDB_begin_tx(ecp, &tx, dbp, NULL);
     assert(ret == RDB_OK);

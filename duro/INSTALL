@@ -4,20 +4,35 @@ Installation procedure for Duro on Linux/POSIX systems
 Duro uses SCons (www.scons.org) to build itself. Type:
 
 scons
-tests/all.tcl (optional)
+scons check (optional)
 scons install
+
+SCons is available from www.scons.org.
 
 To compile Duro, you need GNU Libtool, Berkeley DB 4.3,
 and Tcl 8.1 or later.
 
-Depending on the system, it may be necessary to use link Duro applications
-with libpthread.
-
-
-
 Berkeley DB is assumed to be located in /usr/local/BerkeleyDB.4.4.
-If Berkeley DB is located in a different directory, ...
+If Berkeley DB is located in a different directory, you can
+pass this directory to SCons using the bdb_home variable, so
+if Berkeley DB is located in /usr instead of /usr/local,
+you may use:
+
+scons bdb_home=/usr/BerkeleyDB4.4
+
+The location of Berkeley DB may also be specified using
+teh environment, which may be preferable on Windows.
+
+By default, Duro is installed in C:\duro.0.12 on Windows, and
+/usr/local/duro.0.12 on all other systems.
+You can specify a different directory by passing an installdir
+variable to scons, e. g.:
+
+scons installdir=/usr install
+
+This will install Duro in /usr/duro.0.12.
 
 To build Duro without Tcl support, ...
+
 Note that since most tests depend on Durotcl, running the tests will not
 be possible in this case. Duroadmin and Durodump will not be available either.

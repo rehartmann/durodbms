@@ -8,14 +8,14 @@
 #include "rdb.h"
 #include "typeimpl.h"
 #include "internal.h"
-#include <gen/hashtabit.h>
-#include <gen/strfns.h>
-#include <string.h>
-#include <assert.h>
-
 #include "qresult.h"
 #include "delete.h"
 #include "insert.h"
+#include <gen/hashtabit.h>
+#include <gen/strfns.h>
+
+#include <string.h>
+#include <assert.h>
 
 RDB_object *
 _RDB_new_obj(RDB_exec_context *ecp)
@@ -367,12 +367,14 @@ RDB_irep_to_obj(RDB_object *valp, RDB_type *typ, const void *datap, size_t len,
             break;
         case RDB_OB_BIN:
             valp->var.bin.len = len;
-            valp->var.bin.datap = malloc(len);
-            if (valp->var.bin.datap == NULL) {
-                RDB_raise_no_memory(ecp);
-                return RDB_ERROR;
+            if (len > 0) {
+                valp->var.bin.datap = malloc(len);
+                if (valp->var.bin.datap == NULL) {
+                    RDB_raise_no_memory(ecp);
+                    return RDB_ERROR;
+                }
+                memcpy(valp->var.bin.datap, datap, len);
             }
-            memcpy(valp->var.bin.datap, datap, len);
             break;
         case RDB_OB_TUPLE:
             ret = irep_to_tuple(valp, typ, datap, ecp);
@@ -651,13 +653,15 @@ _RDB_copy_obj(RDB_object *dstvalp, const RDB_object *srcvalp,
             else
                 dstvalp->kind = srcvalp->kind;
             dstvalp->var.bin.len = srcvalp->var.bin.len;
-            dstvalp->var.bin.datap = malloc(srcvalp->var.bin.len);
-            if (dstvalp->var.bin.datap == NULL) {
-                RDB_raise_no_memory(ecp);
-                return RDB_ERROR;
+            if (dstvalp->var.bin.len > 0) {
+                dstvalp->var.bin.datap = malloc(srcvalp->var.bin.len);
+                if (dstvalp->var.bin.datap == NULL) {
+                    RDB_raise_no_memory(ecp);
+                    return RDB_ERROR;
+                }
+                memcpy(dstvalp->var.bin.datap, srcvalp->var.bin.datap,
+                        srcvalp->var.bin.len);
             }
-            memcpy(dstvalp->var.bin.datap, srcvalp->var.bin.datap,
-                    srcvalp->var.bin.len);
             break;
     }
     return RDB_OK;

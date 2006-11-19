@@ -301,7 +301,7 @@ test vtables {virtual tables} -setup $SETUP -body {
     set da [duro::array create TR {KN asc} $tx]
     checkarray $da {{KN 0 SN Bold} {KN 2 SN Blubb} {KN 3 SN Blu}} $tx
     duro::array drop $da
-    
+
     duro::delete TR {SN = "Bold"} $tx
     
     set da [duro::array create TR {KN asc} $tx]

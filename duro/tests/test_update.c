@@ -79,6 +79,7 @@ test_update(RDB_database *dbp, RDB_exec_context *ecp)
     }
 
     RDB_drop_expr(exprp, ecp);
+    RDB_drop_expr(attrs[0].exp, ecp);
 
     /* Updating table, setting SALARY of no 3 to SALARY + 100 */
     attrs[0].name = "SALARY";

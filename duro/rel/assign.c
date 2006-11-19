@@ -15,6 +15,7 @@
 #include "optimize.h"
 #include "internal.h"
 #include <gen/strfns.h>
+
 #include <string.h>
 #include <assert.h>
 
@@ -405,7 +406,7 @@ replace_targets(RDB_expression *exp,
 }
 
 static void
-concat_inslists (insert_node **dstpp, insert_node *srcp)
+concat_inslists(insert_node **dstpp, insert_node *srcp)
 {
     if (*dstpp == NULL) {
         *dstpp = srcp;
@@ -422,7 +423,7 @@ concat_inslists (insert_node **dstpp, insert_node *srcp)
 }
 
 static void
-concat_updlists (update_node **dstpp, update_node *srcp)
+concat_updlists(update_node **dstpp, update_node *srcp)
 {
     if (*dstpp == NULL) {
         *dstpp = srcp;
@@ -871,117 +872,142 @@ resolve_delete(RDB_object *tbp, RDB_expression *condp, delete_node **delnpp,
     return resolve_delete_expr(tbp->var.tb.exp, condp, delnpp, ecp, txp);
 }
 
+/*
+ * Perform update. *updp->tbp must be a real table.
+ */
 static RDB_int
-do_update(const RDB_ma_update *updp, RDB_exec_context *ecp, RDB_transaction *txp)
+do_update(const RDB_ma_update *updp, RDB_exec_context *ecp,
+        RDB_transaction *txp)
 {
-    RDB_expression *tbexp, *exp, *nexp;
+    int ret;
+    RDB_expression *tbexp, *nexp;
+    RDB_expression *exp = NULL;
 
-    if (updp->tbp->var.tb.exp == NULL && updp->condp == NULL) {
+    if (updp->condp == NULL) {
         return _RDB_update_real(updp->tbp, NULL, updp->updc, updp->updv,
                 ecp, txp);
     }
-    tbexp = updp->tbp->var.tb.exp;
-    if (tbexp == NULL) {
-        tbexp = RDB_table_ref(updp->tbp, ecp);
-        if (tbexp == NULL)
-            return RDB_ERROR;
-    }
-    
-    if (updp->condp != NULL) {
-        /*
-         * Build WHERE expression
-         */
-        exp = RDB_ro_op("WHERE", 2, ecp);
-        if (exp == NULL)
-            return RDB_ERROR;
-        RDB_add_arg(exp, tbexp);
-        RDB_add_arg(exp, updp->condp);
-    } else {
-        exp = tbexp;
-    }
 
+    tbexp = RDB_table_ref(updp->tbp, ecp);
+    if (tbexp == NULL)
+        return RDB_ERROR;
+
+    /*
+     * Build WHERE expression
+     */
+    exp = RDB_ro_op("WHERE", 2, ecp);
+    if (exp == NULL)
+        return RDB_ERROR;
+    RDB_add_arg(exp, tbexp);
+    RDB_add_arg(exp, updp->condp);
+
+    /* !! */
     nexp = _RDB_optimize_expr(exp, 0, NULL, ecp, txp);
+    exp->var.op.argv[0] = NULL;
+    exp->var.op.argv[1] = NULL;
+    RDB_drop_expr(exp, ecp);
+    RDB_drop_expr(tbexp, ecp);
     if (nexp == NULL)
         return RDB_ERROR;
 
     if (nexp->kind == RDB_EX_TBP) {
-        return _RDB_update_real(nexp->var.tbref.tbp, NULL, updp->updc, updp->updv,
+        ret = _RDB_update_real(nexp->var.tbref.tbp, NULL, updp->updc, updp->updv,
                 ecp, txp);
+        RDB_drop_expr(nexp, ecp);
+        return ret;
     }
     if (nexp->kind == RDB_EX_RO_OP && strcmp (nexp->var.op.name, "WHERE") == 0) {
         if (nexp->var.op.optinfo.objpc > 0) {
-            return _RDB_update_where_index(nexp, NULL, updp->updc, updp->updv,
+            ret = _RDB_update_where_index(nexp, NULL, updp->updc, updp->updv,
                     ecp, txp);
+            RDB_drop_expr(nexp, ecp);
+            return ret;
         }
 
         if (nexp->var.op.argv[0]->kind == RDB_EX_RO_OP
                 && strcmp(nexp->var.op.argv[0]->var.op.name, "WHERE") == 0
                 && nexp->var.op.argv[0]->var.op.optinfo.objpc > 0) {
-            return _RDB_update_where_index(nexp->var.op.argv[0],
+            ret = _RDB_update_where_index(nexp->var.op.argv[0],
                     nexp->var.op.argv[1], updp->updc, updp->updv,
                     ecp, txp);
+            RDB_drop_expr(nexp, ecp);
+            return ret;
         }
 
         if (nexp->var.op.argv[0]->kind == RDB_EX_TBP) {
-            return _RDB_update_real(nexp->var.op.argv[0]->var.tbref.tbp,
+            ret = _RDB_update_real(nexp->var.op.argv[0]->var.tbref.tbp,
                     nexp->var.op.argv[1], updp->updc, updp->updv, ecp, txp);
+            RDB_drop_expr(nexp, ecp);
+            return ret;
         }
     }
+    RDB_drop_expr(nexp, ecp);
     RDB_raise_not_supported("Unsupported update", ecp);
     return RDB_ERROR;
 }
 
+/*
+ * Perform a delete. updp->tbp must be a real table.
+ */
 static RDB_int
 do_delete(const RDB_ma_delete *delp, RDB_exec_context *ecp,
         RDB_transaction *txp)
 {
+    int ret;
     RDB_expression *tbexp, *exp, *nexp;
 
-    if (delp->tbp->var.tb.exp == NULL && delp->condp == NULL) {
+    if (delp->condp == NULL) {
         return _RDB_delete_real(delp->tbp, NULL, ecp, txp);
     }
 
-    tbexp = delp->tbp->var.tb.exp;
-    if (tbexp == NULL) {
-        tbexp = RDB_table_ref(delp->tbp, ecp);
-        if (tbexp == NULL)
-            return RDB_ERROR;
-    }
+    tbexp = RDB_table_ref(delp->tbp, ecp);
+    if (tbexp == NULL)
+        return RDB_ERROR;
 
-    if (delp->condp != NULL) {
-        exp = RDB_ro_op("WHERE", 2, ecp);
-        if (exp == NULL)
-            return RDB_ERROR;
-        RDB_add_arg(exp, tbexp);
-        RDB_add_arg(exp, delp->condp);
-    } else {
-        exp = tbexp;
-    }
+    exp = RDB_ro_op("WHERE", 2, ecp);
+    if (exp == NULL)
+        return RDB_ERROR;
+    RDB_add_arg(exp, tbexp);
+    RDB_add_arg(exp, delp->condp);
 
     nexp = _RDB_optimize_expr(exp, 0, NULL, ecp, txp);
     if (nexp == NULL)
         return RDB_ERROR;
 
+    exp->var.op.argv[0] = NULL;
+    exp->var.op.argv[1] = NULL;
+    RDB_drop_expr(exp, ecp);
+    RDB_drop_expr(tbexp, ecp);
+
     if (nexp->kind == RDB_EX_TBP) {
-        return _RDB_delete_real(nexp->var.tbref.tbp, NULL, ecp, txp);
+        ret = _RDB_delete_real(nexp->var.tbref.tbp, NULL, ecp, txp);
+        RDB_drop_expr(nexp, ecp);
+        return ret;
     }
     if (nexp->kind == RDB_EX_RO_OP && strcmp (nexp->var.op.name, "WHERE") == 0) {
         if (nexp->var.op.optinfo.objpc > 0) {
-            return _RDB_delete_where_index(nexp, NULL, ecp, txp);
+            ret = _RDB_delete_where_index(nexp, NULL, ecp, txp);
+            RDB_drop_expr(nexp, ecp);
+            return ret;
         }
 
         if (nexp->var.op.argv[0]->kind == RDB_EX_RO_OP
                 && strcmp(nexp->var.op.argv[0]->var.op.name, "WHERE") == 0
                 && nexp->var.op.argv[0]->var.op.optinfo.objpc > 0) {
-            return _RDB_delete_where_index(nexp->var.op.argv[0],
+            ret = _RDB_delete_where_index(nexp->var.op.argv[0],
                     nexp->var.op.argv[1], ecp, txp);
+            RDB_drop_expr(nexp, ecp);
+            return ret;
         }
 
         if (nexp->var.op.argv[0]->kind == RDB_EX_TBP) {
-            return _RDB_delete_real(nexp->var.op.argv[0]->var.tbref.tbp,
+            ret = _RDB_delete_real(nexp->var.op.argv[0]->var.tbref.tbp,
                     nexp->var.op.argv[1], ecp, txp);
+            RDB_drop_expr(nexp, ecp);
+            return ret;
         }
     }
+    RDB_drop_expr(nexp, ecp);
     RDB_raise_not_supported("Unsupported delete", ecp);
     return RDB_ERROR;
 }
