@@ -26,6 +26,7 @@
 <li><a href="#expr_to_vtable">RDB_expr_to_vtable</a>
 <li><a href="#extract_tuple">RDB_extract_tuple</a>
 <li><a href="#get_table">RDB_get_table</a>
+<li><a href="#init_table">RDB_init_table</a>
 <li><a href="#insert">RDB_insert</a>
 <li><a href="#max">RDB_max</a>
 <li><a href="#min">RDB_min</a>
@@ -100,6 +101,7 @@
 <li><a href="#db_name">RDB_db_name</a>
 <li><a href="#drop_db">RDB_drop_db</a>
 <li><a href="#get_db_from_env">RDB_get_db_from_env</a>
+<li><a href="#get_dbs">RDB_get_dbs</a>
 </ul>
 
 <h3>Transaction functions</h3>
@@ -354,7 +356,7 @@ in which case the transaction may be implicitly rolled back.
 
 <hr>
 
-<h2 id="create_table">RDB_create_table</h2>
+<h2 id="create_table">RDB_create_table, RDB_create_table_from_type</h2>
 
 <pre>
 #include &lt;rel/rdb.h&gt;
@@ -489,6 +491,43 @@ in which case the transaction may be implicitly rolled back.
 
 <hr>
 
+<h2 id="init_table">RDB_init_table</h2>
+
+<pre>
+#include &lt;rel/rdb.h&gt;
+
+int
+RDB_init_table(RDB_object *tbp, const char *name, RDB_type *reltyp,
+        int keyc, const RDB_string_vec keyv[], RDB_exec_context *ecp);
+</pre>
+
+<h3>Description</h3>
+
+<p>RDB_init_table turns *<var>tbp</var> into a transient table.
+*<var>tbp</var> should have been initialized using
+<a href="#init_obj">RDB_init_obj()</a>.
+
+<p>For <var>name</var>, <var>reltyp</var>, <var>keyc</var>, <var>keyv</var>,
+and <var>ecp</var>, the same rules apply as for
+<a href="#create_table">RDB_create_table_from_type</a>.
+
+<h3>Return value</h3>
+
+<p>RDB_OK on success, RDB_ERROR if an error occurred.
+
+<h3>Errors</h3>
+
+<dl>
+<dt>RDB_TYPE_MISMATCH_ERROR
+<dd>The type of a default value does not match the type of the corresponding
+attribute.
+<dt>RDB_INVALID_ARGUMENT_ERROR
+<dd>One or more of the arguments are incorrect. For example, a key attribute
+does not appear in *<var>reltyp</var>, etc.
+</dl>
+
+<hr>
+
 <h2 id="drop_table">RDB_drop_table</h2>
 
 <pre>
@@ -501,7 +540,7 @@ RDB_drop_table(RDB_object *tbp, RDB_exec_context *ecp, RDB_transaction *txp);
 <h3>Description</h3>
 
 <p>RDB_drop_table deletes the table specified by <var>tbp</var>
-and frees all resources associated with that table.
+and releases all resources associated with that table.
 If the table is virtual, its unnamed child tables are also deleted.
 
 <p>If an error occurs, an error value is left in *<var>ecp</var>.
@@ -1075,9 +1114,9 @@ into the table specified by <var>tbp</var>.
 <p>If an error occurs, an error value is left in *<var>ecp</var>.
 
 <p>Currently, RDB_insert is not supported for virtual tables which are the result
-of a UNION, MINUS, SEMIMINUS, INTERSECT, SEMIJOIN, MINUS, SUMMARIZE, DIVIDEBY PER,
+of a UNION, MINUS, SEMIMINUS, INTERSECT, JOIN, SEMIJOIN, SUMMARIZE, DIVIDE,
 GROUP, or UNGROUP.
- 
+
 <h3>Return value</h3>
 
 <p>RDB_OK on success, RDB_ERROR if an error occurred.
@@ -1141,8 +1180,7 @@ If <var>exp</var> is NULL, all tuples are updated.
 The attribute specified by the field name is set to the value
 obtained by evaluating the expression specified by the field exp.
 
-<p>Currently, RDB_update is not supported for virtual tables except select
-and project.
+<p>Currently, RDB_update is not supported for virtual tables except PROJECT.
 
 <h3>Return value</h3>
 
@@ -1212,9 +1250,8 @@ If <var>exp</var> is NULL, all tuples are deleted.
 
 <p>If an error occurs, an error value is left in *<var>ecp</var>.
 
-<p>Currently, RDB_delete is not supported for virtual tables which are the result of
-a JOIN, MINUS, SEMIMINUS, UNION, INTERSECT, SEMIJOIN, SUMMARIZE, WRAP, UNWRAP,
-GROUP, UNGROUP, or DIVIDEBY PER.
+<p>Currently, RDB_delete is not supported for virtual tables except
+PROJECT, WHERE, RENAME, and EXTEND.
 
 <h3>Return value</h3>
 
@@ -1253,7 +1290,7 @@ in which case the transaction may be implicitly rolled back.
 #include &lt;rel/rdb.h&gt;
 
 RDB_object *
-RDB_expr_to_vtable(RDB_expression *, RDB_exec_context *ecp, RDB_transaction *txp);
+RDB_expr_to_vtable(RDB_expression *exp, RDB_exec_context *ecp, RDB_transaction *txp);
 </pre>
 
 <h3>Description</h3>
@@ -2620,6 +2657,39 @@ the version of the library.
 </dl>
 
 <p>The call may also fail for a <a href="#syserr">system error</a>.
+
+<hr>
+
+<h2 id="get_dbs">RDB_get_dbs</h2>
+
+<pre>
+#include &lt;rel/rdb.h&gt;
+
+int
+RDB_get_dbs(RDB_environment *envp, RDB_object *arrp, RDB_exec_context *ecp)
+</pre>
+
+<h3>Description</h3>
+
+<p>After RDB_get_dbs has been called successfully, *arrp is
+an array of strings which contains the names of all databases in *envp.
+
+<p>*arrp must either already be an array of RDB_STRING or having been
+initialized using <a href="#init_obj">RDB_init_obj</a>.
+
+<h3>Return value</h3>
+
+<p>RDB_OK on success, RDB_ERROR if an error occurred.
+
+<h3>Errors</h3>
+
+<dl>
+<dt>RDB_TYPE_MISMATCH_ERROR
+<dd>*<var>arrp</var> already contains elements of a type different from
+RDB_STRING.
+</dl>
+
+<p>The call may fail for a <a href="#syserr">system error</a>.
 
 <hr>
 

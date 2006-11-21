@@ -4,7 +4,7 @@ exec tclsh "$0" ${1+"$@"}
 
 # $Id$
 #
-# Test create, insert with UNION, MINUS, INTERSECT, JOIN, RENAME, EXTEND
+# Test create, insert, delete with PROJECT, WHERE, UNION, MINUS, INTERSECT, JOIN, RENAME, EXTEND
 #
 
 package require tcltest 2.2
@@ -26,7 +26,7 @@ test vtables {virtual tables} -setup $SETUP -body {
        {K INTEGER}
        {S1 STRING}
     } {{K}} $tx
-    
+
     duro::table rename T T1 $tx
     
     duro::table create T2 {
@@ -133,7 +133,7 @@ test vtables {virtual tables} -setup $SETUP -body {
 
     duro::table expr -global TX {EXTEND T1 ADD (K*10 AS K0, IF K = 0 THEN "YES" ELSE
             "NO" AS KIS1)} $tx
-    
+
     duro::table expr -global TP {(T1 WHERE K = 1) {K}} $tx
     duro::table expr -global TP2 {T1 {S1}} $tx
     duro::table expr -global TM2 {(T1 WHERE K = 1) MINUS (T2 WHERE K = 1)} $tx
@@ -175,7 +175,7 @@ test vtables {virtual tables} -setup $SETUP -body {
     if {$tpl != {K 1}} {
         error "Tuple value should be {K 1}, but is $tpl"
     }
-    
+
     set tpl [duro::expr {TUPLE FROM TJ2} $tx]
     if {![tequal $tpl {K 2 S1 Blubb S2 B}]} {
         error "Invalid value of TUPLE FROM TJ2"
@@ -235,12 +235,12 @@ test vtables {virtual tables} -setup $SETUP -body {
     if {![string match "ATTRIBUTE_NOT_FOUND_ERROR(*)" $code]} {
         error "wrong error code: $code"
     }
-    
+
     duro::commit $tx
 
     # Close DB environment
     duro::env close $dbenv
-    
+
     # Reopen DB environment
     set dbenv [duro::env open [configure -tmpdir]/dbenv]
     
@@ -253,7 +253,7 @@ test vtables {virtual tables} -setup $SETUP -body {
     if {![catch {duro::delete TP {S1 = "Bla"} $tx}]} {
         error "duro::delete on TP should fail, but succeeded"
     }
-    
+
     set da [duro::array create TSMN {K asc} $tx]
     checkarray $da {{K 3 S1 Blu}} $tx
     duro::array drop $da
@@ -368,7 +368,15 @@ test vtables {virtual tables} -setup $SETUP -body {
     if {![catch {duro::table drop LT $tx}]} {
         error "Dropping TL should fail, but succeeded"
     }
-    
+
+    #
+    # Test delete over projection
+    #    
+    duro::delete TP2 $tx
+    if {![duro::expr {IS_EMPTY(T1)} $tx]} {
+        dberror "T1 should be empty, but is not"
+    }
+
     #
     # Check empty attribute list
     #

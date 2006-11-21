@@ -13,12 +13,12 @@ namespace import ::tcltest::*
 
 source [file dirname [info script]]/setup.tcl
 
-test update_keyindex {real tables} -setup $SETUP -body {
+test update_keyindex {update real tables using key} -setup $SETUP -body {
     set dbenv [duro::env open [configure -tmpdir]/dbenv]
 
     # Create Database
     duro::db create $dbenv TEST
-    
+
     set tx [duro::begin $dbenv TEST]
     
     # Create table
@@ -47,7 +47,7 @@ test update_keyindex {real tables} -setup $SETUP -body {
     duro::env close $dbenv
 }
 
-test update_oindex {real tables} -setup $SETUP -body {
+test update_oindex {update real tables using ordered index} -setup $SETUP -body {
     set dbenv [duro::env open [configure -tmpdir]/dbenv]
     
     # Create Database

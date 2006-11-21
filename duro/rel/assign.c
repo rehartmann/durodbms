@@ -712,7 +712,8 @@ resolve_update_expr(RDB_expression *texp, RDB_expression *condp,
         return RDB_ERROR;
     }
 
-    if (strcmp(texp->var.op.name, "PROJECT") == 0) {
+    if (strcmp(texp->var.op.name, "PROJECT") == 0
+            || strcmp(texp->var.op.name, "REMOVE") == 0) {
         return resolve_update_expr(texp->var.op.argv[0],
                 condp, updc, updv, updnpp, ecp, txp);
     }
@@ -779,7 +780,16 @@ resolve_delete_expr(RDB_expression *exp, RDB_expression *condp,
             RDB_raise_invalid_argument("invalid target table", ecp);
             return RDB_ERROR;
     }
-    
+
+    if (strcmp(exp->var.op.name, "PROJECT") == 0
+            || strcmp(exp->var.op.name, "REMOVE") == 0) {
+        return resolve_delete_expr(exp->var.op.argv[0],
+                condp, delnpp, ecp, txp);
+    }
+
+    /*
+     * Add WHERE condition to all deletes
+     */
     if (strcmp(exp->var.op.name, "WHERE") == 0) {
         if (resolve_delete_expr(exp->var.op.argv[0], condp, &delnp,
                 ecp, txp) != RDB_OK)

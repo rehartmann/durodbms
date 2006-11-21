@@ -355,9 +355,8 @@ _RDB_obj_equals(const char *name, int argc, RDB_object *argv[],
         case RDB_OB_BIN:
             return _RDB_eq_binary("=", 2, argv, NULL, 0, ecp, txp, retvalp);
         case RDB_OB_TUPLE:
-            ret = _RDB_tuple_equals(argv[0], argv[1], ecp, txp, &res);
-            if (ret != RDB_OK)
-                return ret;
+            if (_RDB_tuple_equals(argv[0], argv[1], ecp, txp, &res) != RDB_OK)
+                return RDB_ERROR;
             RDB_bool_to_obj(retvalp, res);
             break;
         case RDB_OB_TABLE:
@@ -365,9 +364,8 @@ _RDB_obj_equals(const char *name, int argc, RDB_object *argv[],
                 RDB_raise_type_mismatch("", ecp);
                 return RDB_ERROR;
             }
-            ret = _RDB_table_equals(argv[0], argv[1], ecp, NULL, &res);
-            if (ret != RDB_OK)
-                return ret;
+            if (_RDB_table_equals(argv[0], argv[1], ecp, txp, &res) != RDB_OK)
+                return RDB_ERROR;
             RDB_bool_to_obj(retvalp, res);
             break;
         case RDB_OB_ARRAY:
