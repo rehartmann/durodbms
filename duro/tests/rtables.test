@@ -53,14 +53,11 @@ test rtables {real tables} -setup $SETUP -body {
     
     # Update key attribute
     duro::update T1 INTATTR {INTATTR + 1} $tx
-    
-    set t [duro::expr {TUPLE FROM T1} $tx]
-    set s {INTATTR 2 STRATTR Blax}
-    
-    if {![tequal $t $s] } {
-        error "Tuple value is $t, should be $s"
+
+    if {[duro::expr {T1 <> RELATION { TUPLE { INTATTR 2, STRATTR "Blax" } }} $tx]} {
+        error "Wrong value of T1: [duro::expr T]"
     }
-    
+
     # Insert 2nd tuple
     duro::insert T1 {INTATTR 3 STRATTR Bla} $tx
     
@@ -108,8 +105,7 @@ test rtables {real tables} -setup $SETUP -body {
         error "$cnt deleted tuples reported, should be 1"
     }
 
-    set tpl [duro::expr {TUPLE FROM T1} $tx]
-    if {![tequal $tpl {INTATTR 2 STRATTR Blax}]} {
+    if {[duro::expr {(TUPLE FROM T1) <> TUPLE { INTATTR 2, STRATTR "Blax" }} $tx]} {
         error "wrong value of TUPLE FROM T1"
     }
 

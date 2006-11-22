@@ -1550,10 +1550,19 @@ RDB_evaluate(RDB_expression *exp, const RDB_object *tplp,
         case RDB_EX_RO_OP:
             return evaluate_ro_op(exp, tplp, ecp, txp, valp);
         case RDB_EX_VAR:
+            /* Try to get tuple attribute */
             if (tplp != NULL) {
                 RDB_object *srcp = RDB_tuple_get(tplp, exp->var.varname);
                 if (srcp != NULL)
                     return RDB_copy_obj(valp, srcp, ecp);
+            }
+
+            /* Try to get table */
+            if (txp != NULL) {
+                RDB_object *srcp = RDB_get_table(exp->var.varname, ecp, txp);
+                
+                if (srcp != NULL)
+                    return _RDB_copy_obj(valp, srcp, ecp, txp);
             }
             RDB_raise_attribute_not_found(exp->var.varname, ecp);
             return RDB_ERROR;
