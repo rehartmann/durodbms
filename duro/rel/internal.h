@@ -243,6 +243,9 @@ int
 _RDB_expr_equals(const RDB_expression *, const RDB_expression *,
         RDB_exec_context *, RDB_transaction *, RDB_bool *);
 
+int
+_RDB_destroy_expr(RDB_expression *, RDB_exec_context *);
+
 /*
  * Extend the tuple type pointed to by typ by the attributes given by
  * attrv and return the new tuple type.

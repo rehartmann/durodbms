@@ -159,34 +159,42 @@ replace_targets_real_ins(RDB_object *tbp, const RDB_ma_insert *insp,
 {
     int ret;
 	RDB_expression *exp, *argp;
-    RDB_object *tb1p;
+    RDB_type *tbtyp;
 
-    tb1p = RDB_create_table_from_type(NULL, RDB_FALSE, tbp->typ,
-            0, NULL, ecp, NULL);
-    if (tb1p == NULL)
-        return NULL;
-    ret = RDB_insert(tb1p, insp->tplp, ecp, NULL);
-    if (ret != RDB_OK)
-        return NULL;
     exp = RDB_ro_op("UNION", 2, ecp);
     if (exp == NULL) {
-        RDB_drop_table(tb1p, ecp, NULL);
         return NULL;
     }
     argp =  RDB_table_ref(tbp, ecp);
     if (argp == NULL) {
-        RDB_drop_table(tb1p, ecp, NULL);
         RDB_drop_expr(exp, ecp);
         return NULL;
     }
     RDB_add_arg(exp, argp);
-    argp = RDB_table_ref(tb1p, ecp);
+
+    argp = RDB_obj_to_expr(NULL, ecp);
     if (argp == NULL) {
-        RDB_drop_table(tb1p, ecp, NULL);
+        RDB_drop_expr(exp, ecp);
+        return NULL;
+    }
+    tbtyp = _RDB_dup_nonscalar_type(RDB_obj_type(tbp), ecp);
+    if (tbtyp == NULL) {
+        RDB_drop_expr(exp, ecp);
+        return NULL;
+    }
+    if (RDB_init_table(RDB_expr_obj(argp), NULL,
+            tbtyp, 0, NULL, ecp) != RDB_OK) {
+        RDB_drop_type(tbtyp, ecp, NULL);
+        RDB_drop_expr(exp, ecp);
+        return NULL;
+    }
+    ret = RDB_insert(RDB_expr_obj(argp), insp->tplp, ecp, NULL);
+    if (ret != RDB_OK) {
         RDB_drop_expr(exp, ecp);
         return NULL;
     }
     RDB_add_arg(exp, argp);
+
     return exp;
 }
 
@@ -277,7 +285,7 @@ replace_targets_real(RDB_object *tbp,
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
     int i;
-    RDB_object *tb1p;
+    RDB_expression *exp;
 
     for (i = 0; i < insc; i++) {
         if (insv[i].tbp == tbp) {
@@ -295,7 +303,7 @@ replace_targets_real(RDB_object *tbp,
         if (delv[i].tbp == tbp) {
             if (delv[i].condp != NULL) {
                 RDB_expression *argp, *wexp;
-                RDB_expression *exp = RDB_ro_op("MINUS", 2, ecp);
+                exp = RDB_ro_op("MINUS", 2, ecp);
                 if (exp == NULL)
                     return NULL;
                 argp = RDB_table_ref(tbp, ecp);
@@ -324,15 +332,25 @@ replace_targets_real(RDB_object *tbp,
                     return NULL;
                 }
                 RDB_add_arg(wexp, argp);
-
                 RDB_add_arg(exp, wexp);
-            }                
-            /* Expression is NULL - table will become empty */
-            tb1p = RDB_create_table_from_type(NULL, RDB_FALSE, tbp->typ,
-                    0, NULL, ecp, NULL);
-            if (tb1p == NULL)
-                return NULL;
-            return RDB_table_ref(tb1p, ecp);
+            } else {
+                /* condition is NULL - table will become empty */
+                RDB_type *tbtyp = _RDB_dup_nonscalar_type(tbp->typ, ecp);
+                if (tbtyp == NULL)
+                    return NULL;
+
+                exp = RDB_obj_to_expr(NULL, ecp);
+                if (exp == NULL) {
+                    RDB_drop_type(tbtyp, ecp, NULL);
+                    return NULL;
+                }
+                if (RDB_init_table(RDB_expr_obj(exp), NULL, tbtyp, 0, NULL, ecp)
+                        != RDB_OK) {
+                    RDB_drop_type(tbtyp, ecp, NULL);
+                    return NULL;
+                }
+            }
+            return exp;
         }
     }
 
@@ -1099,7 +1117,7 @@ resolve_inserts(int insc, const RDB_ma_insert *insv, RDB_ma_insert **ninsvp,
     ret = insc + llen;
     
 cleanup:
-    if (geninsnp == NULL)
+    if (geninsnp != NULL)
         del_inslist(geninsnp, ecp);
 
     return ret;
@@ -1174,7 +1192,7 @@ resolve_updates(int updc, const RDB_ma_update *updv, RDB_ma_update **nupdvp,
     ret = updc + llen;
     
 cleanup:
-    if (genupdnp == NULL)
+    if (genupdnp != NULL)
         del_updlist(genupdnp, ecp);
 
     return ret;
@@ -1244,7 +1262,7 @@ resolve_deletes(int delc, const RDB_ma_delete *delv, RDB_ma_delete **ndelvp,
     ret = delc + llen;
     
 cleanup:
-    if (gendelnp == NULL)
+    if (gendelnp != NULL)
         del_dellist(gendelnp, ecp);
 
     return ret;

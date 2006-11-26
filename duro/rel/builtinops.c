@@ -565,7 +565,7 @@ lt(const char *name, int argc, RDB_object *argv[],
     int ret;
     
     RDB_init_obj(&retval);
-    ret = (*argv[0]->typ->comparep)("compare", 2, argv, NULL, 0, ecp, txp, &retval);
+    ret = (*argv[0]->typ->comparep)("CMP", 2, argv, NULL, 0, ecp, txp, &retval);
     if (ret != RDB_OK) {
         RDB_destroy_obj(&retval, ecp);
         return ret;
@@ -584,10 +584,10 @@ let(const char *name, int argc, RDB_object *argv[],
     int ret;
     
     RDB_init_obj(&retval);
-    ret = (*argv[0]->typ->comparep)("compare", 2, argv, NULL, 0, ecp, txp, &retval);
+    ret = (*argv[0]->typ->comparep)("CMP", 2, argv, NULL, 0, ecp, txp, &retval);
     if (ret != RDB_OK) {
         RDB_destroy_obj(&retval, ecp);
-        return ret;
+        return RDB_ERROR;
     }
     RDB_bool_to_obj(retvalp, RDB_obj_int(&retval) <= 0);
     RDB_destroy_obj(&retval, ecp);
@@ -603,7 +603,7 @@ gt(const char *name, int argc, RDB_object *argv[],
     int ret;
     
     RDB_init_obj(&retval);
-    ret = (*argv[0]->typ->comparep)("compare", 2, argv, NULL, 0, ecp, txp, &retval);
+    ret = (*argv[0]->typ->comparep)("CMP", 2, argv, NULL, 0, ecp, txp, &retval);
     if (ret != RDB_OK) {
         RDB_destroy_obj(&retval, ecp);
         return ret;
@@ -622,7 +622,7 @@ get(const char *name, int argc, RDB_object *argv[],
     int ret;
     
     RDB_init_obj(&retval);
-    ret = (*argv[0]->typ->comparep)("compare", 2, argv, NULL, 0, ecp, txp,
+    ret = (*argv[0]->typ->comparep)("CMP", 2, argv, NULL, 0, ecp, txp,
             &retval);
     if (ret != RDB_OK) {
         RDB_destroy_obj(&retval, ecp);

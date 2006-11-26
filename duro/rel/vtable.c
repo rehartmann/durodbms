@@ -501,6 +501,7 @@ _RDB_index_objpv(_RDB_tbindex *indexp, RDB_expression *exp, RDB_type *tbtyp,
                     RDB_type_attr_type(tbtyp, indexp->attrv[i].attrname), NULL);
             if (attrexp == NULL) {
                 /* !! */
+                free(objpv);
                 return NULL;
             }
 

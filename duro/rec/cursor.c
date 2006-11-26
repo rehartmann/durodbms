@@ -158,6 +158,7 @@ RDB_cursor_update(RDB_cursor *curp, int fieldc, const RDB_field fieldv[])
             curp->txid);
 
 cleanup:
+    free(data.data);
     return ret;
 }
 

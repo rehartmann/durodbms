@@ -61,11 +61,11 @@ update_stored_complex(RDB_object *tbp, RDB_expression *condp,
     size_t len;
     RDB_bool b;
     RDB_transaction tx;
-    RDB_object *tmptbp = NULL;
+    RDB_object tmptb;
+    RDB_type *tmptbtyp;
     RDB_type *tpltyp = tbp->typ->var.basetyp;
     RDB_cursor *curp = NULL;
     RDB_object *valv = malloc(sizeof(RDB_object) * updc);
-
     if (valv == NULL) {
         RDB_raise_no_memory(ecp);
         return RDB_ERROR;
@@ -84,10 +84,15 @@ update_stored_complex(RDB_object *tbp, RDB_expression *condp,
      * Iterate over the records and insert the updated records into
      * a temporary table. For the temporary table, only one key is needed.
      */
+    tmptbtyp = _RDB_dup_nonscalar_type(tbp->typ, ecp);
+    if (tmptbtyp == NULL) {
+        rcount = RDB_ERROR;
+        goto cleanup;
+    }        
 
-    tmptbp = RDB_create_table_from_type(NULL, RDB_FALSE, tbp->typ,
-            1, tbp->var.tb.keyv, ecp, &tx);
-    if (tmptbp == NULL) {
+    ret = RDB_init_table(&tmptb, NULL, tmptbtyp, 1, tbp->var.tb.keyv, ecp);
+    if (ret != RDB_OK) {
+        RDB_drop_type(tmptbtyp, ecp, NULL);
         rcount = RDB_ERROR;
         goto cleanup;
     }
@@ -161,7 +166,7 @@ update_stored_complex(RDB_object *tbp, RDB_expression *condp,
             }
             
             /* Insert tuple into temporary table */
-            ret = _RDB_insert_real(tmptbp, &tpl, ecp, &tx);
+            ret = _RDB_insert_real(&tmptb, &tpl, ecp, &tx);
             if (ret != RDB_OK) {
                 goto cleanup;
             }
@@ -250,13 +255,12 @@ update_stored_complex(RDB_object *tbp, RDB_expression *condp,
     /*
      * Insert the records from the temporary table into the original table.
      */
-    if (_RDB_move_tuples(tbp, tmptbp, ecp, &tx) != RDB_OK) {
+    if (_RDB_move_tuples(tbp, &tmptb, ecp, &tx) != RDB_OK) {
         rcount = RDB_ERROR;
     }
 
 cleanup:
-    if (tmptbp != NULL)
-        RDB_drop_table(tmptbp, ecp, &tx);
+    RDB_destroy_obj(&tmptb, ecp);
     if (curp != NULL) {
         ret = RDB_destroy_cursor(curp);
         if (ret != RDB_OK) {
@@ -791,7 +795,8 @@ update_where_index_complex(RDB_expression *texp, RDB_expression *condp,
     int flags;
     RDB_expression *refexp;
     int objc;
-    RDB_object *tmptbp = NULL;
+    RDB_object tmptb;
+    RDB_type *tmptbtyp;
     RDB_cursor *curp = NULL;
     RDB_field *fv = malloc(sizeof(RDB_field) * objc);
     RDB_object *valv = malloc(sizeof(RDB_object) * updc);
@@ -825,15 +830,22 @@ update_where_index_complex(RDB_expression *texp, RDB_expression *condp,
     for (i = 0; i < updc; i++)
         RDB_init_obj(&valv[i]);
 
+    RDB_init_obj(&tmptb);
+
     /*
      * Iterate over the records and insert the updated records into
      * a temporary table. For the temporary table, only one key is needed.
      */
 
-    tmptbp = RDB_create_table_from_type(NULL, RDB_FALSE,
-            refexp->var.tbref.tbp->typ, 1,
-            refexp->var.tbref.tbp->var.tb.keyv, ecp, &tx);
-    if (tmptbp == NULL) {
+    tmptbtyp = _RDB_dup_nonscalar_type(refexp->var.tbref.tbp->typ, ecp);
+    if (tmptbtyp == NULL) {
+        rcount = RDB_ERROR;
+        goto cleanup;
+    }
+    ret = RDB_init_table(&tmptb, NULL, tmptbtyp, 1,
+            refexp->var.tbref.tbp->var.tb.keyv, ecp);
+    if (ret != RDB_OK) {
+        RDB_drop_type(tmptbtyp, ecp, NULL);
         rcount = RDB_ERROR;
         goto cleanup;
     }
@@ -934,7 +946,7 @@ update_where_index_complex(RDB_expression *texp, RDB_expression *condp,
             }
             
             /* Insert tuple into temporary table */
-            if (RDB_insert(tmptbp, &tpl, ecp, &tx) != RDB_OK) {
+            if (RDB_insert(&tmptb, &tpl, ecp, &tx) != RDB_OK) {
                 rcount = RDB_ERROR;
                 goto cleanup;
             }
@@ -1046,14 +1058,13 @@ update_where_index_complex(RDB_expression *texp, RDB_expression *condp,
     /*
      * Insert the records from the temporary table into the original table.
      */
-     if (_RDB_move_tuples(refexp->var.tbref.tbp, tmptbp, ecp,
+     if (_RDB_move_tuples(refexp->var.tbref.tbp, &tmptb, ecp,
                           &tx) != RDB_OK) {
          rcount = RDB_ERROR;
      }
 
 cleanup:
-    if (tmptbp != NULL)
-        RDB_drop_table(tmptbp, ecp, &tx);
+    RDB_destroy_obj(&tmptb, ecp);
 
     if (curp != NULL) {
         ret = RDB_destroy_cursor(curp);

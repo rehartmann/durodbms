@@ -181,6 +181,74 @@ dbtables_insert(RDB_object *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
     return ret;
 }
 
+static int
+insert_key(RDB_string_vec *keyp, int i, const char *tablename,
+        RDB_dbroot *dbrootp, RDB_exec_context *ecp, RDB_transaction *txp)
+{
+    int ret;
+    int j;
+    RDB_object tpl;
+    RDB_object *keystbp;
+    RDB_type *keystbtyp;
+    RDB_attr keysattr;
+
+    RDB_init_obj(&tpl);
+    if (RDB_tuple_set_int(&tpl, "KEYNO", i, ecp) != RDB_OK)
+        goto error;
+
+    if (RDB_tuple_set_string(&tpl, "TABLENAME", tablename, ecp) != RDB_OK)
+        goto error;
+
+    if (RDB_tuple_set(&tpl, "ATTRS", NULL, ecp) != RDB_OK)
+        goto error;
+
+    keystbp = RDB_tuple_get(&tpl, "ATTRS");
+
+    keysattr.name = "KEY";
+    keysattr.typ = &RDB_STRING;
+    keysattr.defaultp = NULL;
+    keysattr.options = 0;
+
+    keystbtyp = RDB_create_relation_type(1, &keysattr, ecp);
+    if (keystbtyp == NULL)
+        goto error;
+
+    if (RDB_init_table(keystbp, NULL, keystbtyp, 0, NULL, ecp) != RDB_OK) {
+        RDB_drop_type(keystbtyp, ecp, NULL);
+        goto error;
+    }
+
+    for (j = 0; j < keyp->strc; j++) {
+        RDB_object ktpl;
+        
+        RDB_init_obj(&ktpl);
+        if (RDB_tuple_set_string(&ktpl, "KEY", keyp->strv[j], ecp) != RDB_OK) {
+            RDB_destroy_obj(&ktpl, ecp);
+            RDB_drop_table(keystbp, ecp, NULL);
+            goto error;
+        }
+
+        ret = RDB_insert(keystbp, &ktpl, ecp, txp);
+        RDB_destroy_obj(&ktpl, ecp);
+        if (ret != RDB_OK) {
+            RDB_drop_table(keystbp, ecp, NULL);
+            goto error;
+        }
+    }
+
+    if (RDB_insert(dbrootp->keys_tbp, &tpl, ecp, txp) != RDB_OK)
+        goto error;
+
+    RDB_destroy_obj(&tpl, ecp);
+
+    return RDB_OK;
+
+error:
+    RDB_destroy_obj(&tpl, ecp);
+
+    return RDB_ERROR;
+}
+
 /* Insert the table pointed to by tbp into the catalog. */
 static int
 insert_rtable(RDB_object *tbp, RDB_dbroot *dbrootp, RDB_exec_context *ecp,
@@ -189,7 +257,7 @@ insert_rtable(RDB_object *tbp, RDB_dbroot *dbrootp, RDB_exec_context *ecp,
     RDB_object tpl;
     RDB_type *tuptyp = tbp->typ->var.basetyp;
     int ret;
-    int i, j;
+    int i;
 
     /* insert entry into table SYS_RTABLES */
     RDB_init_obj(&tpl);
@@ -311,67 +379,12 @@ insert_rtable(RDB_object *tbp, RDB_dbroot *dbrootp, RDB_exec_context *ecp,
     /*
      * Insert keys into SYS_KEYS
      */
-    RDB_init_obj(&tpl);
-    ret = RDB_tuple_set_string(&tpl, "TABLENAME", RDB_table_name(tbp), ecp);
-    if (ret != RDB_OK)
-        goto cleanup;
-
     for (i = 0; i < tbp->var.tb.keyc; i++) {
-        RDB_object *keystbp;
-        RDB_attr keysattr;
-        RDB_string_vec *kap = &tbp->var.tb.keyv[i];
-
-        ret = RDB_tuple_set_int(&tpl, "KEYNO", i, ecp);
-        if (ret != RDB_OK)
-            goto cleanup;
-
-        keysattr.name = "KEY";
-        keysattr.typ = &RDB_STRING;
-        keysattr.defaultp = NULL;
-        keysattr.options = 0;
-        keystbp = RDB_create_table(NULL, RDB_FALSE, 1, &keysattr, 0, NULL,
-                ecp, txp);
-        if (keystbp == NULL) {
-            ret = RDB_ERROR;
-            goto cleanup;
-        }
-
-        for (j = 0; j < kap->strc; j++) {
-            RDB_object tpl;
-            
-            RDB_init_obj(&tpl);
-            ret = RDB_tuple_set_string(&tpl, "KEY", kap->strv[j], ecp);
-            if (ret != RDB_OK) {
-                RDB_destroy_obj(&tpl, ecp);
-                RDB_drop_table(keystbp, ecp, NULL);
-                goto cleanup;
-            }
-            
-            ret = RDB_insert(keystbp, &tpl, ecp, txp);
-            RDB_destroy_obj(&tpl, ecp);
-            if (ret != RDB_OK) {
-                RDB_drop_table(keystbp, ecp, NULL);
-                goto cleanup;
-            }
-        }
-
-        /* Store keys in tuple attribute */
-        ret = RDB_tuple_set(&tpl, "ATTRS", keystbp, ecp);
-        RDB_drop_table(keystbp, ecp, NULL);
-        if (ret != RDB_OK) {
-            goto cleanup;
-        }
-
-        ret = RDB_insert(dbrootp->keys_tbp, &tpl, ecp, txp);
-        if (ret != RDB_OK)
-            goto cleanup;
+        if (insert_key(&tbp->var.tb.keyv[i], i, RDB_table_name(tbp), dbrootp,
+                ecp, txp) != RDB_OK)
+            return RDB_ERROR;
     }
-    ret = RDB_OK;
-
-cleanup:
-    RDB_destroy_obj(&tpl, ecp);
-
-    return ret;
+    return RDB_OK;
 }
 
 static int
@@ -2194,7 +2207,7 @@ _RDB_cat_get_type(const char *name, RDB_exec_context *ecp,
     /* Search for comparison function */
     typv[0] = typ;
     typv[1] = typ;
-    ret = _RDB_get_ro_op("compare", 2, typv, ecp, txp, &cmpop);
+    ret = _RDB_get_ro_op("CMP", 2, typv, ecp, txp, &cmpop);
     if (ret == RDB_OK) {
         typ->comparep = cmpop->funcp;
         typ->compare_iarglen = cmpop->iarg.var.bin.len;

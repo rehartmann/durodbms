@@ -170,7 +170,7 @@ table_create_cmd(TclState *statep, Tcl_Interp *interp, int objc,
             keyv[i].strv[j] = Tcl_GetString(keyattrobjp);
         }
     }
-    
+
     tbp = RDB_create_table(Tcl_GetString(objv[objc - 4]), persistent,
             attrc, attrv, keyc, keyv, statep->current_ecp, txp);
     if (tbp == NULL) {
@@ -217,6 +217,7 @@ table_expr_cmd(TclState *statep, Tcl_Interp *interp, int objc,
     char *txstr;
     RDB_transaction *txp;
     Tcl_HashEntry *entryp;
+    RDB_expression *texp;
     RDB_object *tbp;
     RDB_bool persistent = RDB_FALSE;
 
@@ -244,11 +245,18 @@ table_expr_cmd(TclState *statep, Tcl_Interp *interp, int objc,
     }
     txp = Tcl_GetHashValue(entryp);
 
-    tbp = Duro_parse_table_utf(interp, Tcl_GetString(objv[objc - 2]), statep,
+    texp = Duro_parse_expr_utf(interp, Tcl_GetString(objv[objc - 2]), statep,
             statep->current_ecp, txp);
-    if (tbp == NULL) {
+    if (texp == NULL) {
         return TCL_ERROR;
     }
+
+    tbp = RDB_expr_to_vtable(texp, statep->current_ecp, txp);
+    if (tbp == NULL) {
+        RDB_drop_expr(texp, statep->current_ecp);
+        Duro_dberror(interp, RDB_get_err(statep->current_ecp), txp);
+        return TCL_ERROR;
+    }        
 
     ret = RDB_set_table_name(tbp, Tcl_GetString(objv[objc - 3]),
             statep->current_ecp, txp);

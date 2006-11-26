@@ -13,6 +13,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <math.h>
+#include <assert.h>
 
 RDB_bool
 _RDB_index_sorts(struct _RDB_tbindex *indexp, int seqitc,
@@ -392,17 +393,19 @@ split_by_index(RDB_expression *texp, _RDB_tbindex *indexp,
             return RDB_ERROR;
     }
 
-    if (texp->var.op.argv[0]->kind == RDB_EX_TBP) {
-        objpv = _RDB_index_objpv(indexp, ixexp, texp->var.op.argv[0]->var.tbref.tbp->typ,
-                objpc, all_eq, asc);
-    } else {
-        objpv = _RDB_index_objpv(indexp, ixexp,
-                texp->var.op.argv[0]->var.op.argv[0]->var.tbref.tbp->typ,
-                objpc, all_eq, asc);        
-    }
-    if (objpv == NULL) {
-        RDB_raise_no_memory(ecp);
-        return RDB_ERROR;
+    if (objpc > 0) {
+        if (texp->var.op.argv[0]->kind == RDB_EX_TBP) {
+            objpv = _RDB_index_objpv(indexp, ixexp, texp->var.op.argv[0]->var.tbref.tbp->typ,
+                    objpc, all_eq, asc);
+        } else {
+            objpv = _RDB_index_objpv(indexp, ixexp,
+                    texp->var.op.argv[0]->var.op.argv[0]->var.tbref.tbp->typ,
+                    objpc, all_eq, asc);        
+        }
+        if (objpv == NULL) {
+            RDB_raise_no_memory(ecp);
+            return RDB_ERROR;
+        }
     }
 
     if (texp->var.op.argv[1] != NULL) {
@@ -422,7 +425,8 @@ split_by_index(RDB_expression *texp, _RDB_tbindex *indexp,
             return RDB_ERROR;
         RDB_add_arg(sitexp, texp->var.op.argv[0]);
         RDB_add_arg(sitexp, ixexp);
-        
+
+        assert(sitexp->var.op.optinfo.objpc == 0);
         sitexp->var.op.optinfo.objpc = objpc;
         sitexp->var.op.optinfo.objpv = objpv;
         sitexp->var.op.optinfo.asc = asc;
@@ -435,6 +439,7 @@ split_by_index(RDB_expression *texp, _RDB_tbindex *indexp,
          * Convert table to index select
          */
         texp->var.op.argv[1] = ixexp;
+        assert(texp->var.op.optinfo.objpc == 0);
         texp->var.op.optinfo.objpc = objpc;
         texp->var.op.optinfo.objpv = objpv;
         texp->var.op.optinfo.asc = asc;

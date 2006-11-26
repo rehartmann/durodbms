@@ -137,13 +137,7 @@
 <li><a href="#obj_to_expr">RDB_obj_to_expr</a>
 <li><a href="#expr_var">RDB_expr_var</a>
 <li><a href="#eq">RDB_eq</a>
-<li><a href="#expr_any">RDB_expr_any</a>
-<li><a href="#expr_all">RDB_expr_all</a>
-<li><a href="#expr_avg">RDB_expr_avg</a>
 <li><a href="#expr_comp">RDB_expr_comp</a>
-<li><a href="#expr_max">RDB_expr_max</a>
-<li><a href="#expr_min">RDB_expr_min</a>
-<li><a href="#expr_sum">RDB_expr_sum</a>
 <li><a href="#tuple_attr">RDB_tuple_attr</a>
 <li><a href="#ro_op">RDB_ro_op</a>
 <li><a href="#drop_expr">RDB_drop_expr</a>
@@ -3317,132 +3311,6 @@ failed.
 
 <hr>
 
-<h2 id="expr_any">RDB_expr_any</h2>
-
-<pre>
-#include &lt;rel/rdb.h&gt;
-
-RDB_expression *
-RDB_expr_any(RDB_expression *, const char *attrname, RDB_exec_context *ecp);
-</pre>
-
-<h3>Description</h3>
-
-<p>RDB_expr_any creates an expression which represents the <a
-href="#any">RDB_any</a> operator.
-
-<h3>Return value</h3>
-
-<p>A pointer to the newly created expression, of NULL if the creation
-failed.
-
-<hr>
-
-<h2 id="expr_all">RDB_expr_all</h2>
-
-<pre>
-#include &lt;rel/rdb.h&gt;
-
-RDB_expression *
-RDB_expr_all(RDB_expression *, const char *attrname, RDB_exec_context *ecp);
-</pre>
-
-<h3>Description</h3>
-
-<p>RDB_expr_all creates an expression which represents the <a
-href="#all">RDB_all</a> operator.
-
-<h3>Return value</h3>
-
-<p>A pointer to the newly created expression, of NULL if the creation
-failed.
-
-<hr>
-
-<h2 id="expr_avg">RDB_expr_avg</h2>
-
-<pre>
-#include &lt;rel/rdb.h&gt;
-
-RDB_expression *
-RDB_expr_avg(RDB_expression *, const char *attrname, RDB_exec_context *ecp);
-</pre>
-
-<h3>Description</h3>
-
-<p>RDB_expr_avg creates an expression which represents the <a
-href="#avg">RDB_avg</a> operator.
-
-<h3>Return value</h3>
-
-<p>A pointer to the newly created expression, of NULL if the creation
-failed.
-
-<hr>
-
-<h2 id="expr_max">RDB_expr_max</h2>
-
-<pre>
-#include &lt;rel/rdb.h&gt;
-
-RDB_expression *
-RDB_expr_max(RDB_expression *, const char *attrname, RDB_exec_context *ecp);
-</pre>
-
-<h3>Description</h3>
-
-<p>RDB_expr_max creates an expression which represents the <a
-href="#max">RDB_max</a> operator.
-
-<h3>Return value</h3>
-
-<p>A pointer to the newly created expression, of NULL if the creation
-failed.
-
-<hr>
-
-<h2 id="expr_min">RDB_expr_min</h2>
-
-<pre>
-#include &lt;rel/rdb.h&gt;
-
-RDB_expression *
-RDB_expr_min(RDB_expression *, const char *attrname, RDB_exec_context *ecp);
-</pre>
-
-<h3>Description</h3>
-
-<p>RDB_expr_min creates an expression which represents the <a
-href="#min">RDB_min</a> operator.
-
-<h3>Return value</h3>
-
-<p>A pointer to the newly created expression, of NULL if the creation
-failed.
-
-<hr>
-
-<h2 id="expr_sum">RDB_expr_sum</h2>
-
-<pre>
-#include &lt;rel/rdb.h&gt;
-
-RDB_expression *
-RDB_expr_sum(RDB_expression *, const char *attrname, RDB_exec_context *ecp);
-</pre>
-
-<h3>Description</h3>
-
-<p>RDB_expr_sum creates an expression which represents the <a
-href="#sum">RDB_sum</a> operator.
-
-<h3>Return value</h3>
-
-<p>A pointer to the newly created expression, of NULL if the creation
-failed.
-
-<hr>
-
 <h2 id="expr_comp">RDB_expr_comp</h2>
 
 <pre>
@@ -3605,6 +3473,16 @@ and must be of the user-defined type in question.
 The second argument is read-only and must be of the type of
 the component.
 </dl>
+
+<p>A user-defined comparison operator CMP returning an INTEGER may be supplied.
+CMP must have two arguments, both of the user-defined type
+for which the comparison is to be defined.
+
+<p>CMP must return -1, 0, or 1 if the first argument is lower than
+equal to, or greater than the secons argument, respectively.
+
+<p>If CMP has been defined, it will be called by the built-in comparison
+operators =, <>, <= etc. 
 
 <h3>Return value</h3>
 

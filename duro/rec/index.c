@@ -288,6 +288,7 @@ RDB_close_index(RDB_index *ixp)
     free(ixp->namp);
     free(ixp->filenamp);
     free(ixp->fieldv);
+    free(ixp->cmpv);
     free(ixp);
     return ret;
 }

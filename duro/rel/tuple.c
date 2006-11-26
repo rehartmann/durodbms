@@ -83,7 +83,7 @@ provide_entry(RDB_object *tplp, const char *attrname, RDB_exec_context *ecp,
 }
 
 int
-RDB_tuple_set(RDB_object *tplp, const char *attrname, const RDB_object *valp,
+RDB_tuple_set(RDB_object *tplp, const char *attrname, const RDB_object *objp,
         RDB_exec_context *ecp)
 {
     RDB_object *dstvalp;
@@ -92,7 +92,9 @@ RDB_tuple_set(RDB_object *tplp, const char *attrname, const RDB_object *valp,
 
     RDB_destroy_obj(dstvalp, ecp);
     RDB_init_obj(dstvalp);
-    return RDB_copy_obj(dstvalp, valp, ecp);
+    if (objp == NULL)
+        return RDB_OK;
+    return RDB_copy_obj(dstvalp, objp, ecp);
 }
 
 int

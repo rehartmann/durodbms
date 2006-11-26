@@ -98,6 +98,8 @@ cleanup:
             RDB_drop_expr(updv[i].exp, statep->current_ecp);
     }
     Tcl_Free((char *) updv);
+    if (wherep != NULL)
+        RDB_drop_expr(wherep, statep->current_ecp);
     return ret;                    
 }
 

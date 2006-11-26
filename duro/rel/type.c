@@ -627,6 +627,7 @@ RDB_create_tuple_type(int attrc, const RDB_attr attrv[],
         return NULL;
     }
     tuptyp->name = NULL;
+    tuptyp->comparep = NULL;
     tuptyp->kind = RDB_TP_TUPLE;
     tuptyp->ireplen = RDB_VARIABLE_LEN;
     tuptyp->var.tuple.attrv = malloc(sizeof(RDB_attr) * attrc);
@@ -692,6 +693,7 @@ RDB_create_relation_type(int attrc, const RDB_attr attrv[],
     }
 
     typ->name = NULL;
+    typ->comparep = NULL;
     typ->kind = RDB_TP_RELATION;
     typ->ireplen = RDB_VARIABLE_LEN;
     typ->var.basetyp = RDB_create_tuple_type(attrc, attrv, ecp);
@@ -712,6 +714,7 @@ RDB_create_array_type(RDB_type *basetyp, RDB_exec_context *ecp)
     }
     
     typ->name = NULL;
+    typ->comparep = NULL;
     typ->kind = RDB_TP_ARRAY;
     typ->ireplen = RDB_VARIABLE_LEN;
     typ->var.basetyp = basetyp;

@@ -903,7 +903,7 @@ _RDB_expr_equals(const RDB_expression *ex1p, const RDB_expression *ex2p,
 static RDB_expression *
 new_expr(RDB_exec_context *ecp) {
     RDB_expression *exp = malloc(sizeof (RDB_expression));
-    
+
     if (exp == NULL) {
         RDB_raise_no_memory(ecp);
         return NULL;
@@ -999,7 +999,7 @@ RDB_string_to_expr(const char *v, RDB_exec_context *ecp)
 }
 
 RDB_expression *
-RDB_obj_to_expr(const RDB_object *valp, RDB_exec_context *ecp)
+RDB_obj_to_expr(const RDB_object *objp, RDB_exec_context *ecp)
 {
     int ret;
     RDB_expression *exp = new_expr(ecp);
@@ -1008,13 +1008,15 @@ RDB_obj_to_expr(const RDB_object *valp, RDB_exec_context *ecp)
         
     exp->kind = RDB_EX_OBJ;
     RDB_init_obj(&exp->var.obj);
-    ret = RDB_copy_obj(&exp->var.obj, valp, ecp);
-    if (ret != RDB_OK) {
-        free(exp);
-        return NULL;
+    if (objp != NULL) {
+        ret = RDB_copy_obj(&exp->var.obj, objp, ecp);
+        if (ret != RDB_OK) {
+            free(exp);
+            return NULL;
+        }
     }
     return exp;
-}    
+}
 
 RDB_expression *
 RDB_table_ref(RDB_object *tbp, RDB_exec_context *ecp)
@@ -1204,12 +1206,36 @@ RDB_expr_comp(RDB_expression *arg, const char *compname,
     return exp;
 }
 
+static int
+drop_children(RDB_expression *exp, RDB_exec_context *ecp)
+{
+    int i;
+    
+    switch (exp->kind) {
+        case RDB_EX_TUPLE_ATTR:
+        case RDB_EX_GET_COMP:            
+            if (RDB_drop_expr(exp->var.op.argv[0], ecp) != RDB_OK)
+                return RDB_ERROR;
+            break;
+        case RDB_EX_RO_OP:
+            for (i = 0; i < exp->var.op.argc; i++) {
+                if (exp->var.op.argv[i] != NULL) {
+                    if (RDB_drop_expr(exp->var.op.argv[i], ecp) != RDB_OK)
+                        return RDB_ERROR;
+                }
+            }
+            break;
+        default: ;
+    }
+    return RDB_OK;
+}
+
 /*
- * Destroy the expression and its subexpressions, but don't
+ * Destroy the expression but not the children and don't
  * free the memory.
  */
-static int
-destroy_expr(RDB_expression *exp, RDB_exec_context *ecp)
+int
+_RDB_destroy_expr(RDB_expression *exp, RDB_exec_context *ecp)
 {
     switch (exp->kind) {
         case RDB_EX_OBJ:
@@ -1226,32 +1252,21 @@ destroy_expr(RDB_expression *exp, RDB_exec_context *ecp)
         case RDB_EX_TUPLE_ATTR:
         case RDB_EX_GET_COMP:
             free(exp->var.op.name);
-            if (RDB_drop_expr(exp->var.op.argv[0], ecp) != RDB_OK)
-                return RDB_ERROR;
             free(exp->var.op.argv);
             break;
         case RDB_EX_RO_OP:
-        {
-            int i;
-
             free(exp->var.op.name);
-            for (i = 0; i < exp->var.op.argc; i++) {
-                if (exp->var.op.argv[i] != NULL) {
-                    if (RDB_drop_expr(exp->var.op.argv[i], ecp) != RDB_OK)
-                        return RDB_ERROR;
-                }
-            }
             free(exp->var.op.argv);
             if (exp->var.op.optinfo.objpc > 0)
                 free(exp->var.op.optinfo.objpv);
             break;
-        }
         case RDB_EX_VAR:
             free(exp->var.varname);
             break;
     }
     if (exp->typ != NULL && !RDB_type_is_scalar(exp->typ))
         return RDB_drop_type(exp->typ, ecp, NULL);
+    exp->kind = 7777;
     return RDB_OK;
 }
 
@@ -1259,7 +1274,9 @@ destroy_expr(RDB_expression *exp, RDB_exec_context *ecp)
 int
 RDB_drop_expr(RDB_expression *exp, RDB_exec_context *ecp)
 {
-    int ret = destroy_expr(exp, ecp);
+    if (drop_children(exp, ecp) != RDB_OK)
+        return RDB_ERROR;
+    int ret = _RDB_destroy_expr(exp, ecp);
     free(exp);
     return ret;
 }
@@ -1876,26 +1893,20 @@ int
 _RDB_expr_to_empty_table(RDB_expression *exp, RDB_exec_context *ecp,
         RDB_transaction *txp)
 {
-    RDB_object *tbp;
     RDB_type *typ = RDB_expr_type(exp, NULL, ecp, txp);
     if (typ == NULL)
         return RDB_ERROR;
 
-    tbp = RDB_create_table_from_type(NULL, RDB_FALSE, typ, 0, NULL, ecp, txp);
-    if (tbp == NULL)
-        return RDB_ERROR;
-
-    /* exp->typ has been consumed by RDB_create_table_from_type(). */
+    /* exp->typ will be consumed by RDB_init_table(). */
     exp->typ = NULL;
 
-    if (destroy_expr(exp, ecp) != RDB_OK) {
-        RDB_drop_table(tbp, ecp, txp);
+    if (drop_children(exp, ecp) != RDB_OK)
+        return RDB_ERROR;
+    if (_RDB_destroy_expr(exp, ecp) != RDB_OK) {
         return RDB_ERROR;
     }
 
-    exp->kind = RDB_EX_TBP;
-    exp->var.tbref.tbp = tbp;
-    exp->var.tbref.indexp = NULL;
-
-    return RDB_OK;
+    exp->kind = RDB_EX_OBJ;
+    RDB_init_obj(&exp->var.obj);
+    return RDB_init_table(&exp->var.obj, NULL, typ, 0, NULL, ecp);
 }

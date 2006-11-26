@@ -100,7 +100,7 @@ RDB_create_ro_op(const char *name, int argc, RDB_type *argtv[], RDB_type *rtyp,
         goto cleanup;
 
     /* Check if it's a comparison operator */
-    if (strcmp(name, "compare") == 0 && argc == 2
+    if (strcmp(name, "CMP") == 0 && argc == 2
             && argtv[0] == argtv[1]
             && (argtv[0]->kind != RDB_TP_SCALAR
                     || !argtv[0]->var.scalar.builtin)) {
@@ -313,7 +313,6 @@ _RDB_obj_equals(const char *name, int argc, RDB_object *argv[],
 
     /*
      * Check if there is a comparison function associated with the type
-     * (
      */
     if (argv[0]->typ != NULL && RDB_type_is_scalar(argv[0]->typ)) {
         if (argv[0]->typ->comparep != NULL) {
@@ -329,7 +328,7 @@ _RDB_obj_equals(const char *name, int argc, RDB_object *argv[],
 
         RDB_init_obj(&retval);
         retval.typ = &RDB_INTEGER;
-        ret = (*arep->comparep)("compare", 2, argv, arep->compare_iargp,
+        ret = (*arep->comparep)("CMP", 2, argv, arep->compare_iargp,
                 arep->compare_iarglen, ecp, txp, &retval);
         if (ret != RDB_OK) {
             RDB_destroy_obj(&retval, ecp);

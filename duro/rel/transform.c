@@ -118,9 +118,10 @@ transform_where(RDB_expression *exp, RDB_exec_context *ecp,
             exp->var.op.argv[0] = chexp->var.op.argv[0];
             exp->var.op.argv[1] = condp;
 
-            free(chexp->var.op.name);
-            free(chexp->var.op.argv);
+            if (_RDB_destroy_expr(chexp, ecp) != RDB_OK)
+                return RDB_ERROR;
             free(chexp);
+            
         } else if (strcmp(chexp->var.op.name, "MINUS") == 0
                 || strcmp(chexp->var.op.name, "SEMIMINUS") == 0
                 || strcmp(chexp->var.op.name, "SEMIJOIN") == 0) {
@@ -248,13 +249,17 @@ transform_where(RDB_expression *exp, RDB_exec_context *ecp,
 }
 
 static int
-swap_project_union(RDB_expression *exp, RDB_expression *chexp,
+swap_project_union(RDB_expression *exp,
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
     int i;
     RDB_expression *nexp, *nargp;
     RDB_expression **hargv;
     char *hname;
+    RDB_expression *chexp = exp->var.op.argv[0];
+
+    assert(strcmp(exp->var.op.name, "PROJECT") == 0);
+    assert(strcmp(chexp->var.op.name, "UNION") == 0);
 
     /*
      * Create new project table for child #2
@@ -364,10 +369,10 @@ swap_project_rename(RDB_expression *texp, RDB_exec_context *ecp,
              * Remove child
              */
             texp->var.op.argv[0] = chtexp->var.op.argv[0];
-            free(chtexp->var.op.name);
             for (i = 1; i < chtexp->var.op.argc; i++)
                 RDB_drop_expr(chtexp->var.op.argv[i], ecp);
-            free(chtexp->var.op.argv);
+            if (_RDB_destroy_expr(chtexp, ecp) != RDB_OK)
+                return RDB_ERROR;
             free(chtexp);
 
             return transform_project(texp, ecp, txp);
@@ -461,7 +466,9 @@ transform_project_extend(RDB_expression *exp, RDB_exec_context *ecp,
         /* Extend became empty - remove */
         exp->var.op.argv[0] = expv[0];
         free(expv);
-        free(chexp->var.op.name);
+        chexp->var.op.argv = 0;
+        if (_RDB_destroy_expr(chexp, ecp) != RDB_OK)
+            return RDB_ERROR;
         free(chexp);
         return transform_project(exp, ecp, txp);
     }
@@ -581,11 +588,6 @@ transform_project(RDB_expression *exp, RDB_exec_context *ecp,
 
     do {
         chexp = exp->var.op.argv[0];
-/*
-        if (_RDB_transform(chexp, ecp, txp) != RDB_OK)
-            return RDB_ERROR;
-*/
-
         if (chexp->kind != RDB_EX_RO_OP)
             return RDB_OK;
 
@@ -596,11 +598,11 @@ transform_project(RDB_expression *exp, RDB_exec_context *ecp,
                 if (RDB_drop_expr(chexp->var.op.argv[i], ecp) != RDB_OK)
                     return RDB_ERROR;
             }
-            free(chexp->var.op.name);
-            free(chexp->var.op.argv);
+            if (_RDB_destroy_expr(chexp, ecp) != RDB_OK)
+                return RDB_ERROR;
             free(chexp);
         } else if (strcmp(chexp->var.op.name, "UNION") == 0) {
-            if (swap_project_union(exp, chexp, ecp, txp) != RDB_OK)
+            if (swap_project_union(exp, ecp, txp) != RDB_OK)
                 return RDB_ERROR;
             if (transform_project(exp->var.op.argv[1], ecp, txp) != RDB_OK)
                 return RDB_ERROR;
@@ -615,7 +617,8 @@ transform_project(RDB_expression *exp, RDB_exec_context *ecp,
         } else if (strcmp(chexp->var.op.name, "RENAME") == 0) {
             if (swap_project_rename(exp, ecp, txp) != RDB_OK)
                 return RDB_ERROR;
-            exp = chexp;
+            exp = exp->var.op.argv[0];
+            assert(exp->kind <= RDB_EX_RO_OP);
         } else if (strcmp(chexp->var.op.name, "EXTEND") == 0) {
             return transform_project_extend(exp, ecp, txp);
         } else {
@@ -623,7 +626,14 @@ transform_project(RDB_expression *exp, RDB_exec_context *ecp,
         }
     } while (exp->kind == RDB_EX_RO_OP
             && strcmp(exp->var.op.name, "PROJECT") == 0);
-    return _RDB_transform(chexp, ecp, txp);
+    assert(exp->kind <= RDB_EX_RO_OP);
+    if (exp->kind == RDB_EX_RO_OP) {
+        for (i = 0; i < exp->var.op.argc; i++) {
+            if (_RDB_transform(exp->var.op.argv[i], ecp, txp) != RDB_OK)
+                return RDB_ERROR;
+        }
+    }
+    return RDB_OK;
 }
 
 /*

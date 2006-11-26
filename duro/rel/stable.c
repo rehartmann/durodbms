@@ -142,7 +142,7 @@ compare_field(const void *data1p, size_t len1, const void *data2p, size_t len2,
     tx.txid = NULL;
     tx.envp = envp;
     retval.typ = &RDB_INTEGER;
-    (*typ->comparep)("compare", 2, valv, typ->compare_iargp,
+    (*typ->comparep)("CMP", 2, valv, typ->compare_iargp,
             typ->compare_iarglen, _RDB_cmp_ecp, &tx, &retval);
     ret = RDB_obj_int(&retval);
 
