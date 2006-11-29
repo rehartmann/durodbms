@@ -6,10 +6,10 @@
 #include <string.h>
 #include <assert.h>
 
-static RDB_object *
-create_table(RDB_exec_context *ecp, RDB_transaction *txp)
+static void
+create_table(RDB_object *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
 {
-    RDB_object *tbp;
+    RDB_type *tbtyp;
     RDB_object tpl;
 
     RDB_attr attrs[] = {
@@ -23,11 +23,13 @@ create_table(RDB_exec_context *ecp, RDB_transaction *txp)
         { 1, keyattrs }
     };
 
-    tbp = RDB_create_table(NULL, RDB_FALSE, 2, attrs, 1, key, ecp, txp);
-    assert(tbp != NULL);
+    tbtyp = RDB_create_relation_type(2, attrs, ecp);
+    assert(tbtyp != NULL);
+
+    assert(RDB_init_table(tbp, NULL, tbtyp, 1, key, ecp) == RDB_OK);
 
     RDB_init_obj(&tpl);
-    
+
     assert(RDB_tuple_set_int(&tpl, "A", 1, ecp) == RDB_OK);
     assert(RDB_tuple_set_string(&tpl, "B", "One", ecp) == RDB_OK);
     
@@ -39,7 +41,6 @@ create_table(RDB_exec_context *ecp, RDB_transaction *txp)
     assert(RDB_insert(tbp, &tpl, ecp, txp) == RDB_OK);   
 
     assert(RDB_destroy_obj(&tpl, ecp) == RDB_OK);
-    return tbp;
 }
 
 static void
@@ -101,7 +102,7 @@ main(void)
     int ret;
     RDB_exec_context ec;
     RDB_transaction tx;
-    RDB_object *tbp;
+    RDB_object tb;
 
     ret = RDB_open_env("dbenv", &dsp);
     if (ret != RDB_OK) {
@@ -120,18 +121,20 @@ main(void)
     ret = RDB_begin_tx(&ec, &tx, dbp, NULL);
     assert (ret == RDB_OK);
 
-    tbp = create_table(&ec, &tx);
+    RDB_init_obj(&tb);
 
-    test_update(tbp, &ec, &tx);
+    create_table(&tb, &ec, &tx);
 
-    check_table(tbp, &ec, &tx);
+    test_update(&tb, &ec, &tx);
 
-    assert(RDB_drop_table(tbp, &ec, &tx) == RDB_OK);
+    check_table(&tb, &ec, &tx);
+
+    assert(RDB_destroy_obj(&tb, &ec) == RDB_OK);
 
     assert(RDB_commit(&ec, &tx) == RDB_OK);
 
     RDB_destroy_exec_context(&ec);
-    
+
     ret = RDB_close_env(dsp);
     if (ret != RDB_OK) {
         fprintf(stderr, "Error: %s\n", db_strerror(ret));

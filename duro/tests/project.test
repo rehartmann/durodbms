@@ -45,10 +45,10 @@ test ptables {projection tables} -setup $SETUP -body {
     set r [duro::expr P1 $tx]
 
     duro::commit $tx
-    
+
     # Close DB environment
     duro::env close $dbenv
-    
+
     # Reopen DB environment
     set dbenv [duro::env open [configure -tmpdir]/dbenv]
     
