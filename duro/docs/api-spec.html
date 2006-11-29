@@ -225,7 +225,6 @@
 
 <ul>
 <li><a href="#parse_expr">RDB_parse_expr</a>
-<li><a href="#parse_expr">RDB_parse_table</a>
 </ul>
 
 
@@ -4427,8 +4426,7 @@ of the RDB_exec_context given by <var>ecp</var>.
 
 <hr>
 
-<h2 id="parse_expr">RDB_parse_expr<br>
-RDB_parse_table</h2>
+<h2 id="parse_expr">RDB_parse_expr</h2>
 
 <pre>
 #include &lt;dli/parse.h&gt;
@@ -4437,10 +4435,6 @@ typedef RDB_object *RDB_ltablefn(const char *, void *);
 
 RDB_expression *
 RDB_parse_expr(const char *exprtxt, RDB_ltablefn *ltfnp, void *arg,
-        RDB_exec_context *ecp, RDB_transaction *);
-
-RDB_object *
-RDB_parse_table(const char *exprtxt, RDB_ltablefn *ltfnp, void *arg,
         RDB_exec_context *ecp, RDB_transaction *);
 </pre>
 
@@ -4455,8 +4449,6 @@ not found.
 
 <p><strong>RDB_parse_expr</strong> converts an expression into a RDB_expression.
 
-<p><strong>RDB_parse_table</strong> converts an expression into a virtual table.
-
 <h3>Return value</h3>
 
 <p>On success, RDB_OK is returned. On failure, RDB_ERROR is returned.
@@ -4466,14 +4458,10 @@ not found.
 <dl>
 <dt>RDB_SYNTAX_ERROR
 <dd>A syntax error occurred during parsing.
-<dt>RDB_TYPE_MISMATCH
-<dd>Raised by <strong>RDB_parse_table</strong> if the type of
-the expression is not a relation type.
 </dl>
 
 <p>The call may also fail for a <a href="#syserr">system error</a>,
 in which case the transaction may be implicitly rolled back.
-
 
 <h3>Notes</h3>
 

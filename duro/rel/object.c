@@ -254,7 +254,7 @@ irep_to_table(RDB_object *tbp, RDB_type *typ, const void *datap, size_t len,
     if (RDB_type_is_scalar(typ))
         typ = typ->var.scalar.arep;
 
-    tbtyp = _RDB_dup_nonscalar_type(typ, ecp);
+    tbtyp = RDB_dup_nonscalar_type(typ, ecp);
     if (tbtyp == NULL) {
     	RDB_drop_type(tbtyp, ecp, NULL);
         return RDB_ERROR;
@@ -622,7 +622,7 @@ _RDB_copy_obj(RDB_object *dstvalp, const RDB_object *srcvalp,
             	            srcvalp->typ->var.basetyp->var.tuple.attrv, ecp);
                 } else {
                     /* Type is scalar with relation type as actual rep */
-                    reltyp = _RDB_dup_nonscalar_type(
+                    reltyp = RDB_dup_nonscalar_type(
                             srcvalp->typ->var.scalar.arep, ecp);
                 }
                 if (reltyp == NULL)

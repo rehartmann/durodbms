@@ -51,7 +51,7 @@ _RDB_insert_real(RDB_object *tbp, const RDB_object *tplp,
                 goto cleanup;
             }
         }
-        
+
         /* Typecheck */
         if (valp->typ == NULL) {
             RDB_type *attrtyp = tuptyp->var.tuple.attrv[i].typ;

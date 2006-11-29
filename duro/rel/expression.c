@@ -189,7 +189,7 @@ where_type(const RDB_expression *exp, const RDB_type *tpltyp,
         RDB_raise_type_mismatch("WHERE requires BOOLEAN argument", ecp);
         return NULL;
     }
-    return _RDB_dup_nonscalar_type(reltyp, ecp);
+    return RDB_dup_nonscalar_type(reltyp, ecp);
 }
 
 static RDB_type *
@@ -510,7 +510,7 @@ expr_op_type(RDB_expression *exp, const RDB_type *tpltyp,
     for (i = 0; i < argc; i++) {
         if (exp->var.op.argv[i]->kind == RDB_EX_OBJ) {
             if (exp->var.op.argv[i]->var.obj.typ != NULL) {
-                argtv[i] = _RDB_dup_nonscalar_type(
+                argtv[i] = RDB_dup_nonscalar_type(
                         exp->var.op.argv[i]->var.obj.typ, ecp);
                 if (argtv[i] == NULL)
                     goto error;
@@ -622,7 +622,7 @@ expr_op_type(RDB_expression *exp, const RDB_type *tpltyp,
             RDB_raise_type_mismatch("IF requires BOOLEAN arguments", ecp);
             goto error;
         }
-        typ = _RDB_dup_nonscalar_type(argtv[1], ecp);
+        typ = RDB_dup_nonscalar_type(argtv[1], ecp);
     /*
      * Handle built-in scalar operators with relational arguments
      */
@@ -703,7 +703,7 @@ expr_op_type(RDB_expression *exp, const RDB_type *tpltyp,
             goto error;
         }
 
-        typ = _RDB_dup_nonscalar_type(argtv[0], ecp);
+        typ = RDB_dup_nonscalar_type(argtv[0], ecp);
         if (typ == NULL)
             goto error;
         free(argtv);
@@ -723,7 +723,7 @@ expr_op_type(RDB_expression *exp, const RDB_type *tpltyp,
             goto error;
         }
 
-        typ = _RDB_dup_nonscalar_type(argtv[0], ecp);
+        typ = RDB_dup_nonscalar_type(argtv[0], ecp);
         if (typ == NULL)
             goto error;
         free(argtv);
@@ -740,7 +740,7 @@ expr_op_type(RDB_expression *exp, const RDB_type *tpltyp,
             goto error;
         }
 
-        typ = _RDB_dup_nonscalar_type(argtv[0]->var.basetyp, ecp);
+        typ = RDB_dup_nonscalar_type(argtv[0]->var.basetyp, ecp);
     } else {
         for (i = 0; i < exp->var.op.argc; i++) {
             if (argtv[i] == NULL) {
@@ -753,7 +753,7 @@ expr_op_type(RDB_expression *exp, const RDB_type *tpltyp,
             argtv, ecp, txp, &op);
         if (ret != RDB_OK)
             goto error;
-        typ = _RDB_dup_nonscalar_type(op->rtyp, ecp);
+        typ = RDB_dup_nonscalar_type(op->rtyp, ecp);
     }
 
     free(argtv);
@@ -799,7 +799,7 @@ RDB_expr_type(RDB_expression *exp, const RDB_type *tuptyp,
                 RDB_raise_attribute_not_found(exp->var.varname, ecp);
                 return NULL;
             }
-            exp->typ = _RDB_dup_nonscalar_type(attrp->typ, ecp);
+            exp->typ = RDB_dup_nonscalar_type(attrp->typ, ecp);
             return exp->typ;
         case RDB_EX_TUPLE_ATTR:
             typ = RDB_expr_type(exp->var.op.argv[0], tuptyp, ecp, txp);

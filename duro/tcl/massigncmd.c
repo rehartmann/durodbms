@@ -171,7 +171,7 @@ list_to_copy(TclState *statep, Tcl_Interp *interp, Tcl_Obj *tobjp,
     int len;
     Tcl_Obj **tobjpv;
     char *dstname, *src;
-    RDB_object *dsttbp, *srctbp;
+    RDB_expression *srcexp;
     int ret = Tcl_ListObjGetElements(interp, tobjp, &len, &tobjpv);
     if (ret != TCL_OK)
         return ret;
@@ -186,8 +186,8 @@ list_to_copy(TclState *statep, Tcl_Interp *interp, Tcl_Obj *tobjp,
         return TCL_ERROR;
 
     /* Get destination table */
-    dsttbp = Duro_get_table(statep, interp, dstname, txp);
-    if (dsttbp == NULL) {
+    copyp->dstp = Duro_get_table(statep, interp, dstname, txp);
+    if (copyp->dstp == NULL) {
         return TCL_ERROR;
     }
 
@@ -197,14 +197,16 @@ list_to_copy(TclState *statep, Tcl_Interp *interp, Tcl_Obj *tobjp,
     }
 
     /* Parse source table expression */
-    srctbp = Duro_parse_table_utf(interp, src, statep, statep->current_ecp,
+    srcexp = Duro_parse_expr_utf(interp, src, statep, statep->current_ecp,
             txp);
-    if (srctbp == NULL) {
+    if (srcexp == NULL) {
         return TCL_ERROR;
     }
-
-    copyp->dstp = dsttbp;
-    copyp->srcp = srctbp;
+    copyp->srcp = RDB_expr_to_vtable(srcexp, statep->current_ecp, txp);
+    if (copyp->srcp == NULL) {
+        RDB_drop_expr(srcexp, statep->current_ecp);
+        return TCL_ERROR;
+    }
 
     return TCL_OK;
 }

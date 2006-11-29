@@ -583,7 +583,7 @@ RDB_type_is_numeric(const RDB_type *typ) {
 }
 
 RDB_type *
-_RDB_dup_nonscalar_type(RDB_type *typ, RDB_exec_context *ecp)
+RDB_dup_nonscalar_type(RDB_type *typ, RDB_exec_context *ecp)
 {
     RDB_type *restyp;
 
@@ -598,7 +598,7 @@ _RDB_dup_nonscalar_type(RDB_type *typ, RDB_exec_context *ecp)
             restyp->name = NULL;
             restyp->kind = typ->kind;
             restyp->ireplen = RDB_VARIABLE_LEN;
-            restyp->var.basetyp = _RDB_dup_nonscalar_type(typ->var.basetyp,
+            restyp->var.basetyp = RDB_dup_nonscalar_type(typ->var.basetyp,
                     ecp);
             if (restyp->var.basetyp == NULL) {
                 free(restyp);
@@ -649,7 +649,7 @@ RDB_create_tuple_type(int attrc, const RDB_attr attrv[],
             }
         }
 
-        tuptyp->var.tuple.attrv[i].typ = _RDB_dup_nonscalar_type(
+        tuptyp->var.tuple.attrv[i].typ = RDB_dup_nonscalar_type(
                 attrv[i].typ, ecp);
         if (tuptyp->var.tuple.attrv[i].typ == NULL) {
             goto error;
@@ -1268,7 +1268,7 @@ RDB_extend_tuple_type(const RDB_type *typ, int attrc, RDB_attr attrv[],
             goto error;
         }
         newtyp->var.tuple.attrv[i].typ =
-                _RDB_dup_nonscalar_type(typ->var.tuple.attrv[i].typ, ecp);
+                RDB_dup_nonscalar_type(typ->var.tuple.attrv[i].typ, ecp);
         if (newtyp->var.tuple.attrv[i].typ == NULL) {
             goto error;
         }
@@ -1291,7 +1291,7 @@ RDB_extend_tuple_type(const RDB_type *typ, int attrc, RDB_attr attrv[],
             goto error;
         }
         newtyp->var.tuple.attrv[typ->var.tuple.attrc + i].typ =
-                _RDB_dup_nonscalar_type(attrv[i].typ, ecp);
+                RDB_dup_nonscalar_type(attrv[i].typ, ecp);
         if (newtyp->var.tuple.attrv[typ->var.tuple.attrc + i].typ == NULL) {
             goto error;
         }
@@ -1369,7 +1369,7 @@ RDB_join_tuple_types(const RDB_type *typ1, const RDB_type *typ2,
         newtyp->var.tuple.attrv[i].name = RDB_dup_str(
                 typ1->var.tuple.attrv[i].name);
         newtyp->var.tuple.attrv[i].typ = 
-                _RDB_dup_nonscalar_type(typ1->var.tuple.attrv[i].typ, ecp);
+                RDB_dup_nonscalar_type(typ1->var.tuple.attrv[i].typ, ecp);
         if (newtyp->var.tuple.attrv[i].typ == NULL)
             goto error;
         newtyp->var.tuple.attrv[i].defaultp = NULL;
@@ -1398,7 +1398,7 @@ RDB_join_tuple_types(const RDB_type *typ1, const RDB_type *typ2,
             newtyp->var.tuple.attrv[attrc].name = RDB_dup_str(
                     typ2->var.tuple.attrv[i].name);
             newtyp->var.tuple.attrv[attrc].typ =
-                    _RDB_dup_nonscalar_type(typ2->var.tuple.attrv[i].typ, ecp);
+                    RDB_dup_nonscalar_type(typ2->var.tuple.attrv[i].typ, ecp);
             if (newtyp->var.tuple.attrv[attrc].typ == NULL)
                 goto error;
             newtyp->var.tuple.attrv[attrc].defaultp = NULL;
@@ -1500,7 +1500,7 @@ RDB_project_tuple_type(const RDB_type *typ, int attrc, char *attrv[],
             RDB_raise_attribute_not_found(attrname, ecp);
             goto error;
         }
-        tuptyp->var.tuple.attrv[i].typ = _RDB_dup_nonscalar_type(attrp->typ, ecp);
+        tuptyp->var.tuple.attrv[i].typ = RDB_dup_nonscalar_type(attrp->typ, ecp);
         if (tuptyp->var.tuple.attrv[i].typ == NULL)
             goto error;
 
@@ -1606,7 +1606,7 @@ RDB_rename_tuple_type(const RDB_type *typ, int renc, const RDB_renaming renv[],
         int ai = _RDB_find_rename_from(renc, renv, attrname);
 
         /* check if the attribute has been renamed */
-        newtyp->var.tuple.attrv[i].typ = _RDB_dup_nonscalar_type(
+        newtyp->var.tuple.attrv[i].typ = RDB_dup_nonscalar_type(
                 typ->var.tuple.attrv[i].typ, ecp);
         if (newtyp->var.tuple.attrv[i].typ == NULL)
             goto error;
@@ -1694,7 +1694,7 @@ copy_attr(RDB_attr *dstp, const RDB_attr *srcp, RDB_exec_context *ecp)
         RDB_raise_no_memory(ecp);
         return RDB_ERROR;
     }
-    dstp->typ = _RDB_dup_nonscalar_type(srcp->typ, ecp);
+    dstp->typ = RDB_dup_nonscalar_type(srcp->typ, ecp);
     if (dstp->typ == NULL) {
         RDB_raise_no_memory(ecp);
         return RDB_ERROR;

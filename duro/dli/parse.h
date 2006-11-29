@@ -16,8 +16,4 @@ RDB_expression *
 RDB_parse_expr(const char *, RDB_ltablefn *, void *, RDB_exec_context *,
         RDB_transaction *);
 
-RDB_object *
-RDB_parse_table(const char *, RDB_ltablefn *, void *, RDB_exec_context *,
-        RDB_transaction *);
-
 #endif

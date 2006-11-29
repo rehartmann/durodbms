@@ -411,6 +411,7 @@ summarize_qresult(RDB_qresult *qrp, RDB_expression *exp, RDB_exec_context *ecp,
 
     key.strv = NULL;
 
+    qrp->matp = NULL;
     qrp->exp = exp;
     qrp->nested = RDB_FALSE;
 
@@ -465,37 +466,37 @@ summarize_qresult(RDB_qresult *qrp, RDB_expression *exp, RDB_exec_context *ecp,
     }
 
     /* create materialized table */
-    qrp->matp = _RDB_create_table(NULL, RDB_FALSE,
-            reltyp->var.basetyp->var.tuple.attrc,
-            reltyp->var.basetyp->var.tuple.attrv,
-            1, &key, ecp, NULL);
+    qrp->matp = _RDB_new_obj(ecp);
     if (qrp->matp == NULL)
         goto error;
 
+    if (_RDB_init_table(qrp->matp, NULL, RDB_FALSE, reltyp, 1, &key, RDB_TRUE,
+            NULL, ecp) != RDB_OK)
+        goto error;
+
     if (init_summ_table(qrp, tb1typ, hasavg, ecp, txp) != RDB_OK) {
-        RDB_drop_table(qrp->matp, ecp, txp);
         goto error;
     }
 
     /* summarize over table 1 */
     if (do_summarize(qrp, tb1typ, hasavg, ecp, txp) != RDB_OK) {
-        RDB_drop_table(qrp->matp, ecp, txp);
         goto error;
     }
 
     if (init_stored_qresult(qrp, qrp->matp, NULL, ecp, txp) != RDB_OK) {
-        RDB_drop_table(qrp->matp, ecp, txp);
         goto error;
     }
 
     free(key.strv);
-    RDB_drop_type(reltyp, ecp, NULL);
     return RDB_OK;
 
 error:
     free(key.strv);
-    if (reltyp != NULL)
+    if (qrp->matp != NULL) {
+        RDB_drop_table(qrp->matp, ecp, txp);
+    } else if (reltyp != NULL) {
         RDB_drop_type(reltyp, ecp, NULL);
+    }
     return RDB_ERROR;
 }
 
@@ -667,6 +668,7 @@ group_qresult(RDB_qresult *qrp, RDB_expression *exp, RDB_exec_context *ecp,
 {
     RDB_string_vec *keyv;
     int keyc;
+    int ret;
     RDB_bool freekeys;
     RDB_type *reltyp = RDB_expr_type(exp, NULL, ecp, txp);
     if (reltyp == NULL)
@@ -682,11 +684,25 @@ group_qresult(RDB_qresult *qrp, RDB_expression *exp, RDB_exec_context *ecp,
     }
 
     /* create materialized table */
-    qrp->matp = RDB_create_table_from_type(NULL, RDB_FALSE, reltyp,
-                        keyc, keyv, ecp, NULL);
+    qrp->matp = _RDB_new_obj(ecp);
+    if (qrp->matp == NULL) {
+        _RDB_free_obj(qrp->matp, ecp);
+        return RDB_ERROR;
+    }
+
+    reltyp = RDB_dup_nonscalar_type(reltyp, NULL);
+    if (reltyp == NULL) {
+        _RDB_free_obj(qrp->matp, ecp);
+        return RDB_ERROR;
+    }
+
+    ret = _RDB_init_table(qrp->matp, NULL, RDB_FALSE, reltyp,
+            keyc, keyv, RDB_TRUE, NULL, ecp);
     if (freekeys)
         _RDB_free_keys(keyc, keyv);
-    if (qrp->matp == NULL) {
+    if (ret != RDB_OK) {
+        RDB_drop_type(reltyp, ecp, NULL);
+        RDB_drop_table(qrp->matp, ecp, txp);
         return RDB_ERROR;
     }
 
@@ -1018,15 +1034,27 @@ _RDB_duprem(RDB_qresult *qrp, RDB_exec_context *ecp, RDB_transaction *txp)
      * Add duplicate remover only if the qresult may return duplicates
      */
     if (rd) {
+        int ret;
+
         /* rd can only be true for virtual tables */
         RDB_type *reltyp = RDB_expr_type(qrp->exp, NULL, ecp, txp);
         if (reltyp == NULL)
             return RDB_ERROR;
+        reltyp = RDB_dup_nonscalar_type(reltyp, ecp);
+        if (reltyp == NULL)
+            return RDB_ERROR;
 
         /* Create materialized (all-key) table */
-        qrp->matp = RDB_create_table_from_type(NULL, RDB_FALSE,
-                reltyp, 0, NULL, ecp, NULL);
+        qrp->matp = _RDB_new_obj(ecp);
         if (qrp->matp == NULL) {
+            RDB_drop_type(reltyp, ecp, NULL);
+            return RDB_ERROR;
+        }            
+        ret = _RDB_init_table(qrp->matp, NULL, RDB_FALSE, reltyp, 0, NULL,
+                RDB_TRUE, NULL, ecp);
+        if (ret != RDB_OK) {
+            RDB_drop_type(reltyp, ecp, NULL);
+            _RDB_free_obj(qrp->matp, ecp);
             return RDB_ERROR;
         }
     }
@@ -1116,12 +1144,16 @@ _RDB_sorter(RDB_expression *texp, RDB_qresult **qrpp, RDB_exec_context *ecp,
     typ = RDB_expr_type(texp, NULL, ecp, txp);
     if (typ == NULL)
         goto error;
+    typ = RDB_dup_nonscalar_type(typ, ecp);
+    if (typ == NULL)
+        goto error;
 
     qrp->matp = _RDB_new_rtable(NULL, RDB_FALSE,
-            typ->var.basetyp->var.tuple.attrc,
-            typ->var.basetyp->var.tuple.attrv, 1, &key, RDB_TRUE, ecp);
-    if (qrp->matp == NULL)
+            typ, 1, &key, RDB_TRUE, ecp);
+    if (qrp->matp == NULL) {
+        RDB_drop_type(typ, ecp, NULL);
         goto error;
+    }
 
     ret = _RDB_create_stored_table(qrp->matp, txp->dbp->dbrootp->envp,
             ascv, ecp, txp);

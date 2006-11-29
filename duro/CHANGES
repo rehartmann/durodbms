@@ -19,6 +19,8 @@ Changes for Duro 0.12
 - Changes to expression syntax for better conformance with TTM, third
   edition.
 
+- Removed RDB_parse_table().
+
 Changes for Duro 0.11
 
 - Added RDB_type_attrs().

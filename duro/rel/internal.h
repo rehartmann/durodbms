@@ -195,7 +195,7 @@ _RDB_init_table(RDB_object *tbp, const char *name, RDB_bool persistent,
 
 RDB_object *
 _RDB_new_rtable(const char *name, RDB_bool persistent,
-                int attrc, const RDB_attr heading[],
+                RDB_type *,
                 int keyc, const RDB_string_vec keyv[], RDB_bool usr,
                 RDB_exec_context *);
 
@@ -225,7 +225,7 @@ _RDB_field_no(RDB_stored_table *, const char *attrname);
 
 RDB_object *
 _RDB_create_table(const char *name, RDB_bool persistent,
-                int attrc, const RDB_attr heading[],
+                RDB_type *,
                 int keyc, const RDB_string_vec keyv[],
                 RDB_exec_context *, RDB_transaction *);
 
@@ -351,11 +351,12 @@ _RDB_rename_attr(const char *srcname, RDB_expression *);
 RDB_attr *
 _RDB_tuple_type_attr(const RDB_type *tuptyp, const char *attrname);
 
-RDB_type *
-_RDB_dup_nonscalar_type(RDB_type *typ, RDB_exec_context *);
-
 RDB_bool
 _RDB_legal_name(const char *name);
+
+int
+_RDB_set_defvals(RDB_type *tbtyp, int attrc, const RDB_attr attrv[],
+        RDB_exec_context *);
 
 int
 _RDB_del_recmap(RDB_transaction *, RDB_recmap *, RDB_exec_context *);

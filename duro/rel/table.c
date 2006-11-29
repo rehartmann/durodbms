@@ -22,6 +22,18 @@ dup_keyv(int keyc, const RDB_string_vec keyv[])
     return _RDB_dup_rename_keys(keyc, keyv, NULL);
 }
 
+static RDB_bool
+strvec_is_subset(const RDB_string_vec *v1p, const RDB_string_vec *v2p)
+{
+    int i;
+
+    for (i = 0; i < v1p->strc; i++) {
+        if (RDB_find_str(v2p->strc, v2p->strv, v1p->strv[i]) == -1)
+            return RDB_FALSE;
+    }
+    return RDB_TRUE;
+}
+
 int
 _RDB_init_table(RDB_object *tbp, const char *name, RDB_bool persistent,
         RDB_type *reltyp, int keyc, const RDB_string_vec keyv[], RDB_bool usr,
@@ -30,6 +42,57 @@ _RDB_init_table(RDB_object *tbp, const char *name, RDB_bool persistent,
     int i;
     RDB_string_vec allkey; /* Used if keyv is NULL */
     int attrc = reltyp->var.basetyp->var.tuple.attrc;
+
+    if (keyv != NULL) {
+        int j;
+
+        /* At least one key is required */
+        if (keyc < 1) {
+            RDB_raise_invalid_argument("key is required", ecp);
+            return RDB_ERROR;
+        }
+
+        /*
+         * Check all keys
+         */
+        for (i = 0; i < keyc; i++) {
+            /* Check if all the key attributes appear in the type */
+            for (j = 0; j < keyv[i].strc; j++) {
+                if (_RDB_tuple_type_attr(reltyp->var.basetyp, keyv[i].strv[j])
+                        == NULL) {
+                    RDB_raise_invalid_argument("invalid key", ecp);
+                    return RDB_ERROR;
+                }
+            }
+
+            /* Check if an attribute appears twice in a key */
+            for (j = 0; j < keyv[i].strc - 1; j++) {
+                /* Search attribute name in the remaining key */
+                if (RDB_find_str(keyv[i].strc - j - 1, keyv[i].strv + j + 1,
+                        keyv[i].strv[j]) != -1) {
+                    RDB_raise_invalid_argument("invalid key", ecp);
+                    return RDB_ERROR;
+                }
+            }
+        }
+
+        /* Check if a key is a subset of another */
+        for (i = 0; i < keyc - 1; i++) {
+            for (j = i + 1; j < keyc; j++) {
+                if (keyv[i].strc <= keyv[j].strc) {
+                    if (strvec_is_subset(&keyv[i], &keyv[j])) {
+                        RDB_raise_invalid_argument("invalid key", ecp);
+                        return RDB_ERROR;
+                    }
+                } else {
+                    if (strvec_is_subset(&keyv[j], &keyv[i])) {
+                        RDB_raise_invalid_argument("invalid key", ecp);
+                        return RDB_ERROR;
+                    }
+                }
+            }
+        }
+    }
 
     tbp->kind = RDB_OB_TABLE;
     tbp->var.tb.is_user = usr;
@@ -107,8 +170,8 @@ RDB_init_table(RDB_object *tbp, const char *name,
  * and does not insert the table into the catalog.
  * reltyp is consumed on success (must not be freed by caller).
  */
-static RDB_object *
-new_rtable(const char *name, RDB_bool persistent,
+RDB_object *
+_RDB_new_rtable(const char *name, RDB_bool persistent,
            RDB_type *reltyp,
            int keyc, const RDB_string_vec keyv[], RDB_bool usr,
            RDB_exec_context *ecp)
@@ -123,51 +186,6 @@ new_rtable(const char *name, RDB_bool persistent,
     if (ret != RDB_OK) {
     	free(tbp);
     	return NULL;
-    }
-    return tbp;
-}
-
-/*
- * Like new_rtable(), but uses attrc and heading instead of reltype.
- */
-RDB_object *
-_RDB_new_rtable(const char *name, RDB_bool persistent,
-                int attrc, const RDB_attr heading[],
-                int keyc, const RDB_string_vec keyv[], RDB_bool usr,
-                RDB_exec_context *ecp)
-{
-    int ret;
-    int i;
-    RDB_object *tbp;
-    RDB_type *reltyp = RDB_create_relation_type(attrc, heading, ecp);
-    if (reltyp == NULL) {
-        return NULL;
-    }
-
-    for (i = 0; i < attrc; i++) {
-        if (heading[i].defaultp != NULL) {
-            RDB_type *tuptyp = reltyp->var.basetyp;
-
-            tuptyp->var.tuple.attrv[i].defaultp = malloc(sizeof (RDB_object));
-            if (tuptyp->var.tuple.attrv[i].defaultp == NULL) {
-                RDB_drop_type(reltyp, ecp, NULL);
-                RDB_raise_no_memory(ecp);
-                return NULL;
-            }
-            RDB_init_obj(tuptyp->var.tuple.attrv[i].defaultp);
-            ret = RDB_copy_obj(tuptyp->var.tuple.attrv[i].defaultp,
-                    heading[i].defaultp, ecp);
-            if (ret != RDB_OK) {
-                RDB_drop_type(reltyp, ecp, NULL);
-                return NULL;
-            }                
-        }
-    }
-
-    tbp = new_rtable(name, persistent, reltyp, keyc, keyv, usr, ecp);
-    if (tbp == NULL) {
-        RDB_drop_type(reltyp, ecp, NULL);
-        return NULL;
     }
     return tbp;
 }
@@ -1078,4 +1096,29 @@ _RDB_expr_sortindex (RDB_expression *exp)
     /* !! RENAME, SUMMARIZE, WRAP, UNWRAP, GROUP, UNGROUP */
 
     return NULL;
+}
+
+int
+_RDB_set_defvals(RDB_type *tbtyp, int attrc, const RDB_attr attrv[],
+        RDB_exec_context *ecp)
+{
+    int i;
+
+    for (i = 0; i < attrc; i++) {
+        if (attrv[i].defaultp != NULL) {
+            RDB_type *tpltyp = tbtyp->var.basetyp;
+
+            tpltyp->var.tuple.attrv[i].defaultp = malloc(sizeof (RDB_object));
+            if (tpltyp->var.tuple.attrv[i].defaultp == NULL) {
+                RDB_raise_no_memory(ecp);
+                return RDB_ERROR;
+            }
+            RDB_init_obj(tpltyp->var.tuple.attrv[i].defaultp);
+            if (RDB_copy_obj(tpltyp->var.tuple.attrv[i].defaultp,
+                    attrv[i].defaultp, ecp) != RDB_OK) {
+                return RDB_ERROR;
+            }
+        }
+    }
+    return RDB_OK;
 }

@@ -316,6 +316,9 @@ RDB_create_table_from_type(const char *name, RDB_bool persistent,
                 int keyc, const RDB_string_vec keyv[],
                 RDB_exec_context *, RDB_transaction *);
 
+RDB_type *
+RDB_dup_nonscalar_type(RDB_type *typ, RDB_exec_context *);
+
 int
 RDB_init_table(RDB_object *tbp, const char *name, RDB_type *reltyp,
         int keyc, const RDB_string_vec keyv[], RDB_exec_context *);

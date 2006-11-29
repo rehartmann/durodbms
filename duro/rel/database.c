@@ -919,21 +919,9 @@ error:
     return RDB_ERROR;
 }
 
-RDB_bool
-strvec_is_subset(const RDB_string_vec *v1p, const RDB_string_vec *v2p)
-{
-    int i;
-
-    for (i = 0; i < v1p->strc; i++) {
-        if (RDB_find_str(v2p->strc, v2p->strv, v1p->strv[i]) == -1)
-            return RDB_FALSE;
-    }
-    return RDB_TRUE;
-}
-
 RDB_object *
 _RDB_create_table(const char *name, RDB_bool persistent,
-                int attrc, const RDB_attr attrv[],
+                RDB_type *reltyp,
                 int keyc, const RDB_string_vec keyv[],
                 RDB_exec_context *ecp, RDB_transaction *txp)
 {
@@ -948,7 +936,7 @@ _RDB_create_table(const char *name, RDB_bool persistent,
             return NULL;
     }
 
-    tbp = _RDB_new_rtable(name, persistent, attrc, attrv,
+    tbp = _RDB_new_rtable(name, persistent, reltyp,
                 keyc, keyv, RDB_TRUE, ecp);
     if (tbp == NULL) {
         RDB_raise_no_memory(ecp);
@@ -974,8 +962,8 @@ _RDB_create_table(const char *name, RDB_bool persistent,
 }
 
 RDB_object *
-RDB_create_table(const char *name, RDB_bool persistent,
-                int attrc, const RDB_attr attrv[],
+RDB_create_table_from_type(const char *name, RDB_bool persistent,
+                RDB_type *reltyp,
                 int keyc, const RDB_string_vec keyv[],
                 RDB_exec_context *ecp, RDB_transaction *txp)
 {
@@ -986,8 +974,8 @@ RDB_create_table(const char *name, RDB_bool persistent,
         return NULL;
     }
 
-    for (i = 0; i < attrc; i++) {
-        if (!_RDB_legal_name(attrv[i].name)) {
+    for (i = 0; i < reltyp->var.basetyp->var.tuple.attrc; i++) {
+        if (!_RDB_legal_name(reltyp->var.basetyp->var.tuple.attrv[i].name)) {
             RDB_object str;
         
             RDB_init_obj(&str);
@@ -997,7 +985,8 @@ RDB_create_table(const char *name, RDB_bool persistent,
                 return NULL;
             }
 
-            if (RDB_append_string(&str, attrv[i].name, ecp) != RDB_OK) {
+            if (RDB_append_string(&str,
+                    reltyp->var.basetyp->var.tuple.attrv[i].name, ecp) != RDB_OK) {
                 RDB_destroy_obj(&str, ecp);
                 return NULL;
             }
@@ -1008,78 +997,32 @@ RDB_create_table(const char *name, RDB_bool persistent,
         }
     }
 
-    if (keyv != NULL) {
-        int j, k;
-
-        /* At least one key is required */
-        if (keyc < 1) {
-            RDB_raise_invalid_argument("key is required", ecp);
-            return NULL;
-        }
-
-        /*
-         * Check all keys
-         */
-        for (i = 0; i < keyc; i++) {
-            /* Check if all the key attributes appear in the attrv */
-            for (j = 0; j < keyv[i].strc; j++) {
-                for (k = 0; k < attrc
-                        && strcmp(keyv[i].strv[j], attrv[k].name) != 0;
-                        k++);
-                if (k >= attrc) {
-                    RDB_raise_invalid_argument("invalid key", ecp);
-                    return NULL;
-                }
-            }
-
-            /* Check if an attribute appears twice in a key */
-            for (j = 0; j < keyv[i].strc - 1; j++) {
-                /* Search attribute name in the remaining key */
-                if (RDB_find_str(keyv[i].strc - j - 1, keyv[i].strv + j + 1,
-                        keyv[i].strv[j]) != -1) {
-                    RDB_raise_invalid_argument("invalid key", ecp);
-                    return NULL;
-                }
-            }
-        }
-
-        /* Check if a key is a subset of another */
-        for (i = 0; i < keyc - 1; i++) {
-            for (j = i + 1; j < keyc; j++) {
-                if (keyv[i].strc <= keyv[j].strc) {
-                    if (strvec_is_subset(&keyv[i], &keyv[j])) {
-                        RDB_raise_invalid_argument("invalid key", ecp);
-                        return NULL;
-                    }
-                } else {
-                    if (strvec_is_subset(&keyv[j], &keyv[i])) {
-                            RDB_raise_invalid_argument("invalid key", ecp);
-                            return NULL;
-                        }
-                }
-            }
-        }
-    }
-
     /* name may only be NULL if table is transient */
     if ((name == NULL) && persistent) {
         RDB_raise_invalid_argument("persistent table must have a name", ecp);
         return NULL;
     }
 
-    return _RDB_create_table(name, persistent, attrc, attrv,
-                keyc, keyv, ecp, txp);
+    return _RDB_create_table(name, persistent, reltyp, keyc, keyv, ecp, txp);
 }
 
 RDB_object *
-RDB_create_table_from_type(const char *name, RDB_bool persistent,
-                RDB_type *reltyp,
+RDB_create_table(const char *name, RDB_bool persistent,
+                int attrc, const RDB_attr heading[],
                 int keyc, const RDB_string_vec keyv[],
                 RDB_exec_context *ecp, RDB_transaction *txp)
 {
-    return RDB_create_table(name, persistent,
-            reltyp->var.basetyp->var.tuple.attrc,
-            reltyp->var.basetyp->var.tuple.attrv, keyc, keyv, ecp, txp);
+    RDB_type *tbtyp = RDB_create_relation_type(attrc, heading, ecp);
+    if (tbtyp == NULL) {
+        return NULL;
+    }
+    if (_RDB_set_defvals(tbtyp, attrc, heading, ecp) != RDB_OK) {
+        RDB_drop_type(tbtyp, ecp, NULL);
+        return NULL;
+    }
+
+    return RDB_create_table_from_type(name, persistent, tbtyp, keyc, keyv,
+            ecp, txp);
 }
 
 RDB_object *
@@ -1118,7 +1061,7 @@ RDB_drop_table(RDB_object *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
 {
     int ret;
 
-    if (tbp->var.tb.is_persistent) {
+    if (tbp->kind == RDB_OB_TABLE && tbp->var.tb.is_persistent) {
         RDB_database *dbp;
         RDB_dbroot *dbrootp;
 

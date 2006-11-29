@@ -394,7 +394,7 @@ list_to_table(Tcl_Interp *interp, Tcl_Obj *tobjp, RDB_type *typ,
         return TCL_ERROR;
 
     /* Duplicate type, as the typ argument is not consumed */
-    typ = _RDB_dup_nonscalar_type(typ, ecp);
+    typ = RDB_dup_nonscalar_type(typ, ecp);
     if (typ == NULL) {
         Duro_dberror(interp, RDB_get_err(ecp), txp);
         return TCL_ERROR;

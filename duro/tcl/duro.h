@@ -151,8 +151,4 @@ RDB_expression *
 Duro_parse_expr_utf(Tcl_Interp *, const char *, void *,
         RDB_exec_context *, RDB_transaction *);
 
-RDB_object *
-Duro_parse_table_utf(Tcl_Interp *interp, const char *s, void *arg,
-        RDB_exec_context *, RDB_transaction *);
-
 #endif

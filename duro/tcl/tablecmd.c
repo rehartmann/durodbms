@@ -14,30 +14,6 @@
 
 #include <string.h>
 
-RDB_object *
-Duro_parse_table_utf(Tcl_Interp *interp, const char *s, void *arg,
-        RDB_exec_context *ecp, RDB_transaction *txp)
-{
-    int ret;
-    RDB_object *tbp;
-    int srclen = strlen(s);
-    int dstlen = (srclen + 1) * 2;
-    char *dst = Tcl_Alloc(dstlen);
-
-    ret = Tcl_UtfToExternal(interp, NULL, s, strlen(s), 0, NULL, dst, dstlen,
-            NULL, NULL, NULL);
-    if (ret != TCL_OK)
-        return NULL;
-
-    tbp = RDB_parse_table(dst, Duro_get_ltable, arg, ecp, txp);
-    Tcl_Free(dst);
-    if (tbp == NULL) {
-        Duro_dberror(interp, RDB_get_err(ecp), txp);
-        return NULL;
-    }
-    return tbp;
-}
-
 int
 Duro_tcl_drop_ltable(table_entry *tbep, Tcl_HashEntry *entryp,
         RDB_exec_context *ecp)

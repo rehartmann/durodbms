@@ -177,7 +177,7 @@ replace_targets_real_ins(RDB_object *tbp, const RDB_ma_insert *insp,
         RDB_drop_expr(exp, ecp);
         return NULL;
     }
-    tbtyp = _RDB_dup_nonscalar_type(RDB_obj_type(tbp), ecp);
+    tbtyp = RDB_dup_nonscalar_type(RDB_obj_type(tbp), ecp);
     if (tbtyp == NULL) {
         RDB_drop_expr(exp, ecp);
         return NULL;
@@ -335,7 +335,7 @@ replace_targets_real(RDB_object *tbp,
                 RDB_add_arg(exp, wexp);
             } else {
                 /* condition is NULL - table will become empty */
-                RDB_type *tbtyp = _RDB_dup_nonscalar_type(tbp->typ, ecp);
+                RDB_type *tbtyp = RDB_dup_nonscalar_type(tbp->typ, ecp);
                 if (tbtyp == NULL)
                     return NULL;
 

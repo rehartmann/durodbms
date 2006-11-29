@@ -220,18 +220,16 @@ insert_key(RDB_string_vec *keyp, int i, const char *tablename,
 
     for (j = 0; j < keyp->strc; j++) {
         RDB_object ktpl;
-        
+
         RDB_init_obj(&ktpl);
         if (RDB_tuple_set_string(&ktpl, "KEY", keyp->strv[j], ecp) != RDB_OK) {
             RDB_destroy_obj(&ktpl, ecp);
-            RDB_drop_table(keystbp, ecp, NULL);
             goto error;
         }
 
         ret = RDB_insert(keystbp, &ktpl, ecp, txp);
         RDB_destroy_obj(&ktpl, ecp);
         if (ret != RDB_OK) {
-            RDB_drop_table(keystbp, ecp, NULL);
             goto error;
         }
     }
@@ -836,10 +834,14 @@ provide_systable(const char *name, int attrc, RDB_attr heading[],
            RDB_object **tbpp)
 {
     int ret;
+    RDB_type *tbtyp = RDB_create_relation_type(attrc, heading, ecp);
+    if (tbtyp == NULL) {
+        return RDB_ERROR;
+    }
 
-    *tbpp = _RDB_new_rtable(name, RDB_TRUE, attrc, heading,
-                keyc, keyv, RDB_FALSE, ecp);
+    *tbpp = _RDB_new_rtable(name, RDB_TRUE, tbtyp, keyc, keyv, RDB_FALSE, ecp);
     if (*tbpp == NULL) {
+        RDB_drop_type(tbtyp, ecp, NULL);
         RDB_raise_no_memory(ecp);
         return RDB_ERROR;
     }
@@ -1469,6 +1471,7 @@ _RDB_cat_get_rtable(const char *name, RDB_exec_context *ecp,
     int defvalc;
     int keyc;
     RDB_string_vec *keyv;
+    RDB_type *tbtyp;
     int indexc;
     _RDB_tbindex *indexv;
     char *recmapname = NULL;
@@ -1682,9 +1685,20 @@ _RDB_cat_get_rtable(const char *name, RDB_exec_context *ecp,
         }
     }
 
-    tbp = _RDB_new_rtable(name, RDB_TRUE, attrc, attrv, keyc, keyv, usr, ecp);
+    tbtyp = RDB_create_relation_type(attrc, attrv, ecp);
+    if (tbtyp == NULL) {
+        RDB_drop_type(tbtyp, ecp, NULL);
+        goto error;
+    }
+    if (_RDB_set_defvals(tbtyp, attrc, attrv, ecp) != RDB_OK) {
+        RDB_drop_type(tbtyp, ecp, NULL);
+        return NULL;
+    }
+
+    tbp = _RDB_new_rtable(name, RDB_TRUE, tbtyp, keyc, keyv, usr, ecp);
     _RDB_free_keys(keyc, keyv);
     if (tbp == NULL) {
+        RDB_drop_type(tbtyp, ecp, NULL);
         goto error;
     }
 

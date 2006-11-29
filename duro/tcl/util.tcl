@@ -8,17 +8,8 @@ package provide duro 0.12
 
 namespace eval duro {
 
-namespace export ptable tables env begin commit rollback db table insert \
+namespace export tables env begin commit rollback db table insert \
         update delete array operator call expr type
-
-# Print all tuples in a table
-proc ptable {tbl tx} {
-    set arr [duro::array create $tbl $tx]
-    duro::array foreach i $arr {
-        puts $i
-    } $tx
-    duro::array drop $arr
-}
 
 # Return a list of all tables of a database
 proc tables {flag tx} {

@@ -567,8 +567,8 @@ _RDB_get_ro_op(const char *name, int argc, RDB_type *argtv[],
                 RDB_raise_no_memory(ecp);
                 return RDB_ERROR;
             }
-            op->argtv[0] = _RDB_dup_nonscalar_type(argtv[0], ecp);
-            op->argtv[1] = _RDB_dup_nonscalar_type(argtv[1], ecp);
+            op->argtv[0] = RDB_dup_nonscalar_type(argtv[0], ecp);
+            op->argtv[1] = RDB_dup_nonscalar_type(argtv[1], ecp);
             ret = _RDB_put_ro_op(txp->dbp->dbrootp, op, ecp);
             if (ret != RDB_OK)
                 return ret;
@@ -581,8 +581,8 @@ _RDB_get_ro_op(const char *name, int argc, RDB_type *argtv[],
                 RDB_raise_no_memory(ecp);
                 return RDB_ERROR;
             }
-            op->argtv[0] = _RDB_dup_nonscalar_type(argtv[0], ecp);
-            op->argtv[1] = _RDB_dup_nonscalar_type(argtv[1], ecp);
+            op->argtv[0] = RDB_dup_nonscalar_type(argtv[0], ecp);
+            op->argtv[1] = RDB_dup_nonscalar_type(argtv[1], ecp);
             ret = _RDB_put_ro_op(txp->dbp->dbrootp, op, ecp);
             if (ret != RDB_OK)
                 return ret;

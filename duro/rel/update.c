@@ -84,7 +84,7 @@ update_stored_complex(RDB_object *tbp, RDB_expression *condp,
      * Iterate over the records and insert the updated records into
      * a temporary table. For the temporary table, only one key is needed.
      */
-    tmptbtyp = _RDB_dup_nonscalar_type(tbp->typ, ecp);
+    tmptbtyp = RDB_dup_nonscalar_type(tbp->typ, ecp);
     if (tmptbtyp == NULL) {
         rcount = RDB_ERROR;
         goto cleanup;
@@ -837,7 +837,7 @@ update_where_index_complex(RDB_expression *texp, RDB_expression *condp,
      * a temporary table. For the temporary table, only one key is needed.
      */
 
-    tmptbtyp = _RDB_dup_nonscalar_type(refexp->var.tbref.tbp->typ, ecp);
+    tmptbtyp = RDB_dup_nonscalar_type(refexp->var.tbref.tbp->typ, ecp);
     if (tmptbtyp == NULL) {
         rcount = RDB_ERROR;
         goto cleanup;
