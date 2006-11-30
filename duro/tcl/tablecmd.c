@@ -21,7 +21,12 @@ Duro_tcl_drop_ltable(table_entry *tbep, Tcl_HashEntry *entryp,
     int ret;
 
     Tcl_DeleteHashEntry(entryp);
-    ret = RDB_drop_table(tbep->tablep, ecp, NULL);
+    if (RDB_table_is_real(tbep->tablep)) {
+        ret = RDB_destroy_obj(tbep->tablep, ecp);
+        Tcl_Free((char *) tbep->tablep);
+    } else {
+        ret = RDB_drop_table(tbep->tablep, ecp, NULL);
+    }
     Tcl_Free((char *) tbep);
     return ret;
 }
@@ -147,23 +152,42 @@ table_create_cmd(TclState *statep, Tcl_Interp *interp, int objc,
         }
     }
 
-    tbp = RDB_create_table(Tcl_GetString(objv[objc - 4]), persistent,
-            attrc, attrv, keyc, keyv, statep->current_ecp, txp);
-    if (tbp == NULL) {
-        Duro_dberror(interp, RDB_get_err(statep->current_ecp), txp);
-        ret = TCL_ERROR;
-        goto cleanup;
-    }
+    if (persistent) {
+        tbp = RDB_create_table(Tcl_GetString(objv[objc - 4]),
+                attrc, attrv, keyc, keyv, statep->current_ecp, txp);
+        if (tbp == NULL) {
+            Duro_dberror(interp, RDB_get_err(statep->current_ecp), txp);
+            ret = TCL_ERROR;
+            goto cleanup;
+        }
+    } else {
+        RDB_type *tbtyp = RDB_create_relation_type(attrc, attrv,
+                statep->current_ecp);
+        if (tbtyp == NULL) {
+            Duro_dberror(interp, RDB_get_err(statep->current_ecp), txp);
+            ret = TCL_ERROR;
+            goto cleanup;
+        }
 
-    if (!persistent) {
+        tbp = (RDB_object *) Tcl_Alloc(sizeof (RDB_object));        
+
+        ret = RDB_init_table(tbp, Tcl_GetString(objv[objc - 4]), tbtyp,
+                keyc, keyv, statep->current_ecp);
+        if (ret != RDB_OK) {
+            RDB_drop_type(tbtyp, statep->current_ecp, NULL);
+            Duro_dberror(interp, RDB_get_err(statep->current_ecp), txp);
+            ret = TCL_ERROR;
+            goto cleanup;
+        }
         ret = Duro_add_table(interp, statep, tbp, RDB_table_name(tbp),
                 RDB_db_env(RDB_tx_db(txp)));
         if (ret != TCL_OK) {
-            RDB_drop_table(tbp, statep->current_ecp, txp);
+            RDB_destroy_obj(tbp, statep->current_ecp);
+            Tcl_Free((char *) tbp);
             goto cleanup;
         }
     }
-
+            
 cleanup:
     if (attrv != NULL) {
         for (i = 0; i < attrc; i++) {

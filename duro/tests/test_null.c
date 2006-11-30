@@ -20,7 +20,7 @@ create_table(RDB_database *dbp, RDB_exec_context *ecp)
 
     key.strv = NULL;
     key.strc = 0;
-    tbp = RDB_create_table("DEEDUM", RDB_TRUE, 0, NULL, 1, &key, ecp, &tx);
+    tbp = RDB_create_table("DEEDUM", 0, NULL, 1, &key, ecp, &tx);
     if (ret != RDB_OK) {
         RDB_rollback(ecp, &tx);
         return RDB_ERROR;

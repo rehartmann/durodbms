@@ -37,6 +37,8 @@
 <li><a href="#sum">RDB_sum</a>
 <li><a href="#table_contains">RDB_table_contains</a>
 <li><a href="#table_is_empty">RDB_table_is_empty</a>
+<li><a href="#table_is_persistent">RDB_table_is_persistent</a> !!
+<li><a href="#table_is_real">RDB_table_is_real</a> !!
 <li><a href="#table_name">RDB_table_name</a>
 <li><a href="#update">RDB_update</a>
 </ul>
@@ -135,6 +137,7 @@
 <li><a href="#string_to_expr">RDB_string_to_expr</a>
 <li><a href="#table_ref">RDB_table_ref</a>
 <li><a href="#obj_to_expr">RDB_obj_to_expr</a>
+<li><a href="#expr_obj">RDB_expr_obj</a>
 <li><a href="#expr_var">RDB_expr_var</a>
 <li><a href="#eq">RDB_eq</a>
 <li><a href="#expr_comp">RDB_expr_comp</a>
@@ -151,6 +154,7 @@
 <li><a href="#create_array_type">RDB_create_array_type</a>
 <li><a href="#create_relation_type">RDB_create_relation_type</a>
 <li><a href="#create_tuple_type">RDB_create_tuple_type</a>
+<li><a href="#dup_nonscalar_type">RDB_dup_nonscalar_type</a> !!
 <li><a href="#get_type">RDB_get_type</a>
 <li><a href="#drop_type">RDB_drop_type</a>
 <li><a href="#type_attrs">RDB_type_attrs</a>
@@ -360,13 +364,13 @@ typedef struct {
 } RDB_string_vec;
 
 RDB_object *
-RDB_create_table(const char *name, RDB_bool global,
+RDB_create_table(const char *name,
                  int attrc, const <a href="#attr">RDB_attr</a> attrv[],
                  int keyc, const RDB_string_vec keyv[],
                  RDB_exec_context *ecp, RDB_transaction *txp);
 
 RDB_object *
-RDB_create_table_from_type(const char *name, RDB_bool global,
+RDB_create_table_from_type(const char *name,
                 RDB_type *reltyp,
                 int keyc, const RDB_string_vec keyv[],
                 RDB_exec_context *ecp, RDB_transaction *txp);
@@ -374,17 +378,12 @@ RDB_create_table_from_type(const char *name, RDB_bool global,
 
 <h3>Description</h3>
 
-<p><strong>RDB_create_table</strong> creates a table with name <var>name</var>
-under the control of the transaction pointed to by <var>txp</var>
+<p><strong>RDB_create_table</strong> creates a persistent table
+with name <var>name</var> in the database
+the transaction *<var>txp</var> interacts with
 and returns a pointer to the newly created RDB_object structure.
 
 <p>If an error occurs, an error value is left in *<var>ecp</var>.
-
-<p>If <var>global</var> is RDB_FALSE, a local (transient) table will be created.
-In this case, <var>name</var> may be NULL.
-
-<p>If <var>global</var> is RDB_TRUE, a global (persistent) table in the database
-the transaction pointed to by <var>txp</var> interacts with will be created.
 
 <p>The table will have <var>attrc</var> attributes. The individual
 attributes are specified by the elements of <var>attrv</var>.
@@ -424,7 +423,8 @@ for each key.
 <p><strong>RDB_create_table_from_type</strong> acts like
 <strong>RDB_create_table</strong>, except that it takes
 a RDB_type argument instead of attribute arguments.
-*<var>reltyp</var> must be a relation type.
+*<var>reltyp</var> must be a relation type and will be managed
+by the table created.
 
 <h3>Return value</h3>
 
@@ -2579,7 +2579,7 @@ is stored at the location pointed to by <var>lenp</var>.
 
 <p>RDB_obj_irep only works types with a binary internal representation.
 These are built-in types and user-defined types
-which use a built-in type or a byte array as actual representation.
+which use a built-in type or a byte array as physical representation.
 
 <h3>Return value</h3>
 
@@ -3234,12 +3234,16 @@ failed.
 #include &lt;rel/rdb.h&gt;
 
 RDB_expression *
-RDB_obj_to_expr(const RDB_object *valp, RDB_exec_context *ecp);
+RDB_obj_to_expr(const RDB_object *objp, RDB_exec_context *ecp);
 </pre>
 
 <h3>Description</h3>
 
 <p>RDB_obj_to_expr creates a constant expression from a RDB_object.
+
+<p>Passing an <var>objp</var> of NULL is equivalent to passing
+a pointer to a RDB_object which has been newly initialized
+using RDB_init_obj().
 
 <h3>Return value</h3>
 
@@ -3438,19 +3442,19 @@ RDB_define_type. After RDB_implement_type was inkoved successfully,
 this type may be used for local variables and table attributes.
 
 <p>If <var>arep</var> is not NULL, it must point to a type which is used
-as the actual representation. The getter, setter, and selector operators
+as the physical representation. The getter, setter, and selector operators
 must be provided by the caller.
 
 <p>If <var>arep</var> is NULL and <var>areplen</var> is not -1,
 <var>areplen</var> specifies the length, in bytes,
-of the actual representation, which then is a fixed-length array of bytes.
+of the physical representation, which then is a fixed-length array of bytes.
 The getter, setter, and selector operators
 must be provided by the caller.
 
 <p>If <var>arep</var> is NULL and <var>areplen</var> is -1,
 the getter and setter operators and the selector operator are provided by Duro.
 In this case, the type must have exactly one possible representation,
-and this representation becomes the actual representation.
+and this representation becomes the physical representation.
 
 <p>For user-provided setters, getters, and selectors,
 the following conventions apply:

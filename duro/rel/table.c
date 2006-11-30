@@ -818,6 +818,12 @@ RDB_table_is_persistent(const RDB_object *tbp)
 	return tbp->var.tb.is_persistent;
 }
 
+RDB_bool
+RDB_table_is_real(const RDB_object *tbp)
+{
+    return (RDB_bool) (tbp->var.tb.exp == NULL);
+}
+
 int
 RDB_table_is_empty(RDB_object *tbp, RDB_exec_context *ecp,
         RDB_transaction *txp, RDB_bool *resultp)

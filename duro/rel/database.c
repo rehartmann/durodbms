@@ -919,9 +919,8 @@ error:
     return RDB_ERROR;
 }
 
-RDB_object *
-_RDB_create_table(const char *name, RDB_bool persistent,
-                RDB_type *reltyp,
+static RDB_object *
+create_table(const char *name, RDB_type *reltyp,
                 int keyc, const RDB_string_vec keyv[],
                 RDB_exec_context *ecp, RDB_transaction *txp)
 {
@@ -936,24 +935,22 @@ _RDB_create_table(const char *name, RDB_bool persistent,
             return NULL;
     }
 
-    tbp = _RDB_new_rtable(name, persistent, reltyp,
+    tbp = _RDB_new_rtable(name, RDB_TRUE, reltyp,
                 keyc, keyv, RDB_TRUE, ecp);
     if (tbp == NULL) {
         RDB_raise_no_memory(ecp);
         return NULL;
     }
 
-    if (persistent) {
-        /* Insert table into catalog */
-        ret = _RDB_cat_insert(tbp, ecp, &tx);
-        if (ret != RDB_OK) {
-            RDB_rollback(ecp, &tx);
-            _RDB_free_obj(tbp, ecp);
-            return NULL;
-        }
-
-        _RDB_assoc_table_db(tbp, txp->dbp);
+    /* Insert table into catalog */
+    ret = _RDB_cat_insert(tbp, ecp, &tx);
+    if (ret != RDB_OK) {
+        RDB_rollback(ecp, &tx);
+        _RDB_free_obj(tbp, ecp);
+        return NULL;
     }
+
+    _RDB_assoc_table_db(tbp, txp->dbp);
 
     if (txp != NULL) {
          RDB_commit(ecp, &tx);
@@ -962,8 +959,7 @@ _RDB_create_table(const char *name, RDB_bool persistent,
 }
 
 RDB_object *
-RDB_create_table_from_type(const char *name, RDB_bool persistent,
-                RDB_type *reltyp,
+RDB_create_table_from_type(const char *name, RDB_type *reltyp,
                 int keyc, const RDB_string_vec keyv[],
                 RDB_exec_context *ecp, RDB_transaction *txp)
 {
@@ -998,16 +994,16 @@ RDB_create_table_from_type(const char *name, RDB_bool persistent,
     }
 
     /* name may only be NULL if table is transient */
-    if ((name == NULL) && persistent) {
+    if ((name == NULL)) {
         RDB_raise_invalid_argument("persistent table must have a name", ecp);
         return NULL;
     }
 
-    return _RDB_create_table(name, persistent, reltyp, keyc, keyv, ecp, txp);
+    return create_table(name, reltyp, keyc, keyv, ecp, txp);
 }
 
 RDB_object *
-RDB_create_table(const char *name, RDB_bool persistent,
+RDB_create_table(const char *name,
                 int attrc, const RDB_attr heading[],
                 int keyc, const RDB_string_vec keyv[],
                 RDB_exec_context *ecp, RDB_transaction *txp)
@@ -1021,7 +1017,7 @@ RDB_create_table(const char *name, RDB_bool persistent,
         return NULL;
     }
 
-    return RDB_create_table_from_type(name, persistent, tbtyp, keyc, keyv,
+    return RDB_create_table_from_type(name, tbtyp, keyc, keyv,
             ecp, txp);
 }
 

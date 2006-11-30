@@ -305,13 +305,13 @@ typedef struct RDB_attr {
  * Return a pointer to the newly created table on success, or NULL on error.
  */
 RDB_object *
-RDB_create_table(const char *name, RDB_bool persistent,
+RDB_create_table(const char *name,
         int attrc, const RDB_attr attrv[],
         int keyc, const RDB_string_vec keyv[],
         RDB_exec_context *, RDB_transaction *);
 
 RDB_object *
-RDB_create_table_from_type(const char *name, RDB_bool persistent,
+RDB_create_table_from_type(const char *name,
                 RDB_type *reltyp,
                 int keyc, const RDB_string_vec keyv[],
                 RDB_exec_context *, RDB_transaction *);
@@ -505,6 +505,9 @@ RDB_extract_tuple(RDB_object *, RDB_exec_context *, RDB_transaction *,
 RDB_bool
 RDB_table_is_persistent(const RDB_object *);
 
+RDB_bool
+RDB_table_is_real(const RDB_object *);
+
 /*
  * Store RDB_TRUE in the location pointed to by resultp if the table
  * is nonempty, RDB_FALSE otherwise.
@@ -626,6 +629,11 @@ int
 RDB_table_to_array(RDB_object *arrp, RDB_object *, 
                    int seqitc, const RDB_seq_item seqitv[],
                    RDB_exec_context *, RDB_transaction *);
+
+int
+RDB_expr_to_array(RDB_object *arrp, RDB_expression *exp,
+                   int seqitc, const RDB_seq_item seqitv[],
+                   RDB_exec_context *ecp, RDB_transaction *txp);
 
 /*
  * Get a pointer to the tuple with index idx.

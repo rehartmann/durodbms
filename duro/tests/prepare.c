@@ -41,7 +41,7 @@ create_tables(RDB_database *dbp, RDB_exec_context *ecp)
     }
 
     printf("Creating table EMPS1\n");
-    tbp = RDB_create_table("EMPS1", RDB_TRUE, 4, emp_attrs, 2, emp_keyattrs,
+    tbp = RDB_create_table("EMPS1", 4, emp_attrs, 2, emp_keyattrs,
                            ecp, &tx);
     if (tbp == NULL) {
         RDB_rollback(ecp, &tx);
@@ -55,7 +55,7 @@ create_tables(RDB_database *dbp, RDB_exec_context *ecp)
     RDB_double_to_obj(&defval, 4000.0);
     emp_attrs[2].defaultp = &defval;
 
-    tbp = RDB_create_table("EMPS2", RDB_TRUE, 4, emp_attrs, 2, emp_keyattrs,
+    tbp = RDB_create_table("EMPS2", 4, emp_attrs, 2, emp_keyattrs,
                            ecp, &tx);
     RDB_destroy_obj(&defval, ecp);
     if (tbp == NULL) {
@@ -66,7 +66,7 @@ create_tables(RDB_database *dbp, RDB_exec_context *ecp)
     printf("Creating table DEPTS\n");
     key.strv = dept_key_attrs;
     key.strc = 1;
-    tbp = RDB_create_table("DEPTS", RDB_TRUE, 2, dept_attrs, 1, &key, ecp, &tx);
+    tbp = RDB_create_table("DEPTS", 2, dept_attrs, 1, &key, ecp, &tx);
     if (tbp == NULL) {
         RDB_rollback(ecp, &tx);
         return RDB_ERROR;

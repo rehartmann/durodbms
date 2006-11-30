@@ -4,11 +4,11 @@ Summary of Changes for Duro
 
 Changes for Duro 0.12
 
-- Changed interface for creating read-only operator expressions.
-
 - Replaced GNU Autotools by SCons.
 
 - Using tcltest for testing.
+
+- Changed interface for creating read-only operator expressions.
 
 - Replaced RDB_table by RDB_object.
 
@@ -16,10 +16,13 @@ Changes for Duro 0.12
 
 - Removed RDB_expr_any(), RDB_expr_all(), etc.
 
-- Changes to expression syntax for better conformance with TTM, third
-  edition.
+- Added RDB_init_table() for creating local tables; removed argument
+  'global' from RDB_create_table() and RDB_create_table_from_type().
 
 - Removed RDB_parse_table().
+
+- Changes to expression syntax for better conformance with TTM, third
+  edition.
 
 Changes for Duro 0.11
 

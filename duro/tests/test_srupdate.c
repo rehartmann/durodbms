@@ -37,7 +37,7 @@ create_table(RDB_database *dbp, RDB_exec_context *ecp)
     ret = RDB_begin_tx(ecp, &tx, dbp, NULL);
     assert(ret == RDB_OK);
 
-    tbp = RDB_create_table("SRTEST", RDB_TRUE, 3, srtest_attrs,
+    tbp = RDB_create_table("SRTEST", 3, srtest_attrs,
             1, srtest_keyattrs, ecp, &tx);
     assert(tbp != NULL);
 

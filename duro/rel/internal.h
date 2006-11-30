@@ -223,12 +223,6 @@ _RDB_close_stored_table(RDB_stored_table *, RDB_exec_context *);
 RDB_int *
 _RDB_field_no(RDB_stored_table *, const char *attrname);
 
-RDB_object *
-_RDB_create_table(const char *name, RDB_bool persistent,
-                RDB_type *,
-                int keyc, const RDB_string_vec keyv[],
-                RDB_exec_context *, RDB_transaction *);
-
 int
 _RDB_assoc_table_db(RDB_object *tbp, RDB_database *dbp);
 

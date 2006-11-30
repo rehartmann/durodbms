@@ -10,22 +10,13 @@
 #include "internal.h"
 #include "optimize.h"
 
-int
-RDB_table_to_array(RDB_object *arrp, RDB_object *tbp,
+static int
+init_expr_array(RDB_object *arrp, RDB_expression *texp,
                    int seqitc, const RDB_seq_item seqitv[],
                    RDB_exec_context *ecp, RDB_transaction *txp)
 {
-    RDB_expression *texp;
     RDB_qresult *qrp = NULL;
     _RDB_tbindex *indexp = NULL;
-
-    if (RDB_destroy_obj(arrp, ecp) != RDB_OK)
-        return RDB_ERROR;
-    RDB_init_obj(arrp);
-
-    texp = _RDB_optimize(tbp, seqitc, seqitv, ecp, txp);
-    if (texp == NULL)
-        return RDB_ERROR;
 
     if (seqitc > 0) {
         indexp = _RDB_expr_sortindex(texp);
@@ -61,6 +52,28 @@ error:
         _RDB_drop_qresult(qrp, ecp, txp);
     RDB_drop_expr(texp, ecp);
     return RDB_ERROR;
+}
+
+int
+RDB_table_to_array(RDB_object *arrp, RDB_object *tbp,
+                   int seqitc, const RDB_seq_item seqitv[],
+                   RDB_exec_context *ecp, RDB_transaction *txp)
+{
+    int ret;
+    RDB_expression *texp;
+
+    if (RDB_destroy_obj(arrp, ecp) != RDB_OK)
+        return RDB_ERROR;
+    RDB_init_obj(arrp);
+
+    texp = _RDB_optimize(tbp, seqitc, seqitv, ecp, txp);
+    if (texp == NULL)
+        return RDB_ERROR;
+
+    ret = init_expr_array(arrp, texp, seqitc, seqitv, ecp, txp);
+    if (ret != RDB_OK)
+        RDB_drop_expr(texp, NULL);
+    return ret;
 }
 
 /*
