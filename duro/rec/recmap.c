@@ -726,9 +726,10 @@ RDB_contains_rec(RDB_recmap *rmp, RDB_field flds[], DB_TXN *txid)
         return ret;
     ret = data_to_DBT(rmp, flds, &data);
     if (ret != RDB_OK) {
-        free(data.data);
+        free(key.data);
         return ret;
     }
+    key.flags = DB_DBT_REALLOC;
     data.flags = DB_DBT_REALLOC;
 
     ret = rmp->dbp->get(rmp->dbp, txid, &key, &data, DB_GET_BOTH);

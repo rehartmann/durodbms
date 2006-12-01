@@ -178,15 +178,9 @@ project: expression '{' attribute_name_list '}' {
         int argc = $5.expc + 1;
         RDB_expression *texp = _RDB_parse_lookup_table($1);
         if (texp == NULL) {
-            for (i = 0; i < $5.expc; i++)
+            for (i = 0; i < $5.expc; i++) {
                 RDB_drop_expr($5.expv[i], _RDB_parse_ecp);
-            YYERROR;
-        }
-
-        texp = _RDB_parse_lookup_table($1);
-        if (texp == NULL) {
-            for (i = 0; i < $5.expc; i++)
-                RDB_drop_expr($5.expv[i], _RDB_parse_ecp);
+            }
             YYERROR;
         }
 
