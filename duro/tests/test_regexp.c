@@ -45,7 +45,7 @@ test_regexp(RDB_database *dbp, RDB_exec_context *ecp)
     if (argp == NULL) {
         goto error;
     }
-    RDB_add_arg(argp, RDB_expr_var("NAME", ecp));
+    RDB_add_arg(argp, RDB_var_ref("NAME", ecp));
     RDB_add_arg(argp, RDB_string_to_expr("o", ecp));
     RDB_add_arg(exp, argp);
     

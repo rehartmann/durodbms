@@ -57,7 +57,7 @@ test_delete(RDB_database *dbp, RDB_exec_context *ecp)
         return RDB_ERROR;
 
     /* Deleting #1 from EMPS1 */
-    exprp = RDB_eq(RDB_expr_var("EMPNO", ecp),
+    exprp = RDB_eq(RDB_var_ref("EMPNO", ecp),
             RDB_int_to_expr(1, ecp), ecp);
     ret = RDB_delete(tbp, exprp, ecp, &tx);
     if (ret == RDB_ERROR) {

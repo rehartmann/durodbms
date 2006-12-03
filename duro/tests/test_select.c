@@ -37,7 +37,7 @@ test_select(RDB_database *dbp, RDB_exec_context *ecp)
         goto error;
     RDB_add_arg(exp, argp);
 
-    argp = RDB_eq(RDB_expr_var("NAME", ecp), RDB_string_to_expr("Smith", ecp),
+    argp = RDB_eq(RDB_var_ref("NAME", ecp), RDB_string_to_expr("Smith", ecp),
             ecp);
     if (argp == NULL)
         goto error;
@@ -78,7 +78,7 @@ test_select(RDB_database *dbp, RDB_exec_context *ecp)
         goto error;
     RDB_add_arg(exp, argp);
 
-    argp = RDB_eq(RDB_expr_var("EMPNO", ecp), RDB_int_to_expr(1, ecp), ecp);
+    argp = RDB_eq(RDB_var_ref("EMPNO", ecp), RDB_int_to_expr(1, ecp), ecp);
     if (argp == NULL)
         goto error;
     RDB_add_arg(exp, argp);

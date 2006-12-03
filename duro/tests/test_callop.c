@@ -70,7 +70,7 @@ test_useop(RDB_database *dbp, RDB_exec_context *ecp)
         goto error;
     }
 
-    expv[0] = RDB_expr_var("DEPTNO", ecp);
+    expv[0] = RDB_var_ref("DEPTNO", ecp);
     expv[1] = RDB_int_to_expr(100, ecp);
 
     exp = RDB_ro_op("EXTEND", 3, ecp);

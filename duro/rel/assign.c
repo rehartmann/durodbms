@@ -182,7 +182,7 @@ replace_targets_real_ins(RDB_object *tbp, const RDB_ma_insert *insp,
         RDB_drop_expr(exp, ecp);
         return NULL;
     }
-    if (RDB_init_table(RDB_expr_obj(argp), NULL,
+    if (RDB_init_table_from_type(RDB_expr_obj(argp), NULL,
             tbtyp, 0, NULL, ecp) != RDB_OK) {
         RDB_drop_type(tbtyp, ecp, NULL);
         RDB_drop_expr(exp, ecp);
@@ -344,8 +344,8 @@ replace_targets_real(RDB_object *tbp,
                     RDB_drop_type(tbtyp, ecp, NULL);
                     return NULL;
                 }
-                if (RDB_init_table(RDB_expr_obj(exp), NULL, tbtyp, 0, NULL, ecp)
-                        != RDB_OK) {
+                if (RDB_init_table_from_type(RDB_expr_obj(exp), NULL, tbtyp,
+                        0, NULL, ecp) != RDB_OK) {
                     RDB_drop_type(tbtyp, ecp, NULL);
                     return NULL;
                 }
@@ -418,7 +418,7 @@ replace_targets(RDB_expression *exp,
           	return replace_targets(exp->var.tbref.tbp->var.tb.exp, insc, insv,
                     updc, updv, delc, delv, copyc, copyv, ecp, txp);
         case RDB_EX_VAR:
-            return RDB_expr_var(exp->var.varname, ecp);
+            return RDB_var_ref(exp->var.varname, ecp);
     }
     abort();
 }

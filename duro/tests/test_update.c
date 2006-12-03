@@ -61,7 +61,7 @@ test_update(RDB_database *dbp, RDB_exec_context *ecp)
     /* Updating table, setting EMPNO from 2 to 3 */
     attrs[0].name = "EMPNO";
     attrs[0].exp = RDB_int_to_expr(3, ecp);
-    exprp = RDB_eq(RDB_expr_var("EMPNO", ecp), RDB_int_to_expr(2, ecp), ecp);
+    exprp = RDB_eq(RDB_var_ref("EMPNO", ecp), RDB_int_to_expr(2, ecp), ecp);
     ret = RDB_update(tbp, exprp, 1, attrs, ecp, &tx);
     if (ret == RDB_ERROR) {
         goto error;
@@ -72,7 +72,7 @@ test_update(RDB_database *dbp, RDB_exec_context *ecp)
     /* Updating table, setting NAME of no 1 to Smythe */
     attrs[0].name = "NAME";
     attrs[0].exp = RDB_string_to_expr("Smythe", ecp);
-    exprp = RDB_eq(RDB_expr_var("EMPNO", ecp), RDB_int_to_expr(1, ecp), ecp);
+    exprp = RDB_eq(RDB_var_ref("EMPNO", ecp), RDB_int_to_expr(1, ecp), ecp);
     ret = RDB_update(tbp, exprp, 1, attrs, ecp, &tx);
     if (ret == RDB_ERROR) {
         goto error;
@@ -89,8 +89,8 @@ test_update(RDB_database *dbp, RDB_exec_context *ecp)
         goto error;
     }
     RDB_add_arg(attrs[0].exp, RDB_double_to_expr(100, ecp));
-    RDB_add_arg(attrs[0].exp, RDB_expr_var("SALARY", ecp));
-    exprp = RDB_eq(RDB_expr_var("EMPNO", ecp), RDB_int_to_expr(3, ecp), ecp);
+    RDB_add_arg(attrs[0].exp, RDB_var_ref("SALARY", ecp));
+    exprp = RDB_eq(RDB_var_ref("EMPNO", ecp), RDB_int_to_expr(3, ecp), ecp);
     ret = RDB_update(tbp, exprp, 1, attrs, ecp, &tx);
     if (ret == RDB_ERROR) {
         goto error;

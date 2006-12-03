@@ -69,7 +69,7 @@ create_view2(RDB_database *dbp, RDB_exec_context *ecp)
     assert(argp != NULL);
     RDB_add_arg(exp, argp);
 
-    hexp = RDB_expr_var("SALARY", ecp);
+    hexp = RDB_var_ref("SALARY", ecp);
     assert(hexp != NULL);
     argp = RDB_ro_op(">", 2, ecp);
     RDB_add_arg(argp, hexp);
@@ -111,7 +111,7 @@ create_view3(RDB_database *dbp, RDB_exec_context *ecp)
     RDB_add_arg(exp, argp); 
     hexp = RDB_ro_op(">", 2, ecp);
     assert(hexp != NULL);
-    RDB_add_arg(hexp, RDB_expr_var("SALARY", ecp));
+    RDB_add_arg(hexp, RDB_var_ref("SALARY", ecp));
     RDB_add_arg(hexp, RDB_double_to_expr(4000.0, ecp));
     RDB_add_arg(exp, hexp);
     argp = RDB_string_to_expr("HIGHSAL", ecp);
@@ -175,7 +175,7 @@ create_view4(RDB_database *dbp, RDB_exec_context *ecp)
     assert(texp != NULL);
     RDB_add_arg(sexp, texp);
 
-    argp = RDB_expr_var("SALARY", ecp);
+    argp = RDB_var_ref("SALARY", ecp);
     assert(argp != NULL);
     RDB_add_arg(texp, argp);
 

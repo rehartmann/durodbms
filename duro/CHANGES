@@ -16,8 +16,11 @@ Changes for Duro 0.12
 
 - Removed RDB_expr_any(), RDB_expr_all(), etc.
 
-- Added RDB_init_table() for creating local tables; removed argument
-  'global' from RDB_create_table() and RDB_create_table_from_type().
+- Added RDB_init_table() and RDB_init_table_from_type() for creating
+  local tables; removed argument 'global' from RDB_create_table()
+  and RDB_create_table_from_type().
+
+- Renamed RDB_expr_var() to RDB_var_ref().
 
 - Removed RDB_parse_table().
 

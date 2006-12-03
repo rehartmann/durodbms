@@ -320,7 +320,13 @@ RDB_type *
 RDB_dup_nonscalar_type(RDB_type *typ, RDB_exec_context *);
 
 int
-RDB_init_table(RDB_object *tbp, const char *name, RDB_type *reltyp,
+RDB_init_table(RDB_object *tbp, const char *name,
+        int attrc, const RDB_attr attrv[],
+        int keyc, const RDB_string_vec keyv[],
+        RDB_exec_context *ecp);
+
+int
+RDB_init_table_from_type(RDB_object *tbp, const char *name, RDB_type *reltyp,
         int keyc, const RDB_string_vec keyv[], RDB_exec_context *);
 
 /*
@@ -838,7 +844,7 @@ RDB_expression *
 RDB_table_ref(RDB_object *tbp, RDB_exec_context *);
 
 RDB_expression *
-RDB_expr_var(const char *varname, RDB_exec_context *);
+RDB_var_ref(const char *varname, RDB_exec_context *);
 
 RDB_expression *
 RDB_eq(RDB_expression *, RDB_expression *, RDB_exec_context *);

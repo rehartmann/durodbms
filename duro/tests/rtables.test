@@ -335,7 +335,7 @@ test rtables {real tables} -setup $SETUP -body {
     } {{B C}} $tx
     
     duro::insert T4 {A a B be C c} $tx
-    
+
     #
     # Shrink 1st key attribute
     #

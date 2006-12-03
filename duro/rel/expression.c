@@ -143,7 +143,7 @@ expr_resolve_attrs(const RDB_expression *exp, const RDB_object *tplp,
             objp = RDB_tuple_get(tplp, exp->var.varname);
             if (objp != NULL)
                 return RDB_obj_to_expr(objp, ecp);
-            return RDB_expr_var(exp->var.varname, ecp);
+            return RDB_var_ref(exp->var.varname, ecp);
     }
     abort();
 }
@@ -1033,13 +1033,13 @@ RDB_table_ref(RDB_object *tbp, RDB_exec_context *ecp)
 }
 
 RDB_expression *
-RDB_expr_var(const char *attrname, RDB_exec_context *ecp)
+RDB_var_ref(const char *attrname, RDB_exec_context *ecp)
 {
     RDB_expression *exp = new_expr(ecp);
     if (exp == NULL) {
         return NULL;
     }
-        
+
     exp->kind = RDB_EX_VAR;
     exp->var.varname = RDB_dup_str(attrname);
     if (exp->var.varname == NULL) {
@@ -1213,7 +1213,7 @@ drop_children(RDB_expression *exp, RDB_exec_context *ecp)
     
     switch (exp->kind) {
         case RDB_EX_TUPLE_ATTR:
-        case RDB_EX_GET_COMP:            
+        case RDB_EX_GET_COMP:
             if (RDB_drop_expr(exp->var.op.argv[0], ecp) != RDB_OK)
                 return RDB_ERROR;
             break;
@@ -1653,7 +1653,7 @@ RDB_dup_expr(const RDB_expression *exp, RDB_exec_context *ecp)
         case RDB_EX_TBP:
             return RDB_table_ref(exp->var.tbref.tbp, ecp);
         case RDB_EX_VAR:
-            return RDB_expr_var(exp->var.varname, ecp);
+            return RDB_var_ref(exp->var.varname, ecp);
     }
     abort();
 }
@@ -1897,7 +1897,10 @@ _RDB_expr_to_empty_table(RDB_expression *exp, RDB_exec_context *ecp,
     if (typ == NULL)
         return RDB_ERROR;
 
-    /* exp->typ will be consumed by RDB_init_table(). */
+    /*
+     * exp->typ will be consumed by RDB_init_table_from_type(),
+     * so prevent it from being destroyed.
+     */
     exp->typ = NULL;
 
     if (drop_children(exp, ecp) != RDB_OK)
@@ -1908,5 +1911,5 @@ _RDB_expr_to_empty_table(RDB_expression *exp, RDB_exec_context *ecp,
 
     exp->kind = RDB_EX_OBJ;
     RDB_init_obj(&exp->var.obj);
-    return RDB_init_table(&exp->var.obj, NULL, typ, 0, NULL, ecp);
+    return RDB_init_table_from_type(&exp->var.obj, NULL, typ, 0, NULL, ecp);
 }

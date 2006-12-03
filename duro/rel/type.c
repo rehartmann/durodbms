@@ -1028,7 +1028,7 @@ RDB_implement_type(const char *name, RDB_type *arep, RDB_int areplen,
             return RDB_ERROR;
     }
 
-    exp = RDB_expr_var("TYPENAME", ecp);
+    exp = RDB_var_ref("TYPENAME", ecp);
     if (exp == NULL) {
         return RDB_ERROR;
     }
@@ -1133,7 +1133,7 @@ RDB_drop_type(RDB_type *typ, RDB_exec_context *ecp, RDB_transaction *txp)
         if (wherep == NULL) {
             return RDB_ERROR;
         }
-        argp = RDB_expr_var("TYPENAME", ecp);
+        argp = RDB_var_ref("TYPENAME", ecp);
         if (argp == NULL) {
             RDB_drop_expr(wherep, ecp);
             return RDB_ERROR;

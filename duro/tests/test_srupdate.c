@@ -74,7 +74,7 @@ test_update1(RDB_database *dbp, RDB_exec_context *ecp)
     assert(exp != NULL);
 
     RDB_add_arg(exp, RDB_int_to_expr(2, ecp));
-    RDB_add_arg(exp, RDB_expr_var("NO", ecp));
+    RDB_add_arg(exp, RDB_var_ref("NO", ecp));
 
     upd.name = "NO";
     upd.exp = exp;
@@ -105,7 +105,7 @@ test_update2(RDB_database *dbp, RDB_exec_context *ecp)
     argp = RDB_table_ref(tbp, ecp);
     assert(argp != NULL);
     RDB_add_arg(exp, argp);
-    argp = RDB_expr_var("COUNT", ecp);
+    argp = RDB_var_ref("COUNT", ecp);
     assert(argp != NULL);
     RDB_add_arg(exp, argp);
 

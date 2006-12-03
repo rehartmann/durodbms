@@ -157,7 +157,7 @@ test_summarize(RDB_database *dbp, RDB_exec_context *ecp)
     assert(argp != NULL);
     RDB_add_arg(exp, argp);
     
-    RDB_add_arg(argp, RDB_expr_var("SALARY", ecp));
+    RDB_add_arg(argp, RDB_var_ref("SALARY", ecp));
     
     argp = RDB_string_to_expr("SUM_SALARY", ecp);
     assert(argp != NULL);
@@ -167,7 +167,7 @@ test_summarize(RDB_database *dbp, RDB_exec_context *ecp)
     assert(argp != NULL);
     RDB_add_arg(exp, argp);
     
-    RDB_add_arg(argp, RDB_expr_var("SALARY", ecp));
+    RDB_add_arg(argp, RDB_var_ref("SALARY", ecp));
     
     argp = RDB_string_to_expr("AVG_SALARY", ecp);
     assert(argp != NULL);

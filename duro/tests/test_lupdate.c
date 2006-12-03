@@ -9,7 +9,6 @@
 static void
 create_table(RDB_object *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
 {
-    RDB_type *tbtyp;
     RDB_object tpl;
 
     RDB_attr attrs[] = {
@@ -23,10 +22,7 @@ create_table(RDB_object *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
         { 1, keyattrs }
     };
 
-    tbtyp = RDB_create_relation_type(2, attrs, ecp);
-    assert(tbtyp != NULL);
-
-    assert(RDB_init_table(tbp, NULL, tbtyp, 1, key, ecp) == RDB_OK);
+    assert(RDB_init_table(tbp, NULL, 2, attrs, 1, key, ecp) == RDB_OK);
 
     RDB_init_obj(&tpl);
 
@@ -55,7 +51,7 @@ test_update(RDB_object *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
     attrs[0].exp = RDB_string_to_expr("Eins", ecp);
     assert(attrs[0].exp != NULL);
 
-    condp = RDB_eq(RDB_expr_var("A", ecp), RDB_int_to_expr(1, ecp), ecp);
+    condp = RDB_eq(RDB_var_ref("A", ecp), RDB_int_to_expr(1, ecp), ecp);
     assert(condp != NULL);
 
     ret = RDB_update(tbp, condp, 1, attrs, ecp, txp);

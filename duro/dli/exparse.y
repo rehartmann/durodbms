@@ -1522,11 +1522,11 @@ ne_expression_list: expression {
 literal: TOK_RELATION '{' ne_expression_list '}' {
         int attrc;
         int i;
+        int ret;
         RDB_attr *attrv;
         RDB_hashtable_iter hiter;
         tuple_entry *entryp;
         RDB_object obj;
-        RDB_type *reltyp;
         RDB_object *tplp = RDB_expr_obj($3.expv[0]);
 
         /*
@@ -1577,17 +1577,10 @@ literal: TOK_RELATION '{' ne_expression_list '}' {
             YYERROR;
         }
 
-        reltyp = RDB_create_relation_type(attrc, attrv, _RDB_parse_ecp);
+        ret = RDB_init_table(RDB_expr_obj($$), NULL, attrc, attrv, 0, NULL,
+                _RDB_parse_ecp);
         free(attrv);
-        if (reltyp == NULL) {
-            RDB_drop_expr($$, _RDB_parse_ecp);
-            for (i = 0; i < $3.expc; i++)
-                RDB_drop_expr($3.expv[i], _RDB_parse_ecp);
-            YYERROR;
-        }
-
-        if (RDB_init_table(RDB_expr_obj($$), NULL, reltyp, 0, NULL,
-                _RDB_parse_ecp) != RDB_OK) {
+        if (ret != RDB_OK) {
             RDB_drop_expr($$, _RDB_parse_ecp);
             for (i = 0; i < $3.expc; i++)
                 RDB_drop_expr($3.expv[i], _RDB_parse_ecp);
@@ -1693,8 +1686,8 @@ ne_tuple_item_list: TOK_ID expression {
         ret = RDB_tuple_set(&obj, $1->var.varname, valp,
                 _RDB_parse_ecp);
         RDB_drop_expr($1, _RDB_parse_ecp);
+        RDB_drop_expr($2, _RDB_parse_ecp);
         if (ret != RDB_OK) {
-            RDB_drop_expr($2, _RDB_parse_ecp);
             YYERROR;
         }
 
@@ -1790,7 +1783,6 @@ table_dum_expr(void)
 {
      RDB_object obj;
      RDB_expression *exp;
-     RDB_type *typ;
 
      RDB_init_obj(&obj);
      exp = RDB_obj_to_expr(&obj, _RDB_parse_ecp);
@@ -1798,15 +1790,8 @@ table_dum_expr(void)
      if (exp == NULL)
          return NULL;
 
-     typ = RDB_create_relation_type(0, NULL, _RDB_parse_ecp);
-     if (typ == NULL) {
-         RDB_drop_expr(exp, _RDB_parse_ecp);
-         return NULL;
-     }
-
-     if (RDB_init_table(RDB_expr_obj(exp), NULL, typ, 0, NULL, _RDB_parse_ecp)
+     if (RDB_init_table(RDB_expr_obj(exp), NULL, 0, NULL, 0, NULL, _RDB_parse_ecp)
              != RDB_OK) {
-        RDB_drop_type(typ, _RDB_parse_ecp, NULL);
         RDB_drop_expr(exp, _RDB_parse_ecp);
         return NULL;
      }

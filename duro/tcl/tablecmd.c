@@ -161,20 +161,11 @@ table_create_cmd(TclState *statep, Tcl_Interp *interp, int objc,
             goto cleanup;
         }
     } else {
-        RDB_type *tbtyp = RDB_create_relation_type(attrc, attrv,
-                statep->current_ecp);
-        if (tbtyp == NULL) {
-            Duro_dberror(interp, RDB_get_err(statep->current_ecp), txp);
-            ret = TCL_ERROR;
-            goto cleanup;
-        }
-
         tbp = (RDB_object *) Tcl_Alloc(sizeof (RDB_object));        
 
-        ret = RDB_init_table(tbp, Tcl_GetString(objv[objc - 4]), tbtyp,
-                keyc, keyv, statep->current_ecp);
+        ret = RDB_init_table(tbp, Tcl_GetString(objv[objc - 4]),
+                attrc, attrv, keyc, keyv, statep->current_ecp);
         if (ret != RDB_OK) {
-            RDB_drop_type(tbtyp, statep->current_ecp, NULL);
             Duro_dberror(interp, RDB_get_err(statep->current_ecp), txp);
             ret = TCL_ERROR;
             goto cleanup;
@@ -402,8 +393,12 @@ Duro_delete_cmd(ClientData data, Tcl_Interp *interp, int objc, Tcl_Obj *CONST ob
     count = RDB_delete(tbp, wherep, statep->current_ecp, txp);
     if (count == RDB_ERROR) {
         Duro_dberror(interp, RDB_get_err(statep->current_ecp), txp);
+        if (wherep != NULL)
+            RDB_drop_expr(wherep, statep->current_ecp);
         return TCL_ERROR;
     }
+    if (wherep != NULL)
+        RDB_drop_expr(wherep, statep->current_ecp);
     restobjp = Tcl_NewIntObj(count);
     if (restobjp == NULL) {
         return TCL_ERROR;

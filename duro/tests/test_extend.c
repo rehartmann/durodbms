@@ -144,7 +144,7 @@ test_extend(RDB_database *dbp, RDB_exec_context *ecp)
 
     mexp = RDB_ro_op("-", 2, ecp);
     assert(mexp != NULL);
-    argp = RDB_expr_var("SALARY", ecp);
+    argp = RDB_var_ref("SALARY", ecp);
     assert(argp != NULL);
     RDB_add_arg(mexp, argp);
     argp = RDB_double_to_expr(4100, ecp);
@@ -167,7 +167,7 @@ test_extend(RDB_database *dbp, RDB_exec_context *ecp)
     }
     RDB_add_arg(exp, texp);
 
-    argp = RDB_expr_var("NAME", ecp);
+    argp = RDB_var_ref("NAME", ecp);
     if (argp == NULL) {
         RDB_drop_expr(exp, ecp);
         goto error;

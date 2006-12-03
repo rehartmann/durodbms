@@ -638,7 +638,7 @@ dup_expr_vt(const RDB_expression *exp, RDB_exec_context *ecp)
                 return RDB_table_ref(exp->var.tbref.tbp, ecp);
             return dup_expr_vt(exp->var.tbref.tbp->var.tb.exp, ecp);
         case RDB_EX_VAR:
-            return RDB_expr_var(exp->var.varname, ecp);
+            return RDB_var_ref(exp->var.varname, ecp);
     }
     abort();
 }

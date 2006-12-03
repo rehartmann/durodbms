@@ -27,6 +27,7 @@
 <li><a href="#extract_tuple">RDB_extract_tuple</a>
 <li><a href="#get_table">RDB_get_table</a>
 <li><a href="#init_table">RDB_init_table</a>
+<li><a href="#init_table">RDB_init_table_from_type</a>
 <li><a href="#insert">RDB_insert</a>
 <li><a href="#max">RDB_max</a>
 <li><a href="#min">RDB_min</a>
@@ -137,8 +138,8 @@
 <li><a href="#string_to_expr">RDB_string_to_expr</a>
 <li><a href="#table_ref">RDB_table_ref</a>
 <li><a href="#obj_to_expr">RDB_obj_to_expr</a>
-<li><a href="#expr_obj">RDB_expr_obj</a>
-<li><a href="#expr_var">RDB_expr_var</a>
+<li><a href="#expr_obj">RDB_expr_obj</a> !!
+<li><a href="var_ref">RDB_var_ref</a>
 <li><a href="#eq">RDB_eq</a>
 <li><a href="#expr_comp">RDB_expr_comp</a>
 <li><a href="#tuple_attr">RDB_tuple_attr</a>
@@ -484,25 +485,33 @@ in which case the transaction may be implicitly rolled back.
 
 <hr>
 
-<h2 id="init_table">RDB_init_table</h2>
+<h2 id="init_table">RDB_init_table, RDB_init_table_from_type</h2>
 
 <pre>
 #include &lt;rel/rdb.h&gt;
 
 int
-RDB_init_table(RDB_object *tbp, const char *name, RDB_type *reltyp,
+RDB_init_table(RDB_object *tbp, const char *name,
+        int attrc, const RDB_attr attrv[],
+        int keyc, const RDB_string_vec keyv[], RDB_exec_context *ecp);
+
+int
+RDB_init_table_from_type(RDB_object *tbp, const char *name, RDB_type *reltyp,
         int keyc, const RDB_string_vec keyv[], RDB_exec_context *ecp);
 </pre>
 
 <h3>Description</h3>
 
-<p>RDB_init_table turns *<var>tbp</var> into a transient table.
+<p>RDB_init_table and RDB_init_table_from_type turn *<var>tbp</var> into
+a transient table.
 *<var>tbp</var> should have been initialized using
 <a href="#init_obj">RDB_init_obj()</a>.
 
-<p>For <var>name</var>, <var>reltyp</var>, <var>keyc</var>, <var>keyv</var>,
+<p>For <var>name</var>, <var>attrc</var>, <var>attrv</var>,
+<var>reltyp</var>, <var>keyc</var>, <var>keyv</var>,
 and <var>ecp</var>, the same rules apply as for
-<a href="#create_table">RDB_create_table_from_type</a>.
+<a href="#create_table">RDB_create_table</a> and
+RDB_create_table_from_type, respectively.
 
 <h3>Return value</h3>
 
@@ -3252,18 +3261,18 @@ failed.
 
 <hr>
 
-<h2 id="expr_var">RDB_expr_var</h2>
+<h2 id="var_ref">RDB_var_ref</h2>
 
 <pre>
 #include &lt;rel/rdb.h&gt;
 
 RDB_expression *
-RDB_expr_var(const char *attrname, RDB_exec_context *ecp);
+RDB_var_ref(const char *attrname, RDB_exec_context *ecp);
 </pre>
 
 <h3>Description</h3>
 
-<p>RDB_expr_var creates an expression that refers to a variable.
+<p>RDB_var_ref creates an expression that refers to a variable.
 
 <h3>Return value</h3>
 

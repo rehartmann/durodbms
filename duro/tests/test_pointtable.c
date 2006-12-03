@@ -161,7 +161,7 @@ test_query(RDB_database *dbp, RDB_exec_context *ecp)
     assert(argp != NULL);
     RDB_add_arg(exp, argp);
 
-    wherep = RDB_expr_var("POINT", ecp);
+    wherep = RDB_var_ref("POINT", ecp);
     wherep = RDB_expr_comp(wherep, "X", ecp);
     wherep = RDB_eq(wherep, RDB_double_to_expr(1.0, ecp), ecp);
     RDB_add_arg(exp, wherep);
@@ -206,7 +206,7 @@ test_query(RDB_database *dbp, RDB_exec_context *ecp)
 
     RDB_add_arg(wherep, compv[0]);
     RDB_add_arg(wherep, compv[1]);
-    wherep = RDB_eq(wherep, RDB_expr_var("POINT", ecp), ecp);
+    wherep = RDB_eq(wherep, RDB_var_ref("POINT", ecp), ecp);
     RDB_add_arg(exp, wherep);
 
     tmptbp = RDB_expr_to_vtable(exp, ecp, &tx);

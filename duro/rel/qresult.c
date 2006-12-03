@@ -615,13 +615,12 @@ do_group(RDB_qresult *qrp, RDB_exec_context *ecp, RDB_transaction *txp)
                 RDB_type *reltyp;
 
                 RDB_clear_err(ecp);
-                reltyp = RDB_create_relation_type(
-                        greltyp->var.basetyp->var.tuple.attrc,
-                        greltyp->var.basetyp->var.tuple.attrv, ecp);
+                reltyp = RDB_dup_nonscalar_type(greltyp, ecp);
                 if (reltyp == NULL)
                     goto cleanup;
                 RDB_init_obj(&gtb);
-                if (RDB_init_table(&gtb, NULL, reltyp, 0, NULL, ecp) != RDB_OK) {
+                if (RDB_init_table_from_type(&gtb, NULL, reltyp, 0, NULL, ecp)
+                        != RDB_OK) {
                     RDB_destroy_obj(&gtb, ecp);
                     RDB_drop_type(reltyp, ecp, NULL);
                     goto cleanup;

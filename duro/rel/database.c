@@ -742,7 +742,7 @@ user_tables_vt(RDB_database *dbp, RDB_exec_context *ecp, RDB_transaction *txp)
     ex1p = RDB_table_ref(dbp->dbrootp->rtables_tbp, ecp);
     if (ex1p == NULL)
         goto error;
-    ex2p = RDB_expr_var("IS_USER", ecp);
+    ex2p = RDB_var_ref("IS_USER", ecp);
     if (ex2p == NULL) {
         goto error;
     }
@@ -754,7 +754,7 @@ user_tables_vt(RDB_database *dbp, RDB_exec_context *ecp, RDB_transaction *txp)
     RDB_add_arg(ex3p, ex2p);
 
     ex2p = NULL;
-    ex1p = RDB_expr_var("DBNAME", ecp);
+    ex1p = RDB_var_ref("DBNAME", ecp);
     if (ex1p == NULL) {
         goto error;
     }
@@ -809,7 +809,7 @@ db_exists_vt(RDB_database *dbp, RDB_exec_context *ecp, RDB_transaction *txp)
 	RDB_expression *ex2p = NULL;
 	RDB_expression *ex3p = NULL;
 	
-	ex1p = RDB_expr_var("DBNAME", ecp);
+	ex1p = RDB_var_ref("DBNAME", ecp);
 	if (ex1p == NULL)
 	    return NULL;
 
@@ -897,7 +897,7 @@ RDB_drop_db(RDB_database *dbp, RDB_exec_context *ecp)
 
     /* Disassociate all tables from database */
 
-    exp = RDB_eq(RDB_expr_var("DBNAME", ecp),
+    exp = RDB_eq(RDB_var_ref("DBNAME", ecp),
                   RDB_string_to_expr(dbp->name, ecp), ecp);
     if (exp == NULL) {
         goto error;

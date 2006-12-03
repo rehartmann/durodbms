@@ -157,12 +157,30 @@ error:
 }
 
 int
-RDB_init_table(RDB_object *tbp, const char *name,
+RDB_init_table_from_type(RDB_object *tbp, const char *name,
         RDB_type *reltyp, int keyc, const RDB_string_vec keyv[],
         RDB_exec_context *ecp)
 {
     return _RDB_init_table(tbp, name, RDB_FALSE, reltyp, keyc, keyv,
             RDB_TRUE, NULL, ecp);
+}
+
+int
+RDB_init_table(RDB_object *tbp, const char *name,
+        int attrc, const RDB_attr attrv[],
+        int keyc, const RDB_string_vec keyv[],
+        RDB_exec_context *ecp)
+{
+    RDB_type *reltyp = RDB_create_relation_type(attrc, attrv, ecp);
+    if (reltyp == NULL)
+        return RDB_ERROR;
+
+    if (RDB_init_table_from_type(tbp, name, reltyp, keyc, keyv, ecp)
+            != RDB_OK) {
+        RDB_drop_type(reltyp, ecp, NULL);
+        return RDB_ERROR;
+    }
+    return RDB_OK;   
 }
 
 /*

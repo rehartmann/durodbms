@@ -577,7 +577,7 @@ deserialize_expr(RDB_object *valp, int *posp, RDB_exec_context *ecp,
                 if (ret != RDB_OK)
                     return ret;
 
-                *expp = RDB_expr_var(attrnamp, ecp);
+                *expp = RDB_var_ref(attrnamp, ecp);
                 free(attrnamp);
                 if (*expp == NULL)
                     return RDB_ERROR;
