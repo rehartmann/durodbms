@@ -5,8 +5,8 @@
 #include <stdio.h>
 #include <assert.h>
 
-void
-test_keys(RDB_database *dbp, RDB_exec_context *ecp)
+static void
+test_keys1(RDB_database *dbp, RDB_exec_context *ecp)
 {
     RDB_transaction tx;
     RDB_object *tbp;
@@ -20,6 +20,7 @@ test_keys(RDB_database *dbp, RDB_exec_context *ecp)
 
     tbp = RDB_get_table("EMPS1", ecp, &tx);
     assert(tbp != NULL);
+
     ret = RDB_tuple_set_int(&tpl, "EMPNO", 1, ecp);
     assert(ret == RDB_OK);
     ret = RDB_tuple_set_string(&tpl, "NAME", "Johnson", ecp);
@@ -30,8 +31,29 @@ test_keys(RDB_database *dbp, RDB_exec_context *ecp)
     assert(ret == RDB_OK);
 
     ret = RDB_insert(tbp, &tpl, ecp, &tx);
-    assert(ret == RDB_ERROR && RDB_obj_type(RDB_get_err(ecp)) == &RDB_KEY_VIOLATION_ERROR);
+    assert(ret == RDB_ERROR
+            && RDB_obj_type(RDB_get_err(ecp)) == &RDB_KEY_VIOLATION_ERROR);
+
+    RDB_destroy_obj(&tpl, ecp);
     RDB_clear_err(ecp);
+    assert(RDB_commit(ecp, &tx) == RDB_OK);
+}
+
+void
+test_keys2(RDB_database *dbp, RDB_exec_context *ecp)
+{
+    RDB_transaction tx;
+    RDB_object *tbp;
+    RDB_object tpl;
+    int ret;
+
+    RDB_init_obj(&tpl);
+
+    ret = RDB_begin_tx(ecp, &tx, dbp, NULL);
+    assert(ret == RDB_OK);
+
+    tbp = RDB_get_table("EMPS1", ecp, &tx);
+    assert(tbp != NULL);
 
     ret = RDB_tuple_set_int(&tpl, "EMPNO", 3, ecp);
     assert(ret == RDB_OK);
@@ -43,7 +65,10 @@ test_keys(RDB_database *dbp, RDB_exec_context *ecp)
     assert(ret == RDB_OK);
 
     ret = RDB_insert(tbp, &tpl, ecp, &tx);
-    assert(ret == RDB_ERROR && RDB_obj_type(RDB_get_err(ecp)) == &RDB_KEY_VIOLATION_ERROR);
+
+    assert(ret == RDB_ERROR
+            && RDB_obj_type(RDB_get_err(ecp)) == &RDB_KEY_VIOLATION_ERROR);
+
     RDB_destroy_obj(&tpl, ecp);
     RDB_clear_err(ecp);
     assert(RDB_commit(ecp, &tx) == RDB_OK);
@@ -70,7 +95,8 @@ main(void)
         return 1;
     }
 
-    test_keys(dbp, &ec);
+    test_keys1(dbp, &ec);
+    test_keys2(dbp, &ec);
     RDB_destroy_exec_context(&ec);
     
     ret = RDB_close_env(envp);

@@ -2460,8 +2460,7 @@ _RDB_next_tuple(RDB_qresult *qrp, RDB_object *tplp, RDB_exec_context *ecp,
         }
 
         /* Check for duplicate, if necessary */
-        if (qrp->matp != NULL /* && tbp->kind != RDB_TB_SUMMARIZE
-                && tbp->kind != RDB_TB_GROUP */) {
+        if (qrp->matp != NULL) {
             ret = _RDB_insert_real(qrp->matp, tplp, ecp, txp);
             if (ret != RDB_OK) {
                 if (RDB_obj_type(RDB_get_err(ecp))

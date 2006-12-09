@@ -1316,7 +1316,6 @@ process_aggr_args(RDB_expression *exp, RDB_exec_context *ecp,
     if (exp->var.op.argv[1]->kind != RDB_EX_VAR) {
         RDB_raise_invalid_argument("invalid aggregate argument #2",
                 ecp);
-        RDB_drop_table(tbp, ecp, NULL);
         return NULL;
     }
 

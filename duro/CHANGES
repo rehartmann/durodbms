@@ -20,6 +20,10 @@ Changes for Duro 0.12
   local tables; removed argument 'global' from RDB_create_table()
   and RDB_create_table_from_type().
 
+- Added RDB_table_is_persistent() and RDB_table_is_real().
+
+- Added RDB_dup_nonscalar_type().
+
 - Renamed RDB_expr_var() to RDB_var_ref().
 
 - Removed RDB_parse_table().

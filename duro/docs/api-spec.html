@@ -38,8 +38,8 @@
 <li><a href="#sum">RDB_sum</a>
 <li><a href="#table_contains">RDB_table_contains</a>
 <li><a href="#table_is_empty">RDB_table_is_empty</a>
-<li><a href="#table_is_persistent">RDB_table_is_persistent</a> !!
-<li><a href="#table_is_real">RDB_table_is_real</a> !!
+<li><a href="#table_is_persistent">RDB_table_is_persistent</a>
+<li><a href="#table_is_real">RDB_table_is_real</a>
 <li><a href="#table_name">RDB_table_name</a>
 <li><a href="#update">RDB_update</a>
 </ul>
@@ -138,10 +138,10 @@
 <li><a href="#string_to_expr">RDB_string_to_expr</a>
 <li><a href="#table_ref">RDB_table_ref</a>
 <li><a href="#obj_to_expr">RDB_obj_to_expr</a>
-<li><a href="#expr_obj">RDB_expr_obj</a> !!
-<li><a href="var_ref">RDB_var_ref</a>
+<li><a href="#var_ref">RDB_var_ref</a>
 <li><a href="#eq">RDB_eq</a>
 <li><a href="#expr_comp">RDB_expr_comp</a>
+<li><a href="#expr_obj">RDB_expr_obj</a>
 <li><a href="#tuple_attr">RDB_tuple_attr</a>
 <li><a href="#ro_op">RDB_ro_op</a>
 <li><a href="#drop_expr">RDB_drop_expr</a>
@@ -155,7 +155,7 @@
 <li><a href="#create_array_type">RDB_create_array_type</a>
 <li><a href="#create_relation_type">RDB_create_relation_type</a>
 <li><a href="#create_tuple_type">RDB_create_tuple_type</a>
-<li><a href="#dup_nonscalar_type">RDB_dup_nonscalar_type</a> !!
+<li><a href="#dup_nonscalar_type">RDB_dup_nonscalar_type</a>
 <li><a href="#get_type">RDB_get_type</a>
 <li><a href="#drop_type">RDB_drop_type</a>
 <li><a href="#type_attrs">RDB_type_attrs</a>
@@ -282,6 +282,12 @@
 <li><a href="#op_count">COUNT</a>
 <li><a href="#op_in">IN</a>
 <li><a href="#op_subset_of">SUBSET_OF</a>
+<li><a href="#op_any">ANY</a>
+<li><a href="#op_all">ALL</a>
+<li><a href="#op_avg">AVG</a>
+<li><a href="#op_max">MAX</a>
+<li><a href="#op_min">MIN</a>
+<li><a href="#op_sum">SUM</a>
 <li><a href="#op_if">IF</a>
 </ul>
 
@@ -1099,6 +1105,48 @@ in which case the transaction may be implicitly rolled back.
 
 <hr>
 
+<h2 id="table_is_persistent">RDB_table_is_persistent</h2>
+
+<pre>
+#include &lt;rel/rdb.h&gt;
+
+RDB_bool
+RDB_table_is_persistent(const RDB_object *tbp);
+</pre>
+
+<h3>Description</h3>
+
+<p>RDB_table_is_persistent returns if the table *<var>tbp</var>
+is persistent.
+
+<h3>Return value</h3>
+
+<p>RDB_TRUE if *<var>tbp</var> is persistent, RDB_FALSE if it
+is transient.
+
+<hr>
+
+<h2 id="table_is_real">RDB_table_is_real</h2>
+
+<pre>
+#include &lt;rel/rdb.h&gt;
+
+RDB_bool
+RDB_table_is_real(const RDB_object *);
+</pre>
+
+<h3>Description</h3>
+
+<p>RDB_table_is_real returns if the table *<var>tbp</var>
+is real.
+
+<h3>Return value</h3>
+
+<p>RDB_TRUE if *<var>tbp</var> is real, RDB_FALSE if it
+is virtual.
+
+<hr>
+
 <h2 id="insert">RDB_insert</h2>
 
 <pre>
@@ -1765,7 +1813,7 @@ RDB_tuple_size(const RDB_object *tplp);
 
 <h3>Description</h3>
 
-<p>RDB_tuple_size determines the number of attributes of the tuple
+<p>RDB_tuple_size returns the number of attributes of the tuple
 specified by <var>tplp</var>.
 
 <h3>Return value</h3>
@@ -2560,7 +2608,7 @@ RDB_binary_length(const RDB_object *valp);
 
 <h3>Description</h3>
 
-<p>RDB_binary_length determines the number of bytes stored in the
+<p>RDB_binary_length returns the number of bytes stored in the
 RDB_object pointed to by <var>valp</var>. The RDB_object
 must be of type BINARY.
 
@@ -2886,7 +2934,7 @@ RDB_tx_is_running(RDB_transaction *txp);
 
 <h3>Description</h3>
 
-<p>RDB_tx_is_running determines if <var>txp</var> points to a running
+<p>RDB_tx_is_running returns if <var>txp</var> points to a running
 transaction.
 
 <h3>Return value</h3>
@@ -3024,7 +3072,7 @@ RDB_array_length(RDB_object *);
 
 <h3>Description</h3>
 
-<p>RDB_array_length determines the length of an array.
+<p>RDB_array_length returns the length of an array.
 
 <h3>Return value</h3>
 
@@ -3107,7 +3155,7 @@ RDB_expr_is_const(const RDB_expression *);
 
 <h3>Description</h3>
 
-<p>RDB_expr_is_const determines if the expression is a constant expression.
+<p>RDB_expr_is_const returns if the expression is a constant expression.
 
 <h3>Return value</h3>
 
@@ -3341,6 +3389,26 @@ possible representation component.
 
 <p>A pointer to the newly created expression, of NULL if the creation
 failed.
+
+<hr>
+
+<h2 id="expr_obj">RDB_expr_obj</h2>
+
+<pre>
+#include &lt;rel/rdb.h&gt;
+
+RDB_object *
+RDB_expr_obj(RDB_expression *exp);
+</pre>
+
+<h3>Description</h3>
+
+<p>RDB_expr_comp returns a pointer to RDB_object embedded in an expression.
+
+<h3>Return value</h3>
+
+<p>A pointer to the embedded RDB_object or NULL if the expression does
+not represent a RDB_object.
 
 <hr>
 
@@ -3597,6 +3665,26 @@ The fields defaultp and options of RDB_attr are ignored.
 </dl>
 
 <p>The call may also fail for a <a href="#syserr">system error</a>.
+
+<hr>
+
+<h2 id="dup_nonscalar_type">RDB_dup_nonscalar_type</h2>
+
+<pre>
+#include &lt;rel/rdb.h&gt;
+
+RDB_type *
+RDB_dup_nonscalar_type(RDB_type *typ, RDB_exec_context *);
+</pre>
+
+<h3>Description</h3>
+
+<p>If *<var>typ</var> is non-scalar, RDB_dup_nonscalar_creates a copy of it.
+
+<h3>Return value</h3>
+
+<p>A copy of *<var>typ</var>, if *<var>typ</var> is non-scalar.
+<var>typ</var>, if *<var>typ</var> is scalar.
 
 <hr>
 
@@ -5084,6 +5172,88 @@ otherwise.
 
 <hr>
 
+<h3 id="op_any">OPERATOR ANY</h3>
+
+<p>OPERATOR ANY(R <em>RELATION</em>, ATTR BOOLEAN) RETURNS BOOLEAN;
+
+<h4>Description</h4>
+
+<p>The ANY aggregate operator.
+For the semantics, see <a href="#any">RDB_any()</a>.
+
+<hr>
+
+<h3 id="op_all">OPERATOR ALL</h3>
+
+<p>OPERATOR ALL(R <em>RELATION</em>, ATTR BOOLEAN) RETURNS BOOLEAN;
+
+<h4>Description</h4>
+
+<p>The ALL aggregate operator.
+For the semantics, see <a href="#all">RDB_all()</a>.
+
+<hr>
+
+<h3 id="op_avg">OPERATOR </h3>
+
+<p>OPERATOR AVG(R <em>RELATION</em>, ATTR INTEGER) RETURNS DOUBLE;
+
+<p>OPERATOR AVG(R <em>RELATION</em>, ATTR FLOAT) RETURNS FLOAT;
+
+<p>OPERATOR AVG(R <em>RELATION</em>, ATTR DOUBLE) RETURNS DOUBLE;
+
+<h4>Description</h4>
+
+<p>The AVG aggregate operator.
+For the semantics, see <a href="#avg">RDB_avg()</a>.
+
+<hr>
+
+<h3 id="op_max">OPERATOR </h3>
+
+<p>OPERATOR MAX(R <em>RELATION</em>, ATTR INTEGER) RETURNS INTEGER;
+
+<p>OPERATOR MAX(R <em>RELATION</em>, ATTR FLOAT) RETURNS FLOAT;
+
+<p>OPERATOR MAX(R <em>RELATION</em>, ATTR DOUBLE) RETURNS DOUBLE;
+
+<h4>Description</h4>
+
+<p>The MAX aggregate operator.
+For the semantics, see <a href="#max">RDB_max()</a>.
+
+<hr>
+
+<h3 id="op_min">OPERATOR </h3>
+
+<p>OPERATOR MIN(R <em>RELATION</em>, ATTR INTEGER) RETURNS INTEGER;
+
+<p>OPERATOR MIN(R <em>RELATION</em>, ATTR FLOAT) RETURNS FLOAT;
+
+<p>OPERATOR MIN(R <em>RELATION</em>, ATTR DOUBLE) RETURNS DOUBLE;
+
+<h4>Description</h4>
+
+<p>The MIN aggregate operator.
+For the semantics, see <a href="#min">RDB_min()</a>.
+
+<hr>
+
+<h3 id="op_sum">OPERATOR SUM</h3>
+
+<p>OPERATOR SUM(R <em>RELATION</em>, ATTR INTEGER) RETURNS INTEGER;
+
+<p>OPERATOR SUM(R <em>RELATION</em>, ATTR FLOAT) RETURNS FLOAT;
+
+<p>OPERATOR SUM(R <em>RELATION</em>, ATTR DOUBLE) RETURNS DOUBLE;
+
+<h4>Description</h4>
+
+<p>The SUM aggregate operator.
+For the semantics, see <a href="#sum">RDB_sum()</a>.
+
+<hr>
+
 <h3 id="op_if">OPERATOR IF</h3>
 
 <p>OPERATOR IF (B BOOLEAN, V1 <em>ANY</em>, V2 <em>ANY</em>) RETURNS <em>ANY</em>;
@@ -5200,7 +5370,7 @@ otherwise.
 
 <h3 id="op_wrap">OPERATOR WRAP</h3>
 
-<p>OPERATOR WRAP(R <em>RELATION</em>, SCR_ATTRS ARRAY OF STRING, DST_ATTR STRING ...) RETURNS <em>RELATION</em>;
+<p>OPERATOR WRAP(R <em>RELATION</em>, SRC_ATTRS ARRAY OF STRING, DST_ATTR STRING ...) RETURNS <em>RELATION</em>;
 
 <p>$Id$
 

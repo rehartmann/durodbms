@@ -75,7 +75,7 @@ make_skey(DB *dbp, const DBT *pkeyp, const DBT *pdatap, DBT *skeyp)
     RDB_field *fieldv;
     int ret;
     int i;
-    
+
     fieldv = malloc (sizeof(RDB_field) * ixp->fieldc);
     if (fieldv == NULL)
         return ENOMEM;
@@ -260,7 +260,6 @@ RDB_open_index(RDB_recmap *rmp, const char *namp, const char *filenamp,
 
     ret = ixp->dbp->open(ixp->dbp, txid, filenamp, namp, DB_UNKNOWN, 0, 0664);
     if (ret != 0) {
-        ret = ret;
         goto error;
     }
 
@@ -276,6 +275,7 @@ RDB_open_index(RDB_recmap *rmp, const char *namp, const char *filenamp,
     *ixpp = ixp;
 
     return RDB_OK;
+
 error:
     RDB_close_index(ixp);
     return ret;

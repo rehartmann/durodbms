@@ -861,7 +861,7 @@ RDB_ro_op(const char *opname, int argc, RDB_exec_context *);
 void
 RDB_add_arg(RDB_expression *exp, RDB_expression *argp);
 
-/* Return address of encapsulated object, or NULL if not a value */
+/* Return address of embedded object, or NULL if not a value */
 RDB_object *
 RDB_expr_obj(RDB_expression *exp);
 
