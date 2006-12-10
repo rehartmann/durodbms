@@ -867,7 +867,7 @@ resolve_delete_expr(RDB_expression *exp, RDB_expression *condp,
                 ecp, txp) != RDB_OK)
             return RDB_ERROR;
 
-        delnp = *delnpp;
+        *delnpp = delnp;
         while (delnp != NULL) {
             if (delnp->del.condp != NULL) {
                 if (_RDB_resolve_extend_expr(&delnp->del.condp,
@@ -929,7 +929,6 @@ do_update(const RDB_ma_update *updp, RDB_exec_context *ecp,
     RDB_add_arg(exp, tbexp);
     RDB_add_arg(exp, updp->condp);
 
-    /* !! */
     nexp = _RDB_optimize_expr(exp, 0, NULL, ecp, txp);
     exp->var.op.argv[0] = NULL;
     exp->var.op.argv[1] = NULL;
@@ -944,7 +943,8 @@ do_update(const RDB_ma_update *updp, RDB_exec_context *ecp,
         RDB_drop_expr(nexp, ecp);
         return ret;
     }
-    if (nexp->kind == RDB_EX_RO_OP && strcmp (nexp->var.op.name, "WHERE") == 0) {
+    if (nexp->kind == RDB_EX_RO_OP
+            && strcmp (nexp->var.op.name, "WHERE") == 0) {
         if (nexp->var.op.optinfo.objpc > 0) {
             ret = _RDB_update_where_index(nexp, NULL, updp->updc, updp->updv,
                     ecp, txp);

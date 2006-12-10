@@ -508,20 +508,13 @@ expr_op_type(RDB_expression *exp, const RDB_type *tpltyp,
     }
 
     for (i = 0; i < argc; i++) {
-        if (exp->var.op.argv[i]->kind == RDB_EX_OBJ) {
-            if (exp->var.op.argv[i]->var.obj.typ != NULL) {
-                argtv[i] = RDB_dup_nonscalar_type(
-                        exp->var.op.argv[i]->var.obj.typ, ecp);
-                if (argtv[i] == NULL)
-                    goto error;
-            } else {
-                argtv[i] = NULL;
-            }
-        } else {
-            argtv[i] = RDB_expr_type(exp->var.op.argv[i], tpltyp, ecp, txp);
-            if (argtv[i] == NULL)
-                goto error;
-        }
+        /*
+         * The expression may not have a type (e.g. if it's an array),
+         * so RDB_expr_type can return NULL without raising an error.
+         */
+        argtv[i] = RDB_expr_type(exp->var.op.argv[i], tpltyp, ecp, txp);
+        if (argtv[i] == NULL && RDB_get_err(ecp) != NULL)
+            goto error;
     }
 
     /* Aggregate operators */
@@ -785,7 +778,9 @@ RDB_expr_type(RDB_expression *exp, const RDB_type *tuptyp,
                 return typ;
 
             /* No type available - generate type from tuple */
-            exp->typ = _RDB_tuple_type(&exp->var.obj, ecp);
+            if (exp->var.obj.kind == RDB_OB_TUPLE) {
+                exp->typ = _RDB_tuple_type(&exp->var.obj, ecp);
+            }
             return exp->typ;
         case RDB_EX_TBP:
             return RDB_obj_type(exp->var.tbref.tbp);
@@ -1266,7 +1261,6 @@ _RDB_destroy_expr(RDB_expression *exp, RDB_exec_context *ecp)
     }
     if (exp->typ != NULL && !RDB_type_is_scalar(exp->typ))
         return RDB_drop_type(exp->typ, ecp, NULL);
-    exp->kind = 7777;
     return RDB_OK;
 }
 

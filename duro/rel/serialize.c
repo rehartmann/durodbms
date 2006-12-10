@@ -611,17 +611,20 @@ deserialize_expr(RDB_object *valp, int *posp, RDB_exec_context *ecp,
             char *name;
             int argc;
             int i;
-        
+
             ret = deserialize_str(valp, posp, ecp, &name);
             if (ret != RDB_OK) {
-                return ret;
+                return RDB_ERROR;
             }
 
             ret = deserialize_int(valp, posp, ecp, &argc);
-            if (ret != RDB_OK)
-                return ret;
+            if (ret != RDB_OK) {
+                free(name);
+                return RDB_ERROR;
+            }
 
             *expp = RDB_ro_op(name, argc, ecp);
+            free(name);
             if (*expp == NULL)
                 return RDB_ERROR;
             for (i = 0; i < argc; i++) {

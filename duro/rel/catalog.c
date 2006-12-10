@@ -2348,7 +2348,7 @@ _RDB_cat_get_ro_op(const char *name, int argc, RDB_type *argtv[],
             
     vtbp = RDB_expr_to_vtable(wexp, ecp, txp);
     if (vtbp == NULL) {
-        RDB_drop_expr(exp, ecp);
+        RDB_drop_expr(wexp, ecp);
         return RDB_ERROR;
     }
     RDB_init_obj(&tpl);
