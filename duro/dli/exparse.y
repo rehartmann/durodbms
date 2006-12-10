@@ -1486,6 +1486,7 @@ operator_invocation: TOK_ID '(' expression_list ')' {
                 $3.expv[i] = exp;
             }
             $$ = RDB_ro_op($1->var.varname, $3.expc, _RDB_parse_ecp);
+            RDB_drop_expr($1, _RDB_parse_ecp);
             if ($$ == NULL) {
                 for (i = 0; i < $3.expc; i++)
                     RDB_drop_expr($3.expv[i], _RDB_parse_ecp);
@@ -1703,20 +1704,17 @@ ne_tuple_item_list: TOK_ID expression {
         if (valp == NULL) {
             RDB_drop_expr($1, _RDB_parse_ecp);
             RDB_drop_expr($3, _RDB_parse_ecp);
+            RDB_drop_expr($4, _RDB_parse_ecp);
             RDB_raise_type_mismatch("", _RDB_parse_ecp);
             YYERROR;
         }
 
-        $$ = RDB_obj_to_expr(RDB_expr_obj($1), _RDB_parse_ecp);
-        RDB_drop_expr($1, _RDB_parse_ecp);
-        if ($$ == NULL) {
-            RDB_drop_expr($3, _RDB_parse_ecp);
-            YYERROR;
-        }
-            
+		$$ = $1;
+
         ret = RDB_tuple_set(RDB_expr_obj($$), $3->var.varname,
                 valp, _RDB_parse_ecp);
         RDB_drop_expr($3, _RDB_parse_ecp);
+        RDB_drop_expr($4, _RDB_parse_ecp);
         if (ret != RDB_OK)
             YYERROR;
     }

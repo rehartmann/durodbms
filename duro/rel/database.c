@@ -1165,13 +1165,17 @@ RDB_add_table(RDB_object *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
         return RDB_ERROR;
     }
 
+    ret = _RDB_cat_insert(tbp, ecp, txp);
+    if (ret != RDB_OK)
+        return RDB_ERROR;
+
     ret = _RDB_assoc_table_db(tbp, txp->dbp);
     if (ret != RDB_OK)
-        return ret;
+        return RDB_ERROR;
 
     tbp->var.tb.is_persistent = RDB_TRUE;
 
-    return _RDB_cat_insert(tbp, ecp, txp);
+    return RDB_OK;
 }
 
 static RDB_object *
