@@ -8,11 +8,11 @@ EXPORTS
     RDB_FLOAT    
     RDB_DOUBLE    
     RDB_STRING    
-    RDB_BINARY    
+    RDB_BINARY
     RDB_INVALID_TRANSACTION_ERROR    
     RDB_INVALID_ARGUMENT_ERROR    
-    RDB_TYPE_MISMATCH_ERROR    
-    RDB_NOT_FOUND_ERROR    
+    RDB_TYPE_MISMATCH_ERROR
+    RDB_NOT_FOUND_ERROR
     RDB_OPERATOR_NOT_FOUND_ERROR    
     RDB_ATTRIBUTE_NOT_FOUND_ERROR    
     RDB_ELEMENT_EXISTS_ERROR    
@@ -62,6 +62,8 @@ RDB_table_contains
 RDB_subset
 RDB_extract_tuple
 RDB_table_is_empty
+RDB_table_is_real
+RDB_table_is_persistent
 RDB_cardinality
 RDB_tuple_set
 RDB_tuple_set_bool
@@ -127,7 +129,7 @@ RDB_float_to_expr
 RDB_double_to_expr
 RDB_string_to_expr
 RDB_obj_to_expr
-RDB_expr_var
+RDB_var_ref
 RDB_eq
 RDB_expr_to_vtable
 RDB_tuple_attr
@@ -170,7 +172,6 @@ RDB_ec_set_property
 RDB_ec_get_property
 RDB_evaluate
 RDB_parse_expr
-RDB_parse_table
 _RDB_obj_to_str
 RDB_dup_str
 _RDB_table_refers
@@ -180,7 +181,8 @@ _RDB_get_upd_op
 _RDB_get_possrep
 RDB_implement_type
 RDB_init_table
-_RDB_dup_nonscalar_type
+RDB_init_table_from_type
+RDB_dup_nonscalar_type
 RDB_type_attrs
 RDB_db_name
 RDB_table_name

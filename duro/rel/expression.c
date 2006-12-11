@@ -1268,9 +1268,11 @@ _RDB_destroy_expr(RDB_expression *exp, RDB_exec_context *ecp)
 int
 RDB_drop_expr(RDB_expression *exp, RDB_exec_context *ecp)
 {
+    int ret;
+
     if (drop_children(exp, ecp) != RDB_OK)
         return RDB_ERROR;
-    int ret = _RDB_destroy_expr(exp, ecp);
+    ret = _RDB_destroy_expr(exp, ecp);
     free(exp);
     return ret;
 }
