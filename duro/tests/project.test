@@ -103,11 +103,23 @@ test ptables {projection tables} -setup $SETUP -body {
     # Update projection
     duro::update P2 B {"yi"} $tx
 
+    # Refer to non-existing table
+
+    if {![catch {
+	    duro::table expr -global P3 {PP { A }} $tx
+    }]} {
+        error "table creation should fail, but succeeded"
+    }
+
+    if {![string match "ATTRIBUTE_NOT_FOUND_ERROR(*)" [lindex $::errorCode 1]]} {
+    	error "wrong errorCode: $::errorCode"
+    }
+
     # Drop tables
     duro::table drop P1 $tx
     duro::table drop P2 $tx
     duro::table drop R $tx
-    
+
     duro::commit $tx
 }
 

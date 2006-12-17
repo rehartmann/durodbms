@@ -761,7 +761,7 @@ error:
  * Returns the type of an expression.
  */
 RDB_type *
-RDB_expr_type(RDB_expression *exp, const RDB_type *tuptyp,
+RDB_expr_type(RDB_expression *exp, const RDB_type *tpltyp,
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
     RDB_attr *attrp;
@@ -785,19 +785,29 @@ RDB_expr_type(RDB_expression *exp, const RDB_type *tuptyp,
         case RDB_EX_TBP:
             return RDB_obj_type(exp->var.tbref.tbp);
         case RDB_EX_VAR:
-            if (tuptyp == NULL) {
-                RDB_raise_invalid_argument("tuple type required", ecp);
-                return NULL;
+            if (tpltyp != NULL) {
+                /* Get type from tuple type */
+                attrp = _RDB_tuple_type_attr(tpltyp, exp->var.varname);
+                if (attrp != NULL) {
+                    exp->typ = RDB_dup_nonscalar_type(attrp->typ, ecp);
+                    return exp->typ;
+                }
             }
-            attrp = _RDB_tuple_type_attr(tuptyp, exp->var.varname);
-            if (attrp == NULL) {
-                RDB_raise_attribute_not_found(exp->var.varname, ecp);
-                return NULL;
+            if (txp != NULL) {
+                RDB_object *tbp = RDB_get_table(exp->var.varname, ecp, txp);
+                if (tbp != NULL) {
+                    /* Transform into table ref */
+                    free(exp->var.varname);
+                    exp->kind = RDB_EX_TBP;
+                    exp->var.tbref.tbp = tbp;
+                    exp->var.tbref.indexp = NULL;
+                    return RDB_obj_type(exp->var.tbref.tbp);
+                }
             }
-            exp->typ = RDB_dup_nonscalar_type(attrp->typ, ecp);
-            return exp->typ;
+            RDB_raise_attribute_not_found(exp->var.varname, ecp);
+            return NULL;
         case RDB_EX_TUPLE_ATTR:
-            typ = RDB_expr_type(exp->var.op.argv[0], tuptyp, ecp, txp);
+            typ = RDB_expr_type(exp->var.op.argv[0], tpltyp, ecp, txp);
             if (typ == NULL)
                 return NULL;
             typ = RDB_type_attr_type(typ, exp->var.op.name);
@@ -807,7 +817,7 @@ RDB_expr_type(RDB_expression *exp, const RDB_type *tuptyp,
             }
             return typ;
         case RDB_EX_GET_COMP:
-            typ = RDB_expr_type(exp->var.op.argv[0], tuptyp, ecp, txp);
+            typ = RDB_expr_type(exp->var.op.argv[0], tpltyp, ecp, txp);
             if (typ == NULL)
                 return typ;
             attrp = _RDB_get_icomp(typ, exp->var.op.name);
@@ -817,7 +827,7 @@ RDB_expr_type(RDB_expression *exp, const RDB_type *tuptyp,
             }
             return attrp->typ;
         case RDB_EX_RO_OP:
-            exp->typ = expr_op_type(exp, tuptyp, ecp, txp);
+            exp->typ = expr_op_type(exp, tpltyp, ecp, txp);
             return exp->typ;
     }
     abort();

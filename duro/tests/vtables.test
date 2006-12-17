@@ -358,11 +358,11 @@ test vtables {virtual tables} -setup $SETUP -body {
     duro::table create -local LT {
         {A INTEGER}
     } {{A}} $tx
-    
+
     if {![catch {duro::table expr -global TL {LT { A }} $tx}]} {
         error "Creation of TL should fail, but succeeded"
     }
-    
+
     duro::table expr LTL {LT { A }} $tx
     
     if {![catch {duro::table drop LT $tx}]} {

@@ -11,6 +11,7 @@ import os
 #
 
 bdbhome = ARGUMENTS.get('bdbhome', '/usr/local/BerkeleyDB.4.5')
+with_durotcl = int(ARGUMENTS.get('with_durotcl', 1))
 
 release = '0.12'
 
@@ -102,9 +103,9 @@ else:
 #
 
 Default(libduro)
-Default(libdurotcl)
 
-env.Alias('libduro', libduro)
+if with_durotcl:
+     Default(libdurotcl)
 
 #
 # Tests
@@ -181,21 +182,23 @@ env.Install(installdir + '/include/gen', gen_hdrs)
 env.Install(installdir + '/include/rec', rec_hdrs)
 env.Install(installdir + '/include/rel', rel_hdrs)
 env.Install(installdir + '/include/dli', dli_hdrs)
-env.Install(installdir + '/bin', tcltools)
+if with_durotcl:
+    env.Install(installdir + '/bin', tcltools)
 
 if env['PLATFORM'] == 'win32':
     env.Install(installdir + '/bin', libduro)
 else:
     env.Install(installdir + '/lib', libduro)
 
-dst_libdurotcl = env.Install(installdir + '/lib', libdurotcl)
-dst_utiltcl = env.Install(installdir + '/lib', 'tcl/util.tcl')
+if with_durotcl:
+    dst_libdurotcl = env.Install(installdir + '/lib', libdurotcl)
+    dst_utiltcl = env.Install(installdir + '/lib', 'tcl/util.tcl')
 
-env.Command(installdir + '/lib/pkgIndex.tcl',
-        [dst_libdurotcl, dst_utiltcl],
-        [open('.tmp.tcl', 'w').write('pkg_mkIndex ' + installdir + '/lib '
-                + libdurotcl[0].path + ' util.tcl'),
-        'tclsh .tmp.tcl'])
+    env.Command(installdir + '/lib/pkgIndex.tcl',
+            [dst_libdurotcl, dst_utiltcl],
+            [open('.tmp.tcl', 'w').write('pkg_mkIndex ' + installdir + '/lib '
+                    + libdurotcl[0].path + ' util.tcl'),
+            'tclsh .tmp.tcl'])
 
 durodocs = ['docs/api-spec.html', 'docs/expressions.html', 'docs/utils.html']
 
@@ -210,7 +213,8 @@ durotcldocs = Split('docs/tcl/index.html docs/tcl/array.html '
 
 env.Install(installdir + '/docs', durodocs)
 
-env.Install(installdir + '/docs/tcl', durotcldocs)
+if with_durotcl:
+    env.Install(installdir + '/docs/tcl', durotcldocs)
 
 #
 # Tests

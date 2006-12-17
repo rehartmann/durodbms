@@ -18,8 +18,6 @@ To learn about how to use Duro, see the documentation in the 'docs'
 subdirectory. Example code can be found in the 'tests' subdirectory
 of the build directory.
 
-By default, Duro is installed in the directory /usr/local/duro.0.12.
-
 When Duro is installed, the Tcl interface is installed as a package in
 the 'lib' subdirectory. The simplest way to make it available to application
 scripts is to add this subdirectory to TCLLIBPATH, e.g.:
