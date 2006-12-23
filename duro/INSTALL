@@ -9,8 +9,8 @@ scons install
 
 SCons is available from www.scons.org.
 
-To compile Duro, you need GNU Libtool, Berkeley DB 4.3,
-and Tcl 8.1 or later.
+To compile Duro, you need GNU Libtool, Berkeley DB 4.3 or later
+(Berkeley DB 4.5 is expected by default), and Tcl 8.1 or later.
 
 'scons check' requires the tcltest package.
 
