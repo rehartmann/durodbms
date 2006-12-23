@@ -32,8 +32,8 @@ env.Replace(YACCFLAGS = '-d')
 env.Replace(RPATH = [installdir + '/lib', bdbhome + '/lib'])
 
 if env['PLATFORM'] == 'win32':
-    env.Replace(LIBS = ['duro', 'libdb44', 'libltdl'])
-    durolibs = ['libdb44', 'libltdl', 'libregex']
+    env.Replace(LIBS = ['duro', 'libdb45', 'libltdl'])
+    durolibs = ['libdb45', 'libltdl', 'libregex']
 else:
     env.Replace(LIBS = ['duro', 'db', 'ltdl', 'm'])
     durolibs = ['db', 'ltdl']
@@ -91,7 +91,7 @@ durotclsrc = ['tcl/duro.c', 'tcl/envcmd.c',
 libdurotcllibs = ['duro']
 
 if env['PLATFORM'] == 'win32':
-    libdurotcllibs += ['tcl84', 'libdb44']
+    libdurotcllibs += ['tcl84', 'libdb45']
     libdurotcl = env.SharedLibrary('durotcl', durotclsrc + ['durotcl.def'],
             LIBS = libdurotcllibs)
 else:
@@ -176,30 +176,6 @@ testlib_hdrs = ['tests/point.h']
 
 tcltools = ['tcl/duroadmin.tcl', 'tcl/durodump.tcl']
 
-env.Alias('install', installdir)
-
-env.Install(installdir + '/include/gen', gen_hdrs)
-env.Install(installdir + '/include/rec', rec_hdrs)
-env.Install(installdir + '/include/rel', rel_hdrs)
-env.Install(installdir + '/include/dli', dli_hdrs)
-if with_durotcl:
-    env.Install(installdir + '/bin', tcltools)
-
-if env['PLATFORM'] == 'win32':
-    env.Install(installdir + '/bin', libduro)
-else:
-    env.Install(installdir + '/lib', libduro)
-
-if with_durotcl:
-    dst_libdurotcl = env.Install(installdir + '/lib', libdurotcl)
-    dst_utiltcl = env.Install(installdir + '/lib', 'tcl/util.tcl')
-
-    env.Command(installdir + '/lib/pkgIndex.tcl',
-            [dst_libdurotcl, dst_utiltcl],
-            [open('.tmp.tcl', 'w').write('pkg_mkIndex ' + installdir + '/lib '
-                    + libdurotcl[0].path + ' util.tcl'),
-            'tclsh .tmp.tcl'])
-
 durodocs = ['docs/api-spec.html', 'docs/expressions.html', 'docs/utils.html']
 
 durotcldocs = Split('docs/tcl/index.html docs/tcl/array.html '
@@ -211,10 +187,32 @@ durotcldocs = Split('docs/tcl/index.html docs/tcl/array.html '
         'docs/tcl/type.html docs/tcl/indexcmd.html docs/tcl/constraint.html '
         'docs/tcl/massign.html docs/tcl/errorCode.html')
 
+env.Alias('install', installdir)
+
+env.Install(installdir + '/include/gen', gen_hdrs)
+env.Install(installdir + '/include/rec', rec_hdrs)
+env.Install(installdir + '/include/rel', rel_hdrs)
+env.Install(installdir + '/include/dli', dli_hdrs)
 env.Install(installdir + '/docs', durodocs)
 
-if with_durotcl:
+# Install durotcl only if libdurotcl has been built
+if os.path.exists(str(libdurotcl[0])):
+    env.Install(installdir + '/bin', tcltools)
+    dst_libdurotcl = env.Install(installdir + '/lib', libdurotcl)
+    dst_utiltcl = env.Install(installdir + '/lib', 'tcl/util.tcl')
+
+    env.Command(installdir + '/lib/pkgIndex.tcl',
+            [dst_libdurotcl, dst_utiltcl],
+            [open('.tmp.tcl', 'w').write('pkg_mkIndex ' + installdir + '/lib '
+                    + libdurotcl[0].path + ' util.tcl'),
+            'tclsh .tmp.tcl'])
+
     env.Install(installdir + '/docs/tcl', durotcldocs)
+
+if env['PLATFORM'] == 'win32':
+    env.Install(installdir + '/bin', libduro)
+else:
+    env.Install(installdir + '/lib', libduro)
 
 #
 # Tests
@@ -233,7 +231,7 @@ env.Alias('check', check)
 if env.has_key('TAR'):
     distdir = 'duro-' + release
 
-    env.Install(distdir, Split('SConstruct README INSTALL README.windows '
+    env.Install(distdir, Split('SConstruct README INSTALL '
             'COPYING AUTHORS CHANGES'))
     env.Install(distdir + '/gen', gensrc)
     env.Install(distdir + '/rec', recsrc)

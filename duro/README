@@ -12,7 +12,7 @@ The following software is required for compiling and running Duro:
 - Tcl 8.1 or later
 
 Duro 0.12 has been tested under Linux/x86 and Windows XP with Berkeley
-DB 4.4 and Tcl 8.4.
+DB 4.5 and Tcl 8.4.
 
 To learn about how to use Duro, see the documentation in the 'docs'
 subdirectory. Example code can be found in the 'tests' subdirectory

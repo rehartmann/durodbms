@@ -1629,8 +1629,15 @@ RDB_multi_assign(int insc, const RDB_ma_insert insv[],
      * Execute assignments
      */
 
-    /* Start subtransaction, if there is more than one assignment */
-    if (ninsc + nupdc + ndelc + copyc > 1) {
+    /*
+     * Start subtransaction, if there is more than one assignment.
+     * A subtransaction is also needed with an insert into a table
+     * with seconmdary indexes, because the insert is not atomic
+     * in Berkeyley DB 4.5.
+     */
+    if (ninsc + nupdc + ndelc + copyc > 1
+            || (ninsc == 1 && ninsv[0].tbp->var.tb.stp != NULL
+                    && ninsv[0].tbp->var.tb.stp->indexc > 1)) {
         if (RDB_begin_tx(ecp, &subtx, RDB_tx_db(txp), txp) != RDB_OK) {
             rcount = RDB_ERROR;
             goto cleanup;
