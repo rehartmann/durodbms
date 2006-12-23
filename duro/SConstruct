@@ -159,6 +159,12 @@ test_scripts = Split('tests/aggr.test tests/constraints.test tests/convert.test 
         'tests/tuple.test tests/update.test tests/utype.test '
         'tests/vtables.test tests/all.tcl tests/testutil.tcl tests/setup.tcl')
 
+check = env.Command('tests/passed', [libduro, libdurotcl, testbins],
+        'tclsh tests/all.tcl -verbose "{pass error}"',
+        ENV = {'LIBDUROTCL' : str(libdurotcl[0]), 'PATH' : os.environ['PATH']})
+
+env.Alias('check', check)
+
 #
 # Installation
 #
@@ -214,16 +220,6 @@ if env['PLATFORM'] == 'win32':
     env.Install(installdir + '/bin', libduro)
 else:
     env.Install(installdir + '/lib', libduro)
-
-#
-# Tests
-#
-
-check = env.Command('tests/passed', [libduro, libdurotcl, testbins],
-        'tclsh tests/all.tcl -verbose "{pass error}"',
-        ENV = {'LIBDUROTCL' : str(libdurotcl[0]), 'PATH' : os.environ['PATH']})
-
-env.Alias('check', check)
 
 #
 # Distribution tarfile
