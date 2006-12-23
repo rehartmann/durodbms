@@ -1,5 +1,5 @@
-Installation procedure for Duro on Linux/POSIX systems
-======================================================
+Installation procedure for Duro
+===============================
 
 Duro uses SCons (www.scons.org) to build itself. Type:
 
