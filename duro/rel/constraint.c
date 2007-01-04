@@ -128,7 +128,7 @@ RDB_create_constraint(const char *name, RDB_expression *exp,
     RDB_constraint *constrp;
 
     /* Check constraint */
-    ret = RDB_evaluate_bool(exp, NULL, ecp, txp, &res);
+    ret = RDB_evaluate_bool(exp, NULL, NULL, ecp, txp, &res);
     if (ret != RDB_OK)
         return ret;
     if (!res) {
@@ -242,7 +242,7 @@ _RDB_check_constraints(const RDB_constraint *constrp, RDB_exec_context *ecp,
     int ret;
 
     while (constrp != NULL) {
-        ret = RDB_evaluate_bool(constrp->exp, NULL, ecp, txp, &b);
+        ret = RDB_evaluate_bool(constrp->exp, NULL, NULL, ecp, txp, &b);
         if (ret != RDB_OK) {
             return ret;
         }

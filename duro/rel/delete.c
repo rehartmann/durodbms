@@ -122,7 +122,8 @@ _RDB_delete_real(RDB_object *tbp, RDB_expression *condp, RDB_exec_context *ecp,
                 }
             }
 
-            if (RDB_evaluate_bool(condp, &tpl, ecp, txp, &b) != RDB_OK)
+            if (RDB_evaluate_bool(condp, &_RDB_tpl_get, &tpl, ecp, txp, &b)
+                    != RDB_OK)
                  goto error;
         } else {
             b = RDB_TRUE;
@@ -189,7 +190,7 @@ delete_where_uindex(RDB_expression *texp, RDB_expression *condp,
             rcount = RDB_ERROR;
             goto cleanup;
         }
-        ret = RDB_evaluate_bool(condp, &tpl, ecp, txp, &b);
+        ret = RDB_evaluate_bool(condp, &_RDB_tpl_get, &tpl, ecp, txp, &b);
         RDB_destroy_obj(&tpl, ecp);
         if (ret != RDB_OK) {
             rcount = RDB_ERROR;
@@ -288,8 +289,8 @@ delete_where_nuindex(RDB_expression *texp, RDB_expression *condp,
             goto cleanup;
         }
         if (texp->var.op.optinfo.stopexp != NULL) {
-            ret = RDB_evaluate_bool(texp->var.op.optinfo.stopexp, &tpl,
-                    ecp, txp, &b);
+            ret = RDB_evaluate_bool(texp->var.op.optinfo.stopexp,
+                    &_RDB_tpl_get, &tpl, ecp, txp, &b);
             if (ret != RDB_OK) {
                 RDB_destroy_obj(&tpl, ecp);
                 rcount = RDB_ERROR;
@@ -301,14 +302,16 @@ delete_where_nuindex(RDB_expression *texp, RDB_expression *condp,
             }
         }
         if (condp != NULL) {
-            ret = RDB_evaluate_bool(condp, &tpl, ecp, txp, &del);
+            ret = RDB_evaluate_bool(condp, &_RDB_tpl_get, &tpl, ecp, txp,
+                    &del);
             if (ret != RDB_OK) {
                 RDB_destroy_obj(&tpl, ecp);
                 ret = RDB_ERROR;
                 goto cleanup;
             }
         }
-        ret = RDB_evaluate_bool(texp->var.op.argv[1], &tpl, ecp, txp, &b);
+        ret = RDB_evaluate_bool(texp->var.op.argv[1], &_RDB_tpl_get, &tpl, ecp,
+                txp, &b);
         RDB_destroy_obj(&tpl, ecp);
         if (ret != RDB_OK) {
             rcount = RDB_ERROR;

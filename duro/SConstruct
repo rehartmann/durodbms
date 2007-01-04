@@ -14,7 +14,7 @@ import os
 bdbhome = ARGUMENTS.get('bdbhome', '/usr/local/BerkeleyDB.4.5')
 with_durotcl = int(ARGUMENTS.get('with_durotcl', 1))
 
-release = '0.12'
+release = '0.13'
 
 env = Environment(ENV = os.environ)
 
@@ -29,7 +29,6 @@ installdir = prefix + '/duro.' + release
 
 env.Replace(CPPPATH = ['.', bdbhome + '/include'])
 env.Replace(LIBPATH = ['.', bdbhome + '/lib'])
-env.Replace(YACCFLAGS = '-d')
 env.Replace(RPATH = [installdir + '/lib', bdbhome + '/lib'])
 
 if env['PLATFORM'] == 'win32':
@@ -49,8 +48,8 @@ env.Replace(TARFLAGS = '-c -z --exclude .sconsign')
 #
 
 if env.has_key('YACC'):
-    CFile('dli/exparse.c', 'dli/exparse.y')
-    CFile('dli/exlex.c', 'dli/exlex.l')
+    CFile('dli/exparse.c', 'dli/exparse.y', YACCFLAGS = '-d')
+    CFile('dli/exlex.c', 'dli/exlex.l', LEXFLAGS = '-i')
 
 gensrc = ['gen/hashmap.c', 'gen/hashmapit.c',
         'gen/strfns.c', 'gen/hashtable.c', 'gen/hashtabit.c']
@@ -64,7 +63,7 @@ relsrc = ['rel/array.c', 'rel/database.c', 'rel/operator.c',
         'rel/delete.c', 'rel/tuple.c', 'rel/type.c', 'rel/object.c',
         'rel/catalog.c', 'rel/optimize.c', 'rel/transform.c',
         'rel/constraint.c', 'rel/assign.c', 'rel/excontext.c',
-        'rel/match.c']
+        'rel/match.c', 'rel/opmap.c']
 
 dlisrc = ['dli/exparse.c', 'dli/exlex.c', 'dli/parse.c', 'dli/tabletostr.c']
 
@@ -100,10 +99,17 @@ else:
             LIBS = libdurotcllibs)
 
 #
+# Interpreter
+#
+
+dli = env.Program('dli/duro.c')
+
+#
 # Defaults
 #
 
 Default(libduro)
+Default(dli)
 
 if with_durotcl:
      Default(libdurotcl)

@@ -493,7 +493,8 @@ check_extend_tuple(const RDB_object *tplp, const RDB_expression *exp, RDB_exec_c
             return RDB_ERROR;
         }
         RDB_init_obj(&val);
-        ret = RDB_evaluate(exp->var.op.argv[i], tplp, ecp, txp, &val);
+        ret = RDB_evaluate(exp->var.op.argv[i], &_RDB_tpl_get, (void *) tplp,
+                ecp, txp, &val);
         if (ret != RDB_OK) {
             RDB_destroy_obj(&val, ecp);
             return ret;
@@ -609,7 +610,8 @@ resolve_insert_expr(RDB_expression *exp, const RDB_object *tplp,
     }
 
     if (strcmp(exp->var.op.name, "WHERE") == 0) {
-        ret = RDB_evaluate_bool(exp->var.op.argv[1], tplp, ecp, txp, &b);
+        ret = RDB_evaluate_bool(exp->var.op.argv[1], &_RDB_tpl_get, (void *) tplp,
+                ecp, txp, &b);
         if (ret != RDB_OK)
             return RDB_ERROR;
         if (!b) {
@@ -1609,7 +1611,7 @@ RDB_multi_assign(int insc, const RDB_ma_insert insv[],
                 /*
                  * Check constraint
                  */
-                ret = RDB_evaluate_bool(newexp, NULL, ecp, txp, &b);
+                ret = RDB_evaluate_bool(newexp, NULL, NULL, ecp, txp, &b);
                 RDB_drop_expr(newexp, ecp);
                 if (ret != RDB_OK) {
                     rcount = RDB_ERROR;
@@ -1632,12 +1634,13 @@ RDB_multi_assign(int insc, const RDB_ma_insert insv[],
     /*
      * Start subtransaction, if there is more than one assignment.
      * A subtransaction is also needed with an insert into a table
-     * with seconmdary indexes, because the insert is not atomic
+     * with secondary indexes, because the insert is not atomic
      * in Berkeyley DB 4.5.
      */
-    if (ninsc + nupdc + ndelc + copyc > 1
+    if (need_tx
+            && (ninsc + nupdc + ndelc + copyc > 1
             || (ninsc == 1 && ninsv[0].tbp->var.tb.stp != NULL
-                    && ninsv[0].tbp->var.tb.stp->indexc > 1)) {
+                    && ninsv[0].tbp->var.tb.stp->indexc > 1))) {
         if (RDB_begin_tx(ecp, &subtx, RDB_tx_db(txp), txp) != RDB_OK) {
             rcount = RDB_ERROR;
             goto cleanup;
@@ -1694,7 +1697,7 @@ RDB_multi_assign(int insc, const RDB_ma_insert insv[],
     }
 
     /* Commit subtx, if it has been started */
-    if (atxp == &subtx) {
+    if (need_tx && (atxp == &subtx)) {
         if (RDB_commit(ecp, &subtx) != RDB_OK)
             rcount = RDB_ERROR;
         atxp = NULL;

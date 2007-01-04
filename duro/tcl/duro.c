@@ -514,7 +514,7 @@ Duro_tcl_to_duro(Tcl_Interp *interp, Tcl_Obj *tobjp, RDB_type *typ,
             Duro_dberror(interp, RDB_get_err(ecp), txp);
             return TCL_ERROR;
         }
-        ret = RDB_evaluate(exp, NULL, ecp, txp, objp);
+        ret = RDB_evaluate(exp, NULL, NULL, ecp, txp, objp);
         RDB_drop_expr(exp, ecp);
         if (ret != RDB_OK) {
             Duro_dberror(interp, RDB_get_err(ecp), txp);

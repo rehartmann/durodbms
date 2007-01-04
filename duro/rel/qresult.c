@@ -194,7 +194,8 @@ do_summarize(RDB_qresult *qrp, RDB_type *tb1typ, RDB_bool hasavg,
                                 nonkeyfv[i].datap, nonkeyfv[i].len, ecp);
                         if (ret != RDB_OK)
                             goto cleanup;
-                        ret = RDB_evaluate(exp, &tpl, ecp, txp, &addval);
+                        ret = RDB_evaluate(exp, &_RDB_tpl_get, &tpl, ecp, txp,
+                                &addval);
                         if (ret != RDB_OK)
                             goto cleanup;
                     }
@@ -1878,8 +1879,8 @@ next_where_index(RDB_qresult *qrp, RDB_object *tplp,
             rtup = RDB_TRUE;
         else {
             if (qrp->exp->var.op.optinfo.stopexp != NULL) {
-                ret = RDB_evaluate_bool(qrp->exp->var.op.optinfo.stopexp, tplp,
-                        ecp, txp, &rtup);
+                ret = RDB_evaluate_bool(qrp->exp->var.op.optinfo.stopexp,
+                        &_RDB_tpl_get, tplp, ecp, txp, &rtup);
                 if (ret != RDB_OK)
                     goto error;
                 if (!rtup) {
@@ -1891,8 +1892,8 @@ next_where_index(RDB_qresult *qrp, RDB_object *tplp,
             /*
              * Check condition, because it could be an open start
              */
-            ret = RDB_evaluate_bool(qrp->exp->var.op.argv[1], tplp, ecp, txp,
-                    &rtup);
+            ret = RDB_evaluate_bool(qrp->exp->var.op.argv[1], &_RDB_tpl_get,
+                    tplp, ecp, txp, &rtup);
             if (ret != RDB_OK)
                 goto error;
         }
@@ -2203,7 +2204,7 @@ next_where_tuple(RDB_qresult *qrp, RDB_object *tplp, RDB_exec_context *ecp,
         if (ret != RDB_OK)
             break;
         ret = RDB_evaluate_bool(qrp->exp->var.op.argv[1],
-                tplp, ecp, txp, &expres);
+                &_RDB_tpl_get, tplp, ecp, txp, &expres);
         if (ret != RDB_OK)
             break;
     } while (!expres);
@@ -2339,7 +2340,8 @@ next_extend_tuple(RDB_qresult *qrp, RDB_object *tplp, RDB_exec_context *ecp,
 
     for (i = 1; i < qrp->exp->var.op.argc; i += 2) {        
         RDB_init_obj(&obj);
-        if (RDB_evaluate(qrp->exp->var.op.argv[i], tplp, ecp, txp, &obj) != RDB_OK) {
+        if (RDB_evaluate(qrp->exp->var.op.argv[i], &_RDB_tpl_get, tplp, ecp,
+                txp, &obj) != RDB_OK) {
             RDB_destroy_obj(&obj, ecp);
             return RDB_ERROR;
         }

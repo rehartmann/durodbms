@@ -1508,7 +1508,7 @@ are deleted from *<var>delv</var>[i]->tbp.
 
 <p>A <strong>RDB_multi_assign</strong> call is atomic with respect to
 constraint checking; a constraint violation error can only occur
-if the result of <em>all</em> operations violate a constraint.
+if the result of <em>all</em> operations violates a constraint.
 
 <p>A table may not appear twice as a target in the arguments to
 <strong>RDB_multi_assign</strong>, and it may not appear
@@ -1517,7 +1517,7 @@ as a source if it appears as a target in a previous assignment.
 <p>This means that an assignment like the following:</p>
 
 <code>
-UPDATE S WHERE S# = S#('S2') STATUS := 15;
+UPDATE S WHERE S# = S#('S2') STATUS := 15,
 UPDATE S WHERE S# = S#('S3') STATUS := 25;
 </code>
 
@@ -4676,15 +4676,15 @@ TYPE ELEMENT_EXISTS_ERROR POSSREP { MSG STRING };
 
 TYPE TYPE_CONSTRAINT_VIOLATION_ERROR POSSREP { MSG STRING };
 
-TYPE KEY_VIOLATION_ERROR { MSG STRING };
+TYPE KEY_VIOLATION_ERROR POSSREP { MSG STRING };
 
-TYPE PREDICATE_VIOLATION_ERROR { MSG STRING };
+TYPE PREDICATE_VIOLATION_ERROR POSSREP { MSG STRING };
 
-TYPE AGGREGATE_UNDEFINED_ERROR { };
+TYPE AGGREGATE_UNDEFINED_ERROR POSSREP { };
 
-TYPE VERSION_MISMATCH_ERROR { };
+TYPE VERSION_MISMATCH_ERROR POSSREP { };
 
-TYPE NOT_SUPPORTED_ERROR { MSG STRING };
+TYPE NOT_SUPPORTED_ERROR POSSREP { MSG STRING };
 
 TYPE SYNTAX_ERROR POSSREP { MSG STRING };
 </pre>

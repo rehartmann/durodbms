@@ -8,9 +8,11 @@
  * See the file COPYING for redistribution information.
  */
 
+#include "opmap.h"
 #include <rec/index.h>
 #include <rec/cursor.h>
 #include <gen/hashtable.h>
+
 #include <ltdl.h>
 
 #define AVG_COUNT "$COUNT"
@@ -83,7 +85,7 @@ typedef struct RDB_dbroot {
     RDB_environment *envp;
     RDB_hashmap typemap;
     RDB_hashmap ro_opmap;
-    RDB_hashmap upd_opmap;
+    RDB_op_map upd_opmap;
     RDB_database *first_dbp;
     RDB_constraint *first_constrp;
     RDB_bool constraints_read;
@@ -136,16 +138,12 @@ typedef int RDB_upd_op_func(const char *name, int argc, RDB_object *argv[],
         RDB_bool updv[], const void *iargp, size_t iarglen,
         RDB_exec_context *, RDB_transaction *);
 
-typedef struct RDB_upd_op {
-    char *name;
-    int argc;
-    RDB_type **argtv;
+typedef struct RDB_upd_op_data {
     RDB_object iarg;
     lt_dlhandle modhdl;
     RDB_upd_op_func *funcp;
     RDB_bool *updv;
-    struct RDB_upd_op *nextp;
-} RDB_upd_op;
+} RDB_upd_op_data;
 
 typedef struct _RDB_tbindex {
     char *name;
@@ -160,6 +158,10 @@ struct _RDB_tx_and_ec {
     RDB_transaction *txp;
     RDB_exec_context *ecp;
 };
+
+extern RDB_hashmap _RDB_builtin_type_map;
+
+extern RDB_hashmap _RDB_builtin_ro_op_map;
 
 /* Used to pass the execution context (not MT-safe */
 extern RDB_exec_context *_RDB_cmp_ecp;
@@ -358,13 +360,8 @@ _RDB_del_recmap(RDB_transaction *, RDB_recmap *, RDB_exec_context *);
 int
 _RDB_del_index(RDB_transaction *, RDB_index *, RDB_exec_context *);
 
-int
-RDB_evaluate_bool(RDB_expression *, const RDB_object *tup,
-        RDB_exec_context *ecp, RDB_transaction *, RDB_bool *);
-
-int
-RDB_evaluate(RDB_expression *, const RDB_object *, RDB_exec_context *,
-             RDB_transaction *, RDB_object *);
+RDB_object *
+_RDB_tpl_get(const char *, void *);
 
 int
 _RDB_find_rename_from(int renc, const RDB_renaming renv[], const char *name);
@@ -461,9 +458,9 @@ int
 _RDB_get_ro_op(const char *name, int argc, RDB_type *argtv[],
                RDB_exec_context *, RDB_transaction *txp, RDB_ro_op_desc **opp);
 
-int
+RDB_upd_op_data *
 _RDB_get_upd_op(const char *name, int argc, RDB_type *argtv[],
-               RDB_exec_context *ecp, RDB_transaction *txp, RDB_upd_op **opp);
+               RDB_exec_context *ecp, RDB_transaction *txp);
 
 RDB_ro_op_desc *
 _RDB_new_ro_op(const char *name, int argc, RDB_type *rtyp, RDB_ro_op_func *funcp,
@@ -492,11 +489,11 @@ _RDB_obj_not_equals(const char *name, int argc, RDB_object *argv[],
 int
 _RDB_put_ro_op(RDB_dbroot *dbrootp, RDB_ro_op_desc *op, RDB_exec_context *);
 
-void
-_RDB_free_ro_ops(RDB_ro_op_desc *op, RDB_exec_context *);
+int
+_RDB_put_builtin_ro_op(RDB_ro_op_desc *op, RDB_exec_context *ecp);
 
 void
-_RDB_free_upd_ops(RDB_upd_op *op, RDB_exec_context *);
+_RDB_free_ro_ops(RDB_ro_op_desc *op, RDB_exec_context *);
 
 int
 _RDB_move_tuples(RDB_object *dstp, RDB_object *srcp, RDB_exec_context *,
@@ -550,10 +547,10 @@ _RDB_check_project_keyloss(RDB_expression *exp,
         RDB_exec_context *ecp);
 
 int
-_RDB_add_builtin_ops(RDB_dbroot *, RDB_exec_context *);
+_RDB_init_builtin_ops(RDB_exec_context *);
 
 int
-_RDB_add_selector(RDB_dbroot *, RDB_type *, RDB_exec_context *);
+_RDB_add_selector(RDB_type *, RDB_exec_context *);
 
 int
 _RDB_sys_select(const char *name, int argc, RDB_object *argv[],

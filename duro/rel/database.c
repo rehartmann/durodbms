@@ -1,7 +1,7 @@
 /*
  * $Id$
  *
- * Copyright (C) 2003-2006 René Hartmann.
+ * Copyright (C) 2003-2007 René Hartmann.
  * See the file COPYING for redistribution information.
  */
 
@@ -72,17 +72,9 @@ free_dbroot(RDB_dbroot *dbrootp, RDB_exec_context *ecp)
         constrp = nextconstrp;
     }
 
-    RDB_init_hashmap_iter(&it, &dbrootp->upd_opmap);
-    while ((datap = RDB_hashmap_next(&it, &keyp)) != NULL) {
-        RDB_upd_op *op = datap;
-
-        if (op != NULL)
-            _RDB_free_upd_ops(op, ecp);
-    }
-    RDB_destroy_hashmap_iter(&it);
-
     RDB_destroy_hashmap(&dbrootp->ro_opmap);
-    RDB_destroy_hashmap(&dbrootp->upd_opmap);
+
+    RDB_destroy_op_map(&dbrootp->upd_opmap);
 
     RDB_destroy_hashtable(&dbrootp->empty_tbtab);
     free(dbrootp);
@@ -289,30 +281,9 @@ exp_equals(const void *ex1p, const void *ex2p, void *argp)
     return res;
 }
 
-static int
-add_type(RDB_dbroot *dbrootp, RDB_type *typ, RDB_exec_context *ecp)
-{
-    int ret = RDB_hashmap_put(&dbrootp->typemap, RDB_type_name(typ), typ);
-    if (ret != RDB_OK) {
-        _RDB_handle_errcode(ret, ecp, NULL);
-        return RDB_ERROR;
-    }
-    /*
-     * Add selector if the type has a possrep (applies to error types)
-     */
-    if (typ->var.scalar.repc == 1) {
-        ret = _RDB_add_selector(dbrootp, typ, ecp);
-        if (ret != RDB_OK) {
-            return RDB_ERROR;
-        }
-    }
-    return RDB_OK;
-}
-
 static RDB_dbroot *
 new_dbroot(RDB_environment *envp, RDB_exec_context *ecp)
 {
-    int ret;
     RDB_dbroot *dbrootp = malloc(sizeof (RDB_dbroot));
 
     if (dbrootp == NULL) {         
@@ -323,114 +294,9 @@ new_dbroot(RDB_environment *envp, RDB_exec_context *ecp)
     dbrootp->envp = envp;
     RDB_init_hashmap(&dbrootp->typemap, RDB_DFL_MAP_CAPACITY);
     RDB_init_hashmap(&dbrootp->ro_opmap, RDB_DFL_MAP_CAPACITY);
-    RDB_init_hashmap(&dbrootp->upd_opmap, RDB_DFL_MAP_CAPACITY);
+    RDB_init_op_map(&dbrootp->upd_opmap);
     RDB_init_hashtable(&dbrootp->empty_tbtab, RDB_DFL_MAP_CAPACITY,
             &hash_exp, &exp_equals);
-
-    ret = _RDB_add_builtin_ops(dbrootp, ecp);
-    if (ret != RDB_OK)
-        return NULL;
-
-    /*
-     * Put built-in types into type map
-     */
-    if (add_type(dbrootp, &RDB_BOOLEAN, ecp) != RDB_OK) {
-        return NULL;
-    }
-    if (add_type(dbrootp, &RDB_INTEGER, ecp) != RDB_OK) {
-        return NULL;
-    }
-    if (add_type(dbrootp, &RDB_FLOAT, ecp) != RDB_OK) {
-        return NULL;
-    }
-    if (add_type(dbrootp, &RDB_DOUBLE, ecp) != RDB_OK) {
-        return NULL;
-    }
-    if (add_type(dbrootp, &RDB_STRING, ecp) != RDB_OK) {
-        return NULL;
-    }
-    if (add_type(dbrootp, &RDB_BINARY, ecp) != RDB_OK) {
-        return NULL;
-    }
-    if (add_type(dbrootp, &RDB_NO_MEMORY_ERROR, ecp) != RDB_OK) {
-        return NULL;
-    }
-    if (add_type(dbrootp, &RDB_NOT_FOUND_ERROR, ecp) != RDB_OK) {
-        return NULL;
-    }
-    if (add_type(dbrootp, &RDB_INVALID_TRANSACTION_ERROR,
-            ecp) != RDB_OK) {
-        return NULL;
-    }
-    if (add_type(dbrootp, &RDB_INVALID_ARGUMENT_ERROR,
-            ecp) != RDB_OK) {
-        return NULL;
-    }
-    if (add_type(dbrootp, &RDB_TYPE_MISMATCH_ERROR, ecp) != RDB_OK) {
-        return NULL;
-    }
-    if (add_type(dbrootp, &RDB_TYPE_CONSTRAINT_VIOLATION_ERROR,
-            ecp) != RDB_OK) {
-        return NULL;
-    }
-    if (add_type(dbrootp, &RDB_OPERATOR_NOT_FOUND_ERROR,
-            ecp) != RDB_OK) {
-        return NULL;
-    }
-    if (add_type(dbrootp, &RDB_ELEMENT_EXISTS_ERROR,
-            ecp) != RDB_OK) {
-        return NULL;
-    }
-    if (add_type(dbrootp, &RDB_KEY_VIOLATION_ERROR,
-            ecp) != RDB_OK) {
-        return NULL;
-    }
-    if (add_type(dbrootp, &RDB_NOT_SUPPORTED_ERROR,
-            ecp) != RDB_OK) {
-        return NULL;
-    }
-    if (add_type(dbrootp, &RDB_ATTRIBUTE_NOT_FOUND_ERROR,
-            ecp) != RDB_OK) {
-        return NULL;
-    }
-    if (add_type(dbrootp, &RDB_PREDICATE_VIOLATION_ERROR,
-            ecp) != RDB_OK) {
-        return NULL;
-    }
-    if (add_type(dbrootp, &RDB_SYSTEM_ERROR,
-            ecp) != RDB_OK) {
-        return NULL;
-    }
-    if (add_type(dbrootp, &RDB_RESOURCE_NOT_FOUND_ERROR,
-            ecp) != RDB_OK) {
-        return NULL;
-    }
-    if (add_type(dbrootp, &RDB_INTERNAL_ERROR,
-            ecp) != RDB_OK) {
-        return NULL;
-    }
-    if (add_type(dbrootp, &RDB_LOCK_NOT_GRANTED_ERROR,
-            ecp) != RDB_OK) {
-        return NULL;
-    }
-    if (add_type(dbrootp, &RDB_AGGREGATE_UNDEFINED_ERROR,
-            ecp) != RDB_OK) {
-        return NULL;
-    }
-    if (add_type(dbrootp, &RDB_VERSION_MISMATCH_ERROR,
-            ecp) != RDB_OK) {
-        return NULL;
-    }
-    if (add_type(dbrootp, &RDB_DEADLOCK_ERROR,
-            ecp) != RDB_OK) {
-        return NULL;
-    }
-    if (add_type(dbrootp, &RDB_FATAL_ERROR, ecp) != RDB_OK) {
-        return NULL;
-    }
-    if (add_type(dbrootp, &RDB_SYNTAX_ERROR, ecp) != RDB_OK) {
-        return NULL;
-    }
 
     dbrootp->first_dbp = NULL;
     dbrootp->first_constrp = NULL;
@@ -1303,7 +1169,20 @@ RDB_get_type(const char *name, RDB_exec_context *ecp, RDB_transaction *txp)
     int ret;
 
     /*
-     * search type in type map
+     * search type in built-in type map
+     */
+    typ = RDB_hashmap_get(&_RDB_builtin_type_map, name);
+    if (typ != NULL) {
+        return typ;
+    }
+
+    if (txp == NULL) {
+        RDB_raise_not_found(name, ecp);
+        return NULL;
+    }
+
+    /*
+     * search type in dbroot type map
      */
     typ = RDB_hashmap_get(&txp->dbp->dbrootp->typemap, name);
     if (typ != NULL) {

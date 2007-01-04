@@ -249,6 +249,8 @@ typedef struct RDB_transaction {
     struct RDB_ixlink *delixp;
 } RDB_transaction;
 
+typedef RDB_object *RDB_getobjfn(const char *, void *);
+
 /*
  * Return the name of the database.
  */
@@ -864,6 +866,14 @@ RDB_add_arg(RDB_expression *exp, RDB_expression *argp);
 /* Return address of embedded object, or NULL if not a value */
 RDB_object *
 RDB_expr_obj(RDB_expression *exp);
+
+int
+RDB_evaluate(RDB_expression *, RDB_getobjfn *, void *,
+        RDB_exec_context *, RDB_transaction *, RDB_object *);
+
+int
+RDB_evaluate_bool(RDB_expression *, RDB_getobjfn *getfnp, void *getdata,
+        RDB_exec_context *, RDB_transaction *, RDB_bool *);
 
 /*
  * Destroy the expression and all its subexpressions

@@ -25,12 +25,12 @@ test string {string functions} -setup $SETUP -body {
     if {$len != 3} {
         error "wrong string length: $len"
     }
-    
-    set str [duro::expr {"\"\t\\"} $tx]
-    if {$str != "\"\t\\"} {
+
+    set str [duro::expr {'"\t"'} $tx]
+    if {$str != "\"\t\""} {
         error "wrong string value: $str"
     }
-    
+
     set str [duro::expr {SUBSTRING("ABC-.+abc", 2, 3)} $tx]
     if {$str != "C-."} {
         error "wrong string value: $str"

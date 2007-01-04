@@ -398,7 +398,7 @@ test vtables {virtual tables} -setup $SETUP -body {
     if {![string match "TYPE_MISMATCH_ERROR(*)" [lindex $::errorCode 1]]} {
         error "Wrong error: $::errorCode"
     }
-    
+
     if {![catch {duro::table expr -global ES {T1 WHERE I > 2} $tx}]} {
         error "Table creation should fail, but succeded"
     }

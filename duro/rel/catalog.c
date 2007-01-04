@@ -1,7 +1,7 @@
 /*
  * $Id$
  *
- * Copyright (C) 2003-2005 René Hartmann.
+ * Copyright (C) 2003-2007 René Hartmann.
  * See the file COPYING for redistribution information.
  */
 
@@ -2447,9 +2447,9 @@ error:
 }
 
 /* Read update operator from database */
-int
+RDB_upd_op_data *
 _RDB_cat_get_upd_op(const char *name, int argc, RDB_type *argtv[],
-        RDB_exec_context *ecp, RDB_transaction *txp, RDB_upd_op **opp)
+        RDB_exec_context *ecp, RDB_transaction *txp)
 {
     RDB_expression *exp, *wexp, *argp;
     RDB_object *vtbp;
@@ -2458,27 +2458,27 @@ _RDB_cat_get_upd_op(const char *name, int argc, RDB_type *argtv[],
     int i;
     int ret;
     char *libname, *symname;
-    RDB_upd_op *op = NULL;
+    RDB_upd_op_data *op = NULL;
     RDB_object *updvobjp, *updobjp;
 
     RDB_init_obj(&typesobj);
     ret = _RDB_make_typesobj(argc, argtv, ecp, &typesobj);
     if (ret != RDB_OK) {
         RDB_destroy_obj(&typesobj, ecp);
-        return RDB_ERROR;
+        return NULL;
     }
         
     exp = RDB_ro_op("AND", 2, ecp);
     if (exp == NULL) {
         RDB_destroy_obj(&typesobj, ecp);
-        return RDB_ERROR;
+        return NULL;
     }
     argp = RDB_eq(RDB_var_ref("NAME", ecp),
             RDB_string_to_expr(name, ecp), ecp);
     if (argp == NULL) {
         RDB_drop_expr(exp, ecp);
         RDB_destroy_obj(&typesobj, ecp);
-        return RDB_ERROR;
+        return NULL;
     }
     RDB_add_arg(exp, argp);
     argp = RDB_eq(RDB_var_ref("ARGTYPES", ecp),
@@ -2486,20 +2486,20 @@ _RDB_cat_get_upd_op(const char *name, int argc, RDB_type *argtv[],
     RDB_destroy_obj(&typesobj, ecp);
     if (argp == NULL) {
         RDB_drop_expr(exp, ecp);
-        return RDB_ERROR;
+        return NULL;
     }
     RDB_add_arg(exp, argp);
 
     wexp = RDB_ro_op("WHERE", 2, ecp);
     if (wexp == NULL) {
         RDB_drop_expr(exp, ecp);
-        return RDB_ERROR;
+        return NULL;
     }
     argp = RDB_table_ref(txp->dbp->dbrootp->upd_ops_tbp, ecp);
     if (argp == NULL) {
         RDB_drop_expr(wexp, ecp);
         RDB_drop_expr(exp, ecp);
-        return RDB_ERROR;
+        return NULL;
     }
     RDB_add_arg(wexp, argp);
     RDB_add_arg(wexp, exp);
@@ -2507,7 +2507,7 @@ _RDB_cat_get_upd_op(const char *name, int argc, RDB_type *argtv[],
     vtbp = RDB_expr_to_vtable(wexp, ecp, txp);
     if (vtbp == NULL) {
         RDB_drop_expr(exp, ecp);
-        return RDB_ERROR;
+        return NULL;
     }
     RDB_init_obj(&tpl);
     ret = RDB_extract_tuple(vtbp, ecp, txp, &tpl);
@@ -2523,54 +2523,20 @@ _RDB_cat_get_upd_op(const char *name, int argc, RDB_type *argtv[],
 
     RDB_init_obj(&op->iarg);
 
-    op->argtv = NULL;
     op->updv = NULL;
-    op->name = RDB_dup_str(RDB_tuple_get_string(&tpl, "NAME"));
-    if (op->name == NULL) {
-        RDB_raise_no_memory(ecp);
-        goto error;
-    }
-
-    op->argc = argc;        
-    op->argtv = malloc(sizeof(RDB_type *) * op->argc);
-    if (op->argtv == NULL) {
-        RDB_raise_no_memory(ecp);
-        goto error;
-    }
-
-    for (i = 0; i < op->argc; i++) {
-        switch (argtv[i]->kind) {
-            case RDB_TP_RELATION:
-                op->argtv[i] = RDB_create_relation_type(
-                        argtv[i]->var.basetyp->var.tuple.attrc,
-                        argtv[i]->var.basetyp->var.tuple.attrv, ecp);
-                if (op->argtv[i] == NULL)
-                    goto error;
-                break;
-            case RDB_TP_TUPLE:
-                op->argtv[i] = RDB_create_tuple_type(
-                        argtv[i]->var.tuple.attrc,
-                        argtv[i]->var.tuple.attrv, ecp);
-                if (op->argtv[i] == NULL)
-                    goto error;
-                break;
-            default:
-                op->argtv[i] = argtv[i];
-        }
-    }
 
     ret = RDB_copy_obj(&op->iarg, RDB_tuple_get(&tpl, "IARG"), ecp);
     if (ret != RDB_OK)
         goto error;
 
-    op->updv = malloc(op->argc);
+    op->updv = malloc(argc);
     if (op->updv == NULL) {
         RDB_raise_no_memory(ecp);
         goto error;
     }
 
     updvobjp = RDB_tuple_get(&tpl, "UPDV");
-    for (i = 0; i < op->argc; i++) {
+    for (i = 0; i < argc; i++) {
         updobjp = RDB_array_get(updvobjp, (RDB_int) i, ecp);
         if (updobjp == NULL)
             goto error;
@@ -2592,20 +2558,17 @@ _RDB_cat_get_upd_op(const char *name, int argc, RDB_type *argtv[],
 
     RDB_destroy_obj(&tpl, ecp);
 
-    *opp = op;
-    return RDB_OK;
+    return op;
 
 error:
     if (op != NULL) {
         RDB_destroy_obj(&op->iarg, ecp);
-        free(op->name);
-        free(op->argtv);
         free(op->updv);
         free(op);
     }
 
     RDB_destroy_obj(&tpl, ecp);
-    return RDB_ERROR;
+    return NULL;
 }
 
 int

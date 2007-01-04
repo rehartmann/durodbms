@@ -1,6 +1,15 @@
 #ifndef OPTIMIZE_H
 #define OPTIMIZE_H
 
+/*
+ * $Id$
+ *
+ * Copyright (C) 2006-2007 René Hartmann.
+ * See the file COPYING for redistribution information.
+ * 
+ * Declares an internal function for inserting tuples into tables.
+ */
+
 #include "rdb.h"
 
 struct _RDB_tbindex;

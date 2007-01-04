@@ -270,7 +270,7 @@ Duro_call_cmd(ClientData data, Tcl_Interp *interp, int objc,
     char *txstr;
     RDB_transaction *txp;
     Tcl_HashEntry *entryp;
-    RDB_upd_op *op;
+    RDB_upd_op_data *op;
     RDB_type **argtv = NULL;
     RDB_object **argv = NULL;
     TclState *statep = (TclState *) data;
@@ -301,9 +301,9 @@ Duro_call_cmd(ClientData data, Tcl_Interp *interp, int objc,
         /* !! who manages non-scalar types? */
     }
 
-    ret = _RDB_get_upd_op(Tcl_GetString(objv[1]), argc, argtv,
-            statep->current_ecp, txp, &op);
-    if (ret != RDB_OK) {
+    op = _RDB_get_upd_op(Tcl_GetString(objv[1]), argc, argtv,
+            statep->current_ecp, txp);
+    if (op == NULL) {
         Duro_dberror(interp, RDB_get_err(statep->current_ecp), txp);
         ret = TCL_ERROR;
         goto cleanup;

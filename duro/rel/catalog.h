@@ -53,9 +53,9 @@ int
 _RDB_cat_get_ro_op(const char *name, int argc, RDB_type *argtv[],
         RDB_exec_context *, RDB_transaction *txp, RDB_ro_op_desc **opp);
 
-int
+RDB_upd_op_data *
 _RDB_cat_get_upd_op(const char *name, int argc, RDB_type *argtv[],
-        RDB_exec_context *, RDB_transaction *txp, RDB_upd_op **opp);
+        RDB_exec_context *, RDB_transaction *);
 
 int
 _RDB_cat_insert_table_recmap(RDB_object *tbp, const char *rmname,
