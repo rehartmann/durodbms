@@ -6,6 +6,8 @@
  */
 
 %option nounput
+%option noyywrap
+%option yylineno
 
 %{
 #define YYSTYPE RDB_expression *
@@ -17,18 +19,22 @@
 
 extern RDB_exec_context *_RDB_parse_ecp;
 
+extern int _RDB_parse_interactive;
+
+int _RDB_parse_start_token;
+
 /*
- * Process escapes
+ * Process backslash escapes
  */
 static void
-process_escapes(char *txt) {
+process_escapes(char *txt)
+{
     int i = 1, j = 1;
 
     for(;;) {
         if (yytext[i] == '\\') {
             switch (yytext[i + 1]) {
                 case '\\':
-                case '\"':
                     yytext[j] = yytext[i + 1];
                     i += 2;
                     j++;
@@ -59,9 +65,43 @@ process_escapes(char *txt) {
     }
 }
 
+/*
+ * Used in interactive mode to start with an empty buffer
+ */
+void
+_RDB_parse_init_buf(void)
+{
+    yy_scan_string("");
+}
+
+void
+_RDB_parse_start_exp(void)
+{
+    _RDB_parse_start_token = TOK_START_EXP;
+}
+
+void
+_RDB_parse_start_stmt(void)
+{
+    _RDB_parse_start_token = TOK_START_STMT;
+}
+
 %}
 
 %%
+
+%{
+
+if (_RDB_parse_start_token != 0)
+{
+    int t = _RDB_parse_start_token;
+    _RDB_parse_start_token = 0;
+    return t;
+}
+
+yylloc.first_line = yylloc.last_line = yylineno;
+
+%}
 
 WHERE {
     return TOK_WHERE;
@@ -187,6 +227,26 @@ ELSE {
     return TOK_ELSE;
 }
 
+END {
+    return TOK_END;
+}
+
+FOR {
+    return TOK_FOR;
+}
+
+DO {
+    return TOK_FOR;
+}
+
+TO {
+    return TOK_TO;
+}
+
+WHILE {
+    return TOK_WHILE;
+}
+
 TRUE {
     yylval = RDB_bool_to_expr(RDB_TRUE, _RDB_parse_ecp);
     return TOK_LIT_BOOLEAN;
@@ -233,6 +293,14 @@ TABLE_DUM {
     return TOK_TABLE_DUM;
 }
 
+VAR {
+    return TOK_VAR;
+}
+
+INIT {
+    return TOK_INIT;
+}
+
 \|\| {
     return TOK_CONCAT;
 }
@@ -242,7 +310,7 @@ TABLE_DUM {
     return TOK_ID;
 }
 
-\"([^"]|\\\"|\\\\|\\n|\\r|\\t)*\" {
+\"([^"]|\\\\|\\n|\\r|\\t)*\" {
 
     process_escapes(yytext);
 
@@ -254,7 +322,7 @@ TABLE_DUM {
     return TOK_LIT_STRING;
 }
 
-\'([^"]|\\\"|\\\\|\\n|\\r|\\t)*\' {
+\'([^']|\\\\|\\n|\\r|\\t)*\' {
 
     process_escapes(yytext);
 
@@ -287,12 +355,38 @@ TABLE_DUM {
 
 \>\= return TOK_GE;
 
-[=><+\-*/{},().] return yytext[0];
+:=	return TOK_ASSIGN;
 
-[[:space:]]
+[[:space:]]	yylloc.first_line = yylloc.last_line = yylineno;
 
-.   {
-    return INVALID;
+[=><+\-*/{},().;] return yytext[0];
+
+--[^\n]*\n	/* One-line comment */
+
+. {
+    char buf[40];
+
+    sprintf(buf, "invalid character '%c' at line %d", yytext[0], yylineno);
+    RDB_raise_syntax(buf, _RDB_parse_ecp);
+    return TOK_INVALID;
+}
+
+<<EOF>> {
+    /*
+     * If in interactive mode, read next line from input
+     */
+    char strbuf[80];
+
+    if (!_RDB_parse_interactive)
+        yyterminate();
+
+    fputs("> ", stdout);
+    if (fgets(strbuf, 80, stdin) == NULL) {
+        yy_delete_buffer(YY_CURRENT_BUFFER);
+        yyterminate();
+    }
+
+    yy_switch_to_buffer(yy_scan_string(strbuf));
 }
 
 %%
