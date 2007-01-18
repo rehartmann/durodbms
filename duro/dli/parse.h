@@ -18,11 +18,51 @@ typedef enum {
     RDB_STMT_NOOP,
     RDB_STMT_CALL,
     RDB_STMT_VAR_DEF,
+    RDB_STMT_VAR_DEF_REAL,
+    RDB_STMT_VAR_DEF_VIRTUAL,
+    RDB_STMT_VAR_DROP,
     RDB_STMT_IF,
-    RDB_STMT_ASSIGN,
     RDB_STMT_FOR,
-    RDB_STMT_WHILE
+    RDB_STMT_WHILE,
+    RDB_STMT_ASSIGN,
+    RDB_STMT_BEGIN_TX,
+    RDB_STMT_COMMIT,
+    RDB_STMT_ROLLBACK
 } RDB_parse_stmt_kind;
+
+typedef struct RDB_parse_attr_assign {
+    RDB_expression *dstp;
+    RDB_expression *srcp;
+    struct RDB_parse_attr_assign *nextp;
+} RDB_parse_attr_assign;
+
+typedef struct {
+    enum {
+        RDB_STMT_COPY,
+        RDB_STMT_INSERT,
+        RDB_STMT_UPDATE,
+        RDB_STMT_DELETE
+    } kind;
+    union {
+        struct {
+            RDB_expression *dstp;
+            RDB_expression *srcp;
+        } copy;
+        struct {
+            RDB_expression *dstp;
+            RDB_expression *srcp;
+        } ins;
+        struct {
+            RDB_expression *dstp;
+            RDB_expression *condp;
+            RDB_parse_attr_assign *assignlp;
+        } upd;
+        struct {
+            RDB_expression *dstp;
+            RDB_expression *condp;
+        } del;
+    } var;
+} RDB_parse_assign;
 
 typedef struct RDB_parse_statement {
     RDB_parse_stmt_kind kind;
@@ -38,16 +78,29 @@ typedef struct RDB_parse_statement {
             RDB_expression *initexp;
         } vardef;
         struct {
+            RDB_object varname;
+            RDB_type *typ;
+            RDB_expression *initexp;
+            int keyc;
+            char **keyv;
+        } vardef_real;
+        struct {
+            RDB_object varname;
+            RDB_expression *exp;
+            int keyc;
+            char **keyv;
+        } vardef_virtual;
+        struct {
+            RDB_object varname;
+        } vardrop;
+        struct {
             RDB_expression *condp;
             struct RDB_parse_statement *ifp;
             struct RDB_parse_statement *elsep;
         } ifthen;
         struct {
             int ac;
-            struct {
-                RDB_expression *dstp;
-                RDB_expression *srcp;
-            } av[DURO_MAX_LLEN];
+            RDB_parse_assign av[DURO_MAX_LLEN];
         } assignment;
         struct {
             RDB_expression *varexp;
@@ -67,8 +120,13 @@ typedef RDB_object *RDB_ltablefn(const char *, void *);
 
 extern int _RDB_parse_interactive;
 
+extern int _RDB_parse_case_insensitive;
+
 void
 _RDB_parse_init_buf(void);
+
+int
+RDB_parse_destroy_assign(RDB_parse_assign *, RDB_exec_context *);
 
 RDB_expression *
 RDB_parse_expr(const char *, RDB_ltablefn *, void *, RDB_exec_context *,
@@ -76,6 +134,9 @@ RDB_parse_expr(const char *, RDB_ltablefn *, void *, RDB_exec_context *,
 
 RDB_parse_statement *
 RDB_parse_stmt(RDB_exec_context *);
+
+int
+RDB_parse_del_assignlist(RDB_parse_attr_assign *, RDB_exec_context *);
 
 int
 RDB_parse_del_stmt(RDB_parse_statement *, RDB_exec_context *);

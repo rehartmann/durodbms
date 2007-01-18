@@ -16,10 +16,13 @@
 #include "exparse.h"
 #include <string.h>
 #include <math.h>
+#include <ctype.h>
 
 extern RDB_exec_context *_RDB_parse_ecp;
 
 extern int _RDB_parse_interactive;
+
+extern int _RDB_parse_case_insensitive;
 
 int _RDB_parse_start_token;
 
@@ -297,8 +300,60 @@ VAR {
     return TOK_VAR;
 }
 
+DROP {
+    return TOK_DROP;
+}
+
+REAL {
+    return TOK_REAL;
+}
+
+BASE {
+    return TOK_REAL;
+}
+
+VIRTUAL {
+    return TOK_VIRTUAL;
+}
+
+KEY {
+    return TOK_KEY;
+}
+
 INIT {
     return TOK_INIT;
+}
+
+BEGIN {
+    return TOK_BEGIN;
+}
+
+TRANSACTION {
+    return TOK_TX;
+}
+
+TRANS {
+    return TOK_TX;
+}
+
+COMMIT {
+    return TOK_COMMIT;
+}
+
+ROLLBACK {
+    return TOK_ROLLBACK;
+}
+
+INSERT {
+    return TOK_INSERT;
+}
+
+DELETE {
+    return TOK_DELETE;
+}
+
+UPDATE {
+    return TOK_UPDATE;
 }
 
 \|\| {
@@ -306,6 +361,13 @@ INIT {
 }
 
 [a-zA-Z][a-zA-Z0-9_#]* {
+    int i;
+
+    if (_RDB_parse_case_insensitive) {
+        for (i = 0; yytext[i] != '\0'; i++) {
+            yytext[i] = toupper(yytext[i]);
+        }
+    }
     yylval = RDB_var_ref(yytext, _RDB_parse_ecp);
     return TOK_ID;
 }
@@ -349,11 +411,13 @@ INIT {
     return TOK_LIT_FLOAT;
 }
 
-\<\> return TOK_NE;
+\<> return TOK_NE;
 
-\<\= return TOK_LE;
+!= return TOK_NE;
 
-\>\= return TOK_GE;
+\<= return TOK_LE;
+
+\>= return TOK_GE;
 
 :=	return TOK_ASSIGN;
 
@@ -375,13 +439,13 @@ INIT {
     /*
      * If in interactive mode, read next line from input
      */
-    char strbuf[80];
+    char strbuf[256];
 
     if (!_RDB_parse_interactive)
         yyterminate();
 
     fputs("> ", stdout);
-    if (fgets(strbuf, 80, stdin) == NULL) {
+    if (fgets(strbuf, sizeof(strbuf), stdin) == NULL) {
         yy_delete_buffer(YY_CURRENT_BUFFER);
         yyterminate();
     }

@@ -26,6 +26,7 @@ RDB_ltablefn *_RDB_parse_ltfp;
 void *_RDB_parse_arg;
 RDB_exec_context *_RDB_parse_ecp;
 int _RDB_parse_interactive = 0;
+int _RDB_parse_case_insensitive = 1;
 
 RDB_expression *
 _RDB_parse_lookup_table(RDB_expression *);
@@ -57,10 +58,53 @@ void yyerror(char *errtxt)
             RDB_raise_no_memory(_RDB_parse_ecp);
             return;
         }
-        sprintf(bufp, ": %s at line %d", errtxt, yylloc.first_line);
+        sprintf(bufp, "%s at line %d", errtxt, yylloc.first_line);
         RDB_raise_syntax(bufp, _RDB_parse_ecp);
         free(bufp);
     }
+}
+
+int
+RDB_parse_destroy_assign(RDB_parse_assign *ap, RDB_exec_context *ecp)
+{
+    switch(ap->kind) {
+        case RDB_STMT_COPY:
+            RDB_drop_expr(ap->var.copy.dstp, ecp);
+            RDB_drop_expr(ap->var.copy.srcp, ecp);
+            break;
+        case RDB_STMT_INSERT:
+            RDB_drop_expr(ap->var.ins.dstp, ecp);
+            RDB_drop_expr(ap->var.ins.srcp, ecp);
+            break;
+        case RDB_STMT_UPDATE:
+            RDB_drop_expr(
+                    ap->var.upd.dstp, ecp);
+            if (ap->var.upd.condp != NULL)
+                RDB_drop_expr(ap->var.upd.condp, ecp);
+            RDB_parse_del_assignlist(ap->var.upd.assignlp, ecp);
+            break;
+        case RDB_STMT_DELETE:
+            RDB_drop_expr(
+                    ap->var.del.dstp, ecp);
+            if (ap->var.del.condp != NULL)
+                RDB_drop_expr(ap->var.del.condp, ecp);
+            break;
+    }
+    return RDB_OK;
+}
+
+int
+RDB_parse_del_assignlist(RDB_parse_attr_assign *ap, RDB_exec_context *ecp)
+{
+    RDB_parse_attr_assign *hap;
+    do {
+        RDB_drop_expr(ap->dstp, ecp);
+        RDB_drop_expr(ap->srcp, ecp);
+        hap = ap->nextp;
+        free(ap);
+        ap = hap;
+    } while (ap != NULL);
+    return RDB_OK;
 }
 
 int
@@ -83,17 +127,26 @@ RDB_parse_del_stmt(RDB_parse_statement *stmtp, RDB_exec_context *ecp)
             if (stmtp->var.vardef.initexp != NULL)
                 ret = RDB_drop_expr(stmtp->var.vardef.initexp, ecp);
             break;
+        case RDB_STMT_VAR_DEF_REAL:
+            ret = RDB_destroy_obj(&stmtp->var.vardef_real.varname, ecp);
+            if (stmtp->var.vardef_real.typ != NULL
+                    && !RDB_type_is_scalar(stmtp->var.vardef_real.typ))
+                ret = RDB_drop_type(stmtp->var.vardef_real.typ, ecp, NULL);
+            if (stmtp->var.vardef_real.initexp != NULL)
+                ret = RDB_drop_expr(stmtp->var.vardef_real.initexp, ecp);
+            break;
+        case RDB_STMT_VAR_DEF_VIRTUAL:
+            RDB_destroy_obj(&stmtp->var.vardef_virtual.varname, ecp);
+            ret = RDB_drop_expr(stmtp->var.vardef_virtual.exp, ecp);
+            break;
+        case RDB_STMT_VAR_DROP:
+            ret = RDB_destroy_obj(&stmtp->var.vardrop.varname, ecp);
+            break;
         case RDB_STMT_IF:
             RDB_drop_expr(stmtp->var.ifthen.condp, ecp);
             RDB_parse_del_stmtlist(stmtp->var.ifthen.ifp, ecp);
             if (stmtp->var.ifthen.elsep != NULL)
                 ret = RDB_parse_del_stmtlist(stmtp->var.ifthen.elsep, ecp);
-            break;
-        case RDB_STMT_ASSIGN:
-            for (i = 0; i < stmtp->var.assignment.ac; i++) {
-                 RDB_drop_expr(stmtp->var.assignment.av[i].dstp, ecp);
-                 RDB_drop_expr(stmtp->var.assignment.av[i].srcp, ecp);
-            }
             break;
         case RDB_STMT_FOR:
             RDB_drop_expr(stmtp->var.forloop.varexp, ecp);
@@ -105,6 +158,15 @@ RDB_parse_del_stmt(RDB_parse_statement *stmtp, RDB_exec_context *ecp)
             RDB_drop_expr(stmtp->var.whileloop.condp, ecp);
             ret = RDB_parse_del_stmtlist(stmtp->var.whileloop.bodyp, ecp);
             break;
+        case RDB_STMT_ASSIGN:            
+            for (i = 0; i < stmtp->var.assignment.ac; i++) {
+                ret = RDB_parse_destroy_assign(&stmtp->var.assignment.av[i],
+                        ecp);
+            }
+            break;
+        case RDB_STMT_BEGIN_TX:
+        case RDB_STMT_COMMIT:
+        case RDB_STMT_ROLLBACK:
         case RDB_STMT_NOOP:
             break;
     }

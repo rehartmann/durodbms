@@ -52,7 +52,7 @@ test operator {operators} -setup $SETUP -body {
     } $tx
     
     # Create read-only operator with tuple argument
-    duro::operator create tswap -returns {tuple {A STRING} {B STRING}} \
+    duro::operator create TSWAP -returns {tuple {A STRING} {B STRING}} \
         {r {tuple {A STRING} {B STRING}}} {
         array set a $r
         return [list A $a(B) B $a(A)]
@@ -71,8 +71,8 @@ test operator {operators} -setup $SETUP -body {
         return 0
     } $tx
     
-    if {![tequal [duro::expr {tswap (TUPLE {A "a", B "b"})} $tx] {A b B a}]} {
-        error "unexpected value of tswap()"
+    if {![tequal [duro::expr {TSWAP (TUPLE {A "a", B "b"})} $tx] {A b B a}]} {
+        error "unexpected value of TSWAP()"
     }
     
     duro::table create -local t {

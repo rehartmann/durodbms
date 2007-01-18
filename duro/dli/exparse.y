@@ -55,10 +55,8 @@ yyerror(const char *);
         RDB_parse_statement *firstp;
         RDB_parse_statement *lastp;
     } stmtlist;
-    struct {
-    	RDB_expression *dstp;
-    	RDB_expression *srcp;
-    } assign;
+    RDB_parse_assign assign;
+    RDB_parse_attr_assign *assignlist;
     parse_attribute attr;
     struct {
         int attrc;
@@ -71,22 +69,20 @@ yyerror(const char *);
 %token TOK_WHERE TOK_UNION TOK_INTERSECT TOK_MINUS TOK_SEMIMINUS TOK_SEMIJOIN
         TOK_JOIN TOK_RENAME TOK_EXTEND TOK_SUMMARIZE TOK_DIVIDEBY TOK_WRAP
         TOK_UNWRAP TOK_GROUP TOK_UNGROUP
-%token TOK_CALL
-%token TOK_FROM TOK_TUPLE TOK_RELATION TOK_BUT TOK_AS TOK_PER TOK_VAR TOK_INIT
-%token TOK_ADD
-%token TOK_MATCHES TOK_IN TOK_SUBSET_OF
-%token TOK_OR TOK_AND TOK_NOT
-%token TOK_CONCAT
-%token TOK_NE TOK_LE TOK_GE
-%token TOK_COUNT TOK_SUM TOK_AVG TOK_MAX TOK_MIN TOK_ALL TOK_ANY
-%token TOK_IF TOK_THEN TOK_ELSE TOK_END TOK_FOR TOK_TO TOK_WHILE
-%token TOK_TABLE_DEE TOK_TABLE_DUM
-%token TOK_ASSIGN
-%token TOK_INVALID
+        TOK_CALL TOK_FROM TOK_TUPLE TOK_RELATION TOK_BUT TOK_AS TOK_PER TOK_VAR
+        TOK_DROP TOK_INIT TOK_ADD TOK_BEGIN TOK_TX TOK_REAL TOK_VIRTUAL TOK_KEY
+        TOK_COMMIT TOK_ROLLBACK
+        TOK_MATCHES TOK_IN TOK_SUBSET_OF TOK_OR TOK_AND TOK_NOT
+        TOK_CONCAT TOK_NE TOK_LE TOK_GE
+        TOK_COUNT TOK_SUM TOK_AVG TOK_MAX TOK_MIN TOK_ALL TOK_ANY
+        TOK_IF TOK_THEN TOK_ELSE TOK_END TOK_FOR TOK_TO TOK_WHILE
+        TOK_TABLE_DEE TOK_TABLE_DUM
+        TOK_ASSIGN TOK_INSERT TOK_DELETE TOK_UPDATE
+        TOK_INVALID
 
-%type <exp> expression literal operator_invocation count_invocation
+%type <exp> expression literal ro_op_invocation count_invocation
         sum_invocation avg_invocation min_invocation max_invocation
-        all_invocation any_invocation ne_tuple_item_list
+        all_invocation any_invocation ne_tuple_item_list dot_invocation
 
 %type <explist> expression_list ne_expression_list
         ne_attribute_name_list attribute_name_list
@@ -97,11 +93,13 @@ yyerror(const char *);
 
 %type <stmt> statement statement_body assignment
 
-%type <type> type
+%type <type> type rel_type
 
 %type <stmtlist> ne_statement_list
 
-%type <assign> assign;
+%type <assign> simple_assign assign;
+
+%type <assignlist> ne_attr_assign_list;
 
 %type <attr> attribute
 
@@ -123,6 +121,44 @@ yyerror(const char *);
 %destructor {
     RDB_drop_expr($$, _RDB_parse_ecp);
 } expression
+
+%destructor {
+    RDB_parse_del_stmt($$, _RDB_parse_ecp);
+} statement statement_body assignment
+
+%destructor {
+    if (!RDB_type_is_scalar($$)) {
+        RDB_drop_type($$, _RDB_parse_ecp, NULL);
+    }
+} type rel_type
+
+%destructor {
+    RDB_parse_del_stmtlist($$.firstp, _RDB_parse_ecp);
+} ne_statement_list
+
+%destructor {
+    RDB_parse_destroy_assign(&$$, _RDB_parse_ecp);
+} simple_assign assign
+
+%destructor {
+    RDB_parse_del_assignlist($$, _RDB_parse_ecp);
+} ne_attr_assign_list
+
+%destructor {
+    RDB_drop_expr($$.namexp, _RDB_parse_ecp);
+    if (!RDB_type_is_scalar($$.typ))
+        RDB_drop_type($$.typ, _RDB_parse_ecp, NULL);
+} attribute
+
+%destructor {
+    int i;
+
+    for (i = 0; i < $$.attrc; i++) {
+        RDB_drop_expr($$.attrv[i].namexp, _RDB_parse_ecp);
+        if (!RDB_type_is_scalar($$.attrv[i].typ))
+            RDB_drop_type($$.attrv[i].typ, _RDB_parse_ecp, NULL);
+    }
+} ne_attribute_list
 
 %left TOK_FROM TOK_ELSE ','
 %left TOK_UNION TOK_MINUS TOK_INTERSECT TOK_SEMIMINUS TOK_JOIN TOK_SEMIJOIN
@@ -208,7 +244,6 @@ statement: statement_body ';'
         $$->var.whileloop.condp = $2;
         $$->var.whileloop.bodyp = $4.firstp;
     }
-    ;
 
 statement_body: /* empty */ {
         $$ = malloc(sizeof(RDB_parse_statement));
@@ -221,6 +256,31 @@ statement_body: /* empty */ {
     | TOK_CALL TOK_ID '(' expression_list ')' {
     	/* !! */
     }
+    | TOK_ID '(' expression_list ')' {
+        int ret;
+        int i;
+
+        $$ = malloc(sizeof(RDB_parse_statement));
+        if ($$ == NULL) {
+            for (i = 0; i < $3.expc; i++)
+                RDB_drop_expr($3.expv[i], _RDB_parse_ecp);
+            RDB_raise_no_memory(_RDB_parse_ecp);
+           	YYERROR;
+        }
+    	$$->kind = RDB_STMT_CALL;
+        RDB_init_obj(&$$->var.call.opname);
+    	ret = RDB_string_to_obj(&$$->var.call.opname, $1->var.varname,
+    			_RDB_parse_ecp);
+    	RDB_drop_expr($1, NULL);
+    	if (ret != RDB_OK) {
+    	    RDB_destroy_obj(&$$->var.call.opname, NULL);
+    	    YYERROR;
+    	}
+  	    $$->var.call.argc = $3.expc;
+    	for (i = 0; i < $3.expc; i++)
+    	    $$->var.call.argv[i] = $3.expv[i];
+    }
+    ;
     | TOK_VAR TOK_ID type {
         int ret;
 
@@ -294,55 +354,168 @@ statement_body: /* empty */ {
     	$$->var.vardef.typ = NULL;
 	   	$$->var.vardef.initexp = $4;
     }
-    | TOK_ID expression_list {
-        int ret;
-        int i;
-
+    | TOK_VAR TOK_ID TOK_REAL rel_type key_list {
         $$ = malloc(sizeof(RDB_parse_statement));
         if ($$ == NULL) {
-            for (i = 0; i < $2.expc; i++)
-                RDB_drop_expr($2.expv[i], _RDB_parse_ecp);
+            RDB_drop_expr($2, _RDB_parse_ecp);
+            RDB_drop_type($4, _RDB_parse_ecp, NULL);
             RDB_raise_no_memory(_RDB_parse_ecp);
            	YYERROR;
         }
-    	$$->kind = RDB_STMT_CALL;
-        RDB_init_obj(&$$->var.call.opname);
-    	ret = RDB_string_to_obj(&$$->var.call.opname, $1->var.varname,
-    			_RDB_parse_ecp);
-    	RDB_drop_expr($1, NULL);
-    	if (ret != RDB_OK) {
-    	    RDB_destroy_obj(&$$->var.call.opname, NULL);
-    	    YYERROR;
-    	}
-  	    $$->var.call.argc = $2.expc;
-    	for (i = 0; i < $2.expc; i++)
-    	    $$->var.call.argv[i] = $2.expv[i];
+        $$->kind = RDB_STMT_VAR_DEF_REAL;
+        RDB_init_obj(&$$->var.vardef_real.varname);
+    	RDB_string_to_obj(&$$->var.vardef_real.varname,
+    	        $2->var.varname, _RDB_parse_ecp);
+    	/* !! */
+        $$->var.vardef_real.typ = $4;
+    }
+    | TOK_VAR TOK_ID TOK_VIRTUAL expression {
+        $$ = malloc(sizeof(RDB_parse_statement));
+        if ($$ == NULL) {
+            RDB_drop_expr($2, _RDB_parse_ecp);
+            RDB_drop_expr($4, _RDB_parse_ecp);
+            RDB_raise_no_memory(_RDB_parse_ecp);
+           	YYERROR;
+        }
+        $$->kind = RDB_STMT_VAR_DEF_VIRTUAL;
+        RDB_init_obj(&$$->var.vardef_real.varname);
+    	RDB_string_to_obj(&$$->var.vardef_virtual.varname,
+    	        $2->var.varname, _RDB_parse_ecp);
+    	/* !! */
+        $$->var.vardef_virtual.exp = $4;
+    }
+    | TOK_DROP TOK_VAR TOK_ID {
+        $$ = malloc(sizeof(RDB_parse_statement));
+        if ($$ == NULL) {
+            RDB_drop_expr($3, _RDB_parse_ecp);
+            RDB_raise_no_memory(_RDB_parse_ecp);
+           	YYERROR;
+        }
+        $$->kind = RDB_STMT_VAR_DROP;
+        RDB_init_obj(&$$->var.vardrop.varname);
+    	RDB_string_to_obj(&$$->var.vardef_virtual.varname,
+    	        $3->var.varname, _RDB_parse_ecp);
+        RDB_drop_expr($3, _RDB_parse_ecp);
+    	/* !! */
     }
     | assignment
+    | TOK_BEGIN TOK_TX {
+        $$ = malloc(sizeof(RDB_parse_statement));
+        if ($$ == NULL) {
+            RDB_raise_no_memory(_RDB_parse_ecp);
+            YYERROR;
+        }
+        $$->kind = RDB_STMT_BEGIN_TX;
+    }    
+    | TOK_COMMIT {
+        $$ = malloc(sizeof(RDB_parse_statement));
+        if ($$ == NULL) {
+            RDB_raise_no_memory(_RDB_parse_ecp);
+            YYERROR;
+        }
+        $$->kind = RDB_STMT_COMMIT;
+    }    
+    | TOK_ROLLBACK {
+        $$ = malloc(sizeof(RDB_parse_statement));
+        if ($$ == NULL) {
+            RDB_raise_no_memory(_RDB_parse_ecp);
+            YYERROR;
+        }
+        $$->kind = RDB_STMT_ROLLBACK;
+    }    
+
+key_list: /* empty */ {
+    }
+    | key_list TOK_KEY '{' attribute_name_list '}' {
+    }
 
 assignment: assign {
         $$ = malloc(sizeof(RDB_parse_statement));
         if ($$ == NULL) {
-        	RDB_drop_expr($1.dstp, _RDB_parse_ecp);
-        	RDB_drop_expr($1.srcp, _RDB_parse_ecp);
+        	RDB_drop_expr($1.var.copy.dstp, _RDB_parse_ecp);
+        	RDB_drop_expr($1.var.copy.srcp, _RDB_parse_ecp);
             RDB_raise_no_memory(_RDB_parse_ecp);
             YYERROR;
         }
         $$->kind = RDB_STMT_ASSIGN;
         $$->var.assignment.ac = 1;
-        $$->var.assignment.av[0].dstp = $1.dstp;
-        $$->var.assignment.av[0].srcp = $1.srcp;
+        $$->var.assignment.av[0].kind = $1.kind;
+        switch ($$->var.assignment.av[0].kind) {
+            case RDB_STMT_COPY:
+                $$->var.assignment.av[0].var.copy.dstp = $1.var.copy.dstp;
+                $$->var.assignment.av[0].var.copy.srcp = $1.var.copy.srcp;
+                break;
+            case RDB_STMT_INSERT:
+                $$->var.assignment.av[0].var.ins.dstp = $1.var.ins.dstp;
+                $$->var.assignment.av[0].var.ins.srcp = $1.var.ins.srcp;
+                break;
+            case RDB_STMT_UPDATE:
+                $$->var.assignment.av[0].var.upd.dstp = $1.var.upd.dstp;
+                $$->var.assignment.av[0].var.upd.condp = $1.var.upd.condp;
+                $$->var.assignment.av[0].var.upd.assignlp = $1.var.upd.assignlp;
+                break;
+            case RDB_STMT_DELETE:
+                $$->var.assignment.av[0].var.del.dstp = $1.var.del.dstp;
+                $$->var.assignment.av[0].var.del.condp = $1.var.del.condp;
+                break;
+        }
+        $$->var.assignment.av[0].var.copy.dstp = $1.var.copy.dstp;
+        $$->var.assignment.av[0].var.copy.srcp = $1.var.copy.srcp;
     }
     | assignment ',' assign {
         $$ = $1;
-        $$->var.assignment.av[$1->var.assignment.ac].dstp = $3.dstp;
-        $$->var.assignment.av[$1->var.assignment.ac].srcp = $3.srcp;
+        $$->var.assignment.av[$1->var.assignment.ac] = $3;
         $$->var.assignment.ac++;
     }
 
-assign: TOK_ID TOK_ASSIGN expression {
-        $$.dstp = $1;
-        $$.srcp = $3;
+assign: simple_assign
+    | TOK_INSERT TOK_ID expression {
+        $$.kind = RDB_STMT_INSERT;
+        $$.var.ins.dstp = $2;
+        $$.var.ins.srcp = $3;
+    }
+    | TOK_DELETE TOK_ID {
+        $$.kind = RDB_STMT_DELETE;
+        $$.var.del.dstp = $2;
+        $$.var.del.condp = NULL;
+    }
+    | TOK_DELETE TOK_ID TOK_WHERE expression {
+        $$.kind = RDB_STMT_DELETE;
+        $$.var.del.dstp = $2;
+        $$.var.del.condp = $4;
+    }
+    | TOK_UPDATE TOK_ID '{' ne_attr_assign_list '}' {
+        $$.kind = RDB_STMT_UPDATE;
+        $$.var.upd.dstp = $2;
+        $$.var.upd.assignlp = $4;
+        $$.var.upd.condp = NULL;
+    }
+    | TOK_UPDATE TOK_ID TOK_WHERE expression '{' ne_attr_assign_list '}' {
+        $$.kind = RDB_STMT_UPDATE;
+        $$.var.upd.dstp = $2;
+        $$.var.upd.assignlp = $6;
+        $$.var.upd.condp = $4;
+    }
+
+ne_attr_assign_list: simple_assign {
+		$$ = malloc(sizeof (RDB_parse_attr_assign));
+		/* !! */
+		$$->dstp = $1.var.copy.dstp;
+		$$->srcp = $1.var.copy.srcp;
+		$$->nextp = NULL;
+    }
+	| ne_attr_assign_list ',' simple_assign {
+		$$ = malloc(sizeof (RDB_parse_attr_assign));
+
+        $$->dstp = $3.var.copy.dstp;
+        $$->srcp = $3.var.copy.srcp;
+        $$->nextp = $1;
+	}
+
+simple_assign: TOK_ID TOK_ASSIGN expression {
+        $$.kind = RDB_STMT_COPY;
+        $$.var.copy.dstp = $1;
+        $$.var.copy.srcp = $3;
     }
 
 ne_statement_list: statement {
@@ -1011,12 +1184,7 @@ expression: expression '{' attribute_name_list '}' {
         RDB_add_arg($$, $3);
     }
     | TOK_ID
-    | expression '.' TOK_ID {
-        $$ = RDB_tuple_attr($1, $3->var.varname, _RDB_parse_ecp);
-        RDB_drop_expr($3, _RDB_parse_ecp);
-        if ($$ == NULL)
-            RDB_drop_expr($1, _RDB_parse_ecp);
-    }
+    | dot_invocation
     | literal
     | count_invocation
     | sum_invocation
@@ -1025,7 +1193,7 @@ expression: expression '{' attribute_name_list '}' {
     | min_invocation
     | all_invocation
     | any_invocation
-    | operator_invocation
+    | ro_op_invocation
     | '(' expression ')' {
         $$ = $2;
     }
@@ -1075,6 +1243,13 @@ expression: expression '{' attribute_name_list '}' {
         RDB_add_arg($$, ex2p);
     }
     ;
+
+dot_invocation: expression '.' TOK_ID {
+        $$ = RDB_tuple_attr($1, $3->var.varname, _RDB_parse_ecp);
+        RDB_drop_expr($3, _RDB_parse_ecp);
+        if ($$ == NULL)
+            RDB_drop_expr($1, _RDB_parse_ecp);
+    }
 
 attribute_name_list: /* empty */ {
         $$.expc = 0;
@@ -1623,7 +1798,7 @@ any_invocation: TOK_ANY '(' ne_expression_list ')' {
     }
     ;
 
-operator_invocation: TOK_ID '(' expression_list ')' {
+ro_op_invocation: TOK_ID '(' expression_list ')' {
         if ($3.expc == 1
                 && strlen($1->var.varname) > 4
                 && strncmp($1->var.varname, "THE_", 4) == 0) {
@@ -1928,10 +2103,22 @@ type: TOK_ID {
 /*
     | "SAME_TYPE_AS" '(' expression ')'
     | "SAME_HEADING_AS" '(' expression ')'
-    | "RELATION" '{' attribute_name_type_list '}'
-    | "RELATION" '{' '}'
     ;
 */
+
+rel_type: TOK_RELATION '{' ne_attribute_list '}' {
+        int i;
+        RDB_attr attrv[DURO_MAX_LLEN];
+
+        for (i = 0; i < $3.attrc; i++) {
+            attrv[i].name = $3.attrv[i].namexp->var.varname;
+            attrv[i].typ = RDB_dup_nonscalar_type($3.attrv[i].typ,
+            		_RDB_parse_ecp);
+        }
+        $$ = RDB_create_relation_type($3.attrc, attrv, _RDB_parse_ecp);
+		if ($$ == NULL)
+		    YYERROR;
+    }
 
 expression_list: /* empty */ {
         $$.expc = 0;

@@ -16,11 +16,22 @@
 #include <string.h>
 #include <errno.h>
 
+typedef struct tx_node {
+    RDB_transaction tx;
+    struct tx_node *nextp;
+} tx_node;
+
 extern int yydebug;
 
 static RDB_hashmap varmap;
 
 static RDB_op_map opmap;
+
+static RDB_environment *envp = NULL;
+
+static char *dbname = NULL;
+
+static tx_node *txnp = NULL;
 
 typedef int upd_op_func(const char *name, int argc, RDB_object *argv[],
         RDB_exec_context *, RDB_transaction *);
@@ -80,11 +91,14 @@ exec_vardef(const RDB_parse_statement *stmtp, RDB_exec_context *ecp)
      * Check if the variable already exists
      */
     if (RDB_hashmap_get(&varmap, varname) != NULL) {
-        printf("%s already exists.\n", varname);
-        return RDB_OK;
+        RDB_raise_element_exists(varname, ecp);
+        return RDB_ERROR;
     }
     objp = malloc(sizeof (RDB_object));
-    /* !! */
+    if (objp == NULL) {
+        RDB_raise_no_memory(ecp);
+        return RDB_ERROR;
+    }
     RDB_init_obj(objp);
     if (stmtp->var.vardef.initexp == NULL) {
         init_obj(objp, stmtp->var.vardef.typ, ecp); /* !! */
@@ -113,6 +127,82 @@ exec_vardef(const RDB_parse_statement *stmtp, RDB_exec_context *ecp)
 }
 
 static int
+exec_vardef_real(const RDB_parse_statement *stmtp, RDB_exec_context *ecp)
+{
+    RDB_object *tbp;
+    char *varname = RDB_obj_string(&stmtp->var.vardef_real.varname);
+    RDB_type *tbtyp = RDB_dup_nonscalar_type(stmtp->var.vardef_real.typ, ecp);
+    if (tbtyp == NULL)
+        return RDB_ERROR;
+
+    if (txnp == NULL) {
+        printf("Error: no transaction\n");
+        return RDB_ERROR;
+    }
+    tbp = RDB_create_table_from_type(varname, tbtyp, 0, NULL, ecp, &txnp->tx);
+    if (tbp == NULL) {
+        RDB_drop_type(tbtyp, ecp, NULL);
+        return RDB_ERROR;
+    }
+   
+    if (_RDB_parse_interactive)
+        printf("Table %s created.\n", varname);
+    return RDB_OK;
+}
+
+static int
+exec_vardef_virtual(const RDB_parse_statement *stmtp, RDB_exec_context *ecp)
+{
+    RDB_object *tbp;
+    char *varname = RDB_obj_string(&stmtp->var.vardef_virtual.varname);
+    RDB_expression *texp = RDB_dup_expr(stmtp->var.vardef_virtual.exp,
+            ecp);
+    if (texp == NULL)
+        return RDB_ERROR;
+
+    if (txnp == NULL) {
+        printf("Error: no transaction\n");
+        return RDB_ERROR;
+    }
+    tbp = RDB_expr_to_vtable(texp, ecp, &txnp->tx);
+    if (tbp == NULL) {
+        RDB_drop_expr(texp, ecp);
+        return RDB_ERROR;
+    }
+    if (RDB_set_table_name(tbp, varname, ecp, &txnp->tx) != RDB_OK)
+        return RDB_ERROR;
+    if (RDB_add_table(tbp, ecp, &txnp->tx) != RDB_OK)
+        return RDB_ERROR;
+
+    if (_RDB_parse_interactive)
+        printf("Table %s created.\n", varname);
+    return RDB_OK;
+}
+
+static int
+exec_vardrop(const RDB_parse_statement *stmtp, RDB_exec_context *ecp)
+{
+    char *varname = RDB_obj_string(&stmtp->var.vardrop.varname);
+    RDB_object *tbp;
+    
+    if (txnp == NULL) {
+        printf("Error: no transaction\n");
+        return RDB_ERROR;
+    }
+
+    tbp = RDB_get_table(varname, ecp, &txnp->tx);
+    if (tbp == NULL)
+        return RDB_ERROR;
+
+    if (RDB_drop_table(tbp, ecp, &txnp->tx) != RDB_OK)
+        return RDB_ERROR;
+
+    if (_RDB_parse_interactive)
+        printf("Table %s dropped.\n", varname);
+    return RDB_OK;
+}
+
+static int
 exec_call(const RDB_parse_statement *stmtp, RDB_exec_context *ecp)
 {
     int ret;
@@ -127,7 +217,7 @@ exec_call(const RDB_parse_statement *stmtp, RDB_exec_context *ecp)
     for (i = 0; i < stmtp->var.call.argc; i++) {
         RDB_init_obj(&argv[i]);
         if (RDB_evaluate(stmtp->var.call.argv[i], &get_var, &varmap,
-                ecp, NULL, &argv[i]) != RDB_OK)
+                ecp, txnp != NULL ? &txnp->tx : NULL, &argv[i]) != RDB_OK)
             return RDB_ERROR;
         argpv[i] = &argv[i];
         argtv[i] = RDB_obj_type(&argv[i]);
@@ -141,7 +231,8 @@ exec_call(const RDB_parse_statement *stmtp, RDB_exec_context *ecp)
         return RDB_ERROR;
     }
     opdatap = (upd_op_data *) op;
-    ret = (*opdatap->fnp) (opname, stmtp->var.call.argc, argpv, ecp, NULL);
+    ret = (*opdatap->fnp) (opname, stmtp->var.call.argc, argpv, ecp,
+            txnp != NULL ? &txnp->tx : NULL);
     for (i = 0; i < stmtp->var.call.argc; i++)
         RDB_destroy_obj(&argv[i], ecp);
     return ret;
@@ -208,7 +299,7 @@ exec_for(const RDB_parse_statement *stmtp, RDB_exec_context *ecp)
     if (varp == NULL) {
         printf("undefined variable %s\n",
                 stmtp->var.forloop.varexp->var.varname);
-        return RDB_OK;
+        return RDB_ERROR;
     }
     if (RDB_obj_type(varp) != &RDB_INTEGER) {
         RDB_raise_type_mismatch("loop variable must be INTEGER", ecp);
@@ -240,40 +331,225 @@ exec_for(const RDB_parse_statement *stmtp, RDB_exec_context *ecp)
     return RDB_OK;
 }
 
+static RDB_object *
+lookup_var(const char *name, RDB_exec_context *ecp)
+{
+    RDB_object *objp = RDB_hashmap_get(&varmap, name);
+    if (objp == NULL && txnp != NULL) {
+        /* Try to get table from DB */
+        objp = RDB_get_table(name, ecp, &txnp->tx);
+    }
+    if (objp == NULL)
+        RDB_raise_attribute_not_found(name, ecp);
+    return objp;
+}
+
+static RDB_attr_update *
+convert_attr_assigns(RDB_parse_attr_assign *assignlp, int *updcp)
+{
+    int i;
+    RDB_attr_update *updv;
+    RDB_parse_attr_assign *ap = assignlp;
+    *updcp = 0;
+    do {
+        (*updcp)++;
+        ap = ap->nextp;
+    } while (ap != NULL);
+
+    updv = malloc(*updcp * sizeof(RDB_attr_update));
+    if (updv == NULL)
+        return NULL;
+    ap = assignlp;
+    for (i = 0; i < *updcp; i++) {
+        updv[i].name = ap->dstp->var.varname;
+        updv[i].exp = ap->srcp;
+        ap = ap->nextp;
+    }
+    return updv;
+}
+
 static int
 exec_assign(const RDB_parse_statement *stmtp, RDB_exec_context *ecp)
 {
     int i;
+    int cnt;
     RDB_ma_copy copyv[DURO_MAX_LLEN];
+    RDB_ma_insert insv[DURO_MAX_LLEN];
+    RDB_ma_update updv[DURO_MAX_LLEN];
+    RDB_ma_delete delv[DURO_MAX_LLEN];
     RDB_object srcobjv[DURO_MAX_LLEN];
+    int copyc = 0;
+    int insc = 0;
+    int updc = 0;
+    int delc = 0;
 
     for (i = 0; i < stmtp->var.assignment.ac; i++) {
         RDB_init_obj(&srcobjv[i]);
     }
 
     for (i = 0; i < stmtp->var.assignment.ac; i++) {
-        if (stmtp->var.assignment.av[i].dstp->kind != RDB_EX_VAR) {
-            printf("invalid assignment target\n");
-            return RDB_OK;
+        switch (stmtp->var.assignment.av[i].kind) {
+            case RDB_STMT_COPY:
+                if (stmtp->var.assignment.av[i].var.copy.dstp->kind
+                        != RDB_EX_VAR) {
+                    RDB_raise_syntax("invalid assignment target", ecp);
+                    return RDB_ERROR;
+                }
+                copyv[copyc].dstp = lookup_var(
+                        stmtp->var.assignment.av[i].var.copy.dstp->var.varname,
+                        ecp);
+                if (copyv[copyc].dstp == NULL) {
+                    return RDB_ERROR;
+                }
+                copyv[copyc].srcp = &srcobjv[i];
+                if (RDB_evaluate(stmtp->var.assignment.av[i].var.copy.srcp, &get_var,
+                        &varmap, ecp, txnp != NULL ? &txnp->tx : NULL, &srcobjv[i])
+                               != RDB_OK)
+                    return RDB_ERROR;
+                copyc++;
+                break;
+            case RDB_STMT_INSERT:
+                if (stmtp->var.assignment.av[i].var.copy.dstp->kind
+                        != RDB_EX_VAR) {
+                    RDB_raise_syntax("invalid assignment target", ecp);
+                    return RDB_ERROR;
+                }
+                insv[insc].tbp = lookup_var(
+                        stmtp->var.assignment.av[i].var.ins.dstp->var.varname,
+                        ecp);
+                if (insv[insc].tbp == NULL) {
+                    return RDB_ERROR;
+                }
+                insv[insc].tplp = &srcobjv[i];
+                if (RDB_evaluate(stmtp->var.assignment.av[i].var.ins.srcp, &get_var,
+                        &varmap, ecp, txnp != NULL ? &txnp->tx : NULL, &srcobjv[i])
+                               != RDB_OK)
+                    return RDB_ERROR;
+                insc++;
+                break;                
+            case RDB_STMT_UPDATE:
+                if (stmtp->var.assignment.av[i].var.upd.dstp->kind
+                        != RDB_EX_VAR) {
+                    RDB_raise_syntax("invalid assignment target", ecp);
+                    return RDB_ERROR;
+                }
+                updv[updc].tbp = lookup_var(
+                        stmtp->var.assignment.av[i].var.upd.dstp->var.varname,
+                        ecp);
+                if (updv[updc].tbp == NULL) {
+                    return RDB_ERROR;
+                }
+                updv[updc].updv = convert_attr_assigns(
+                        stmtp->var.assignment.av[i].var.upd.assignlp,
+                        &updv[updc].updc);
+                if (updv[updc].updv == NULL) {
+                    RDB_raise_no_memory(ecp);
+                    return RDB_ERROR;
+                }
+                updv[updc].condp = stmtp->var.assignment.av[i].var.upd.condp;
+                updc++;
+                break;
+            case RDB_STMT_DELETE:
+                if (stmtp->var.assignment.av[i].var.del.dstp->kind
+                        != RDB_EX_VAR) {
+                    RDB_raise_syntax("invalid assignment target", ecp);
+                    return RDB_ERROR;
+                }
+                delv[delc].tbp = lookup_var(
+                        stmtp->var.assignment.av[i].var.del.dstp->var.varname,
+                        ecp);
+                if (delv[insc].tbp == NULL) {
+                    return RDB_ERROR;
+                }
+                delv[delc].condp = stmtp->var.assignment.av[i].var.del.condp;
+                delc++;
+                break;                
         }
-        copyv[i].dstp = RDB_hashmap_get(&varmap,
-                stmtp->var.assignment.av[i].dstp->var.varname);
-        if (copyv[i].dstp == NULL) {
-            printf("undefined variable %s\n",
-                    stmtp->var.assignment.av[i].dstp->var.varname);
-            return RDB_OK;
-        }
-        copyv[i].srcp = &srcobjv[i];
-        if (RDB_evaluate(stmtp->var.assignment.av[i].srcp, &get_var, &varmap,
-                ecp, NULL, &srcobjv[i]) != RDB_OK)
-            return RDB_ERROR;
     }
-    if (RDB_multi_assign(0, NULL, 0, NULL, 0, NULL,
-           stmtp->var.assignment.ac, copyv, ecp, NULL) == (RDB_int) RDB_ERROR)
+    cnt = RDB_multi_assign(insc, insv, updc, updv, delc, delv, copyc, copyv,
+            ecp, txnp != NULL ? &txnp->tx : NULL);
+    if (cnt == (RDB_int) RDB_ERROR)
         return RDB_ERROR;
 
-    /* !! */
+    if (_RDB_parse_interactive)
+        printf("%d elements affected.\n", (int) cnt);
 
+    return RDB_OK;
+}
+
+static int
+exec_begin_tx(const RDB_parse_statement *stmtp, RDB_exec_context *ecp)
+{
+    int ret;
+    RDB_database *dbp;
+
+    if (envp == NULL || dbname == NULL) {
+        printf("no database\n");
+        return RDB_ERROR;
+    }
+    if (txnp != NULL) {
+        printf("Hier wäre eine nested Tx fällig!\n");
+        return RDB_OK;
+    }
+
+    dbp = RDB_get_db_from_env(dbname, envp, ecp);
+    if (dbp == NULL)
+        return RDB_ERROR;
+
+    txnp = malloc(sizeof(tx_node));
+    if (txnp == NULL) {
+        RDB_raise_no_memory(ecp);
+        return RDB_ERROR;
+    }    
+
+    ret = RDB_begin_tx(ecp, &txnp->tx, dbp, NULL);
+    if (ret != RDB_OK) {
+        free(txnp);
+        txnp = NULL;
+        return RDB_ERROR;
+    }
+    txnp->nextp = NULL;
+
+    if (_RDB_parse_interactive)
+        printf("Transaction started.\n");
+    return RDB_OK;
+}
+
+static int
+exec_commit(const RDB_parse_statement *stmtp, RDB_exec_context *ecp)
+{
+    if (txnp == NULL) {
+        printf("Error: no transaction\n");
+        return RDB_ERROR;
+    }
+
+    if (RDB_commit(ecp, &txnp->tx) != RDB_OK)
+        return RDB_ERROR;
+
+    free(txnp);
+    txnp = NULL;
+
+    if (_RDB_parse_interactive)
+        printf("Transaction commited.\n");
+    return RDB_OK;
+}
+
+static int
+exec_rollback(const RDB_parse_statement *stmtp, RDB_exec_context *ecp)
+{
+    if (txnp == NULL) {
+        printf("Error: no transaction\n");
+        return RDB_ERROR;
+    }
+
+    if (RDB_rollback(ecp, &txnp->tx) != RDB_OK)
+        return RDB_ERROR;
+
+    free(txnp);
+    txnp = NULL;
+
+    if (_RDB_parse_interactive)
+        printf("Transaction rolled back.\n");
     return RDB_OK;
 }
 
@@ -285,16 +561,28 @@ exec_stmt(const RDB_parse_statement *stmtp, RDB_exec_context *ecp)
             return exec_call(stmtp, ecp);
         case RDB_STMT_VAR_DEF:
             return exec_vardef(stmtp, ecp);
+        case RDB_STMT_VAR_DEF_REAL:
+            return exec_vardef_real(stmtp, ecp);
+        case RDB_STMT_VAR_DEF_VIRTUAL:
+            return exec_vardef_virtual(stmtp, ecp);
+        case RDB_STMT_VAR_DROP:
+            return exec_vardrop(stmtp, ecp);
         case RDB_STMT_NOOP:
             return RDB_OK;
         case RDB_STMT_IF:
             return exec_if(stmtp, ecp);
-        case RDB_STMT_ASSIGN:
-            return exec_assign(stmtp, ecp);
         case RDB_STMT_FOR:
             return exec_for(stmtp, ecp);
         case RDB_STMT_WHILE:
             return exec_while(stmtp, ecp);
+        case RDB_STMT_ASSIGN:
+            return exec_assign(stmtp, ecp);
+        case RDB_STMT_BEGIN_TX:
+            return exec_begin_tx(stmtp, ecp);
+        case RDB_STMT_COMMIT:
+            return exec_commit(stmtp, ecp);
+        case RDB_STMT_ROLLBACK:
+            return exec_rollback(stmtp, ecp);
     }
     abort();
 }
@@ -337,21 +625,74 @@ init_upd_ops(RDB_exec_context *ecp)
 
 extern FILE *yyin;
 
+static void
+usage_error(void)
+{
+    puts("usage: duro [-e envpath] [-d database] [file]");
+    exit(1);
+}
+
+static void
+exit_interp(int rcode) {
+    if (txnp != NULL) {
+        RDB_exec_context ec;
+
+        RDB_init_exec_context(&ec);
+        RDB_rollback(&ec, &txnp->tx);
+        RDB_destroy_exec_context(&ec);
+
+        if (_RDB_parse_interactive)
+            printf("Transaction rolled back.\n");
+    }
+    if (envp != NULL)
+        RDB_close_env(envp);
+    exit(rcode);
+}
+
 int
 main(int argc, char *argv[])
 {
     int ret;
     RDB_exec_context ec;
     RDB_parse_statement *stmtp;
+    char *envname = NULL;
 
+    while (argc > 1) {
+        if (strcmp(argv[1], "-e") == 0) {
+            if (argc < 3)
+                usage_error();
+            envname = argv[2];
+            argc -= 2;
+            argv += 2;
+        } else if (strcmp(argv[1], "-d") == 0) {
+            if (argc < 3)
+                usage_error();
+            dbname = argv[2];
+            argc -= 2;
+            argv += 2;
+        } else
+            break;
+    }
+    if (argc > 2)
+        usage_error();
     if (argc == 2) {        
         yyin = fopen(argv[1], "r");
         if (yyin == NULL) {
-            fprintf(stderr, "unable to open %s: %s\n", argv[1], strerror(errno));
+            fprintf(stderr, "unable to open %s: %s\n", argv[1],
+                strerror(errno));
             return 1;
         }
     } else {
         yyin = stdin;
+    }
+
+    if (envname != NULL) {
+        ret = RDB_open_env(envname, &envp);
+        if (ret != RDB_OK) {
+            fprintf(stderr, "unable to open environment %s: %s\n", envname,
+                db_strerror(errno));
+            return 1;
+        }
     }
 
     _RDB_parse_interactive = (RDB_bool) isatty(fileno(yyin));
@@ -384,26 +725,29 @@ main(int argc, char *argv[])
             if (errobjp != NULL) {
                 print_error(errobjp);
                 if (!_RDB_parse_interactive)
-                    return 1;
+                    exit_interp(1);
                 RDB_clear_err(&ec);
             } else {
                 /* Exit on EOF  */
-                return 0;
+                puts("");
+                exit_interp(0);
             }
         } else {
             ret = exec_stmt(stmtp, &ec);
             if (ret != RDB_OK) {
                 RDB_parse_del_stmt(stmtp, &ec);
                 RDB_object *errobjp = RDB_get_err(&ec);
-                print_error(errobjp);
-                RDB_clear_err(&ec);
+                if (errobjp != NULL) {
+                    print_error(errobjp);
+                    RDB_clear_err(&ec);
+                }
             } else {
                 ret = RDB_parse_del_stmt(stmtp, &ec);
                 if (ret != RDB_OK) {
                     RDB_parse_del_stmt(stmtp, &ec);
                     RDB_object *errobjp = RDB_get_err(&ec);
                     print_error(errobjp);
-                    exit(2);
+                    exit_interp(2);
                 }
             }
         }
