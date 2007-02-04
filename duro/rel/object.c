@@ -1,7 +1,7 @@
 /*
  * $Id$
  *
- * Copyright (C) 2003-2006 René Hartmann.
+ * Copyright (C) 2003-2007 René Hartmann.
  * See the file COPYING for redistribution information.
  */
 
@@ -35,29 +35,6 @@ _RDB_free_obj(RDB_object *objp, RDB_exec_context *ecp)
     int ret = RDB_destroy_obj(objp, ecp);
     free(objp);
     return ret;
-}
-
-void *
-RDB_obj_irep(RDB_object *valp, size_t *lenp)
-{
-    if (lenp != NULL) {
-        *lenp = valp->typ->ireplen;
-        if (*lenp == RDB_VARIABLE_LEN)
-            *lenp = valp->var.bin.len;
-    }
-
-    switch (valp->kind) {
-        case RDB_OB_BOOL:
-            return &valp->var.bool_val;
-        case RDB_OB_INT:
-            return &valp->var.int_val;
-        case RDB_OB_FLOAT:
-            return &valp->var.float_val;
-        case RDB_OB_DOUBLE:
-            return &valp->var.double_val;
-        default:
-            return valp->var.bin.datap;
-    }
 }
 
 /* !! really belongs into table.c */
@@ -335,6 +312,55 @@ irep_to_array(RDB_object *arrp, RDB_type *typ, const void *datap, size_t len,
     return RDB_OK;
 }
 
+/** @addtogroup typeimpl
+ * @{
+ */
+
+/**
+ * RDB_obj_irep returns a pointer to the binary internal representation of
+the variable specified by <var>valp</var>.
+If lenp is not NULL, the size of the internal representation
+is stored at the location pointed to by <var>lenp</var>.
+
+RDB_obj_irep only works types with a binary internal representation.
+These are built-in types and user-defined types
+which use a built-in type or a byte array as physical representation.
+
+@returns
+
+A pointer to the internal representation.
+ */
+void *
+RDB_obj_irep(RDB_object *valp, size_t *lenp)
+{
+    if (lenp != NULL) {
+        *lenp = valp->typ->ireplen;
+        if (*lenp == RDB_VARIABLE_LEN)
+            *lenp = valp->var.bin.len;
+    }
+
+    switch (valp->kind) {
+        case RDB_OB_BOOL:
+            return &valp->var.bool_val;
+        case RDB_OB_INT:
+            return &valp->var.int_val;
+        case RDB_OB_FLOAT:
+            return &valp->var.float_val;
+        case RDB_OB_DOUBLE:
+            return &valp->var.double_val;
+        default:
+            return valp->var.bin.datap;
+    }
+}
+
+/**
+ * Initialize the value pointed to by valp with the internal
+ * representation given by datap and len.
+ * 
+ * @returns
+ * 
+ * RDB_OK on success, RDB_ERROR on failure.
+ */
 int
 RDB_irep_to_obj(RDB_object *valp, RDB_type *typ, const void *datap, size_t len,
         RDB_exec_context *ecp)
@@ -395,6 +421,8 @@ RDB_irep_to_obj(RDB_object *valp, RDB_type *typ, const void *datap, size_t len,
     valp->kind = kind;
     return RDB_OK;
 }
+
+/*@}*/
 
 typedef struct {
     RDB_byte *bp;
@@ -552,27 +580,7 @@ _RDB_obj_to_field(RDB_field *fvp, RDB_object *objp, RDB_exec_context *ecp)
     return _RDB_obj_ilen(objp, &fvp->len, ecp);
 }
 
-int
-RDB_obj_equals(const RDB_object *val1p, const RDB_object *val2p,
-        RDB_exec_context *ecp, RDB_transaction *txp, RDB_bool *resp)
-{
-    int ret;
-    RDB_object retval;
-    RDB_object *argv[2];
-
-    argv[0] = (RDB_object *) val1p;
-    argv[1] = (RDB_object *) val2p;
-    RDB_init_obj(&retval);
-    ret = RDB_call_ro_op("=", 2, argv, ecp, txp, &retval);
-    if (ret != RDB_OK) {
-        RDB_destroy_obj(&retval, ecp);
-        return RDB_ERROR;
-    }
-    *resp = RDB_obj_bool(&retval);
-    return RDB_destroy_obj(&retval, ecp);
-}
-
-/*
+/**
  * Copy RDB_object, but not the type information.
  * If the RDB_object wraps a table, it must be a real table.
  */
@@ -615,34 +623,34 @@ _RDB_copy_obj(RDB_object *dstvalp, const RDB_object *srcvalp,
             if (dstvalp->kind == RDB_OB_INITIAL) {
                 RDB_type *reltyp;
 
-            	/* Turn the RDB_object into a table */
+                /* Turn the RDB_object into a table */
                 if (srcvalp->typ->kind == RDB_TP_RELATION) {
-            	    reltyp = RDB_create_relation_type(
+                    reltyp = RDB_create_relation_type(
                             srcvalp->typ->var.basetyp->var.tuple.attrc, 
-            	            srcvalp->typ->var.basetyp->var.tuple.attrv, ecp);
+                            srcvalp->typ->var.basetyp->var.tuple.attrv, ecp);
                 } else {
                     /* Type is scalar with relation type as actual rep */
                     reltyp = RDB_dup_nonscalar_type(
                             srcvalp->typ->var.scalar.arep, ecp);
                 }
                 if (reltyp == NULL)
-            	    return RDB_ERROR;
+                    return RDB_ERROR;
 
-            	ret = _RDB_init_table(dstvalp, NULL, RDB_FALSE,
+                ret = _RDB_init_table(dstvalp, NULL, RDB_FALSE,
                         reltyp, 1, srcvalp->var.tb.keyv, RDB_FALSE,
                         NULL, ecp);
                 if (ret != RDB_OK)
-            	    return RDB_ERROR;
+                    return RDB_ERROR;
             } else {
                 if (dstvalp->kind != RDB_OB_TABLE) {
                     RDB_raise_type_mismatch("destination must be table", ecp);
                     return RDB_ERROR;
                 }
-            	/* Delete all tuples */
+                /* Delete all tuples */
                 ret = _RDB_delete_real(dstvalp, NULL, ecp,
                         dstvalp->var.tb.is_persistent ? txp : NULL);
                 if (ret != RDB_OK)
-            	    return RDB_ERROR;
+                    return RDB_ERROR;
             }
             return _RDB_move_tuples(dstvalp, (RDB_object *) srcvalp, ecp,
                     srcvalp->var.tb.is_persistent || srcvalp->var.tb.exp != NULL
@@ -667,6 +675,80 @@ _RDB_copy_obj(RDB_object *dstvalp, const RDB_object *srcvalp,
     return RDB_OK;
 }
 
+/** @defgroup generic Scalar and generic functions 
+ * @{
+ */
+
+/**
+ * RDB_obj_equals checks two RDB_object variables for equality
+and stores the result in the variable pointed to by <var>resp</var>.
+
+If an error occurs, an error value is left in *<var>ecp</var>.
+
+@returns
+
+RDB_OK on success, RDB_ERROR if an error occurred.
+ */
+int
+RDB_obj_equals(const RDB_object *val1p, const RDB_object *val2p,
+        RDB_exec_context *ecp, RDB_transaction *txp, RDB_bool *resp)
+{
+    int ret;
+    RDB_object retval;
+    RDB_object *argv[2];
+
+    argv[0] = (RDB_object *) val1p;
+    argv[1] = (RDB_object *) val2p;
+    RDB_init_obj(&retval);
+    ret = RDB_call_ro_op("=", 2, argv, ecp, txp, &retval);
+    if (ret != RDB_OK) {
+        RDB_destroy_obj(&retval, ecp);
+        return RDB_ERROR;
+    }
+    *resp = RDB_obj_bool(&retval);
+    return RDB_destroy_obj(&retval, ecp);
+}
+
+/**
+ * RDB_copy_obj copies the value of the RDB_object pointed to
+by <var>srcvalp</var> to the RDB_object pointed to by <var>dstvalp</var>.
+
+The source RDB_object must either be newly initialized or of the same type
+as the destination.
+
+If the target is newly initialized, then the following two cases
+are handled in a special way:
+
+(2) If the source holds an unnamed virtual table, the virtual table
+is duplicated. !!
+
+If both the source and the target hold a table, the tuples
+are copied from the source to the target. In this case, both tables
+must be local, because otherwise a transaction would be required.
+RDB_copy_table() or
+RDB_multi_assign() can be used to copy
+global tables.
+
+Currently, RDB_copy_obj is not supported for targets which hold
+a virtual table.
+
+If an error occurs, an error value is left in *<var>ecp</var>.
+
+@returns
+
+RDB_OK on success, RDB_ERROR if an error occurred.
+
+@par Errors:
+
+<dl>
+<dt>RDB_TYPE_MISMATCH_ERROR
+<dd>The RDB_object specified by <var>dstvalp</var> is not newly initialized
+and its type does not match the type of the RDB_object specified by
+<var>srcvalp</var>.
+</dl>
+
+The call may also fail for a @ref system-errors "system error".
+ */
 int
 RDB_copy_obj(RDB_object *dstvalp, const RDB_object *srcvalp,
         RDB_exec_context *ecp)
@@ -680,6 +762,11 @@ RDB_copy_obj(RDB_object *dstvalp, const RDB_object *srcvalp,
             != RDB_ERROR ? RDB_OK : RDB_ERROR ;
 } 
 
+/**
+ * RDB_init_obj initializes the RDB_object structure pointed to by
+<var>valp</var>. RDB_init_obj must be called before any other
+operation can be performed on a RDB_object variable.
+ */
 void
 RDB_init_obj(RDB_object *valp)
 {
@@ -687,8 +774,8 @@ RDB_init_obj(RDB_object *valp)
     valp->typ = NULL;
 }
 
-/*
- * Delete candidate keys
+/**
+ * Delete candidate keys.
  */
 void
 _RDB_free_keys(int keyc, RDB_string_vec *keyv)
@@ -701,6 +788,14 @@ _RDB_free_keys(int keyc, RDB_string_vec *keyv)
     free(keyv);
 }
 
+/**
+ * RDB_destroy_obj releases all resources associated with a RDB_object
+ * structure.
+
+@returns
+
+RDB_OK on success, RDB_ERROR if an error occurred.
+ */
 int
 RDB_destroy_obj(RDB_object *objp, RDB_exec_context *ecp)
 {
@@ -794,6 +889,13 @@ RDB_destroy_obj(RDB_object *objp, RDB_exec_context *ecp)
     return RDB_OK;
 }
 
+/**
+ * RDB_bool_to_obj sets the RDB_object pointed to by <var>valp</var>
+to the boolean value specified by <var>v</var>.
+
+The RDB_object must either be newly initialized or of type
+BOOLEAN.
+ */
 void
 RDB_bool_to_obj(RDB_object *valp, RDB_bool v)
 {
@@ -804,6 +906,13 @@ RDB_bool_to_obj(RDB_object *valp, RDB_bool v)
     valp->var.bool_val = v;
 }
 
+/**
+ * RDB_int_to_obj sets the RDB_object pointed to by <var>valp</var>
+to the integer value specified by <var>v</var>.
+
+The RDB_object must either be newly initialized or of type
+INTEGER.
+ */
 void
 RDB_int_to_obj(RDB_object *valp, RDB_int v)
 {
@@ -814,6 +923,13 @@ RDB_int_to_obj(RDB_object *valp, RDB_int v)
     valp->var.int_val = v;
 }
 
+/**
+ * RDB_float_to_obj sets the RDB_object pointed to by <var>valp</var>
+to the RDB_float value specified by <var>v</var>.
+
+The RDB_object must either be newly initialized or of type
+FLOAT.
+ */
 void
 RDB_float_to_obj(RDB_object *valp, RDB_float v)
 {
@@ -824,6 +940,13 @@ RDB_float_to_obj(RDB_object *valp, RDB_float v)
     valp->var.float_val = v;
 }
 
+/**
+ * RDB_double_to_obj sets the RDB_object pointed to by <var>valp</var>
+to the RDB_double value specified by <var>v</var>.
+
+The RDB_object must either be newly initialized or of type
+DOUBLE.
+ */
 void
 RDB_double_to_obj(RDB_object *valp, RDB_double v)
 {
@@ -834,6 +957,13 @@ RDB_double_to_obj(RDB_object *valp, RDB_double v)
     valp->var.double_val = v;
 }
 
+/**
+ * RDB_string_to_obj sets the RDB_object pointed to by <var>valp</var>
+to the string value specified by <var>str</var>.
+
+The RDB_object must either be newly initialized or of type
+STRING.
+ */
 int
 RDB_string_to_obj(RDB_object *valp, const char *str, RDB_exec_context *ecp)
 {
@@ -867,6 +997,19 @@ RDB_string_to_obj(RDB_object *valp, const char *str, RDB_exec_context *ecp)
     return RDB_OK;
 }
 
+/**
+ * Appends the string <var>str</var> to *<var>objp</var>.
+
+*<var>objp</var> must be of type STRING.
+
+@returns
+
+RDB_OK on success, RDB_ERROR if an error occurred.
+
+@par Errors:
+
+The call may fail for a @ref system-errors "system error".
+ */
 int
 RDB_append_string(RDB_object *objp, const char *str, RDB_exec_context *ecp)
 {
@@ -883,6 +1026,32 @@ RDB_append_string(RDB_object *objp, const char *str, RDB_exec_context *ecp)
     return RDB_OK;
 }
 
+/**
+ * RDB_obj_comp copies the value of component <var>compname</var>
+of a possible representation of the variable pointed to by <var>valp</var>
+to the variable pointed to by <var>comp</var>.
+
+If an error occurs, an error value is left in *<var>ecp</var>.
+
+@returns
+
+RDB_OK on success, RDB_ERROR if an error occurred.
+
+@par Errors:
+
+<dl>
+<dt>RDB_INVALID_ARGUMENT_ERROR
+<dd>The type of *<var>valp</var> is not scalar, or it does not
+have a possible representation with a component <var>compname</var>.
+<dt>RDB_OPERATOR_NOT_FOUND_ERROR
+<dd>The getter method for component <var>compname</var> has not been created.
+</dl>
+
+RDB_obj_comp may also raise an error raised by a
+user-provided getter function.
+
+The call may also fail for a @ref system-errors "system error".
+ */
 int
 RDB_obj_comp(const RDB_object *valp, const char *compname, RDB_object *compvalp,
         RDB_exec_context *ecp, RDB_transaction *txp)
@@ -948,6 +1117,20 @@ RDB_obj_comp(const RDB_object *valp, const char *compname, RDB_object *compvalp,
     return ret;
 }
 
+/**
+ * RDB_obj_set_comp sets the the value of component <var>compname</var>
+of a possible representation of the RDB_object specified to by <var>valp</var>
+to the value of the variable pointed to by <var>comp</var>.
+
+The RDB_object must be of a type which has a component
+<var>compname</var>.
+
+If an error occurs, an error value is left in *<var>ecp</var>.
+
+@returns
+
+RDB_OK on success, RDB_ERROR if an error occurred.
+ */
 int
 RDB_obj_set_comp(RDB_object *valp, const char *compname,
         const RDB_object *compvalp, RDB_exec_context *ecp,
@@ -999,36 +1182,96 @@ RDB_obj_set_comp(RDB_object *valp, const char *compname,
     return ret;
 }
 
+/**
+ * RDB_obj_bool returns the value of the RDB_object pointed to by
+<var>valp</var> as a RDB_bool. The RDB_object must be of type
+BOOLEAN.
+
+@returns
+
+The value of the RDB_object.
+ */
 RDB_bool
 RDB_obj_bool(const RDB_object *valp)
 {
     return valp->var.bool_val;
 }
 
+/**
+ * RDB_obj_int returns the value of the RDB_object pointed to by
+<var>valp</var> as a RDB_int. The RDB_object must be of type
+INTEGER.
+
+@returns
+
+The value of the RDB_object.
+ */
 RDB_int
 RDB_obj_int(const RDB_object *valp)
 {
     return valp->var.int_val;
 }
 
+/**
+ * RDB_obj_float returns the value of the RDB_object pointed to by
+<var>valp</var> as a RDB_float. The RDB_object must be of type
+FLOAT.
+
+@returns
+
+The value of the RDB_object.
+ */
 RDB_float
 RDB_obj_float(const RDB_object *valp)
 {
     return valp->var.float_val;
 }
 
+/**
+ * RDB_obj_double returns the value of the RDB_object pointed to by
+<var>valp</var> as a RDB_double. The RDB_object must be of type
+DOUBLE.
+
+@returns
+
+The value of the RDB_object.
+ */
 RDB_double
 RDB_obj_double(const RDB_object *valp)
 {
     return valp->var.double_val;
 }
 
+/**
+ * RDB_obj_string returns a pointer to the value of the RDB_object pointed to by
+<var>valp</var> as a char *. The RDB_object must be of type STRING.
+
+@returns
+
+The string value of the RDB_object.
+ */
 char *
 RDB_obj_string(const RDB_object *valp)
 {
     return valp->var.bin.datap;
 }
 
+/**
+ * RDB_binary_set copies <var>len</var> bytes from srcp to
+the position <var>pos</var> in the RDB_object pointed to by <var>valp</var>.
+<var>valp</var> must point either to a new initialized RDB_object
+or to a RDB_object of type BINARY.
+
+If an error occurs, an error value is left in *<var>ecp</var>.
+
+@returns
+
+RDB_OK on success, RDB_ERROR if an error occurred.
+
+@par Errors:
+
+The call may fail for a @ref system-errors "system error".
+ */
 int
 RDB_binary_set(RDB_object *valp, size_t pos, const void *srcp, size_t len,
         RDB_exec_context *ecp)
@@ -1071,6 +1314,26 @@ RDB_binary_set(RDB_object *valp, size_t pos, const void *srcp, size_t len,
     return RDB_OK;
 }
 
+/**
+ * RDB_binary_get obtains a pointer to <var>len</var> bytes starting at position
+<var>pos</var> of the RDB_object pointed to by <var>valp</var>
+and stores this pointer at the location pointed to by <var>pp</var>.
+If the sum of <var>pos</var> and <var>len</var> exceeds the length of the
+object, the length of the byte block will be lower than requested.
+
+If <var>alenp</var> is not NULL, the actual length of the byte block is stored
+at the location pointed to by <var>alenp</var>.
+
+<var>valp</var> must point to a RDB_object of type BINARY.
+
+@returns
+
+RDB_OK on success, RDB_ERROR if an error occurred.
+
+@par Errors:
+
+The call may fail for a @ref system-errors "system error".
+ */
 int
 RDB_binary_get(const RDB_object *objp, size_t pos, size_t len,
         RDB_exec_context *ecp, void **pp, size_t *alenp)
@@ -1089,17 +1352,35 @@ RDB_binary_get(const RDB_object *objp, size_t pos, size_t len,
     return RDB_OK;
 }
 
+/**
+ * RDB_binary_length returns the number of bytes stored in the
+RDB_object pointed to by <var>valp</var>. The RDB_object
+must be of type BINARY.
+
+@returns
+
+The length of the RDB_object.
+ */
 size_t
 RDB_binary_length(const RDB_object *objp)
 {
     return objp->var.bin.len;
 }
 
+/**
+ * RDB_obj_type returns a pointer to the type of *<var>objp</var>.
+
+@returns
+
+A pointer to the type of the RDB_object.
+ */
 RDB_type *
 RDB_obj_type(const RDB_object *objp)
 {
     return objp->typ;
 }
+
+/*@}*/
 
 /* Works only for scalar types */
 void

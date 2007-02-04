@@ -10,6 +10,40 @@
 #include "internal.h"
 #include <string.h>
 
+/** @addtogroup table
+ * @{
+ */
+
+/**
+ * RDB_table_contains checks if the tuple specified by <var>tplp</var>
+is an element of the table specified by <var>tbp</var>
+and stores the result at the location pointed to by <var>resultp</var>.
+
+If an error occurs, an error value is left in *<var>ecp</var>.
+
+@returns
+
+On success, RDB_OK is returned.
+If an error occurred, RDB_ERROR is returned.
+
+@par Errors:
+
+<dl>
+<dt>RDB_INVALID_TRANSACTION_ERROR
+<dd><var>txp</var> does not point to a running transaction.
+<dt>RDB_INVALID_ARGUMENT_ERROR
+<dd>A table attribute is missing in the tuple.
+<dt>RDB_TYPE_MISMATCH_ERROR
+<dd>The type of a tuple attribute does not match the type of the
+corresponding table attribute.
+<dt>RDB_OPERATOR_NOT_FOUND_ERROR
+<dd>The definition of the table specified by <var>tbp</var>
+refers to a non-existing operator.
+</dl>
+
+The call may also fail for a @ref system-errors "system error",
+in which case the transaction may be implicitly rolled back.
+ */
 int
 RDB_table_contains(RDB_object *tbp, const RDB_object *tplp, RDB_exec_context *ecp,
         RDB_transaction *txp, RDB_bool *resultp)
@@ -36,3 +70,5 @@ RDB_table_contains(RDB_object *tbp, const RDB_object *tplp, RDB_exec_context *ec
 
     return _RDB_matching_tuple(tbp, tplp, ecp, txp, resultp);
 }
+
+/*@}*/

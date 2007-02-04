@@ -1,7 +1,7 @@
 /*
  * $Id$
  *
- * Copyright (C) 2003-2006 René Hartmann.
+ * Copyright (C) 2003-2007 René Hartmann.
  * See the file COPYING for redistribution information.
  */
 
@@ -9,6 +9,7 @@
 #include "internal.h"
 #include <gen/hashtabit.h>
 #include <gen/strfns.h>
+
 #include <string.h>
 #include <stdlib.h>
 
@@ -82,6 +83,37 @@ provide_entry(RDB_object *tplp, const char *attrname, RDB_exec_context *ecp,
     return RDB_OK;
 }
 
+/** @defgroup tuple Tuple functions 
+ * @{
+ */
+
+/** @struct RDB_renaming rdb.h <rel/rdb.h>
+ * Represents an attribute renaming.
+ */
+
+/** @struct RDB_wrapping rdb.h <rel/rdb.h>
+ * Represents an attribute wrapping.
+ */
+
+/** @struct RDB_virtual_attr rdb.h <rel/rdb.h>
+ * Represents a virtual attribute, used for EXTEND.
+ */
+
+/**
+ * RDB_tuple_set sets the attribute <var>name</var> of the tuple
+variable specified by <var>tplp</var> to the value specified by
+<var>valp</var>.
+
+If an error occurs, an error value is left in *<var>ecp</var>.
+
+@returns
+
+RDB_OK on success, RDB_ERROR if an error occurred.
+
+@par Errors:
+
+The call may fail for a @ref system-errors "system error".
+ */
 int
 RDB_tuple_set(RDB_object *tplp, const char *attrname, const RDB_object *objp,
         RDB_exec_context *ecp)
@@ -97,6 +129,21 @@ RDB_tuple_set(RDB_object *tplp, const char *attrname, const RDB_object *objp,
     return RDB_copy_obj(dstvalp, objp, ecp);
 }
 
+/**
+ * RDB_tuple_set_bool sets the attribute <var>name</var> of the tuple
+variable specified by <var>tplp</var> to the boolean value specified by
+<var>val</var>.
+
+If an error occurs, an error value is left in *<var>ecp</var>.
+
+@returns
+
+RDB_OK on success, RDB_ERROR if an error occurred.
+
+@par Errors:
+
+The call may fail for a @ref system-errors "system error".
+ */
 int
 RDB_tuple_set_bool(RDB_object *tplp, const char *attrname, RDB_bool val,
         RDB_exec_context *ecp)
@@ -109,6 +156,21 @@ RDB_tuple_set_bool(RDB_object *tplp, const char *attrname, RDB_bool val,
     return RDB_OK;
 } 
 
+/**
+ * RDB_tuple_set_int sets the attribute <var>name</var> of the tuple
+variable specified by <var>tplp</var> to the integer value specified by
+<var>val</var>.
+
+If an error occurs, an error value is left in *<var>ecp</var>.
+
+@returns
+
+RDB_OK on success, RDB_ERROR if an error occurred.
+
+@par Errors:
+
+The call may fail for a @ref system-errors "system error".
+ */
 int
 RDB_tuple_set_int(RDB_object *tplp, const char *attrname, RDB_int val,
         RDB_exec_context *ecp)
@@ -121,6 +183,21 @@ RDB_tuple_set_int(RDB_object *tplp, const char *attrname, RDB_int val,
     return RDB_OK;
 }
 
+/**
+ * Set the attribute <var>name</var> of the tuple
+variable specified by <var>tplp</var> to the value specified by
+<var>val</var>.
+
+If an error occurs, an error value is left in *<var>ecp</var>.
+
+@returns
+
+RDB_OK on success, RDB_ERROR if an error occurred.
+
+@par Errors:
+
+The call may fail for a @ref system-errors "system error".
+ */
 int
 RDB_tuple_set_float(RDB_object *tplp, const char *attrname, RDB_float val,
         RDB_exec_context *ecp)
@@ -133,6 +210,21 @@ RDB_tuple_set_float(RDB_object *tplp, const char *attrname, RDB_float val,
     return RDB_OK;
 }
 
+/**
+ * Set the attribute <var>name</var> of the tuple
+variable specified by <var>tplp</var> to the value specified by
+<var>val</var>.
+
+If an error occurs, an error value is left in *<var>ecp</var>.
+
+@returns
+
+RDB_OK on success, RDB_ERROR if an error occurred.
+
+@par Errors:
+
+The call may fail for a @ref system-errors "system error".
+ */
 int
 RDB_tuple_set_double(RDB_object *tplp, const char *attrname, RDB_double val,
         RDB_exec_context *ecp)
@@ -145,6 +237,21 @@ RDB_tuple_set_double(RDB_object *tplp, const char *attrname, RDB_double val,
     return RDB_OK;
 }
 
+/**
+ * Set the attribute <var>name</var> of the tuple
+variable specified by <var>tplp</var> to the value specified by
+<var>str</var>.
+
+If an error occurs, an error value is left in *<var>ecp</var>.
+
+@returns
+
+RDB_OK on success, RDB_ERROR if an error occurred.
+
+@par Errors:
+
+The call may fail for a @ref system-errors "system error".
+ */
 int
 RDB_tuple_set_string(RDB_object *tplp, const char *attrname, const char *str,
         RDB_exec_context *ecp)
@@ -156,6 +263,16 @@ RDB_tuple_set_string(RDB_object *tplp, const char *attrname, const char *str,
     return RDB_string_to_obj(dstvalp, str, ecp);
 }
 
+/**
+ * RDB_tuple_get returns a pointer to a RDB_object structure
+which contains the value for attribute <var>name</var>.
+The value is not copied.
+
+@returns
+
+A pointer to the value of the attribute, or NULL if no
+attribute with that name exists.
+ */
 RDB_object *
 RDB_tuple_get(const RDB_object *tplp, const char *attrname)
 {
@@ -172,36 +289,89 @@ RDB_tuple_get(const RDB_object *tplp, const char *attrname)
     return &entryp->obj;
 }
 
+/**
+ * RDB_tuple_get_bool returns the value of attribute <var>name</var>
+as a RDB_bool. The attribute must exist and it must be of
+type BOOLEAN.
+
+@returns
+
+The attribute value.
+ */
 RDB_bool
 RDB_tuple_get_bool(const RDB_object *tplp, const char *attrname)
 {
     return ((RDB_object *) RDB_tuple_get(tplp, attrname))->var.bool_val;
 }
 
+/**
+ * RDB_tuple_get_int returns the value of attribute <var>name</var>
+as a RDB_int. The attribute must exist and it must be of
+type INTEGER.
+
+@returns
+
+The attribute value.
+ */
 RDB_int
 RDB_tuple_get_int(const RDB_object *tplp, const char *attrname)
 {
     return ((RDB_object *) RDB_tuple_get(tplp, attrname))->var.int_val;
 }
 
+/**
+ * RDB_tuple_get_double returns the value of attribute <var>name</var>
+as a RDB_double. The attribute must exist and it must be of
+type DOUBLE.
+
+@returns
+
+The attribute value.
+ */
 RDB_double
 RDB_tuple_get_double(const RDB_object *tplp, const char *attrname)
 {
     return ((RDB_object *) RDB_tuple_get(tplp, attrname))->var.double_val;
 }
 
+/**
+ * RDB_tuple_get_double returns the value of attribute <var>name</var>
+as a RDB_float. The attribute must exist and it must be of
+type FLOAT.
+
+@returns
+
+The attribute value.
+ */
 RDB_float
 RDB_tuple_get_float(const RDB_object *tplp, const char *attrname)
 {
     return ((RDB_object *) RDB_tuple_get(tplp, attrname))->var.float_val;
 }
 
+/**
+ * RDB_tuple_get_string returns a pointer to the value of attribute
+<var>name</var>. The attribute must exist and it must be of
+type STRING.
+
+@returns
+
+A pointer to the attribute value.
+ */
 char *
 RDB_tuple_get_string(const RDB_object *tplp, const char *attrname)
 {
     return ((RDB_object *) RDB_tuple_get(tplp, attrname))->var.bin.datap;
 }
 
+/**
+ * RDB_tuple_size returns the number of attributes of the tuple
+specified by <var>tplp</var>.
+
+@returns
+
+The number of attributes.
+ */
 RDB_int
 RDB_tuple_size(const RDB_object *tplp)
 {
@@ -210,6 +380,14 @@ RDB_tuple_size(const RDB_object *tplp)
     return (RDB_int) RDB_hashtable_size(&tplp->var.tpl_tab);
 }
 
+/**
+ * RDB_tuple_attr_names fills <var>namev</var> with pointers to
+the attribute names of the tuple specified by <var>tplp</var>.
+
+<var>namev</var> must be large enough for all attribute names.
+The pointers must not be modified by the caller and will become invalid
+when the tuple is destroyed.
+ */
 void
 RDB_tuple_attr_names(const RDB_object *tplp, char **namev)
 {
@@ -224,6 +402,26 @@ RDB_tuple_attr_names(const RDB_object *tplp, char **namev)
     RDB_destroy_hashtable_iter(&hiter);
 }
 
+/**
+ * RDB_project_tuple creates a tuple which contains only the attributes
+specified by <var>attrc</var> and <var>attrv</var>.
+
+If an error occurs, an error value is left in *<var>ecp</var>.
+
+@returns
+
+RDB_OK on success, RDB_ERROR if an error occurred.
+
+@par Errors:
+
+<dl>
+<dt>RDB_ATTRIBUTE_NOT_FOUND_ERROR
+<dd>One of the attributes specified by <var>attrv</var> is not an attribute
+of the original tuple.
+</dl>
+
+The call may also fail for a @ref system-errors "system error".
+ */
 int
 RDB_project_tuple(const RDB_object *tplp, int attrc, char *attrv[],
                  RDB_exec_context *ecp, RDB_object *restplp)
@@ -341,6 +539,29 @@ RDB_add_tuple(RDB_object *tpl1p, const RDB_object *tpl2p,
     return RDB_OK;
 }
 
+/**
+ * RDB_join_tuples creates a tuple which contains the attributes
+of the two tuples specified by <var>tpl1p</var> and <var>tpl2p</var>.
+
+If an error occurs, an error value is left in *<var>ecp</var>.
+
+@returns
+
+RDB_OK on success, RDB_ERROR if an error occurred.
+
+@par Errors:
+
+<dl>
+<dt>RDB_TYPE_MISMATCH_ERROR
+<dd>The two tuples have an attribute with the same name, but with
+different types.
+<dt>RDB_INVALID_ARGUMENT_ERROR
+<dd>The two tuples have an attribute with the same name, but with
+different values.
+</dl>
+
+The call may also fail for a @ref system-errors "system error".
+ */
 int
 RDB_join_tuples(const RDB_object *tpl1p, const RDB_object *tpl2p,
         RDB_exec_context *ecp, RDB_transaction *txp, RDB_object *restplp)
@@ -352,6 +573,31 @@ RDB_join_tuples(const RDB_object *tpl1p, const RDB_object *tpl2p,
     return RDB_add_tuple(restplp, tpl2p, ecp, txp);
 }
 
+/**
+ * RDB_extend_tuple extends the tuple specified by <var>tplp</var>
+by the attributes specified by <var>attrc</var> and <var>attrv</var>.
+
+If an error occurs, an error value is left in *<var>ecp</var>.
+
+@returns
+
+RDB_OK on success, RDB_ERROR if an error occurred.
+
+@par Errors:
+
+<dl>
+<dt>RDB_ATTRIBUTE_NOT_FOUND_ERROR
+<dd>One of the expressions specified in <var>updv</var> refers to an attribute
+which does not exist in the tuple.
+<dt>RDB_INVALID_ARGUMENT_ERROR
+<dd>One of the additional attributes already exists in the original table.
+<dt>RDB_OPERATOR_NOT_FOUND_ERROR
+<dd>One of the expressions specified in <var>updv</var> refers to an
+operator which does not exist.
+</dl>
+
+The call may also fail for a @ref system-errors "system error".
+ */
 int
 RDB_extend_tuple(RDB_object *tplp, int attrc, const RDB_virtual_attr attrv[],
                 RDB_exec_context *ecp, RDB_transaction *txp)
@@ -375,6 +621,21 @@ RDB_extend_tuple(RDB_object *tplp, int attrc, const RDB_virtual_attr attrv[],
     return RDB_OK;
 }
 
+/**
+ * RDB_rename_tuple creates copies the tuple specified by <var>tplp</var>
+to the tuple specified by <var>restplp</var>, renaming the attributes
+specified by <var>renc</var> and <var>renv</var>.
+
+If an error occurs, an error value is left in *<var>ecp</var>.
+
+@returns
+
+RDB_OK on success, RDB_ERROR if an error occurred.
+
+@par Errors:
+
+The call may fail for a @ref system-errors "system error".
+ */
 int
 RDB_rename_tuple(const RDB_object *tplp, int renc, const RDB_renaming renv[],
                  RDB_exec_context *ecp, RDB_object *restup)
@@ -422,6 +683,149 @@ find_rename_to(const RDB_expression *exp, const char *name)
     /* found */
     return i;
 }
+
+/**
+ * RDB_wrap_tuple performs a tuple WRAP operator on the tuple pointed to by
+<var>tplp</var> and stores the result in the variable pointed to by
+<var>restplp</var>.
+
+If an error occurs, an error value is left in *<var>ecp</var>.
+
+@returns
+
+RDB_OK on success, RDB_ERROR if an error occurred.
+
+@par Errors:
+
+<dl>
+<dt>RDB_ATTRIBUTE_NOT_FOUND_ERROR
+<dd>One or more of the attributes specified by wrapv[i].attrv does not
+exist.
+</dl>
+*/
+int
+RDB_wrap_tuple(const RDB_object *tplp, int wrapc, const RDB_wrapping wrapv[],
+               RDB_exec_context *ecp, RDB_object *restplp)
+{
+    int i, j;
+    int ret;
+    RDB_object tpl;
+    RDB_hashtable_iter it;
+    tuple_entry *entryp;
+
+    RDB_init_obj(&tpl);
+
+    /* Wrap attributes */
+    for (i = 0; i < wrapc; i++) {
+        for (j = 0; j < wrapv[i].attrc; j++) {
+            RDB_object *attrp = RDB_tuple_get(tplp, wrapv[i].attrv[j]);
+
+            if (attrp == NULL) {
+                RDB_destroy_obj(&tpl, ecp);
+                RDB_raise_attribute_not_found(wrapv[i].attrv[j], ecp);
+                return RDB_ERROR;
+            }
+
+            ret = RDB_tuple_set(&tpl, wrapv[i].attrv[j], attrp, ecp);
+            if (ret != RDB_OK) {
+                RDB_destroy_obj(&tpl, ecp);
+                return ret;
+            }
+        }
+        RDB_tuple_set(restplp, wrapv[i].attrname, &tpl, ecp);
+        if (ret != RDB_OK) {
+            RDB_destroy_obj(&tpl, ecp);
+            return ret;
+        }
+    }
+    RDB_destroy_obj(&tpl, ecp);
+
+    /* Copy attributes which have not been wrapped */
+    RDB_init_hashtable_iter(&it, (RDB_hashtable *)&tplp->var.tpl_tab);
+    while ((entryp = RDB_hashtable_next(&it)) != NULL) {
+        int i;
+
+        for (i = 0; i < wrapc
+                && RDB_find_str(wrapv[i].attrc, wrapv[i].attrv, entryp->key) == -1;
+                i++);
+        if (i == wrapc) {
+            /* Attribute not found, copy */
+            ret = RDB_tuple_set(restplp, entryp->key, &entryp->obj, ecp);
+            if (ret != RDB_OK) {
+                RDB_destroy_hashtable_iter(&it);
+                return RDB_ERROR;
+            }
+        }
+    }
+    RDB_destroy_hashtable_iter(&it);
+
+    return RDB_OK;
+}
+
+/**
+ * RDB_unwrap_tuple performs a tuple UNWRAP operator on the tuple pointed to by
+<var>tplp</var> and stores the result in the variable pointed to by
+<var>restplp</var>.
+
+If an error occurs, an error value is left in *<var>ecp</var>.
+
+@returns
+
+RDB_OK on success, RDB_ERROR if an error occurred.
+
+@par Errors:
+
+<dl>
+<dt>RDB_ATTRIBUTE_NOT_FOUND_ERROR
+<dd>An attribute specified by attrv does not exist.
+<dt>RDB_INVALID_ARGUMENT_ERROR
+<dd>An attribute specified by attrv is not tuple-typed.
+</dl>
+ */
+int
+RDB_unwrap_tuple(const RDB_object *tplp, int attrc, char *attrv[],
+        RDB_exec_context *ecp, RDB_object *restplp)
+{
+    int i;
+    int ret;
+    RDB_hashtable_iter it;
+    tuple_entry *entryp;
+    
+    for (i = 0; i < attrc; i++) {
+        RDB_object *wtplp = RDB_tuple_get(tplp, attrv[i]);
+
+        if (wtplp == NULL) {
+            RDB_raise_attribute_not_found(attrv[i], ecp);
+            return RDB_ERROR;
+        }
+        if (wtplp->kind != RDB_OB_TUPLE) {
+            RDB_raise_invalid_argument("attribute is not tuple", ecp);
+            return RDB_ERROR;
+        }
+
+        ret = _RDB_copy_tuple(restplp, wtplp, ecp);
+        if (ret != RDB_OK)
+            return ret;
+    }
+    
+    /* Copy remaining attributes */
+    RDB_init_hashtable_iter(&it, (RDB_hashtable *)&tplp->var.tpl_tab);
+    while ((entryp = RDB_hashtable_next(&it)) != NULL) {
+        /* Copy attribute if it does not appear in attrv */
+        if (RDB_find_str(attrc, attrv, entryp->key) == -1) {
+            ret = RDB_tuple_set(restplp, entryp->key, &entryp->obj, ecp);
+            if (ret != RDB_OK) {
+                RDB_destroy_hashtable_iter(&it);
+                return ret;
+            }
+        }
+    }
+    RDB_destroy_hashtable_iter(&it);
+
+    return RDB_OK;
+}
+
+/*@}*/
 
 int
 _RDB_invrename_tuple(const RDB_object *tup, const RDB_expression *exp,
@@ -560,108 +964,6 @@ _RDB_copy_tuple(RDB_object *dstp, const RDB_object *srcp, RDB_exec_context *ecp)
 
     RDB_destroy_hashtable_iter(&it);
     
-    return RDB_OK;
-}
-
-int
-RDB_wrap_tuple(const RDB_object *tplp, int wrapc, const RDB_wrapping wrapv[],
-               RDB_exec_context *ecp, RDB_object *restplp)
-{
-    int i, j;
-    int ret;
-    RDB_object tpl;
-    RDB_hashtable_iter it;
-    tuple_entry *entryp;
-
-    RDB_init_obj(&tpl);
-
-    /* Wrap attributes */
-    for (i = 0; i < wrapc; i++) {
-        for (j = 0; j < wrapv[i].attrc; j++) {
-            RDB_object *attrp = RDB_tuple_get(tplp, wrapv[i].attrv[j]);
-
-            if (attrp == NULL) {
-                RDB_destroy_obj(&tpl, ecp);
-                RDB_raise_attribute_not_found(wrapv[i].attrv[j], ecp);
-                return RDB_ERROR;
-            }
-
-            ret = RDB_tuple_set(&tpl, wrapv[i].attrv[j], attrp, ecp);
-            if (ret != RDB_OK) {
-                RDB_destroy_obj(&tpl, ecp);
-                return ret;
-            }
-        }
-        RDB_tuple_set(restplp, wrapv[i].attrname, &tpl, ecp);
-        if (ret != RDB_OK) {
-            RDB_destroy_obj(&tpl, ecp);
-            return ret;
-        }
-    }
-    RDB_destroy_obj(&tpl, ecp);
-
-    /* Copy attributes which have not been wrapped */
-    RDB_init_hashtable_iter(&it, (RDB_hashtable *)&tplp->var.tpl_tab);
-    while ((entryp = RDB_hashtable_next(&it)) != NULL) {
-        int i;
-
-        for (i = 0; i < wrapc
-                && RDB_find_str(wrapv[i].attrc, wrapv[i].attrv, entryp->key) == -1;
-                i++);
-        if (i == wrapc) {
-            /* Attribute not found, copy */
-            ret = RDB_tuple_set(restplp, entryp->key, &entryp->obj, ecp);
-            if (ret != RDB_OK) {
-                RDB_destroy_hashtable_iter(&it);
-                return RDB_ERROR;
-            }
-        }
-    }
-    RDB_destroy_hashtable_iter(&it);
-
-    return RDB_OK;
-}
-
-int
-RDB_unwrap_tuple(const RDB_object *tplp, int attrc, char *attrv[],
-        RDB_exec_context *ecp, RDB_object *restplp)
-{
-    int i;
-    int ret;
-    RDB_hashtable_iter it;
-    tuple_entry *entryp;
-    
-    for (i = 0; i < attrc; i++) {
-        RDB_object *wtplp = RDB_tuple_get(tplp, attrv[i]);
-
-        if (wtplp == NULL) {
-            RDB_raise_attribute_not_found(attrv[i], ecp);
-            return RDB_ERROR;
-        }
-        if (wtplp->kind != RDB_OB_TUPLE) {
-            RDB_raise_invalid_argument("attribute is not tuple", ecp);
-            return RDB_ERROR;
-        }
-
-        ret = _RDB_copy_tuple(restplp, wtplp, ecp);
-        if (ret != RDB_OK)
-            return ret;
-    }
-    
-    /* Copy remaining attributes */
-    RDB_init_hashtable_iter(&it, (RDB_hashtable *)&tplp->var.tpl_tab);
-    while ((entryp = RDB_hashtable_next(&it)) != NULL) {
-        /* Copy attribute if it does not appear in attrv */
-        if (RDB_find_str(attrc, attrv, entryp->key) == -1) {
-            ret = RDB_tuple_set(restplp, entryp->key, &entryp->obj, ecp);
-            if (ret != RDB_OK) {
-                RDB_destroy_hashtable_iter(&it);
-                return ret;
-            }
-        }
-    }
-    RDB_destroy_hashtable_iter(&it);
-
     return RDB_OK;
 }
 

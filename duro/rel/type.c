@@ -13,6 +13,101 @@
 #include <string.h>
 #include <locale.h>
 
+/** @page builtin-types Built-in types
+@section basic-types Basic data types
+
+<table border="1" summary="Built-in types">
+<tr><th>Name<th>RDB_type variable<th>C type
+<tr><td>BOOLEAN<td>RDB_BOOLEAN<td>RDB_bool
+<tr><td>INTEGER<td>RDB_INTEGER<td>RDB_int
+<tr><td>FLOAT<td>RDB_FLOAT<td>RDB_float
+<tr><td>DOUBLE<td>RDB_DOUBLE<td>RDB_double
+<tr><td>STRING<td>RDB_STRING<td>char *
+<tr><td>BINARY<td>RDB_BINARY<td>&nbsp;-
+</table>
+
+@section error-types Error types
+
+Since version 0.10, Duro errors are scalar types.
+They are shown below in Tutorial D notation.
+
+<pre>
+TYPE INVALID_TRANSACTION_ERROR POSSREP { };
+
+TYPE INVALID_ARGUMENT_ERROR POSSREP { MSG STRING };
+
+TYPE TYPE_MISMATCH_ERROR POSSREP { MSG STRING };
+
+TYPE NOT_FOUND_ERROR POSSREP { MSG STRING };
+
+TYPE OPERATOR_NOT_FOUND_ERROR POSSREP { MSG STRING };
+
+TYPE ATTRIBUTE_NOT_FOUND_ERROR POSSREP { MSG STRING };
+
+TYPE ELEMENT_EXISTS_ERROR POSSREP { MSG STRING };
+
+TYPE TYPE_CONSTRAINT_VIOLATION_ERROR POSSREP { MSG STRING };
+
+TYPE KEY_VIOLATION_ERROR POSSREP { MSG STRING };
+
+TYPE PREDICATE_VIOLATION_ERROR POSSREP { MSG STRING };
+
+TYPE AGGREGATE_UNDEFINED_ERROR POSSREP { };
+
+TYPE VERSION_MISMATCH_ERROR POSSREP { };
+
+TYPE NOT_SUPPORTED_ERROR POSSREP { MSG STRING };
+
+TYPE SYNTAX_ERROR POSSREP { MSG STRING };
+</pre>
+
+@subsection system-errors System errors
+
+<pre>
+TYPE NO_MEMORY_ERROR POSSREP {  };
+</pre>
+
+Insufficient memory.
+
+<pre>
+TYPE SYSTEM_ERROR POSSREP { MSG STRING };
+</pre>
+
+Unspecified system error.
+
+<pre>
+TYPE LOCK_NOT_GRANTED_ERROR POSSREP { };
+</pre>
+
+A lock was requested but could not be granted.
+
+<pre>
+TYPE DEADLOCK_ERROR POSSREP { };
+</pre>
+
+A deadlock condition was detected.
+
+<pre>
+TYPE RESOURCE_NOT_FOUND_ERROR POSSREP { MSG STRING };
+</pre>
+
+A system resource, usually a file, could not be found.
+
+<pre>
+TYPE INTERNAL_ERROR POSSREP { MSG STRING };
+</pre>
+
+Internal error.
+
+<pre>
+TYPE FATAL_ERROR POSSREP { };
+</pre>
+
+Fatal error. This means that future calls to Duro functions
+will most likely fail.
+
+*/
+
 RDB_type RDB_BOOLEAN;
 RDB_type RDB_INTEGER;
 RDB_type RDB_FLOAT;
@@ -703,12 +798,128 @@ _RDB_init_builtin_types(RDB_exec_context *ecp)
     return RDB_OK;
 }
 
+static void
+free_type(RDB_type *typ, RDB_exec_context *ecp)
+{
+    int i;
+
+    free(typ->name);
+
+    switch (typ->kind) {
+        case RDB_TP_TUPLE:
+            for (i = 0; i < typ->var.tuple.attrc; i++) {
+                RDB_type *attrtyp = typ->var.tuple.attrv[i].typ;
+            
+                free(typ->var.tuple.attrv[i].name);
+                if (!RDB_type_is_scalar(attrtyp))
+                    RDB_drop_type(attrtyp, ecp, NULL);
+                if (typ->var.tuple.attrv[i].defaultp != NULL) {
+                    RDB_destroy_obj(typ->var.tuple.attrv[i].defaultp, ecp);
+                    free(typ->var.tuple.attrv[i].defaultp);
+                }
+            }
+            free(typ->var.tuple.attrv);
+            break;
+        case RDB_TP_RELATION:
+        case RDB_TP_ARRAY:
+            if (!RDB_type_is_scalar(typ->var.basetyp))
+                RDB_drop_type(typ->var.basetyp, ecp, NULL);
+            break;
+        case RDB_TP_SCALAR:
+            if (typ->var.scalar.repc > 0) {
+                int i, j;
+                
+                for (i = 0; i < typ->var.scalar.repc; i++) {
+                    for (j = 0; j < typ->var.scalar.repv[i].compc; j++) {
+                        free(typ->var.scalar.repv[i].compv[i].name);
+                    }
+                    free(typ->var.scalar.repv[i].compv);
+                }
+                free(typ->var.scalar.repv);
+            }
+            if (typ->var.scalar.arep != NULL
+                    && typ->var.scalar.arep->name == NULL)
+                RDB_drop_type(typ->var.scalar.arep, ecp, NULL);
+            break;
+        default:
+            abort();
+    }
+    typ->kind = (enum _RDB_tp_kind) -1;
+    free(typ);
+}    
+
+/**
+ * Implements a system-generated selector
+ */
+int
+_RDB_sys_select(const char *name, int argc, RDB_object *argv[],
+        const void *iargp, size_t iarglen, RDB_exec_context *ecp,
+        RDB_transaction *txp, RDB_object *retvalp)
+{
+    RDB_type *typ = retvalp->typ;
+    RDB_possrep *prp;
+
+    /* Find possrep */
+    prp = _RDB_get_possrep(typ, name);
+    if (prp == NULL) {
+        RDB_raise_invalid_argument("component name is NULL", ecp);
+        return RDB_ERROR;
+    }
+
+    /* If *retvalp carries a value, it must match the type */
+    if (retvalp->kind != RDB_OB_INITIAL
+            && (retvalp->typ == NULL
+                || !RDB_type_equals(retvalp->typ, typ))) {
+        RDB_raise_type_mismatch("invalid selector return type", ecp);
+        return RDB_ERROR;
+    }
+
+    if (argc == 1) {
+        /* Copy value */
+        if (_RDB_copy_obj(retvalp, argv[0], ecp, NULL) != RDB_OK)
+            return RDB_ERROR;
+    } else {
+        /* Copy tuple attributes */
+        int i;
+
+        for (i = 0; i < argc; i++) {
+            if (RDB_tuple_set(retvalp, typ->var.scalar.repv[0].compv[i].name,
+                    argv[i], ecp) != RDB_OK) {
+                return RDB_ERROR;
+            }
+        }
+    }
+    retvalp->typ = typ;
+    return RDB_OK;
+}
+
+/** @addtogroup type
+ * @{
+ */
+
+/**
+ * RDB_type_is_numeric checks if a type is numeric.
+
+@returns
+
+RDB_TRUE if the type is INTEGER, FLOAT, or DOUBLE, RDB_FALSE otherwise.
+ */
 RDB_bool
 RDB_type_is_numeric(const RDB_type *typ) {
     return (RDB_bool)(typ == &RDB_INTEGER || typ == &RDB_FLOAT
             || typ == &RDB_DOUBLE);
 }
 
+/**
+ * If *<var>typ</var> is non-scalar, RDB_dup_nonscalar_creates a copy of it.
+
+@returns
+
+A copy of *<var>typ</var>, if *<var>typ</var> is non-scalar.
+<var>typ</var>, if *<var>typ</var> is scalar.
+
+ If the operation fails, NULL is returned.
+ */
 RDB_type *
 RDB_dup_nonscalar_type(RDB_type *typ, RDB_exec_context *ecp)
 {
@@ -741,6 +952,25 @@ RDB_dup_nonscalar_type(RDB_type *typ, RDB_exec_context *ecp)
     abort();
 }
 
+/**
+ * RDB_create_tuple_type creates a tuple type and stores
+a pointer to the type at the location pointed to by <var>typp</var>.
+The attributes are specified by <var>attrc</var> and <var>attrv</var>.
+The fields defaultp and options of RDB_attr are ignored.
+
+@returns
+
+On success, RDB_OK is returned. Any other return value indicates an error.
+
+@par Errors:
+
+<dl>
+<dt>RDB_INVALID_ARGUMENT_ERROR
+<dd><var>attrv</var> contains two attributes with the same name.
+</dl>
+
+The call may also fail for a @ref system-errors "system error".
+ */
 RDB_type *
 RDB_create_tuple_type(int attrc, const RDB_attr attrv[],
         RDB_exec_context *ecp)
@@ -809,6 +1039,25 @@ error:
     return NULL;
 }
 
+/**
+ * RDB_create_relation_type creates a relation type and stores
+a pointer to the type at the location pointed to by <var>typp</var>.
+The attributes are specified by <var>attrc</var> and <var>attrv</var>.
+The fields defaultp and options of RDB_attr are ignored.
+
+@returns
+
+On success, a pointer to the type. On failure, NULL is returned.
+
+@par Errors:
+
+<dl>
+<dt>RDB_INVALID_ARGUMENT_ERROR
+<dd><var>attrv</var> contains two attributes with the same name.
+</dl>
+
+The call may also fail for a @ref system-errors "system error".
+ */
 RDB_type *
 RDB_create_relation_type(int attrc, const RDB_attr attrv[],
         RDB_exec_context *ecp)
@@ -831,6 +1080,14 @@ RDB_create_relation_type(int attrc, const RDB_attr attrv[],
     return typ;
 }
 
+/**
+ * RDB_create_array_type creates an array type.
+The base type is specified by <var>typ</var>.
+
+@returns
+
+The new array type, or NULL if the creation failed due to insufficient memory.
+ */
 RDB_type *
 RDB_create_array_type(RDB_type *basetyp, RDB_exec_context *ecp)
 {
@@ -849,12 +1106,31 @@ RDB_create_array_type(RDB_type *basetyp, RDB_exec_context *ecp)
     return typ;
 }
 
+/**
+RDB_type_is_scalar checks if a type is scalar.
+
+@returns
+
+RDB_TRUE if the type is scalar, RDB_FALSE if not.
+*/
 RDB_bool
 RDB_type_is_scalar(const RDB_type *typ)
 {
     return (typ->kind == RDB_TP_SCALAR);
 }
 
+/**
+ * RDB_type_attrs returns a pointer to an array of
+RDB_attr structures
+describing the attributes of the tuple or relation type
+specified by *<var>typ</var> and stores the number of attributes in
+*<var>attrcp</var>.
+
+@returns
+
+A pointer to an array of RDB_attr structures or NULL if the type
+is not a tuple or relation type.
+ */
 RDB_attr *
 RDB_type_attrs(RDB_type *typ, int *attrc)
 {
@@ -868,56 +1144,33 @@ RDB_type_attrs(RDB_type *typ, int *attrc)
     return typ->var.tuple.attrv;
 }
 
-static void
-free_type(RDB_type *typ, RDB_exec_context *ecp)
-{
-    int i;
+/**
+ *
+RDB_define_type defines a type with the name <var>name</var> and
+<var>repc</var> possible representations.
+The individual possible representations are
+described by the elements of <var>repv</var>.
 
-    free(typ->name);
+If <var>constraintp</var> is not NULL, it specifies the type constraint.
+When the constraint is evaluated, the value to check is made available
+as an attribute with the same name as the type.
 
-    switch (typ->kind) {
-        case RDB_TP_TUPLE:
-            for (i = 0; i < typ->var.tuple.attrc; i++) {
-                RDB_type *attrtyp = typ->var.tuple.attrv[i].typ;
-            
-                free(typ->var.tuple.attrv[i].name);
-                if (!RDB_type_is_scalar(attrtyp))
-                    RDB_drop_type(attrtyp, ecp, NULL);
-                if (typ->var.tuple.attrv[i].defaultp != NULL) {
-                    RDB_destroy_obj(typ->var.tuple.attrv[i].defaultp, ecp);
-                    free(typ->var.tuple.attrv[i].defaultp);
-                }
-            }
-            free(typ->var.tuple.attrv);
-            break;
-        case RDB_TP_RELATION:
-        case RDB_TP_ARRAY:
-            if (!RDB_type_is_scalar(typ->var.basetyp))
-                RDB_drop_type(typ->var.basetyp, ecp, NULL);
-            break;
-        case RDB_TP_SCALAR:
-            if (typ->var.scalar.repc > 0) {
-                int i, j;
-                
-                for (i = 0; i < typ->var.scalar.repc; i++) {
-                    for (j = 0; j < typ->var.scalar.repv[i].compc; j++) {
-                        free(typ->var.scalar.repv[i].compv[i].name);
-                    }
-                    free(typ->var.scalar.repv[i].compv);
-                }
-                free(typ->var.scalar.repv);
-            }
-            if (typ->var.scalar.arep != NULL
-                    && typ->var.scalar.arep->name == NULL)
-                RDB_drop_type(typ->var.scalar.arep, ecp, NULL);
-            break;
-        default:
-            abort();
-    }
-    typ->kind = (enum _RDB_tp_kind) -1;
-    free(typ);
-}    
+@returns
 
+RDB_OK on success, RDB_ERROR if an error occurred.
+
+@par Errors:
+
+<dl>
+<dt>RDB_INVALID_TRANSACTION_ERROR
+<dd><var>txp</var> does not point to a running transaction.
+<dt>RDB_ELEMENT_EXIST_ERROR
+<dd>There is already a type with name <var>name</var>.
+</dl>
+
+The call may also fail for a @ref system-errors "system error",
+in which case the transaction may be implicitly rolled back.
+ */
 int
 RDB_define_type(const char *name, int repc, const RDB_possrep repv[],
                 RDB_expression *constraintp, RDB_exec_context *ecp,
@@ -1035,51 +1288,6 @@ error:
     return RDB_ERROR;
 }
 
-/* Implements a system-generated selector */
-int
-_RDB_sys_select(const char *name, int argc, RDB_object *argv[],
-        const void *iargp, size_t iarglen, RDB_exec_context *ecp,
-        RDB_transaction *txp, RDB_object *retvalp)
-{
-    RDB_type *typ = retvalp->typ;
-    RDB_possrep *prp;
-
-    /* Find possrep */
-    prp = _RDB_get_possrep(typ, name);
-    if (prp == NULL) {
-        RDB_raise_invalid_argument("component name is NULL", ecp);
-        return RDB_ERROR;
-    }
-
-    /* If *retvalp carries a value, it must match the type */
-    if (retvalp->kind != RDB_OB_INITIAL
-            && (retvalp->typ == NULL
-                || !RDB_type_equals(retvalp->typ, typ))) {
-        RDB_raise_type_mismatch("invalid selector return type", ecp);
-        return RDB_ERROR;
-    }
-
-    if (argc == 1) {
-        /* Copy value */
-        if (_RDB_copy_obj(retvalp, argv[0], ecp, NULL) != RDB_OK)
-            return RDB_ERROR;
-    } else {
-        /* Copy tuple attributes */
-        int i;
-
-        RDB_destroy_obj(retvalp, ecp);
-        RDB_init_obj(retvalp);
-        for (i = 0; i < argc; i++) {
-            if (RDB_tuple_set(retvalp, typ->var.scalar.repv[0].compv[i].name,
-                    argv[i], ecp) != RDB_OK) {
-                return RDB_ERROR;
-            }
-        }
-    }
-    retvalp->typ = typ;
-    return RDB_OK;
-}
-
 static int
 create_selector(RDB_type *typ, RDB_exec_context *ecp, RDB_transaction *txp)
 {
@@ -1101,6 +1309,82 @@ create_selector(RDB_type *typ, RDB_exec_context *ecp, RDB_transaction *txp)
     return ret;
 }
 
+/** @defgroup typeimpl Type implementation functions
+ * \#include <rel/typeimpl.h>
+ * @{
+ */
+
+/**
+ * RDB_implement_type implements the user-defined type with name
+<var>name</var>. The type must have been defined previously using
+RDB_define_type. After RDB_implement_type was inkoved successfully,
+this type may be used for local variables and table attributes.
+
+If <var>arep</var> is not NULL, it must point to a type which is used
+as the physical representation. The getter, setter, and selector operators
+must be provided by the caller.
+
+If <var>arep</var> is NULL and <var>areplen</var> is not -1,
+<var>areplen</var> specifies the length, in bytes,
+of the physical representation, which then is a fixed-length array of bytes.
+The getter, setter, and selector operators
+must be provided by the caller.
+
+If <var>arep</var> is NULL and <var>areplen</var> is -1,
+the getter and setter operators and the selector operator are provided by Duro.
+In this case, the type must have exactly one possible representation,
+and this representation becomes the physical representation.
+
+For user-provided setters, getters, and selectors,
+the following conventions apply:
+
+<dl>
+<dt>Selectors
+<dd>A selector is a read-only operator whose name is is the name of a possible
+representation. It takes one argument for each component.
+<dt>Getters
+<dd>A getter is a read-only operator whose name consists of the
+type and a component name, separated by "_get_".
+It takes one argument. The argument must be of the user-defined type in question.
+The return type must be the component type.
+<dt>Setters
+<dd>A setter is an update operator whose name consists of the
+type and a component name, separated by "_set_".
+It takes two arguments. The first argument is an update argument
+and must be of the user-defined type in question.
+The second argument is read-only and must be of the type of
+the component.
+</dl>
+
+A user-defined comparison operator CMP returning an INTEGER may be supplied.
+CMP must have two arguments, both of the user-defined type
+for which the comparison is to be defined.
+
+CMP must return -1, 0, or 1 if the first argument is lower than
+equal to, or greater than the secons argument, respectively.
+
+If CMP has been defined, it will be called by the built-in comparison
+operators =, <>, <= etc. 
+
+@returns
+
+On success, RDB_OK is returned. Any other return value indicates an error.
+
+@par Errors:
+
+<dl>
+<dt>RDB_INVALID_TRANSACTION_ERROR
+<dd><var>txp</var> does not point to a running transaction.
+<dt>RDB_NOT_FOUND_ERROR
+<dd>The type has not been previously defined.
+<dt>RDB_INVALID_ARGUMENT_ERROR
+<dd><var>arep</var> is NULL and <var>areplen</var> is -1,
+and the type was defined with more than one possible representation.
+</dl>
+
+The call may also fail for a @ref system-errors "system error",
+in which case the transaction may be implicitly rolled back.
+ */
 int
 RDB_implement_type(const char *name, RDB_type *arep, RDB_int areplen,
         RDB_exec_context *ecp, RDB_transaction *txp)
@@ -1219,6 +1503,34 @@ cleanup:
     return ret;
 }
 
+/*@}*/
+
+/**
+ * RDB_drop_type destroys the type specified by <var>typ</var>.
+
+If the type is a scalar user-defined type, it is deleted from the
+database.
+
+If the type is non-scalar, the argument <var>txp</var> is ignored.
+
+It is not possible to destroy built-in types.
+
+@returns
+
+On success, RDB_OK is returned. Any other return value indicates an error.
+
+@par Errors:
+
+<dl>
+<dt>RDB_INVALID_TRANSACTION_ERROR
+<dd>The type is scalar and <var>txp</var> does not point to a running transaction.
+<dt>RDB_INVALID_ARGUMENT_ERROR
+<dd>The type is a builtin type.
+</dl>
+
+The call may also fail for a @ref system-errors "system error",
+in which case the transaction may be implicitly rolled back.
+ */
 int
 RDB_drop_type(RDB_type *typ, RDB_exec_context *ecp, RDB_transaction *txp)
 {
@@ -1289,6 +1601,15 @@ RDB_drop_type(RDB_type *typ, RDB_exec_context *ecp, RDB_transaction *txp)
     return RDB_OK;
 }
 
+/**
+ * RDB_type_equals checks if two types are equal.
+
+Nonscalar types are equal if there definition is the same.
+
+@returns
+
+RDB_TRUE if the types are equal, RDB_FALSE otherwise.
+ */
 RDB_bool
 RDB_type_equals(const RDB_type *typ1, const RDB_type *typ2)
 {
@@ -1336,11 +1657,20 @@ RDB_type_equals(const RDB_type *typ1, const RDB_type *typ2)
     abort();
 }  
 
+/**
+ * RDB_type_name returns the name of a type.
+
+@returns
+
+A pointer to the name of the type or NULL if the type has no name.
+ */
 char *
 RDB_type_name(const RDB_type *typ)
 {
     return typ->name;
 }
+
+/*@}*/
 
 RDB_type *
 RDB_type_attr_type(const RDB_type *typ, const char *name)

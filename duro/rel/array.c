@@ -54,6 +54,34 @@ error:
     return RDB_ERROR;
 }
 
+/** @defgroup array Array functions 
+ * @{
+ */
+
+/**
+ * RDB_table_to_array creates an array which contains
+all tuples from the table specified by <var>tbp</var>.
+If <var>seqitc</var> is zero, the order of the tuples is undefined.
+If <var>seqitc</var> is greater than zero, the order of the tuples
+is specified by <var>seqitv</var>.
+
+@returns
+
+RDB_OK on success, RDB_ERROR if an error occurred.
+
+@par Errors:
+
+<dl>
+<dt>RDB_INVALID_TRANSACTION_ERROR
+<dd><var>txp</var> does not point to a running transaction.
+<dt>RDB_OPERATOR_NOT_FOUND_ERROR
+<dd>The definition of the table specified by <var>tbp</var>
+refers to a non-existing operator.
+</dl>
+
+The call may also fail for a @ref system-errors "system error",
+in which case the transaction may be implicitly rolled back.
+ */
 int
 RDB_table_to_array(RDB_object *arrp, RDB_object *tbp,
                    int seqitc, const RDB_seq_item seqitv[],
@@ -76,10 +104,9 @@ RDB_table_to_array(RDB_object *arrp, RDB_object *tbp,
     return ret;
 }
 
-/*
+/**
  * Get next element from qresult
  */
-
 static int
 next_tuple(RDB_object *arrp, RDB_bool mustread, RDB_exec_context *ecp)
 {
@@ -105,6 +132,28 @@ enum {
     ARRAY_BUFLEN_MAX = 32768
 };
 
+/**
+ * RDB_array_get stores a pointer to the RDB_object at index <var>idx</var>
+at the location pointed to by <var>tplpp</var>. This pointer may become
+invalid after the next invocation of RDB_array_get.
+The pointer will become invalid when the array is destroyed.
+
+@returns
+
+RDB_OK on success, RDB_ERROR if an error occurred.
+
+@par Errors:
+
+<dl>
+<dt>RDB_NOT_FOUND_ERROR
+<dd><var>idx</var> exceeds the array length.
+<dt>RDB_OPERATOR_NOT_FOUND_ERROR
+<dd>The array was created from a table which refers to a non-existing
+operator.
+</dl>
+
+The call may also fail for a @ref system-errors "system error".
+ */
 RDB_object *
 RDB_array_get(RDB_object *arrp, RDB_int idx, RDB_exec_context *ecp)
 {
@@ -219,6 +268,24 @@ RDB_array_get(RDB_object *arrp, RDB_int idx, RDB_exec_context *ecp)
     return tplp;
 }
 
+/**
+ * RDB_array_length returns the length of an array.
+
+@returns
+
+The length of the array. A return code lower than zero
+indicates an error.
+
+@par Errors:
+
+<dl>
+<dt>RDB_OPERATOR_NOT_FOUND_ERROR
+<dd>The array was created from a table which refers to a non-existing
+operator.
+</dl>
+
+The call may also fail for a @ref system-errors "system error".
+ */
 RDB_int
 RDB_array_length(RDB_object *arrp, RDB_exec_context *ecp)
 {
@@ -239,6 +306,24 @@ RDB_array_length(RDB_object *arrp, RDB_exec_context *ecp)
     return arrp->var.arr.length;
 }
 
+/**
+ * RDB_set_array_length sets the length of the array specified by
+<var>arrp</var>.
+
+This function is not supported for arrays which have been created
+using RDB_table_to_array.
+
+@returns
+
+RDB_OK on success, RDB_ERROR if an error occurred.
+
+@par Errors:
+
+<dl>
+<dt>RDB_NOT_SUPPORTED_ERROR
+<dd>The array has been created using RDB_table_to_array.
+</dl>
+ */
 int
 RDB_set_array_length(RDB_object *arrp, RDB_int len, RDB_exec_context *ecp)
 {
@@ -288,6 +373,28 @@ RDB_set_array_length(RDB_object *arrp, RDB_int len, RDB_exec_context *ecp)
     return RDB_OK;
 }
 
+/**
+ * RDB_array_set copies the RDB_object pointed to by tplp
+into the RDB_object at index <var>idx</var>.
+
+RDB_array_set is not supported for arrays which have been created
+using RDB_table_to_array.
+
+@returns
+
+RDB_OK on success, RDB_ERROR if an error occurred.
+
+@par Errors:
+
+<dl>
+<dt>RDB_NOT_FOUND_ERROR
+<dd><var>idx</var> exceeds the array length.
+<dt>RDB_NOT_SUPPORTED_ERROR
+<dd>The table has been created using RDB_table_to_array.
+</dl>
+
+The call may also fail for a @ref system-errors "system error".
+ */
 int
 RDB_array_set(RDB_object *arrp, RDB_int idx, const RDB_object *objp,
         RDB_exec_context *ecp)
@@ -304,6 +411,8 @@ RDB_array_set(RDB_object *arrp, RDB_int idx, const RDB_object *objp,
 
     return RDB_copy_obj(&arrp->var.arr.elemv[idx], objp, ecp);
 }
+
+/*@}*/
 
 int
 _RDB_copy_array(RDB_object *dstp, const RDB_object *srcp,

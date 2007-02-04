@@ -171,6 +171,10 @@ extern RDB_exec_context *_RDB_cmp_ecp;
 int
 _RDB_init_builtin_types(RDB_exec_context *);
 
+int
+_RDB_create_tbindex(RDB_object *tbp, RDB_environment *, RDB_exec_context *,
+        RDB_transaction *, _RDB_tbindex *, int);
+
 /* Abort transaction and all parent transactions */
 int
 RDB_rollback_all(RDB_exec_context *, RDB_transaction *);
@@ -190,16 +194,16 @@ _RDB_expr_matching_tuple(RDB_expression *exp, const RDB_object *tplp,
 RDB_object *
 _RDB_new_obj(RDB_exec_context *ecp);
 
-int
-_RDB_init_table(RDB_object *tbp, const char *name, RDB_bool persistent,
-        RDB_type *reltyp, int keyc, const RDB_string_vec keyv[], RDB_bool usr,
-        RDB_expression *exp, RDB_exec_context *ecp);
-
 RDB_object *
 _RDB_new_rtable(const char *name, RDB_bool persistent,
                 RDB_type *,
                 int keyc, const RDB_string_vec keyv[], RDB_bool usr,
                 RDB_exec_context *);
+
+int
+_RDB_init_table(RDB_object *, const char *, RDB_bool,
+        RDB_type *, int keyc, const RDB_string_vec keyv[], RDB_bool,
+        RDB_expression *, RDB_exec_context *);
 
 int
 _RDB_free_obj(RDB_object *tbp, RDB_exec_context *);

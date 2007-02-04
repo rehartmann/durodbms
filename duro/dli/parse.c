@@ -191,6 +191,33 @@ RDB_parse_del_stmtlist(RDB_parse_statement *stmtp, RDB_exec_context *ecp)
     return ret;
 }
 
+/**@defgroup parse Parsing functions
+ * \#include <dli/parse.h>
+ * @{
+ */
+
+/**
+ * Parse the <a href="expressions.html">expression</a>
+specified by <var>txt</var>. If <var>lt_fp</var> is not NULL,
+it must point to a function which is used to look up local tables.
+The function is invoked with the table name and <var>lt_arg</var> as
+arguments. It must return a pointer to the table or NULL if the table was
+not found.
+
+@returns The parsed expression, or NULL if the parsing failed.
+
+@par Errors:
+
+<dl>
+<dt>RDB_SYNTAX_ERROR
+<dd>A syntax error occurred during parsing.
+</dl>
+
+The call may also fail for a @ref system-errors "system error",
+in which case the transaction may be implicitly rolled back.
+
+@warning The parser is not reentrant.
+ */
 RDB_expression *
 RDB_parse_expr(const char *txt, RDB_ltablefn *lt_fp, void *lt_arg,
         RDB_exec_context *ecp, RDB_transaction *txp)
@@ -228,6 +255,8 @@ RDB_parse_expr(const char *txt, RDB_ltablefn *lt_fp, void *lt_arg,
     }
     return exp;
 }
+
+/*@}*/
 
 RDB_parse_statement *
 RDB_parse_stmt(RDB_exec_context *ecp)

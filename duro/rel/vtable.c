@@ -38,6 +38,35 @@ _RDB_vtexp_to_obj(RDB_expression *exp, RDB_exec_context *ecp,
     return RDB_OK;
 }
 
+/** @addtogroup table
+ * @{
+ */
+
+/**
+ * RDB_expr_to_vtable creates a virtual table from the expression *<var>exp</var>.
+
+If an error occurs, an error value is left in *<var>ecp</var>.
+
+@returns
+
+A pointer to the newly created table, or NULL if an error occurred.
+
+@par Errors:
+
+<dl>
+<dt>RDB_INVALID_TRANSACTION_ERROR
+<dd><var>txp</var> does not point to a running transaction.
+<dt>RDB_INVALID_ARGUMENT_ERROR
+<dd>*<var>exp</var> does not define a valid virtual table.
+<dt>RDB_ATTRIBUTE_NOT_FOUND_ERROR
+<dd>*<var>exp</var> refers to an undefined attribute.
+<dt>RDB_TYPE_MISMATCH_ERROR
+<dd>*<var>exp</var> contains an operator invocation with an argument
+of a wrong type.
+<dt>RDB_OPERATOR_NOT_FOUND_ERROR
+<dd>*<var>exp</var> contains an invocation of a non-existing operator.
+</dl>
+ */
 RDB_object *
 RDB_expr_to_vtable(RDB_expression *exp, RDB_exec_context *ecp,
         RDB_transaction *txp)
@@ -63,7 +92,9 @@ RDB_expr_to_vtable(RDB_expression *exp, RDB_exec_context *ecp,
     return tbp;
 }
 
-/*
+/*@}*/
+
+/**
  * Determine which keys are preserved by the projection.
  *
  * exp      a PROJECT expression

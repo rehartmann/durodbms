@@ -20,14 +20,6 @@ typedef struct RDB_ixlink {
 } RDB_ixlink;
 
 int
-RDB_begin_tx(RDB_exec_context *ecp, RDB_transaction *txp, RDB_database *dbp,
-        RDB_transaction *parentp)
-{
-    txp->dbp = dbp;
-    return _RDB_begin_tx(ecp, txp, dbp->dbrootp->envp, parentp);
-}
-
-int
 _RDB_begin_tx(RDB_exec_context *ecp, RDB_transaction *txp, RDB_environment *envp,
         RDB_transaction *parentp)
 {
@@ -120,6 +112,51 @@ close_storage(RDB_transaction *txp)
     return ret;
 }
 
+/** @defgroup tx Transaction functions 
+ * @{
+ */
+
+/**
+ * RDB_begin_tx starts a transaction which interacts with the
+database specified by <var>dbp</var>.
+
+If <var>parentp</var> is not NULL, the new transaction is
+a subtransaction of the transaction specified by <var>parentp</var>.
+
+The execution of a parent transaction is suspended while a child
+transaction executes. It is an error to perform an operation under
+the control of a transaction which has a running child transaction.
+
+@returns
+
+RDB_OK on success, RDB_ERROR if an error occurred.
+
+The call may fail for a @ref system-errors "system error".
+ */
+int
+RDB_begin_tx(RDB_exec_context *ecp, RDB_transaction *txp, RDB_database *dbp,
+        RDB_transaction *parentp)
+{
+    txp->dbp = dbp;
+    return _RDB_begin_tx(ecp, txp, dbp->dbrootp->envp, parentp);
+}
+
+/**
+ * RDB_commit commits the transaction pointed to by <var>txp</var>.
+
+@returns
+
+RDB_OK on success, RDB_ERROR if an error occurred.
+
+@par Errors:
+
+<dl>
+<dt>RDB_INVALID_TRANSACTION_ERROR
+<dd><var>txp</var> does not point to a running transaction.
+</dl>
+
+The call may also fail for a @ref system-errors "system error".
+ */
 int
 RDB_commit(RDB_exec_context *ecp, RDB_transaction *txp)
 {
@@ -175,6 +212,23 @@ RDB_commit(RDB_exec_context *ecp, RDB_transaction *txp)
     return RDB_OK;
 }
 
+/**
+ * RDB_rollback terminates the transaction pointed to by <var>txp</var>
+and rolls back all changes made by this transaction and its subtransactions.
+
+@returns
+
+RDB_OK on success, RDB_ERROR if an error occurred.
+
+@par Errors:
+
+<dl>
+<dt>RDB_INVALID_TRANSACTION_ERROR
+<dd><var>txp</var> does not point to a running transaction.
+</dl>
+
+The call may also fail for a @ref system-errors "system error".
+ */
 int
 RDB_rollback(RDB_exec_context *ecp, RDB_transaction *txp)
 {
@@ -220,11 +274,21 @@ RDB_rollback_all(RDB_exec_context *ecp, RDB_transaction *txp)
     return RDB_OK;
 }
 
+/**
+ * RDB_tx_is_running returns if <var>txp</var> points to a running
+transaction.
+
+@returns
+
+RDB_TRUE if the transaction is running, RDB_FALSE otherwise.
+ */
 RDB_bool
 RDB_tx_is_running(RDB_transaction *txp)
 {
     return (RDB_bool)(txp->txid != NULL);
 }
+
+/*@}*/
 
 int
 _RDB_del_recmap(RDB_transaction *txp, RDB_recmap *rmp, RDB_exec_context *ecp)

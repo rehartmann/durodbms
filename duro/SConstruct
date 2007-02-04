@@ -105,6 +105,17 @@ else:
 dli = env.Program('dli/duro.c')
 
 #
+# Docs
+#
+
+env.Command('docs/html/index.html',
+		['Doxyfile', 'rec/env.c', 'rel/rdb.h', 'rel/database.c', 'rel/table.c',
+				'rel/type.c', 'rel/object.c', 'rel/tuple.c', 'rel/expression.c',
+				'rel/operator.c', 'rel/constraint.c', 'rel/excontext.c',
+				'rel/builtinops.c', 'rel/assign.c', 'rel/contains.c', 'dli/parse.c'],
+        'doxygen')
+
+#
 # Defaults
 #
 

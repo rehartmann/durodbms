@@ -1279,6 +1279,101 @@ static RDB_bool copy_needs_tx(const RDB_object *dstp, const RDB_object *srcp)
                     && srcp->var.tb.is_persistent));
 }
 
+/** @addtogroup table
+ * @{
+ */
+
+/** @struct RDB_ma_insert rdb.h <rel/rdb.h>
+ * Represents an insert.
+ */
+
+/** @struct RDB_ma_update rdb.h <rel/rdb.h>
+ * Represents an update.
+ */
+
+/** @struct RDB_ma_delete rdb.h <rel/rdb.h>
+ * Represents a delete.
+ */
+
+/**
+ * Perform a number of insert, update, delete,
+and copy operations in a single call.
+
+For each of the RDB_ma_insert elements given by <var>insc</var> and <var>insv</var>,
+the tuple *<var>insv</var>[i]->tplp is inserted into *<var>insv</var>[i]->tbp.
+
+For each of the RDB_ma_update elements given by <var>updc</var> and <var>updv</var>,
+the attributes given by <var>updv</var>[i]->updc and <var>updv</var>[i]->updv
+of the tuples of *<var>updv</var>[i]->tbp for which *<var>updv</var>[i]->condp
+evaluates to RDB_TRUE are updated.
+
+For each of the RDB_ma_delete elements given by <var>delc</var> and <var>delv</var>,
+the tuples for which *<var>delv</var>[i]->condp evaluates to RDB_TRUE
+are deleted from *<var>delv</var>[i]->tbp.
+
+For each of the RDB_ma_copy elements given by <var>copyc</var> and <var>copyv</var>,
+*<var>copyv</var>[i]->scrp is copied to *<var>copyv</var>[i]->dstp.
+
+A <strong>RDB_multi_assign</strong> call is atomic with respect to
+constraint checking; a constraint violation error can only occur
+if the result of <em>all</em> operations violates a constraint.
+
+A table may not appear twice as a target in the arguments to
+<strong>RDB_multi_assign</strong>, and it may not appear
+as a source if it appears as a target in a previous assignment.
+
+This means that an assignment like the following:</p>
+
+<code>
+UPDATE S WHERE S# = S#('S2') STATUS := 15,
+UPDATE S WHERE S# = S#('S3') STATUS := 25;
+</code>
+
+(taken from <em>TTM</em>, chapter 6)
+cannot be performed directly. It can, however, be converted to a
+form like the following:</p>
+
+<code>
+UPDATE S WHERE (S# = S#('S2')) OR (S# = S#('S3'))
+        STATUS := IF (S# = S#('S2')) THEN 15 ELSE 25;
+</code>
+
+The restrictions of RDB_insert(), RDB_update(), RDB_delete(),
+and RDB_copy_obj()
+regarding virtual target tables apply to RDB_multi_assign,
+too.
+
+<var>txp</var> must point to a running transaction execpt
+if (1) no update or delete is specified, (2) only
+inserts into local tables are specified, and (3)
+there is no copy operation with an existing table as a target
+which involves a global table as source or target.
+
+@returns
+
+On success, the number of tuples inserted, deleted, and updated due to
+<var>insc</var>, <var>insv</var>, <var>updc</var>, <var>updv</var>,
+<var>delc</var> and <var>delv</var> arguments,
+plus <var>objc</var>. If an error occurred, (RDB_int) RDB_ERROR is returned.
+
+@par Errors:
+
+<dl>
+<dt>RDB_INVALID_TRANSACTION_ERROR
+<dd><var>txp</var> must point to a running transaction (see above)
+but does not.
+<dt>RDB_INVALID_ARGUMENT_ERROR
+<dd>A table appears twice as a target.
+<dt>RDB_NOT_SUPPORTED_ERROR
+<dd>A table is both source and target.
+<dd>A virtual table appears as a target in <var>copyv</var>.
+<dt>RDB_PREDICATE_VIOLATION_ERROR
+<dd>A constraint has been violated.
+</dl>
+
+The errors that can be raised by RDB_insert(),
+RDB_update(), RDB_delete() and RDB_copy_obj() can also be raised.
+ */
 RDB_int
 RDB_multi_assign(int insc, const RDB_ma_insert insv[],
         int updc, const RDB_ma_update updv[],
@@ -1743,6 +1838,50 @@ cleanup:
     return rcount;
 }
 
+/**
+ * RDB_insert inserts the tuple specified by <var>tplp</var>
+into the table specified by <var>tbp</var>.
+
+If an error occurs, an error value is left in *<var>ecp</var>.
+
+Currently, RDB_insert is not supported for virtual tables which are the result
+of a UNION, MINUS, SEMIMINUS, INTERSECT, JOIN, SEMIJOIN, SUMMARIZE, DIVIDE,
+GROUP, or UNGROUP.
+
+@returns
+
+RDB_OK on success, RDB_ERROR if an error occurred.
+
+@par Errors:
+
+<dl>
+<dt>RDB_INVALID_TRANSACTION_ERROR
+<dd>The table given by <var>tbp</var> is global and <var>txp</var>
+does not point to a running transaction.
+<dt>RDB_INVALID_ARGUMENT_ERROR
+<dd>A table attribute is missing in the tuple and no default value
+was specified for that attribute.
+<dt>RDB_ELEMENT_EXIST_ERROR
+<dd>The tuple was already an element of the table.
+<dt>RDB_KEY_VIOLATION_ERROR
+<dd>Inserting the tuple would result in a table which contains
+a key value twice.
+<dt>RDB_PREDICATE_VIOLATION_ERROR
+<dd>Inserting the tuple would result in a table which violates its
+predicate.
+<dt>RDB_TYPE_MISMATCH_ERROR
+<dd>The type of a tuple attribute does not match the type of the
+corresponding table attribute.
+<dt>RDB_OPERATOR_NOT_FOUND_ERROR
+<dd>The definition of the table specified by <var>tbp</var>
+refers to a non-existing operator.
+<dt>RDB_NOT_SUPPORTED_ERROR
+<dd>RDB_insert is not supported for this type of table.
+</dl>
+
+The call may also fail for a @ref system-errors "system error",
+in which case the transaction may be implicitly rolled back.
+ */
 int
 RDB_insert(RDB_object *tbp, const RDB_object *tplp, RDB_exec_context *ecp,
            RDB_transaction *txp)
@@ -1758,6 +1897,68 @@ RDB_insert(RDB_object *tbp, const RDB_object *tplp, RDB_exec_context *ecp,
     return RDB_OK;
 }
 
+/**
+ * RDB_update updates all tuples from the table specified by <var>tbp</var>
+for which the expression specified by <var>exp</var> evaluates to true.
+If <var>exp</var> is NULL, all tuples are updated.
+
+If an error occurs, an error value is left in *<var>ecp</var>.
+
+The attributes to be updated are specified by the <var>updv</var> array.
+The attribute specified by the field name is set to the value
+obtained by evaluating the expression specified by the field exp.
+
+Currently, RDB_update is not supported for virtual tables except PROJECT.
+
+@returns
+
+The number of updated tuples in real tables if the call was successful.
+A call which did not modify any tuple because no tuple matched the condition
+is considered a successful call and returns zero.
+If an error occurred, (RDB_int)RDB_ERROR is returned.
+
+@par Errors:
+
+<dl>
+<dt>RDB_INVALID_TRANSACTION_ERROR
+<dd><var>txp</var> does not point to a running transaction.
+
+<dt>RDB_ATTRIBUTE_NOT_FOUND_ERROR
+<dd>One of the attributes in <var>updv</var> does not exist in the table.
+<dd>One of the expressions specified in <var>updv</var> refers to an attribute
+which does not exist in the table.
+
+<dt>RDB_ELEMENT_EXIST_ERROR
+<dd>The update operation would update a tuple so that it would be equal
+to a tuple which is already an element of the table.
+
+<dt>RDB_KEY_VIOLATION_ERROR
+<dd>The update operation would result in a table which contains
+a key value twice.
+
+<dt>RDB_PREDICATE_VIOLATION_ERROR
+<dd>The update operation would result in a table which violates its
+predicate.
+
+<dt>RDB_TYPE_MISMATCH_ERROR
+<dd>The type of one of the expressions in <var>updv</var> is not the same
+as the type of the corresponding table attribute.
+
+<dt>RDB_OPERATOR_NOT_FOUND_ERROR
+<dd>The definition of the table specified by <var>tbp</var>
+refers to a non-existing operator.
+<dd>The expression specified by <var>exp</var>
+refers to a non-existing operator.
+<dd>One of the expressions specified in <var>updv</var>
+refers to a non-existing operator.
+
+<dt>RDB_NOT_SUPPORTED_ERROR
+<dd>RDB_update is not supported for this type of table.
+</dl>
+
+The call may also fail for a @ref system-errors "system error",
+in which case the transaction may be implicitly rolled back.
+ */
 RDB_int
 RDB_update(RDB_object *tbp, RDB_expression *condp, int updc,
            const RDB_attr_update updv[], RDB_exec_context *ecp,
@@ -1772,6 +1973,43 @@ RDB_update(RDB_object *tbp, RDB_expression *condp, int updc,
     return RDB_multi_assign(0, NULL, 1, &upd, 0, NULL, 0, NULL, ecp, txp);
 }
 
+/**
+ * RDB_delete deletes all tuples from the table specified by <var>tbp</var>
+for which the expression specified by <var>exp</var> evaluates to true.
+If <var>exp</var> is NULL, all tuples are deleted.
+
+If an error occurs, an error value is left in *<var>ecp</var>.
+
+Currently, RDB_delete is not supported for virtual tables except
+PROJECT, WHERE, RENAME, and EXTEND.
+
+@returns
+
+The number of deleted tuples, if no error occurred.
+A call which did not delete any tuple because no tuple matched the condition
+is considered a successful call and returns zero.
+If an error occurred, (RDB_int)RDB_ERROR is returned.
+
+@par Errors:
+
+<dl>
+<dt>RDB_INVALID_TRANSACTION_ERROR
+<dd><var>txp</var> does not point to a running transaction.
+<dt>RDB_INVALID_ARGUMENT_ERROR
+<dd><var>exp</var> refers to an attribute which does not exist in the table.
+<dt>RDB_PREDICATE_VIOLATION_ERROR
+<dd>Deleting the tuples would result in a table which violates its
+predicate.
+<dt>RDB_OPERATOR_NOT_FOUND_ERROR
+<dd>The definition of the table specified by <var>tbp</var> refers to a non-existing operator.
+<dd>The expression specified by <var>exp</var> refers to a non-existing operator.
+<dt>RDB_NOT_SUPPORTED_ERROR
+<dd>RDB_delete is not supported for this type of table.
+</dl>
+
+The call may also fail for a @ref system-errors "system error",
+in which case the transaction may be implicitly rolled back.
+ */
 RDB_int
 RDB_delete(RDB_object *tbp, RDB_expression *condp, RDB_exec_context *ecp,
         RDB_transaction *txp)
@@ -1782,3 +2020,5 @@ RDB_delete(RDB_object *tbp, RDB_expression *condp, RDB_exec_context *ecp,
     del.condp = condp;
     return RDB_multi_assign(0, NULL, 0, NULL, 1, &del, 0, NULL, ecp, txp);
 }
+
+/*@}*/

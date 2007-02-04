@@ -14,6 +14,64 @@
 #include <string.h>
 #include <stdlib.h>
 
+/** @defgroup op Operator functions 
+ * @{
+ */
+
+/**
+ * RDB_create_ro_op creates a read-only operator with name <var>name</var>.
+The argument types are specified by <var>argc</var> and <var>argtv</var>.
+
+To execute the operator, Duro will execute the function specified by
+<var>sym</var> from the library specified by <var>libname</var>.
+
+The name of the library must be passed without the file extension.
+
+This function must have the following signature:
+
+@verbatim
+int
+<sym>(const char *name, int argc, RDB_object *argv[],
+          const void *iargp, size_t iarglen, RDB_exec_context *ecp, RDB_transaction *txp,
+          RDB_object *retvalp)
+@endverbatim
+
+When the function is executed, the name of the operator is passed through <var>name</var>
+and the arguments are passed through <var>argc</var> and <var>argv</var>.
+
+The function specified by <var>sym</var> must store the result at the
+location specified by <var>retvalp</var> and return RDB_OK.
+It can indicate an error condition by leaving an error in *<var>ecp</var>
+(see RDB_raise_err())
+and returning RDB_ERROR.
+
+If <var>iargp</var> is not NULL, it must point to a byte block
+of length <var>iarglen</var> which will be passed to the function
+specified by <var>sym</var>.
+This can be used to pass code to an interpreter function.
+
+Overloading operators is possible.
+
+Array-valued argument and return types are not supported.
+
+@returns
+
+RDB_OK on success, RDB_ERROR if an error occurred.
+
+@par Errors:
+
+<dl>
+<dt>RDB_INVALID_TRANSACTION_ERROR
+<dd><var>txp</var> does not point to a running transaction.
+<dt>RDB_ELEMENT_EXIST_ERROR
+<dd>A read-only operator with this name and signature does already exist.
+<dt>RDB_NOT_SUPPORTED_ERROR
+<dd>One of the argument types or the return type is an array type.
+</dl>
+
+The call may also fail for a @ref system-errors "system error",
+in which case the transaction may be implicitly rolled back.
+ */
 int
 RDB_create_ro_op(const char *name, int argc, RDB_type *argtv[], RDB_type *rtyp,
                  const char *libname, const char *symname,
@@ -121,6 +179,63 @@ cleanup:
     return ret;
 }
 
+/**
+ * RDB_create_update_op creates an update operator with name <var>name</var>.
+The argument types are specified by <var>argc</var> and <var>argtv</var>.
+
+The argument <var>upd</var> specifies which of the arguments are updated.
+If upd[<em>i</em>] is RDB_TRUE, this indicates that the <em>i</em>th argument
+is updated by the operator.
+
+To execute the operator, Duro will execute the function specified by
+<var>sym</var> from the library specified by <var>libname</var>.
+
+The name of the library must be passed without the file extension.
+
+This function must have the following signature:
+
+@verbatim
+int
+<sym>(const char *name, int argc, RDB_object *argv[],
+        RDB_bool updv[], const void *iargp, size_t iarglen,
+        RDB_exec_context *ecp, RDB_transaction *txp)
+@endverbatim
+
+When the function is executed, the name of the operator is passed through <var>name</var>
+and the arguments are passed through <var>argc</var> and <var>argv</var>.
+
+On success, the function specified by <var>sym</var> must return RDB_OK.
+It can indicate an error condition by leaving an error in *<var>ecp</var>
+(see RDB_raise_err() and related functions)
+and returning RDB_ERROR.
+
+If <var>iargp</var> is not NULL, it must point to a byte block
+of length <var>iarglen</var> which will be passed to the function
+specified by <var>sym</var>.
+This can be used to pass code to an interpreter function.
+
+Overloading operators is possible.
+
+Array-valued argument types are not supported.
+
+@returns
+
+RDB_OK on success, RDB_ERROR if an error occurred.
+
+@par Errors:
+
+<dl>
+<dt>RDB_INVALID_TRANSACTION_ERROR
+<dd><var>txp</var> does not point to a running transaction.
+<dt>RDB_ELEMENT_EXIST_ERROR
+<dd>An update operator with this name and signature does already exist.
+<dt>RDB_NOT_SUPPORTED_ERROR
+<dd>One of the argument types is an array type.
+</dl>
+
+The call may also fail for a @ref system-errors "system error",
+in which case the transaction may be implicitly rolled back.
+ */
 int
 RDB_create_update_op(const char *name, int argc, RDB_type *argtv[],
                   RDB_bool updv[], const char *libname, const char *symname,
@@ -155,10 +270,10 @@ RDB_create_update_op(const char *name, int argc, RDB_type *argtv[],
     ret = RDB_tuple_set_string(&tpl, "NAME", name, ecp);
     if (ret != RDB_OK)
         goto cleanup;
-    RDB_tuple_set_string(&tpl, "LIB", libname, ecp);
+    ret = RDB_tuple_set_string(&tpl, "LIB", libname, ecp);
     if (ret != RDB_OK)
         goto cleanup;
-    RDB_tuple_set_string(&tpl, "SYMBOL", symname, ecp);
+    ret = RDB_tuple_set_string(&tpl, "SYMBOL", symname, ecp);
     if (ret != RDB_OK)
         goto cleanup;
 
@@ -213,6 +328,384 @@ cleanup:
     RDB_destroy_obj(&tpl, ecp);
     return ret;
 }
+
+static RDB_bool
+obj_is_scalar(RDB_object *objp)
+{
+    return (RDB_bool) (objp->typ != NULL && RDB_type_is_scalar(objp->typ));
+}
+
+static RDB_bool
+obj_is_table(RDB_object *objp)
+{
+    /*
+     * Check type first, as it could be a user-defined type
+     * with a table representation
+     */
+    RDB_type *typ = RDB_obj_type(objp);
+    if (typ == NULL)
+        return (RDB_bool) (objp->kind == RDB_OB_TABLE);
+    return (RDB_bool) (typ->kind == RDB_TP_RELATION);
+}
+
+static RDB_type **
+valv_to_typev(int valc, RDB_object **valv, RDB_exec_context *ecp)
+{
+    int i;
+    RDB_type **typv = malloc(sizeof (RDB_type *) * valc);
+
+    if (typv == NULL)
+        return NULL;
+    for (i = 0; i < valc; i++) {
+        if (valv[i]->kind == RDB_OB_TUPLE)
+            typv[i] = _RDB_tuple_type(valv[i], ecp);
+        else
+            typv[i] = RDB_obj_type(valv[i]);
+    }
+    return typv;
+}
+
+/**
+ * RDB_call_ro_op invokes the read-only operator with the name <var>name</var>,
+passing the arguments in <var>argc</var> and <var>argv</var>.
+
+The result will be stored at the location pointed to by
+<var>retvalp</var>. 
+
+@returns
+
+RDB_OK on success, RDB_ERROR if an error occurred.
+
+@par Errors:
+
+<dl>
+<dt>RDB_INVALID_TRANSACTION_ERROR
+<dd><var>txp</var> does not point to a running transaction.
+<dt>RDB_OPERATOR_NOT_FOUND_ERROR
+<dd>A read-only operator that matches the name and argument types could not be
+found.
+<dt>RDB_TYPE_MISMATCH_ERROR
+<dd>A read-only operator that matches <var>name</var> could be found,
+but it does not match the argument types.
+</dl>
+
+If the user-supplied function which implements the function raises an
+error, this error is returned in *ecp.
+
+The call may also fail for a @ref system-errors "system error",
+in which case the transaction may be implicitly rolled back.
+ */
+int
+RDB_call_ro_op(const char *name, int argc, RDB_object *argv[],
+               RDB_exec_context *ecp, RDB_transaction *txp,
+               RDB_object *retvalp)
+{
+    RDB_ro_op_desc *op;
+    int ret;
+    RDB_type **argtv;
+    int i;
+
+    /*
+     * Handle nonscalar comparison
+     */
+    if (argc == 2 && !obj_is_scalar(argv[0]) && !obj_is_scalar(argv[1])) {
+        if (strcmp(name, "=") == 0)
+            return _RDB_obj_equals(name, 2, argv, NULL, 0, ecp, txp, retvalp);
+        if (strcmp(name, "<>") == 0) {
+            ret = _RDB_obj_equals(name, 2, argv, NULL, 0, ecp, txp, retvalp);
+            if (ret != RDB_OK)
+                return ret;
+            retvalp->var.bool_val = (RDB_bool) !retvalp->var.bool_val;
+            return RDB_OK;
+        }
+    }
+
+    /*
+     * Handle IF-THEN-ELSE
+     */
+    if (strcmp(name, "IF") == 0 && argc == 3) {
+        if (argv[0]->typ != &RDB_BOOLEAN) {
+            RDB_raise_type_mismatch("IF argument must be BOOLEAN", ecp);
+            return RDB_ERROR;
+        }
+        if (argv[0]->var.bool_val) {
+            ret = RDB_copy_obj(retvalp, argv[1], ecp);
+        } else {
+            ret = RDB_copy_obj(retvalp, argv[2], ecp);
+        }
+        return ret;
+    }
+
+    /*
+     * Handle built-in operators with relational arguments
+     */
+    if (argc == 1 && obj_is_table(argv[0]))  {
+        if (strcmp(name, "IS_EMPTY") == 0) {
+            RDB_bool res;
+
+            if (RDB_table_is_empty(argv[0], ecp, txp, &res) != RDB_OK)
+                return RDB_ERROR;
+
+            RDB_bool_to_obj(retvalp, res);
+            return RDB_OK;
+        }
+        if (strcmp(name, "COUNT") == 0) {
+            ret = RDB_cardinality(argv[0], ecp, txp);
+            if (ret < 0)
+                return RDB_ERROR;
+
+            RDB_int_to_obj(retvalp, ret);
+            return RDB_OK;
+        }
+    } else if (argc == 2 && obj_is_table(argv[1])) {
+        if (strcmp(name, "IN") == 0) {
+            RDB_bool b;
+
+            ret = RDB_table_contains(argv[1], argv[0], ecp, txp, &b);
+            if (ret != RDB_OK)
+                return RDB_ERROR;
+
+            RDB_bool_to_obj(retvalp, b);
+            return RDB_OK;
+        }
+        if (strcmp(name, "SUBSET_OF") == 0) {
+            RDB_bool res;
+
+            ret = RDB_subset(argv[0], argv[1], ecp, txp, &res);
+            if (ret != RDB_OK)
+                return RDB_ERROR;
+            RDB_bool_to_obj(retvalp, res);
+            return RDB_OK;
+        }
+    }
+    if (argc >= 1 && obj_is_table(argv[0]) && strcmp(name, "TO_TUPLE") == 0
+            && argc == 1) {
+        return RDB_extract_tuple(argv[0], ecp, txp, retvalp);
+    }
+
+    argtv = valv_to_typev(argc, argv, ecp);
+    if (argtv == NULL) {
+        RDB_raise_no_memory(ecp);
+        return RDB_ERROR;
+    }
+
+    ret = _RDB_get_ro_op(name, argc, argtv, ecp, txp, &op);
+    for (i = 0; i < argc; i++) {
+        if (argv[i]->kind == RDB_OB_TUPLE)
+            RDB_drop_type(argtv[i], ecp, NULL);
+    }
+
+    free(argtv);
+
+    if (ret != RDB_OK) {
+        goto error;
+    }
+
+    /* Set return type to make it available to the function */
+    retvalp->typ = op->rtyp;
+
+    ret = (*op->funcp)(name, argc, argv, op->iarg.var.bin.datap,
+            op->iarg.var.bin.len, ecp, txp, retvalp);
+    if (ret != RDB_OK)
+        goto error;
+
+    /* Check type constraint if the operator is a selector */
+    if (retvalp->typ != NULL &&_RDB_get_possrep(retvalp->typ, name) != NULL) {
+        ret = _RDB_check_type_constraint(retvalp, ecp, txp);
+        if (ret != RDB_OK) {
+            /* Destroy illegal value */
+            RDB_destroy_obj(retvalp, ecp);
+            RDB_init_obj(retvalp);
+            return RDB_ERROR;
+        }
+    }
+
+    return RDB_OK;
+
+error:
+    return RDB_ERROR;
+}
+
+/**
+ * RDB_call_update_op invokes the update operator with the name <var>name</var>,
+passing the arguments in <var>argc</var> and <var>argv</var>.
+
+@returns
+
+RDB_OK on success, RDB_ERROR if an error occurred.
+
+@par Errors:
+
+<dl>
+<dt>RDB_INVALID_TRANSACTION_ERROR
+<dd><var>txp</var> does not point to a running transaction.
+<dt>RDB_OPERATOR_NOT_FOUND_ERROR
+<dd>An update operator that matches the name and arguments could not be
+found.
+</dl>
+
+If the user-supplied function which implements the operator raises an
+error, this error is returned in *ecp.
+
+The call may also fail for a @ref system-errors "system error",
+in which case the transaction may be implicitly rolled back.
+ */
+int
+RDB_call_update_op(const char *name, int argc, RDB_object *argv[],
+                   RDB_exec_context *ecp, RDB_transaction *txp)
+{
+    RDB_upd_op_data *op;
+    RDB_type **argtv;
+    int i;
+
+    if (!RDB_tx_is_running(txp)) {
+        RDB_raise_invalid_tx(ecp);
+        return RDB_ERROR;
+    }
+
+    argtv = valv_to_typev(argc, argv, ecp);
+    if (argtv == NULL) {
+        RDB_raise_no_memory(ecp);
+        return RDB_ERROR;
+    }
+    op = _RDB_get_upd_op(name, argc, argtv, ecp, txp);
+    for (i = 0; i < argc; i++) {
+        if (argv[i]->kind == RDB_OB_TUPLE)
+            RDB_drop_type(argtv[i], ecp, NULL);
+    }
+    free(argtv);
+    if (op == NULL) {
+        if (RDB_obj_type(RDB_get_err(ecp)) == &RDB_OPERATOR_NOT_FOUND_ERROR) {
+            RDB_clear_err(ecp);
+            RDB_raise_operator_not_found(name, ecp);
+        }
+        return RDB_ERROR;
+    }
+
+    return (*op->funcp)(name, argc, argv, op->updv, op->iarg.var.bin.datap,
+            op->iarg.var.bin.len, ecp, txp);
+}
+
+/**
+ * RDB_drop_op deletes the operator with the name <var>name</var>
+from the database. This affects all overloaded versions.
+
+@returns
+
+RDB_OK on success, RDB_ERROR if an error occurred.
+
+@par Errors:
+
+<dl>
+<dt>RDB_INVALID_TRANSACTION_ERROR
+<dd><var>txp</var> does not point to a running transaction.
+<dt>RDB_NOT_FOUND_ERROR
+<dd>An operator with the specified name could not be found.
+</dl>
+
+The call may also fail for a @ref system-errors "system error",
+in which case the transaction may be implicitly rolled back.
+ */
+int
+RDB_drop_op(const char *name, RDB_exec_context *ecp, RDB_transaction *txp)
+{
+    RDB_expression *exp, *argp;
+    RDB_object *vtbp;
+    int ret;
+    RDB_bool isempty;
+
+    if (!RDB_tx_is_running(txp)) {
+        RDB_raise_invalid_tx(ecp);
+        return RDB_ERROR;
+    }
+
+    /*
+     * Check if it's a read-only operator
+     */
+    exp = RDB_ro_op("WHERE", 2, ecp);
+    if (exp == NULL)
+        return RDB_ERROR;
+    argp = RDB_table_ref(txp->dbp->dbrootp->ro_ops_tbp, ecp);
+    if (argp == NULL) {
+        RDB_drop_expr(exp, ecp);
+        return RDB_ERROR;
+    }
+    RDB_add_arg(exp, argp);
+    argp = RDB_eq(RDB_var_ref("NAME", ecp), RDB_string_to_expr(name, ecp),
+            ecp);
+    if (argp == NULL) {
+        RDB_drop_expr(exp, ecp);
+        return RDB_ERROR;
+    }
+    RDB_add_arg(exp, argp);
+    
+    vtbp = RDB_expr_to_vtable(exp, ecp, txp);
+    if (vtbp == NULL) {
+        RDB_drop_expr(exp, ecp);
+        return RDB_ERROR;
+    }
+    ret = RDB_table_is_empty(vtbp, ecp, txp, &isempty);
+    if (ret != RDB_OK) {
+        RDB_drop_table(vtbp, ecp, txp);
+        return ret;
+    }
+    ret = RDB_drop_table(vtbp, ecp, txp);
+    if (ret != RDB_OK) {
+        return ret;
+    }
+
+    if (isempty) {
+        /* It's an update operator */
+
+        /* Delete all versions of update operator from operator map */
+        if (RDB_del_ops(&txp->dbp->dbrootp->upd_opmap, name, ecp) != RDB_OK)
+            return RDB_ERROR;
+
+        /* Delete all versions of update operator from the database */
+        exp = RDB_eq(RDB_var_ref("NAME", ecp), RDB_string_to_expr(name, ecp), ecp);
+        if (exp == NULL) {
+            RDB_raise_no_memory(ecp);
+            return RDB_ERROR;
+        }
+        ret = RDB_delete(txp->dbp->dbrootp->upd_ops_tbp, exp, ecp, txp);
+        RDB_drop_expr(exp, ecp);
+        if (ret == RDB_ERROR) {
+            return RDB_ERROR;
+        }        
+    } else {
+        /* It's a read-only operator */
+        RDB_ro_op_desc *oldop;
+        RDB_ro_op_desc *op = NULL;
+
+        /* Delete all versions of readonly operator from hashmap */
+        oldop = RDB_hashmap_get(&txp->dbp->dbrootp->ro_opmap, name);
+        if (oldop != NULL)
+            _RDB_free_ro_ops(oldop, ecp);
+        ret = RDB_hashmap_put(&txp->dbp->dbrootp->ro_opmap, name, op);
+        if (ret != RDB_OK) {
+            _RDB_handle_errcode(ret, ecp, txp);
+            return RDB_ERROR;
+        }
+
+        /* Delete all versions of update operator from the database */
+        exp = RDB_eq(RDB_var_ref("NAME", ecp), RDB_string_to_expr(name, ecp),
+               ecp);
+        if (exp == NULL) {
+            RDB_raise_no_memory(ecp);
+            return RDB_ERROR;
+        }
+        ret = RDB_delete(txp->dbp->dbrootp->ro_ops_tbp, exp, ecp, txp);
+        if (ret == RDB_ERROR) {
+            RDB_drop_expr(exp, ecp);
+            _RDB_handle_errcode(ret, ecp, txp);
+            return RDB_ERROR;
+        }
+    }
+
+    return RDB_OK;
+}
+
+/*@}*/
 
 static void
 free_ro_op(RDB_ro_op_desc *op, RDB_exec_context *ecp)
@@ -456,23 +949,6 @@ get_ro_op(RDB_hashmap *opmap, const char *name,
     return NULL;
 }
 
-static RDB_type **
-valv_to_typev(int valc, RDB_object **valv, RDB_exec_context *ecp)
-{
-    int i;
-    RDB_type **typv = malloc(sizeof (RDB_type *) * valc);
-
-    if (typv == NULL)
-        return NULL;
-    for (i = 0; i < valc; i++) {
-        if (valv[i]->kind == RDB_OB_TUPLE)
-            typv[i] = _RDB_tuple_type(valv[i], ecp);
-        else
-            typv[i] = RDB_obj_type(valv[i]);
-    }
-    return typv;
-}
-
 int
 _RDB_get_ro_op(const char *name, int argc, RDB_type *argtv[],
                RDB_exec_context *ecp, RDB_transaction *txp,
@@ -654,156 +1130,6 @@ _RDB_check_type_constraint(RDB_object *valp, RDB_exec_context *ecp,
     return RDB_OK;
 }
 
-static RDB_bool
-obj_is_table(RDB_object *objp)
-{
-    /*
-     * Check type first, as it could be a user-defined type
-     * with a table representation
-     */
-    RDB_type *typ = RDB_obj_type(objp);
-    if (typ == NULL)
-        return (RDB_bool) (objp->kind == RDB_OB_TABLE);
-    return (RDB_bool) (typ->kind == RDB_TP_RELATION);
-}
-
-static RDB_bool
-obj_is_scalar(RDB_object *objp)
-{
-    return (RDB_bool) (objp->typ != NULL && RDB_type_is_scalar(objp->typ));
-}
-
-int
-RDB_call_ro_op(const char *name, int argc, RDB_object *argv[],
-               RDB_exec_context *ecp, RDB_transaction *txp,
-               RDB_object *retvalp)
-{
-    RDB_ro_op_desc *op;
-    int ret;
-    RDB_type **argtv;
-    int i;
-
-    /*
-     * Handle nonscalar comparison
-     */
-    if (argc == 2 && !obj_is_scalar(argv[0]) && !obj_is_scalar(argv[1])) {
-        if (strcmp(name, "=") == 0)
-            return _RDB_obj_equals(name, 2, argv, NULL, 0, ecp, txp, retvalp);
-        if (strcmp(name, "<>") == 0) {
-            ret = _RDB_obj_equals(name, 2, argv, NULL, 0, ecp, txp, retvalp);
-            if (ret != RDB_OK)
-                return ret;
-            retvalp->var.bool_val = (RDB_bool) !retvalp->var.bool_val;
-            return RDB_OK;
-        }
-    }
-
-    /*
-     * Handle IF-THEN-ELSE
-     */
-    if (strcmp(name, "IF") == 0 && argc == 3) {
-        if (argv[0]->typ != &RDB_BOOLEAN) {
-            RDB_raise_type_mismatch("IF argument must be BOOLEAN", ecp);
-            return RDB_ERROR;
-        }
-        if (argv[0]->var.bool_val) {
-            ret = RDB_copy_obj(retvalp, argv[1], ecp);
-        } else {
-            ret = RDB_copy_obj(retvalp, argv[2], ecp);
-        }
-        return ret;
-    }
-
-    /*
-     * Handle built-in operators with relational arguments
-     */
-    if (argc == 1 && obj_is_table(argv[0]))  {
-        if (strcmp(name, "IS_EMPTY") == 0) {
-            RDB_bool res;
-
-            if (RDB_table_is_empty(argv[0], ecp, txp, &res) != RDB_OK)
-                return RDB_ERROR;
-
-            RDB_bool_to_obj(retvalp, res);
-            return RDB_OK;
-        }
-        if (strcmp(name, "COUNT") == 0) {
-            ret = RDB_cardinality(argv[0], ecp, txp);
-            if (ret < 0)
-                return RDB_ERROR;
-
-            RDB_int_to_obj(retvalp, ret);
-            return RDB_OK;
-        }
-    } else if (argc == 2 && obj_is_table(argv[1])) {
-        if (strcmp(name, "IN") == 0) {
-            RDB_bool b;
-
-            ret = RDB_table_contains(argv[1], argv[0], ecp, txp, &b);
-            if (ret != RDB_OK)
-                return RDB_ERROR;
-
-            RDB_bool_to_obj(retvalp, b);
-            return RDB_OK;
-        }
-        if (strcmp(name, "SUBSET_OF") == 0) {
-            RDB_bool res;
-
-            ret = RDB_subset(argv[0], argv[1], ecp, txp, &res);
-            if (ret != RDB_OK)
-                return RDB_ERROR;
-            RDB_bool_to_obj(retvalp, res);
-            return RDB_OK;
-        }
-    }
-    if (argc >= 1 && obj_is_table(argv[0]) && strcmp(name, "TO_TUPLE") == 0
-            && argc == 1) {
-        return RDB_extract_tuple(argv[0], ecp, txp, retvalp);
-    }
-
-    argtv = valv_to_typev(argc, argv, ecp);
-    if (argtv == NULL) {
-        RDB_raise_no_memory(ecp);
-        return RDB_ERROR;
-    }
-
-    ret = _RDB_get_ro_op(name, argc, argtv, ecp, txp, &op);
-    for (i = 0; i < argc; i++) {
-        if (argv[i]->kind == RDB_OB_TUPLE)
-            RDB_drop_type(argtv[i], ecp, NULL);
-    }
-
-    free(argtv);
-
-    if (ret != RDB_OK) {
-        goto error;
-    }
-
-    /* Set return type to make it available to the function */
-    retvalp->typ = op->rtyp;
-
-    ret = (*op->funcp)(name, argc, argv, op->iarg.var.bin.datap,
-            op->iarg.var.bin.len, ecp, txp, retvalp);
-    if (ret != RDB_OK)
-        goto error;
-
-    /* Check type constraint if the operator is a selector */
-    if (retvalp->typ != NULL &&_RDB_get_possrep(retvalp->typ, name) != NULL) {
-        ret = _RDB_check_type_constraint(retvalp, ecp, txp);
-        if (ret != RDB_OK) {
-            /* Destroy illegal value */
-            RDB_destroy_obj(retvalp, ecp);
-            RDB_init_obj(retvalp);
-            return RDB_ERROR;
-        }
-    }
-
-    return RDB_OK;
-
-error:
-    return RDB_ERROR;
-}
-
 static void
 free_upd_op_data(RDB_upd_op_data *op, RDB_exec_context *ecp)
 {
@@ -836,141 +1162,6 @@ _RDB_get_upd_op(const char *name, int argc, RDB_type *argtv[],
         }
     }
     return op;
-}
-
-int
-RDB_call_update_op(const char *name, int argc, RDB_object *argv[],
-                   RDB_exec_context *ecp, RDB_transaction *txp)
-{
-    RDB_upd_op_data *op;
-    RDB_type **argtv;
-    int i;
-
-    if (!RDB_tx_is_running(txp)) {
-        RDB_raise_invalid_tx(ecp);
-        return RDB_ERROR;
-    }
-
-    argtv = valv_to_typev(argc, argv, ecp);
-    if (argtv == NULL) {
-        RDB_raise_no_memory(ecp);
-        return RDB_ERROR;
-    }
-    op = _RDB_get_upd_op(name, argc, argtv, ecp, txp);
-    for (i = 0; i < argc; i++) {
-        if (argv[i]->kind == RDB_OB_TUPLE)
-            RDB_drop_type(argtv[i], ecp, NULL);
-    }
-    free(argtv);
-    if (op == NULL) {
-        if (RDB_obj_type(RDB_get_err(ecp)) == &RDB_OPERATOR_NOT_FOUND_ERROR) {
-            RDB_clear_err(ecp);
-            RDB_raise_operator_not_found(name, ecp);
-        }
-        return RDB_ERROR;
-    }
-
-    return (*op->funcp)(name, argc, argv, op->updv, op->iarg.var.bin.datap,
-            op->iarg.var.bin.len, ecp, txp);
-}
-
-int
-RDB_drop_op(const char *name, RDB_exec_context *ecp, RDB_transaction *txp)
-{
-    RDB_expression *exp, *argp;
-    RDB_object *vtbp;
-    int ret;
-    RDB_bool isempty;
-
-    if (!RDB_tx_is_running(txp)) {
-        RDB_raise_invalid_tx(ecp);
-        return RDB_ERROR;
-    }
-
-    /*
-     * Check if it's a read-only operator
-     */
-    exp = RDB_ro_op("WHERE", 2, ecp);
-    if (exp == NULL)
-        return RDB_ERROR;
-    argp = RDB_table_ref(txp->dbp->dbrootp->ro_ops_tbp, ecp);
-    if (argp == NULL) {
-        RDB_drop_expr(exp, ecp);
-        return RDB_ERROR;
-    }
-    RDB_add_arg(exp, argp);
-    argp = RDB_eq(RDB_var_ref("NAME", ecp), RDB_string_to_expr(name, ecp),
-            ecp);
-    if (argp == NULL) {
-        RDB_drop_expr(exp, ecp);
-        return RDB_ERROR;
-    }
-    RDB_add_arg(exp, argp);
-    
-    vtbp = RDB_expr_to_vtable(exp, ecp, txp);
-    if (vtbp == NULL) {
-    	RDB_drop_expr(exp, ecp);
-        return RDB_ERROR;
-    }
-    ret = RDB_table_is_empty(vtbp, ecp, txp, &isempty);
-    if (ret != RDB_OK) {
-        RDB_drop_table(vtbp, ecp, txp);
-        return ret;
-    }
-    ret = RDB_drop_table(vtbp, ecp, txp);
-    if (ret != RDB_OK) {
-        return ret;
-    }
-
-    if (isempty) {
-        /* It's an update operator */
-
-        /* Delete all versions of update operator from operator map */
-        if (RDB_del_ops(&txp->dbp->dbrootp->upd_opmap, name, ecp) != RDB_OK)
-            return RDB_ERROR;
-
-        /* Delete all versions of update operator from the database */
-        exp = RDB_eq(RDB_var_ref("NAME", ecp), RDB_string_to_expr(name, ecp), ecp);
-        if (exp == NULL) {
-            RDB_raise_no_memory(ecp);
-            return RDB_ERROR;
-        }
-        ret = RDB_delete(txp->dbp->dbrootp->upd_ops_tbp, exp, ecp, txp);
-        RDB_drop_expr(exp, ecp);
-        if (ret == RDB_ERROR) {
-            return RDB_ERROR;
-        }        
-    } else {
-        /* It's a read-only operator */
-        RDB_ro_op_desc *oldop;
-        RDB_ro_op_desc *op = NULL;
-
-        /* Delete all versions of readonly operator from hashmap */
-        oldop = RDB_hashmap_get(&txp->dbp->dbrootp->ro_opmap, name);
-        if (oldop != NULL)
-            _RDB_free_ro_ops(oldop, ecp);
-        ret = RDB_hashmap_put(&txp->dbp->dbrootp->ro_opmap, name, op);
-        if (ret != RDB_OK) {
-            _RDB_handle_errcode(ret, ecp, txp);
-            return RDB_ERROR;
-        }
-
-        /* Delete all versions of update operator from the database */
-        exp = RDB_eq(RDB_var_ref("NAME", ecp), RDB_string_to_expr(name, ecp),
-               ecp);
-        if (exp == NULL) {
-            RDB_raise_no_memory(ecp);
-            return RDB_ERROR;
-        }
-        ret = RDB_delete(txp->dbp->dbrootp->ro_ops_tbp, exp, ecp, txp);
-        if (ret == RDB_ERROR) {
-            RDB_drop_expr(exp, ecp);
-            _RDB_handle_errcode(ret, ecp, txp);
-            return RDB_ERROR;
-        }
-    }
-
-    return RDB_OK;
 }
 
 int

@@ -12,10 +12,639 @@
 
 RDB_hashmap _RDB_builtin_ro_op_map;
 
-/*
- * Built-in operators
- */
+/** @page builtin-ops Built-in operators
+@section scalar-ops Built-in scalar operators
 
+OPERATOR = (ANY, ANY) RETURNS BOOLEAN;
+
+The equality operator. Defined for every type. The arguments must be of the same type.
+
+@returns
+
+TRUE if the two arguments are equal, FALSE otherwise.  
+
+OPERATOR <> (<em>ANY</em>, <em>ANY</em>) RETURNS BOOLEAN;
+
+<h4>Description</h4>
+
+The inequality operator. Defined for every type.
+The arguments must be of the same type.
+
+<h4>Return value</h4>
+
+TRUE if the two arguments are not equal, FALSE otherwise.
+
+<hr>
+
+<h3 id="op_lt">OPERATOR &lt;</h3>
+
+OPERATOR &lt; (INTEGER, INTEGER) RETURNS BOOLEAN;
+
+OPERATOR &lt; (FLOAT, FLOAT) RETURNS BOOLEAN;
+
+OPERATOR &lt; (DOUBLE, DOUBLE) RETURNS BOOLEAN;
+
+OPERATOR &lt; (STRING, STRING) RETURNS BOOLEAN;
+
+<h4>Description</h4>
+
+The lower-than operator.
+
+<h4>Return value</h4>
+
+TRUE if the first argument is lower than the first.
+If the operands are strings, the strings will be compared using strcoll().
+
+<hr>
+
+<h3 id="op_lte">OPERATOR &lt;=</h3>
+
+OPERATOR &lt;= (INTEGER, INTEGER) RETURNS BOOLEAN;
+
+OPERATOR &lt;= (FLOAT, FLOAT) RETURNS BOOLEAN;
+
+OPERATOR &lt;= (DOUBLE, DOUBLE) RETURNS BOOLEAN;
+
+OPERATOR &lt;= (STRING, STRING) RETURNS BOOLEAN;
+
+<h4>Description</h4>
+
+The lower-than-or-equal operator.
+
+<h4>Return value</h4>
+
+TRUE if the first argument is lower than or equal to the second.
+If the operands are strings, the strings will be compared using strcoll().
+
+<hr>
+
+<h3 id="op_gt">OPERATOR &gt;</h3>
+
+OPERATOR &gt; (INTEGER, INTEGER) RETURNS BOOLEAN;
+
+OPERATOR &gt; (FLOAT, FLOAT) RETURNS BOOLEAN;
+
+OPERATOR &gt; (DOUBLE, DOUBLE) RETURNS BOOLEAN;
+
+OPERATOR &gt; (STRING, STRING) RETURNS BOOLEAN;
+
+<h4>Description</h4>
+
+The greater-than operator.
+
+<h4>Return value</h4>
+
+TRUE if the first argument is greater than the first.
+If the operands are strings, the strings will be compared using strcoll().
+
+<hr>
+
+<h3 id="op_gte">OPERATOR &gt;=</h3>
+
+OPERATOR &gt;= (INTEGER, INTEGER) RETURNS BOOLEAN;
+
+OPERATOR &gt;= (FLOAT, FLOAT) RETURNS BOOLEAN;
+
+OPERATOR &gt;= (DOUBLE, DOUBLE) RETURNS BOOLEAN;
+
+OPERATOR &gt;= (STRING, STRING) RETURNS BOOLEAN;
+
+<h4>Description</h4>
+
+The greater-than-or-equal operator.
+
+<h4>Return value</h4>
+
+TRUE if the first argument is greater than or equal to the second.
+If the operands are strings, the strings will be compared using strcoll().
+
+<hr>
+
+<h3 id="op_plus">OPERATOR +</h3>
+
+OPERATOR + (INTEGER, INTEGER) RETURNS INTEGER;
+
+OPERATOR + (FLOAT, FLOAT) RETURNS FLOAT;
+
+OPERATOR + (DOUBLE, DOUBLE) RETURNS DOUBLE;
+
+<h4>Description</h4>
+
+The addition operator.
+
+<h4>Return value</h4>
+
+The sum of the two operands.
+
+<hr>
+
+<h3 id="op_uminus">OPERATOR - (unary)</h3>
+
+OPERATOR - (INTEGER) RETURNS INTEGER;
+
+OPERATOR - (FLOAT) RETURNS FLOAT;
+
+OPERATOR - (DOUBLE) RETURNS DOUBLE;
+
+<h4>Description</h4>
+
+The unary minus operator.
+
+<h4>Return value</h4>
+
+The operand, sign inverted.
+
+<hr>
+
+<h3 id="op_bminus">OPERATOR - (binary)</h3>
+
+OPERATOR - (INTEGER, INTEGER) RETURNS INTEGER;
+
+OPERATOR - (FLOAT, FLOAT) RETURNS FLOAT;
+
+OPERATOR - (DOUBLE, DOUBLE) RETURNS DOUBLE;
+
+<h4>Description</h4>
+
+The subtraction operator.
+
+<h4>Return value</h4>
+
+The difference of the two operands.
+
+<hr>
+
+<h3 id="op_times">OPERATOR *</h3>
+
+OPERATOR * (INTEGER, INTEGER) RETURNS INTEGER;;
+
+OPERATOR * (FLOAT, FLOAT) RETURNS FLOAT;
+
+OPERATOR * (DOUBLE, DOUBLE) RETURNS DOUBLE;
+
+<h4>Description</h4>
+
+The multiplication operator.
+
+<h4>Return value</h4>
+
+The product of the two operands.
+
+<hr>
+
+<h3 id="op_div">OPERATOR /</h3>
+
+OPERATOR / (INTEGER, INTEGER) RETURNS INTEGER;
+
+OPERATOR / (FLOAT, FLOAT) RETURNS FLOAT;
+
+OPERATOR / (DOUBLE, DOUBLE) RETURNS DOUBLE;
+
+<h4>Description</h4>
+
+The division operator.
+
+<h4>Return value</h4>
+
+The quotient of the operators.
+
+<h4>Errors</h4>
+
+<dl>
+<dt>INVALID_ARGUMENT_ERROR
+<dd>The divisor is zero.
+</dl>
+
+<hr>
+
+<h3 id="op_and">OPERATOR AND</h3>
+
+OPERATOR AND (BOOLEAN, BOOLEAN) RETURNS BOOLEAN;
+
+<h4>Description</h4>
+
+The boolean AND operator.
+
+<hr>
+
+<h3 id="op_or">OPERATOR OR</h3>
+
+OPERATOR OR (BOOLEAN, BOOLEAN) RETURNS BOOLEAN;
+
+<h4>Description</h4>
+
+The boolean OR operator.
+
+<hr>
+
+<h3 id="op_not">OPERATOR NOT</h3>
+
+OPERATOR NOT (BOOLEAN) RETURNS BOOLEAN;
+
+<h4>Description</h4>
+
+The boolean NOT operator.
+
+<hr>
+
+<h3 id="op_concat">OPERATOR ||</h3>
+
+OPERATOR || (STRING, STRING) RETURNS STRING;
+
+<h4>Description</h4>
+
+The string concatenation operator.
+
+<h4>Return value</h4>
+
+The result of the concatenation of the operands.
+
+<hr>
+
+<h3 id="op_length">OPERATOR LENGTH</h3>
+
+OPERATOR LENGTH (STRING) RETURNS INTEGER;
+
+<h4>Description</h4>
+
+The string length operator.
+
+<h4>Return value</h4>
+
+The length of the operand.
+
+<hr>
+
+<h3 id="op_substring">OPERATOR SUBSTRING</h3>
+
+OPERATOR SUBSTRING(S STRING, START INTEGER, LENGTH INTEGER) RETURNS
+STRING;
+
+<h4>Description</h4>
+
+The substring operator.
+
+<h4>Return value</h4>
+
+The substring of S with length LENGTH starting at position
+START.
+
+<h4>Errors</h4>
+
+<dl>
+<dt>INVALID_ARGUMENT_ERROR
+<dd>START is negative, or START + LENGTH is greater than LENGTH(S).
+</dl>
+
+<hr>
+
+<h3 id="op_matches">OPERATOR MATCHES</h3>
+
+OPERATOR MATCHES (S STRING, PATTERN STRING) RETURNS BOOLEAN;
+
+<h4>Description</h4>
+
+The regular expression matching operator.
+
+<h4>Return value</h4>
+
+RDB_TRUE if S matches PATTERN, RDB_FALSE otherwise.
+
+<hr>
+
+<h3 id="op_integer">OPERATOR INTEGER</h3>
+
+OPERATOR INTEGER (DOUBLE) RETURNS INTEGER;
+
+OPERATOR INTEGER (FLOAT) RETURNS INTEGER;
+
+OPERATOR INTEGER (STRING) RETURNS INTEGER;
+
+<h4>Description</h4>
+
+Converts the operand to INTEGER.
+
+<h4>Return value</h4>
+
+The operand, converted to INTEGER.
+
+<hr>
+
+<h3 id="op_float">OPERATOR FLOAT</h3>
+
+OPERATOR FLOAT (INTEGER) RETURNS FLOAT;
+
+OPERATOR FLOAT (DOUBLE) RETURNS FLOAT;
+
+OPERATOR FLOAT (STRING) RETURNS FLOAT;
+
+<h4>Description</h4>
+
+Converts the operand to FLOAT.
+
+<h4>Return value</h4>
+
+The operand, converted to FLOAT.
+
+<hr>
+
+<h3 id="op_double">OPERATOR DOUBLE</h3>
+
+OPERATOR DOUBLE (INTEGER) RETURNS DOUBLE;
+
+OPERATOR DOUBLE (FLOAT) RETURNS DOUBLE;
+
+OPERATOR DOUBLE (STRING) RETURNS DOUBLE;
+
+<h4>Description</h4>
+
+Converts the operand to DOUBLE.
+
+<h4>Return value</h4>
+
+The operand, converted to DOUBLE.
+
+<hr>
+
+<h3 id="op_string">OPERATOR STRING</h3>
+
+OPERATOR STRING (INTEGER) RETURNS STRING;
+
+OPERATOR STRING (FLOAT) RETURNS STRING;
+
+OPERATOR STRING (DOUBLE) RETURNS STRING;
+
+<h4>Description</h4>
+
+Converts the operand to a string.
+
+<h4>Return value</h4>
+
+The operand, converted to STRING.
+
+<hr>
+
+<h3 id="op_is_empty">OPERATOR IS_EMPTY</h3>
+
+OPERATOR IS_EMPTY (<em>RELATION</em>) RETURNS BOOLEAN;
+
+<h4>Description</h4>
+
+Checks if a table is empty.
+
+<h4>Return value</h4>
+
+RDB_TRUE if the relation-valued operand is empty, RDB_FALSE
+otherwise.
+
+<hr>
+
+<h3 id="op_count">OPERATOR COUNT</h3>
+
+OPERATOR COUNT (<em>RELATION</em>) RETURNS INTEGER;
+
+<h4>Description</h4>
+
+Counts the tuples in a table.
+
+<h4>Return value</h4>
+
+The cardinality of the relation-valued operand.
+
+<hr>
+
+<h3 id="op_in">OPERATOR IN</h3>
+
+OPERATOR IN (T <em>TUPLE</em>, R <em>RELATION</em>) RETURNS BOOLEAN;
+
+<h4>Description</h4>
+
+Checks if a table contains a given tuple.
+
+<h4>Return value</h4>
+
+RDB_TRUE if <var>R</var> contains <var>T</var>, RDB_FALSE otherwise.
+
+<hr>
+
+<h3 id="op_subset_of">OPERATOR SUBSET_OF</h3>
+
+OPERATOR SUBSET_OF (R1 <em>RELATION</em>, R2 <em>RELATION</em>) RETURNS BOOLEAN;
+
+<h4>Description</h4>
+
+Checks if a table is a subset of another table.
+
+<h4>Return value</h4>
+
+RDB_TRUE if the <var>R1</var> is a subset of <var>R2</var>, RDB_FALSE otherwise.
+
+<hr>
+
+<h3 id="op_any">OPERATOR ANY</h3>
+
+OPERATOR ANY(R <em>RELATION</em>, ATTR BOOLEAN) RETURNS BOOLEAN;
+
+<h4>Description</h4>
+
+The ANY aggregate operator.
+For the semantics, see RDB_any().
+
+<hr>
+
+<h3 id="op_all">OPERATOR ALL</h3>
+
+OPERATOR ALL(R <em>RELATION</em>, ATTR BOOLEAN) RETURNS BOOLEAN;
+
+<h4>Description</h4>
+
+The ALL aggregate operator.
+For the semantics, see RDB_all().
+
+<hr>
+
+<h3 id="op_avg">OPERATOR AVG</h3>
+
+OPERATOR AVG(R <em>RELATION</em>, ATTR INTEGER) RETURNS DOUBLE;
+
+OPERATOR AVG(R <em>RELATION</em>, ATTR FLOAT) RETURNS FLOAT;
+
+OPERATOR AVG(R <em>RELATION</em>, ATTR DOUBLE) RETURNS DOUBLE;
+
+<h4>Description</h4>
+
+The AVG aggregate operator.
+For the semantics, see RDB_avg().
+
+<hr>
+
+<h3 id="op_max">OPERATOR MAX</h3>
+
+OPERATOR MAX(R <em>RELATION</em>, ATTR INTEGER) RETURNS INTEGER;
+
+OPERATOR MAX(R <em>RELATION</em>, ATTR FLOAT) RETURNS FLOAT;
+
+OPERATOR MAX(R <em>RELATION</em>, ATTR DOUBLE) RETURNS DOUBLE;
+
+<h4>Description</h4>
+
+The MAX aggregate operator.
+For the semantics, see RDB_max().
+
+<hr>
+
+<h3 id="op_min">OPERATOR MIN</h3>
+
+OPERATOR MIN(R <em>RELATION</em>, ATTR INTEGER) RETURNS INTEGER;
+
+OPERATOR MIN(R <em>RELATION</em>, ATTR FLOAT) RETURNS FLOAT;
+
+OPERATOR MIN(R <em>RELATION</em>, ATTR DOUBLE) RETURNS DOUBLE;
+
+<h4>Description</h4>
+
+The MIN aggregate operator.
+For the semantics, see RDB_min().
+
+<hr>
+
+<h3 id="op_sum">OPERATOR SUM</h3>
+
+OPERATOR SUM(R <em>RELATION</em>, ATTR INTEGER) RETURNS INTEGER;
+
+OPERATOR SUM(R <em>RELATION</em>, ATTR FLOAT) RETURNS FLOAT;
+
+OPERATOR SUM(R <em>RELATION</em>, ATTR DOUBLE) RETURNS DOUBLE;
+
+<h4>Description</h4>
+
+The SUM aggregate operator.
+For the semantics, see RDB_sum().
+
+<hr>
+
+<h3 id="op_if">OPERATOR IF</h3>
+
+OPERATOR IF (B BOOLEAN, V1 <em>ANY</em>, V2 <em>ANY</em>) RETURNS <em>ANY</em>;
+
+<h4>Description</h4>
+
+The IF-THEN-ELSE operator.
+
+<h4>Return value</h4>
+
+<var>V1</var> if <var>B</var> is RDB_TRUE, <var>V2</var> otherwise.
+
+@section tup-rel-ops Built-in tuple and relational operators
+
+<h3 id="op_divide">OPERATOR DIVIDE</h3>
+
+OPERATOR DIVIDE(R1 <em>RELATION</em>, R2 <em>RELATION</em>, R2 <em>RELATION</em>) RETURNS <em>RELATION</em>;
+
+<h4>Description</h4>
+
+The relational three-argument (small) DIVIDE operator.
+
+<hr>
+
+<h3 id="op_extend">OPERATOR EXTEND</h3>
+
+OPERATOR EXTEND(R <em>RELATION</em>, ATTREXP <em>ANY</em>, ATTRNAME STRING, ...) RETURNS <em>RELATION</em>;
+
+<hr>
+
+<h3 id="op_group">OPERATOR GROUP</h3>
+
+OPERATOR GROUP(R <em>RELATION</em>, ATTRNAME <em>STRING</em> ...) RETURNS <em>RELATION</em>;
+
+<hr>
+
+<h3 id="op_intersect">OPERATOR INTERSECT</h3>
+
+OPERATOR INTERSECT(R1 <em>RELATION</em>, R2 <em>RELATION</em>) RETURNS <em>RELATION</em>;
+
+<hr>
+
+<h3 id="op_join">OPERATOR JOIN</h3>
+
+OPERATOR JOIN(R1 <em>RELATION</em>, R2 <em>RELATION</em>) RETURNS <em>RELATION</em>;
+
+<hr>
+
+<h3 id="op_minus">OPERATOR MINUS</h3>
+
+OPERATOR MINUS(R1 <em>RELATION</em>, R2 <em>RELATION</em>) RETURNS <em>RELATION</em>;
+
+<hr>
+
+<h3 id="op_project">OPERATOR PROJECT</h3>
+
+OPERATOR PROJECT(R1 <em>RELATION</em>, ATTRNAME STRING ...) RETURNS <em>RELATION</em>;
+
+<hr>
+
+<h3 id="op_remove">OPERATOR REMOVE</h3>
+
+OPERATOR REMOVE(R <em>RELATION</em>, ATTRNAME STRING ...) RETURNS <em>RELATION</em>;
+
+<hr>
+
+<h3 id="op_rename">OPERATOR RENAME</h3>
+
+OPERATOR RENAME(R <em>RELATION</em>, SRC_ATTRNAME STRING, DST_ATTRNAME ...) RETURNS <em>RELATION</em>;
+
+<hr>
+
+<h3 id="op_ungroup">OPERATOR UNGROUP</h3>
+
+OPERATOR UNGROUP(R <em>RELATION</em>, ATTRNAME STRING) RETURNS <em>RELATION</em>;
+
+<hr>
+
+<h3 id="op_union">OPERATOR UNION</h3>
+
+OPERATOR UNION(R1 <em>RELATION</em>, R2 <em>RELATION</em>) RETURNS <em>RELATION</em>;
+
+<hr>
+
+<h3 id="op_unwrap">OPERATOR UNWRAP</h3>
+
+OPERATOR UNWRAP(ATTRNAME STRING, ...) RETURNS <em>RELATION</em>;
+
+<hr>
+
+<h3 id="op_semijoin">OPERATOR SEMIJOIN</h3>
+
+OPERATOR SEMIJOIN(R1 <em>RELATION</em>, R2 <em>RELATION</em>) RETURNS <em>RELATION</em>;
+
+<hr>
+
+<h3 id="op_semiminus">OPERATOR SEMIMINUS</h3>
+
+OPERATOR SEMIMINUS(R1 <em>RELATION</em>, R2 <em>RELATION</em>) RETURNS <em>RELATION</em>;
+
+<hr>
+
+<h3 id="op_summarize">OPERATOR SUMMARIZE</h3>
+
+OPERATOR SUMMARIZE(R1 <em>RELATION</em>, R2 <em>RELATION</em>, EXPR <em>ANY</em>, ATTRNAME STRING, ...) RETURNS <em>RELATION</em>;
+
+<hr>
+
+<h3 id="op_where">OPERATOR WHERE</h3>
+
+OPERATOR WHERE(R <em>RELATION</em>, B BOOLEAN) RETURNS <em>RELATION</em>;
+
+<hr>
+
+<h3 id="op_wrap">OPERATOR WRAP</h3>
+
+OPERATOR WRAP(R <em>RELATION</em>, SRC_ATTRS ARRAY OF STRING, DST_ATTR STRING ...) RETURNS <em>RELATION</em>;
+*/
+
+/*
+ * The following functions implement the built-in operators
+ */
 static int
 neq_bool(const char *name, int argc, RDB_object *argv[],
         const void *iargp, size_t iarglen, RDB_exec_context *ecp,

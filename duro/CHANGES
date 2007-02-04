@@ -2,6 +2,14 @@ $Id$
 
 Summary of Changes for Duro
 
+Changes for Duro 0.13
+
+- Implemented interpreter application.
+
+- Fixed bug in Duroadmin - now uses correct floating-point types.
+
+- Using doxygen for the documentation.
+
 Changes for Duro 0.12
 
 - Replaced GNU Autotools by SCons.

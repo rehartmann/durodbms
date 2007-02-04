@@ -18,24 +18,37 @@
 #include <stdio.h>
 #include <ctype.h>
 
+/** @defgroup db Database functions
+ * \#include <rel/rdb.h>
+ * @{
+ */
+
+/**
+ * Return a pointer to the name of the database
+specified by <var>dbp</var>.
+
+@returns
+
+The name of the database.
+*/
 char *
 RDB_db_name(RDB_database *dbp)
 {
     return dbp->name;
 }
 
+/**
+RDB_db_env returns a pointer to the database environment of the database
+specified by <var>dbp</var>.
+
+@returns
+
+A pointer to the database environment.
+*/
 RDB_environment *
 RDB_db_env(RDB_database *dbp)
 {
     return dbp->dbrootp->envp;
-}
-
-/* Associate a RDB_object structure with a RDB_database structure. */
-int
-_RDB_assoc_table_db(RDB_object *tbp, RDB_database *dbp)
-{
-    /* Insert table into table map */
-    return RDB_hashmap_put(&dbp->tbmap, tbp->var.tb.name, tbp);
 }
 
 static void
@@ -333,22 +346,6 @@ error:
     return NULL;
 }
 
-/* check if the name is legal */
-RDB_bool
-_RDB_legal_name(const char *name)
-{
-    int i;
-
-    if (*name == '\0')
-        return RDB_FALSE;
-
-    for (i = 0; name[i] != '\0'; i++) {
-        if (!isprint(name[i]) || isspace(name[i]) || (name[i] == '$'))
-            return RDB_FALSE;
-    }
-    return RDB_TRUE;
-}
-
 static void
 assoc_systables(RDB_dbroot *dbrootp, RDB_database *dbp)
 {
@@ -416,6 +413,26 @@ error:
     return ret;
 }
 
+/**
+RDB_create_db_from_env creates a database from a database environment.
+If an error occurs, an error value is left in <var>ecp</var>.
+
+@returns
+
+A pointer to the newly created database, or NULL if an error occurred.
+
+@par Errors:
+
+<dl>
+<dt>RDB_ELEMENT_EXIST_ERROR
+<dd>A database with the name <var>name</var> already exixts.
+<dt>RDB_VERSION_MISMATCH_ERROR
+<dd>The version number stored in the catalog does not match
+the version of the library.
+</dl>
+
+The call may also fail for a @ref system-errors "system error".
+*/
 RDB_database *
 RDB_create_db_from_env(const char *name, RDB_environment *envp,
                        RDB_exec_context *ecp)
@@ -487,6 +504,28 @@ error:
     return NULL;
 }
 
+/**
+RDB_get_db_from_env obtains a pointer to the database with name
+<var>name</var> in the environment specified by <var>envp</var>.
+If an error occurs, an error value is left in <var>ecp</var>.
+
+@returns
+
+On success, a pointer to the database is returned. If an error occurred, NULL is
+returned.
+
+@par Errors:
+
+<dl>
+<dt>RDB_NOT_FOUND_ERROR
+<dd>A database with the name <var>name</var> could not be found.
+<dt>RDB_VERSION_MISMATCH_ERROR
+<dd>The version number stored in the catalog does not match
+the version of the library.
+</dl>
+
+The call may also fail for a @ref system-errors "system error".
+*/
 RDB_database *
 RDB_get_db_from_env(const char *name, RDB_environment *envp,
                     RDB_exec_context *ecp)
@@ -715,6 +754,27 @@ error:
     return NULL;
 }
 
+/**
+RDB_drop_db deletes the database specified by <var>dbp</var>.
+The database must be empty.
+
+If an error occurs, an error value is left in <var>ecp</var>.
+
+@returns
+
+RDB_OK on success, RDB_ERROR if an error occurred.
+
+@par Errors:
+
+<dl>
+<dt>RDB_NOT_FOUND_ERROR
+<dd>The database was not found.
+<dt>RDB_ELEMENT_EXISTS_ERROR
+<dd>The database is not empty.
+</dl>
+
+The call may also fail for a @ref system-errors "system error".
+*/
 int
 RDB_drop_db(RDB_database *dbp, RDB_exec_context *ecp)
 {
@@ -786,271 +846,12 @@ error:
 }
 
 static RDB_object *
-create_table(const char *name, RDB_type *reltyp,
-                int keyc, const RDB_string_vec keyv[],
-                RDB_exec_context *ecp, RDB_transaction *txp)
-{
-    RDB_object *tbp;
-    int ret;
-    RDB_transaction tx;
-
-    if (txp != NULL) {
-        /* Create subtransaction */
-        ret = RDB_begin_tx(ecp, &tx, txp->dbp, txp);
-        if (ret != RDB_OK)
-            return NULL;
-    }
-
-    tbp = _RDB_new_rtable(name, RDB_TRUE, reltyp,
-                keyc, keyv, RDB_TRUE, ecp);
-    if (tbp == NULL) {
-        RDB_raise_no_memory(ecp);
-        return NULL;
-    }
-
-    /* Insert table into catalog */
-    ret = _RDB_cat_insert(tbp, ecp, &tx);
-    if (ret != RDB_OK) {
-        RDB_rollback(ecp, &tx);
-        _RDB_free_obj(tbp, ecp);
-        return NULL;
-    }
-
-    _RDB_assoc_table_db(tbp, txp->dbp);
-
-    if (txp != NULL) {
-         RDB_commit(ecp, &tx);
-    }
-    return tbp;
-}
-
-RDB_object *
-RDB_create_table_from_type(const char *name, RDB_type *reltyp,
-                int keyc, const RDB_string_vec keyv[],
-                RDB_exec_context *ecp, RDB_transaction *txp)
-{
-    int i;
-
-    if (name != NULL && !_RDB_legal_name(name)) {
-        RDB_raise_invalid_argument("invalid table name", ecp);
-        return NULL;
-    }
-
-    for (i = 0; i < reltyp->var.basetyp->var.tuple.attrc; i++) {
-        if (!_RDB_legal_name(reltyp->var.basetyp->var.tuple.attrv[i].name)) {
-            RDB_object str;
-        
-            RDB_init_obj(&str);
-            if (RDB_string_to_obj(&str, "invalid attribute name: ", ecp)
-                    != RDB_OK) {
-                RDB_destroy_obj(&str, ecp);
-                return NULL;
-            }
-
-            if (RDB_append_string(&str,
-                    reltyp->var.basetyp->var.tuple.attrv[i].name, ecp) != RDB_OK) {
-                RDB_destroy_obj(&str, ecp);
-                return NULL;
-            }
-
-            RDB_raise_invalid_argument(RDB_obj_string(&str), ecp);
-            RDB_destroy_obj(&str, ecp);            
-            return NULL;
-        }
-    }
-
-    /* name may only be NULL if table is transient */
-    if ((name == NULL)) {
-        RDB_raise_invalid_argument("persistent table must have a name", ecp);
-        return NULL;
-    }
-
-    return create_table(name, reltyp, keyc, keyv, ecp, txp);
-}
-
-RDB_object *
-RDB_create_table(const char *name,
-                int attrc, const RDB_attr heading[],
-                int keyc, const RDB_string_vec keyv[],
-                RDB_exec_context *ecp, RDB_transaction *txp)
-{
-    RDB_type *tbtyp = RDB_create_relation_type(attrc, heading, ecp);
-    if (tbtyp == NULL) {
-        return NULL;
-    }
-    if (_RDB_set_defvals(tbtyp, attrc, heading, ecp) != RDB_OK) {
-        RDB_drop_type(tbtyp, ecp, NULL);
-        return NULL;
-    }
-
-    return RDB_create_table_from_type(name, tbtyp, keyc, keyv,
-            ecp, txp);
-}
-
-RDB_object *
-RDB_get_table(const char *name, RDB_exec_context *ecp, RDB_transaction *txp)
-{
-    RDB_object *tbp;
-    RDB_database *dbp;
-    RDB_object *errp;
-
-    /* Search table in all databases */
-    dbp = txp->dbp->dbrootp->first_dbp;
-    while (dbp != NULL) {
-        tbp = RDB_hashmap_get(&dbp->tbmap, name);
-        if (tbp != NULL) {
-            /* Found */
-            return tbp;
-        }
-        dbp = dbp->nextdbp;
-    }
-
-    tbp = _RDB_cat_get_rtable(name, ecp, txp);
-    if (tbp != NULL)
-        return tbp;
-    errp = RDB_get_err(ecp);
-    if (errp != NULL) {
-        if (RDB_obj_type(errp) != &RDB_NOT_FOUND_ERROR)
-            return NULL;
-        RDB_clear_err(ecp);
-    }
-
-    return _RDB_cat_get_vtable(name, ecp, txp);
-}
-
-int
-RDB_drop_table(RDB_object *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
-{
-    int ret;
-
-    if (tbp->kind == RDB_OB_TABLE && tbp->var.tb.is_persistent) {
-        RDB_database *dbp;
-        RDB_dbroot *dbrootp;
-
-        if (!RDB_tx_is_running(txp)) {
-            RDB_raise_invalid_tx(ecp);
-            return RDB_ERROR;
-        }
-    
-        /*
-         * Remove table from all RDB_databases in list
-         */
-        dbrootp = (RDB_dbroot *) RDB_env_private(txp->envp);
-        for (dbp = dbrootp->first_dbp; dbp != NULL; dbp = dbp->nextdbp) {
-            RDB_object *foundtbp = RDB_hashmap_get(&dbp->tbmap, tbp->var.tb.name);
-            if (foundtbp != NULL) {
-                RDB_hashmap_put(&dbp->tbmap, tbp->var.tb.name, NULL);
-            }
-        }
-
-        /*
-         * Remove table from catalog
-         */
-        ret = _RDB_cat_delete(tbp, ecp, txp);
-        if (ret != RDB_OK)
-            return ret;
-
-        /*
-         * Delete recmap, if any
-         */
-        if (tbp->var.tb.stp != NULL) {
-            ret = _RDB_delete_stored_table(tbp->var.tb.stp, ecp, txp);
-            if (ret != RDB_OK)
-                return RDB_ERROR;
-            tbp->var.tb.stp = NULL;
-        }
-    }
-
-    _RDB_free_obj(tbp, ecp);
-    return RDB_OK;
-}
-
-int
-RDB_set_table_name(RDB_object *tbp, const char *name, RDB_exec_context *ecp,
-        RDB_transaction *txp)
-{
-    int ret;
-
-    if (!_RDB_legal_name(name)) {
-        RDB_raise_invalid_argument("invalid table name", ecp);
-        return RDB_ERROR;
-    }
-
-    /* !! should check if virtual tables depend on this table */
-
-    if (tbp->var.tb.is_persistent) {
-        RDB_database *dbp;
-
-        /* Update catalog */
-        ret = _RDB_cat_rename_table(tbp, name, ecp, txp);
-        if (ret != RDB_OK) {
-            return RDB_ERROR;
-        }
-
-        /* Delete and reinsert tables from/to table maps */
-        for (dbp = txp->dbp->dbrootp->first_dbp; dbp != NULL;
-                dbp = dbp->nextdbp) {
-            RDB_object *foundtbp = RDB_hashmap_get(&dbp->tbmap, tbp->var.tb.name);
-            if (foundtbp != NULL) {
-                RDB_hashmap_put(&dbp->tbmap, tbp->var.tb.name, NULL);
-                RDB_hashmap_put(&dbp->tbmap, name, tbp);
-            }
-        }
-    }
-    
-    if (tbp->var.tb.name != NULL)
-        free(tbp->var.tb.name);
-    tbp->var.tb.name = RDB_dup_str(name);
-    if (tbp->var.tb.name == NULL) {
-        RDB_raise_no_memory(ecp);
-        return RDB_ERROR;
-    }
-
-    return RDB_OK;
-}
-
-int
-RDB_add_table(RDB_object *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
-{
-    int ret;
-
-    if (tbp->var.tb.name == NULL) {
-        RDB_raise_invalid_argument("missing table name", ecp);
-        return RDB_ERROR;
-    }
-
-    /* Turning a local real table into a persistent table is not supported */
-    if (!tbp->var.tb.is_persistent && tbp->var.tb.exp == NULL) {
-        RDB_raise_not_supported(
-                "operation not supported for local real tables", ecp);
-        return RDB_ERROR;
-    }
-
-    if (!RDB_tx_is_running(txp)) {
-        RDB_raise_invalid_tx(ecp);
-        return RDB_ERROR;
-    }
-
-    ret = _RDB_cat_insert(tbp, ecp, txp);
-    if (ret != RDB_OK)
-        return RDB_ERROR;
-
-    ret = _RDB_assoc_table_db(tbp, txp->dbp);
-    if (ret != RDB_OK)
-        return RDB_ERROR;
-
-    tbp->var.tb.is_persistent = RDB_TRUE;
-
-    return RDB_OK;
-}
-
-static RDB_object *
 db_names_tb(RDB_object *dbtables_tbp, RDB_exec_context *ecp, RDB_transaction *txp)
 {
-	RDB_expression *ex1p = NULL;
-	RDB_expression *ex2p = NULL;
-	RDB_expression *ex3p = NULL;
-	RDB_object *vtbp;
+    RDB_expression *ex1p = NULL;
+    RDB_expression *ex2p = NULL;
+    RDB_expression *ex3p = NULL;
+    RDB_object *vtbp;
 
     ex1p = RDB_table_ref(dbtables_tbp, ecp);
     if (ex1p == NULL)
@@ -1081,6 +882,27 @@ error:
     return NULL;
 }
 
+/**
+After RDB_get_dbs has been called successfully, *arrp is
+an array of strings which contains the names of all databases in *envp.
+
+*arrp must either already be an array of RDB_STRING or having been
+initialized using RDB_init_obj().
+
+@returns
+
+RDB_OK on success, RDB_ERROR if an error occurred.
+
+@par Errors:
+
+<dl>
+<dt>RDB_TYPE_MISMATCH_ERROR
+<dd>*<var>arrp</var> already contains elements of a type different from
+RDB_STRING.
+</dl>
+
+The call may fail for a @ref system-errors "system error".
+*/
 int
 RDB_get_dbs(RDB_environment *envp, RDB_object *arrp, RDB_exec_context *ecp)
 {
@@ -1162,6 +984,534 @@ cleanup:
     return RDB_ERROR;
 }
 
+/*@}*/
+
+/**
+ * Associate a RDB_object structure with a RDB_database structure.
+ */
+int
+_RDB_assoc_table_db(RDB_object *tbp, RDB_database *dbp)
+{
+    /* Insert table into table map */
+    return RDB_hashmap_put(&dbp->tbmap, tbp->var.tb.name, tbp);
+}
+
+/**
+ * Check if the name is legal
+ */
+RDB_bool
+_RDB_legal_name(const char *name)
+{
+    int i;
+
+    if (*name == '\0')
+        return RDB_FALSE;
+
+    for (i = 0; name[i] != '\0'; i++) {
+        if (!isprint(name[i]) || isspace(name[i]) || (name[i] == '$'))
+            return RDB_FALSE;
+    }
+    return RDB_TRUE;
+}
+
+static RDB_object *
+create_table(const char *name, RDB_type *reltyp,
+                int keyc, const RDB_string_vec keyv[],
+                RDB_exec_context *ecp, RDB_transaction *txp)
+{
+    RDB_object *tbp;
+    int ret;
+    RDB_transaction tx;
+
+    if (txp != NULL) {
+        /* Create subtransaction */
+        ret = RDB_begin_tx(ecp, &tx, txp->dbp, txp);
+        if (ret != RDB_OK)
+            return NULL;
+    }
+
+    tbp = _RDB_new_rtable(name, RDB_TRUE, reltyp,
+                keyc, keyv, RDB_TRUE, ecp);
+    if (tbp == NULL) {
+        RDB_raise_no_memory(ecp);
+        return NULL;
+    }
+
+    /* Insert table into catalog */
+    ret = _RDB_cat_insert(tbp, ecp, &tx);
+    if (ret != RDB_OK) {
+        RDB_rollback(ecp, &tx);
+        _RDB_free_obj(tbp, ecp);
+        return NULL;
+    }
+
+    _RDB_assoc_table_db(tbp, txp->dbp);
+
+    if (txp != NULL) {
+         RDB_commit(ecp, &tx);
+    }
+    return tbp;
+}
+
+/** @defgroup table Table functions 
+ * @{
+ */
+
+/** @struct RDB_attr rdb.h <rel/rdb.h>
+ * This struct is used to specify attribute definitions.
+ */
+
+/**
+<strong>RDB_create_table</strong> creates a persistent table
+with name <var>name</var> in the database
+the transaction *<var>txp</var> interacts with
+and returns a pointer to the newly created RDB_object structure.
+
+If an error occurs, an error value is left in *<var>ecp</var>.
+
+The table will have <var>attrc</var> attributes. The individual
+attributes are specified by the elements of <var>attrv</var>.
+
+The fields of the RDB_attr structure are interpreted as follows:
+
+<dl>
+<dt>name
+<dd>Specifies the name of the attribute.
+<dt>typ
+<dd>Specifies the type of the attribute.
+<dt>defaultp
+<dd>If not NULL, this field must point to a RDB_object variable that specifies
+the default value for the attribute.
+<dt>options
+<dd>This field is currently ignored. It should be set to zero
+for compatibility with future versions of Duro.
+</dl>
+
+The table will have <var>keyc</var> candidate keys. The <var>keyv</var>
+argument specifies the key attributes.
+The strc field of the RDB_string_vec structure specifies
+the number of attributes in a key, while the elements of the strv field specify
+the names of the key attributes.
+
+At least one candidate key must be specified.
+A candidate key may not be a subset of another.
+If a single candidate key is specified, that key
+may be empty (not contain any attributes).
+
+Passing a <var>keyv</var> of NULL is equivalent to specifiying a single key
+which consists of all attributes, that is, the table will become all-key.
+
+To enforce the key constraints, Duro creates a unique hash index
+for each key.
+
+@returns
+
+On success, a pointer to the newly created table is returned.
+If an error occurred, NULL is returned.
+
+@par Errors:
+
+<dl>
+<dt>RDB_INVALID_TRANSACTION_ERROR
+<dd><var>txp</var> does not point to a running transaction.
+<dt>RDB_TYPE_MISMATCH_ERROR
+<dd>The type of a default value does not match the type of the corresponding
+attribute.
+<dt>RDB_INVALID_ARGUMENT_ERROR
+<dd>One or more of the arguments are incorrect. For example, a key attribute
+does not appear in <var>attrv</var>, etc.
+</dl>
+
+The call may also fail for a @ref system-errors "system error",
+in which case the transaction may be implicitly rolled back.
+*/
+RDB_object *
+RDB_create_table(const char *name,
+                int attrc, const RDB_attr heading[],
+                int keyc, const RDB_string_vec keyv[],
+                RDB_exec_context *ecp, RDB_transaction *txp)
+{
+    RDB_type *tbtyp = RDB_create_relation_type(attrc, heading, ecp);
+    if (tbtyp == NULL) {
+        return NULL;
+    }
+    if (_RDB_set_defvals(tbtyp, attrc, heading, ecp) != RDB_OK) {
+        RDB_drop_type(tbtyp, ecp, NULL);
+        return NULL;
+    }
+
+    return RDB_create_table_from_type(name, tbtyp, keyc, keyv,
+            ecp, txp);
+}
+
+/**
+<strong>RDB_create_table_from_type</strong> acts like
+RDB_create_table(), except that it takes
+a RDB_type argument instead of attribute arguments.
+*<var>reltyp</var> must be a relation type and will be managed
+by the table created.
+*/
+RDB_object *
+RDB_create_table_from_type(const char *name, RDB_type *reltyp,
+                int keyc, const RDB_string_vec keyv[],
+                RDB_exec_context *ecp, RDB_transaction *txp)
+{
+    int i;
+
+    if (name != NULL && !_RDB_legal_name(name)) {
+        RDB_raise_invalid_argument("invalid table name", ecp);
+        return NULL;
+    }
+
+    for (i = 0; i < reltyp->var.basetyp->var.tuple.attrc; i++) {
+        if (!_RDB_legal_name(reltyp->var.basetyp->var.tuple.attrv[i].name)) {
+            RDB_object str;
+        
+            RDB_init_obj(&str);
+            if (RDB_string_to_obj(&str, "invalid attribute name: ", ecp)
+                    != RDB_OK) {
+                RDB_destroy_obj(&str, ecp);
+                return NULL;
+            }
+
+            if (RDB_append_string(&str,
+                    reltyp->var.basetyp->var.tuple.attrv[i].name, ecp) != RDB_OK) {
+                RDB_destroy_obj(&str, ecp);
+                return NULL;
+            }
+
+            RDB_raise_invalid_argument(RDB_obj_string(&str), ecp);
+            RDB_destroy_obj(&str, ecp);            
+            return NULL;
+        }
+    }
+
+    /* name may only be NULL if table is transient */
+    if ((name == NULL)) {
+        RDB_raise_invalid_argument("persistent table must have a name", ecp);
+        return NULL;
+    }
+
+    return create_table(name, reltyp, keyc, keyv, ecp, txp);
+}
+
+/**
+RDB_get_table looks up the global table with name <var>name</var>
+in the environment of the database the transaction
+specified by <var>txp</var> interacts with and returns a pointer to it.
+
+If an error occurs, an error value is left in *<var>ecp</var>.
+
+@returns
+
+A pointer to the table, or NULL if an error occurred.
+
+@par Errors:
+
+<dl>
+<dt>RDB_INVALID_TRANSACTION_ERROR
+<dd><var>txp</var> does not point to a running transaction.
+<dt>RDB_NOT_FOUND_ERROR
+<dd>A table with the name <var>name</var> could not be found.
+</dl>
+
+The call may also fail for a @ref system-errors "system error",
+in which case the transaction may be implicitly rolled back.
+*/
+RDB_object *
+RDB_get_table(const char *name, RDB_exec_context *ecp, RDB_transaction *txp)
+{
+    RDB_object *tbp;
+    RDB_database *dbp;
+    RDB_object *errp;
+
+    /* Search table in all databases */
+    dbp = txp->dbp->dbrootp->first_dbp;
+    while (dbp != NULL) {
+        tbp = RDB_hashmap_get(&dbp->tbmap, name);
+        if (tbp != NULL) {
+            /* Found */
+            return tbp;
+        }
+        dbp = dbp->nextdbp;
+    }
+
+    tbp = _RDB_cat_get_rtable(name, ecp, txp);
+    if (tbp != NULL)
+        return tbp;
+    errp = RDB_get_err(ecp);
+    if (errp != NULL) {
+        if (RDB_obj_type(errp) != &RDB_NOT_FOUND_ERROR)
+            return NULL;
+        RDB_clear_err(ecp);
+    }
+
+    return _RDB_cat_get_vtable(name, ecp, txp);
+}
+
+/**
+RDB_drop_table deletes the table specified by <var>tbp</var>
+and releases all resources associated with that table.
+If the table is virtual, its unnamed child tables are also deleted.
+
+If an error occurs, an error value is left in *<var>ecp</var>.
+
+If the table is local, <var>txp</var> may be NULL.
+
+@returns
+
+On success, RDB_OK is returned. On failure, RDB_ERROR is returned.
+
+@par Errors:
+
+<dl>
+<dt>RDB_INVALID_TRANSACTION_ERROR
+<dd>The table is global (persistent) and <var>txp</var>
+does not point to a running transaction.
+</dl>
+
+The call may also fail for a @ref system-errors "system error",
+in which case the transaction may be implicitly rolled back.
+*/
+int
+RDB_drop_table(RDB_object *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
+{
+    int ret;
+
+    if (tbp->kind == RDB_OB_TABLE && tbp->var.tb.is_persistent) {
+        RDB_database *dbp;
+        RDB_dbroot *dbrootp;
+
+        if (!RDB_tx_is_running(txp)) {
+            RDB_raise_invalid_tx(ecp);
+            return RDB_ERROR;
+        }
+    
+        /*
+         * Remove table from all RDB_databases in list
+         */
+        dbrootp = (RDB_dbroot *) RDB_env_private(txp->envp);
+        for (dbp = dbrootp->first_dbp; dbp != NULL; dbp = dbp->nextdbp) {
+            RDB_object *foundtbp = RDB_hashmap_get(&dbp->tbmap, tbp->var.tb.name);
+            if (foundtbp != NULL) {
+                RDB_hashmap_put(&dbp->tbmap, tbp->var.tb.name, NULL);
+            }
+        }
+
+        /*
+         * Remove table from catalog
+         */
+        ret = _RDB_cat_delete(tbp, ecp, txp);
+        if (ret != RDB_OK)
+            return ret;
+
+        /*
+         * Delete recmap, if any
+         */
+        if (tbp->var.tb.stp != NULL) {
+            ret = _RDB_delete_stored_table(tbp->var.tb.stp, ecp, txp);
+            if (ret != RDB_OK)
+                return RDB_ERROR;
+            tbp->var.tb.stp = NULL;
+        }
+    }
+
+    _RDB_free_obj(tbp, ecp);
+    return RDB_OK;
+}
+
+/**
+RDB_set_table_name sets the name of the table to <var>name</var>.
+
+If an error occurs, an error value is left in *<var>ecp</var>.
+
+@returns
+
+On success, RDB_OK is returned. On failure, RDB_ERROR is returned.
+
+@par Errors:
+
+<dl>
+<dt>RDB_INVALID_TRANSACTION_ERROR
+<dd><var>txp</var> does not point to a running transaction.
+<dt>RDB_INVALID_ARGUMENT_ERROR
+<dd><var>name</var> is not a valid table name.
+</dl>
+
+The call may also fail for a @ref system-errors "system error",
+in which case the transaction may be implicitly rolled back.
+*/
+int
+RDB_set_table_name(RDB_object *tbp, const char *name, RDB_exec_context *ecp,
+        RDB_transaction *txp)
+{
+    int ret;
+
+    if (!_RDB_legal_name(name)) {
+        RDB_raise_invalid_argument("invalid table name", ecp);
+        return RDB_ERROR;
+    }
+
+    /* !! should check if virtual tables depend on this table */
+
+    if (tbp->var.tb.is_persistent) {
+        RDB_database *dbp;
+
+        /* Update catalog */
+        ret = _RDB_cat_rename_table(tbp, name, ecp, txp);
+        if (ret != RDB_OK) {
+            return RDB_ERROR;
+        }
+
+        /* Delete and reinsert tables from/to table maps */
+        for (dbp = txp->dbp->dbrootp->first_dbp; dbp != NULL;
+                dbp = dbp->nextdbp) {
+            RDB_object *foundtbp = RDB_hashmap_get(&dbp->tbmap, tbp->var.tb.name);
+            if (foundtbp != NULL) {
+                RDB_hashmap_put(&dbp->tbmap, tbp->var.tb.name, NULL);
+                RDB_hashmap_put(&dbp->tbmap, name, tbp);
+            }
+        }
+    }
+    
+    if (tbp->var.tb.name != NULL)
+        free(tbp->var.tb.name);
+    tbp->var.tb.name = RDB_dup_str(name);
+    if (tbp->var.tb.name == NULL) {
+        RDB_raise_no_memory(ecp);
+        return RDB_ERROR;
+    }
+
+    return RDB_OK;
+}
+
+/**
+RDB_add_table adds the table specified by <var>tbp</var> to the
+database the transaction specified by <var>txp</var> interacts with.
+
+If an error occurs, an error value is left in *<var>ecp</var>.
+
+If the table is a local (transient) table, it is made global
+(persistent).
+
+The table must have a name.
+
+Currently, RDB_add_table is not supported for local real tables.
+
+@returns
+
+RDB_OK on success, RDB_ERROR if an error occurred.
+
+@par Errors
+
+<dl>
+<dt>RDB_INVALID_TRANSACTION_ERROR
+<dd><var>txp</var> does not point to a running transaction.
+<dt>RDB_INVALID_ARGUMENT_ERROR
+<dd>The table does not have a name.
+<dt>RDB_ELEMENT_EXIST_ERROR
+<dd>The table is already associated with the database.
+<dt>RDB_NOT_SUPPORTED_ERROR
+<dd>The table is a local real table.
+</dl>
+
+The call may also fail for a @ref system-errors "system error",
+in which case the transaction may be implicitly rolled back.
+*/
+int
+RDB_add_table(RDB_object *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
+{
+    int ret;
+
+    if (tbp->var.tb.name == NULL) {
+        RDB_raise_invalid_argument("missing table name", ecp);
+        return RDB_ERROR;
+    }
+
+    /* Turning a local real table into a persistent table is not supported */
+    if (!tbp->var.tb.is_persistent && tbp->var.tb.exp == NULL) {
+        RDB_raise_not_supported(
+                "operation not supported for local real tables", ecp);
+        return RDB_ERROR;
+    }
+
+    if (!RDB_tx_is_running(txp)) {
+        RDB_raise_invalid_tx(ecp);
+        return RDB_ERROR;
+    }
+
+    ret = _RDB_cat_insert(tbp, ecp, txp);
+    if (ret != RDB_OK)
+        return RDB_ERROR;
+
+    ret = _RDB_assoc_table_db(tbp, txp->dbp);
+    if (ret != RDB_OK)
+        return RDB_ERROR;
+
+    tbp->var.tb.is_persistent = RDB_TRUE;
+
+    return RDB_OK;
+}
+
+/**
+ * RDB_remove_table removes the table specified by <var>tbp</var> from the
+database the transaction specified by <var>txp</var> interacts with.
+
+If an error occurs, an error value is left in *<var>ecp</var>.
+
+If the table is a global table, it is made local.
+
+@returns RDB_OK on success, RDB_ERROR if an error occurred.
+
+@par Errors:
+
+<dl>
+<dt>RDB_INVALID_TRANSACTION_ERROR
+<dd><var>txp</var> does not point to a running transaction.
+<dt>RDB_INVALID_ARGUMENT_ERROR
+<dd>The table does not belong to the database the transaction interacts
+with.
+</dl>
+
+The call may also fail for a @ref system-errors "system error",
+in which case the transaction may be implicitly rolled back.
+
+@remarks <strong>This function is not implemented.</strong>
+int
+RDB_remove_table(RDB_object *tbp, RDB_exec_context *ecp, RDB_transaction *txp);
+*/
+
+/*@}*/
+
+/** @defgroup type Type functions
+ * @{
+ */
+
+/** @struct RDB_possrep rdb.h <rel/rdb.h>
+ * Specifies a possible representations.
+ */
+
+/**
+RDB_get_type obtains a pointer to RDB_type structure which
+represents the type with the name <var>name</var>
+and stores that pointer at the location pointed to by <var>typp</var>.
+
+@returns
+
+On success, RDB_OK is returned. Any other return value indicates an error.
+
+@par Errors:
+
+<dl>
+<dt>RDB_INVALID_TRANSACTION_ERROR
+<dd><var>txp</var> does not point to a running transaction.
+<dt>RDB_NOT_FOUND_ERROR
+<dd>A type with the name <var>name</var> could not be found.
+</dl>
+
+The call may also fail for a @ref system-errors "system error",
+in which case the transaction may be implicitly rolled back.
+*/
 RDB_type *
 RDB_get_type(const char *name, RDB_exec_context *ecp, RDB_transaction *txp)
 {
@@ -1206,3 +1556,5 @@ RDB_get_type(const char *name, RDB_exec_context *ecp, RDB_transaction *txp)
     }
     return typ;
 }
+
+/*@}*/

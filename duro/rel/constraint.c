@@ -118,6 +118,33 @@ cleanup:
     return ret;
 }
 
+/** @defgroup constr Constraint functions 
+ * @{
+ */
+
+/**
+ * 
+RDB_create_constraint creates a constraint with the name <var>name</var>
+on the database the transaction specified by <var>txp</var> interacts with.
+
+@returns
+
+RDB_OK on success, RDB_ERROR if an error occurred.
+
+@par Errors:
+
+<dl>
+<dt>RDB_INVALID_TRANSACTION_ERROR
+<dd><var>txp</var> does not point to a running transaction.
+<dt>RDB_TYPE_MISMATCH_ERROR
+<dd>The expression specified by <var>constrp</var> is not of type BOOLEAN.
+<dt>RDB_PREDICATE_VIOLATION_ERROR
+<dd>The expression specified by <var>constrp</var> is not satisfied.
+</dl>
+
+The call may also fail for a @ref system-errors "system error",
+in which case the transaction may be implicitly rolled back.
+ */
 int
 RDB_create_constraint(const char *name, RDB_expression *exp,
         RDB_exec_context *ecp, RDB_transaction *txp)
@@ -181,6 +208,25 @@ error:
     return RDB_ERROR;
 }
 
+/**
+ * RDB_drop_constraint deletes the constraint with the name <var>name</var>.
+
+@returns
+
+RDB_OK on success, RDB_ERROR if an error occurred.
+
+@par Errors:
+
+<dl>
+<dt>RDB_INVALID_TRANSACTION_ERROR
+<dd><var>txp</var> does not point to a running transaction.
+<dt>RDB_NOT_FOUND_ERROR
+<dd>A constraint with the name <var>name</var> could not be found.
+</dl>
+
+The call may also fail for a @ref system-errors "system error",
+in which case the transaction may be implicitly rolled back.
+ */
 int
 RDB_drop_constraint(const char *name, RDB_exec_context *ecp,
         RDB_transaction *txp)
@@ -233,6 +279,8 @@ RDB_drop_constraint(const char *name, RDB_exec_context *ecp,
 
     return ret == RDB_ERROR ? RDB_ERROR : RDB_OK;
 }
+
+/*@}*/
 
 int
 _RDB_check_constraints(const RDB_constraint *constrp, RDB_exec_context *ecp,

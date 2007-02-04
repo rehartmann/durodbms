@@ -10,6 +10,14 @@
 #include <gen/hashmap.h>
 #include <errno.h>
 
+/** @defgroup excontext Execution context functions
+ * @{
+ */
+
+/** RDB_init_exec_context initializes the RDB_exec_context structure given by
+<var>ecp</var>. RDB_init_exec_context must be called before any other
+operation can be performed on a RDB_exec_context structure.
+ */
 void
 RDB_init_exec_context(RDB_exec_context *ecp)
 {
@@ -17,6 +25,9 @@ RDB_init_exec_context(RDB_exec_context *ecp)
     RDB_init_hashmap(&ecp->pmap, 16);
 }
 
+/** RDB_destroy_exec_context frees all resources associated with a
+RDB_exec_context.
+ */
 void
 RDB_destroy_exec_context(RDB_exec_context *ecp)
 {
@@ -26,6 +37,25 @@ RDB_destroy_exec_context(RDB_exec_context *ecp)
     RDB_destroy_hashmap(&ecp->pmap);
 }
 
+/** <strong>RDB_raise_err</strong> initializes a RDB_object structure,
+makes it the error associated with the RDB_exec_context given
+by <var>ecp</var>, and returns a pointer to it.
+A previously raised error is overwritten. 
+After RDB_raise_err() has been called succssfully, the RDB_object is in the
+same state as after a call to RDB_init_obj(). It is the caller's
+responsibility to assign a value to the RDB_object,
+for example, by calling a selector.
+
+@returns
+
+A pointer to the error, or NULL if the call fails.
+
+@par Errors:
+
+The call my fail and return NULL if an error was already
+associated with the RDB_exec_context and destroying this error
+failed.
+ */
 RDB_object *
 RDB_raise_err(RDB_exec_context *ecp)
 {
@@ -40,12 +70,24 @@ RDB_raise_err(RDB_exec_context *ecp)
     return &ecp->error;
 }
 
+/** Returns the error associated with the RDB_exec_context given by
+<var>ecp</var>.
+
+@returns
+
+A pointer to the error associated with the RDB_exec_context, or NULL
+if no error has been raised.
+ */
 RDB_object *
 RDB_get_err(RDB_exec_context *ecp)
 {
     return ecp->error_active ? &ecp->error : NULL;
 }
 
+/** RDB_clear_err clears the error associated with the RDB_exec_context given by
+<var>ecp</var>, freing all resources associated with it.
+Subsequent calls calls to RDB_get_err will return NULL.
+ */
 void
 RDB_clear_err(RDB_exec_context *ecp)
 {
@@ -55,6 +97,9 @@ RDB_clear_err(RDB_exec_context *ecp)
     }
 }
 
+/*@{*/
+/** Convenience function to raise a system-provided error.
+ */
 RDB_object *
 RDB_raise_no_memory(RDB_exec_context *ecp)
 {
@@ -172,6 +217,8 @@ RDB_raise_internal(const char *msg, RDB_exec_context *ecp)
     return raise_msg_err(&RDB_INTERNAL_ERROR, msg, ecp);
 }
 
+/**
+ */
 RDB_object *
 RDB_raise_lock_not_granted(RDB_exec_context *ecp)
 {
@@ -227,11 +274,48 @@ RDB_raise_fatal(RDB_exec_context *ecp)
     return errp;
 }
 
+/**
+ */
 RDB_object *
 RDB_raise_syntax(const char *msg, RDB_exec_context *ecp)
 {
     return raise_msg_err(&RDB_SYNTAX_ERROR, msg, ecp);
 }
+
+/*@}*/
+
+/** <strong>RDB_ec_set_property</strong> sets the property <var>name</var>
+of the RDB_exec_context given by <var>ecp</var> to <var>value</var>.
+
+@returns
+
+RDB_OK on success, RDB_ERROR on failure.
+ */
+int
+RDB_ec_set_property(RDB_exec_context *ecp, const char *name, void *p)
+{
+    int ret = RDB_hashmap_put(&ecp->pmap, name, p);
+    if (ret != RDB_OK) {
+        _RDB_handle_errcode(ret, ecp, NULL);
+        return RDB_ERROR;
+    }
+    return RDB_OK;
+}
+
+/** <strong>RDB_ec_get_property</strong> returns the value of the property <var>name</var>
+of the RDB_exec_context given by <var>ecp</var>.
+ * 
+@returns
+
+The property value.
+ */
+void *
+RDB_ec_get_property(RDB_exec_context *ecp, const char *name)
+{
+    return RDB_hashmap_get(&ecp->pmap, name);
+}
+
+/*@}*/
 
 void
 _RDB_handle_errcode(int errcode, RDB_exec_context *ecp, RDB_transaction *txp)
@@ -267,21 +351,4 @@ _RDB_handle_errcode(int errcode, RDB_exec_context *ecp, RDB_transaction *txp)
         default:
             RDB_raise_system(db_strerror(errcode), ecp);
     }
-}
-
-int
-RDB_ec_set_property(RDB_exec_context *ecp, const char *name, void *p)
-{
-    int ret = RDB_hashmap_put(&ecp->pmap, name, p);
-    if (ret != RDB_OK) {
-        _RDB_handle_errcode(ret, ecp, NULL);
-        return RDB_ERROR;
-    }
-    return RDB_OK;
-}
-
-void *
-RDB_ec_get_property(RDB_exec_context *ecp, const char *name)
-{
-    return RDB_hashmap_get(&ecp->pmap, name);
 }

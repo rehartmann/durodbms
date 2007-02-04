@@ -153,8 +153,8 @@ compare_field(const void *data1p, size_t len1, const void *data2p, size_t len2,
     return ret;
 }
 
-static int
-create_index(RDB_object *tbp, RDB_environment *envp, RDB_exec_context *ecp,
+int
+_RDB_create_tbindex(RDB_object *tbp, RDB_environment *envp, RDB_exec_context *ecp,
         RDB_transaction *txp, _RDB_tbindex *indexp, int flags)
 {
     int ret;
@@ -296,7 +296,6 @@ create_indexes(RDB_object *tbp, RDB_environment *envp, RDB_exec_context *ecp,
         RDB_transaction *txp)
 {
     int i;
-    int ret;
 
     /*
      * Create secondary indexes
@@ -312,9 +311,9 @@ create_indexes(RDB_object *tbp, RDB_environment *envp, RDB_exec_context *ecp,
             if (tbp->var.tb.stp->indexv[i].ordered)
                 flags |= RDB_ORDERED;
 
-            ret = create_index(tbp, envp, ecp, txp, &tbp->var.tb.stp->indexv[i], flags);
-            if (ret != RDB_OK)
-                return ret;
+            if (_RDB_create_tbindex(tbp, envp, ecp, txp,
+                    &tbp->var.tb.stp->indexv[i], flags) != RDB_OK)
+                return RDB_ERROR;
         }
     }
     return RDB_OK;
@@ -730,86 +729,6 @@ _RDB_open_table_index(RDB_object *tbp, _RDB_tbindex *indexp,
 cleanup:
     free(fieldv);
     return ret;
-}
-
-int
-RDB_create_table_index(const char *name, RDB_object *tbp, int idxcompc,
-        const RDB_seq_item idxcompv[], int flags, RDB_exec_context *ecp,
-        RDB_transaction *txp)
-{
-    int i;
-    int ret;
-    _RDB_tbindex *indexp;
-
-    if (!_RDB_legal_name(name)) {
-        RDB_raise_invalid_argument("invalid index name", ecp);
-        return RDB_ERROR;
-    }
-
-    if (tbp->var.tb.is_persistent) {
-        /* Insert index into catalog */
-        ret = _RDB_cat_insert_index(name, idxcompc, idxcompv,
-                (RDB_bool) ((RDB_UNIQUE & flags) != 0),
-                (RDB_bool) ((RDB_ORDERED & flags) != 0), RDB_table_name(tbp),
-                ecp, txp);
-        if (ret != RDB_OK)
-            goto error;
-    }
-
-    if (tbp->var.tb.stp != NULL) {
-        tbp->var.tb.stp->indexv = realloc(tbp->var.tb.stp->indexv,
-                (tbp->var.tb.stp->indexc + 1) * sizeof (_RDB_tbindex));
-        if (tbp->var.tb.stp->indexv == NULL) {
-            RDB_raise_no_memory(ecp);
-            return RDB_ERROR;
-        }
-
-        indexp = &tbp->var.tb.stp->indexv[tbp->var.tb.stp->indexc++];
-
-        indexp->name = RDB_dup_str(name);
-        if (indexp->name == NULL) {
-            RDB_raise_no_memory(ecp);
-            return RDB_ERROR;
-        }
-
-        indexp->attrc = idxcompc;
-        indexp->attrv = malloc(sizeof (RDB_seq_item) * idxcompc);
-        if (indexp->attrv == NULL) {
-            free(indexp->name);
-            RDB_raise_no_memory(ecp);
-            return RDB_ERROR;
-        }
-
-        for (i = 0; i < idxcompc; i++) {
-            indexp->attrv[i].attrname = RDB_dup_str(idxcompv[i].attrname);
-            if (indexp->attrv[i].attrname == NULL) {
-                RDB_raise_no_memory(ecp);
-                return RDB_ERROR;
-            }
-            indexp->attrv[i].asc = idxcompv[i].asc;
-        }
-        indexp->unique = (RDB_bool) (RDB_UNIQUE & flags);
-        indexp->ordered = (RDB_bool) (RDB_ORDERED & flags);
-
-        /* Create index */
-        ret = create_index(tbp, RDB_db_env(RDB_tx_db(txp)), ecp, txp, indexp,
-                flags);
-        if (ret != RDB_OK) {
-            goto error;
-        }
-    }
-
-    return RDB_OK;
-
-error:
-    if (tbp->var.tb.stp != NULL) {
-        /* Remove index entry */
-        void *ivp = realloc(tbp->var.tb.stp->indexv,
-                (--tbp->var.tb.stp->indexc) * sizeof (_RDB_tbindex));
-        if (ivp != NULL)
-            tbp->var.tb.stp->indexv = ivp;
-    }
-    return RDB_ERROR;
 }
 
 int

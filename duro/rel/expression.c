@@ -1,7 +1,7 @@
 /*
  * $Id$
  *
- * Copyright (C) 2004-2006 René Hartmann.
+ * Copyright (C) 2004-2007 René Hartmann.
  * See the file COPYING for redistribution information.
  */
 
@@ -13,6 +13,21 @@
 
 #include <string.h>
 
+enum {
+    EXPV_LEN = 64
+};
+
+/** @defgroup expr Expression functions 
+ * @{
+ */
+
+/**
+ * RDB_expr_is_const returns if the expression is a constant expression.
+
+@returns
+
+RDB_TRUE if the expression is a constant expression, RDB_FALSE otherwise.
+ */
 RDB_bool
 RDB_expr_is_const(const RDB_expression *exp)
 {
@@ -757,8 +772,8 @@ error:
     return NULL;
 }
 
-/*
- * Returns the type of an expression.
+/**
+ * Return the type of an expression.
  */
 RDB_type *
 RDB_expr_type(RDB_expression *exp, const RDB_type *tpltyp,
@@ -833,78 +848,6 @@ RDB_expr_type(RDB_expression *exp, const RDB_type *tpltyp,
     abort();
 }
 
-int
-_RDB_check_expr_type(RDB_expression *exp, const RDB_type *tuptyp,
-        const RDB_type *checktyp, RDB_exec_context *ecp, RDB_transaction *txp)
-{
-    RDB_type *typ = RDB_expr_type(exp, tuptyp, ecp, txp);
-    if (typ == NULL)
-        return RDB_ERROR;
-
-    if (!RDB_type_equals(typ, checktyp)) {
-        RDB_raise_type_mismatch("", ecp);
-        return RDB_ERROR;
-    }        
-    return RDB_OK;
-}
-
-int
-_RDB_expr_equals(const RDB_expression *ex1p, const RDB_expression *ex2p,
-        RDB_exec_context *ecp, RDB_transaction *txp, RDB_bool *resp)
-{
-    int ret;
-    int i;
-
-    if (ex1p->kind != ex2p->kind) {
-        *resp = RDB_FALSE;
-        return RDB_OK;
-    }
-
-    switch (ex1p->kind) {
-        case RDB_EX_OBJ:
-            return RDB_obj_equals(&ex1p->var.obj, &ex2p->var.obj, ecp, txp,
-                    resp);
-        case RDB_EX_TBP:
-            if (ex1p->var.tbref.tbp->var.tb.is_persistent
-                    || ex2p->var.tbref.tbp->var.tb.is_persistent) {
-                *resp = (RDB_bool) (ex1p->var.tbref.tbp == ex2p->var.tbref.tbp);
-                return RDB_OK;
-            }
-            return RDB_obj_equals(ex1p->var.tbref.tbp, ex2p->var.tbref.tbp, ecp, txp,
-                    resp);
-        case RDB_EX_VAR:
-            *resp = (RDB_bool)
-                    (strcmp (ex1p->var.varname, ex2p->var.varname) == 0);
-            break;
-        case RDB_EX_TUPLE_ATTR:
-        case RDB_EX_GET_COMP:
-            ret = _RDB_expr_equals(ex1p->var.op.argv[0], ex2p->var.op.argv[0],
-                    ecp, txp, resp);
-            if (ret != RDB_OK)
-                return RDB_ERROR;
-            *resp = (RDB_bool)
-                    (strcmp (ex1p->var.op.name, ex2p->var.op.name) == 0);
-            break;
-        case RDB_EX_RO_OP:
-            if (ex1p->var.op.argc != ex2p->var.op.argc
-                    || strcmp(ex1p->var.op.name, ex2p->var.op.name) != 0) {
-                *resp = RDB_FALSE;
-                return RDB_OK;
-            }
-            for (i = 0; i < ex1p->var.op.argc; i++) {
-                ret = _RDB_expr_equals(ex1p->var.op.argv[i],
-                        ex2p->var.op.argv[i], ecp, txp, resp);
-                if (ret != RDB_OK)
-                    return RDB_ERROR;
-                if (!*resp)
-                    return RDB_OK;
-            }
-            *resp = RDB_TRUE;
-            break;
-    }
-    return RDB_OK;
-}
-
 static RDB_expression *
 new_expr(RDB_exec_context *ecp) {
     RDB_expression *exp = malloc(sizeof (RDB_expression));
@@ -917,6 +860,14 @@ new_expr(RDB_exec_context *ecp) {
 	return exp;
 }
 
+/**
+ * RDB_bool_to_expr creates a constant expression of type BOOLEAN.
+
+@returns
+
+A pointer to the newly created expression, of NULL if the creation
+failed.
+ */
 RDB_expression *
 RDB_bool_to_expr(RDB_bool v, RDB_exec_context *ecp)
 {
@@ -933,6 +884,14 @@ RDB_bool_to_expr(RDB_bool v, RDB_exec_context *ecp)
     return exp;
 }
 
+/**
+ * RDB_int_to_expr creates a constant expression of type INTEGER.
+
+@returns
+
+A pointer to the newly created expression, of NULL if the creation
+failed.
+ */
 RDB_expression *
 RDB_int_to_expr(RDB_int v, RDB_exec_context *ecp)
 {
@@ -949,6 +908,14 @@ RDB_int_to_expr(RDB_int v, RDB_exec_context *ecp)
     return exp;
 }
 
+/**
+ * RDB_float_to_expr creates a constant expression of type FLOAT.
+
+@returns
+
+A pointer to the newly created expression, of NULL if the creation
+failed.
+ */
 RDB_expression *
 RDB_float_to_expr(RDB_float v, RDB_exec_context *ecp)
 {
@@ -965,6 +932,15 @@ RDB_float_to_expr(RDB_float v, RDB_exec_context *ecp)
     return exp;
 }
 
+/**
+ *
+RDB_double_to_expr creates a constant expression of type DOUBLE.
+
+@returns
+
+A pointer to the newly created expression, of NULL if the creation
+failed.
+ */
 RDB_expression *
 RDB_double_to_expr(RDB_double v, RDB_exec_context *ecp)
 {
@@ -981,6 +957,14 @@ RDB_double_to_expr(RDB_double v, RDB_exec_context *ecp)
     return exp;
 }
 
+/**
+ * RDB_string_to_expr creates a constant expression of type STRING.
+
+@returns
+
+A pointer to the newly created expression, of NULL if the creation
+failed.
+ */
 RDB_expression *
 RDB_string_to_expr(const char *v, RDB_exec_context *ecp)
 {
@@ -1003,6 +987,18 @@ RDB_string_to_expr(const char *v, RDB_exec_context *ecp)
     return exp;
 }
 
+/**
+ * RDB_obj_to_expr creates a constant expression from a RDB_object.
+
+Passing an <var>objp</var> of NULL is equivalent to passing
+a pointer to a RDB_object which has been newly initialized
+using RDB_init_obj().
+
+@returns
+
+A pointer to the newly created expression, of NULL if the creation
+failed.
+ */
 RDB_expression *
 RDB_obj_to_expr(const RDB_object *objp, RDB_exec_context *ecp)
 {
@@ -1023,6 +1019,14 @@ RDB_obj_to_expr(const RDB_object *objp, RDB_exec_context *ecp)
     return exp;
 }
 
+/**
+ * RDB_table_ref creates an expression which refers to a table.
+
+@returns
+
+A pointer to the newly created expression, of NULL if the creation
+failed.
+ */
 RDB_expression *
 RDB_table_ref(RDB_object *tbp, RDB_exec_context *ecp)
 {
@@ -1037,6 +1041,14 @@ RDB_table_ref(RDB_object *tbp, RDB_exec_context *ecp)
     return exp;
 }
 
+/**
+ * RDB_var_ref creates an expression that refers to a variable.
+
+@returns
+
+A pointer to the newly created expression, of NULL if the creation
+failed.
+ */
 RDB_expression *
 RDB_var_ref(const char *attrname, RDB_exec_context *ecp)
 {
@@ -1056,61 +1068,20 @@ RDB_var_ref(const char *attrname, RDB_exec_context *ecp)
     return exp;
 }
 
-RDB_expression *
-_RDB_create_unexpr(RDB_expression *arg, enum _RDB_expr_kind kind,
-        RDB_exec_context *ecp)
-{
-    RDB_expression *exp;
+/**
+ * RDB_ro_op creates an expression which represents the invocation
+of a readonly operator.
 
-    if (arg == NULL)
-        return NULL;
+If <var>argc</var> is greater than zero, the arguments must
+be added using RDB_add_arg() to obtain
+a valid expression.
 
-    exp = new_expr(ecp);
-    if (exp == NULL) {
-        return NULL;
-    }
+@returns
 
-    exp->var.op.argv = malloc(sizeof (RDB_expression *));
-    if (exp->var.op.argv == NULL) {
-        RDB_raise_no_memory(ecp);
-        free(exp);
-        return NULL;
-    }
-        
-    exp->kind = kind;
-    exp->var.op.argv[0] = arg;
-
-    return exp;
-}
-
-RDB_expression *
-_RDB_create_binexpr(RDB_expression *arg1, RDB_expression *arg2,
-        enum _RDB_expr_kind kind, RDB_exec_context *ecp)
-{
-    RDB_expression *exp;
-
-    if ((arg1 == NULL) || (arg2 == NULL))
-        return NULL;
-
-    exp = new_expr(ecp);
-    if (exp == NULL) {
-        return NULL;
-    }
-
-    exp->var.op.argv = malloc(sizeof (RDB_expression *) * 2);
-    if (exp->var.op.argv == NULL) {
-        RDB_raise_no_memory(ecp);
-        free(exp);
-        return NULL;
-    }
-        
-    exp->kind = kind;
-    exp->var.op.argv[0] = arg1;
-    exp->var.op.argv[1] = arg2;
-
-    return exp;
-}
-
+On success, a pointer to the newly created expression is returned.
+If the expression could not be created due to insufficient memory,
+NULL is returned and an error is left in *<var>ecp</var>.
+ */
 RDB_expression *
 RDB_ro_op(const char *opname, int argc, RDB_exec_context *ecp)
 {
@@ -1148,10 +1119,17 @@ RDB_ro_op(const char *opname, int argc, RDB_exec_context *ecp)
     return exp;
 }
 
-enum {
-    EXPV_LEN = 64
-};
+/**
+ * RDB_add_arg adds the child expression *<var>argp</var>
+to the expression *<var>exp</var>.
+*<var>exp</var> must represent a read-only operator invocation.
+RDB_ro_op() should be used to create
+such an expression.
 
+To obtain a valid expression representing a read-only
+operator invocation, RDB_add_arg must be called once
+for each argument of the operator.
+ */
 void
 RDB_add_arg(RDB_expression *exp, RDB_expression *argp)
 {
@@ -1162,6 +1140,15 @@ RDB_add_arg(RDB_expression *exp, RDB_expression *argp)
     exp->var.op.argv[i] = argp;
 }
 
+/**
+ * RDB_eq creates an expression that represents an "is equal" operator.
+If one of the arguments is NULL, NULL is returned.
+
+@returns
+
+A pointer to the newly created expression, of NULL if the creation
+failed.
+ */
 RDB_expression *
 RDB_eq(RDB_expression *arg1, RDB_expression *arg2, RDB_exec_context *ecp)
 {
@@ -1174,6 +1161,15 @@ RDB_eq(RDB_expression *arg1, RDB_expression *arg2, RDB_exec_context *ecp)
     return exp;
 }
 
+/**
+ * RDB_tuple_attr creates an expression that represents a tuple attribute
+extraction.
+
+@returns
+
+A pointer to the newly created expression, of NULL if the creation
+failed.
+ */
 RDB_expression *
 RDB_tuple_attr(RDB_expression *arg, const char *attrname,
         RDB_exec_context *ecp)
@@ -1193,6 +1189,15 @@ RDB_tuple_attr(RDB_expression *arg, const char *attrname,
     return exp;
 }
 
+/**
+ * RDB_expr_comp creates an expression which evaluates to a
+possible representation component.
+
+@returns
+
+A pointer to the newly created expression, of NULL if the creation
+failed.
+ */
 RDB_expression *
 RDB_expr_comp(RDB_expression *arg, const char *compname,
         RDB_exec_context *ecp)
@@ -1235,46 +1240,18 @@ drop_children(RDB_expression *exp, RDB_exec_context *ecp)
     return RDB_OK;
 }
 
-/*
- * Destroy the expression but not the children and don't
- * free the memory.
- */
-int
-_RDB_destroy_expr(RDB_expression *exp, RDB_exec_context *ecp)
-{
-    switch (exp->kind) {
-        case RDB_EX_OBJ:
-            /* The expression takes responsibility for non-scalar types */
-            if (exp->var.obj.typ != NULL
-                    && !RDB_type_is_scalar(exp->var.obj.typ)
-                    && exp->var.obj.kind != RDB_OB_TABLE)
-                RDB_drop_type(exp->var.obj.typ, ecp, NULL);
-            if (RDB_destroy_obj(&exp->var.obj, ecp) != RDB_OK)
-                return RDB_ERROR;
-            break;
-        case RDB_EX_TBP:
-            break;
-        case RDB_EX_TUPLE_ATTR:
-        case RDB_EX_GET_COMP:
-            free(exp->var.op.name);
-            free(exp->var.op.argv);
-            break;
-        case RDB_EX_RO_OP:
-            free(exp->var.op.name);
-            free(exp->var.op.argv);
-            if (exp->var.op.optinfo.objpc > 0)
-                free(exp->var.op.optinfo.objpv);
-            break;
-        case RDB_EX_VAR:
-            free(exp->var.varname);
-            break;
-    }
-    if (exp->typ != NULL && !RDB_type_is_scalar(exp->typ))
-        return RDB_drop_type(exp->typ, ecp, NULL);
-    return RDB_OK;
-}
+/**
+ * RDB_drop_expr destroys the expression specified to by <var>exp</var>
+(including all subexpressions) and frees all resources associated with it.
 
-/* Destroy the expression and all subexpressions */
+@returns
+
+RDB_OK on success, RDB_ERROR on failure.
+
+@par Errors:
+
+The call may fail for a @ref system-errors "system error".
+ */
 int
 RDB_drop_expr(RDB_expression *exp, RDB_exec_context *ecp)
 {
@@ -1624,12 +1601,9 @@ RDB_evaluate_bool(RDB_expression *exp, RDB_getobjfn *getfnp, void *getdata,
     return RDB_OK;
 }
 
-RDB_object *
-_RDB_tpl_get(const char *name, void *arg)
-{
-    return RDB_tuple_get((RDB_object *) arg, name);
-}
-
+/**
+ * Create a copy of an expression.
+ */
 RDB_expression *
 RDB_dup_expr(const RDB_expression *exp, RDB_exec_context *ecp)
 {
@@ -1670,6 +1644,68 @@ RDB_dup_expr(const RDB_expression *exp, RDB_exec_context *ecp)
             return RDB_var_ref(exp->var.varname, ecp);
     }
     abort();
+}
+
+/**
+ * RDB_expr_comp returns a pointer to RDB_object embedded in an expression.
+
+@returns
+
+A pointer to the embedded RDB_object or NULL if the expression does
+not represent a RDB_object.
+ */
+RDB_object *
+RDB_expr_obj(RDB_expression *exp)
+{
+    switch (exp->kind) {
+        case RDB_EX_OBJ:
+            return &exp->var.obj;
+        case RDB_EX_TBP:
+            return exp->var.tbref.tbp;
+        default: ;
+    }
+    return NULL;
+}
+
+/*@}*/
+
+/**
+ * Destroy the expression but not the children and don't
+ * free the memory.
+ */
+int
+_RDB_destroy_expr(RDB_expression *exp, RDB_exec_context *ecp)
+{
+    switch (exp->kind) {
+        case RDB_EX_OBJ:
+            /* The expression takes responsibility for non-scalar types */
+            if (exp->var.obj.typ != NULL
+                    && !RDB_type_is_scalar(exp->var.obj.typ)
+                    && exp->var.obj.kind != RDB_OB_TABLE)
+                RDB_drop_type(exp->var.obj.typ, ecp, NULL);
+            if (RDB_destroy_obj(&exp->var.obj, ecp) != RDB_OK)
+                return RDB_ERROR;
+            break;
+        case RDB_EX_TBP:
+            break;
+        case RDB_EX_TUPLE_ATTR:
+        case RDB_EX_GET_COMP:
+            free(exp->var.op.name);
+            free(exp->var.op.argv);
+            break;
+        case RDB_EX_RO_OP:
+            free(exp->var.op.name);
+            free(exp->var.op.argv);
+            if (exp->var.op.optinfo.objpc > 0)
+                free(exp->var.op.optinfo.objpv);
+            break;
+        case RDB_EX_VAR:
+            free(exp->var.varname);
+            break;
+    }
+    if (exp->typ != NULL && !RDB_type_is_scalar(exp->typ))
+        return RDB_drop_type(exp->typ, ecp, NULL);
+    return RDB_OK;
 }
 
 RDB_bool
@@ -1767,16 +1803,136 @@ _RDB_expr_table_depend(const RDB_expression *exp, const RDB_object *tbp)
 }
 
 RDB_object *
-RDB_expr_obj(RDB_expression *exp)
+_RDB_tpl_get(const char *name, void *arg)
 {
-    switch (exp->kind) {
-        case RDB_EX_OBJ:
-            return &exp->var.obj;
-        case RDB_EX_TBP:
-            return exp->var.tbref.tbp;
-        default: ;
+    return RDB_tuple_get((RDB_object *) arg, name);
+}
+
+RDB_expression *
+_RDB_create_unexpr(RDB_expression *arg, enum _RDB_expr_kind kind,
+        RDB_exec_context *ecp)
+{
+    RDB_expression *exp;
+
+    if (arg == NULL)
+        return NULL;
+
+    exp = new_expr(ecp);
+    if (exp == NULL) {
+        return NULL;
     }
-    return NULL;
+
+    exp->var.op.argv = malloc(sizeof (RDB_expression *));
+    if (exp->var.op.argv == NULL) {
+        RDB_raise_no_memory(ecp);
+        free(exp);
+        return NULL;
+    }
+        
+    exp->kind = kind;
+    exp->var.op.argv[0] = arg;
+
+    return exp;
+}
+
+RDB_expression *
+_RDB_create_binexpr(RDB_expression *arg1, RDB_expression *arg2,
+        enum _RDB_expr_kind kind, RDB_exec_context *ecp)
+{
+    RDB_expression *exp;
+
+    if ((arg1 == NULL) || (arg2 == NULL))
+        return NULL;
+
+    exp = new_expr(ecp);
+    if (exp == NULL) {
+        return NULL;
+    }
+
+    exp->var.op.argv = malloc(sizeof (RDB_expression *) * 2);
+    if (exp->var.op.argv == NULL) {
+        RDB_raise_no_memory(ecp);
+        free(exp);
+        return NULL;
+    }
+        
+    exp->kind = kind;
+    exp->var.op.argv[0] = arg1;
+    exp->var.op.argv[1] = arg2;
+
+    return exp;
+}
+
+int
+_RDB_check_expr_type(RDB_expression *exp, const RDB_type *tuptyp,
+        const RDB_type *checktyp, RDB_exec_context *ecp, RDB_transaction *txp)
+{
+    RDB_type *typ = RDB_expr_type(exp, tuptyp, ecp, txp);
+    if (typ == NULL)
+        return RDB_ERROR;
+
+    if (!RDB_type_equals(typ, checktyp)) {
+        RDB_raise_type_mismatch("", ecp);
+        return RDB_ERROR;
+    }        
+    return RDB_OK;
+}
+
+int
+_RDB_expr_equals(const RDB_expression *ex1p, const RDB_expression *ex2p,
+        RDB_exec_context *ecp, RDB_transaction *txp, RDB_bool *resp)
+{
+    int ret;
+    int i;
+
+    if (ex1p->kind != ex2p->kind) {
+        *resp = RDB_FALSE;
+        return RDB_OK;
+    }
+
+    switch (ex1p->kind) {
+        case RDB_EX_OBJ:
+            return RDB_obj_equals(&ex1p->var.obj, &ex2p->var.obj, ecp, txp,
+                    resp);
+        case RDB_EX_TBP:
+            if (ex1p->var.tbref.tbp->var.tb.is_persistent
+                    || ex2p->var.tbref.tbp->var.tb.is_persistent) {
+                *resp = (RDB_bool) (ex1p->var.tbref.tbp == ex2p->var.tbref.tbp);
+                return RDB_OK;
+            }
+            return RDB_obj_equals(ex1p->var.tbref.tbp, ex2p->var.tbref.tbp, ecp, txp,
+                    resp);
+        case RDB_EX_VAR:
+            *resp = (RDB_bool)
+                    (strcmp (ex1p->var.varname, ex2p->var.varname) == 0);
+            break;
+        case RDB_EX_TUPLE_ATTR:
+        case RDB_EX_GET_COMP:
+            ret = _RDB_expr_equals(ex1p->var.op.argv[0], ex2p->var.op.argv[0],
+                    ecp, txp, resp);
+            if (ret != RDB_OK)
+                return RDB_ERROR;
+            *resp = (RDB_bool)
+                    (strcmp (ex1p->var.op.name, ex2p->var.op.name) == 0);
+            break;
+        case RDB_EX_RO_OP:
+            if (ex1p->var.op.argc != ex2p->var.op.argc
+                    || strcmp(ex1p->var.op.name, ex2p->var.op.name) != 0) {
+                *resp = RDB_FALSE;
+                return RDB_OK;
+            }
+            for (i = 0; i < ex1p->var.op.argc; i++) {
+                ret = _RDB_expr_equals(ex1p->var.op.argv[i],
+                        ex2p->var.op.argv[i], ecp, txp, resp);
+                if (ret != RDB_OK)
+                    return RDB_ERROR;
+                if (!*resp)
+                    return RDB_OK;
+            }
+            *resp = RDB_TRUE;
+            break;
+    }
+    return RDB_OK;
 }
 
 int
