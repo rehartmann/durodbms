@@ -2000,9 +2000,10 @@ If an error occurred, (RDB_int)RDB_ERROR is returned.
 <dt>RDB_PREDICATE_VIOLATION_ERROR
 <dd>Deleting the tuples would result in a table which violates its
 predicate.
-<dt>RDB_OPERATOR_NOT_FOUND_ERROR
-<dd>The definition of the table specified by <var>tbp</var> refers to a non-existing operator.
-<dd>The expression specified by <var>exp</var> refers to a non-existing operator.
+<dt>RDB_OPERATOR_NOT_FOUND_ERROR</dt>
+<dd>The definition of the table specified by <var>tbp</var>
+refers to a non-existing operator.</dd>
+<dd>The expression specified by <var>exp</var> refers to a non-existing operator.</dd>
 <dt>RDB_NOT_SUPPORTED_ERROR
 <dd>RDB_delete is not supported for this type of table.
 </dl>

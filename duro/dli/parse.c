@@ -197,7 +197,7 @@ RDB_parse_del_stmtlist(RDB_parse_statement *stmtp, RDB_exec_context *ecp)
  */
 
 /**
- * Parse the <a href="expressions.html">expression</a>
+ * Parse the <a href="../expressions.html">expression</a>
 specified by <var>txt</var>. If <var>lt_fp</var> is not NULL,
 it must point to a function which is used to look up local tables.
 The function is invoked with the table name and <var>lt_arg</var> as
