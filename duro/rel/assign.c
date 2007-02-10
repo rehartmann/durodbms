@@ -1,7 +1,7 @@
 /*
  * $Id$
  *
- * Copyright (C) 2005-2006 René Hartmann.
+ * Copyright (C) 2005-2007 René Hartmann.
  * See the file COPYING for redistribution information.
  * 
  * Functions for assignment operations (insert, update, delete, copy),
@@ -14,6 +14,7 @@
 #include "insert.h"
 #include "optimize.h"
 #include "internal.h"
+#include "stable.h"
 #include <gen/strfns.h>
 
 #include <string.h>
@@ -69,7 +70,8 @@ typedef struct delete_node {
     struct delete_node *nextp;
 } delete_node;
 
-static RDB_expression *prefixed_string_expr(char *str, RDB_exec_context *ecp)
+static RDB_expression *
+prefixed_string_expr(char *str, RDB_exec_context *ecp)
 {
 	RDB_expression *exp;
 	char *nstr = malloc(strlen(str) + 2);

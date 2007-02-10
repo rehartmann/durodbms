@@ -198,3 +198,15 @@ _RDB_init_builtin_types
 RDB_print_obj
 RDB_obj_irep
 RDB_irep_to_obj
+RDB_put_op
+RDB_init_op_map
+_RDB_parse_interactive
+RDB_parse_del_stmt
+_RDB_parse_init_buf
+RDB_dup_expr
+RDB_get_op
+RDB_evaluate_bool
+RDB_raise_syntax
+RDB_parse_stmt
+_RDB_parse_case_insensitive
+yyin

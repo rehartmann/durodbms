@@ -8,6 +8,7 @@
 #include "rdb.h"
 #include "qresult.h"
 #include "internal.h"
+#include "stable.h"
 #include "optimize.h"
 
 static int

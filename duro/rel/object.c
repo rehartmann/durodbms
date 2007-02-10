@@ -8,6 +8,7 @@
 #include "rdb.h"
 #include "typeimpl.h"
 #include "internal.h"
+#include "stable.h"
 #include "qresult.h"
 #include "delete.h"
 #include "insert.h"

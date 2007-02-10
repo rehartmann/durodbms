@@ -1168,11 +1168,12 @@ int
 _RDB_add_selector(RDB_type *typ, RDB_exec_context *ecp)
 {
     int i;
+    RDB_ro_op_desc *op;
 
     if (_RDB_init_builtin_ops(ecp) != RDB_OK)
         return RDB_ERROR;
 
-    RDB_ro_op_desc *op = _RDB_new_ro_op(typ->name,
+    op = _RDB_new_ro_op(typ->name,
             typ->var.scalar.repv[0].compc, typ, &_RDB_sys_select, ecp);
     if (op == NULL) {
         RDB_raise_no_memory(ecp);

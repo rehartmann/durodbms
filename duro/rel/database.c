@@ -7,6 +7,7 @@
 
 #include "rdb.h"
 #include "internal.h"
+#include "stable.h"
 #include "typeimpl.h"
 #include "serialize.h"
 #include "catalog.h"

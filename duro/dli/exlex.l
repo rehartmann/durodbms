@@ -1,13 +1,14 @@
 /*
  * $Id$
  *
- * Copyright (C) 2003-2005 René Hartmann.
+ * Copyright (C) 2003-2007 René Hartmann.
  * See the file COPYING for redistribution information.
  */
 
 %option nounput
 %option noyywrap
 %option yylineno
+%option nounistd
 
 %{
 #define YYSTYPE RDB_expression *
@@ -354,6 +355,10 @@ DELETE {
 
 UPDATE {
     return TOK_UPDATE;
+}
+
+CALL {
+    return TOK_CALL;
 }
 
 \|\| {

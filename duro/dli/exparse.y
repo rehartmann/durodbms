@@ -38,6 +38,27 @@ yylex(void);
 void
 yyerror(const char *);
 
+static RDB_parse_statement *
+new_call(char *name, int expc, RDB_expression **expv) {
+    int ret;
+    int i;
+    RDB_parse_statement *stmtp = malloc(sizeof(RDB_parse_statement));
+    if (stmtp == NULL)
+        return NULL;
+
+    stmtp->kind = RDB_STMT_CALL;
+    RDB_init_obj(&stmtp->var.call.opname);
+  	ret = RDB_string_to_obj(&stmtp->var.call.opname, name, _RDB_parse_ecp);
+  	if (ret != RDB_OK) {
+   	    RDB_destroy_obj(&stmtp->var.call.opname, NULL);
+   	    return NULL;
+  	}
+    stmtp->var.call.argc = expc;
+  	for (i = 0; i < expc; i++)
+   	    stmtp->var.call.argv[i] = expv[i];
+   	return stmtp;
+}
+
 %}
 
 %error-verbose
@@ -254,31 +275,26 @@ statement_body: /* empty */ {
     	$$->kind = RDB_STMT_NOOP;
     }
     | TOK_CALL TOK_ID '(' expression_list ')' {
-    	/* !! */
+        $$ = new_call($2->var.varname, $4.expc, $4.expv);
+        RDB_drop_expr($2, _RDB_parse_ecp);
+        if ($$ == NULL) {
+	        int i;
+
+            for (i = 0; i < $4.expc; i++)
+                RDB_drop_expr($4.expv[i], _RDB_parse_ecp);
+            YYERROR;
+        }
     }
     | TOK_ID '(' expression_list ')' {
-        int ret;
-        int i;
-
-        $$ = malloc(sizeof(RDB_parse_statement));
+        $$ = new_call($1->var.varname, $3.expc, $3.expv);
+        RDB_drop_expr($1, _RDB_parse_ecp);
         if ($$ == NULL) {
+	        int i;
+
             for (i = 0; i < $3.expc; i++)
                 RDB_drop_expr($3.expv[i], _RDB_parse_ecp);
-            RDB_raise_no_memory(_RDB_parse_ecp);
-           	YYERROR;
+            YYERROR;
         }
-    	$$->kind = RDB_STMT_CALL;
-        RDB_init_obj(&$$->var.call.opname);
-    	ret = RDB_string_to_obj(&$$->var.call.opname, $1->var.varname,
-    			_RDB_parse_ecp);
-    	RDB_drop_expr($1, NULL);
-    	if (ret != RDB_OK) {
-    	    RDB_destroy_obj(&$$->var.call.opname, NULL);
-    	    YYERROR;
-    	}
-  	    $$->var.call.argc = $3.expc;
-    	for (i = 0; i < $3.expc; i++)
-    	    $$->var.call.argv[i] = $3.expv[i];
     }
     ;
     | TOK_VAR TOK_ID type {

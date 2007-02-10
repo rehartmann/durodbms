@@ -1,13 +1,14 @@
 /*
  * $Id$
  *
- * Copyright (C) 2003-2006 René Hartmann.
+ * Copyright (C) 2003-2007 René Hartmann.
  * See the file COPYING for redistribution information.
  */
 
 #include "insert.h"
 #include "typeimpl.h"
 #include "internal.h"
+#include "stable.h"
 #include <gen/strfns.h>
 #include <string.h>
 

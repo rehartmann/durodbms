@@ -118,9 +118,14 @@ typedef struct RDB_parse_statement {
 
 typedef RDB_object *RDB_ltablefn(const char *, void *);
 
-extern int _RDB_parse_interactive;
+#if defined (_WIN32) && !defined (NO_DLL_IMPORT)
+#define _RDB_EXTERN_VAR __declspec(dllimport)
+#else
+#define _RDB_EXTERN_VAR extern
+#endif
 
-extern int _RDB_parse_case_insensitive;
+_RDB_EXTERN_VAR int _RDB_parse_interactive;
+_RDB_EXTERN_VAR int _RDB_parse_case_insensitive;
 
 void
 _RDB_parse_init_buf(void);

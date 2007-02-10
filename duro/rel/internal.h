@@ -4,12 +4,11 @@
 /*
  * $Id$
  *
- * Copyright (C) 2003-2006 René Hartmann.
+ * Copyright (C) 2003-2007 René Hartmann.
  * See the file COPYING for redistribution information.
  */
 
 #include "opmap.h"
-#include <rec/index.h>
 #include <rec/cursor.h>
 #include <gen/hashtable.h>
 
@@ -113,16 +112,6 @@ typedef struct {
     RDB_int fno;
 } _RDB_attrmap_entry;
 
-typedef struct RDB_stored_table {
-    RDB_recmap *recmapp;
-    RDB_hashtable attrmap;   /* Maps attr names to field numbers */
-
-    /* Table indexes */
-    int indexc;
-    struct _RDB_tbindex *indexv;
-    int est_cardinality; /* estimated cardinality (from statistics) */
-} RDB_stored_table;
-
 typedef struct RDB_ro_op_desc {
     char *name;
     int argc;
@@ -145,15 +134,6 @@ typedef struct RDB_upd_op_data {
     RDB_bool *updv;
 } RDB_upd_op_data;
 
-typedef struct _RDB_tbindex {
-    char *name;
-    int attrc;
-    RDB_seq_item *attrv;
-    RDB_bool unique;
-    RDB_bool ordered;
-    RDB_index *idxp;	/* NULL for the primary index */
-} _RDB_tbindex;
-
 struct _RDB_tx_and_ec {
     RDB_transaction *txp;
     RDB_exec_context *ecp;
@@ -163,7 +143,7 @@ extern RDB_hashmap _RDB_builtin_type_map;
 
 extern RDB_hashmap _RDB_builtin_ro_op_map;
 
-/* Used to pass the execution context (not MT-safe */
+/* Used to pass the execution context (not MT-safe!) */
 extern RDB_exec_context *_RDB_cmp_ecp;
 
 /* Internal functions */
@@ -171,11 +151,9 @@ extern RDB_exec_context *_RDB_cmp_ecp;
 int
 _RDB_init_builtin_types(RDB_exec_context *);
 
-int
-_RDB_create_tbindex(RDB_object *tbp, RDB_environment *, RDB_exec_context *,
-        RDB_transaction *, _RDB_tbindex *, int);
-
-/* Abort transaction and all parent transactions */
+/**
+ * Abort transaction and all parent transactions
+ */
 int
 RDB_rollback_all(RDB_exec_context *, RDB_transaction *);
 
@@ -207,27 +185,6 @@ _RDB_init_table(RDB_object *, const char *, RDB_bool,
 
 int
 _RDB_free_obj(RDB_object *tbp, RDB_exec_context *);
-
-void
-_RDB_free_tbindex(_RDB_tbindex *);
-
-int
-_RDB_create_stored_table(RDB_object *tbp, RDB_environment *envp,
-        const RDB_bool ascv[], RDB_exec_context *, RDB_transaction *);
-
-int
-_RDB_open_stored_table(RDB_object *tbp, RDB_environment *envp, const char *,
-           int indexc, _RDB_tbindex *indexv, RDB_exec_context *,
-           RDB_transaction *);
-
-int
-_RDB_delete_stored_table(RDB_stored_table *, RDB_exec_context *, RDB_transaction *);
-
-int
-_RDB_close_stored_table(RDB_stored_table *, RDB_exec_context *);
-
-RDB_int *
-_RDB_field_no(RDB_stored_table *, const char *attrname);
 
 int
 _RDB_assoc_table_db(RDB_object *tbp, RDB_database *dbp);
@@ -535,10 +492,6 @@ _RDB_copy_obj(RDB_object *dstvalp, const RDB_object *srcvalp,
         RDB_exec_context *, RDB_transaction *);
 
 int
-_RDB_open_table_index(RDB_object *tbp, _RDB_tbindex *indexp,
-        RDB_environment *, RDB_exec_context *, RDB_transaction *);
-
-int
 _RDB_infer_keys(RDB_expression *exp, RDB_exec_context *, RDB_string_vec **,
         RDB_bool *caller_must_freep);
 
@@ -562,10 +515,10 @@ _RDB_sys_select(const char *name, int argc, RDB_object *argv[],
         RDB_transaction *, RDB_object *retvalp);
 
 RDB_object **
-_RDB_index_objpv(_RDB_tbindex *indexp, RDB_expression *exp, RDB_type *tbtyp,
+_RDB_index_objpv(struct _RDB_tbindex *indexp, RDB_expression *exp, RDB_type *tbtyp,
         int objpc, RDB_bool all_eq, RDB_bool asc);
 
-_RDB_tbindex *
+struct _RDB_tbindex *
 _RDB_expr_sortindex (RDB_expression *);
 
 RDB_expression *

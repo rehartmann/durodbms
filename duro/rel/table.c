@@ -1,19 +1,20 @@
 /*
  * $Id$
  *
- * Copyright (C) 2003-2006 René Hartmann.
+ * Copyright (C) 2003-2007 René Hartmann.
  * See the file COPYING for redistribution information.
  */
 
 #include "rdb.h"
 #include "typeimpl.h"
 #include "catalog.h"
+#include "stable.h"
 #include "qresult.h"
 #include "insert.h"
 #include "optimize.h"
 #include "internal.h"
-
 #include <gen/strfns.h>
+
 #include <string.h>
 
 static RDB_string_vec *

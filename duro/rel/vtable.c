@@ -11,6 +11,7 @@
 #include "rdb.h"
 #include "typeimpl.h"
 #include "internal.h"
+#include "stable.h"
 #include <gen/strfns.h>
 #include <string.h>
 

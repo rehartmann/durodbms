@@ -9,6 +9,7 @@
 #include <string.h>
 #include <errno.h>
 #include <rel/internal.h>
+#include <rel/stable.h>
 #include <gen/hashtabit.h>
 
 int

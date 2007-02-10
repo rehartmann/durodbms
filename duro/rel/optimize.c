@@ -8,6 +8,7 @@
 #include "optimize.h"
 #include "transform.h"
 #include "internal.h"
+#include "stable.h"
 
 #include <gen/strfns.h>
 #include <string.h>

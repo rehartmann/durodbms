@@ -9,6 +9,7 @@
 #include "typeimpl.h"
 #include "insert.h"
 #include "internal.h"
+#include "stable.h"
 #include "serialize.h"
 #include <gen/strfns.h>
 #include <string.h>
@@ -709,7 +710,7 @@ _RDB_cat_delete(RDB_object *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
  */
 int
 _RDB_cat_get_indexes(const char *tablename, RDB_dbroot *dbrootp,
-        RDB_exec_context *ecp, RDB_transaction *txp, _RDB_tbindex **indexvp)
+        RDB_exec_context *ecp, RDB_transaction *txp, struct _RDB_tbindex **indexvp)
 {
     int ret;
     int i;

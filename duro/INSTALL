@@ -1,7 +1,7 @@
 Installation procedure for Duro
 ===============================
 
-Duro uses SCons (www.scons.org) to build itself. Type:
+Duro uses SCons to build itself. Type:
 
 scons
 scons check (optional)

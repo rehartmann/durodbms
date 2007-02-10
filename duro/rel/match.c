@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2005-2006 René Hartmann.
+ * Copyright (C) 2005-2007 René Hartmann.
  * See the file COPYING for redistribution information.
  *
  *
@@ -10,6 +10,7 @@
 #include "qresult.h"
 #include "optimize.h"
 #include "internal.h"
+#include "stable.h"
 
 #include <string.h>
 #include <assert.h>

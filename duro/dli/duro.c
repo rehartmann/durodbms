@@ -12,7 +12,6 @@
 #include "parse.h"
 
 #include <stdio.h>
-#include <unistd.h>
 #include <string.h>
 #include <errno.h>
 
@@ -20,6 +19,14 @@ typedef struct tx_node {
     RDB_transaction tx;
     struct tx_node *nextp;
 } tx_node;
+
+#ifdef _WIN32
+#define _RDB_EXTERN_VAR __declspec(dllimport)
+#else
+#define _RDB_EXTERN_VAR extern
+#endif
+
+_RDB_EXTERN_VAR FILE *yyin;
 
 extern int yydebug;
 
@@ -36,9 +43,22 @@ static tx_node *txnp = NULL;
 typedef int upd_op_func(const char *name, int argc, RDB_object *argv[],
         RDB_exec_context *, RDB_transaction *);
 
-typedef struct {
-    upd_op_func *fnp;
-} upd_op_data;
+static void
+exit_interp(int rcode) {
+    if (txnp != NULL) {
+        RDB_exec_context ec;
+
+        RDB_init_exec_context(&ec);
+        RDB_rollback(&ec, &txnp->tx);
+        RDB_destroy_exec_context(&ec);
+
+        if (_RDB_parse_interactive)
+            printf("Transaction rolled back.\n");
+    }
+    if (envp != NULL)
+        RDB_close_env(envp);
+    exit(rcode);
+}
 
 static int
 println_op(const char *name, int argc, RDB_object *argv[],
@@ -46,6 +66,22 @@ println_op(const char *name, int argc, RDB_object *argv[],
 {
     puts(RDB_obj_string(argv[0]));
     return RDB_OK;
+}   
+
+static int
+exit_op(const char *name, int argc, RDB_object *argv[],
+        RDB_exec_context *ecp, RDB_transaction *txp)
+{
+    exit_interp(0);
+    return 0; /* only to avoid compiling error */
+}   
+
+static int
+exit_op_int(const char *name, int argc, RDB_object *argv[],
+        RDB_exec_context *ecp, RDB_transaction *txp)
+{
+    exit_interp(RDB_obj_int(argv[0]));
+    return 0; /* only to avoid compiling error */
 }   
 
 static RDB_object *
@@ -212,7 +248,7 @@ exec_call(const RDB_parse_statement *stmtp, RDB_exec_context *ecp)
     RDB_type *argtv[DURO_MAX_LLEN];
     char *opname;
     void *op;
-    upd_op_data *opdatap;
+    upd_op_func *opfnp;
 
     for (i = 0; i < stmtp->var.call.argc; i++) {
         RDB_init_obj(&argv[i]);
@@ -230,8 +266,8 @@ exec_call(const RDB_parse_statement *stmtp, RDB_exec_context *ecp)
             RDB_destroy_obj(&argv[i], ecp);
         return RDB_ERROR;
     }
-    opdatap = (upd_op_data *) op;
-    ret = (*opdatap->fnp) (opname, stmtp->var.call.argc, argpv, ecp,
+    opfnp = (upd_op_func *) op;
+    ret = (*opfnp) (opname, stmtp->var.call.argc, argpv, ecp,
             txnp != NULL ? &txnp->tx : NULL);
     for (i = 0; i < stmtp->var.call.argc; i++)
         RDB_destroy_obj(&argv[i], ecp);
@@ -612,41 +648,28 @@ print_error(const RDB_object *errobjp)
 int
 init_upd_ops(RDB_exec_context *ecp)
 {
-    static RDB_type *println_types[] = { &RDB_STRING };
-    static upd_op_data println_data = { &println_op };
+    static RDB_type *println_types[1];
+    static RDB_type *exit_int_types[1];
+    println_types[0] = &RDB_STRING;
+    exit_int_types[0] = &RDB_INTEGER;
 
     RDB_init_op_map(&opmap);
 
-    if (RDB_put_op(&opmap, "PRINTLN", 1, println_types, &println_data, ecp) != RDB_OK)
+    if (RDB_put_op(&opmap, "PRINTLN", 1, println_types, println_op, ecp) != RDB_OK)
+        return RDB_ERROR;
+    if (RDB_put_op(&opmap, "EXIT", 0, NULL, exit_op, ecp) != RDB_OK)
+        return RDB_ERROR;
+    if (RDB_put_op(&opmap, "EXIT", 1, exit_int_types, exit_op_int, ecp) != RDB_OK)
         return RDB_ERROR;
 
     return RDB_OK;
 }
-
-extern FILE *yyin;
 
 static void
 usage_error(void)
 {
     puts("usage: duro [-e envpath] [-d database] [file]");
     exit(1);
-}
-
-static void
-exit_interp(int rcode) {
-    if (txnp != NULL) {
-        RDB_exec_context ec;
-
-        RDB_init_exec_context(&ec);
-        RDB_rollback(&ec, &txnp->tx);
-        RDB_destroy_exec_context(&ec);
-
-        if (_RDB_parse_interactive)
-            printf("Transaction rolled back.\n");
-    }
-    if (envp != NULL)
-        RDB_close_env(envp);
-    exit(rcode);
 }
 
 int
@@ -733,10 +756,12 @@ main(int argc, char *argv[])
                 exit_interp(0);
             }
         } else {
+            RDB_object *errobjp;
+
             ret = exec_stmt(stmtp, &ec);
             if (ret != RDB_OK) {
                 RDB_parse_del_stmt(stmtp, &ec);
-                RDB_object *errobjp = RDB_get_err(&ec);
+                errobjp = RDB_get_err(&ec);
                 if (errobjp != NULL) {
                     print_error(errobjp);
                     RDB_clear_err(&ec);
@@ -745,7 +770,7 @@ main(int argc, char *argv[])
                 ret = RDB_parse_del_stmt(stmtp, &ec);
                 if (ret != RDB_OK) {
                     RDB_parse_del_stmt(stmtp, &ec);
-                    RDB_object *errobjp = RDB_get_err(&ec);
+                    errobjp = RDB_get_err(&ec);
                     print_error(errobjp);
                     exit_interp(2);
                 }

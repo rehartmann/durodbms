@@ -75,7 +75,7 @@ _RDB_cat_delete_index(const char *, RDB_exec_context *, RDB_transaction *);
 
 int
 _RDB_cat_get_indexes(const char *tablename, RDB_dbroot *dbrootp,
-        RDB_exec_context *, RDB_transaction *, _RDB_tbindex **);
+        RDB_exec_context *, RDB_transaction *, struct _RDB_tbindex **);
 
 int
 _RDB_cat_create_constraint(const char *name, RDB_expression *exp,

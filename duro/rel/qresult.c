@@ -8,6 +8,7 @@
 #include "qresult.h"
 #include "insert.h"
 #include "internal.h"
+#include "stable.h"
 #include "typeimpl.h"
 #include <gen/hashtabit.h>
 #include <gen/strfns.h>

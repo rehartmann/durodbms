@@ -7,7 +7,7 @@
  * Functions for physical storage of tables
  */
 
-#include "rdb.h"
+#include "stable.h"
 #include "typeimpl.h"
 #include "catalog.h"
 #include "internal.h"
@@ -30,7 +30,7 @@ _RDB_free_tbindex(_RDB_tbindex *idxp)
     free(idxp->attrv);
 }
 
-void
+static void
 free_stored_table(RDB_stored_table *stp)
 {
     int i;
@@ -91,7 +91,7 @@ _RDB_field_no(RDB_stored_table *stp, const char *attrname)
     return entryp != NULL ? &entryp->fno : NULL;
 }
 
-int
+static int
 _RDB_put_field_no(RDB_stored_table *stp, const char *attrname,
         RDB_int fno, RDB_exec_context *ecp)
 {
@@ -319,7 +319,8 @@ create_indexes(RDB_object *tbp, RDB_environment *envp, RDB_exec_context *ecp,
     return RDB_OK;
 }
 
-static int replen(const RDB_type *typ)
+static int
+replen(const RDB_type *typ)
 {
     switch(typ->kind) {
         case RDB_TP_TUPLE:
