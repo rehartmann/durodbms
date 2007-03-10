@@ -671,17 +671,18 @@ RDB_rename_tuple(const RDB_object *tplp, int renc, const RDB_renaming renv[],
     return RDB_OK;
 }
 
-static int
+static RDB_expression *
 find_rename_to(const RDB_expression *exp, const char *name)
 {
-    int i;
+    RDB_expression *argp = exp->var.op.args.firstp->nextp;
 
-    for (i = 1; i < exp->var.op.argc
-            && strcmp(RDB_obj_string(&exp->var.op.argv[i + 1]->var.obj), name) != 0; i += 2);
-    if (i >= exp->var.op.argc)
-        return -1; /* not found */
-    /* found */
-    return i;
+    while (argp != NULL) {
+        if (strcmp(RDB_obj_string(&argp->nextp->var.obj), name) == 0)
+            return argp;
+        argp = argp->nextp->nextp;
+    }
+    /* not found */
+    return NULL;
 }
 
 /**
@@ -843,10 +844,10 @@ _RDB_invrename_tuple(const RDB_object *tup, const RDB_expression *exp,
     RDB_init_hashtable_iter(&it, (RDB_hashtable *)&tup->var.tpl_tab);
     while ((entryp = RDB_hashtable_next(&it)) != NULL) {
         int ret;
-        int ai = find_rename_to(exp, entryp->key);
+        RDB_expression *argp = find_rename_to(exp, entryp->key);
 
-        if (ai >= 0) {
-            ret = RDB_tuple_set(restup, RDB_obj_string(&exp->var.op.argv[ai]->var.obj),
+        if (argp != NULL) {
+            ret = RDB_tuple_set(restup, RDB_obj_string(&argp->var.obj),
                     &entryp->obj, ecp);
         } else {
             ret = RDB_tuple_set(restup, entryp->key, &entryp->obj, ecp);
@@ -871,7 +872,8 @@ _RDB_invwrap_tuple(const RDB_object *tplp, RDB_expression *exp,
 {
     int i;
     int ret;
-    int wrapc = (exp->var.op.argc - 1) / 2;
+    RDB_expression *argp;
+    int wrapc = (RDB_expr_list_length(&exp->var.op.args) - 1) / 2;
     char **attrv = malloc(sizeof(char *) * wrapc);
 
     if (attrv == NULL) {
@@ -882,9 +884,10 @@ _RDB_invwrap_tuple(const RDB_object *tplp, RDB_expression *exp,
     /*
      * Create unwrapped tuple
      */
-
+    argp = exp->var.op.args.firstp;
     for (i = 0; i < wrapc; i++) {
-        attrv[i] = RDB_obj_string(&exp->var.op.argv[2 + i * 2]->var.obj);
+        argp = argp->nextp->nextp;
+        attrv[i] = RDB_obj_string(&argp->var.obj);
     }
 
     ret = RDB_unwrap_tuple(tplp, wrapc, attrv, ecp, restplp);
@@ -899,8 +902,9 @@ _RDB_invunwrap_tuple(const RDB_object *tplp, RDB_expression *exp,
 {
     int ret;
     int i, j;
-    int attrc = exp->var.op.argc - 1;
-    RDB_type *srcreltyp = RDB_expr_type(exp->var.op.argv[0], NULL, ecp, txp);
+    RDB_expression *argp;
+    int attrc = RDB_expr_list_length(&exp->var.op.args) - 1;
+    RDB_type *srcreltyp = RDB_expr_type(exp->var.op.args.firstp, NULL, ecp, txp);
     RDB_type *srctuptyp = srcreltyp->var.basetyp;
     RDB_wrapping *wrapv = malloc(sizeof(RDB_wrapping) * attrc);
     if (wrapv == NULL) {
@@ -912,9 +916,10 @@ _RDB_invunwrap_tuple(const RDB_object *tplp, RDB_expression *exp,
      * Create wrapped tuple
      */
 
+    argp = exp->var.op.args.firstp->nextp;
     for (i = 0; i < attrc; i++) {
         RDB_type *tuptyp = _RDB_tuple_type_attr(srctuptyp,
-                RDB_obj_string(&exp->var.op.argv[i + 1]->var.obj))->typ;
+                RDB_obj_string(&argp->var.obj))->typ;
 
         wrapv[i].attrc = tuptyp->var.tuple.attrc;
         wrapv[i].attrv = malloc(sizeof(char *) * tuptyp->var.tuple.attrc);
@@ -925,7 +930,8 @@ _RDB_invunwrap_tuple(const RDB_object *tplp, RDB_expression *exp,
         for (j = 0; j < wrapv[i].attrc; j++)
             wrapv[i].attrv[j] = tuptyp->var.tuple.attrv[j].name;
 
-        wrapv[i].attrname = RDB_obj_string(&exp->var.op.argv[i + 1]->var.obj);
+        wrapv[i].attrname = RDB_obj_string(&argp->var.obj);
+        argp = argp->nextp;
     }
 
     ret = RDB_wrap_tuple(tplp, attrc, wrapv, ecp, restplp);

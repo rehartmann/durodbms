@@ -48,15 +48,16 @@ static int
 project_matching(RDB_expression *texp, const RDB_object *tplp, RDB_exec_context *ecp,
         RDB_transaction *txp, RDB_bool *resultp)
 {
-    int i;
+    RDB_expression *argp;
     RDB_object tpl;
 
     /*
      * Pick attributes which are attributes of the table
      */
     RDB_init_obj(&tpl);
-    for (i = 0; i < texp->var.op.argc - 1; i++) {
-        char *attrname = RDB_obj_string(&texp->var.op.argv[i + 1]->var.obj);
+    argp = texp->var.op.args.firstp->nextp;
+    while (argp != NULL) {
+        char *attrname = RDB_obj_string(&argp->var.obj);
         RDB_object *attrp = RDB_tuple_get(tplp, attrname);
         if (attrp != NULL) {
             if (RDB_tuple_set(&tpl, attrname, attrp, ecp) != RDB_OK) {
@@ -64,9 +65,10 @@ project_matching(RDB_expression *texp, const RDB_object *tplp, RDB_exec_context 
                 return RDB_ERROR;
             }
         }
+        argp = argp->nextp;
     }
-    if (_RDB_expr_matching_tuple(texp->var.op.argv[0], &tpl, ecp, txp, resultp)
-            != RDB_OK) {
+    if (_RDB_expr_matching_tuple(texp->var.op.args.firstp, &tpl, ecp, txp,
+            resultp) != RDB_OK) {
         RDB_destroy_obj(&tpl, ecp);
         return RDB_ERROR;
     }

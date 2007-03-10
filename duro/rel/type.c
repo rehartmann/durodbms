@@ -1443,7 +1443,7 @@ RDB_implement_type(const char *name, RDB_type *arep, RDB_int areplen,
     if (exp == NULL) {
         return RDB_ERROR;
     }
-    wherep = RDB_ro_op("=", 2, ecp);
+    wherep = RDB_ro_op("=", ecp);
     if (wherep == NULL) {
         RDB_drop_expr(exp, ecp);
         return RDB_ERROR;
@@ -1568,7 +1568,7 @@ RDB_drop_type(RDB_type *typ, RDB_exec_context *ecp, RDB_transaction *txp)
         }
 
         /* Delete type from database */
-        wherep = RDB_ro_op("=", 2, ecp);
+        wherep = RDB_ro_op("=", ecp);
         if (wherep == NULL) {
             return RDB_ERROR;
         }
@@ -2092,6 +2092,10 @@ error:
     return NULL;
 }
 
+/**
+ * Rename the attributes of the relation type pointed to by typ according to renc
+ * and renv return the new tuple type.
+ */
 RDB_type *
 RDB_rename_relation_type(const RDB_type *typ, int renc, const RDB_renaming renv[],
         RDB_exec_context *ecp)
@@ -2177,11 +2181,12 @@ aggr_type(const RDB_expression *exp, const RDB_type *tpltyp,
     } else if (strcmp(exp->var.op.name, "SUM") == 0
             || strcmp(exp->var.op.name, "MAX") == 0
             || strcmp(exp->var.op.name, "MIN") == 0) {
-        if (exp->var.op.argc != 1) {
+        if (exp->var.op.args.firstp == NULL
+                || exp->var.op.args.firstp->nextp != NULL) {
             RDB_raise_invalid_argument("invalid number of aggregate arguments", ecp);
             return NULL;
         }
-        return RDB_expr_type(exp->var.op.argv[0], tpltyp, ecp, txp);
+        return RDB_expr_type(exp->var.op.args.firstp, tpltyp, ecp, txp);
     } else if (strcmp(exp->var.op.name, "ANY") == 0
             || strcmp(exp->var.op.name, "ALL") == 0) {
         return &RDB_BOOLEAN;
@@ -2191,15 +2196,17 @@ aggr_type(const RDB_expression *exp, const RDB_type *tpltyp,
 }
 
 RDB_type *
-RDB_summarize_type(int expc, RDB_expression **expv,
+RDB_summarize_type(RDB_expr_list *expsp,
         int avgc, char **avgv, RDB_exec_context *ecp, RDB_transaction *txp)
 {
     int i;
     RDB_type *newtyp;
     int addc, attrc;
+    RDB_expression *argp;
     RDB_attr *attrv = NULL;
     RDB_type *tb1typ = NULL;
     RDB_type *tb2typ = NULL;
+    int expc = RDB_expr_list_length(expsp);
 
     if (expc < 2 || (expc % 2) != 0) {
         RDB_raise_invalid_argument("invalid number of arguments", ecp);
@@ -2209,10 +2216,10 @@ RDB_summarize_type(int expc, RDB_expression **expv,
     addc = (expc - 2) / 2;
     attrc = addc + avgc;
 
-    tb1typ = RDB_expr_type(expv[0], NULL, ecp, txp);
+    tb1typ = RDB_expr_type(expsp->firstp, NULL, ecp, txp);
     if (tb1typ == NULL)
         return NULL;
-    tb2typ = RDB_expr_type(expv[1], NULL, ecp, txp);
+    tb2typ = RDB_expr_type(expsp->firstp->nextp, NULL, ecp, txp);
     if (tb2typ == NULL)
         goto error;
    
@@ -2227,20 +2234,22 @@ RDB_summarize_type(int expc, RDB_expression **expv,
         goto error;
     }
 
+    argp = expsp->firstp->nextp->nextp;
     for (i = 0; i < addc; i++) {
-        attrv[i].typ = aggr_type(expv[2 + i * 2], tb1typ->var.basetyp,
+        attrv[i].typ = aggr_type(argp, tb1typ->var.basetyp,
                 ecp, txp);
         if (attrv[i].typ == NULL)
             goto error;
-        if (expv[3 + i * 2]->kind != RDB_EX_OBJ) {
+        if (argp->nextp->kind != RDB_EX_OBJ) {
             RDB_raise_invalid_argument("invalid SUMMARIZE argument", ecp);
             goto error;
         }
-        attrv[i].name = RDB_obj_string(&expv[3 + i * 2]->var.obj);
+        attrv[i].name = RDB_obj_string(&argp->nextp->var.obj);
         if (attrv[i].name == NULL) {
             RDB_raise_invalid_argument("invalid SUMMARIZE argument", ecp);
             goto error;
         }
+        argp = argp->nextp->nextp;
     }
     for (i = 0; i < avgc; i++) {
         attrv[addc + i].name = avgv[i];

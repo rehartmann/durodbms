@@ -28,6 +28,11 @@ _RDB_vtexp_to_obj(RDB_expression *exp, RDB_exec_context *ecp,
         return RDB_ERROR;
     }
 
+    if (tbtyp->kind != RDB_TP_RELATION) {
+        RDB_raise_type_mismatch("relation type required", ecp);
+        return RDB_ERROR;
+    }
+
     tbtyp = RDB_dup_nonscalar_type(tbtyp, ecp);
     if (tbtyp == NULL)
         return RDB_ERROR;
@@ -107,20 +112,19 @@ _RDB_check_project_keyloss(RDB_expression *exp,
         int keyc, RDB_string_vec *keyv, RDB_bool presv[],
         RDB_exec_context *ecp)
 {
-    int i, j, k;
+    int i, j;
     int count = 0;
     RDB_bool pres;
 
     for (i = 0; i < keyc; i++) {
         for (j = 0; j < keyv[i].strc; j++) {
             /* Search for key attribute in projection attrs */
-            for (k = 0;
-                 (k < exp->var.op.argc - 1)
-                        && (strcmp(keyv[i].strv[j],
-                            RDB_obj_string(&exp->var.op.argv[k + 1]->var.obj)) != 0);
-                 k++);
+            RDB_expression *argp = exp->var.op.args.firstp->nextp;
+            while (argp != NULL
+                    && (strcmp(keyv[i].strv[j], RDB_obj_string(&argp->var.obj)) != 0))
+                argp = argp->nextp;
             /* If not found, exit loop */
-            if (k >= exp->var.op.argc - 1)
+            if (argp == NULL)
                 break;
         }
         /* If the loop didn't terminate prematurely, the key is preserved */
@@ -180,10 +184,10 @@ infer_join_keys(RDB_expression *exp, RDB_exec_context *ecp,
     RDB_string_vec *newkeyv;
     RDB_bool free1, free2;
 
-    keyc1 = _RDB_infer_keys(exp->var.op.argv[0], ecp, &keyv1, &free1);
+    keyc1 = _RDB_infer_keys(exp->var.op.args.firstp, ecp, &keyv1, &free1);
     if (keyc1 < 0)
         return keyc1;
-    keyc2 = _RDB_infer_keys(exp->var.op.argv[0], ecp, &keyv2, &free2);
+    keyc2 = _RDB_infer_keys(exp->var.op.args.firstp, ecp, &keyv2, &free2);
     if (keyc2 < 0)
         return keyc2;
 
@@ -247,7 +251,7 @@ infer_project_keys(RDB_expression *exp, RDB_exec_context *ecp,
     RDB_bool *presv;
     RDB_bool freekeys;
 
-    keyc = _RDB_infer_keys(exp->var.op.argv[0], ecp, &keyv, &freekeys);
+    keyc = _RDB_infer_keys(exp->var.op.args.firstp, ecp, &keyv, &freekeys);
     if (keyc < 0)
         return keyc;
 
@@ -331,7 +335,7 @@ infer_group_keys(RDB_expression *exp, RDB_exec_context *ecp,
     j = 0;
     for (i = 0; i < tbtyp->var.basetyp->var.tuple.attrc; i++) {
         if (strcmp(tbtyp->var.basetyp->var.tuple.attrv[i].name,
-                RDB_obj_string(&exp->var.op.argv[exp->var.op.argc - 1]->var.obj)) != 0) {
+                RDB_obj_string(&exp->var.op.args.lastp->var.obj)) != 0) {
             newkeyv[0].strv[j] = RDB_dup_str(
                     tbtyp->var.basetyp->var.tuple.attrv[i].name);
             if (newkeyv[0].strv[j] == NULL) {
@@ -350,14 +354,13 @@ char *
 _RDB_rename_attr(const char *srcname, RDB_expression *exp)
 {
     /* Search for attribute in rename arguments */
-    int i = 1;
-    while (i < exp->var.op.argc
-            && strcmp(RDB_obj_string(&exp->var.op.argv[i]->var.obj), srcname) != 0) {
-        i += 2;
+    RDB_expression *argp = exp->var.op.args.firstp->nextp;
+    while (argp != NULL  && strcmp(RDB_obj_string(&argp->var.obj), srcname) != 0) {
+        argp = argp->nextp->nextp;
     }
-    if (i < exp->var.op.argc) {
+    if (argp != NULL) {
         /* Found - return new attribute name */
-        return RDB_obj_string(&exp->var.op.argv[i + 1]->var.obj);
+        return RDB_obj_string(&argp->nextp->var.obj);
     }
     return NULL;   
 }
@@ -439,7 +442,7 @@ _RDB_infer_keys(RDB_expression *exp, RDB_exec_context *ecp,
             || (strcmp(exp->var.op.name, "INTERSECT") == 0)
             || (strcmp(exp->var.op.name, "EXTEND") == 0)
             || (strcmp(exp->var.op.name, "DIVIDE") == 0)) {
-        return _RDB_infer_keys(exp->var.op.argv[0], ecp, keyvp,
+        return _RDB_infer_keys(exp->var.op.args.firstp, ecp, keyvp,
                 caller_must_freep);
     }
     if (strcmp(exp->var.op.name, "JOIN") == 0) {
@@ -450,12 +453,12 @@ _RDB_infer_keys(RDB_expression *exp, RDB_exec_context *ecp,
     	return infer_project_keys(exp, ecp, keyvp, caller_must_freep);
     }
     if (strcmp(exp->var.op.name, "SUMMARIZE") == 0) {
-        return _RDB_infer_keys(exp->var.op.argv[1], ecp, keyvp,
+        return _RDB_infer_keys(exp->var.op.args.firstp->nextp, ecp, keyvp,
                 caller_must_freep);
     }
     if (strcmp(exp->var.op.name, "RENAME") == 0) {
         RDB_bool freekey;
-        int keyc = _RDB_infer_keys(exp->var.op.argv[0], ecp, keyvp, &freekey);
+        int keyc = _RDB_infer_keys(exp->var.op.args.firstp, ecp, keyvp, &freekey);
         if (keyc == RDB_ERROR)
             return RDB_ERROR;
 
@@ -525,18 +528,18 @@ _RDB_index_objpv(_RDB_tbindex *indexp, RDB_expression *exp, RDB_type *tbtyp,
         attrexp = nodep;
         if (attrexp->kind == RDB_EX_RO_OP
                 && strcmp (attrexp->var.op.name, "AND") == 0)
-            attrexp = attrexp->var.op.argv[1];
-        if (attrexp->var.op.argv[1]->var.obj.typ == NULL
-                && (attrexp->var.op.argv[1]->var.obj.kind == RDB_OB_TUPLE
-                || attrexp->var.op.argv[1]->var.obj.kind == RDB_OB_ARRAY)) {
-            attrexp->var.op.argv[1]->var.obj.typ = RDB_dup_nonscalar_type(
+            attrexp = attrexp->var.op.args.firstp->nextp;
+        if (attrexp->var.op.args.firstp->nextp->var.obj.typ == NULL
+                && (attrexp->var.op.args.firstp->nextp->var.obj.kind == RDB_OB_TUPLE
+                || attrexp->var.op.args.firstp->nextp->var.obj.kind == RDB_OB_ARRAY)) {
+            attrexp->var.op.args.firstp->nextp->var.obj.typ = RDB_dup_nonscalar_type(
                     RDB_type_attr_type(tbtyp, indexp->attrv[i].attrname), NULL);
-            if (attrexp->var.op.argv[1]->var.obj.typ == NULL) {
+            if (attrexp->var.op.args.firstp->nextp->var.obj.typ == NULL) {
                 free(objpv);
                 return NULL;
             }
         }
-        objpv[i] = &attrexp->var.op.argv[1]->var.obj;       
+        objpv[i] = &attrexp->var.op.args.firstp->nextp->var.obj;       
     }
     return objpv;
 }

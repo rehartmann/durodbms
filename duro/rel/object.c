@@ -867,7 +867,7 @@ RDB_destroy_obj(RDB_object *objp, RDB_exec_context *ecp)
             }
 
             /* It may be a scalar type with a relation actual rep */ 
-            if (!RDB_type_is_scalar(objp->typ))
+            if (objp->typ != NULL && !RDB_type_is_scalar(objp->typ))
                 RDB_drop_type(objp->typ, ecp, NULL);
             
             free(objp->var.tb.name);

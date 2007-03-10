@@ -191,9 +191,8 @@ static int
 serialize_expr(RDB_object *valp, int *posp, const RDB_expression *exp,
         RDB_exec_context *ecp)
 {
-    int ret = serialize_byte(valp, posp, (RDB_byte) exp->kind, ecp);
-    if (ret != RDB_OK)
-        return ret;
+    if (serialize_byte(valp, posp, (RDB_byte) exp->kind, ecp) != RDB_OK)
+        return RDB_ERROR;
 
     switch(exp->kind) {
         case RDB_EX_OBJ:
@@ -203,32 +202,31 @@ serialize_expr(RDB_object *valp, int *posp, const RDB_expression *exp,
         case RDB_EX_VAR:
             return serialize_str(valp, posp, exp->var.varname, ecp);
         case RDB_EX_GET_COMP:
-            ret = serialize_expr(valp, posp, exp->var.op.argv[0], ecp);
-            if (ret != RDB_OK)
-                return ret;
+            if (serialize_expr(valp, posp, exp->var.op.args.firstp, ecp)
+                    != RDB_OK)
+                return RDB_ERROR;
             return serialize_str(valp, posp, exp->var.op.name, ecp);
         case RDB_EX_RO_OP:
         {
-            int i;
-            int argc = exp->var.op.argc;
+            RDB_expression *argp;
 
-            ret = serialize_str(valp, posp, exp->var.op.name, ecp);
-            if (ret != RDB_OK)
+            if (serialize_str(valp, posp, exp->var.op.name, ecp) != RDB_OK)
                 return RDB_ERROR;
-            ret = serialize_int (valp, posp, argc, ecp);
-            if (ret != RDB_OK)
+            if (serialize_int (valp, posp,
+                    RDB_expr_list_length(&exp->var.op.args), ecp) != RDB_OK)
                 return RDB_ERROR;
-            for (i = 0; i < argc; i++) {
-                ret = serialize_expr(valp, posp, exp->var.op.argv[i], ecp);
-                if (ret != RDB_OK)
+            argp = exp->var.op.args.firstp;
+            while (argp != NULL) {
+                if (serialize_expr(valp, posp, argp, ecp) != RDB_OK)
                     return RDB_ERROR;
+                argp = argp->nextp;
             }
             return RDB_OK;
         }
         case RDB_EX_TUPLE_ATTR:
-            ret = serialize_expr(valp, posp, exp->var.op.argv[0], ecp);
-            if (ret != RDB_OK)
-                return ret;
+            if (serialize_expr(valp, posp, exp->var.op.args.firstp, ecp)
+                    != RDB_OK)
+                return RDB_ERROR;
             return serialize_str(valp, posp, exp->var.op.name, ecp);
     }
     /* should never be reached */
@@ -623,7 +621,7 @@ deserialize_expr(RDB_object *valp, int *posp, RDB_exec_context *ecp,
                 return RDB_ERROR;
             }
 
-            *expp = RDB_ro_op(name, argc, ecp);
+            *expp = RDB_ro_op(name, ecp);
             free(name);
             if (*expp == NULL)
                 return RDB_ERROR;

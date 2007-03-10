@@ -652,7 +652,7 @@ user_tables_vt(RDB_database *dbp, RDB_exec_context *ecp, RDB_transaction *txp)
     if (ex2p == NULL) {
         goto error;
     }
-    ex3p = RDB_ro_op("WHERE", 2, ecp);
+    ex3p = RDB_ro_op("WHERE", ecp);
     if (ex3p == NULL) {
         goto error;
     }
@@ -676,13 +676,13 @@ user_tables_vt(RDB_database *dbp, RDB_exec_context *ecp, RDB_transaction *txp)
     ex1p = RDB_table_ref(dbp->dbrootp->dbtables_tbp, ecp);
     if (ex1p == NULL)
         goto error;
-    ex2p = RDB_ro_op("WHERE", 2, ecp);
+    ex2p = RDB_ro_op("WHERE", ecp);
     if (ex2p == NULL)
         goto error;
     RDB_add_arg(ex2p, ex1p);
     RDB_add_arg(ex2p, ex4p);
     ex4p = NULL;
-    ex1p = RDB_ro_op("JOIN", 2, ecp);
+    ex1p = RDB_ro_op("JOIN", ecp);
     if (ex1p == NULL)
         goto error;
     RDB_add_arg(ex1p, ex2p);
@@ -732,7 +732,7 @@ db_exists_vt(RDB_database *dbp, RDB_exec_context *ecp, RDB_transaction *txp)
     if (ex1p == NULL)
         goto error;
 
-    ex2p = RDB_ro_op("WHERE", 2, ecp);
+    ex2p = RDB_ro_op("WHERE", ecp);
     if (ex2p == NULL)
         goto error;
     RDB_add_arg(ex2p, ex1p);
@@ -861,7 +861,7 @@ db_names_tb(RDB_object *dbtables_tbp, RDB_exec_context *ecp, RDB_transaction *tx
     if (ex2p == NULL)
         return NULL;
 
-    ex3p = RDB_ro_op("PROJECT", 2, ecp);
+    ex3p = RDB_ro_op("PROJECT", ecp);
     if (ex3p == NULL)
         goto error;
     RDB_add_arg(ex3p, ex1p);
@@ -1034,13 +1034,14 @@ create_table(const char *name, RDB_type *reltyp,
     tbp = _RDB_new_rtable(name, RDB_TRUE, reltyp,
                 keyc, keyv, RDB_TRUE, ecp);
     if (tbp == NULL) {
-        RDB_raise_no_memory(ecp);
         return NULL;
     }
 
     /* Insert table into catalog */
     ret = _RDB_cat_insert(tbp, ecp, &tx);
     if (ret != RDB_OK) {
+        /* Don't destroy type */
+        tbp->typ = NULL;
         RDB_rollback(ecp, &tx);
         _RDB_free_obj(tbp, ecp);
         return NULL;

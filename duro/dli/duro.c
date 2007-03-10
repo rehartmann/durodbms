@@ -166,6 +166,12 @@ static int
 exec_vardef_real(const RDB_parse_statement *stmtp, RDB_exec_context *ecp)
 {
     RDB_object *tbp;
+    RDB_string_vec *keyv;
+    int keyc = 0;
+    RDB_parse_keydef *keyp;
+    RDB_expression *keyattrp;
+    int i, j;
+    RDB_bool freekey;
     char *varname = RDB_obj_string(&stmtp->var.vardef_real.varname);
     RDB_type *tbtyp = RDB_dup_nonscalar_type(stmtp->var.vardef_real.typ, ecp);
     if (tbtyp == NULL)
@@ -175,12 +181,52 @@ exec_vardef_real(const RDB_parse_statement *stmtp, RDB_exec_context *ecp)
         printf("Error: no transaction\n");
         return RDB_ERROR;
     }
-    tbp = RDB_create_table_from_type(varname, tbtyp, 0, NULL, ecp, &txnp->tx);
+
+    keyp = stmtp->var.vardef_real.firstkeyp;
+    while (keyp != NULL) {
+        keyc++;
+        keyp = keyp->nextp;
+    }
+
+    if (keyc > 0) {
+        keyv = malloc(sizeof(RDB_string_vec) * keyc);
+        if (keyv == NULL) {
+            RDB_raise_no_memory(ecp);
+            return RDB_ERROR;
+        }
+        keyp = stmtp->var.vardef_real.firstkeyp;
+        for (i = 0; i < keyc; i++) {
+            keyv[i].strc = RDB_expr_list_length(&keyp->attrlist);
+            keyv[i].strv = malloc(keyv[i].strc * sizeof(char *));
+            if (keyv[i].strv == NULL) {
+                RDB_raise_no_memory(ecp);
+                return RDB_ERROR;
+            }
+            keyattrp = keyp->attrlist.firstp;
+            for (j = 0; j < keyv[i].strc; j++) {
+                keyv[i].strv[j] = RDB_obj_string(RDB_expr_obj(keyattrp));
+                keyattrp = keyattrp->nextp;
+            }
+        }       
+    } else {
+        /* Get keys from expression */
+
+        printf("Inferring keys\n");
+
+        keyc = _RDB_infer_keys(stmtp->var.vardef_real.initexp, ecp, &keyv,
+                &freekey);
+        if (keyc == RDB_ERROR)
+            return RDB_ERROR;
+    }
+
+    tbp = RDB_create_table_from_type(varname, tbtyp, keyc, keyv, ecp, &txnp->tx);
     if (tbp == NULL) {
         RDB_drop_type(tbtyp, ecp, NULL);
         return RDB_ERROR;
     }
-   
+
+    /* !! */   
+
     if (_RDB_parse_interactive)
         printf("Table %s created.\n", varname);
     return RDB_OK;
@@ -243,33 +289,39 @@ exec_call(const RDB_parse_statement *stmtp, RDB_exec_context *ecp)
 {
     int ret;
     int i;
+    int argc;
     RDB_object argv[DURO_MAX_LLEN];
     RDB_object *argpv[DURO_MAX_LLEN];
     RDB_type *argtv[DURO_MAX_LLEN];
     char *opname;
     void *op;
     upd_op_func *opfnp;
+    RDB_expression *argp;
 
-    for (i = 0; i < stmtp->var.call.argc; i++) {
+    argp = stmtp->var.call.arglist.firstp;
+    i = 0;
+    while (argp != NULL) {
         RDB_init_obj(&argv[i]);
-        if (RDB_evaluate(stmtp->var.call.argv[i], &get_var, &varmap,
+        if (RDB_evaluate(argp, &get_var, &varmap,
                 ecp, txnp != NULL ? &txnp->tx : NULL, &argv[i]) != RDB_OK)
             return RDB_ERROR;
         argpv[i] = &argv[i];
         argtv[i] = RDB_obj_type(&argv[i]);
+        i++;
     }
+    argc = i;
     opname = RDB_obj_string(&stmtp->var.call.opname);
-    op = RDB_get_op(&opmap, opname, stmtp->var.call.argc, argtv);
+    op = RDB_get_op(&opmap, opname, argc, argtv);
     if (op == NULL) {
         RDB_raise_operator_not_found(opname, ecp);
-        for (i = 0; i < stmtp->var.call.argc; i++)
+        for (i = 0; i < argc; i++)
             RDB_destroy_obj(&argv[i], ecp);
         return RDB_ERROR;
     }
     opfnp = (upd_op_func *) op;
-    ret = (*opfnp) (opname, stmtp->var.call.argc, argpv, ecp,
+    ret = (*opfnp) (opname, argc, argpv, ecp,
             txnp != NULL ? &txnp->tx : NULL);
-    for (i = 0; i < stmtp->var.call.argc; i++)
+    for (i = 0; i < argc; i++)
         RDB_destroy_obj(&argv[i], ecp);
     return ret;
 }

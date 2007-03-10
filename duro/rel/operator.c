@@ -622,7 +622,7 @@ RDB_drop_op(const char *name, RDB_exec_context *ecp, RDB_transaction *txp)
     /*
      * Check if it's a read-only operator
      */
-    exp = RDB_ro_op("WHERE", 2, ecp);
+    exp = RDB_ro_op("WHERE", ecp);
     if (exp == NULL)
         return RDB_ERROR;
     argp = RDB_table_ref(txp->dbp->dbrootp->ro_ops_tbp, ecp);

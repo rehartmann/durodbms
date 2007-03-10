@@ -64,13 +64,17 @@ typedef struct {
     } var;
 } RDB_parse_assign;
 
+typedef struct RDB_parse_keydef {
+    RDB_expr_list attrlist;
+    struct RDB_parse_keydef *nextp;
+} RDB_parse_keydef;
+
 typedef struct RDB_parse_statement {
     RDB_parse_stmt_kind kind;
     union {
         struct {
             RDB_object opname;
-            int argc;
-            RDB_expression *argv[DURO_MAX_LLEN];
+            RDB_expr_list arglist;
         } call;
         struct {
             RDB_object varname;
@@ -81,14 +85,12 @@ typedef struct RDB_parse_statement {
             RDB_object varname;
             RDB_type *typ;
             RDB_expression *initexp;
-            int keyc;
-            char **keyv;
+            RDB_parse_keydef *firstkeyp;
         } vardef_real;
         struct {
             RDB_object varname;
             RDB_expression *exp;
-            int keyc;
-            char **keyv;
+            RDB_parse_keydef *firstkeyp;
         } vardef_virtual;
         struct {
             RDB_object varname;
@@ -139,6 +141,9 @@ RDB_parse_expr(const char *, RDB_ltablefn *, void *, RDB_exec_context *,
 
 RDB_parse_statement *
 RDB_parse_stmt(RDB_exec_context *);
+
+int
+RDB_parse_del_keydef_list(RDB_parse_keydef *firstkeyp, RDB_exec_context *);
 
 int
 RDB_parse_del_assignlist(RDB_parse_attr_assign *, RDB_exec_context *);

@@ -65,6 +65,19 @@ void yyerror(char *errtxt)
 }
 
 int
+RDB_parse_del_keydef_list(RDB_parse_keydef *firstkeyp, RDB_exec_context *ecp)
+{
+    int ret = RDB_OK;
+    while (firstkeyp != NULL) {
+        RDB_parse_keydef *nextp = firstkeyp->nextp;
+        if (RDB_destroy_expr_list(&firstkeyp->attrlist, _RDB_parse_ecp) != RDB_OK)
+            ret = RDB_ERROR;
+        firstkeyp = nextp;
+    }
+    return ret;
+}
+
+int
 RDB_parse_destroy_assign(RDB_parse_assign *ap, RDB_exec_context *ecp)
 {
     switch(ap->kind) {
@@ -115,9 +128,7 @@ RDB_parse_del_stmt(RDB_parse_statement *stmtp, RDB_exec_context *ecp)
 
     switch(stmtp->kind) {
         case RDB_STMT_CALL:
-            for (i = 0; i < stmtp->var.call.argc; i++)
-                RDB_drop_expr(stmtp->var.call.argv[i], ecp);
-            ret = RDB_destroy_obj(&stmtp->var.call.opname, ecp);
+            ret = RDB_destroy_expr_list(&stmtp->var.call.arglist, ecp);
             break;
         case RDB_STMT_VAR_DEF:
             ret = RDB_destroy_obj(&stmtp->var.vardef.varname, ecp);
@@ -134,6 +145,9 @@ RDB_parse_del_stmt(RDB_parse_statement *stmtp, RDB_exec_context *ecp)
                 ret = RDB_drop_type(stmtp->var.vardef_real.typ, ecp, NULL);
             if (stmtp->var.vardef_real.initexp != NULL)
                 ret = RDB_drop_expr(stmtp->var.vardef_real.initexp, ecp);
+            if (stmtp->var.vardef_real.firstkeyp != NULL)
+                RDB_parse_del_keydef_list(stmtp->var.vardef_real.firstkeyp,
+                    ecp);
             break;
         case RDB_STMT_VAR_DEF_VIRTUAL:
             RDB_destroy_obj(&stmtp->var.vardef_virtual.varname, ecp);

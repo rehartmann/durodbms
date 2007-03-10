@@ -461,11 +461,11 @@ update_where_pindex(RDB_expression *texp, RDB_expression *condp,
     RDB_field *fieldv;
     RDB_expression *refexp;
 
-    if (texp->var.op.argv[0]->kind == RDB_EX_TBP) {
-        refexp = texp->var.op.argv[0];
+    if (texp->var.op.args.firstp->kind == RDB_EX_TBP) {
+        refexp = texp->var.op.args.firstp;
     } else {
         /* child is projection */
-        refexp = texp->var.op.argv[0]->var.op.argv[0];
+        refexp = texp->var.op.args.firstp->var.op.args.firstp;
     }
     objc = refexp->var.tbref.indexp->attrc;
 
@@ -592,11 +592,11 @@ update_where_index_simple(RDB_expression *texp, RDB_expression *condp,
     RDB_field *fieldv;
     RDB_cursor *curp = NULL;
 
-    if (texp->var.op.argv[0]->kind == RDB_EX_TBP) {
-        refexp = texp->var.op.argv[0];
+    if (texp->var.op.args.firstp->kind == RDB_EX_TBP) {
+        refexp = texp->var.op.args.firstp;
     } else {
         /* child is projection */
-        refexp = texp->var.op.argv[0]->var.op.argv[0];
+        refexp = texp->var.op.args.firstp->var.op.args.firstp;
     }
     objc = refexp->var.tbref.indexp->attrc;
 
@@ -692,7 +692,7 @@ update_where_index_simple(RDB_expression *texp, RDB_expression *condp,
             }
         }
 
-        if (RDB_evaluate_bool(texp->var.op.argv[1], &_RDB_tpl_get, &tpl,
+        if (RDB_evaluate_bool(texp->var.op.args.firstp->nextp, &_RDB_tpl_get, &tpl,
                 ecp, &tx, &b) != RDB_OK) {
             rcount = RDB_ERROR;
             goto cleanup;
@@ -812,11 +812,11 @@ update_where_index_complex(RDB_expression *texp, RDB_expression *condp,
         return RDB_ERROR;
     }
 
-    if (texp->var.op.argv[0]->kind == RDB_EX_TBP) {
-        refexp = texp->var.op.argv[0];
+    if (texp->var.op.args.firstp->kind == RDB_EX_TBP) {
+        refexp = texp->var.op.args.firstp;
     } else {
         /* child is projection */
-        refexp = texp->var.op.argv[0]->var.op.argv[0];
+        refexp = texp->var.op.args.firstp->var.op.args.firstp;
     }
     objc = refexp->var.tbref.indexp->attrc;
 
@@ -928,7 +928,7 @@ update_where_index_complex(RDB_expression *texp, RDB_expression *condp,
             }
         }
 
-        if (RDB_evaluate_bool(texp->var.op.argv[1], &_RDB_tpl_get, &tpl, ecp,
+        if (RDB_evaluate_bool(texp->var.op.args.firstp->nextp, &_RDB_tpl_get, &tpl, ecp,
                 &tx, &b) != RDB_OK) {
             RDB_destroy_obj(&tpl, ecp);
             rcount = RDB_ERROR;
@@ -1029,7 +1029,7 @@ update_where_index_complex(RDB_expression *texp, RDB_expression *condp,
             }
         }
 
-        if (RDB_evaluate_bool(texp->var.op.argv[1], &_RDB_tpl_get, &tpl, ecp,
+        if (RDB_evaluate_bool(texp->var.op.args.firstp->nextp, &_RDB_tpl_get, &tpl, ecp,
                 &tx, &b) != RDB_OK) {
             RDB_destroy_obj(&tpl, ecp);
             rcount = RDB_ERROR;
@@ -1147,11 +1147,11 @@ _RDB_update_where_index(RDB_expression *texp, RDB_expression *condp,
 {
     RDB_expression *refexp;
 
-    if (texp->var.op.argv[0]->kind == RDB_EX_TBP) {
-        refexp = texp->var.op.argv[0];
+    if (texp->var.op.args.firstp->kind == RDB_EX_TBP) {
+        refexp = texp->var.op.args.firstp;
     } else {
         /* child is projection */
-        refexp = texp->var.op.argv[0]->var.op.argv[0];
+        refexp = texp->var.op.args.firstp->var.op.args.firstp;
     }
     
     if (refexp->var.tbref.tbp->var.tb.stp == NULL)
@@ -1162,7 +1162,7 @@ _RDB_update_where_index(RDB_expression *texp, RDB_expression *condp,
     }
 
     if (upd_complex(refexp->var.tbref.tbp, updc, updv, ecp)
-        || _RDB_expr_refers(texp->var.op.argv[1], refexp->var.tbref.tbp)
+        || _RDB_expr_refers(texp->var.op.args.firstp->nextp, refexp->var.tbref.tbp)
         || (condp != NULL && _RDB_expr_refers(condp, refexp->var.tbref.tbp))) {
         return update_where_index_complex(texp, condp, updc, updv, ecp, txp);
     }

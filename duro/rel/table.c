@@ -17,6 +17,8 @@
 
 #include <string.h>
 
+#include <dli/tabletostr.h>
+
 static RDB_string_vec *
 dup_keyv(int keyc, const RDB_string_vec keyv[])
 {
@@ -1113,7 +1115,7 @@ RDB_table_is_empty(RDB_object *tbp, RDB_exec_context *ecp,
     /*
      * Project all attributes away, then optimize
      */
-    exp = RDB_ro_op("PROJECT", 1, ecp);
+    exp = RDB_ro_op("PROJECT", ecp);
     if (exp == NULL)
     	return RDB_ERROR;
     argp = RDB_table_ref(tbp, ecp);
@@ -1411,10 +1413,10 @@ _RDB_expr_sortindex (RDB_expression *exp)
     if (exp->kind != RDB_EX_RO_OP)
         return NULL;
     if (strcmp(exp->var.op.name, "WHERE") == 0) {
-        return _RDB_expr_sortindex(exp->var.op.argv[0]);
+        return _RDB_expr_sortindex(exp->var.op.args.firstp);
     }
     if (strcmp(exp->var.op.name, "PROJECT") == 0) {
-        return _RDB_expr_sortindex(exp->var.op.argv[0]);
+        return _RDB_expr_sortindex(exp->var.op.args.firstp);
     }
     if (strcmp(exp->var.op.name, "SEMIMINUS") == 0
             || strcmp(exp->var.op.name, "MINUS") == 0
@@ -1423,7 +1425,7 @@ _RDB_expr_sortindex (RDB_expression *exp)
             || strcmp(exp->var.op.name, "JOIN") == 0
             || strcmp(exp->var.op.name, "EXTEND") == 0
             || strcmp(exp->var.op.name, "DIVIDE") == 0) {
-        return _RDB_expr_sortindex(exp->var.op.argv[0]);
+        return _RDB_expr_sortindex(exp->var.op.args.firstp);
     }
     /* !! RENAME, SUMMARIZE, WRAP, UNWRAP, GROUP, UNGROUP */
 

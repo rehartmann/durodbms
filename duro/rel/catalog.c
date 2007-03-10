@@ -517,7 +517,7 @@ _RDB_cat_index_tablename(const char *name, char **tbnamep,
     RDB_object tpl;
     RDB_object *vtbp;
     RDB_expression *argp;
-    RDB_expression *exp = RDB_ro_op("WHERE", 2, ecp);
+    RDB_expression *exp = RDB_ro_op("WHERE", ecp);
     if (exp == NULL) {
         return RDB_ERROR;
     }
@@ -719,7 +719,7 @@ _RDB_cat_get_indexes(const char *tablename, RDB_dbroot *dbrootp,
     RDB_object *vtbp;
     RDB_object arr;
     RDB_expression *argp;
-    RDB_expression *exp = RDB_ro_op("WHERE", 2, ecp);
+    RDB_expression *exp = RDB_ro_op("WHERE", ecp);
     if (exp == NULL) {
         return RDB_ERROR;
     }
@@ -1368,7 +1368,7 @@ get_keys(const char *name, RDB_exec_context *ecp, RDB_transaction *txp,
 
     *keyvp = NULL;
 
-    exp = RDB_ro_op("WHERE", 2, ecp);
+    exp = RDB_ro_op("WHERE", ecp);
     if (exp == NULL) {
         return RDB_ERROR;
     }
@@ -1479,7 +1479,7 @@ _RDB_cat_get_rtable(const char *name, RDB_exec_context *ecp,
 
     /* !! Should check if table is from txp->dbp ... */
 
-    exp = RDB_ro_op("WHERE", 2, ecp);
+    exp = RDB_ro_op("WHERE", ecp);
     if (exp == NULL) {
         goto error;
     }
@@ -1514,7 +1514,7 @@ _RDB_cat_get_rtable(const char *name, RDB_exec_context *ecp,
      * Read attribute names and types
      */
 
-    exp = RDB_ro_op("WHERE", 2, ecp);
+    exp = RDB_ro_op("WHERE", ecp);
     if (exp == NULL) {
         goto error;
     }
@@ -1578,7 +1578,7 @@ _RDB_cat_get_rtable(const char *name, RDB_exec_context *ecp,
      * Read default values
      */
 
-    exp = RDB_ro_op("WHERE", 2, ecp);
+    exp = RDB_ro_op("WHERE", ecp);
     if (exp == NULL) {
         goto error;
     }
@@ -1646,7 +1646,7 @@ _RDB_cat_get_rtable(const char *name, RDB_exec_context *ecp,
          * Read recmap name from catalog, if it's user table.
          * For system tables, the recmap name is the table name.
          */
-        exp = RDB_ro_op("WHERE", 2, ecp);
+        exp = RDB_ro_op("WHERE", ecp);
         if (exp == NULL) {
             goto error;
         }
@@ -1784,7 +1784,7 @@ _RDB_cat_get_vtable(const char *name, RDB_exec_context *ecp,
     RDB_init_obj(&arr);
     RDB_init_obj(&tpl);
 
-    exp = RDB_ro_op("WHERE", 2, ecp);
+    exp = RDB_ro_op("WHERE", ecp);
     if (exp == NULL) {
         goto error;
     }
@@ -1906,7 +1906,7 @@ types_query(const char *name, RDB_exec_context *ecp, RDB_transaction *txp,
 {
     RDB_expression *exp, *argp;
 
-    exp = RDB_ro_op("WHERE", 2, ecp);
+    exp = RDB_ro_op("WHERE", ecp);
     if (exp == NULL) {
         return RDB_ERROR;
     }
@@ -1939,7 +1939,7 @@ _RDB_possreps_query(const char *name, RDB_exec_context *ecp,
 {
     RDB_expression *exp, *argp;
 
-    exp = RDB_ro_op("PROJECT", 3, ecp);
+    exp = RDB_ro_op("PROJECT", ecp);
     if (exp == NULL)
     	return RDB_ERROR;
     argp = RDB_table_ref(txp->dbp->dbrootp->possrepcomps_tbp, ecp);
@@ -1962,7 +1962,7 @@ _RDB_possreps_query(const char *name, RDB_exec_context *ecp,
     RDB_add_arg(exp, argp);
 
     argp = exp;
-    exp = RDB_ro_op("WHERE", 2, ecp);
+    exp = RDB_ro_op("WHERE", ecp);
     if (exp == NULL) {
         RDB_drop_expr(argp, ecp);        
         return RDB_ERROR;
@@ -1989,7 +1989,7 @@ possrepcomps_query(const char *name, const char *possrepname,
 {
     RDB_object *tbp;
     RDB_expression *argp, *wexp;
-    RDB_expression *exp = RDB_ro_op("AND", 2, ecp);
+    RDB_expression *exp = RDB_ro_op("AND", ecp);
     if (exp == NULL) {
         return NULL;
     }
@@ -2008,7 +2008,7 @@ possrepcomps_query(const char *name, const char *possrepname,
     }
     RDB_add_arg(exp, argp);
 
-    wexp = RDB_ro_op("WHERE", 2, ecp);
+    wexp = RDB_ro_op("WHERE", ecp);
     if (wexp == NULL) {
         RDB_drop_expr(exp, ecp);        
         return NULL;
@@ -2311,7 +2311,7 @@ _RDB_cat_get_ro_op(const char *name, int argc, RDB_type *argtv[],
         return RDB_ERROR;
     }
 
-    exp = RDB_ro_op("AND", 2, ecp);
+    exp = RDB_ro_op("AND", ecp);
     if (exp == NULL) {
         RDB_destroy_obj(&typesobj, ecp);
         return RDB_ERROR;
@@ -2333,7 +2333,7 @@ _RDB_cat_get_ro_op(const char *name, int argc, RDB_type *argtv[],
     }
     RDB_add_arg(exp, argp);
 
-    wexp = RDB_ro_op("WHERE", 2, ecp);
+    wexp = RDB_ro_op("WHERE", ecp);
     if (wexp == NULL) {
         RDB_drop_expr(exp, ecp);
         return RDB_ERROR;
@@ -2469,7 +2469,7 @@ _RDB_cat_get_upd_op(const char *name, int argc, RDB_type *argtv[],
         return NULL;
     }
         
-    exp = RDB_ro_op("AND", 2, ecp);
+    exp = RDB_ro_op("AND", ecp);
     if (exp == NULL) {
         RDB_destroy_obj(&typesobj, ecp);
         return NULL;
@@ -2491,7 +2491,7 @@ _RDB_cat_get_upd_op(const char *name, int argc, RDB_type *argtv[],
     }
     RDB_add_arg(exp, argp);
 
-    wexp = RDB_ro_op("WHERE", 2, ecp);
+    wexp = RDB_ro_op("WHERE", ecp);
     if (wexp == NULL) {
         RDB_drop_expr(exp, ecp);
         return NULL;

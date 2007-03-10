@@ -57,7 +57,13 @@ typedef struct {
 
 typedef struct RDB_expression RDB_expression;
 
-/*
+typedef struct RDB_expr_list {
+    RDB_expression *firstp;
+    RDB_expression *lastp;
+    struct RDB_expr_list *nextp;
+} RDB_expr_list;
+
+/**
  * A RDB_object structure carries a value of an arbitrary type,
  * together with the type information.
  */
@@ -731,13 +737,22 @@ RDB_expression *
 RDB_expr_comp(RDB_expression *, const char *, RDB_exec_context *);
 
 RDB_expression *
-RDB_ro_op(const char *opname, int argc, RDB_exec_context *);
+RDB_ro_op(const char *opname, RDB_exec_context *);
 
 void
 RDB_add_arg(RDB_expression *exp, RDB_expression *argp);
 
 RDB_object *
 RDB_expr_obj(RDB_expression *exp);
+
+int
+RDB_destroy_expr_list(RDB_expr_list *, RDB_exec_context *);
+
+RDB_int
+RDB_expr_list_length(const RDB_expr_list *);
+
+void
+RDB_join_expr_lists(RDB_expr_list *, RDB_expr_list *);
 
 int
 RDB_evaluate(RDB_expression *, RDB_getobjfn *, void *,

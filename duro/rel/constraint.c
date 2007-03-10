@@ -33,13 +33,14 @@ add_empty_tb(RDB_constraint *constrp, RDB_exec_context *ecp,
     te.ecp = ecp;
 
     if (constrp->exp->kind == RDB_EX_RO_OP
-            && constrp->exp->var.op.argc == 1
+            && constrp->exp->var.op.args.firstp != NULL
+            && constrp->exp->var.op.args.firstp->nextp == NULL
             && strcmp(constrp->exp->var.op.name, "IS_EMPTY") == 0) {
         RDB_expression *exp;
-        RDB_expression *oexp = constrp->exp->var.op.argv[0];
+        RDB_expression *oexp = constrp->exp->var.op.args.firstp;
         if (oexp->kind == RDB_EX_RO_OP
                 && strcmp(oexp->var.op.name, "PROJECT") == 0) {
-            oexp = oexp->var.op.argv[0];
+            oexp = oexp->var.op.args.firstp;
         }
         exp = RDB_dup_expr(oexp, ecp);
         if (exp == NULL)

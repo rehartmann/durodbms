@@ -42,8 +42,7 @@ struct RDB_expression {
             struct _RDB_tbindex *indexp;
         } tbref;
         struct {
-            int argc;
-            struct RDB_expression **argv;
+            RDB_expr_list args;
             char *name;
             struct {
                 int objpc;
@@ -57,6 +56,7 @@ struct RDB_expression {
         } op;
     } var;
     RDB_type *typ; /* NULL if the type has not been determined */
+    struct RDB_expression *nextp;
 };
 
 struct RDB_database {
@@ -203,6 +203,9 @@ _RDB_expr_equals(const RDB_expression *, const RDB_expression *,
 int
 _RDB_destroy_expr(RDB_expression *, RDB_exec_context *);
 
+void
+_RDB_expr_list_set_lastp(RDB_expr_list *);
+
 /*
  * Extend the tuple type pointed to by typ by the attributes given by
  * attrv and return the new tuple type.
@@ -264,17 +267,13 @@ RDB_type *
 RDB_rename_tuple_type(const RDB_type *typ, int renc, const RDB_renaming renv[],
         RDB_exec_context *);
 
-/*
- * Rename the attributes of the relation type pointed to by typ according to renc
- * and renv return the new tuple type.
- */
 RDB_type *
 RDB_rename_relation_type(const RDB_type *typ, int renc, const RDB_renaming renv[],
         RDB_exec_context *);
 
 RDB_type *
-RDB_summarize_type(int expc, RDB_expression **expv,
-        int avgc, char **avgv, RDB_exec_context *ecp, RDB_transaction *txp);
+RDB_summarize_type(RDB_expr_list *, int avgc, char **avgv,
+        RDB_exec_context *ecp, RDB_transaction *txp);
 
 RDB_type *
 RDB_wrap_tuple_type(const RDB_type *typ, int wrapc,

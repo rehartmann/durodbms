@@ -4,6 +4,8 @@ Summary of Changes for Duro
 
 Changes for Duro 0.13
 
+- Dropped argc argument of RDB_ro_op().
+
 - Implemented interpreter application.
 
 - Fixed bug in Duroadmin - now uses correct floating-point types.
