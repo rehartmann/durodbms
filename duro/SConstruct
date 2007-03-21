@@ -102,7 +102,7 @@ else:
 # Interpreter
 #
 
-dli = env.Program('dli/duro.c')
+dli = env.Program(['dli/durodt.c', 'dli/iinterp.c'])
 
 #
 # Docs

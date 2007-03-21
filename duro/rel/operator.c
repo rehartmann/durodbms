@@ -330,13 +330,13 @@ cleanup:
 }
 
 static RDB_bool
-obj_is_scalar(RDB_object *objp)
+obj_is_scalar(const RDB_object *objp)
 {
     return (RDB_bool) (objp->typ != NULL && RDB_type_is_scalar(objp->typ));
 }
 
 static RDB_bool
-obj_is_table(RDB_object *objp)
+obj_is_table(const RDB_object *objp)
 {
     /*
      * Check type first, as it could be a user-defined type

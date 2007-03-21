@@ -208,8 +208,7 @@ add_type(RDB_type *typ, RDB_exec_context *ecp)
      * Add selector if the type has a possrep (applies to error types)
      */
     if (typ->var.scalar.repc == 1) {
-        ret = _RDB_add_selector(typ, ecp);
-        if (ret != RDB_OK) {
+        if (_RDB_add_selector(typ, ecp) != RDB_OK) {
             return RDB_ERROR;
         }
     }
@@ -1317,7 +1316,7 @@ create_selector(RDB_type *typ, RDB_exec_context *ecp, RDB_transaction *txp)
 /**
  * RDB_implement_type implements the user-defined type with name
 <var>name</var>. The type must have been defined previously using
-RDB_define_type. After RDB_implement_type was inkoved successfully,
+RDB_define_type(). After RDB_implement_type was inkoved successfully,
 this type may be used for local variables and table attributes.
 
 If <var>arep</var> is not NULL, it must point to a type which is used
