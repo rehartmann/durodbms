@@ -215,9 +215,9 @@ transform_where(RDB_expression *exp, RDB_exec_context *ecp,
              * Only if the variables in the where condition 
              * all appear in the RENAME table
              */
-            if (RDB_expr_type(exp, NULL, ecp, txp) == NULL) {
+            if (_RDB_expr_type(exp, NULL, ecp, txp) == NULL) {
                 RDB_type *errtyp = RDB_obj_type(RDB_get_err(ecp));
-                if (errtyp != &RDB_ATTRIBUTE_NOT_FOUND_ERROR)
+                if (errtyp != &NAME_ERROR)
                     return RDB_ERROR;
                 RDB_clear_err(ecp);
                 return RDB_OK;
@@ -482,7 +482,7 @@ swap_project_where(RDB_expression *exp, RDB_expression *chexp,
     int attrc;
     char **attrv;
     RDB_expression *argp;
-    RDB_type *chtyp = RDB_expr_type(chexp, NULL, ecp, txp);
+    RDB_type *chtyp = _RDB_expr_type(chexp, NULL, ecp, txp);
     if (chtyp == NULL)
         return RDB_ERROR;
 
@@ -661,7 +661,7 @@ _RDB_remove_to_project(RDB_expression *exp, RDB_exec_context *ecp,
         argp = argp->nextp;
     }                
 
-    chtyp = RDB_expr_type(exp->var.op.args.firstp, NULL, ecp, txp);
+    chtyp = _RDB_expr_type(exp->var.op.args.firstp, NULL, ecp, txp);
     if (chtyp == NULL)
         return RDB_ERROR;
     if (chtyp->kind == RDB_TP_RELATION) {

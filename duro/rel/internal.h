@@ -464,12 +464,8 @@ _RDB_obj_to_field(RDB_field *, RDB_object *, RDB_exec_context *);
 
 #define _RDB_pkey_len(tbp) ((tbp)->var.tb.keyv[0].strc)
 
-/*
- * Return the type of the expression.
- * If the type is non-scalar, it is managed by the expression.
- */
 RDB_type *
-RDB_expr_type(RDB_expression *, const RDB_type *, RDB_exec_context *,
+_RDB_expr_type(RDB_expression *, const RDB_type *, RDB_exec_context *,
         RDB_transaction *);
 
 RDB_type *

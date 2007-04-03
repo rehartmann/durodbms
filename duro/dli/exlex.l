@@ -27,6 +27,8 @@ extern int _RDB_parse_case_insensitive;
 
 int _RDB_parse_start_token;
 
+char *_RDB_parse_prompt;
+
 /*
  * Process backslash escapes
  */
@@ -289,6 +291,10 @@ ANY {
     return TOK_ANY;
 }
 
+SAME_TYPE_AS {
+	return TOK_SAME_TYPE_AS;
+}
+
 TABLE_DEE {
     return TOK_TABLE_DEE;
 }
@@ -449,7 +455,7 @@ CALL {
     if (!_RDB_parse_interactive)
         yyterminate();
 
-    fputs("> ", stdout);
+    fputs(_RDB_parse_prompt, stdout);
     if (fgets(strbuf, sizeof(strbuf), stdin) == NULL) {
         yy_delete_buffer(YY_CURRENT_BUFFER);
         yyterminate();

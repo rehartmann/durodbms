@@ -776,20 +776,6 @@ RDB_init_obj(RDB_object *valp)
 }
 
 /**
- * Delete candidate keys.
- */
-void
-_RDB_free_keys(int keyc, RDB_string_vec *keyv)
-{
-    int i;
-
-    for (i = 0; i < keyc; i++) {
-        RDB_free_strvec(keyv[i].strc, keyv[i].strv);
-    }
-    free(keyv);
-}
-
-/**
  * RDB_destroy_obj releases all resources associated with a RDB_object
  * structure.
 
@@ -1382,6 +1368,20 @@ RDB_obj_type(const RDB_object *objp)
 }
 
 /*@}*/
+
+/**
+ * Delete candidate keys.
+ */
+void
+_RDB_free_keys(int keyc, RDB_string_vec *keyv)
+{
+    int i;
+
+    for (i = 0; i < keyc; i++) {
+        RDB_free_strvec(keyv[i].strc, keyv[i].strv);
+    }
+    free(keyv);
+}
 
 /* Works only for scalar types */
 void

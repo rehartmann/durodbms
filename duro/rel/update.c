@@ -132,7 +132,7 @@ update_stored_complex(RDB_object *tbp, RDB_expression *condp,
             }
             attrobjp = RDB_tuple_get(&tpl, tpltyp->var.tuple.attrv[i].name);
             if (attrobjp == NULL) {
-                RDB_raise_attribute_not_found(tpltyp->var.tuple.attrv[i].name, ecp);
+                RDB_raise_name(tpltyp->var.tuple.attrv[i].name, ecp);
                 rcount = RDB_ERROR;
                 goto cleanup;
             }

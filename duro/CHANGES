@@ -6,9 +6,11 @@ Changes for Duro 0.13
 
 - Dropped argc argument of RDB_ro_op().
 
-- Implemented interpreter application.
+- Implemented interpreter Duro D/T.
 
 - Fixed bug in Duroadmin - now uses correct floating-point types.
+
+- Replaced ATTRIBUTE_NOT_FOUND_ERROR by NAME_ERROR.
 
 - Using doxygen for the documentation.
 

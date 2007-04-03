@@ -193,7 +193,7 @@ _RDB_create_tbindex(RDB_object *tbp, RDB_environment *envp, RDB_exec_context *ec
     for (i = 0; i < indexp->attrc; i++) {
         RDB_int *np = _RDB_field_no(tbp->var.tb.stp, indexp->attrv[i].attrname);
         if (np == NULL) {
-            RDB_raise_attribute_not_found(indexp->attrv[i].attrname, ecp);
+            RDB_raise_name(indexp->attrv[i].attrname, ecp);
             return RDB_ERROR;
         }
         fieldv[i] = *np;

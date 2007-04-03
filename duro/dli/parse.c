@@ -22,7 +22,7 @@ void yy_delete_buffer(YY_BUFFER_STATE);
 RDB_transaction *_RDB_parse_txp;
 RDB_expression *_RDB_parse_resultp;
 RDB_parse_statement *_RDB_parse_stmtp;
-RDB_ltablefn *_RDB_parse_ltfp;
+RDB_getobjfn *_RDB_parse_getobjfp;
 void *_RDB_parse_arg;
 RDB_exec_context *_RDB_parse_ecp;
 int _RDB_parse_interactive = 0;
@@ -39,6 +39,9 @@ _RDB_parse_start_stmt(void);
 
 void
 yy_switch_to_buffer(YY_BUFFER_STATE);
+
+void
+yy_flush_buffer(YY_BUFFER_STATE);
 
 typedef struct YYLTYPE
 {
@@ -233,7 +236,7 @@ in which case the transaction may be implicitly rolled back.
 @warning The parser is not reentrant.
  */
 RDB_expression *
-RDB_parse_expr(const char *txt, RDB_ltablefn *lt_fp, void *lt_arg,
+RDB_parse_expr(const char *txt, RDB_getobjfn *lt_fp, void *lt_arg,
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
     int pret;
@@ -241,7 +244,7 @@ RDB_parse_expr(const char *txt, RDB_ltablefn *lt_fp, void *lt_arg,
     YY_BUFFER_STATE buf;
 
     _RDB_parse_txp = txp;
-    _RDB_parse_ltfp = lt_fp;
+    _RDB_parse_getobjfp = lt_fp;
     _RDB_parse_arg = lt_arg;
     _RDB_parse_ecp = ecp;
 
@@ -273,10 +276,14 @@ RDB_parse_expr(const char *txt, RDB_ltablefn *lt_fp, void *lt_arg,
 /*@}*/
 
 RDB_parse_statement *
-RDB_parse_stmt(RDB_exec_context *ecp)
+RDB_parse_stmt(RDB_getobjfn *getobjfp, void *arg, RDB_exec_context *ecp,
+        RDB_transaction *txp)
 {
     int pret;
 
+    _RDB_parse_txp = txp;
+    _RDB_parse_getobjfp = getobjfp;
+    _RDB_parse_arg = arg;
     _RDB_parse_ecp = ecp;
 
     _RDB_parse_start_stmt();

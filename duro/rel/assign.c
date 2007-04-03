@@ -1459,7 +1459,7 @@ RDB_multi_assign(int insc, const RDB_ma_insert insv[],
             RDB_attr *attrp = _RDB_tuple_type_attr(
                     updv[i].tbp->typ->var.basetyp, updv[i].updv[j].name);
             if (attrp == NULL) {
-                RDB_raise_attribute_not_found(updv[i].updv[j].name, ecp);
+                RDB_raise_name(updv[i].updv[j].name, ecp);
                 return RDB_ERROR;
             }
 
@@ -1929,7 +1929,7 @@ If an error occurred, (RDB_int)RDB_ERROR is returned.
 <dt>RDB_INVALID_TRANSACTION_ERROR
 <dd><var>txp</var> does not point to a running transaction.
 
-<dt>RDB_ATTRIBUTE_NOT_FOUND_ERROR
+<dt>NAME_ERROR
 <dd>One of the attributes in <var>updv</var> does not exist in the table.
 <dd>One of the expressions specified in <var>updv</var> refers to an attribute
 which does not exist in the table.

@@ -188,9 +188,9 @@ RDB_raise_not_supported(const char *msg, RDB_exec_context *ecp)
 }
 
 RDB_object *
-RDB_raise_attribute_not_found(const char *msg, RDB_exec_context *ecp)
+RDB_raise_name(const char *msg, RDB_exec_context *ecp)
 {
-    return raise_msg_err(&RDB_ATTRIBUTE_NOT_FOUND_ERROR, msg, ecp);
+    return raise_msg_err(&NAME_ERROR, msg, ecp);
 }
 
 RDB_object *

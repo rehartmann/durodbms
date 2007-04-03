@@ -192,7 +192,7 @@ do_summarize(RDB_qresult *qrp, RDB_type *tb1typ, RDB_bool hasavg,
                                 nonkeyfv[i].datap, nonkeyfv[i].len, ecp);
                     } else {
                         RDB_expression *exp = argp->var.op.args.firstp;
-                        typ = RDB_expr_type(exp, tb1typ->var.basetyp, ecp, txp);
+                        typ = _RDB_expr_type(exp, tb1typ->var.basetyp, ecp, txp);
                         if (typ == NULL)
                             goto cleanup;
                         ret = RDB_irep_to_obj(&svalv[i].val, typ,
@@ -331,7 +331,7 @@ init_summ_table(RDB_qresult *qrp, RDB_type *tb1typ, RDB_bool hasavg, RDB_exec_co
             } else if (strcmp(opname, "AVG") == 0) {
                 ret = RDB_tuple_set_double(&tpl, name, 0, ecp);
             } else if (strcmp(opname, "SUM") == 0) {
-                typ = RDB_expr_type(opexp->var.op.args.firstp,
+                typ = _RDB_expr_type(opexp->var.op.args.firstp,
                         tb1typ->var.basetyp, ecp, txp);
                 if (typ == NULL)
                     goto error;
@@ -340,7 +340,7 @@ init_summ_table(RDB_qresult *qrp, RDB_type *tb1typ, RDB_bool hasavg, RDB_exec_co
                 else
                     ret = RDB_tuple_set_double(&tpl, name, 0.0, ecp);
             } else if (strcmp(opname, "MAX") == 0) {
-                typ = RDB_expr_type(opexp->var.op.args.firstp,
+                typ = _RDB_expr_type(opexp->var.op.args.firstp,
                         tb1typ->var.basetyp,
                         ecp, txp);
                 if (typ == NULL)
@@ -355,7 +355,7 @@ init_summ_table(RDB_qresult *qrp, RDB_type *tb1typ, RDB_bool hasavg, RDB_exec_co
                             RDB_DOUBLE_MIN, ecp);
                 }
             } else if (strcmp(opname, "MIN") == 0) {
-                typ = RDB_expr_type(opexp->var.op.args.firstp,
+                typ = _RDB_expr_type(opexp->var.op.args.firstp,
                         tb1typ->var.basetyp, ecp, txp);
                 if (typ == NULL)
                     goto error;
@@ -423,11 +423,11 @@ summarize_qresult(RDB_qresult *qrp, RDB_expression *exp, RDB_exec_context *ecp,
     qrp->exp = exp;
     qrp->nested = RDB_FALSE;
 
-    tb1typ = RDB_expr_type(exp->var.op.args.firstp, NULL, ecp, txp);
+    tb1typ = _RDB_expr_type(exp->var.op.args.firstp, NULL, ecp, txp);
     if (tb1typ == NULL)
         return RDB_ERROR;
 
-    tb2typ = RDB_expr_type(exp->var.op.args.firstp->nextp, NULL, ecp, txp);
+    tb2typ = _RDB_expr_type(exp->var.op.args.firstp->nextp, NULL, ecp, txp);
     if (tb2typ == NULL)
         goto error;
 
@@ -679,7 +679,7 @@ group_qresult(RDB_qresult *qrp, RDB_expression *exp, RDB_exec_context *ecp,
     int keyc;
     int ret;
     RDB_bool freekeys;
-    RDB_type *reltyp = RDB_expr_type(exp, NULL, ecp, txp);
+    RDB_type *reltyp = _RDB_expr_type(exp, NULL, ecp, txp);
     if (reltyp == NULL)
         return RDB_ERROR;
 
@@ -1046,7 +1046,7 @@ _RDB_duprem(RDB_qresult *qrp, RDB_exec_context *ecp, RDB_transaction *txp)
         int ret;
 
         /* rd can only be true for virtual tables */
-        RDB_type *reltyp = RDB_expr_type(qrp->exp, NULL, ecp, txp);
+        RDB_type *reltyp = _RDB_expr_type(qrp->exp, NULL, ecp, txp);
         if (reltyp == NULL)
             return RDB_ERROR;
         reltyp = RDB_dup_nonscalar_type(reltyp, ecp);
@@ -1150,7 +1150,7 @@ _RDB_sorter(RDB_expression *texp, RDB_qresult **qrpp, RDB_exec_context *ecp,
      * Create a sorted RDB_table
      */
 
-    typ = RDB_expr_type(texp, NULL, ecp, txp);
+    typ = _RDB_expr_type(texp, NULL, ecp, txp);
     if (typ == NULL)
         goto error;
     typ = RDB_dup_nonscalar_type(typ, ecp);
@@ -1474,7 +1474,7 @@ next_unwrap_tuple(RDB_qresult *qrp, RDB_object *tplp, RDB_exec_context *ecp,
         RDB_object *wtplp = RDB_tuple_get(&tpl, attrname);
 
         if (wtplp == NULL) {
-            RDB_raise_attribute_not_found(attrname, ecp);
+            RDB_raise_name(attrname, ecp);
             RDB_destroy_obj(&tpl, ecp);
             return RDB_ERROR;
         }
@@ -1809,7 +1809,7 @@ next_project_tuple(RDB_qresult *qrp, RDB_object *tplp, RDB_exec_context *ecp,
     if (!qrp->nested) {
         if (tplp != NULL) {
             ret = _RDB_get_by_cursor(qrp->var.stored.tbp, qrp->var.stored.curp,
-                    RDB_expr_type(qrp->exp, NULL, ecp, txp)->var.basetyp, tplp, ecp, txp);
+                    _RDB_expr_type(qrp->exp, NULL, ecp, txp)->var.basetyp, tplp, ecp, txp);
             if (ret != RDB_OK)
                 return RDB_ERROR;
         }
@@ -1862,7 +1862,7 @@ next_where_index(RDB_qresult *qrp, RDB_object *tplp,
         tpltyp = qrp->var.stored.tbp->typ->var.basetyp;
     } else {
         indexp = qrp->exp->var.op.args.firstp->var.op.args.firstp->var.tbref.indexp;
-        reltyp = RDB_expr_type(qrp->exp->var.op.args.firstp, NULL, ecp, txp);
+        reltyp = _RDB_expr_type(qrp->exp->var.op.args.firstp, NULL, ecp, txp);
         if (reltyp == NULL)
             return RDB_ERROR;
         tpltyp = reltyp->var.basetyp;
@@ -1981,7 +1981,7 @@ wrap_tuple(const RDB_object *tplp, RDB_expression *exp,
 
             if (attrp == NULL) {
                 RDB_destroy_obj(&tpl, ecp);
-                RDB_raise_attribute_not_found(wrattrname, ecp);
+                RDB_raise_name(wrattrname, ecp);
                 return RDB_ERROR;
             }
 
@@ -2099,7 +2099,7 @@ _RDB_sdivide_preserves(RDB_expression *exp, const RDB_object *tplp,
     RDB_qresult qr;
     RDB_type *tb1tuptyp;
     RDB_bool matchall = RDB_TRUE;
-    RDB_type *tb1typ = RDB_expr_type(exp->var.op.args.firstp, NULL, ecp, txp);
+    RDB_type *tb1typ = _RDB_expr_type(exp->var.op.args.firstp, NULL, ecp, txp);
     if (tb1typ == NULL)
         return RDB_ERROR;
     if (tb1typ->kind != RDB_TP_RELATION) {

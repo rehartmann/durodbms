@@ -169,7 +169,7 @@ expr_resolve_attrs(const RDB_expression *exp, RDB_getobjfn *getfnp,
 }
 
 static RDB_type *
-where_type(const RDB_expression *exp, const RDB_type *tpltyp,
+where_type(const RDB_expression *exp, RDB_gettypefn *getfnp, void *arg,
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
     RDB_type *condtyp;
@@ -181,7 +181,7 @@ where_type(const RDB_expression *exp, const RDB_type *tpltyp,
         return NULL;
     }
 
-    reltyp = RDB_expr_type(exp->var.op.args.firstp, tpltyp, ecp, txp);
+    reltyp = RDB_expr_type(exp->var.op.args.firstp, getfnp, arg, ecp, txp);
     if (reltyp == NULL)
         return NULL;
 
@@ -190,16 +190,17 @@ where_type(const RDB_expression *exp, const RDB_type *tpltyp,
         return NULL;
     }
 
-    if (tpltyp != NULL) {
-        jtyp = RDB_join_tuple_types(tpltyp, reltyp->var.basetyp, ecp);
+    if (arg != NULL) {
+        /* !! verketten */
+        jtyp = RDB_join_tuple_types((RDB_type *) arg, reltyp->var.basetyp, ecp);
         if (jtyp == NULL) {
             return NULL;
         }
     }
 
-    condtyp = RDB_expr_type(exp->var.op.args.lastp,
-            tpltyp == NULL ? reltyp->var.basetyp : jtyp, ecp, txp);
-    if (tpltyp != NULL)
+    condtyp = _RDB_expr_type(exp->var.op.args.lastp,
+            arg == NULL ? reltyp->var.basetyp : jtyp, ecp, txp);
+    if (arg != NULL) /* !! */
         RDB_drop_type(jtyp, ecp, NULL);
     if (condtyp == NULL) {
         return NULL;
@@ -230,7 +231,7 @@ extend_type(const RDB_expression *exp, RDB_exec_context *ecp,
     }
 
     attrc = (argc - 1) / 2;
-    arg1typ = RDB_expr_type(exp->var.op.args.firstp, NULL, ecp, txp);
+    arg1typ = _RDB_expr_type(exp->var.op.args.firstp, NULL, ecp, txp);
     if (arg1typ == NULL)
         return NULL;
 
@@ -252,7 +253,7 @@ extend_type(const RDB_expression *exp, RDB_exec_context *ecp,
     }
     argp = exp->var.op.args.firstp->nextp;
     for (i = 0; i < attrc; i++) {
-        attrv[i].typ = RDB_expr_type(argp, tpltyp, ecp, txp);
+        attrv[i].typ = _RDB_expr_type(argp, tpltyp, ecp, txp);
         if (attrv[i].typ == NULL) {
             int j;
 
@@ -514,7 +515,7 @@ rename_type(const RDB_expression *exp, RDB_type **argtv,
 }
 
 static RDB_type *
-expr_op_type(RDB_expression *exp, const RDB_type *tpltyp,
+expr_op_type(RDB_expression *exp, RDB_gettypefn *getfnp, void *arg,
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
     int i;
@@ -529,7 +530,7 @@ expr_op_type(RDB_expression *exp, const RDB_type *tpltyp,
      * WHERE, EXTEND and SUMMARIZE require special treatment
      */
     if (strcmp(exp->var.op.name, "WHERE") == 0) {
-        return where_type(exp, tpltyp, ecp, txp);
+        return where_type(exp, getfnp, arg, ecp, txp);
     }
     if (strcmp(exp->var.op.name, "EXTEND") == 0) {
         return extend_type(exp, ecp, txp);
@@ -558,9 +559,9 @@ expr_op_type(RDB_expression *exp, const RDB_type *tpltyp,
     for (i = 0; i < argc; i++) {
         /*
          * The expression may not have a type (e.g. if it's an array),
-         * so RDB_expr_type can return NULL without raising an error.
+         * so _RDB_expr_type can return NULL without raising an error.
          */
-        argtv[i] = RDB_expr_type(argp, tpltyp, ecp, txp);
+        argtv[i] = RDB_expr_type(argp, getfnp, arg, ecp, txp);
         if (argtv[i] == NULL && RDB_get_err(ecp) != NULL)
             goto error;
         argp = argp->nextp;
@@ -806,11 +807,8 @@ error:
     return NULL;
 }
 
-/**
- * Return the type of an expression.
- */
 RDB_type *
-RDB_expr_type(RDB_expression *exp, const RDB_type *tpltyp,
+RDB_expr_type(RDB_expression *exp, RDB_gettypefn *getfnp, void *arg,
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
     RDB_attr *attrp;
@@ -834,11 +832,11 @@ RDB_expr_type(RDB_expression *exp, const RDB_type *tpltyp,
         case RDB_EX_TBP:
             return RDB_obj_type(exp->var.tbref.tbp);
         case RDB_EX_VAR:
-            if (tpltyp != NULL) {
+            if (arg != NULL) {
                 /* Get type from tuple type */
-                attrp = _RDB_tuple_type_attr(tpltyp, exp->var.varname);
-                if (attrp != NULL) {
-                    exp->typ = RDB_dup_nonscalar_type(attrp->typ, ecp);
+                typ = (*getfnp) (exp->var.varname, arg);
+                if (typ != NULL) {
+                    exp->typ = RDB_dup_nonscalar_type(typ, ecp);
                     return exp->typ;
                 }
             }
@@ -853,20 +851,20 @@ RDB_expr_type(RDB_expression *exp, const RDB_type *tpltyp,
                     return RDB_obj_type(exp->var.tbref.tbp);
                 }
             }
-            RDB_raise_attribute_not_found(exp->var.varname, ecp);
+            RDB_raise_name(exp->var.varname, ecp);
             return NULL;
         case RDB_EX_TUPLE_ATTR:
-            typ = RDB_expr_type(exp->var.op.args.firstp, tpltyp, ecp, txp);
+            typ = RDB_expr_type(exp->var.op.args.firstp, getfnp, arg, ecp, txp);
             if (typ == NULL)
                 return NULL;
             typ = RDB_type_attr_type(typ, exp->var.op.name);
             if (typ == NULL) {
-                RDB_raise_attribute_not_found(exp->var.varname, ecp);
+                RDB_raise_name(exp->var.varname, ecp);
                 return NULL;
             }
             return typ;
         case RDB_EX_GET_COMP:
-            typ = RDB_expr_type(exp->var.op.args.firstp, tpltyp, ecp, txp);
+            typ = RDB_expr_type(exp->var.op.args.firstp, getfnp, arg, ecp, txp);
             if (typ == NULL)
                 return typ;
             attrp = _RDB_get_icomp(typ, exp->var.op.name);
@@ -876,10 +874,27 @@ RDB_expr_type(RDB_expression *exp, const RDB_type *tpltyp,
             }
             return attrp->typ;
         case RDB_EX_RO_OP:
-            exp->typ = expr_op_type(exp, tpltyp, ecp, txp);
+            exp->typ = expr_op_type(exp, getfnp, arg, ecp, txp);
             return exp->typ;
     }
     abort();
+}
+
+static RDB_type *
+get_tuple_attr_type(const char *attrname, void *arg) {
+    RDB_attr *attrp = _RDB_tuple_type_attr((RDB_type *) arg, attrname);
+    return attrp != NULL ? attrp->typ : NULL;
+}
+
+/**
+ * Return the type of the expression.
+ * If the type is non-scalar, it is managed by the expression.
+ */
+RDB_type *
+_RDB_expr_type(RDB_expression *exp, const RDB_type *tpltyp,
+        RDB_exec_context *ecp, RDB_transaction *txp)
+{
+    return RDB_expr_type(exp, &get_tuple_attr_type, (void *) tpltyp, ecp, txp);
 }
 
 static RDB_expression *
@@ -891,16 +906,14 @@ new_expr(RDB_exec_context *ecp) {
         return NULL;
     }
     exp->typ = NULL;
-    exp->nextp = (RDB_expression *)42;
+    exp->nextp = (RDB_expression *)42; // !!
 	return exp;
 }
 
 /**
  * RDB_bool_to_expr creates a constant expression of type BOOLEAN.
 
-@returns
-
-A pointer to the newly created expression, of NULL if the creation
+@returns    A pointer to the newly created expression, of NULL if the creation
 failed.
  */
 RDB_expression *
@@ -1351,7 +1364,7 @@ evaluate_ro_op(RDB_expression *exp, RDB_getobjfn *getfnp, void *getdata,
      */
 
     if (strcmp(exp->var.op.name, "EXTEND") == 0) {
-        RDB_type *typ = RDB_expr_type(exp->var.op.args.firstp, NULL, ecp, txp);
+        RDB_type *typ = _RDB_expr_type(exp->var.op.args.firstp, NULL, ecp, txp);
         if (typ == NULL)
             return RDB_ERROR;
         
@@ -1550,7 +1563,7 @@ RDB_evaluate(RDB_expression *exp, RDB_getobjfn *getfnp, void *getdata,
             attrp = RDB_tuple_get(&tpl, exp->var.op.name);
             if (attrp == NULL) {
                 RDB_destroy_obj(&tpl, ecp);
-                RDB_raise_attribute_not_found(exp->var.op.name, ecp);
+                RDB_raise_name(exp->var.op.name, ecp);
                 return RDB_ERROR;
             }
             ret = RDB_copy_obj(valp, attrp, ecp);
@@ -1592,7 +1605,7 @@ RDB_evaluate(RDB_expression *exp, RDB_getobjfn *getfnp, void *getdata,
                 if (srcp != NULL)
                     return _RDB_copy_obj(valp, srcp, ecp, txp);
             }
-            RDB_raise_attribute_not_found(exp->var.varname, ecp);
+            RDB_raise_name(exp->var.varname, ecp);
             return RDB_ERROR;
         case RDB_EX_OBJ:
             return RDB_copy_obj(valp, &exp->var.obj, ecp);
@@ -1939,14 +1952,14 @@ int
 _RDB_check_expr_type(RDB_expression *exp, const RDB_type *tuptyp,
         const RDB_type *checktyp, RDB_exec_context *ecp, RDB_transaction *txp)
 {
-    RDB_type *typ = RDB_expr_type(exp, tuptyp, ecp, txp);
+    RDB_type *typ = _RDB_expr_type(exp, tuptyp, ecp, txp);
     if (typ == NULL)
         return RDB_ERROR;
 
     if (!RDB_type_equals(typ, checktyp)) {
         RDB_raise_type_mismatch("", ecp);
         return RDB_ERROR;
-    }        
+    }
     return RDB_OK;
 }
 
@@ -2151,7 +2164,7 @@ int
 _RDB_expr_to_empty_table(RDB_expression *exp, RDB_exec_context *ecp,
         RDB_transaction *txp)
 {
-    RDB_type *typ = RDB_expr_type(exp, NULL, ecp, txp);
+    RDB_type *typ = _RDB_expr_type(exp, NULL, ecp, txp);
     if (typ == NULL)
         return RDB_ERROR;
 

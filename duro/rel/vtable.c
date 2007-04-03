@@ -23,7 +23,7 @@ _RDB_vtexp_to_obj(RDB_expression *exp, RDB_exec_context *ecp,
         RDB_transaction *txp, RDB_object *tbp)
 {
     /* Create type */
-    RDB_type *tbtyp = RDB_expr_type(exp, NULL, ecp, txp);
+    RDB_type *tbtyp = _RDB_expr_type(exp, NULL, ecp, txp);
     if (tbtyp == NULL) {
         return RDB_ERROR;
     }
@@ -64,7 +64,7 @@ A pointer to the newly created table, or NULL if an error occurred.
 <dd><var>txp</var> does not point to a running transaction.
 <dt>RDB_INVALID_ARGUMENT_ERROR
 <dd>*<var>exp</var> does not define a valid virtual table.
-<dt>RDB_ATTRIBUTE_NOT_FOUND_ERROR
+<dt>NAME_ERROR
 <dd>*<var>exp</var> refers to an undefined attribute.
 <dt>RDB_TYPE_MISMATCH_ERROR
 <dd>*<var>exp</var> contains an operator invocation with an argument
@@ -144,7 +144,7 @@ all_key(RDB_expression *exp, RDB_exec_context *ecp)
 {
     int attrc;
     int i;
-    RDB_type *tbtyp = RDB_expr_type(exp, NULL, ecp, NULL);
+    RDB_type *tbtyp = _RDB_expr_type(exp, NULL, ecp, NULL);
     RDB_string_vec *keyv = malloc(sizeof (RDB_string_vec));
     if (keyv == NULL)
         return NULL;
@@ -315,7 +315,7 @@ infer_group_keys(RDB_expression *exp, RDB_exec_context *ecp,
 {
     int i, j;
     RDB_string_vec *newkeyv;
-    RDB_type *tbtyp = RDB_expr_type(exp, NULL, ecp, NULL);
+    RDB_type *tbtyp = _RDB_expr_type(exp, NULL, ecp, NULL);
 
     /*
      * Key consists of all attributes which are not grouped

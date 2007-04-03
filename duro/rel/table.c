@@ -395,7 +395,7 @@ RDB_OK on success, RDB_ERROR if an error occurred.
 <dl>
 <dt>RDB_INVALID_TRANSACTION_ERROR
 <dd><var>txp</var> does not point to a running transaction.
-<dt>RDB_ATTRIBUTE_NOT_FOUND_ERROR
+<dt>NAME_ERROR
 <dd>The table does not have an attribute <var>attrname</var>.
 <dt>RDB_TYPE_MISMATCH_ERROR
 <dd>The type of the attribute is not BOOLEAN.
@@ -428,7 +428,7 @@ RDB_all(RDB_object *tbp, const char *attrname, RDB_exec_context *ecp,
 
     attrtyp = _RDB_tuple_type_attr(tbp->typ->var.basetyp, attrname)->typ;
     if (attrtyp == NULL) {
-        RDB_raise_attribute_not_found(attrname, ecp);
+        RDB_raise_name(attrname, ecp);
         return RDB_ERROR;
     }
     if (attrtyp != &RDB_BOOLEAN) {
@@ -487,7 +487,7 @@ RDB_OK on success, RDB_ERROR if an error occurred.
 <dl>
 <dt>RDB_INVALID_TRANSACTION_ERROR
 <dd><var>txp</var> does not point to a running transaction.
-<dt>RDB_ATTRIBUTE_NOT_FOUND_ERROR
+<dt>NAME_ERROR
 <dd>The table does not have an attribute <var>attrname</var>.
 <dt>RDB_TYPE_MISMATCH_ERROR
 <dd>The type of the attribute is not BOOLEAN.
@@ -520,7 +520,7 @@ RDB_any(RDB_object *tbp, const char *attrname, RDB_exec_context *ecp,
 
     attrtyp = _RDB_tuple_type_attr(tbp->typ->var.basetyp, attrname)->typ;
     if (attrtyp == NULL) {
-        RDB_raise_attribute_not_found(attrname, ecp);
+        RDB_raise_name(attrname, ecp);
         return RDB_ERROR;
     }
     if (attrtyp != &RDB_BOOLEAN) {
@@ -578,7 +578,7 @@ RDB_OK on success, RDB_ERROR if an error occurred.
 <dl>
 <dt>RDB_INVALID_TRANSACTION_ERROR
 <dd><var>txp</var> does not point to a running transaction.
-<dt>RDB_ATTRIBUTE_NOT_FOUND_ERROR
+<dt>NAME_ERROR
 <dd>The table does not have an attribute <var>attrname</var>.
 <dt>RDB_TYPE_MISMATCH_ERROR
 <dd>The type of the attribute is not numeric.
@@ -610,7 +610,7 @@ RDB_max(RDB_object *tbp, const char *attrname, RDB_exec_context *ecp,
 
     attrtyp = _RDB_tuple_type_attr(tbp->typ->var.basetyp, attrname)->typ;
     if (attrtyp == NULL) {
-        RDB_raise_attribute_not_found(attrname, ecp);
+        RDB_raise_name(attrname, ecp);
         return RDB_ERROR;
     }
 
@@ -682,7 +682,7 @@ RDB_OK on success, RDB_ERROR if an error occurred.
 <dl>
 <dt>RDB_INVALID_TRANSACTION_ERROR
 <dd><var>txp</var> does not point to a running transaction.
-<dt>RDB_ATTRIBUTE_NOT_FOUND_ERROR
+<dt>NAME_ERROR
 <dd>The table does not have an attribute <var>attrname</var>.
 <dt>RDB_TYPE_MISMATCH_ERROR
 <dd>The type of the attribute is not numeric.
@@ -715,7 +715,7 @@ RDB_min(RDB_object *tbp, const char *attrname, RDB_exec_context *ecp,
 
     attrtyp = _RDB_tuple_type_attr(tbp->typ->var.basetyp, attrname)->typ;
     if (attrtyp == NULL) {
-        RDB_raise_attribute_not_found(attrname, ecp);
+        RDB_raise_name(attrname, ecp);
         return RDB_ERROR;
     }
 
@@ -788,7 +788,7 @@ RDB_OK on success, RDB_ERROR if an error occurred.
 <dl>
 <dt>RDB_INVALID_TRANSACTION_ERROR
 <dd><var>txp</var> does not point to a running transaction.
-<dt>RDB_ATTRIBUTE_NOT_FOUND_ERROR
+<dt>NAME_ERROR
 <dd>The table does not have an attribute <var>attrname</var>.
 <dt>RDB_TYPE_MISMATCH_ERROR
 <dd>The type of the attribute is not numeric.
@@ -820,7 +820,7 @@ RDB_sum(RDB_object *tbp, const char *attrname, RDB_exec_context *ecp,
 
     attrtyp = _RDB_tuple_type_attr(tbp->typ->var.basetyp, attrname)->typ;
     if (attrtyp == NULL) {
-        RDB_raise_attribute_not_found(attrname, ecp);
+        RDB_raise_name(attrname, ecp);
         return RDB_ERROR;
     }
 
@@ -889,7 +889,7 @@ RDB_OK on success, RDB_ERROR if an error occurred.
 <dl>
 <dt>RDB_INVALID_TRANSACTION_ERROR
 <dd><var>txp</var> does not point to a running transaction.
-<dt>RDB_ATTRIBUTE_NOT_FOUND_ERROR
+<dt>NAME_ERROR
 <dd>The table does not have an attribute <var>attrname</var>.
 <dt>RDB_TYPE_MISMATCH_ERROR
 <dd>The type of the attribute is not numeric.
@@ -925,7 +925,7 @@ RDB_avg(RDB_object *tbp, const char *attrname, RDB_exec_context *ecp,
 
     attrtyp = _RDB_tuple_type_attr(tbp->typ->var.basetyp, attrname)->typ;
     if (attrtyp == NULL) {
-        RDB_raise_attribute_not_found(attrname, ecp);
+        RDB_raise_name(attrname, ecp);
         return RDB_ERROR;
     }
 
@@ -1487,7 +1487,7 @@ RDB_OK on success, RDB_ERROR if an error occurred.
 <dd><var>name</var> is not a valid index name.
 <dt>RDB_ELEMENT_EXIST_ERROR
 <dd>An index with name <var>name</var> already exists.
-<dt>RDB_ATTRIBUTE_NOT_FOUND_ERROR
+<dt>NAME_ERROR
 <dd>An attribute specified by <var>idxcompv</var> does not appear in the
 table.
 </dl>

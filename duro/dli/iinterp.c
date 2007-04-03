@@ -11,6 +11,14 @@
 #include <rel/rdb.h>
 #include <rel/internal.h>
 
+typedef struct tx_node {
+    RDB_transaction tx;
+    struct tx_node *nextp;
+} tx_node;
+
+typedef int upd_op_func(const char *name, int argc, RDB_object *argv[],
+        RDB_exec_context *, RDB_transaction *);
+
 varmap_node toplevel_vars;
 
 static varmap_node *current_varmapp;
@@ -19,15 +27,7 @@ static RDB_op_map opmap;
 
 RDB_environment *envp = NULL;
 
-typedef struct tx_node {
-    RDB_transaction tx;
-    struct tx_node *nextp;
-} tx_node;
-
 static tx_node *txnp = NULL;
-
-typedef int upd_op_func(const char *name, int argc, RDB_object *argv[],
-        RDB_exec_context *, RDB_transaction *);
 
 static int
 add_varmap(RDB_exec_context *ecp)
@@ -80,7 +80,7 @@ lookup_var(const char *name, RDB_exec_context *ecp)
         objp = RDB_get_table(name, ecp, &txnp->tx);
     }
     if (objp == NULL)
-        RDB_raise_attribute_not_found(name, ecp);
+        RDB_raise_name(name, ecp);
     return objp;
 }
 
@@ -116,6 +116,14 @@ println_op(const char *name, int argc, RDB_object *argv[],
 }   
 
 static int
+print_op(const char *name, int argc, RDB_object *argv[],
+        RDB_exec_context *ecp, RDB_transaction *txp)
+{
+    fputs(RDB_obj_string(argv[0]), stdout);
+    return RDB_OK;
+}   
+
+static int
 exit_op(const char *name, int argc, RDB_object *argv[],
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
@@ -143,18 +151,50 @@ connect_op(const char *name, int argc, RDB_object *argv[],
     return RDB_OK;
 }   
 
+static int
+create_db_op(const char *name, int argc, RDB_object *argv[],
+        RDB_exec_context *ecp, RDB_transaction *txp)
+{
+    if (envp == NULL) {
+        /* !! */
+        printf("No env\n");
+        return RDB_ERROR;
+    }
+    if (RDB_create_db_from_env (RDB_obj_string(argv[0]), envp, ecp) == NULL)
+        return RDB_ERROR;
+    return RDB_OK;
+}   
+
+static int
+create_env_op(const char *name, int argc, RDB_object *argv[],
+        RDB_exec_context *ecp, RDB_transaction *txp)
+{
+    int ret = RDB_open_env(RDB_obj_string(argv[0]), &envp);
+    if (ret != RDB_OK) {
+        _RDB_handle_errcode(ret, ecp, txp);
+        return RDB_ERROR;
+    }
+    return RDB_OK;
+}   
+
 int
 Duro_init_exec(RDB_exec_context *ecp, const char *dbname)
 {
     static RDB_type *println_types[1];
+    static RDB_type *print_types[1];
     static RDB_type *exit_int_types[1];
     static RDB_type *connect_types[2];
+    static RDB_type *create_db_types[1];
+    static RDB_type *create_env_types[1];
     RDB_object *objp;
 
     println_types[0] = &RDB_STRING;
+    print_types[0] = &RDB_STRING;
     exit_int_types[0] = &RDB_INTEGER;
     connect_types[0] = &RDB_STRING;
     connect_types[1] = &RDB_STRING;
+    create_db_types[0] = &RDB_STRING;
+    create_env_types[0] = &RDB_STRING;
 
     RDB_init_hashmap(&toplevel_vars.map, 256);
     toplevel_vars.parentp = NULL;
@@ -162,13 +202,23 @@ Duro_init_exec(RDB_exec_context *ecp, const char *dbname)
 
     RDB_init_op_map(&opmap);
 
-    if (RDB_put_op(&opmap, "PRINTLN", 1, println_types, println_op, ecp) != RDB_OK)
+    if (RDB_put_op(&opmap, "PRINTLN", 1, println_types, println_op, ecp)
+            != RDB_OK)
+        return RDB_ERROR;
+    if (RDB_put_op(&opmap, "PRINT", 1, print_types, print_op, ecp)
+            != RDB_OK)
         return RDB_ERROR;
     if (RDB_put_op(&opmap, "EXIT", 0, NULL, exit_op, ecp) != RDB_OK)
         return RDB_ERROR;
     if (RDB_put_op(&opmap, "EXIT", 1, exit_int_types, exit_op_int, ecp) != RDB_OK)
         return RDB_ERROR;
     if (RDB_put_op(&opmap, "CONNECT", 2, connect_types, connect_op, ecp) != RDB_OK)
+        return RDB_ERROR;
+    if (RDB_put_op(&opmap, "CREATE_DB", 1, create_db_types, create_db_op, ecp)
+            != RDB_OK)
+        return RDB_ERROR;
+    if (RDB_put_op(&opmap, "CREATE_ENV", 1, create_env_types, create_env_op, ecp)
+            != RDB_OK)
         return RDB_ERROR;
 
     objp = malloc(sizeof (RDB_object));
@@ -599,7 +649,7 @@ exec_assign(const RDB_parse_statement *stmtp, RDB_exec_context *ecp)
                 }
                 copyv[copyc].srcp = &srcobjv[i];
                 if (RDB_evaluate(stmtp->var.assignment.av[i].var.copy.srcp, get_var,
-                        &current_varmapp, ecp, txnp != NULL ? &txnp->tx : NULL, &srcobjv[i])
+                        current_varmapp, ecp, txnp != NULL ? &txnp->tx : NULL, &srcobjv[i])
                                != RDB_OK)
                     return RDB_ERROR;
                 copyc++;
@@ -791,4 +841,32 @@ Duro_exec_stmt(const RDB_parse_statement *stmtp, RDB_exec_context *ecp)
             return exec_rollback(stmtp, ecp);
     }
     abort();
+}
+
+int
+Duro_process_stmt(RDB_exec_context *ecp)
+{
+    RDB_parse_statement *stmtp;
+    RDB_object prompt;
+    RDB_object *dbnameobjp = RDB_hashmap_get(&toplevel_vars.map, "CURRENT_DB");
+
+    RDB_init_obj(&prompt);
+    if (dbnameobjp != NULL && *RDB_obj_string(dbnameobjp) != '\0') {
+        RDB_string_to_obj(&prompt, RDB_obj_string(dbnameobjp), ecp);
+    } else {
+        RDB_string_to_obj(&prompt, "no db", ecp);
+    }
+    RDB_append_string(&prompt, "> ", ecp);
+
+    _RDB_parse_prompt = RDB_obj_string(&prompt);
+    
+    stmtp = RDB_parse_stmt(&get_var, current_varmapp,
+            ecp, txnp != NULL ? &txnp->tx : NULL);
+    if (stmtp == NULL)
+        return RDB_ERROR;
+    if (Duro_exec_stmt(stmtp, ecp) != RDB_OK) {
+        RDB_parse_del_stmt(stmtp, ecp);
+        return RDB_ERROR;
+    }
+    return RDB_parse_del_stmt(stmtp, ecp);
 }

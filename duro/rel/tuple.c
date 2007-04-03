@@ -415,7 +415,7 @@ RDB_OK on success, RDB_ERROR if an error occurred.
 @par Errors:
 
 <dl>
-<dt>RDB_ATTRIBUTE_NOT_FOUND_ERROR
+<dt>NAME_ERROR
 <dd>One of the attributes specified by <var>attrv</var> is not an attribute
 of the original tuple.
 </dl>
@@ -440,7 +440,7 @@ RDB_project_tuple(const RDB_object *tplp, int attrc, char *attrv[],
     for (i = 0; i < attrc; i++) {
         attrp = RDB_tuple_get(tplp, attrv[i]);
         if (attrp == NULL) {
-            RDB_raise_attribute_not_found(attrv[i], ecp);
+            RDB_raise_name(attrv[i], ecp);
             return RDB_ERROR;
         }
 
@@ -586,7 +586,7 @@ RDB_OK on success, RDB_ERROR if an error occurred.
 @par Errors:
 
 <dl>
-<dt>RDB_ATTRIBUTE_NOT_FOUND_ERROR
+<dt>NAME_ERROR
 <dd>One of the expressions specified in <var>updv</var> refers to an attribute
 which does not exist in the tuple.
 <dt>RDB_INVALID_ARGUMENT_ERROR
@@ -699,7 +699,7 @@ RDB_OK on success, RDB_ERROR if an error occurred.
 @par Errors:
 
 <dl>
-<dt>RDB_ATTRIBUTE_NOT_FOUND_ERROR
+<dt>NAME_ERROR
 <dd>One or more of the attributes specified by wrapv[i].attrv does not
 exist.
 </dl>
@@ -723,7 +723,7 @@ RDB_wrap_tuple(const RDB_object *tplp, int wrapc, const RDB_wrapping wrapv[],
 
             if (attrp == NULL) {
                 RDB_destroy_obj(&tpl, ecp);
-                RDB_raise_attribute_not_found(wrapv[i].attrv[j], ecp);
+                RDB_raise_name(wrapv[i].attrv[j], ecp);
                 return RDB_ERROR;
             }
 
@@ -777,7 +777,7 @@ RDB_OK on success, RDB_ERROR if an error occurred.
 @par Errors:
 
 <dl>
-<dt>RDB_ATTRIBUTE_NOT_FOUND_ERROR
+<dt>NAME_ERROR
 <dd>An attribute specified by attrv does not exist.
 <dt>RDB_INVALID_ARGUMENT_ERROR
 <dd>An attribute specified by attrv is not tuple-typed.
@@ -796,7 +796,7 @@ RDB_unwrap_tuple(const RDB_object *tplp, int attrc, char *attrv[],
         RDB_object *wtplp = RDB_tuple_get(tplp, attrv[i]);
 
         if (wtplp == NULL) {
-            RDB_raise_attribute_not_found(attrv[i], ecp);
+            RDB_raise_name(attrv[i], ecp);
             return RDB_ERROR;
         }
         if (wtplp->kind != RDB_OB_TUPLE) {
@@ -904,7 +904,7 @@ _RDB_invunwrap_tuple(const RDB_object *tplp, RDB_expression *exp,
     int i, j;
     RDB_expression *argp;
     int attrc = RDB_expr_list_length(&exp->var.op.args) - 1;
-    RDB_type *srcreltyp = RDB_expr_type(exp->var.op.args.firstp, NULL, ecp, txp);
+    RDB_type *srcreltyp = _RDB_expr_type(exp->var.op.args.firstp, NULL, ecp, txp);
     RDB_type *srctuptyp = srcreltyp->var.basetyp;
     RDB_wrapping *wrapv = malloc(sizeof(RDB_wrapping) * attrc);
     if (wrapv == NULL) {

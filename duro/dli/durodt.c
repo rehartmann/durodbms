@@ -24,6 +24,8 @@
 
 _RDB_EXTERN_VAR FILE *yyin;
 
+void yyrestart(FILE *);
+
 extern int yydebug;
 
 /*
@@ -67,7 +69,6 @@ main(int argc, char *argv[])
 {
     int ret;
     RDB_exec_context ec;
-    RDB_parse_statement *stmtp;
     char *envname = NULL;
     char *dbname = "";
 
@@ -93,7 +94,7 @@ main(int argc, char *argv[])
         yyin = fopen(argv[1], "r");
         if (yyin == NULL) {
             fprintf(stderr, "unable to open %s: %s\n", argv[1],
-                strerror(errno));
+                    strerror(errno));
             return 1;
         }
     } else {
@@ -126,17 +127,18 @@ main(int argc, char *argv[])
     }
 
     if (_RDB_parse_interactive) {
-        puts("Interactive Duro D early development version");
+        puts("Duro D/T early development version");
         _RDB_parse_init_buf();
     }
 
     for(;;) {
-        stmtp = RDB_parse_stmt(&ec);
-        if (stmtp == NULL) {
+        if (Duro_process_stmt(&ec) != RDB_OK) {
             RDB_object *errobjp = RDB_get_err(&ec);
             if (errobjp != NULL) {
                 print_error(errobjp);
-                if (!_RDB_parse_interactive) {
+                if (_RDB_parse_interactive) {
+                    _RDB_parse_init_buf();
+                } else {
                     Duro_exit_interp();
                     exit(1);
                 }
@@ -146,25 +148,6 @@ main(int argc, char *argv[])
                 puts("");
                 Duro_exit_interp();
                 exit(0);
-            }
-        } else {
-            RDB_object *errobjp;
-
-            if (Duro_exec_stmt(stmtp, &ec) != RDB_OK) {
-                RDB_parse_del_stmt(stmtp, &ec);
-                errobjp = RDB_get_err(&ec);
-                if (errobjp != NULL) {
-                    print_error(errobjp);
-                    RDB_clear_err(&ec);
-                }
-            } else {
-                if (RDB_parse_del_stmt(stmtp, &ec) != RDB_OK) {
-                    RDB_parse_del_stmt(stmtp, &ec);
-                    errobjp = RDB_get_err(&ec);
-                    print_error(errobjp);
-                    Duro_exit_interp();
-                    exit(2);
-                }
             }
         }
     }

@@ -22,4 +22,7 @@ Duro_exit_interp(void);
 int
 Duro_exec_stmt(const RDB_parse_statement *, RDB_exec_context *);
 
+int
+Duro_process_stmt(RDB_exec_context *);
+
 #endif /*EXECUTE_H*/

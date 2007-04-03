@@ -817,7 +817,7 @@ index_joins(RDB_expression *otexp, RDB_expression *itexp,
     RDB_object *tbp;
     int tbc;
     int i;
-    RDB_type *ottyp = RDB_expr_type(otexp, NULL, ecp, txp);
+    RDB_type *ottyp = _RDB_expr_type(otexp, NULL, ecp, txp);
     if (ottyp == NULL)
         return RDB_ERROR;
 

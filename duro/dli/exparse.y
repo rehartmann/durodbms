@@ -17,9 +17,10 @@
 extern RDB_transaction *_RDB_parse_txp;
 extern RDB_expression *_RDB_parse_resultp;
 extern RDB_parse_statement *_RDB_parse_stmtp;
-extern RDB_ltablefn *_RDB_parse_ltfp;
+extern RDB_getobjfn *_RDB_parse_getobjfp;
 extern void *_RDB_parse_arg;
 extern RDB_exec_context *_RDB_parse_ecp;
+extern void *_RDB_parse_lookup_arg;
 
 RDB_expression *
 _RDB_parse_lookup_table(RDB_expression *exp);
@@ -74,6 +75,14 @@ new_call(char *name, RDB_expr_list *explistp) {
    	return stmtp;
 }
 
+static RDB_type *
+get_type(const char *attrname, void *arg)
+{
+    RDB_object *objp = (*_RDB_parse_getobjfp) (attrname, arg);
+
+    return RDB_obj_type(objp);
+}
+
 %}
 
 %error-verbose
@@ -112,6 +121,7 @@ new_call(char *name, RDB_expr_list *explistp) {
         TOK_MATCHES TOK_IN TOK_SUBSET_OF TOK_OR TOK_AND TOK_NOT
         TOK_CONCAT TOK_NE TOK_LE TOK_GE
         TOK_COUNT TOK_SUM TOK_AVG TOK_MAX TOK_MIN TOK_ALL TOK_ANY
+        TOK_SAME_TYPE_AS
         TOK_IF TOK_THEN TOK_ELSE TOK_END TOK_FOR TOK_TO TOK_WHILE
         TOK_TABLE_DEE TOK_TABLE_DUM
         TOK_ASSIGN TOK_INSERT TOK_DELETE TOK_UPDATE
@@ -2034,8 +2044,13 @@ type: TOK_ID {
 		if ($$ == NULL)
 		    YYERROR;
     }
+    | TOK_SAME_TYPE_AS '(' expression ')' {
+		$$ = RDB_expr_type($3, &get_type, _RDB_parse_arg, _RDB_parse_ecp,
+		        _RDB_parse_txp);
+		if ($$ == NULL)
+		    YYERROR;
+	}
 /*
-    | "SAME_TYPE_AS" '(' expression ')'
     | "SAME_HEADING_AS" '(' expression ')'
     ;
 */
@@ -2075,9 +2090,9 @@ _RDB_parse_lookup_table(RDB_expression *exp)
     if (exp->kind == RDB_EX_VAR) {
         RDB_object *tbp;
 
-        if (_RDB_parse_ltfp != NULL) {
+        if (_RDB_parse_getobjfp != NULL) {
 	        /* Try to find local table first */
-	        tbp = (*_RDB_parse_ltfp)(exp->var.varname, _RDB_parse_arg);
+	        tbp = (*_RDB_parse_getobjfp)(exp->var.varname, _RDB_parse_arg);
 	        if (tbp != NULL) {
 	            RDB_drop_expr(exp, _RDB_parse_ecp);
 	            return RDB_table_ref(tbp, _RDB_parse_ecp);

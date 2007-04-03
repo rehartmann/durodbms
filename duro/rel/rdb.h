@@ -196,7 +196,7 @@ _RDB_EXTERN_VAR RDB_type RDB_INVALID_ARGUMENT_ERROR;
 _RDB_EXTERN_VAR RDB_type RDB_TYPE_MISMATCH_ERROR;
 _RDB_EXTERN_VAR RDB_type RDB_NOT_FOUND_ERROR;
 _RDB_EXTERN_VAR RDB_type RDB_OPERATOR_NOT_FOUND_ERROR;
-_RDB_EXTERN_VAR RDB_type RDB_ATTRIBUTE_NOT_FOUND_ERROR;
+_RDB_EXTERN_VAR RDB_type NAME_ERROR;
 _RDB_EXTERN_VAR RDB_type RDB_ELEMENT_EXISTS_ERROR;
 _RDB_EXTERN_VAR RDB_type RDB_TYPE_CONSTRAINT_VIOLATION_ERROR;
 _RDB_EXTERN_VAR RDB_type RDB_KEY_VIOLATION_ERROR;
@@ -250,6 +250,8 @@ typedef struct RDB_transaction {
 } RDB_transaction;
 
 typedef RDB_object *RDB_getobjfn(const char *, void *);
+
+typedef RDB_type *RDB_gettypefn(const char *, void *);
 
 char *
 RDB_db_name(RDB_database *dbp);
@@ -758,6 +760,10 @@ int
 RDB_evaluate(RDB_expression *, RDB_getobjfn *, void *,
         RDB_exec_context *, RDB_transaction *, RDB_object *);
 
+RDB_type *
+RDB_expr_type(RDB_expression *, RDB_gettypefn *, void *,
+        RDB_exec_context *, RDB_transaction *);
+
 int
 RDB_evaluate_bool(RDB_expression *, RDB_getobjfn *getfnp, void *getdata,
         RDB_exec_context *, RDB_transaction *, RDB_bool *);
@@ -839,7 +845,7 @@ RDB_object *
 RDB_raise_not_supported(const char *info, RDB_exec_context *);
 
 RDB_object *
-RDB_raise_attribute_not_found(const char *info, RDB_exec_context *);
+RDB_raise_name(const char *info, RDB_exec_context *);
 
 RDB_object *
 RDB_raise_predicate_violation(const char *info, RDB_exec_context *);
