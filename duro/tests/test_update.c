@@ -83,7 +83,7 @@ test_update(RDB_database *dbp, RDB_exec_context *ecp)
 
     /* Updating table, setting SALARY of no 3 to SALARY + 100 */
     attrs[0].name = "SALARY";
-    attrs[0].exp = RDB_ro_op("+", 2, ecp);
+    attrs[0].exp = RDB_ro_op("+", ecp);
     if (attrs[0].exp == NULL) {
         ret = RDB_ERROR;
         goto error;

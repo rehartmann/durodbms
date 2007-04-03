@@ -50,7 +50,7 @@ test parse {parser} -setup $SETUP -body {
     }
     
     set errcode [lindex $errorCode 1]
-    if {![string match "ATTRIBUTE_NOT_FOUND_ERROR(*)" $errcode]} {
+    if {![string match "NAME_ERROR(*)" $errcode]} {
         error "wrong error: $errcode"
     }
     

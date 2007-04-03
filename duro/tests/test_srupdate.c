@@ -70,7 +70,7 @@ test_update1(RDB_database *dbp, RDB_exec_context *ecp)
     tbp = RDB_get_table("SRTEST", ecp, &tx);
     assert(tbp != NULL);
 
-    exp = RDB_ro_op("-", 2, ecp);
+    exp = RDB_ro_op("-", ecp);
     assert(exp != NULL);
 
     RDB_add_arg(exp, RDB_int_to_expr(2, ecp));
@@ -100,7 +100,7 @@ test_update2(RDB_database *dbp, RDB_exec_context *ecp)
     tbp = RDB_get_table("SRTEST", ecp, &tx);
     assert(tbp != NULL);
 
-    exp = RDB_ro_op("SUM", 2, ecp);
+    exp = RDB_ro_op("SUM", ecp);
     assert(exp != NULL);
     argp = RDB_table_ref(tbp, ecp);
     assert(argp != NULL);
@@ -109,7 +109,7 @@ test_update2(RDB_database *dbp, RDB_exec_context *ecp)
     assert(argp != NULL);
     RDB_add_arg(exp, argp);
 
-    condp = RDB_ro_op("+", 2, ecp);
+    condp = RDB_ro_op("+", ecp);
     assert(condp != NULL);
 
     RDB_add_arg(condp, exp);

@@ -73,7 +73,7 @@ test_useop(RDB_database *dbp, RDB_exec_context *ecp)
     expv[0] = RDB_var_ref("DEPTNO", ecp);
     expv[1] = RDB_int_to_expr(100, ecp);
 
-    exp = RDB_ro_op("EXTEND", 3, ecp);
+    exp = RDB_ro_op("EXTEND", ecp);
     if (exp == NULL)
         goto error;
 
@@ -83,7 +83,7 @@ test_useop(RDB_database *dbp, RDB_exec_context *ecp)
         goto error;
     }
     RDB_add_arg(exp, argp);
-    argp = RDB_ro_op("PLUS", 2, ecp);
+    argp = RDB_ro_op("PLUS", ecp);
     if (argp == NULL) {
         RDB_drop_expr(exp, ecp);
         goto error;

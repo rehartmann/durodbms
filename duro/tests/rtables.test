@@ -235,8 +235,8 @@ test rtables {real tables} -setup $SETUP -body {
     set tpl [duro::expr {TUPLE FROM T2} $tx]
     if {![tequal $tpl $stpl]} {
         error "Tuple should be $stpl, but is $tpl"
-    }  
-    
+    }
+
     #
     # Delete by secondary key
     #

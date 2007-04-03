@@ -23,9 +23,9 @@ create_view1(RDB_database *dbp, RDB_exec_context *ecp)
     tbp2 = RDB_get_table("EMPS2", ecp, &tx);
     assert(tbp2 != NULL);
 
-    exp = RDB_ro_op("PROJECT", 2, ecp);
+    exp = RDB_ro_op("PROJECT", ecp);
     assert(exp != NULL);
-    texp = RDB_ro_op("UNION", 2, ecp);
+    texp = RDB_ro_op("UNION", ecp);
     assert(texp != NULL);
     RDB_add_arg(exp, texp);
     argp = RDB_table_ref(tbp, ecp);
@@ -63,7 +63,7 @@ create_view2(RDB_database *dbp, RDB_exec_context *ecp)
     tbp = RDB_get_table("EMPS1", ecp, &tx);
     assert(ret == RDB_OK);
 
-    exp = RDB_ro_op("WHERE", 2, ecp);
+    exp = RDB_ro_op("WHERE", ecp);
     assert(exp != NULL);
     argp = RDB_table_ref(tbp, ecp);
     assert(argp != NULL);
@@ -71,7 +71,7 @@ create_view2(RDB_database *dbp, RDB_exec_context *ecp)
 
     hexp = RDB_var_ref("SALARY", ecp);
     assert(hexp != NULL);
-    argp = RDB_ro_op(">", 2, ecp);
+    argp = RDB_ro_op(">", ecp);
     RDB_add_arg(argp, hexp);
     hexp = RDB_double_to_expr(4000.0, ecp);
     assert(hexp != NULL);
@@ -103,13 +103,13 @@ create_view3(RDB_database *dbp, RDB_exec_context *ecp)
     tbp = RDB_get_table("EMPS1", ecp, &tx);
     assert(tbp != NULL);
 
-    exp = RDB_ro_op("EXTEND", 3, ecp);
+    exp = RDB_ro_op("EXTEND", ecp);
     assert(exp != NULL);
 
     argp = RDB_table_ref(tbp, ecp);
     assert(argp != NULL);
     RDB_add_arg(exp, argp); 
-    hexp = RDB_ro_op(">", 2, ecp);
+    hexp = RDB_ro_op(">", ecp);
     assert(hexp != NULL);
     RDB_add_arg(hexp, RDB_var_ref("SALARY", ecp));
     RDB_add_arg(hexp, RDB_double_to_expr(4000.0, ecp));
@@ -148,10 +148,10 @@ create_view4(RDB_database *dbp, RDB_exec_context *ecp)
      * ADD MAX (SALARY) AS MAX_SALARY ) RENAME DEPTNO AS DEPARTMENT
      */
 
-    exp = RDB_ro_op("RENAME", 3, ecp);
+    exp = RDB_ro_op("RENAME", ecp);
     assert(exp != NULL);
 
-    sexp = RDB_ro_op("SUMMARIZE", 4, ecp);
+    sexp = RDB_ro_op("SUMMARIZE", ecp);
     assert(sexp != NULL);
     RDB_add_arg(exp, sexp);
 
@@ -159,7 +159,7 @@ create_view4(RDB_database *dbp, RDB_exec_context *ecp)
     assert(argp != NULL);
     RDB_add_arg(sexp, argp);
 
-    texp = RDB_ro_op("PROJECT", 2, ecp);
+    texp = RDB_ro_op("PROJECT", ecp);
     assert(texp != NULL);
     RDB_add_arg(sexp, texp);
 
@@ -171,7 +171,7 @@ create_view4(RDB_database *dbp, RDB_exec_context *ecp)
     assert(argp != NULL);
     RDB_add_arg(texp, argp);
 
-    texp = RDB_ro_op("MAX", 1, ecp);
+    texp = RDB_ro_op("MAX", ecp);
     assert(texp != NULL);
     RDB_add_arg(sexp, texp);
 

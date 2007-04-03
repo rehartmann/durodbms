@@ -60,7 +60,7 @@ test_join(RDB_database *dbp, RDB_exec_context *ecp)
         return RDB_ERROR;
     }
 
-    exp = RDB_ro_op("JOIN", 2, ecp);
+    exp = RDB_ro_op("JOIN", ecp);
     if (exp == NULL) {
         RDB_rollback(ecp, &tx);
         return RDB_ERROR;

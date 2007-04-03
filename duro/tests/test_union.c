@@ -71,7 +71,7 @@ test_union(RDB_database *dbp, RDB_exec_context *ecp)
     tbp2 = RDB_get_table("EMPS2", ecp, &tx);
     assert(tbp2 != NULL);
 
-    exp = RDB_ro_op("UNION", 2, ecp);
+    exp = RDB_ro_op("UNION", ecp);
     assert(exp != NULL);
     
     argp = RDB_table_ref(tbp2, ecp);

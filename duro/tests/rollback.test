@@ -15,7 +15,7 @@ source [file dirname [info script]]/setup.tcl
 
 test rollback {rollback} -setup $SETUP -body {
     set dbenv [duro::env open [configure -tmpdir]/dbenv]
-    
+
     # Create Database
     duro::db create $dbenv TEST
     
@@ -31,19 +31,25 @@ test rollback {rollback} -setup $SETUP -body {
     
     duro::commit $tx
     
+    set tx [duro::begin $dbenv TEST]
+
+    duro::insert T {A a B b} $tx
+
+    if {[duro::expr {IS_EMPTY(T)} $tx]} {
+        dberror "T is empty"
+    }
+
+    duro::rollback $tx
+
     duro::env close $dbenv
     
     set dbenv [duro::env open [configure -tmpdir]/dbenv]
     
     set tx [duro::begin $dbenv TEST]
     
-    duro::expr {IS_EMPTY(T)} $tx
-    
-    duro::rollback $tx
-    
-    set tx [duro::begin $dbenv TEST]
-    
-    duro::expr {IS_EMPTY(T)} $tx
+    if {[duro::expr {NOT IS_EMPTY(T)} $tx]} {
+        dberror "T is not empty"
+    }
     
     duro::commit $tx
     

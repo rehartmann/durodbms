@@ -154,7 +154,7 @@ test_query(RDB_database *dbp, RDB_exec_context *ecp)
     assert(RDB_obj_type(RDB_get_err(ecp)) == &RDB_NOT_FOUND_ERROR);
     RDB_clear_err(ecp);
 
-    exp = RDB_ro_op("WHERE", 2, ecp);
+    exp = RDB_ro_op("WHERE", ecp);
     assert(exp != NULL);
     
     argp = RDB_table_ref(tbp, ecp);
@@ -192,7 +192,7 @@ test_query(RDB_database *dbp, RDB_exec_context *ecp)
 
     /* Creating POINTTEST WHERE POINT=POINT(1,2) */
 
-    exp = RDB_ro_op("WHERE", 2, ecp);
+    exp = RDB_ro_op("WHERE", ecp);
     assert(exp != NULL);
 
     argp = RDB_table_ref(tbp, ecp);
@@ -201,7 +201,7 @@ test_query(RDB_database *dbp, RDB_exec_context *ecp)
 
     compv[0] = RDB_double_to_expr(1.0, ecp);
     compv[1] = RDB_double_to_expr(2.0, ecp);
-    wherep = RDB_ro_op("POINT", 2, ecp);
+    wherep = RDB_ro_op("POINT", ecp);
     assert(wherep != NULL);
 
     RDB_add_arg(wherep, compv[0]);

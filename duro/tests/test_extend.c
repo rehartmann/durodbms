@@ -131,7 +131,7 @@ test_extend(RDB_database *dbp, RDB_exec_context *ecp)
         goto error;
     }
 
-    exp = RDB_ro_op("EXTEND", 5, ecp);
+    exp = RDB_ro_op("EXTEND", ecp);
     if (exp == NULL)
         goto error;
 
@@ -142,7 +142,7 @@ test_extend(RDB_database *dbp, RDB_exec_context *ecp)
     }
     RDB_add_arg(exp, argp);
 
-    mexp = RDB_ro_op("-", 2, ecp);
+    mexp = RDB_ro_op("-", ecp);
     assert(mexp != NULL);
     argp = RDB_var_ref("SALARY", ecp);
     assert(argp != NULL);
@@ -160,7 +160,7 @@ test_extend(RDB_database *dbp, RDB_exec_context *ecp)
     }
     RDB_add_arg(exp, argp);
 
-    texp = RDB_ro_op("LENGTH", 1, ecp);
+    texp = RDB_ro_op("LENGTH", ecp);
     if (texp == NULL) {
         RDB_drop_expr(exp, ecp);
         goto error;

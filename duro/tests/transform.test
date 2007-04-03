@@ -1,0 +1,62 @@
+#!/bin/sh
+# Execute tclsh from the user's PATH \
+exec tclsh "$0" ${1+"$@"}
+
+# $Id$
+#
+# Test create, insert, update with several kinds of real tables
+#
+
+package require tcltest 2.2
+eval ::tcltest::configure $argv
+namespace import ::tcltest::*
+
+source [file dirname [info script]]/setup.tcl
+
+test transform {real tables} -setup $SETUP -body {
+    set dbenv [duro::env open [configure -tmpdir]/dbenv]
+
+    # Create Database
+    duro::db create $dbenv TEST
+    
+    #
+    # Perform test with table with integer key
+    #
+    
+    set tx [duro::begin $dbenv TEST]
+
+    # Create tables
+    duro::table create T1 {
+       {A INTEGER}
+    } {{A}} $tx
+
+    duro::table create T2 {
+       {A INTEGER}
+    } {{A}} $tx
+
+    # Insert tuple
+    duro::insert T1 {A 0} $tx
+    duro::insert T1 {A 1} $tx
+
+    duro::table expr t {(T1 WHERE A=0 {A}) UNION (T1 WHERE NOT(A=0) {A})} $tx
+    set plan [duro::table getplan t $tx]
+    if {[string match UNION [lindex $::errorCode 1]]} {
+        error "UNION was nor elmininated: $plan"
+    }
+
+    set cnt [duro::expr {COUNT((T2 WHERE A=0 {A}) UNION (T1 WHERE NOT(A=0) {A}))} $tx]
+    if {$cnt != 1} {
+        error "COUNT is $cnt, should be 1"
+    }
+
+    duro::table drop t $tx
+
+    duro::table drop T1 $tx
+    
+    duro::commit $tx
+    
+    # Close DB environment
+    duro::env close $dbenv
+}
+
+cleanupTests

@@ -20,7 +20,17 @@ test vtables {virtual tables} -setup $SETUP -body {
     duro::db create $dbenv TEST
     
     set tx [duro::begin $dbenv TEST]
-    
+
+    # Check creating virtual table from non-relation-valued expression
+    if {![catch {
+        duro::table expr t 0 $tx
+    }]} {
+        error "table creation should fail, but succeeded"
+    }
+    if {![string match TYPE_MISMATCH_ERROR* [lindex $::errorCode 1]]} {
+        error "unexpected errorCode: $::errorCode"
+    }
+
     # Create real tables
     duro::table create T {
        {K INTEGER}
@@ -202,7 +212,7 @@ test vtables {virtual tables} -setup $SETUP -body {
     }
     
     set err [lindex $errorCode 1]
-    if {![string match "ATTRIBUTE_NOT_FOUND_ERROR(*)" $err]} {
+    if {![string match "NAME_ERROR(*)" $err]} {
         error "wrong error code: $err"
     }
     if {![string match "*K*" [duro::expr THE_MSG($err) $tx]]} {
@@ -214,7 +224,7 @@ test vtables {virtual tables} -setup $SETUP -body {
     }
     
     set code [lindex $errorCode 1]
-    if {![string match "ATTRIBUTE_NOT_FOUND_ERROR(*)" $code]} {
+    if {![string match "NAME_ERROR(*)" $code]} {
         error "wrong error code: $code"
     }
     
@@ -223,7 +233,7 @@ test vtables {virtual tables} -setup $SETUP -body {
     }
     
     set code [lindex $errorCode 1]
-    if {![string match "ATTRIBUTE_NOT_FOUND_ERROR(*)" $code]} {
+    if {![string match "NAME_ERROR(*)" $code]} {
         error "wrong error code: $code"
     }
     
@@ -232,7 +242,7 @@ test vtables {virtual tables} -setup $SETUP -body {
     }
     
     set code [lindex $errorCode 1]
-    if {![string match "ATTRIBUTE_NOT_FOUND_ERROR(*)" $code]} {
+    if {![string match "NAME_ERROR(*)" $code]} {
         error "wrong error code: $code"
     }
 
@@ -402,7 +412,7 @@ test vtables {virtual tables} -setup $SETUP -body {
     if {![catch {duro::table expr -global ES {T1 WHERE I > 2} $tx}]} {
         error "Table creation should fail, but succeded"
     }
-    if {![string match "ATTRIBUTE_NOT_FOUND_ERROR(*)" [lindex $::errorCode 1]]} {
+    if {![string match "NAME_ERROR(*)" [lindex $::errorCode 1]]} {
         error "Wrong error: $::errorCode"
     }
     

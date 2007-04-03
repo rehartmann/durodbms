@@ -1,0 +1,22 @@
+#!/bin/sh
+# Execute tclsh from the user's PATH \
+exec tclsh "$0" ${1+"$@"}
+
+# $Id$
+#
+# Test string operators
+#
+
+package require tcltest 2.2
+eval ::tcltest::configure $argv
+namespace import ::tcltest::*
+
+set testdir [::tcltest::configure -testdir]
+
+test scalar_builtin {built-in scalar definitions and operators} -body {
+    exec $testdir/../../dli/durodt $testdir/scalar.d
+} -result {2
+3
+}
+
+cleanupTests

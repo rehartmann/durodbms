@@ -24,7 +24,7 @@ test_type(RDB_database *dbp, RDB_exec_context *ecp)
     pr.name = NULL;
     pr.compc = 1;
     pr.compv = &comp;
-    constraintp = RDB_ro_op("<", 2, ecp);
+    constraintp = RDB_ro_op("<", ecp);
     if (constraintp == NULL) {
         return RDB_ERROR;
     }

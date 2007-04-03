@@ -111,7 +111,7 @@ test ptables {projection tables} -setup $SETUP -body {
         error "table creation should fail, but succeeded"
     }
 
-    if {![string match "ATTRIBUTE_NOT_FOUND_ERROR(*)" [lindex $::errorCode 1]]} {
+    if {![string match "NAME_ERROR(*)" [lindex $::errorCode 1]]} {
     	error "wrong errorCode: $::errorCode"
     }
 

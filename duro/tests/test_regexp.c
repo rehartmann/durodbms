@@ -30,7 +30,7 @@ test_regexp(RDB_database *dbp, RDB_exec_context *ecp)
 
     /* Creating selection (NAME regmatch "o") */
 
-    exp = RDB_ro_op("WHERE", 2, ecp);
+    exp = RDB_ro_op("WHERE", ecp);
     if (exp == NULL) {
         goto error;
     }
@@ -41,7 +41,7 @@ test_regexp(RDB_database *dbp, RDB_exec_context *ecp)
     }
     RDB_add_arg(exp, argp);
 
-    argp = RDB_ro_op("MATCHES", 2, ecp);
+    argp = RDB_ro_op("MATCHES", ecp);
     if (argp == NULL) {
         goto error;
     }
