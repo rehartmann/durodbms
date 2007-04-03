@@ -79,11 +79,11 @@ print_tables(RDB_exec_context *ecp, RDB_transaction *txp, RDB_bool all,
 
     RDB_init_obj(&array);
 
-    exp = RDB_ro_op("JOIN", 2, ecp);
+    exp = RDB_ro_op("JOIN", ecp);
     if (exp == NULL)
         goto error;
 
-    texp = RDB_ro_op("WHERE", 2, ecp);
+    texp = RDB_ro_op("WHERE", ecp);
     if (texp == NULL)
         goto error;
     RDB_add_arg(exp, texp);
@@ -102,7 +102,7 @@ print_tables(RDB_exec_context *ecp, RDB_transaction *txp, RDB_bool all,
         goto error;
     RDB_add_arg(texp, argp);
 
-    texp = RDB_ro_op("WHERE", 2, ecp);
+    texp = RDB_ro_op("WHERE", ecp);
     if (texp == NULL)
         goto error;
     RDB_add_arg(exp, texp);
