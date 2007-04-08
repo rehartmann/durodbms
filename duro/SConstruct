@@ -109,7 +109,8 @@ dli = env.Program(['dli/durodt.c', 'dli/iinterp.c'])
 #
 
 env.Command('docs/html/index.html',
-		['Doxyfile', 'rec/env.c', 'rel/rdb.h', 'rel/database.c', 'rel/table.c',
+		['Doxyfile', 'rec/env.c',
+				'rel/rdb.h', 'rel/array.c', 'rel/database.c', 'rel/table.c',
 				'rel/type.c', 'rel/object.c', 'rel/tuple.c', 'rel/expression.c',
 				'rel/operator.c', 'rel/constraint.c', 'rel/excontext.c',
 				'rel/builtinops.c', 'rel/assign.c', 'rel/contains.c', 'dli/parse.c'],
@@ -176,7 +177,7 @@ test_scripts = Split('tests/aggr.test tests/constraints.test tests/convert.test 
         'tests/tuple.test tests/update.test tests/utype.test '
         'tests/vtables.test tests/all.tcl tests/testutil.tcl tests/setup.tcl')
 
-check = env.Command('tests/passed', [libduro, libdurotcl, testbins],
+check = env.Command('tests/passed', [libduro, libdurotcl, testbins, dli],
         'tclsh tests/all.tcl -verbose "{pass error}"',
         ENV = {'LIBDUROTCL' : str(libdurotcl[0]), 'PATH' : os.environ['PATH']})
 

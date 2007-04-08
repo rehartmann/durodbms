@@ -1063,6 +1063,10 @@ create_table(const char *name, RDB_type *reltyp,
  * This struct is used to specify attribute definitions.
  */
 
+/** @struct RDB_string_vec rdb.h <rel/rdb.h>
+ * This struct is used to specify attribute definitions.
+ */
+
 /**
 <strong>RDB_create_table</strong> creates a persistent table
 with name <var>name</var> in the database
@@ -1074,26 +1078,8 @@ If an error occurs, an error value is left in *<var>ecp</var>.
 The table will have <var>attrc</var> attributes. The individual
 attributes are specified by the elements of <var>attrv</var>.
 
-The fields of the RDB_attr structure are interpreted as follows:
-
-<dl>
-<dt>name
-<dd>Specifies the name of the attribute.
-<dt>typ
-<dd>Specifies the type of the attribute.
-<dt>defaultp
-<dd>If not NULL, this field must point to a RDB_object variable that specifies
-the default value for the attribute.
-<dt>options
-<dd>This field is currently ignored. It should be set to zero
-for compatibility with future versions of Duro.
-</dl>
-
-The table will have <var>keyc</var> candidate keys. The <var>keyv</var>
-argument specifies the key attributes.
-The strc field of the RDB_string_vec structure specifies
-the number of attributes in a key, while the elements of the strv field specify
-the names of the key attributes.
+The candidate keys for the table are specified by <var>keyc</var>
+and <var>keyv</var>.
 
 At least one candidate key must be specified.
 A candidate key may not be a subset of another.

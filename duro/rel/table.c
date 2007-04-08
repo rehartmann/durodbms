@@ -1473,7 +1473,7 @@ If <var>flags</var> is RDB_ORDERED, a B-tree index is created.
 
 Functions which read tuples from a table (like
 @ref RDB_table_to_array
-and @ref RDB_extract_tuple try to use available
+and @ref RDB_extract_tuple) try to use available
 indexes to achieve better performance.
 
 @returns

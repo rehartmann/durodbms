@@ -13,10 +13,6 @@
 
 #include <string.h>
 
-enum {
-    EXPV_LEN = 64
-};
-
 /** @defgroup expr Expression functions 
  * @{
  */
@@ -169,11 +165,34 @@ expr_resolve_attrs(const RDB_expression *exp, RDB_getobjfn *getfnp,
 }
 
 static RDB_type *
+get_tuple_attr_type(const char *attrname, void *arg) {
+    RDB_attr *attrp = _RDB_tuple_type_attr(arg, attrname);
+    return attrp != NULL ? attrp->typ : NULL;
+}
+
+struct chained_type_map {
+    void *arg1;
+    RDB_gettypefn *getfn1p;
+    void *arg2;
+    RDB_gettypefn *getfn2p;
+};
+
+static RDB_type *
+get_chained_map_type(const char *attrname, void *arg) {
+    struct chained_type_map *mapp = arg;
+    RDB_type *typ = (*mapp->getfn1p) (attrname, mapp->arg1);
+    if (typ != NULL)
+        return typ;
+    
+    return (*mapp->getfn2p) (attrname, mapp->arg2);
+}
+
+static RDB_type *
 where_type(const RDB_expression *exp, RDB_gettypefn *getfnp, void *arg,
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
     RDB_type *condtyp;
-    RDB_type *jtyp;
+/*    RDB_type *jtyp; */
     RDB_type *reltyp;
 
     if (RDB_expr_list_length(&exp->var.op.args) != 2) {
@@ -189,27 +208,26 @@ where_type(const RDB_expression *exp, RDB_gettypefn *getfnp, void *arg,
         RDB_raise_type_mismatch("WHERE requires relation argument", ecp);
         return NULL;
     }
-
     if (arg != NULL) {
-        /* !! verketten */
-        jtyp = RDB_join_tuple_types((RDB_type *) arg, reltyp->var.basetyp, ecp);
-        if (jtyp == NULL) {
-            return NULL;
-        }
+        struct chained_type_map tmap;
+        tmap.arg1 = arg;
+        tmap.getfn1p = getfnp;
+        tmap.arg2 = reltyp->var.basetyp;
+        tmap.getfn2p = get_tuple_attr_type;
+        condtyp = RDB_expr_type(exp->var.op.args.lastp, get_chained_map_type,
+                &tmap, ecp, txp);        
+    } else {
+        condtyp = RDB_expr_type(exp->var.op.args.lastp, get_tuple_attr_type,
+                reltyp->var.basetyp, ecp, txp);
     }
-
-    condtyp = _RDB_expr_type(exp->var.op.args.lastp,
-            arg == NULL ? reltyp->var.basetyp : jtyp, ecp, txp);
-    if (arg != NULL) /* !! */
-        RDB_drop_type(jtyp, ecp, NULL);
     if (condtyp == NULL) {
         return NULL;
     }
-
     if (condtyp != &RDB_BOOLEAN) {
         RDB_raise_type_mismatch("WHERE requires BOOLEAN argument", ecp);
         return NULL;
     }
+
     return RDB_dup_nonscalar_type(reltyp, ecp);
 }
 
@@ -878,23 +896,6 @@ RDB_expr_type(RDB_expression *exp, RDB_gettypefn *getfnp, void *arg,
             return exp->typ;
     }
     abort();
-}
-
-static RDB_type *
-get_tuple_attr_type(const char *attrname, void *arg) {
-    RDB_attr *attrp = _RDB_tuple_type_attr((RDB_type *) arg, attrname);
-    return attrp != NULL ? attrp->typ : NULL;
-}
-
-/**
- * Return the type of the expression.
- * If the type is non-scalar, it is managed by the expression.
- */
-RDB_type *
-_RDB_expr_type(RDB_expression *exp, const RDB_type *tpltyp,
-        RDB_exec_context *ecp, RDB_transaction *txp)
-{
-    return RDB_expr_type(exp, &get_tuple_attr_type, (void *) tpltyp, ecp, txp);
 }
 
 static RDB_expression *
@@ -1688,7 +1689,7 @@ RDB_dup_expr(const RDB_expression *exp, RDB_exec_context *ecp)
 }
 
 /**
- * RDB_expr_comp returns a pointer to RDB_object embedded in an expression.
+ * RDB_expr_obj returns a pointer to RDB_object embedded in an expression.
 
 @returns
 
@@ -1709,6 +1710,17 @@ RDB_expr_obj(RDB_expression *exp)
 }
 
 /*@}*/
+
+/**
+ * Return the type of the expression. Use *tpltyp to resolve refs to variables.
+ * If the type is non-scalar, it is managed by the expression.
+ */
+RDB_type *
+_RDB_expr_type(RDB_expression *exp, const RDB_type *tpltyp,
+        RDB_exec_context *ecp, RDB_transaction *txp)
+{
+    return RDB_expr_type(exp, &get_tuple_attr_type, (void *) tpltyp, ecp, txp);
+}
 
 /**
  * Drop all expressions in the list.

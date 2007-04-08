@@ -51,7 +51,9 @@ enum _RDB_obj_kind {
 };
 
 typedef struct {
+    /** The number of strings. */
     int strc;
+    /** The array holding pointers to the strings. */
     char **strv;
 } RDB_string_vec;
 

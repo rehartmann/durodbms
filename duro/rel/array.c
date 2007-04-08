@@ -55,6 +55,12 @@ error:
     return RDB_ERROR;
 }
 
+/* !! should be made configurable */
+enum {
+    ARRAY_BUFLEN_MIN = 256,
+    ARRAY_BUFLEN_MAX = 32768
+};
+
 /** @defgroup array Array functions 
  * @{
  */
@@ -126,12 +132,6 @@ next_tuple(RDB_object *arrp, RDB_bool mustread, RDB_exec_context *ecp)
     return _RDB_next_tuple(arrp->var.arr.qrp, tplp,
                 ecp, arrp->var.arr.txp);
 }
-
-/* !! should be made configurable */
-enum {
-    ARRAY_BUFLEN_MIN = 256,
-    ARRAY_BUFLEN_MAX = 32768
-};
 
 /**
  * RDB_array_get stores a pointer to the RDB_object at index <var>idx</var>

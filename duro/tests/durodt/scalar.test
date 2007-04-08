@@ -14,7 +14,7 @@ namespace import ::tcltest::*
 set testdir [::tcltest::configure -testdir]
 
 test scalar_builtin {built-in scalar definitions and operators} -body {
-    exec $testdir/../../dli/durodt $testdir/scalar.d
+    exec $testdir/../../dli/durodt $testdir/scalar.td
 } -result {2
 3
 }
