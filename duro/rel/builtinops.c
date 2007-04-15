@@ -1,7 +1,7 @@
 /*
  * $Id$
  *
- * Copyright (C) 2005-2006 René Hartmann.
+ * Copyright (C) 2005-2007 René Hartmann.
  * See the file COPYING for redistribution information.
  */
 
@@ -591,7 +591,7 @@ OPERATOR REMOVE(R <em>RELATION</em>, ATTRNAME STRING ...) RETURNS <em>RELATION</
 
 <h3 id="op_rename">OPERATOR RENAME</h3>
 
-OPERATOR RENAME(R <em>RELATION</em>, SRC_ATTRNAME STRING, DST_ATTRNAME ...) RETURNS <em>RELATION</em>;
+OPERATOR RENAME(R <em>RELATION</em>, SRC_ATTRNAME STRING, DST_ATTRNAME STRING ...) RETURNS <em>RELATION</em>;
 
 <hr>
 
@@ -604,6 +604,12 @@ OPERATOR UNGROUP(R <em>RELATION</em>, ATTRNAME STRING) RETURNS <em>RELATION</em>
 <h3 id="op_union">OPERATOR UNION</h3>
 
 OPERATOR UNION(R1 <em>RELATION</em>, R2 <em>RELATION</em>) RETURNS <em>RELATION</em>;
+
+<hr>
+
+<h3 id="op_union">OPERATOR UPDATE</h3>
+
+OPERATOR UPDATE(R1 <em>RELATION</em>, DST_ATTRNAME <em>STRING</em>, SRC_EXPR <em>ANY</em>) RETURNS <em>RELATION</em>;
 
 <hr>
 

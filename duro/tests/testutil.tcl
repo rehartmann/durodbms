@@ -35,3 +35,9 @@ proc checkarray {a l tx} {
         }
     }
 }   
+
+proc duro_assert {exp tx} {
+    if {![duro::expr $exp $tx]} {
+        error "$exp is FALSE"
+    }
+}

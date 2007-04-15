@@ -11,9 +11,11 @@
 #include "catalog.h"
 #include <gen/strfns.h>
 
+#include <dli/tabletostr.h>
+
 #include <string.h>
 
-/** @defgroup expr Expression functions 
+/** @defgroup expr Expression functions
  * @{
  */
 
@@ -192,7 +194,6 @@ where_type(const RDB_expression *exp, RDB_gettypefn *getfnp, void *arg,
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
     RDB_type *condtyp;
-/*    RDB_type *jtyp; */
     RDB_type *reltyp;
 
     if (RDB_expr_list_length(&exp->var.op.args) != 2) {
@@ -537,7 +538,6 @@ expr_op_type(RDB_expression *exp, RDB_gettypefn *getfnp, void *arg,
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
     int i;
-    int ret;
     RDB_type *typ;
     RDB_ro_op_desc *op;
     RDB_expression *argp;
@@ -810,9 +810,8 @@ expr_op_type(RDB_expression *exp, RDB_gettypefn *getfnp, void *arg,
             }
         }
 
-        ret = _RDB_get_ro_op(exp->var.op.name, argc,
-            argtv, ecp, txp, &op);
-        if (ret != RDB_OK)
+        if (_RDB_get_ro_op(exp->var.op.name, argc, argtv, ecp, txp, &op)
+                != RDB_OK)
             goto error;
         typ = RDB_dup_nonscalar_type(op->rtyp, ecp);
     }
@@ -1051,7 +1050,6 @@ failed.
 RDB_expression *
 RDB_obj_to_expr(const RDB_object *objp, RDB_exec_context *ecp)
 {
-    int ret;
     RDB_expression *exp = new_expr(ecp);
     if (exp == NULL)
         return NULL;
@@ -1059,8 +1057,7 @@ RDB_obj_to_expr(const RDB_object *objp, RDB_exec_context *ecp)
     exp->kind = RDB_EX_OBJ;
     RDB_init_obj(&exp->var.obj);
     if (objp != NULL) {
-        ret = RDB_copy_obj(&exp->var.obj, objp, ecp);
-        if (ret != RDB_OK) {
+        if (RDB_copy_obj(&exp->var.obj, objp, ecp) != RDB_OK) {
             free(exp);
             return NULL;
         }
@@ -1360,15 +1357,19 @@ evaluate_ro_op(RDB_expression *exp, RDB_getobjfn *getfnp, void *getdata,
     RDB_object *valv = NULL;
     int argc = RDB_expr_list_length(&exp->var.op.args);
 
+    if (_RDB_transform(exp, ecp, txp) != RDB_OK)
+        return RDB_ERROR;
+
     /*
      * Special treatment of relational operators
      */
 
     if (strcmp(exp->var.op.name, "EXTEND") == 0) {
-        RDB_type *typ = _RDB_expr_type(exp->var.op.args.firstp, NULL, ecp, txp);
+        RDB_type *typ = RDB_expr_type(exp->var.op.args.firstp, NULL, NULL,
+                ecp, txp);
         if (typ == NULL)
             return RDB_ERROR;
-        
+
         if (typ->kind == RDB_TP_RELATION) {
             return evaluate_vt(exp, getfnp, getdata, ecp, txp, valp);
         } else if (typ->kind == RDB_TP_TUPLE) {
@@ -1394,8 +1395,8 @@ evaluate_ro_op(RDB_expression *exp, RDB_getobjfn *getfnp, void *getdata,
                 argp = argp->nextp->nextp;
             }
             
-            ret = RDB_evaluate(exp->var.op.args.firstp, getfnp, getdata, ecp, txp, valp);
-            if (ret != RDB_OK) {
+            if (RDB_evaluate(exp->var.op.args.firstp, getfnp, getdata, ecp,
+                    txp, valp) != RDB_OK) {
                 free(attrv);
                 return RDB_ERROR;
             }
@@ -1580,10 +1581,10 @@ RDB_evaluate(RDB_expression *exp, RDB_getobjfn *getfnp, void *getdata,
             RDB_object obj;
 
             RDB_init_obj(&obj);
-            ret = RDB_evaluate(exp->var.op.args.firstp, getfnp, getdata, ecp, txp, &obj);
-            if (ret != RDB_OK) {
+            if (RDB_evaluate(exp->var.op.args.firstp, getfnp, getdata, ecp,
+                    txp, &obj) != RDB_OK) {
                  RDB_destroy_obj(&obj, ecp);
-                 return ret;
+                 return RDB_ERROR;
             }
             ret = RDB_obj_comp(&obj, exp->var.op.name, valp, ecp, txp);
             RDB_destroy_obj(&obj, ecp);
@@ -1719,7 +1720,8 @@ RDB_type *
 _RDB_expr_type(RDB_expression *exp, const RDB_type *tpltyp,
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
-    return RDB_expr_type(exp, &get_tuple_attr_type, (void *) tpltyp, ecp, txp);
+    return RDB_expr_type(exp, &get_tuple_attr_type, (RDB_type *) tpltyp,
+            ecp, txp);
 }
 
 /**
@@ -1749,7 +1751,7 @@ RDB_expr_list_length(const RDB_expr_list *explistp)
         ++len;
         exp = exp->nextp;
     }
-    return len;
+    return (RDB_int) len;
 }
 
 void
@@ -1873,7 +1875,7 @@ _RDB_expr_refers(const RDB_expression *exp, const RDB_object *tbp)
 }
 
 RDB_bool
-_RDB_expr_refers_attr(const RDB_expression *exp, const char *attrname)
+_RDB_expr_refers_var(const RDB_expression *exp, const char *attrname)
 {
     switch (exp->kind) {
         case RDB_EX_OBJ:
@@ -1883,12 +1885,12 @@ _RDB_expr_refers_attr(const RDB_expression *exp, const char *attrname)
             return (RDB_bool) (strcmp(exp->var.varname, attrname) == 0);
         case RDB_EX_TUPLE_ATTR:
         case RDB_EX_GET_COMP:
-            return _RDB_expr_refers_attr(exp->var.op.args.firstp, attrname);
+            return _RDB_expr_refers_var(exp->var.op.args.firstp, attrname);
         case RDB_EX_RO_OP:
         {
             RDB_expression *argp = exp->var.op.args.firstp;
             while (argp != NULL) {
-                if (_RDB_expr_refers_attr(argp, attrname))
+                if (_RDB_expr_refers_var(argp, attrname))
                     return RDB_TRUE;
                 argp = argp->nextp;
             }            

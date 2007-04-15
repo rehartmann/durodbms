@@ -165,9 +165,8 @@ RDB_create_constraint(const char *name, RDB_expression *exp,
     }
 
     if (!RDB_tx_db(txp)->dbrootp->constraints_read) {
-        ret = _RDB_read_constraints(ecp, txp);
-        if (ret != RDB_OK)
-            return ret;
+        if (_RDB_read_constraints(ecp, txp) != RDB_OK)
+            return RDB_ERROR;
         RDB_tx_db(txp)->dbrootp->constraints_read = RDB_TRUE;
     }
 

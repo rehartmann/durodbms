@@ -338,7 +338,7 @@ RDB_bool
 _RDB_expr_refers(const RDB_expression *, const RDB_object *);
 
 RDB_bool
-_RDB_expr_refers_attr(const RDB_expression *, const char *attrname);
+_RDB_expr_refers_var(const RDB_expression *, const char *attrname);
 
 RDB_bool
 _RDB_expr_table_depend(const RDB_expression *, const RDB_object *);

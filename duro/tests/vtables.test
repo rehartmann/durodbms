@@ -79,11 +79,8 @@ test vtables {virtual tables} -setup $SETUP -body {
     
     duro::insert T4 {A 2 B 3} $tx
     
-    set tpl [duro::expr {TUPLE FROM (T1 MINUS (T1 WHERE K <> 1))} $tx]
-    set stpl {K 1 S1 Bla}
-    if {![tequal $tpl $stpl]} {
-        error "Invalid tuple value: $tpl, should be $stpl"
-    }
+    duro_assert {(TUPLE FROM (T1 MINUS (T1 WHERE K <> 1)))
+            = TUPLE {K 1, S1 'Bla'}} $tx
 
     # Create virtual tables
 
@@ -156,7 +153,13 @@ test vtables {virtual tables} -setup $SETUP -body {
     duro::table expr -global TSJ {T1 SEMIJOIN T3} $tx
 
     duro::table expr -global TS2 {T1 WHERE K = 1} $tx
-    
+
+    duro_assert {UPDATE T4 {B := A + B} = RELATION {
+        TUPLE {A 1, B 2},
+        TUPLE {A 1, B 3},
+        TUPLE {A 2, B 3},
+        TUPLE {A 2, B 5}}} $tx
+
     # Create table again - must fail
     if {![catch {
         duro::table expr -global TS2 {T1 WHERE K = 1} $tx
@@ -169,7 +172,7 @@ test vtables {virtual tables} -setup $SETUP -body {
     }
 
     duro::table expr ts2 {T1 WHERE K = 1} $tx
-    
+
     # Create table again - must fail
     if {![catch {
         duro::table expr ts2 {T1 WHERE K = 1} $tx
@@ -190,11 +193,11 @@ test vtables {virtual tables} -setup $SETUP -body {
     if {![tequal $tpl {K 2 S1 Blubb S2 B}]} {
         error "Invalid value of TUPLE FROM TJ2"
     }
-    
-    set da [duro::array create TSM {A asc} $tx]
-    checkarray $da {{A 1 MIN_B 1 MAX_B 2 CNT 2} {A 2 MIN_B 1 MAX_B 3 CNT 2}} $tx
-    duro::array drop $da
-    
+
+    duro_assert {TSM = RELATION {
+            TUPLE {A 1, MIN_B 1, MAX_B 2, CNT 2},
+            TUPLE {A 2, MIN_B 1, MAX_B 3, CNT 2}}} $tx
+
     if {![catch {duro::table expr -global TX2 {EXTEND T1 ADD (K*10 AS K)} $tx}]} {
         error "invalid EXTEND should fail, but succeeded"
     }

@@ -1,7 +1,7 @@
 /*
  * $Id$
  *
- * Copyright (C) 2004-2006 René Hartmann.
+ * Copyright (C) 2004-2007 René Hartmann.
  * See the file COPYING for redistribution information.
  *
  *
@@ -23,7 +23,7 @@ _RDB_vtexp_to_obj(RDB_expression *exp, RDB_exec_context *ecp,
         RDB_transaction *txp, RDB_object *tbp)
 {
     /* Create type */
-    RDB_type *tbtyp = _RDB_expr_type(exp, NULL, ecp, txp);
+    RDB_type *tbtyp = RDB_expr_type(exp, NULL, NULL, ecp, txp);
     if (tbtyp == NULL) {
         return RDB_ERROR;
     }

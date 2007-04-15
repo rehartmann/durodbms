@@ -876,6 +876,38 @@ expression: expression '{' attribute_name_list '}' {
         RDB_add_arg($$, texp);
         RDB_join_expr_lists(&$$->var.op.args, &$5);
     }
+    | TOK_UPDATE expression '{' ne_attr_assign_list '}' {
+        RDB_parse_attr_assign *ap, *hap;
+        RDB_expression *texp = _RDB_parse_lookup_table($2);
+        if (texp == NULL) {
+            RDB_drop_expr($2, _RDB_parse_ecp);
+            RDB_parse_del_assignlist($4, _RDB_parse_ecp);
+            YYERROR;
+        }
+
+        $$ = RDB_ro_op("UPDATE", _RDB_parse_ecp);
+        if ($$ == NULL) {
+ 	        RDB_drop_expr(texp, _RDB_parse_ecp);
+            RDB_parse_del_assignlist($4, _RDB_parse_ecp);
+            YYERROR;
+        }
+        RDB_add_arg($$, texp);
+        ap = $4;
+        do {
+            if (ap->dstp->kind != RDB_EX_VAR) {
+                RDB_raise_invalid_argument("invalid UPDATE argument",
+                        _RDB_parse_ecp);
+                YYERROR;
+            }
+            RDB_add_arg($$, RDB_string_to_expr(ap->dstp->var.varname,
+                    _RDB_parse_ecp));
+            RDB_add_arg($$, ap->srcp);
+            RDB_drop_expr(ap->dstp, _RDB_parse_ecp);
+            hap = ap;
+            ap = ap->nextp;
+            free(hap);
+        } while (ap != NULL);
+    }
     | TOK_SUMMARIZE expression TOK_PER expression
            TOK_ADD '(' summarize_add_list ')' {
         RDB_expression *tex1p, *tex2p;

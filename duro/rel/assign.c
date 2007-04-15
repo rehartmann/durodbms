@@ -71,87 +71,31 @@ typedef struct delete_node {
 } delete_node;
 
 static RDB_expression *
-prefixed_string_expr(char *str, RDB_exec_context *ecp)
-{
-	RDB_expression *exp;
-	char *nstr = malloc(strlen(str) + 2);
-	if (nstr == NULL) {
-		RDB_raise_no_memory(ecp);
-	    return NULL;
-	}
-    nstr[0] = '$';
-	strcpy(nstr + 1, str);
-	exp = RDB_string_to_expr(nstr, ecp);
-	free(nstr);
-	return exp;
-}
-
-static RDB_expression *
 replace_updattrs(RDB_expression *exp, int updc, RDB_attr_update updv[],
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
     int i;
-    RDB_expression *rexp, *xexp, *hexp;
+    RDB_expression *uexp, *hexp;
 
-    /*
-     * Add 'updated' attributes
-     */
-
-    rexp = xexp = RDB_ro_op("EXTEND", ecp);
-    if (rexp == NULL)
+    uexp = RDB_ro_op("UPDATE", ecp);
+    if (uexp == NULL)
         return NULL;
-    RDB_add_arg(rexp, exp);
+    RDB_add_arg(uexp, exp);
+
     for (i = 0; i < updc; i++) {
+        hexp = RDB_string_to_expr(updv[i].name, ecp);
+        if (hexp == NULL)
+            goto error;
+        RDB_add_arg(uexp, hexp);
         hexp = RDB_dup_expr(updv[i].exp, ecp);
         if (hexp == NULL)
             goto error;
-        RDB_add_arg(rexp, hexp);
-        hexp = prefixed_string_expr(updv[i].name, ecp);
-        if (hexp == NULL)
-            goto error;
-        RDB_add_arg(rexp, hexp);
+        RDB_add_arg(uexp, hexp);
     }
-
-    /*
-     * Remove old attributes
-     */
-    hexp = RDB_ro_op("REMOVE", ecp);
-    if (hexp == NULL)
-        goto error;
-    RDB_add_arg(hexp, rexp);
-    rexp = hexp;
-    for (i = 0; i < updc; i++) {
-        hexp = RDB_string_to_expr(updv[i].name, ecp);
-        if (hexp == NULL)
-            goto error;
-        RDB_add_arg(rexp, hexp);
-    }
-
-    /*
-     * Rename new attributes
-     */
-    hexp = RDB_ro_op("RENAME", ecp);
-    if (hexp == NULL)
-        goto error;
-    RDB_add_arg(hexp, rexp);
-    rexp = hexp;
-    for (i = 0; i < updc; i++) {
-        hexp = prefixed_string_expr(updv[i].name, ecp);
-        if (hexp == NULL)
-            goto error;
-        RDB_add_arg(rexp, hexp);
-        hexp = RDB_string_to_expr(updv[i].name, ecp);
-        if (hexp == NULL)
-            goto error;
-        RDB_add_arg(rexp, hexp);
-    }
-    return rexp;
+    return uexp;
 
 error:
-    /* Prevent exp from being dropped */
-    xexp->var.op.args.firstp = NULL;
-
-    RDB_drop_expr(rexp, ecp);
+    RDB_drop_expr(uexp, ecp);
     return NULL;
 }
 

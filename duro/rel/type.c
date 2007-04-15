@@ -1,7 +1,7 @@
 /*
  * $Id$
  *
- * Copyright (C) 2003-2006 René Hartmann.
+ * Copyright (C) 2003-2007 René Hartmann.
  * See the file COPYING for redistribution information.
  */
 
@@ -2215,10 +2215,10 @@ RDB_summarize_type(RDB_expr_list *expsp,
     addc = (expc - 2) / 2;
     attrc = addc + avgc;
 
-    tb1typ = _RDB_expr_type(expsp->firstp, NULL, ecp, txp);
+    tb1typ = RDB_expr_type(expsp->firstp, NULL, NULL, ecp, txp);
     if (tb1typ == NULL)
         return NULL;
-    tb2typ = _RDB_expr_type(expsp->firstp->nextp, NULL, ecp, txp);
+    tb2typ = RDB_expr_type(expsp->firstp->nextp, NULL, NULL, ecp, txp);
     if (tb2typ == NULL)
         goto error;
    

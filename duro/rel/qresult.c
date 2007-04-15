@@ -1,7 +1,7 @@
 /*
  * $Id$
  *
- * Copyright (C) 2003-2006 René Hartmann.
+ * Copyright (C) 2003-2007 René Hartmann.
  * See the file COPYING for redistribution information.
  */
 
@@ -423,11 +423,11 @@ summarize_qresult(RDB_qresult *qrp, RDB_expression *exp, RDB_exec_context *ecp,
     qrp->exp = exp;
     qrp->nested = RDB_FALSE;
 
-    tb1typ = _RDB_expr_type(exp->var.op.args.firstp, NULL, ecp, txp);
+    tb1typ = RDB_expr_type(exp->var.op.args.firstp, NULL, NULL, ecp, txp);
     if (tb1typ == NULL)
         return RDB_ERROR;
 
-    tb2typ = _RDB_expr_type(exp->var.op.args.firstp->nextp, NULL, ecp, txp);
+    tb2typ = RDB_expr_type(exp->var.op.args.firstp->nextp, NULL, NULL, ecp, txp);
     if (tb2typ == NULL)
         goto error;
 
@@ -679,7 +679,7 @@ group_qresult(RDB_qresult *qrp, RDB_expression *exp, RDB_exec_context *ecp,
     int keyc;
     int ret;
     RDB_bool freekeys;
-    RDB_type *reltyp = _RDB_expr_type(exp, NULL, ecp, txp);
+    RDB_type *reltyp = RDB_expr_type(exp, NULL, NULL, ecp, txp);
     if (reltyp == NULL)
         return RDB_ERROR;
 
@@ -1046,7 +1046,7 @@ _RDB_duprem(RDB_qresult *qrp, RDB_exec_context *ecp, RDB_transaction *txp)
         int ret;
 
         /* rd can only be true for virtual tables */
-        RDB_type *reltyp = _RDB_expr_type(qrp->exp, NULL, ecp, txp);
+        RDB_type *reltyp = RDB_expr_type(qrp->exp, NULL, NULL, ecp, txp);
         if (reltyp == NULL)
             return RDB_ERROR;
         reltyp = RDB_dup_nonscalar_type(reltyp, ecp);
@@ -1150,7 +1150,7 @@ _RDB_sorter(RDB_expression *texp, RDB_qresult **qrpp, RDB_exec_context *ecp,
      * Create a sorted RDB_table
      */
 
-    typ = _RDB_expr_type(texp, NULL, ecp, txp);
+    typ = RDB_expr_type(texp, NULL, NULL, ecp, txp);
     if (typ == NULL)
         goto error;
     typ = RDB_dup_nonscalar_type(typ, ecp);
@@ -1809,7 +1809,8 @@ next_project_tuple(RDB_qresult *qrp, RDB_object *tplp, RDB_exec_context *ecp,
     if (!qrp->nested) {
         if (tplp != NULL) {
             ret = _RDB_get_by_cursor(qrp->var.stored.tbp, qrp->var.stored.curp,
-                    _RDB_expr_type(qrp->exp, NULL, ecp, txp)->var.basetyp, tplp, ecp, txp);
+                    RDB_expr_type(qrp->exp, NULL, NULL, ecp, txp)->var.basetyp,
+                    tplp, ecp, txp);
             if (ret != RDB_OK)
                 return RDB_ERROR;
         }
@@ -1862,7 +1863,7 @@ next_where_index(RDB_qresult *qrp, RDB_object *tplp,
         tpltyp = qrp->var.stored.tbp->typ->var.basetyp;
     } else {
         indexp = qrp->exp->var.op.args.firstp->var.op.args.firstp->var.tbref.indexp;
-        reltyp = _RDB_expr_type(qrp->exp->var.op.args.firstp, NULL, ecp, txp);
+        reltyp = RDB_expr_type(qrp->exp->var.op.args.firstp, NULL, NULL, ecp, txp);
         if (reltyp == NULL)
             return RDB_ERROR;
         tpltyp = reltyp->var.basetyp;
@@ -2099,7 +2100,7 @@ _RDB_sdivide_preserves(RDB_expression *exp, const RDB_object *tplp,
     RDB_qresult qr;
     RDB_type *tb1tuptyp;
     RDB_bool matchall = RDB_TRUE;
-    RDB_type *tb1typ = _RDB_expr_type(exp->var.op.args.firstp, NULL, ecp, txp);
+    RDB_type *tb1typ = RDB_expr_type(exp->var.op.args.firstp, NULL, NULL, ecp, txp);
     if (tb1typ == NULL)
         return RDB_ERROR;
     if (tb1typ->kind != RDB_TP_RELATION) {

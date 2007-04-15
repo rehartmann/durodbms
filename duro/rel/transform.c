@@ -1,7 +1,7 @@
 /*
  * $Id$
  *
- * Copyright (C) 2004-2006 René Hartmann.
+ * Copyright (C) 2004-2007 René Hartmann.
  * See the file COPYING for redistribution information.
  */
 
@@ -13,8 +13,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <assert.h>
-
-#include <dli/tabletostr.h>
 
 static int
 exprs_compl(const RDB_expression *ex1p, const RDB_expression *ex2p,
@@ -210,23 +208,28 @@ transform_where(RDB_expression *exp, RDB_exec_context *ecp,
             
             exp = chexp;
         } else if (strcmp(chexp->var.op.name, "RENAME") == 0) {
+            RDB_expression *argp;
+
             /*
              * WHERE(RENAME( -> RENAME(WHERE(
-             * Only if the variables in the where condition 
-             * all appear in the RENAME table
+             * Only if the where condition does not contain
+             * variables which have been "renamed away".
              */
-            if (_RDB_expr_type(exp, NULL, ecp, txp) == NULL) {
-                RDB_type *errtyp = RDB_obj_type(RDB_get_err(ecp));
-                if (errtyp != &NAME_ERROR)
-                    return RDB_ERROR;
-                RDB_clear_err(ecp);
-                return RDB_OK;
+
+            argp = chexp->var.op.args.firstp->nextp;
+            while (argp != NULL) {
+                if (_RDB_expr_refers_var(exp->var.op.args.firstp->nextp,
+                        RDB_obj_string(RDB_expr_obj(argp))))
+                    return RDB_OK;
+                argp = argp->nextp->nextp;
             }
 
-            RDB_drop_type(exp->typ, ecp, NULL);
-            exp->typ = NULL;
+            if (exp->typ != NULL) {
+                RDB_drop_type(exp->typ, ecp, NULL);
+                exp->typ = NULL;
+            }
 
-            if (_RDB_invrename_expr(exp->var.op.args.firstp->nextp, chexp, ecp)
+            if (_RDB_invrename_expr(chexp->nextp, chexp, ecp)
                     != RDB_OK)
                 return RDB_ERROR;
 
@@ -324,7 +327,7 @@ proj_attr(const RDB_expression *exp, const char *attrname)
 }
 
 /**
- * Transforms PROJECT(RENAME) to RENAME(PROJECT) or PROJECT
+ * Transform PROJECT(RENAME) to RENAME(PROJECT) or PROJECT
  */
 static int
 swap_project_rename(RDB_expression *texp, RDB_exec_context *ecp,
@@ -411,7 +414,9 @@ swap_project_rename(RDB_expression *texp, RDB_exec_context *ecp,
     return RDB_OK;
 }
 
-/* Transforms PROJECT(EXTEND) to EXTEND(PROJECT) or PROJECT */
+/**
+ * Transform PROJECT(EXTEND) to EXTEND(PROJECT) or PROJECT
+ */
 static int
 transform_project_extend(RDB_expression *exp, RDB_exec_context *ecp,
         RDB_transaction *txp)
@@ -471,8 +476,8 @@ transform_project_extend(RDB_expression *exp, RDB_exec_context *ecp,
     return _RDB_transform(chexp, ecp, txp);
 }
 
-/*
- * Transforms PROJECT(WHERE) to WHERE(PROJECT) or PROJECT(WHERE(PROJECT))
+/**
+ * Transform PROJECT(WHERE) to WHERE(PROJECT) or PROJECT(WHERE(PROJECT))
  */
 static int
 swap_project_where(RDB_expression *exp, RDB_expression *chexp,
@@ -482,7 +487,7 @@ swap_project_where(RDB_expression *exp, RDB_expression *chexp,
     int attrc;
     char **attrv;
     RDB_expression *argp;
-    RDB_type *chtyp = _RDB_expr_type(chexp, NULL, ecp, txp);
+    RDB_type *chtyp = RDB_expr_type(chexp, NULL, NULL, ecp, txp);
     if (chtyp == NULL)
         return RDB_ERROR;
 
@@ -510,7 +515,7 @@ swap_project_where(RDB_expression *exp, RDB_expression *chexp,
         char *attrname = chtyp->var.basetyp->var.tuple.attrv[i].name;
 
         if (proj_attr(exp, attrname) == NULL
-                && _RDB_expr_refers_attr(chexp, attrname)) {
+                && _RDB_expr_refers_var(chexp, attrname)) {
             attrv[attrc++] = attrname;
         }
     }
@@ -631,7 +636,7 @@ transform_project(RDB_expression *exp, RDB_exec_context *ecp,
     return RDB_OK;
 }
 
-/*
+/**
  * Convert REMOVE into PROJECT
  */
 int
@@ -661,7 +666,7 @@ _RDB_remove_to_project(RDB_expression *exp, RDB_exec_context *ecp,
         argp = argp->nextp;
     }                
 
-    chtyp = _RDB_expr_type(exp->var.op.args.firstp, NULL, ecp, txp);
+    chtyp = RDB_expr_type(exp->var.op.args.firstp, NULL, NULL, ecp, txp);
     if (chtyp == NULL)
         return RDB_ERROR;
     if (chtyp->kind == RDB_TP_RELATION) {
@@ -739,7 +744,7 @@ error:
     return RDB_ERROR;
 }
 
-/*
+/**
  * Transform REMOVE
  */
 static int
@@ -748,6 +753,83 @@ transform_remove(RDB_expression *exp, RDB_exec_context *ecp, RDB_transaction *tx
     if (_RDB_remove_to_project(exp, ecp, txp) != RDB_OK)
         return RDB_ERROR;
     return transform_project(exp, ecp, txp);
+}
+
+/**
+ * Transform UPDATE into RENAME(PROJECT(EXTEND(
+ */
+static int
+transform_update(RDB_expression *exp, RDB_exec_context *ecp,
+        RDB_transaction *txp)
+{
+    RDB_object nattrname;
+    RDB_expression *pexp, *xexp;
+    RDB_expression *argp = exp->var.op.args.firstp->nextp;
+
+    strcpy(exp->var.op.name, "RENAME");
+
+    pexp = RDB_ro_op("REMOVE", ecp);
+    if (pexp == NULL)
+        return RDB_ERROR;
+    pexp->nextp = NULL;
+
+    xexp = RDB_ro_op("EXTEND", ecp);
+    if (xexp == NULL)
+        return RDB_ERROR;
+    RDB_add_arg(pexp, xexp);
+    RDB_add_arg(xexp, exp->var.op.args.firstp);
+
+    exp->var.op.args.firstp = exp->var.op.args.lastp = pexp;
+
+    RDB_init_obj(&nattrname);
+    while (argp != NULL) {
+        RDB_expression *nargp, *hexp;
+
+        if (argp->nextp == NULL) {
+            RDB_raise_invalid_argument("UPDATE: invalid number of arguments",
+                    ecp);
+            return RDB_ERROR;
+        }
+        nargp = argp->nextp->nextp;
+
+        if (argp->kind != RDB_EX_OBJ) {
+            RDB_raise_invalid_argument("UPDATE argument must be STRING",
+                    ecp);
+            return RDB_ERROR;
+        }
+
+        /* Build attribute name prefixed by $ */
+        if (RDB_string_to_obj(&nattrname, "$", ecp) != RDB_OK)
+            return RDB_ERROR;
+        if (RDB_append_string(&nattrname, RDB_obj_string(RDB_expr_obj(argp)),
+                ecp) != RDB_OK)
+            return RDB_ERROR;
+
+        /* Append EXTEND args */
+        RDB_add_arg(xexp, argp->nextp);
+        hexp = RDB_obj_to_expr(&nattrname, ecp);
+        if (hexp == NULL)
+            return RDB_ERROR;
+        RDB_add_arg(xexp, hexp);
+
+        /* Append REMOVE args */
+        hexp = RDB_obj_to_expr(RDB_expr_obj(argp), ecp);
+        if (hexp == NULL)
+            return RDB_ERROR;
+        RDB_add_arg(pexp, hexp);
+
+        /* Append RENAME args */
+        hexp = RDB_obj_to_expr(&nattrname, ecp);
+        if (hexp == NULL)
+            return RDB_ERROR;
+        RDB_add_arg(exp, hexp);
+        RDB_add_arg(exp, argp);
+
+        argp = nargp;
+    }
+    RDB_destroy_obj(&nattrname, ecp);
+
+    return transform_remove(pexp, ecp, txp);
 }
 
 static int
@@ -777,8 +859,8 @@ transform_is_empty(RDB_expression *exp, RDB_exec_context *ecp,
     return RDB_OK;
 }
 
-/*
- * Performs algebraic optimization.
+/**
+ * Perform algebraic optimization.
  * Eliminating NOT in WHERE expressions is not performed here,
  * because it conflicts with optimizing certain UNIONs.
  */
@@ -795,6 +877,9 @@ _RDB_transform(RDB_expression *exp, RDB_exec_context *ecp, RDB_transaction *txp)
         if (_RDB_transform(argp, ecp, txp) != RDB_OK)
             return RDB_ERROR;
         argp = argp->nextp;
+    }
+    if (strcmp(exp->var.op.name, "UPDATE") == 0) {
+        return transform_update(exp, ecp, txp);
     }
     if (strcmp(exp->var.op.name, "UNION") == 0) {
         return transform_union(exp, ecp, txp);

@@ -248,8 +248,12 @@ init_obj(RDB_object *objp, RDB_type *typ, RDB_exec_context *ecp)
         RDB_bool_to_obj(objp, RDB_FALSE);
     } else if (typ == &RDB_INTEGER) {
         RDB_int_to_obj(objp, 0);
+    } else if (typ == &RDB_FLOAT) {
+        RDB_double_to_obj(objp, 0.0);
     } else if (typ == &RDB_STRING) {
         return RDB_string_to_obj(objp, "", ecp);
+    } else if (typ == &RDB_BINARY) {
+        return RDB_binary_set(objp, 0, NULL, (size_t) 0, ecp);
     } else if (typ->kind == RDB_TP_TUPLE) {
         for (i = 0; i < typ->var.tuple.attrc; i++) {
             if (RDB_tuple_set(objp, typ->var.tuple.attrv[i].name,
@@ -718,7 +722,7 @@ exec_assign(const RDB_parse_statement *stmtp, RDB_exec_context *ecp)
         return RDB_ERROR;
 
     if (_RDB_parse_interactive)
-        printf("%d elements affected.\n", (int) cnt);
+        printf("%d element(s) affected.\n", (int) cnt);
 
     return RDB_OK;
 }
@@ -744,6 +748,7 @@ exec_begin_tx(const RDB_parse_statement *stmtp, RDB_exec_context *ecp)
         return RDB_ERROR;
     }
     if (txnp != NULL) {
+        /* !! */
         printf("Hier wäre eine nested Tx fällig!\n");
         return RDB_ERROR;
     }

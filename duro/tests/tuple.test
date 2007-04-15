@@ -77,18 +77,13 @@ test tuple {tuple-valued attribrutes} -setup $SETUP -body {
     
     set tx [duro::begin $dbenv TEST]
     
-    set tpl [duro::expr {TUPLE FROM T1} $tx]
-    set stpl {SCATTR Bla TPATTR {T {C Blip} A 1 B Blubb}}
-    if {![tequal $tpl $stpl]} {
-        error "Tuple value from T1 is $tpl, should be $stpl"
-    }
-    
-    set tpl [duro::expr {TUPLE FROM UW} $tx]
-    set stpl {T {C Blip} SCATTR Bla A 1 B Blubb}
-    if {![tequal $tpl $stpl]} {
-        error "Tuple value from UW is $tpl, should be $stpl"
-    }
-    
+    duro_assert {(TUPLE FROM T1)
+            = TUPLE {SCATTR 'Bla',
+                     TPATTR TUPLE {T TUPLE {C 'Blip'}, A 1, B 'Blubb'}}} $tx
+
+    duro_assert {(TUPLE FROM UW)
+            = TUPLE {T TUPLE{C 'Blip'}, SCATTR 'Bla', A 1, B 'Blubb'}} $tx
+
     set tpl {T {C Blip} SCATTR Bla A 1 B Blubb}
     
     if {![duro::table contains UW $tpl $tx]} {
@@ -186,23 +181,25 @@ test tuple {tuple-valued attribrutes} -setup $SETUP -body {
     if {![tequal $tpl $stpl]} {
         error "Tuple is $tpl, should be $stpl"
     }
-    
+
     set tpl [duro::expr {TUPLE {T TUPLE {A 1, B "Bee"}} UNWRAP (T)} $tx]
     set stpl {A 1 B Bee}
     if {![tequal $tpl $stpl]} {
         error "Tuple is $tpl, should be $stpl"
     }
-    
+
+    duro_assert {UPDATE TUPLE{A 1, B "b"} {A := 2} = TUPLE{A 2, B "b"}} $tx
+
     if {[duro::expr {TUPLE FROM WH} $tx] != "SCATTR Bla"} {
         error "SCATTR should be \"Bla\", but is not"
     }
-    
+
     duro::table expr XT2 {EXTEND T2 ADD (TUPLE {A 1, B "b"} AS TATTR)} $tx
     set tpl [duro::expr {(TUPLE FROM XT2).TATTR} $tx]
     if {![tequal $tpl {A 1 B b}]} {
         error "Wrong value of TATTR"
     }
-    
+
     # Must fail, because XT2 depends on T2
     if {![catch {
         duro::table drop T2 $tx
