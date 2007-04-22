@@ -359,7 +359,7 @@ RDB_copy_table(RDB_object *dstp, RDB_object *srcp, RDB_exec_context *,
 
 typedef struct {
     RDB_object *tbp;
-    RDB_object *tplp;
+    RDB_object *objp;
 } RDB_ma_insert;
 
 typedef struct {

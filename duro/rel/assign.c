@@ -134,7 +134,7 @@ replace_targets_real_ins(RDB_object *tbp, const RDB_ma_insert *insp,
         RDB_drop_expr(exp, ecp);
         return NULL;
     }
-    ret = RDB_insert(RDB_expr_obj(argp), insp->tplp, ecp, NULL);
+    ret = RDB_insert(RDB_expr_obj(argp), insp->objp, ecp, NULL);
     if (ret != RDB_OK) {
         RDB_drop_expr(exp, ecp);
         return NULL;
@@ -468,16 +468,16 @@ new_insert_node(RDB_object *tbp, const RDB_object *tplp, RDB_exec_context *ecp)
     insert_node *insnp = malloc(sizeof (insert_node));
     if (insnp == NULL)
         return NULL;
-    insnp->ins.tplp = malloc(sizeof(RDB_object));
-    if (insnp->ins.tplp == NULL) {
+    insnp->ins.objp = malloc(sizeof(RDB_object));
+    if (insnp->ins.objp == NULL) {
         free(insnp);
         return NULL;
     }
-    RDB_init_obj(insnp->ins.tplp);
-    ret = _RDB_copy_tuple(insnp->ins.tplp, tplp, ecp);
+    RDB_init_obj(insnp->ins.objp);
+    ret = _RDB_copy_tuple(insnp->ins.objp, tplp, ecp);
     if (ret != RDB_OK) {
-        RDB_destroy_obj(insnp->ins.tplp, ecp);
-        free(insnp->ins.tplp);
+        RDB_destroy_obj(insnp->ins.objp, ecp);
+        free(insnp->ins.objp);
         free(insnp);
         return NULL;
     }
@@ -494,9 +494,9 @@ del_inslist(insert_node *insnp, RDB_exec_context *ecp)
     while (insnp != NULL) {
         hinsnp = insnp->nextp;
 
-        if (insnp->ins.tplp != NULL) {
-            RDB_destroy_obj(insnp->ins.tplp, ecp);
-            free(insnp->ins.tplp);
+        if (insnp->ins.objp != NULL) {
+            RDB_destroy_obj(insnp->ins.objp, ecp);
+            free(insnp->ins.objp);
         }
         free(insnp);
         insnp = hinsnp;
@@ -1021,7 +1021,7 @@ resolve_inserts(int insc, const RDB_ma_insert *insv, RDB_ma_insert **ninsvp,
 
     for (i = 0; i < insc; i++) {
         if (insv[i].tbp->var.tb.exp != NULL) {
-            ret = resolve_insert(insv[i].tbp, insv[i].tplp, &insnp, ecp, txp);
+            ret = resolve_insert(insv[i].tbp, insv[i].objp, &insnp, ecp, txp);
             if (ret != RDB_OK)
                 goto cleanup;
 
@@ -1049,16 +1049,16 @@ resolve_inserts(int insc, const RDB_ma_insert *insv, RDB_ma_insert **ninsvp,
 
         for (i = 0; i < insc; i++) {
             (*ninsvp)[i].tbp = insv[i].tbp;
-            (*ninsvp)[i].tplp = insv[i].tplp;
+            (*ninsvp)[i].objp = insv[i].objp;
         }
 
         insnp = geninsnp;
         while (insnp != NULL) {
             (*ninsvp)[i].tbp = insnp->ins.tbp;
-            (*ninsvp)[i].tplp = insnp->ins.tplp;
+            (*ninsvp)[i].objp = insnp->ins.objp;
 
             /* mark as copied */
-            insnp->ins.tplp = NULL;
+            insnp->ins.objp = NULL;
 
             insnp = insnp->nextp;
             i++;
@@ -1250,7 +1250,7 @@ static RDB_bool copy_needs_tx(const RDB_object *dstp, const RDB_object *srcp)
 and copy operations in a single call.
 
 For each of the RDB_ma_insert elements given by <var>insc</var> and <var>insv</var>,
-the tuple *<var>insv</var>[i]->tplp is inserted into *<var>insv</var>[i]->tbp.
+the tuple or relation *<var>insv</var>[i]->objp is inserted into *<var>insv</var>[i]->tbp.
 
 For each of the RDB_ma_update elements given by <var>updc</var> and <var>updv</var>,
 the attributes given by <var>updv</var>[i]->updc and <var>updv</var>[i]->updv
@@ -1269,7 +1269,7 @@ constraint checking; a constraint violation error can only occur
 if the result of <em>all</em> operations violates a constraint.
 
 A table may not appear twice as a target in the arguments to
-<strong>RDB_multi_assign</strong>, and it may not appear
+<strong>RDB_multi_assign()</strong>, and it may not appear
 as a source if it appears as a target in a previous assignment.
 
 This means that an assignment like the following:</p>
@@ -1698,12 +1698,32 @@ RDB_multi_assign(int insc, const RDB_ma_insert insv[],
     rcount = 0;
     for (i = 0; i < ninsc; i++) {
         if (ninsv[i].tbp->var.tb.exp == NULL) {
-            if (_RDB_insert_real(ninsv[i].tbp, ninsv[i].tplp, ecp, atxp)
-                    != RDB_OK) {
-                rcount = RDB_ERROR;
-                goto cleanup;
+            RDB_int rc;
+            switch (ninsv[i].objp->kind) {
+                case RDB_OB_INITIAL:
+                case RDB_OB_TUPLE:
+                    if (_RDB_insert_real(ninsv[i].tbp, ninsv[i].objp, ecp, atxp)
+                            != RDB_OK) {
+                        rcount = RDB_ERROR;
+                        goto cleanup;
+                    }
+                    rcount++;
+                    break;
+                case RDB_OB_TABLE:
+                    rc = _RDB_move_tuples(ninsv[i].tbp, ninsv[i].objp, ecp,
+                            atxp);
+                    if (rc == RDB_ERROR) {
+                        rcount = RDB_ERROR;
+                        goto cleanup;
+                    }
+                    rcount += rc;
+                    break;
+                default:
+                    RDB_raise_invalid_argument(
+                            "INSERT requires tuple or relation argument", ecp);
+                    rcount = RDB_ERROR;
+                    goto cleanup;
             }
-            rcount++;
         }
     }
     for (i = 0; i < nupdc; i++) {
@@ -1754,8 +1774,8 @@ cleanup:
      */
     if (ninsv != insv) {
         for (i = insc; i < ninsc; i++) {
-            RDB_destroy_obj(ninsv[i].tplp, ecp);
-            free(ninsv[i].tplp);
+            RDB_destroy_obj(ninsv[i].objp, ecp);
+            free(ninsv[i].objp);
         }
         free(ninsv);
     }
@@ -1789,7 +1809,7 @@ cleanup:
 }
 
 /**
- * RDB_insert inserts the tuple specified by <var>tplp</var>
+ * RDB_insert inserts the tuple or relation specified by <var>objp</var>
 into the table specified by <var>tbp</var>.
 
 If an error occurs, an error value is left in *<var>ecp</var>.
@@ -1833,14 +1853,14 @@ The call may also fail for a @ref system-errors "system error",
 in which case the transaction may be implicitly rolled back.
  */
 int
-RDB_insert(RDB_object *tbp, const RDB_object *tplp, RDB_exec_context *ecp,
+RDB_insert(RDB_object *tbp, const RDB_object *objp, RDB_exec_context *ecp,
            RDB_transaction *txp)
 {
     RDB_ma_insert ins;
     RDB_int count;
 
     ins.tbp = tbp;
-    ins.tplp = (RDB_object *) tplp;
+    ins.objp = (RDB_object *) objp;
     count = RDB_multi_assign(1, &ins, 0, NULL, 0, NULL, 0, NULL, ecp, txp);
     if (count == RDB_ERROR)
         return RDB_ERROR;

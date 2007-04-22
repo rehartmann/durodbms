@@ -1,0 +1,40 @@
+#!/bin/sh
+# Execute tclsh from the user's PATH \
+exec tclsh "$0" ${1+"$@"}
+
+# $Id$
+#
+# Test scalar definitions and operations
+#
+
+package require tcltest 2.2
+eval ::tcltest::configure $argv
+namespace import ::tcltest::*
+
+set testdir [::tcltest::configure -testdir]
+
+set ::SETUP {
+    file delete -force dbenv
+    exec $testdir/../../dli/durodt << {
+        create_env('dbenv');
+        create_db('D');
+    }
+}
+
+test insert {creating relvar and tuple insertion} -setup $SETUP -body {
+    exec $testdir/../../dli/durodt << {
+        connect('', 'dbenv');
+        current_db := 'D';
+        begin transaction;
+        var t real relation {i integer, d double, c string}
+             key {i};
+        insert t relation {tuple {i 1, d 1.0, c 'X'}, tuple {i 2, d 1.1, c 'Y'}};
+        insert t tuple {i 3, d 1.0, c 'Z'};
+        println(string(count(t)));
+        println((tuple from t where i=2).c);    
+    }
+} -result {3
+Y
+}
+
+cleanupTests

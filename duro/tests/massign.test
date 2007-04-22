@@ -18,7 +18,7 @@ test massign {multiple assignment} -setup $SETUP -body {
 
     # Create Database
     duro::db create $dbenv TEST
-    
+
     set tx [duro::begin $dbenv TEST]
     
     # Create table

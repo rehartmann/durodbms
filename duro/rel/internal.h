@@ -455,7 +455,7 @@ _RDB_put_builtin_ro_op(RDB_ro_op_desc *op, RDB_exec_context *ecp);
 void
 _RDB_free_ro_ops(RDB_ro_op_desc *op, RDB_exec_context *);
 
-int
+RDB_int
 _RDB_move_tuples(RDB_object *dstp, RDB_object *srcp, RDB_exec_context *,
         RDB_transaction *);
 

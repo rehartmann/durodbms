@@ -590,6 +590,7 @@ _RDB_copy_obj(RDB_object *dstvalp, const RDB_object *srcvalp,
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
     int ret;
+    RDB_int rc;
 
     if (dstvalp->kind != RDB_OB_INITIAL && srcvalp->kind != dstvalp->kind) {
         RDB_raise_type_mismatch("source type does not match destination type",
@@ -653,9 +654,12 @@ _RDB_copy_obj(RDB_object *dstvalp, const RDB_object *srcvalp,
                 if (ret != RDB_OK)
                     return RDB_ERROR;
             }
-            return _RDB_move_tuples(dstvalp, (RDB_object *) srcvalp, ecp,
+            rc = _RDB_move_tuples(dstvalp, (RDB_object *) srcvalp, ecp,
                     srcvalp->var.tb.is_persistent || srcvalp->var.tb.exp != NULL
                     || dstvalp->var.tb.is_persistent ? txp : NULL);
+            if (rc == RDB_ERROR)
+                return RDB_ERROR;
+            return RDB_OK;
         case RDB_OB_BIN:
             if (dstvalp->kind == RDB_OB_BIN)
                 free(dstvalp->var.bin.datap);

@@ -6,6 +6,8 @@ Changes for Duro 0.13
 
 - Dropped argc argument of RDB_ro_op().
 
+- RDB_insert() and RDB_multi_assign() now support inserting tables.
+
 - Implemented interpreter Duro D/T.
 
 - Fixed bug in Duroadmin - now uses correct floating-point types.

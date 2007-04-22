@@ -11,6 +11,10 @@
 #include <rel/rdb.h>
 #include <rel/internal.h>
 
+#include <sys/stat.h>
+#include <errno.h>
+#include <string.h>
+
 typedef struct tx_node {
     RDB_transaction tx;
     struct tx_node *nextp;
@@ -146,10 +150,11 @@ connect_op(const char *name, int argc, RDB_object *argv[],
     int ret = RDB_open_env(RDB_obj_string(argv[1]), &envp);
     if (ret != RDB_OK) {
         _RDB_handle_errcode(ret, ecp, txp);
+        envp = NULL;
         return RDB_ERROR;
     }
     return RDB_OK;
-}   
+}
 
 static int
 create_db_op(const char *name, int argc, RDB_object *argv[],
@@ -160,7 +165,8 @@ create_db_op(const char *name, int argc, RDB_object *argv[],
         printf("No env\n");
         return RDB_ERROR;
     }
-    if (RDB_create_db_from_env (RDB_obj_string(argv[0]), envp, ecp) == NULL)
+
+    if (RDB_create_db_from_env(RDB_obj_string(argv[0]), envp, ecp) == NULL)
         return RDB_ERROR;
     return RDB_OK;
 }   
@@ -169,9 +175,20 @@ static int
 create_env_op(const char *name, int argc, RDB_object *argv[],
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
-    int ret = RDB_open_env(RDB_obj_string(argv[0]), &envp);
+    int ret;
+
+    /* Create directory if does not exist */
+    if (mkdir(RDB_obj_string(argv[0]),
+            S_IRUSR | S_IWUSR | S_IXUSR) == -1
+            && errno != EEXIST) {
+        RDB_raise_system(strerror(errno), ecp);
+        return RDB_ERROR;
+    }
+
+    ret = RDB_open_env(RDB_obj_string(argv[0]), &envp);
     if (ret != RDB_OK) {
         _RDB_handle_errcode(ret, ecp, txp);
+        envp = NULL;
         return RDB_ERROR;
     }
     return RDB_OK;
@@ -670,7 +687,7 @@ exec_assign(const RDB_parse_statement *stmtp, RDB_exec_context *ecp)
                 if (insv[insc].tbp == NULL) {
                     return RDB_ERROR;
                 }
-                insv[insc].tplp = &srcobjv[i];
+                insv[insc].objp = &srcobjv[i];
                 if (RDB_evaluate(stmtp->var.assignment.av[i].var.ins.srcp, &get_var,
                         current_varmapp, ecp, txnp != NULL ? &txnp->tx : NULL, &srcobjv[i])
                                != RDB_OK)

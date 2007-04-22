@@ -34,15 +34,15 @@ list_to_ins(TclState *statep, Tcl_Interp *interp, Tcl_Obj *tobjp,
         return TCL_ERROR;
     }
 
-    insp->tplp = (RDB_object *) Tcl_Alloc(sizeof (RDB_object));
-    RDB_init_obj(insp->tplp);
+    insp->objp = (RDB_object *) Tcl_Alloc(sizeof (RDB_object));
+    RDB_init_obj(insp->objp);
 
     ret = Duro_tcl_to_duro(interp, tobjpv[2],
-            RDB_obj_type(insp->tbp)->var.basetyp, insp->tplp,
+            RDB_obj_type(insp->tbp)->var.basetyp, insp->objp,
             statep->current_ecp, txp);
     if (ret != TCL_OK) {
-        RDB_destroy_obj(insp->tplp, statep->current_ecp);
-        Tcl_Free((char *) insp->tplp);
+        RDB_destroy_obj(insp->objp, statep->current_ecp);
+        Tcl_Free((char *) insp->objp);
         return ret;
     }
 
@@ -306,8 +306,8 @@ Duro_massign_cmd(ClientData data, Tcl_Interp *interp, int objc,
 
 cleanup:
     for (i = 0; i < insc; i++) {
-        RDB_destroy_obj(insv[i].tplp, statep->current_ecp);
-        Tcl_Free((char *) insv[i].tplp);
+        RDB_destroy_obj(insv[i].objp, statep->current_ecp);
+        Tcl_Free((char *) insv[i].objp);
     }
     Tcl_Free((char *) insv);
 

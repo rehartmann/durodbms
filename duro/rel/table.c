@@ -64,12 +64,13 @@ _RDB_new_rtable(const char *name, RDB_bool persistent,
  * Copy all tuples from source table into the destination table.
  * The destination table must be a real table.
  */
-int
+RDB_int
 _RDB_move_tuples(RDB_object *dstp, RDB_object *srcp, RDB_exec_context *ecp,
         RDB_transaction *txp)
 {
     RDB_object tpl;
     int ret;
+    int count = 0;
     RDB_qresult *qrp = NULL;
     RDB_expression *texp = _RDB_optimize(srcp, 0, NULL, ecp, txp);
     if (texp == NULL)
@@ -82,8 +83,7 @@ _RDB_move_tuples(RDB_object *dstp, RDB_object *srcp, RDB_exec_context *ecp,
     }
 
     /* Eliminate duplicates, if necessary */
-    ret = _RDB_duprem(qrp, ecp, txp);
-    if (ret != RDB_OK)
+    if (_RDB_duprem(qrp, ecp, txp) != RDB_OK)
         goto cleanup;
 
     RDB_init_obj(&tpl);
@@ -96,10 +96,11 @@ _RDB_move_tuples(RDB_object *dstp, RDB_object *srcp, RDB_exec_context *ecp,
         if (ret != RDB_OK) {
             goto cleanup;
         }
+        count++;
     }
     if (RDB_obj_type(RDB_get_err(ecp)) == &RDB_NOT_FOUND_ERROR) {
         RDB_clear_err(ecp);
-        ret = RDB_OK;
+        ret = count;
     }
 
 cleanup:
