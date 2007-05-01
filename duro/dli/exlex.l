@@ -367,6 +367,18 @@ CALL {
     return TOK_CALL;
 }
 
+TYPE {
+	return TOK_TYPE;
+}
+
+POSSREP {
+    return TOK_POSSREP;
+}
+
+CONSTRAINT {
+    return TOK_CONSTRAINT;
+}
+
 \|\| {
     return TOK_CONCAT;
 }

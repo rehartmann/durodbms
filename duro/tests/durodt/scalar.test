@@ -13,10 +13,31 @@ namespace import ::tcltest::*
 
 set testdir [::tcltest::configure -testdir]
 
+set ::DBSETUP {
+    file delete -force dbenv
+    exec $testdir/../../dli/durodt << {
+        create_env('dbenv');
+        create_db('D');
+    }
+}
+
 test scalar_builtin {built-in scalar definitions and operators} -body {
     exec $testdir/../../dli/durodt $testdir/scalar.td
 } -result {2
 3
+}
+
+test deftype {user-defined types} -setup $DBSETUP -body {
+    exec $testdir/../../dli/durodt << {
+        connect('', 'dbenv');    
+        current_db := 'D';
+        begin trans;
+        type t
+            possrep { a integer, b integer };
+
+        drop type t;
+        commit;
+    }
 }
 
 cleanupTests

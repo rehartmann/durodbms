@@ -257,7 +257,50 @@ Duro_init_exec(RDB_exec_context *ecp, const char *dbname)
 }
 
 static int
-init_obj(RDB_object *objp, RDB_type *typ, RDB_exec_context *ecp)
+init_obj(RDB_object *, RDB_type *, RDB_exec_context *, RDB_transaction *);
+
+static int
+init_obj_by_selector(RDB_object *objp, RDB_possrep *rep,
+        RDB_exec_context *ecp, RDB_transaction *txp)
+{
+    int ret;
+    int i;
+    RDB_object *objv;
+    RDB_object **objpv;
+
+    for (i = 0; i < rep->compc; i++)
+        RDB_init_obj(&objv[i]);
+
+    objv = RDB_alloc(sizeof(RDB_object) * rep->compc, ecp);
+    objpv = RDB_alloc(sizeof(RDB_object *) * rep->compc, ecp);
+    if (objv == NULL || objpv == NULL) {
+        ret = RDB_ERROR;
+        goto cleanup;
+    }
+
+    /* Get selector agruments */
+    for (i = 0; i < rep->compc; i++) {
+        ret = init_obj(&objv[i], rep->compv[i].typ, ecp, txp);
+        if (ret != RDB_OK)
+            goto cleanup;
+        objpv[i] = &objv[i];
+    }
+
+    /* Call selector */
+    ret = RDB_call_ro_op(rep->name, rep->compc, objpv, ecp, txp, objp);
+
+cleanup:
+    for (i = 0; i < rep->compc; i++)
+        RDB_destroy_obj(&objv[i], ecp);
+    free(objv);
+    free(objpv);
+
+    return ret;
+}
+
+static int
+init_obj(RDB_object *objp, RDB_type *typ, RDB_exec_context *ecp,
+        RDB_transaction *txp)
 {
     int i;
 
@@ -277,11 +320,19 @@ init_obj(RDB_object *objp, RDB_type *typ, RDB_exec_context *ecp)
                     NULL, ecp) != RDB_OK)
                 return RDB_ERROR;
             if (init_obj(RDB_tuple_get(objp, typ->var.tuple.attrv[i].name),
-                    typ->var.tuple.attrv[i].typ, ecp) != RDB_OK)
+                    typ->var.tuple.attrv[i].typ, ecp, txp) != RDB_OK)
                 return RDB_ERROR;
         }
     } else {
-        abort();
+        printf("%d possreps.\n", typ->var.scalar.repc);
+        if (typ->var.scalar.repc > 0) {
+            if (txp == NULL) {
+                printf("Error: no transaction\n");
+                return RDB_ERROR;        
+            }
+            return init_obj_by_selector(objp, &typ->var.scalar.repv[0],
+                    ecp, txp);
+        }
     }
     return RDB_OK;
 }
@@ -306,11 +357,17 @@ exec_vardef(const RDB_parse_statement *stmtp, RDB_exec_context *ecp)
     }
     RDB_init_obj(objp);
     if (stmtp->var.vardef.initexp == NULL) {
-        init_obj(objp, stmtp->var.vardef.typ, ecp); /* !! */
+        if (init_obj(objp, stmtp->var.vardef.typ, ecp,
+                txnp != NULL ? &txnp->tx : NULL) != RDB_OK) {
+            RDB_destroy_obj(objp, ecp);
+            free(objp);
+            return RDB_ERROR;
+        }
     } else {
         if (RDB_evaluate(stmtp->var.vardef.initexp, &get_var,
                 current_varmapp, ecp, NULL, objp) != RDB_OK) {
             RDB_destroy_obj(objp, ecp);
+            free(objp);
             return RDB_ERROR;
         }
         if (stmtp->var.vardef.typ != NULL
@@ -323,6 +380,7 @@ exec_vardef(const RDB_parse_statement *stmtp, RDB_exec_context *ecp)
     }
     if (RDB_hashmap_put(&current_varmapp->map, varname, objp) != RDB_OK) {
         RDB_destroy_obj(objp, ecp);
+        free(objp);
         RDB_raise_no_memory(ecp);
         return RDB_ERROR;
     }
@@ -808,7 +866,7 @@ exec_commit(const RDB_parse_statement *stmtp, RDB_exec_context *ecp)
     txnp = NULL;
 
     if (_RDB_parse_interactive)
-        printf("Transaction commited.\n");
+        printf("Transaction committed.\n");
     return RDB_OK;
 }
 
@@ -829,6 +887,37 @@ exec_rollback(const RDB_parse_statement *stmtp, RDB_exec_context *ecp)
     if (_RDB_parse_interactive)
         printf("Transaction rolled back.\n");
     return RDB_OK;
+}
+
+static int
+exec_deftype(const RDB_parse_statement *stmtp, RDB_exec_context *ecp)
+{
+    if (txnp == NULL) {
+        printf("Error: no transaction\n");
+        return RDB_ERROR;
+    }
+    
+    return RDB_define_type(RDB_obj_string(&stmtp->var.deftype.typename),
+            stmtp->var.deftype.repc, stmtp->var.deftype.repv,
+            stmtp->var.deftype.constraintp, ecp, &txnp->tx);
+}
+
+static int
+exec_typedrop(const RDB_parse_statement *stmtp, RDB_exec_context *ecp)
+{
+    RDB_type *typ;
+    
+    if (txnp == NULL) {
+        printf("Error: no transaction\n");
+        return RDB_ERROR;
+    }
+    
+    typ = RDB_get_type(RDB_obj_string(&stmtp->var.vardrop.varname),
+        ecp, &txnp->tx);
+    if (typ == NULL)
+        return RDB_ERROR;
+
+    return RDB_drop_type(typ, ecp, &txnp->tx);
 }
 
 int
@@ -861,6 +950,10 @@ Duro_exec_stmt(const RDB_parse_statement *stmtp, RDB_exec_context *ecp)
             return exec_commit(stmtp, ecp);
         case RDB_STMT_ROLLBACK:
             return exec_rollback(stmtp, ecp);
+        case RDB_STMT_TYPE_DEF:
+            return exec_deftype(stmtp, ecp);
+        case RDB_STMT_TYPE_DROP:
+            return exec_typedrop(stmtp, ecp);
     }
     abort();
 }

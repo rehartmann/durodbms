@@ -27,7 +27,9 @@ typedef enum {
     RDB_STMT_ASSIGN,
     RDB_STMT_BEGIN_TX,
     RDB_STMT_COMMIT,
-    RDB_STMT_ROLLBACK
+    RDB_STMT_ROLLBACK,
+    RDB_STMT_TYPE_DEF,
+    RDB_STMT_TYPE_DROP,
 } RDB_parse_stmt_kind;
 
 typedef struct RDB_parse_attr_assign {
@@ -114,6 +116,15 @@ typedef struct RDB_parse_statement {
             RDB_expression *condp;
             struct RDB_parse_statement *bodyp;
         } whileloop;
+        struct {
+            RDB_object typename;
+            int repc;
+            RDB_possrep *repv;
+            RDB_expression *constraintp;
+        } deftype;
+        struct {
+            RDB_object typename;
+        } typedrop;
     } var;
     struct RDB_parse_statement *nextp;
 } RDB_parse_statement;

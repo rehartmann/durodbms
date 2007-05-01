@@ -28,6 +28,8 @@ along with Duro; if not, write to the Free Software Foundation, Inc.,
 #include <gen/hashtable.h>
 #include <gen/types.h>
 
+#include <stdlib.h>
+
 enum {
     RDB_ERROR = -1
 };
@@ -878,5 +880,11 @@ RDB_ec_set_property(RDB_exec_context *, const char *name, void *);
 
 void *
 RDB_ec_get_property(RDB_exec_context *, const char *name);
+
+void *
+RDB_alloc(size_t, RDB_exec_context *);
+
+void *
+RDB_realloc(void *, size_t, RDB_exec_context *);
 
 #endif

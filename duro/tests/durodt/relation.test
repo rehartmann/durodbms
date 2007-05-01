@@ -21,17 +21,22 @@ set ::SETUP {
     }
 }
 
-test insert {creating relvar and tuple insertion} -setup $SETUP -body {
+test insert {creating relvar and inserting tuples} -setup $SETUP -body {
     exec $testdir/../../dli/durodt << {
         connect('', 'dbenv');
         current_db := 'D';
+
         begin transaction;
-        var t real relation {i integer, d double, c string}
+        var r real relation {i integer, d double, c string}
              key {i};
-        insert t relation {tuple {i 1, d 1.0, c 'X'}, tuple {i 2, d 1.1, c 'Y'}};
-        insert t tuple {i 3, d 1.0, c 'Z'};
-        println(string(count(t)));
-        println((tuple from t where i=2).c);    
+        insert r relation {tuple {i 1, d 1.0, c 'X'}, tuple {i 2, d 1.1, c 'Y'}};
+
+        var t init tuple {i 3, d 1.0, c 'Z'};
+        insert r t; 
+
+        println(string(count(r)));
+        println((tuple from r where i=2).c);
+        commit;
     }
 } -result {3
 Y

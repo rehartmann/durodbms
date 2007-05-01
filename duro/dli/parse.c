@@ -126,7 +126,7 @@ RDB_parse_del_assignlist(RDB_parse_attr_assign *ap, RDB_exec_context *ecp)
 int
 RDB_parse_del_stmt(RDB_parse_statement *stmtp, RDB_exec_context *ecp)
 {
-    int i;
+    int i, j;
     int ret = RDB_OK;
 
     switch(stmtp->kind) {
@@ -180,6 +180,20 @@ RDB_parse_del_stmt(RDB_parse_statement *stmtp, RDB_exec_context *ecp)
                 ret = RDB_parse_destroy_assign(&stmtp->var.assignment.av[i],
                         ecp);
             }
+            break;
+        case RDB_STMT_TYPE_DEF:
+            ret = RDB_destroy_obj(&stmtp->var.deftype.typename, ecp);
+            for (i = 0; i < stmtp->var.deftype.repc; i++) {
+                RDB_possrep *rep = &stmtp->var.deftype.repv[i];
+                for (j = 0; j < rep->compc; j++) {
+                    free(rep->compv[j].name);
+                    if (!RDB_type_is_scalar(rep->compv[j].typ))
+                        RDB_drop_type(rep->compv[j].typ, ecp, NULL);
+                }
+            }
+            break;
+        case RDB_STMT_TYPE_DROP:
+            ret = RDB_destroy_obj(&stmtp->var.typedrop.typename, ecp);
             break;
         case RDB_STMT_BEGIN_TX:
         case RDB_STMT_COMMIT:

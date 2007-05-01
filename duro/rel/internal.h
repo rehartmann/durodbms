@@ -16,9 +16,12 @@
 
 #define AVG_COUNT "$COUNT"
 
-/* initial capacities of attribute map and table map */
 enum {
-    RDB_DFL_MAP_CAPACITY = 37
+    /** initial capacities of attribute map and table map */
+    RDB_DFL_MAP_CAPACITY = 37,
+
+    /** marks types which have been defined but not implemented */
+    RDB_NOT_IMPLEMENTED = -2
 };
 
 enum _RDB_expr_kind {

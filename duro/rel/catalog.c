@@ -16,7 +16,7 @@
 
 enum {
     MAJOR_VERSION = 0,
-    MINOR_VERSION = 12
+    MINOR_VERSION = 13
 };
 
 /*
@@ -164,14 +164,13 @@ dbtables_insert(RDB_object *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
     /* Insert (database, table) pair into SYS_DBTABLES */
     RDB_init_obj(&tpl);
 
-    ret = RDB_tuple_set_string(&tpl, "TABLENAME", RDB_table_name(tbp), ecp);
-    if (ret != RDB_OK)
+    if (RDB_tuple_set_string(&tpl, "TABLENAME", RDB_table_name(tbp), ecp)
+            != RDB_OK)
     {
         RDB_destroy_obj(&tpl, ecp);
         return RDB_ERROR;
     }
-    ret = RDB_tuple_set_string(&tpl, "DBNAME", txp->dbp->name, ecp);
-    if (ret != RDB_OK)
+    if (RDB_tuple_set_string(&tpl, "DBNAME", txp->dbp->name, ecp) != RDB_OK)
     {
         RDB_destroy_obj(&tpl, ecp);
         return RDB_ERROR;
@@ -258,17 +257,17 @@ insert_rtable(RDB_object *tbp, RDB_dbroot *dbrootp, RDB_exec_context *ecp,
     ret = RDB_tuple_set_string(&tpl, "TABLENAME", RDB_table_name(tbp), ecp);
     if (ret != RDB_OK) {
         RDB_destroy_obj(&tpl, ecp);
-        return ret;
+        return RDB_ERROR;
     }
     ret = RDB_tuple_set_bool(&tpl, "IS_USER", tbp->var.tb.is_user, ecp);
     if (ret != RDB_OK) {
         RDB_destroy_obj(&tpl, ecp);
-        return ret;
+        return RDB_ERROR;
     }
     ret = RDB_insert(dbrootp->rtables_tbp, &tpl, ecp, txp);
     RDB_destroy_obj(&tpl, ecp);
     if (ret != RDB_OK) {
-        return ret;
+        return RDB_ERROR;
     }
 
     /* insert entries into table SYS_TABLEATTRS */

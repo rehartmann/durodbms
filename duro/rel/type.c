@@ -16,7 +16,7 @@
 /** @page builtin-types Built-in types
 @section basic-types Basic data types
 
-<table border="1" summary="Built-in types">
+<table border="1" summary="Built-in basic data types">
 <tr><th>Name<th>RDB_type variable<th>C type
 <tr><td>BOOLEAN<td>RDB_BOOLEAN<td>RDB_bool
 <tr><td>INTEGER<td>RDB_INTEGER<td>RDB_int
@@ -830,7 +830,7 @@ free_type(RDB_type *typ, RDB_exec_context *ecp)
                 
                 for (i = 0; i < typ->var.scalar.repc; i++) {
                     for (j = 0; j < typ->var.scalar.repv[i].compc; j++) {
-                        free(typ->var.scalar.repv[i].compv[i].name);
+                        free(typ->var.scalar.repv[i].compv[j].name);
                     }
                     free(typ->var.scalar.repv[i].compv);
                 }
@@ -1198,17 +1198,14 @@ RDB_define_type(const char *name, int repc, const RDB_possrep repv[],
      * Insert tuple into SYS_TYPES
      */
 
-    ret = RDB_tuple_set_string(&tpl, "TYPENAME", name, ecp);
-    if (ret != RDB_OK)
+    if (RDB_tuple_set_string(&tpl, "TYPENAME", name, ecp) != RDB_OK)
         goto error;
-    ret = RDB_tuple_set(&tpl, "I_AREP_TYPE", &typedata, ecp);
-    if (ret != RDB_OK)
+    if (RDB_tuple_set(&tpl, "I_AREP_TYPE", &typedata, ecp) != RDB_OK)
         goto error;
-    ret = RDB_tuple_set_int(&tpl, "I_AREP_LEN", -2, ecp);
-    if (ret != RDB_OK)
+    if (RDB_tuple_set_int(&tpl, "I_AREP_LEN", RDB_NOT_IMPLEMENTED, ecp)
+            != RDB_OK)
         goto error;
-    ret = RDB_tuple_set_bool(&tpl, "I_SYSIMPL", RDB_FALSE, ecp);
-    if (ret != RDB_OK)
+    if (RDB_tuple_set_bool(&tpl, "I_SYSIMPL", RDB_FALSE, ecp) != RDB_OK)
         goto error;
 
     /* Store constraint in tuple */
@@ -1231,12 +1228,13 @@ RDB_define_type(const char *name, int repc, const RDB_possrep repv[],
         char *prname = repv[i].name;
 
         if (prname == NULL) {
-            /* possrep name may be NULL if there's only 1 possrep */
+            /* Possrep name may be NULL if there's only 1 possrep */
             if (repc > 1) {
                 RDB_raise_invalid_argument("possrep name is NULL", ecp);
                 goto error;
             }
-            prname = (char *)name;
+            /* Make type name the possrep name */
+            prname = (char *) name;
         }
         ret = RDB_tuple_set_string(&tpl, "POSSREPNAME", prname, ecp);
         if (ret != RDB_OK)
