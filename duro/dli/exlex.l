@@ -379,6 +379,22 @@ CONSTRAINT {
     return TOK_CONSTRAINT;
 }
 
+OPERATOR {
+    return TOK_OPERATOR;
+}
+
+RETURNS {
+    return TOK_RETURNS;
+}
+
+UPDATES {
+    return TOK_UPDATES;
+}
+
+RETURN {
+    return TOK_RETURN;
+}
+
 \|\| {
     return TOK_CONCAT;
 }

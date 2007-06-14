@@ -30,6 +30,9 @@ typedef enum {
     RDB_STMT_ROLLBACK,
     RDB_STMT_TYPE_DEF,
     RDB_STMT_TYPE_DROP,
+    RDB_STMT_RO_OP_DEF,
+    RDB_STMT_UPD_OP_DEF,
+    RDB_STMT_RETURN
 } RDB_parse_stmt_kind;
 
 typedef struct RDB_parse_attr_assign {
@@ -70,6 +73,12 @@ typedef struct RDB_parse_keydef {
     RDB_expr_list attrlist;
     struct RDB_parse_keydef *nextp;
 } RDB_parse_keydef;
+
+typedef struct RDB_parse_arg {
+    RDB_object name;
+    RDB_type *typ;
+    RDB_bool upd;
+} RDB_parse_arg;
 
 typedef struct RDB_parse_statement {
     RDB_parse_stmt_kind kind;
@@ -125,6 +134,15 @@ typedef struct RDB_parse_statement {
         struct {
             RDB_object typename;
         } typedrop;
+        struct {
+            RDB_object opname;
+            int argc;
+            RDB_parse_arg *argv;
+            RDB_type *rtyp;
+            RDB_bool *upd;
+            struct RDB_parse_statement *bodyp;
+        } opdef;
+        RDB_expression *retexp;
     } var;
     struct RDB_parse_statement *nextp;
 } RDB_parse_statement;

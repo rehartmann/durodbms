@@ -125,7 +125,7 @@ print_op(const char *name, int argc, RDB_object *argv[],
 {
     fputs(RDB_obj_string(argv[0]), stdout);
     return RDB_OK;
-}   
+}
 
 static int
 exit_op(const char *name, int argc, RDB_object *argv[],
@@ -552,14 +552,20 @@ exec_call(const RDB_parse_statement *stmtp, RDB_exec_context *ecp)
     opname = RDB_obj_string(&stmtp->var.call.opname);
     op = RDB_get_op(&opmap, opname, argc, argtv);
     if (op == NULL) {
-        RDB_raise_operator_not_found(opname, ecp);
-        for (i = 0; i < argc; i++)
-            RDB_destroy_obj(&argv[i], ecp);
-        return RDB_ERROR;
-    }
-    opfnp = (upd_op_func *) op;
-    ret = (*opfnp) (opname, argc, argpv, ecp,
+        if (txnp == NULL) {
+            printf("Error: no transaction\n");
+            ret = RDB_ERROR;
+            goto cleanup;
+        }
+
+        ret = RDB_call_update_op(opname, argc, argpv, ecp, &txnp->tx);
+    } else {
+        opfnp = (upd_op_func *) op;
+        ret = (*opfnp) (opname, argc, argpv, ecp,
             txnp != NULL ? &txnp->tx : NULL);
+    }
+
+cleanup:
     for (i = 0; i < argc; i++)
         RDB_destroy_obj(&argv[i], ecp);
     return ret;
@@ -921,6 +927,79 @@ exec_typedrop(const RDB_parse_statement *stmtp, RDB_exec_context *ecp)
 }
 
 int
+Duro_invoke_dt_ro_op(const char *name, int argc, RDB_object *argv[],
+          const void *iargp, size_t iarglen,
+          RDB_exec_context *ecp, RDB_transaction *txp,
+          RDB_object *retvalp)
+{
+    return RDB_ERROR;
+}
+
+int
+Duro_invoke_dt_update_op(const char *name, int argc, RDB_object *argv[],
+        RDB_bool updv[], const void *iargp, size_t iarglen,
+        RDB_exec_context *ecp, RDB_transaction *txp)
+{
+    return RDB_ERROR;
+}
+
+static int
+exec_ro_op_def(const RDB_parse_statement *stmtp, RDB_exec_context *ecp)
+{
+    int i;
+    int ret;
+    RDB_type **argtv;
+
+    if (txnp == NULL) {
+        printf("Error: no transaction\n");
+        return RDB_ERROR;
+    }
+
+    argtv = RDB_alloc(stmtp->var.opdef.argc * sizeof(RDB_type *),
+            ecp);
+    if (argtv == NULL)
+        return RDB_ERROR;
+    for (i = 0; i < stmtp->var.opdef.argc; i++)
+        argtv[i] = stmtp->var.opdef.argv[i].typ;
+    
+    ret = RDB_create_ro_op(RDB_obj_string(&stmtp->var.opdef.opname),
+            stmtp->var.opdef.argc, argtv, stmtp->var.opdef.rtyp,
+            "libduro", "Duro_invoke_dt_ro_op",
+            NULL, 0,
+            ecp, &txnp->tx);
+    free(argtv);
+    return ret;
+}
+
+static int
+exec_update_op_def(const RDB_parse_statement *stmtp, RDB_exec_context *ecp)
+{
+    int i;
+    int ret;
+    RDB_type **argtv;
+
+    if (txnp == NULL) {
+        printf("Error: no transaction\n");
+        return RDB_ERROR;
+    }
+
+    argtv = RDB_alloc(stmtp->var.opdef.argc * sizeof(RDB_type *),
+            ecp);
+    if (argtv == NULL)
+        return RDB_ERROR;
+    for (i = 0; i < stmtp->var.opdef.argc; i++)
+        argtv[i] = stmtp->var.opdef.argv[i].typ;
+    
+    ret = RDB_create_update_op(RDB_obj_string(&stmtp->var.opdef.opname),
+            stmtp->var.opdef.argc, argtv, stmtp->var.opdef.upd,
+            "libduro", "Duro_invoke_dt_update_op",
+            NULL, 0,
+            ecp, &txnp->tx);
+    free(argtv);
+    return ret;
+}
+
+int
 Duro_exec_stmt(const RDB_parse_statement *stmtp, RDB_exec_context *ecp)
 {
     switch (stmtp->kind) {
@@ -954,6 +1033,13 @@ Duro_exec_stmt(const RDB_parse_statement *stmtp, RDB_exec_context *ecp)
             return exec_deftype(stmtp, ecp);
         case RDB_STMT_TYPE_DROP:
             return exec_typedrop(stmtp, ecp);
+        case RDB_STMT_RO_OP_DEF:
+            return exec_ro_op_def(stmtp, ecp);
+        case RDB_STMT_UPD_OP_DEF:
+            return exec_update_op_def(stmtp, ecp);
+        case RDB_STMT_RETURN:
+            RDB_raise_not_supported("", ecp);
+            return RDB_ERROR;
     }
     abort();
 }
@@ -974,7 +1060,7 @@ Duro_process_stmt(RDB_exec_context *ecp)
     RDB_append_string(&prompt, "> ", ecp);
 
     _RDB_parse_prompt = RDB_obj_string(&prompt);
-    
+
     stmtp = RDB_parse_stmt(&get_var, current_varmapp,
             ecp, txnp != NULL ? &txnp->tx : NULL);
     if (stmtp == NULL)

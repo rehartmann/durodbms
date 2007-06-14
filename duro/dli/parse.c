@@ -195,6 +195,18 @@ RDB_parse_del_stmt(RDB_parse_statement *stmtp, RDB_exec_context *ecp)
         case RDB_STMT_TYPE_DROP:
             ret = RDB_destroy_obj(&stmtp->var.typedrop.typename, ecp);
             break;
+        case RDB_STMT_RO_OP_DEF:
+            if (!RDB_type_is_scalar(stmtp->var.opdef.rtyp))
+                RDB_drop_type(stmtp->var.opdef.rtyp, ecp, NULL);
+            ret = RDB_destroy_obj(&stmtp->var.opdef.opname, ecp);
+            break;
+        case RDB_STMT_UPD_OP_DEF:
+            ret = RDB_destroy_obj(&stmtp->var.opdef.opname, ecp);
+            break;
+        case RDB_STMT_RETURN:
+            if (stmtp->var.retexp != NULL)
+                ret = RDB_drop_expr(stmtp->var.retexp, ecp);
+            break;
         case RDB_STMT_BEGIN_TX:
         case RDB_STMT_COMMIT:
         case RDB_STMT_ROLLBACK:
