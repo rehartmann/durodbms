@@ -36,8 +36,8 @@ reserve_space(RDB_object *valp, int pos, size_t n, RDB_exec_context *ecp)
     return RDB_OK;
 }
 
-static int
-serialize_str(RDB_object *valp, int *posp, const char *str,
+int
+_RDB_serialize_str(RDB_object *valp, int *posp, const char *str,
         RDB_exec_context *ecp)
 {
     size_t len = strlen(str);
@@ -52,8 +52,8 @@ serialize_str(RDB_object *valp, int *posp, const char *str,
     return RDB_OK;
 }
 
-static int
-serialize_int(RDB_object *valp, int *posp, RDB_int v, RDB_exec_context *ecp)
+int
+_RDB_serialize_int(RDB_object *valp, int *posp, RDB_int v, RDB_exec_context *ecp)
 {
     int ret;
 
@@ -78,53 +78,45 @@ serialize_size_t(RDB_object *valp, int *posp, size_t v, RDB_exec_context *ecp)
     return RDB_OK;
 }
 
-static int
-serialize_byte(RDB_object *valp, int *posp, RDB_byte b, RDB_exec_context *ecp)
+int
+_RDB_serialize_byte(RDB_object *valp, int *posp, RDB_byte b,
+        RDB_exec_context *ecp)
 {
-    int ret;
-
-    ret = reserve_space(valp, *posp, 1, ecp);
-    if (ret != RDB_OK)
-        return ret;
+    if (reserve_space(valp, *posp, 1, ecp) != RDB_OK)
+        return RDB_ERROR;
     ((RDB_byte *) valp->var.bin.datap)[(*posp)++] = b;
     return RDB_OK;
 }
 
-static int
-serialize_type(RDB_object *valp, int *posp, const RDB_type *typ,
+int
+_RDB_serialize_type(RDB_object *valp, int *posp, const RDB_type *typ,
         RDB_exec_context *ecp)
 {
-    int ret;
-    
-    ret = serialize_byte(valp, posp, (RDB_byte) typ->kind, ecp);
-    if (ret != RDB_OK)
-        return ret;
+    if (_RDB_serialize_byte(valp, posp, (RDB_byte) typ->kind, ecp) != RDB_OK)
+        return RDB_ERROR;
 
     switch (typ->kind) {
         case RDB_TP_SCALAR:
-            return serialize_str(valp, posp, typ->name, ecp);
+            return _RDB_serialize_str(valp, posp, typ->name, ecp);
         case RDB_TP_TUPLE:
         {
             int i;
 
-            ret = serialize_int(valp, posp, typ->var.tuple.attrc, ecp);
-            if (ret != RDB_OK)
-                return ret;
+            if (_RDB_serialize_int(valp, posp, typ->var.tuple.attrc, ecp) != RDB_OK)
+                return RDB_ERROR;
 
             for (i = 0; i < typ->var.tuple.attrc; i++) {
-                ret = serialize_str(valp, posp, typ->var.tuple.attrv[i].name, ecp);
-                if (ret != RDB_OK)
-                    return ret;
+                if (_RDB_serialize_str(valp, posp, typ->var.tuple.attrv[i].name, ecp) != RDB_OK)
+                    return RDB_ERROR;
 
-                ret = serialize_type(valp, posp, typ->var.tuple.attrv[i].typ, ecp);
-                if (ret != RDB_OK)
-                    return ret;
+                if (_RDB_serialize_type(valp, posp, typ->var.tuple.attrv[i].typ, ecp) != RDB_OK)
+                    return RDB_ERROR;
             }
             return RDB_OK;
         }
         case RDB_TP_RELATION:
         case RDB_TP_ARRAY:
-            return serialize_type(valp, posp, typ->var.basetyp, ecp);
+            return _RDB_serialize_type(valp, posp, typ->var.basetyp, ecp);
     }
     abort();
 }
@@ -155,7 +147,7 @@ serialize_trobj(RDB_object *valp, int *posp, const RDB_object *argvalp,
         crtpltyp = RDB_TRUE;
         ((RDB_object *)argvalp)->typ = typ;
     }
-    if (serialize_type(valp, posp, typ, ecp) != RDB_OK) {
+    if (_RDB_serialize_type(valp, posp, typ, ecp) != RDB_OK) {
         return RDB_ERROR;
     }
 
@@ -187,11 +179,11 @@ serialize_trobj(RDB_object *valp, int *posp, const RDB_object *argvalp,
 static int
 serialize_table(RDB_object *valp, int *posp, RDB_object *tbp, RDB_exec_context *);
 
-static int
-serialize_expr(RDB_object *valp, int *posp, const RDB_expression *exp,
+int
+_RDB_serialize_expr(RDB_object *valp, int *posp, const RDB_expression *exp,
         RDB_exec_context *ecp)
 {
-    if (serialize_byte(valp, posp, (RDB_byte) exp->kind, ecp) != RDB_OK)
+    if (_RDB_serialize_byte(valp, posp, (RDB_byte) exp->kind, ecp) != RDB_OK)
         return RDB_ERROR;
 
     switch(exp->kind) {
@@ -200,34 +192,34 @@ serialize_expr(RDB_object *valp, int *posp, const RDB_expression *exp,
         case RDB_EX_TBP:
             return serialize_table(valp, posp, exp->var.tbref.tbp, ecp);
         case RDB_EX_VAR:
-            return serialize_str(valp, posp, exp->var.varname, ecp);
+            return _RDB_serialize_str(valp, posp, exp->var.varname, ecp);
         case RDB_EX_GET_COMP:
-            if (serialize_expr(valp, posp, exp->var.op.args.firstp, ecp)
+            if (_RDB_serialize_expr(valp, posp, exp->var.op.args.firstp, ecp)
                     != RDB_OK)
                 return RDB_ERROR;
-            return serialize_str(valp, posp, exp->var.op.name, ecp);
+            return _RDB_serialize_str(valp, posp, exp->var.op.name, ecp);
         case RDB_EX_RO_OP:
         {
             RDB_expression *argp;
 
-            if (serialize_str(valp, posp, exp->var.op.name, ecp) != RDB_OK)
+            if (_RDB_serialize_str(valp, posp, exp->var.op.name, ecp) != RDB_OK)
                 return RDB_ERROR;
-            if (serialize_int (valp, posp,
+            if (_RDB_serialize_int (valp, posp,
                     RDB_expr_list_length(&exp->var.op.args), ecp) != RDB_OK)
                 return RDB_ERROR;
             argp = exp->var.op.args.firstp;
             while (argp != NULL) {
-                if (serialize_expr(valp, posp, argp, ecp) != RDB_OK)
+                if (_RDB_serialize_expr(valp, posp, argp, ecp) != RDB_OK)
                     return RDB_ERROR;
                 argp = argp->nextp;
             }
             return RDB_OK;
         }
         case RDB_EX_TUPLE_ATTR:
-            if (serialize_expr(valp, posp, exp->var.op.args.firstp, ecp)
+            if (_RDB_serialize_expr(valp, posp, exp->var.op.args.firstp, ecp)
                     != RDB_OK)
                 return RDB_ERROR;
-            return serialize_str(valp, posp, exp->var.op.name, ecp);
+            return _RDB_serialize_str(valp, posp, exp->var.op.name, ecp);
     }
     /* should never be reached */
     abort();
@@ -238,23 +230,19 @@ serialize_table(RDB_object *valp, int *posp, RDB_object *tbp,
         RDB_exec_context *ecp)
 {
     if (tbp->var.tb.is_persistent)
-        return serialize_str(valp, posp, RDB_table_name(tbp), ecp);
-    if (serialize_str(valp, posp, "", ecp) != RDB_OK)
+        return _RDB_serialize_str(valp, posp, RDB_table_name(tbp), ecp);
+    if (_RDB_serialize_str(valp, posp, "", ecp) != RDB_OK)
         return RDB_ERROR;
 
     if (tbp->var.tb.exp == NULL) {
-        if (serialize_byte(valp, posp, (RDB_byte) 1, ecp) != RDB_OK)
+        if (_RDB_serialize_byte(valp, posp, (RDB_byte) 1, ecp) != RDB_OK)
             return RDB_ERROR;
         return serialize_trobj(valp, posp, tbp, ecp);
     }
-    if (serialize_byte(valp, posp, (RDB_byte) 0, ecp) != RDB_OK)
+    if (_RDB_serialize_byte(valp, posp, (RDB_byte) 0, ecp) != RDB_OK)
         return RDB_ERROR;
-    return serialize_expr(valp, posp, tbp->var.tb.exp, ecp);
+    return _RDB_serialize_expr(valp, posp, tbp->var.tb.exp, ecp);
 }
-
-enum {
-    RDB_BUF_INITLEN = 256
-};
 
 int
 _RDB_vtable_to_binobj(RDB_object *valp, RDB_object *tbp, RDB_exec_context *ecp)
@@ -272,9 +260,9 @@ _RDB_vtable_to_binobj(RDB_object *valp, RDB_object *tbp, RDB_exec_context *ecp)
         return RDB_ERROR;
     }
     pos = 0;
-    ret = serialize_expr(valp, &pos, tbp->var.tb.exp, ecp);
+    ret = _RDB_serialize_expr(valp, &pos, tbp->var.tb.exp, ecp);
     if (ret != RDB_OK)
-        return ret;
+        return RDB_ERROR;
 
     valp->var.bin.len = pos; /* Only store actual length */
     return RDB_OK;
@@ -296,7 +284,7 @@ _RDB_type_to_binobj(RDB_object *valp, const RDB_type *typ, RDB_exec_context *ecp
         return RDB_ERROR;
     }
     pos = 0;
-    ret = serialize_type(valp, &pos, typ, ecp);
+    ret = _RDB_serialize_type(valp, &pos, typ, ecp);
     if (ret != RDB_OK)
         return ret;
 
@@ -320,7 +308,7 @@ _RDB_expr_to_binobj(RDB_object *valp, const RDB_expression *exp,
             RDB_raise_no_memory(ecp);
             return RDB_ERROR;
         }
-        if (serialize_expr(valp, &pos, exp, ecp) != RDB_OK) {
+        if (_RDB_serialize_expr(valp, &pos, exp, ecp) != RDB_OK) {
             return RDB_ERROR;
         }
     } else {
@@ -331,8 +319,8 @@ _RDB_expr_to_binobj(RDB_object *valp, const RDB_expression *exp,
     return RDB_OK;
 }
 
-static int
-deserialize_str(RDB_object *valp, int *posp, RDB_exec_context *ecp,
+int
+_RDB_deserialize_str(RDB_object *valp, int *posp, RDB_exec_context *ecp,
         char **strp)
 {
     size_t len;
@@ -359,8 +347,28 @@ deserialize_str(RDB_object *valp, int *posp, RDB_exec_context *ecp,
     return RDB_OK;
 }
 
-static int
-deserialize_int(RDB_object *valp, int *posp, RDB_exec_context *ecp,
+int
+_RDB_deserialize_strobj(RDB_object *valp, int *posp, RDB_exec_context *ecp,
+        RDB_object *strobjp)
+{
+    char *str;
+
+    if (RDB_destroy_obj(strobjp, ecp) != RDB_OK)
+        return RDB_ERROR;
+
+    if (_RDB_deserialize_str(valp, posp, ecp, &str) != RDB_OK)
+        return RDB_ERROR;
+    
+    RDB_init_obj(strobjp);
+    strobjp->typ = &RDB_STRING;
+    strobjp->kind = RDB_OB_BIN;
+    strobjp->var.bin.len = strlen(str);
+    strobjp->var.bin.datap = str;
+    return RDB_OK;
+}
+
+int
+_RDB_deserialize_int(RDB_object *valp, int *posp, RDB_exec_context *ecp,
         RDB_int *vp)
 {
     if (*posp + sizeof (RDB_int) > valp->var.bin.len) {
@@ -385,8 +393,8 @@ deserialize_size_t(const RDB_object *valp, int *posp, RDB_exec_context *ecp,
     return RDB_OK;
 }
 
-static int
-deserialize_byte(RDB_object *valp, int *posp, RDB_exec_context *ecp)
+int
+_RDB_deserialize_byte(RDB_object *valp, int *posp, RDB_exec_context *ecp)
 {
     if (*posp + 1 > valp->var.bin.len) {
         RDB_raise_internal("invalid byte during deserialization", ecp);
@@ -396,8 +404,8 @@ deserialize_byte(RDB_object *valp, int *posp, RDB_exec_context *ecp)
     return ((RDB_byte *) valp->var.bin.datap)[(*posp)++];
 }
 
-static RDB_type *
-deserialize_type(RDB_object *valp, int *posp, RDB_exec_context *ecp,
+RDB_type *
+_RDB_deserialize_type(RDB_object *valp, int *posp, RDB_exec_context *ecp,
         RDB_transaction *txp)
 {
     char *namp;
@@ -405,14 +413,14 @@ deserialize_type(RDB_object *valp, int *posp, RDB_exec_context *ecp,
     enum _RDB_tp_kind kind;
     RDB_type *typ;
 
-    ret = deserialize_byte(valp, posp, ecp);
+    ret = _RDB_deserialize_byte(valp, posp, ecp);
     if (ret < 0)
         return NULL;
     kind = (enum _RDB_tp_kind ) ret;
 
     switch (kind) {
         case RDB_TP_SCALAR:
-            ret = deserialize_str(valp, posp, ecp, &namp);
+            ret = _RDB_deserialize_str(valp, posp, ecp, &namp);
             if (ret != RDB_OK)
                 return NULL;
             typ = RDB_get_type(namp, ecp, txp);
@@ -423,7 +431,7 @@ deserialize_type(RDB_object *valp, int *posp, RDB_exec_context *ecp,
             RDB_int attrc;
             int i;
 
-            ret = deserialize_int(valp, posp, ecp, &attrc);
+            ret = _RDB_deserialize_int(valp, posp, ecp, &attrc);
             typ = (RDB_type *) malloc(sizeof (RDB_type));
             if (typ == NULL) {
                 RDB_raise_no_memory(ecp);
@@ -440,13 +448,13 @@ deserialize_type(RDB_object *valp, int *posp, RDB_exec_context *ecp,
                 return NULL;
             }
             for (i = 0; i < attrc; i++) {
-                ret = deserialize_str(valp, posp, ecp,
+                ret = _RDB_deserialize_str(valp, posp, ecp,
                         &typ->var.tuple.attrv[i].name);
                 if (ret != RDB_OK) {
                     free(typ->var.tuple.attrv);
                     free(typ);
                 }
-                typ->var.tuple.attrv[i].typ = deserialize_type(valp, posp,
+                typ->var.tuple.attrv[i].typ = _RDB_deserialize_type(valp, posp,
                         ecp, txp);
                 if (typ->var.tuple.attrv[i].typ == NULL) {
                     free(typ->var.tuple.attrv);
@@ -469,7 +477,7 @@ deserialize_type(RDB_object *valp, int *posp, RDB_exec_context *ecp,
             typ->kind = kind;
             typ->ireplen = RDB_VARIABLE_LEN;
 
-            typ->var.basetyp = deserialize_type(valp, posp, ecp, txp);
+            typ->var.basetyp = _RDB_deserialize_type(valp, posp, ecp, txp);
             if (typ->var.basetyp == NULL) {
                 free(typ);
                 return NULL;
@@ -486,7 +494,7 @@ _RDB_binobj_to_type(RDB_object *valp, RDB_exec_context *ecp,
 {
     int pos = 0;
 
-    return deserialize_type(valp, &pos, ecp, txp);
+    return _RDB_deserialize_type(valp, &pos, ecp, txp);
 }
 
 static RDB_object *
@@ -501,7 +509,7 @@ deserialize_trobj(RDB_object *valp, int *posp, RDB_exec_context *ecp,
     size_t len;
     int ret;
 
-    typ = deserialize_type(valp, posp, ecp, txp);
+    typ = _RDB_deserialize_type(valp, posp, ecp, txp);
     if (typ == NULL)
         return RDB_ERROR;
 
@@ -522,8 +530,8 @@ deserialize_trobj(RDB_object *valp, int *posp, RDB_exec_context *ecp,
     return ret;
 }
 
-static int
-deserialize_expr(RDB_object *valp, int *posp, RDB_exec_context *ecp,
+int
+_RDB_deserialize_expr(RDB_object *valp, int *posp, RDB_exec_context *ecp,
         RDB_transaction *txp, RDB_expression **expp)
 {
     RDB_expression *ex1p;
@@ -535,7 +543,7 @@ deserialize_expr(RDB_object *valp, int *posp, RDB_exec_context *ecp,
         return RDB_OK;
     }
 
-    ret = deserialize_byte(valp, posp, ecp);
+    ret = _RDB_deserialize_byte(valp, posp, ecp);
     if (ret < 0)
         return ret;
     ekind = (enum _RDB_expr_kind) ret;
@@ -571,7 +579,7 @@ deserialize_expr(RDB_object *valp, int *posp, RDB_exec_context *ecp,
             {
                 char *attrnamp;
             
-                ret = deserialize_str(valp, posp, ecp, &attrnamp);
+                ret = _RDB_deserialize_str(valp, posp, ecp, &attrnamp);
                 if (ret != RDB_OK)
                     return ret;
 
@@ -585,10 +593,10 @@ deserialize_expr(RDB_object *valp, int *posp, RDB_exec_context *ecp,
         {
             char *name;
             
-            ret = deserialize_expr(valp, posp, ecp, txp, &ex1p);
+            ret = _RDB_deserialize_expr(valp, posp, ecp, txp, &ex1p);
             if (ret != RDB_OK)
                 return ret;
-            ret = deserialize_str(valp, posp, ecp, &name);
+            ret = _RDB_deserialize_str(valp, posp, ecp, &name);
             if (ret != RDB_OK) {
                 RDB_drop_expr(ex1p, ecp);
                 return ret;
@@ -610,12 +618,12 @@ deserialize_expr(RDB_object *valp, int *posp, RDB_exec_context *ecp,
             int argc;
             int i;
 
-            ret = deserialize_str(valp, posp, ecp, &name);
+            ret = _RDB_deserialize_str(valp, posp, ecp, &name);
             if (ret != RDB_OK) {
                 return RDB_ERROR;
             }
 
-            ret = deserialize_int(valp, posp, ecp, &argc);
+            ret = _RDB_deserialize_int(valp, posp, ecp, &argc);
             if (ret != RDB_OK) {
                 free(name);
                 return RDB_ERROR;
@@ -628,7 +636,7 @@ deserialize_expr(RDB_object *valp, int *posp, RDB_exec_context *ecp,
             for (i = 0; i < argc; i++) {
                 RDB_expression *argp;
 
-                ret = deserialize_expr(valp, posp, ecp, txp, &argp);
+                ret = _RDB_deserialize_expr(valp, posp, ecp, txp, &argp);
                 if (ret != RDB_OK) {
                     return RDB_ERROR;
                 }
@@ -640,10 +648,10 @@ deserialize_expr(RDB_object *valp, int *posp, RDB_exec_context *ecp,
         {
             char *name;
             
-            ret = deserialize_expr(valp, posp, ecp, txp, &ex1p);
+            ret = _RDB_deserialize_expr(valp, posp, ecp, txp, &ex1p);
             if (ret != RDB_OK)
                 return ret;
-            ret = deserialize_str(valp, posp, ecp, &name);
+            ret = _RDB_deserialize_str(valp, posp, ecp, &name);
             if (ret != RDB_OK) {
                 RDB_drop_expr(ex1p, ecp);
                 return ret;
@@ -670,7 +678,7 @@ _RDB_binobj_to_expr(RDB_object *valp, RDB_exec_context *ecp,
     RDB_expression *exp;
     int pos = 0;
 
-    if (deserialize_expr(valp, &pos, ecp, txp, &exp) != RDB_OK)
+    if (_RDB_deserialize_expr(valp, &pos, ecp, txp, &exp) != RDB_OK)
         return NULL;
     return exp;
 }
@@ -681,7 +689,7 @@ _RDB_binobj_to_vtable(RDB_object *valp, RDB_exec_context *ecp,
 {
 	RDB_expression *exp;
     int pos = 0;
-    int ret = deserialize_expr(valp, &pos, ecp, txp, &exp);
+    int ret = _RDB_deserialize_expr(valp, &pos, ecp, txp, &exp);
     if (ret != RDB_OK)
         return NULL;
 
@@ -710,7 +718,7 @@ deserialize_table(RDB_object *valp, int *posp, RDB_exec_context *ecp,
     char *namp;
     RDB_object *tbp;
     RDB_expression *exp;
-    int ret = deserialize_str(valp, posp, ecp, &namp);
+    int ret = _RDB_deserialize_str(valp, posp, ecp, &namp);
     if (ret != RDB_OK)
         return NULL;
 
@@ -721,13 +729,13 @@ deserialize_table(RDB_object *valp, int *posp, RDB_exec_context *ecp,
     }
     free(namp);
 
-    ret = deserialize_byte(valp, posp, ecp);
+    ret = _RDB_deserialize_byte(valp, posp, ecp);
     if (ret < 0)
         return NULL;
     if (ret) {
         return deserialize_rtable(valp, posp, ecp, txp);
     }
-    ret = deserialize_expr(valp, posp, ecp, txp, &exp);
+    ret = _RDB_deserialize_expr(valp, posp, ecp, txp, &exp);
     if (ret != RDB_OK)
         return NULL;
     

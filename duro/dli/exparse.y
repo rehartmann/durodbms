@@ -65,26 +65,6 @@ yylex(void);
 void
 yyerror(const char *);
 
-static RDB_parse_statement *
-new_call(char *name, RDB_expr_list *explistp)
-{
-    int ret;
-    RDB_parse_statement *stmtp = malloc(sizeof(RDB_parse_statement));
-    if (stmtp == NULL)
-        return NULL;
-
-    stmtp->kind = RDB_STMT_CALL;
-    RDB_init_obj(&stmtp->var.call.opname);
-  	ret = RDB_string_to_obj(&stmtp->var.call.opname, name, _RDB_parse_ecp);
-  	if (ret != RDB_OK) {
-   	    RDB_destroy_obj(&stmtp->var.call.opname, NULL);
-   	    free(stmtp);
-   	    return NULL;
-  	}
-    stmtp->var.call.arglist = *explistp;
-   	return stmtp;
-}
-
 static int
 attrlist_length(parse_attribute *attrlistp)
 {
@@ -202,9 +182,21 @@ error:
     return NULL;
 }
 
+static RDB_bool
+argname_in_list(parse_attribute *argp, RDB_expr_list *listp)
+{
+    RDB_expression *exp = listp->firstp;
+    while(exp != NULL) {
+        if (strcmp(argp->namexp->var.varname, RDB_obj_string(RDB_expr_obj(exp))) == 0)
+            return RDB_TRUE;
+        exp = exp->nextp;
+    }
+    return RDB_FALSE;
+}
+
 static RDB_parse_statement *
 new_update_op_def(const char *name, parse_attribute *arglistp,
-        RDB_expr_list *uplistp, RDB_parse_statement *stmtlistp)
+        RDB_expr_list *updlistp, RDB_parse_statement *stmtlistp)
 {
     int i;
     parse_attribute *attrlistp;
@@ -240,6 +232,8 @@ new_update_op_def(const char *name, parse_attribute *arglistp,
       	    goto error;
       	}
       	stmtp->var.opdef.argv[i].typ = arglistp->typ;
+      	if (argname_in_list(arglistp, updlistp))
+      	    stmtp->var.opdef.upd[i] = RDB_TRUE;
       	arglistp = arglistp->nextp;
   	}
 
@@ -528,7 +522,7 @@ statement_body: /* empty */ {
     	$$->kind = RDB_STMT_NOOP;
     }
     | TOK_CALL TOK_ID '(' expression_list ')' {
-        $$ = new_call($2->var.varname, &$4);
+        $$ = RDB_parse_new_call($2->var.varname, &$4);
         RDB_drop_expr($2, _RDB_parse_ecp);
         if ($$ == NULL) {
             RDB_destroy_expr_list(&$4, _RDB_parse_ecp);
@@ -536,7 +530,7 @@ statement_body: /* empty */ {
         }
     }
     | TOK_ID '(' expression_list ')' {
-        $$ = new_call($1->var.varname, &$3);
+        $$ = RDB_parse_new_call($1->var.varname, &$3);
         RDB_drop_expr($1, _RDB_parse_ecp);
         if ($$ == NULL) {
             RDB_destroy_expr_list(&$3, _RDB_parse_ecp);
@@ -565,7 +559,7 @@ statement_body: /* empty */ {
     	    YYERROR;
     	}
     	$$->var.vardef.typ = $3;
-	   	$$->var.vardef.initexp = NULL;
+	   	$$->var.vardef.exp = NULL;
     }
     | TOK_VAR TOK_ID type TOK_INIT expression {
         int ret;
@@ -591,7 +585,7 @@ statement_body: /* empty */ {
     	    YYERROR;
     	}
     	$$->var.vardef.typ = $3;
-	   	$$->var.vardef.initexp = $5;
+	   	$$->var.vardef.exp = $5;
     }
     | TOK_VAR TOK_ID TOK_INIT expression {
         int ret;
@@ -614,7 +608,7 @@ statement_body: /* empty */ {
     	    YYERROR;
     	}
     	$$->var.vardef.typ = NULL;
-	   	$$->var.vardef.initexp = $4;
+	   	$$->var.vardef.exp = $4;
     }
     | TOK_VAR TOK_ID TOK_REAL rel_type ne_key_list {
         $$ = malloc(sizeof(RDB_parse_statement));
@@ -626,12 +620,12 @@ statement_body: /* empty */ {
            	YYERROR;
         }
         $$->kind = RDB_STMT_VAR_DEF_REAL;
-        RDB_init_obj(&$$->var.vardef_real.varname);
-    	RDB_string_to_obj(&$$->var.vardef_real.varname,
+        RDB_init_obj(&$$->var.vardef.varname);
+    	RDB_string_to_obj(&$$->var.vardef.varname,
     	        $2->var.varname, _RDB_parse_ecp);
-        $$->var.vardef_real.typ = $4;
-        $$->var.vardef_real.firstkeyp = $5.firstp;
-    	$$->var.vardef_real.initexp = NULL;
+        $$->var.vardef.typ = $4;
+        $$->var.vardef.firstkeyp = $5.firstp;
+    	$$->var.vardef.exp = NULL;
     }
     | TOK_VAR TOK_ID TOK_REAL rel_type TOK_INIT expression key_list {
         $$ = malloc(sizeof(RDB_parse_statement));
@@ -644,12 +638,12 @@ statement_body: /* empty */ {
            	YYERROR;
         }
         $$->kind = RDB_STMT_VAR_DEF_REAL;
-        RDB_init_obj(&$$->var.vardef_real.varname);
-    	RDB_string_to_obj(&$$->var.vardef_real.varname,
+        RDB_init_obj(&$$->var.vardef.varname);
+    	RDB_string_to_obj(&$$->var.vardef.varname,
     	        $2->var.varname, _RDB_parse_ecp);
-        $$->var.vardef_real.typ = $4;
-    	$$->var.vardef_real.initexp = $6;
-        $$->var.vardef_real.firstkeyp = $7.firstp;
+        $$->var.vardef.typ = $4;
+    	$$->var.vardef.exp = $6;
+        $$->var.vardef.firstkeyp = $7.firstp;
     }
     | TOK_VAR TOK_ID TOK_REAL TOK_INIT expression key_list {
         $$ = malloc(sizeof(RDB_parse_statement));
@@ -660,12 +654,12 @@ statement_body: /* empty */ {
            	YYERROR;
         }
         $$->kind = RDB_STMT_VAR_DEF_REAL;
-        RDB_init_obj(&$$->var.vardef_real.varname);
-    	RDB_string_to_obj(&$$->var.vardef_real.varname,
+        RDB_init_obj(&$$->var.vardef.varname);
+    	RDB_string_to_obj(&$$->var.vardef.varname,
     	        $2->var.varname, _RDB_parse_ecp);
-        $$->var.vardef_real.typ = NULL;
-    	$$->var.vardef_real.initexp = $5;
-        $$->var.vardef_real.firstkeyp = $6.firstp;
+        $$->var.vardef.typ = NULL;
+    	$$->var.vardef.exp = $5;
+        $$->var.vardef.firstkeyp = $6.firstp;
     }
     | TOK_VAR TOK_ID TOK_VIRTUAL expression {
         $$ = malloc(sizeof(RDB_parse_statement));
@@ -676,11 +670,11 @@ statement_body: /* empty */ {
            	YYERROR;
         }
         $$->kind = RDB_STMT_VAR_DEF_VIRTUAL;
-        RDB_init_obj(&$$->var.vardef_real.varname);
-    	if (RDB_string_to_obj(&$$->var.vardef_virtual.varname,
+        RDB_init_obj(&$$->var.vardef.varname);
+    	if (RDB_string_to_obj(&$$->var.vardef.varname,
     	        $2->var.varname, _RDB_parse_ecp) != RDB_OK)
     	    YYERROR;
-        $$->var.vardef_virtual.exp = $4;
+        $$->var.vardef.exp = $4;
     }
     | TOK_DROP TOK_VAR TOK_ID {
         $$ = malloc(sizeof(RDB_parse_statement));
@@ -742,6 +736,21 @@ statement_body: /* empty */ {
         $$->kind = RDB_STMT_TYPE_DROP;
         RDB_init_obj(&$$->var.typedrop.typename);
     	if (RDB_string_to_obj(&$$->var.typedrop.typename,
+    	        $3->var.varname, _RDB_parse_ecp) != RDB_OK)
+    	    YYERROR;
+        if (RDB_drop_expr($3, _RDB_parse_ecp) != RDB_OK)
+            YYERROR;
+    }
+    | TOK_DROP TOK_OPERATOR TOK_ID {
+        $$ = malloc(sizeof(RDB_parse_statement));
+        if ($$ == NULL) {
+            RDB_drop_expr($3, _RDB_parse_ecp);
+            RDB_raise_no_memory(_RDB_parse_ecp);
+           	YYERROR;
+        }
+        $$->kind = RDB_STMT_OP_DROP;
+        RDB_init_obj(&$$->var.opdrop.opname);
+    	if (RDB_string_to_obj(&$$->var.opdrop.opname,
     	        $3->var.varname, _RDB_parse_ecp) != RDB_OK)
     	    YYERROR;
         if (RDB_drop_expr($3, _RDB_parse_ecp) != RDB_OK)

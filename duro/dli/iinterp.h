@@ -4,6 +4,8 @@
 #include <rel/rdb.h>
 #include "parse.h"
 
+#define DURO_RETURN (-1000)
+
 typedef struct varmap_node {
     RDB_hashmap map;
     struct varmap_node *parentp;
@@ -20,7 +22,7 @@ void
 Duro_exit_interp(void);
 
 int
-Duro_exec_stmt(const RDB_parse_statement *, RDB_exec_context *);
+Duro_exec_stmt(const RDB_parse_statement *, RDB_exec_context *, RDB_object *);
 
 int
 Duro_process_stmt(RDB_exec_context *);

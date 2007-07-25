@@ -60,7 +60,7 @@ print_error(const RDB_object *errobjp)
 static void
 usage_error(void)
 {
-    puts("usage: duro [-e envpath] [-d database] [file]");
+    puts("usage: durodt [-e envpath] [-d database] [file]");
     exit(1);
 }
 

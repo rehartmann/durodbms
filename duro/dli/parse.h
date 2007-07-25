@@ -32,6 +32,7 @@ typedef enum {
     RDB_STMT_TYPE_DROP,
     RDB_STMT_RO_OP_DEF,
     RDB_STMT_UPD_OP_DEF,
+    RDB_STMT_OP_DROP,
     RDB_STMT_RETURN
 } RDB_parse_stmt_kind;
 
@@ -90,31 +91,21 @@ typedef struct RDB_parse_statement {
         struct {
             RDB_object varname;
             RDB_type *typ;
-            RDB_expression *initexp;
+            RDB_expression *exp;
+            RDB_parse_keydef *firstkeyp;
         } vardef;
         struct {
             RDB_object varname;
-            RDB_type *typ;
-            RDB_expression *initexp;
-            RDB_parse_keydef *firstkeyp;
-        } vardef_real;
-        struct {
-            RDB_object varname;
-            RDB_expression *exp;
-            RDB_parse_keydef *firstkeyp;
-        } vardef_virtual;
-        struct {
-            RDB_object varname;
         } vardrop;
+        struct {
+            int ac;
+            RDB_parse_assign av[DURO_MAX_LLEN];
+        } assignment;
         struct {
             RDB_expression *condp;
             struct RDB_parse_statement *ifp;
             struct RDB_parse_statement *elsep;
         } ifthen;
-        struct {
-            int ac;
-            RDB_parse_assign av[DURO_MAX_LLEN];
-        } assignment;
         struct {
             RDB_expression *varexp;
             RDB_expression *fromp;
@@ -142,6 +133,9 @@ typedef struct RDB_parse_statement {
             RDB_bool *upd;
             struct RDB_parse_statement *bodyp;
         } opdef;
+        struct {
+            RDB_object opname;
+        } opdrop;
         RDB_expression *retexp;
     } var;
     struct RDB_parse_statement *nextp;
@@ -182,5 +176,8 @@ RDB_parse_del_stmt(RDB_parse_statement *, RDB_exec_context *);
 
 int
 RDB_parse_del_stmtlist(RDB_parse_statement *, RDB_exec_context *);
+
+RDB_parse_statement *
+RDB_parse_new_call(char *name, RDB_expr_list *);
 
 #endif

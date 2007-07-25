@@ -66,7 +66,7 @@ relsrc = ['rel/array.c', 'rel/database.c', 'rel/operator.c',
         'rel/match.c', 'rel/opmap.c']
 
 dlisrc = ['dli/exparse.c', 'dli/exlex.c', 'dli/parse.c', 'dli/tabletostr.c',
-        'dli/iinterp.c']
+        'dli/iinterp.c', 'dli/stmtser.c']
 
 durosrc = gensrc + recsrc + relsrc + dlisrc
 
@@ -196,7 +196,7 @@ rel_ihdrs = Split('rel/catalog.h rel/delete.h rel/serialize.h '
         'rel/insert.h rel/transform.h rel/internal.h rel/stable.h '
         'rel/optimize.h rel/update.h rel/qresult.h rel/opmap.h')
 dli_hdrs = ['dli/parse.h']
-dli_ihdrs = ['dli/exparse.h', 'dli/tabletostr.h']
+dli_ihdrs = ['dli/exparse.h', 'dli/tabletostr.h', 'dli/stmtser.h']
 durotcl_hdrs = ['tcl/duro.h']
 testlib_hdrs = ['tests/point.h']
 

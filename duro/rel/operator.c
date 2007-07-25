@@ -988,8 +988,10 @@ _RDB_get_ro_op(const char *name, int argc, RDB_type *argtv[],
 
         /* Lookup operator in dbroot map */
         *opp = get_ro_op(&txp->dbp->dbrootp->ro_opmap, name, argc, argtv, ecp);
-        if (*opp != NULL)
+        if (*opp != NULL) {
+            RDB_clear_err(ecp);
             return RDB_OK;
+        }
 
         errtyp = RDB_obj_type(RDB_get_err(ecp));        
         if (errtyp != &RDB_OPERATOR_NOT_FOUND_ERROR

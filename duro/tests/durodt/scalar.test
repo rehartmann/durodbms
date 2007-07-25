@@ -40,4 +40,70 @@ test deftype {user-defined types} -setup $DBSETUP -body {
     }
 }
 
+test defroop {read-only user-defined operators} -setup $DBSETUP -body {
+    exec $testdir/../../dli/durodt -e dbenv << {
+        current_db := 'D';
+        begin trans;
+
+        operator testop() returns string;
+            var a integer;
+            var b integer init 1;
+            var c integer;
+
+            if a <> 0 then
+                return "error: a <> 0";
+            end if;
+
+            if a = 0 then
+                a := a + 1;
+            else
+                return "error: (a = 0) is false";
+            end if;
+
+            var i init 0;
+            drop var c;
+            var c init 1;
+            while i < 3;
+                var one init 1;
+                i := i + one;
+                c := c * 2;
+            end while;
+
+            var d init 1;
+            for i:= 1 to 3;
+                d := d * 2 + 1;
+            end for;
+
+            return "a = " || string(a) || ", b = " || string(b) || ", c = " || string(c)
+            		 || ", d = " || string(d);
+        end operator;
+
+        println(testop());
+        drop operator testop;
+        commit;
+    }
+} -result {a = 1, b = 1, c = 8, d = 15
+}
+
+test defupdop {user-defined update operators} -setup $DBSETUP -body {
+    exec $testdir/../../dli/durodt -e dbenv << {
+        current_db := 'D';
+        begin trans;
+
+        operator inc(i integer, j integer) updates i;
+            i := i + 1;
+            -- j := j + 1;
+            return;
+        end operator;
+
+        var a integer init 1;
+        var b integer init 1;
+        inc(a, b);
+        println("a = " || string(a) || ", b = " || string(b));
+
+        commit;
+    }
+} -result {a = 2, b = 1
+}
+
 cleanupTests

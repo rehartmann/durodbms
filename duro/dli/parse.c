@@ -138,23 +138,23 @@ RDB_parse_del_stmt(RDB_parse_statement *stmtp, RDB_exec_context *ecp)
             if (stmtp->var.vardef.typ != NULL
                     && !RDB_type_is_scalar(stmtp->var.vardef.typ))
                 ret = RDB_drop_type(stmtp->var.vardef.typ, ecp, NULL);
-            if (stmtp->var.vardef.initexp != NULL)
-                ret = RDB_drop_expr(stmtp->var.vardef.initexp, ecp);
+            if (stmtp->var.vardef.exp != NULL)
+                ret = RDB_drop_expr(stmtp->var.vardef.exp, ecp);
             break;
         case RDB_STMT_VAR_DEF_REAL:
-            ret = RDB_destroy_obj(&stmtp->var.vardef_real.varname, ecp);
-            if (stmtp->var.vardef_real.typ != NULL
-                    && !RDB_type_is_scalar(stmtp->var.vardef_real.typ))
-                ret = RDB_drop_type(stmtp->var.vardef_real.typ, ecp, NULL);
-            if (stmtp->var.vardef_real.initexp != NULL)
-                ret = RDB_drop_expr(stmtp->var.vardef_real.initexp, ecp);
-            if (stmtp->var.vardef_real.firstkeyp != NULL)
-                RDB_parse_del_keydef_list(stmtp->var.vardef_real.firstkeyp,
+            ret = RDB_destroy_obj(&stmtp->var.vardef.varname, ecp);
+            if (stmtp->var.vardef.typ != NULL
+                    && !RDB_type_is_scalar(stmtp->var.vardef.typ))
+                ret = RDB_drop_type(stmtp->var.vardef.typ, ecp, NULL);
+            if (stmtp->var.vardef.exp != NULL)
+                ret = RDB_drop_expr(stmtp->var.vardef.exp, ecp);
+            if (stmtp->var.vardef.firstkeyp != NULL)
+                RDB_parse_del_keydef_list(stmtp->var.vardef.firstkeyp,
                     ecp);
             break;
         case RDB_STMT_VAR_DEF_VIRTUAL:
-            RDB_destroy_obj(&stmtp->var.vardef_virtual.varname, ecp);
-            ret = RDB_drop_expr(stmtp->var.vardef_virtual.exp, ecp);
+            RDB_destroy_obj(&stmtp->var.vardef.varname, ecp);
+            ret = RDB_drop_expr(stmtp->var.vardef.exp, ecp);
             break;
         case RDB_STMT_VAR_DROP:
             ret = RDB_destroy_obj(&stmtp->var.vardrop.varname, ecp);
@@ -203,6 +203,9 @@ RDB_parse_del_stmt(RDB_parse_statement *stmtp, RDB_exec_context *ecp)
         case RDB_STMT_UPD_OP_DEF:
             ret = RDB_destroy_obj(&stmtp->var.opdef.opname, ecp);
             break;
+        case RDB_STMT_OP_DROP:
+            ret = RDB_destroy_obj(&stmtp->var.opdrop.opname, ecp);
+            break;
         case RDB_STMT_RETURN:
             if (stmtp->var.retexp != NULL)
                 ret = RDB_drop_expr(stmtp->var.retexp, ecp);
@@ -232,6 +235,26 @@ RDB_parse_del_stmtlist(RDB_parse_statement *stmtp, RDB_exec_context *ecp)
         stmtp = nextp;
     } while (stmtp != NULL);
     return ret;
+}
+
+RDB_parse_statement *
+RDB_parse_new_call(char *name, RDB_expr_list *explistp)
+{
+    int ret;
+    RDB_parse_statement *stmtp = RDB_alloc(sizeof(RDB_parse_statement), _RDB_parse_ecp);
+    if (stmtp == NULL)
+        return NULL;
+
+    stmtp->kind = RDB_STMT_CALL;
+    RDB_init_obj(&stmtp->var.call.opname);
+    ret = RDB_string_to_obj(&stmtp->var.call.opname, name, _RDB_parse_ecp);
+    if (ret != RDB_OK) {
+        RDB_destroy_obj(&stmtp->var.call.opname, NULL);
+        free(stmtp);
+        return NULL;
+    }
+    stmtp->var.call.arglist = *explistp;
+    return stmtp;
 }
 
 /**@defgroup parse Parsing functions
