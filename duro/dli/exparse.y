@@ -208,7 +208,6 @@ new_update_op_def(const char *name, parse_attribute *arglistp,
     stmtp->kind = RDB_STMT_UPD_OP_DEF;
     RDB_init_obj(&stmtp->var.opdef.opname);
     stmtp->var.opdef.argv = NULL;
-    stmtp->var.opdef.upd = NULL;
     stmtp->var.opdef.bodyp = stmtlistp;
    	if (RDB_string_to_obj(&stmtp->var.opdef.opname, name, _RDB_parse_ecp)
       	        != RDB_OK) {
@@ -218,11 +217,8 @@ new_update_op_def(const char *name, parse_attribute *arglistp,
   	stmtp->var.opdef.argv = malloc(argc * sizeof(RDB_parse_arg));
   	if (stmtp->var.opdef.argv == NULL)
   	    goto error;
-  	stmtp->var.opdef.upd = malloc(argc * sizeof(RDB_bool));
-  	if (stmtp->var.opdef.upd == NULL)
-  	    goto error;
   	for (i = 0; i < argc; i++) {
-  	    stmtp->var.opdef.upd[i] = RDB_FALSE;
+  	    stmtp->var.opdef.argv[i].upd = RDB_FALSE;
   	}
   	attrlistp = arglistp;
     for (i = 0; i < argc; i++) {
@@ -233,7 +229,7 @@ new_update_op_def(const char *name, parse_attribute *arglistp,
       	}
       	stmtp->var.opdef.argv[i].typ = arglistp->typ;
       	if (argname_in_list(arglistp, updlistp))
-      	    stmtp->var.opdef.upd[i] = RDB_TRUE;
+      	    stmtp->var.opdef.argv[i].upd = RDB_TRUE;
       	arglistp = arglistp->nextp;
   	}
 
@@ -482,9 +478,9 @@ statement: statement_body ';'
         if ($$ == NULL)
             YYERROR;
     }
-    | TOK_OPERATOR TOK_ID '(' attribute_list ')' TOK_UPDATES ne_id_list
+    | TOK_OPERATOR TOK_ID '(' attribute_list ')' TOK_UPDATES '{' id_list '}'
             ne_statement_list TOK_END TOK_OPERATOR {
-        $$ = new_update_op_def($2->var.varname, $4.firstp, &$7, $8.firstp);
+        $$ = new_update_op_def($2->var.varname, $4.firstp, &$8, $10.firstp);
         if ($$ == NULL)
             YYERROR;
     }
@@ -499,14 +495,18 @@ possrep_def: TOK_POSSREP '{' attribute_list '}' {
 	}
 
 possrep_def_list: possrep_def {
-        $$.firstp = malloc(sizeof(parse_possrep)); /* !! */
+        $$.firstp = RDB_alloc(sizeof(parse_possrep), _RDB_parse_ecp);
+	    if ($$.firstp == NULL)
+	        YYERROR;
         $$.firstp->attrlistp = $1.attrlistp;
         $$.firstp->namexp = $1.namexp;
         $$.firstp->nextp = NULL;
         $$.lastp = $$.firstp;
     }
 	| possrep_def_list possrep_def {
-	    $1.lastp->nextp = malloc(sizeof(parse_possrep));
+	    $1.lastp->nextp = RDB_alloc(sizeof(parse_possrep), _RDB_parse_ecp);
+	    if ($1.lastp->nextp == NULL)
+	        YYERROR;
 	    $1.lastp->nextp->attrlistp = $2.attrlistp;
 	    $1.lastp->nextp->namexp = $2.namexp;
 	    $$.firstp = $1.firstp;
@@ -2358,6 +2358,10 @@ ne_attribute_list: attribute {
     ;
 
 attribute: TOK_ID type {
+        $$.namexp = $1;
+        $$.typ = $2;
+    }
+    | TOK_ID rel_type {
         $$.namexp = $1;
         $$.typ = $2;
     }

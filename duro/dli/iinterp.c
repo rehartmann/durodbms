@@ -403,11 +403,11 @@ exec_vardef_real(const RDB_parse_statement *stmtp, RDB_exec_context *ecp)
 {
     RDB_object *tbp;
     RDB_string_vec *keyv;
-    int keyc = 0;
     RDB_parse_keydef *keyp;
     RDB_expression *keyattrp;
     int i, j;
     RDB_bool freekey;
+    int keyc = 0;
     char *varname = RDB_obj_string(&stmtp->var.vardef.varname);
     RDB_type *tbtyp = RDB_dup_nonscalar_type(stmtp->var.vardef.typ, ecp);
     if (tbtyp == NULL)
@@ -1095,6 +1095,7 @@ exec_update_op_def(const RDB_parse_statement *stmtp, RDB_exec_context *ecp)
     int i;
     int ret;
     RDB_type **argtv;
+    RDB_bool *updv;
     RDB_object code;
     size_t sercodelen;
     void *sercodep;
@@ -1115,18 +1116,24 @@ exec_update_op_def(const RDB_parse_statement *stmtp, RDB_exec_context *ecp)
             ecp);
     if (argtv == NULL)
         return RDB_ERROR;
-    for (i = 0; i < stmtp->var.opdef.argc; i++)
+    updv = RDB_alloc(stmtp->var.opdef.argc * sizeof(RDB_bool), ecp);
+    if (updv == NULL)
+        return RDB_ERROR;
+    for (i = 0; i < stmtp->var.opdef.argc; i++) {
         argtv[i] = stmtp->var.opdef.argv[i].typ;
-    
+        updv[i] = stmtp->var.opdef.argv[i].upd;
+    }
+
     sercodelen = RDB_binary_length(&code);
     RDB_binary_get (&code, 0, sercodelen, ecp, &sercodep, NULL);
 
     ret = RDB_create_update_op(RDB_obj_string(&stmtp->var.opdef.opname),
-            stmtp->var.opdef.argc, argtv, stmtp->var.opdef.upd,
+            stmtp->var.opdef.argc, argtv, updv,
             "libduro", "Duro_invoke_dt_update_op",
             sercodep, sercodelen,
             ecp, &txnp->tx);
     free(argtv);
+    free(updv);
     return ret;
 }
 

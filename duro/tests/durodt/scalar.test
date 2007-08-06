@@ -90,20 +90,40 @@ test defupdop {user-defined update operators} -setup $DBSETUP -body {
         current_db := 'D';
         begin trans;
 
-        operator inc(i integer, j integer) updates i;
-            i := i + 1;
-            -- j := j + 1;
+        operator op(s string, i integer) updates {s};
+            -- i := i + 1; !!
+
+            type length_t possrep { m float } constraint (m >= 0.0);
+
+            drop type length_t;
+
+            operator op1(s string) returns string;
+                return s || 'y';
+            end operator;
+
+            operator op2(s string) updates { s };
+                s := s || 'z';
+            end operator;
+
+            s := op1(s);
+            op2(s);
+
+            drop operator op1;
+            drop operator op2;
+
             return;
         end operator;
 
-        var a integer init 1;
+        var a string init 'x';
         var b integer init 1;
-        inc(a, b);
-        println("a = " || string(a) || ", b = " || string(b));
+        op(a, b);
+        println("a = " || a || ", b = " || string(b));
+
+        drop var a;
 
         commit;
     }
-} -result {a = 2, b = 1
+} -result {a = xyz, b = 1
 }
 
 cleanupTests

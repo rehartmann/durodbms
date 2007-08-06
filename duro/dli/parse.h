@@ -130,7 +130,6 @@ typedef struct RDB_parse_statement {
             int argc;
             RDB_parse_arg *argv;
             RDB_type *rtyp;
-            RDB_bool *upd;
             struct RDB_parse_statement *bodyp;
         } opdef;
         struct {
