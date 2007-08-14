@@ -129,6 +129,32 @@ print_op(const char *name, int argc, RDB_object *argv[],
 }
 
 static int
+readln_op(const char *name, int argc, RDB_object *argv[],
+        RDB_exec_context *ecp, RDB_transaction *txp)
+{
+    char buf[128];
+    size_t len;
+
+    if (RDB_string_to_obj(argv[0], "", ecp) != RDB_OK)
+        return RDB_ERROR;
+
+    if (fgets(buf, sizeof(buf), stdin) == NULL)
+        return RDB_OK;
+    len = strlen(buf);
+
+    /* Read until a complete line has been read */
+    while (buf[len - 1] != '\n') {
+        if (RDB_append_string(argv[0], buf, ecp) != RDB_OK)
+            return RDB_ERROR;
+        if (fgets(buf, sizeof(buf), stdin) == NULL)
+            return RDB_OK;
+        len = strlen(buf);
+    }
+    buf[len - 1] = '\0';
+    return RDB_append_string(argv[0], buf, ecp);
+}
+
+static int
 exit_op(const char *name, int argc, RDB_object *argv[],
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
@@ -212,6 +238,7 @@ Duro_init_exec(RDB_exec_context *ecp, const char *dbname)
 {
     static RDB_type *println_types[1];
     static RDB_type *print_types[1];
+    static RDB_type *readln_types[1];
     static RDB_type *exit_int_types[1];
     static RDB_type *connect_types[2];
     static RDB_type *create_db_types[1];
@@ -220,6 +247,7 @@ Duro_init_exec(RDB_exec_context *ecp, const char *dbname)
 
     println_types[0] = &RDB_STRING;
     print_types[0] = &RDB_STRING;
+    readln_types[0] = &RDB_STRING;
     exit_int_types[0] = &RDB_INTEGER;
     connect_types[0] = &RDB_STRING;
     connect_types[1] = &RDB_STRING;
@@ -236,6 +264,9 @@ Duro_init_exec(RDB_exec_context *ecp, const char *dbname)
             != RDB_OK)
         return RDB_ERROR;
     if (RDB_put_op(&opmap, "PRINT", 1, print_types, print_op, ecp)
+            != RDB_OK)
+        return RDB_ERROR;
+    if (RDB_put_op(&opmap, "READLN", 1, readln_types, readln_op, ecp)
             != RDB_OK)
         return RDB_ERROR;
     if (RDB_put_op(&opmap, "EXIT", 0, NULL, exit_op, ecp) != RDB_OK)
@@ -827,8 +858,13 @@ exec_assign(const RDB_parse_statement *stmtp, RDB_exec_context *ecp)
     if (cnt == (RDB_int) RDB_ERROR)
         return RDB_ERROR;
 
-    if (_RDB_parse_interactive)
-        printf("%d element(s) affected.\n", (int) cnt);
+    if (_RDB_parse_interactive) {
+        if (cnt == 1) {
+            printf("1 element affected.\n");
+        } else {
+            printf("%d elements affected.\n", (int) cnt);
+        }
+    }
 
     return RDB_OK;
 }

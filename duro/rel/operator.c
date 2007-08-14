@@ -924,6 +924,10 @@ get_ro_op(RDB_hashmap *opmap, const char *name,
 
     rop = RDB_hashmap_get(opmap, name);
 
+    /* Generic? */
+    if (rop != NULL && rop->argtv == NULL)
+        return rop;
+
     /* Search for an operator with same signature */
     while (rop != NULL) {
         if (rop->argtv != NULL && rop->argc == argc) {

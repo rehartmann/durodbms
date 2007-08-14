@@ -476,6 +476,87 @@ group_type(const RDB_expression *exp, RDB_type *argtv[],
 }
 
 static RDB_type *
+tuple_type(const RDB_expression *exp, RDB_gettypefn *getfnp, void *arg, 
+        RDB_exec_context *ecp, RDB_transaction *txp)
+{
+    int i;
+    int attrc;
+    RDB_attr *attrv;
+    RDB_expression *argp;
+    RDB_object *attrobjp;
+    RDB_type *typ = NULL;
+    int argc = RDB_expr_list_length(&exp->var.op.args);
+
+    if ((argc % 2) == 1) {
+        RDB_raise_invalid_argument("invalid number of TUPLE arguments", ecp);
+        return NULL;
+    }
+    attrc = argc / 2;
+
+    attrv = RDB_alloc(sizeof(RDB_attr) * attrc, ecp);
+    if (attrv == NULL)
+        return NULL;
+
+    for (i = 0; i < attrc; i++) {
+        attrv[i].typ = NULL;
+    }
+
+    argp = exp->var.op.args.firstp;
+    for (i = 0; i < attrc; i++) {
+        attrobjp = RDB_expr_obj(argp);
+        if (attrobjp == NULL || RDB_obj_type(attrobjp) != &RDB_STRING) {
+            RDB_raise_invalid_argument("invalid TUPLE argument", ecp);
+            goto cleanup;
+        }
+
+        argp = argp->nextp;
+
+        attrv[i].name = RDB_obj_string(attrobjp);
+        attrv[i].typ = RDB_expr_type(argp, getfnp, arg, ecp, txp);
+        if (attrv[i].typ == NULL)
+            goto cleanup;
+
+        argp = argp->nextp;
+    }
+
+    typ = RDB_create_tuple_type(attrc, attrv, ecp);
+
+cleanup:
+    RDB_free(attrv);
+    return typ;
+}
+
+static RDB_type *
+relation_type(const RDB_expression *exp, RDB_type **argtv,
+        RDB_exec_context *ecp, RDB_transaction *txp)
+{
+    RDB_type *rtyp = NULL;
+
+    if (exp->var.op.args.firstp == NULL) {
+        RDB_raise_not_supported("argument required for RELATION", ecp);
+        goto error;
+    }
+    if (argtv[0]->kind != RDB_TP_TUPLE) {
+        RDB_raise_type_mismatch("tuple argument required for RELATION", ecp);
+        goto error;
+    }
+    rtyp = malloc(sizeof(RDB_type));
+    if (rtyp == NULL) {
+        goto error;
+    }
+    rtyp->kind = RDB_TP_RELATION;
+    rtyp->name = NULL;
+    rtyp->ireplen = RDB_VARIABLE_LEN;
+    rtyp->var.basetyp = RDB_create_tuple_type(argtv[0]->var.tuple.attrc,
+            argtv[0]->var.tuple.attrv, ecp);
+
+    return rtyp;
+
+error:
+    return NULL;
+}
+
+static RDB_type *
 rename_type(const RDB_expression *exp, RDB_type **argtv,
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
@@ -545,7 +626,7 @@ expr_op_type(RDB_expression *exp, RDB_gettypefn *getfnp, void *arg,
     RDB_type **argtv = NULL;
 
     /*
-     * WHERE, EXTEND and SUMMARIZE require special treatment
+     * WHERE, EXTEND, etc. require special treatment
      */
     if (strcmp(exp->var.op.name, "WHERE") == 0) {
         return where_type(exp, getfnp, arg, ecp, txp);
@@ -555,6 +636,9 @@ expr_op_type(RDB_expression *exp, RDB_gettypefn *getfnp, void *arg,
     }
     if (strcmp(exp->var.op.name, "SUMMARIZE") == 0) {
         return RDB_summarize_type(&exp->var.op.args, 0, NULL, ecp, txp);
+    }
+    if (strcmp(exp->var.op.name, "TUPLE") == 0) {
+        return tuple_type(exp, getfnp, arg, ecp, txp);
     }
 
     if (strcmp(exp->var.op.name, "REMOVE") == 0) {
@@ -650,6 +734,8 @@ expr_op_type(RDB_expression *exp, RDB_gettypefn *getfnp, void *arg,
             goto error;
         }
         typ = &RDB_BOOLEAN;
+    } else if (strcmp(exp->var.op.name, "RELATION") == 0) {
+        typ = relation_type(exp, argtv, ecp, txp);
     } else if (strcmp(exp->var.op.name, "RENAME") == 0) {
         typ = rename_type(exp, argtv, ecp, txp);
     } else if (strcmp(exp->var.op.name, "WRAP") == 0) {
@@ -1361,7 +1447,7 @@ evaluate_ro_op(RDB_expression *exp, RDB_getobjfn *getfnp, void *getdata,
         return RDB_ERROR;
 
     /*
-     * Special treatment of relational operators
+     * Special treatment of relational operators and TUPLE
      */
 
     if (strcmp(exp->var.op.name, "EXTEND") == 0) {

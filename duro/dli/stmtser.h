@@ -1,6 +1,13 @@
 #ifndef STMTSER_H
 #define STMTSER_H
 
+/* 
+ * $Id$
+ *
+ * Copyright (C) 2007 René Hartmann.
+ * See the file COPYING for redistribution information.
+ */
+
 #include "parse.h"   
 
 int

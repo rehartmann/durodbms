@@ -887,4 +887,7 @@ RDB_alloc(size_t, RDB_exec_context *);
 void *
 RDB_realloc(void *, size_t, RDB_exec_context *);
 
+void
+RDB_free(void *);
+
 #endif

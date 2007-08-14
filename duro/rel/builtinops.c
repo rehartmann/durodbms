@@ -535,7 +535,29 @@ The IF-THEN-ELSE operator.
 
 <var>V1</var> if <var>B</var> is RDB_TRUE, <var>V2</var> otherwise.
 
+<hr>
+
 @section tup-rel-ops Built-in tuple and relational operators
+
+<h3 id="op_tuple">OPERATOR TUPLE</h3>
+
+OPERATOR TUPLE(ATTRNAME STRING, ATTRVAL <em>STRING</em>, ...) RETURNS <em>TUPLE</em>;
+
+<h4>Description</h4>
+
+The tuple selector.
+
+<hr>
+
+<h3 id="op_relation">OPERATOR RELATION</h3>
+
+OPERATOR RELATION(T TUPLE, ...) RETURNS <em>RELATION</em>;
+
+<h4>Description</h4>
+
+The relation selector.
+
+<hr>
 
 <h3 id="op_divide">OPERATOR DIVIDE</h3>
 
@@ -717,6 +739,75 @@ op_vtable(const char *name, int argc, RDB_object *argv[],
         RDB_drop_expr(exp, ecp);
         return RDB_ERROR;
     }
+    return RDB_OK;
+}
+
+static int
+op_tuple(const char *name, int argc, RDB_object *argv[],
+        const void *iargp, size_t iarglen, RDB_exec_context *ecp,
+        RDB_transaction *txp, RDB_object *retvalp)
+{
+    int i;
+
+    if (argc % 2 == 1) {
+        RDB_raise_invalid_argument("Even number of arguments required by TUPLE", ecp);
+        return RDB_OK;
+    }
+
+    for (i = 0; i < argc; i += 2) {
+        if (RDB_obj_type(argv[i]) != &RDB_STRING) {
+            RDB_raise_invalid_argument("invalid TUPLE argument", ecp);
+            return RDB_ERROR;
+        }
+
+        if (RDB_tuple_set(retvalp, RDB_obj_string(argv[i]), argv[i + 1], ecp)
+                != RDB_OK) {
+            return RDB_ERROR;
+        }
+    }
+    return RDB_OK;
+}
+
+static int
+op_relation(const char *name, int argc, RDB_object *argv[],
+        const void *iargp, size_t iarglen, RDB_exec_context *ecp,
+        RDB_transaction *txp, RDB_object *retvalp)
+{
+    RDB_type *rtyp;
+    int i;
+
+    if (argc == 0) {
+        return RDB_init_table(retvalp, NULL, 0, NULL, 0, NULL, ecp);
+    }
+
+    if (argv[0]->kind != RDB_OB_TUPLE) {
+        RDB_raise_not_supported("tuple required by RELATION", ecp);
+        return RDB_ERROR;
+    }
+
+    rtyp = RDB_alloc(sizeof(RDB_type), ecp);
+    if (rtyp == NULL) {
+        return RDB_ERROR;
+    }
+    rtyp->kind = RDB_TP_RELATION;
+    rtyp->name = NULL;
+    rtyp->var.basetyp = _RDB_tuple_type(argv[0], ecp);
+    if (rtyp->var.basetyp == NULL) {
+        RDB_free(rtyp);
+        return RDB_ERROR;
+    }
+
+    if (RDB_init_table_from_type(retvalp, NULL, rtyp, 0, NULL, ecp) != RDB_OK) {
+        RDB_drop_type(rtyp, ecp, NULL);
+        return RDB_ERROR;
+    }
+
+    for (i = 0; i < argc; i++) {
+        if (RDB_insert(retvalp, argv[i], ecp, NULL) != RDB_OK) {
+            return RDB_ERROR;
+        }
+    }
+
     return RDB_OK;
 }
 
@@ -2179,7 +2270,7 @@ _RDB_init_builtin_ops(RDB_exec_context *ecp)
     if (_RDB_put_builtin_ro_op(op, ecp) != RDB_OK)
         return RDB_ERROR;
 
-    op = _RDB_new_ro_op("PROJECT", -1, NULL, &op_project, ecp);
+    op = _RDB_new_ro_op("TUPLE", -1, NULL, &op_tuple, ecp);
     if (op == NULL) {
         RDB_raise_no_memory(ecp);
         return RDB_ERROR;
@@ -2188,6 +2279,23 @@ _RDB_init_builtin_ops(RDB_exec_context *ecp)
     if (_RDB_put_builtin_ro_op(op, ecp) != RDB_OK)
         return RDB_ERROR;
 
+    op = _RDB_new_ro_op("RELATION", -1, NULL, &op_relation, ecp);
+    if (op == NULL) {
+        RDB_raise_no_memory(ecp);
+        return RDB_ERROR;
+    }
+
+    if (_RDB_put_builtin_ro_op(op, ecp) != RDB_OK)
+        return RDB_ERROR;
+
+    op = _RDB_new_ro_op("PROJECT", -1, NULL, &op_project, ecp);
+    if (op == NULL) {
+        RDB_raise_no_memory(ecp);
+        return RDB_ERROR;
+    }
+
+    if (_RDB_put_builtin_ro_op(op, ecp) != RDB_OK)
+        return RDB_ERROR;
     op = _RDB_new_ro_op("REMOVE", -1, NULL, &op_remove, ecp);
     if (op == NULL) {
         RDB_raise_no_memory(ecp);

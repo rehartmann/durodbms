@@ -304,10 +304,10 @@ get_type(const char *attrname, void *arg)
 
 %type <exp> expression literal ro_op_invocation count_invocation
         sum_invocation avg_invocation min_invocation max_invocation
-        all_invocation any_invocation ne_tuple_item_list dot_invocation
+        all_invocation any_invocation dot_invocation
 
 %type <explist> expression_list ne_expression_list
-        ne_id_list id_list
+        ne_id_list id_list ne_tuple_item_list
         extend_add_list ne_extend_add_list extend_add summarize_add
         renaming ne_renaming_list renaming_list
         summarize_add_list ne_summarize_add_list
@@ -2128,101 +2128,21 @@ ne_expression_list: expression {
     }
     ;
 
-literal: TOK_RELATION '{' ne_expression_list '}' {
-        int attrc;
-        int i;
-        int ret;
-        RDB_attr *attrv;
-        RDB_hashtable_iter hiter;
-        tuple_entry *entryp;
+literal: TOK_RELATION '{' expression_list '}' {
         RDB_expression *argp;
-        RDB_object obj;
-        RDB_object *tplp = RDB_expr_obj($3.firstp);
 
-        /*
-         * Get type from first tuple
-         */
-        if (tplp == NULL)
-            YYERROR;
-        if (tplp->kind != RDB_OB_TUPLE) {
-            RDB_destroy_expr_list(&$3, _RDB_parse_ecp);
-            RDB_raise_type_mismatch("tuple required", _RDB_parse_ecp);
-            YYERROR;
-        }
-        attrc = RDB_tuple_size(tplp);
-        attrv = malloc(sizeof (RDB_attr) * attrc);
-        if (attrv == NULL) {
-            RDB_destroy_expr_list(&$3, _RDB_parse_ecp);
-            RDB_raise_no_memory(_RDB_parse_ecp);
-            YYERROR;
-        }
-
-        RDB_init_hashtable_iter(&hiter, &tplp->var.tpl_tab);
-        for (i = 0; i < attrc; i++) {
-            /* Get next attribute */
-            entryp = RDB_hashtable_next(&hiter);
-
-            attrv[i].name = entryp->key;
-            if (entryp->obj.typ == NULL) {
-                RDB_destroy_expr_list(&$3, _RDB_parse_ecp);
-                free(attrv);
-                RDB_destroy_hashtable_iter(&hiter);
-                RDB_raise_not_supported("", _RDB_parse_ecp);
-                YYERROR;
-            }
-            attrv[i].typ = entryp->obj.typ;
-            attrv[i].defaultp = NULL;
-        }
-        RDB_destroy_hashtable_iter(&hiter);
-
-        RDB_init_obj(&obj);
-        $$ = RDB_obj_to_expr(&obj, _RDB_parse_ecp);        
-        RDB_destroy_obj(&obj, _RDB_parse_ecp);
+        $$ = RDB_ro_op("RELATION", _RDB_parse_ecp);
         if ($$ == NULL) {
             RDB_destroy_expr_list(&$3, _RDB_parse_ecp);
-            free(attrv);
             YYERROR;
         }
-
-        ret = RDB_init_table(RDB_expr_obj($$), NULL, attrc, attrv, 0, NULL,
-                _RDB_parse_ecp);
-        free(attrv);
-        if (ret != RDB_OK) {
-            RDB_drop_expr($$, _RDB_parse_ecp);
-            RDB_destroy_expr_list(&$3, _RDB_parse_ecp);
-            YYERROR;
+        argp = $3.firstp;
+        while (argp != NULL)
+        {
+            RDB_expression *nextp = argp->nextp;
+        	RDB_add_arg($$, argp);
+            argp = nextp;
         }
-
-        if (RDB_insert(RDB_expr_obj($$), tplp, _RDB_parse_ecp, _RDB_parse_txp)
-                != RDB_OK) {
-            RDB_drop_expr($$, _RDB_parse_ecp);
-            RDB_destroy_expr_list(&$3, _RDB_parse_ecp);
-            YYERROR;
-        }
-
-        argp = $3.firstp->nextp;
-        while (argp != NULL) {
-            tplp = RDB_expr_obj(argp);
-            if (tplp == NULL) {
-                RDB_drop_expr($$, _RDB_parse_ecp);
-                RDB_destroy_expr_list(&$3, _RDB_parse_ecp);
-                YYERROR;
-            }
-            if (tplp->kind != RDB_OB_TUPLE) {
-                RDB_drop_expr($$, _RDB_parse_ecp);
-                RDB_destroy_expr_list(&$3, _RDB_parse_ecp);
-                RDB_raise_type_mismatch("tuple required", _RDB_parse_ecp);
-                YYERROR;
-            }
-            if (RDB_insert(RDB_expr_obj($$), tplp, _RDB_parse_ecp,
-                    _RDB_parse_txp) != RDB_OK) {
-                RDB_drop_expr($$, _RDB_parse_ecp);
-                RDB_destroy_expr_list(&$3, _RDB_parse_ecp);
-                YYERROR;
-            }
-            argp = argp->nextp;
-        }
-        RDB_destroy_expr_list(&$3, _RDB_parse_ecp);
     }
 /*     | TOK_RELATION '{' attribute_name_type_list '}'
        '{' expression_list '}' {
@@ -2265,7 +2185,23 @@ literal: TOK_RELATION '{' ne_expression_list '}' {
         RDB_destroy_obj(&obj, _RDB_parse_ecp);
     } 
     | TOK_TUPLE '{' ne_tuple_item_list '}' {
-        $$ = $3;
+        RDB_expression *exp, *ex2p, *nextp;
+
+        $$ = RDB_ro_op("TUPLE", _RDB_parse_ecp);
+        if ($$ == NULL) {
+            RDB_destroy_expr_list(&$3, _RDB_parse_ecp);
+            YYERROR;
+        }
+
+        exp = $3.firstp;
+        while (exp != NULL) {
+            ex2p = exp->nextp;
+            nextp = exp->nextp->nextp;
+
+            RDB_add_arg($$, exp);
+            RDB_add_arg($$, ex2p);
+            exp = nextp;
+        }
     } 
     | TOK_LIT_STRING
     | TOK_LIT_INTEGER
@@ -2274,50 +2210,24 @@ literal: TOK_RELATION '{' ne_expression_list '}' {
     ;
 
 ne_tuple_item_list: TOK_ID expression {
-        RDB_object obj;
-        RDB_object *valp;
-        int ret;
-
-        RDB_init_obj(&obj);
-        valp = RDB_expr_obj($2);
-        if (valp == NULL) {
-            RDB_drop_expr($1, _RDB_parse_ecp);
-            RDB_drop_expr($2, _RDB_parse_ecp);
+        $$.firstp = RDB_string_to_expr($1->var.varname, _RDB_parse_ecp);
+        if ($$.firstp == NULL)
             YYERROR;
-        }
-        ret = RDB_tuple_set(&obj, $1->var.varname, valp,
-                _RDB_parse_ecp);
         RDB_drop_expr($1, _RDB_parse_ecp);
-        RDB_drop_expr($2, _RDB_parse_ecp);
-        if (ret != RDB_OK) {
-            YYERROR;
-        }
-
-        $$ = RDB_obj_to_expr(&obj, _RDB_parse_ecp);
-        RDB_destroy_obj(&obj, _RDB_parse_ecp);
-        if ($$ == NULL) {
-             YYERROR;
-        }
+        $$.lastp = $2;
+        $$.firstp->nextp = $2;
+        $2->nextp = NULL;
     }
     | ne_tuple_item_list ',' TOK_ID expression {
-        int ret;
-        RDB_object *valp = RDB_expr_obj($4);
-        if (valp == NULL) {
-            RDB_drop_expr($1, _RDB_parse_ecp);
-            RDB_drop_expr($3, _RDB_parse_ecp);
-            RDB_drop_expr($4, _RDB_parse_ecp);
-            RDB_raise_type_mismatch("", _RDB_parse_ecp);
+        RDB_expression *attrexp = RDB_string_to_expr($3->var.varname, _RDB_parse_ecp);
+        if (attrexp == NULL)
             YYERROR;
-        }
-
-		$$ = $1;
-
-        ret = RDB_tuple_set(RDB_expr_obj($$), $3->var.varname,
-                valp, _RDB_parse_ecp);
         RDB_drop_expr($3, _RDB_parse_ecp);
-        RDB_drop_expr($4, _RDB_parse_ecp);
-        if (ret != RDB_OK)
-            YYERROR;
+        $$.firstp = $1.firstp;
+        $$.lastp->nextp = attrexp;
+        $$.lastp = $4;
+        attrexp->nextp = $4;
+        $4->nextp = NULL;
     }
     ;
 
@@ -2424,6 +2334,14 @@ rel_type: TOK_RELATION '{' attribute_list '}' {
 		if ($$ == NULL)
 		    YYERROR;
     }
+/*
+    | TOK_SAME_TYPE_AS '(' expression ')' {
+		$$ = RDB_expr_type($3, &get_type, _RDB_parse_arg, _RDB_parse_ecp,
+		        _RDB_parse_txp);
+		if ($$ == NULL)
+		    YYERROR;
+	}
+*/
 
 expression_list: /* empty */ {
         $$.firstp = $$.lastp = NULL;

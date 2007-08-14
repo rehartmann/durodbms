@@ -41,6 +41,12 @@ RDB_realloc(void *p, size_t size, RDB_exec_context *ecp)
     return p;
 }
 
+void
+RDB_free(void *p)
+{
+    free(p);
+}
+
 RDB_object *
 _RDB_new_obj(RDB_exec_context *ecp)
 {
@@ -56,7 +62,7 @@ int
 _RDB_free_obj(RDB_object *objp, RDB_exec_context *ecp)
 {
     int ret = RDB_destroy_obj(objp, ecp);
-    free(objp);
+    RDB_free(objp);
     return ret;
 }
 

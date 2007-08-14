@@ -8,6 +8,8 @@
 #include "duro.h"
 #include <string.h>
 
+#include <rel/internal.h>
+
 static int
 list_to_ins(TclState *statep, Tcl_Interp *interp, Tcl_Obj *tobjp,
         RDB_transaction *txp, RDB_ma_insert *insp)
@@ -202,12 +204,26 @@ list_to_copy(TclState *statep, Tcl_Interp *interp, Tcl_Obj *tobjp,
     if (srcexp == NULL) {
         return TCL_ERROR;
     }
-    copyp->srcp = RDB_expr_to_vtable(srcexp, statep->current_ecp, txp);
-    if (copyp->srcp == NULL) {
-        RDB_drop_expr(srcexp, statep->current_ecp);
-        return TCL_ERROR;
+    if (srcexp->kind == RDB_EX_RO_OP
+            && strcmp(srcexp->var.op.name, "RELATION") == 0) {
+        copyp->srcp = RDB_alloc(sizeof(RDB_object), statep->current_ecp);
+        if (copyp->srcp == NULL) {
+            return TCL_ERROR;
+        }
+        RDB_init_obj(copyp->srcp);
+        if (RDB_evaluate(srcexp, NULL, NULL, statep->current_ecp, txp, copyp->srcp)
+                != RDB_OK) {
+            RDB_destroy_obj(copyp->srcp, statep->current_ecp);
+            RDB_free(copyp->srcp);
+            return TCL_ERROR;
+        }
+    } else {
+        copyp->srcp = RDB_expr_to_vtable(srcexp, statep->current_ecp, txp);
+        if (copyp->srcp == NULL) {
+            RDB_drop_expr(srcexp, statep->current_ecp);
+            return TCL_ERROR;
+        }
     }
-
     return TCL_OK;
 }
 

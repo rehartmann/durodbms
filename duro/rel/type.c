@@ -1795,7 +1795,7 @@ RDB_join_tuple_types(const RDB_type *typ1, const RDB_type *typ2,
     RDB_type *newtyp;
     int attrc;
     int i, j;
-    
+
     /* Create new tuple type */
     newtyp = malloc(sizeof (RDB_type));
     if (newtyp == NULL) {
