@@ -31,7 +31,7 @@ test deftype {user-defined types} -setup $DBSETUP -body {
     exec $testdir/../../dli/durodt << {
         connect('', 'dbenv');    
         current_db := 'D';
-        begin trans;
+        begin transaction;
         type t
             possrep { a integer, b integer };
 
@@ -43,7 +43,7 @@ test deftype {user-defined types} -setup $DBSETUP -body {
 test defroop {read-only user-defined operators} -setup $DBSETUP -body {
     exec $testdir/../../dli/durodt -e dbenv << {
         current_db := 'D';
-        begin trans;
+        begin tx;
 
         operator testop() returns string;
             var a integer;
@@ -88,7 +88,7 @@ test defroop {read-only user-defined operators} -setup $DBSETUP -body {
 test defupdop {user-defined update operators} -setup $DBSETUP -body {
     exec $testdir/../../dli/durodt -e dbenv << {
         current_db := 'D';
-        begin trans;
+        begin transaction;
 
         operator op(s string, i integer) updates {s};
             -- i := i + 1; !!

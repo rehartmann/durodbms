@@ -461,6 +461,7 @@ serialize_stmt(RDB_object *objp, int *posp, const RDB_parse_statement *stmtp,
         case RDB_STMT_VAR_DEF:
             return serialize_var_def(objp, posp, stmtp, ecp);
         case RDB_STMT_VAR_DEF_REAL:
+        case RDB_STMT_VAR_DEF_PRIVATE:
             return serialize_var_def_real(objp, posp, stmtp, ecp);
         case RDB_STMT_VAR_DEF_VIRTUAL:
             return serialize_var_def_virtual(objp, posp, stmtp, ecp);
@@ -1037,6 +1038,7 @@ deserialize_stmt(RDB_object *objp, int *posp, RDB_exec_context *ecp,
                 goto error;
             break;
         case RDB_STMT_VAR_DEF_REAL:
+        case RDB_STMT_VAR_DEF_PRIVATE:
             if (deserialize_var_def_real(objp, posp, ecp, txp, stmtp) != RDB_OK)
                 goto error;
             break;

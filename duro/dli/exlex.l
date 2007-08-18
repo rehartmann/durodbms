@@ -315,6 +315,10 @@ REAL {
     return TOK_REAL;
 }
 
+PRIVATE {
+    return TOK_PRIVATE;
+}
+
 BASE {
     return TOK_REAL;
 }
@@ -339,7 +343,7 @@ TRANSACTION {
     return TOK_TX;
 }
 
-TRANS {
+TX {
     return TOK_TX;
 }
 

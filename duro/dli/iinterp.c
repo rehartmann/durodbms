@@ -37,9 +37,8 @@ static tx_node *txnp = NULL;
 static int
 add_varmap(RDB_exec_context *ecp)
 {
-    varmap_node *nodep = malloc(sizeof(varmap_node));
+    varmap_node *nodep = RDB_alloc(sizeof(varmap_node), ecp);
     if (nodep == NULL) {
-        RDB_raise_no_memory(ecp);
         return RDB_ERROR;
     }
     RDB_init_hashmap(&nodep->map, 128);
@@ -224,9 +223,8 @@ create_env_op(const char *name, int argc, RDB_object *argv[],
 static RDB_object *
 new_obj(RDB_exec_context *ecp)
 {
-    RDB_object *objp = malloc(sizeof (RDB_object));
+    RDB_object *objp = RDB_alloc(sizeof (RDB_object), ecp);
     if (objp == NULL) {
-        RDB_raise_no_memory(ecp);
         return NULL;
     }
     RDB_init_obj(objp);
@@ -392,9 +390,8 @@ exec_vardef(const RDB_parse_statement *stmtp, RDB_exec_context *ecp)
         return RDB_ERROR;
     }
 
-    objp = malloc(sizeof (RDB_object));
+    objp = RDB_alloc(sizeof (RDB_object), ecp);
     if (objp == NULL) {
-        RDB_raise_no_memory(ecp);
         return RDB_ERROR;
     }
     RDB_init_obj(objp);
@@ -429,14 +426,45 @@ exec_vardef(const RDB_parse_statement *stmtp, RDB_exec_context *ecp)
     return RDB_OK;
 }
 
+RDB_string_vec *
+keylist_to_keyv(RDB_parse_keydef *firstkeyp, int *keycp, RDB_exec_context *ecp)
+{
+    int i, j;
+    RDB_string_vec *keyv;
+    RDB_expression *keyattrp;
+    RDB_parse_keydef *keyp = firstkeyp;
+    *keycp = 0;
+    while (keyp != NULL) {
+        (*keycp)++;
+        keyp = keyp->nextp;
+    }
+
+    keyv = RDB_alloc(sizeof(RDB_string_vec) * (*keycp), ecp);
+    if (keyv == NULL) {
+        return NULL;
+    }
+    keyp = firstkeyp;
+    for (i = 0; i < *keycp; i++) {
+        keyv[i].strc = RDB_expr_list_length(&keyp->attrlist);
+        keyv[i].strv = RDB_alloc(keyv[i].strc * sizeof(char *), ecp);
+        if (keyv[i].strv == NULL) {
+            return NULL;
+        }
+        keyattrp = keyp->attrlist.firstp;
+        for (j = 0; j < keyv[i].strc; j++) {
+            keyv[i].strv[j] = RDB_obj_string(RDB_expr_obj(keyattrp));
+            keyattrp = keyattrp->nextp;
+        }
+        keyp = keyp->nextp;
+    }
+    return keyv;
+}
+
 static int
 exec_vardef_real(const RDB_parse_statement *stmtp, RDB_exec_context *ecp)
 {
     RDB_object *tbp;
     RDB_string_vec *keyv;
-    RDB_parse_keydef *keyp;
-    RDB_expression *keyattrp;
-    int i, j;
     RDB_bool freekey;
     int keyc = 0;
     char *varname = RDB_obj_string(&stmtp->var.vardef.varname);
@@ -449,32 +477,10 @@ exec_vardef_real(const RDB_parse_statement *stmtp, RDB_exec_context *ecp)
         return RDB_ERROR;
     }
 
-    keyp = stmtp->var.vardef.firstkeyp;
-    while (keyp != NULL) {
-        keyc++;
-        keyp = keyp->nextp;
-    }
-
-    if (keyc > 0) {
-        keyv = malloc(sizeof(RDB_string_vec) * keyc);
-        if (keyv == NULL) {
-            RDB_raise_no_memory(ecp);
+    if (stmtp->var.vardef.firstkeyp != NULL) {
+        keyv = keylist_to_keyv(stmtp->var.vardef.firstkeyp, &keyc, ecp);
+        if (keyv == NULL)
             return RDB_ERROR;
-        }
-        keyp = stmtp->var.vardef.firstkeyp;
-        for (i = 0; i < keyc; i++) {
-            keyv[i].strc = RDB_expr_list_length(&keyp->attrlist);
-            keyv[i].strv = malloc(keyv[i].strc * sizeof(char *));
-            if (keyv[i].strv == NULL) {
-                RDB_raise_no_memory(ecp);
-                return RDB_ERROR;
-            }
-            keyattrp = keyp->attrlist.firstp;
-            for (j = 0; j < keyv[i].strc; j++) {
-                keyv[i].strv[j] = RDB_obj_string(RDB_expr_obj(keyattrp));
-                keyattrp = keyattrp->nextp;
-            }
-        }       
     } else {
         /* Get keys from expression */
 
@@ -524,6 +530,61 @@ exec_vardef_virtual(const RDB_parse_statement *stmtp, RDB_exec_context *ecp)
 
     if (_RDB_parse_interactive)
         printf("Table %s created.\n", varname);
+    return RDB_OK;
+}
+
+static int
+exec_vardef_private(const RDB_parse_statement *stmtp, RDB_exec_context *ecp)
+{
+    RDB_object *tbp;
+    RDB_string_vec *keyv;
+    RDB_bool freekey;
+    int keyc = 0;
+    char *varname = RDB_obj_string(&stmtp->var.vardef.varname);
+    RDB_type *tbtyp = RDB_dup_nonscalar_type(stmtp->var.vardef.typ, ecp);
+    if (tbtyp == NULL)
+        return RDB_ERROR;
+
+    if (stmtp->var.vardef.firstkeyp != NULL) {
+        keyv = keylist_to_keyv(stmtp->var.vardef.firstkeyp, &keyc, ecp);
+        if (keyv == NULL)
+            return RDB_ERROR;
+    } else {
+        /* Get keys from expression */
+
+        printf("Inferring keys\n");
+
+        keyc = _RDB_infer_keys(stmtp->var.vardef.exp, ecp, &keyv, &freekey);
+        if (keyc == RDB_ERROR)
+            return RDB_ERROR;
+    }
+
+    tbp = RDB_alloc(sizeof(RDB_object), ecp);
+    if (tbp == NULL) {
+        RDB_drop_type(tbtyp, ecp, NULL);
+        return RDB_ERROR;
+    }
+
+    RDB_init_obj(tbp);
+    if (RDB_init_table_from_type(tbp, varname, tbtyp, keyc, keyv, ecp)
+            != RDB_OK) {
+        RDB_destroy_obj(tbp, ecp);
+        RDB_free(tbp);
+        RDB_drop_type(tbtyp, ecp, NULL);
+        return RDB_ERROR;
+    }
+
+    if (RDB_hashmap_put(&current_varmapp->map, varname, tbp) != RDB_OK) {
+        RDB_destroy_obj(tbp, ecp);
+        RDB_free(tbp);
+        RDB_raise_no_memory(ecp);
+        return RDB_ERROR;
+    }
+
+    /* !! */   
+
+    if (_RDB_parse_interactive)
+        printf("Local table %s created.\n", varname);
     return RDB_OK;
 }
 
@@ -732,7 +793,8 @@ exec_for(const RDB_parse_statement *stmtp, RDB_exec_context *ecp,
 }
 
 static RDB_attr_update *
-convert_attr_assigns(RDB_parse_attr_assign *assignlp, int *updcp)
+convert_attr_assigns(RDB_parse_attr_assign *assignlp, int *updcp,
+        RDB_exec_context *ecp)
 {
     int i;
     RDB_attr_update *updv;
@@ -743,7 +805,7 @@ convert_attr_assigns(RDB_parse_attr_assign *assignlp, int *updcp)
         ap = ap->nextp;
     } while (ap != NULL);
 
-    updv = malloc(*updcp * sizeof(RDB_attr_update));
+    updv = RDB_alloc(*updcp * sizeof(RDB_attr_update), ecp);
     if (updv == NULL)
         return NULL;
     ap = assignlp;
@@ -828,7 +890,7 @@ exec_assign(const RDB_parse_statement *stmtp, RDB_exec_context *ecp)
                 }
                 updv[updc].updv = convert_attr_assigns(
                         stmtp->var.assignment.av[i].var.upd.assignlp,
-                        &updv[updc].updc);
+                        &updv[updc].updc, ecp);
                 if (updv[updc].updv == NULL) {
                     RDB_raise_no_memory(ecp);
                     return RDB_ERROR;
@@ -898,9 +960,8 @@ exec_begin_tx(const RDB_parse_statement *stmtp, RDB_exec_context *ecp)
     if (dbp == NULL)
         return RDB_ERROR;
 
-    txnp = malloc(sizeof(tx_node));
+    txnp = RDB_alloc(sizeof(tx_node), ecp);
     if (txnp == NULL) {
-        RDB_raise_no_memory(ecp);
         return RDB_ERROR;
     }    
 
@@ -1008,7 +1069,7 @@ Duro_invoke_dt_ro_op(const char *name, int argc, RDB_object *argv[],
     char **argnamev;
     varmap_node *ovarmapp = current_varmapp;
 
-    argnamev = malloc(argc * sizeof(char *));
+    argnamev = RDB_alloc(argc * sizeof(char *), ecp);
     if (argnamev == NULL)
         return RDB_ERROR;
 
@@ -1050,7 +1111,7 @@ Duro_invoke_dt_update_op(const char *name, int argc, RDB_object *argv[],
     char **argnamev;
     varmap_node *ovarmapp = current_varmapp;
 
-    argnamev = malloc(argc * sizeof(char *));
+    argnamev = RDB_alloc(argc * sizeof(char *), ecp);
     if (argnamev == NULL)
         return RDB_ERROR;
 
@@ -1202,6 +1263,8 @@ Duro_exec_stmt(const RDB_parse_statement *stmtp, RDB_exec_context *ecp,
             return exec_vardef_real(stmtp, ecp);
         case RDB_STMT_VAR_DEF_VIRTUAL:
             return exec_vardef_virtual(stmtp, ecp);
+        case RDB_STMT_VAR_DEF_PRIVATE:
+            return exec_vardef_private(stmtp, ecp);
         case RDB_STMT_VAR_DROP:
             return exec_vardrop(stmtp, ecp);
         case RDB_STMT_NOOP:

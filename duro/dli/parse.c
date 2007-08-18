@@ -142,6 +142,7 @@ RDB_parse_del_stmt(RDB_parse_statement *stmtp, RDB_exec_context *ecp)
                 ret = RDB_drop_expr(stmtp->var.vardef.exp, ecp);
             break;
         case RDB_STMT_VAR_DEF_REAL:
+        case RDB_STMT_VAR_DEF_PRIVATE:
             ret = RDB_destroy_obj(&stmtp->var.vardef.varname, ecp);
             if (stmtp->var.vardef.typ != NULL
                     && !RDB_type_is_scalar(stmtp->var.vardef.typ))

@@ -190,7 +190,7 @@ int
 _RDB_free_obj(RDB_object *tbp, RDB_exec_context *);
 
 int
-_RDB_assoc_table_db(RDB_object *tbp, RDB_database *dbp);
+_RDB_assoc_table_db(RDB_object *tbp, RDB_database *dbp, RDB_exec_context *);
 
 RDB_bool
 _RDB_table_refers(const RDB_object *tbp, const RDB_object *rtbp);

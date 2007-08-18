@@ -91,7 +91,7 @@ test vtables {virtual tables} -setup $SETUP -body {
     duro::table rename VT TJ $tx
     duro::table expr -global TR {T1 RENAME (K AS KN, S1 AS SN)} $tx
     if {![catch {
-        duro::table expr -global TX \
+        duro::table expr -global TEX \
                 {EXTEND T1 ADD (K*10 AS K0, IF K = 0 THEN "YES" ELSE 1 AS KIS1)} $tx
     }]} {
         error "invalid EXTEND should fail, but succeeded"
@@ -138,7 +138,7 @@ test vtables {virtual tables} -setup $SETUP -body {
         error "COUNT is $cnt"
     }
 
-    duro::table expr -global TX {EXTEND T1 ADD (K*10 AS K0, IF K = 0 THEN "YES" ELSE
+    duro::table expr -global TEX {EXTEND T1 ADD (K*10 AS K0, IF K = 0 THEN "YES" ELSE
             "NO" AS KIS1)} $tx
 
     duro::table expr -global TP {(T1 WHERE K = 1) {K}} $tx
@@ -329,9 +329,9 @@ test vtables {virtual tables} -setup $SETUP -body {
         error "TUPLE FROM TM should be $stpl, but is $tpl"
     }
     
-    duro::delete TX {K0 = 40} $tx
+    duro::delete TEX {K0 = 40} $tx
     
-    set tpl [duro::expr {TUPLE FROM (TX WHERE K0 >= 30)} $tx]
+    set tpl [duro::expr {TUPLE FROM (TEX WHERE K0 >= 30)} $tx]
     set stpl {K 3 S1 Blu K0 30 KIS1 NO}
     if {![tequal $tpl $stpl]} {
         error "Tuple should be $stpl, but is $tpl"
@@ -354,11 +354,11 @@ test vtables {virtual tables} -setup $SETUP -body {
     
     duro::table drop TU $tx
     
-    duro::table drop TX $tx
+    duro::table drop TEX $tx
     
-    # Try to drop TX a second time
-    if {![catch {duro::table drop TX $tx}]} {
-        error "Dropping TX should fail, but succeeded"
+    # Try to drop TEX a second time
+    if {![catch {duro::table drop TEX $tx}]} {
+        error "Dropping TEX should fail, but succeeded"
     }
     
     # Recreate TU

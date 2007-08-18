@@ -1723,7 +1723,8 @@ _RDB_cat_get_rtable(const char *name, RDB_exec_context *ecp,
     if (attrc > 0)
         free(attrv);
 
-    _RDB_assoc_table_db(tbp, txp->dbp);
+    if (_RDB_assoc_table_db(tbp, txp->dbp, ecp) != RDB_OK)
+        goto error;
 
     ret = RDB_destroy_obj(&arr, ecp);
 
@@ -1835,7 +1836,8 @@ _RDB_cat_get_vtable(const char *name, RDB_exec_context *ecp,
         return NULL;
     }
 
-    _RDB_assoc_table_db(tbp, txp->dbp);
+    if (_RDB_assoc_table_db(tbp, txp->dbp, ecp) != RDB_OK)
+        goto error;
     
     return tbp;
 

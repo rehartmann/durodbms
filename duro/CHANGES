@@ -4,6 +4,8 @@ Summary of Changes for Duro
 
 Changes for Duro 0.13
 
+- Added RDB_type_is_relation().
+
 - Added built-in operators TUPLE and RELATION.
 
 - Dropped argc argument of RDB_ro_op().

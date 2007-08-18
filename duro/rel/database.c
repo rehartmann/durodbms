@@ -143,7 +143,8 @@ rm_db(RDB_database *dbp, RDB_exec_context *ecp)
 }
 
 static void
-free_db(RDB_database *dbp) {
+free_db(RDB_database *dbp)
+{
     RDB_destroy_hashmap(&dbp->tbmap);
     free(dbp->name);
     free(dbp);
@@ -347,22 +348,36 @@ error:
     return NULL;
 }
 
-static void
-assoc_systables(RDB_dbroot *dbrootp, RDB_database *dbp)
+static int
+assoc_systables(RDB_dbroot *dbrootp, RDB_database *dbp, RDB_exec_context *ecp)
 {
-    _RDB_assoc_table_db(dbrootp->table_attr_tbp, dbp);
-    _RDB_assoc_table_db(dbrootp->table_attr_defvals_tbp, dbp);
-    _RDB_assoc_table_db(dbrootp->rtables_tbp, dbp);
-    _RDB_assoc_table_db(dbrootp->vtables_tbp, dbp);
-    _RDB_assoc_table_db(dbrootp->dbtables_tbp, dbp);
-    _RDB_assoc_table_db(dbrootp->keys_tbp, dbp);
-    _RDB_assoc_table_db(dbrootp->types_tbp, dbp);
-    _RDB_assoc_table_db(dbrootp->possrepcomps_tbp, dbp);
-    _RDB_assoc_table_db(dbrootp->ro_ops_tbp, dbp);
-    _RDB_assoc_table_db(dbrootp->upd_ops_tbp, dbp);
-    _RDB_assoc_table_db(dbrootp->indexes_tbp, dbp);
-    _RDB_assoc_table_db(dbrootp->constraints_tbp, dbp);
-    _RDB_assoc_table_db(dbrootp->version_info_tbp, dbp);
+    if (_RDB_assoc_table_db(dbrootp->table_attr_tbp, dbp, ecp) != RDB_OK)
+        return RDB_ERROR;
+    if (_RDB_assoc_table_db(dbrootp->table_attr_defvals_tbp, dbp, ecp) != RDB_OK)
+        return RDB_ERROR;
+    if (_RDB_assoc_table_db(dbrootp->rtables_tbp, dbp, ecp) != RDB_OK)
+        return RDB_ERROR;
+    if (_RDB_assoc_table_db(dbrootp->vtables_tbp, dbp, ecp) != RDB_OK)
+        return RDB_ERROR;
+    if (_RDB_assoc_table_db(dbrootp->dbtables_tbp, dbp, ecp) != RDB_OK)
+        return RDB_ERROR;
+    if (_RDB_assoc_table_db(dbrootp->keys_tbp, dbp, ecp) != RDB_OK)
+        return RDB_ERROR;
+    if (_RDB_assoc_table_db(dbrootp->types_tbp, dbp, ecp) != RDB_OK)
+        return RDB_ERROR;
+    if (_RDB_assoc_table_db(dbrootp->possrepcomps_tbp, dbp, ecp) != RDB_OK)
+        return RDB_ERROR;
+    if (_RDB_assoc_table_db(dbrootp->ro_ops_tbp, dbp, ecp) != RDB_OK)
+        return RDB_ERROR;
+    if (_RDB_assoc_table_db(dbrootp->upd_ops_tbp, dbp, ecp) != RDB_OK)
+        return RDB_ERROR;
+    if (_RDB_assoc_table_db(dbrootp->indexes_tbp, dbp, ecp) != RDB_OK)
+        return RDB_ERROR;
+    if (_RDB_assoc_table_db(dbrootp->constraints_tbp, dbp, ecp) != RDB_OK)
+        return RDB_ERROR;
+    if (_RDB_assoc_table_db(dbrootp->version_info_tbp, dbp, ecp) != RDB_OK)
+        return RDB_ERROR;
+    return RDB_OK;
 }
 
 /*
@@ -492,7 +507,8 @@ RDB_create_db_from_env(const char *name, RDB_environment *envp,
         goto error;
     }
 
-    assoc_systables(dbrootp, dbp);
+    if (assoc_systables(dbrootp, dbp, ecp) != RDB_OK)
+        goto error;
 
     /* Insert database into list */
     dbp->nextdbp = dbrootp->first_dbp;
@@ -613,7 +629,8 @@ RDB_get_db_from_env(const char *name, RDB_environment *envp,
     if (ret != RDB_OK)
         return NULL;
     
-    assoc_systables(dbrootp, dbp);
+    if (assoc_systables(dbrootp, dbp, ecp) != RDB_OK)
+        goto error;
     dbp->dbrootp = dbrootp;
     
     /* Insert database into list */
@@ -991,10 +1008,15 @@ cleanup:
  * Associate a RDB_object structure with a RDB_database structure.
  */
 int
-_RDB_assoc_table_db(RDB_object *tbp, RDB_database *dbp)
+_RDB_assoc_table_db(RDB_object *tbp, RDB_database *dbp, RDB_exec_context *ecp)
 {
     /* Insert table into table map */
-    return RDB_hashmap_put(&dbp->tbmap, tbp->var.tb.name, tbp);
+    int ret = RDB_hashmap_put(&dbp->tbmap, tbp->var.tb.name, tbp);
+    if (ret != RDB_OK) {
+        _RDB_handle_errcode(ret, ecp, NULL);
+        return RDB_ERROR;
+    }
+    return RDB_OK;
 }
 
 /**
@@ -1021,15 +1043,11 @@ create_table(const char *name, RDB_type *reltyp,
                 RDB_exec_context *ecp, RDB_transaction *txp)
 {
     RDB_object *tbp;
-    int ret;
     RDB_transaction tx;
 
-    if (txp != NULL) {
-        /* Create subtransaction */
-        ret = RDB_begin_tx(ecp, &tx, txp->dbp, txp);
-        if (ret != RDB_OK)
-            return NULL;
-    }
+    /* Create subtransaction */
+    if (RDB_begin_tx(ecp, &tx, txp->dbp, txp) != RDB_OK)
+        return NULL;
 
     tbp = _RDB_new_rtable(name, RDB_TRUE, reltyp,
                 keyc, keyv, RDB_TRUE, ecp);
@@ -1038,8 +1056,7 @@ create_table(const char *name, RDB_type *reltyp,
     }
 
     /* Insert table into catalog */
-    ret = _RDB_cat_insert(tbp, ecp, &tx);
-    if (ret != RDB_OK) {
+    if (_RDB_cat_insert(tbp, ecp, &tx) != RDB_OK) {
         /* Don't destroy type */
         tbp->typ = NULL;
         RDB_rollback(ecp, &tx);
@@ -1047,11 +1064,18 @@ create_table(const char *name, RDB_type *reltyp,
         return NULL;
     }
 
-    _RDB_assoc_table_db(tbp, txp->dbp);
-
-    if (txp != NULL) {
-         RDB_commit(ecp, &tx);
+    if (_RDB_assoc_table_db(tbp, txp->dbp, ecp) != RDB_OK) {
+        RDB_rollback(ecp, &tx);
+        _RDB_free_obj(tbp, ecp);
+        return NULL;
     }
+
+    if (RDB_commit(ecp, &tx) != RDB_OK) {
+         RDB_hashmap_put(&txp->dbp->tbmap, name, NULL);
+        _RDB_free_obj(tbp, ecp);
+        return NULL;
+    }
+   
     return tbp;
 }
 
@@ -1432,7 +1456,7 @@ RDB_add_table(RDB_object *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
     if (ret != RDB_OK)
         return RDB_ERROR;
 
-    ret = _RDB_assoc_table_db(tbp, txp->dbp);
+    ret = _RDB_assoc_table_db(tbp, txp->dbp, ecp);
     if (ret != RDB_OK)
         return RDB_ERROR;
 

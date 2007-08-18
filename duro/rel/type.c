@@ -1115,7 +1115,20 @@ RDB_TRUE if the type is scalar, RDB_FALSE if not.
 RDB_bool
 RDB_type_is_scalar(const RDB_type *typ)
 {
-    return (typ->kind == RDB_TP_SCALAR);
+    return (RDB_bool) (typ->kind == RDB_TP_SCALAR);
+}
+
+/**
+ * Checks if a type is a relation type.
+
+@returns
+
+RDB_TRUE if the type is a relation, RDB_FALSE if not.
+*/
+RDB_bool
+RDB_type_is_relation(const RDB_type *typ)
+{
+    return (RDB_bool) (typ->kind == RDB_TP_RELATION);
 }
 
 /**
