@@ -113,6 +113,7 @@ main(int argc, char *argv[])
     _RDB_parse_interactive = (RDB_bool) isatty(fileno(yyin));
 
     /* yydebug = 1; */
+    err_line = -1;
 
     RDB_init_exec_context(&ec);
 
@@ -135,6 +136,9 @@ main(int argc, char *argv[])
         if (Duro_process_stmt(&ec) != RDB_OK) {
             RDB_object *errobjp = RDB_get_err(&ec);
             if (errobjp != NULL) {
+                if (!_RDB_parse_interactive) {
+                    printf("error in statement at or near line %d: ", err_line);
+                }
                 print_error(errobjp);
                 if (_RDB_parse_interactive) {
                     _RDB_parse_init_buf();

@@ -19,17 +19,11 @@ typedef struct yy_buffer_state *YY_BUFFER_STATE;
 YY_BUFFER_STATE yy_scan_string(const char *txt);
 void yy_delete_buffer(YY_BUFFER_STATE);
 
-RDB_transaction *_RDB_parse_txp;
 RDB_expression *_RDB_parse_resultp;
 RDB_parse_statement *_RDB_parse_stmtp;
-RDB_getobjfn *_RDB_parse_getobjfp;
-void *_RDB_parse_arg;
 RDB_exec_context *_RDB_parse_ecp;
 int _RDB_parse_interactive = 0;
 int _RDB_parse_case_insensitive = 1;
-
-RDB_expression *
-_RDB_parse_lookup_table(RDB_expression *);
 
 void
 _RDB_parse_start_exp(void);
@@ -265,11 +259,7 @@ RDB_parse_new_call(char *name, RDB_expr_list *explistp)
 
 /**
  * Parse the <a href="../expressions.html">expression</a>
-specified by <var>txt</var>. If <var>lt_fp</var> is not NULL,
-it must point to a function which is used to look up local tables.
-The function is invoked with the table name and <var>lt_arg</var> as
-arguments. It must return a pointer to the table or NULL if the table was
-not found.
+specified by <var>txt</var>.
 
 @returns The parsed expression, or NULL if the parsing failed.
 
@@ -286,16 +276,11 @@ in which case the transaction may be implicitly rolled back.
 @warning The parser is not reentrant.
  */
 RDB_expression *
-RDB_parse_expr(const char *txt, RDB_getobjfn *lt_fp, void *lt_arg,
-        RDB_exec_context *ecp, RDB_transaction *txp)
+RDB_parse_expr(const char *txt, RDB_exec_context *ecp)
 {
     int pret;
-    RDB_expression *exp;
     YY_BUFFER_STATE buf;
 
-    _RDB_parse_txp = txp;
-    _RDB_parse_getobjfp = lt_fp;
-    _RDB_parse_arg = lt_arg;
     _RDB_parse_ecp = ecp;
 
     buf = yy_scan_string(txt);
@@ -309,31 +294,16 @@ RDB_parse_expr(const char *txt, RDB_getobjfn *lt_fp, void *lt_arg,
         return NULL;
     }
 
-    /* If the expression represents an attribute, try to get table */
-    if (_RDB_parse_resultp->kind == RDB_EX_VAR) {
-        exp = _RDB_parse_lookup_table(_RDB_parse_resultp);
-        if (exp == NULL) {
-            RDB_drop_expr(_RDB_parse_resultp, ecp);
-            RDB_raise_no_memory(ecp);
-            return NULL;
-        }
-    } else {
-        exp = _RDB_parse_resultp;
-    }
-    return exp;
+    return _RDB_parse_resultp;
 }
 
 /*@}*/
 
 RDB_parse_statement *
-RDB_parse_stmt(RDB_getobjfn *getobjfp, void *arg, RDB_exec_context *ecp,
-        RDB_transaction *txp)
+RDB_parse_stmt(RDB_exec_context *ecp)
 {
     int pret;
 
-    _RDB_parse_txp = txp;
-    _RDB_parse_getobjfp = getobjfp;
-    _RDB_parse_arg = arg;
     _RDB_parse_ecp = ecp;
 
     _RDB_parse_start_stmt();

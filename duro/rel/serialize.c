@@ -55,11 +55,9 @@ _RDB_serialize_str(RDB_object *valp, int *posp, const char *str,
 int
 _RDB_serialize_int(RDB_object *valp, int *posp, RDB_int v, RDB_exec_context *ecp)
 {
-    int ret;
+    if (reserve_space(valp, *posp, sizeof v, ecp) != RDB_OK)
+        return RDB_ERROR;
 
-    ret = reserve_space(valp, *posp, sizeof v, ecp);
-    if (ret != RDB_OK)
-        return ret;
     memcpy(((RDB_byte *) valp->var.bin.datap) + *posp, &v, sizeof v);
     *posp += sizeof v;
     return RDB_OK;
@@ -72,7 +70,7 @@ serialize_size_t(RDB_object *valp, int *posp, size_t v, RDB_exec_context *ecp)
 
     ret = reserve_space(valp, *posp, sizeof v, ecp);
     if (ret != RDB_OK)
-        return ret;
+        return RDB_ERROR;
     memcpy(((RDB_byte *) valp->var.bin.datap) + *posp, &v, sizeof v);
     *posp += sizeof v;
     return RDB_OK;

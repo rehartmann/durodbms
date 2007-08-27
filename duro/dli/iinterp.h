@@ -15,6 +15,8 @@ extern RDB_environment *envp;
 
 extern varmap_node toplevel_vars;
 
+extern int err_line;
+
 int
 Duro_init_exec(RDB_exec_context *, const char *);
 

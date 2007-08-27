@@ -118,20 +118,20 @@ cleanup:
     return typ;
 }
 
-static RDB_expression *
-expr_resolve_attrs(const RDB_expression *exp, RDB_getobjfn *getfnp,
-        void *getdata, RDB_exec_context *ecp)
+RDB_expression *
+RDB_expr_resolve_varnames(const RDB_expression *exp, RDB_getobjfn *getfnp,
+        void *getdata, RDB_exec_context *ecp, RDB_transaction *txp)
 {
     RDB_object *objp;
 
     switch (exp->kind) {
         case RDB_EX_TUPLE_ATTR:
             return RDB_tuple_attr(
-                    expr_resolve_attrs(exp->var.op.args.firstp, getfnp, getdata, ecp),
+                    RDB_expr_resolve_varnames(exp->var.op.args.firstp, getfnp, getdata, ecp, txp),
                             exp->var.op.name, ecp);
         case RDB_EX_GET_COMP:
             return RDB_expr_comp(
-                    expr_resolve_attrs(exp->var.op.args.firstp, getfnp, getdata, ecp),
+                    RDB_expr_resolve_varnames(exp->var.op.args.firstp, getfnp, getdata, ecp, txp),
                             exp->var.op.name, ecp);
         case RDB_EX_RO_OP:
         {
@@ -142,8 +142,8 @@ expr_resolve_attrs(const RDB_expression *exp, RDB_getobjfn *getfnp,
 
             argp = exp->var.op.args.firstp;
             while (argp != NULL) {
-                RDB_expression *argexp = expr_resolve_attrs(
-                        argp, getfnp, getdata, ecp);
+                RDB_expression *argexp = RDB_expr_resolve_varnames(
+                        argp, getfnp, getdata, ecp, txp);
                 if (argexp == NULL) {
                     RDB_drop_expr(newexp, ecp);
                     return NULL;
@@ -158,9 +158,26 @@ expr_resolve_attrs(const RDB_expression *exp, RDB_getobjfn *getfnp,
         case RDB_EX_TBP:
             return RDB_table_ref(exp->var.tbref.tbp, ecp);
         case RDB_EX_VAR:
-            objp = (*getfnp)(exp->var.varname, getdata);
-            if (objp != NULL)
-                return RDB_obj_to_expr(objp, ecp);
+            if (getfnp != (RDB_getobjfn *) NULL) {
+                objp = (*getfnp)(exp->var.varname, getdata);
+                if (objp != NULL) {
+                    if (objp->kind == RDB_OB_TABLE && objp->var.tb.exp != NULL) {
+                        return RDB_expr_resolve_varnames(objp->var.tb.exp,
+                                getfnp, getdata, ecp, txp);
+                    }
+                    if (objp->kind == RDB_OB_TABLE)
+                        return RDB_table_ref(objp, ecp);
+                    return RDB_obj_to_expr(objp, ecp);
+                }
+            }
+            if (txp != NULL) {
+                objp = RDB_get_table(exp->var.varname, ecp, txp);
+                if (objp != NULL) {
+                    return RDB_table_ref(objp, ecp);
+                }
+                RDB_clear_err(ecp);
+            }
+                
             return RDB_var_ref(exp->var.varname, ecp);
     }
     abort();
@@ -233,8 +250,8 @@ where_type(const RDB_expression *exp, RDB_gettypefn *getfnp, void *arg,
 }
 
 static RDB_type *
-extend_type(const RDB_expression *exp, RDB_exec_context *ecp,
-        RDB_transaction *txp)
+extend_type(const RDB_expression *exp, RDB_gettypefn *getfnp, void *arg,
+        RDB_exec_context *ecp, RDB_transaction *txp)
 {
     int i;
     RDB_attr *attrv;
@@ -250,7 +267,7 @@ extend_type(const RDB_expression *exp, RDB_exec_context *ecp,
     }
 
     attrc = (argc - 1) / 2;
-    arg1typ = _RDB_expr_type(exp->var.op.args.firstp, NULL, ecp, txp);
+    arg1typ = RDB_expr_type(exp->var.op.args.firstp, getfnp, arg, ecp, txp);
     if (arg1typ == NULL)
         return NULL;
 
@@ -632,7 +649,7 @@ expr_op_type(RDB_expression *exp, RDB_gettypefn *getfnp, void *arg,
         return where_type(exp, getfnp, arg, ecp, txp);
     }
     if (strcmp(exp->var.op.name, "EXTEND") == 0) {
-        return extend_type(exp, ecp, txp);
+        return extend_type(exp, getfnp, arg, ecp, txp);
     }
     if (strcmp(exp->var.op.name, "SUMMARIZE") == 0) {
         return RDB_summarize_type(&exp->var.op.args, 0, NULL, ecp, txp);
@@ -933,7 +950,12 @@ RDB_expr_type(RDB_expression *exp, RDB_gettypefn *getfnp, void *arg,
             }
             return exp->typ;
         case RDB_EX_TBP:
-            return RDB_obj_type(exp->var.tbref.tbp);
+            typ = RDB_obj_type(exp->var.tbref.tbp);
+            if (typ == NULL) {
+                /* Assume tuple */
+                typ = exp->typ = _RDB_tuple_type(exp->var.tbref.tbp, ecp);
+            }
+            return typ;
         case RDB_EX_VAR:
             if (arg != NULL) {
                 /* Get type from tuple type */
@@ -1142,11 +1164,17 @@ RDB_obj_to_expr(const RDB_object *objp, RDB_exec_context *ecp)
         
     exp->kind = RDB_EX_OBJ;
     RDB_init_obj(&exp->var.obj);
-    if (objp != NULL) {
+    if (objp != NULL) {        
         if (RDB_copy_obj(&exp->var.obj, objp, ecp) != RDB_OK) {
             free(exp);
             return NULL;
         }
+        if (objp->typ != NULL) {
+            exp->var.obj.typ = RDB_dup_nonscalar_type(objp->typ, ecp);
+            if (exp->var.obj.typ == NULL)
+                return NULL;
+        }
+        
     }
     return exp;
 }
@@ -1388,7 +1416,7 @@ evaluate_vt(RDB_expression *exp, RDB_getobjfn *getfnp, void *getdata,
         RDB_exec_context *ecp, RDB_transaction *txp, RDB_object *retvalp)
 {
     RDB_expression *nexp = getfnp != NULL
-            ? expr_resolve_attrs(exp, getfnp, getdata, ecp)
+            ? RDB_expr_resolve_varnames(exp, getfnp, getdata, ecp, txp)
             : RDB_dup_expr(exp, ecp);
     if (nexp == NULL)
         return RDB_ERROR;
@@ -1595,11 +1623,24 @@ evaluate_ro_op(RDB_expression *exp, RDB_getobjfn *getfnp, void *getdata,
             case RDB_EX_TBP:
                 valpv[i] = argp->var.tbref.tbp;
                 break;
+            case RDB_EX_VAR:
+                if (getfnp != NULL) {
+                    valpv[i] = (*getfnp)(argp->var.varname, getdata);
+                }
+                if (valpv[i] == NULL && txp != NULL) {
+                    /* Try to get table */
+                    valpv[i] = RDB_get_table(argp->var.varname, ecp, txp);
+                }
+                if (valpv[i] == NULL) {
+                    RDB_raise_name(argp->var.varname, ecp);
+                    ret = RDB_ERROR;
+                    goto cleanup;
+                }
+                break;
             default:
                 valpv[i] = &valv[i];
                 RDB_init_obj(&valv[i]);
-                ret = RDB_evaluate(argp, getfnp, getdata, ecp,
-                        txp, &valv[i]);
+                ret = RDB_evaluate(argp, getfnp, getdata, ecp, txp, &valv[i]);
                 if (ret != RDB_OK)
                     goto cleanup;
                 break;
@@ -1613,7 +1654,7 @@ cleanup:
         argp = exp->var.op.args.firstp;
         for (i = 0; i < argc; i++) {
             if (valpv[i] != NULL && argp->kind != RDB_EX_OBJ
-                    && argp->kind != RDB_EX_TBP) {
+                    && argp->kind != RDB_EX_TBP && argp->kind != RDB_EX_VAR) {
                 RDB_destroy_obj(&valv[i], ecp);
             }
             argp = argp->nextp;
@@ -1679,7 +1720,7 @@ RDB_evaluate(RDB_expression *exp, RDB_getobjfn *getfnp, void *getdata,
         case RDB_EX_RO_OP:
             return evaluate_ro_op(exp, getfnp, getdata, ecp, txp, valp);
         case RDB_EX_VAR:
-            /* Try to get tuple attribute */
+            /* Try to resolve variable via getfnp */
             if (getfnp != NULL) {
                 RDB_object *srcp = (*getfnp)(exp->var.varname, getdata);
                 if (srcp != NULL)

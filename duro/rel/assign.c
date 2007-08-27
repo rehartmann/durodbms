@@ -1001,8 +1001,9 @@ copy_obj(RDB_object *dstvalp, const RDB_object *srcvalp, RDB_exec_context *ecp,
     if (_RDB_copy_obj(dstvalp, srcvalp, ecp, txp) != RDB_OK)
         return RDB_ERROR;
 
-    if (srctyp != NULL && RDB_type_is_scalar(srctyp))
+    if (srctyp != NULL && RDB_type_is_scalar(srctyp)) {
         dstvalp->typ = srctyp;
+    }
     return RDB_OK;
 } 
 

@@ -4,6 +4,8 @@ Summary of Changes for Duro
 
 Changes for Duro 0.13
 
+- Removed arguments ltfnp, arg, and txp from parsing functions.
+
 - Added RDB_type_is_relation().
 
 - Added built-in operators TUPLE and RELATION.

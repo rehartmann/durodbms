@@ -27,15 +27,14 @@ test insert {creating table and inserting tuples} -setup $SETUP -body {
         current_db := 'D';
 
         begin transaction;
-        var r real relation {i integer, d double, c string}
-             key {i};
+        var r real relation {i integer, d double, c string} key {i};
         insert r relation {};
 
         var a init 1;
         insert r relation {tuple {i a, d 1.0, c 'X'}, tuple {i 2, d 1.1, c 'Y'}};
 
         var t init tuple {i 2 + 1, d 1.0, c 'Z'};
-        insert r t; 
+        insert r update t {i := i + 1};
 
         println(string(count(r)));
         println((tuple from r where i=2).c);
@@ -50,15 +49,13 @@ test private {creating private table and inserting tuples} -setup $SETUP -body {
         connect('', 'dbenv');
         current_db := 'D';
 
-        var r private relation {i integer, d double, c string}
-             key {i};
+        var r private relation {i integer, d double, c string} key {i};
         insert r relation {};
 
         var a init 1;
         insert r relation {tuple {i a, d 1.0, c 'X'}, tuple {i 2, d 1.1, c 'Y'}};
 
-        var t init tuple {i 2 + 1, d 1.0, c 'Z'};
-        insert r t; 
+        insert r tuple {i 2 + 1, d 1.0, c 'Z'}; 
 
         println(string(count(r)));
         println((tuple from r where i=2).c);

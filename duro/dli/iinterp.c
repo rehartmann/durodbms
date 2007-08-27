@@ -15,6 +15,7 @@
 #include <sys/stat.h>
 #include <errno.h>
 #include <string.h>
+#include <assert.h>
 
 typedef struct tx_node {
     RDB_transaction tx;
@@ -25,6 +26,8 @@ typedef int upd_op_func(const char *name, int argc, RDB_object *argv[],
         RDB_exec_context *, RDB_transaction *);
 
 varmap_node toplevel_vars;
+
+int err_line;
 
 static varmap_node *current_varmapp;
 
@@ -822,6 +825,7 @@ exec_assign(const RDB_parse_statement *stmtp, RDB_exec_context *ecp)
 {
     int i;
     int cnt;
+    RDB_expression *rexp;
     RDB_ma_copy copyv[DURO_MAX_LLEN];
     RDB_ma_insert insv[DURO_MAX_LLEN];
     RDB_ma_update updv[DURO_MAX_LLEN];
@@ -870,10 +874,16 @@ exec_assign(const RDB_parse_statement *stmtp, RDB_exec_context *ecp)
                     return RDB_ERROR;
                 }
                 insv[insc].objp = &srcobjv[i];
-                if (RDB_evaluate(stmtp->var.assignment.av[i].var.ins.srcp, &get_var,
-                        current_varmapp, ecp, txnp != NULL ? &txnp->tx : NULL, &srcobjv[i])
-                               != RDB_OK)
+                rexp = RDB_expr_resolve_varnames(stmtp->var.assignment.av[i].var.ins.srcp,
+                        &get_var, current_varmapp, ecp, txnp != NULL ? &txnp->tx : NULL);
+                if (rexp == NULL)
                     return RDB_ERROR;
+                if (RDB_evaluate(rexp, NULL, NULL, ecp,
+                            txnp != NULL ? &txnp->tx : NULL, &srcobjv[i]) != RDB_OK) {
+                    RDB_drop_expr(rexp, ecp);
+                    return RDB_ERROR;
+                }
+                RDB_drop_expr(rexp, ecp);
                 insc++;
                 break;
             case RDB_STMT_UPDATE:
@@ -1254,49 +1264,78 @@ int
 Duro_exec_stmt(const RDB_parse_statement *stmtp, RDB_exec_context *ecp,
         RDB_object *retvalp)
 {
+    int ret;
+    
     switch (stmtp->kind) {
         case RDB_STMT_CALL:
-            return exec_call(stmtp, ecp);
+            ret = exec_call(stmtp, ecp);
+            break;
         case RDB_STMT_VAR_DEF:
-            return exec_vardef(stmtp, ecp);
+            ret = exec_vardef(stmtp, ecp);
+            break;
         case RDB_STMT_VAR_DEF_REAL:
-            return exec_vardef_real(stmtp, ecp);
+            ret = exec_vardef_real(stmtp, ecp);
+            break;
         case RDB_STMT_VAR_DEF_VIRTUAL:
-            return exec_vardef_virtual(stmtp, ecp);
+            ret = exec_vardef_virtual(stmtp, ecp);
+            break;
         case RDB_STMT_VAR_DEF_PRIVATE:
-            return exec_vardef_private(stmtp, ecp);
+            ret = exec_vardef_private(stmtp, ecp);
+            break;
         case RDB_STMT_VAR_DROP:
-            return exec_vardrop(stmtp, ecp);
+            ret = exec_vardrop(stmtp, ecp);
+            break;
         case RDB_STMT_NOOP:
-            return RDB_OK;
+            ret = RDB_OK;
+            break;
         case RDB_STMT_IF:
-            return exec_if(stmtp, ecp, retvalp);
+            ret = exec_if(stmtp, ecp, retvalp);
+            break;
         case RDB_STMT_FOR:
-            return exec_for(stmtp, ecp, retvalp);
+            ret = exec_for(stmtp, ecp, retvalp);
+            break;
         case RDB_STMT_WHILE:
-            return exec_while(stmtp, ecp, retvalp);
+            ret = exec_while(stmtp, ecp, retvalp);
+            break;
         case RDB_STMT_ASSIGN:
-            return exec_assign(stmtp, ecp);
+            ret = exec_assign(stmtp, ecp);
+            break;
         case RDB_STMT_BEGIN_TX:
-            return exec_begin_tx(stmtp, ecp);
+            ret = exec_begin_tx(stmtp, ecp);
+            break;
         case RDB_STMT_COMMIT:
-            return exec_commit(stmtp, ecp);
+            ret = exec_commit(stmtp, ecp);
+            break;
         case RDB_STMT_ROLLBACK:
-            return exec_rollback(stmtp, ecp);
+            ret = exec_rollback(stmtp, ecp);
+            break;
         case RDB_STMT_TYPE_DEF:
-            return exec_deftype(stmtp, ecp);
+            ret = exec_deftype(stmtp, ecp);
+            break;
         case RDB_STMT_TYPE_DROP:
-            return exec_typedrop(stmtp, ecp);
+            ret = exec_typedrop(stmtp, ecp);
+            break;
         case RDB_STMT_RO_OP_DEF:
-            return exec_ro_op_def(stmtp, ecp);
+            ret = exec_ro_op_def(stmtp, ecp);
+            break;
         case RDB_STMT_UPD_OP_DEF:
-            return exec_update_op_def(stmtp, ecp);
+            ret = exec_update_op_def(stmtp, ecp);
+            break;
         case RDB_STMT_OP_DROP:
-            return exec_opdrop(stmtp, ecp);
+            ret = exec_opdrop(stmtp, ecp);
+            break;
         case RDB_STMT_RETURN:
-            return exec_return(stmtp, ecp, retvalp);
+            ret = exec_return(stmtp, ecp, retvalp);
+            break;
+        default:
+            abort();
     }
-    abort();
+    if (ret != RDB_OK) {
+        if (err_line < 0) {
+            err_line = stmtp->lineno;
+        }
+    }
+    return ret;
 }
 
 int
@@ -1316,12 +1355,16 @@ Duro_process_stmt(RDB_exec_context *ecp)
 
     _RDB_parse_prompt = RDB_obj_string(&prompt);
 
-    stmtp = RDB_parse_stmt(&get_var, current_varmapp,
-            ecp, txnp != NULL ? &txnp->tx : NULL);
-    if (stmtp == NULL)
+    stmtp = RDB_parse_stmt(ecp);
+    if (stmtp == NULL) {
         return RDB_ERROR;
+    }
+    assert(RDB_get_err(ecp) == NULL);
     if (Duro_exec_stmt(stmtp, ecp, NULL) != RDB_OK) {
         RDB_parse_del_stmt(stmtp, ecp);
+        if (RDB_get_err(ecp) == NULL) {
+            RDB_raise_internal("statement execution failed, no error available", ecp);
+        }
         return RDB_ERROR;
     }
     return RDB_parse_del_stmt(stmtp, ecp);

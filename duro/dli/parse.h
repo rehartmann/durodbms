@@ -138,6 +138,7 @@ typedef struct RDB_parse_statement {
         } opdrop;
         RDB_expression *retexp;
     } var;
+    int lineno;
     struct RDB_parse_statement *nextp;
 } RDB_parse_statement;
 
@@ -158,12 +159,10 @@ int
 RDB_parse_destroy_assign(RDB_parse_assign *, RDB_exec_context *);
 
 RDB_expression *
-RDB_parse_expr(const char *, RDB_getobjfn *, void *, RDB_exec_context *,
-        RDB_transaction *);
+RDB_parse_expr(const char *, RDB_exec_context *);
 
 RDB_parse_statement *
-RDB_parse_stmt(RDB_getobjfn *, void *, RDB_exec_context *,
-        RDB_transaction *);
+RDB_parse_stmt(RDB_exec_context *);
 
 int
 RDB_parse_del_keydef_list(RDB_parse_keydef *firstkeyp, RDB_exec_context *);
