@@ -117,10 +117,22 @@ RDB_parse_del_assignlist(RDB_parse_attr_assign *ap, RDB_exec_context *ecp)
     return RDB_OK;
 }
 
+static int
+destroy_parse_type(RDB_parse_type *ptyp, RDB_exec_context *ecp)
+{
+    int ret = RDB_OK;
+    
+    if (ptyp->exp != NULL)
+        ret = RDB_drop_expr(ptyp->exp, ecp);
+    if (ptyp->typ != NULL && !RDB_type_is_scalar(ptyp->typ))
+        ret = RDB_drop_type(ptyp->typ, ecp, NULL);
+    return ret;    
+}
+
 int
 RDB_parse_del_stmt(RDB_parse_statement *stmtp, RDB_exec_context *ecp)
 {
-    int i, j;
+    int i;
     int ret = RDB_OK;
 
     switch(stmtp->kind) {
@@ -129,18 +141,14 @@ RDB_parse_del_stmt(RDB_parse_statement *stmtp, RDB_exec_context *ecp)
             break;
         case RDB_STMT_VAR_DEF:
             ret = RDB_destroy_obj(&stmtp->var.vardef.varname, ecp);
-            if (stmtp->var.vardef.typ != NULL
-                    && !RDB_type_is_scalar(stmtp->var.vardef.typ))
-                ret = RDB_drop_type(stmtp->var.vardef.typ, ecp, NULL);
+            ret = destroy_parse_type(&stmtp->var.vardef.type, ecp);
             if (stmtp->var.vardef.exp != NULL)
                 ret = RDB_drop_expr(stmtp->var.vardef.exp, ecp);
             break;
         case RDB_STMT_VAR_DEF_REAL:
         case RDB_STMT_VAR_DEF_PRIVATE:
             ret = RDB_destroy_obj(&stmtp->var.vardef.varname, ecp);
-            if (stmtp->var.vardef.typ != NULL
-                    && !RDB_type_is_scalar(stmtp->var.vardef.typ))
-                ret = RDB_drop_type(stmtp->var.vardef.typ, ecp, NULL);
+            ret = destroy_parse_type(&stmtp->var.vardef.type, ecp);
             if (stmtp->var.vardef.exp != NULL)
                 ret = RDB_drop_expr(stmtp->var.vardef.exp, ecp);
             if (stmtp->var.vardef.firstkeyp != NULL)
@@ -178,6 +186,7 @@ RDB_parse_del_stmt(RDB_parse_statement *stmtp, RDB_exec_context *ecp)
             break;
         case RDB_STMT_TYPE_DEF:
             ret = RDB_destroy_obj(&stmtp->var.deftype.typename, ecp);
+/* !!
             for (i = 0; i < stmtp->var.deftype.repc; i++) {
                 RDB_possrep *rep = &stmtp->var.deftype.repv[i];
                 for (j = 0; j < rep->compc; j++) {
@@ -186,13 +195,13 @@ RDB_parse_del_stmt(RDB_parse_statement *stmtp, RDB_exec_context *ecp)
                         RDB_drop_type(rep->compv[j].typ, ecp, NULL);
                 }
             }
+*/
             break;
         case RDB_STMT_TYPE_DROP:
             ret = RDB_destroy_obj(&stmtp->var.typedrop.typename, ecp);
             break;
         case RDB_STMT_RO_OP_DEF:
-            if (!RDB_type_is_scalar(stmtp->var.opdef.rtyp))
-                RDB_drop_type(stmtp->var.opdef.rtyp, ecp, NULL);
+            destroy_parse_type(&stmtp->var.opdef.rtype, ecp);
             ret = RDB_destroy_obj(&stmtp->var.opdef.opname, ecp);
             break;
         case RDB_STMT_UPD_OP_DEF:

@@ -20,18 +20,6 @@ extern RDB_parse_statement *_RDB_parse_stmtp;
 extern RDB_exec_context *_RDB_parse_ecp;
 extern int yylineno;
 
-typedef struct parse_attribute {
-    RDB_expression *namexp;
-    RDB_type *typ;
-    struct parse_attribute *nextp;
-} parse_attribute;
-
-typedef struct parse_possrep {
-    RDB_expression *namexp;
-    parse_attribute *attrlistp;
-    struct parse_possrep *nextp;
-} parse_possrep;
-
 static RDB_expression *
 table_dum_expr(void)
 {
@@ -59,68 +47,17 @@ yylex(void);
 void
 yyerror(const char *);
 
-static int
-attrlist_length(parse_attribute *attrlistp)
-{
-    int res = 0;
-    while (attrlistp != NULL) {
-        res++;
-        attrlistp = attrlistp->nextp;
-    }
-    return res;
-}
-
 static RDB_parse_statement *
-new_deftype(const char *name, parse_possrep *possreplistp,
+new_deftype(const char *name, RDB_parse_possrep *possreplistp,
         RDB_expression *constrp)
 {
-    int i;
-    parse_possrep *rep;
-    parse_attribute *attrlistp;
-    int repc = 0;
     RDB_parse_statement *stmtp = RDB_alloc(sizeof(RDB_parse_statement), _RDB_parse_ecp);
     if (stmtp == NULL) {
         return NULL;
     }
 
     stmtp->kind = RDB_STMT_TYPE_DEF;
-    rep = possreplistp;
-    while (rep != NULL) {
-        repc++;
-        rep = rep->nextp;
-    }
-
-    stmtp->var.deftype.repc = repc;
-    stmtp->var.deftype.repv = RDB_alloc(sizeof(RDB_possrep) * repc, _RDB_parse_ecp);
-    if (stmtp->var.deftype.repv == NULL) {
-   	    RDB_free(stmtp);
-        return NULL;
-    }
-    rep = possreplistp;
-    for (i = 0; i < repc; i++) {
-        int j;
-        int compc = attrlist_length(rep->attrlistp);
-
-        stmtp->var.deftype.repv[i].compc = compc;
-        stmtp->var.deftype.repv[i].compv = RDB_alloc(sizeof(RDB_attr) * compc,
-        		_RDB_parse_ecp);
-        if (stmtp->var.deftype.repv[i].compv == NULL) {
-            return NULL;
-        }
-
-        attrlistp = rep->attrlistp;
-        for (j = 0; j < compc; j++) {
-            stmtp->var.deftype.repv[i].compv[j].name = attrlistp->namexp->var.varname;
-            stmtp->var.deftype.repv[i].compv[j].typ = attrlistp->typ;
-            attrlistp = attrlistp->nextp;
-        }
-        if (rep->namexp != NULL) {
-            stmtp->var.deftype.repv[i].name = rep->namexp->var.varname;
-        } else {
-            stmtp->var.deftype.repv[i].name = NULL;
-        }
-        /* !! free attrlist */
-    }
+    stmtp->var.deftype.replistp = possreplistp;
     RDB_init_obj(&stmtp->var.deftype.typename);
   	if (RDB_string_to_obj(&stmtp->var.deftype.typename, name,
   	        _RDB_parse_ecp) != RDB_OK)
@@ -130,7 +67,7 @@ new_deftype(const char *name, parse_possrep *possreplistp,
 }
 
 static RDB_parse_statement *
-new_var_def(const char *name, RDB_type *typ, RDB_expression *exp)
+new_var_def(const char *name, RDB_expression *typexp, RDB_expression *exp)
 {
     RDB_parse_statement *stmtp = RDB_alloc(sizeof(RDB_parse_statement), _RDB_parse_ecp);
     if (stmtp == NULL) {
@@ -143,14 +80,15 @@ new_var_def(const char *name, RDB_type *typ, RDB_expression *exp)
 	    RDB_destroy_obj(&stmtp->var.vardef.varname, NULL);
 	    return NULL;
 	}
-	stmtp->var.vardef.typ = typ;
+	stmtp->var.vardef.type.exp = typexp;
+	stmtp->var.vardef.type.typ = NULL;
    	stmtp->var.vardef.exp = exp;
    	stmtp->lineno = yylineno;
    	return stmtp;
 }
 
 static RDB_parse_statement *
-new_var_def_real(const char *name, RDB_type *rtyp, RDB_expression *exp,
+new_var_def_real(const char *name, RDB_expression *rtypexp, RDB_expression *exp,
         RDB_parse_keydef *firstkeyp)
 {
     RDB_parse_statement *stmtp = RDB_alloc(sizeof(RDB_parse_statement), _RDB_parse_ecp);
@@ -164,14 +102,15 @@ new_var_def_real(const char *name, RDB_type *rtyp, RDB_expression *exp,
 	    RDB_destroy_obj(&stmtp->var.vardef.varname, NULL);
 	    return NULL;
 	}
-	stmtp->var.vardef.typ = rtyp;
+	stmtp->var.vardef.type.exp = rtypexp;
+	stmtp->var.vardef.type.typ = NULL;
    	stmtp->var.vardef.exp = exp;
    	stmtp->var.vardef.firstkeyp = firstkeyp;
    	return stmtp;
 }
 
 static RDB_parse_statement *
-new_var_def_private(const char *name, RDB_type *rtyp, RDB_expression *exp,
+new_var_def_private(const char *name, RDB_expression *rtypexp, RDB_expression *exp,
         RDB_parse_keydef *firstkeyp)
 {
     RDB_parse_statement *stmtp = RDB_alloc(sizeof(RDB_parse_statement), _RDB_parse_ecp);
@@ -185,25 +124,27 @@ new_var_def_private(const char *name, RDB_type *rtyp, RDB_expression *exp,
 	    RDB_destroy_obj(&stmtp->var.vardef.varname, NULL);
 	    return NULL;
 	}
-	stmtp->var.vardef.typ = rtyp;
+	stmtp->var.vardef.type.exp = rtypexp;
+	stmtp->var.vardef.type.typ = NULL;
    	stmtp->var.vardef.exp = exp;
    	stmtp->var.vardef.firstkeyp = firstkeyp;
    	return stmtp;
 }
 
 static RDB_parse_statement *
-new_ro_op_def(const char *name, parse_attribute *arglistp, RDB_type *rtyp,
+new_ro_op_def(const char *name, RDB_expr_list *arglistp, RDB_expression *rtypexp,
 		RDB_parse_statement *stmtlistp)
 {
     int i;
-    parse_attribute *attrlistp;
-    int argc = attrlist_length(arglistp);
+    RDB_expression *argp = arglistp->firstp;
+    int argc = RDB_expr_list_length(arglistp) / 2;
     RDB_parse_statement *stmtp = RDB_alloc(sizeof(RDB_parse_statement), _RDB_parse_ecp);
     if (stmtp == NULL)
         return NULL;
 
     stmtp->kind = RDB_STMT_RO_OP_DEF;
-    stmtp->var.opdef.rtyp = rtyp;
+    stmtp->var.opdef.rtype.exp = rtypexp;
+    stmtp->var.opdef.rtype.typ = NULL;
     RDB_init_obj(&stmtp->var.opdef.opname);
     stmtp->var.opdef.argv = NULL;
     stmtp->var.opdef.bodyp = stmtlistp;
@@ -215,15 +156,15 @@ new_ro_op_def(const char *name, parse_attribute *arglistp, RDB_type *rtyp,
   	stmtp->var.opdef.argv = RDB_alloc(argc * sizeof(RDB_parse_arg), _RDB_parse_ecp);
   	if (stmtp->var.opdef.argv == NULL)
   	    goto error;
-  	attrlistp = arglistp;
     for (i = 0; i < argc; i++) {
         RDB_init_obj(&stmtp->var.opdef.argv[i].name);
         if (RDB_string_to_obj(&stmtp->var.opdef.argv[i].name,
-                arglistp->namexp->var.varname, _RDB_parse_ecp) != RDB_OK) {
+                argp->var.varname, _RDB_parse_ecp) != RDB_OK) {
       	    goto error;
       	}
-      	stmtp->var.opdef.argv[i].typ = arglistp->typ;
-      	arglistp = arglistp->nextp;
+      	stmtp->var.opdef.argv[i].type.exp = argp->nextp;
+      	stmtp->var.opdef.argv[i].type.typ = NULL;
+      	argp = argp->nextp->nextp;
   	}
 
   	return stmtp;
@@ -237,11 +178,11 @@ error:
 }
 
 static RDB_bool
-argname_in_list(parse_attribute *argp, RDB_expr_list *listp)
+argname_in_list(RDB_expression *argp, RDB_expr_list *listp)
 {
     RDB_expression *exp = listp->firstp;
     while(exp != NULL) {
-        if (strcmp(argp->namexp->var.varname, RDB_obj_string(RDB_expr_obj(exp))) == 0)
+        if (strcmp(argp->var.varname, RDB_obj_string(RDB_expr_obj(exp))) == 0)
             return RDB_TRUE;
         exp = exp->nextp;
     }
@@ -249,12 +190,11 @@ argname_in_list(parse_attribute *argp, RDB_expr_list *listp)
 }
 
 static RDB_parse_statement *
-new_update_op_def(const char *name, parse_attribute *arglistp,
+new_update_op_def(const char *name, RDB_expr_list *arglistp,
         RDB_expr_list *updlistp, RDB_parse_statement *stmtlistp)
 {
     int i;
-    parse_attribute *attrlistp;
-    int argc = attrlist_length(arglistp);
+    RDB_expression *argp;
     RDB_parse_statement *stmtp = RDB_alloc(sizeof(RDB_parse_statement), _RDB_parse_ecp);
     if (stmtp == NULL)
         return NULL;
@@ -267,24 +207,26 @@ new_update_op_def(const char *name, parse_attribute *arglistp,
       	        != RDB_OK) {
       	goto error;
   	}
-  	stmtp->var.opdef.argc = argc;
-  	stmtp->var.opdef.argv = RDB_alloc(argc * sizeof(RDB_parse_arg), _RDB_parse_ecp);
+  	stmtp->var.opdef.argc = RDB_expr_list_length(arglistp) / 2;
+  	stmtp->var.opdef.argv = RDB_alloc(
+  			stmtp->var.opdef.argc * sizeof(RDB_parse_arg), _RDB_parse_ecp);
   	if (stmtp->var.opdef.argv == NULL)
   	    goto error;
-  	for (i = 0; i < argc; i++) {
+  	for (i = 0; i < stmtp->var.opdef.argc; i++) {
   	    stmtp->var.opdef.argv[i].upd = RDB_FALSE;
   	}
-  	attrlistp = arglistp;
-    for (i = 0; i < argc; i++) {
+  	argp = arglistp->firstp;
+    for (i = 0; i < stmtp->var.opdef.argc; i++) {
         RDB_init_obj(&stmtp->var.opdef.argv[i].name);
         if (RDB_string_to_obj(&stmtp->var.opdef.argv[i].name,
-                arglistp->namexp->var.varname, _RDB_parse_ecp) != RDB_OK) {
+                argp->var.varname, _RDB_parse_ecp) != RDB_OK) {
       	    goto error;
       	}
-      	stmtp->var.opdef.argv[i].typ = arglistp->typ;
-      	if (argname_in_list(arglistp, updlistp))
+      	stmtp->var.opdef.argv[i].type.exp = argp->nextp;
+      	stmtp->var.opdef.argv[i].type.typ = NULL;
+      	if (argname_in_list(argp, updlistp))
       	    stmtp->var.opdef.argv[i].upd = RDB_TRUE;
-      	arglistp = arglistp->nextp;
+      	argp = argp->nextp->nextp;
   	}
 
   	return stmtp;
@@ -305,7 +247,6 @@ error:
 %union {
     RDB_expression *exp;
     RDB_expr_list explist;
-    RDB_type *type;
     RDB_parse_statement *stmt;
     struct {
         RDB_parse_statement *firstp;
@@ -313,19 +254,14 @@ error:
     } stmtlist;
     RDB_parse_assign assign;
     RDB_parse_attr_assign *assignlist;
-    parse_attribute attr;
-    struct {
-        parse_attribute *firstp;
-        parse_attribute *lastp;
-    } attrlist;
     struct {
         RDB_parse_keydef *firstp;
         RDB_parse_keydef *lastp;
     } keylist;
-    parse_possrep possrep;
+    RDB_parse_possrep possrep;
     struct {
-        parse_possrep *firstp;
-        parse_possrep *lastp;
+        RDB_parse_possrep *firstp;
+        RDB_parse_possrep *lastp;
     } possreplist;
 }
 
@@ -351,7 +287,7 @@ error:
 
 %type <exp> expression literal ro_op_invocation count_invocation
         sum_invocation avg_invocation min_invocation max_invocation
-        all_invocation any_invocation dot_invocation
+        all_invocation any_invocation dot_invocation type
 
 %type <explist> expression_list ne_expression_list
         ne_id_list id_list ne_tuple_item_list
@@ -359,20 +295,15 @@ error:
         renaming ne_renaming_list renaming_list
         summarize_add_list ne_summarize_add_list
         wrapping wrapping_list ne_wrapping_list
+        attribute_list ne_attribute_list
 
 %type <stmt> statement statement_body assignment
-
-%type <type> type
 
 %type <stmtlist> ne_statement_list
 
 %type <assign> simple_assign assign;
 
 %type <assignlist> ne_attr_assign_list;
-
-%type <attr> attribute
-
-%type <attrlist> attribute_list ne_attribute_list
 
 %type <keylist> key_list ne_key_list
 
@@ -398,12 +329,6 @@ error:
 } statement statement_body assignment
 
 %destructor {
-    if (!RDB_type_is_scalar($$)) {
-        RDB_drop_type($$, _RDB_parse_ecp, NULL);
-    }
-} type
-
-%destructor {
     RDB_parse_del_keydef_list($$.firstp, _RDB_parse_ecp);
 } key_list ne_key_list
 
@@ -418,22 +343,6 @@ error:
 %destructor {
     RDB_parse_del_assignlist($$, _RDB_parse_ecp);
 } ne_attr_assign_list
-
-%destructor {
-    RDB_drop_expr($$.namexp, _RDB_parse_ecp);
-    if (!RDB_type_is_scalar($$.typ))
-        RDB_drop_type($$.typ, _RDB_parse_ecp, NULL);
-} attribute
-
-%destructor {
-    parse_attribute *attrp = $$.firstp;
-    while (attrp != NULL) {
-        if (!RDB_type_is_scalar(attrp->typ))
-            RDB_drop_type(attrp->typ, _RDB_parse_ecp, NULL);
-        RDB_drop_expr(attrp->namexp, _RDB_parse_ecp);
-        attrp = attrp->nextp;
-    }
-} ne_attribute_list
 
 %left TOK_FROM TOK_ELSE ','
 %left TOK_UNION TOK_MINUS TOK_INTERSECT TOK_SEMIMINUS TOK_JOIN TOK_SEMIJOIN
@@ -517,40 +426,40 @@ statement: statement_body ';'
     }
     | TOK_OPERATOR TOK_ID '(' attribute_list ')' TOK_RETURNS type
             ne_statement_list TOK_END TOK_OPERATOR {
-        $$ = new_ro_op_def($2->var.varname, $4.firstp, $7, $8.firstp);
+        $$ = new_ro_op_def($2->var.varname, &$4, $7, $8.firstp);
         if ($$ == NULL)
             YYERROR;
     }
     | TOK_OPERATOR TOK_ID '(' attribute_list ')' TOK_UPDATES '{' id_list '}'
             ne_statement_list TOK_END TOK_OPERATOR {
-        $$ = new_update_op_def($2->var.varname, $4.firstp, &$8, $10.firstp);
+        $$ = new_update_op_def($2->var.varname, &$4, &$8, $10.firstp);
         if ($$ == NULL)
             YYERROR;
     }
 
 possrep_def: TOK_POSSREP '{' attribute_list '}' {
 	    $$.namexp = NULL;
-        $$.attrlistp = $3.firstp;
+        $$.attrlist = $3;
 	}
 	| TOK_POSSREP TOK_ID '{' attribute_list '}' {
 	    $$.namexp = $2;
-        $$.attrlistp = $4.firstp;
+        $$.attrlist = $4;
 	}
 
 possrep_def_list: possrep_def {
-        $$.firstp = RDB_alloc(sizeof(parse_possrep), _RDB_parse_ecp);
+        $$.firstp = RDB_alloc(sizeof(RDB_parse_possrep), _RDB_parse_ecp);
 	    if ($$.firstp == NULL)
 	        YYERROR;
-        $$.firstp->attrlistp = $1.attrlistp;
+        $$.firstp->attrlist = $1.attrlist;
         $$.firstp->namexp = $1.namexp;
         $$.firstp->nextp = NULL;
         $$.lastp = $$.firstp;
     }
 	| possrep_def_list possrep_def {
-	    $1.lastp->nextp = RDB_alloc(sizeof(parse_possrep), _RDB_parse_ecp);
+	    $1.lastp->nextp = RDB_alloc(sizeof(RDB_parse_possrep), _RDB_parse_ecp);
 	    if ($1.lastp->nextp == NULL)
 	        YYERROR;
-	    $1.lastp->nextp->attrlistp = $2.attrlistp;
+	    $1.lastp->nextp->attrlist = $2.attrlist;
 	    $1.lastp->nextp->namexp = $2.namexp;
 	    $$.firstp = $1.firstp;
 	    $$.lastp = $1.lastp->nextp;
@@ -582,18 +491,14 @@ statement_body: /* empty */ {
     | TOK_VAR TOK_ID type {
         $$ = new_var_def($2->var.varname, $3, NULL);
         if ($$ == NULL) {
-            if (!RDB_type_is_scalar($3)) {
-                RDB_drop_type($3, _RDB_parse_ecp, NULL);
-            }
+            RDB_drop_expr($3, _RDB_parse_ecp);
             YYERROR;
         }
     }
     | TOK_VAR TOK_ID type TOK_INIT expression {
         $$ = new_var_def($2->var.varname, $3, $5);
         if ($$ == NULL) {
-            if (!RDB_type_is_scalar($3)) {
-                RDB_drop_type($3, _RDB_parse_ecp, NULL);
-            }
+            RDB_drop_expr($3, _RDB_parse_ecp);
             RDB_drop_expr($5, _RDB_parse_ecp);
             YYERROR;
         }
@@ -606,34 +511,19 @@ statement_body: /* empty */ {
         }
     }
     | TOK_VAR TOK_ID TOK_REAL type ne_key_list {
-        if (!RDB_type_is_relation($4)) {
-            RDB_drop_expr($2, _RDB_parse_ecp);
-            RDB_drop_type($4, _RDB_parse_ecp, NULL);
-            RDB_parse_del_keydef_list($5.firstp, _RDB_parse_ecp);
-            RDB_raise_type_mismatch("relation type required", _RDB_parse_ecp);
-            YYERROR;
-        }
         $$ = new_var_def_real($2->var.varname, $4, NULL, $5.firstp);
         if ($$ == NULL) {
             RDB_drop_expr($2, _RDB_parse_ecp);
-            RDB_drop_type($4, _RDB_parse_ecp, NULL);
+            RDB_drop_expr($4, _RDB_parse_ecp);
             RDB_parse_del_keydef_list($5.firstp, _RDB_parse_ecp);
            	YYERROR;
         }
     }
     | TOK_VAR TOK_ID TOK_REAL type TOK_INIT expression key_list {
-        if (!RDB_type_is_relation($4)) {
-            RDB_drop_expr($2, _RDB_parse_ecp);
-            RDB_drop_type($4, _RDB_parse_ecp, NULL);
-            RDB_drop_expr($6, _RDB_parse_ecp);
-            RDB_parse_del_keydef_list($7.firstp, _RDB_parse_ecp);
-            RDB_raise_type_mismatch("relation type required", _RDB_parse_ecp);
-            YYERROR;
-        }
         $$ = new_var_def_real($2->var.varname, $4, $6, $7.firstp);
         if ($$ == NULL) {
             RDB_drop_expr($2, _RDB_parse_ecp);
-            RDB_drop_type($4, _RDB_parse_ecp, NULL);
+            RDB_drop_expr($4, _RDB_parse_ecp);
             RDB_drop_expr($6, _RDB_parse_ecp);
             RDB_parse_del_keydef_list($7.firstp, _RDB_parse_ecp);
            	YYERROR;
@@ -649,34 +539,19 @@ statement_body: /* empty */ {
         }
     }
     | TOK_VAR TOK_ID TOK_PRIVATE type ne_key_list {
-        if (!RDB_type_is_relation($4)) {
-            RDB_drop_expr($2, _RDB_parse_ecp);
-            RDB_drop_type($4, _RDB_parse_ecp, NULL);
-            RDB_parse_del_keydef_list($5.firstp, _RDB_parse_ecp);
-            RDB_raise_type_mismatch("relation type required", _RDB_parse_ecp);
-            YYERROR;
-        }
         $$ = new_var_def_private($2->var.varname, $4, NULL, $5.firstp);
         if ($$ == NULL) {
             RDB_drop_expr($2, _RDB_parse_ecp);
-            RDB_drop_type($4, _RDB_parse_ecp, NULL);
+            RDB_drop_expr($4, _RDB_parse_ecp);
             RDB_parse_del_keydef_list($5.firstp, _RDB_parse_ecp);
            	YYERROR;
         }
     }
     | TOK_VAR TOK_ID TOK_PRIVATE type TOK_INIT expression key_list {
-        if (!RDB_type_is_relation($4)) {
-            RDB_drop_expr($2, _RDB_parse_ecp);
-            RDB_drop_type($4, _RDB_parse_ecp, NULL);
-            RDB_drop_expr($6, _RDB_parse_ecp);
-            RDB_parse_del_keydef_list($7.firstp, _RDB_parse_ecp);
-            RDB_raise_type_mismatch("relation type required", _RDB_parse_ecp);
-            YYERROR;
-        }
         $$ = new_var_def_private($2->var.varname, $4, $6, $7.firstp);
         if ($$ == NULL) {
             RDB_drop_expr($2, _RDB_parse_ecp);
-            RDB_drop_type($4, _RDB_parse_ecp, NULL);
+            RDB_drop_expr($4, _RDB_parse_ecp);
             RDB_drop_expr($6, _RDB_parse_ecp);
             RDB_parse_del_keydef_list($7.firstp, _RDB_parse_ecp);
            	YYERROR;
@@ -2252,89 +2127,46 @@ attribute_list: /* empty */ {
 	    $$ = $1;
 	}
 
-ne_attribute_list: attribute {
-        $$.firstp = RDB_alloc(sizeof(parse_attribute), _RDB_parse_ecp);
-        if ($$.firstp == NULL) {
-            YYERROR;
-        }
-
-        $$.firstp->namexp = $1.namexp;
-        $$.firstp->typ = $1.typ;
-        $$.firstp->nextp = NULL;
-        $$.lastp = $$.firstp;
+ne_attribute_list: TOK_ID type {
+        $$.firstp = $1;
+        $$.lastp = $2;
+        $$.firstp->nextp = $2;
+        $2->nextp = NULL;
     }
-    | ne_attribute_list ',' attribute {
-        parse_attribute *attrp = RDB_alloc(sizeof(parse_attribute), _RDB_parse_ecp);
-        if (attrp == NULL) {
-            YYERROR;
-        }
-
-        attrp->namexp = $3.namexp;
-        attrp->typ = $3.typ;
-
-        $1.lastp->nextp = attrp;
-        attrp->nextp = NULL;
-        $$.lastp = attrp;
+    | ne_attribute_list ',' TOK_ID type {
         $$.firstp = $1.firstp;
+        $$.lastp->nextp = $3;
+        $$.lastp = $4;
+        $3->nextp = $4;
+        $4->nextp = NULL;
     }
     ;
 
-attribute: TOK_ID type {
-        $$.namexp = $1;
-        $$.typ = $2;
-    }
-    ;
-
-type: TOK_ID {
-		$$ = RDB_get_type($1->var.varname, _RDB_parse_ecp, NULL); /* !! */
-		if ($$ == NULL)
-		    YYERROR;
-    }
+type: TOK_ID
     | TOK_TUPLE '{' '}' {
-        $$ = RDB_create_tuple_type(0, NULL, _RDB_parse_ecp);
+        $$ = RDB_ro_op("TUPLE", _RDB_parse_ecp);
 		if ($$ == NULL)
 		    YYERROR;
     }
     | TOK_TUPLE '{' ne_attribute_list '}' {
-        RDB_attr attrv[DURO_MAX_LLEN];
-        parse_attribute *attrp = $3.firstp;
-        int i = 0;
-
-        while (attrp != NULL) {
-            attrv[i].name = attrp->namexp->var.varname;
-            attrv[i].typ = RDB_dup_nonscalar_type(attrp->typ,
-            		_RDB_parse_ecp);
-            if (attrv[i].typ == NULL)
-                YYERROR;
-            attrp = attrp->nextp;
-            i++;
-        }
-        $$ = RDB_create_tuple_type(i, attrv, _RDB_parse_ecp);
+        $$ = RDB_ro_op("TUPLE", _RDB_parse_ecp);
 		if ($$ == NULL)
 		    YYERROR;
+
+        $$->var.op.args = $3;
     }
     | TOK_RELATION '{' attribute_list '}' {
-        RDB_attr attrv[DURO_MAX_LLEN];
-        int i = 0;
-        parse_attribute *attrp = $3.firstp;
-
-        while (attrp != NULL) {
-            attrv[i].name = attrp->namexp->var.varname;
-            attrv[i].typ = RDB_dup_nonscalar_type(attrp->typ,
-            		_RDB_parse_ecp);
-            if (attrv[i].typ == NULL)
-                YYERROR;
-            attrp = attrp->nextp;
-            i++;
-        }
-        $$ = RDB_create_relation_type(i, attrv, _RDB_parse_ecp);
+        $$ = RDB_ro_op("RELATION", _RDB_parse_ecp);
 		if ($$ == NULL)
 		    YYERROR;
+
+        $$->var.op.args = $3;
     }
     | TOK_SAME_TYPE_AS '(' expression ')' {
-		$$ = RDB_expr_type($3, NULL, NULL, _RDB_parse_ecp, NULL); /* !! */
+        $$ = RDB_ro_op("SAME_TYPE_AS", _RDB_parse_ecp);
 		if ($$ == NULL)
 		    YYERROR;
+        RDB_add_arg($$, $3);
 	}
 /*
     | "SAME_HEADING_AS" '(' expression ')'

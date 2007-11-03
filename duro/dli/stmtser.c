@@ -18,11 +18,11 @@ serialize_var_def(RDB_object *objp, int *posp, const RDB_parse_statement *stmtp,
         return RDB_ERROR;
     }
     if (_RDB_serialize_byte(objp, posp,
-            (RDB_byte) (stmtp->var.vardef.typ != NULL), ecp) != RDB_OK) {
+            (RDB_byte) (stmtp->var.vardef.type.exp != NULL), ecp) != RDB_OK) {
          return RDB_ERROR;
     }
-    if (stmtp->var.vardef.typ != NULL) {
-        if (_RDB_serialize_type(objp, posp, stmtp->var.vardef.typ, ecp)
+    if (stmtp->var.vardef.type.exp != NULL) {
+        if (_RDB_serialize_expr(objp, posp, stmtp->var.vardef.type.exp, ecp)
                 != RDB_OK) {
             return RDB_ERROR;
         }
@@ -86,11 +86,11 @@ serialize_var_def_real(RDB_object *objp, int *posp, const RDB_parse_statement *s
         return RDB_ERROR;
     }
     if (_RDB_serialize_byte(objp, posp,
-            (RDB_byte) (stmtp->var.vardef.typ != NULL), ecp) != RDB_OK) {
+            (RDB_byte) (stmtp->var.vardef.type.exp != NULL), ecp) != RDB_OK) {
          return RDB_ERROR;
     }
-    if (stmtp->var.vardef.typ != NULL) {
-        if (_RDB_serialize_type(objp, posp, stmtp->var.vardef.typ, ecp)
+    if (stmtp->var.vardef.type.exp != NULL) {
+        if (_RDB_serialize_expr(objp, posp, stmtp->var.vardef.type.exp, ecp)
                 != RDB_OK) {
             return RDB_ERROR;
         }
@@ -325,41 +325,57 @@ serialize_return(RDB_object *objp, int *posp, const RDB_parse_statement *stmtp,
 }
 
 static int
+serialize_possrep(RDB_object *objp, int *posp, const RDB_parse_possrep *rep,
+        RDB_exec_context *ecp)
+{
+    RDB_expression *exp;
+
+    if (_RDB_serialize_str(objp, posp,
+            rep->namexp != NULL ? RDB_obj_string(RDB_expr_obj(rep->namexp)) : "",
+            ecp) != RDB_OK)
+        return RDB_ERROR;
+
+    if (_RDB_serialize_int(objp, posp,
+            RDB_expr_list_length(&rep->attrlist), ecp) != RDB_OK)
+        return RDB_ERROR;
+
+    exp = rep->attrlist.firstp;
+    while (exp != NULL) {
+        if (_RDB_serialize_expr(objp, posp, exp, ecp) != RDB_OK)
+            return RDB_ERROR;
+        exp = exp->nextp;
+    }
+    return RDB_OK;
+}
+
+static int
 serialize_type_def(RDB_object *objp, int *posp, const RDB_parse_statement *stmtp,
         RDB_exec_context *ecp)
 {
-    int i, j;
-    char *name;
-    
+    RDB_parse_possrep *rep;
+    RDB_int repc;
+
     if (_RDB_serialize_str(objp, posp,
             RDB_obj_string(&stmtp->var.deftype.typename), ecp) != RDB_OK) {
         return RDB_ERROR;
     }
-    if (_RDB_serialize_int(objp, posp, (RDB_int) stmtp->var.deftype.repc, ecp)
-            != RDB_OK) {
+
+    repc = 0;
+    rep = stmtp->var.deftype.replistp;
+    while (rep != NULL) {
+        repc++;
+        rep = rep->nextp;
+    }
+    if (_RDB_serialize_int(objp, posp, repc, ecp) != RDB_OK) {
         return RDB_ERROR;
     }
-    for (i = 0; i < stmtp->var.deftype.repc; i++) {
-        name = stmtp->var.deftype.repv[i].name;
-        if (_RDB_serialize_str(objp, posp, name != NULL ? name : "", ecp)
-                != RDB_OK) {
+    rep = stmtp->var.deftype.replistp;
+    while (rep != NULL) {
+        if (serialize_possrep(objp, posp, rep, ecp) != RDB_OK)
             return RDB_ERROR;
-        }
-        if (_RDB_serialize_int(objp, posp, (RDB_int) stmtp->var.deftype.repv[i].compc, ecp)
-                != RDB_OK) {
-            return RDB_ERROR;
-        }
-        for (j = 0; j < stmtp->var.deftype.repv[i].compc; j++) {
-            if (_RDB_serialize_str(objp, posp, stmtp->var.deftype.repv[i].compv[j].name, ecp)
-                    != RDB_OK) {
-                return RDB_ERROR;
-            }
-            if (_RDB_serialize_type(objp, posp, stmtp->var.deftype.repv[i].compv[j].typ, ecp)
-                    != RDB_OK) {
-                return RDB_ERROR;
-            }
-        }
+        rep = rep->nextp;
     }
+
     if (_RDB_serialize_byte(objp, posp,
             (RDB_byte) (stmtp->var.deftype.constraintp != NULL), ecp)
             != RDB_OK) {
@@ -398,12 +414,12 @@ serialize_ro_op_def(RDB_object *objp, int *posp, const RDB_parse_statement *stmt
                 RDB_obj_string(&stmtp->var.opdef.argv[i].name), ecp) != RDB_OK) {
             return RDB_ERROR;
         }
-        if (_RDB_serialize_type(objp, posp, stmtp->var.opdef.argv[i].typ, ecp)
+        if (_RDB_serialize_expr(objp, posp, stmtp->var.opdef.argv[i].type.exp, ecp)
                 != RDB_OK) {
             return RDB_ERROR;
         }
     }
-    if (_RDB_serialize_type(objp, posp, stmtp->var.opdef.rtyp, ecp)
+    if (_RDB_serialize_expr(objp, posp, stmtp->var.opdef.rtype.exp, ecp)
             != RDB_OK) {
         return RDB_ERROR;
     }
@@ -426,7 +442,7 @@ serialize_upd_op_def(RDB_object *objp, int *posp, const RDB_parse_statement *stm
                 RDB_obj_string(&stmtp->var.opdef.argv[i].name), ecp) != RDB_OK) {
             return RDB_ERROR;
         }
-        if (_RDB_serialize_type(objp, posp, stmtp->var.opdef.argv[i].typ, ecp)
+        if (_RDB_serialize_expr(objp, posp, stmtp->var.opdef.argv[i].type.exp, ecp)
                 != RDB_OK) {
             return RDB_ERROR;
         }
@@ -536,11 +552,11 @@ deserialize_var_def(RDB_object *objp, int *posp, RDB_exec_context *ecp,
     if (hastype == RDB_ERROR)
         return RDB_ERROR;
     if (hastype) {
-        stmtp->var.vardef.typ = _RDB_deserialize_type(objp, posp, ecp, txp);
-        if (stmtp->var.vardef.typ == NULL)
-            return RDB_OK;
+        if (_RDB_deserialize_expr(objp, posp, ecp, txp, &stmtp->var.vardef.type.exp) != RDB_OK)
+            return RDB_ERROR;
+        stmtp->var.vardef.type.typ = NULL;
     } else {
-        stmtp->var.vardef.typ = NULL;
+        stmtp->var.vardef.type.exp = NULL;
     }
     hasexp = _RDB_deserialize_byte(objp, posp, ecp);
     if (hasexp == RDB_ERROR)
@@ -636,11 +652,14 @@ deserialize_var_def_real(RDB_object *objp, int *posp, RDB_exec_context *ecp,
     if (hastype == RDB_ERROR)
         return RDB_ERROR;
     if (hastype) {
-        stmtp->var.vardef.typ = _RDB_deserialize_type(objp, posp, ecp, txp);
-        if (stmtp->var.vardef.typ == NULL)
+        if (_RDB_deserialize_expr(objp, posp, ecp, txp, &stmtp->var.vardef.type.exp) != RDB_OK)
+            return RDB_ERROR;
+        
+        stmtp->var.vardef.type.typ = NULL;
+        if (stmtp->var.vardef.type.exp == NULL)
             return RDB_ERROR;
     } else {
-        stmtp->var.vardef.typ = NULL;
+        stmtp->var.vardef.type.exp = NULL;
     }
     hasexp = _RDB_deserialize_byte(objp, posp, ecp);
     if (hasexp == RDB_ERROR)
@@ -728,7 +747,7 @@ deserialize_for(RDB_object *objp, int *posp, RDB_exec_context *ecp,
 
 static int
 deserialize_while(RDB_object *objp, int *posp, RDB_exec_context *ecp,
-    RDB_transaction *txp, RDB_parse_statement *stmtp)
+        RDB_transaction *txp, RDB_parse_statement *stmtp)
 {
     if (_RDB_deserialize_expr(objp, posp, ecp, txp, &stmtp->var.whileloop.condp) != RDB_OK)
         return RDB_ERROR;
@@ -739,7 +758,7 @@ deserialize_while(RDB_object *objp, int *posp, RDB_exec_context *ecp,
 
 static int
 deserialize_call(RDB_object *objp, int *posp, RDB_exec_context *ecp,
-    RDB_transaction *txp, RDB_parse_statement *stmtp)
+        RDB_transaction *txp, RDB_parse_statement *stmtp)
 {
     RDB_init_obj(&stmtp->var.call.opname);
     if (_RDB_deserialize_strobj(objp, posp, ecp, &stmtp->var.call.opname) != RDB_OK) {
@@ -753,15 +772,48 @@ deserialize_call(RDB_object *objp, int *posp, RDB_exec_context *ecp,
     return RDB_OK;
 }
 
+static RDB_parse_possrep *
+deserialize_possrep(RDB_object *objp, int *posp, RDB_exec_context *ecp,
+        RDB_transaction *txp)
+{
+    RDB_object nameobj;
+
+    RDB_init_obj(&nameobj);
+    RDB_parse_possrep *rep = RDB_alloc(sizeof(RDB_parse_possrep), ecp);
+    if (rep == NULL)
+        return NULL;
+
+    if (_RDB_deserialize_strobj(objp, posp, ecp, &nameobj) != RDB_OK) {
+        goto error;
+    }
+    if (RDB_obj_string(&nameobj)[0] == '\0') {
+        rep->namexp = NULL;
+    } else {
+        rep->namexp = RDB_obj_to_expr(&nameobj, ecp);
+        if (rep->namexp == NULL)
+            goto error;
+    }
+
+    if (deserialize_expr_list(objp, posp, ecp, txp, &rep->attrlist) != RDB_OK)
+        goto error;
+
+    RDB_destroy_obj(&nameobj, ecp);
+    return rep;
+
+error:
+    RDB_destroy_obj(&nameobj, ecp);
+    free(rep);
+    return NULL;
+}
+
 static int
 deserialize_type_def(RDB_object *objp, int *posp, RDB_exec_context *ecp,
-    RDB_transaction *txp, RDB_parse_statement *stmtp)
+        RDB_transaction *txp, RDB_parse_statement *stmtp)
 {
-    int i, j;
+    int i;
     RDB_int repc;
-    RDB_int compc;
     int hasconstr;
-    char *name;
+    RDB_parse_possrep *rep, *lastrep;
 
     if (_RDB_deserialize_strobj(objp, posp, ecp, &stmtp->var.deftype.typename)
             != RDB_OK) {
@@ -770,6 +822,21 @@ deserialize_type_def(RDB_object *objp, int *posp, RDB_exec_context *ecp,
     if (_RDB_deserialize_int(objp, posp, ecp, &repc) != RDB_OK) {
         return RDB_ERROR;
     }
+    lastrep = NULL;
+    for (i = 0; i < repc; i++) {
+        rep = deserialize_possrep(objp, posp, ecp, txp);
+        if (rep == NULL)
+            return RDB_ERROR;
+        if (lastrep != NULL) {
+            lastrep->nextp = rep;
+        } else {
+            stmtp->var.deftype.replistp = rep;
+        }
+        lastrep = rep;
+        lastrep->nextp = NULL;
+    }
+            
+#ifdef NIXDA            
     stmtp->var.deftype.repc = (int) repc;
     stmtp->var.deftype.repv = RDB_alloc(repc * sizeof(RDB_possrep), ecp);
     if (stmtp->var.deftype.repv == NULL)
@@ -803,6 +870,8 @@ deserialize_type_def(RDB_object *objp, int *posp, RDB_exec_context *ecp,
             }
         }
     }
+#endif
+
     hasconstr = _RDB_deserialize_byte(objp, posp, ecp);
     if (hasconstr == RDB_ERROR) {
          return RDB_ERROR;
@@ -850,13 +919,14 @@ deserialize_ro_op_def(RDB_object *objp, int *posp, RDB_exec_context *ecp,
                 &stmtp->var.opdef.argv[i].name) != RDB_OK) {
             return RDB_ERROR;
         }
-        stmtp->var.opdef.argv[i].typ = _RDB_deserialize_type(objp, posp, ecp, txp);
-        if (stmtp->var.opdef.argv[i].typ == NULL) {
+        if (_RDB_deserialize_expr(objp, posp, ecp, txp,
+                &stmtp->var.opdef.argv[i].type.exp) != RDB_OK) {
             return RDB_ERROR;
         }
+        stmtp->var.opdef.argv[i].type.typ = NULL;
     }
-    stmtp->var.opdef.rtyp = _RDB_deserialize_type(objp, posp, ecp, txp);
-    if (stmtp->var.opdef.rtyp == NULL) {
+    if (_RDB_deserialize_expr(objp, posp, ecp, txp,
+            &stmtp->var.opdef.rtype.exp) != RDB_OK) {
         return RDB_ERROR;
     }
     return deserialize_stmt_list(objp, posp, ecp, txp, &stmtp->var.opdef.bodyp);
@@ -891,10 +961,12 @@ deserialize_upd_op_def(RDB_object *objp, int *posp, RDB_exec_context *ecp,
                 &stmtp->var.opdef.argv[i].name) != RDB_OK) {
             return RDB_ERROR;
         }
-        stmtp->var.opdef.argv[i].typ = _RDB_deserialize_type(objp, posp, ecp, txp);
-        if (stmtp->var.opdef.argv[i].typ == NULL) {
+        if (_RDB_deserialize_expr(objp, posp, ecp, txp,
+                &stmtp->var.opdef.argv[i].type.exp) != RDB_OK) {
             return RDB_ERROR;
         }
+        stmtp->var.opdef.argv[i].type.typ = NULL;
+
         b = _RDB_deserialize_byte(objp, posp, ecp);
         if (b == RDB_ERROR)
             return RDB_ERROR;

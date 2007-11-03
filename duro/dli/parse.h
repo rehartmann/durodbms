@@ -76,11 +76,22 @@ typedef struct RDB_parse_keydef {
     struct RDB_parse_keydef *nextp;
 } RDB_parse_keydef;
 
+typedef struct RDB_parse_type {
+    RDB_expression *exp;
+    RDB_type *typ;
+} RDB_parse_type;
+
 typedef struct RDB_parse_arg {
     RDB_object name;
-    RDB_type *typ;
+    RDB_parse_type type;
     RDB_bool upd;
 } RDB_parse_arg;
+
+typedef struct RDB_parse_possrep {
+    RDB_expression *namexp;
+    RDB_expr_list attrlist;
+    struct RDB_parse_possrep *nextp;
+} RDB_parse_possrep;
 
 typedef struct RDB_parse_statement {
     RDB_parse_stmt_kind kind;
@@ -91,7 +102,7 @@ typedef struct RDB_parse_statement {
         } call;
         struct {
             RDB_object varname;
-            RDB_type *typ;
+            RDB_parse_type type;
             RDB_expression *exp;
             RDB_parse_keydef *firstkeyp;
         } vardef;
@@ -119,8 +130,7 @@ typedef struct RDB_parse_statement {
         } whileloop;
         struct {
             RDB_object typename;
-            int repc;
-            RDB_possrep *repv;
+            RDB_parse_possrep *replistp;
             RDB_expression *constraintp;
         } deftype;
         struct {
@@ -130,7 +140,7 @@ typedef struct RDB_parse_statement {
             RDB_object opname;
             int argc;
             RDB_parse_arg *argv;
-            RDB_type *rtyp;
+            RDB_parse_type rtype;
             struct RDB_parse_statement *bodyp;
         } opdef;
         struct {

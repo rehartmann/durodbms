@@ -24,7 +24,7 @@ void
 Duro_exit_interp(void);
 
 int
-Duro_exec_stmt(const RDB_parse_statement *, RDB_exec_context *, RDB_object *);
+Duro_exec_stmt(RDB_parse_statement *, RDB_exec_context *, RDB_object *);
 
 int
 Duro_process_stmt(RDB_exec_context *);
