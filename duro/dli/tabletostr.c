@@ -112,10 +112,10 @@ append_quoted_string(RDB_object *objp, const RDB_object *strp,
     int ret;
     int i;
     size_t qlen;
-    char *qstr = malloc((strp->var.bin.len + 2) * 2);
+    char *qstr = RDB_alloc((strp->var.bin.len + 2) * 2, ecp);
 
     if (qstr == NULL)
-        return ENOMEM;
+        return RDB_ERROR;
 
     qstr[0] = '\"';
     qlen = 1;
@@ -149,7 +149,7 @@ append_quoted_string(RDB_object *objp, const RDB_object *strp,
     qstr[qlen] = '\0';
 
     ret = RDB_append_string(objp, qstr, ecp);
-    free(qstr);
+    RDB_free(qstr);
     return ret;
 }
 

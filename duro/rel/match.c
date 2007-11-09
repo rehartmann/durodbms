@@ -179,9 +179,8 @@ stored_matching(RDB_object *tbp, const RDB_object *tplp, RDB_exec_context *ecp,
         return matching_ts(tbp, tplp, ecp, txp, resultp);
     }
     indexp = &tbp->var.tb.stp->indexv[i];
-    objpv = malloc(sizeof(RDB_object *) * indexp->attrc);
+    objpv = RDB_alloc(sizeof(RDB_object *) * indexp->attrc, ecp);
     if (objpv == NULL) {
-        RDB_raise_no_memory(ecp);
         return RDB_ERROR;
     }
     for (i = 0; i < indexp->attrc; i++) {
@@ -208,7 +207,7 @@ stored_matching(RDB_object *tbp, const RDB_object *tplp, RDB_exec_context *ecp,
     }
 
 cleanup:
-    free(objpv);
+    RDB_free(objpv);
     RDB_destroy_obj(&tpl, ecp);
     return ret;   
 }

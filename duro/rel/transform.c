@@ -73,7 +73,7 @@ transform_union(RDB_expression *exp, RDB_exec_context *ecp, RDB_transaction *txp
                 if (RDB_drop_expr(exp->var.op.args.firstp->nextp, ecp) != RDB_OK)
                     return RDB_ERROR;
 
-                free(exp->var.op.name);
+                RDB_free(exp->var.op.name);
                 pexp = exp->var.op.args.firstp;
                 exp->var.op.name = pexp->var.op.name;
 
@@ -83,8 +83,8 @@ transform_union(RDB_expression *exp, RDB_exec_context *ecp, RDB_transaction *txp
                     return RDB_ERROR;
                 wex1p->var.op.args.firstp->nextp = pexp->var.op.args.firstp->nextp;
 
-                free(pexp);
-                free(wex1p->var.op.name);
+                RDB_free(pexp);
+                RDB_free(wex1p->var.op.name);
 
                 return transform_project(exp, ecp, txp);
             }
@@ -125,7 +125,7 @@ transform_where(RDB_expression *exp, RDB_exec_context *ecp,
 
             if (_RDB_destroy_expr(chexp, ecp) != RDB_OK)
                 return RDB_ERROR;
-            free(chexp);
+            RDB_free(chexp);
         } else if (strcmp(chexp->var.op.name, "MINUS") == 0
                 || strcmp(chexp->var.op.name, "SEMIMINUS") == 0
                 || strcmp(chexp->var.op.name, "SEMIJOIN") == 0) {
@@ -365,7 +365,7 @@ swap_project_rename(RDB_expression *texp, RDB_exec_context *ecp,
         texp->var.op.args.firstp = chtexp->var.op.args.firstp;
         if (_RDB_destroy_expr(chtexp, ecp) != RDB_OK)
             return RDB_ERROR;
-        free(chtexp);
+        RDB_free(chtexp);
 
         return transform_project(texp, ecp, txp);
     }
@@ -432,9 +432,8 @@ transform_project_extend(RDB_expression *exp, RDB_exec_context *ecp,
      * Remove EXTEND-Attributes which are 'projected away'
      */
 
-    expv = malloc(sizeof (RDB_expression *) * chargc);
+    expv = RDB_alloc(sizeof (RDB_expression *) * chargc, ecp);
     if (expv == NULL) {
-        RDB_raise_no_memory(ecp);
         return RDB_ERROR;
     }
 
@@ -459,10 +458,10 @@ transform_project_extend(RDB_expression *exp, RDB_exec_context *ecp,
         /* Extend became empty - remove */
         expv[0]->nextp = exp->var.op.args.firstp->nextp;
         exp->var.op.args.firstp = expv[0];
-        free(expv);
+        RDB_free(expv);
         if (_RDB_destroy_expr(chexp, ecp) != RDB_OK)
             return RDB_ERROR;
-        free(chexp);
+        RDB_free(chexp);
         return transform_project(exp, ecp, txp);
     }
     chexp->var.op.args.firstp = chexp->var.op.args.lastp = NULL;
@@ -491,9 +490,8 @@ swap_project_where(RDB_expression *exp, RDB_expression *chexp,
     if (chtyp == NULL)
         return RDB_ERROR;
 
-    attrv = malloc(sizeof(char *) * chtyp->var.basetyp->var.tuple.attrc);
+    attrv = RDB_alloc(sizeof(char *) * chtyp->var.basetyp->var.tuple.attrc, ecp);
     if (attrv == NULL) {
-        RDB_raise_no_memory(ecp);
         return RDB_ERROR;
     }
 
@@ -535,7 +533,7 @@ swap_project_where(RDB_expression *exp, RDB_expression *chexp,
             argp = RDB_string_to_expr(attrv[i], ecp);
             if (argp == NULL) {
                 RDB_drop_expr(nexp, ecp);
-                free(attrv);
+                RDB_free(attrv);
                 return RDB_ERROR;
             }
             RDB_add_arg(nexp, argp);
@@ -566,7 +564,7 @@ swap_project_where(RDB_expression *exp, RDB_expression *chexp,
         _RDB_expr_list_set_lastp(&exp->var.op.args);
         _RDB_expr_list_set_lastp(&chexp->var.op.args);
     }
-    free(attrv);
+    RDB_free(attrv);
 
     return RDB_OK;
 }
@@ -597,7 +595,7 @@ transform_project(RDB_expression *exp, RDB_exec_context *ecp,
             exp->var.op.args.firstp->nextp = chexp->nextp;
             if (_RDB_destroy_expr(chexp, ecp) != RDB_OK)
                 return RDB_ERROR;
-            free(chexp);
+            RDB_free(chexp);
         } else if (strcmp(chexp->var.op.name, "UNION") == 0) {
             if (swap_project_union(exp, ecp, txp) != RDB_OK)
                 return RDB_ERROR;

@@ -465,20 +465,20 @@ new_insert_node(RDB_object *tbp, const RDB_object *tplp, RDB_exec_context *ecp)
 {
     int ret;
 
-    insert_node *insnp = malloc(sizeof (insert_node));
+    insert_node *insnp = RDB_alloc(sizeof (insert_node), ecp);
     if (insnp == NULL)
         return NULL;
-    insnp->ins.objp = malloc(sizeof(RDB_object));
+    insnp->ins.objp = RDB_alloc(sizeof(RDB_object), ecp);
     if (insnp->ins.objp == NULL) {
-        free(insnp);
+        RDB_free(insnp);
         return NULL;
     }
     RDB_init_obj(insnp->ins.objp);
     ret = _RDB_copy_tuple(insnp->ins.objp, tplp, ecp);
     if (ret != RDB_OK) {
         RDB_destroy_obj(insnp->ins.objp, ecp);
-        free(insnp->ins.objp);
-        free(insnp);
+        RDB_free(insnp->ins.objp);
+        RDB_free(insnp);
         return NULL;
     }
     insnp->ins.tbp = tbp;
@@ -496,9 +496,9 @@ del_inslist(insert_node *insnp, RDB_exec_context *ecp)
 
         if (insnp->ins.objp != NULL) {
             RDB_destroy_obj(insnp->ins.objp, ecp);
-            free(insnp->ins.objp);
+            RDB_free(insnp->ins.objp);
         }
-        free(insnp);
+        RDB_free(insnp);
         insnp = hinsnp;
     }    
 }
@@ -514,7 +514,7 @@ del_updlist(update_node *updnp, RDB_exec_context *ecp)
         if (updnp->upd.condp != NULL) {
             RDB_drop_expr(updnp->upd.condp, ecp);
         }
-        free(updnp);
+        RDB_free(updnp);
         updnp = hupdnp;
     }    
 }
@@ -530,7 +530,7 @@ del_dellist(delete_node *delnp, RDB_exec_context *ecp)
         if (delnp->del.condp != NULL) {
             RDB_drop_expr(delnp->del.condp, ecp);
         }
-        free(delnp);
+        RDB_free(delnp);
         delnp = hdelnp;
     }    
 }
@@ -648,7 +648,7 @@ static update_node *
 new_update_node(RDB_object *tbp, RDB_expression *condp,
         int updc, RDB_attr_update *updv, RDB_exec_context *ecp)
 {
-    update_node *nupdnp = malloc(sizeof (update_node));
+    update_node *nupdnp = RDB_alloc(sizeof (update_node), ecp);
     if (nupdnp == NULL)
         return NULL;
     if (condp == NULL) {
@@ -656,7 +656,7 @@ new_update_node(RDB_object *tbp, RDB_expression *condp,
     } else {
         nupdnp->upd.condp = RDB_dup_expr(condp, ecp);
         if (nupdnp->upd.condp == NULL) {
-            free(nupdnp);
+            RDB_free(nupdnp);
             return NULL;
         }
     }
@@ -712,7 +712,7 @@ resolve_update(RDB_object *tbp, RDB_expression *condp,
 static delete_node *
 new_delete_node(RDB_object *tbp, RDB_expression *condp, RDB_exec_context *ecp)
 {
-    delete_node *ndelnp = malloc(sizeof (delete_node));
+    delete_node *ndelnp = RDB_alloc(sizeof (delete_node), ecp);
     if (ndelnp == NULL)
         return NULL;
     if (condp == NULL) {
@@ -720,7 +720,7 @@ new_delete_node(RDB_object *tbp, RDB_expression *condp, RDB_exec_context *ecp)
     } else {
         ndelnp->del.condp = RDB_dup_expr(condp, ecp);
         if (ndelnp->del.condp == NULL) {
-            free(ndelnp);
+            RDB_free(ndelnp);
             return NULL;
         }
     }
@@ -1044,7 +1044,7 @@ resolve_inserts(int insc, const RDB_ma_insert *insv, RDB_ma_insert **ninsvp,
     }
 
     if (llen > 0) {
-        (*ninsvp) = malloc(sizeof (RDB_ma_insert) * (insc + llen));
+        (*ninsvp) = RDB_alloc(sizeof (RDB_ma_insert) * (insc + llen), ecp);
         if (*ninsvp == NULL)
             goto cleanup;
 
@@ -1115,7 +1115,7 @@ resolve_updates(int updc, const RDB_ma_update *updv, RDB_ma_update **nupdvp,
     }
 
     if (llen > 0) {
-        (*nupdvp) = malloc(sizeof (RDB_ma_update) * (updc + llen));
+        (*nupdvp) = RDB_alloc(sizeof (RDB_ma_update) * (updc + llen), ecp);
         if (*nupdvp == NULL)
             goto cleanup;
 
@@ -1189,7 +1189,7 @@ resolve_deletes(int delc, const RDB_ma_delete *delv, RDB_ma_delete **ndelvp,
     }
 
     if (llen > 0) {
-        (*ndelvp) = malloc(sizeof (RDB_ma_delete) * (delc + llen));
+        (*ndelvp) = RDB_alloc(sizeof (RDB_ma_delete) * (delc + llen), ecp);
         if (*ndelvp == NULL)
             goto cleanup;
 
@@ -1776,9 +1776,9 @@ cleanup:
     if (ninsv != insv) {
         for (i = insc; i < ninsc; i++) {
             RDB_destroy_obj(ninsv[i].objp, ecp);
-            free(ninsv[i].objp);
+            RDB_free(ninsv[i].objp);
         }
-        free(ninsv);
+        RDB_free(ninsv);
     }
 
     if (nupdv != updv) {
@@ -1787,7 +1787,7 @@ cleanup:
                 RDB_drop_expr(nupdv[i].condp, ecp);
             }
         }
-        free(nupdv);
+        RDB_free(nupdv);
     }
 
     if (ndelv != delv) {
@@ -1796,7 +1796,7 @@ cleanup:
                 RDB_drop_expr(ndelv[i].condp, ecp);
             }
         }
-        free(ndelv);
+        RDB_free(ndelv);
     }
 
     /* Abort subtx, if necessary */

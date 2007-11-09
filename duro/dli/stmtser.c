@@ -802,7 +802,7 @@ deserialize_possrep(RDB_object *objp, int *posp, RDB_exec_context *ecp,
 
 error:
     RDB_destroy_obj(&nameobj, ecp);
-    free(rep);
+    RDB_free(rep);
     return NULL;
 }
 
@@ -834,43 +834,7 @@ deserialize_type_def(RDB_object *objp, int *posp, RDB_exec_context *ecp,
         }
         lastrep = rep;
         lastrep->nextp = NULL;
-    }
-            
-#ifdef NIXDA            
-    stmtp->var.deftype.repc = (int) repc;
-    stmtp->var.deftype.repv = RDB_alloc(repc * sizeof(RDB_possrep), ecp);
-    if (stmtp->var.deftype.repv == NULL)
-        return RDB_ERROR;
-    for (i = 0; i < repc; i++) {
-        if (_RDB_deserialize_str(objp, posp, ecp, &name) != RDB_OK) {
-            return RDB_ERROR;
-        }
-        if (name[0] == '\0') {
-            free(name);
-            stmtp->var.deftype.repv[i].name = NULL;
-        } else {
-            stmtp->var.deftype.repv[i].name = name;
-        }
-
-        if (_RDB_deserialize_int(objp, posp, ecp, &compc) != RDB_OK) {
-            return RDB_ERROR;
-        }
-        stmtp->var.deftype.repv[i].compc = (int) compc;
-        stmtp->var.deftype.repv[i].compv = RDB_alloc(compc * sizeof(RDB_attr), ecp);
-        if (stmtp->var.deftype.repv[i].compv == NULL)
-            return RDB_ERROR;
-        for (j = 0; j < compc; j++) {
-            if (_RDB_deserialize_str(objp, posp, ecp, &stmtp->var.deftype.repv[i].compv[j].name)
-                    != RDB_OK) {
-                return RDB_ERROR;
-            }
-            stmtp->var.deftype.repv[i].compv[j].typ = _RDB_deserialize_type(objp, posp, ecp, txp);
-            if (stmtp->var.deftype.repv[i].compv[j].typ == NULL) {
-                return RDB_ERROR;
-            }
-        }
-    }
-#endif
+    }          
 
     hasconstr = _RDB_deserialize_byte(objp, posp, ecp);
     if (hasconstr == RDB_ERROR) {
@@ -1170,7 +1134,7 @@ deserialize_stmt(RDB_object *objp, int *posp, RDB_exec_context *ecp,
     return stmtp;
 
 error:
-    free(stmtp);
+    RDB_free(stmtp);
     return NULL;
 }
 
@@ -1218,9 +1182,8 @@ Duro_op_to_binobj(RDB_object *objp, const RDB_parse_statement *opstmtp,
     objp->typ = &RDB_BINARY;
     objp->kind = RDB_OB_BIN;
     objp->var.bin.len = RDB_BUF_INITLEN;
-    objp->var.bin.datap = malloc(RDB_BUF_INITLEN);
+    objp->var.bin.datap = RDB_alloc(RDB_BUF_INITLEN, ecp);
     if (objp->var.bin.datap == NULL) {
-        RDB_raise_no_memory(ecp);
         return RDB_ERROR;
     }
     pos = 0;

@@ -20,9 +20,9 @@
 #include <dli/tabletostr.h>
 
 static RDB_string_vec *
-dup_keyv(int keyc, const RDB_string_vec keyv[])
+dup_keyv(int keyc, const RDB_string_vec keyv[], RDB_exec_context *ecp)
 {
-    return _RDB_dup_rename_keys(keyc, keyv, NULL);
+    return _RDB_dup_rename_keys(keyc, keyv, NULL, ecp);
 }
 
 static RDB_bool
@@ -54,7 +54,7 @@ _RDB_new_rtable(const char *name, RDB_bool persistent,
 
     if (_RDB_init_table(tbp, name, persistent, reltyp, keyc, keyv,
             usr, NULL, ecp) != RDB_OK) {
-        free(tbp);
+        RDB_free(tbp);
         return NULL;
     }
     return tbp;
@@ -195,9 +195,8 @@ _RDB_init_table(RDB_object *tbp, const char *name, RDB_bool persistent,
         if (keyv == NULL) {
             /* Create key for all-key table */
             allkey.strc = attrc;
-            allkey.strv = malloc(sizeof (char *) * attrc);
+            allkey.strv = RDB_alloc(sizeof (char *) * attrc, ecp);
             if (allkey.strv == NULL) {
-                RDB_raise_no_memory(ecp);
                 goto error;
             }
             for (i = 0; i < attrc; i++)
@@ -207,9 +206,8 @@ _RDB_init_table(RDB_object *tbp, const char *name, RDB_bool persistent,
         }
 
         /* Copy candidate keys */
-        tbp->var.tb.keyv = dup_keyv(keyc, keyv);
+        tbp->var.tb.keyv = dup_keyv(keyc, keyv, ecp);
         if (tbp->var.tb.keyv == NULL) {
-            RDB_raise_no_memory(ecp);
             goto error;
         }
         tbp->var.tb.keyc = keyc;
@@ -218,18 +216,18 @@ _RDB_init_table(RDB_object *tbp, const char *name, RDB_bool persistent,
 
     tbp->typ = reltyp;
 
-    free(allkey.strv);
+    RDB_free(allkey.strv);
 
     return RDB_OK;
 
 error:
     /* Clean up */
     if (tbp != NULL) {
-        free(tbp->var.tb.name);
+        RDB_free(tbp->var.tb.name);
         if (tbp->var.tb.keyv != NULL)
             _RDB_free_keys(tbp->var.tb.keyc, tbp->var.tb.keyv);
     }
-    free(allkey.strv);
+    RDB_free(allkey.strv);
     return RDB_ERROR;
 }
 
@@ -307,9 +305,8 @@ RDB_table_keys(RDB_object *tbp, RDB_exec_context *ecp, RDB_string_vec **keyvp)
         if (freekey) {
             tbp->var.tb.keyv = keyv;
         } else {
-            tbp->var.tb.keyv = dup_keyv(keyc, keyv);
+            tbp->var.tb.keyv = dup_keyv(keyc, keyv, ecp);
             if (tbp->var.tb.keyv == NULL) {
-                RDB_raise_no_memory(ecp);
                 return RDB_ERROR;
             }
         }
@@ -1443,9 +1440,8 @@ _RDB_set_defvals(RDB_type *tbtyp, int attrc, const RDB_attr attrv[],
         if (attrv[i].defaultp != NULL) {
             RDB_type *tpltyp = tbtyp->var.basetyp;
 
-            tpltyp->var.tuple.attrv[i].defaultp = malloc(sizeof (RDB_object));
+            tpltyp->var.tuple.attrv[i].defaultp = RDB_alloc(sizeof (RDB_object), ecp);
             if (tpltyp->var.tuple.attrv[i].defaultp == NULL) {
-                RDB_raise_no_memory(ecp);
                 return RDB_ERROR;
             }
             RDB_init_obj(tpltyp->var.tuple.attrv[i].defaultp);
@@ -1537,10 +1533,9 @@ RDB_create_table_index(const char *name, RDB_object *tbp, int idxcompc,
         }
 
         indexp->attrc = idxcompc;
-        indexp->attrv = malloc(sizeof (RDB_seq_item) * idxcompc);
+        indexp->attrv = RDB_alloc(sizeof (RDB_seq_item) * idxcompc, ecp);
         if (indexp->attrv == NULL) {
-            free(indexp->name);
-            RDB_raise_no_memory(ecp);
+            RDB_free(indexp->name);
             return RDB_ERROR;
         }
 
@@ -1612,7 +1607,7 @@ RDB_drop_table_index(const char *name, RDB_exec_context *ecp,
         return RDB_ERROR;
 
     tbp = RDB_get_table(tbname, ecp, txp);
-    free(tbname);
+    RDB_free(tbname);
     if (tbp == NULL)
         return RDB_ERROR;
 
@@ -1623,7 +1618,7 @@ RDB_drop_table_index(const char *name, RDB_exec_context *ecp,
         /* Index not found, so reread indexes */
         for (i = 0; i < tbp->var.tb.stp->indexc; i++)
             _RDB_free_tbindex(&tbp->var.tb.stp->indexv[i]);
-        free(tbp->var.tb.stp->indexv);
+        RDB_free(tbp->var.tb.stp->indexv);
         ret = _RDB_cat_get_indexes(tbp->var.tb.name, txp->dbp->dbrootp, ecp, txp,
                 &tbp->var.tb.stp->indexv);
         if (ret != RDB_OK)

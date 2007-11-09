@@ -19,7 +19,7 @@
 
 typedef struct tx_node {
     RDB_transaction tx;
-    struct tx_node *nextp;
+    struct tx_node *parentp;
 } tx_node;
 
 typedef int upd_op_func(const char *name, int argc, RDB_object *argv[],
@@ -1047,18 +1047,32 @@ exec_begin_tx(const RDB_parse_statement *stmtp, RDB_exec_context *ecp)
         printf("no connection\n");
         return RDB_ERROR;
     }
-    if (txnp != NULL) {
-        /* !! */
-        printf("Hier wäre eine nested Tx fällig!\n");
-        return RDB_ERROR;
-    }
 
     dbp = RDB_get_db_from_env(dbname, envp, ecp);
     if (dbp == NULL)
         return RDB_ERROR;
 
+    if (txnp != NULL) {
+        tx_node *ntxnp = RDB_alloc(sizeof(tx_node), ecp);
+        if (ntxnp == NULL) {        
+            return RDB_ERROR;
+        }
+
+        if (RDB_begin_tx(ecp, &ntxnp->tx, dbp, &txnp->tx) != RDB_OK) {
+            free(ntxnp);
+            return RDB_ERROR;
+        }
+        ntxnp->parentp = txnp;
+        txnp = ntxnp;
+
+        if (_RDB_parse_interactive)
+            printf("Subtransaction started.\n");
+        return RDB_OK;
+    }
+
+
     txnp = RDB_alloc(sizeof(tx_node), ecp);
-    if (txnp == NULL) {
+    if (txnp == NULL) {        
         return RDB_ERROR;
     }
 
@@ -1067,7 +1081,7 @@ exec_begin_tx(const RDB_parse_statement *stmtp, RDB_exec_context *ecp)
         txnp = NULL;
         return RDB_ERROR;
     }
-    txnp->nextp = NULL;
+    txnp->parentp = NULL;
 
     if (_RDB_parse_interactive)
         printf("Transaction started.\n");
@@ -1077,6 +1091,8 @@ exec_begin_tx(const RDB_parse_statement *stmtp, RDB_exec_context *ecp)
 static int
 exec_commit(const RDB_parse_statement *stmtp, RDB_exec_context *ecp)
 {
+    tx_node *ptxnp;
+
     if (txnp == NULL) {
         printf("Error: no transaction\n");
         return RDB_ERROR;
@@ -1085,8 +1101,9 @@ exec_commit(const RDB_parse_statement *stmtp, RDB_exec_context *ecp)
     if (RDB_commit(ecp, &txnp->tx) != RDB_OK)
         return RDB_ERROR;
 
-    free(txnp);
-    txnp = NULL;
+    ptxnp = txnp->parentp;
+    RDB_free(txnp);
+    txnp = ptxnp;
 
     if (_RDB_parse_interactive)
         printf("Transaction committed.\n");

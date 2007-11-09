@@ -24,10 +24,10 @@ _RDB_free_tbindex(_RDB_tbindex *idxp)
 {
     int i;
 
-    free(idxp->name);
+    RDB_free(idxp->name);
     for (i = 0; i < idxp->attrc; i++)
-        free(idxp->attrv[i].attrname);
-    free(idxp->attrv);
+        RDB_free(idxp->attrv[i].attrname);
+    RDB_free(idxp->attrv);
 }
 
 static void
@@ -39,8 +39,8 @@ free_stored_table(RDB_stored_table *stp)
 
     RDB_init_hashtable_iter(&hiter, &stp->attrmap);
     while ((entryp = RDB_hashtable_next(&hiter)) != NULL) {
-        free(entryp->key);
-        free(entryp);
+        RDB_free(entryp->key);
+        RDB_free(entryp);
     }
     RDB_destroy_hashtable_iter(&hiter);
 
@@ -50,9 +50,9 @@ free_stored_table(RDB_stored_table *stp)
         for (i = 0; i < stp->indexc; i++) {
             _RDB_free_tbindex(&stp->indexv[i]);
         }
-        free(stp->indexv);
+        RDB_free(stp->indexv);
     }
-    free(stp);
+    RDB_free(stp);
 }
 
 int
@@ -96,15 +96,14 @@ _RDB_put_field_no(RDB_stored_table *stp, const char *attrname,
         RDB_int fno, RDB_exec_context *ecp)
 {
     int ret;
-    _RDB_attrmap_entry *entryp = malloc(sizeof(_RDB_attrmap_entry));
+    _RDB_attrmap_entry *entryp = RDB_alloc(sizeof(_RDB_attrmap_entry), ecp);
     if (entryp == NULL) {
-        RDB_raise_no_memory(ecp);
         return RDB_ERROR;
     }
 
     entryp->key = RDB_dup_str(attrname);
     if (entryp->key == NULL) {
-        free(entryp);
+        RDB_free(entryp);
         RDB_raise_no_memory(ecp);
         return RDB_ERROR;
     }
@@ -112,8 +111,8 @@ _RDB_put_field_no(RDB_stored_table *stp, const char *attrname,
     entryp->fno = fno;
     ret = RDB_hashtable_put(&stp->attrmap, entryp, NULL);
     if (ret != RDB_OK) {
-        free(entryp->key);
-        free(entryp);
+        RDB_free(entryp->key);
+        RDB_free(entryp);
     }
     return ret;
 }
@@ -160,18 +159,16 @@ _RDB_create_tbindex(RDB_object *tbp, RDB_environment *envp, RDB_exec_context *ec
     int ret;
     int i;
     RDB_compare_field *cmpv = 0;
-    int *fieldv = malloc(sizeof(int *) * indexp->attrc);
+    int *fieldv = RDB_alloc(sizeof(int *) * indexp->attrc, ecp);
 
     if (fieldv == NULL) {
-        RDB_raise_no_memory(ecp);
         ret = RDB_ERROR;
         goto cleanup;
     }
 
     if (RDB_ORDERED & flags) {
-        cmpv = malloc(sizeof (RDB_compare_field) * indexp->attrc);
+        cmpv = RDB_alloc(sizeof (RDB_compare_field) * indexp->attrc, ecp);
         if (cmpv == NULL) {
-            RDB_raise_no_memory(ecp);
             ret = RDB_ERROR;
             goto cleanup;
         }
@@ -212,8 +209,8 @@ _RDB_create_tbindex(RDB_object *tbp, RDB_environment *envp, RDB_exec_context *ec
     }
 
 cleanup:
-    free(fieldv);
-    free(cmpv);
+    RDB_free(fieldv);
+    RDB_free(cmpv);
     return ret;
 }
 
@@ -243,10 +240,9 @@ keys_to_indexes(RDB_object *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
         tbp->var.tb.stp->indexv[oindexc + i].unique = RDB_TRUE;
         tbp->var.tb.stp->indexv[oindexc + i].ordered = RDB_FALSE;
         tbp->var.tb.stp->indexv[oindexc + i].attrc = tbp->var.tb.keyv[i].strc;
-        tbp->var.tb.stp->indexv[oindexc + i].attrv = malloc(sizeof(RDB_seq_item)
-                * tbp->var.tb.keyv[i].strc);
+        tbp->var.tb.stp->indexv[oindexc + i].attrv = RDB_alloc(sizeof(RDB_seq_item)
+                * tbp->var.tb.keyv[i].strc, ecp);
         if (tbp->var.tb.stp->indexv[oindexc + i].attrv == NULL) {
-            RDB_raise_no_memory(ecp);
             return RDB_ERROR;
         }
         for (j = 0; j < tbp->var.tb.keyv[i].strc; j++) {
@@ -259,9 +255,8 @@ keys_to_indexes(RDB_object *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
         }
 
         if (tbp->var.tb.is_persistent) {
-            tbp->var.tb.stp->indexv[oindexc + i].name = malloc(strlen(RDB_table_name(tbp)) + 4);
+            tbp->var.tb.stp->indexv[oindexc + i].name = RDB_alloc(strlen(RDB_table_name(tbp)) + 4, ecp);
             if (tbp->var.tb.stp->indexv[oindexc + i].name == NULL) {
-                RDB_raise_no_memory(ecp);
                 return RDB_ERROR;
             }
             /* build index name */            
@@ -361,9 +356,8 @@ key_fnos(RDB_object *tbp, int **flenvp, const RDB_bool ascv[],
     int piattrc = tbp->var.tb.keyv[0].strc;
     char **piattrv = tbp->var.tb.keyv[0].strv;
 
-    *flenvp = malloc(sizeof(int) * attrc);
+    *flenvp = RDB_alloc(sizeof(int) * attrc, ecp);
     if (*flenvp == NULL) {
-        RDB_raise_no_memory(ecp);
         return RDB_ERROR;
     }
 
@@ -425,7 +419,7 @@ key_fnos(RDB_object *tbp, int **flenvp, const RDB_bool ascv[],
         ret = _RDB_put_field_no(tbp->var.tb.stp,
                 tbp->typ->var.basetyp->var.tuple.attrv[i].name, fno, ecp);
         if (ret != RDB_OK) {
-            free(*flenvp);
+            RDB_free(*flenvp);
             return ret;
         }
 
@@ -479,9 +473,8 @@ _RDB_create_stored_table(RDB_object *tbp, RDB_environment *envp,
         return RDB_ERROR;
     }
 
-    tbp->var.tb.stp = malloc(sizeof(RDB_stored_table));
+    tbp->var.tb.stp = RDB_alloc(sizeof(RDB_stored_table), ecp);
     if (tbp->var.tb.stp == NULL) {
-        RDB_raise_no_memory(ecp);
         return RDB_ERROR;
     }
 
@@ -492,9 +485,8 @@ _RDB_create_stored_table(RDB_object *tbp, RDB_environment *envp,
 
     /* Allocate comparison vector, if needed */
     if (ascv != NULL) {
-        cmpv = malloc(sizeof (RDB_compare_field) * piattrc);
+        cmpv = RDB_alloc(sizeof (RDB_compare_field) * piattrc, ecp);
         if (cmpv == NULL) {
-            RDB_raise_no_memory(ecp);
             goto error;
         }
     }
@@ -529,9 +521,8 @@ _RDB_create_stored_table(RDB_object *tbp, RDB_environment *envp,
 
             RDB_clear_err(ecp);
             /* Choose a different recmap name */
-            rmname = malloc(strlen(RDB_table_name(tbp)) + 4);
+            rmname = RDB_alloc(strlen(RDB_table_name(tbp)) + 4, ecp);
             if (rmname == NULL) {
-                RDB_raise_no_memory(ecp);
                 goto error;
             }
             do {
@@ -573,23 +564,23 @@ _RDB_create_stored_table(RDB_object *tbp, RDB_environment *envp,
             goto error;
     }
 
-    free(flenv);
-    free(cmpv);
-    free(rmname);
+    RDB_free(flenv);
+    RDB_free(cmpv);
+    RDB_free(rmname);
     return RDB_OK;
 
 error:
     /* clean up */
     if (flenv != NULL) {
-        free(flenv);
+        RDB_free(flenv);
     }
-    free(cmpv);
-    free(rmname);
+    RDB_free(cmpv);
+    RDB_free(rmname);
 
     RDB_init_hashtable_iter(&hiter, &tbp->var.tb.stp->attrmap);
     while ((entryp = RDB_hashtable_next(&hiter)) != NULL) {
-        free(entryp->key);
-        free(entryp);
+        RDB_free(entryp->key);
+        RDB_free(entryp);
     }
     RDB_destroy_hashtable_iter(&hiter);
 
@@ -598,7 +589,7 @@ error:
     if (tbp->var.tb.stp->recmapp != NULL) {
         RDB_delete_recmap(tbp->var.tb.stp->recmapp, txp != NULL ? txp->txid : NULL);
     }
-    free(tbp->var.tb.stp);
+    RDB_free(tbp->var.tb.stp);
     tbp->var.tb.stp = NULL;
 
     return RDB_ERROR;
@@ -637,9 +628,8 @@ _RDB_open_stored_table(RDB_object *tbp, RDB_environment *envp,
         return RDB_ERROR;
     }
 
-    tbp->var.tb.stp = malloc(sizeof(RDB_stored_table));
+    tbp->var.tb.stp = RDB_alloc(sizeof(RDB_stored_table), ecp);
     if (tbp->var.tb.stp == NULL) {
-        RDB_raise_no_memory(ecp);
         return RDB_ERROR;
     }
 
@@ -678,24 +668,24 @@ _RDB_open_stored_table(RDB_object *tbp, RDB_environment *envp,
         }
     }
 
-    free(flenv);
-    free(cmpv);
+    RDB_free(flenv);
+    RDB_free(cmpv);
     return RDB_OK;
 
 error:
     /* clean up */
-    free(flenv);
-    free(cmpv);
+    RDB_free(flenv);
+    RDB_free(cmpv);
 
     RDB_init_hashtable_iter(&hiter, &tbp->var.tb.stp->attrmap);
     while ((entryp = RDB_hashtable_next(&hiter)) != NULL) {
-        free(entryp->key);
-        free(entryp);
+        RDB_free(entryp->key);
+        RDB_free(entryp);
     }
     RDB_destroy_hashtable_iter(&hiter);
 
     RDB_destroy_hashtable(&tbp->var.tb.stp->attrmap);
-    free(tbp->var.tb.stp);
+    RDB_free(tbp->var.tb.stp);
     tbp->var.tb.stp = NULL;
 
     return RDB_ERROR;
@@ -707,10 +697,9 @@ _RDB_open_table_index(RDB_object *tbp, _RDB_tbindex *indexp,
 {
     int ret;
     int i;
-    int *fieldv = malloc(sizeof(int *) * indexp->attrc);
+    int *fieldv = RDB_alloc(sizeof(int *) * indexp->attrc, ecp);
 
     if (fieldv == NULL) {
-        RDB_raise_no_memory(ecp);
         ret = RDB_ERROR;
         goto cleanup;
     }
@@ -728,7 +717,7 @@ _RDB_open_table_index(RDB_object *tbp, _RDB_tbindex *indexp,
                   txp != NULL ? txp->txid : NULL, &indexp->idxp);
 
 cleanup:
-    free(fieldv);
+    RDB_free(fieldv);
     return ret;
 }
 

@@ -50,14 +50,13 @@ extern YYLTYPE yylloc;
 void yyerror(char *errtxt)
 {
     if (RDB_get_err(_RDB_parse_ecp) == NULL) {
-        char *bufp = malloc(strlen(errtxt) + 32);
+        char *bufp = RDB_alloc(strlen(errtxt) + 32, _RDB_parse_ecp);
         if (bufp == NULL) {
-            RDB_raise_no_memory(_RDB_parse_ecp);
             return;
         }
         sprintf(bufp, "%s at line %d", errtxt, yylloc.first_line);
         RDB_raise_syntax(bufp, _RDB_parse_ecp);
-        free(bufp);
+        RDB_free(bufp);
     }
 }
 

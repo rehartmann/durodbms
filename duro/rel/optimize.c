@@ -396,11 +396,11 @@ split_by_index(RDB_expression *texp, _RDB_tbindex *indexp,
     if (objpc > 0) {
         if (texp->var.op.args.firstp->kind == RDB_EX_TBP) {
             objpv = _RDB_index_objpv(indexp, ixexp, texp->var.op.args.firstp->var.tbref.tbp->typ,
-                    objpc, all_eq, asc);
+                    objpc, all_eq, asc, ecp);
         } else {
             objpv = _RDB_index_objpv(indexp, ixexp,
                     texp->var.op.args.firstp->var.op.args.firstp->var.tbref.tbp->typ,
-                    objpc, all_eq, asc);        
+                    objpc, all_eq, asc, ecp);
         }
         if (objpv == NULL) {
             RDB_raise_no_memory(ecp);

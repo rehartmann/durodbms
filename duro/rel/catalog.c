@@ -749,9 +749,8 @@ _RDB_cat_get_indexes(const char *tablename, RDB_dbroot *dbrootp,
 
     indexc = RDB_array_length(&arr, ecp);
     if (indexc > 0) {
-        (*indexvp) = malloc(sizeof(_RDB_tbindex) * indexc);
+        (*indexvp) = RDB_alloc(sizeof(_RDB_tbindex) * indexc, ecp);
         if (*indexvp == NULL) {
-            RDB_raise_no_memory(ecp);
             ret = RDB_ERROR;
             goto cleanup;
         }
@@ -784,9 +783,8 @@ _RDB_cat_get_indexes(const char *tablename, RDB_dbroot *dbrootp,
                 goto cleanup;
             }
             
-            indexp->attrv = malloc(sizeof (RDB_seq_item) * indexp->attrc);
+            indexp->attrv = RDB_alloc(sizeof (RDB_seq_item) * indexp->attrc, ecp);
             if (indexp->attrv == NULL) {
-                RDB_raise_no_memory(ecp);
                 ret = RDB_ERROR;
                 goto cleanup;
             }
@@ -1319,7 +1317,7 @@ get_key(RDB_object *tbp, RDB_string_vec *keyp, RDB_exec_context *ecp)
         ret = keyp->strc;
         return ret;
     }
-    keyp->strv = malloc(sizeof (char *) * keyp->strc);
+    keyp->strv = RDB_alloc(sizeof (char *) * keyp->strc, ecp);
     if (keyp->strv == NULL) {
         RDB_raise_no_memory(ecp);
         goto error;
@@ -1347,8 +1345,8 @@ get_key(RDB_object *tbp, RDB_string_vec *keyp, RDB_exec_context *ecp)
 error:
     if (keyp->strv != NULL) {
         for (i = 0; i < keyp->strc; i++)
-            free(keyp->strv[i]);
-        free(keyp->strv);
+            RDB_free(keyp->strv[i]);
+        RDB_free(keyp->strv);
     }
     RDB_destroy_obj(&attrarr, ecp);
     return RDB_ERROR;
@@ -1402,9 +1400,8 @@ get_keys(const char *name, RDB_exec_context *ecp, RDB_transaction *txp,
         goto error;
     *keycp = ret;
 
-    *keyvp = malloc(sizeof(RDB_string_vec) * *keycp);
+    *keyvp = RDB_alloc(sizeof(RDB_string_vec) * *keycp, ecp);
     if (*keyvp == NULL) {
-        RDB_raise_no_memory(ecp);
         goto error;
     }
     for (i = 0; i < *keycp; i++)
@@ -1437,10 +1434,10 @@ error:
         for (i = 0; i < *keycp; i++) {
             if ((*keyvp)[i].strv != NULL) {
                 for (j = 0; j < (*keyvp)[i].strc; j++)
-                    free((*keyvp)[i].strv[j]);
+                    RDB_free((*keyvp)[i].strv[j]);
             }
         }
-        free(*keyvp);
+        RDB_free(*keyvp);
     }
     return RDB_ERROR;
 }
@@ -1541,9 +1538,8 @@ _RDB_cat_get_rtable(const char *name, RDB_exec_context *ecp,
 
     attrc = RDB_array_length(&arr, ecp);
     if (attrc > 0) {
-        attrv = malloc(sizeof(RDB_attr) * attrc);
+        attrv = RDB_alloc(sizeof(RDB_attr) * attrc, ecp);
         if (attrv == NULL) {
-            RDB_raise_no_memory(ecp);
             goto error;
         }
     }
@@ -1624,9 +1620,8 @@ _RDB_cat_get_rtable(const char *name, RDB_exec_context *ecp,
                     "attribute not found while setting default value", ecp);
             goto error;
         }
-        attrv[i].defaultp = malloc(sizeof (RDB_object));
+        attrv[i].defaultp = RDB_alloc(sizeof (RDB_object), ecp);
         if (attrv[i].defaultp == NULL) {
-            RDB_raise_no_memory(ecp);
             goto error;
         }
         RDB_init_obj(attrv[i].defaultp);
@@ -1714,14 +1709,14 @@ _RDB_cat_get_rtable(const char *name, RDB_exec_context *ecp,
         }
     }
     for (i = 0; i < attrc; i++) {
-        free(attrv[i].name);
+        RDB_free(attrv[i].name);
         if (attrv[i].defaultp != NULL) {
             RDB_destroy_obj(attrv[i].defaultp, ecp);
-            free(attrv[i].defaultp);
+            RDB_free(attrv[i].defaultp);
         }
     }
     if (attrc > 0)
-        free(attrv);
+        RDB_free(attrv);
 
     if (_RDB_assoc_table_db(tbp, txp->dbp, ecp) != RDB_OK)
         goto error;
@@ -1741,8 +1736,8 @@ _RDB_cat_get_rtable(const char *name, RDB_exec_context *ecp,
 error:
     if (attrv != NULL) {
         for (i = 0; i < attrc; i++)
-            free(attrv[i].name);
-        free(attrv);
+            RDB_free(attrv[i].name);
+        RDB_free(attrv);
     }
 
     RDB_destroy_obj(&arr, ecp);
@@ -2057,9 +2052,8 @@ get_possrepcomps(const char *typename, RDB_possrep *rep,
     }
     rep->compc = ret;
     if (ret > 0) {
-        rep->compv = malloc(ret * sizeof (RDB_attr));
+        rep->compv = RDB_alloc(ret * sizeof (RDB_attr), ecp);
         if (rep->compv == NULL) {
-            RDB_raise_no_memory(ecp);
             goto error;
         }
     } else {
@@ -2133,7 +2127,7 @@ _RDB_cat_get_type(const char *name, RDB_exec_context *ecp,
     if (ret != RDB_OK)
         goto error;
 
-    typ = malloc(sizeof (RDB_type));
+    typ = RDB_alloc(sizeof (RDB_type), ecp);
     if (typ == NULL) {
         RDB_raise_no_memory(ecp);
         goto error;
@@ -2187,9 +2181,8 @@ _RDB_cat_get_type(const char *name, RDB_exec_context *ecp,
     }
     typ->var.scalar.repc = ret;
     if (ret > 0) {
-        typ->var.scalar.repv = malloc(ret * sizeof (RDB_possrep));
+        typ->var.scalar.repv = RDB_alloc(ret * sizeof (RDB_possrep), ecp);
         if (typ->var.scalar.repv == NULL) {
-            RDB_raise_no_memory(ecp);
             goto error;
         }
     }
@@ -2257,11 +2250,11 @@ error:
     if (typ != NULL) {
         if (typ->var.scalar.repc != 0) {
             for (i = 0; i < typ->var.scalar.repc; i++)
-                free(typ->var.scalar.repv[i].compv);
-            free(typ->var.scalar.repv);
+                RDB_free(typ->var.scalar.repv[i].compv);
+            RDB_free(typ->var.scalar.repv);
         }
-        free(typ->name);
-        free(typ);
+        RDB_free(typ->name);
+        RDB_free(typ);
     }
     return RDB_ERROR;
 }
@@ -2359,9 +2352,8 @@ _RDB_cat_get_ro_op(const char *name, int argc, RDB_type *argtv[],
     if (ret != RDB_OK)
         goto error;
 
-    op = malloc(sizeof (RDB_ro_op_desc));
+    op = RDB_alloc(sizeof (RDB_ro_op_desc), ecp);
     if (op == NULL) {
-        RDB_raise_no_memory(ecp);
         goto error;
     }
 
@@ -2375,9 +2367,8 @@ _RDB_cat_get_ro_op(const char *name, int argc, RDB_type *argtv[],
     }
 
     op->argc = argc;        
-    op->argtv = malloc(sizeof (RDB_type *) * op->argc);
+    op->argtv = RDB_alloc(sizeof (RDB_type *) * op->argc, ecp);
     if (op->argtv == NULL) {
-        RDB_raise_no_memory(ecp);
         goto error;
     }
 
@@ -2439,9 +2430,9 @@ _RDB_cat_get_ro_op(const char *name, int argc, RDB_type *argtv[],
 error:
     if (op != NULL) {
         RDB_destroy_obj(&op->iarg, ecp);
-        free(op->name);
-        free(op->argtv);
-        free(op);
+        RDB_free(op->name);
+        RDB_free(op->argtv);
+        RDB_free(op);
     }
 
     RDB_destroy_obj(&tpl, ecp);
@@ -2517,9 +2508,8 @@ _RDB_cat_get_upd_op(const char *name, int argc, RDB_type *argtv[],
     if (ret != RDB_OK)
         goto error;
 
-    op = malloc(sizeof (RDB_ro_op_desc));
+    op = RDB_alloc(sizeof (RDB_ro_op_desc), ecp);
     if (op == NULL) {
-        RDB_raise_no_memory(ecp);
         goto error;
     }
 
@@ -2531,9 +2521,8 @@ _RDB_cat_get_upd_op(const char *name, int argc, RDB_type *argtv[],
     if (ret != RDB_OK)
         goto error;
 
-    op->updv = malloc(argc);
+    op->updv = RDB_alloc(argc, ecp);
     if (op->updv == NULL) {
-        RDB_raise_no_memory(ecp);
         goto error;
     }
 
@@ -2565,8 +2554,8 @@ _RDB_cat_get_upd_op(const char *name, int argc, RDB_type *argtv[],
 error:
     if (op != NULL) {
         RDB_destroy_obj(&op->iarg, ecp);
-        free(op->updv);
-        free(op);
+        RDB_free(op->updv);
+        RDB_free(op);
     }
 
     RDB_destroy_obj(&tpl, ecp);

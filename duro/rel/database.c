@@ -80,9 +80,9 @@ free_dbroot(RDB_dbroot *dbrootp, RDB_exec_context *ecp)
     constrp = dbrootp->first_constrp;
     while (constrp != NULL) {
         nextconstrp = constrp->nextp;
-        free(constrp->name);
+        RDB_free(constrp->name);
         RDB_drop_expr(constrp->exp, ecp);
-        free(constrp);
+        RDB_free(constrp);
         constrp = nextconstrp;
     }
 
@@ -91,7 +91,7 @@ free_dbroot(RDB_dbroot *dbrootp, RDB_exec_context *ecp)
     RDB_destroy_op_map(&dbrootp->upd_opmap);
 
     RDB_destroy_hashtable(&dbrootp->empty_tbtab);
-    free(dbrootp);
+    RDB_free(dbrootp);
 }
 
 static int
@@ -146,8 +146,8 @@ static void
 free_db(RDB_database *dbp)
 {
     RDB_destroy_hashmap(&dbp->tbmap);
-    free(dbp->name);
-    free(dbp);
+    RDB_free(dbp->name);
+    RDB_free(dbp);
 }
 
 /* Check if there is a table this table depends on */
@@ -299,10 +299,9 @@ exp_equals(const void *ex1p, const void *ex2p, void *argp)
 static RDB_dbroot *
 new_dbroot(RDB_environment *envp, RDB_exec_context *ecp)
 {
-    RDB_dbroot *dbrootp = malloc(sizeof (RDB_dbroot));
+    RDB_dbroot *dbrootp = RDB_alloc(sizeof (RDB_dbroot), ecp);
 
-    if (dbrootp == NULL) {         
-        RDB_raise_no_memory(ecp);
+    if (dbrootp == NULL) {
         return NULL;
     }
     
@@ -321,18 +320,19 @@ new_dbroot(RDB_environment *envp, RDB_exec_context *ecp)
 }
 
 static RDB_database *
-new_db(const char *name)
+new_db(const char *name, RDB_exec_context *ecp)
 {
     RDB_database *dbp;
 
     /* Allocate structure */
-    dbp = malloc(sizeof (RDB_database));
+    dbp = RDB_alloc(sizeof (RDB_database), ecp);
     if (dbp == NULL)
         return NULL;
 
     /* Set name */
     dbp->name = RDB_dup_str(name);
     if (dbp->name == NULL) {
+        RDB_raise_no_memory(ecp);
         goto error;
     }
 
@@ -343,8 +343,8 @@ new_db(const char *name)
     return dbp;
 
 error:
-    free(dbp->name);
-    free(dbp);
+    RDB_free(dbp->name);
+    RDB_free(dbp);
     return NULL;
 }
 
@@ -464,9 +464,8 @@ RDB_create_db_from_env(const char *name, RDB_environment *envp,
     }
 
     dbrootp = (RDB_dbroot *)RDB_env_private(envp);
-    dbp = new_db(name);
+    dbp = new_db(name, ecp);
     if (dbp == NULL) {
-        RDB_raise_no_memory(ecp);
         return NULL;
     }
 
@@ -605,9 +604,8 @@ RDB_get_db_from_env(const char *name, RDB_environment *envp,
         goto error;
     }
 
-    dbp = new_db(name);
+    dbp = new_db(name, ecp);
     if (dbp == NULL) {
-        RDB_raise_no_memory(ecp);
         goto error;
     }
 
@@ -1387,7 +1385,7 @@ RDB_set_table_name(RDB_object *tbp, const char *name, RDB_exec_context *ecp,
     }
     
     if (tbp->var.tb.name != NULL)
-        free(tbp->var.tb.name);
+        RDB_free(tbp->var.tb.name);
     tbp->var.tb.name = RDB_dup_str(name);
     if (tbp->var.tb.name == NULL) {
         RDB_raise_no_memory(ecp);

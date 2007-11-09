@@ -73,14 +73,14 @@ test updop {user defined update operators}  -setup $SETUP -body {
         begin transaction;
 
         operator op() updates {};
-	        -- begin transaction;
+	        begin transaction;
 	        var r real relation {i integer, s string} key {i};
 	        
             insert r tuple {i 0, s "duro"};
 
             var v virtual (extend r add (s || 'x' as sx));
 
-	        -- commit;
+	        commit;
         end operator;
 
         op();

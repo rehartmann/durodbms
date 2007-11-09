@@ -66,9 +66,8 @@ update_stored_complex(RDB_object *tbp, RDB_expression *condp,
     RDB_type *tmptbtyp;
     RDB_type *tpltyp = tbp->typ->var.basetyp;
     RDB_cursor *curp = NULL;
-    RDB_object *valv = malloc(sizeof(RDB_object) * updc);
+    RDB_object *valv = RDB_alloc(sizeof(RDB_object) * updc, ecp);
     if (valv == NULL) {
-        RDB_raise_no_memory(ecp);
         return RDB_ERROR;
     }
 
@@ -271,7 +270,7 @@ cleanup:
     }
     for (i = 0; i < updc; i++)
         RDB_destroy_obj(&valv[i], ecp);
-    free(valv);
+    RDB_free(valv);
 
     if (RDB_destroy_obj(&tpl, ecp) != RDB_OK) {
         rcount = RDB_ERROR;
@@ -302,13 +301,12 @@ update_stored_simple(RDB_object *tbp, RDB_expression *condp,
     RDB_transaction tx;
     RDB_type *tpltyp = tbp->typ->var.basetyp;
     RDB_cursor *curp = NULL;
-    RDB_object *valv = malloc(sizeof(RDB_object) * updc);
-    RDB_field *fieldv = malloc(sizeof(RDB_field) * updc);
+    RDB_object *valv = RDB_alloc(sizeof(RDB_object) * updc, ecp);
+    RDB_field *fieldv = RDB_alloc(sizeof(RDB_field) * updc, ecp);
 
     if (valv == NULL || fieldv == NULL) {
-        free(valv);
-        free(fieldv);
-        RDB_raise_no_memory(ecp);
+        RDB_free(valv);
+        RDB_free(fieldv);
         return RDB_ERROR;
     }
 
@@ -416,7 +414,7 @@ update_stored_simple(RDB_object *tbp, RDB_expression *condp,
      }
 
 cleanup:
-    free(fieldv);
+    RDB_free(fieldv);
 
     if (curp != NULL) {
         ret = RDB_destroy_cursor(curp);
@@ -427,7 +425,7 @@ cleanup:
     }
     for (i = 0; i < updc; i++)
         RDB_destroy_obj(&valv[i], ecp);
-    free(valv);
+    RDB_free(valv);
 
     ret = RDB_destroy_obj(&tpl, ecp);
     if (ret != RDB_OK) {
@@ -472,15 +470,14 @@ update_where_pindex(RDB_expression *texp, RDB_expression *condp,
     if (refexp->var.tbref.tbp->var.tb.stp == NULL)
         return 0;
 
-    fvv = malloc(sizeof(RDB_field) * objc);
-    valv = malloc(sizeof(RDB_object) * updc);
-    fieldv = malloc(sizeof(RDB_field) * updc);
+    fvv = RDB_alloc(sizeof(RDB_field) * objc, ecp);
+    valv = RDB_alloc(sizeof(RDB_object) * updc, ecp);
+    fieldv = RDB_alloc(sizeof(RDB_field) * updc, ecp);
 
     if (fvv == NULL || valv == NULL || fieldv == NULL) {
-        free(fvv);
-        free(valv);
-        free(fieldv);
-        RDB_raise_no_memory(ecp);
+        RDB_free(fvv);
+        RDB_free(valv);
+        RDB_free(fieldv);
         rcount = RDB_ERROR;
         goto cleanup;
     }
@@ -566,9 +563,9 @@ cleanup:
     for (i = 0; i < updc; i++)
         RDB_destroy_obj(&valv[i], ecp);
     RDB_destroy_obj(&tpl, ecp);
-    free(valv);
-    free(fieldv);
-    free(fvv);
+    RDB_free(valv);
+    RDB_free(fieldv);
+    RDB_free(fvv);
 
     return rcount;
 }
@@ -600,14 +597,14 @@ update_where_index_simple(RDB_expression *texp, RDB_expression *condp,
     }
     objc = refexp->var.tbref.indexp->attrc;
 
-    fv = malloc(sizeof(RDB_field) * objc);
-    valv = malloc(sizeof(RDB_object) * updc);
-    fieldv = malloc(sizeof(RDB_field) * updc);
+    fv = RDB_alloc(sizeof(RDB_field) * objc, ecp);
+    valv = RDB_alloc(sizeof(RDB_object) * updc, ecp);
+    fieldv = RDB_alloc(sizeof(RDB_field) * updc, ecp);
 
     if (fv == NULL || valv == NULL || fieldv == NULL) {
-        free(fv);
-        free(valv);
-        free(fieldv);
+        RDB_free(fv);
+        RDB_free(valv);
+        RDB_free(fieldv);
         RDB_raise_no_memory(ecp);
         return RDB_ERROR;
     }
@@ -615,9 +612,9 @@ update_where_index_simple(RDB_expression *texp, RDB_expression *condp,
     /* Start subtransaction */
     ret = RDB_begin_tx(ecp, &tx, RDB_tx_db(txp), txp);
     if (ret != RDB_OK) {
-        free(fv);
-        free(valv);
-        free(fieldv);
+        RDB_free(fv);
+        RDB_free(valv);
+        RDB_free(fieldv);
         return RDB_ERROR;
     }
 
@@ -769,9 +766,9 @@ cleanup:
             }
         }
     }
-    free(valv);
-    free(fieldv);
-    free(fv);
+    RDB_free(valv);
+    RDB_free(fieldv);
+    RDB_free(fv);
 
     if (rcount == RDB_ERROR) {
         RDB_rollback(ecp, &tx);
@@ -800,15 +797,13 @@ update_where_index_complex(RDB_expression *texp, RDB_expression *condp,
     RDB_object tmptb;
     RDB_type *tmptbtyp;
     RDB_cursor *curp = NULL;
-    RDB_field *fv = malloc(sizeof(RDB_field) * objc);
-    RDB_object *valv = malloc(sizeof(RDB_object) * updc);
-    RDB_field *fieldv = malloc(sizeof(RDB_field) * updc);
+    RDB_field *fv;
+    RDB_object *valv = RDB_alloc(sizeof(RDB_object) * updc, ecp);
+    RDB_field *fieldv = RDB_alloc(sizeof(RDB_field) * updc, ecp);
 
-    if (fv == NULL || valv == NULL || fieldv == NULL) {
-        free(fv);
-        free(valv);
-        free(fieldv);
-        RDB_raise_no_memory(ecp);
+    if (valv == NULL || fieldv == NULL) {
+        RDB_free(valv);
+        RDB_free(fieldv);
         return RDB_ERROR;
     }
 
@@ -820,12 +815,19 @@ update_where_index_complex(RDB_expression *texp, RDB_expression *condp,
     }
     objc = refexp->var.tbref.indexp->attrc;
 
+    fv = RDB_alloc(sizeof(RDB_field) * objc, ecp);
+    if (fv == NULL) {
+        RDB_free(valv);
+        RDB_free(fieldv);
+        return RDB_ERROR;
+    }
+
     /* Start subtransaction */
     ret = RDB_begin_tx(ecp, &tx, RDB_tx_db(txp), txp);
     if (ret != RDB_OK) {
-        free(fv);
-        free(valv);
-        free(fieldv);
+        RDB_free(fv);
+        RDB_free(valv);
+        RDB_free(fieldv);
         return RDB_ERROR;
     }
 
@@ -1084,9 +1086,9 @@ cleanup:
     for (i = 0; i < updc; i++) {
         RDB_destroy_obj(&valv[i], ecp);
     }
-    free(valv);
-    free(fieldv);
-    free(fv);
+    RDB_free(valv);
+    RDB_free(fieldv);
+    RDB_free(fv);
 
     if (rcount == RDB_ERROR) {
         RDB_rollback(ecp, &tx);

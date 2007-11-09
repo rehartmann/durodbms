@@ -145,15 +145,15 @@ all_key(RDB_expression *exp, RDB_exec_context *ecp)
     int attrc;
     int i;
     RDB_type *tbtyp = _RDB_expr_type(exp, NULL, ecp, NULL);
-    RDB_string_vec *keyv = malloc(sizeof (RDB_string_vec));
+    RDB_string_vec *keyv = RDB_alloc(sizeof (RDB_string_vec), ecp);
     if (keyv == NULL)
         return NULL;
 
     attrc = keyv[0].strc =
             tbtyp->var.basetyp->var.tuple.attrc;
-    keyv[0].strv = malloc(sizeof(char *) * attrc);
+    keyv[0].strv = RDB_alloc(sizeof(char *) * attrc, ecp);
     if (keyv[0].strv == NULL) {
-        free(keyv);
+        RDB_free(keyv);
         return NULL;
     }
     for (i = 0; i < attrc; i++)
@@ -169,7 +169,7 @@ all_key(RDB_expression *exp, RDB_exec_context *ecp)
     return keyv;
 error:
     RDB_free_strvec(keyv[0].strc, keyv[0].strv);
-    free(keyv);
+    RDB_free(keyv);
     return NULL;
 }
 
@@ -192,7 +192,7 @@ infer_join_keys(RDB_expression *exp, RDB_exec_context *ecp,
         return keyc2;
 
     newkeyc = keyc1 * keyc2;
-    newkeyv = malloc(sizeof (RDB_string_vec) * newkeyc);
+    newkeyv = RDB_alloc(sizeof (RDB_string_vec) * newkeyc, ecp);
     if (newkeyv == NULL)
         goto error;
     for (i = 0; i < keyc1; i++) {
@@ -200,7 +200,7 @@ infer_join_keys(RDB_expression *exp, RDB_exec_context *ecp,
             RDB_string_vec *attrsp = &newkeyv[i * keyc2 + j];
 
             attrsp->strc = keyv1[i].strc + keyv2[j].strc;
-            attrsp->strv = malloc(sizeof(char *) * attrsp->strc);
+            attrsp->strv = RDB_alloc(sizeof(char *) * attrsp->strc, ecp);
             if (attrsp->strv == NULL)
                 goto error;
             for (k = 0; k < attrsp->strc; k++)
@@ -236,7 +236,6 @@ error:
         _RDB_free_keys(keyc1, keyv1);
     if (free2)
         _RDB_free_keys(keyc2, keyv2);
-    RDB_raise_no_memory(ecp);
     return RDB_ERROR;
 }
 
@@ -255,9 +254,8 @@ infer_project_keys(RDB_expression *exp, RDB_exec_context *ecp,
     if (keyc < 0)
         return keyc;
 
-    presv = malloc(sizeof(RDB_bool) * keyc);
+    presv = RDB_alloc(sizeof(RDB_bool) * keyc, ecp);
     if (presv == NULL) {
-        RDB_raise_no_memory(ecp);
         return RDB_ERROR;
     }
     newkeyc = _RDB_check_project_keyloss(exp, keyc, keyv, presv, ecp);
@@ -278,9 +276,8 @@ infer_project_keys(RDB_expression *exp, RDB_exec_context *ecp,
         int i, j;
 
         /* Pick the keys which survived the projection */
-        newkeyv = malloc(sizeof (RDB_string_vec) * newkeyc);
+        newkeyv = RDB_alloc(sizeof (RDB_string_vec) * newkeyc, ecp);
         if (newkeyv == NULL) {
-            RDB_raise_no_memory(ecp);
             return RDB_ERROR;
         }
 
@@ -301,7 +298,7 @@ infer_project_keys(RDB_expression *exp, RDB_exec_context *ecp,
             }
         }
     }
-    free(presv);
+    RDB_free(presv);
     if (freekeys)
         _RDB_free_keys(keyc, keyv);
     *keyvp = newkeyv;
@@ -320,15 +317,13 @@ infer_group_keys(RDB_expression *exp, RDB_exec_context *ecp,
     /*
      * Key consists of all attributes which are not grouped
      */    
-    newkeyv = malloc(sizeof(RDB_string_vec));
+    newkeyv = RDB_alloc(sizeof(RDB_string_vec), ecp);
     if (newkeyv == NULL) {
-        RDB_raise_no_memory(ecp);
         return RDB_ERROR;
     }
     newkeyv[0].strc = tbtyp->var.basetyp->var.tuple.attrc - 1;
-    newkeyv[0].strv = malloc(sizeof (char *) * newkeyv[0].strc);
+    newkeyv[0].strv = RDB_alloc(sizeof (char *) * newkeyv[0].strc, ecp);
     if (newkeyv[0].strv == NULL) {
-        RDB_raise_no_memory(ecp);
         return RDB_ERROR;
     }
 
@@ -366,11 +361,12 @@ _RDB_rename_attr(const char *srcname, RDB_expression *exp)
 }
 
 RDB_string_vec *
-_RDB_dup_rename_keys(int keyc, const RDB_string_vec keyv[], RDB_expression *texp)
+_RDB_dup_rename_keys(int keyc, const RDB_string_vec keyv[], RDB_expression *texp,
+        RDB_exec_context *ecp)
 {
     int i, j;
 
-    RDB_string_vec *nkeyv = malloc(sizeof(RDB_attr) * keyc);
+    RDB_string_vec *nkeyv = RDB_alloc(sizeof(RDB_attr) * keyc, ecp);
     if (keyv == NULL) {
         return NULL;
     }
@@ -379,7 +375,7 @@ _RDB_dup_rename_keys(int keyc, const RDB_string_vec keyv[], RDB_expression *texp
     }
     for (i = 0; i < keyc; i++) {
         nkeyv[i].strc = keyv[i].strc;
-        nkeyv[i].strv = malloc(sizeof(char *) * keyv[i].strc);
+        nkeyv[i].strv = RDB_alloc(sizeof(char *) * keyv[i].strc, ecp);
         if (nkeyv[i].strv == NULL)
             goto error;
         for (j = 0; j < keyv[i].strc; j++)
@@ -408,10 +404,10 @@ error:
     for (i = 0; i < keyc; i++) {
         if (nkeyv[i].strv != NULL) {
             for (j = 0; j < nkeyv[i].strc; j++)
-                free(nkeyv[i].strv[j]);
+                RDB_free(nkeyv[i].strv[j]);
         }
     }
-    free(nkeyv);
+    RDB_free(nkeyv);
     return NULL;
 }
 
@@ -462,9 +458,8 @@ _RDB_infer_keys(RDB_expression *exp, RDB_exec_context *ecp,
         if (keyc == RDB_ERROR)
             return RDB_ERROR;
 
-        *keyvp = _RDB_dup_rename_keys(keyc, *keyvp, exp);
+        *keyvp = _RDB_dup_rename_keys(keyc, *keyvp, exp, ecp);
         if (*keyvp == NULL) {
-            RDB_raise_no_memory(ecp);
             return RDB_ERROR;
         }
         if (freekey) {
@@ -501,13 +496,13 @@ _RDB_table_refers(const RDB_object *srctbp, const RDB_object *dsttbp)
 
 RDB_object **
 _RDB_index_objpv(_RDB_tbindex *indexp, RDB_expression *exp, RDB_type *tbtyp,
-        int objpc, RDB_bool all_eq, RDB_bool asc)
+        int objpc, RDB_bool all_eq, RDB_bool asc, RDB_exec_context *ecp)
 {
     int i;
     RDB_expression *nodep;
     RDB_expression *attrexp;
 
-    RDB_object **objpv = malloc(sizeof (RDB_object *) * objpc);
+    RDB_object **objpv = RDB_alloc(sizeof (RDB_object *) * objpc, ecp);
     if (objpv == NULL)
         return NULL;
     for (i = 0; i < objpc; i++) {
@@ -535,7 +530,7 @@ _RDB_index_objpv(_RDB_tbindex *indexp, RDB_expression *exp, RDB_type *tbtyp,
             attrexp->var.op.args.firstp->nextp->var.obj.typ = RDB_dup_nonscalar_type(
                     RDB_type_attr_type(tbtyp, indexp->attrv[i].attrname), NULL);
             if (attrexp->var.op.args.firstp->nextp->var.obj.typ == NULL) {
-                free(objpv);
+                RDB_free(objpv);
                 return NULL;
             }
         }

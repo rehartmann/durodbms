@@ -30,14 +30,14 @@ free_upd_op(struct op_entry *op, RDB_exec_context *ecp)
 {
     int i;
 
-    free(op->name);
+    RDB_free(op->name);
     for (i = 0; i < op->argc; i++) {
         if (RDB_type_name(op->argtv[i]) == NULL)
             RDB_drop_type(op->argtv[i], ecp, NULL);
     }
-    free(op->argtv);
+    RDB_free(op->argtv);
     /* !! datap */
-    free(op);
+    RDB_free(op);
 }
 
 static void
@@ -81,9 +81,8 @@ RDB_put_op(RDB_op_map *opmap, const char *name, int argc, RDB_type **argtv,
     int i;
     struct op_entry *fop, *op;
 
-    op = malloc(sizeof(struct op_entry));
+    op = RDB_alloc(sizeof(struct op_entry), ecp);
     if (op == NULL) {
-        RDB_raise_no_memory(ecp);
         return RDB_ERROR;
     }
 
@@ -94,9 +93,8 @@ RDB_put_op(RDB_op_map *opmap, const char *name, int argc, RDB_type **argtv,
         goto error;
     }
     op->argc = argc;
-    op->argtv = malloc(sizeof (RDB_type *) * argc);
+    op->argtv = RDB_alloc(sizeof (RDB_type *) * argc, ecp);
     if (op->argtv == NULL) {
-        RDB_raise_no_memory(ecp);
         goto error;
     }
 
@@ -128,14 +126,14 @@ RDB_put_op(RDB_op_map *opmap, const char *name, int argc, RDB_type **argtv,
     return RDB_OK;
 
 error:
-    free(op->name);
+    RDB_free(op->name);
     if (op->argtv != NULL) {
         for (i = 0; i < argc; i++) {
             if (op->argtv[i] != NULL && !RDB_type_is_scalar(op->argtv[i]))
                 RDB_drop_type(op->argtv[i], ecp, NULL);
         }
     }
-    free(op);
+    RDB_free(op);
     return RDB_ERROR;   
 }
 

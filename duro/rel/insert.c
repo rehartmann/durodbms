@@ -30,7 +30,7 @@ _RDB_insert_real(RDB_object *tbp, const RDB_object *tplp,
         }
     }
 
-    fvp = malloc(sizeof(RDB_field) * attrcount);
+    fvp = RDB_alloc(sizeof(RDB_field) * attrcount, ecp);
     if (fvp == NULL) {
         RDB_raise_no_memory(ecp);
         ret = RDB_ERROR;
@@ -144,6 +144,6 @@ _RDB_insert_real(RDB_object *tbp, const RDB_object *tplp,
     }
 
 cleanup:
-    free(fvp);
+    RDB_free(fvp);
     return ret;
 }

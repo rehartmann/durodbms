@@ -77,17 +77,16 @@ _RDB_read_constraints(RDB_exec_context *ecp, RDB_transaction *txp)
         goto cleanup;
 
     for (i = 0; (tplp = RDB_array_get(&constrs, i, ecp)) != NULL; i++) {
-        RDB_constraint *constrp = malloc(sizeof(RDB_constraint));
+        RDB_constraint *constrp = RDB_alloc(sizeof(RDB_constraint), ecp);
 
         if (constrp == NULL) {
-            RDB_raise_no_memory(ecp);
             ret = RDB_ERROR;
             goto cleanup;
         }
         constrp->name = RDB_dup_str(RDB_obj_string(RDB_tuple_get(tplp,
                 "CONSTRAINTNAME")));
         if (constrp->name == NULL) {
-            free(constrp);
+            RDB_free(constrp);
             RDB_raise_no_memory(ecp);
             ret = RDB_ERROR;
             goto cleanup;
@@ -95,8 +94,8 @@ _RDB_read_constraints(RDB_exec_context *ecp, RDB_transaction *txp)
         constrp->exp = _RDB_binobj_to_expr(RDB_tuple_get(tplp, "I_EXPR"), ecp,
                 txp);
         if (constrp->exp == NULL) {
-            free(constrp->name);
-            free(constrp);
+            RDB_free(constrp->name);
+            RDB_free(constrp);
             ret = RDB_ERROR;
             goto cleanup;
         }
@@ -170,9 +169,8 @@ RDB_create_constraint(const char *name, RDB_expression *exp,
         RDB_tx_db(txp)->dbrootp->constraints_read = RDB_TRUE;
     }
 
-    constrp = malloc(sizeof (RDB_constraint));
+    constrp = RDB_alloc(sizeof (RDB_constraint), ecp);
     if (constrp == NULL) {
-        RDB_raise_no_memory(ecp);
         return RDB_ERROR;
     }
 
@@ -202,8 +200,8 @@ RDB_create_constraint(const char *name, RDB_expression *exp,
     return RDB_OK;
 
 error:
-    free(constrp->name);
-    free(constrp);
+    RDB_free(constrp->name);
+    RDB_free(constrp);
 
     return RDB_ERROR;
 }
@@ -246,8 +244,8 @@ RDB_drop_constraint(const char *name, RDB_exec_context *ecp,
         if (strcmp(constrp->name, name) == 0) {
             dbrootp->first_constrp = constrp->nextp;
             RDB_drop_expr(constrp->exp, ecp);
-            free(constrp->name);
-            free(constrp);
+            RDB_free(constrp->name);
+            RDB_free(constrp);
         } else {
             RDB_constraint *hconstrp;
 
@@ -263,8 +261,8 @@ RDB_drop_constraint(const char *name, RDB_exec_context *ecp,
             hconstrp = constrp->nextp;
             constrp->nextp = constrp->nextp->nextp;
             RDB_drop_expr(hconstrp->exp, ecp);
-            free(hconstrp->name);
-            free(hconstrp);
+            RDB_free(hconstrp->name);
+            RDB_free(hconstrp);
         }
     }
 

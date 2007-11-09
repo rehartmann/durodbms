@@ -184,9 +184,8 @@ RDB_array_get(RDB_object *arrp, RDB_int idx, RDB_exec_context *ecp)
     }
 
     if (arrp->var.arr.tplp == NULL) {
-        arrp->var.arr.tplp = malloc(sizeof (RDB_object));
+        arrp->var.arr.tplp = RDB_alloc(sizeof (RDB_object), ecp);
         if (arrp->var.arr.tplp == NULL) {
-            RDB_raise_no_memory(ecp);
             return NULL;
         }
         RDB_init_obj(arrp->var.arr.tplp);
@@ -203,9 +202,8 @@ RDB_array_get(RDB_object *arrp, RDB_int idx, RDB_exec_context *ecp)
             arrp->var.arr.elemc = idx + 1;
         if (arrp->var.arr.elemc > ARRAY_BUFLEN_MAX)
             arrp->var.arr.elemc = ARRAY_BUFLEN_MAX;
-        arrp->var.arr.elemv = malloc (sizeof(RDB_object) * arrp->var.arr.elemc);
+        arrp->var.arr.elemv = RDB_alloc (sizeof(RDB_object) * arrp->var.arr.elemc, ecp);
         if (arrp->var.arr.elemv == NULL) {
-            RDB_raise_no_memory(ecp);
             return NULL;
         }
 
@@ -334,9 +332,8 @@ RDB_set_array_length(RDB_object *arrp, RDB_int len, RDB_exec_context *ecp)
     if (arrp->kind == RDB_OB_INITIAL) {
         arrp->kind = RDB_OB_ARRAY;
 
-        arrp->var.arr.elemv = malloc(sizeof(RDB_object) * len);
+        arrp->var.arr.elemv = RDB_alloc(sizeof(RDB_object) * len, ecp);
         if (arrp->var.arr.elemv == NULL) {
-            RDB_raise_no_memory(ecp);
             return RDB_ERROR;
         }
         for (i = 0; i < len; i++)

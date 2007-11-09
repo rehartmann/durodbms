@@ -67,9 +67,8 @@ wrap_type(const RDB_expression *exp, RDB_type **argtv,
 
     wrapc = (argc - 1) / 2;
     if (wrapc > 0) {
-        wrapv = malloc(sizeof(RDB_wrapping) * wrapc);
+        wrapv = RDB_alloc(sizeof(RDB_wrapping) * wrapc, ecp);
         if (wrapv == NULL) {
-            RDB_raise_no_memory(ecp);
             return NULL;
         }
     }
@@ -82,7 +81,9 @@ wrap_type(const RDB_expression *exp, RDB_type **argtv,
         RDB_object *objp;
 
         wrapv[i].attrc =  RDB_array_length(&argp->var.obj, ecp);
-        wrapv[i].attrv = malloc(sizeof (char *) * wrapv[i].attrc);
+        wrapv[i].attrv = RDB_alloc(sizeof (char *) * wrapv[i].attrc, ecp);
+        if (wrapv[i].attrv == NULL)
+            return NULL;
         for (j = 0; j < wrapv[i].attrc; j++) {
             objp = RDB_array_get(&argp->var.obj, (RDB_int) j, ecp);
             if (objp == NULL) {
@@ -111,10 +112,10 @@ wrap_type(const RDB_expression *exp, RDB_type **argtv,
 
 cleanup:
     for (i = 0; i < wrapc; i++) {
-        free(wrapv[i].attrv);
+        RDB_free(wrapv[i].attrv);
     }
     if (wrapc > 0)
-        free(wrapv);
+        RDB_free(wrapv);
     return typ;
 }
 
@@ -282,9 +283,8 @@ extend_type(const RDB_expression *exp, RDB_gettypefn *getfnp, void *arg,
     else
         tpltyp = arg1typ;
 
-    attrv = malloc(sizeof (RDB_attr) * attrc);
+    attrv = RDB_alloc(sizeof (RDB_attr) * attrc, ecp);
     if (attrv == NULL) {
-        RDB_raise_no_memory(ecp);
         return NULL;
     }
     argp = exp->var.op.args.firstp->nextp;
@@ -293,7 +293,7 @@ extend_type(const RDB_expression *exp, RDB_gettypefn *getfnp, void *arg,
         if (attrv[i].typ == NULL) {
             int j;
 
-            free(attrv);
+            RDB_free(attrv);
             for (j = 0; i < j; j++) {
                 if (!RDB_type_is_scalar(attrv[j].typ)) {
                     RDB_drop_type(attrv[j].typ, ecp, NULL);
@@ -322,7 +322,7 @@ extend_type(const RDB_expression *exp, RDB_gettypefn *getfnp, void *arg,
                     "EXTEND requires tuple or relation argument", ecp);
             typ = NULL;
     }
-    free(attrv);
+    RDB_free(attrv);
     return typ;
 }
 
@@ -361,9 +361,8 @@ project_type(const RDB_expression *exp, RDB_type *argtv[],
         }
         argp = argp->nextp;
     }
-    attrv = malloc(sizeof (char *) * (argc - 1));
+    attrv = RDB_alloc(sizeof (char *) * (argc - 1), ecp);
     if (attrv == NULL) {
-        RDB_raise_no_memory(ecp);
         return NULL;
     }
     argp = exp->var.op.args.firstp->nextp;
@@ -381,7 +380,7 @@ project_type(const RDB_expression *exp, RDB_type *argtv[],
         RDB_raise_invalid_argument("invalid PROJECT argument", ecp);
         typ = NULL;
     }
-    free(attrv);
+    RDB_free(attrv);
     return typ;
 }
 
@@ -418,9 +417,8 @@ unwrap_type(const RDB_expression *exp, RDB_type *argtv[],
         argp = argp->nextp;
     }
 
-    attrv = malloc(attrc * sizeof (char *));
+    attrv = RDB_alloc(attrc * sizeof (char *), ecp);
     if (attrv == NULL) {
-        RDB_raise_no_memory(ecp);
         return NULL;
     }
     argp = exp->var.op.args.firstp->nextp;
@@ -438,7 +436,7 @@ unwrap_type(const RDB_expression *exp, RDB_type *argtv[],
         typ = NULL;
     }
 
-    free(attrv);
+    RDB_free(attrv);
     return typ;
 }
 
@@ -472,9 +470,8 @@ group_type(const RDB_expression *exp, RDB_type *argtv[],
     }
 
     if (argc > 2) {
-        attrv = malloc(sizeof (char *) * (argc - 2));
+        attrv = RDB_alloc(sizeof (char *) * (argc - 2), ecp);
         if (attrv == NULL) {
-            RDB_raise_no_memory(ecp);
             return NULL;
         }
     } else {
@@ -488,7 +485,7 @@ group_type(const RDB_expression *exp, RDB_type *argtv[],
     }
     typ = RDB_group_type(argtv[0], argc - 2, attrv,
             RDB_obj_string(&exp->var.op.args.lastp->var.obj), ecp);
-    free(attrv);
+    RDB_free(attrv);
     return typ;
 }
 
@@ -557,7 +554,7 @@ relation_type(const RDB_expression *exp, RDB_type **argtv,
         RDB_raise_type_mismatch("tuple argument required for RELATION", ecp);
         goto error;
     }
-    rtyp = malloc(sizeof(RDB_type));
+    rtyp = RDB_alloc(sizeof(RDB_type), ecp);
     if (rtyp == NULL) {
         goto error;
     }
@@ -591,9 +588,8 @@ rename_type(const RDB_expression *exp, RDB_type **argtv,
 
     renc = (argc - 1) / 2;
     if (renc > 0) {
-        renv = malloc(sizeof (RDB_renaming) * renc);
+        renv = RDB_alloc(sizeof (RDB_renaming) * renc, ecp);
         if (renv == NULL) {
-            RDB_raise_no_memory(ecp);
             return NULL;
         }
     }
@@ -601,7 +597,7 @@ rename_type(const RDB_expression *exp, RDB_type **argtv,
     argp = exp->var.op.args.firstp->nextp;
     for (i = 0; i < renc; i++) {
         if (argp->kind != RDB_EX_OBJ || argp->var.obj.typ != &RDB_STRING) {
-            free(renv);
+            RDB_free(renv);
             RDB_raise_invalid_argument("STRING argument required", ecp);
             return NULL;
         }
@@ -627,7 +623,7 @@ rename_type(const RDB_expression *exp, RDB_type **argtv,
                     "relation or tuple argument required", ecp);
             typ = NULL;
     }
-    free(renv);
+    RDB_free(renv);
     return typ;
 }
 
@@ -668,9 +664,8 @@ expr_op_type(RDB_expression *exp, RDB_gettypefn *getfnp, void *arg,
     /*
      * Get argument types
      */
-    argtv = malloc(sizeof (RDB_type *) * argc);
+    argtv = RDB_alloc(sizeof (RDB_type *) * argc, ecp);
     if (argtv == NULL) {
-        RDB_raise_no_memory(ecp);
         return NULL;
     }
 
@@ -870,7 +865,7 @@ expr_op_type(RDB_expression *exp, RDB_gettypefn *getfnp, void *arg,
         typ = RDB_dup_nonscalar_type(argtv[0], ecp);
         if (typ == NULL)
             goto error;
-        free(argtv);
+        RDB_free(argtv);
         return typ;
     } else if (strcmp(exp->var.op.name, "DIVIDE") == 0) {
         if (argc != 3 || argtv[0] == NULL
@@ -890,7 +885,7 @@ expr_op_type(RDB_expression *exp, RDB_gettypefn *getfnp, void *arg,
         typ = RDB_dup_nonscalar_type(argtv[0], ecp);
         if (typ == NULL)
             goto error;
-        free(argtv);
+        RDB_free(argtv);
         return typ;
     } else if (strcmp(exp->var.op.name, "TO_TUPLE") == 0) {
         if (argc != 1 || argtv[0] == NULL) {
@@ -919,11 +914,11 @@ expr_op_type(RDB_expression *exp, RDB_gettypefn *getfnp, void *arg,
         typ = RDB_dup_nonscalar_type(op->rtyp, ecp);
     }
 
-    free(argtv);
+    RDB_free(argtv);
     return typ;
 
 error:
-    free(argtv);
+    RDB_free(argtv);
     return NULL;
 }
 
@@ -969,7 +964,7 @@ RDB_expr_type(RDB_expression *exp, RDB_gettypefn *getfnp, void *arg,
                 RDB_object *tbp = RDB_get_table(exp->var.varname, ecp, txp);
                 if (tbp != NULL) {
                     /* Transform into table ref */
-                    free(exp->var.varname);
+                    RDB_free(exp->var.varname);
                     exp->kind = RDB_EX_TBP;
                     exp->var.tbref.tbp = tbp;
                     exp->var.tbref.indexp = NULL;
@@ -1007,10 +1002,8 @@ RDB_expr_type(RDB_expression *exp, RDB_gettypefn *getfnp, void *arg,
 
 static RDB_expression *
 new_expr(RDB_exec_context *ecp) {
-    RDB_expression *exp = malloc(sizeof (RDB_expression));
-
+    RDB_expression *exp = RDB_alloc(sizeof (RDB_expression), ecp);
     if (exp == NULL) {
-        RDB_raise_no_memory(ecp);
         return NULL;
     }
     exp->typ = NULL;
@@ -1134,7 +1127,7 @@ RDB_string_to_expr(const char *v, RDB_exec_context *ecp)
     exp->var.obj.kind = RDB_OB_BIN;
     exp->var.obj.var.bin.datap = RDB_dup_str(v);
     if (exp->var.obj.var.bin.datap == NULL) {
-        free(exp);
+        RDB_free(exp);
         RDB_raise_no_memory(ecp);
         return NULL;
     }
@@ -1166,7 +1159,7 @@ RDB_obj_to_expr(const RDB_object *objp, RDB_exec_context *ecp)
     RDB_init_obj(&exp->var.obj);
     if (objp != NULL) {        
         if (RDB_copy_obj(&exp->var.obj, objp, ecp) != RDB_OK) {
-            free(exp);
+            RDB_free(exp);
             return NULL;
         }
         if (objp->typ != NULL) {
@@ -1221,7 +1214,7 @@ RDB_var_ref(const char *attrname, RDB_exec_context *ecp)
     exp->var.varname = RDB_dup_str(attrname);
     if (exp->var.varname == NULL) {
         RDB_raise_no_memory(ecp);
-        free(exp);
+        RDB_free(exp);
         return NULL;
     }
     
@@ -1254,7 +1247,7 @@ RDB_ro_op(const char *opname, RDB_exec_context *ecp)
     
     exp->var.op.name = RDB_dup_str(opname);
     if (exp->var.op.name == NULL) {
-        free(exp);
+        RDB_free(exp);
         RDB_raise_no_memory(ecp);
         return NULL;
     }
@@ -1404,7 +1397,7 @@ RDB_drop_expr(RDB_expression *exp, RDB_exec_context *ecp)
     if (drop_children(exp, ecp) != RDB_OK)
         return RDB_ERROR;
     ret = _RDB_destroy_expr(exp, ecp);
-    free(exp);
+    RDB_free(exp);
     return ret;
 }
 
@@ -1490,9 +1483,8 @@ evaluate_ro_op(RDB_expression *exp, RDB_getobjfn *getfnp, void *getdata,
             int attrc = (argc - 1) / 2;
             RDB_virtual_attr *attrv;
 
-            attrv = malloc(sizeof (RDB_virtual_attr) * attrc);
+            attrv = RDB_alloc(sizeof (RDB_virtual_attr) * attrc, ecp);
             if (attrv == NULL) {
-                RDB_raise_no_memory(ecp);
                 return RDB_ERROR;
             }
 
@@ -1511,12 +1503,12 @@ evaluate_ro_op(RDB_expression *exp, RDB_getobjfn *getfnp, void *getdata,
             
             if (RDB_evaluate(exp->var.op.args.firstp, getfnp, getdata, ecp,
                     txp, valp) != RDB_OK) {
-                free(attrv);
+                RDB_free(attrv);
                 return RDB_ERROR;
             }
             
             ret = RDB_extend_tuple(valp, attrc, attrv, ecp, txp);
-            free(attrv);
+            RDB_free(attrv);
             return ret;
         }
         RDB_raise_invalid_argument("invalid extend argument", ecp);
@@ -1600,15 +1592,13 @@ evaluate_ro_op(RDB_expression *exp, RDB_getobjfn *getfnp, void *getdata,
         }
         return ret;
     }
-    valpv = malloc(argc * sizeof (RDB_object *));
+    valpv = RDB_alloc(argc * sizeof (RDB_object *), ecp);
     if (valpv == NULL) {
-        RDB_raise_no_memory(ecp);
         ret = RDB_ERROR;
         goto cleanup;
     }
-    valv = malloc(argc * sizeof (RDB_object));
+    valv = RDB_alloc(argc * sizeof (RDB_object), ecp);
     if (valv == NULL) {
-        RDB_raise_no_memory(ecp);
         ret = RDB_ERROR;
         goto cleanup;
     }
@@ -1659,9 +1649,9 @@ cleanup:
             }
             argp = argp->nextp;
         }
-        free(valv);
+        RDB_free(valv);
     }
-    free(valpv);
+    RDB_free(valpv);
     return ret;
 }
 
@@ -1927,15 +1917,15 @@ _RDB_destroy_expr(RDB_expression *exp, RDB_exec_context *ecp)
             break;
         case RDB_EX_TUPLE_ATTR:
         case RDB_EX_GET_COMP:
-            free(exp->var.op.name);
+            RDB_free(exp->var.op.name);
             break;
         case RDB_EX_RO_OP:
-            free(exp->var.op.name);
+            RDB_free(exp->var.op.name);
             if (exp->var.op.optinfo.objpc > 0)
-                free(exp->var.op.optinfo.objpv);
+                RDB_free(exp->var.op.optinfo.objpv);
             break;
         case RDB_EX_VAR:
-            free(exp->var.varname);
+            RDB_free(exp->var.varname);
             break;
     }
     if (exp->typ != NULL && !RDB_type_is_scalar(exp->typ))

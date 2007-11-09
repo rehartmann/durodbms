@@ -689,7 +689,7 @@ _RDB_copy_obj(RDB_object *dstvalp, const RDB_object *srcvalp,
             return RDB_OK;
         case RDB_OB_BIN:
             if (dstvalp->kind == RDB_OB_BIN)
-                free(dstvalp->var.bin.datap);
+                RDB_free(dstvalp->var.bin.datap);
             else
                 dstvalp->kind = srcvalp->kind;
             dstvalp->var.bin.len = srcvalp->var.bin.len;
@@ -825,7 +825,7 @@ RDB_destroy_obj(RDB_object *objp, RDB_exec_context *ecp)
             break;
         case RDB_OB_BIN:
             if (objp->var.bin.len > 0)
-                free(objp->var.bin.datap);
+                RDB_free(objp->var.bin.datap);
             break;
         case RDB_OB_TUPLE:
         {
@@ -835,8 +835,8 @@ RDB_destroy_obj(RDB_object *objp, RDB_exec_context *ecp)
             RDB_init_hashtable_iter(&it, (RDB_hashtable *) &objp->var.tpl_tab);
             while ((entryp = RDB_hashtable_next(&it)) != NULL) {
                 RDB_destroy_obj(&entryp->obj, ecp);
-                free(entryp->key);
-                free(entryp);
+                RDB_free(entryp->key);
+                RDB_free(entryp);
             }
             RDB_destroy_hashtable_iter(&it);
             RDB_destroy_hashtable(&objp->var.tpl_tab);

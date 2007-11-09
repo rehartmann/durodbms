@@ -60,9 +60,8 @@ provide_entry(RDB_object *tplp, const char *attrname, RDB_exec_context *ecp,
         /* Return pointer to value */
     } else {
         /* Insert new entry */
-        entryp = malloc(sizeof(tuple_entry));
+        entryp = RDB_alloc(sizeof(tuple_entry), ecp);
         if (entryp == NULL) {
-            RDB_raise_no_memory(ecp);
             return RDB_ERROR;
         }
         entryp->key = RDB_dup_str(attrname);
@@ -874,10 +873,9 @@ _RDB_invwrap_tuple(const RDB_object *tplp, RDB_expression *exp,
     int ret;
     RDB_expression *argp;
     int wrapc = (RDB_expr_list_length(&exp->var.op.args) - 1) / 2;
-    char **attrv = malloc(sizeof(char *) * wrapc);
+    char **attrv = RDB_alloc(sizeof(char *) * wrapc, ecp);
 
     if (attrv == NULL) {
-        RDB_raise_no_memory(ecp);
         return RDB_ERROR;
     }
 
@@ -907,9 +905,8 @@ _RDB_invunwrap_tuple(const RDB_object *tplp, RDB_expression *exp,
     RDB_type *srcreltyp = RDB_expr_type(exp->var.op.args.firstp, NULL, NULL,
             ecp, txp);
     RDB_type *srctuptyp = srcreltyp->var.basetyp;
-    RDB_wrapping *wrapv = malloc(sizeof(RDB_wrapping) * attrc);
+    RDB_wrapping *wrapv = RDB_alloc(sizeof(RDB_wrapping) * attrc, ecp);
     if (wrapv == NULL) {
-        RDB_raise_no_memory(ecp);
         return RDB_ERROR;
     }
 
@@ -923,9 +920,8 @@ _RDB_invunwrap_tuple(const RDB_object *tplp, RDB_expression *exp,
                 RDB_obj_string(&argp->var.obj))->typ;
 
         wrapv[i].attrc = tuptyp->var.tuple.attrc;
-        wrapv[i].attrv = malloc(sizeof(char *) * tuptyp->var.tuple.attrc);
+        wrapv[i].attrv = RDB_alloc(sizeof(char *) * tuptyp->var.tuple.attrc, ecp);
         if (wrapv[i].attrv == NULL) {
-            RDB_raise_no_memory(ecp);
             return RDB_ERROR;
         }
         for (j = 0; j < wrapv[i].attrc; j++)
@@ -1044,7 +1040,7 @@ _RDB_tuple_type(const RDB_object *tplp, RDB_exec_context *ecp)
     int i;
     tuple_entry *entryp;
     RDB_hashtable_iter hiter;
-    RDB_type *typ = malloc(sizeof (RDB_type));
+    RDB_type *typ = RDB_alloc(sizeof (RDB_type), ecp);
     if (typ == NULL)
         return NULL;
 
@@ -1053,7 +1049,7 @@ _RDB_tuple_type(const RDB_object *tplp, RDB_exec_context *ecp)
     typ->ireplen = RDB_VARIABLE_LEN;
     typ->var.tuple.attrc = RDB_tuple_size(tplp);
     if (typ->var.tuple.attrc > 0) {
-        typ->var.tuple.attrv = malloc(sizeof(RDB_attr) * typ->var.tuple.attrc);
+        typ->var.tuple.attrv = RDB_alloc(sizeof(RDB_attr) * typ->var.tuple.attrc, ecp);
         if (typ->var.tuple.attrv == NULL)
             goto error;
 

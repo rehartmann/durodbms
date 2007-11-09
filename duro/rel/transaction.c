@@ -50,7 +50,7 @@ cleanup_storage(RDB_transaction *txp)
     rmlinkp = txp->delrmp;
     while (rmlinkp != NULL) {
         hrmlinkp = rmlinkp->nextp;
-        free(rmlinkp);
+        RDB_free(rmlinkp);
         rmlinkp = hrmlinkp;
     }
     txp->delrmp = NULL;
@@ -58,7 +58,7 @@ cleanup_storage(RDB_transaction *txp)
     ixlinkp = txp->delixp;
     while (ixlinkp != NULL) {
         hixlinkp = ixlinkp->nextp;
-        free(ixlinkp);
+        RDB_free(ixlinkp);
         ixlinkp = hixlinkp;
     }
     txp->delixp = NULL;
@@ -293,26 +293,24 @@ RDB_tx_is_running(RDB_transaction *txp)
 int
 _RDB_del_recmap(RDB_transaction *txp, RDB_recmap *rmp, RDB_exec_context *ecp)
 {
-    RDB_rmlink *linkp = malloc(sizeof (RDB_rmlink));
+    RDB_rmlink *linkp = RDB_alloc(sizeof (RDB_rmlink), ecp);
 
     if (linkp == NULL) {
-        RDB_raise_no_memory(ecp);
         return RDB_ERROR;
     }
     linkp->rmp = rmp;
     linkp->nextp = txp->delrmp;
     txp->delrmp = linkp;
-    
+
     return RDB_OK;
 }
 
 int
 _RDB_del_index(RDB_transaction *txp, RDB_index *ixp, RDB_exec_context *ecp)
 {
-    RDB_ixlink *linkp = malloc(sizeof (RDB_ixlink));
+    RDB_ixlink *linkp = RDB_alloc(sizeof (RDB_ixlink), ecp);
 
     if (linkp == NULL) {
-        RDB_raise_no_memory(ecp);
         return RDB_ERROR;
     }
     linkp->ixp = ixp;

@@ -851,9 +851,8 @@ op_remove(const char *name, int argc, RDB_object *argv[],
     if (argv[0]->kind == RDB_OB_TABLE)
         return op_vtable(name, argc, argv, ecp, txp, retvalp);
 
-    attrv = malloc(sizeof (char *) * (argc - 1));
+    attrv = RDB_alloc(sizeof (char *) * (argc - 1), ecp);
     if (attrv == NULL) {
-        RDB_raise_no_memory(ecp);
         return RDB_ERROR;
     }
 
@@ -862,7 +861,7 @@ op_remove(const char *name, int argc, RDB_object *argv[],
     }
 
     ret = RDB_remove_tuple(argv[0], argc - 1, attrv, ecp, retvalp);
-    free(attrv);
+    RDB_free(attrv);
     return ret;
 }
 
@@ -879,16 +878,15 @@ op_rename(const char *name, int argc, RDB_object *argv[],
     if (argv[0]->kind == RDB_OB_TABLE)
         return op_vtable(name, argc, argv, ecp, txp, retvalp);
 
-    renv = malloc(sizeof(RDB_renaming) * renc);
+    renv = RDB_alloc(sizeof(RDB_renaming) * renc, ecp);
     if (renv == NULL) {
-        RDB_raise_no_memory(ecp);
         return RDB_ERROR;
     }
 
     for (i = 0; i < renc; i++) {
         if (argv[1 + i]->typ != &RDB_STRING
                 || argv[2 + i]->typ != &RDB_STRING) {
-            free(renv);
+            RDB_free(renv);
             RDB_raise_type_mismatch("RENAME argument must be STRING", ecp);
             return RDB_ERROR;
         }
@@ -897,7 +895,7 @@ op_rename(const char *name, int argc, RDB_object *argv[],
     }
 
     ret = RDB_rename_tuple(argv[0], renc, renv, ecp, retvalp);
-    free(renv);
+    RDB_free(renv);
     return ret;
 }
 
@@ -937,9 +935,8 @@ op_wrap(const char *name, int argc, RDB_object *argv[],
 
     wrapc = argc % 2;
     if (wrapc > 0) {
-        wrapv = malloc(sizeof(RDB_wrapping) * wrapc);
+        wrapv = RDB_alloc(sizeof(RDB_wrapping) * wrapc, ecp);
         if (wrapv == NULL) {
-            RDB_raise_no_memory(ecp);
             return RDB_ERROR;
         }
     }
@@ -951,9 +948,8 @@ op_wrap(const char *name, int argc, RDB_object *argv[],
         RDB_object *objp;
 
         wrapv[i].attrc =  RDB_array_length(argv[i * 2 + 1], ecp);
-        wrapv[i].attrv = malloc(sizeof (char *) * wrapv[i].attrc);
+        wrapv[i].attrv = RDB_alloc(sizeof (char *) * wrapv[i].attrc, ecp);
         if (wrapv[i].attrv == NULL) {
-            RDB_raise_no_memory(ecp);
             ret = RDB_ERROR;
             goto cleanup;
         }
@@ -972,10 +968,10 @@ op_wrap(const char *name, int argc, RDB_object *argv[],
 
 cleanup:
     for (i = 0; i < wrapc; i++) {
-        free(wrapv[i].attrv);
+        RDB_free(wrapv[i].attrv);
     }
     if (wrapc > 0)
-        free(wrapv);
+        RDB_free(wrapv);
 
     return ret;
 }
@@ -997,9 +993,8 @@ op_unwrap(const char *name, int argc, RDB_object *argv[],
     if (argv[0]->kind == RDB_OB_TABLE)
         return op_vtable(name, argc, argv, ecp, txp, retvalp);
 
-    attrv = malloc(sizeof(char *) * (argc - 1));
+    attrv = RDB_alloc(sizeof(char *) * (argc - 1), ecp);
     if (attrv == NULL) {
-        RDB_raise_no_memory(ecp);
         return RDB_ERROR;
     }
 
@@ -1008,7 +1003,7 @@ op_unwrap(const char *name, int argc, RDB_object *argv[],
     }
 
     ret = RDB_unwrap_tuple(argv[0], argc - 1, attrv, ecp, retvalp);
-    free(attrv);
+    RDB_free(attrv);
     return ret;
 }
 
@@ -1188,9 +1183,8 @@ substring(const char *name, int argc, RDB_object *argv[],
     retvalp->typ = &RDB_STRING;
     retvalp->kind = RDB_OB_BIN;
     retvalp->var.bin.len = blen + 1;
-    retvalp->var.bin.datap = malloc(retvalp->var.bin.len);
+    retvalp->var.bin.datap = RDB_alloc(retvalp->var.bin.len, ecp);
     if (retvalp->var.bin.datap == NULL) {
-        RDB_raise_no_memory(ecp);
         return RDB_ERROR;
     }
     strncpy(retvalp->var.bin.datap, (char *) argv[0]->var.bin.datap
@@ -1210,18 +1204,16 @@ concat(const char *name, int argc, RDB_object *argv[],
     if (retvalp->kind == RDB_OB_INITIAL) {
         /* Turn *retvalp into a string */
         _RDB_set_obj_type(retvalp, &RDB_STRING);
-        retvalp->var.bin.datap = malloc(dstsize);
+        retvalp->var.bin.datap = RDB_alloc(dstsize, ecp);
         if (retvalp->var.bin.datap == NULL) {
-            RDB_raise_no_memory(ecp);
             return RDB_ERROR;
         }
         retvalp->var.bin.len = dstsize;
     } else if (retvalp->typ == &RDB_STRING) {
         /* Grow string if necessary */
         if (retvalp->var.bin.len < dstsize) {
-            void *datap = realloc(retvalp->var.bin.datap, dstsize);
+            void *datap = RDB_realloc(retvalp->var.bin.datap, dstsize, ecp);
             if (datap == NULL) {
-                RDB_raise_no_memory(ecp);
                 return RDB_ERROR;
             }
             retvalp->var.bin.datap = datap;
@@ -1541,7 +1533,6 @@ _RDB_init_builtin_ops(RDB_exec_context *ecp)
 
     op = _RDB_new_ro_op("INTEGER", 1, &RDB_INTEGER, &integer_float, ecp);
     if (op == NULL) {
-        RDB_raise_no_memory(ecp);
         return RDB_ERROR;
     }
     op->argtv[0] = &RDB_FLOAT;
@@ -1552,7 +1543,6 @@ _RDB_init_builtin_ops(RDB_exec_context *ecp)
 
     op = _RDB_new_ro_op("INTEGER", 1, &RDB_INTEGER, &integer_double, ecp);
     if (op == NULL) {
-        RDB_raise_no_memory(ecp);
         return RDB_ERROR;
     }
     op->argtv[0] = &RDB_DOUBLE;
@@ -1563,7 +1553,6 @@ _RDB_init_builtin_ops(RDB_exec_context *ecp)
 
     op = _RDB_new_ro_op("INTEGER", 1, &RDB_INTEGER, &integer_string, ecp);
     if (op == NULL) {
-        RDB_raise_no_memory(ecp);
         return RDB_ERROR;
     }
     op->argtv[0] = &RDB_STRING;
@@ -1574,7 +1563,6 @@ _RDB_init_builtin_ops(RDB_exec_context *ecp)
 
     op = _RDB_new_ro_op("FLOAT", 1, &RDB_FLOAT, &float_int, ecp);
     if (op == NULL) {
-        RDB_raise_no_memory(ecp);
         return RDB_ERROR;
     }
     op->argtv[0] = &RDB_INTEGER;
@@ -1585,7 +1573,6 @@ _RDB_init_builtin_ops(RDB_exec_context *ecp)
 
     op = _RDB_new_ro_op("FLOAT", 1, &RDB_FLOAT, &float_double, ecp);
     if (op == NULL) {
-        RDB_raise_no_memory(ecp);
         return RDB_ERROR;
     }
     op->argtv[0] = &RDB_DOUBLE;
@@ -1596,7 +1583,6 @@ _RDB_init_builtin_ops(RDB_exec_context *ecp)
 
     op = _RDB_new_ro_op("FLOAT", 1, &RDB_FLOAT, &float_string, ecp);
     if (op == NULL) {
-        RDB_raise_no_memory(ecp);
         return RDB_ERROR;
     }
     op->argtv[0] = &RDB_STRING;
@@ -1607,7 +1593,6 @@ _RDB_init_builtin_ops(RDB_exec_context *ecp)
 
     op = _RDB_new_ro_op("DOUBLE", 1, &RDB_DOUBLE, &double_int, ecp);
     if (op == NULL) {
-        RDB_raise_no_memory(ecp);
         return RDB_ERROR;
     }
     op->argtv[0] = &RDB_INTEGER;
@@ -1618,7 +1603,6 @@ _RDB_init_builtin_ops(RDB_exec_context *ecp)
 
     op = _RDB_new_ro_op("DOUBLE", 1, &RDB_DOUBLE, &double_float, ecp);
     if (op == NULL) {
-        RDB_raise_no_memory(ecp);
         return RDB_ERROR;
     }
     op->argtv[0] = &RDB_FLOAT;
@@ -1629,7 +1613,6 @@ _RDB_init_builtin_ops(RDB_exec_context *ecp)
 
     op = _RDB_new_ro_op("DOUBLE", 1, &RDB_DOUBLE, &double_string, ecp);
     if (op == NULL) {
-        RDB_raise_no_memory(ecp);
         return RDB_ERROR;
     }
     op->argtv[0] = &RDB_STRING;
@@ -1640,7 +1623,6 @@ _RDB_init_builtin_ops(RDB_exec_context *ecp)
 
     op = _RDB_new_ro_op("STRING", 1, &RDB_STRING, &string_obj, ecp);
     if (op == NULL) {
-        RDB_raise_no_memory(ecp);
         return RDB_ERROR;
     }
     op->argtv[0] = &RDB_INTEGER;
@@ -1651,7 +1633,6 @@ _RDB_init_builtin_ops(RDB_exec_context *ecp)
 
     op = _RDB_new_ro_op("STRING", 1, &RDB_STRING, &string_obj, ecp);
     if (op == NULL) {
-        RDB_raise_no_memory(ecp);
         return RDB_ERROR;
     }
     op->argtv[0] = &RDB_FLOAT;
@@ -1662,7 +1643,6 @@ _RDB_init_builtin_ops(RDB_exec_context *ecp)
 
     op = _RDB_new_ro_op("STRING", 1, &RDB_STRING, &string_obj, ecp);
     if (op == NULL) {
-        RDB_raise_no_memory(ecp);
         return RDB_ERROR;
     }
     op->argtv[0] = &RDB_DOUBLE;
@@ -1673,7 +1653,6 @@ _RDB_init_builtin_ops(RDB_exec_context *ecp)
 
     op = _RDB_new_ro_op("LENGTH", 1, &RDB_INTEGER, &length_string, ecp);
     if (op == NULL) {
-        RDB_raise_no_memory(ecp);
         return RDB_ERROR;
     }
     op->argtv[0] = &RDB_STRING;
@@ -1684,7 +1663,6 @@ _RDB_init_builtin_ops(RDB_exec_context *ecp)
 
     op = _RDB_new_ro_op("SUBSTRING", 3, &RDB_STRING, &substring, ecp);
     if (op == NULL) {
-        RDB_raise_no_memory(ecp);
         return RDB_ERROR;
     }
     op->argtv[0] = &RDB_STRING;
@@ -1697,7 +1675,6 @@ _RDB_init_builtin_ops(RDB_exec_context *ecp)
 
     op = _RDB_new_ro_op("||", 2, &RDB_STRING, &concat, ecp);
     if (op == NULL) {
-        RDB_raise_no_memory(ecp);
         return RDB_ERROR;
     }
     op->argtv[0] = &RDB_STRING;
@@ -1709,7 +1686,6 @@ _RDB_init_builtin_ops(RDB_exec_context *ecp)
 
     op = _RDB_new_ro_op("MATCHES", 2, &RDB_BOOLEAN, &matches, ecp);
     if (op == NULL) {
-        RDB_raise_no_memory(ecp);
         return RDB_ERROR;
     }
     op->argtv[0] = &RDB_STRING;
@@ -1721,7 +1697,6 @@ _RDB_init_builtin_ops(RDB_exec_context *ecp)
 
     op = _RDB_new_ro_op("AND", 2, &RDB_BOOLEAN, &and, ecp);
     if (op == NULL) {
-        RDB_raise_no_memory(ecp);
         return RDB_ERROR;
     }
     op->argtv[0] = &RDB_BOOLEAN;
@@ -1733,7 +1708,6 @@ _RDB_init_builtin_ops(RDB_exec_context *ecp)
 
     op = _RDB_new_ro_op("OR", 2, &RDB_BOOLEAN, &or, ecp);
     if (op == NULL) {
-        RDB_raise_no_memory(ecp);
         return RDB_ERROR;
     }
     op->argtv[0] = &RDB_BOOLEAN;
@@ -1745,7 +1719,6 @@ _RDB_init_builtin_ops(RDB_exec_context *ecp)
 
     op = _RDB_new_ro_op("NOT", 1, &RDB_BOOLEAN, &not, ecp);
     if (op == NULL) {
-        RDB_raise_no_memory(ecp);
         return RDB_ERROR;
     }
     op->argtv[0] = &RDB_BOOLEAN;
@@ -1756,7 +1729,6 @@ _RDB_init_builtin_ops(RDB_exec_context *ecp)
 
     op = _RDB_new_ro_op("<", 2, &RDB_BOOLEAN, &lt, ecp);
     if (op == NULL) {
-        RDB_raise_no_memory(ecp);
         return RDB_ERROR;
     }
     op->argtv[0] = &RDB_INTEGER;
@@ -1768,7 +1740,6 @@ _RDB_init_builtin_ops(RDB_exec_context *ecp)
 
     op = _RDB_new_ro_op("<", 2, &RDB_BOOLEAN, &lt, ecp);
     if (op == NULL) {
-        RDB_raise_no_memory(ecp);
         return RDB_ERROR;
     }
     op->argtv[0] = &RDB_FLOAT;
@@ -1780,7 +1751,6 @@ _RDB_init_builtin_ops(RDB_exec_context *ecp)
 
     op = _RDB_new_ro_op("<", 2, &RDB_BOOLEAN, &lt, ecp);
     if (op == NULL) {
-        RDB_raise_no_memory(ecp);
         return RDB_ERROR;
     }
     op->argtv[0] = &RDB_DOUBLE;
@@ -1792,7 +1762,6 @@ _RDB_init_builtin_ops(RDB_exec_context *ecp)
 
     op = _RDB_new_ro_op("<", 2, &RDB_BOOLEAN, &lt, ecp);
     if (op == NULL) {
-        RDB_raise_no_memory(ecp);
         return RDB_ERROR;
     }
     op->argtv[0] = &RDB_STRING;
@@ -1804,7 +1773,6 @@ _RDB_init_builtin_ops(RDB_exec_context *ecp)
 
     op = _RDB_new_ro_op("<=", 2, &RDB_BOOLEAN, &let, ecp);
     if (op == NULL) {
-        RDB_raise_no_memory(ecp);
         return RDB_ERROR;
     }
     op->argtv[0] = &RDB_INTEGER;
@@ -1816,7 +1784,6 @@ _RDB_init_builtin_ops(RDB_exec_context *ecp)
 
     op = _RDB_new_ro_op("<=", 2, &RDB_BOOLEAN, &let, ecp);
     if (op == NULL) {
-        RDB_raise_no_memory(ecp);
         return RDB_ERROR;
     }
     op->argtv[0] = &RDB_FLOAT;
@@ -1828,7 +1795,6 @@ _RDB_init_builtin_ops(RDB_exec_context *ecp)
 
     op = _RDB_new_ro_op("<=", 2, &RDB_BOOLEAN, &let, ecp);
     if (op == NULL) {
-        RDB_raise_no_memory(ecp);
         return RDB_ERROR;
     }
     op->argtv[0] = &RDB_DOUBLE;
@@ -1840,7 +1806,6 @@ _RDB_init_builtin_ops(RDB_exec_context *ecp)
 
     op = _RDB_new_ro_op("<=", 2, &RDB_BOOLEAN, &let, ecp);
     if (op == NULL) {
-        RDB_raise_no_memory(ecp);
         return RDB_ERROR;
     }
     op->argtv[0] = &RDB_STRING;
@@ -1852,7 +1817,6 @@ _RDB_init_builtin_ops(RDB_exec_context *ecp)
 
     op = _RDB_new_ro_op(">", 2, &RDB_BOOLEAN, &gt, ecp);
     if (op == NULL) {
-        RDB_raise_no_memory(ecp);
         return RDB_ERROR;
     }
     op->argtv[0] = &RDB_INTEGER;
@@ -1864,7 +1828,6 @@ _RDB_init_builtin_ops(RDB_exec_context *ecp)
 
     op = _RDB_new_ro_op(">", 2, &RDB_BOOLEAN, &gt, ecp);
     if (op == NULL) {
-        RDB_raise_no_memory(ecp);
         return RDB_ERROR;
     }
     op->argtv[0] = &RDB_FLOAT;
@@ -1876,7 +1839,6 @@ _RDB_init_builtin_ops(RDB_exec_context *ecp)
 
     op = _RDB_new_ro_op(">", 2, &RDB_BOOLEAN, &gt, ecp);
     if (op == NULL) {
-        RDB_raise_no_memory(ecp);
         return RDB_ERROR;
     }
     op->argtv[0] = &RDB_DOUBLE;
@@ -1888,7 +1850,6 @@ _RDB_init_builtin_ops(RDB_exec_context *ecp)
 
     op = _RDB_new_ro_op(">", 2, &RDB_BOOLEAN, &gt, ecp);
     if (op == NULL) { 
-        RDB_raise_no_memory(ecp);
         return RDB_ERROR;
     }
     op->argtv[0] = &RDB_STRING;
@@ -1900,7 +1861,6 @@ _RDB_init_builtin_ops(RDB_exec_context *ecp)
 
     op = _RDB_new_ro_op(">=", 2, &RDB_BOOLEAN, &get, ecp);
     if (op == NULL) {
-        RDB_raise_no_memory(ecp);
         return RDB_ERROR;
     }
     op->argtv[0] = &RDB_INTEGER;
@@ -1912,7 +1872,6 @@ _RDB_init_builtin_ops(RDB_exec_context *ecp)
 
     op = _RDB_new_ro_op(">=", 2, &RDB_BOOLEAN, &get, ecp);
     if (op == NULL) {
-        RDB_raise_no_memory(ecp);
         return RDB_ERROR;
     }
     op->argtv[0] = &RDB_FLOAT;
@@ -1924,7 +1883,6 @@ _RDB_init_builtin_ops(RDB_exec_context *ecp)
 
     op = _RDB_new_ro_op(">=", 2, &RDB_BOOLEAN, &get, ecp);
     if (op == NULL) {
-        RDB_raise_no_memory(ecp);
         return RDB_ERROR;
     }
     op->argtv[0] = &RDB_DOUBLE;
@@ -1936,7 +1894,6 @@ _RDB_init_builtin_ops(RDB_exec_context *ecp)
 
     op = _RDB_new_ro_op(">=", 2, &RDB_BOOLEAN, &get, ecp);
     if (op == NULL) {
-        RDB_raise_no_memory(ecp);
         return RDB_ERROR;
     }
     op->argtv[0] = &RDB_STRING;
@@ -1948,7 +1905,6 @@ _RDB_init_builtin_ops(RDB_exec_context *ecp)
 
     op = _RDB_new_ro_op("=", 2, &RDB_BOOLEAN, &_RDB_eq_bool, ecp);
     if (op == NULL) {
-        RDB_raise_no_memory(ecp);
         return RDB_ERROR;
     }
     op->argtv[0] = &RDB_BOOLEAN;
@@ -1956,13 +1912,11 @@ _RDB_init_builtin_ops(RDB_exec_context *ecp)
 
     ret = _RDB_put_builtin_ro_op(op, ecp);
     if (ret != RDB_OK) {
-        RDB_raise_no_memory(ecp);
         return RDB_ERROR;
     }
 
     op = _RDB_new_ro_op("=", 2, &RDB_BOOLEAN, _RDB_obj_equals, ecp);
     if (op == NULL) {
-        RDB_raise_no_memory(ecp);
         return RDB_ERROR;
     }
     op->argtv[0] = &RDB_INTEGER;
@@ -1974,7 +1928,6 @@ _RDB_init_builtin_ops(RDB_exec_context *ecp)
 
     op = _RDB_new_ro_op("=", 2, &RDB_BOOLEAN, _RDB_obj_equals, ecp);
     if (op == NULL) {
-        RDB_raise_no_memory(ecp);
         return RDB_ERROR;
     }
     op->argtv[0] = &RDB_FLOAT;
@@ -1986,7 +1939,6 @@ _RDB_init_builtin_ops(RDB_exec_context *ecp)
 
     op = _RDB_new_ro_op("=", 2, &RDB_BOOLEAN, _RDB_obj_equals, ecp);
     if (op == NULL) {
-        RDB_raise_no_memory(ecp);
         return RDB_ERROR;
     }
     op->argtv[0] = &RDB_DOUBLE;
@@ -1998,7 +1950,6 @@ _RDB_init_builtin_ops(RDB_exec_context *ecp)
 
     op = _RDB_new_ro_op("=", 2, &RDB_BOOLEAN, _RDB_obj_equals, ecp);
     if (op == NULL) {
-        RDB_raise_no_memory(ecp);
         return RDB_ERROR;
     }
     op->argtv[0] = &RDB_STRING;
@@ -2010,7 +1961,6 @@ _RDB_init_builtin_ops(RDB_exec_context *ecp)
 
     op = _RDB_new_ro_op("=", 2, &RDB_BOOLEAN, &_RDB_eq_binary, ecp);
     if (op == NULL) {
-        RDB_raise_no_memory(ecp);
         return RDB_ERROR;
     }
     op->argtv[0] = &RDB_BINARY;
@@ -2022,7 +1972,6 @@ _RDB_init_builtin_ops(RDB_exec_context *ecp)
 
     op = _RDB_new_ro_op("<>", 2, &RDB_BOOLEAN, &neq_bool, ecp);
     if (op == NULL) {
-        RDB_raise_no_memory(ecp);
         return RDB_ERROR;
     }
     op->argtv[0] = &RDB_BOOLEAN;
@@ -2034,7 +1983,6 @@ _RDB_init_builtin_ops(RDB_exec_context *ecp)
 
     op = _RDB_new_ro_op("<>", 2, &RDB_BOOLEAN, &_RDB_obj_not_equals, ecp);
     if (op == NULL) {
-        RDB_raise_no_memory(ecp);
         return RDB_ERROR;
     }
     op->argtv[0] = &RDB_INTEGER;
@@ -2046,7 +1994,6 @@ _RDB_init_builtin_ops(RDB_exec_context *ecp)
 
     op = _RDB_new_ro_op("<>", 2, &RDB_BOOLEAN, &_RDB_obj_not_equals, ecp);
     if (op == NULL) {
-        RDB_raise_no_memory(ecp);
         return RDB_ERROR;
     }
     op->argtv[0] = &RDB_FLOAT;
@@ -2058,7 +2005,6 @@ _RDB_init_builtin_ops(RDB_exec_context *ecp)
 
     op = _RDB_new_ro_op("<>", 2, &RDB_BOOLEAN, &_RDB_obj_not_equals, ecp);
     if (op == NULL) {
-        RDB_raise_no_memory(ecp);
         return RDB_ERROR;
     }
     op->argtv[0] = &RDB_DOUBLE;
@@ -2070,7 +2016,6 @@ _RDB_init_builtin_ops(RDB_exec_context *ecp)
 
     op = _RDB_new_ro_op("<>", 2, &RDB_BOOLEAN, &_RDB_obj_not_equals, ecp);
     if (op == NULL) {
-        RDB_raise_no_memory(ecp);
         return RDB_ERROR;
     }
     op->argtv[0] = &RDB_STRING;
@@ -2082,7 +2027,6 @@ _RDB_init_builtin_ops(RDB_exec_context *ecp)
 
     op = _RDB_new_ro_op("<>", 2, &RDB_BOOLEAN, &neq_binary, ecp);
     if (op == NULL) {
-        RDB_raise_no_memory(ecp);
         return RDB_ERROR;
     }
     op->argtv[0] = &RDB_BINARY;
@@ -2094,7 +2038,6 @@ _RDB_init_builtin_ops(RDB_exec_context *ecp)
 
     op = _RDB_new_ro_op("-", 1, &RDB_INTEGER, &negate_int, ecp);
     if (op == NULL) {
-        RDB_raise_no_memory(ecp);
         return RDB_ERROR;
     }
     op->argtv[0] = &RDB_INTEGER;
@@ -2105,7 +2048,6 @@ _RDB_init_builtin_ops(RDB_exec_context *ecp)
 
     op = _RDB_new_ro_op("-", 1, &RDB_FLOAT, &negate_float, ecp);
     if (op == NULL) {
-        RDB_raise_no_memory(ecp);
         return RDB_ERROR;
     }
     op->argtv[0] = &RDB_FLOAT;
@@ -2116,7 +2058,6 @@ _RDB_init_builtin_ops(RDB_exec_context *ecp)
 
     op = _RDB_new_ro_op("-", 1, &RDB_DOUBLE, &negate_double, ecp);
     if (op == NULL) {
-        RDB_raise_no_memory(ecp);
         return RDB_ERROR;
     }
     op->argtv[0] = &RDB_DOUBLE;
@@ -2127,7 +2068,6 @@ _RDB_init_builtin_ops(RDB_exec_context *ecp)
 
     op = _RDB_new_ro_op("+", 2, &RDB_INTEGER, &add_int, ecp);
     if (op == NULL) {
-        RDB_raise_no_memory(ecp);
         return RDB_ERROR;
     }
     op->argtv[0] = &RDB_INTEGER;
@@ -2139,7 +2079,6 @@ _RDB_init_builtin_ops(RDB_exec_context *ecp)
 
     op = _RDB_new_ro_op("+", 2, &RDB_FLOAT, &add_double, ecp);
     if (op == NULL) {
-        RDB_raise_no_memory(ecp);
         return RDB_ERROR;
     }
     op->argtv[0] = &RDB_FLOAT;
@@ -2151,7 +2090,6 @@ _RDB_init_builtin_ops(RDB_exec_context *ecp)
 
     op = _RDB_new_ro_op("+", 2, &RDB_DOUBLE, &add_double, ecp);
     if (op == NULL) {
-        RDB_raise_no_memory(ecp);
         return RDB_ERROR;
     }
     op->argtv[0] = &RDB_DOUBLE;
@@ -2163,7 +2101,6 @@ _RDB_init_builtin_ops(RDB_exec_context *ecp)
 
     op = _RDB_new_ro_op("-", 2, &RDB_INTEGER, &subtract_int, ecp);
     if (op == NULL) {
-        RDB_raise_no_memory(ecp);
         return RDB_ERROR;
     }
     op->argtv[0] = &RDB_INTEGER;
@@ -2175,7 +2112,6 @@ _RDB_init_builtin_ops(RDB_exec_context *ecp)
 
     op = _RDB_new_ro_op("-", 2, &RDB_FLOAT, &subtract_float, ecp);
     if (op == NULL) {
-        RDB_raise_no_memory(ecp);
         return RDB_ERROR;
     }
     op->argtv[0] = &RDB_FLOAT;
@@ -2187,7 +2123,6 @@ _RDB_init_builtin_ops(RDB_exec_context *ecp)
 
     op = _RDB_new_ro_op("-", 2, &RDB_DOUBLE, &subtract_double, ecp);
     if (op == NULL) {
-        RDB_raise_no_memory(ecp);
         return RDB_ERROR;
     }
     op->argtv[0] = &RDB_DOUBLE;
@@ -2199,7 +2134,6 @@ _RDB_init_builtin_ops(RDB_exec_context *ecp)
 
     op = _RDB_new_ro_op("*", 2, &RDB_INTEGER, &multiply_int, ecp);
     if (op == NULL) {
-        RDB_raise_no_memory(ecp);
         return RDB_ERROR;
     }
     op->argtv[0] = &RDB_INTEGER;
@@ -2211,7 +2145,6 @@ _RDB_init_builtin_ops(RDB_exec_context *ecp)
 
     op = _RDB_new_ro_op("*", 2, &RDB_FLOAT, &multiply_float, ecp);
     if (op == NULL) {
-        RDB_raise_no_memory(ecp);
         return RDB_ERROR;
     }
     op->argtv[0] = &RDB_FLOAT;
@@ -2223,7 +2156,6 @@ _RDB_init_builtin_ops(RDB_exec_context *ecp)
 
     op = _RDB_new_ro_op("*", 2, &RDB_DOUBLE, &multiply_double, ecp);
     if (op == NULL) {
-        RDB_raise_no_memory(ecp);
         return RDB_ERROR;
     }
     op->argtv[0] = &RDB_DOUBLE;
@@ -2235,7 +2167,6 @@ _RDB_init_builtin_ops(RDB_exec_context *ecp)
 
     op = _RDB_new_ro_op("/", 2, &RDB_INTEGER, &divide_int, ecp);
     if (op == NULL) {
-        RDB_raise_no_memory(ecp);
         return RDB_ERROR;
     }
     op->argtv[0] = &RDB_INTEGER;
@@ -2243,13 +2174,11 @@ _RDB_init_builtin_ops(RDB_exec_context *ecp)
 
     ret = _RDB_put_builtin_ro_op(op, ecp);
     if (ret != RDB_OK) {
-        RDB_raise_no_memory(ecp);
         return RDB_ERROR;
     }
 
     op = _RDB_new_ro_op("/", 2, &RDB_FLOAT, &divide_float, ecp);
     if (op == NULL) {
-        RDB_raise_no_memory(ecp);
         return RDB_ERROR;
     }
     op->argtv[0] = &RDB_FLOAT;
@@ -2261,7 +2190,6 @@ _RDB_init_builtin_ops(RDB_exec_context *ecp)
 
     op = _RDB_new_ro_op("/", 2, &RDB_DOUBLE, &divide_double, ecp);
     if (op == NULL) {
-        RDB_raise_no_memory(ecp);
         return RDB_ERROR;
     }
     op->argtv[0] = &RDB_DOUBLE;
@@ -2272,7 +2200,6 @@ _RDB_init_builtin_ops(RDB_exec_context *ecp)
 
     op = _RDB_new_ro_op("TUPLE", -1, NULL, &op_tuple, ecp);
     if (op == NULL) {
-        RDB_raise_no_memory(ecp);
         return RDB_ERROR;
     }
 
@@ -2281,7 +2208,6 @@ _RDB_init_builtin_ops(RDB_exec_context *ecp)
 
     op = _RDB_new_ro_op("RELATION", -1, NULL, &op_relation, ecp);
     if (op == NULL) {
-        RDB_raise_no_memory(ecp);
         return RDB_ERROR;
     }
 
@@ -2290,7 +2216,6 @@ _RDB_init_builtin_ops(RDB_exec_context *ecp)
 
     op = _RDB_new_ro_op("PROJECT", -1, NULL, &op_project, ecp);
     if (op == NULL) {
-        RDB_raise_no_memory(ecp);
         return RDB_ERROR;
     }
 
@@ -2298,7 +2223,6 @@ _RDB_init_builtin_ops(RDB_exec_context *ecp)
         return RDB_ERROR;
     op = _RDB_new_ro_op("REMOVE", -1, NULL, &op_remove, ecp);
     if (op == NULL) {
-        RDB_raise_no_memory(ecp);
         return RDB_ERROR;
     }
 
@@ -2308,7 +2232,6 @@ _RDB_init_builtin_ops(RDB_exec_context *ecp)
 
     op = _RDB_new_ro_op("RENAME", -1, NULL, &op_rename, ecp);
     if (op == NULL) {
-        RDB_raise_no_memory(ecp);
         return RDB_ERROR;
     }
 
@@ -2318,7 +2241,6 @@ _RDB_init_builtin_ops(RDB_exec_context *ecp)
 
     op = _RDB_new_ro_op("JOIN", -1, NULL, &op_join, ecp);
     if (op == NULL) {
-        RDB_raise_no_memory(ecp);
         return RDB_ERROR;
     }
 
@@ -2328,7 +2250,6 @@ _RDB_init_builtin_ops(RDB_exec_context *ecp)
 
     op = _RDB_new_ro_op("WRAP", -1, NULL, &op_wrap, ecp);
     if (op == NULL) {
-        RDB_raise_no_memory(ecp);
         return RDB_ERROR;
     }
 
@@ -2338,7 +2259,6 @@ _RDB_init_builtin_ops(RDB_exec_context *ecp)
 
     op = _RDB_new_ro_op("UNWRAP", -1, NULL, &op_unwrap, ecp);
     if (op == NULL) {
-        RDB_raise_no_memory(ecp);
         return RDB_ERROR;
     }
 
@@ -2348,7 +2268,6 @@ _RDB_init_builtin_ops(RDB_exec_context *ecp)
 
     op = _RDB_new_ro_op("UNION", -1, NULL, &op_vtable_wrapfn, ecp);
     if (op == NULL) {
-        RDB_raise_no_memory(ecp);
         return RDB_ERROR;
     }
 
@@ -2358,7 +2277,6 @@ _RDB_init_builtin_ops(RDB_exec_context *ecp)
 
     op = _RDB_new_ro_op("MINUS", -1, NULL, &op_vtable_wrapfn, ecp);
     if (op == NULL) {
-        RDB_raise_no_memory(ecp);
         return RDB_ERROR;
     }
 
@@ -2368,17 +2286,15 @@ _RDB_init_builtin_ops(RDB_exec_context *ecp)
 
     op = _RDB_new_ro_op("SEMIMINUS", -1, NULL, &op_vtable_wrapfn, ecp);
     if (op == NULL) {
-        RDB_raise_no_memory(ecp);
         return RDB_ERROR;
     }
 
     ret = _RDB_put_builtin_ro_op(op, ecp);
     if (ret != RDB_OK)
-        return ret;
+        return RDB_ERROR;
 
     op = _RDB_new_ro_op("INTERSECT", -1, NULL, &op_vtable_wrapfn, ecp);
     if (op == NULL) {
-        RDB_raise_no_memory(ecp);
         return RDB_ERROR;
     }
 
@@ -2388,7 +2304,6 @@ _RDB_init_builtin_ops(RDB_exec_context *ecp)
 
     op = _RDB_new_ro_op("SEMIJOIN", -1, NULL, &op_vtable_wrapfn, ecp);
     if (op == NULL) {
-        RDB_raise_no_memory(ecp);
         return RDB_ERROR;
     }
 
@@ -2398,7 +2313,6 @@ _RDB_init_builtin_ops(RDB_exec_context *ecp)
 
     op = _RDB_new_ro_op("DIVIDE", -1, NULL, &op_vtable_wrapfn, ecp);
     if (op == NULL) {
-        RDB_raise_no_memory(ecp);
         return RDB_ERROR;
     }
 
@@ -2408,7 +2322,6 @@ _RDB_init_builtin_ops(RDB_exec_context *ecp)
 
     op = _RDB_new_ro_op("GROUP", -1, NULL, &op_vtable_wrapfn, ecp);
     if (op == NULL) {
-        RDB_raise_no_memory(ecp);
         return RDB_ERROR;
     }
 
@@ -2418,7 +2331,6 @@ _RDB_init_builtin_ops(RDB_exec_context *ecp)
 
     op = _RDB_new_ro_op("UNGROUP", -1, NULL, &op_vtable_wrapfn, ecp);
     if (op == NULL) {
-        RDB_raise_no_memory(ecp);
         return RDB_ERROR;
     }
     ret = _RDB_put_builtin_ro_op(op, ecp);

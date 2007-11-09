@@ -302,7 +302,8 @@ RDB_type *
 RDB_ungroup_type(RDB_type *typ, const char *attr, RDB_exec_context *);
 
 RDB_string_vec *
-_RDB_dup_rename_keys(int keyc, const RDB_string_vec keyv[], RDB_expression *);
+_RDB_dup_rename_keys(int keyc, const RDB_string_vec keyv[], RDB_expression *,
+        RDB_exec_context *);
 
 char *
 _RDB_rename_attr(const char *srcname, RDB_expression *);
@@ -514,7 +515,7 @@ _RDB_sys_select(const char *name, int argc, RDB_object *argv[],
 
 RDB_object **
 _RDB_index_objpv(struct _RDB_tbindex *indexp, RDB_expression *exp, RDB_type *tbtyp,
-        int objpc, RDB_bool all_eq, RDB_bool asc);
+        int objpc, RDB_bool all_eq, RDB_bool asc, RDB_exec_context *);
 
 struct _RDB_tbindex *
 _RDB_expr_sortindex (RDB_expression *);

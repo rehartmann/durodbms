@@ -23,7 +23,7 @@ delete_by_uindex(RDB_object *tbp, RDB_object *objpv[], _RDB_tbindex *indexp,
     int ret;
     int keylen = indexp->attrc;
 
-    fv = malloc(sizeof (RDB_field) * keylen);
+    fv = RDB_alloc(sizeof (RDB_field) * keylen, ecp);
     if (fv == NULL) {
         RDB_raise_no_memory(ecp);
         rcount = RDB_ERROR;
@@ -59,7 +59,7 @@ delete_by_uindex(RDB_object *tbp, RDB_object *objpv[], _RDB_tbindex *indexp,
     }
 
 cleanup:
-    free(fv);
+    RDB_free(fv);
     return rcount;
 }
 
@@ -242,7 +242,7 @@ delete_where_nuindex(RDB_expression *texp, RDB_expression *condp,
         return RDB_ERROR;
     }
 
-    fv = malloc(sizeof (RDB_field) * keylen);
+    fv = RDB_alloc(sizeof (RDB_field) * keylen, ecp);
     if (fv == NULL) {
         RDB_raise_no_memory(ecp);
         rcount = RDB_ERROR;
@@ -351,7 +351,7 @@ cleanup:
             rcount = RDB_ERROR;
         }
     }
-    free(fv);
+    RDB_free(fv);
     return rcount;
 }
 

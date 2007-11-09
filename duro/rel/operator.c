@@ -352,7 +352,7 @@ static RDB_type **
 valv_to_typev(int valc, RDB_object **valv, RDB_exec_context *ecp)
 {
     int i;
-    RDB_type **typv = malloc(sizeof (RDB_type *) * valc);
+    RDB_type **typv = RDB_alloc(sizeof (RDB_type *) * valc, ecp);
 
     if (typv == NULL)
         return NULL;
@@ -495,7 +495,7 @@ RDB_call_ro_op(const char *name, int argc, RDB_object *argv[],
             RDB_drop_type(argtv[i], ecp, NULL);
     }
 
-    free(argtv);
+    RDB_free(argtv);
 
     if (ret != RDB_OK) {
         goto error;
@@ -573,7 +573,7 @@ RDB_call_update_op(const char *name, int argc, RDB_object *argv[],
         if (argv[i]->kind == RDB_OB_TUPLE)
             RDB_drop_type(argtv[i], ecp, NULL);
     }
-    free(argtv);
+    RDB_free(argtv);
     if (op == NULL) {
         if (RDB_obj_type(RDB_get_err(ecp)) == &RDB_OPERATOR_NOT_FOUND_ERROR) {
             RDB_clear_err(ecp);
@@ -712,13 +712,13 @@ free_ro_op(RDB_ro_op_desc *op, RDB_exec_context *ecp)
 {
     int i;
 
-    free(op->name);
+    RDB_free(op->name);
     if (op->argtv != NULL) {
         for (i = 0; i < op->argc; i++) {
             if (RDB_type_name(op->argtv[i]) == NULL)
                 RDB_drop_type(op->argtv[i], ecp, NULL);
         }
-        free(op->argtv);
+        RDB_free(op->argtv);
     }
     if (op->rtyp != NULL && RDB_type_name(op->rtyp) == NULL)
         RDB_drop_type(op->rtyp, ecp, NULL);
@@ -727,7 +727,7 @@ free_ro_op(RDB_ro_op_desc *op, RDB_exec_context *ecp)
         lt_dlclose(op->modhdl);
         RDB_destroy_obj(&op->iarg, ecp);
     }
-    free(op);
+    RDB_free(op);
 }
 
 void
@@ -862,26 +862,24 @@ RDB_ro_op_desc *
 _RDB_new_ro_op(const char *name, int argc, RDB_type *rtyp,
         RDB_ro_op_func *funcp, RDB_exec_context *ecp)
 {
-    RDB_ro_op_desc *op = malloc(sizeof (RDB_ro_op_desc));
+    RDB_ro_op_desc *op = RDB_alloc(sizeof (RDB_ro_op_desc), ecp);
     if (op == NULL) {
-        RDB_raise_no_memory(ecp);
         return NULL;
     }
 
     op->name = RDB_dup_str(name);
     if (op->name == NULL) {
-        free(op);
+        RDB_free(op);
         RDB_raise_no_memory(ecp);
         return NULL;
     }
 
     if (argc > 0) {
         op->argc = argc;
-        op->argtv = malloc(sizeof (RDB_type *) * argc);
+        op->argtv = RDB_alloc(sizeof (RDB_type *) * argc, ecp);
         if (op->argtv == NULL) {
-            free(op->name);
-            free(op);
-            RDB_raise_no_memory(ecp);
+            RDB_free(op->name);
+            RDB_free(op);
             return NULL;
         }
     } else {
@@ -1139,10 +1137,10 @@ _RDB_check_type_constraint(RDB_object *valp, RDB_exec_context *ecp,
 static void
 free_upd_op_data(RDB_upd_op_data *op, RDB_exec_context *ecp)
 {
-    free(op->updv);
+    RDB_free(op->updv);
     lt_dlclose(op->modhdl);
     RDB_destroy_obj(&op->iarg, ecp);
-    free(op);
+    RDB_free(op);
 }
 
 RDB_upd_op_data *

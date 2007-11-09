@@ -115,14 +115,13 @@ do_summarize(RDB_qresult *qrp, RDB_type *tb1typ, RDB_bool hasavg,
     int i;
     int avgc = hasavg ? 1 : 0;
 
-    keyfv = malloc(sizeof (RDB_field) * keyfc);
-    nonkeyfv = malloc(sizeof (RDB_field) * (addc + avgc));
-    svalv = malloc(sizeof (struct _RDB_summval) * addc);
+    keyfv = RDB_alloc(sizeof (RDB_field) * keyfc, ecp);
+    nonkeyfv = RDB_alloc(sizeof (RDB_field) * (addc + avgc), ecp);
+    svalv = RDB_alloc(sizeof (struct _RDB_summval) * addc, ecp);
     if (keyfv == NULL || nonkeyfv == NULL || svalv == NULL) {
-        free(keyfv);
-        free(nonkeyfv);
-        free(svalv);
-        RDB_raise_no_memory(ecp);
+        RDB_free(keyfv);
+        RDB_free(nonkeyfv);
+        RDB_free(svalv);
         return RDB_ERROR;
     }
 
@@ -246,9 +245,9 @@ cleanup:
     for (i = 0; i < addc; i++)
         RDB_destroy_obj(&svalv[i].val, ecp);
     _RDB_drop_qresult(lqrp, ecp, txp);
-    free(keyfv);
-    free(nonkeyfv);
-    free(svalv);
+    RDB_free(keyfv);
+    RDB_free(nonkeyfv);
+    RDB_free(svalv);
 
     return ret;
 }
@@ -467,9 +466,8 @@ summarize_qresult(RDB_qresult *qrp, RDB_expression *exp, RDB_exec_context *ecp,
 
     /* Key consists of table #2 attributes */
     key.strc = tb2typ->var.basetyp->var.tuple.attrc;
-    key.strv = malloc(sizeof (char *) * key.strc);
+    key.strv = RDB_alloc(sizeof (char *) * key.strc, ecp);
     if (key.strv == NULL) {
-        RDB_raise_no_memory(ecp);
         goto error;
     }
     for (i = 0; i < key.strc; i++) {
@@ -498,11 +496,11 @@ summarize_qresult(RDB_qresult *qrp, RDB_expression *exp, RDB_exec_context *ecp,
         goto error;
     }
 
-    free(key.strv);
+    RDB_free(key.strv);
     return RDB_OK;
 
 error:
-    free(key.strv);
+    RDB_free(key.strv);
     if (qrp->matp != NULL) {
         RDB_drop_table(qrp->matp, ecp, txp);
     } else if (reltyp != NULL) {
@@ -550,9 +548,8 @@ do_group(RDB_qresult *qrp, RDB_exec_context *ecp, RDB_transaction *txp)
 
     keyfc = _RDB_pkey_len(qrp->matp);
 
-    keyfv = malloc(sizeof (RDB_field) * keyfc);
+    keyfv = RDB_alloc(sizeof (RDB_field) * keyfc, ecp);
     if (keyfv == NULL) {
-        RDB_raise_no_memory(ecp);
         return RDB_ERROR;
     }
 
@@ -666,7 +663,7 @@ cleanup:
     RDB_destroy_obj(&tpl, ecp);
     RDB_destroy_obj(&gval, ecp);
     _RDB_drop_qresult(newqrp, ecp, txp);
-    free(keyfv);
+    RDB_free(keyfv);
 
     return ret;
 }
@@ -795,16 +792,15 @@ init_where_index_qresult(RDB_qresult *qrp, RDB_expression *texp,
         flags = RDB_REC_RANGE;
     }
 
-    fv = malloc(sizeof (RDB_field) * indexp->attrc);
+    fv = RDB_alloc(sizeof (RDB_field) * indexp->attrc, ecp);
     if (fv == NULL) {
-        RDB_raise_no_memory(ecp);
         return RDB_ERROR;
     }
 
     for (i = 0; i < texp->var.op.optinfo.objpc; i++) {
         ret = _RDB_obj_to_field(&fv[i], texp->var.op.optinfo.objpv[i], ecp);
         if (ret != RDB_OK) {
-            free(fv);
+            RDB_free(fv);
             return RDB_ERROR;
         }
     }
@@ -816,7 +812,7 @@ init_where_index_qresult(RDB_qresult *qrp, RDB_expression *texp,
         ret = RDB_OK;
     }
 
-    free(fv);
+    RDB_free(fv);
     if (ret != RDB_OK) {
         _RDB_handle_errcode(ret, ecp, txp);
         return RDB_ERROR;
@@ -923,13 +919,12 @@ _RDB_expr_qresult(RDB_expression *exp, RDB_exec_context *ecp,
 {
     RDB_qresult *qrp;
 
-    qrp = malloc(sizeof (RDB_qresult));
+    qrp = RDB_alloc(sizeof (RDB_qresult), ecp);
     if (qrp == NULL) {
-        RDB_raise_no_memory(ecp);
         return NULL;
     }
     if (init_expr_qresult(qrp, exp, ecp, txp) != RDB_OK) {
-        free(qrp);
+        RDB_free(qrp);
         return NULL;
     }
     return qrp;
@@ -1075,13 +1070,12 @@ _RDB_table_qresult(RDB_object *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
 {
     RDB_qresult *qrp;
 
-    qrp = malloc(sizeof (RDB_qresult));
+    qrp = RDB_alloc(sizeof (RDB_qresult), ecp);
     if (qrp == NULL) {
-        RDB_raise_no_memory(ecp);
         return NULL;
     }
     if (init_qresult(qrp, tbp, ecp, txp) != RDB_OK) {
-        free(qrp);
+        RDB_free(qrp);
         return NULL;
     }
     return qrp;
@@ -1100,7 +1094,7 @@ print_mem_stat(RDB_environment *envp)
         abort();
     }
     fprintf(stderr, "st_cache_miss = %d\n", statp->st_cache_miss);
-    free(statp);
+    RDB_free(statp);
 }
 */
 
@@ -1118,20 +1112,18 @@ _RDB_sorter(RDB_expression *texp, RDB_qresult **qrpp, RDB_exec_context *ecp,
     RDB_qresult *tmpqrp;
     RDB_object tpl;
     RDB_type *typ = NULL;
-    RDB_qresult *qrp = malloc(sizeof (RDB_qresult));
+    RDB_qresult *qrp = RDB_alloc(sizeof (RDB_qresult), ecp);
     if (qrp == NULL) {
-        RDB_raise_no_memory(ecp);
         return RDB_ERROR;
     }
 
     key.strc = seqitc;
-    key.strv = malloc(sizeof (char *) * seqitc);
+    key.strv = RDB_alloc(sizeof (char *) * seqitc, ecp);
     if (key.strv == NULL) {
-        RDB_raise_no_memory(ecp);
         goto error;
     }
 
-    ascv = malloc(sizeof (RDB_bool) * seqitc);
+    ascv = RDB_alloc(sizeof (RDB_bool) * seqitc, ecp);
     if (ascv == NULL) {
         RDB_raise_no_memory(ecp);
         goto error;
@@ -1207,20 +1199,20 @@ _RDB_sorter(RDB_expression *texp, RDB_qresult **qrpp, RDB_exec_context *ecp,
     if (ret != RDB_OK)
         goto error;
 
-    free(key.strv);
-    free(ascv);
+    RDB_free(key.strv);
+    RDB_free(ascv);
 
     *qrpp = qrp;
     return RDB_OK;
 
 error:
     if (key.strv != NULL)
-        free(key.strv);
+        RDB_free(key.strv);
     if (ascv != NULL)
-        free(ascv);
+        RDB_free(ascv);
     if (qrp->matp != NULL)
         RDB_drop_table(qrp->matp, ecp, NULL);
-    free(qrp);
+    RDB_free(qrp);
 
     return RDB_ERROR;
 }
@@ -1517,7 +1509,7 @@ seek_index_qresult(RDB_qresult *qrp, _RDB_tbindex *indexp,
 {
     int i;
     int ret;
-    RDB_field *fv = malloc(sizeof (RDB_field) * indexp->attrc);
+    RDB_field *fv = RDB_alloc(sizeof (RDB_field) * indexp->attrc, ecp);
     if (fv == NULL) {
         RDB_raise_no_memory(ecp);
         return RDB_ERROR;
@@ -1538,7 +1530,7 @@ seek_index_qresult(RDB_qresult *qrp, _RDB_tbindex *indexp,
     }
 
 cleanup:
-    free(fv);
+    RDB_free(fv);
 
     return ret;
 }
@@ -1626,7 +1618,7 @@ next_join_tuple_uix(RDB_qresult *qrp, RDB_object *tplp, RDB_exec_context *ecp,
     RDB_bool match;
     _RDB_tbindex *indexp = qrp->exp->var.op.args.firstp->nextp->var.tbref.indexp;
 
-    objpv = malloc(sizeof(RDB_object *) * indexp->attrc);
+    objpv = RDB_alloc(sizeof(RDB_object *) * indexp->attrc, ecp);
     if (objpv == NULL) {
         RDB_raise_no_memory(ecp);
         return RDB_ERROR;
@@ -1662,7 +1654,7 @@ next_join_tuple_uix(RDB_qresult *qrp, RDB_object *tplp, RDB_exec_context *ecp,
     ret = RDB_add_tuple(tplp, &tpl, ecp, txp);
 
 cleanup:
-    free(objpv);
+    RDB_free(objpv);
     RDB_destroy_obj(&tpl, ecp);
 
     return ret;
@@ -1686,16 +1678,14 @@ _RDB_get_by_uindex(RDB_object *tbp, RDB_object *objpv[], _RDB_tbindex *indexp,
     int resfc = tpltyp->var.tuple.attrc - keylen;
 
     if (resfc > 0) {
-        resfv = malloc(sizeof (RDB_field) * resfc);
+        resfv = RDB_alloc(sizeof (RDB_field) * resfc, ecp);
         if (resfv == NULL) {
-            RDB_raise_no_memory(ecp);
             ret = RDB_ERROR;
             goto cleanup;
         }
     }
-    fv = malloc(sizeof (RDB_field) * keylen);
+    fv = RDB_alloc(sizeof (RDB_field) * keylen, ecp);
     if (fv == NULL) {
-        RDB_raise_no_memory(ecp);
         ret = RDB_ERROR;
         goto cleanup;
     }
@@ -1792,8 +1782,8 @@ _RDB_get_by_uindex(RDB_object *tbp, RDB_object *objpv[], _RDB_tbindex *indexp,
     ret = RDB_OK;
 
 cleanup:
-    free(fv);
-    free(resfv);
+    RDB_free(fv);
+    RDB_free(resfv);
     return ret;
 }
 
@@ -2541,7 +2531,7 @@ _RDB_drop_qresult(RDB_qresult *qrp, RDB_exec_context *ecp,
 {
     int ret = destroy_qresult(qrp, ecp, txp);
 
-    free(qrp);
+    RDB_free(qrp);
 
     return ret;
 }
