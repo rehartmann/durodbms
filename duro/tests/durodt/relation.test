@@ -65,7 +65,7 @@ test private {creating private table and inserting tuples} -setup $SETUP -body {
 Y
 }
 
-test updop {user defined update operators}  -setup $SETUP -body {
+test updop {user defined update operators} -setup $SETUP -body {
     exec $testdir/../../dli/durodt << {
         connect('', 'dbenv');
         current_db := 'D';
