@@ -165,6 +165,10 @@ RELATION {
     return TOK_RELATION;
 }
 
+ARRAY {
+    return TOK_ARRAY;
+}
+
 BUT {
     return TOK_BUT;
 }
@@ -399,6 +403,22 @@ RETURN {
     return TOK_RETURN;
 }
 
+LOAD {
+    return TOK_LOAD;
+}
+
+ORDER {
+    return TOK_ORDER;
+}
+
+ASC {
+    return TOK_ASC;
+}
+
+DESC {
+    return TOK_DESC;
+}
+
 \|\| {
     return TOK_CONCAT;
 }
@@ -466,7 +486,7 @@ RETURN {
 
 [[:space:]]	yylloc.first_line = yylloc.last_line = yylineno;
 
-[=><+\-*/{},().;] return yytext[0];
+[=><+\-*/{},().;\[\]] return yytext[0];
 
 --[^\n]*\n	/* One-line comment */
 

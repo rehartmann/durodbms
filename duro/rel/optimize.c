@@ -989,6 +989,11 @@ _RDB_optimize(RDB_object *tbp, int seqitc, const RDB_seq_item seqitv[],
     int i;
     RDB_expression *nexp;
 
+    if (tbp->kind != RDB_OB_TABLE) {
+        RDB_raise_invalid_argument("not a table", ecp);
+        return NULL;
+    }
+
     if (tbp->var.tb.exp == NULL) {
         if (seqitc > 0 && tbp->var.tb.stp != NULL) {
             /*

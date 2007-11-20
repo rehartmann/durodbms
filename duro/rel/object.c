@@ -1390,6 +1390,19 @@ RDB_obj_type(const RDB_object *objp)
     return objp->typ;
 }
 
+/**
+ * Set the type information for *<var>objp</var>.
+ * This should be used only for tuples and arrays, which, unlike scalars
+ * and tables, do not to carry explicit type information by default.
+ * The caller must manage the type; it is not automatically destroyed
+ * when *<var>objp</var> is destroyed.
+ */
+void
+RDB_obj_set_type(RDB_object *objp, RDB_type *typ)
+{
+    objp->typ = typ;
+}
+
 /*@}*/
 
 /**

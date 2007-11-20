@@ -310,10 +310,11 @@ update_stored_simple(RDB_object *tbp, RDB_expression *condp,
         return RDB_ERROR;
     }
 
-    /* Start subtransaction */
-    ret = RDB_begin_tx(ecp, &tx, RDB_tx_db(txp), txp);
-    if (ret != RDB_OK)
-        return ret;
+    if (txp != NULL) {
+        /* Start subtransaction */
+        if (RDB_begin_tx(ecp, &tx, RDB_tx_db(txp), txp) != RDB_OK)
+            return RDB_ERROR;
+    }
 
     for (i = 0; i < updc; i++)
         RDB_init_obj(&valv[i]);
@@ -436,9 +437,10 @@ cleanup:
         RDB_rollback(ecp, &tx);
         return RDB_ERROR;
     }
-    ret = RDB_commit(ecp, &tx);
-    if (ret != RDB_OK) {
-        return RDB_ERROR;
+    if (txp != NULL) {
+        if (RDB_commit(ecp, &tx) != RDB_OK) {
+            return RDB_ERROR;
+        }
     }
     return rcount;
 }

@@ -236,7 +236,9 @@ typedef struct {
 } RDB_wrapping;
 
 typedef struct {
+    /** Attribute name. */
     char *attrname;
+    /** RDB_TRUE if order is ascending, RDB_FALSE if order is descending. */
     RDB_bool asc;
 } RDB_seq_item;
 
@@ -493,6 +495,9 @@ RDB_type_equals(const RDB_type *, const RDB_type *);
 
 RDB_type *
 RDB_obj_type(const RDB_object *);
+
+void
+RDB_obj_set_type(RDB_object *, RDB_type *);
 
 RDB_type *
 RDB_type_attr_type(const RDB_type *, const char *);
@@ -754,11 +759,17 @@ RDB_add_arg(RDB_expression *exp, RDB_expression *argp);
 RDB_object *
 RDB_expr_obj(RDB_expression *exp);
 
+void
+RDB_init_expr_list(RDB_expr_list *explistp);
+
 int
 RDB_destroy_expr_list(RDB_expr_list *, RDB_exec_context *);
 
 RDB_int
 RDB_expr_list_length(const RDB_expr_list *);
+
+void
+RDB_expr_list_append(RDB_expr_list *, RDB_expression *);
 
 void
 RDB_join_expr_lists(RDB_expr_list *, RDB_expr_list *);

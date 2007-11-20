@@ -106,6 +106,7 @@ new_var_def_real(const char *name, RDB_expression *rtypexp, RDB_expression *exp,
 	stmtp->var.vardef.type.typ = NULL;
    	stmtp->var.vardef.exp = exp;
    	stmtp->var.vardef.firstkeyp = firstkeyp;
+   	stmtp->lineno = yylineno;
    	return stmtp;
 }
 
@@ -128,6 +129,7 @@ new_var_def_private(const char *name, RDB_expression *rtypexp, RDB_expression *e
 	stmtp->var.vardef.type.typ = NULL;
    	stmtp->var.vardef.exp = exp;
    	stmtp->var.vardef.firstkeyp = firstkeyp;
+   	stmtp->lineno = yylineno;
    	return stmtp;
 }
 
@@ -167,6 +169,7 @@ new_ro_op_def(const char *name, RDB_expr_list *arglistp, RDB_expression *rtypexp
       	argp = argp->nextp->nextp;
   	}
 
+   	stmtp->lineno = yylineno;
   	return stmtp;
 
 error:
@@ -190,23 +193,33 @@ argname_in_list(RDB_expression *argp, RDB_expr_list *listp)
 }
 
 static RDB_parse_statement *
-new_update_op_def(const char *name, RDB_expr_list *arglistp,
-        RDB_expr_list *updlistp, RDB_parse_statement *stmtlistp)
+new_update_op_stmt(const char *name)
 {
-    int i;
-    RDB_expression *argp;
     RDB_parse_statement *stmtp = RDB_alloc(sizeof(RDB_parse_statement), _RDB_parse_ecp);
     if (stmtp == NULL)
         return NULL;
 
     stmtp->kind = RDB_STMT_UPD_OP_DEF;
     RDB_init_obj(&stmtp->var.opdef.opname);
-    stmtp->var.opdef.argv = NULL;
-    stmtp->var.opdef.bodyp = stmtlistp;
    	if (RDB_string_to_obj(&stmtp->var.opdef.opname, name, _RDB_parse_ecp)
       	        != RDB_OK) {
-      	goto error;
+        free(stmtp);
+      	return NULL;
   	}
+  	return stmtp;
+}
+
+static RDB_parse_statement *
+new_update_op_def(const char *name, RDB_expr_list *arglistp,
+        RDB_expr_list *updlistp, RDB_parse_statement *stmtlistp)
+{
+    int i;
+    RDB_expression *argp;
+    RDB_parse_statement *stmtp = new_update_op_stmt(name);
+    if (stmtp == NULL)
+        return NULL;
+
+    stmtp->var.opdef.bodyp = stmtlistp;
   	stmtp->var.opdef.argc = RDB_expr_list_length(arglistp) / 2;
   	stmtp->var.opdef.argv = RDB_alloc(
   			stmtp->var.opdef.argc * sizeof(RDB_parse_arg), _RDB_parse_ecp);
@@ -290,6 +303,7 @@ error:
 %token TOK_FROM "FROM"
 %token TOK_TUPLE "TUPLE"
 %token TOK_RELATION "RELATION"
+%token TOK_ARRAY "ARRAY"
 %token TOK_BUT "BUT"
 %token TOK_AS "AS"
 %token TOK_PER "PER"
@@ -343,6 +357,10 @@ error:
 %token TOK_RETURNS "RETURNS"
 %token TOK_UPDATES "UPDATES"
 %token TOK_RETURN "RETURN"
+%token TOK_LOAD "LOAD"
+%token TOK_ORDER "ORDER"
+%token TOK_ASC "ASC"
+%token TOK_DESC "DESC"
 %token TOK_INVALID "invalid character"
 
 %type <exp> expression literal ro_op_invocation count_invocation
@@ -356,6 +374,7 @@ error:
         summarize_add_list ne_summarize_add_list
         wrapping wrapping_list ne_wrapping_list
         attribute_list ne_attribute_list
+        order_item order_item_list ne_order_item_list
 
 %type <stmt> statement statement_body assignment
 
@@ -414,7 +433,7 @@ error:
 %left '=' '<' '>' TOK_NE TOK_LE TOK_GE TOK_IN TOK_SUBSET_OF TOK_MATCHES
 %left '+' '-' TOK_CONCAT
 %left '*' '/'
-%left '.' UPLUS UMINUS
+%left '.' UPLUS UMINUS '['
 
 %%
 
@@ -524,6 +543,40 @@ possrep_def_list: possrep_def {
 	    $$.firstp = $1.firstp;
 	    $$.lastp = $1.lastp->nextp;
 	}
+
+order_item: TOK_ID TOK_ASC {
+        $$.firstp = RDB_string_to_expr($1->var.varname, _RDB_parse_ecp);
+        if ($$.firstp == NULL)
+            YYERROR;
+        $$.lastp = RDB_string_to_expr("ASC", _RDB_parse_ecp);
+        if ($$.lastp == NULL)
+            YYERROR;
+        RDB_drop_expr($1, _RDB_parse_ecp);
+        $$.firstp->nextp = $$.lastp;
+        $$.lastp->nextp = NULL;
+    }
+    | TOK_ID TOK_DESC {
+        $$.firstp = RDB_string_to_expr($1->var.varname, _RDB_parse_ecp);
+        if ($$.firstp == NULL)
+            YYERROR;
+        $$.lastp = RDB_string_to_expr("DESC", _RDB_parse_ecp);
+        if ($$.lastp == NULL)
+            YYERROR;
+        RDB_drop_expr($1, _RDB_parse_ecp);
+        $$.firstp->nextp = $$.lastp;
+        $$.lastp->nextp = NULL;
+    }
+
+ne_order_item_list: order_item 
+    | ne_order_item_list ',' order_item {
+        $$ = $1;
+        RDB_join_expr_lists(&$$, &$3);
+    }
+
+order_item_list: ne_order_item_list {
+    }
+    | /* Empty */ {
+    }
 
 statement_body: /* empty */ {
         $$ = RDB_alloc(sizeof(RDB_parse_statement), _RDB_parse_ecp);
@@ -730,6 +783,18 @@ statement_body: /* empty */ {
         }
         $$->kind = RDB_STMT_RETURN;
         $$->var.retexp = NULL;
+    }
+    | TOK_LOAD TOK_ID TOK_FROM expression TOK_ORDER '(' order_item_list ')' {
+         RDB_expr_list explist;
+
+         RDB_init_expr_list(&explist);
+         RDB_expr_list_append(&explist, $2);
+         RDB_expr_list_append(&explist, $4);
+         RDB_join_expr_lists(&explist, &$7);
+
+         $2->nextp = $4;
+         $4->nextp = NULL;
+         $$ = RDB_parse_new_call("LOAD", &explist);
     }
 
 ne_key_list: TOK_KEY '{' id_list '}' {
@@ -1527,6 +1592,16 @@ expression: expression '{' id_list '}' {
         }
         RDB_add_arg($$, texp);
     }
+    | expression '[' expression ']' {
+        $$ = RDB_ro_op("[]", _RDB_parse_ecp);
+        if ($$ == NULL) {
+            RDB_drop_expr($1, _RDB_parse_ecp);
+            RDB_drop_expr($3, _RDB_parse_ecp);
+            YYERROR;
+        }
+        RDB_add_arg($$, $1);
+        RDB_add_arg($$, $3);
+    }
     | TOK_IF expression TOK_THEN expression TOK_ELSE expression {
         RDB_expression *ex1p, *ex2p;
 
@@ -1566,7 +1641,7 @@ dot_invocation: expression '.' TOK_ID {
     }
 
 id_list: /* empty */ {
-        $$.firstp = $$.lastp = NULL;
+        RDB_init_expr_list(&$$);
     }
     | ne_id_list
     ;
@@ -1581,15 +1656,14 @@ ne_id_list: TOK_ID {
         $$.firstp->nextp = NULL;
     }
     | ne_id_list ',' TOK_ID {
-        $$.firstp = $1.firstp;
-        $1.lastp->nextp = RDB_string_to_expr($3->var.varname, _RDB_parse_ecp);
+        RDB_expression *exp = RDB_string_to_expr($3->var.varname, _RDB_parse_ecp);
         RDB_drop_expr($3, _RDB_parse_ecp);
-        if ($1.lastp->nextp == NULL) {
+        if (exp == NULL) {
             RDB_destroy_expr_list(&$1, _RDB_parse_ecp);
             YYERROR;
         }
-        $$.lastp = $1.lastp->nextp;
-        $$.lastp->nextp = NULL;
+
+        RDB_expr_list_append(&$$, exp);
     }
     ;
 
@@ -2221,6 +2295,13 @@ type: TOK_ID
 		    YYERROR;
 
         $$->var.op.args = $3;
+    }
+    | TOK_ARRAY type {
+        $$ = RDB_ro_op("ARRAY", _RDB_parse_ecp);
+		if ($$ == NULL)
+		    YYERROR;
+
+        RDB_add_arg($$, $2);
     }
     | TOK_SAME_TYPE_AS '(' expression ')' {
         $$ = RDB_ro_op("SAME_TYPE_AS", _RDB_parse_ecp);

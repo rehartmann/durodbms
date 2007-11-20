@@ -1173,6 +1173,11 @@ RDB_create_table_from_type(const char *name, RDB_type *reltyp,
         return NULL;
     }
 
+    if (reltyp->kind != RDB_TP_RELATION) {
+        RDB_raise_type_mismatch("relation type required", ecp);
+        return NULL;
+    }
+
     for (i = 0; i < reltyp->var.basetyp->var.tuple.attrc; i++) {
         if (!_RDB_legal_name(reltyp->var.basetyp->var.tuple.attrv[i].name)) {
             RDB_object str;

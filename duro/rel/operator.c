@@ -961,7 +961,7 @@ _RDB_get_ro_op(const char *name, int argc, RDB_type *argtv[],
     RDB_bool typnull = RDB_FALSE;
     RDB_bool typmismatch = RDB_FALSE;
 
-    /* Check one of the types if NULL */
+    /* Check one of the types is NULL */
     for (i = 0; i < argc && !typnull; i++) {
         if (argtv[i] == NULL) {
             typnull = RDB_TRUE;
@@ -987,7 +987,7 @@ _RDB_get_ro_op(const char *name, int argc, RDB_type *argtv[],
 
         if (txp == NULL)
             return RDB_ERROR;
-
+         
         /* Lookup operator in dbroot map */
         *opp = get_ro_op(&txp->dbp->dbrootp->ro_opmap, name, argc, argtv, ecp);
         if (*opp != NULL) {
@@ -1008,6 +1008,7 @@ _RDB_get_ro_op(const char *name, int argc, RDB_type *argtv[],
 
     /*
      * Search for a generic operator in built-in type map
+     * !! Not used in current tests
      */
     *opp = RDB_hashmap_get(&_RDB_builtin_ro_op_map, name);
     while ((*opp) != NULL) {
@@ -1018,17 +1019,19 @@ _RDB_get_ro_op(const char *name, int argc, RDB_type *argtv[],
         *opp = (*opp)->nextp;
     } 
 
-    /*
-     * Search for a generic operator
-     */
-    *opp = RDB_hashmap_get(&txp->dbp->dbrootp->ro_opmap, name);
-    while ((*opp) != NULL) {
-        if ((*opp)->argtv == NULL) {
-            /* Generic operator found */
-            return RDB_OK;
+    if (txp != NULL) {
+        /*
+         * Search for a generic operator
+         */
+        *opp = RDB_hashmap_get(&txp->dbp->dbrootp->ro_opmap, name);
+        while ((*opp) != NULL) {
+            if ((*opp)->argtv == NULL) {
+                /* Generic operator found */
+                return RDB_OK;
+            }
+            *opp = (*opp)->nextp;
         }
-        *opp = (*opp)->nextp;
-    } 
+    }
 
     /*
      * If one of the argument types is NULL and a generic operator

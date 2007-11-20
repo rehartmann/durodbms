@@ -79,10 +79,12 @@ RDB_expr_to_vtable(RDB_expression *exp, RDB_exec_context *ecp,
 {
     RDB_object *tbp;
 
+/*
     if (!RDB_tx_is_running(txp)) {
         RDB_raise_invalid_tx(ecp);
         return NULL;
     }
+*/
 
     tbp = _RDB_new_obj(ecp);
     if (tbp == NULL) {

@@ -93,20 +93,24 @@ RDB_put_op(RDB_op_map *opmap, const char *name, int argc, RDB_type **argtv,
         goto error;
     }
     op->argc = argc;
-    op->argtv = RDB_alloc(sizeof (RDB_type *) * argc, ecp);
-    if (op->argtv == NULL) {
-        goto error;
-    }
-
-    for (i = 0; i < argc; i++) {
-        op->argtv[i] = NULL;
-    }
-    for (i = 0; i < argc; i++) {
-        op->argtv[i] = RDB_dup_nonscalar_type(argtv[i], ecp);
-        if (op->argtv[i] == NULL) {
-            RDB_raise_no_memory(ecp);
+    if (argc > 0) {
+        op->argtv = RDB_alloc(sizeof (RDB_type *) * argc, ecp);
+        if (op->argtv == NULL) {
             goto error;
         }
+    
+        for (i = 0; i < argc; i++) {
+            op->argtv[i] = NULL;
+        }
+        for (i = 0; i < argc; i++) {
+            op->argtv[i] = RDB_dup_nonscalar_type(argtv[i], ecp);
+            if (op->argtv[i] == NULL) {
+                RDB_raise_no_memory(ecp);
+                goto error;
+            }
+        }
+    } else {
+        op->argtv = NULL;
     }
     op->datap = datap;
 
@@ -141,11 +145,13 @@ void *
 RDB_get_op(const RDB_op_map *opmap, const char *name, int argc,
         RDB_type *argtv[])
 {
-    struct op_entry *op = RDB_hashmap_get(&opmap->map, name);
-    if (op == NULL)
+    struct op_entry *op;
+    struct op_entry *firstop = RDB_hashmap_get(&opmap->map, name);
+    if (firstop == NULL)
         return NULL;
-    
+
     /* Find an operator with same signature */
+    op = firstop;
     while (op != NULL) {
         if (op->argc == argc) {
             int i;
@@ -158,6 +164,14 @@ RDB_get_op(const RDB_op_map *opmap, const char *name, int argc,
                 return op->datap;
             }
         }
+        op = op->nextp;
+    }
+
+    /* If not, found, search operator with variable # of args (argc == -1) */
+    op = firstop;
+    while (op != NULL) {
+        if (op->argc == -1)
+            return op->datap;
         op = op->nextp;
     }
 

@@ -1008,6 +1008,18 @@ op_unwrap(const char *name, int argc, RDB_object *argv[],
 }
 
 static int
+op_subscript(const char *name, int argc, RDB_object *argv[],
+        const void *iargp, size_t iarglen, RDB_exec_context *ecp,
+        RDB_transaction *txp, RDB_object *retvalp)
+{
+    RDB_object *objp = RDB_array_get(argv[0], RDB_obj_int(argv[1]), ecp);
+    if (objp == NULL)
+        return RDB_ERROR;
+
+    return RDB_copy_obj(retvalp, objp, ecp);
+}
+
+static int
 integer_float(const char *name, int argc, RDB_object *argv[],
         const void *iargp, size_t iarglen, RDB_exec_context *ecp,
         RDB_transaction *txp, RDB_object *retvalp)
@@ -2336,6 +2348,15 @@ _RDB_init_builtin_ops(RDB_exec_context *ecp)
     ret = _RDB_put_builtin_ro_op(op, ecp);
     if (ret != RDB_OK)
         return ret;
+
+    op = _RDB_new_ro_op("[]", -1, NULL, &op_subscript, ecp);
+    if (op == NULL) {
+        return RDB_ERROR;
+    }
+
+    if (_RDB_put_builtin_ro_op(op, ecp) != RDB_OK) {
+        return RDB_ERROR;
+    }
 
     return RDB_OK;
 }

@@ -243,15 +243,14 @@ RDB_parse_del_stmtlist(RDB_parse_statement *stmtp, RDB_exec_context *ecp)
 RDB_parse_statement *
 RDB_parse_new_call(char *name, RDB_expr_list *explistp)
 {
-    int ret;
     RDB_parse_statement *stmtp = RDB_alloc(sizeof(RDB_parse_statement), _RDB_parse_ecp);
     if (stmtp == NULL)
         return NULL;
 
     stmtp->kind = RDB_STMT_CALL;
     RDB_init_obj(&stmtp->var.call.opname);
-    ret = RDB_string_to_obj(&stmtp->var.call.opname, name, _RDB_parse_ecp);
-    if (ret != RDB_OK) {
+    if (RDB_string_to_obj(&stmtp->var.call.opname, name, _RDB_parse_ecp)
+            != RDB_OK) {
         RDB_destroy_obj(&stmtp->var.call.opname, NULL);
         free(stmtp);
         return NULL;

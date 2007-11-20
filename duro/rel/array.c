@@ -65,6 +65,11 @@ enum {
  * @{
  */
 
+/** @struct RDB_seq_item rdb.h <rel/rdb.h>
+ * This struct is used to specify an attribute and a direction
+ * for tuple ordering.
+ */
+
 /**
  * RDB_table_to_array creates an array which contains
 all tuples from the table specified by <var>tbp</var>.

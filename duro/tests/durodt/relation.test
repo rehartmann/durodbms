@@ -33,16 +33,30 @@ test insert {creating table and inserting tuples} -setup $SETUP -body {
         var a init 1;
         insert r relation {tuple {i a, d 1.0, c 'X'}, tuple {i 2, d 1.1, c 'Y'}};
 
+        var s real init r key {i};
+
         var t init tuple {i 2 + 1, d 1.0, c 'Z'};
         insert r update t {i := i + 1};
 
         println(string(count(r)));
+        println(string(count(s)));
         println((tuple from r where i=2).c);
         commit;
     }
 } -result {3
+2
 Y
 }
+
+test invalid_type {invalid (scalar) type for table} -setup $SETUP -match glob -body {
+    exec $testdir/../../dli/durodt << {
+	    connect('', 'dbenv');
+    	current_db := 'D';
+
+	    begin transaction;
+    	var ir real integer key {};
+    }
+}  -returnCodes {1} -result {*TYPE_MISMATCH_ERROR*}
 
 test private {creating private table and inserting tuples} -setup $SETUP -body {
     exec $testdir/../../dli/durodt << {
@@ -52,17 +66,25 @@ test private {creating private table and inserting tuples} -setup $SETUP -body {
         var r private relation {i integer, d double, c string} key {i};
         insert r relation {};
 
+        var s private relation {i integer} init relation { tuple {i 1}, tuple {i 2} } key {i};
+
         var a init 1;
         insert r relation {tuple {i a, d 1.0, c 'X'}, tuple {i 2, d 1.1, c 'Y'}};
 
         insert r tuple {i 2 + 1, d 1.0, c 'Z'}; 
 
-        println(string(count(r)));
+        update r where i=3 { c:= 'ZZ' };
+
+        delete r where i<>2;
+
+        println(count(r));
         println((tuple from r where i=2).c);
+        println(sum(s, i));
         drop var r;
     }
-} -result {3
+} -result {1
 Y
+3
 }
 
 test updop {user defined update operators} -setup $SETUP -body {

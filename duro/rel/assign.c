@@ -1223,11 +1223,8 @@ cleanup:
 
 static RDB_bool copy_needs_tx(const RDB_object *dstp, const RDB_object *srcp)
 {
-    if (dstp->kind != RDB_OB_TABLE)
-        return RDB_FALSE;
-    return (RDB_bool) (dstp->var.tb.is_persistent
-            || (srcp->kind != RDB_OB_TABLE
-                    && srcp->var.tb.is_persistent));
+    return (RDB_bool) ((dstp->kind == RDB_OB_TABLE && dstp->var.tb.is_persistent)
+            || (srcp->kind == RDB_OB_TABLE && srcp->var.tb.is_persistent));
 }
 
 /** @addtogroup table
@@ -1281,8 +1278,8 @@ UPDATE S WHERE S# = S#('S3') STATUS := 25;
 </code>
 
 (taken from <em>TTM</em>, chapter 6)
-cannot be performed directly. It can, however, be converted to a
-form like the following:</p>
+cannot be performed directly. It can, however, be converted to an
+equivalent form like the following:</p>
 
 <code>
 UPDATE S WHERE (S# = S#('S2')) OR (S# = S#('S3'))
@@ -1294,11 +1291,8 @@ and RDB_copy_obj()
 regarding virtual target tables apply to RDB_multi_assign,
 too.
 
-<var>txp</var> must point to a running transaction execpt
-if (1) no update or delete is specified, (2) only
-inserts into local tables are specified, and (3)
-there is no copy operation with an existing table as a target
-which involves a global table as source or target.
+<var>txp</var> must point to a running transaction 
+if a persistent table is involved.
 
 @returns
 
@@ -1346,25 +1340,23 @@ RDB_multi_assign(int insc, const RDB_ma_insert insv[],
     RDB_ma_delete *ndelv = NULL;
 
     /*
-     * A running transaction is required for:
-     * - updates
-     * - deletes
-     * - copying persistent tables (except if the target is newly initialized)
-     * - inserts into persistent tables
+     * A running transaction is required if a persistent table is involved.
      */
-    if (updc > 0 || delc > 0) {
-        need_tx = RDB_TRUE;
-    } else {
-        for (i = 0;
-             i < copyc && !copy_needs_tx(copyv[i].dstp, copyv[i].dstp);
-             i++);
+    for (i = 0; i < delc && !delv[i].tbp->var.tb.is_persistent; i++);
+    need_tx = (RDB_bool) (i < delc);
+    if (!need_tx) {
+        for (i = 0; i < updc && !updv[i].tbp->var.tb.is_persistent; i++);
+        need_tx = (RDB_bool) (i < updc);
+    }
+    if (!need_tx) {
+        for (i = 0; i < copyc && !copy_needs_tx(copyv[i].dstp, copyv[i].srcp); i++);
         need_tx = (RDB_bool) (i < copyc);
-        if (!need_tx) {
-            for (i = 0;
-                 i < insc && !insv[i].tbp->var.tb.is_persistent;
-                 i++);
-            need_tx = (RDB_bool) (i < insc);
-        }
+    }     
+    if (!need_tx) {
+        for (i = 0;
+             i < insc && !insv[i].tbp->var.tb.is_persistent;
+             i++);
+        need_tx = (RDB_bool) (i < insc);
     }
 
     if (need_tx && !RDB_tx_is_running(txp)) {
@@ -1623,6 +1615,9 @@ RDB_multi_assign(int insc, const RDB_ma_insert insv[],
 
         dbrootp = RDB_tx_db(txp)->dbrootp;
 
+        /*
+         * Read constraints from DB
+         */
         if (!dbrootp->constraints_read) {
             if (_RDB_read_constraints(ecp, txp) != RDB_OK) {
                 rcount = RDB_ERROR;
@@ -1679,7 +1674,7 @@ RDB_multi_assign(int insc, const RDB_ma_insert insv[],
 
     /*
      * Start subtransaction, if there is more than one assignment.
-     * A subtransaction is also needed with an insert into a table
+     * A subtransaction is also needed for an insert into a table
      * with secondary indexes, because the insert is not atomic
      * in Berkeyley DB 4.5.
      */

@@ -118,7 +118,14 @@ _RDB_init_table(RDB_object *tbp, const char *name, RDB_bool persistent,
 {
     int i;
     RDB_string_vec allkey; /* Used if keyv is NULL */
-    int attrc = reltyp->var.basetyp->var.tuple.attrc;
+    int attrc;
+
+    if (reltyp->kind != RDB_TP_RELATION) {
+        RDB_raise_type_mismatch("relation type required", ecp);
+        return RDB_ERROR;
+    }
+
+    attrc = reltyp->var.basetyp->var.tuple.attrc;
 
     if (keyv != NULL) {
         int j;
