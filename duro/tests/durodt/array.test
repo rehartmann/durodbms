@@ -15,12 +15,30 @@ set testdir [::tcltest::configure -testdir]
 
 test ptarray {array from private table} -body {
     exec $testdir/../../dli/durodt << {
-        var r private init relation { tuple {i 1, c 'foo'}, tuple {i 2, c 'foo'} } key {i};
+        var r private init relation { tuple {i 1, c 'foo'}, tuple {i 2, c 'foo'},
+        		tuple {i 3, c 'bar'} } key {i};
         var a array tuple {i integer, c string};
 
-        load a from r order();
-
+        load a from r where c = 'foo' order();
         println(a[0].c);
+
+        load a from r order(c asc, i desc);
+        println(a[0].i);
+        println(a[1].i);
+        println(a[2].i);
+
+        load a from r order(c desc, i asc);
+        println(a[0].i);
+        println(a[1].i);
+        println(a[2].i);
+        
+        drop var a;
     }
 } -result {foo
+3
+2
+1
+1
+2
+3
 }

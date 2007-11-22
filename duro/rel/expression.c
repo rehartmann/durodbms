@@ -1274,15 +1274,6 @@ void
 RDB_add_arg(RDB_expression *exp, RDB_expression *argp)
 {
     RDB_expr_list_append(&exp->var.op.args, argp);
-/*
-    argp->nextp = NULL;
-    if (exp->var.op.args.firstp == NULL) {
-        exp->var.op.args.firstp = exp->var.op.args.lastp = argp;
-    } else {
-        exp->var.op.args.lastp->nextp = argp;
-        exp->var.op.args.lastp = argp;
-    }
-*/
 }
 
 /**

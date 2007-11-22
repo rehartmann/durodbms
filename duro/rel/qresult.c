@@ -1156,9 +1156,8 @@ _RDB_sorter(RDB_expression *texp, RDB_qresult **qrpp, RDB_exec_context *ecp,
         goto error;
     }
 
-    ret = _RDB_create_stored_table(qrp->matp, txp->dbp->dbrootp->envp,
-            ascv, ecp, txp);
-    if (ret != RDB_OK)
+    if (_RDB_create_stored_table(qrp->matp,
+            txp!= NULL ? txp->dbp->dbrootp->envp : NULL, ascv, ecp, txp) != RDB_OK)
         goto error;
 
     /*

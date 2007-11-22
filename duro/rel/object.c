@@ -852,7 +852,7 @@ RDB_destroy_obj(RDB_object *objp, RDB_exec_context *ecp)
 
                 for (i = 0; i < objp->var.arr.elemc; i++)
                     RDB_destroy_obj(&objp->var.arr.elemv[i], ecp);
-                free(objp->var.arr.elemv);
+                RDB_free(objp->var.arr.elemv);
             }
 
             if (objp->var.arr.texp == NULL)
@@ -864,10 +864,8 @@ RDB_destroy_obj(RDB_object *objp, RDB_exec_context *ecp)
             }
 
             /* Delete optimzed table copy (only if it's a virtual table) */
-            if (objp->var.arr.texp != NULL) {
-                if (RDB_drop_expr(objp->var.arr.texp, ecp) != RDB_OK)
-                    return RDB_ERROR;
-            }
+            if (RDB_drop_expr(objp->var.arr.texp, ecp) != RDB_OK)
+                return RDB_ERROR;
 
             if (objp->var.arr.tplp != NULL) {
                 ret2 = RDB_destroy_obj(objp->var.arr.tplp, ecp);

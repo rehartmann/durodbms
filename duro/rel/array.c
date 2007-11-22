@@ -19,6 +19,31 @@ init_expr_array(RDB_object *arrp, RDB_expression *texp,
     RDB_qresult *qrp = NULL;
     _RDB_tbindex *indexp = NULL;
 
+    if (arrp->kind == RDB_OB_ARRAY && arrp->var.arr.texp != NULL) {
+        if (arrp->var.arr.elemv != NULL) {
+            int i;
+
+            for (i = 0; i < arrp->var.arr.elemc; i++)
+                RDB_destroy_obj(&arrp->var.arr.elemv[i], ecp);
+            RDB_free(arrp->var.arr.elemv);
+        }
+
+        if (arrp->var.arr.qrp != NULL) {
+            if (_RDB_drop_qresult(arrp->var.arr.qrp, ecp,
+                    arrp->var.arr.txp) != RDB_OK)
+                return RDB_ERROR;
+        }
+        
+        if (RDB_drop_expr(arrp->var.arr.texp, ecp) != RDB_OK)
+            return RDB_ERROR;
+        
+        if (arrp->var.arr.tplp != NULL) {
+            if (RDB_destroy_obj(arrp->var.arr.tplp, ecp) != RDB_OK)
+                return RDB_ERROR;
+            RDB_free(arrp->var.arr.tplp);
+        }
+    }
+
     if (seqitc > 0) {
         indexp = _RDB_expr_sortindex(texp);
         if (indexp == NULL || !_RDB_index_sorts(indexp, seqitc, seqitv)) {
@@ -38,12 +63,12 @@ init_expr_array(RDB_object *arrp, RDB_expression *texp,
     }
 
     arrp->kind = RDB_OB_ARRAY;
+    arrp->var.arr.elemv = NULL;
+    arrp->var.arr.pos = 0;
     arrp->var.arr.texp = texp;
     arrp->var.arr.txp = txp;
     arrp->var.arr.length = -1;
     arrp->var.arr.tplp = NULL;
-    arrp->var.arr.elemv = NULL;
-    arrp->var.arr.pos = 0;
     arrp->var.arr.qrp = qrp;
 
     return RDB_OK;
@@ -102,9 +127,10 @@ RDB_table_to_array(RDB_object *arrp, RDB_object *tbp,
     int ret;
     RDB_expression *texp;
 
-    if (RDB_destroy_obj(arrp, ecp) != RDB_OK)
+    if (arrp->kind != RDB_OB_INITIAL && arrp->kind != RDB_OB_ARRAY) {
+        RDB_raise_invalid_argument("no array", ecp);
         return RDB_ERROR;
-    RDB_init_obj(arrp);
+    }
 
     texp = _RDB_optimize(tbp, seqitc, seqitv, ecp, txp);
     if (texp == NULL)
@@ -159,7 +185,7 @@ operator.
 </dl>
 
 The call may also fail for a @ref system-errors "system error".
- */
+*/
 RDB_object *
 RDB_array_get(RDB_object *arrp, RDB_int idx, RDB_exec_context *ecp)
 {

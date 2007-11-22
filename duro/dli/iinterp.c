@@ -265,12 +265,49 @@ static int
 load_op(const char *name, int argc, RDB_object *argv[],
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
+    RDB_seq_item *seqitv = NULL;
+    int seqitc = 0;
+
     if (argc < 2) {
         RDB_raise_invalid_argument("Too few arguments for LOAD", ecp);
         return RDB_ERROR;
     }
 
-    return RDB_table_to_array(argv[0], argv[1], 0, NULL, ecp, txp);
+    /* !! more typechecks */
+
+    if (argc > 2) {
+        int i;
+        
+        if (argc % 2 != 0) {
+            RDB_raise_invalid_argument("load", ecp);
+            return RDB_ERROR;
+        }
+        seqitv = RDB_alloc(sizeof(RDB_seq_item) * (argc - 2), ecp);
+        if (seqitv == NULL)
+            return RDB_ERROR;
+        seqitc = (argc - 2) / 2;
+        for (i = 0; i < seqitc; i++) {
+            if (RDB_obj_type(argv[2 + i * 2]) != &RDB_STRING) {
+                RDB_raise_type_mismatch("invalid order", ecp);
+                goto error;
+            }
+            if (RDB_obj_type(argv[2 + i * 2 + 1]) != &RDB_STRING) {
+                RDB_raise_type_mismatch("invalid order", ecp);
+                goto error;
+            }
+            seqitv[i].attrname = RDB_obj_string(argv[2 + i * 2]);
+            seqitv[i].asc = (RDB_bool) (strcmp(RDB_obj_string(argv[2 + i * 2 + 1]), "ASC") == 0);
+        }
+    }
+
+    if (RDB_table_to_array(argv[0], argv[1], seqitc, seqitv, ecp, txp) != RDB_OK)
+        goto error;
+    RDB_free(seqitv);
+    return RDB_OK;
+
+error:
+    RDB_free(seqitv);
+    return RDB_ERROR;
 }   
 
 static RDB_object *
@@ -851,23 +888,40 @@ error:
 }
 
 static int
-exec_vardrop(const RDB_parse_statement *stmtp, RDB_exec_context *ecp)
+drop_local_var(RDB_object *objp, RDB_exec_context *ecp)
 {
-    int ret;
-    char *varname = RDB_obj_string(&stmtp->var.vardrop.varname);
-    RDB_object *objp = RDB_hashmap_get(&current_varmapp->map, varname);
-    if (objp != NULL) {
-        ret = RDB_hashmap_put(&current_varmapp->map, varname, NULL);
-        if (ret != RDB_OK) {
-            RDB_raise_no_memory(ecp);
+    RDB_type *typ = RDB_obj_type(objp);
+    
+    /* Array and tuple types must be destroyed */
+    if (!RDB_type_is_scalar(typ) && !RDB_type_is_relation(typ)) {
+        if (RDB_drop_type(typ, ecp, NULL) != RDB_OK)
             return RDB_ERROR;
-        }
-        if (RDB_destroy_obj(objp, ecp) != RDB_OK)
-            return RDB_ERROR;
-        free(objp);
-        return RDB_OK;
     }
 
+    if (RDB_destroy_obj(objp, ecp) != RDB_OK)
+        return RDB_ERROR;
+    
+    RDB_free(objp);
+    return RDB_OK;
+}
+
+static int
+exec_vardrop(const RDB_parse_statement *stmtp, RDB_exec_context *ecp)
+{
+    char *varname = RDB_obj_string(&stmtp->var.vardrop.varname);
+
+    /* Try to look up local variable */
+    RDB_object *objp = RDB_hashmap_get(&current_varmapp->map, varname);
+    if (objp != NULL) {
+        /* Local variable found */
+        if (RDB_hashmap_put(&current_varmapp->map, varname, NULL) != RDB_OK)
+            return RDB_ERROR;
+        return drop_local_var(objp, ecp);
+    }
+
+    /*
+     * Delete persistent table
+     */
     if (txnp == NULL) {
         printf("Error: no transaction\n");
         return RDB_ERROR;
@@ -933,12 +987,12 @@ exec_call(const RDB_parse_statement *stmtp, RDB_exec_context *ecp)
     } else {
         opfnp = (upd_op_func *) op;
         ret = (*opfnp) (opname, argc, argpv, ecp,
-            txnp != NULL ? &txnp->tx : NULL);
+                txnp != NULL ? &txnp->tx : NULL);
     }
 
 cleanup:
     for (i = 0; i < argc; i++) {
-        if (argvar[i])
+        if (!argvar[i])
             RDB_destroy_obj(&argv[i], ecp);
     }
     return ret;
@@ -1132,6 +1186,12 @@ exec_assign(const RDB_parse_statement *stmtp, RDB_exec_context *ecp)
                 if (insv[insc].tbp == NULL) {
                     return RDB_ERROR;
                 }
+                /* Only tables are allowed as target */
+                if (insv[insc].tbp->typ == NULL
+                        || !RDB_type_is_relation(insv[insc].tbp->typ)) {
+                    RDB_raise_type_mismatch("INSERT target must be relation", ecp);
+                    return RDB_ERROR;
+                }
                 insv[insc].objp = &srcobjv[i];
                 rexp = RDB_expr_resolve_varnames(stmtp->var.assignment.av[i].var.ins.srcp,
                         &get_var, current_varmapp, ecp, txnp != NULL ? &txnp->tx : NULL);
@@ -1176,7 +1236,13 @@ exec_assign(const RDB_parse_statement *stmtp, RDB_exec_context *ecp)
                 delv[delc].tbp = lookup_var(
                         stmtp->var.assignment.av[i].var.del.dstp->var.varname,
                         ecp);
-                if (delv[insc].tbp == NULL) {
+                if (delv[delc].tbp == NULL) {
+                    return RDB_ERROR;
+                }
+                /* Only tables are allowed as target */
+                if (delv[delc].tbp->typ == NULL
+                        || !RDB_type_is_relation(delv[delc].tbp->typ)) {
+                    RDB_raise_type_mismatch("DELETE target must be relation", ecp);
                     return RDB_ERROR;
                 }
                 delv[delc].condp = stmtp->var.assignment.av[i].var.del.condp;

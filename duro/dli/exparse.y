@@ -365,7 +365,7 @@ error:
 
 %type <exp> expression literal ro_op_invocation count_invocation
         sum_invocation avg_invocation min_invocation max_invocation
-        all_invocation any_invocation dot_invocation type
+        all_invocation any_invocation dot_invocation vexpr type
 
 %type <explist> expression_list ne_expression_list
         ne_id_list id_list ne_tuple_item_list
@@ -576,6 +576,7 @@ ne_order_item_list: order_item
 order_item_list: ne_order_item_list {
     }
     | /* Empty */ {
+        RDB_init_expr_list(&$$);
     }
 
 statement_body: /* empty */ {
@@ -790,10 +791,9 @@ statement_body: /* empty */ {
          RDB_init_expr_list(&explist);
          RDB_expr_list_append(&explist, $2);
          RDB_expr_list_append(&explist, $4);
+         
          RDB_join_expr_lists(&explist, &$7);
 
-         $2->nextp = $4;
-         $4->nextp = NULL;
          $$ = RDB_parse_new_call("LOAD", &explist);
     }
 
@@ -915,10 +915,23 @@ ne_attr_assign_list: simple_assign {
         $$->nextp = $1;
 	}
 
-simple_assign: TOK_ID TOK_ASSIGN expression {
+simple_assign: vexpr TOK_ASSIGN expression {
         $$.kind = RDB_STMT_COPY;
         $$.var.copy.dstp = $1;
         $$.var.copy.srcp = $3;
+    }
+
+vexpr: TOK_ID
+    | ro_op_invocation
+    | vexpr '[' expression ']' {
+        $$ = RDB_ro_op("[]", _RDB_parse_ecp);
+        if ($$ == NULL) {
+            RDB_drop_expr($1, _RDB_parse_ecp);
+            RDB_drop_expr($3, _RDB_parse_ecp);
+            YYERROR;
+        }
+        RDB_add_arg($$, $1);
+        RDB_add_arg($$, $3);
     }
 
 ne_statement_list: statement {
@@ -1562,7 +1575,7 @@ expression: expression '{' id_list '}' {
         RDB_add_arg($$, $1);
         RDB_add_arg($$, $3);
     }
-    | TOK_ID
+    | vexpr
     | dot_invocation
     | literal
     | count_invocation
@@ -1572,7 +1585,6 @@ expression: expression '{' id_list '}' {
     | min_invocation
     | all_invocation
     | any_invocation
-    | ro_op_invocation
     | '(' expression ')' {
         $$ = $2;
     }
@@ -1591,16 +1603,6 @@ expression: expression '{' id_list '}' {
             YYERROR;
         }
         RDB_add_arg($$, texp);
-    }
-    | expression '[' expression ']' {
-        $$ = RDB_ro_op("[]", _RDB_parse_ecp);
-        if ($$ == NULL) {
-            RDB_drop_expr($1, _RDB_parse_ecp);
-            RDB_drop_expr($3, _RDB_parse_ecp);
-            YYERROR;
-        }
-        RDB_add_arg($$, $1);
-        RDB_add_arg($$, $3);
     }
     | TOK_IF expression TOK_THEN expression TOK_ELSE expression {
         RDB_expression *ex1p, *ex2p;
