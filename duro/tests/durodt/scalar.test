@@ -25,6 +25,7 @@ test scalar_builtin {built-in scalar definitions and operators} -body {
     exec $testdir/../../dli/durodt $testdir/scalar.td
 } -result {2
 3
+XX
 }
 
 test deftype {user-defined types} -setup $DBSETUP -body {

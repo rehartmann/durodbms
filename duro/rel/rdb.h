@@ -487,6 +487,9 @@ RDB_type_is_scalar(const RDB_type *);
 RDB_bool
 RDB_type_is_relation(const RDB_type *);
 
+RDB_bool
+RDB_type_is_tuple(const RDB_type *);
+
 RDB_attr *
 RDB_type_attrs(RDB_type *, int *);
 
