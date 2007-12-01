@@ -486,9 +486,35 @@ DESC {
 
 [[:space:]]	yylloc.first_line = yylloc.last_line = yylineno;
 
-[=><+\-*/{},().;\[\]] return yytext[0];
-
 --[^\n]*\n	/* One-line comment */
+
+"/*" {
+        int c;
+
+        for ( ; ; )
+        {
+            while ((c = input()) != '*' && c != EOF)
+                ;    /* eat up text of comment */
+
+            if ( c == '*' )
+            {
+                while ((c = input()) == '*')
+                    ;
+                if (c == '/')
+                    break;    /* found the end */
+            }
+
+            if (c == EOF)
+            {
+                char buf[40];
+                sprintf(buf, "unterminated comment at line %d", yylineno);
+	            RDB_raise_syntax(buf, _RDB_parse_ecp);
+                return TOK_INVALID;
+            }
+        }
+    }
+
+[=><+\-*/{},().;\[\]] return yytext[0];
 
 . {
     char buf[40];

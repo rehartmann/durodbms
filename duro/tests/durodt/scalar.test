@@ -26,6 +26,7 @@ test scalar_builtin {built-in scalar definitions and operators} -body {
 } -result {2
 3
 XX
+FALSE
 }
 
 test deftype {user-defined types} -setup $DBSETUP -body {
@@ -79,11 +80,36 @@ test defroop {read-only user-defined operators} -setup $DBSETUP -body {
             		 || ", d = " || string(d);
         end operator;
 
+        /*
+         * Reverse string.
+         */
+        operator reverse(s string) returns string;
+            var res string;	-- automatically initialized to ''
+            var len init length(s);
+
+            var i integer init len - 1;
+            while i >= 0;
+                res := res || substring(s, i, 1);
+                i := i - 1;
+            end while;
+            return res;
+        end operator;
+
+        operator fib(n integer) returns integer;
+            return if n < 2 then n else fib(n - 1) + fib(n - 2);
+        end operator;
+
         println(testop());
         drop operator testop;
+        
+        println(reverse("Madam, I'm Adam."));
+        
+        println(fib(6));
         commit;
     }
 } -result {a = 1, b = 1, c = 8, d = 15
+.madA m'I ,madaM
+8
 }
 
 test defupdop {user-defined update operators} -setup $DBSETUP -body {

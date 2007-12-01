@@ -15,6 +15,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <errno.h>
+#include <signal.h>
 
 #ifdef _WIN32
 #define _RDB_EXTERN_VAR __declspec(dllimport)
@@ -64,6 +65,11 @@ usage_error(void)
     exit(1);
 }
 
+static void
+handle_sigint(int sig) {
+    interrupted = 1;
+}
+
 int
 main(int argc, char *argv[])
 {
@@ -71,6 +77,14 @@ main(int argc, char *argv[])
     RDB_exec_context ec;
     char *envname = NULL;
     char *dbname = "";
+    struct sigaction sigact;
+
+    interrupted = 0;
+    sigact.sa_handler = &handle_sigint;
+    sigemptyset(&sigact.sa_mask);
+    sigact.sa_flags = 0;
+    if (sigaction(SIGINT, &sigact, NULL) == -1)
+        fprintf(stderr, "sigaction(): %s\n", strerror(errno));
 
     while (argc > 1) {
         if (strcmp(argv[1], "-e") == 0) {

@@ -361,7 +361,7 @@ error:
 %token TOK_ORDER "ORDER"
 %token TOK_ASC "ASC"
 %token TOK_DESC "DESC"
-%token TOK_INVALID "invalid character"
+%token TOK_INVALID "invalid"
 
 %type <exp> expression literal ro_op_invocation count_invocation
         sum_invocation avg_invocation min_invocation max_invocation

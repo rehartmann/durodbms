@@ -3,6 +3,7 @@
 
 #include <rel/rdb.h>
 #include "parse.h"
+#include <signal.h>
 
 #define DURO_RETURN (-1000)
 
@@ -16,6 +17,8 @@ extern RDB_environment *envp;
 extern varmap_node toplevel_vars;
 
 extern int err_line;
+
+extern sig_atomic_t interrupted;
 
 int
 Duro_init_exec(RDB_exec_context *, const char *);

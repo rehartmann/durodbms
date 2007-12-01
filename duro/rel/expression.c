@@ -1435,6 +1435,42 @@ process_aggr_args(RDB_expression *exp, RDB_getobjfn *getfnp, void *getdata,
 }
 
 static int
+evaluate_if(RDB_expression *exp, RDB_getobjfn *getfnp, void *getdata,
+        RDB_exec_context *ecp, RDB_transaction *txp, RDB_object *valp)
+{
+    int ret;
+    RDB_object arg1;
+
+    RDB_init_obj(&arg1);
+
+    /* Caller must ensure that there are 3 args */
+
+    if (RDB_evaluate(exp->var.op.args.firstp, getfnp, getdata, ecp, txp, &arg1)
+            != RDB_OK) {
+        ret = RDB_ERROR;
+        goto cleanup;
+    }
+
+    if (RDB_obj_type(&arg1) != &RDB_BOOLEAN) {
+        RDB_raise_type_mismatch("BOOLEAN required", ecp);
+        ret = RDB_ERROR;
+        goto cleanup;
+    }
+
+    if (RDB_obj_bool(&arg1)) {
+        ret = RDB_evaluate(exp->var.op.args.firstp->nextp, getfnp, getdata,
+                ecp, txp, valp);
+    } else {
+        ret = RDB_evaluate(exp->var.op.args.firstp->nextp->nextp, getfnp, getdata,
+                ecp, txp, valp);
+    }
+
+cleanup:
+    RDB_destroy_obj(&arg1, ecp);
+    return ret;
+}
+
+static int
 evaluate_ro_op(RDB_expression *exp, RDB_getobjfn *getfnp, void *getdata,
         RDB_exec_context *ecp, RDB_transaction *txp, RDB_object *valp)
 {
@@ -1450,7 +1486,7 @@ evaluate_ro_op(RDB_expression *exp, RDB_getobjfn *getfnp, void *getdata,
         return RDB_ERROR;
 
     /*
-     * Special treatment of relational operators and TUPLE
+     * Certain operators require special treatment
      */
 
     if (strcmp(exp->var.op.name, "EXTEND") == 0) {
@@ -1575,6 +1611,14 @@ evaluate_ro_op(RDB_expression *exp, RDB_getobjfn *getfnp, void *getdata,
         }
         return ret;
     }
+    
+    /* If needs special treatment because of lazy evaluation */
+    if (strcmp(exp->var.op.name, "IF") == 0) {
+        int len = RDB_expr_list_length(&exp->var.op.args);
+        if (len == 3)
+            return evaluate_if(exp, getfnp, getdata, ecp, txp, valp);
+    }
+
     valpv = RDB_alloc(argc * sizeof (RDB_object *), ecp);
     if (valpv == NULL) {
         ret = RDB_ERROR;

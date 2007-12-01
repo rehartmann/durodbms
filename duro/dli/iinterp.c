@@ -9,6 +9,8 @@
 
 #include "iinterp.h"
 #include "stmtser.h"
+#include <gen/hashmap.h>
+#include <gen/hashmapit.h>
 #include <rel/rdb.h>
 #include <rel/internal.h>
 
@@ -29,6 +31,8 @@ typedef int upd_op_func(const char *name, int argc, RDB_object *argv[],
 varmap_node toplevel_vars;
 
 int err_line;
+
+sig_atomic_t interrupted;
 
 static varmap_node *current_varmapp;
 
@@ -51,12 +55,52 @@ add_varmap(RDB_exec_context *ecp)
     return RDB_OK;
 }
 
+static int
+drop_local_var(RDB_object *objp, RDB_exec_context *ecp)
+{
+    RDB_type *typ = RDB_obj_type(objp);
+
+    /* Array and tuple types must be destroyed */
+    if (!RDB_type_is_scalar(typ) && !RDB_type_is_relation(typ)) {
+        if (RDB_drop_type(typ, ecp, NULL) != RDB_OK)
+            return RDB_ERROR;
+    }
+
+    if (RDB_destroy_obj(objp, ecp) != RDB_OK)
+        return RDB_ERROR;
+    
+    RDB_free(objp);
+    return RDB_OK;
+}
+
+static void
+destroy_varmap(RDB_hashmap *map) {
+    RDB_hashmap_iter it;
+    char *name;
+    RDB_object *objp;
+    RDB_exec_context ec;
+
+    RDB_init_exec_context(&ec);
+    RDB_init_hashmap_iter(&it, map);
+    for(;;) {
+        objp = RDB_hashmap_next(&it, &name);
+        if (name == NULL)
+            break;
+        if (objp != NULL) {
+            /* !! printf("destroying %s\n", name); */
+            drop_local_var(objp, &ec);
+        }
+    }
+
+    RDB_destroy_hashmap(map);
+    RDB_destroy_exec_context(&ec);
+}
+
 static void
 remove_varmap(void) {
-    /* !! destroy vars */
     varmap_node *parentp = current_varmapp->parentp;
-    RDB_destroy_hashmap(&current_varmapp->map);
-    free(current_varmapp);
+    destroy_varmap(&current_varmapp->map);
+    RDB_free(current_varmapp);
     current_varmapp = parentp;
 }
 
@@ -126,23 +170,65 @@ static int
 println_string_op(const char *name, int argc, RDB_object *argv[],
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
-    puts(RDB_obj_string(argv[0]));
+    if (puts(RDB_obj_string(argv[0])) == EOF) {
+        _RDB_handle_errcode(errno, ecp, txp);
+        return RDB_ERROR;
+    }
     return RDB_OK;
-}   
+}
 
 static int
 println_int_op(const char *name, int argc, RDB_object *argv[],
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
-    printf("%d\n", (int) RDB_obj_int(argv[0]));
+    if (printf("%d\n", (int) RDB_obj_int(argv[0])) < 0) {
+        _RDB_handle_errcode(errno, ecp, txp);
+        return RDB_ERROR;
+    }
     return RDB_OK;
-}   
+}
+
+static int
+println_float_op(const char *name, int argc, RDB_object *argv[],
+        RDB_exec_context *ecp, RDB_transaction *txp)
+{
+    if (printf("%f\n", (double) RDB_obj_float(argv[0])) < 0) {
+        _RDB_handle_errcode(errno, ecp, txp);
+        return RDB_ERROR;
+    }
+    return RDB_OK;
+}
+
+static int
+println_double_op(const char *name, int argc, RDB_object *argv[],
+        RDB_exec_context *ecp, RDB_transaction *txp)
+{
+    if (printf("%f\n", (double) RDB_obj_double(argv[0])) < 0) {
+        _RDB_handle_errcode(errno, ecp, txp);
+        return RDB_ERROR;
+    }
+    return RDB_OK;
+}
+
+static int
+println_bool_op(const char *name, int argc, RDB_object *argv[],
+        RDB_exec_context *ecp, RDB_transaction *txp)
+{
+    if (puts(RDB_obj_bool(argv[0]) ? "TRUE" : "FALSE") == EOF) {
+        _RDB_handle_errcode(errno, ecp, txp);
+        return RDB_ERROR;
+    }
+    return RDB_OK;
+}
 
 static int
 print_string_op(const char *name, int argc, RDB_object *argv[],
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
-    fputs(RDB_obj_string(argv[0]), stdout);
+    if (fputs(RDB_obj_string(argv[0]), stdout) == EOF) {
+        _RDB_handle_errcode(errno, ecp, txp);
+        return RDB_ERROR;
+    }
     return RDB_OK;
 }
 
@@ -150,9 +236,12 @@ static int
 print_int_op(const char *name, int argc, RDB_object *argv[],
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
-    printf("%d", (int) RDB_obj_int(argv[0]));
+    if (printf("%d", (int) RDB_obj_int(argv[0])) < 0) {
+        _RDB_handle_errcode(errno, ecp, txp);
+        return RDB_ERROR;
+    }
     return RDB_OK;
-}   
+}
 
 static int
 readln_op(const char *name, int argc, RDB_object *argv[],
@@ -164,16 +253,26 @@ readln_op(const char *name, int argc, RDB_object *argv[],
     if (RDB_string_to_obj(argv[0], "", ecp) != RDB_OK)
         return RDB_ERROR;
 
-    if (fgets(buf, sizeof(buf), stdin) == NULL)
+    if (fgets(buf, sizeof(buf), stdin) == NULL) {
+        if (ferror(stdin)) {
+            _RDB_handle_errcode(errno, ecp, txp);
+            return RDB_ERROR;
+        }
         return RDB_OK;
+    }
     len = strlen(buf);
 
     /* Read until a complete line has been read */
     while (buf[len - 1] != '\n') {
         if (RDB_append_string(argv[0], buf, ecp) != RDB_OK)
             return RDB_ERROR;
-        if (fgets(buf, sizeof(buf), stdin) == NULL)
+        if (fgets(buf, sizeof(buf), stdin) == NULL) {
+            if (ferror(stdin)) {
+                _RDB_handle_errcode(errno, ecp, txp);
+                return RDB_ERROR;
+            }
             return RDB_OK;
+        }
         len = strlen(buf);
     }
     buf[len - 1] = '\0';
@@ -252,12 +351,11 @@ system_op(const char *name, int argc, RDB_object *argv[],
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
     int ret = system(RDB_obj_string(argv[0]));
-    /* !! return value */
-    
-    if (ret == -1) {
+    if (ret == -1 || ret == 127) {
         _RDB_handle_errcode(errno, ecp, txp);
         return RDB_ERROR;
     }
+    RDB_int_to_obj(argv[1], (RDB_int) ret);
     return RDB_OK;
 }
 
@@ -326,16 +424,22 @@ Duro_init_exec(RDB_exec_context *ecp, const char *dbname)
 {
     static RDB_type *print_string_types[1];
     static RDB_type *print_int_types[1];
+    static RDB_type *print_float_types[1];
+    static RDB_type *print_double_types[1];
+    static RDB_type *print_bool_types[1];
     static RDB_type *readln_types[1];
     static RDB_type *exit_int_types[1];
     static RDB_type *connect_types[2];
     static RDB_type *create_db_types[1];
     static RDB_type *create_env_types[1];
-    static RDB_type *system_types[1];
+    static RDB_type *system_types[2];
     RDB_object *objp;
 
     print_string_types[0] = &RDB_STRING;
     print_int_types[0] = &RDB_INTEGER;
+    print_float_types[0] = &RDB_FLOAT;
+    print_double_types[0] = &RDB_DOUBLE;
+    print_bool_types[0] = &RDB_BOOLEAN;
     readln_types[0] = &RDB_STRING;
     exit_int_types[0] = &RDB_INTEGER;
     connect_types[0] = &RDB_STRING;
@@ -343,6 +447,7 @@ Duro_init_exec(RDB_exec_context *ecp, const char *dbname)
     create_db_types[0] = &RDB_STRING;
     create_env_types[0] = &RDB_STRING;
     system_types[0] = &RDB_STRING;
+    system_types[1] = &RDB_INTEGER;
 
     RDB_init_hashmap(&toplevel_vars.map, 256);
     toplevel_vars.parentp = NULL;
@@ -354,6 +459,15 @@ Duro_init_exec(RDB_exec_context *ecp, const char *dbname)
             != RDB_OK)
         return RDB_ERROR;
     if (RDB_put_op(&opmap, "PRINTLN", 1, print_int_types, &println_int_op, ecp)
+            != RDB_OK)
+        return RDB_ERROR;
+    if (RDB_put_op(&opmap, "PRINTLN", 1, print_float_types, &println_float_op, ecp)
+            != RDB_OK)
+        return RDB_ERROR;
+    if (RDB_put_op(&opmap, "PRINTLN", 1, print_double_types, &println_double_op, ecp)
+            != RDB_OK)
+        return RDB_ERROR;
+    if (RDB_put_op(&opmap, "PRINTLN", 1, print_bool_types, &println_bool_op, ecp)
             != RDB_OK)
         return RDB_ERROR;
     if (RDB_put_op(&opmap, "PRINT", 1, print_string_types, &print_string_op, ecp)
@@ -377,7 +491,7 @@ Duro_init_exec(RDB_exec_context *ecp, const char *dbname)
     if (RDB_put_op(&opmap, "CREATE_ENV", 1, create_env_types, &create_env_op, ecp)
             != RDB_OK)
         return RDB_ERROR;
-    if (RDB_put_op(&opmap, "SYSTEM", 1, system_types, &system_op, ecp)
+    if (RDB_put_op(&opmap, "SYSTEM", 2, system_types, &system_op, ecp)
             != RDB_OK)
         return RDB_ERROR;
     if (RDB_put_op(&opmap, "LOAD", -1, NULL, &load_op, ecp)
@@ -891,24 +1005,6 @@ error:
 }
 
 static int
-drop_local_var(RDB_object *objp, RDB_exec_context *ecp)
-{
-    RDB_type *typ = RDB_obj_type(objp);
-    
-    /* Array and tuple types must be destroyed */
-    if (!RDB_type_is_scalar(typ) && !RDB_type_is_relation(typ)) {
-        if (RDB_drop_type(typ, ecp, NULL) != RDB_OK)
-            return RDB_ERROR;
-    }
-
-    if (RDB_destroy_obj(objp, ecp) != RDB_OK)
-        return RDB_ERROR;
-    
-    RDB_free(objp);
-    return RDB_OK;
-}
-
-static int
 exec_vardrop(const RDB_parse_statement *stmtp, RDB_exec_context *ecp)
 {
     char *varname = RDB_obj_string(&stmtp->var.vardrop.varname);
@@ -981,7 +1077,7 @@ exec_call(const RDB_parse_statement *stmtp, RDB_exec_context *ecp)
     op = RDB_get_op(&opmap, opname, argc, argtv);
     if (op == NULL) {
         if (txnp == NULL) {
-            RDB_raise_operator_not_found("no transaction", ecp);
+            RDB_raise_operator_not_found(opname, ecp);
             ret = RDB_ERROR;
             goto cleanup;
         }
@@ -1057,6 +1153,10 @@ exec_while(const RDB_parse_statement *stmtp, RDB_exec_context *ecp,
             return RDB_ERROR;
         }
         remove_varmap();
+        if (interrupted) {
+            RDB_raise_system("interrupted", ecp);
+            return RDB_ERROR;
+        }
     }
 }
 
@@ -1071,10 +1171,9 @@ exec_for(const RDB_parse_statement *stmtp, RDB_exec_context *ecp,
         RDB_raise_syntax("variable name expected", ecp);
         return RDB_ERROR;
     }
-    varp = RDB_hashmap_get(&current_varmapp->map, stmtp->var.forloop.varexp->var.varname);
+    varp = lookup_local_var(stmtp->var.forloop.varexp->var.varname, current_varmapp);
     if (varp == NULL) {
-        printf("undefined variable %s\n",
-                stmtp->var.forloop.varexp->var.varname);
+        RDB_raise_name(stmtp->var.forloop.varexp->var.varname, ecp);
         return RDB_ERROR;
     }
     if (RDB_obj_type(varp) != &RDB_INTEGER) {
@@ -1096,7 +1195,8 @@ exec_for(const RDB_parse_statement *stmtp, RDB_exec_context *ecp,
         RDB_raise_type_mismatch("expression must be INTEGER", ecp);
         return RDB_ERROR;
     }
-    while (varp->var.int_val <= endval.var.int_val) {
+
+    for(;;) {
         if (add_varmap(ecp) != RDB_OK)
             return RDB_ERROR;
         if (exec_stmtlist(stmtp->var.forloop.bodyp, ecp, retvalp) != RDB_OK) {
@@ -1105,6 +1205,13 @@ exec_for(const RDB_parse_statement *stmtp, RDB_exec_context *ecp,
             return RDB_ERROR;
         }
         remove_varmap();
+        if (varp->var.int_val == endval.var.int_val)
+            break;
+        if (interrupted) {
+            RDB_destroy_obj(&endval, ecp);
+            RDB_raise_system("interrupted", ecp);
+            return RDB_ERROR;
+        }
         varp->var.int_val++;
     }
     RDB_destroy_obj(&endval, ecp);
@@ -1542,6 +1649,11 @@ Duro_invoke_dt_ro_op(const char *name, int argc, RDB_object *argv[],
     char **argnamev;
     varmap_node *ovarmapp = current_varmapp;
 
+    if (interrupted) {
+        RDB_raise_system("interrupted", ecp);
+        return RDB_ERROR;
+    }
+
     argnamev = RDB_alloc(argc * sizeof(char *), ecp);
     if (argnamev == NULL)
         return RDB_ERROR;
@@ -1563,12 +1675,22 @@ Duro_invoke_dt_ro_op(const char *name, int argc, RDB_object *argv[],
             return RDB_ERROR;
         }
     }
-    free(argnamev);
 
     ret = exec_stmtlist(stmtlistp, ecp, retvalp);
+
+    /*
+     * Keep arguments from being destroyed
+     */
+    for (i = 0; i < argc; i++) {
+        if (RDB_hashmap_put(&current_varmapp->map, argnamev[i], NULL) != RDB_OK) {
+            RDB_raise_no_memory(ecp);
+            return RDB_ERROR;
+        }
+    }
+    RDB_free(argnamev);
+
     current_varmapp = ovarmapp;
-    /* !! destroy vars */
-    RDB_destroy_hashmap(&vars.map);
+    destroy_varmap(&vars.map);
     return ret == RDB_ERROR ? RDB_ERROR : RDB_OK;
 }
 
@@ -1584,6 +1706,11 @@ Duro_invoke_dt_update_op(const char *name, int argc, RDB_object *argv[],
     char **argnamev;
     varmap_node *ovarmapp = current_varmapp;
 
+    if (interrupted) {
+        RDB_raise_system("interrupted", ecp);
+        return RDB_ERROR;
+    }
+
     argnamev = RDB_alloc(argc * sizeof(char *), ecp);
     if (argnamev == NULL)
         return RDB_ERROR;
@@ -1605,12 +1732,22 @@ Duro_invoke_dt_update_op(const char *name, int argc, RDB_object *argv[],
             return RDB_ERROR;
         }
     }
-    free(argnamev);
 
     ret = exec_stmtlist(stmtlistp, ecp, NULL);   
+
+    /*
+     * Keep arguments from being destroyed
+     */
+    for (i = 0; i < argc; i++) {
+        if (RDB_hashmap_put(&current_varmapp->map, argnamev[i], NULL) != RDB_OK) {
+            RDB_raise_no_memory(ecp);
+            return RDB_ERROR;
+        }
+    }
+    RDB_free(argnamev);
+
     current_varmapp = ovarmapp;
-    /* !! destroy vars */
-    RDB_destroy_hashmap(&vars.map);
+    destroy_varmap(&vars.map);
     return ret == RDB_ERROR ? RDB_ERROR : RDB_OK;
 }
 

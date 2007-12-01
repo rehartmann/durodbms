@@ -551,10 +551,10 @@ deserialize_var_def(RDB_object *objp, int *posp, RDB_exec_context *ecp,
     hastype = _RDB_deserialize_byte(objp, posp, ecp);
     if (hastype == RDB_ERROR)
         return RDB_ERROR;
+    stmtp->var.vardef.type.typ = NULL;
     if (hastype) {
         if (_RDB_deserialize_expr(objp, posp, ecp, txp, &stmtp->var.vardef.type.exp) != RDB_OK)
             return RDB_ERROR;
-        stmtp->var.vardef.type.typ = NULL;
     } else {
         stmtp->var.vardef.type.exp = NULL;
     }
