@@ -815,6 +815,7 @@ deserialize_type_def(RDB_object *objp, int *posp, RDB_exec_context *ecp,
     int hasconstr;
     RDB_parse_possrep *rep, *lastrep;
 
+    RDB_init_obj(&stmtp->var.deftype.typename);
     if (_RDB_deserialize_strobj(objp, posp, ecp, &stmtp->var.deftype.typename)
             != RDB_OK) {
         return RDB_ERROR;

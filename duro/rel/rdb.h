@@ -566,7 +566,7 @@ RDB_tuple_set_double(RDB_object *, const char *name, RDB_double val,
         RDB_exec_context *);
 
 int
-RDB_tuple_set_string(RDB_object *, const char *name, const char *valp,
+RDB_tuple_set_string(RDB_object *, const char *name, const char *,
         RDB_exec_context *);
 
 RDB_object *
@@ -652,25 +652,25 @@ RDB_copy_obj(RDB_object *dstvalp, const RDB_object *srcvalp,
         RDB_exec_context *);
 
 void
-RDB_init_obj(RDB_object *valp);
+RDB_init_obj(RDB_object *);
 
 int
-RDB_destroy_obj(RDB_object *valp, RDB_exec_context *);
+RDB_destroy_obj(RDB_object *, RDB_exec_context *);
 
 void
-RDB_bool_to_obj(RDB_object *valp, RDB_bool v);
+RDB_bool_to_obj(RDB_object *, RDB_bool v);
 
 void
-RDB_int_to_obj(RDB_object *valp, RDB_int v);
+RDB_int_to_obj(RDB_object *, RDB_int v);
 
 void
-RDB_float_to_obj(RDB_object *valp, RDB_float v);
+RDB_float_to_obj(RDB_object *, RDB_float v);
 
 void
-RDB_double_to_obj(RDB_object *valp, RDB_double v);
+RDB_double_to_obj(RDB_object *, RDB_double v);
 
 int
-RDB_string_to_obj(RDB_object *valp, const char *str, RDB_exec_context *);
+RDB_string_to_obj(RDB_object *, const char *str, RDB_exec_context *);
 
 int
 RDB_obj_to_string(RDB_object *dstp, const RDB_object *srcp,
@@ -680,28 +680,28 @@ int
 RDB_append_string(RDB_object *, const char *, RDB_exec_context *);
 
 int
-RDB_obj_comp(const RDB_object *valp, const char *compname,
+RDB_obj_comp(const RDB_object *, const char *compname,
                    RDB_object *comp, RDB_exec_context *, RDB_transaction *);
 
 int
-RDB_obj_set_comp(RDB_object *valp, const char *compname,
+RDB_obj_set_comp(RDB_object *, const char *compname,
                  const RDB_object *comp, RDB_exec_context *,
                  RDB_transaction *);
 
 RDB_bool
-RDB_obj_bool(const RDB_object *valp);
+RDB_obj_bool(const RDB_object *);
 
 RDB_int
-RDB_obj_int(const RDB_object *valp);
+RDB_obj_int(const RDB_object *);
 
 RDB_float
-RDB_obj_float(const RDB_object *valp);
+RDB_obj_float(const RDB_object *);
 
 RDB_double
-RDB_obj_double(const RDB_object *valp);
+RDB_obj_double(const RDB_object *);
 
 char *
-RDB_obj_string(const RDB_object *valp);
+RDB_obj_string(const RDB_object *);
 
 int
 RDB_binary_set(RDB_object *, size_t pos, const void *srcp, size_t len,
@@ -715,7 +715,7 @@ size_t
 RDB_binary_length(const RDB_object *);
 
 void
-_RDB_set_obj_type(RDB_object *valp, RDB_type *typ);
+_RDB_set_obj_type(RDB_object *, RDB_type *typ);
 
 RDB_bool
 RDB_expr_is_const(const RDB_expression *);
@@ -736,7 +736,7 @@ RDB_expression *
 RDB_string_to_expr(const char *, RDB_exec_context *);
 
 RDB_expression *
-RDB_obj_to_expr(const RDB_object *valp, RDB_exec_context *);
+RDB_obj_to_expr(const RDB_object *, RDB_exec_context *);
 
 RDB_expression *
 RDB_table_ref(RDB_object *tbp, RDB_exec_context *);

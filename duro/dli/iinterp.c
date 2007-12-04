@@ -87,7 +87,6 @@ destroy_varmap(RDB_hashmap *map) {
         if (name == NULL)
             break;
         if (objp != NULL) {
-            /* !! printf("destroying %s\n", name); */
             drop_local_var(objp, &ec);
         }
     }
@@ -842,8 +841,6 @@ exec_vardef_real(RDB_parse_statement *stmtp, RDB_exec_context *ecp)
     } else {
         /* Get keys from expression */
 
-        printf("Inferring keys\n");
-
         keyc = _RDB_infer_keys(stmtp->var.vardef.exp, ecp, &keyv, &freekey);
         if (keyc == RDB_ERROR)
             return RDB_ERROR;
@@ -947,9 +944,6 @@ exec_vardef_private(RDB_parse_statement *stmtp, RDB_exec_context *ecp)
             goto error;
     } else {
         /* Get keys from expression */
-
-        printf("Inferring keys\n");
-
         keyc = _RDB_infer_keys(stmtp->var.vardef.exp, ecp, &keyv, &freekey);
         if (keyc == RDB_ERROR) {
             if (stmtp->var.vardef.exp != NULL) {        
@@ -1107,7 +1101,7 @@ exec_stmtlist(RDB_parse_statement *stmtp, RDB_exec_context *ecp,
         if (ret != RDB_OK)
             return ret;
         stmtp = stmtp->nextp;
-    } while(stmtp != NULL);
+    } while (stmtp != NULL);
     return RDB_OK;
 }
 
@@ -1670,6 +1664,7 @@ Duro_invoke_dt_ro_op(const char *name, int argc, RDB_object *argv[],
 
     for (i = 0; i < argc; i++) {
         if (RDB_hashmap_put(&current_varmapp->map, argnamev[i], argv[i]) != RDB_OK) {
+            RDB_parse_del_stmtlist(stmtlistp, ecp);
             free(argnamev);
             RDB_raise_no_memory(ecp);
             return RDB_ERROR;
@@ -1677,6 +1672,7 @@ Duro_invoke_dt_ro_op(const char *name, int argc, RDB_object *argv[],
     }
 
     ret = exec_stmtlist(stmtlistp, ecp, retvalp);
+    RDB_parse_del_stmtlist(stmtlistp, ecp);
 
     /*
      * Keep arguments from being destroyed
@@ -1727,13 +1723,15 @@ Duro_invoke_dt_update_op(const char *name, int argc, RDB_object *argv[],
 
     for (i = 0; i < argc; i++) {
         if (RDB_hashmap_put(&current_varmapp->map, argnamev[i], argv[i]) != RDB_OK) {
+            RDB_parse_del_stmtlist(stmtlistp, ecp);
             free(argnamev);
             RDB_raise_no_memory(ecp);
             return RDB_ERROR;
         }
     }
 
-    ret = exec_stmtlist(stmtlistp, ecp, NULL);   
+    ret = exec_stmtlist(stmtlistp, ecp, NULL);
+    RDB_parse_del_stmtlist(stmtlistp, ecp);
 
     /*
      * Keep arguments from being destroyed
@@ -1792,8 +1790,6 @@ exec_ro_op_def(RDB_parse_statement *stmtp, RDB_exec_context *ecp)
     sercodelen = RDB_binary_length(&code);
     RDB_binary_get (&code, 0, sercodelen, ecp, &sercodep, NULL);
 
-    if (_RDB_parse_interactive)
-        printf("Creating operator %s\n", RDB_obj_string(&stmtp->var.opdef.opname));
     if (eval_parse_type(&stmtp->var.opdef.rtype, ecp, &txnp->tx) != RDB_OK) {
         free(argtv);
         RDB_destroy_obj(&code, ecp);
@@ -1804,6 +1800,8 @@ exec_ro_op_def(RDB_parse_statement *stmtp, RDB_exec_context *ecp)
             stmtp->var.opdef.argc, argtv, stmtp->var.opdef.rtype.typ,
             "libduro", "Duro_invoke_dt_ro_op",
             sercodep, sercodelen, ecp, &txnp->tx);
+    if (_RDB_parse_interactive && (ret == RDB_OK))
+        printf("Operator %s created.\n", RDB_obj_string(&stmtp->var.opdef.opname));
     free(argtv);
     RDB_destroy_obj(&code, ecp);
     return ret;
@@ -1971,6 +1969,7 @@ Duro_process_stmt(RDB_exec_context *ecp)
     _RDB_parse_prompt = RDB_obj_string(&prompt);
 
     stmtp = RDB_parse_stmt(ecp);
+    RDB_destroy_obj(&prompt, ecp);
     if (stmtp == NULL) {
         return RDB_ERROR;
     }

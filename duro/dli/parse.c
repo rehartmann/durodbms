@@ -184,17 +184,21 @@ RDB_parse_del_stmt(RDB_parse_statement *stmtp, RDB_exec_context *ecp)
             }
             break;
         case RDB_STMT_TYPE_DEF:
-            ret = RDB_destroy_obj(&stmtp->var.deftype.typename, ecp);
-/* !!
-            for (i = 0; i < stmtp->var.deftype.repc; i++) {
-                RDB_possrep *rep = &stmtp->var.deftype.repv[i];
-                for (j = 0; j < rep->compc; j++) {
-                    free(rep->compv[j].name);
-                    if (!RDB_type_is_scalar(rep->compv[j].typ))
-                        RDB_drop_type(rep->compv[j].typ, ecp, NULL);
+            {
+                RDB_parse_possrep *rep = stmtp->var.deftype.replistp;
+                while (rep != NULL) {
+                    RDB_parse_possrep *nextrep = rep->nextp;
+
+                    if (rep->namexp != NULL)
+                        RDB_drop_expr(rep->namexp, ecp);
+                    RDB_destroy_expr_list(&rep->attrlist, ecp);
+                    RDB_free(rep);
+                    rep = nextrep;
                 }
+                if (stmtp->var.deftype.constraintp != NULL)
+                    RDB_drop_expr(stmtp->var.deftype.constraintp, ecp);
+                ret = RDB_destroy_obj(&stmtp->var.deftype.typename, ecp);
             }
-*/
             break;
         case RDB_STMT_TYPE_DROP:
             ret = RDB_destroy_obj(&stmtp->var.typedrop.typename, ecp);
@@ -219,7 +223,7 @@ RDB_parse_del_stmt(RDB_parse_statement *stmtp, RDB_exec_context *ecp)
         case RDB_STMT_NOOP:
             break;
     }
-    free(stmtp);
+    RDB_free(stmtp);
     return ret;
 }
 
@@ -229,7 +233,7 @@ RDB_parse_del_stmtlist(RDB_parse_statement *stmtp, RDB_exec_context *ecp)
     int r;
     RDB_parse_statement *nextp;
     int ret = RDB_OK;
-    
+
     do {
         nextp = stmtp->nextp;
         r = RDB_parse_del_stmt(stmtp, ecp);

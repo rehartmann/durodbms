@@ -1293,9 +1293,6 @@ RDB_define_type(const char *name, int repc, const RDB_possrep repv[],
     RDB_destroy_obj(&conval, ecp);    
     RDB_destroy_obj(&tpl, ecp);
 
-    if (constraintp != NULL)
-        RDB_drop_expr(constraintp, ecp);
-    
     return RDB_OK;
     
 error:
