@@ -66,14 +66,14 @@ provide_entry(RDB_object *tplp, const char *attrname, RDB_exec_context *ecp,
         }
         entryp->key = RDB_dup_str(attrname);
         if (entryp->key == NULL) {
-            free(entryp);
+            RDB_free(entryp);
             RDB_raise_no_memory(ecp);
             return RDB_ERROR;
         }
         ret = RDB_hashtable_put(&tplp->var.tpl_tab, entryp, NULL);
         if (ret != RDB_OK) {
-            free(entryp->key);
-            free(entryp);
+            RDB_free(entryp->key);
+            RDB_free(entryp);
             return ret;
         }
         RDB_init_obj(&entryp->obj);
@@ -889,7 +889,7 @@ _RDB_invwrap_tuple(const RDB_object *tplp, RDB_expression *exp,
     }
 
     ret = RDB_unwrap_tuple(tplp, wrapc, attrv, ecp, restplp);
-    free(attrv);
+    RDB_free(attrv);
     return ret;
 }
 
@@ -934,8 +934,8 @@ _RDB_invunwrap_tuple(const RDB_object *tplp, RDB_expression *exp,
     ret = RDB_wrap_tuple(tplp, attrc, wrapv, ecp, restplp);
 
     for (i = 0; i < attrc; i++)
-        free(wrapv[i].attrv);
-    free(wrapv);
+        RDB_free(wrapv[i].attrv);
+    RDB_free(wrapv);
     return ret;
 }
 
@@ -1080,13 +1080,13 @@ _RDB_tuple_type(const RDB_object *tplp, RDB_exec_context *ecp)
 error:
     if (typ->var.tuple.attrc > 0 && typ->var.tuple.attrv != NULL) {
         for (i = 0; i < typ->var.tuple.attrc; i++) {
-            free(typ->var.tuple.attrv[i].name);
+            RDB_free(typ->var.tuple.attrv[i].name);
             if (typ->var.tuple.attrv[i].typ != NULL
                     && typ->var.tuple.attrv[i].typ->kind == RDB_TP_TUPLE)
                 RDB_drop_type(typ->var.tuple.attrv[i].typ, ecp, NULL);
         }
-        free(typ->var.tuple.attrv);
+        RDB_free(typ->var.tuple.attrv);
     }
-    free(typ);
+    RDB_free(typ);
     return NULL;
 }

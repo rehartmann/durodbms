@@ -203,7 +203,7 @@ new_update_op_stmt(const char *name)
     RDB_init_obj(&stmtp->var.opdef.opname);
    	if (RDB_string_to_obj(&stmtp->var.opdef.opname, name, _RDB_parse_ecp)
       	        != RDB_OK) {
-        free(stmtp);
+        RDB_free(stmtp);
       	return NULL;
   	}
   	return stmtp;

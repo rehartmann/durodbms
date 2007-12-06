@@ -1199,7 +1199,6 @@ RDB_define_type(const char *name, int repc, const RDB_possrep repv[],
     RDB_object tpl;
     RDB_object conval;
     RDB_object typedata;
-    int ret;
     int i, j;
 
     if (!RDB_tx_is_running(txp)) {
@@ -1211,8 +1210,7 @@ RDB_define_type(const char *name, int repc, const RDB_possrep repv[],
     RDB_init_obj(&conval);
     RDB_init_obj(&typedata);
 
-    ret = RDB_binary_set(&typedata, 0, NULL, 0, ecp);
-    if (ret != RDB_OK)
+    if (RDB_binary_set(&typedata, 0, NULL, 0, ecp) != RDB_OK)
         return RDB_ERROR;
 
     /*
@@ -1230,15 +1228,12 @@ RDB_define_type(const char *name, int repc, const RDB_possrep repv[],
         goto error;
 
     /* Store constraint in tuple */
-    ret = _RDB_expr_to_binobj(&conval, constraintp, ecp);
-    if (ret != RDB_OK)
+    if (_RDB_expr_to_binobj(&conval, constraintp, ecp) != RDB_OK)
         goto error;
-    ret = RDB_tuple_set(&tpl, "I_CONSTRAINT", &conval, ecp);
-    if (ret != RDB_OK)
+    if (RDB_tuple_set(&tpl, "I_CONSTRAINT", &conval, ecp) != RDB_OK)
         goto error;
 
-    ret = RDB_insert(txp->dbp->dbrootp->types_tbp, &tpl, ecp, txp);
-    if (ret != RDB_OK)
+    if (RDB_insert(txp->dbp->dbrootp->types_tbp, &tpl, ecp, txp) != RDB_OK)
         goto error;
 
     /*
@@ -1257,8 +1252,7 @@ RDB_define_type(const char *name, int repc, const RDB_possrep repv[],
             /* Make type name the possrep name */
             prname = (char *) name;
         }
-        ret = RDB_tuple_set_string(&tpl, "POSSREPNAME", prname, ecp);
-        if (ret != RDB_OK)
+        if (RDB_tuple_set_string(&tpl, "POSSREPNAME", prname, ecp) != RDB_OK)
             goto error;
 
         for (j = 0; j < repv[i].compc; j++) {
@@ -1271,20 +1265,16 @@ RDB_define_type(const char *name, int repc, const RDB_possrep repv[],
                 }
                 cname = prname;
             }
-            ret = RDB_tuple_set_int(&tpl, "COMPNO", (RDB_int)j, ecp);
-            if (ret != RDB_OK)
+            if (RDB_tuple_set_int(&tpl, "COMPNO", (RDB_int)j, ecp) != RDB_OK)
                 goto error;
-            ret = RDB_tuple_set_string(&tpl, "COMPNAME", cname, ecp);
-            if (ret != RDB_OK)
+            if (RDB_tuple_set_string(&tpl, "COMPNAME", cname, ecp) != RDB_OK)
                 goto error;
-            ret = RDB_tuple_set_string(&tpl, "COMPTYPENAME",
-                    repv[i].compv[j].typ->name, ecp);
-            if (ret != RDB_OK)
+            if (RDB_tuple_set_string(&tpl, "COMPTYPENAME",
+                    repv[i].compv[j].typ->name, ecp) != RDB_OK)
                 goto error;
 
-            ret = RDB_insert(txp->dbp->dbrootp->possrepcomps_tbp, &tpl, ecp,
-                    txp);
-            if (ret != RDB_OK)
+            if (RDB_insert(txp->dbp->dbrootp->possrepcomps_tbp, &tpl, ecp, txp)
+                    != RDB_OK)
                 goto error;
         }
     }
@@ -2377,7 +2367,7 @@ error:
     for (i = 0; i < attrc; i++) {
         attrp = &newtyp->var.tuple.attrv[i];
         if (attrp->name != NULL)
-            free (attrp->name);
+            RDB_free(attrp->name);
         if (attrp->typ != NULL) {
             if (attrp->typ == NULL)
                 RDB_drop_type(attrp->typ, ecp, NULL);

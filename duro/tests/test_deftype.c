@@ -14,9 +14,8 @@ test_type(RDB_database *dbp, RDB_exec_context *ecp)
     RDB_attr comp;
     int ret;
 
-    ret = RDB_begin_tx(ecp, &tx, dbp, NULL);
-    if (ret != RDB_OK) {
-        return ret;
+    if (RDB_begin_tx(ecp, &tx, dbp, NULL) != RDB_OK) {
+        return RDB_ERROR;
     }
 
     comp.name = NULL;
@@ -33,8 +32,8 @@ test_type(RDB_database *dbp, RDB_exec_context *ecp)
     RDB_add_arg(constraintp, RDB_int_to_expr(100, ecp));
 
     ret = RDB_define_type("TINYINT", 1, &pr, constraintp, ecp, &tx);
+    RDB_drop_expr(constraintp, ecp);
     if (ret != RDB_OK) {
-        RDB_drop_expr(constraintp, ecp);
         RDB_rollback(ecp, &tx);
         return ret;
     }

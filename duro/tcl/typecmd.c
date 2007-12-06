@@ -135,8 +135,9 @@ type_define_cmd(TclState *statep, Tcl_Interp *interp, int objc,
 
     ret = RDB_define_type(Tcl_GetString(objv[2]), repc, repv, constraintp,
             statep->current_ecp, txp);
-    if (ret != RDB_OK) {
+    if (constraintp != NULL)
         RDB_drop_expr(constraintp, statep->current_ecp);
+    if (ret != RDB_OK) {
         Duro_dberror(interp, RDB_get_err(statep->current_ecp), txp);
         ret = TCL_ERROR;
         goto cleanup;

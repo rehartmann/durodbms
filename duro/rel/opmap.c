@@ -167,11 +167,12 @@ RDB_get_op(const RDB_op_map *opmap, const char *name, int argc,
         op = op->nextp;
     }
 
-    /* If not, found, search operator with variable # of args (argc == -1) */
+    /* If not, found, search generic operator (argc == -1) */
     op = firstop;
     while (op != NULL) {
-        if (op->argc == -1)
+        if (op->argc == -1) {
             return op->datap;
+        }
         op = op->nextp;
     }
 

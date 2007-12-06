@@ -74,8 +74,8 @@ eliminate_child (RDB_expression *exp, const char *name, RDB_exec_context *ecp,
         return RDB_ERROR;
 
     exp->var.op.args.firstp = hexp->var.op.args.firstp;
-    free(hexp->var.op.name);
-    free(hexp);
+    RDB_free(hexp->var.op.name);
+    RDB_free(hexp);
     return _RDB_transform(exp->var.op.args.firstp, ecp, txp);
 }
 
@@ -158,10 +158,10 @@ eliminate_not(RDB_expression *exp, RDB_exec_context *ecp, RDB_transaction *txp)
     if (strcmp(exp->var.op.args.firstp->var.op.name, "NOT") == 0) {
         hexp = exp->var.op.args.firstp;
         memcpy(exp, hexp->var.op.args.firstp, sizeof (RDB_expression));
-        free(hexp->var.op.args.firstp->var.op.name);
-        free(hexp->var.op.args.firstp);
-        free(hexp->var.op.name);
-        free(hexp);
+        RDB_free(hexp->var.op.args.firstp->var.op.name);
+        RDB_free(hexp->var.op.args.firstp);
+        RDB_free(hexp->var.op.name);
+        RDB_free(hexp);
         return eliminate_not(exp->var.op.args.firstp, ecp, txp);;
     }
 
@@ -270,8 +270,8 @@ move_node(RDB_expression *texp, RDB_expression **dstpp, RDB_expression *nodep,
                 prevp->var.op.args.firstp->nextp->nextp = pprevp->var.op.args.firstp->nextp;
                 pprevp->var.op.args.firstp = prevp->var.op.args.firstp->nextp;
             }
-            free(prevp->var.op.name);
-            free(prevp);
+            RDB_free(prevp->var.op.name);
+            RDB_free(prevp);
         }
 
         if (*dstpp == NULL)
@@ -305,8 +305,8 @@ move_node(RDB_expression *texp, RDB_expression **dstpp, RDB_expression *nodep,
             *dstpp = exp;
         }
 
-        free(nodep->var.op.name);
-        free(nodep);
+        RDB_free(nodep->var.op.name);
+        RDB_free(nodep);
     }
     return RDB_OK;
 }

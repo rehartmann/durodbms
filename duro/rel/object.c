@@ -869,7 +869,7 @@ RDB_destroy_obj(RDB_object *objp, RDB_exec_context *ecp)
 
             if (objp->var.arr.tplp != NULL) {
                 ret2 = RDB_destroy_obj(objp->var.arr.tplp, ecp);
-                free(objp->var.arr.tplp);
+                RDB_free(objp->var.arr.tplp);
             }
             if (ret != RDB_OK)
                 return RDB_ERROR;
@@ -884,7 +884,7 @@ RDB_destroy_obj(RDB_object *objp, RDB_exec_context *ecp)
             if (objp->typ != NULL && !RDB_type_is_scalar(objp->typ))
                 RDB_drop_type(objp->typ, ecp, NULL);
             
-            free(objp->var.tb.name);
+            RDB_free(objp->var.tb.name);
             
             if (objp->var.tb.exp != NULL) {
                 if (RDB_drop_expr(objp->var.tb.exp, ecp) != RDB_OK)
@@ -1123,7 +1123,7 @@ RDB_obj_comp(const RDB_object *valp, const char *compname, RDB_object *compvalp,
         argv[0] = (RDB_object *) valp;
 
         ret = RDB_call_ro_op(opname, 1, argv, ecp, txp, compvalp);
-        free(opname);
+        RDB_free(opname);
     }
     return ret;
 }
@@ -1177,7 +1177,7 @@ RDB_obj_set_comp(RDB_object *valp, const char *compname,
         argv[1] = (RDB_object *) compvalp;
         
         ret = RDB_call_update_op(opname, 2, argv, ecp, txp);
-        free(opname);        
+        RDB_free(opname);        
     }
 
     if (ret != RDB_OK)
@@ -1414,7 +1414,7 @@ _RDB_free_keys(int keyc, RDB_string_vec *keyv)
     for (i = 0; i < keyc; i++) {
         RDB_free_strvec(keyv[i].strc, keyv[i].strv);
     }
-    free(keyv);
+    RDB_free(keyv);
 }
 
 /* Works only for scalar types */
