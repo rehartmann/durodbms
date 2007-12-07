@@ -134,7 +134,7 @@ RDB_OK on success, RDB_ERROR if an error occurred.
 @par Errors:
 
 <dl>
-<dt>RDB_INVALID_TRANSACTION_ERROR
+<dt>RDB_NO_RUNNING_TX_ERROR
 <dd><var>txp</var> does not point to a running transaction.
 <dt>RDB_TYPE_MISMATCH_ERROR
 <dd>The expression specified by <var>constrp</var> is not of type BOOLEAN.
@@ -216,7 +216,7 @@ RDB_OK on success, RDB_ERROR if an error occurred.
 @par Errors:
 
 <dl>
-<dt>RDB_INVALID_TRANSACTION_ERROR
+<dt>RDB_NO_RUNNING_TX_ERROR
 <dd><var>txp</var> does not point to a running transaction.
 <dt>RDB_NOT_FOUND_ERROR
 <dd>A constraint with the name <var>name</var> could not be found.

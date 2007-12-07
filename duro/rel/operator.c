@@ -61,7 +61,7 @@ RDB_OK on success, RDB_ERROR if an error occurred.
 @par Errors:
 
 <dl>
-<dt>RDB_INVALID_TRANSACTION_ERROR
+<dt>RDB_NO_RUNNING_TX_ERROR
 <dd><var>txp</var> does not point to a running transaction.
 <dt>RDB_ELEMENT_EXIST_ERROR
 <dd>A read-only operator with this name and signature does already exist.
@@ -86,7 +86,7 @@ RDB_create_ro_op(const char *name, int argc, RDB_type *argtv[], RDB_type *rtyp,
     int i;
 
     if (!RDB_tx_is_running(txp)) {
-        RDB_raise_invalid_tx(ecp);
+        RDB_raise_no_running_tx(ecp);
         return RDB_ERROR;
     }
 
@@ -225,7 +225,7 @@ RDB_OK on success, RDB_ERROR if an error occurred.
 @par Errors:
 
 <dl>
-<dt>RDB_INVALID_TRANSACTION_ERROR
+<dt>RDB_NO_RUNNING_TX_ERROR
 <dd><var>txp</var> does not point to a running transaction.
 <dt>RDB_ELEMENT_EXIST_ERROR
 <dd>An update operator with this name and signature does already exist.
@@ -251,7 +251,7 @@ RDB_create_update_op(const char *name, int argc, RDB_type *argtv[],
     int ret;
 
     if (!RDB_tx_is_running(txp)) {
-        RDB_raise_invalid_tx(ecp);
+        RDB_raise_no_running_tx(ecp);
         return RDB_ERROR;
     }
 
@@ -379,7 +379,7 @@ RDB_OK on success, RDB_ERROR if an error occurred.
 @par Errors:
 
 <dl>
-<dt>RDB_INVALID_TRANSACTION_ERROR
+<dt>RDB_NO_RUNNING_TX_ERROR
 <dd><var>txp</var> does not point to a running transaction.
 <dt>RDB_OPERATOR_NOT_FOUND_ERROR
 <dd>A read-only operator that matches the name and argument types could not be
@@ -536,7 +536,7 @@ RDB_OK on success, RDB_ERROR if an error occurred.
 @par Errors:
 
 <dl>
-<dt>RDB_INVALID_TRANSACTION_ERROR
+<dt>RDB_NO_RUNNING_TX_ERROR
 <dd><var>txp</var> does not point to a running transaction.
 <dt>RDB_OPERATOR_NOT_FOUND_ERROR
 <dd>An update operator that matches the name and arguments could not be
@@ -558,7 +558,7 @@ RDB_call_update_op(const char *name, int argc, RDB_object *argv[],
     int i;
 
     if (!RDB_tx_is_running(txp)) {
-        RDB_raise_invalid_tx(ecp);
+        RDB_raise_no_running_tx(ecp);
         return RDB_ERROR;
     }
 
@@ -596,7 +596,7 @@ RDB_OK on success, RDB_ERROR if an error occurred.
 @par Errors:
 
 <dl>
-<dt>RDB_INVALID_TRANSACTION_ERROR
+<dt>RDB_NO_RUNNING_TX_ERROR
 <dd><var>txp</var> does not point to a running transaction.
 <dt>RDB_NOT_FOUND_ERROR
 <dd>An operator with the specified name could not be found.
@@ -614,7 +614,7 @@ RDB_drop_op(const char *name, RDB_exec_context *ecp, RDB_transaction *txp)
     RDB_bool isempty;
 
     if (!RDB_tx_is_running(txp)) {
-        RDB_raise_invalid_tx(ecp);
+        RDB_raise_no_running_tx(ecp);
         return RDB_ERROR;
     }
 

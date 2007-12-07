@@ -195,7 +195,7 @@ _RDB_EXTERN_VAR RDB_type RDB_BINARY;
 /*
  * Error types
  */
-_RDB_EXTERN_VAR RDB_type RDB_INVALID_TRANSACTION_ERROR;
+_RDB_EXTERN_VAR RDB_type RDB_NO_RUNNING_TX_ERROR;
 _RDB_EXTERN_VAR RDB_type RDB_INVALID_ARGUMENT_ERROR;
 _RDB_EXTERN_VAR RDB_type RDB_TYPE_MISMATCH_ERROR;
 _RDB_EXTERN_VAR RDB_type RDB_NOT_FOUND_ERROR;
@@ -392,27 +392,27 @@ RDB_multi_assign(int insc, const RDB_ma_insert insv[],
 
 int
 RDB_max(RDB_object *tbp, const char *attrname, RDB_exec_context *,
-        RDB_transaction *txp, RDB_object *resultp);
+        RDB_transaction *, RDB_object *resultp);
 
 int
 RDB_min(RDB_object *tbp, const char *attrname, RDB_exec_context *,
-        RDB_transaction *txp, RDB_object *resultp);
+        RDB_transaction *, RDB_object *resultp);
 
 int
 RDB_all(RDB_object *tbp, const char *attrname, RDB_exec_context *,
-        RDB_transaction *txp, RDB_bool *resultp);
+        RDB_transaction *, RDB_bool *resultp);
 
 int
 RDB_any(RDB_object *tbp, const char *attrname, RDB_exec_context *,
-        RDB_transaction *txp, RDB_bool *resultp);
+        RDB_transaction *, RDB_bool *resultp);
 
 int
 RDB_sum(RDB_object *tbp, const char *attrname, RDB_exec_context *,
-        RDB_transaction *txp, RDB_object *resultp);
+        RDB_transaction *, RDB_object *resultp);
 
 int
 RDB_avg(RDB_object *tbp, const char *attrname, RDB_exec_context *,
-        RDB_transaction *txp, RDB_double *resultp);
+        RDB_transaction *, RDB_double *resultp);
 
 int
 RDB_table_contains(RDB_object *tbp, const RDB_object *tplp, RDB_exec_context *,
@@ -533,10 +533,10 @@ the database environment.
 /** @} */
 
 RDB_bool
-RDB_tx_is_running(RDB_transaction *txp);
+RDB_tx_is_running(RDB_transaction *);
 
 int
-RDB_begin_tx(RDB_exec_context *, RDB_transaction *txp, RDB_database *dbp,
+RDB_begin_tx(RDB_exec_context *, RDB_transaction *, RDB_database *dbp,
         RDB_transaction *parent);
 
 int
@@ -800,21 +800,21 @@ int
 RDB_create_ro_op(const char *name, int argc, RDB_type *argtv[], RDB_type *rtyp,
                  const char *libname, const char *symname,
                  const void *iargp, size_t iarglen, 
-                 RDB_exec_context *, RDB_transaction *txp);
+                 RDB_exec_context *, RDB_transaction *);
 
 int
 RDB_create_update_op(const char *name, int argc, RDB_type *argtv[],
                   RDB_bool upd[], const char *libname, const char *symname,
                   const void *iargp, size_t iarglen,
-                  RDB_exec_context *, RDB_transaction *txp);
+                  RDB_exec_context *, RDB_transaction *);
 
 int
 RDB_call_ro_op(const char *name, int argc, RDB_object *argv[],
-               RDB_exec_context *, RDB_transaction *txp, RDB_object *retvalp);
+               RDB_exec_context *, RDB_transaction *, RDB_object *retvalp);
 
 int
 RDB_call_update_op(const char *name, int argc, RDB_object *argv[],
-                RDB_exec_context *, RDB_transaction *txp);
+                RDB_exec_context *, RDB_transaction *);
 
 int
 RDB_drop_op(const char *name, RDB_exec_context *, RDB_transaction *);
@@ -849,7 +849,7 @@ RDB_object *
 RDB_raise_invalid_argument(const char *, RDB_exec_context *);
 
 RDB_object *
-RDB_raise_invalid_tx(RDB_exec_context *);
+RDB_raise_no_running_tx(RDB_exec_context *);
 
 RDB_object *
 RDB_raise_not_found(const char *, RDB_exec_context *);

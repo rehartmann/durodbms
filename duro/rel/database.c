@@ -1107,7 +1107,7 @@ If an error occurred, NULL is returned.
 @par Errors:
 
 <dl>
-<dt>RDB_INVALID_TRANSACTION_ERROR
+<dt>RDB_NO_RUNNING_TX_ERROR
 <dd><var>txp</var> does not point to a running transaction.
 <dt>RDB_TYPE_MISMATCH_ERROR
 <dd>The type of a default value does not match the type of the corresponding
@@ -1209,7 +1209,7 @@ A pointer to the table, or NULL if an error occurred.
 @par Errors:
 
 <dl>
-<dt>RDB_INVALID_TRANSACTION_ERROR
+<dt>RDB_NO_RUNNING_TX_ERROR
 <dd><var>txp</var> does not point to a running transaction.
 <dt>RDB_NOT_FOUND_ERROR
 <dd>A table with the name <var>name</var> could not be found.
@@ -1265,7 +1265,7 @@ On success, RDB_OK is returned. On failure, RDB_ERROR is returned.
 @par Errors:
 
 <dl>
-<dt>RDB_INVALID_TRANSACTION_ERROR
+<dt>RDB_NO_RUNNING_TX_ERROR
 <dd>The table is global (persistent) and <var>txp</var>
 does not point to a running transaction.
 </dl>
@@ -1283,7 +1283,7 @@ RDB_drop_table(RDB_object *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
         RDB_dbroot *dbrootp;
 
         if (!RDB_tx_is_running(txp)) {
-            RDB_raise_invalid_tx(ecp);
+            RDB_raise_no_running_tx(ecp);
             return RDB_ERROR;
         }
     
@@ -1332,7 +1332,7 @@ On success, RDB_OK is returned. On failure, RDB_ERROR is returned.
 @par Errors:
 
 <dl>
-<dt>RDB_INVALID_TRANSACTION_ERROR
+<dt>RDB_NO_RUNNING_TX_ERROR
 <dd><var>txp</var> does not point to a running transaction.
 <dt>RDB_INVALID_ARGUMENT_ERROR
 <dd><var>name</var> is not a valid table name.
@@ -1405,7 +1405,7 @@ RDB_OK on success, RDB_ERROR if an error occurred.
 @par Errors
 
 <dl>
-<dt>RDB_INVALID_TRANSACTION_ERROR
+<dt>RDB_NO_RUNNING_TX_ERROR
 <dd><var>txp</var> does not point to a running transaction.
 <dt>RDB_INVALID_ARGUMENT_ERROR
 <dd>The table does not have a name.
@@ -1436,7 +1436,7 @@ RDB_add_table(RDB_object *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
     }
 
     if (!RDB_tx_is_running(txp)) {
-        RDB_raise_invalid_tx(ecp);
+        RDB_raise_no_running_tx(ecp);
         return RDB_ERROR;
     }
 
@@ -1466,7 +1466,7 @@ If the table is a global table, it is made local.
 @par Errors:
 
 <dl>
-<dt>RDB_INVALID_TRANSACTION_ERROR
+<dt>RDB_NO_RUNNING_TX_ERROR
 <dd><var>txp</var> does not point to a running transaction.
 <dt>RDB_INVALID_ARGUMENT_ERROR
 <dd>The table does not belong to the database the transaction interacts
@@ -1503,7 +1503,7 @@ On success, RDB_OK is returned. Any other return value indicates an error.
 @par Errors:
 
 <dl>
-<dt>RDB_INVALID_TRANSACTION_ERROR
+<dt>RDB_NO_RUNNING_TX_ERROR
 <dd><var>txp</var> does not point to a running transaction.
 <dt>RDB_NOT_FOUND_ERROR
 <dd>A type with the name <var>name</var> could not be found.

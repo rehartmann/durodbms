@@ -469,7 +469,7 @@ _RDB_create_stored_table(RDB_object *tbp, RDB_environment *envp,
        txp = NULL;
 
     if (txp != NULL && !RDB_tx_is_running(txp)) {
-        RDB_raise_invalid_tx(ecp);
+        RDB_raise_no_running_tx(ecp);
         return RDB_ERROR;
     }
 
@@ -624,7 +624,7 @@ _RDB_open_stored_table(RDB_object *tbp, RDB_environment *envp,
        txp = NULL;
 
     if (txp != NULL && !RDB_tx_is_running(txp)) {
-        RDB_raise_invalid_tx(ecp);
+        RDB_raise_no_running_tx(ecp);
         return RDB_ERROR;
     }
 

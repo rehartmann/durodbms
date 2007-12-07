@@ -151,7 +151,7 @@ RDB_OK on success, RDB_ERROR if an error occurred.
 @par Errors:
 
 <dl>
-<dt>RDB_INVALID_TRANSACTION_ERROR
+<dt>RDB_NO_RUNNING_TX_ERROR
 <dd><var>txp</var> does not point to a running transaction.
 </dl>
 
@@ -163,7 +163,7 @@ RDB_commit(RDB_exec_context *ecp, RDB_transaction *txp)
     int ret;
 
     if (txp->txid == NULL) {
-        RDB_raise_invalid_tx(ecp);
+        RDB_raise_no_running_tx(ecp);
         return RDB_ERROR;
     }
 
@@ -223,7 +223,7 @@ RDB_OK on success, RDB_ERROR if an error occurred.
 @par Errors:
 
 <dl>
-<dt>RDB_INVALID_TRANSACTION_ERROR
+<dt>RDB_NO_RUNNING_TX_ERROR
 <dd><var>txp</var> does not point to a running transaction.
 </dl>
 
@@ -235,7 +235,7 @@ RDB_rollback(RDB_exec_context *ecp, RDB_transaction *txp)
     int ret;
 
     if (txp->txid == NULL) {
-        RDB_raise_invalid_tx(ecp);
+        RDB_raise_no_running_tx(ecp);
         return RDB_ERROR;
     }
 

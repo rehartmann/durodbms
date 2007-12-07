@@ -112,13 +112,13 @@ RDB_raise_no_memory(RDB_exec_context *ecp)
 }
 
 RDB_object *
-RDB_raise_invalid_tx(RDB_exec_context *ecp)
+RDB_raise_no_running_tx(RDB_exec_context *ecp)
 {
     RDB_object *errp = RDB_raise_err(ecp);
     if (errp == NULL)
         return NULL;
 
-    errp->typ = &RDB_INVALID_TRANSACTION_ERROR;
+    errp->typ = &RDB_NO_RUNNING_TX_ERROR;
     return errp;
 }
 

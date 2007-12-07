@@ -32,7 +32,7 @@ Since version 0.10, Duro errors are scalar types.
 They are shown below in Tutorial D notation.
 
 <pre>
-TYPE INVALID_TRANSACTION_ERROR POSSREP { };
+TYPE NO_RUNNING_TRANSACTION_ERROR POSSREP { };
 
 TYPE INVALID_ARGUMENT_ERROR POSSREP { MSG STRING };
 
@@ -115,7 +115,7 @@ RDB_type RDB_DOUBLE;
 RDB_type RDB_STRING;
 RDB_type RDB_BINARY;
 
-RDB_type RDB_INVALID_TRANSACTION_ERROR;
+RDB_type RDB_NO_RUNNING_TX_ERROR;
 RDB_type RDB_INVALID_ARGUMENT_ERROR;
 RDB_type RDB_TYPE_MISMATCH_ERROR;
 RDB_type RDB_NOT_FOUND_ERROR;
@@ -226,8 +226,8 @@ _RDB_init_builtin_types(RDB_exec_context *ecp)
         0
     };
 
-    static RDB_possrep invalid_transaction_rep = {
-        "INVALID_TRANSACTION_ERROR",
+    static RDB_possrep no_running_tx_rep = {
+        "NO_RUNNING_TX_ERROR",
         0
     };
 
@@ -441,20 +441,20 @@ _RDB_init_builtin_types(RDB_exec_context *ecp)
     RDB_NO_MEMORY_ERROR.var.scalar.constraintp = NULL;
     RDB_NO_MEMORY_ERROR.comparep = NULL;
 
-    RDB_INVALID_TRANSACTION_ERROR.kind = RDB_TP_SCALAR;
-    RDB_INVALID_TRANSACTION_ERROR.var.scalar.builtin = RDB_TRUE;
-    RDB_INVALID_TRANSACTION_ERROR.ireplen = RDB_VARIABLE_LEN;
-    RDB_INVALID_TRANSACTION_ERROR.name = "INVALID_TRANSACTION_ERROR";
-    RDB_INVALID_TRANSACTION_ERROR.var.scalar.repc = 1;
-    RDB_INVALID_TRANSACTION_ERROR.var.scalar.repv = &invalid_transaction_rep;
-    RDB_INVALID_TRANSACTION_ERROR.var.scalar.arep = RDB_create_tuple_type(0, NULL, ecp);
-    if (RDB_INVALID_TRANSACTION_ERROR.var.scalar.arep == NULL) {
+    RDB_NO_RUNNING_TX_ERROR.kind = RDB_TP_SCALAR;
+    RDB_NO_RUNNING_TX_ERROR.var.scalar.builtin = RDB_TRUE;
+    RDB_NO_RUNNING_TX_ERROR.ireplen = RDB_VARIABLE_LEN;
+    RDB_NO_RUNNING_TX_ERROR.name = "NO_RUNNING_TX_ERROR";
+    RDB_NO_RUNNING_TX_ERROR.var.scalar.repc = 1;
+    RDB_NO_RUNNING_TX_ERROR.var.scalar.repv = &no_running_tx_rep;
+    RDB_NO_RUNNING_TX_ERROR.var.scalar.arep = RDB_create_tuple_type(0, NULL, ecp);
+    if (RDB_NO_RUNNING_TX_ERROR.var.scalar.arep == NULL) {
         RDB_raise_no_memory(ecp);
         return RDB_ERROR;
     }
-    RDB_INVALID_TRANSACTION_ERROR.var.scalar.arep = NULL;
-    RDB_INVALID_TRANSACTION_ERROR.var.scalar.constraintp = NULL;
-    RDB_INVALID_TRANSACTION_ERROR.comparep = NULL;
+    RDB_NO_RUNNING_TX_ERROR.var.scalar.arep = NULL;
+    RDB_NO_RUNNING_TX_ERROR.var.scalar.constraintp = NULL;
+    RDB_NO_RUNNING_TX_ERROR.comparep = NULL;
 
     RDB_NOT_FOUND_ERROR.kind = RDB_TP_SCALAR;
     RDB_NOT_FOUND_ERROR.var.scalar.builtin = RDB_TRUE;
@@ -720,7 +720,7 @@ _RDB_init_builtin_types(RDB_exec_context *ecp)
     if (add_type(&RDB_NOT_FOUND_ERROR, ecp) != RDB_OK) {
         return RDB_ERROR;
     }
-    if (add_type(&RDB_INVALID_TRANSACTION_ERROR,
+    if (add_type(&RDB_NO_RUNNING_TX_ERROR,
             ecp) != RDB_OK) {
         return RDB_ERROR;
     }
@@ -1182,7 +1182,7 @@ RDB_OK on success, RDB_ERROR if an error occurred.
 @par Errors:
 
 <dl>
-<dt>RDB_INVALID_TRANSACTION_ERROR
+<dt>RDB_NO_RUNNING_TX_ERROR
 <dd><var>txp</var> does not point to a running transaction.
 <dt>RDB_ELEMENT_EXIST_ERROR
 <dd>There is already a type with name <var>name</var>.
@@ -1202,7 +1202,7 @@ RDB_define_type(const char *name, int repc, const RDB_possrep repv[],
     int i, j;
 
     if (!RDB_tx_is_running(txp)) {
-        RDB_raise_invalid_tx(ecp);
+        RDB_raise_no_running_tx(ecp);
         return RDB_ERROR;
     }
 
@@ -1377,7 +1377,7 @@ On success, RDB_OK is returned. Any other return value indicates an error.
 @par Errors:
 
 <dl>
-<dt>RDB_INVALID_TRANSACTION_ERROR
+<dt>RDB_NO_RUNNING_TX_ERROR
 <dd><var>txp</var> does not point to a running transaction.
 <dt>RDB_NOT_FOUND_ERROR
 <dd>The type has not been previously defined.
@@ -1401,7 +1401,7 @@ RDB_implement_type(const char *name, RDB_type *arep, RDB_int areplen,
     RDB_bool sysimpl = (arep == NULL) && (areplen == -1);
 
     if (!RDB_tx_is_running(txp)) {
-        RDB_raise_invalid_tx(ecp);
+        RDB_raise_no_running_tx(ecp);
         return RDB_ERROR;
     }
 
@@ -1526,7 +1526,7 @@ On success, RDB_OK is returned. Any other return value indicates an error.
 @par Errors:
 
 <dl>
-<dt>RDB_INVALID_TRANSACTION_ERROR
+<dt>RDB_NO_RUNNING_TX_ERROR
 <dd>The type is scalar and <var>txp</var> does not point to a running transaction.
 <dt>RDB_INVALID_ARGUMENT_ERROR
 <dd>The type is a builtin type.
@@ -1550,7 +1550,7 @@ RDB_drop_type(RDB_type *typ, RDB_exec_context *ecp, RDB_transaction *txp)
         RDB_type *ntp = NULL;
 
         if (!RDB_tx_is_running(txp)) {
-            RDB_raise_invalid_tx(ecp);
+            RDB_raise_no_running_tx(ecp);
             return RDB_ERROR;
         }
 

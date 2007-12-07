@@ -20,6 +20,9 @@ Changes for Duro 0.13
 
 - Replaced ATTRIBUTE_NOT_FOUND_ERROR by NAME_ERROR.
 
+- Renamed INVALID_TRANSACTION_ERROR to NO_RUNNING_TX_ERROR
+  and RDB_raise_invalid_tx() to RDB_raise_no_running_tx().
+
 - Using doxygen for the documentation.
 
 Changes for Duro 0.12

@@ -355,7 +355,7 @@ RDB_OK on success, RDB_ERROR if an error occurred.
 @par Errors:
 
 <dl>
-<dt>RDB_INVALID_TRANSACTION_ERROR
+<dt>RDB_NO_RUNNING_TX_ERROR
 <dd><var>txp</var> does not point to a running transaction.
 <dt>RDB_TYPE_MISMATCH_ERROR
 <dd>The types of the two tables differ.
@@ -398,7 +398,7 @@ RDB_OK on success, RDB_ERROR if an error occurred.
 @par Errors:
 
 <dl>
-<dt>RDB_INVALID_TRANSACTION_ERROR
+<dt>RDB_NO_RUNNING_TX_ERROR
 <dd><var>txp</var> does not point to a running transaction.
 <dt>NAME_ERROR
 <dd>The table does not have an attribute <var>attrname</var>.
@@ -490,7 +490,7 @@ RDB_OK on success, RDB_ERROR if an error occurred.
 @par Errors:
 
 <dl>
-<dt>RDB_INVALID_TRANSACTION_ERROR
+<dt>RDB_NO_RUNNING_TX_ERROR
 <dd><var>txp</var> does not point to a running transaction.
 <dt>NAME_ERROR
 <dd>The table does not have an attribute <var>attrname</var>.
@@ -581,7 +581,7 @@ RDB_OK on success, RDB_ERROR if an error occurred.
 @par Errors:
 
 <dl>
-<dt>RDB_INVALID_TRANSACTION_ERROR
+<dt>RDB_NO_RUNNING_TX_ERROR
 <dd><var>txp</var> does not point to a running transaction.
 <dt>NAME_ERROR
 <dd>The table does not have an attribute <var>attrname</var>.
@@ -685,7 +685,7 @@ RDB_OK on success, RDB_ERROR if an error occurred.
 @par Errors:
 
 <dl>
-<dt>RDB_INVALID_TRANSACTION_ERROR
+<dt>RDB_NO_RUNNING_TX_ERROR
 <dd><var>txp</var> does not point to a running transaction.
 <dt>NAME_ERROR
 <dd>The table does not have an attribute <var>attrname</var>.
@@ -791,7 +791,7 @@ RDB_OK on success, RDB_ERROR if an error occurred.
 @par Errors:
 
 <dl>
-<dt>RDB_INVALID_TRANSACTION_ERROR
+<dt>RDB_NO_RUNNING_TX_ERROR
 <dd><var>txp</var> does not point to a running transaction.
 <dt>NAME_ERROR
 <dd>The table does not have an attribute <var>attrname</var>.
@@ -892,7 +892,7 @@ RDB_OK on success, RDB_ERROR if an error occurred.
 @par Errors:
 
 <dl>
-<dt>RDB_INVALID_TRANSACTION_ERROR
+<dt>RDB_NO_RUNNING_TX_ERROR
 <dd><var>txp</var> does not point to a running transaction.
 <dt>NAME_ERROR
 <dd>The table does not have an attribute <var>attrname</var>.
@@ -990,7 +990,7 @@ RDB_OK on success, RDB_ERROR if an error occurred.
 @par Errors:
 
 <dl>
-<dt>RDB_INVALID_TRANSACTION_ERROR
+<dt>RDB_NO_RUNNING_TX_ERROR
 <dd><var>txp</var> does not point to a running transaction.
 <dt>RDB_NOT_FOUND_ERROR
 <dd>The table is empty.
@@ -1113,7 +1113,7 @@ RDB_table_is_empty(RDB_object *tbp, RDB_exec_context *ecp,
     RDB_expression *exp, *argp, *nexp;
 
     if (txp != NULL && !RDB_tx_is_running(txp)) {
-        RDB_raise_invalid_tx(ecp);
+        RDB_raise_no_running_tx(ecp);
         return RDB_ERROR;
     }
 
@@ -1186,7 +1186,7 @@ On failure, (RDB_int)RDB_ERROR is returned.
 @par Errors:
 
 <dl>
-<dt>RDB_INVALID_TRANSACTION_ERROR
+<dt>RDB_NO_RUNNING_TX_ERROR
 <dd><var>txp</var> does not point to a running transaction.
 <dt>RDB_OPERATOR_NOT_FOUND_ERROR
 <dd>The definition of the table specified by <var>tbp</var>
@@ -1206,7 +1206,7 @@ RDB_cardinality(RDB_object *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
     RDB_expression *texp;
 
     if (txp != NULL && !RDB_tx_is_running(txp)) {
-        RDB_raise_invalid_tx(ecp);
+        RDB_raise_no_running_tx(ecp);
         return RDB_ERROR;
     }
 
@@ -1273,7 +1273,7 @@ RDB_OK on success, RDB_ERROR if an error occurred.
 @par Errors:
 
 <dl>
-<dt>RDB_INVALID_TRANSACTION_ERROR
+<dt>RDB_NO_RUNNING_TX_ERROR
 <dd><var>txp</var> does not point to a running transaction.
 <dt>RDB_TYPE_MISMATCH_ERROR
 <dd>The types of the two tables differ.
@@ -1299,7 +1299,7 @@ RDB_subset(RDB_object *tb1p, RDB_object *tb2p, RDB_exec_context *ecp,
     }
 
     if (!RDB_tx_is_running(txp)) {
-        RDB_raise_invalid_tx(ecp);
+        RDB_raise_no_running_tx(ecp);
         return RDB_ERROR;
     }
 

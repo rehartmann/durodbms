@@ -613,8 +613,8 @@ init_obj(RDB_object *objp, RDB_type *typ, RDB_exec_context *ecp,
     } else {
         if (typ->var.scalar.repc > 0) {
             if (txp == NULL) {
-                RDB_raise_invalid_tx(ecp);
-                return RDB_ERROR;        
+                RDB_raise_no_running_tx(ecp);
+                return RDB_ERROR;
             }
             return init_obj_by_selector(objp, &typ->var.scalar.repv[0],
                     ecp, txp);
@@ -851,7 +851,7 @@ exec_vardef_real(RDB_parse_statement *stmtp, RDB_exec_context *ecp)
         goto error;
 
     if (txnp == NULL) {
-        RDB_raise_invalid_tx(ecp);
+        RDB_raise_no_running_tx(ecp);
         return RDB_ERROR;
     }
 
@@ -905,7 +905,7 @@ exec_vardef_virtual(const RDB_parse_statement *stmtp, RDB_exec_context *ecp)
         return RDB_ERROR;
 
     if (txnp == NULL) {
-        RDB_raise_invalid_tx(ecp);
+        RDB_raise_no_running_tx(ecp);
         return RDB_ERROR;
     }
     tbp = RDB_expr_to_vtable(texp, ecp, &txnp->tx);
@@ -1037,7 +1037,7 @@ exec_vardrop(const RDB_parse_statement *stmtp, RDB_exec_context *ecp)
      * Delete persistent table
      */
     if (txnp == NULL) {
-        RDB_raise_invalid_tx(ecp);
+        RDB_raise_no_running_tx(ecp);
         return RDB_ERROR;
     }
 
@@ -1504,7 +1504,7 @@ exec_commit(const RDB_parse_statement *stmtp, RDB_exec_context *ecp)
     tx_node *ptxnp;
 
     if (txnp == NULL) {
-        RDB_raise_invalid_tx(ecp);
+        RDB_raise_no_running_tx(ecp);
         return RDB_ERROR;
     }
 
@@ -1524,7 +1524,7 @@ static int
 exec_rollback(const RDB_parse_statement *stmtp, RDB_exec_context *ecp)
 {
     if (txnp == NULL) {
-        RDB_raise_invalid_tx(ecp);
+        RDB_raise_no_running_tx(ecp);
         return RDB_ERROR;
     }
 
@@ -1575,7 +1575,7 @@ exec_typedef(const RDB_parse_statement *stmtp, RDB_exec_context *ecp)
     RDB_parse_possrep *prep;
 
     if (txnp == NULL) {
-        RDB_raise_invalid_tx(ecp);
+        RDB_raise_no_running_tx(ecp);
         return RDB_ERROR;
     }
 
@@ -1629,7 +1629,7 @@ exec_typedrop(const RDB_parse_statement *stmtp, RDB_exec_context *ecp)
     RDB_type *typ;
     
     if (txnp == NULL) {
-        RDB_raise_invalid_tx(ecp);
+        RDB_raise_no_running_tx(ecp);
         return RDB_ERROR;
     }
     
@@ -1644,7 +1644,7 @@ static int
 exec_opdrop(const RDB_parse_statement *stmtp, RDB_exec_context *ecp)
 {
     if (txnp == NULL) {
-        RDB_raise_invalid_tx(ecp);
+        RDB_raise_no_running_tx(ecp);
         return RDB_ERROR;
     }
 
@@ -1791,7 +1791,7 @@ exec_ro_op_def(RDB_parse_statement *stmtp, RDB_exec_context *ecp)
     void *sercodep;
 
     if (txnp == NULL) {
-        RDB_raise_invalid_tx(ecp);
+        RDB_raise_no_running_tx(ecp);
         return RDB_ERROR;
     }
 
@@ -1850,7 +1850,7 @@ exec_update_op_def(const RDB_parse_statement *stmtp, RDB_exec_context *ecp)
     void *sercodep;
 
     if (txnp == NULL) {
-        RDB_raise_invalid_tx(ecp);
+        RDB_raise_no_running_tx(ecp);
         return RDB_ERROR;
     }
 

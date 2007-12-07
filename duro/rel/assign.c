@@ -1304,7 +1304,7 @@ plus <var>objc</var>. If an error occurred, (RDB_int) RDB_ERROR is returned.
 @par Errors:
 
 <dl>
-<dt>RDB_INVALID_TRANSACTION_ERROR
+<dt>RDB_NO_RUNNING_TX_ERROR
 <dd><var>txp</var> must point to a running transaction (see above)
 but does not.
 <dt>RDB_INVALID_ARGUMENT_ERROR
@@ -1360,7 +1360,7 @@ RDB_multi_assign(int insc, const RDB_ma_insert insv[],
     }
 
     if (need_tx && !RDB_tx_is_running(txp)) {
-        RDB_raise_invalid_tx(ecp);
+        RDB_raise_no_running_tx(ecp);
         return RDB_ERROR;
     }
 
@@ -1821,7 +1821,7 @@ RDB_OK on success, RDB_ERROR if an error occurred.
 @par Errors:
 
 <dl>
-<dt>RDB_INVALID_TRANSACTION_ERROR
+<dt>RDB_NO_RUNNING_TX_ERROR
 <dd>The table given by <var>tbp</var> is global and <var>txp</var>
 does not point to a running transaction.
 <dt>RDB_INVALID_ARGUMENT_ERROR
@@ -1886,7 +1886,7 @@ If an error occurred, (RDB_int)RDB_ERROR is returned.
 @par Errors:
 
 <dl>
-<dt>RDB_INVALID_TRANSACTION_ERROR
+<dt>RDB_NO_RUNNING_TX_ERROR
 <dd><var>txp</var> does not point to a running transaction.
 
 <dt>NAME_ERROR
@@ -1959,7 +1959,7 @@ If an error occurred, (RDB_int)RDB_ERROR is returned.
 @par Errors:
 
 <dl>
-<dt>RDB_INVALID_TRANSACTION_ERROR
+<dt>RDB_NO_RUNNING_TX_ERROR
 <dd><var>txp</var> does not point to a running transaction.
 <dt>RDB_INVALID_ARGUMENT_ERROR
 <dd><var>exp</var> refers to an attribute which does not exist in the table.
