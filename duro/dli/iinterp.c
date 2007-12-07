@@ -1089,13 +1089,13 @@ exec_call(const RDB_parse_statement *stmtp, RDB_exec_context *ecp)
     }
     argc = i;
     opname = RDB_obj_string(&stmtp->var.call.opname);
-    op = RDB_get_op(&opmap, opname, argc, argtv);
+    op = RDB_get_op(&opmap, opname, argc, argtv, ecp);
     if (op == NULL) {
         if (txnp == NULL) {
-            RDB_raise_operator_not_found(opname, ecp);
             ret = RDB_ERROR;
             goto cleanup;
         }
+        RDB_clear_err(ecp);
 
         ret = RDB_call_update_op(opname, argc, argpv, ecp, &txnp->tx);
     } else {

@@ -55,24 +55,9 @@ RDB_db_env(RDB_database *dbp)
 static void
 free_dbroot(RDB_dbroot *dbrootp, RDB_exec_context *ecp)
 {
-    RDB_hashmap_iter it;
-    char *keyp;
-    void *datap;
     RDB_constraint *constrp, *nextconstrp;
 
     RDB_destroy_hashmap(&dbrootp->typemap);
-
-    /*
-     * destroy user-defined operators in memory
-     */
-    RDB_init_hashmap_iter(&it, &dbrootp->ro_opmap);
-    while ((datap = RDB_hashmap_next(&it, &keyp)) != NULL) {
-        RDB_ro_op_desc *op = datap;
-
-        if (op != NULL)
-            _RDB_free_ro_ops(op, ecp);
-    }
-    RDB_destroy_hashmap_iter(&it);
 
     /*
      * Destroy constraints
@@ -86,7 +71,7 @@ free_dbroot(RDB_dbroot *dbrootp, RDB_exec_context *ecp)
         constrp = nextconstrp;
     }
 
-    RDB_destroy_hashmap(&dbrootp->ro_opmap);
+    RDB_destroy_op_map(&dbrootp->ro_opmap);
 
     RDB_destroy_op_map(&dbrootp->upd_opmap);
 
@@ -307,7 +292,7 @@ new_dbroot(RDB_environment *envp, RDB_exec_context *ecp)
     
     dbrootp->envp = envp;
     RDB_init_hashmap(&dbrootp->typemap, RDB_DFL_MAP_CAPACITY);
-    RDB_init_hashmap(&dbrootp->ro_opmap, RDB_DFL_MAP_CAPACITY);
+    RDB_init_op_map(&dbrootp->ro_opmap);
     RDB_init_op_map(&dbrootp->upd_opmap);
     RDB_init_hashtable(&dbrootp->empty_tbtab, RDB_DFL_MAP_CAPACITY,
             &hash_exp, &exp_equals);

@@ -26,7 +26,7 @@ struct op_entry {
 };
 
 static void
-free_upd_op(struct op_entry *op, RDB_exec_context *ecp)
+free_op(struct op_entry *op, RDB_exec_context *ecp)
 {
     int i;
 
@@ -41,12 +41,12 @@ free_upd_op(struct op_entry *op, RDB_exec_context *ecp)
 }
 
 static void
-free_upd_ops(struct op_entry *op, RDB_exec_context *ecp)
+free_ops(struct op_entry *op, RDB_exec_context *ecp)
 {
     struct op_entry *nextop;
     do {
         nextop = op->nextp;
-        free_upd_op(op, ecp);
+        free_op(op, ecp);
         op = nextop;
     } while (op != NULL);
 }
@@ -55,18 +55,22 @@ void
 RDB_destroy_op_map(RDB_op_map *opmap)
 {
     RDB_hashmap_iter it;
+/*
     char *keyp;
     void *datap;
+*/
     RDB_exec_context ec;
 
     RDB_init_exec_context(&ec);
     RDB_init_hashmap_iter(&it, &opmap->map);
+/* !! make work for ro ops too
     while ((datap = RDB_hashmap_next(&it, &keyp)) != NULL) {
         struct op_entry *op = datap;
 
         if (op != NULL)
             free_upd_ops(op, &ec);
     }
+*/
     RDB_destroy_hashmap_iter(&it);
     RDB_destroy_exec_context(&ec);
 
@@ -143,12 +147,15 @@ error:
 
 void *
 RDB_get_op(const RDB_op_map *opmap, const char *name, int argc,
-        RDB_type *argtv[])
+        RDB_type *argtv[], RDB_exec_context *ecp)
 {
+    RDB_bool argc_match = RDB_FALSE;
     struct op_entry *op;
     struct op_entry *firstop = RDB_hashmap_get(&opmap->map, name);
-    if (firstop == NULL)
+    if (firstop == NULL) {
+        RDB_raise_operator_not_found(name, ecp);
         return NULL;
+    }
 
     /* Find an operator with same signature */
     op = firstop;
@@ -163,6 +170,7 @@ RDB_get_op(const RDB_op_map *opmap, const char *name, int argc,
                 /* Found */
                 return op->datap;
             }
+            argc_match = RDB_TRUE;
         }
         op = op->nextp;
     }
@@ -176,6 +184,12 @@ RDB_get_op(const RDB_op_map *opmap, const char *name, int argc,
         op = op->nextp;
     }
 
+    if (argc_match) {
+        RDB_raise_type_mismatch(name, ecp);
+    } else {
+        RDB_raise_operator_not_found(name, ecp);
+    }    
+
     return NULL;
 }
 
@@ -186,7 +200,7 @@ RDB_del_ops(RDB_op_map *opmap, const char *name, RDB_exec_context *ecp)
     if (op != NULL) {
         int ret;
 
-        free_upd_ops(op, ecp);
+        free_ops(op, ecp);
         ret = RDB_hashmap_put(&opmap->map, name, NULL);
         if (ret != RDB_OK) {
             _RDB_handle_errcode(ret, ecp, NULL);

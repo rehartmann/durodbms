@@ -10,7 +10,7 @@
 #include <regex.h>
 #include <string.h>
 
-RDB_hashmap _RDB_builtin_ro_op_map;
+RDB_op_map _RDB_builtin_ro_op_map;
 
 /** @page builtin-ops Built-in operators
 @section scalar-ops Built-in scalar operators
@@ -1513,21 +1513,7 @@ divide_double(const char *name, int argc, RDB_object *argv[],
 int
 _RDB_put_builtin_ro_op(RDB_ro_op_desc *op, RDB_exec_context *ecp)
 {
-    int ret;
-    RDB_ro_op_desc *fop = RDB_hashmap_get(&_RDB_builtin_ro_op_map, op->name);
-
-    if (fop == NULL) {
-        op->nextp = NULL;
-        ret = RDB_hashmap_put(&_RDB_builtin_ro_op_map, op->name, op);
-        if (ret != RDB_OK) {
-            _RDB_handle_errcode(ret, ecp, NULL);
-            return RDB_ERROR;
-        }
-    } else {
-        op->nextp = fop->nextp;
-        fop->nextp = op;
-    }
-    return RDB_OK;
+    return RDB_put_op(&_RDB_builtin_ro_op_map, op->name, op->argc, op->argtv, op, ecp);
 }
 
 int
@@ -1541,7 +1527,7 @@ _RDB_init_builtin_ops(RDB_exec_context *ecp)
         return RDB_OK;
     initialized = RDB_TRUE;
 
-    RDB_init_hashmap(&_RDB_builtin_ro_op_map, 64);
+    RDB_init_op_map(&_RDB_builtin_ro_op_map);
 
     op = _RDB_new_ro_op("INTEGER", 1, &RDB_INTEGER, &integer_float, ecp);
     if (op == NULL) {

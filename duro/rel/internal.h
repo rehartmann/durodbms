@@ -86,7 +86,7 @@ typedef struct RDB_constraint {
 typedef struct RDB_dbroot {
     RDB_environment *envp;
     RDB_hashmap typemap;
-    RDB_hashmap ro_opmap;
+    RDB_op_map ro_opmap;
     RDB_op_map upd_opmap;
     RDB_database *first_dbp;
     RDB_constraint *first_constrp;
@@ -144,7 +144,7 @@ struct _RDB_tx_and_ec {
 
 extern RDB_hashmap _RDB_builtin_type_map;
 
-extern RDB_hashmap _RDB_builtin_ro_op_map;
+extern RDB_op_map _RDB_builtin_ro_op_map;
 
 /* Used to pass the execution context (not MT-safe!) */
 extern RDB_exec_context *_RDB_cmp_ecp;

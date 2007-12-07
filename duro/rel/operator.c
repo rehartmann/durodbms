@@ -511,8 +511,7 @@ RDB_call_ro_op(const char *name, int argc, RDB_object *argv[],
 
     /* Check type constraint if the operator is a selector */
     if (retvalp->typ != NULL &&_RDB_get_possrep(retvalp->typ, name) != NULL) {
-        ret = _RDB_check_type_constraint(retvalp, ecp, txp);
-        if (ret != RDB_OK) {
+        if (_RDB_check_type_constraint(retvalp, ecp, txp) != RDB_OK) {
             /* Destroy illegal value */
             RDB_destroy_obj(retvalp, ecp);
             RDB_init_obj(retvalp);
@@ -674,18 +673,10 @@ RDB_drop_op(const char *name, RDB_exec_context *ecp, RDB_transaction *txp)
         }        
     } else {
         /* It's a read-only operator */
-        RDB_ro_op_desc *oldop;
-        RDB_ro_op_desc *op = NULL;
 
-        /* Delete all versions of readonly operator from hashmap */
-        oldop = RDB_hashmap_get(&txp->dbp->dbrootp->ro_opmap, name);
-        if (oldop != NULL)
-            _RDB_free_ro_ops(oldop, ecp);
-        ret = RDB_hashmap_put(&txp->dbp->dbrootp->ro_opmap, name, op);
-        if (ret != RDB_OK) {
-            _RDB_handle_errcode(ret, ecp, txp);
+        /* Delete all versions of readonly operator from operator map */
+        if (RDB_del_ops(&txp->dbp->dbrootp->ro_opmap, name, ecp) != RDB_OK)
             return RDB_ERROR;
-        }
 
         /* Delete all versions of update operator from the database */
         exp = RDB_eq(RDB_var_ref("NAME", ecp), RDB_string_to_expr(name, ecp),
@@ -874,16 +865,14 @@ _RDB_new_ro_op(const char *name, int argc, RDB_type *rtyp,
         return NULL;
     }
 
+    op->argc = argc;
     if (argc > 0) {
-        op->argc = argc;
         op->argtv = RDB_alloc(sizeof (RDB_type *) * argc, ecp);
         if (op->argtv == NULL) {
             RDB_free(op->name);
             RDB_free(op);
             return NULL;
         }
-    } else {
-        op->argtv = NULL;
     }
 
     op->rtyp = rtyp;
@@ -896,59 +885,7 @@ _RDB_new_ro_op(const char *name, int argc, RDB_type *rtyp,
 int
 _RDB_put_ro_op(RDB_dbroot *dbrootp, RDB_ro_op_desc *op, RDB_exec_context *ecp)
 {
-    int ret;
-    RDB_ro_op_desc *fop = RDB_hashmap_get(&dbrootp->ro_opmap, op->name);
-
-    if (fop == NULL) {
-        op->nextp = NULL;
-        ret = RDB_hashmap_put(&dbrootp->ro_opmap, op->name, op);
-        if (ret != RDB_OK) {
-            _RDB_handle_errcode(ret, ecp, NULL);
-            return RDB_ERROR;
-        }
-    } else {
-        op->nextp = fop->nextp;
-        fop->nextp = op;
-    }
-    return RDB_OK;
-}
-
-static RDB_ro_op_desc *
-get_ro_op(RDB_hashmap *opmap, const char *name,
-        int argc, RDB_type *argtv[], RDB_exec_context *ecp)
-{
-    RDB_ro_op_desc *rop;
-    RDB_bool pm = RDB_FALSE;
-
-    rop = RDB_hashmap_get(opmap, name);
-
-    /* Generic? */
-    if (rop != NULL && rop->argtv == NULL)
-        return rop;
-
-    /* Search for an operator with same signature */
-    while (rop != NULL) {
-        if (rop->argtv != NULL && rop->argc == argc) {
-            int i;
-
-            pm = RDB_TRUE;
-            for (i = 0; (i < argc)
-                    && RDB_type_equals(rop->argtv[i], argtv[i]);
-                 i++);
-            if (i == argc) {
-                /* Found */
-                return rop;
-            }
-        }
-        rop = rop->nextp;
-    }
-
-    if (pm) {
-        RDB_raise_type_mismatch("", ecp);
-    } else {
-        RDB_raise_operator_not_found(name, ecp);
-    }
-    return NULL;
+   return RDB_put_op(&dbrootp->ro_opmap, op->name, op->argc, op->argtv, op, ecp);
 }
 
 int
@@ -956,91 +893,42 @@ _RDB_get_ro_op(const char *name, int argc, RDB_type *argtv[],
                RDB_exec_context *ecp, RDB_transaction *txp,
                RDB_ro_op_desc **opp)
 {
-    int i;
-    int ret;
-    RDB_bool typnull = RDB_FALSE;
+    RDB_type *errtyp;
     RDB_bool typmismatch = RDB_FALSE;
 
-    /* Check one of the types is NULL */
-    for (i = 0; i < argc && !typnull; i++) {
-        if (argtv[i] == NULL) {
-            typnull = RDB_TRUE;
-        }
-    }
+    /* Lookup operator in built-in operator map */
+    *opp = RDB_get_op(&_RDB_builtin_ro_op_map, name, argc, argtv, ecp);
+    if (*opp != NULL)
+        return RDB_OK;
 
-    if (!typnull) {
-        RDB_type *errtyp;
-
-        /* Lookup operator in built-in operator map */
-        *opp = get_ro_op(&_RDB_builtin_ro_op_map, name, argc, argtv, ecp);
-        if (*opp != NULL)
-            return RDB_OK;
-
-        errtyp = RDB_obj_type(RDB_get_err(ecp));        
-        if (errtyp != &RDB_OPERATOR_NOT_FOUND_ERROR
-                && errtyp != &RDB_TYPE_MISMATCH_ERROR) {
-            return RDB_ERROR;
-        }
-        if (errtyp == &RDB_TYPE_MISMATCH_ERROR) {
-            typmismatch = RDB_TRUE;
-        }
-
-        if (txp == NULL)
-            return RDB_ERROR;
-         
-        /* Lookup operator in dbroot map */
-        *opp = get_ro_op(&txp->dbp->dbrootp->ro_opmap, name, argc, argtv, ecp);
-        if (*opp != NULL) {
-            RDB_clear_err(ecp);
-            return RDB_OK;
-        }
-
-        errtyp = RDB_obj_type(RDB_get_err(ecp));        
-        if (errtyp != &RDB_OPERATOR_NOT_FOUND_ERROR
-                && errtyp != &RDB_TYPE_MISMATCH_ERROR) {
-            return RDB_ERROR;
-        }
-        if (errtyp == &RDB_TYPE_MISMATCH_ERROR) {
-            typmismatch = RDB_TRUE;
-        }
-        RDB_clear_err(ecp);
-    }
-
-    /*
-     * Search for a generic operator in built-in type map
-     * !! Not used in current tests
-     */
-    *opp = RDB_hashmap_get(&_RDB_builtin_ro_op_map, name);
-    while ((*opp) != NULL) {
-        if ((*opp)->argtv == NULL) {
-            /* Generic operator found */
-            return RDB_OK;
-        }
-        *opp = (*opp)->nextp;
-    } 
-
-    if (txp != NULL) {
-        /*
-         * Search for a generic operator
-         */
-        *opp = RDB_hashmap_get(&txp->dbp->dbrootp->ro_opmap, name);
-        while ((*opp) != NULL) {
-            if ((*opp)->argtv == NULL) {
-                /* Generic operator found */
-                return RDB_OK;
-            }
-            *opp = (*opp)->nextp;
-        }
-    }
-
-    /*
-     * If one of the argument types is NULL and a generic operator
-     * was not found, return with failure
-     */
-    if (typnull) {
-        RDB_raise_operator_not_found(name, ecp);
+    errtyp = RDB_obj_type(RDB_get_err(ecp));
+    if (errtyp != &RDB_OPERATOR_NOT_FOUND_ERROR
+            && errtyp != &RDB_TYPE_MISMATCH_ERROR) {
         return RDB_ERROR;
     }
+    if (errtyp == &RDB_TYPE_MISMATCH_ERROR) {
+        typmismatch = RDB_TRUE;
+    }
+
+    if (txp == NULL)
+        return RDB_ERROR;
+     
+    /* Lookup operator in dbroot map */
+    *opp = RDB_get_op(&txp->dbp->dbrootp->ro_opmap, name, argc, argtv, ecp);
+    if (*opp != NULL) {
+        RDB_clear_err(ecp);
+        return RDB_OK;
+    }
+
+    errtyp = RDB_obj_type(RDB_get_err(ecp));        
+    if (errtyp != &RDB_OPERATOR_NOT_FOUND_ERROR
+            && errtyp != &RDB_TYPE_MISMATCH_ERROR) {
+        return RDB_ERROR;
+    }
+    if (errtyp == &RDB_TYPE_MISMATCH_ERROR) {
+        typmismatch = RDB_TRUE;
+    }
+    RDB_clear_err(ecp);
 
     /*
      * Provide "=" and "<>" for user-defined types
@@ -1078,14 +966,13 @@ _RDB_get_ro_op(const char *name, int argc, RDB_type *argtv[],
             return RDB_OK;
         }
     }
+    RDB_clear_err(ecp);
 
     /*
      * Operator was not found in map, so read from catalog
      */
     if (_RDB_cat_get_ro_op(name, argc, argtv, ecp, txp, opp) != RDB_OK) {
-        _RDB_cat_get_ro_op(name, argc, argtv, ecp, txp, opp);
         if (RDB_obj_type(RDB_get_err(ecp)) == &RDB_NOT_FOUND_ERROR) {
-            RDB_clear_err(ecp);
             if (typmismatch) {
                 RDB_raise_type_mismatch("", ecp);
             } else {
@@ -1096,10 +983,9 @@ _RDB_get_ro_op(const char *name, int argc, RDB_type *argtv[],
     }
 
     /* Insert operator into dbroot map */
-    ret = _RDB_put_ro_op(txp->dbp->dbrootp, *opp, ecp);
-    if (ret != RDB_OK) {
+    if (_RDB_put_ro_op(txp->dbp->dbrootp, *opp, ecp) != RDB_OK) {
         free_ro_op(*opp, ecp);
-        return ret;
+        return RDB_ERROR;
     }
 
     return RDB_OK;
@@ -1150,20 +1036,18 @@ RDB_upd_op_data *
 _RDB_get_upd_op(const char *name, int argc, RDB_type *argtv[],
                 RDB_exec_context *ecp, RDB_transaction *txp)
 {
-    int ret;
-    
-    RDB_upd_op_data *op = RDB_get_op(&txp->dbp->dbrootp->upd_opmap, name, argc, argtv);
+    RDB_upd_op_data *op = RDB_get_op(&txp->dbp->dbrootp->upd_opmap, name, argc, argtv, ecp);
     if (op == NULL) {
+        RDB_clear_err(ecp);
         op = _RDB_cat_get_upd_op(name, argc, argtv, ecp, txp);
         if (op == NULL) {
             if (RDB_obj_type(RDB_get_err(ecp)) == &RDB_NOT_FOUND_ERROR) {
-                RDB_clear_err(ecp);
                 RDB_raise_operator_not_found(name, ecp);
             }
             return NULL;
         }
-        ret = RDB_put_op(&txp->dbp->dbrootp->upd_opmap, name, argc, argtv, op, ecp);
-        if (ret != RDB_OK) {
+        if (RDB_put_op(&txp->dbp->dbrootp->upd_opmap, name, argc, argtv, op,
+                ecp) != RDB_OK) {
             free_upd_op_data(op, ecp);
             return NULL;
         }
@@ -1186,6 +1070,7 @@ _RDB_add_selector(RDB_type *typ, RDB_exec_context *ecp)
         RDB_raise_no_memory(ecp);
         return RDB_ERROR;
     }
+    op->argc = typ->var.scalar.repv[0].compc;
     for (i = 0; i < typ->var.scalar.repv[0].compc; i++) {
         op->argtv[i] = typ->var.scalar.repv[0].compv[i].typ;
     }

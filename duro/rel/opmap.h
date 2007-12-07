@@ -28,7 +28,8 @@ RDB_put_op(RDB_op_map *, const char *name, int argc, RDB_type **argtv, void *dat
         RDB_exec_context *);
 
 void *
-RDB_get_op(const RDB_op_map *, const char *name, int argc, RDB_type *argtv[]);
+RDB_get_op(const RDB_op_map *, const char *name, int argc, RDB_type *argtv[],
+        RDB_exec_context *);
 
 int
 RDB_del_ops(RDB_op_map *, const char *name, /* !! del_fn, */ RDB_exec_context *);
