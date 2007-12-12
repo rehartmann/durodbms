@@ -32,6 +32,8 @@ test ptarray {array from private table} -body {
         println(a[1].i);
         println(a[2].i);
         
+        println(length(a));
+        
         drop var a;
     }
 } -result {foo
@@ -40,5 +42,6 @@ test ptarray {array from private table} -body {
 1
 1
 2
+3
 3
 }

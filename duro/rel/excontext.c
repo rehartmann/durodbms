@@ -52,7 +52,7 @@ A pointer to the error, or NULL if the call fails.
 
 @par Errors:
 
-The call my fail and return NULL if an error was already
+The call may fail and return NULL if an error was already
 associated with the RDB_exec_context and destroying this error
 failed.
  */

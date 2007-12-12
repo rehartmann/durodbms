@@ -110,15 +110,13 @@ _RDB_insert_real(RDB_object *tbp, const RDB_object *tplp,
         }
 
         /* Set type - needed for tuple and array attributes */
-        if (valp->typ == NULL
-                && (valp->kind == RDB_OB_TUPLE
-                 || valp->kind == RDB_OB_ARRAY)) {
-            valp->typ =  tuptyp->var.tuple.attrv[i].typ;
+        if (valp->typ == NULL) {
+            RDB_obj_set_type(valp, tuptyp->var.tuple.attrv[i].typ);
             /* !! check object kind against type? */
         }
 
-        if (_RDB_obj_to_field(&fvp[*fnop], valp, ecp) != RDB_OK) {
-            ret = RDB_ERROR;
+        ret = _RDB_obj_to_field(&fvp[*fnop], valp, ecp);
+        if (ret != RDB_OK) {
             goto cleanup;
         }
     }

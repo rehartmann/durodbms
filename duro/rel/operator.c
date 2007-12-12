@@ -353,14 +353,20 @@ valv_to_typev(int valc, RDB_object **valv, RDB_exec_context *ecp)
 {
     int i;
     RDB_type **typv = RDB_alloc(sizeof (RDB_type *) * valc, ecp);
-
     if (typv == NULL)
         return NULL;
+
     for (i = 0; i < valc; i++) {
-        if (valv[i]->kind == RDB_OB_TUPLE)
-            typv[i] = _RDB_tuple_type(valv[i], ecp);
-        else
-            typv[i] = RDB_obj_type(valv[i]);
+        typv[i] = RDB_obj_type(valv[i]);
+        if (typv[i] == NULL) {
+            if (valv[i]->kind == RDB_OB_TUPLE)
+                typv[i] = _RDB_tuple_type(valv[i], ecp);
+            if (typv[i] == NULL) {
+                RDB_raise_invalid_argument("cannot determine argument type", ecp);
+                RDB_free(typv);
+                return NULL;
+            }
+        }
     }
     return typv;
 }
@@ -485,14 +491,15 @@ RDB_call_ro_op(const char *name, int argc, RDB_object *argv[],
 
     argtv = valv_to_typev(argc, argv, ecp);
     if (argtv == NULL) {
-        RDB_raise_no_memory(ecp);
         return RDB_ERROR;
     }
 
     ret = _RDB_get_ro_op(name, argc, argtv, ecp, txp, &op);
     for (i = 0; i < argc; i++) {
-        if (argv[i]->kind == RDB_OB_TUPLE)
+        /* Destroy type if it has been created by valv_to_typev() */
+        if (RDB_obj_type(argv[i]) == NULL) {
             RDB_drop_type(argtv[i], ecp, NULL);
+        }
     }
 
     RDB_free(argtv);
@@ -564,18 +571,18 @@ RDB_call_update_op(const char *name, int argc, RDB_object *argv[],
 
     argtv = valv_to_typev(argc, argv, ecp);
     if (argtv == NULL) {
-        RDB_raise_no_memory(ecp);
         return RDB_ERROR;
     }
     op = _RDB_get_upd_op(name, argc, argtv, ecp, txp);
     for (i = 0; i < argc; i++) {
-        if (argv[i]->kind == RDB_OB_TUPLE)
+        /* Destroy type if it has been created by valv_to_typev() */
+        if (RDB_obj_type(argv[i]) == NULL) {
             RDB_drop_type(argtv[i], ecp, NULL);
+        }
     }
     RDB_free(argtv);
     if (op == NULL) {
         if (RDB_obj_type(RDB_get_err(ecp)) == &RDB_OPERATOR_NOT_FOUND_ERROR) {
-            RDB_clear_err(ecp);
             RDB_raise_operator_not_found(name, ecp);
         }
         return RDB_ERROR;

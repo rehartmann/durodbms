@@ -1510,6 +1510,31 @@ divide_double(const char *name, int argc, RDB_object *argv[],
     return RDB_OK;
 }
 
+static int
+length_array(const char *name, int argc, RDB_object *argv[],
+        const void *iargp, size_t iarglen, RDB_exec_context *ecp,
+        RDB_transaction *txp, RDB_object *retvalp)
+{
+    RDB_int len;
+
+    if (argc != 1) {
+        RDB_raise_invalid_argument("invalid number of arguments to LENGTH",
+                ecp);
+        return RDB_ERROR;
+    }
+    
+    if (argv[0]->kind != RDB_OB_ARRAY && argv[0]->kind != RDB_OB_INITIAL) {
+        RDB_raise_type_mismatch("invalid argument type", ecp);
+        return RDB_ERROR;
+    }
+    len = RDB_array_length(argv[0], ecp);
+    if (len == (RDB_int) RDB_ERROR)
+        return RDB_ERROR;
+    
+    RDB_int_to_obj(retvalp, len);
+    return RDB_OK;
+}
+
 int
 _RDB_put_builtin_ro_op(RDB_ro_op_desc *op, RDB_exec_context *ecp)
 {
@@ -2336,6 +2361,15 @@ _RDB_init_builtin_ops(RDB_exec_context *ecp)
         return ret;
 
     op = _RDB_new_ro_op("[]", -1, NULL, &op_subscript, ecp);
+    if (op == NULL) {
+        return RDB_ERROR;
+    }
+
+    if (_RDB_put_builtin_ro_op(op, ecp) != RDB_OK) {
+        return RDB_ERROR;
+    }
+
+    op = _RDB_new_ro_op("LENGTH", -1, NULL, &length_array, ecp);
     if (op == NULL) {
         return RDB_ERROR;
     }
