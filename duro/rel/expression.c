@@ -10,10 +10,10 @@
 #include "internal.h"
 #include "catalog.h"
 #include <gen/strfns.h>
-
 #include <dli/tabletostr.h>
 
 #include <string.h>
+#include <assert.h>
 
 struct chained_type_map {
     void *arg1;
@@ -676,8 +676,9 @@ expr_op_type(RDB_expression *exp, RDB_gettypefn *getfnp, void *arg,
          * so _RDB_expr_type can return NULL without raising an error.
          */
         argtv[i] = RDB_expr_type(argp, getfnp, arg, ecp, txp);
-        if (argtv[i] == NULL && RDB_get_err(ecp) != NULL)
+        if (argtv[i] == NULL && RDB_get_err(ecp) != NULL) {
             goto error;
+        }
         argp = argp->nextp;
     }
 
@@ -900,10 +901,14 @@ expr_op_type(RDB_expression *exp, RDB_gettypefn *getfnp, void *arg,
         }
 
         typ = RDB_dup_nonscalar_type(argtv[0]->var.basetyp, ecp);
+    } else if (strcmp(exp->var.op.name, "LENGTH") == 0
+            && argc == 1
+            && (argtv[0] == NULL || argtv[0]->kind == RDB_TP_ARRAY)) {
+        typ = &RDB_INTEGER;
     } else {
         for (i = 0; i < argc; i++) {
             if (argtv[i] == NULL) {
-                RDB_raise_operator_not_found("", ecp);
+                RDB_raise_operator_not_found(exp->var.op.name, ecp);
                 goto error;
             }
         }
@@ -947,13 +952,12 @@ RDB_expr_type(RDB_expression *exp, RDB_gettypefn *getfnp, void *arg,
         case RDB_EX_TBP:
             typ = RDB_obj_type(exp->var.tbref.tbp);
             if (typ == NULL) {
-                /* Assume tuple */
+                /* Assume tuple !! */
                 typ = exp->typ = _RDB_tuple_type(exp->var.tbref.tbp, ecp);
             }
             return typ;
         case RDB_EX_VAR:
             if (arg != NULL) {
-                /* Get type from tuple type */
                 typ = (*getfnp) (exp->var.varname, arg);
                 if (typ != NULL) {
                     exp->typ = RDB_dup_nonscalar_type(typ, ecp);
@@ -1167,7 +1171,6 @@ RDB_obj_to_expr(const RDB_object *objp, RDB_exec_context *ecp)
             if (exp->var.obj.typ == NULL)
                 return NULL;
         }
-        
     }
     return exp;
 }

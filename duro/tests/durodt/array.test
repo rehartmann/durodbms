@@ -34,6 +34,8 @@ test ptarray {array from private table} -body {
         
         println(length(a));
         
+        var i same_type_as(length(a));
+        
         drop var a;
     }
 } -result {foo
