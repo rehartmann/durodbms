@@ -1432,7 +1432,8 @@ process_aggr_args(RDB_expression *exp, RDB_getobjfn *getfnp, void *getdata,
         return RDB_ERROR;
     }
 
-    if (RDB_evaluate(exp->var.op.args.firstp, getfnp, getdata, ecp, txp, tbp) != RDB_OK)
+    if (RDB_evaluate(exp->var.op.args.firstp, getfnp, getdata, ecp, txp, tbp)
+            != RDB_OK)
         return RDB_ERROR;
     return RDB_OK;
 }
@@ -1701,7 +1702,7 @@ RDB_evaluate(RDB_expression *exp, RDB_getobjfn *getfnp, void *getdata,
                     txp, &tpl);
             if (ret != RDB_OK) {
                 RDB_destroy_obj(&tpl, ecp);
-                return ret;
+                return RDB_ERROR;
             }
             if (tpl.kind != RDB_OB_TUPLE) {
                 RDB_destroy_obj(&tpl, ecp);
@@ -1718,7 +1719,7 @@ RDB_evaluate(RDB_expression *exp, RDB_getobjfn *getfnp, void *getdata,
             ret = RDB_copy_obj(valp, attrp, ecp);
             if (ret != RDB_OK) {
                 RDB_destroy_obj(&tpl, ecp);
-                return ret;
+                return RDB_ERROR;
             }
             return RDB_destroy_obj(&tpl, ecp);
         }

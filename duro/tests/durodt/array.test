@@ -13,6 +13,14 @@ namespace import ::tcltest::*
 
 set testdir [::tcltest::configure -testdir]
 
+set ::DBSETUP {
+    file delete -force dbenv
+    exec $testdir/../../dli/durodt << {
+        create_env('dbenv');
+        create_db('D');
+    }
+}
+
 test ptarray {array from private table} -body {
     exec $testdir/../../dli/durodt << {
         var r private init relation { tuple {i 1, c 'foo'}, tuple {i 2, c 'foo'},
@@ -45,5 +53,44 @@ test ptarray {array from private table} -body {
 1
 2
 3
+3
+}
+
+test ops {array operator} -setup $DBSETUP -body {
+    exec $testdir/../../dli/durodt << {
+        connect('', 'dbenv');
+        current_db := 'D';
+
+        begin transaction;
+
+        operator first(a array tuple{i integer}) returns tuple{i integer};
+	        return a[0];
+        end operator;
+
+        operator acopy(dst array tuple{i integer}, src array tuple{i integer}) updates {a};
+	        dst := src;
+        end operator;
+
+        var r private init relation { tuple {i 1}, tuple {i 2},
+        		tuple {i 3} } key {i};
+        var a array tuple {i integer};
+
+        load a from r order (i asc);
+        var t tuple {i integer};
+        t := first(a);
+
+        println(t.i);
+
+        var b array tuple {i integer};
+        acopy(b, a);
+
+        println(b[2].i);
+
+        drop var a;
+        drop var b;
+
+        commit;
+    }
+} -result {1
 3
 }

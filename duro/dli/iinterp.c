@@ -587,6 +587,8 @@ init_obj(RDB_object *objp, RDB_type *typ, RDB_exec_context *ecp,
     } else if (typ == &RDB_INTEGER) {
         RDB_int_to_obj(objp, 0);
     } else if (typ == &RDB_FLOAT) {
+        RDB_float_to_obj(objp, 0.0);
+    } else if (typ == &RDB_DOUBLE) {
         RDB_double_to_obj(objp, 0.0);
     } else if (typ == &RDB_STRING) {
         return RDB_string_to_obj(objp, "", ecp);
@@ -1974,7 +1976,7 @@ Duro_exec_stmt(RDB_parse_statement *stmtp, RDB_exec_context *ecp,
         default:
             abort();
     }
-    if (ret != RDB_OK) {
+    if (ret == RDB_ERROR) {
         if (err_line < 0) {
             err_line = stmtp->lineno;
         }

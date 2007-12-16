@@ -593,6 +593,7 @@ statement_body: /* empty */ {
             RDB_destroy_expr_list(&$4, _RDB_parse_ecp);
             YYERROR;
         }
+        $$->lineno = yylineno;
     }
     | TOK_ID '(' expression_list ')' {
         $$ = RDB_parse_new_call($1->var.varname, &$3);
@@ -601,6 +602,7 @@ statement_body: /* empty */ {
             RDB_destroy_expr_list(&$3, _RDB_parse_ecp);
             YYERROR;
         }
+        $$->lineno = yylineno;
     }
     | TOK_VAR TOK_ID type {
         $$ = new_var_def($2->var.varname, $3, NULL);
@@ -776,6 +778,7 @@ statement_body: /* empty */ {
         }
         $$->kind = RDB_STMT_RETURN;
         $$->var.retexp = $2;
+        $$->lineno = yylineno;
     }
     | TOK_RETURN {
         $$ = RDB_alloc(sizeof(RDB_parse_statement), _RDB_parse_ecp);
@@ -784,6 +787,7 @@ statement_body: /* empty */ {
         }
         $$->kind = RDB_STMT_RETURN;
         $$->var.retexp = NULL;
+        $$->lineno = yylineno;
     }
     | TOK_LOAD TOK_ID TOK_FROM expression TOK_ORDER '(' order_item_list ')' {
          RDB_expr_list explist;

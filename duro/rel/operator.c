@@ -52,7 +52,7 @@ This can be used to pass code to an interpreter function.
 
 Overloading operators is possible.
 
-Array-valued argument and return types are not supported.
+Array-valued return types are not supported.
 
 @returns
 
@@ -66,7 +66,7 @@ RDB_OK on success, RDB_ERROR if an error occurred.
 <dt>RDB_ELEMENT_EXIST_ERROR
 <dd>A read-only operator with this name and signature does already exist.
 <dt>RDB_NOT_SUPPORTED_ERROR
-<dd>One of the argument types or the return type is an array type.
+<dd>The return type is an array type.
 </dl>
 
 The call may also fail for a @ref system-errors "system error",
@@ -83,23 +83,12 @@ RDB_create_ro_op(const char *name, int argc, RDB_type *argtv[], RDB_type *rtyp,
     RDB_object rtypobj;
     RDB_object typesobj;
     int ret;
-    int i;
 
     if (!RDB_tx_is_running(txp)) {
         RDB_raise_no_running_tx(ecp);
         return RDB_ERROR;
     }
 
-    /*
-     * Array types are not supported as argument or return types
-     */
-    for (i = 0; i < argc; i++) {
-        if (argtv[i]->kind == RDB_TP_ARRAY) {
-            RDB_raise_not_supported(
-                    "array type not supported as argument type", ecp);
-            return RDB_ERROR;
-        }
-    }
     if (rtyp->kind == RDB_TP_ARRAY) {
         RDB_raise_not_supported("array type not supported as return type",
                 ecp);
@@ -216,8 +205,6 @@ This can be used to pass code to an interpreter function.
 
 Overloading operators is possible.
 
-Array-valued argument types are not supported.
-
 @returns
 
 RDB_OK on success, RDB_ERROR if an error occurred.
@@ -229,8 +216,6 @@ RDB_OK on success, RDB_ERROR if an error occurred.
 <dd><var>txp</var> does not point to a running transaction.
 <dt>RDB_ELEMENT_EXIST_ERROR
 <dd>An update operator with this name and signature does already exist.
-<dt>RDB_NOT_SUPPORTED_ERROR
-<dd>One of the argument types is an array type.
 </dl>
 
 The call may also fail for a @ref system-errors "system error",
@@ -257,7 +242,7 @@ RDB_create_update_op(const char *name, int argc, RDB_type *argtv[],
 
     /*
      * Array types are not supported as argument types
-     */
+     *
     for (i = 0; i < argc; i++) {
         if (argtv[i]->kind == RDB_TP_ARRAY) {
             RDB_raise_not_supported(
@@ -265,6 +250,7 @@ RDB_create_update_op(const char *name, int argc, RDB_type *argtv[],
             return RDB_ERROR;
          }
     }
+    */
 
     RDB_init_obj(&tpl);
     ret = RDB_tuple_set_string(&tpl, "NAME", name, ecp);

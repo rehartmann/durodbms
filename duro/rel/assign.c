@@ -1351,7 +1351,7 @@ RDB_multi_assign(int insc, const RDB_ma_insert insv[],
     if (!need_tx) {
         for (i = 0; i < copyc && !copy_needs_tx(copyv[i].dstp, copyv[i].srcp); i++);
         need_tx = (RDB_bool) (i < copyc);
-    }     
+    }
     if (!need_tx) {
         for (i = 0;
              i < insc && !insv[i].tbp->var.tb.is_persistent;
