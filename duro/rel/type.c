@@ -1036,8 +1036,7 @@ error:
 }
 
 /**
- * RDB_create_relation_type creates a relation type and stores
-a pointer to the type at the location pointed to by <var>typp</var>.
+ * Create a relation type and return a pointer to it.
 The attributes are specified by <var>attrc</var> and <var>attrv</var>.
 The fields defaultp and options of RDB_attr are ignored.
 
@@ -1058,6 +1057,28 @@ RDB_type *
 RDB_create_relation_type(int attrc, const RDB_attr attrv[],
         RDB_exec_context *ecp)
 {
+    RDB_type *tpltyp = RDB_create_tuple_type(attrc, attrv, ecp);
+    if (tpltyp == NULL) {
+        return NULL;
+    }
+
+    return RDB_create_relation_type_from_base(tpltyp, ecp);
+}
+
+/**
+ * Create a relation type from a tuple type.
+
+@returns
+
+On success, a pointer to the type. On failure, NULL is returned.
+
+@par Errors:
+
+The call may fail for a @ref system-errors "system error".
+ */
+RDB_type *
+RDB_create_relation_type_from_base(RDB_type *tpltyp, RDB_exec_context *ecp)
+{
     RDB_type *typ = RDB_alloc(sizeof (RDB_type), ecp);
     if (typ == NULL) {
         return NULL;
@@ -1067,11 +1088,7 @@ RDB_create_relation_type(int attrc, const RDB_attr attrv[],
     typ->comparep = NULL;
     typ->kind = RDB_TP_RELATION;
     typ->ireplen = RDB_VARIABLE_LEN;
-    typ->var.basetyp = RDB_create_tuple_type(attrc, attrv, ecp);
-    if (typ->var.basetyp == NULL) {
-        RDB_free(typ);
-        return NULL;
-    }
+    typ->var.basetyp = tpltyp;
     return typ;
 }
 

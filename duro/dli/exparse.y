@@ -337,6 +337,7 @@ error:
 %token TOK_ALL ALL
 %token TOK_ANY ANY
 %token TOK_SAME_TYPE_AS "SAME_TYPE_AS"
+%token TOK_SAME_HEADING_AS "SAME_HEADING_AS"
 %token TOK_IF "IF"
 %token TOK_THEN "THEN"
 %token TOK_ELSE "ELSE"
@@ -2315,10 +2316,18 @@ type: TOK_ID
 		    YYERROR;
         RDB_add_arg($$, $3);
 	}
-/*
-    | "SAME_HEADING_AS" '(' expression ')'
-    ;
-*/
+    | TOK_TUPLE TOK_SAME_HEADING_AS '(' expression ')' {
+        $$ = RDB_ro_op("TUPLE_SAME_HEADING_AS", _RDB_parse_ecp);
+		if ($$ == NULL)
+		    YYERROR;
+        RDB_add_arg($$, $4);
+	}
+    | TOK_RELATION TOK_SAME_HEADING_AS '(' expression ')' {
+        $$ = RDB_ro_op("RELATION_SAME_HEADING_AS", _RDB_parse_ecp);
+		if ($$ == NULL)
+		    YYERROR;
+        RDB_add_arg($$, $4);
+	}
 
 expression_list: /* empty */ {
         $$.firstp = $$.lastp = NULL;

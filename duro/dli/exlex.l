@@ -299,6 +299,10 @@ SAME_TYPE_AS {
 	return TOK_SAME_TYPE_AS;
 }
 
+SAME_HEADING_AS {
+	return TOK_SAME_HEADING_AS;
+}
+
 TABLE_DEE {
     return TOK_TABLE_DEE;
 }
@@ -487,6 +491,8 @@ DESC {
 [[:space:]]	yylloc.first_line = yylloc.last_line = yylineno;
 
 --[^\n]*\n	/* One-line comment */
+
+^#![^\n]*\n	/* For interpreter files */
 
 "/*" {
         int c;

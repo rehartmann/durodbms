@@ -647,17 +647,46 @@ expr_to_type(RDB_expression *exp, RDB_exec_context *ecp, RDB_transaction *txp)
     }
 
     if (strcmp(exp->var.op.name, "ARRAY") == 0) {
-        RDB_type *typ = expr_to_type(exp->var.op.args.firstp, ecp, txp);
+        typ = expr_to_type(exp->var.op.args.firstp, ecp, txp);
         if (typ == NULL)
             return NULL;
         return RDB_create_array_type(typ, ecp);
     }
     if (strcmp(exp->var.op.name, "SAME_TYPE_AS") == 0) {
-        RDB_type *typ = RDB_expr_type(exp->var.op.args.firstp, get_var_type,
+        typ = RDB_expr_type(exp->var.op.args.firstp, get_var_type,
                 current_varmapp, ecp, txnp != NULL ? &txnp->tx : NULL);
         if (typ == NULL)
             return NULL;
         return RDB_dup_nonscalar_type(typ, ecp);
+    }
+    if (strcmp(exp->var.op.name, "RELATION_SAME_HEADING_AS") == 0) {
+        typ = RDB_expr_type(exp->var.op.args.firstp, get_var_type,
+                current_varmapp, ecp, txnp != NULL ? &txnp->tx : NULL);
+        if (typ == NULL)
+            return NULL;
+        if (RDB_type_is_relation(typ)) {
+            return RDB_dup_nonscalar_type(typ, ecp);
+        }
+        if (RDB_type_is_tuple(typ)) {
+            typ = RDB_dup_nonscalar_type(typ, ecp);
+            if (typ == NULL)
+                return NULL;
+            return RDB_create_relation_type_from_base(typ, ecp);
+        }
+        RDB_raise_invalid_argument("tuple or relation type required", ecp);
+    }
+    if (strcmp(exp->var.op.name, "TUPLE_SAME_HEADING_AS") == 0) {
+        typ = RDB_expr_type(exp->var.op.args.firstp, get_var_type,
+                current_varmapp, ecp, txnp != NULL ? &txnp->tx : NULL);
+        if (typ == NULL)
+            return NULL;
+        if (RDB_type_is_relation(typ)) {
+            return RDB_dup_nonscalar_type(typ->var.basetyp, ecp);
+        }
+        if (RDB_type_is_tuple(typ)) {
+            return RDB_dup_nonscalar_type(typ, ecp);
+        }
+        RDB_raise_invalid_argument("tuple or relation type required", ecp);
     }
 
     attrc = RDB_expr_list_length(&exp->var.op.args);
