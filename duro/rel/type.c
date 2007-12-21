@@ -914,7 +914,7 @@ RDB_type_is_numeric(const RDB_type *typ) {
 
 @returns
 
-A copy of *<var>typ</var>, if *<var>typ</var> is non-scalar.
+A pointer to a copy of *<var>typ</var>, if *<var>typ</var> is non-scalar.
 <var>typ</var>, if *<var>typ</var> is scalar.
 
  If the operation fails, NULL is returned.
@@ -958,7 +958,7 @@ The fields defaultp and options of RDB_attr are ignored.
 
 @returns
 
-On success, RDB_OK is returned. Any other return value indicates an error.
+A pointer to the tuple type, or NULL if an error occured.
 
 @par Errors:
 

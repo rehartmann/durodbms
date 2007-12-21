@@ -165,14 +165,13 @@ next_tuple(RDB_object *arrp, RDB_bool mustread, RDB_exec_context *ecp)
 }
 
 /**
- * RDB_array_get stores a pointer to the RDB_object at index <var>idx</var>
-at the location pointed to by <var>tplpp</var>. This pointer may become
-invalid after the next invocation of RDB_array_get.
+ * RDB_array_get returns a pointer to the RDB_object at index <var>idx</var>.
+This pointer may become invalid after the next invocation of RDB_array_get().
 The pointer will become invalid when the array is destroyed.
 
 @returns
 
-RDB_OK on success, RDB_ERROR if an error occurred.
+A pointer to the array element, or NULL if an error occurred.
 
 @par Errors:
 
