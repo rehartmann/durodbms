@@ -13,11 +13,12 @@
 #include "insert.h"
 #include "optimize.h"
 #include "internal.h"
+
 #include <gen/strfns.h>
 
-#include <string.h>
-
 #include <dli/tabletostr.h>
+
+#include <string.h>
 
 static RDB_string_vec *
 dup_keyv(int keyc, const RDB_string_vec keyv[], RDB_exec_context *ecp)
@@ -625,8 +626,6 @@ RDB_max(RDB_object *tbp, const char *attrname, RDB_exec_context *ecp,
         resultp->var.int_val = RDB_INT_MIN;
     else if (attrtyp == &RDB_FLOAT)
         resultp->var.float_val = RDB_FLOAT_MIN;
-    else if (attrtyp == &RDB_DOUBLE)
-        resultp->var.double_val = RDB_DOUBLE_MIN;
     else {
         RDB_raise_type_mismatch("argument must be numeric", ecp);
         return RDB_ERROR;
@@ -651,10 +650,10 @@ RDB_max(RDB_object *tbp, const char *attrname, RDB_exec_context *ecp,
             if (val > resultp->var.int_val)
                  resultp->var.int_val = val;
         } else {
-            RDB_double val = RDB_tuple_get_double(tplp, attrname);
+            RDB_float val = RDB_tuple_get_float(tplp, attrname);
              
-            if (val > resultp->var.double_val)
-                resultp->var.double_val = val;
+            if (val > resultp->var.float_val)
+                resultp->var.float_val = val;
         }
     }
     if (RDB_obj_type(RDB_get_err(ecp)) != &RDB_NOT_FOUND_ERROR) {
@@ -729,9 +728,7 @@ RDB_min(RDB_object *tbp, const char *attrname, RDB_exec_context *ecp,
     if (attrtyp == &RDB_INTEGER)
         resultp->var.int_val = RDB_INT_MAX;
     else if (attrtyp == &RDB_FLOAT)
-        resultp->var.double_val = RDB_FLOAT_MAX;
-    else if (attrtyp == &RDB_DOUBLE)
-        resultp->var.double_val = RDB_DOUBLE_MAX;
+        resultp->var.float_val = RDB_FLOAT_MAX;
     else {
         RDB_raise_type_mismatch("argument must be numeric", ecp);
         return RDB_ERROR;
@@ -757,10 +754,10 @@ RDB_min(RDB_object *tbp, const char *attrname, RDB_exec_context *ecp,
             if (val < resultp->var.int_val)
                  resultp->var.int_val = val;
         } else {
-            RDB_double val = RDB_tuple_get_double(tplp, attrname);
+            RDB_float val = RDB_tuple_get_float(tplp, attrname);
              
-            if (val < resultp->var.double_val)
-                resultp->var.double_val = val;
+            if (val < resultp->var.float_val)
+                resultp->var.float_val = val;
         }
     }
     if (RDB_obj_type(RDB_get_err(ecp)) != &RDB_NOT_FOUND_ERROR) {
@@ -836,8 +833,6 @@ RDB_sum(RDB_object *tbp, const char *attrname, RDB_exec_context *ecp,
         resultp->var.int_val = 0;
     else if (attrtyp == &RDB_FLOAT)
         resultp->var.float_val = 0.0;
-    else if (attrtyp == &RDB_DOUBLE)
-        resultp->var.double_val = 0.0;
     else {
         RDB_raise_type_mismatch("argument must be numeric", ecp);
         return RDB_ERROR;
@@ -860,8 +855,8 @@ RDB_sum(RDB_object *tbp, const char *attrname, RDB_exec_context *ecp,
         if (attrtyp == &RDB_INTEGER)
             resultp->var.int_val += RDB_tuple_get_int(tplp, attrname);
         else
-            resultp->var.double_val
-                            += RDB_tuple_get_double(tplp, attrname);
+            resultp->var.float_val
+                            += RDB_tuple_get_float(tplp, attrname);
     }
     if (RDB_obj_type(RDB_get_err(ecp)) != &RDB_NOT_FOUND_ERROR) {
         RDB_destroy_obj(&arr, ecp);
@@ -910,7 +905,7 @@ in which case the transaction may be implicitly rolled back.
  */
 int
 RDB_avg(RDB_object *tbp, const char *attrname, RDB_exec_context *ecp,
-        RDB_transaction *txp, RDB_double *resultp)
+        RDB_transaction *txp, RDB_float *resultp)
 {
     RDB_type *attrtyp;
     RDB_object arr;
@@ -959,7 +954,7 @@ RDB_avg(RDB_object *tbp, const char *attrname, RDB_exec_context *ecp,
         if (attrtyp == &RDB_INTEGER)
             *resultp += RDB_tuple_get_int(tplp, attrname);
         else
-            *resultp += RDB_tuple_get_double(tplp, attrname);
+            *resultp += RDB_tuple_get_float(tplp, attrname);
     }
     if (RDB_obj_type(RDB_get_err(ecp)) != &RDB_NOT_FOUND_ERROR) {
         RDB_destroy_obj(&arr, ecp);

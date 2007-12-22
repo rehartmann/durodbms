@@ -800,7 +800,6 @@ _RDB_obj_equals(const char *name, int argc, RDB_object *argv[],
             return _RDB_eq_bool("=", 2, argv, NULL, 0, ecp, txp, retvalp);
         case RDB_OB_INT:
         case RDB_OB_FLOAT:
-        case RDB_OB_DOUBLE:
             /* Must not happen, because there must be a comparsion function */
             RDB_raise_internal("missing comparison function", ecp);
             return RDB_ERROR;
@@ -967,7 +966,7 @@ _RDB_get_ro_op(const char *name, int argc, RDB_type *argtv[],
     if (_RDB_cat_get_ro_op(name, argc, argtv, ecp, txp, opp) != RDB_OK) {
         if (RDB_obj_type(RDB_get_err(ecp)) == &RDB_NOT_FOUND_ERROR) {
             if (typmismatch) {
-                RDB_raise_type_mismatch("", ecp);
+                RDB_raise_type_mismatch(name, ecp);
             } else {
                 RDB_raise_operator_not_found(name, ecp);
             }

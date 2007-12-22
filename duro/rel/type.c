@@ -21,7 +21,6 @@
 <tr><td>BOOLEAN<td>RDB_BOOLEAN<td>RDB_bool
 <tr><td>INTEGER<td>RDB_INTEGER<td>RDB_int
 <tr><td>FLOAT<td>RDB_FLOAT<td>RDB_float
-<tr><td>DOUBLE<td>RDB_DOUBLE<td>RDB_double
 <tr><td>STRING<td>RDB_STRING<td>char *
 <tr><td>BINARY<td>RDB_BINARY<td>&nbsp;-
 </table>
@@ -111,7 +110,6 @@ will most likely fail.
 RDB_type RDB_BOOLEAN;
 RDB_type RDB_INTEGER;
 RDB_type RDB_FLOAT;
-RDB_type RDB_DOUBLE;
 RDB_type RDB_STRING;
 RDB_type RDB_BINARY;
 
@@ -159,24 +157,6 @@ compare_float(const char *name, int argc, RDB_object *argv[],
     if (argv[0]->var.float_val < argv[1]->var.float_val) {
         res = -1;
     } else if (argv[0]->var.float_val > argv[1]->var.float_val) {
-        res = 1;
-    } else {
-        res = 0;
-    }
-    RDB_int_to_obj(retvalp, res);
-    return RDB_OK;
-}
-
-static int
-compare_double(const char *name, int argc, RDB_object *argv[],
-        const void *iargp, size_t iarglen, RDB_exec_context *ecp,
-        RDB_transaction *txp, RDB_object *retvalp)
-{
-    RDB_int res;
-
-    if (argv[0]->var.double_val < argv[1]->var.double_val) {
-        res = -1;
-    } else if (argv[0]->var.double_val > argv[1]->var.double_val) {
         res = 1;
     } else {
         res = 0;
@@ -408,15 +388,6 @@ _RDB_init_builtin_types(RDB_exec_context *ecp)
     RDB_FLOAT.var.scalar.arep = NULL;
     RDB_FLOAT.var.scalar.constraintp = NULL;
     RDB_FLOAT.comparep = &compare_float;
-
-    RDB_DOUBLE.kind = RDB_TP_SCALAR;
-    RDB_DOUBLE.var.scalar.builtin = RDB_TRUE;
-    RDB_DOUBLE.ireplen = sizeof (RDB_double);
-    RDB_DOUBLE.name = "DOUBLE";
-    RDB_DOUBLE.var.scalar.repc = 0;
-    RDB_DOUBLE.var.scalar.arep = NULL;
-    RDB_DOUBLE.var.scalar.constraintp = NULL;
-    RDB_DOUBLE.comparep = &compare_double;
 
     RDB_BINARY.kind = RDB_TP_SCALAR;
     RDB_BINARY.var.scalar.builtin = RDB_TRUE;
@@ -705,9 +676,6 @@ _RDB_init_builtin_types(RDB_exec_context *ecp)
     if (add_type(&RDB_FLOAT, ecp) != RDB_OK) {
         return RDB_ERROR;
     }
-    if (add_type(&RDB_DOUBLE, ecp) != RDB_OK) {
-        return RDB_ERROR;
-    }
     if (add_type(&RDB_STRING, ecp) != RDB_OK) {
         return RDB_ERROR;
     }
@@ -901,12 +869,11 @@ _RDB_sys_select(const char *name, int argc, RDB_object *argv[],
 
 @returns
 
-RDB_TRUE if the type is INTEGER, FLOAT, or DOUBLE, RDB_FALSE otherwise.
+RDB_TRUE if the type is INTEGER or FLOAT, RDB_FALSE otherwise.
  */
 RDB_bool
 RDB_type_is_numeric(const RDB_type *typ) {
-    return (RDB_bool)(typ == &RDB_INTEGER || typ == &RDB_FLOAT
-            || typ == &RDB_DOUBLE);
+    return (RDB_bool)(typ == &RDB_INTEGER || typ == &RDB_FLOAT);
 }
 
 /**
@@ -2189,7 +2156,7 @@ aggr_type(const RDB_expression *exp, const RDB_type *tpltyp,
     if (strcmp(exp->var.op.name, "COUNT") == 0) {
         return &RDB_INTEGER;
     } else if (strcmp(exp->var.op.name, "AVG") == 0) {
-        return &RDB_DOUBLE;
+        return &RDB_FLOAT;
     } else if (strcmp(exp->var.op.name, "SUM") == 0
             || strcmp(exp->var.op.name, "MAX") == 0
             || strcmp(exp->var.op.name, "MIN") == 0) {

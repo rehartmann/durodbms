@@ -32,7 +32,6 @@ _RDB_insert_real(RDB_object *tbp, const RDB_object *tplp,
 
     fvp = RDB_alloc(sizeof(RDB_field) * attrcount, ecp);
     if (fvp == NULL) {
-        RDB_raise_no_memory(ecp);
         ret = RDB_ERROR;
         goto cleanup;
     }
@@ -61,7 +60,6 @@ _RDB_insert_real(RDB_object *tbp, const RDB_object *tplp,
                 case RDB_OB_BOOL:
                 case RDB_OB_INT:
                 case RDB_OB_FLOAT:
-                case RDB_OB_DOUBLE:
                 case RDB_OB_BIN:
                     RDB_raise_internal("invalid tuple attribute", ecp);
                     ret = RDB_ERROR;

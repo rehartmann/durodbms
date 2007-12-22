@@ -42,8 +42,6 @@ OPERATOR &lt; (INTEGER, INTEGER) RETURNS BOOLEAN;
 
 OPERATOR &lt; (FLOAT, FLOAT) RETURNS BOOLEAN;
 
-OPERATOR &lt; (DOUBLE, DOUBLE) RETURNS BOOLEAN;
-
 OPERATOR &lt; (STRING, STRING) RETURNS BOOLEAN;
 
 <h4>Description</h4>
@@ -62,8 +60,6 @@ If the operands are strings, the strings will be compared using strcoll().
 OPERATOR &lt;= (INTEGER, INTEGER) RETURNS BOOLEAN;
 
 OPERATOR &lt;= (FLOAT, FLOAT) RETURNS BOOLEAN;
-
-OPERATOR &lt;= (DOUBLE, DOUBLE) RETURNS BOOLEAN;
 
 OPERATOR &lt;= (STRING, STRING) RETURNS BOOLEAN;
 
@@ -84,8 +80,6 @@ OPERATOR &gt; (INTEGER, INTEGER) RETURNS BOOLEAN;
 
 OPERATOR &gt; (FLOAT, FLOAT) RETURNS BOOLEAN;
 
-OPERATOR &gt; (DOUBLE, DOUBLE) RETURNS BOOLEAN;
-
 OPERATOR &gt; (STRING, STRING) RETURNS BOOLEAN;
 
 <h4>Description</h4>
@@ -104,8 +98,6 @@ If the operands are strings, the strings will be compared using strcoll().
 OPERATOR &gt;= (INTEGER, INTEGER) RETURNS BOOLEAN;
 
 OPERATOR &gt;= (FLOAT, FLOAT) RETURNS BOOLEAN;
-
-OPERATOR &gt;= (DOUBLE, DOUBLE) RETURNS BOOLEAN;
 
 OPERATOR &gt;= (STRING, STRING) RETURNS BOOLEAN;
 
@@ -126,8 +118,6 @@ OPERATOR + (INTEGER, INTEGER) RETURNS INTEGER;
 
 OPERATOR + (FLOAT, FLOAT) RETURNS FLOAT;
 
-OPERATOR + (DOUBLE, DOUBLE) RETURNS DOUBLE;
-
 <h4>Description</h4>
 
 The addition operator.
@@ -143,8 +133,6 @@ The sum of the two operands.
 OPERATOR - (INTEGER) RETURNS INTEGER;
 
 OPERATOR - (FLOAT) RETURNS FLOAT;
-
-OPERATOR - (DOUBLE) RETURNS DOUBLE;
 
 <h4>Description</h4>
 
@@ -162,8 +150,6 @@ OPERATOR - (INTEGER, INTEGER) RETURNS INTEGER;
 
 OPERATOR - (FLOAT, FLOAT) RETURNS FLOAT;
 
-OPERATOR - (DOUBLE, DOUBLE) RETURNS DOUBLE;
-
 <h4>Description</h4>
 
 The subtraction operator.
@@ -180,8 +166,6 @@ OPERATOR * (INTEGER, INTEGER) RETURNS INTEGER;;
 
 OPERATOR * (FLOAT, FLOAT) RETURNS FLOAT;
 
-OPERATOR * (DOUBLE, DOUBLE) RETURNS DOUBLE;
-
 <h4>Description</h4>
 
 The multiplication operator.
@@ -197,8 +181,6 @@ The product of the two operands.
 OPERATOR / (INTEGER, INTEGER) RETURNS INTEGER;
 
 OPERATOR / (FLOAT, FLOAT) RETURNS FLOAT;
-
-OPERATOR / (DOUBLE, DOUBLE) RETURNS DOUBLE;
 
 <h4>Description</h4>
 
@@ -314,8 +296,6 @@ RDB_TRUE if S matches PATTERN, RDB_FALSE otherwise.
 
 <h3 id="op_integer">OPERATOR INTEGER</h3>
 
-OPERATOR INTEGER (DOUBLE) RETURNS INTEGER;
-
 OPERATOR INTEGER (FLOAT) RETURNS INTEGER;
 
 OPERATOR INTEGER (STRING) RETURNS INTEGER;
@@ -334,8 +314,6 @@ The operand, converted to INTEGER.
 
 OPERATOR FLOAT (INTEGER) RETURNS FLOAT;
 
-OPERATOR FLOAT (DOUBLE) RETURNS FLOAT;
-
 OPERATOR FLOAT (STRING) RETURNS FLOAT;
 
 <h4>Description</h4>
@@ -348,31 +326,11 @@ The operand, converted to FLOAT.
 
 <hr>
 
-<h3 id="op_double">OPERATOR DOUBLE</h3>
-
-OPERATOR DOUBLE (INTEGER) RETURNS DOUBLE;
-
-OPERATOR DOUBLE (FLOAT) RETURNS DOUBLE;
-
-OPERATOR DOUBLE (STRING) RETURNS DOUBLE;
-
-<h4>Description</h4>
-
-Converts the operand to DOUBLE.
-
-<h4>Return value</h4>
-
-The operand, converted to DOUBLE.
-
-<hr>
-
 <h3 id="op_string">OPERATOR STRING</h3>
 
 OPERATOR STRING (INTEGER) RETURNS STRING;
 
 OPERATOR STRING (FLOAT) RETURNS STRING;
-
-OPERATOR STRING (DOUBLE) RETURNS STRING;
 
 <h4>Description</h4>
 
@@ -465,11 +423,9 @@ For the semantics, see RDB_all().
 
 <h3 id="op_avg">OPERATOR AVG</h3>
 
-OPERATOR AVG(R <em>RELATION</em>, ATTR INTEGER) RETURNS DOUBLE;
+OPERATOR AVG(R <em>RELATION</em>, ATTR INTEGER) RETURNS FLOAT;
 
 OPERATOR AVG(R <em>RELATION</em>, ATTR FLOAT) RETURNS FLOAT;
-
-OPERATOR AVG(R <em>RELATION</em>, ATTR DOUBLE) RETURNS DOUBLE;
 
 <h4>Description</h4>
 
@@ -484,8 +440,6 @@ OPERATOR MAX(R <em>RELATION</em>, ATTR INTEGER) RETURNS INTEGER;
 
 OPERATOR MAX(R <em>RELATION</em>, ATTR FLOAT) RETURNS FLOAT;
 
-OPERATOR MAX(R <em>RELATION</em>, ATTR DOUBLE) RETURNS DOUBLE;
-
 <h4>Description</h4>
 
 The MAX aggregate operator.
@@ -499,8 +453,6 @@ OPERATOR MIN(R <em>RELATION</em>, ATTR INTEGER) RETURNS INTEGER;
 
 OPERATOR MIN(R <em>RELATION</em>, ATTR FLOAT) RETURNS FLOAT;
 
-OPERATOR MIN(R <em>RELATION</em>, ATTR DOUBLE) RETURNS DOUBLE;
-
 <h4>Description</h4>
 
 The MIN aggregate operator.
@@ -513,8 +465,6 @@ For the semantics, see RDB_min().
 OPERATOR SUM(R <em>RELATION</em>, ATTR INTEGER) RETURNS INTEGER;
 
 OPERATOR SUM(R <em>RELATION</em>, ATTR FLOAT) RETURNS FLOAT;
-
-OPERATOR SUM(R <em>RELATION</em>, ATTR DOUBLE) RETURNS DOUBLE;
 
 <h4>Description</h4>
 
@@ -1029,15 +979,6 @@ integer_float(const char *name, int argc, RDB_object *argv[],
 }
 
 static int
-integer_double(const char *name, int argc, RDB_object *argv[],
-        const void *iargp, size_t iarglen, RDB_exec_context *ecp,
-        RDB_transaction *txp, RDB_object *retvalp)
-{
-    RDB_int_to_obj(retvalp, (RDB_int) argv[0]->var.double_val);
-    return RDB_OK;
-}
-
-static int
 integer_string(const char *name, int argc, RDB_object *argv[],
         const void *iargp, size_t iarglen, RDB_exec_context *ecp,
         RDB_transaction *txp, RDB_object *retvalp)
@@ -1063,15 +1004,6 @@ float_int(const char *name, int argc, RDB_object *argv[],
 }
 
 static int
-float_double(const char *name, int argc, RDB_object *argv[],
-        const void *iargp, size_t iarglen, RDB_exec_context *ecp,
-        RDB_transaction *txp, RDB_object *retvalp)
-{
-    RDB_float_to_obj(retvalp, (RDB_float) argv[0]->var.double_val);
-    return RDB_OK;
-}
-
-static int
 float_string(const char *name, int argc, RDB_object *argv[],
         const void *iargp, size_t iarglen, RDB_exec_context *ecp,
         RDB_transaction *txp, RDB_object *retvalp)
@@ -1081,41 +1013,7 @@ float_string(const char *name, int argc, RDB_object *argv[],
     RDB_float_to_obj(retvalp, (RDB_float)
             strtod(argv[0]->var.bin.datap, &endp));
     if (*endp != '\0') {
-        RDB_raise_invalid_argument("conversion to DOUBLE failed", ecp);
-        return RDB_ERROR;
-    }
-    return RDB_OK;
-}
-
-static int
-double_int(const char *name, int argc, RDB_object *argv[],
-        const void *iargp, size_t iarglen, RDB_exec_context *ecp,
-        RDB_transaction *txp, RDB_object *retvalp)
-{
-    RDB_double_to_obj(retvalp, (RDB_double) argv[0]->var.int_val);
-    return RDB_OK;
-}
-
-static int
-double_float(const char *name, int argc, RDB_object *argv[],
-        const void *iargp, size_t iarglen, RDB_exec_context *ecp,
-        RDB_transaction *txp, RDB_object *retvalp)
-{
-    RDB_double_to_obj(retvalp, (RDB_double) argv[0]->var.float_val);
-    return RDB_OK;
-}
-
-static int
-double_string(const char *name, int argc, RDB_object *argv[],
-        const void *iargp, size_t iarglen, RDB_exec_context *ecp,
-        RDB_transaction *txp, RDB_object *retvalp)
-{
-    char *endp;
-
-    RDB_double_to_obj(retvalp, (RDB_double)
-            strtod(argv[0]->var.bin.datap, &endp));
-    if (*endp != '\0') {
-        RDB_raise_invalid_argument("conversion to DOUBLE failed", ecp);
+        RDB_raise_invalid_argument("conversion to FLOAT failed", ecp);
         return RDB_ERROR;
     }
     return RDB_OK;
@@ -1384,15 +1282,6 @@ negate_float(const char *name, int argc, RDB_object *argv[],
 }
 
 static int
-negate_double(const char *name, int argc, RDB_object *argv[],
-        const void *iargp, size_t iarglen, RDB_exec_context *ecp,
-        RDB_transaction *txp, RDB_object *retvalp)
-{
-    RDB_double_to_obj(retvalp, -argv[0]->var.double_val);
-    return RDB_OK;
-}
-
-static int
 add_int(const char *name, int argc, RDB_object *argv[],
         const void *iargp, size_t iarglen, RDB_exec_context *ecp,
         RDB_transaction *txp, RDB_object *retvalp)
@@ -1402,12 +1291,12 @@ add_int(const char *name, int argc, RDB_object *argv[],
 }
 
 static int
-add_double(const char *name, int argc, RDB_object *argv[],
+add_float(const char *name, int argc, RDB_object *argv[],
         const void *iargp, size_t iarglen, RDB_exec_context *ecp,
         RDB_transaction *txp, RDB_object *retvalp)
 {
-    RDB_double_to_obj(retvalp,
-            argv[0]->var.double_val + argv[1]->var.double_val);
+    RDB_float_to_obj(retvalp,
+            argv[0]->var.float_val + argv[1]->var.float_val);
     return RDB_OK;
 }
 
@@ -1431,16 +1320,6 @@ subtract_float(const char *name, int argc, RDB_object *argv[],
 }
 
 static int
-subtract_double(const char *name, int argc, RDB_object *argv[],
-        const void *iargp, size_t iarglen, RDB_exec_context *ecp,
-        RDB_transaction *txp, RDB_object *retvalp)
-{
-    RDB_double_to_obj(retvalp,
-            argv[0]->var.double_val - argv[1]->var.double_val);
-    return RDB_OK;
-}
-
-static int
 multiply_int(const char *name, int argc, RDB_object *argv[],
         const void *iargp, size_t iarglen, RDB_exec_context *ecp,
         RDB_transaction *txp, RDB_object *retvalp)
@@ -1456,16 +1335,6 @@ multiply_float(const char *name, int argc, RDB_object *argv[],
 {
     RDB_float_to_obj(retvalp,
             argv[0]->var.float_val * argv[1]->var.float_val);
-    return RDB_OK;
-}
-
-static int
-multiply_double(const char *name, int argc, RDB_object *argv[],
-        const void *iargp, size_t iarglen, RDB_exec_context *ecp,
-        RDB_transaction *txp, RDB_object *retvalp)
-{
-    RDB_double_to_obj(retvalp,
-            argv[0]->var.double_val * argv[1]->var.double_val);
     return RDB_OK;
 }
 
@@ -1493,20 +1362,6 @@ divide_float(const char *name, int argc, RDB_object *argv[],
     }
     RDB_float_to_obj(retvalp,
             argv[0]->var.float_val / argv[1]->var.float_val);
-    return RDB_OK;
-}
-
-static int
-divide_double(const char *name, int argc, RDB_object *argv[],
-        const void *iargp, size_t iarglen, RDB_exec_context *ecp,
-        RDB_transaction *txp, RDB_object *retvalp)
-{
-    if (argv[1]->var.double_val == 0.0) {
-        RDB_raise_invalid_argument("division by zero", ecp);
-        return RDB_ERROR;
-    }
-    RDB_double_to_obj(retvalp,
-            argv[0]->var.double_val / argv[1]->var.double_val);
     return RDB_OK;
 }
 
@@ -1564,16 +1419,6 @@ _RDB_init_builtin_ops(RDB_exec_context *ecp)
     if (ret != RDB_OK)
         return ret;
 
-    op = _RDB_new_ro_op("INTEGER", 1, &RDB_INTEGER, &integer_double, ecp);
-    if (op == NULL) {
-        return RDB_ERROR;
-    }
-    op->argtv[0] = &RDB_DOUBLE;
-
-    ret = _RDB_put_builtin_ro_op(op, ecp);
-    if (ret != RDB_OK)
-        return ret;
-
     op = _RDB_new_ro_op("INTEGER", 1, &RDB_INTEGER, &integer_string, ecp);
     if (op == NULL) {
         return RDB_ERROR;
@@ -1594,16 +1439,6 @@ _RDB_init_builtin_ops(RDB_exec_context *ecp)
     if (ret != RDB_OK)
         return ret;
 
-    op = _RDB_new_ro_op("FLOAT", 1, &RDB_FLOAT, &float_double, ecp);
-    if (op == NULL) {
-        return RDB_ERROR;
-    }
-    op->argtv[0] = &RDB_DOUBLE;
-
-    ret = _RDB_put_builtin_ro_op(op, ecp);
-    if (ret != RDB_OK)
-        return ret;
-
     op = _RDB_new_ro_op("FLOAT", 1, &RDB_FLOAT, &float_string, ecp);
     if (op == NULL) {
         return RDB_ERROR;
@@ -1614,36 +1449,6 @@ _RDB_init_builtin_ops(RDB_exec_context *ecp)
     if (ret != RDB_OK)
         return ret;
 
-    op = _RDB_new_ro_op("DOUBLE", 1, &RDB_DOUBLE, &double_int, ecp);
-    if (op == NULL) {
-        return RDB_ERROR;
-    }
-    op->argtv[0] = &RDB_INTEGER;
-
-    ret = _RDB_put_builtin_ro_op(op, ecp);
-    if (ret != RDB_OK)
-        return ret;
-
-    op = _RDB_new_ro_op("DOUBLE", 1, &RDB_DOUBLE, &double_float, ecp);
-    if (op == NULL) {
-        return RDB_ERROR;
-    }
-    op->argtv[0] = &RDB_FLOAT;
-
-    ret = _RDB_put_builtin_ro_op(op, ecp);
-    if (ret != RDB_OK)
-        return ret;
-
-    op = _RDB_new_ro_op("DOUBLE", 1, &RDB_DOUBLE, &double_string, ecp);
-    if (op == NULL) {
-        return RDB_ERROR;
-    }
-    op->argtv[0] = &RDB_STRING;
-
-    ret = _RDB_put_builtin_ro_op(op, ecp);
-    if (ret != RDB_OK)
-        return ret;
-
     op = _RDB_new_ro_op("STRING", 1, &RDB_STRING, &string_obj, ecp);
     if (op == NULL) {
         return RDB_ERROR;
@@ -1668,7 +1473,7 @@ _RDB_init_builtin_ops(RDB_exec_context *ecp)
     if (op == NULL) {
         return RDB_ERROR;
     }
-    op->argtv[0] = &RDB_DOUBLE;
+    op->argtv[0] = &RDB_FLOAT;
 
     ret = _RDB_put_builtin_ro_op(op, ecp);
     if (ret != RDB_OK)
@@ -1776,8 +1581,8 @@ _RDB_init_builtin_ops(RDB_exec_context *ecp)
     if (op == NULL) {
         return RDB_ERROR;
     }
-    op->argtv[0] = &RDB_DOUBLE;
-    op->argtv[1] = &RDB_DOUBLE;
+    op->argtv[0] = &RDB_FLOAT;
+    op->argtv[1] = &RDB_FLOAT;
 
     ret = _RDB_put_builtin_ro_op(op, ecp);
     if (ret != RDB_OK)
@@ -1820,8 +1625,8 @@ _RDB_init_builtin_ops(RDB_exec_context *ecp)
     if (op == NULL) {
         return RDB_ERROR;
     }
-    op->argtv[0] = &RDB_DOUBLE;
-    op->argtv[1] = &RDB_DOUBLE;
+    op->argtv[0] = &RDB_FLOAT;
+    op->argtv[1] = &RDB_FLOAT;
 
     ret = _RDB_put_builtin_ro_op(op, ecp);
     if (ret != RDB_OK)
@@ -1864,8 +1669,8 @@ _RDB_init_builtin_ops(RDB_exec_context *ecp)
     if (op == NULL) {
         return RDB_ERROR;
     }
-    op->argtv[0] = &RDB_DOUBLE;
-    op->argtv[1] = &RDB_DOUBLE;
+    op->argtv[0] = &RDB_FLOAT;
+    op->argtv[1] = &RDB_FLOAT;
 
     ret = _RDB_put_builtin_ro_op(op, ecp);
     if (ret != RDB_OK)
@@ -1908,8 +1713,8 @@ _RDB_init_builtin_ops(RDB_exec_context *ecp)
     if (op == NULL) {
         return RDB_ERROR;
     }
-    op->argtv[0] = &RDB_DOUBLE;
-    op->argtv[1] = &RDB_DOUBLE;
+    op->argtv[0] = &RDB_FLOAT;
+    op->argtv[1] = &RDB_FLOAT;
 
     ret = _RDB_put_builtin_ro_op(op, ecp);
     if (ret != RDB_OK)
@@ -1964,8 +1769,8 @@ _RDB_init_builtin_ops(RDB_exec_context *ecp)
     if (op == NULL) {
         return RDB_ERROR;
     }
-    op->argtv[0] = &RDB_DOUBLE;
-    op->argtv[1] = &RDB_DOUBLE;
+    op->argtv[0] = &RDB_FLOAT;
+    op->argtv[1] = &RDB_FLOAT;
 
     ret = _RDB_put_builtin_ro_op(op, ecp);
     if (ret != RDB_OK)
@@ -2030,8 +1835,8 @@ _RDB_init_builtin_ops(RDB_exec_context *ecp)
     if (op == NULL) {
         return RDB_ERROR;
     }
-    op->argtv[0] = &RDB_DOUBLE;
-    op->argtv[1] = &RDB_DOUBLE;
+    op->argtv[0] = &RDB_FLOAT;
+    op->argtv[1] = &RDB_FLOAT;
 
     ret = _RDB_put_builtin_ro_op(op, ecp);
     if (ret != RDB_OK)
@@ -2079,16 +1884,6 @@ _RDB_init_builtin_ops(RDB_exec_context *ecp)
     if (ret != RDB_OK)
         return ret;
 
-    op = _RDB_new_ro_op("-", 1, &RDB_DOUBLE, &negate_double, ecp);
-    if (op == NULL) {
-        return RDB_ERROR;
-    }
-    op->argtv[0] = &RDB_DOUBLE;
-
-    ret = _RDB_put_builtin_ro_op(op, ecp);
-    if (ret != RDB_OK)
-        return ret;
-
     op = _RDB_new_ro_op("+", 2, &RDB_INTEGER, &add_int, ecp);
     if (op == NULL) {
         return RDB_ERROR;
@@ -2100,23 +1895,12 @@ _RDB_init_builtin_ops(RDB_exec_context *ecp)
     if (ret != RDB_OK)
         return ret;
 
-    op = _RDB_new_ro_op("+", 2, &RDB_FLOAT, &add_double, ecp);
+    op = _RDB_new_ro_op("+", 2, &RDB_FLOAT, &add_float, ecp);
     if (op == NULL) {
         return RDB_ERROR;
     }
     op->argtv[0] = &RDB_FLOAT;
     op->argtv[1] = &RDB_FLOAT;
-
-    ret = _RDB_put_builtin_ro_op(op, ecp);
-    if (ret != RDB_OK)
-        return ret;
-
-    op = _RDB_new_ro_op("+", 2, &RDB_DOUBLE, &add_double, ecp);
-    if (op == NULL) {
-        return RDB_ERROR;
-    }
-    op->argtv[0] = &RDB_DOUBLE;
-    op->argtv[1] = &RDB_DOUBLE;
 
     ret = _RDB_put_builtin_ro_op(op, ecp);
     if (ret != RDB_OK)
@@ -2144,17 +1928,6 @@ _RDB_init_builtin_ops(RDB_exec_context *ecp)
     if (ret != RDB_OK)
         return ret;
 
-    op = _RDB_new_ro_op("-", 2, &RDB_DOUBLE, &subtract_double, ecp);
-    if (op == NULL) {
-        return RDB_ERROR;
-    }
-    op->argtv[0] = &RDB_DOUBLE;
-    op->argtv[1] = &RDB_DOUBLE;
-
-    ret = _RDB_put_builtin_ro_op(op, ecp);
-    if (ret != RDB_OK)
-        return ret;
-
     op = _RDB_new_ro_op("*", 2, &RDB_INTEGER, &multiply_int, ecp);
     if (op == NULL) {
         return RDB_ERROR;
@@ -2172,17 +1945,6 @@ _RDB_init_builtin_ops(RDB_exec_context *ecp)
     }
     op->argtv[0] = &RDB_FLOAT;
     op->argtv[1] = &RDB_FLOAT;
-
-    ret = _RDB_put_builtin_ro_op(op, ecp);
-    if (ret != RDB_OK)
-        return ret;
-
-    op = _RDB_new_ro_op("*", 2, &RDB_DOUBLE, &multiply_double, ecp);
-    if (op == NULL) {
-        return RDB_ERROR;
-    }
-    op->argtv[0] = &RDB_DOUBLE;
-    op->argtv[1] = &RDB_DOUBLE;
 
     ret = _RDB_put_builtin_ro_op(op, ecp);
     if (ret != RDB_OK)
@@ -2210,16 +1972,6 @@ _RDB_init_builtin_ops(RDB_exec_context *ecp)
     ret = _RDB_put_builtin_ro_op(op, ecp);
     if (ret != RDB_OK)
         return ret;
-
-    op = _RDB_new_ro_op("/", 2, &RDB_DOUBLE, &divide_double, ecp);
-    if (op == NULL) {
-        return RDB_ERROR;
-    }
-    op->argtv[0] = &RDB_DOUBLE;
-    op->argtv[1] = &RDB_DOUBLE;
-
-    if (_RDB_put_builtin_ro_op(op, ecp) != RDB_OK)
-        return RDB_ERROR;
 
     op = _RDB_new_ro_op("TUPLE", -1, NULL, &op_tuple, ecp);
     if (op == NULL) {

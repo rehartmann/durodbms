@@ -706,11 +706,11 @@ expr_op_type(RDB_expression *exp, RDB_gettypefn *getfnp, void *arg,
             goto error;
         }
         if (argtv[1] != &RDB_INTEGER && argtv[1] != &RDB_FLOAT
-                && argtv[1] != &RDB_DOUBLE) {
+                && argtv[1] != &RDB_FLOAT) {
             RDB_raise_type_mismatch("invalid attribute type", ecp);
             goto error;
         }
-        typ = &RDB_DOUBLE;
+        typ = &RDB_FLOAT;
     } else if (strcmp(exp->var.op.name, "SUM") == 0
             || strcmp(exp->var.op.name, "MAX") == 0
             || strcmp(exp->var.op.name, "MIN") == 0) {
@@ -729,7 +729,7 @@ expr_op_type(RDB_expression *exp, RDB_gettypefn *getfnp, void *arg,
             goto error;
         }
         if (argtv[1] != &RDB_INTEGER && argtv[1] != &RDB_FLOAT
-                && argtv[1] != &RDB_DOUBLE) {
+                && argtv[1] != &RDB_FLOAT) {
             RDB_raise_type_mismatch("invalid attribute type", ecp);
             goto error;
         }
@@ -1081,31 +1081,6 @@ RDB_float_to_expr(RDB_float v, RDB_exec_context *ecp)
     exp->var.obj.typ = &RDB_FLOAT;
     exp->var.obj.kind = RDB_OB_FLOAT;
     exp->var.obj.var.float_val = v;
-
-    return exp;
-}
-
-/**
- *
-RDB_double_to_expr creates a constant expression of type DOUBLE.
-
-@returns
-
-A pointer to the newly created expression, of NULL if the creation
-failed.
- */
-RDB_expression *
-RDB_double_to_expr(RDB_double v, RDB_exec_context *ecp)
-{
-    RDB_expression *exp = new_expr(ecp);
-    if (exp == NULL) {
-        return NULL;
-    }
-        
-    exp->kind = RDB_EX_OBJ;
-    exp->var.obj.typ = &RDB_DOUBLE;
-    exp->var.obj.kind = RDB_OB_DOUBLE;
-    exp->var.obj.var.double_val = v;
 
     return exp;
 }
@@ -1561,7 +1536,7 @@ evaluate_ro_op(RDB_expression *exp, RDB_getobjfn *getfnp, void *getdata,
         return ret;
     }
     if (strcmp(exp->var.op.name, "AVG") ==  0) {
-        RDB_double res;
+        RDB_float res;
 
         RDB_init_obj(&tb);
         if (process_aggr_args(exp, getfnp, getdata, ecp, txp, &tb) != RDB_OK)
@@ -1569,7 +1544,7 @@ evaluate_ro_op(RDB_expression *exp, RDB_getobjfn *getfnp, void *getdata,
         ret = RDB_avg(&tb, exp->var.op.args.firstp->nextp->var.varname, ecp, txp, &res);
         RDB_destroy_obj(&tb, ecp);
         if (ret == RDB_OK) {
-            RDB_double_to_obj(valp, res);
+            RDB_float_to_obj(valp, res);
         }
         return ret;
     }

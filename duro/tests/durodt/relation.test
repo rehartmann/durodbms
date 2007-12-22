@@ -27,7 +27,7 @@ test insert {creating table and inserting tuples} -setup $SETUP -body {
         current_db := 'D';
 
         begin transaction;
-        var r real relation {i integer, d double, c string} key {i};
+        var r real relation {i integer, d float, c string} key {i};
         insert r relation {};
 
         var a init 1;
@@ -63,7 +63,7 @@ test private {creating private table and inserting tuples} -setup $SETUP -body {
         connect('', 'dbenv');
         current_db := 'D';
 
-        var r private relation {i integer, d double, c string} key {i};
+        var r private relation {i integer, d float, c string} key {i};
         insert r relation {};
 
         var s private relation {i integer} init relation { tuple {i 1}, tuple {i 2} } key {i};

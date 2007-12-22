@@ -212,33 +212,6 @@ RDB_tuple_set_float(RDB_object *tplp, const char *attrname, RDB_float val,
 /**
  * Set the attribute <var>name</var> of the tuple
 variable specified by <var>tplp</var> to the value specified by
-<var>val</var>.
-
-If an error occurs, an error value is left in *<var>ecp</var>.
-
-@returns
-
-RDB_OK on success, RDB_ERROR if an error occurred.
-
-@par Errors:
-
-The call may fail for a @ref system-errors "system error".
- */
-int
-RDB_tuple_set_double(RDB_object *tplp, const char *attrname, RDB_double val,
-        RDB_exec_context *ecp)
-{
-    RDB_object *dstvalp;
-    if (provide_entry(tplp, attrname, ecp, &dstvalp) != RDB_OK)
-        return RDB_ERROR;
-
-    RDB_double_to_obj(dstvalp, val);
-    return RDB_OK;
-}
-
-/**
- * Set the attribute <var>name</var> of the tuple
-variable specified by <var>tplp</var> to the value specified by
 <var>str</var>.
 
 If an error occurs, an error value is left in *<var>ecp</var>.
@@ -319,22 +292,7 @@ RDB_tuple_get_int(const RDB_object *tplp, const char *attrname)
 }
 
 /**
- * RDB_tuple_get_double returns the value of attribute <var>name</var>
-as a RDB_double. The attribute must exist and it must be of
-type DOUBLE.
-
-@returns
-
-The attribute value.
- */
-RDB_double
-RDB_tuple_get_double(const RDB_object *tplp, const char *attrname)
-{
-    return ((RDB_object *) RDB_tuple_get(tplp, attrname))->var.double_val;
-}
-
-/**
- * RDB_tuple_get_double returns the value of attribute <var>name</var>
+ * Return the value of attribute <var>name</var>
 as a RDB_float. The attribute must exist and it must be of
 type FLOAT.
 

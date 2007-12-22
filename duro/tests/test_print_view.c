@@ -11,7 +11,7 @@ print_salary_view(RDB_database *dbp, RDB_exec_context *ecp)
     RDB_transaction tx;
     RDB_object *tmpvtbp;
     RDB_object array;
-    RDB_double d1, d2;
+    RDB_float d1, d2;
     int ret;
 
     ret = RDB_begin_tx(ecp, &tx, dbp, NULL);
@@ -35,9 +35,9 @@ print_salary_view(RDB_database *dbp, RDB_exec_context *ecp)
 
     assert(RDB_array_length(&array, ecp) == 2);
     
-    d1 = RDB_tuple_get_double(RDB_array_get(&array, 0, ecp), "SALARY");
-    d2 = RDB_tuple_get_double(RDB_array_get(&array, 1, ecp), "SALARY");
-    
+    d1 = RDB_tuple_get_float(RDB_array_get(&array, 0, ecp), "SALARY");
+    d2 = RDB_tuple_get_float(RDB_array_get(&array, 1, ecp), "SALARY");
+
     assert ((d1 == 4000.0 && d2 == 4100.0) || (d1 == 4100.0 && d2 == 4000.0));
 
     RDB_destroy_obj(&array, ecp);
@@ -84,7 +84,7 @@ print_emp_view(RDB_database *dbp, RDB_exec_context *ecp)
     for (i = 0; (tplp = RDB_array_get(&array, i, ecp)) != NULL; i++) {
         printf("EMPNO: %d\n", (int) RDB_tuple_get_int(tplp, "EMPNO"));
         printf("NAME: %s\n", RDB_tuple_get_string(tplp, "NAME"));
-        printf("SALARY: %f\n", (float)RDB_tuple_get_double(tplp, "SALARY"));
+        printf("SALARY: %f\n", (float)RDB_tuple_get_float(tplp, "SALARY"));
     }
     if (RDB_obj_type(RDB_get_err(ecp)) != &RDB_NOT_FOUND_ERROR) {
         goto error;
@@ -134,7 +134,7 @@ print_emps_view(RDB_database *dbp, RDB_exec_context *ecp)
     
         printf("EMPNO: %d\n", (int) RDB_tuple_get_int(tplp, "EMPNO"));
         printf("NAME: %s\n", RDB_tuple_get_string(tplp, "NAME"));
-        printf("SALARY: %f\n", (float) RDB_tuple_get_double(tplp, "SALARY"));
+        printf("SALARY: %f\n", (float) RDB_tuple_get_float(tplp, "SALARY"));
         b = RDB_tuple_get_bool(tplp, "HIGHSAL");
         printf("HIGHSAL: %s\n", b ? "TRUE" : "FALSE");
     }
@@ -185,7 +185,7 @@ print_emps2_view(RDB_database *dbp, RDB_exec_context *ecp)
 
     for (i = 0; (tplp = RDB_array_get(&array, i, ecp)) != NULL; i++) {
         printf("DEPARTMENT: %d\n", (int) RDB_tuple_get_int(tplp, "DEPARTMENT"));
-        printf("MAX_SALARY: %f\n", (float) RDB_tuple_get_double(tplp,
+        printf("MAX_SALARY: %f\n", (float) RDB_tuple_get_float(tplp,
                 "MAX_SALARY"));
     }
     if (RDB_obj_type(RDB_get_err(ecp)) != &RDB_NOT_FOUND_ERROR) {

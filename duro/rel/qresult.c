@@ -65,30 +65,30 @@ summ_step(struct _RDB_summval *svalp, const RDB_object *addvalp,
     if (strcmp(opname, "COUNT") == 0) {
         svalp->val.var.int_val++;
     } else if (strcmp(opname, "AVG") == 0) {
-        svalp->val.var.double_val =
-                (svalp->val.var.double_val * count
-                + addvalp->var.double_val)
+        svalp->val.var.float_val =
+                (svalp->val.var.float_val * count
+                + addvalp->var.float_val)
                 / (count + 1);
     } else if (strcmp(opname, "SUM") == 0) {
             if (svalp->val.typ == &RDB_INTEGER)
                 svalp->val.var.int_val += addvalp->var.int_val;
             else
-                svalp->val.var.double_val += addvalp->var.double_val;
+                svalp->val.var.float_val += addvalp->var.float_val;
     } else if (strcmp(opname, "MAX") == 0) {
             if (svalp->val.typ == &RDB_INTEGER) {
                 if (addvalp->var.int_val > svalp->val.var.int_val)
                     svalp->val.var.int_val = addvalp->var.int_val;
             } else {
-                if (addvalp->var.double_val > svalp->val.var.double_val)
-                    svalp->val.var.double_val = addvalp->var.double_val;
+                if (addvalp->var.float_val > svalp->val.var.float_val)
+                    svalp->val.var.float_val = addvalp->var.float_val;
             }
     } else if (strcmp(opname, "MIN") == 0) {
         if (svalp->val.typ == &RDB_INTEGER) {
             if (addvalp->var.int_val < svalp->val.var.int_val)
                 svalp->val.var.int_val = addvalp->var.int_val;
         } else {
-            if (addvalp->var.double_val < svalp->val.var.double_val)
-                svalp->val.var.double_val = addvalp->var.double_val;
+            if (addvalp->var.float_val < svalp->val.var.float_val)
+                svalp->val.var.float_val = addvalp->var.float_val;
         }
     } else if (strcmp(opname, "ANY") == 0) {
         if (addvalp->var.bool_val)
@@ -328,7 +328,7 @@ init_summ_table(RDB_qresult *qrp, RDB_type *tb1typ, RDB_bool hasavg, RDB_exec_co
             if (strcmp(opname, "COUNT") == 0) {
                 ret = RDB_tuple_set_int(&tpl, name, 0, ecp);
             } else if (strcmp(opname, "AVG") == 0) {
-                ret = RDB_tuple_set_double(&tpl, name, 0, ecp);
+                ret = RDB_tuple_set_float(&tpl, name, 0, ecp);
             } else if (strcmp(opname, "SUM") == 0) {
                 typ = _RDB_expr_type(opexp->var.op.args.firstp,
                         tb1typ->var.basetyp, ecp, txp);
@@ -337,7 +337,7 @@ init_summ_table(RDB_qresult *qrp, RDB_type *tb1typ, RDB_bool hasavg, RDB_exec_co
                 if (typ == &RDB_INTEGER)
                     ret = RDB_tuple_set_int(&tpl, name, 0, ecp);
                 else
-                    ret = RDB_tuple_set_double(&tpl, name, 0.0, ecp);
+                    ret = RDB_tuple_set_float(&tpl, name, 0.0, ecp);
             } else if (strcmp(opname, "MAX") == 0) {
                 typ = _RDB_expr_type(opexp->var.op.args.firstp,
                         tb1typ->var.basetyp,
@@ -346,12 +346,9 @@ init_summ_table(RDB_qresult *qrp, RDB_type *tb1typ, RDB_bool hasavg, RDB_exec_co
                     goto error;
                 if (typ == &RDB_INTEGER)
                     ret = RDB_tuple_set_int(&tpl, name, RDB_INT_MIN, ecp);
-                else if (typ == &RDB_FLOAT) {
+                else {
                     ret = RDB_tuple_set_float(&tpl, name,
                             RDB_FLOAT_MIN, ecp);
-                } else {
-                    ret = RDB_tuple_set_double(&tpl, name,
-                            RDB_DOUBLE_MIN, ecp);
                 }
             } else if (strcmp(opname, "MIN") == 0) {
                 typ = _RDB_expr_type(opexp->var.op.args.firstp,
@@ -360,12 +357,9 @@ init_summ_table(RDB_qresult *qrp, RDB_type *tb1typ, RDB_bool hasavg, RDB_exec_co
                     goto error;
                 if (typ == &RDB_INTEGER)
                     ret = RDB_tuple_set_int(&tpl, name, RDB_INT_MAX, ecp);
-                else if (typ == &RDB_FLOAT) {
+                else {
                     ret = RDB_tuple_set_float(&tpl, name,
                             RDB_FLOAT_MAX, ecp);
-                } else {
-                    ret = RDB_tuple_set_double(&tpl, name,
-                            RDB_DOUBLE_MAX, ecp);
                 }
             } else if (strcmp(opname, "ALL") == 0) {
                 ret = RDB_tuple_set_bool(&tpl, name, RDB_TRUE, ecp);

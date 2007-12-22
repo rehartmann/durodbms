@@ -27,9 +27,9 @@ print_extend(RDB_object *vtbp, RDB_exec_context *ecp, RDB_transaction *txp)
     for (i = 0; (tplp = RDB_array_get(&array, i, ecp)) != NULL; i++) {
         printf("EMPNO: %d\n", (int)RDB_tuple_get_int(tplp, "EMPNO"));
         printf("NAME: %s\n", RDB_tuple_get_string(tplp, "NAME"));
-        printf("SALARY: %f\n", (float)RDB_tuple_get_double(tplp, "SALARY"));
+        printf("SALARY: %f\n", (float)RDB_tuple_get_float(tplp, "SALARY"));
         printf("SALARY_AFTER_TAX: %f\n",
-                (float)RDB_tuple_get_double(tplp, "SALARY_AFTER_TAX"));
+                (float)RDB_tuple_get_float(tplp, "SALARY_AFTER_TAX"));
         printf("NAME_LEN: %d\n", (int)RDB_tuple_get_int(tplp, "NAME_LEN"));
     }
     if (RDB_obj_type(RDB_get_err(ecp)) != &RDB_NOT_FOUND_ERROR) {
@@ -59,14 +59,14 @@ insert_extend(RDB_object *vtbp, RDB_exec_context *ecp, RDB_transaction *txp)
     ret = RDB_tuple_set_string(&tpl, "NAME", "Johnson", ecp);
     if (ret != RDB_OK)
         goto error;
-    ret = RDB_tuple_set_double(&tpl, "SALARY", (RDB_double)4000.0, ecp);
+    ret = RDB_tuple_set_float(&tpl, "SALARY", (RDB_float) 4000.0, ecp);
     if (ret != RDB_OK)
         goto error;
     ret = RDB_tuple_set_int(&tpl, "DEPTNO", 1, ecp);
     if (ret != RDB_OK)
         goto error;
-    ret = RDB_tuple_set_double(&tpl, "SALARY_AFTER_TAX",
-            (RDB_double)4200.0, ecp);
+    ret = RDB_tuple_set_float(&tpl, "SALARY_AFTER_TAX",
+            (RDB_float)4200.0, ecp);
     if (ret != RDB_OK)
         goto error;
     ret = RDB_tuple_set_int(&tpl, "NAME_LEN", (RDB_int)7, ecp);
@@ -86,14 +86,14 @@ insert_extend(RDB_object *vtbp, RDB_exec_context *ecp, RDB_transaction *txp)
     ret = RDB_tuple_set_string(&tpl, "NAME", "Johnson", ecp);
     if (ret != RDB_OK)
         goto error;
-    ret = RDB_tuple_set_double(&tpl, "SALARY", (RDB_double)4000.0, ecp);
+    ret = RDB_tuple_set_float(&tpl, "SALARY", (RDB_float) 4000.0, ecp);
     if (ret != RDB_OK)
         goto error;
     ret = RDB_tuple_set_int(&tpl, "DEPTNO", 1, ecp);
     if (ret != RDB_OK)
         goto error;
-    ret = RDB_tuple_set_double(&tpl, "SALARY_AFTER_TAX",
-            (RDB_double)-100.0, ecp);
+    ret = RDB_tuple_set_float(&tpl, "SALARY_AFTER_TAX",
+            (RDB_float)-100.0, ecp);
     if (ret != RDB_OK)
         goto error;
     ret = RDB_tuple_set_int(&tpl, "NAME_LEN", (RDB_int)7, ecp);
@@ -147,7 +147,7 @@ test_extend(RDB_database *dbp, RDB_exec_context *ecp)
     argp = RDB_var_ref("SALARY", ecp);
     assert(argp != NULL);
     RDB_add_arg(mexp, argp);
-    argp = RDB_double_to_expr(4100, ecp);
+    argp = RDB_float_to_expr(4100, ecp);
     assert(argp != NULL);
     RDB_add_arg(mexp, argp);
 

@@ -39,14 +39,14 @@ test_type(RDB_database *dbp, RDB_exec_context *ecp)
     RDB_type *getargtv[1];
     RDB_type *argtv[2];
 
-    argtv[0] = &RDB_DOUBLE;
-    argtv[1] = &RDB_DOUBLE;
+    argtv[0] = &RDB_FLOAT;
+    argtv[1] = &RDB_FLOAT;
 
-    pointcompv[0].typ = &RDB_DOUBLE;
-    pointcompv[1].typ = &RDB_DOUBLE;
+    pointcompv[0].typ = &RDB_FLOAT;
+    pointcompv[1].typ = &RDB_FLOAT;
 
-    polarcompv[0].typ = &RDB_DOUBLE;
-    polarcompv[1].typ = &RDB_DOUBLE;
+    polarcompv[0].typ = &RDB_FLOAT;
+    polarcompv[1].typ = &RDB_FLOAT;
 
     ret = RDB_begin_tx(ecp, &tx, dbp, NULL);
     assert(ret == RDB_OK);
@@ -75,7 +75,7 @@ test_type(RDB_database *dbp, RDB_exec_context *ecp)
      * Create setters
      */
     updargtv[0] = typ;
-    updargtv[1] = &RDB_DOUBLE;
+    updargtv[1] = &RDB_FLOAT;
     updv[0] = RDB_TRUE;
     updv[1] = RDB_FALSE;
      
@@ -100,19 +100,19 @@ test_type(RDB_database *dbp, RDB_exec_context *ecp)
      */
     getargtv[0] = typ;
 
-    ret = RDB_create_ro_op("POINT_get_X", 1, getargtv, &RDB_DOUBLE, SHLIB,
+    ret = RDB_create_ro_op("POINT_get_X", 1, getargtv, &RDB_FLOAT, SHLIB,
             "POINT_get_X", NULL, 0, ecp, &tx);
     assert(ret == RDB_OK);
 
-    ret = RDB_create_ro_op("POINT_get_Y", 1, getargtv, &RDB_DOUBLE, SHLIB,
+    ret = RDB_create_ro_op("POINT_get_Y", 1, getargtv, &RDB_FLOAT, SHLIB,
             "POINT_get_Y", NULL, 0, ecp, &tx);
     assert(ret == RDB_OK);
 
-    ret = RDB_create_ro_op("POINT_get_THETA", 1, getargtv, &RDB_DOUBLE, SHLIB,
+    ret = RDB_create_ro_op("POINT_get_THETA", 1, getargtv, &RDB_FLOAT, SHLIB,
             "POINT_get_THETA", NULL, 0, ecp, &tx);
     assert(ret == RDB_OK);
 
-    ret = RDB_create_ro_op("POINT_get_LENGTH", 1, getargtv, &RDB_DOUBLE, SHLIB,
+    ret = RDB_create_ro_op("POINT_get_LENGTH", 1, getargtv, &RDB_FLOAT, SHLIB,
             "POINT_get_LENGTH", NULL, 0, ecp, &tx);
     assert(ret == RDB_OK);
 

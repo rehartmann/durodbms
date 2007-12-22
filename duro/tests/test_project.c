@@ -21,7 +21,7 @@ print_table1(RDB_object *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
     }
     
     for (i = 0; (tplp = RDB_array_get(&array, i, ecp)) != NULL; i++) {
-        printf("SALARY: %f\n", (float)RDB_tuple_get_double(tplp, "SALARY"));
+        printf("SALARY: %f\n", (float)RDB_tuple_get_float(tplp, "SALARY"));
     }
     if (RDB_obj_type(RDB_get_err(ecp)) != &RDB_NOT_FOUND_ERROR) {
         goto error;
@@ -125,12 +125,12 @@ test_project(RDB_database *dbp, RDB_exec_context *ecp)
     ret = print_table1(vtbp, ecp, &tx);
 
     RDB_init_obj(&tpl);
-    RDB_tuple_set_double(&tpl, "SALARY", (RDB_double)4000.0, ecp);
+    RDB_tuple_set_float(&tpl, "SALARY", (RDB_float)4000.0, ecp);
     assert(RDB_table_contains(vtbp, &tpl, ecp, &tx, &b) == RDB_OK);
 
     assert(b);
 
-    RDB_tuple_set_double(&tpl, "SALARY", (RDB_double)4400.0, ecp);
+    RDB_tuple_set_float(&tpl, "SALARY", (RDB_float)4400.0, ecp);
     assert(RDB_table_contains(vtbp, &tpl, ecp, &tx, &b) == RDB_OK);
     assert(!b);
 

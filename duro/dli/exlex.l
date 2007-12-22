@@ -469,12 +469,12 @@ DESC {
 }
 
 -?[0-9]+"."[0-9]+[Ee][0-9]+ {
-    yylval = RDB_double_to_expr((RDB_double) atof(yytext), _RDB_parse_ecp);
+    yylval = RDB_float_to_expr((RDB_float) atof(yytext), _RDB_parse_ecp);
     return TOK_LIT_FLOAT;
 }
 
 -?[0-9]+"."[0-9]+	{
-    yylval = RDB_double_to_expr((RDB_double) atof(yytext), _RDB_parse_ecp);
+    yylval = RDB_float_to_expr((RDB_float) atof(yytext), _RDB_parse_ecp);
     return TOK_LIT_FLOAT;
 }
 

@@ -478,15 +478,6 @@ Duro_tcl_to_duro(Tcl_Interp *interp, Tcl_Obj *tobjp, RDB_type *typ,
         RDB_float_to_obj(objp, (RDB_float) val);
         return TCL_OK;
     }
-    if (typ == &RDB_DOUBLE) {
-        double val;
-
-        ret = Tcl_GetDoubleFromObj(interp, tobjp, &val);
-        if (ret != TCL_OK)
-            return ret;
-        RDB_double_to_obj(objp, (RDB_double) val);
-        return TCL_OK;
-    }
     if (typ == &RDB_BOOLEAN) {
         int val;
 
@@ -796,9 +787,6 @@ Duro_irep_to_tcl(Tcl_Interp *interp, const RDB_object *objp,
     }
     if (typ == &RDB_FLOAT) {
         return Tcl_NewDoubleObj((double) RDB_obj_float(objp));
-    }
-    if (typ == &RDB_DOUBLE) {
-        return Tcl_NewDoubleObj((double) RDB_obj_double(objp));
     }
     if (typ == &RDB_BOOLEAN) {
         return Tcl_NewBooleanObj((int) RDB_obj_bool(objp));

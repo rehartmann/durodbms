@@ -45,7 +45,6 @@ enum _RDB_obj_kind {
     RDB_OB_BOOL,
     RDB_OB_INT,
     RDB_OB_FLOAT,
-    RDB_OB_DOUBLE,
     RDB_OB_BIN,
     RDB_OB_TABLE,
     RDB_OB_TUPLE,
@@ -79,7 +78,6 @@ typedef struct RDB_object {
         RDB_bool bool_val;
         RDB_int int_val;
         RDB_float float_val;
-        RDB_double double_val;
         struct {
             void *datap;
             size_t len;
@@ -188,7 +186,6 @@ typedef struct RDB_type {
 _RDB_EXTERN_VAR RDB_type RDB_BOOLEAN;
 _RDB_EXTERN_VAR RDB_type RDB_INTEGER;
 _RDB_EXTERN_VAR RDB_type RDB_FLOAT;
-_RDB_EXTERN_VAR RDB_type RDB_DOUBLE;
 _RDB_EXTERN_VAR RDB_type RDB_STRING;
 _RDB_EXTERN_VAR RDB_type RDB_BINARY;
 
@@ -412,7 +409,7 @@ RDB_sum(RDB_object *tbp, const char *attrname, RDB_exec_context *,
 
 int
 RDB_avg(RDB_object *tbp, const char *attrname, RDB_exec_context *,
-        RDB_transaction *, RDB_double *resultp);
+        RDB_transaction *, RDB_float *resultp);
 
 int
 RDB_table_contains(RDB_object *tbp, const RDB_object *tplp, RDB_exec_context *,
@@ -565,10 +562,6 @@ RDB_tuple_set_float(RDB_object *, const char *name, RDB_float val,
         RDB_exec_context *);
 
 int
-RDB_tuple_set_double(RDB_object *, const char *name, RDB_double val,
-        RDB_exec_context *);
-
-int
 RDB_tuple_set_string(RDB_object *, const char *name, const char *,
         RDB_exec_context *);
 
@@ -583,9 +576,6 @@ RDB_tuple_get_int(const RDB_object *, const char *name);
 
 RDB_float
 RDB_tuple_get_float(const RDB_object *, const char *name);
-
-RDB_double
-RDB_tuple_get_double(const RDB_object *, const char *name);
 
 RDB_int
 RDB_tuple_size(const RDB_object *);
@@ -669,9 +659,6 @@ RDB_int_to_obj(RDB_object *, RDB_int v);
 void
 RDB_float_to_obj(RDB_object *, RDB_float v);
 
-void
-RDB_double_to_obj(RDB_object *, RDB_double v);
-
 int
 RDB_string_to_obj(RDB_object *, const char *str, RDB_exec_context *);
 
@@ -699,9 +686,6 @@ RDB_obj_int(const RDB_object *);
 
 RDB_float
 RDB_obj_float(const RDB_object *);
-
-RDB_double
-RDB_obj_double(const RDB_object *);
 
 char *
 RDB_obj_string(const RDB_object *);
@@ -731,9 +715,6 @@ RDB_int_to_expr(RDB_int, RDB_exec_context *);
 
 RDB_expression *
 RDB_float_to_expr(RDB_float, RDB_exec_context *);
-
-RDB_expression *
-RDB_double_to_expr(RDB_double, RDB_exec_context *);
 
 RDB_expression *
 RDB_string_to_expr(const char *, RDB_exec_context *);

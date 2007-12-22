@@ -157,7 +157,7 @@ _RDB_obj_ilen(const RDB_object *objp, size_t *lenp, RDB_exec_context *ecp)
             }
             if (RDB_obj_type(RDB_get_err(ecp)) != &RDB_NOT_FOUND_ERROR)
                 return RDB_ERROR;
-            RDB_clear_err(ecp);            
+            RDB_clear_err(ecp);
             return RDB_OK;
         }            
         default: ;
@@ -179,8 +179,6 @@ val_kind(const RDB_type *typ)
                 return RDB_OB_INT;
             if (typ == &RDB_FLOAT)
                 return RDB_OB_FLOAT;
-            if (typ == &RDB_DOUBLE)
-                return RDB_OB_DOUBLE;
             if (typ->var.scalar.arep != NULL)
                 return val_kind(typ->var.scalar.arep);
             return RDB_OB_BIN;
@@ -375,8 +373,6 @@ RDB_obj_irep(RDB_object *valp, size_t *lenp)
             return &valp->var.int_val;
         case RDB_OB_FLOAT:
             return &valp->var.float_val;
-        case RDB_OB_DOUBLE:
-            return &valp->var.double_val;
         default:
             return valp->var.bin.datap;
     }
@@ -416,9 +412,6 @@ RDB_irep_to_obj(RDB_object *valp, RDB_type *typ, const void *datap, size_t len,
             break;
         case RDB_OB_FLOAT:
             memcpy(&valp->var.float_val, datap, sizeof (RDB_float));
-            break;
-        case RDB_OB_DOUBLE:
-            memcpy(&valp->var.double_val, datap, sizeof (RDB_double));
             break;
         case RDB_OB_BIN:
             valp->var.bin.len = len;
@@ -543,9 +536,6 @@ _RDB_obj_to_irep(void *dstp, const RDB_object *objp, size_t len)
         case RDB_OB_FLOAT:
             memcpy(bp, &objp->var.float_val, sizeof (RDB_float));
             break;
-        case RDB_OB_DOUBLE:
-            memcpy(bp, &objp->var.double_val, sizeof (RDB_double));
-            break;
         case RDB_OB_TUPLE:
         {
             RDB_type *tpltyp = objp->typ;
@@ -639,10 +629,6 @@ _RDB_copy_obj(RDB_object *dstvalp, const RDB_object *srcvalp,
         case RDB_OB_FLOAT:
             dstvalp->kind = srcvalp->kind;
             dstvalp->var.float_val = srcvalp->var.float_val;
-            break;
-        case RDB_OB_DOUBLE:
-            dstvalp->kind = srcvalp->kind;
-            dstvalp->var.double_val = srcvalp->var.double_val;
             break;
         case RDB_OB_TUPLE:
             return _RDB_copy_tuple(dstvalp, srcvalp, ecp);
@@ -821,7 +807,6 @@ RDB_destroy_obj(RDB_object *objp, RDB_exec_context *ecp)
         case RDB_OB_BOOL:
         case RDB_OB_INT:
         case RDB_OB_FLOAT:
-        case RDB_OB_DOUBLE:
             break;
         case RDB_OB_BIN:
             if (objp->var.bin.len > 0)
@@ -953,23 +938,6 @@ RDB_float_to_obj(RDB_object *valp, RDB_float v)
     valp->typ = &RDB_FLOAT;
     valp->kind = RDB_OB_FLOAT;
     valp->var.float_val = v;
-}
-
-/**
- * RDB_double_to_obj sets the RDB_object pointed to by <var>valp</var>
-to the RDB_double value specified by <var>v</var>.
-
-The RDB_object must either be newly initialized or of type
-DOUBLE.
- */
-void
-RDB_double_to_obj(RDB_object *valp, RDB_double v)
-{
-    assert(valp->kind == RDB_OB_INITIAL || valp->typ == &RDB_DOUBLE);
-
-    valp->typ = &RDB_DOUBLE;
-    valp->kind = RDB_OB_DOUBLE;
-    valp->var.double_val = v;
 }
 
 /**
@@ -1238,21 +1206,6 @@ RDB_obj_float(const RDB_object *valp)
 }
 
 /**
- * RDB_obj_double returns the value of the RDB_object pointed to by
-<var>valp</var> as a RDB_double. The RDB_object must be of type
-DOUBLE.
-
-@returns
-
-The value of the RDB_object.
- */
-RDB_double
-RDB_obj_double(const RDB_object *valp)
-{
-    return valp->var.double_val;
-}
-
-/**
  * RDB_obj_string returns a pointer to the value of the RDB_object pointed to by
 <var>valp</var> as a char *. The RDB_object must be of type STRING.
 
@@ -1446,11 +1399,6 @@ RDB_obj_to_string(RDB_object *dstp, const RDB_object *srcp,
             return ret;
     } else if (srcp->typ == &RDB_FLOAT) {
         sprintf(buf, "%g", (double) RDB_obj_float(srcp));
-        ret = RDB_string_to_obj(dstp, buf, ecp);
-        if (ret != RDB_OK)
-            return ret;
-    } else if (srcp->typ == &RDB_DOUBLE) {
-        sprintf(buf, "%g", (double) RDB_obj_double(srcp));
         ret = RDB_string_to_obj(dstp, buf, ecp);
         if (ret != RDB_OK)
             return ret;

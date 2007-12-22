@@ -25,7 +25,7 @@ test_keys1(RDB_database *dbp, RDB_exec_context *ecp)
     assert(ret == RDB_OK);
     ret = RDB_tuple_set_string(&tpl, "NAME", "Johnson", ecp);
     assert(ret == RDB_OK);
-    ret = RDB_tuple_set_double(&tpl, "SALARY", (RDB_double)4000.0, ecp);
+    ret = RDB_tuple_set_float(&tpl, "SALARY", (RDB_float)4000.0, ecp);
     assert(ret == RDB_OK);
     ret = RDB_tuple_set_int(&tpl, "DEPTNO", 1, ecp);
     assert(ret == RDB_OK);
@@ -59,7 +59,7 @@ test_keys2(RDB_database *dbp, RDB_exec_context *ecp)
     assert(ret == RDB_OK);
     ret = RDB_tuple_set_string(&tpl, "NAME", "Smith", ecp);
     assert(ret == RDB_OK);
-    ret = RDB_tuple_set_double(&tpl, "SALARY", (RDB_double)4000.0, ecp);
+    ret = RDB_tuple_set_float(&tpl, "SALARY", (RDB_float)4000.0, ecp);
     assert(ret == RDB_OK);
     ret = RDB_tuple_set_int(&tpl, "DEPTNO", 1, ecp);
     assert(ret == RDB_OK);

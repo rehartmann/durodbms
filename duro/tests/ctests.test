@@ -181,8 +181,6 @@ test point {user-defined type POINT} -setup $SETUP -body {
     exec [configure -testdir]/test_defpointtype
     exec [configure -testdir]/test_pointtable
 } -result {X=1.000000, Y=2.000000
-X=2.000000, Y=4.000000
-X=1.000000, Y=2.000000
 X=1.000000, Y=2.000000}
 
 test 2db {two databases} -setup $SETUP -body {

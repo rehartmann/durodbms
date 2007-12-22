@@ -435,7 +435,7 @@ proc rename_table {} {
 }
 
 proc get_types {tx} {
-    set types {STRING BOOLEAN INTEGER FLOAT DOUBLE BINARY}
+    set types {STRING BOOLEAN INTEGER FLOAT BINARY}
 
     # Add user-defined types
     set tnames [duro::expr {SYS_TYPES {TYPENAME}} $tx]

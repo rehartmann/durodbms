@@ -33,7 +33,7 @@ print_table(RDB_object *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
     assert(ret == 1);
     assert(strcmp(RDB_tuple_get_string(tplp, "NAME"), "Smith") == 0);
     assert(RDB_tuple_get_int(tplp, "DEPTNO") == 1);
-    assert(RDB_tuple_get_double(tplp, "SALARY") == 4000.0);
+    assert(RDB_tuple_get_float(tplp, "SALARY") == 4000.0);
 
     tplp = RDB_array_get(&array, 1, ecp);
     assert(tplp != NULL);
@@ -41,7 +41,7 @@ print_table(RDB_object *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
     assert(RDB_tuple_get_int(tplp, "EMPNO") == 2);
     assert(strcmp(RDB_tuple_get_string(tplp, "NAME"), "Jones") == 0);
     assert(RDB_tuple_get_int(tplp, "DEPTNO") == 2);
-    assert(RDB_tuple_get_double(tplp, "SALARY") == 4100.0);
+    assert(RDB_tuple_get_float(tplp, "SALARY") == 4100.0);
 
     tplp = RDB_array_get(&array, 2, ecp);
     assert(tplp != NULL);
@@ -49,7 +49,7 @@ print_table(RDB_object *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
     assert(RDB_tuple_get_int(tplp, "EMPNO") == 3);
     assert(strcmp(RDB_tuple_get_string(tplp, "NAME"), "Clarke") == 0);
     assert(RDB_tuple_get_int(tplp, "DEPTNO") == 2);
-    assert(RDB_tuple_get_double(tplp, "SALARY") == 4000.0);
+    assert(RDB_tuple_get_float(tplp, "SALARY") == 4000.0);
 
     assert(RDB_destroy_obj(&array, ecp) == RDB_OK);
 }

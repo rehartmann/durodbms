@@ -292,7 +292,7 @@ test rtables {real tables} -setup $SETUP -body {
     duro::table create T {
        {A INTEGER}
        {B FLOAT}
-       {C DOUBLE 1.0}
+       {C FLOAT 1.0}
     } {{A}} $tx
     
     duro::table rename T T3 $tx

@@ -218,17 +218,6 @@ println_float_op(const char *name, int argc, RDB_object *argv[],
 }
 
 static int
-println_double_op(const char *name, int argc, RDB_object *argv[],
-        RDB_exec_context *ecp, RDB_transaction *txp)
-{
-    if (printf("%f\n", (double) RDB_obj_double(argv[0])) < 0) {
-        _RDB_handle_errcode(errno, ecp, txp);
-        return RDB_ERROR;
-    }
-    return RDB_OK;
-}
-
-static int
 println_bool_op(const char *name, int argc, RDB_object *argv[],
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
@@ -443,7 +432,6 @@ Duro_init_exec(RDB_exec_context *ecp, const char *dbname)
     static RDB_type *print_string_types[1];
     static RDB_type *print_int_types[1];
     static RDB_type *print_float_types[1];
-    static RDB_type *print_double_types[1];
     static RDB_type *print_bool_types[1];
     static RDB_type *readln_types[1];
     static RDB_type *exit_int_types[1];
@@ -456,7 +444,6 @@ Duro_init_exec(RDB_exec_context *ecp, const char *dbname)
     print_string_types[0] = &RDB_STRING;
     print_int_types[0] = &RDB_INTEGER;
     print_float_types[0] = &RDB_FLOAT;
-    print_double_types[0] = &RDB_DOUBLE;
     print_bool_types[0] = &RDB_BOOLEAN;
     readln_types[0] = &RDB_STRING;
     exit_int_types[0] = &RDB_INTEGER;
@@ -480,9 +467,6 @@ Duro_init_exec(RDB_exec_context *ecp, const char *dbname)
             != RDB_OK)
         return RDB_ERROR;
     if (RDB_put_op(&opmap, "PRINTLN", 1, print_float_types, &println_float_op, ecp)
-            != RDB_OK)
-        return RDB_ERROR;
-    if (RDB_put_op(&opmap, "PRINTLN", 1, print_double_types, &println_double_op, ecp)
             != RDB_OK)
         return RDB_ERROR;
     if (RDB_put_op(&opmap, "PRINTLN", 1, print_bool_types, &println_bool_op, ecp)
@@ -588,8 +572,6 @@ init_obj(RDB_object *objp, RDB_type *typ, RDB_exec_context *ecp,
         RDB_int_to_obj(objp, 0);
     } else if (typ == &RDB_FLOAT) {
         RDB_float_to_obj(objp, 0.0);
-    } else if (typ == &RDB_DOUBLE) {
-        RDB_double_to_obj(objp, 0.0);
     } else if (typ == &RDB_STRING) {
         return RDB_string_to_obj(objp, "", ecp);
     } else if (typ == &RDB_BINARY) {

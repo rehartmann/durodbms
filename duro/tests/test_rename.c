@@ -23,7 +23,7 @@ print_table(RDB_object *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
     for (i = 0; (tplp = RDB_array_get(&array, i, ecp)) != NULL; i++) {
         printf("EMP#: %d\n", (int) RDB_tuple_get_int(tplp, "EMP#"));
         printf("NAME: %s\n", RDB_tuple_get_string(tplp, "NAME"));
-        printf("SAL: %f\n", (double) RDB_tuple_get_double(tplp, "SAL"));
+        printf("SAL: %f\n", (double) RDB_tuple_get_float(tplp, "SAL"));
     }
     if (RDB_obj_type(RDB_get_err(ecp)) != &RDB_NOT_FOUND_ERROR) {
         goto error;
@@ -121,7 +121,7 @@ test_rename(RDB_database *dbp, RDB_exec_context *ecp)
     ret = RDB_tuple_set_string(&tpl, "NAME", "Smith", ecp);
     if (ret != RDB_OK)
         goto error;
-    ret = RDB_tuple_set_double(&tpl, "SAL", (RDB_double)4000.0, ecp);
+    ret = RDB_tuple_set_float(&tpl, "SAL", (RDB_float) 4000.0, ecp);
     if (ret != RDB_OK)
         goto error;
     ret = RDB_tuple_set_int(&tpl, "DEPTNO", 1, ecp);

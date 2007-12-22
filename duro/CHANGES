@@ -23,6 +23,8 @@ Changes for Duro 0.13
 - Renamed INVALID_TRANSACTION_ERROR to NO_RUNNING_TX_ERROR
   and RDB_raise_invalid_tx() to RDB_raise_no_running_tx().
 
+- Dropped type DOUBLE. FLOAT is now double precision.
+
 - Using doxygen for the documentation.
 
 Changes for Duro 0.12

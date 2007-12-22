@@ -23,12 +23,12 @@ check_table(RDB_object *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
     tplp = RDB_array_get(&array, 0, ecp);
     assert(RDB_tuple_get_int(tplp, "EMPNO") == 1);
     assert(strcmp(RDB_tuple_get_string(tplp, "NAME"), "Smythe") == 0);
-    assert(RDB_tuple_get_double(tplp, "SALARY") == 4500.0);
+    assert(RDB_tuple_get_float(tplp, "SALARY") == 4500.0);
 
     tplp = RDB_array_get(&array, 1, ecp);
     assert(RDB_tuple_get_int(tplp, "EMPNO") == 3);
     assert(strcmp(RDB_tuple_get_string(tplp, "NAME"), "Jones") == 0);
-    assert(RDB_tuple_get_double(tplp, "SALARY") == 4600.0);
+    assert(RDB_tuple_get_float(tplp, "SALARY") == 4600.0);
 
     assert(RDB_array_get(&array, 2, ecp) == NULL && RDB_obj_type(RDB_get_err(ecp)) == &RDB_NOT_FOUND_ERROR);
 
@@ -52,7 +52,7 @@ test_update(RDB_database *dbp, RDB_exec_context *ecp)
 
     /* Updating table, setting SALARY to 4500 */
     attrs[0].name = "SALARY";
-    attrs[0].exp = RDB_double_to_expr(4500.0, ecp);
+    attrs[0].exp = RDB_float_to_expr(4500.0, ecp);
     ret = RDB_update(tbp, NULL, 1, attrs, ecp, &tx);
     if (ret == RDB_ERROR) {
         goto error;
@@ -88,7 +88,7 @@ test_update(RDB_database *dbp, RDB_exec_context *ecp)
         ret = RDB_ERROR;
         goto error;
     }
-    RDB_add_arg(attrs[0].exp, RDB_double_to_expr(100, ecp));
+    RDB_add_arg(attrs[0].exp, RDB_float_to_expr(100, ecp));
     RDB_add_arg(attrs[0].exp, RDB_var_ref("SALARY", ecp));
     exprp = RDB_eq(RDB_var_ref("EMPNO", ecp), RDB_int_to_expr(3, ecp), ecp);
     ret = RDB_update(tbp, exprp, 1, attrs, ecp, &tx);
