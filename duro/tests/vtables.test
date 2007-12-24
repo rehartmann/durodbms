@@ -33,8 +33,8 @@ test vtables {virtual tables} -setup $SETUP -body {
 
     # Create real tables
     duro::table create T {
-       {K INTEGER}
-       {S1 STRING}
+        {K INTEGER}
+        {S1 STRING}
     } {{K}} $tx
 
     duro::table rename T T1 $tx
@@ -183,10 +183,16 @@ test vtables {virtual tables} -setup $SETUP -body {
     if {![string match "RDB_ELEMENT_EXISTS_ERROR(*)" $code]} {
         error "Wrong error: $errorCode"
     }
-    
+
     set tpl [duro::expr {TUPLE FROM TP} $tx]
     if {$tpl != {K 1}} {
         error "Tuple value should be {K 1}, but is $tpl"
+    }
+
+    if {![catch {
+	    duro::table drop T3 $tx
+    }]} {
+        error "dropping T3 should fail because of dependencies, but succeeded"
     }
 
     set tpl [duro::expr {TUPLE FROM TJ2} $tx]
@@ -230,7 +236,7 @@ test vtables {virtual tables} -setup $SETUP -body {
     if {![string match "NAME_ERROR(*)" $code]} {
         error "wrong error code: $code"
     }
-    
+
     if {![catch {duro::update TP2 {K = 1} S1 {"Blb"} $tx}]} {
         error "duro::update should fail, but succeeded"
     }
@@ -278,7 +284,7 @@ test vtables {virtual tables} -setup $SETUP -body {
     set tpl {K 0 S1 Bold S2 Z}
     
     # !! duro::insert TJ $tpl $tx
-    
+
     # if {![duro::table contains TJ $tpl $tx]} {
     #     error "Insert into TJ was not successful."
     # }

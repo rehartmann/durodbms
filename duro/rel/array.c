@@ -222,11 +222,11 @@ RDB_array_get(RDB_object *arrp, RDB_int idx, RDB_exec_context *ecp)
     }
 
     /*
-     * Allocate buffer, not already present
+     * Allocate buffer if not already present
      */
     if (arrp->var.arr.elemv == NULL) {
         int i;
-        
+
         arrp->var.arr.elemc = ARRAY_BUFLEN_MIN;
         if (idx > arrp->var.arr.elemc)
             arrp->var.arr.elemc = idx + 1;
@@ -329,7 +329,7 @@ RDB_array_length(RDB_object *arrp, RDB_exec_context *ecp)
             i++;
         errtyp = RDB_obj_type(RDB_get_err(ecp));
         if (errtyp != &RDB_NOT_FOUND_ERROR)
-            return RDB_ERROR;
+            return (RDB_int) RDB_ERROR;
         RDB_clear_err(ecp);
     }
     return arrp->var.arr.length;

@@ -588,12 +588,12 @@ init_obj(RDB_object *objp, RDB_type *typ, RDB_exec_context *ecp,
         typ = RDB_dup_nonscalar_type(typ, ecp);
         if (typ == NULL)
             return RDB_ERROR;
-        RDB_obj_set_type(objp, typ);
+        RDB_obj_set_typeinfo(objp, typ);
     } else if (typ->kind == RDB_TP_ARRAY) {
         typ = RDB_dup_nonscalar_type(typ, ecp);
         if (typ == NULL)
             return RDB_ERROR;
-        RDB_obj_set_type(objp, typ);
+        RDB_obj_set_typeinfo(objp, typ);
     } else {
         if (typ->var.scalar.repc > 0) {
             if (txp == NULL) {
@@ -778,7 +778,7 @@ exec_vardef(RDB_parse_statement *stmtp, RDB_exec_context *ecp)
             typ = RDB_dup_nonscalar_type(typ, ecp);
             if (typ == NULL)
                 goto error;
-            RDB_obj_set_type(objp, typ);
+            RDB_obj_set_typeinfo(objp, typ);
         }
     }
     if (RDB_hashmap_put(&current_varmapp->map, varname, objp) != RDB_OK) {

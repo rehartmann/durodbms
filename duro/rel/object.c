@@ -1349,7 +1349,7 @@ RDB_obj_type(const RDB_object *objp)
  * when *<var>objp</var> is destroyed.
  */
 void
-RDB_obj_set_type(RDB_object *objp, RDB_type *typ)
+RDB_obj_set_typeinfo(RDB_object *objp, RDB_type *typ)
 {
     objp->typ = typ;
 }

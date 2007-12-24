@@ -344,6 +344,8 @@ assoc_systables(RDB_dbroot *dbrootp, RDB_database *dbp, RDB_exec_context *ecp)
         return RDB_ERROR;
     if (_RDB_assoc_table_db(dbrootp->vtables_tbp, dbp, ecp) != RDB_OK)
         return RDB_ERROR;
+    if (_RDB_assoc_table_db(dbrootp->table_recmap_tbp, dbp, ecp) != RDB_OK)
+        return RDB_ERROR;
     if (_RDB_assoc_table_db(dbrootp->dbtables_tbp, dbp, ecp) != RDB_OK)
         return RDB_ERROR;
     if (_RDB_assoc_table_db(dbrootp->keys_tbp, dbp, ecp) != RDB_OK)
@@ -1249,6 +1251,95 @@ RDB_get_table(const char *name, RDB_exec_context *ecp, RDB_transaction *txp)
     return _RDB_cat_get_vtable(name, ecp, txp);
 }
 
+static int
+table_dep_check(RDB_object *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
+{
+    int ret;
+    int i;
+    RDB_int len;
+    RDB_object tbarr;
+    RDB_object *vtbp;
+    RDB_object *dtbp;
+    RDB_expression *wherep;
+    RDB_expression *ex2p;
+    RDB_expression *ex1p = RDB_var_ref("DBNAME", ecp);
+    if (ex1p == NULL)
+        return RDB_ERROR;
+
+    ex2p = RDB_string_to_expr(RDB_db_name(RDB_tx_db(txp)), ecp);
+    if (ex2p == NULL) {
+        RDB_drop_expr(ex1p, ecp);
+        return RDB_ERROR;
+    }
+
+    wherep = RDB_eq(ex1p, ex2p, ecp);
+    if (wherep == NULL) {
+        RDB_drop_expr(ex1p, ecp);
+        RDB_drop_expr(ex2p, ecp);
+        return RDB_ERROR;
+    }
+
+    ex1p = RDB_ro_op("WHERE", ecp);
+    if (ex1p == NULL) {
+        RDB_drop_expr(wherep, ecp);
+        return RDB_ERROR;
+    }
+
+    ex2p = RDB_table_ref(txp->dbp->dbrootp->dbtables_tbp, ecp);
+    if (ex2p == NULL) {
+        RDB_drop_expr(wherep, ecp);
+        RDB_drop_expr(ex1p, ecp);
+        return RDB_ERROR;
+    }
+
+    RDB_add_arg(ex1p, ex2p);
+    RDB_add_arg(ex1p, wherep);            
+
+    vtbp = RDB_expr_to_vtable(ex1p, ecp, txp);
+    if (vtbp == NULL) {
+        RDB_drop_expr(ex1p, ecp);
+        return RDB_ERROR;
+    }
+
+    RDB_init_obj(&tbarr);
+    ret = RDB_table_to_array(&tbarr, vtbp, 0, NULL, ecp, txp);
+    if (ret != RDB_OK) {
+        goto cleanup;
+    }
+    len = RDB_array_length(&tbarr, ecp);
+    if (len == (RDB_int) RDB_ERROR) {
+        ret = RDB_ERROR;
+        goto cleanup;
+    }
+    for (i = 0; i < len; i++) {
+        RDB_object *tplp = RDB_array_get(&tbarr, (RDB_int) i, ecp);
+        if (tplp == NULL) {
+            ret = RDB_ERROR;
+            goto cleanup;
+        }
+
+        dtbp = RDB_get_table(RDB_tuple_get_string(tplp, "TABLENAME"), ecp, txp);
+        if (dtbp == NULL) {
+            ret = RDB_ERROR;
+            goto cleanup;
+        }
+        if (!RDB_table_is_real(dtbp)) {
+            if (_RDB_expr_refers(dtbp->var.tb.exp, tbp)) {
+                RDB_raise_invalid_argument("table has dependencies", ecp);
+                ret = RDB_ERROR;
+                goto cleanup;
+            }
+        }
+    }
+    ret = RDB_OK;           
+
+cleanup:
+    RDB_destroy_obj(&tbarr, ecp);
+    RDB_drop_table(vtbp, ecp, txp);
+
+    return ret;
+}
+
 /**
 RDB_drop_table deletes the table specified by <var>tbp</var>
 and releases all resources associated with that table.
@@ -1286,7 +1377,11 @@ RDB_drop_table(RDB_object *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
             RDB_raise_no_running_tx(ecp);
             return RDB_ERROR;
         }
-    
+
+        if (table_dep_check(tbp, ecp, txp) != RDB_OK) {
+            return RDB_ERROR;
+        }
+
         /*
          * Remove table from all RDB_databases in list
          */
@@ -1299,13 +1394,6 @@ RDB_drop_table(RDB_object *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
         }
 
         /*
-         * Remove table from catalog
-         */
-        ret = _RDB_cat_delete(tbp, ecp, txp);
-        if (ret != RDB_OK)
-            return ret;
-
-        /*
          * Delete recmap, if any
          */
         if (tbp->var.tb.stp != NULL) {
@@ -1314,6 +1402,13 @@ RDB_drop_table(RDB_object *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
                 return RDB_ERROR;
             tbp->var.tb.stp = NULL;
         }
+
+        /*
+         * Remove table from catalog
+         */
+        ret = _RDB_cat_delete(tbp, ecp, txp);
+        if (ret != RDB_OK)
+            return RDB_ERROR;
     }
 
     _RDB_free_obj(tbp, ecp);
@@ -1352,7 +1447,9 @@ RDB_set_table_name(RDB_object *tbp, const char *name, RDB_exec_context *ecp,
         return RDB_ERROR;
     }
 
-    /* !! should check if virtual tables depend on this table */
+    /* Check if virtual tables depend on this table */
+    if (table_dep_check(tbp, ecp, txp) != RDB_OK)
+        return RDB_ERROR;
 
     if (tbp->var.tb.is_persistent) {
         RDB_database *dbp;

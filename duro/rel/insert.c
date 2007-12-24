@@ -109,7 +109,7 @@ _RDB_insert_real(RDB_object *tbp, const RDB_object *tplp,
 
         /* Set type - needed for tuple and array attributes */
         if (valp->typ == NULL) {
-            RDB_obj_set_type(valp, tuptyp->var.tuple.attrv[i].typ);
+            RDB_obj_set_typeinfo(valp, tuptyp->var.tuple.attrv[i].typ);
             /* !! check object kind against type? */
         }
 

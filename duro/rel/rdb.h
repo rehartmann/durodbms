@@ -500,7 +500,7 @@ RDB_type *
 RDB_obj_type(const RDB_object *);
 
 void
-RDB_obj_set_type(RDB_object *, RDB_type *);
+RDB_obj_set_typeinfo(RDB_object *, RDB_type *);
 
 RDB_type *
 RDB_type_attr_type(const RDB_type *, const char *);

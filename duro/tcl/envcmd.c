@@ -11,6 +11,7 @@
 int
 Duro_tcl_close_env(TclState *statep, RDB_environment *envp, Tcl_HashEntry *entryp)
 {
+    int ret;
     Tcl_HashSearch search;
     table_entry *tbep;
     FILE *errfp;
@@ -33,11 +34,11 @@ Duro_tcl_close_env(TclState *statep, RDB_environment *envp, Tcl_HashEntry *entry
     }
 
     bdb_envp->get_errfile(bdb_envp, &errfp);
+    ret = RDB_close_env(envp);
     if (errfp != NULL) {
         fclose(errfp);
     }
-
-    return RDB_close_env(envp);
+    return ret;
 }
 
 int
