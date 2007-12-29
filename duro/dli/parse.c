@@ -54,7 +54,10 @@ void yyerror(char *errtxt)
         if (bufp == NULL) {
             return;
         }
-        sprintf(bufp, "%s at line %d", errtxt, yylloc.first_line);
+        if (_RDB_parse_interactive)
+            sprintf(bufp, "%s", errtxt);
+        else
+            sprintf(bufp, "%s at line %d", errtxt, yylloc.first_line);
         RDB_raise_syntax(bufp, _RDB_parse_ecp);
         RDB_free(bufp);
     }

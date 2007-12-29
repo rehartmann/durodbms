@@ -1221,7 +1221,8 @@ cleanup:
     return ret;
 }
 
-static RDB_bool copy_needs_tx(const RDB_object *dstp, const RDB_object *srcp)
+static RDB_bool
+copy_needs_tx(const RDB_object *dstp, const RDB_object *srcp)
 {
     return (RDB_bool) ((dstp->kind == RDB_OB_TABLE && dstp->var.tb.is_persistent)
             || (srcp->kind == RDB_OB_TABLE && srcp->var.tb.is_persistent));

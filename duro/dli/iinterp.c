@@ -1396,8 +1396,8 @@ exec_assign(const RDB_parse_statement *stmtp, RDB_exec_context *ecp)
                                        != RDB_OK) {
                             goto error;
                         }
-                        copyc++;
                         ap = ap->nextp;
+                        copyc++;
                     }
                 } else {
                     RDB_raise_syntax("invalid UPDATE target", ecp);

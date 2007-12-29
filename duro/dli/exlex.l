@@ -439,6 +439,18 @@ DESC {
     return TOK_ID;
 }
 
+\'([^']|\\\\|\\n|\\r|\\t)*\' {
+
+    process_escapes(yytext);
+
+    /*
+     * Remove trailing 's
+     */
+    yytext[(strlen(yytext) - 1)] = '\0';
+    yylval = RDB_string_to_expr(yytext + 1, _RDB_parse_ecp);
+    return TOK_LIT_STRING;
+}
+
 \"([^"]|\\\\|\\n|\\r|\\t)*\" {
 
     process_escapes(yytext);
@@ -451,16 +463,26 @@ DESC {
     return TOK_LIT_STRING;
 }
 
-\'([^']|\\\\|\\n|\\r|\\t)*\' {
+\' {
+    char buf[40];
 
-    process_escapes(yytext);
+    if (_RDB_parse_interactive)
+	    sprintf(buf, "unbalanced '");
+	else
+	    sprintf(buf, "unbalanced ' at line %d", yylineno);
+    RDB_raise_syntax(buf, _RDB_parse_ecp);
+    return TOK_INVALID;
+}
 
-    /*
-     * Remove trailing 's
-     */
-    yytext[(strlen(yytext) - 1)] = '\0';
-    yylval = RDB_string_to_expr(yytext + 1, _RDB_parse_ecp);
-    return TOK_LIT_STRING;
+\" {
+    char buf[40];
+
+    if (_RDB_parse_interactive)
+	    sprintf(buf, "unbalanced \"");
+	else 
+	    sprintf(buf, "unbalanced \" at line %d", yylineno);
+    RDB_raise_syntax(buf, _RDB_parse_ecp);
+    return TOK_INVALID;
 }
 
 -?[0-9]+ {
@@ -513,7 +535,10 @@ DESC {
             if (c == EOF)
             {
                 char buf[40];
-                sprintf(buf, "unterminated comment at line %d", yylineno);
+                if (_RDB_parse_interactive)
+	                sprintf(buf, "unterminated comment");
+                else
+	                sprintf(buf, "unterminated comment at line %d", yylineno);
 	            RDB_raise_syntax(buf, _RDB_parse_ecp);
                 return TOK_INVALID;
             }
@@ -525,7 +550,10 @@ DESC {
 . {
     char buf[40];
 
-    sprintf(buf, "invalid character '%c' at line %d", yytext[0], yylineno);
+    if (_RDB_parse_interactive)
+    	sprintf(buf, "invalid character %c", yytext[0]);
+    else
+	    sprintf(buf, "invalid character %c at line %d", yytext[0], yylineno);
     RDB_raise_syntax(buf, _RDB_parse_ecp);
     return TOK_INVALID;
 }

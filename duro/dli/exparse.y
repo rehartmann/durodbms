@@ -366,7 +366,7 @@ error:
 
 %type <exp> expression literal ro_op_invocation count_invocation
         sum_invocation avg_invocation min_invocation max_invocation
-        all_invocation any_invocation dot_invocation vexpr type
+        all_invocation any_invocation vexpr type
 
 %type <explist> expression_list ne_expression_list
         ne_id_list id_list ne_tuple_item_list
@@ -1581,7 +1581,6 @@ expression: expression '{' id_list '}' {
         RDB_add_arg($$, $3);
     }
     | vexpr
-    | dot_invocation
     | literal
     | count_invocation
     | sum_invocation
@@ -1592,6 +1591,18 @@ expression: expression '{' id_list '}' {
     | any_invocation
     | '(' expression ')' {
         $$ = $2;
+    }
+    | expression '.' TOK_ID {
+        $$ = RDB_tuple_attr($1, $3->var.varname, _RDB_parse_ecp);
+        RDB_drop_expr($3, _RDB_parse_ecp);
+        if ($$ == NULL)
+            RDB_drop_expr($1, _RDB_parse_ecp);
+    }
+    | TOK_ID TOK_FROM expression {
+        $$ = RDB_tuple_attr($3, $1->var.varname, _RDB_parse_ecp);
+        RDB_drop_expr($1, _RDB_parse_ecp);
+        if ($$ == NULL)
+            RDB_drop_expr($3, _RDB_parse_ecp);
     }
     | TOK_TUPLE TOK_FROM expression {
         RDB_expression *texp;
@@ -1639,13 +1650,6 @@ expression: expression '{' id_list '}' {
         RDB_add_arg($$, ex2p);
     }
     ;
-
-dot_invocation: expression '.' TOK_ID {
-        $$ = RDB_tuple_attr($1, $3->var.varname, _RDB_parse_ecp);
-        RDB_drop_expr($3, _RDB_parse_ecp);
-        if ($$ == NULL)
-            RDB_drop_expr($1, _RDB_parse_ecp);
-    }
 
 id_list: /* empty */ {
         RDB_init_expr_list(&$$);
