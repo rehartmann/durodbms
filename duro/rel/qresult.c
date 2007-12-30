@@ -8,6 +8,7 @@
 #include "qresult.h"
 #include "insert.h"
 #include "internal.h"
+#include "delete.h"
 #include "stable.h"
 #include "typeimpl.h"
 #include <gen/hashtabit.h>
@@ -2280,33 +2281,22 @@ next_union_tuple(RDB_qresult *qrp, RDB_object *tplp, RDB_exec_context *ecp,
 {
     int ret;
 
-    if (qrp->var.children.qr2p == NULL) {
+    if (!qrp->var.children.qrp->endreached) {
         ret = _RDB_next_tuple(qrp->var.children.qrp, tplp, ecp, txp);
-        if (ret != RDB_OK) {
-            if (RDB_obj_type(RDB_get_err(ecp))
-                    == &RDB_NOT_FOUND_ERROR) {
-                RDB_clear_err(ecp);
+        if (ret == RDB_OK || RDB_obj_type(RDB_get_err(ecp))
+                    != &RDB_NOT_FOUND_ERROR)
+            return ret;
+    }
+    RDB_clear_err(ecp);
 
-                /* Switch to second table */
-                qrp->var.children.qr2p = _RDB_expr_qresult(
-                        qrp->exp->var.op.args.firstp->nextp, ecp, txp);
-                if (qrp->var.children.qr2p == NULL)
-                    return RDB_ERROR;
-                ret = _RDB_next_tuple(qrp->var.children.qr2p, tplp,
-                        ecp, txp);
-                if (ret != RDB_OK)
-                    return RDB_ERROR;
-            } else {
-                return RDB_ERROR;
-            }
-        }
-    } else {
-        ret = _RDB_next_tuple(qrp->var.children.qr2p, tplp, ecp,
-                txp);
-        if (ret != RDB_OK)
+    /* Switch to second table */
+    if (qrp->var.children.qr2p == NULL) {
+        qrp->var.children.qr2p = _RDB_expr_qresult(
+                qrp->exp->var.op.args.firstp->nextp, ecp, txp);
+        if (qrp->var.children.qr2p == NULL)
             return RDB_ERROR;
     }
-    return RDB_OK;
+    return _RDB_next_tuple(qrp->var.children.qr2p, tplp, ecp, txp);
 }
 
 static int
@@ -2374,9 +2364,9 @@ _RDB_next_tuple(RDB_qresult *qrp, RDB_object *tplp, RDB_exec_context *ecp,
         RDB_type *tpltyp;
         if (qrp->var.stored.tbp == NULL) {
             /* It's a sorter */
-	    return next_stored_tuple(qrp, qrp->matp, tplp, RDB_TRUE, RDB_FALSE,
+           return next_stored_tuple(qrp, qrp->matp, tplp, RDB_TRUE, RDB_FALSE,
                     qrp->matp->typ->var.basetyp, ecp, txp);
-	}
+	    }
         tpltyp = qrp->var.stored.tbp->typ->kind == RDB_TP_RELATION ?
                 qrp->var.stored.tbp->typ->var.basetyp
                 : qrp->var.stored.tbp->typ->var.scalar.arep->var.basetyp;
@@ -2514,6 +2504,11 @@ _RDB_reset_qresult(RDB_qresult *qrp, RDB_exec_context *ecp, RDB_transaction *txp
             _RDB_handle_errcode(ret, ecp, txp);
             return RDB_ERROR;
         }
+    }
+    if (qrp->exp != NULL && qrp->matp != NULL) {
+        /* Clear materialized result */
+        if (_RDB_delete_real(qrp->matp, NULL, ecp, txp) == (RDB_int) RDB_ERROR)
+            return RDB_ERROR;
     }
     return RDB_OK;
 }

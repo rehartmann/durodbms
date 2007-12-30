@@ -147,7 +147,7 @@ test_query(RDB_database *dbp, RDB_exec_context *ecp)
     tbp = RDB_get_table("POINTTEST", ecp, &tx);
     assert(tbp != NULL);
 
-    ret = RDB_table_to_array(&array, tbp, 0, NULL, ecp, &tx);
+    ret = RDB_table_to_array(&array, tbp, 0, NULL, 0, ecp, &tx);
     assert(ret == RDB_OK);
 
     assert(RDB_array_length(&array, ecp) == 2);
@@ -187,7 +187,7 @@ test_query(RDB_database *dbp, RDB_exec_context *ecp)
     tmptbp = RDB_expr_to_vtable(exp, ecp, &tx);
     assert(tmptbp != NULL);
 
-    ret = RDB_table_to_array(&array, tmptbp, 0, NULL, ecp, &tx);
+    ret = RDB_table_to_array(&array, tmptbp, 0, NULL, 0, ecp, &tx);
     assert(ret == RDB_OK);
 
     for (i = 0; (tplp = RDB_array_get(&array, i, ecp)) != NULL; i++) {
@@ -232,7 +232,7 @@ test_query(RDB_database *dbp, RDB_exec_context *ecp)
 
     RDB_init_obj(&array);
 
-    ret = RDB_table_to_array(&array, tmptbp, 0, NULL, ecp, &tx);
+    ret = RDB_table_to_array(&array, tmptbp, 0, NULL, 0, ecp, &tx);
     assert(ret == RDB_OK);
 
     for (i = 0; (tplp = RDB_array_get(&array, i, ecp)) != NULL; i++) {

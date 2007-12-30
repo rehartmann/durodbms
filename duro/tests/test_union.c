@@ -21,7 +21,7 @@ print_table(RDB_object *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
     sq.attrname = "NAME";
     sq.asc = RDB_FALSE;
 
-    ret = RDB_table_to_array(&array, tbp, 1, &sq, ecp, txp);
+    ret = RDB_table_to_array(&array, tbp, 1, &sq, 0, ecp, txp);
     assert(ret == RDB_OK);
 
     assert(RDB_array_length(&array, ecp) == 3);

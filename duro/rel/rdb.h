@@ -620,7 +620,7 @@ RDB_unwrap_tuple(const RDB_object *tplp, int attrc, char *attrv[],
 
 int
 RDB_table_to_array(RDB_object *arrp, RDB_object *, 
-                   int seqitc, const RDB_seq_item seqitv[],
+                   int seqitc, const RDB_seq_item seqitv[], int flags,
                    RDB_exec_context *, RDB_transaction *);
 
 RDB_object *

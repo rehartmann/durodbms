@@ -66,7 +66,7 @@ array_create_cmd(TclState *statep, Tcl_Interp *interp, int objc,
     arrayp = (RDB_object *) Tcl_Alloc(sizeof (RDB_object));
     RDB_init_obj(arrayp);
 
-    ret = RDB_table_to_array(arrayp, tbp, seqitc, seqitv, statep->current_ecp,
+    ret = RDB_table_to_array(arrayp, tbp, seqitc, seqitv, 0, statep->current_ecp,
             txp);
     if (seqitv != NULL)
         Tcl_Free((char *) seqitv);

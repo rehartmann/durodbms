@@ -947,7 +947,7 @@ RDB_get_dbs(RDB_environment *envp, RDB_object *arrp, RDB_exec_context *ecp)
 
     RDB_init_obj(&resarr);
 
-    ret = RDB_table_to_array(&resarr, vtbp, 0, NULL, ecp, &tx);
+    ret = RDB_table_to_array(&resarr, vtbp, 0, NULL, 0, ecp, &tx);
     if (ret != RDB_OK)
         goto cleanup;
 
@@ -1302,7 +1302,7 @@ table_dep_check(RDB_object *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
     }
 
     RDB_init_obj(&tbarr);
-    ret = RDB_table_to_array(&tbarr, vtbp, 0, NULL, ecp, txp);
+    ret = RDB_table_to_array(&tbarr, vtbp, 0, NULL, 0, ecp, txp);
     if (ret != RDB_OK) {
         goto cleanup;
     }

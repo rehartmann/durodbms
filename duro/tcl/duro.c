@@ -564,7 +564,7 @@ table_to_list(Tcl_Interp *interp, RDB_object *tbp, RDB_exec_context *ecp,
     Tcl_Obj *listobjp = Tcl_NewListObj(0, NULL);
 
     RDB_init_obj(&arr);
-    ret = RDB_table_to_array(&arr, tbp, 0, NULL, ecp, txp);
+    ret = RDB_table_to_array(&arr, tbp, 0, NULL, 0, ecp, txp);
     if (ret != RDB_OK) {
         Duro_dberror(interp, RDB_get_err(ecp), txp);
         RDB_destroy_obj(&arr, ecp);

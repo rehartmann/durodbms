@@ -17,7 +17,7 @@ test_select(RDB_database *dbp, RDB_exec_context *ecp)
 
     ret = RDB_begin_tx(ecp, &tx, dbp, NULL);
     if (ret != RDB_OK) {
-        return ret;
+        return RDB_ERROR;
     }
 
     tbp = RDB_get_table("EMPS1", ecp, &tx);
@@ -48,7 +48,7 @@ test_select(RDB_database *dbp, RDB_exec_context *ecp)
         goto error;
     }
 
-    ret = RDB_table_to_array(&array, vtbp, 0, NULL, ecp, &tx);
+    ret = RDB_table_to_array(&array, vtbp, 0, NULL, 0, ecp, &tx);
     if (ret != RDB_OK) {
         goto error;
     } 
@@ -89,7 +89,7 @@ test_select(RDB_database *dbp, RDB_exec_context *ecp)
         return RDB_ERROR;
     }
 
-    ret = RDB_table_to_array(&array, vtbp, 0, NULL, ecp, &tx);
+    ret = RDB_table_to_array(&array, vtbp, 0, NULL, 0, ecp, &tx);
     if (ret != RDB_OK) {
         goto error;
     } 

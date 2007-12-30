@@ -16,7 +16,7 @@ print_salary_view(RDB_database *dbp, RDB_exec_context *ecp)
 
     ret = RDB_begin_tx(ecp, &tx, dbp, NULL);
     if (ret != RDB_OK) {
-        return ret;
+        return RDB_ERROR;
     }
 
     printf("Table SALARIES\n");
@@ -28,13 +28,13 @@ print_salary_view(RDB_database *dbp, RDB_exec_context *ecp)
 
     RDB_init_obj(&array);
 
-    ret = RDB_table_to_array(&array, tmpvtbp, 0, NULL, ecp, &tx);
+    ret = RDB_table_to_array(&array, tmpvtbp, 0, NULL, 0, ecp, &tx);
     if (ret != RDB_OK) {
         goto error;
     }
 
     assert(RDB_array_length(&array, ecp) == 2);
-    
+
     d1 = RDB_tuple_get_float(RDB_array_get(&array, 0, ecp), "SALARY");
     d2 = RDB_tuple_get_float(RDB_array_get(&array, 1, ecp), "SALARY");
 
@@ -76,7 +76,7 @@ print_emp_view(RDB_database *dbp, RDB_exec_context *ecp)
 
     RDB_init_obj(&array);
 
-    ret = RDB_table_to_array(&array, tmpvtbp, 1, &empseqit, ecp, &tx);
+    ret = RDB_table_to_array(&array, tmpvtbp, 1, &empseqit, 0, ecp, &tx);
     if (ret != RDB_OK) {
         goto error;
     }
@@ -124,7 +124,7 @@ print_emps_view(RDB_database *dbp, RDB_exec_context *ecp)
 
     RDB_init_obj(&array);
 
-    ret = RDB_table_to_array(&array, tmpvtbp, 1, &empseqit, ecp, &tx);
+    ret = RDB_table_to_array(&array, tmpvtbp, 1, &empseqit, 0, ecp, &tx);
     if (ret != RDB_OK) {
         goto error;
     }
@@ -178,7 +178,7 @@ print_emps2_view(RDB_database *dbp, RDB_exec_context *ecp)
 
     RDB_init_obj(&array);
 
-    ret = RDB_table_to_array(&array, tmpvtbp, 1, &depseqit, ecp, &tx);
+    ret = RDB_table_to_array(&array, tmpvtbp, 1, &depseqit, 0, ecp, &tx);
     if (ret != RDB_OK) {
         goto error;
     }

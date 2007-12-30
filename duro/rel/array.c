@@ -13,7 +13,7 @@
 
 static int
 init_expr_array(RDB_object *arrp, RDB_expression *texp,
-                   int seqitc, const RDB_seq_item seqitv[],
+                   int seqitc, const RDB_seq_item seqitv[], int flags,
                    RDB_exec_context *ecp, RDB_transaction *txp)
 {
     RDB_qresult *qrp = NULL;
@@ -121,7 +121,7 @@ in which case the transaction may be implicitly rolled back.
  */
 int
 RDB_table_to_array(RDB_object *arrp, RDB_object *tbp,
-                   int seqitc, const RDB_seq_item seqitv[],
+                   int seqitc, const RDB_seq_item seqitv[], int flags,
                    RDB_exec_context *ecp, RDB_transaction *txp)
 {
     int ret;
@@ -136,7 +136,7 @@ RDB_table_to_array(RDB_object *arrp, RDB_object *tbp,
     if (texp == NULL)
         return RDB_ERROR;
 
-    ret = init_expr_array(arrp, texp, seqitc, seqitv, ecp, txp);
+    ret = init_expr_array(arrp, texp, seqitc, seqitv, 0, ecp, txp);
     if (ret != RDB_OK)
         RDB_drop_expr(texp, NULL);
     return ret;
@@ -148,17 +148,7 @@ RDB_table_to_array(RDB_object *arrp, RDB_object *tbp,
 static int
 next_tuple(RDB_object *arrp, RDB_bool mustread, RDB_exec_context *ecp)
 {
-    RDB_object *tplp;
-
-    if (arrp->var.arr.pos < arrp->var.arr.elemc) {
-        tplp = &arrp->var.arr.elemv[arrp->var.arr.pos];
-        if (tplp->kind == RDB_OB_TUPLE) {
-            /* Don't read same tuple again */
-            tplp = NULL;
-        }
-    } else {
-        tplp = mustread ? arrp->var.arr.tplp : NULL;
-    }
+    RDB_object *tplp = mustread ? arrp->var.arr.tplp : NULL;
 
     return _RDB_next_tuple(arrp->var.arr.qrp, tplp,
                 ecp, arrp->var.arr.txp);
@@ -200,11 +190,6 @@ RDB_array_get(RDB_object *arrp, RDB_int idx, RDB_exec_context *ecp)
         return &arrp->var.arr.elemv[idx];
     }
 
-    /* If the element is in buffer, return it */
-    if (idx < arrp->var.arr.pos && idx < arrp->var.arr.elemc) {
-        return &arrp->var.arr.elemv[idx];
-    }
-
     /* Reset qresult to start, if necessary */
     if (arrp->var.arr.pos > idx) {
         ret = _RDB_reset_qresult(arrp->var.arr.qrp, ecp, arrp->var.arr.txp);
@@ -219,47 +204,6 @@ RDB_array_get(RDB_object *arrp, RDB_int idx, RDB_exec_context *ecp)
             return NULL;
         }
         RDB_init_obj(arrp->var.arr.tplp);
-    }
-
-    /*
-     * Allocate buffer if not already present
-     */
-    if (arrp->var.arr.elemv == NULL) {
-        int i;
-
-        arrp->var.arr.elemc = ARRAY_BUFLEN_MIN;
-        if (idx > arrp->var.arr.elemc)
-            arrp->var.arr.elemc = idx + 1;
-        if (arrp->var.arr.elemc > ARRAY_BUFLEN_MAX)
-            arrp->var.arr.elemc = ARRAY_BUFLEN_MAX;
-        arrp->var.arr.elemv = RDB_alloc (sizeof(RDB_object) * arrp->var.arr.elemc, ecp);
-        if (arrp->var.arr.elemv == NULL) {
-            return NULL;
-        }
-
-        for (i = 0; i < arrp->var.arr.elemc; i++)
-            RDB_init_obj(&arrp->var.arr.elemv[i]);
-    }
-
-    /* Enlarge buffer if necessary and permitted */
-    if (idx >= arrp->var.arr.elemc && idx < ARRAY_BUFLEN_MAX) {
-        int oldelemc = arrp->var.arr.elemc;
-        int elemc = oldelemc;
-        int i;
-
-        do {
-            elemc *= 2;
-        } while (elemc < idx);
-
-        arrp->var.arr.elemv = realloc(arrp->var.arr.elemv,
-                 sizeof(RDB_object) * elemc);
-        if (arrp->var.arr.elemv == NULL) {
-            RDB_raise_no_memory(ecp);
-            return NULL;
-        }
-        for (i = oldelemc; i < elemc; i++)
-           RDB_init_obj(&arrp->var.arr.elemv[i]);
-        arrp->var.arr.elemc = elemc;
     }
          
     /*
@@ -287,11 +231,7 @@ RDB_array_get(RDB_object *arrp, RDB_int idx, RDB_exec_context *ecp)
         return NULL;
     }
 
-    if (arrp->var.arr.pos < arrp->var.arr.elemc) {
-        tplp = &arrp->var.arr.elemv[arrp->var.arr.pos];
-    } else {
-        tplp = arrp->var.arr.tplp;
-    }
+    tplp = arrp->var.arr.tplp;
     ++arrp->var.arr.pos;
 
     return tplp;

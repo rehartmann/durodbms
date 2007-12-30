@@ -743,7 +743,7 @@ _RDB_cat_get_indexes(const char *tablename, RDB_dbroot *dbrootp,
     }
 
     RDB_init_obj(&arr);
-    ret = RDB_table_to_array(&arr, vtbp, 0, NULL, ecp, txp);
+    ret = RDB_table_to_array(&arr, vtbp, 0, NULL, 0, ecp, txp);
     if (ret != RDB_OK)
         goto cleanup;
 
@@ -1306,7 +1306,7 @@ get_key(RDB_object *tbp, RDB_string_vec *keyp, RDB_exec_context *ecp)
     RDB_object *tplp;
 
     RDB_init_obj(&attrarr);
-    ret = RDB_table_to_array(&attrarr, tbp, 0, NULL, ecp, NULL);
+    ret = RDB_table_to_array(&attrarr, tbp, 0, NULL, 0, ecp, NULL);
     if (ret != RDB_OK) {
         RDB_destroy_obj(&attrarr, ecp);
         return ret;
@@ -1391,7 +1391,7 @@ get_keys(const char *name, RDB_exec_context *ecp, RDB_transaction *txp,
 
     RDB_init_obj(&arr);
     
-    ret = RDB_table_to_array(&arr, vtbp, 0, NULL, ecp, txp);
+    ret = RDB_table_to_array(&arr, vtbp, 0, NULL, 0, ecp, txp);
     if (ret != RDB_OK)
         goto error;
 
@@ -1531,7 +1531,7 @@ _RDB_cat_get_rtable(const char *name, RDB_exec_context *ecp,
     tmptb2p = RDB_expr_to_vtable(exp, ecp, txp);
     if (tmptb2p == NULL)
         goto error;
-    ret = RDB_table_to_array(&arr, tmptb2p, 0, NULL, ecp, txp);
+    ret = RDB_table_to_array(&arr, tmptb2p, 0, NULL, 0, ecp, txp);
     if (ret != RDB_OK) {
         goto error;
     }
@@ -1595,7 +1595,7 @@ _RDB_cat_get_rtable(const char *name, RDB_exec_context *ecp,
     tmptb3p = RDB_expr_to_vtable(exp, ecp, txp);
     if (tmptb3p == NULL)
         goto error;
-    ret = RDB_table_to_array(&arr, tmptb3p, 0, NULL, ecp, txp);
+    ret = RDB_table_to_array(&arr, tmptb3p, 0, NULL, 0, ecp, txp);
     if (ret != RDB_OK) {
         goto error;
     }
@@ -2042,7 +2042,7 @@ get_possrepcomps(const char *typename, RDB_possrep *rep,
     if (tmptbp == NULL) {
         goto error;
     }
-    ret = RDB_table_to_array(&comps, tmptbp, 0, NULL, ecp, txp);
+    ret = RDB_table_to_array(&comps, tmptbp, 0, NULL, 0, ecp, txp);
     if (ret != RDB_OK) {
         goto error;
     }
@@ -2171,7 +2171,7 @@ _RDB_cat_get_type(const char *name, RDB_exec_context *ecp,
     ret = _RDB_possreps_query(name, ecp, txp, &tmptb2p);
     if (ret != RDB_OK)
         goto error;
-    ret = RDB_table_to_array(&possreps, tmptb2p, 0, NULL, ecp, txp);
+    ret = RDB_table_to_array(&possreps, tmptb2p, 0, NULL, 0, ecp, txp);
     if (ret != RDB_OK) {
         goto error;
     }

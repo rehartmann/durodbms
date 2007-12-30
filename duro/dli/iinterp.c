@@ -405,7 +405,7 @@ load_op(const char *name, int argc, RDB_object *argv[],
         }
     }
 
-    if (RDB_table_to_array(argv[0], argv[1], seqitc, seqitv, ecp, txp) != RDB_OK)
+    if (RDB_table_to_array(argv[0], argv[1], seqitc, seqitv, 0, ecp, txp) != RDB_OK)
         goto error;
     RDB_free(seqitv);
     return RDB_OK;

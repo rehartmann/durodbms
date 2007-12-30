@@ -451,7 +451,7 @@ RDB_all(RDB_object *tbp, const char *attrname, RDB_exec_context *ecp,
 
     RDB_init_obj(&arr);
 
-    ret = RDB_table_to_array(&arr, tbp, 0, NULL, ecp, txp);
+    ret = RDB_table_to_array(&arr, tbp, 0, NULL, 0, ecp, txp);
     if (ret != RDB_OK) {
         RDB_destroy_obj(&arr, ecp);
         return RDB_ERROR;
@@ -543,7 +543,7 @@ RDB_any(RDB_object *tbp, const char *attrname, RDB_exec_context *ecp,
 
     RDB_init_obj(&arr);
 
-    ret = RDB_table_to_array(&arr, tbp, 0, NULL, ecp, txp);
+    ret = RDB_table_to_array(&arr, tbp, 0, NULL, 0, ecp, txp);
     if (ret != RDB_OK) {
         RDB_destroy_obj(&arr, ecp);
         return ret;
@@ -637,7 +637,7 @@ RDB_max(RDB_object *tbp, const char *attrname, RDB_exec_context *ecp,
 
     RDB_init_obj(&arr);
 
-    if (RDB_table_to_array(&arr, tbp, 0, NULL, ecp, txp) != RDB_OK) {
+    if (RDB_table_to_array(&arr, tbp, 0, NULL, 0, ecp, txp) != RDB_OK) {
         RDB_destroy_obj(&arr, ecp);
         return RDB_ERROR;
     }
@@ -740,7 +740,7 @@ RDB_min(RDB_object *tbp, const char *attrname, RDB_exec_context *ecp,
 
     RDB_init_obj(&arr);
 
-    ret = RDB_table_to_array(&arr, tbp, 0, NULL, ecp, txp);
+    ret = RDB_table_to_array(&arr, tbp, 0, NULL, 0, ecp, txp);
     if (ret != RDB_OK) {
         RDB_destroy_obj(&arr, ecp);
         return ret;
@@ -844,7 +844,7 @@ RDB_sum(RDB_object *tbp, const char *attrname, RDB_exec_context *ecp,
 
     RDB_init_obj(&arr);
 
-    ret = RDB_table_to_array(&arr, tbp, 0, NULL, ecp, txp);
+    ret = RDB_table_to_array(&arr, tbp, 0, NULL, 0, ecp, txp);
     if (ret != RDB_OK) {
         RDB_destroy_obj(&arr, ecp);
         return ret;
@@ -941,7 +941,7 @@ RDB_avg(RDB_object *tbp, const char *attrname, RDB_exec_context *ecp,
 
     RDB_init_obj(&arr);
 
-    ret = RDB_table_to_array(&arr, tbp, 0, NULL, ecp, txp);
+    ret = RDB_table_to_array(&arr, tbp, 0, NULL, 0, ecp, txp);
     if (ret != RDB_OK) {
         RDB_destroy_obj(&arr, ecp);
         return ret;

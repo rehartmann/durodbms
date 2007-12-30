@@ -54,7 +54,7 @@ test_regexp(RDB_database *dbp, RDB_exec_context *ecp)
         goto error;
     }
 
-    ret = RDB_table_to_array(&array, vtbp, 0, NULL, ecp, &tx);
+    ret = RDB_table_to_array(&array, vtbp, 0, NULL, 0, ecp, &tx);
     if (ret != RDB_OK) {
         goto error;
     } 

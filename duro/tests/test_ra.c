@@ -78,7 +78,7 @@ test_ra(RDB_database *dbp, RDB_exec_context *ecp)
 
     RDB_init_obj(&array);
 
-    ret = RDB_table_to_array(&array, vtbp, 0, NULL, ecp, &tx);
+    ret = RDB_table_to_array(&array, vtbp, 0, NULL, 0, ecp, &tx);
     if (ret != RDB_OK) {
         RDB_destroy_obj(&array, ecp);
         RDB_commit(ecp, &tx);

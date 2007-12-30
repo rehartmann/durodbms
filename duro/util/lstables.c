@@ -121,7 +121,7 @@ print_tables(RDB_exec_context *ecp, RDB_transaction *txp, RDB_bool all,
         goto error;
     }
 
-    ret = RDB_table_to_array(&array, vtbp, 0, NULL, ecp, txp);
+    ret = RDB_table_to_array(&array, vtbp, 0, NULL, 0, ecp, txp);
     if (ret != RDB_OK) {
         goto error;
     } 

@@ -15,7 +15,7 @@ print_table1(RDB_object *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
 
     RDB_init_obj(&array);
 
-    ret = RDB_table_to_array(&array, tbp, 0, NULL, ecp, txp);
+    ret = RDB_table_to_array(&array, tbp, 0, NULL, 0, ecp, txp);
     if (ret != RDB_OK) {
         goto error;
     }
@@ -48,7 +48,7 @@ print_table2(RDB_object *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
 
     RDB_init_obj(&array);
 
-    ret = RDB_table_to_array(&array, tbp, 0, NULL, ecp, txp);
+    ret = RDB_table_to_array(&array, tbp, 0, NULL, 0, ecp, txp);
     if (ret != RDB_OK) {
         goto error;
     }

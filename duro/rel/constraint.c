@@ -71,7 +71,7 @@ _RDB_read_constraints(RDB_exec_context *ecp, RDB_transaction *txp)
 
     RDB_init_obj(&constrs);
 
-    ret = RDB_table_to_array(&constrs, dbrootp->constraints_tbp, 0, NULL, ecp,
+    ret = RDB_table_to_array(&constrs, dbrootp->constraints_tbp, 0, NULL, 0, ecp,
             txp);
     if (ret != RDB_OK)
         goto cleanup;
