@@ -80,12 +80,6 @@ error:
     return RDB_ERROR;
 }
 
-/* !! should be made configurable */
-enum {
-    ARRAY_BUFLEN_MIN = 256,
-    ARRAY_BUFLEN_MAX = 32768
-};
-
 /** @defgroup array Array functions 
  * @{
  */

@@ -713,7 +713,7 @@ table_def_cmd(TclState *statep, Tcl_Interp *interp, int objc,
     }
 
     RDB_init_obj(&defobj);
-    ret = _RDB_obj_to_str(&defobj, tbp, statep->current_ecp, txp, 0);
+    ret = _RDB_table_def_to_str(&defobj, tbp, statep->current_ecp, txp, 0);
     if (ret != RDB_OK) {
         RDB_destroy_obj(&defobj, statep->current_ecp);
         Duro_dberror(interp, RDB_get_err(statep->current_ecp), txp);

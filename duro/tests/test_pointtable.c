@@ -71,13 +71,6 @@ test_insert(RDB_database *dbp, RDB_exec_context *ecp)
     compv[0] = &xval;
     compv[1] = &yval;
     ret = RDB_call_ro_op("POINT", 2, compv, ecp, &tx, &pval);
-    if (ret != RDB_OK) {
-        fprintf(stderr, "Error at %s:%d: ", __FILE__, __LINE__);
-        RDB_print_obj(RDB_get_err(ecp), stderr, ecp, &tx);
-        fputs("\n", stderr);
-        abort();
-    }
-
     assert(ret == RDB_OK);
 
     ret = RDB_tuple_set(&tpl, "POINT", &pval, ecp);

@@ -9,6 +9,7 @@
 
 #include "iinterp.h"
 #include "stmtser.h"
+#include "tabletostr.h"
 #include <gen/hashmap.h>
 #include <gen/hashmapit.h>
 #include <rel/rdb.h>
@@ -229,6 +230,50 @@ println_bool_op(const char *name, int argc, RDB_object *argv[],
 }
 
 static int
+print_nonscalar_op(const char *name, int argc, RDB_object *argv[],
+        RDB_exec_context *ecp, RDB_transaction *txp)
+{
+    RDB_object strobj;
+
+    if (argc != 1) {
+        RDB_raise_invalid_argument("invalid # of arguments", ecp);
+        return RDB_ERROR;
+    }
+    if (RDB_obj_type(argv[0]) != NULL
+            && RDB_type_is_scalar(RDB_obj_type(argv[0]))) {
+        RDB_raise_type_mismatch(name, ecp);
+        return RDB_ERROR;
+    }
+
+    RDB_init_obj(&strobj);
+    if (_RDB_obj_to_str(&strobj, argv[0], ecp, txp) != RDB_OK) {
+        RDB_destroy_obj(&strobj, ecp);
+        return RDB_ERROR;
+    }
+    if (fputs(RDB_obj_string(&strobj), stdout) == EOF) {
+        RDB_destroy_obj(&strobj, ecp);
+        _RDB_handle_errcode(errno, ecp, txp);
+        return RDB_ERROR;
+    }
+        
+    RDB_destroy_obj(&strobj, ecp);
+    return RDB_OK;
+}
+
+static int
+println_nonscalar_op(const char *name, int argc, RDB_object *argv[],
+        RDB_exec_context *ecp, RDB_transaction *txp)
+{
+    if (print_nonscalar_op("PRINT", argc, argv, ecp, txp) != RDB_OK)
+        return RDB_ERROR;
+    if (puts("") == EOF) {
+        _RDB_handle_errcode(errno, ecp, txp);
+        return RDB_ERROR;
+    }
+    return RDB_OK;
+}
+
+static int
 print_string_op(const char *name, int argc, RDB_object *argv[],
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
@@ -244,6 +289,28 @@ print_int_op(const char *name, int argc, RDB_object *argv[],
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
     if (printf("%d", (int) RDB_obj_int(argv[0])) < 0) {
+        _RDB_handle_errcode(errno, ecp, txp);
+        return RDB_ERROR;
+    }
+    return RDB_OK;
+}
+
+static int
+print_float_op(const char *name, int argc, RDB_object *argv[],
+        RDB_exec_context *ecp, RDB_transaction *txp)
+{
+    if (printf("%f", (double) RDB_obj_float(argv[0])) < 0) {
+        _RDB_handle_errcode(errno, ecp, txp);
+        return RDB_ERROR;
+    }
+    return RDB_OK;
+}
+
+static int
+print_bool_op(const char *name, int argc, RDB_object *argv[],
+        RDB_exec_context *ecp, RDB_transaction *txp)
+{
+    if (fputs(RDB_obj_bool(argv[0]) ? "TRUE" : "FALSE", stdout) == EOF) {
         _RDB_handle_errcode(errno, ecp, txp);
         return RDB_ERROR;
     }
@@ -472,10 +539,22 @@ Duro_init_exec(RDB_exec_context *ecp, const char *dbname)
     if (RDB_put_op(&opmap, "PRINTLN", 1, print_bool_types, &println_bool_op, ecp)
             != RDB_OK)
         return RDB_ERROR;
+    if (RDB_put_op(&opmap, "PRINTLN", -1, NULL, &println_nonscalar_op, ecp)
+            != RDB_OK)
+        return RDB_ERROR;
     if (RDB_put_op(&opmap, "PRINT", 1, print_string_types, &print_string_op, ecp)
             != RDB_OK)
         return RDB_ERROR;
     if (RDB_put_op(&opmap, "PRINT", 1, print_int_types, &print_int_op, ecp)
+            != RDB_OK)
+        return RDB_ERROR;
+    if (RDB_put_op(&opmap, "PRINT", 1, print_float_types, &print_float_op, ecp)
+            != RDB_OK)
+        return RDB_ERROR;
+    if (RDB_put_op(&opmap, "PRINT", 1, print_bool_types, &print_bool_op, ecp)
+            != RDB_OK)
+        return RDB_ERROR;
+    if (RDB_put_op(&opmap, "PRINT", -1, NULL, &print_nonscalar_op, ecp)
             != RDB_OK)
         return RDB_ERROR;
     if (RDB_put_op(&opmap, "READLN", 1, readln_types, &readln_op, ecp)

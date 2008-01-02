@@ -833,7 +833,7 @@ uobj_to_tobj(Tcl_Interp *interp, const RDB_object *objp, RDB_exec_context *ecp,
     Tcl_Obj *tobjp;
 
     RDB_init_obj(&strobj);
-    ret = _RDB_obj_to_str(&strobj, objp, ecp, txp, 0);
+    ret = _RDB_obj_to_str(&strobj, objp, ecp, txp);
     if (ret != RDB_OK) {
         Duro_dberror(interp, RDB_get_err(ecp), txp);
         RDB_destroy_obj(&strobj, ecp);
