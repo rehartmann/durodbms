@@ -451,6 +451,26 @@ start: TOK_START_EXP expression {
     ;
 
 statement: statement_body ';'
+    | TOK_BEGIN ne_statement_list TOK_END {
+        /*
+         * Convert BEGIN ... END into IF TRUE THEN ... END IF
+         * BEGIN ... END is not really needed, and only supported
+         * for compatibility with TTM
+         */
+        RDB_expression *condp = RDB_bool_to_expr (RDB_TRUE, _RDB_parse_ecp);
+        if (condp == NULL)
+            YYERROR;
+        $$ = RDB_alloc(sizeof(RDB_parse_statement), _RDB_parse_ecp);
+        if ($$ == NULL) {
+            RDB_drop_expr(condp, _RDB_parse_ecp);
+            RDB_parse_del_stmtlist($2.firstp, _RDB_parse_ecp);
+            YYERROR;
+        }
+        $$->kind = RDB_STMT_IF;
+        $$->var.ifthen.condp = condp;
+        $$->var.ifthen.ifp = $2.firstp;
+    	$$->var.ifthen.elsep = NULL;
+    }
     | TOK_IF expression TOK_THEN ne_statement_list TOK_END TOK_IF {
         $$ = RDB_alloc(sizeof(RDB_parse_statement), _RDB_parse_ecp);
         if ($$ == NULL) {
