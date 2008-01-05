@@ -14,6 +14,8 @@ Changes for Duro 0.13
 
 - RDB_insert() and RDB_multi_assign() now support inserting tables.
 
+- RDB_table_to_array() now supports two modes (buffered and unbuffered).
+
 - Implemented interpreter Duro D/T.
 
 - Fixed bug in Duroadmin - now uses correct floating-point types.

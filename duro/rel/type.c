@@ -1852,9 +1852,13 @@ RDB_join_tuple_types(const RDB_type *typ1, const RDB_type *typ2,
 
     /* adjust array size, if necessary */    
     if (attrc < newtyp->var.tuple.attrc) {
+        void *p = RDB_realloc(newtyp->var.tuple.attrv,
+                sizeof(RDB_attr) * attrc, ecp);
+        if (p == NULL)
+            goto error;
+
         newtyp->var.tuple.attrc = attrc;
-        newtyp->var.tuple.attrv = realloc(newtyp->var.tuple.attrv,
-                sizeof(RDB_attr) * attrc);
+        newtyp->var.tuple.attrv = p;
     }
     return newtyp;
 

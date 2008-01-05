@@ -5,7 +5,7 @@
 $Id$
 
 This file is part of Duro, a relational database library.
-Copyright (C) 2003-2007 René Hartmann.
+Copyright (C) 2003-2008 René Hartmann.
 
 Duro is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -31,7 +31,8 @@ along with Duro; if not, write to the Free Software Foundation, Inc.,
 #include <stdlib.h>
 
 enum {
-    RDB_ERROR = -1
+    RDB_ERROR = -1,
+    RDB_UNBUFFERED = 1
 };
 
 typedef struct {

@@ -229,10 +229,9 @@ keys_to_indexes(RDB_object *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
         tbp->var.tb.stp->indexv = NULL;
 
     tbp->var.tb.stp->indexc += tbp->var.tb.keyc;
-    tbp->var.tb.stp->indexv = realloc(tbp->var.tb.stp->indexv,
-            sizeof (_RDB_tbindex) * tbp->var.tb.stp->indexc);
+    tbp->var.tb.stp->indexv = RDB_realloc(tbp->var.tb.stp->indexv,
+            sizeof (_RDB_tbindex) * tbp->var.tb.stp->indexc, ecp);
     if (tbp->var.tb.stp->indexv == NULL) {
-        RDB_raise_no_memory(ecp);
         return RDB_ERROR;
     }
 

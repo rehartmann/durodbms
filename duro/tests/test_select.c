@@ -1,10 +1,12 @@
 /* $Id$ */
 
 #include <rel/rdb.h>
+
 #include <stdlib.h>
 #include <stdio.h>
+#include <assert.h>
 
-int
+void
 test_select(RDB_database *dbp, RDB_exec_context *ecp)
 {
     RDB_transaction tx;
@@ -12,107 +14,79 @@ test_select(RDB_database *dbp, RDB_exec_context *ecp)
     RDB_object array;
     RDB_object *tplp;
     RDB_expression *exp, *argp;
-    int ret;
     RDB_int i;
 
-    ret = RDB_begin_tx(ecp, &tx, dbp, NULL);
-    if (ret != RDB_OK) {
-        return RDB_ERROR;
-    }
+    assert(RDB_begin_tx(ecp, &tx, dbp, NULL) == RDB_OK);
 
     tbp = RDB_get_table("EMPS1", ecp, &tx);
-    if (tbp == NULL) {
-        RDB_rollback(ecp, &tx);
-        return RDB_ERROR;
-    }
+    assert(tbp != NULL);
 
     RDB_init_obj(&array);
 
     exp = RDB_ro_op("WHERE", ecp);
-    if (exp == NULL)
-        goto error;
+    assert(exp != NULL);
 
     argp = RDB_table_ref(tbp, ecp);
-    if (argp == NULL)
-        goto error;
+    assert(argp != NULL);
     RDB_add_arg(exp, argp);
 
     argp = RDB_eq(RDB_var_ref("NAME", ecp), RDB_string_to_expr("Smith", ecp),
             ecp);
-    if (argp == NULL)
-        goto error;
+    assert(argp != NULL);
     RDB_add_arg(exp, argp);
 
     vtbp = RDB_expr_to_vtable(exp, ecp, &tx);
-    if (vtbp == NULL) {
-        goto error;
-    }
+    assert(vtbp != NULL);
 
-    ret = RDB_table_to_array(&array, vtbp, 0, NULL, 0, ecp, &tx);
-    if (ret != RDB_OK) {
-        goto error;
-    } 
+    assert(RDB_table_to_array(&array, vtbp, 0, NULL, RDB_UNBUFFERED, ecp, &tx) == RDB_OK);
 
     for (i = 0; (tplp = RDB_array_get(&array, i, ecp)) != NULL; i++) {
         printf("EMPNO: %d\n", (int)RDB_tuple_get_int(tplp, "EMPNO"));
         printf("NAME: %s\n", RDB_tuple_get_string(tplp, "NAME"));
         printf("SALARY: %f\n", (double)RDB_tuple_get_float(tplp, "SALARY"));
     }
-    if (RDB_obj_type(RDB_get_err(ecp)) != &RDB_NOT_FOUND_ERROR) {
-        goto error;
-    }
+    assert(RDB_obj_type(RDB_get_err(ecp)) == &RDB_NOT_FOUND_ERROR);
     RDB_clear_err(ecp);
 
-    RDB_destroy_obj(&array, ecp);
+    /* Must destroy the array before the table because of RDB_UNBUFFERED. */
+    assert(RDB_destroy_obj(&array, ecp) == RDB_OK);
 
-    RDB_drop_table(vtbp, ecp, &tx);
+    assert(RDB_drop_table(vtbp, ecp, &tx) == RDB_OK);
 
     RDB_init_obj(&array);
 
     exp = RDB_ro_op("WHERE", ecp);
-    if (exp == NULL)
-        goto error;
+    assert(exp != NULL);
 
     argp = RDB_table_ref(tbp, ecp);
-    if (argp == NULL)
-        goto error;
+    assert(argp != NULL);
     RDB_add_arg(exp, argp);
 
     argp = RDB_eq(RDB_var_ref("EMPNO", ecp), RDB_int_to_expr(1, ecp), ecp);
-    if (argp == NULL)
-        goto error;
+    assert(argp != NULL);
     RDB_add_arg(exp, argp);
     
     vtbp = RDB_expr_to_vtable(exp, ecp, &tx);
-    if (vtbp == NULL) {
-        RDB_rollback(ecp, &tx);
-        return RDB_ERROR;
-    }
+    assert(vtbp != NULL);
 
-    ret = RDB_table_to_array(&array, vtbp, 0, NULL, 0, ecp, &tx);
-    if (ret != RDB_OK) {
-        goto error;
-    } 
+    assert(RDB_table_to_array(&array, vtbp, 0, NULL, 0, ecp, &tx) == RDB_OK);
+
+    /*
+     * Dropping the table must be OK, since RDB_table_to_array was not called
+     * with RDB_UNBUFFERED.
+     */
+    assert(RDB_drop_table(vtbp, ecp, &tx) == RDB_OK);
 
     for (i = 0; (tplp = RDB_array_get(&array, i, ecp)) != NULL; i++) {
         printf("EMPNO: %d\n", (int)RDB_tuple_get_int(tplp, "EMPNO"));
         printf("NAME: %s\n", RDB_tuple_get_string(tplp, "NAME"));
         printf("SALARY: %f\n", (double)RDB_tuple_get_float(tplp, "SALARY"));
     }
-    if (RDB_obj_type(RDB_get_err(ecp)) != &RDB_NOT_FOUND_ERROR) {
-        goto error;
-    }
+    assert(RDB_obj_type(RDB_get_err(ecp)) == &RDB_NOT_FOUND_ERROR);
 
-    RDB_destroy_obj(&array, ecp);
+    assert(RDB_destroy_obj(&array, ecp) == RDB_OK);
 
-    RDB_drop_table(vtbp, ecp, &tx);
-
-    return RDB_commit(ecp, &tx);
-
-error:
-    RDB_destroy_obj(&array, ecp);
-    RDB_rollback(ecp, &tx);
-    return RDB_ERROR;
+    assert(RDB_commit(ecp, &tx) == RDB_OK);
 }
 
 int
@@ -120,37 +94,20 @@ main(void)
 {
     RDB_environment *envp;
     RDB_database *dbp;
-    int ret;
     RDB_exec_context ec;
     
-    ret = RDB_open_env("dbenv", &envp);
-    if (ret != 0) {
-        fprintf(stderr, "Error: %s\n", db_strerror(ret));
-        return 1;
-    }
+    assert(RDB_open_env("dbenv", &envp) == RDB_OK);
 
     RDB_bdb_env(envp)->set_errfile(RDB_bdb_env(envp), stderr);
 
     RDB_init_exec_context(&ec);
     dbp = RDB_get_db_from_env("TEST", envp, &ec);
-    if (dbp == NULL) {
-        fprintf(stderr, "Error: %s\n", RDB_type_name(RDB_obj_type(RDB_get_err(&ec))));
-        return 1;
-    }
+    assert(dbp != NULL);
 
-    ret = test_select(dbp, &ec);
-    if (ret != RDB_OK) {
-        fprintf(stderr, "Error: %s\n", RDB_type_name(RDB_obj_type(RDB_get_err(&ec))));
-        RDB_destroy_exec_context(&ec);
-        return 2;
-    }
+    test_select(dbp, &ec);
     RDB_destroy_exec_context(&ec);
 
-    ret = RDB_close_env(envp);
-    if (ret != RDB_OK) {
-        fprintf(stderr, "Error: %s\n", db_strerror(ret));
-        return 2;
-    }
+    assert(RDB_close_env(envp) == RDB_OK);
 
     return 0;
 }

@@ -1,7 +1,7 @@
 /*
  * $Id$
  *
- * Copyright (C) 2003-2005 René Hartmann.
+ * Copyright (C) 2003-2008 René Hartmann.
  * See the file COPYING for redistribution information.
  */
 
@@ -12,6 +12,21 @@
 #include "optimize.h"
 
 static int
+enlarge_buf(RDB_object *arrp, RDB_int len, RDB_exec_context *ecp)
+{
+    int i;
+    void *vp = RDB_realloc(arrp->var.arr.elemv, sizeof (RDB_object) * len, ecp);
+    if (vp == NULL)
+        return RDB_ERROR;
+
+    arrp->var.arr.elemv = vp;
+    for (i = arrp->var.arr.elemc; i < len; i++)
+        RDB_init_obj(&arrp->var.arr.elemv[i]);
+    arrp->var.arr.elemc = len;
+    return RDB_OK;
+}
+
+static int
 init_expr_array(RDB_object *arrp, RDB_expression *texp,
                    int seqitc, const RDB_seq_item seqitv[], int flags,
                    RDB_exec_context *ecp, RDB_transaction *txp)
@@ -19,29 +34,9 @@ init_expr_array(RDB_object *arrp, RDB_expression *texp,
     RDB_qresult *qrp = NULL;
     _RDB_tbindex *indexp = NULL;
 
-    if (arrp->kind == RDB_OB_ARRAY && arrp->var.arr.texp != NULL) {
-        if (arrp->var.arr.elemv != NULL) {
-            int i;
-
-            for (i = 0; i < arrp->var.arr.elemc; i++)
-                RDB_destroy_obj(&arrp->var.arr.elemv[i], ecp);
-            RDB_free(arrp->var.arr.elemv);
-        }
-
-        if (arrp->var.arr.qrp != NULL) {
-            if (_RDB_drop_qresult(arrp->var.arr.qrp, ecp,
-                    arrp->var.arr.txp) != RDB_OK)
-                return RDB_ERROR;
-        }
-        
-        if (RDB_drop_expr(arrp->var.arr.texp, ecp) != RDB_OK)
+    if (arrp->kind == RDB_OB_ARRAY) {
+        if (RDB_destroy_obj(arrp, ecp) != RDB_OK)
             return RDB_ERROR;
-        
-        if (arrp->var.arr.tplp != NULL) {
-            if (RDB_destroy_obj(arrp->var.arr.tplp, ecp) != RDB_OK)
-                return RDB_ERROR;
-            RDB_free(arrp->var.arr.tplp);
-        }
     }
 
     if (seqitc > 0) {
@@ -64,14 +59,47 @@ init_expr_array(RDB_object *arrp, RDB_expression *texp,
 
     arrp->kind = RDB_OB_ARRAY;
     arrp->var.arr.elemv = NULL;
-    arrp->var.arr.pos = 0;
-    arrp->var.arr.texp = texp;
-    arrp->var.arr.txp = txp;
-    arrp->var.arr.length = -1;
     arrp->var.arr.tplp = NULL;
-    arrp->var.arr.qrp = qrp;
+    if (RDB_UNBUFFERED & flags) {
+        arrp->var.arr.pos = 0;
+        arrp->var.arr.texp = texp;
+        arrp->var.arr.txp = txp;
+        arrp->var.arr.length = -1;
+        arrp->var.arr.qrp = qrp;
 
-    return RDB_OK;
+        return RDB_OK;
+    }
+
+    arrp->var.arr.texp = NULL;
+    arrp->var.arr.length = 0;
+    arrp->var.arr.tplp = NULL;
+    arrp->var.arr.qrp = NULL;
+    arrp->var.arr.elemc = 0;
+
+    for(;;) {
+        /* Extend elemv if necessary to make room for the next element */
+        if (arrp->var.arr.elemc <= arrp->var.arr.length) {
+            if (enlarge_buf(arrp, arrp->var.arr.elemc + 256, ecp) != RDB_OK) {
+                goto error;
+            }
+        }
+
+        /* Get next tuple */
+        if (_RDB_next_tuple(qrp, &arrp->var.arr.elemv[arrp->var.arr.length],
+                ecp, txp) != RDB_OK)
+            break;
+        arrp->var.arr.length++;
+    }
+    if (RDB_obj_type(RDB_get_err(ecp)) != &RDB_NOT_FOUND_ERROR)
+        goto error;
+    RDB_clear_err(ecp);
+
+    if (_RDB_drop_qresult(qrp, ecp, txp) != RDB_OK) {
+        qrp = NULL;
+        goto error;
+    }
+
+    return RDB_drop_expr(texp, ecp);
 
 error:
     if (qrp != NULL)
@@ -96,18 +124,28 @@ If <var>seqitc</var> is zero, the order of the tuples is undefined.
 If <var>seqitc</var> is greater than zero, the order of the tuples
 is specified by <var>seqitv</var>.
 
-@returns
+@param flags    Must be 0 or RDB_UNBUFFERED. If flags is set to RDB_UNBUFFERED,
+an array access will result in an access to *<var>tbp</var>
+with the following consequences:
+<ul>
+<li>*<var>tbp</var> must not be deleted before the array is destroyed.
+<li>*<var>arrp</var> will become inaccessible if the transaction
+is committed or rolled back.
+<li>Write access to *<var>arrp</var> is not supported.
+</ul>
 
+@returns
 RDB_OK on success, RDB_ERROR if an error occurred.
 
 @par Errors:
-
 <dl>
 <dt>RDB_NO_RUNNING_TX_ERROR
 <dd><var>txp</var> does not point to a running transaction.
 <dt>RDB_OPERATOR_NOT_FOUND_ERROR
 <dd>The definition of the table specified by <var>tbp</var>
 refers to a non-existing operator.
+<dt>RDB_INVALID_ARGUMENT
+<dd>*<var>arrp</var> is neither newly initialized nor an array.
 </dl>
 
 The call may also fail for a @ref system-errors "system error",
@@ -130,7 +168,7 @@ RDB_table_to_array(RDB_object *arrp, RDB_object *tbp,
     if (texp == NULL)
         return RDB_ERROR;
 
-    ret = init_expr_array(arrp, texp, seqitc, seqitv, 0, ecp, txp);
+    ret = init_expr_array(arrp, texp, seqitc, seqitv, flags, ecp, txp);
     if (ret != RDB_OK)
         RDB_drop_expr(texp, NULL);
     return ret;
@@ -154,11 +192,9 @@ This pointer may become invalid after the next invocation of RDB_array_get().
 The pointer will become invalid when the array is destroyed.
 
 @returns
-
 A pointer to the array element, or NULL if an error occurred.
 
 @par Errors:
-
 <dl>
 <dt>RDB_NOT_FOUND_ERROR
 <dd><var>idx</var> exceeds the array length.
@@ -235,12 +271,10 @@ RDB_array_get(RDB_object *arrp, RDB_int idx, RDB_exec_context *ecp)
  * RDB_array_length returns the length of an array.
 
 @returns
-
 The length of the array. A return code lower than zero
 indicates an error.
 
 @par Errors:
-
 <dl>
 <dt>RDB_OPERATOR_NOT_FOUND_ERROR
 <dd>The array was created from a table which refers to a non-existing
@@ -274,17 +308,15 @@ RDB_array_length(RDB_object *arrp, RDB_exec_context *ecp)
 <var>arrp</var>.
 
 This function is not supported for arrays which have been created
-using RDB_table_to_array.
+using RDB_table_to_array with the RDB_UNBUFFERED flag.
 
 @returns
-
 RDB_OK on success, RDB_ERROR if an error occurred.
 
 @par Errors:
-
 <dl>
 <dt>RDB_NOT_SUPPORTED_ERROR
-<dd>The array has been created using RDB_table_to_array.
+<dd>The array has been created using RDB_table_to_array with the RDB_UNBUFFERED flag.
 </dl>
  */
 int
@@ -315,20 +347,21 @@ RDB_set_array_length(RDB_object *arrp, RDB_int len, RDB_exec_context *ecp)
     }
 
     if (len < arrp->var.arr.length) {
+        void *vp;
         /* Shrink array */
         for (i = len; i < arrp->var.arr.length; i++) {
             ret = RDB_destroy_obj(&arrp->var.arr.elemv[i], ecp);
             if (ret != RDB_OK)
                 return ret;
-        }            
-        arrp->var.arr.elemv = realloc(arrp->var.arr.elemv,
-                sizeof (RDB_object) * len);
+        }
+        vp = RDB_realloc(arrp->var.arr.elemv, sizeof (RDB_object) * len, ecp);
+        if (vp == NULL)
+            return RDB_ERROR;
+        arrp->var.arr.elemv = vp;
     } else if (len < arrp->var.arr.length) {
         /* Enlarge array */
-        arrp->var.arr.elemv = realloc(arrp->var.arr.elemv,
-                sizeof (RDB_object) * len);
-        for (i = arrp->var.arr.length; i < len; i++)
-            RDB_init_obj(&arrp->var.arr.elemv[i]);
+        if (enlarge_buf(arrp, len, ecp) != RDB_OK)
+            return RDB_ERROR;
     }
     arrp->var.arr.length = len;
         
@@ -340,19 +373,17 @@ RDB_set_array_length(RDB_object *arrp, RDB_int len, RDB_exec_context *ecp)
 into the RDB_object at index <var>idx</var>.
 
 RDB_array_set is not supported for arrays which have been created
-using RDB_table_to_array.
+using RDB_table_to_array with the RDB_UNBUFFERED flag.
 
 @returns
-
 RDB_OK on success, RDB_ERROR if an error occurred.
 
 @par Errors:
-
 <dl>
 <dt>RDB_NOT_FOUND_ERROR
 <dd><var>idx</var> exceeds the array length.
 <dt>RDB_NOT_SUPPORTED_ERROR
-<dd>The table has been created using RDB_table_to_array.
+<dd>The table has been created using RDB_table_to_array with the RDB_UNBUFFERED flag.
 </dl>
 
 The call may also fail for a @ref system-errors "system error".

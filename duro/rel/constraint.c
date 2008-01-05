@@ -1,7 +1,7 @@
 /*
  * $Id$
  *
- * Copyright (C) 2005-2006 René Hartmann.
+ * Copyright (C) 2005-2008 René Hartmann.
  * See the file COPYING for redistribution information.
  *
  *
@@ -71,8 +71,8 @@ _RDB_read_constraints(RDB_exec_context *ecp, RDB_transaction *txp)
 
     RDB_init_obj(&constrs);
 
-    ret = RDB_table_to_array(&constrs, dbrootp->constraints_tbp, 0, NULL, 0, ecp,
-            txp);
+    ret = RDB_table_to_array(&constrs, dbrootp->constraints_tbp, 0, NULL,
+            RDB_UNBUFFERED, ecp, txp);
     if (ret != RDB_OK)
         goto cleanup;
 
@@ -127,12 +127,9 @@ cleanup:
 RDB_create_constraint creates a constraint with the name <var>name</var>
 on the database the transaction specified by <var>txp</var> interacts with.
 
-@returns
-
-RDB_OK on success, RDB_ERROR if an error occurred.
+@returns RDB_OK on success, RDB_ERROR if an error occurred.
 
 @par Errors:
-
 <dl>
 <dt>RDB_NO_RUNNING_TX_ERROR
 <dd><var>txp</var> does not point to a running transaction.
@@ -209,12 +206,9 @@ error:
 /**
  * RDB_drop_constraint deletes the constraint with the name <var>name</var>.
 
-@returns
-
-RDB_OK on success, RDB_ERROR if an error occurred.
+@returns RDB_OK on success, RDB_ERROR if an error occurred.
 
 @par Errors:
-
 <dl>
 <dt>RDB_NO_RUNNING_TX_ERROR
 <dd><var>txp</var> does not point to a running transaction.

@@ -927,6 +927,10 @@ error:
     return NULL;
 }
 
+/*
+ * Get the type of an expression. The type is managed by the expression.
+ * After RDB_expr_type() has been called once, future calls will return the same type.
+ */
 RDB_type *
 RDB_expr_type(RDB_expression *exp, RDB_gettypefn *getfnp, void *arg,
         RDB_exec_context *ecp, RDB_transaction *txp)
@@ -2218,9 +2222,8 @@ _RDB_invrename_expr(RDB_expression *exp, RDB_expression *texp,
             /* If found, replace it */
             if (argp != NULL) {
                 char *from = RDB_obj_string(&argp->var.obj);
-                char *name = realloc(exp->var.varname, strlen(from) + 1);
+                char *name = RDB_realloc(exp->var.varname, strlen(from) + 1, ecp);
                 if (name == NULL) {
-                    RDB_raise_no_memory(ecp);
                     return RDB_ERROR;
                 }
 

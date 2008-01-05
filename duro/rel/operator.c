@@ -54,9 +54,7 @@ Overloading operators is possible.
 
 Array-valued return types are not supported.
 
-@returns
-
-RDB_OK on success, RDB_ERROR if an error occurred.
+@returns RDB_OK on success, RDB_ERROR if an error occurred.
 
 @par Errors:
 
@@ -205,9 +203,7 @@ This can be used to pass code to an interpreter function.
 
 Overloading operators is possible.
 
-@returns
-
-RDB_OK on success, RDB_ERROR if an error occurred.
+@returns RDB_OK on success, RDB_ERROR if an error occurred.
 
 @par Errors:
 
@@ -364,9 +360,7 @@ passing the arguments in <var>argc</var> and <var>argv</var>.
 The result will be stored at the location pointed to by
 <var>retvalp</var>. 
 
-@returns
-
-RDB_OK on success, RDB_ERROR if an error occurred.
+@returns RDB_OK on success, RDB_ERROR if an error occurred.
 
 @par Errors:
 
@@ -521,10 +515,9 @@ error:
 /**
  * RDB_call_update_op invokes the update operator with the name <var>name</var>,
 passing the arguments in <var>argc</var> and <var>argv</var>.
+The arguments must carry type information.
 
-@returns
-
-RDB_OK on success, RDB_ERROR if an error occurred.
+@returns RDB_OK on success, RDB_ERROR if an error occurred.
 
 @par Errors:
 
@@ -582,9 +575,7 @@ RDB_call_update_op(const char *name, int argc, RDB_object *argv[],
  * RDB_drop_op deletes the operator with the name <var>name</var>
 from the database. This affects all overloaded versions.
 
-@returns
-
-RDB_OK on success, RDB_ERROR if an error occurred.
+@returns RDB_OK on success, RDB_ERROR if an error occurred.
 
 @par Errors:
 

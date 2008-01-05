@@ -1176,6 +1176,12 @@ exec_call(const RDB_parse_statement *stmtp, RDB_exec_context *ecp)
             argpv[i] = &argv[i];
         }            
         argtv[i] = RDB_obj_type(argpv[i]);
+        if (argtv[i] == NULL) {
+            argtv[i] = RDB_expr_type(argp, &get_var_type, current_varmapp, ecp,
+                    txnp != NULL ? &txnp->tx : NULL);
+            if (argtv[i] == NULL)
+                return RDB_ERROR;
+        }
         i++;
         argp = argp->nextp;
     }

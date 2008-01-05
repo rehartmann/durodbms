@@ -51,9 +51,8 @@ alter_op(RDB_expression *exp, const char *name, RDB_exec_context *ecp)
 {
     char *newname;
 
-    newname = realloc(exp->var.op.name, strlen(name) + 1);
+    newname = RDB_realloc(exp->var.op.name, strlen(name) + 1, ecp);
     if (newname == NULL) {
-        RDB_raise_no_memory(ecp);
         return RDB_ERROR;
     }
     strcpy(newname, name);

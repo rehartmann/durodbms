@@ -278,7 +278,6 @@ specified by <var>txt</var>.
 @returns The parsed expression, or NULL if the parsing failed.
 
 @par Errors:
-
 <dl>
 <dt>RDB_SYNTAX_ERROR
 <dd>A syntax error occurred during parsing.

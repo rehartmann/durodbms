@@ -36,10 +36,13 @@ test ptarray {array from private table} -body {
         println(a[2].i);
 
         load a from r order(c desc, i asc);
+
+        drop var r;
+
         println(a[0].i);
         println(a[1].i);
         println(a[2].i);
-        
+
         println(length(a));
         
         var i same_type_as(length(a));

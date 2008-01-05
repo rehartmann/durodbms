@@ -441,10 +441,9 @@ summarize_qresult(RDB_qresult *qrp, RDB_expression *exp, RDB_exec_context *ecp,
     }
     if (hasavg) {
         int attrc = reltyp->var.basetyp->var.tuple.attrc + 1;
-        RDB_attr *attrv = realloc(reltyp->var.basetyp->var.tuple.attrv,
-                attrc * sizeof (RDB_attr));
+        RDB_attr *attrv = RDB_realloc(reltyp->var.basetyp->var.tuple.attrv,
+                attrc * sizeof (RDB_attr), ecp);
         if (attrv == NULL) {
-            RDB_raise_no_memory(ecp);
             goto error;
         }
         attrv[attrc - 1].name = RDB_dup_str(AVG_COUNT);

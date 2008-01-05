@@ -719,9 +719,8 @@ _RDB_remove_to_project(RDB_expression *exp, RDB_exec_context *ecp,
         goto error;
     }
 
-    opname = realloc(exp->var.op.name, 8);
+    opname = RDB_realloc(exp->var.op.name, 8, ecp);
     if (opname == NULL) {
-        RDB_raise_no_memory(ecp);
         goto error;
     }
     strcpy(opname, "PROJECT");

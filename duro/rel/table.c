@@ -1,7 +1,7 @@
 /*
  * $Id$
  *
- * Copyright (C) 2003-2007 René Hartmann.
+ * Copyright (C) 2003-2008 René Hartmann.
  * See the file COPYING for redistribution information.
  */
 
@@ -451,7 +451,7 @@ RDB_all(RDB_object *tbp, const char *attrname, RDB_exec_context *ecp,
 
     RDB_init_obj(&arr);
 
-    ret = RDB_table_to_array(&arr, tbp, 0, NULL, 0, ecp, txp);
+    ret = RDB_table_to_array(&arr, tbp, 0, NULL, RDB_UNBUFFERED, ecp, txp);
     if (ret != RDB_OK) {
         RDB_destroy_obj(&arr, ecp);
         return RDB_ERROR;
@@ -543,7 +543,7 @@ RDB_any(RDB_object *tbp, const char *attrname, RDB_exec_context *ecp,
 
     RDB_init_obj(&arr);
 
-    ret = RDB_table_to_array(&arr, tbp, 0, NULL, 0, ecp, txp);
+    ret = RDB_table_to_array(&arr, tbp, 0, NULL, RDB_UNBUFFERED, ecp, txp);
     if (ret != RDB_OK) {
         RDB_destroy_obj(&arr, ecp);
         return ret;
@@ -637,7 +637,7 @@ RDB_max(RDB_object *tbp, const char *attrname, RDB_exec_context *ecp,
 
     RDB_init_obj(&arr);
 
-    if (RDB_table_to_array(&arr, tbp, 0, NULL, 0, ecp, txp) != RDB_OK) {
+    if (RDB_table_to_array(&arr, tbp, 0, NULL, RDB_UNBUFFERED, ecp, txp) != RDB_OK) {
         RDB_destroy_obj(&arr, ecp);
         return RDB_ERROR;
     }
@@ -740,7 +740,7 @@ RDB_min(RDB_object *tbp, const char *attrname, RDB_exec_context *ecp,
 
     RDB_init_obj(&arr);
 
-    ret = RDB_table_to_array(&arr, tbp, 0, NULL, 0, ecp, txp);
+    ret = RDB_table_to_array(&arr, tbp, 0, NULL, RDB_UNBUFFERED, ecp, txp);
     if (ret != RDB_OK) {
         RDB_destroy_obj(&arr, ecp);
         return ret;
@@ -844,7 +844,7 @@ RDB_sum(RDB_object *tbp, const char *attrname, RDB_exec_context *ecp,
 
     RDB_init_obj(&arr);
 
-    ret = RDB_table_to_array(&arr, tbp, 0, NULL, 0, ecp, txp);
+    ret = RDB_table_to_array(&arr, tbp, 0, NULL, RDB_UNBUFFERED, ecp, txp);
     if (ret != RDB_OK) {
         RDB_destroy_obj(&arr, ecp);
         return ret;
@@ -941,7 +941,7 @@ RDB_avg(RDB_object *tbp, const char *attrname, RDB_exec_context *ecp,
 
     RDB_init_obj(&arr);
 
-    ret = RDB_table_to_array(&arr, tbp, 0, NULL, 0, ecp, txp);
+    ret = RDB_table_to_array(&arr, tbp, 0, NULL, RDB_UNBUFFERED, ecp, txp);
     if (ret != RDB_OK) {
         RDB_destroy_obj(&arr, ecp);
         return ret;
@@ -1519,10 +1519,9 @@ RDB_create_table_index(const char *name, RDB_object *tbp, int idxcompc,
     }
 
     if (tbp->var.tb.stp != NULL) {
-        tbp->var.tb.stp->indexv = realloc(tbp->var.tb.stp->indexv,
-                (tbp->var.tb.stp->indexc + 1) * sizeof (_RDB_tbindex));
+        tbp->var.tb.stp->indexv = RDB_realloc(tbp->var.tb.stp->indexv,
+                (tbp->var.tb.stp->indexc + 1) * sizeof (_RDB_tbindex), ecp);
         if (tbp->var.tb.stp->indexv == NULL) {
-            RDB_raise_no_memory(ecp);
             return RDB_ERROR;
         }
 
@@ -1564,8 +1563,8 @@ RDB_create_table_index(const char *name, RDB_object *tbp, int idxcompc,
 error:
     if (tbp->var.tb.stp != NULL) {
         /* Remove index entry */
-        void *ivp = realloc(tbp->var.tb.stp->indexv,
-                (--tbp->var.tb.stp->indexc) * sizeof (_RDB_tbindex));
+        void *ivp = RDB_realloc(tbp->var.tb.stp->indexv,
+                (--tbp->var.tb.stp->indexc) * sizeof (_RDB_tbindex), ecp);
         if (ivp != NULL)
             tbp->var.tb.stp->indexv = ivp;
     }
@@ -1598,6 +1597,7 @@ RDB_drop_table_index(const char *name, RDB_exec_context *ecp,
     int xi;
     char *tbname;
     RDB_object *tbp;
+    void *p;
 
     if (!_RDB_legal_name(name)) {
         RDB_raise_not_found("invalid index name", ecp);
@@ -1658,8 +1658,11 @@ RDB_drop_table_index(const char *name, RDB_exec_context *ecp,
         tbp->var.tb.stp->indexv[i] = tbp->var.tb.stp->indexv[i + 1];
     }
 
-    realloc(tbp->var.tb.stp->indexv,
-            sizeof(_RDB_tbindex) * tbp->var.tb.stp->indexc);
+    p = RDB_realloc(tbp->var.tb.stp->indexv,
+            sizeof(_RDB_tbindex) * tbp->var.tb.stp->indexc, ecp);
+    if (p == NULL)
+        return RDB_ERROR;
+    tbp->var.tb.stp->indexv = p;
 
     return RDB_OK;
 }
