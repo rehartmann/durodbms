@@ -1,7 +1,7 @@
 /*
  * $Id$
  *
- * Copyright (C) 2007 René Hartmann.
+ * Copyright (C) 2007-2008 René Hartmann.
  * See the file COPYING for redistribution information.
  *
  * Statement execution functions.
@@ -387,8 +387,7 @@ create_db_op(const char *name, int argc, RDB_object *argv[],
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
     if (envp == NULL) {
-        /* !! */
-        printf("No env\n");
+        RDB_raise_resource_not_found("no environment", ecp);
         return RDB_ERROR;
     }
 
@@ -909,11 +908,11 @@ keylist_to_keyv(RDB_parse_keydef *firstkeyp, int *keycp, RDB_exec_context *ecp)
 static int
 exec_vardef_real(RDB_parse_statement *stmtp, RDB_exec_context *ecp)
 {
-    RDB_object *tbp;
     RDB_string_vec *keyv;
     RDB_bool freekey;
     RDB_object tb;
     RDB_type *tbtyp;
+    RDB_object *tbp = NULL;
     int keyc = 0;
     char *varname = RDB_obj_string(&stmtp->var.vardef.varname);
 
@@ -978,10 +977,19 @@ exec_vardef_real(RDB_parse_statement *stmtp, RDB_exec_context *ecp)
     return RDB_OK;
 
 error:
-    if (tbtyp != NULL && !RDB_type_is_scalar(tbtyp))
-        RDB_drop_type(tbtyp, ecp, NULL);
-    if (stmtp->var.vardef.exp != NULL) {        
-        RDB_destroy_obj(&tb, ecp);
+    {
+        RDB_exec_context ec;
+        
+        RDB_init_exec_context(&ec);
+        if (tbp != NULL) {
+            RDB_drop_table(tbp, &ec, &txnp->tx);
+        } else if (tbtyp != NULL && !RDB_type_is_scalar(tbtyp)) {
+            RDB_drop_type(tbtyp, &ec, NULL);
+       }
+        if (stmtp->var.vardef.exp != NULL) {        
+            RDB_destroy_obj(&tb, &ec);
+        }
+        RDB_destroy_exec_context(&ec);
     }
     return RDB_ERROR;
 }

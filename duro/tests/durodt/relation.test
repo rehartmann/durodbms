@@ -87,6 +87,26 @@ Y
 3
 }
 
+test ra {relational algebra} -setup $SETUP -body {
+    exec $testdir/../../dli/durodt << {
+        connect('', 'dbenv');
+        current_db := 'D';
+
+        begin transaction;
+
+        var t1 real relation {a integer, b string}
+        		init relation { tuple {a 1, b 'x'}, tuple {a 2, b 'y'} } key {a};
+        var t2 real relation {a integer} key {a};
+
+        insert t2 relation { tuple {a 2}, tuple {a 3} };
+
+        println(with t1 {a} as p, p intersect t2 as is: (tuple from is).a);
+
+        commit;
+    }
+} -result {2
+}
+
 test updop {user defined update operators} -setup $SETUP -body {
     exec $testdir/../../dli/durodt << {
         connect('', 'dbenv');

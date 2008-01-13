@@ -423,6 +423,10 @@ DESC {
     return TOK_DESC;
 }
 
+WITH {
+    return TOK_WITH;
+}
+
 \|\| {
     return TOK_CONCAT;
 }
@@ -545,7 +549,7 @@ DESC {
         }
     }
 
-[=><+\-*/{},().;\[\]] return yytext[0];
+[=><+\-*/{},().;\[\]:] return yytext[0];
 
 . {
     char buf[40];

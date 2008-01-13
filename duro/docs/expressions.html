@@ -24,7 +24,7 @@ the second edition of TTM.
 <pre>
 expression = or_expression | extractor | ifthenelse | relation | project
         | select | rename | extend | summarize | wrap | unwrap | group
-        | ungroup | divideby.
+        | ungroup | divideby | with.
 
 project = expression '{' [ALL BUT] [id {',' id}] '}'.
 
@@ -50,7 +50,7 @@ summary = COUNT '(' ')' | summary_type '(' expression ')'.
 
 summary_type = SUM | AVG | MAX | MIN | ALL | ANY.
 
-wrap   = expression WRAP '(' [wrapping {',' wrapping}] ')'.
+wrap = expression WRAP '(' [wrapping {',' wrapping}] ')'.
 
 wrapping = '{' [id {',' id}] '}' AS id.
 
@@ -59,6 +59,8 @@ unwrap = expression UNWRAP '(' [id {',' id}] ')'.
 group  = expression GROUP '{' [id {',' id}] '}' AS id.
 
 ungroup = expression UNGROUP id.
+
+with = WITH [expression AS id {',' expression AS id}] ':' expression.
 
 or_expression = and_expression | or_expression OR and_expression.
 

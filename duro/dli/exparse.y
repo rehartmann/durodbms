@@ -1,6 +1,7 @@
-/* $Id$
+/*
+ * $Id$
  *
- * Copyright (C) 2004-2007 René Hartmann.
+ * Copyright (C) 2004-2008 René Hartmann.
  * See the file COPYING for redistribution information.
  */
 
@@ -160,6 +161,9 @@ new_ro_op_def(const char *name, RDB_expr_list *arglistp, RDB_expression *rtypexp
   	    goto error;
     for (i = 0; i < argc; i++) {
         RDB_init_obj(&stmtp->var.opdef.argv[i].name);
+      	stmtp->var.opdef.argv[i].type.exp = NULL;
+    }
+    for (i = 0; i < argc; i++) {
         if (RDB_string_to_obj(&stmtp->var.opdef.argv[i].name,
                 argp->var.varname, _RDB_parse_ecp) != RDB_OK) {
       	    goto error;
@@ -174,7 +178,14 @@ new_ro_op_def(const char *name, RDB_expr_list *arglistp, RDB_expression *rtypexp
 
 error:
     RDB_destroy_obj(&stmtp->var.opdef.opname, _RDB_parse_ecp);
-    RDB_free(stmtp->var.opdef.argv); /* ... !! */
+    if (stmtp->var.opdef.argv != NULL) {
+	    for (i = 0; i < argc; i++) {
+	        if (stmtp->var.opdef.argv[i].type.exp != NULL)
+	    	    RDB_drop_expr(stmtp->var.opdef.argv[i].type.exp, _RDB_parse_ecp);
+    	    RDB_destroy_obj(&stmtp->var.opdef.argv[i].name, _RDB_parse_ecp);
+    	}
+	    RDB_free(stmtp->var.opdef.argv);
+    }
     RDB_parse_del_stmtlist(stmtp->var.opdef.bodyp, _RDB_parse_ecp);
     RDB_free(stmtp);
     return NULL;
@@ -226,11 +237,12 @@ new_update_op_def(const char *name, RDB_expr_list *arglistp,
   	if (stmtp->var.opdef.argv == NULL)
   	    goto error;
   	for (i = 0; i < stmtp->var.opdef.argc; i++) {
+        RDB_init_obj(&stmtp->var.opdef.argv[i].name);
+      	stmtp->var.opdef.argv[i].type.exp = NULL;
   	    stmtp->var.opdef.argv[i].upd = RDB_FALSE;
   	}
   	argp = arglistp->firstp;
     for (i = 0; i < stmtp->var.opdef.argc; i++) {
-        RDB_init_obj(&stmtp->var.opdef.argv[i].name);
         if (RDB_string_to_obj(&stmtp->var.opdef.argv[i].name,
                 argp->var.varname, _RDB_parse_ecp) != RDB_OK) {
       	    goto error;
@@ -246,10 +258,27 @@ new_update_op_def(const char *name, RDB_expr_list *arglistp,
 
 error:
     RDB_destroy_obj(&stmtp->var.opdef.opname, _RDB_parse_ecp);
-    RDB_free(stmtp->var.opdef.argv); /* ... !! */
+    if (stmtp->var.opdef.argv != NULL) {
+	    for (i = 0; i < stmtp->var.opdef.argc; i++) {
+    	    if (stmtp->var.opdef.argv[i].type.exp != NULL)
+	    	    RDB_drop_expr(stmtp->var.opdef.argv[i].type.exp, _RDB_parse_ecp);
+    	    RDB_destroy_obj(&stmtp->var.opdef.argv[i].name, _RDB_parse_ecp);
+    	}
+	    RDB_free(stmtp->var.opdef.argv);
+    }
     RDB_parse_del_stmtlist(stmtp->var.opdef.bodyp, _RDB_parse_ecp);
     RDB_free(stmtp);
     return NULL;
+}
+
+static int
+resolve_with(RDB_expression **expp, RDB_expression *texp)
+{
+    if (texp->nextp->nextp != NULL) {
+        if (resolve_with(expp, texp->nextp->nextp) != RDB_OK)
+            return RDB_ERROR;
+    }
+    return _RDB_resolve_exprnames(expp, texp, _RDB_parse_ecp);
 }
 
 %}
@@ -362,6 +391,7 @@ error:
 %token TOK_ORDER "ORDER"
 %token TOK_ASC "ASC"
 %token TOK_DESC "DESC"
+%token TOK_WITH "WITH"
 %token TOK_INVALID "invalid"
 
 %type <exp> expression literal ro_op_invocation count_invocation
@@ -370,7 +400,7 @@ error:
 
 %type <explist> expression_list ne_expression_list
         ne_id_list id_list ne_tuple_item_list
-        extend_add_list ne_extend_add_list extend_add summarize_add
+        name_intro_list ne_name_intro_list name_intro summarize_add
         renaming ne_renaming_list renaming_list
         summarize_add_list ne_summarize_add_list
         wrapping wrapping_list ne_wrapping_list
@@ -395,7 +425,7 @@ error:
     RDB_destroy_expr_list(&$$, _RDB_parse_ecp);
 } expression_list ne_expression_list
         ne_id_list id_list
-        extend_add_list ne_extend_add_list extend_add
+        name_intro_list ne_name_intro_list name_intro
         ne_renaming_list renaming_list renaming
         summarize_add summarize_add_list ne_summarize_add_list
         wrapping wrapping_list ne_wrapping_list
@@ -424,7 +454,7 @@ error:
     RDB_parse_del_assignlist($$, _RDB_parse_ecp);
 } ne_attr_assign_list
 
-%left TOK_FROM TOK_ELSE ','
+%left TOK_FROM TOK_ELSE ',' ':'
 %left TOK_UNION TOK_MINUS TOK_INTERSECT TOK_SEMIMINUS TOK_JOIN TOK_SEMIJOIN
         TOK_WHERE TOK_RENAME TOK_WRAP TOK_UNWRAP TOK_GROUP TOK_UNGROUP
         TOK_DIVIDEBY TOK_PER '{'
@@ -1199,7 +1229,7 @@ expression: expression '{' id_list '}' {
         RDB_add_arg($$, tex1p);
         RDB_add_arg($$, tex2p);
     }
-    | TOK_EXTEND expression TOK_ADD '(' extend_add_list ')' {
+    | TOK_EXTEND expression TOK_ADD '(' name_intro_list ')' {
         RDB_expression *texp = $2;
         if (texp == NULL) {
             RDB_drop_expr($2, _RDB_parse_ecp);
@@ -1669,6 +1699,17 @@ expression: expression '{' id_list '}' {
         RDB_add_arg($$, ex1p);
         RDB_add_arg($$, ex2p);
     }
+    | TOK_WITH name_intro_list ':' expression {
+        if ($2.firstp != NULL) {
+            if (resolve_with(&$4, $2.firstp) != RDB_OK) {
+                RDB_destroy_expr_list(&$2, _RDB_parse_ecp);
+                RDB_drop_expr($4, _RDB_parse_ecp);
+                YYERROR;
+            }
+            RDB_destroy_expr_list(&$2, _RDB_parse_ecp);
+        }
+        $$ = $4;
+    }
     ;
 
 id_list: /* empty */ {
@@ -1734,22 +1775,21 @@ renaming: TOK_ID TOK_AS TOK_ID {
 */
     ;
 
-
-extend_add_list: /* empty */ {
+name_intro_list: /* empty */ {
         $$.firstp = $$.lastp = NULL;
     }
-    | ne_extend_add_list
+    | ne_name_intro_list
     ;
 
-ne_extend_add_list: extend_add
-    | ne_extend_add_list ',' extend_add {
+ne_name_intro_list: name_intro
+    | ne_name_intro_list ',' name_intro {
         $$.firstp = $1.firstp;
         $1.lastp->nextp = $3.firstp;
         $$.lastp = $3.lastp;
     }
     ;
 
-extend_add: expression TOK_AS TOK_ID {
+name_intro: expression TOK_AS TOK_ID {
         $$.firstp = $1;
         $$.lastp = RDB_string_to_expr($3->var.varname, _RDB_parse_ecp);
         RDB_drop_expr($3, _RDB_parse_ecp);

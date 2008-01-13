@@ -2236,7 +2236,7 @@ _RDB_invrename_expr(RDB_expression *exp, RDB_expression *texp,
 }
 
 int
-_RDB_resolve_extend_expr(RDB_expression **expp, RDB_expression *texp,
+_RDB_resolve_exprnames(RDB_expression **expp, RDB_expression *texp,
         RDB_exec_context *ecp)
 {
     RDB_expression *argp;
@@ -2244,14 +2244,14 @@ _RDB_resolve_extend_expr(RDB_expression **expp, RDB_expression *texp,
     switch ((*expp)->kind) {
         case RDB_EX_TUPLE_ATTR:
         case RDB_EX_GET_COMP:
-            return _RDB_resolve_extend_expr(&(*expp)->var.op.args.firstp,
+            return _RDB_resolve_exprnames(&(*expp)->var.op.args.firstp,
                     texp, ecp);
         case RDB_EX_RO_OP:
             argp = (*expp)->var.op.args.firstp;
             (*expp)->var.op.args.firstp = NULL;
             while (argp != NULL) {
                 RDB_expression *nextp = argp->nextp;
-                if (_RDB_resolve_extend_expr(&argp, texp, ecp) != RDB_OK)
+                if (_RDB_resolve_exprnames(&argp, texp, ecp) != RDB_OK)
                     return RDB_ERROR;
                 RDB_add_arg(*expp, argp);
                 argp = nextp;
@@ -2262,7 +2262,7 @@ _RDB_resolve_extend_expr(RDB_expression **expp, RDB_expression *texp,
             return RDB_OK;
         case RDB_EX_VAR:
             /* Search attribute name in attrs */
-            argp = texp->var.op.args.firstp->nextp;
+            argp = texp;
             while (argp != NULL) {
                 if (strcmp(RDB_obj_string(&argp->nextp->var.obj),
                         (*expp)->var.varname) == 0)

@@ -358,7 +358,7 @@ _RDB_invrename_expr(RDB_expression *exp, RDB_expression *texp,
         RDB_exec_context *);
 
 int
-_RDB_resolve_extend_expr(RDB_expression **expp, RDB_expression *texp,
+_RDB_resolve_exprnames(RDB_expression **expp, RDB_expression *texp,
         RDB_exec_context *);
 
 int

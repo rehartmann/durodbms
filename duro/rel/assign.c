@@ -823,8 +823,8 @@ resolve_delete_expr(RDB_expression *exp, RDB_expression *condp,
         *delnpp = delnp;
         while (delnp != NULL) {
             if (delnp->del.condp != NULL) {
-                if (_RDB_resolve_extend_expr(&delnp->del.condp,
-                        exp, ecp) != RDB_OK) {
+                if (_RDB_resolve_exprnames(&delnp->del.condp,
+                        exp->var.op.args.firstp->nextp, ecp) != RDB_OK) {
                     del_dellist(*delnpp, ecp);
                     return RDB_ERROR;
                 }

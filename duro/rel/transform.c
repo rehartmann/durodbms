@@ -192,8 +192,8 @@ transform_where(RDB_expression *exp, RDB_exec_context *ecp,
             /*
              * WHERE(EXTEND( -> EXTEND(WHERE(
              */
-            if (_RDB_resolve_extend_expr(&exp->var.op.args.firstp->nextp,
-                    chexp, ecp) != RDB_OK)
+            if (_RDB_resolve_exprnames(&exp->var.op.args.firstp->nextp,
+                    chexp->var.op.args.firstp->nextp, ecp) != RDB_OK)
                 return RDB_ERROR;
 
             hname = chexp->var.op.name;
