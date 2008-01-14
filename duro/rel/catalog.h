@@ -49,11 +49,11 @@ int
 _RDB_make_typesobj(int argc, RDB_type *argtv[], RDB_exec_context *,
         RDB_object *objp);
 
-int
+RDB_op_data *
 _RDB_cat_get_ro_op(const char *name, int argc, RDB_type *argtv[],
-        RDB_exec_context *, RDB_transaction *txp, RDB_ro_op_desc **opp);
+        RDB_exec_context *, RDB_transaction *txp);
 
-RDB_upd_op_data *
+RDB_op_data *
 _RDB_cat_get_upd_op(const char *name, int argc, RDB_type *argtv[],
         RDB_exec_context *, RDB_transaction *);
 

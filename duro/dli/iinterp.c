@@ -26,9 +26,6 @@ typedef struct tx_node {
     struct tx_node *parentp;
 } tx_node;
 
-typedef int upd_op_func(const char *name, int argc, RDB_object *argv[],
-        RDB_exec_context *, RDB_transaction *);
-
 varmap_node toplevel_vars;
 
 int err_line;
@@ -187,6 +184,7 @@ Duro_exit_interp(void)
 
 static int
 println_string_op(const char *name, int argc, RDB_object *argv[],
+        RDB_bool updv[], const void *iargp, size_t iarglen,
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
     if (puts(RDB_obj_string(argv[0])) == EOF) {
@@ -198,6 +196,7 @@ println_string_op(const char *name, int argc, RDB_object *argv[],
 
 static int
 println_int_op(const char *name, int argc, RDB_object *argv[],
+        RDB_bool updv[], const void *iargp, size_t iarglen,
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
     if (printf("%d\n", (int) RDB_obj_int(argv[0])) < 0) {
@@ -209,6 +208,7 @@ println_int_op(const char *name, int argc, RDB_object *argv[],
 
 static int
 println_float_op(const char *name, int argc, RDB_object *argv[],
+        RDB_bool updv[], const void *iargp, size_t iarglen,
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
     if (printf("%f\n", (double) RDB_obj_float(argv[0])) < 0) {
@@ -220,6 +220,7 @@ println_float_op(const char *name, int argc, RDB_object *argv[],
 
 static int
 println_bool_op(const char *name, int argc, RDB_object *argv[],
+        RDB_bool updv[], const void *iargp, size_t iarglen,
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
     if (puts(RDB_obj_bool(argv[0]) ? "TRUE" : "FALSE") == EOF) {
@@ -231,6 +232,7 @@ println_bool_op(const char *name, int argc, RDB_object *argv[],
 
 static int
 print_nonscalar_op(const char *name, int argc, RDB_object *argv[],
+        RDB_bool updv[], const void *iargp, size_t iarglen,
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
     RDB_object strobj;
@@ -262,9 +264,11 @@ print_nonscalar_op(const char *name, int argc, RDB_object *argv[],
 
 static int
 println_nonscalar_op(const char *name, int argc, RDB_object *argv[],
+        RDB_bool updv[], const void *iargp, size_t iarglen,
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
-    if (print_nonscalar_op("PRINT", argc, argv, ecp, txp) != RDB_OK)
+    if (print_nonscalar_op("PRINT", argc, argv, updv, iargp, iarglen,
+            ecp, txp) != RDB_OK)
         return RDB_ERROR;
     if (puts("") == EOF) {
         _RDB_handle_errcode(errno, ecp, txp);
@@ -275,6 +279,7 @@ println_nonscalar_op(const char *name, int argc, RDB_object *argv[],
 
 static int
 print_string_op(const char *name, int argc, RDB_object *argv[],
+        RDB_bool updv[], const void *iargp, size_t iarglen,
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
     if (fputs(RDB_obj_string(argv[0]), stdout) == EOF) {
@@ -286,6 +291,7 @@ print_string_op(const char *name, int argc, RDB_object *argv[],
 
 static int
 print_int_op(const char *name, int argc, RDB_object *argv[],
+        RDB_bool updv[], const void *iargp, size_t iarglen,
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
     if (printf("%d", (int) RDB_obj_int(argv[0])) < 0) {
@@ -297,6 +303,7 @@ print_int_op(const char *name, int argc, RDB_object *argv[],
 
 static int
 print_float_op(const char *name, int argc, RDB_object *argv[],
+        RDB_bool updv[], const void *iargp, size_t iarglen,
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
     if (printf("%f", (double) RDB_obj_float(argv[0])) < 0) {
@@ -308,6 +315,7 @@ print_float_op(const char *name, int argc, RDB_object *argv[],
 
 static int
 print_bool_op(const char *name, int argc, RDB_object *argv[],
+        RDB_bool updv[], const void *iargp, size_t iarglen,
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
     if (fputs(RDB_obj_bool(argv[0]) ? "TRUE" : "FALSE", stdout) == EOF) {
@@ -319,6 +327,7 @@ print_bool_op(const char *name, int argc, RDB_object *argv[],
 
 static int
 readln_op(const char *name, int argc, RDB_object *argv[],
+        RDB_bool updv[], const void *iargp, size_t iarglen,
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
     char buf[128];
@@ -355,6 +364,7 @@ readln_op(const char *name, int argc, RDB_object *argv[],
 
 static int
 exit_op(const char *name, int argc, RDB_object *argv[],
+        RDB_bool updv[], const void *iargp, size_t iarglen,
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
     Duro_exit_interp();
@@ -363,6 +373,7 @@ exit_op(const char *name, int argc, RDB_object *argv[],
 
 static int
 exit_int_op(const char *name, int argc, RDB_object *argv[],
+        RDB_bool updv[], const void *iargp, size_t iarglen,
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
     Duro_exit_interp();
@@ -371,6 +382,7 @@ exit_int_op(const char *name, int argc, RDB_object *argv[],
 
 static int
 connect_op(const char *name, int argc, RDB_object *argv[],
+        RDB_bool updv[], const void *iargp, size_t iarglen,
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
     int ret = RDB_open_env(RDB_obj_string(argv[1]), &envp);
@@ -384,6 +396,7 @@ connect_op(const char *name, int argc, RDB_object *argv[],
 
 static int
 create_db_op(const char *name, int argc, RDB_object *argv[],
+        RDB_bool updv[], const void *iargp, size_t iarglen,
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
     if (envp == NULL) {
@@ -398,6 +411,7 @@ create_db_op(const char *name, int argc, RDB_object *argv[],
 
 static int
 create_env_op(const char *name, int argc, RDB_object *argv[],
+        RDB_bool updv[], const void *iargp, size_t iarglen,
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
     int ret;
@@ -421,6 +435,7 @@ create_env_op(const char *name, int argc, RDB_object *argv[],
 
 static int
 system_op(const char *name, int argc, RDB_object *argv[],
+        RDB_bool updv[], const void *iargp, size_t iarglen,
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
     int ret = system(RDB_obj_string(argv[0]));
@@ -434,6 +449,7 @@ system_op(const char *name, int argc, RDB_object *argv[],
 
 static int
 load_op(const char *name, int argc, RDB_object *argv[],
+        RDB_bool updv[], const void *iargp, size_t iarglen,
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
     RDB_seq_item *seqitv = NULL;
@@ -492,6 +508,27 @@ new_obj(RDB_exec_context *ecp)
     return objp;
 }
 
+static int
+put_op(RDB_op_map *opmap, const char *name, int argc, RDB_type **argtv,
+        RDB_upd_op_func *opfp, RDB_exec_context *ecp)
+{
+    RDB_op_data *datap = RDB_alloc(sizeof(RDB_op_data), ecp);
+    if (datap == NULL)
+        return RDB_ERROR;
+    RDB_init_obj(&datap->iarg);
+    datap->modhdl = NULL;
+    datap->opfn.upd_fp = opfp;
+    datap->rtyp = NULL;
+    datap->updv = NULL;
+
+    if (RDB_put_op(opmap, name, argc, argtv, datap, ecp) != RDB_OK) {
+        RDB_destroy_obj(&datap->iarg, ecp);
+        RDB_free(datap);
+        return RDB_ERROR;
+    }
+    return RDB_OK;
+}
+
 int
 Duro_init_exec(RDB_exec_context *ecp, const char *dbname)
 {
@@ -526,55 +563,55 @@ Duro_init_exec(RDB_exec_context *ecp, const char *dbname)
 
     RDB_init_op_map(&opmap);
 
-    if (RDB_put_op(&opmap, "PRINTLN", 1, print_string_types, &println_string_op, ecp)
+    if (put_op(&opmap, "PRINTLN", 1, print_string_types, &println_string_op, ecp)
             != RDB_OK)
         return RDB_ERROR;
-    if (RDB_put_op(&opmap, "PRINTLN", 1, print_int_types, &println_int_op, ecp)
+    if (put_op(&opmap, "PRINTLN", 1, print_int_types, &println_int_op, ecp)
             != RDB_OK)
         return RDB_ERROR;
-    if (RDB_put_op(&opmap, "PRINTLN", 1, print_float_types, &println_float_op, ecp)
+    if (put_op(&opmap, "PRINTLN", 1, print_float_types, &println_float_op, ecp)
             != RDB_OK)
         return RDB_ERROR;
-    if (RDB_put_op(&opmap, "PRINTLN", 1, print_bool_types, &println_bool_op, ecp)
+    if (put_op(&opmap, "PRINTLN", 1, print_bool_types, &println_bool_op, ecp)
             != RDB_OK)
         return RDB_ERROR;
-    if (RDB_put_op(&opmap, "PRINTLN", -1, NULL, &println_nonscalar_op, ecp)
+    if (put_op(&opmap, "PRINTLN", -1, NULL, &println_nonscalar_op, ecp)
             != RDB_OK)
         return RDB_ERROR;
-    if (RDB_put_op(&opmap, "PRINT", 1, print_string_types, &print_string_op, ecp)
+    if (put_op(&opmap, "PRINT", 1, print_string_types, &print_string_op, ecp)
             != RDB_OK)
         return RDB_ERROR;
-    if (RDB_put_op(&opmap, "PRINT", 1, print_int_types, &print_int_op, ecp)
+    if (put_op(&opmap, "PRINT", 1, print_int_types, &print_int_op, ecp)
             != RDB_OK)
         return RDB_ERROR;
-    if (RDB_put_op(&opmap, "PRINT", 1, print_float_types, &print_float_op, ecp)
+    if (put_op(&opmap, "PRINT", 1, print_float_types, &print_float_op, ecp)
             != RDB_OK)
         return RDB_ERROR;
-    if (RDB_put_op(&opmap, "PRINT", 1, print_bool_types, &print_bool_op, ecp)
+    if (put_op(&opmap, "PRINT", 1, print_bool_types, &print_bool_op, ecp)
             != RDB_OK)
         return RDB_ERROR;
-    if (RDB_put_op(&opmap, "PRINT", -1, NULL, &print_nonscalar_op, ecp)
+    if (put_op(&opmap, "PRINT", -1, NULL, &print_nonscalar_op, ecp)
             != RDB_OK)
         return RDB_ERROR;
-    if (RDB_put_op(&opmap, "READLN", 1, readln_types, &readln_op, ecp)
+    if (put_op(&opmap, "READLN", 1, readln_types, &readln_op, ecp)
             != RDB_OK)
         return RDB_ERROR;
-    if (RDB_put_op(&opmap, "EXIT", 0, NULL, &exit_op, ecp) != RDB_OK)
+    if (put_op(&opmap, "EXIT", 0, NULL, &exit_op, ecp) != RDB_OK)
         return RDB_ERROR;
-    if (RDB_put_op(&opmap, "EXIT", 1, exit_int_types, &exit_int_op, ecp) != RDB_OK)
+    if (put_op(&opmap, "EXIT", 1, exit_int_types, &exit_int_op, ecp) != RDB_OK)
         return RDB_ERROR;
-    if (RDB_put_op(&opmap, "CONNECT", 2, connect_types, &connect_op, ecp) != RDB_OK)
+    if (put_op(&opmap, "CONNECT", 2, connect_types, &connect_op, ecp) != RDB_OK)
         return RDB_ERROR;
-    if (RDB_put_op(&opmap, "CREATE_DB", 1, create_db_types, &create_db_op, ecp)
+    if (put_op(&opmap, "CREATE_DB", 1, create_db_types, &create_db_op, ecp)
             != RDB_OK)
         return RDB_ERROR;
-    if (RDB_put_op(&opmap, "CREATE_ENV", 1, create_env_types, &create_env_op, ecp)
+    if (put_op(&opmap, "CREATE_ENV", 1, create_env_types, &create_env_op, ecp)
             != RDB_OK)
         return RDB_ERROR;
-    if (RDB_put_op(&opmap, "SYSTEM", 2, system_types, &system_op, ecp)
+    if (put_op(&opmap, "SYSTEM", 2, system_types, &system_op, ecp)
             != RDB_OK)
         return RDB_ERROR;
-    if (RDB_put_op(&opmap, "LOAD", -1, NULL, &load_op, ecp)
+    if (put_op(&opmap, "LOAD", -1, NULL, &load_op, ecp)
             != RDB_OK)
         return RDB_ERROR;
 
@@ -1164,8 +1201,8 @@ exec_call(const RDB_parse_statement *stmtp, RDB_exec_context *ecp)
     RDB_type *argtv[DURO_MAX_LLEN];
     RDB_bool argvar[DURO_MAX_LLEN];
     char *opname;
-    void *op;
-    upd_op_func *opfnp;
+    RDB_op_data *op;
+    RDB_upd_op_func *opfnp;
     RDB_expression *argp;
 
     argp = stmtp->var.call.arglist.firstp;
@@ -1205,8 +1242,8 @@ exec_call(const RDB_parse_statement *stmtp, RDB_exec_context *ecp)
 
         ret = RDB_call_update_op(opname, argc, argpv, ecp, &txnp->tx);
     } else {
-        opfnp = (upd_op_func *) op;
-        ret = (*opfnp) (opname, argc, argpv, ecp,
+        opfnp = op->opfn.upd_fp;
+        ret = (*opfnp) (opname, argc, argpv, NULL, NULL, 0, ecp,
                 txnp != NULL ? &txnp->tx : NULL);
     }
 

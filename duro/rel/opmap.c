@@ -1,11 +1,9 @@
 /*
  * $Id$
  *
- * Copyright (C) 2007 René Hartmann.
+ * Copyright (C) 2007-2008 René Hartmann.
  * See the file COPYING for redistribution information.
  */
-
-#include "opmap.h"
 
 #include "internal.h"
 #include <gen/hashmapit.h>
@@ -21,23 +19,25 @@ struct op_entry {
     char *name;
     int argc;
     RDB_type **argtv;
-    void *datap;
+    RDB_op_data *datap;
     struct op_entry *nextp;
 };
 
-static void
+static int
 free_op(struct op_entry *op, RDB_exec_context *ecp)
 {
     int i;
+    int ret;
 
     RDB_free(op->name);
     for (i = 0; i < op->argc; i++) {
-        if (RDB_type_name(op->argtv[i]) == NULL)
+        if (!RDB_type_is_scalar(op->argtv[i]))
             RDB_drop_type(op->argtv[i], ecp, NULL);
     }
     RDB_free(op->argtv);
-    /* !! datap */
+    ret = RDB_free_op_data(op->datap, ecp);
     RDB_free(op);
+    return ret;
 }
 
 static void
@@ -55,22 +55,20 @@ void
 RDB_destroy_op_map(RDB_op_map *opmap)
 {
     RDB_hashmap_iter it;
-/*
     char *keyp;
     void *datap;
-*/
     RDB_exec_context ec;
 
     RDB_init_exec_context(&ec);
     RDB_init_hashmap_iter(&it, &opmap->map);
-/* !! make work for ro ops too
+
     while ((datap = RDB_hashmap_next(&it, &keyp)) != NULL) {
         struct op_entry *op = datap;
 
         if (op != NULL)
-            free_upd_ops(op, &ec);
+            free_ops(op, &ec);
     }
-*/
+
     RDB_destroy_hashmap_iter(&it);
     RDB_destroy_exec_context(&ec);
 
@@ -79,7 +77,7 @@ RDB_destroy_op_map(RDB_op_map *opmap)
 
 int
 RDB_put_op(RDB_op_map *opmap, const char *name, int argc, RDB_type **argtv,
-        void *datap, RDB_exec_context *ecp)
+        RDB_op_data *datap, RDB_exec_context *ecp)
 {
     int ret;
     int i;
@@ -145,7 +143,7 @@ error:
     return RDB_ERROR;   
 }
 
-void *
+RDB_op_data *
 RDB_get_op(const RDB_op_map *opmap, const char *name, int argc,
         RDB_type *argtv[], RDB_exec_context *ecp)
 {
@@ -208,4 +206,39 @@ RDB_del_ops(RDB_op_map *opmap, const char *name, RDB_exec_context *ecp)
         }
     }
     return RDB_OK;
+}
+
+RDB_op_data *
+_RDB_new_ro_op_data(RDB_type *rtyp,
+        RDB_ro_op_func *funcp, RDB_exec_context *ecp)
+{
+    RDB_op_data *op = RDB_alloc(sizeof (RDB_op_data), ecp);
+    if (op == NULL) {
+        return NULL;
+    }
+
+    RDB_init_obj(&op->iarg);
+    op->rtyp = rtyp;
+    op->modhdl = NULL;
+    op->updv = NULL;
+    op->opfn.ro_fp = funcp;
+
+    return op;
+}
+
+int
+RDB_free_op_data(RDB_op_data *op, RDB_exec_context *ecp)
+{
+    int ret;
+
+    if (op->rtyp != NULL && !RDB_type_is_scalar(op->rtyp))
+        RDB_drop_type(op->rtyp, ecp, NULL);
+    if (op->modhdl != NULL) {
+        /* Operator loaded from module */
+        lt_dlclose(op->modhdl);
+    }
+    ret = RDB_destroy_obj(&op->iarg, ecp);
+    RDB_free(op->updv);
+    RDB_free(op);
+    return ret;
 }

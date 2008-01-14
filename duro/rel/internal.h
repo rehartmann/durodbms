@@ -4,15 +4,13 @@
 /*
  * $Id$
  *
- * Copyright (C) 2003-2007 René Hartmann.
+ * Copyright (C) 2003-2008 René Hartmann.
  * See the file COPYING for redistribution information.
  */
 
 #include "opmap.h"
 #include <rec/cursor.h>
 #include <gen/hashtable.h>
-
-#include <ltdl.h>
 
 #define AVG_COUNT "$COUNT"
 
@@ -114,28 +112,6 @@ typedef struct {
     char *key;
     RDB_int fno;
 } _RDB_attrmap_entry;
-
-typedef struct RDB_ro_op_desc {
-    char *name;
-    int argc;
-    RDB_type **argtv;
-    RDB_type *rtyp;
-    RDB_object iarg;
-    lt_dlhandle modhdl;
-    RDB_ro_op_func *funcp;
-    struct RDB_ro_op_desc *nextp;
-} RDB_ro_op_desc;
-
-typedef int RDB_upd_op_func(const char *name, int argc, RDB_object *argv[],
-        RDB_bool updv[], const void *iargp, size_t iarglen,
-        RDB_exec_context *, RDB_transaction *);
-
-typedef struct RDB_upd_op_data {
-    RDB_object iarg;
-    lt_dlhandle modhdl;
-    RDB_upd_op_func *funcp;
-    RDB_bool *updv;
-} RDB_upd_op_data;
 
 struct _RDB_tx_and_ec {
     RDB_transaction *txp;
@@ -418,17 +394,13 @@ _RDB_obj_ilen(const RDB_object *, size_t *, RDB_exec_context *);
 void
 _RDB_obj_to_irep(void *dstp, const RDB_object *, size_t);
 
-int
+RDB_op_data *
 _RDB_get_ro_op(const char *name, int argc, RDB_type *argtv[],
-               RDB_exec_context *, RDB_transaction *txp, RDB_ro_op_desc **opp);
+               RDB_exec_context *, RDB_transaction *txp);
 
-RDB_upd_op_data *
+RDB_op_data *
 _RDB_get_upd_op(const char *name, int argc, RDB_type *argtv[],
                RDB_exec_context *ecp, RDB_transaction *txp);
-
-RDB_ro_op_desc *
-_RDB_new_ro_op(const char *name, int argc, RDB_type *rtyp, RDB_ro_op_func *funcp,
-        RDB_exec_context *);
 
 int
 _RDB_eq_bool(const char *name, int argc, RDB_object *argv[],
@@ -449,15 +421,6 @@ int
 _RDB_obj_not_equals(const char *name, int argc, RDB_object *argv[],
         const void *iargp, size_t iarglen, RDB_exec_context *,
         RDB_transaction *, RDB_object *retvalp);
-
-int
-_RDB_put_ro_op(RDB_dbroot *dbrootp, RDB_ro_op_desc *op, RDB_exec_context *);
-
-int
-_RDB_put_builtin_ro_op(RDB_ro_op_desc *op, RDB_exec_context *ecp);
-
-void
-_RDB_free_ro_ops(RDB_ro_op_desc *op, RDB_exec_context *);
 
 RDB_int
 _RDB_move_tuples(RDB_object *dstp, RDB_object *srcp, RDB_exec_context *,

@@ -270,7 +270,7 @@ Duro_call_cmd(ClientData data, Tcl_Interp *interp, int objc,
     char *txstr;
     RDB_transaction *txp;
     Tcl_HashEntry *entryp;
-    RDB_upd_op_data *op;
+    RDB_op_data *op;
     RDB_type **argtv = NULL;
     RDB_object **argv = NULL;
     TclState *statep = (TclState *) data;

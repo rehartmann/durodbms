@@ -633,7 +633,7 @@ expr_op_type(RDB_expression *exp, RDB_gettypefn *getfnp, void *arg,
 {
     int i;
     RDB_type *typ;
-    RDB_ro_op_desc *op;
+    RDB_op_data *op;
     RDB_expression *argp;
     int argc;
     RDB_type **argtv = NULL;
@@ -913,8 +913,8 @@ expr_op_type(RDB_expression *exp, RDB_gettypefn *getfnp, void *arg,
             }
         }
 
-        if (_RDB_get_ro_op(exp->var.op.name, argc, argtv, ecp, txp, &op)
-                != RDB_OK)
+        op = _RDB_get_ro_op(exp->var.op.name, argc, argtv, ecp, txp);
+        if (op == NULL)
             goto error;
         typ = RDB_dup_nonscalar_type(op->rtyp, ecp);
     }

@@ -1,7 +1,7 @@
 /*
  * $Id$
  *
- * Copyright (C) 2004-2007 René Hartmann.
+ * Copyright (C) 2004-2008 René Hartmann.
  * See the file COPYING for redistribution information.
  */
 
@@ -150,12 +150,14 @@ RDB_create_ro_op(const char *name, int argc, RDB_type *argtv[], RDB_type *rtyp,
             && argtv[0] == argtv[1]
             && (argtv[0]->kind != RDB_TP_SCALAR
                     || !argtv[0]->var.scalar.builtin)) {
-        RDB_ro_op_desc *cmpop;
+        RDB_op_data *cmpop;
 
-        ret = _RDB_get_ro_op(name, argc, argtv, ecp, txp, &cmpop);
-        if (ret != RDB_OK)
+        cmpop = _RDB_get_ro_op(name, argc, argtv, ecp, txp);
+        if (cmpop == NULL) {
+            ret = RDB_ERROR;
             goto cleanup;
-        argtv[0]->comparep = cmpop->funcp;
+        }
+        argtv[0]->comparep = cmpop->opfn.ro_fp;
         argtv[0]->compare_iarglen = cmpop->iarg.var.bin.len;
         argtv[0]->compare_iargp = cmpop->iarg.var.bin.datap;
     }
@@ -386,7 +388,7 @@ RDB_call_ro_op(const char *name, int argc, RDB_object *argv[],
                RDB_exec_context *ecp, RDB_transaction *txp,
                RDB_object *retvalp)
 {
-    RDB_ro_op_desc *op;
+    RDB_op_data *op;
     int ret;
     RDB_type **argtv;
     int i;
@@ -474,7 +476,7 @@ RDB_call_ro_op(const char *name, int argc, RDB_object *argv[],
         return RDB_ERROR;
     }
 
-    ret = _RDB_get_ro_op(name, argc, argtv, ecp, txp, &op);
+    op = _RDB_get_ro_op(name, argc, argtv, ecp, txp);
     for (i = 0; i < argc; i++) {
         /* Destroy type if it has been created by valv_to_typev() */
         if (RDB_obj_type(argv[i]) == NULL) {
@@ -484,14 +486,14 @@ RDB_call_ro_op(const char *name, int argc, RDB_object *argv[],
 
     RDB_free(argtv);
 
-    if (ret != RDB_OK) {
+    if (op == NULL) {
         goto error;
     }
 
     /* Set return type to make it available to the function */
     retvalp->typ = op->rtyp;
 
-    ret = (*op->funcp)(name, argc, argv, op->iarg.var.bin.datap,
+    ret = (*op->opfn.ro_fp)(name, argc, argv, op->iarg.var.bin.datap,
             op->iarg.var.bin.len, ecp, txp, retvalp);
     if (ret != RDB_OK)
         goto error;
@@ -539,7 +541,7 @@ int
 RDB_call_update_op(const char *name, int argc, RDB_object *argv[],
                    RDB_exec_context *ecp, RDB_transaction *txp)
 {
-    RDB_upd_op_data *op;
+    RDB_op_data *op;
     RDB_type **argtv;
     int i;
 
@@ -567,7 +569,7 @@ RDB_call_update_op(const char *name, int argc, RDB_object *argv[],
         return RDB_ERROR;
     }
 
-    return (*op->funcp)(name, argc, argv, op->updv, op->iarg.var.bin.datap,
+    return (*op->opfn.upd_fp)(name, argc, argv, op->updv, op->iarg.var.bin.datap,
             op->iarg.var.bin.len, ecp, txp);
 }
 
@@ -681,39 +683,6 @@ RDB_drop_op(const char *name, RDB_exec_context *ecp, RDB_transaction *txp)
 }
 
 /*@}*/
-
-static void
-free_ro_op(RDB_ro_op_desc *op, RDB_exec_context *ecp)
-{
-    int i;
-
-    RDB_free(op->name);
-    if (op->argtv != NULL) {
-        for (i = 0; i < op->argc; i++) {
-            if (RDB_type_name(op->argtv[i]) == NULL)
-                RDB_drop_type(op->argtv[i], ecp, NULL);
-        }
-        RDB_free(op->argtv);
-    }
-    if (op->rtyp != NULL && RDB_type_name(op->rtyp) == NULL)
-        RDB_drop_type(op->rtyp, ecp, NULL);
-    if (op->modhdl != NULL) {
-        /* Built-in operator */
-        lt_dlclose(op->modhdl);
-        RDB_destroy_obj(&op->iarg, ecp);
-    }
-    RDB_free(op);
-}
-
-void
-_RDB_free_ro_ops(RDB_ro_op_desc *op, RDB_exec_context *ecp)
-{
-    do {
-        RDB_ro_op_desc *nextop = op->nextp;
-        free_ro_op(op, ecp);
-        op = nextop;
-    } while (op != NULL);
-}
 
 int
 _RDB_eq_bool(const char *name, int argc, RDB_object *argv[],
@@ -832,81 +801,39 @@ _RDB_obj_not_equals(const char *name, int argc, RDB_object *argv[],
     return RDB_OK;
 }
 
-RDB_ro_op_desc *
-_RDB_new_ro_op(const char *name, int argc, RDB_type *rtyp,
-        RDB_ro_op_func *funcp, RDB_exec_context *ecp)
-{
-    RDB_ro_op_desc *op = RDB_alloc(sizeof (RDB_ro_op_desc), ecp);
-    if (op == NULL) {
-        return NULL;
-    }
-
-    op->name = RDB_dup_str(name);
-    if (op->name == NULL) {
-        RDB_free(op);
-        RDB_raise_no_memory(ecp);
-        return NULL;
-    }
-
-    op->argc = argc;
-    if (argc > 0) {
-        op->argtv = RDB_alloc(sizeof (RDB_type *) * argc, ecp);
-        if (op->argtv == NULL) {
-            RDB_free(op->name);
-            RDB_free(op);
-            return NULL;
-        }
-    }
-
-    op->rtyp = rtyp;
-    op->funcp = funcp;
-    op->modhdl = NULL;    
-
-    return op;
-}
-
-int
-_RDB_put_ro_op(RDB_dbroot *dbrootp, RDB_ro_op_desc *op, RDB_exec_context *ecp)
-{
-   return RDB_put_op(&dbrootp->ro_opmap, op->name, op->argc, op->argtv, op, ecp);
-}
-
-int
+RDB_op_data *
 _RDB_get_ro_op(const char *name, int argc, RDB_type *argtv[],
-               RDB_exec_context *ecp, RDB_transaction *txp,
-               RDB_ro_op_desc **opp)
+               RDB_exec_context *ecp, RDB_transaction *txp)
 {
     RDB_type *errtyp;
+    RDB_op_data *op;
     RDB_bool typmismatch = RDB_FALSE;
 
     /* Lookup operator in built-in operator map */
-    *opp = RDB_get_op(&_RDB_builtin_ro_op_map, name, argc, argtv, ecp);
-    if (*opp != NULL)
-        return RDB_OK;
+    op = RDB_get_op(&_RDB_builtin_ro_op_map, name, argc, argtv, ecp);
+    if (op != NULL)
+        return op;
 
     errtyp = RDB_obj_type(RDB_get_err(ecp));
     if (errtyp != &RDB_OPERATOR_NOT_FOUND_ERROR
             && errtyp != &RDB_TYPE_MISMATCH_ERROR) {
-        return RDB_ERROR;
+        return NULL;
     }
     if (errtyp == &RDB_TYPE_MISMATCH_ERROR) {
         typmismatch = RDB_TRUE;
     }
-
-    if (txp == NULL)
-        return RDB_ERROR;
      
     /* Lookup operator in dbroot map */
-    *opp = RDB_get_op(&txp->dbp->dbrootp->ro_opmap, name, argc, argtv, ecp);
-    if (*opp != NULL) {
+    op = RDB_get_op(&txp->dbp->dbrootp->ro_opmap, name, argc, argtv, ecp);
+    if (op != NULL) {
         RDB_clear_err(ecp);
-        return RDB_OK;
+        return op;
     }
 
     errtyp = RDB_obj_type(RDB_get_err(ecp));        
     if (errtyp != &RDB_OPERATOR_NOT_FOUND_ERROR
             && errtyp != &RDB_TYPE_MISMATCH_ERROR) {
-        return RDB_ERROR;
+        return NULL;
     }
     if (errtyp == &RDB_TYPE_MISMATCH_ERROR) {
         typmismatch = RDB_TRUE;
@@ -917,36 +844,29 @@ _RDB_get_ro_op(const char *name, int argc, RDB_type *argtv[],
      * Provide "=" and "<>" for user-defined types
      */
     if (argc == 2 && RDB_type_equals(argtv[0], argtv[1])) {
-        RDB_ro_op_desc *op;
         int ret;
 
         if (strcmp(name, "=") == 0) {
-            op = _RDB_new_ro_op("=", 2, &RDB_BOOLEAN, &_RDB_obj_equals, ecp);
+            op = _RDB_new_ro_op_data(&RDB_BOOLEAN, &_RDB_obj_equals, ecp);
             if (op == NULL) {
-                RDB_raise_no_memory(ecp);
-                return RDB_ERROR;
+                return NULL;
             }
-            op->argtv[0] = RDB_dup_nonscalar_type(argtv[0], ecp);
-            op->argtv[1] = RDB_dup_nonscalar_type(argtv[1], ecp);
-            ret = _RDB_put_ro_op(txp->dbp->dbrootp, op, ecp);
+            ret = RDB_put_op(&txp->dbp->dbrootp->ro_opmap, name,
+                    2, argtv, op, ecp);
             if (ret != RDB_OK)
-                return ret;
-            *opp = op;
-            return RDB_OK;
+                return NULL;
+            return op;
         }
         if (strcmp(name, "<>") == 0) {
-            op = _RDB_new_ro_op("<>", 2, &RDB_BOOLEAN, &_RDB_obj_not_equals, ecp);
+            op = _RDB_new_ro_op_data(&RDB_BOOLEAN, &_RDB_obj_not_equals, ecp);
             if (op == NULL) {
-                RDB_raise_no_memory(ecp);
-                return RDB_ERROR;
+                return NULL;
             }
-            op->argtv[0] = RDB_dup_nonscalar_type(argtv[0], ecp);
-            op->argtv[1] = RDB_dup_nonscalar_type(argtv[1], ecp);
-            ret = _RDB_put_ro_op(txp->dbp->dbrootp, op, ecp);
+            ret = RDB_put_op(&txp->dbp->dbrootp->ro_opmap, name,
+                    2, argtv, op, ecp);
             if (ret != RDB_OK)
-                return ret;
-            *opp = op;
-            return RDB_OK;
+                return NULL;
+            return op;
         }
     }
     RDB_clear_err(ecp);
@@ -954,7 +874,8 @@ _RDB_get_ro_op(const char *name, int argc, RDB_type *argtv[],
     /*
      * Operator was not found in map, so read from catalog
      */
-    if (_RDB_cat_get_ro_op(name, argc, argtv, ecp, txp, opp) != RDB_OK) {
+    op = _RDB_cat_get_ro_op(name, argc, argtv, ecp, txp);
+    if (op == NULL) {
         if (RDB_obj_type(RDB_get_err(ecp)) == &RDB_NOT_FOUND_ERROR) {
             if (typmismatch) {
                 RDB_raise_type_mismatch(name, ecp);
@@ -962,16 +883,17 @@ _RDB_get_ro_op(const char *name, int argc, RDB_type *argtv[],
                 RDB_raise_operator_not_found(name, ecp);
             }
         }
-        return RDB_ERROR;
+        return NULL;
     }
 
     /* Insert operator into dbroot map */
-    if (_RDB_put_ro_op(txp->dbp->dbrootp, *opp, ecp) != RDB_OK) {
-        free_ro_op(*opp, ecp);
-        return RDB_ERROR;
+    if (RDB_put_op(&txp->dbp->dbrootp->ro_opmap, name,
+            argc, argtv, op, ecp) != RDB_OK) {
+        RDB_free_op_data(op, ecp);
+        return NULL;
     }
 
-    return RDB_OK;
+    return op;
 }
 
 int
@@ -1006,20 +928,11 @@ _RDB_check_type_constraint(RDB_object *valp, RDB_exec_context *ecp,
     return RDB_OK;
 }
 
-static void
-free_upd_op_data(RDB_upd_op_data *op, RDB_exec_context *ecp)
-{
-    RDB_free(op->updv);
-    lt_dlclose(op->modhdl);
-    RDB_destroy_obj(&op->iarg, ecp);
-    RDB_free(op);
-}
-
-RDB_upd_op_data *
+RDB_op_data *
 _RDB_get_upd_op(const char *name, int argc, RDB_type *argtv[],
                 RDB_exec_context *ecp, RDB_transaction *txp)
 {
-    RDB_upd_op_data *op = RDB_get_op(&txp->dbp->dbrootp->upd_opmap, name, argc, argtv, ecp);
+    RDB_op_data *op = RDB_get_op(&txp->dbp->dbrootp->upd_opmap, name, argc, argtv, ecp);
     if (op == NULL) {
         RDB_clear_err(ecp);
         op = _RDB_cat_get_upd_op(name, argc, argtv, ecp, txp);
@@ -1031,7 +944,7 @@ _RDB_get_upd_op(const char *name, int argc, RDB_type *argtv[],
         }
         if (RDB_put_op(&txp->dbp->dbrootp->upd_opmap, name, argc, argtv, op,
                 ecp) != RDB_OK) {
-            free_upd_op_data(op, ecp);
+            RDB_free_op_data(op, ecp);
             return NULL;
         }
     }
@@ -1042,21 +955,33 @@ int
 _RDB_add_selector(RDB_type *typ, RDB_exec_context *ecp)
 {
     int i;
-    RDB_ro_op_desc *op;
+    RDB_op_data *datap;
+    int argc = typ->var.scalar.repv[0].compc;
+    RDB_type **argtv = NULL;
 
     if (_RDB_init_builtin_ops(ecp) != RDB_OK)
         return RDB_ERROR;
 
-    op = _RDB_new_ro_op(typ->name,
-            typ->var.scalar.repv[0].compc, typ, &_RDB_sys_select, ecp);
-    if (op == NULL) {
-        RDB_raise_no_memory(ecp);
+    datap = _RDB_new_ro_op_data(typ, &_RDB_sys_select, ecp);
+    if (datap == NULL)
         return RDB_ERROR;
-    }
-    op->argc = typ->var.scalar.repv[0].compc;
-    for (i = 0; i < typ->var.scalar.repv[0].compc; i++) {
-        op->argtv[i] = typ->var.scalar.repv[0].compv[i].typ;
+
+    argtv = RDB_alloc(sizeof(RDB_type *) * argc, ecp);
+    if (argtv == NULL)
+        goto error;
+    for (i = 0; i < argc; i++) {
+        argtv[i] = typ->var.scalar.repv[0].compv[i].typ;
     }
 
-    return _RDB_put_builtin_ro_op(op, ecp);
+    if (RDB_put_op(&_RDB_builtin_ro_op_map, typ->name, argc, argtv,
+            datap, ecp) != RDB_OK) {
+        goto error;
+    }
+    RDB_free(argtv);
+    return RDB_OK;
+
+error:
+    free(argtv);
+    RDB_free_op_data(datap, ecp);
+    return RDB_ERROR;
 }
