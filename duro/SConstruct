@@ -11,7 +11,7 @@ import os
 # Basic settings
 #
 
-bdbhome = ARGUMENTS.get('bdbhome', '/usr/local/BerkeleyDB.4.5')
+bdbhome = ARGUMENTS.get('bdbhome', '/usr/local/BerkeleyDB.4.6')
 with_durotcl = int(ARGUMENTS.get('with_durotcl', 1))
 
 release = '0.13'

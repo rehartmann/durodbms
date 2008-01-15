@@ -4,6 +4,8 @@ Summary of Changes for Duro
 
 Changes for Duro 0.13
 
+- Upgraded to Berkeley DB 4.6.
+
 - Removed arguments ltfnp, arg, and txp from parsing functions.
 
 - Added RDB_type_is_relation().
@@ -123,7 +125,7 @@ Changes for Duro 0.9
 
 - Documented utilities in utils.html.
 
-- Switched to Berkeley DB 4.3.
+- Upgraded to Berkeley DB 4.3.
 
 - Added dump utility Durodump.
 

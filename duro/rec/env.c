@@ -64,6 +64,11 @@ RDB_open_env(const char *path, RDB_environment **envpp)
         return ret;
     }
 
+    /*
+     * Suppress error output by default
+     */
+    envp->envp->set_errfile(envp->envp, NULL);
+
     /* open DB environment */
     ret = envp->envp->open(envp->envp, path,
             DB_INIT_LOCK | DB_INIT_LOG | DB_INIT_MPOOL | DB_INIT_TXN

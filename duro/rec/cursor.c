@@ -79,7 +79,7 @@ RDB_destroy_cursor(RDB_cursor *curp)
     free(curp->current_key.data);
     free(curp->current_data.data);
 
-    ret = curp->cursorp->c_close(curp->cursorp);
+    ret = curp->cursorp->close(curp->cursorp);
     free(curp);
     return ret;
 }
@@ -128,14 +128,14 @@ RDB_cursor_set(RDB_cursor *curp, int fieldc, RDB_field fields[])
     }
 
     /* Key not modified, so write data only */
-    return curp->cursorp->c_put(curp->cursorp,
+    return curp->cursorp->put(curp->cursorp,
                 &curp->current_key, &curp->current_data, DB_CURRENT);
 }
 
 int
 RDB_cursor_delete(RDB_cursor *curp)
 {
-    return curp->cursorp->c_del(curp->cursorp, 0);
+    return curp->cursorp->del(curp->cursorp, 0);
 }
 
 int
@@ -149,7 +149,7 @@ RDB_cursor_update(RDB_cursor *curp, int fieldc, const RDB_field fieldv[])
     memset(&data, 0, sizeof (data));
     data.flags = DB_DBT_REALLOC;
 
-    ret = curp->cursorp->c_pget(curp->cursorp, &key, &pkey, &data, DB_CURRENT);
+    ret = curp->cursorp->pget(curp->cursorp, &key, &pkey, &data, DB_CURRENT);
     if (ret != 0) {
         goto cleanup;
     }
@@ -166,13 +166,13 @@ int
 RDB_cursor_first(RDB_cursor *curp)
 {
     if (curp->idxp == NULL) {
-        return curp->cursorp->c_get(curp->cursorp,
+        return curp->cursorp->get(curp->cursorp,
                 &curp->current_key, &curp->current_data, DB_FIRST);
     } else {
         DBT key;
 
         memset(&key, 0, sizeof key);
-        return curp->cursorp->c_pget(curp->cursorp,
+        return curp->cursorp->pget(curp->cursorp,
                 &key, &curp->current_key, &curp->current_data, DB_FIRST);
     }
 }
@@ -183,12 +183,12 @@ RDB_cursor_next(RDB_cursor *curp, int flags)
     DBT key;
 
     if (curp->idxp == NULL) {
-        return curp->cursorp->c_get(curp->cursorp,
+        return curp->cursorp->get(curp->cursorp,
                 &curp->current_key, &curp->current_data,
                 flags == RDB_REC_DUP ? DB_NEXT_DUP : DB_NEXT);
     } else {
         memset(&key, 0, sizeof key);
-        return curp->cursorp->c_pget(curp->cursorp,
+        return curp->cursorp->pget(curp->cursorp,
                 &key, &curp->current_key, &curp->current_data,
                 flags == RDB_REC_DUP ? DB_NEXT_DUP : DB_NEXT);
     }
@@ -200,11 +200,11 @@ RDB_cursor_prev(RDB_cursor *curp)
     DBT key;
 
     if (curp->idxp == NULL) {
-        return curp->cursorp->c_get(curp->cursorp,
+        return curp->cursorp->get(curp->cursorp,
                 &curp->current_key, &curp->current_data, DB_PREV);
     } else {
         memset(&key, 0, sizeof key);
-        return curp->cursorp->c_pget(curp->cursorp,
+        return curp->cursorp->pget(curp->cursorp,
                 &key, &curp->current_key, &curp->current_data, DB_PREV);
     }
 }
@@ -235,11 +235,11 @@ RDB_cursor_seek(RDB_cursor *curp, int fieldc, RDB_field keyv[], int flags)
         return ret;
 
     if (curp->idxp == NULL) {
-        ret = curp->cursorp->c_get(curp->cursorp,
+        ret = curp->cursorp->get(curp->cursorp,
                 &curp->current_key, &curp->current_data,
                 flags == RDB_REC_RANGE ? DB_SET_RANGE : DB_SET);
     } else {
-        ret = curp->cursorp->c_pget(curp->cursorp,
+        ret = curp->cursorp->pget(curp->cursorp,
                 &key, &curp->current_key, &curp->current_data,
                 flags == RDB_REC_RANGE ? DB_SET_RANGE : DB_SET);
     }
