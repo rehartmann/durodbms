@@ -1,7 +1,7 @@
 /*
  * $Id$
  *
- * Copyright (C) 2003-2007 René Hartmann.
+ * Copyright (C) 2003-2008 René Hartmann.
  * See the file COPYING for redistribution information.
  */
 
@@ -79,7 +79,7 @@ RDB_parse_del_keydef_list(RDB_parse_keydef *firstkeyp, RDB_exec_context *ecp)
 int
 RDB_parse_destroy_assign(RDB_parse_assign *ap, RDB_exec_context *ecp)
 {
-    switch(ap->kind) {
+    switch (ap->kind) {
         case RDB_STMT_COPY:
             RDB_drop_expr(ap->var.copy.dstp, ecp);
             RDB_drop_expr(ap->var.copy.srcp, ecp);
@@ -106,14 +106,13 @@ RDB_parse_destroy_assign(RDB_parse_assign *ap, RDB_exec_context *ecp)
 }
 
 int
-RDB_parse_del_assignlist(RDB_parse_attr_assign *ap, RDB_exec_context *ecp)
+RDB_parse_del_assignlist(RDB_parse_assign *ap, RDB_exec_context *ecp)
 {
-    RDB_parse_attr_assign *hap;
+    RDB_parse_assign *hap;
     do {
-        RDB_drop_expr(ap->dstp, ecp);
-        RDB_drop_expr(ap->srcp, ecp);
         hap = ap->nextp;
-        free(ap);
+        RDB_parse_destroy_assign(ap, ecp);
+        RDB_free(ap);
         ap = hap;
     } while (ap != NULL);
     return RDB_OK;
@@ -134,7 +133,6 @@ destroy_parse_type(RDB_parse_type *ptyp, RDB_exec_context *ecp)
 int
 RDB_parse_del_stmt(RDB_parse_statement *stmtp, RDB_exec_context *ecp)
 {
-    int i;
     int ret = RDB_OK;
 
     switch(stmtp->kind) {
@@ -180,11 +178,8 @@ RDB_parse_del_stmt(RDB_parse_statement *stmtp, RDB_exec_context *ecp)
             RDB_drop_expr(stmtp->var.whileloop.condp, ecp);
             ret = RDB_parse_del_stmtlist(stmtp->var.whileloop.bodyp, ecp);
             break;
-        case RDB_STMT_ASSIGN:            
-            for (i = 0; i < stmtp->var.assignment.ac; i++) {
-                ret = RDB_parse_destroy_assign(&stmtp->var.assignment.av[i],
-                        ecp);
-            }
+        case RDB_STMT_ASSIGN:
+            ret = RDB_parse_del_assignlist(stmtp->var.assignment.assignp, ecp);
             break;
         case RDB_STMT_TYPE_DEF:
             {
@@ -228,6 +223,17 @@ RDB_parse_del_stmt(RDB_parse_statement *stmtp, RDB_exec_context *ecp)
     }
     RDB_free(stmtp);
     return ret;
+}
+
+RDB_int
+RDB_parse_assignlist_length(const RDB_parse_assign *assignp)
+{
+    RDB_int cnt = 0;
+    while (assignp != NULL) {
+        cnt++;
+        assignp = assignp->nextp;
+    }
+    return cnt;
 }
 
 int

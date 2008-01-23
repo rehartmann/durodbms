@@ -21,6 +21,10 @@
 #include <stdlib.h>
 #include <assert.h>
 
+enum {
+    DURO_MAX_LLEN = 64
+};
+
 typedef struct tx_node {
     RDB_transaction tx;
     struct tx_node *parentp;
@@ -1208,6 +1212,10 @@ exec_call(const RDB_parse_statement *stmtp, RDB_exec_context *ecp)
     argp = stmtp->var.call.arglist.firstp;
     i = 0;
     while (argp != NULL) {
+        if (i >= DURO_MAX_LLEN) {
+            RDB_raise_not_supported("too many arguments", ecp);
+            return RDB_ERROR;
+        }
         argvar[i] = (RDB_bool) (argp->kind == RDB_EX_VAR);
         if (argvar[i]) {
             argpv[i] = lookup_var(argp->var.varname, ecp);
@@ -1377,10 +1385,10 @@ exec_for(const RDB_parse_statement *stmtp, RDB_exec_context *ecp,
 }
 
 static int
-attr_assign_list_length(const RDB_parse_attr_assign *assignlp)
+attr_assign_list_length(const RDB_parse_assign *assignlp)
 {
     int assignc = 0;
-    const RDB_parse_attr_assign *ap = assignlp;
+    const RDB_parse_assign *ap = assignlp;
 
     do {
         assignc++;
@@ -1390,21 +1398,21 @@ attr_assign_list_length(const RDB_parse_attr_assign *assignlp)
 }
 
 static RDB_attr_update *
-convert_attr_assigns(RDB_parse_attr_assign *assignlp, int *updcp,
+convert_attr_assigns(RDB_parse_assign *assignlp, int *updcp,
         RDB_exec_context *ecp)
 {
     int i;
     RDB_attr_update *updv;
     *updcp = attr_assign_list_length(assignlp);
-    RDB_parse_attr_assign *ap = assignlp;
+    RDB_parse_assign *ap = assignlp;
 
     updv = RDB_alloc(*updcp * sizeof(RDB_attr_update), ecp);
     if (updv == NULL)
         return NULL;
     ap = assignlp;
     for (i = 0; i < *updcp; i++) {
-        updv[i].name = ap->dstp->var.varname;
-        updv[i].exp = ap->srcp;
+        updv[i].name = ap->var.copy.dstp->var.varname;
+        updv[i].exp = ap->var.copy.srcp;
         ap = ap->nextp;
     }
     return updv;
@@ -1427,24 +1435,29 @@ exec_assign(const RDB_parse_statement *stmtp, RDB_exec_context *ecp)
     int updc = 0;
     int delc = 0;
     int srcobjc = 0;
+    RDB_parse_assign *assignp = stmtp->var.assignment.assignp;
 
-    for (i = 0; i < stmtp->var.assignment.ac; i++) {
-        switch (stmtp->var.assignment.av[i].kind) {
+    while (assignp != NULL) {
+        switch (assignp->kind) {
             case RDB_STMT_COPY:
-                if (stmtp->var.assignment.av[i].var.copy.dstp->kind
+                if (copyc >= DURO_MAX_LLEN) {
+                    RDB_raise_not_supported("too many assignents", ecp);
+                    return RDB_ERROR;
+                }
+                if (assignp->var.copy.dstp->kind
                         != RDB_EX_VAR) {
                     RDB_raise_syntax("invalid assignment target", ecp);
                     goto error;
                 }
                 copyv[copyc].dstp = lookup_var(
-                        stmtp->var.assignment.av[i].var.copy.dstp->var.varname,
+                        assignp->var.copy.dstp->var.varname,
                         ecp);
                 if (copyv[copyc].dstp == NULL) {
                     goto error;
                 }
                 RDB_init_obj(&srcobjv[srcobjc++]);
                 copyv[copyc].srcp = &srcobjv[srcobjc - 1];
-                if (RDB_evaluate(stmtp->var.assignment.av[i].var.copy.srcp, get_var,
+                if (RDB_evaluate(assignp->var.copy.srcp, get_var,
                         current_varmapp, ecp, txnp != NULL ? &txnp->tx : NULL, &srcobjv[srcobjc - 1])
                                != RDB_OK) {
                     goto error;
@@ -1452,13 +1465,17 @@ exec_assign(const RDB_parse_statement *stmtp, RDB_exec_context *ecp)
                 copyc++;
                 break;
             case RDB_STMT_INSERT:
-                if (stmtp->var.assignment.av[i].var.copy.dstp->kind
+                if (insc >= DURO_MAX_LLEN) {
+                    RDB_raise_not_supported("too many assignents", ecp);
+                    return RDB_ERROR;
+                }
+                if (assignp->var.copy.dstp->kind
                         != RDB_EX_VAR) {
                     RDB_raise_syntax("invalid assignment target", ecp);
                     goto error;
                 }
                 insv[insc].tbp = lookup_var(
-                        stmtp->var.assignment.av[i].var.ins.dstp->var.varname,
+                        assignp->var.ins.dstp->var.varname,
                         ecp);
                 if (insv[insc].tbp == NULL) {
                     goto error;
@@ -1471,7 +1488,7 @@ exec_assign(const RDB_parse_statement *stmtp, RDB_exec_context *ecp)
                 }
                 RDB_init_obj(&srcobjv[srcobjc++]);
                 insv[insc].objp = &srcobjv[srcobjc - 1];
-                rexp = RDB_expr_resolve_varnames(stmtp->var.assignment.av[i].var.ins.srcp,
+                rexp = RDB_expr_resolve_varnames(assignp->var.ins.srcp,
                         &get_var, current_varmapp, ecp, txnp != NULL ? &txnp->tx : NULL);
                 if (rexp == NULL)
                     goto error;
@@ -1484,13 +1501,16 @@ exec_assign(const RDB_parse_statement *stmtp, RDB_exec_context *ecp)
                 insc++;
                 break;
             case RDB_STMT_UPDATE:
-                if (stmtp->var.assignment.av[i].var.upd.dstp->kind
+                if (updc >= DURO_MAX_LLEN) {
+                    RDB_raise_not_supported("too many assignents", ecp);
+                    return RDB_ERROR;
+                }
+                if (assignp->var.upd.dstp->kind
                         != RDB_EX_VAR) {
                     RDB_raise_syntax("invalid UPDATE target", ecp);
                     goto error;
                 }
-                dstp = lookup_var(
-                        stmtp->var.assignment.av[i].var.upd.dstp->var.varname,
+                dstp = lookup_var(assignp->var.upd.dstp->var.varname,
                         ecp);
                 if (dstp == NULL) {
                     goto error;
@@ -1498,30 +1518,30 @@ exec_assign(const RDB_parse_statement *stmtp, RDB_exec_context *ecp)
                 if (RDB_type_is_relation(dstp->typ)) {
                     updv[updc].tbp = dstp;
                     updv[updc].updv = convert_attr_assigns(
-                            stmtp->var.assignment.av[i].var.upd.assignlp,
+                            assignp->var.upd.assignlp,
                             &updv[updc].updc, ecp);
                     if (updv[updc].updv == NULL) {
                         RDB_raise_no_memory(ecp);
                         goto error;
                     }
-                    updv[updc].condp = stmtp->var.assignment.av[i].var.upd.condp;
+                    updv[updc].condp = assignp->var.upd.condp;
                     updc++;
                 } else if (RDB_type_is_tuple(dstp->typ)) {
-                    RDB_parse_attr_assign *ap;
-                    if (stmtp->var.assignment.av[i].var.upd.condp != NULL) {
+                    RDB_parse_assign *ap;
+                    if (assignp->var.upd.condp != NULL) {
                         RDB_raise_syntax("WHERE not allowed with tuple UPDATE", ecp);
                         goto error;
                     }
-                    ap = stmtp->var.assignment.av[i].var.upd.assignlp;
+                    ap = assignp->var.upd.assignlp;
                     while (ap != NULL) {
-                        copyv[copyc].dstp = RDB_tuple_get(dstp, ap->dstp->var.varname);
+                        copyv[copyc].dstp = RDB_tuple_get(dstp, ap->var.copy.dstp->var.varname);
                         if (copyv[copyc].dstp == NULL) {
                             RDB_raise_invalid_argument("target attribute not found", ecp);
                             goto error;
                         }
                         RDB_init_obj(&srcobjv[srcobjc++]);
                         copyv[copyc].srcp = &srcobjv[srcobjc - 1];
-                        if (RDB_evaluate(ap->srcp, get_var, current_varmapp, ecp,
+                        if (RDB_evaluate(ap->var.copy.srcp, get_var, current_varmapp, ecp,
                                 txnp != NULL ? &txnp->tx : NULL, &srcobjv[srcobjc - 1])
                                        != RDB_OK) {
                             goto error;
@@ -1535,13 +1555,17 @@ exec_assign(const RDB_parse_statement *stmtp, RDB_exec_context *ecp)
                 }
                 break;
             case RDB_STMT_DELETE:
-                if (stmtp->var.assignment.av[i].var.del.dstp->kind
+                if (delc >= DURO_MAX_LLEN) {
+                    RDB_raise_not_supported("too many assignents", ecp);
+                    return RDB_ERROR;
+                }
+                if (assignp->var.del.dstp->kind
                         != RDB_EX_VAR) {
                     RDB_raise_syntax("invalid assignment target", ecp);
                     goto error;
                 }
                 delv[delc].tbp = lookup_var(
-                        stmtp->var.assignment.av[i].var.del.dstp->var.varname,
+                        assignp->var.del.dstp->var.varname,
                         ecp);
                 if (delv[delc].tbp == NULL) {
                     goto error;
@@ -1552,10 +1576,11 @@ exec_assign(const RDB_parse_statement *stmtp, RDB_exec_context *ecp)
                     RDB_raise_type_mismatch("DELETE target must be relation", ecp);
                     goto error;
                 }
-                delv[delc].condp = stmtp->var.assignment.av[i].var.del.condp;
+                delv[delc].condp = assignp->var.del.condp;
                 delc++;
                 break;                
         }
+        assignp = assignp->nextp;
     }
     cnt = RDB_multi_assign(insc, insv, updc, updv, delc, delv, copyc, copyv,
             ecp, txnp != NULL ? &txnp->tx : NULL);

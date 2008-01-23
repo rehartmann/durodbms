@@ -1,7 +1,7 @@
 /*
  * $Id$
  *
- * Copyright (C) 2007 René Hartmann.
+ * Copyright (C) 2007-2008 René Hartmann.
  * See the file COPYING for redistribution information.
  */
 
@@ -221,7 +221,7 @@ serialize_call(RDB_object *objp, int *posp, const RDB_parse_statement *stmtp,
 }
 
 static RDB_int
-assign_list_len(RDB_parse_attr_assign *assignp)
+assign_list_len(RDB_parse_assign *assignp)
 {
     RDB_int len = 0;
     while (assignp != NULL) {
@@ -232,77 +232,95 @@ assign_list_len(RDB_parse_attr_assign *assignp)
 }
 
 static int
-serialize_assign(RDB_object *objp, int *posp, const RDB_parse_statement *stmtp,
-        RDB_exec_context *ecp)
-{
-    int i;
-    RDB_int len;
-    RDB_parse_attr_assign *assignp;
+serialize_assignlist(RDB_object *objp, int *posp,
+        const RDB_parse_assign *assignp, RDB_exec_context *ecp);
 
-    if (_RDB_serialize_int(objp, posp, (RDB_int) stmtp->var.assignment.ac, ecp) != RDB_OK) {
+static int
+serialize_assign(RDB_object *objp, int *posp,
+        const RDB_parse_assign *assignp, RDB_exec_context *ecp)
+{
+    RDB_int len;
+    RDB_bool hascond;
+
+    if (_RDB_serialize_int(objp, posp, (RDB_int) assignp->kind, ecp) != RDB_OK) {
         return RDB_ERROR;
     }
-    for (i = 0; i < stmtp->var.assignment.ac; i++) {
-        RDB_bool hascond;
+    switch (assignp->kind) {
+        case RDB_STMT_COPY:
+            if (_RDB_serialize_expr(objp, posp,
+                    assignp->var.copy.dstp, ecp) != RDB_OK)
+                return RDB_ERROR;
+            if (_RDB_serialize_expr(objp, posp,
+                    assignp->var.copy.srcp, ecp) != RDB_OK)
+                return RDB_ERROR;
+            break;
+        case RDB_STMT_INSERT:
+            if (_RDB_serialize_expr(objp, posp,
+                    assignp->var.ins.dstp, ecp) != RDB_OK)
+                return RDB_ERROR;
+            if (_RDB_serialize_expr(objp, posp,
+                    assignp->var.ins.srcp, ecp) != RDB_OK)
+                return RDB_ERROR;
+            break;
+        case RDB_STMT_UPDATE:
+            if (_RDB_serialize_expr(objp, posp,
+                    assignp->var.upd.dstp, ecp) != RDB_OK)
+                return RDB_ERROR;
 
-        if (_RDB_serialize_int(objp, posp, (RDB_int) stmtp->var.assignment.av[i].kind, ecp) != RDB_OK) {
+            hascond = (RDB_bool) (assignp->var.upd.condp != NULL);
+            if (_RDB_serialize_byte(objp, posp, (RDB_byte) hascond, ecp) != RDB_OK)
+                return RDB_ERROR;
+
+            if (serialize_assignlist(objp, posp, assignp->var.upd.assignlp, ecp)
+                    != RDB_OK)
+                return RDB_ERROR;
+
+            len = assign_list_len(assignp->var.upd.assignlp);
+            if (_RDB_serialize_int(objp, posp, len, ecp) != RDB_OK)
+                return RDB_ERROR;
+            assignp = assignp->var.upd.assignlp;
+            while (assignp != NULL) {
+                if (_RDB_serialize_expr(objp, posp, assignp->var.copy.dstp, ecp)
+                        != RDB_OK)
+                    return RDB_ERROR;
+                if (_RDB_serialize_expr(objp, posp, assignp->var.copy.srcp, ecp)
+                        != RDB_OK)
+                    return RDB_ERROR;
+                assignp = assignp->nextp;
+            }
+            break;
+        case RDB_STMT_DELETE:
+            if (_RDB_serialize_expr(objp, posp,
+                    assignp->var.del.dstp, ecp) != RDB_OK)
+                return RDB_ERROR;
+
+            hascond = (RDB_bool) (assignp->var.del.condp != NULL);
+            if (_RDB_serialize_byte(objp, posp, (RDB_byte) hascond, ecp) != RDB_OK)
+                return RDB_ERROR;                
+            if (hascond) {
+                if (_RDB_serialize_expr(objp, posp,
+                        assignp->var.del.condp, ecp) != RDB_OK)
+                    return RDB_ERROR;
+            }
+            break;
+    }
+    return RDB_OK;
+}
+
+static int
+serialize_assignlist(RDB_object *objp, int *posp,
+        const RDB_parse_assign *assignp, RDB_exec_context *ecp)
+{
+    RDB_int ac = RDB_parse_assignlist_length(assignp);
+
+    if (_RDB_serialize_int(objp, posp, ac, ecp) != RDB_OK) {
+        return RDB_ERROR;
+    }
+    while (assignp != NULL) {
+        if (serialize_assign(objp, posp, assignp, ecp) != RDB_OK) {
             return RDB_ERROR;
         }
-        switch (stmtp->var.assignment.av[i].kind) {
-            case RDB_STMT_COPY:
-                if (_RDB_serialize_expr(objp, posp,
-                        stmtp->var.assignment.av[i].var.copy.dstp, ecp) != RDB_OK)
-                    return RDB_ERROR;
-                if (_RDB_serialize_expr(objp, posp,
-                        stmtp->var.assignment.av[i].var.copy.srcp, ecp) != RDB_OK)
-                    return RDB_ERROR;
-                break;
-            case RDB_STMT_INSERT:
-                if (_RDB_serialize_expr(objp, posp,
-                        stmtp->var.assignment.av[i].var.ins.dstp, ecp) != RDB_OK)
-                    return RDB_ERROR;
-                if (_RDB_serialize_expr(objp, posp,
-                        stmtp->var.assignment.av[i].var.ins.srcp, ecp) != RDB_OK)
-                    return RDB_ERROR;
-                break;
-            case RDB_STMT_UPDATE:
-                if (_RDB_serialize_expr(objp, posp,
-                        stmtp->var.assignment.av[i].var.upd.dstp, ecp) != RDB_OK)
-                    return RDB_ERROR;
-
-                hascond = (RDB_bool) (stmtp->var.assignment.av[i].var.upd.condp != NULL);
-                if (_RDB_serialize_byte(objp, posp, (RDB_byte) hascond, ecp) != RDB_OK)
-                    return RDB_ERROR;                
-
-                len = assign_list_len(stmtp->var.assignment.av[i].var.upd.assignlp);
-                if (_RDB_serialize_int(objp, posp, len, ecp) != RDB_OK)
-                    return RDB_ERROR;
-                assignp = stmtp->var.assignment.av[i].var.upd.assignlp;
-                while (assignp != NULL) {
-                    if (_RDB_serialize_expr(objp, posp, assignp->dstp, ecp)
-                            != RDB_OK)
-                        return RDB_ERROR;
-                    if (_RDB_serialize_expr(objp, posp, assignp->srcp, ecp)
-                            != RDB_OK)
-                        return RDB_ERROR;
-                    assignp = assignp->nextp;
-                }
-                break;
-            case RDB_STMT_DELETE:
-                if (_RDB_serialize_expr(objp, posp,
-                        stmtp->var.assignment.av[i].var.del.dstp, ecp) != RDB_OK)
-                    return RDB_ERROR;
-
-                hascond = (RDB_bool) (stmtp->var.assignment.av[i].var.del.condp != NULL);
-                if (_RDB_serialize_byte(objp, posp, (RDB_byte) hascond, ecp) != RDB_OK)
-                    return RDB_ERROR;                
-                if (hascond) {
-                    if (_RDB_serialize_expr(objp, posp,
-                            stmtp->var.assignment.av[i].var.del.condp, ecp) != RDB_OK)
-                        return RDB_ERROR;
-                }
-                break;
-        }
+        assignp = assignp->nextp;
     }
     return RDB_OK;
 }
@@ -490,7 +508,7 @@ serialize_stmt(RDB_object *objp, int *posp, const RDB_parse_statement *stmtp,
         case RDB_STMT_WHILE:
             return serialize_while(objp, posp, stmtp, ecp);
         case RDB_STMT_ASSIGN:
-            return serialize_assign(objp, posp, stmtp, ecp);
+            return serialize_assignlist(objp, posp, stmtp->var.assignment.assignp, ecp);
         case RDB_STMT_BEGIN_TX:
         case RDB_STMT_COMMIT:
         case RDB_STMT_ROLLBACK:
@@ -941,93 +959,113 @@ deserialize_upd_op_def(RDB_object *objp, int *posp, RDB_exec_context *ecp,
 } 
 
 static int
+deserialize_assignlist(RDB_object *, int *, RDB_exec_context *,
+    RDB_transaction *, RDB_parse_assign **);
+
+static RDB_parse_assign *
 deserialize_assign(RDB_object *objp, int *posp, RDB_exec_context *ecp,
-    RDB_transaction *txp, RDB_parse_statement *stmtp)
+    RDB_transaction *txp)
 {
-    int i, j;
-    RDB_int iv;
     RDB_int len;
+    RDB_int iv;
     int hascond;
-    RDB_parse_attr_assign *assignp, *lastp;
+    RDB_parse_assign *assignp = RDB_alloc(sizeof(RDB_parse_assign), ecp);
+    if (assignp == NULL)
+        return NULL;
 
     if (_RDB_deserialize_int(objp, posp, ecp, &iv) != RDB_OK)
-        return RDB_ERROR;
-    stmtp->var.assignment.ac = (int) iv;
-    for (i = 0; i < stmtp->var.assignment.ac; i++) {
-        if (_RDB_deserialize_int(objp, posp, ecp, &iv) != RDB_OK)
-            return RDB_ERROR;
-        stmtp->var.assignment.av[i].kind = iv;
-        switch (stmtp->var.assignment.av[i].kind) {
-            case RDB_STMT_COPY:
+        goto error;
+    assignp->kind = iv;
+    switch (assignp->kind) {
+        case RDB_STMT_COPY:
+            if (_RDB_deserialize_expr(objp, posp, ecp, txp,
+                    &assignp->var.copy.dstp) != RDB_OK)
+                goto error;
+            if (_RDB_deserialize_expr(objp, posp, ecp, txp,
+                    &assignp->var.copy.srcp) != RDB_OK)
+                goto error;
+            break;
+        case RDB_STMT_INSERT:
+            if (_RDB_deserialize_expr(objp, posp, ecp, txp,
+                    &assignp->var.ins.dstp) != RDB_OK)
+                goto error;
+            if (_RDB_deserialize_expr(objp, posp, ecp, txp,
+                    &assignp->var.ins.srcp) != RDB_OK)
+                goto error;
+            break;
+        case RDB_STMT_UPDATE:
+            if (_RDB_deserialize_expr(objp, posp, ecp, txp,
+                    &assignp->var.upd.dstp) != RDB_OK)
+                goto error;
+            hascond = _RDB_deserialize_byte(objp, posp, ecp);
+            if (hascond == RDB_ERROR)
+                goto error;
+            if (hascond) {
                 if (_RDB_deserialize_expr(objp, posp, ecp, txp,
-                        &stmtp->var.assignment.av[i].var.copy.dstp) != RDB_OK)
-                    return RDB_ERROR;
+                        &assignp->var.upd.condp) != RDB_OK)
+                    goto error;
+            } else {
+                assignp->var.upd.condp = NULL;
+            }
+            if (_RDB_deserialize_int(objp, posp, ecp, &len) != RDB_OK)
+                goto error;
+            if (deserialize_assignlist(objp, posp, ecp, txp,
+                    &assignp->var.upd.assignlp) != RDB_OK) {
+                goto error;
+            }
+            break;
+        case RDB_STMT_DELETE:
+            if (_RDB_deserialize_expr(objp, posp, ecp, txp,
+                    &assignp->var.del.dstp) != RDB_OK)
+                goto error;
+            hascond = _RDB_deserialize_byte(objp, posp, ecp);
+            if (hascond == RDB_ERROR)
+                goto error;
+            if (hascond) {
                 if (_RDB_deserialize_expr(objp, posp, ecp, txp,
-                        &stmtp->var.assignment.av[i].var.copy.srcp) != RDB_OK)
-                    return RDB_ERROR;
-                break;
-            case RDB_STMT_INSERT:
-                if (_RDB_deserialize_expr(objp, posp, ecp, txp,
-                        &stmtp->var.assignment.av[i].var.ins.dstp) != RDB_OK)
-                    return RDB_ERROR;
-                if (_RDB_deserialize_expr(objp, posp, ecp, txp,
-                        &stmtp->var.assignment.av[i].var.ins.srcp) != RDB_OK)
-                    return RDB_ERROR;
-                break;
-            case RDB_STMT_UPDATE:
-                if (_RDB_deserialize_expr(objp, posp, ecp, txp,
-                        &stmtp->var.assignment.av[i].var.upd.dstp) != RDB_OK)
-                    return RDB_ERROR;
-                hascond = _RDB_deserialize_byte(objp, posp, ecp);
-                if (hascond == RDB_ERROR)
-                    return RDB_ERROR;
-                if (hascond) {
-                    if (_RDB_deserialize_expr(objp, posp, ecp, txp,
-                            &stmtp->var.assignment.av[i].var.upd.condp) != RDB_OK)
-                        return RDB_ERROR;
-                } else {
-                    stmtp->var.assignment.av[i].var.upd.condp = NULL;
-                }
-                if (_RDB_deserialize_int(objp, posp, ecp, &len) != RDB_OK)
-                    return RDB_ERROR;
-                stmtp->var.assignment.av[i].var.upd.assignlp = NULL;
-                for (j = 0; j < len; j++) {
-                    assignp = RDB_alloc(sizeof(RDB_parse_attr_assign), ecp);
-                    if (assignp == NULL) {
-                        return RDB_ERROR;
-                    }
-                    if (_RDB_deserialize_expr(objp, posp, ecp, txp,
-                            &assignp->dstp) != RDB_OK)
-                        return RDB_ERROR;
-                    if (_RDB_deserialize_expr(objp, posp, ecp, txp,
-                            &assignp->srcp) != RDB_OK)
-                        return RDB_ERROR;
-                    if (j == 0) {
-                        stmtp->var.assignment.av[i].var.upd.assignlp = lastp = assignp;
-                    } else {
-                        lastp->nextp = assignp;
-                        lastp = assignp;
-                    }
-                }
-                break;
-            case RDB_STMT_DELETE:
-                if (_RDB_deserialize_expr(objp, posp, ecp, txp,
-                        &stmtp->var.assignment.av[i].var.del.dstp) != RDB_OK)
-                    return RDB_ERROR;
-                hascond = _RDB_deserialize_byte(objp, posp, ecp);
-                if (hascond == RDB_ERROR)
-                    return RDB_ERROR;
-                if (hascond) {
-                    if (_RDB_deserialize_expr(objp, posp, ecp, txp,
-                            &stmtp->var.assignment.av[i].var.del.condp) != RDB_OK)
-                        return RDB_ERROR;
-                } else {
-                    stmtp->var.assignment.av[i].var.del.condp = NULL;
-                }
-                break;
-        }
+                        &assignp->var.del.condp) != RDB_OK)
+                    goto error;
+            } else {
+                assignp->var.del.condp = NULL;
+            }
+            break;
     }
+    return assignp;
+
+error:
+    RDB_free(assignp);
+    return NULL;
+}
+
+static int
+deserialize_assignlist(RDB_object *objp, int *posp, RDB_exec_context *ecp,
+    RDB_transaction *txp, RDB_parse_assign **assignpp)
+{
+    int i;
+    RDB_int ac;
+    RDB_parse_assign *assignp;
+    RDB_parse_assign *assignlistp = NULL;
+
+    if (_RDB_deserialize_int(objp, posp, ecp, &ac) != RDB_OK)
+        return RDB_ERROR;
+    for (i = 0; i < ac; i++) {
+        assignp = deserialize_assign(objp, posp, ecp, txp);
+        if (assignp == NULL)
+            goto error;
+        if (assignlistp == NULL) {
+            assignp->nextp = NULL;
+        } else {
+            assignp->nextp = assignlistp;
+        }
+        assignlistp = assignp;
+    }
+    *assignpp = assignlistp;
     return RDB_OK;
+
+error:
+    if (assignlistp != NULL)
+        RDB_parse_del_assignlist(assignlistp, ecp);
+    return RDB_ERROR;
 }
 
 static int
@@ -1100,7 +1138,8 @@ deserialize_stmt(RDB_object *objp, int *posp, RDB_exec_context *ecp,
                 goto error;
             break;
         case RDB_STMT_ASSIGN:
-            if (deserialize_assign(objp, posp, ecp, txp, stmtp) != RDB_OK)
+            if (deserialize_assignlist(objp, posp, ecp, txp,
+                    &stmtp->var.assignment.assignp) != RDB_OK)
                 goto error;
             break;
         case RDB_STMT_BEGIN_TX:

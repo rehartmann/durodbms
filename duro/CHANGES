@@ -4,6 +4,8 @@ Summary of Changes for Duro
 
 Changes for Duro 0.13
 
+- Renamed build target "check" to "test".
+
 - Upgraded to Berkeley DB 4.6.
 
 - Removed arguments ltfnp, arg, and txp from parsing functions.
@@ -20,7 +22,7 @@ Changes for Duro 0.13
 
 - Implemented interpreter Duro D/T.
 
-- Fixed bug in Duroadmin - now uses correct floating-point types.
+- Fixed bug in Duroadmin - now uses correct floating-point type.
 
 - Replaced ATTRIBUTE_NOT_FOUND_ERROR by NAME_ERROR.
 

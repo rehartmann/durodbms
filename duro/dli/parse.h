@@ -10,10 +10,6 @@
 
 #include <rel/rdb.h>
 
-enum {
-    DURO_MAX_LLEN = 64
-};
-
 typedef enum {
     RDB_STMT_NOOP,
     RDB_STMT_CALL,
@@ -37,13 +33,7 @@ typedef enum {
     RDB_STMT_RETURN
 } RDB_parse_stmt_kind;
 
-typedef struct RDB_parse_attr_assign {
-    RDB_expression *dstp;
-    RDB_expression *srcp;
-    struct RDB_parse_attr_assign *nextp;
-} RDB_parse_attr_assign;
-
-typedef struct {
+typedef struct RDB_parse_assign {
     enum {
         RDB_STMT_COPY,
         RDB_STMT_INSERT,
@@ -62,13 +52,14 @@ typedef struct {
         struct {
             RDB_expression *dstp;
             RDB_expression *condp;
-            RDB_parse_attr_assign *assignlp;
+            struct RDB_parse_assign *assignlp;
         } upd;
         struct {
             RDB_expression *dstp;
             RDB_expression *condp;
         } del;
     } var;
+    struct RDB_parse_assign *nextp;
 } RDB_parse_assign;
 
 typedef struct RDB_parse_keydef {
@@ -110,8 +101,7 @@ typedef struct RDB_parse_statement {
             RDB_object varname;
         } vardrop;
         struct {
-            int ac;
-            RDB_parse_assign av[DURO_MAX_LLEN];
+            RDB_parse_assign *assignp;
         } assignment;
         struct {
             RDB_expression *condp;
@@ -177,8 +167,11 @@ RDB_parse_stmt(RDB_exec_context *);
 int
 RDB_parse_del_keydef_list(RDB_parse_keydef *firstkeyp, RDB_exec_context *);
 
+RDB_int
+RDB_parse_assignlist_length(const RDB_parse_assign *);
+
 int
-RDB_parse_del_assignlist(RDB_parse_attr_assign *, RDB_exec_context *);
+RDB_parse_del_assignlist(RDB_parse_assign *, RDB_exec_context *);
 
 int
 RDB_parse_del_stmt(RDB_parse_statement *, RDB_exec_context *);
