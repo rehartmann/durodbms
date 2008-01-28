@@ -1061,7 +1061,7 @@ RDB_obj_comp(const RDB_object *valp, const char *compname, RDB_object *compvalp,
             }
             ret = _RDB_copy_obj(compvalp, valp, ecp, NULL);
             if (ret != RDB_OK)
-                return ret;
+                return RDB_ERROR;
             compvalp->typ = comptyp;
         } else {
             /* Actual rep is tuple */
@@ -1076,6 +1076,11 @@ RDB_obj_comp(const RDB_object *valp, const char *compname, RDB_object *compvalp,
         /* Getter is implemented by user */
         char *opname;
         RDB_object *argv[1];
+
+        if (txp == NULL) {
+            RDB_raise_no_running_tx(ecp);
+            return RDB_ERROR;
+        }
 
         opname = RDB_alloc(strlen(valp->typ->name) + strlen(compname) + 6, ecp);
         if (opname == NULL) {

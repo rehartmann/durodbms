@@ -154,12 +154,14 @@ get_var_type(const char *name, void *maparg)
 
 struct op_data {
     RDB_parse_statement *stmtlistp;
+    int argnamec;
     char **argnamev;
 };
 
 void
 Duro_exit_interp(void)
 {
+    int i;
     RDB_exec_context ec;
     RDB_hashmap_iter it;
     char *name;
@@ -170,7 +172,10 @@ Duro_exit_interp(void)
     RDB_init_hashmap_iter(&it, &ro_op_cache);
     while((op = RDB_hashmap_next(&it, &name)) != NULL) {
         RDB_parse_del_stmtlist(op->stmtlistp, &ec);
-        RDB_free(op->argnamev); /* !! */
+        for (i = 0; i < op->argnamec; i++) {
+            RDB_free(op->argnamev[i]);
+        }
+        RDB_free(op->argnamev);
     }
     RDB_destroy_hashmap_iter(&it);
     RDB_destroy_hashmap(&ro_op_cache);
@@ -464,7 +469,11 @@ load_op(const char *name, int argc, RDB_object *argv[],
         return RDB_ERROR;
     }
 
-    /* !! more typechecks */
+    if (RDB_obj_type(argv[0]) == NULL
+            || RDB_obj_type(argv[0])->kind != RDB_TP_ARRAY) {
+        RDB_raise_type_mismatch("first argument must be array", ecp);
+        goto error;
+    }        
 
     if (argc > 2) {
         int i;
@@ -649,17 +658,19 @@ init_obj_by_selector(RDB_object *objp, RDB_possrep *rep,
     RDB_object *objv;
     RDB_object **objpv;
 
+    objv = RDB_alloc(sizeof(RDB_object) * rep->compc, ecp);
+    if (objv == NULL) {
+        return RDB_ERROR;
+    }
     for (i = 0; i < rep->compc; i++)
         RDB_init_obj(&objv[i]);
-
-    objv = RDB_alloc(sizeof(RDB_object) * rep->compc, ecp);
     objpv = RDB_alloc(sizeof(RDB_object *) * rep->compc, ecp);
-    if (objv == NULL || objpv == NULL) {
+    if (objpv == NULL) {
         ret = RDB_ERROR;
         goto cleanup;
     }
 
-    /* Get selector agruments */
+    /* Get selector arguments */
     for (i = 0; i < rep->compc; i++) {
         ret = init_obj(&objv[i], rep->compv[i].typ, ecp, txp);
         if (ret != RDB_OK)
@@ -957,6 +968,11 @@ exec_vardef_real(RDB_parse_statement *stmtp, RDB_exec_context *ecp)
     int keyc = 0;
     char *varname = RDB_obj_string(&stmtp->var.vardef.varname);
 
+    if (txnp == NULL) {
+        RDB_raise_no_running_tx(ecp);
+        return RDB_ERROR;
+    }
+
     if (stmtp->var.vardef.type.exp != NULL) {
         if (eval_parse_type(&stmtp->var.vardef.type, ecp, NULL) != RDB_OK)
             goto error;
@@ -981,11 +997,6 @@ exec_vardef_real(RDB_parse_statement *stmtp, RDB_exec_context *ecp)
     }
     if (tbtyp == NULL)
         goto error;
-
-    if (txnp == NULL) {
-        RDB_raise_no_running_tx(ecp);
-        return RDB_ERROR;
-    }
 
     if (stmtp->var.vardef.firstkeyp != NULL) {
         keyv = keylist_to_keyv(stmtp->var.vardef.firstkeyp, &keyc, ecp);
@@ -1012,7 +1023,7 @@ exec_vardef_real(RDB_parse_statement *stmtp, RDB_exec_context *ecp)
     if (_RDB_parse_interactive)
         printf("Table %s created.\n", varname);
 
-    if (stmtp->var.vardef.exp != NULL) {        
+    if (stmtp->var.vardef.exp != NULL) {
         RDB_destroy_obj(&tb, ecp);
     }
     return RDB_OK;
@@ -1140,8 +1151,6 @@ exec_vardef_private(RDB_parse_statement *stmtp, RDB_exec_context *ecp)
         RDB_raise_no_memory(ecp);
         goto error;
     }
-
-    /* !! */   
 
     if (_RDB_parse_interactive)
         printf("Local table %s created.\n", varname);
@@ -1613,16 +1622,16 @@ exec_begin_tx(const RDB_parse_statement *stmtp, RDB_exec_context *ecp)
     RDB_database *dbp;
     RDB_object *dbnameobjp = RDB_hashmap_get(&toplevel_vars.map, "CURRENT_DB");
     if (dbnameobjp == NULL) {
-        printf("no database\n");
+        RDB_raise_resource_not_found("no database", ecp);
         return RDB_ERROR;
     }
     dbname = RDB_obj_string(dbnameobjp);
     if (*dbname == '\0') {
-        printf("no database\n");
+        RDB_raise_resource_not_found("no database", ecp);
         return RDB_ERROR;
     }
     if (envp == NULL) {
-        printf("no connection\n");
+        RDB_raise_resource_not_found("no connection", ecp);
         return RDB_ERROR;
     }
 
@@ -1853,6 +1862,7 @@ Duro_invoke_dt_ro_op(const char *name, int argc, RDB_object *argv[],
 
         op = RDB_alloc(sizeof(struct op_data), ecp);
         op->stmtlistp = stmtlistp;
+        op->argnamec = argc;
         op->argnamev = argnamev;
 
         RDB_hashmap_put(&ro_op_cache, name, op);
@@ -1868,6 +1878,8 @@ Duro_invoke_dt_ro_op(const char *name, int argc, RDB_object *argv[],
     for (i = 0; i < argc; i++) {
         if (RDB_hashmap_put(&current_varmapp->map, argnamev[i], argv[i]) != RDB_OK) {
             RDB_parse_del_stmtlist(stmtlistp, ecp);
+            for (i = 0; i < argc; i++)
+                RDB_free(argnamev[i]);
             RDB_free(argnamev);
             RDB_raise_no_memory(ecp);
             return RDB_ERROR;
