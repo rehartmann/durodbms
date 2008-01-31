@@ -156,7 +156,6 @@ RDB_table_to_array(RDB_object *arrp, RDB_object *tbp,
                    int seqitc, const RDB_seq_item seqitv[], int flags,
                    RDB_exec_context *ecp, RDB_transaction *txp)
 {
-    int ret;
     RDB_expression *texp;
 
     if (arrp->kind != RDB_OB_INITIAL && arrp->kind != RDB_OB_ARRAY) {
@@ -168,10 +167,7 @@ RDB_table_to_array(RDB_object *arrp, RDB_object *tbp,
     if (texp == NULL)
         return RDB_ERROR;
 
-    ret = init_expr_array(arrp, texp, seqitc, seqitv, flags, ecp, txp);
-    if (ret != RDB_OK)
-        RDB_drop_expr(texp, NULL);
-    return ret;
+    return init_expr_array(arrp, texp, seqitc, seqitv, flags, ecp, txp);
 }
 
 /**

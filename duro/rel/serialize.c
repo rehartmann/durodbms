@@ -149,7 +149,7 @@ serialize_trobj(RDB_object *valp, int *posp, const RDB_object *argvalp,
     }
 
     len = typ != NULL ? typ->ireplen : RDB_VARIABLE_LEN;
-    if (len == RDB_VARIABLE_LEN) {
+    if (len == (size_t) RDB_VARIABLE_LEN) {
         /*
          * Store size
          */
@@ -281,7 +281,7 @@ _RDB_type_to_binobj(RDB_object *valp, const RDB_type *typ, RDB_exec_context *ecp
     pos = 0;
     ret = _RDB_serialize_type(valp, &pos, typ, ecp);
     if (ret != RDB_OK)
-        return ret;
+        return RDB_ERROR;
 
     valp->var.bin.len = pos; /* Only store actual length */
     return RDB_OK;
@@ -504,7 +504,7 @@ deserialize_trobj(RDB_object *valp, int *posp, RDB_exec_context *ecp,
         return RDB_ERROR;
 
     len = typ->ireplen;
-    if (len == RDB_VARIABLE_LEN) {
+    if (len == (size_t) RDB_VARIABLE_LEN) {
         if (deserialize_size_t(valp, posp, ecp, &len) != RDB_OK)
             return RDB_ERROR;
     }

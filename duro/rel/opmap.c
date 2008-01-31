@@ -12,7 +12,7 @@
 void
 RDB_init_op_map(RDB_op_map *opmap)
 {
-    RDB_init_hashmap(&opmap->map, 64);
+    RDB_init_hashmap(&opmap->map, 256);
 }
 
 struct op_entry {

@@ -1261,7 +1261,6 @@ next_stored_tuple(RDB_qresult *qrp, RDB_object *tbp, RDB_object *tplp,
     if (tplp != NULL) {
         ret = _RDB_get_by_cursor(tbp, qrp->var.stored.curp, tpltyp, tplp, ecp, txp);
         if (ret != RDB_OK) {
-            _RDB_handle_errcode(ret, ecp, txp);
             return RDB_ERROR;
         }
     }

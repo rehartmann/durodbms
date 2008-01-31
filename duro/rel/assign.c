@@ -1806,6 +1806,52 @@ cleanup:
 }
 
 /**
+ * RDB_copy_obj copies the value of the RDB_object pointed to
+by <var>srcvalp</var> to the RDB_object pointed to by <var>dstvalp</var>.
+
+The source RDB_object must either be newly initialized or of the same type
+as the destination.
+
+If both the source and the target are a table, the tuples
+are copied from the source to the target. In this case, both tables
+must be local, because otherwise a transaction would be required.
+RDB_copy_table() or RDB_multi_assign() can be used to copy
+global tables.
+
+Currently, RDB_copy_obj is not supported for targets which hold
+a virtual table.
+
+If an error occurs, an error value is left in *<var>ecp</var>.
+
+@returns
+
+RDB_OK on success, RDB_ERROR if an error occurred.
+
+@par Errors:
+
+<dl>
+<dt>RDB_TYPE_MISMATCH_ERROR
+<dd>*<var>dstvalp</var> is not newly initialized
+and its type does not match the type of the RDB_object specified by
+<var>srcvalp</var>.
+</dl>
+
+The call may also fail for a @ref system-errors "system error".
+ */
+int
+RDB_copy_obj(RDB_object *dstvalp, const RDB_object *srcvalp,
+        RDB_exec_context *ecp)
+{
+    RDB_ma_copy cpy;
+
+    cpy.dstp = dstvalp;
+    cpy.srcp = (RDB_object *) srcvalp;
+
+    return RDB_multi_assign(0, NULL, 0, NULL, 0, NULL, 1, &cpy, ecp, NULL)
+            != RDB_ERROR ? RDB_OK : RDB_ERROR ;
+} 
+
+/**
  * RDB_insert inserts the tuple or relation specified by <var>objp</var>
 into the table specified by <var>tbp</var>.
 
@@ -1823,8 +1869,8 @@ RDB_OK on success, RDB_ERROR if an error occurred.
 
 <dl>
 <dt>RDB_NO_RUNNING_TX_ERROR
-<dd>The table given by <var>tbp</var> is global and <var>txp</var>
-does not point to a running transaction.
+<dd>The table given by <var>tbp</var> is global and *<var>txp</var>
+is not a running transaction.
 <dt>RDB_INVALID_ARGUMENT_ERROR
 <dd>A table attribute is missing in the tuple and no default value
 was specified for that attribute.
@@ -1840,7 +1886,7 @@ predicate.
 <dd>The type of a tuple attribute does not match the type of the
 corresponding table attribute.
 <dt>RDB_OPERATOR_NOT_FOUND_ERROR
-<dd>The definition of the table specified by <var>tbp</var>
+<dd>The definition of *<var>tbp</var>
 refers to a non-existing operator.
 <dt>RDB_NOT_SUPPORTED_ERROR
 <dd>RDB_insert is not supported for this type of table.
@@ -1859,7 +1905,7 @@ RDB_insert(RDB_object *tbp, const RDB_object *objp, RDB_exec_context *ecp,
     ins.tbp = tbp;
     ins.objp = (RDB_object *) objp;
     count = RDB_multi_assign(1, &ins, 0, NULL, 0, NULL, 0, NULL, ecp, txp);
-    if (count == RDB_ERROR)
+    if (count == (RDB_int) RDB_ERROR)
         return RDB_ERROR;
     return RDB_OK;
 }

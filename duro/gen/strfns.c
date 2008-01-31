@@ -9,8 +9,10 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
+#include <assert.h>
 
-char *RDB_dup_str(const char *str) {
+char *
+RDB_dup_str(const char *str) {
     char *resp = malloc(strlen(str) + 1);
     
     if (resp == NULL)
@@ -19,7 +21,8 @@ char *RDB_dup_str(const char *str) {
     return strcpy(resp, str);
 }
 
-void RDB_free_strvec(int cnt, char **strv) {
+void
+RDB_free_strvec(int cnt, char **strv) {
     int i;
 
     for (i = 0; i < cnt; i++)
@@ -27,7 +30,8 @@ void RDB_free_strvec(int cnt, char **strv) {
     free(strv);
 }
 
-char **RDB_dup_strvec(int cnt, char **srcv) {
+char **
+RDB_dup_strvec(int cnt, char **srcv) {
     int i;
     char **resv;
     
@@ -75,12 +79,12 @@ _RDB_dump(void *datap, size_t size)
 unsigned
 RDB_hash_str(const char *str)
 {
-    int len = (int) strlen(str);
-    int i;
-    unsigned res = 0;
-    
-    for (i = 0; i < len; i++)
-        res += str[i];
+    unsigned hash = 5381;
+    int c;
 
-    return res;
+    while ((c = *str++) != '\0')
+       hash = hash + c;
+/* !!      hash = (hash * 33) ^ c; */
+
+    return hash;
 }

@@ -90,7 +90,7 @@ table_ilen(const RDB_object *tbp, size_t *lenp, RDB_exec_context *ecp)
         if (ret != RDB_OK) {
              RDB_destroy_obj(&tpl, ecp);
             _RDB_drop_qresult(qrp, ecp, NULL);
-            return ret;
+            return RDB_ERROR;
         }
         *lenp += len;
     }
@@ -132,7 +132,7 @@ _RDB_obj_ilen(const RDB_object *objp, size_t *lenp, RDB_exec_context *ecp)
                     *lenp += sizeof (size_t);
                 ret = _RDB_obj_ilen(attrobjp, &len, ecp);
                 if (ret != RDB_OK)
-                    return ret;
+                    return RDB_ERROR;
                 *lenp += len;
             }
 
@@ -152,7 +152,7 @@ _RDB_obj_ilen(const RDB_object *objp, size_t *lenp, RDB_exec_context *ecp)
                     *lenp += sizeof (size_t);
                 ret = _RDB_obj_ilen(elemp, &len, ecp);
                 if (ret != RDB_OK)
-                    return ret;
+                    return RDB_ERROR;
                 *lenp += len;
             }
             if (RDB_obj_type(RDB_get_err(ecp)) != &RDB_NOT_FOUND_ERROR)
@@ -210,7 +210,7 @@ len_irep_to_obj(RDB_object *valp, RDB_type *typ, const void *datap,
 
     ret = RDB_irep_to_obj(valp, typ, bp, len, ecp);
     if (ret != RDB_OK)
-        return ret;
+        return RDB_ERROR;
     return llen + len;
 }
 
@@ -241,7 +241,7 @@ irep_to_tuple(RDB_object *tplp, RDB_type *typ, const void *datap,
         ret = RDB_tuple_set(tplp, typ->var.tuple.attrv[i].name, &obj, ecp);
         RDB_destroy_obj(&obj, ecp);
         if (ret != RDB_OK)
-            return ret;        
+            return RDB_ERROR;
     }
     return len;
 }
@@ -319,7 +319,7 @@ irep_to_array(RDB_object *arrp, RDB_type *typ, const void *datap, size_t len,
     ret = RDB_set_array_length(arrp, (RDB_int) arrlen, ecp);
     if (ret != RDB_OK) {
         RDB_destroy_obj(&tpl, ecp);
-        return ret;
+        return RDB_ERROR;
     }
     
     bp = (RDB_byte *)datap;
@@ -329,7 +329,7 @@ irep_to_array(RDB_object *arrp, RDB_type *typ, const void *datap, size_t len,
         ret = RDB_array_set(arrp, i, &tpl, ecp);
         if (ret != RDB_OK) {
             RDB_destroy_obj(&tpl, ecp);
-            return ret;
+            return RDB_ERROR;
         }
         bp += l;
     }
@@ -727,59 +727,6 @@ RDB_obj_equals(const RDB_object *val1p, const RDB_object *val2p,
 }
 
 /**
- * RDB_copy_obj copies the value of the RDB_object pointed to
-by <var>srcvalp</var> to the RDB_object pointed to by <var>dstvalp</var>.
-
-The source RDB_object must either be newly initialized or of the same type
-as the destination.
-
-If the target is newly initialized, then the following two cases
-are handled in a special way:
-
-(2) If the source holds an unnamed virtual table, the virtual table
-is duplicated. !!
-
-If both the source and the target hold a table, the tuples
-are copied from the source to the target. In this case, both tables
-must be local, because otherwise a transaction would be required.
-RDB_copy_table() or
-RDB_multi_assign() can be used to copy
-global tables.
-
-Currently, RDB_copy_obj is not supported for targets which hold
-a virtual table.
-
-If an error occurs, an error value is left in *<var>ecp</var>.
-
-@returns
-
-RDB_OK on success, RDB_ERROR if an error occurred.
-
-@par Errors:
-
-<dl>
-<dt>RDB_TYPE_MISMATCH_ERROR
-<dd>The RDB_object specified by <var>dstvalp</var> is not newly initialized
-and its type does not match the type of the RDB_object specified by
-<var>srcvalp</var>.
-</dl>
-
-The call may also fail for a @ref system-errors "system error".
- */
-int
-RDB_copy_obj(RDB_object *dstvalp, const RDB_object *srcvalp,
-        RDB_exec_context *ecp)
-{
-    RDB_ma_copy cpy;
-
-    cpy.dstp = dstvalp;
-    cpy.srcp = (RDB_object *) srcvalp;
-
-    return RDB_multi_assign(0, NULL, 0, NULL, 0, NULL, 1, &cpy, ecp, NULL)
-            != RDB_ERROR ? RDB_OK : RDB_ERROR ;
-} 
-
-/**
  * RDB_init_obj initializes the RDB_object structure pointed to by
 <var>valp</var>. RDB_init_obj must be called before any other
 operation can be performed on a RDB_object variable.
@@ -1124,7 +1071,7 @@ RDB_obj_set_comp(RDB_object *valp, const char *compname,
         if (valp->typ->var.scalar.repv[0].compc == 1) {
             ret = RDB_destroy_obj(valp, ecp);
             if (ret != RDB_OK)
-                return ret;
+                return RDB_ERROR;
 
             ret = _RDB_copy_obj(valp, compvalp, ecp, NULL);
         } else {
@@ -1151,7 +1098,7 @@ RDB_obj_set_comp(RDB_object *valp, const char *compname,
     }
 
     if (ret != RDB_OK)
-        return ret;
+        return RDB_ERROR;
     
     ret = _RDB_check_type_constraint(valp, ecp, txp);
     if (ret != RDB_OK) {
@@ -1393,21 +1340,21 @@ RDB_obj_to_string(RDB_object *dstp, const RDB_object *srcp,
         sprintf(buf, "%d", RDB_obj_int(srcp));
         ret = RDB_string_to_obj(dstp, buf, ecp);
         if (ret != RDB_OK)
-            return ret;
+            return RDB_ERROR;
     } else if (srcp->typ == &RDB_BOOLEAN) {
         ret = RDB_string_to_obj(dstp, RDB_obj_bool(srcp) ? "TRUE" : "FALSE",
                 ecp);
         if (ret != RDB_OK)
-            return ret;
+            return RDB_ERROR;
     } else if (srcp->typ == &RDB_FLOAT) {
         sprintf(buf, "%g", (double) RDB_obj_float(srcp));
         ret = RDB_string_to_obj(dstp, buf, ecp);
         if (ret != RDB_OK)
-            return ret;
+            return RDB_ERROR;
     } else if (srcp->typ == &RDB_STRING) {
         ret = RDB_string_to_obj(dstp, RDB_obj_string(srcp), ecp);
         if (ret != RDB_OK)
-            return ret;
+            return RDB_ERROR;
     } else {
         RDB_raise_invalid_argument("type cannot be converted to STRING", ecp);
         return RDB_ERROR;

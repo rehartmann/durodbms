@@ -13,7 +13,9 @@
 #include <string.h>
 #include <stdlib.h>
 
-#define RDB_TUPLE_CAPACITY 7
+enum {
+    RDB_TUPLE_CAPACITY = 31
+};
 
 /*
  * A tuple is implemented using a hash table, taking advantage of

@@ -912,6 +912,7 @@ deserialize_ro_op_def(RDB_object *objp, int *posp, RDB_exec_context *ecp,
             &stmtp->var.opdef.rtype.exp) != RDB_OK) {
         return RDB_ERROR;
     }
+    stmtp->var.opdef.rtype.typ = NULL;
     return deserialize_stmt_list(objp, posp, ecp, txp, &stmtp->var.opdef.bodyp);
 } 
 

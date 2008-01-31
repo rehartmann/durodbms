@@ -97,13 +97,10 @@ test tuple {tuple-valued attribrutes} -setup $SETUP -body {
     }
     
     duro::table expr S {T1 WHERE TPATTR.A = 1} $tx
-    
-    set tpl [duro::expr {TUPLE FROM S} $tx]
-    set stpl {SCATTR Bla TPATTR {T {C Blip} A 1 B Blubb}}
-    if {![tequal $tpl $stpl]} {
-        error "Tuple value from S is $tpl, should be $stpl"
-    }
-    
+
+    duro_assert {(TUPLE FROM S)
+            = TUPLE {SCATTR 'Bla', TPATTR TUPLE{T TUPLE{C 'Blip'}, A 1, B 'Blubb'}}} $tx
+
     # Test insert into UNWRAP table
     
     set tpl {T {C Bleb} SCATTR Ble A 1 B Blubb}
@@ -175,12 +172,9 @@ test tuple {tuple-valued attribrutes} -setup $SETUP -body {
     if {![tequal $tpl $stpl]} {
         error "Tuple is $tpl, should be $stpl"
     }
-    
-    set tpl [duro::expr {TUPLE {A 1, B "Bee"} WRAP ({A, B} AS T)} $tx]
-    set stpl {T {A 1 B Bee}}
-    if {![tequal $tpl $stpl]} {
-        error "Tuple is $tpl, should be $stpl"
-    }
+
+    duro_assert {TUPLE {A 1, B "Bee"} WRAP ({A, B} AS T)
+    		= TUPLE {T TUPLE {A 1, B 'Bee'}}} $tx
 
     set tpl [duro::expr {TUPLE {T TUPLE {A 1, B "Bee"}} UNWRAP (T)} $tx]
     set stpl {A 1 B Bee}
