@@ -185,6 +185,7 @@ stored_matching(RDB_object *tbp, const RDB_object *tplp, RDB_exec_context *ecp,
     }
     for (i = 0; i < indexp->attrc; i++) {
         objpv[i] = RDB_tuple_get(tplp, indexp->attrv[i].attrname);
+        objpv[i]->store_typ = objpv[i]->typ;
     }
     RDB_init_obj(&tpl);
     ret = _RDB_get_by_uindex(tbp, objpv, indexp, tbp->typ->var.basetyp, ecp,

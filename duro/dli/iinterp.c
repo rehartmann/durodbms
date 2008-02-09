@@ -786,6 +786,7 @@ expr_to_type(RDB_expression *exp, RDB_exec_context *ecp, RDB_transaction *txp)
             return RDB_create_relation_type_from_base(typ, ecp);
         }
         RDB_raise_invalid_argument("tuple or relation type required", ecp);
+        return NULL;
     }
     if (strcmp(exp->var.op.name, "TUPLE_SAME_HEADING_AS") == 0) {
         typ = RDB_expr_type(exp->var.op.args.firstp, get_var_type,
@@ -799,6 +800,7 @@ expr_to_type(RDB_expression *exp, RDB_exec_context *ecp, RDB_transaction *txp)
             return RDB_dup_nonscalar_type(typ, ecp);
         }
         RDB_raise_invalid_argument("tuple or relation type required", ecp);
+        return NULL;
     }
 
     attrc = RDB_expr_list_length(&exp->var.op.args);
@@ -963,7 +965,7 @@ exec_vardef_real(RDB_parse_statement *stmtp, RDB_exec_context *ecp)
     RDB_string_vec *keyv;
     RDB_bool freekey;
     RDB_object tb;
-    RDB_type *tbtyp;
+    RDB_type *tbtyp = NULL;
     RDB_object *tbp = NULL;
     int keyc = 0;
     char *varname = RDB_obj_string(&stmtp->var.vardef.varname);
@@ -1037,7 +1039,7 @@ error:
             RDB_drop_table(tbp, &ec, &txnp->tx);
         } else if (tbtyp != NULL && !RDB_type_is_scalar(tbtyp)) {
             RDB_drop_type(tbtyp, &ec, NULL);
-       }
+        }
         if (stmtp->var.vardef.exp != NULL) {        
             RDB_destroy_obj(&tb, &ec);
         }
@@ -1929,6 +1931,7 @@ Duro_invoke_dt_update_op(const char *name, int argc, RDB_object *argv[],
         RDB_free(argnamev);
         return RDB_ERROR;
     }
+    fflush(stderr);
 
     RDB_init_hashmap(&vars.map, 256);
     vars.parentp = NULL;

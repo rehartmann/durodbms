@@ -385,12 +385,8 @@ update_stored_simple(RDB_object *tbp, RDB_expression *condp,
                 fieldv[i].no = *_RDB_field_no(tbp->var.tb.stp, updv[i].name);
 
                 /* Set type - needed for tuple and array attributes */
-                if (valv[i].typ == NULL
-                        && (valv[i].kind == RDB_OB_TUPLE
-                         || valv[i].kind == RDB_OB_ARRAY)) {
-                    valv[i].typ = RDB_type_attr_type(RDB_obj_type(tbp),
+                valv[i].store_typ = RDB_type_attr_type(RDB_obj_type(tbp),
                             updv[i].name);
-                }
 
                 /* Get data */
                 if (_RDB_obj_to_field(&fieldv[i], &valv[i], ecp) != RDB_OK) {
@@ -537,12 +533,8 @@ update_where_pindex(RDB_expression *texp, RDB_expression *condp,
                  refexp->var.tbref.tbp->var.tb.stp, updv[i].name);
          
         /* Set type - needed for tuple and array attributes */
-        if (valv[i].typ == NULL
-                && (valv[i].kind == RDB_OB_TUPLE
-                 || valv[i].kind == RDB_OB_ARRAY)) {
-            valv[i].typ = RDB_type_attr_type(
+        valv[i].store_typ = RDB_type_attr_type(
                     RDB_obj_type(refexp->var.tbref.tbp), updv[i].name);
-        }
         if (_RDB_obj_to_field(&fieldv[i], &valv[i], ecp) != RDB_OK) {
             rcount = RDB_ERROR;
             goto cleanup;
@@ -710,12 +702,8 @@ update_where_index_simple(RDB_expression *texp, RDB_expression *condp,
                         refexp->var.tbref.tbp->var.tb.stp, updv[i].name);
                  
                 /* Set type - needed for tuple and array attributes */
-                if (valv[i].typ == NULL
-                        && (valv[i].kind == RDB_OB_TUPLE
-                         || valv[i].kind == RDB_OB_ARRAY)) {
-                    valv[i].typ = RDB_type_attr_type(
+                valv[i].store_typ = RDB_type_attr_type(
                             RDB_obj_type(refexp->var.tbref.tbp), updv[i].name);
-                }
                 if (_RDB_obj_to_field(&fieldv[i], &valv[i], ecp) != RDB_OK) {
                     rcount = RDB_ERROR;
                     goto cleanup;

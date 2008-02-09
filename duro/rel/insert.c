@@ -1,7 +1,7 @@
 /*
  * $Id$
  *
- * Copyright (C) 2003-2007 René Hartmann.
+ * Copyright (C) 2003-2008 René Hartmann.
  * See the file COPYING for redistribution information.
  */
 
@@ -38,6 +38,7 @@ _RDB_insert_real(RDB_object *tbp, const RDB_object *tplp,
     for (i = 0; i < attrcount; i++) {
         int *fnop;
         RDB_object *valp;
+        RDB_type *attrtyp = tuptyp->var.tuple.attrv[i].typ;
         
         fnop = _RDB_field_no(tbp->var.tb.stp, tuptyp->var.tuple.attrv[i].name);
         valp = RDB_tuple_get(tplp, tuptyp->var.tuple.attrv[i].name);
@@ -54,51 +55,13 @@ _RDB_insert_real(RDB_object *tbp, const RDB_object *tplp,
 
         /* Typecheck */
         if (valp->typ == NULL) {
-            RDB_type *attrtyp = tuptyp->var.tuple.attrv[i].typ;
-
-            switch (valp->kind) {
-                case RDB_OB_BOOL:
-                case RDB_OB_INT:
-                case RDB_OB_FLOAT:
-                case RDB_OB_BIN:
-                    RDB_raise_internal("invalid tuple attribute", ecp);
-                    ret = RDB_ERROR;
-                    goto cleanup;
-                case RDB_OB_INITIAL:
-                    if (!RDB_type_is_scalar(attrtyp)) {
-                        RDB_raise_type_mismatch("attribute type must be scalar",
-                                ecp);
-                        ret = RDB_ERROR;
-                        goto cleanup;
-                    }
-                    break;
-                case RDB_OB_TUPLE:
-                    if (attrtyp->kind != RDB_TP_TUPLE) {
-                        RDB_raise_type_mismatch("attribute must be tuple",
-                                ecp);
-                        ret = RDB_ERROR;
-                        goto cleanup;
-                    }
-                    break;
-                case RDB_OB_TABLE:
-                    if (attrtyp->kind != RDB_TP_RELATION) {
-                        RDB_raise_type_mismatch("attribute must be table",
-                                ecp);
-                        ret = RDB_ERROR;
-                        goto cleanup;
-                     }
-                     break;
-                case RDB_OB_ARRAY:
-                    if (attrtyp->kind != RDB_TP_ARRAY) {
-                        RDB_raise_type_mismatch("attribute must be array",
-                                ecp);
-                        ret = RDB_ERROR;
-                        goto cleanup;
-                    }
-                    break;
+            if (valp->kind != RDB_OB_TUPLE && valp->kind != RDB_OB_ARRAY) {
+                RDB_raise_invalid_argument("missing type information", ecp);
+                ret = RDB_ERROR;
+                goto cleanup;
             }
         } else {
-            if (!RDB_type_equals(valp->typ, tuptyp->var.tuple.attrv[i].typ)) {
+            if (!RDB_type_equals(valp->typ, attrtyp)) {
                 RDB_raise_type_mismatch(
                         "tuple attribute type does not match table attribute type",
                         ecp);
@@ -107,11 +70,8 @@ _RDB_insert_real(RDB_object *tbp, const RDB_object *tplp,
             }
         }
 
-        /* Set type - needed for tuple and array attributes */
-        if (valp->typ == NULL) {
-            RDB_obj_set_typeinfo(valp, tuptyp->var.tuple.attrv[i].typ);
-            /* !! check object kind against type? */
-        }
+        /* Set type information for storage */
+        valp->store_typ = attrtyp;
 
         ret = _RDB_obj_to_field(&fvp[*fnop], valp, ecp);
         if (ret != RDB_OK) {

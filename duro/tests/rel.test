@@ -27,6 +27,8 @@ test rel {relation-valued attributes} -setup $SETUP -body {
         {RLATTR {relation
             {A INTEGER}
             {B STRING}
+            {C STRING}
+            {D INTEGER}
         }}
     } {{SCATTR}} $tx
     
@@ -37,13 +39,13 @@ test rel {relation-valued attributes} -setup $SETUP -body {
             {B STRING}
         }}
     } {{SCATTR}} $tx
-    
+
     duro::table create T3 {
         {A STRING}
         {B INTEGER}
         {C STRING}
     } {{A B}} $tx
-    
+
     duro::table expr -global U1 {T1 UNGROUP RLATTR} $tx
     
     if {![catch {
@@ -55,34 +57,37 @@ test rel {relation-valued attributes} -setup $SETUP -body {
     duro::table expr -global G1 {T3 GROUP {B, C} AS BC} $tx
     
     duro::table expr -global S1 {T1 WHERE RLATTR = RELATION {
-            TUPLE {A 1, B "x"}, TUPLE {A 2, B "y"}}} $tx
+            TUPLE {A 1, B "x", C "x", D 1}, TUPLE {A 2, B "y", C "y", D 1}}} $tx
 
     duro::table expr -global W1 {T1 WHERE RLATTR = RELATION {
-            TUPLE {A 1, B "x"}, TUPLE {A 2, B "y"}}} $tx
+            TUPLE {A 1, B "x", C "x", D 1}, TUPLE {A 2, B "y", C "y", D 1}}} $tx
     
     duro::commit $tx
     
     # Close DB environment
     duro::env close $dbenv
-    
+
     # Reopen DB environment
     set dbenv [duro::env open [configure -tmpdir]/dbenv]
     
     set tx [duro::begin $dbenv TEST]
     
-    set tpl {SCATTR 2 RLATTR {{A 1 B x} {A 2 B y}}}
+    set tpl {SCATTR 2 RLATTR {{A 1 B x C x D 1} {A 2 B y C y D 1}}}
     duro::insert T1 $tpl $tx
     
     if {![duro::table contains T1 $tpl $tx]} {
         error "Table should contain $tpl, but does not"
     }
     
-    # Try different order of tuples in attribute
-    set tpl {SCATTR 2 RLATTR {{A 2 B y} {A 1 B x}}}
-    if {![duro::table contains T1 $tpl $tx]} {
-        error "Table should contain $tpl, but does not"
+    if {![catch {
+	    set tpl {SCATTR 2 RLATTR {{A 2 B y} {A 1 B x}}}
+    	duro::table contains T1 $tpl $tx
+    }]} {
+        error "T1 contains $rpl should fail, but did not"
     }
-    
+
+    # Try different order of tuples in attribute
+
     duro::insert T1 {SCATTR 3 RLATTR {}} $tx
 
     set v [duro::expr {(TUPLE FROM W1).SCATTR} $tx]
@@ -90,7 +95,7 @@ test rel {relation-valued attributes} -setup $SETUP -body {
         error "wrong result from W1: $v"
     }
     
-    duro::table expr W2 {T1 WHERE (TUPLE {A 1, B "x"} IN RLATTR)} $tx
+    duro::table expr W2 {T1 WHERE (TUPLE {A 1, B "x", C "x", D 1} IN RLATTR)} $tx
 
     set cnt [duro::expr {COUNT ((TUPLE FROM W2).RLATTR)} $tx]
     if {$cnt != 2} {
@@ -132,33 +137,33 @@ test rel {relation-valued attributes} -setup $SETUP -body {
     
     # Test IN together with aggregate operators
     
-    set n [duro::expr {COUNT (T1 WHERE (TUPLE{A 1, B "y"} IN RLATTR))} $tx]
+    set n [duro::expr {COUNT (T1 WHERE (TUPLE{A 1, B "y", C "x", D 1} IN RLATTR))} $tx]
     if {$n != 0} {
         error "$n tuples found, should be 0"
     }
     
-    set n [duro::expr {SUM (T1 WHERE (TUPLE{A 1, B "x"} IN RLATTR), SCATTR)} $tx]
+    set n [duro::expr {SUM (T1 WHERE (TUPLE{A 1, B "x", C "x", D 1} IN RLATTR), SCATTR)} $tx]
     if {$n != 2} {
         error "SUM was $n, should be 2"
     }
     
-    duro::update T1 {SCATTR = 2} RLATTR {RELATION {TUPLE {A 1, B "y"},
-            TUPLE {A 1, B "z"}}} $tx
+    duro::update T1 {SCATTR = 2} RLATTR {RELATION {TUPLE {A 1, B "y", C "y", D 2},
+            TUPLE {A 1, B "z", C "z", D 2}}} $tx
     
     set da [duro::array create U1 {B asc} $tx]
-    
+
     array set ta [duro::array index $da 0 $tx]
-    
-    if {[array size ta] != 3 || $ta(A) != 1 || $ta(B) != "y"
+
+    if {[array size ta] != 5 || $ta(A) != 1 || $ta(B) != "y"
             || $ta(SCATTR) != 2} {
-        error "Incorrect tuple value #0 from U1: $tpl"
+        error "Incorrect tuple value #0 from U1: [array get ta]"
     }
-    
+
     array set ta [duro::array index $da 1 $tx]
     
-    if {[array size ta] != 3 || $ta(A) != 1 || $ta(B) != "z"
+    if {[array size ta] != 5 || $ta(A) != 1 || $ta(B) != "z"
             || $ta(SCATTR) != 2} {
-        error "Incorrect tuple value #1 from U1: $tpl"
+        error "Incorrect tuple value #1 from U1: [array get ta]"
     }
     
     set alen [duro::array length $da]
@@ -169,12 +174,12 @@ test rel {relation-valued attributes} -setup $SETUP -body {
     
     duro::array drop $da
     
-    set tpl {B y A 1 SCATTR 2}
+    set tpl {B y A 1 SCATTR 2 C y D 2}
     if {![duro::table contains U1 $tpl $tx]} {
         error "U1 should contain $tpl, but does not"
     }
     
-    set tpl {B x A 1 SCATTR 2}
+    set tpl {B x A 1 SCATTR 2 C y D 2}
     if {[duro::table contains U1 $tpl $tx]} {
         error "U1 should not contain $tpl, but does"
     }

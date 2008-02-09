@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2003 René Hartmann.
+ * Copyright (C) 2003-2008 René Hartmann.
  * See the file COPYING for redistribution information.
  */
 
@@ -83,8 +83,7 @@ RDB_hash_str(const char *str)
     int c;
 
     while ((c = *str++) != '\0')
-       hash = hash + c;
-/* !!      hash = (hash * 33) ^ c; */
+        hash = (hash * 33) ^ c;
 
     return hash;
 }

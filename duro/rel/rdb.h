@@ -119,6 +119,8 @@ typedef struct RDB_object {
             struct RDB_object *tplp;
         } arr;
      } var;
+     /* Used internally for conversion into the internal representation */
+     struct RDB_type *store_typ;
 } RDB_object;
 
 typedef struct {

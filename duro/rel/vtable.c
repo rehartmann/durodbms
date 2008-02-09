@@ -1,7 +1,7 @@
 /*
  * $Id$
  *
- * Copyright (C) 2004-2007 René Hartmann.
+ * Copyright (C) 2004-2008 René Hartmann.
  * See the file COPYING for redistribution information.
  *
  *
@@ -14,6 +14,7 @@
 #include "stable.h"
 #include <gen/strfns.h>
 #include <string.h>
+#include <assert.h>
 
 /*
  * Turn *tbp into a virtual table defined by exp.
@@ -526,17 +527,9 @@ _RDB_index_objpv(_RDB_tbindex *indexp, RDB_expression *exp, RDB_type *tbtyp,
         if (attrexp->kind == RDB_EX_RO_OP
                 && strcmp (attrexp->var.op.name, "AND") == 0)
             attrexp = attrexp->var.op.args.firstp->nextp;
-        if (attrexp->var.op.args.firstp->nextp->var.obj.typ == NULL
-                && (attrexp->var.op.args.firstp->nextp->var.obj.kind == RDB_OB_TUPLE
-                || attrexp->var.op.args.firstp->nextp->var.obj.kind == RDB_OB_ARRAY)) {
-            attrexp->var.op.args.firstp->nextp->var.obj.typ = RDB_dup_nonscalar_type(
-                    RDB_type_attr_type(tbtyp, indexp->attrv[i].attrname), NULL);
-            if (attrexp->var.op.args.firstp->nextp->var.obj.typ == NULL) {
-                RDB_free(objpv);
-                return NULL;
-            }
-        }
-        objpv[i] = &attrexp->var.op.args.firstp->nextp->var.obj;       
+        attrexp->var.op.args.firstp->nextp->var.obj.store_typ =
+                    RDB_type_attr_type(tbtyp, indexp->attrv[i].attrname);
+        objpv[i] = &attrexp->var.op.args.firstp->nextp->var.obj;
     }
     return objpv;
 }

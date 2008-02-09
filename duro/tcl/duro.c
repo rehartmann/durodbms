@@ -410,7 +410,6 @@ list_to_table(Tcl_Interp *interp, Tcl_Obj *tobjp, RDB_type *typ,
 
     ret = Tcl_ListObjLength(interp, tobjp, &llen);
     if (ret != TCL_OK) {
-        RDB_destroy_obj(tbp, ecp);
         return ret;
     }
 
@@ -428,7 +427,6 @@ list_to_table(Tcl_Interp *interp, Tcl_Obj *tobjp, RDB_type *typ,
         if (RDB_insert(tbp, &tpl, ecp, NULL) != RDB_OK) {
             Duro_dberror(interp, RDB_get_err(ecp), txp);
             RDB_destroy_obj(&tpl, ecp);
-            RDB_destroy_obj(tbp, ecp);
             return TCL_ERROR;
         }
     }

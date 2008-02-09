@@ -97,17 +97,40 @@ _RDB_serialize_type(RDB_object *valp, int *posp, const RDB_type *typ,
             return _RDB_serialize_str(valp, posp, typ->name, ecp);
         case RDB_TP_TUPLE:
         {
-            int i;
+            int i, j;
+            char *lastwritten = NULL;
 
             if (_RDB_serialize_int(valp, posp, typ->var.tuple.attrc, ecp) != RDB_OK)
                 return RDB_ERROR;
 
+            /*
+             * Write attributes in alphabetical order of their names,
+             * to make the representation independent of the attribute order
+             */
             for (i = 0; i < typ->var.tuple.attrc; i++) {
-                if (_RDB_serialize_str(valp, posp, typ->var.tuple.attrv[i].name, ecp) != RDB_OK)
-                    return RDB_ERROR;
+                int attridx = -1;
 
-                if (_RDB_serialize_type(valp, posp, typ->var.tuple.attrv[i].typ, ecp) != RDB_OK)
+                /* Get lowest attribute name which is higher than the last one written */
+                for (j = 0; j < typ->var.tuple.attrc; j++) {
+                    if ((lastwritten == NULL
+                            || strcmp(typ->var.tuple.attrv[j].name, lastwritten) > 0)
+                        && (attridx == -1
+                            || strcmp(typ->var.tuple.attrv[j].name,
+                                      typ->var.tuple.attrv[attridx].name) < 0)) {
+                        attridx = j;
+                    }
+                }
+
+                if (_RDB_serialize_str(valp, posp,
+                        typ->var.tuple.attrv[attridx].name, ecp) != RDB_OK) {
                     return RDB_ERROR;
+                }
+
+                if (_RDB_serialize_type(valp, posp,
+                        typ->var.tuple.attrv[attridx].typ, ecp) != RDB_OK) {
+                    return RDB_ERROR;
+                }
+                lastwritten = typ->var.tuple.attrv[attridx].name;
             }
             return RDB_OK;
         }
@@ -142,8 +165,8 @@ serialize_trobj(RDB_object *valp, int *posp, const RDB_object *argvalp,
         if (typ == NULL)
             return RDB_ERROR;
         crtpltyp = RDB_TRUE;
-        ((RDB_object *)argvalp)->typ = typ;
     }
+    ((RDB_object *)argvalp)->store_typ = typ;
     if (_RDB_serialize_type(valp, posp, typ, ecp) != RDB_OK) {
         return RDB_ERROR;
     }
@@ -345,13 +368,11 @@ _RDB_deserialize_strobj(RDB_object *valp, int *posp, RDB_exec_context *ecp,
         RDB_object *strobjp)
 {
     char *str;
-
     if (RDB_destroy_obj(strobjp, ecp) != RDB_OK)
         return RDB_ERROR;
-
     if (_RDB_deserialize_str(valp, posp, ecp, &str) != RDB_OK)
         return RDB_ERROR;
-    
+
     RDB_init_obj(strobjp);
     strobjp->typ = &RDB_STRING;
     strobjp->kind = RDB_OB_BIN;
@@ -605,7 +626,7 @@ _RDB_deserialize_expr(RDB_object *valp, int *posp, RDB_exec_context *ecp,
         case RDB_EX_RO_OP:
         {
             char *name;
-            int argc;
+            RDB_int argc;
             int i;
 
             ret = _RDB_deserialize_str(valp, posp, ecp, &name);

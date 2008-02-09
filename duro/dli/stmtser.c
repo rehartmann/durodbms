@@ -581,7 +581,7 @@ deserialize_var_def(RDB_object *objp, int *posp, RDB_exec_context *ecp,
         return RDB_OK;
     if (hasexp) {
         if (_RDB_deserialize_expr(objp, posp, ecp, txp, &stmtp->var.vardef.exp) != RDB_OK)
-            return RDB_OK;
+            return RDB_ERROR;
     } else {
         stmtp->var.vardef.exp = NULL;
     }
@@ -889,6 +889,7 @@ deserialize_ro_op_def(RDB_object *objp, int *posp, RDB_exec_context *ecp,
     int i;
     RDB_int argc;
 
+    RDB_init_obj(&stmtp->var.opdef.opname);
     if (_RDB_deserialize_strobj(objp, posp, ecp, &stmtp->var.opdef.opname) != RDB_OK)
         return RDB_ERROR;
     if (_RDB_deserialize_int(objp, posp, ecp, &argc) != RDB_OK)
@@ -898,6 +899,7 @@ deserialize_ro_op_def(RDB_object *objp, int *posp, RDB_exec_context *ecp,
     if (stmtp->var.opdef.argv == NULL)
         return RDB_ERROR;
     for (i = 0; i < argc; i++) {
+        RDB_init_obj(&stmtp->var.opdef.argv[i].name);
         if (_RDB_deserialize_strobj(objp, posp, ecp,
                 &stmtp->var.opdef.argv[i].name) != RDB_OK) {
             return RDB_ERROR;
@@ -920,6 +922,7 @@ static int
 deserialize_op_drop(RDB_object *objp, int *posp, RDB_exec_context *ecp,
         RDB_parse_statement *stmtp)
 {
+    RDB_init_obj(&stmtp->var.opdrop.opname);
     return _RDB_deserialize_strobj(objp, posp, ecp, &stmtp->var.opdrop.opname);
 }
 
@@ -930,6 +933,7 @@ deserialize_upd_op_def(RDB_object *objp, int *posp, RDB_exec_context *ecp,
     int i;
     RDB_int argc;
 
+    RDB_init_obj(&stmtp->var.opdef.opname);
     if (_RDB_deserialize_strobj(objp, posp, ecp, &stmtp->var.opdef.opname) != RDB_OK)
         return RDB_ERROR;
     if (_RDB_deserialize_int(objp, posp, ecp, &argc) != RDB_OK)
@@ -941,6 +945,7 @@ deserialize_upd_op_def(RDB_object *objp, int *posp, RDB_exec_context *ecp,
     for (i = 0; i < argc; i++) {
         int b;
 
+        RDB_init_obj(&stmtp->var.opdef.argv[i].name);
         if (_RDB_deserialize_strobj(objp, posp, ecp,
                 &stmtp->var.opdef.argv[i].name) != RDB_OK) {
             return RDB_ERROR;
@@ -1273,6 +1278,7 @@ Duro_bin_to_stmts(const void *p, size_t len, int argc, RDB_exec_context *ecp,
             RDB_destroy_obj(&binobj, ecp);
             return NULL;
         }
+        stmtp->nextp = NULL;
         if (firststmtp == NULL) {
             firststmtp = laststmtp = stmtp;
         } else {

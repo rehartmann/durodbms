@@ -179,7 +179,7 @@ append_table_val(RDB_object *objp, const RDB_object *tbp, RDB_exec_context *ecp,
         return RDB_ERROR;
 
     RDB_init_obj(&arr);
-    if (RDB_table_to_array(&arr, (RDB_object *) tbp, 0, NULL, 0, ecp, NULL)
+    if (RDB_table_to_array(&arr, (RDB_object *) tbp, 0, NULL, 0, ecp, txp)
             != RDB_OK) {
         return RDB_ERROR;
     }

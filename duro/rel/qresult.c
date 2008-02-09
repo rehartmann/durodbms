@@ -151,9 +151,10 @@ do_summarize(RDB_qresult *qrp, RDB_type *tb1typ, RDB_bool hasavg,
         if (ret == RDB_OK) {
             /* Build key */
             for (i = 0; i < keyfc; i++) {
-                ret = _RDB_obj_to_field(&keyfv[i],
-                        RDB_tuple_get(&tpl,
-                                qrp->matp->var.tb.keyv[0].strv[i]), ecp);
+                RDB_object *attrobjp = RDB_tuple_get(&tpl,
+                                qrp->matp->var.tb.keyv[0].strv[i]);
+                attrobjp->store_typ = attrobjp->typ;
+                ret = _RDB_obj_to_field(&keyfv[i], attrobjp, ecp);
                 if (ret != RDB_OK)
                     return RDB_ERROR;
             }
@@ -206,6 +207,7 @@ do_summarize(RDB_qresult *qrp, RDB_type *tb1typ, RDB_bool hasavg,
                     }
                     summ_step(&svalv[i], &addval, opname, count);
 
+                    svalv[i].val.store_typ = svalv[i].val.typ;
                     ret = _RDB_obj_to_field(&nonkeyfv[i], &svalv[i].val, ecp);
                     if (ret != RDB_OK)
                         return RDB_ERROR;
@@ -565,8 +567,10 @@ do_group(RDB_qresult *qrp, RDB_exec_context *ecp, RDB_transaction *txp)
         if (ret == RDB_OK) {
             /* Build key */
             for (i = 0; i < keyfc; i++) {
-                ret = _RDB_obj_to_field(&keyfv[i],
-                        RDB_tuple_get(&tpl, qrp->matp->var.tb.keyv[0].strv[i]), ecp);
+                RDB_object *attrobjp = RDB_tuple_get(&tpl,
+                        qrp->matp->var.tb.keyv[0].strv[i]);
+                attrobjp->store_typ = attrobjp->typ;                
+                ret = _RDB_obj_to_field(&keyfv[i], attrobjp, ecp);
                 if (ret != RDB_OK)
                     goto cleanup;
             }
@@ -600,6 +604,7 @@ do_group(RDB_qresult *qrp, RDB_exec_context *ecp, RDB_transaction *txp)
                     goto cleanup;
 
                 /* Update materialized table */
+                gval.store_typ = greltyp;
                 ret = _RDB_obj_to_field(&gfield, &gval, ecp);
                 if (ret != RDB_OK)
                     goto cleanup;
@@ -1508,8 +1513,9 @@ seek_index_qresult(RDB_qresult *qrp, _RDB_tbindex *indexp,
     }
 
     for (i = 0; i < indexp->attrc; i++) {
-        ret = _RDB_obj_to_field(&fv[i],
-                RDB_tuple_get(tplp, indexp->attrv[i].attrname), ecp);
+        RDB_object *attrobjp = RDB_tuple_get(tplp, indexp->attrv[i].attrname);
+        attrobjp->store_typ = attrobjp->typ;
+        ret = _RDB_obj_to_field(&fv[i], attrobjp, ecp);
         if (ret != RDB_OK)
             goto cleanup;
     }
@@ -1628,6 +1634,7 @@ next_join_tuple_uix(RDB_qresult *qrp, RDB_object *tplp, RDB_exec_context *ecp,
 
         for (i = 0; i < indexp->attrc; i++) {
             objpv[i] = RDB_tuple_get(tplp, indexp->attrv[i].attrname);
+            objpv[i]->store_typ = objpv[i]->typ;
         }
         ret = _RDB_get_by_uindex(qrp->exp->var.op.args.firstp->nextp->var.tbref.tbp,
                 objpv, indexp,

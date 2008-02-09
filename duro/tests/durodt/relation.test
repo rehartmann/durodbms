@@ -114,22 +114,24 @@ test updop {user defined update operators} -setup $SETUP -body {
 
         begin transaction;
 
-        operator op() updates {};
+        operator defop() updates {};
 	        begin transaction;
 	        
-	        var t init tuple {i 0, s "duro"};
-	        
-	        var r real relation same_heading_as(t) key {i};
-	        
-            insert r t;
+            var tp init tuple {a 0, b "duro"};
+            var r real relation same_heading_as(tp) key {a};
 
-            var v virtual (extend r add (s || 'x' as sx));
+            var v virtual (extend r add (b || 'x' as bx));
 
-	        commit;
+            commit;
         end operator;
 
-        op();
-        println((tuple from v).sx);
+        operator insop(t relation {b string, a integer}) updates {t};
+            insert t tuple {a 0, b "duro"};
+        end operator;
+
+        defop();
+        insop(r);
+        println((tuple from v).bx);
         commit;
     }
 } -result {durox

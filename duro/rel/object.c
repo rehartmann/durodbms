@@ -1,7 +1,7 @@
 /*
  * $Id$
  *
- * Copyright (C) 2003-2007 René Hartmann.
+ * Copyright (C) 2003-2008 René Hartmann.
  * See the file COPYING for redistribution information.
  */
 
@@ -83,9 +83,9 @@ table_ilen(const RDB_object *tbp, size_t *lenp, RDB_exec_context *ecp)
 
     *lenp = 0;
     while ((ret = _RDB_next_tuple(qrp, &tpl, ecp, NULL)) == RDB_OK) {
-        tpl.typ = RDB_type_is_scalar(tbp->typ) ?
-                tbp->typ->var.scalar.arep->var.basetyp
-                : tbp->typ->var.basetyp;
+        tpl.store_typ = RDB_type_is_scalar(tbp->store_typ) ?
+                tbp->store_typ->var.scalar.arep->var.basetyp
+                : tbp->store_typ->var.basetyp;
         ret = _RDB_obj_ilen(&tpl, &len, ecp);
         if (ret != RDB_OK) {
              RDB_destroy_obj(&tpl, ecp);
@@ -116,7 +116,7 @@ _RDB_obj_ilen(const RDB_object *objp, size_t *lenp, RDB_exec_context *ecp)
         case RDB_OB_TUPLE:
         {
             int i;
-            RDB_type *tpltyp = objp->typ;
+            RDB_type *tpltyp = objp->store_typ;
 
             if (RDB_type_is_scalar(tpltyp))
                 tpltyp = tpltyp->var.scalar.arep;
@@ -125,9 +125,12 @@ _RDB_obj_ilen(const RDB_object *objp, size_t *lenp, RDB_exec_context *ecp)
                 RDB_type *attrtyp = tpltyp->var.tuple.attrv[i].typ;
                 RDB_object *attrobjp = RDB_tuple_get(objp,
                         tpltyp->var.tuple.attrv[i].name);
+                if (attrobjp == NULL) {
+                    RDB_raise_type_mismatch("missing attribute value", ecp);
+                    return RDB_ERROR;
+                }
 
-                if (attrobjp->typ == NULL)
-                    attrobjp->typ = attrtyp;
+                attrobjp->store_typ = attrtyp;
                 if (attrtyp->ireplen == RDB_VARIABLE_LEN)
                     *lenp += sizeof (size_t);
                 ret = _RDB_obj_ilen(attrobjp, &len, ecp);
@@ -147,8 +150,8 @@ _RDB_obj_ilen(const RDB_object *objp, size_t *lenp, RDB_exec_context *ecp)
 
             while ((elemp = RDB_array_get((RDB_object *)objp, (RDB_int) i++,
                     ecp)) != NULL) {
-                elemp->typ = RDB_obj_type(objp)->var.basetyp;
-                if (elemp->typ->ireplen == RDB_VARIABLE_LEN)
+                elemp->store_typ = objp->store_typ->var.basetyp;
+                if (elemp->store_typ->ireplen == RDB_VARIABLE_LEN)
                     *lenp += sizeof (size_t);
                 ret = _RDB_obj_ilen(elemp, &len, ecp);
                 if (ret != RDB_OK)
@@ -162,7 +165,7 @@ _RDB_obj_ilen(const RDB_object *objp, size_t *lenp, RDB_exec_context *ecp)
         }            
         default: ;
     }
-    *lenp = RDB_obj_type(objp)->ireplen;
+    *lenp = objp->store_typ->ireplen;
     if (*lenp == RDB_VARIABLE_LEN)
         *lenp = objp->var.bin.len;
     return RDB_OK;
@@ -476,10 +479,10 @@ obj_to_len_irep(void *dstp, const RDB_object *objp, RDB_type *typ,
     bp += len;
 
     return bp;
-}    
+}
 
-void
-_RDB_table_to_irep(void *dstp, RDB_object *tbp, size_t len)
+static void
+table_to_irep(void *dstp, RDB_object *tbp, size_t len)
 {
     RDB_exec_context ec;
     RDB_object tpl;
@@ -499,9 +502,9 @@ _RDB_table_to_irep(void *dstp, RDB_object *tbp, size_t len)
     RDB_init_obj(&tpl);
 
     while ((ret = _RDB_next_tuple(qrp, &tpl, &ec, NULL)) == RDB_OK) {
-        tpl.typ = RDB_type_is_scalar(tbp->typ) ?
-                tbp->typ->var.scalar.arep->var.basetyp
-                : tbp->typ->var.basetyp;
+        tpl.store_typ = RDB_type_is_scalar(tbp->store_typ) ?
+                tbp->store_typ->var.scalar.arep->var.basetyp
+                : tbp->store_typ->var.basetyp;
         ret = _RDB_obj_ilen(&tpl, &l, &ec);
         if (ret != RDB_OK) {
             RDB_destroy_exec_context(&ec);
@@ -538,7 +541,7 @@ _RDB_obj_to_irep(void *dstp, const RDB_object *objp, size_t len)
             break;
         case RDB_OB_TUPLE:
         {
-            RDB_type *tpltyp = objp->typ;
+            RDB_type *tpltyp = objp->store_typ;
             int i;
 
             RDB_init_exec_context(&ec);
@@ -558,7 +561,7 @@ _RDB_obj_to_irep(void *dstp, const RDB_object *objp, size_t len)
             break;
         }
         case RDB_OB_TABLE:
-            _RDB_table_to_irep(dstp, (RDB_object *) objp, len);
+            table_to_irep(dstp, (RDB_object *) objp, len);
             break;
         case RDB_OB_ARRAY:
         {
@@ -569,7 +572,7 @@ _RDB_obj_to_irep(void *dstp, const RDB_object *objp, size_t len)
 
             while ((elemp = RDB_array_get((RDB_object *) objp, (RDB_int) i++,
                     &ec)) != NULL) {
-                elemp->typ = RDB_obj_type(objp)->var.basetyp;
+                elemp->typ = objp->store_typ->var.basetyp;
                 bp = obj_to_len_irep(bp, elemp, elemp->typ, &ec);
             }
             if (RDB_obj_type(RDB_get_err(&ec)) != &RDB_NOT_FOUND_ERROR) {
@@ -587,7 +590,7 @@ int
 _RDB_obj_to_field(RDB_field *fvp, RDB_object *objp, RDB_exec_context *ecp)
 {
     /* Global tables cannot be converted to field values */
-    if (objp->kind == RDB_OB_TABLE && objp->var.tb.is_persistent) {
+    if (objp->kind == RDB_OB_TABLE && RDB_table_is_persistent(objp)) {
         RDB_raise_invalid_argument(
                 "global table cannot be used as field value", ecp);
         return RDB_ERROR;
