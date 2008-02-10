@@ -1,7 +1,7 @@
 /*
  * $Id$
  *
- * Copyright (C) 2003-2007 René Hartmann.
+ * Copyright (C) 2003-2008 René Hartmann.
  * See the file COPYING for redistribution information.
  */
 
@@ -267,7 +267,27 @@ cleanup_env(RDB_environment *envp)
 static unsigned
 hash_exp(const void *exp, void *arg)
 {
-    return ((RDB_expression *) exp)->kind; /* !! */
+    RDB_expression *hexp = (RDB_expression *) exp;
+    switch (hexp->kind) {
+        case RDB_EX_TUPLE_ATTR:
+            return RDB_hash_str(hexp->var.op.name);
+        case RDB_EX_GET_COMP:
+            return RDB_hash_str(hexp->var.op.name);
+        case RDB_EX_RO_OP:
+            return RDB_hash_str(hexp->var.op.name);
+        case RDB_EX_OBJ:
+            return (unsigned) hexp->kind;
+        case RDB_EX_TBP:
+        {
+            char *name = RDB_table_name(hexp->var.tbref.tbp);
+            if (name != NULL)
+                return RDB_hash_str(name);
+            return (unsigned) hexp->kind;
+        }
+        case RDB_EX_VAR:
+            return RDB_hash_str(hexp->var.varname);
+    }
+    abort();
 }
 
 static RDB_bool
