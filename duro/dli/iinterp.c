@@ -813,6 +813,9 @@ expr_to_type(RDB_expression *exp, RDB_exec_context *ecp, RDB_transaction *txp)
     attrv = RDB_alloc(attrc * sizeof(RDB_attr), ecp);
     if (attrv == NULL)
         return NULL;
+    for (i = 0; i < attrc; i++) {
+        attrv[i].typ = NULL;
+    }
 
     argp = exp->var.op.args.firstp;
     for (i = 0; i < attrc; i++) {

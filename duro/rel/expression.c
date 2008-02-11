@@ -1015,7 +1015,6 @@ new_expr(RDB_exec_context *ecp) {
         return NULL;
     }
     exp->typ = NULL;
-    exp->nextp = (RDB_expression *)42; // !!
 	return exp;
 }
 
@@ -1962,7 +1961,6 @@ _RDB_destroy_expr(RDB_expression *exp, RDB_exec_context *ecp)
     }
     if (exp->typ != NULL && !RDB_type_is_scalar(exp->typ))
         return RDB_drop_type(exp->typ, ecp, NULL);
-    exp->kind = 888888; /* !! */
     return RDB_OK;
 }
 
