@@ -368,7 +368,9 @@ The result will be stored at the location pointed to by
 
 <dl>
 <dt>RDB_NO_RUNNING_TX_ERROR
-<dd><var>txp</var> does not point to a running transaction.
+<dd><var>txp</var> is not NULL and *<var>txp</var> is not a running transaction.
+<dd><var>name</var> is not a built-in operator and <var>txp</var> is NULL
+or does not point to a running transaction.
 <dt>RDB_OPERATOR_NOT_FOUND_ERROR
 <dd>A read-only operator that matches the name and argument types could not be
 found.
@@ -584,7 +586,7 @@ from the database. This affects all overloaded versions.
 <dl>
 <dt>RDB_NO_RUNNING_TX_ERROR
 <dd><var>txp</var> does not point to a running transaction.
-<dt>RDB_NOT_FOUND_ERROR
+<dt>RDB_OPERATOR_NOT_FOUND_ERROR
 <dd>An operator with the specified name could not be found.
 </dl>
 
@@ -654,6 +656,10 @@ RDB_drop_op(const char *name, RDB_exec_context *ecp, RDB_transaction *txp)
         }
         ret = RDB_delete(txp->dbp->dbrootp->upd_ops_tbp, exp, ecp, txp);
         RDB_drop_expr(exp, ecp);
+        if (ret == 0) {
+            RDB_raise_operator_not_found(name, ecp);
+            return RDB_ERROR;
+        }
         if (ret == RDB_ERROR) {
             return RDB_ERROR;
         }        
@@ -821,6 +827,11 @@ _RDB_get_ro_op(const char *name, int argc, RDB_type *argtv[],
     }
     if (errtyp == &RDB_TYPE_MISMATCH_ERROR) {
         typmismatch = RDB_TRUE;
+    }
+
+    if (txp == NULL || !RDB_tx_is_running(txp)) {
+        RDB_raise_no_running_tx(ecp);
+        return NULL;
     }
      
     /* Lookup operator in dbroot map */

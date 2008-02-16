@@ -486,6 +486,9 @@ serialize_stmt(RDB_object *objp, int *posp, const RDB_parse_statement *stmtp,
 {
     if (_RDB_serialize_byte(objp, posp, (RDB_byte) stmtp->kind, ecp) != RDB_OK)
         return RDB_ERROR;
+    if (_RDB_serialize_int(objp, posp, stmtp->lineno, ecp) != RDB_OK) {
+         return RDB_ERROR;
+    }
 
     switch (stmtp->kind) {
         case RDB_STMT_NOOP:
@@ -670,9 +673,10 @@ deserialize_var_def_real(RDB_object *objp, int *posp, RDB_exec_context *ecp,
     if (hastype == RDB_ERROR)
         return RDB_ERROR;
     if (hastype) {
-        if (_RDB_deserialize_expr(objp, posp, ecp, txp, &stmtp->var.vardef.type.exp) != RDB_OK)
+        if (_RDB_deserialize_expr(objp, posp, ecp, txp,
+                &stmtp->var.vardef.type.exp) != RDB_OK)
             return RDB_ERROR;
-        
+
         stmtp->var.vardef.type.typ = NULL;
         if (stmtp->var.vardef.type.exp == NULL)
             return RDB_ERROR;
@@ -1104,6 +1108,10 @@ deserialize_stmt(RDB_object *objp, int *posp, RDB_exec_context *ecp,
 
     stmtp = RDB_alloc(sizeof(RDB_parse_statement), ecp);
     if (stmtp == NULL) {
+        return NULL;
+    }
+    if (_RDB_deserialize_int(objp, posp, ecp, &stmtp->lineno) != RDB_OK) {
+        RDB_free(stmtp);
         return NULL;
     }
     stmtp->kind = (RDB_parse_stmt_kind) ret;

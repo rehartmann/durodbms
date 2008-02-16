@@ -217,6 +217,7 @@ new_update_op_stmt(const char *name)
         RDB_free(stmtp);
       	return NULL;
   	}
+   	stmtp->lineno = yylineno;
   	return stmtp;
 }
 
@@ -493,6 +494,7 @@ statement: statement_body ';'
         $$->var.ifthen.condp = condp;
         $$->var.ifthen.ifp = $2.firstp;
     	$$->var.ifthen.elsep = NULL;
+        $$->lineno = yylineno;
     }
     | TOK_IF expression TOK_THEN ne_statement_list TOK_END TOK_IF {
         $$ = RDB_alloc(sizeof(RDB_parse_statement), _RDB_parse_ecp);
@@ -505,6 +507,7 @@ statement: statement_body ';'
         $$->var.ifthen.condp = $2;
         $$->var.ifthen.ifp = $4.firstp;
     	$$->var.ifthen.elsep = NULL;
+        $$->lineno = yylineno;
     }
     | TOK_IF expression TOK_THEN ne_statement_list TOK_ELSE
             ne_statement_list TOK_END TOK_IF {
@@ -519,6 +522,7 @@ statement: statement_body ';'
         $$->var.ifthen.condp = $2;
         $$->var.ifthen.ifp = $4.firstp;
     	$$->var.ifthen.elsep = $6.firstp;
+        $$->lineno = yylineno;
     }
     | TOK_FOR TOK_ID TOK_ASSIGN expression TOK_TO expression ';'
             ne_statement_list TOK_END TOK_FOR {
@@ -535,6 +539,7 @@ statement: statement_body ';'
         $$->var.forloop.fromp = $4;
         $$->var.forloop.top = $6;
         $$->var.forloop.bodyp = $8.firstp;
+        $$->lineno = yylineno;
     }
     | TOK_WHILE expression ';' ne_statement_list TOK_END TOK_WHILE {
         $$ = RDB_alloc(sizeof(RDB_parse_statement), _RDB_parse_ecp);
@@ -546,6 +551,7 @@ statement: statement_body ';'
         $$->kind = RDB_STMT_WHILE;
         $$->var.whileloop.condp = $2;
         $$->var.whileloop.bodyp = $4.firstp;
+        $$->lineno = yylineno;
     }
     | TOK_OPERATOR TOK_ID '(' attribute_list ')' TOK_RETURNS type
             ne_statement_list TOK_END TOK_OPERATOR {
@@ -629,6 +635,7 @@ statement_body: /* empty */ {
             YYERROR;
         }
     	$$->kind = RDB_STMT_NOOP;
+        $$->lineno = yylineno;
     }
     | TOK_CALL TOK_ID '(' expression_list ')' {
         $$ = RDB_parse_new_call($2->var.varname, &$4);
@@ -739,6 +746,7 @@ statement_body: /* empty */ {
     	        $2->var.varname, _RDB_parse_ecp) != RDB_OK)
     	    YYERROR;
         $$->var.vardef.exp = $4;
+        $$->lineno = yylineno;
     }
     | TOK_DROP TOK_VAR TOK_ID {
         $$ = RDB_alloc(sizeof(RDB_parse_statement), _RDB_parse_ecp);
@@ -753,6 +761,7 @@ statement_body: /* empty */ {
     	    YYERROR;
         if (RDB_drop_expr($3, _RDB_parse_ecp) != RDB_OK)
             YYERROR;
+        $$->lineno = yylineno;
     }
     | assignment {
         $$ = RDB_alloc(sizeof(RDB_parse_statement), _RDB_parse_ecp);
@@ -761,6 +770,7 @@ statement_body: /* empty */ {
         }
         $$->kind = RDB_STMT_ASSIGN;
         $$->var.assignment.assignp = $1;
+        $$->lineno = yylineno;
     }
     | TOK_BEGIN TOK_TX {
         $$ = RDB_alloc(sizeof(RDB_parse_statement), _RDB_parse_ecp);
@@ -768,6 +778,7 @@ statement_body: /* empty */ {
             YYERROR;
         }
         $$->kind = RDB_STMT_BEGIN_TX;
+        $$->lineno = yylineno;
     }    
     | TOK_COMMIT {
         $$ = RDB_alloc(sizeof(RDB_parse_statement), _RDB_parse_ecp);
@@ -775,6 +786,7 @@ statement_body: /* empty */ {
             YYERROR;
         }
         $$->kind = RDB_STMT_COMMIT;
+        $$->lineno = yylineno;
     }    
     | TOK_ROLLBACK {
         $$ = RDB_alloc(sizeof(RDB_parse_statement), _RDB_parse_ecp);
@@ -782,6 +794,7 @@ statement_body: /* empty */ {
             YYERROR;
         }
         $$->kind = RDB_STMT_ROLLBACK;
+        $$->lineno = yylineno;
     }
     | TOK_TYPE TOK_ID possrep_def_list {
         $$ = new_deftype($2->var.varname, $3.firstp, NULL);
@@ -806,6 +819,7 @@ statement_body: /* empty */ {
     	    YYERROR;
         if (RDB_drop_expr($3, _RDB_parse_ecp) != RDB_OK)
             YYERROR;
+        $$->lineno = yylineno;
     }
     | TOK_DROP TOK_OPERATOR TOK_ID {
         $$ = RDB_alloc(sizeof(RDB_parse_statement), _RDB_parse_ecp);
@@ -820,6 +834,7 @@ statement_body: /* empty */ {
     	    YYERROR;
         if (RDB_drop_expr($3, _RDB_parse_ecp) != RDB_OK)
             YYERROR;
+        $$->lineno = yylineno;
     }
     | TOK_RETURN expression {
         $$ = RDB_alloc(sizeof(RDB_parse_statement), _RDB_parse_ecp);

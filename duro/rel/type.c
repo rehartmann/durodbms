@@ -1545,7 +1545,7 @@ RDB_drop_type(RDB_type *typ, RDB_exec_context *ecp, RDB_transaction *txp)
         /* Delete selector */
         ret = RDB_drop_op(typ->name, ecp, txp);
         if (ret != RDB_OK) {
-            if (RDB_obj_type(RDB_get_err(ecp)) != &RDB_NOT_FOUND_ERROR) {
+            if (RDB_obj_type(RDB_get_err(ecp)) != &RDB_OPERATOR_NOT_FOUND_ERROR) {
                 return RDB_ERROR;
             }
             RDB_clear_err(ecp);

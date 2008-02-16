@@ -1293,7 +1293,7 @@ RDB_subset(RDB_object *tb1p, RDB_object *tb2p, RDB_exec_context *ecp,
         return RDB_ERROR;
     }
 
-    if (!RDB_tx_is_running(txp)) {
+    if (txp != NULL && !RDB_tx_is_running(txp)) {
         RDB_raise_no_running_tx(ecp);
         return RDB_ERROR;
     }

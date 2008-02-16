@@ -138,7 +138,7 @@ typedef struct RDB_parse_statement {
         } opdrop;
         RDB_expression *retexp;
     } var;
-    int lineno;
+    RDB_int lineno;
     struct RDB_parse_statement *nextp;
 } RDB_parse_statement;
 
