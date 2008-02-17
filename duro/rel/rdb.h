@@ -898,4 +898,10 @@ RDB_realloc(void *, size_t, RDB_exec_context *);
 void
 RDB_free(void *);
 
+int
+RDB_major_version(void);
+
+int
+RDB_minor_version(void);
+
 #endif

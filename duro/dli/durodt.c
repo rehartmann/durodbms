@@ -1,7 +1,7 @@
 /*
  * $Id$
  *
- * Copyright (C) 2007 René Hartmann.
+ * Copyright (C) 2008 René Hartmann.
  * See the file COPYING for redistribution information.
  *
  * Interpreter for Duro D/T.
@@ -28,13 +28,6 @@ _RDB_EXTERN_VAR FILE *yyin;
 void yyrestart(FILE *);
 
 extern int yydebug;
-
-/*
- * $Id$
- *
- * Copyright (C) 2003-2007 René Hartmann.
- * See the file COPYING for redistribution information.
- */
 
 static void
 print_error(const RDB_object *errobjp)
@@ -142,7 +135,8 @@ main(int argc, char *argv[])
     }
 
     if (_RDB_parse_interactive) {
-        puts("Duro D/T early development version");
+        printf("Duro D/T library version %d.%d\n", RDB_major_version(),
+                RDB_minor_version());
         _RDB_parse_init_buf();
     }
 

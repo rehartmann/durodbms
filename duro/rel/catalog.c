@@ -2570,3 +2570,15 @@ cleanup:
 
     return ret;
 }
+
+int
+RDB_major_version(void)
+{
+    return MAJOR_VERSION;
+}
+
+int
+RDB_minor_version(void)
+{
+    return MINOR_VERSION;
+}

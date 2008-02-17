@@ -13,6 +13,7 @@
 <ul>
 <li><a href="#duroadmin">Duroadmin</a>
 <li><a href="#durodump">Durodump</a>
+<li><a href="#durodt">Duro D/T</a>
 </ul>
 
 <h2 id="duroadmin">Duroadmin</h2>
@@ -58,6 +59,50 @@ to restore the data. The environment directory which is to be restored
 can be passed as an argument. If no argument is given,
 the original environment directory is used.
 The environment directory must exist and is expected to be empty.
+
+<h2 id="duroadmin">Duroadmin</h2>
+
+<h3>Synopsis</h3>
+
+<pre>
+duroadmin.tcl [<var>envpath</var>]
+</pre>
+
+<h3>Description</h3>
+
+<p>Duroadmin is a Tcl/Tk script which allows manipulation of Duro
+databases.
+
+<p>If <var>envpath</var> is given, Duroadmin interprets it as
+a database environment directory and tries to open that environment.
+
+<p>To create a new database within a new environment, first create
+a new environment by selecting File-&gt;Create Environment and entering
+a new directory or an empty existing directory. Then create a database
+by selecting Database-&gt;Create-&gt;Database.
+
+<h2 id="durodt">Duro D/T</h2>
+
+<h3>Synopsis</h3>
+
+<pre>
+durodt [-e dbenv [-d db]] [file]
+</pre>
+
+<h3>Description</h3>
+
+<p>Interpreter for Duro's flavor of Tutorial D.
+
+<h3>Options</h3>
+
+<dl>
+<dt>-e dbenv
+<dd>Open the database environment dbenv.
+<dt>-d db
+<dd>Set db as the current database.
+</dl>
+
+<hr>
 
 <p>$Id$
 
