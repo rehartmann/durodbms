@@ -41,7 +41,7 @@ TYPE NOT_FOUND_ERROR POSSREP { MSG STRING };
 
 TYPE OPERATOR_NOT_FOUND_ERROR POSSREP { MSG STRING };
 
-TYPE NAME_ERROR POSSREP { MSG STRING };
+TYPE RDB_NAME_ERROR POSSREP { MSG STRING };
 
 TYPE ELEMENT_EXISTS_ERROR POSSREP { MSG STRING };
 
@@ -118,7 +118,7 @@ RDB_type RDB_INVALID_ARGUMENT_ERROR;
 RDB_type RDB_TYPE_MISMATCH_ERROR;
 RDB_type RDB_NOT_FOUND_ERROR;
 RDB_type RDB_OPERATOR_NOT_FOUND_ERROR;
-RDB_type NAME_ERROR;
+RDB_type RDB_NAME_ERROR;
 RDB_type RDB_ELEMENT_EXISTS_ERROR;
 RDB_type RDB_TYPE_CONSTRAINT_VIOLATION_ERROR;
 RDB_type RDB_KEY_VIOLATION_ERROR;
@@ -518,16 +518,16 @@ _RDB_init_builtin_types(RDB_exec_context *ecp)
     RDB_NOT_SUPPORTED_ERROR.var.scalar.sysimpl = RDB_TRUE;
     RDB_NOT_SUPPORTED_ERROR.comparep = NULL;
 
-    NAME_ERROR.kind = RDB_TP_SCALAR;
-    NAME_ERROR.ireplen = RDB_VARIABLE_LEN;
-    NAME_ERROR.name = "NAME_ERROR";
-    NAME_ERROR.var.scalar.builtin = RDB_TRUE;
-    NAME_ERROR.var.scalar.repc = 1;
-    NAME_ERROR.var.scalar.repv = &name_rep;
-    NAME_ERROR.var.scalar.arep = &RDB_STRING;
-    NAME_ERROR.var.scalar.constraintp = NULL;
-    NAME_ERROR.var.scalar.sysimpl = RDB_TRUE;
-    NAME_ERROR.comparep = NULL;
+    RDB_NAME_ERROR.kind = RDB_TP_SCALAR;
+    RDB_NAME_ERROR.ireplen = RDB_VARIABLE_LEN;
+    RDB_NAME_ERROR.name = "NAME_ERROR";
+    RDB_NAME_ERROR.var.scalar.builtin = RDB_TRUE;
+    RDB_NAME_ERROR.var.scalar.repc = 1;
+    RDB_NAME_ERROR.var.scalar.repv = &name_rep;
+    RDB_NAME_ERROR.var.scalar.arep = &RDB_STRING;
+    RDB_NAME_ERROR.var.scalar.constraintp = NULL;
+    RDB_NAME_ERROR.var.scalar.sysimpl = RDB_TRUE;
+    RDB_NAME_ERROR.comparep = NULL;
 
     RDB_PREDICATE_VIOLATION_ERROR.kind = RDB_TP_SCALAR;
     RDB_PREDICATE_VIOLATION_ERROR.ireplen = RDB_VARIABLE_LEN;
@@ -721,7 +721,7 @@ _RDB_init_builtin_types(RDB_exec_context *ecp)
             ecp) != RDB_OK) {
         return RDB_ERROR;
     }
-    if (add_type(&NAME_ERROR,
+    if (add_type(&RDB_NAME_ERROR,
             ecp) != RDB_OK) {
         return RDB_ERROR;
     }

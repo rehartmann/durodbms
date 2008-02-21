@@ -401,7 +401,7 @@ RDB_OK on success, RDB_ERROR if an error occurred.
 <dl>
 <dt>RDB_NO_RUNNING_TX_ERROR
 <dd><var>txp</var> does not point to a running transaction.
-<dt>NAME_ERROR
+<dt>RDB_NAME_ERROR
 <dd>The table does not have an attribute <var>attrname</var>.
 <dt>RDB_TYPE_MISMATCH_ERROR
 <dd>The type of the attribute is not BOOLEAN.
@@ -493,7 +493,7 @@ RDB_OK on success, RDB_ERROR if an error occurred.
 <dl>
 <dt>RDB_NO_RUNNING_TX_ERROR
 <dd><var>txp</var> does not point to a running transaction.
-<dt>NAME_ERROR
+<dt>RDB_NAME_ERROR
 <dd>The table does not have an attribute <var>attrname</var>.
 <dt>RDB_TYPE_MISMATCH_ERROR
 <dd>The type of the attribute is not BOOLEAN.
@@ -584,7 +584,7 @@ RDB_OK on success, RDB_ERROR if an error occurred.
 <dl>
 <dt>RDB_NO_RUNNING_TX_ERROR
 <dd><var>txp</var> does not point to a running transaction.
-<dt>NAME_ERROR
+<dt>RDB_NAME_ERROR
 <dd>The table does not have an attribute <var>attrname</var>.
 <dt>RDB_TYPE_MISMATCH_ERROR
 <dd>The type of the attribute is not numeric.
@@ -686,7 +686,7 @@ RDB_OK on success, RDB_ERROR if an error occurred.
 <dl>
 <dt>RDB_NO_RUNNING_TX_ERROR
 <dd><var>txp</var> does not point to a running transaction.
-<dt>NAME_ERROR
+<dt>RDB_NAME_ERROR
 <dd>The table does not have an attribute <var>attrname</var>.
 <dt>RDB_TYPE_MISMATCH_ERROR
 <dd>The type of the attribute is not numeric.
@@ -790,7 +790,7 @@ RDB_OK on success, RDB_ERROR if an error occurred.
 <dl>
 <dt>RDB_NO_RUNNING_TX_ERROR
 <dd><var>txp</var> does not point to a running transaction.
-<dt>NAME_ERROR
+<dt>RDB_NAME_ERROR
 <dd>The table does not have an attribute <var>attrname</var>.
 <dt>RDB_TYPE_MISMATCH_ERROR
 <dd>The type of the attribute is not numeric.
@@ -889,7 +889,7 @@ RDB_OK on success, RDB_ERROR if an error occurred.
 <dl>
 <dt>RDB_NO_RUNNING_TX_ERROR
 <dd><var>txp</var> does not point to a running transaction.
-<dt>NAME_ERROR
+<dt>RDB_NAME_ERROR
 <dd>The table does not have an attribute <var>attrname</var>.
 <dt>RDB_TYPE_MISMATCH_ERROR
 <dd>The type of the attribute is not numeric.
@@ -1486,7 +1486,7 @@ RDB_OK on success, RDB_ERROR if an error occurred.
 <dd><var>name</var> is not a valid index name.
 <dt>RDB_ELEMENT_EXIST_ERROR
 <dd>An index with name <var>name</var> already exists.
-<dt>NAME_ERROR
+<dt>RDB_NAME_ERROR
 <dd>An attribute specified by <var>idxcompv</var> does not appear in the
 table.
 </dl>

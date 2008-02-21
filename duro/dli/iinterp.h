@@ -1,5 +1,5 @@
-#ifndef EXECUTE_H
-#define EXECUTE_H
+#ifndef IINTERP_H
+#define IINTERP_H
 
 #include <rel/rdb.h>
 #include "parse.h"
@@ -12,24 +12,13 @@ typedef struct varmap_node {
     struct varmap_node *parentp;
 } varmap_node;
 
-extern RDB_environment *envp;
-
-extern varmap_node toplevel_vars;
-
-extern int err_line;
-
-extern sig_atomic_t interrupted;
-
-int
-Duro_init_exec(RDB_exec_context *, const char *);
+void
+Duro_print_error(const RDB_object *);
 
 void
-Duro_exit_interp(void);
+Duro_dt_interrupt(void);
 
 int
-Duro_exec_stmt(RDB_parse_statement *, RDB_exec_context *, RDB_object *);
+Duro_dt_execute(RDB_environment *, char *, RDB_exec_context *);
 
-int
-Duro_process_stmt(RDB_exec_context *);
-
-#endif /*EXECUTE_H*/
+#endif /*IINTERP_H*/

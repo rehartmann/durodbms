@@ -32,8 +32,8 @@ env.Replace(LIBPATH = ['.', bdbhome + '/lib'])
 env.Replace(RPATH = [installdir + '/lib', bdbhome + '/lib'])
 
 if env['PLATFORM'] == 'win32':
-    env.Replace(LIBS = ['duro', 'libdb45', 'libltdl'])
-    durolibs = ['libdb45', 'libltdl', 'libregex']
+    env.Replace(LIBS = ['duro', 'libdb46', 'libltdl'])
+    durolibs = ['libdb46', 'libltdl', 'libregex']
 else:
     env.Replace(LIBS = ['duro', 'db', 'ltdl', 'm'])
     durolibs = ['db', 'ltdl']
@@ -95,7 +95,7 @@ durotclsrc = ['tcl/duro.c', 'tcl/envcmd.c',
 libdurotcllibs = ['duro']
 
 if env['PLATFORM'] == 'win32':
-    libdurotcllibs += ['tcl84', 'libdb45']
+    libdurotcllibs += ['tcl84', 'libdb46']
     libdurotcl = env.SharedLibrary('durotcl', durotclsrc + ['durotcl.def'],
             LIBS = libdurotcllibs)
 else:
@@ -178,8 +178,13 @@ test_scripts = Split('tests/aggr.test tests/constraints.test tests/convert.test 
         'tests/parse.test tests/project.test tests/qqueries.test '
         'tests/rel.test tests/rollback.test tests/rtables.test '
         'tests/sdivide.test tests/string.test tests/subset.test '
-        'tests/tuple.test tests/update.test tests/utype.test '
-        'tests/vtables.test tests/all.tcl tests/testutil.tcl tests/setup.tcl')
+        'tests/transform.test tests/tuple.test tests/update.test '
+        'tests/utype.test tests/vtables.test '
+        'tests/all.tcl tests/testutil.tcl tests/setup.tcl')
+durodt_test_scripts = Split('tests/durodt/array.test tests/durodt/relation.test '
+        'tests/durodt/scalar.test tests/durodt/scalar.td '
+        'tests/durodt/tuple.test '
+        'tests/durodt/all.tcl')
 
 test = env.Command('tests/passed', [libduro, libdurotcl, testbins, dli],
         'tclsh tests/all.tcl -verbose "{pass error}"',
@@ -199,7 +204,8 @@ rel_ihdrs = Split('rel/catalog.h rel/delete.h rel/serialize.h '
         'rel/insert.h rel/transform.h rel/internal.h rel/stable.h '
         'rel/optimize.h rel/update.h rel/qresult.h rel/opmap.h')
 dli_hdrs = ['dli/parse.h']
-dli_ihdrs = ['dli/exparse.h', 'dli/tabletostr.h', 'dli/stmtser.h']
+dli_ihdrs = ['dli/exparse.h', 'dli/tabletostr.h', 'dli/stmtser.h',
+        'dli/iinterp.h']
 durotcl_hdrs = ['tcl/duro.h']
 testlib_hdrs = ['tests/point.h']
 
@@ -251,13 +257,13 @@ else:
 if env.has_key('TAR'):
     distdir = 'duro-' + release
 
-    env.Install(distdir, Split('SConstruct README INSTALL '
+    env.Install(distdir, Split('SConstruct README README.windows INSTALL '
             'COPYING AUTHORS CHANGES'))
     env.Install(distdir + '/gen', gensrc)
     env.Install(distdir + '/rec', recsrc)
     env.Install(distdir + '/rel', relsrc)
     env.Install(distdir + '/dli', dlisrc)
-    env.Install(distdir + '/dli', 'dli/duro.c')
+    env.Install(distdir + '/dli', 'dli/durodt.c')
     env.Install(distdir + '/tcl', durotclsrc)
     env.Install(distdir + '/docs', durodocs)
     env.Install(distdir + '/docs/tcl', durotcldocs)
@@ -274,6 +280,7 @@ if env.has_key('TAR'):
     env.Install(distdir + '/dli', dli_ihdrs)
     env.Install(distdir + '/tests', testlib_hdrs)
     env.Install(distdir + '/tests', test_scripts)
+    env.Install(distdir + '/tests/durodt', durodt_test_scripts)
     env.Install(distdir + '/tcl', tcltools)
     env.Install(distdir + '/dli', ['dli/exparse.y', 'dli/exlex.l'])
     env.Install(distdir + '/tcl', 'tcl/util.tcl')

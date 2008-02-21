@@ -799,11 +799,11 @@ deserialize_possrep(RDB_object *objp, int *posp, RDB_exec_context *ecp,
         RDB_transaction *txp)
 {
     RDB_object nameobj;
-
-    RDB_init_obj(&nameobj);
     RDB_parse_possrep *rep = RDB_alloc(sizeof(RDB_parse_possrep), ecp);
     if (rep == NULL)
         return NULL;
+
+    RDB_init_obj(&nameobj);
 
     if (_RDB_deserialize_strobj(objp, posp, ecp, &nameobj) != RDB_OK) {
         goto error;

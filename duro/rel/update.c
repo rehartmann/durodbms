@@ -1,7 +1,7 @@
 /*
  * $Id$
  *
- * Copyright (C) 2003-2007 René Hartmann.
+ * Copyright (C) 2003-2008 René Hartmann.
  * See the file COPYING for redistribution information.
  */
 
@@ -576,7 +576,6 @@ update_where_index_simple(RDB_expression *texp, RDB_expression *condp,
     int i;
     int flags;
     RDB_expression *refexp;
-    _RDB_tbindex *indexp;
     int objc;
     RDB_field *fv;
     RDB_object *valv;
@@ -632,7 +631,7 @@ update_where_index_simple(RDB_expression *texp, RDB_expression *condp,
         }
     }
 
-    if (texp->var.op.optinfo.objpc != indexp->attrc
+    if (texp->var.op.optinfo.objpc != refexp->var.tbref.indexp->attrc
             || !texp->var.op.optinfo.all_eq)
         flags = RDB_REC_RANGE;
     else
@@ -719,7 +718,7 @@ update_where_index_simple(RDB_expression *texp, RDB_expression *condp,
             }
             rcount++;
         }
-        if (texp->var.op.optinfo.objpc == indexp->attrc
+        if (texp->var.op.optinfo.objpc == refexp->var.tbref.indexp->attrc
                 && texp->var.op.optinfo.all_eq) {
             flags = RDB_REC_DUP;
         } else {

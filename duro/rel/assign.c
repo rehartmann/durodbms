@@ -1936,7 +1936,7 @@ If an error occurred, (RDB_int)RDB_ERROR is returned.
 <dt>RDB_NO_RUNNING_TX_ERROR
 <dd><var>txp</var> does not point to a running transaction.
 
-<dt>NAME_ERROR
+<dt>RDB_NAME_ERROR
 <dd>One of the attributes in <var>updv</var> does not exist in the table.
 <dd>One of the expressions specified in <var>updv</var> refers to an attribute
 which does not exist in the table.

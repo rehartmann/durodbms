@@ -4,17 +4,16 @@ EXPORTS
     RDB_close_env
     RDB_bdb_env
     RDB_BOOLEAN
-    RDB_INTEGER    
-    RDB_FLOAT    
-    RDB_DOUBLE    
-    RDB_STRING    
+    RDB_INTEGER
+    RDB_FLOAT
+    RDB_STRING
     RDB_BINARY
-    RDB_INVALID_TRANSACTION_ERROR    
-    RDB_INVALID_ARGUMENT_ERROR    
+    RDB_NO_RUNNING_TX_ERROR    
+    RDB_INVALID_ARGUMENT_ERROR
     RDB_TYPE_MISMATCH_ERROR
     RDB_NOT_FOUND_ERROR
     RDB_OPERATOR_NOT_FOUND_ERROR    
-    RDB_ATTRIBUTE_NOT_FOUND_ERROR    
+    RDB_NAME_ERROR    
     RDB_ELEMENT_EXISTS_ERROR    
     RDB_TYPE_CONSTRAINT_VIOLATION_ERROR    
     RDB_KEY_VIOLATION_ERROR    
@@ -69,13 +68,11 @@ RDB_tuple_set
 RDB_tuple_set_bool
 RDB_tuple_set_int
 RDB_tuple_set_float
-RDB_tuple_set_double
 RDB_tuple_set_string
 RDB_tuple_get
 RDB_tuple_get_bool
 RDB_tuple_get_int
 RDB_tuple_get_float
-RDB_tuple_get_double
 RDB_tuple_size
 RDB_tuple_attr_names
 RDB_tuple_get_string
@@ -108,7 +105,6 @@ RDB_destroy_obj
 RDB_bool_to_obj
 RDB_int_to_obj
 RDB_float_to_obj
-RDB_double_to_obj
 RDB_string_to_obj
 RDB_obj_to_string
 RDB_obj_comp
@@ -116,7 +112,6 @@ RDB_obj_set_comp
 RDB_obj_bool
 RDB_obj_int
 RDB_obj_float
-RDB_obj_double
 RDB_obj_string
 RDB_binary_set
 RDB_binary_get
@@ -126,10 +121,10 @@ RDB_expr_is_const
 RDB_bool_to_expr
 RDB_int_to_expr
 RDB_float_to_expr
-RDB_double_to_expr
 RDB_string_to_expr
 RDB_obj_to_expr
 RDB_var_ref
+RDB_expr_resolve_varnames
 RDB_eq
 RDB_expr_to_vtable
 RDB_tuple_attr
@@ -153,14 +148,14 @@ RDB_get_err
 RDB_clear_err
 RDB_raise_no_memory
 RDB_raise_invalid_argument
-RDB_raise_invalid_tx
+RDB_raise_no_running_tx
 RDB_raise_not_found
 RDB_raise_type_mismatch
 RDB_raise_operator_not_found
 RDB_raise_type_constraint_violation
 RDB_raise_element_exists
 RDB_raise_not_supported
-RDB_raise_attribute_not_found
+RDB_raise_name
 RDB_raise_predicate_violation
 RDB_raise_system
 RDB_raise_resource_not_found
@@ -168,14 +163,15 @@ RDB_raise_internal
 RDB_raise_lock_not_granted
 RDB_raise_aggregate_undefined
 RDB_raise_version_mismatch
+RDB_raise_syntax
 RDB_ec_set_property
 RDB_ec_get_property
 RDB_evaluate
 RDB_parse_expr
 _RDB_obj_to_str
+_RDB_table_def_to_str
 RDB_dup_str
 _RDB_table_refers
-_RDB_table_to_str
 _RDB_optimize
 _RDB_get_upd_op
 _RDB_get_possrep
@@ -187,6 +183,8 @@ RDB_type_attrs
 RDB_db_name
 RDB_table_name
 RDB_table_is_persistent
+RDB_free
+RDB_alloc
 RDB_init_hashmap
 RDB_destroy_hashmap
 RDB_hashmap_get
@@ -195,7 +193,6 @@ _RDB_expr_to_str
 RDB_table_ref
 RDB_add_arg
 _RDB_init_builtin_types
-RDB_print_obj
 RDB_obj_irep
 RDB_irep_to_obj
 RDB_put_op
@@ -206,7 +203,10 @@ _RDB_parse_init_buf
 RDB_dup_expr
 RDB_get_op
 RDB_evaluate_bool
-RDB_raise_syntax
-RDB_parse_stmt
+RDB_major_version
+RDB_minor_version
 _RDB_parse_case_insensitive
 yyin
+Duro_print_error
+Duro_dt_interrupt
+Duro_dt_execute

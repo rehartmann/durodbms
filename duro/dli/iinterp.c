@@ -34,13 +34,13 @@ varmap_node toplevel_vars;
 
 int err_line;
 
-sig_atomic_t interrupted;
+static sig_atomic_t interrupted;
 
 static varmap_node *current_varmapp;
 
 static RDB_op_map opmap;
 
-RDB_environment *envp = NULL;
+static RDB_environment *envp = NULL;
 
 static tx_node *txnp = NULL;
 
@@ -427,7 +427,7 @@ create_env_op(const char *name, int argc, RDB_object *argv[],
 
     /* Create directory if does not exist */
     if (mkdir(RDB_obj_string(argv[0]),
-            S_IRUSR | S_IWUSR | S_IXUSR) == -1
+            S_IREAD | S_IWRITE | S_IEXEC) == -1
             && errno != EEXIST) {
         RDB_raise_system(strerror(errno), ecp);
         return RDB_ERROR;
@@ -1278,6 +1278,9 @@ cleanup:
 }
 
 static int
+Duro_exec_stmt(RDB_parse_statement *, RDB_exec_context *, RDB_object *);
+
+static int
 exec_stmtlist(RDB_parse_statement *stmtp, RDB_exec_context *ecp,
         RDB_object *retvalp)
 {
@@ -1334,6 +1337,7 @@ exec_while(const RDB_parse_statement *stmtp, RDB_exec_context *ecp,
         }
         remove_varmap();
         if (interrupted) {
+            interrupted = 0;
             RDB_raise_system("interrupted", ecp);
             return RDB_ERROR;
         }
@@ -1388,6 +1392,7 @@ exec_for(const RDB_parse_statement *stmtp, RDB_exec_context *ecp,
         if (varp->var.int_val == endval.var.int_val)
             break;
         if (interrupted) {
+            interrupted = 0;
             RDB_destroy_obj(&endval, ecp);
             RDB_raise_system("interrupted", ecp);
             return RDB_ERROR;
@@ -1417,8 +1422,8 @@ convert_attr_assigns(RDB_parse_assign *assignlp, int *updcp,
 {
     int i;
     RDB_attr_update *updv;
-    *updcp = attr_assign_list_length(assignlp);
     RDB_parse_assign *ap = assignlp;
+    *updcp = attr_assign_list_length(assignlp);
 
     updv = RDB_alloc(*updcp * sizeof(RDB_attr_update), ecp);
     if (updv == NULL)
@@ -1859,7 +1864,7 @@ exec_opdrop(const RDB_parse_statement *stmtp, RDB_exec_context *ecp)
 }
 
 int
-Duro_invoke_dt_ro_op(const char *name, int argc, RDB_object *argv[],
+Duro_dt_invoke_ro_op(const char *name, int argc, RDB_object *argv[],
           const void *iargp, size_t iarglen,
           RDB_exec_context *ecp, RDB_transaction *txp,
           RDB_object *retvalp)
@@ -1873,6 +1878,7 @@ Duro_invoke_dt_ro_op(const char *name, int argc, RDB_object *argv[],
     varmap_node *ovarmapp = current_varmapp;
 
     if (interrupted) {
+        interrupted = 0;
         RDB_raise_system("interrupted", ecp);
         return RDB_ERROR;
     }
@@ -1934,7 +1940,7 @@ Duro_invoke_dt_ro_op(const char *name, int argc, RDB_object *argv[],
 }
 
 int
-Duro_invoke_dt_update_op(const char *name, int argc, RDB_object *argv[],
+Duro_dt_invoke_update_op(const char *name, int argc, RDB_object *argv[],
         RDB_bool updv[], const void *iargp, size_t iarglen,
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
@@ -1946,6 +1952,7 @@ Duro_invoke_dt_update_op(const char *name, int argc, RDB_object *argv[],
     varmap_node *ovarmapp = current_varmapp;
 
     if (interrupted) {
+        interrupted = 0;
         RDB_raise_system("interrupted", ecp);
         return RDB_ERROR;
     }
@@ -2044,7 +2051,7 @@ exec_ro_op_def(RDB_parse_statement *stmtp, RDB_exec_context *ecp)
 
     ret = RDB_create_ro_op(RDB_obj_string(&stmtp->var.opdef.opname),
             stmtp->var.opdef.argc, argtv, stmtp->var.opdef.rtype.typ,
-            "libduro", "Duro_invoke_dt_ro_op",
+            "libduro", "Duro_dt_invoke_ro_op",
             sercodep, sercodelen, ecp,
             txnp != NULL ? &txnp->tx : &tmp_tx);
     if (ret != RDB_OK)
@@ -2117,7 +2124,7 @@ exec_update_op_def(const RDB_parse_statement *stmtp, RDB_exec_context *ecp)
 
     ret = RDB_create_update_op(RDB_obj_string(&stmtp->var.opdef.opname),
             stmtp->var.opdef.argc, argtv, updv,
-            "libduro", "Duro_invoke_dt_update_op",
+            "libduro", "Duro_dt_invoke_update_op",
             sercodep, sercodelen, ecp, txnp != NULL ? &txnp->tx : &tmp_tx);
     if (ret != RDB_OK)
         goto error;
@@ -2159,7 +2166,7 @@ exec_return(const RDB_parse_statement *stmtp, RDB_exec_context *ecp,
     return DURO_RETURN;
 }
 
-int
+static int
 Duro_exec_stmt(RDB_parse_statement *stmtp, RDB_exec_context *ecp,
         RDB_object *retvalp)
 {
@@ -2268,4 +2275,76 @@ Duro_process_stmt(RDB_exec_context *ecp)
         return RDB_ERROR;
     }
     return RDB_parse_del_stmt(stmtp, ecp);
+}
+
+void
+Duro_print_error(const RDB_object *errobjp)
+{
+    RDB_exec_context ec;
+    RDB_object msgobj;
+    RDB_type *errtyp = RDB_obj_type(errobjp);
+
+    RDB_init_exec_context(&ec);
+    RDB_init_obj(&msgobj);
+
+    fputs(RDB_type_name(errtyp), stdout);
+
+    if (RDB_obj_comp(errobjp, "MSG", &msgobj, &ec, NULL) == RDB_OK) {
+        printf(": %s", RDB_obj_string(&msgobj));
+    }
+
+    fputs("\n", stdout);
+
+    RDB_destroy_obj(&msgobj, &ec);
+    RDB_destroy_exec_context(&ec);
+}
+
+void
+Duro_dt_interrupt(void)
+{
+    interrupted = 1;
+}
+
+int
+Duro_dt_execute(RDB_environment *dbenvp, char *dbname, RDB_exec_context *ecp)
+{
+    envp = dbenvp;
+    interrupted = 0;
+
+    if (Duro_init_exec(ecp, dbname) != RDB_OK) {
+        return RDB_ERROR;
+    }
+
+    err_line = -1;
+
+    if (_RDB_parse_interactive) {
+        printf("Duro D/T library version %d.%d\n", RDB_major_version(),
+                RDB_minor_version());
+        _RDB_parse_init_buf();
+    }
+
+    for(;;) {
+        if (Duro_process_stmt(ecp) != RDB_OK) {
+            RDB_object *errobjp = RDB_get_err(ecp);
+            if (errobjp != NULL) {
+                if (!_RDB_parse_interactive) {
+                    printf("error in statement at or near line %d: ", err_line);
+                }
+                if (_RDB_parse_interactive) {
+                    Duro_print_error(errobjp);
+                    _RDB_parse_init_buf();
+                } else {
+                    Duro_exit_interp();
+                    return RDB_ERROR;
+                }
+                RDB_clear_err(ecp);
+            } else {
+                /* Exit on EOF  */
+                puts("");
+                Duro_exit_interp();
+                return RDB_OK;
+            }
+        }
+    }
+    return RDB_OK;
 }

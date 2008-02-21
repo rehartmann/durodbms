@@ -30,28 +30,6 @@ void yyrestart(FILE *);
 extern int yydebug;
 
 static void
-print_error(const RDB_object *errobjp)
-{
-    RDB_exec_context ec;
-    RDB_object msgobj;
-    RDB_type *errtyp = RDB_obj_type(errobjp);
-
-    RDB_init_exec_context(&ec);
-    RDB_init_obj(&msgobj);
-
-    fputs(RDB_type_name(errtyp), stdout);
-
-    if (RDB_obj_comp(errobjp, "MSG", &msgobj, &ec, NULL) == RDB_OK) {
-        printf(": %s", RDB_obj_string(&msgobj));
-    }
-
-    fputs("\n", stdout);
-
-    RDB_destroy_obj(&msgobj, &ec);
-    RDB_destroy_exec_context(&ec);
-}
-
-static void
 usage_error(void)
 {
     puts("usage: durodt [-e envpath] [-d database] [file]");
@@ -60,7 +38,7 @@ usage_error(void)
 
 static void
 handle_sigint(int sig) {
-    interrupted = 1;
+    Duro_dt_interrupt();
 }
 
 int
@@ -70,14 +48,20 @@ main(int argc, char *argv[])
     RDB_exec_context ec;
     char *envname = NULL;
     char *dbname = "";
+    RDB_environment *envp;
+#ifndef _WIN32
     struct sigaction sigact;
+#endif
 
-    interrupted = 0;
+#ifdef _WIN32
+    signal(SIGINT, handle_sigint);
+#else
     sigact.sa_handler = &handle_sigint;
     sigemptyset(&sigact.sa_mask);
     sigact.sa_flags = 0;
     if (sigaction(SIGINT, &sigact, NULL) == -1)
         fprintf(stderr, "sigaction(): %s\n", strerror(errno));
+#endif
 
     while (argc > 1) {
         if (strcmp(argv[1], "-e") == 0) {
@@ -119,48 +103,22 @@ main(int argc, char *argv[])
 
     _RDB_parse_interactive = (RDB_bool) isatty(fileno(yyin));
 
-    /* yydebug = 1; */
-    err_line = -1;
-
     RDB_init_exec_context(&ec);
 
     if (_RDB_init_builtin_types(&ec) != RDB_OK) {
-        print_error(RDB_get_err(&ec));
-        return 1;
+        Duro_print_error(RDB_get_err(&ec));
+        goto error;
     }
 
-    if (Duro_init_exec(&ec, dbname) != RDB_OK) {
-        print_error(RDB_get_err(&ec));
-        return 1;
+    if (Duro_dt_execute(envp, dbname, &ec) != RDB_OK) {
+        Duro_print_error(RDB_get_err(&ec));
+        goto error;
     }
 
-    if (_RDB_parse_interactive) {
-        printf("Duro D/T library version %d.%d\n", RDB_major_version(),
-                RDB_minor_version());
-        _RDB_parse_init_buf();
-    }
+    RDB_destroy_exec_context(&ec);
+    return 0;
 
-    for(;;) {
-        if (Duro_process_stmt(&ec) != RDB_OK) {
-            RDB_object *errobjp = RDB_get_err(&ec);
-            if (errobjp != NULL) {
-                if (!_RDB_parse_interactive) {
-                    printf("error in statement at or near line %d: ", err_line);
-                }
-                print_error(errobjp);
-                if (_RDB_parse_interactive) {
-                    _RDB_parse_init_buf();
-                } else {
-                    Duro_exit_interp();
-                    exit(1);
-                }
-                RDB_clear_err(&ec);
-            } else {
-                /* Exit on EOF  */
-                puts("");
-                Duro_exit_interp();
-                exit(0);
-            }
-        }
-    }
+error:
+    RDB_destroy_exec_context(&ec);
+    return 1;    
 }

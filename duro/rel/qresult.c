@@ -163,9 +163,9 @@ do_summarize(RDB_qresult *qrp, RDB_type *tb1typ, RDB_bool hasavg,
             argp = qrp->exp->var.op.args.firstp->nextp;
             for (i = 0; i < addc; i++) {
                 argp = argp->nextp->nextp;
-                char *attrname = RDB_obj_string(&argp->var.obj);
 
-                nonkeyfv[i].no = *_RDB_field_no(qrp->matp->var.tb.stp, attrname);
+                nonkeyfv[i].no = *_RDB_field_no(qrp->matp->var.tb.stp,
+                        RDB_obj_string(&argp->var.obj));
             }
 
             if (hasavg) {

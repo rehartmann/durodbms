@@ -374,7 +374,7 @@ RDB_OK on success, RDB_ERROR if an error occurred.
 @par Errors:
 
 <dl>
-<dt>NAME_ERROR
+<dt>RDB_NAME_ERROR
 <dd>One of the attributes specified by <var>attrv</var> is not an attribute
 of the original tuple.
 </dl>
@@ -545,7 +545,7 @@ RDB_OK on success, RDB_ERROR if an error occurred.
 @par Errors:
 
 <dl>
-<dt>NAME_ERROR
+<dt>RDB_NAME_ERROR
 <dd>One of the expressions specified in <var>updv</var> refers to an attribute
 which does not exist in the tuple.
 <dt>RDB_INVALID_ARGUMENT_ERROR
@@ -658,7 +658,7 @@ RDB_OK on success, RDB_ERROR if an error occurred.
 @par Errors:
 
 <dl>
-<dt>NAME_ERROR
+<dt>RDB_NAME_ERROR
 <dd>One or more of the attributes specified by wrapv[i].attrv does not
 exist.
 </dl>
@@ -736,7 +736,7 @@ RDB_OK on success, RDB_ERROR if an error occurred.
 @par Errors:
 
 <dl>
-<dt>NAME_ERROR
+<dt>RDB_NAME_ERROR
 <dd>An attribute specified by attrv does not exist.
 <dt>RDB_INVALID_ARGUMENT_ERROR
 <dd>An attribute specified by attrv is not tuple-typed.

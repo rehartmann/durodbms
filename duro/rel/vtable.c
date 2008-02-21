@@ -65,7 +65,7 @@ A pointer to the newly created table, or NULL if an error occurred.
 <dd><var>txp</var> does not point to a running transaction.
 <dt>RDB_INVALID_ARGUMENT_ERROR
 <dd>*<var>exp</var> does not define a valid virtual table.
-<dt>NAME_ERROR
+<dt>RDB_NAME_ERROR
 <dd>*<var>exp</var> refers to an undefined attribute.
 <dt>RDB_TYPE_MISMATCH_ERROR
 <dd>*<var>exp</var> contains an operator invocation with an argument
