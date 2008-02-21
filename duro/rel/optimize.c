@@ -448,6 +448,7 @@ split_by_index(RDB_expression *texp, _RDB_tbindex *indexp,
         texp->var.op.optinfo.all_eq = all_eq;
         texp->var.op.optinfo.stopexp = stopexp;
     }
+    texp->var.op.args.lastp = texp->var.op.args.firstp->nextp;
     return RDB_OK;
 }
 
