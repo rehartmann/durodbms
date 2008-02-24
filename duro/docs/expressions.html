@@ -4,13 +4,13 @@
 <head>
 <title>Duro expression syntax</title>
 <body>
-<h2>Duro 0.12 expression syntax</h2>
+<h2>Duro 0.13 expression syntax</h2>
 
 <p>The language for Duro expressions is a subset of Tutorial D, as defined
 in <cite>TTM</cite>, third edition, with a few differences:
 
 <ol>
-<li>Duro uses a dot ('.') operator for tuple attribute extraction, instead of FROM.
+<li>Duro uses a dot ('.') operator for tuple attribute extraction, in addition to FROM.
 <li>Duro supports a MATCHES operator which performs regular expression matching.
 <li>Duro uses the keyword SUBSET_OF for the subset operator
 and IN for the element-of operator.
@@ -22,29 +22,50 @@ the second edition of TTM.
 <h3>Duro expression syntax (EBNF notation)</h3>
 
 <pre>
-expression = or_expression | extractor | ifthenelse | relation | project
-        | select | rename | extend | summarize | wrap | unwrap | group
-        | ungroup | divideby | with.
+expression = with | ifthenelse
+        | project | select | rename | relation 
+        | extend | update | summarize | divideby
+	| wrap | unwrap | group | ungroup
+	| expression OR expression
+	| expression AND expression
+	| NOT expression
+	| rel_expression
+	| '+' expression | '-' expression
+        | expression '+' expression
+        | expression '-' expression
+        | expression '||' expression
+        | expression '*' expression
+        | expression '/' expression
+	| var_expression
+	| literal
+	| count_invocation
+	| aggregate_invocation
+	| '(' expression ')'
+	| expression '.' id
+	| id FROM expression
+	| TUPLE FROM expression.
 
 project = expression '{' [ALL BUT] [id {',' id}] '}'.
 
-select = expression WHERE or_expression.
+select = expression WHERE expression.
 
 rename = expression RENAME '(' [id AS id {',' id AS id}] ')'.
 
-relation = expression UNION primary_expression
-        | expression INTERSECT primary_expression
-        | expression MINUS primary_expression
-        | expression SEMIMINUS primary_expression
-        | expression JOIN primary_expression
-        | expression SEMIJOIN primary_expression.
+relation = expression UNION expression
+        | expression INTERSECT expression
+        | expression MINUS expression
+        | expression SEMIMINUS expression
+        | expression JOIN expression
+        | expression SEMIJOIN expression.
 
 extend = EXTEND expression ADD '(' [expression AS id {',' expression AS id}] ')'.
+
+update = UPDATE expression '{' [id ':=' expression {',' id ':=' expression}] '}'.
 
 summarize = SUMMARIZE expression PER expression
            ADD '(' [summary AS id {',' summary AS id}] ')'.
 
-divideby = expression DIVIDEBY expression PER primary_expression.
+divideby = expression DIVIDEBY expression PER expression.
 
 summary = COUNT '(' ')' | summary_type '(' expression ')'.
 
@@ -60,39 +81,22 @@ group  = expression GROUP '{' [id {',' id}] '}' AS id.
 
 ungroup = expression UNGROUP id.
 
+var_expression = id | id '(' [id {',' id}] ')' | var_expression '[' expression ']'.
+
 with = WITH [expression AS id {',' expression AS id}] ':' expression.
 
-or_expression = and_expression | or_expression OR and_expression.
+rel_expression = expression | expression '=' expression
+        | expression '&lt;>' expression
+        | expression '!=' expression
+        | expression '>=' expression
+        | expression '&lt;=' expression
+        | expression '>' expression
+        | expression '&lt;' expression
+        | expression IN expression
+        | expression MATCHES expression
+        | expression SUBSET_OF expression.
 
-and_expression = not_expression | and_expression AND not_expression.
-
-not_expression = rel_expression | NOT rel_expression.
-
-rel_expression = add_expression | add_expression '=' add_expression
-        | add_expression '<>' add_expression
-        | add_expression '>=' add_expression
-        | add_expression '<=' add_expression
-        | add_expression '>' add_expression
-        | add_expression '<' add_expression
-        | add_expression IN add_expression
-        | add_expression MATCHES add_expression
-        | add_expression SUBSET_OF add_expression.
-
-add_expression = mul_expression | '+' mul_expression | '-' mul_expression
-        | add_expression '+' mul_expression
-        | add_expression '-' mul_expression
-        | add_expression '||' mul_expression.
-
-mul_expression = primary_expression | mul_expression '*' primary_expression
-        | mul_expression '/' primary_expression.
-
-primary_expression = id | primary_expression '.' id
-        | literal | count_invocation | aggregate_invocation
-        | operator_invocation | '(' expression ')'.
-
-extractor = TUPLE FROM expression.
-
-ifthenelse = IF or_expression THEN add_expression ELSE add_expression.
+ifthenelse = IF expression THEN expression ELSE expression.
 
 count_invocation = COUNT '(' expression ')'.
 
@@ -103,7 +107,7 @@ operator_invocation = 'THE_'id '(' expression ')'
 
 literal = string | integer | decimal | float | TRUE | FALSE
         | TUPLE '{' tuple_item_list '}'
-        | RELATION '{' ne_expression_list '}' | TABLE_DEE | TABLE_DUM.
+        | RELATION '{' expression_list '}' | TABLE_DEE | TABLE_DUM.
 
 tuple_item_list = [ne_tuple_item_list].
 
@@ -117,11 +121,11 @@ string = '"'{char_lit}'"' | "'"{char_lit}"'".
 
 char_lit = char | '\"' | '\\' | '\n' | '\r' | '\t'.
 
-integer = ['-']digit{digit}.
+integer = digit{digit}.
 
-decimal = ['-']digit{digit}'.'digit{digit}.
+decimal = digit{digit}'.'digit{digit}.
 
-float = ['-']digit{digit}'.'digit{digit}('E' | 'e')digit{digit}.
+float = digit{digit}'.'digit{digit}('E' | 'e')digit{digit}.
 
 id = letter{letter | digit | '_' | '#'}.
 

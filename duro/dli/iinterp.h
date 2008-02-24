@@ -19,6 +19,6 @@ void
 Duro_dt_interrupt(void);
 
 int
-Duro_dt_execute(RDB_environment *, char *, RDB_exec_context *);
+Duro_dt_execute(RDB_environment *, char *, char *, RDB_exec_context *);
 
 #endif /*IINTERP_H*/

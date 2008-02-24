@@ -31,6 +31,8 @@ Changes for Duro 0.13
 
 - Dropped type DOUBLE. FLOAT is now double precision.
 
+- Lexer: removed leading "-" from number literals.
+
 - Using doxygen for the documentation.
 
 Changes for Duro 0.12

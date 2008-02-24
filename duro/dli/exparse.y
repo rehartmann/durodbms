@@ -448,7 +448,8 @@ resolve_with(RDB_expression **expp, RDB_expression *texp)
     RDB_parse_del_assignlist($$, _RDB_parse_ecp);
 } simple_assign assign ne_attr_assign_list assignment
 
-%left TOK_FROM TOK_ELSE ',' ':'
+%left ':'
+%left TOK_FROM TOK_ELSE ','
 %left TOK_UNION TOK_MINUS TOK_INTERSECT TOK_SEMIMINUS TOK_JOIN TOK_SEMIJOIN
         TOK_WHERE TOK_RENAME TOK_WRAP TOK_UNWRAP TOK_GROUP TOK_UNGROUP
         TOK_DIVIDEBY TOK_PER '{'
@@ -903,9 +904,16 @@ assignment: assign
         $$ = $3;
     }
 
-assign: simple_assign {
-        $$ = $1;
+assign: vexpr TOK_ASSIGN expression {
+		$$ = RDB_alloc(sizeof (RDB_parse_assign), _RDB_parse_ecp);
+		if ($$ == NULL) {
+		    YYERROR;
+		}
         $$->nextp = NULL;
+
+        $$->kind = RDB_STMT_COPY;
+        $$->var.copy.dstp = $1;
+        $$->var.copy.srcp = $3;
     }
     | TOK_INSERT TOK_ID expression {
         $$ = RDB_alloc(sizeof(RDB_parse_assign), _RDB_parse_ecp);
@@ -969,7 +977,7 @@ ne_attr_assign_list: simple_assign {
 	    $3->nextp = $1;
 	}
 
-simple_assign: vexpr TOK_ASSIGN expression {
+simple_assign: TOK_ID TOK_ASSIGN expression {
 		$$ = RDB_alloc(sizeof (RDB_parse_assign), _RDB_parse_ecp);
 		if ($$ == NULL) {
 		    YYERROR;
@@ -2245,11 +2253,8 @@ literal: TOK_RELATION '{' expression_list '}' {
     }
 /*     | TOK_RELATION '{' attribute_name_type_list '}'
        '{' expression_list '}' {
-    }
-    | TOK_RELATION '{' '}'
-       '{' expression_list '}' {
-    }
-    */ | TOK_TABLE_DEE {
+    } */
+    | TOK_TABLE_DEE {
         int ret;
 
         RDB_object tpl;

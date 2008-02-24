@@ -32,6 +32,8 @@ typedef struct tx_node {
 
 varmap_node toplevel_vars;
 
+extern FILE *yyin;
+
 int err_line;
 
 static sig_atomic_t interrupted;
@@ -894,7 +896,8 @@ exec_vardef(RDB_parse_statement *stmtp, RDB_exec_context *ecp)
         }
     } else {
         if (RDB_evaluate(stmtp->var.vardef.exp, &get_var,
-                current_varmapp, ecp, NULL, objp) != RDB_OK) {
+                current_varmapp, ecp, txnp != NULL ? &txnp->tx : NULL,
+                objp) != RDB_OK) {
             goto error;
         }
         if (RDB_obj_type(objp) != NULL) {
@@ -2051,7 +2054,12 @@ exec_ro_op_def(RDB_parse_statement *stmtp, RDB_exec_context *ecp)
 
     ret = RDB_create_ro_op(RDB_obj_string(&stmtp->var.opdef.opname),
             stmtp->var.opdef.argc, argtv, stmtp->var.opdef.rtype.typ,
-            "libduro", "Duro_dt_invoke_ro_op",
+#ifdef _WIN32
+            "duro",
+#else
+            "libduro",
+#endif
+            "Duro_dt_invoke_ro_op",
             sercodep, sercodelen, ecp,
             txnp != NULL ? &txnp->tx : &tmp_tx);
     if (ret != RDB_OK)
@@ -2124,7 +2132,12 @@ exec_update_op_def(const RDB_parse_statement *stmtp, RDB_exec_context *ecp)
 
     ret = RDB_create_update_op(RDB_obj_string(&stmtp->var.opdef.opname),
             stmtp->var.opdef.argc, argtv, updv,
-            "libduro", "Duro_dt_invoke_update_op",
+#ifdef _WIN32
+            "duro",
+#else
+            "libduro",
+#endif
+            "Duro_dt_invoke_update_op",
             sercodep, sercodelen, ecp, txnp != NULL ? &txnp->tx : &tmp_tx);
     if (ret != RDB_OK)
         goto error;
@@ -2306,16 +2319,29 @@ Duro_dt_interrupt(void)
 }
 
 int
-Duro_dt_execute(RDB_environment *dbenvp, char *dbname, RDB_exec_context *ecp)
+Duro_dt_execute(RDB_environment *dbenvp, char *dbname, char *infilename,
+        RDB_exec_context *ecp)
 {
     envp = dbenvp;
     interrupted = 0;
 
+    if (infilename != NULL) {
+        yyin = fopen(infilename, "r");
+        if (yyin == NULL) {
+            RDB_raise_resource_not_found(infilename, ecp);
+            return RDB_ERROR;
+        }
+    } else {
+        yyin = stdin;
+    }
+
     if (Duro_init_exec(ecp, dbname) != RDB_OK) {
-        return RDB_ERROR;
+        goto error;
     }
 
     err_line = -1;
+
+    _RDB_parse_interactive = (RDB_bool) isatty(fileno(yyin));
 
     if (_RDB_parse_interactive) {
         printf("Duro D/T library version %d.%d\n", RDB_major_version(),
@@ -2335,16 +2361,24 @@ Duro_dt_execute(RDB_environment *dbenvp, char *dbname, RDB_exec_context *ecp)
                     _RDB_parse_init_buf();
                 } else {
                     Duro_exit_interp();
-                    return RDB_ERROR;
+                    goto error;
                 }
                 RDB_clear_err(ecp);
             } else {
                 /* Exit on EOF  */
                 puts("");
                 Duro_exit_interp();
+                if (infilename != NULL) {
+                    fclose(yyin);
+                }
                 return RDB_OK;
             }
         }
     }
-    return RDB_OK;
+
+error:
+    if (infilename != NULL) {
+        fclose(yyin);
+    }
+    return RDB_ERROR;
 }

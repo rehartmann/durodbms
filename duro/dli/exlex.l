@@ -489,17 +489,17 @@ WITH {
     return TOK_INVALID;
 }
 
--?[0-9]+ {
+[0-9]+ {
     yylval = RDB_int_to_expr((RDB_int) atoi(yytext), _RDB_parse_ecp);
     return TOK_LIT_INTEGER;
 }
 
--?[0-9]+"."[0-9]+[Ee][0-9]+ {
+[0-9]+"."[0-9]+[Ee][0-9]+ {
     yylval = RDB_float_to_expr((RDB_float) atof(yytext), _RDB_parse_ecp);
     return TOK_LIT_FLOAT;
 }
 
--?[0-9]+"."[0-9]+	{
+[0-9]+"."[0-9]+	{
     yylval = RDB_float_to_expr((RDB_float) atof(yytext), _RDB_parse_ecp);
     return TOK_LIT_FLOAT;
 }

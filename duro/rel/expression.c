@@ -1,7 +1,7 @@
 /*
  * $Id$
  *
- * Copyright (C) 2004-2007 René Hartmann.
+ * Copyright (C) 2004-2008 René Hartmann.
  * See the file COPYING for redistribution information.
  */
 
@@ -905,6 +905,10 @@ expr_op_type(RDB_expression *exp, RDB_gettypefn *getfnp, void *arg,
             && argc == 1
             && (argtv[0] == NULL || argtv[0]->kind == RDB_TP_ARRAY)) {
         typ = &RDB_INTEGER;
+    } else if (strcmp(exp->var.op.name, "[]") == 0
+            && argc == 2
+            && (argtv[0] == NULL || argtv[0]->kind == RDB_TP_ARRAY)) {
+        typ = RDB_dup_nonscalar_type(argtv[0]->var.basetyp, ecp);
     } else {
         for (i = 0; i < argc; i++) {
             if (argtv[i] == NULL) {
@@ -916,7 +920,13 @@ expr_op_type(RDB_expression *exp, RDB_gettypefn *getfnp, void *arg,
         op = _RDB_get_ro_op(exp->var.op.name, argc, argtv, ecp, txp);
         if (op == NULL)
             goto error;
+        if (op->rtyp == NULL) {
+            RDB_raise_invalid_argument(exp->var.op.name, ecp);
+            goto error;
+        }
         typ = RDB_dup_nonscalar_type(op->rtyp, ecp);
+        if (typ == NULL)
+            goto error;
     }
 
     RDB_free(argtv);

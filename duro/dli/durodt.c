@@ -17,18 +17,6 @@
 #include <errno.h>
 #include <signal.h>
 
-#ifdef _WIN32
-#define _RDB_EXTERN_VAR __declspec(dllimport)
-#else
-#define _RDB_EXTERN_VAR extern
-#endif
-
-_RDB_EXTERN_VAR FILE *yyin;
-
-void yyrestart(FILE *);
-
-extern int yydebug;
-
 static void
 usage_error(void)
 {
@@ -49,6 +37,7 @@ main(int argc, char *argv[])
     char *envname = NULL;
     char *dbname = "";
     RDB_environment *envp;
+    char *infilename;
 #ifndef _WIN32
     struct sigaction sigact;
 #endif
@@ -81,15 +70,10 @@ main(int argc, char *argv[])
     }
     if (argc > 2)
         usage_error();
-    if (argc == 2) {        
-        yyin = fopen(argv[1], "r");
-        if (yyin == NULL) {
-            fprintf(stderr, "unable to open %s: %s\n", argv[1],
-                    strerror(errno));
-            return 1;
-        }
+    if (argc == 2) {
+        infilename = argv[1];
     } else {
-        yyin = stdin;
+        infilename = NULL;
     }
 
     if (envname != NULL) {
@@ -99,9 +83,9 @@ main(int argc, char *argv[])
                 db_strerror(errno));
             return 1;
         }
+    } else {
+        envp = NULL;
     }
-
-    _RDB_parse_interactive = (RDB_bool) isatty(fileno(yyin));
 
     RDB_init_exec_context(&ec);
 
@@ -110,7 +94,7 @@ main(int argc, char *argv[])
         goto error;
     }
 
-    if (Duro_dt_execute(envp, dbname, &ec) != RDB_OK) {
+    if (Duro_dt_execute(envp, dbname, infilename, &ec) != RDB_OK) {
         Duro_print_error(RDB_get_err(&ec));
         goto error;
     }

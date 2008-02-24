@@ -1,0 +1,481 @@
+<html>
+<title>Duro D/T Tutorial</title>
+<body>
+<h1>A Brief Duro D/T Tutorial</h1>
+
+<h2>Invoking the interpreter</h2>
+
+<p>To invoke the interpreter, type:
+
+<pre>
+durodt
+no db>
+</pre>
+
+<p>Duro D/T displays a prompt with the database currently
+in use. Since no database is selected in the example shown above,
+the prompt is "no db".
+
+<p>To exit the interpreter, type an end-of-file character
+(Control-D on Unix, Control-Z on Windows) or type "exit();".
+(Do not forget the parentheses and the semicolon)
+
+<p>For more information about invoking Duro D/T see <a href="../utils.html#durodt">Duro utilities</a>.
+
+<h2>Declaring variables</h2>
+
+<p>In Duro D/T, variables are typed, as required by TTM, RM prescriptions
+11, 12, and 13. They must be declared before they can be used.
+
+<p>Example:
+
+<pre>
+no db> var i integer;
+no db>
+</pre>
+
+<p>This creates a variable named I. Note that Duro D/T is case
+insensitive, so there is no diffence between "var i integer;"
+and "VAR I INTEGER;". This tutorial shows example code in lowercase,
+since this is more convenient to type.
+
+<p>When declaring a variable, an initial value can be specified.
+
+<p>Example:
+
+<pre>
+no db> var j integer init 2;
+no db>
+</pre>
+
+<p>If an initial value is given, the type can be omitted.
+So the above can also be written as follows:
+
+<pre>
+no db> var j init 2;
+no db>
+</pre>
+
+<p>If an initial value is not specified, the variable is
+automatically initialized to a default value, which is
+zero for numeric types, the empty string for STRING
+and FALSE for BOOLEAN.
+
+<p>A variable can also be declared to have the same type
+as some other variable. Example:
+
+<pre>
+no db> var k same_type_as(i);
+no db>
+</pre>
+
+<h2>Assignment</h2>
+
+<p>Once a variable has been declared, a value can be assigned
+to it. For example:
+
+<pre>
+no db> i := 5;
+1 element affected.
+no db>
+</pre>
+
+<p>Duro D/T supports <strong>multiple assignment</strong>,
+i.e. more than one assignment in one statement.
+A multiple assignment behaves as if the individual assignments
+were executed in parallel.
+
+<p>For example, to exchange the values of two variables,
+one can write:
+
+<pre>
+no db> i := j, j := i;
+2 elements affected.
+no db>
+</pre>
+
+<h2>Types</h2>
+
+<p>Duro supports the following built-in scalar types:
+
+<ul>
+<li>BOOLEAN</li>
+<li>INTEGER</li>
+<li>FLOAT</li>
+<li>STRING</li>
+</ul>
+
+<p>CHAR can be used as an alias for STRING.
+
+<p>Examples:
+
+<pre>
+no db> var b boolean init true;
+no db> var i integer init 1;
+no db> var f float init 1.0;
+no db> var s string init 'Foo';
+</pre>
+
+<p>For non-scalar types, see the chapters on tuples, tables, and arrays,
+respectively.
+
+<p>Duro supports the usual arithmetical operators. Example:
+
+<pre>
+no db> println(2 + 3 * 4);
+14
+no db> 
+</pre>
+
+<p>For details on the built-in operator PRINTLN, see the chapter on I/O.
+
+<h2>Comments</h2>
+
+<p>Duro D/T supports line comments and multi-line comments.
+
+<pre>
+-- This is a line comment.
+
+/*
+This is a
+multi-line
+comment.
+*/
+</pre>
+
+<p>Lines starting with #! are ignored to allow for Unix interpreter files.</p>
+
+<h2>Control statements</h2>
+
+<h3>IF</h3>
+
+<p>Example:</p>
+
+<pre>
+println('Please enter a number:');
+var s string;
+readln(s);
+var n init integer(s);
+if (n < 0) then
+    println('Negative');
+else
+    println('Positive');
+end if
+</pre>
+
+<p>In Duro D/T, BEGIN .. END is not required since there can be several statements after THEN.
+But the following form, which more strictly adheres to TTM, is supported too:</P>
+
+<pre>
+println('Please enter a number:');
+var s string;
+readln(s);
+var n init integer(s);
+if (n < 0) then
+    begin;
+        println('Negative');
+    end
+else
+    begin;
+        println('Positive');
+    end
+end if
+</pre>
+
+<h3>FOR</h3>
+
+<p>Example:</p>
+
+<pre>
+var i integer;
+for i := 1 to 10;
+    println(i);
+end for;
+</pre>
+
+<p>DO may be used instead of FOR.
+
+<h3>WHILE</h3>
+
+<p>Example:
+
+<pre>
+println('Please enter a positive number:');
+var s string;
+readln(s);
+var n init integer(s);
+while n < 0;
+    println('This number is not positive. Please enter again:');
+    readln(s);
+    n := integer(s);
+end while;
+</pre>
+
+<h3>CASE</h3>
+
+<p>This statement is not supported yet.
+
+<h2>Tuples</h2>
+
+<p>Tuple variables can be declared as follows:</p>
+
+<pre>
+no db>var t tuple {i integer, s string};
+no db>
+</pre>
+
+<p>Like scalar variables, tuple variables can be explicitly initialized
+when they are declared:</p>
+
+<pre>
+no db>var t tuple {i integer, s string} init tuple {i 1, s 'One'};
+no db>
+</pre>
+
+Or shorter:
+
+<pre>
+no db>var t init tuple {i 1, s 'One'};
+no db>
+</pre>
+
+Note that as required by TTM proscription 1 there is no attribute
+ordering in Duro D/T, so the statement above is perfectly equivalent
+fo the following:
+
+<pre>
+no db>var t init tuple {s 'One', i 1};
+no db>
+</pre>
+
+<p>Tuples variables can be assigned and updated:</p>
+
+<pre>
+no db>t := tuple {i 2, s 'Two'};
+1 element affected.
+no db> update t {i := 3};
+1 element affected.
+no db> update t {i := 4, s := 'Four'};
+2 elements affected.
+</pre>
+
+<p>Accessing tuple attributes:
+
+<pre>
+no db>println(t.s);
+Four
+no db>
+</pre>
+
+<p>Alternative form:
+
+<pre>
+no db>println(s from t);
+Four
+no db>
+</pre>
+
+<h2>Databases and database environments</h2>
+
+<p>Database environments are the places where databases and tables are physically stored.
+Therefore a database environment must exist before a database can be created.
+In Duro D/T, a database environment can be created using the built-in
+update operator CREATE_ENV().</p>
+
+<p>Example:</p>
+
+<pre>
+no db>create_env('dbenv');
+no db>
+</pre>
+
+<p>The built-in update operator CONNECT can be used to connect
+to an existing database environment. CONNECT takes two arguments
+of type STRING. The second argument specifies the database environment.
+The first argument is currently ignored. In future versions it will
+specify a network host. For compatibility with future versions, it is
+recommended to pass an empty string as the first argument.</p>
+
+<p>Example:</p>
+
+<pre>
+no db>connect('', 'dbenv');
+no db>
+</pre>
+
+<p>After a database environment was created or connected to, a
+database can be created using the built-in
+update operator CREATE_DB().</p>
+
+<pre>
+no db>create_db('D');
+no db>
+</pre>
+
+<p>The variable CURRENT_DB contains the database currently in use.
+A database can be selected by assigning the variable:</p>
+
+<pre>
+no db>current_db := 'D';
+1 element affected.
+D>
+</pre>
+
+<p>After CURRENT_DB has been set, the prompt shows the name
+of the database selected and a transaction can be started
+using BEGIN TRANSACTION. Instead of BEGIN TRANSACTION, BEGIN TX
+can be used.</p>
+
+<p>Example:</p>
+
+<pre>
+D>begin tx;
+Transaction started.
+D>
+</pre>
+
+<h2>Tables</h2>
+
+<p>Creating a real persistent table:
+
+<pre>
+D>var r real relation{no integer, name string} key {no};
+Table R created.
+D>
+</pre>
+
+<p>Creating a private (real transient) table:
+
+<pre>
+D> var p private relation{no integer, name string} key {no};
+Local table P created.
+D>
+</pre>
+
+<p>Creating a virtual table:<p>
+
+<pre>
+D> var v virtual r {no};
+Table V created.
+D>
+</pre>
+
+<h2>Arrays</h2>
+
+<p>Example: Printing all tuples of table R in an unspecified order:
+
+<pre>
+D> var a array tuple same_heading_as(r);
+D> load a from r order();
+D> var i integer;
+D> for i:= 0 to length(a)-1;
+D>   println(a[i]);
+D> end for;
+</pre>
+
+<h2>I/O</h2>
+
+<p>In its current version, Duro D/T features very limited I/O support.
+
+<p>It provides the following update operators for I/O:
+
+<h3>PRINTLN</h3>
+
+<p>PRINTLN takes one argument and prints it on standard output,
+followed by a newline. It is defined for all built-in scalar types
+and also for tuple and relaion arguments.
+
+<p>Example:
+
+<pre>
+no db> println(true);
+TRUE
+no db> println(2 * 4);
+8
+no db> println(tuple {a 1, b 'bee'});
+TUPLE { A 1, B "bee" }
+no db> println(relation {tuple {i 1, c 'foo'}, tuple {i 2, c 'bar'}});
+RELATION { TUPLE { I 1, C "foo" }, TUPLE { I 2, C "bar" }}
+no db>
+</pre>
+
+<p>Note that in Duro D/T, the keyword CALL in update operator invocations
+is optional. The following is also valid:
+
+<pre>
+no db> call println(2 * 4);
+8
+no db>
+</pre>
+
+<h3>PRINT</h3>
+
+<p>PRINT works like PRINTLN, except that its output is not
+followed by a newline.
+
+<p>Example:
+
+<pre>
+no db> print('2 + 2 = '); println(2 + 2);
+2 + 2 = 4
+no db>
+</pre>
+
+<h3>READLN</h3>
+
+<p>READLN is defined as follows:</p>
+
+<p>OPERATOR READLN(LINE STRING) UPDATES LINE;</p>
+
+<p>READLN reads one line from standard input and stores it in LINE,
+without the trailing newline.</p>
+
+<h2>User-defined operators</h2>
+
+<p>Defining a read-only operator:
+
+<pre>
+D> operator incr(i integer) returns integer;
+D> return i + 1;
+D> end operator;
+Operator INCR created.
+D>
+</pre>
+
+<p>Defining an update operator:
+
+<pre>
+D> operator inc(i integer) updates {i};
+D> i := i + 1;
+D> end operator;
+Operator INC created.
+D>
+</pre>
+
+<p>Dropping an operator:
+
+<pre>
+D>drop operator incr;
+Operator INCR dropped.
+D>
+</pre>
+
+<h2>User-defined types</h2>
+
+<p>Example for defining a type:</p>
+
+<pre>
+begin tx;
+type len possrep {n float} constraint the_n(len) >= 0.0;
+commit;
+</pre>
+
+<p>Before the type can be used, it must first be implemented.
+This is currently not possible with Duro D/T.
+The Tcl command <a href="../tcl/type.html">duro::type</a> can be used for this.
+
+<hr>
+
+<p>$Id$
+
+</html>

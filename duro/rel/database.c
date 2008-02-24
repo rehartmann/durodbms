@@ -1609,21 +1609,22 @@ RDB_remove_table(RDB_object *tbp, RDB_exec_context *ecp, RDB_transaction *txp);
  */
 
 /**
-RDB_get_type obtains a pointer to RDB_type structure which
-represents the type with the name <var>name</var>
-and stores that pointer at the location pointed to by <var>typp</var>.
+Return a pointer to RDB_type structure which
+represents the type with the name <var>name</var>.
 
 @returns
 
-On success, RDB_OK is returned. Any other return value indicates an error.
+The pointer to the type on success, or NULL if an error occured.
 
 @par Errors:
 
 <dl>
-<dt>RDB_NO_RUNNING_TX_ERROR
-<dd><var>txp</var> does not point to a running transaction.
-<dt>RDB_NOT_FOUND_ERROR
+<dt>RDB_NOT_FOUND_ERROR</dt>
 <dd>A type with the name <var>name</var> could not be found.
+</dd>
+<dt></dt>
+<dd>The type <var>name</var> is not a built-in type and <var>txp</var> is NULL.
+</dd>
 </dl>
 
 The call may also fail for a @ref system-errors "system error",
@@ -1649,7 +1650,7 @@ RDB_get_type(const char *name, RDB_exec_context *ecp, RDB_transaction *txp)
     }
 
     /*
-     * search type in dbroot type map
+     * Search type in dbroot type map
      */
     typ = RDB_hashmap_get(&txp->dbp->dbrootp->typemap, name);
     if (typ != NULL) {
@@ -1657,14 +1658,14 @@ RDB_get_type(const char *name, RDB_exec_context *ecp, RDB_transaction *txp)
     }
     
     /*
-     * search type in catalog
+     * Search type in catalog
      */
     ret = _RDB_cat_get_type(name, ecp, txp, &typ);
     if (ret != RDB_OK)
         return NULL;
 
     /*
-     * put type into type map
+     * Put type into type map
      */
     ret = RDB_hashmap_put(&txp->dbp->dbrootp->typemap, name, typ);
     if (ret != RDB_OK) {

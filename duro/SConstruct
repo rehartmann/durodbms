@@ -112,12 +112,10 @@ dli = env.Program('dli/durodt.c')
 # Docs
 #
 
-env.Command('docs/html/index.html',
-		['Doxyfile', 'rec/env.c',
-				'rel/rdb.h', 'rel/array.c', 'rel/database.c', 'rel/table.c',
-				'rel/type.c', 'rel/object.c', 'rel/tuple.c', 'rel/expression.c',
-				'rel/operator.c', 'rel/constraint.c', 'rel/excontext.c',
-				'rel/builtinops.c', 'rel/assign.c', 'rel/contains.c', 'dli/parse.c'],
+env.Alias('apidocs', 'docs/api/html/index.html')
+
+env.Command('docs/api/html/index.html',
+        ['Doxyfile'] + recsrc + relsrc + dlisrc,
         'doxygen')
 
 #
@@ -211,7 +209,7 @@ testlib_hdrs = ['tests/point.h']
 
 tcltools = ['tcl/duroadmin.tcl', 'tcl/durodump.tcl']
 
-durodocs = ['docs/expressions.html', 'docs/utils.html']
+durodocs = ['docs/expressions.html', 'docs/utils.html', 'docs/index.html']
 
 durotcldocs = Split('docs/tcl/index.html docs/tcl/array.html '
         'docs/tcl/begin.html docs/tcl/call.html '
@@ -267,6 +265,7 @@ if env.has_key('TAR'):
     env.Install(distdir + '/tcl', durotclsrc)
     env.Install(distdir + '/docs', durodocs)
     env.Install(distdir + '/docs/tcl', durotcldocs)
+    env.Install(distdir + '/docs/api', 'docs/api/html')
     env.Install(distdir, ['duro.def', 'durotcl.def'])
     env.Install(distdir + '/tcl', durotcl_hdrs)
     env.Install(distdir + '/tests', testsrc)
