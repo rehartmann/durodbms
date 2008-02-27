@@ -227,6 +227,7 @@ new_update_op_def(const char *name, RDB_expr_list *arglistp,
 {
     int i;
     RDB_expression *argp;
+    RDB_expression *updexp;
     RDB_parse_statement *stmtp = new_update_op_stmt(name);
     if (stmtp == NULL)
         return NULL;
@@ -242,6 +243,7 @@ new_update_op_def(const char *name, RDB_expr_list *arglistp,
       	stmtp->var.opdef.argv[i].type.exp = NULL;
   	    stmtp->var.opdef.argv[i].upd = RDB_FALSE;
   	}
+
   	argp = arglistp->firstp;
     for (i = 0; i < stmtp->var.opdef.argc; i++) {
         if (RDB_string_to_obj(&stmtp->var.opdef.argv[i].name,
@@ -255,6 +257,23 @@ new_update_op_def(const char *name, RDB_expr_list *arglistp,
       	argp = argp->nextp->nextp;
   	}
 
+  	/* Check if all UPDATE arguments are valid */
+  	updexp = updlistp->firstp;
+  	while (updexp != NULL) {
+  	    for (i = 0;
+  	            i < stmtp->var.opdef.argc
+                && strcmp(RDB_obj_string(RDB_expr_obj(updexp)),
+                        RDB_obj_string(&stmtp->var.opdef.argv[i].name)) != 0;
+  	            i++);
+  	    if (i >= stmtp->var.opdef.argc) {
+  	        /* Not found */
+  	        RDB_raise_invalid_argument("Invalid UPDATES clause",
+  	        		_RDB_parse_ecp);
+  	        goto error;
+  	    }
+  	    updexp = updexp->nextp;
+  	}
+  	
   	return stmtp;
 
 error:

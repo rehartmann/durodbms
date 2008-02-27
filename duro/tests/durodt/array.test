@@ -70,7 +70,7 @@ test ops {array operator} -setup $DBSETUP -body {
 	        return a[0];
         end operator;
 
-        operator acopy(dst array tuple{i integer}, src array tuple{i integer}) updates {a};
+        operator acopy(dst array tuple{i integer}, src array tuple{i integer}) updates {dst};
 	        dst := src;
         end operator;
 

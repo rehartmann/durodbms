@@ -661,6 +661,88 @@ expr_op_type(RDB_expression *exp, RDB_gettypefn *getfnp, void *arg,
 
     argc = RDB_expr_list_length(&exp->var.op.args);
 
+    /* Aggregate operators with attribute argument */
+    if (strcmp(exp->var.op.name, "AVG") == 0) {
+        RDB_type *argtyp;
+        RDB_type *attrtyp;
+
+        if (argc != 2) {
+            RDB_raise_invalid_argument("invalid number of aggregate arguments",
+                    ecp);
+            goto error;
+        }
+
+        if (exp->var.op.args.firstp->nextp->kind != RDB_EX_VAR) {
+            RDB_raise_invalid_argument("invalid aggregate", ecp);
+            goto error;
+        }
+        if (argtv[0]->kind != RDB_TP_RELATION) {
+            RDB_raise_invalid_argument("aggregate requires relation argument",
+                    ecp);
+            goto error;
+        }
+
+        argtyp = RDB_expr_type(exp->var.op.args.firstp, getfnp, arg, ecp, txp);
+        attrtyp = RDB_type_attr_type(argtyp,
+                exp->var.op.args.firstp->nextp->var.varname);
+        if (attrtyp != &RDB_INTEGER && attrtyp != &RDB_FLOAT
+                && attrtyp != &RDB_FLOAT) {
+            RDB_raise_type_mismatch("invalid attribute type", ecp);
+            goto error;
+        }
+        return &RDB_FLOAT;
+    } else if (strcmp(exp->var.op.name, "SUM") == 0
+            || strcmp(exp->var.op.name, "MAX") == 0
+            || strcmp(exp->var.op.name, "MIN") == 0) {
+        RDB_type *argtyp;
+        RDB_type *attrtyp;
+
+        if (argc != 2) {
+            RDB_raise_invalid_argument("invalid number of aggregate arguments",
+                    ecp);
+            goto error;
+        }
+        if (exp->var.op.args.firstp->nextp->kind != RDB_EX_VAR) {
+            RDB_raise_invalid_argument("invalid aggregate", ecp);
+            goto error;
+        }
+
+        argtyp = RDB_expr_type(exp->var.op.args.firstp, getfnp, arg, ecp, txp);
+        attrtyp = RDB_type_attr_type(argtyp,
+                exp->var.op.args.firstp->nextp->var.varname);
+        if (argtyp->kind != RDB_TP_RELATION) {
+            RDB_raise_invalid_argument("aggregate requires relation argument",
+                    ecp);
+            goto error;
+        }
+        if (attrtyp != &RDB_INTEGER && attrtyp != &RDB_FLOAT
+                && attrtyp != &RDB_FLOAT) {
+            RDB_raise_type_mismatch("invalid attribute type", ecp);
+            goto error;
+        }
+        return attrtyp;
+    } else if (strcmp(exp->var.op.name, "ANY") == 0
+            || strcmp(exp->var.op.name, "ALL") == 0) {
+        RDB_type *argtyp;
+        RDB_type *attrtyp;
+
+        if (argc != 2) {
+            RDB_raise_invalid_argument("invalid number of aggregate arguments",
+                    ecp);
+            goto error;
+        }
+
+        argtyp = RDB_expr_type(exp->var.op.args.firstp, getfnp, arg, ecp, txp);
+        attrtyp = RDB_type_attr_type(argtyp,
+                exp->var.op.args.firstp->nextp->var.varname);
+
+        if (attrtyp != &RDB_BOOLEAN) {
+            RDB_raise_type_mismatch("invalid attribute type", ecp);
+            goto error;
+        }
+        return &RDB_BOOLEAN;
+    }
+
     /*
      * Get argument types
      */
@@ -682,7 +764,6 @@ expr_op_type(RDB_expression *exp, RDB_gettypefn *getfnp, void *arg,
         argp = argp->nextp;
     }
 
-    /* Aggregate operators */
     if (strcmp(exp->var.op.name, "COUNT") == 0
             && argc == 1) {
         if (argtv[0]->kind != RDB_TP_RELATION) {
@@ -690,63 +771,6 @@ expr_op_type(RDB_expression *exp, RDB_gettypefn *getfnp, void *arg,
             goto error;
         }
         typ = &RDB_INTEGER;
-    } else if (strcmp(exp->var.op.name, "AVG") == 0) {
-        if (argc != 2) {
-            RDB_raise_invalid_argument("invalid number of aggregate arguments",
-                    ecp);
-            goto error;
-        }
-        if (exp->var.op.args.firstp->nextp->kind != RDB_EX_VAR) {
-            RDB_raise_invalid_argument("invalid aggregate", ecp);
-            goto error;
-        }
-        if (argtv[0]->kind != RDB_TP_RELATION) {
-            RDB_raise_invalid_argument("aggregate requires relation argument",
-                    ecp);
-            goto error;
-        }
-        if (argtv[1] != &RDB_INTEGER && argtv[1] != &RDB_FLOAT
-                && argtv[1] != &RDB_FLOAT) {
-            RDB_raise_type_mismatch("invalid attribute type", ecp);
-            goto error;
-        }
-        typ = &RDB_FLOAT;
-    } else if (strcmp(exp->var.op.name, "SUM") == 0
-            || strcmp(exp->var.op.name, "MAX") == 0
-            || strcmp(exp->var.op.name, "MIN") == 0) {
-        if (argc != 2) {
-            RDB_raise_invalid_argument("invalid number of aggregate arguments",
-                    ecp);
-            goto error;
-        }
-        if (exp->var.op.args.firstp->nextp->kind != RDB_EX_VAR) {
-            RDB_raise_invalid_argument("invalid aggregate", ecp);
-            goto error;
-        }
-        if (argtv[0]->kind != RDB_TP_RELATION) {
-            RDB_raise_invalid_argument("aggregate requires relation argument",
-                    ecp);
-            goto error;
-        }
-        if (argtv[1] != &RDB_INTEGER && argtv[1] != &RDB_FLOAT
-                && argtv[1] != &RDB_FLOAT) {
-            RDB_raise_type_mismatch("invalid attribute type", ecp);
-            goto error;
-        }
-        typ = argtv[1];
-    } else if (strcmp(exp->var.op.name, "ANY") == 0
-            || strcmp(exp->var.op.name, "ALL") == 0) {
-        if (argc != 2) {
-            RDB_raise_invalid_argument("invalid number of aggregate arguments",
-                    ecp);
-            goto error;
-        }
-
-        if (argtv[1] != &RDB_BOOLEAN) {
-            RDB_raise_type_mismatch("invalid attribute type", ecp);
-            goto error;
-        }
-        typ = &RDB_BOOLEAN;
     } else if (strcmp(exp->var.op.name, "RELATION") == 0) {
         typ = relation_type(exp, argtv, ecp, txp);
     } else if (strcmp(exp->var.op.name, "RENAME") == 0) {
@@ -981,12 +1005,8 @@ RDB_expr_type(RDB_expression *exp, RDB_gettypefn *getfnp, void *arg,
             if (txp != NULL) {
                 RDB_object *tbp = RDB_get_table(exp->var.varname, ecp, txp);
                 if (tbp != NULL) {
-                    /* Transform into table ref */
-                    RDB_free(exp->var.varname);
-                    exp->kind = RDB_EX_TBP;
-                    exp->var.tbref.tbp = tbp;
-                    exp->var.tbref.indexp = NULL;
-                    return RDB_obj_type(exp->var.tbref.tbp);
+                    exp->typ = RDB_dup_nonscalar_type(RDB_obj_type(tbp), ecp);
+                    return exp->typ;
                 }
             }
             RDB_raise_name(exp->var.varname, ecp);

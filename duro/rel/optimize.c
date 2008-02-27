@@ -457,13 +457,20 @@ table_cost(RDB_expression *texp)
 {
     _RDB_tbindex *indexp;
 
-    if (texp->kind == RDB_EX_TBP)
-        return texp->var.tbref.tbp->var.tb.stp != NULL ?
-                texp->var.tbref.tbp->var.tb.stp->est_cardinality : 0;
-
-    if (texp->kind == RDB_EX_OBJ)
-        return texp->var.obj.var.tb.stp != NULL ?
-                texp->var.obj.var.tb.stp->est_cardinality : 0;
+    switch(texp->kind) {
+        case RDB_EX_TBP:
+            return texp->var.tbref.tbp->var.tb.stp != NULL ?
+                    texp->var.tbref.tbp->var.tb.stp->est_cardinality : 0;
+        case RDB_EX_OBJ:
+            return texp->var.obj.var.tb.stp != NULL ?
+                    texp->var.obj.var.tb.stp->est_cardinality : 0;
+        case RDB_EX_VAR:
+        case RDB_EX_TUPLE_ATTR:
+        case RDB_EX_GET_COMP:
+            abort();
+        case RDB_EX_RO_OP:
+            ;
+    }
 
     if (strcmp(texp->var.op.name, "SEMIMINUS") == 0)
         return table_cost(texp->var.op.args.firstp); /* !! */
@@ -614,12 +621,14 @@ dup_expr_vt(const RDB_expression *exp, RDB_exec_context *ecp)
             newexp = dup_expr_vt(exp->var.op.args.firstp, ecp);
             if (newexp == NULL)
                 return NULL;
-            return RDB_tuple_attr(newexp, exp->var.op.name, ecp);
+            newexp = RDB_tuple_attr(newexp, exp->var.op.name, ecp);
+            break;
         case RDB_EX_GET_COMP:
             newexp = dup_expr_vt(exp->var.op.args.firstp, ecp);
             if (newexp == NULL)
                 return NULL;
-            return RDB_expr_comp(newexp, exp->var.op.name, ecp);
+            newexp = RDB_expr_comp(newexp, exp->var.op.name, ecp);
+            break;
         case RDB_EX_RO_OP:
         {
             RDB_expression *argp;
@@ -633,18 +642,33 @@ dup_expr_vt(const RDB_expression *exp, RDB_exec_context *ecp)
                 RDB_add_arg(newexp, nargp);
                 argp = argp->nextp;
             }
-            return newexp;
+            break;
         }
         case RDB_EX_OBJ:
-            return RDB_obj_to_expr(&exp->var.obj, ecp);
+            newexp = RDB_obj_to_expr(&exp->var.obj, ecp);
+            break;
         case RDB_EX_TBP:
-            if (exp->var.tbref.tbp->var.tb.exp == NULL)
-                return RDB_table_ref(exp->var.tbref.tbp, ecp);
-            return dup_expr_vt(exp->var.tbref.tbp->var.tb.exp, ecp);
+            if (exp->var.tbref.tbp->var.tb.exp == NULL) {
+                newexp = RDB_table_ref(exp->var.tbref.tbp, ecp);
+            } else {
+                newexp = dup_expr_vt(exp->var.tbref.tbp->var.tb.exp, ecp);
+            }
+            break;
         case RDB_EX_VAR:
-            return RDB_var_ref(exp->var.varname, ecp);
+            newexp = RDB_var_ref(exp->var.varname, ecp);
+            break;
     }
-    abort();
+    if (newexp == NULL)
+        return NULL;
+        
+    if (exp->typ != NULL) {
+        newexp->typ = RDB_dup_nonscalar_type(exp->typ, ecp);
+        if (newexp->typ == NULL) {
+            RDB_drop_expr(newexp, ecp);
+            return NULL;
+        }
+    }
+    return newexp;
 }
 
 static int
@@ -1036,10 +1060,21 @@ _RDB_optimize_expr(RDB_expression *texp, int seqitc, const RDB_seq_item seqitv[]
     if (nexp == NULL)
         return NULL;
 
+    if (nexp->kind == RDB_EX_VAR && txp != NULL) {
+        /* Transform into table ref */
+        RDB_object *tbp = RDB_get_table(nexp->var.varname, ecp, txp);
+        if (tbp == NULL)
+            return NULL;
+        
+        RDB_free(nexp->var.varname);
+        nexp->kind = RDB_EX_TBP;
+        nexp->var.tbref.tbp = tbp;
+        nexp->var.tbref.indexp = NULL;
+    }
+
     /*
      * Algebraic optimization
      */
-
     if (_RDB_transform(nexp, ecp, txp) != RDB_OK)
         return NULL;
 

@@ -207,7 +207,8 @@ RDB_array_get(RDB_object *arrp, RDB_int idx, RDB_exec_context *ecp)
     int ret;
     RDB_object *tplp;
 
-    if (arrp->var.arr.length != -1 && idx >= arrp->var.arr.length) {
+    if (arrp->kind == RDB_OB_INITIAL ||
+            (arrp->var.arr.length != -1 && idx >= arrp->var.arr.length)) {
         RDB_raise_not_found("array index out of bounds", ecp);
         return NULL;
     }

@@ -832,6 +832,11 @@ init_expr_qresult(RDB_qresult *qrp, RDB_expression *exp, RDB_exec_context *ecp,
                     exp->var.tbref.indexp, ecp, txp);
         return init_qresult(qrp, exp->var.tbref.tbp, ecp, txp);
     }
+    if (exp->kind == RDB_EX_VAR && txp != NULL) {
+        RDB_object *tbp = RDB_get_table(exp->var.varname, ecp, txp);
+        if (tbp == NULL)
+            return RDB_ERROR;        
+    }
     if (exp->kind != RDB_EX_RO_OP) {
         RDB_raise_invalid_argument(
                 "invalid expression, must be object or operator", ecp);

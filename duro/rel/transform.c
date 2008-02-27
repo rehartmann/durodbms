@@ -856,6 +856,19 @@ transform_is_empty(RDB_expression *exp, RDB_exec_context *ecp,
     return RDB_OK;
 }
 
+static int
+transform_children(RDB_expression *exp, RDB_exec_context *ecp,
+    RDB_transaction *txp)
+{
+    RDB_expression *argp = exp->var.op.args.firstp;
+    while (argp != NULL) {
+        if (_RDB_transform(argp, ecp, txp) != RDB_OK)
+            return RDB_ERROR;
+        argp = argp->nextp;
+    }
+    return RDB_OK;
+}
+
 /**
  * Perform algebraic optimization.
  * Eliminating NOT in WHERE expressions is not performed here,
@@ -864,17 +877,27 @@ transform_is_empty(RDB_expression *exp, RDB_exec_context *ecp,
 int
 _RDB_transform(RDB_expression *exp, RDB_exec_context *ecp, RDB_transaction *txp)
 {
-    RDB_expression *argp;
+    if (exp->kind == RDB_EX_VAR && txp != NULL
+            && (exp->typ == NULL || RDB_type_is_relation(exp->typ))) {
+        RDB_object *tbp = RDB_get_table(exp->var.varname, ecp, txp);
+        if (tbp == NULL) {
+            RDB_clear_err(ecp);
+            return RDB_OK;
+        }
+
+        /* Transform into table ref */
+        RDB_free(exp->var.varname);
+        exp->kind = RDB_EX_TBP;
+        exp->var.tbref.tbp = tbp;
+        exp->var.tbref.indexp = NULL;
+    }
 
     if (exp->kind != RDB_EX_RO_OP)
         return RDB_OK;
 
-    argp = exp->var.op.args.firstp;
-    while (argp != NULL) {
-        if (_RDB_transform(argp, ecp, txp) != RDB_OK)
-            return RDB_ERROR;
-        argp = argp->nextp;
-    }
+    if (transform_children(exp, ecp, txp) != RDB_OK)
+        return RDB_ERROR;
+
     if (strcmp(exp->var.op.name, "UPDATE") == 0) {
         return transform_update(exp, ecp, txp);
     }
@@ -892,6 +915,9 @@ _RDB_transform(RDB_expression *exp, RDB_exec_context *ecp, RDB_transaction *txp)
     }
     if (strcmp(exp->var.op.name, "IS_EMPTY") == 0) {
         return transform_is_empty(exp, ecp, txp);
+    }
+    if (strcmp(exp->var.op.name, "TO_TUPLE") == 0) {
+        return RDB_OK;
     }
     return RDB_OK;
 }

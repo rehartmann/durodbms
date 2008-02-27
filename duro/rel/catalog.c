@@ -1498,7 +1498,7 @@ _RDB_cat_get_rtable(const char *name, RDB_exec_context *ecp,
         RDB_drop_expr(exp, ecp);
         goto error;
     }
-    
+
     ret = RDB_extract_tuple(tmptb1p, ecp, txp, &tpl);
     if (ret != RDB_OK) {
         goto error;

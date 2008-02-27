@@ -118,7 +118,7 @@ test defupdop {user-defined update operators} -setup $DBSETUP -body {
         begin transaction;
 
         operator op(s string, i integer) updates {s};
-            -- i := i + 1; !!
+            i := i + 1;
 
             type length_t possrep { m float } constraint (m >= 0.0);
 

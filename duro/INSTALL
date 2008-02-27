@@ -4,7 +4,7 @@ Installation procedure for Duro
 Duro uses SCons to build itself. Type:
 
 scons
-scons test (optional)
+scons test    (optional)
 scons install
 
 SCons is available from www.scons.org.

@@ -32,32 +32,14 @@ void
 _RDB_parse_start_stmt(void);
 
 void
-yy_switch_to_buffer(YY_BUFFER_STATE);
-
-void
-yy_flush_buffer(YY_BUFFER_STATE);
-
-typedef struct YYLTYPE
-{
-    int first_line;
-    int first_column;
-    int last_line;
-    int last_column;
-} YYLTYPE;
-
-extern YYLTYPE yylloc;
-
-void yyerror(char *errtxt)
+yyerror(char *errtxt)
 {
     if (RDB_get_err(_RDB_parse_ecp) == NULL) {
         char *bufp = RDB_alloc(strlen(errtxt) + 32, _RDB_parse_ecp);
         if (bufp == NULL) {
             return;
         }
-        if (_RDB_parse_interactive)
-            sprintf(bufp, "%s", errtxt);
-        else
-            sprintf(bufp, "%s at line %d", errtxt, yylloc.first_line);
+        sprintf(bufp, "%s", errtxt);
         RDB_raise_syntax(bufp, _RDB_parse_ecp);
         RDB_free(bufp);
     }
