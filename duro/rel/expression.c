@@ -423,6 +423,7 @@ unwrap_type(const RDB_expression *exp, RDB_type *argtv[],
     }
     argp = exp->var.op.args.firstp->nextp;
     while (argp != NULL) {
+        assert(expr_is_string(argp));
         attrv[i] = RDB_obj_string(&argp->var.obj);
         argp = argp->nextp;
     }
@@ -988,12 +989,7 @@ RDB_expr_type(RDB_expression *exp, RDB_gettypefn *getfnp, void *arg,
             }
             return exp->typ;
         case RDB_EX_TBP:
-            typ = RDB_obj_type(exp->var.tbref.tbp);
-            if (typ == NULL) {
-                /* Assume tuple !! */
-                typ = exp->typ = _RDB_tuple_type(exp->var.tbref.tbp, ecp);
-            }
-            return typ;
+            return RDB_obj_type(exp->var.tbref.tbp);
         case RDB_EX_VAR:
             if (arg != NULL) {
                 typ = (*getfnp) (exp->var.varname, arg);
@@ -1759,7 +1755,7 @@ RDB_evaluate(RDB_expression *exp, RDB_getobjfn *getfnp, void *getdata,
             /* Try to get table */
             if (txp != NULL) {
                 RDB_object *srcp = RDB_get_table(exp->var.varname, ecp, txp);
-                
+
                 if (srcp != NULL)
                     return _RDB_copy_obj(valp, srcp, ecp, txp);
             }

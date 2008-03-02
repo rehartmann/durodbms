@@ -468,6 +468,7 @@ _RDB_infer_keys(RDB_expression *exp, RDB_exec_context *ecp,
         if (freekey) {
             _RDB_free_keys(keyc, *keyvp);
         }
+        *caller_must_freep = RDB_TRUE;
         return keyc;
     }
     if (strcmp(exp->var.op.name, "GROUP") == 0) {

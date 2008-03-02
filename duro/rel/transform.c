@@ -877,6 +877,10 @@ transform_children(RDB_expression *exp, RDB_exec_context *ecp,
 int
 _RDB_transform(RDB_expression *exp, RDB_exec_context *ecp, RDB_transaction *txp)
 {
+    /*
+     * Convert variable expressions referring to tables
+     * to table references if possible (_RDB_optimize() cannot handle the former)
+     */
     if (exp->kind == RDB_EX_VAR && txp != NULL
             && (exp->typ == NULL || RDB_type_is_relation(exp->typ))) {
         RDB_object *tbp = RDB_get_table(exp->var.varname, ecp, txp);

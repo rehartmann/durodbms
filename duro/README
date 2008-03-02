@@ -2,7 +2,8 @@
 
 $Id$
 
-This directory contains release 0.13 of Duro, a relational database library.
+This directory contains release 0.13 of Duro, a relational database
+management system.
 
 The following software is required for compiling and running Duro:
 
@@ -35,7 +36,7 @@ rhartmann@users.sourceforge.net.
 
 -----
 
-This file is part of Duro, a relational database library.
+This file is part of Duro, a relational management system.
 Copyright (C) 2003-2008 René Hartmann.
 
 Duro is free software; you can redistribute it and/or modify

@@ -1,7 +1,7 @@
 /*
  * $Id$
  *
- * Copyright (C) 2004-2007 René Hartmann.
+ * Copyright (C) 2004-2008 René Hartmann.
  * See the file COPYING for redistribution information.
  */
 
@@ -1065,7 +1065,7 @@ _RDB_optimize_expr(RDB_expression *texp, int seqitc, const RDB_seq_item seqitv[]
         RDB_object *tbp = RDB_get_table(nexp->var.varname, ecp, txp);
         if (tbp == NULL)
             return NULL;
-        
+
         RDB_free(nexp->var.varname);
         nexp->kind = RDB_EX_TBP;
         nexp->var.tbref.tbp = tbp;

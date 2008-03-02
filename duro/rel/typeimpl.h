@@ -4,7 +4,7 @@
 /* $Id$ */
 
 /*
-This file is part of Duro, a relational database library.
+This file is part of Duro, a relational database management system.
 Copyright (C) 2003 René Hartmann.
 
 Duro is free software; you can redistribute it and/or modify
