@@ -2230,7 +2230,7 @@ Duro_exec_stmt(RDB_parse_statement *stmtp, RDB_exec_context *ecp,
         RDB_object *retvalp)
 {
     int ret;
-    
+
     switch (stmtp->kind) {
         case RDB_STMT_CALL:
             ret = exec_call(stmtp, ecp);

@@ -227,6 +227,8 @@ env.Install(installdir + '/include/rec', rec_hdrs)
 env.Install(installdir + '/include/rel', rel_hdrs)
 env.Install(installdir + '/include/dli', dli_hdrs)
 env.Install(installdir + '/docs', durodocs)
+# 'scons install' does not rebuild api docs
+env.Command(installdir + '/docs/api/html', [], Copy("$TARGET", 'docs/api/html'))
 env.Install(installdir + '/bin', dli)
 
 # Install durotcl only if libdurotcl has been built
@@ -256,7 +258,7 @@ if env.has_key('TAR'):
     distdir = 'duro-' + release
 
     env.Install(distdir, Split('SConstruct README README.windows INSTALL '
-            'COPYING AUTHORS CHANGES'))
+            'COPYING AUTHORS CHANGES Doxyfile'))
     env.Install(distdir + '/gen', gensrc)
     env.Install(distdir + '/rec', recsrc)
     env.Install(distdir + '/rel', relsrc)
