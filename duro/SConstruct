@@ -209,7 +209,7 @@ testlib_hdrs = ['tests/point.h']
 
 tcltools = ['tcl/duroadmin.tcl', 'tcl/durodump.tcl']
 
-durodocs = ['docs/index.html', 'docs/expressions.html', 'docs/utils.html', 'docs/durodt']
+durodocs = ['docs/index.html', 'docs/expressions.html', 'docs/utils.html']
 
 durotcldocs = Split('docs/tcl/index.html docs/tcl/array.html '
         'docs/tcl/begin.html docs/tcl/call.html '
@@ -227,6 +227,7 @@ env.Install(installdir + '/include/rec', rec_hdrs)
 env.Install(installdir + '/include/rel', rel_hdrs)
 env.Install(installdir + '/include/dli', dli_hdrs)
 env.Install(installdir + '/docs', durodocs)
+env.Install(installdir + '/docs/durodt', 'docs/durodt/tut.html')
 # 'scons install' does not rebuild api docs
 env.Command(installdir + '/docs/api/html', [], Copy("$TARGET", 'docs/api/html'))
 env.Install(installdir + '/bin', dli)
@@ -266,6 +267,7 @@ if env.has_key('TAR'):
     env.Install(distdir + '/dli', 'dli/durodt.c')
     env.Install(distdir + '/tcl', durotclsrc)
     env.Install(distdir + '/docs', durodocs)
+    env.Install(distdir + '/docs/durodt', 'docs/durodt/tut.html')
     env.Install(distdir + '/docs/tcl', durotcldocs)
     env.Install(distdir + '/docs/api', 'docs/api/html')
     env.Install(distdir, ['duro.def', 'durotcl.def'])
