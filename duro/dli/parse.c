@@ -260,7 +260,7 @@ RDB_parse_new_call(char *name, RDB_expr_list *explistp)
  */
 
 /**
- * Parse the <a href="../expressions.html">expression</a>
+ * Parse the <a href="../../expressions.html">expression</a>
 specified by <var>txt</var>.
 
 @returns The parsed expression, or NULL if the parsing failed.
@@ -271,8 +271,7 @@ specified by <var>txt</var>.
 <dd>A syntax error occurred during parsing.
 </dl>
 
-The call may also fail for a @ref system-errors "system error",
-in which case the transaction may be implicitly rolled back.
+The call may also fail for a @ref system-errors "system error".
 
 @warning The parser is not reentrant.
  */
