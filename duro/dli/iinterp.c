@@ -727,7 +727,7 @@ init_obj(RDB_object *objp, RDB_type *typ, RDB_exec_context *ecp,
         return RDB_string_to_obj(objp, "", ecp);
     } else if (typ == &RDB_BINARY) {
         return RDB_binary_set(objp, 0, NULL, (size_t) 0, ecp);
-    } else if (typ->kind == RDB_TP_TUPLE) {
+    } else if (RDB_type_is_tuple(typ)) {
         for (i = 0; i < typ->var.tuple.attrc; i++) {
             if (RDB_tuple_set(objp, typ->var.tuple.attrv[i].name,
                     NULL, ecp) != RDB_OK)
