@@ -10,7 +10,7 @@ exec tclsh "$0" ${1+"$@"}
 # See the file COPYING for redistribution information.
 #
 
-set duro_version 0.12
+set duro_version 0.14
 
 package require -exact duro $duro_version
 
