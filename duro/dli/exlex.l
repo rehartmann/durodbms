@@ -241,6 +241,14 @@ END {
     return TOK_END;
 }
 
+CASE {
+    return TOK_CASE;
+}
+
+WHEN {
+    return TOK_WHEN;
+}
+
 FOR {
     return TOK_FOR;
 }

@@ -389,6 +389,8 @@ resolve_with(RDB_expression **expp, RDB_expression *texp)
 %token TOK_IF "IF"
 %token TOK_THEN "THEN"
 %token TOK_ELSE "ELSE"
+%token TOK_CASE "CASE"
+%token TOK_WHEN "WHEN"
 %token TOK_END "END"
 %token TOK_FOR "FOR"
 %token TOK_TO "TO"
@@ -426,7 +428,7 @@ resolve_with(RDB_expression **expp, RDB_expression *texp)
         attribute_list ne_attribute_list
         order_item order_item_list ne_order_item_list
 
-%type <stmt> statement statement_body
+%type <stmt> statement statement_body when_def when_def_list
 
 %type <stmtlist> ne_statement_list
 
@@ -452,8 +454,9 @@ resolve_with(RDB_expression **expp, RDB_expression *texp)
 } expression
 
 %destructor {
-    RDB_parse_del_stmt($$, _RDB_parse_ecp);
-} statement statement_body
+    if ($$ != NULL)
+        RDB_parse_del_stmt($$, _RDB_parse_ecp);
+} statement statement_body when_def when_def_list
 
 %destructor {
     RDB_parse_del_keydef_list($$.firstp, _RDB_parse_ecp);
@@ -544,6 +547,35 @@ statement: statement_body ';'
     	$$->var.ifthen.elsep = $6.firstp;
         $$->lineno = yylineno;
     }
+    | case_opt_semi when_def_list TOK_END TOK_CASE {
+        if ($2 == NULL) {
+	        $$ = RDB_alloc(sizeof(RDB_parse_statement), _RDB_parse_ecp);
+	        if ($$ == NULL) {
+	            YYERROR;
+	        }
+	    	$$->kind = RDB_STMT_NOOP;
+	        $$->lineno = yylineno;
+	    } else {
+	        $$ = $2;
+	    }
+    }
+    | case_opt_semi when_def_list TOK_ELSE
+            ne_statement_list TOK_END TOK_CASE {
+        if ($2 == NULL) {
+	        $$ = $4.firstp;
+	    } else {
+	        /*
+	         * Attach ELSE branch to last of WHENs
+	         */
+            RDB_parse_statement *lastp = $2;
+
+            while (lastp->var.ifthen.elsep != NULL)
+                lastp = lastp->var.ifthen.elsep;
+	        lastp->var.ifthen.elsep = $4.firstp;
+
+	        $$ = $2;
+	    }
+    }
     | TOK_FOR TOK_ID TOK_ASSIGN expression TOK_TO expression ';'
             ne_statement_list TOK_END TOK_FOR {
         $$ = RDB_alloc(sizeof(RDB_parse_statement), _RDB_parse_ecp);
@@ -584,6 +616,39 @@ statement: statement_body ';'
         $$ = new_update_op_def($2->var.varname, &$4, &$8, $10.firstp);
         if ($$ == NULL)
             YYERROR;
+    }
+
+case_opt_semi: TOK_CASE ';'
+    | TOK_CASE
+
+when_def: TOK_WHEN expression TOK_THEN ne_statement_list {
+        $$ = RDB_alloc(sizeof(RDB_parse_statement), _RDB_parse_ecp);
+        if ($$ == NULL) {
+            RDB_drop_expr($2, _RDB_parse_ecp);
+            RDB_parse_del_stmtlist($4.firstp, _RDB_parse_ecp);
+            YYERROR;
+        }
+        $$->kind = RDB_STMT_IF;
+        $$->var.ifthen.condp = $2;
+        $$->var.ifthen.ifp = $4.firstp;
+    	$$->var.ifthen.elsep = NULL;
+        $$->lineno = yylineno;
+    }
+
+when_def_list: /* empty */ {
+        $$ = NULL;
+    }
+    | when_def when_def_list {
+        $$ = RDB_alloc(sizeof(RDB_parse_statement), _RDB_parse_ecp);
+        if ($$ == NULL) {
+            RDB_parse_del_stmt($1, _RDB_parse_ecp);
+            if ($2 != NULL)
+	            RDB_parse_del_stmt($2, _RDB_parse_ecp);
+            YYERROR;
+        }
+        $$ = $1;
+    	$$->var.ifthen.elsep = $2;
+        $$->lineno = yylineno;
     }
 
 possrep_def: TOK_POSSREP '{' attribute_list '}' {

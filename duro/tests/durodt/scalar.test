@@ -99,17 +99,31 @@ test defroop {read-only user-defined operators} -setup $DBSETUP -body {
             return if n < 2 then n else fib(n - 1) + fib(n - 2);
         end operator;
 
+        operator sgn(n integer) returns integer;
+            case
+                when n < 0 then return -1;
+                when n > 0 then return 1;
+                else return 0;
+            end case;
+        end operator;
+
         println(testop());
         drop operator testop;
         
         println(reverse("Madam, I'm Adam."));
         
         println(fib(6));
+        
+        println(sgn(5));
+        println(sgn(0));
+
         commit;
     }
 } -result {a = 1, b = 1, c = 8, d = 15
 .madA m'I ,madaM
 8
+1
+0
 }
 
 test defupdop {user-defined update operators} -setup $DBSETUP -body {
