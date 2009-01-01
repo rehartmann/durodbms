@@ -132,7 +132,7 @@ if with_durotcl:
 # Tests
 #
 
-testenv = env.Copy(RPATH = [bdbhome + '/lib'])
+testenv = env.Clone(RPATH = [bdbhome + '/lib'])
 
 testsrc = Split('tests/tupletest.c tests/maptest.c '
         'tests/prepare.c tests/test_aggregate.c '

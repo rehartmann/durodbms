@@ -11,7 +11,7 @@ The following software is required for compiling and running Duro:
 - POSIX.2 regular expressions
 - GNU Libtool
 - Tcl 8.1 or later
-- SCons 0.97 or later
+- SCons 1.2.0 or later
 
 Duro 0.14 has been tested under Linux/x86 and Windows XP with Berkeley
 DB 4.7 and Tcl 8.4.
