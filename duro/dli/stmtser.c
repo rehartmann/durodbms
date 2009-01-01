@@ -445,6 +445,24 @@ serialize_ro_op_def(RDB_object *objp, int *posp, const RDB_parse_statement *stmt
 } 
 
 static int
+serialize_constr_def(RDB_object *objp, int *posp, const RDB_parse_statement *stmtp,
+        RDB_exec_context *ecp)
+{
+    if (_RDB_serialize_str(objp, posp,
+            RDB_obj_string(&stmtp->var.constrdef.constrname), ecp) != RDB_OK)
+        return RDB_ERROR;
+    return _RDB_serialize_expr(objp, posp, stmtp->var.constrdef.constraintp, ecp);
+} 
+
+static int
+serialize_constr_drop(RDB_object *objp, int *posp, const RDB_parse_statement *stmtp,
+        RDB_exec_context *ecp)
+{
+    return _RDB_serialize_str(objp, posp,
+            RDB_obj_string(&stmtp->var.constrdrop.constrname), ecp);
+}
+
+static int
 serialize_upd_op_def(RDB_object *objp, int *posp, const RDB_parse_statement *stmtp,
         RDB_exec_context *ecp)
 {
@@ -528,6 +546,10 @@ serialize_stmt(RDB_object *objp, int *posp, const RDB_parse_statement *stmtp,
             return serialize_op_drop(objp, posp, stmtp, ecp);
         case RDB_STMT_RETURN:
             return serialize_return(objp, posp, stmtp, ecp);
+        case RDB_STMT_CONSTRAINT_DEF:
+            return serialize_constr_def(objp, posp, stmtp, ecp);
+        case RDB_STMT_CONSTRAINT_DROP:
+            return serialize_constr_drop(objp, posp, stmtp, ecp);
     }
     abort();
 }
@@ -966,7 +988,26 @@ deserialize_upd_op_def(RDB_object *objp, int *posp, RDB_exec_context *ecp,
         stmtp->var.opdef.argv[i].upd = (RDB_byte) b;
     }
     return deserialize_stmt_list(objp, posp, ecp, txp, &stmtp->var.opdef.bodyp);
+}
+
+static int
+deserialize_constr_def(RDB_object *objp, int *posp, RDB_exec_context *ecp,
+        RDB_transaction *txp, RDB_parse_statement *stmtp)
+{
+    RDB_init_obj(&stmtp->var.opdef.opname);
+    if (_RDB_deserialize_strobj(objp, posp, ecp, &stmtp->var.constrdef.constrname) != RDB_OK)
+        return RDB_ERROR;
+    return _RDB_deserialize_expr(objp, posp, ecp, txp, &stmtp->var.constrdef.constraintp);
 } 
+
+static int
+deserialize_constr_drop(RDB_object *objp, int *posp, RDB_exec_context *ecp,
+        RDB_transaction *txp, RDB_parse_statement *stmtp)
+{
+    RDB_init_obj(&stmtp->var.constrdrop.constrname);
+    return _RDB_deserialize_strobj(objp, posp, ecp, &stmtp->var.constrdrop.constrname);
+}
+
 
 static int
 deserialize_assignlist(RDB_object *, int *, RDB_exec_context *,
@@ -1182,6 +1223,14 @@ deserialize_stmt(RDB_object *objp, int *posp, RDB_exec_context *ecp,
             break;
         case RDB_STMT_RETURN:
             if (deserialize_return(objp, posp, ecp, txp, stmtp) != RDB_OK)
+                goto error;
+            break;
+        case RDB_STMT_CONSTRAINT_DEF:
+            if (deserialize_constr_def(objp, posp, ecp, txp, stmtp) != RDB_OK)
+                goto error;
+            break;
+        case RDB_STMT_CONSTRAINT_DROP:
+            if (deserialize_constr_drop(objp, posp, ecp, txp, stmtp) != RDB_OK)
                 goto error;
             break;
     }

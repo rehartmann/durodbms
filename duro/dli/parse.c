@@ -197,6 +197,13 @@ RDB_parse_del_stmt(RDB_parse_statement *stmtp, RDB_exec_context *ecp)
             if (stmtp->var.retexp != NULL)
                 ret = RDB_drop_expr(stmtp->var.retexp, ecp);
             break;
+        case RDB_STMT_CONSTRAINT_DEF:
+            RDB_destroy_obj(&stmtp->var.constrdef.constrname, ecp);
+            ret = RDB_drop_expr(stmtp->var.constrdef.constraintp, ecp);
+            break;
+        case RDB_STMT_CONSTRAINT_DROP:
+            ret = RDB_destroy_obj(&stmtp->var.constrdrop.constrname, ecp);
+            break;
         case RDB_STMT_BEGIN_TX:
         case RDB_STMT_COMMIT:
         case RDB_STMT_ROLLBACK:

@@ -30,7 +30,9 @@ typedef enum {
     RDB_STMT_RO_OP_DEF,
     RDB_STMT_UPD_OP_DEF,
     RDB_STMT_OP_DROP,
-    RDB_STMT_RETURN
+    RDB_STMT_RETURN,
+    RDB_STMT_CONSTRAINT_DEF,
+    RDB_STMT_CONSTRAINT_DROP
 } RDB_parse_stmt_kind;
 
 typedef struct RDB_parse_assign {
@@ -136,6 +138,13 @@ typedef struct RDB_parse_statement {
         struct {
             RDB_object opname;
         } opdrop;
+        struct {
+            RDB_object constrname;
+            RDB_expression *constraintp;
+        } constrdef;
+        struct {
+            RDB_object constrname;
+        } constrdrop;
         RDB_expression *retexp;
     } var;
     RDB_int lineno;

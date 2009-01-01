@@ -371,7 +371,7 @@ D>
 <p>Inserting several tuples:</p>
 
 <pre>
-D> insert r relation{tuple {no 2, name 'two'}, tuple {no 3, name 'three'}};
+D> insert r relation {tuple {no 2, name 'two'}, tuple {no 3, name 'three'}};
 2 elements affected.
 D>
 </pre>
@@ -392,7 +392,25 @@ D> delete r where no = 4;
 D>
 </pre>
 
-<h2>Constraints</h2>
+<h2>Table and database constraints</h2>
+
+<p>Example:</p>
+
+<pre>
+D> begin tx;
+Transaction started.
+D> var r real relation {no integer, name string} key {no};
+Table R created.
+D> constraint cr count(r) <= 1;
+Constraint CR created.
+D> insert r tuple {no 1, name 'one'};
+1 element affected.
+D> insert r tuple {no 2, name 'two'};
+PREDICATE_VIOLATION_ERROR: CR
+D> drop constraint cr;
+Constraint CR dropped.
+D>
+</pre>
 
 <h2>Arrays</h2>
 

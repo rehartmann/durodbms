@@ -1,15 +1,15 @@
-	README for Duro 0.13
+	README for Duro 0.14
 
 $Id$
 
-This directory contains the binary Windows release 0.13 of Duro, a relational
+This directory contains the binary Windows release 0.14 of Duro, a relational
 database library.
 
 Complete source code is available from http://sourceforge.net/projects/duro.
 
 The following software is required for running this version of Duro:
 
-- Berkeley DB Transactional Data Store, release 4.6
+- Berkeley DB Transactional Data Store, release 4.7
 - POSIX.2 regular expressions (e.g., GNU Regex)
 - GNU Libtool
 - Tcl 8.1 or later
@@ -17,8 +17,8 @@ The following software is required for running this version of Duro:
 Add the directories where the respective DLLs are located to PATH,
 together with the 'bin' subdirectory of the Duro root directory.
 
-Duro 0.13 has been tested under Linux/x86 and Windows XP with Berkeley
-DB 4.6 and Tcl 8.4.
+Duro 0.14 has been tested under Linux/x86 and Windows XP with Berkeley
+DB 4.7 and Tcl 8.4.
 
 To learn about how to use Duro, see the documentation in the 'docs'
 subdirectory. Example code can be found in the 'tests' subdirectory
@@ -28,7 +28,7 @@ The Tcl interface can be found in the 'lib' subdirectory.
 The simplest way to make it available to application
 scripts is to add this subdirectory to TCLLIBPATH, e.g.:
 
-    TCLLIBPATH=C:/duro.0.13/lib
+    TCLLIBPATH=C:/duro.0.14/lib
     export TCLLIBPATH
 
 To run Duroadmin, run duroadmin.tcl from the 'bin' subdirectory

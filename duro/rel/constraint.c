@@ -225,39 +225,44 @@ RDB_drop_constraint(const char *name, RDB_exec_context *ecp,
 {
     int ret;
     RDB_expression *condp;
+    RDB_constraint *constrp;
     RDB_dbroot *dbrootp = RDB_tx_db(txp)->dbrootp;
 
-    if (dbrootp->constraints_read) {
-        /* Delete constraint from list */
-        RDB_constraint *constrp = dbrootp->first_constrp;
-        if (constrp == NULL) {
-            RDB_raise_not_found(name, ecp);
+    if (!RDB_tx_db(txp)->dbrootp->constraints_read) {
+        if (_RDB_read_constraints(ecp, txp) != RDB_OK)
             return RDB_ERROR;
+        RDB_tx_db(txp)->dbrootp->constraints_read = RDB_TRUE;
+    }
+
+    /* Delete constraint from list */
+    constrp = dbrootp->first_constrp;
+    if (constrp == NULL) {
+        RDB_raise_not_found(name, ecp);
+        return RDB_ERROR;
+    }
+
+    if (strcmp(constrp->name, name) == 0) {
+        dbrootp->first_constrp = constrp->nextp;
+        RDB_drop_expr(constrp->exp, ecp);
+        RDB_free(constrp->name);
+        RDB_free(constrp);
+    } else {
+        RDB_constraint *hconstrp;
+
+        while (constrp->nextp != NULL
+                && strcmp(constrp->nextp->name, name) !=0) {
+            constrp = constrp->nextp;
         }
+        if (constrp->nextp == NULL) {
+             RDB_raise_not_found(name, ecp);
+             return RDB_ERROR;
+         }
 
-        if (strcmp(constrp->name, name) == 0) {
-            dbrootp->first_constrp = constrp->nextp;
-            RDB_drop_expr(constrp->exp, ecp);
-            RDB_free(constrp->name);
-            RDB_free(constrp);
-        } else {
-            RDB_constraint *hconstrp;
-
-            while (constrp->nextp != NULL
-                    && strcmp(constrp->nextp->name, name) !=0) {
-                constrp = constrp->nextp;
-            }
-            if (constrp->nextp == NULL) {
-                 RDB_raise_not_found(name, ecp);
-                 return RDB_ERROR;
-             }
-
-            hconstrp = constrp->nextp;
-            constrp->nextp = constrp->nextp->nextp;
-            RDB_drop_expr(hconstrp->exp, ecp);
-            RDB_free(hconstrp->name);
-            RDB_free(hconstrp);
-        }
+        hconstrp = constrp->nextp;
+        constrp->nextp = constrp->nextp->nextp;
+        RDB_drop_expr(hconstrp->exp, ecp);
+        RDB_free(hconstrp->name);
+        RDB_free(hconstrp);
     }
 
     /* Delete constraint from catalog */

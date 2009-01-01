@@ -403,7 +403,7 @@ resolve_with(RDB_expression **expp, RDB_expression *texp)
 %token TOK_UPDATE "UPDATE"
 %token TOK_TYPE "TYPE"
 %token TOK_POSSREP "POSSREP"
-%token TOK_CONSTRAINT "CONSTRANT"
+%token TOK_CONSTRAINT "CONSTRAINT"
 %token TOK_OPERATOR "OPERATOR"
 %token TOK_RETURNS "RETURNS"
 %token TOK_UPDATES "UPDATES"
@@ -946,11 +946,43 @@ statement_body: /* empty */ {
          RDB_init_expr_list(&explist);
          RDB_expr_list_append(&explist, $2);
          RDB_expr_list_append(&explist, $4);
-         
+
          RDB_join_expr_lists(&explist, &$7);
 
          $$ = RDB_parse_new_call("LOAD", &explist);
     }
+    | TOK_CONSTRAINT TOK_ID expression {
+        $$ = RDB_alloc(sizeof(RDB_parse_statement), _RDB_parse_ecp);
+        if ($$ == NULL) {
+            RDB_drop_expr($2, _RDB_parse_ecp);
+            RDB_drop_expr($3, _RDB_parse_ecp);
+           	YYERROR;
+        }
+        $$->kind = RDB_STMT_CONSTRAINT_DEF;
+        RDB_init_obj(&$$->var.constrdef.constrname);
+    	if (RDB_string_to_obj(&$$->var.constrdef.constrname,
+    	        $2->var.varname, _RDB_parse_ecp) != RDB_OK)
+    	    YYERROR;
+        if (RDB_drop_expr($2, _RDB_parse_ecp) != RDB_OK)
+            YYERROR;
+        $$->var.constrdef.constraintp = $3;
+        $$->lineno = yylineno;
+    }
+    | TOK_DROP TOK_CONSTRAINT TOK_ID {
+        $$ = RDB_alloc(sizeof(RDB_parse_statement), _RDB_parse_ecp);
+        if ($$ == NULL) {
+            RDB_drop_expr($3, _RDB_parse_ecp);
+           	YYERROR;
+        }
+        $$->kind = RDB_STMT_CONSTRAINT_DROP;
+        RDB_init_obj(&$$->var.constrdrop.constrname);
+    	if (RDB_string_to_obj(&$$->var.constrdrop.constrname,
+    	        $3->var.varname, _RDB_parse_ecp) != RDB_OK)
+    	    YYERROR;
+        if (RDB_drop_expr($3, _RDB_parse_ecp) != RDB_OK)
+            YYERROR;
+        $$->lineno = yylineno;
+    }    
 
 ne_key_list: TOK_KEY '{' id_list '}' {
         RDB_parse_keydef *kdp = RDB_alloc(sizeof(RDB_parse_keydef), _RDB_parse_ecp);

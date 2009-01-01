@@ -2226,6 +2226,88 @@ exec_return(const RDB_parse_statement *stmtp, RDB_exec_context *ecp,
 }
 
 static int
+exec_constr_def(RDB_parse_statement *stmtp, RDB_exec_context *ecp)
+{
+    int ret;
+    RDB_transaction tmp_tx;
+    RDB_expression *constrexp = NULL;
+
+    /*
+     * Create temporary transaction, if no transaction is active
+     */
+    if (txnp == NULL) {
+        RDB_database *dbp = get_db(ecp);
+        if (dbp == NULL)
+            return RDB_ERROR;
+        if (RDB_begin_tx(ecp, &tmp_tx, dbp, NULL) != RDB_OK) {
+            return RDB_ERROR;
+        }
+    }
+
+    constrexp = RDB_dup_expr(stmtp->var.constrdef.constraintp, ecp);
+    if (constrexp == NULL)
+        goto error;
+    ret = RDB_create_constraint(RDB_obj_string(&stmtp->var.constrdef.constrname),
+            constrexp, ecp, txnp != NULL ? &txnp->tx : &tmp_tx);
+    if (ret != RDB_OK)
+        goto error;
+
+    if (txnp == NULL) {
+        ret = RDB_commit(ecp, &tmp_tx);
+    } else {
+        ret = RDB_OK;
+    }
+    if ((ret == RDB_OK) && _RDB_parse_interactive)
+        printf("Constraint %s created.\n", RDB_obj_string(&stmtp->var.opdef.opname));
+    return ret;
+
+error:
+    if (constrexp != NULL)
+        RDB_drop_expr(constrexp, ecp);
+    if (txnp == NULL)
+        RDB_rollback(ecp, &tmp_tx);
+    return RDB_ERROR;
+}
+
+static int
+exec_constr_drop(RDB_parse_statement *stmtp, RDB_exec_context *ecp)
+{
+    int ret;
+    RDB_transaction tmp_tx;
+
+    /*
+     * Create temporary transaction, if no transaction is active
+     */
+    if (txnp == NULL) {
+        RDB_database *dbp = get_db(ecp);
+        if (dbp == NULL)
+            return RDB_ERROR;
+        if (RDB_begin_tx(ecp, &tmp_tx, dbp, NULL) != RDB_OK) {
+            return RDB_ERROR;
+        }
+    }
+
+    ret = RDB_drop_constraint(RDB_obj_string(&stmtp->var.constrdrop.constrname),
+            ecp, txnp != NULL ? &txnp->tx : &tmp_tx);
+    if (ret != RDB_OK)
+        goto error;
+
+    if (txnp == NULL) {
+        ret = RDB_commit(ecp, &tmp_tx);
+    } else {
+        ret = RDB_OK;
+    }
+    if ((ret == RDB_OK) && _RDB_parse_interactive)
+        printf("Constraint %s dropped.\n", RDB_obj_string(&stmtp->var.opdef.opname));
+    return ret;
+
+error:
+    if (txnp == NULL)
+        RDB_rollback(ecp, &tmp_tx);
+    return RDB_ERROR;
+}
+
+static int
 Duro_exec_stmt(RDB_parse_statement *stmtp, RDB_exec_context *ecp,
         RDB_object *retvalp)
 {
@@ -2291,6 +2373,12 @@ Duro_exec_stmt(RDB_parse_statement *stmtp, RDB_exec_context *ecp,
             break;
         case RDB_STMT_RETURN:
             ret = exec_return(stmtp, ecp, retvalp);
+            break;
+        case RDB_STMT_CONSTRAINT_DEF:
+            ret = exec_constr_def(stmtp, ecp);
+            break;
+        case RDB_STMT_CONSTRAINT_DROP:
+            ret = exec_constr_drop(stmtp, ecp);
             break;
         default:
             abort();
