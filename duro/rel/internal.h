@@ -56,7 +56,12 @@ struct RDB_expression {
             } optinfo;
         } op;
     } var;
-    RDB_type *typ; /* NULL if the type has not been determined */
+    
+    /*
+     * The expression type. NULL if the type has not been determined.
+     * If typ is non-scalar, it is destroyed by RDB_drop_expr().
+     */
+    RDB_type *typ; 
     struct RDB_expression *nextp;
 };
 

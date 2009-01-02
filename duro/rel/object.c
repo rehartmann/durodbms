@@ -1,7 +1,7 @@
 /*
  * $Id$
  *
- * Copyright (C) 2003-2008 René Hartmann.
+ * Copyright (C) 2003-2009 René Hartmann.
  * See the file COPYING for redistribution information.
  */
 
@@ -402,7 +402,13 @@ RDB_irep_to_obj(RDB_object *valp, RDB_type *typ, const void *datap, size_t len,
         RDB_init_obj(valp);
     }
 
-    valp->typ = typ;
+    /*
+     * No type information for non-scalar types
+     */
+    if (RDB_type_is_scalar(typ))
+        valp->typ = typ;
+    else
+        valp->typ = NULL;
     kind = val_kind(typ);
 
     switch (kind) {

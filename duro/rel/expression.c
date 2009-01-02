@@ -1,7 +1,7 @@
 /*
  * $Id$
  *
- * Copyright (C) 2004-2008 René Hartmann.
+ * Copyright (C) 2004-2009 René Hartmann.
  * See the file COPYING for redistribution information.
  */
 
@@ -108,9 +108,9 @@ wrap_type(const RDB_expression *exp, RDB_type **argtv,
         goto cleanup;
     }
 
-    if (argtv[0]->kind == RDB_TP_RELATION) {
+    if (RDB_type_is_relation(argtv[0])) {
         typ = RDB_wrap_relation_type(argtv[0], wrapc, wrapv, ecp);
-    } else if (argtv[0]->kind == RDB_TP_TUPLE) {
+    } else if (RDB_type_is_tuple(argtv[0])) {
         typ = RDB_wrap_tuple_type(argtv[0], wrapc, wrapv, ecp);
     } else {
         RDB_raise_type_mismatch("First argument to WRAP must be non-scalar",
@@ -422,9 +422,10 @@ unwrap_type(const RDB_expression *exp, RDB_type *argtv[],
         return NULL;
     }
     argp = exp->var.op.args.firstp->nextp;
+    i = 0;
     while (argp != NULL) {
         assert(expr_is_string(argp));
-        attrv[i] = RDB_obj_string(&argp->var.obj);
+        attrv[i++] = RDB_obj_string(&argp->var.obj);
         argp = argp->nextp;
     }
 
@@ -1713,7 +1714,7 @@ RDB_evaluate(RDB_expression *exp, RDB_getobjfn *getfnp, void *getdata,
                 RDB_raise_type_mismatch("", ecp);
                 return RDB_ERROR;
             }
-                
+
             attrp = RDB_tuple_get(&tpl, exp->var.op.name);
             if (attrp == NULL) {
                 RDB_destroy_obj(&tpl, ecp);
