@@ -185,8 +185,7 @@ durodt_test_scripts = Split('tests/durodt/array.test tests/durodt/relation.test 
         'tests/durodt/all.tcl')
 
 test = env.Command('tests/passed', [libduro, libdurotcl, testbins, dli],
-        'tclsh tests/all.tcl -verbose "{pass error}"',
-        ENV = {'LIBDUROTCL' : str(libdurotcl[0]), 'PATH' : os.environ['PATH']})
+        'tclsh tests/all.tcl -verbose "{pass error}"')
 
 env.Alias('test', test)
 

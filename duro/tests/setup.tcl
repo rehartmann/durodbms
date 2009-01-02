@@ -1,11 +1,12 @@
 set ::SETUP {
     set scriptdir [file dirname [info script]]
 
-    if {[info exists ::env(LIBDUROTCL)]} {
-        load $scriptdir/../$::env(LIBDUROTCL)
+    if {$::tcl_platform(platform) == "windows"} {
+        load $scriptdir/../durotcl.dll
     } else {
         load $scriptdir/../libdurotcl.so
     }
+
     source $scriptdir/testutil.tcl
 
     # Create DB environment dir, ensure it's empty

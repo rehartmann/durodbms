@@ -639,15 +639,10 @@ when_def_list: /* empty */ {
         $$ = NULL;
     }
     | when_def when_def_list {
-        $$ = RDB_alloc(sizeof(RDB_parse_statement), _RDB_parse_ecp);
-        if ($$ == NULL) {
-            RDB_parse_del_stmt($1, _RDB_parse_ecp);
-            if ($2 != NULL)
-	            RDB_parse_del_stmt($2, _RDB_parse_ecp);
-            YYERROR;
-        }
         $$ = $1;
-    	$$->var.ifthen.elsep = $2;
+        $$->var.ifthen.elsep = $2;
+        if ($2 != NULL)
+            $2->nextp = NULL;
         $$->lineno = yylineno;
     }
 
