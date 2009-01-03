@@ -404,6 +404,7 @@ RDB_irep_to_obj(RDB_object *valp, RDB_type *typ, const void *datap, size_t len,
 
     /*
      * No type information for non-scalar types
+     * (except tables, in this case irep_to_table() will set the type)
      */
     if (RDB_type_is_scalar(typ))
         valp->typ = typ;
@@ -818,7 +819,7 @@ RDB_destroy_obj(RDB_object *objp, RDB_exec_context *ecp)
                 _RDB_free_keys(objp->var.tb.keyc, objp->var.tb.keyv);
             }
 
-            /* It may be a scalar type with a relation actual rep */ 
+            /* It could be a scalar type with a relation actual rep */ 
             if (objp->typ != NULL && !RDB_type_is_scalar(objp->typ))
                 RDB_drop_type(objp->typ, ecp, NULL);
             

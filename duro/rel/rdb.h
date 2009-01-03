@@ -72,8 +72,17 @@ typedef struct RDB_expr_list {
  * together with the type information.
  */
 typedef struct RDB_object {
-    /* internal */
-    struct RDB_type *typ;	/* Type, NULL for non-scalar types */
+    /*
+     * Internal 
+     */
+
+    /* The type. If the value is non-scalar and not a table, it is NULL by default,
+     * but can be set by calling RDB_obj_set_typeinfo().
+     * In this case, the caller is responsible for managing the type
+     * (e.g. destroying the type when the RDB_object is destroyed).
+     */
+    struct RDB_type *typ;
+
     enum _RDB_obj_kind kind;
     union {
         RDB_bool bool_val;

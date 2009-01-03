@@ -4,9 +4,9 @@ Summary of Changes for Duro
 
 Changes for Duro 0.14
 
-- Upgraded to Berkeley DB 4.6.
+- Upgraded to Berkeley DB 4.7.
 
-- Duro D/T now supports CASE.
+- Duro D/T now supports CASE and constraints.
 
 Changes for Duro 0.13
 
