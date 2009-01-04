@@ -14,7 +14,7 @@
 #endif
 
 int
-POINT(const char *name, int argc, RDB_object *compv[],
+POINT(const char *name, int argc, RDB_object *compv[], RDB_type *rtyp,
         const void *iargp, size_t iarglen, RDB_exec_context *ecp,
         RDB_transaction *txp, RDB_object *valp)
 {
@@ -42,7 +42,7 @@ POINT_set_X(const char *name, int argc, RDB_object *argv[], RDB_bool updv[],
 }
 
 int
-POINT_get_X(const char *name, int argc, RDB_object *argv[],
+POINT_get_X(const char *name, int argc, RDB_object *argv[], RDB_type *rtyp,
         const void *iargp, size_t iarglen, RDB_exec_context *ecp,
         RDB_transaction *txp, RDB_object *valp)
 {
@@ -66,7 +66,7 @@ POINT_set_Y(const char *name, int argc, RDB_object *argv[], RDB_bool updv[],
 }
 
 int
-POINT_get_Y(const char *name, int argc, RDB_object *argv[],
+POINT_get_Y(const char *name, int argc, RDB_object *argv[], RDB_type *rtyp,
         const void *iargp, size_t iarglen, RDB_exec_context *ecp,
         RDB_transaction *txp, RDB_object *valp)
 {
@@ -82,9 +82,9 @@ POINT_get_Y(const char *name, int argc, RDB_object *argv[],
  */
 
 int
-POLAR(const char *name, int argc, RDB_object *compv[], const void *iargp,
-        size_t iarglen, RDB_exec_context *ecp, RDB_transaction *txp,
-        RDB_object *valp)
+POLAR(const char *name, int argc, RDB_object *compv[], RDB_type *rtyp,
+        const void *iargp, size_t iarglen, RDB_exec_context *ecp,
+        RDB_transaction *txp, RDB_object *valp)
 {
     i_point ipt;
     double th = (double) RDB_obj_float(compv[0]);
@@ -115,7 +115,7 @@ POINT_set_THETA(const char *name, int argc, RDB_object *argv[], RDB_bool updv[],
 }
 
 int
-POINT_get_THETA(const char *name, int argc, RDB_object *argv[],
+POINT_get_THETA(const char *name, int argc, RDB_object *argv[], RDB_type *rtyp,
         const void *iargp, size_t iarglen, RDB_exec_context *ecp,
         RDB_transaction *txp, RDB_object *valp)
 {
@@ -143,7 +143,7 @@ POINT_set_LENGTH(const char *name, int argc, RDB_object *argv[], RDB_bool updv[]
 }
 
 int
-POINT_get_LENGTH(const char *name, int argc, RDB_object *argv[],
+POINT_get_LENGTH(const char *name, int argc, RDB_object *argv[], RDB_type *rtyp,
         const void *iargp, size_t iarglen, RDB_exec_context *ecp,
         RDB_transaction *txp, RDB_object *valp)
 {

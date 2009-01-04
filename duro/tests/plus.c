@@ -4,7 +4,7 @@
  * Implementation of user-defined read-only operator PLUS
  */
 int
-RDBU_plus(const char *name, int argc, RDB_object *argv[],
+RDBU_plus(const char *name, int argc, RDB_object *argv[], RDB_type *rtyp,
         const void *iargp, size_t iarglen, RDB_exec_context *ecp,
         RDB_transaction *txp, RDB_object *retvalp)
 {

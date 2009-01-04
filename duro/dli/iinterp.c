@@ -1,7 +1,7 @@
 /*
  * $Id$
  *
- * Copyright (C) 2007-2008 René Hartmann.
+ * Copyright (C) 2007-2009 René Hartmann.
  * See the file COPYING for redistribution information.
  *
  * Statement execution functions.
@@ -29,6 +29,11 @@ typedef struct tx_node {
     RDB_transaction tx;
     struct tx_node *parentp;
 } tx_node;
+
+typedef struct return_info {
+    RDB_type *typ;  /* Return type */
+    RDB_object *objp;   /* Return value */
+} return_info;
 
 varmap_node toplevel_vars;
 
@@ -1328,15 +1333,15 @@ cleanup:
 }
 
 static int
-Duro_exec_stmt(RDB_parse_statement *, RDB_exec_context *, RDB_object *);
+Duro_exec_stmt(RDB_parse_statement *, RDB_exec_context *, return_info *);
 
 static int
 exec_stmtlist(RDB_parse_statement *stmtp, RDB_exec_context *ecp,
-        RDB_object *retvalp)
+        return_info *retinfop)
 {
     int ret;
     do {
-        ret = Duro_exec_stmt(stmtp, ecp, retvalp);
+        ret = Duro_exec_stmt(stmtp, ecp, retinfop);
         if (ret != RDB_OK)
             return ret;
         stmtp = stmtp->nextp;
@@ -1346,7 +1351,7 @@ exec_stmtlist(RDB_parse_statement *stmtp, RDB_exec_context *ecp,
 
 static int
 exec_if(const RDB_parse_statement *stmtp, RDB_exec_context *ecp,
-        RDB_object *retvalp)
+        return_info *retinfop)
 {
     RDB_bool b;
     int ret;
@@ -1357,9 +1362,9 @@ exec_if(const RDB_parse_statement *stmtp, RDB_exec_context *ecp,
     if (add_varmap(ecp) != RDB_OK)
         return RDB_ERROR;
     if (b) {
-        ret = exec_stmtlist(stmtp->var.ifthen.ifp, ecp, retvalp);
+        ret = exec_stmtlist(stmtp->var.ifthen.ifp, ecp, retinfop);
     } else if (stmtp->var.ifthen.elsep != NULL) {
-        ret = exec_stmtlist(stmtp->var.ifthen.elsep, ecp, retvalp);
+        ret = exec_stmtlist(stmtp->var.ifthen.elsep, ecp, retinfop);
     } else {
         ret = RDB_OK;
     }
@@ -1369,7 +1374,7 @@ exec_if(const RDB_parse_statement *stmtp, RDB_exec_context *ecp,
 
 static int
 exec_while(const RDB_parse_statement *stmtp, RDB_exec_context *ecp,
-        RDB_object *retvalp)
+        return_info *retinfop)
 {
     RDB_bool b;
 
@@ -1381,7 +1386,7 @@ exec_while(const RDB_parse_statement *stmtp, RDB_exec_context *ecp,
             return RDB_OK;
         if (add_varmap(ecp) != RDB_OK)
             return RDB_ERROR;
-        if (exec_stmtlist(stmtp->var.whileloop.bodyp, ecp, retvalp) != RDB_OK) {
+        if (exec_stmtlist(stmtp->var.whileloop.bodyp, ecp, retinfop) != RDB_OK) {
             remove_varmap();
             return RDB_ERROR;
         }
@@ -1396,7 +1401,7 @@ exec_while(const RDB_parse_statement *stmtp, RDB_exec_context *ecp,
 
 static int
 exec_for(const RDB_parse_statement *stmtp, RDB_exec_context *ecp,
-        RDB_object *retvalp)
+        return_info *retinfop)
 {
     RDB_object *varp;
     RDB_object endval;
@@ -1433,7 +1438,7 @@ exec_for(const RDB_parse_statement *stmtp, RDB_exec_context *ecp,
     for(;;) {
         if (add_varmap(ecp) != RDB_OK)
             return RDB_ERROR;
-        if (exec_stmtlist(stmtp->var.forloop.bodyp, ecp, retvalp) != RDB_OK) {
+        if (exec_stmtlist(stmtp->var.forloop.bodyp, ecp, retinfop) != RDB_OK) {
             remove_varmap();
             RDB_destroy_obj(&endval, ecp);
             return RDB_ERROR;
@@ -1915,9 +1920,9 @@ exec_opdrop(const RDB_parse_statement *stmtp, RDB_exec_context *ecp)
 
 int
 Duro_dt_invoke_ro_op(const char *name, int argc, RDB_object *argv[],
-          const void *iargp, size_t iarglen,
-          RDB_exec_context *ecp, RDB_transaction *txp,
-          RDB_object *retvalp)
+        RDB_type *rtyp, const void *iargp, size_t iarglen,
+        RDB_exec_context *ecp, RDB_transaction *txp,
+        RDB_object *retvalp)
 {
     int i;
     int ret;
@@ -1925,6 +1930,7 @@ Duro_dt_invoke_ro_op(const char *name, int argc, RDB_object *argv[],
     RDB_parse_statement *stmtlistp;
     char **argnamev;
     struct op_data *op;
+    return_info retinfo;
     varmap_node *ovarmapp = current_varmapp;
 
     if (interrupted) {
@@ -1972,7 +1978,9 @@ Duro_dt_invoke_ro_op(const char *name, int argc, RDB_object *argv[],
         }
     }
 
-    ret = exec_stmtlist(stmtlistp, ecp, retvalp);
+    retinfo.objp = retvalp;
+    retinfo.typ = rtyp;
+    ret = exec_stmtlist(stmtlistp, ecp, &retinfo);
 
     /*
      * Keep arguments from being destroyed
@@ -1986,7 +1994,17 @@ Duro_dt_invoke_ro_op(const char *name, int argc, RDB_object *argv[],
 
     current_varmapp = ovarmapp;
     destroy_varmap(&vars.map);
-    return ret == RDB_ERROR ? RDB_ERROR : RDB_OK;
+
+    switch (ret) {
+        case RDB_OK:
+            RDB_raise_syntax("end of operator reached without RETURN", ecp);
+            ret = RDB_ERROR;
+            break;
+        case DURO_RETURN:
+            ret = RDB_OK;
+            break;
+    }
+    return ret;
 }
 
 int
@@ -2211,16 +2229,39 @@ error:
 
 static int
 exec_return(const RDB_parse_statement *stmtp, RDB_exec_context *ecp,
-        RDB_object *retvalp)
+        return_info *retinfop)
 {
     if (stmtp->var.retexp != NULL) {
-        if (retvalp == NULL) {
+        RDB_type *rtyp;
+
+        if (retinfop == NULL) {
             RDB_raise_invalid_argument("return argument not allowed", ecp);
             return RDB_ERROR;
         }
-        if (RDB_evaluate(stmtp->var.retexp, &get_var, current_varmapp, ecp,
-                txnp != NULL ? &txnp->tx : NULL, retvalp) != RDB_OK)
+
+        /*
+         * Type check
+         */
+        rtyp = RDB_expr_type(stmtp->var.retexp, get_var_type,
+                current_varmapp, ecp, txnp != NULL ? &txnp->tx : NULL);
+        if (rtyp == NULL)
             return RDB_ERROR;
+        if (!RDB_type_equals(rtyp, retinfop->typ)) {
+            RDB_raise_type_mismatch("invalid return type", ecp);
+            return RDB_ERROR;
+        }
+
+        /*
+         * Evaluate expression
+         */
+        if (RDB_evaluate(stmtp->var.retexp, &get_var, current_varmapp, ecp,
+                txnp != NULL ? &txnp->tx : NULL, retinfop->objp) != RDB_OK)
+            return RDB_ERROR;
+    } else {
+        if (retinfop != NULL) {
+            RDB_raise_invalid_argument("return argument expected", ecp);
+            return RDB_ERROR;
+        }
     }
     return DURO_RETURN;
 }
@@ -2309,7 +2350,7 @@ error:
 
 static int
 Duro_exec_stmt(RDB_parse_statement *stmtp, RDB_exec_context *ecp,
-        RDB_object *retvalp)
+        return_info *retinfop)
 {
     int ret;
 
@@ -2336,13 +2377,13 @@ Duro_exec_stmt(RDB_parse_statement *stmtp, RDB_exec_context *ecp,
             ret = RDB_OK;
             break;
         case RDB_STMT_IF:
-            ret = exec_if(stmtp, ecp, retvalp);
+            ret = exec_if(stmtp, ecp, retinfop);
             break;
         case RDB_STMT_FOR:
-            ret = exec_for(stmtp, ecp, retvalp);
+            ret = exec_for(stmtp, ecp, retinfop);
             break;
         case RDB_STMT_WHILE:
-            ret = exec_while(stmtp, ecp, retvalp);
+            ret = exec_while(stmtp, ecp, retinfop);
             break;
         case RDB_STMT_ASSIGN:
             ret = exec_assign(stmtp, ecp);
@@ -2372,7 +2413,7 @@ Duro_exec_stmt(RDB_parse_statement *stmtp, RDB_exec_context *ecp,
             ret = exec_opdrop(stmtp, ecp);
             break;
         case RDB_STMT_RETURN:
-            ret = exec_return(stmtp, ecp, retvalp);
+            ret = exec_return(stmtp, ecp, retinfop);
             break;
         case RDB_STMT_CONSTRAINT_DEF:
             ret = exec_constr_def(stmtp, ecp);

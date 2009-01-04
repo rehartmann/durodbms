@@ -5,7 +5,7 @@
 $Id$
 
 This file is part of Duro, a relational database management system.
-Copyright (C) 2003-2008 René Hartmann.
+Copyright (C) 2003-2009 René Hartmann.
 
 Duro is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -138,8 +138,10 @@ typedef struct {
     RDB_hashmap pmap;
 } RDB_exec_context;
 
+typedef struct RDB_type RDB_type;
+
 typedef int RDB_ro_op_func(const char *name, int argc, RDB_object *argv[],
-        const void *iargp, size_t iarglen, RDB_exec_context *,
+        RDB_type *, const void *iargp, size_t iarglen, RDB_exec_context *,
         struct RDB_transaction *txp,
         RDB_object *retvalp);
 
@@ -151,7 +153,7 @@ enum _RDB_tp_kind {
     RDB_TP_ARRAY
 };
 
-typedef struct RDB_type {
+struct RDB_type {
     /* internal */
     char *name;
     enum _RDB_tp_kind kind;
@@ -184,7 +186,7 @@ typedef struct RDB_type {
             RDB_expression *constraintp;
         } scalar;
     } var;
-} RDB_type;
+};
 
 #if defined (_WIN32) && !defined (NO_DLL_IMPORT)
 #define _RDB_EXTERN_VAR __declspec(dllimport)

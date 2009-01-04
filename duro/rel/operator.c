@@ -31,7 +31,7 @@ This function must have the following signature:
 
 @verbatim
 int
-<sym>(const char *name, int argc, RDB_object *argv[],
+<sym>(const char *name, int argc, RDB_object *argv[], RDB_type *rtyp,
           const void *iargp, size_t iarglen, RDB_exec_context *ecp, RDB_transaction *txp,
           RDB_object *retvalp)
 @endverbatim
@@ -42,8 +42,9 @@ and the arguments are passed through <var>argc</var> and <var>argv</var>.
 The function specified by <var>sym</var> must store the result at the
 location specified by <var>retvalp</var> and return RDB_OK.
 It can indicate an error condition by leaving an error in *<var>ecp</var>
-(see RDB_raise_err())
-and returning RDB_ERROR.
+(see RDB_raise_err()) and returning RDB_ERROR.
+
+The return type is passed through <var>rtyp</var>.
 
 If <var>iargp</var> is not NULL, it must point to a byte block
 of length <var>iarglen</var> which will be passed to the function
@@ -405,9 +406,9 @@ RDB_call_ro_op(const char *name, int argc, RDB_object *argv[],
      */
     if (argc == 2 && !obj_is_scalar(argv[0]) && !obj_is_scalar(argv[1])) {
         if (strcmp(name, "=") == 0)
-            return _RDB_obj_equals(name, 2, argv, NULL, 0, ecp, txp, retvalp);
+            return _RDB_obj_equals(name, 2, argv, &RDB_BOOLEAN, NULL, 0, ecp, txp, retvalp);
         if (strcmp(name, "<>") == 0) {
-            ret = _RDB_obj_equals(name, 2, argv, NULL, 0, ecp, txp, retvalp);
+            ret = _RDB_obj_equals(name, 2, argv, &RDB_BOOLEAN, NULL, 0, ecp, txp, retvalp);
             if (ret != RDB_OK)
                 return ret;
             retvalp->var.bool_val = (RDB_bool) !retvalp->var.bool_val;
@@ -500,7 +501,7 @@ RDB_call_ro_op(const char *name, int argc, RDB_object *argv[],
     /* Set return type to make it available to the function */
     retvalp->typ = op->rtyp;
 
-    ret = (*op->opfn.ro_fp)(name, argc, argv, op->iarg.var.bin.datap,
+    ret = (*op->opfn.ro_fp)(name, argc, argv, op->rtyp, op->iarg.var.bin.datap,
             op->iarg.var.bin.len, ecp, txp, retvalp);
     if (ret != RDB_OK)
         goto error;
@@ -696,7 +697,7 @@ RDB_drop_op(const char *name, RDB_exec_context *ecp, RDB_transaction *txp)
 /*@}*/
 
 int
-_RDB_eq_bool(const char *name, int argc, RDB_object *argv[],
+_RDB_eq_bool(const char *name, int argc, RDB_object *argv[], RDB_type *rtyp,
         const void *iargp, size_t iarglen, RDB_exec_context *ecp,
         RDB_transaction *txp, RDB_object *retvalp)
 {
@@ -706,7 +707,7 @@ _RDB_eq_bool(const char *name, int argc, RDB_object *argv[],
 }
 
 int
-_RDB_eq_binary(const char *name, int argc, RDB_object *argv[],
+_RDB_eq_binary(const char *name, int argc, RDB_object *argv[], RDB_type *rtyp,
         const void *iargp, size_t iarglen, RDB_exec_context *ecp,
         RDB_transaction *txp, RDB_object *retvalp)
 {
@@ -722,7 +723,7 @@ _RDB_eq_binary(const char *name, int argc, RDB_object *argv[],
 
 /* Default equality operator */
 int
-_RDB_obj_equals(const char *name, int argc, RDB_object *argv[],
+_RDB_obj_equals(const char *name, int argc, RDB_object *argv[], RDB_type *typ,
         const void *iargp, size_t iarglen, RDB_exec_context *ecp,
         RDB_transaction *txp, RDB_object *retvalp)
 {
@@ -751,8 +752,7 @@ _RDB_obj_equals(const char *name, int argc, RDB_object *argv[],
         RDB_object retval;
 
         RDB_init_obj(&retval);
-        retval.typ = &RDB_INTEGER;
-        ret = (*arep->comparep)("CMP", 2, argv, arep->compare_iargp,
+        ret = (*arep->comparep)("CMP", 2, argv, &RDB_INTEGER, arep->compare_iargp,
                 arep->compare_iarglen, ecp, txp, &retval);
         if (ret != RDB_OK) {
             RDB_destroy_obj(&retval, ecp);
@@ -768,14 +768,14 @@ _RDB_obj_equals(const char *name, int argc, RDB_object *argv[],
             RDB_raise_invalid_argument("invalid argument to equality", ecp);
             return RDB_ERROR;
         case RDB_OB_BOOL:
-            return _RDB_eq_bool("=", 2, argv, NULL, 0, ecp, txp, retvalp);
+            return _RDB_eq_bool("=", 2, argv, &RDB_BOOLEAN, NULL, 0, ecp, txp, retvalp);
         case RDB_OB_INT:
         case RDB_OB_FLOAT:
             /* Must not happen, because there must be a comparsion function */
             RDB_raise_internal("missing comparison function", ecp);
             return RDB_ERROR;
         case RDB_OB_BIN:
-            return _RDB_eq_binary("=", 2, argv, NULL, 0, ecp, txp, retvalp);
+            return _RDB_eq_binary("=", 2, argv, &RDB_BOOLEAN, NULL, 0, ecp, txp, retvalp);
         case RDB_OB_TUPLE:
             if (_RDB_tuple_equals(argv[0], argv[1], ecp, txp, &res) != RDB_OK)
                 return RDB_ERROR;
@@ -801,11 +801,11 @@ _RDB_obj_equals(const char *name, int argc, RDB_object *argv[],
 } 
 
 int
-_RDB_obj_not_equals(const char *name, int argc, RDB_object *argv[],
+_RDB_obj_not_equals(const char *name, int argc, RDB_object *argv[], RDB_type *typ,
         const void *iargp, size_t iarglen, RDB_exec_context *ecp,
         RDB_transaction *txp, RDB_object *retvalp)
 {
-    int ret = _RDB_obj_equals("=", 2, argv, NULL, 0, ecp, txp, retvalp);
+    int ret = _RDB_obj_equals("=", 2, argv, typ, NULL, 0, ecp, txp, retvalp);
     if (ret != RDB_OK)
         return ret;
     retvalp->var.bool_val = (RDB_bool) !retvalp->var.bool_val;

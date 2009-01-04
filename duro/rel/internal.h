@@ -408,22 +408,22 @@ _RDB_get_upd_op(const char *name, int argc, RDB_type *argtv[],
                RDB_exec_context *ecp, RDB_transaction *txp);
 
 int
-_RDB_eq_bool(const char *name, int argc, RDB_object *argv[],
+_RDB_eq_bool(const char *name, int argc, RDB_object *argv[], RDB_type *,
         const void *iargp, size_t iarglen, RDB_exec_context *ecp,
         RDB_transaction *txp, RDB_object *retvalp);
 
 int
-_RDB_obj_equals(const char *name, int argc, RDB_object *argv[],
+_RDB_obj_equals(const char *name, int argc, RDB_object *argv[], RDB_type *,
         const void *iargp, size_t iarglen, RDB_exec_context *,
         RDB_transaction *, RDB_object *retvalp);
 
 int
-_RDB_eq_binary(const char *name, int argc, RDB_object *argv[],
+_RDB_eq_binary(const char *name, int argc, RDB_object *argv[], RDB_type *,
         const void *iargp, size_t iarglen, RDB_exec_context *,
         RDB_transaction *, RDB_object *retvalp);
 
 int
-_RDB_obj_not_equals(const char *name, int argc, RDB_object *argv[],
+_RDB_obj_not_equals(const char *name, int argc, RDB_object *argv[], RDB_type *,
         const void *iargp, size_t iarglen, RDB_exec_context *,
         RDB_transaction *, RDB_object *retvalp);
 
@@ -477,7 +477,7 @@ int
 _RDB_add_selector(RDB_type *, RDB_exec_context *);
 
 int
-_RDB_sys_select(const char *name, int argc, RDB_object *argv[],
+_RDB_sys_select(const char *name, int argc, RDB_object *argv[], RDB_type *,
         const void *iargp, size_t iarglen, RDB_exec_context *,
         RDB_transaction *, RDB_object *retvalp);
 

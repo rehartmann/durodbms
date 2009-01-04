@@ -139,7 +139,7 @@ RDB_type RDB_SYNTAX_ERROR;
 RDB_hashmap _RDB_builtin_type_map;
 
 static int
-compare_int(const char *name, int argc, RDB_object *argv[],
+compare_int(const char *name, int argc, RDB_object *argv[], RDB_type *rtyp,
         const void *iargp, size_t iarglen, RDB_exec_context *ecp,
         RDB_transaction *txp, RDB_object *retvalp)
 {
@@ -148,7 +148,7 @@ compare_int(const char *name, int argc, RDB_object *argv[],
 }
 
 static int
-compare_float(const char *name, int argc, RDB_object *argv[],
+compare_float(const char *name, int argc, RDB_object *argv[], RDB_type *rtyp,
         const void *iargp, size_t iarglen, RDB_exec_context *ecp,
         RDB_transaction *txp, RDB_object *retvalp)
 {
@@ -166,7 +166,7 @@ compare_float(const char *name, int argc, RDB_object *argv[],
 }
 
 static int
-compare_string(const char *name, int argc, RDB_object *argv[],
+compare_string(const char *name, int argc, RDB_object *argv[], RDB_type *rtyp,
         const void *iargp, size_t iarglen, RDB_exec_context *ecp,
         RDB_transaction *txp, RDB_object *retvalp)
 {
@@ -821,11 +821,10 @@ free_type(RDB_type *typ, RDB_exec_context *ecp)
  * Implements a system-generated selector
  */
 int
-_RDB_sys_select(const char *name, int argc, RDB_object *argv[],
+_RDB_sys_select(const char *name, int argc, RDB_object *argv[], RDB_type *typ,
         const void *iargp, size_t iarglen, RDB_exec_context *ecp,
         RDB_transaction *txp, RDB_object *retvalp)
 {
-    RDB_type *typ = retvalp->typ;
     RDB_possrep *prp;
 
     /* Find possrep */

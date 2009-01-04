@@ -8,6 +8,9 @@ Changes for Duro 0.14
 
 - Duro D/T now supports CASE and constraints.
 
+- The return type is now explicitly passed to funtions which implement
+  read-only operators.
+
 Changes for Duro 0.13
 
 - Renamed build target "check" to "test".

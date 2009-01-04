@@ -1,7 +1,7 @@
 /*
  * $Id$
  *
- * Copyright (C) 2003-2005 René Hartmann.
+ * Copyright (C) 2003-2009 René Hartmann.
  * See the file COPYING for redistribution information.
  */
 
@@ -316,7 +316,7 @@ Duro_call_cmd(ClientData data, Tcl_Interp *interp, int objc,
     for (i = 0; i < argc; i++) {
         Tcl_Obj *valobjp = objv[2 + i * 2];
 
-        if (op->updv[i] && argtv[i]->kind != RDB_TP_RELATION) {
+        if (op->updv[i] && !RDB_type_is_relation(argtv[i])) {
             /* It's a non-relation update argument - read variable */
             valobjp = Tcl_ObjGetVar2(interp, valobjp, NULL, 0);
             if (valobjp == NULL) {
@@ -328,7 +328,7 @@ Duro_call_cmd(ClientData data, Tcl_Interp *interp, int objc,
             }
         }
 
-        if (op->updv[i] && argtv[i]->kind == RDB_TP_RELATION) {
+        if (op->updv[i] && RDB_type_is_relation(argtv[i])) {
             /* Updated relation argument - pass table */
             argv[i] = Duro_get_table(statep, interp, Tcl_GetString(valobjp), txp);
         } else {
@@ -355,7 +355,7 @@ Duro_call_cmd(ClientData data, Tcl_Interp *interp, int objc,
 
     /* Store updated values */
     for (i = 0; i < argc; i++) {
-        if (op->updv[i] && argtv[i]->kind != RDB_TP_RELATION) {
+        if (op->updv[i] && !RDB_type_is_relation(argtv[i])) {
             Tcl_Obj *valobjp = Duro_to_tcl(interp, argv[i],
                     statep->current_ecp, txp);
             if (valobjp == NULL) {
@@ -372,7 +372,7 @@ cleanup:
     if (argv != NULL) {
         for (i = 0; i < argc; i++) {
             if (argv[i] != NULL
-                    && (!op->updv[i] || argtv[i]->kind != RDB_TP_RELATION)) {
+                    && (!op->updv[i] || !RDB_type_is_relation(argtv[i]))) {
                 RDB_destroy_obj(argv[i], statep->current_ecp);
                 Tcl_Free((char *) argv[i]);
             }
@@ -499,7 +499,7 @@ Duro_invoke_update_op(const char *name, int argc, RDB_object *argv[],
 
     for (i = 0; i < argc; i++) {
         RDB_type *typ = RDB_obj_type(argv[i]);
-        if ((typ->kind == RDB_TP_RELATION) && updv[i]) {
+        if ((RDB_type_is_relation(typ)) && updv[i]) {
             if (RDB_table_name(argv[i]) == NULL) {
                 /* Only possible when it's a setter */
 
@@ -574,7 +574,7 @@ Duro_invoke_update_op(const char *name, int argc, RDB_object *argv[],
 
     /* Store updated values */
     for (i = 0; i < argc; i++) {
-        if (updv[i] && RDB_obj_type(argv[i])->kind != RDB_TP_RELATION) {
+        if (updv[i] && !RDB_type_is_relation(RDB_obj_type(argv[i]))) {
             Tcl_Obj *valobjp;
             RDB_type *convtyp;
             RDB_type *argtyp = RDB_obj_type(argv[i]);
@@ -624,7 +624,7 @@ is_compare (const char *name, int argc) {
 
 int
 Duro_invoke_ro_op(const char *name, int argc, RDB_object *argv[],
-        const void *iargp, size_t iarglen,
+        RDB_type *rtyp, const void *iargp, size_t iarglen,
         RDB_exec_context *ecp, RDB_transaction *txp, RDB_object *retvalp)
 {
     int ret;
@@ -641,7 +641,6 @@ Duro_invoke_ro_op(const char *name, int argc, RDB_object *argv[],
     RDB_exec_context *oldecp;
     Tcl_Obj *msgobjp;
     Tcl_Obj *txtop = NULL;
-    RDB_type *rtyp = RDB_obj_type(retvalp);
     Tcl_Interp *interp = RDB_ec_get_property(ecp, "TCL_INTERP");
     if (interp == NULL) {
         RDB_raise_resource_not_found("Tcl interpreter not found", ecp);
@@ -760,7 +759,7 @@ Duro_invoke_ro_op(const char *name, int argc, RDB_object *argv[],
      * Convert result
      */
     if (rtyp->kind == RDB_TP_SCALAR) {
-        if(_RDB_get_possrep(retvalp->typ, name) != NULL) {
+        if(_RDB_get_possrep(rtyp, name) != NULL) {
             /* It's a selector, so use internal rep */
             convtyp = rtyp->var.scalar.arep;
         } else {
@@ -771,7 +770,7 @@ Duro_invoke_ro_op(const char *name, int argc, RDB_object *argv[],
     }
     ret = Duro_tcl_to_duro(interp, Tcl_GetObjResult(interp),
             convtyp, retvalp, ecp, txp);
-    if (rtyp->kind != RDB_TP_RELATION)
+    if (!RDB_type_is_relation(rtyp))
         retvalp->typ = rtyp;
     if (ret != TCL_OK) {
         RDB_raise_invalid_argument("converting return value failed", ecp);
