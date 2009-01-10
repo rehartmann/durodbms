@@ -435,6 +435,18 @@ WITH {
     return TOK_WITH;
 }
 
+TRY {
+    return TOK_TRY;
+}
+
+CATCH {
+    return TOK_CATCH;
+}
+
+RAISE {
+    return TOK_RAISE;
+}
+
 \|\| {
     return TOK_CONCAT;
 }

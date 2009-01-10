@@ -526,6 +526,44 @@ commit;
 This is currently not possible with Duro D/T.
 The Durotcl command <a href="../tcl/type.html">duro::type</a> can be used for this.
 
+<h2>Exception handling</h2>
+
+<p>By default, if an error occurs, execution is stopped.
+
+<p>In Duro D/T, it is possible to handle errors and to continue execution.
+It is also possible to generate errors from user code.
+
+<h3>RAISE</h3>
+
+<p>The RAISE generates an error. I can take any argument and will use it as an error value.
+
+<p>Example:
+
+<pre>
+D> raise 2;
+INTEGER
+D>
+</pre>
+
+<p>If an error is not handled, execution is stopped and the error type
+is printed to standard output. This is why we see "INTEGER" appear.
+
+<p>Raising a system-provided error:
+
+<pre>
+D> raise name_error('test');
+NAME_ERROR: test
+D>
+</pre>
+
+<p>If the error type has a MSG property, its value is printed together with the type.
+See the <a href="../api/html/builtin-types.html">built-in types</a>
+for a list of system-provided error tpyes.
+
+<h3>TRY .. CATCH</h3>
+
+
+
 <hr>
 
 <p>$Id$

@@ -167,4 +167,59 @@ test defupdop {user-defined update operators} -setup $DBSETUP -body {
 } -result {a = xyz, b = 1
 }
 
+test tconstraint {db/table constraints} -setup $DBSETUP -body {
+    exec $testdir/../../dli/durodt -e dbenv << {
+        current_db := 'D';
+        begin transaction;
+
+        operator create_constraint() updates {};
+            constraint cr count(r) <= 1;
+        end operator;
+
+        operator drop_constraint() updates {};
+            drop constraint cr;
+        end operator;
+
+        var r real relation {no integer, name string}
+                init relation {tuple {no 1, name 'one'}}
+                key {no};
+
+        create_constraint();
+
+        try
+            insert r tuple {no 2, name 'two'};
+        catch err predicate_violation_error;
+            println('caught predicate violation: ' || the_msg(err));
+        end try;
+
+        drop_constraint();
+
+        commit;
+    }
+} -result {caught predicate violation: CR
+}
+
+test trycatch {TRY .. CATCH} -setup $DBSETUP -body {
+    exec $testdir/../../dli/durodt -e dbenv << {
+        current_db := 'D';
+        begin transaction;
+
+        operator test() updates {};
+            var s string;
+            try
+                s := substring('x', 1, 1);
+            catch err name_error;
+                println('caught name_error');
+            catch err;
+                println('caught');
+            end try;
+        end operator;
+
+        test();
+
+        commit;
+    }
+} -result {caught
+}
+
 cleanupTests

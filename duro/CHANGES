@@ -8,6 +8,8 @@ Changes for Duro 0.14
 
 - Duro D/T now supports CASE and constraints.
 
+- Added exception handling to Duro D/T.
+
 - The return type is now explicitly passed to funtions which implement
   read-only operators.
 

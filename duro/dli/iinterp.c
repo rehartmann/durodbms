@@ -2267,6 +2267,109 @@ exec_return(const RDB_parse_statement *stmtp, RDB_exec_context *ecp,
 }
 
 static int
+exec_raise(const RDB_parse_statement *stmtp, RDB_exec_context *ecp)
+{
+    RDB_object *errp = RDB_raise_err(ecp);
+    if (errp == NULL) {
+        fprintf(stderr, "RDB_raise_err() failed.");
+        abort();
+    }
+    RDB_evaluate(stmtp->var.retexp, &get_var, current_varmapp, ecp,
+                txnp != NULL ? &txnp->tx : NULL, errp);
+    return RDB_ERROR;
+}
+
+static int
+exec_catch(const RDB_parse_catch *catchp, const RDB_type *errtyp,
+        RDB_exec_context *ecp, return_info *retinfop)
+{
+    int ret;
+    RDB_object *objp;
+
+    if (add_varmap(ecp) != RDB_OK)
+        return RDB_ERROR;
+
+    objp = RDB_alloc(sizeof (RDB_object), ecp);
+    if (objp == NULL) {
+        goto error;
+    }
+    RDB_init_obj(objp);
+    
+    /*
+     * Create and initialize local variable
+     */
+    if (RDB_hashmap_put(&current_varmapp->map, catchp->namexp->var.varname, objp)
+            != RDB_OK) {
+        RDB_raise_no_memory(ecp);
+        goto error;
+    }
+    if (RDB_copy_obj(objp, RDB_get_err(ecp), ecp) != RDB_OK)
+       goto error;
+
+    RDB_clear_err(ecp);
+
+    ret = exec_stmtlist(catchp->bodyp, ecp, retinfop);
+    remove_varmap();
+    return ret;
+
+error:
+    remove_varmap();
+    return RDB_ERROR;    
+}
+
+static int
+exec_try(const RDB_parse_statement *stmtp, RDB_exec_context *ecp, return_info *retinfop)
+{
+    int ret;
+    RDB_parse_catch *catchp = stmtp->var._try.catchp;
+
+    /* Evaluate all types in the catch clauses */
+    while (catchp != NULL) {
+        if (catchp->type.exp != NULL && catchp->type.typ == NULL) {
+            if (eval_parse_type(&catchp->type, ecp,
+                    txnp != NULL ? &txnp->tx : NULL) != RDB_OK)
+                return RDB_ERROR;
+        }
+        catchp = catchp->nextp;
+    }
+
+    /*
+     * Execute try body
+     */
+    if (add_varmap(ecp) != RDB_OK)
+        return RDB_ERROR;
+    ret = exec_stmtlist(stmtp->var._try.bodyp, ecp, retinfop);
+    remove_varmap();
+
+    if (ret == RDB_ERROR) {
+        /*
+         * Try to find a catch clause to handle the error
+         */
+        RDB_object *errp = RDB_get_err(ecp);
+        RDB_type *errtyp = RDB_obj_type(errp);
+
+        if (errtyp != NULL) {
+            catchp = stmtp->var._try.catchp;
+
+            while (catchp != NULL) {
+                if (catchp->type.typ != NULL) {
+                    /* Catch clause with type */
+                    if (RDB_type_equals(errtyp, catchp->type.typ)) {
+                        return exec_catch(catchp, catchp->type.typ, ecp,
+                                retinfop);
+                    }
+                } else {
+                    /* Catch clause without type */                    
+                    return exec_catch(catchp, errtyp, ecp, retinfop);
+                }
+                catchp = catchp->nextp;
+            }
+        }
+    }
+    return ret;
+}
+
+static int
 exec_constr_def(RDB_parse_statement *stmtp, RDB_exec_context *ecp)
 {
     int ret;
@@ -2415,14 +2518,18 @@ Duro_exec_stmt(RDB_parse_statement *stmtp, RDB_exec_context *ecp,
         case RDB_STMT_RETURN:
             ret = exec_return(stmtp, ecp, retinfop);
             break;
+        case RDB_STMT_RAISE:
+            ret = exec_raise(stmtp, ecp);
+            break;
         case RDB_STMT_CONSTRAINT_DEF:
             ret = exec_constr_def(stmtp, ecp);
             break;
         case RDB_STMT_CONSTRAINT_DROP:
             ret = exec_constr_drop(stmtp, ecp);
             break;
-        default:
-            abort();
+        case RDB_STMT_TRY:
+            ret = exec_try(stmtp, ecp, retinfop);
+            break;
     }
     if (ret == RDB_ERROR) {
         if (err_line < 0) {

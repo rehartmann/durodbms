@@ -1,13 +1,15 @@
 /*
  * $Id$
  *
- * Copyright (C) 2007-2008 René Hartmann.
+ * Copyright (C) 2007-2009 René Hartmann.
  * See the file COPYING for redistribution information.
  */
 
 #include "stmtser.h"
 #include <rel/serialize.h>
 #include <rel/internal.h>
+
+#include <assert.h>
 
 static int
 serialize_var_def(RDB_object *objp, int *posp, const RDB_parse_statement *stmtp,
@@ -343,6 +345,60 @@ serialize_return(RDB_object *objp, int *posp, const RDB_parse_statement *stmtp,
 }
 
 static int
+serialize_raise(RDB_object *objp, int *posp, const RDB_parse_statement *stmtp,
+        RDB_exec_context *ecp)
+{
+    return _RDB_serialize_expr(objp, posp, stmtp->var.retexp, ecp);
+}
+
+static int
+serialize_catch(RDB_object *objp, int *posp, RDB_exec_context *ecp,
+        const RDB_parse_catch *catchp)
+{
+    if (_RDB_serialize_expr(objp, posp, catchp->namexp, ecp) != RDB_OK)
+        return RDB_ERROR;
+    if (_RDB_serialize_byte(objp, posp,
+                (RDB_byte) (catchp->type.exp != NULL), ecp) != RDB_OK) {
+        return RDB_ERROR;
+    }
+    if (catchp->type.exp != NULL) {
+        if (_RDB_serialize_expr(objp, posp, catchp->type.exp, ecp) != RDB_OK)
+            return RDB_ERROR;
+    }   
+    return serialize_stmt_list(objp, posp, catchp->bodyp, ecp);
+}
+
+static int
+serialize_try(RDB_object *objp, int *posp, const RDB_parse_statement *stmtp,
+        RDB_exec_context *ecp)
+{
+    RDB_int catchc;
+    RDB_parse_catch *catchp;
+
+    if (serialize_stmt_list(objp, posp, stmtp->var._try.bodyp, ecp) != RDB_OK) {
+        return RDB_ERROR;
+    }
+
+    catchc = 0;
+    catchp = stmtp->var._try.catchp;
+    while (catchp != NULL) {
+        catchp = catchp->nextp;
+        catchc++;
+    }
+
+    if (_RDB_serialize_int(objp, posp, catchc, ecp) != RDB_OK)
+        return RDB_ERROR;
+
+    catchp = stmtp->var._try.catchp;
+    while (catchp != NULL) {
+        if (serialize_catch(objp, posp, ecp, catchp) != RDB_OK)
+            return RDB_ERROR;
+        catchp = catchp->nextp;
+    }
+    return RDB_OK;
+}
+
+static int
 serialize_possrep(RDB_object *objp, int *posp, const RDB_parse_possrep *rep,
         RDB_exec_context *ecp)
 {
@@ -550,6 +606,10 @@ serialize_stmt(RDB_object *objp, int *posp, const RDB_parse_statement *stmtp,
             return serialize_constr_def(objp, posp, stmtp, ecp);
         case RDB_STMT_CONSTRAINT_DROP:
             return serialize_constr_drop(objp, posp, stmtp, ecp);
+        case RDB_STMT_RAISE:
+            return serialize_raise(objp, posp, stmtp, ecp);
+        case RDB_STMT_TRY:
+            return serialize_try(objp, posp, stmtp, ecp);
     }
     abort();
 }
@@ -1138,6 +1198,86 @@ deserialize_return(RDB_object *objp, int *posp, RDB_exec_context *ecp,
     return RDB_OK;
 }
 
+static int
+deserialize_raise(RDB_object *objp, int *posp, RDB_exec_context *ecp,
+        RDB_transaction *txp, RDB_parse_statement *stmtp)
+{
+    return _RDB_deserialize_expr(objp, posp, ecp, txp, &stmtp->var.retexp);
+}
+
+static RDB_parse_catch *
+deserialize_catch(RDB_object *objp, int *posp, RDB_exec_context *ecp,
+        RDB_transaction *txp)
+{
+    int t;
+    RDB_parse_catch *catchp = RDB_alloc(sizeof (RDB_parse_catch), ecp);
+    if (catchp == NULL)
+        return NULL;
+
+    catchp->namexp = NULL;
+    catchp->type.exp = NULL;
+    catchp->type.typ = NULL;
+    catchp->bodyp = NULL;
+    catchp->nextp = NULL;
+
+    if (_RDB_deserialize_expr(objp, posp, ecp, txp, &catchp->namexp) != RDB_OK)
+        goto error;
+    t = _RDB_deserialize_byte(objp, posp, ecp);
+    if (t == RDB_ERROR)
+        goto error;
+
+    if (t) {
+        if (_RDB_deserialize_expr(objp, posp, ecp, txp, &catchp->type.exp) != RDB_OK)
+            goto error;
+    } else {
+        catchp->type.exp = NULL;
+    }
+    if (deserialize_stmt_list(objp, posp, ecp, txp, &catchp->bodyp) != RDB_OK)
+        goto error;
+    return catchp;
+
+error:
+    RDB_parse_del_catch(catchp, ecp);
+    return NULL;
+}
+
+static int
+deserialize_try(RDB_object *objp, int *posp, RDB_exec_context *ecp,
+        RDB_transaction *txp, RDB_parse_statement *stmtp)
+{
+    RDB_int catchc;
+    RDB_parse_catch *catchp, *lastcatchp;
+    int i;
+
+    stmtp->var._try.bodyp = NULL;
+    stmtp->var._try.catchp = NULL;
+
+    if (deserialize_stmt_list(objp, posp, ecp, txp, &stmtp->var._try.bodyp) != RDB_OK)
+        return RDB_ERROR;
+
+    if (_RDB_deserialize_int(objp, posp, ecp, &catchc) != RDB_OK) {
+        return RDB_ERROR;
+    }
+    if (catchc < 1) {
+        RDB_raise_internal("missing catch clause", ecp);
+        return RDB_ERROR;
+    }
+
+    stmtp->var._try.catchp = deserialize_catch(objp, posp, ecp, txp);
+    if (stmtp->var._try.catchp == NULL)
+        return RDB_ERROR;
+    lastcatchp = stmtp->var._try.catchp;
+
+    for (i = 1; i < catchc; i++) {
+        catchp = deserialize_catch(objp, posp, ecp, txp);
+        if (catchp == NULL)
+            return RDB_ERROR;
+        lastcatchp->nextp = catchp;
+        lastcatchp = catchp;
+    }
+    return RDB_OK;
+}
+
 static RDB_parse_statement *
 deserialize_stmt(RDB_object *objp, int *posp, RDB_exec_context *ecp,
         RDB_transaction *txp)
@@ -1231,6 +1371,14 @@ deserialize_stmt(RDB_object *objp, int *posp, RDB_exec_context *ecp,
             break;
         case RDB_STMT_CONSTRAINT_DROP:
             if (deserialize_constr_drop(objp, posp, ecp, txp, stmtp) != RDB_OK)
+                goto error;
+            break;
+        case RDB_STMT_RAISE:
+            if (deserialize_raise(objp, posp, ecp, txp, stmtp) != RDB_OK)
+                goto error;
+            break;
+        case RDB_STMT_TRY:
+            if (deserialize_try(objp, posp, ecp, txp, stmtp) != RDB_OK)
                 goto error;
             break;
     }

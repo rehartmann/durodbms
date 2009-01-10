@@ -4,7 +4,7 @@
 /*
  * $Id$
  *
- * Copyright (C) 2003-2008 René Hartmann.
+ * Copyright (C) 2003-2009 René Hartmann.
  * See the file COPYING for redistribution information.
  */
 
@@ -32,7 +32,9 @@ typedef enum {
     RDB_STMT_OP_DROP,
     RDB_STMT_RETURN,
     RDB_STMT_CONSTRAINT_DEF,
-    RDB_STMT_CONSTRAINT_DROP
+    RDB_STMT_CONSTRAINT_DROP,
+    RDB_STMT_RAISE,
+    RDB_STMT_TRY
 } RDB_parse_stmt_kind;
 
 typedef struct RDB_parse_assign {
@@ -85,6 +87,13 @@ typedef struct RDB_parse_possrep {
     RDB_expr_list attrlist;
     struct RDB_parse_possrep *nextp;
 } RDB_parse_possrep;
+
+typedef struct RDB_parse_catch {
+    RDB_expression *namexp;
+    RDB_parse_type type;
+    struct RDB_parse_statement *bodyp;
+    struct RDB_parse_catch *nextp;
+} RDB_parse_catch;
 
 typedef struct RDB_parse_statement {
     RDB_parse_stmt_kind kind;
@@ -146,6 +155,10 @@ typedef struct RDB_parse_statement {
             RDB_object constrname;
         } constrdrop;
         RDB_expression *retexp;
+        struct {
+            struct RDB_parse_statement *bodyp;
+            RDB_parse_catch *catchp;
+        } _try;
     } var;
     RDB_int lineno;
     struct RDB_parse_statement *nextp;
@@ -181,6 +194,9 @@ RDB_parse_assignlist_length(const RDB_parse_assign *);
 
 int
 RDB_parse_del_assignlist(RDB_parse_assign *, RDB_exec_context *);
+
+int
+RDB_parse_del_catch(RDB_parse_catch *, RDB_exec_context *);
 
 int
 RDB_parse_del_stmt(RDB_parse_statement *, RDB_exec_context *);

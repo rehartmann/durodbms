@@ -1,7 +1,7 @@
 /*
  * $Id$
  *
- * Copyright (C) 2004-2008 René Hartmann.
+ * Copyright (C) 2004-2009 René Hartmann.
  * See the file COPYING for redistribution information.
  */
 
@@ -291,6 +291,22 @@ error:
     return NULL;
 }
 
+static RDB_parse_catch *
+new_catch(RDB_expression *namexp, RDB_parse_type *ptyp,
+		RDB_parse_statement *bodyp)
+{
+    RDB_parse_catch *catchp = RDB_alloc(sizeof (RDB_parse_catch), _RDB_parse_ecp);
+    if (catchp == NULL)
+        return NULL;
+
+    catchp->namexp = namexp;
+    catchp->type.exp = ptyp->exp;
+    catchp->type.typ = ptyp->typ;
+    catchp->bodyp = bodyp;
+    catchp->nextp = NULL;
+    return catchp;
+}
+
 static int
 resolve_with(RDB_expression **expp, RDB_expression *texp)
 {
@@ -324,6 +340,11 @@ resolve_with(RDB_expression **expp, RDB_expression *texp)
         RDB_parse_possrep *firstp;
         RDB_parse_possrep *lastp;
     } possreplist;
+    RDB_parse_catch catch;
+    struct {
+        RDB_parse_catch *firstp;
+        RDB_parse_catch *lastp;
+    } catchlist;
 }
 
 %token TOK_START_EXP TOK_START_STMT
@@ -413,6 +434,9 @@ resolve_with(RDB_expression **expp, RDB_expression *texp)
 %token TOK_ASC "ASC"
 %token TOK_DESC "DESC"
 %token TOK_WITH "WITH"
+%token TOK_RAISE "RAISE"
+%token TOK_TRY "TRY"
+%token TOK_CATCH "CATCH"
 %token TOK_INVALID "invalid"
 
 %type <exp> expression literal ro_op_invocation count_invocation
@@ -439,6 +463,10 @@ resolve_with(RDB_expression **expp, RDB_expression *texp)
 %type <possrep> possrep_def
 
 %type <possreplist> possrep_def_list;
+
+%type <catch> catch_def
+
+%type <catchlist> ne_catch_def_list
 
 %destructor {
     RDB_destroy_expr_list(&$$, _RDB_parse_ecp);
@@ -617,6 +645,14 @@ statement: statement_body ';'
         if ($$ == NULL)
             YYERROR;
     }
+    | TOK_TRY ne_statement_list ne_catch_def_list TOK_END TOK_TRY {
+        $$ = RDB_alloc(sizeof(RDB_parse_statement), _RDB_parse_ecp);
+        if ($$ == NULL)
+            YYERROR;
+        $$->kind = RDB_STMT_TRY;
+        $$->var._try.bodyp = $2.firstp;
+        $$->var._try.catchp = $3.firstp;
+    }
 
 case_opt_semi: TOK_CASE ';'
     | TOK_CASE
@@ -707,6 +743,36 @@ order_item_list: ne_order_item_list {
     }
     | /* Empty */ {
         RDB_init_expr_list(&$$);
+    }
+
+ne_catch_def_list: catch_def {
+        RDB_parse_catch *catchp = new_catch($1.namexp, &$1.type, $1.bodyp);
+        if (catchp == NULL)
+            YYERROR;
+
+        $$.firstp = $$.lastp = catchp;
+    }
+    | ne_catch_def_list catch_def {
+        RDB_parse_catch *catchp = new_catch($2.namexp, &$2.type, $2.bodyp);
+        if (catchp == NULL)
+            YYERROR;
+
+        $1.lastp->nextp = catchp;
+        $$.firstp = $1.firstp;
+        $$.lastp = catchp;
+    }
+
+catch_def: TOK_CATCH TOK_ID type ';' ne_statement_list {
+        $$.namexp = $2;
+    	$$.type.exp = $3;
+	    $$.type.typ = NULL;
+    	$$.bodyp = $5.firstp;
+    }
+    | TOK_CATCH TOK_ID ';' ne_statement_list {
+        $$.namexp = $2;
+    	$$.type.exp = NULL;
+	    $$.type.typ = NULL;
+    	$$.bodyp = $4.firstp;
     }
 
 statement_body: /* empty */ {
@@ -878,8 +944,9 @@ statement_body: /* empty */ {
     }
     | TOK_TYPE TOK_ID possrep_def_list {
         $$ = new_deftype($2->var.varname, $3.firstp, NULL);
-        if ($$ == NULL)
-             YYERROR;
+        if ($$ == NULL) {
+            YYERROR;
+        }
     }
     | TOK_TYPE TOK_ID possrep_def_list TOK_CONSTRAINT expression {
         $$ = new_deftype($2->var.varname, $3.firstp, $5);
@@ -978,6 +1045,15 @@ statement_body: /* empty */ {
             YYERROR;
         $$->lineno = yylineno;
     }    
+    | TOK_RAISE expression {
+        $$ = RDB_alloc(sizeof(RDB_parse_statement), _RDB_parse_ecp);
+        if ($$ == NULL) {
+            YYERROR;
+        }
+        $$->kind = RDB_STMT_RAISE;
+        $$->var.retexp = $2;
+        $$->lineno = yylineno;
+    }
 
 ne_key_list: TOK_KEY '{' id_list '}' {
         RDB_parse_keydef *kdp = RDB_alloc(sizeof(RDB_parse_keydef), _RDB_parse_ecp);

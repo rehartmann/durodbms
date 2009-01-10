@@ -1,7 +1,7 @@
 /*
  * $Id$
  *
- * Copyright (C) 2003-2008 René Hartmann.
+ * Copyright (C) 2003-2009 René Hartmann.
  * See the file COPYING for redistribution information.
  */
 
@@ -109,7 +109,23 @@ destroy_parse_type(RDB_parse_type *ptyp, RDB_exec_context *ecp)
         ret = RDB_drop_expr(ptyp->exp, ecp);
     if (ptyp->typ != NULL && !RDB_type_is_scalar(ptyp->typ))
         ret = RDB_drop_type(ptyp->typ, ecp, NULL);
-    return ret;    
+    return ret;
+}
+
+int
+RDB_parse_del_catch(RDB_parse_catch *catchp, RDB_exec_context *ecp)
+{
+    int ret, r;
+
+    ret = RDB_drop_expr(catchp->namexp, ecp);
+    r = destroy_parse_type(&catchp->type, ecp);
+    if (r != RDB_OK)
+        ret = r;
+    r = RDB_parse_del_stmtlist(catchp->bodyp, ecp);
+    if (r != RDB_OK)
+        ret = r;
+    RDB_free(catchp);
+    return ret;
 }
 
 int
@@ -208,6 +224,21 @@ RDB_parse_del_stmt(RDB_parse_statement *stmtp, RDB_exec_context *ecp)
         case RDB_STMT_COMMIT:
         case RDB_STMT_ROLLBACK:
         case RDB_STMT_NOOP:
+            break;
+        case RDB_STMT_RAISE:
+            ret = RDB_drop_expr(stmtp->var.retexp, ecp);
+            break;
+        case RDB_STMT_TRY:
+            {
+                RDB_parse_catch *catchp = stmtp->var._try.catchp;
+                RDB_parse_catch *nextcatchp;
+                while (catchp != NULL) {
+                    nextcatchp = catchp->nextp;
+                    RDB_parse_del_catch(catchp, ecp);
+                    catchp = nextcatchp;
+                }
+                ret = RDB_parse_del_stmtlist(stmtp->var._try.bodyp, ecp);
+            }
             break;
     }
     RDB_free(stmtp);
