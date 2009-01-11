@@ -181,7 +181,7 @@ test_drop(RDB_database *dbp, RDB_exec_context *ecp)
 
     tinyintp = RDB_get_type("TINYINT", ecp, &tx);
     assert(tinyintp == NULL);
-    assert(RDB_obj_type(RDB_get_err(ecp)) == &RDB_NOT_FOUND_ERROR);
+    assert(RDB_obj_type(RDB_get_err(ecp)) == &RDB_NAME_ERROR);
     RDB_clear_err(ecp);
 
     return RDB_commit(ecp, &tx);
@@ -194,7 +194,7 @@ main(void)
     RDB_database *dbp;
     int ret;
     RDB_exec_context ec;
-    
+
     ret = RDB_open_env("dbenv", &dsp);
     if (ret != 0) {
         fprintf(stderr, "Error: %s\n", RDB_type_name(RDB_obj_type(RDB_get_err(&ec))));

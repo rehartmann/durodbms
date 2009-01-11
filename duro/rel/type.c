@@ -1,7 +1,7 @@
 /*
  * $Id$
  *
- * Copyright (C) 2003-2008 René Hartmann.
+ * Copyright (C) 2003-2009 René Hartmann.
  * See the file COPYING for redistribution information.
  */
 
@@ -27,7 +27,7 @@
 
 @section error-types Error types
 
-Since version 0.10, Duro errors are scalar types.
+Duro errors are scalar types.
 They are shown below in Tutorial D notation.
 
 <pre>
@@ -1090,7 +1090,7 @@ RDB_type_is_scalar checks if a type is scalar.
 
 @returns
 
-RDB_TRUE if the type is scalar, RDB_FALSE if not.
+RDB_TRUE if *<var>typ</var> is scalar, RDB_FALSE if not.
 */
 RDB_bool
 RDB_type_is_scalar(const RDB_type *typ)
@@ -1103,7 +1103,7 @@ RDB_type_is_scalar(const RDB_type *typ)
 
 @returns
 
-RDB_TRUE if the *<var>typ</var> is a relation type, RDB_FALSE if not.
+RDB_TRUE if *<var>typ</var> is a relation type, RDB_FALSE if not.
 */
 RDB_bool
 RDB_type_is_relation(const RDB_type *typ)
@@ -1112,11 +1112,11 @@ RDB_type_is_relation(const RDB_type *typ)
 }
 
 /**
- * Checks if a type is a relation type.
+ * Checks if a type is a tuple type.
 
 @returns
 
-RDB_TRUE if the *<var>typ</var> is a relation type, RDB_FALSE if not.
+RDB_TRUE if *<var>typ</var> is a tuple type, RDB_FALSE if not.
 */
 RDB_bool
 RDB_type_is_tuple(const RDB_type *typ)
@@ -1363,7 +1363,7 @@ On success, RDB_OK is returned. Any other return value indicates an error.
 
 <dl>
 <dt>RDB_NO_RUNNING_TX_ERROR
-<dd><var>txp</var> does not point to a running transaction.
+<dd>*<var>txp</var> is not a running transaction.
 <dt>RDB_NOT_FOUND_ERROR
 <dd>The type has not been previously defined.
 <dt>RDB_INVALID_ARGUMENT_ERROR
@@ -1512,7 +1512,7 @@ On success, RDB_OK is returned. Any other return value indicates an error.
 
 <dl>
 <dt>RDB_NO_RUNNING_TX_ERROR
-<dd>The type is scalar and <var>txp</var> does not point to a running transaction.
+<dd>The type is scalar and *<var>txp</var> is not a running transaction.
 <dt>RDB_INVALID_ARGUMENT_ERROR
 <dd>The type is a builtin type.
 </dl>
@@ -2078,8 +2078,8 @@ error:
 }
 
 /**
- * Rename the attributes of the relation type pointed to by typ according to renc
- * and renv return the new tuple type.
+ * Rename the attributes of the relation type *<var>typ</var> as specified by <var>renc</var>
+ * and <var>renv<var> and return the new relation type.
  */
 RDB_type *
 RDB_rename_relation_type(const RDB_type *typ, int renc, const RDB_renaming renv[],

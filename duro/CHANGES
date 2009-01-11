@@ -13,6 +13,10 @@ Changes for Duro 0.14
 - The return type is now explicitly passed to funtions which implement
   read-only operators.
 
+- Single quotes are now used in data output in Tutorial D form.
+
+- If a type is not found, NAME_ERROR is raised instead of NOT_FOUND_ERROR.
+
 Changes for Duro 0.13
 
 - Renamed build target "check" to "test".

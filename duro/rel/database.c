@@ -1619,7 +1619,7 @@ The pointer to the type on success, or NULL if an error occured.
 @par Errors:
 
 <dl>
-<dt>RDB_NOT_FOUND_ERROR</dt>
+<dt>RDB_NAME_ERROR</dt>
 <dd>A type with the name <var>name</var> could not be found.
 </dd>
 <dt></dt>
@@ -1645,7 +1645,7 @@ RDB_get_type(const char *name, RDB_exec_context *ecp, RDB_transaction *txp)
     }
 
     if (txp == NULL) {
-        RDB_raise_not_found(name, ecp);
+        RDB_raise_name(name, ecp);
         return NULL;
     }
 
@@ -1661,8 +1661,13 @@ RDB_get_type(const char *name, RDB_exec_context *ecp, RDB_transaction *txp)
      * Search type in catalog
      */
     ret = _RDB_cat_get_type(name, ecp, txp, &typ);
-    if (ret != RDB_OK)
+    if (ret != RDB_OK) {
+        RDB_type *errtyp = RDB_obj_type(RDB_get_err(ecp));
+        if (errtyp != NULL && errtyp == &RDB_NOT_FOUND_ERROR) {
+            RDB_raise_name(name, ecp);
+        }
         return NULL;
+    }
 
     /*
      * Put type into type map
