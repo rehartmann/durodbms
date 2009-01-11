@@ -25,5 +25,5 @@ test tuplevar {tuple variables} -body {
     }
 } -result {5 foo
 2 bar
-TUPLE { S "bar" }
+TUPLE { S 'bar' }
 }

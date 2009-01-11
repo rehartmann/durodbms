@@ -1,7 +1,7 @@
 /*
  * $Id$
  *
- * Copyright (C) 2004-2006 René Hartmann.
+ * Copyright (C) 2004-2009 René Hartmann.
  * See the file COPYING for redistribution information.
  */
 
@@ -91,7 +91,7 @@ append_quoted_string(RDB_object *objp, const RDB_object *strp,
     if (qstr == NULL)
         return RDB_ERROR;
 
-    qstr[0] = '\"';
+    qstr[0] = '\'';
     qlen = 1;
     for (i = 0; i < strp->var.bin.len - 1; i++) {
         switch (((char *)strp->var.bin.datap)[i]) {
@@ -119,7 +119,7 @@ append_quoted_string(RDB_object *objp, const RDB_object *strp,
                 qstr[qlen++] = ((char *)strp->var.bin.datap)[i];
         }
     }
-    qstr[qlen++] = '\"';
+    qstr[qlen++] = '\'';
     qstr[qlen] = '\0';
 
     ret = RDB_append_string(objp, qstr, ecp);

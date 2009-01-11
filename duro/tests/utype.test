@@ -121,32 +121,32 @@ test utype {user-defined types} -setup $SETUP -body {
        {NAME PNAME}
     } {{NO}} $tx
     
-    set tpl {NO 1 NAME {PNAME("Peter", "Potter")}}
+    set tpl {NO 1 NAME {PNAME('Peter', 'Potter')}}
     duro::insert T2 $tpl $tx
     
     duro::table expr -global V1 {T2 WHERE NAME=PNAME("Peter", "Potter")} $tx
-    
+
     if {![duro::table contains T2 $tpl $tx]} {
         error "T2 should contain $tpl, but does not."
     }
     
     array set a [duro::expr {TUPLE FROM (T2 WHERE THE_LASTNAME(NAME) = "Potter")} $tx]
     
-    if {($a(NO) != 1) || ($a(NAME) != {PNAME("Peter", "Potter")})} {
+    if {($a(NO) != 1) || ($a(NAME) != {PNAME('Peter', 'Potter')})} {
         error "wrong value tuple value: $a(NAME)"
     }
     
     array set a [duro::expr {TUPLE FROM V1} $tx]
     
-    if {($a(NO) != 1) || ($a(NAME) != {PNAME("Peter", "Potter")})} {
+    if {($a(NO) != 1) || ($a(NAME) != {PNAME('Peter', 'Potter')})} {
         error "V1 has wrong value"
     }
     
     duro::insert T2 {NO 2 NAME {PNAME("Ali", "Z")}} $tx
     
     set arr [duro::array create T2 {NAME asc} $tx]
-    checkarray $arr {{NO 1 NAME {PNAME("Peter", "Potter")}}
-            {NO 2 NAME {PNAME("Ali", "Z")}}} \
+    checkarray $arr {{NO 1 NAME {PNAME('Peter', 'Potter')}}
+            {NO 2 NAME {PNAME('Ali', 'Z')}}} \
             $tx
     duro::array drop $arr
     
@@ -166,8 +166,8 @@ test utype {user-defined types} -setup $SETUP -body {
     
     set compare_called 0
     set arr [duro::array create T2 {NAME asc} $tx]
-    checkarray $arr {{NO 1 NAME {PNAME("Peter", "Potter")}}
-            {NO 2 NAME {PNAME("Ali", "Z")}}} \
+    checkarray $arr {{NO 1 NAME {PNAME('Peter', 'Potter')}}
+            {NO 2 NAME {PNAME('Ali', 'Z')}}} \
             $tx
     duro::array drop $arr
     
@@ -184,14 +184,14 @@ test utype {user-defined types} -setup $SETUP -body {
     } {{IS}} $tx
     
     set sil {1 2}
-    set stpl [list IS INTLIST("$sil")]
+    set stpl [list IS INTLIST('$sil')]
     duro::insert T3 $stpl $tx
     
     set tpl [duro::expr {TUPLE FROM T3} $tx]
     if {![string equal $tpl $stpl]} {
         error "TUPLE FROM T3 should be $stpl, but is $tpl"
     }
-    
+
     set il [duro::expr {THE_INTLIST((TUPLE FROM T3).IS)} $tx]
     if {![string equal $il $sil]} {
         error "THE_INTLIST should be $sil, but is $il"
@@ -204,7 +204,7 @@ test utype {user-defined types} -setup $SETUP -body {
     set is {INTLIST("1 3 4")}
     duro::call INTSET_set_INTLIST is INTSET {1 2 3} STRING $tx
     
-    set sis {INTLIST("1 2 3")}
+    set sis {INTLIST('1 2 3')}
     if {![string equal $is $sis]} {
         error "INTSET value should be $sis, but is $is"
     }
