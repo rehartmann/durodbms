@@ -548,7 +548,8 @@ _RDB_create_stored_table(RDB_object *tbp, RDB_environment *envp,
     ret = RDB_create_recmap(tbp->var.tb.is_persistent ?
             (rmname == NULL ? RDB_table_name(tbp) : rmname) : NULL,
             tbp->var.tb.is_persistent ? RDB_DATAFILE : NULL,
-            envp, attrc, flenv, piattrc, cmpv, flags,
+            envp,
+            attrc, flenv, piattrc, cmpv, flags,
             txp != NULL ? txp->txid : NULL,
             &tbp->var.tb.stp->recmapp);
     if (ret != RDB_OK) {
@@ -729,7 +730,8 @@ _RDB_delete_stored_table(RDB_stored_table *stp, RDB_exec_context *ecp,
     /* Schedule secondary indexes for deletion */
     for (i = 0; i < stp->indexc; i++) {
         if (stp->indexv[i].idxp != NULL) {
-            ret = _RDB_del_index(txp, stp->indexv[i].idxp, ecp);
+            ret = RDB_delete_index(stp->indexv[i].idxp,
+                    RDB_tx_env(txp), txp->txid);
             if (ret != RDB_OK)
                 return ret;
         }
@@ -737,7 +739,7 @@ _RDB_delete_stored_table(RDB_stored_table *stp, RDB_exec_context *ecp,
 
     if (txp != NULL) {
         /* Schedule recmap for deletion */
-        ret = _RDB_del_recmap(txp, stp->recmapp, ecp);
+        ret = RDB_delete_recmap(stp->recmapp, txp->txid);
     } else {
         ret = RDB_delete_recmap(stp->recmapp, NULL);
         if (ret != RDB_OK) {

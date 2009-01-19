@@ -299,12 +299,6 @@ int
 _RDB_set_defvals(RDB_type *tbtyp, int attrc, const RDB_attr attrv[],
         RDB_exec_context *);
 
-int
-_RDB_del_recmap(RDB_transaction *, RDB_recmap *, RDB_exec_context *);
-
-int
-_RDB_del_index(RDB_transaction *, RDB_index *, RDB_exec_context *);
-
 RDB_object *
 _RDB_tpl_get(const char *, void *);
 

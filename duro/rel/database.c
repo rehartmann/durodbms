@@ -1324,8 +1324,13 @@ table_dep_check(RDB_object *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
     RDB_init_obj(&tbarr);
     ret = RDB_table_to_array(&tbarr, vtbp, 0, NULL, 0, ecp, txp);
     if (ret != RDB_OK) {
+        RDB_drop_table(vtbp, ecp, txp);
         goto cleanup;
     }
+    ret = RDB_drop_table(vtbp, ecp, txp);
+    if (ret != RDB_OK)
+        goto cleanup;
+
     len = RDB_array_length(&tbarr, ecp);
     if (len == (RDB_int) RDB_ERROR) {
         ret = RDB_ERROR;
@@ -1355,7 +1360,6 @@ table_dep_check(RDB_object *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
 
 cleanup:
     RDB_destroy_obj(&tbarr, ecp);
-    RDB_drop_table(vtbp, ecp, txp);
 
     return ret;
 }

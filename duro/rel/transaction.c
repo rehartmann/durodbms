@@ -9,16 +9,6 @@
 #include "internal.h"
 #include <gen/strfns.h>
 
-typedef struct RDB_rmlink {
-    RDB_recmap *rmp;
-    struct RDB_rmlink *nextp;
-} RDB_rmlink;
-
-typedef struct RDB_ixlink {
-    RDB_index *ixp;
-    struct RDB_ixlink *nextp;
-} RDB_ixlink;
-
 int
 _RDB_begin_tx(RDB_exec_context *ecp, RDB_transaction *txp, RDB_environment *envp,
         RDB_transaction *parentp)
@@ -33,83 +23,7 @@ _RDB_begin_tx(RDB_exec_context *ecp, RDB_transaction *txp, RDB_environment *envp
         RDB_raise_system("too many transactions", ecp);
         return RDB_ERROR;
     }
-    txp->delrmp = NULL;
-    txp->delixp = NULL;
     return RDB_OK;
-}
-
-static void
-cleanup_storage(RDB_transaction *txp)
-{
-    RDB_rmlink *rmlinkp, *hrmlinkp;
-    RDB_ixlink *ixlinkp, *hixlinkp;
-
-    /*
-     * Delete lists
-     */
-    rmlinkp = txp->delrmp;
-    while (rmlinkp != NULL) {
-        hrmlinkp = rmlinkp->nextp;
-        RDB_free(rmlinkp);
-        rmlinkp = hrmlinkp;
-    }
-    txp->delrmp = NULL;
-
-    ixlinkp = txp->delixp;
-    while (ixlinkp != NULL) {
-        hixlinkp = ixlinkp->nextp;
-        RDB_free(ixlinkp);
-        ixlinkp = hixlinkp;
-    }
-    txp->delixp = NULL;
-}
-
-static int
-del_storage(RDB_transaction *txp)
-{
-    RDB_rmlink *rmlinkp;
-    RDB_ixlink *ixlinkp;
-    int ret = RDB_OK;
-
-    for (ixlinkp = txp->delixp;
-         (ixlinkp != NULL) && (ret == RDB_OK);
-         ixlinkp = ixlinkp->nextp) {
-        ret = RDB_delete_index(ixlinkp->ixp, txp->envp, NULL);
-    }
-
-    for (rmlinkp = txp->delrmp;
-         (rmlinkp != NULL) && (ret == RDB_OK);
-         rmlinkp = rmlinkp->nextp) {
-        ret = RDB_delete_recmap(rmlinkp->rmp, NULL);
-    }
-
-    cleanup_storage(txp);
-    
-    return ret;
-}
-
-static int
-close_storage(RDB_transaction *txp)
-{
-    RDB_rmlink *rmlinkp;
-    RDB_ixlink *ixlinkp;
-    int ret = RDB_OK;
-
-    for (ixlinkp = txp->delixp;
-         (ixlinkp != NULL) && (ret == RDB_OK);
-         ixlinkp = ixlinkp->nextp) {
-        ret = RDB_close_index(ixlinkp->ixp);
-    }
-
-    for (rmlinkp = txp->delrmp;
-         (rmlinkp != NULL) && (ret == RDB_OK);
-         rmlinkp = rmlinkp->nextp) {
-        ret = RDB_close_recmap(rmlinkp->rmp);
-    }
-
-    cleanup_storage(txp);
-    
-    return ret;
 }
 
 /** @defgroup tx Transaction functions 
@@ -173,40 +87,6 @@ RDB_commit(RDB_exec_context *ecp, RDB_transaction *txp)
         return RDB_ERROR;
     }
 
-    if (txp->parentp != NULL) {
-        /* Move recmaps and indexes to parent tx */
-        RDB_rmlink *rmlinkp;
-        RDB_ixlink *ixlinkp;
-        
-        rmlinkp = txp->delrmp;
-        if (rmlinkp != NULL) {
-             /* Find last link */
-             while (rmlinkp->nextp != NULL)
-                 rmlinkp = rmlinkp->nextp;
-
-             /* Concatenate lists */
-             rmlinkp->nextp = txp->parentp->delrmp;
-             txp->parentp->delrmp = txp->delrmp;
-        }
-
-        ixlinkp = txp->delixp;
-        if (ixlinkp != NULL) {
-             /* Find last link */
-             while (ixlinkp->nextp != NULL)
-                 ixlinkp = ixlinkp->nextp;
-
-             /* Concatenate lists */
-             ixlinkp->nextp = txp->parentp->delixp;
-             txp->parentp->delixp = txp->delixp;
-        }   
-    } else {
-        /* Delete recmaps and indexes scheduled for deletion */
-        ret = del_storage(txp);
-        if (ret != RDB_OK) {
-            return ret;
-        }
-    }
-
     txp->txid = NULL;
     
     return RDB_OK;
@@ -245,17 +125,6 @@ RDB_rollback(RDB_exec_context *ecp, RDB_transaction *txp)
         return RDB_ERROR;
     }
 
-    /*
-     * Delete recmap list
-     */
-    ret = close_storage(txp);
-    if (ret != RDB_OK) {
-        _RDB_handle_errcode(ret, ecp, txp);
-        ret = RDB_ERROR;
-    }
-
-    txp->txid = NULL;
-
     return ret;
 }
 
@@ -289,33 +158,3 @@ RDB_tx_is_running(RDB_transaction *txp)
 }
 
 /*@}*/
-
-int
-_RDB_del_recmap(RDB_transaction *txp, RDB_recmap *rmp, RDB_exec_context *ecp)
-{
-    RDB_rmlink *linkp = RDB_alloc(sizeof (RDB_rmlink), ecp);
-
-    if (linkp == NULL) {
-        return RDB_ERROR;
-    }
-    linkp->rmp = rmp;
-    linkp->nextp = txp->delrmp;
-    txp->delrmp = linkp;
-
-    return RDB_OK;
-}
-
-int
-_RDB_del_index(RDB_transaction *txp, RDB_index *ixp, RDB_exec_context *ecp)
-{
-    RDB_ixlink *linkp = RDB_alloc(sizeof (RDB_ixlink), ecp);
-
-    if (linkp == NULL) {
-        return RDB_ERROR;
-    }
-    linkp->ixp = ixp;
-    linkp->nextp = txp->delixp;
-    txp->delixp = linkp;
-    
-    return RDB_OK;
-}

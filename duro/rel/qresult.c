@@ -1,7 +1,7 @@
 /*
  * $Id$
  *
- * Copyright (C) 2003-2007 René Hartmann.
+ * Copyright (C) 2003-2009 René Hartmann.
  * See the file COPYING for redistribution information.
  */
 
@@ -1324,7 +1324,8 @@ next_ungroup_tuple(RDB_qresult *qrp, RDB_object *tplp, RDB_exec_context *ecp,
 
     /* Read next element of relation-valued attribute */
     ret = _RDB_next_tuple(qrp->var.children.qr2p, tplp, ecp, txp);
-    while (ret == DB_NOTFOUND) {
+    while (ret == RDB_ERROR
+            && RDB_obj_type(RDB_get_err(ecp)) == &RDB_NOT_FOUND_ERROR) {
         /* Destroy qresult over relation-valued attribute */
         ret = _RDB_drop_qresult(qrp->var.children.qr2p, ecp, txp);
         qrp->var.children.qr2p = NULL;
@@ -1645,7 +1646,8 @@ next_join_tuple_uix(RDB_qresult *qrp, RDB_object *tplp, RDB_exec_context *ecp,
                 objpv, indexp,
                 qrp->exp->var.op.args.firstp->nextp->var.tbref.tbp->typ->var.basetyp,
                 ecp, txp, &tpl);
-        if (ret == DB_NOTFOUND) {
+        if (ret == RDB_ERROR
+                && RDB_obj_type(RDB_get_err(ecp)) == &RDB_NOT_FOUND_ERROR) {
             continue;
         }
         if (ret != RDB_OK)
