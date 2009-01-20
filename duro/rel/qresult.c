@@ -1326,6 +1326,7 @@ next_ungroup_tuple(RDB_qresult *qrp, RDB_object *tplp, RDB_exec_context *ecp,
     ret = _RDB_next_tuple(qrp->var.children.qr2p, tplp, ecp, txp);
     while (ret == RDB_ERROR
             && RDB_obj_type(RDB_get_err(ecp)) == &RDB_NOT_FOUND_ERROR) {
+        RDB_clear_err(ecp);
         /* Destroy qresult over relation-valued attribute */
         ret = _RDB_drop_qresult(qrp->var.children.qr2p, ecp, txp);
         qrp->var.children.qr2p = NULL;
@@ -1619,7 +1620,7 @@ next_join_tuple_uix(RDB_qresult *qrp, RDB_object *tplp, RDB_exec_context *ecp,
     int i;
     RDB_object tpl;
     RDB_object **objpv;
-    RDB_bool match;
+    RDB_bool match = RDB_FALSE;
     _RDB_tbindex *indexp = qrp->exp->var.op.args.firstp->nextp->var.tbref.indexp;
 
     objpv = RDB_alloc(sizeof(RDB_object *) * indexp->attrc, ecp);
@@ -1646,14 +1647,16 @@ next_join_tuple_uix(RDB_qresult *qrp, RDB_object *tplp, RDB_exec_context *ecp,
                 objpv, indexp,
                 qrp->exp->var.op.args.firstp->nextp->var.tbref.tbp->typ->var.basetyp,
                 ecp, txp, &tpl);
-        if (ret == RDB_ERROR
-                && RDB_obj_type(RDB_get_err(ecp)) == &RDB_NOT_FOUND_ERROR) {
-            continue;
-        }
-        if (ret != RDB_OK)
+        if (ret == RDB_ERROR) {
+            if (RDB_obj_type(RDB_get_err(ecp)) == &RDB_NOT_FOUND_ERROR) {
+                RDB_clear_err(ecp);
+                continue;
+            }
             goto cleanup;
+        }
 
-        if (_RDB_tuple_matches(tplp, &tpl, ecp, txp, &match) != RDB_OK)
+        ret = _RDB_tuple_matches(tplp, &tpl, ecp, txp, &match);
+        if (ret != RDB_OK)
             goto cleanup;
     } while (!match);
 
