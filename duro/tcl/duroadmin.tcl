@@ -3,7 +3,7 @@
 exec wish "$0" ${1+"$@"}
 
 # Duroadmin - GUI administration tool for Duro.
-# Copyright (C) 2004-2006 René Hartmann.
+# Copyright (C) 2004-2009 René Hartmann.
 # See the file COPYING for redistribution information.
 
 # $Id$
@@ -196,8 +196,8 @@ proc set_row {row tpl} {
         array set ta $tpl
         set attrname [lindex $::tableattrs $j]
         set s $ta($attrname)
-        if {![string is print $s]} {
-            set s "(nonprintable)"
+        if {$::tabletypes($attrname) == "BINARY"} {
+            set s "(binary)"
         } elseif {$::tabletypes($attrname) == "BOOLEAN"} {
             set s [expr {$s ?  "TRUE" : "FALSE"}]
         }
@@ -1124,7 +1124,7 @@ listbox .tables -yscrollcommand ".tablesbar set"
 scrollbar .tablesbar -orient vertical -command ".tables yview"
 
 frame .tableframe
-table .tableframe.table -titlerows 1 -rows [expr {$duroadmin(initrows) + 2}] \
+table .tableframe.table -multiline 1 -wrap 1 -titlerows 1 -rows [expr {$duroadmin(initrows) + 2}] \
         -xscrollcommand ".tableframe.xbar set" \
         -yscrollcommand ".tableframe.ybar set" \
         -variable tbcontent -state disabled -anchor w \
@@ -1147,6 +1147,7 @@ grid columnconfigure .tableframe 0 -weight 1
 grid rowconfigure .tableframe 0 -weight 1
 
 bind .tables <<ListboxSelect>> show_table
+bind .tableframe.table <Control-Return> { }
 bind .tableframe.table <Return> update_row
 
 wm protocol . WM_DELETE_WINDOW quit
