@@ -1609,7 +1609,7 @@ RDB_remove_table(RDB_object *tbp, RDB_exec_context *ecp, RDB_transaction *txp);
  */
 
 /** @struct RDB_possrep rdb.h <rel/rdb.h>
- * Specifies a possible representations.
+ * Specifies a possible representation.
  */
 
 /**

@@ -1593,7 +1593,7 @@ RDB_drop_type(RDB_type *typ, RDB_exec_context *ecp, RDB_transaction *txp)
 /**
  * RDB_type_equals checks if two types are equal.
 
-Nonscalar types are equal if there definition is the same.
+Nonscalar types are equal if their definition is the same.
 
 @returns
 

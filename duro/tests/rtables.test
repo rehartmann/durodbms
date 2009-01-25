@@ -353,4 +353,36 @@ test rtables {real tables} -setup $SETUP -body {
     duro::env close $dbenv
 }
 
+test droptables {create and drop tables} -setup $SETUP -constraints { drop_table_fixed } -body {
+    set dbenv [duro::env open [configure -tmpdir]/dbenv]
+
+    # Create Database
+    duro::db create $dbenv TEST
+
+    set tx [duro::begin $dbenv TEST]
+
+    duro::table create T1 {
+       {NO INTEGER}
+    } {{NO}} $tx
+    
+    duro::commit $tx
+
+    set tx [duro::begin $dbenv TEST]
+
+    duro::insert T1 {NO 1} $tx
+
+    duro::table drop T1 $tx
+
+    duro::table create T2 {
+        {NO INTEGER}
+    } {{NO}} $tx
+    
+    duro::insert T2 {NO 1} $tx
+
+    duro::commit $tx
+    
+    # Close DB environment
+    duro::env close $dbenv
+}
+
 cleanupTests

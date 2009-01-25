@@ -1,7 +1,7 @@
 /*
  * $Id$
  * 
- * Copyright (C) 2003-2006 René Hartmann.
+ * Copyright (C) 2003-2009 René Hartmann.
  * See the file COPYING for redistribution information.
  */
 
@@ -110,7 +110,11 @@ compare_key(DB *dbp, const DBT *dbt1p, const DBT *dbt2p)
         int res;
 
         offs1 = _RDB_get_field(rmp, i, dbt1p->data, dbt1p->size, &len1, NULL);
+        if (offs1 < 0)
+            return offs1;
         offs2 = _RDB_get_field(rmp, i, dbt2p->data, dbt2p->size, &len2, NULL);
+        if (offs2 < 0)
+            return offs2;
         data1p = ((RDB_byte *) dbt1p->data) + offs1;
         data2p = ((RDB_byte *) dbt2p->data) + offs2;
 
@@ -153,8 +157,10 @@ RDB_create_recmap(const char *name, const char *filename,
 
     if (cmpv != NULL) {
         (*rmpp)->cmpv = malloc(sizeof (RDB_compare_field) * keyfieldc);
-        if ((*rmpp)->cmpv == NULL)
+        if ((*rmpp)->cmpv == NULL) {
+            ret = ENOMEM;
             goto error;
+        }
         for (i = 0; i < keyfieldc; i++) {
             (*rmpp)->cmpv[i].comparep = cmpv[i].comparep;
             (*rmpp)->cmpv[i].arg = cmpv[i].arg;
@@ -369,6 +375,9 @@ _RDB_get_field(RDB_recmap *rmp, int fno, void *datap, size_t len, size_t *lenp,
             *lenp = _RDB_get_vflen(databp, len, rmp->vardatafieldcount, vpos);
         }
     }
+    /* Integrity check */
+    if (*lenp > len)
+        return RDB_RECORD_CORRUPTED;
     if (vposp != NULL)
         *vposp = vpos;
     return offs;
@@ -539,7 +548,7 @@ RDB_insert_rec(RDB_recmap *rmp, RDB_field flds[], DB_TXN *txid)
     return ret;
 }
 
-void
+int
 _RDB_set_field(RDB_recmap *recmapp, DBT *recpartp, const RDB_field *fieldp, 
                int varfieldc)
 {
@@ -548,6 +557,8 @@ _RDB_set_field(RDB_recmap *recmapp, DBT *recpartp, const RDB_field *fieldp,
     RDB_byte *databp = (RDB_byte *) recpartp->data;
     int offs = _RDB_get_field(recmapp, fieldp->no,
                     recpartp->data, recpartp->size, &oldlen, &vpos);
+    if (offs < 0)
+        return offs;
 
     if (oldlen != fieldp->len) {
         /*
@@ -576,6 +587,7 @@ _RDB_set_field(RDB_recmap *recmapp, DBT *recpartp, const RDB_field *fieldp,
     }
     /* copy data into field */
     (*(fieldp->copyfp))(databp + offs, fieldp->datap, fieldp->len);
+    return RDB_OK;
 }
 
 int
@@ -601,12 +613,14 @@ _RDB_update_rec(RDB_recmap *rmp, DBT *keyp, DBT *datap,
 
     for (i = 0; i < fieldc; i++) {
         if (fieldv[i].no < rmp->keyfieldcount) {
-            _RDB_set_field(rmp, keyp, &fieldv[i],
+            ret = _RDB_set_field(rmp, keyp, &fieldv[i],
                            rmp->varkeyfieldcount);
         } else {
-            _RDB_set_field(rmp, datap, &fieldv[i],
+            ret = _RDB_set_field(rmp, datap, &fieldv[i],
                            rmp->vardatafieldcount);
         }
+        if (ret != RDB_OK)
+            return ret;
     }
 
     /* Write record back */
@@ -680,10 +694,14 @@ _RDB_get_fields(RDB_recmap *rmp, const DBT *keyp, const DBT *datap, int fieldc,
         if (retfieldv[i].no < rmp->keyfieldcount) {
             offs = _RDB_get_field(rmp, retfieldv[i].no,
                     keyp->data, keyp->size, &retfieldv[i].len, NULL);
+            if (offs < 0)
+                return offs;
             retfieldv[i].datap = ((RDB_byte *)keyp->data) + offs;
         } else {
             offs = _RDB_get_field(rmp, retfieldv[i].no,
                     datap->data, datap->size, &retfieldv[i].len, NULL);
+            if (offs < 0)
+                return offs;
             retfieldv[i].datap = ((RDB_byte *)datap->data) + offs;
         }
     }

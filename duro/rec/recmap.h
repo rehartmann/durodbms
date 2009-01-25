@@ -25,7 +25,8 @@ enum {
     RDB_ORDERED = 2,
 
     RDB_ELEMENT_EXISTS = -200,
-    RDB_KEY_VIOLATION = -201
+    RDB_KEY_VIOLATION = -201,
+    RDB_RECORD_CORRUPTED = -202
 };
 
 typedef struct {
@@ -154,7 +155,7 @@ int
 _RDB_get_field(RDB_recmap *rfp, int fno, void *datap, size_t len,
         size_t *fieldlenp, int *vposp);
 
-void
+int
 _RDB_set_field(RDB_recmap *recmapp, DBT *recpartp, const RDB_field *fieldp,
                int varfieldc);
 

@@ -348,6 +348,9 @@ _RDB_handle_errcode(int errcode, RDB_exec_context *ecp, RDB_transaction *txp)
         case DB_RUNRECOVERY:
             RDB_raise_fatal(ecp);
             break;
+        case RDB_RECORD_CORRUPTED:
+            RDB_raise_fatal(ecp);
+            break;
         default:
             RDB_raise_system(db_strerror(errcode), ecp);
     }

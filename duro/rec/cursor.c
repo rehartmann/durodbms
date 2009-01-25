@@ -99,6 +99,8 @@ RDB_cursor_get(RDB_cursor *curp, int fno, void **datapp, size_t *lenp)
         offs = _RDB_get_field(curp->recmapp, fno,
                 curp->current_data.data, curp->current_data.size, lenp, NULL);
     }
+    if (offs < 0)
+       return offs;
     *datapp = databp + offs;
     return RDB_OK;
 }
@@ -107,16 +109,21 @@ int
 RDB_cursor_set(RDB_cursor *curp, int fieldc, RDB_field fields[])
 {
     int i;
+    int ret;
     RDB_bool keymodfd = RDB_FALSE;
 
     for (i = 0; i < fieldc; i++) {
         if (fields[i].no < curp->recmapp->keyfieldcount) {
-            _RDB_set_field(curp->recmapp, &curp->current_key, &fields[i],
+            ret = _RDB_set_field(curp->recmapp, &curp->current_key, &fields[i],
                       curp->recmapp->varkeyfieldcount);
+            if (ret != RDB_OK)
+                return ret;
             keymodfd = RDB_TRUE;
         } else {
-            _RDB_set_field(curp->recmapp, &curp->current_data, &fields[i],
+            ret = _RDB_set_field(curp->recmapp, &curp->current_data, &fields[i],
                       curp->recmapp->vardatafieldcount);
+            if (ret != RDB_OK)
+                return ret;
         }
     }
     

@@ -357,10 +357,14 @@ RDB_index_get_fields(RDB_index *ixp, RDB_field keyv[], int fieldc, DB_TXN *txid,
         if (fno < ixp->rmp->keyfieldcount) {
             offs = _RDB_get_field(ixp->rmp, fno, pkey.data, pkey.size,
                     &retfieldv[i].len, NULL);
+            if (offs < 0)
+                return offs;
             retfieldv[i].datap = ((RDB_byte *)pkey.data) + offs;
         } else {
             offs = _RDB_get_field(ixp->rmp, fno,
                     data.data, data.size, &retfieldv[i].len, NULL);
+            if (offs < 0)
+                return offs;
             retfieldv[i].datap = ((RDB_byte *)data.data) + offs;
         }
     }

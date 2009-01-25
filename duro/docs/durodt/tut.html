@@ -103,6 +103,7 @@ no db>
 <li>INTEGER</li>
 <li>FLOAT</li>
 <li>STRING</li>
+<li>BINARY</li>
 </ul>
 
 <p>CHAR can be used as an alias for STRING.
@@ -334,6 +335,22 @@ Transaction started.
 D>
 </pre>
 
+<p>Transaction commit:
+
+<pre>
+D> commit;
+Transaction committed.
+D>
+</pre>
+
+<p>Transaction rollback:
+
+<pre>
+D> rollback;
+Transaction rolled back.
+D>
+</pre>
+
 <h2>Tables</h2>
 
 <p>Creating a real persistent table:
@@ -435,7 +452,7 @@ D> end for;
 
 <p>PRINTLN takes one argument and prints it on standard output,
 followed by a newline. It is defined for all built-in scalar types
-and also for tuple and relation arguments.
+except BINARY and also for tuple and relation arguments.
 
 <p>Example:
 
@@ -445,9 +462,9 @@ TRUE
 no db> println(2 * 4);
 8
 no db> println(tuple {a 1, b 'bee'});
-TUPLE { A 1, B "bee" }
+TUPLE { A 1, B 'bee' }
 no db> println(relation {tuple {i 1, c 'foo'}, tuple {i 2, c 'bar'}});
-RELATION { TUPLE { I 1, C "foo" }, TUPLE { I 2, C "bar" }}
+RELATION { TUPLE { I 1, C 'foo' }, TUPLE { I 2, C 'bar' }}
 no db>
 </pre>
 
@@ -477,7 +494,7 @@ no db>
 
 <p>READLN is defined as follows:</p>
 
-<p>OPERATOR READLN(LINE STRING) UPDATES LINE;</p>
+<p>OPERATOR READLN(LINE STRING) UPDATES {LINE};</p>
 
 <p>READLN reads one line from standard input and stores it in LINE,
 without the trailing newline.</p>
@@ -535,7 +552,7 @@ It is also possible to generate errors from user code.
 
 <h3>RAISE</h3>
 
-<p>The RAISE generates an error. I can take any argument and will use it as an error value.
+<p>The RAISE statement generates an error. I can take any argument and will use it as an error value.
 
 <p>Example:
 
@@ -558,11 +575,36 @@ D>
 
 <p>If the error type has a MSG property, its value is printed together with the type.
 See the <a href="../api/html/builtin-types.html">built-in types</a>
-for a list of system-provided error tpyes.
+for a list of system-provided error types.
 
 <h3>TRY .. CATCH</h3>
 
+<p>TRY .. CATCH can be used to catch errors that may be raised during execution.
+A TRY block must be followed by one or more CATCH blocks.
 
+<p>The following code illustrates catching errors using TRY .. CATCH:
+
+<pre>
+try
+
+/* Perform operations that could throw errors */
+
+...
+
+catch err invalid_argument_error;
+
+/* Handle INVALID_ARGUMENT_ERROR */
+
+...
+
+catch err;
+
+/* Handle remaining errors */
+
+...
+
+end try;
+</pre>
 
 <hr>
 

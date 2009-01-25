@@ -16,11 +16,13 @@ source [file dirname [info script]]/setup.tcl
 test utype {user-defined types} -setup $SETUP -body {
     set dbenv [duro::env open [configure -tmpdir]/dbenv]
 
+    duro::env seterrfile $dbenv errors
+
     # Create Database
     duro::db create $dbenv TEST
     
     # Create type
-    
+
     set tx [duro::begin $dbenv TEST]
     
     #
@@ -50,8 +52,6 @@ test utype {user-defined types} -setup $SETUP -body {
     if {![string match "TYPE_CONSTRAINT_VIOLATION_ERROR(*)" $errcode]} {
         error "Wrong error: $errcode"
     }
-    
-    duro::table drop T1 $tx
     
     #
     # Define type PNAME. Only rep is (FIRSTNAME,LASTNAME)
@@ -154,8 +154,10 @@ test utype {user-defined types} -setup $SETUP -body {
         error "comparison operator not called"
     }
     
+    duro::table drop T1 $tx
+
     duro::commit $tx
-    
+
     # Close DB environment
     duro::env close $dbenv
     
@@ -200,7 +202,7 @@ test utype {user-defined types} -setup $SETUP -body {
     #
     # Test setter
     #
-    
+
     set is {INTLIST("1 3 4")}
     duro::call INTSET_set_INTLIST is INTSET {1 2 3} STRING $tx
     
@@ -208,7 +210,7 @@ test utype {user-defined types} -setup $SETUP -body {
     if {![string equal $is $sis]} {
         error "INTSET value should be $sis, but is $is"
     }
-    
+
     duro::commit $tx
     
     # Test setter
