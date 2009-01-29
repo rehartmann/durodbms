@@ -61,7 +61,7 @@ test ptarray {array from private table} -body {
 
 test ops {array operator} -setup $DBSETUP -body {
     exec $testdir/../../dli/durodt << {
-        connect('', 'dbenv');
+        connect('dbenv');
         current_db := 'D';
 
         begin transaction;

@@ -24,8 +24,8 @@ the prompt is "no db".
 
 <h2>Declaring variables</h2>
 
-<p>In Duro D/T, variables are typed, as required by TTM, RM prescriptions
-11, 12, and 13. They must be declared before they can be used.
+<p>In Duro D/T, variables are typed, as required by TTM.
+They must be declared before they can be used.
 
 <p>Example:
 
@@ -48,7 +48,7 @@ no db> var j integer init 2;
 no db>
 </pre>
 
-<p>If an initial value is given, the type can be omitted.
+<p>If an initial value is provided, the type can be omitted.
 So the above can also be written as follows:
 
 <pre>
@@ -291,16 +291,13 @@ no db>
 </pre>
 
 <p>The built-in update operator CONNECT can be used to connect
-to an existing database environment. CONNECT takes two arguments
-of type STRING. The second argument specifies the database environment.
-The first argument is currently ignored. In future versions it may be used
-to specify a network host. For compatibility with future versions, it is
-recommended to pass an empty string as the first argument.</p>
+to an existing database environment. CONNECT takes one argument
+of type STRING which specifies the database environment.</p>
 
 <p>Example:</p>
 
 <pre>
-no db>connect('', 'dbenv');
+no db>connect('dbenv');
 no db>
 </pre>
 

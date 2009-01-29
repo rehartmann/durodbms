@@ -403,7 +403,7 @@ connect_op(const char *name, int argc, RDB_object *argv[],
         RDB_bool updv[], const void *iargp, size_t iarglen,
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
-    int ret = RDB_open_env(RDB_obj_string(argv[1]), &envp);
+    int ret = RDB_open_env(RDB_obj_string(argv[0]), &envp);
     if (ret != RDB_OK) {
         _RDB_handle_errcode(ret, ecp, txp);
         envp = NULL;
@@ -562,7 +562,7 @@ Duro_init_exec(RDB_exec_context *ecp, const char *dbname)
     static RDB_type *print_bool_types[1];
     static RDB_type *readln_types[1];
     static RDB_type *exit_int_types[1];
-    static RDB_type *connect_types[2];
+    static RDB_type *connect_types[1];
     static RDB_type *create_db_types[1];
     static RDB_type *create_env_types[1];
     static RDB_type *system_types[2];
@@ -570,7 +570,7 @@ Duro_init_exec(RDB_exec_context *ecp, const char *dbname)
     static RDB_bool print_updv[] = { RDB_FALSE };
     static RDB_bool readln_updv[] = { RDB_TRUE };
     static RDB_bool exit_int_updv[] = { RDB_FALSE };
-    static RDB_bool connect_updv[] = { RDB_FALSE, RDB_FALSE };
+    static RDB_bool connect_updv[] = { RDB_FALSE };
     static RDB_bool create_db_updv[] = { RDB_FALSE };
     static RDB_bool create_env_updv[] = { RDB_FALSE };
     static RDB_bool system_updv[] = { RDB_FALSE, RDB_TRUE };
@@ -585,7 +585,6 @@ Duro_init_exec(RDB_exec_context *ecp, const char *dbname)
     readln_types[0] = &RDB_STRING;
     exit_int_types[0] = &RDB_INTEGER;
     connect_types[0] = &RDB_STRING;
-    connect_types[1] = &RDB_STRING;
     create_db_types[0] = &RDB_STRING;
     create_env_types[0] = &RDB_STRING;
     system_types[0] = &RDB_STRING;
@@ -634,7 +633,7 @@ Duro_init_exec(RDB_exec_context *ecp, const char *dbname)
         return RDB_ERROR;
     if (put_op(&opmap, "EXIT", 1, exit_int_types, &exit_int_op, exit_int_updv, ecp) != RDB_OK)
         return RDB_ERROR;
-    if (put_op(&opmap, "CONNECT", 2, connect_types, &connect_op, connect_updv, ecp) != RDB_OK)
+    if (put_op(&opmap, "CONNECT", 1, connect_types, &connect_op, connect_updv, ecp) != RDB_OK)
         return RDB_ERROR;
     if (put_op(&opmap, "CREATE_DB", 1, create_db_types, &create_db_op, create_db_updv, ecp)
             != RDB_OK)

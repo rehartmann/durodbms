@@ -31,7 +31,7 @@ FALSE
 
 test deftype {user-defined types} -setup $DBSETUP -body {
     exec $testdir/../../dli/durodt << {
-        connect('', 'dbenv');
+        connect('dbenv');
         current_db := 'D';
         begin transaction;
         type t

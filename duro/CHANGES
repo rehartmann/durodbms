@@ -10,6 +10,8 @@ Changes for Duro 0.14
 
 - Added exception handling to Duro D/T.
 
+- Dropped first argument of CONNECT.
+
 - The return type is now explicitly passed to funtions which implement
   read-only operators.
 
