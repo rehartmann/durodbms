@@ -447,6 +447,10 @@ RAISE {
     return TOK_RAISE;
 }
 
+IMPLEMENT {
+    return TOK_IMPLEMENT;
+}
+
 \|\| {
     return TOK_CONCAT;
 }

@@ -1169,7 +1169,7 @@ RDB_OK on success, RDB_ERROR if an error occurred.
 <dl>
 <dt>RDB_NO_RUNNING_TX_ERROR
 <dd><var>txp</var> does not point to a running transaction.
-<dt>RDB_ELEMENT_EXIST_ERROR
+<dt>RDB_ELEMENT_EXISTS_ERROR
 <dd>There is already a type with name <var>name</var>.
 </dl>
 
@@ -1321,8 +1321,10 @@ must be provided by the caller.
 
 If <var>arep</var> is NULL and <var>areplen</var> is -1,
 the getter and setter operators and the selector operator are provided by Duro.
-In this case, the type must have exactly one possible representation,
-and this representation becomes the physical representation.
+In this case, the type must have exactly one possible representation.
+If this representation has exactly one property, the type of this representation will become
+the physical representation. Otherwise the type will be represented by a tuple type with
+one attribute for each property.
 
 For user-provided setters, getters, and selectors,
 the following conventions apply:

@@ -37,9 +37,23 @@ test deftype {user-defined types} -setup $DBSETUP -body {
         type t
             possrep { a integer, b integer };
 
+        implement type t;
+
+        var v t;
+        println(the_a(v));
+        println(the_b(v));
+        
+        v := t(1, 2);
+        println(the_a(v));
+        println(the_b(v));
+
         drop type t;
         commit;
     }
+} -result {0
+0
+1
+2
 }
 
 test defroop {read-only user-defined operators} -setup $DBSETUP -body {

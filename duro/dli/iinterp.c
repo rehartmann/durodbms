@@ -14,6 +14,7 @@
 #include <gen/hashmapit.h>
 #include <rel/rdb.h>
 #include <rel/internal.h>
+#include <rel/typeimpl.h>
 
 #include <sys/stat.h>
 #include <errno.h>
@@ -1826,7 +1827,7 @@ exec_typedef(const RDB_parse_statement *stmtp, RDB_exec_context *ecp)
     }
 
     repc = 0;
-    prep = stmtp->var.deftype.replistp;
+    prep = stmtp->var._typedef.replistp;
     while (prep != NULL) {
         repc++;
         prep = prep->nextp;
@@ -1837,7 +1838,7 @@ exec_typedef(const RDB_parse_statement *stmtp, RDB_exec_context *ecp)
         return RDB_ERROR;
 
     i = 0;
-    prep = stmtp->var.deftype.replistp;
+    prep = stmtp->var._typedef.replistp;
     while (prep != NULL) {
         if (parserep_to_rep(prep, &repv[i], ecp, &txnp->tx) != RDB_OK)
             goto error;
@@ -1845,8 +1846,8 @@ exec_typedef(const RDB_parse_statement *stmtp, RDB_exec_context *ecp)
         i++;
     }
     
-    if (RDB_define_type(RDB_obj_string(&stmtp->var.deftype.typename),
-            repc, repv, stmtp->var.deftype.constraintp, ecp, &txnp->tx) != RDB_OK)
+    if (RDB_define_type(RDB_obj_string(&stmtp->var._typedef.typename),
+            repc, repv, stmtp->var._typedef.constraintp, ecp, &txnp->tx) != RDB_OK)
         goto error;
 
     for (i = 0; i < repc; i++) {
@@ -2451,6 +2452,23 @@ error:
 }
 
 static int
+exec_typeimpl(RDB_parse_statement *stmtp, RDB_exec_context *ecp)
+{
+    if (txnp == NULL) {
+        RDB_raise_no_running_tx(ecp);
+        return RDB_ERROR;
+    }
+
+    if (stmtp->var.typeimpl.areptype.exp != NULL) {
+        if (eval_parse_type(&stmtp->var.typeimpl.areptype, ecp, &txnp->tx) != RDB_OK)
+            return RDB_ERROR;
+    }
+
+    return RDB_implement_type(RDB_obj_string(&stmtp->var.typeimpl.typename),
+            stmtp->var.typeimpl.areptype.typ, (RDB_int) -1, ecp, &txnp->tx);
+}
+
+static int
 Duro_exec_stmt(RDB_parse_statement *stmtp, RDB_exec_context *ecp,
         return_info *retinfop)
 {
@@ -2528,6 +2546,9 @@ Duro_exec_stmt(RDB_parse_statement *stmtp, RDB_exec_context *ecp,
             break;
         case RDB_STMT_TRY:
             ret = exec_try(stmtp, ecp, retinfop);
+            break;
+        case RDB_STMT_TYPE_IMPL:
+            ret = exec_typeimpl(stmtp, ecp);
             break;
     }
     if (ret == RDB_ERROR) {

@@ -58,12 +58,12 @@ new_deftype(const char *name, RDB_parse_possrep *possreplistp,
     }
 
     stmtp->kind = RDB_STMT_TYPE_DEF;
-    stmtp->var.deftype.replistp = possreplistp;
-    RDB_init_obj(&stmtp->var.deftype.typename);
-  	if (RDB_string_to_obj(&stmtp->var.deftype.typename, name,
+    stmtp->var._typedef.replistp = possreplistp;
+    RDB_init_obj(&stmtp->var._typedef.typename);
+  	if (RDB_string_to_obj(&stmtp->var._typedef.typename, name,
   	        _RDB_parse_ecp) != RDB_OK)
   	    return NULL;
-  	stmtp->var.deftype.constraintp = constrp;
+  	stmtp->var._typedef.constraintp = constrp;
     return stmtp;
 }
 
@@ -437,6 +437,7 @@ resolve_with(RDB_expression **expp, RDB_expression *texp)
 %token TOK_RAISE "RAISE"
 %token TOK_TRY "TRY"
 %token TOK_CATCH "CATCH"
+%token TOK_IMPLEMENT "IMPLEMENT"
 %token TOK_INVALID "invalid"
 
 %type <exp> expression literal ro_op_invocation count_invocation
@@ -1052,6 +1053,20 @@ statement_body: /* empty */ {
         }
         $$->kind = RDB_STMT_RAISE;
         $$->var.retexp = $2;
+        $$->lineno = yylineno;
+    }
+    | TOK_IMPLEMENT TOK_TYPE TOK_ID {
+        $$ = RDB_alloc(sizeof(RDB_parse_statement), _RDB_parse_ecp);
+        if ($$ == NULL) {
+            YYERROR;
+        }
+        $$->kind = RDB_STMT_TYPE_IMPL;
+        RDB_init_obj(&$$->var.typeimpl.typename);
+    	if (RDB_string_to_obj(&$$->var.typeimpl.typename,
+    	        $3->var.varname, _RDB_parse_ecp) != RDB_OK)
+    	    YYERROR;
+        $$->var.typeimpl.areptype.exp = NULL;
+        $$->var.typeimpl.areptype.typ = NULL;
         $$->lineno = yylineno;
     }
 

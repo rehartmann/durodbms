@@ -537,8 +537,33 @@ commit;
 </pre>
 
 <p>Before the type can be used, it must first be implemented.
-This is currently not possible with Duro D/T.
-The Durotcl command <a href="../tcl/type.html">duro::type</a> can be used for this.
+This can be done using IMPLEMENT TYPE:</p>
+
+<pre>
+begin tx;
+implement type len;
+commit;
+</pre>
+
+<p>This currently works only for types with exactly one possible representation.
+Full type implementation functionality is available through the
+<a href="../api/html/group__typeimpl.html">C interface</a>
+or the Tcl interface
+(<a href="../tcl/type.html">duro::type</a>).
+
+<p>After a type has been defined, it can be used to declare and assign variables, like so:
+
+<pre>
+D> begin tx;
+Transaction started.
+D> var l len;
+D> l := len(1.0);
+1 element affected.
+D>
+</pre>
+
+<p>(A running transaction is required for accessing the catalog, where information
+about user-defined types is stored.)
 
 <h2>Exception handling</h2>
 
