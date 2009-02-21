@@ -19,7 +19,9 @@ Changes for Duro 0.14
 
 - If a type is not found, NAME_ERROR is raised instead of NOT_FOUND_ERROR.
 
-- Added limited type implementation functionality to Duro D/T .
+- Added limited type implementation functionality to Duro D/T.
+
+- Added operator GETENV.
 
 Changes for Duro 0.13
 

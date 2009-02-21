@@ -236,4 +236,13 @@ test trycatch {TRY .. CATCH} -setup $DBSETUP -body {
 } -result {caught
 }
 
+test getenv {GETENV operator} -body {
+    set ::env(TEST) DUROTEST
+
+    exec $testdir/../../dli/durodt -e dbenv << {
+        println(getenv('TEST'));
+    }
+} -result {DUROTEST
+}
+
 cleanupTests

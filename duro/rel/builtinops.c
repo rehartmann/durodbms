@@ -9,6 +9,7 @@
 #include "internal.h"
 #include <regex.h>
 #include <string.h>
+#include <stdlib.h>
 
 RDB_op_map _RDB_builtin_ro_op_map;
 
@@ -339,6 +340,20 @@ Converts the operand to a string.
 <h4>Return value</h4>
 
 The operand, converted to STRING.
+
+<hr>
+
+<h3 id="op_length">OPERATOR GETENV</h3>
+
+OPERATOR GETENV (NAME STRING) RETURNS STRING;
+
+<h4>Description</h4>
+
+Reads the environment variable <var>NAME</var>.
+
+<h4>Return value</h4>
+
+The value of the environment variable <var>NAME</var>.
 
 <hr>
 
@@ -1394,6 +1409,21 @@ length_array(const char *name, int argc, RDB_object *argv[], RDB_type *typ,
 }
 
 static int
+op_getenv(const char *name, int argc, RDB_object *argv[], RDB_type *typ,
+        const void *iargp, size_t iarglen, RDB_exec_context *ecp,
+        RDB_transaction *txp, RDB_object *retvalp)
+{
+    char *valp = getenv(RDB_obj_string(argv[0]));
+
+    /* If the environment variable does not exist, raise RESOURCE_NOT_FOUND */
+    if (valp == NULL) {
+        RDB_raise_resource_not_found(RDB_obj_string(argv[0]), ecp);
+        return RDB_ERROR;
+    }
+    return RDB_string_to_obj(retvalp, valp, ecp);
+}
+
+static int
 put_builtin_ro_op(const char *name, int argc, RDB_type **argtv, RDB_type *rtyp,
         RDB_ro_op_func *fp, RDB_exec_context *ecp)
 {
@@ -1854,6 +1884,12 @@ _RDB_init_builtin_ops(RDB_exec_context *ecp)
             != RDB_OK) {
         return RDB_ERROR;
     }
+
+    argtv[0] = &RDB_STRING;
+
+    ret = put_builtin_ro_op("GETENV", 1, argtv, &RDB_STRING, &op_getenv, ecp);
+    if (ret != RDB_OK)
+        return ret;
 
     return RDB_OK;
 }
