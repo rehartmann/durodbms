@@ -183,21 +183,29 @@ find_del_table(RDB_database *dbp)
     return tbp;
 }
 
+/*
+ * Close all user tables
+ */
+int
+_RDB_close_user_tables(RDB_database *dbp, RDB_exec_context *ecp)
+{
+    RDB_object *tbp;
+    
+    while ((tbp = find_del_table(dbp)) != NULL) {
+        if (close_table(tbp, dbp->dbrootp->envp, ecp) != RDB_OK)
+            return RDB_ERROR;
+    }
+    return RDB_OK;
+}    
+
 static int
 release_db(RDB_database *dbp, RDB_exec_context *ecp)
 {
     int ret;
-    RDB_object *tbp;
 
-    /*
-     * Close all user tables
-     */
-    
-    while ((tbp = find_del_table(dbp)) != NULL) {
-        ret = close_table(tbp, dbp->dbrootp->envp, ecp);
-        if (ret != RDB_OK)
-            return RDB_ERROR;
-    }
+    ret = _RDB_close_user_tables(dbp, ecp);
+    if (ret != RDB_OK)
+        return RDB_ERROR;
 
     ret = rm_db(dbp, ecp);
     if (ret != RDB_OK)
@@ -414,6 +422,7 @@ create_dbroot(RDB_environment *envp, RDB_bool newdb,
         goto error;
     }
 
+    sdb.name = NULL;
     tx.dbp = &sdb;
     sdb.dbrootp = dbrootp;
     ret = _RDB_open_systables(dbrootp, ecp, &tx);
@@ -589,6 +598,7 @@ RDB_get_db_from_env(const char *name, RDB_environment *envp,
      * Not found, read database from catalog
      */
 
+    tx.dbp = NULL;
     ret = _RDB_begin_tx(ecp, &tx, envp, NULL);
     if (ret != RDB_OK) {
         goto error;

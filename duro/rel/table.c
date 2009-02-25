@@ -1638,10 +1638,7 @@ RDB_drop_table_index(const char *name, RDB_exec_context *ecp,
     xi = i;
 
     /* Destroy index */
-    /*
     ret = _RDB_del_index(txp, tbp->var.tb.stp->indexv[i].idxp, ecp);
-    */
-    ret = RDB_delete_index(tbp->var.tb.stp->indexv[i].idxp, RDB_tx_env(txp), txp->txid);
     if (ret != RDB_OK)
         return ret;
 

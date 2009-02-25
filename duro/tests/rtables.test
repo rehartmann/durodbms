@@ -353,7 +353,7 @@ test rtables {real tables} -setup $SETUP -body {
     duro::env close $dbenv
 }
 
-test droptables {create and drop tables} -setup $SETUP -constraints { drop_table_fixed } -body {
+test droptables {create and drop tables} -setup $SETUP -body {
     set dbenv [duro::env open [configure -tmpdir]/dbenv]
 
     # Create Database

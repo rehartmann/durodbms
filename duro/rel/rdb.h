@@ -262,6 +262,8 @@ typedef struct RDB_transaction {
     DB_TXN *txid;
     void *user_data;
     struct RDB_transaction *parentp;
+    struct RDB_rmlink *delrmp;
+    struct RDB_ixlink *delixp;
 } RDB_transaction;
 
 typedef RDB_object *RDB_getobjfn(const char *, void *);

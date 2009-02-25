@@ -495,4 +495,10 @@ _RDB_check_constraints(const RDB_constraint *, RDB_exec_context *,
 void
 _RDB_handle_errcode(int errcode, RDB_exec_context *, RDB_transaction *);
 
+int
+_RDB_del_recmap(RDB_transaction *, RDB_recmap *, RDB_exec_context *);
+
+int
+_RDB_del_index(RDB_transaction *, RDB_index *, RDB_exec_context *);
+
 #endif

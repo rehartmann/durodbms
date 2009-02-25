@@ -553,6 +553,8 @@ _RDB_create_stored_table(RDB_object *tbp, RDB_environment *envp,
             txp != NULL ? txp->txid : NULL,
             &tbp->var.tb.stp->recmapp);
     if (ret != RDB_OK) {
+        tbp->var.tb.stp->recmapp = NULL;
+        _RDB_handle_errcode(ret, ecp, txp);
         goto error;
     }
 
@@ -730,16 +732,20 @@ _RDB_delete_stored_table(RDB_stored_table *stp, RDB_exec_context *ecp,
     /* Schedule secondary indexes for deletion */
     for (i = 0; i < stp->indexc; i++) {
         if (stp->indexv[i].idxp != NULL) {
-            ret = RDB_delete_index(stp->indexv[i].idxp,
-                    RDB_tx_env(txp), txp->txid);
+            ret = _RDB_del_index(txp, stp->indexv[i].idxp, ecp);
             if (ret != RDB_OK)
                 return ret;
         }
     }
 
     if (txp != NULL) {
-        /* Schedule recmap for deletion */
-        ret = RDB_delete_recmap(stp->recmapp, txp->txid);
+        /*
+         * Schedule recmap for deletion.
+         * The recmap cannot be deleted immediately, because
+         * this means closing the DB handle, which must not be closed
+         * before transaction commit.
+         */
+        ret = _RDB_del_recmap(txp, stp->recmapp, ecp);
     } else {
         ret = RDB_delete_recmap(stp->recmapp, NULL);
         if (ret != RDB_OK) {

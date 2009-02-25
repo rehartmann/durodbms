@@ -184,9 +184,11 @@ RDB_create_recmap(const char *name, const char *filename,
         }
     }
 
-    /* Create BDB database */
-    if ((ret = (*rmpp)->dbp->open((*rmpp)->dbp, txid, filename, name,
-            RDB_ORDERED & flags ? DB_BTREE : DB_HASH, DB_CREATE, 0664)) != 0) {
+    /* Create BDB database under transaction control */
+    ret = (*rmpp)->dbp->open((*rmpp)->dbp, txid, filename, name,
+            RDB_ORDERED & flags ? DB_BTREE : DB_HASH,
+            DB_CREATE, 0664);
+    if (ret != 0) {
         goto error;
     }
 
@@ -214,8 +216,9 @@ RDB_open_recmap(const char *name, const char *filename,
         }
     }
 
-    ret = (*rmpp)->dbp->open((*rmpp)->dbp, 0, filename, name, DB_UNKNOWN,
-            DB_AUTO_COMMIT, 0664);
+    /* Open database */
+    ret = (*rmpp)->dbp->open((*rmpp)->dbp, txid, filename, name, DB_UNKNOWN,
+            0, 0664);
     if (ret != 0) {
         goto error;
     }
