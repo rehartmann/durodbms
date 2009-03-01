@@ -69,6 +69,14 @@ no db> var k same_type_as(i);
 no db>
 </pre>
 
+<p>Variables can be explicity destroyed. This is usally not necessary for transient variables,
+but is supported for all user-declared variables:
+
+<pre>
+no db> drop var i;
+no db>
+</pre>
+
 <h2>Assignment</h2>
 
 <p>Once a variable has been declared, a value can be assigned
@@ -153,34 +161,39 @@ comment.
 <p>Example:</p>
 
 <pre>
-println('Please enter a number:');
-var s string;
-readln(s);
-var n init integer(s);
-if n < 0 then
-    println('Negative');
-else
-    println('Positive');
-end if
+no db> var s string;
+no db> println('Please enter a number:'); readln(s);
+Please enter a number:
+2
+no db> var n init integer(s);
+no db> if n < 0 then
+no db>     println('Negative');
+no db> else
+no db>     println('Positive');
+no db> end if;
+Positive
+no db>
 </pre>
 
 <p>In Duro D/T, BEGIN .. END is not required since there can be several statements after THEN.
 But the following form, which more strictly adheres to TTM, is supported too:</P>
 
 <pre>
-println('Please enter a number:');
-var s string;
-readln(s);
-var n init integer(s);
-if n < 0 then
-    begin;
-        println('Negative');
-    end
-else
-    begin;
-        println('Positive');
-    end
-end if
+no db> var s string;
+no db> println('Please enter a number:'); readln(s);Please enter a number:
+-2
+no db> var n init integer(s);
+no db> if n < 0 then
+no db>     begin;
+no db>         println('Negative');
+no db>     end;
+no db> else
+no db>     begin;
+no db>         println('Positive');
+no db>     end;
+no db> end if;
+Negative
+no db>
 </pre>
 
 <h3>FOR</h3>
@@ -214,7 +227,25 @@ end while;
 
 <h3>CASE</h3>
 
-<p>This statement is not supported yet.
+<p>Example:
+
+<pre>
+no db> var s string;
+no db> println('Please enter a number:'); readln(s);
+Please enter a number:
+0
+no db> var n init integer(s);
+no db> case
+no db>     when n > 0 then
+no db>         println('Positive');
+no db>     when n < 0 then
+no db>         println('Negative');
+no db>     else
+no db>         println('Zero');
+no db> end case;
+Zero
+no db>
+</pre>
 
 <h2>Tuples</h2>
 

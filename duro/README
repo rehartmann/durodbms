@@ -7,7 +7,7 @@ management system.
 
 The following software is required for compiling and running Duro:
 
-- Berkeley DB Transactional Data Store, release 4.6
+- Berkeley DB Transactional Data Store, release 4.6 or later
 - POSIX.2 regular expressions
 - GNU Libtool
 - Tcl 8.1 or later
