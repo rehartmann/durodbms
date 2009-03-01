@@ -587,8 +587,14 @@ error:
 
     RDB_destroy_hashtable(&tbp->var.tb.stp->attrmap);
 
-    if (tbp->var.tb.stp->recmapp != NULL) {
-        RDB_delete_recmap(tbp->var.tb.stp->recmapp, txp != NULL ? txp->txid : NULL);
+    if (tbp->var.tb.stp->recmapp != NULL && txp == NULL) {
+        /*
+         * Delete recmap if there is no transaction, otherwise this must happen
+         * through the rollback
+         * (If the transaction has been created under the control of a transaction,
+         * the transaction must have been committed before the DB handle can be destroyed)
+         */
+        RDB_delete_recmap(tbp->var.tb.stp->recmapp, NULL);
     }
     RDB_free(tbp->var.tb.stp);
     tbp->var.tb.stp = NULL;
