@@ -2321,7 +2321,7 @@ static int
 exec_try(const RDB_parse_statement *stmtp, RDB_exec_context *ecp, return_info *retinfop)
 {
     int ret;
-    RDB_parse_catch *catchp = stmtp->var._try.catchp;
+    RDB_parse_catch *catchp = stmtp->var.trycatch.catchp;
 
     /* Evaluate all types in the catch clauses */
     while (catchp != NULL) {
@@ -2338,7 +2338,7 @@ exec_try(const RDB_parse_statement *stmtp, RDB_exec_context *ecp, return_info *r
      */
     if (add_varmap(ecp) != RDB_OK)
         return RDB_ERROR;
-    ret = exec_stmtlist(stmtp->var._try.bodyp, ecp, retinfop);
+    ret = exec_stmtlist(stmtp->var.trycatch.bodyp, ecp, retinfop);
     remove_varmap();
 
     if (ret == RDB_ERROR) {
@@ -2349,7 +2349,7 @@ exec_try(const RDB_parse_statement *stmtp, RDB_exec_context *ecp, return_info *r
         RDB_type *errtyp = RDB_obj_type(errp);
 
         if (errtyp != NULL) {
-            catchp = stmtp->var._try.catchp;
+            catchp = stmtp->var.trycatch.catchp;
 
             while (catchp != NULL) {
                 if (catchp->type.typ != NULL) {

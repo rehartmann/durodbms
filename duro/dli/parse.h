@@ -159,7 +159,7 @@ typedef struct RDB_parse_statement {
         struct {
             struct RDB_parse_statement *bodyp;
             RDB_parse_catch *catchp;
-        } _try;
+        } trycatch;
         struct {
             RDB_object typename;
             RDB_parse_type areptype;

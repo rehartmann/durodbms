@@ -651,8 +651,8 @@ statement: statement_body ';'
         if ($$ == NULL)
             YYERROR;
         $$->kind = RDB_STMT_TRY;
-        $$->var._try.bodyp = $2.firstp;
-        $$->var._try.catchp = $3.firstp;
+        $$->var.trycatch.bodyp = $2.firstp;
+        $$->var.trycatch.catchp = $3.firstp;
     }
 
 case_opt_semi: TOK_CASE ';'

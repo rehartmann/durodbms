@@ -375,12 +375,12 @@ serialize_try(RDB_object *objp, int *posp, const RDB_parse_statement *stmtp,
     RDB_int catchc;
     RDB_parse_catch *catchp;
 
-    if (serialize_stmt_list(objp, posp, stmtp->var._try.bodyp, ecp) != RDB_OK) {
+    if (serialize_stmt_list(objp, posp, stmtp->var.trycatch.bodyp, ecp) != RDB_OK) {
         return RDB_ERROR;
     }
 
     catchc = 0;
-    catchp = stmtp->var._try.catchp;
+    catchp = stmtp->var.trycatch.catchp;
     while (catchp != NULL) {
         catchp = catchp->nextp;
         catchc++;
@@ -389,7 +389,7 @@ serialize_try(RDB_object *objp, int *posp, const RDB_parse_statement *stmtp,
     if (_RDB_serialize_int(objp, posp, catchc, ecp) != RDB_OK)
         return RDB_ERROR;
 
-    catchp = stmtp->var._try.catchp;
+    catchp = stmtp->var.trycatch.catchp;
     while (catchp != NULL) {
         if (serialize_catch(objp, posp, ecp, catchp) != RDB_OK)
             return RDB_ERROR;
@@ -1272,10 +1272,10 @@ deserialize_try(RDB_object *objp, int *posp, RDB_exec_context *ecp,
     RDB_parse_catch *catchp, *lastcatchp;
     int i;
 
-    stmtp->var._try.bodyp = NULL;
-    stmtp->var._try.catchp = NULL;
+    stmtp->var.trycatch.bodyp = NULL;
+    stmtp->var.trycatch.catchp = NULL;
 
-    if (deserialize_stmt_list(objp, posp, ecp, txp, &stmtp->var._try.bodyp) != RDB_OK)
+    if (deserialize_stmt_list(objp, posp, ecp, txp, &stmtp->var.trycatch.bodyp) != RDB_OK)
         return RDB_ERROR;
 
     if (_RDB_deserialize_int(objp, posp, ecp, &catchc) != RDB_OK) {
@@ -1286,10 +1286,10 @@ deserialize_try(RDB_object *objp, int *posp, RDB_exec_context *ecp,
         return RDB_ERROR;
     }
 
-    stmtp->var._try.catchp = deserialize_catch(objp, posp, ecp, txp);
-    if (stmtp->var._try.catchp == NULL)
+    stmtp->var.trycatch.catchp = deserialize_catch(objp, posp, ecp, txp);
+    if (stmtp->var.trycatch.catchp == NULL)
         return RDB_ERROR;
-    lastcatchp = stmtp->var._try.catchp;
+    lastcatchp = stmtp->var.trycatch.catchp;
 
     for (i = 1; i < catchc; i++) {
         catchp = deserialize_catch(objp, posp, ecp, txp);

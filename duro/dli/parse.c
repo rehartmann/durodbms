@@ -230,14 +230,14 @@ RDB_parse_del_stmt(RDB_parse_statement *stmtp, RDB_exec_context *ecp)
             break;
         case RDB_STMT_TRY:
             {
-                RDB_parse_catch *catchp = stmtp->var._try.catchp;
+                RDB_parse_catch *catchp = stmtp->var.trycatch.catchp;
                 RDB_parse_catch *nextcatchp;
                 while (catchp != NULL) {
                     nextcatchp = catchp->nextp;
                     RDB_parse_del_catch(catchp, ecp);
                     catchp = nextcatchp;
                 }
-                ret = RDB_parse_del_stmtlist(stmtp->var._try.bodyp, ecp);
+                ret = RDB_parse_del_stmtlist(stmtp->var.trycatch.bodyp, ecp);
             }
             break;
         case RDB_STMT_TYPE_IMPL:
