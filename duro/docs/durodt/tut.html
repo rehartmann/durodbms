@@ -39,9 +39,7 @@ insensitive, so there is no diffence between "var i integer;"
 and "VAR I INTEGER;". This tutorial shows example code in lowercase,
 since this is more convenient to type.
 
-<p>When declaring a variable, an initial value can be specified.
-
-<p>Example:
+<p>When declaring a variable, an initial value can be specified:
 
 <pre>
 no db> var j integer init 2;
@@ -157,8 +155,6 @@ comment.
 <h2>Control statements</h2>
 
 <h3>IF</h3>
-
-<p>Example:</p>
 
 <pre>
 no db> var s string;
@@ -312,9 +308,7 @@ no db>
 <p>Database environments are the places where databases and tables are physically stored.
 Therefore a database environment must exist before a database can be created.
 In Duro D/T, a database environment can be created using the built-in
-update operator CREATE_ENV().</p>
-
-<p>Example:</p>
+update operator CREATE_ENV():</p>
 
 <pre>
 no db>create_env('dbenv');
@@ -323,9 +317,7 @@ no db>
 
 <p>The built-in update operator CONNECT can be used to connect
 to an existing database environment. CONNECT takes one argument
-of type STRING which specifies the database environment.</p>
-
-<p>Example:</p>
+of type STRING which specifies the database environment:</p>
 
 <pre>
 no db>connect('dbenv');
@@ -353,9 +345,7 @@ D>
 <p>After CURRENT_DB has been set, the prompt shows the name
 of the database selected and a transaction can be started
 using BEGIN TRANSACTION. Instead of BEGIN TRANSACTION, BEGIN TX
-can be used.</p>
-
-<p>Example:</p>
+can be used:</p>
 
 <pre>
 D> begin tx;
@@ -397,7 +387,7 @@ Local table P created.
 D>
 </pre>
 
-<p>Creating a virtual table:<p>
+<p>Creating a virtual table:
 
 <pre>
 D> var v virtual r {no};
@@ -480,9 +470,7 @@ D> end for;
 
 <p>PRINTLN takes one argument and prints it on standard output,
 followed by a newline. It is defined for all built-in scalar types
-except BINARY and also for tuple and relation arguments.
-
-<p>Example:
+except BINARY and also for tuple and relation arguments:
 
 <pre>
 no db> println(true);
@@ -508,9 +496,7 @@ no db>
 <h3>PRINT</h3>
 
 <p>PRINT works like PRINTLN, except that its output is not
-followed by a newline.
-
-<p>Example:
+followed by a newline:
 
 <pre>
 no db> print('2 + 2 = '); println(2 + 2);
@@ -605,9 +591,8 @@ It is also possible to generate errors from user code.
 
 <h3>RAISE</h3>
 
-<p>The RAISE statement generates an error. I can take any argument and will use it as an error value.
-
-<p>Example:
+<p>The RAISE statement generates an error. I can take any argument and will use it as an error
+value:
 
 <pre>
 D> raise 2;
