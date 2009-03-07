@@ -1351,8 +1351,8 @@ A user-defined comparison operator CMP returning an INTEGER may be supplied.
 CMP must have two arguments, both of the user-defined type
 for which the comparison is to be defined.
 
-CMP must return -1, 0, or 1 if the first argument is lower than
-equal to, or greater than the secons argument, respectively.
+CMP must return -1, 0, or 1 if the first argument is lower than,
+equal to, or greater than the second argument, respectively.
 
 If CMP has been defined, it will be called by the built-in comparison
 operators =, <>, <= etc. 

@@ -12,7 +12,7 @@ Changes for Duro 0.14
 
 - Dropped first argument of CONNECT.
 
-- The return type is now explicitly passed to funtions which implement
+- The return type is now explicitly passed to functions which implement
   read-only operators.
 
 - Single quotes are now used in data output in Tutorial D form.

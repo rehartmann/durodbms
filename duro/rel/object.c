@@ -352,7 +352,7 @@ the variable specified by <var>valp</var>.
 If lenp is not NULL, the size of the internal representation
 is stored at the location pointed to by <var>lenp</var>.
 
-RDB_obj_irep only works types with a binary internal representation.
+RDB_obj_irep only works for types with a binary internal representation.
 These are built-in types and user-defined types
 which use a built-in type or a byte array as physical representation.
 
