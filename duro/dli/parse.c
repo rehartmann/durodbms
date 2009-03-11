@@ -167,12 +167,16 @@ RDB_parse_del_stmt(RDB_parse_statement *stmtp, RDB_exec_context *ecp)
                 ret = RDB_parse_del_stmtlist(stmtp->var.ifthen.elsep, ecp);
             break;
         case RDB_STMT_FOR:
+            if (stmtp->var.forloop.namexp != NULL)
+                RDB_drop_expr(stmtp->var.forloop.namexp, ecp);
             RDB_drop_expr(stmtp->var.forloop.varexp, ecp);
             RDB_drop_expr(stmtp->var.forloop.fromp, ecp);
             RDB_drop_expr(stmtp->var.forloop.top, ecp);
             ret = RDB_parse_del_stmtlist(stmtp->var.forloop.bodyp, ecp);
             break;
         case RDB_STMT_WHILE:
+            if (stmtp->var.whileloop.namexp != NULL)
+                RDB_drop_expr(stmtp->var.whileloop.namexp, ecp);
             RDB_drop_expr(stmtp->var.whileloop.condp, ecp);
             ret = RDB_parse_del_stmtlist(stmtp->var.whileloop.bodyp, ecp);
             break;
@@ -243,6 +247,9 @@ RDB_parse_del_stmt(RDB_parse_statement *stmtp, RDB_exec_context *ecp)
         case RDB_STMT_TYPE_IMPL:
             RDB_destroy_obj(&stmtp->var.typeimpl.typename, ecp);
             ret = destroy_parse_type(&stmtp->var.typeimpl.areptype, ecp);
+            break;
+        case RDB_STMT_LEAVE:
+            ret = RDB_destroy_obj(&stmtp->var.leave.targetname, ecp);
             break;
     }
     RDB_free(stmtp);

@@ -265,6 +265,10 @@ WHILE {
     return TOK_WHILE;
 }
 
+LEAVE {
+    return TOK_LEAVE;
+}
+
 TRUE {
     yylval = RDB_bool_to_expr(RDB_TRUE, _RDB_parse_ecp);
     return TOK_LIT_BOOLEAN;

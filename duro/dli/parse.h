@@ -35,7 +35,8 @@ typedef enum {
     RDB_STMT_CONSTRAINT_DROP,
     RDB_STMT_RAISE,
     RDB_STMT_TRY,
-    RDB_STMT_TYPE_IMPL
+    RDB_STMT_TYPE_IMPL,
+    RDB_STMT_LEAVE
 } RDB_parse_stmt_kind;
 
 typedef struct RDB_parse_assign {
@@ -121,12 +122,14 @@ typedef struct RDB_parse_statement {
             struct RDB_parse_statement *elsep;
         } ifthen;
         struct {
+            RDB_expression *namexp;
             RDB_expression *varexp;
             RDB_expression *fromp;
             RDB_expression *top;
             struct RDB_parse_statement *bodyp;
         } forloop;
         struct {
+            RDB_expression *namexp;
             RDB_expression *condp;
             struct RDB_parse_statement *bodyp;
         } whileloop;
@@ -164,6 +167,9 @@ typedef struct RDB_parse_statement {
             RDB_object typename;
             RDB_parse_type areptype;
         } typeimpl;
+        struct {
+            RDB_object targetname;
+        } leave;
     } var;
     RDB_int lineno;
     struct RDB_parse_statement *nextp;

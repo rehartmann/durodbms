@@ -54,6 +54,8 @@ static RDB_environment *envp = NULL;
 
 static tx_node *txnp = NULL;
 
+static char *leave_targetname;
+
 static RDB_hashmap ro_op_cache;
 
 static int
@@ -1376,6 +1378,7 @@ static int
 exec_while(const RDB_parse_statement *stmtp, RDB_exec_context *ecp,
         return_info *retinfop)
 {
+    int ret;
     RDB_bool b;
 
     for(;;) {
@@ -1386,9 +1389,21 @@ exec_while(const RDB_parse_statement *stmtp, RDB_exec_context *ecp,
             return RDB_OK;
         if (add_varmap(ecp) != RDB_OK)
             return RDB_ERROR;
-        if (exec_stmtlist(stmtp->var.whileloop.bodyp, ecp, retinfop) != RDB_OK) {
+        ret = exec_stmtlist(stmtp->var.whileloop.bodyp, ecp, retinfop);
+        if (ret != RDB_OK) {
+            if (ret == DURO_LEAVE) {
+                /*
+                 * If the statement name matches the LEAVE target,
+                 * exit loop with RDB_OK
+                 */
+                RDB_expression *namexp = stmtp->var.whileloop.namexp;
+                if (namexp != NULL
+                        && strcmp(namexp->var.varname, leave_targetname) == 0) {
+                    ret = RDB_OK;
+                }
+            }
             remove_varmap();
-            return RDB_ERROR;
+            return ret;
         }
         remove_varmap();
         if (interrupted) {
@@ -1403,6 +1418,7 @@ static int
 exec_for(const RDB_parse_statement *stmtp, RDB_exec_context *ecp,
         return_info *retinfop)
 {
+    int ret;
     RDB_object *varp;
     RDB_object endval;
 
@@ -1438,10 +1454,22 @@ exec_for(const RDB_parse_statement *stmtp, RDB_exec_context *ecp,
     for(;;) {
         if (add_varmap(ecp) != RDB_OK)
             return RDB_ERROR;
-        if (exec_stmtlist(stmtp->var.forloop.bodyp, ecp, retinfop) != RDB_OK) {
+        ret = exec_stmtlist(stmtp->var.forloop.bodyp, ecp, retinfop);
+        if (ret != RDB_OK) {
+            if (ret == DURO_LEAVE) {
+                /*
+                 * If the statement name matches the LEAVE target,
+                 * exit loop with RDB_OK
+                 */
+                RDB_expression *namexp = stmtp->var.forloop.namexp;
+                if (namexp != NULL
+                        && strcmp(namexp->var.varname, leave_targetname) == 0) {
+                    ret = RDB_OK;
+                }
+            }
             remove_varmap();
             RDB_destroy_obj(&endval, ecp);
-            return RDB_ERROR;
+            return ret;
         }
         remove_varmap();
         if (varp->var.int_val == endval.var.int_val)
@@ -2469,6 +2497,12 @@ exec_typeimpl(RDB_parse_statement *stmtp, RDB_exec_context *ecp)
 }
 
 static int
+exec_leave(RDB_parse_statement *stmtp, RDB_exec_context *ecp) {
+    leave_targetname = RDB_obj_string(&stmtp->var.leave.targetname);
+    return DURO_LEAVE;
+}
+
+static int
 Duro_exec_stmt(RDB_parse_statement *stmtp, RDB_exec_context *ecp,
         return_info *retinfop)
 {
@@ -2550,6 +2584,9 @@ Duro_exec_stmt(RDB_parse_statement *stmtp, RDB_exec_context *ecp,
         case RDB_STMT_TYPE_IMPL:
             ret = exec_typeimpl(stmtp, ecp);
             break;
+        case RDB_STMT_LEAVE:
+            ret = exec_leave(stmtp, ecp);
+            break;
     }
     if (ret == RDB_ERROR) {
         if (err_line < 0) {
@@ -2562,6 +2599,7 @@ Duro_exec_stmt(RDB_parse_statement *stmtp, RDB_exec_context *ecp,
 int
 Duro_process_stmt(RDB_exec_context *ecp)
 {
+    int ret;
     RDB_parse_statement *stmtp;
     RDB_object prompt;
     RDB_object *dbnameobjp = RDB_hashmap_get(&toplevel_vars.map, "CURRENT_DB");
@@ -2583,7 +2621,18 @@ Duro_process_stmt(RDB_exec_context *ecp)
         return RDB_ERROR;
     }
     assert(RDB_get_err(ecp) == NULL);
-    if (Duro_exec_stmt(stmtp, ecp, NULL) != RDB_OK) {
+    ret = Duro_exec_stmt(stmtp, ecp, NULL);
+    if (ret != RDB_OK) {
+        if (ret == DURO_RETURN) {
+            RDB_raise_syntax("invalid RETURN", ecp);
+            err_line = yylineno;
+            return RDB_ERROR;
+        }
+        if (ret == DURO_LEAVE) {
+            RDB_raise_syntax("unmatched LEAVE", ecp);
+            err_line = yylineno;
+            return RDB_ERROR;
+        }
         RDB_parse_del_stmt(stmtp, ecp);
         if (RDB_get_err(ecp) == NULL) {
             RDB_raise_internal("statement execution failed, no error available", ecp);

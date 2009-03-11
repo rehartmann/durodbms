@@ -6,6 +6,7 @@
 #include <signal.h>
 
 #define DURO_RETURN (-1000)
+#define DURO_LEAVE (-1001)
 
 typedef struct varmap_node {
     RDB_hashmap map;

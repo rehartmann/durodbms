@@ -191,6 +191,59 @@ error:
     return NULL;
 }
 
+static RDB_parse_statement *
+new_forloop(RDB_expression *namexp, RDB_expression *varexp,
+        RDB_expression *fromexp, RDB_expression *toexp,
+        RDB_parse_statement *bodyp)
+{
+    RDB_parse_statement *stmtp = RDB_alloc(sizeof(RDB_parse_statement), _RDB_parse_ecp);
+    if (stmtp == NULL) {
+       	return NULL;
+    }
+    stmtp->kind = RDB_STMT_FOR;
+    stmtp->var.forloop.namexp = namexp;
+    stmtp->var.forloop.varexp = varexp;
+    stmtp->var.forloop.fromp = fromexp;
+    stmtp->var.forloop.top = toexp;
+    stmtp->var.forloop.bodyp = bodyp;
+    stmtp->lineno = yylineno;
+    return stmtp;
+}
+
+static RDB_parse_statement *
+new_whileloop(RDB_expression *namexp, RDB_expression *condp,
+        RDB_parse_statement *bodyp)
+{
+    RDB_parse_statement *stmtp = RDB_alloc(sizeof(RDB_parse_statement), _RDB_parse_ecp);
+    if (stmtp == NULL) {
+       	return NULL;
+    }
+    stmtp->kind = RDB_STMT_WHILE;
+    stmtp->var.whileloop.namexp = namexp;
+    stmtp->var.whileloop.condp = condp;
+    stmtp->var.whileloop.bodyp = bodyp;
+    stmtp->lineno = yylineno;
+    return stmtp;
+}
+
+static RDB_parse_statement *
+new_leave(const char *targetname)
+{
+    RDB_parse_statement *stmtp = RDB_alloc(sizeof(RDB_parse_statement), _RDB_parse_ecp);
+    if (stmtp == NULL) {
+       	return NULL;
+    }
+    stmtp->kind = RDB_STMT_LEAVE;
+    RDB_init_obj(&stmtp->var.leave.targetname);
+    if (RDB_string_to_obj(&stmtp->var.leave.targetname,
+    	        targetname, _RDB_parse_ecp) != RDB_OK) {
+    	RDB_destroy_obj(&stmtp->var.leave.targetname, _RDB_parse_ecp);
+    	RDB_free(stmtp);
+    	return NULL;
+    }
+    return stmtp;
+}
+
 static RDB_bool
 argname_in_list(RDB_expression *argp, RDB_expr_list *listp)
 {
@@ -416,6 +469,7 @@ resolve_with(RDB_expression **expp, RDB_expression *texp)
 %token TOK_FOR "FOR"
 %token TOK_TO "TO"
 %token TOK_WHILE "WHILE"
+%token TOK_LEAVE "LEAVE"
 %token TOK_TABLE_DEE "TABLE_DEE"
 %token TOK_TABLE_DUM "TABLE_DUM"
 %token TOK_ASSIGN ":="
@@ -607,7 +661,7 @@ statement: statement_body ';'
     }
     | TOK_FOR TOK_ID TOK_ASSIGN expression TOK_TO expression ';'
             ne_statement_list TOK_END TOK_FOR {
-        $$ = RDB_alloc(sizeof(RDB_parse_statement), _RDB_parse_ecp);
+        $$ = new_forloop(NULL, $2, $4, $6, $8.firstp);
         if ($$ == NULL) {
             RDB_drop_expr($2, _RDB_parse_ecp);
             RDB_drop_expr($4, _RDB_parse_ecp);
@@ -615,24 +669,44 @@ statement: statement_body ';'
             RDB_parse_del_stmtlist($8.firstp, _RDB_parse_ecp);
             YYERROR;
         }
-        $$->kind = RDB_STMT_FOR;
-        $$->var.forloop.varexp = $2;
-        $$->var.forloop.fromp = $4;
-        $$->var.forloop.top = $6;
-        $$->var.forloop.bodyp = $8.firstp;
-        $$->lineno = yylineno;
+    }
+    | TOK_ID ':' TOK_FOR TOK_ID TOK_ASSIGN expression TOK_TO expression ';'
+            ne_statement_list TOK_END TOK_FOR {
+        $$ = new_forloop($1, $4, $6, $8, $10.firstp);
+        if ($$ == NULL) {
+            RDB_drop_expr($1, _RDB_parse_ecp);
+            RDB_drop_expr($4, _RDB_parse_ecp);
+            RDB_drop_expr($6, _RDB_parse_ecp);
+            RDB_drop_expr($8, _RDB_parse_ecp);
+            RDB_parse_del_stmtlist($10.firstp, _RDB_parse_ecp);
+            YYERROR;
+        }
     }
     | TOK_WHILE expression ';' ne_statement_list TOK_END TOK_WHILE {
-        $$ = RDB_alloc(sizeof(RDB_parse_statement), _RDB_parse_ecp);
+        $$ = new_whileloop(NULL, $2, $4.firstp);
         if ($$ == NULL) {
             RDB_drop_expr($2, _RDB_parse_ecp);
             RDB_parse_del_stmtlist($4.firstp, _RDB_parse_ecp);
             YYERROR;
         }
-        $$->kind = RDB_STMT_WHILE;
-        $$->var.whileloop.condp = $2;
-        $$->var.whileloop.bodyp = $4.firstp;
-        $$->lineno = yylineno;
+    }
+    | TOK_LEAVE TOK_ID {
+        $$ = new_leave($2->var.varname);
+        if ($$ == NULL) {
+            RDB_drop_expr($2, _RDB_parse_ecp);
+            YYERROR;
+        }
+        if (RDB_drop_expr($2, _RDB_parse_ecp) != RDB_OK)
+            YYERROR;
+    }
+    | TOK_ID ':' TOK_WHILE expression ';' ne_statement_list TOK_END TOK_WHILE {
+        $$ = new_whileloop($1, $4, $6.firstp);
+        if ($$ == NULL) {
+            RDB_drop_expr($1, _RDB_parse_ecp);
+            RDB_drop_expr($4, _RDB_parse_ecp);
+            RDB_parse_del_stmtlist($6.firstp, _RDB_parse_ecp);
+            YYERROR;
+        }
     }
     | TOK_OPERATOR TOK_ID '(' attribute_list ')' TOK_RETURNS type
             ne_statement_list TOK_END TOK_OPERATOR {
