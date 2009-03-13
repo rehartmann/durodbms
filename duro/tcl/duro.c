@@ -1,13 +1,12 @@
 /*
  * $Id$
  *
- * Copyright (C) 2003-2005 René Hartmann.
+ * Copyright (C) 2003-2009 René Hartmann.
  * See the file COPYING for redistribution information.
  */
 
 #include "duro.h"
 #include <rel/rdb.h>
-#include <rel/internal.h>
 #include <dli/parse.h>
 #include <dli/tabletostr.h>
 #include <string.h>
@@ -514,17 +513,17 @@ Duro_tcl_to_duro(Tcl_Interp *interp, Tcl_Obj *tobjp, RDB_type *typ,
         }
         return TCL_OK;
     }
-    switch (typ->kind) {
-        case RDB_TP_TUPLE:
-            return list_to_tuple(interp, tobjp, typ, objp, ecp, txp);
-        case RDB_TP_RELATION:
-            ret = list_to_table(interp, tobjp, typ, objp, ecp, txp);
-            if (ret != TCL_OK)
-                return ret;
-            return TCL_OK;
-        case RDB_TP_ARRAY:
-            return list_to_array(interp, tobjp, typ, objp, ecp, txp);
-        default: ;
+    if (RDB_type_is_tuple(typ)) {
+        return list_to_tuple(interp, tobjp, typ, objp, ecp, txp);
+    }
+    if (RDB_type_is_relation(typ)) {
+        ret = list_to_table(interp, tobjp, typ, objp, ecp, txp);
+        if (ret != TCL_OK)
+            return ret;
+        return TCL_OK;
+    }
+    if (RDB_type_is_array(typ)) {
+        return list_to_array(interp, tobjp, typ, objp, ecp, txp);
     }
     Tcl_AppendResult(interp, "unsupported type: ", Tcl_GetString(tobjp),
             NULL);

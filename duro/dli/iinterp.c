@@ -482,7 +482,7 @@ load_op(const char *name, int argc, RDB_object *argv[],
     }
 
     if (RDB_obj_type(argv[0]) == NULL
-            || RDB_obj_type(argv[0])->kind != RDB_TP_ARRAY) {
+            || !RDB_type_is_array(RDB_obj_type(argv[0]))) {
         RDB_raise_type_mismatch("first argument must be array", ecp);
         goto error;
     }        
@@ -747,7 +747,7 @@ init_obj(RDB_object *objp, RDB_type *typ, RDB_exec_context *ecp,
         if (typ == NULL)
             return RDB_ERROR;
         RDB_obj_set_typeinfo(objp, typ);
-    } else if (typ->kind == RDB_TP_ARRAY) {
+    } else if (RDB_type_is_array(typ)) {
         typ = RDB_dup_nonscalar_type(typ, ecp);
         if (typ == NULL)
             return RDB_ERROR;

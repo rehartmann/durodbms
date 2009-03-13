@@ -586,7 +586,7 @@ Duro_invoke_update_op(const char *name, int argc, RDB_object *argv[],
 
             valobjp = Tcl_ObjGetVar2(interp, varnamep, NULL, 0);
 
-            if (argtyp->kind == RDB_TP_SCALAR) {
+            if (RDB_type_is_scalar(argtyp)) {
                 if (issetter && i == 0) {
                     /* It´s the argument of setter, so use internal rep */
                     convtyp = argtyp->var.scalar.arep;
@@ -758,7 +758,7 @@ Duro_invoke_ro_op(const char *name, int argc, RDB_object *argv[],
     /*
      * Convert result
      */
-    if (rtyp->kind == RDB_TP_SCALAR) {
+    if (RDB_type_is_scalar(rtyp)) {
         if(_RDB_get_possrep(rtyp, name) != NULL) {
             /* It's a selector, so use internal rep */
             convtyp = rtyp->var.scalar.arep;

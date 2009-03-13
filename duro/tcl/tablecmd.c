@@ -1,7 +1,7 @@
 /*
  * $Id$
  *
- * Copyright (C) 2003-2005 René Hartmann.
+ * Copyright (C) 2003-2009 René Hartmann.
  * See the file COPYING for redistribution information.
  */
 
@@ -551,58 +551,54 @@ type_to_tobj(Tcl_Interp *interp, const RDB_type *typ)
 
     if (RDB_type_is_scalar(typ))
         return Tcl_NewStringObj(RDB_type_name(typ), -1);
-    switch (typ->kind) {
-        case RDB_TP_TUPLE:
-            attrv = RDB_type_attrs((RDB_type *) typ, &attrc);
-            listobjp = Tcl_NewListObj(0, NULL);
-            if (listobjp == NULL)
-                return NULL;
-            Tcl_ListObjAppendElement(interp, listobjp,
-                    Tcl_NewStringObj("tuple", -1));
-            for (i = 0; i < attrc; i++) {
-                Tcl_Obj *attrobjp = Tcl_NewListObj(0, NULL);
+    if (RDB_type_is_tuple(typ)) {
+        attrv = RDB_type_attrs((RDB_type *) typ, &attrc);
+        listobjp = Tcl_NewListObj(0, NULL);
+        if (listobjp == NULL)
+            return NULL;
+        Tcl_ListObjAppendElement(interp, listobjp,
+                Tcl_NewStringObj("tuple", -1));
+        for (i = 0; i < attrc; i++) {
+            Tcl_Obj *attrobjp = Tcl_NewListObj(0, NULL);
 
-                Tcl_ListObjAppendElement(interp, attrobjp,
-                        Tcl_NewStringObj(attrv[i].name, -1));
-                typobjp = type_to_tobj(interp, attrv[i].typ);
-                if (typobjp == NULL)
-                    return NULL;
-                Tcl_ListObjAppendElement(interp, attrobjp, typobjp);
-                Tcl_ListObjAppendElement(interp, listobjp, attrobjp);
-            }
-            break;
-        case RDB_TP_RELATION:
-            attrv = RDB_type_attrs((RDB_type *) typ, &attrc);
-            listobjp = Tcl_NewListObj(0, NULL);
-            if (listobjp == NULL)
-                return NULL;
-            Tcl_ListObjAppendElement(interp, listobjp,
-                    Tcl_NewStringObj("relation", -1));
-            for (i = 0; i < attrc; i++) {
-                Tcl_Obj *attrobjp = Tcl_NewListObj(0, NULL);
-
-                Tcl_ListObjAppendElement(interp, attrobjp,
-                        Tcl_NewStringObj(attrv[i].name, -1));
-                typobjp = type_to_tobj(interp, attrv[i].typ);
-                if (typobjp == NULL)
-                    return NULL;
-                Tcl_ListObjAppendElement(interp, attrobjp, typobjp);
-                Tcl_ListObjAppendElement(interp, listobjp, attrobjp);
-            }
-            break;
-        case RDB_TP_ARRAY:
-            listobjp = Tcl_NewListObj(0, NULL);
-            if (listobjp == NULL)
-                return NULL;
-            Tcl_ListObjAppendElement(interp, listobjp,
-                    Tcl_NewStringObj("array", -1));
-            typobjp = type_to_tobj(interp, typ->var.basetyp);
+            Tcl_ListObjAppendElement(interp, attrobjp,
+                    Tcl_NewStringObj(attrv[i].name, -1));
+            typobjp = type_to_tobj(interp, attrv[i].typ);
             if (typobjp == NULL)
                 return NULL;
-            Tcl_ListObjAppendElement(interp, listobjp, typobjp);
-            break;
-        default:
+            Tcl_ListObjAppendElement(interp, attrobjp, typobjp);
+            Tcl_ListObjAppendElement(interp, listobjp, attrobjp);
+        }
+    } else if (RDB_type_is_relation(typ)) {
+        attrv = RDB_type_attrs((RDB_type *) typ, &attrc);
+        listobjp = Tcl_NewListObj(0, NULL);
+        if (listobjp == NULL)
             return NULL;
+        Tcl_ListObjAppendElement(interp, listobjp,
+                Tcl_NewStringObj("relation", -1));
+        for (i = 0; i < attrc; i++) {
+            Tcl_Obj *attrobjp = Tcl_NewListObj(0, NULL);
+
+            Tcl_ListObjAppendElement(interp, attrobjp,
+                    Tcl_NewStringObj(attrv[i].name, -1));
+            typobjp = type_to_tobj(interp, attrv[i].typ);
+            if (typobjp == NULL)
+                return NULL;
+            Tcl_ListObjAppendElement(interp, attrobjp, typobjp);
+            Tcl_ListObjAppendElement(interp, listobjp, attrobjp);
+        }
+    } else if (RDB_type_is_array(typ)) {
+        listobjp = Tcl_NewListObj(0, NULL);
+        if (listobjp == NULL)
+            return NULL;
+        Tcl_ListObjAppendElement(interp, listobjp,
+                Tcl_NewStringObj("array", -1));
+        typobjp = type_to_tobj(interp, typ->var.basetyp);
+        if (typobjp == NULL)
+            return NULL;
+        Tcl_ListObjAppendElement(interp, listobjp, typobjp);
+    } else {
+        return NULL;
     }
     return listobjp;
 }

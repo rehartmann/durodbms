@@ -1125,6 +1125,18 @@ RDB_type_is_tuple(const RDB_type *typ)
 }
 
 /**
+ * Checks if a type is an array type.
+ *
+ * @returns
+ * RDB_TRUE if *<var>typ</var> is an array type, RDB_FALSE if not.
+*/
+RDB_bool
+RDB_type_is_array(const RDB_type *typ)
+{
+    return (RDB_bool) (typ->kind == RDB_TP_ARRAY);
+}
+
+/**
  * RDB_type_attrs returns a pointer to an array of
 RDB_attr structures
 describing the attributes of the tuple or relation type
