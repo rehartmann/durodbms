@@ -186,7 +186,7 @@ find_del_table(RDB_database *dbp)
 /*
  * Close all user tables
  */
-int
+static int
 _RDB_close_user_tables(RDB_database *dbp, RDB_exec_context *ecp)
 {
     RDB_object *tbp;
@@ -447,7 +447,7 @@ error:
 
 /**
 RDB_create_db_from_env creates a database from a database environment.
-If an error occurs, an error value is left in <var>ecp</var>.
+If an error occurs, an error value is left in *<var>ecp</var>.
 
 @returns
 
@@ -539,7 +539,7 @@ error:
 /**
 RDB_get_db_from_env obtains a pointer to the database with name
 <var>name</var> in the environment specified by <var>envp</var>.
-If an error occurs, an error value is left in <var>ecp</var>.
+If an error occurs, an error value is left in *<var>ecp</var>.
 
 @returns
 
@@ -791,7 +791,7 @@ error:
 RDB_drop_db deletes the database specified by <var>dbp</var>.
 The database must be empty.
 
-If an error occurs, an error value is left in <var>ecp</var>.
+If an error occurs, an error value is left in *<var>ecp</var>.
 
 @returns
 

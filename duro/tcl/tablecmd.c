@@ -593,7 +593,7 @@ type_to_tobj(Tcl_Interp *interp, const RDB_type *typ)
             return NULL;
         Tcl_ListObjAppendElement(interp, listobjp,
                 Tcl_NewStringObj("array", -1));
-        typobjp = type_to_tobj(interp, typ->var.basetyp);
+        typobjp = type_to_tobj(interp, RDB_base_type((RDB_type *) typ));
         if (typobjp == NULL)
             return NULL;
         Tcl_ListObjAppendElement(interp, listobjp, typobjp);

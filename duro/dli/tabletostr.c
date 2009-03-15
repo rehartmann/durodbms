@@ -207,6 +207,35 @@ append_table_val(RDB_object *objp, const RDB_object *tbp, RDB_exec_context *ecp,
 }
 
 static int
+append_array(RDB_object *objp, const RDB_object *arrp, RDB_exec_context *ecp,
+        RDB_transaction *txp)
+{
+    int i;
+    RDB_object *elemp;
+
+    if (RDB_append_string(objp, "ARRAY (", ecp) != RDB_OK)
+        return RDB_ERROR;
+
+    for (i = 0;
+            (elemp = RDB_array_get((RDB_object *) arrp, (RDB_int) i, ecp)) != NULL;
+            i++) {
+        if (i > 0) {
+            if (RDB_append_string(objp, ", ", ecp) != RDB_OK) {
+                return RDB_ERROR;
+            }
+        }
+
+        if (append_obj(objp, elemp, ecp, txp) != RDB_OK) {
+            return RDB_ERROR;
+        }
+    }
+    if (RDB_obj_type(RDB_get_err(ecp)) != &RDB_NOT_FOUND_ERROR)
+        return RDB_ERROR;
+    RDB_clear_err(ecp);
+    return RDB_append_string(objp, ")", ecp);
+}
+
+static int
 append_obj(RDB_object *objp, const RDB_object *srcp, RDB_exec_context *ecp,
         RDB_transaction *txp)
 {
@@ -234,20 +263,23 @@ append_obj(RDB_object *objp, const RDB_object *srcp, RDB_exec_context *ecp,
              return RDB_ERROR;
          }
     } else {
-        switch (srcp->kind) {
-            case RDB_OB_TUPLE:
-                ret = append_tuple(objp, srcp, ecp, txp);
-                if (ret != RDB_OK)
-                    return ret;
-                break;
-            case RDB_OB_TABLE:
-                ret = append_table_val(objp, srcp, ecp, txp);
-                if (ret != RDB_OK)
-                    return ret;
-                break;
-            default:
-                RDB_raise_not_supported("", ecp);
+        if ((typ != NULL && RDB_type_is_tuple(typ))
+                || srcp->kind == RDB_OB_TUPLE) {
+            ret = append_tuple(objp, srcp, ecp, txp);
+            if (ret != RDB_OK)
                 return RDB_ERROR;
+        } else if (typ != NULL && RDB_type_is_relation(typ)) {
+            ret = append_table_val(objp, srcp, ecp, txp);
+            if (ret != RDB_OK)
+                return RDB_ERROR;
+        } else if ((typ != NULL && RDB_type_is_array(typ))
+                || srcp->kind == RDB_OB_ARRAY) {
+            ret = append_array(objp, srcp, ecp, txp);
+            if (ret != RDB_OK)
+                return RDB_ERROR;
+        } else {
+            RDB_raise_not_supported("", ecp);
+            return RDB_ERROR;
         }
     }
     return RDB_OK;

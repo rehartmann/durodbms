@@ -2,6 +2,10 @@ $Id$
 
 Summary of Changes for Duro
 
+Changes for Duro 0.15
+
+- Duro D/T now supports LEAVE. Improved array support.
+
 Changes for Duro 0.14
 
 - Upgraded to Berkeley DB 4.7.

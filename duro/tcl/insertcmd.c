@@ -1,7 +1,7 @@
 /*
  * $Id$
  *
- * Copyright (C) 2003-2005 René Hartmann.
+ * Copyright (C) 2003-2009 René Hartmann.
  * See the file COPYING for redistribution information.
  */
 
@@ -43,7 +43,7 @@ Duro_insert_cmd(ClientData data, Tcl_Interp *interp, int objc,
     }
 
     RDB_init_obj(&tpl);
-    ret = Duro_tcl_to_duro(interp, objv[2], RDB_obj_type(tbp)->var.basetyp,
+    ret = Duro_tcl_to_duro(interp, objv[2], RDB_base_type(RDB_obj_type(tbp)),
             &tpl, statep->current_ecp, txp);
     if (ret != TCL_OK) {
         goto cleanup;

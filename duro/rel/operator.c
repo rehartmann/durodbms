@@ -53,8 +53,6 @@ This can be used to pass code to an interpreter function.
 
 Overloading operators is possible.
 
-Array-valued return types are not supported.
-
 @returns RDB_OK on success, RDB_ERROR if an error occurred.
 
 @par Errors:
@@ -64,8 +62,6 @@ Array-valued return types are not supported.
 <dd><var>txp</var> does not point to a running transaction.
 <dt>RDB_ELEMENT_EXIST_ERROR
 <dd>A read-only operator with this name and signature does already exist.
-<dt>RDB_NOT_SUPPORTED_ERROR
-<dd>The return type is an array type.
 </dl>
 
 The call may also fail for a @ref system-errors "system error",
@@ -90,12 +86,6 @@ RDB_create_ro_op(const char *name, int argc, RDB_type *argtv[], RDB_type *rtyp,
 
     if (!RDB_tx_is_running(txp)) {
         RDB_raise_no_running_tx(ecp);
-        return RDB_ERROR;
-    }
-
-    if (rtyp->kind == RDB_TP_ARRAY) {
-        RDB_raise_not_supported("array type not supported as return type",
-                ecp);
         return RDB_ERROR;
     }
 

@@ -59,7 +59,7 @@ test ptarray {array from private table} -body {
 3
 }
 
-test ops {array operator} -setup $DBSETUP -body {
+test ops {operators with array arguments} -setup $DBSETUP -body {
     exec $testdir/../../dli/durodt << {
         connect('dbenv');
         current_db := 'D';
@@ -96,4 +96,37 @@ test ops {array operator} -setup $DBSETUP -body {
     }
 } -result {1
 3
+}
+
+test retops {operator returning array} -setup $DBSETUP -body {
+    exec $testdir/../../dli/durodt << {
+        connect('dbenv');
+        current_db := 'D';
+
+        begin transaction;
+
+        operator rest(a array integer) returns array integer;
+            var result array integer;
+            length(result) := length(a) - 1;
+
+            var i integer;
+            for i := 0 to length(result) - 1;
+                result[i] := a[i + 1];
+            end for;
+
+            return result;
+        end operator;
+
+        var a array integer init array(1, 3, 5);
+        var b array integer;
+        b := rest(a);
+        var i integer;
+        for i := 0 to length(b) - 1;
+            println(b[i]);
+        end for;
+        
+        commit;
+    }
+} -result {3
+5
 }

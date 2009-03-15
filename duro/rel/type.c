@@ -1129,11 +1129,25 @@ RDB_type_is_tuple(const RDB_type *typ)
  *
  * @returns
  * RDB_TRUE if *<var>typ</var> is an array type, RDB_FALSE if not.
-*/
+ */
 RDB_bool
 RDB_type_is_array(const RDB_type *typ)
 {
     return (RDB_bool) (typ->kind == RDB_TP_ARRAY);
+}
+
+/**
+ * Return the base type of a relation or array type.
+ *
+ * @returns
+ * The base type if <var>typ</var> is a relation or array type,
+ * NULL otherwise.
+ */
+RDB_type *
+RDB_base_type(RDB_type *typ)
+{
+    return typ->kind == RDB_TP_ARRAY || typ->kind == RDB_TP_RELATION
+            ? typ->var.basetyp : NULL;
 }
 
 /**

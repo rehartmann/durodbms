@@ -362,7 +362,7 @@ list_to_array(Tcl_Interp *interp, Tcl_Obj *tobjp, RDB_type *typ,
 
         /* Convert value to RDB_object and set tuple attribute */
         RDB_init_obj(&obj);
-        ret = Duro_tcl_to_duro(interp, valuep, typ->var.basetyp, &obj, ecp, txp);
+        ret = Duro_tcl_to_duro(interp, valuep, RDB_base_type(typ), &obj, ecp, txp);
         if (ret != TCL_OK) {
             RDB_destroy_obj(&obj, ecp);
             return ret;
@@ -416,7 +416,7 @@ list_to_table(Tcl_Interp *interp, Tcl_Obj *tobjp, RDB_type *typ,
     for (i = 0; i < llen; i++) {
         Tcl_ListObjIndex(interp, tobjp, i, &tplobjp);
 
-        ret = list_to_tuple(interp, tplobjp, typ->var.basetyp, &tpl, ecp, txp);
+        ret = list_to_tuple(interp, tplobjp, RDB_base_type(typ), &tpl, ecp, txp);
         if (ret != TCL_OK) {
             RDB_destroy_obj(&tpl, ecp);
             RDB_destroy_obj(tbp, ecp);

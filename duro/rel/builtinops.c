@@ -524,6 +524,16 @@ The relation selector.
 
 <hr>
 
+<h3 id="op_tuple">OPERATOR TUPLE</h3>
+
+OPERATOR ARRAY(<em>ANY</em>, ...) RETURNS <em>ARRAY</em>;
+
+<h4>Description</h4>
+
+The array selector.
+
+<hr>
+
 <h3 id="op_divide">OPERATOR DIVIDE</h3>
 
 OPERATOR DIVIDE(R1 <em>RELATION</em>, R2 <em>RELATION</em>, R2 <em>RELATION</em>) RETURNS <em>RELATION</em>;
@@ -773,6 +783,25 @@ op_relation(const char *name, int argc, RDB_object *argv[], RDB_type *typ,
         }
     }
 
+    return RDB_OK;
+}
+
+static int
+op_array(const char *name, int argc, RDB_object *argv[], RDB_type *typ,
+        const void *iargp, size_t iarglen, RDB_exec_context *ecp,
+        RDB_transaction *txp, RDB_object *retvalp)
+{
+    int i;
+
+    /* Set array length */
+    if (RDB_set_array_length(retvalp, (RDB_int) argc, ecp) != RDB_OK)
+        return RDB_ERROR;
+
+    /* Set elements */
+    for (i = 0; i < argc; i++) {
+        if (RDB_array_set(retvalp, (RDB_int) i, argv[i], ecp) != RDB_OK)
+            return RDB_ERROR;
+    }
     return RDB_OK;
 }
 
@@ -1817,6 +1846,9 @@ _RDB_init_builtin_ops(RDB_exec_context *ecp)
 
     if (put_builtin_ro_op("RELATION", -1, NULL, NULL, &op_relation, ecp)
             != RDB_OK)
+        return RDB_ERROR;
+
+    if (put_builtin_ro_op("ARRAY", -1, NULL, NULL, &op_array, ecp) != RDB_OK)
         return RDB_ERROR;
 
     if (put_builtin_ro_op("PROJECT", -1, NULL, NULL, &op_project, ecp)

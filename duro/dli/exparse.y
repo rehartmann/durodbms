@@ -2582,6 +2582,26 @@ literal: TOK_RELATION '{' expression_list '}' {
             exp = nextp;
         }
     } 
+    | TOK_ARRAY '(' ne_expression_list ')' {
+        RDB_expression *argp;
+        $$ = RDB_ro_op("ARRAY", _RDB_parse_ecp);
+        if ($$ == NULL) {
+            RDB_destroy_expr_list(&$3, _RDB_parse_ecp);
+            YYERROR;
+        }
+        argp = $3.firstp;
+        while (argp != NULL)
+        {
+            RDB_expression *nextp = argp->nextp;
+            RDB_expression *exp = (argp);
+            if (exp == NULL) {
+                RDB_destroy_expr_list(&$3, _RDB_parse_ecp);
+                YYERROR;
+            }
+        	RDB_add_arg($$, exp);
+            argp = nextp;
+        }
+    }
     | TOK_LIT_STRING
     | TOK_LIT_INTEGER
     | TOK_LIT_FLOAT

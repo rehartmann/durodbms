@@ -543,6 +543,39 @@ cleanup:
 }
 
 static RDB_type *
+array_type(const RDB_expression *exp, RDB_gettypefn *getfnp, void *arg, 
+        RDB_exec_context *ecp, RDB_transaction *txp)
+{
+    RDB_type *rtyp = NULL;
+    RDB_type *basetyp;
+
+    if (exp->var.op.args.firstp == NULL) {
+        RDB_raise_not_supported("argument required for ARRAY", ecp);
+        goto error;
+    }
+    basetyp = RDB_expr_type(exp->var.op.args.firstp, getfnp, arg, ecp, txp);
+    if (basetyp == NULL) {
+        RDB_raise_invalid_argument("type required for ARRAY argument", ecp);
+        goto error;
+    }
+    basetyp = RDB_dup_nonscalar_type(basetyp, ecp);
+    if (basetyp == NULL)
+        return NULL;
+
+    rtyp = RDB_create_array_type(basetyp, ecp);
+    if (rtyp == NULL) {
+        if (!RDB_type_is_scalar(basetyp))
+            RDB_drop_type(basetyp, ecp, NULL);
+        return NULL;
+    }
+
+    return rtyp;
+
+error:
+    return NULL;
+}
+
+static RDB_type *
 relation_type(const RDB_expression *exp, RDB_type **argtv,
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
@@ -654,6 +687,9 @@ expr_op_type(RDB_expression *exp, RDB_gettypefn *getfnp, void *arg,
     }
     if (strcmp(exp->var.op.name, "TUPLE") == 0) {
         return tuple_type(exp, getfnp, arg, ecp, txp);
+    }
+    if (strcmp(exp->var.op.name, "ARRAY") == 0) {
+        return array_type(exp, getfnp, arg, ecp, txp);
     }
 
     if (strcmp(exp->var.op.name, "REMOVE") == 0) {
@@ -963,9 +999,11 @@ error:
     return NULL;
 }
 
-/*
+/**
  * Get the type of an expression. The type is managed by the expression.
  * After RDB_expr_type() has been called once, future calls will return the same type.
+ * 
+ * @returns the type of the expression, or NULL on failure.
  */
 RDB_type *
 RDB_expr_type(RDB_expression *exp, RDB_gettypefn *getfnp, void *arg,
@@ -1033,6 +1071,30 @@ RDB_expr_type(RDB_expression *exp, RDB_gettypefn *getfnp, void *arg,
             return exp->typ;
     }
     abort();
+}
+
+/**
+ * Return operator name for read-only operator expressions.
+ * 
+ * @returns The operator name if the expression is a read-only operator
+ * invocation, or NULL if it is not.
+ */
+const char *
+RDB_expr_op_name(const RDB_expression *expr)
+{
+    return expr->kind == RDB_EX_RO_OP ? expr->var.op.name : NULL;
+}
+
+/**
+ * Return variable name for expressions referring to variables.
+ * 
+ * @returns The variable name if the expression is a read-only variable
+ * reference, or NULL if it is not.
+ */
+const char *
+RDB_expr_var_name(const RDB_expression *expr)
+{
+    return expr->kind == RDB_EX_VAR ? expr->var.varname : NULL;
 }
 
 static RDB_expression *

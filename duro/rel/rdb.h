@@ -507,6 +507,9 @@ RDB_type_is_tuple(const RDB_type *);
 RDB_bool
 RDB_type_is_array(const RDB_type *);
 
+RDB_type *
+RDB_base_type(RDB_type *typ);
+
 RDB_attr *
 RDB_type_attrs(RDB_type *, int *);
 
@@ -785,6 +788,12 @@ RDB_evaluate(RDB_expression *, RDB_getobjfn *, void *,
 RDB_type *
 RDB_expr_type(RDB_expression *, RDB_gettypefn *, void *,
         RDB_exec_context *, RDB_transaction *);
+
+const char *
+RDB_expr_op_name(const RDB_expression *expr);
+
+const char *
+RDB_expr_var_name(const RDB_expression *expr);
 
 int
 RDB_evaluate_bool(RDB_expression *, RDB_getobjfn *getfnp, void *getdata,

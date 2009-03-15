@@ -1,7 +1,7 @@
 /*
  * $Id$
  *
- * Copyright (C) 2005 René Hartmann.
+ * Copyright (C) 2005-2009 René Hartmann.
  * See the file COPYING for redistribution information.
  */
 
@@ -40,7 +40,7 @@ list_to_ins(TclState *statep, Tcl_Interp *interp, Tcl_Obj *tobjp,
     RDB_init_obj(insp->objp);
 
     ret = Duro_tcl_to_duro(interp, tobjpv[2],
-            RDB_obj_type(insp->tbp)->var.basetyp, insp->objp,
+            RDB_base_type(RDB_obj_type(insp->tbp)), insp->objp,
             statep->current_ecp, txp);
     if (ret != TCL_OK) {
         RDB_destroy_obj(insp->objp, statep->current_ecp);

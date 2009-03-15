@@ -245,49 +245,4 @@ test getenv {GETENV operator} -body {
 } -result {DUROTEST
 }
 
-test loops {FOR, WHILE, LEAVE} -setup $DBSETUP -body {
-    exec $testdir/../../dli/durodt -e dbenv << {
-        current_db := 'D';
-        begin transaction;
-
-        var i integer;
-        var j integer;
-
-        outer_loop: for i := 0 to 10;
-            j := 0;
-            while j < 10;
-                if i = 2 and j = 3 then
-                    leave outer_loop;
-                end if;
-                j := j + 1;
-            end while;
-        end for;
-
-        println(i);
-        println(j);
-
-        operator lop() returns string;
-            var i integer;
-            var j integer;
-
-            outer_loop: while i < 10;
-                for j := 0 to 10;
-                    if i = 2 and j = 3 then
-                        leave outer_loop;
-                    end if;
-                end for;
-                i := i + 1;
-            end while;
-            return string(i) || ',' || string(j);
-        end operator;
-        
-        println(lop());
-
-        commit;
-    }
-} -result {2
-3
-2,3
-}
-
 cleanupTests
