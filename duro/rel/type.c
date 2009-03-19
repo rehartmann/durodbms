@@ -1280,8 +1280,11 @@ RDB_define_type(const char *name, int repc, const RDB_possrep repv[],
                 goto error;
             if (RDB_tuple_set_string(&tpl, "COMPNAME", cname, ecp) != RDB_OK)
                 goto error;
-            if (RDB_tuple_set_string(&tpl, "COMPTYPENAME",
-                    repv[i].compv[j].typ->name, ecp) != RDB_OK)
+
+            if (_RDB_type_to_binobj(&typedata, repv[i].compv[j].typ,
+                    ecp) != RDB_OK)
+                goto error;
+            if (RDB_tuple_set(&tpl, "COMPTYPE", &typedata, ecp) != RDB_OK)
                 goto error;
 
             if (RDB_insert(txp->dbp->dbrootp->possrepcomps_tbp, &tpl, ecp, txp)
@@ -1497,10 +1500,10 @@ RDB_implement_type(const char *name, RDB_type *arep, RDB_int areplen,
 
         upd[2].name = "I_AREP_TYPE";
         upd[2].exp = RDB_obj_to_expr(&typedata, ecp);
+        RDB_destroy_obj(&typedata, ecp);
         if (upd[2].exp == NULL) {
             RDB_raise_no_memory(ecp);
             ret = RDB_ERROR;
-            RDB_destroy_obj(&typedata, ecp);
             goto cleanup;
         }
     }

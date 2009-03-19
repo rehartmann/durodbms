@@ -792,12 +792,14 @@ expr_op_type(RDB_expression *exp, RDB_gettypefn *getfnp, void *arg,
     argp = exp->var.op.args.firstp;
     for (i = 0; i < argc; i++) {
         /*
-         * The expression may not have a type (e.g. if it's an array),
-         * so _RDB_expr_type can return NULL without raising an error.
+         * The expression may not have a type (e.g. if it's an array).
+         * In this case RDB_NOT_FOUND is raised, which is caught.
          */
         argtv[i] = RDB_expr_type(argp, getfnp, arg, ecp, txp);
-        if (argtv[i] == NULL && RDB_get_err(ecp) != NULL) {
-            goto error;
+        if (argtv[i] == NULL) {
+            if (RDB_obj_type(RDB_get_err(ecp)) != &RDB_NOT_FOUND_ERROR)
+                goto error;
+            RDB_clear_err(ecp);
         }
         argp = argp->nextp;
     }
@@ -1003,7 +1005,7 @@ error:
  * Get the type of an expression. The type is managed by the expression.
  * After RDB_expr_type() has been called once, future calls will return the same type.
  * 
- * @returns the type of the expression, or NULL on failure.
+ * @returns The type of the expression, or NULL on failure.
  */
 RDB_type *
 RDB_expr_type(RDB_expression *exp, RDB_gettypefn *getfnp, void *arg,
@@ -1025,6 +1027,12 @@ RDB_expr_type(RDB_expression *exp, RDB_gettypefn *getfnp, void *arg,
             /* No type available - generate type from tuple */
             if (exp->var.obj.kind == RDB_OB_TUPLE) {
                 exp->typ = _RDB_tuple_type(&exp->var.obj, ecp);
+                if (exp->typ == NULL)
+                    return NULL;
+            }
+            if (exp->typ == NULL) {
+                RDB_raise_not_found("missing type information", ecp);
+                return NULL;
             }
             return exp->typ;
         case RDB_EX_TBP:
@@ -1733,6 +1741,15 @@ evaluate_ro_op(RDB_expression *exp, RDB_getobjfn *getfnp, void *getdata,
                     goto cleanup;
                 break;
         }
+        /* !!
+        if (valpv[i]->typ == NULL) {
+            valpv[i]->typ = RDB_expr_type(argp, NULL, NULL, ecp, txp);
+            if (valpv[i]->typ == NULL) {
+                RDB_clear_err(ecp);
+            }
+        } !!
+        */
+
         argp = argp->nextp;
     }
     ret = RDB_call_ro_op(exp->var.op.name, argc, valpv, ecp, txp, valp);

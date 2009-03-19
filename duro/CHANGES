@@ -4,7 +4,17 @@ Summary of Changes for Duro
 
 Changes for Duro 0.15
 
-- Duro D/T now supports LEAVE. Improved array support.
+- RDB_expr_type now always raises an error if the type could not be determined.
+
+- Change in catalog table SYS_POSSREPCOMPS
+
+Duro D/T:
+
+- LEAVE is now supported
+
+- Improved array support
+
+- Non-scalar types allowed as possrep components
 
 Changes for Duro 0.14
 

@@ -194,8 +194,10 @@ do_summarize(RDB_qresult *qrp, RDB_type *tb1typ, RDB_bool hasavg,
                     } else {
                         RDB_expression *exp = argp->var.op.args.firstp;
                         typ = _RDB_expr_type(exp, tb1typ->var.basetyp, ecp, txp);
-                        if (typ == NULL)
+                        if (typ == NULL) {
+                            ret = RDB_ERROR;
                             goto cleanup;
+                        }
                         ret = RDB_irep_to_obj(&svalv[i].val, typ,
                                 nonkeyfv[i].datap, nonkeyfv[i].len, ecp);
                         if (ret != RDB_OK)

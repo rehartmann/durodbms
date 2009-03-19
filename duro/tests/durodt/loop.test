@@ -21,7 +21,20 @@ set ::DBSETUP {
     }
 }
 
-test loops {FOR, WHILE, LEAVE} -setup $DBSETUP -body {
+test for {FOR} -setup $DBSETUP -body {
+    exec $testdir/../../dli/durodt -e dbenv << {
+        var i integer;
+    
+        for i := 1 to 3;
+            println(i);
+        end for;
+    }
+} -result {1
+2
+3
+}
+
+test leave {FOR, WHILE, LEAVE} -setup $DBSETUP -body {
     exec $testdir/../../dli/durodt -e dbenv << {
         current_db := 'D';
         begin transaction;

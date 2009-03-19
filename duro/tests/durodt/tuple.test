@@ -22,6 +22,8 @@ test tuplevar {tuple variables} -body {
         update t2 {i := 2, s := 'bar'};
         println(string(t2.i) || ' ' || t2.s);
         println(t2 {s});
+        
+        var t3 init tuple{};
     }
 } -result {5 foo
 2 bar

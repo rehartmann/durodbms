@@ -130,3 +130,17 @@ test retops {operator returning array} -setup $DBSETUP -body {
 } -result {3
 5
 }
+
+test array_utype {type with array-valued component} -setup $DBSETUP -body {
+    exec $testdir/../../dli/durodt << {
+        connect('dbenv');
+        current_db := 'D';
+
+        begin transaction;
+        
+        type path possrep { components array string };
+        
+        commit;
+    }
+}
+

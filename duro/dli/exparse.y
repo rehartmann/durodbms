@@ -2557,10 +2557,18 @@ literal: TOK_RELATION '{' expression_list '}' {
     }
     | TOK_TUPLE '{' '}' {
         RDB_object obj;
+        RDB_type *typ = RDB_create_tuple_type(0, NULL, _RDB_parse_ecp);
+        if (typ == NULL)
+            YYERROR;
 
         RDB_init_obj(&obj);
 
         $$ = RDB_obj_to_expr(&obj, _RDB_parse_ecp);
+        if ($$ == NULL) {
+            RDB_drop_type(typ, _RDB_parse_ecp, NULL);
+            YYERROR;
+        }
+        $$->typ = typ;
         RDB_destroy_obj(&obj, _RDB_parse_ecp);
     } 
     | TOK_TUPLE '{' ne_tuple_item_list '}' {

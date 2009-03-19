@@ -1,7 +1,7 @@
 /*
  * $Id$
  *
- * Copyright (C) 2003-2007 René Hartmann.
+ * Copyright (C) 2003-2009 René Hartmann.
  * See the file COPYING for redistribution information.
  */
 
@@ -11,12 +11,13 @@
 #include "internal.h"
 #include "stable.h"
 #include "serialize.h"
+
 #include <gen/strfns.h>
 #include <string.h>
 
 enum {
     MAJOR_VERSION = 0,
-    MINOR_VERSION = 14
+    MINOR_VERSION = 15
 };
 
 /*
@@ -92,7 +93,7 @@ static RDB_attr possrepcomps_attrv[] = {
     { "POSSREPNAME", &RDB_STRING, NULL, 0 },
     { "COMPNO", &RDB_INTEGER, NULL, 0 },
     { "COMPNAME", &RDB_STRING, NULL, 0 },
-    { "COMPTYPENAME", &RDB_STRING, NULL, 0 }
+    { "COMPTYPE", &RDB_BINARY, NULL, 0 }
 };
 static char *possrepcomps_keyattrv1[] = { "TYPENAME", "POSSREPNAME", "COMPNO" };
 static char *possrepcomps_keyattrv2[] = { "TYPENAME", "POSSREPNAME", "COMPNAME" };
@@ -2077,8 +2078,9 @@ get_possrepcomps(const char *typename, RDB_possrep *rep,
             RDB_raise_no_memory(ecp);
             goto error;
         }
-        rep->compv[idx].typ = RDB_get_type(
-                RDB_tuple_get_string(tplp, "COMPTYPENAME"), ecp, txp);
+
+        rep->compv[idx].typ = _RDB_binobj_to_type(
+                RDB_tuple_get(tplp, "COMPTYPE"), ecp, txp);
         if (rep->compv[idx].typ == NULL)
             goto error;
     }
@@ -2339,7 +2341,7 @@ _RDB_cat_get_ro_op(const char *name, int argc, RDB_type *argtv[],
     }
     RDB_add_arg(wexp, argp);
     RDB_add_arg(wexp, exp);
-            
+
     vtbp = RDB_expr_to_vtable(wexp, ecp, txp);
     if (vtbp == NULL) {
         RDB_drop_expr(wexp, ecp);
