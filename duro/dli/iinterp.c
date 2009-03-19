@@ -1455,18 +1455,18 @@ exec_for(const RDB_parse_statement *stmtp, RDB_exec_context *ecp,
     RDB_init_obj(&endval);
     if (RDB_evaluate(stmtp->var.forloop.top, &get_var,
             current_varmapp, ecp, NULL, &endval) != RDB_OK) {
-        RDB_destroy_obj(&endval, ecp);
-        return RDB_ERROR;
+        goto error;
     }
     if (RDB_obj_type(&endval) != &RDB_INTEGER) {
-        RDB_destroy_obj(&endval, ecp);
         RDB_raise_type_mismatch("expression must be INTEGER", ecp);
-        return RDB_ERROR;
+        goto error;
     }
 
-    for(;;) {
+    while (varp->var.int_val <= endval.var.int_val) {
         if (add_varmap(ecp) != RDB_OK)
-            return RDB_ERROR;
+            goto error;
+
+        /* Execute statements */
         ret = exec_stmtlist(stmtp->var.forloop.bodyp, ecp, retinfop);
         if (ret != RDB_OK) {
             if (ret == DURO_LEAVE) {
@@ -1485,18 +1485,23 @@ exec_for(const RDB_parse_statement *stmtp, RDB_exec_context *ecp,
             return ret;
         }
         remove_varmap();
-        if (varp->var.int_val == endval.var.int_val)
-            break;
+
+        /*
+         * Check for user interrupt
+         */
         if (interrupted) {
             interrupted = 0;
-            RDB_destroy_obj(&endval, ecp);
             RDB_raise_system("interrupted", ecp);
-            return RDB_ERROR;
+            goto error;
         }
         varp->var.int_val++;
     }
     RDB_destroy_obj(&endval, ecp);
     return RDB_OK;
+
+error:
+    RDB_destroy_obj(&endval, ecp);
+    return RDB_ERROR;
 }
 
 static int
@@ -1642,6 +1647,7 @@ exec_assign(const RDB_parse_statement *stmtp, RDB_exec_context *ecp)
             if (RDB_set_array_length(arrp, len, ecp) != RDB_OK) {
                 return RDB_ERROR;
             }
+
             /* Initialize new elements */
             if (len > olen) {
                 int i;

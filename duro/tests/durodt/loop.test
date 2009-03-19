@@ -28,10 +28,22 @@ test for {FOR} -setup $DBSETUP -body {
         for i := 1 to 3;
             println(i);
         end for;
+
+        for i := -1 to 1;
+            println(i);
+        end for;
+
+        for i := 0 to -1;
+            println('Must not appear');
+            exit();
+        end for;
     }
 } -result {1
 2
 3
+-1
+0
+1
 }
 
 test leave {FOR, WHILE, LEAVE} -setup $DBSETUP -body {

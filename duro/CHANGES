@@ -16,6 +16,8 @@ Duro D/T:
 
 - Non-scalar types allowed as possrep components
 
+- Changed FOR to allow for zero iterations
+
 Changes for Duro 0.14
 
 - Upgraded to Berkeley DB 4.7.
