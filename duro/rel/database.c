@@ -456,9 +456,9 @@ A pointer to the newly created database, or NULL if an error occurred.
 @par Errors:
 
 <dl>
-<dt>RDB_ELEMENT_EXIST_ERROR
+<dt>ELEMENT_EXIST_ERROR
 <dd>A database with the name <var>name</var> already exixts.
-<dt>RDB_VERSION_MISMATCH_ERROR
+<dt>VERSION_MISMATCH_ERROR
 <dd>The version number stored in the catalog does not match
 the version of the library.
 </dl>
@@ -549,9 +549,9 @@ returned.
 @par Errors:
 
 <dl>
-<dt>RDB_NOT_FOUND_ERROR
+<dt>NOT_FOUND_ERROR
 <dd>A database with the name <var>name</var> could not be found.
-<dt>RDB_VERSION_MISMATCH_ERROR
+<dt>VERSION_MISMATCH_ERROR
 <dd>The version number stored in the catalog does not match
 the version of the library.
 </dl>
@@ -800,9 +800,9 @@ RDB_OK on success, RDB_ERROR if an error occurred.
 @par Errors:
 
 <dl>
-<dt>RDB_NOT_FOUND_ERROR
+<dt>NOT_FOUND_ERROR
 <dd>The database was not found.
-<dt>RDB_ELEMENT_EXISTS_ERROR
+<dt>ELEMENT_EXISTS_ERROR
 <dd>The database is not empty.
 </dl>
 
@@ -929,7 +929,7 @@ RDB_OK on success, RDB_ERROR if an error occurred.
 @par Errors:
 
 <dl>
-<dt>RDB_TYPE_MISMATCH_ERROR
+<dt>TYPE_MISMATCH_ERROR
 <dd>*<var>arrp</var> already contains elements of a type different from
 RDB_STRING.
 </dl>
@@ -1139,12 +1139,12 @@ If an error occurred, NULL is returned.
 @par Errors:
 
 <dl>
-<dt>RDB_NO_RUNNING_TX_ERROR
+<dt>NO_RUNNING_TX_ERROR
 <dd><var>txp</var> does not point to a running transaction.
-<dt>RDB_TYPE_MISMATCH_ERROR
+<dt>TYPE_MISMATCH_ERROR
 <dd>The type of a default value does not match the type of the corresponding
 attribute.
-<dt>RDB_INVALID_ARGUMENT_ERROR
+<dt>INVALID_ARGUMENT_ERROR
 <dd>One or more of the arguments are incorrect. For example, a key attribute
 does not appear in <var>attrv</var>, etc.
 </dl>
@@ -1241,9 +1241,9 @@ A pointer to the table, or NULL if an error occurred.
 @par Errors:
 
 <dl>
-<dt>RDB_NO_RUNNING_TX_ERROR
+<dt>NO_RUNNING_TX_ERROR
 <dd><var>txp</var> does not point to a running transaction.
-<dt>RDB_NOT_FOUND_ERROR
+<dt>NOT_FOUND_ERROR
 <dd>A table with the name <var>name</var> could not be found.
 </dl>
 
@@ -1390,7 +1390,7 @@ On success, RDB_OK is returned. On failure, RDB_ERROR is returned.
 @par Errors:
 
 <dl>
-<dt>RDB_NO_RUNNING_TX_ERROR
+<dt>NO_RUNNING_TX_ERROR
 <dd>The table is global (persistent) and <var>txp</var>
 does not point to a running transaction.
 </dl>
@@ -1461,9 +1461,9 @@ On success, RDB_OK is returned. On failure, RDB_ERROR is returned.
 @par Errors:
 
 <dl>
-<dt>RDB_NO_RUNNING_TX_ERROR
+<dt>NO_RUNNING_TX_ERROR
 <dd><var>txp</var> does not point to a running transaction.
-<dt>RDB_INVALID_ARGUMENT_ERROR
+<dt>INVALID_ARGUMENT_ERROR
 <dd><var>name</var> is not a valid table name.
 </dl>
 
@@ -1536,13 +1536,13 @@ RDB_OK on success, RDB_ERROR if an error occurred.
 @par Errors
 
 <dl>
-<dt>RDB_NO_RUNNING_TX_ERROR
+<dt>NO_RUNNING_TX_ERROR
 <dd><var>txp</var> does not point to a running transaction.
-<dt>RDB_INVALID_ARGUMENT_ERROR
+<dt>INVALID_ARGUMENT_ERROR
 <dd>The table does not have a name.
-<dt>RDB_ELEMENT_EXIST_ERROR
+<dt>ELEMENT_EXIST_ERROR
 <dd>The table is already associated with the database.
-<dt>RDB_NOT_SUPPORTED_ERROR
+<dt>NOT_SUPPORTED_ERROR
 <dd>The table is a local real table.
 </dl>
 
@@ -1597,9 +1597,9 @@ If the table is a global table, it is made local.
 @par Errors:
 
 <dl>
-<dt>RDB_NO_RUNNING_TX_ERROR
+<dt>NO_RUNNING_TX_ERROR
 <dd><var>txp</var> does not point to a running transaction.
-<dt>RDB_INVALID_ARGUMENT_ERROR
+<dt>INVALID_ARGUMENT_ERROR
 <dd>The table does not belong to the database the transaction interacts
 with.
 </dl>
@@ -1633,7 +1633,7 @@ The pointer to the type on success, or NULL if an error occured.
 @par Errors:
 
 <dl>
-<dt>RDB_NAME_ERROR</dt>
+<dt>NAME_ERROR</dt>
 <dd>A type with the name <var>name</var> could not be found.
 </dd>
 <dt></dt>

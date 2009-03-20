@@ -2590,7 +2590,7 @@ literal: TOK_RELATION '{' expression_list '}' {
             exp = nextp;
         }
     } 
-    | TOK_ARRAY '(' ne_expression_list ')' {
+    | TOK_ARRAY '(' expression_list ')' {
         RDB_expression *argp;
         $$ = RDB_ro_op("ARRAY", _RDB_parse_ecp);
         if ($$ == NULL) {

@@ -139,12 +139,12 @@ RDB_OK on success, RDB_ERROR if an error occurred.
 
 @par Errors:
 <dl>
-<dt>RDB_NO_RUNNING_TX_ERROR
+<dt>NO_RUNNING_TX_ERROR
 <dd><var>txp</var> does not point to a running transaction.
-<dt>RDB_OPERATOR_NOT_FOUND_ERROR
+<dt>OPERATOR_NOT_FOUND_ERROR
 <dd>The definition of the table specified by <var>tbp</var>
 refers to a non-existing operator.
-<dt>RDB_INVALID_ARGUMENT
+<dt>INVALID_ARGUMENT
 <dd>*<var>arrp</var> is neither newly initialized nor an array.
 </dl>
 
@@ -192,9 +192,9 @@ A pointer to the array element, or NULL if an error occurred.
 
 @par Errors:
 <dl>
-<dt>RDB_NOT_FOUND_ERROR
+<dt>NOT_FOUND_ERROR
 <dd><var>idx</var> exceeds the array length.
-<dt>RDB_OPERATOR_NOT_FOUND_ERROR
+<dt>OPERATOR_NOT_FOUND_ERROR
 <dd>The array was created from a table which refers to a non-existing
 operator.
 </dl>
@@ -273,7 +273,7 @@ indicates an error.
 
 @par Errors:
 <dl>
-<dt>RDB_OPERATOR_NOT_FOUND_ERROR
+<dt>OPERATOR_NOT_FOUND_ERROR
 <dd>The array was created from a table which refers to a non-existing
 operator.
 </dl>
@@ -312,7 +312,7 @@ RDB_OK on success, RDB_ERROR if an error occurred.
 
 @par Errors:
 <dl>
-<dt>RDB_NOT_SUPPORTED_ERROR
+<dt>NOT_SUPPORTED_ERROR
 <dd>The array has been created using RDB_table_to_array with the RDB_UNBUFFERED flag.
 </dl>
  */
@@ -377,9 +377,9 @@ RDB_OK on success, RDB_ERROR if an error occurred.
 
 @par Errors:
 <dl>
-<dt>RDB_NOT_FOUND_ERROR
+<dt>NOT_FOUND_ERROR
 <dd><var>idx</var> exceeds the array length.
-<dt>RDB_NOT_SUPPORTED_ERROR
+<dt>NOT_SUPPORTED_ERROR
 <dd>The table has been created using RDB_table_to_array with the RDB_UNBUFFERED flag.
 </dl>
 

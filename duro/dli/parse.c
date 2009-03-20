@@ -316,7 +316,7 @@ specified by <var>txt</var>.
 
 @par Errors:
 <dl>
-<dt>RDB_SYNTAX_ERROR
+<dt>SYNTAX_ERROR
 <dd>A syntax error occurred during parsing.
 </dl>
 

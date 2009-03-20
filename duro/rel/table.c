@@ -270,10 +270,10 @@ RDB_OK on success, RDB_ERROR if an error occurred.
 @par Errors:
 
 <dl>
-<dt>RDB_TYPE_MISMATCH_ERROR
+<dt>TYPE_MISMATCH_ERROR
 <dd>The type of a default value does not match the type of the corresponding
 attribute.
-<dt>RDB_INVALID_ARGUMENT_ERROR
+<dt>INVALID_ARGUMENT_ERROR
 <dd>One or more of the arguments are incorrect. For example, a key attribute
 does not appear in *<var>attrv</var>, etc.
 </dl>
@@ -356,11 +356,11 @@ RDB_OK on success, RDB_ERROR if an error occurred.
 @par Errors:
 
 <dl>
-<dt>RDB_NO_RUNNING_TX_ERROR
+<dt>NO_RUNNING_TX_ERROR
 <dd><var>txp</var> does not point to a running transaction.
-<dt>RDB_TYPE_MISMATCH_ERROR
+<dt>TYPE_MISMATCH_ERROR
 <dd>The types of the two tables differ.
-<dt>RDB_OPERATOR_NOT_FOUND_ERROR
+<dt>OPERATOR_NOT_FOUND_ERROR
 <dd>The definition of the table specified by <var>srcp</var>
 refers to a non-existing operator.
 </dl>
@@ -399,13 +399,13 @@ RDB_OK on success, RDB_ERROR if an error occurred.
 @par Errors:
 
 <dl>
-<dt>RDB_NO_RUNNING_TX_ERROR
+<dt>NO_RUNNING_TX_ERROR
 <dd><var>txp</var> does not point to a running transaction.
-<dt>RDB_NAME_ERROR
+<dt>NAME_ERROR
 <dd>The table does not have an attribute <var>attrname</var>.
-<dt>RDB_TYPE_MISMATCH_ERROR
+<dt>TYPE_MISMATCH_ERROR
 <dd>The type of the attribute is not BOOLEAN.
-<dt>RDB_INVALID_ARGUMENT_ERROR
+<dt>INVALID_ARGUMENT_ERROR
 <dd><var>attrname</var> is NULL and the table has more than one
 attribute.
 </dl>
@@ -491,13 +491,13 @@ RDB_OK on success, RDB_ERROR if an error occurred.
 @par Errors:
 
 <dl>
-<dt>RDB_NO_RUNNING_TX_ERROR
+<dt>NO_RUNNING_TX_ERROR
 <dd><var>txp</var> does not point to a running transaction.
-<dt>RDB_NAME_ERROR
+<dt>NAME_ERROR
 <dd>The table does not have an attribute <var>attrname</var>.
-<dt>RDB_TYPE_MISMATCH_ERROR
+<dt>TYPE_MISMATCH_ERROR
 <dd>The type of the attribute is not BOOLEAN.
-<dt>RDB_INVALID_ARGUMENT_ERROR
+<dt>INVALID_ARGUMENT_ERROR
 <dd><var>attrname</var> is NULL and the table has more than one
 attribute.
 </dl>
@@ -582,13 +582,13 @@ RDB_OK on success, RDB_ERROR if an error occurred.
 @par Errors:
 
 <dl>
-<dt>RDB_NO_RUNNING_TX_ERROR
+<dt>NO_RUNNING_TX_ERROR
 <dd><var>txp</var> does not point to a running transaction.
-<dt>RDB_NAME_ERROR
+<dt>NAME_ERROR
 <dd>The table does not have an attribute <var>attrname</var>.
-<dt>RDB_TYPE_MISMATCH_ERROR
+<dt>TYPE_MISMATCH_ERROR
 <dd>The type of the attribute is not numeric.
-<dt>RDB_INVALID_ARGUMENT_ERROR
+<dt>INVALID_ARGUMENT_ERROR
 <dd><var>attrname</var> is NULL and the table has more than one
 attribute.
 </dl>
@@ -684,13 +684,13 @@ RDB_OK on success, RDB_ERROR if an error occurred.
 @par Errors:
 
 <dl>
-<dt>RDB_NO_RUNNING_TX_ERROR
+<dt>NO_RUNNING_TX_ERROR
 <dd><var>txp</var> does not point to a running transaction.
-<dt>RDB_NAME_ERROR
+<dt>NAME_ERROR
 <dd>The table does not have an attribute <var>attrname</var>.
-<dt>RDB_TYPE_MISMATCH_ERROR
+<dt>TYPE_MISMATCH_ERROR
 <dd>The type of the attribute is not numeric.
-<dt>RDB_INVALID_ARGUMENT_ERROR
+<dt>INVALID_ARGUMENT_ERROR
 <dd><var>attrname</var> is NULL and the table has more than one
 attribute.
 </dl>
@@ -788,13 +788,13 @@ RDB_OK on success, RDB_ERROR if an error occurred.
 @par Errors:
 
 <dl>
-<dt>RDB_NO_RUNNING_TX_ERROR
+<dt>NO_RUNNING_TX_ERROR
 <dd><var>txp</var> does not point to a running transaction.
-<dt>RDB_NAME_ERROR
+<dt>NAME_ERROR
 <dd>The table does not have an attribute <var>attrname</var>.
-<dt>RDB_TYPE_MISMATCH_ERROR
+<dt>TYPE_MISMATCH_ERROR
 <dd>The type of the attribute is not numeric.
-<dt>RDB_INVALID_ARGUMENT_ERROR
+<dt>INVALID_ARGUMENT_ERROR
 <dd><var>attrname</var> is NULL and the table has more than one
 attribute.
 </dl>
@@ -887,16 +887,16 @@ RDB_OK on success, RDB_ERROR if an error occurred.
 @par Errors:
 
 <dl>
-<dt>RDB_NO_RUNNING_TX_ERROR
+<dt>NO_RUNNING_TX_ERROR
 <dd><var>txp</var> does not point to a running transaction.
-<dt>RDB_NAME_ERROR
+<dt>NAME_ERROR
 <dd>The table does not have an attribute <var>attrname</var>.
-<dt>RDB_TYPE_MISMATCH_ERROR
+<dt>TYPE_MISMATCH_ERROR
 <dd>The type of the attribute is not numeric.
-<dt>RDB_INVALID_ARGUMENT_ERROR
+<dt>INVALID_ARGUMENT_ERROR
 <dd><var>attrname</var> is NULL and the table has more than one
 attribute.
-<dt>RDB_AGGREGATE_UNDEFINED_ERROR
+<dt>AGGREGATE_UNDEFINED_ERROR
 <dd>The table is empty.
 </dl>
 
@@ -985,13 +985,13 @@ RDB_OK on success, RDB_ERROR if an error occurred.
 @par Errors:
 
 <dl>
-<dt>RDB_NO_RUNNING_TX_ERROR
+<dt>NO_RUNNING_TX_ERROR
 <dd><var>txp</var> does not point to a running transaction.
-<dt>RDB_NOT_FOUND_ERROR
+<dt>NOT_FOUND_ERROR
 <dd>The table is empty.
-<dt>RDB_INVALID_ARGUMENT_ERROR
+<dt>INVALID_ARGUMENT_ERROR
 <dd>The table contains more than one tuple.
-<dt>RDB_OPERATOR_NOT_FOUND_ERROR
+<dt>OPERATOR_NOT_FOUND_ERROR
 <dd>The definition of the table specified by <var>tbp</var>
 refers to a non-existing operator.
 </dl>
@@ -1181,9 +1181,9 @@ On failure, (RDB_int)RDB_ERROR is returned.
 @par Errors:
 
 <dl>
-<dt>RDB_NO_RUNNING_TX_ERROR
+<dt>NO_RUNNING_TX_ERROR
 <dd><var>txp</var> does not point to a running transaction.
-<dt>RDB_OPERATOR_NOT_FOUND_ERROR
+<dt>OPERATOR_NOT_FOUND_ERROR
 <dd>The definition of the table specified by <var>tbp</var>
 refers to a non-existing operator.
 </dl>
@@ -1268,11 +1268,11 @@ RDB_OK on success, RDB_ERROR if an error occurred.
 @par Errors:
 
 <dl>
-<dt>RDB_NO_RUNNING_TX_ERROR
+<dt>NO_RUNNING_TX_ERROR
 <dd><var>txp</var> does not point to a running transaction.
-<dt>RDB_TYPE_MISMATCH_ERROR
+<dt>TYPE_MISMATCH_ERROR
 <dd>The types of the two tables differ.
-<dt>RDB_OPERATOR_NOT_FOUND_ERROR
+<dt>OPERATOR_NOT_FOUND_ERROR
 <dd>The definition of one of the tables
 refers to a non-existing operator.
 </dl>
@@ -1482,11 +1482,11 @@ RDB_OK on success, RDB_ERROR if an error occurred.
 @par Errors:
 
 <dl>
-<dt>RDB_INVALID_ARGUMENT_ERROR
+<dt>INVALID_ARGUMENT_ERROR
 <dd><var>name</var> is not a valid index name.
-<dt>RDB_ELEMENT_EXIST_ERROR
+<dt>ELEMENT_EXIST_ERROR
 <dd>An index with name <var>name</var> already exists.
-<dt>RDB_NAME_ERROR
+<dt>NAME_ERROR
 <dd>An attribute specified by <var>idxcompv</var> does not appear in the
 table.
 </dl>
@@ -1581,7 +1581,7 @@ RDB_OK on success, RDB_ERROR if an error occurred.
 @par Errors:
 
 <dl>
-<dt>RDB_NOT_FOUND_ERROR
+<dt>NOT_FOUND_ERROR
 <dd>An index with name <var>name</var> does not exist.
 </dl>
 

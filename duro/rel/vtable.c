@@ -1,7 +1,7 @@
 /*
  * $Id$
  *
- * Copyright (C) 2004-2008 René Hartmann.
+ * Copyright (C) 2004-2009 René Hartmann.
  * See the file COPYING for redistribution information.
  *
  *
@@ -61,16 +61,16 @@ A pointer to the newly created table, or NULL if an error occurred.
 @par Errors:
 
 <dl>
-<dt>RDB_NO_RUNNING_TX_ERROR
+<dt>NO_RUNNING_TX_ERROR
 <dd><var>txp</var> does not point to a running transaction.
-<dt>RDB_INVALID_ARGUMENT_ERROR
+<dt>INVALID_ARGUMENT_ERROR
 <dd>*<var>exp</var> does not define a valid virtual table.
-<dt>RDB_NAME_ERROR
+<dt>NAME_ERROR
 <dd>*<var>exp</var> refers to an undefined attribute.
-<dt>RDB_TYPE_MISMATCH_ERROR
+<dt>TYPE_MISMATCH_ERROR
 <dd>*<var>exp</var> contains an operator invocation with an argument
 of a wrong type.
-<dt>RDB_OPERATOR_NOT_FOUND_ERROR
+<dt>OPERATOR_NOT_FOUND_ERROR
 <dd>*<var>exp</var> contains an invocation of a non-existing operator.
 </dl>
  */

@@ -931,7 +931,7 @@ A pointer to the tuple type, or NULL if an error occured.
 @par Errors:
 
 <dl>
-<dt>RDB_INVALID_ARGUMENT_ERROR
+<dt>INVALID_ARGUMENT_ERROR
 <dd><var>attrv</var> contains two attributes with the same name.
 </dl>
 
@@ -1015,7 +1015,7 @@ On success, a pointer to the type. On failure, NULL is returned.
 @par Errors:
 
 <dl>
-<dt>RDB_INVALID_ARGUMENT_ERROR
+<dt>INVALID_ARGUMENT_ERROR
 <dd><var>attrv</var> contains two attributes with the same name.
 </dl>
 
@@ -1193,9 +1193,9 @@ RDB_OK on success, RDB_ERROR if an error occurred.
 @par Errors:
 
 <dl>
-<dt>RDB_NO_RUNNING_TX_ERROR
+<dt>NO_RUNNING_TX_ERROR
 <dd><var>txp</var> does not point to a running transaction.
-<dt>RDB_ELEMENT_EXISTS_ERROR
+<dt>ELEMENT_EXISTS_ERROR
 <dd>There is already a type with name <var>name</var>.
 </dl>
 
@@ -1393,11 +1393,11 @@ On success, RDB_OK is returned. Any other return value indicates an error.
 @par Errors:
 
 <dl>
-<dt>RDB_NO_RUNNING_TX_ERROR
+<dt>NO_RUNNING_TX_ERROR
 <dd>*<var>txp</var> is not a running transaction.
-<dt>RDB_NOT_FOUND_ERROR
+<dt>NOT_FOUND_ERROR
 <dd>The type has not been previously defined.
-<dt>RDB_INVALID_ARGUMENT_ERROR
+<dt>INVALID_ARGUMENT_ERROR
 <dd><var>arep</var> is NULL and <var>areplen</var> is -1,
 and the type was defined with more than one possible representation.
 </dl>
@@ -1542,9 +1542,9 @@ On success, RDB_OK is returned. Any other return value indicates an error.
 @par Errors:
 
 <dl>
-<dt>RDB_NO_RUNNING_TX_ERROR
+<dt>NO_RUNNING_TX_ERROR
 <dd>The type is scalar and *<var>txp</var> is not a running transaction.
-<dt>RDB_INVALID_ARGUMENT_ERROR
+<dt>INVALID_ARGUMENT_ERROR
 <dd>The type is a builtin type.
 </dl>
 

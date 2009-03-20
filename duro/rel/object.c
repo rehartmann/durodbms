@@ -974,10 +974,10 @@ RDB_OK on success, RDB_ERROR if an error occurred.
 @par Errors:
 
 <dl>
-<dt>RDB_INVALID_ARGUMENT_ERROR
+<dt>INVALID_ARGUMENT_ERROR
 <dd>The type of *<var>valp</var> is not scalar, or it does not
 have a possible representation with a component <var>compname</var>.
-<dt>RDB_OPERATOR_NOT_FOUND_ERROR
+<dt>OPERATOR_NOT_FOUND_ERROR
 <dd>The getter method for component <var>compname</var> has not been created.
 </dl>
 

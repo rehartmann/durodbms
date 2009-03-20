@@ -58,9 +58,9 @@ Overloading operators is possible.
 @par Errors:
 
 <dl>
-<dt>RDB_NO_RUNNING_TX_ERROR
+<dt>NO_RUNNING_TX_ERROR
 <dd><var>txp</var> does not point to a running transaction.
-<dt>RDB_ELEMENT_EXIST_ERROR
+<dt>ELEMENT_EXIST_ERROR
 <dd>A read-only operator with this name and signature does already exist.
 </dl>
 
@@ -206,9 +206,9 @@ Overloading operators is possible.
 @par Errors:
 
 <dl>
-<dt>RDB_NO_RUNNING_TX_ERROR
+<dt>NO_RUNNING_TX_ERROR
 <dd><var>txp</var> does not point to a running transaction.
-<dt>RDB_ELEMENT_EXIST_ERROR
+<dt>ELEMENT_EXIST_ERROR
 <dd>An update operator with this name and signature does already exist.
 </dl>
 
@@ -363,12 +363,12 @@ The result will be stored at the location pointed to by
 @par Errors:
 
 <dl>
-<dt>RDB_NO_RUNNING_TX_ERROR
+<dt>NO_RUNNING_TX_ERROR
 <dd><var>txp</var> is not NULL and *<var>txp</var> is not a running transaction.
-<dt>RDB_OPERATOR_NOT_FOUND_ERROR
+<dt>OPERATOR_NOT_FOUND_ERROR
 <dd>A read-only operator that matches the name and argument types could not be
 found.
-<dt>RDB_TYPE_MISMATCH_ERROR
+<dt>TYPE_MISMATCH_ERROR
 <dd>A read-only operator that matches <var>name</var> could be found,
 but it does not match the argument types.
 </dl>
@@ -522,9 +522,9 @@ The arguments must carry type information.
 @par Errors:
 
 <dl>
-<dt>RDB_NO_RUNNING_TX_ERROR
+<dt>NO_RUNNING_TX_ERROR
 <dd><var>txp</var> does not point to a running transaction.
-<dt>RDB_OPERATOR_NOT_FOUND_ERROR
+<dt>OPERATOR_NOT_FOUND_ERROR
 <dd>An update operator that matches the name and arguments could not be
 found.
 </dl>
@@ -580,9 +580,9 @@ from the database. This affects all overloaded versions.
 @par Errors:
 
 <dl>
-<dt>RDB_NO_RUNNING_TX_ERROR
+<dt>NO_RUNNING_TX_ERROR
 <dd><var>txp</var> does not point to a running transaction.
-<dt>RDB_OPERATOR_NOT_FOUND_ERROR
+<dt>OPERATOR_NOT_FOUND_ERROR
 <dd>An operator with the specified name could not be found.
 </dl>
 
@@ -670,7 +670,6 @@ RDB_drop_op(const char *name, RDB_exec_context *ecp, RDB_transaction *txp)
         exp = RDB_eq(RDB_var_ref("NAME", ecp), RDB_string_to_expr(name, ecp),
                ecp);
         if (exp == NULL) {
-            RDB_raise_no_memory(ecp);
             return RDB_ERROR;
         }
         ret = RDB_delete(txp->dbp->dbrootp->ro_ops_tbp, exp, ecp, txp);
@@ -737,7 +736,7 @@ _RDB_obj_equals(const char *name, int argc, RDB_object *argv[], RDB_type *typ,
         }
     }
 
-    /* If yes, call it */
+    /* If there is, call it */
     if (arep != NULL && arep->comparep != NULL) {
         RDB_object retval;
 

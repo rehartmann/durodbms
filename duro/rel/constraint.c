@@ -1,7 +1,7 @@
 /*
  * $Id$
  *
- * Copyright (C) 2005-2008 René Hartmann.
+ * Copyright (C) 2005-2009 René Hartmann.
  * See the file COPYING for redistribution information.
  *
  *
@@ -131,11 +131,11 @@ on the database the transaction specified by <var>txp</var> interacts with.
 
 @par Errors:
 <dl>
-<dt>RDB_NO_RUNNING_TX_ERROR
+<dt>NO_RUNNING_TX_ERROR
 <dd><var>txp</var> does not point to a running transaction.
-<dt>RDB_TYPE_MISMATCH_ERROR
+<dt>TYPE_MISMATCH_ERROR
 <dd>The expression specified by <var>constrp</var> is not of type BOOLEAN.
-<dt>RDB_PREDICATE_VIOLATION_ERROR
+<dt>PREDICATE_VIOLATION_ERROR
 <dd>The expression specified by <var>constrp</var> is not satisfied.
 </dl>
 
@@ -210,9 +210,9 @@ error:
 
 @par Errors:
 <dl>
-<dt>RDB_NO_RUNNING_TX_ERROR
+<dt>NO_RUNNING_TX_ERROR
 <dd><var>txp</var> does not point to a running transaction.
-<dt>RDB_NOT_FOUND_ERROR
+<dt>NOT_FOUND_ERROR
 <dd>A constraint with the name <var>name</var> could not be found.
 </dl>
 
