@@ -1741,14 +1741,17 @@ evaluate_ro_op(RDB_expression *exp, RDB_getobjfn *getfnp, void *getdata,
                     goto cleanup;
                 break;
         }
-        /* !!
+
+        /*
+         * Obtain argument type if not already available
+         */
         if (valpv[i]->typ == NULL) {
             valpv[i]->typ = RDB_expr_type(argp, NULL, NULL, ecp, txp);
             if (valpv[i]->typ == NULL) {
-                RDB_clear_err(ecp);
+                ret = RDB_ERROR;
+                goto cleanup;
             }
-        } !!
-        */
+        }
 
         argp = argp->nextp;
     }

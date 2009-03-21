@@ -930,6 +930,19 @@ _RDB_copy_tuple(RDB_object *dstp, const RDB_object *srcp, RDB_exec_context *ecp)
     return RDB_OK;
 }
 
+static int
+set_tuple_attr_type(RDB_object *objp, RDB_type *tpltyp, const char *attrname,
+        RDB_exec_context *ecp)
+{
+    RDB_type *attrtyp = RDB_type_attr_type(tpltyp, attrname);
+    if (attrtyp == NULL) {
+        RDB_raise_invalid_argument("cannot obtain tuple attribute type", ecp);
+        return RDB_ERROR;
+    }
+    RDB_obj_set_typeinfo(objp, attrtyp);
+    return RDB_OK;
+}
+
 int
 _RDB_tuple_equals(const RDB_object *tpl1p, const RDB_object *tpl2p,
         RDB_exec_context *ecp, RDB_transaction *txp, RDB_bool *resp)
@@ -946,6 +959,27 @@ _RDB_tuple_equals(const RDB_object *tpl1p, const RDB_object *tpl2p,
             *resp = RDB_FALSE;
             return RDB_OK;
         }
+        if (RDB_obj_type(&entryp->obj) == NULL) {
+            if (RDB_obj_type(tpl1p) == NULL) {
+                RDB_raise_invalid_argument("cannot obtain tuple attribute type", ecp);
+                return RDB_ERROR;
+            }
+            if (set_tuple_attr_type(&entryp->obj, RDB_obj_type(tpl1p),
+                    entryp->key, ecp) != RDB_OK) {
+                return RDB_ERROR;
+            }
+        }
+        if (RDB_obj_type(objp) == NULL) {
+            if (RDB_obj_type(tpl2p) == NULL) {
+                RDB_raise_invalid_argument("cannot obtain tuple attribute type", ecp);
+                return RDB_ERROR;
+            }
+            if (set_tuple_attr_type(objp, RDB_obj_type(tpl2p),
+                    entryp->key, ecp) != RDB_OK) {
+                return RDB_ERROR;
+            }
+        }
+
         if (RDB_obj_equals(&entryp->obj, objp, ecp, txp, &b) != RDB_OK) {
             RDB_destroy_hashtable_iter(&it);
             return RDB_ERROR;
@@ -961,6 +995,10 @@ _RDB_tuple_equals(const RDB_object *tpl1p, const RDB_object *tpl2p,
     return RDB_OK;
 }
 
+/*
+ * Check if *tpl1p and *tpl2p match.
+ * Only *tpl1p must carry type information.
+ */
 int
 _RDB_tuple_matches(const RDB_object *tpl1p, const RDB_object *tpl2p,
         RDB_exec_context *ecp, RDB_transaction *txp, RDB_bool *resp)
@@ -974,6 +1012,27 @@ _RDB_tuple_matches(const RDB_object *tpl1p, const RDB_object *tpl2p,
     while ((entryp = RDB_hashtable_next(&hiter)) != NULL) {
         RDB_object *attrp = RDB_tuple_get(tpl2p, entryp->key);
         if (attrp != NULL) {
+            if (RDB_obj_type(&entryp->obj) == NULL) {
+                if (RDB_obj_type(tpl1p) == NULL) {
+                    RDB_raise_invalid_argument("cannot obtain tuple attribute type", ecp);
+                    return RDB_ERROR;
+                }
+                if (set_tuple_attr_type(&entryp->obj, RDB_obj_type(tpl1p),
+                        entryp->key, ecp) != RDB_OK) {
+                    return RDB_ERROR;
+                }
+            }
+            if (RDB_obj_type(attrp) == NULL) {
+                if (RDB_obj_type(tpl1p) == NULL) {
+                    RDB_raise_invalid_argument("cannot obtain tuple attribute type", ecp);
+                    return RDB_ERROR;
+                }
+                if (set_tuple_attr_type(attrp, RDB_obj_type(tpl1p),
+                        entryp->key, ecp) != RDB_OK) {
+                    return RDB_ERROR;
+                }
+            }
+
             ret = RDB_obj_equals(&entryp->obj, attrp, ecp, txp, &b);
             if (ret != RDB_OK) {
                 RDB_destroy_hashtable_iter(&it);

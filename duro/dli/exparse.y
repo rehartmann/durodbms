@@ -64,6 +64,7 @@ new_deftype(const char *name, RDB_parse_possrep *possreplistp,
   	        _RDB_parse_ecp) != RDB_OK)
   	    return NULL;
   	stmtp->var._typedef.constraintp = constrp;
+   	stmtp->lineno = yylineno;
     return stmtp;
 }
 

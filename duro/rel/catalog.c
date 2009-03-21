@@ -2319,6 +2319,7 @@ _RDB_cat_get_ro_op(const char *name, int argc, RDB_type *argtv[],
         return NULL;
     }
     RDB_add_arg(exp, argp);
+    RDB_obj_set_typeinfo(&typesobj, ro_ops_attrv[1].typ); /* Set array type */
     argp = RDB_eq(RDB_var_ref("ARGTYPES", ecp),
             RDB_obj_to_expr(&typesobj, ecp), ecp);
     RDB_destroy_obj(&typesobj, ecp);
@@ -2439,6 +2440,7 @@ _RDB_cat_get_upd_op(const char *name, int argc, RDB_type *argtv[],
         return NULL;
     }
     RDB_add_arg(exp, argp);
+    RDB_obj_set_typeinfo(&typesobj, upd_ops_attrv[1].typ); /* Set array type */
     argp = RDB_eq(RDB_var_ref("ARGTYPES", ecp),
                    RDB_obj_to_expr(&typesobj, ecp), ecp);
     RDB_destroy_obj(&typesobj, ecp);

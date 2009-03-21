@@ -8,6 +8,9 @@ Changes for Duro 0.15
 
 - Change in catalog table SYS_POSSREPCOMPS
 
+- Changed type handling in RDB_evaluate(), RDB_call_ro_op(), and
+   RDB_call_update_op(),
+
 Duro D/T:
 
 - LEAVE is now supported

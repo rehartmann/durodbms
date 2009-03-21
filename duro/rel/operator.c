@@ -339,13 +339,9 @@ valv_to_typev(int valc, RDB_object **valv, RDB_exec_context *ecp)
     for (i = 0; i < valc; i++) {
         typv[i] = RDB_obj_type(valv[i]);
         if (typv[i] == NULL) {
-            if (valv[i]->kind == RDB_OB_TUPLE)
-                typv[i] = _RDB_tuple_type(valv[i], ecp);
-            if (typv[i] == NULL) {
-                RDB_raise_invalid_argument("cannot determine argument type", ecp);
-                RDB_free(typv);
-                return NULL;
-            }
+            RDB_raise_invalid_argument("cannot determine argument type", ecp);
+            RDB_free(typv);
+            return NULL;
         }
     }
     return typv;
@@ -357,6 +353,8 @@ passing the arguments in <var>argc</var> and <var>argv</var>.
 
 The result will be stored at the location pointed to by
 <var>retvalp</var>. 
+
+The arguments must carry type information.
 
 @returns RDB_OK on success, RDB_ERROR if an error occurred.
 
@@ -390,6 +388,13 @@ RDB_call_ro_op(const char *name, int argc, RDB_object *argv[],
     int ret;
     RDB_type **argtv;
     int i;
+
+    for (i = 0; i < argc; i++) {
+        if (RDB_obj_type(argv[i]) == NULL) {
+            RDB_raise_invalid_argument("cannot determine argument type", ecp);
+            return RDB_ERROR;
+        }
+    }
 
     /*
      * Handle nonscalar comparison
@@ -475,15 +480,7 @@ RDB_call_ro_op(const char *name, int argc, RDB_object *argv[],
     }
 
     op = _RDB_get_ro_op(name, argc, argtv, ecp, txp);
-    for (i = 0; i < argc; i++) {
-        /* Destroy type if it has been created by valv_to_typev() */
-        if (RDB_obj_type(argv[i]) == NULL) {
-            RDB_drop_type(argtv[i], ecp, NULL);
-        }
-    }
-
     RDB_free(argtv);
-
     if (op == NULL) {
         goto error;
     }
@@ -515,6 +512,7 @@ error:
 /**
  * RDB_call_update_op invokes the update operator with the name <var>name</var>,
 passing the arguments in <var>argc</var> and <var>argv</var>.
+
 The arguments must carry type information.
 
 @returns RDB_OK on success, RDB_ERROR if an error occurred.
@@ -541,7 +539,7 @@ RDB_call_update_op(const char *name, int argc, RDB_object *argv[],
 {
     RDB_op_data *op;
     RDB_type **argtv;
-    int i;
+    /* int i; */
 
     if (!RDB_tx_is_running(txp)) {
         RDB_raise_no_running_tx(ecp);
@@ -553,12 +551,6 @@ RDB_call_update_op(const char *name, int argc, RDB_object *argv[],
         return RDB_ERROR;
     }
     op = _RDB_get_upd_op(name, argc, argtv, ecp, txp);
-    for (i = 0; i < argc; i++) {
-        /* Destroy type if it has been created by valv_to_typev() */
-        if (RDB_obj_type(argv[i]) == NULL) {
-            RDB_drop_type(argtv[i], ecp, NULL);
-        }
-    }
     RDB_free(argtv);
     if (op == NULL) {
         if (RDB_obj_type(RDB_get_err(ecp)) == &RDB_OPERATOR_NOT_FOUND_ERROR) {

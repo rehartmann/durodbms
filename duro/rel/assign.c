@@ -1417,7 +1417,7 @@ RDB_multi_assign(int insc, const RDB_ma_insert insv[],
     for (i = 0; i < copyc; i++) {
         RDB_type *srctyp = RDB_obj_type(copyv[i].srcp);
 
-        if (srctyp != NULL && RDB_type_is_scalar(srctyp)) {
+        if (srctyp != NULL) {
             /* If destination carries a value, types must match */
             if (copyv[i].dstp->kind != RDB_OB_INITIAL
                     && (copyv[i].dstp->typ == NULL

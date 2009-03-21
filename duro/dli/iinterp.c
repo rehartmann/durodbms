@@ -1419,6 +1419,10 @@ exec_while(const RDB_parse_statement *stmtp, RDB_exec_context *ecp,
             return ret;
         }
         remove_varmap();
+        /*
+         * Check interrupt flag - this allows the user to break out of loops,
+         * with Control-C
+         */
         if (interrupted) {
             interrupted = 0;
             RDB_raise_system("interrupted", ecp);

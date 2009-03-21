@@ -68,6 +68,9 @@ RDB_table_contains(RDB_object *tbp, const RDB_object *tplp, RDB_exec_context *ec
         }
     }
 
+    if (RDB_obj_type(tplp) == NULL)
+        RDB_obj_set_typeinfo((RDB_object *) tplp, RDB_base_type(RDB_obj_type(tbp)));
+
     return _RDB_matching_tuple(tbp, tplp, ecp, txp, resultp);
 }
 
