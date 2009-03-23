@@ -16,7 +16,7 @@
 #include <math.h>
 #include <assert.h>
 
-#include <dli/tabletostr.h>
+static RDB_bool _RDB_optimize_enabled = RDB_TRUE;
 
 RDB_bool
 _RDB_index_sorts(struct _RDB_tbindex *indexp, int seqitc,
@@ -1019,6 +1019,7 @@ _RDB_optimize(RDB_object *tbp, int seqitc, const RDB_seq_item seqitv[],
     }
 
     if (tbp->var.tb.exp == NULL) {
+        /* It's a real table - no optimization possible */
         if (seqitc > 0 && tbp->var.tb.stp != NULL) {
             /*
              * Check if an index can be used for sorting
@@ -1039,7 +1040,9 @@ _RDB_optimize(RDB_object *tbp, int seqitc, const RDB_seq_item seqitv[],
         }
         return RDB_table_ref(tbp, ecp);
     }
-    return _RDB_optimize_expr(tbp->var.tb.exp, seqitc, seqitv, ecp, txp);
+    return _RDB_optimize_enabled ?
+            _RDB_optimize_expr(tbp->var.tb.exp, seqitc, seqitv, ecp, txp)
+            : dup_expr_vt(tbp->var.tb.exp, ecp);
 }
 
 RDB_expression *

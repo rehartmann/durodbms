@@ -230,6 +230,10 @@ _RDB_EXTERN_VAR RDB_type RDB_SYSTEM_ERROR;
 
 _RDB_EXTERN_VAR RDB_type RDB_SYNTAX_ERROR;
 
+/* I/O type */
+
+_RDB_EXTERN_VAR RDB_type RDB_IO_STREAM;
+
 typedef struct {
     char *name;
     RDB_expression *exp;

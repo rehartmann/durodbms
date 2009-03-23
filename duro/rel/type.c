@@ -9,7 +9,9 @@
 #include "typeimpl.h"
 #include "internal.h"
 #include "serialize.h"
+#include "io.h"
 #include <gen/strfns.h>
+
 #include <string.h>
 #include <locale.h>
 
@@ -175,8 +177,8 @@ compare_string(const char *name, int argc, RDB_object *argv[], RDB_type *rtyp,
     return RDB_OK;
 }
 
-static int
-add_type(RDB_type *typ, RDB_exec_context *ecp)
+int
+_RDB_add_type(RDB_type *typ, RDB_exec_context *ecp)
 {
     int ret = RDB_hashmap_put(&_RDB_builtin_type_map, RDB_type_name(typ), typ);
     if (ret != RDB_OK) {
@@ -200,6 +202,10 @@ int
 _RDB_init_builtin_types(RDB_exec_context *ecp)
 {
     static RDB_bool initialized = RDB_FALSE;
+
+    /*
+     * Add error types
+     */
 
     static RDB_possrep no_memory_rep = {
         "NO_MEMORY_ERROR",
@@ -669,98 +675,103 @@ _RDB_init_builtin_types(RDB_exec_context *ecp)
     /*
      * Put built-in types into type map
      */
-    if (add_type(&RDB_BOOLEAN, ecp) != RDB_OK) {
+    if (_RDB_add_type(&RDB_BOOLEAN, ecp) != RDB_OK) {
         return RDB_ERROR;
     }
-    if (add_type(&RDB_INTEGER, ecp) != RDB_OK) {
+    if (_RDB_add_type(&RDB_INTEGER, ecp) != RDB_OK) {
         return RDB_ERROR;
     }
-    if (add_type(&RDB_FLOAT, ecp) != RDB_OK) {
+    if (_RDB_add_type(&RDB_FLOAT, ecp) != RDB_OK) {
         return RDB_ERROR;
     }
-    if (add_type(&RDB_STRING, ecp) != RDB_OK) {
+    if (_RDB_add_type(&RDB_STRING, ecp) != RDB_OK) {
         return RDB_ERROR;
     }
-    if (add_type(&RDB_BINARY, ecp) != RDB_OK) {
+    if (_RDB_add_type(&RDB_BINARY, ecp) != RDB_OK) {
         return RDB_ERROR;
     }
-    if (add_type(&RDB_NO_MEMORY_ERROR, ecp) != RDB_OK) {
+    if (_RDB_add_type(&RDB_NO_MEMORY_ERROR, ecp) != RDB_OK) {
         return RDB_ERROR;
     }
-    if (add_type(&RDB_NOT_FOUND_ERROR, ecp) != RDB_OK) {
+    if (_RDB_add_type(&RDB_NOT_FOUND_ERROR, ecp) != RDB_OK) {
         return RDB_ERROR;
     }
-    if (add_type(&RDB_NO_RUNNING_TX_ERROR,
+    if (_RDB_add_type(&RDB_NO_RUNNING_TX_ERROR,
             ecp) != RDB_OK) {
         return RDB_ERROR;
     }
-    if (add_type(&RDB_INVALID_ARGUMENT_ERROR,
+    if (_RDB_add_type(&RDB_INVALID_ARGUMENT_ERROR,
             ecp) != RDB_OK) {
         return RDB_ERROR;
     }
-    if (add_type(&RDB_TYPE_MISMATCH_ERROR, ecp) != RDB_OK) {
+    if (_RDB_add_type(&RDB_TYPE_MISMATCH_ERROR, ecp) != RDB_OK) {
         return RDB_ERROR;
     }
-    if (add_type(&RDB_TYPE_CONSTRAINT_VIOLATION_ERROR,
+    if (_RDB_add_type(&RDB_TYPE_CONSTRAINT_VIOLATION_ERROR,
             ecp) != RDB_OK) {
         return RDB_ERROR;
     }
-    if (add_type(&RDB_OPERATOR_NOT_FOUND_ERROR,
+    if (_RDB_add_type(&RDB_OPERATOR_NOT_FOUND_ERROR,
             ecp) != RDB_OK) {
         return RDB_ERROR;
     }
-    if (add_type(&RDB_ELEMENT_EXISTS_ERROR,
+    if (_RDB_add_type(&RDB_ELEMENT_EXISTS_ERROR,
             ecp) != RDB_OK) {
         return RDB_ERROR;
     }
-    if (add_type(&RDB_KEY_VIOLATION_ERROR,
+    if (_RDB_add_type(&RDB_KEY_VIOLATION_ERROR,
             ecp) != RDB_OK) {
         return RDB_ERROR;
     }
-    if (add_type(&RDB_NOT_SUPPORTED_ERROR,
+    if (_RDB_add_type(&RDB_NOT_SUPPORTED_ERROR,
             ecp) != RDB_OK) {
         return RDB_ERROR;
     }
-    if (add_type(&RDB_NAME_ERROR,
+    if (_RDB_add_type(&RDB_NAME_ERROR,
             ecp) != RDB_OK) {
         return RDB_ERROR;
     }
-    if (add_type(&RDB_PREDICATE_VIOLATION_ERROR,
+    if (_RDB_add_type(&RDB_PREDICATE_VIOLATION_ERROR,
             ecp) != RDB_OK) {
         return RDB_ERROR;
     }
-    if (add_type(&RDB_SYSTEM_ERROR,
+    if (_RDB_add_type(&RDB_SYSTEM_ERROR,
             ecp) != RDB_OK) {
         return RDB_ERROR;
     }
-    if (add_type(&RDB_RESOURCE_NOT_FOUND_ERROR,
+    if (_RDB_add_type(&RDB_RESOURCE_NOT_FOUND_ERROR,
             ecp) != RDB_OK) {
         return RDB_ERROR;
     }
-    if (add_type(&RDB_INTERNAL_ERROR,
+    if (_RDB_add_type(&RDB_INTERNAL_ERROR,
             ecp) != RDB_OK) {
         return RDB_ERROR;
     }
-    if (add_type(&RDB_LOCK_NOT_GRANTED_ERROR,
+    if (_RDB_add_type(&RDB_LOCK_NOT_GRANTED_ERROR,
             ecp) != RDB_OK) {
         return RDB_ERROR;
     }
-    if (add_type(&RDB_AGGREGATE_UNDEFINED_ERROR,
+    if (_RDB_add_type(&RDB_AGGREGATE_UNDEFINED_ERROR,
             ecp) != RDB_OK) {
         return RDB_ERROR;
     }
-    if (add_type(&RDB_VERSION_MISMATCH_ERROR,
+    if (_RDB_add_type(&RDB_VERSION_MISMATCH_ERROR,
             ecp) != RDB_OK) {
         return RDB_ERROR;
     }
-    if (add_type(&RDB_DEADLOCK_ERROR,
+    if (_RDB_add_type(&RDB_DEADLOCK_ERROR,
             ecp) != RDB_OK) {
         return RDB_ERROR;
     }
-    if (add_type(&RDB_FATAL_ERROR, ecp) != RDB_OK) {
+    if (_RDB_add_type(&RDB_FATAL_ERROR, ecp) != RDB_OK) {
         return RDB_ERROR;
     }
-    if (add_type(&RDB_SYNTAX_ERROR, ecp) != RDB_OK) {
+    if (_RDB_add_type(&RDB_SYNTAX_ERROR, ecp) != RDB_OK) {
+        return RDB_ERROR;
+    }
+
+    /* Add IO_STREAM */
+    if (_RDB_add_io(ecp) != RDB_OK) {
         return RDB_ERROR;
     }
 

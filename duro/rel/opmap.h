@@ -4,10 +4,10 @@
 /*
  * $Id$
  *
- * Copyright (C) 2006-2008 René Hartmann.
+ * Copyright (C) 2006-2009 René Hartmann.
  * See the file COPYING for redistribution information.
  *
- * Functions for mapping operator signatures to arbitrary data.
+ * Functions for storing operator in a hashmap.
  */
 
 #include <rel/rdb.h>
@@ -54,6 +54,10 @@ RDB_del_ops(RDB_op_map *, const char *name, RDB_exec_context *);
 RDB_op_data *
 _RDB_new_ro_op_data(RDB_type *rtyp, RDB_ro_op_func *,
         RDB_exec_context *);
+
+int
+RDB_put_upd_op(RDB_op_map *, const char *, int, RDB_type **,
+        RDB_upd_op_func *, RDB_bool *, RDB_exec_context *);
 
 int
 RDB_free_op_data(RDB_op_data *, RDB_exec_context *);

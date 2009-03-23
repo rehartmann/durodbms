@@ -245,4 +245,32 @@ test getenv {GETENV operator} -body {
 } -result {DUROTEST
 }
 
+test file_io {FILE I/O} -match regexp -body {
+    exec $testdir/../../dli/durodt -e dbenv << {
+        VAR is IO_STREAM;
+
+        OPEN(is, 'test.txt', 'w');
+
+        PRINT(is, 'Test ');
+        PRINT(is, 3);
+        PRINT(is, 1.7);
+        PRINT(is, TRUE);
+
+        PRINTLN(is, 'Duro');
+        PRINTLN(is, 4);
+        PRINTLN(is, 1.41);
+        PRINTLN(is, FALSE);
+
+        CLOSE(is);
+    }
+    set f [open test.txt]
+    puts [read $f]
+    close $f
+
+    file delete -force test.txt
+} -output {Test 31.70*TRUEDuro
+4
+1.410*
+FALSE}
+
 cleanupTests

@@ -135,6 +135,9 @@ extern RDB_exec_context *_RDB_cmp_ecp;
 int
 _RDB_init_builtin_types(RDB_exec_context *);
 
+int
+_RDB_add_type(RDB_type *, RDB_exec_context *);
+
 /**
  * Abort transaction and all parent transactions
  */

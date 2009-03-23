@@ -1,7 +1,7 @@
 /*
  * $Id$
  *
- * Copyright (C) 2007-2008 René Hartmann.
+ * Copyright (C) 2007-2009 René Hartmann.
  * See the file COPYING for redistribution information.
  */
 
@@ -224,6 +224,27 @@ _RDB_new_ro_op_data(RDB_type *rtyp,
     op->opfn.ro_fp = funcp;
 
     return op;
+}
+
+int
+RDB_put_upd_op(RDB_op_map *opmap, const char *name, int argc, RDB_type **argtv,
+        RDB_upd_op_func *opfp, RDB_bool *updv, RDB_exec_context *ecp)
+{
+    RDB_op_data *datap = RDB_alloc(sizeof(RDB_op_data), ecp);
+    if (datap == NULL)
+        return RDB_ERROR;
+    RDB_init_obj(&datap->iarg);
+    datap->modhdl = NULL;
+    datap->opfn.upd_fp = opfp;
+    datap->rtyp = NULL;
+    datap->updv = updv;
+
+    if (RDB_put_op(opmap, name, argc, argtv, datap, ecp) != RDB_OK) {
+        RDB_destroy_obj(&datap->iarg, ecp);
+        RDB_free(datap);
+        return RDB_ERROR;
+    }
+    return RDB_OK;
 }
 
 int
