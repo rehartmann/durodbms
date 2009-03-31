@@ -15,128 +15,26 @@
 #include <string.h>
 
 enum {
-    FILETAB_LEN = 64
+    IOSTREAMS_MAX = 64
 };
 
-static FILE *iostreams[FILETAB_LEN] = {};
+static FILE *iostreams[IOSTREAMS_MAX] = {}; /* Initalize with zeros */
 
-static int
-op_println_string(const char *name, int argc, RDB_object *argv[],
-        RDB_bool updv[], const void *iargp, size_t iarglen,
-        RDB_exec_context *ecp, RDB_transaction *txp)
-{
-    if (puts(RDB_obj_string(argv[0])) == EOF) {
-        _RDB_handle_errcode(errno, ecp, txp);
-        return RDB_ERROR;
-    }
-    return RDB_OK;
-}
-
-static int
-op_println_int(const char *name, int argc, RDB_object *argv[],
-        RDB_bool updv[], const void *iargp, size_t iarglen,
-        RDB_exec_context *ecp, RDB_transaction *txp)
-{
-    if (printf("%d\n", (int) RDB_obj_int(argv[0])) < 0) {
-        _RDB_handle_errcode(errno, ecp, txp);
-        return RDB_ERROR;
-    }
-    return RDB_OK;
-}
-
-static int
-op_println_float(const char *name, int argc, RDB_object *argv[],
-        RDB_bool updv[], const void *iargp, size_t iarglen,
-        RDB_exec_context *ecp, RDB_transaction *txp)
-{
-    if (printf("%f\n", (double) RDB_obj_float(argv[0])) < 0) {
-        _RDB_handle_errcode(errno, ecp, txp);
-        return RDB_ERROR;
-    }
-    return RDB_OK;
-}
-
-static int
-op_println_bool(const char *name, int argc, RDB_object *argv[],
-        RDB_bool updv[], const void *iargp, size_t iarglen,
-        RDB_exec_context *ecp, RDB_transaction *txp)
-{
-    if (puts(RDB_obj_bool(argv[0]) ? "TRUE" : "FALSE") == EOF) {
-        _RDB_handle_errcode(errno, ecp, txp);
-        return RDB_ERROR;
-    }
-    return RDB_OK;
-}
-
-static int print_nonscalar(FILE *fp, const RDB_object *objp, 
-    RDB_exec_context *ecp, RDB_transaction *txp)
-{
-    RDB_object strobj;
-    
-    RDB_init_obj(&strobj);
-    if (_RDB_obj_to_str(&strobj, objp, ecp, txp) != RDB_OK) {
-        RDB_destroy_obj(&strobj, ecp);
-        return RDB_ERROR;
-    }
-    if (fputs(RDB_obj_string(&strobj), stdout) == EOF) {
-        RDB_destroy_obj(&strobj, ecp);
-        _RDB_handle_errcode(errno, ecp, txp);
-        return RDB_ERROR;
-    }
-        
-    RDB_destroy_obj(&strobj, ecp);
-    return RDB_OK;
-}
+RDB_object DURO_STDIN_OBJ;
+RDB_object DURO_STDOUT_OBJ;
+RDB_object DURO_STDERR_OBJ;
 
 /*
  * Get file number from IO_STREAM
  */
 static int get_fileno(const RDB_object *objp, RDB_exec_context *ecp)
 {
-    int fileno = (int) RDB_obj_int(objp);
-    if (fileno >= FILETAB_LEN || iostreams[fileno] == NULL) {
+    int fno = (int) RDB_obj_int(objp);
+    if (fno >= IOSTREAMS_MAX || iostreams[fno] == NULL) {
         RDB_raise_invalid_argument("invalid file number", ecp);
         return RDB_ERROR;
     }
-    return fileno;
-}
-
-static int
-op_println_nonscalar(const char *name, int argc, RDB_object *argv[],
-        RDB_bool updv[], const void *iargp, size_t iarglen,
-        RDB_exec_context *ecp, RDB_transaction *txp)
-{
-    RDB_object *dataobjp;
-    int fno;
-
-    if (argc != 1 && argc != 2) {
-        RDB_raise_invalid_argument("invalid # of arguments", ecp);
-        return RDB_ERROR;
-    }
-
-    dataobjp = argv[argc - 1];
-    if (RDB_obj_type(dataobjp) != NULL
-            && RDB_type_is_scalar(RDB_obj_type(dataobjp))) {
-        RDB_raise_type_mismatch(name, ecp);
-        return RDB_ERROR;
-    }
-
-    if (argc == 2) {
-        /* Get file number from arg #1 */
-        fno = get_fileno(argv[0], ecp);
-        if (fno == RDB_ERROR)
-            return RDB_ERROR;
-    }        
-
-    if (print_nonscalar(argc == 1 ? stdout : iostreams[fno], dataobjp,
-            ecp, txp) != RDB_OK) {
-        return RDB_ERROR;
-    }
-    if (puts("") == EOF) {
-        _RDB_handle_errcode(errno, ecp, txp);
-        return RDB_ERROR;
-    }
-    return RDB_OK;
+    return fno;
 }
 
 static int
@@ -145,12 +43,12 @@ op_println_iostream_string(const char *name, int argc, RDB_object *argv[],
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
     /* Get file number from arg #1 */
-    int fileno = get_fileno(argv[0], ecp);
-    if (fileno == RDB_ERROR) {
+    int fno = get_fileno(argv[0], ecp);
+    if (fno == RDB_ERROR) {
         return RDB_ERROR;
     }
     
-    if (fprintf(iostreams[fileno], "%s\n", RDB_obj_string(argv[1])) < 0) {
+    if (fprintf(iostreams[fno], "%s\n", RDB_obj_string(argv[1])) < 0) {
         _RDB_handle_errcode(errno, ecp, txp);
         return RDB_ERROR;
     }
@@ -163,12 +61,12 @@ op_println_iostream_int(const char *name, int argc, RDB_object *argv[],
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
     /* Get file number from arg #1 */
-    int fileno = get_fileno(argv[0], ecp);
-    if (fileno == RDB_ERROR) {
+    int fno = get_fileno(argv[0], ecp);
+    if (fno == RDB_ERROR) {
         return RDB_ERROR;
     }
 
-    if (fprintf(iostreams[fileno], "%d\n", (int) RDB_obj_int(argv[1])) < 0) {
+    if (fprintf(iostreams[fno], "%d\n", (int) RDB_obj_int(argv[1])) < 0) {
         _RDB_handle_errcode(errno, ecp, txp);
         return RDB_ERROR;
     }
@@ -181,12 +79,12 @@ op_println_iostream_float(const char *name, int argc, RDB_object *argv[],
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
     /* Get file number from arg #1 */
-    int fileno = get_fileno(argv[0], ecp);
-    if (fileno == RDB_ERROR) {
+    int fno = get_fileno(argv[0], ecp);
+    if (fno == RDB_ERROR) {
         return RDB_ERROR;
     }
 
-    if (fprintf(iostreams[fileno], "%f\n", (double) RDB_obj_float(argv[1])) < 0) {
+    if (fprintf(iostreams[fno], "%f\n", (double) RDB_obj_float(argv[1])) < 0) {
         _RDB_handle_errcode(errno, ecp, txp);
         return RDB_ERROR;
     }
@@ -199,16 +97,37 @@ op_println_iostream_bool(const char *name, int argc, RDB_object *argv[],
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
     /* Get file number from arg #1 */
-    int fileno = get_fileno(argv[0], ecp);
-    if (fileno == RDB_ERROR) {
+    int fno = get_fileno(argv[0], ecp);
+    if (fno == RDB_ERROR) {
         return RDB_ERROR;
     }
 
-    if (fprintf(iostreams[fileno], "%s\n",
+    if (fprintf(iostreams[fno], "%s\n",
             RDB_obj_bool(argv[1]) ? "TRUE" : "FALSE") == EOF) {
         _RDB_handle_errcode(errno, ecp, txp);
         return RDB_ERROR;
     }
+    return RDB_OK;
+}
+
+static int
+print_nonscalar(FILE *fp, const RDB_object *objp, 
+    RDB_exec_context *ecp, RDB_transaction *txp)
+{
+    RDB_object strobj;
+    
+    RDB_init_obj(&strobj);
+    if (_RDB_obj_to_str(&strobj, objp, ecp, txp) != RDB_OK) {
+        RDB_destroy_obj(&strobj, ecp);
+        return RDB_ERROR;
+    }
+    if (fputs(RDB_obj_string(&strobj), fp) == EOF) {
+        RDB_destroy_obj(&strobj, ecp);
+        _RDB_handle_errcode(errno, ecp, txp);
+        return RDB_ERROR;
+    }
+        
+    RDB_destroy_obj(&strobj, ecp);
     return RDB_OK;
 }
 
@@ -297,12 +216,12 @@ op_print_iostream_string(const char *name, int argc, RDB_object *argv[],
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
     /* Get file number from arg #1 */
-    int fileno = get_fileno(argv[0], ecp);
-    if (fileno == RDB_ERROR) {
+    int fno = get_fileno(argv[0], ecp);
+    if (fno == RDB_ERROR) {
         return RDB_ERROR;
     }
 
-    if (fputs(RDB_obj_string(argv[1]), iostreams[fileno]) < 0) {
+    if (fputs(RDB_obj_string(argv[1]), iostreams[fno]) < 0) {
         _RDB_handle_errcode(errno, ecp, txp);
         return RDB_ERROR;
     }
@@ -315,12 +234,12 @@ op_print_iostream_int(const char *name, int argc, RDB_object *argv[],
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
     /* Get file number from arg #1 */
-    int fileno = get_fileno(argv[0], ecp);
-    if (fileno == RDB_ERROR) {
+    int fno = get_fileno(argv[0], ecp);
+    if (fno == RDB_ERROR) {
         return RDB_ERROR;
     }
 
-    if (fprintf(iostreams[fileno], "%d", (int) RDB_obj_int(argv[1])) < 0) {
+    if (fprintf(iostreams[fno], "%d", (int) RDB_obj_int(argv[1])) < 0) {
         _RDB_handle_errcode(errno, ecp, txp);
         return RDB_ERROR;
     }
@@ -333,12 +252,12 @@ op_print_iostream_float(const char *name, int argc, RDB_object *argv[],
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
     /* Get file number from arg #1 */
-    int fileno = get_fileno(argv[0], ecp);
-    if (fileno == RDB_ERROR) {
+    int fno = get_fileno(argv[0], ecp);
+    if (fno == RDB_ERROR) {
         return RDB_ERROR;
     }
 
-    if (fprintf(iostreams[fileno], "%f", (double) RDB_obj_float(argv[1])) < 0) {
+    if (fprintf(iostreams[fno], "%f", (double) RDB_obj_float(argv[1])) < 0) {
         _RDB_handle_errcode(errno, ecp, txp);
         return RDB_ERROR;
     }
@@ -351,12 +270,107 @@ op_print_iostream_bool(const char *name, int argc, RDB_object *argv[],
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
     /* Get file number from arg #1 */
-    int fileno = get_fileno(argv[0], ecp);
-    if (fileno == RDB_ERROR) {
+    int fno = get_fileno(argv[0], ecp);
+    if (fno == RDB_ERROR) {
         return RDB_ERROR;
     }
 
-    if (fputs(RDB_obj_bool(argv[1]) ? "TRUE" : "FALSE", iostreams[fileno]) == EOF) {
+    if (fputs(RDB_obj_bool(argv[1]) ? "TRUE" : "FALSE", iostreams[fno]) == EOF) {
+        _RDB_handle_errcode(errno, ecp, txp);
+        return RDB_ERROR;
+    }
+    return RDB_OK;
+}
+
+static int
+op_println_string(const char *name, int argc, RDB_object *argv[],
+        RDB_bool updv[], const void *iargp, size_t iarglen,
+        RDB_exec_context *ecp, RDB_transaction *txp)
+{
+    RDB_object *callargv[3];
+
+    callargv[0] = &DURO_STDOUT_OBJ;
+    callargv[1] = argv[0];
+    callargv[2] = argv[1];
+    
+    return op_println_iostream_string(name, 3, callargv,
+        NULL, NULL, 0, ecp, txp);
+}
+
+static int
+op_println_int(const char *name, int argc, RDB_object *argv[],
+        RDB_bool updv[], const void *iargp, size_t iarglen,
+        RDB_exec_context *ecp, RDB_transaction *txp)
+{
+    if (printf("%d\n", (int) RDB_obj_int(argv[0])) < 0) {
+        _RDB_handle_errcode(errno, ecp, txp);
+        return RDB_ERROR;
+    }
+    return RDB_OK;
+}
+
+static int
+op_println_float(const char *name, int argc, RDB_object *argv[],
+        RDB_bool updv[], const void *iargp, size_t iarglen,
+        RDB_exec_context *ecp, RDB_transaction *txp)
+{
+    RDB_object *callargv[3];
+
+    callargv[0] = &DURO_STDOUT_OBJ;
+    callargv[1] = argv[0];
+    callargv[2] = argv[1];
+    
+    return op_println_iostream_float(name, 3, callargv,
+        NULL, NULL, 0, ecp, txp);
+}
+
+static int
+op_println_bool(const char *name, int argc, RDB_object *argv[],
+        RDB_bool updv[], const void *iargp, size_t iarglen,
+        RDB_exec_context *ecp, RDB_transaction *txp)
+{
+    RDB_object *callargv[3];
+
+    callargv[0] = &DURO_STDOUT_OBJ;
+    callargv[1] = argv[0];
+    callargv[2] = argv[1];
+    
+    return op_println_iostream_bool(name, 3, callargv,
+        NULL, NULL, 0, ecp, txp);
+}
+
+static int
+op_println_nonscalar(const char *name, int argc, RDB_object *argv[],
+        RDB_bool updv[], const void *iargp, size_t iarglen,
+        RDB_exec_context *ecp, RDB_transaction *txp)
+{
+    RDB_object *dataobjp;
+    int fno;
+
+    if (argc != 1 && argc != 2) {
+        RDB_raise_invalid_argument("invalid # of arguments", ecp);
+        return RDB_ERROR;
+    }
+
+    dataobjp = argv[argc - 1];
+    if (RDB_obj_type(dataobjp) != NULL
+            && RDB_type_is_scalar(RDB_obj_type(dataobjp))) {
+        RDB_raise_type_mismatch(name, ecp);
+        return RDB_ERROR;
+    }
+
+    if (argc == 2) {
+        /* Get file number from arg #1 */
+        fno = get_fileno(argv[0], ecp);
+        if (fno == RDB_ERROR)
+            return RDB_ERROR;
+    }        
+
+    if (print_nonscalar(argc == 1 ? stdout : iostreams[fno], dataobjp,
+            ecp, txp) != RDB_OK) {
+        return RDB_ERROR;
+    }
+    if (fprintf(argc == 1 ? stdout : iostreams[fno], "\n") < 0) {
         _RDB_handle_errcode(errno, ecp, txp);
         return RDB_ERROR;
     }
@@ -373,8 +387,8 @@ readln(FILE *fp, RDB_object *linep, RDB_exec_context *ecp,
     if (RDB_string_to_obj(linep, "", ecp) != RDB_OK)
         return RDB_ERROR;
 
-    if (fgets(buf, sizeof(buf), stdin) == NULL) {
-        if (ferror(stdin)) {
+    if (fgets(buf, sizeof(buf), fp) == NULL) {
+        if (ferror(fp)) {
             _RDB_handle_errcode(errno, ecp, txp);
             return RDB_ERROR;
         }
@@ -386,8 +400,8 @@ readln(FILE *fp, RDB_object *linep, RDB_exec_context *ecp,
     while (buf[len - 1] != '\n') {
         if (RDB_append_string(linep, buf, ecp) != RDB_OK)
             return RDB_ERROR;
-        if (fgets(buf, sizeof(buf), stdin) == NULL) {
-            if (ferror(stdin)) {
+        if (fgets(buf, sizeof(buf), fp) == NULL) {
+            if (ferror(fp)) {
                 _RDB_handle_errcode(errno, ecp, txp);
                 return RDB_ERROR;
             }
@@ -408,13 +422,27 @@ op_readln(const char *name, int argc, RDB_object *argv[],
 }
 
 static int
+op_readln_iostream(const char *name, int argc, RDB_object *argv[],
+        RDB_bool updv[], const void *iargp, size_t iarglen,
+        RDB_exec_context *ecp, RDB_transaction *txp)
+{
+    /* Get file number from arg #1 */
+    int fno = get_fileno(argv[0], ecp);
+    if (fno == RDB_ERROR) {
+        return RDB_ERROR;
+    }
+
+    return readln(iostreams[fno], argv[1], ecp, txp);
+}
+
+static int
 op_close(const char *name, int argc, RDB_object *argv[],
         RDB_bool updv[], const void *iargp, size_t iarglen,
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
     /* Get file number from arg*/
     int fno = RDB_obj_int(argv[0]);
-    if (fno >= FILETAB_LEN || iostreams[fno] == NULL) {
+    if (fno >= IOSTREAMS_MAX || iostreams[fno] == NULL) {
         RDB_raise_invalid_argument("invalid file number", ecp);
         return RDB_ERROR;
     }
@@ -427,15 +455,35 @@ op_close(const char *name, int argc, RDB_object *argv[],
     return RDB_OK;
 }
 
+/* Initialize *iosp using fno */
+static int
+init_iostream(RDB_object *iosp, int fno, RDB_exec_context *ecp)
+{
+    int ret;
+    RDB_object fobj;
+    RDB_object *fobjp;
+
+    /* Check fno */
+    if (fno >= IOSTREAMS_MAX) {
+        RDB_raise_not_supported("file number too high", ecp);
+        return RDB_ERROR;
+    }
+
+    /* Call selector */
+    RDB_init_obj(&fobj);
+    RDB_int_to_obj(&fobj, (RDB_int) fno);
+    fobjp = &fobj;
+    ret = RDB_call_ro_op("IO_STREAM", 1, &fobjp, ecp, NULL, iosp);
+    RDB_destroy_obj(&fobj, ecp);
+    return ret;
+}    
+
 static int
 op_open(const char *name, int argc, RDB_object *argv[],
         RDB_bool updv[], const void *iargp, size_t iarglen,
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
     int fno;
-    int ret;
-    RDB_object fobj;
-    RDB_object *fobjp;
 
     /* Open file */
     FILE *fp = fopen(RDB_obj_string(argv[1]), RDB_obj_string(argv[2]));
@@ -446,20 +494,12 @@ op_open(const char *name, int argc, RDB_object *argv[],
 
     /* Get file number */
     fno = fileno(fp);
-    if (fno >= FILETAB_LEN) {
-        RDB_raise_not_supported("file number too high", ecp);
-        return RDB_ERROR;
-    }
 
+    /* Set table entry */
     iostreams[fno] = fp;
 
-    /* Set argument #3 by calling the IO_STREAM selector */
-    RDB_init_obj(&fobj);
-    RDB_int_to_obj(&fobj, (RDB_int) fno);
-    fobjp = &fobj;
-    ret = RDB_call_ro_op("IO_STREAM", 1, &fobjp, ecp, NULL, argv[0]);
-    RDB_destroy_obj(&fobj, ecp);
-    return ret;
+    /* Set argument #1 */
+    return init_iostream(argv[0], fno, ecp);
 }
 
 int
@@ -476,12 +516,14 @@ _RDB_add_io_ops(RDB_op_map *opmapp, RDB_exec_context *ecp)
     static RDB_type *print_iostream_bool_types[2];
 
     static RDB_type *readln_types[1];
+    static RDB_type *readln_iostream_types[2];
     static RDB_type *open_types[3];
     static RDB_type *close_types[1];
     
     static RDB_bool print_updv[] = { RDB_FALSE };
     static RDB_bool print_iostream_updv[] = { RDB_FALSE, RDB_FALSE };
     static RDB_bool readln_updv[] = { RDB_TRUE };
+    static RDB_bool readln_iostream_updv[] = { RDB_FALSE, RDB_TRUE };
     static RDB_bool open_updv[] = { RDB_TRUE, RDB_FALSE, RDB_FALSE };
     static RDB_bool close_updv[] = { RDB_FALSE };
 
@@ -500,6 +542,9 @@ _RDB_add_io_ops(RDB_op_map *opmapp, RDB_exec_context *ecp)
     print_iostream_bool_types[1] = &RDB_BOOLEAN;
 
     readln_types[0] = &RDB_STRING;
+    readln_iostream_types[0] = &RDB_IO_STREAM;
+    readln_iostream_types[1] = &RDB_STRING;
+
     close_types[0] = &RDB_IO_STREAM;
 
     open_types[0] = &RDB_IO_STREAM;
@@ -547,7 +592,7 @@ _RDB_add_io_ops(RDB_op_map *opmapp, RDB_exec_context *ecp)
     if (RDB_put_upd_op(opmapp, "PRINT", 1, print_bool_types, &op_print_bool, print_updv, ecp)
             != RDB_OK)
         return RDB_ERROR;
-    if (RDB_put_upd_op(opmapp, "PRINT", -1, NULL, &op_print_nonscalar, print_updv, ecp)
+    if (RDB_put_upd_op(opmapp, "PRINT", -1, NULL, &op_print_nonscalar, NULL, ecp)
             != RDB_OK)
         return RDB_ERROR;
 
@@ -567,6 +612,9 @@ _RDB_add_io_ops(RDB_op_map *opmapp, RDB_exec_context *ecp)
     if (RDB_put_upd_op(opmapp, "READLN", 1, readln_types, &op_readln, readln_updv, ecp)
             != RDB_OK)
         return RDB_ERROR;
+    if (RDB_put_upd_op(opmapp, "READLN", 2, readln_iostream_types,
+            &op_readln_iostream, readln_iostream_updv, ecp) != RDB_OK)
+        return RDB_ERROR;
 
     if (RDB_put_upd_op(opmapp, "CLOSE", 1, close_types, &op_close, close_updv, ecp)
             != RDB_OK)
@@ -575,6 +623,21 @@ _RDB_add_io_ops(RDB_op_map *opmapp, RDB_exec_context *ecp)
     if (RDB_put_upd_op(opmapp, "OPEN", 3, open_types, &op_open, open_updv, ecp)
             != RDB_OK)
         return RDB_ERROR;
+
+    RDB_init_obj(&DURO_STDIN_OBJ);
+    if (init_iostream(&DURO_STDIN_OBJ, STDIN_FILENO, ecp) != RDB_OK)
+        return RDB_ERROR;
+    iostreams[STDIN_FILENO] = stdin;
+
+    RDB_init_obj(&DURO_STDOUT_OBJ);
+    if (init_iostream(&DURO_STDOUT_OBJ, STDOUT_FILENO, ecp) != RDB_OK)
+        return RDB_ERROR;
+    iostreams[STDOUT_FILENO] = stdout;
+
+    RDB_init_obj(&DURO_STDERR_OBJ);
+    if (init_iostream(&DURO_STDERR_OBJ, STDERR_FILENO, ecp) != RDB_OK)
+        return RDB_ERROR;
+    iostreams[STDERR_FILENO] = stderr;
 
     return RDB_OK;
 }

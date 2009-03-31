@@ -1,0 +1,117 @@
+#!/bin/sh
+# Execute tclsh from the user's PATH \
+exec tclsh "$0" ${1+"$@"}
+
+# $Id$
+#
+# Test scalar definitions and operations
+#
+
+package require tcltest 2.2
+eval ::tcltest::configure $argv
+namespace import ::tcltest::*
+
+set testdir [::tcltest::configure -testdir]
+
+test def_output {Default output} -match regexp -body {
+    exec $testdir/../../dli/durodt -e dbenv << {
+        PRINT('Test ');
+        PRINT(3);
+        PRINT(1.7);
+        PRINT(TRUE);
+
+        PRINTLN('Duro');
+        PRINTLN(4);
+        PRINTLN(1.41);
+        PRINTLN(FALSE);
+    }
+} -result {Test 31.70*TRUEDuro
+4
+1.410*
+FALSE}
+
+test file_output {File Output} -match regexp -body {
+    exec $testdir/../../dli/durodt -e dbenv << {
+        VAR is IO_STREAM;
+
+        OPEN(is, 'out.txt', 'w');
+
+        PRINT(is, 'Test ');
+        PRINT(is, 3);
+        PRINT(is, 1.7);
+        PRINT(is, TRUE);
+
+        PRINTLN(is, 'Duro');
+        PRINTLN(is, 4);
+        PRINTLN(is, 1.41);
+        PRINTLN(is, FALSE);
+
+        CLOSE(is);
+    }
+    set f [open out.txt r]
+    puts [read $f]
+    close $f
+
+    file delete -force out.txt
+} -output {Test 31.70*TRUEDuro
+4
+1.410*
+FALSE}
+
+test stdout_output {STDOUT output} -match regexp -body {
+    exec $testdir/../../dli/durodt -e dbenv << {
+        PRINT(STDOUT, 'Test ');
+        PRINT(STDOUT, 3);
+        PRINT(STDOUT, 1.7);
+        PRINT(STDOUT, TRUE);
+
+        PRINTLN(STDOUT, 'Duro');
+        PRINTLN(STDOUT, 4);
+        PRINTLN(STDOUT, 1.41);
+        PRINTLN(STDOUT, TRUE);
+    }
+} -result {Test 31.70*TRUEDuro
+4
+1.410*
+TRUE}
+
+test stderr_output {STDERR output} -match regexp -body {
+    exec $testdir/../../dli/durodt -e dbenv << {
+        PRINT(STDERR, 'Test ');
+        PRINT(STDERR, 3);
+        PRINT(STDERR, 1.7);
+        PRINT(STDERR, TRUE);
+
+        PRINTLN(STDERR, 'Duro');
+        PRINTLN(STDERR, 4);
+        PRINTLN(STDERR, 1.41);
+        PRINTLN(STDERR, TRUE);
+    } 2> out.txt
+    set f [open out.txt r]
+    puts [read $f]
+    close $f
+
+    file delete -force out.txt
+} -output {Test 31.70*TRUEDuro
+4
+1.410*
+TRUE}
+
+test file_input {File input} -body {
+    set f [open in.txt w]
+    puts $f {Duro%$-}
+    close $f    
+
+    set res [exec $testdir/../../dli/durodt -e dbenv << {
+        VAR IS IO_STREAM;
+
+        OPEN(IS, 'in.txt', 'r');
+        VAR LINE STRING;
+        READLN(IS, LINE);
+        PRINTLN(LINE);
+        CLOSE(IS);
+    }]
+    file delete -force in.txt
+    return $res
+} -result {Duro%$-
+}

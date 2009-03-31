@@ -195,7 +195,7 @@ struct RDB_type {
 #endif
 
 /*
- * Built-in types
+ * Built-in primitive data types
  */
 _RDB_EXTERN_VAR RDB_type RDB_BOOLEAN;
 _RDB_EXTERN_VAR RDB_type RDB_INTEGER;

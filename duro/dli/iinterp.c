@@ -389,18 +389,20 @@ Duro_init_exec(RDB_exec_context *ecp, const char *dbname)
 
     if (RDB_put_upd_op(&opmap, "EXIT", 0, NULL, &exit_op, NULL, ecp) != RDB_OK)
         return RDB_ERROR;
-    if (RDB_put_upd_op(&opmap, "EXIT", 1, exit_int_types, &exit_int_op, exit_int_updv, ecp) != RDB_OK)
+    if (RDB_put_upd_op(&opmap, "EXIT", 1, exit_int_types, &exit_int_op,
+            exit_int_updv, ecp) != RDB_OK)
         return RDB_ERROR;
-    if (RDB_put_upd_op(&opmap, "CONNECT", 1, connect_types, &connect_op, connect_updv, ecp) != RDB_OK)
+    if (RDB_put_upd_op(&opmap, "CONNECT", 1, connect_types, &connect_op,
+            connect_updv, ecp) != RDB_OK)
         return RDB_ERROR;
-    if (RDB_put_upd_op(&opmap, "CREATE_DB", 1, create_db_types, &create_db_op, create_db_updv, ecp)
-            != RDB_OK)
+    if (RDB_put_upd_op(&opmap, "CREATE_DB", 1, create_db_types, &create_db_op,
+            create_db_updv, ecp) != RDB_OK)
         return RDB_ERROR;
-    if (RDB_put_upd_op(&opmap, "CREATE_ENV", 1, create_env_types, &create_env_op, create_env_updv, ecp)
-            != RDB_OK)
+    if (RDB_put_upd_op(&opmap, "CREATE_ENV", 1, create_env_types, &create_env_op,
+            create_env_updv, ecp) != RDB_OK)
         return RDB_ERROR;
-    if (RDB_put_upd_op(&opmap, "SYSTEM", 2, system_types, &system_op, system_updv, ecp)
-            != RDB_OK)
+    if (RDB_put_upd_op(&opmap, "SYSTEM", 2, system_types, &system_op,
+            system_updv, ecp) != RDB_OK)
         return RDB_ERROR;
 
     if (RDB_put_upd_op(&opmap, "SYSTEM", 2, system_types, &system_op, system_updv, ecp)
@@ -427,6 +429,22 @@ Duro_init_exec(RDB_exec_context *ecp, const char *dbname)
     }
     if (RDB_hashmap_put(&toplevel_vars.map, "CURRENT_DB", objp) != RDB_OK) {
         RDB_destroy_obj(objp, ecp);
+        RDB_raise_no_memory(ecp);
+        return RDB_ERROR;
+    }
+
+    if (RDB_hashmap_put(&toplevel_vars.map, "STDIN", &DURO_STDIN_OBJ) != RDB_OK) {
+        /* !! */
+        RDB_raise_no_memory(ecp);
+        return RDB_ERROR;
+    }
+    if (RDB_hashmap_put(&toplevel_vars.map, "STDOUT", &DURO_STDOUT_OBJ) != RDB_OK) {
+        /* !! */
+        RDB_raise_no_memory(ecp);
+        return RDB_ERROR;
+    }
+    if (RDB_hashmap_put(&toplevel_vars.map, "STDERR", &DURO_STDERR_OBJ) != RDB_OK) {
+        /* !! */
         RDB_raise_no_memory(ecp);
         return RDB_ERROR;
     }
@@ -1054,21 +1072,33 @@ exec_call(const RDB_parse_statement *stmtp, RDB_exec_context *ecp)
     argp = stmtp->var.call.arglist.firstp;
     i = 0;
     while (argp != NULL) {
-        if (op->updv[i]) {
+        argpv[i] = NULL;
+        if (op->updv == NULL || op->updv[i]) {
             /*
-             * Update argument - lookup variable
+             * If op->updv is NULL (no updv can cover all arguments of n-ary operators),
+             * treat the argument as an update argument if it's a variable 
              */
-            if (argp->kind == RDB_EX_VAR) {
-                argpv[i] = lookup_var(argp->var.varname, ecp);
+            const char *varname = RDB_expr_var_name(argp);
+            if (varname != NULL) {
+                argpv[i] = lookup_var(varname, ecp);
             } else if (argp->kind == RDB_EX_TBP) {
                 argpv[i] = argp->var.tbref.tbp;
-            } else {
+            }
+
+            /*
+             * If it's an update argument and the argument is not a variable,
+             * raise an error
+             */
+            if (argpv[i] == NULL && op->updv != NULL && op->updv[i]) {
                 RDB_raise_invalid_argument(
                         "update argument must be a variable", ecp);
                 ret = RDB_ERROR;
                 goto cleanup;
             }
-        } else {
+        }
+
+        /* If the expression has not been resolved as a variable, evaluate it */
+        if (argpv[i] == NULL) {
             RDB_init_obj(&argv[i]);
             if (RDB_evaluate(argp, &get_var, current_varmapp, ecp,
                     txnp != NULL ? &txnp->tx : NULL, &argv[i]) != RDB_OK) {
