@@ -1,7 +1,7 @@
 /*
  * $Id$
  *
- * Copyright (C) 2005-2007 René Hartmann.
+ * Copyright (C) 2005-2011 René Hartmann.
  * See the file COPYING for redistribution information.
  * 
  * Functions for assignment operations (insert, update, delete, copy),
@@ -1228,7 +1228,7 @@ copy_needs_tx(const RDB_object *dstp, const RDB_object *srcp)
             || (srcp->kind == RDB_OB_TABLE && srcp->var.tb.is_persistent));
 }
 
-/** @addtogroup table
+/** @addtogroup generic
  * @{
  */
 

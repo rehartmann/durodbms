@@ -1,16 +1,20 @@
 /*
  * $Id$
  *
- * Copyright (C) 2003-2009 René Hartmann.
+ * Copyright (C) 2003-2011 Rene Hartmann.
  * See the file COPYING for redistribution information.
  */
 
 #include "parse.h"
+#include "exparse.h"
+#include "tabletostr.h"
+#include <rel/transform.h>
 #include <rel/rdb.h>
 #include <rel/internal.h>
 
 #include <stdio.h>
 #include <string.h>
+#include <assert.h>
 
 int yyparse(void);
 
@@ -18,18 +22,31 @@ typedef struct yy_buffer_state *YY_BUFFER_STATE;
 
 YY_BUFFER_STATE yy_scan_string(const char *txt);
 void yy_delete_buffer(YY_BUFFER_STATE);
+void yy_switch_to_buffer(YY_BUFFER_STATE);
 
-RDB_expression *_RDB_parse_resultp;
-RDB_parse_statement *_RDB_parse_stmtp;
+extern YY_BUFFER_STATE _RDB_parse_buffer;
+
+RDB_parse_node *_RDB_parse_resultp;
 RDB_exec_context *_RDB_parse_ecp;
 int _RDB_parse_interactive = 0;
 int _RDB_parse_case_insensitive = 1;
+
+static const char TOK_COUNT_NAME[] = "COUNT";
+static const char TOK_SUM_NAME[] = "SUM";
+static const char TOK_AVG_NAME[] = "AVG";
+static const char TOK_MAX_NAME[] = "MAX";
+static const char TOK_MIN_NAME[] = "MIN";
+static const char TOK_ALL_NAME[] = "ALL";
+static const char TOK_ANY_NAME[] = "ANY";
 
 void
 _RDB_parse_start_exp(void);
 
 void
 _RDB_parse_start_stmt(void);
+
+const char *
+RDB_token_name(int tok);
 
 void
 yyerror(char *errtxt)
@@ -45,262 +62,1164 @@ yyerror(char *errtxt)
     }
 }
 
-int
-RDB_parse_del_keydef_list(RDB_parse_keydef *firstkeyp, RDB_exec_context *ecp)
+RDB_parse_node *
+RDB_new_parse_token(int tok, RDB_exec_context *ecp)
 {
-    int ret = RDB_OK;
-    while (firstkeyp != NULL) {
-        RDB_parse_keydef *nextp = firstkeyp->nextp;
-        if (RDB_destroy_expr_list(&firstkeyp->attrlist, _RDB_parse_ecp) != RDB_OK)
-            ret = RDB_ERROR;
-        firstkeyp = nextp;
-    }
-    return ret;
+    RDB_parse_node *pnodep = RDB_alloc(sizeof (RDB_parse_node), ecp);
+    if (pnodep == NULL)
+        return NULL;
+    pnodep->kind = RDB_NODE_TOK;
+    pnodep->exp = NULL;
+    pnodep->val.token = tok;
+    return pnodep;
 }
 
-int
-RDB_parse_destroy_assign(RDB_parse_assign *ap, RDB_exec_context *ecp)
+RDB_parse_node *
+RDB_new_parse_inner(RDB_exec_context *ecp)
 {
-    switch (ap->kind) {
-        case RDB_STMT_COPY:
-            RDB_drop_expr(ap->var.copy.dstp, ecp);
-            RDB_drop_expr(ap->var.copy.srcp, ecp);
-            break;
-        case RDB_STMT_INSERT:
-            RDB_drop_expr(ap->var.ins.dstp, ecp);
-            RDB_drop_expr(ap->var.ins.srcp, ecp);
-            break;
-        case RDB_STMT_UPDATE:
-            RDB_drop_expr(
-                    ap->var.upd.dstp, ecp);
-            if (ap->var.upd.condp != NULL)
-                RDB_drop_expr(ap->var.upd.condp, ecp);
-            RDB_parse_del_assignlist(ap->var.upd.assignlp, ecp);
-            break;
-        case RDB_STMT_DELETE:
-            RDB_drop_expr(
-                    ap->var.del.dstp, ecp);
-            if (ap->var.del.condp != NULL)
-                RDB_drop_expr(ap->var.del.condp, ecp);
-            break;
-    }
-    return RDB_OK;
+    RDB_parse_node *pnodep = RDB_alloc(sizeof (RDB_parse_node), ecp);
+    if (pnodep == NULL)
+        return NULL;
+    pnodep->kind = RDB_NODE_INNER;
+    pnodep->exp = NULL;
+    pnodep->val.children.firstp = pnodep->val.children.lastp = NULL;
+    return pnodep;
 }
 
-int
-RDB_parse_del_assignlist(RDB_parse_assign *ap, RDB_exec_context *ecp)
+RDB_parse_node *
+RDB_new_parse_expr(RDB_expression *exp, RDB_exec_context *ecp)
 {
-    RDB_parse_assign *hap;
-    do {
-        hap = ap->nextp;
-        RDB_parse_destroy_assign(ap, ecp);
-        RDB_free(ap);
-        ap = hap;
-    } while (ap != NULL);
-    return RDB_OK;
+    RDB_parse_node *pnodep = RDB_alloc(sizeof (RDB_parse_node), ecp);
+    if (pnodep == NULL)
+        return NULL;
+    pnodep->kind = RDB_NODE_EXPR;
+    pnodep->exp = exp;
+    return pnodep;
+}
+
+static RDB_expression *
+binop_node_expr(RDB_parse_node *nodep, RDB_exec_context *ecp)
+{
+    RDB_expression *argp;
+    RDB_parse_node *firstp = nodep->val.children.firstp;
+    char opbuf[] = " ";
+    char *opnamep;
+
+    /* Binary operator */
+    switch (firstp->nextp->val.token) {
+        case '+':
+        case '-':
+        case '*':
+        case '/':
+        case '>':
+        case '<':
+        case '=':
+            opbuf[0] = firstp->nextp->val.token;
+            opnamep = opbuf;
+            break;
+        case TOK_AND:
+            opnamep = "AND";
+            break;
+        case TOK_OR:
+            opnamep = "OR";
+            break;
+        case TOK_CONCAT:
+            opnamep = "||";
+            break;
+        case TOK_MATCHES:
+            opnamep = "MATCHES";
+            break;
+        case TOK_IN:
+            opnamep = "IN";
+            break;
+        case TOK_SUBSET_OF:
+            opnamep = "SUBSET_OF";
+            break;
+        case TOK_NE:
+            opnamep = "<>";
+            break;
+        case TOK_LE:
+            opnamep = "<=";
+            break;
+        case TOK_GE:
+            opnamep = ">=";
+            break;
+        case TOK_WHERE:
+            opnamep = "WHERE";
+            break;
+        case TOK_UNION:
+            opnamep = "UNION";
+            break;
+        case TOK_INTERSECT:
+            opnamep = "INTERSECT";
+            break;
+        case TOK_MINUS:
+            opnamep = "MINUS";
+            break;
+        case TOK_SEMIMINUS:
+            opnamep = "SEMIMINUS";
+            break;
+        case TOK_SEMIJOIN:
+            opnamep = "SEMIJOIN";
+            break;
+        case TOK_JOIN:
+            opnamep = "JOIN";
+            break;
+        case TOK_UNGROUP:
+            nodep->exp = RDB_ro_op("UNGROUP", ecp);
+            if (nodep->exp == NULL)
+                goto error;
+            argp = RDB_parse_node_expr(firstp, ecp);
+            if (argp == NULL)
+                goto error;
+            argp = RDB_dup_expr(argp, ecp);
+            if (argp == NULL)
+                goto error;
+            RDB_add_arg(nodep->exp, argp);
+
+            argp = RDB_string_to_expr(
+                    RDB_expr_var_name(RDB_parse_node_expr(
+                            firstp->nextp->nextp, ecp)),
+                    ecp);
+            RDB_add_arg(nodep->exp, argp);
+            return nodep->exp;
+        case '.':
+            argp = RDB_parse_node_expr(firstp, ecp);
+            if (argp == NULL)
+                goto error;
+            argp = RDB_dup_expr(argp, ecp);
+            if (argp == NULL)
+                goto error;
+            nodep->exp = RDB_tuple_attr(argp,
+                    RDB_expr_var_name(RDB_parse_node_expr(
+                            firstp->nextp->nextp, ecp)), ecp);
+            return nodep->exp;
+        default:
+            RDB_raise_internal("invalid binary operator", ecp);
+            return NULL;
+    }
+    nodep->exp = RDB_ro_op(opnamep, ecp);
+    if (nodep->exp == NULL)
+        goto error;
+    argp = RDB_parse_node_expr(firstp, ecp);
+    if (argp == NULL)
+        goto error;
+    argp = RDB_dup_expr(argp, ecp);
+    if (argp == NULL)
+        goto error;
+    RDB_add_arg(nodep->exp, argp);
+
+    argp = RDB_parse_node_expr(firstp->nextp->nextp, ecp);
+    if (argp == NULL)
+        goto error;
+    argp = RDB_dup_expr(argp, ecp);
+    if (argp == NULL)
+        goto error;
+    RDB_add_arg(nodep->exp, argp);
+    return nodep->exp;
+
+error:
+    if (nodep->exp != NULL) {
+        RDB_drop_expr(nodep->exp, ecp);
+        nodep->exp = NULL;
+    }
+    return NULL;
 }
 
 static int
-destroy_parse_type(RDB_parse_type *ptyp, RDB_exec_context *ecp)
-{
-    int ret = RDB_OK;
+add_args(RDB_expression *exp, RDB_parse_node *pnodep, RDB_exec_context *ecp) {
+    RDB_parse_node *nodep = pnodep->val.children.firstp;
+    RDB_expression *chexp;
+
+    if (nodep != NULL) {
+        for(;;) {
+            chexp = RDB_parse_node_expr(nodep, ecp);
+            if (chexp == NULL)
+                return RDB_ERROR;
+            chexp = RDB_dup_expr(chexp, ecp);
+            if (chexp == NULL)
+                return RDB_ERROR;        
+            RDB_add_arg(exp, chexp);
+            
+            if (nodep->nextp == NULL)
+               break;
+               
+            // Skip comma
+            nodep = nodep->nextp->nextp;
+        }
+    }
+    return RDB_OK;
+}
+
+static RDB_expression *
+aggr_node_expr(int token, RDB_parse_node *nodep, RDB_exec_context *ecp) {
+    RDB_expression *exp;
+    const char *opname;
     
-    if (ptyp->exp != NULL)
-        ret = RDB_drop_expr(ptyp->exp, ecp);
-    if (ptyp->typ != NULL && !RDB_type_is_scalar(ptyp->typ))
-        ret = RDB_drop_type(ptyp->typ, ecp, NULL);
-    return ret;
-}
-
-int
-RDB_parse_del_catch(RDB_parse_catch *catchp, RDB_exec_context *ecp)
-{
-    int ret, r;
-
-    ret = RDB_drop_expr(catchp->namexp, ecp);
-    r = destroy_parse_type(&catchp->type, ecp);
-    if (r != RDB_OK)
-        ret = r;
-    r = RDB_parse_del_stmtlist(catchp->bodyp, ecp);
-    if (r != RDB_OK)
-        ret = r;
-    RDB_free(catchp);
-    return ret;
-}
-
-int
-RDB_parse_del_stmt(RDB_parse_statement *stmtp, RDB_exec_context *ecp)
-{
-    int ret = RDB_OK;
-
-    switch(stmtp->kind) {
-        case RDB_STMT_CALL:
-            ret = RDB_destroy_expr_list(&stmtp->var.call.arglist, ecp);
+    switch (token) {
+        case TOK_SUM:
+            opname = "SUM";
             break;
-        case RDB_STMT_VAR_DEF:
-            ret = RDB_destroy_obj(&stmtp->var.vardef.varname, ecp);
-            ret = destroy_parse_type(&stmtp->var.vardef.type, ecp);
-            if (stmtp->var.vardef.exp != NULL)
-                ret = RDB_drop_expr(stmtp->var.vardef.exp, ecp);
+        case TOK_AVG:
+            opname = "AVG";
             break;
-        case RDB_STMT_VAR_DEF_REAL:
-        case RDB_STMT_VAR_DEF_PRIVATE:
-            ret = RDB_destroy_obj(&stmtp->var.vardef.varname, ecp);
-            ret = destroy_parse_type(&stmtp->var.vardef.type, ecp);
-            if (stmtp->var.vardef.exp != NULL)
-                ret = RDB_drop_expr(stmtp->var.vardef.exp, ecp);
-            if (stmtp->var.vardef.firstkeyp != NULL)
-                RDB_parse_del_keydef_list(stmtp->var.vardef.firstkeyp,
-                    ecp);
+        case TOK_MAX:
+            opname = "MAX";
             break;
-        case RDB_STMT_VAR_DEF_VIRTUAL:
-            RDB_destroy_obj(&stmtp->var.vardef.varname, ecp);
-            ret = RDB_drop_expr(stmtp->var.vardef.exp, ecp);
+        case TOK_MIN:
+            opname = "MIN";
             break;
-        case RDB_STMT_VAR_DROP:
-            ret = RDB_destroy_obj(&stmtp->var.vardrop.varname, ecp);
+        case TOK_ALL:
+            opname = "ALL";
             break;
-        case RDB_STMT_IF:
-            RDB_drop_expr(stmtp->var.ifthen.condp, ecp);
-            RDB_parse_del_stmtlist(stmtp->var.ifthen.ifp, ecp);
-            if (stmtp->var.ifthen.elsep != NULL)
-                ret = RDB_parse_del_stmtlist(stmtp->var.ifthen.elsep, ecp);
-            break;
-        case RDB_STMT_FOR:
-            if (stmtp->var.forloop.namexp != NULL)
-                RDB_drop_expr(stmtp->var.forloop.namexp, ecp);
-            RDB_drop_expr(stmtp->var.forloop.varexp, ecp);
-            RDB_drop_expr(stmtp->var.forloop.fromp, ecp);
-            RDB_drop_expr(stmtp->var.forloop.top, ecp);
-            ret = RDB_parse_del_stmtlist(stmtp->var.forloop.bodyp, ecp);
-            break;
-        case RDB_STMT_WHILE:
-            if (stmtp->var.whileloop.namexp != NULL)
-                RDB_drop_expr(stmtp->var.whileloop.namexp, ecp);
-            RDB_drop_expr(stmtp->var.whileloop.condp, ecp);
-            ret = RDB_parse_del_stmtlist(stmtp->var.whileloop.bodyp, ecp);
-            break;
-        case RDB_STMT_ASSIGN:
-            ret = RDB_parse_del_assignlist(stmtp->var.assignment.assignp, ecp);
-            break;
-        case RDB_STMT_TYPE_DEF:
-            {
-                RDB_parse_possrep *rep = stmtp->var._typedef.replistp;
-                while (rep != NULL) {
-                    RDB_parse_possrep *nextrep = rep->nextp;
-
-                    if (rep->namexp != NULL)
-                        RDB_drop_expr(rep->namexp, ecp);
-                    RDB_destroy_expr_list(&rep->attrlist, ecp);
-                    RDB_free(rep);
-                    rep = nextrep;
-                }
-                if (stmtp->var._typedef.constraintp != NULL)
-                    RDB_drop_expr(stmtp->var._typedef.constraintp, ecp);
-                ret = RDB_destroy_obj(&stmtp->var._typedef.typename, ecp);
-            }
-            break;
-        case RDB_STMT_TYPE_DROP:
-            ret = RDB_destroy_obj(&stmtp->var.typedrop.typename, ecp);
-            break;
-        case RDB_STMT_RO_OP_DEF:
-            destroy_parse_type(&stmtp->var.opdef.rtype, ecp);
-            ret = RDB_destroy_obj(&stmtp->var.opdef.opname, ecp);
-            break;
-        case RDB_STMT_UPD_OP_DEF:
-            ret = RDB_destroy_obj(&stmtp->var.opdef.opname, ecp);
-            break;
-        case RDB_STMT_OP_DROP:
-            ret = RDB_destroy_obj(&stmtp->var.opdrop.opname, ecp);
-            break;
-        case RDB_STMT_RETURN:
-            if (stmtp->var.retexp != NULL)
-                ret = RDB_drop_expr(stmtp->var.retexp, ecp);
-            break;
-        case RDB_STMT_CONSTRAINT_DEF:
-            RDB_destroy_obj(&stmtp->var.constrdef.constrname, ecp);
-            ret = RDB_drop_expr(stmtp->var.constrdef.constraintp, ecp);
-            break;
-        case RDB_STMT_CONSTRAINT_DROP:
-            ret = RDB_destroy_obj(&stmtp->var.constrdrop.constrname, ecp);
-            break;
-        case RDB_STMT_BEGIN_TX:
-        case RDB_STMT_COMMIT:
-        case RDB_STMT_ROLLBACK:
-        case RDB_STMT_NOOP:
-            break;
-        case RDB_STMT_RAISE:
-            ret = RDB_drop_expr(stmtp->var.retexp, ecp);
-            break;
-        case RDB_STMT_TRY:
-            {
-                RDB_parse_catch *catchp = stmtp->var.trycatch.catchp;
-                RDB_parse_catch *nextcatchp;
-                while (catchp != NULL) {
-                    nextcatchp = catchp->nextp;
-                    RDB_parse_del_catch(catchp, ecp);
-                    catchp = nextcatchp;
-                }
-                ret = RDB_parse_del_stmtlist(stmtp->var.trycatch.bodyp, ecp);
-            }
-            break;
-        case RDB_STMT_TYPE_IMPL:
-            RDB_destroy_obj(&stmtp->var.typeimpl.typename, ecp);
-            ret = destroy_parse_type(&stmtp->var.typeimpl.areptype, ecp);
-            break;
-        case RDB_STMT_LEAVE:
-            ret = RDB_destroy_obj(&stmtp->var.leave.targetname, ecp);
+        case TOK_ANY:
+            opname = "ANY";
             break;
     }
-    RDB_free(stmtp);
-    return ret;
+    exp = RDB_ro_op(opname, ecp);
+    if (exp == NULL)
+        return NULL;
+
+    if (add_args(exp, nodep, ecp) != RDB_OK)
+        return NULL;    
+    
+    return exp;
+}
+
+static RDB_expression *
+unop_expr(const char *opname, RDB_parse_node *nodep,
+        RDB_parse_node *argnodep, RDB_exec_context *ecp)
+{
+    RDB_expression *argp;
+
+    nodep->exp = RDB_ro_op(opname, ecp);
+    if (nodep->exp == NULL)
+        return NULL;
+
+    argp = RDB_parse_node_expr(argnodep, ecp);
+    if (argp == NULL)
+        return NULL;        
+    argp = RDB_dup_expr(argp, ecp);
+    if (argp == NULL)
+        return NULL;
+    RDB_add_arg(nodep->exp, argp);
+    return nodep->exp;
+}
+
+static RDB_expression *
+if_expr(RDB_parse_node *nodep,
+        RDB_parse_node *argnodep, RDB_exec_context *ecp)
+{
+    RDB_expression *argp;
+
+    nodep->exp = RDB_ro_op("IF", ecp);
+    if (nodep->exp == NULL)
+        return NULL;
+
+    argp = RDB_parse_node_expr(argnodep, ecp);
+    if (argp == NULL)
+        return NULL;        
+    argp = RDB_dup_expr(argp, ecp);
+    if (argp == NULL)
+        return NULL;
+    RDB_add_arg(nodep->exp, argp);
+
+    argp = RDB_parse_node_expr(argnodep->nextp->nextp, ecp);
+    if (argp == NULL)
+        return NULL;        
+    argp = RDB_dup_expr(argp, ecp);
+    if (argp == NULL)
+        return NULL;
+    RDB_add_arg(nodep->exp, argp);
+
+    argp = RDB_parse_node_expr(argnodep->nextp->nextp->nextp->nextp, ecp);
+    if (argp == NULL)
+        return NULL;        
+    argp = RDB_dup_expr(argp, ecp);
+    if (argp == NULL)
+        return NULL;
+    RDB_add_arg(nodep->exp, argp);
+
+    return nodep->exp;
+}
+
+static RDB_expression *
+extend_node_expr(RDB_parse_node *argnodep,
+        RDB_exec_context *ecp)
+{
+    RDB_expression *argp;
+    RDB_parse_node *nodep;
+
+    RDB_expression *rexp = RDB_ro_op("EXTEND", ecp);
+    if (rexp == NULL)
+        return NULL;
+
+    argp = RDB_parse_node_expr(argnodep, ecp);
+    if (argp == NULL)
+        return NULL;        
+    argp = RDB_dup_expr(argp, ecp);
+    if (argp == NULL)
+        return NULL;
+    RDB_add_arg(rexp, argp);
+
+    nodep = argnodep->nextp->nextp->nextp->val.children.firstp;
+    if (nodep != NULL) {
+        for (;;) {
+            argp = RDB_parse_node_expr(nodep->val.children.firstp, ecp);
+            if (argp == NULL)
+                return NULL;
+            argp = RDB_dup_expr(argp, ecp);
+            if (argp == NULL)
+                return NULL;
+            RDB_add_arg(rexp, argp);
+    
+            argp = RDB_string_to_expr(
+                    RDB_expr_var_name(RDB_parse_node_expr(
+                            nodep->val.children.firstp->nextp->nextp, ecp)),
+                    ecp);
+            RDB_add_arg(rexp, argp);
+                
+            nodep = nodep->nextp;
+            if (nodep == NULL)
+                break;
+            
+            /* Skip comma */
+            nodep = nodep->nextp;            
+        }
+    }              
+
+    return rexp;
+}
+
+static RDB_expression *
+summarize_node_expr(RDB_parse_node *argnodep,
+        RDB_exec_context *ecp)
+{
+    RDB_expression *argp;
+    RDB_parse_node *nodep;
+    RDB_expression *rexp = RDB_ro_op("SUMMARIZE", ecp);
+    if (rexp == NULL)
+        return NULL;
+
+    argp = RDB_parse_node_expr(argnodep, ecp);
+    if (argp == NULL)
+        return NULL;        
+    argp = RDB_dup_expr(argp, ecp);
+    if (argp == NULL)
+        return NULL;
+    RDB_add_arg(rexp, argp);
+
+    argp = RDB_parse_node_expr(argnodep->nextp->nextp, ecp);
+    if (argp == NULL)
+        return NULL;        
+    argp = RDB_dup_expr(argp, ecp);
+    if (argp == NULL)
+        return NULL;
+    RDB_add_arg(rexp, argp);
+
+    nodep = argnodep->nextp->nextp->nextp->nextp->nextp->val.children.firstp;
+    if (nodep != NULL) {
+        for (;;) {
+            const char *aggropname;
+            RDB_expression *aggrexp;
+            int aggrtok = nodep->val.children.firstp->val.token;
+            switch (aggrtok) {
+                case TOK_COUNT:
+                    aggropname = TOK_COUNT_NAME;
+                    break;
+                case TOK_SUM:
+                    aggropname = TOK_SUM_NAME;
+                    break;
+                case TOK_AVG:
+                    aggropname = TOK_AVG_NAME;
+                    break;
+                case TOK_MAX:
+                    aggropname = TOK_MAX_NAME;
+                    break;
+                case TOK_MIN:
+                    aggropname = TOK_MIN_NAME;
+                    break;
+                case TOK_ALL:
+                    aggropname = TOK_ALL_NAME;
+                    break;
+                case TOK_ANY:
+                    aggropname = TOK_ANY_NAME;
+                    break;
+            }                
+            aggrexp = RDB_ro_op(aggropname, ecp);
+            if (aggrexp == NULL)
+                return NULL;
+    
+            if (aggrtok != TOK_COUNT) {
+                argp = RDB_dup_expr(RDB_parse_node_expr(
+                        RDB_parse_node_child(nodep, 2), ecp), ecp);
+                if (argp == NULL)
+                    return NULL;
+                RDB_add_arg(aggrexp, argp);
+            }
+            RDB_add_arg(rexp, aggrexp);
+
+            argp = RDB_string_to_expr(
+                    RDB_expr_var_name(RDB_parse_node_expr(
+                            RDB_parse_node_child(nodep,
+                                aggrtok == TOK_COUNT ? 4 : 5), ecp)),
+                    ecp);
+            if (argp == NULL)
+                return NULL;
+            RDB_add_arg(rexp, argp);
+                
+            nodep = nodep->nextp;
+            if (nodep == NULL)
+                break;
+            
+            /* Skip comma */
+            nodep = nodep->nextp;            
+        }
+    }              
+
+    return rexp;
+}
+
+static RDB_expression *
+update_node_expr(RDB_parse_node *argnodep,
+        RDB_exec_context *ecp)
+{
+    RDB_expression *argp;
+    RDB_parse_node *nodep;
+    RDB_expression *rexp = RDB_ro_op("UPDATE", ecp);
+    if (rexp == NULL)
+        return NULL;
+
+    argp = RDB_parse_node_expr(argnodep, ecp);
+    if (argp == NULL)
+        return NULL;        
+    argp = RDB_dup_expr(argp, ecp);
+    if (argp == NULL)
+        return NULL;
+    RDB_add_arg(rexp, argp);
+
+    nodep = argnodep->nextp->nextp->val.children.firstp;
+    if (nodep != NULL) {
+        for (;;) {
+            argp = RDB_string_to_expr(
+                    RDB_expr_var_name(RDB_parse_node_expr(
+                            nodep->val.children.firstp, ecp)),
+                    ecp);
+            RDB_add_arg(rexp, argp);
+
+            argp = RDB_parse_node_expr(nodep->val.children.firstp->nextp->nextp, ecp);
+            if (argp == NULL)
+                return NULL;
+            argp = RDB_dup_expr(argp, ecp);
+            if (argp == NULL)
+                return NULL;
+            RDB_add_arg(rexp, argp);
+                    
+            nodep = nodep->nextp;
+            if (nodep == NULL)
+                break;
+            
+            /* Skip comma */
+            nodep = nodep->nextp;            
+        }
+    }
+
+    return rexp;
+}
+
+static RDB_expression *
+var_name_to_string_expr(RDB_expression *exp, RDB_exec_context *ecp)
+{
+    const char *attrname = RDB_expr_var_name(exp);
+
+    if (attrname == NULL) {
+        RDB_raise_invalid_argument("missing attribute name", ecp);
+        return NULL;
+    }
+    return RDB_string_to_expr(attrname, ecp);
+}
+
+static RDB_expression *
+rename_node_expr(RDB_parse_node *argnodep,
+        RDB_exec_context *ecp)
+{
+    RDB_expression *argp;
+    RDB_parse_node *nodep;
+
+    RDB_expression *rexp = RDB_ro_op("RENAME", ecp);
+
+    argp = RDB_parse_node_expr(argnodep, ecp);
+    if (argp == NULL)
+        return NULL;        
+    argp = RDB_dup_expr(argp, ecp);
+    if (argp == NULL)
+        return NULL;
+    RDB_add_arg(rexp, argp);
+
+    nodep = argnodep->nextp->nextp->nextp->val.children.firstp;
+    if (nodep != NULL) {
+        for (;;) {
+            argp = var_name_to_string_expr(RDB_parse_node_expr(
+                            nodep->val.children.firstp, ecp), ecp);
+            RDB_add_arg(rexp, argp);
+ 
+            argp = var_name_to_string_expr(RDB_parse_node_expr(
+                            nodep->val.children.firstp->nextp->nextp, ecp), ecp);
+            RDB_add_arg(rexp, argp);
+                
+            nodep = nodep->nextp;
+            if (nodep == NULL)
+                break;
+            
+            /* Skip comma */
+            nodep = nodep->nextp;            
+        }
+    }              
+
+    return rexp;
+}
+
+static int
+add_id_list(RDB_expression *exp, RDB_parse_node *nodep, RDB_exec_context *ecp)
+{
+    RDB_expression *argp;
+
+    for(;;) {
+        argp = RDB_parse_node_expr(nodep, ecp);
+        if (argp == NULL)
+            return RDB_ERROR;
+        argp = var_name_to_string_expr(argp, ecp);
+        if (argp == NULL)
+            return RDB_ERROR;
+        RDB_add_arg(exp, argp);
+        
+        nodep = nodep->nextp;
+        if (nodep == NULL)
+            break;
+        nodep = nodep->nextp;
+    }
+    return RDB_OK;
+}
+
+static RDB_expression *
+wrap_node_expr(RDB_parse_node *argnodep,
+        RDB_exec_context *ecp)
+{
+    RDB_expression *argp;
+    RDB_expression *rexp = RDB_ro_op("WRAP", ecp);
+    RDB_parse_node *wnodep, *nodep;
+
+    argp = RDB_parse_node_expr(argnodep, ecp);
+    if (argp == NULL)
+        return NULL;        
+    argp = RDB_dup_expr(argp, ecp);
+    if (argp == NULL)
+        return NULL;
+    RDB_add_arg(rexp, argp);
+
+    wnodep = argnodep->nextp->nextp->nextp->val.children.firstp;
+    if (wnodep != NULL) {
+        for (;;) {
+            RDB_expression *attrexp;
+            RDB_type *arrtyp;
+            RDB_object *arrp;
+            const char *attrname;
+            int i;
+
+            /* Create array arg */
+            argp = RDB_obj_to_expr(NULL, _RDB_parse_ecp);
+            if (argp == NULL)
+                return NULL;
+            arrp = RDB_expr_obj(argp);
+            if (RDB_set_array_length(arrp,
+                    (RDB_parse_nodelist_length(wnodep->val.children.firstp->nextp) + 1) / 2,
+                    _RDB_parse_ecp) != RDB_OK)
+                return NULL;
+            arrtyp = RDB_create_array_type(&RDB_STRING, _RDB_parse_ecp);
+            if (arrtyp == NULL)
+                return NULL;
+            RDB_obj_set_typeinfo(arrp, arrtyp);
+
+            i = 0;
+            nodep = wnodep->val.children.firstp->nextp->val.children.firstp;
+            if (nodep != NULL) {
+                for (;;) {                    
+                    attrexp = RDB_parse_node_expr(nodep, ecp);
+                    if (attrexp == NULL)
+                        return NULL;
+
+                    attrname = RDB_expr_var_name(attrexp);
+                    if (attrname == NULL) {
+                        RDB_raise_invalid_argument("missing attribute name", ecp);
+                        return NULL;
+                    }
+                    if (RDB_string_to_obj(RDB_array_get(arrp, i++, _RDB_parse_ecp),
+                            attrname, _RDB_parse_ecp) != RDB_OK)
+                        return NULL;
+                    if (nodep->nextp == NULL)
+                        break;
+                    nodep = nodep->nextp->nextp;
+                }
+            }
+            RDB_add_arg(rexp, argp);
+
+            argp = RDB_parse_node_expr(
+                    wnodep->val.children.firstp->nextp->nextp->nextp->nextp, ecp);
+            if (argp == NULL)
+                return NULL;
+            argp = var_name_to_string_expr(argp, ecp);
+            if (argp == NULL)
+                return NULL;
+            RDB_add_arg(rexp, argp);
+
+            if (wnodep->nextp == NULL)
+                break;
+            wnodep = wnodep->nextp->nextp;
+        }
+    }
+    return rexp;
+}                  
+
+static RDB_expression *
+unwrap_node_expr(RDB_parse_node *argnodep,
+        RDB_exec_context *ecp)
+{
+    RDB_expression *argp;
+    RDB_expression *rexp = RDB_ro_op("UNWRAP", ecp);
+
+    argp = RDB_parse_node_expr(argnodep, ecp);
+    if (argp == NULL)
+        return NULL;
+    argp = RDB_dup_expr(argp, ecp);
+    if (argp == NULL)
+        return NULL;
+    RDB_add_arg(rexp, argp);
+
+    if (argnodep->nextp->nextp->nextp->val.children.firstp != NULL) {
+        if (add_id_list(rexp,
+                argnodep->nextp->nextp->nextp->val.children.firstp, ecp) != RDB_OK)
+            return NULL;
+    }
+
+    return rexp;
+}
+
+static RDB_expression *
+group_node_expr(RDB_parse_node *argnodep,
+        RDB_exec_context *ecp)
+{
+    RDB_expression *argp;
+    RDB_expression *rexp = RDB_ro_op("GROUP", ecp);
+
+    argp = RDB_parse_node_expr(argnodep, ecp);
+    if (argp == NULL)
+        return NULL;        
+    argp = RDB_dup_expr(argp, ecp);
+    if (argp == NULL)
+        return NULL;
+    RDB_add_arg(rexp, argp);
+
+    if (argnodep->nextp->nextp->nextp->val.children.firstp != NULL) {
+        if (add_id_list(rexp,
+                argnodep->nextp->nextp->nextp->val.children.firstp, ecp) != RDB_OK)
+            return NULL;
+    }
+
+    argp = RDB_string_to_expr(
+            RDB_expr_var_name(RDB_parse_node_expr(
+                    argnodep->nextp->nextp->nextp->nextp->nextp->nextp, ecp)),
+            ecp);
+    RDB_add_arg(rexp, argp);
+    return rexp;
+}
+
+static int
+resolve_exprname(RDB_expression **expp, RDB_parse_node *nameintrop,
+        RDB_exec_context *ecp)
+{
+    RDB_expression *argp;
+
+    switch ((*expp)->kind) {
+        case RDB_EX_TUPLE_ATTR:
+        case RDB_EX_GET_COMP:
+            return resolve_exprname(&(*expp)->var.op.args.firstp,
+                    nameintrop, ecp);
+        case RDB_EX_RO_OP:
+            argp = (*expp)->var.op.args.firstp;
+            (*expp)->var.op.args.firstp = NULL;
+            while (argp != NULL) {
+                RDB_expression *nextp = argp->nextp;
+                if (resolve_exprname(&argp, nameintrop, ecp) != RDB_OK)
+                    return RDB_ERROR;
+                RDB_add_arg(*expp, argp);
+                argp = nextp;
+            }
+            return RDB_OK;
+        case RDB_EX_OBJ:
+        case RDB_EX_TBP:
+            return RDB_OK;
+        case RDB_EX_VAR:
+			if (strcmp(RDB_expr_var_name(
+			        nameintrop->val.children.firstp->nextp->nextp->exp),
+			        RDB_expr_var_name(*expp)) == 0) {
+                RDB_expression *exp = RDB_parse_node_expr(
+                		nameintrop->val.children.firstp, ecp);
+                if (exp == NULL)
+                    return RDB_ERROR;
+                exp = RDB_dup_expr(exp, ecp);
+                if (exp == NULL) {
+                    return RDB_ERROR;
+                }
+
+                exp->nextp = (*expp)->nextp;
+                RDB_drop_expr(*expp, ecp);
+                *expp = exp;
+            }
+            return RDB_OK;
+    }
+    abort();
+}
+
+static int
+resolve_exprnames(RDB_expression **expp, RDB_parse_node *nameintrop,
+        RDB_exec_context *ecp) {
+	if (nameintrop->nextp != NULL) {
+	    /* Skip comma, process rest of list */
+		if (resolve_exprnames(expp, nameintrop->nextp->nextp, ecp) != RDB_OK)
+			return RDB_ERROR;
+	}
+	return resolve_exprname(expp, nameintrop, ecp);
+}
+
+static RDB_expression *
+with_node_expr(RDB_parse_node *nodep, RDB_exec_context *ecp)
+{
+	RDB_expression *exp;
+
+	/* Convert node to expression */
+	exp = RDB_parse_node_expr(nodep->nextp->nextp, ecp);
+	if (exp == NULL)
+		return NULL;
+
+	exp = RDB_dup_expr(exp, ecp);
+	if (exp == NULL)
+		return NULL;
+
+	/* Resolve */
+	if (nodep->val.children.firstp != NULL) {
+        if (resolve_exprnames(&exp, nodep->val.children.firstp, ecp) != RDB_OK) {
+            return NULL;
+        }
+	}
+
+	return exp;
+}
+
+static RDB_expression *
+divide_node_expr(RDB_parse_node *argnodep,
+        RDB_exec_context *ecp)
+{
+    RDB_expression *argp;
+    RDB_expression *rexp = RDB_ro_op("DIVIDE", ecp);
+
+    argp = RDB_parse_node_expr(argnodep, ecp);
+    if (argp == NULL)
+        return NULL;        
+    argp = RDB_dup_expr(argp, ecp);
+    if (argp == NULL)
+        return NULL;
+    RDB_add_arg(rexp, argp);
+
+    argp = RDB_parse_node_expr(argnodep->nextp->nextp, ecp);
+    if (argp == NULL)
+        return NULL;        
+    argp = RDB_dup_expr(argp, ecp);
+    if (argp == NULL)
+        return NULL;
+    RDB_add_arg(rexp, argp);
+
+    argp = RDB_parse_node_expr(argnodep->nextp->nextp->nextp->nextp, ecp);
+    if (argp == NULL)
+        return NULL;        
+    argp = RDB_dup_expr(argp, ecp);
+    if (argp == NULL)
+        return NULL;
+    RDB_add_arg(rexp, argp);
+
+    return rexp;
+}
+
+static RDB_expression *
+ro_op_node_expr(RDB_parse_node *argnodep,
+        RDB_exec_context *ecp)
+{
+    RDB_expression *rexp;
+    const char *opnamep = RDB_expr_var_name(argnodep->exp);
+    
+    // Readonly operator
+    if (strncmp(opnamep, "THE_", 4) == 0) {
+        RDB_expression *argp;
+
+        if (argnodep->nextp->nextp == NULL) {
+            RDB_raise_syntax("THE_ operator requires argument", ecp);
+            return NULL;
+        }
+        argp = RDB_dup_expr(RDB_parse_node_expr(RDB_parse_node_child(
+                argnodep->nextp->nextp, 0), ecp), ecp);
+        if (argp == NULL)
+            return NULL;
+        rexp = RDB_expr_comp(argp, opnamep + 4, ecp);
+    } else {
+        rexp = RDB_ro_op(opnamep, ecp);
+        if (rexp == NULL)
+            return NULL;
+        if (add_args(rexp, argnodep->nextp->nextp, ecp) != RDB_OK) {
+            return NULL;
+        }
+    }
+    return rexp;
+}
+
+static RDB_expression *
+subscript_node_expr(RDB_parse_node *argnodep, RDB_exec_context *ecp)
+{
+    RDB_expression *rexp;
+    RDB_expression *argp;
+
+    rexp = RDB_ro_op("[]", ecp);
+    if (rexp == NULL)
+        return NULL;
+    argp = RDB_parse_node_expr(argnodep, ecp);
+    if (argp == NULL)
+        return NULL;        
+    argp = RDB_dup_expr(argp, ecp);
+    if (argp == NULL)
+        return NULL;
+    RDB_add_arg(rexp, argp);
+
+    argp = RDB_parse_node_expr(argnodep->nextp->nextp, ecp);
+    if (argp == NULL)
+        return NULL;        
+    argp = RDB_dup_expr(argp, ecp);
+    if (argp == NULL)
+        return NULL;
+    RDB_add_arg(rexp, argp);
+    
+    return rexp;
+}
+
+static int
+add_arg_list(RDB_expression *exp, RDB_parse_node *nodep, RDB_exec_context *ecp)
+{
+	RDB_expression *argp;
+    RDB_parse_node *itemp = nodep->val.children.firstp;
+
+    if (itemp == NULL)
+    	return RDB_OK;
+	for(;;) {
+		argp = RDB_parse_node_expr(itemp, ecp);
+		if (argp == NULL)
+			return RDB_ERROR;
+		argp = RDB_dup_expr(argp, ecp);
+		if (argp == NULL)
+			return RDB_ERROR;
+		RDB_add_arg(exp, argp);
+
+		itemp = itemp->nextp;
+		if (itemp == NULL)
+			return RDB_OK;
+		/* Skip comma */
+		itemp = itemp->nextp;
+	}
+	return RDB_OK;
+}
+
+static RDB_expression *
+inner_node_expr(RDB_parse_node *nodep, RDB_exec_context *ecp)
+{
+    RDB_parse_node *firstp = nodep->val.children.firstp;
+    RDB_parse_node *id_list_nodep;
+    RDB_expression *argp;
+
+    if (firstp->kind == RDB_NODE_TOK) {
+        switch (firstp->val.token) {
+            case TOK_TUPLE:
+                if (firstp->nextp->kind == RDB_NODE_TOK
+                        && firstp->nextp->val.token == TOK_FROM) {
+                    nodep->exp = RDB_ro_op("TO_TUPLE", ecp);
+                    argp = RDB_parse_node_expr(firstp->nextp->nextp, ecp);
+                    if (argp == NULL)
+                        return NULL;
+                    argp = RDB_dup_expr(argp, ecp);
+                    if (argp == NULL)
+                        return NULL;
+                    RDB_add_arg(nodep->exp, argp);
+                    return nodep->exp;
+                }
+                nodep->exp = RDB_ro_op("TUPLE", ecp);
+                if (nodep->exp == NULL)
+                    return NULL;
+    
+                if (firstp->nextp->nextp->kind == RDB_NODE_INNER) {
+                    RDB_parse_node *itemp = firstp->nextp->nextp->val.children.firstp;
+                    for(;;) {
+                        argp = RDB_string_to_expr(RDB_expr_var_name(itemp->exp), ecp);
+                        if (argp == NULL)
+                            return NULL;
+                        RDB_add_arg(nodep->exp, argp);
+                        
+                        argp = RDB_parse_node_expr(itemp->nextp, ecp);
+                        if (argp == NULL)
+                            return NULL;
+                        argp = RDB_dup_expr(argp, ecp);
+                        if (argp == NULL)
+                            return NULL;
+                        RDB_add_arg(nodep->exp, argp);
+    
+                        itemp = itemp->nextp->nextp;
+                        if (itemp == NULL)
+                            break;
+                        itemp = itemp->nextp;
+                    }
+                }
+                return nodep->exp;
+            case TOK_RELATION:
+                nodep->exp = RDB_ro_op("RELATION", ecp);
+                if (nodep->exp == NULL)
+                    return NULL;
+
+                assert(firstp->nextp->nextp->kind == RDB_NODE_INNER);
+				if (add_arg_list(nodep->exp, firstp->nextp->nextp, ecp) != RDB_OK)
+					return NULL;
+                return nodep->exp;
+            case TOK_ARRAY:
+                nodep->exp = RDB_ro_op("ARRAY", ecp);
+                if (nodep->exp == NULL)
+                    return NULL;
+
+                assert(firstp->nextp->nextp->kind == RDB_NODE_INNER);
+				if (add_arg_list(nodep->exp, firstp->nextp->nextp, ecp) != RDB_OK)
+					return NULL;
+                return nodep->exp;
+            case TOK_TABLE_DEE:
+            case TOK_TABLE_DUM:
+                return nodep->exp;
+            case '-':
+                return unop_expr("-", nodep, firstp->nextp, ecp);
+            case '+':
+                argp = RDB_parse_node_expr(firstp->nextp, ecp);
+                if (argp == NULL)
+                    return NULL;        
+                nodep->exp = RDB_dup_expr(argp, ecp);
+                return nodep->exp;
+            case TOK_NOT:
+                return unop_expr("NOT", nodep, firstp->nextp, ecp);            
+            case TOK_IF:
+                return if_expr(nodep, firstp->nextp, ecp);            
+            case TOK_COUNT:
+                nodep->exp = RDB_ro_op("COUNT", ecp);
+                if (nodep->exp == NULL)
+                    return NULL;
+
+                argp = RDB_parse_node_expr(firstp->nextp->nextp, ecp);
+                if (argp == NULL)
+                    return NULL;        
+                argp = RDB_dup_expr(argp, ecp);
+                if (argp == NULL)
+                    return NULL;
+                RDB_add_arg(nodep->exp, argp);
+                return nodep->exp;
+            case TOK_SUM:
+            case TOK_AVG:
+            case TOK_MAX:
+            case TOK_MIN:
+            case TOK_ALL:
+            case TOK_ANY:
+                return nodep->exp = aggr_node_expr(firstp->val.token,
+                        firstp->nextp->nextp, ecp);
+            case TOK_EXTEND:
+                return nodep->exp = extend_node_expr(firstp->nextp, ecp);
+            case TOK_SUMMARIZE:
+                return nodep->exp = summarize_node_expr(firstp->nextp, ecp);
+            case TOK_UPDATE:
+                return nodep->exp = update_node_expr(firstp->nextp, ecp);
+            case '(':
+                argp = RDB_parse_node_expr(firstp->nextp, ecp);
+                if (argp == NULL)
+                    return NULL;
+                return nodep->exp = RDB_dup_expr(argp, ecp);
+            case TOK_WITH:
+            	return nodep->exp = with_node_expr(firstp->nextp, ecp);
+            default:
+                RDB_raise_syntax("invalid token", ecp);
+                return NULL;
+        }
+    }
+
+    if (firstp->nextp != NULL && firstp->nextp->kind == RDB_NODE_TOK
+            && firstp->nextp->val.token == '{') {
+        if (firstp->nextp->nextp != NULL
+                && firstp->nextp->nextp->kind == RDB_NODE_TOK
+                && firstp->nextp->nextp->val.token == TOK_ALL
+                && firstp->nextp->nextp->nextp != NULL
+                && firstp->nextp->nextp->nextp->kind == RDB_NODE_TOK
+                && firstp->nextp->nextp->nextp->val.token == TOK_BUT) {
+            nodep->exp = RDB_ro_op("REMOVE", ecp);
+            if (nodep->exp == NULL)
+                return NULL;
+            id_list_nodep = firstp->nextp->nextp->nextp->nextp->val.children.firstp;
+        } else {
+            nodep->exp = RDB_ro_op("PROJECT", ecp);
+            if (nodep->exp == NULL)
+                return NULL;
+            id_list_nodep = firstp->nextp->nextp->val.children.firstp;
+        }
+        argp = RDB_parse_node_expr(firstp, ecp);
+        if (argp == NULL)
+            return NULL;        
+        argp = RDB_dup_expr(argp, ecp);
+        if (argp == NULL)
+            return NULL;
+        RDB_add_arg(nodep->exp, argp);
+
+        if (id_list_nodep != NULL) {
+            if (add_id_list(nodep->exp, id_list_nodep, ecp) != RDB_OK)
+                return NULL;
+        }
+        return nodep->exp;
+    }
+
+    if (firstp->nextp != NULL) {
+        if (firstp->nextp->kind == RDB_NODE_TOK) {
+            switch (firstp->nextp->val.token) {
+                case '(':
+                    return nodep->exp = ro_op_node_expr(firstp, ecp);
+                 case TOK_RENAME:
+                    return nodep->exp = rename_node_expr(firstp, ecp);
+                 case TOK_WRAP:
+                    return nodep->exp = wrap_node_expr(firstp, ecp);
+                 case TOK_UNWRAP:
+                    return nodep->exp = unwrap_node_expr(firstp, ecp);
+                 case TOK_GROUP:
+                    return nodep->exp = group_node_expr(firstp, ecp);
+                 case TOK_DIVIDEBY:
+                    return nodep->exp = divide_node_expr(firstp, ecp);
+                 case '[':
+                    return nodep->exp = subscript_node_expr(firstp, ecp);
+            }
+        }
+        if (firstp->nextp->nextp != NULL
+                && firstp->nextp->nextp->nextp == NULL
+                && firstp->nextp->kind == RDB_NODE_TOK) {
+            return binop_node_expr(nodep, ecp);                    
+        }
+    }
+
+    RDB_raise_internal("cannot convert parse tree to expression", ecp);
+    return NULL;
+}
+
+RDB_expression *
+RDB_parse_node_expr(RDB_parse_node *nodep, RDB_exec_context *ecp)
+{
+    if (nodep->exp != NULL)
+        return nodep->exp;
+
+    assert(nodep->kind != RDB_NODE_TOK);
+
+    if (nodep->kind == RDB_NODE_INNER) {
+        if (inner_node_expr(nodep, ecp) == NULL)
+            return NULL;
+    }
+
+    return nodep->exp;
+}
+
+const char *
+RDB_parse_node_ID(const RDB_parse_node *nodep)
+{
+    if (nodep->kind == RDB_NODE_EXPR && nodep->exp->kind == RDB_EX_VAR) {
+        return nodep->exp->var.varname;
+    }
+    return NULL;
+}
+
+void
+RDB_parse_add_child(RDB_parse_node *pnodep, RDB_parse_node *childp) {
+    childp->nextp = NULL;
+    if (pnodep->val.children.firstp == NULL) {
+        pnodep->val.children.firstp = pnodep->val.children.lastp = childp;
+    } else {
+        pnodep->val.children.lastp->nextp = childp;
+        pnodep->val.children.lastp = childp;
+    }
 }
 
 RDB_int
-RDB_parse_assignlist_length(const RDB_parse_assign *assignp)
+RDB_parse_nodelist_length(const RDB_parse_node *pnodep)
 {
+    RDB_parse_node *nodep = pnodep->val.children.firstp;
     RDB_int cnt = 0;
-    while (assignp != NULL) {
+    while (nodep != NULL) {
         cnt++;
-        assignp = assignp->nextp;
+        nodep = nodep->nextp;
     }
     return cnt;
 }
 
-int
-RDB_parse_del_stmtlist(RDB_parse_statement *stmtp, RDB_exec_context *ecp)
+RDB_parse_node *
+RDB_parse_node_child(const RDB_parse_node *nodep, RDB_int idx)
 {
-    int r;
-    RDB_parse_statement *nextp;
-    int ret = RDB_OK;
-
-    do {
-        nextp = stmtp->nextp;
-        r = RDB_parse_del_stmt(stmtp, ecp);
-        if (r != RDB_OK)
-            ret = RDB_ERROR;
-        stmtp = nextp;
-    } while (stmtp != NULL);
-    return ret;
+    if (nodep->kind != RDB_NODE_INNER)
+        return NULL;
+    RDB_parse_node *chnodep = nodep->val.children.firstp;
+    while (idx-- > 0 && chnodep != NULL) {
+        chnodep = chnodep->nextp;
+    }
+    return chnodep;
 }
 
-RDB_parse_statement *
-RDB_parse_new_call(char *name, RDB_expr_list *explistp)
+int
+RDB_parse_del_node(RDB_parse_node *nodep, RDB_exec_context *ecp)
 {
-    RDB_parse_statement *stmtp = RDB_alloc(sizeof(RDB_parse_statement), _RDB_parse_ecp);
-    if (stmtp == NULL)
-        return NULL;
-
-    stmtp->kind = RDB_STMT_CALL;
-    RDB_init_obj(&stmtp->var.call.opname);
-    if (RDB_string_to_obj(&stmtp->var.call.opname, name, _RDB_parse_ecp)
-            != RDB_OK) {
-        RDB_destroy_obj(&stmtp->var.call.opname, NULL);
-        free(stmtp);
-        return NULL;
+    if (nodep->kind == RDB_NODE_INNER
+            && nodep->val.children.firstp != NULL) {
+        if (RDB_parse_del_nodelist(nodep->val.children.firstp, ecp) != RDB_OK)
+            return RDB_ERROR;
     }
-    stmtp->var.call.arglist = *explistp;
-    return stmtp;
+    if (nodep->exp != NULL)
+        return RDB_drop_expr(nodep->exp, ecp);
+    return RDB_OK;
+}
+
+int
+RDB_parse_del_nodelist(RDB_parse_node *nodep, RDB_exec_context *ecp)
+{
+    do {
+        RDB_parse_node *np = nodep->nextp;
+        if (RDB_parse_del_node(nodep, ecp) != RDB_OK)
+            return RDB_ERROR;
+        nodep = np;
+    } while (nodep != NULL);
+    return RDB_OK;
+}
+
+int
+RDB_parse_node_var_name_idx(const RDB_parse_node *nodep, const char *namep)
+{
+	int idx = 0;
+
+	if (nodep == NULL)
+		return -1;
+	for(;;) {
+		if (strcmp(RDB_expr_var_name(nodep->exp), namep) == 0)
+			return idx;
+		idx++;
+		nodep = nodep->nextp;
+		if (nodep == NULL)
+			return -1;
+		nodep = nodep->nextp;
+	}
 }
 
 /**@defgroup parse Parsing functions
@@ -324,7 +1243,7 @@ The call may also fail for a @ref system-errors "system error".
 
 @warning The parser is not reentrant.
  */
-RDB_expression *
+RDB_parse_node *
 RDB_parse_expr(const char *txt, RDB_exec_context *ecp)
 {
     int pret;
@@ -348,7 +1267,7 @@ RDB_parse_expr(const char *txt, RDB_exec_context *ecp)
 
 /*@}*/
 
-RDB_parse_statement *
+RDB_parse_node *
 RDB_parse_stmt(RDB_exec_context *ecp)
 {
     int pret;
@@ -363,5 +1282,92 @@ RDB_parse_stmt(RDB_exec_context *ecp)
         }
         return NULL;
     }
-    return _RDB_parse_stmtp;
+    return _RDB_parse_resultp;
+}
+
+RDB_parse_node *
+RDB_parse_stmt_string(const char *txt, RDB_exec_context *ecp)
+{
+    int pret;
+    YY_BUFFER_STATE oldbuf = _RDB_parse_buffer;
+
+    _RDB_parse_ecp = ecp;
+
+    _RDB_parse_buffer = yy_scan_string(txt);
+
+    _RDB_parse_start_stmt();
+    pret = yyparse();
+    yy_delete_buffer(_RDB_parse_buffer);
+    if (_RDB_parse_interactive) {
+        _RDB_parse_buffer = yy_scan_string("");
+    } else {
+        yy_switch_to_buffer(oldbuf);
+        _RDB_parse_buffer = oldbuf;
+    }
+
+    if (pret != 0) {
+        if (RDB_get_err(ecp) == NULL) {
+            RDB_raise_internal("parser error", ecp);
+        }
+        return NULL;
+    }
+
+    return _RDB_parse_resultp;
+}
+
+int
+Duro_parse_node_to_obj_string(RDB_object *dstp, RDB_parse_node *nodep,
+		RDB_exec_context *ecp, RDB_transaction *txp)
+{
+    RDB_parse_node *np;
+    RDB_object strobj;
+    int ret;
+
+    switch(nodep->kind) {
+        case RDB_NODE_TOK:
+            return RDB_string_to_obj(dstp, RDB_token_name(nodep->val.token), ecp);
+        case RDB_NODE_INNER:
+            ret = RDB_string_to_obj(dstp, "", ecp);
+            if (ret != RDB_OK)
+                return ret;
+
+            RDB_init_obj(&strobj);
+            np = nodep->val.children.firstp;
+            while (np != NULL) {
+                ret = Duro_parse_node_to_obj_string(&strobj, np, ecp, txp);
+                if (ret != RDB_OK) {
+                    RDB_destroy_obj(&strobj, ecp);
+                    return ret;
+                }
+                ret = RDB_append_string(dstp, RDB_obj_string(&strobj), ecp);
+                if (ret != RDB_OK) {
+                    RDB_destroy_obj(&strobj, ecp);
+                    return ret;
+                }
+                ret = RDB_append_string(dstp, " ", ecp);
+                if (ret != RDB_OK) {
+                    RDB_destroy_obj(&strobj, ecp);
+                    return ret;
+                }
+                np = np->nextp;
+            }
+            RDB_destroy_obj(&strobj, ecp);
+            return RDB_OK;
+        case RDB_NODE_EXPR:
+            return _RDB_expr_to_str(dstp, nodep->exp, ecp, txp, 0);
+    }
+    RDB_raise_internal("invalid parse node", ecp);
+    return RDB_ERROR;
+}
+
+void
+RDB_print_parse_node(FILE *fp, RDB_parse_node *nodep,
+        RDB_exec_context *ecp)
+{
+    RDB_object strobj;
+
+    RDB_init_obj(&strobj);
+    Duro_parse_node_to_obj_string(&strobj, nodep, ecp, NULL);
+    fputs(RDB_obj_string(&strobj), fp);
+    RDB_destroy_obj(&strobj, ecp);
 }

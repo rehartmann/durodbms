@@ -1,7 +1,7 @@
 /*
  * $Id$
  *
- * Copyright (C) 2004-2009 René Hartmann.
+ * Copyright (C) 2004-2011 Rene Hartmann.
  * See the file COPYING for redistribution information.
  */
 
@@ -1039,7 +1039,7 @@ RDB_expr_type(RDB_expression *exp, RDB_gettypefn *getfnp, void *arg,
             return RDB_obj_type(exp->var.tbref.tbp);
         case RDB_EX_VAR:
             if (arg != NULL) {
-                typ = (*getfnp) (exp->var.varname, arg);
+                typ = (*getfnp) (RDB_expr_var_name(exp), arg);
                 if (typ != NULL) {
                     exp->typ = RDB_dup_nonscalar_type(typ, ecp);
                     return exp->typ;
@@ -1743,9 +1743,9 @@ evaluate_ro_op(RDB_expression *exp, RDB_getobjfn *getfnp, void *getdata,
         }
 
         /*
-         * Obtain argument type if not already available
+         * Obtain argument type if not already available (except for RELATION)
          */
-        if (valpv[i]->typ == NULL) {
+        if (valpv[i]->typ == NULL && strcmp(exp->var.op.name, "RELATION") != 0) {
             valpv[i]->typ = RDB_expr_type(argp, NULL, NULL, ecp, txp);
             if (valpv[i]->typ == NULL) {
                 ret = RDB_ERROR;

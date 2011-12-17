@@ -1,7 +1,7 @@
 /*
  * $Id$
  *
- * Copyright (C) 2004-2009 René Hartmann.
+ * Copyright (C) 2004-2011 Rene Hartmann.
  * See the file COPYING for redistribution information.
  *
  *
@@ -80,7 +80,7 @@ RDB_expr_to_vtable(RDB_expression *exp, RDB_exec_context *ecp,
 {
     RDB_object *tbp;
 
-/*
+/* !!
     if (!RDB_tx_is_running(txp)) {
         RDB_raise_no_running_tx(ecp);
         return NULL;

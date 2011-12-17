@@ -1,7 +1,7 @@
 /*
  * $Id$
  *
- * Copyright (C) 2004-2008 René Hartmann.
+ * Copyright (C) 2004-2011 Rene Hartmann.
  * See the file COPYING for redistribution information.
  */
 
@@ -107,7 +107,8 @@ eliminate_not(RDB_expression *exp, RDB_exec_context *ecp, RDB_transaction *txp)
         if (hexp == NULL)
             return RDB_ERROR;
         RDB_add_arg(hexp, exp->var.op.args.firstp->var.op.args.firstp->nextp);
-        if (alter_op(exp, "OR", ecp) != RDB_OK)
+        ret = alter_op(exp, "OR", ecp);
+        if (ret != RDB_OK)
             return ret;
         exp->var.op.args.firstp->nextp = hexp;
 

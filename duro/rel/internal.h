@@ -4,7 +4,7 @@
 /*
  * $Id$
  *
- * Copyright (C) 2003-2008 René Hartmann.
+ * Copyright (C) 2003-2011 Rene Hartmann.
  * See the file COPYING for redistribution information.
  */
 
@@ -503,5 +503,11 @@ _RDB_del_recmap(RDB_transaction *, RDB_recmap *, RDB_exec_context *);
 
 int
 _RDB_del_index(RDB_transaction *, RDB_index *, RDB_exec_context *);
+
+/* !! prefix */
+int
+_RDB_op_relation(const char *name, int argc, RDB_object *argv[], RDB_type *typ,
+        const void *iargp, size_t iarglen, RDB_exec_context *ecp,
+        RDB_transaction *txp, RDB_object *retvalp);
 
 #endif

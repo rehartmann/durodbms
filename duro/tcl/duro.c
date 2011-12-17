@@ -1,7 +1,7 @@
 /*
  * $Id$
  *
- * Copyright (C) 2003-2009 René Hartmann.
+ * Copyright (C) 2003-2011 Rene Hartmann.
  * See the file COPYING for redistribution information.
  */
 
@@ -498,15 +498,19 @@ Duro_tcl_to_duro(Tcl_Interp *interp, Tcl_Obj *tobjp, RDB_type *typ,
     }
     if (RDB_type_is_scalar(typ)) {
         RDB_expression *exp;
-
-        exp = RDB_parse_expr(Tcl_GetString(tobjp), ecp);
+        RDB_parse_node *nodep = RDB_parse_expr(Tcl_GetString(tobjp), ecp);
+        if (nodep == NULL) {
+            Duro_dberror(interp, RDB_get_err(ecp), txp);
+            return TCL_ERROR;
+        }
+        exp = RDB_parse_node_expr(nodep, ecp);
         if (exp == NULL) {
             Duro_dberror(interp, RDB_get_err(ecp), txp);
             return TCL_ERROR;
         }
 
         ret = RDB_evaluate(exp, NULL, NULL, ecp, txp, objp);
-        RDB_drop_expr(exp, ecp);
+        RDB_parse_del_node(nodep, ecp);
         if (ret != RDB_OK) {
             Duro_dberror(interp, RDB_get_err(ecp), txp);
             return TCL_ERROR;
@@ -860,6 +864,7 @@ Duro_parse_expr_utf(Tcl_Interp *interp, const char *s, void *arg,
 {
     int ret;
     RDB_expression *exp, *rexp;
+    RDB_parse_node *nodep;
     int srclen = strlen(s);
     int dstlen = (srclen + 1) * 2;
     char *dst = Tcl_Alloc(dstlen);
@@ -869,14 +874,21 @@ Duro_parse_expr_utf(Tcl_Interp *interp, const char *s, void *arg,
     if (ret != TCL_OK)
         return NULL;
 
-    exp = RDB_parse_expr(dst, ecp);
+    nodep = RDB_parse_expr(dst, ecp);
+    if (nodep == NULL) {
+        Duro_dberror(interp, RDB_get_err(ecp), txp);
+        return NULL;
+    }
+    exp = RDB_parse_node_expr(nodep, ecp);
+    
     Tcl_Free(dst);
     if (exp == NULL) {
+        RDB_parse_del_node(nodep, ecp);
         Duro_dberror(interp, RDB_get_err(ecp), txp);
         return NULL;
     }
     rexp = RDB_expr_resolve_varnames(exp, Duro_get_ltable, arg, ecp, txp);
-    RDB_drop_expr(exp, ecp);
+    RDB_parse_del_node(nodep, ecp);
     if (rexp == NULL) {
         Duro_dberror(interp, RDB_get_err(ecp), txp);
         return NULL;

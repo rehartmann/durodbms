@@ -1,7 +1,7 @@
 /*
  * $Id$
  *
- * Copyright (C) 2004-2008 René Hartmann.
+ * Copyright (C) 2004-2008 Renï¿½ Hartmann.
  * See the file COPYING for redistribution information.
  */
 
@@ -388,6 +388,14 @@ RDB_call_ro_op(const char *name, int argc, RDB_object *argv[],
     int ret;
     RDB_type **argtv;
     int i;
+
+    /*
+     * Handle RELATION, calling it directly,
+     * bypassing getting types of all arguments
+     */
+    if (strcmp(name, "RELATION") == 0)
+    	return _RDB_op_relation(name, argc, argv, NULL,
+    	        NULL, -1, ecp, txp, retvalp);
 
     for (i = 0; i < argc; i++) {
         if (RDB_obj_type(argv[i]) == NULL) {

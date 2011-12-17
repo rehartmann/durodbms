@@ -4,7 +4,7 @@
 /*
  * $Id$
  *
- * Copyright (C) 2004-2006 René Hartmann.
+ * Copyright (C) 2004-2011 Rene Hartmann.
  * See the file COPYING for redistribution information.
  */
 
@@ -26,5 +26,8 @@ _RDB_table_def_to_str(RDB_object *dstp, const RDB_object *srcp,
 int
 _RDB_expr_to_str(RDB_object *dstp, const RDB_expression *exp,
         RDB_exec_context *, RDB_transaction *, int options);
+
+int
+_RDB_print_expr(const RDB_expression *, RDB_exec_context *);
 
 #endif

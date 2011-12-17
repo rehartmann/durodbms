@@ -1,7 +1,7 @@
 /*
  * $Id$
  *
- * Copyright (C) 2004-2007 René Hartmann.
+ * Copyright (C) 2004-2011 Rene Hartmann.
  * See the file COPYING for redistribution information.
  */
 
@@ -641,7 +641,7 @@ int
 _RDB_remove_to_project(RDB_expression *exp, RDB_exec_context *ecp,
         RDB_transaction *txp)
 {
-    RDB_expression **argv;
+    RDB_expression **argv = NULL;
     RDB_expression *argp, *nargp, *lastnargp;
     RDB_expr_list oargs;
     int attrc;

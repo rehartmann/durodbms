@@ -1,7 +1,7 @@
 /*
  * $Id$
  *
- * Copyright (C) 2004-2009 René Hartmann.
+ * Copyright (C) 2004-2011 Rene Hartmann.
  * See the file COPYING for redistribution information.
  */
 
@@ -456,4 +456,19 @@ _RDB_expr_to_str(RDB_object *dstp, const RDB_expression *exp,
         return RDB_ERROR;
 
     return append_ex(dstp, exp, ecp, txp, options);
+}
+
+int
+_RDB_print_expr(const RDB_expression *exp, RDB_exec_context *ecp)
+{
+	RDB_object dst;
+
+	RDB_init_obj(&dst);
+    if (_RDB_expr_to_str(&dst, exp, ecp, NULL, 0) != RDB_OK) {
+        RDB_destroy_obj(&dst, ecp);
+        return RDB_ERROR;
+    }
+    puts(RDB_obj_string(&dst));
+    RDB_destroy_obj(&dst, ecp);
+    return RDB_OK;
 }

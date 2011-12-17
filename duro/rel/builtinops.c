@@ -1,7 +1,7 @@
 /*
  * $Id$
  *
- * Copyright (C) 2005-2009 René Hartmann.
+ * Copyright (C) 2005-2010 Renï¿½ Hartmann.
  * See the file COPYING for redistribution information.
  */
 
@@ -506,7 +506,7 @@ The IF-THEN-ELSE operator.
 
 <h3 id="op_tuple">OPERATOR TUPLE</h3>
 
-OPERATOR TUPLE(ATTRNAME STRING, ATTRVAL <em>STRING</em>, ...) RETURNS <em>TUPLE</em>;
+OPERATOR TUPLE(ATTRNAME STRING, ATTRVAL <em>ANY</em>, ...) RETURNS <em>TUPLE</em>;
 
 <h4>Description</h4>
 
@@ -524,13 +524,23 @@ The relation selector.
 
 <hr>
 
-<h3 id="op_tuple">OPERATOR TUPLE</h3>
+<h3 id="op_array">OPERATOR ARRAY</h3>
 
 OPERATOR ARRAY(<em>ANY</em>, ...) RETURNS <em>ARRAY</em>;
 
 <h4>Description</h4>
 
 The array selector.
+
+<hr>
+
+<h3 id="op_to_tuple">OPERATOR TO_TUPLE</h3>
+
+OPERATOR TO_TUPLE(R <em>RELATION</em>) RETURNS <em>TUPLE</em>;
+
+<h4>Description</h4>
+
+Extracts a single tuple from a relation.
 
 <hr>
 
@@ -604,7 +614,7 @@ OPERATOR UNION(R1 <em>RELATION</em>, R2 <em>RELATION</em>) RETURNS <em>RELATION<
 
 <hr>
 
-<h3 id="op_union">OPERATOR UPDATE</h3>
+<h3 id="op_update">OPERATOR UPDATE</h3>
 
 OPERATOR UPDATE(R1 <em>RELATION</em>, DST_ATTRNAME <em>STRING</em>, SRC_EXPR <em>ANY</em>) RETURNS <em>RELATION</em>;
 
@@ -743,8 +753,8 @@ op_tuple(const char *name, int argc, RDB_object *argv[], RDB_type *typ,
     return RDB_OK;
 }
 
-static int
-op_relation(const char *name, int argc, RDB_object *argv[], RDB_type *typ,
+int
+_RDB_op_relation(const char *name, int argc, RDB_object *argv[], RDB_type *typ,
         const void *iargp, size_t iarglen, RDB_exec_context *ecp,
         RDB_transaction *txp, RDB_object *retvalp)
 {
@@ -922,12 +932,12 @@ op_wrap(const char *name, int argc, RDB_object *argv[], RDB_type *rtyp,
     if (argv[0]->kind == RDB_OB_TABLE)
         return op_vtable(name, argc, argv, rtyp, ecp, txp, retvalp);
 
-    if (argc < 1 || argc %2 != 1) {
+    if (argc < 1 || argc % 2 != 1) {
         RDB_raise_invalid_argument("invalid number of arguments", ecp);
         return RDB_ERROR;
     }
 
-    wrapc = argc % 2;
+    wrapc = argc / 2;
     if (wrapc > 0) {
         wrapv = RDB_alloc(sizeof(RDB_wrapping) * wrapc, ecp);
         if (wrapv == NULL) {
@@ -954,7 +964,7 @@ op_wrap(const char *name, int argc, RDB_object *argv[], RDB_type *rtyp,
                 goto cleanup;
             }
             wrapv[i].attrv[j] = RDB_obj_string(objp);
-        }        
+        }
         wrapv[i].attrname = RDB_obj_string(argv[i * 2 + 2]);
     }
 
@@ -1844,7 +1854,7 @@ _RDB_init_builtin_ops(RDB_exec_context *ecp)
     if (put_builtin_ro_op("TUPLE", -1, NULL, NULL, &op_tuple, ecp) != RDB_OK)
         return RDB_ERROR;
 
-    if (put_builtin_ro_op("RELATION", -1, NULL, NULL, &op_relation, ecp)
+    if (put_builtin_ro_op("RELATION", -1, NULL, NULL, &_RDB_op_relation, ecp)
             != RDB_OK)
         return RDB_ERROR;
 

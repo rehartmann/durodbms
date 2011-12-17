@@ -1,7 +1,7 @@
 /*
  * $Id$
  *
- * Copyright (C) 2003-2009 René Hartmann.
+ * Copyright (C) 2003-2011 Rene Hartmann.
  * See the file COPYING for redistribution information.
  */
 
@@ -1936,7 +1936,7 @@ RDB_join_relation_types(const RDB_type *typ1, const RDB_type *typ2,
 }
 
 /* Return a pointer to the RDB_attr strcuture of the attribute with name attrname in the tuple
-   type pointed to by tutyp. */
+   type *tpltyp. */
 RDB_attr *
 _RDB_tuple_type_attr(const RDB_type *tpltyp, const char *attrname)
 {

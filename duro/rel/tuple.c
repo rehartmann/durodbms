@@ -1,7 +1,7 @@
 /*
  * $Id$
  *
- * Copyright (C) 2003-2007 René Hartmann.
+ * Copyright (C) 2003-2011 Rene Hartmann.
  * See the file COPYING for redistribution information.
  */
 
@@ -673,10 +673,9 @@ RDB_wrap_tuple(const RDB_object *tplp, int wrapc, const RDB_wrapping wrapv[],
     RDB_hashtable_iter it;
     tuple_entry *entryp;
 
-    RDB_init_obj(&tpl);
-
     /* Wrap attributes */
     for (i = 0; i < wrapc; i++) {
+        RDB_init_obj(&tpl);
         for (j = 0; j < wrapv[i].attrc; j++) {
             RDB_object *attrp = RDB_tuple_get(tplp, wrapv[i].attrv[j]);
 
@@ -697,8 +696,8 @@ RDB_wrap_tuple(const RDB_object *tplp, int wrapc, const RDB_wrapping wrapv[],
             RDB_destroy_obj(&tpl, ecp);
             return ret;
         }
+        RDB_destroy_obj(&tpl, ecp);
     }
-    RDB_destroy_obj(&tpl, ecp);
 
     /* Copy attributes which have not been wrapped */
     RDB_init_hashtable_iter(&it, (RDB_hashtable *)&tplp->var.tpl_tab);

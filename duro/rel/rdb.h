@@ -5,7 +5,7 @@
 $Id$
 
 This file is part of Duro, a relational database management system.
-Copyright (C) 2003-2009 René Hartmann.
+Copyright (C) 2003-2011 Rene Hartmann.
 
 Duro is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -356,7 +356,7 @@ int
 RDB_add_table(RDB_object *, RDB_exec_context *, RDB_transaction *);
 
 typedef struct {
-    char *name;
+    const char *name;
     RDB_expression *exp;
 } RDB_attr_update;
 

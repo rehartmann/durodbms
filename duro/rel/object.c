@@ -1,7 +1,7 @@
 /*
  * $Id$
  *
- * Copyright (C) 2003-2009 René Hartmann.
+ * Copyright (C) 2003-2011 Renï¿½ Hartmann.
  * See the file COPYING for redistribution information.
  */
 
@@ -933,6 +933,48 @@ RDB_string_to_obj(RDB_object *valp, const char *str, RDB_exec_context *ecp)
 }
 
 /**
+ * RDB_string_to_obj sets the RDB_object pointed to by <var>valp</var>
+to the string value specified by <var>str</var>.
+
+The RDB_object must either be newly initialized or of type
+STRING.
+ */
+static int
+bin_to_string(RDB_object *dstp, const RDB_object *srcp, RDB_exec_context *ecp)
+{
+    void *datap;
+
+    if (dstp->kind != RDB_OB_INITIAL && dstp->typ != &RDB_STRING) {
+        RDB_raise_type_mismatch("not a STRING", ecp);
+        return RDB_ERROR;
+    }
+
+    if (dstp->kind == RDB_OB_INITIAL) {
+        datap = RDB_alloc(srcp->var.bin.len + 1, ecp);
+        if (datap == NULL) {
+            return RDB_ERROR;
+        }
+        dstp->typ = &RDB_STRING;
+        dstp->kind = RDB_OB_BIN;
+    } else {
+        datap = RDB_realloc(dstp->var.bin.datap, srcp->var.bin.len + 1, ecp);
+        if (datap == NULL) {
+            return RDB_ERROR;
+        }
+    }
+    dstp->var.bin.len = srcp->var.bin.len + 1;
+    dstp->var.bin.datap = datap;
+
+    /* Copy data */
+    memcpy(dstp->var.bin.datap, srcp->var.bin.datap, srcp->var.bin.len);
+
+    /* Add terminating zero */
+    ((char *) dstp->var.bin.datap)[srcp->var.bin.len] = '\0';
+
+    return RDB_OK;
+}
+
+/**
  * Appends the string <var>str</var> to *<var>objp</var>.
 
 *<var>objp</var> must be of type STRING.
@@ -1305,7 +1347,8 @@ RDB_obj_type(const RDB_object *objp)
  * This should be used only for tuples and arrays, which, unlike scalars
  * and tables, do not to carry explicit type information by default.
  * The caller must manage the type; it is not automatically destroyed
- * when *<var>objp</var> is destroyed.
+ * when *<var>objp</var> is destroyed (except if *<var>objp</var> is embedded in an
+ * expression).
  */
 void
 RDB_obj_set_typeinfo(RDB_object *objp, RDB_type *typ)
@@ -1363,6 +1406,10 @@ RDB_obj_to_string(RDB_object *dstp, const RDB_object *srcp,
             return RDB_ERROR;
     } else if (srcp->typ == &RDB_STRING) {
         ret = RDB_string_to_obj(dstp, RDB_obj_string(srcp), ecp);
+        if (ret != RDB_OK)
+            return RDB_ERROR;
+    } else if (srcp->typ == &RDB_BINARY) {
+        ret = bin_to_string(dstp, srcp, ecp);
         if (ret != RDB_OK)
             return RDB_ERROR;
     } else {

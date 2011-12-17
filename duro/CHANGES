@@ -2,6 +2,10 @@ $Id$
 
 Summary of Changes for Duro
 
+Changes for Duro 0.16
+
+- Store user-defined operators as source code
+
 Changes for Duro 0.15
 
 - RDB_expr_type now always raises an error if the type could not be determined.
