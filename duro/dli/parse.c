@@ -183,6 +183,16 @@ binop_node_expr(RDB_parse_node *nodep, RDB_exec_context *ecp)
                     ecp);
             RDB_add_arg(nodep->exp, argp);
             return nodep->exp;
+        case TOK_FROM:
+            argp = RDB_parse_node_expr(firstp->nextp->nextp, ecp);
+            if (argp == NULL)
+                goto error;
+            argp = RDB_dup_expr(argp, ecp);
+            if (argp == NULL)
+                goto error;
+            nodep->exp = RDB_tuple_attr(argp,
+                    RDB_expr_var_name(RDB_parse_node_expr(firstp, ecp)), ecp);
+            return nodep->exp;
         case '.':
             argp = RDB_parse_node_expr(firstp, ecp);
             if (argp == NULL)
