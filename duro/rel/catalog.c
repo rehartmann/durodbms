@@ -1,7 +1,7 @@
 /*
  * $Id$
  *
- * Copyright (C) 2003-2009 René Hartmann.
+ * Copyright (C) 2003-2009 Renï¿½ Hartmann.
  * See the file COPYING for redistribution information.
  */
 
@@ -955,7 +955,7 @@ _RDB_open_systables(RDB_dbroot *dbrootp, RDB_exec_context *ecp,
     RDB_type *typ;
     RDB_bool create = RDB_FALSE;
 
-    /* create or open catalog tables */
+    /* Create or open catalog tables */
 
     for(;;) {
         ret = provide_systable("SYS_TABLEATTRS", 4, table_attr_attrv,
@@ -1825,6 +1825,7 @@ _RDB_cat_get_vtable(const char *name, RDB_exec_context *ecp,
         goto error;
 
     tbp->var.tb.is_persistent = RDB_TRUE;
+    tbp->var.tb.is_user = usr;
 
     tbp->var.tb.name = RDB_dup_str(name);
     if (tbp->var.tb.name == NULL) {

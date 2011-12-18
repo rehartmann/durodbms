@@ -2290,14 +2290,22 @@ exec_opdrop(const RDB_parse_node *nodep, RDB_exec_context *ecp)
     /* !! Aus opmap löschen */
 
     /*
-     * If a transaction is not active, start transaction if a database
+     * If a transaction is not active, start transaction if a database environment
      * is available
      */
     if (txnp == NULL) {
-        RDB_database *dbp = get_db(ecp);
-        if (dbp == NULL)
+        RDB_database *sysdbp;
+
+        if (envp == NULL) {
+            RDB_raise_resource_not_found("no connection", ecp);
             return RDB_ERROR;
-        if (RDB_begin_tx(ecp, &tmp_tx, dbp, NULL) != RDB_OK) {
+        }
+
+        sysdbp = RDB_get_sys_db(envp, ecp);
+        if (sysdbp == NULL)
+            return RDB_ERROR;
+
+        if (RDB_begin_tx(ecp, &tmp_tx, sysdbp, NULL) != RDB_OK) {
             return RDB_ERROR;
         }
     }
@@ -2525,10 +2533,18 @@ exec_opdef(RDB_parse_node *parentp, RDB_exec_context *ecp)
      * Create temporary transaction, if no transaction is active
      */
     if (txnp == NULL) {
-        RDB_database *dbp = get_db(ecp);
-        if (dbp == NULL)
+        RDB_database *sysdbp;
+
+        if (envp == NULL) {
+            RDB_raise_resource_not_found("no connection", ecp);
             return RDB_ERROR;
-        if (RDB_begin_tx(ecp, &tmp_tx, dbp, NULL) != RDB_OK) {
+        }
+
+        sysdbp = RDB_get_sys_db(envp, ecp);
+        if (sysdbp == NULL)
+            return RDB_ERROR;
+
+        if (RDB_begin_tx(ecp, &tmp_tx, sysdbp, NULL) != RDB_OK) {
             return RDB_ERROR;
         }
     }

@@ -11,10 +11,10 @@ import os
 # Basic settings
 #
 
-bdbhome = ARGUMENTS.get('bdbhome', '/usr/local/BerkeleyDB.4.7')
+bdbhome = ARGUMENTS.get('bdbhome', '/usr/local/BerkeleyDB.5.2')
 with_durotcl = int(ARGUMENTS.get('with_durotcl', 1))
 
-release = '0.14'
+release = '0.15'
 
 env = Environment(ENV = os.environ)
 

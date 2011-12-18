@@ -1,7 +1,7 @@
 /*
  * $Id$
  *
- * Copyright (C) 2003-2008 René Hartmann.
+ * Copyright (C) 2003-2008 Renï¿½ Hartmann.
  * See the file COPYING for redistribution information.
  */
 
@@ -396,12 +396,143 @@ assoc_systables(RDB_dbroot *dbrootp, RDB_database *dbp, RDB_exec_context *ecp)
 }
 
 /*
- * Create and initialize RDB_dbroot structure. Use dbp to create the transaction.
- * If newdb is true, create the database in the catalog.
+ * Create database from dbroot
+ */
+static RDB_database *
+create_db(const char *name, RDB_dbroot *dbrootp,
+                       RDB_exec_context *ecp)
+{
+    RDB_transaction tx;
+    int ret;
+    RDB_database *dbp = new_db(name, ecp);
+    if (dbp == NULL) {
+        return NULL;
+    }
+
+    /*
+     * Create DB in catalog
+     */
+
+    dbp->dbrootp = dbrootp;
+
+    ret = RDB_begin_tx(ecp, &tx, dbp, NULL);
+    if (ret != RDB_OK) {
+        goto error;
+    }
+
+    ret = _RDB_cat_create_db(ecp, &tx);
+    if (ret != RDB_OK) {
+        RDB_rollback(ecp, &tx);
+        goto error;
+    }
+
+    ret = RDB_commit(ecp, &tx);
+    if (ret != RDB_OK) {
+        goto error;
+    }
+
+    if (assoc_systables(dbrootp, dbp, ecp) != RDB_OK)
+        goto error;
+
+    /* Insert database into list */
+    dbp->nextdbp = dbrootp->first_dbp;
+    dbrootp->first_dbp = dbp;
+
+    return dbp;
+
+error:
+    free_db(dbp);
+    return NULL;
+}
+
+static RDB_database *
+get_db(const char *name, RDB_dbroot *dbrootp, RDB_exec_context *ecp)
+{
+    RDB_database *dbp = NULL;
+    RDB_transaction tx;
+    RDB_object tpl;
+    RDB_bool b;
+    int ret;
+
+    /* Search the DB list for the database */
+    for (dbp = dbrootp->first_dbp; dbp != NULL; dbp = dbp->nextdbp) {
+        if (strcmp(dbp->name, name) == 0) {
+            return dbp;
+        }
+    }
+
+    /*
+     * Not found, read database from catalog
+     */
+
+    tx.dbp = NULL;
+    ret = _RDB_begin_tx(ecp, &tx, dbrootp->envp, NULL);
+    if (ret != RDB_OK) {
+        goto error;
+    }
+
+    /*
+     * Check if the database exists by checking if the DBTABLES contains
+     * SYS_RTABLES for this database.
+     */
+
+    RDB_init_obj(&tpl);
+    ret = RDB_tuple_set_string(&tpl, "TABLENAME", "SYS_RTABLES", ecp);
+    if (ret != RDB_OK) {
+        RDB_rollback(ecp, &tx);
+        goto error;
+    }
+    ret = RDB_tuple_set_string(&tpl, "DBNAME", name, ecp);
+    if (ret != RDB_OK) {
+        RDB_rollback(ecp, &tx);
+        goto error;
+    }
+
+    dbp = new_db(name, ecp);
+    if (dbp == NULL) {
+        goto error;
+    }
+
+    ret = RDB_table_contains(dbrootp->dbtables_tbp, &tpl, ecp, &tx, &b);
+    if (ret != RDB_OK) {
+        RDB_destroy_obj(&tpl, ecp);
+        RDB_rollback(ecp, &tx);
+        goto error;
+    }
+    if (!b) {
+        RDB_destroy_obj(&tpl, ecp);
+        RDB_rollback(ecp, &tx);
+        RDB_raise_not_found("database not found", ecp);
+        goto error;
+    }
+    RDB_destroy_obj(&tpl, ecp);
+
+    ret = RDB_commit(ecp, &tx);
+    if (ret != RDB_OK)
+        return NULL;
+
+    if (assoc_systables(dbrootp, dbp, ecp) != RDB_OK)
+        goto error;
+    dbp->dbrootp = dbrootp;
+
+    /* Insert database into list */
+    dbp->nextdbp = dbrootp->first_dbp;
+    dbrootp->first_dbp = dbp;
+
+    return dbp;
+
+error:
+    if (dbp != NULL) {
+        free_db(dbp);
+    }
+    return NULL;
+}
+
+/*
+ * Create and initialize RDB_dbroot structure.
  */
 static int
-create_dbroot(RDB_environment *envp, RDB_bool newdb,
-              RDB_exec_context *ecp, RDB_dbroot **dbrootpp)
+create_dbroot(RDB_environment *envp, RDB_exec_context *ecp, RDB_dbroot **dbrootpp)
 {
     RDB_transaction tx;
     RDB_dbroot *dbrootp;
@@ -446,6 +577,62 @@ error:
 }
 
 /**
+ * Return a pointer to the system database SYS_DB.
+ * Create the database if it does not exist.
+
+@returns
+
+On success, a pointer to the database is returned. If an error occurred, NULL is
+returned.
+
+ */
+RDB_database *
+RDB_get_sys_db(RDB_environment *envp, RDB_exec_context *ecp)
+{
+    int ret;
+    RDB_database *dbp;
+    RDB_dbroot *dbrootp = (RDB_dbroot *) RDB_env_private(envp);
+    RDB_bool crdbroot = RDB_FALSE;
+
+    if (dbrootp == NULL) {
+        /*
+         * No dbroot found, initialize builtin types and libltdl
+         * and create RDB_dbroot structure
+         */
+
+        if (_RDB_init_builtin_types(ecp) != RDB_OK) {
+            goto error;
+        }
+        lt_dlinit();
+        ret = create_dbroot(envp, ecp, &dbrootp);
+        if (ret != RDB_OK) {
+            goto error;
+        }
+        crdbroot = RDB_TRUE;
+    }
+    dbp = get_db("SYS_DB", dbrootp, ecp);
+    if (dbp == NULL) {
+        if (RDB_obj_type(RDB_get_err(ecp)) != &RDB_NOT_FOUND_ERROR)
+            goto error;
+        RDB_clear_err(ecp);
+        dbp = create_db("SYS_DB", dbrootp, ecp);
+        if (dbp == NULL)
+            goto error;
+    }
+    return dbp;
+
+error:
+    if (crdbroot) {
+        close_systables(dbrootp, ecp);
+        free_dbroot(dbrootp, ecp);
+        RDB_env_private(envp) = NULL;
+    }
+
+    lt_dlexit();
+    return NULL;
+}
+
+/**
 RDB_create_db_from_env creates a database from a database environment.
 If an error occurs, an error value is left in *<var>ecp</var>.
 
@@ -469,71 +656,19 @@ RDB_database *
 RDB_create_db_from_env(const char *name, RDB_environment *envp,
                        RDB_exec_context *ecp)
 {
-    int ret;
-    RDB_database *dbp;
-    RDB_dbroot *dbrootp;
-    RDB_transaction tx;
+    RDB_database *sysdbp;
 
     if (!_RDB_legal_name(name)) {
         RDB_raise_invalid_argument("invalid database name", ecp);
         return NULL;
     }
 
-    dbrootp = (RDB_dbroot *)RDB_env_private(envp);
-    dbp = new_db(name, ecp);
-    if (dbp == NULL) {
+    /* Get dbroot from sys DB */
+    sysdbp = RDB_get_sys_db(envp, ecp);
+    if (sysdbp == NULL)
         return NULL;
-    }
 
-    if (dbrootp == NULL) {
-        /*
-         * No dbroot found, initialize builtin types and libltdl
-         * and create RDB_dbroot structure
-         */
-        if (_RDB_init_builtin_types(ecp) != RDB_OK) {
-            goto error;
-        }
-        ret = create_dbroot(envp, RDB_TRUE, ecp, &dbrootp);
-        if (ret != RDB_OK) {
-            goto error;
-        }
-        lt_dlinit();
-    }
-
-    /*
-     * Create DB in catalog
-     */
-
-    dbp->dbrootp = dbrootp;
-
-    ret = RDB_begin_tx(ecp, &tx, dbp, NULL);
-    if (ret != RDB_OK) {
-        goto error;
-    }
-
-    ret = _RDB_cat_create_db(ecp, &tx);
-    if (ret != RDB_OK) {
-        RDB_rollback(ecp, &tx);
-        goto error;
-    }
-
-    ret = RDB_commit(ecp, &tx);
-    if (ret != RDB_OK) {
-        goto error;
-    }
-
-    if (assoc_systables(dbrootp, dbp, ecp) != RDB_OK)
-        goto error;
-
-    /* Insert database into list */
-    dbp->nextdbp = dbrootp->first_dbp;
-    dbrootp->first_dbp = dbp;
-
-    return dbp;
-
-error:
-    free_db(dbp);
-    return NULL;
+    return create_db(name, sysdbp->dbrootp, ecp);
 }
 
 /**
@@ -562,110 +697,15 @@ RDB_database *
 RDB_get_db_from_env(const char *name, RDB_environment *envp,
                     RDB_exec_context *ecp)
 {
-    int ret;
-    RDB_transaction tx;
-    RDB_object tpl;
-    RDB_bool b;
-    RDB_database *dbp = NULL;
-    RDB_dbroot *dbrootp = (RDB_dbroot *) RDB_env_private(envp);
-    RDB_bool crdbroot = RDB_FALSE;
+    RDB_database *dbp;
+    RDB_database *sysdbp;
 
-    if (dbrootp == NULL) {
-        /*
-         * No dbroot found, initialize builtin types and libltdl
-         * and create RDB_dbroot structure
-         */
-
-        if (_RDB_init_builtin_types(ecp) != RDB_OK) {
-            goto error;
-        }
-        lt_dlinit();
-        ret = create_dbroot(envp, RDB_FALSE, ecp, &dbrootp);
-        if (ret != RDB_OK) {
-            goto error;
-        }
-        crdbroot = RDB_TRUE;
-    }
-
-    /* search the DB list for the database */
-    for (dbp = dbrootp->first_dbp; dbp != NULL; dbp = dbp->nextdbp) {
-        if (strcmp(dbp->name, name) == 0) {
-            return dbp;
-        }
-    }
-
-    /*
-     * Not found, read database from catalog
-     */
-
-    tx.dbp = NULL;
-    ret = _RDB_begin_tx(ecp, &tx, envp, NULL);
-    if (ret != RDB_OK) {
-        goto error;
-    }
-
-    /*
-     * Check if the database exists by checking if the DBTABLES contains
-     * SYS_RTABLES for this database.
-     */
-
-    RDB_init_obj(&tpl);
-    ret = RDB_tuple_set_string(&tpl, "TABLENAME", "SYS_RTABLES", ecp);
-    if (ret != RDB_OK) {
-        RDB_rollback(ecp, &tx);
-        goto error;
-    }
-    ret = RDB_tuple_set_string(&tpl, "DBNAME", name, ecp);
-    if (ret != RDB_OK) {
-        RDB_rollback(ecp, &tx);
-        goto error;
-    }
-
-    dbp = new_db(name, ecp);
-    if (dbp == NULL) {
-        goto error;
-    }
-
-    ret = RDB_table_contains(dbrootp->dbtables_tbp, &tpl, ecp, &tx, &b);
-    if (ret != RDB_OK) {
-        RDB_destroy_obj(&tpl, ecp);
-        RDB_rollback(ecp, &tx);
-        goto error;
-    }
-    if (!b) {
-        RDB_destroy_obj(&tpl, ecp);
-        RDB_rollback(ecp, &tx);
-        RDB_raise_not_found("database not found", ecp);
-        goto error;
-    }
-    RDB_destroy_obj(&tpl, ecp);
-
-    ret = RDB_commit(ecp, &tx);
-    if (ret != RDB_OK)
+    /* Get dbroot from sys DB */
+    sysdbp = RDB_get_sys_db(envp, ecp);
+    if (sysdbp == NULL)
         return NULL;
-    
-    if (assoc_systables(dbrootp, dbp, ecp) != RDB_OK)
-        goto error;
-    dbp->dbrootp = dbrootp;
-    
-    /* Insert database into list */
-    dbp->nextdbp = dbrootp->first_dbp;
-    dbrootp->first_dbp = dbp;
 
-    return dbp;
-
-error:
-    if (crdbroot) {
-        close_systables(dbrootp, ecp);
-        free_dbroot(dbrootp, ecp);
-        RDB_env_private(envp) = NULL;
-    }
-
-    if (dbp != NULL) {
-        free_db(dbp);
-    }
-    lt_dlexit();
-    return NULL;
+    return get_db(name, sysdbp->dbrootp, ecp);
 }
 
 static RDB_object *
@@ -955,7 +995,7 @@ RDB_get_dbs(RDB_environment *envp, RDB_object *arrp, RDB_exec_context *ecp)
         if (_RDB_init_builtin_types(ecp) != RDB_OK) {
             return RDB_ERROR;
         }
-        ret = create_dbroot(envp, RDB_TRUE, ecp, &dbrootp);
+        ret = create_dbroot(envp, ecp, &dbrootp);
         if (ret != RDB_OK) {
             return RDB_ERROR;
         }

@@ -76,7 +76,9 @@ typedef struct RDB_object {
      * Internal 
      */
 
-    /* The type. If the value is non-scalar and not a table, it is NULL by default,
+    /*
+     * The type of the RDB_object.
+     * If the value is non-scalar and not a table, it is NULL by default,
      * but can be set by calling RDB_obj_set_typeinfo().
      * In this case, the caller is responsible for managing the type
      * (e.g. destroying the type when the RDB_object is destroyed).
@@ -128,6 +130,7 @@ typedef struct RDB_object {
             struct RDB_object *tplp;
         } arr;
      } var;
+
      /* Used internally for conversion into the internal representation */
      struct RDB_type *store_typ;
 } RDB_object;
@@ -279,6 +282,9 @@ RDB_db_name(RDB_database *dbp);
 
 RDB_environment *
 RDB_db_env(RDB_database *);
+
+RDB_database *
+RDB_get_sys_db(RDB_environment *, RDB_exec_context *);
 
 RDB_database *
 RDB_create_db_from_env(const char *name, RDB_environment *envp,
