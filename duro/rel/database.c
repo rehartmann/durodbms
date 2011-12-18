@@ -1,7 +1,7 @@
 /*
  * $Id$
  *
- * Copyright (C) 2003-2008 Ren� Hartmann.
+ * Copyright (C) 2003-2011 Rene Hartmann.
  * See the file COPYING for redistribution information.
  */
 
@@ -531,8 +531,8 @@ error:
 /*
  * Create and initialize RDB_dbroot structure.
  */
-static int
-create_dbroot(RDB_environment *envp, RDB_exec_context *ecp, RDB_dbroot **dbrootpp)
+static RDB_dbroot *
+create_dbroot(RDB_environment *envp, RDB_exec_context *ecp)
 {
     RDB_transaction tx;
     RDB_dbroot *dbrootp;
@@ -545,7 +545,7 @@ create_dbroot(RDB_environment *envp, RDB_exec_context *ecp, RDB_dbroot **dbrootp
     dbrootp = new_dbroot(envp, ecp);
     if (dbrootp == NULL) {
         RDB_raise_no_memory(ecp);
-        return RDB_ERROR;
+        return NULL;
     }
 
     ret = _RDB_begin_tx(ecp, &tx, envp, NULL);
@@ -568,12 +568,11 @@ create_dbroot(RDB_environment *envp, RDB_exec_context *ecp, RDB_dbroot **dbrootp
 
     RDB_env_private(envp) = dbrootp;
 
-    *dbrootpp = dbrootp;
-    return RDB_OK;
+    return dbrootp;
 
 error:
     free_dbroot(dbrootp, ecp);
-    return ret;
+    return NULL;
 }
 
 /**
@@ -589,7 +588,6 @@ returned.
 RDB_database *
 RDB_get_sys_db(RDB_environment *envp, RDB_exec_context *ecp)
 {
-    int ret;
     RDB_database *dbp;
     RDB_dbroot *dbrootp = (RDB_dbroot *) RDB_env_private(envp);
     RDB_bool crdbroot = RDB_FALSE;
@@ -604,8 +602,8 @@ RDB_get_sys_db(RDB_environment *envp, RDB_exec_context *ecp)
             goto error;
         }
         lt_dlinit();
-        ret = create_dbroot(envp, ecp, &dbrootp);
-        if (ret != RDB_OK) {
+        dbrootp = create_dbroot(envp, ecp);
+        if (dbrootp == NULL) {
             goto error;
         }
         crdbroot = RDB_TRUE;
@@ -697,11 +695,8 @@ RDB_database *
 RDB_get_db_from_env(const char *name, RDB_environment *envp,
                     RDB_exec_context *ecp)
 {
-    RDB_database *dbp;
-    RDB_database *sysdbp;
-
-    /* Get dbroot from sys DB */
-    sysdbp = RDB_get_sys_db(envp, ecp);
+    /* Get dbroot from system DB */
+    RDB_database *sysdbp = RDB_get_sys_db(envp, ecp);
     if (sysdbp == NULL)
         return NULL;
 
@@ -985,30 +980,18 @@ RDB_get_dbs(RDB_environment *envp, RDB_object *arrp, RDB_exec_context *ecp)
     RDB_object *vtbp;
     RDB_object resarr;
     RDB_transaction tx;
-    RDB_dbroot *dbrootp = (RDB_dbroot *) RDB_env_private(envp);
-
-    if (dbrootp == NULL) {
-        /*
-         * No dbroot found, initialize builtin types and libltdl
-         * and create RDB_dbroot structure
-         */
-        if (_RDB_init_builtin_types(ecp) != RDB_OK) {
-            return RDB_ERROR;
-        }
-        ret = create_dbroot(envp, ecp, &dbrootp);
-        if (ret != RDB_OK) {
-            return RDB_ERROR;
-        }
-        lt_dlinit();
+    RDB_database *sysdbp = RDB_get_sys_db(envp, ecp); /* Get SYS_DB */
+    if (sysdbp == NULL) {
+        return RDB_ERROR;
     }
 
-    ret = _RDB_begin_tx(ecp, &tx, envp, NULL);
+    ret = RDB_begin_tx(ecp, &tx, sysdbp, NULL);
     if (ret != RDB_OK) {
         return ret;
     }
     tx.dbp = NULL;
 
-    vtbp = db_names_tb(dbrootp->dbtables_tbp, ecp, &tx);
+    vtbp = db_names_tb(sysdbp->dbrootp->dbtables_tbp, ecp, &tx);
     if (vtbp == NULL) {
         RDB_rollback(ecp, &tx);
         RDB_raise_no_memory(ecp);
@@ -1165,6 +1148,8 @@ A candidate key may not be a subset of another.
 If a single candidate key is specified, that key
 may be empty (not contain any attributes).
 
+The database *<var>txp</var> interacts with must be a user database.
+
 Passing a <var>keyv</var> of NULL is equivalent to specifiying a single key
 which consists of all attributes, that is, the table will become all-key.
 
@@ -1232,6 +1217,15 @@ RDB_create_table_from_type(const char *name, RDB_type *reltyp,
 
     if (reltyp->kind != RDB_TP_RELATION) {
         RDB_raise_type_mismatch("relation type required", ecp);
+        return NULL;
+    }
+
+    /*
+     * Creating user tables in SYS_DB is not permitted
+     * !! needs documentation
+     */
+    if (strcmp(RDB_db_name(RDB_tx_db(txp)), "SYS_DB") == 0) {
+        RDB_raise_invalid_argument("SYS_DB must not contain user tables", ecp);
         return NULL;
     }
 

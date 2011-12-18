@@ -551,18 +551,17 @@ D>
 <p>Example for defining a type:</p>
 
 <pre>
-begin tx;
-type len possrep {n float} constraint the_n(len) >= 0.0;
-commit;
+no db> connect('dbenv');
+no db> type len possrep {n float} constraint the_n(len) >= 0.0;
+Type LEN defined.
 </pre>
 
 <p>Before the type can be used, it must first be implemented.
 This can be done using IMPLEMENT TYPE:</p>
 
 <pre>
-begin tx;
-implement type len;
-commit;
+no db> implement type len;
+Type LEN implemented.
 </pre>
 
 <p>This currently works only for types with exactly one possible representation.

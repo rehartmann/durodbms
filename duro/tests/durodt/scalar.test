@@ -32,13 +32,13 @@ FALSE
 test deftype {user-defined types} -setup $DBSETUP -body {
     exec $testdir/../../dli/durodt << {
         connect('dbenv');
-        current_db := 'D';
-        begin transaction;
         type t
             possrep { a integer, b integer };
 
         implement type t;
 
+        current_db := 'D';
+        begin transaction;
         var v t;
         println(the_a(v));
         println(the_b(v));
@@ -47,8 +47,9 @@ test deftype {user-defined types} -setup $DBSETUP -body {
         println(the_a(v));
         println(the_b(v));
 
-        drop type t;
         commit;
+
+        drop type t;
     }
 } -result {0
 0
@@ -58,9 +59,6 @@ test deftype {user-defined types} -setup $DBSETUP -body {
 
 test defroop {read-only user-defined operators} -setup $DBSETUP -body {
     exec $testdir/../../dli/durodt -e dbenv << {
-        current_db := 'D';
-        begin tx;
-
         operator testop() returns string;
             var a integer;
             var b integer init 1;
@@ -121,17 +119,21 @@ test defroop {read-only user-defined operators} -setup $DBSETUP -body {
             end case;
         end operator;
 
+        current_db := 'D';
+        begin tx;
+
         println(testop());
-        drop operator testop;
-        
+
         println(reverse("Madam, I'm Adam."));
-        
+
         println(fib(6));
-        
+
         println(sgn(5));
         println(sgn(0));
 
         commit;
+
+        drop operator testop;
     }
 } -result {a = 1, b = 1, c = 8, d = 15
 .madA m'I ,madaM

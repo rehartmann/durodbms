@@ -2212,87 +2212,14 @@ parserep_to_rep(const RDB_parse_node *nodep, RDB_possrep *rep,
 static int
 exec_typedef(const RDB_parse_node *stmtp, RDB_exec_context *ecp)
 {
+    int ret;
     int i, j;
     int repc;
+    RDB_transaction tmp_tx;
     RDB_possrep *repv;
     RDB_parse_node *nodep;
     RDB_expression *constraintp = NULL;
 
-    if (txnp == NULL) {
-        RDB_raise_no_running_tx(ecp);
-        return RDB_ERROR;
-    }
-
-    repc = RDB_parse_nodelist_length(stmtp->nextp);
-    repv = RDB_alloc(repc * sizeof(RDB_possrep), ecp);
-    if (repv == NULL)
-        return RDB_ERROR;
-    nodep = stmtp->nextp->val.children.firstp;
-    for (i = 0; i < repc; i++) {
-        if (parserep_to_rep(nodep, &repv[i], ecp, &txnp->tx) != RDB_OK)
-            goto error;
-        nodep = nodep->nextp;
-    }
-
-    if (stmtp->nextp->nextp != NULL) {
-        constraintp = RDB_parse_node_expr(stmtp->nextp->nextp->nextp, ecp);
-        if (constraintp == NULL)
-        	goto error;
-    }
-
-    if (RDB_define_type(RDB_expr_var_name(stmtp->exp),
-            repc, repv, constraintp, ecp, &txnp->tx) != RDB_OK)
-        goto error;
-
-    for (i = 0; i < repc; i++) {
-        for (j = 0; j < repv[i].compc; j++) {
-            if (!RDB_type_is_scalar(repv[i].compv[j].typ))
-                RDB_drop_type(repv[i].compv[j].typ, ecp, NULL);
-        }
-    }
-    RDB_free(repv);
-    return RDB_OK;
-
-error:
-    for (i = 0; i < repc; i++) {
-        for (j = 0; j < repv[i].compc; j++) {
-            if (!RDB_type_is_scalar(repv[i].compv[j].typ))
-                RDB_drop_type(repv[i].compv[j].typ, ecp, NULL);
-        }
-    }
-    RDB_free(repv);
-    return RDB_ERROR;
-}
-
-static int
-exec_typedrop(const RDB_parse_node *nodep, RDB_exec_context *ecp)
-{
-    RDB_type *typ;
-
-    if (txnp == NULL) {
-        RDB_raise_no_running_tx(ecp);
-        return RDB_ERROR;
-    }
-
-    typ = RDB_get_type(RDB_expr_var_name(nodep->exp), ecp, &txnp->tx);
-    if (typ == NULL)
-        return RDB_ERROR;
-
-    return RDB_drop_type(typ, ecp, &txnp->tx);
-}
-
-static int
-exec_opdrop(const RDB_parse_node *nodep, RDB_exec_context *ecp)
-{
-    int ret;
-    RDB_transaction tmp_tx;
-
-    /* !! Aus opmap löschen */
-
-    /*
-     * If a transaction is not active, start transaction if a database environment
-     * is available
-     */
     if (txnp == NULL) {
         RDB_database *sysdbp;
 
@@ -2310,20 +2237,145 @@ exec_opdrop(const RDB_parse_node *nodep, RDB_exec_context *ecp)
         }
     }
 
-    if (RDB_drop_op(RDB_expr_var_name(nodep->exp), ecp,
-            txnp == NULL ? &tmp_tx : &txnp->tx) != RDB_OK) {
-        if (txnp == NULL)
-            RDB_rollback(ecp, &tmp_tx);
-        return RDB_ERROR;
+    repc = RDB_parse_nodelist_length(stmtp->nextp);
+    repv = RDB_alloc(repc * sizeof(RDB_possrep), ecp);
+    if (repv == NULL)
+        goto error;
+    nodep = stmtp->nextp->val.children.firstp;
+    for (i = 0; i < repc; i++) {
+        if (parserep_to_rep(nodep, &repv[i], ecp, txnp != NULL ? &txnp->tx : &tmp_tx) != RDB_OK)
+            goto error;
+        nodep = nodep->nextp;
     }
+
+    if (stmtp->nextp->nextp != NULL) {
+        constraintp = RDB_parse_node_expr(stmtp->nextp->nextp->nextp, ecp);
+        if (constraintp == NULL)
+        	goto error;
+    }
+
+    if (RDB_define_type(RDB_expr_var_name(stmtp->exp),
+            repc, repv, constraintp, ecp, txnp != NULL ? &txnp->tx : &tmp_tx) != RDB_OK)
+        goto error;
+
+    for (i = 0; i < repc; i++) {
+        for (j = 0; j < repv[i].compc; j++) {
+            if (!RDB_type_is_scalar(repv[i].compv[j].typ))
+                RDB_drop_type(repv[i].compv[j].typ, ecp, NULL);
+        }
+    }
+    RDB_free(repv);
+    if (txnp == NULL) {
+        ret = RDB_commit(ecp, &tmp_tx);
+    } else {
+        ret = RDB_OK;
+    }
+    if ((ret == RDB_OK) && _RDB_parse_interactive)
+        printf("Type %s defined.\n", RDB_expr_var_name(stmtp->exp));
+    return ret;
+
+error:
+    if (txnp == NULL)
+        RDB_rollback(ecp, &tmp_tx);
+    for (i = 0; i < repc; i++) {
+        for (j = 0; j < repv[i].compc; j++) {
+            if (!RDB_type_is_scalar(repv[i].compv[j].typ))
+                RDB_drop_type(repv[i].compv[j].typ, ecp, NULL);
+        }
+    }
+    RDB_free(repv);
+    return RDB_ERROR;
+}
+
+static int
+exec_typedrop(const RDB_parse_node *nodep, RDB_exec_context *ecp)
+{
+    int ret;
+    RDB_transaction tmp_tx;
+    RDB_type *typ;
+
+    if (txnp == NULL) {
+        RDB_database *sysdbp;
+
+        if (envp == NULL) {
+            RDB_raise_resource_not_found("no connection", ecp);
+            return RDB_ERROR;
+        }
+
+        sysdbp = RDB_get_sys_db(envp, ecp);
+        if (sysdbp == NULL)
+            return RDB_ERROR;
+
+        if (RDB_begin_tx(ecp, &tmp_tx, sysdbp, NULL) != RDB_OK) {
+            return RDB_ERROR;
+        }
+    }
+
+    typ = RDB_get_type(RDB_expr_var_name(nodep->exp), ecp,
+            txnp != NULL ? &txnp->tx : &tmp_tx);
+    if (typ == NULL)
+        goto error;
+
+    ret = RDB_drop_type(typ, ecp, txnp != NULL ? &txnp->tx : &tmp_tx);
+    if (ret != RDB_OK)
+        goto error;
+
     if (txnp == NULL) {
         ret = RDB_commit(ecp, &tmp_tx);
     } else {
         ret = RDB_OK;
     }
     if (ret == RDB_OK && _RDB_parse_interactive)
-        printf("Operator %s dropped.\n", RDB_expr_var_name(nodep->exp));
+        printf("Type %s dropped.\n", RDB_expr_var_name(nodep->exp));
     return ret;
+
+error:
+    if (txnp == NULL)
+        RDB_rollback(ecp, &tmp_tx);
+    return RDB_ERROR;
+}
+
+static int
+exec_typeimpl(RDB_parse_node *nodep, RDB_exec_context *ecp)
+{
+    int ret;
+    RDB_transaction tmp_tx;
+
+    if (txnp == NULL) {
+        RDB_database *sysdbp;
+
+        if (envp == NULL) {
+            RDB_raise_resource_not_found("no connection", ecp);
+            return RDB_ERROR;
+        }
+
+        sysdbp = RDB_get_sys_db(envp, ecp);
+        if (sysdbp == NULL)
+            return RDB_ERROR;
+
+        if (RDB_begin_tx(ecp, &tmp_tx, sysdbp, NULL) != RDB_OK) {
+            return RDB_ERROR;
+        }
+    }
+
+    ret = RDB_implement_type(RDB_expr_var_name(nodep->exp),
+            NULL, (RDB_int) -1, ecp, txnp != NULL ? &txnp->tx : &tmp_tx);
+    if (ret != RDB_OK)
+        goto error;
+
+    if (txnp == NULL) {
+        ret = RDB_commit(ecp, &tmp_tx);
+    } else {
+        ret = RDB_OK;
+    }
+    if (ret == RDB_OK && _RDB_parse_interactive)
+        printf("Type %s implemented.\n", RDB_expr_var_name(nodep->exp));
+    return ret;
+
+error:
+    if (txnp == NULL)
+        RDB_rollback(ecp, &tmp_tx);
+    return RDB_ERROR;
 }
 
 int
@@ -2644,6 +2696,52 @@ error:
 }
 
 static int
+exec_opdrop(const RDB_parse_node *nodep, RDB_exec_context *ecp)
+{
+    int ret;
+    RDB_transaction tmp_tx;
+
+    /* !! Aus opmap löschen */
+
+    /*
+     * If a transaction is not active, start transaction if a database environment
+     * is available
+     */
+    if (txnp == NULL) {
+        RDB_database *sysdbp;
+
+        if (envp == NULL) {
+            RDB_raise_resource_not_found("no connection", ecp);
+            return RDB_ERROR;
+        }
+
+        sysdbp = RDB_get_sys_db(envp, ecp);
+        if (sysdbp == NULL)
+            return RDB_ERROR;
+
+        if (RDB_begin_tx(ecp, &tmp_tx, sysdbp, NULL) != RDB_OK) {
+            return RDB_ERROR;
+        }
+    }
+
+    if (RDB_drop_op(RDB_expr_var_name(nodep->exp), ecp,
+            txnp == NULL ? &tmp_tx : &txnp->tx) != RDB_OK) {
+        if (txnp == NULL)
+            RDB_rollback(ecp, &tmp_tx);
+        return RDB_ERROR;
+    }
+
+    if (txnp == NULL) {
+        ret = RDB_commit(ecp, &tmp_tx);
+    } else {
+        ret = RDB_OK;
+    }
+    if (ret == RDB_OK && _RDB_parse_interactive)
+        printf("Operator %s dropped.\n", RDB_expr_var_name(nodep->exp));
+    return ret;
+}
+
+static int
 exec_return(RDB_parse_node *stmtp, RDB_exec_context *ecp,
         return_info *retinfop)
 {    
@@ -2896,18 +2994,6 @@ error:
     if (txnp == NULL)
         RDB_rollback(ecp, &tmp_tx);
     return RDB_ERROR;
-}
-
-static int
-exec_typeimpl(RDB_parse_node *nodep, RDB_exec_context *ecp)
-{
-    if (txnp == NULL) {
-        RDB_raise_no_running_tx(ecp);
-        return RDB_ERROR;
-    }
-
-    return RDB_implement_type(RDB_expr_var_name(nodep->exp),
-            NULL, (RDB_int) -1, ecp, &txnp->tx);
 }
 
 static int
