@@ -14,7 +14,7 @@ namespace import ::tcltest::*
 set testdir [::tcltest::configure -testdir]
 
 test def_output {Default output} -match regexp -body {
-    exec $testdir/../../dli/durodt -e dbenv << {
+    exec $testdir/../../dli/durodt << {
         PRINT('Test ');
         PRINT(3);
         PRINT(1.7);
@@ -31,7 +31,7 @@ test def_output {Default output} -match regexp -body {
 FALSE}
 
 test file_output {File Output} -match regexp -body {
-    exec $testdir/../../dli/durodt -e dbenv << {
+    exec $testdir/../../dli/durodt << {
         VAR is IO_STREAM;
 
         OPEN(is, 'out.txt', 'w');
@@ -59,7 +59,7 @@ test file_output {File Output} -match regexp -body {
 FALSE}
 
 test stdout_output {STDOUT output} -match regexp -body {
-    exec $testdir/../../dli/durodt -e dbenv << {
+    exec $testdir/../../dli/durodt << {
         PRINT(STDOUT, 'Test ');
         PRINT(STDOUT, 3);
         PRINT(STDOUT, 1.7);
@@ -76,7 +76,7 @@ test stdout_output {STDOUT output} -match regexp -body {
 TRUE}
 
 test stderr_output {STDERR output} -match regexp -body {
-    exec $testdir/../../dli/durodt -e dbenv << {
+    exec $testdir/../../dli/durodt << {
         PRINT(STDERR, 'Test ');
         PRINT(STDERR, 3);
         PRINT(STDERR, 1.7);
@@ -102,7 +102,7 @@ test file_input {File input} -body {
     puts $f {Duro%$-}
     close $f    
 
-    set res [exec $testdir/../../dli/durodt -e dbenv << {
+    set res [exec $testdir/../../dli/durodt << {
         VAR IS IO_STREAM;
 
         OPEN(IS, 'in.txt', 'r');

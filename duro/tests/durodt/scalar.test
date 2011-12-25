@@ -21,6 +21,10 @@ set ::DBSETUP {
     }
 }
 
+set ::CLEANUP {
+    file delete -force dbenv
+}
+
 test scalar_builtin {built-in scalar definitions and operators} -body {
     exec $testdir/../../dli/durodt $testdir/scalar.td
 } -result {2
@@ -29,7 +33,7 @@ XX
 FALSE
 }
 
-test deftype {user-defined types} -setup $DBSETUP -body {
+test deftype {user-defined types} -setup $DBSETUP -cleanup $CLEANUP -body {
     exec $testdir/../../dli/durodt << {
         connect('dbenv');
         type t
@@ -57,7 +61,7 @@ test deftype {user-defined types} -setup $DBSETUP -body {
 2
 }
 
-test defroop {read-only user-defined operators} -setup $DBSETUP -body {
+test defroop {read-only user-defined operators} -setup $DBSETUP -cleanup $CLEANUP -body {
     exec $testdir/../../dli/durodt -e dbenv << {
         operator testop() returns string;
             var a integer;
@@ -142,7 +146,7 @@ test defroop {read-only user-defined operators} -setup $DBSETUP -body {
 0
 }
 
-test defupdop {user-defined update operators} -setup $DBSETUP -body {
+test defupdop {user-defined update operators} -setup $DBSETUP -cleanup $CLEANUP -body {
     exec $testdir/../../dli/durodt -e dbenv << {
         current_db := 'D';
         begin transaction;
@@ -183,7 +187,7 @@ test defupdop {user-defined update operators} -setup $DBSETUP -body {
 } -result {a = xyz, b = 1
 }
 
-test tconstraint {db/table constraints} -setup $DBSETUP -body {
+test tconstraint {db/table constraints} -setup $DBSETUP -cleanup $CLEANUP -body {
     exec $testdir/../../dli/durodt -e dbenv << {
         current_db := 'D';
         begin transaction;
@@ -215,7 +219,7 @@ test tconstraint {db/table constraints} -setup $DBSETUP -body {
 } -result {caught predicate violation: CR
 }
 
-test trycatch {TRY .. CATCH} -setup $DBSETUP -body {
+test trycatch {TRY .. CATCH} -setup $DBSETUP -cleanup $CLEANUP -body {
     exec $testdir/../../dli/durodt -e dbenv << {
         current_db := 'D';
         begin transaction;
@@ -238,7 +242,7 @@ test trycatch {TRY .. CATCH} -setup $DBSETUP -body {
 } -result {caught
 }
 
-test getenv {GETENV operator} -body {
+test getenv {GETENV operator} -setup $DBSETUP -cleanup $CLEANUP -body {
     set ::env(TEST) DUROTEST
 
     exec $testdir/../../dli/durodt -e dbenv << {
