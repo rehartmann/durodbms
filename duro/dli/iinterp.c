@@ -2684,7 +2684,7 @@ exec_opdef(RDB_parse_node *parentp, RDB_exec_context *ecp)
         ret = RDB_OK;
     }
     if ((ret == RDB_OK) && _RDB_parse_interactive)
-        printf(ro ? "Read-only %s created.\n" : "Update operator %s created.\n", opname);
+        printf(ro ? "Read-only operator %s created.\n" : "Update operator %s created.\n", opname);
     return ret;
 
 error:

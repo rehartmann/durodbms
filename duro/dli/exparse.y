@@ -1933,7 +1933,7 @@ literal: TOK_RELATION '{' expression_list '}' {
             YYERROR;
         }
 
-        $$ = RDB_new_parse_expr(exp, _RDB_parse_ecp);
+        $$ = RDB_new_parse_expr(exp, NULL, _RDB_parse_ecp);
 		RDB_parse_del_node($1, _RDB_parse_ecp);
         if ($$ == NULL) {
             YYERROR;
@@ -1944,7 +1944,7 @@ literal: TOK_RELATION '{' expression_list '}' {
         if (exp == NULL) {
             YYERROR;
         }
-        $$ = RDB_new_parse_expr(exp, _RDB_parse_ecp);
+        $$ = RDB_new_parse_expr(exp, NULL, _RDB_parse_ecp);
 		RDB_parse_del_node($1, _RDB_parse_ecp);
         if ($$ == NULL) {
             YYERROR;
@@ -2124,7 +2124,7 @@ expression_list: /* empty */ {
 %%
 
 const char *
-RDB_token_name(int tok)
+_RDB_token_name(int tok)
 {
     static char chtok[2];
 

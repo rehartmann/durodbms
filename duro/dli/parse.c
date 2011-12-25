@@ -46,7 +46,7 @@ void
 _RDB_parse_start_stmt(void);
 
 const char *
-RDB_token_name(int tok);
+_RDB_token_name(int tok);
 
 void
 yyerror(char *errtxt)
@@ -63,7 +63,7 @@ yyerror(char *errtxt)
 }
 
 RDB_parse_node *
-RDB_new_parse_token(int tok, RDB_exec_context *ecp)
+RDB_new_parse_token(int tok, RDB_object *wcp, RDB_exec_context *ecp)
 {
     RDB_parse_node *pnodep = RDB_alloc(sizeof (RDB_parse_node), ecp);
     if (pnodep == NULL)
@@ -71,6 +71,7 @@ RDB_new_parse_token(int tok, RDB_exec_context *ecp)
     pnodep->kind = RDB_NODE_TOK;
     pnodep->exp = NULL;
     pnodep->val.token = tok;
+    pnodep->whitecommp = wcp;
     return pnodep;
 }
 
@@ -83,17 +84,19 @@ RDB_new_parse_inner(RDB_exec_context *ecp)
     pnodep->kind = RDB_NODE_INNER;
     pnodep->exp = NULL;
     pnodep->val.children.firstp = pnodep->val.children.lastp = NULL;
+    pnodep->whitecommp = NULL;
     return pnodep;
 }
 
 RDB_parse_node *
-RDB_new_parse_expr(RDB_expression *exp, RDB_exec_context *ecp)
+RDB_new_parse_expr(RDB_expression *exp, RDB_object *wcp, RDB_exec_context *ecp)
 {
     RDB_parse_node *pnodep = RDB_alloc(sizeof (RDB_parse_node), ecp);
     if (pnodep == NULL)
         return NULL;
     pnodep->kind = RDB_NODE_EXPR;
     pnodep->exp = exp;
+    pnodep->whitecommp = wcp;
     return pnodep;
 }
 
@@ -430,33 +433,8 @@ summarize_node_expr(RDB_parse_node *argnodep,
     nodep = argnodep->nextp->nextp->nextp->nextp->nextp->val.children.firstp;
     if (nodep != NULL) {
         for (;;) {
-            const char *aggropname;
-            RDB_expression *aggrexp;
             int aggrtok = nodep->val.children.firstp->val.token;
-            switch (aggrtok) {
-                case TOK_COUNT:
-                    aggropname = TOK_COUNT_NAME;
-                    break;
-                case TOK_SUM:
-                    aggropname = TOK_SUM_NAME;
-                    break;
-                case TOK_AVG:
-                    aggropname = TOK_AVG_NAME;
-                    break;
-                case TOK_MAX:
-                    aggropname = TOK_MAX_NAME;
-                    break;
-                case TOK_MIN:
-                    aggropname = TOK_MIN_NAME;
-                    break;
-                case TOK_ALL:
-                    aggropname = TOK_ALL_NAME;
-                    break;
-                case TOK_ANY:
-                    aggropname = TOK_ANY_NAME;
-                    break;
-            }                
-            aggrexp = RDB_ro_op(aggropname, ecp);
+            RDB_expression *aggrexp = RDB_ro_op(_RDB_token_name(aggrtok), ecp);
             if (aggrexp == NULL)
                 return NULL;
     
@@ -1199,6 +1177,10 @@ RDB_parse_del_node(RDB_parse_node *nodep, RDB_exec_context *ecp)
     }
     if (nodep->exp != NULL)
         return RDB_drop_expr(nodep->exp, ecp);
+    if (nodep->whitecommp != NULL) {
+        RDB_destroy_obj(nodep->whitecommp, ecp);
+        RDB_free(nodep->whitecommp);
+    }
     return RDB_OK;
 }
 
@@ -1333,17 +1315,27 @@ Duro_parse_node_to_obj_string(RDB_object *dstp, RDB_parse_node *nodep,
     RDB_object strobj;
     int ret;
 
+    /*
+     * Get comments and whitespace, if present
+     */
+    if (nodep->whitecommp != NULL) {
+        ret = RDB_copy_obj(dstp, nodep->whitecommp, ecp);
+    } else {
+        ret = RDB_string_to_obj(dstp, "", ecp);
+    }
+    if (ret != RDB_OK)
+        return ret;
+
     switch(nodep->kind) {
         case RDB_NODE_TOK:
-            return RDB_string_to_obj(dstp, RDB_token_name(nodep->val.token), ecp);
+            return RDB_append_string(dstp, _RDB_token_name(nodep->val.token), ecp);
         case RDB_NODE_INNER:
-            ret = RDB_string_to_obj(dstp, "", ecp);
-            if (ret != RDB_OK)
-                return ret;
-
             RDB_init_obj(&strobj);
             np = nodep->val.children.firstp;
             while (np != NULL) {
+                /*
+                 * Convert child to string and append it
+                 */
                 ret = Duro_parse_node_to_obj_string(&strobj, np, ecp, txp);
                 if (ret != RDB_OK) {
                     RDB_destroy_obj(&strobj, ecp);
@@ -1354,17 +1346,21 @@ Duro_parse_node_to_obj_string(RDB_object *dstp, RDB_parse_node *nodep,
                     RDB_destroy_obj(&strobj, ecp);
                     return ret;
                 }
-                ret = RDB_append_string(dstp, " ", ecp);
-                if (ret != RDB_OK) {
-                    RDB_destroy_obj(&strobj, ecp);
-                    return ret;
-                }
                 np = np->nextp;
             }
-            RDB_destroy_obj(&strobj, ecp);
-            return RDB_OK;
+            return RDB_destroy_obj(&strobj, ecp);
         case RDB_NODE_EXPR:
-            return _RDB_expr_to_str(dstp, nodep->exp, ecp, txp, 0);
+            RDB_init_obj(&strobj);
+            ret = _RDB_expr_to_str(&strobj, nodep->exp, ecp, txp, 0);
+            if (ret != RDB_OK) {
+                RDB_destroy_obj(&strobj, ecp);
+                return ret;
+            }
+            ret = RDB_append_string(dstp, RDB_obj_string(&strobj), ecp);
+            if (ret != RDB_OK) {
+                return ret;
+            }
+            return RDB_destroy_obj(&strobj, ecp);
     }
     RDB_raise_internal("invalid parse node", ecp);
     return RDB_ERROR;

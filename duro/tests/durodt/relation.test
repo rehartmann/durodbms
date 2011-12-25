@@ -21,7 +21,11 @@ set ::SETUP {
     }
 }
 
-test insert {creating table and inserting tuples} -setup $SETUP -body {
+set ::CLEANUP {
+    file delete -force dbenv
+}
+
+test insert {creating table and inserting tuples} -setup $SETUP -cleanup $CLEANUP -body {
     exec $testdir/../../dli/durodt << {
         connect('dbenv');
         current_db := 'D';
@@ -48,7 +52,7 @@ test insert {creating table and inserting tuples} -setup $SETUP -body {
 Y
 }
 
-test invalid_type {invalid (scalar) type for table} -setup $SETUP -match glob -body {
+test invalid_type {invalid (scalar) type for table} -setup $SETUP -cleanup $CLEANUP -match glob -body {
     exec $testdir/../../dli/durodt << {
 	    connect('dbenv');
     	current_db := 'D';
@@ -58,7 +62,7 @@ test invalid_type {invalid (scalar) type for table} -setup $SETUP -match glob -b
     }
 }  -returnCodes {1} -result {*TYPE_MISMATCH_ERROR*}
 
-test private {creating private table and inserting tuples} -setup $SETUP -body {
+test private {creating private table and inserting tuples} -setup $SETUP -cleanup $CLEANUP -body {
     exec $testdir/../../dli/durodt << {
         connect('dbenv');
         current_db := 'D';
@@ -87,7 +91,7 @@ Y
 3
 }
 
-test ra {relational algebra} -setup $SETUP -body {
+test ra {relational algebra} -setup $SETUP -cleanup $CLEANUP -body {
     exec $testdir/../../dli/durodt << {
         connect('dbenv');
         current_db := 'D';
@@ -107,7 +111,7 @@ test ra {relational algebra} -setup $SETUP -body {
 } -result {2
 }
 
-test updop {user defined update operators} -setup $SETUP -body {
+test updop {user defined update operators} -setup $SETUP -cleanup $CLEANUP -body {
     exec $testdir/../../dli/durodt << {
         connect('dbenv');
         current_db := 'D';

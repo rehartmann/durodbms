@@ -38,16 +38,19 @@ typedef struct RDB_parse_node {
 
     /* Line number in the source file */
     int lineno;
+
+    /* White space or comment before the node */
+    RDB_object *whitecommp;
 } RDB_parse_node;
 
 RDB_parse_node *
-RDB_new_parse_token(int tok, RDB_exec_context *);
+RDB_new_parse_token(int tok, RDB_object *, RDB_exec_context *);
 
 RDB_parse_node *
 RDB_new_parse_inner(RDB_exec_context *);
 
 RDB_parse_node *
-RDB_new_parse_expr(RDB_expression *, RDB_exec_context *);
+RDB_new_parse_expr(RDB_expression *, RDB_object *, RDB_exec_context *);
 
 RDB_expression *
 RDB_parse_node_expr(RDB_parse_node *, RDB_exec_context *);
