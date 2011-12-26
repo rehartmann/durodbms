@@ -584,6 +584,15 @@ error:
 On success, a pointer to the database is returned. If an error occurred, NULL is
 returned.
 
+@par Errors:
+
+<dl>
+<dt>VERSION_MISMATCH_ERROR
+<dd>The version number stored in the catalog does not match
+the version of the library.
+</dl>
+
+The call may also fail for a @ref system-errors "system error".
  */
 RDB_database *
 RDB_get_sys_db(RDB_environment *envp, RDB_exec_context *ecp)
@@ -610,8 +619,11 @@ RDB_get_sys_db(RDB_environment *envp, RDB_exec_context *ecp)
     }
     dbp = get_db("SYS_DB", dbrootp, ecp);
     if (dbp == NULL) {
+        /* If the error is different from RDB_NOT_FOUND, stop */
         if (RDB_obj_type(RDB_get_err(ecp)) != &RDB_NOT_FOUND_ERROR)
             goto error;
+
+        /* Create DB */
         RDB_clear_err(ecp);
         dbp = create_db("SYS_DB", dbrootp, ecp);
         if (dbp == NULL)
@@ -624,9 +636,9 @@ error:
         close_systables(dbrootp, ecp);
         free_dbroot(dbrootp, ecp);
         RDB_env_private(envp) = NULL;
+        lt_dlexit();
     }
 
-    lt_dlexit();
     return NULL;
 }
 
@@ -889,8 +901,9 @@ RDB_drop_db(RDB_database *dbp, RDB_exec_context *ecp)
         goto error;
     }
 
-    /* Disassociate all tables from database */
-
+    /*
+     * Disassociate all tables from database
+     */
     exp = RDB_eq(RDB_var_ref("DBNAME", ecp),
                   RDB_string_to_expr(dbp->name, ecp), ecp);
     if (exp == NULL) {
@@ -1222,7 +1235,7 @@ RDB_create_table_from_type(const char *name, RDB_type *reltyp,
 
     /*
      * Creating user tables in SYS_DB is not permitted
-     * !! needs documentation
+     * because SYS_DB is only for catalog tables
      */
     if (strcmp(RDB_db_name(RDB_tx_db(txp)), "SYS_DB") == 0) {
         RDB_raise_invalid_argument("SYS_DB must not contain user tables", ecp);
