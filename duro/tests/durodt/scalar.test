@@ -73,7 +73,9 @@ test defroop {read-only user-defined operators} -setup $DBSETUP -cleanup $CLEANU
             end if;
 
             if a = 0 then
+            begin;
                 a := a + 1;
+            end;
             else
                 return "error: (a = 0) is false";
             end if;

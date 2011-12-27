@@ -4,6 +4,8 @@ Summary of Changes for Duro
 
 Changes for Duro 0.15
 
+- File I/O
+
 - Upgrade to Berkeley DB 5.2. (But older versions should work too)
 
 - Store user-defined operators as source code

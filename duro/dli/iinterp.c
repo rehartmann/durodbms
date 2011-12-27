@@ -689,7 +689,8 @@ exec_vardef(RDB_parse_node *nodep, RDB_exec_context *ecp)
             RDB_raise_syntax("relation type not permitted", ecp);
             return RDB_ERROR;
         }
-        if (nodep->nextp->nextp != NULL) {
+        if (nodep->nextp->nextp->kind == RDB_NODE_TOK
+                && nodep->nextp->nextp->val.token == TOK_INIT) {
             /* Get INIT value */
             initexp = RDB_parse_node_expr(nodep->nextp->nextp->nextp, ecp);
             if (initexp == NULL)
@@ -886,7 +887,7 @@ exec_vardef_real(RDB_parse_node *nodep, RDB_exec_context *ecp)
     if (tbtyp == NULL)
         goto error;
 
-    if (keylistnodep != NULL) {
+    if (keylistnodep->kind == RDB_NODE_INNER) {
         keyv = keylist_to_keyv(keylistnodep, &keyc, ecp);
         if (keyv == NULL)
             goto error;
@@ -1043,7 +1044,7 @@ exec_vardef_private(RDB_parse_node *nodep, RDB_exec_context *ecp)
         goto error;
     }
 
-    if (keylistnodep != NULL) {
+    if (keylistnodep->kind == RDB_NODE_INNER) {
         keyv = keylist_to_keyv(keylistnodep, &keyc, ecp);
         if (keyv == NULL)
             goto error;
@@ -2248,7 +2249,7 @@ exec_typedef(const RDB_parse_node *stmtp, RDB_exec_context *ecp)
         nodep = nodep->nextp;
     }
 
-    if (stmtp->nextp->nextp != NULL) {
+    if (stmtp->nextp->nextp->kind != RDB_NODE_TOK) {
         constraintp = RDB_parse_node_expr(stmtp->nextp->nextp->nextp, ecp);
         if (constraintp == NULL)
         	goto error;
@@ -2745,7 +2746,7 @@ static int
 exec_return(RDB_parse_node *stmtp, RDB_exec_context *ecp,
         return_info *retinfop)
 {    
-    if (stmtp != NULL) {
+    if (stmtp->kind != RDB_NODE_TOK) {
         RDB_expression *retexp;
         RDB_type *rtyp;
 
@@ -3038,53 +3039,14 @@ Duro_exec_stmt(RDB_parse_node *stmtp, RDB_exec_context *ecp,
             case TOK_LEAVE:
                 ret = exec_leave(firstchildp->nextp, ecp);
                 break;
-            default:
-                RDB_raise_internal("invalid token", ecp);
-                ret = RDB_ERROR;
-        }                    
-        if (ret == RDB_ERROR) {
-            if (err_line < 0) {
-                err_line = stmtp->lineno;
-            }
-        }
-        return ret;
-    }
-    if (firstchildp->kind == RDB_NODE_EXPR) {
-        switch (firstchildp->nextp->nextp->val.token) {
-			case TOK_WHILE:
-                ret = exec_while(firstchildp->nextp->nextp->nextp,
-                		firstchildp, ecp, retinfop);
+            case ';':
+                /* Empty statement */
+                ret = RDB_OK;
                 break;
-			case TOK_FOR:
-                ret = exec_for(firstchildp->nextp->nextp->nextp,
-                		firstchildp, ecp, retinfop);
-                break;
-            default:
-                RDB_raise_internal("invalid token", ecp);
-                ret = RDB_ERROR;
-        }
-        if (ret == RDB_ERROR) {
-            if (err_line < 0) {
-                err_line = stmtp->lineno;
-            }
-        }
-        return ret;
-    }
-    if (firstchildp->kind != RDB_NODE_INNER) {
-        RDB_raise_internal("interpreter encountered invalid node", ecp);
-        return RDB_ERROR;
-    }
-    if (firstchildp->val.children.firstp == NULL) {
-        return RDB_OK;
-    }
-    stmtp = firstchildp;
-    if (stmtp->val.children.firstp->kind == RDB_NODE_TOK) {
-        firstchildp = stmtp->val.children.firstp;
-        switch (firstchildp->val.token) {
             case TOK_CALL:
                 ret = exec_call(firstchildp->nextp, ecp);
                 break;
-            case TOK_VAR:                
+            case TOK_VAR:
                 if (firstchildp->nextp->nextp->kind == RDB_NODE_TOK) {
                     switch (firstchildp->nextp->nextp->val.token) {
                         case TOK_REAL:
@@ -3115,12 +3077,19 @@ Duro_exec_stmt(RDB_parse_node *stmtp, RDB_exec_context *ecp,
                         ret = exec_typedrop(firstchildp->nextp->nextp, ecp);
                         break;
                     case TOK_OPERATOR:
-						ret = exec_opdrop(firstchildp->nextp->nextp, ecp);
-						break;
+                        ret = exec_opdrop(firstchildp->nextp->nextp, ecp);
+                        break;
                 }
                 break;
             case TOK_BEGIN:
-                ret = exec_begin_tx(ecp);
+                if (firstchildp->nextp->kind == RDB_NODE_INNER) {
+                    /* BEGIN ... END */
+                    ret = exec_stmts(firstchildp->nextp->val.children.firstp,
+                            ecp, retinfop);
+                } else {
+                    /* BEGIN TRANSACTION */
+                    ret = exec_begin_tx(ecp);
+                }
                 break;
             case TOK_COMMIT:
                 ret = exec_commit(ecp);
@@ -3131,17 +3100,17 @@ Duro_exec_stmt(RDB_parse_node *stmtp, RDB_exec_context *ecp,
             case TOK_TYPE:
                 ret = exec_typedef(firstchildp->nextp, ecp);
                 break;
-            case TOK_LOAD:
-                ret = exec_load(firstchildp->nextp, ecp);
-                break;
             case TOK_RETURN:
                 ret = exec_return(firstchildp->nextp, ecp, retinfop);
                 break;
-            case TOK_RAISE:
-                ret = exec_raise(firstchildp->nextp, ecp);
+            case TOK_LOAD:
+                ret = exec_load(firstchildp->nextp, ecp);
                 break;
             case TOK_CONSTRAINT:
                 ret = exec_constrdef(firstchildp->nextp, ecp);
+                break;
+            case TOK_RAISE:
+                ret = exec_raise(firstchildp->nextp, ecp);
                 break;
             case TOK_IMPLEMENT:
                 ret = exec_typeimpl(firstchildp->nextp->nextp, ecp);
@@ -3155,27 +3124,40 @@ Duro_exec_stmt(RDB_parse_node *stmtp, RDB_exec_context *ecp,
                 err_line = stmtp->lineno;
             }
         }
-    } else {
-        if (RDB_parse_node_ID(stmtp->val.children.firstp) != NULL) {
-            /* Check if '(' follows the ID -> operator invocation */
-            RDB_parse_node *parenp = stmtp->val.children.firstp->nextp;
-            if (parenp->kind == RDB_NODE_TOK) {
-                if (parenp->val.token == '(') {
-                    ret = exec_call(stmtp->val.children.firstp, ecp);
-                } else {
-                    RDB_raise_syntax("( or := expected", ecp);
-                    ret = RDB_ERROR;
-                }
-            } else {
-                RDB_raise_syntax("", ecp);
-                ret = RDB_ERROR;
-            }
-        } else {
-            /* Assume assignment */                
-            ret = exec_assign(stmtp->val.children.firstp, ecp);
-        }
+        return ret;
     }
-    return ret;
+    if (firstchildp->kind == RDB_NODE_EXPR) {
+        if (firstchildp->nextp->val.token == '(') {
+            /* Operator invocation */
+            ret = exec_call(firstchildp, ecp);
+        } else {
+            switch (firstchildp->nextp->nextp->val.token) {
+                case TOK_WHILE:
+                    ret = exec_while(firstchildp->nextp->nextp->nextp,
+                            firstchildp, ecp, retinfop);
+                    break;
+                case TOK_FOR:
+                    ret = exec_for(firstchildp->nextp->nextp->nextp,
+                            firstchildp, ecp, retinfop);
+                    break;
+                default:
+                    RDB_raise_internal("invalid token", ecp);
+                    ret = RDB_ERROR;
+            }
+        }
+        if (ret == RDB_ERROR) {
+            if (err_line < 0) {
+                err_line = stmtp->lineno;
+            }
+        }
+        return ret;
+    }
+    if (firstchildp->kind != RDB_NODE_INNER) {
+        RDB_raise_internal("interpreter encountered invalid node", ecp);
+        return RDB_ERROR;
+    }
+    /* Assignment */
+    return exec_assign(firstchildp->val.children.firstp, ecp);
 }
 
 int
