@@ -1492,7 +1492,13 @@ _RDB_cat_get_rtable(const char *name, RDB_exec_context *ecp,
         RDB_drop_expr(exp, ecp);
         goto error;
     }
+
+    /* Set transformed flags to avoid infinite recursion */
+
+    argp->transformed = RDB_TRUE;
     RDB_add_arg(exp, argp);
+
+    exp->transformed = RDB_TRUE;
 
     tmptb1p = RDB_expr_to_vtable(exp, ecp, txp);
     if (tmptb1p == NULL) {
@@ -1789,6 +1795,9 @@ _RDB_cat_get_vtable(const char *name, RDB_exec_context *ecp,
         RDB_drop_expr(exp, ecp);
         goto error;
     }
+    /* Set transformed flags to avoid infinite recursion */
+
+    argp->transformed = RDB_TRUE;
     RDB_add_arg(exp, argp);
 
     argp = RDB_eq(RDB_var_ref("TABLENAME", ecp),
@@ -1797,8 +1806,10 @@ _RDB_cat_get_vtable(const char *name, RDB_exec_context *ecp,
         RDB_drop_expr(exp, ecp);
         goto error;
     }
+    argp->transformed = RDB_TRUE;
     RDB_add_arg(exp, argp);
 
+    exp->transformed = RDB_TRUE;
     tmptbp = RDB_expr_to_vtable(exp, ecp, txp);
     if (tmptbp == NULL) {
         RDB_drop_expr(exp, ecp);

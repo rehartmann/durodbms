@@ -63,6 +63,9 @@ struct RDB_expression {
      */
     RDB_type *typ; 
     struct RDB_expression *nextp;
+
+    /* RDB_TRUE if the expression has been transformed by _RDB_transform(). */
+    RDB_bool transformed;
 };
 
 struct RDB_database {

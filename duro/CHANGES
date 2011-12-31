@@ -4,6 +4,8 @@ Summary of Changes for Duro
 
 Changes for Duro 0.15
 
+- Conversion of expressions etc. to string is now part of the core.
+
 - File I/O
 
 - Upgrade to Berkeley DB 5.2. (But older versions should work too)

@@ -1,7 +1,7 @@
 /*
  * $Id$
  *
- * Copyright (C) 2005-2009 René Hartmann.
+ * Copyright (C) 2005-2011 Rene Hartmann.
  * See the file COPYING for redistribution information.
  *
  *
@@ -15,8 +15,6 @@
 #include "serialize.h"
 #include <gen/strfns.h>
 #include <string.h>
-
-#include <dli/tabletostr.h>
 
 /*
  * If the constraint is of the form IS_EMPTY(table), add table to

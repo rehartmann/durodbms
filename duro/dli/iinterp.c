@@ -9,10 +9,10 @@
 
 #include "iinterp.h"
 #include "exparse.h"
-#include "tabletostr.h"
 #include "ioop.h"
 #include <gen/hashmap.h>
 #include <gen/hashmapit.h>
+#include <rel/tostr.h>
 #include <rel/rdb.h>
 #include <rel/internal.h>
 #include <rel/typeimpl.h>
@@ -1711,7 +1711,7 @@ node_to_insert(RDB_ma_insert *insp, RDB_parse_node *nodep, RDB_exec_context *ecp
         return RDB_ERROR;
     }
 
-    /* !! Umständlich */
+    /* !! Umständlich
     srcexp = RDB_expr_resolve_varnames(srcexp,
             &get_var, current_varmapp, ecp, txnp != NULL ? &txnp->tx : NULL);
     if (srcexp == NULL)
@@ -1722,6 +1722,12 @@ node_to_insert(RDB_ma_insert *insp, RDB_parse_node *nodep, RDB_exec_context *ecp
         return RDB_ERROR;
     }
     RDB_drop_expr(srcexp, ecp);
+    */
+
+    if (RDB_evaluate(srcexp, &get_var, current_varmapp, ecp,
+            txnp != NULL ? &txnp->tx : NULL, insp->objp) != RDB_OK) {
+        return RDB_ERROR;
+    }
 
     return RDB_OK;
 }

@@ -7,7 +7,7 @@
 
 #include "parse.h"
 #include "exparse.h"
-#include "tabletostr.h"
+#include "rel/tostr.h"
 #include <rel/transform.h>
 #include <rel/rdb.h>
 #include <rel/internal.h>

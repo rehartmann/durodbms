@@ -11,7 +11,6 @@
 #include "typeimpl.h"
 #include "serialize.h"
 #include "catalog.h"
-#include <dli/tabletostr.h>
 #include <gen/hashmapit.h>
 #include <gen/hashtabit.h>
 #include <gen/strfns.h>

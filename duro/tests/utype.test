@@ -14,9 +14,10 @@ namespace import ::tcltest::*
 source [file dirname [info script]]/setup.tcl
 
 test utype {user-defined types} -setup $SETUP -body {
-    set dbenv [duro::env open [configure -tmpdir]/dbenv]
+    set dbenv [duro::env open $::tcltest::temporaryDirectory/dbenv]
 
-    duro::env seterrfile $dbenv errors
+    makeFile {} errors
+    duro::env seterrfile $dbenv $::tcltest::temporaryDirectory/errors
 
     # Create Database
     duro::db create $dbenv TEST

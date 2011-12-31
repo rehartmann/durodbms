@@ -14,18 +14,16 @@ namespace import ::tcltest::*
 set testdir [::tcltest::configure -testdir]
 
 set ::SETUP {
-    file delete -force dbenv
+    removeDirectory dbenv
+    makeDirectory dbenv
+    cd $::tcltest::temporaryDirectory
     exec $testdir/../../dli/durodt << {
         create_env('dbenv');
         create_db('D');
     }
 }
 
-set ::CLEANUP {
-    file delete -force dbenv
-}
-
-test insert {creating table and inserting tuples} -setup $SETUP -cleanup $CLEANUP -body {
+test insert {creating table and inserting tuples} -setup $SETUP -body {
     exec $testdir/../../dli/durodt << {
         connect('dbenv');
         current_db := 'D';
@@ -52,7 +50,7 @@ test insert {creating table and inserting tuples} -setup $SETUP -cleanup $CLEANU
 Y
 }
 
-test invalid_type {invalid (scalar) type for table} -setup $SETUP -cleanup $CLEANUP -match glob -body {
+test invalid_type {invalid (scalar) type for table} -setup $SETUP -match glob -body {
     exec $testdir/../../dli/durodt << {
 	    connect('dbenv');
     	current_db := 'D';
@@ -62,7 +60,7 @@ test invalid_type {invalid (scalar) type for table} -setup $SETUP -cleanup $CLEA
     }
 }  -returnCodes {1} -result {*TYPE_MISMATCH_ERROR*}
 
-test private {creating private table and inserting tuples} -setup $SETUP -cleanup $CLEANUP -body {
+test private {creating private table and inserting tuples} -setup $SETUP -body {
     exec $testdir/../../dli/durodt << {
         connect('dbenv');
         current_db := 'D';
@@ -91,7 +89,7 @@ Y
 3
 }
 
-test ra {relational algebra} -setup $SETUP -cleanup $CLEANUP -body {
+test ra {relational algebra} -setup $SETUP -body {
     exec $testdir/../../dli/durodt << {
         connect('dbenv');
         current_db := 'D';
@@ -111,7 +109,7 @@ test ra {relational algebra} -setup $SETUP -cleanup $CLEANUP -body {
 } -result {2
 }
 
-test updop {user defined update operators} -setup $SETUP -cleanup $CLEANUP -body {
+test updop {user defined update operators} -setup $SETUP -body {
     exec $testdir/../../dli/durodt << {
         connect('dbenv');
         current_db := 'D';

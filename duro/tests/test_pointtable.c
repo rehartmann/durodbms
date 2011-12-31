@@ -1,7 +1,7 @@
 /* $Id$ */
 
 #include <rel/rdb.h>
-#include <dli/tabletostr.h>
+#include <rel/tostr.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <assert.h>

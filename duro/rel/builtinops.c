@@ -1,7 +1,7 @@
 /*
  * $Id$
  *
- * Copyright (C) 2005-2010 Ren� Hartmann.
+ * Copyright (C) 2005-2011 Rene Hartmann.
  * See the file COPYING for redistribution information.
  */
 
@@ -16,7 +16,7 @@ RDB_op_map _RDB_builtin_ro_op_map;
 /** @page builtin-ops Built-in operators
 @section scalar-ops Built-in scalar operators
 
-OPERATOR = (ANY, ANY) RETURNS BOOLEAN;
+OPERATOR = (<em>ANY</em>, <em>ANY</em>) RETURNS BOOLEAN;
 
 The equality operator. Defined for every type. The arguments must be of the same type.
 

@@ -1,15 +1,15 @@
 /*
  * $Id$
  *
- * Copyright (C) 2003-2009 René Hartmann.
+ * Copyright (C) 2003-2011 Rene Hartmann.
  * See the file COPYING for redistribution information.
  */
 
 #include "duro.h"
 #include <rel/optimize.h>
 #include <rel/internal.h>
+#include <rel/tostr.h>
 #include <dli/parse.h>
-#include <dli/tabletostr.h>
 #include <gen/strfns.h>
 
 #include <string.h>

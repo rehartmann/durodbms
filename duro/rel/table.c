@@ -1,7 +1,7 @@
 /*
  * $Id$
  *
- * Copyright (C) 2003-2008 René Hartmann.
+ * Copyright (C) 2003-2008 Renï¿½ Hartmann.
  * See the file COPYING for redistribution information.
  */
 
@@ -15,8 +15,6 @@
 #include "internal.h"
 
 #include <gen/strfns.h>
-
-#include <dli/tabletostr.h>
 
 #include <string.h>
 

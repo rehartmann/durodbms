@@ -17,17 +17,25 @@ test tuplevar {tuple variables} -body {
     exec $testdir/../../dli/durodt << {
         var t1 init tuple {i 5, s 'foo'};
         println(string(t1.i) || ' ' || t1.s);
+        println(t1.i);
         println(s FROM t1);
         
         var t2 same_type_as(t1);
-        update t2 {i := 2, s := 'bar'};
+        t2 := tuple {i 2, s 'bar'};
         println(string(t2.i) || ' ' || t2.s);
         println(t2 {s});
+
+        update t2 {i := i + 2, s := s || 'r'};
+        println(t2.i);
+        println(s FROM t2);
         
         var t3 init tuple{};
     }
 } -result {5 foo
+5
 foo
 2 bar
 TUPLE { S 'bar' }
+3
+barr
 }

@@ -877,6 +877,10 @@ transform_children(RDB_expression *exp, RDB_exec_context *ecp,
 int
 _RDB_transform(RDB_expression *exp, RDB_exec_context *ecp, RDB_transaction *txp)
 {
+    if (exp->transformed)
+        return RDB_OK;
+    exp->transformed = RDB_TRUE;
+
     /*
      * Convert variable expressions referring to tables
      * to table references if possible (_RDB_optimize() cannot handle the former)

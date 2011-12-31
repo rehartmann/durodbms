@@ -1,7 +1,7 @@
 /*
  * $Id$
  *
- * Copyright (C) 2003-2006 René Hartmann.
+ * Copyright (C) 2003-2011 Rene Hartmann.
  * See the file COPYING for redistribution information.
  */
 
@@ -446,7 +446,7 @@ _RDB_deserialize_type(RDB_object *valp, int *posp, RDB_exec_context *ecp,
             int i;
 
             ret = _RDB_deserialize_int(valp, posp, ecp, &attrc);
-            typ = (RDB_type *) RDB_alloc(sizeof (RDB_type), ecp);
+            typ = RDB_alloc(sizeof (RDB_type), ecp);
             if (typ == NULL) {
                 return NULL;
             }
@@ -480,7 +480,7 @@ _RDB_deserialize_type(RDB_object *valp, int *posp, RDB_exec_context *ecp,
         }
         case RDB_TP_RELATION:
         case RDB_TP_ARRAY:
-            typ = (RDB_type *) RDB_alloc(sizeof (RDB_type), ecp);
+            typ = RDB_alloc(sizeof (RDB_type), ecp);
             if (typ == NULL) {
                 return NULL;
             }

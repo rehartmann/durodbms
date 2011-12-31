@@ -8,7 +8,6 @@
 #include "duro.h"
 #include <rel/rdb.h>
 #include <dli/parse.h>
-#include <dli/tabletostr.h>
 #include <string.h>
 #include <stdio.h>
 #include <locale.h>

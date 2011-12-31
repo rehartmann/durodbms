@@ -1,7 +1,7 @@
 /*
  * $Id$
  *
- * Copyright (C) 2003-2011 Ren� Hartmann.
+ * Copyright (C) 2003-2011 Rene Hartmann.
  * See the file COPYING for redistribution information.
  */
 
@@ -353,8 +353,8 @@ If lenp is not NULL, the size of the internal representation
 is stored at the location pointed to by <var>lenp</var>.
 
 RDB_obj_irep only works for types with a binary internal representation.
-These are built-in types and user-defined types
-which use a built-in type or a byte array as physical representation.
+These are built-in scalar types and user-defined types
+which use a built-in scalar type or a byte array as physical representation.
 
 @returns
 

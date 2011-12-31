@@ -27,6 +27,8 @@
 <tr><td>BINARY<td>RDB_BINARY<td>&nbsp;-
 </table>
 
+(Support for BINARY is incomplete.)
+
 @section error-types Error types
 
 Duro errors are scalar types.
@@ -1356,8 +1358,9 @@ must be provided by the caller.
 If <var>arep</var> is NULL and <var>areplen</var> is not -1,
 <var>areplen</var> specifies the length, in bytes,
 of the physical representation, which then is a fixed-length array of bytes.
-The getter, setter, and selector operators
-must be provided by the caller.
+The getter, setter, and selector operators must be provided by the caller.
+RDB_irep_to_obj() can be used by the selector to assign a value to an RDB_object.
+RDB_obj_irep() can be used by setters and getters to access the actual representation.
 
 If <var>arep</var> is NULL and <var>areplen</var> is -1,
 the getter and setter operators and the selector operator are provided by Duro.

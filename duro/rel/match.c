@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2005-2007 René Hartmann.
+ * Copyright (C) 2005-2011 Rene Hartmann.
  * See the file COPYING for redistribution information.
  *
  *
@@ -14,7 +14,6 @@
 
 #include <string.h>
 #include <assert.h>
-#include <dli/tabletostr.h>
 
 static int
 qr_matching_tuple(RDB_qresult *qrp, const RDB_object *tplp,

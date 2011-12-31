@@ -1,7 +1,7 @@
 /*
  * $Id$
  *
- * Copyright (C) 2009 René Hartmann.
+ * Copyright (C) 2011 Rene Hartmann.
  * See the file COPYING for redistribution information.
  *
  * I/O operators.
@@ -9,7 +9,7 @@
 
 #include <rel/rdb.h>
 #include <rel/internal.h>
-#include "tabletostr.h"
+#include <rel/tostr.h>
 
 #include <errno.h>
 #include <string.h>
@@ -23,6 +23,74 @@ static FILE *iostreams[IOSTREAMS_MAX] = {}; /* Initalize with zeros */
 RDB_object DURO_STDIN_OBJ;
 RDB_object DURO_STDOUT_OBJ;
 RDB_object DURO_STDERR_OBJ;
+
+/** @page io-ops Built-in I/O operators
+
+These operators are only available in Duro D/T.
+
+OPERATOR PRINTLN(STRING) UPDATES {};
+
+OPERATOR PRINTLN(INTEGER) UPDATES {};
+
+OPERATOR PRINTLN(FLOAT) UPDATES {};
+
+OPERATOR PRINTLN(BOOLEAN) UPDATES {};
+
+OPERATOR PRINTLN(<em>TUPLE</em>) UPDATES {};
+
+OPERATOR PRINTLN(<em>RELATION></em>) UPDATES {};
+
+OPERATOR PRINTLN(IO_STREAM, <em>ARRAY</em>) UPDATES {};
+
+OPERATOR PRINT(STRING) UPDATES {};
+
+OPERATOR PRINT(INTEGER) UPDATES {};
+
+OPERATOR PRINT(FLOAT) UPDATES {};
+
+OPERATOR PRINT(BOOLEAN) UPDATES {};
+
+OPERATOR PRINT(<em>TUPLE</em>) UPDATES {};
+
+OPERATOR PRINT(<em>RELATION></em>) UPDATES {};
+
+OPERATOR PRINT(<em>ARRAY</em>) UPDATES {};
+
+OPERATOR PRINTLN(IO_STREAM, STRING) UPDATES {};
+
+OPERATOR PRINTLN(IO_STREAM, INTEGER) UPDATES {};
+
+OPERATOR PRINTLN(IO_STREAM, FLOAT) UPDATES {};
+
+OPERATOR PRINTLN(IO_STREAM, BOOLEAN) UPDATES {};
+
+OPERATOR PRINTLN(IO_STREAM, <em>TUPLE</em>) UPDATES {};
+
+OPERATOR PRINTLN(IO_STREAM, <em>RELATION></em>) UPDATES {};
+
+OPERATOR PRINTLN(IO_STREAM, <em>ARRAY</em>) UPDATES {};
+
+OPERATOR PRINT(IO_STREAM, STRING) UPDATES {};
+
+OPERATOR PRINT(IO_STREAM, INTEGER) UPDATES {};
+
+OPERATOR PRINT(IO_STREAM, FLOAT) UPDATES {};
+
+OPERATOR PRINT(IO_STREAM, BOOLEAN) UPDATES {};
+
+OPERATOR PRINT(IO_STREAM, <em>TUPLE</em>) UPDATES {};
+
+OPERATOR PRINT(IO_STREAM, <em>RELATION></em>) UPDATES {};
+
+OPERATOR PRINT(IO_STREAM, <em>ARRAY</em>) UPDATES {};
+
+OPERATOR READLN(LINE STRING) UPDATES {LINE};
+
+OPERATOR OPEN(IOS IO_STREAM, STRING PATH, STRING MODE) UPDATES {IOS};
+
+OPERATOR CLOSE(IOS IO_STREAM) UPDATES {};
+
+*/
 
 /*
  * Get file number from IO_STREAM
@@ -291,9 +359,8 @@ op_println_string(const char *name, int argc, RDB_object *argv[],
 
     callargv[0] = &DURO_STDOUT_OBJ;
     callargv[1] = argv[0];
-    callargv[2] = argv[1];
     
-    return op_println_iostream_string(name, 3, callargv,
+    return op_println_iostream_string(name, 2, callargv,
         NULL, NULL, 0, ecp, txp);
 }
 

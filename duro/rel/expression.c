@@ -9,8 +9,8 @@
 #include "transform.h"
 #include "internal.h"
 #include "catalog.h"
+/* !! #include "tostr.h" */
 #include <gen/strfns.h>
-#include <dli/tabletostr.h>
 
 #include <string.h>
 #include <assert.h>
@@ -673,6 +673,9 @@ expr_op_type(RDB_expression *exp, RDB_gettypefn *getfnp, void *arg,
     int argc;
     RDB_type **argtv = NULL;
 
+    if (_RDB_transform(exp, ecp, txp) != RDB_OK)
+        return NULL;
+
     /*
      * WHERE, EXTEND, etc. require special treatment
      */
@@ -1112,6 +1115,7 @@ new_expr(RDB_exec_context *ecp) {
         return NULL;
     }
     exp->typ = NULL;
+    exp->transformed = RDB_FALSE;
 	return exp;
 }
 
@@ -1352,6 +1356,7 @@ void
 RDB_add_arg(RDB_expression *exp, RDB_expression *argp)
 {
     RDB_expr_list_append(&exp->var.op.args, argp);
+    exp->transformed = RDB_FALSE;
 }
 
 /**

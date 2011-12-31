@@ -14,15 +14,13 @@ namespace import ::tcltest::*
 set testdir [::tcltest::configure -testdir]
 
 set ::DBSETUP {
-    file delete -force dbenv
+    removeDirectory dbenv
+    makeDirectory dbenv
+    cd $::tcltest::temporaryDirectory
     exec $testdir/../../dli/durodt << {
         create_env('dbenv');
         create_db('D');
     }
-}
-
-set ::CLEANUP {
-    file delete -force dbenv
 }
 
 test ptarray {array from private table} -body {
@@ -63,7 +61,7 @@ test ptarray {array from private table} -body {
 3
 }
 
-test ops {operators with array arguments} -setup $DBSETUP -cleanup $CLEANUP -body {
+test ops {operators with array arguments} -setup $DBSETUP -body {
     exec $testdir/../../dli/durodt << {
         connect('dbenv');
         current_db := 'D';
@@ -102,7 +100,7 @@ test ops {operators with array arguments} -setup $DBSETUP -cleanup $CLEANUP -bod
 3
 }
 
-test retops {operator returning array} -setup $DBSETUP -cleanup $CLEANUP -body {
+test retops {operator returning array} -setup $DBSETUP -body {
     exec $testdir/../../dli/durodt << {
         connect('dbenv');
         current_db := 'D';
@@ -135,7 +133,7 @@ test retops {operator returning array} -setup $DBSETUP -cleanup $CLEANUP -body {
 5
 }
 
-test array_utype {type with array-valued component} -setup $DBSETUP -cleanup $CLEANUP -body {
+test array_utype {type with array-valued component} -setup $DBSETUP -body {
     exec $testdir/../../dli/durodt << {
         connect('dbenv');
         current_db := 'D';
