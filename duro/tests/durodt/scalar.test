@@ -36,29 +36,38 @@ FALSE
 test deftype {user-defined types} -setup $DBSETUP -body {
     exec $testdir/../../dli/durodt << {
         connect('dbenv');
-        type t
+        type T
             possrep { a integer, b integer };
 
-        implement type t;
+        implement type T;
 
         current_db := 'D';
         begin transaction;
-        var v t;
-        println(the_a(v));
-        println(the_b(v));
+        var V T;
+        println(the_a(V));
+        println(the_b(V));
         
-        v := t(1, 2);
-        println(the_a(v));
-        println(the_b(v));
+        V := T(1, 2);
+        println(the_a(V));
+        println(the_b(V));
 
         commit;
 
-        drop type t;
+        -- Dropping T must fail because V still exists
+        try
+            drop type T;
+		catch ex IN_USE_ERROR;
+		    println('caught IN_USE');
+		end try;
+
+        drop var V;
+        drop type T;
     }
 } -result {0
 0
 1
 2
+caught IN_USE
 }
 
 test defroop {read-only user-defined operators} -setup $DBSETUP -body {

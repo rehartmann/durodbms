@@ -219,6 +219,7 @@ _RDB_EXTERN_VAR RDB_type RDB_ELEMENT_EXISTS_ERROR;
 _RDB_EXTERN_VAR RDB_type RDB_TYPE_CONSTRAINT_VIOLATION_ERROR;
 _RDB_EXTERN_VAR RDB_type RDB_KEY_VIOLATION_ERROR;
 _RDB_EXTERN_VAR RDB_type RDB_PREDICATE_VIOLATION_ERROR;
+_RDB_EXTERN_VAR RDB_type RDB_IN_USE_ERROR;
 _RDB_EXTERN_VAR RDB_type RDB_AGGREGATE_UNDEFINED_ERROR;
 _RDB_EXTERN_VAR RDB_type RDB_VERSION_MISMATCH_ERROR;
 _RDB_EXTERN_VAR RDB_type RDB_NOT_SUPPORTED_ERROR;
@@ -887,19 +888,22 @@ RDB_object *
 RDB_raise_type_constraint_violation(const char *, RDB_exec_context *);
 
 RDB_object *
-RDB_raise_element_exists(const char *info, RDB_exec_context *);
+RDB_raise_element_exists(const char *, RDB_exec_context *);
 
 RDB_object *
-RDB_raise_not_supported(const char *info, RDB_exec_context *);
+RDB_raise_not_supported(const char *, RDB_exec_context *);
 
 RDB_object *
-RDB_raise_name(const char *info, RDB_exec_context *);
+RDB_raise_name(const char *, RDB_exec_context *);
 
 RDB_object *
-RDB_raise_predicate_violation(const char *info, RDB_exec_context *);
+RDB_raise_predicate_violation(const char *, RDB_exec_context *);
 
 RDB_object *
-RDB_raise_system(const char *info, RDB_exec_context *);
+RDB_raise_in_use(const char *, RDB_exec_context *);
+
+RDB_object *
+RDB_raise_system(const char *, RDB_exec_context *);
 
 RDB_object *
 RDB_raise_resource_not_found(const char *info, RDB_exec_context *);

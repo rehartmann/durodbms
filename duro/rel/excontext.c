@@ -1,7 +1,7 @@
 /*
  * $Id$
  *
- * Copyright (C) 2005-2009 René Hartmann.
+ * Copyright (C) 2005-2011 Rene Hartmann.
  * See the file COPYING for redistribution information.
  */
 
@@ -197,6 +197,12 @@ RDB_object *
 RDB_raise_predicate_violation(const char *msg, RDB_exec_context *ecp)
 {
     return raise_msg_err(&RDB_PREDICATE_VIOLATION_ERROR, msg, ecp);
+}
+
+RDB_object *
+RDB_raise_in_use(const char *msg, RDB_exec_context *ecp)
+{
+    return raise_msg_err(&RDB_IN_USE_ERROR, msg, ecp);
 }
 
 RDB_object *

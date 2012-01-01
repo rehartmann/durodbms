@@ -24,7 +24,8 @@
 #include <assert.h>
 
 enum {
-    DURO_MAX_LLEN = 64
+    DURO_MAX_LLEN = 64,
+    DEFAULT_VARMAP_SIZE = 128
 };
 
 typedef struct tx_node {
@@ -37,7 +38,28 @@ typedef struct return_info {
     RDB_object *objp;   /* Return value */
 } return_info;
 
-varmap_node toplevel_vars;
+/* Contains operators and global transient variables */
+typedef struct module {
+    /* Global transient variables */
+    RDB_hashmap varmap;
+
+    /* System-defined update operators (not stored), only used in sys_module */
+    RDB_op_map upd_op_map;
+
+    RDB_hashmap ro_op_cache;
+    RDB_hashmap upd_op_cache; /* !! unused */
+} module;
+
+typedef struct varmap_node {
+    RDB_hashmap map;
+    struct varmap_node *parentp;
+} varmap_node;
+
+/* Top-level module */
+static module root_module;
+
+/* System module, contains STDIN, STDOUT etc. */
+static module sys_module;
 
 extern int yylineno;
 
@@ -47,17 +69,17 @@ typedef struct yy_buffer_state *YY_BUFFER_STATE;
 
 static sig_atomic_t interrupted;
 
+/*
+ * Points to the local variables in the current scope.
+ * Linked list from inner to outer scope.
+ */
 static varmap_node *current_varmapp;
-
-static RDB_op_map opmap;
 
 static RDB_environment *envp = NULL;
 
 static tx_node *txnp = NULL;
 
 static char *leave_targetname;
-
-static RDB_hashmap ro_op_cache;
 
 static int
 add_varmap(RDB_exec_context *ecp)
@@ -66,7 +88,7 @@ add_varmap(RDB_exec_context *ecp)
     if (nodep == NULL) {
         return RDB_ERROR;
     }
-    RDB_init_hashmap(&nodep->map, 128);
+    RDB_init_hashmap(&nodep->map, DEFAULT_VARMAP_SIZE);
     nodep->parentp = current_varmapp;
     current_varmapp = nodep;
     return RDB_OK;
@@ -122,25 +144,32 @@ remove_varmap(void) {
 }
 
 static RDB_object *
-lookup_local_var(const char *name, varmap_node *varmapp)
+lookup_transient_var(const char *name, varmap_node *varmapp)
 {
     RDB_object *objp;
     varmap_node *nodep = varmapp;
 
-    do {
+    /* Search in local vars */
+    while (nodep != NULL) {
         objp = RDB_hashmap_get(&nodep->map, name);
         if (objp != NULL)
             return objp;
         nodep = nodep->parentp;
-    } while (nodep != NULL);
+    }
 
-    return NULL;
+    /* Search in global transient vars */
+    objp = RDB_hashmap_get(&root_module.varmap, name);
+    if (objp != NULL)
+        return objp;
+
+    /* Search in system module */
+    return RDB_hashmap_get(&sys_module.varmap, name);
 }
 
 static RDB_object *
 lookup_var(const char *name, RDB_exec_context *ecp)
 {
-    RDB_object *objp = lookup_local_var(name, current_varmapp);
+    RDB_object *objp = lookup_transient_var(name, current_varmapp);
     if (objp != NULL)
         return objp;
 
@@ -156,13 +185,13 @@ lookup_var(const char *name, RDB_exec_context *ecp)
 static RDB_object *
 get_var(const char *name, void *maparg)
 {
-    return lookup_local_var(name, (varmap_node *) maparg);
+    return lookup_transient_var(name, (varmap_node *) maparg);
 }
 
 static RDB_type *
 get_var_type(const char *name, void *maparg)
 {
-    RDB_object *objp = lookup_local_var(name, (varmap_node *) maparg);
+    RDB_object *objp = lookup_transient_var(name, (varmap_node *) maparg);
     return objp != NULL ? RDB_obj_type(objp) : NULL;
 }
 
@@ -183,7 +212,7 @@ Duro_exit_interp(void)
 
     RDB_init_exec_context(&ec);
 
-    RDB_init_hashmap_iter(&it, &ro_op_cache);
+    RDB_init_hashmap_iter(&it, &root_module.ro_op_cache);
     while((op = RDB_hashmap_next(&it, &name)) != NULL) {
         RDB_parse_del_nodelist(op->stmtlistp, &ec);
         for (i = 0; i < op->argnamec; i++) {
@@ -192,7 +221,12 @@ Duro_exit_interp(void)
         RDB_free(op->argnamev);
     }
     RDB_destroy_hashmap_iter(&it);
-    RDB_destroy_hashmap(&ro_op_cache);
+    RDB_destroy_hashmap(&root_module.ro_op_cache);
+
+    destroy_varmap(&root_module.varmap);
+
+    /* Destroy only the varmap, not the variables since they are global */
+    RDB_destroy_hashmap(&sys_module.varmap);
 
     if (txnp != NULL) {
         RDB_rollback(&ec, &txnp->tx);
@@ -382,77 +416,79 @@ Duro_init_exec(RDB_exec_context *ecp, const char *dbname)
     system_types[0] = &RDB_STRING;
     system_types[1] = &RDB_INTEGER;
 
-    RDB_init_hashmap(&toplevel_vars.map, 256);
-    toplevel_vars.parentp = NULL;
-    current_varmapp = &toplevel_vars;
+    RDB_init_hashmap(&root_module.varmap, DEFAULT_VARMAP_SIZE);
+    RDB_init_hashmap(&sys_module.varmap, DEFAULT_VARMAP_SIZE);
+    current_varmapp = NULL;
 
-    RDB_init_op_map(&opmap);
+    RDB_init_op_map(&sys_module.upd_op_map);
 
-    if (RDB_put_upd_op(&opmap, "EXIT", 0, NULL, &exit_op, NULL, ecp) != RDB_OK)
-        return RDB_ERROR;
-    if (RDB_put_upd_op(&opmap, "EXIT", 1, exit_int_types, &exit_int_op,
+    if (RDB_put_upd_op(&sys_module.upd_op_map, "EXIT", 0, NULL, &exit_op, NULL, ecp) != RDB_OK)
+        goto error;
+    if (RDB_put_upd_op(&sys_module.upd_op_map, "EXIT", 1, exit_int_types, &exit_int_op,
             exit_int_updv, ecp) != RDB_OK)
-        return RDB_ERROR;
-    if (RDB_put_upd_op(&opmap, "CONNECT", 1, connect_types, &connect_op,
+        goto error;
+    if (RDB_put_upd_op(&sys_module.upd_op_map, "CONNECT", 1, connect_types, &connect_op,
             connect_updv, ecp) != RDB_OK)
-        return RDB_ERROR;
-    if (RDB_put_upd_op(&opmap, "CREATE_DB", 1, create_db_types, &create_db_op,
+        goto error;
+    if (RDB_put_upd_op(&sys_module.upd_op_map, "CREATE_DB", 1, create_db_types, &create_db_op,
             create_db_updv, ecp) != RDB_OK)
-        return RDB_ERROR;
-    if (RDB_put_upd_op(&opmap, "CREATE_ENV", 1, create_env_types, &create_env_op,
+        goto error;
+    if (RDB_put_upd_op(&sys_module.upd_op_map, "CREATE_ENV", 1, create_env_types, &create_env_op,
             create_env_updv, ecp) != RDB_OK)
-        return RDB_ERROR;
-    if (RDB_put_upd_op(&opmap, "SYSTEM", 2, system_types, &system_op,
+        goto error;
+    if (RDB_put_upd_op(&sys_module.upd_op_map, "SYSTEM", 2, system_types, &system_op,
             system_updv, ecp) != RDB_OK)
-        return RDB_ERROR;
+        goto error;
 
-    if (RDB_put_upd_op(&opmap, "SYSTEM", 2, system_types, &system_op, system_updv, ecp)
+    if (RDB_put_upd_op(&sys_module.upd_op_map, "SYSTEM", 2, system_types, &system_op, system_updv, ecp)
             != RDB_OK)
-        return RDB_ERROR;
+        goto error;
 
-    if (_RDB_add_io_ops(&opmap, ecp) != RDB_OK)
-        return RDB_ERROR;
+    if (_RDB_add_io_ops(&sys_module.upd_op_map, ecp) != RDB_OK)
+        goto error;
 
     load_updv[0] = RDB_TRUE;
     for (i = 1; i < DURO_MAX_LLEN; i++) {
         load_updv[i] = RDB_FALSE;
     }
-    if (RDB_put_upd_op(&opmap, "LOAD", -1, NULL, &load_op, load_updv, ecp)
+    if (RDB_put_upd_op(&sys_module.upd_op_map, "LOAD", -1, NULL, &load_op, load_updv, ecp)
             != RDB_OK)
-        return RDB_ERROR;
+        goto error;
 
     objp = new_obj(ecp);
     if (objp == NULL)
-        return RDB_ERROR;
+        goto error;
 
     if (RDB_string_to_obj(objp, dbname, ecp) != RDB_OK) {
-        return RDB_ERROR;
+        goto error;
     }
-    if (RDB_hashmap_put(&toplevel_vars.map, "CURRENT_DB", objp) != RDB_OK) {
+    if (RDB_hashmap_put(&sys_module.varmap, "CURRENT_DB", objp) != RDB_OK) {
         RDB_destroy_obj(objp, ecp);
         RDB_raise_no_memory(ecp);
-        return RDB_ERROR;
+        goto error;
     }
 
-    if (RDB_hashmap_put(&toplevel_vars.map, "STDIN", &DURO_STDIN_OBJ) != RDB_OK) {
-        /* !! */
+    if (RDB_hashmap_put(&sys_module.varmap, "STDIN", &DURO_STDIN_OBJ) != RDB_OK) {
         RDB_raise_no_memory(ecp);
-        return RDB_ERROR;
+        goto error;
     }
-    if (RDB_hashmap_put(&toplevel_vars.map, "STDOUT", &DURO_STDOUT_OBJ) != RDB_OK) {
-        /* !! */
+    if (RDB_hashmap_put(&sys_module.varmap, "STDOUT", &DURO_STDOUT_OBJ) != RDB_OK) {
         RDB_raise_no_memory(ecp);
-        return RDB_ERROR;
+        goto error;
     }
-    if (RDB_hashmap_put(&toplevel_vars.map, "STDERR", &DURO_STDERR_OBJ) != RDB_OK) {
-        /* !! */
+    if (RDB_hashmap_put(&sys_module.varmap, "STDERR", &DURO_STDERR_OBJ) != RDB_OK) {
         RDB_raise_no_memory(ecp);
-        return RDB_ERROR;
+        goto error;
     }
 
-    RDB_init_hashmap(&ro_op_cache, 256);
+    RDB_init_hashmap(&root_module.ro_op_cache, 256);
+    RDB_init_hashmap(&sys_module.ro_op_cache, 256);
 
     return RDB_OK;
+
+error:
+    RDB_destroy_op_map(&sys_module.upd_op_map);
+    return RDB_ERROR;
 }
 
 static int
@@ -701,7 +737,7 @@ exec_vardef(RDB_parse_node *nodep, RDB_exec_context *ecp)
     /*
      * Check if the variable already exists
      */
-    if (RDB_hashmap_get(&current_varmapp->map, varname) != NULL) {
+    if (current_varmapp != NULL && RDB_hashmap_get(&current_varmapp->map, varname) != NULL) {
         RDB_raise_element_exists(varname, ecp);
         return RDB_ERROR;
     }
@@ -742,9 +778,18 @@ exec_vardef(RDB_parse_node *nodep, RDB_exec_context *ecp)
         }
     }
 
-    if (RDB_hashmap_put(&current_varmapp->map, varname, objp) != RDB_OK) {
-        RDB_raise_no_memory(ecp);
-        goto error;
+    if (current_varmapp != NULL) {
+        /* We're in local scope */
+        if (RDB_hashmap_put(&current_varmapp->map, varname, objp) != RDB_OK) {
+            RDB_raise_no_memory(ecp);
+            goto error;
+        }
+    } else {
+        /* Global scope */
+        if (RDB_hashmap_put(&root_module.varmap, varname, objp) != RDB_OK) {
+            RDB_raise_no_memory(ecp);
+            goto error;
+        }
     }
     return RDB_OK;
 
@@ -1078,11 +1123,20 @@ exec_vardef_private(RDB_parse_node *nodep, RDB_exec_context *ecp)
         }
     }
 
-    if (RDB_hashmap_put(&current_varmapp->map, varname, tbp) != RDB_OK) {
-        RDB_destroy_obj(tbp, ecp);
-        RDB_free(tbp);
-        RDB_raise_no_memory(ecp);
-        goto error;
+    if (current_varmapp != NULL) {
+        if (RDB_hashmap_put(&current_varmapp->map, varname, tbp) != RDB_OK) {
+            RDB_destroy_obj(tbp, ecp);
+            RDB_free(tbp);
+            RDB_raise_no_memory(ecp);
+            goto error;
+        }
+    } else {
+        if (RDB_hashmap_put(&root_module.varmap, varname, tbp) != RDB_OK) {
+            RDB_destroy_obj(tbp, ecp);
+            RDB_free(tbp);
+            RDB_raise_no_memory(ecp);
+            goto error;
+        }
     }
 
     if (_RDB_parse_interactive)
@@ -1106,13 +1160,22 @@ static int
 exec_vardrop(const RDB_parse_node *nodep, RDB_exec_context *ecp)
 {
     const char *varname = RDB_expr_var_name(nodep->exp);
+    RDB_object *objp = NULL;
 
     /* Try to look up local variable */
-    RDB_object *objp = RDB_hashmap_get(&current_varmapp->map, varname);
+    if (current_varmapp != NULL)
+        objp = RDB_hashmap_get(&current_varmapp->map, varname);
+    if (objp == NULL)
+        objp = RDB_hashmap_get(&root_module.varmap, varname);
     if (objp != NULL) {
-        /* Local variable found */
-        if (RDB_hashmap_put(&current_varmapp->map, varname, NULL) != RDB_OK)
-            return RDB_ERROR;
+        /* If transient variable found */
+        if (current_varmapp != NULL) {
+            if (RDB_hashmap_put(&current_varmapp->map, varname, NULL) != RDB_OK)
+                return RDB_ERROR;
+        } else {
+            if (RDB_hashmap_put(&root_module.varmap, varname, NULL) != RDB_OK)
+                return RDB_ERROR;
+        }
         return drop_local_var(objp, ecp);
     }
 
@@ -1175,7 +1238,7 @@ exec_call(const RDB_parse_node *nodep, RDB_exec_context *ecp)
     /*
      * Get operator
      */
-    op = RDB_get_op(&opmap, opname, argc, argtv, ecp);
+    op = RDB_get_op(&sys_module.upd_op_map, opname, argc, argtv, ecp);
     if (op == NULL) {
         if (txnp == NULL) {
             return RDB_ERROR;
@@ -1496,7 +1559,7 @@ exec_for(const RDB_parse_node *nodep, const RDB_parse_node *labelp,
     int ret;
     RDB_object endval;
     RDB_expression *fromexp, *toexp;
-    RDB_object *varp = lookup_local_var(nodep->exp->var.varname, current_varmapp);
+    RDB_object *varp = lookup_transient_var(nodep->exp->var.varname, current_varmapp);
     if (varp == NULL) {
         RDB_raise_name(nodep->exp->var.varname, ecp);
         return RDB_ERROR;
@@ -2067,7 +2130,7 @@ static RDB_database *
 get_db(RDB_exec_context *ecp)
 {
     char *dbname;
-    RDB_object *dbnameobjp = RDB_hashmap_get(&toplevel_vars.map, "CURRENT_DB");
+    RDB_object *dbnameobjp = RDB_hashmap_get(&sys_module.varmap, "CURRENT_DB");
     if (dbnameobjp == NULL) {
         RDB_raise_resource_not_found("no database", ecp);
         return NULL;
@@ -2280,6 +2343,49 @@ error:
     return RDB_ERROR;
 }
 
+static const char *
+var_of_type(RDB_hashmap *mapp, RDB_type *typ)
+{
+    RDB_hashmap_iter it;
+    char *namp;
+    RDB_object *objp;
+
+    RDB_init_hashmap_iter(&it, mapp);
+    for(;;) {
+        objp = RDB_hashmap_next(&it, &namp);
+        if (namp == NULL)
+            break;
+        if (objp != NULL) {
+            RDB_type *vtyp = RDB_obj_type(objp);
+
+            /* If the types are equal, return variable name */
+            if (vtyp != NULL && RDB_type_equals(vtyp, typ))
+                return namp;
+        }
+    }
+    return NULL;
+}
+
+/*
+ * Checks if *typ is in use by a transient variable.
+ * If it is, returns the name of the variable, otherwise NULL.
+ */
+static const char *
+type_in_use(RDB_type *typ)
+{
+    const char *typenamp;
+    if (current_varmapp != NULL) {
+        varmap_node *varnodep = current_varmapp;
+        do {
+            typenamp = var_of_type(&varnodep->map, typ);
+            if (typenamp != NULL)
+                return typenamp;
+            varnodep = varnodep->parentp;
+        } while (varnodep != NULL);
+    }
+    return var_of_type(&root_module.varmap, typ);
+}
+
 static int
 exec_typedrop(const RDB_parse_node *nodep, RDB_exec_context *ecp)
 {
@@ -2308,6 +2414,14 @@ exec_typedrop(const RDB_parse_node *nodep, RDB_exec_context *ecp)
             txnp != NULL ? &txnp->tx : &tmp_tx);
     if (typ == NULL)
         goto error;
+
+    /*
+     * Check if a transien variable of that type exists
+     */
+    if (type_in_use(typ)) {
+        RDB_raise_in_use("enable to drop type because a variable with that type exists", ecp);
+        goto error;
+    }
 
     ret = RDB_drop_type(typ, ecp, txnp != NULL ? &txnp->tx : &tmp_tx);
     if (ret != RDB_OK)
@@ -2393,7 +2507,7 @@ Duro_dt_invoke_ro_op(const char *name, int argc, RDB_object *argv[],
     }
 
     /* Try to get statements from the cache */
-    op = RDB_hashmap_get(&ro_op_cache, name);
+    op = RDB_hashmap_get(&root_module.ro_op_cache, name);
     if (op == NULL) {
 
         /* Not found */
@@ -2422,7 +2536,7 @@ Duro_dt_invoke_ro_op(const char *name, int argc, RDB_object *argv[],
         op->argnamec = argc;
         op->argnamev = argnamev;
 
-        RDB_hashmap_put(&ro_op_cache, name, op);
+        RDB_hashmap_put(&root_module.ro_op_cache, name, op);
     } else {
         argnamev = op->argnamev;
     }
@@ -2694,7 +2808,7 @@ exec_opdrop(const RDB_parse_node *nodep, RDB_exec_context *ecp)
     int ret;
     RDB_transaction tmp_tx;
 
-    /* !! Aus opmap löschen */
+    /* !! delete from opmap */
 
     /*
      * If a transaction is not active, start transaction if a database environment
@@ -3158,7 +3272,7 @@ Duro_process_stmt(RDB_exec_context *ecp)
     int ret;
     RDB_parse_node *stmtp;
     RDB_object prompt;
-    RDB_object *dbnameobjp = RDB_hashmap_get(&toplevel_vars.map, "CURRENT_DB");
+    RDB_object *dbnameobjp = RDB_hashmap_get(&sys_module.varmap, "CURRENT_DB");
 
     RDB_init_obj(&prompt);
     if (dbnameobjp != NULL && *RDB_obj_string(dbnameobjp) != '\0') {

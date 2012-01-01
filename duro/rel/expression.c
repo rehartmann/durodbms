@@ -326,12 +326,6 @@ extend_type(const RDB_expression *exp, RDB_gettypefn *getfnp, void *arg,
     return typ;
 }
 
-RDB_bool
-_RDB_expr_is_string(const RDB_expression *exp)
-{
-    return exp->kind == RDB_EX_OBJ && exp->var.obj.typ == &RDB_STRING;
-}
-
 static RDB_type *
 project_type(const RDB_expression *exp, RDB_type *argtv[],
         RDB_exec_context *ecp, RDB_transaction *txp)
@@ -1041,7 +1035,7 @@ RDB_expr_type(RDB_expression *exp, RDB_gettypefn *getfnp, void *arg,
         case RDB_EX_TBP:
             return RDB_obj_type(exp->var.tbref.tbp);
         case RDB_EX_VAR:
-            if (arg != NULL) {
+            if (getfnp != NULL) {
                 typ = (*getfnp) (RDB_expr_var_name(exp), arg);
                 if (typ != NULL) {
                     exp->typ = RDB_dup_nonscalar_type(typ, ecp);
@@ -1546,6 +1540,12 @@ RDB_expr_obj(RDB_expression *exp)
 }
 
 /*@}*/
+
+RDB_bool
+_RDB_expr_is_string(const RDB_expression *exp)
+{
+    return exp->kind == RDB_EX_OBJ && exp->var.obj.typ == &RDB_STRING;
+}
 
 /**
  * Return the type of the expression. Use *tpltyp to resolve refs to variables.

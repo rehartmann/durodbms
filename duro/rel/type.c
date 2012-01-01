@@ -62,6 +62,8 @@ TYPE VERSION_MISMATCH_ERROR POSSREP { };
 TYPE NOT_SUPPORTED_ERROR POSSREP { MSG STRING };
 
 TYPE SYNTAX_ERROR POSSREP { MSG STRING };
+
+TYPE IN_USE_ERROR POSSREP { MSG STRING };
 </pre>
 
 @subsection system-errors System errors
@@ -130,6 +132,7 @@ RDB_type RDB_PREDICATE_VIOLATION_ERROR;
 RDB_type RDB_AGGREGATE_UNDEFINED_ERROR;
 RDB_type RDB_VERSION_MISMATCH_ERROR;
 RDB_type RDB_NOT_SUPPORTED_ERROR;
+RDB_type RDB_IN_USE_ERROR;
 RDB_type RDB_NO_MEMORY_ERROR;
 RDB_type RDB_LOCK_NOT_GRANTED_ERROR;
 RDB_type RDB_DEADLOCK_ERROR;
@@ -281,6 +284,14 @@ _RDB_init_builtin_types(RDB_exec_context *ecp)
         "NOT_SUPPORTED_ERROR",
         1,
         &not_supported_comp
+    };
+
+    static RDB_attr in_use_comp = { "MSG", &RDB_STRING };
+
+    static RDB_possrep in_use_rep = {
+        "IN_USE_ERROR",
+        1,
+        &in_use_comp
     };
 
     static RDB_attr name_comp = { "MSG", &RDB_STRING };
@@ -548,6 +559,17 @@ _RDB_init_builtin_types(RDB_exec_context *ecp)
     RDB_PREDICATE_VIOLATION_ERROR.var.scalar.sysimpl = RDB_TRUE;
     RDB_PREDICATE_VIOLATION_ERROR.comparep = NULL;
 
+    RDB_IN_USE_ERROR.kind = RDB_TP_SCALAR;
+    RDB_IN_USE_ERROR.ireplen = RDB_VARIABLE_LEN;
+    RDB_IN_USE_ERROR.name = "IN_USE_ERROR";
+    RDB_IN_USE_ERROR.var.scalar.builtin = RDB_TRUE;
+    RDB_IN_USE_ERROR.var.scalar.repc = 1;
+    RDB_IN_USE_ERROR.var.scalar.repv = &in_use_rep;
+    RDB_IN_USE_ERROR.var.scalar.arep = &RDB_STRING;
+    RDB_IN_USE_ERROR.var.scalar.constraintp = NULL;
+    RDB_IN_USE_ERROR.var.scalar.sysimpl = RDB_TRUE;
+    RDB_IN_USE_ERROR.comparep = NULL;
+
     RDB_SYSTEM_ERROR.kind = RDB_TP_SCALAR;
     RDB_SYSTEM_ERROR.ireplen = RDB_VARIABLE_LEN;
     RDB_SYSTEM_ERROR.name = "SYSTEM_ERROR";
@@ -734,6 +756,10 @@ _RDB_init_builtin_types(RDB_exec_context *ecp)
         return RDB_ERROR;
     }
     if (_RDB_add_type(&RDB_PREDICATE_VIOLATION_ERROR,
+            ecp) != RDB_OK) {
+        return RDB_ERROR;
+    }
+    if (_RDB_add_type(&RDB_IN_USE_ERROR,
             ecp) != RDB_OK) {
         return RDB_ERROR;
     }

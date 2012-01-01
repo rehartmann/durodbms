@@ -1406,7 +1406,7 @@ table_dep_check(RDB_object *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
         }
         if (!RDB_table_is_real(dtbp)) {
             if (_RDB_expr_refers(dtbp->var.tb.exp, tbp)) {
-                RDB_raise_invalid_argument("table has dependencies", ecp);
+                RDB_raise_in_use("a virtual table depends on this table", ecp);
                 ret = RDB_ERROR;
                 goto cleanup;
             }

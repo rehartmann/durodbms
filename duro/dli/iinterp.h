@@ -8,11 +8,6 @@
 #define DURO_RETURN (-1000)
 #define DURO_LEAVE (-1001)
 
-typedef struct varmap_node {
-    RDB_hashmap map;
-    struct varmap_node *parentp;
-} varmap_node;
-
 void
 Duro_print_error(const RDB_object *);
 
