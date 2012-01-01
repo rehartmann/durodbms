@@ -190,6 +190,9 @@ int
 _RDB_expr_equals(const RDB_expression *, const RDB_expression *,
         RDB_exec_context *, RDB_transaction *, RDB_bool *);
 
+RDB_bool
+_RDB_expr_is_string(const RDB_expression *);
+
 int
 _RDB_destroy_expr(RDB_expression *, RDB_exec_context *);
 
@@ -330,9 +333,6 @@ _RDB_expr_table_depend(const RDB_expression *, const RDB_object *);
 
 RDB_bool
 _RDB_expr_expr_depend(const RDB_expression *, const RDB_expression *);
-
-RDB_expression *
-RDB_dup_expr(const RDB_expression *, RDB_exec_context *);
 
 int
 _RDB_invrename_expr(RDB_expression *exp, RDB_expression *texp,

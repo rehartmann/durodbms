@@ -60,7 +60,7 @@ gensrc = ['gen/hashmap.c', 'gen/hashmapit.c',
 recsrc = ['rec/cursor.c', 'rec/env.c', 'rec/index.c', 'rec/recmap.c']
 
 relsrc = ['rel/array.c', 'rel/database.c', 'rel/operator.c',
-        'rel/builtinops.c', 'rel/expression.c', 'rel/qresult.c',
+        'rel/builtinops.c', 'rel/expression.c', 'rel/evaluate.c', 'rel/qresult.c',
         'rel/serialize.c', 'rel/table.c', 'rel/stable.c', 'rel/vtable.c',
         'rel/update.c', 'rel/insert.c', 'rel/contains.c', 'rel/transaction.c',
         'rel/delete.c', 'rel/tuple.c', 'rel/type.c', 'rel/object.c',
