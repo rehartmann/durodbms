@@ -1,0 +1,5 @@
+*.so
+dbenv
+.sconsign.dblite
+core
+.directory

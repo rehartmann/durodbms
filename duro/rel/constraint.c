@@ -169,7 +169,7 @@ RDB_create_constraint(const char *name, RDB_expression *exp,
         return RDB_ERROR;
     }
 
-    if (_RDB_transform(exp, ecp, txp) != RDB_OK) {
+    if (_RDB_transform(exp, NULL, NULL, ecp, txp) != RDB_OK) {
         return RDB_ERROR;
     }
 

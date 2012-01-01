@@ -192,7 +192,8 @@ RDB_expr_resolve_varnames(const RDB_expression *exp, RDB_getobjfn *getfnp,
 }
 
 static RDB_type *
-get_tuple_attr_type(const char *attrname, void *arg) {
+get_tuple_attr_type(const char *attrname, void *arg)
+{
     RDB_attr *attrp = _RDB_tuple_type_attr(arg, attrname);
     return attrp != NULL ? attrp->typ : NULL;
 }
@@ -673,7 +674,7 @@ expr_op_type(RDB_expression *exp, RDB_gettypefn *getfnp, void *arg,
     int argc;
     RDB_type **argtv = NULL;
 
-    if (_RDB_transform(exp, ecp, txp) != RDB_OK)
+    if (_RDB_transform(exp, getfnp, arg, ecp, txp) != RDB_OK)
         return NULL;
 
     /*
@@ -696,7 +697,7 @@ expr_op_type(RDB_expression *exp, RDB_gettypefn *getfnp, void *arg,
     }
 
     if (strcmp(exp->var.op.name, "REMOVE") == 0) {
-        if (_RDB_remove_to_project(exp, ecp, txp) != RDB_OK)
+        if (_RDB_remove_to_project(exp, getfnp, arg, ecp, txp) != RDB_OK)
             goto error;
     }
 
@@ -1554,6 +1555,21 @@ cleanup:
     return ret;
 }
 
+struct get_type_info {
+    RDB_getobjfn *getfnp;
+    void *getdata;
+};
+
+static RDB_type *
+get_type(const char *name, void *arg)
+{
+    struct get_type_info *infop = arg;
+    RDB_object *objp = (*infop->getfnp) (name, infop->getdata);
+    if (objp == NULL)
+        return NULL;
+    return objp->typ;
+}
+
 static int
 evaluate_ro_op(RDB_expression *exp, RDB_getobjfn *getfnp, void *getdata,
         RDB_exec_context *ecp, RDB_transaction *txp, RDB_object *valp)
@@ -1565,8 +1581,15 @@ evaluate_ro_op(RDB_expression *exp, RDB_getobjfn *getfnp, void *getdata,
     RDB_object **valpv;
     RDB_object *valv = NULL;
     int argc = RDB_expr_list_length(&exp->var.op.args);
+    struct get_type_info gtinfo;
 
-    if (_RDB_transform(exp, ecp, txp) != RDB_OK)
+    if (getfnp != NULL) {
+        gtinfo.getdata = getdata;
+        gtinfo.getfnp = getfnp;
+    }
+
+    if (_RDB_transform(exp, getfnp != NULL ? get_type : NULL,
+            getfnp != NULL ? &gtinfo : NULL, ecp, txp) != RDB_OK)
         return RDB_ERROR;
 
     /*

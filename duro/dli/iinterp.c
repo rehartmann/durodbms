@@ -1569,42 +1569,6 @@ error:
     return RDB_ERROR;
 }
 
-/*
-static int
-attr_assign_list_length(const RDB_parse_assign *assignlp)
-{
-    int assignc = 0;
-    const RDB_parse_assign *ap = assignlp;
-
-    do {
-        assignc++;
-        ap = ap->nextp;
-    } while (ap != NULL);
-    return assignc;
-}
-
-static RDB_attr_update *
-convert_attr_assigns(RDB_parse_assign *assignlp, int *updcp,
-        RDB_exec_context *ecp)
-{
-    int i;
-    RDB_attr_update *updv;
-    RDB_parse_assign *ap = assignlp;
-    *updcp = attr_assign_list_length(assignlp);
-
-    updv = RDB_alloc(*updcp * sizeof(RDB_attr_update), ecp);
-    if (updv == NULL)
-        return NULL;
-    ap = assignlp;
-    for (i = 0; i < *updcp; i++) {
-        updv[i].name = ap->var.copy.dstp->var.varname;
-        updv[i].exp = ap->var.copy.srcp;
-        ap = ap->nextp;
-    }
-    return updv;
-}
-*/
-
 static RDB_object *
 resolve_target(const RDB_expression *exp, RDB_exec_context *ecp)
 {
@@ -1687,6 +1651,78 @@ node_to_copy(RDB_ma_copy *copyp, RDB_parse_node *nodep, RDB_exec_context *ecp)
 }
 
 static int
+tuple_update_to_copy(RDB_ma_copy *copyp, RDB_parse_node *nodep,
+        RDB_exec_context *ecp)
+{
+    RDB_expression *srcexp;
+    RDB_expression *srcvarexp;
+    RDB_parse_node *ap;
+
+    if (nodep->nextp->val.token == TOK_WHERE) {
+        RDB_raise_syntax("WHERE not allowed with tuple UPDATE", ecp);
+        goto error;
+    }
+
+    /*
+     * Get destination
+     */
+    copyp->dstp = resolve_target(nodep->exp, ecp);
+    if (copyp->dstp == NULL) {
+        return RDB_ERROR;
+    }
+
+    /*
+     * Get source value by creating an UPDATE expression
+     * and evaluating it
+     */
+    srcexp = RDB_ro_op("UPDATE", ecp);
+    if (srcexp == NULL)
+        return RDB_ERROR;
+    srcvarexp = RDB_dup_expr(nodep->exp, ecp);
+    if (srcvarexp == NULL)
+        goto error;
+    RDB_add_arg(srcexp, srcvarexp);
+
+    ap = nodep->nextp->nextp->val.children.firstp;
+    for(;;) {
+        RDB_expression *exp = RDB_string_to_expr(
+                RDB_expr_var_name(RDB_parse_node_expr(
+                        ap->val.children.firstp, ecp)),
+                ecp);
+        if (exp == NULL)
+            goto error;
+        RDB_add_arg(srcexp, exp);
+
+        exp = RDB_parse_node_expr(
+                ap->val.children.firstp->nextp->nextp, ecp);
+        if (exp == NULL)
+            goto error;
+        exp = RDB_dup_expr(exp, ecp);
+        if (exp == NULL)
+            goto error;
+        RDB_add_arg(srcexp, exp);
+
+        ap = ap->nextp;
+        if (ap == NULL)
+            break;
+
+        /* Skip comma */
+        ap = ap->nextp;
+    }
+
+    if (RDB_evaluate(srcexp, get_var, current_varmapp, ecp,
+            txnp != NULL ? &txnp->tx : NULL, copyp->srcp) != RDB_OK) {
+        return RDB_ERROR;
+    }
+
+    return RDB_OK;
+
+error:
+    RDB_drop_expr(srcexp, ecp);
+    return RDB_ERROR;
+}
+
+static int
 node_to_insert(RDB_ma_insert *insp, RDB_parse_node *nodep, RDB_exec_context *ecp)
 {
     RDB_expression *srcexp;
@@ -1711,19 +1747,6 @@ node_to_insert(RDB_ma_insert *insp, RDB_parse_node *nodep, RDB_exec_context *ecp
         return RDB_ERROR;
     }
 
-    /* !! Umständlich
-    srcexp = RDB_expr_resolve_varnames(srcexp,
-            &get_var, current_varmapp, ecp, txnp != NULL ? &txnp->tx : NULL);
-    if (srcexp == NULL)
-    	return RDB_ERROR;
-
-    if (RDB_evaluate(srcexp, NULL, NULL, ecp,
-            txnp != NULL ? &txnp->tx : NULL, insp->objp) != RDB_OK) {
-        return RDB_ERROR;
-    }
-    RDB_drop_expr(srcexp, ecp);
-    */
-
     if (RDB_evaluate(srcexp, &get_var, current_varmapp, ecp,
             txnp != NULL ? &txnp->tx : NULL, insp->objp) != RDB_OK) {
         return RDB_ERROR;
@@ -1733,7 +1756,8 @@ node_to_insert(RDB_ma_insert *insp, RDB_parse_node *nodep, RDB_exec_context *ecp
 }
 
 static int
-node_to_update(RDB_ma_update *updp, RDB_object *dstp, RDB_parse_node *nodep, RDB_exec_context *ecp)
+node_to_update(RDB_ma_update *updp, RDB_object *dstp, RDB_parse_node *nodep,
+        RDB_exec_context *ecp)
 {
 	RDB_parse_node *np;
 	RDB_parse_node *aafnp;
@@ -1947,7 +1971,7 @@ exec_assign(const RDB_parse_node *nodep, RDB_exec_context *ecp)
                         return RDB_ERROR;
                     }
 
-                    /* Only tables are allowed as target */
+                    /* Only tables and tuples are allowed as target */
                     if (dstp->typ == NULL
                             || !(RDB_type_is_relation(dstp->typ)
                                     || RDB_type_is_tuple(dstp->typ))) {
@@ -1955,63 +1979,25 @@ exec_assign(const RDB_parse_node *nodep, RDB_exec_context *ecp)
                                 "UPDATE target must be tuple or relation", ecp);
                         return RDB_ERROR;
                     }
-
                     if (dstp->typ != NULL && RDB_type_is_tuple(dstp->typ)) {
                         /*
                          * Tuple update
                          */
-                        RDB_parse_node *ap;
+                        if (srcobjc >= DURO_MAX_LLEN) {
+                            RDB_raise_not_supported("too many assigments", ecp);
+                            return RDB_ERROR;
+                        }
 
-                        if (firstp->nextp->nextp->val.token == TOK_WHERE) {
-                            RDB_raise_syntax("WHERE not allowed with tuple UPDATE", ecp);
+                        RDB_init_obj(&srcobjv[srcobjc++]);
+                        copyv[copyc].srcp = &srcobjv[srcobjc - 1];
+                        if (tuple_update_to_copy(&copyv[copyc++], firstp->nextp, ecp) != RDB_OK) {
                             goto error;
                         }
-
-                        ap = firstp->nextp->nextp->nextp->val.children.firstp;
-                        for(;;) {
-                            RDB_expression *exp;
-
-                            if (copyc >= DURO_MAX_LLEN) {
-                                RDB_raise_not_supported("too many updates", ecp);
-                                return RDB_ERROR;
-                            }
-
-                            /*
-                             * Get address of destination attribute
-                             */
-                            copyv[copyc].dstp = RDB_tuple_get(dstp,
-                                    RDB_expr_var_name(ap->val.children.firstp->exp));
-                            if (copyv[copyc].dstp == NULL) {
-                                RDB_raise_invalid_argument(
-                                        "target attribute not found", ecp);
-                                goto error;
-                            }
-
-                            /*
-                             * Get source value
-                             */
-                            exp = RDB_parse_node_expr(
-                                    ap->val.children.firstp->nextp->nextp, ecp);
-                            if (exp == NULL)
-                                goto error;
-                            RDB_init_obj(&srcobjv[srcobjc++]);
-                            copyv[copyc].srcp = &srcobjv[srcobjc - 1];
-
-                            if (RDB_evaluate(exp, get_var, current_varmapp, ecp,
-                                    txnp != NULL ? &txnp->tx : NULL, &srcobjv[srcobjc - 1])
-                                           != RDB_OK) {
-                                goto error;
-                            }
-                            copyc++;
-
-                            ap = ap->nextp;
-                            if (ap == NULL)
-                                break;
-
-                            /* Skip comma */
-                            ap = ap->nextp;
-                        }
                     } else {
+                        if (updc >= DURO_MAX_LLEN) {
+                            RDB_raise_not_supported("too many updates", ecp);
+                            return RDB_ERROR;
+                        }
                         updv[updc].updv = &attrupdv[attrupdc];
                         if (node_to_update(&updv[updc++], dstp, firstp->nextp, ecp)
                                 != RDB_OK) {

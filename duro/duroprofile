@@ -1,0 +1,5 @@
+ulimit -c unlimited
+LD_LIBRARY_PATH=$PWD
+export LD_LIBRARY_PATH
+TCLLIBPATH=$PWD
+export TCLLIBPATH

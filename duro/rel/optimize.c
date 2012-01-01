@@ -75,7 +75,7 @@ eliminate_child (RDB_expression *exp, const char *name, RDB_exec_context *ecp,
     exp->var.op.args.firstp = hexp->var.op.args.firstp;
     RDB_free(hexp->var.op.name);
     RDB_free(hexp);
-    return _RDB_transform(exp->var.op.args.firstp, ecp, txp);
+    return _RDB_transform(exp->var.op.args.firstp, NULL, NULL, ecp, txp);
 }
 
 /* Try to eliminate NOT operator */
@@ -1079,7 +1079,7 @@ _RDB_optimize_expr(RDB_expression *texp, int seqitc, const RDB_seq_item seqitv[]
     /*
      * Algebraic optimization
      */
-    if (_RDB_transform(nexp, ecp, txp) != RDB_OK)
+    if (_RDB_transform(nexp, NULL, NULL, ecp, txp) != RDB_OK)
         return NULL;
 
     /*

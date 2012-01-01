@@ -4,16 +4,16 @@
 /*
  * $Id$
  *
- * Copyright (C) 2006 René Hartmann.
+ * Copyright (C) 2006 Renï¿½ Hartmann.
  * See the file COPYING for redistribution information.
  */
 
 #include "rdb.h"
 
 int
-_RDB_transform(RDB_expression *, RDB_exec_context *, RDB_transaction *);
+_RDB_transform(RDB_expression *, RDB_gettypefn *, void *, RDB_exec_context *, RDB_transaction *);
 
 int
-_RDB_remove_to_project(RDB_expression *, RDB_exec_context *, RDB_transaction *);
+_RDB_remove_to_project(RDB_expression *, RDB_gettypefn *, void *, RDB_exec_context *, RDB_transaction *);
 
 #endif /*TRANSFORM_H*/
