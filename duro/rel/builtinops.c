@@ -1,7 +1,7 @@
 /*
  * $Id$
  *
- * Copyright (C) 2005-2011 Rene Hartmann.
+ * Copyright (C) 2005-2012 Rene Hartmann.
  * See the file COPYING for redistribution information.
  */
 
@@ -1467,12 +1467,11 @@ put_builtin_ro_op(const char *name, int argc, RDB_type **argtv, RDB_type *rtyp,
         RDB_ro_op_func *fp, RDB_exec_context *ecp)
 {
     int ret;
-    RDB_op_data *datap = _RDB_new_ro_op_data(rtyp, fp, ecp);
+    RDB_operator *datap = _RDB_new_ro_op_data(name, rtyp, fp, ecp);
     if (datap == NULL)
         return RDB_ERROR;
 
-    ret =  RDB_put_op(&_RDB_builtin_ro_op_map, name, argc, argtv,
-            datap, ecp);
+    ret =  RDB_put_op(&_RDB_builtin_ro_op_map, datap, argc, argtv, ecp);
     if (ret != RDB_OK) {
         RDB_free_op_data(datap, ecp);
         return RDB_ERROR;

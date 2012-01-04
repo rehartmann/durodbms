@@ -1,7 +1,7 @@
 /*
  * $Id$
  *
- * Copyright (C) 2003-2009 René Hartmann.
+ * Copyright (C) 2003-2012 Rene Hartmann.
  * See the file COPYING for redistribution information.
  */
 
@@ -270,7 +270,7 @@ Duro_call_cmd(ClientData data, Tcl_Interp *interp, int objc,
     char *txstr;
     RDB_transaction *txp;
     Tcl_HashEntry *entryp;
-    RDB_op_data *op;
+    RDB_operator *op;
     RDB_type **argtv = NULL;
     RDB_object **argv = NULL;
     TclState *statep = (TclState *) data;
@@ -301,7 +301,7 @@ Duro_call_cmd(ClientData data, Tcl_Interp *interp, int objc,
         /* !! who manages non-scalar types? */
     }
 
-    op = _RDB_get_upd_op(Tcl_GetString(objv[1]), argc, argtv,
+    op = RDB_get_update_op(Tcl_GetString(objv[1]), argc, argtv,
             statep->current_ecp, txp);
     if (op == NULL) {
         Duro_dberror(interp, RDB_get_err(statep->current_ecp), txp);
@@ -346,7 +346,7 @@ Duro_call_cmd(ClientData data, Tcl_Interp *interp, int objc,
         }
     }
 
-    ret = RDB_call_update_op(Tcl_GetString(objv[1]),
+    ret = RDB_call_update_op_by_name(Tcl_GetString(objv[1]),
             argc, argv, statep->current_ecp, txp);
     if (ret != RDB_OK) {
         Duro_dberror(interp, RDB_get_err(statep->current_ecp), txp);
@@ -588,7 +588,7 @@ Duro_invoke_update_op(const char *name, int argc, RDB_object *argv[],
 
             if (RDB_type_is_scalar(argtyp)) {
                 if (issetter && i == 0) {
-                    /* It´s the argument of setter, so use internal rep */
+                    /* Itï¿½s the argument of setter, so use internal rep */
                     convtyp = argtyp->var.scalar.arep;
                 } else {
                     convtyp = argtyp;

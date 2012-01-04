@@ -540,7 +540,7 @@ init_iostream(RDB_object *iosp, int fno, RDB_exec_context *ecp)
     RDB_init_obj(&fobj);
     RDB_int_to_obj(&fobj, (RDB_int) fno);
     fobjp = &fobj;
-    ret = RDB_call_ro_op("IO_STREAM", 1, &fobjp, ecp, NULL, iosp);
+    ret = RDB_call_ro_op_by_name("IO_STREAM", 1, &fobjp, ecp, NULL, iosp);
     RDB_destroy_obj(&fobj, ecp);
     return ret;
 }    

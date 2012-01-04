@@ -84,7 +84,7 @@ test_table(RDB_database *dbp, RDB_exec_context *ecp)
     RDB_int_to_obj(&ival, (RDB_int)200);
     ivalp = &ival;
 
-    ret = RDB_call_ro_op("TINYINT", 1, &ivalp, ecp, &tx, &tival);
+    ret = RDB_call_ro_op_by_name("TINYINT", 1, &ivalp, ecp, &tx, &tival);
     assert(ret != RDB_OK);
     assert(RDB_obj_type(RDB_get_err(ecp)) == &RDB_TYPE_CONSTRAINT_VIOLATION_ERROR);
     RDB_clear_err(ecp);
@@ -92,7 +92,7 @@ test_table(RDB_database *dbp, RDB_exec_context *ecp)
     RDB_int_to_obj(&ival, (RDB_int) 99);
     ivalp = &ival;
 
-    ret = RDB_call_ro_op("TINYINT", 1, &ivalp, ecp, &tx, &tival);
+    ret = RDB_call_ro_op_by_name("TINYINT", 1, &ivalp, ecp, &tx, &tival);
     if (ret != RDB_OK) {
         goto error;
     }
@@ -110,7 +110,7 @@ test_table(RDB_database *dbp, RDB_exec_context *ecp)
      * Call selector again
      */
     RDB_int_to_obj(&ival, 99);
-    ret = RDB_call_ro_op("TINYINT", 1, &ivalp, ecp, &tx, &tival);
+    ret = RDB_call_ro_op_by_name("TINYINT", 1, &ivalp, ecp, &tx, &tival);
     if (ret != RDB_OK) {
         goto error;
     }

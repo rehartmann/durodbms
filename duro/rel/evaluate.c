@@ -314,7 +314,7 @@ evaluate_ro_op(RDB_expression *exp, RDB_getobjfn *getfnp, void *getdata,
 
         argp = argp->nextp;
     }
-    ret = RDB_call_ro_op(exp->var.op.name, argc, valpv, ecp, txp, valp);
+    ret = RDB_call_ro_op_by_name(exp->var.op.name, argc, valpv, ecp, txp, valp);
 
 cleanup:
     if (valv != NULL) {

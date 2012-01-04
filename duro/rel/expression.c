@@ -1,7 +1,7 @@
 /*
  * $Id$
  *
- * Copyright (C) 2004-2011 Rene Hartmann.
+ * Copyright (C) 2004-2012 Rene Hartmann.
  * See the file COPYING for redistribution information.
  */
 
@@ -662,7 +662,7 @@ expr_op_type(RDB_expression *exp, RDB_gettypefn *getfnp, void *arg,
 {
     int i;
     RDB_type *typ;
-    RDB_op_data *op;
+    RDB_operator *op;
     RDB_expression *argp;
     int argc;
     RDB_type **argtv = NULL;

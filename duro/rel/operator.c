@@ -1,7 +1,7 @@
 /*
  * $Id$
  *
- * Copyright (C) 2004-2008 Ren� Hartmann.
+ * Copyright (C) 2004-2011 Rene Hartmann.
  * See the file COPYING for redistribution information.
  */
 
@@ -59,7 +59,7 @@ Overloading operators is possible.
 
 <dl>
 <dt>NO_RUNNING_TX_ERROR
-<dd><var>txp</var> does not point to a running transaction.
+<dd>*<var>txp</var> is not a running transaction.
 <dt>ELEMENT_EXIST_ERROR
 <dd>A read-only operator with this name and signature does already exist.
 </dl>
@@ -146,7 +146,7 @@ RDB_create_ro_op(const char *name, int argc, RDB_type *argtv[], RDB_type *rtyp,
             && argtv[0] == argtv[1]
             && (argtv[0]->kind != RDB_TP_SCALAR
                     || !argtv[0]->var.scalar.builtin)) {
-        RDB_op_data *cmpop;
+        RDB_operator *cmpop;
 
         cmpop = _RDB_get_ro_op(name, argc, argtv, ecp, txp);
         if (cmpop == NULL) {
@@ -207,7 +207,7 @@ Overloading operators is possible.
 
 <dl>
 <dt>NO_RUNNING_TX_ERROR
-<dd><var>txp</var> does not point to a running transaction.
+<dd>*<var>txp</var> is not a running transaction.
 <dt>ELEMENT_EXIST_ERROR
 <dd>An update operator with this name and signature does already exist.
 </dl>
@@ -348,7 +348,7 @@ valv_to_typev(int valc, RDB_object **valv, RDB_exec_context *ecp)
 }
 
 /**
- * RDB_call_ro_op invokes the read-only operator with the name <var>name</var>,
+ * RDB_call_ro_op_by_name invokes the read-only operator with the name <var>name</var>,
 passing the arguments in <var>argc</var> and <var>argv</var>.
 
 The result will be stored at the location pointed to by
@@ -380,11 +380,11 @@ The call may also fail for a @ref system-errors "system error",
 in which case the transaction may be implicitly rolled back.
  */
 int
-RDB_call_ro_op(const char *name, int argc, RDB_object *argv[],
+RDB_call_ro_op_by_name(const char *name, int argc, RDB_object *argv[],
                RDB_exec_context *ecp, RDB_transaction *txp,
                RDB_object *retvalp)
 {
-    RDB_op_data *op;
+    RDB_operator *op;
     int ret;
     RDB_type **argtv;
     int i;
@@ -496,7 +496,7 @@ RDB_call_ro_op(const char *name, int argc, RDB_object *argv[],
     /* Set return type to make it available to the function */
     retvalp->typ = op->rtyp;
 
-    ret = (*op->opfn.ro_fp)(name, argc, argv, op->rtyp, op->iarg.var.bin.datap,
+    ret = (*op->opfn.ro_fp)(op->name, argc, argv, op->rtyp, op->iarg.var.bin.datap,
             op->iarg.var.bin.len, ecp, txp, retvalp);
     if (ret != RDB_OK)
         goto error;
@@ -518,7 +518,50 @@ error:
 }
 
 /**
- * RDB_call_update_op invokes the update operator with the name <var>name</var>,
+ * Return the update operator with the name <var>name</var>
+and the signature given by <var>argc</var> and <var>argtv</var>.
+
+@returns the update operator, or NULL if an error occurred,
+in which case *<var>ecp</var> carries the error information.
+
+@par Errors:
+
+<dl>
+<dt>NO_RUNNING_TX_ERROR
+<dd>*<var>txp</var> is not a running transaction.
+<dt>OPERATOR_NOT_FOUND_ERROR
+<dd>An update operator that matches the name and arguments could not be
+found.
+</dl>
+
+The call may also fail for a @ref system-errors "system error",
+in which case the transaction may be implicitly rolled back.
+ */
+
+RDB_operator *
+RDB_get_update_op(const char *name, int argc, RDB_type *argtv[],
+                RDB_exec_context *ecp, RDB_transaction *txp)
+{
+    RDB_operator *op = RDB_get_op(&txp->dbp->dbrootp->upd_opmap, name, argc, argtv, ecp);
+    if (op == NULL) {
+        RDB_clear_err(ecp);
+        op = _RDB_cat_get_upd_op(name, argc, argtv, ecp, txp);
+        if (op == NULL) {
+            if (RDB_obj_type(RDB_get_err(ecp)) == &RDB_NOT_FOUND_ERROR) {
+                RDB_raise_operator_not_found(name, ecp);
+            }
+            return NULL;
+        }
+        if (RDB_put_op(&txp->dbp->dbrootp->upd_opmap, op, argc, argtv, ecp) != RDB_OK) {
+            RDB_free_op_data(op, ecp);
+            return NULL;
+        }
+    }
+    return op;
+}
+
+/**
+ * RDB_call_update_op_by_name invokes the update operator with the name <var>name</var>,
 passing the arguments in <var>argc</var> and <var>argv</var>.
 
 The arguments must carry type information.
@@ -529,7 +572,7 @@ The arguments must carry type information.
 
 <dl>
 <dt>NO_RUNNING_TX_ERROR
-<dd><var>txp</var> does not point to a running transaction.
+<dd>*<var>txp</var> is not a running transaction.
 <dt>OPERATOR_NOT_FOUND_ERROR
 <dd>An update operator that matches the name and arguments could not be
 found.
@@ -542,12 +585,11 @@ The call may also fail for a @ref system-errors "system error",
 in which case the transaction may be implicitly rolled back.
  */
 int
-RDB_call_update_op(const char *name, int argc, RDB_object *argv[],
+RDB_call_update_op_by_name(const char *name, int argc, RDB_object *argv[],
                    RDB_exec_context *ecp, RDB_transaction *txp)
 {
-    RDB_op_data *op;
+    RDB_operator *op;
     RDB_type **argtv;
-    /* int i; */
 
     if (!RDB_tx_is_running(txp)) {
         RDB_raise_no_running_tx(ecp);
@@ -558,7 +600,7 @@ RDB_call_update_op(const char *name, int argc, RDB_object *argv[],
     if (argtv == NULL) {
         return RDB_ERROR;
     }
-    op = _RDB_get_upd_op(name, argc, argtv, ecp, txp);
+    op = RDB_get_update_op(name, argc, argtv, ecp, txp);
     RDB_free(argtv);
     if (op == NULL) {
         if (RDB_obj_type(RDB_get_err(ecp)) == &RDB_OPERATOR_NOT_FOUND_ERROR) {
@@ -567,8 +609,15 @@ RDB_call_update_op(const char *name, int argc, RDB_object *argv[],
         return RDB_ERROR;
     }
 
-    return (*op->opfn.upd_fp)(name, argc, argv, op->updv, op->iarg.var.bin.datap,
-            op->iarg.var.bin.len, ecp, txp);
+    return RDB_call_update_op(op, argc, argv, ecp, txp);
+}
+
+int
+RDB_call_update_op(RDB_operator *op, int argc, RDB_object *argv[],
+                RDB_exec_context *ecp, RDB_transaction *txp)
+{
+    return (*op->opfn.upd_fp)(op->name, argc, argv, op->updv, op->iarg.var.bin.datap,
+                op->iarg.var.bin.len, ecp, txp);
 }
 
 /**
@@ -581,7 +630,7 @@ from the database. This affects all overloaded versions.
 
 <dl>
 <dt>NO_RUNNING_TX_ERROR
-<dd><var>txp</var> does not point to a running transaction.
+<dd>*<var>txp</var> is not a running transaction.
 <dt>OPERATOR_NOT_FOUND_ERROR
 <dd>An operator with the specified name could not be found.
 </dl>
@@ -801,12 +850,12 @@ _RDB_obj_not_equals(const char *name, int argc, RDB_object *argv[], RDB_type *ty
     return RDB_OK;
 }
 
-RDB_op_data *
+RDB_operator *
 _RDB_get_ro_op(const char *name, int argc, RDB_type *argtv[],
                RDB_exec_context *ecp, RDB_transaction *txp)
 {
     RDB_type *errtyp;
-    RDB_op_data *op;
+    RDB_operator *op;
     RDB_bool typmismatch = RDB_FALSE;
 
     /* Lookup operator in built-in operator map */
@@ -860,23 +909,21 @@ _RDB_get_ro_op(const char *name, int argc, RDB_type *argtv[],
         int ret;
 
         if (strcmp(name, "=") == 0) {
-            op = _RDB_new_ro_op_data(&RDB_BOOLEAN, &_RDB_obj_equals, ecp);
+            op = _RDB_new_ro_op_data(name, &RDB_BOOLEAN, &_RDB_obj_equals, ecp);
             if (op == NULL) {
                 return NULL;
             }
-            ret = RDB_put_op(&txp->dbp->dbrootp->ro_opmap, name,
-                    2, argtv, op, ecp);
+            ret = RDB_put_op(&txp->dbp->dbrootp->ro_opmap, op, 2, argtv, ecp);
             if (ret != RDB_OK)
                 return NULL;
             return op;
         }
         if (strcmp(name, "<>") == 0) {
-            op = _RDB_new_ro_op_data(&RDB_BOOLEAN, &_RDB_obj_not_equals, ecp);
+            op = _RDB_new_ro_op_data(name, &RDB_BOOLEAN, &_RDB_obj_not_equals, ecp);
             if (op == NULL) {
                 return NULL;
             }
-            ret = RDB_put_op(&txp->dbp->dbrootp->ro_opmap, name,
-                    2, argtv, op, ecp);
+            ret = RDB_put_op(&txp->dbp->dbrootp->ro_opmap, op, 2, argtv, ecp);
             if (ret != RDB_OK)
                 return NULL;
             return op;
@@ -900,8 +947,7 @@ _RDB_get_ro_op(const char *name, int argc, RDB_type *argtv[],
     }
 
     /* Insert operator into dbroot map */
-    if (RDB_put_op(&txp->dbp->dbrootp->ro_opmap, name,
-            argc, argtv, op, ecp) != RDB_OK) {
+    if (RDB_put_op(&txp->dbp->dbrootp->ro_opmap, op, argc, argtv, ecp) != RDB_OK) {
         RDB_free_op_data(op, ecp);
         return NULL;
     }
@@ -941,41 +987,18 @@ _RDB_check_type_constraint(RDB_object *valp, RDB_exec_context *ecp,
     return RDB_OK;
 }
 
-RDB_op_data *
-_RDB_get_upd_op(const char *name, int argc, RDB_type *argtv[],
-                RDB_exec_context *ecp, RDB_transaction *txp)
-{
-    RDB_op_data *op = RDB_get_op(&txp->dbp->dbrootp->upd_opmap, name, argc, argtv, ecp);
-    if (op == NULL) {
-        RDB_clear_err(ecp);
-        op = _RDB_cat_get_upd_op(name, argc, argtv, ecp, txp);
-        if (op == NULL) {
-            if (RDB_obj_type(RDB_get_err(ecp)) == &RDB_NOT_FOUND_ERROR) {
-                RDB_raise_operator_not_found(name, ecp);
-            }
-            return NULL;
-        }
-        if (RDB_put_op(&txp->dbp->dbrootp->upd_opmap, name, argc, argtv, op,
-                ecp) != RDB_OK) {
-            RDB_free_op_data(op, ecp);
-            return NULL;
-        }
-    }
-    return op;
-}
-
 int
 _RDB_add_selector(RDB_type *typ, RDB_exec_context *ecp)
 {
     int i;
-    RDB_op_data *datap;
+    RDB_operator *datap;
     int argc = typ->var.scalar.repv[0].compc;
     RDB_type **argtv = NULL;
 
     if (_RDB_init_builtin_ops(ecp) != RDB_OK)
         return RDB_ERROR;
 
-    datap = _RDB_new_ro_op_data(typ, &_RDB_sys_select, ecp);
+    datap = _RDB_new_ro_op_data(typ->name, typ, &_RDB_sys_select, ecp);
     if (datap == NULL)
         return RDB_ERROR;
 
@@ -986,8 +1009,7 @@ _RDB_add_selector(RDB_type *typ, RDB_exec_context *ecp)
         argtv[i] = typ->var.scalar.repv[0].compv[i].typ;
     }
 
-    if (RDB_put_op(&_RDB_builtin_ro_op_map, typ->name, argc, argtv,
-            datap, ecp) != RDB_OK) {
+    if (RDB_put_op(&_RDB_builtin_ro_op_map, datap, argc, argtv, ecp) != RDB_OK) {
         goto error;
     }
     RDB_free(argtv);

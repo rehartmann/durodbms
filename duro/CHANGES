@@ -4,6 +4,10 @@ Summary of Changes for Duro
 
 Changes for Duro 0.15
 
+- Added RDB_get_update_op to the public interface. Renamed RDB_call_ro_op
+and RDB_call_update_op as RDB_call_ro_op_by_name and RDB_call_update_op_by_name.
+Added RDB_call_update_op with new semantics.
+
 - Conversion of expressions etc. to string is now part of the core.
 
 - File I/O

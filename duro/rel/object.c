@@ -1,7 +1,7 @@
 /*
  * $Id$
  *
- * Copyright (C) 2003-2011 Rene Hartmann.
+ * Copyright (C) 2003-2012 Rene Hartmann.
  * See the file COPYING for redistribution information.
  */
 
@@ -727,7 +727,7 @@ RDB_obj_equals(const RDB_object *val1p, const RDB_object *val2p,
     argv[0] = (RDB_object *) val1p;
     argv[1] = (RDB_object *) val2p;
     RDB_init_obj(&retval);
-    ret = RDB_call_ro_op("=", 2, argv, ecp, txp, &retval);
+    ret = RDB_call_ro_op_by_name("=", 2, argv, ecp, txp, &retval);
     if (ret != RDB_OK) {
         RDB_destroy_obj(&retval, ecp);
         return RDB_ERROR;
@@ -1091,7 +1091,7 @@ RDB_obj_comp(const RDB_object *valp, const char *compname, RDB_object *compvalp,
         strcat(opname, compname);
         argv[0] = (RDB_object *) valp;
 
-        ret = RDB_call_ro_op(opname, 1, argv, ecp, txp, compvalp);
+        ret = RDB_call_ro_op_by_name(opname, 1, argv, ecp, txp, compvalp);
         RDB_free(opname);
     }
     return ret;
@@ -1145,7 +1145,7 @@ RDB_obj_set_comp(RDB_object *valp, const char *compname,
         argv[0] = valp;
         argv[1] = (RDB_object *) compvalp;
         
-        ret = RDB_call_update_op(opname, 2, argv, ecp, txp);
+        ret = RDB_call_update_op_by_name(opname, 2, argv, ecp, txp);
         RDB_free(opname);        
     }
 

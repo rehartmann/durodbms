@@ -274,6 +274,8 @@ typedef struct RDB_transaction {
     struct RDB_ixlink *delixp;
 } RDB_transaction;
 
+typedef struct RDB_op_data RDB_operator;
+
 typedef RDB_object *RDB_getobjfn(const char *, void *);
 
 typedef RDB_type *RDB_gettypefn(const char *, void *);
@@ -832,12 +834,20 @@ RDB_create_update_op(const char *name, int argc, RDB_type *argtv[],
                   const void *iargp, size_t iarglen,
                   RDB_exec_context *, RDB_transaction *);
 
-int
-RDB_call_ro_op(const char *name, int argc, RDB_object *argv[],
-               RDB_exec_context *, RDB_transaction *, RDB_object *retvalp);
+RDB_operator *
+RDB_get_update_op(const char *name, int argc, RDB_type *argtv[],
+               RDB_exec_context *ecp, RDB_transaction *txp);
 
 int
-RDB_call_update_op(const char *name, int argc, RDB_object *argv[],
+RDB_call_ro_op_by_name(const char *, int, RDB_object *[],
+               RDB_exec_context *, RDB_transaction *, RDB_object *);
+
+int
+RDB_call_update_op_by_name(const char *name, int argc, RDB_object *argv[],
+                RDB_exec_context *, RDB_transaction *);
+
+int
+RDB_call_update_op(RDB_operator *, int argc, RDB_object *[],
                 RDB_exec_context *, RDB_transaction *);
 
 int

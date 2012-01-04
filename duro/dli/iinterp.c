@@ -524,7 +524,7 @@ init_obj_by_selector(RDB_object *objp, RDB_possrep *rep,
     }
 
     /* Call selector */
-    ret = RDB_call_ro_op(rep->name, rep->compc, objpv, ecp, txp, objp);
+    ret = RDB_call_ro_op_by_name(rep->name, rep->compc, objpv, ecp, txp, objp);
 
 cleanup:
     for (i = 0; i < rep->compc; i++)
@@ -1212,7 +1212,7 @@ exec_call(const RDB_parse_node *nodep, RDB_exec_context *ecp)
     RDB_type *argtv[DURO_MAX_LLEN];
     RDB_object *argpv[DURO_MAX_LLEN];
     RDB_object argv[DURO_MAX_LLEN];
-    RDB_op_data *op;
+    RDB_operator *op;
     RDB_parse_node *argp = nodep->nextp->nextp->val.children.firstp;
     const char *opname = RDB_parse_node_ID(nodep);
 
@@ -1241,11 +1241,12 @@ exec_call(const RDB_parse_node *nodep, RDB_exec_context *ecp)
     op = RDB_get_op(&sys_module.upd_op_map, opname, argc, argtv, ecp);
     if (op == NULL) {
         if (txnp == NULL) {
+            // !! Start tx?
             return RDB_ERROR;
         }
         RDB_clear_err(ecp);
 
-        op = _RDB_get_upd_op(opname, argc, argtv, ecp, &txnp->tx);
+        op = RDB_get_update_op(opname, argc, argtv, ecp, &txnp->tx);
         if (op == NULL) {
             return RDB_ERROR;
         }
@@ -1312,8 +1313,7 @@ exec_call(const RDB_parse_node *nodep, RDB_exec_context *ecp)
     }
 
     /* Invoke function */
-    ret = (*op->opfn.upd_fp) (opname, argc, argpv, op->updv,
-            op->iarg.var.bin.datap, op->iarg.var.bin.len, ecp,
+    ret = RDB_call_update_op(op, argc, argpv, ecp,
             txnp != NULL ? &txnp->tx : NULL);
 
 cleanup:

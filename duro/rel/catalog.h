@@ -4,7 +4,7 @@
 /*
  * $Id$
  *
- * Copyright (C) 2003-2005 René Hartmann.
+ * Copyright (C) 2003-2005 Renï¿½ Hartmann.
  * See the file COPYING for redistribution information.
  */
 
@@ -49,11 +49,11 @@ int
 _RDB_make_typesobj(int argc, RDB_type *argtv[], RDB_exec_context *,
         RDB_object *objp);
 
-RDB_op_data *
+RDB_operator *
 _RDB_cat_get_ro_op(const char *name, int argc, RDB_type *argtv[],
         RDB_exec_context *, RDB_transaction *txp);
 
-RDB_op_data *
+RDB_operator *
 _RDB_cat_get_upd_op(const char *name, int argc, RDB_type *argtv[],
         RDB_exec_context *, RDB_transaction *);
 

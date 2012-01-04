@@ -70,7 +70,7 @@ test_insert(RDB_database *dbp, RDB_exec_context *ecp)
 
     compv[0] = &xval;
     compv[1] = &yval;
-    ret = RDB_call_ro_op("POINT", 2, compv, ecp, &tx, &pval);
+    ret = RDB_call_ro_op_by_name("POINT", 2, compv, ecp, &tx, &pval);
     assert(ret == RDB_OK);
 
     ret = RDB_tuple_set(&tpl, "POINT", &pval, ecp);

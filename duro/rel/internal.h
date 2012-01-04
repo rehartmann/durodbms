@@ -4,7 +4,7 @@
 /*
  * $Id$
  *
- * Copyright (C) 2003-2011 Rene Hartmann.
+ * Copyright (C) 2003-2012 Rene Hartmann.
  * See the file COPYING for redistribution information.
  */
 
@@ -115,6 +115,18 @@ typedef struct RDB_dbroot {
     RDB_object *constraints_tbp;
     RDB_object *version_info_tbp;
 } RDB_dbroot;
+
+struct RDB_op_data {
+    char *name;
+    RDB_object iarg;
+    lt_dlhandle modhdl;
+    RDB_bool *updv;
+    RDB_type *rtyp;
+    union {
+        RDB_upd_op_func *upd_fp;
+        RDB_ro_op_func *ro_fp;
+    } opfn;
+};
 
 typedef struct {
     char *key;
@@ -399,13 +411,9 @@ _RDB_obj_ilen(const RDB_object *, size_t *, RDB_exec_context *);
 void
 _RDB_obj_to_irep(void *dstp, const RDB_object *, size_t);
 
-RDB_op_data *
+RDB_operator *
 _RDB_get_ro_op(const char *name, int argc, RDB_type *argtv[],
                RDB_exec_context *, RDB_transaction *txp);
-
-RDB_op_data *
-_RDB_get_upd_op(const char *name, int argc, RDB_type *argtv[],
-               RDB_exec_context *ecp, RDB_transaction *txp);
 
 int
 _RDB_eq_bool(const char *name, int argc, RDB_object *argv[], RDB_type *,

@@ -1,7 +1,7 @@
 /*
  * $Id$
  *
- * Copyright (C) 2003-2011 Rene Hartmann.
+ * Copyright (C) 2003-2012 Rene Hartmann.
  * See the file COPYING for redistribution information.
  */
 
@@ -2124,7 +2124,7 @@ _RDB_cat_get_type(const char *name, RDB_exec_context *ecp,
     int ret, tret;
     int i;
     RDB_type *typv[2];
-    RDB_op_data *cmpop;
+    RDB_operator *cmpop;
 
     RDB_init_obj(&tpl);
     RDB_init_obj(&possreps);
@@ -2299,7 +2299,7 @@ _RDB_make_typesobj(int argc, RDB_type *argtv[], RDB_exec_context *ecp,
 }
 
 /* Read read-only operator from database */
-RDB_op_data *
+RDB_operator *
 _RDB_cat_get_ro_op(const char *name, int argc, RDB_type *argtv[],
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
@@ -2308,8 +2308,9 @@ _RDB_cat_get_ro_op(const char *name, int argc, RDB_type *argtv[],
     RDB_object tpl;
     RDB_object typesobj;
     int ret;
+    RDB_type *rtyp;
     char *libname, *symname;
-    RDB_op_data *op = NULL;
+    RDB_operator *op = NULL;
 
     RDB_init_obj(&typesobj);
     ret = _RDB_make_typesobj(argc, argtv, ecp, &typesobj);
@@ -2366,17 +2367,21 @@ _RDB_cat_get_ro_op(const char *name, int argc, RDB_type *argtv[],
     if (ret != RDB_OK)
         goto error;
 
-    op = RDB_alloc(sizeof (RDB_op_data), ecp);
-    if (op == NULL) {
+    rtyp = _RDB_binobj_to_type(RDB_tuple_get(&tpl, "RTYPE"), ecp, txp);
+    if (rtyp == NULL) {
         goto error;
     }
 
+    op = _RDB_new_ro_op_data(name, rtyp, (RDB_ro_op_func *) NULL, ecp);
+    if (op == NULL)
+        goto error;
+
     RDB_init_obj(&op->iarg);
-    op->updv = NULL;
 
     ret = RDB_copy_obj(&op->iarg, RDB_tuple_get(&tpl, "IARG"), ecp);
     if (ret != RDB_OK)
         goto error;
+
     libname = RDB_tuple_get_string(&tpl, "LIB");
     if (libname[0] != '\0') {
         op->modhdl = lt_dlopenext(libname);
@@ -2398,11 +2403,6 @@ _RDB_cat_get_ro_op(const char *name, int argc, RDB_type *argtv[],
         }
     }
 
-    op->rtyp = _RDB_binobj_to_type(RDB_tuple_get(&tpl, "RTYPE"), ecp, txp);
-    if (op->rtyp == NULL) {
-        goto error;
-    }
-
     RDB_destroy_obj(&tpl, ecp);
 
     return op;
@@ -2418,7 +2418,7 @@ error:
 }
 
 /* Read update operator from database */
-RDB_op_data *
+RDB_operator *
 _RDB_cat_get_upd_op(const char *name, int argc, RDB_type *argtv[],
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
@@ -2429,7 +2429,7 @@ _RDB_cat_get_upd_op(const char *name, int argc, RDB_type *argtv[],
     int i;
     int ret;
     char *libname, *symname;
-    RDB_op_data *op = NULL;
+    RDB_operator *op = NULL;
     RDB_object *updvobjp, *updobjp;
 
     RDB_init_obj(&typesobj);
@@ -2487,7 +2487,7 @@ _RDB_cat_get_upd_op(const char *name, int argc, RDB_type *argtv[],
     if (ret != RDB_OK)
         goto error;
 
-    op = RDB_alloc(sizeof (RDB_op_data), ecp);
+    op = RDB_alloc(sizeof (RDB_operator), ecp);
     if (op == NULL) {
         goto error;
     }
@@ -2502,6 +2502,11 @@ _RDB_cat_get_upd_op(const char *name, int argc, RDB_type *argtv[],
 
     op->updv = RDB_alloc(argc, ecp);
     if (op->updv == NULL) {
+        goto error;
+    }
+    op->name = RDB_dup_str(name);
+    if (op->name == NULL) {
+        RDB_raise_no_memory(ecp);
         goto error;
     }
 

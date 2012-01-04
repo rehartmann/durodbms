@@ -28,13 +28,13 @@ test_callop(RDB_database *dbp, RDB_exec_context *ecp)
     argv[0] = &arg1;
     argv[1] = &arg2;
 
-    ret = RDB_call_ro_op("PLUS", 2, argv, ecp, &tx, &retval);
+    ret = RDB_call_ro_op_by_name("PLUS", 2, argv, ecp, &tx, &retval);
     if (ret != RDB_OK) {
         goto error;
     }
     assert(RDB_obj_int(&retval) == 4);
 
-    ret = RDB_call_update_op("ADD", 2, argv, ecp, &tx);
+    ret = RDB_call_update_op_by_name("ADD", 2, argv, ecp, &tx);
     if (ret != RDB_OK) {
         goto error;
     }
