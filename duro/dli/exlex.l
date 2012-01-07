@@ -199,7 +199,19 @@ TUPLE {
     return TOK_TUPLE;
 }
 
+TUP {
+    yylval = RDB_new_parse_token(TOK_TUPLE, whitecommp, _RDB_parse_ecp);
+    whitecommp = NULL;
+    return TOK_TUPLE;
+}
+
 RELATION {
+    yylval = RDB_new_parse_token(TOK_RELATION, whitecommp, _RDB_parse_ecp);
+    whitecommp = NULL;
+    return TOK_RELATION;
+}
+
+REL {
     yylval = RDB_new_parse_token(TOK_RELATION, whitecommp, _RDB_parse_ecp);
     whitecommp = NULL;
     return TOK_RELATION;
@@ -435,7 +447,19 @@ TABLE_DEE {
     return TOK_TABLE_DEE;
 }
 
+DEE {
+    yylval = RDB_new_parse_token(TOK_TABLE_DEE, whitecommp, _RDB_parse_ecp);
+    whitecommp = NULL;
+    return TOK_TABLE_DEE;
+}
+
 TABLE_DUM {
+    yylval = RDB_new_parse_token(TOK_TABLE_DUM, whitecommp, _RDB_parse_ecp);
+    whitecommp = NULL;
+    return TOK_TABLE_DUM;
+}
+
+DUM {
     yylval = RDB_new_parse_token(TOK_TABLE_DUM, whitecommp, _RDB_parse_ecp);
     whitecommp = NULL;
     return TOK_TABLE_DUM;

@@ -4,6 +4,9 @@ Summary of Changes for Duro
 
 Changes for Duro 0.15
 
+- Added TUP, REL, DEE, and DUM as synonyms for TUPLE, RELATION, TABLE_DEE
+  and TABLE_DUM.
+
 - Changed interface and calling conventions for user-defined operators.
 
 - Added RDB_get_update_op to the public interface. Renamed RDB_call_ro_op

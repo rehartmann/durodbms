@@ -21,7 +21,7 @@ test tuplevar {tuple variables} -body {
         println(s FROM t1);
 
         var t2 same_type_as(t1);
-        t2 := tuple {i 2, s 'bar'};
+        t2 := tup {i 2, s 'bar'};
         println(string(t2.i) || ' ' || t2.s);
         println(t2 {s});
     }
@@ -29,7 +29,7 @@ test tuplevar {tuple variables} -body {
 5
 foo
 2 bar
-TUPLE { S 'bar' }
+TUPLE { S 'bar'}
 }
 
 test tupleupdexpr {tuple update expression} -body {

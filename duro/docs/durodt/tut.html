@@ -255,18 +255,19 @@ no db>var t tuple {i integer, s string};
 no db>
 </pre>
 
-<p>Like scalar variables, tuple variables can be explicitly initialized
+<p>TUP can be used as a synonym for TUPLE.
+Like scalar variables, tuple variables can be explicitly initialized
 when they are declared:</p>
 
 <pre>
-no db>var t tuple {i integer, s string} init tuple {i 1, s 'One'};
+no db>var t tup {i integer, s string} init tup {i 1, s 'One'};
 no db>
 </pre>
 
 Or shorter:
 
 <pre>
-no db>var t init tuple {i 1, s 'One'};
+no db>var t init tup {i 1, s 'One'};
 no db>
 </pre>
 
@@ -275,14 +276,14 @@ ordering in Duro D/T, so the statement above is perfectly equivalent
 to the following:
 
 <pre>
-no db>var t init tuple {s 'One', i 1};
+no db>var t init tup {s 'One', i 1};
 no db>
 </pre>
 
 <p>Tuples variables can be assigned and updated:</p>
 
 <pre>
-no db>t := tuple {i 2, s 'Two'};
+no db>t := tup {i 2, s 'Two'};
 1 element affected.
 no db> update t {i := 3};
 1 element affected.
@@ -377,15 +378,17 @@ D>
 <p>Creating a real persistent table:
 
 <pre>
-D> var r real relation{no integer, name string} key {no};
+D> var r real rel{no integer, name string} key {no};
 Table R created.
 D>
 </pre>
 
+<p>REL can be used as a synonym for RELATION.
+
 <p>Creating a private (real transient) table:
 
 <pre>
-D> var p private relation{no integer, name string} key {no};
+D> var p private rel{no integer, name string} key {no};
 Local table P created.
 D>
 </pre>
@@ -401,7 +404,7 @@ D>
 <p>Inserting a single tuple:</p>
 
 <pre>
-D> insert r tuple {no 1, name 'one'};
+D> insert r tup {no 1, name 'one'};
 1 element affected.
 D>
 </pre>
@@ -409,7 +412,7 @@ D>
 <p>Inserting several tuples:</p>
 
 <pre>
-D> insert r relation {tuple {no 2, name 'two'}, tuple {no 3, name 'three'}};
+D> insert r rel {tup {no 2, name 'two'}, tup {no 3, name 'three'}};
 2 elements affected.
 D>
 </pre>
@@ -437,13 +440,13 @@ D>
 <pre>
 D> begin tx;
 Transaction started.
-D> var r real relation {no integer, name string} key {no};
+D> var r real rel {no integer, name string} key {no};
 Table R created.
 D> constraint cr count(r) <= 1;
 Constraint CR created.
-D> insert r tuple {no 1, name 'one'};
+D> insert r tup {no 1, name 'one'};
 1 element affected.
-D> insert r tuple {no 2, name 'two'};
+D> insert r tup {no 2, name 'two'};
 PREDICATE_VIOLATION_ERROR: CR
 D> drop constraint cr;
 Constraint CR dropped.
@@ -455,7 +458,7 @@ D>
 <p>Example: Printing all tuples of table R in an unspecified order:
 
 <pre>
-D> var a array tuple same_heading_as(r);
+D> var a array tup same_heading_as(r);
 D> load a from r order();
 D> var i integer;
 D> for i:= 0 to length(a)-1;
@@ -480,9 +483,9 @@ no db> println(true);
 TRUE
 no db> println(2 * 4);
 8
-no db> println(tuple {a 1, b 'bee'});
+no db> println(tup {a 1, b 'bee'});
 TUPLE { A 1, B 'bee' }
-no db> println(relation {tuple {i 1, c 'foo'}, tuple {i 2, c 'bar'}});
+no db> println(rel {tup {i 1, c 'foo'}, tup {i 2, c 'bar'}});
 RELATION { TUPLE { I 1, C 'foo' }, TUPLE { I 2, C 'bar' }}
 no db>
 </pre>

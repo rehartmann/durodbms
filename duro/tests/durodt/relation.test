@@ -33,7 +33,7 @@ test insert {creating table and inserting tuples} -setup $SETUP -body {
         insert r relation {};
 
         var a init 1;
-        insert r relation {tuple {i a, d 1.0, c 'X'}, tuple {i 2, d 1.1, c 'Y'}};
+        insert r rel {tuple {i a, d 1.0, c 'X'}, tup {i 2, d 1.1, c 'Y'}};
 
         var s real init r key {i};
 
@@ -137,6 +137,19 @@ test updop {user defined update operators} -setup $SETUP -body {
         commit;
     }
 } -result {durox
+}
+
+test deedum {TABLE_DEE and TABLE_DUM} -body {
+    exec $testdir/../../dli/durodt << {
+        println(tup from TABLE_DEE);
+        println(tup from DEE);
+        println(TABLE_DUM);
+        println(DUM);
+    }
+} -result {TUPLE { }
+TUPLE { }
+RELATION { }
+RELATION { }
 }
 
 cleanupTests

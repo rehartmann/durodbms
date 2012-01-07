@@ -66,7 +66,7 @@ append_tuple(RDB_object *objp, const RDB_object *tplp, RDB_exec_context *ecp,
                 goto error;
         }
     }
-    ret = RDB_append_string(objp, " }", ecp);
+    ret = RDB_append_string(objp, "}", ecp);
     if (ret != RDB_OK)
         return RDB_ERROR;
 
