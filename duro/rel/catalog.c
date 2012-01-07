@@ -2147,7 +2147,7 @@ _RDB_cat_get_type(const char *name, RDB_exec_context *ecp,
         goto error;
     }
     typ->kind = RDB_TP_SCALAR;
-    typ->comparep = NULL;
+    typ->compare_op = NULL;
 
     typedatap = RDB_tuple_get(&tpl, "I_AREP_TYPE");
     if (RDB_binary_length(typedatap) != 0) {   
@@ -2227,9 +2227,7 @@ _RDB_cat_get_type(const char *name, RDB_exec_context *ecp,
     typv[1] = typ;
     cmpop = _RDB_get_ro_op("CMP", 2, typv, ecp, txp);
     if (cmpop != NULL) {
-        typ->comparep = cmpop->opfn.ro_fp;
-        typ->compare_iarglen = cmpop->iarg.var.bin.len;
-        typ->compare_iargp = cmpop->iarg.var.bin.datap;
+        typ->compare_op = cmpop;
     } else {
         RDB_object *errp = RDB_get_err(ecp);
         if (errp != NULL
@@ -2372,7 +2370,7 @@ _RDB_cat_get_ro_op(const char *name, int argc, RDB_type *argtv[],
         goto error;
     }
 
-    op = _RDB_new_ro_op_data(name, rtyp, (RDB_ro_op_func *) NULL, ecp);
+    op = _RDB_new_ro_op_data(name, argc, argtv, rtyp, (RDB_ro_op_func *) NULL, ecp);
     if (op == NULL)
         goto error;
 
@@ -2409,8 +2407,7 @@ _RDB_cat_get_ro_op(const char *name, int argc, RDB_type *argtv[],
 
 error:
     if (op != NULL) {
-        RDB_destroy_obj(&op->iarg, ecp);
-        RDB_free(op);
+        RDB_free_op_data(op, ecp);
     }
 
     RDB_destroy_obj(&tpl, ecp);
@@ -2494,16 +2491,32 @@ _RDB_cat_get_upd_op(const char *name, int argc, RDB_type *argtv[],
 
     RDB_init_obj(&op->iarg);
 
-    op->updv = NULL;
+    op->paramv = NULL;
 
     ret = RDB_copy_obj(&op->iarg, RDB_tuple_get(&tpl, "IARG"), ecp);
     if (ret != RDB_OK)
         goto error;
 
-    op->updv = RDB_alloc(argc, ecp);
-    if (op->updv == NULL) {
-        goto error;
+    op->paramc = argc;
+    if (argc > 0) {
+        op->paramv = RDB_alloc(sizeof (RDB_parameter) * argc, ecp);
+        if (op->paramv == NULL) {
+            goto error;
+        }
+
+        for (i = 0; i < argc; i++) {
+            op->paramv[i].typ = NULL;
+        }
+        for (i = 0; i < argc; i++) {
+            op->paramv[i].typ = RDB_dup_nonscalar_type(argtv[i], ecp);
+            if (op->paramv[i].typ == NULL) {
+                goto error;
+            }
+        }
+    } else {
+        op->paramv = NULL;
     }
+
     op->name = RDB_dup_str(name);
     if (op->name == NULL) {
         RDB_raise_no_memory(ecp);
@@ -2515,7 +2528,7 @@ _RDB_cat_get_upd_op(const char *name, int argc, RDB_type *argtv[],
         updobjp = RDB_array_get(updvobjp, (RDB_int) i, ecp);
         if (updobjp == NULL)
             goto error;
-        op->updv[i] = RDB_obj_bool(updobjp);
+        op->paramv[i].update = RDB_obj_bool(updobjp);
     }
         
     libname = RDB_tuple_get_string(&tpl, "LIB");
@@ -2538,8 +2551,17 @@ _RDB_cat_get_upd_op(const char *name, int argc, RDB_type *argtv[],
 
 error:
     if (op != NULL) {
+        if (op->name != NULL)
+            RDB_free(op->name);
         RDB_destroy_obj(&op->iarg, ecp);
-        RDB_free(op->updv);
+        if (op->paramv != NULL) {
+            for (i = 0; i < op->paramc; i++) {
+                if (op->paramv[i].typ != NULL
+                       && !RDB_type_is_scalar(op->paramv[i].typ)) {
+                    RDB_drop_type(op->paramv[i].typ, ecp, NULL);
+                }
+            }
+        }
         RDB_free(op);
     }
 

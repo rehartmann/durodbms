@@ -118,10 +118,11 @@ typedef struct RDB_dbroot {
 
 struct RDB_op_data {
     char *name;
+    RDB_type *rtyp;
     RDB_object iarg;
     lt_dlhandle modhdl;
-    RDB_bool *updv;
-    RDB_type *rtyp;
+    int paramc;
+    struct RDB_parameter *paramv;
     union {
         RDB_upd_op_func *upd_fp;
         RDB_ro_op_func *ro_fp;
@@ -416,24 +417,20 @@ _RDB_get_ro_op(const char *name, int argc, RDB_type *argtv[],
                RDB_exec_context *, RDB_transaction *txp);
 
 int
-_RDB_eq_bool(const char *name, int argc, RDB_object *argv[], RDB_type *,
-        const void *iargp, size_t iarglen, RDB_exec_context *ecp,
-        RDB_transaction *txp, RDB_object *retvalp);
+_RDB_eq_bool(int, RDB_object *[], const RDB_operator *,
+        RDB_exec_context *, RDB_transaction *, RDB_object *);
 
 int
-_RDB_obj_equals(const char *name, int argc, RDB_object *argv[], RDB_type *,
-        const void *iargp, size_t iarglen, RDB_exec_context *,
+_RDB_obj_equals(int argc, RDB_object *argv[], const RDB_operator *,
+        RDB_exec_context *, RDB_transaction *, RDB_object *retvalp);
+
+int
+_RDB_eq_binary(int, RDB_object *[], const RDB_operator *, RDB_exec_context *,
         RDB_transaction *, RDB_object *retvalp);
 
 int
-_RDB_eq_binary(const char *name, int argc, RDB_object *argv[], RDB_type *,
-        const void *iargp, size_t iarglen, RDB_exec_context *,
-        RDB_transaction *, RDB_object *retvalp);
-
-int
-_RDB_obj_not_equals(const char *name, int argc, RDB_object *argv[], RDB_type *,
-        const void *iargp, size_t iarglen, RDB_exec_context *,
-        RDB_transaction *, RDB_object *retvalp);
+_RDB_obj_not_equals(int argc, RDB_object *argv[], const RDB_operator *,
+        RDB_exec_context *, RDB_transaction *, RDB_object *retvalp);
 
 RDB_int
 _RDB_move_tuples(RDB_object *dstp, RDB_object *srcp, RDB_exec_context *,
@@ -485,9 +482,8 @@ int
 _RDB_add_selector(RDB_type *, RDB_exec_context *);
 
 int
-_RDB_sys_select(const char *name, int argc, RDB_object *argv[], RDB_type *,
-        const void *iargp, size_t iarglen, RDB_exec_context *,
-        RDB_transaction *, RDB_object *retvalp);
+_RDB_sys_select(int argc, RDB_object *argv[], const RDB_operator *,
+        RDB_exec_context *, RDB_transaction *, RDB_object *retvalp);
 
 RDB_object **
 _RDB_index_objpv(struct _RDB_tbindex *indexp, RDB_expression *exp, RDB_type *tbtyp,
@@ -517,8 +513,7 @@ _RDB_del_index(RDB_transaction *, RDB_index *, RDB_exec_context *);
 
 /* !! prefix */
 int
-_RDB_op_relation(const char *name, int argc, RDB_object *argv[], RDB_type *typ,
-        const void *iargp, size_t iarglen, RDB_exec_context *ecp,
-        RDB_transaction *txp, RDB_object *retvalp);
+_RDB_op_relation(int argc, RDB_object *argv[], const RDB_operator *op,
+        RDB_exec_context *ecp, RDB_transaction *txp, RDB_object *retvalp);
 
 #endif

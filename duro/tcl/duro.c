@@ -1,12 +1,13 @@
 /*
  * $Id$
  *
- * Copyright (C) 2003-2011 Rene Hartmann.
+ * Copyright (C) 2003-2012 Rene Hartmann.
  * See the file COPYING for redistribution information.
  */
 
 #include "duro.h"
 #include <rel/rdb.h>
+#include <rel/tostr.h>
 #include <dli/parse.h>
 #include <string.h>
 #include <stdio.h>

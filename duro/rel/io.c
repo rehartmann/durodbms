@@ -1,7 +1,7 @@
 /*
  * $Id$
  *
- * Copyright (C) 2009 René Hartmann.
+ * Copyright (C) 2012 Rene Hartmann.
  * See the file COPYING for redistribution information.
  */
 
@@ -34,7 +34,7 @@ _RDB_add_io(RDB_exec_context *ecp)
     RDB_IO_STREAM.var.scalar.arep = &RDB_INTEGER;
     RDB_IO_STREAM.var.scalar.constraintp = NULL;
     RDB_IO_STREAM.var.scalar.sysimpl = RDB_TRUE;
-    RDB_IO_STREAM.comparep = NULL;
+    RDB_IO_STREAM.compare_op = NULL;
 
     return _RDB_add_type(&RDB_IO_STREAM, ecp);
 }

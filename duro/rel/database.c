@@ -1,7 +1,7 @@
 /*
  * $Id$
  *
- * Copyright (C) 2003-2011 Rene Hartmann.
+ * Copyright (C) 2003-2012 Rene Hartmann.
  * See the file COPYING for redistribution information.
  */
 
@@ -609,7 +609,10 @@ RDB_get_sys_db(RDB_environment *envp, RDB_exec_context *ecp)
         if (_RDB_init_builtin_types(ecp) != RDB_OK) {
             goto error;
         }
-        lt_dlinit();
+        if (lt_dlinit() != 0) {
+            RDB_raise_system("lt_dlinit() failed.", ecp);
+            return NULL;
+        }
         dbrootp = create_dbroot(envp, ecp);
         if (dbrootp == NULL) {
             goto error;

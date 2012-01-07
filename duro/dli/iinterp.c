@@ -1,7 +1,7 @@
 /*
  * $Id$
  *
- * Copyright (C) 2007-2011 Rene Hartmann.
+ * Copyright (C) 2007-2012 Rene Hartmann.
  * See the file COPYING for redistribution information.
  *
  * Statement execution functions.
@@ -240,8 +240,7 @@ Duro_exit_interp(void)
 }
 
 static int
-exit_op(const char *name, int argc, RDB_object *argv[],
-        RDB_bool updv[], const void *iargp, size_t iarglen,
+exit_op(int argc, RDB_object *argv[], const RDB_operator *op,
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
     Duro_exit_interp();
@@ -249,8 +248,7 @@ exit_op(const char *name, int argc, RDB_object *argv[],
 }   
 
 static int
-exit_int_op(const char *name, int argc, RDB_object *argv[],
-        RDB_bool updv[], const void *iargp, size_t iarglen,
+exit_int_op(int argc, RDB_object *argv[], const RDB_operator *op,
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
     Duro_exit_interp();
@@ -258,8 +256,7 @@ exit_int_op(const char *name, int argc, RDB_object *argv[],
 }   
 
 static int
-connect_op(const char *name, int argc, RDB_object *argv[],
-        RDB_bool updv[], const void *iargp, size_t iarglen,
+connect_op(int argc, RDB_object *argv[], const RDB_operator *op,
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
     int ret = RDB_open_env(RDB_obj_string(argv[0]), &envp);
@@ -272,8 +269,7 @@ connect_op(const char *name, int argc, RDB_object *argv[],
 }
 
 static int
-create_db_op(const char *name, int argc, RDB_object *argv[],
-        RDB_bool updv[], const void *iargp, size_t iarglen,
+create_db_op(int argc, RDB_object *argv[], const RDB_operator *op,
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
     if (envp == NULL) {
@@ -287,8 +283,7 @@ create_db_op(const char *name, int argc, RDB_object *argv[],
 }   
 
 static int
-create_env_op(const char *name, int argc, RDB_object *argv[],
-        RDB_bool updv[], const void *iargp, size_t iarglen,
+create_env_op(int argc, RDB_object *argv[], const RDB_operator *op,
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
     int ret;
@@ -311,8 +306,7 @@ create_env_op(const char *name, int argc, RDB_object *argv[],
 }   
 
 static int
-system_op(const char *name, int argc, RDB_object *argv[],
-        RDB_bool updv[], const void *iargp, size_t iarglen,
+system_op(int argc, RDB_object *argv[], const RDB_operator *op,
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
     int ret = system(RDB_obj_string(argv[0]));
@@ -325,8 +319,7 @@ system_op(const char *name, int argc, RDB_object *argv[],
 }
 
 static int
-load_op(const char *name, int argc, RDB_object *argv[],
-        RDB_bool updv[], const void *iargp, size_t iarglen,
+load_op(int argc, RDB_object *argv[], const RDB_operator *op,
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
     RDB_seq_item *seqitv = NULL;
@@ -392,29 +385,26 @@ new_obj(RDB_exec_context *ecp)
 int
 Duro_init_exec(RDB_exec_context *ecp, const char *dbname)
 {
-    int i;
-
-    static RDB_type *exit_int_types[1];
-    static RDB_type *connect_types[1];
-    static RDB_type *create_db_types[1];
-    static RDB_type *create_env_types[1];
-    static RDB_type *system_types[2];
-
-    static RDB_bool exit_int_updv[] = { RDB_FALSE };
-    static RDB_bool connect_updv[] = { RDB_FALSE };
-    static RDB_bool create_db_updv[] = { RDB_FALSE };
-    static RDB_bool create_env_updv[] = { RDB_FALSE };
-    static RDB_bool system_updv[] = { RDB_FALSE, RDB_TRUE };
-    static RDB_bool load_updv[DURO_MAX_LLEN];
+    static RDB_parameter exit_int_params[1];
+    static RDB_parameter connect_params[1];
+    static RDB_parameter create_db_params[1];
+    static RDB_parameter create_env_params[1];
+    static RDB_parameter system_params[2];
 
     RDB_object *objp;
 
-    exit_int_types[0] = &RDB_INTEGER;
-    connect_types[0] = &RDB_STRING;
-    create_db_types[0] = &RDB_STRING;
-    create_env_types[0] = &RDB_STRING;
-    system_types[0] = &RDB_STRING;
-    system_types[1] = &RDB_INTEGER;
+    exit_int_params[0].typ = &RDB_INTEGER;
+    exit_int_params[0].update = RDB_FALSE;
+    connect_params[0].typ = &RDB_STRING;
+    connect_params[0].update = RDB_FALSE;
+    create_db_params[0].typ = &RDB_STRING;
+    create_db_params[0].update = RDB_FALSE;
+    create_env_params[0].typ = &RDB_STRING;
+    create_env_params[0].update = RDB_FALSE;
+    system_params[0].typ = &RDB_STRING;
+    system_params[0].update = RDB_FALSE;
+    system_params[1].typ = &RDB_INTEGER;
+    system_params[1].update = RDB_TRUE;
 
     RDB_init_hashmap(&root_module.varmap, DEFAULT_VARMAP_SIZE);
     RDB_init_hashmap(&sys_module.varmap, DEFAULT_VARMAP_SIZE);
@@ -422,36 +412,28 @@ Duro_init_exec(RDB_exec_context *ecp, const char *dbname)
 
     RDB_init_op_map(&sys_module.upd_op_map);
 
-    if (RDB_put_upd_op(&sys_module.upd_op_map, "EXIT", 0, NULL, &exit_op, NULL, ecp) != RDB_OK)
+    if (RDB_put_upd_op(&sys_module.upd_op_map, "EXIT", 0, NULL, &exit_op, ecp) != RDB_OK)
         goto error;
-    if (RDB_put_upd_op(&sys_module.upd_op_map, "EXIT", 1, exit_int_types, &exit_int_op,
-            exit_int_updv, ecp) != RDB_OK)
+    if (RDB_put_upd_op(&sys_module.upd_op_map, "EXIT", 1, exit_int_params, &exit_int_op,
+            ecp) != RDB_OK)
         goto error;
-    if (RDB_put_upd_op(&sys_module.upd_op_map, "CONNECT", 1, connect_types, &connect_op,
-            connect_updv, ecp) != RDB_OK)
+    if (RDB_put_upd_op(&sys_module.upd_op_map, "CONNECT", 1, connect_params, &connect_op,
+            ecp) != RDB_OK)
         goto error;
-    if (RDB_put_upd_op(&sys_module.upd_op_map, "CREATE_DB", 1, create_db_types, &create_db_op,
-            create_db_updv, ecp) != RDB_OK)
+    if (RDB_put_upd_op(&sys_module.upd_op_map, "CREATE_DB", 1, create_db_params, &create_db_op,
+            ecp) != RDB_OK)
         goto error;
-    if (RDB_put_upd_op(&sys_module.upd_op_map, "CREATE_ENV", 1, create_env_types, &create_env_op,
-            create_env_updv, ecp) != RDB_OK)
+    if (RDB_put_upd_op(&sys_module.upd_op_map, "CREATE_ENV", 1, create_env_params, &create_env_op,
+            ecp) != RDB_OK)
         goto error;
-    if (RDB_put_upd_op(&sys_module.upd_op_map, "SYSTEM", 2, system_types, &system_op,
-            system_updv, ecp) != RDB_OK)
-        goto error;
-
-    if (RDB_put_upd_op(&sys_module.upd_op_map, "SYSTEM", 2, system_types, &system_op, system_updv, ecp)
-            != RDB_OK)
+    if (RDB_put_upd_op(&sys_module.upd_op_map, "SYSTEM", 2, system_params, &system_op,
+            ecp) != RDB_OK)
         goto error;
 
     if (_RDB_add_io_ops(&sys_module.upd_op_map, ecp) != RDB_OK)
         goto error;
 
-    load_updv[0] = RDB_TRUE;
-    for (i = 1; i < DURO_MAX_LLEN; i++) {
-        load_updv[i] = RDB_FALSE;
-    }
-    if (RDB_put_upd_op(&sys_module.upd_op_map, "LOAD", -1, NULL, &load_op, load_updv, ecp)
+    if (RDB_put_upd_op(&sys_module.upd_op_map, "LOAD", -1, NULL, &load_op, ecp)
             != RDB_OK)
         goto error;
 
@@ -1259,16 +1241,18 @@ exec_call(const RDB_parse_node *nodep, RDB_exec_context *ecp)
     argp = nodep->nextp->nextp->val.children.firstp;
     i = 0;
     while (argp != NULL) {
+        RDB_parameter *paramp;
+
         if (i > 0)
             argp = argp->nextp;
         exp = RDB_parse_node_expr(argp, ecp);
         if (exp == NULL)
             return RDB_ERROR;
-        if (op->updv == NULL || op->updv[i]) {
-            /*
-             * If op->updv is NULL (no updv can cover all arguments of n-ary operators),
-             * treat the argument as an update argument if it's a variable
-             */
+        paramp = RDB_get_parameter(op, i);
+        /*
+         * paramp may be NULL for n-ary operators
+         */
+        if (paramp != NULL && paramp->update) {
             const char *varname = RDB_expr_var_name(exp);
             if (varname != NULL) {
                 argpv[i] = lookup_var(varname, ecp);
@@ -1280,7 +1264,7 @@ exec_call(const RDB_parse_node *nodep, RDB_exec_context *ecp)
              * If it's an update argument and the argument is not a variable,
              * raise an error
              */
-            if (argpv[i] == NULL && op->updv != NULL && op->updv[i]) {
+            if (argpv[i] == NULL /* && op->updv != NULL && op->updv[i] */) {
                 RDB_raise_invalid_argument(
                         "update argument must be a variable", ecp);
                 ret = RDB_ERROR;
@@ -1318,7 +1302,8 @@ exec_call(const RDB_parse_node *nodep, RDB_exec_context *ecp)
 
 cleanup:
     for (i = 0; i < argc; i++) {
-        if ((argpv[i] != NULL) && !op->updv[i]
+        RDB_parameter *paramp = RDB_get_parameter(op, i);
+        if ((argpv[i] != NULL) && (paramp == NULL || !paramp->update)
                 && (argpv[i]->kind != RDB_OB_TABLE
                     || !RDB_table_is_persistent(argpv[i])))
             RDB_destroy_obj(&argv[i], ecp);
@@ -1400,7 +1385,7 @@ exec_load(RDB_parse_node *nodep, RDB_exec_context *ecp)
         itemp = itemp->nextp;
     }
 
-    ret = load_op("LOAD", 2 + itemc, argpv, NULL, NULL, 0, ecp,
+    ret = load_op(2 + itemc, argpv, NULL, ecp,
             txnp != NULL ? &txnp->tx : NULL);
 
 cleanup:
@@ -2486,8 +2471,7 @@ error:
 }
 
 int
-Duro_dt_invoke_ro_op(const char *name, int argc, RDB_object *argv[],
-        RDB_type *rtyp, const void *iargp, size_t iarglen,
+Duro_dt_invoke_ro_op(int argc, RDB_object *argv[], const RDB_operator *op,
         RDB_exec_context *ecp, RDB_transaction *txp,
         RDB_object *retvalp)
 {
@@ -2496,7 +2480,7 @@ Duro_dt_invoke_ro_op(const char *name, int argc, RDB_object *argv[],
     varmap_node vars;
     RDB_parse_node *codestmtp, *attrnodep;
     char **argnamev;
-    struct op_data *op;
+    struct op_data *opdatap;
     return_info retinfo;
     varmap_node *ovarmapp = current_varmapp;
 
@@ -2507,15 +2491,14 @@ Duro_dt_invoke_ro_op(const char *name, int argc, RDB_object *argv[],
     }
 
     /* Try to get statements from the cache */
-    op = RDB_hashmap_get(&root_module.ro_op_cache, name);
-    if (op == NULL) {
-
+    opdatap = RDB_hashmap_get(&root_module.ro_op_cache, RDB_operator_name(op));
+    if (opdatap == NULL) {
         /* Not found */
         argnamev = RDB_alloc(argc * sizeof(char *), ecp);
         if (argnamev == NULL)
             return RDB_ERROR;
 
-        codestmtp = RDB_parse_stmt_string((char *) iargp, ecp);
+        codestmtp = RDB_parse_stmt_string((char *) RDB_operator_iargp(op), ecp);
         if (codestmtp == NULL) {
             RDB_free(argnamev);
             return RDB_ERROR;
@@ -2530,15 +2513,15 @@ Duro_dt_invoke_ro_op(const char *name, int argc, RDB_object *argv[],
             attrnodep = attrnodep->nextp->nextp;
         }
 
-        op = RDB_alloc(sizeof(struct op_data), ecp);
-        op->stmtlistp = codestmtp->val.children.firstp->nextp->nextp->nextp->nextp
+        opdatap = RDB_alloc(sizeof(struct op_data), ecp);
+        opdatap->stmtlistp = codestmtp->val.children.firstp->nextp->nextp->nextp->nextp
                 ->nextp->nextp->nextp->nextp->val.children.firstp;
-        op->argnamec = argc;
-        op->argnamev = argnamev;
+        opdatap->argnamec = argc;
+        opdatap->argnamev = argnamev;
 
-        RDB_hashmap_put(&root_module.ro_op_cache, name, op);
+        RDB_hashmap_put(&root_module.ro_op_cache, RDB_operator_name(op), opdatap);
     } else {
-        argnamev = op->argnamev;
+        argnamev = opdatap->argnamev;
     }
 
     RDB_init_hashmap(&vars.map, 256);
@@ -2547,7 +2530,7 @@ Duro_dt_invoke_ro_op(const char *name, int argc, RDB_object *argv[],
 
     for (i = 0; i < argc; i++) {
         if (RDB_hashmap_put(&current_varmapp->map, argnamev[i], argv[i]) != RDB_OK) {
-            RDB_parse_del_nodelist(op->stmtlistp, ecp);
+            RDB_parse_del_nodelist(opdatap->stmtlistp, ecp);
             for (i = 0; i < argc; i++)
                 RDB_free(argnamev[i]);
             RDB_free(argnamev);
@@ -2557,8 +2540,8 @@ Duro_dt_invoke_ro_op(const char *name, int argc, RDB_object *argv[],
     }
 
     retinfo.objp = retvalp;
-    retinfo.typ = rtyp;
-    ret = exec_stmts(op->stmtlistp, ecp, &retinfo);
+    retinfo.typ = RDB_return_type(op);
+    ret = exec_stmts(opdatap->stmtlistp, ecp, &retinfo);
 
     /*
      * Keep arguments from being destroyed
@@ -2590,8 +2573,7 @@ Duro_dt_invoke_ro_op(const char *name, int argc, RDB_object *argv[],
 }
 
 int
-Duro_dt_invoke_update_op(const char *name, int argc, RDB_object *argv[],
-        RDB_bool updv[], const void *iargp, size_t iarglen,
+Duro_dt_invoke_update_op(int argc, RDB_object *argv[], const RDB_operator *op,
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
     int ret;
@@ -2613,7 +2595,7 @@ Duro_dt_invoke_update_op(const char *name, int argc, RDB_object *argv[],
     if (argnamev == NULL)
         return RDB_ERROR;
 
-    codestmtp = RDB_parse_stmt_string((char *) iargp, ecp);
+    codestmtp = RDB_parse_stmt_string((char *) RDB_operator_iargp(op), ecp);
     if (codestmtp == NULL) {
         RDB_free(argnamev);
         return RDB_ERROR;
@@ -2675,14 +2657,13 @@ exec_opdef(RDB_parse_node *parentp, RDB_exec_context *ecp)
     RDB_object code;
     RDB_parse_node *attrnodep;
     RDB_transaction tmp_tx;
-    RDB_type **argtv = NULL;
+    RDB_parameter *paramv = NULL;
     RDB_type *rtyp;
     char *sercodep;
     int ret;
     int i;
     int argc;
     const char *opname;
-    RDB_bool *updv = NULL;
     RDB_parse_node *stmtp = parentp->val.children.firstp->nextp;
 
     argc = (int) RDB_parse_nodelist_length(stmtp->nextp->nextp) / 2;
@@ -2715,8 +2696,8 @@ exec_opdef(RDB_parse_node *parentp, RDB_exec_context *ecp)
         goto error;
     }
 
-    argtv = RDB_alloc(argc * sizeof(RDB_type *), ecp);
-    if (argtv == NULL) {
+    paramv = RDB_alloc(argc * sizeof(RDB_parameter), ecp);
+    if (paramv == NULL) {
         goto error;
     }
 
@@ -2726,9 +2707,9 @@ exec_opdef(RDB_parse_node *parentp, RDB_exec_context *ecp)
         if (i > 0)
             attrnodep = attrnodep->nextp;
 
-        argtv[i] = node_to_type(attrnodep->nextp, ecp,
+        paramv[i].typ = node_to_type(attrnodep->nextp, ecp,
                 txnp != NULL ? &txnp->tx : &tmp_tx);
-        if (argtv[i] == NULL)
+        if (paramv[i].typ == NULL)
             goto error;
         attrnodep = attrnodep->nextp->nextp;
     }
@@ -2742,7 +2723,7 @@ exec_opdef(RDB_parse_node *parentp, RDB_exec_context *ecp)
                     txnp != NULL ? &txnp->tx : &tmp_tx);
         if (rtyp == NULL)
             goto error;
-        ret = RDB_create_ro_op(opname, argc, argtv, rtyp,
+        ret = RDB_create_ro_op(opname, argc, paramv, rtyp,
 #ifdef _WIN32
                 "duro",
 #else
@@ -2754,23 +2735,20 @@ exec_opdef(RDB_parse_node *parentp, RDB_exec_context *ecp)
         if (ret != RDB_OK)
             goto error;
     } else {
-        updv = RDB_alloc(argc * sizeof(RDB_bool), ecp);
-        if (updv == NULL)
-            goto error;
         attrnodep = stmtp->nextp->nextp->val.children.firstp;
         for (i = 0; i < argc; i++) {
             /* Skip comma */
             if (i > 0)
                 attrnodep = attrnodep->nextp;
 
-            updv[i] = (RDB_bool) (RDB_parse_node_var_name_idx(
+            paramv[i].update = (RDB_bool) (RDB_parse_node_var_name_idx(
 						stmtp->nextp->nextp->nextp->nextp->nextp->nextp->val.children.firstp,
 						RDB_expr_var_name(attrnodep->exp)) != -1);
             attrnodep = attrnodep->nextp->nextp;
         }
 
         ret = RDB_create_update_op(opname,
-                argc, argtv, updv,
+                argc, paramv,
 #ifdef _WIN32
                 "duro",
 #else
@@ -2780,10 +2758,9 @@ exec_opdef(RDB_parse_node *parentp, RDB_exec_context *ecp)
                 sercodep, strlen(sercodep) + 1, ecp, txnp != NULL ? &txnp->tx : &tmp_tx);
         if (ret != RDB_OK)
             goto error;
-        RDB_free(updv);
     }
 
-    RDB_free(argtv);
+    RDB_free(paramv);
     RDB_destroy_obj(&code, ecp);
     if (txnp == NULL) {
         ret = RDB_commit(ecp, &tmp_tx);
@@ -2797,7 +2774,7 @@ exec_opdef(RDB_parse_node *parentp, RDB_exec_context *ecp)
 error:
     if (txnp == NULL)
         RDB_rollback(ecp, &tmp_tx);
-    RDB_free(argtv);
+    RDB_free(paramv);
     RDB_destroy_obj(&code, ecp);
     return RDB_ERROR;
 }

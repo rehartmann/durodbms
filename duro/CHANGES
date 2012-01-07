@@ -4,6 +4,8 @@ Summary of Changes for Duro
 
 Changes for Duro 0.15
 
+- Changed interface and calling conventions for user-defined operators.
+
 - Added RDB_get_update_op to the public interface. Renamed RDB_call_ro_op
 and RDB_call_update_op as RDB_call_ro_op_by_name and RDB_call_update_op_by_name.
 Added RDB_call_update_op with new semantics.

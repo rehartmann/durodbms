@@ -1,7 +1,7 @@
 /*
  * $Id$
  *
- * Copyright (C) 2003-2011 Rene Hartmann.
+ * Copyright (C) 2003-2012 Rene Hartmann.
  * See the file COPYING for redistribution information.
  */
 
@@ -146,18 +146,16 @@ RDB_type RDB_SYNTAX_ERROR;
 RDB_hashmap _RDB_builtin_type_map;
 
 static int
-compare_int(const char *name, int argc, RDB_object *argv[], RDB_type *rtyp,
-        const void *iargp, size_t iarglen, RDB_exec_context *ecp,
-        RDB_transaction *txp, RDB_object *retvalp)
+compare_int(int argc, RDB_object *argv[], const RDB_operator *op,
+        RDB_exec_context *ecp, RDB_transaction *txp, RDB_object *retvalp)
 {
     RDB_int_to_obj(retvalp, argv[0]->var.int_val - argv[1]->var.int_val);
     return RDB_OK;
 }
 
 static int
-compare_float(const char *name, int argc, RDB_object *argv[], RDB_type *rtyp,
-        const void *iargp, size_t iarglen, RDB_exec_context *ecp,
-        RDB_transaction *txp, RDB_object *retvalp)
+compare_float(int argc, RDB_object *argv[], const RDB_operator *op,
+        RDB_exec_context *ecp, RDB_transaction *txp, RDB_object *retvalp)
 {
     RDB_int res;
 
@@ -173,9 +171,8 @@ compare_float(const char *name, int argc, RDB_object *argv[], RDB_type *rtyp,
 }
 
 static int
-compare_string(const char *name, int argc, RDB_object *argv[], RDB_type *rtyp,
-        const void *iargp, size_t iarglen, RDB_exec_context *ecp,
-        RDB_transaction *txp, RDB_object *retvalp)
+compare_string(int argc, RDB_object *argv[], const RDB_operator *op,
+        RDB_exec_context *ecp, RDB_transaction *txp, RDB_object *retvalp)
 {
     RDB_int_to_obj(retvalp,
             strcoll(argv[0]->var.bin.datap, argv[1]->var.bin.datap));
@@ -379,7 +376,13 @@ _RDB_init_builtin_types(RDB_exec_context *ecp)
     RDB_BOOLEAN.var.scalar.repc = 0;
     RDB_BOOLEAN.var.scalar.arep = NULL;
     RDB_BOOLEAN.var.scalar.constraintp = NULL;
-    RDB_BOOLEAN.comparep = NULL;
+    RDB_BOOLEAN.compare_op = NULL;
+
+    static RDB_operator compare_string_op = {
+        "CMP",
+        &RDB_INTEGER
+    };
+    compare_string_op.opfn.ro_fp = &compare_string;
 
     RDB_STRING.kind = RDB_TP_SCALAR;
     RDB_STRING.ireplen = RDB_VARIABLE_LEN;
@@ -388,7 +391,13 @@ _RDB_init_builtin_types(RDB_exec_context *ecp)
     RDB_STRING.var.scalar.repc = 0;
     RDB_STRING.var.scalar.arep = NULL;
     RDB_STRING.var.scalar.constraintp = NULL;
-    RDB_STRING.comparep = &compare_string;
+    RDB_STRING.compare_op = &compare_string_op;
+
+    static RDB_operator compare_int_op = {
+        "CMP",
+        &RDB_INTEGER
+    };
+    compare_int_op.opfn.ro_fp = &compare_int;
 
     RDB_INTEGER.kind = RDB_TP_SCALAR;
     RDB_INTEGER.ireplen = sizeof (RDB_int);
@@ -397,7 +406,13 @@ _RDB_init_builtin_types(RDB_exec_context *ecp)
     RDB_INTEGER.var.scalar.repc = 0;
     RDB_INTEGER.var.scalar.arep = NULL;
     RDB_INTEGER.var.scalar.constraintp = NULL;
-    RDB_INTEGER.comparep = &compare_int;
+    RDB_INTEGER.compare_op = &compare_int_op;
+
+    static RDB_operator compare_float_op = {
+        "CMP",
+        &RDB_INTEGER
+    };
+    compare_float_op.opfn.ro_fp = &compare_float;
 
     RDB_FLOAT.kind = RDB_TP_SCALAR;
     RDB_FLOAT.ireplen = sizeof (RDB_float);
@@ -406,7 +421,7 @@ _RDB_init_builtin_types(RDB_exec_context *ecp)
     RDB_FLOAT.var.scalar.repc = 0;
     RDB_FLOAT.var.scalar.arep = NULL;
     RDB_FLOAT.var.scalar.constraintp = NULL;
-    RDB_FLOAT.comparep = &compare_float;
+    RDB_FLOAT.compare_op = &compare_float_op;
 
     RDB_BINARY.kind = RDB_TP_SCALAR;
     RDB_BINARY.ireplen = RDB_VARIABLE_LEN;
@@ -415,7 +430,7 @@ _RDB_init_builtin_types(RDB_exec_context *ecp)
     RDB_BINARY.var.scalar.arep = NULL;
     RDB_BINARY.var.scalar.builtin = RDB_TRUE;
     RDB_BINARY.var.scalar.constraintp = NULL;
-    RDB_BINARY.comparep = NULL;
+    RDB_BINARY.compare_op = NULL;
 
     RDB_NO_MEMORY_ERROR.kind = RDB_TP_SCALAR;
     RDB_NO_MEMORY_ERROR.ireplen = RDB_VARIABLE_LEN;
@@ -430,7 +445,7 @@ _RDB_init_builtin_types(RDB_exec_context *ecp)
     }
     RDB_NO_MEMORY_ERROR.var.scalar.constraintp = NULL;
     RDB_NO_MEMORY_ERROR.var.scalar.sysimpl = RDB_TRUE;
-    RDB_NO_MEMORY_ERROR.comparep = NULL;
+    RDB_NO_MEMORY_ERROR.compare_op = NULL;
 
     RDB_NO_RUNNING_TX_ERROR.kind = RDB_TP_SCALAR;
     RDB_NO_RUNNING_TX_ERROR.ireplen = RDB_VARIABLE_LEN;
@@ -446,7 +461,7 @@ _RDB_init_builtin_types(RDB_exec_context *ecp)
     RDB_NO_RUNNING_TX_ERROR.var.scalar.arep = NULL;
     RDB_NO_RUNNING_TX_ERROR.var.scalar.constraintp = NULL;
     RDB_NO_RUNNING_TX_ERROR.var.scalar.sysimpl = RDB_TRUE;
-    RDB_NO_RUNNING_TX_ERROR.comparep = NULL;
+    RDB_NO_RUNNING_TX_ERROR.compare_op = NULL;
 
     RDB_NOT_FOUND_ERROR.kind = RDB_TP_SCALAR;
     RDB_NOT_FOUND_ERROR.ireplen = RDB_VARIABLE_LEN;
@@ -457,7 +472,7 @@ _RDB_init_builtin_types(RDB_exec_context *ecp)
     RDB_NOT_FOUND_ERROR.var.scalar.arep = &RDB_STRING;
     RDB_NOT_FOUND_ERROR.var.scalar.constraintp = NULL;
     RDB_NOT_FOUND_ERROR.var.scalar.sysimpl = RDB_TRUE;
-    RDB_NOT_FOUND_ERROR.comparep = NULL;
+    RDB_NOT_FOUND_ERROR.compare_op = NULL;
 
     RDB_INVALID_ARGUMENT_ERROR.kind = RDB_TP_SCALAR;
     RDB_INVALID_ARGUMENT_ERROR.ireplen = RDB_VARIABLE_LEN;
@@ -468,7 +483,7 @@ _RDB_init_builtin_types(RDB_exec_context *ecp)
     RDB_INVALID_ARGUMENT_ERROR.var.scalar.arep = &RDB_STRING;
     RDB_INVALID_ARGUMENT_ERROR.var.scalar.constraintp = NULL;
     RDB_INVALID_ARGUMENT_ERROR.var.scalar.sysimpl = RDB_TRUE;
-    RDB_INVALID_ARGUMENT_ERROR.comparep = NULL;
+    RDB_INVALID_ARGUMENT_ERROR.compare_op = NULL;
 
     RDB_TYPE_MISMATCH_ERROR.kind = RDB_TP_SCALAR;
     RDB_TYPE_MISMATCH_ERROR.ireplen = RDB_VARIABLE_LEN;
@@ -479,7 +494,7 @@ _RDB_init_builtin_types(RDB_exec_context *ecp)
     RDB_TYPE_MISMATCH_ERROR.var.scalar.arep = &RDB_STRING;
     RDB_TYPE_MISMATCH_ERROR.var.scalar.constraintp = NULL;
     RDB_TYPE_MISMATCH_ERROR.var.scalar.sysimpl = RDB_TRUE;
-    RDB_TYPE_MISMATCH_ERROR.comparep = NULL;
+    RDB_TYPE_MISMATCH_ERROR.compare_op = NULL;
 
     RDB_TYPE_CONSTRAINT_VIOLATION_ERROR.kind = RDB_TP_SCALAR;
     RDB_TYPE_CONSTRAINT_VIOLATION_ERROR.ireplen = RDB_VARIABLE_LEN;
@@ -491,7 +506,7 @@ _RDB_init_builtin_types(RDB_exec_context *ecp)
     RDB_TYPE_CONSTRAINT_VIOLATION_ERROR.var.scalar.arep = &RDB_STRING;
     RDB_TYPE_CONSTRAINT_VIOLATION_ERROR.var.scalar.constraintp = NULL;
     RDB_TYPE_CONSTRAINT_VIOLATION_ERROR.var.scalar.sysimpl = RDB_TRUE;
-    RDB_TYPE_CONSTRAINT_VIOLATION_ERROR.comparep = NULL;
+    RDB_TYPE_CONSTRAINT_VIOLATION_ERROR.compare_op = NULL;
 
     RDB_OPERATOR_NOT_FOUND_ERROR.kind = RDB_TP_SCALAR;
     RDB_OPERATOR_NOT_FOUND_ERROR.ireplen = RDB_VARIABLE_LEN;
@@ -502,7 +517,7 @@ _RDB_init_builtin_types(RDB_exec_context *ecp)
     RDB_OPERATOR_NOT_FOUND_ERROR.var.scalar.arep = &RDB_STRING;
     RDB_OPERATOR_NOT_FOUND_ERROR.var.scalar.constraintp = NULL;
     RDB_OPERATOR_NOT_FOUND_ERROR.var.scalar.sysimpl = RDB_TRUE;
-    RDB_OPERATOR_NOT_FOUND_ERROR.comparep = NULL;
+    RDB_OPERATOR_NOT_FOUND_ERROR.compare_op = NULL;
 
     RDB_ELEMENT_EXISTS_ERROR.kind = RDB_TP_SCALAR;
     RDB_ELEMENT_EXISTS_ERROR.ireplen = RDB_VARIABLE_LEN;
@@ -513,7 +528,7 @@ _RDB_init_builtin_types(RDB_exec_context *ecp)
     RDB_ELEMENT_EXISTS_ERROR.var.scalar.arep = &RDB_STRING;
     RDB_ELEMENT_EXISTS_ERROR.var.scalar.constraintp = NULL;
     RDB_ELEMENT_EXISTS_ERROR.var.scalar.sysimpl = RDB_TRUE;
-    RDB_ELEMENT_EXISTS_ERROR.comparep = NULL;
+    RDB_ELEMENT_EXISTS_ERROR.compare_op = NULL;
 
     RDB_KEY_VIOLATION_ERROR.kind = RDB_TP_SCALAR;
     RDB_KEY_VIOLATION_ERROR.ireplen = RDB_VARIABLE_LEN;
@@ -524,7 +539,7 @@ _RDB_init_builtin_types(RDB_exec_context *ecp)
     RDB_KEY_VIOLATION_ERROR.var.scalar.arep = &RDB_STRING;
     RDB_KEY_VIOLATION_ERROR.var.scalar.constraintp = NULL;
     RDB_KEY_VIOLATION_ERROR.var.scalar.sysimpl = RDB_TRUE;
-    RDB_KEY_VIOLATION_ERROR.comparep = NULL;
+    RDB_KEY_VIOLATION_ERROR.compare_op = NULL;
 
     RDB_NOT_SUPPORTED_ERROR.kind = RDB_TP_SCALAR;
     RDB_NOT_SUPPORTED_ERROR.ireplen = RDB_VARIABLE_LEN;
@@ -535,7 +550,7 @@ _RDB_init_builtin_types(RDB_exec_context *ecp)
     RDB_NOT_SUPPORTED_ERROR.var.scalar.arep = &RDB_STRING;
     RDB_NOT_SUPPORTED_ERROR.var.scalar.constraintp = NULL;
     RDB_NOT_SUPPORTED_ERROR.var.scalar.sysimpl = RDB_TRUE;
-    RDB_NOT_SUPPORTED_ERROR.comparep = NULL;
+    RDB_NOT_SUPPORTED_ERROR.compare_op = NULL;
 
     RDB_NAME_ERROR.kind = RDB_TP_SCALAR;
     RDB_NAME_ERROR.ireplen = RDB_VARIABLE_LEN;
@@ -546,7 +561,7 @@ _RDB_init_builtin_types(RDB_exec_context *ecp)
     RDB_NAME_ERROR.var.scalar.arep = &RDB_STRING;
     RDB_NAME_ERROR.var.scalar.constraintp = NULL;
     RDB_NAME_ERROR.var.scalar.sysimpl = RDB_TRUE;
-    RDB_NAME_ERROR.comparep = NULL;
+    RDB_NAME_ERROR.compare_op = NULL;
 
     RDB_PREDICATE_VIOLATION_ERROR.kind = RDB_TP_SCALAR;
     RDB_PREDICATE_VIOLATION_ERROR.ireplen = RDB_VARIABLE_LEN;
@@ -557,7 +572,7 @@ _RDB_init_builtin_types(RDB_exec_context *ecp)
     RDB_PREDICATE_VIOLATION_ERROR.var.scalar.arep = &RDB_STRING;
     RDB_PREDICATE_VIOLATION_ERROR.var.scalar.constraintp = NULL;
     RDB_PREDICATE_VIOLATION_ERROR.var.scalar.sysimpl = RDB_TRUE;
-    RDB_PREDICATE_VIOLATION_ERROR.comparep = NULL;
+    RDB_PREDICATE_VIOLATION_ERROR.compare_op = NULL;
 
     RDB_IN_USE_ERROR.kind = RDB_TP_SCALAR;
     RDB_IN_USE_ERROR.ireplen = RDB_VARIABLE_LEN;
@@ -568,7 +583,7 @@ _RDB_init_builtin_types(RDB_exec_context *ecp)
     RDB_IN_USE_ERROR.var.scalar.arep = &RDB_STRING;
     RDB_IN_USE_ERROR.var.scalar.constraintp = NULL;
     RDB_IN_USE_ERROR.var.scalar.sysimpl = RDB_TRUE;
-    RDB_IN_USE_ERROR.comparep = NULL;
+    RDB_IN_USE_ERROR.compare_op = NULL;
 
     RDB_SYSTEM_ERROR.kind = RDB_TP_SCALAR;
     RDB_SYSTEM_ERROR.ireplen = RDB_VARIABLE_LEN;
@@ -579,7 +594,7 @@ _RDB_init_builtin_types(RDB_exec_context *ecp)
     RDB_SYSTEM_ERROR.var.scalar.arep = &RDB_STRING;
     RDB_SYSTEM_ERROR.var.scalar.constraintp = NULL;
     RDB_SYSTEM_ERROR.var.scalar.sysimpl = RDB_TRUE;
-    RDB_SYSTEM_ERROR.comparep = NULL;
+    RDB_SYSTEM_ERROR.compare_op = NULL;
 
     RDB_RESOURCE_NOT_FOUND_ERROR.kind = RDB_TP_SCALAR;
     RDB_RESOURCE_NOT_FOUND_ERROR.var.scalar.builtin = RDB_TRUE;
@@ -590,7 +605,7 @@ _RDB_init_builtin_types(RDB_exec_context *ecp)
     RDB_RESOURCE_NOT_FOUND_ERROR.var.scalar.arep = &RDB_STRING;
     RDB_RESOURCE_NOT_FOUND_ERROR.var.scalar.constraintp = NULL;
     RDB_RESOURCE_NOT_FOUND_ERROR.var.scalar.sysimpl = RDB_TRUE;
-    RDB_RESOURCE_NOT_FOUND_ERROR.comparep = NULL;
+    RDB_RESOURCE_NOT_FOUND_ERROR.compare_op = NULL;
 
     RDB_INTERNAL_ERROR.kind = RDB_TP_SCALAR;
     RDB_INTERNAL_ERROR.var.scalar.builtin = RDB_TRUE;
@@ -601,7 +616,7 @@ _RDB_init_builtin_types(RDB_exec_context *ecp)
     RDB_INTERNAL_ERROR.var.scalar.arep = &RDB_STRING;
     RDB_INTERNAL_ERROR.var.scalar.constraintp = NULL;
     RDB_INTERNAL_ERROR.var.scalar.sysimpl = RDB_TRUE;
-    RDB_INTERNAL_ERROR.comparep = NULL;
+    RDB_INTERNAL_ERROR.compare_op = NULL;
 
     RDB_LOCK_NOT_GRANTED_ERROR.kind = RDB_TP_SCALAR;
     RDB_LOCK_NOT_GRANTED_ERROR.ireplen = RDB_VARIABLE_LEN;
@@ -617,7 +632,7 @@ _RDB_init_builtin_types(RDB_exec_context *ecp)
     }
     RDB_LOCK_NOT_GRANTED_ERROR.var.scalar.constraintp = NULL;
     RDB_LOCK_NOT_GRANTED_ERROR.var.scalar.sysimpl = RDB_TRUE;
-    RDB_LOCK_NOT_GRANTED_ERROR.comparep = NULL;
+    RDB_LOCK_NOT_GRANTED_ERROR.compare_op = NULL;
 
     RDB_AGGREGATE_UNDEFINED_ERROR.kind = RDB_TP_SCALAR;
     RDB_AGGREGATE_UNDEFINED_ERROR.ireplen = RDB_VARIABLE_LEN;
@@ -633,7 +648,7 @@ _RDB_init_builtin_types(RDB_exec_context *ecp)
     }
     RDB_AGGREGATE_UNDEFINED_ERROR.var.scalar.constraintp = NULL;
     RDB_AGGREGATE_UNDEFINED_ERROR.var.scalar.sysimpl = RDB_TRUE;
-    RDB_AGGREGATE_UNDEFINED_ERROR.comparep = NULL;
+    RDB_AGGREGATE_UNDEFINED_ERROR.compare_op = NULL;
 
     RDB_VERSION_MISMATCH_ERROR.kind = RDB_TP_SCALAR;
     RDB_VERSION_MISMATCH_ERROR.ireplen = RDB_VARIABLE_LEN;
@@ -649,7 +664,7 @@ _RDB_init_builtin_types(RDB_exec_context *ecp)
     }
     RDB_VERSION_MISMATCH_ERROR.var.scalar.constraintp = NULL;
     RDB_VERSION_MISMATCH_ERROR.var.scalar.sysimpl = RDB_TRUE;
-    RDB_VERSION_MISMATCH_ERROR.comparep = NULL;
+    RDB_VERSION_MISMATCH_ERROR.compare_op = NULL;
 
     RDB_DEADLOCK_ERROR.kind = RDB_TP_SCALAR;
     RDB_DEADLOCK_ERROR.ireplen = RDB_VARIABLE_LEN;
@@ -665,7 +680,7 @@ _RDB_init_builtin_types(RDB_exec_context *ecp)
     }
     RDB_DEADLOCK_ERROR.var.scalar.constraintp = NULL;
     RDB_DEADLOCK_ERROR.var.scalar.sysimpl = RDB_TRUE;
-    RDB_DEADLOCK_ERROR.comparep = NULL;
+    RDB_DEADLOCK_ERROR.compare_op = NULL;
 
     RDB_FATAL_ERROR.kind = RDB_TP_SCALAR;
     RDB_FATAL_ERROR.ireplen = RDB_VARIABLE_LEN;
@@ -681,7 +696,7 @@ _RDB_init_builtin_types(RDB_exec_context *ecp)
     }
     RDB_FATAL_ERROR.var.scalar.constraintp = NULL;
     RDB_FATAL_ERROR.var.scalar.sysimpl = RDB_TRUE;
-    RDB_FATAL_ERROR.comparep = NULL;
+    RDB_FATAL_ERROR.compare_op = NULL;
 
     RDB_SYNTAX_ERROR.kind = RDB_TP_SCALAR;
     RDB_SYNTAX_ERROR.ireplen = RDB_VARIABLE_LEN;
@@ -692,7 +707,7 @@ _RDB_init_builtin_types(RDB_exec_context *ecp)
     RDB_SYNTAX_ERROR.var.scalar.arep = &RDB_STRING;
     RDB_SYNTAX_ERROR.var.scalar.constraintp = NULL;
     RDB_SYNTAX_ERROR.var.scalar.sysimpl = RDB_TRUE;
-    RDB_SYNTAX_ERROR.comparep = NULL;
+    RDB_SYNTAX_ERROR.compare_op = NULL;
 
     RDB_init_hashmap(&_RDB_builtin_type_map, 32);
 
@@ -860,14 +875,13 @@ free_type(RDB_type *typ, RDB_exec_context *ecp)
  * Implements a system-generated selector
  */
 int
-_RDB_sys_select(const char *name, int argc, RDB_object *argv[], RDB_type *typ,
-        const void *iargp, size_t iarglen, RDB_exec_context *ecp,
+_RDB_sys_select(int argc, RDB_object *argv[], const RDB_operator *op, RDB_exec_context *ecp,
         RDB_transaction *txp, RDB_object *retvalp)
 {
     RDB_possrep *prp;
 
     /* Find possrep */
-    prp = _RDB_get_possrep(typ, name);
+    prp = _RDB_get_possrep(op->rtyp, op->name);
     if (prp == NULL) {
         RDB_raise_invalid_argument("component name is NULL", ecp);
         return RDB_ERROR;
@@ -876,7 +890,7 @@ _RDB_sys_select(const char *name, int argc, RDB_object *argv[], RDB_type *typ,
     /* If *retvalp carries a value, it must match the type */
     if (retvalp->kind != RDB_OB_INITIAL
             && (retvalp->typ == NULL
-                || !RDB_type_equals(retvalp->typ, typ))) {
+                || !RDB_type_equals(retvalp->typ, op->rtyp))) {
         RDB_raise_type_mismatch("invalid selector return type", ecp);
         return RDB_ERROR;
     }
@@ -890,13 +904,13 @@ _RDB_sys_select(const char *name, int argc, RDB_object *argv[], RDB_type *typ,
         int i;
 
         for (i = 0; i < argc; i++) {
-            if (RDB_tuple_set(retvalp, typ->var.scalar.repv[0].compv[i].name,
+            if (RDB_tuple_set(retvalp, op->rtyp->var.scalar.repv[0].compv[i].name,
                     argv[i], ecp) != RDB_OK) {
                 return RDB_ERROR;
             }
         }
     }
-    retvalp->typ = typ;
+    retvalp->typ = op->rtyp;
     return RDB_OK;
 }
 
@@ -988,7 +1002,7 @@ RDB_create_tuple_type(int attrc, const RDB_attr attrv[],
         return NULL;
     }
     tuptyp->name = NULL;
-    tuptyp->comparep = NULL;
+    tuptyp->compare_op = NULL;
     tuptyp->kind = RDB_TP_TUPLE;
     tuptyp->ireplen = RDB_VARIABLE_LEN;
     tuptyp->var.tuple.attrv = RDB_alloc(sizeof(RDB_attr) * attrc, ecp);
@@ -1092,7 +1106,7 @@ RDB_create_relation_type_from_base(RDB_type *tpltyp, RDB_exec_context *ecp)
     }
 
     typ->name = NULL;
-    typ->comparep = NULL;
+    typ->compare_op = NULL;
     typ->kind = RDB_TP_RELATION;
     typ->ireplen = RDB_VARIABLE_LEN;
     typ->var.basetyp = tpltyp;
@@ -1116,7 +1130,7 @@ RDB_create_array_type(RDB_type *basetyp, RDB_exec_context *ecp)
     }
     
     typ->name = NULL;
-    typ->comparep = NULL;
+    typ->compare_op = NULL;
     typ->kind = RDB_TP_ARRAY;
     typ->ireplen = RDB_VARIABLE_LEN;
     typ->var.basetyp = basetyp;
@@ -1352,17 +1366,17 @@ create_selector(RDB_type *typ, RDB_exec_context *ecp, RDB_transaction *txp)
     int i;
     int ret;
     int compc = typ->var.scalar.repv[0].compc;
-    RDB_type **argtv = RDB_alloc(sizeof(RDB_type *) * compc, ecp);
-    if (argtv == NULL) {
+    RDB_parameter *paramv = RDB_alloc(sizeof(RDB_parameter) * compc, ecp);
+    if (paramv == NULL) {
         return RDB_ERROR;
     }
 
     for (i = 0; i < compc; i++)
-        argtv[i] = typ->var.scalar.repv[0].compv[i].typ;
-    ret = RDB_create_ro_op(typ->var.scalar.repv[0].name, compc, argtv, typ,
+        paramv[i].typ = typ->var.scalar.repv[0].compv[i].typ;
+    ret = RDB_create_ro_op(typ->var.scalar.repv[0].name, compc, paramv, typ,
             "", "_RDB_sys_select", typ->name, strlen(typ->name) + 1,
             ecp, txp);
-    RDB_free(argtv);
+    RDB_free(paramv);
     return ret;
 }
 

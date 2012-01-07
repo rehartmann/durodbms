@@ -1,7 +1,7 @@
 /*
  * $Id$
  *
- * Copyright (C) 2005-2006 René Hartmann.
+ * Copyright (C) 2005-2012 Rene Hartmann.
  * See the file COPYING for redistribution information.
  *
  * Functions for physical storage of tables
@@ -140,8 +140,7 @@ compare_field(const void *data1p, size_t len1, const void *data2p, size_t len2,
     valv[1] = &val2;
     tx.txid = NULL;
     tx.envp = envp;
-    (*typ->comparep)("CMP", 2, valv, &RDB_INTEGER, typ->compare_iargp,
-            typ->compare_iarglen, _RDB_cmp_ecp, &tx, &retval);
+    RDB_call_ro_op(typ->compare_op, 2, valv, _RDB_cmp_ecp, &tx, &retval);
     ret = RDB_obj_int(&retval);
 
     RDB_destroy_obj(&val1, _RDB_cmp_ecp);
@@ -175,7 +174,7 @@ _RDB_create_tbindex(RDB_object *tbp, RDB_environment *envp, RDB_exec_context *ec
             RDB_type *attrtyp = RDB_type_attr_type(tbp->typ,
                     indexp->attrv[i].attrname);
 
-            if (attrtyp->comparep != NULL) {
+            if (attrtyp->compare_op != NULL) {
                 cmpv[i].comparep = &compare_field;
                 cmpv[i].arg = attrtyp;
             } else {
@@ -404,7 +403,7 @@ key_fnos(RDB_object *tbp, int **flenvp, const RDB_bool ascv[],
             fno = di++;
         else if (ascv != NULL) {
             /* Set comparison field */
-            if (heading[i].typ->comparep != NULL) {
+            if (heading[i].typ->compare_op != NULL) {
                 cmpv[fno].comparep = &compare_field;
                 cmpv[fno].arg = heading[i].typ;
             } else {

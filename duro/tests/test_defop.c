@@ -17,26 +17,24 @@ test_defop(RDB_database *dbp, RDB_exec_context *ecp)
     RDB_transaction tx;
     int ret;
 
-    RDB_type *plusargtv[] = {
-        &RDB_INTEGER,
-        &RDB_INTEGER
+    RDB_parameter plusparamv[] = {
+        { &RDB_INTEGER },
+        { &RDB_INTEGER }
     };
 
-    RDB_type *addargtv[] = {
-        &RDB_INTEGER,
-        &RDB_INTEGER
+    RDB_parameter addparamv[] = {
+        { &RDB_INTEGER, RDB_TRUE },
+        { &RDB_INTEGER, RDB_TRUE }
     };
-
-    RDB_bool updv[] = { RDB_TRUE, RDB_FALSE };
 
     ret = RDB_begin_tx(ecp, &tx, dbp, NULL);
     assert(ret == RDB_OK);
 
-    ret = RDB_create_ro_op("PLUS", 2, plusargtv, &RDB_INTEGER, SHLIB,
+    ret = RDB_create_ro_op("PLUS", 2, plusparamv, &RDB_INTEGER, SHLIB,
             "RDBU_plus", NULL, 0, ecp, &tx);
     assert(ret == RDB_OK);
 
-    ret = RDB_create_update_op("ADD", 2, addargtv, updv, SHLIB, "RDBU_add",
+    ret = RDB_create_update_op("ADD", 2, addparamv, SHLIB, "RDBU_add",
             NULL, 0, ecp, &tx);
     assert(ret == RDB_OK);
 

@@ -143,10 +143,7 @@ typedef struct {
 
 typedef struct RDB_type RDB_type;
 
-typedef int RDB_ro_op_func(const char *name, int argc, RDB_object *argv[],
-        RDB_type *, const void *iargp, size_t iarglen, RDB_exec_context *,
-        struct RDB_transaction *txp,
-        RDB_object *retvalp);
+typedef struct RDB_op_data RDB_operator;
 
 /* internal */
 enum _RDB_tp_kind {
@@ -162,9 +159,7 @@ struct RDB_type {
     enum _RDB_tp_kind kind;
 
     /* comparison function */
-    RDB_ro_op_func *comparep;
-    size_t compare_iarglen;
-    void *compare_iargp;
+    RDB_operator *compare_op;
 
     RDB_int ireplen;
 
@@ -190,6 +185,18 @@ struct RDB_type {
         } scalar;
     } var;
 };
+
+typedef struct RDB_parameter {
+    /**
+     * Parameter type
+     */
+    RDB_type *typ;
+    /**
+     * RDB_TRUE if and only if it's an update parameter.
+     * Defined only for update operators.
+     */
+    RDB_bool update;
+} RDB_parameter;
 
 #if defined (_WIN32) && !defined (NO_DLL_IMPORT)
 #define _RDB_EXTERN_VAR __declspec(dllimport)
@@ -273,8 +280,6 @@ typedef struct RDB_transaction {
     struct RDB_rmlink *delrmp;
     struct RDB_ixlink *delixp;
 } RDB_transaction;
-
-typedef struct RDB_op_data RDB_operator;
 
 typedef RDB_object *RDB_getobjfn(const char *, void *);
 
@@ -823,14 +828,14 @@ RDB_expr_resolve_varnames(const RDB_expression *, RDB_getobjfn *,
         void *, RDB_exec_context *, RDB_transaction *);
 
 int
-RDB_create_ro_op(const char *name, int argc, RDB_type *argtv[], RDB_type *rtyp,
+RDB_create_ro_op(const char *name, int, RDB_parameter[], RDB_type *rtyp,
                  const char *libname, const char *symname,
                  const void *iargp, size_t iarglen, 
                  RDB_exec_context *, RDB_transaction *);
 
 int
-RDB_create_update_op(const char *name, int argc, RDB_type *argtv[],
-                  RDB_bool upd[], const char *libname, const char *symname,
+RDB_create_update_op(const char *name, int, RDB_parameter[],
+                  const char *libname, const char *symname,
                   const void *iargp, size_t iarglen,
                   RDB_exec_context *, RDB_transaction *);
 
@@ -847,11 +852,30 @@ RDB_call_update_op_by_name(const char *name, int argc, RDB_object *argv[],
                 RDB_exec_context *, RDB_transaction *);
 
 int
+RDB_call_ro_op(RDB_operator *, int, RDB_object *[],
+               RDB_exec_context *, RDB_transaction *, RDB_object *);
+
+int
 RDB_call_update_op(RDB_operator *, int argc, RDB_object *[],
                 RDB_exec_context *, RDB_transaction *);
 
 int
 RDB_drop_op(const char *name, RDB_exec_context *, RDB_transaction *);
+
+RDB_parameter *
+RDB_get_parameter(const RDB_operator *, int);
+
+const char *
+RDB_operator_name(const RDB_operator *);
+
+RDB_type *
+RDB_return_type(const RDB_operator *);
+
+size_t
+RDB_operator_iarglen(const RDB_operator *);
+
+void *
+RDB_operator_iargp(const RDB_operator *);
 
 int
 RDB_create_constraint(const char *name, RDB_expression *,
