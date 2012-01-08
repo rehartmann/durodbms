@@ -220,6 +220,16 @@ The boolean OR operator.
 
 <hr>
 
+<h3 id="op_and">OPERATOR XOR</h3>
+
+OPERATOR XOR (BOOLEAN, BOOLEAN) RETURNS BOOLEAN;
+
+<h4>Description</h4>
+
+The boolean XOR operator.
+
+<hr>
+
 <h3 id="op_not">OPERATOR NOT</h3>
 
 OPERATOR NOT (BOOLEAN) RETURNS BOOLEAN;
@@ -1208,6 +1218,15 @@ or(int argc, RDB_object *argv[], const RDB_operator *op,
 }
 
 static int
+xor(int argc, RDB_object *argv[], const RDB_operator *op,
+        RDB_exec_context *ecp, RDB_transaction *txp, RDB_object *retvalp)
+{
+    RDB_bool_to_obj(retvalp, (RDB_bool)
+            argv[0]->var.bool_val != argv[1]->var.bool_val);
+    return RDB_OK;
+}
+
+static int
 not(int argc, RDB_object *argv[], const RDB_operator *op,
         RDB_exec_context *ecp, RDB_transaction *txp, RDB_object *retvalp)
 {
@@ -1522,10 +1541,11 @@ _RDB_init_builtin_ops(RDB_exec_context *ecp)
     if (ret != RDB_OK)
         return ret;
 
-    argtv[0] = &RDB_BOOLEAN;
-    argtv[1] = &RDB_BOOLEAN;
-
     ret = put_builtin_ro_op("OR", 2, argtv, &RDB_BOOLEAN, &or, ecp);
+    if (ret != RDB_OK)
+        return ret;
+
+    ret = put_builtin_ro_op("XOR", 2, argtv, &RDB_BOOLEAN, &xor, ecp);
     if (ret != RDB_OK)
         return ret;
 

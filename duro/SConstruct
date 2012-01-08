@@ -231,6 +231,12 @@ env.Install(installdir + '/docs/durodt', 'docs/durodt/tut.html')
 env.Command(installdir + '/docs/api/html', [], Copy("$TARGET", 'docs/api/html'))
 env.Install(installdir + '/bin', dli)
 
+def mkIndex(env, target, source):
+    import os
+    open('tmp.tcl', 'w').write('pkg_mkIndex ' + installdir + '/lib ' + libdurotcl[0].path + ' util.tcl')
+    os.system('tclsh tmp.tcl')
+    os.remove('tmp.tcl')
+
 # Install durotcl only if libdurotcl has been built
 if os.path.exists(str(libdurotcl[0])):
     env.Install(installdir + '/bin', tcltools)
@@ -239,13 +245,9 @@ if os.path.exists(str(libdurotcl[0])):
 
     env.Command(installdir + '/lib/pkgIndex.tcl',
             [dst_libdurotcl, dst_utiltcl],
-			'echo \'pkg_mkIndex ' + installdir + '/lib ' + libdurotcl[0].path
-			+ ' util.tcl\' > tmp.tcl; tclsh tmp.tcl; rm tmp.tcl')
+			[mkIndex])
 
-#            [open('tmp.tcl', 'w').write('pkg_mkIndex ' + installdir + '/lib '
-# + libdurotcl[0].path + ' util.tcl'), 'tclsh tmp.tcl; rm tmp.tcl'])
-
-    env.Install(installdir + '/docs/tcl', durotcldocs)
+env.Install(installdir + '/docs/tcl', durotcldocs)
 
 if env['PLATFORM'] == 'win32':
     env.Install(installdir + '/bin', libduro)

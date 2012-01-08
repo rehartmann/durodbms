@@ -4,6 +4,8 @@ Summary of Changes for Duro
 
 Changes for Duro 0.15
 
+- Added XOR.
+
 - Added TUP, REL, DEE, and DUM as synonyms for TUPLE, RELATION, TABLE_DEE
   and TABLE_DUM.
 
@@ -36,7 +38,7 @@ Duro D/T:
 
 - Non-scalar types allowed as possrep components
 
-- Changed FOR to allow for zero iterations
+- Changed FOR/DO to allow for zero iterations
 
 Changes for Duro 0.14
 

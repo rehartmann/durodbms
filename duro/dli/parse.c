@@ -126,6 +126,9 @@ binop_node_expr(RDB_parse_node *nodep, RDB_exec_context *ecp)
         case TOK_OR:
             opnamep = "OR";
             break;
+        case TOK_XOR:
+            opnamep = "XOR";
+            break;
         case TOK_CONCAT:
             opnamep = "||";
             break;

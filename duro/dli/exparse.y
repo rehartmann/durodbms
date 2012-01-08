@@ -108,6 +108,7 @@ yyerror(const char *);
 %token TOK_SUBSET_OF "SUBSET_OF"
 %token TOK_OR "OR"
 %token TOK_AND "AND"
+%token TOK_XOR "XOR"
 %token TOK_NOT "NOT"
 %token TOK_CONCAT "||"
 %token TOK_NE "<>"
@@ -161,7 +162,7 @@ yyerror(const char *);
 %left TOK_UNION TOK_MINUS TOK_INTERSECT TOK_SEMIMINUS TOK_JOIN TOK_SEMIJOIN
         TOK_WHERE TOK_RENAME TOK_WRAP TOK_UNWRAP TOK_GROUP TOK_UNGROUP
         TOK_DIVIDEBY TOK_PER '{'
-%left TOK_OR
+%left TOK_OR TOK_XOR
 %left TOK_AND
 %left TOK_NOT
 %left '=' '<' '>' TOK_NE TOK_LE TOK_GE TOK_IN TOK_SUBSET_OF TOK_MATCHES
@@ -1544,6 +1545,18 @@ expression: expression '{' id_list '}' {
         RDB_parse_add_child($$, $3);
     }
     | expression TOK_AND expression {
+        $$ = new_parse_inner();
+        if ($$ == NULL) {
+            RDB_parse_del_node($1, _RDB_parse_ecp);
+            RDB_parse_del_node($2, _RDB_parse_ecp);
+            RDB_parse_del_node($3, _RDB_parse_ecp);
+            YYERROR;
+        }
+        RDB_parse_add_child($$, $1);
+        RDB_parse_add_child($$, $2);
+        RDB_parse_add_child($$, $3);
+    }
+    | expression TOK_XOR expression {
         $$ = new_parse_inner();
         if ($$ == NULL) {
             RDB_parse_del_node($1, _RDB_parse_ecp);

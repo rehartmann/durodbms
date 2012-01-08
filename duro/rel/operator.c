@@ -130,6 +130,10 @@ RDB_create_ro_op(const char *name, int paramc, RDB_parameter paramv[], RDB_type 
         return RDB_ERROR;
     }
 
+    /*
+     * Insert operator data into catalog
+     */
+
     RDB_init_obj(&tpl);
     RDB_init_obj(&rtypobj);
 
@@ -288,6 +292,10 @@ RDB_create_update_op(const char *name, int paramc, RDB_parameter paramv[],
          }
     }
     */
+
+    /*
+     * Insert operator data into catalog
+     */
 
     RDB_init_obj(&tpl);
     ret = RDB_tuple_set_string(&tpl, "NAME", name, ecp);
@@ -583,8 +591,14 @@ RDB_operator *
 RDB_get_update_op(const char *name, int argc, RDB_type *argtv[],
                 RDB_exec_context *ecp, RDB_transaction *txp)
 {
+    /*
+     * Try to get the operator from operator map
+     */
     RDB_operator *op = RDB_get_op(&txp->dbp->dbrootp->upd_opmap, name, argc, argtv, ecp);
     if (op == NULL) {
+        /*
+         * The operator has not already been loaded into memory, so get it from the catalog
+         */
         RDB_clear_err(ecp);
         op = _RDB_cat_get_upd_op(name, argc, argtv, ecp, txp);
         if (op == NULL) {
@@ -779,6 +793,9 @@ RDB_drop_op(const char *name, RDB_exec_context *ecp, RDB_transaction *txp)
     return RDB_OK;
 }
 
+/**
+ * Return the idx-th parameter of *<var>op</var>
+ */
 RDB_parameter *
 RDB_get_parameter(const RDB_operator *op, int idx)
 {
@@ -787,12 +804,18 @@ RDB_get_parameter(const RDB_operator *op, int idx)
     return &op->paramv[idx];
 }
 
+/**
+ * Return the name of *<var>op</var>
+ */
 const char *
 RDB_operator_name(const RDB_operator *op)
 {
     return op->name;
 }
 
+/**
+ * Return the return type of *<var>op</var> if it's a read-only operator.
+ */
 RDB_type *
 RDB_return_type(const RDB_operator *op)
 {

@@ -152,4 +152,65 @@ RELATION { }
 RELATION { }
 }
 
+test logic {Logic operators} -setup $SETUP -body {
+    exec $testdir/../../dli/durodt << {
+        connect('dbenv');
+        current_db := 'D';
+
+        begin transaction;
+
+        var t real relation {i integer, j integer} key {i, j};
+
+        insert t relation { tuple {i 1, j 1}, tuple {i 1, j 2},
+                tuple {i 2, j 1}, tuple {i 2, j 2} };
+
+        var va virtual t where i=1 or j=1;
+        var vo virtual t where i=1 and j=1;
+        var vx virtual t where i=1 xor j=1;
+        
+        var a array tuple {i integer, j integer};
+
+        load a from va order(i asc, j asc);
+        
+        var i integer;
+        for i:= 0 to length(a)-1;
+			print(a[i].i);
+			print(' ');
+			println(a[i].j);			
+		end for;
+
+		println("");
+
+        load a from vo order(i asc, j asc);
+        
+        var i integer;
+        for i:= 0 to length(a)-1;
+			print(a[i].i);
+			print(' ');
+			println(a[i].j);			
+		end for;
+
+		println("");
+
+        load a from vx order(i asc, j asc);
+        
+        var i integer;
+        for i:= 0 to length(a)-1;
+			print(a[i].i);
+			print(' ');
+			println(a[i].j);			
+		end for;
+
+        commit;
+    }
+} -result {1 1
+1 2
+2 1
+
+1 1
+
+1 2
+2 1
+}
+
 cleanupTests

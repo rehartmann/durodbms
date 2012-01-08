@@ -301,6 +301,12 @@ AND {
     return TOK_AND;
 }
 
+XOR {
+    yylval = RDB_new_parse_token(TOK_XOR, whitecommp, _RDB_parse_ecp);
+    whitecommp = NULL;
+    return TOK_XOR;
+}
+
 NOT {
     yylval = RDB_new_parse_token(TOK_NOT, whitecommp, _RDB_parse_ecp);
     whitecommp = NULL;
