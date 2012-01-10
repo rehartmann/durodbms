@@ -213,4 +213,73 @@ test logic {Logic operators} -setup $SETUP -body {
 2 1
 }
 
+test aggregate {Aggregate operators} -setup $SETUP -body {
+    exec $testdir/../../dli/durodt << {
+        connect('dbenv');
+        current_db := 'D';
+
+        begin transaction;
+
+        var t real relation {b boolean} key {b};
+
+		insert t tup {b true};
+		insert t tup {b false};
+
+		println(all(t, b));
+		println(and(t, b));
+		println(any(t, b));
+		println(or(t, b));
+
+        commit;
+    }
+} -result {FALSE
+FALSE
+TRUE
+TRUE
+}
+
+test summarize {SUMMARIZE} -setup $SETUP -body {
+    exec $testdir/../../dli/durodt << {
+        connect('dbenv');
+        current_db := 'D';
+
+        begin transaction;
+
+        var t real relation {i integer, j integer} key {i, j};
+
+		insert t tup {i 1, j 0};
+		insert t tup {i 1, j 1};
+		insert t tup {i 2, j 1};
+		insert t tup {i 2, j 2};
+
+		var v virtual SUMMARIZE t PER t {i} ADD (
+				SUM(j) AS A_SUM,
+		        ALL(j > 0) AS A_ALL,
+		        AND(j > 0) AS A_AND,
+		        ANY(j > 0) AS A_ANY,
+		        OR(j > 0) AS A_OR);
+
+        var arr array tuple same_heading_as (v);
+
+        load arr from v order(i asc);
+
+        var i integer;
+        for i:= 0 to length(arr)-1;
+			print(arr[i].A_SUM);			
+			print(' ');
+			print(arr[i].A_ALL);			
+			print(' ');
+			print(arr[i].A_AND);
+			print(' ');
+			print(arr[i].A_ANY);
+			print(' ');
+			println(arr[i].A_OR);
+		end for;
+
+        commit;
+    }
+} -result {1 FALSE FALSE TRUE TRUE
+3 TRUE TRUE TRUE TRUE
+}
+
 cleanupTests

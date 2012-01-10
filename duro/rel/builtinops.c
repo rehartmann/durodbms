@@ -56,7 +56,7 @@ If the operands are strings, the strings will be compared using strcoll().
 
 <hr>
 
-<h3 id="op_lte">OPERATOR &lt;=</h3>
+<h3 id="op_lt">OPERATOR &lt;=</h3>
 
 OPERATOR &lt;= (INTEGER, INTEGER) RETURNS BOOLEAN;
 
@@ -220,7 +220,7 @@ The boolean OR operator.
 
 <hr>
 
-<h3 id="op_and">OPERATOR XOR</h3>
+<h3 id="op_xnd">OPERATOR XOR</h3>
 
 OPERATOR XOR (BOOLEAN, BOOLEAN) RETURNS BOOLEAN;
 

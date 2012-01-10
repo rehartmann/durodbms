@@ -1985,7 +1985,9 @@ aggr: TOK_SUM
 	| TOK_MAX
 	| TOK_MIN
 	| TOK_ALL
+	| TOK_AND
 	| TOK_ANY
+	| TOK_OR
 	;
 
 summarize_add: TOK_COUNT '(' ')' TOK_AS TOK_ID {

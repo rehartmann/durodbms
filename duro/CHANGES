@@ -4,6 +4,8 @@ Summary of Changes for Duro
 
 Changes for Duro 0.15
 
+- Added aggregate operators AND and OR as synonyms for ALL and ANY.
+
 - Added XOR.
 
 - Added TUP, REL, DEE, and DUM as synonyms for TUPLE, RELATION, TABLE_DEE

@@ -55,18 +55,18 @@ test aggregate {real tables} -setup $SETUP -body {
         error "invalid MAX: $v"
     }
 
-    if {![catch {duro::expr {ANY(T, A)} $tx}]} {
+    if {![catch {duro::expr {OR(T, A)} $tx}]} {
         error "invalid ANY should fail, but succeeded"
     }
     if {![string match "TYPE_MISMATCH_ERROR(*)" [lindex $errorCode 1]]} {
-        error "Wrong error from ANY: $errorCode"
+        error "Wrong error from OR: $errorCode"
     }
 
-    if {![catch {duro::expr {ALL(T, A)} $tx}]} {
-        error "invalid ALL should fail, but succeeded"
+    if {![catch {duro::expr {AND(T, A)} $tx}]} {
+        error "invalid AND should fail, but succeeded"
     }
     if {![string match "TYPE_MISMATCH_ERROR(*)" [lindex $errorCode 1]]} {
-        error "Wrong error from ALL: $errorCode"
+        error "Wrong error from AND: $errorCode"
     }
 
     set v [duro::expr {ANY(T, B)} $tx]
@@ -74,9 +74,19 @@ test aggregate {real tables} -setup $SETUP -body {
         error "invalid ANY: $v"
     }
 
+    set v [duro::expr {OR(T, B)} $tx]
+    if {!$v} {
+        error "invalid OR: $v"
+    }
+
     set v [duro::expr {ALL(T, B)} $tx]
     if {$v} {
         error "invalid ALL: $v"
+    }
+
+    set v [duro::expr {AND(T, B)} $tx]
+    if {$v} {
+        error "invalid AND: $v"
     }
 
     duro::commit $tx

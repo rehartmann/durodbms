@@ -1,7 +1,7 @@
 /*
  * $Id$
  *
- * Copyright (C) 2003-2009 René Hartmann.
+ * Copyright (C) 2003-2012 Rene Hartmann.
  * See the file COPYING for redistribution information.
  */
 
@@ -109,7 +109,6 @@ do_summarize(RDB_qresult *qrp, RDB_type *tb1typ, RDB_bool hasavg,
     RDB_field *keyfv, *nonkeyfv;
     int ret;
     struct _RDB_summval *svalv;
-    RDB_object addval;
     RDB_expression *argp;
     int keyfc = _RDB_pkey_len(qrp->matp);
     int addc = (RDB_expr_list_length(&qrp->exp->var.op.args) - 2) / 2;
@@ -140,7 +139,6 @@ do_summarize(RDB_qresult *qrp, RDB_type *tb1typ, RDB_bool hasavg,
     }
 
     RDB_init_obj(&tpl);
-    RDB_init_obj(&addval);
     for (i = 0; i < addc; i++)
         RDB_init_obj(&svalv[i].val);
     do {
@@ -186,8 +184,10 @@ do_summarize(RDB_qresult *qrp, RDB_type *tb1typ, RDB_bool hasavg,
                 argp = qrp->exp->var.op.args.firstp->nextp->nextp;
                 for (i = 0; i < addc; i++) {
                     RDB_type *typ;
+                    RDB_object addval;
                     char *opname = argp->var.op.name;
 
+                    RDB_init_obj(&addval);
                     if (strcmp(opname, "COUNT") == 0) {
                         ret = RDB_irep_to_obj(&svalv[i].val, &RDB_INTEGER,
                                 nonkeyfv[i].datap, nonkeyfv[i].len, ecp);
@@ -195,19 +195,25 @@ do_summarize(RDB_qresult *qrp, RDB_type *tb1typ, RDB_bool hasavg,
                         RDB_expression *exp = argp->var.op.args.firstp;
                         typ = _RDB_expr_type(exp, tb1typ->var.basetyp, ecp, txp);
                         if (typ == NULL) {
+                            RDB_destroy_obj(&addval, ecp);
                             ret = RDB_ERROR;
                             goto cleanup;
                         }
                         ret = RDB_irep_to_obj(&svalv[i].val, typ,
                                 nonkeyfv[i].datap, nonkeyfv[i].len, ecp);
-                        if (ret != RDB_OK)
+                        if (ret != RDB_OK) {
+                            RDB_destroy_obj(&addval, ecp);
                             goto cleanup;
+                        }
                         ret = RDB_evaluate(exp, &_RDB_tpl_get, &tpl, ecp, txp,
                                 &addval);
-                        if (ret != RDB_OK)
+                        if (ret != RDB_OK) {
+                            RDB_destroy_obj(&addval, ecp);
                             goto cleanup;
+                        }
                     }
                     summ_step(&svalv[i], &addval, opname, count);
+                    RDB_destroy_obj(&addval, ecp);
 
                     svalv[i].val.store_typ = svalv[i].val.typ;
                     ret = _RDB_obj_to_field(&nonkeyfv[i], &svalv[i].val, ecp);
@@ -246,7 +252,6 @@ do_summarize(RDB_qresult *qrp, RDB_type *tb1typ, RDB_bool hasavg,
 
 cleanup:
     RDB_destroy_obj(&tpl, ecp);
-    RDB_destroy_obj(&addval, ecp);
     for (i = 0; i < addc; i++)
         RDB_destroy_obj(&svalv[i].val, ecp);
     _RDB_drop_qresult(lqrp, ecp, txp);

@@ -31,14 +31,6 @@ RDB_exec_context *_RDB_parse_ecp;
 int _RDB_parse_interactive = 0;
 int _RDB_parse_case_insensitive = 1;
 
-static const char TOK_COUNT_NAME[] = "COUNT";
-static const char TOK_SUM_NAME[] = "SUM";
-static const char TOK_AVG_NAME[] = "AVG";
-static const char TOK_MAX_NAME[] = "MAX";
-static const char TOK_MIN_NAME[] = "MIN";
-static const char TOK_ALL_NAME[] = "ALL";
-static const char TOK_ANY_NAME[] = "ANY";
-
 void
 _RDB_parse_start_exp(void);
 
@@ -285,9 +277,11 @@ aggr_node_expr(int token, RDB_parse_node *nodep, RDB_exec_context *ecp) {
         case TOK_MIN:
             opname = "MIN";
             break;
+        case TOK_AND:
         case TOK_ALL:
             opname = "ALL";
             break;
+        case TOK_OR:
         case TOK_ANY:
             opname = "ANY";
             break;
@@ -437,10 +431,14 @@ summarize_node_expr(RDB_parse_node *argnodep,
     if (nodep != NULL) {
         for (;;) {
             int aggrtok = nodep->val.children.firstp->val.token;
+            if (aggrtok == TOK_AND)
+                aggrtok = TOK_ALL;
+            if (aggrtok == TOK_OR)
+                aggrtok = TOK_ANY;
             RDB_expression *aggrexp = RDB_ro_op(_RDB_token_name(aggrtok), ecp);
             if (aggrexp == NULL)
                 return NULL;
-    
+
             if (aggrtok != TOK_COUNT) {
                 argp = RDB_dup_expr(RDB_parse_node_expr(
                         RDB_parse_node_child(nodep, 2), ecp), ecp);
@@ -1024,7 +1022,9 @@ inner_node_expr(RDB_parse_node *nodep, RDB_exec_context *ecp)
             case TOK_AVG:
             case TOK_MAX:
             case TOK_MIN:
+            case TOK_AND:
             case TOK_ALL:
+            case TOK_OR:
             case TOK_ANY:
                 return nodep->exp = aggr_node_expr(firstp->val.token,
                         firstp->nextp->nextp, ecp);
