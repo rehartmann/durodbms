@@ -1663,6 +1663,7 @@ resolve_target(const RDB_expression *exp, RDB_exec_context *ecp)
         return NULL;
     }
 
+    /* Resolve variable name */
     varname = RDB_expr_var_name(exp);
     if (varname != NULL) {
         return lookup_var(varname, ecp);

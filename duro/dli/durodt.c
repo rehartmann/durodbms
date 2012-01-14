@@ -1,7 +1,7 @@
 /*
  * $Id$
  *
- * Copyright (C) 2008 René Hartmann.
+ * Copyright (C) 2012 Rene Hartmann.
  * See the file COPYING for redistribution information.
  *
  * Interpreter for Duro D/T.
@@ -16,6 +16,7 @@
 #include <string.h>
 #include <errno.h>
 #include <signal.h>
+#include <locale.h>
 
 static void
 usage_error(void)
@@ -42,15 +43,23 @@ main(int argc, char *argv[])
     struct sigaction sigact;
 #endif
 
+    /*
+     * Install signal handler to catch Control-C
+     */
 #ifdef _WIN32
     signal(SIGINT, handle_sigint);
 #else
+    /* POSIX */
     sigact.sa_handler = &handle_sigint;
     sigemptyset(&sigact.sa_mask);
     sigact.sa_flags = 0;
     if (sigaction(SIGINT, &sigact, NULL) == -1)
         fprintf(stderr, "sigaction(): %s\n", strerror(errno));
 #endif
+
+    /* Set char/string locales according to the environmen */
+    setlocale(LC_COLLATE, "");
+    setlocale(LC_CTYPE, "");
 
     while (argc > 1) {
         if (strcmp(argv[1], "-e") == 0) {
