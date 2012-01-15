@@ -871,6 +871,21 @@ free_type(RDB_type *typ, RDB_exec_context *ecp)
     RDB_free(typ);
 }    
 
+static RDB_possrep *
+_RDB_get_possrep(const RDB_type *typ, const char *repname)
+{
+    int i;
+
+    if (!RDB_type_is_scalar(typ))
+        return NULL;
+    for (i = 0; i < typ->var.scalar.repc
+            && strcmp(typ->var.scalar.repv[i].name, repname) != 0;
+            i++);
+    if (i >= typ->var.scalar.repc)
+        return NULL;
+    return &typ->var.scalar.repv[i];
+}
+
 /**
  * Implements a system-generated selector
  */
@@ -1216,7 +1231,7 @@ A pointer to an array of RDB_attr structures or NULL if the type
 is not a tuple or relation type.
  */
 RDB_attr *
-RDB_type_attrs(RDB_type *typ, int *attrc)
+RDB_type_attrs(RDB_type *typ, int *attrcp)
 {
     if (typ->kind == RDB_TP_RELATION) {
         typ = typ->var.basetyp;
@@ -1224,7 +1239,7 @@ RDB_type_attrs(RDB_type *typ, int *attrc)
     if (typ->kind != RDB_TP_TUPLE) {
         return NULL;
     }
-    *attrc = typ->var.tuple.attrc;
+    *attrcp = typ->var.tuple.attrc;
     return typ->var.tuple.attrv;
 }
 
@@ -1378,6 +1393,19 @@ create_selector(RDB_type *typ, RDB_exec_context *ecp, RDB_transaction *txp)
             ecp, txp);
     RDB_free(paramv);
     return ret;
+}
+
+/**
+ * Check if the operator *<var>op</var> is a selector.
+ */
+RDB_bool
+RDB_is_selector(const RDB_operator *op)
+{
+    if (op->rtyp == NULL)
+        return RDB_FALSE; /* Not a read-only operator */
+
+    /* Check if there is a possrep with the same name as the operator */
+    return (RDB_bool) (_RDB_get_possrep(op->rtyp, RDB_operator_name(op)) != NULL);
 }
 
 /** @defgroup typeimpl Type implementation functions
@@ -2185,21 +2213,6 @@ RDB_rename_relation_type(const RDB_type *typ, int renc, const RDB_renaming renv[
         return NULL;
     }
     return newtyp;
-}
-
-RDB_possrep *
-_RDB_get_possrep(RDB_type *typ, const char *repname)
-{
-    int i;
-
-    if (!RDB_type_is_scalar(typ))
-        return NULL;
-    for (i = 0; i < typ->var.scalar.repc
-            && strcmp(typ->var.scalar.repv[i].name, repname) != 0;
-            i++);
-    if (i >= typ->var.scalar.repc)
-        return NULL;
-    return &typ->var.scalar.repv[i];
 }
 
 RDB_attr *

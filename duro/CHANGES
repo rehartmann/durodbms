@@ -4,6 +4,10 @@ Summary of Changes for Duro
 
 Changes for Duro 0.15
 
+- Added RDB_is_selector().
+
+- Removed RDB_tx_env().
+
 - Duro D/T sets LC_CTYPE and LC_COLLATE locales according to the environment.
 
 - Added aggregate operators AND and OR as synonyms for ALL and ANY.
@@ -32,7 +36,7 @@ Added RDB_call_update_op with new semantics.
 - Change in catalog table SYS_POSSREPCOMPS
 
 - Changed type handling in RDB_evaluate(), RDB_call_ro_op(), and
-   RDB_call_update_op(),
+  RDB_call_update_op(),
 
 Duro D/T:
 

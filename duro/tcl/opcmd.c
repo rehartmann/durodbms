@@ -6,7 +6,6 @@
  */
 
 #include "duro.h"
-#include <rel/internal.h>
 #include <string.h>
 
 static int
@@ -292,7 +291,6 @@ Duro_call_cmd(ClientData data, Tcl_Interp *interp, int objc,
             ret = TCL_ERROR;
             goto cleanup;
         }
-        /* !! who manages non-scalar types? */
     }
 
     op = RDB_get_update_op(Tcl_GetString(objv[1]), argc, argtv,
@@ -325,6 +323,10 @@ Duro_call_cmd(ClientData data, Tcl_Interp *interp, int objc,
         if (RDB_get_parameter(op, i)->update && RDB_type_is_relation(argtv[i])) {
             /* Updated relation argument - pass table */
             argv[i] = Duro_get_table(statep, interp, Tcl_GetString(valobjp), txp);
+            if (argv[i] == NULL) {
+                ret = TCL_ERROR;
+                goto cleanup;
+            }
         } else {
             argv[i] = (RDB_object *) Tcl_Alloc(sizeof (RDB_object));
             RDB_init_obj(argv[i]);
@@ -337,11 +339,12 @@ Duro_call_cmd(ClientData data, Tcl_Interp *interp, int objc,
                 ret = TCL_ERROR;
                 goto cleanup;
             }
+            if (RDB_type_is_tuple(argtv[i]))
+                argv[i]->typ = argtv[i];
         }
     }
 
-    ret = RDB_call_update_op_by_name(Tcl_GetString(objv[1]),
-            argc, argv, statep->current_ecp, txp);
+    ret = RDB_call_update_op(op, argc, argv, statep->current_ecp, txp);
     if (ret != RDB_OK) {
         Duro_dberror(interp, RDB_get_err(statep->current_ecp), txp);
         return TCL_ERROR;
@@ -369,6 +372,9 @@ cleanup:
                     && (!RDB_get_parameter(op, i)->update || !RDB_type_is_relation(argtv[i]))) {
                 RDB_destroy_obj(argv[i], statep->current_ecp);
                 Tcl_Free((char *) argv[i]);
+            }
+            if (!RDB_type_is_scalar(argtv[i])) {
+                ret = RDB_drop_type(argtv[i], statep->current_ecp, NULL);
             }
         }
         Tcl_Free((char *) argv);
@@ -504,7 +510,7 @@ Duro_invoke_update_op(int argc, RDB_object *argv[], RDB_operator *op,
                     return RDB_ERROR;
                 }
                 ret = Duro_add_table(interp, statep, argv[i], "duro_t",
-                        RDB_tx_env(txp));
+                        RDB_db_env(RDB_tx_db(txp)));
                 if (ret != TCL_OK) {
                     Tcl_Free((char *) opargv);
                     RDB_raise_internal("passing table arg failed", ecp);
@@ -753,7 +759,7 @@ Duro_invoke_ro_op(int argc, RDB_object *argv[], RDB_operator *op,
      * Convert result
      */
     if (RDB_type_is_scalar(rtyp)) {
-        if(_RDB_get_possrep(rtyp, RDB_operator_name(op)) != NULL) {
+        if (RDB_is_selector(op)) {
             /* It's a selector, so use internal rep */
             convtyp = rtyp->var.scalar.arep;
         } else {

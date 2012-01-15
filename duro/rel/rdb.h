@@ -5,7 +5,7 @@
 $Id$
 
 This file is part of Duro, a relational database management system.
-Copyright (C) 2003-2011 Rene Hartmann.
+Copyright (C) 2003-2012 Rene Hartmann.
 
 Duro is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -543,6 +543,9 @@ RDB_obj_set_typeinfo(RDB_object *, RDB_type *);
 RDB_type *
 RDB_type_attr_type(const RDB_type *, const char *);
 
+RDB_bool
+RDB_is_selector(const RDB_operator *);
+
 /** @addtogroup tx
  * @{
  */
@@ -556,17 +559,6 @@ to by <var>txp</var> interacts with.
 A pointer to the RDB_database structure that represents the database.
  */
 #define RDB_tx_db(txp) ((txp)->dbp)
-
-/**
- * Return the database environment associated with the transaction.
-
-@returns
-
-A pointer to the RDB_environment structure representing
-the database environment.
-
- */
-#define RDB_tx_env(txp) ((txp)->envp)
 
 /** @} */
 

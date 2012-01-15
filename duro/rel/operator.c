@@ -551,7 +551,7 @@ RDB_call_ro_op_by_name(const char *name, int argc, RDB_object *argv[],
         goto error;
 
     /* Check type constraint if the operator is a selector */
-    if (retvalp->typ != NULL &&_RDB_get_possrep(retvalp->typ, name) != NULL) {
+    if (retvalp->typ != NULL && RDB_is_selector(op)) {
         if (_RDB_check_type_constraint(retvalp, ecp, txp) != RDB_OK) {
             /* Destroy illegal value */
             RDB_destroy_obj(retvalp, ecp);

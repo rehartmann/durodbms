@@ -400,9 +400,6 @@ int
 _RDB_vtexp_to_obj(RDB_expression *exp, RDB_exec_context *ecp,
         RDB_transaction *txp, RDB_object *tbp);
 
-RDB_possrep *
-_RDB_get_possrep(RDB_type *typ, const char *repname);
-
 RDB_attr *
 _RDB_get_icomp(RDB_type *, const char *compname);
 
