@@ -1,7 +1,7 @@
 /*
  * $Id$
  *
- * Copyright (C) 2003-2005 René Hartmann.
+ * Copyright (C) 2003-2012 Rene Hartmann.
  * See the file COPYING for redistribution information.
  */
 
@@ -15,12 +15,14 @@ Duro_tcl_close_env(TclState *statep, RDB_environment *envp, Tcl_HashEntry *entry
     Tcl_HashSearch search;
     table_entry *tbep;
     FILE *errfp;
+    RDB_transaction *txp;
     DB_ENV *bdb_envp = RDB_bdb_env(envp);
 
     Tcl_DeleteHashEntry(entryp);
 
-    /* Delete local tables which belong to the environment */
-
+    /*
+     * Delete local tables which belong to the environment
+     */
     entryp = Tcl_FirstHashEntry(&statep->ltables, &search);
     while (entryp != NULL) {
         tbep = Tcl_GetHashValue(entryp);
@@ -28,6 +30,22 @@ Duro_tcl_close_env(TclState *statep, RDB_environment *envp, Tcl_HashEntry *entry
             /* Drop table, delete entry and start from the beginning */
             Duro_tcl_drop_ltable(tbep, entryp, statep->current_ecp);
             entryp = Tcl_FirstHashEntry(&statep->ltables, &search);
+        } else {
+            entryp = Tcl_NextHashEntry(&search);
+        }
+    }
+
+    /*
+     * Abort pending transactions
+     */
+    entryp = Tcl_FirstHashEntry(&statep->txs, &search);
+    while (entryp != NULL) {
+        txp = Tcl_GetHashValue(entryp);
+
+        /* Abort transaction if the environment of its database is *envp */
+        if (RDB_db_env(RDB_tx_db(txp)) == envp) {
+            Duro_tcl_rollback(entryp, statep->current_ecp, txp);
+            entryp = Tcl_FirstHashEntry(&statep->txs, &search);
         } else {
             entryp = Tcl_NextHashEntry(&search);
         }
