@@ -163,7 +163,7 @@ no db> var s string;
 no db> println('Please enter a number:'); readln(s);
 Please enter a number:
 2
-no db> var n init integer(s);
+no db> var n init cast_as_integer(s);
 no db> if n < 0 then
 no db>     println('Negative');
 no db> else
@@ -181,7 +181,7 @@ no db> var s string;
 no db> println('Please enter a number:'); readln(s);
 Please enter a number:
 -2
-no db> var n init integer(s);
+no db> var n init cast_as_integer(s);
 no db> if n < 0 then
 no db>     begin;
 no db>         println('Negative');
@@ -216,11 +216,11 @@ end for;
 println('Please enter a positive number:');
 var s string;
 readln(s);
-var n init integer(s);
+var n init cast_as_integer(s);
 while n < 0;
     println('This number is not positive. Please enter again:');
     readln(s);
-    n := integer(s);
+    n := cast_as_integer(s);
 end while;
 </pre>
 
@@ -233,7 +233,7 @@ no db> var s string;
 no db> println('Please enter a number:'); readln(s);
 Please enter a number:
 0
-no db> var n init integer(s);
+no db> var n init cast_as_integer(s);
 no db> case
 no db>     when n > 0 then
 no db>         println('Positive');
@@ -650,7 +650,5 @@ end try;
 </pre>
 
 <hr>
-
-<p>$Id$
 
 </html>

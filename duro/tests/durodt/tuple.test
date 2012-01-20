@@ -16,13 +16,13 @@ set testdir [::tcltest::configure -testdir]
 test tuplevar {tuple variables} -body {
     exec $testdir/../../dli/durodt << {
         var t1 init tuple {i 5, s 'foo'};
-        println(string(t1.i) || ' ' || t1.s);
+        println(cast_as_string(t1.i) || ' ' || t1.s);
         println(t1.i);
         println(s FROM t1);
 
         var t2 same_type_as(t1);
         t2 := tup {i 2, s 'bar'};
-        println(string(t2.i) || ' ' || t2.s);
+        println(cast_as_string(t2.i) || ' ' || t2.s);
         println(t2 {s});
     }
 } -result {5 foo

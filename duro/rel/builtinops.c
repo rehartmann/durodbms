@@ -305,11 +305,11 @@ RDB_TRUE if S matches PATTERN, RDB_FALSE otherwise.
 
 <hr>
 
-<h3 id="op_integer">OPERATOR INTEGER</h3>
+<h3 id="op_integer">OPERATOR CAST_AS_INTEGER</h3>
 
-OPERATOR INTEGER (FLOAT) RETURNS INTEGER;
+OPERATOR CAST_AS_INTEGER (FLOAT) RETURNS INTEGER;
 
-OPERATOR INTEGER (STRING) RETURNS INTEGER;
+OPERATOR CAST_AS_INTEGER (STRING) RETURNS INTEGER;
 
 <h4>Description</h4>
 
@@ -321,11 +321,11 @@ The operand, converted to INTEGER.
 
 <hr>
 
-<h3 id="op_float">OPERATOR FLOAT</h3>
+<h3 id="op_float">OPERATOR CAST_AS_FLOAT</h3>
 
-OPERATOR FLOAT (INTEGER) RETURNS FLOAT;
+OPERATOR CAST_AS_FLOAT (INTEGER) RETURNS FLOAT;
 
-OPERATOR FLOAT (STRING) RETURNS FLOAT;
+OPERATOR CAST_AS_FLOAT (STRING) RETURNS FLOAT;
 
 <h4>Description</h4>
 
@@ -337,11 +337,11 @@ The operand, converted to FLOAT.
 
 <hr>
 
-<h3 id="op_string">OPERATOR STRING</h3>
+<h3 id="op_string">OPERATOR CAST_AS_STRING</h3>
 
-OPERATOR STRING (INTEGER) RETURNS STRING;
+OPERATOR CAST_AS_STRING (INTEGER) RETURNS STRING;
 
-OPERATOR STRING (FLOAT) RETURNS STRING;
+OPERATOR CAST_AS_STRING (FLOAT) RETURNS STRING;
 
 <h4>Description</h4>
 
@@ -1021,7 +1021,7 @@ op_subscript(int argc, RDB_object *argv[], const RDB_operator *op,
 }
 
 static int
-integer_float(int argc, RDB_object *argv[], const RDB_operator *op,
+cast_as_integer_float(int argc, RDB_object *argv[], const RDB_operator *op,
         RDB_exec_context *ecp, RDB_transaction *txp, RDB_object *retvalp)
 {
     RDB_int_to_obj(retvalp, (RDB_int) argv[0]->var.float_val);
@@ -1029,7 +1029,7 @@ integer_float(int argc, RDB_object *argv[], const RDB_operator *op,
 }
 
 static int
-integer_string(int argc, RDB_object *argv[], const RDB_operator *op,
+cast_as_integer_string(int argc, RDB_object *argv[], const RDB_operator *op,
         RDB_exec_context *ecp, RDB_transaction *txp, RDB_object *retvalp)
 {
     char *endp;
@@ -1044,7 +1044,7 @@ integer_string(int argc, RDB_object *argv[], const RDB_operator *op,
 }
 
 static int
-float_int(int argc, RDB_object *argv[], const RDB_operator *op,
+cast_as_float_int(int argc, RDB_object *argv[], const RDB_operator *op,
         RDB_exec_context *ecp, RDB_transaction *txp, RDB_object *retvalp)
 {
     RDB_float_to_obj(retvalp, (RDB_float) argv[0]->var.int_val);
@@ -1052,7 +1052,7 @@ float_int(int argc, RDB_object *argv[], const RDB_operator *op,
 }
 
 static int
-float_string(int argc, RDB_object *argv[], const RDB_operator *op,
+cast_as_float_string(int argc, RDB_object *argv[], const RDB_operator *op,
         RDB_exec_context *ecp, RDB_transaction *txp, RDB_object *retvalp)
 {
     char *endp;
@@ -1067,7 +1067,7 @@ float_string(int argc, RDB_object *argv[], const RDB_operator *op,
 }
 
 static int
-string_obj(int argc, RDB_object *argv[], const RDB_operator *op,
+cast_as_string(int argc, RDB_object *argv[], const RDB_operator *op,
         RDB_exec_context *ecp, RDB_transaction *txp, RDB_object *retvalp)
 {
     return RDB_obj_to_string(retvalp, argv[0], ecp);
@@ -1079,7 +1079,7 @@ length_string(int argc, RDB_object *argv[], const RDB_operator *op,
 {
     size_t len = mbstowcs(NULL, argv[0]->var.bin.datap, 0);
     if (len == -1) {
-        RDB_raise_invalid_argument("", ecp);
+        RDB_raise_invalid_argument("obtaining string length failed", ecp);
         return RDB_ERROR;
     }
 
@@ -1467,42 +1467,36 @@ _RDB_init_builtin_ops(RDB_exec_context *ecp)
     RDB_init_op_map(&_RDB_builtin_ro_op_map);
 
     argtv[0] = &RDB_FLOAT;
-    ret = put_builtin_ro_op("INTEGER", 1, argtv, &RDB_INTEGER, &integer_float,
+    ret = put_builtin_ro_op("CAST_AS_INTEGER", 1, argtv, &RDB_INTEGER, &cast_as_integer_float,
             ecp);
     if (ret != RDB_OK)
         return RDB_ERROR;
 
     argtv[0] = &RDB_STRING;
-    ret = put_builtin_ro_op("INTEGER", 1, argtv, &RDB_INTEGER, &integer_string,
+    ret = put_builtin_ro_op("CAST_AS_INTEGER", 1, argtv, &RDB_INTEGER, &cast_as_integer_string,
             ecp);
     if (ret != RDB_OK)
         return RDB_ERROR;
 
     argtv[0] = &RDB_INTEGER;
-    ret = put_builtin_ro_op("FLOAT", 1, argtv, &RDB_FLOAT, &float_int, ecp);
+    ret = put_builtin_ro_op("CAST_AS_FLOAT", 1, argtv, &RDB_FLOAT, &cast_as_float_int, ecp);
     if (ret != RDB_OK)
         return RDB_ERROR;
 
     argtv[0] = &RDB_STRING;
-    ret = put_builtin_ro_op("FLOAT", 1, argtv, &RDB_FLOAT, &float_string, ecp);
+    ret = put_builtin_ro_op("CAST_AS_FLOAT", 1, argtv, &RDB_FLOAT, &cast_as_float_string, ecp);
     if (ret != RDB_OK)
         return RDB_ERROR;
 
     argtv[0] = &RDB_INTEGER;
 
-    ret = put_builtin_ro_op("STRING", 1, argtv, &RDB_STRING, &string_obj, ecp);
+    ret = put_builtin_ro_op("CAST_AS_STRING", 1, argtv, &RDB_STRING, &cast_as_string, ecp);
     if (ret != RDB_OK)
         return ret;
 
     argtv[0] = &RDB_FLOAT;
 
-    ret = put_builtin_ro_op("STRING", 1, argtv, &RDB_STRING, &string_obj, ecp);
-    if (ret != RDB_OK)
-        return ret;
-
-    argtv[0] = &RDB_FLOAT;
-
-    ret = put_builtin_ro_op("STRING", 1, argtv, &RDB_STRING, &string_obj, ecp);
+    ret = put_builtin_ro_op("CAST_AS_STRING", 1, argtv, &RDB_STRING, &cast_as_string, ecp);
     if (ret != RDB_OK)
         return ret;
 

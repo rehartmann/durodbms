@@ -103,8 +103,8 @@ test defroop {read-only user-defined operators} -setup $DBSETUP -body {
                 d := d * 2 + 1;
             end for;
 
-            return "a = " || string(a) || ", b = " || string(b) || ", c = " || string(c)
-            		 || ", d = " || string(d);
+            return "a = " || cast_as_string(a) || ", b = " || cast_as_string(b)
+                     || ", c = " || cast_as_string(c) || ", d = " || cast_as_string(d);
         end operator;
 
         /*
@@ -189,7 +189,7 @@ test defupdop {user-defined update operators} -setup $DBSETUP -body {
         var a string init 'x';
         var b integer init 1;
         op(a, b);
-        println("a = " || a || ", b = " || string(b));
+        println("a = " || a || ", b = " || cast_as_string(b));
 
         drop var a;
 

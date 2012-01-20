@@ -81,7 +81,7 @@ test leave {FOR, WHILE, LEAVE} -setup $DBSETUP -body {
                 end for;
                 i := i + 1;
             end while;
-            return string(i) || ',' || string(j);
+            return cast_as_string(i) || ',' || cast_as_string(j);
         end operator;
         
         println(lop());

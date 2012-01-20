@@ -23,12 +23,9 @@ extern int yylineno;
 static RDB_expression *
 table_dum_expr(void)
 {
-    RDB_object obj;
     RDB_expression *exp;
 
-    RDB_init_obj(&obj);
-    exp = RDB_obj_to_expr(&obj, _RDB_parse_ecp);
-    RDB_destroy_obj(&obj, _RDB_parse_ecp);
+    exp = RDB_obj_to_expr(NULL, _RDB_parse_ecp);
     if (exp == NULL)
         return NULL;
 
@@ -1767,7 +1764,96 @@ expression: expression '{' id_list '}' {
         RDB_parse_add_child($$, $3);
     }
     | vexpr
-    | literal
+    |     TOK_RELATION '{' expression_list '}' {
+        $$ = new_parse_inner();
+        if ($$ == NULL) {
+            RDB_parse_del_node($1, _RDB_parse_ecp);
+            RDB_parse_del_node($2, _RDB_parse_ecp);
+            RDB_parse_del_node($3, _RDB_parse_ecp);
+            RDB_parse_del_node($4, _RDB_parse_ecp);
+            YYERROR;
+        }
+        RDB_parse_add_child($$, $1);
+        RDB_parse_add_child($$, $2);
+        RDB_parse_add_child($$, $3);
+        RDB_parse_add_child($$, $4);
+    }
+/*     | TOK_RELATION '{' attribute_name_type_list '}'
+       '{' expression_list '}' {
+    } */
+    | TOK_TABLE_DEE {
+        int ret;
+
+        RDB_object tpl;
+        RDB_expression *exp = table_dum_expr();
+        if (exp == NULL) {
+            YYERROR;
+        }
+
+        RDB_init_obj(&tpl);
+        ret = RDB_insert(&exp->var.obj, &tpl, _RDB_parse_ecp, NULL);
+        RDB_destroy_obj(&tpl, _RDB_parse_ecp);
+        if (ret != RDB_OK) {
+            YYERROR;
+        }
+
+        $$ = RDB_new_parse_expr(exp, NULL, _RDB_parse_ecp);
+		RDB_parse_del_node($1, _RDB_parse_ecp);
+        if ($$ == NULL) {
+            YYERROR;
+        }
+    }
+    | TOK_TABLE_DUM {
+        RDB_expression *exp = table_dum_expr();
+        if (exp == NULL) {
+            YYERROR;
+        }
+        $$ = RDB_new_parse_expr(exp, NULL, _RDB_parse_ecp);
+		RDB_parse_del_node($1, _RDB_parse_ecp);
+        if ($$ == NULL) {
+            YYERROR;
+        }
+    }
+    | TOK_TUPLE '{' '}' {
+        $$ = new_parse_inner();
+        if ($$ == NULL) {
+            RDB_parse_del_node($1, _RDB_parse_ecp);
+            RDB_parse_del_node($2, _RDB_parse_ecp);
+            RDB_parse_del_node($3, _RDB_parse_ecp);
+            YYERROR;
+        }
+        RDB_parse_add_child($$, $1);
+        RDB_parse_add_child($$, $2);
+        RDB_parse_add_child($$, $3);
+    } 
+    | TOK_TUPLE '{' ne_tuple_item_list '}' {
+        $$ = new_parse_inner();
+        if ($$ == NULL) {
+            RDB_parse_del_node($1, _RDB_parse_ecp);
+            RDB_parse_del_node($2, _RDB_parse_ecp);
+            RDB_parse_del_node($3, _RDB_parse_ecp);
+            RDB_parse_del_node($4, _RDB_parse_ecp);
+            YYERROR;
+        }
+        RDB_parse_add_child($$, $1);
+        RDB_parse_add_child($$, $2);
+        RDB_parse_add_child($$, $3);
+        RDB_parse_add_child($$, $4);
+    } 
+    | TOK_ARRAY '(' expression_list ')' {
+        $$ = new_parse_inner();
+        if ($$ == NULL) {
+            RDB_parse_del_node($1, _RDB_parse_ecp);
+            RDB_parse_del_node($2, _RDB_parse_ecp);
+            RDB_parse_del_node($3, _RDB_parse_ecp);
+            RDB_parse_del_node($4, _RDB_parse_ecp);
+            YYERROR;
+        }
+        RDB_parse_add_child($$, $1);
+        RDB_parse_add_child($$, $2);
+        RDB_parse_add_child($$, $3);
+        RDB_parse_add_child($$, $4);
+    }
     | count_invocation
     | aggr_invocation
     | '(' expression ')' {
@@ -1850,6 +1936,10 @@ expression: expression '{' id_list '}' {
         RDB_parse_add_child($$, $3);
         RDB_parse_add_child($$, $4);
     }
+    | TOK_LIT_STRING
+    | TOK_LIT_INTEGER
+    | TOK_LIT_FLOAT
+    | TOK_LIT_BOOLEAN
     ;
 
 id_list: /* empty */ {
@@ -2132,101 +2222,6 @@ ne_expression_list: expression {
     }
     ;
 
-literal: TOK_RELATION '{' expression_list '}' {
-        $$ = new_parse_inner();
-        if ($$ == NULL) {
-            RDB_parse_del_node($1, _RDB_parse_ecp);
-            RDB_parse_del_node($2, _RDB_parse_ecp);
-            RDB_parse_del_node($3, _RDB_parse_ecp);
-            RDB_parse_del_node($4, _RDB_parse_ecp);
-            YYERROR;
-        }
-        RDB_parse_add_child($$, $1);
-        RDB_parse_add_child($$, $2);
-        RDB_parse_add_child($$, $3);
-        RDB_parse_add_child($$, $4);
-    }
-/*     | TOK_RELATION '{' attribute_name_type_list '}'
-       '{' expression_list '}' {
-    } */
-    | TOK_TABLE_DEE {
-        int ret;
-
-        RDB_object tpl;
-        RDB_expression *exp = table_dum_expr();
-        if (exp == NULL) {
-            YYERROR;
-        }
-
-        RDB_init_obj(&tpl);
-        ret = RDB_insert(&exp->var.obj, &tpl, _RDB_parse_ecp, NULL);
-        RDB_destroy_obj(&tpl, _RDB_parse_ecp);
-        if (ret != RDB_OK) {
-            YYERROR;
-        }
-
-        $$ = RDB_new_parse_expr(exp, NULL, _RDB_parse_ecp);
-		RDB_parse_del_node($1, _RDB_parse_ecp);
-        if ($$ == NULL) {
-            YYERROR;
-        }
-    }
-    | TOK_TABLE_DUM {
-        RDB_expression *exp = table_dum_expr();
-        if (exp == NULL) {
-            YYERROR;
-        }
-        $$ = RDB_new_parse_expr(exp, NULL, _RDB_parse_ecp);
-		RDB_parse_del_node($1, _RDB_parse_ecp);
-        if ($$ == NULL) {
-            YYERROR;
-        }
-    }
-    | TOK_TUPLE '{' '}' {
-        $$ = new_parse_inner();
-        if ($$ == NULL) {
-            RDB_parse_del_node($1, _RDB_parse_ecp);
-            RDB_parse_del_node($2, _RDB_parse_ecp);
-            RDB_parse_del_node($3, _RDB_parse_ecp);
-            YYERROR;
-        }
-        RDB_parse_add_child($$, $1);
-        RDB_parse_add_child($$, $2);
-        RDB_parse_add_child($$, $3);
-    } 
-    | TOK_TUPLE '{' ne_tuple_item_list '}' {
-        $$ = new_parse_inner();
-        if ($$ == NULL) {
-            RDB_parse_del_node($1, _RDB_parse_ecp);
-            RDB_parse_del_node($2, _RDB_parse_ecp);
-            RDB_parse_del_node($3, _RDB_parse_ecp);
-            RDB_parse_del_node($4, _RDB_parse_ecp);
-            YYERROR;
-        }
-        RDB_parse_add_child($$, $1);
-        RDB_parse_add_child($$, $2);
-        RDB_parse_add_child($$, $3);
-        RDB_parse_add_child($$, $4);
-    } 
-    | TOK_ARRAY '(' expression_list ')' {
-        $$ = new_parse_inner();
-        if ($$ == NULL) {
-            RDB_parse_del_node($1, _RDB_parse_ecp);
-            RDB_parse_del_node($2, _RDB_parse_ecp);
-            RDB_parse_del_node($3, _RDB_parse_ecp);
-            RDB_parse_del_node($4, _RDB_parse_ecp);
-            YYERROR;
-        }
-        RDB_parse_add_child($$, $1);
-        RDB_parse_add_child($$, $2);
-        RDB_parse_add_child($$, $3);
-        RDB_parse_add_child($$, $4);
-    }
-    | TOK_LIT_STRING
-    | TOK_LIT_INTEGER
-    | TOK_LIT_FLOAT
-    | TOK_LIT_BOOLEAN
-    ;
 
 ne_tuple_item_list: TOK_ID expression {
         $$ = new_parse_inner();

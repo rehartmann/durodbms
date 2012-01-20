@@ -32,9 +32,9 @@ test convert {type conversions} -setup $SETUP -body {
     duro::insert T1 {A 1 B 2.0 C 03} $tx
     
     duro::table expr -global X {EXTEND T1 ADD (
-            A AS A_I, FLOAT(A) * 2.0 AS A_R, "S" || STRING(A) AS A_S,
-            INTEGER(B) AS B_I, B * 2.0 AS B_R, "S" || STRING(B) AS B_S,
-            INTEGER(C) AS C_I, FLOAT(C) * 2.0 AS C_R, "S" || C AS C_S,
+            A AS A_I, CAST_AS_FLOAT(A) * 2.0 AS A_R, "S" || CAST_AS_STRING(A) AS A_S,
+            CAST_AS_INTEGER(B) AS B_I, B * 2.0 AS B_R, "S" || CAST_AS_STRING(B) AS B_S,
+            CAST_AS_INTEGER(C) AS C_I, CAST_AS_FLOAT(C) * 2.0 AS C_R, "S" || C AS C_S,
             B AS B_F)
     } $tx
 

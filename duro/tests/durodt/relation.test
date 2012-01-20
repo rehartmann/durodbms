@@ -40,8 +40,8 @@ test insert {creating table and inserting tuples} -setup $SETUP -body {
         var t init tuple {i 2 + 1, d 1.0, c 'Z'};
         insert r update t {i := i + 1};
 
-        println(string(count(r)));
-        println(string(count(s)));
+        println(cast_as_string(count(r)));
+        println(cast_as_string(count(s)));
         println((tuple from r where i=2).c);
         commit;
     }
