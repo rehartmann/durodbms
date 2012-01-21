@@ -1005,7 +1005,7 @@ error:
  * @returns The type of the expression, or NULL on failure.
  */
 RDB_type *
-RDB_expr_type(RDB_expression *exp, RDB_gettypefn *getfnp, void *arg,
+RDB_expr_type(RDB_expression *exp, RDB_gettypefn *getfnp, void *getarg,
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
     RDB_attr *attrp;
@@ -1036,7 +1036,7 @@ RDB_expr_type(RDB_expression *exp, RDB_gettypefn *getfnp, void *arg,
             return RDB_obj_type(exp->var.tbref.tbp);
         case RDB_EX_VAR:
             if (getfnp != NULL) {
-                typ = (*getfnp) (RDB_expr_var_name(exp), arg);
+                typ = (*getfnp) (RDB_expr_var_name(exp), getarg);
                 if (typ != NULL) {
                     exp->typ = RDB_dup_nonscalar_type(typ, ecp);
                     return exp->typ;
@@ -1052,7 +1052,7 @@ RDB_expr_type(RDB_expression *exp, RDB_gettypefn *getfnp, void *arg,
             RDB_raise_name(exp->var.varname, ecp);
             return NULL;
         case RDB_EX_TUPLE_ATTR:
-            typ = RDB_expr_type(exp->var.op.args.firstp, getfnp, arg, ecp, txp);
+            typ = RDB_expr_type(exp->var.op.args.firstp, getfnp, getarg, ecp, txp);
             if (typ == NULL)
                 return NULL;
             typ = RDB_type_attr_type(typ, exp->var.op.name);
@@ -1062,7 +1062,7 @@ RDB_expr_type(RDB_expression *exp, RDB_gettypefn *getfnp, void *arg,
             }
             return typ;
         case RDB_EX_GET_COMP:
-            typ = RDB_expr_type(exp->var.op.args.firstp, getfnp, arg, ecp, txp);
+            typ = RDB_expr_type(exp->var.op.args.firstp, getfnp, getarg, ecp, txp);
             if (typ == NULL)
                 return typ;
             attrp = _RDB_get_icomp(typ, exp->var.op.name);
@@ -1072,7 +1072,7 @@ RDB_expr_type(RDB_expression *exp, RDB_gettypefn *getfnp, void *arg,
             }
             return attrp->typ;
         case RDB_EX_RO_OP:
-            exp->typ = expr_op_type(exp, getfnp, arg, ecp, txp);
+            exp->typ = expr_op_type(exp, getfnp, getarg, ecp, txp);
             return exp->typ;
     }
     abort();
@@ -1537,6 +1537,16 @@ RDB_expr_obj(RDB_expression *exp)
         default: ;
     }
     return NULL;
+}
+
+/**
+ * Set the type of expression *<var>exp</var> to *<var>typ</var>.
+ * Only used for special purposes, such as specifying the type of relation selectors.
+ */
+void
+RDB_set_expr_type(RDB_expression *exp, RDB_type *typ)
+{
+    exp->typ = typ;
 }
 
 /*@}*/

@@ -30,7 +30,7 @@ test insert {creating table and inserting tuples} -setup $SETUP -body {
 
         begin transaction;
         var r real relation {i integer, d float, c string} key {i};
-        insert r relation {};
+        insert r relation {} {};
 
         var a init 1;
         insert r rel {tuple {i a, d 1.0, c 'X'}, tup {i 2, d 1.1, c 'Y'}};
@@ -66,7 +66,7 @@ test private {creating private table and inserting tuples} -setup $SETUP -body {
         current_db := 'D';
 
         var r private relation {i integer, d float, c string} key {i};
-        insert r relation {};
+        insert r relation {} {};
 
         var s private relation {i integer} init relation { tuple {i 1}, tuple {i 2} } key {i};
 
@@ -83,10 +83,21 @@ test private {creating private table and inserting tuples} -setup $SETUP -body {
         println((tuple from r where i=2).c);
         println(sum(s, i));
         drop var r;
+        
+        -- test invalid relation selector
+        try
+            var r init relation {a integer} {tuple {a 'x'}};
+        catch err type_mismatch_error;
+            println("type mismatch");
+        end try;
+        
+        println((tuple from relation {a integer} {tuple {a 7}}).a);
     }
 } -result {1
 Y
 3
+type mismatch
+7
 }
 
 test ra {relational algebra} -setup $SETUP -body {

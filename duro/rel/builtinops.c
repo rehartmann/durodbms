@@ -761,14 +761,35 @@ op_tuple(int argc, RDB_object *argv[], const RDB_operator *op,
 }
 
 int
+_RDB_op_type_relation(int argc, RDB_object *argv[], RDB_type *reltyp,
+        RDB_exec_context *ecp, RDB_transaction *txp, RDB_object *retvalp)
+{
+    int i;
+
+    if (RDB_init_table_from_type(retvalp, NULL, reltyp, 0, NULL, ecp) != RDB_OK) {
+        RDB_drop_type(reltyp, ecp, NULL);
+        return RDB_ERROR;
+    }
+
+    for (i = 0; i < argc; i++) {
+        if (RDB_insert(retvalp, argv[i], ecp, NULL) != RDB_OK) {
+            return RDB_ERROR;
+        }
+    }
+
+    return RDB_OK;
+}
+
+int
 _RDB_op_relation(int argc, RDB_object *argv[], const RDB_operator *op,
         RDB_exec_context *ecp, RDB_transaction *txp, RDB_object *retvalp)
 {
+    int ret;
     RDB_type *rtyp;
-    int i;
 
     if (argc == 0) {
-        return RDB_init_table(retvalp, NULL, 0, NULL, 0, NULL, ecp);
+        RDB_raise_invalid_argument("At least one argument required", ecp);
+        return RDB_ERROR;
     }
 
     if (argv[0]->kind != RDB_OB_TUPLE) {
@@ -776,6 +797,9 @@ _RDB_op_relation(int argc, RDB_object *argv[], const RDB_operator *op,
         return RDB_ERROR;
     }
 
+    /*
+     * Create relation type using the first argument
+     */
     rtyp = RDB_alloc(sizeof(RDB_type), ecp);
     if (rtyp == NULL) {
         return RDB_ERROR;
@@ -788,18 +812,10 @@ _RDB_op_relation(int argc, RDB_object *argv[], const RDB_operator *op,
         return RDB_ERROR;
     }
 
-    if (RDB_init_table_from_type(retvalp, NULL, rtyp, 0, NULL, ecp) != RDB_OK) {
+    ret = _RDB_op_type_relation(argc, argv, rtyp, ecp, txp, retvalp);
+    if (ret != RDB_OK)
         RDB_drop_type(rtyp, ecp, NULL);
-        return RDB_ERROR;
-    }
-
-    for (i = 0; i < argc; i++) {
-        if (RDB_insert(retvalp, argv[i], ecp, NULL) != RDB_OK) {
-            return RDB_ERROR;
-        }
-    }
-
-    return RDB_OK;
+    return ret;
 }
 
 static int

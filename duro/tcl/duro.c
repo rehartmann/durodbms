@@ -503,7 +503,7 @@ Duro_tcl_to_duro(Tcl_Interp *interp, Tcl_Obj *tobjp, RDB_type *typ,
             Duro_dberror(interp, RDB_get_err(ecp), txp);
             return TCL_ERROR;
         }
-        exp = RDB_parse_node_expr(nodep, ecp);
+        exp = RDB_parse_node_expr(nodep, ecp, txp);
         if (exp == NULL) {
             Duro_dberror(interp, RDB_get_err(ecp), txp);
             return TCL_ERROR;
@@ -879,7 +879,7 @@ Duro_parse_expr_utf(Tcl_Interp *interp, const char *s, void *arg,
         Duro_dberror(interp, RDB_get_err(ecp), txp);
         return NULL;
     }
-    exp = RDB_parse_node_expr(nodep, ecp);
+    exp = RDB_parse_node_expr(nodep, ecp, txp);
     
     Tcl_Free(dst);
     if (exp == NULL) {

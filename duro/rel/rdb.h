@@ -771,10 +771,13 @@ RDB_expression *
 RDB_ro_op(const char *opname, RDB_exec_context *);
 
 void
-RDB_add_arg(RDB_expression *exp, RDB_expression *argp);
+RDB_add_arg(RDB_expression *, RDB_expression *argp);
 
 RDB_object *
-RDB_expr_obj(RDB_expression *exp);
+RDB_expr_obj(RDB_expression *);
+
+void
+RDB_set_expr_type(RDB_expression *, RDB_type *);
 
 void
 RDB_init_expr_list(RDB_expr_list *explistp);
@@ -800,10 +803,10 @@ RDB_expr_type(RDB_expression *, RDB_gettypefn *, void *,
         RDB_exec_context *, RDB_transaction *);
 
 const char *
-RDB_expr_op_name(const RDB_expression *expr);
+RDB_expr_op_name(const RDB_expression *);
 
 const char *
-RDB_expr_var_name(const RDB_expression *expr);
+RDB_expr_var_name(const RDB_expression *);
 
 int
 RDB_evaluate_bool(RDB_expression *, RDB_getobjfn *getfnp, void *getdata,

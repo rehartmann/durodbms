@@ -191,7 +191,7 @@ statement: assignment ';' {
         RDB_parse_add_child($$, $1);
         RDB_parse_add_child($$, $2);
     }
-    | TOK_CALL TOK_ID '(' expression_list ')' ';' {
+    | TOK_CALL TOK_ID '(' expression_commalist ')' ';' {
         $$ = new_parse_inner();
         if ($$ == NULL) {
             RDB_parse_del_node($1, _RDB_parse_ecp);
@@ -209,7 +209,7 @@ statement: assignment ';' {
         RDB_parse_add_child($$, $5);
         RDB_parse_add_child($$, $6);
     }
-    | TOK_ID '(' expression_list ')' ';' {
+    | TOK_ID '(' expression_commalist ')' ';' {
         $$ = new_parse_inner();
         if ($$ == NULL) {
             RDB_parse_del_node($1, _RDB_parse_ecp);
@@ -677,7 +677,7 @@ statement: assignment ';' {
         RDB_parse_add_child($$, $7);
         RDB_parse_add_child($$, $8);
     }
-    | TOK_OPERATOR TOK_ID '(' attribute_list ')' TOK_RETURNS type ';'
+    | TOK_OPERATOR TOK_ID '(' id_type_commalist ')' TOK_RETURNS type ';'
             ne_statement_list TOK_END TOK_OPERATOR {
         $$ = new_parse_inner();
         if ($$ == NULL) {
@@ -706,7 +706,7 @@ statement: assignment ';' {
         RDB_parse_add_child($$, $10);
         RDB_parse_add_child($$, $11);
     }
-    | TOK_OPERATOR TOK_ID '(' attribute_list ')' TOK_UPDATES '{' id_list '}' ';'
+    | TOK_OPERATOR TOK_ID '(' id_type_commalist ')' TOK_UPDATES '{' id_commalist '}' ';'
             ne_statement_list TOK_END TOK_OPERATOR {
         $$ = new_parse_inner();
         if ($$ == NULL) {
@@ -841,7 +841,7 @@ statement: assignment ';' {
         RDB_parse_add_child($$, $1);
         RDB_parse_add_child($$, $2);
     }
-    | TOK_LOAD TOK_ID TOK_FROM expression TOK_ORDER '(' order_item_list ')' ';' {
+    | TOK_LOAD TOK_ID TOK_FROM expression TOK_ORDER '(' order_item_commalist ')' ';' {
         $$ = new_parse_inner();
         if ($$ == NULL) {
             RDB_parse_del_node($1, _RDB_parse_ecp);
@@ -936,7 +936,7 @@ when_def_list: /* empty */ {
         RDB_parse_add_child($$, $2);
     }
 
-possrep_def: TOK_POSSREP '{' attribute_list '}' {
+possrep_def: TOK_POSSREP '{' id_type_commalist '}' {
         $$ = new_parse_inner();
         if ($$ == NULL) {
             RDB_parse_del_node($1, _RDB_parse_ecp);
@@ -950,7 +950,7 @@ possrep_def: TOK_POSSREP '{' attribute_list '}' {
         RDB_parse_add_child($$, $3);
         RDB_parse_add_child($$, $4);
 	}
-	| TOK_POSSREP TOK_ID '{' attribute_list '}' {
+	| TOK_POSSREP TOK_ID '{' id_type_commalist '}' {
         $$ = new_parse_inner();
         if ($$ == NULL) {
             RDB_parse_del_node($1, _RDB_parse_ecp);
@@ -1001,7 +1001,7 @@ order_item: TOK_ID TOK_ASC {
         RDB_parse_add_child($$, $2);
     }
 
-ne_order_item_list: order_item  {
+ne_order_item_commalist: order_item  {
         $$ = new_parse_inner();
         if ($$ == NULL) {
             RDB_parse_del_node($1, _RDB_parse_ecp);
@@ -1009,12 +1009,12 @@ ne_order_item_list: order_item  {
         }
         RDB_parse_add_child($$, $1);
     }
-    | ne_order_item_list ',' order_item {
+    | ne_order_item_commalist ',' order_item {
         $$ = $1;
         RDB_parse_add_child($$, $3);
     }
 
-order_item_list: ne_order_item_list {
+order_item_commalist: ne_order_item_commalist {
     }
     | /* Empty */ {
         $$ = new_parse_inner();
@@ -1066,7 +1066,7 @@ catch_def: TOK_CATCH TOK_ID type ';' ne_statement_list {
         RDB_parse_add_child($$, $4);
     }
 
-ne_key_list: TOK_KEY '{' id_list '}' {
+ne_key_list: TOK_KEY '{' id_commalist '}' {
         $$ = new_parse_inner();
         if ($$ == NULL) {
             RDB_parse_del_node($1, _RDB_parse_ecp);
@@ -1080,7 +1080,7 @@ ne_key_list: TOK_KEY '{' id_list '}' {
         RDB_parse_add_child($$, $3);
         RDB_parse_add_child($$, $4);
     }
-    | ne_key_list TOK_KEY '{' id_list '}' {
+    | ne_key_list TOK_KEY '{' id_commalist '}' {
         $$ = new_parse_inner();
         if ($$ == NULL) {
             RDB_parse_del_node($1, _RDB_parse_ecp);
@@ -1166,7 +1166,7 @@ assign: vexpr TOK_ASSIGN expression {
         RDB_parse_add_child($$, $3);
         RDB_parse_add_child($$, $4);
     }
-    | TOK_UPDATE TOK_ID '{' ne_attr_assign_list '}' {
+    | TOK_UPDATE TOK_ID '{' ne_attr_assign_commalist '}' {
         $$ = new_parse_inner();
         if ($$ == NULL) {
             RDB_parse_del_node($1, _RDB_parse_ecp);
@@ -1182,7 +1182,7 @@ assign: vexpr TOK_ASSIGN expression {
         RDB_parse_add_child($$, $4);
         RDB_parse_add_child($$, $5);
     }
-    | TOK_UPDATE TOK_ID TOK_WHERE expression '{' ne_attr_assign_list '}' {
+    | TOK_UPDATE TOK_ID TOK_WHERE expression '{' ne_attr_assign_commalist '}' {
         $$ = new_parse_inner();
         if ($$ == NULL) {
             RDB_parse_del_node($1, _RDB_parse_ecp);
@@ -1203,7 +1203,7 @@ assign: vexpr TOK_ASSIGN expression {
         RDB_parse_add_child($$, $7);
     }
 
-ne_attr_assign_list: simple_assign {
+ne_attr_assign_commalist: simple_assign {
         $$ = new_parse_inner();
         if ($$ == NULL) {
             RDB_parse_del_node($1, _RDB_parse_ecp);
@@ -1211,7 +1211,7 @@ ne_attr_assign_list: simple_assign {
         }
         RDB_parse_add_child($$, $1);
     }
-	| ne_attr_assign_list ',' simple_assign {
+	| ne_attr_assign_commalist ',' simple_assign {
 	    $$ = $1;
         RDB_parse_add_child($$, $2);
         RDB_parse_add_child($$, $3);
@@ -1260,7 +1260,7 @@ ne_statement_list: statement {
         RDB_parse_add_child($$, $2);
     }
 
-expression: expression '{' id_list '}' {
+expression: expression '{' id_commalist '}' {
         $$ = new_parse_inner();
         if ($$ == NULL) {
             RDB_parse_del_node($1, _RDB_parse_ecp);
@@ -1274,7 +1274,7 @@ expression: expression '{' id_list '}' {
         RDB_parse_add_child($$, $3);
         RDB_parse_add_child($$, $4);
     }
-    | expression '{' TOK_ALL TOK_BUT id_list '}' {
+    | expression '{' TOK_ALL TOK_BUT id_commalist '}' {
         $$ = new_parse_inner();
         if ($$ == NULL) {
             RDB_parse_del_node($1, _RDB_parse_ecp);
@@ -1304,7 +1304,7 @@ expression: expression '{' id_list '}' {
         RDB_parse_add_child($$, $2);
         RDB_parse_add_child($$, $3);
     }
-    | expression TOK_RENAME '(' renaming_list ')' {
+    | expression TOK_RENAME '(' renaming_commalist ')' {
         $$ = new_parse_inner();
         if ($$ == NULL) {
             RDB_parse_del_node($1, _RDB_parse_ecp);
@@ -1392,7 +1392,7 @@ expression: expression '{' id_list '}' {
         RDB_parse_add_child($$, $2);
         RDB_parse_add_child($$, $3);
     }
-    | TOK_EXTEND expression TOK_ADD '(' name_intro_list ')' {
+    | TOK_EXTEND expression TOK_ADD '(' name_intro_commalist ')' {
         $$ = new_parse_inner();
         if ($$ == NULL) {
             RDB_parse_del_node($1, _RDB_parse_ecp);
@@ -1410,7 +1410,7 @@ expression: expression '{' id_list '}' {
         RDB_parse_add_child($$, $5);
         RDB_parse_add_child($$, $6);
     }
-    | TOK_UPDATE expression '{' ne_attr_assign_list '}' {
+    | TOK_UPDATE expression '{' ne_attr_assign_commalist '}' {
         $$ = new_parse_inner();
         if ($$ == NULL) {
             RDB_parse_del_node($1, _RDB_parse_ecp);
@@ -1427,7 +1427,7 @@ expression: expression '{' id_list '}' {
         RDB_parse_add_child($$, $5);
     }
     | TOK_SUMMARIZE expression TOK_PER expression
-           TOK_ADD '(' summarize_add_list ')' {
+           TOK_ADD '(' summarize_add_commalist ')' {
         $$ = new_parse_inner();
         if ($$ == NULL) {
             RDB_parse_del_node($1, _RDB_parse_ecp);
@@ -1465,7 +1465,7 @@ expression: expression '{' id_list '}' {
         RDB_parse_add_child($$, $4);
         RDB_parse_add_child($$, $5);
     }
-    | expression TOK_WRAP '(' wrapping_list ')' {
+    | expression TOK_WRAP '(' wrapping_commalist ')' {
         $$ = new_parse_inner();
         if ($$ == NULL) {
             RDB_parse_del_node($1, _RDB_parse_ecp);
@@ -1481,7 +1481,7 @@ expression: expression '{' id_list '}' {
         RDB_parse_add_child($$, $4);
         RDB_parse_add_child($$, $5);
     }
-    | expression TOK_UNWRAP '(' id_list ')' {
+    | expression TOK_UNWRAP '(' id_commalist ')' {
         $$ = new_parse_inner();
         if ($$ == NULL) {
             RDB_parse_del_node($1, _RDB_parse_ecp);
@@ -1497,7 +1497,7 @@ expression: expression '{' id_list '}' {
         RDB_parse_add_child($$, $4);
         RDB_parse_add_child($$, $5);
     }
-    | expression TOK_GROUP '{' id_list '}' TOK_AS TOK_ID {
+    | expression TOK_GROUP '{' id_commalist '}' TOK_AS TOK_ID {
         $$ = new_parse_inner();
         if ($$ == NULL) {
             RDB_parse_del_node($1, _RDB_parse_ecp);
@@ -1764,7 +1764,7 @@ expression: expression '{' id_list '}' {
         RDB_parse_add_child($$, $3);
     }
     | vexpr
-    |     TOK_RELATION '{' expression_list '}' {
+    | TOK_RELATION '{' ne_expression_commalist '}' {
         $$ = new_parse_inner();
         if ($$ == NULL) {
             RDB_parse_del_node($1, _RDB_parse_ecp);
@@ -1778,9 +1778,27 @@ expression: expression '{' id_list '}' {
         RDB_parse_add_child($$, $3);
         RDB_parse_add_child($$, $4);
     }
-/*     | TOK_RELATION '{' attribute_name_type_list '}'
-       '{' expression_list '}' {
-    } */
+    | TOK_RELATION '{' id_type_commalist '}'
+           '{' expression_commalist '}' {
+        $$ = new_parse_inner();
+        if ($$ == NULL) {
+            RDB_parse_del_node($1, _RDB_parse_ecp);
+            RDB_parse_del_node($2, _RDB_parse_ecp);
+            RDB_parse_del_node($3, _RDB_parse_ecp);
+            RDB_parse_del_node($4, _RDB_parse_ecp);
+            RDB_parse_del_node($5, _RDB_parse_ecp);
+            RDB_parse_del_node($6, _RDB_parse_ecp);
+            RDB_parse_del_node($7, _RDB_parse_ecp);
+            YYERROR;
+        }
+        RDB_parse_add_child($$, $1);
+        RDB_parse_add_child($$, $2);
+        RDB_parse_add_child($$, $3);
+        RDB_parse_add_child($$, $4);
+        RDB_parse_add_child($$, $5);
+        RDB_parse_add_child($$, $6);
+        RDB_parse_add_child($$, $7);
+    }
     | TOK_TABLE_DEE {
         int ret;
 
@@ -1814,19 +1832,7 @@ expression: expression '{' id_list '}' {
             YYERROR;
         }
     }
-    | TOK_TUPLE '{' '}' {
-        $$ = new_parse_inner();
-        if ($$ == NULL) {
-            RDB_parse_del_node($1, _RDB_parse_ecp);
-            RDB_parse_del_node($2, _RDB_parse_ecp);
-            RDB_parse_del_node($3, _RDB_parse_ecp);
-            YYERROR;
-        }
-        RDB_parse_add_child($$, $1);
-        RDB_parse_add_child($$, $2);
-        RDB_parse_add_child($$, $3);
-    } 
-    | TOK_TUPLE '{' ne_tuple_item_list '}' {
+    | TOK_TUPLE '{' tuple_item_commalist '}' {
         $$ = new_parse_inner();
         if ($$ == NULL) {
             RDB_parse_del_node($1, _RDB_parse_ecp);
@@ -1840,7 +1846,7 @@ expression: expression '{' id_list '}' {
         RDB_parse_add_child($$, $3);
         RDB_parse_add_child($$, $4);
     } 
-    | TOK_ARRAY '(' expression_list ')' {
+    | TOK_ARRAY '(' expression_commalist ')' {
         $$ = new_parse_inner();
         if ($$ == NULL) {
             RDB_parse_del_node($1, _RDB_parse_ecp);
@@ -1922,7 +1928,7 @@ expression: expression '{' id_list '}' {
         RDB_parse_add_child($$, $5);
         RDB_parse_add_child($$, $6);
     }
-    | TOK_WITH name_intro_list ':' expression {
+    | TOK_WITH name_intro_commalist ':' expression {
         $$ = new_parse_inner();
         if ($$ == NULL) {
             RDB_parse_del_node($1, _RDB_parse_ecp);
@@ -1942,16 +1948,16 @@ expression: expression '{' id_list '}' {
     | TOK_LIT_BOOLEAN
     ;
 
-id_list: /* empty */ {
+id_commalist: /* empty */ {
         $$ = new_parse_inner();
         if ($$ == NULL) {
             YYERROR;
         }
     }
-    | ne_id_list
+    | ne_id_commalist
     ;
 
-ne_id_list: TOK_ID {
+ne_id_commalist: TOK_ID {
         $$ = new_parse_inner();
         if ($$ == NULL) {
             RDB_parse_del_node($1, _RDB_parse_ecp);
@@ -1959,23 +1965,23 @@ ne_id_list: TOK_ID {
         }
         RDB_parse_add_child($$, $1);
     }
-    | ne_id_list ',' TOK_ID {
+    | ne_id_commalist ',' TOK_ID {
         $$ = $1;
         RDB_parse_add_child($$, $2);
         RDB_parse_add_child($$, $3);
     }
     ;
 
-renaming_list: /* empty */ {
+renaming_commalist: /* empty */ {
         $$ = new_parse_inner();
         if ($$ == NULL) {
             YYERROR;
         }
     }
-    | ne_renaming_list
+    | ne_renaming_commalist
     ;
 
-ne_renaming_list: renaming {
+ne_renaming_commalist: renaming {
         $$ = new_parse_inner();
         if ($$ == NULL) {
             RDB_parse_del_node($1, _RDB_parse_ecp);
@@ -1983,7 +1989,7 @@ ne_renaming_list: renaming {
         }
         RDB_parse_add_child($$, $1);
     }
-    | ne_renaming_list ',' renaming {
+    | ne_renaming_commalist ',' renaming {
         $$ = $1;
         RDB_parse_add_child($$, $2);
         RDB_parse_add_child($$, $3);
@@ -2002,22 +2008,22 @@ renaming: TOK_ID TOK_AS TOK_ID {
         RDB_parse_add_child($$, $2);
         RDB_parse_add_child($$, $3);
     }
-/*
+/* not yet implemented
     | "PREFIX" STRING AS STRING
     | "SUFFIX" STRING AS STRING
 */
     ;
 
-name_intro_list: /* empty */ {
+name_intro_commalist: /* empty */ {
         $$ = new_parse_inner();
         if ($$ == NULL) {
             YYERROR;
         }
     }
-    | ne_name_intro_list
+    | ne_name_intro_commalist
     ;
 
-ne_name_intro_list: name_intro {
+ne_name_intro_commalist: name_intro {
         $$ = new_parse_inner();
         if ($$ == NULL) {
             RDB_parse_del_node($1, _RDB_parse_ecp);
@@ -2025,7 +2031,7 @@ ne_name_intro_list: name_intro {
         }
         RDB_parse_add_child($$, $1);
     }
-    | ne_name_intro_list ',' name_intro {
+    | ne_name_intro_commalist ',' name_intro {
         $$ = $1;
         RDB_parse_add_child($$, $2);
         RDB_parse_add_child($$, $3);
@@ -2046,16 +2052,16 @@ name_intro: expression TOK_AS TOK_ID {
     }
     ;
 
-summarize_add_list: /* empty */ {
+summarize_add_commalist: /* empty */ {
         $$ = new_parse_inner();
         if ($$ == NULL) {
             YYERROR;
         }
     }
-    | ne_summarize_add_list
+    | ne_summarize_add_commalist
     ;
 
-ne_summarize_add_list: summarize_add {
+ne_summarize_add_commalist: summarize_add {
         $$ = new_parse_inner();
         if ($$ == NULL) {
             RDB_parse_del_node($1, _RDB_parse_ecp);
@@ -2063,7 +2069,7 @@ ne_summarize_add_list: summarize_add {
         }
         RDB_parse_add_child($$, $1);
     }
-    | ne_summarize_add_list ',' summarize_add {
+    | ne_summarize_add_commalist ',' summarize_add {
         $$ = $1;
         RDB_parse_add_child($$, $2);
         RDB_parse_add_child($$, $3);
@@ -2116,16 +2122,16 @@ summarize_add: TOK_COUNT '(' ')' TOK_AS TOK_ID {
     }
     ;
 
-wrapping_list: /* empty */ {
+wrapping_commalist: /* empty */ {
         $$ = new_parse_inner();
         if ($$ == NULL) {
             YYERROR;
         }
     }
-    | ne_wrapping_list
+    | ne_wrapping_commalist
     ;
 
-ne_wrapping_list: wrapping {
+ne_wrapping_commalist: wrapping {
         $$ = new_parse_inner();
         if ($$ == NULL) {
             RDB_parse_del_node($1, _RDB_parse_ecp);
@@ -2133,14 +2139,14 @@ ne_wrapping_list: wrapping {
         }
         RDB_parse_add_child($$, $1);
     }
-    | ne_wrapping_list ',' wrapping {
+    | ne_wrapping_commalist ',' wrapping {
         $$ = $1;
         RDB_parse_add_child($$, $2);
         RDB_parse_add_child($$, $3);
     }
     ;
 
-wrapping: '{' id_list '}' TOK_AS TOK_ID {
+wrapping: '{' id_commalist '}' TOK_AS TOK_ID {
         $$ = new_parse_inner();
         if ($$ == NULL) {
             RDB_parse_del_node($1, _RDB_parse_ecp);
@@ -2174,7 +2180,7 @@ count_invocation: TOK_COUNT '(' expression ')' {
     }
     ;
 
-aggr_invocation: aggr '(' ne_expression_list ')' {
+aggr_invocation: aggr '(' ne_expression_commalist ')' {
         $$ = new_parse_inner();
         if ($$ == NULL) {
             RDB_parse_del_node($1, _RDB_parse_ecp);
@@ -2190,7 +2196,7 @@ aggr_invocation: aggr '(' ne_expression_list ')' {
     }
     ;
 
-ro_op_invocation: TOK_ID '(' expression_list ')' {
+ro_op_invocation: TOK_ID '(' expression_commalist ')' {
         $$ = new_parse_inner();
         if ($$ == NULL) {
             RDB_parse_del_node($1, _RDB_parse_ecp);
@@ -2206,7 +2212,7 @@ ro_op_invocation: TOK_ID '(' expression_list ')' {
     }
     ;
 
-ne_expression_list: expression {
+ne_expression_commalist: expression {
         $$ = new_parse_inner();
         if ($$ == NULL) {
             RDB_parse_del_node($1, _RDB_parse_ecp);
@@ -2214,7 +2220,7 @@ ne_expression_list: expression {
         }
         RDB_parse_add_child($$, $1);
     }
-    | ne_expression_list ',' expression {
+    | ne_expression_commalist ',' expression {
         $$ = $1;
 
         RDB_parse_add_child($$, $2);
@@ -2223,7 +2229,16 @@ ne_expression_list: expression {
     ;
 
 
-ne_tuple_item_list: TOK_ID expression {
+tuple_item_commalist: /* empty */ {
+        $$ = new_parse_inner();
+        if ($$ == NULL) {
+            YYERROR;
+        }
+    }
+    | ne_tuple_item_commalist
+    ;
+
+ne_tuple_item_commalist: TOK_ID expression {
         $$ = new_parse_inner();
         if ($$ == NULL) {
             RDB_parse_del_node($1, _RDB_parse_ecp);
@@ -2233,7 +2248,7 @@ ne_tuple_item_list: TOK_ID expression {
         RDB_parse_add_child($$, $1);
         RDB_parse_add_child($$, $2);
     }
-    | ne_tuple_item_list ',' TOK_ID expression {
+    | ne_tuple_item_commalist ',' TOK_ID expression {
         $$ = $1;
         RDB_parse_add_child($$, $2);
         RDB_parse_add_child($$, $3);
@@ -2241,17 +2256,17 @@ ne_tuple_item_list: TOK_ID expression {
     }
     ;
 
-attribute_list: /* empty */ {
+id_type_commalist: /* empty */ {
         $$ = new_parse_inner();
         if ($$ == NULL) {
             YYERROR;
         }
 	}
-	| ne_attribute_list {
+	| ne_id_type_commalist {
 	    $$ = $1;
 	}
 
-ne_attribute_list: TOK_ID type {
+ne_id_type_commalist: TOK_ID type {
         $$ = new_parse_inner();
         if ($$ == NULL) {
             RDB_parse_del_node($1, _RDB_parse_ecp);
@@ -2261,7 +2276,7 @@ ne_attribute_list: TOK_ID type {
         RDB_parse_add_child($$, $1);
         RDB_parse_add_child($$, $2);
     }
-    | ne_attribute_list ',' TOK_ID type {
+    | ne_id_type_commalist ',' TOK_ID type {
         $$ = $1;
         RDB_parse_add_child($$, $2);
         RDB_parse_add_child($$, $3);
@@ -2270,7 +2285,7 @@ ne_attribute_list: TOK_ID type {
     ;
 
 type: TOK_ID
-    | TOK_TUPLE '{' '}' {
+    | TOK_TUPLE '{' '}' { /* !! */
         $$ = new_parse_inner();
         if ($$ == NULL) {
             RDB_parse_del_node($1, _RDB_parse_ecp);
@@ -2282,7 +2297,7 @@ type: TOK_ID
         RDB_parse_add_child($$, $2);
         RDB_parse_add_child($$, $3);
     }
-    | TOK_TUPLE '{' ne_attribute_list '}' {
+    | TOK_TUPLE '{' ne_id_type_commalist '}' {
         $$ = new_parse_inner();
         if ($$ == NULL) {
             RDB_parse_del_node($1, _RDB_parse_ecp);
@@ -2296,7 +2311,7 @@ type: TOK_ID
         RDB_parse_add_child($$, $3);
         RDB_parse_add_child($$, $4);
     }
-    | TOK_RELATION '{' attribute_list '}' {
+    | TOK_RELATION '{' id_type_commalist '}' {
         $$ = new_parse_inner();
         if ($$ == NULL) {
             RDB_parse_del_node($1, _RDB_parse_ecp);
@@ -2367,13 +2382,13 @@ type: TOK_ID
         RDB_parse_add_child($$, $5);
 	}
 
-expression_list: /* empty */ {
+expression_commalist: /* empty */ {
         $$ = new_parse_inner();
         if ($$ == NULL) {
             YYERROR;
         }
     }
-    | ne_expression_list
+    | ne_expression_commalist
     ;
 
 %%

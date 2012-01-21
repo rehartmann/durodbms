@@ -314,7 +314,18 @@ evaluate_ro_op(RDB_expression *exp, RDB_getobjfn *getfnp, void *getdata,
 
         argp = argp->nextp;
     }
-    ret = RDB_call_ro_op_by_name(exp->var.op.name, argc, valpv, ecp, txp, valp);
+
+    if (strcmp(exp->var.op.name, "RELATION") == 0 && exp->typ != NULL) {
+        /* Relation type has been specified - use it for creating the table */
+        RDB_type *typ = RDB_dup_nonscalar_type(exp->typ, ecp);
+        if (typ == NULL) {
+            ret = RDB_ERROR;
+            goto cleanup;
+        }
+        ret = _RDB_op_type_relation(argc, valpv, typ, ecp, txp, valp);
+    } else {
+        ret = RDB_call_ro_op_by_name(exp->var.op.name, argc, valpv, ecp, txp, valp);
+    }
 
 cleanup:
     if (valv != NULL) {

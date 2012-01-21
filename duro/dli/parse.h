@@ -53,7 +53,11 @@ RDB_parse_node *
 RDB_new_parse_expr(RDB_expression *, RDB_object *, RDB_exec_context *);
 
 RDB_expression *
-RDB_parse_node_expr(RDB_parse_node *, RDB_exec_context *);
+RDB_parse_node_expr(RDB_parse_node *, RDB_exec_context *, RDB_transaction *);
+
+RDB_type *
+RDB_parse_node_to_type(RDB_parse_node *, RDB_gettypefn *getfnp, void *arg,
+        RDB_exec_context *, RDB_transaction *);
 
 const char *
 RDB_parse_node_ID(const RDB_parse_node *);

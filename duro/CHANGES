@@ -4,11 +4,13 @@ Summary of Changes for Duro
 
 Changes for Duro 0.15
 
+- Duro D/T now supports headings in relation selectors.
+
+- Duro D/T sets LC_CTYPE and LC_COLLATE locales according to the environment.
+
 - Added RDB_is_selector().
 
 - Removed RDB_tx_env().
-
-- Duro D/T sets LC_CTYPE and LC_COLLATE locales according to the environment.
 
 - Added aggregate operators AND and OR as synonyms for ALL and ANY.
 

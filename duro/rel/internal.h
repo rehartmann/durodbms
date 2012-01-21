@@ -508,9 +508,13 @@ _RDB_del_recmap(RDB_transaction *, RDB_recmap *, RDB_exec_context *);
 int
 _RDB_del_index(RDB_transaction *, RDB_index *, RDB_exec_context *);
 
+int
+_RDB_op_type_relation(int , RDB_object *[], RDB_type *,
+        RDB_exec_context *, RDB_transaction *, RDB_object *);
+
 /* !! prefix */
 int
-_RDB_op_relation(int argc, RDB_object *argv[], const RDB_operator *op,
-        RDB_exec_context *ecp, RDB_transaction *txp, RDB_object *retvalp);
+_RDB_op_relation(int, RDB_object *[], const RDB_operator *,
+        RDB_exec_context *, RDB_transaction *, RDB_object *);
 
 #endif

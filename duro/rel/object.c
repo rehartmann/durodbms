@@ -1348,7 +1348,7 @@ RDB_obj_type(const RDB_object *objp)
  * and tables, do not to carry explicit type information by default.
  * The caller must manage the type; it is not automatically destroyed
  * when *<var>objp</var> is destroyed (except if *<var>objp</var> is embedded in an
- * expression).
+ * expression, in which case the expression takes responsibility for destroying the type).
  */
 void
 RDB_obj_set_typeinfo(RDB_object *objp, RDB_type *typ)

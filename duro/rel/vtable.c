@@ -147,8 +147,12 @@ all_key(RDB_expression *exp, RDB_exec_context *ecp)
 {
     int attrc;
     int i;
+    RDB_string_vec *keyv;
     RDB_type *tbtyp = _RDB_expr_type(exp, NULL, ecp, NULL);
-    RDB_string_vec *keyv = RDB_alloc(sizeof (RDB_string_vec), ecp);
+    if (tbtyp == NULL)
+        return NULL;
+
+    keyv = RDB_alloc(sizeof (RDB_string_vec), ecp);
     if (keyv == NULL)
         return NULL;
 

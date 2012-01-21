@@ -1,7 +1,7 @@
 /*
  * $Id$
  *
- * Copyright (C) 2003-2008 Ren� Hartmann.
+ * Copyright (C) 2003-2012 Rene Hartmann.
  * See the file COPYING for redistribution information.
  */
 
@@ -241,8 +241,10 @@ error:
  * @{
  */
 
-/** Like RDB_init_table(), but uses a relation type instead
- * of a RDB_type argument instead of attribute arguments.
+/**
+ * Like RDB_init_table(), but uses a RDB_type argument
+ * instead of attribute arguments.
+ * If it returns with RDB_OK, <var>rtyp</var> is consumed.
  */
 int
 RDB_init_table_from_type(RDB_object *tbp, const char *name, RDB_type *reltyp,

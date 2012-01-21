@@ -20,14 +20,19 @@ test tuplevar {tuple variables} -body {
         println(t1.i);
         println(s FROM t1);
 
-        var t2 same_type_as(t1);
-        t2 := tup {i 2, s 'bar'};
-        println(cast_as_string(t2.i) || ' ' || t2.s);
-        println(t2 {s});
+		var t2 init tuple{};
+		var t3 init tuple{i 555};
+		println(t3.i);
+
+        var t4 same_type_as(t1);
+        t4 := tup {i 2, s 'bar'};
+        println(cast_as_string(t4.i) || ' ' || t4.s);
+        println(t4 {s});
     }
 } -result {5 foo
 5
 foo
+555
 2 bar
 TUPLE { S 'bar'}
 }
