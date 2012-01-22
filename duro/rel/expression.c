@@ -125,6 +125,57 @@ cleanup:
     return typ;
 }
 
+/**
+ * Replace all occurrences of variable names by expressions
+ * Replcement is performed in-place if possible.
+ */
+int
+RDB_expr_resolve_varname_expr(RDB_expression **expp, const char *varname,
+        RDB_expression *texp, RDB_exec_context *ecp)
+{
+    RDB_expression *argp;
+
+    switch ((*expp)->kind) {
+        case RDB_EX_TUPLE_ATTR:
+        case RDB_EX_GET_COMP:
+            return RDB_expr_resolve_varname_expr(&(*expp)->var.op.args.firstp,
+                    varname, texp, ecp);
+        case RDB_EX_RO_OP:
+            argp = (*expp)->var.op.args.firstp;
+            (*expp)->var.op.args.firstp = NULL;
+            while (argp != NULL) {
+                RDB_expression *nextp = argp->nextp;
+                if (RDB_expr_resolve_varname_expr(&argp, varname, texp, ecp) != RDB_OK)
+                    return RDB_ERROR;
+                RDB_add_arg(*expp, argp);
+                argp = nextp;
+            }
+            return RDB_OK;
+        case RDB_EX_OBJ:
+        case RDB_EX_TBP:
+            return RDB_OK;
+        case RDB_EX_VAR:
+            if (strcmp(varname, RDB_expr_var_name(*expp)) == 0) {
+                RDB_expression *exp = RDB_dup_expr(texp, ecp);
+                if (exp == NULL) {
+                    return RDB_ERROR;
+                }
+
+                exp->nextp = (*expp)->nextp;
+                RDB_drop_expr(*expp, ecp);
+                *expp = exp;
+            }
+            return RDB_OK;
+    }
+    /* Never reached */
+    abort();
+}
+
+/*
+ * Return a new expression in which all variable names for which
+ * *<var>getfnp</var>() or RDB_get_table() return an RDB_object
+ * have been replaced by this object
+ */
 RDB_expression *
 RDB_expr_resolve_varnames(const RDB_expression *exp, RDB_getobjfn *getfnp,
         void *getdata, RDB_exec_context *ecp, RDB_transaction *txp)

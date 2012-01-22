@@ -1,7 +1,7 @@
 /*
  * $Id$
  *
- * Copyright (C) 2003-2011 Rene Hartmann.
+ * Copyright (C) 2003-2012 Rene Hartmann.
  * See the file COPYING for redistribution information.
  */
 
@@ -10,7 +10,6 @@
 #include "rel/tostr.h"
 #include <rel/transform.h>
 #include <rel/rdb.h>
-#include <rel/internal.h>
 
 #include <stdio.h>
 #include <string.h>
@@ -726,53 +725,9 @@ group_node_expr(RDB_parse_node *argnodep,
     return rexp;
 }
 
-static int
-resolve_exprname(RDB_expression **expp, RDB_parse_node *nameintrop,
-        RDB_exec_context *ecp, RDB_transaction *txp)
-{
-    RDB_expression *argp;
-
-    switch ((*expp)->kind) {
-        case RDB_EX_TUPLE_ATTR:
-        case RDB_EX_GET_COMP:
-            return resolve_exprname(&(*expp)->var.op.args.firstp,
-                    nameintrop, ecp, txp);
-        case RDB_EX_RO_OP:
-            argp = (*expp)->var.op.args.firstp;
-            (*expp)->var.op.args.firstp = NULL;
-            while (argp != NULL) {
-                RDB_expression *nextp = argp->nextp;
-                if (resolve_exprname(&argp, nameintrop, ecp, txp) != RDB_OK)
-                    return RDB_ERROR;
-                RDB_add_arg(*expp, argp);
-                argp = nextp;
-            }
-            return RDB_OK;
-        case RDB_EX_OBJ:
-        case RDB_EX_TBP:
-            return RDB_OK;
-        case RDB_EX_VAR:
-			if (strcmp(RDB_expr_var_name(
-			        nameintrop->val.children.firstp->nextp->nextp->exp),
-			        RDB_expr_var_name(*expp)) == 0) {
-                RDB_expression *exp = RDB_parse_node_expr(
-                		nameintrop->val.children.firstp, ecp, txp);
-                if (exp == NULL)
-                    return RDB_ERROR;
-                exp = RDB_dup_expr(exp, ecp);
-                if (exp == NULL) {
-                    return RDB_ERROR;
-                }
-
-                exp->nextp = (*expp)->nextp;
-                RDB_drop_expr(*expp, ecp);
-                *expp = exp;
-            }
-            return RDB_OK;
-    }
-    abort();
-}
-
+/*
+ * Replace occurrences of variable names by corresponding expression
+ */
 static int
 resolve_exprnames(RDB_expression **expp, RDB_parse_node *nameintrop,
         RDB_exec_context *ecp, RDB_transaction *txp) {
@@ -781,7 +736,10 @@ resolve_exprnames(RDB_expression **expp, RDB_parse_node *nameintrop,
 		if (resolve_exprnames(expp, nameintrop->nextp->nextp, ecp, txp) != RDB_OK)
 			return RDB_ERROR;
 	}
-	return resolve_exprname(expp, nameintrop, ecp, txp);
+	return RDB_expr_resolve_varname_expr(expp,
+	            RDB_expr_var_name(nameintrop->val.children.firstp->nextp->nextp->exp),
+	            RDB_parse_node_expr(nameintrop->val.children.firstp, ecp, txp),
+	            ecp);
 }
 
 static RDB_expression *
@@ -1313,8 +1271,8 @@ RDB_parse_node_expr(RDB_parse_node *nodep, RDB_exec_context *ecp,
 const char *
 RDB_parse_node_ID(const RDB_parse_node *nodep)
 {
-    if (nodep->kind == RDB_NODE_EXPR && nodep->exp->kind == RDB_EX_VAR) {
-        return nodep->exp->var.varname;
+    if (nodep->kind == RDB_NODE_EXPR) {
+        return RDB_expr_var_name(nodep->exp);
     }
     return NULL;
 }

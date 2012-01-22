@@ -262,4 +262,11 @@ test getenv {GETENV operator} -setup $DBSETUP -body {
 } -result {DUROTEST
 }
 
+test with {WITH expression} -body {
+    exec $testdir/../../dli/durodt -e dbenv << {
+        println(WITH 100 AS C: WITH 7 AS A, C AS B: A+B);
+    }
+} -result {107
+}
+
 cleanupTests

@@ -818,6 +818,10 @@ RDB_drop_expr(RDB_expression *, RDB_exec_context *);
 RDB_expression *
 RDB_dup_expr(const RDB_expression *, RDB_exec_context *);
 
+int
+RDB_expr_resolve_varname_expr(RDB_expression **, const char *,
+        RDB_expression *, RDB_exec_context *);
+
 RDB_expression *
 RDB_expr_resolve_varnames(const RDB_expression *, RDB_getobjfn *,
         void *, RDB_exec_context *, RDB_transaction *);
