@@ -15,11 +15,11 @@
 
 #include <ltdl.h>
 
-typedef int RDB_ro_op_func(int, RDB_object *[], const RDB_operator *,
+typedef int RDB_ro_op_func(int, RDB_object *[], RDB_operator *,
         RDB_exec_context *, struct RDB_transaction *,
         RDB_object *);
 
-typedef int RDB_upd_op_func(int, RDB_object *[], const RDB_operator *,
+typedef int RDB_upd_op_func(int, RDB_object *[], RDB_operator *,
     RDB_exec_context *, RDB_transaction *);
 
 typedef struct {
@@ -43,8 +43,8 @@ int
 RDB_del_ops(RDB_op_map *, const char *name, RDB_exec_context *);
 
 RDB_operator *
-_RDB_new_ro_op_data(const char *, int, RDB_type *argtv[], RDB_type *,
-        RDB_ro_op_func *, RDB_exec_context *);
+_RDB_new_operator(const char *, int, RDB_type *argtv[], RDB_type *,
+        RDB_exec_context *);
 
 int
 RDB_put_upd_op(RDB_op_map *, const char *, int, RDB_parameter *,

@@ -127,6 +127,8 @@ struct RDB_op_data {
         RDB_upd_op_func *upd_fp;
         RDB_ro_op_func *ro_fp;
     } opfn;
+    void *u_data;
+    RDB_op_cleanup_func *cleanup_fp;
 };
 
 typedef struct {
@@ -414,19 +416,19 @@ _RDB_get_ro_op(const char *name, int argc, RDB_type *argtv[],
                RDB_exec_context *, RDB_transaction *txp);
 
 int
-_RDB_eq_bool(int, RDB_object *[], const RDB_operator *,
+_RDB_eq_bool(int, RDB_object *[], RDB_operator *,
         RDB_exec_context *, RDB_transaction *, RDB_object *);
 
 int
-_RDB_obj_equals(int argc, RDB_object *argv[], const RDB_operator *,
+_RDB_obj_equals(int argc, RDB_object *argv[], RDB_operator *,
         RDB_exec_context *, RDB_transaction *, RDB_object *retvalp);
 
 int
-_RDB_eq_binary(int, RDB_object *[], const RDB_operator *, RDB_exec_context *,
+_RDB_eq_binary(int, RDB_object *[], RDB_operator *, RDB_exec_context *,
         RDB_transaction *, RDB_object *retvalp);
 
 int
-_RDB_obj_not_equals(int argc, RDB_object *argv[], const RDB_operator *,
+_RDB_obj_not_equals(int argc, RDB_object *argv[], RDB_operator *,
         RDB_exec_context *, RDB_transaction *, RDB_object *retvalp);
 
 RDB_int
@@ -479,7 +481,7 @@ int
 _RDB_add_selector(RDB_type *, RDB_exec_context *);
 
 int
-_RDB_sys_select(int argc, RDB_object *argv[], const RDB_operator *,
+_RDB_sys_select(int argc, RDB_object *argv[], RDB_operator *,
         RDB_exec_context *, RDB_transaction *, RDB_object *retvalp);
 
 RDB_object **
@@ -512,9 +514,8 @@ int
 _RDB_op_type_relation(int , RDB_object *[], RDB_type *,
         RDB_exec_context *, RDB_transaction *, RDB_object *);
 
-/* !! prefix */
 int
-_RDB_op_relation(int, RDB_object *[], const RDB_operator *,
+_RDB_op_relation(int, RDB_object *[], RDB_operator *,
         RDB_exec_context *, RDB_transaction *, RDB_object *);
 
 #endif

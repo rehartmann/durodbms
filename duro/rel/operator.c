@@ -58,7 +58,7 @@ This function must have the following signature:
 
 @verbatim
 int
-<sym>(int argc, RDB_object *argv[], const RDB_operator *op,
+<sym>(int argc, RDB_object *argv[], RDB_operator *op,
           RDB_exec_context *ecp, RDB_transaction *txp,
           RDB_object *retvalp)
 @endverbatim
@@ -228,7 +228,7 @@ This function must have the following signature:
 
 @verbatim
 int
-<sym>(int argc, RDB_object *argv[], const RDB_operator *op,
+<sym>(int argc, RDB_object *argv[], RDB_operator *op,
         RDB_exec_context *ecp, RDB_transaction *txp)
 @endverbatim
 
@@ -834,10 +834,33 @@ RDB_operator_iargp(const RDB_operator *op)
     return op->iarg.var.bin.datap;
 }
 
+
+void *
+RDB_op_u_data(const RDB_operator *op)
+{
+    return op->u_data;
+}
+
+void
+RDB_set_op_u_data(RDB_operator *op, void *u_data)
+{
+    op->u_data = u_data;
+}
+
+/**
+ * Set function which is invoked when the *<var>op</var>
+ * is deleted from memory
+ */
+void
+RDB_set_op_cleanup_fn(RDB_operator *op,  RDB_op_cleanup_func *fp)
+{
+    op->cleanup_fp = fp;
+}
+
 /*@}*/
 
 int
-_RDB_eq_bool(int argc, RDB_object *argv[], const RDB_operator *op,
+_RDB_eq_bool(int argc, RDB_object *argv[], RDB_operator *op,
         RDB_exec_context *ecp, RDB_transaction *txp, RDB_object *retvalp)
 {
     RDB_bool_to_obj(retvalp,
@@ -846,7 +869,7 @@ _RDB_eq_bool(int argc, RDB_object *argv[], const RDB_operator *op,
 }
 
 int
-_RDB_eq_binary(int argc, RDB_object *argv[], const RDB_operator *op,
+_RDB_eq_binary(int argc, RDB_object *argv[], RDB_operator *op,
         RDB_exec_context *ecp, RDB_transaction *txp, RDB_object *retvalp)
 {
     if (argv[0]->var.bin.len != argv[1]->var.bin.len)
@@ -861,7 +884,7 @@ _RDB_eq_binary(int argc, RDB_object *argv[], const RDB_operator *op,
 
 /* Default equality operator */
 int
-_RDB_obj_equals(int argc, RDB_object *argv[], const RDB_operator *op,
+_RDB_obj_equals(int argc, RDB_object *argv[], RDB_operator *op,
         RDB_exec_context *ecp, RDB_transaction *txp, RDB_object *retvalp)
 {
     int ret;
@@ -937,7 +960,7 @@ _RDB_obj_equals(int argc, RDB_object *argv[], const RDB_operator *op,
 } 
 
 int
-_RDB_obj_not_equals(int argc, RDB_object *argv[], const RDB_operator *op,
+_RDB_obj_not_equals(int argc, RDB_object *argv[], RDB_operator *op,
         RDB_exec_context *ecp, RDB_transaction *txp, RDB_object *retvalp)
 {
     int ret = _RDB_obj_equals(2, argv, NULL, ecp, txp, retvalp);
@@ -1006,20 +1029,22 @@ _RDB_get_ro_op(const char *name, int argc, RDB_type *argtv[],
         int ret;
 
         if (strcmp(name, "=") == 0) {
-            op = _RDB_new_ro_op_data(name, 2, argtv, &RDB_BOOLEAN, &_RDB_obj_equals, ecp);
+            op = _RDB_new_operator(name, 2, argtv, &RDB_BOOLEAN, ecp);
             if (op == NULL) {
                 return NULL;
             }
+            op->opfn.ro_fp = &_RDB_obj_equals;
             ret = RDB_put_op(&txp->dbp->dbrootp->ro_opmap, op, ecp);
             if (ret != RDB_OK)
                 return NULL;
             return op;
         }
         if (strcmp(name, "<>") == 0) {
-            op = _RDB_new_ro_op_data(name, 2, argtv, &RDB_BOOLEAN, &_RDB_obj_not_equals, ecp);
+            op = _RDB_new_operator(name, 2, argtv, &RDB_BOOLEAN, ecp);
             if (op == NULL) {
                 return NULL;
             }
+            op->opfn.ro_fp = &_RDB_obj_not_equals;
             ret = RDB_put_op(&txp->dbp->dbrootp->ro_opmap, op, ecp);
             if (ret != RDB_OK)
                 return NULL;
@@ -1104,11 +1129,16 @@ _RDB_add_selector(RDB_type *typ, RDB_exec_context *ecp)
         argtv[i] = typ->var.scalar.repv[0].compv[i].typ;
     }
 
-    datap = _RDB_new_ro_op_data(typ->name, argc, argtv, typ, &_RDB_sys_select, ecp);
+    /*
+     * Create RDB_operator and put it into read-only operator map
+     */
+
+    datap = _RDB_new_operator(typ->name, argc, argtv, typ, ecp);
     if (argtv != NULL)
         RDB_free(argtv);
     if (datap == NULL)
         goto error;
+    datap->opfn.ro_fp = &_RDB_sys_select;
 
     if (RDB_put_op(&_RDB_builtin_ro_op_map, datap, ecp) != RDB_OK) {
         goto error;

@@ -45,9 +45,6 @@ typedef struct module {
 
     /* System-defined update operators (not stored), only used in sys_module */
     RDB_op_map upd_op_map;
-
-    RDB_hashmap ro_op_cache;
-    RDB_hashmap upd_op_cache; /* !! unused */
 } module;
 
 typedef struct varmap_node {
@@ -201,27 +198,35 @@ struct op_data {
     char **argnamev;
 };
 
-void
-Duro_exit_interp(void)
+static void
+free_opdata(RDB_operator *op)
 {
     int i;
     RDB_exec_context ec;
-    RDB_hashmap_iter it;
-    char *name;
-    struct op_data *op;
+    struct op_data *opdatap = RDB_op_u_data(op);
 
+    /* Initialize temporary execution context */
     RDB_init_exec_context(&ec);
 
-    RDB_init_hashmap_iter(&it, &root_module.ro_op_cache);
-    while((op = RDB_hashmap_next(&it, &name)) != NULL) {
-        RDB_parse_del_nodelist(op->stmtlistp, &ec);
-        for (i = 0; i < op->argnamec; i++) {
-            RDB_free(op->argnamev[i]);
-        }
-        RDB_free(op->argnamev);
+    /* Delete code */
+    RDB_parse_del_nodelist(opdatap->stmtlistp, &ec);
+
+    RDB_destroy_exec_context(&ec);
+
+    /* Delete arguments */
+
+    for (i = 0; i < opdatap->argnamec; i++) {
+        RDB_free(opdatap->argnamev[i]);
     }
-    RDB_destroy_hashmap_iter(&it);
-    RDB_destroy_hashmap(&root_module.ro_op_cache);
+    RDB_free(opdatap->argnamev);
+}
+
+void
+Duro_exit_interp(void)
+{
+    RDB_exec_context ec;
+
+    RDB_init_exec_context(&ec);
 
     destroy_varmap(&root_module.varmap);
 
@@ -240,7 +245,7 @@ Duro_exit_interp(void)
 }
 
 static int
-exit_op(int argc, RDB_object *argv[], const RDB_operator *op,
+exit_op(int argc, RDB_object *argv[], RDB_operator *op,
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
     Duro_exit_interp();
@@ -248,7 +253,7 @@ exit_op(int argc, RDB_object *argv[], const RDB_operator *op,
 }   
 
 static int
-exit_int_op(int argc, RDB_object *argv[], const RDB_operator *op,
+exit_int_op(int argc, RDB_object *argv[], RDB_operator *op,
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
     Duro_exit_interp();
@@ -256,7 +261,7 @@ exit_int_op(int argc, RDB_object *argv[], const RDB_operator *op,
 }   
 
 static int
-connect_op(int argc, RDB_object *argv[], const RDB_operator *op,
+connect_op(int argc, RDB_object *argv[], RDB_operator *op,
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
     int ret = RDB_open_env(RDB_obj_string(argv[0]), &envp);
@@ -269,7 +274,7 @@ connect_op(int argc, RDB_object *argv[], const RDB_operator *op,
 }
 
 static int
-create_db_op(int argc, RDB_object *argv[], const RDB_operator *op,
+create_db_op(int argc, RDB_object *argv[], RDB_operator *op,
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
     if (envp == NULL) {
@@ -283,7 +288,7 @@ create_db_op(int argc, RDB_object *argv[], const RDB_operator *op,
 }   
 
 static int
-create_env_op(int argc, RDB_object *argv[], const RDB_operator *op,
+create_env_op(int argc, RDB_object *argv[], RDB_operator *op,
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
     int ret;
@@ -306,7 +311,7 @@ create_env_op(int argc, RDB_object *argv[], const RDB_operator *op,
 }   
 
 static int
-system_op(int argc, RDB_object *argv[], const RDB_operator *op,
+system_op(int argc, RDB_object *argv[], RDB_operator *op,
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
     int ret = system(RDB_obj_string(argv[0]));
@@ -319,7 +324,7 @@ system_op(int argc, RDB_object *argv[], const RDB_operator *op,
 }
 
 static int
-load_op(int argc, RDB_object *argv[], const RDB_operator *op,
+load_op(int argc, RDB_object *argv[], RDB_operator *op,
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
     RDB_seq_item *seqitv = NULL;
@@ -462,9 +467,6 @@ Duro_init_exec(RDB_exec_context *ecp, const char *dbname)
         RDB_raise_no_memory(ecp);
         goto error;
     }
-
-    RDB_init_hashmap(&root_module.ro_op_cache, 256);
-    RDB_init_hashmap(&sys_module.ro_op_cache, 256);
 
     return RDB_OK;
 
@@ -2363,7 +2365,7 @@ error:
 }
 
 int
-Duro_dt_invoke_ro_op(int argc, RDB_object *argv[], const RDB_operator *op,
+Duro_dt_invoke_ro_op(int argc, RDB_object *argv[], RDB_operator *op,
         RDB_exec_context *ecp, RDB_transaction *txp,
         RDB_object *retvalp)
 {
@@ -2371,7 +2373,6 @@ Duro_dt_invoke_ro_op(int argc, RDB_object *argv[], const RDB_operator *op,
     int ret;
     varmap_node vars;
     RDB_parse_node *codestmtp, *attrnodep;
-    char **argnamev;
     struct op_data *opdatap;
     return_info retinfo;
     varmap_node *ovarmapp = current_varmapp;
@@ -2382,11 +2383,13 @@ Duro_dt_invoke_ro_op(int argc, RDB_object *argv[], const RDB_operator *op,
         return RDB_ERROR;
     }
 
-    /* Try to get statements from the cache */
-    opdatap = RDB_hashmap_get(&root_module.ro_op_cache, RDB_operator_name(op));
+    /* Try to get cached statements */
+    opdatap = op->u_data;
     if (opdatap == NULL) {
-        /* Not found */
-        argnamev = RDB_alloc(argc * sizeof(char *), ecp);
+        /*
+         * Not available - parse code
+         */
+        char **argnamev = RDB_alloc(argc * sizeof(char *), ecp);
         if (argnamev == NULL)
             return RDB_ERROR;
 
@@ -2407,14 +2410,17 @@ Duro_dt_invoke_ro_op(int argc, RDB_object *argv[], const RDB_operator *op,
         }
 
         opdatap = RDB_alloc(sizeof(struct op_data), ecp);
+        if (opdatap == NULL) {
+            RDB_free(argnamev);
+            return RDB_ERROR;
+        }
         opdatap->stmtlistp = codestmtp->val.children.firstp->nextp->nextp->nextp->nextp
                 ->nextp->nextp->nextp->nextp->val.children.firstp;
         opdatap->argnamec = argc;
         opdatap->argnamev = argnamev;
 
-        RDB_hashmap_put(&root_module.ro_op_cache, RDB_operator_name(op), opdatap);
-    } else {
-        argnamev = opdatap->argnamev;
+        RDB_set_op_u_data(op, opdatap);
+        RDB_set_op_cleanup_fn(op, &free_opdata);
     }
 
     RDB_init_hashmap(&vars.map, 256);
@@ -2422,11 +2428,8 @@ Duro_dt_invoke_ro_op(int argc, RDB_object *argv[], const RDB_operator *op,
     current_varmapp = &vars;
 
     for (i = 0; i < argc; i++) {
-        if (RDB_hashmap_put(&current_varmapp->map, argnamev[i], argv[i]) != RDB_OK) {
-            RDB_parse_del_nodelist(opdatap->stmtlistp, ecp);
-            for (i = 0; i < argc; i++)
-                RDB_free(argnamev[i]);
-            RDB_free(argnamev);
+        if (RDB_hashmap_put(&current_varmapp->map, opdatap->argnamev[i], argv[i])
+                != RDB_OK) {
             RDB_raise_no_memory(ecp);
             return RDB_ERROR;
         }
@@ -2440,7 +2443,7 @@ Duro_dt_invoke_ro_op(int argc, RDB_object *argv[], const RDB_operator *op,
      * Keep arguments from being destroyed
      */
     for (i = 0; i < argc; i++) {
-        if (RDB_hashmap_put(&current_varmapp->map, argnamev[i], NULL) != RDB_OK) {
+        if (RDB_hashmap_put(&current_varmapp->map, opdatap->argnamev[i], NULL) != RDB_OK) {
             RDB_raise_no_memory(ecp);
             return RDB_ERROR;
         }
@@ -2466,7 +2469,7 @@ Duro_dt_invoke_ro_op(int argc, RDB_object *argv[], const RDB_operator *op,
 }
 
 int
-Duro_dt_invoke_update_op(int argc, RDB_object *argv[], const RDB_operator *op,
+Duro_dt_invoke_update_op(int argc, RDB_object *argv[], RDB_operator *op,
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
     int ret;
@@ -2474,9 +2477,8 @@ Duro_dt_invoke_update_op(int argc, RDB_object *argv[], const RDB_operator *op,
     varmap_node vars;
     RDB_parse_node *codestmtp;
     RDB_parse_node *attrnodep;
-    RDB_parse_node *stmtlistp;
-    char **argnamev;
     varmap_node *ovarmapp = current_varmapp;
+    struct op_data *opdatap;
 
     if (interrupted) {
         interrupted = 0;
@@ -2484,54 +2486,70 @@ Duro_dt_invoke_update_op(int argc, RDB_object *argv[], const RDB_operator *op,
         return RDB_ERROR;
     }
 
-    argnamev = RDB_alloc(argc * sizeof(char *), ecp);
-    if (argnamev == NULL)
-        return RDB_ERROR;
+    /* Try to get cached statements */
+    opdatap = RDB_op_u_data(op);
+    if (opdatap == NULL) {
+        char **argnamev = RDB_alloc(argc * sizeof(char *), ecp);
+        if (argnamev == NULL)
+            return RDB_ERROR;
 
-    codestmtp = RDB_parse_stmt_string((char *) RDB_operator_iargp(op), ecp);
-    if (codestmtp == NULL) {
-        RDB_free(argnamev);
-        return RDB_ERROR;
+        /*
+         * Not available - parse cod
+         */
+        codestmtp = RDB_parse_stmt_string((char *) RDB_operator_iargp(op), ecp);
+        if (codestmtp == NULL) {
+            RDB_free(argnamev);
+            return RDB_ERROR;
+        }
+
+        attrnodep = codestmtp->val.children.firstp->nextp->nextp->nextp->val.children.firstp;
+        for (i = 0; i < argc; i++) {
+            /* Skip comma */
+            if (i > 0)
+                attrnodep = attrnodep->nextp;
+            argnamev[i] = (char *) RDB_expr_var_name(RDB_parse_node_expr(attrnodep, ecp,
+                    txnp != NULL ? &txnp->tx : NULL));
+            attrnodep = attrnodep->nextp->nextp;
+        }
+
+        opdatap = RDB_alloc(sizeof(struct op_data), ecp);
+        if (opdatap == NULL) {
+            RDB_free(argnamev);
+            return RDB_ERROR;
+        }
+        opdatap->stmtlistp = codestmtp->val.children.firstp->nextp->nextp->nextp->nextp
+                    ->nextp->nextp->nextp->nextp->nextp->nextp->val.children.firstp;
+        opdatap->argnamec = argc;
+        opdatap->argnamev = argnamev;
+
+        RDB_set_op_u_data(op, opdatap);
+        RDB_set_op_cleanup_fn(op, &free_opdata);
     }
-
-    attrnodep = codestmtp->val.children.firstp->nextp->nextp->nextp->val.children.firstp;
-    for (i = 0; i < argc; i++) {
-        /* Skip comma */
-        if (i > 0)
-            attrnodep = attrnodep->nextp;
-        argnamev[i] = (char *) RDB_expr_var_name(RDB_parse_node_expr(attrnodep, ecp,
-                txnp != NULL ? &txnp->tx : NULL));
-        attrnodep = attrnodep->nextp->nextp;
-    }
-
-    stmtlistp = codestmtp->val.children.firstp->nextp->nextp->nextp->nextp
-                ->nextp->nextp->nextp->nextp->nextp->nextp->val.children.firstp;
 
     RDB_init_hashmap(&vars.map, 256);
     vars.parentp = NULL;
     current_varmapp = &vars;
 
     for (i = 0; i < argc; i++) {
-        if (RDB_hashmap_put(&current_varmapp->map, argnamev[i],
+        if (RDB_hashmap_put(&current_varmapp->map, opdatap->argnamev[i],
                 argv[i]) != RDB_OK) {
             RDB_raise_no_memory(ecp);
             return RDB_ERROR;
         }
     }
 
-    ret = exec_stmts(stmtlistp, ecp, NULL);
-    RDB_parse_del_nodelist(stmtlistp, ecp);
+    ret = exec_stmts(opdatap->stmtlistp, ecp, NULL);
 
     /*
      * Keep arguments from being destroyed
      */
     for (i = 0; i < argc; i++) {
-        if (RDB_hashmap_put(&current_varmapp->map, argnamev[i], NULL) != RDB_OK) {
+        if (RDB_hashmap_put(&current_varmapp->map, opdatap->argnamev[i], NULL)
+                != RDB_OK) {
             RDB_raise_no_memory(ecp);
             return RDB_ERROR;
         }
     }
-    RDB_free(argnamev);
 
     current_varmapp = ovarmapp;
     destroy_varmap(&vars.map);

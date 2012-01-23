@@ -2370,9 +2370,10 @@ _RDB_cat_get_ro_op(const char *name, int argc, RDB_type *argtv[],
         goto error;
     }
 
-    op = _RDB_new_ro_op_data(name, argc, argtv, rtyp, (RDB_ro_op_func *) NULL, ecp);
+    op = _RDB_new_operator(name, argc, argtv, rtyp, ecp);
     if (op == NULL)
         goto error;
+    op->opfn.ro_fp = NULL;
 
     RDB_init_obj(&op->iarg);
 
@@ -2484,44 +2485,18 @@ _RDB_cat_get_upd_op(const char *name, int argc, RDB_type *argtv[],
     if (ret != RDB_OK)
         goto error;
 
-    op = RDB_alloc(sizeof (RDB_operator), ecp);
+    /* Allocate RDB_operator */
+    op = _RDB_new_operator(name, argc, argtv, NULL, ecp);
     if (op == NULL) {
         goto error;
     }
+    op->opfn.ro_fp = NULL;
 
     RDB_init_obj(&op->iarg);
-
-    op->paramv = NULL;
 
     ret = RDB_copy_obj(&op->iarg, RDB_tuple_get(&tpl, "IARG"), ecp);
     if (ret != RDB_OK)
         goto error;
-
-    op->paramc = argc;
-    if (argc > 0) {
-        op->paramv = RDB_alloc(sizeof (RDB_parameter) * argc, ecp);
-        if (op->paramv == NULL) {
-            goto error;
-        }
-
-        for (i = 0; i < argc; i++) {
-            op->paramv[i].typ = NULL;
-        }
-        for (i = 0; i < argc; i++) {
-            op->paramv[i].typ = RDB_dup_nonscalar_type(argtv[i], ecp);
-            if (op->paramv[i].typ == NULL) {
-                goto error;
-            }
-        }
-    } else {
-        op->paramv = NULL;
-    }
-
-    op->name = RDB_dup_str(name);
-    if (op->name == NULL) {
-        RDB_raise_no_memory(ecp);
-        goto error;
-    }
 
     updvobjp = RDB_tuple_get(&tpl, "UPDV");
     for (i = 0; i < argc; i++) {
@@ -2543,7 +2518,6 @@ _RDB_cat_get_upd_op(const char *name, int argc, RDB_type *argtv[],
         RDB_raise_resource_not_found(libname, ecp);
         goto error;
     }
-    op->rtyp = NULL;
 
     RDB_destroy_obj(&tpl, ecp);
 

@@ -167,8 +167,8 @@ RDB_del_ops(RDB_op_map *opmap, const char *name, RDB_exec_context *ecp)
 }
 
 RDB_operator *
-_RDB_new_ro_op_data(const char *name, int argc, RDB_type *argtv[], RDB_type *rtyp,
-        RDB_ro_op_func *funcp, RDB_exec_context *ecp)
+_RDB_new_operator(const char *name, int argc, RDB_type *argtv[], RDB_type *rtyp,
+        RDB_exec_context *ecp)
 {
     int i;
     RDB_operator *op = RDB_alloc(sizeof (RDB_operator), ecp);
@@ -205,7 +205,8 @@ _RDB_new_ro_op_data(const char *name, int argc, RDB_type *argtv[], RDB_type *rty
 
     op->rtyp = rtyp;
     op->modhdl = NULL;
-    op->opfn.ro_fp = funcp;
+    op->u_data = NULL;
+    op->cleanup_fp = NULL;
 
     return op;
 
@@ -263,6 +264,7 @@ int
 RDB_free_op_data(RDB_operator *op, RDB_exec_context *ecp)
 {
     int i;
+    int ret;
 
     if (op->rtyp != NULL && !RDB_type_is_scalar(op->rtyp))
         RDB_drop_type(op->rtyp, ecp, NULL);
@@ -276,6 +278,9 @@ RDB_free_op_data(RDB_operator *op, RDB_exec_context *ecp)
     }
     RDB_free(op->paramv);
     RDB_free(op->name);
+    if (op->cleanup_fp != NULL)
+        (*op->cleanup_fp) (op);
+    ret = RDB_destroy_obj(&op->iarg, ecp);
     RDB_free(op);
-    return RDB_destroy_obj(&op->iarg, ecp);
+    return ret;
 }

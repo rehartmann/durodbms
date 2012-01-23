@@ -191,6 +191,8 @@ test defupdop {user-defined update operators} -setup $DBSETUP -body {
         op(a, b);
         println("a = " || a || ", b = " || cast_as_string(b));
 
+        op(a, b);
+
         drop var a;
 
         commit;

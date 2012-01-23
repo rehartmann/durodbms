@@ -198,6 +198,8 @@ typedef struct RDB_parameter {
     RDB_bool update;
 } RDB_parameter;
 
+typedef void RDB_op_cleanup_func(RDB_operator *);
+
 #if defined (_WIN32) && !defined (NO_DLL_IMPORT)
 #define _RDB_EXTERN_VAR __declspec(dllimport)
 #else
@@ -875,6 +877,15 @@ RDB_operator_iarglen(const RDB_operator *);
 
 void *
 RDB_operator_iargp(const RDB_operator *);
+
+void *
+RDB_op_u_data(const RDB_operator *);
+
+void
+RDB_set_op_u_data(RDB_operator *, void *);
+
+void
+RDB_set_op_cleanup_fn(RDB_operator *,  RDB_op_cleanup_func*);
 
 int
 RDB_create_constraint(const char *name, RDB_expression *,

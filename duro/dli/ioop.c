@@ -107,7 +107,7 @@ static int get_fileno(const RDB_object *objp, RDB_exec_context *ecp)
 
 static int
 op_println_iostream_string(int argc, RDB_object *argv[],
-        const RDB_operator *op, RDB_exec_context *ecp, RDB_transaction *txp)
+        RDB_operator *op, RDB_exec_context *ecp, RDB_transaction *txp)
 {
     /* Get file number from arg #1 */
     int fno = get_fileno(argv[0], ecp);
@@ -124,7 +124,7 @@ op_println_iostream_string(int argc, RDB_object *argv[],
 
 static int
 op_println_iostream_int(int argc, RDB_object *argv[],
-        const RDB_operator *op, RDB_exec_context *ecp, RDB_transaction *txp)
+        RDB_operator *op, RDB_exec_context *ecp, RDB_transaction *txp)
 {
     /* Get file number from arg #1 */
     int fno = get_fileno(argv[0], ecp);
@@ -141,7 +141,7 @@ op_println_iostream_int(int argc, RDB_object *argv[],
 
 static int
 op_println_iostream_float(int argc, RDB_object *argv[],
-        const RDB_operator *op, RDB_exec_context *ecp, RDB_transaction *txp)
+        RDB_operator *op, RDB_exec_context *ecp, RDB_transaction *txp)
 {
     /* Get file number from arg #1 */
     int fno = get_fileno(argv[0], ecp);
@@ -158,7 +158,7 @@ op_println_iostream_float(int argc, RDB_object *argv[],
 
 static int
 op_println_iostream_bool(int argc, RDB_object *argv[],
-        const RDB_operator *op, RDB_exec_context *ecp, RDB_transaction *txp)
+        RDB_operator *op, RDB_exec_context *ecp, RDB_transaction *txp)
 {
     /* Get file number from arg #1 */
     int fno = get_fileno(argv[0], ecp);
@@ -196,7 +196,7 @@ print_nonscalar(FILE *fp, const RDB_object *objp,
 }
 
 static int
-op_print_string(int argc, RDB_object *argv[], const RDB_operator *op,
+op_print_string(int argc, RDB_object *argv[], RDB_operator *op,
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
     if (fputs(RDB_obj_string(argv[0]), stdout) == EOF) {
@@ -207,7 +207,7 @@ op_print_string(int argc, RDB_object *argv[], const RDB_operator *op,
 }
 
 static int
-op_print_int(int argc, RDB_object *argv[], const RDB_operator *op,
+op_print_int(int argc, RDB_object *argv[], RDB_operator *op,
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
     if (printf("%d", (int) RDB_obj_int(argv[0])) < 0) {
@@ -218,7 +218,7 @@ op_print_int(int argc, RDB_object *argv[], const RDB_operator *op,
 }
 
 static int
-op_print_float(int argc, RDB_object *argv[], const RDB_operator *op,
+op_print_float(int argc, RDB_object *argv[], RDB_operator *op,
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
     if (printf("%f", (double) RDB_obj_float(argv[0])) < 0) {
@@ -229,7 +229,7 @@ op_print_float(int argc, RDB_object *argv[], const RDB_operator *op,
 }
 
 static int
-op_print_bool(int argc, RDB_object *argv[], const RDB_operator *op,
+op_print_bool(int argc, RDB_object *argv[], RDB_operator *op,
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
     if (fputs(RDB_obj_bool(argv[0]) ? "TRUE" : "FALSE", stdout) == EOF) {
@@ -240,7 +240,7 @@ op_print_bool(int argc, RDB_object *argv[], const RDB_operator *op,
 }
 
 static int
-op_print_nonscalar(int argc, RDB_object *argv[], const RDB_operator *op,
+op_print_nonscalar(int argc, RDB_object *argv[], RDB_operator *op,
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
     RDB_object *dataobjp;
@@ -270,7 +270,7 @@ op_print_nonscalar(int argc, RDB_object *argv[], const RDB_operator *op,
 }
 
 static int
-op_print_iostream_string(int argc, RDB_object *argv[], const RDB_operator *op,
+op_print_iostream_string(int argc, RDB_object *argv[], RDB_operator *op,
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
     /* Get file number from arg #1 */
@@ -287,7 +287,7 @@ op_print_iostream_string(int argc, RDB_object *argv[], const RDB_operator *op,
 }
 
 static int
-op_print_iostream_int(int argc, RDB_object *argv[], const RDB_operator *op,
+op_print_iostream_int(int argc, RDB_object *argv[], RDB_operator *op,
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
     /* Get file number from arg #1 */
@@ -304,7 +304,7 @@ op_print_iostream_int(int argc, RDB_object *argv[], const RDB_operator *op,
 }
 
 static int
-op_print_iostream_float(int argc, RDB_object *argv[], const RDB_operator *op,
+op_print_iostream_float(int argc, RDB_object *argv[], RDB_operator *op,
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
     /* Get file number from arg #1 */
@@ -321,7 +321,7 @@ op_print_iostream_float(int argc, RDB_object *argv[], const RDB_operator *op,
 }
 
 static int
-op_print_iostream_bool(int argc, RDB_object *argv[], const RDB_operator *op,
+op_print_iostream_bool(int argc, RDB_object *argv[], RDB_operator *op,
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
     /* Get file number from arg #1 */
@@ -338,7 +338,7 @@ op_print_iostream_bool(int argc, RDB_object *argv[], const RDB_operator *op,
 }
 
 static int
-op_println_string(int argc, RDB_object *argv[], const RDB_operator *op,
+op_println_string(int argc, RDB_object *argv[], RDB_operator *op,
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
     RDB_object *callargv[3];
@@ -350,7 +350,7 @@ op_println_string(int argc, RDB_object *argv[], const RDB_operator *op,
 }
 
 static int
-op_println_int(int argc, RDB_object *argv[], const RDB_operator *op,
+op_println_int(int argc, RDB_object *argv[], RDB_operator *op,
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
     if (printf("%d\n", (int) RDB_obj_int(argv[0])) < 0) {
@@ -361,7 +361,7 @@ op_println_int(int argc, RDB_object *argv[], const RDB_operator *op,
 }
 
 static int
-op_println_float(int argc, RDB_object *argv[], const RDB_operator *op,
+op_println_float(int argc, RDB_object *argv[], RDB_operator *op,
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
     RDB_object *callargv[3];
@@ -375,7 +375,7 @@ op_println_float(int argc, RDB_object *argv[], const RDB_operator *op,
 }
 
 static int
-op_println_bool(int argc, RDB_object *argv[], const RDB_operator *op,
+op_println_bool(int argc, RDB_object *argv[], RDB_operator *op,
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
     RDB_object *callargv[3];
@@ -389,7 +389,7 @@ op_println_bool(int argc, RDB_object *argv[], const RDB_operator *op,
 }
 
 static int
-op_println_nonscalar(int argc, RDB_object *argv[], const RDB_operator *op,
+op_println_nonscalar(int argc, RDB_object *argv[], RDB_operator *op,
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
     RDB_object *dataobjp;
@@ -462,14 +462,14 @@ readln(FILE *fp, RDB_object *linep, RDB_exec_context *ecp,
 }
 
 static int
-op_readln(int argc, RDB_object *argv[], const RDB_operator *op,
+op_readln(int argc, RDB_object *argv[], RDB_operator *op,
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
     return readln(stdin, argv[0], ecp, txp);
 }
 
 static int
-op_readln_iostream(int argc, RDB_object *argv[], const RDB_operator *op,
+op_readln_iostream(int argc, RDB_object *argv[], RDB_operator *op,
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
     /* Get file number from arg #1 */
@@ -482,7 +482,7 @@ op_readln_iostream(int argc, RDB_object *argv[], const RDB_operator *op,
 }
 
 static int
-op_close(int argc, RDB_object *argv[], const RDB_operator *op,
+op_close(int argc, RDB_object *argv[], RDB_operator *op,
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
     /* Get file number from arg*/
@@ -524,7 +524,7 @@ init_iostream(RDB_object *iosp, int fno, RDB_exec_context *ecp)
 }    
 
 static int
-op_open(int argc, RDB_object *argv[], const RDB_operator *op,
+op_open(int argc, RDB_object *argv[], RDB_operator *op,
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
     int fno;

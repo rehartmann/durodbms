@@ -669,7 +669,7 @@ OPERATOR WRAP(R <em>RELATION</em>, SRC_ATTRS ARRAY OF STRING, DST_ATTR STRING ..
  * The following functions implement the built-in operators
  */
 static int
-neq_bool(int argc, RDB_object *argv[], const RDB_operator *op,
+neq_bool(int argc, RDB_object *argv[], RDB_operator *op,
         RDB_exec_context *ecp, RDB_transaction *txp, RDB_object *retvalp)
 {
     RDB_bool_to_obj(retvalp,
@@ -678,7 +678,7 @@ neq_bool(int argc, RDB_object *argv[], const RDB_operator *op,
 }
 
 static int
-neq_binary(int argc, RDB_object *argv[], const RDB_operator *op,
+neq_binary(int argc, RDB_object *argv[], RDB_operator *op,
         RDB_exec_context *ecp, RDB_transaction *txp, RDB_object *retvalp)
 {
     if (argv[0]->var.bin.len != argv[1]->var.bin.len)
@@ -692,7 +692,7 @@ neq_binary(int argc, RDB_object *argv[], const RDB_operator *op,
 }
 
 static int 
-op_vtable(int argc, RDB_object *argv[], const RDB_operator *op,
+op_vtable(int argc, RDB_object *argv[], RDB_operator *op,
         RDB_exec_context *ecp, RDB_transaction *txp, RDB_object *retvalp)
 {
     int i;
@@ -736,7 +736,7 @@ op_vtable(int argc, RDB_object *argv[], const RDB_operator *op,
 }
 
 static int
-op_tuple(int argc, RDB_object *argv[], const RDB_operator *op,
+op_tuple(int argc, RDB_object *argv[], RDB_operator *op,
         RDB_exec_context *ecp, RDB_transaction *txp, RDB_object *retvalp)
 {
     int i;
@@ -781,7 +781,7 @@ _RDB_op_type_relation(int argc, RDB_object *argv[], RDB_type *reltyp,
 }
 
 int
-_RDB_op_relation(int argc, RDB_object *argv[], const RDB_operator *op,
+_RDB_op_relation(int argc, RDB_object *argv[], RDB_operator *op,
         RDB_exec_context *ecp, RDB_transaction *txp, RDB_object *retvalp)
 {
     int ret;
@@ -819,7 +819,7 @@ _RDB_op_relation(int argc, RDB_object *argv[], const RDB_operator *op,
 }
 
 static int
-op_array(int argc, RDB_object *argv[], const RDB_operator *op,
+op_array(int argc, RDB_object *argv[], RDB_operator *op,
         RDB_exec_context *ecp, RDB_transaction *txp, RDB_object *retvalp)
 {
     int i;
@@ -837,14 +837,14 @@ op_array(int argc, RDB_object *argv[], const RDB_operator *op,
 }
 
 static int
-op_vtable_wrapfn(int argc, RDB_object *argv[], const RDB_operator *op,
+op_vtable_wrapfn(int argc, RDB_object *argv[], RDB_operator *op,
         RDB_exec_context *ecp, RDB_transaction *txp, RDB_object *retvalp)
 {
     return op_vtable(argc, argv, op, ecp, txp, retvalp);
 }
 
 static int
-op_project(int argc, RDB_object *argv[], const RDB_operator *op,
+op_project(int argc, RDB_object *argv[], RDB_operator *op,
         RDB_exec_context *ecp, RDB_transaction *txp, RDB_object *retvalp)
 {
     int i;
@@ -863,7 +863,7 @@ op_project(int argc, RDB_object *argv[], const RDB_operator *op,
 }
 
 static int
-op_remove(int argc, RDB_object *argv[], const RDB_operator *op,
+op_remove(int argc, RDB_object *argv[], RDB_operator *op,
         RDB_exec_context *ecp, RDB_transaction *txp, RDB_object *retvalp)
 {
     int i;
@@ -888,7 +888,7 @@ op_remove(int argc, RDB_object *argv[], const RDB_operator *op,
 }
 
 static int
-op_rename(int argc, RDB_object *argv[], const RDB_operator *op,
+op_rename(int argc, RDB_object *argv[], RDB_operator *op,
         RDB_exec_context *ecp, RDB_transaction *txp, RDB_object *retvalp)
 {
     int i;
@@ -921,7 +921,7 @@ op_rename(int argc, RDB_object *argv[], const RDB_operator *op,
 }
 
 static int
-op_join(int argc, RDB_object *argv[], const RDB_operator *op,
+op_join(int argc, RDB_object *argv[], RDB_operator *op,
         RDB_exec_context *ecp, RDB_transaction *txp, RDB_object *retvalp)
 {    
     if (argc != 2) {
@@ -936,7 +936,7 @@ op_join(int argc, RDB_object *argv[], const RDB_operator *op,
 }
 
 static int
-op_wrap(int argc, RDB_object *argv[], const RDB_operator *op,
+op_wrap(int argc, RDB_object *argv[], RDB_operator *op,
         RDB_exec_context *ecp, RDB_transaction *txp, RDB_object *retvalp)
 {
     int ret;
@@ -996,7 +996,7 @@ cleanup:
 }
 
 static int
-op_unwrap(int argc, RDB_object *argv[], const RDB_operator *op,
+op_unwrap(int argc, RDB_object *argv[], RDB_operator *op,
         RDB_exec_context *ecp, RDB_transaction *txp, RDB_object *retvalp)
 {
     int ret;
@@ -1026,7 +1026,7 @@ op_unwrap(int argc, RDB_object *argv[], const RDB_operator *op,
 }
 
 static int
-op_subscript(int argc, RDB_object *argv[], const RDB_operator *op,
+op_subscript(int argc, RDB_object *argv[], RDB_operator *op,
         RDB_exec_context *ecp, RDB_transaction *txp, RDB_object *retvalp)
 {
     RDB_object *objp = RDB_array_get(argv[0], RDB_obj_int(argv[1]), ecp);
@@ -1037,7 +1037,7 @@ op_subscript(int argc, RDB_object *argv[], const RDB_operator *op,
 }
 
 static int
-cast_as_integer_float(int argc, RDB_object *argv[], const RDB_operator *op,
+cast_as_integer_float(int argc, RDB_object *argv[], RDB_operator *op,
         RDB_exec_context *ecp, RDB_transaction *txp, RDB_object *retvalp)
 {
     RDB_int_to_obj(retvalp, (RDB_int) argv[0]->var.float_val);
@@ -1045,7 +1045,7 @@ cast_as_integer_float(int argc, RDB_object *argv[], const RDB_operator *op,
 }
 
 static int
-cast_as_integer_string(int argc, RDB_object *argv[], const RDB_operator *op,
+cast_as_integer_string(int argc, RDB_object *argv[], RDB_operator *op,
         RDB_exec_context *ecp, RDB_transaction *txp, RDB_object *retvalp)
 {
     char *endp;
@@ -1060,7 +1060,7 @@ cast_as_integer_string(int argc, RDB_object *argv[], const RDB_operator *op,
 }
 
 static int
-cast_as_float_int(int argc, RDB_object *argv[], const RDB_operator *op,
+cast_as_float_int(int argc, RDB_object *argv[], RDB_operator *op,
         RDB_exec_context *ecp, RDB_transaction *txp, RDB_object *retvalp)
 {
     RDB_float_to_obj(retvalp, (RDB_float) argv[0]->var.int_val);
@@ -1068,7 +1068,7 @@ cast_as_float_int(int argc, RDB_object *argv[], const RDB_operator *op,
 }
 
 static int
-cast_as_float_string(int argc, RDB_object *argv[], const RDB_operator *op,
+cast_as_float_string(int argc, RDB_object *argv[], RDB_operator *op,
         RDB_exec_context *ecp, RDB_transaction *txp, RDB_object *retvalp)
 {
     char *endp;
@@ -1083,14 +1083,14 @@ cast_as_float_string(int argc, RDB_object *argv[], const RDB_operator *op,
 }
 
 static int
-cast_as_string(int argc, RDB_object *argv[], const RDB_operator *op,
+cast_as_string(int argc, RDB_object *argv[], RDB_operator *op,
         RDB_exec_context *ecp, RDB_transaction *txp, RDB_object *retvalp)
 {
     return RDB_obj_to_string(retvalp, argv[0], ecp);
 }
 
 static int
-length_string(int argc, RDB_object *argv[], const RDB_operator *op,
+length_string(int argc, RDB_object *argv[], RDB_operator *op,
         RDB_exec_context *ecp, RDB_transaction *txp, RDB_object *retvalp)
 {
     size_t len = mbstowcs(NULL, argv[0]->var.bin.datap, 0);
@@ -1104,7 +1104,7 @@ length_string(int argc, RDB_object *argv[], const RDB_operator *op,
 }
 
 static int
-substring(int argc, RDB_object *argv[], const RDB_operator *op,
+substring(int argc, RDB_object *argv[], RDB_operator *op,
         RDB_exec_context *ecp, RDB_transaction *txp, RDB_object *retvalp)
 {
     int start = argv[1]->var.int_val;
@@ -1164,7 +1164,7 @@ substring(int argc, RDB_object *argv[], const RDB_operator *op,
 }
 
 static int
-concat(int argc, RDB_object *argv[], const RDB_operator *op,
+concat(int argc, RDB_object *argv[], RDB_operator *op,
         RDB_exec_context *ecp, RDB_transaction *txp, RDB_object *retvalp)
 {
     size_t s1len = strlen(argv[0]->var.bin.datap);
@@ -1197,7 +1197,7 @@ concat(int argc, RDB_object *argv[], const RDB_operator *op,
 }
 
 static int
-matches(int argc, RDB_object *argv[], const RDB_operator *op,
+matches(int argc, RDB_object *argv[], RDB_operator *op,
         RDB_exec_context *ecp, RDB_transaction *txp, RDB_object *retvalp)
 {
     regex_t reg;
@@ -1216,7 +1216,7 @@ matches(int argc, RDB_object *argv[], const RDB_operator *op,
 }
 
 static int
-and(int argc, RDB_object *argv[], const RDB_operator *op,
+and(int argc, RDB_object *argv[], RDB_operator *op,
         RDB_exec_context *ecp, RDB_transaction *txp, RDB_object *retvalp)
 {
     RDB_bool_to_obj(retvalp, (RDB_bool)
@@ -1225,7 +1225,7 @@ and(int argc, RDB_object *argv[], const RDB_operator *op,
 }
 
 static int
-or(int argc, RDB_object *argv[], const RDB_operator *op,
+or(int argc, RDB_object *argv[], RDB_operator *op,
         RDB_exec_context *ecp, RDB_transaction *txp, RDB_object *retvalp)
 {
     RDB_bool_to_obj(retvalp, (RDB_bool)
@@ -1234,7 +1234,7 @@ or(int argc, RDB_object *argv[], const RDB_operator *op,
 }
 
 static int
-xor(int argc, RDB_object *argv[], const RDB_operator *op,
+xor(int argc, RDB_object *argv[], RDB_operator *op,
         RDB_exec_context *ecp, RDB_transaction *txp, RDB_object *retvalp)
 {
     RDB_bool_to_obj(retvalp, (RDB_bool)
@@ -1243,7 +1243,7 @@ xor(int argc, RDB_object *argv[], const RDB_operator *op,
 }
 
 static int
-not(int argc, RDB_object *argv[], const RDB_operator *op,
+not(int argc, RDB_object *argv[], RDB_operator *op,
         RDB_exec_context *ecp, RDB_transaction *txp, RDB_object *retvalp)
 {
     RDB_bool_to_obj(retvalp, (RDB_bool) !argv[0]->var.bool_val);
@@ -1251,7 +1251,7 @@ not(int argc, RDB_object *argv[], const RDB_operator *op,
 }
 
 static int
-lt(int argc, RDB_object *argv[], const RDB_operator *op,
+lt(int argc, RDB_object *argv[], RDB_operator *op,
         RDB_exec_context *ecp, RDB_transaction *txp, RDB_object *retvalp)
 {
     RDB_object retval;
@@ -1269,7 +1269,7 @@ lt(int argc, RDB_object *argv[], const RDB_operator *op,
 }
 
 static int
-let(int argc, RDB_object *argv[], const RDB_operator *op,
+let(int argc, RDB_object *argv[], RDB_operator *op,
         RDB_exec_context *ecp, RDB_transaction *txp, RDB_object *retvalp)
 {
     RDB_object retval;
@@ -1287,7 +1287,7 @@ let(int argc, RDB_object *argv[], const RDB_operator *op,
 }
 
 static int
-gt(int argc, RDB_object *argv[], const RDB_operator *op,
+gt(int argc, RDB_object *argv[], RDB_operator *op,
         RDB_exec_context *ecp, RDB_transaction *txp, RDB_object *retvalp)
 {
     RDB_object retval;
@@ -1305,7 +1305,7 @@ gt(int argc, RDB_object *argv[], const RDB_operator *op,
 }
 
 static int
-get(int argc, RDB_object *argv[], const RDB_operator *op,
+get(int argc, RDB_object *argv[], RDB_operator *op,
         RDB_exec_context *ecp, RDB_transaction *txp, RDB_object *retvalp)
 {
     RDB_object retval;
@@ -1323,7 +1323,7 @@ get(int argc, RDB_object *argv[], const RDB_operator *op,
 }
 
 static int
-negate_int(int argc, RDB_object *argv[], const RDB_operator *op,
+negate_int(int argc, RDB_object *argv[], RDB_operator *op,
         RDB_exec_context *ecp, RDB_transaction *txp, RDB_object *retvalp)
 {
     RDB_int_to_obj(retvalp, -argv[0]->var.int_val);
@@ -1331,7 +1331,7 @@ negate_int(int argc, RDB_object *argv[], const RDB_operator *op,
 }
 
 static int
-negate_float(int argc, RDB_object *argv[], const RDB_operator *op,
+negate_float(int argc, RDB_object *argv[], RDB_operator *op,
         RDB_exec_context *ecp, RDB_transaction *txp, RDB_object *retvalp)
 {
     RDB_float_to_obj(retvalp, -argv[0]->var.float_val);
@@ -1339,7 +1339,7 @@ negate_float(int argc, RDB_object *argv[], const RDB_operator *op,
 }
 
 static int
-add_int(int argc, RDB_object *argv[], const RDB_operator *op,
+add_int(int argc, RDB_object *argv[], RDB_operator *op,
         RDB_exec_context *ecp, RDB_transaction *txp, RDB_object *retvalp)
 {
     RDB_int_to_obj(retvalp, argv[0]->var.int_val + argv[1]->var.int_val);
@@ -1347,7 +1347,7 @@ add_int(int argc, RDB_object *argv[], const RDB_operator *op,
 }
 
 static int
-add_float(int argc, RDB_object *argv[], const RDB_operator *op,
+add_float(int argc, RDB_object *argv[], RDB_operator *op,
         RDB_exec_context *ecp, RDB_transaction *txp, RDB_object *retvalp)
 {
     RDB_float_to_obj(retvalp,
@@ -1356,7 +1356,7 @@ add_float(int argc, RDB_object *argv[], const RDB_operator *op,
 }
 
 static int
-subtract_int(int argc, RDB_object *argv[], const RDB_operator *op,
+subtract_int(int argc, RDB_object *argv[], RDB_operator *op,
         RDB_exec_context *ecp, RDB_transaction *txp, RDB_object *retvalp)
 {
     RDB_int_to_obj(retvalp, argv[0]->var.int_val - argv[1]->var.int_val);
@@ -1364,7 +1364,7 @@ subtract_int(int argc, RDB_object *argv[], const RDB_operator *op,
 }
 
 static int
-subtract_float(int argc, RDB_object *argv[], const RDB_operator *op,
+subtract_float(int argc, RDB_object *argv[], RDB_operator *op,
         RDB_exec_context *ecp, RDB_transaction *txp, RDB_object *retvalp)
 {
     RDB_float_to_obj(retvalp,
@@ -1373,7 +1373,7 @@ subtract_float(int argc, RDB_object *argv[], const RDB_operator *op,
 }
 
 static int
-multiply_int(int argc, RDB_object *argv[], const RDB_operator *op,
+multiply_int(int argc, RDB_object *argv[], RDB_operator *op,
         RDB_exec_context *ecp, RDB_transaction *txp, RDB_object *retvalp)
 {
     RDB_int_to_obj(retvalp, argv[0]->var.int_val * argv[1]->var.int_val);
@@ -1381,7 +1381,7 @@ multiply_int(int argc, RDB_object *argv[], const RDB_operator *op,
 }
 
 static int
-multiply_float(int argc, RDB_object *argv[], const RDB_operator *op,
+multiply_float(int argc, RDB_object *argv[], RDB_operator *op,
         RDB_exec_context *ecp, RDB_transaction *txp, RDB_object *retvalp)
 {
     RDB_float_to_obj(retvalp,
@@ -1390,7 +1390,7 @@ multiply_float(int argc, RDB_object *argv[], const RDB_operator *op,
 }
 
 static int
-divide_int(int argc, RDB_object *argv[], const RDB_operator *op,
+divide_int(int argc, RDB_object *argv[], RDB_operator *op,
         RDB_exec_context *ecp, RDB_transaction *txp, RDB_object *retvalp)
 {
     if (argv[1]->var.int_val == 0) {
@@ -1402,7 +1402,7 @@ divide_int(int argc, RDB_object *argv[], const RDB_operator *op,
 }
 
 static int
-divide_float(int argc, RDB_object *argv[], const RDB_operator *op,
+divide_float(int argc, RDB_object *argv[], RDB_operator *op,
         RDB_exec_context *ecp, RDB_transaction *txp, RDB_object *retvalp)
 {
     if (argv[1]->var.float_val == 0.0) {
@@ -1415,7 +1415,7 @@ divide_float(int argc, RDB_object *argv[], const RDB_operator *op,
 }
 
 static int
-length_array(int argc, RDB_object *argv[], const RDB_operator *op,
+length_array(int argc, RDB_object *argv[], RDB_operator *op,
         RDB_exec_context *ecp, RDB_transaction *txp, RDB_object *retvalp)
 {
     RDB_int len;
@@ -1439,7 +1439,7 @@ length_array(int argc, RDB_object *argv[], const RDB_operator *op,
 }
 
 static int
-op_getenv(int argc, RDB_object *argv[], const RDB_operator *op,
+op_getenv(int argc, RDB_object *argv[], RDB_operator *op,
         RDB_exec_context *ecp, RDB_transaction *txp, RDB_object *retvalp)
 {
     char *valp = getenv(RDB_obj_string(argv[0]));
@@ -1457,9 +1457,10 @@ put_builtin_ro_op(const char *name, int argc, RDB_type **argtv, RDB_type *rtyp,
         RDB_ro_op_func *fp, RDB_exec_context *ecp)
 {
     int ret;
-    RDB_operator *datap = _RDB_new_ro_op_data(name, argc, argtv, rtyp, fp, ecp);
+    RDB_operator *datap = _RDB_new_operator(name, argc, argtv, rtyp, ecp);
     if (datap == NULL)
         return RDB_ERROR;
+    datap->opfn.ro_fp = fp;
 
     ret =  RDB_put_op(&_RDB_builtin_ro_op_map, datap, ecp);
     if (ret != RDB_OK) {
