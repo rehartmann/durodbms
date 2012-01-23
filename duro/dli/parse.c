@@ -6,6 +6,7 @@
  */
 
 #include "parse.h"
+#include "parsenode.h"
 #include "exparse.h"
 #include "rel/tostr.h"
 #include <rel/transform.h>
@@ -36,9 +37,6 @@ _RDB_parse_start_exp(void);
 void
 _RDB_parse_start_stmt(void);
 
-const char *
-_RDB_token_name(int tok);
-
 void
 yyerror(char *errtxt)
 {
@@ -51,186 +49,6 @@ yyerror(char *errtxt)
         RDB_raise_syntax(bufp, _RDB_parse_ecp);
         RDB_free(bufp);
     }
-}
-
-RDB_parse_node *
-RDB_new_parse_token(int tok, RDB_object *wcp, RDB_exec_context *ecp)
-{
-    RDB_parse_node *pnodep = RDB_alloc(sizeof (RDB_parse_node), ecp);
-    if (pnodep == NULL)
-        return NULL;
-    pnodep->kind = RDB_NODE_TOK;
-    pnodep->exp = NULL;
-    pnodep->val.token = tok;
-    pnodep->whitecommp = wcp;
-    return pnodep;
-}
-
-RDB_parse_node *
-RDB_new_parse_inner(RDB_exec_context *ecp)
-{
-    RDB_parse_node *pnodep = RDB_alloc(sizeof (RDB_parse_node), ecp);
-    if (pnodep == NULL)
-        return NULL;
-    pnodep->kind = RDB_NODE_INNER;
-    pnodep->exp = NULL;
-    pnodep->val.children.firstp = pnodep->val.children.lastp = NULL;
-    pnodep->whitecommp = NULL;
-    return pnodep;
-}
-
-RDB_parse_node *
-RDB_new_parse_expr(RDB_expression *exp, RDB_object *wcp, RDB_exec_context *ecp)
-{
-    RDB_parse_node *pnodep = RDB_alloc(sizeof (RDB_parse_node), ecp);
-    if (pnodep == NULL)
-        return NULL;
-    pnodep->kind = RDB_NODE_EXPR;
-    pnodep->exp = exp;
-    pnodep->whitecommp = wcp;
-    return pnodep;
-}
-
-static RDB_expression *
-binop_node_expr(RDB_parse_node *nodep, RDB_exec_context *ecp, RDB_transaction *txp)
-{
-    RDB_expression *argp;
-    RDB_parse_node *firstp = nodep->val.children.firstp;
-    char opbuf[] = " ";
-    char *opnamep;
-
-    /* Binary operator */
-    switch (firstp->nextp->val.token) {
-        case '+':
-        case '-':
-        case '*':
-        case '/':
-        case '>':
-        case '<':
-        case '=':
-            opbuf[0] = firstp->nextp->val.token;
-            opnamep = opbuf;
-            break;
-        case TOK_AND:
-            opnamep = "AND";
-            break;
-        case TOK_OR:
-            opnamep = "OR";
-            break;
-        case TOK_XOR:
-            opnamep = "XOR";
-            break;
-        case TOK_CONCAT:
-            opnamep = "||";
-            break;
-        case TOK_MATCHES:
-            opnamep = "MATCHES";
-            break;
-        case TOK_IN:
-            opnamep = "IN";
-            break;
-        case TOK_SUBSET_OF:
-            opnamep = "SUBSET_OF";
-            break;
-        case TOK_NE:
-            opnamep = "<>";
-            break;
-        case TOK_LE:
-            opnamep = "<=";
-            break;
-        case TOK_GE:
-            opnamep = ">=";
-            break;
-        case TOK_WHERE:
-            opnamep = "WHERE";
-            break;
-        case TOK_UNION:
-            opnamep = "UNION";
-            break;
-        case TOK_INTERSECT:
-            opnamep = "INTERSECT";
-            break;
-        case TOK_MINUS:
-            opnamep = "MINUS";
-            break;
-        case TOK_SEMIMINUS:
-            opnamep = "SEMIMINUS";
-            break;
-        case TOK_SEMIJOIN:
-            opnamep = "SEMIJOIN";
-            break;
-        case TOK_JOIN:
-            opnamep = "JOIN";
-            break;
-        case TOK_UNGROUP:
-            nodep->exp = RDB_ro_op("UNGROUP", ecp);
-            if (nodep->exp == NULL)
-                goto error;
-            argp = RDB_parse_node_expr(firstp, ecp, txp);
-            if (argp == NULL)
-                goto error;
-            argp = RDB_dup_expr(argp, ecp);
-            if (argp == NULL)
-                goto error;
-            RDB_add_arg(nodep->exp, argp);
-
-            argp = RDB_string_to_expr(
-                    RDB_expr_var_name(RDB_parse_node_expr(
-                            firstp->nextp->nextp, ecp, txp)),
-                    ecp);
-            RDB_add_arg(nodep->exp, argp);
-            return nodep->exp;
-        case TOK_FROM:
-            argp = RDB_parse_node_expr(firstp->nextp->nextp, ecp, txp);
-            if (argp == NULL)
-                goto error;
-            argp = RDB_dup_expr(argp, ecp);
-            if (argp == NULL)
-                goto error;
-            nodep->exp = RDB_tuple_attr(argp,
-                    RDB_expr_var_name(RDB_parse_node_expr(firstp, ecp, txp)), ecp);
-            return nodep->exp;
-        case '.':
-            argp = RDB_parse_node_expr(firstp, ecp, txp);
-            if (argp == NULL)
-                goto error;
-            argp = RDB_dup_expr(argp, ecp);
-            if (argp == NULL)
-                goto error;
-            nodep->exp = RDB_tuple_attr(argp,
-                    RDB_expr_var_name(RDB_parse_node_expr(
-                            firstp->nextp->nextp, ecp, txp)), ecp);
-            return nodep->exp;
-        default:
-            RDB_raise_internal("invalid binary operator", ecp);
-            return NULL;
-    }
-    nodep->exp = RDB_ro_op(opnamep, ecp);
-    if (nodep->exp == NULL)
-        goto error;
-    argp = RDB_parse_node_expr(firstp, ecp, txp);
-    if (argp == NULL)
-        goto error;
-    argp = RDB_dup_expr(argp, ecp);
-    if (argp == NULL)
-        goto error;
-    RDB_add_arg(nodep->exp, argp);
-
-    argp = RDB_parse_node_expr(firstp->nextp->nextp, ecp, txp);
-    if (argp == NULL)
-        goto error;
-    argp = RDB_dup_expr(argp, ecp);
-    if (argp == NULL)
-        goto error;
-    RDB_add_arg(nodep->exp, argp);
-    return nodep->exp;
-
-error:
-    if (nodep->exp != NULL) {
-        RDB_drop_expr(nodep->exp, ecp);
-        nodep->exp = NULL;
-    }
-    return NULL;
 }
 
 static int
@@ -887,6 +705,35 @@ add_arg_list(RDB_expression *exp, RDB_parse_node *nodep,
 	return RDB_OK;
 }
 
+static int
+add_tuple_item_list(RDB_expression *exp, RDB_parse_node *nodep,
+RDB_exec_context *ecp, RDB_transaction *txp)
+{
+    RDB_parse_node *itemp = nodep->val.children.firstp;
+    if (itemp == NULL)
+        return RDB_OK;
+    for(;;) {
+        RDB_expression *argp = RDB_string_to_expr(RDB_expr_var_name(itemp->exp), ecp);
+        if (argp == NULL)
+            return RDB_ERROR;
+        RDB_add_arg(exp, argp);
+
+        argp = RDB_parse_node_expr(itemp->nextp, ecp, txp);
+        if (argp == NULL)
+            return RDB_ERROR;
+        argp = RDB_dup_expr(argp, ecp);
+        if (argp == NULL)
+            return RDB_ERROR;
+        RDB_add_arg(exp, argp);
+
+        if (itemp->nextp->nextp == NULL)
+            break;
+
+        itemp = itemp->nextp->nextp->nextp;
+    }
+    return RDB_OK;
+}
+
 /**
  * Parse heading and convert it to a tuple or relation type,
  * depending on <var>rel</var>.
@@ -942,6 +789,358 @@ cleanup:
     }
     RDB_free(attrv);
     return typ;
+}
+
+static RDB_expression *
+binop_node_expr(RDB_parse_node *nodep, RDB_exec_context *ecp, RDB_transaction *txp)
+{
+    RDB_expression *argp;
+    RDB_parse_node *firstp = nodep->val.children.firstp;
+    char opbuf[] = " ";
+    char *opnamep;
+
+    /* Binary operator */
+    switch (firstp->nextp->val.token) {
+        case '+':
+        case '-':
+        case '*':
+        case '/':
+        case '>':
+        case '<':
+        case '=':
+            opbuf[0] = firstp->nextp->val.token;
+            opnamep = opbuf;
+            break;
+        case TOK_AND:
+            opnamep = "AND";
+            break;
+        case TOK_OR:
+            opnamep = "OR";
+            break;
+        case TOK_XOR:
+            opnamep = "XOR";
+            break;
+        case TOK_CONCAT:
+            opnamep = "||";
+            break;
+        case TOK_MATCHES:
+            opnamep = "MATCHES";
+            break;
+        case TOK_IN:
+            opnamep = "IN";
+            break;
+        case TOK_SUBSET_OF:
+            opnamep = "SUBSET_OF";
+            break;
+        case TOK_NE:
+            opnamep = "<>";
+            break;
+        case TOK_LE:
+            opnamep = "<=";
+            break;
+        case TOK_GE:
+            opnamep = ">=";
+            break;
+        case TOK_WHERE:
+            opnamep = "WHERE";
+            break;
+        case TOK_UNION:
+            opnamep = "UNION";
+            break;
+        case TOK_INTERSECT:
+            opnamep = "INTERSECT";
+            break;
+        case TOK_MINUS:
+            opnamep = "MINUS";
+            break;
+        case TOK_SEMIMINUS:
+            opnamep = "SEMIMINUS";
+            break;
+        case TOK_SEMIJOIN:
+            opnamep = "SEMIJOIN";
+            break;
+        case TOK_JOIN:
+            opnamep = "JOIN";
+            break;
+        case TOK_UNGROUP:
+            nodep->exp = RDB_ro_op("UNGROUP", ecp);
+            if (nodep->exp == NULL)
+                goto error;
+            argp = RDB_parse_node_expr(firstp, ecp, txp);
+            if (argp == NULL)
+                goto error;
+            argp = RDB_dup_expr(argp, ecp);
+            if (argp == NULL)
+                goto error;
+            RDB_add_arg(nodep->exp, argp);
+
+            argp = RDB_string_to_expr(
+                    RDB_expr_var_name(RDB_parse_node_expr(
+                            firstp->nextp->nextp, ecp, txp)),
+                    ecp);
+            RDB_add_arg(nodep->exp, argp);
+            return nodep->exp;
+        case TOK_FROM:
+            argp = RDB_parse_node_expr(firstp->nextp->nextp, ecp, txp);
+            if (argp == NULL)
+                goto error;
+            argp = RDB_dup_expr(argp, ecp);
+            if (argp == NULL)
+                goto error;
+            nodep->exp = RDB_tuple_attr(argp,
+                    RDB_expr_var_name(RDB_parse_node_expr(firstp, ecp, txp)), ecp);
+            return nodep->exp;
+        case '.':
+            argp = RDB_parse_node_expr(firstp, ecp, txp);
+            if (argp == NULL)
+                goto error;
+            argp = RDB_dup_expr(argp, ecp);
+            if (argp == NULL)
+                goto error;
+            nodep->exp = RDB_tuple_attr(argp,
+                    RDB_expr_var_name(RDB_parse_node_expr(
+                            firstp->nextp->nextp, ecp, txp)), ecp);
+            return nodep->exp;
+        default:
+            RDB_raise_internal("invalid binary operator", ecp);
+            return NULL;
+    }
+    nodep->exp = RDB_ro_op(opnamep, ecp);
+    if (nodep->exp == NULL)
+        goto error;
+    argp = RDB_parse_node_expr(firstp, ecp, txp);
+    if (argp == NULL)
+        goto error;
+    argp = RDB_dup_expr(argp, ecp);
+    if (argp == NULL)
+        goto error;
+    RDB_add_arg(nodep->exp, argp);
+
+    argp = RDB_parse_node_expr(firstp->nextp->nextp, ecp, txp);
+    if (argp == NULL)
+        goto error;
+    argp = RDB_dup_expr(argp, ecp);
+    if (argp == NULL)
+        goto error;
+    RDB_add_arg(nodep->exp, argp);
+    return nodep->exp;
+
+error:
+    if (nodep->exp != NULL) {
+        RDB_drop_expr(nodep->exp, ecp);
+        nodep->exp = NULL;
+    }
+    return NULL;
+}
+
+static RDB_expression *
+inner_node_expr(RDB_parse_node *nodep, RDB_exec_context *ecp, RDB_transaction *txp)
+{
+    RDB_parse_node *firstp = nodep->val.children.firstp;
+    RDB_parse_node *id_list_nodep;
+    RDB_expression *argp;
+
+    if (firstp->kind == RDB_NODE_TOK) {
+        switch (firstp->val.token) {
+            case TOK_TUPLE:
+                if (firstp->nextp->kind == RDB_NODE_TOK
+                        && firstp->nextp->val.token == TOK_FROM) {
+                    nodep->exp = RDB_ro_op("TO_TUPLE", ecp);
+                    argp = RDB_parse_node_expr(firstp->nextp->nextp, ecp, txp);
+                    if (argp == NULL)
+                        return NULL;
+                    argp = RDB_dup_expr(argp, ecp);
+                    if (argp == NULL)
+                        return NULL;
+                    RDB_add_arg(nodep->exp, argp);
+                    return nodep->exp;
+                }
+                nodep->exp = RDB_ro_op("TUPLE", ecp);
+                if (nodep->exp == NULL)
+                    return NULL;
+
+                if (firstp->nextp->nextp->kind == RDB_NODE_INNER) {
+                    if (add_tuple_item_list(nodep->exp,
+                            firstp->nextp->nextp, ecp, txp)
+                                    != RDB_OK) {
+                        RDB_drop_expr(nodep->exp, ecp);
+                        return nodep->exp = NULL;
+                    }
+                }
+                return nodep->exp;
+            case TOK_RELATION:
+                nodep->exp = RDB_ro_op("RELATION", ecp);
+                if (nodep->exp == NULL)
+                    return NULL;
+
+                if (firstp->nextp->nextp->nextp->nextp != NULL) {
+                    /*
+                     * Parse heading
+                     */
+                    RDB_type *reltyp = parse_heading(firstp->nextp->nextp,
+                            RDB_TRUE, ecp, txp);
+                    if (reltyp == NULL) {
+                        RDB_drop_expr(nodep->exp, ecp);
+                        return nodep->exp = NULL;
+                    }
+                    RDB_set_expr_type(nodep->exp, reltyp);
+                    if (add_arg_list(nodep->exp, firstp->nextp->nextp->nextp->nextp->nextp, ecp, txp)
+                            != RDB_OK) {
+                        RDB_drop_expr(nodep->exp, ecp);
+                        return nodep->exp = NULL;
+                    }
+                    return nodep->exp;
+                } else {
+                    if (add_arg_list(nodep->exp, firstp->nextp->nextp, ecp, txp) != RDB_OK) {
+                        RDB_drop_expr(nodep->exp, ecp);
+                        return nodep->exp = NULL;
+                    }
+                }
+                return nodep->exp;
+            case TOK_ARRAY:
+                nodep->exp = RDB_ro_op("ARRAY", ecp);
+                if (nodep->exp == NULL)
+                    return NULL;
+
+                assert(firstp->nextp->nextp->kind == RDB_NODE_INNER);
+                if (add_arg_list(nodep->exp, firstp->nextp->nextp, ecp, txp) != RDB_OK)
+                    return NULL;
+                return nodep->exp;
+            case TOK_TABLE_DEE:
+            case TOK_TABLE_DUM:
+                return nodep->exp;
+            case '-':
+                return unop_expr("-", nodep, firstp->nextp, ecp, txp);
+            case '+':
+                argp = RDB_parse_node_expr(firstp->nextp, ecp, txp);
+                if (argp == NULL)
+                    return NULL;
+                nodep->exp = RDB_dup_expr(argp, ecp);
+                return nodep->exp;
+            case TOK_NOT:
+                return unop_expr("NOT", nodep, firstp->nextp, ecp, txp);
+            case TOK_IF:
+                return if_expr(nodep, firstp->nextp, ecp, txp);
+            case TOK_COUNT:
+                nodep->exp = RDB_ro_op("COUNT", ecp);
+                if (nodep->exp == NULL)
+                    return NULL;
+
+                argp = RDB_parse_node_expr(firstp->nextp->nextp, ecp, txp);
+                if (argp == NULL)
+                    return NULL;
+                argp = RDB_dup_expr(argp, ecp);
+                if (argp == NULL)
+                    return NULL;
+                RDB_add_arg(nodep->exp, argp);
+                return nodep->exp;
+            case TOK_SUM:
+            case TOK_AVG:
+            case TOK_MAX:
+            case TOK_MIN:
+            case TOK_AND:
+            case TOK_ALL:
+            case TOK_OR:
+            case TOK_ANY:
+                return nodep->exp = aggr_node_expr(firstp->val.token,
+                        firstp->nextp->nextp, ecp, txp);
+            case TOK_EXTEND:
+                return nodep->exp = extend_node_expr(firstp->nextp, ecp, txp);
+            case TOK_SUMMARIZE:
+                return nodep->exp = summarize_node_expr(firstp->nextp, ecp, txp);
+            case TOK_UPDATE:
+                return nodep->exp = update_node_expr(firstp->nextp, ecp, txp);
+            case '(':
+                argp = RDB_parse_node_expr(firstp->nextp, ecp, txp);
+                if (argp == NULL)
+                    return NULL;
+                return nodep->exp = RDB_dup_expr(argp, ecp);
+            case TOK_WITH:
+                return nodep->exp = with_node_expr(firstp->nextp, ecp, txp);
+            default:
+                RDB_raise_syntax("invalid token", ecp);
+                return NULL;
+        }
+    }
+
+    if (firstp->nextp != NULL && firstp->nextp->kind == RDB_NODE_TOK
+            && firstp->nextp->val.token == '{') {
+        if (firstp->nextp->nextp != NULL
+                && firstp->nextp->nextp->kind == RDB_NODE_TOK
+                && firstp->nextp->nextp->val.token == TOK_ALL
+                && firstp->nextp->nextp->nextp != NULL
+                && firstp->nextp->nextp->nextp->kind == RDB_NODE_TOK
+                && firstp->nextp->nextp->nextp->val.token == TOK_BUT) {
+            nodep->exp = RDB_ro_op("REMOVE", ecp);
+            if (nodep->exp == NULL)
+                return NULL;
+            id_list_nodep = firstp->nextp->nextp->nextp->nextp->val.children.firstp;
+        } else {
+            nodep->exp = RDB_ro_op("PROJECT", ecp);
+            if (nodep->exp == NULL)
+                return NULL;
+            id_list_nodep = firstp->nextp->nextp->val.children.firstp;
+        }
+        argp = RDB_parse_node_expr(firstp, ecp, txp);
+        if (argp == NULL)
+            return NULL;
+        argp = RDB_dup_expr(argp, ecp);
+        if (argp == NULL)
+            return NULL;
+        RDB_add_arg(nodep->exp, argp);
+
+        if (id_list_nodep != NULL) {
+            if (add_id_list(nodep->exp, id_list_nodep, ecp, txp) != RDB_OK)
+                return NULL;
+        }
+        return nodep->exp;
+    }
+
+    if (firstp->nextp != NULL) {
+        if (firstp->nextp->kind == RDB_NODE_TOK) {
+            switch (firstp->nextp->val.token) {
+                case '(':
+                    return nodep->exp = ro_op_node_expr(firstp, ecp, txp);
+                 case TOK_RENAME:
+                    return nodep->exp = rename_node_expr(firstp, ecp, txp);
+                 case TOK_WRAP:
+                    return nodep->exp = wrap_node_expr(firstp, ecp, txp);
+                 case TOK_UNWRAP:
+                    return nodep->exp = unwrap_node_expr(firstp, ecp, txp);
+                 case TOK_GROUP:
+                    return nodep->exp = group_node_expr(firstp, ecp, txp);
+                 case TOK_DIVIDEBY:
+                    return nodep->exp = divide_node_expr(firstp, ecp, txp);
+                 case '[':
+                    return nodep->exp = subscript_node_expr(firstp, ecp, txp);
+            }
+        }
+        if (firstp->nextp->nextp != NULL
+                && firstp->nextp->nextp->nextp == NULL
+                && firstp->nextp->kind == RDB_NODE_TOK) {
+            return binop_node_expr(nodep, ecp, txp);
+        }
+    }
+
+    RDB_raise_internal("cannot convert parse tree to expression", ecp);
+    return NULL;
+}
+
+RDB_expression *
+RDB_parse_node_expr(RDB_parse_node *nodep, RDB_exec_context *ecp,
+        RDB_transaction *txp)
+{
+    if (nodep->exp != NULL)
+        return nodep->exp;
+
+    assert(nodep->kind != RDB_NODE_TOK);
+
+    if (nodep->kind == RDB_NODE_INNER) {
+        if (inner_node_expr(nodep, ecp, txp) == NULL)
+            return NULL;
+    }
+
+    return nodep->exp;
 }
 
 static RDB_type *
@@ -1026,337 +1225,6 @@ RDB_parse_node_to_type(RDB_parse_node *nodep, RDB_gettypefn *getfnp, void *getar
 
     RDB_raise_not_supported("unsupported type", ecp);
     return NULL;
-}
-
-static int
-add_tuple_item_list(RDB_expression *exp, RDB_parse_node *nodep,
-RDB_exec_context *ecp, RDB_transaction *txp)
-{
-    RDB_parse_node *itemp = nodep->val.children.firstp;
-    if (itemp == NULL)
-        return RDB_OK;
-    for(;;) {
-        RDB_expression *argp = RDB_string_to_expr(RDB_expr_var_name(itemp->exp), ecp);
-        if (argp == NULL)
-            return RDB_ERROR;
-        RDB_add_arg(exp, argp);
-
-        argp = RDB_parse_node_expr(itemp->nextp, ecp, txp);
-        if (argp == NULL)
-            return RDB_ERROR;
-        argp = RDB_dup_expr(argp, ecp);
-        if (argp == NULL)
-            return RDB_ERROR;
-        RDB_add_arg(exp, argp);
-
-        if (itemp->nextp->nextp == NULL)
-            break;
-
-        itemp = itemp->nextp->nextp->nextp;
-    }
-    return RDB_OK;
-}
-
-
-static RDB_expression *
-inner_node_expr(RDB_parse_node *nodep, RDB_exec_context *ecp, RDB_transaction *txp)
-{
-    RDB_parse_node *firstp = nodep->val.children.firstp;
-    RDB_parse_node *id_list_nodep;
-    RDB_expression *argp;
-
-    if (firstp->kind == RDB_NODE_TOK) {
-        switch (firstp->val.token) {
-            case TOK_TUPLE:
-                if (firstp->nextp->kind == RDB_NODE_TOK
-                        && firstp->nextp->val.token == TOK_FROM) {
-                    nodep->exp = RDB_ro_op("TO_TUPLE", ecp);
-                    argp = RDB_parse_node_expr(firstp->nextp->nextp, ecp, txp);
-                    if (argp == NULL)
-                        return NULL;
-                    argp = RDB_dup_expr(argp, ecp);
-                    if (argp == NULL)
-                        return NULL;
-                    RDB_add_arg(nodep->exp, argp);
-                    return nodep->exp;
-                }
-                nodep->exp = RDB_ro_op("TUPLE", ecp);
-                if (nodep->exp == NULL)
-                    return NULL;
-    
-                if (firstp->nextp->nextp->kind == RDB_NODE_INNER) {
-                    if (add_tuple_item_list(nodep->exp,
-                            firstp->nextp->nextp, ecp, txp)
-                                    != RDB_OK) {
-                        RDB_drop_expr(nodep->exp, ecp);
-                        return nodep->exp = NULL;
-                    }
-                }
-                return nodep->exp;
-            case TOK_RELATION:
-                nodep->exp = RDB_ro_op("RELATION", ecp);
-                if (nodep->exp == NULL)
-                    return NULL;
-
-                if (firstp->nextp->nextp->nextp->nextp != NULL) {
-                    /*
-                     * Parse heading
-                     */
-                    RDB_type *reltyp = parse_heading(firstp->nextp->nextp,
-                            RDB_TRUE, ecp, txp);
-                    if (reltyp == NULL) {
-                        RDB_drop_expr(nodep->exp, ecp);
-                        return nodep->exp = NULL;
-                    }
-                    RDB_set_expr_type(nodep->exp, reltyp);
-                    if (add_arg_list(nodep->exp, firstp->nextp->nextp->nextp->nextp->nextp, ecp, txp)
-                            != RDB_OK) {
-                        RDB_drop_expr(nodep->exp, ecp);
-                        return nodep->exp = NULL;
-                    }
-                    return nodep->exp;
-                } else {
-                    if (add_arg_list(nodep->exp, firstp->nextp->nextp, ecp, txp) != RDB_OK) {
-                        RDB_drop_expr(nodep->exp, ecp);
-                        return nodep->exp = NULL;
-                    }
-                }
-                return nodep->exp;
-            case TOK_ARRAY:
-                nodep->exp = RDB_ro_op("ARRAY", ecp);
-                if (nodep->exp == NULL)
-                    return NULL;
-
-                assert(firstp->nextp->nextp->kind == RDB_NODE_INNER);
-				if (add_arg_list(nodep->exp, firstp->nextp->nextp, ecp, txp) != RDB_OK)
-					return NULL;
-                return nodep->exp;
-            case TOK_TABLE_DEE:
-            case TOK_TABLE_DUM:
-                return nodep->exp;
-            case '-':
-                return unop_expr("-", nodep, firstp->nextp, ecp, txp);
-            case '+':
-                argp = RDB_parse_node_expr(firstp->nextp, ecp, txp);
-                if (argp == NULL)
-                    return NULL;        
-                nodep->exp = RDB_dup_expr(argp, ecp);
-                return nodep->exp;
-            case TOK_NOT:
-                return unop_expr("NOT", nodep, firstp->nextp, ecp, txp);
-            case TOK_IF:
-                return if_expr(nodep, firstp->nextp, ecp, txp);
-            case TOK_COUNT:
-                nodep->exp = RDB_ro_op("COUNT", ecp);
-                if (nodep->exp == NULL)
-                    return NULL;
-
-                argp = RDB_parse_node_expr(firstp->nextp->nextp, ecp, txp);
-                if (argp == NULL)
-                    return NULL;        
-                argp = RDB_dup_expr(argp, ecp);
-                if (argp == NULL)
-                    return NULL;
-                RDB_add_arg(nodep->exp, argp);
-                return nodep->exp;
-            case TOK_SUM:
-            case TOK_AVG:
-            case TOK_MAX:
-            case TOK_MIN:
-            case TOK_AND:
-            case TOK_ALL:
-            case TOK_OR:
-            case TOK_ANY:
-                return nodep->exp = aggr_node_expr(firstp->val.token,
-                        firstp->nextp->nextp, ecp, txp);
-            case TOK_EXTEND:
-                return nodep->exp = extend_node_expr(firstp->nextp, ecp, txp);
-            case TOK_SUMMARIZE:
-                return nodep->exp = summarize_node_expr(firstp->nextp, ecp, txp);
-            case TOK_UPDATE:
-                return nodep->exp = update_node_expr(firstp->nextp, ecp, txp);
-            case '(':
-                argp = RDB_parse_node_expr(firstp->nextp, ecp, txp);
-                if (argp == NULL)
-                    return NULL;
-                return nodep->exp = RDB_dup_expr(argp, ecp);
-            case TOK_WITH:
-            	return nodep->exp = with_node_expr(firstp->nextp, ecp, txp);
-            default:
-                RDB_raise_syntax("invalid token", ecp);
-                return NULL;
-        }
-    }
-
-    if (firstp->nextp != NULL && firstp->nextp->kind == RDB_NODE_TOK
-            && firstp->nextp->val.token == '{') {
-        if (firstp->nextp->nextp != NULL
-                && firstp->nextp->nextp->kind == RDB_NODE_TOK
-                && firstp->nextp->nextp->val.token == TOK_ALL
-                && firstp->nextp->nextp->nextp != NULL
-                && firstp->nextp->nextp->nextp->kind == RDB_NODE_TOK
-                && firstp->nextp->nextp->nextp->val.token == TOK_BUT) {
-            nodep->exp = RDB_ro_op("REMOVE", ecp);
-            if (nodep->exp == NULL)
-                return NULL;
-            id_list_nodep = firstp->nextp->nextp->nextp->nextp->val.children.firstp;
-        } else {
-            nodep->exp = RDB_ro_op("PROJECT", ecp);
-            if (nodep->exp == NULL)
-                return NULL;
-            id_list_nodep = firstp->nextp->nextp->val.children.firstp;
-        }
-        argp = RDB_parse_node_expr(firstp, ecp, txp);
-        if (argp == NULL)
-            return NULL;        
-        argp = RDB_dup_expr(argp, ecp);
-        if (argp == NULL)
-            return NULL;
-        RDB_add_arg(nodep->exp, argp);
-
-        if (id_list_nodep != NULL) {
-            if (add_id_list(nodep->exp, id_list_nodep, ecp, txp) != RDB_OK)
-                return NULL;
-        }
-        return nodep->exp;
-    }
-
-    if (firstp->nextp != NULL) {
-        if (firstp->nextp->kind == RDB_NODE_TOK) {
-            switch (firstp->nextp->val.token) {
-                case '(':
-                    return nodep->exp = ro_op_node_expr(firstp, ecp, txp);
-                 case TOK_RENAME:
-                    return nodep->exp = rename_node_expr(firstp, ecp, txp);
-                 case TOK_WRAP:
-                    return nodep->exp = wrap_node_expr(firstp, ecp, txp);
-                 case TOK_UNWRAP:
-                    return nodep->exp = unwrap_node_expr(firstp, ecp, txp);
-                 case TOK_GROUP:
-                    return nodep->exp = group_node_expr(firstp, ecp, txp);
-                 case TOK_DIVIDEBY:
-                    return nodep->exp = divide_node_expr(firstp, ecp, txp);
-                 case '[':
-                    return nodep->exp = subscript_node_expr(firstp, ecp, txp);
-            }
-        }
-        if (firstp->nextp->nextp != NULL
-                && firstp->nextp->nextp->nextp == NULL
-                && firstp->nextp->kind == RDB_NODE_TOK) {
-            return binop_node_expr(nodep, ecp, txp);
-        }
-    }
-
-    RDB_raise_internal("cannot convert parse tree to expression", ecp);
-    return NULL;
-}
-
-RDB_expression *
-RDB_parse_node_expr(RDB_parse_node *nodep, RDB_exec_context *ecp,
-        RDB_transaction *txp)
-{
-    if (nodep->exp != NULL)
-        return nodep->exp;
-
-    assert(nodep->kind != RDB_NODE_TOK);
-
-    if (nodep->kind == RDB_NODE_INNER) {
-        if (inner_node_expr(nodep, ecp, txp) == NULL)
-            return NULL;
-    }
-
-    return nodep->exp;
-}
-
-const char *
-RDB_parse_node_ID(const RDB_parse_node *nodep)
-{
-    if (nodep->kind == RDB_NODE_EXPR) {
-        return RDB_expr_var_name(nodep->exp);
-    }
-    return NULL;
-}
-
-void
-RDB_parse_add_child(RDB_parse_node *pnodep, RDB_parse_node *childp) {
-    childp->nextp = NULL;
-    if (pnodep->val.children.firstp == NULL) {
-        pnodep->val.children.firstp = pnodep->val.children.lastp = childp;
-    } else {
-        pnodep->val.children.lastp->nextp = childp;
-        pnodep->val.children.lastp = childp;
-    }
-}
-
-RDB_int
-RDB_parse_nodelist_length(const RDB_parse_node *pnodep)
-{
-    RDB_parse_node *nodep = pnodep->val.children.firstp;
-    RDB_int cnt = 0;
-    while (nodep != NULL) {
-        cnt++;
-        nodep = nodep->nextp;
-    }
-    return cnt;
-}
-
-RDB_parse_node *
-RDB_parse_node_child(const RDB_parse_node *nodep, RDB_int idx)
-{
-    if (nodep->kind != RDB_NODE_INNER)
-        return NULL;
-    RDB_parse_node *chnodep = nodep->val.children.firstp;
-    while (idx-- > 0 && chnodep != NULL) {
-        chnodep = chnodep->nextp;
-    }
-    return chnodep;
-}
-
-int
-RDB_parse_del_node(RDB_parse_node *nodep, RDB_exec_context *ecp)
-{
-    if (nodep->kind == RDB_NODE_INNER
-            && nodep->val.children.firstp != NULL) {
-        if (RDB_parse_del_nodelist(nodep->val.children.firstp, ecp) != RDB_OK)
-            return RDB_ERROR;
-    }
-    if (nodep->exp != NULL)
-        return RDB_drop_expr(nodep->exp, ecp);
-    if (nodep->whitecommp != NULL) {
-        RDB_destroy_obj(nodep->whitecommp, ecp);
-        RDB_free(nodep->whitecommp);
-    }
-    return RDB_OK;
-}
-
-int
-RDB_parse_del_nodelist(RDB_parse_node *nodep, RDB_exec_context *ecp)
-{
-    do {
-        RDB_parse_node *np = nodep->nextp;
-        if (RDB_parse_del_node(nodep, ecp) != RDB_OK)
-            return RDB_ERROR;
-        nodep = np;
-    } while (nodep != NULL);
-    return RDB_OK;
-}
-
-int
-RDB_parse_node_var_name_idx(const RDB_parse_node *nodep, const char *namep)
-{
-	int idx = 0;
-
-	if (nodep == NULL)
-		return -1;
-	for(;;) {
-		if (strcmp(RDB_expr_var_name(nodep->exp), namep) == 0)
-			return idx;
-		idx++;
-		nodep = nodep->nextp;
-		if (nodep == NULL)
-			return -1;
-		nodep = nodep->nextp;
-	}
 }
 
 /**@defgroup parse Parsing functions
@@ -1450,75 +1318,4 @@ RDB_parse_stmt_string(const char *txt, RDB_exec_context *ecp)
     }
 
     return _RDB_parse_resultp;
-}
-
-int
-Duro_parse_node_to_obj_string(RDB_object *dstp, RDB_parse_node *nodep,
-		RDB_exec_context *ecp, RDB_transaction *txp)
-{
-    RDB_parse_node *np;
-    RDB_object strobj;
-    int ret;
-
-    /*
-     * Get comments and whitespace, if present
-     */
-    if (nodep->whitecommp != NULL) {
-        ret = RDB_copy_obj(dstp, nodep->whitecommp, ecp);
-    } else {
-        ret = RDB_string_to_obj(dstp, "", ecp);
-    }
-    if (ret != RDB_OK)
-        return ret;
-
-    switch(nodep->kind) {
-        case RDB_NODE_TOK:
-            return RDB_append_string(dstp, _RDB_token_name(nodep->val.token), ecp);
-        case RDB_NODE_INNER:
-            RDB_init_obj(&strobj);
-            np = nodep->val.children.firstp;
-            while (np != NULL) {
-                /*
-                 * Convert child to string and append it
-                 */
-                ret = Duro_parse_node_to_obj_string(&strobj, np, ecp, txp);
-                if (ret != RDB_OK) {
-                    RDB_destroy_obj(&strobj, ecp);
-                    return ret;
-                }
-                ret = RDB_append_string(dstp, RDB_obj_string(&strobj), ecp);
-                if (ret != RDB_OK) {
-                    RDB_destroy_obj(&strobj, ecp);
-                    return ret;
-                }
-                np = np->nextp;
-            }
-            return RDB_destroy_obj(&strobj, ecp);
-        case RDB_NODE_EXPR:
-            RDB_init_obj(&strobj);
-            ret = _RDB_expr_to_str(&strobj, nodep->exp, ecp, txp, 0);
-            if (ret != RDB_OK) {
-                RDB_destroy_obj(&strobj, ecp);
-                return ret;
-            }
-            ret = RDB_append_string(dstp, RDB_obj_string(&strobj), ecp);
-            if (ret != RDB_OK) {
-                return ret;
-            }
-            return RDB_destroy_obj(&strobj, ecp);
-    }
-    RDB_raise_internal("invalid parse node", ecp);
-    return RDB_ERROR;
-}
-
-void
-RDB_print_parse_node(FILE *fp, RDB_parse_node *nodep,
-        RDB_exec_context *ecp)
-{
-    RDB_object strobj;
-
-    RDB_init_obj(&strobj);
-    Duro_parse_node_to_obj_string(&strobj, nodep, ecp, NULL);
-    fputs(RDB_obj_string(&strobj), fp);
-    RDB_destroy_obj(&strobj, ecp);
 }

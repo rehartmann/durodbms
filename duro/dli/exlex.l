@@ -14,7 +14,7 @@
 #define YYSTYPE RDB_parse_node *
 
 #include <rel/rdb.h>
-#include "parse.h"
+#include "parsenode.h"
 #include "exparse.h"
 #include <string.h>
 #include <math.h>
