@@ -115,9 +115,12 @@ test ra {relational algebra} -setup $SETUP -body {
 
         println(with (is := p intersect t2, p := t1 {a}): (tuple from is).a);
 
+		println((tuple from relation{tuple{i 1}} join table_dee).i);
+
         commit;
     }
 } -result {2
+1
 }
 
 test updop {user defined update operators} -setup $SETUP -body {

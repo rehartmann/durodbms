@@ -1007,6 +1007,14 @@ _RDB_tuple_matches(const RDB_object *tpl1p, const RDB_object *tpl2p,
     tuple_entry *entryp;
     RDB_bool b;
 
+    /*
+     * If one of the tuples is the empty tuple, the tuple matches
+     */
+    if (tpl1p->kind == RDB_OB_INITIAL || tpl2p->kind == RDB_OB_INITIAL) {
+        *resp = RDB_TRUE;
+        return RDB_OK;
+    }
+
     RDB_init_hashtable_iter(&hiter, (RDB_hashtable *) &tpl1p->var.tpl_tab);
     while ((entryp = RDB_hashtable_next(&hiter)) != NULL) {
         RDB_object *attrp = RDB_tuple_get(tpl2p, entryp->key);
