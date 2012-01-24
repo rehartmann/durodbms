@@ -15,7 +15,7 @@ source [file dirname [info script]]/setup.tcl
 
 test qqueries {quota queries} -setup $SETUP -body {
     set dbenv [duro::env open [configure -tmpdir]/dbenv]
-    
+
     # Create Database
     duro::db create $dbenv TEST
     
@@ -29,9 +29,9 @@ test qqueries {quota queries} -setup $SETUP -body {
 
     # Create virtual table with WEIGHT_RANK attribute
 
-    duro::table expr V1 {EXTEND T1 ADD (
-            COUNT(T1 RENAME (WEIGHT AS W) WHERE W < WEIGHT)
-            AS WEIGHT_RANK)} $tx
+    duro::table expr V1 {EXTEND T1 : {
+            WEIGHT_RANK := COUNT(T1 RENAME (WEIGHT AS W) WHERE W < WEIGHT)
+            }} $tx
 
     duro::table expr V2 {V1 WHERE WEIGHT_RANK <= 1 { ID, WEIGHT } } $tx
 

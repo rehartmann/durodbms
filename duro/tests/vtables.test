@@ -92,7 +92,7 @@ test vtables {virtual tables} -setup $SETUP -body {
     duro::table expr -global TR {T1 RENAME (K AS KN, S1 AS SN)} $tx
     if {![catch {
         duro::table expr -global TEX \
-                {EXTEND T1 ADD (K*10 AS K0, IF K = 0 THEN "YES" ELSE 1 AS KIS1)} $tx
+                {EXTEND T1 : {K0 := K*10, KIS1 := IF K = 0 THEN "YES" ELSE 1}} $tx
     }]} {
         error "invalid EXTEND should fail, but succeeded"
     }
@@ -117,7 +117,7 @@ test vtables {virtual tables} -setup $SETUP -body {
     duro::table drop TER $tx
 
     # Empty EXTEND
-    duro::table expr -local TEX {EXTEND T1 ADD ()} $tx
+    duro::table expr -local TEX {EXTEND T1 : {}} $tx
     set tpl [duro::expr {TUPLE FROM TEX WHERE K=2} $tx]
     if {![tequal $tpl {K 2 S1 Blubb}]} {
         error "Invalid tuple value: $tpl"
@@ -138,8 +138,8 @@ test vtables {virtual tables} -setup $SETUP -body {
         error "COUNT is $cnt"
     }
 
-    duro::table expr -global TEX {EXTEND T1 ADD (K*10 AS K0, IF K = 0 THEN "YES" ELSE
-            "NO" AS KIS1)} $tx
+    duro::table expr -global TEX {EXTEND T1 : {K0 := K*10, KIS1 := IF K = 0 THEN "YES" ELSE
+            "NO"}} $tx
 
     duro::table expr -global TP {(T1 WHERE K = 1) {K}} $tx
     duro::table expr -global TP2 {T1 {S1}} $tx
@@ -204,7 +204,7 @@ test vtables {virtual tables} -setup $SETUP -body {
             TUPLE {A 1, MIN_B 1, MAX_B 2, CNT 2},
             TUPLE {A 2, MIN_B 1, MAX_B 3, CNT 2}}} $tx
 
-    if {![catch {duro::table expr -global TX2 {EXTEND T1 ADD (K*10 AS K)} $tx}]} {
+    if {![catch {duro::table expr -global TX2 {EXTEND T1 : {K := K*10}} $tx}]} {
         error "invalid EXTEND should fail, but succeeded"
     }
     if {![string match "INVALID_ARGUMENT_ERROR(*)" [lindex $errorCode 1]]} {
@@ -431,23 +431,23 @@ test vtables {virtual tables} -setup $SETUP -body {
     #
     # Check RDB_expr_type()
     #
-    duro::table expr t {EXTEND TABLE_DEE ADD ((EXTEND TABLE_DEE ADD (1 AS N)) \
-            JOIN (EXTEND TABLE_DEE ADD (2 AS M)) AS R)} $tx
+    duro::table expr t {EXTEND TABLE_DEE : {R := (EXTEND TABLE_DEE : {N := 1}) \
+            JOIN (EXTEND TABLE_DEE : {M := 2})}} $tx
 
     duro::table drop t $tx
     
-    duro::table expr t {EXTEND TABLE_DEE ADD ((EXTEND TABLE_DEE ADD (1 AS N)) \
-            { N } AS R)} $tx
+    duro::table expr t {EXTEND TABLE_DEE : {R := (EXTEND TABLE_DEE : {N := 1}) \
+            { N }}} $tx
     
     duro::table drop t $tx
     
     duro::table expr t {EXTEND TABLE_DEE
-            ADD (EXTEND TABLE_DEE ADD (1 AS N) WRAP ({ N } AS T) AS R) } $tx
+            : {R := EXTEND TABLE_DEE : {N := 1} WRAP ({ N } AS T)} } $tx
     
     duro::table drop t $tx
     
     duro::table expr t {EXTEND TABLE_DEE
-            ADD (EXTEND TABLE_DEE ADD (1 AS N, 2 AS M) { ALL BUT N } AS R)} $tx
+            : {R := EXTEND TABLE_DEE : {N := 1, M := 2} { ALL BUT N }}} $tx
     
     set tpl [duro::expr {(TUPLE FROM t).R} $tx]
     if {$tpl != "{M 2}"} {
@@ -457,26 +457,26 @@ test vtables {virtual tables} -setup $SETUP -body {
     duro::table drop t $tx
     
     duro::table expr t {EXTEND TABLE_DEE
-            ADD (EXTEND TABLE_DEE ADD (1 AS N, 2 AS M)
-                 GROUP { N, M } AS R AS R)} $tx
+            : {R := EXTEND TABLE_DEE : {N := 1, M := 2}
+                 GROUP { N, M } AS R}} $tx
     
     duro::table drop t $tx
     
     duro::table expr t {EXTEND TABLE_DEE
-            ADD (SUMMARIZE (EXTEND TABLE_DEE ADD (1 AS N))
-                 PER TABLE_DEE ADD (COUNT() AS C) AS R)} $tx
+            : {R := SUMMARIZE (EXTEND TABLE_DEE : {N := 1})
+                 PER TABLE_DEE ADD (COUNT() AS C)}} $tx
     
     duro::table drop t $tx
     
     duro::table expr t {EXTEND TABLE_DEE
-            ADD ((EXTEND TABLE_DEE ADD (1 AS N, 2 AS M)
-                 GROUP { N, M } AS R) UNGROUP R AS R)} $tx
+            : {R := (EXTEND TABLE_DEE : {N := 1, M := 2}
+                 GROUP { N, M } AS R) UNGROUP R}} $tx
     
     duro::table drop t $tx
     
     duro::table expr t {EXTEND TABLE_DEE
-            ADD ((EXTEND TABLE_DEE ADD (1 AS N, 2 AS M)
-                 WRAP ({ N, M } AS T)) UNWRAP (T) AS T)} $tx
+            : {T := (EXTEND TABLE_DEE : {N := 1, M := 2}
+                 WRAP ({ N, M } AS T)) UNWRAP (T)}} $tx
     
     duro::table drop t $tx
     

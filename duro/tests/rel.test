@@ -108,8 +108,8 @@ test rel {relation-valued attributes} -setup $SETUP -body {
         error "SCATTR value should be 2, but is $v"
     }
 
-    duro::table expr X {EXTEND T1 ADD (COUNT(RLATTR) AS RCNT,
-            IS_EMPTY(RLATTR) AS REMPTY)} $tx
+    duro::table expr X {EXTEND T1 : {RCNT := COUNT(RLATTR),
+            REMPTY := IS_EMPTY(RLATTR)}} $tx
     
     # Get tuple with empty RLATTR
     
@@ -218,7 +218,7 @@ test rel {relation-valued attributes} -setup $SETUP -body {
     }
     
     duro::table expr X1 {EXTEND T3
-            ADD (RELATION { TUPLE {A 1, B "b"} } AS RLATTR)} $tx
+            : {RLATTR := RELATION { TUPLE {A 1, B "b"} }}} $tx
     
     set tpl [duro::expr {TUPLE FROM ((TUPLE FROM (X1 { RLATTR })).RLATTR)} $tx]
     

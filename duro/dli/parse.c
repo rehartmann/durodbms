@@ -194,17 +194,17 @@ extend_node_expr(RDB_parse_node *argnodep,
     nodep = argnodep->nextp->nextp->nextp->val.children.firstp;
     if (nodep != NULL) {
         for (;;) {
-            argp = RDB_parse_node_expr(nodep->val.children.firstp, ecp, txp);
+            argp = RDB_parse_node_expr(nodep->val.children.firstp->nextp->nextp, ecp, txp);
             if (argp == NULL)
                 return NULL;
             argp = RDB_dup_expr(argp, ecp);
             if (argp == NULL)
                 return NULL;
             RDB_add_arg(rexp, argp);
-    
+
             argp = RDB_string_to_expr(
                     RDB_expr_var_name(RDB_parse_node_expr(
-                            nodep->val.children.firstp->nextp->nextp, ecp, txp)),
+                            nodep->val.children.firstp, ecp, txp)),
                     ecp);
             RDB_add_arg(rexp, argp);
                 
@@ -549,15 +549,18 @@ group_node_expr(RDB_parse_node *argnodep,
 static int
 resolve_exprnames(RDB_expression **expp, RDB_parse_node *nameintrop,
         RDB_exec_context *ecp, RDB_transaction *txp) {
-	if (nameintrop->nextp != NULL) {
-	    /* Skip comma, process rest of list */
-		if (resolve_exprnames(expp, nameintrop->nextp->nextp, ecp, txp) != RDB_OK)
-			return RDB_ERROR;
-	}
-	return RDB_expr_resolve_varname_expr(expp,
-	            RDB_expr_var_name(nameintrop->val.children.firstp->nextp->nextp->exp),
-	            RDB_parse_node_expr(nameintrop->val.children.firstp, ecp, txp),
-	            ecp);
+    for(;;) {
+        int ret = RDB_expr_resolve_varname_expr(expp,
+                RDB_expr_var_name(nameintrop->val.children.firstp->exp),
+                RDB_parse_node_expr(nameintrop->val.children.firstp->nextp->nextp, ecp, txp),
+                ecp);
+        if (ret != RDB_OK)
+            return ret;
+        if (nameintrop->nextp == NULL)
+            break;
+        nameintrop = nameintrop->nextp->nextp;
+    }
+    return RDB_OK;
 }
 
 static RDB_expression *
@@ -566,7 +569,7 @@ with_node_expr(RDB_parse_node *nodep, RDB_exec_context *ecp, RDB_transaction *tx
 	RDB_expression *exp;
 
 	/* Convert node to expression */
-	exp = RDB_parse_node_expr(nodep->nextp->nextp, ecp, txp);
+	exp = RDB_parse_node_expr(nodep->nextp->nextp->nextp->nextp, ecp, txp);
 	if (exp == NULL)
 		return NULL;
 
@@ -575,8 +578,9 @@ with_node_expr(RDB_parse_node *nodep, RDB_exec_context *ecp, RDB_transaction *tx
 		return NULL;
 
 	/* Resolve */
-	if (nodep->val.children.firstp != NULL) {
-        if (resolve_exprnames(&exp, nodep->val.children.firstp, ecp, txp) != RDB_OK) {
+	if (nodep->nextp->val.children.firstp != NULL) {
+        if (resolve_exprnames(&exp, nodep->nextp->val.children.firstp, ecp, txp)
+                != RDB_OK) {
             return NULL;
         }
 	}

@@ -1118,7 +1118,7 @@ assignment: assign {
         RDB_parse_add_child($$, $3);
     }
 
-assign: vexpr TOK_ASSIGN expression {
+assign: assignable_expression TOK_ASSIGN expression {
         $$ = new_parse_inner();
         if ($$ == NULL) {
             RDB_parse_del_node($1, _RDB_parse_ecp);
@@ -1230,9 +1230,9 @@ simple_assign: TOK_ID TOK_ASSIGN expression {
         RDB_parse_add_child($$, $3);
     }
 
-vexpr: TOK_ID
-    | ro_op_invocation
-    | vexpr '[' expression ']' {
+assignable_expression: TOK_ID
+    | ro_op_invocation /* For THE_ operators */
+    | assignable_expression '[' expression ']' {
         $$ = new_parse_inner();
         if ($$ == NULL) {
             RDB_parse_del_node($1, _RDB_parse_ecp);
@@ -1392,7 +1392,7 @@ expression: expression '{' id_commalist '}' {
         RDB_parse_add_child($$, $2);
         RDB_parse_add_child($$, $3);
     }
-    | TOK_EXTEND expression TOK_ADD '(' name_intro_commalist ')' {
+    | TOK_EXTEND expression ':' '{' name_intro_commalist '}' {
         $$ = new_parse_inner();
         if ($$ == NULL) {
             RDB_parse_del_node($1, _RDB_parse_ecp);
@@ -1763,7 +1763,7 @@ expression: expression '{' id_commalist '}' {
         RDB_parse_add_child($$, $2);
         RDB_parse_add_child($$, $3);
     }
-    | vexpr
+    | assignable_expression
     | TOK_RELATION '{' ne_expression_commalist '}' {
         $$ = new_parse_inner();
         if ($$ == NULL) {
@@ -1928,19 +1928,23 @@ expression: expression '{' id_commalist '}' {
         RDB_parse_add_child($$, $5);
         RDB_parse_add_child($$, $6);
     }
-    | TOK_WITH name_intro_commalist ':' expression {
+    | TOK_WITH '(' name_intro_commalist ')' ':' expression {
         $$ = new_parse_inner();
         if ($$ == NULL) {
             RDB_parse_del_node($1, _RDB_parse_ecp);
             RDB_parse_del_node($2, _RDB_parse_ecp);
             RDB_parse_del_node($3, _RDB_parse_ecp);
             RDB_parse_del_node($4, _RDB_parse_ecp);
+            RDB_parse_del_node($5, _RDB_parse_ecp);
+            RDB_parse_del_node($6, _RDB_parse_ecp);
             YYERROR;
         }
         RDB_parse_add_child($$, $1);
         RDB_parse_add_child($$, $2);
         RDB_parse_add_child($$, $3);
         RDB_parse_add_child($$, $4);
+        RDB_parse_add_child($$, $5);
+        RDB_parse_add_child($$, $6);
     }
     | TOK_LIT_STRING
     | TOK_LIT_INTEGER
@@ -2038,7 +2042,7 @@ ne_name_intro_commalist: name_intro {
     }
     ;
 
-name_intro: expression TOK_AS TOK_ID {
+name_intro: TOK_ID TOK_ASSIGN expression {
         $$ = new_parse_inner();
         if ($$ == NULL) {
             RDB_parse_del_node($1, _RDB_parse_ecp);

@@ -167,7 +167,7 @@ test tuple {tuple-valued attributes} -setup $SETUP -body {
         error "Tuple is $tpl, should be $stpl"
     }
     
-    set tpl [duro::expr {EXTEND TUPLE {A 1} ADD (A*2 AS B)} $tx]
+    set tpl [duro::expr {EXTEND TUPLE {A 1} : {B := A*2}} $tx]
     set stpl {A 1 B 2}
     if {![tequal $tpl $stpl]} {
         error "Tuple is $tpl, should be $stpl"
@@ -188,7 +188,7 @@ test tuple {tuple-valued attributes} -setup $SETUP -body {
         error "SCATTR should be \"Bla\", but is not"
     }
 
-    duro::table expr XT2 {EXTEND T2 ADD (TUPLE {A 1, B "b"} AS TATTR)} $tx
+    duro::table expr XT2 {EXTEND T2 : {TATTR := TUPLE {A 1, B "b"}}} $tx
     set tpl [duro::expr {(TUPLE FROM XT2).TATTR} $tx]
     if {![tequal $tpl {A 1 B b}]} {
         error "Wrong value of TATTR"

@@ -36,16 +36,16 @@ test parse {parser} -setup $SETUP -body {
         error "wrong error: $errcode"
     }
     
-    if {![catch {duro::table expr TX {EXTEND T { K } ADD (2*K AS K2} $tx} msg]} {
+    if {![catch {duro::table expr TX {EXTEND T { K } : (K2 := 2*K} $tx} msg]} {
         error "creating TX should fail, but succeeded"
     }
-    
+
     set errcode [lindex $errorCode 1]
     if {![string match "SYNTAX_ERROR(*)" $errcode]} {
         error "wrong error: $errcode"
     }
     
-    if {![catch {duro::table expr TX {EXTEND T { K } ADD (2*X AS K2)} $tx} msg]} {
+    if {![catch {duro::table expr TX {EXTEND T { K } : {K2 := 2*X}} $tx} msg]} {
         error "creating TX should fail, but succeeded"
     }
     

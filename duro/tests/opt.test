@@ -102,7 +102,7 @@ test opt {optimizer} -setup $SETUP -body {
         error "Invalid tuple value: $tpl"
     }
 
-    set tpl [duro::expr {TUPLE FROM (EXTEND T2 ADD (A AS AA)) WHERE B=2 AND AA=1} \
+    set tpl [duro::expr {TUPLE FROM (EXTEND T2 : {AA := A}) WHERE B=2 AND AA=1} \
             $tx]
     if {![tequal $tpl {A 1 AA 1 B 2 C 3}]} {
         error "Invalid tuple value: $tpl"
