@@ -1166,7 +1166,7 @@ assign: assignable_expression TOK_ASSIGN expression {
         RDB_parse_add_child($$, $3);
         RDB_parse_add_child($$, $4);
     }
-    | TOK_UPDATE TOK_ID '{' ne_attr_assign_commalist '}' {
+    | TOK_UPDATE TOK_ID '{' ne_id_assign_commalist '}' {
         $$ = new_parse_inner();
         if ($$ == NULL) {
             RDB_parse_del_node($1, _RDB_parse_ecp);
@@ -1182,7 +1182,7 @@ assign: assignable_expression TOK_ASSIGN expression {
         RDB_parse_add_child($$, $4);
         RDB_parse_add_child($$, $5);
     }
-    | TOK_UPDATE TOK_ID TOK_WHERE expression '{' ne_attr_assign_commalist '}' {
+    | TOK_UPDATE TOK_ID TOK_WHERE expression '{' ne_id_assign_commalist '}' {
         $$ = new_parse_inner();
         if ($$ == NULL) {
             RDB_parse_del_node($1, _RDB_parse_ecp);
@@ -1203,7 +1203,7 @@ assign: assignable_expression TOK_ASSIGN expression {
         RDB_parse_add_child($$, $7);
     }
 
-ne_attr_assign_commalist: simple_assign {
+ne_id_assign_commalist: id_assign {
         $$ = new_parse_inner();
         if ($$ == NULL) {
             RDB_parse_del_node($1, _RDB_parse_ecp);
@@ -1211,13 +1211,13 @@ ne_attr_assign_commalist: simple_assign {
         }
         RDB_parse_add_child($$, $1);
     }
-	| ne_attr_assign_commalist ',' simple_assign {
+	| ne_id_assign_commalist ',' id_assign {
 	    $$ = $1;
         RDB_parse_add_child($$, $2);
         RDB_parse_add_child($$, $3);
 	}
 
-simple_assign: TOK_ID TOK_ASSIGN expression {
+id_assign: TOK_ID TOK_ASSIGN expression {
         $$ = new_parse_inner();
         if ($$ == NULL) {
             RDB_parse_del_node($1, _RDB_parse_ecp);
@@ -1410,7 +1410,7 @@ expression: expression '{' id_commalist '}' {
         RDB_parse_add_child($$, $5);
         RDB_parse_add_child($$, $6);
     }
-    | TOK_UPDATE expression '{' ne_attr_assign_commalist '}' {
+    | TOK_UPDATE expression '{' ne_id_assign_commalist '}' {
         $$ = new_parse_inner();
         if ($$ == NULL) {
             RDB_parse_del_node($1, _RDB_parse_ecp);
@@ -2024,36 +2024,7 @@ name_intro_commalist: /* empty */ {
             YYERROR;
         }
     }
-    | ne_name_intro_commalist
-    ;
-
-ne_name_intro_commalist: name_intro {
-        $$ = new_parse_inner();
-        if ($$ == NULL) {
-            RDB_parse_del_node($1, _RDB_parse_ecp);
-            YYERROR;
-        }
-        RDB_parse_add_child($$, $1);
-    }
-    | ne_name_intro_commalist ',' name_intro {
-        $$ = $1;
-        RDB_parse_add_child($$, $2);
-        RDB_parse_add_child($$, $3);
-    }
-    ;
-
-name_intro: TOK_ID TOK_ASSIGN expression {
-        $$ = new_parse_inner();
-        if ($$ == NULL) {
-            RDB_parse_del_node($1, _RDB_parse_ecp);
-            RDB_parse_del_node($2, _RDB_parse_ecp);
-            RDB_parse_del_node($3, _RDB_parse_ecp);
-            YYERROR;
-        }
-        RDB_parse_add_child($$, $1);
-        RDB_parse_add_child($$, $2);
-        RDB_parse_add_child($$, $3);
-    }
+    | ne_id_assign_commalist
     ;
 
 summarize_add_commalist: /* empty */ {
