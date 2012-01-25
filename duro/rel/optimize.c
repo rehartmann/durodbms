@@ -534,7 +534,8 @@ table_cost(RDB_expression *texp)
         return table_cost(texp->var.op.args.firstp)
                 * table_cost(texp->var.op.args.firstp->nextp); /* !! */
     }
-    abort();
+    /* Other operator */
+    return 0;
 }
 
 static int

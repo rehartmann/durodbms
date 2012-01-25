@@ -409,6 +409,11 @@ insert_vtable(RDB_object *tbp, RDB_dbroot *dbrootp, RDB_exec_context *ecp,
     if (ret != RDB_OK)
         goto cleanup;
 
+#ifdef DEBUG
+    fprintf(stderr, "Writing virtual table definition:\n");
+    _RDB_dump(defval.var.bin.datap, defval.var.bin.len, stderr);
+#endif
+
     ret = RDB_insert(dbrootp->vtables_tbp, &tpl, ecp, txp);
     if (ret != RDB_OK) {
         if (RDB_obj_type(RDB_get_err(ecp)) == &RDB_KEY_VIOLATION_ERROR) {

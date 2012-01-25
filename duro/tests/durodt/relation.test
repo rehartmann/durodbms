@@ -117,10 +117,17 @@ test ra {relational algebra} -setup $SETUP -body {
 
 		println((tuple from relation{tuple{i 1}} join table_dee).i);
 
+        var a array tuple{i integer};
+        load a from rel{tup{i 1}} union rel{tup{i 2}} order (i asc);
+        println(a[0].i);
+        println(a[1].i);
+
         commit;
     }
 } -result {2
 1
+1
+2
 }
 
 test updop {user defined update operators} -setup $SETUP -body {

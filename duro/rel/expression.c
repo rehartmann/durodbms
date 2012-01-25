@@ -177,7 +177,7 @@ RDB_expr_resolve_varname_expr(RDB_expression **expp, const char *varname,
  * have been replaced by this object
  */
 RDB_expression *
-RDB_expr_resolve_varnames(const RDB_expression *exp, RDB_getobjfn *getfnp,
+RDB_expr_resolve_varnames(RDB_expression *exp, RDB_getobjfn *getfnp,
         void *getdata, RDB_exec_context *ecp, RDB_transaction *txp)
 {
     RDB_object *objp;
@@ -194,10 +194,28 @@ RDB_expr_resolve_varnames(const RDB_expression *exp, RDB_getobjfn *getfnp,
         case RDB_EX_RO_OP:
         {
             RDB_expression *argp;
-            RDB_expression *newexp = RDB_ro_op(exp->var.op.name, ecp);
+            RDB_expression *newexp;
+
+            if (strcmp(exp->var.op.name, "RELATION") == 0) {
+                int ret;
+
+                newexp = RDB_obj_to_expr(NULL, ecp);
+                if (newexp == NULL)
+                    return NULL;
+
+                ret = RDB_evaluate(exp, getfnp, getdata, ecp, txp, &newexp->var.obj);
+                if (ret != RDB_OK) {
+                    RDB_drop_expr(newexp, ecp);
+                    return NULL;
+                }
+                return newexp;
+            }
+
+            newexp = RDB_ro_op(exp->var.op.name, ecp);
             if (newexp == NULL)
                 return NULL;
 
+            /* Perform resolve on all arguments */
             argp = exp->var.op.args.firstp;
             while (argp != NULL) {
                 RDB_expression *argexp = RDB_expr_resolve_varnames(
@@ -209,6 +227,7 @@ RDB_expr_resolve_varnames(const RDB_expression *exp, RDB_getobjfn *getfnp,
                 RDB_add_arg(newexp, argexp);
                 argp = argp->nextp;
             }
+
             return newexp;
         }
         case RDB_EX_OBJ:

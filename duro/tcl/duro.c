@@ -419,7 +419,6 @@ list_to_table(Tcl_Interp *interp, Tcl_Obj *tobjp, RDB_type *typ,
         ret = list_to_tuple(interp, tplobjp, RDB_base_type(typ), &tpl, ecp, txp);
         if (ret != TCL_OK) {
             RDB_destroy_obj(&tpl, ecp);
-            RDB_destroy_obj(tbp, ecp);
             return ret;
         }
 

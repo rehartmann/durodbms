@@ -97,7 +97,8 @@ _RDB_serialize_type(RDB_object *valp, int *posp, const RDB_type *typ,
             return _RDB_serialize_str(valp, posp, typ->name, ecp);
         case RDB_TP_TUPLE:
         {
-            int i, j;
+            int i;
+            int attridx;
             char *lastwritten = NULL;
 
             if (_RDB_serialize_int(valp, posp, typ->var.tuple.attrc, ecp) != RDB_OK)
@@ -105,21 +106,12 @@ _RDB_serialize_type(RDB_object *valp, int *posp, const RDB_type *typ,
 
             /*
              * Write attributes in alphabetical order of their names,
-             * to make the representation independent of the attribute order
+             * to get a canonical representation of attribute types.
+             * Necessary because types are compares bitwise when searching
+             * for a matching operator.
              */
             for (i = 0; i < typ->var.tuple.attrc; i++) {
-                int attridx = -1;
-
-                /* Get lowest attribute name which is higher than the last one written */
-                for (j = 0; j < typ->var.tuple.attrc; j++) {
-                    if ((lastwritten == NULL
-                            || strcmp(typ->var.tuple.attrv[j].name, lastwritten) > 0)
-                        && (attridx == -1
-                            || strcmp(typ->var.tuple.attrv[j].name,
-                                      typ->var.tuple.attrv[attridx].name) < 0)) {
-                        attridx = j;
-                    }
-                }
+                attridx = RDB_next_attr_sorted(typ, lastwritten);
 
                 if (_RDB_serialize_str(valp, posp,
                         typ->var.tuple.attrv[attridx].name, ecp) != RDB_OK) {
@@ -143,7 +135,6 @@ _RDB_serialize_type(RDB_object *valp, int *posp, const RDB_type *typ,
 
 /*
  * Serialize transient RDB_objects.
- * (All except persistent virtual or persistent tables)
  */
 static int
 serialize_trobj(RDB_object *valp, int *posp, const RDB_object *argvalp,
@@ -167,6 +158,7 @@ serialize_trobj(RDB_object *valp, int *posp, const RDB_object *argvalp,
         crtpltyp = RDB_TRUE;
     }
     ((RDB_object *)argvalp)->store_typ = typ;
+
     if (_RDB_serialize_type(valp, posp, typ, ecp) != RDB_OK) {
         return RDB_ERROR;
     }
@@ -203,6 +195,7 @@ int
 _RDB_serialize_expr(RDB_object *valp, int *posp, const RDB_expression *exp,
         RDB_exec_context *ecp)
 {
+    /* Expression kind (1 byte) */
     if (_RDB_serialize_byte(valp, posp, (RDB_byte) exp->kind, ecp) != RDB_OK)
         return RDB_ERROR;
 
@@ -222,11 +215,16 @@ _RDB_serialize_expr(RDB_object *valp, int *posp, const RDB_expression *exp,
         {
             RDB_expression *argp;
 
+            /* Operator name */
             if (_RDB_serialize_str(valp, posp, exp->var.op.name, ecp) != RDB_OK)
                 return RDB_ERROR;
+
+            /* # of arguments */
             if (_RDB_serialize_int (valp, posp,
                     RDB_expr_list_length(&exp->var.op.args), ecp) != RDB_OK)
                 return RDB_ERROR;
+
+            /* Write arg expressions */
             argp = exp->var.op.args.firstp;
             while (argp != NULL) {
                 if (_RDB_serialize_expr(valp, posp, argp, ecp) != RDB_OK)
@@ -249,6 +247,7 @@ static int
 serialize_table(RDB_object *valp, int *posp, RDB_object *tbp,
         RDB_exec_context *ecp)
 {
+    /* If the table is persisten, write name only */
     if (tbp->var.tb.is_persistent)
         return _RDB_serialize_str(valp, posp, RDB_table_name(tbp), ecp);
     if (_RDB_serialize_str(valp, posp, "", ecp) != RDB_OK)
@@ -680,7 +679,7 @@ _RDB_deserialize_expr(RDB_object *valp, int *posp, RDB_exec_context *ecp,
         }
     }
     return RDB_OK;
-}
+} /* _RDB_deserialize_expr */
 
 RDB_expression *
 _RDB_binobj_to_expr(RDB_object *valp, RDB_exec_context *ecp,

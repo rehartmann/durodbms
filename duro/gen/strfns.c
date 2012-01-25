@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2003-2008 René Hartmann.
+ * Copyright (C) 2003-2008 Renï¿½ Hartmann.
  * See the file COPYING for redistribution information.
  */
 
@@ -8,7 +8,6 @@
 #include "strfns.h"
 #include <stdlib.h>
 #include <string.h>
-#include <stdio.h>
 #include <assert.h>
 
 char *
@@ -66,14 +65,14 @@ RDB_find_str(int strc, char *strv[], const char *str)
 }
 
 void
-_RDB_dump(void *datap, size_t size)
+_RDB_dump(void *datap, size_t size, FILE *fp)
 {
     int i;
     char *cp = (char*)datap;
 
     for (i = 0; i < size; i++)
-        printf("%d ", (int)cp[i]);
-    printf("\n");
+        fprintf(fp, "%d ", (int)cp[i]);
+    fputs("\n", fp);
 }
 
 unsigned

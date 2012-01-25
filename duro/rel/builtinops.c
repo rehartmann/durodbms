@@ -786,6 +786,7 @@ _RDB_op_relation(int argc, RDB_object *argv[], RDB_operator *op,
 {
     int ret;
     RDB_type *rtyp;
+    RDB_type *tuptyp;
 
     if (argc == 0) {
         RDB_raise_invalid_argument("At least one argument required", ecp);
@@ -800,15 +801,12 @@ _RDB_op_relation(int argc, RDB_object *argv[], RDB_operator *op,
     /*
      * Create relation type using the first argument
      */
-    rtyp = RDB_alloc(sizeof(RDB_type), ecp);
-    if (rtyp == NULL) {
+    tuptyp = _RDB_tuple_type(argv[0], ecp);
+    if (tuptyp == NULL) {
         return RDB_ERROR;
     }
-    rtyp->kind = RDB_TP_RELATION;
-    rtyp->name = NULL;
-    rtyp->var.basetyp = _RDB_tuple_type(argv[0], ecp);
-    if (rtyp->var.basetyp == NULL) {
-        RDB_free(rtyp);
+    rtyp = RDB_create_relation_type_from_base(tuptyp, ecp);
+    if (rtyp == NULL) {
         return RDB_ERROR;
     }
 

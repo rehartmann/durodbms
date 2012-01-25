@@ -2818,3 +2818,25 @@ error:
 
     return NULL;
 }
+
+/**
+ * Assume the attributes were ordered by the alphabetical order of their names.
+ * Return the next attribute after *lastname.
+ * If lastname is NULL, return the first.
+ */
+int
+RDB_next_attr_sorted(const RDB_type *typ, const char *lastname) {
+    int i;
+    int attridx = -1;
+
+    for (i = 0; i < typ->var.tuple.attrc; i++) {
+        if ((lastname == NULL
+                    || strcmp(typ->var.tuple.attrv[i].name, lastname) > 0)
+                && (attridx == -1
+                    || strcmp(typ->var.tuple.attrv[i].name,
+                            typ->var.tuple.attrv[attridx].name) < 0)) {
+            attridx = i;
+        }
+    }
+    return attridx;
+}

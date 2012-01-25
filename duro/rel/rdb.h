@@ -536,6 +536,9 @@ RDB_type_attrs(RDB_type *, int *);
 RDB_bool
 RDB_type_equals(const RDB_type *, const RDB_type *);
 
+int
+RDB_next_attr_sorted(const RDB_type *, const char *);
+
 RDB_type *
 RDB_obj_type(const RDB_object *);
 
@@ -825,7 +828,7 @@ RDB_expr_resolve_varname_expr(RDB_expression **, const char *,
         RDB_expression *, RDB_exec_context *);
 
 RDB_expression *
-RDB_expr_resolve_varnames(const RDB_expression *, RDB_getobjfn *,
+RDB_expr_resolve_varnames(RDB_expression *, RDB_getobjfn *,
         void *, RDB_exec_context *, RDB_transaction *);
 
 int

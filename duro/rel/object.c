@@ -201,14 +201,16 @@ len_irep_to_obj(RDB_object *valp, RDB_type *typ, const void *datap,
         RDB_exec_context *ecp)
 {
     int ret;
+    size_t len;
     size_t llen = 0;
-    size_t len = typ->ireplen;
     RDB_byte *bp = (RDB_byte *)datap;
 
-    if (len == RDB_VARIABLE_LEN) {
+    if (typ->ireplen == RDB_VARIABLE_LEN) {
         memcpy(&len, bp, sizeof len);
         llen = sizeof (size_t);
         bp += sizeof (size_t);
+    } else {
+        len = (size_t) typ->ireplen;
     }
 
     ret = RDB_irep_to_obj(valp, typ, bp, len, ecp);
@@ -550,6 +552,8 @@ _RDB_obj_to_irep(void *dstp, const RDB_object *objp, size_t len)
         {
             RDB_type *tpltyp = objp->store_typ;
             int i;
+            int attridx;
+            char *lastwritten = NULL;
 
             RDB_init_exec_context(&ec);
 
@@ -557,12 +561,20 @@ _RDB_obj_to_irep(void *dstp, const RDB_object *objp, size_t len)
             if (tpltyp->kind == RDB_TP_SCALAR)
                 tpltyp = tpltyp->var.scalar.arep;
 
+            /*
+             * Write attributes in alphabetical order of their names,
+             * so the order correspons with serializes tuple types.
+             * See _RDB_serialize_type().
+             */
             for (i = 0; i < tpltyp->var.tuple.attrc; i++) {
                 RDB_object *attrp;
+
+                attridx = RDB_next_attr_sorted(tpltyp, lastwritten);
 
                 attrp = RDB_tuple_get(objp, tpltyp->var.tuple.attrv[i].name);
                 bp = obj_to_len_irep(bp, attrp, tpltyp->var.tuple.attrv[i].typ,
                         &ec);
+                lastwritten = tpltyp->var.tuple.attrv[i].name;
             }
             RDB_destroy_exec_context(&ec);
             break;

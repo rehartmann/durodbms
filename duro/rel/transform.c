@@ -1,7 +1,7 @@
 /*
  * $Id$
  *
- * Copyright (C) 2004-2011 Rene Hartmann.
+ * Copyright (C) 2004-2012 Rene Hartmann.
  * See the file COPYING for redistribution information.
  */
 
@@ -932,4 +932,4 @@ _RDB_transform(RDB_expression *exp, RDB_gettypefn *getfnp, void *arg,
         return RDB_OK;
     }
     return RDB_OK;
-}
+} /* _RDB_transform */

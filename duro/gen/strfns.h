@@ -4,6 +4,7 @@
 /*$Id$*/
 
 #include <stdlib.h>
+#include <stdio.h>
 
 /*
  * Create a copy of string str on the heap, including the
@@ -40,6 +41,6 @@ unsigned
 RDB_hash_str(const char *str);
 
 void
-_RDB_dump(void *datap, size_t size);
+_RDB_dump(void *datap, size_t size, FILE *fp);
 
 #endif
