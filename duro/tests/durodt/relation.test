@@ -164,13 +164,17 @@ test deedum {TABLE_DEE and TABLE_DUM} -body {
     exec $testdir/../../dli/durodt << {
         println(tup from TABLE_DEE);
         println(tup from DEE);
+
         println(TABLE_DUM);
         println(DUM);
+
+        println(tuple from (rel{} {} union table_dee));
     }
 } -result {TUPLE { }
 TUPLE { }
 RELATION { }
 RELATION { }
+TUPLE { }
 }
 
 test logic {Logic operators} -setup $SETUP -body {

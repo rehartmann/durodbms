@@ -1568,6 +1568,10 @@ RDB_dup_expr(const RDB_expression *exp, RDB_exec_context *ecp)
             newexp = RDB_ro_op(exp->var.op.name, ecp);
             if (newexp == NULL)
                 return NULL;
+
+            /*
+             * Duplicate child expressions and append them to new expression
+             */
             argp = exp->var.op.args.firstp;
             while (argp != NULL) {
                 argdp = RDB_dup_expr(argp, ecp);
@@ -1576,6 +1580,22 @@ RDB_dup_expr(const RDB_expression *exp, RDB_exec_context *ecp)
                 RDB_add_arg(newexp, argdp);
                 argp = argp->nextp;
             }
+
+            /*
+             * If the expression is RELATION {}, duplicate the type if available
+             * because otherwise it would be impossible to determine the type
+             * of the copy.
+             */
+            if (exp->var.op.args.firstp == NULL && exp->typ != NULL
+                    && RDB_type_is_relation(exp->typ)
+                    && strcmp(exp->var.op.name, "RELATION") == 0) {
+                newexp->typ = RDB_dup_nonscalar_type(exp->typ, ecp);
+                if (newexp->typ == NULL) {
+                    RDB_drop_expr(newexp, ecp);
+                    return NULL;
+                }
+            }
+
             return newexp;
         }
         case RDB_EX_OBJ:

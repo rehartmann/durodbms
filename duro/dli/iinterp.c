@@ -3143,10 +3143,8 @@ Duro_exec_stmt(RDB_parse_node *stmtp, RDB_exec_context *ecp,
                     ret = RDB_ERROR;
             }
         }
-        if (ret == RDB_ERROR) {
-            if (err_line < 0) {
-                err_line = stmtp->lineno;
-            }
+        if (ret == RDB_ERROR && err_line < 0) {
+            err_line = stmtp->lineno;
         }
         return ret;
     }
@@ -3155,7 +3153,11 @@ Duro_exec_stmt(RDB_parse_node *stmtp, RDB_exec_context *ecp,
         return RDB_ERROR;
     }
     /* Assignment */
-    return exec_assign(firstchildp->val.children.firstp, ecp);
+    ret = exec_assign(firstchildp->val.children.firstp, ecp);
+    if (ret == RDB_ERROR && err_line < 0) {
+        err_line = stmtp->lineno;
+    }
+    return ret;
 }
 
 int
