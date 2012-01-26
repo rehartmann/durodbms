@@ -392,6 +392,10 @@ int
 RDB_copy_table(RDB_object *dstp, RDB_object *srcp, RDB_exec_context *,
         RDB_transaction *);
 
+RDB_int
+RDB_move_tuples(RDB_object *, RDB_object *, RDB_exec_context *,
+        RDB_transaction *);
+
 typedef struct {
     RDB_object *tbp;
     RDB_object *objp;
@@ -969,6 +973,9 @@ RDB_raise_version_mismatch(RDB_exec_context *);
 
 RDB_object *
 RDB_raise_syntax(const char *, RDB_exec_context *);
+
+void
+RDB_errcode_to_error(int errcode, RDB_exec_context *, RDB_transaction *);
 
 int
 RDB_ec_set_property(RDB_exec_context *, const char *name, void *);

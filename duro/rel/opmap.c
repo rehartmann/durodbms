@@ -87,7 +87,7 @@ RDB_put_op(RDB_op_map *opmap, RDB_operator *op,
         opep->nextp = NULL;
         ret = RDB_hashmap_put(&opmap->map, op->name, opep);
         if (ret != RDB_OK) {
-            _RDB_handle_errcode(ret, ecp, NULL);
+            RDB_errcode_to_error(ret, ecp, NULL);
             goto error;
         }
     } else {
@@ -159,7 +159,7 @@ RDB_del_ops(RDB_op_map *opmap, const char *name, RDB_exec_context *ecp)
         free_ops(op, ecp);
         ret = RDB_hashmap_put(&opmap->map, name, NULL);
         if (ret != RDB_OK) {
-            _RDB_handle_errcode(ret, ecp, NULL);
+            RDB_errcode_to_error(ret, ecp, NULL);
             return RDB_ERROR;
         }
     }

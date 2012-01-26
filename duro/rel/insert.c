@@ -1,7 +1,7 @@
 /*
  * $Id$
  *
- * Copyright (C) 2003-2008 René Hartmann.
+ * Copyright (C) 2003-2008 Renï¿½ Hartmann.
  * See the file COPYING for redistribution information.
  */
 
@@ -88,11 +88,11 @@ _RDB_insert_real(RDB_object *tbp, const RDB_object *tplp,
                 tbp->var.tb.is_persistent ? txp->txid : NULL) == RDB_OK) {
             RDB_raise_element_exists("tuple is already in table", ecp);
         } else {
-            _RDB_handle_errcode(ret, ecp, txp);
+            RDB_errcode_to_error(ret, ecp, txp);
         }
         ret = RDB_ERROR;
     } else if (ret != RDB_OK) {
-        _RDB_handle_errcode(ret, ecp, txp);
+        RDB_errcode_to_error(ret, ecp, txp);
         ret = RDB_ERROR;
     }
     if (ret == RDB_OK) {

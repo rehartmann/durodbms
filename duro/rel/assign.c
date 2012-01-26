@@ -1,7 +1,7 @@
 /*
  * $Id$
  *
- * Copyright (C) 2005-2011 René Hartmann.
+ * Copyright (C) 2005-2011 Renï¿½ Hartmann.
  * See the file COPYING for redistribution information.
  * 
  * Functions for assignment operations (insert, update, delete, copy),
@@ -1707,7 +1707,7 @@ RDB_multi_assign(int insc, const RDB_ma_insert insv[],
                     rcount++;
                     break;
                 case RDB_OB_TABLE:
-                    rc = _RDB_move_tuples(ninsv[i].tbp, ninsv[i].objp, ecp,
+                    rc = RDB_move_tuples(ninsv[i].tbp, ninsv[i].objp, ecp,
                             atxp);
                     if (rc == RDB_ERROR) {
                         rcount = RDB_ERROR;

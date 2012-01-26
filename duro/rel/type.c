@@ -184,7 +184,7 @@ _RDB_add_type(RDB_type *typ, RDB_exec_context *ecp)
 {
     int ret = RDB_hashmap_put(&_RDB_builtin_type_map, RDB_type_name(typ), typ);
     if (ret != RDB_OK) {
-        _RDB_handle_errcode(ret, ecp, NULL);
+        RDB_errcode_to_error(ret, ecp, NULL);
         return RDB_ERROR;
     }
 

@@ -233,11 +233,11 @@ do_summarize(RDB_qresult *qrp, RDB_type *tb1typ, RDB_bool hasavg,
                 ret = RDB_update_rec(qrp->matp->var.tb.stp->recmapp, keyfv,
                         addc + avgc, nonkeyfv, NULL);
                 if (ret != RDB_OK) {
-                    _RDB_handle_errcode(ret, ecp, txp);
+                    RDB_errcode_to_error(ret, ecp, txp);
                     goto cleanup;
                 }
             } else {
-                _RDB_handle_errcode(ret, ecp, txp);
+                RDB_errcode_to_error(ret, ecp, txp);
                 if (RDB_obj_type(RDB_get_err(ecp)) != &RDB_NOT_FOUND_ERROR) {
                     goto cleanup;
                 }
@@ -284,7 +284,7 @@ init_stored_qresult(RDB_qresult *qrp, RDB_object *tbp, RDB_expression *exp,
     ret = RDB_recmap_cursor(&qrp->var.stored.curp, tbp->var.tb.stp->recmapp,
                     RDB_FALSE, tbp->var.tb.is_persistent ? txp->txid : NULL);
     if (ret != RDB_OK) {
-        _RDB_handle_errcode(ret, ecp, txp);
+        RDB_errcode_to_error(ret, ecp, txp);
         return RDB_ERROR;
     }
     ret = RDB_cursor_first(qrp->var.stored.curp);
@@ -293,7 +293,7 @@ init_stored_qresult(RDB_qresult *qrp, RDB_object *tbp, RDB_expression *exp,
         return RDB_OK;
     }
     if (ret != RDB_OK) {
-        _RDB_handle_errcode(ret, ecp, txp);
+        RDB_errcode_to_error(ret, ecp, txp);
         return RDB_ERROR;
     }
     return RDB_OK;
@@ -588,7 +588,7 @@ do_group(RDB_qresult *qrp, RDB_exec_context *ecp, RDB_transaction *txp)
                 /* Try to read tuple of the materialized table */
                 ret = RDB_get_fields(qrp->matp->var.tb.stp->recmapp, keyfv,
                         1, NULL, &gfield);
-                _RDB_handle_errcode(ret, ecp, txp);
+                RDB_errcode_to_error(ret, ecp, txp);
             } else {
                 RDB_raise_not_found("", ecp);
                 ret = RDB_ERROR;
@@ -747,7 +747,7 @@ init_index_qresult(RDB_qresult *qrp, RDB_object *tbp, _RDB_tbindex *indexp,
     ret = RDB_index_cursor(&qrp->var.stored.curp, indexp->idxp, RDB_FALSE,
             txp != NULL ? txp->txid : NULL);
     if (ret != RDB_OK) {
-        _RDB_handle_errcode(ret, ecp, txp);
+        RDB_errcode_to_error(ret, ecp, txp);
         return RDB_ERROR;
     }
     ret = RDB_cursor_first(qrp->var.stored.curp);
@@ -756,7 +756,7 @@ init_index_qresult(RDB_qresult *qrp, RDB_object *tbp, _RDB_tbindex *indexp,
         return RDB_OK;
     }
     if (ret != RDB_OK) {
-        _RDB_handle_errcode(ret, ecp, txp);
+        RDB_errcode_to_error(ret, ecp, txp);
         return RDB_ERROR;
     }
     return RDB_OK;
@@ -789,7 +789,7 @@ init_where_index_qresult(RDB_qresult *qrp, RDB_expression *texp,
     ret = RDB_index_cursor(&qrp->var.stored.curp, indexp->idxp, RDB_FALSE,
             qrp->var.stored.tbp->var.tb.is_persistent ? txp->txid : NULL);
     if (ret != RDB_OK) {
-        _RDB_handle_errcode(ret, ecp, txp);
+        RDB_errcode_to_error(ret, ecp, txp);
         return RDB_ERROR;
     }
 
@@ -820,7 +820,7 @@ init_where_index_qresult(RDB_qresult *qrp, RDB_expression *texp,
 
     RDB_free(fv);
     if (ret != RDB_OK) {
-        _RDB_handle_errcode(ret, ecp, txp);
+        RDB_errcode_to_error(ret, ecp, txp);
         return RDB_ERROR;
     }
     return RDB_OK;
@@ -1245,7 +1245,7 @@ _RDB_get_by_cursor(RDB_object *tbp, RDB_cursor *curp, RDB_type *tpltyp,
         fno = *_RDB_field_no(tbp->var.tb.stp, attrp->name);
         ret = RDB_cursor_get(curp, fno, &datap, &len);
         if (ret != RDB_OK) {
-            _RDB_handle_errcode(ret, ecp, txp);
+            RDB_errcode_to_error(ret, ecp, txp);
             return RDB_ERROR;
         }
         RDB_init_obj(&val);
@@ -1295,7 +1295,7 @@ next_stored_tuple(RDB_qresult *qrp, RDB_object *tbp, RDB_object *tplp,
         return RDB_OK;
     }
     if (ret != RDB_OK) {
-        _RDB_handle_errcode(ret, ecp, txp);
+        RDB_errcode_to_error(ret, ecp, txp);
         return RDB_ERROR;
     }
     return RDB_OK;
@@ -1748,7 +1748,7 @@ _RDB_get_by_uindex(RDB_object *tbp, RDB_object *objpv[], _RDB_tbindex *indexp,
     }
 
     if (ret != RDB_OK) {
-        _RDB_handle_errcode(ret, ecp, txp);
+        RDB_errcode_to_error(ret, ecp, txp);
         ret = RDB_ERROR;
         goto cleanup;
     }
@@ -2076,7 +2076,7 @@ destroy_qresult(RDB_qresult *qrp, RDB_exec_context *ecp, RDB_transaction *txp)
     } else if (qrp->var.stored.curp != NULL) {
         ret = RDB_destroy_cursor(qrp->var.stored.curp);
         if (ret != RDB_OK) {
-            _RDB_handle_errcode(ret, ecp, txp);
+            RDB_errcode_to_error(ret, ecp, txp);
             ret = RDB_ERROR;
         }
     } else {
@@ -2523,7 +2523,7 @@ _RDB_reset_qresult(RDB_qresult *qrp, RDB_exec_context *ecp, RDB_transaction *txp
             qrp->endreached = RDB_FALSE;
         }
         if (ret != RDB_OK) {
-            _RDB_handle_errcode(ret, ecp, txp);
+            RDB_errcode_to_error(ret, ecp, txp);
             return RDB_ERROR;
         }
     }

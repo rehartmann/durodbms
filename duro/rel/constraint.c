@@ -48,7 +48,7 @@ add_empty_tb(RDB_constraint *constrp, RDB_exec_context *ecp,
                 exp, &te);
         if (ret != RDB_OK) {
             RDB_drop_expr(exp, ecp);
-            _RDB_handle_errcode(ret, ecp, txp);
+            RDB_errcode_to_error(ret, ecp, txp);
             return RDB_ERROR;
         }
     }

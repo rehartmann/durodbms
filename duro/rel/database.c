@@ -1066,7 +1066,7 @@ _RDB_assoc_table_db(RDB_object *tbp, RDB_database *dbp, RDB_exec_context *ecp)
     /* Insert table into table map */
     int ret = RDB_hashmap_put(&dbp->tbmap, tbp->var.tb.name, tbp);
     if (ret != RDB_OK) {
-        _RDB_handle_errcode(ret, ecp, NULL);
+        RDB_errcode_to_error(ret, ecp, NULL);
         return RDB_ERROR;
     }
     return RDB_OK;

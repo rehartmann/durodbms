@@ -785,7 +785,7 @@ RDB_drop_op(const char *name, RDB_exec_context *ecp, RDB_transaction *txp)
         ret = RDB_delete(txp->dbp->dbrootp->ro_ops_tbp, exp, ecp, txp);
         if (ret == RDB_ERROR) {
             RDB_drop_expr(exp, ecp);
-            _RDB_handle_errcode(ret, ecp, txp);
+            RDB_errcode_to_error(ret, ecp, txp);
             return RDB_ERROR;
         }
     }

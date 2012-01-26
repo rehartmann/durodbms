@@ -116,7 +116,7 @@ op_println_iostream_string(int argc, RDB_object *argv[],
     }
     
     if (fprintf(iostreams[fno], "%s\n", RDB_obj_string(argv[1])) < 0) {
-        _RDB_handle_errcode(errno, ecp, txp);
+        RDB_errcode_to_error(errno, ecp, txp);
         return RDB_ERROR;
     }
     return RDB_OK;
@@ -133,7 +133,7 @@ op_println_iostream_int(int argc, RDB_object *argv[],
     }
 
     if (fprintf(iostreams[fno], "%d\n", (int) RDB_obj_int(argv[1])) < 0) {
-        _RDB_handle_errcode(errno, ecp, txp);
+        RDB_errcode_to_error(errno, ecp, txp);
         return RDB_ERROR;
     }
     return RDB_OK;
@@ -150,7 +150,7 @@ op_println_iostream_float(int argc, RDB_object *argv[],
     }
 
     if (fprintf(iostreams[fno], "%f\n", (double) RDB_obj_float(argv[1])) < 0) {
-        _RDB_handle_errcode(errno, ecp, txp);
+        RDB_errcode_to_error(errno, ecp, txp);
         return RDB_ERROR;
     }
     return RDB_OK;
@@ -168,7 +168,7 @@ op_println_iostream_bool(int argc, RDB_object *argv[],
 
     if (fprintf(iostreams[fno], "%s\n",
             RDB_obj_bool(argv[1]) ? "TRUE" : "FALSE") == EOF) {
-        _RDB_handle_errcode(errno, ecp, txp);
+        RDB_errcode_to_error(errno, ecp, txp);
         return RDB_ERROR;
     }
     return RDB_OK;
@@ -187,7 +187,7 @@ print_nonscalar(FILE *fp, const RDB_object *objp,
     }
     if (fputs(RDB_obj_string(&strobj), fp) == EOF) {
         RDB_destroy_obj(&strobj, ecp);
-        _RDB_handle_errcode(errno, ecp, txp);
+        RDB_errcode_to_error(errno, ecp, txp);
         return RDB_ERROR;
     }
         
@@ -200,7 +200,7 @@ op_print_string(int argc, RDB_object *argv[], RDB_operator *op,
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
     if (fputs(RDB_obj_string(argv[0]), stdout) == EOF) {
-        _RDB_handle_errcode(errno, ecp, txp);
+        RDB_errcode_to_error(errno, ecp, txp);
         return RDB_ERROR;
     }
     return RDB_OK;
@@ -211,7 +211,7 @@ op_print_int(int argc, RDB_object *argv[], RDB_operator *op,
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
     if (printf("%d", (int) RDB_obj_int(argv[0])) < 0) {
-        _RDB_handle_errcode(errno, ecp, txp);
+        RDB_errcode_to_error(errno, ecp, txp);
         return RDB_ERROR;
     }
     return RDB_OK;
@@ -222,7 +222,7 @@ op_print_float(int argc, RDB_object *argv[], RDB_operator *op,
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
     if (printf("%f", (double) RDB_obj_float(argv[0])) < 0) {
-        _RDB_handle_errcode(errno, ecp, txp);
+        RDB_errcode_to_error(errno, ecp, txp);
         return RDB_ERROR;
     }
     return RDB_OK;
@@ -233,7 +233,7 @@ op_print_bool(int argc, RDB_object *argv[], RDB_operator *op,
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
     if (fputs(RDB_obj_bool(argv[0]) ? "TRUE" : "FALSE", stdout) == EOF) {
-        _RDB_handle_errcode(errno, ecp, txp);
+        RDB_errcode_to_error(errno, ecp, txp);
         return RDB_ERROR;
     }
     return RDB_OK;
@@ -280,7 +280,7 @@ op_print_iostream_string(int argc, RDB_object *argv[], RDB_operator *op,
     }
 
     if (fputs(RDB_obj_string(argv[1]), iostreams[fno]) < 0) {
-        _RDB_handle_errcode(errno, ecp, txp);
+        RDB_errcode_to_error(errno, ecp, txp);
         return RDB_ERROR;
     }
     return RDB_OK;
@@ -297,7 +297,7 @@ op_print_iostream_int(int argc, RDB_object *argv[], RDB_operator *op,
     }
 
     if (fprintf(iostreams[fno], "%d", (int) RDB_obj_int(argv[1])) < 0) {
-        _RDB_handle_errcode(errno, ecp, txp);
+        RDB_errcode_to_error(errno, ecp, txp);
         return RDB_ERROR;
     }
     return RDB_OK;
@@ -314,7 +314,7 @@ op_print_iostream_float(int argc, RDB_object *argv[], RDB_operator *op,
     }
 
     if (fprintf(iostreams[fno], "%f", (double) RDB_obj_float(argv[1])) < 0) {
-        _RDB_handle_errcode(errno, ecp, txp);
+        RDB_errcode_to_error(errno, ecp, txp);
         return RDB_ERROR;
     }
     return RDB_OK;
@@ -331,7 +331,7 @@ op_print_iostream_bool(int argc, RDB_object *argv[], RDB_operator *op,
     }
 
     if (fputs(RDB_obj_bool(argv[1]) ? "TRUE" : "FALSE", iostreams[fno]) == EOF) {
-        _RDB_handle_errcode(errno, ecp, txp);
+        RDB_errcode_to_error(errno, ecp, txp);
         return RDB_ERROR;
     }
     return RDB_OK;
@@ -354,7 +354,7 @@ op_println_int(int argc, RDB_object *argv[], RDB_operator *op,
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
     if (printf("%d\n", (int) RDB_obj_int(argv[0])) < 0) {
-        _RDB_handle_errcode(errno, ecp, txp);
+        RDB_errcode_to_error(errno, ecp, txp);
         return RDB_ERROR;
     }
     return RDB_OK;
@@ -419,7 +419,7 @@ op_println_nonscalar(int argc, RDB_object *argv[], RDB_operator *op,
         return RDB_ERROR;
     }
     if (fprintf(argc == 1 ? stdout : iostreams[fno], "\n") < 0) {
-        _RDB_handle_errcode(errno, ecp, txp);
+        RDB_errcode_to_error(errno, ecp, txp);
         return RDB_ERROR;
     }
     return RDB_OK;
@@ -437,7 +437,7 @@ readln(FILE *fp, RDB_object *linep, RDB_exec_context *ecp,
 
     if (fgets(buf, sizeof(buf), fp) == NULL) {
         if (ferror(fp)) {
-            _RDB_handle_errcode(errno, ecp, txp);
+            RDB_errcode_to_error(errno, ecp, txp);
             return RDB_ERROR;
         }
         return RDB_OK;
@@ -450,7 +450,7 @@ readln(FILE *fp, RDB_object *linep, RDB_exec_context *ecp,
             return RDB_ERROR;
         if (fgets(buf, sizeof(buf), fp) == NULL) {
             if (ferror(fp)) {
-                _RDB_handle_errcode(errno, ecp, txp);
+                RDB_errcode_to_error(errno, ecp, txp);
                 return RDB_ERROR;
             }
             return RDB_OK;
@@ -493,7 +493,7 @@ op_close(int argc, RDB_object *argv[], RDB_operator *op,
     }
     if (fclose(iostreams[fno]) != 0) {
         iostreams[fno] = NULL;
-        _RDB_handle_errcode(errno, ecp, txp);
+        RDB_errcode_to_error(errno, ecp, txp);
         return RDB_ERROR;
     }
     iostreams[fno] = NULL;
@@ -532,7 +532,7 @@ op_open(int argc, RDB_object *argv[], RDB_operator *op,
     /* Open file */
     FILE *fp = fopen(RDB_obj_string(argv[1]), RDB_obj_string(argv[2]));
     if (fp == NULL) {
-        _RDB_handle_errcode(errno, ecp, txp);
+        RDB_errcode_to_error(errno, ecp, txp);
         return RDB_ERROR;
     }
 

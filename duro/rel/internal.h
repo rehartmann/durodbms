@@ -431,10 +431,6 @@ int
 _RDB_obj_not_equals(int argc, RDB_object *argv[], RDB_operator *,
         RDB_exec_context *, RDB_transaction *, RDB_object *retvalp);
 
-RDB_int
-_RDB_move_tuples(RDB_object *dstp, RDB_object *srcp, RDB_exec_context *,
-        RDB_transaction *);
-
 int
 _RDB_obj_to_field(RDB_field *, RDB_object *, RDB_exec_context *);
 
@@ -500,9 +496,6 @@ _RDB_read_constraints(RDB_exec_context *, RDB_transaction *);
 int
 _RDB_check_constraints(const RDB_constraint *, RDB_exec_context *,
         RDB_transaction *);
-
-void
-_RDB_handle_errcode(int errcode, RDB_exec_context *, RDB_transaction *);
 
 int
 _RDB_del_recmap(RDB_transaction *, RDB_recmap *, RDB_exec_context *);

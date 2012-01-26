@@ -302,7 +302,7 @@ RDB_ec_set_property(RDB_exec_context *ecp, const char *name, void *p)
 {
     int ret = RDB_hashmap_put(&ecp->pmap, name, p);
     if (ret != RDB_OK) {
-        _RDB_handle_errcode(ret, ecp, NULL);
+        RDB_errcode_to_error(ret, ecp, NULL);
         return RDB_ERROR;
     }
     return RDB_OK;
@@ -321,10 +321,11 @@ RDB_ec_get_property(RDB_exec_context *ecp, const char *name)
     return RDB_hashmap_get(&ecp->pmap, name);
 }
 
-/*@}*/
-
+/**
+ * Raise an error that corresponds to a POSIX error code.
+ */
 void
-_RDB_handle_errcode(int errcode, RDB_exec_context *ecp, RDB_transaction *txp)
+RDB_errcode_to_error(int errcode, RDB_exec_context *ecp, RDB_transaction *txp)
 {
     switch (errcode) {
         case ENOMEM:
@@ -361,3 +362,5 @@ _RDB_handle_errcode(int errcode, RDB_exec_context *ecp, RDB_transaction *txp)
             RDB_raise_system(db_strerror(errcode), ecp);
     }
 }
+
+/*@}*/

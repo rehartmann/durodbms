@@ -73,7 +73,7 @@ _RDB_close_stored_table(RDB_stored_table *stp, RDB_exec_context *ecp)
     ret = RDB_close_recmap(stp->recmapp);
     free_stored_table(stp);
     if (ret != 0) {
-        _RDB_handle_errcode(ret, ecp, NULL);
+        RDB_errcode_to_error(ret, ecp, NULL);
         return RDB_ERROR;
     }
     return RDB_OK;
@@ -201,7 +201,7 @@ _RDB_create_tbindex(RDB_object *tbp, RDB_environment *envp, RDB_exec_context *ec
                   envp, indexp->attrc, fieldv, cmpv, flags,
                   txp != NULL ? txp->txid : NULL, &indexp->idxp);
     if (ret != RDB_OK) {
-        _RDB_handle_errcode(ret, ecp, txp);
+        RDB_errcode_to_error(ret, ecp, txp);
         indexp->idxp = NULL;
         ret = RDB_ERROR;
     }
@@ -553,7 +553,7 @@ _RDB_create_stored_table(RDB_object *tbp, RDB_environment *envp,
             &tbp->var.tb.stp->recmapp);
     if (ret != RDB_OK) {
         tbp->var.tb.stp->recmapp = NULL;
-        _RDB_handle_errcode(ret, ecp, txp);
+        RDB_errcode_to_error(ret, ecp, txp);
         goto error;
     }
 
@@ -657,7 +657,7 @@ _RDB_open_stored_table(RDB_object *tbp, RDB_environment *envp,
         if (ret == ENOENT) {
             RDB_raise_not_found("table not found", ecp);
         } else {
-            _RDB_handle_errcode(ret, ecp, txp);
+            RDB_errcode_to_error(ret, ecp, txp);
         }
         goto error;
     }
@@ -754,7 +754,7 @@ _RDB_delete_stored_table(RDB_stored_table *stp, RDB_exec_context *ecp,
     } else {
         ret = RDB_delete_recmap(stp->recmapp, NULL);
         if (ret != RDB_OK) {
-            _RDB_handle_errcode(ret, ecp, txp);
+            RDB_errcode_to_error(ret, ecp, txp);
             ret = RDB_ERROR;
         }
     }

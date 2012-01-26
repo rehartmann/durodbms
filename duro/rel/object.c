@@ -227,26 +227,32 @@ irep_to_tuple(RDB_object *tplp, RDB_type *typ, const void *datap,
     int ret;
     size_t len = 0;
     const RDB_byte *bp = (RDB_byte *) datap;
+    char *lastname = NULL;
 
     if (RDB_type_is_scalar(typ))
         typ = typ->var.scalar.arep;
 
+    /*
+     * Read attribute in the alphabetical order of their names
+     */
     for (i = 0; i < typ->var.tuple.attrc; i++) {
         RDB_object obj;
         size_t l;
+        int attridx = RDB_next_attr_sorted(typ, lastname);
 
         RDB_init_obj(&obj);
-        l = len_irep_to_obj(&obj, typ->var.tuple.attrv[i].typ, bp, ecp);
+        l = len_irep_to_obj(&obj, typ->var.tuple.attrv[attridx].typ, bp, ecp);
         if (l < 0) {
             RDB_destroy_obj(&obj, ecp);
             return l;
         }
         bp += l;
         len += l;
-        ret = RDB_tuple_set(tplp, typ->var.tuple.attrv[i].name, &obj, ecp);
+        ret = RDB_tuple_set(tplp, typ->var.tuple.attrv[attridx].name, &obj, ecp);
         RDB_destroy_obj(&obj, ecp);
         if (ret != RDB_OK)
             return RDB_ERROR;
+        lastname =  typ->var.tuple.attrv[attridx].name;
     }
     return len;
 }
@@ -552,7 +558,6 @@ _RDB_obj_to_irep(void *dstp, const RDB_object *objp, size_t len)
         {
             RDB_type *tpltyp = objp->store_typ;
             int i;
-            int attridx;
             char *lastwritten = NULL;
 
             RDB_init_exec_context(&ec);
@@ -563,18 +568,17 @@ _RDB_obj_to_irep(void *dstp, const RDB_object *objp, size_t len)
 
             /*
              * Write attributes in alphabetical order of their names,
-             * so the order correspons with serializes tuple types.
+             * so the order corresponds with serializes tuple types.
              * See _RDB_serialize_type().
              */
             for (i = 0; i < tpltyp->var.tuple.attrc; i++) {
                 RDB_object *attrp;
+                int attridx = RDB_next_attr_sorted(tpltyp, lastwritten);
 
-                attridx = RDB_next_attr_sorted(tpltyp, lastwritten);
-
-                attrp = RDB_tuple_get(objp, tpltyp->var.tuple.attrv[i].name);
-                bp = obj_to_len_irep(bp, attrp, tpltyp->var.tuple.attrv[i].typ,
+                attrp = RDB_tuple_get(objp, tpltyp->var.tuple.attrv[attridx].name);
+                bp = obj_to_len_irep(bp, attrp, tpltyp->var.tuple.attrv[attridx].typ,
                         &ec);
-                lastwritten = tpltyp->var.tuple.attrv[i].name;
+                lastwritten = tpltyp->var.tuple.attrv[attridx].name;
             }
             RDB_destroy_exec_context(&ec);
             break;
@@ -689,7 +693,7 @@ _RDB_copy_obj(RDB_object *dstvalp, const RDB_object *srcvalp,
                 if (ret != RDB_OK)
                     return RDB_ERROR;
             }
-            rc = _RDB_move_tuples(dstvalp, (RDB_object *) srcvalp, ecp,
+            rc = RDB_move_tuples(dstvalp, (RDB_object *) srcvalp, ecp,
                     srcvalp->var.tb.is_persistent || srcvalp->var.tb.exp != NULL
                     || dstvalp->var.tb.is_persistent ? txp : NULL);
             if (rc == RDB_ERROR)

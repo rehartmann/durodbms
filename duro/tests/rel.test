@@ -53,7 +53,7 @@ test rel {relation-valued attributes} -setup $SETUP -body {
     }]} {
         error "Creation of U2 should fail, but did not"
     }
-    
+
     duro::table expr -global G1 {T3 GROUP {B, C} AS BC} $tx
     
     duro::table expr -global S1 {T1 WHERE RLATTR = RELATION {

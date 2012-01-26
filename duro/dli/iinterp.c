@@ -266,7 +266,7 @@ connect_op(int argc, RDB_object *argv[], RDB_operator *op,
 {
     int ret = RDB_open_env(RDB_obj_string(argv[0]), &envp);
     if (ret != RDB_OK) {
-        _RDB_handle_errcode(ret, ecp, txp);
+        RDB_errcode_to_error(ret, ecp, txp);
         envp = NULL;
         return RDB_ERROR;
     }
@@ -303,7 +303,7 @@ create_env_op(int argc, RDB_object *argv[], RDB_operator *op,
 
     ret = RDB_open_env(RDB_obj_string(argv[0]), &envp);
     if (ret != RDB_OK) {
-        _RDB_handle_errcode(ret, ecp, txp);
+        RDB_errcode_to_error(ret, ecp, txp);
         envp = NULL;
         return RDB_ERROR;
     }
@@ -316,7 +316,7 @@ system_op(int argc, RDB_object *argv[], RDB_operator *op,
 {
     int ret = system(RDB_obj_string(argv[0]));
     if (ret == -1 || ret == 127) {
-        _RDB_handle_errcode(errno, ecp, txp);
+        RDB_errcode_to_error(errno, ecp, txp);
         return RDB_ERROR;
     }
     RDB_int_to_obj(argv[1], (RDB_int) ret);
@@ -812,7 +812,7 @@ exec_vardef_real(RDB_parse_node *nodep, RDB_exec_context *ecp)
     }
 
     if (initexp != NULL) {
-        if (_RDB_move_tuples(tbp, &tb, ecp, &txnp->tx) == (RDB_int) RDB_ERROR)
+        if (RDB_move_tuples(tbp, &tb, ecp, &txnp->tx) == (RDB_int) RDB_ERROR)
             goto error;
     }
 
@@ -976,7 +976,7 @@ exec_vardef_private(RDB_parse_node *nodep, RDB_exec_context *ecp)
         goto error;
     }
 
-    if (initexp != NULL) {        
+    if (initexp != NULL) {
         if (RDB_evaluate(initexp, get_var, current_varmapp, ecp,
                 txnp != NULL ? &txnp->tx : NULL, &tb) != RDB_OK) {
             goto error;

@@ -1,7 +1,7 @@
 /*
  * $Id$
  *
- * Copyright (C) 2003-2009 René Hartmann.
+ * Copyright (C) 2003-2009 Renï¿½ Hartmann.
  * See the file COPYING for redistribution information.
  */
 
@@ -169,7 +169,7 @@ RDB_commit(RDB_exec_context *ecp, RDB_transaction *txp)
 
     ret = txp->txid->commit(txp->txid, 0);
     if (ret != 0) {
-        _RDB_handle_errcode(ret, ecp, txp);
+        RDB_errcode_to_error(ret, ecp, txp);
         return RDB_ERROR;
     }
 
@@ -213,7 +213,7 @@ RDB_rollback(RDB_exec_context *ecp, RDB_transaction *txp)
 
     ret = txp->txid->abort(txp->txid);
     if (ret != 0) {
-        _RDB_handle_errcode(ret, ecp, txp);
+        RDB_errcode_to_error(ret, ecp, txp);
         return RDB_ERROR;
     }
 
@@ -222,7 +222,7 @@ RDB_rollback(RDB_exec_context *ecp, RDB_transaction *txp)
      */
     ret = close_storage(txp);
     if (ret != RDB_OK) {
-        _RDB_handle_errcode(ret, ecp, txp);
+        RDB_errcode_to_error(ret, ecp, txp);
         ret = RDB_ERROR;
     }
 

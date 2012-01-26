@@ -59,57 +59,6 @@ _RDB_new_rtable(const char *name, RDB_bool persistent,
     return tbp;
 }
 
-/**
- * Copy all tuples from source table into the destination table.
- * The destination table must be a real table.
- */
-RDB_int
-_RDB_move_tuples(RDB_object *dstp, RDB_object *srcp, RDB_exec_context *ecp,
-        RDB_transaction *txp)
-{
-    RDB_object tpl;
-    int ret;
-    int count = 0;
-    RDB_qresult *qrp = NULL;
-    RDB_expression *texp = _RDB_optimize(srcp, 0, NULL, ecp, txp);
-    if (texp == NULL)
-        return RDB_ERROR;
-
-    qrp = _RDB_expr_qresult(texp, ecp, txp);
-    if (qrp == NULL) {
-        ret = RDB_ERROR;
-        goto cleanup;
-    }
-
-    /* Eliminate duplicates, if necessary */
-    if (_RDB_duprem(qrp, ecp, txp) != RDB_OK)
-        goto cleanup;
-
-    RDB_init_obj(&tpl);
-
-    while ((ret = _RDB_next_tuple(qrp, &tpl, ecp, txp)) == RDB_OK) {
-        if (!dstp->var.tb.is_persistent)
-            ret = _RDB_insert_real(dstp, &tpl, ecp, NULL);
-        else
-            ret = _RDB_insert_real(dstp, &tpl, ecp, txp);
-        if (ret != RDB_OK) {
-            goto cleanup;
-        }
-        count++;
-    }
-    if (RDB_obj_type(RDB_get_err(ecp)) == &RDB_NOT_FOUND_ERROR) {
-        RDB_clear_err(ecp);
-        ret = count;
-    }
-
-cleanup:
-    if (qrp != NULL)
-        _RDB_drop_qresult(qrp, ecp, txp);
-    RDB_drop_expr(texp, ecp);
-    RDB_destroy_obj(&tpl, ecp);
-    return ret;
-}
-
 int
 _RDB_init_table(RDB_object *tbp, const char *name, RDB_bool persistent,
         RDB_type *reltyp, int keyc, const RDB_string_vec keyv[], RDB_bool usr,
@@ -240,6 +189,59 @@ error:
 /** @addtogroup table
  * @{
  */
+
+/**
+ * Copy all tuples from source table into the destination table.
+ * The destination table must be a real table.
+ *
+ * @returns the number of tuples copied on success, RDB_ERROR on failure
+ */
+RDB_int
+RDB_move_tuples(RDB_object *dstp, RDB_object *srcp, RDB_exec_context *ecp,
+        RDB_transaction *txp)
+{
+    RDB_object tpl;
+    int ret;
+    int count = 0;
+    RDB_qresult *qrp = NULL;
+    RDB_expression *texp = _RDB_optimize(srcp, 0, NULL, ecp, txp);
+    if (texp == NULL)
+        return RDB_ERROR;
+
+    qrp = _RDB_expr_qresult(texp, ecp, txp);
+    if (qrp == NULL) {
+        ret = RDB_ERROR;
+        goto cleanup;
+    }
+
+    /* Eliminate duplicates, if necessary */
+    if (_RDB_duprem(qrp, ecp, txp) != RDB_OK)
+        goto cleanup;
+
+    RDB_init_obj(&tpl);
+
+    while ((ret = _RDB_next_tuple(qrp, &tpl, ecp, txp)) == RDB_OK) {
+        if (!dstp->var.tb.is_persistent)
+            ret = _RDB_insert_real(dstp, &tpl, ecp, NULL);
+        else
+            ret = _RDB_insert_real(dstp, &tpl, ecp, txp);
+        if (ret != RDB_OK) {
+            goto cleanup;
+        }
+        count++;
+    }
+    if (RDB_obj_type(RDB_get_err(ecp)) == &RDB_NOT_FOUND_ERROR) {
+        RDB_clear_err(ecp);
+        ret = count;
+    }
+
+cleanup:
+    if (qrp != NULL)
+        _RDB_drop_qresult(qrp, ecp, txp);
+    RDB_drop_expr(texp, ecp);
+    RDB_destroy_obj(&tpl, ecp);
+    return ret;
+}
 
 /**
  * Like RDB_init_table(), but uses a RDB_type argument
