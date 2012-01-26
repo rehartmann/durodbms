@@ -303,4 +303,25 @@ test summarize {SUMMARIZE} -setup $SETUP -body {
 3 TRUE TRUE TRUE TRUE
 }
 
+test relrel {table with relation attribute} -setup $SETUP -body {
+    exec $testdir/../../dli/durodt << {
+        connect('dbenv');
+        current_db := 'D';
+
+        begin transaction;
+
+        var t real relation {x integer, a string, r relation{s string, i integer}} key {x};
+
+		insert t tuple{x 1, a 'hm', r rel{tup{i 5, s 'yo'}}};
+
+		var tp init tuple from (tuple from t).r;
+
+        println(tp.i);
+        println(tp.s);
+        commit;
+    }
+} -result {5
+yo
+}
+
 cleanupTests
