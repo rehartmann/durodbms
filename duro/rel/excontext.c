@@ -1,7 +1,7 @@
 /*
  * $Id$
  *
- * Copyright (C) 2005-2011 Rene Hartmann.
+ * Copyright (C) 2005-2012 Rene Hartmann.
  * See the file COPYING for redistribution information.
  */
 
@@ -291,16 +291,16 @@ RDB_raise_syntax(const char *msg, RDB_exec_context *ecp)
 /*@}*/
 
 /** <strong>RDB_ec_set_property</strong> sets the property <var>name</var>
-of the RDB_exec_context given by <var>ecp</var> to <var>value</var>.
+of the RDB_exec_context given by <var>ecp</var> to <var>val</var>.
 
 @returns
 
 RDB_OK on success, RDB_ERROR on failure.
  */
 int
-RDB_ec_set_property(RDB_exec_context *ecp, const char *name, void *p)
+RDB_ec_set_property(RDB_exec_context *ecp, const char *name, void *val)
 {
-    int ret = RDB_hashmap_put(&ecp->pmap, name, p);
+    int ret = RDB_hashmap_put(&ecp->pmap, name, val);
     if (ret != RDB_OK) {
         RDB_errcode_to_error(ret, ecp, NULL);
         return RDB_ERROR;

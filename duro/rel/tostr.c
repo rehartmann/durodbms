@@ -1,7 +1,7 @@
 /*
  * $Id$
  *
- * Copyright (C) 2004-2011 Rene Hartmann.
+ * Copyright (C) 2004-2012 Rene Hartmann.
  * See the file COPYING for redistribution information.
  */
 
@@ -243,11 +243,14 @@ append_obj(RDB_object *objp, const RDB_object *srcp, RDB_exec_context *ecp,
     RDB_type *typ = RDB_obj_type(srcp);
 
     if (typ != NULL && RDB_type_is_scalar(typ)) {
-         if (srcp->typ->var.scalar.repc > 0)
+         if (srcp->typ->var.scalar.repc > 0) {
+             /* Type with possreps - generate selector */
              ret = append_utype_obj(objp, srcp, ecp, txp);
-         else if (srcp->typ == &RDB_STRING)
+         } else if (srcp->typ == &RDB_STRING) {
+             /* String */
              ret = append_quoted_string(objp, srcp, ecp);
-         else {
+         } else {
+             /* Other type - convert to string */
              RDB_object dst;
 
              RDB_init_obj(&dst);
@@ -259,31 +262,27 @@ append_obj(RDB_object *objp, const RDB_object *srcp, RDB_exec_context *ecp,
              ret = RDB_append_string(objp, dst.var.bin.datap, ecp);
              RDB_destroy_obj(&dst, ecp);
          }
-         if (ret != RDB_OK) {
-             return RDB_ERROR;
-         }
-    } else {
-        if ((typ != NULL && RDB_type_is_tuple(typ))
+         return ret;
+    }
+    if (typ != NULL) {
+        if (RDB_type_is_tuple(typ)
                 || srcp->kind == RDB_OB_TUPLE) {
             ret = append_tuple(objp, srcp, ecp, txp);
-            if (ret != RDB_OK)
-                return RDB_ERROR;
-        } else if (typ != NULL && RDB_type_is_relation(typ)) {
+        } else if (RDB_type_is_relation(typ)) {
             ret = append_table_val(objp, srcp, ecp, txp);
-            if (ret != RDB_OK)
-                return RDB_ERROR;
-        } else if ((typ != NULL && RDB_type_is_array(typ))
+        } else if (RDB_type_is_array(typ)
                 || srcp->kind == RDB_OB_ARRAY) {
             ret = append_array(objp, srcp, ecp, txp);
-            if (ret != RDB_OK)
-                return RDB_ERROR;
-        } else {
-            RDB_raise_not_supported("", ecp);
-            return RDB_ERROR;
         }
+    } else if (srcp->kind == RDB_OB_INITIAL) {
+        /* Treat as empty tuple */
+        ret = RDB_append_string(objp, "TUPLE { }", ecp);
+    } else {
+        RDB_raise_invalid_argument("unable to convert RDB_object to string", ecp);
+        return RDB_ERROR;
     }
-    return RDB_OK;
-}
+    return ret;
+} /* append_obj */
 
 static int
 append_ex(RDB_object *objp, const RDB_expression *exp, RDB_exec_context *ecp,

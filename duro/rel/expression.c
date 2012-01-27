@@ -203,6 +203,10 @@ RDB_expr_resolve_varnames(RDB_expression *exp, RDB_getobjfn *getfnp,
                 if (newexp == NULL)
                     return NULL;
 
+                /*
+                 * Evaluate selector and store result
+                 * !! becomes obsolete if RELATION is supported as virtual relvar
+                 */
                 ret = RDB_evaluate(exp, getfnp, getdata, ecp, txp, &newexp->var.obj);
                 if (ret != RDB_OK) {
                     RDB_drop_expr(newexp, ecp);
@@ -258,7 +262,7 @@ RDB_expr_resolve_varnames(RDB_expression *exp, RDB_getobjfn *getfnp,
             return RDB_var_ref(exp->var.varname, ecp);
     }
     abort();
-}
+} /* RDB_expr_resolve_varnames */
 
 static RDB_type *
 get_tuple_attr_type(const char *attrname, void *arg)
@@ -639,34 +643,49 @@ error:
     return NULL;
 }
 
+/*
+ * Return type of relation expression *exp and tuple types in argtv.
+ * The type is not consumed.
+ */
 static RDB_type *
 relation_type(const RDB_expression *exp, RDB_type **argtv,
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
-    RDB_type *rtyp = NULL;
+    RDB_type *rtyp;
+    RDB_type *tpltyp;
+    RDB_type *basetyp;
 
     if (exp->var.op.args.firstp == NULL) {
-        RDB_raise_not_supported("argument required for RELATION", ecp);
-        goto error;
+        RDB_raise_invalid_argument("argument required for RELATION", ecp);
+        return NULL;
     }
-    if (argtv[0]->kind != RDB_TP_TUPLE) {
+    tpltyp = argtv[0];
+    if (tpltyp == NULL) {
+        /*
+         * If the type of the first arg hasn't been passed in argtv[0],
+         * get type of first expression
+         */
+        tpltyp = RDB_expr_type(exp->var.op.args.firstp, NULL, NULL, ecp, txp);
+        if (tpltyp == NULL)
+            return NULL;
+    }
+    if (tpltyp->kind != RDB_TP_TUPLE) {
         RDB_raise_type_mismatch("tuple argument required for RELATION", ecp);
-        goto error;
+        return NULL;
     }
-    rtyp = RDB_alloc(sizeof(RDB_type), ecp);
+
+    /*
+     * Create relation type. The base type must be duplicated.
+     */
+    basetyp = RDB_dup_nonscalar_type(tpltyp, ecp);
+    if (basetyp == NULL)
+        return NULL;
+    rtyp = RDB_create_relation_type_from_base(basetyp, ecp);
     if (rtyp == NULL) {
-        goto error;
+        RDB_drop_type(basetyp, ecp, NULL);
+        return NULL;
     }
-    rtyp->kind = RDB_TP_RELATION;
-    rtyp->name = NULL;
-    rtyp->ireplen = RDB_VARIABLE_LEN;
-    rtyp->var.basetyp = RDB_create_tuple_type(argtv[0]->var.tuple.attrc,
-            argtv[0]->var.tuple.attrv, ecp);
-
     return rtyp;
-
-error:
-    return NULL;
 }
 
 static RDB_type *
@@ -1146,7 +1165,7 @@ RDB_expr_type(RDB_expression *exp, RDB_gettypefn *getfnp, void *getarg,
             return exp->typ;
     }
     abort();
-}
+} /* RDB_expr_type */
 
 /**
  * Return operator name for read-only operator expressions.

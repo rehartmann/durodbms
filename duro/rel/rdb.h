@@ -136,8 +136,15 @@ typedef struct RDB_object {
 } RDB_object;
 
 typedef struct {
+    /* Internal */
+
+    /* RDB_TRUE if error if the ec contains an error */
     RDB_bool error_active;
+
+    /* The error value, if error_active is RDB_TRUE*/
     RDB_object error;
+
+    /* Property map */
     RDB_hashmap pmap;
 } RDB_exec_context;
 

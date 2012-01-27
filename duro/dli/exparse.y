@@ -23,17 +23,18 @@ extern int yylineno;
 static RDB_expression *
 table_dum_expr(void)
 {
-    RDB_expression *exp;
-
-    exp = RDB_obj_to_expr(NULL, _RDB_parse_ecp);
+    RDB_type *reltyp;
+    RDB_expression *exp = RDB_ro_op("RELATION", _RDB_parse_ecp);
     if (exp == NULL)
-        return NULL;
+        return NULL; 
 
-    if (RDB_init_table(RDB_expr_obj(exp), NULL, 0, NULL, 0, NULL,
-            _RDB_parse_ecp) != RDB_OK) {
+    reltyp = RDB_create_relation_type(0, NULL, _RDB_parse_ecp);
+    if (reltyp == NULL) {
         RDB_drop_expr(exp, _RDB_parse_ecp);
         return NULL;
     }
+
+    RDB_set_expr_type(exp, reltyp);
 
     return exp;
 }
@@ -1800,24 +1801,26 @@ expression: expression '{' id_commalist '}' {
         RDB_parse_add_child($$, $7);
     }
     | TOK_TABLE_DEE {
-        int ret;
-
-        RDB_object tpl;
+		RDB_expression *argexp;
         RDB_expression *exp = table_dum_expr();
         if (exp == NULL) {
             YYERROR;
         }
 
-        RDB_init_obj(&tpl);
-        ret = RDB_insert(&exp->var.obj, &tpl, _RDB_parse_ecp, NULL);
-        RDB_destroy_obj(&tpl, _RDB_parse_ecp);
-        if (ret != RDB_OK) {
+        /*
+         * Create expression which represents a newly initialized RDB_object.
+         * In this context, it represents an empty tuple.
+         */
+        argexp = RDB_ro_op("TUPLE", _RDB_parse_ecp);
+        if (argexp == NULL) {
+            RDB_drop_expr(exp, _RDB_parse_ecp);
             YYERROR;
         }
+        RDB_add_arg(exp, argexp);
 
         $$ = RDB_new_parse_expr(exp, NULL, _RDB_parse_ecp);
-		RDB_parse_del_node($1, _RDB_parse_ecp);
         if ($$ == NULL) {
+            RDB_drop_expr(exp, _RDB_parse_ecp);
             YYERROR;
         }
     }

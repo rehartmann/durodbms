@@ -793,7 +793,7 @@ _RDB_op_relation(int argc, RDB_object *argv[], RDB_operator *op,
         return RDB_ERROR;
     }
 
-    if (argv[0]->kind != RDB_OB_TUPLE) {
+    if (argv[0]->kind != RDB_OB_TUPLE && argv[0]->kind != RDB_OB_INITIAL) {
         RDB_raise_not_supported("tuple required by RELATION", ecp);
         return RDB_ERROR;
     }

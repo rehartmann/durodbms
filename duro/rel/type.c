@@ -841,7 +841,8 @@ free_type(RDB_type *typ, RDB_exec_context *ecp)
                     RDB_free(typ->var.tuple.attrv[i].defaultp);
                 }
             }
-            RDB_free(typ->var.tuple.attrv);
+            if (typ->var.tuple.attrc > 0)
+                RDB_free(typ->var.tuple.attrv);
             break;
         case RDB_TP_RELATION:
         case RDB_TP_ARRAY:
@@ -1020,10 +1021,12 @@ RDB_create_tuple_type(int attrc, const RDB_attr attrv[],
     tuptyp->compare_op = NULL;
     tuptyp->kind = RDB_TP_TUPLE;
     tuptyp->ireplen = RDB_VARIABLE_LEN;
-    tuptyp->var.tuple.attrv = RDB_alloc(sizeof(RDB_attr) * attrc, ecp);
-    if (tuptyp->var.tuple.attrv == NULL) {
-        RDB_free(tuptyp);
-        return NULL;
+    if (attrc > 0) {
+        tuptyp->var.tuple.attrv = RDB_alloc(sizeof(RDB_attr) * attrc, ecp);
+        if (tuptyp->var.tuple.attrv == NULL) {
+            RDB_free(tuptyp);
+            return NULL;
+        }
     }
     for (i = 0; i < attrc; i++) {
         tuptyp->var.tuple.attrv[i].typ = NULL;

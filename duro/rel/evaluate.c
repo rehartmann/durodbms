@@ -7,6 +7,7 @@
 #include "rdb.h"
 #include "internal.h"
 #include "transform.h"
+#include "tostr.h"
 #include <string.h>
 
 /*
@@ -355,6 +356,13 @@ int
 RDB_evaluate(RDB_expression *exp, RDB_getobjfn *getfnp, void *getdata,
         RDB_exec_context *ecp, RDB_transaction *txp, RDB_object *valp)
 {
+    if (RDB_FALSE /* !! */) {
+        fputs("Evaluating: ", stderr);
+        if (_RDB_print_expr(exp, stderr, ecp) == RDB_ERROR)
+            return RDB_ERROR;
+        fputs("\n", stderr);
+    }
+
     switch (exp->kind) {
         case RDB_EX_TUPLE_ATTR:
         {
@@ -429,7 +437,7 @@ RDB_evaluate(RDB_expression *exp, RDB_getobjfn *getfnp, void *getdata,
     }
     /* Should never be reached */
     abort();
-}
+} /* RDB_evaluate */
 
 int
 RDB_evaluate_bool(RDB_expression *exp, RDB_getobjfn *getfnp, void *getdata,
