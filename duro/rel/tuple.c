@@ -499,7 +499,7 @@ RDB_add_tuple(RDB_object *tpl1p, const RDB_object *tpl2p,
 }
 
 /**
- * RDB_join_tuples creates a tuple which contains the attributes
+ * RDB_union_tuples creates a tuple which contains the attributes
 of the two tuples specified by <var>tpl1p</var> and <var>tpl2p</var>.
 
 If an error occurs, an error value is left in *<var>ecp</var>.
@@ -522,7 +522,7 @@ different values.
 The call may also fail for a @ref system-errors "system error".
  */
 int
-RDB_join_tuples(const RDB_object *tpl1p, const RDB_object *tpl2p,
+RDB_union_tuples(const RDB_object *tpl1p, const RDB_object *tpl2p,
         RDB_exec_context *ecp, RDB_transaction *txp, RDB_object *restplp)
 {
     int ret = RDB_copy_obj(restplp, tpl1p, ecp);

@@ -919,18 +919,61 @@ op_rename(int argc, RDB_object *argv[], RDB_operator *op,
 }
 
 static int
-op_join(int argc, RDB_object *argv[], RDB_operator *op,
+op_rel_binop(int argc, RDB_object *argv[], RDB_operator *op,
         RDB_exec_context *ecp, RDB_transaction *txp, RDB_object *retvalp)
-{    
+{
+    RDB_type *typ;
+
     if (argc != 2) {
-        RDB_raise_invalid_argument("invalid argument to JOIN", ecp);
+        RDB_raise_invalid_argument("invalid # of arguments", ecp);
         return RDB_ERROR;
     }
 
-    if (argv[0]->kind == RDB_OB_TABLE)
-        return op_vtable(argc, argv, op, ecp, txp, retvalp);
+    typ = RDB_obj_type(argv[0]);
+    if (!RDB_type_is_relation(typ)) {
+        RDB_raise_type_mismatch("relation argument required", ecp);
+        return RDB_ERROR;
+    }
 
-    return RDB_join_tuples(argv[0], argv[1], ecp, txp, retvalp);
+    typ = RDB_obj_type(argv[1]);
+    if (!RDB_type_is_relation(typ)) {
+        RDB_raise_type_mismatch("relation argument required", ecp);
+        return RDB_ERROR;
+    }
+
+    return op_vtable(argc, argv, op, ecp, txp, retvalp);
+}
+
+static int
+op_union(int argc, RDB_object *argv[], RDB_operator *op,
+        RDB_exec_context *ecp, RDB_transaction *txp, RDB_object *retvalp)
+{
+    RDB_type *typ1, *typ2;
+
+    if (argc != 2) {
+        RDB_raise_invalid_argument("invalid # of arguments", ecp);
+        return RDB_ERROR;
+    }
+
+    typ1 = RDB_obj_type(argv[0]);
+    typ2 = RDB_obj_type(argv[1]);
+
+    if ((typ1 == NULL || RDB_type_is_tuple(typ1))
+            && (typ2 == NULL || RDB_type_is_tuple(typ2))
+            && (argv[0]->kind == RDB_OB_TUPLE || argv[0]->kind == RDB_OB_INITIAL)
+            && (argv[1]->kind == RDB_OB_TUPLE || argv[1]->kind == RDB_OB_INITIAL)) {
+        /* Tuple UNION */
+        return RDB_union_tuples(argv[0], argv[1], ecp, txp, retvalp);
+    }
+
+    /* Relation UNION - check types */
+    if (typ1 == NULL || !RDB_type_is_relation(typ1)
+            || typ2 == NULL || !RDB_type_is_relation(typ2)) {
+        RDB_raise_type_mismatch("relation argument required", ecp);
+        return RDB_ERROR;
+    }
+
+    return op_vtable(argc, argv, op, ecp, txp, retvalp);
 }
 
 static int
@@ -1856,7 +1899,27 @@ _RDB_init_builtin_ops(RDB_exec_context *ecp)
     if (ret != RDB_OK)
         return RDB_ERROR;
 
-    ret = put_builtin_ro_op("JOIN", -1, NULL, NULL, &op_join, ecp);
+    ret = put_builtin_ro_op("JOIN", -1, NULL, NULL, &op_rel_binop, ecp);
+    if (ret != RDB_OK)
+        return ret;
+
+    ret = put_builtin_ro_op("MINUS", -1, NULL, NULL, &op_rel_binop, ecp);
+    if (ret != RDB_OK)
+        return ret;
+
+    ret = put_builtin_ro_op("SEMIMINUS", -1, NULL, NULL, &op_rel_binop, ecp);
+    if (ret != RDB_OK)
+        return ret;
+
+    ret = put_builtin_ro_op("INTERSECT", -1, NULL, NULL, &op_rel_binop, ecp);
+    if (ret != RDB_OK)
+        return ret;
+
+    ret = put_builtin_ro_op("SEMIJOIN", -1, NULL, NULL, &op_rel_binop, ecp);
+    if (ret != RDB_OK)
+        return ret;
+
+    ret = put_builtin_ro_op("UNION", -1, NULL, NULL, &op_union, ecp);
     if (ret != RDB_OK)
         return ret;
 

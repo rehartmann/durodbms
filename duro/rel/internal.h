@@ -238,7 +238,7 @@ RDB_extend_relation_type(const RDB_type *typ, int attrc, RDB_attr attrv[],
  * RDB_TYPE_MISMATCH is returned.
  */
 RDB_type *
-RDB_join_tuple_types(const RDB_type *typ1, const RDB_type *typ2,
+RDB_union_tuple_types(const RDB_type *typ1, const RDB_type *typ2,
         RDB_exec_context *);
 
 /*

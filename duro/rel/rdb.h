@@ -649,7 +649,7 @@ RDB_add_tuple(RDB_object *, const RDB_object *,
         RDB_exec_context *, RDB_transaction *);
 
 int
-RDB_join_tuples(const RDB_object *, const RDB_object *, RDB_exec_context *,
+RDB_union_tuples(const RDB_object *, const RDB_object *, RDB_exec_context *,
         RDB_transaction *, RDB_object *);
 
 int

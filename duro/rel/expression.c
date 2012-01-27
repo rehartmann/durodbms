@@ -987,16 +987,35 @@ expr_op_type(RDB_expression *exp, RDB_gettypefn *getfnp, void *arg,
                 || argtv[1] == NULL) {
             RDB_raise_invalid_argument("invalid JOIN", ecp);
             goto error;
-        }        
-            
+        }
+
         if (argtv[0]->kind != RDB_TP_RELATION
                     || argtv[1]->kind != RDB_TP_RELATION) {
             RDB_raise_type_mismatch("table argument required", ecp);
             goto error;
         }
         typ = RDB_join_relation_types(argtv[0], argtv[1], ecp);
-    } else if (strcmp(exp->var.op.name, "UNION") == 0
-                || strcmp(exp->var.op.name, "MINUS") == 0
+    } else if (strcmp(exp->var.op.name, "UNION") == 0) {
+        if (argc != 2 || argtv[0] == NULL
+                || argtv[1] == NULL) {
+            RDB_raise_invalid_argument("invalid relational operator invocation",
+                    ecp);
+            goto error;
+        }
+
+        if ((RDB_type_is_relation(argtv[0]) && RDB_type_is_relation(argtv[1]))) {
+            typ = RDB_dup_nonscalar_type(argtv[0], ecp);
+        } else if ((RDB_type_is_tuple(argtv[0]) && RDB_type_is_tuple(argtv[1]))) {
+            typ = RDB_union_tuple_types(argtv[0], argtv[1], ecp);
+        } else {
+            RDB_raise_type_mismatch("table or tuple argument required", ecp);
+            goto error;
+        }
+        if (typ == NULL)
+            goto error;
+        RDB_free(argtv);
+        return typ;
+    } else if (strcmp(exp->var.op.name, "MINUS") == 0
                 || strcmp(exp->var.op.name, "SEMIMINUS") == 0
                 || strcmp(exp->var.op.name, "INTERSECT") == 0
                 || strcmp(exp->var.op.name, "SEMIJOIN") == 0) {

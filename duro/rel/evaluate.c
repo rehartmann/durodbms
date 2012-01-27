@@ -174,11 +174,6 @@ evaluate_ro_op(RDB_expression *exp, RDB_getobjfn *getfnp, void *getdata,
 
     if (strcmp(exp->var.op.name, "WHERE") == 0
             || strcmp(exp->var.op.name, "SUMMARIZE") == 0
-            || strcmp(exp->var.op.name, "MINUS") == 0
-            || strcmp(exp->var.op.name, "SEMIMINUS") == 0
-            || strcmp(exp->var.op.name, "INTERSECT") == 0
-            || strcmp(exp->var.op.name, "SEMIJOIN") == 0
-            || strcmp(exp->var.op.name, "UNION") == 0
             || strcmp(exp->var.op.name, "DIVIDE") == 0
             || strcmp(exp->var.op.name, "GROUP") == 0
             || strcmp(exp->var.op.name, "UNGROUP") == 0) {

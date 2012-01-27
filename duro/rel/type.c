@@ -1894,7 +1894,7 @@ RDB_extend_relation_type(const RDB_type *typ, int attrc, RDB_attr attrv[],
 }
 
 RDB_type *
-RDB_join_tuple_types(const RDB_type *typ1, const RDB_type *typ2,
+RDB_union_tuple_types(const RDB_type *typ1, const RDB_type *typ2,
         RDB_exec_context *ecp)
 {
     RDB_type *newtyp;
@@ -2000,7 +2000,7 @@ RDB_join_relation_types(const RDB_type *typ1, const RDB_type *typ2,
     newtyp->name = NULL;
     newtyp->kind = RDB_TP_RELATION;
 
-    newtyp->var.basetyp = RDB_join_tuple_types(typ1->var.basetyp,
+    newtyp->var.basetyp = RDB_union_tuple_types(typ1->var.basetyp,
             typ2->var.basetyp, ecp);
     if (newtyp->var.basetyp == NULL) {
         RDB_free(newtyp);
