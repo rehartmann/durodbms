@@ -477,7 +477,7 @@ summarize_qresult(RDB_qresult *qrp, RDB_expression *exp, RDB_exec_context *ecp,
         key.strv[0] = tb2typ->var.basetyp->var.tuple.attrv[i].name;
     }
 
-    /* create materialized table */
+    /* Create materialized table */
     qrp->matp = _RDB_new_obj(ecp);
     if (qrp->matp == NULL)
         goto error;
@@ -510,7 +510,7 @@ error:
         RDB_drop_type(reltyp, ecp, NULL);
     }
     return RDB_ERROR;
-}
+} /* summarize_qresult */
 
 static int
 sdivide_qresult(RDB_qresult *qrp, RDB_expression *exp, RDB_exec_context *ecp,
@@ -672,7 +672,7 @@ cleanup:
     RDB_free(keyfv);
 
     return ret;
-}
+} /* do_group */
 
 static int
 group_qresult(RDB_qresult *qrp, RDB_expression *exp, RDB_exec_context *ecp,
@@ -826,6 +826,9 @@ init_where_index_qresult(RDB_qresult *qrp, RDB_expression *texp,
     return RDB_OK;
 }
 
+/*
+ * Initialize qresult from expression
+ */
 static int
 init_expr_qresult(RDB_qresult *qrp, RDB_expression *exp, RDB_exec_context *ecp,
         RDB_transaction *txp)
@@ -919,11 +922,22 @@ init_expr_qresult(RDB_qresult *qrp, RDB_expression *exp, RDB_exec_context *ecp,
     }    
     if (strcmp(exp->var.op.name, "DIVIDE") == 0) {
         return sdivide_qresult(qrp, exp, ecp, txp);
-    }    
-    RDB_raise_operator_not_found(exp->var.op.name, ecp);
+    }
+    if (strcmp(exp->var.op.name, "RELATION") == 0) {
+        qrp->nested = RDB_FALSE;
+        qrp->exp = exp;
+
+        /* Start with first argument */
+        qrp->var.next_exp = exp->var.op.args.firstp;
+        return RDB_OK;
+    }
+    RDB_raise_invalid_argument(exp->var.op.name, ecp);
     return RDB_ERROR;
 }
 
+/*
+ * Create qresult from expression
+ */
 RDB_qresult *
 _RDB_expr_qresult(RDB_expression *exp, RDB_exec_context *ecp,
         RDB_transaction *txp)
@@ -954,6 +968,9 @@ init_qresult(RDB_qresult *qrp, RDB_object *tbp, RDB_exec_context *ecp,
     return init_expr_qresult(qrp, tbp->var.tb.exp, ecp, txp);
 }
 
+/*
+ * Check if a qresult based on *exp may return duplicates and store the result in *resp.
+ */
 static int
 expr_dups(RDB_expression *exp, RDB_exec_context *ecp, RDB_bool *resp)
 {
@@ -968,6 +985,12 @@ expr_dups(RDB_expression *exp, RDB_exec_context *ecp, RDB_bool *resp)
             *resp = RDB_FALSE;
             return RDB_OK;
         }
+    }
+
+    if (strcmp(exp->var.op.name, "RELATION") == 0) {
+        /* A tuple may appear twice among the arguments */
+        *resp = RDB_TRUE;
+        return RDB_OK;
     }
 
     if (strcmp(exp->var.op.name, "WHERE") == 0
@@ -1027,6 +1050,9 @@ expr_dups(RDB_expression *exp, RDB_exec_context *ecp, RDB_bool *resp)
     return RDB_OK;
 }
 
+/*
+ * Check if the qresult may return duplicates and store the result in *resp.
+ */
 static int
 qr_dups(RDB_qresult *qrp, RDB_exec_context *ecp, RDB_bool *resp)
 {
@@ -1091,23 +1117,6 @@ _RDB_table_qresult(RDB_object *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
     }
     return qrp;
 }
-
-/*
-static void
-print_mem_stat(RDB_environment *envp)
-{
-    DB_MPOOL_STAT *statp;
-    int ret;
-
-    ret = envp->envp->memp_stat(envp->envp, &statp, NULL, 0);
-    if (ret != 0) {
-        fputs(db_strerror(ret), stderr);
-        abort();
-    }
-    fprintf(stderr, "st_cache_miss = %d\n", statp->st_cache_miss);
-    RDB_free(statp);
-}
-*/
 
 /*
  * Creates a qresult which sorts a table.
@@ -1227,6 +1236,9 @@ error:
     return RDB_ERROR;
 }
 
+/*
+ * Get the next tuple using cursor *curp and store the result tuple in *tplp.
+ */
 int
 _RDB_get_by_cursor(RDB_object *tbp, RDB_cursor *curp, RDB_type *tpltyp,
         RDB_object *tplp, RDB_exec_context *ecp, RDB_transaction *txp)
@@ -2371,6 +2383,24 @@ next_extend_tuple(RDB_qresult *qrp, RDB_object *tplp, RDB_exec_context *ecp,
     return RDB_OK;
 }
 
+static int
+next_relation_tuple(RDB_qresult *qrp, RDB_object *tplp, RDB_exec_context *ecp,
+        RDB_transaction *txp)
+{
+    int ret;
+
+    /* endreached is meaningless, next_exp tells us if we're done */
+    if (qrp->var.next_exp == NULL) {
+        RDB_raise_not_found("", ecp);
+        return RDB_ERROR;
+    }
+
+    /* Evaluate argument and go to the next */
+    ret = RDB_evaluate(qrp->var.next_exp, NULL, NULL, ecp, txp, tplp);
+    qrp->var.next_exp = qrp->var.next_exp->nextp;
+    return ret;
+}
+
 int
 _RDB_next_tuple(RDB_qresult *qrp, RDB_object *tplp, RDB_exec_context *ecp,
         RDB_transaction *txp)
@@ -2472,6 +2502,9 @@ _RDB_next_tuple(RDB_qresult *qrp, RDB_object *tplp, RDB_exec_context *ecp,
         } else if (strcmp(qrp->exp->var.op.name, "UNGROUP") == 0) {
             if (next_ungroup_tuple(qrp, tplp, ecp, txp) != RDB_OK)
                 return RDB_ERROR;
+        } else if (strcmp(qrp->exp->var.op.name, "RELATION") == 0) {
+            if (next_relation_tuple(qrp, tplp, ecp, txp) != RDB_OK)
+                return RDB_ERROR;
         } else {
             RDB_raise_internal(qrp->exp->var.op.name, ecp);
             return RDB_ERROR;
@@ -2498,6 +2531,14 @@ int
 _RDB_reset_qresult(RDB_qresult *qrp, RDB_exec_context *ecp, RDB_transaction *txp)
 {
     int ret;
+
+    /*
+     * If it is a qresult over a RELATION expression, we don't have to do anything
+     */
+    if (qrp->exp != NULL && qrp->exp->kind == RDB_EX_RO_OP
+            && strcmp(qrp->exp->var.op.name, "RELATION") == 0) {
+        return RDB_OK;
+    }
 
     if (qrp->nested) {
         ret = _RDB_reset_qresult(qrp->var.children.qrp, ecp, txp);

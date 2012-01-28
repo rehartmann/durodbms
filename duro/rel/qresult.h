@@ -4,7 +4,7 @@
 /*
  * $Id$
  *
- * Copyright (C) 2006 René Hartmann.
+ * Copyright (C) 2006 Renï¿½ Hartmann.
  * See the file COPYING for redistribution information.
  * 
  * Internal functions for iterating over query results.
@@ -37,6 +37,8 @@ typedef struct RDB_qresult {
             RDB_object tpl;
             RDB_bool tpl_valid;
         } children;
+        /* When iterating over operator arguments */
+        RDB_expression *next_exp;
     } var;
     RDB_bool endreached;
  

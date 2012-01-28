@@ -141,7 +141,7 @@ testsrc = Split('tests/tupletest.c tests/maptest.c '
         'tests/test_delete.c tests/test_extend.c '
         'tests/test_union.c tests/test_minus.c '
         'tests/test_intersect.c tests/test_join.c '
-        'tests/test_keys.c tests/test_null.c '
+        'tests/test_keys.c tests/test_null.c tests/test_relation_op.c '
         'tests/test_pointtable.c tests/test_print_view.c '
         'tests/test_project.c tests/test_ra.c '
         'tests/test_regexp.c tests/test_rename.c tests/test_select.c '
@@ -188,6 +188,8 @@ test = env.Command('tests/passed', [libduro, libdurotcl, testbins, dli],
         'tclsh tests/all.tcl -verbose "{pass error}"')
 
 env.Alias('test', test)
+
+env.Alias('testbins', testbins)
 
 #
 # Installation

@@ -35,3 +35,4 @@ test_print_view
 test_defpointtype
 maptest
 test_2db
+test_relation_op

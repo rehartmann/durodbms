@@ -57,3 +57,18 @@ test tupleupdstmt {tuple update statement} -body {
 } -result {7
 barr
 }
+
+test union {tuple UNION} -body {
+    exec $testdir/../../dli/durodt << {
+        var t1 init tuple {i 5, j 6} union tup {j 6, x 2};
+        println(t1.i);
+        println(t1.j);
+        println(t1.x);
+
+        println((tuple{} union tuple {s 'yo'}).s);
+    }
+} -result {5
+6
+2
+yo
+}

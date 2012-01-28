@@ -4,6 +4,8 @@ Summary of Changes for Duro
 
 Changes for Duro 0.15
 
+- Tuple JOIN is now tuple UNION.
+
 - Duro D/T: Changed WITH and EXTEND syntax according to Database Explorations.
 
 - Duro D/T now supports headings in relation selectors.

@@ -172,6 +172,26 @@ RDB_expr_resolve_varname_expr(RDB_expression **expp, const char *varname,
 }
 
 /*
+ * Copy type information from *srcexp to *dstexp
+ * if the type info would otherwise get lost
+ * (as with RELATION())
+ */
+static int
+copy_expr_typeinfo_if_needed(RDB_expression *dstexp, const RDB_expression *srcexp,
+        RDB_exec_context *ecp)
+{
+    if (srcexp->typ != NULL && dstexp->typ == NULL
+            && srcexp->var.op.args.firstp == NULL
+            && strcmp(srcexp->var.op.name, "RELATION") == 0) {
+        RDB_type *typ = RDB_dup_nonscalar_type(srcexp->typ, ecp);
+        if (typ == NULL)
+            return RDB_ERROR;
+        dstexp->typ = typ;
+    }
+    return RDB_OK;
+}
+
+/*
  * Return a new expression in which all variable names for which
  * *<var>getfnp</var>() or RDB_get_table() return an RDB_object
  * have been replaced by this object
@@ -196,25 +216,6 @@ RDB_expr_resolve_varnames(RDB_expression *exp, RDB_getobjfn *getfnp,
             RDB_expression *argp;
             RDB_expression *newexp;
 
-            if (strcmp(exp->var.op.name, "RELATION") == 0) {
-                int ret;
-
-                newexp = RDB_obj_to_expr(NULL, ecp);
-                if (newexp == NULL)
-                    return NULL;
-
-                /*
-                 * Evaluate selector and store result
-                 * !! becomes obsolete if RELATION is supported as virtual relvar
-                 */
-                ret = RDB_evaluate(exp, getfnp, getdata, ecp, txp, &newexp->var.obj);
-                if (ret != RDB_OK) {
-                    RDB_drop_expr(newexp, ecp);
-                    return NULL;
-                }
-                return newexp;
-            }
-
             newexp = RDB_ro_op(exp->var.op.name, ecp);
             if (newexp == NULL)
                 return NULL;
@@ -230,6 +231,15 @@ RDB_expr_resolve_varnames(RDB_expression *exp, RDB_getobjfn *getfnp,
                 }
                 RDB_add_arg(newexp, argexp);
                 argp = argp->nextp;
+            }
+
+            /*
+             * Duplicate type of RELATION() because otherwise the type information
+             * is lost
+             */
+            if (copy_expr_typeinfo_if_needed(newexp, exp, ecp) != RDB_OK) {
+                RDB_drop_expr(newexp, ecp);
+                return NULL;
             }
 
             return newexp;
@@ -655,8 +665,11 @@ relation_type(const RDB_expression *exp, RDB_type **argtv,
     RDB_type *tpltyp;
     RDB_type *basetyp;
 
+    /*
+     * When there is no argument, the type of RELATION cannot be inferred.
+     */
     if (exp->var.op.args.firstp == NULL) {
-        RDB_raise_invalid_argument("argument required for RELATION", ecp);
+        RDB_raise_not_found("cannot determine RELATION type", ecp);
         return NULL;
     }
     tpltyp = argtv[0];
@@ -1580,7 +1593,7 @@ RDB_drop_expr(RDB_expression *exp, RDB_exec_context *ecp)
 }
 
 /**
- * Create a copy of an expression.
+ * Return a deep copy of an expression.
  */
 RDB_expression *
 RDB_dup_expr(const RDB_expression *exp, RDB_exec_context *ecp)
@@ -1620,18 +1633,13 @@ RDB_dup_expr(const RDB_expression *exp, RDB_exec_context *ecp)
             }
 
             /*
-             * If the expression is RELATION {}, duplicate the type if available
+             * If the expression is e.g. RELATION {}, duplicate the type if available
              * because otherwise it would be impossible to determine the type
              * of the copy.
              */
-            if (exp->var.op.args.firstp == NULL && exp->typ != NULL
-                    && RDB_type_is_relation(exp->typ)
-                    && strcmp(exp->var.op.name, "RELATION") == 0) {
-                newexp->typ = RDB_dup_nonscalar_type(exp->typ, ecp);
-                if (newexp->typ == NULL) {
-                    RDB_drop_expr(newexp, ecp);
-                    return NULL;
-                }
+            if (copy_expr_typeinfo_if_needed(newexp, exp, ecp) != RDB_OK) {
+                RDB_drop_expr(newexp, ecp);
+                return NULL;
             }
 
             return newexp;

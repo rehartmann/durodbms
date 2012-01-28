@@ -15,7 +15,7 @@ test deedum {TABLE_DEE and TABLE_DUM} -setup $SETUP -body {
 
     # Create Database
     duro::db create $dbenv TEST
-    
+
     set tx [duro::begin $dbenv TEST]
     
     duro::table expr tdee TABLE_DEE $tx

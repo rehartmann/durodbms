@@ -103,6 +103,11 @@ RDB_clear_err(RDB_exec_context *ecp)
 RDB_object *
 RDB_raise_no_memory(RDB_exec_context *ecp)
 {
+    /*
+     * Since the error type is internally represented by an empty tuple,
+     * we can simply call RDB_raise_err() and then set the type.
+     */
+
     RDB_object *errp = RDB_raise_err(ecp);
     if (errp == NULL)
         return NULL;
@@ -125,6 +130,11 @@ RDB_raise_no_running_tx(RDB_exec_context *ecp)
 static RDB_object *
 raise_msg_err(RDB_type *errtyp, const char *msg, RDB_exec_context *ecp)
 {
+    /*
+     * The only possrep consists only of the MSG attribute of type string.
+     * This means the internal representation is a string,
+     * so we can call RDB_raise_err(), set the string value and the type.
+     */
     RDB_object *errp = RDB_raise_err(ecp);
     if (errp == NULL)
         return NULL;

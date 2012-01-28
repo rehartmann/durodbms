@@ -195,4 +195,8 @@ test op {user-defined operators} -setup $SETUP -body {
     return {}
 }
 
+test relation_op {operator RELATION} -setup $SETUP -body {
+    exec [configure -testdir]/test_relation_op
+}
+
 cleanupTests

@@ -221,8 +221,11 @@ _RDB_serialize_expr(RDB_object *valp, int *posp, const RDB_expression *exp,
 
             /* # of arguments */
             if (_RDB_serialize_int (valp, posp,
-                    RDB_expr_list_length(&exp->var.op.args), ecp) != RDB_OK)
+                    RDB_expr_list_length(&exp->var.op.args), ecp) != RDB_OK) {
                 return RDB_ERROR;
+            }
+
+            /* !! type information gets lost if it's RELATON() */
 
             /* Write arg expressions */
             argp = exp->var.op.args.firstp;
