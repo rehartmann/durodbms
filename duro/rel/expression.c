@@ -883,9 +883,11 @@ expr_op_type(RDB_expression *exp, RDB_gettypefn *getfnp, void *arg,
     /*
      * Get argument types
      */
-    argtv = RDB_alloc(sizeof (RDB_type *) * argc, ecp);
-    if (argtv == NULL) {
-        return NULL;
+    if (argc > 0) {
+        argtv = RDB_alloc(sizeof (RDB_type *) * argc, ecp);
+        if (argtv == NULL) {
+            return NULL;
+        }
     }
 
     argp = exp->var.op.args.firstp;
@@ -905,7 +907,7 @@ expr_op_type(RDB_expression *exp, RDB_gettypefn *getfnp, void *arg,
 
     if (strcmp(exp->var.op.name, "COUNT") == 0
             && argc == 1) {
-        if (argtv[0]->kind != RDB_TP_RELATION) {
+        if (argc == 1 && argtv[0]->kind != RDB_TP_RELATION) {
             RDB_raise_type_mismatch("COUNT requires relation argument", ecp);
             goto error;
         }
@@ -1026,7 +1028,8 @@ expr_op_type(RDB_expression *exp, RDB_gettypefn *getfnp, void *arg,
         }
         if (typ == NULL)
             goto error;
-        RDB_free(argtv);
+        if (argc > 0)
+            RDB_free(argtv);
         return typ;
     } else if (strcmp(exp->var.op.name, "MINUS") == 0
                 || strcmp(exp->var.op.name, "SEMIMINUS") == 0
@@ -1111,11 +1114,46 @@ expr_op_type(RDB_expression *exp, RDB_gettypefn *getfnp, void *arg,
             goto error;
     }
 
-    RDB_free(argtv);
+    if (argc > 0)
+        RDB_free(argtv);
     return typ;
 
 error:
-    RDB_free(argtv);
+    if (argc > 0)
+        RDB_free(argtv);
+    return NULL;
+}
+
+static RDB_type *
+var_expr_type(RDB_expression *exp, RDB_gettypefn *getfnp, void *getarg,
+        RDB_exec_context *ecp, RDB_transaction *txp)
+{
+    RDB_type *typ;
+    RDB_object *errp;
+
+    if (getfnp != NULL) {
+        typ = (*getfnp) (RDB_expr_var_name(exp), getarg);
+        if (typ != NULL) {
+            exp->typ = RDB_dup_nonscalar_type(typ, ecp);
+            return exp->typ;
+        }
+    }
+    if (txp != NULL) {
+        RDB_object *tbp = RDB_get_table(exp->var.varname, ecp, txp);
+        if (tbp != NULL) {
+            exp->typ = RDB_dup_nonscalar_type(RDB_obj_type(tbp), ecp);
+            return exp->typ;
+        }
+    }
+
+    /*
+     * Handle error - if no error or NOT_FOUND_ERROR has been raised raise NAME_ERROR
+     */
+    errp = RDB_get_err(ecp);
+    if (errp == NULL || RDB_obj_type(errp) == &RDB_NOT_FOUND_ERROR) {
+        RDB_clear_err(ecp);
+        RDB_raise_name(exp->var.varname, ecp);
+    }
     return NULL;
 }
 
@@ -1156,22 +1194,7 @@ RDB_expr_type(RDB_expression *exp, RDB_gettypefn *getfnp, void *getarg,
         case RDB_EX_TBP:
             return RDB_obj_type(exp->var.tbref.tbp);
         case RDB_EX_VAR:
-            if (getfnp != NULL) {
-                typ = (*getfnp) (RDB_expr_var_name(exp), getarg);
-                if (typ != NULL) {
-                    exp->typ = RDB_dup_nonscalar_type(typ, ecp);
-                    return exp->typ;
-                }
-            }
-            if (txp != NULL) {
-                RDB_object *tbp = RDB_get_table(exp->var.varname, ecp, txp);
-                if (tbp != NULL) {
-                    exp->typ = RDB_dup_nonscalar_type(RDB_obj_type(tbp), ecp);
-                    return exp->typ;
-                }
-            }
-            RDB_raise_name(exp->var.varname, ecp);
-            return NULL;
+            return var_expr_type(exp, getfnp, getarg, ecp, txp);
         case RDB_EX_TUPLE_ATTR:
             typ = RDB_expr_type(exp->var.op.args.firstp, getfnp, getarg, ecp, txp);
             if (typ == NULL)

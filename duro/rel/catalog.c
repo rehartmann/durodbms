@@ -1769,7 +1769,7 @@ error:
         _RDB_free_obj(tbp, ecp);
 
     return NULL;
-}
+} /* _RDB_cat_get_rtable */
 
 RDB_object *
 _RDB_cat_get_vtable(const char *name, RDB_exec_context *ecp,
@@ -1851,7 +1851,12 @@ _RDB_cat_get_vtable(const char *name, RDB_exec_context *ecp,
 
     if (_RDB_assoc_table_db(tbp, txp->dbp, ecp) != RDB_OK)
         goto error;
-    
+
+    if (RDB_FALSE /* !! */) {
+        fprintf(stderr,
+                "Definition of virtual table %s read from the catalog\n",
+                name);
+    }
     return tbp;
 
 error:
@@ -1859,7 +1864,7 @@ error:
     RDB_destroy_obj(&arr, ecp);
     
     return NULL;
-}
+} /* _RDB_cat_get_vtable */
 
 int
 _RDB_cat_rename_table(RDB_object *tbp, const char *name, RDB_exec_context *ecp,

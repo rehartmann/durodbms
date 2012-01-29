@@ -448,7 +448,7 @@ test vtables {virtual tables} -setup $SETUP -body {
     
     duro::table expr t {EXTEND TABLE_DEE
             : {R := EXTEND TABLE_DEE : {N := 1, M := 2} { ALL BUT N }}} $tx
-    
+
     set tpl [duro::expr {(TUPLE FROM t).R} $tx]
     if {$tpl != "{M 2}"} {
         error "wrong tuple value: $tpl"

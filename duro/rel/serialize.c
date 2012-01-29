@@ -192,7 +192,7 @@ static int
 serialize_table(RDB_object *valp, int *posp, RDB_object *tbp, RDB_exec_context *);
 
 int
-_RDB_serialize_expr(RDB_object *valp, int *posp, const RDB_expression *exp,
+_RDB_serialize_expr(RDB_object *valp, int *posp, RDB_expression *exp,
         RDB_exec_context *ecp)
 {
     /* Expression kind (1 byte) */
@@ -225,8 +225,6 @@ _RDB_serialize_expr(RDB_object *valp, int *posp, const RDB_expression *exp,
                 return RDB_ERROR;
             }
 
-            /* !! type information gets lost if it's RELATON() */
-
             /* Write arg expressions */
             argp = exp->var.op.args.firstp;
             while (argp != NULL) {
@@ -234,6 +232,20 @@ _RDB_serialize_expr(RDB_object *valp, int *posp, const RDB_expression *exp,
                     return RDB_ERROR;
                 argp = argp->nextp;
             }
+
+            /*
+             * If # of args is zero, serialize type to preserve
+             * the type of e.g. RELATION()
+             */
+            if (exp->var.op.args.firstp == NULL
+                    && (strcmp(exp->var.op.name, "RELATION") == 0)) {
+                RDB_type *typ = RDB_expr_type(exp, NULL, NULL, ecp, NULL);
+                if (typ == NULL)
+                    return RDB_ERROR;
+                if (_RDB_serialize_type(valp, posp, typ, ecp) != RDB_OK)
+                    return RDB_ERROR;
+            }
+
             return RDB_OK;
         }
         case RDB_EX_TUPLE_ATTR:
@@ -244,13 +256,13 @@ _RDB_serialize_expr(RDB_object *valp, int *posp, const RDB_expression *exp,
     }
     /* should never be reached */
     abort();
-}
+} /* _RDB_serialize_expr */
 
 static int
 serialize_table(RDB_object *valp, int *posp, RDB_object *tbp,
         RDB_exec_context *ecp)
 {
-    /* If the table is persisten, write name only */
+    /* If the table is persistent, write name only */
     if (tbp->var.tb.is_persistent)
         return _RDB_serialize_str(valp, posp, RDB_table_name(tbp), ecp);
     if (_RDB_serialize_str(valp, posp, "", ecp) != RDB_OK)
@@ -313,7 +325,7 @@ _RDB_type_to_binobj(RDB_object *valp, const RDB_type *typ, RDB_exec_context *ecp
 }
 
 int
-_RDB_expr_to_binobj(RDB_object *valp, const RDB_expression *exp,
+_RDB_expr_to_binobj(RDB_object *valp, RDB_expression *exp,
         RDB_exec_context *ecp)
 {
     int pos = 0;
@@ -646,6 +658,7 @@ _RDB_deserialize_expr(RDB_object *valp, int *posp, RDB_exec_context *ecp,
             RDB_free(name);
             if (*expp == NULL)
                 return RDB_ERROR;
+
             for (i = 0; i < argc; i++) {
                 RDB_expression *argp;
 
@@ -654,6 +667,17 @@ _RDB_deserialize_expr(RDB_object *valp, int *posp, RDB_exec_context *ecp,
                     return RDB_ERROR;
                 }
                 RDB_add_arg(*expp, argp);
+            }
+
+            /*
+             * If # of args is zero, the type is to preserve
+             * the type of e.g. RELATION()
+             */
+            if (argc == 0 && (strcmp((*expp)->var.op.name, "RELATION") == 0)) {
+                RDB_type *typ = _RDB_deserialize_type(valp, posp, ecp, txp);
+                if (typ == NULL)
+                    return RDB_ERROR;
+                RDB_set_expr_type(*expp, typ);
             }
             break;
         }

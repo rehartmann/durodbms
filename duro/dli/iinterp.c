@@ -274,6 +274,23 @@ connect_op(int argc, RDB_object *argv[], RDB_operator *op,
 }
 
 static int
+disconnect_op(int argc, RDB_object *argv[], RDB_operator *op,
+        RDB_exec_context *ecp, RDB_transaction *txp)
+{
+    int ret = RDB_close_env(envp);
+    envp = NULL;
+    if (ret != RDB_OK) {
+        RDB_errcode_to_error(ret, ecp, txp);
+        envp = NULL;
+        return RDB_ERROR;
+    }
+
+    /* What about CURRENT_DB !!? */
+
+    return RDB_OK;
+}
+
+static int
 create_db_op(int argc, RDB_object *argv[], RDB_operator *op,
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
@@ -423,6 +440,9 @@ Duro_init_exec(RDB_exec_context *ecp, const char *dbname)
             ecp) != RDB_OK)
         goto error;
     if (RDB_put_upd_op(&sys_module.upd_op_map, "CONNECT", 1, connect_params, &connect_op,
+            ecp) != RDB_OK)
+        goto error;
+    if (RDB_put_upd_op(&sys_module.upd_op_map, "DISCONNECT", 0, NULL, &disconnect_op,
             ecp) != RDB_OK)
         goto error;
     if (RDB_put_upd_op(&sys_module.upd_op_map, "CREATE_DB", 1, create_db_params, &create_db_op,

@@ -160,7 +160,7 @@ test updop {user defined update operators} -setup $SETUP -body {
 } -result {durox
 }
 
-test deedum {TABLE_DEE and TABLE_DUM} -body {
+test deedum {TABLE_DEE and TABLE_DUM} -setup $SETUP -body {
     exec $testdir/../../dli/durodt << {
         println(tup from TABLE_DEE);
         println(tup from DEE);
@@ -169,12 +169,29 @@ test deedum {TABLE_DEE and TABLE_DUM} -body {
         println(DUM);
 
         println(tuple from (rel{} {} union table_dee));
+        
+        connect('dbenv');
+        current_db := 'D';
+
+        begin transaction;
+        var ev virtual relation {i integer} {};
+        commit;
+
+        disconnect();
+
+        -- Connect again and read virtual table
+        connect('dbenv');
+        current_db:='D';
+        begin tx;
+        println(ev);
+        commit;
     }
 } -result {TUPLE { }
 TUPLE { }
 RELATION { }
 RELATION { }
 TUPLE { }
+RELATION { }
 }
 
 test logic {Logic operators} -setup $SETUP -body {

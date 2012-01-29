@@ -3,7 +3,7 @@
 
 /* $Id$
  *
- * Copyright (C) 2003-2005 René Hartmann.
+ * Copyright (C) 2003-2005 Renï¿½ Hartmann.
  * See the file COPYING for redistribution information.
  */
 
@@ -14,7 +14,7 @@ enum {
 };
 
 int
-_RDB_expr_to_binobj(RDB_object *, const RDB_expression *, RDB_exec_context *);
+_RDB_expr_to_binobj(RDB_object *, RDB_expression *, RDB_exec_context *);
 
 int
 _RDB_type_to_binobj(RDB_object *, const RDB_type *, RDB_exec_context *);
@@ -39,7 +39,7 @@ int
 _RDB_serialize_int(RDB_object *, int *, RDB_int, RDB_exec_context *);
 
 int
-_RDB_serialize_expr(RDB_object *, int *, const RDB_expression *,
+_RDB_serialize_expr(RDB_object *, int *, RDB_expression *,
         RDB_exec_context *);
 
 int
