@@ -235,10 +235,13 @@ _RDB_serialize_expr(RDB_object *valp, int *posp, RDB_expression *exp,
 
             /*
              * Serialize type to preserve the type of e.g. RELATION()
-             * !! Storing tuple types results in an error!?
+             * Only do this when the number of arguments is zero, because otherwise
+             * RDB_expr_type() would stop here and e.g. tuple-valued
+             * attribute names in virtual table definitions wouldn't get a type
+             * which is required by RDB_qresult.
              */
 
-            if (exp->typ != NULL && strcmp(exp->var.op.name, "RELATION") == 0) {
+            if (exp->typ != NULL && exp->var.op.args.firstp == NULL) {
                 if (_RDB_serialize_byte(valp, posp, (RDB_byte) RDB_TRUE,
                         ecp) != RDB_OK)
                     return RDB_ERROR;
