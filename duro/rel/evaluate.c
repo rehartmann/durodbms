@@ -301,7 +301,8 @@ evaluate_ro_op(RDB_expression *exp, RDB_getobjfn *getfnp, void *getdata,
          * Obtain argument type if not already available (except for RELATION)
          */
         if (valpv[i]->typ == NULL && strcmp(exp->var.op.name, "RELATION") != 0) {
-            valpv[i]->typ = RDB_expr_type(argp, NULL, NULL, ecp, txp);
+            valpv[i]->typ = RDB_expr_type(argp, getfnp != NULL ? get_type : NULL,
+                    getfnp != NULL ? &gtinfo : NULL, ecp, txp);
             if (valpv[i]->typ == NULL) {
                 ret = RDB_ERROR;
                 goto cleanup;

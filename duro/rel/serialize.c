@@ -234,15 +234,22 @@ _RDB_serialize_expr(RDB_object *valp, int *posp, RDB_expression *exp,
             }
 
             /*
-             * If # of args is zero, serialize type to preserve
-             * the type of e.g. RELATION()
+             * Serialize type to preserve the type of e.g. RELATION()
+             * !! Storing tuple types results in an error!?
              */
-            if (exp->var.op.args.firstp == NULL
-                    && (strcmp(exp->var.op.name, "RELATION") == 0)) {
-                RDB_type *typ = RDB_expr_type(exp, NULL, NULL, ecp, NULL);
-                if (typ == NULL)
+
+            if (exp->typ != NULL && strcmp(exp->var.op.name, "RELATION") == 0) {
+                if (_RDB_serialize_byte(valp, posp, (RDB_byte) RDB_TRUE,
+                        ecp) != RDB_OK)
                     return RDB_ERROR;
-                if (_RDB_serialize_type(valp, posp, typ, ecp) != RDB_OK)
+
+                if (exp->typ != NULL) {
+                    if (_RDB_serialize_type(valp, posp, exp->typ, ecp) != RDB_OK)
+                        return RDB_ERROR;
+                }
+            } else {
+                if (_RDB_serialize_byte(valp, posp, (RDB_byte) RDB_FALSE,
+                        ecp) != RDB_OK)
                     return RDB_ERROR;
             }
 
@@ -511,7 +518,7 @@ _RDB_deserialize_type(RDB_object *valp, int *posp, RDB_exec_context *ecp,
     }
     RDB_raise_internal("invalid type during deserialization", ecp);
     return NULL;
-}
+} /* _RDB_deserialize_type */
 
 RDB_type *
 _RDB_binobj_to_type(RDB_object *valp, RDB_exec_context *ecp,
@@ -670,10 +677,13 @@ _RDB_deserialize_expr(RDB_object *valp, int *posp, RDB_exec_context *ecp,
             }
 
             /*
-             * If # of args is zero, the type is to preserve
+             * Restore type if it was stored to preserve
              * the type of e.g. RELATION()
              */
-            if (argc == 0 && (strcmp((*expp)->var.op.name, "RELATION") == 0)) {
+            ret = _RDB_deserialize_byte(valp, posp, ecp);
+            if (ret < 0)
+                return RDB_ERROR;
+            if (ret) {
                 RDB_type *typ = _RDB_deserialize_type(valp, posp, ecp, txp);
                 if (typ == NULL)
                     return RDB_ERROR;

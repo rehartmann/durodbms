@@ -447,13 +447,6 @@ RDB_call_ro_op_by_name(const char *name, int argc, RDB_object *argv[],
     if (strcmp(name, "RELATION") == 0)
     	return _RDB_op_relation(argc, argv, NULL, ecp, txp, retvalp);
 
-    for (i = 0; i < argc; i++) {
-        if (RDB_obj_type(argv[i]) == NULL) {
-            RDB_raise_invalid_argument("cannot determine argument type", ecp);
-            return RDB_ERROR;
-        }
-    }
-
     /*
      * Handle nonscalar comparison
      */
@@ -466,6 +459,13 @@ RDB_call_ro_op_by_name(const char *name, int argc, RDB_object *argv[],
                 return ret;
             retvalp->var.bool_val = (RDB_bool) !retvalp->var.bool_val;
             return RDB_OK;
+        }
+    }
+
+    for (i = 0; i < argc; i++) {
+        if (RDB_obj_type(argv[i]) == NULL) {
+            RDB_raise_invalid_argument("cannot determine argument type", ecp);
+            return RDB_ERROR;
         }
     }
 
