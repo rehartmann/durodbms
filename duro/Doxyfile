@@ -460,9 +460,9 @@ WARN_LOGFILE           =
 # with spaces.
 
 INPUT = rec/env.c rel/rdb.h rel/database.c rel/table.c rel/type.c rel/object.c \
-    rel/vtable.c rel/transaction.c rel/tuple.c rel/array.c rel/expression.c rel/evaluate.c \
-    rel/operator.c rel/constraint.c rel/excontext.c rel/builtinops.c rel/assign.c \
-    rel/contains.c dli/parse.c dli/ioop.c
+    rel/vtable.c rel/transaction.c rel/tuple.c rel/array.c rel/expression.c \
+    rel/evaluate.c rel/exprtype.c rel/operator.c rel/constraint.c rel/excontext.c \
+    rel/builtinops.c rel/assign.c rel/contains.c dli/parse.c dli/ioop.c
 
 # If the value of the INPUT tag contains directories, you can use the 
 # FILE_PATTERNS tag to specify one or more wildcard pattern (like *.cpp 
