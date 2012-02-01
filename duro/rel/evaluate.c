@@ -11,12 +11,15 @@
 #include <string.h>
 
 /*
- * Convert an expression to a virtual table.
+ * Evaluate an expression by converting it to a virtual table.
  */
 static int
 evaluate_vt(RDB_expression *exp, RDB_getobjfn *getfnp, void *getdata,
         RDB_exec_context *ecp, RDB_transaction *txp, RDB_object *retvalp)
 {
+    /*
+     * Resolve variable names, if any
+     */
     RDB_expression *nexp = getfnp != NULL
             ? RDB_expr_resolve_varnames(exp, getfnp, getdata, ecp, txp)
             : RDB_dup_expr(exp, ecp);
@@ -30,27 +33,22 @@ evaluate_vt(RDB_expression *exp, RDB_getobjfn *getfnp, void *getdata,
     return RDB_OK;
 }
 
+/*
+ * Check if arg #2 is var name and evaluate argument #1
+ *
 static int
 process_aggr_args(RDB_expression *exp, RDB_getobjfn *getfnp, void *getdata,
         RDB_exec_context *ecp, RDB_transaction *txp, RDB_object *tbp)
 {
-    if (RDB_expr_list_length(&exp->var.op.args) != 2) {
-        RDB_raise_invalid_argument("invalid number of aggregate arguments",
-                ecp);
-        return RDB_ERROR;
-    }
-
-    if (exp->var.op.args.firstp->nextp->kind != RDB_EX_VAR) {
-        RDB_raise_invalid_argument("invalid aggregate argument #2", ecp);
-        return RDB_ERROR;
-    }
-
     if (RDB_evaluate(exp->var.op.args.firstp, getfnp, getdata, ecp, txp, tbp)
             != RDB_OK)
         return RDB_ERROR;
     return RDB_OK;
-}
+}*/
 
+/*
+ *  Evaluate IF expression. There must be 3 arguments.
+ */
 static int
 evaluate_if(RDB_expression *exp, RDB_getobjfn *getfnp, void *getdata,
         RDB_exec_context *ecp, RDB_transaction *txp, RDB_object *valp)
@@ -59,8 +57,6 @@ evaluate_if(RDB_expression *exp, RDB_getobjfn *getfnp, void *getdata,
     RDB_object arg1;
 
     RDB_init_obj(&arg1);
-
-    /* Caller must ensure that there are 3 args */
 
     if (RDB_evaluate(exp->var.op.args.firstp, getfnp, getdata, ecp, txp, &arg1)
             != RDB_OK) {
@@ -103,6 +99,45 @@ get_type(const char *name, void *arg)
 }
 
 static int
+evaluate_tuple_extend(RDB_expression *exp, RDB_getobjfn *getfnp, void *getdata,
+        RDB_exec_context *ecp, RDB_transaction *txp, RDB_object *valp)
+{
+    RDB_expression *argp;
+    RDB_virtual_attr *attrv;
+    int i;
+    int ret;
+    int attrc = (RDB_expr_list_length(&exp->var.op.args) - 1) / 2;
+
+    attrv = RDB_alloc(sizeof (RDB_virtual_attr) * attrc, ecp);
+    if (attrv == NULL) {
+        return RDB_ERROR;
+    }
+
+    argp = exp->var.op.args.firstp->nextp;
+    for (i = 0; i < attrc; i++) {
+        attrv[i].exp = argp;
+
+        if (!_RDB_expr_is_string(argp->nextp)) {
+            RDB_raise_type_mismatch("attribute argument must be string",
+                    ecp);
+            return RDB_ERROR;
+        }
+        attrv[i].name = RDB_obj_string(&argp->nextp->var.obj);
+        argp = argp->nextp->nextp;
+    }
+
+    if (RDB_evaluate(exp->var.op.args.firstp, getfnp, getdata, ecp,
+            txp, valp) != RDB_OK) {
+        RDB_free(attrv);
+        return RDB_ERROR;
+    }
+
+    ret = RDB_extend_tuple(valp, attrc, attrv, ecp, txp);
+    RDB_free(attrv);
+    return ret;
+}
+
+static int
 evaluate_ro_op(RDB_expression *exp, RDB_getobjfn *getfnp, void *getdata,
         RDB_exec_context *ecp, RDB_transaction *txp, RDB_object *valp)
 {
@@ -112,7 +147,7 @@ evaluate_ro_op(RDB_expression *exp, RDB_getobjfn *getfnp, void *getdata,
     RDB_object tb;
     RDB_object **valpv;
     RDB_object *valv = NULL;
-    int argc = RDB_expr_list_length(&exp->var.op.args);
+    int argc;
     struct get_type_info gtinfo;
 
     if (getfnp != NULL) {
@@ -125,7 +160,8 @@ evaluate_ro_op(RDB_expression *exp, RDB_getobjfn *getfnp, void *getdata,
         return RDB_ERROR;
 
     /*
-     * Certain operators require special treatment
+     * Certain operators cannot be evaluated by evaluating the arguments
+     * and calling an operator function, so they get special treatment
      */
 
     if (strcmp(exp->var.op.name, "EXTEND") == 0) {
@@ -137,39 +173,8 @@ evaluate_ro_op(RDB_expression *exp, RDB_getobjfn *getfnp, void *getdata,
         if (typ->kind == RDB_TP_RELATION) {
             return evaluate_vt(exp, getfnp, getdata, ecp, txp, valp);
         } else if (typ->kind == RDB_TP_TUPLE) {
-            int attrc = (argc - 1) / 2;
-            RDB_virtual_attr *attrv;
-
-            attrv = RDB_alloc(sizeof (RDB_virtual_attr) * attrc, ecp);
-            if (attrv == NULL) {
-                return RDB_ERROR;
-            }
-
-            argp = exp->var.op.args.firstp->nextp;
-            for (i = 0; i < attrc; i++) {
-                attrv[i].exp = argp;
-
-                if (!_RDB_expr_is_string(argp->nextp)) {
-                    RDB_raise_type_mismatch("attribute argument must be string",
-                            ecp);
-                    return RDB_ERROR;
-                }
-                attrv[i].name = RDB_obj_string(&argp->nextp->var.obj);
-                argp = argp->nextp->nextp;
-            }
-
-            if (RDB_evaluate(exp->var.op.args.firstp, getfnp, getdata, ecp,
-                    txp, valp) != RDB_OK) {
-                RDB_free(attrv);
-                return RDB_ERROR;
-            }
-
-            ret = RDB_extend_tuple(valp, attrc, attrv, ecp, txp);
-            RDB_free(attrv);
-            return ret;
+            return evaluate_tuple_extend(exp, getfnp, getdata, ecp, txp, valp);
         }
-        RDB_raise_invalid_argument("invalid extend argument", ecp);
-        return RDB_ERROR;
     }
 
     if (strcmp(exp->var.op.name, "WHERE") == 0
@@ -180,77 +185,82 @@ evaluate_ro_op(RDB_expression *exp, RDB_getobjfn *getfnp, void *getdata,
         return evaluate_vt(exp, getfnp, getdata, ecp, txp, valp);
     }
 
-    if (strcmp(exp->var.op.name, "SUM") == 0) {
-        RDB_init_obj(&tb);
+    argc = RDB_expr_list_length(&exp->var.op.args);
 
-        if (process_aggr_args(exp, getfnp, getdata, ecp, txp, &tb) != RDB_OK)
-            return RDB_ERROR;
-        ret = RDB_sum(&tb, exp->var.op.args.firstp->nextp->var.varname, ecp,
-                txp, valp);
-        RDB_destroy_obj(&tb, ecp);
-        return ret;
-    }
-    if (strcmp(exp->var.op.name, "AVG") ==  0) {
-        RDB_float res;
+    /*
+     * Handle aggregate functions except COUNT
+     * First check if there are 2 arguments and the second is a variable name
+     */
+    if (argc == 2 && exp->var.op.args.firstp->nextp->kind == RDB_EX_VAR) {
+        if (strcmp(exp->var.op.name, "SUM") == 0) {
+            RDB_init_obj(&tb);
 
-        RDB_init_obj(&tb);
-        if (process_aggr_args(exp, getfnp, getdata, ecp, txp, &tb) != RDB_OK)
-            return RDB_ERROR;
-        ret = RDB_avg(&tb, exp->var.op.args.firstp->nextp->var.varname, ecp, txp, &res);
-        RDB_destroy_obj(&tb, ecp);
-        if (ret == RDB_OK) {
-            RDB_float_to_obj(valp, res);
+            if (RDB_evaluate(exp->var.op.args.firstp, getfnp, getdata, ecp, txp, &tb) != RDB_OK)
+                return RDB_ERROR;
+            ret = RDB_sum(&tb, exp->var.op.args.firstp->nextp->var.varname, ecp,
+                    txp, valp);
+            RDB_destroy_obj(&tb, ecp);
+            return ret;
         }
-        return ret;
-    }
-    if (strcmp(exp->var.op.name, "MIN") ==  0) {
-        RDB_init_obj(&tb);
-        if (process_aggr_args(exp, getfnp, getdata, ecp, txp, &tb) != RDB_OK)
-            return RDB_ERROR;
-        ret = RDB_min(&tb, exp->var.op.args.firstp->nextp->var.varname, ecp, txp, valp);
-        RDB_destroy_obj(&tb, ecp);
-        return ret;
-    }
-    if (strcmp(exp->var.op.name, "MAX") ==  0) {
-        RDB_init_obj(&tb);
-        if (process_aggr_args(exp, getfnp, getdata, ecp, txp, &tb) != RDB_OK)
-            return RDB_ERROR;
-        ret = RDB_max(&tb, exp->var.op.args.firstp->nextp->var.varname, ecp, txp, valp);
-        RDB_destroy_obj(&tb, ecp);
-        return ret;
-    }
-    if (strcmp(exp->var.op.name, "ALL") ==  0) {
-        RDB_bool res;
+        if (strcmp(exp->var.op.name, "AVG") ==  0) {
+            RDB_float res;
 
-        RDB_init_obj(&tb);
-        if (process_aggr_args(exp, getfnp, getdata, ecp, txp, &tb) != RDB_OK)
-            return RDB_ERROR;
-        ret = RDB_all(&tb, exp->var.op.args.firstp->nextp->var.varname, ecp, txp, &res);
-        RDB_destroy_obj(&tb, ecp);
-        if (ret == RDB_OK) {
-            RDB_bool_to_obj(valp, res);
+            RDB_init_obj(&tb);
+            if (RDB_evaluate(exp->var.op.args.firstp, getfnp, getdata, ecp, txp, &tb) != RDB_OK)
+                return RDB_ERROR;
+            ret = RDB_avg(&tb, exp->var.op.args.firstp->nextp->var.varname, ecp, txp, &res);
+            RDB_destroy_obj(&tb, ecp);
+            if (ret == RDB_OK) {
+                RDB_float_to_obj(valp, res);
+            }
+            return ret;
         }
-        return ret;
-    }
-    if (strcmp(exp->var.op.name, "ANY") ==  0) {
-        RDB_bool res;
-
-        RDB_init_obj(&tb);
-        if (process_aggr_args(exp, getfnp, getdata, ecp, txp, &tb) != RDB_OK)
-            return RDB_ERROR;
-        ret = RDB_any(&tb, exp->var.op.args.firstp->nextp->var.varname, ecp, txp, &res);
-        RDB_destroy_obj(&tb, ecp);
-        if (ret == RDB_OK) {
-            RDB_bool_to_obj(valp, res);
+        if (strcmp(exp->var.op.name, "MIN") ==  0) {
+            RDB_init_obj(&tb);
+            if (RDB_evaluate(exp->var.op.args.firstp, getfnp, getdata, ecp, txp, &tb) != RDB_OK)
+                return RDB_ERROR;
+            ret = RDB_min(&tb, exp->var.op.args.firstp->nextp->var.varname, ecp, txp, valp);
+            RDB_destroy_obj(&tb, ecp);
+            return ret;
         }
-        return ret;
+        if (strcmp(exp->var.op.name, "MAX") ==  0) {
+            RDB_init_obj(&tb);
+            if (RDB_evaluate(exp->var.op.args.firstp, getfnp, getdata, ecp, txp, &tb) != RDB_OK)
+                return RDB_ERROR;
+            ret = RDB_max(&tb, exp->var.op.args.firstp->nextp->var.varname, ecp, txp, valp);
+            RDB_destroy_obj(&tb, ecp);
+            return ret;
+        }
+        if (strcmp(exp->var.op.name, "ALL") ==  0) {
+            RDB_bool res;
+
+            RDB_init_obj(&tb);
+            if (RDB_evaluate(exp->var.op.args.firstp, getfnp, getdata, ecp, txp, &tb) != RDB_OK)
+                return RDB_ERROR;
+            ret = RDB_all(&tb, exp->var.op.args.firstp->nextp->var.varname, ecp, txp, &res);
+            RDB_destroy_obj(&tb, ecp);
+            if (ret == RDB_OK) {
+                RDB_bool_to_obj(valp, res);
+            }
+            return ret;
+        }
+        if (strcmp(exp->var.op.name, "ANY") ==  0) {
+            RDB_bool res;
+
+            RDB_init_obj(&tb);
+            if (RDB_evaluate(exp->var.op.args.firstp, getfnp, getdata, ecp, txp, &tb) != RDB_OK)
+                return RDB_ERROR;
+            ret = RDB_any(&tb, exp->var.op.args.firstp->nextp->var.varname, ecp, txp, &res);
+            RDB_destroy_obj(&tb, ecp);
+            if (ret == RDB_OK) {
+                RDB_bool_to_obj(valp, res);
+            }
+            return ret;
+        }
     }
 
-    /* If needs special treatment because of lazy evaluation */
-    if (strcmp(exp->var.op.name, "IF") == 0) {
-        int len = RDB_expr_list_length(&exp->var.op.args);
-        if (len == 3)
-            return evaluate_if(exp, getfnp, getdata, ecp, txp, valp);
+    if (argc == 3 && strcmp(exp->var.op.name, "IF") == 0) {
+        return evaluate_if(exp, getfnp, getdata, ecp, txp, valp);
     }
 
     valpv = RDB_alloc(argc * sizeof (RDB_object *), ecp);
@@ -265,6 +275,11 @@ evaluate_ro_op(RDB_expression *exp, RDB_getobjfn *getfnp, void *getdata,
     }
     for (i = 0; i < argc; i++)
         valpv[i] = NULL;
+
+    /*
+     * Get pointers to argument values, trying to avoid copying of values.
+     */
+
     argp = exp->var.op.args.firstp;
     for (i = 0; i < argc; i++) {
         switch (argp->kind) {
@@ -331,6 +346,9 @@ cleanup:
             if (valpv[i] != NULL && argp->kind != RDB_EX_OBJ
                     && argp->kind != RDB_EX_TBP && argp->kind != RDB_EX_VAR) {
                 RDB_destroy_obj(&valv[i], ecp);
+                /* Don't have to drop valpv[i]->typ
+                 * because it's managed by the argument expression
+                 */
             }
             argp = argp->nextp;
         }

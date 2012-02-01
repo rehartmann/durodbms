@@ -235,10 +235,11 @@ _RDB_serialize_expr(RDB_object *valp, int *posp, RDB_expression *exp,
 
             /*
              * Serialize type to preserve the type of e.g. RELATION()
-             * Only do this when the number of arguments is zero, because otherwise
-             * RDB_expr_type() would stop here and e.g. tuple-valued
-             * attribute names in virtual table definitions wouldn't get a type
-             * which is required by RDB_qresult.
+             * Only do this when the number of arguments is zero, because
+             * RDB_expr_type() will not go deeper if type information is already present
+             * and descendants may not get type information.
+             * This can cause in RDB_qresult not working on virtual table
+             * whose definition contain tuple-valued attribute names.
              */
 
             if (exp->typ != NULL && exp->var.op.args.firstp == NULL) {
