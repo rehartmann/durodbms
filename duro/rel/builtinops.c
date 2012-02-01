@@ -760,6 +760,10 @@ op_tuple(int argc, RDB_object *argv[], RDB_operator *op,
     return RDB_OK;
 }
 
+/*
+ * Create virtual table from RELATION selector arguments and *reltyp.
+ * *reltyp is consumed.
+ */
 int
 _RDB_op_type_relation(int argc, RDB_object *argv[], RDB_type *reltyp,
         RDB_exec_context *ecp, RDB_transaction *txp, RDB_object *retvalp)

@@ -926,6 +926,7 @@ init_expr_qresult(RDB_qresult *qrp, RDB_expression *exp, RDB_exec_context *ecp,
     if (strcmp(exp->var.op.name, "RELATION") == 0) {
         qrp->nested = RDB_FALSE;
         qrp->exp = exp;
+        qrp->var.stored.curp = NULL;
 
         /* Start with first argument */
         qrp->var.next_exp = exp->var.op.args.firstp;
