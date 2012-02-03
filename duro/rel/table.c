@@ -1389,6 +1389,7 @@ _RDB_table_equals(RDB_object *tb1p, RDB_object *tb2p, RDB_exec_context *ecp,
             return _RDB_drop_qresult(qrp, ecp, txp);
         }
     }
+    RDB_clear_err(ecp);
 
     *resp = RDB_TRUE;
     RDB_destroy_obj(&tpl, ecp);
