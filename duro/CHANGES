@@ -4,6 +4,8 @@ Summary of Changes for Duro
 
 Changes for Duro 0.15
 
+- Trace output can be enabled using RDB_env_trace() and TRACE().
+
 - Tuple JOIN is now tuple UNION.
 
 - Duro D/T: Changed WITH and EXTEND syntax according to Database Explorations.

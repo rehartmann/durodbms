@@ -444,7 +444,7 @@ array_type(const RDB_expression *exp, RDB_gettypefn *getfnp, void *arg,
     RDB_type *basetyp;
 
     if (exp->var.op.args.firstp == NULL) {
-        RDB_raise_not_supported("argument required for ARRAY", ecp);
+        RDB_raise_internal("argument required for ARRAY", ecp);
         goto error;
     }
     basetyp = RDB_expr_type(exp->var.op.args.firstp, getfnp, arg, ecp, txp);

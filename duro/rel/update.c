@@ -343,7 +343,7 @@ update_stored_simple(RDB_object *tbp, RDB_expression *condp,
                     *_RDB_field_no(tbp->var.tb.stp, tpltyp->var.tuple.attrv[i].name),
                     &datap, &len);
             if (ret != RDB_OK) {
-                RDB_errcode_to_error(ret, ecp, &tx);
+                RDB_errcode_to_error(ret, ecp, txp != NULL ? &tx: NULL);
                 rcount = RDB_ERROR;
                 goto cleanup;
             }
@@ -365,7 +365,8 @@ update_stored_simple(RDB_object *tbp, RDB_expression *condp,
         
         /* Evaluate condition */
         if (condp != NULL) {
-            ret = RDB_evaluate_bool(condp, &_RDB_tpl_get, &tpl, ecp, &tx, &b);
+            ret = RDB_evaluate_bool(condp, &_RDB_tpl_get, &tpl, ecp,
+                    txp != NULL ? &tx: NULL, &b);
             if (ret != RDB_OK) {
                 rcount = RDB_ERROR;
                 goto cleanup;
@@ -376,7 +377,7 @@ update_stored_simple(RDB_object *tbp, RDB_expression *condp,
 
         if (b) {
             /* Perform update */
-            if (upd_to_vals(updc, updv, &tpl, valv, ecp, &tx) != RDB_OK) {
+            if (upd_to_vals(updc, updv, &tpl, valv, ecp, txp != NULL ? &tx: NULL) != RDB_OK) {
                 rcount = RDB_ERROR;
                 goto cleanup;
             }
@@ -396,7 +397,7 @@ update_stored_simple(RDB_object *tbp, RDB_expression *condp,
             }
             ret = RDB_cursor_set(curp, updc, fieldv);
             if (ret != RDB_OK) {
-                RDB_errcode_to_error(ret, ecp, txp);
+                RDB_errcode_to_error(ret, ecp, txp != NULL ? &tx: NULL);
                 rcount = RDB_ERROR;
                 goto cleanup;
             }
@@ -406,7 +407,7 @@ update_stored_simple(RDB_object *tbp, RDB_expression *condp,
     };
 
     if (ret != DB_NOTFOUND) {
-        RDB_errcode_to_error(ret, ecp, txp);
+        RDB_errcode_to_error(ret, ecp, txp != NULL ? &tx: NULL);
         rcount = RDB_ERROR;
      }
 

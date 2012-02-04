@@ -341,6 +341,23 @@ system_op(int argc, RDB_object *argv[], RDB_operator *op,
 }
 
 static int
+trace_op(int argc, RDB_object *argv[], RDB_operator *op,
+        RDB_exec_context *ecp, RDB_transaction *txp)
+{
+    int l = RDB_obj_int(argv[0]);
+    if (envp == NULL) {
+        RDB_raise_resource_not_found("Missing database environment", ecp);
+        return RDB_ERROR;
+    }
+    if (l < 0) {
+        RDB_raise_invalid_argument("Invalid trace level", ecp);
+        return RDB_ERROR;
+    }
+    RDB_env_set_trace(envp, (unsigned) l);
+    return RDB_OK;
+}
+
+static int
 load_op(int argc, RDB_object *argv[], RDB_operator *op,
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
@@ -412,6 +429,7 @@ Duro_init_exec(RDB_exec_context *ecp, const char *dbname)
     static RDB_parameter create_db_params[1];
     static RDB_parameter create_env_params[1];
     static RDB_parameter system_params[2];
+    static RDB_parameter trace_params[2];
 
     RDB_object *objp;
 
@@ -427,6 +445,8 @@ Duro_init_exec(RDB_exec_context *ecp, const char *dbname)
     system_params[0].update = RDB_FALSE;
     system_params[1].typ = &RDB_INTEGER;
     system_params[1].update = RDB_TRUE;
+    trace_params[0].typ = &RDB_INTEGER;
+    trace_params[0].update = RDB_FALSE;
 
     RDB_init_hashmap(&root_module.varmap, DEFAULT_VARMAP_SIZE);
     RDB_init_hashmap(&sys_module.varmap, DEFAULT_VARMAP_SIZE);
@@ -445,14 +465,17 @@ Duro_init_exec(RDB_exec_context *ecp, const char *dbname)
     if (RDB_put_upd_op(&sys_module.upd_op_map, "DISCONNECT", 0, NULL, &disconnect_op,
             ecp) != RDB_OK)
         goto error;
-    if (RDB_put_upd_op(&sys_module.upd_op_map, "CREATE_DB", 1, create_db_params, &create_db_op,
-            ecp) != RDB_OK)
+    if (RDB_put_upd_op(&sys_module.upd_op_map, "CREATE_DB", 1, create_db_params,
+            &create_db_op, ecp) != RDB_OK)
         goto error;
-    if (RDB_put_upd_op(&sys_module.upd_op_map, "CREATE_ENV", 1, create_env_params, &create_env_op,
-            ecp) != RDB_OK)
+    if (RDB_put_upd_op(&sys_module.upd_op_map, "CREATE_ENV", 1, create_env_params,
+            &create_env_op, ecp) != RDB_OK)
         goto error;
     if (RDB_put_upd_op(&sys_module.upd_op_map, "SYSTEM", 2, system_params, &system_op,
             ecp) != RDB_OK)
+        goto error;
+    if (RDB_put_upd_op(&sys_module.upd_op_map, "TRACE", 1, trace_params,
+            &trace_op, ecp) != RDB_OK)
         goto error;
 
     if (_RDB_add_io_ops(&sys_module.upd_op_map, ecp) != RDB_OK)
@@ -2808,10 +2831,7 @@ exec_raise(RDB_parse_node *nodep, RDB_exec_context *ecp)
 {
     RDB_expression *exp;
     RDB_object *errp = RDB_raise_err(ecp);
-    if (errp == NULL) {
-        fprintf(stderr, "RDB_raise_err() failed.");
-        abort();
-    }
+    assert(errp != NULL);
 
     exp = RDB_parse_node_expr(nodep, ecp, txnp != NULL ? &txnp->tx : NULL);
     if (exp == NULL)

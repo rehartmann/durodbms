@@ -1849,7 +1849,23 @@ expression: expression '{' id_commalist '}' {
         RDB_parse_add_child($$, $3);
         RDB_parse_add_child($$, $4);
     } 
-    | TOK_ARRAY '(' expression_commalist ')' {
+    | TOK_ARRAY type '(' expression_commalist ')' {
+        $$ = new_parse_inner();
+        if ($$ == NULL) {
+            RDB_parse_del_node($1, _RDB_parse_ecp);
+            RDB_parse_del_node($2, _RDB_parse_ecp);
+            RDB_parse_del_node($3, _RDB_parse_ecp);
+            RDB_parse_del_node($4, _RDB_parse_ecp);
+            RDB_parse_del_node($5, _RDB_parse_ecp);
+            YYERROR;
+        }
+        RDB_parse_add_child($$, $1);
+        RDB_parse_add_child($$, $2);
+        RDB_parse_add_child($$, $3);
+        RDB_parse_add_child($$, $4);
+        RDB_parse_add_child($$, $5);
+    }
+    | TOK_ARRAY '(' ne_expression_commalist ')' {
         $$ = new_parse_inner();
         if ($$ == NULL) {
             RDB_parse_del_node($1, _RDB_parse_ecp);

@@ -1006,7 +1006,28 @@ inner_node_expr(RDB_parse_node *nodep, RDB_exec_context *ecp, RDB_transaction *t
                 if (nodep->exp == NULL)
                     return NULL;
 
-                assert(firstp->nextp->nextp->kind == RDB_NODE_INNER);
+                if (firstp->nextp->kind != RDB_NODE_TOK) {
+                    /* Set expression type */
+                    RDB_type *arrtyp;
+                    RDB_type *typ = RDB_parse_node_to_type(firstp->nextp,
+                            NULL, NULL, ecp, txp);
+                    if (typ == NULL) {
+                        RDB_drop_expr(nodep->exp, ecp);
+                        return nodep->exp = NULL;
+                    }
+                    arrtyp = RDB_create_array_type(typ, ecp);
+                    if (arrtyp == NULL) {
+                        RDB_drop_expr(nodep->exp, ecp);
+                        return nodep->exp = NULL;
+                    }
+
+                    RDB_set_expr_type(nodep->exp, arrtyp);
+
+                    if (add_arg_list(nodep->exp, firstp->nextp->nextp->nextp, ecp, txp) != RDB_OK)
+                        return NULL;
+                    return nodep->exp;
+                }
+
                 if (add_arg_list(nodep->exp, firstp->nextp->nextp, ecp, txp) != RDB_OK)
                     return NULL;
                 return nodep->exp;

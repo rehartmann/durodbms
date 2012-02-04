@@ -1,7 +1,7 @@
 /*
  * $Id$
  *
- * Copyright (C) 2003-2007 René Hartmann.
+ * Copyright (C) 2003-2012 Rene Hartmann.
  * See the file COPYING for redistribution information.
  */
 
@@ -44,6 +44,7 @@ RDB_open_env(const char *path, RDB_environment **envpp)
 
     envp->closefn = NULL;
     envp->user_data = NULL;
+    envp->trace = 0;
 
     /* create environment handle */
     *envpp = envp;
@@ -111,6 +112,19 @@ RDB_close_env(RDB_environment *envp)
     ret = envp->envp->close(envp->envp, 0);
     free(envp);
     return ret;
+}
+
+/**
+ * Set trace level. Zero means no trace messages.
+ *
+ * @param envp     the pointer to the environment.
+ * @param level    the new trace level.
+ *
+ */
+void
+RDB_env_set_trace(RDB_environment *envp, unsigned level)
+{
+    envp->trace = level;
 }
 
 /*@}*/

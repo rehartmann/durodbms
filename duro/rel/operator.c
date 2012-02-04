@@ -611,6 +611,11 @@ RDB_get_update_op(const char *name, int argc, RDB_type *argtv[],
             RDB_free_op_data(op, ecp);
             return NULL;
         }
+        if (RDB_env_trace(txp->envp) > 0) {
+            fputs("Update operator ", stderr);
+            fputs(name, stderr);
+            fputs(" loaded from catalog\n", stderr);
+        }
     }
     return op;
 }
@@ -1072,6 +1077,12 @@ _RDB_get_ro_op(const char *name, int argc, RDB_type *argtv[],
     if (RDB_put_op(&txp->dbp->dbrootp->ro_opmap, op, ecp) != RDB_OK) {
         RDB_free_op_data(op, ecp);
         return NULL;
+    }
+
+    if (RDB_env_trace(txp->envp) > 0) {
+        fputs("Read-only operator ", stderr);
+        fputs(name, stderr);
+        fputs(" loaded from catalog\n", stderr);
     }
 
     return op;

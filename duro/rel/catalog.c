@@ -409,10 +409,10 @@ insert_vtable(RDB_object *tbp, RDB_dbroot *dbrootp, RDB_exec_context *ecp,
     if (ret != RDB_OK)
         goto cleanup;
 
-#ifdef DEBUG
-    fprintf(stderr, "Writing virtual table definition:\n");
-    _RDB_dump(defval.var.bin.datap, defval.var.bin.len, stderr);
-#endif
+    if (RDB_env_trace(dbrootp->envp) > 0) {
+        fputs("Writing virtual table definition:\n", stderr);
+        _RDB_dump(defval.var.bin.datap, defval.var.bin.len, stderr);
+    }
 
     ret = RDB_insert(dbrootp->vtables_tbp, &tpl, ecp, txp);
     if (ret != RDB_OK) {
@@ -1852,7 +1852,7 @@ _RDB_cat_get_vtable(const char *name, RDB_exec_context *ecp,
     if (_RDB_assoc_table_db(tbp, txp->dbp, ecp) != RDB_OK)
         goto error;
 
-    if (RDB_FALSE /* !! */) {
+    if (RDB_env_trace(RDB_db_env(RDB_tx_db(txp))) > 0) {
         fprintf(stderr,
                 "Definition of virtual table %s read from the catalog\n",
                 name);

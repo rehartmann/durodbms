@@ -1,7 +1,7 @@
 /*
  * $Id$
  *
- * Copyright (C) 2003-2008 René Hartmann.
+ * Copyright (C) 2003-2008 Renï¿½ Hartmann.
  * See the file COPYING for redistribution information.
  */
 
@@ -351,9 +351,14 @@ RDB_set_array_length(RDB_object *arrp, RDB_int len, RDB_exec_context *ecp)
             if (ret != RDB_OK)
                 return ret;
         }
-        vp = RDB_realloc(arrp->var.arr.elemv, sizeof (RDB_object) * len, ecp);
-        if (vp == NULL)
-            return RDB_ERROR;
+        if (len > 0) {
+            vp = RDB_realloc(arrp->var.arr.elemv, sizeof (RDB_object) * len, ecp);
+            if (vp == NULL)
+                return RDB_ERROR;
+        } else {
+            RDB_free(arrp->var.arr.elemv);
+            vp = NULL;
+        }
         arrp->var.arr.elemv = vp;
     } else if (len < arrp->var.arr.length) {
         /* Enlarge array */

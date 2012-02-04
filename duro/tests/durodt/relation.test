@@ -345,4 +345,12 @@ test relrel {table with relation attribute} -setup $SETUP -body {
 yo
 }
 
+test group {GROUP} -body {
+    exec $testdir/../../dli/durodt << {
+		var gt init rel{tup{i 1, j 1}, tup{i 2, j 2}} group {i, j} as ij;
+		println((tuple from gt).ij = rel{tup{i 1, j 1}, tup{i 2, j 2}});
+    }
+} -result {TRUE
+}
+
 cleanupTests

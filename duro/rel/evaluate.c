@@ -34,19 +34,6 @@ evaluate_vt(RDB_expression *exp, RDB_getobjfn *getfnp, void *getdata,
 }
 
 /*
- * Check if arg #2 is var name and evaluate argument #1
- *
-static int
-process_aggr_args(RDB_expression *exp, RDB_getobjfn *getfnp, void *getdata,
-        RDB_exec_context *ecp, RDB_transaction *txp, RDB_object *tbp)
-{
-    if (RDB_evaluate(exp->var.op.args.firstp, getfnp, getdata, ecp, txp, tbp)
-            != RDB_OK)
-        return RDB_ERROR;
-    return RDB_OK;
-}*/
-
-/*
  *  Evaluate IF expression. There must be 3 arguments.
  */
 static int
@@ -179,9 +166,10 @@ evaluate_ro_op(RDB_expression *exp, RDB_getobjfn *getfnp, void *getdata,
 
     if (strcmp(exp->var.op.name, "WHERE") == 0
             || strcmp(exp->var.op.name, "SUMMARIZE") == 0
+            /* !! test
             || strcmp(exp->var.op.name, "DIVIDE") == 0
             || strcmp(exp->var.op.name, "GROUP") == 0
-            || strcmp(exp->var.op.name, "UNGROUP") == 0) {
+            || strcmp(exp->var.op.name, "UNGROUP") == 0 */) {
         return evaluate_vt(exp, getfnp, getdata, ecp, txp, valp);
     }
 
@@ -327,6 +315,41 @@ evaluate_ro_op(RDB_expression *exp, RDB_getobjfn *getfnp, void *getdata,
         argp = argp->nextp;
     }
 
+    /*
+     * Check ARRAY arguments
+     */
+    if (strcmp(exp->var.op.name, "ARRAY") == 0) {
+        RDB_type *typ;
+
+        if (exp->typ != NULL) {
+            /* Expression type is available - get array element type */
+            typ = RDB_base_type(exp->typ);
+            if (typ == NULL) {
+                RDB_raise_internal("Obtaining ARRAY type failed", ecp);
+                ret = RDB_ERROR;
+                goto cleanup;
+            }
+        } else {
+            /* No expression type - get type of argument #1 */
+            if (argc < 1) {
+                RDB_raise_internal("argument required for ARRAY", ecp);
+                ret = RDB_ERROR;
+                goto cleanup;
+            }
+            typ = valpv[0]->typ;
+        }
+
+        /* Check argument types */
+        for (i = 0; i < argc; i++) {
+            if (!RDB_type_equals(valpv[i]->typ, typ)) {
+                RDB_raise_type_mismatch("ARRAY type mismatch", ecp);
+                ret = RDB_ERROR;
+                goto cleanup;
+            }
+        }
+    }
+
+    /* Handle RELATION with type */
     if (strcmp(exp->var.op.name, "RELATION") == 0 && exp->typ != NULL) {
         /* Relation type has been specified - use it for creating the table */
         RDB_type *typ = RDB_dup_nonscalar_type(exp->typ, ecp);
@@ -335,9 +358,10 @@ evaluate_ro_op(RDB_expression *exp, RDB_getobjfn *getfnp, void *getdata,
             goto cleanup;
         }
         ret = _RDB_op_type_relation(argc, valpv, typ, ecp, txp, valp);
-    } else {
-        ret = RDB_call_ro_op_by_name(exp->var.op.name, argc, valpv, ecp, txp, valp);
+        goto cleanup;
     }
+
+    ret = RDB_call_ro_op_by_name(exp->var.op.name, argc, valpv, ecp, txp, valp);
 
 cleanup:
     if (valv != NULL) {
@@ -370,8 +394,8 @@ int
 RDB_evaluate(RDB_expression *exp, RDB_getobjfn *getfnp, void *getdata,
         RDB_exec_context *ecp, RDB_transaction *txp, RDB_object *valp)
 {
-    if (RDB_FALSE /* !! */) {
-        fputs("Evaluating: ", stderr);
+    if (txp != NULL && RDB_env_trace(txp->envp) > 0) {
+        fputs("Evaluating ", stderr);
         if (_RDB_print_expr(exp, stderr, ecp) == RDB_ERROR)
             return RDB_ERROR;
         fputs("\n", stderr);

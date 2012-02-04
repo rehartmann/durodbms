@@ -23,6 +23,60 @@ set ::DBSETUP {
     }
 }
 
+test arraysel {array selectors} -body {
+    exec $testdir/../../dli/durodt << {
+	    -- without type 
+	    var a1 init array(2, 4);
+	    println(length(a1));
+	    println(a1[0]);
+	    println(a1[1]);
+
+	    -- with type
+	    var a2 init array string ('relational');
+	    println(length(a2));
+	    println(a2[0]);
+
+	    -- with type and without arguments
+	    a1 := array integer();
+	    -- println(length(a1));
+	    
+	    -- array of tuple without type
+	    var at1 init array(tup{i 200});
+	    println(length(at1));
+	    println(at1[0].i);
+
+	    -- array of tuple with type
+	    var at1 init array tup{s string} (tup{s 'A'}, tup{s 'Ilsebill'});
+	    println(length(at1));
+	    println(at1[0].s);
+	    println(at1[1].s);
+	    
+	    -- type mismatch
+	    try
+	        var ae init array integer ('S');
+	    catch type_mismatch_error;
+	        println('type mismatch 1');
+	    end try;
+	    try
+	        var ae init array tup{i integer} (tup{i 1}, tup{i 1, j 2});
+	    catch type_mismatch_error;
+	        println('type mismatch 2');
+	    end try;
+	}
+} -result {2
+2
+4
+1
+relational
+1
+200
+2
+A
+Ilsebill
+type mismatch 1
+type mismatch 2
+}    
+
 test ptarray {array from private table} -body {
     exec $testdir/../../dli/durodt << {
         var r private init relation { tuple {i 1, c 'foo'}, tuple {i 2, c 'foo'},
