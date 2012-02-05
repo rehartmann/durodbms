@@ -8,7 +8,7 @@
  */
 
 #include <rel/rdb.h>
-#include <rel/internal.h>
+#include <rel/opmap.h>
 #include <rel/tostr.h>
 
 #include <errno.h>

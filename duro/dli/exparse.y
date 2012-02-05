@@ -10,7 +10,6 @@
 
 #include <dli/parsenode.h>
 #include <rel/rdb.h>
-#include <rel/internal.h>
 
 #define YYSTYPE RDB_parse_node*
 
