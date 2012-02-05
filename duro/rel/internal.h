@@ -413,7 +413,7 @@ _RDB_obj_to_irep(void *dstp, const RDB_object *, size_t);
 
 RDB_operator *
 _RDB_get_ro_op(const char *name, int argc, RDB_type *argtv[],
-               RDB_exec_context *, RDB_transaction *txp);
+               RDB_environment *, RDB_exec_context *, RDB_transaction *txp);
 
 int
 _RDB_eq_bool(int, RDB_object *[], RDB_operator *,

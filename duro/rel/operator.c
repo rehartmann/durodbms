@@ -197,7 +197,7 @@ RDB_create_ro_op(const char *name, int paramc, RDB_parameter paramv[], RDB_type 
         paramtv[0] = paramv[0].typ;
         paramtv[1] = paramv[1].typ;
 
-        cmpop = _RDB_get_ro_op(name, 2, paramtv, ecp, txp);
+        cmpop = _RDB_get_ro_op(name, 2, paramtv, NULL, ecp, txp);
         if (cmpop == NULL) {
             ret = RDB_ERROR;
             goto cleanup;
@@ -435,15 +435,30 @@ RDB_call_ro_op_by_name(const char *name, int argc, RDB_object *argv[],
                RDB_exec_context *ecp, RDB_transaction *txp,
                RDB_object *retvalp)
 {
+    return RDB_call_ro_op_by_name_e(name, argc, argv, NULL, ecp, txp, retvalp);
+}
+
+/**
+ * Same as RDB_call_ro_op_by_name() but with an additional argument <var>envp</var>.
+ * If <var>txp</var> is NULL and <var>envp</var> is not, <var>envp</var> is used
+ * to look up read-only operators from memory.
+ * If <var>txp</var> is not NULL, <var>envp</var> is ignored.
+ */
+int
+RDB_call_ro_op_by_name_e(const char *name, int argc, RDB_object *argv[],
+               RDB_environment *envp, RDB_exec_context *ecp, RDB_transaction *txp,
+               RDB_object *retvalp)
+{
     RDB_operator *op;
     int ret;
     RDB_type **argtv;
     int i;
 
     /*
-     * Handle RELATION, calling it directly,
+     * Handle RELATION and other operators by calling them directly,
      * bypassing getting types of all arguments
      */
+
     if (strcmp(name, "RELATION") == 0)
     	return _RDB_op_relation(argc, argv, NULL, ecp, txp, retvalp);
 
@@ -452,9 +467,9 @@ RDB_call_ro_op_by_name(const char *name, int argc, RDB_object *argv[],
      */
     if (argc == 2 && !obj_is_scalar(argv[0]) && !obj_is_scalar(argv[1])) {
         if (strcmp(name, "=") == 0)
-            return _RDB_obj_equals(2, argv, NULL /* !! */, ecp, txp, retvalp);
+            return _RDB_obj_equals(2, argv, NULL, ecp, txp, retvalp);
         if (strcmp(name, "<>") == 0) {
-            ret = _RDB_obj_equals(2, argv, NULL /* !! */, ecp, txp, retvalp);
+            ret = _RDB_obj_equals(2, argv, NULL, ecp, txp, retvalp);
             if (ret != RDB_OK)
                 return ret;
             retvalp->var.bool_val = (RDB_bool) !retvalp->var.bool_val;
@@ -537,7 +552,7 @@ RDB_call_ro_op_by_name(const char *name, int argc, RDB_object *argv[],
         return RDB_ERROR;
     }
 
-    op = _RDB_get_ro_op(name, argc, argtv, ecp, txp);
+    op = _RDB_get_ro_op(name, argc, argtv, envp, ecp, txp);
     RDB_free(argtv);
     if (op == NULL) {
         goto error;
@@ -675,13 +690,6 @@ RDB_get_update_op_e(const char *name, int argc, RDB_type *argtv[],
     return op;
 }
 
-int
-RDB_call_ro_op(RDB_operator *op, int argc, RDB_object *argv[],
-                RDB_exec_context *ecp, RDB_transaction *txp, RDB_object *retvalp)
-{
-    return (*op->opfn.ro_fp)(argc, argv, op, ecp, txp, retvalp);
-}
-
 /**
  * RDB_call_update_op_by_name invokes the update operator with the name <var>name</var>,
 passing the arguments in <var>argc</var> and <var>argv</var>.
@@ -734,6 +742,15 @@ RDB_call_update_op_by_name(const char *name, int argc, RDB_object *argv[],
     return RDB_call_update_op(op, argc, argv, ecp, txp);
 }
 
+/**
+ * Call the update operator *<var>op</var>,
+passing the arguments in <var>argc</var> and <var>argv</var>.
+
+@returns RDB_OK on success, RDB_ERROR if an error occurred.
+
+If the user-supplied function which implements the operator raises an
+error, this error is returned in *ecp.
+ */
 int
 RDB_call_update_op(RDB_operator *op, int argc, RDB_object *argv[],
                 RDB_exec_context *ecp, RDB_transaction *txp)
@@ -972,7 +989,7 @@ _RDB_obj_equals(int argc, RDB_object *argv[], RDB_operator *op,
         RDB_object retval;
 
         RDB_init_obj(&retval);
-        ret = RDB_call_ro_op(arep->compare_op, 2, argv, ecp, txp, &retval);
+        ret = (*arep->compare_op->opfn.ro_fp)(2, argv, arep->compare_op, ecp, txp, &retval);
         if (ret != RDB_OK) {
             RDB_destroy_obj(&retval, ecp);
             return ret;
@@ -1031,16 +1048,17 @@ _RDB_obj_not_equals(int argc, RDB_object *argv[], RDB_operator *op,
 }
 
 /*
- * Get operator by name. !! If txp is NULL, envp must not be NULL
+ * Get operator by name. If txp is NULL, envp must not be NULL
  * and is used to look up the operator in memory.
  * If txp is not NULL, envp is ignored.
  */
 RDB_operator *
 _RDB_get_ro_op(const char *name, int argc, RDB_type *argtv[],
-        RDB_exec_context *ecp, RDB_transaction *txp)
+        RDB_environment *envp, RDB_exec_context *ecp, RDB_transaction *txp)
 {
     RDB_type *errtyp;
     RDB_operator *op;
+    RDB_dbroot *dbrootp;
     RDB_bool typmismatch = RDB_FALSE;
 
     /* Lookup operator in built-in operator map */
@@ -1056,8 +1074,17 @@ _RDB_get_ro_op(const char *name, int argc, RDB_type *argtv[],
     if (errtyp == &RDB_TYPE_MISMATCH_ERROR) {
         typmismatch = RDB_TRUE;
     }
+    RDB_clear_err(ecp);
 
-    if (txp == NULL) {
+    if (txp != NULL) {
+        if (!RDB_tx_is_running(txp)) {
+            RDB_raise_no_running_tx(ecp);
+            return NULL;
+        }
+        dbrootp = RDB_tx_db(txp)->dbrootp;
+    } else if (envp != NULL) {
+        dbrootp = RDB_env_xdata(envp);
+    } else {
         if (typmismatch) {
             RDB_raise_type_mismatch(name, ecp);
         } else {
@@ -1065,13 +1092,9 @@ _RDB_get_ro_op(const char *name, int argc, RDB_type *argtv[],
         }
         return NULL;
     }
-    if (!RDB_tx_is_running(txp)) {
-        RDB_raise_no_running_tx(ecp);
-        return NULL;
-    }
      
     /* Lookup operator in dbroot map */
-    op = RDB_get_op(&txp->dbp->dbrootp->ro_opmap, name, argc, argtv, ecp);
+    op = RDB_get_op(&dbrootp->ro_opmap, name, argc, argtv, ecp);
     if (op != NULL) {
         RDB_clear_err(ecp);
         return op;
@@ -1099,7 +1122,7 @@ _RDB_get_ro_op(const char *name, int argc, RDB_type *argtv[],
                 return NULL;
             }
             op->opfn.ro_fp = &_RDB_obj_equals;
-            ret = RDB_put_op(&txp->dbp->dbrootp->ro_opmap, op, ecp);
+            ret = RDB_put_op(&dbrootp->ro_opmap, op, ecp);
             if (ret != RDB_OK)
                 return NULL;
             return op;
@@ -1110,17 +1133,21 @@ _RDB_get_ro_op(const char *name, int argc, RDB_type *argtv[],
                 return NULL;
             }
             op->opfn.ro_fp = &_RDB_obj_not_equals;
-            ret = RDB_put_op(&txp->dbp->dbrootp->ro_opmap, op, ecp);
+            ret = RDB_put_op(&dbrootp->ro_opmap, op, ecp);
             if (ret != RDB_OK)
                 return NULL;
             return op;
         }
     }
-    RDB_clear_err(ecp);
-
     /*
      * Operator was not found in map, so read from catalog
+     * if a transaction is available
      */
+    if (txp == NULL)
+        return NULL;
+
+    RDB_clear_err(ecp);
+
     op = _RDB_cat_get_ro_op(name, argc, argtv, ecp, txp);
     if (op == NULL) {
         if (RDB_obj_type(RDB_get_err(ecp)) == &RDB_NOT_FOUND_ERROR) {
@@ -1134,7 +1161,7 @@ _RDB_get_ro_op(const char *name, int argc, RDB_type *argtv[],
     }
 
     /* Insert operator into dbroot map */
-    if (RDB_put_op(&txp->dbp->dbrootp->ro_opmap, op, ecp) != RDB_OK) {
+    if (RDB_put_op(&dbrootp->ro_opmap, op, ecp) != RDB_OK) {
         RDB_free_op_data(op, ecp);
         return NULL;
     }
@@ -1167,7 +1194,7 @@ _RDB_check_type_constraint(RDB_object *valp, RDB_exec_context *ecp,
             return ret;
         }
         ret = RDB_evaluate_bool(valp->typ->var.scalar.constraintp,
-                &_RDB_tpl_get, &tpl, ecp, txp, &result);
+                &_RDB_tpl_get, &tpl, NULL, ecp, txp, &result);
         RDB_destroy_obj(&tpl, ecp);
         if (ret != RDB_OK) {
             return ret;

@@ -442,7 +442,7 @@ check_extend_tuple(const RDB_object *tplp, const RDB_expression *exp, RDB_exec_c
         }
         RDB_init_obj(&val);
         ret = RDB_evaluate(argp, &_RDB_tpl_get, (void *) tplp,
-                ecp, txp, &val);
+                NULL, ecp, txp, &val);
         if (ret != RDB_OK) {
             RDB_destroy_obj(&val, ecp);
             return ret;
@@ -560,7 +560,7 @@ resolve_insert_expr(RDB_expression *exp, const RDB_object *tplp,
 
     if (strcmp(exp->var.op.name, "WHERE") == 0) {
         ret = RDB_evaluate_bool(exp->var.op.args.firstp->nextp, &_RDB_tpl_get,
-                (void *) tplp, ecp, txp, &b);
+                (void *) tplp, NULL, ecp, txp, &b);
         if (ret != RDB_OK)
             return RDB_ERROR;
         if (!b) {
@@ -1653,7 +1653,7 @@ RDB_multi_assign(int insc, const RDB_ma_insert insv[],
                 /*
                  * Check constraint
                  */
-                ret = RDB_evaluate_bool(newexp, NULL, NULL, ecp, txp, &b);
+                ret = RDB_evaluate_bool(newexp, NULL, NULL, NULL, ecp, txp, &b);
                 RDB_drop_expr(newexp, ecp);
                 if (ret != RDB_OK) {
                     rcount = RDB_ERROR;

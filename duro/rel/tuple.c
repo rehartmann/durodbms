@@ -567,7 +567,7 @@ RDB_extend_tuple(RDB_object *tplp, int attrc, const RDB_virtual_attr attrv[],
 
     for (i = 0; i < attrc; i++) {
         RDB_init_obj(&obj);
-        if (RDB_evaluate(attrv[i].exp, &_RDB_tpl_get, tplp, ecp, txp, &obj)
+        if (RDB_evaluate(attrv[i].exp, &_RDB_tpl_get, tplp, NULL, ecp, txp, &obj)
                 != RDB_OK) {
             RDB_destroy_obj(&obj, ecp);
             return RDB_ERROR;

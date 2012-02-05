@@ -508,7 +508,7 @@ Duro_tcl_to_duro(Tcl_Interp *interp, Tcl_Obj *tobjp, RDB_type *typ,
             return TCL_ERROR;
         }
 
-        ret = RDB_evaluate(exp, NULL, NULL, ecp, txp, objp);
+        ret = RDB_evaluate(exp, NULL, NULL, NULL, ecp, txp, objp);
         RDB_parse_del_node(nodep, ecp);
         if (ret != RDB_OK) {
             Duro_dberror(interp, RDB_get_err(ecp), txp);

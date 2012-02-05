@@ -37,7 +37,7 @@ upd_to_vals(int updc, const RDB_attr_update updv[],
     int i, ret;
 
     for (i = 0; i < updc; i++) {
-        ret = RDB_evaluate(updv[i].exp, &_RDB_tpl_get, tplp, ecp, txp, &valv[i]);
+        ret = RDB_evaluate(updv[i].exp, &_RDB_tpl_get, tplp, NULL, ecp, txp, &valv[i]);
         if (ret != RDB_OK) {
             int j;
             
@@ -147,7 +147,7 @@ update_stored_complex(RDB_object *tbp, RDB_expression *condp,
         if (condp == NULL)
             b = RDB_TRUE;
         else {
-            ret = RDB_evaluate_bool(condp, &_RDB_tpl_get, &tpl, ecp, &tx, &b);
+            ret = RDB_evaluate_bool(condp, &_RDB_tpl_get, &tpl, NULL, ecp, &tx, &b);
             if (ret != RDB_OK) {
                 rcount = RDB_ERROR;
                 return ret;
@@ -220,7 +220,7 @@ update_stored_complex(RDB_object *tbp, RDB_expression *condp,
         if (condp == NULL) {
             b = RDB_TRUE;
         } else {
-            ret = RDB_evaluate_bool(condp, &_RDB_tpl_get, &tpl, ecp, &tx, &b);
+            ret = RDB_evaluate_bool(condp, &_RDB_tpl_get, &tpl, NULL, ecp, &tx, &b);
             if (ret != RDB_OK) {
                 rcount = RDB_ERROR;
                 goto cleanup;
@@ -365,7 +365,7 @@ update_stored_simple(RDB_object *tbp, RDB_expression *condp,
         
         /* Evaluate condition */
         if (condp != NULL) {
-            ret = RDB_evaluate_bool(condp, &_RDB_tpl_get, &tpl, ecp,
+            ret = RDB_evaluate_bool(condp, &_RDB_tpl_get, &tpl, NULL, ecp,
                     txp != NULL ? &tx: NULL, &b);
             if (ret != RDB_OK) {
                 rcount = RDB_ERROR;
@@ -512,7 +512,7 @@ update_where_pindex(RDB_expression *texp, RDB_expression *condp,
         /*
          * Check condition
          */
-        if (RDB_evaluate_bool(condp, &_RDB_tpl_get, &tpl, ecp, txp, &b) != RDB_OK) {
+        if (RDB_evaluate_bool(condp, &_RDB_tpl_get, &tpl, NULL, ecp, txp, &b) != RDB_OK) {
             rcount = RDB_ERROR;
             goto cleanup;
         }
@@ -661,7 +661,7 @@ update_where_index_simple(RDB_expression *texp, RDB_expression *condp,
 
         if (texp->var.op.optinfo.stopexp != NULL) {
             ret = RDB_evaluate_bool(texp->var.op.optinfo.stopexp,
-                    &_RDB_tpl_get, &tpl, ecp, txp, &b);
+                    &_RDB_tpl_get, &tpl, NULL, ecp, txp, &b);
             if (ret != RDB_OK) {
                 rcount = RDB_ERROR;
                 goto cleanup;
@@ -676,7 +676,7 @@ update_where_index_simple(RDB_expression *texp, RDB_expression *condp,
             /*
              * Check condition
              */
-            if (RDB_evaluate_bool(condp, &_RDB_tpl_get, &tpl, ecp, &tx, &upd)
+            if (RDB_evaluate_bool(condp, &_RDB_tpl_get, &tpl, NULL, ecp, &tx, &upd)
                     != RDB_OK) {
                 rcount = RDB_ERROR;
                 goto cleanup;
@@ -684,7 +684,7 @@ update_where_index_simple(RDB_expression *texp, RDB_expression *condp,
         }
 
         if (RDB_evaluate_bool(texp->var.op.args.firstp->nextp, &_RDB_tpl_get, &tpl,
-                ecp, &tx, &b) != RDB_OK) {
+                NULL, ecp, &tx, &b) != RDB_OK) {
             rcount = RDB_ERROR;
             goto cleanup;
         }
@@ -896,7 +896,7 @@ update_where_index_complex(RDB_expression *texp, RDB_expression *condp,
 
         if (texp->var.op.optinfo.stopexp != NULL) {
             if (RDB_evaluate_bool(texp->var.op.optinfo.stopexp,
-                    &_RDB_tpl_get, &tpl, ecp, txp, &b) != RDB_OK) {
+                    &_RDB_tpl_get, &tpl, NULL, ecp, txp, &b) != RDB_OK) {
                 rcount = RDB_ERROR;
                 RDB_destroy_obj(&tpl, ecp);
                 goto cleanup;
@@ -912,7 +912,7 @@ update_where_index_complex(RDB_expression *texp, RDB_expression *condp,
             /*
              * Check condition
              */
-            if (RDB_evaluate_bool(condp, &_RDB_tpl_get, &tpl, ecp, &tx, &upd)
+            if (RDB_evaluate_bool(condp, &_RDB_tpl_get, &tpl, NULL, ecp, &tx, &upd)
                     != RDB_OK) {
                 RDB_destroy_obj(&tpl, ecp);
                 rcount = RDB_ERROR;
@@ -920,8 +920,8 @@ update_where_index_complex(RDB_expression *texp, RDB_expression *condp,
             }
         }
 
-        if (RDB_evaluate_bool(texp->var.op.args.firstp->nextp, &_RDB_tpl_get, &tpl, ecp,
-                &tx, &b) != RDB_OK) {
+        if (RDB_evaluate_bool(texp->var.op.args.firstp->nextp, &_RDB_tpl_get, &tpl,
+                NULL, ecp, &tx, &b) != RDB_OK) {
             RDB_destroy_obj(&tpl, ecp);
             rcount = RDB_ERROR;
             goto cleanup;
@@ -997,7 +997,7 @@ update_where_index_complex(RDB_expression *texp, RDB_expression *condp,
 
         if (texp->var.op.optinfo.stopexp != NULL) {
             if (RDB_evaluate_bool(texp->var.op.optinfo.stopexp,
-                    &_RDB_tpl_get, &tpl, ecp, txp, &b) != RDB_OK) {
+                    &_RDB_tpl_get, &tpl, NULL, ecp, txp, &b) != RDB_OK) {
                 RDB_destroy_obj(&tpl, ecp);
                 ret = DB_NOTFOUND;
                 goto cleanup;
@@ -1013,7 +1013,7 @@ update_where_index_complex(RDB_expression *texp, RDB_expression *condp,
             /*
              * Check condition
              */
-            if (RDB_evaluate_bool(condp, &_RDB_tpl_get, &tpl, ecp, &tx, &upd)
+            if (RDB_evaluate_bool(condp, &_RDB_tpl_get, &tpl, NULL, ecp, &tx, &upd)
                     != RDB_OK) {
                 RDB_destroy_obj(&tpl, ecp);
                 rcount = RDB_ERROR;
@@ -1021,8 +1021,8 @@ update_where_index_complex(RDB_expression *texp, RDB_expression *condp,
             }
         }
 
-        if (RDB_evaluate_bool(texp->var.op.args.firstp->nextp, &_RDB_tpl_get, &tpl, ecp,
-                &tx, &b) != RDB_OK) {
+        if (RDB_evaluate_bool(texp->var.op.args.firstp->nextp, &_RDB_tpl_get, &tpl,
+                NULL, ecp, &tx, &b) != RDB_OK) {
             RDB_destroy_obj(&tpl, ecp);
             rcount = RDB_ERROR;
             goto cleanup;

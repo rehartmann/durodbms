@@ -606,6 +606,94 @@ init_obj(RDB_object *objp, RDB_type *typ, RDB_exec_context *ecp,
     return RDB_OK;
 }
 
+static RDB_database *
+get_db(RDB_exec_context *ecp)
+{
+    char *dbname;
+    RDB_object *dbnameobjp = RDB_hashmap_get(&sys_module.varmap, "CURRENT_DB");
+    if (dbnameobjp == NULL) {
+        RDB_raise_resource_not_found("no database", ecp);
+        return NULL;
+    }
+    dbname = RDB_obj_string(dbnameobjp);
+    if (*dbname == '\0') {
+        RDB_raise_resource_not_found("no database", ecp);
+        return NULL;
+    }
+    if (envp == NULL) {
+        RDB_raise_resource_not_found("no connection", ecp);
+        return NULL;
+    }
+
+    return RDB_get_db_from_env(dbname, envp, ecp);
+}
+
+/*
+ * Evaluate expression.
+ * If evaluation fails with OPERATOR_NOT_FOUND_ERROR ad no transaction is running
+ * but a environment is available, start a transaction and try again.
+ */
+static int
+evaluate_retry(RDB_expression *exp, RDB_exec_context *ecp, RDB_object *resultp)
+{
+    RDB_transaction tx;
+    RDB_database *dbp;
+    int ret;
+
+    ret = RDB_evaluate(exp, &get_var, current_varmapp, envp, ecp,
+            txnp != NULL ? &txnp->tx : NULL, resultp);
+    /*
+     * Success or error different from OPERATOR_NOT_FOUND_ERROR
+     * -> return
+     */
+    if (ret == RDB_OK
+            || RDB_obj_type(RDB_get_err(ecp)) != &RDB_OPERATOR_NOT_FOUND_ERROR)
+        return ret;
+    /*
+     * If a transaction is already active or no environment is
+     * available, give up
+     */
+    if (txnp != NULL || envp == NULL)
+        return ret;
+    /*
+     * Start transaction and retry.
+     * If this succeeds, the operator will be in memory next time
+     * so no transaction will be needed.
+     */
+    dbp = get_db(ecp);
+    if (dbp == NULL) {
+        dbp = RDB_get_sys_db(envp, ecp);
+        if (dbp == NULL)
+            return RDB_ERROR;
+    }
+
+    if (RDB_begin_tx(ecp, &tx, dbp, NULL) != RDB_OK)
+        return RDB_ERROR;
+    ret = RDB_evaluate(exp, &get_var, current_varmapp, envp, ecp, &tx, resultp);
+    if (ret != RDB_OK) {
+        RDB_commit(ecp, &tx);
+        return ret;
+    }
+    return RDB_commit(ecp, &tx);
+}
+
+static int
+evaluate_retry_bool(RDB_expression *exp, RDB_exec_context *ecp, RDB_bool *resultp)
+{
+    int ret;
+    RDB_object result;
+
+    RDB_init_obj(&result);
+    ret = evaluate_retry(exp, ecp, &result);
+    if (ret != RDB_OK) {
+        RDB_destroy_obj(&result, ecp);
+        return ret;
+    }
+    *resultp = RDB_obj_bool(&result);
+    RDB_destroy_obj(&result, ecp);
+    return RDB_OK;
+}
+
 static int
 exec_vardef(RDB_parse_node *nodep, RDB_exec_context *ecp)
 {
@@ -658,9 +746,7 @@ exec_vardef(RDB_parse_node *nodep, RDB_exec_context *ecp)
             goto error;
         }
     } else {
-        if (RDB_evaluate(initexp, &get_var,
-                current_varmapp, ecp, txnp != NULL ? &txnp->tx : NULL,
-                objp) != RDB_OK) {
+        if (evaluate_retry(initexp, ecp, objp) != RDB_OK) {
             goto error;
         }
         if (RDB_obj_type(objp) != NULL) {
@@ -822,8 +908,7 @@ exec_vardef_real(RDB_parse_node *nodep, RDB_exec_context *ecp)
 
     if (initexp != NULL) {
         RDB_init_obj(&tb);
-        if (RDB_evaluate(initexp, get_var, current_varmapp, ecp,
-                txnp != NULL ? &txnp->tx : NULL, &tb) != RDB_OK) {
+        if (evaluate_retry(initexp, ecp, &tb) != RDB_OK) {
             goto error;
         }
         if (RDB_obj_type(&tb) == NULL) {
@@ -956,8 +1041,7 @@ exec_vardef_private(RDB_parse_node *nodep, RDB_exec_context *ecp)
             return RDB_ERROR;
         keylistnodep = nodep->nextp->nextp->nextp->nextp;
         RDB_init_obj(&tb);
-        if (RDB_evaluate(initexp, get_var, current_varmapp, ecp,
-                txnp != NULL ? &txnp->tx : NULL, &tb) != RDB_OK) {
+        if (evaluate_retry(initexp, ecp, &tb) != RDB_OK) {
             goto error;
         }
         if (RDB_obj_type(&tb) == NULL) {
@@ -1020,8 +1104,7 @@ exec_vardef_private(RDB_parse_node *nodep, RDB_exec_context *ecp)
     }
 
     if (initexp != NULL) {
-        if (RDB_evaluate(initexp, get_var, current_varmapp, ecp,
-                txnp != NULL ? &txnp->tx : NULL, &tb) != RDB_OK) {
+        if (evaluate_retry(initexp, ecp, &tb) != RDB_OK) {
             goto error;
         }
         if (RDB_copy_obj(tbp, &tb, ecp) != RDB_OK) {
@@ -1203,8 +1286,7 @@ exec_call(const RDB_parse_node *nodep, RDB_exec_context *ecp,
         /* If the expression has not been resolved as a variable, evaluate it */
         if (argpv[i] == NULL) {
             RDB_init_obj(&argv[i]);
-            if (RDB_evaluate(exp, &get_var, current_varmapp, ecp,
-                        txp, &argv[i]) != RDB_OK) {
+            if (evaluate_retry(exp, ecp, &argv[i]) != RDB_OK) {
                 ret = RDB_ERROR;
                 goto cleanup;
             }
@@ -1236,28 +1318,6 @@ cleanup:
             RDB_destroy_obj(&argv[i], ecp);
     }
     return ret;
-}
-
-static RDB_database *
-get_db(RDB_exec_context *ecp)
-{
-    char *dbname;
-    RDB_object *dbnameobjp = RDB_hashmap_get(&sys_module.varmap, "CURRENT_DB");
-    if (dbnameobjp == NULL) {
-        RDB_raise_resource_not_found("no database", ecp);
-        return NULL;
-    }
-    dbname = RDB_obj_string(dbnameobjp);
-    if (*dbname == '\0') {
-        RDB_raise_resource_not_found("no database", ecp);
-        return NULL;
-    }
-    if (envp == NULL) {
-        RDB_raise_resource_not_found("no connection", ecp);
-        return NULL;
-    }
-
-    return RDB_get_db_from_env(dbname, envp, ecp);
 }
 
 /*
@@ -1350,8 +1410,7 @@ exec_load(RDB_parse_node *nodep, RDB_exec_context *ecp)
     }
 
     RDB_init_obj(&srctb);
-    if (RDB_evaluate(exp, &get_var, current_varmapp, ecp,
-            txnp != NULL ? &txnp->tx : NULL, &srctb) != RDB_OK) {
+    if (evaluate_retry(exp, ecp, &srctb) != RDB_OK) {
         ret = RDB_ERROR;
         goto cleanup;
     }
@@ -1423,7 +1482,7 @@ exec_if(RDB_parse_node *nodep, RDB_exec_context *ecp,
     if (condp == NULL)
         return RDB_ERROR;
 
-    if (RDB_evaluate_bool(condp, &get_var, current_varmapp, ecp, NULL, &b)
+    if (evaluate_retry_bool(condp, ecp, &b)
             != RDB_OK) {
         return RDB_ERROR;
     }
@@ -1463,7 +1522,7 @@ exec_case(RDB_parse_node *nodep, RDB_exec_context *ecp,
         if (condp == NULL)
             return RDB_ERROR;
 
-        if (RDB_evaluate_bool(condp, &get_var, current_varmapp, ecp, NULL, &b)
+        if (evaluate_retry_bool(condp, ecp, &b)
                 != RDB_OK) {
             return RDB_ERROR;
         }
@@ -1500,8 +1559,7 @@ exec_while(RDB_parse_node *nodep, RDB_parse_node *labelp, RDB_exec_context *ecp,
         return RDB_ERROR;
 
     for(;;) {
-        if (RDB_evaluate_bool(condp, &get_var, current_varmapp,
-                ecp, NULL, &b) != RDB_OK)
+        if (evaluate_retry_bool(condp, ecp, &b) != RDB_OK)
             return RDB_ERROR;
         if (!b)
             return RDB_OK;
@@ -1558,8 +1616,7 @@ exec_for(const RDB_parse_node *nodep, const RDB_parse_node *labelp,
             txnp != NULL ? &txnp->tx : NULL);
     if (fromexp == NULL)
         return RDB_ERROR;
-    if (RDB_evaluate(fromexp, &get_var,
-            current_varmapp, ecp, NULL, varp) != RDB_OK) {
+    if (evaluate_retry(fromexp, ecp, varp) != RDB_OK) {
         return RDB_ERROR;
     }
     toexp = RDB_parse_node_expr(nodep->nextp->nextp->nextp->nextp, ecp,
@@ -1567,8 +1624,7 @@ exec_for(const RDB_parse_node *nodep, const RDB_parse_node *labelp,
     if (toexp == NULL)
         return RDB_ERROR;
     RDB_init_obj(&endval);
-    if (RDB_evaluate(toexp, &get_var,
-            current_varmapp, ecp, NULL, &endval) != RDB_OK) {
+    if (evaluate_retry(toexp, ecp, &endval) != RDB_OK) {
         goto error;
     }
     if (RDB_obj_type(&endval) != &RDB_INTEGER) {
@@ -1645,8 +1701,7 @@ resolve_target(const RDB_expression *exp, RDB_exec_context *ecp)
             /* Get second argument, which must be INTEGER */
             RDB_object idxobj;
             RDB_init_obj(&idxobj);
-            if (RDB_evaluate(exp->var.op.args.firstp->nextp, get_var,
-                    current_varmapp, ecp, txnp != NULL ? &txnp->tx : NULL,
+            if (evaluate_retry(exp->var.op.args.firstp->nextp, ecp,
                     &idxobj) != RDB_OK) {
                 RDB_destroy_obj(&idxobj, ecp);
                 return NULL;
@@ -1692,8 +1747,7 @@ node_to_copy(RDB_ma_copy *copyp, RDB_parse_node *nodep, RDB_exec_context *ecp)
         return RDB_ERROR;
     }
 
-    if (RDB_evaluate(srcexp, get_var, current_varmapp, ecp,
-            txnp != NULL ? &txnp->tx : NULL, copyp->srcp) != RDB_OK) {
+    if (evaluate_retry(srcexp, ecp, copyp->srcp) != RDB_OK) {
         return RDB_ERROR;
     }
 
@@ -1760,8 +1814,7 @@ tuple_update_to_copy(RDB_ma_copy *copyp, RDB_parse_node *nodep,
         ap = ap->nextp;
     }
 
-    if (RDB_evaluate(srcexp, get_var, current_varmapp, ecp,
-            txnp != NULL ? &txnp->tx : NULL, copyp->srcp) != RDB_OK) {
+    if (evaluate_retry(srcexp, ecp, copyp->srcp) != RDB_OK) {
         return RDB_ERROR;
     }
 
@@ -1797,8 +1850,7 @@ node_to_insert(RDB_ma_insert *insp, RDB_parse_node *nodep, RDB_exec_context *ecp
         return RDB_ERROR;
     }
 
-    if (RDB_evaluate(srcexp, &get_var, current_varmapp, ecp,
-            txnp != NULL ? &txnp->tx : NULL, insp->objp) != RDB_OK) {
+    if (evaluate_retry(srcexp, ecp, insp->objp) != RDB_OK) {
         return RDB_ERROR;
     }
 
@@ -1937,9 +1989,7 @@ exec_assign(const RDB_parse_node *nodep, RDB_exec_context *ecp)
                     txnp != NULL ? &txnp->tx : NULL);
             if (srcexp == NULL)
             	return RDB_ERROR;
-            if (RDB_evaluate(srcexp, get_var,
-                    current_varmapp, ecp, txnp != NULL ? &txnp->tx : NULL,
-                    &lenobj) != RDB_OK) {
+            if (evaluate_retry(srcexp, ecp, &lenobj) != RDB_OK) {
                 RDB_destroy_obj(&lenobj, ecp);
                 return RDB_ERROR;
             }
@@ -2864,8 +2914,7 @@ exec_return(RDB_parse_node *stmtp, RDB_exec_context *ecp,
         /*
          * Evaluate expression
          */
-        if (RDB_evaluate(retexp, &get_var, current_varmapp, ecp,
-                txnp != NULL ? &txnp->tx : NULL, retinfop->objp) != RDB_OK)
+        if (evaluate_retry(retexp, ecp, retinfop->objp) != RDB_OK)
             return RDB_ERROR;
     } else {
         if (retinfop != NULL) {
@@ -2887,8 +2936,7 @@ exec_raise(RDB_parse_node *nodep, RDB_exec_context *ecp)
     if (exp == NULL)
         return RDB_ERROR;
 
-    RDB_evaluate(exp, &get_var, current_varmapp, ecp,
-                txnp != NULL ? &txnp->tx : NULL, errp);
+    evaluate_retry(exp, ecp, errp);
     return RDB_ERROR;
 }
 

@@ -811,7 +811,7 @@ void
 RDB_join_expr_lists(RDB_expr_list *, RDB_expr_list *);
 
 int
-RDB_evaluate(RDB_expression *, RDB_getobjfn *, void *,
+RDB_evaluate(RDB_expression *, RDB_getobjfn *, void *, RDB_environment *,
         RDB_exec_context *, RDB_transaction *, RDB_object *);
 
 RDB_type *
@@ -826,7 +826,7 @@ RDB_expr_var_name(const RDB_expression *);
 
 int
 RDB_evaluate_bool(RDB_expression *, RDB_getobjfn *getfnp, void *getdata,
-        RDB_exec_context *, RDB_transaction *, RDB_bool *);
+        RDB_environment *, RDB_exec_context *, RDB_transaction *, RDB_bool *);
 
 int
 RDB_drop_expr(RDB_expression *, RDB_exec_context *);
@@ -867,12 +867,12 @@ RDB_call_ro_op_by_name(const char *, int, RDB_object *[],
                RDB_exec_context *, RDB_transaction *, RDB_object *);
 
 int
-RDB_call_update_op_by_name(const char *name, int argc, RDB_object *argv[],
-                RDB_exec_context *, RDB_transaction *);
+RDB_call_ro_op_by_name_e(const char *, int, RDB_object *[], RDB_environment *,
+               RDB_exec_context *, RDB_transaction *, RDB_object *);
 
 int
-RDB_call_ro_op(RDB_operator *, int, RDB_object *[],
-               RDB_exec_context *, RDB_transaction *, RDB_object *);
+RDB_call_update_op_by_name(const char *name, int argc, RDB_object *argv[],
+                RDB_exec_context *, RDB_transaction *);
 
 int
 RDB_call_update_op(RDB_operator *, int argc, RDB_object *[],

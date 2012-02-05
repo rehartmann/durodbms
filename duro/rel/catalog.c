@@ -2235,7 +2235,7 @@ _RDB_cat_get_type(const char *name, RDB_exec_context *ecp,
     /* Search for comparison function */
     typv[0] = typ;
     typv[1] = typ;
-    cmpop = _RDB_get_ro_op("CMP", 2, typv, ecp, txp);
+    cmpop = _RDB_get_ro_op("CMP", 2, typv, NULL, ecp, txp);
     if (cmpop != NULL) {
         typ->compare_op = cmpop;
     } else {

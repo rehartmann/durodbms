@@ -140,7 +140,7 @@ compare_field(const void *data1p, size_t len1, const void *data2p, size_t len2,
     valv[1] = &val2;
     tx.txid = NULL;
     tx.envp = envp;
-    RDB_call_ro_op(typ->compare_op, 2, valv, _RDB_cmp_ecp, &tx, &retval);
+    (*typ->compare_op->opfn.ro_fp) (2, valv, typ->compare_op, _RDB_cmp_ecp, &tx, &retval);
     ret = RDB_obj_int(&retval);
 
     RDB_destroy_obj(&val1, _RDB_cmp_ecp);

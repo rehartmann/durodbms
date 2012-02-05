@@ -918,7 +918,7 @@ expr_op_type(RDB_expression *exp, RDB_gettypefn *getfnp, void *arg,
             }
         }
 
-        op = _RDB_get_ro_op(exp->var.op.name, argc, argtv, ecp, txp);
+        op = _RDB_get_ro_op(exp->var.op.name, argc, argtv, NULL, ecp, txp);
         if (op == NULL)
             goto error;
         if (op->rtyp == NULL) {

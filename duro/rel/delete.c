@@ -123,7 +123,7 @@ _RDB_delete_real(RDB_object *tbp, RDB_expression *condp, RDB_exec_context *ecp,
                 }
             }
 
-            if (RDB_evaluate_bool(condp, &_RDB_tpl_get, &tpl, ecp, txp, &b)
+            if (RDB_evaluate_bool(condp, &_RDB_tpl_get, &tpl, NULL, ecp, txp, &b)
                     != RDB_OK)
                  goto error;
         } else {
@@ -191,7 +191,7 @@ delete_where_uindex(RDB_expression *texp, RDB_expression *condp,
             rcount = RDB_ERROR;
             goto cleanup;
         }
-        ret = RDB_evaluate_bool(condp, &_RDB_tpl_get, &tpl, ecp, txp, &b);
+        ret = RDB_evaluate_bool(condp, &_RDB_tpl_get, &tpl, NULL, ecp, txp, &b);
         RDB_destroy_obj(&tpl, ecp);
         if (ret != RDB_OK) {
             rcount = RDB_ERROR;
@@ -291,7 +291,7 @@ delete_where_nuindex(RDB_expression *texp, RDB_expression *condp,
         }
         if (texp->var.op.optinfo.stopexp != NULL) {
             ret = RDB_evaluate_bool(texp->var.op.optinfo.stopexp,
-                    &_RDB_tpl_get, &tpl, ecp, txp, &b);
+                    &_RDB_tpl_get, &tpl, NULL, ecp, txp, &b);
             if (ret != RDB_OK) {
                 RDB_destroy_obj(&tpl, ecp);
                 rcount = RDB_ERROR;
@@ -303,7 +303,7 @@ delete_where_nuindex(RDB_expression *texp, RDB_expression *condp,
             }
         }
         if (condp != NULL) {
-            ret = RDB_evaluate_bool(condp, &_RDB_tpl_get, &tpl, ecp, txp,
+            ret = RDB_evaluate_bool(condp, &_RDB_tpl_get, &tpl, NULL, ecp, txp,
                     &del);
             if (ret != RDB_OK) {
                 RDB_destroy_obj(&tpl, ecp);
@@ -311,8 +311,8 @@ delete_where_nuindex(RDB_expression *texp, RDB_expression *condp,
                 goto cleanup;
             }
         }
-        ret = RDB_evaluate_bool(texp->var.op.args.firstp->nextp, &_RDB_tpl_get, &tpl, ecp,
-                txp, &b);
+        ret = RDB_evaluate_bool(texp->var.op.args.firstp->nextp, &_RDB_tpl_get,
+                &tpl, NULL, ecp, txp, &b);
         RDB_destroy_obj(&tpl, ecp);
         if (ret != RDB_OK) {
             rcount = RDB_ERROR;

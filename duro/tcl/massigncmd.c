@@ -1,7 +1,7 @@
 /*
  * $Id$
  *
- * Copyright (C) 2005-2009 René Hartmann.
+ * Copyright (C) 2005-2009 Renï¿½ Hartmann.
  * See the file COPYING for redistribution information.
  */
 
@@ -211,7 +211,7 @@ list_to_copy(TclState *statep, Tcl_Interp *interp, Tcl_Obj *tobjp,
             return TCL_ERROR;
         }
         RDB_init_obj(copyp->srcp);
-        if (RDB_evaluate(srcexp, NULL, NULL, statep->current_ecp, txp, copyp->srcp)
+        if (RDB_evaluate(srcexp, NULL, NULL, NULL, statep->current_ecp, txp, copyp->srcp)
                 != RDB_OK) {
             RDB_destroy_obj(copyp->srcp, statep->current_ecp);
             RDB_free(copyp->srcp);
