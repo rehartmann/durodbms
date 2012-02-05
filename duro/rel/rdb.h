@@ -855,8 +855,12 @@ RDB_create_update_op(const char *name, int, RDB_parameter[],
                   RDB_exec_context *, RDB_transaction *);
 
 RDB_operator *
-RDB_get_update_op(const char *name, int argc, RDB_type *argtv[],
-               RDB_exec_context *ecp, RDB_transaction *txp);
+RDB_get_update_op(const char *, int, RDB_type *[],
+               RDB_exec_context *, RDB_transaction *);
+
+RDB_operator *
+RDB_get_update_op_e(const char *, int, RDB_type *[],
+               RDB_environment *, RDB_exec_context *, RDB_transaction *);
 
 int
 RDB_call_ro_op_by_name(const char *, int, RDB_object *[],

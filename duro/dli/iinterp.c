@@ -1106,10 +1106,11 @@ exec_vardrop(const RDB_parse_node *nodep, RDB_exec_context *ecp)
 }
 
 /*
- * Invoke update operator. nodep points to the operator name token.
+ * Call update operator. nodep points to the operator name token.
  */
 static int
-exec_call(const RDB_parse_node *nodep, RDB_exec_context *ecp)
+exec_call(const RDB_parse_node *nodep, RDB_exec_context *ecp,
+        RDB_transaction *txp)
 {
     int ret;
     int i;
@@ -1129,11 +1130,11 @@ exec_call(const RDB_parse_node *nodep, RDB_exec_context *ecp)
     while (argp != NULL) {
         if (argc > 0)
             argp = argp->nextp;
-        exp = RDB_parse_node_expr(argp, ecp, txnp != NULL ? &txnp->tx : NULL);
+        exp = RDB_parse_node_expr(argp, ecp, txp);
         if (exp == NULL)
             return RDB_ERROR;
         argtv[argc] = RDB_expr_type(exp, &get_var_type, current_varmapp, ecp,
-                txnp != NULL ? &txnp->tx : NULL);
+                txp);
         if (argtv[argc] == NULL)
             return RDB_ERROR;
 
@@ -1146,13 +1147,16 @@ exec_call(const RDB_parse_node *nodep, RDB_exec_context *ecp)
      */
     op = RDB_get_op(&sys_module.upd_op_map, opname, argc, argtv, ecp);
     if (op == NULL) {
-        if (txnp == NULL) {
-            // !! Start tx?
+        /*
+         * If there is transaction and no environment, RDB_get_update_op_e()
+         * will fail
+         */
+        if (txp == NULL && envp == NULL) {
             return RDB_ERROR;
         }
         RDB_clear_err(ecp);
 
-        op = RDB_get_update_op(opname, argc, argtv, ecp, &txnp->tx);
+        op = RDB_get_update_op_e(opname, argc, argtv, envp, ecp, txp);
         if (op == NULL) {
             return RDB_ERROR;
         }
@@ -1169,7 +1173,7 @@ exec_call(const RDB_parse_node *nodep, RDB_exec_context *ecp)
 
         if (i > 0)
             argp = argp->nextp;
-        exp = RDB_parse_node_expr(argp, ecp, txnp != NULL ? &txnp->tx : NULL);
+        exp = RDB_parse_node_expr(argp, ecp, txp);
         if (exp == NULL)
             return RDB_ERROR;
         paramp = RDB_get_parameter(op, i);
@@ -1200,14 +1204,14 @@ exec_call(const RDB_parse_node *nodep, RDB_exec_context *ecp)
         if (argpv[i] == NULL) {
             RDB_init_obj(&argv[i]);
             if (RDB_evaluate(exp, &get_var, current_varmapp, ecp,
-                    txnp != NULL ? &txnp->tx : NULL, &argv[i]) != RDB_OK) {
+                        txp, &argv[i]) != RDB_OK) {
                 ret = RDB_ERROR;
                 goto cleanup;
             }
             /* Set type if missing */
             if (RDB_obj_type(&argv[i]) == NULL) {
                 RDB_type *typ = RDB_expr_type(exp, &get_var_type,
-                        current_varmapp, ecp, txnp != NULL ? &txnp->tx : NULL);
+                        current_varmapp, ecp, txp);
                 if (typ == NULL) {
                     ret = RDB_ERROR;
                     goto cleanup;
@@ -1221,8 +1225,7 @@ exec_call(const RDB_parse_node *nodep, RDB_exec_context *ecp)
     }
 
     /* Invoke function */
-    ret = RDB_call_update_op(op, argc, argpv, ecp,
-            txnp != NULL ? &txnp->tx : NULL);
+    ret = RDB_call_update_op(op, argc, argpv, ecp, txp);
 
 cleanup:
     for (i = 0; i < argc; i++) {
@@ -1233,6 +1236,75 @@ cleanup:
             RDB_destroy_obj(&argv[i], ecp);
     }
     return ret;
+}
+
+static RDB_database *
+get_db(RDB_exec_context *ecp)
+{
+    char *dbname;
+    RDB_object *dbnameobjp = RDB_hashmap_get(&sys_module.varmap, "CURRENT_DB");
+    if (dbnameobjp == NULL) {
+        RDB_raise_resource_not_found("no database", ecp);
+        return NULL;
+    }
+    dbname = RDB_obj_string(dbnameobjp);
+    if (*dbname == '\0') {
+        RDB_raise_resource_not_found("no database", ecp);
+        return NULL;
+    }
+    if (envp == NULL) {
+        RDB_raise_resource_not_found("no connection", ecp);
+        return NULL;
+    }
+
+    return RDB_get_db_from_env(dbname, envp, ecp);
+}
+
+/*
+ * Call update operator. nodep points to the operator name token.
+ * If there is no transaction but an db environment is available,
+ * start a transaction and try again.
+ */
+static int
+exec_call_retry(const RDB_parse_node *nodep, RDB_exec_context *ecp) {
+    int ret;
+    RDB_transaction tx;
+    RDB_database *dbp;
+
+    ret = exec_call(nodep, ecp, txnp != NULL ? &txnp->tx : NULL);
+    /*
+     * Success or error different from OPERATOR_NOT_FOUND_ERROR
+     * -> return
+     */
+    if (ret == RDB_OK
+            || RDB_obj_type(RDB_get_err(ecp)) != &RDB_OPERATOR_NOT_FOUND_ERROR)
+        return ret;
+    /*
+     * If a transaction is already active or no environment is
+     * available, give up
+     */
+    if (txnp != NULL || envp == NULL)
+        return ret;
+    /*
+     * Start transaction and retry.
+     * If this succeeds, the operator will be in memory next time
+     * so no transaction will be needed.
+     */
+    dbp = get_db(ecp);
+    if (dbp == NULL) {
+        dbp = RDB_get_sys_db(envp, ecp);
+        if (dbp == NULL)
+            return RDB_ERROR;
+    }
+
+    if (RDB_begin_tx(ecp, &tx, dbp, NULL) != RDB_OK)
+        return RDB_ERROR;
+    ret = exec_call(nodep, ecp, &tx);
+    if (ret != RDB_OK) {
+        RDB_commit(ecp, &tx);
+        return ret;
+    }
+    return RDB_commit(ecp, &tx);
 }
 
 static int
@@ -2044,28 +2116,6 @@ error:
     for (i = 0; i < srcobjc; i++)
         RDB_destroy_obj(&srcobjv[i], ecp);
     return RDB_ERROR;
-}
-
-static RDB_database *
-get_db(RDB_exec_context *ecp)
-{
-    char *dbname;
-    RDB_object *dbnameobjp = RDB_hashmap_get(&sys_module.varmap, "CURRENT_DB");
-    if (dbnameobjp == NULL) {
-        RDB_raise_resource_not_found("no database", ecp);
-        return NULL;
-    }
-    dbname = RDB_obj_string(dbnameobjp);
-    if (*dbname == '\0') {
-        RDB_raise_resource_not_found("no database", ecp);
-        return NULL;
-    }
-    if (envp == NULL) {
-        RDB_raise_resource_not_found("no connection", ecp);
-        return NULL;
-    }
-
-    return RDB_get_db_from_env(dbname, envp, ecp);
 }
 
 static int
@@ -3082,7 +3132,7 @@ Duro_exec_stmt(RDB_parse_node *stmtp, RDB_exec_context *ecp,
                 ret = RDB_OK;
                 break;
             case TOK_CALL:
-                ret = exec_call(firstchildp->nextp, ecp);
+                ret = exec_call_retry(firstchildp->nextp, ecp);
                 break;
             case TOK_VAR:
                 if (firstchildp->nextp->nextp->kind == RDB_NODE_TOK) {
@@ -3167,7 +3217,7 @@ Duro_exec_stmt(RDB_parse_node *stmtp, RDB_exec_context *ecp,
     if (firstchildp->kind == RDB_NODE_EXPR) {
         if (firstchildp->nextp->val.token == '(') {
             /* Operator invocation */
-            ret = exec_call(firstchildp, ecp);
+            ret = exec_call_retry(firstchildp, ecp);
         } else {
             switch (firstchildp->nextp->nextp->val.token) {
                 case TOK_WHILE:

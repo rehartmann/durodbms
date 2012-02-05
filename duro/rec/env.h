@@ -20,10 +20,10 @@ typedef struct RDB_environment {
     void (*closefn)(struct RDB_environment *);
 
     /*
-     * Used to store additional data. The relational layer
-     * uses this to store a pointer to the dbroot structure.
+     * Used by higher layers to store additional data.
+     * The relational layer uses this to store a pointer to the dbroot structure.
      */
-    void *user_data;
+    void *xdata;
 
     /* Trace level. 0 means no trace. */
     unsigned trace;
@@ -31,7 +31,7 @@ typedef struct RDB_environment {
 
 #define RDB_internal_env(renvp) (renvp->envp)
 
-#define RDB_env_private(renvp) (renvp->user_data)
+#define RDB_env_xdata(renvp) (renvp->xdata)
 
 #define RDB_env_trace(renvp) (renvp->trace)
 

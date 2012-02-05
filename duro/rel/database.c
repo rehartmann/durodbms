@@ -95,7 +95,7 @@ close_table(RDB_object *tbp, RDB_environment *envp, RDB_exec_context *ecp)
     /*
      * Remove table from all RDB_databases in list
      */
-    dbrootp = (RDB_dbroot *)RDB_env_private(envp);
+    dbrootp = (RDB_dbroot *)RDB_env_xdata(envp);
     for (dbp = dbrootp->first_dbp; dbp != NULL; dbp = dbp->nextdbp) {
         RDB_object *foundtbp = RDB_hashmap_get(&dbp->tbmap, tbp->var.tb.name);
         if (foundtbp != NULL) {
@@ -237,7 +237,7 @@ close_systables(RDB_dbroot *dbrootp, RDB_exec_context *ecp)
 static void
 cleanup_env(RDB_environment *envp)
 {
-    RDB_dbroot *dbrootp = (RDB_dbroot *) RDB_env_private(envp);
+    RDB_dbroot *dbrootp = (RDB_dbroot *) RDB_env_xdata(envp);
     RDB_database *dbp;
     RDB_database *nextdbp;
     RDB_hashtable_iter tit;
@@ -565,7 +565,7 @@ create_dbroot(RDB_environment *envp, RDB_exec_context *ecp)
     if (ret != RDB_OK)
         goto error;
 
-    RDB_env_private(envp) = dbrootp;
+    RDB_env_xdata(envp) = dbrootp;
 
     return dbrootp;
 
@@ -597,7 +597,7 @@ RDB_database *
 RDB_get_sys_db(RDB_environment *envp, RDB_exec_context *ecp)
 {
     RDB_database *dbp;
-    RDB_dbroot *dbrootp = (RDB_dbroot *) RDB_env_private(envp);
+    RDB_dbroot *dbrootp = (RDB_dbroot *) RDB_env_xdata(envp);
     RDB_bool crdbroot = RDB_FALSE;
 
     if (dbrootp == NULL) {
@@ -637,7 +637,7 @@ error:
     if (crdbroot) {
         close_systables(dbrootp, ecp);
         free_dbroot(dbrootp, ecp);
-        RDB_env_private(envp) = NULL;
+        RDB_env_xdata(envp) = NULL;
         lt_dlexit();
     }
 
@@ -1468,7 +1468,7 @@ RDB_drop_table(RDB_object *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
         /*
          * Remove table from all RDB_databases in list
          */
-        dbrootp = (RDB_dbroot *) RDB_env_private(txp->envp);
+        dbrootp = (RDB_dbroot *) RDB_env_xdata(txp->envp);
         for (dbp = dbrootp->first_dbp; dbp != NULL; dbp = dbp->nextdbp) {
             RDB_object *foundtbp = RDB_hashmap_get(&dbp->tbmap, tbp->var.tb.name);
             if (foundtbp != NULL) {

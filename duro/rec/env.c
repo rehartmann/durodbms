@@ -43,7 +43,7 @@ RDB_open_env(const char *path, RDB_environment **envpp)
        return ENOMEM;
 
     envp->closefn = NULL;
-    envp->user_data = NULL;
+    envp->xdata = NULL;
     envp->trace = 0;
 
     /* create environment handle */

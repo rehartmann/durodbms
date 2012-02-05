@@ -586,36 +586,91 @@ found.
 The call may also fail for a @ref system-errors "system error",
 in which case the transaction may be implicitly rolled back.
  */
-
 RDB_operator *
 RDB_get_update_op(const char *name, int argc, RDB_type *argtv[],
                 RDB_exec_context *ecp, RDB_transaction *txp)
 {
+    if (txp == NULL) {
+        RDB_raise_no_running_tx(ecp);
+        return NULL;
+    }
+    return RDB_get_update_op_e(name, argc, argtv, NULL, ecp, txp);
+}
+
+/**
+ * Return the update operator with the name <var>name</var>
+and the signature given by <var>argc</var> and <var>argtv</var>.
+
+If <var>txp</var> is NULL, <var>envp</var> is used to look up the
+operator in memory. If <var>txp</var> is not NULL, <var>envp</var> is ignored.
+
+@returns the update operator, or NULL if an error occurred,
+in which case *<var>ecp</var> carries the error information.
+
+@par Errors:
+
+<dl>
+<dt>INVALID_ARGUMENT_ERROR
+<dd>Both <var>txp</var> and <var>envp</var> are NULL.
+<dt>OPERATOR_NOT_FOUND_ERROR
+<dd>An update operator that matches the name and arguments could not be
+found.
+</dl>
+
+The call may also fail for a @ref system-errors "system error",
+in which case the transaction may be implicitly rolled back.
+ */
+RDB_operator *
+RDB_get_update_op_e(const char *name, int argc, RDB_type *argtv[],
+                RDB_environment *envp, RDB_exec_context *ecp, RDB_transaction *txp)
+{
+    RDB_dbroot *dbrootp;
+
+    if (txp != NULL) {
+        dbrootp = RDB_tx_db(txp)->dbrootp;
+    } else if (envp != NULL) {
+        dbrootp = RDB_env_xdata(envp);
+        /* Dbroot not initialized */
+        if (dbrootp == NULL) {
+            RDB_raise_operator_not_found(name, ecp);
+            return NULL;
+        }
+    } else {
+        RDB_raise_invalid_argument(
+                "No transaction and no database environment available", ecp);
+        return NULL;
+    }
+
     /*
      * Try to get the operator from operator map
      */
-    RDB_operator *op = RDB_get_op(&txp->dbp->dbrootp->upd_opmap, name, argc, argtv, ecp);
+    RDB_operator *op = RDB_get_op(&dbrootp->upd_opmap, name, argc, argtv, ecp);
+    if (op != NULL)
+        return op;
+
+    /*
+     * The operator has not already been loaded into memory, so get it
+     * from the catalog if a transaction is available
+     */
+    if (txp == NULL)
+        return NULL;
+
+    RDB_clear_err(ecp);
+    op = _RDB_cat_get_upd_op(name, argc, argtv, ecp, txp);
     if (op == NULL) {
-        /*
-         * The operator has not already been loaded into memory, so get it from the catalog
-         */
-        RDB_clear_err(ecp);
-        op = _RDB_cat_get_upd_op(name, argc, argtv, ecp, txp);
-        if (op == NULL) {
-            if (RDB_obj_type(RDB_get_err(ecp)) == &RDB_NOT_FOUND_ERROR) {
-                RDB_raise_operator_not_found(name, ecp);
-            }
-            return NULL;
+        if (RDB_obj_type(RDB_get_err(ecp)) == &RDB_NOT_FOUND_ERROR) {
+            RDB_raise_operator_not_found(name, ecp);
         }
-        if (RDB_put_op(&txp->dbp->dbrootp->upd_opmap, op, ecp) != RDB_OK) {
-            RDB_free_op_data(op, ecp);
-            return NULL;
-        }
-        if (RDB_env_trace(txp->envp) > 0) {
-            fputs("Update operator ", stderr);
-            fputs(name, stderr);
-            fputs(" loaded from catalog\n", stderr);
-        }
+        return NULL;
+    }
+    if (RDB_put_op(&txp->dbp->dbrootp->upd_opmap, op, ecp) != RDB_OK) {
+        RDB_free_op_data(op, ecp);
+        return NULL;
+    }
+    if (RDB_env_trace(txp->envp) > 0) {
+        fputs("Update operator ", stderr);
+        fputs(name, stderr);
+        fputs(" loaded from catalog\n", stderr);
     }
     return op;
 }
@@ -975,9 +1030,14 @@ _RDB_obj_not_equals(int argc, RDB_object *argv[], RDB_operator *op,
     return RDB_OK;
 }
 
+/*
+ * Get operator by name. !! If txp is NULL, envp must not be NULL
+ * and is used to look up the operator in memory.
+ * If txp is not NULL, envp is ignored.
+ */
 RDB_operator *
 _RDB_get_ro_op(const char *name, int argc, RDB_type *argtv[],
-               RDB_exec_context *ecp, RDB_transaction *txp)
+        RDB_exec_context *ecp, RDB_transaction *txp)
 {
     RDB_type *errtyp;
     RDB_operator *op;
