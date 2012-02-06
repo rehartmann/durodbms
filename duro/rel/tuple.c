@@ -1086,11 +1086,14 @@ _RDB_tuple_type(const RDB_object *tplp, RDB_exec_context *ecp)
         i = 0;
         while ((entryp = RDB_hashtable_next(&hiter)) != NULL) {
             if (entryp->obj.kind != RDB_OB_TUPLE) {
-                typ->var.tuple.attrv[i].typ = RDB_obj_type(&entryp->obj);
+                typ->var.tuple.attrv[i].typ = RDB_dup_nonscalar_type(
+                        RDB_obj_type(&entryp->obj), ecp);
             } else {
                 typ->var.tuple.attrv[i].typ = _RDB_tuple_type(&entryp->obj,
                         ecp);
             }
+            if (typ->var.tuple.attrv[i].typ == NULL)
+                goto error;
             typ->var.tuple.attrv[i].name = RDB_dup_str(entryp->key);
             if (typ->var.tuple.attrv[i].name == NULL) {
                 RDB_destroy_hashtable_iter(&it);
