@@ -762,7 +762,7 @@ op_tuple(int argc, RDB_object *argv[], RDB_operator *op,
 
 /*
  * Create virtual table from RELATION selector arguments and *reltyp.
- * *reltyp is consumed.
+ * *reltyp is consumed even if RDB_ERROR is returned.
  */
 int
 _RDB_op_type_relation(int argc, RDB_object *argv[], RDB_type *reltyp,
@@ -788,7 +788,6 @@ int
 _RDB_op_relation(int argc, RDB_object *argv[], RDB_operator *op,
         RDB_exec_context *ecp, RDB_transaction *txp, RDB_object *retvalp)
 {
-    int ret;
     RDB_type *rtyp;
     RDB_type *tuptyp;
 
@@ -814,10 +813,7 @@ _RDB_op_relation(int argc, RDB_object *argv[], RDB_operator *op,
         return RDB_ERROR;
     }
 
-    ret = _RDB_op_type_relation(argc, argv, rtyp, ecp, txp, retvalp);
-    if (ret != RDB_OK)
-        RDB_drop_type(rtyp, ecp, NULL);
-    return ret;
+    return _RDB_op_type_relation(argc, argv, rtyp, ecp, txp, retvalp);
 }
 
 static int

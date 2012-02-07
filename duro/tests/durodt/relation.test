@@ -353,4 +353,50 @@ test group {GROUP} -body {
 } -result {TRUE
 }
 
+test ungroup {UNGROUP} -body {
+    exec $testdir/../../dli/durodt << {
+		var ugt init rel{
+		        tup {st rel{tup{s 'a', t 'b'}, tup{s 'c', t 'd'}}},
+		        tup {st rel{tup{s 'e', t 'f'}}}} ungroup st;
+		var arr array tuple{s string, t string};
+		load arr from ugt order(s asc);
+		println(length(arr));
+		println(arr[0].s);
+		println(arr[0].t);
+		println(arr[1].s);
+		println(arr[1].t);
+		println(arr[2].s);
+		println(arr[2].t);
+    }
+} -result {3
+a
+b
+c
+d
+e
+f
+}
+
+test sdivide {small DIVIDE} -body {
+    exec $testdir/../../dli/durodt << {
+        var pizzas private init rel{tup{pizza# 1}, tup{pizza# 2}};
+        var condiments private init rel{tup{cond 'salami'},tup{cond 'mushrooms'}};
+
+        try
+            var p_c private init rel{tup{pizza# 1, cond 'salami'},
+                    tup{pizza 2, cond 'salami'}, tup{pizza 2, cond 'mushrooms'}};
+        catch err;
+            println('error caught');
+        end try;
+
+        var p_c private init rel{tup{pizza# 1, cond 'salami'},
+                tup{pizza# 2, cond 'salami'}, tup{pizza# 2, cond 'mushrooms'}};
+                
+        -- Get pizzas with all condiments
+        println((tuple from (pizzas divideby condiments per (p_c))).pizza#);
+    }
+} -result {error caught
+2
+}
+
 cleanupTests

@@ -167,11 +167,7 @@ evaluate_ro_op(RDB_expression *exp, RDB_getobjfn *getfnp, void *getdata,
     }
 
     if (strcmp(exp->var.op.name, "WHERE") == 0
-            || strcmp(exp->var.op.name, "SUMMARIZE") == 0
-            /* !! test
-            || strcmp(exp->var.op.name, "DIVIDE") == 0
-            || strcmp(exp->var.op.name, "GROUP") == 0
-            || strcmp(exp->var.op.name, "UNGROUP") == 0 */) {
+            || strcmp(exp->var.op.name, "SUMMARIZE") == 0) {
         return evaluate_vt(exp, getfnp, getdata, ecp, txp, valp);
     }
 
@@ -274,6 +270,11 @@ evaluate_ro_op(RDB_expression *exp, RDB_getobjfn *getfnp, void *getdata,
     /*
      * Get pointers to argument values, trying to avoid copying of values.
      */
+
+    if (strcmp(exp->var.op.name, "UNGROUP") == 0) {
+        int i = 2;
+        i = i*i;
+    }
 
     argp = exp->var.op.args.firstp;
     for (i = 0; i < argc; i++) {
