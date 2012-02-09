@@ -55,7 +55,7 @@ struct RDB_expression {
                 RDB_expression *stopexp;
             } optinfo;
         } op;
-    } var;
+    } def;
     
     /*
      * The expression type. NULL if the type has not been determined.
@@ -434,7 +434,7 @@ _RDB_obj_not_equals(int argc, RDB_object *argv[], RDB_operator *,
 int
 _RDB_obj_to_field(RDB_field *, RDB_object *, RDB_exec_context *);
 
-#define _RDB_pkey_len(tbp) ((tbp)->var.tb.keyv[0].strc)
+#define _RDB_pkey_len(tbp) ((tbp)->val.tb.keyv[0].strc)
 
 RDB_type *
 _RDB_expr_type(RDB_expression *, const RDB_type *, RDB_exec_context *,

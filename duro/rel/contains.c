@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2003-2005 René Hartmann.
+ * Copyright (C) 2003-2012 Rene Hartmann.
  * See the file COPYING for redistribution information.
  */
 
@@ -58,8 +58,8 @@ RDB_table_contains(RDB_object *tbp, const RDB_object *tplp, RDB_exec_context *ec
     /*
      * Check if tuple contains all attributes
      */
-    for (i = 0; i < tbp->typ->var.basetyp->var.tuple.attrc; i++) {
-        char *attrname = tbp->typ->var.basetyp->var.tuple.attrv[i].name;
+    for (i = 0; i < tbp->typ->def.basetyp->def.tuple.attrc; i++) {
+        char *attrname = tbp->typ->def.basetyp->def.tuple.attrv[i].name;
 
         if (strchr(attrname, '$') == NULL
                 && RDB_tuple_get(tplp, attrname) == NULL) {

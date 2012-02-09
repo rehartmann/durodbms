@@ -35,7 +35,7 @@ append_tuple(RDB_object *objp, const RDB_object *tplp, RDB_exec_context *ecp,
 
     /* Tuple can be empty */
     if (tplp->kind != RDB_OB_INITIAL) {
-        RDB_init_hashtable_iter(&hiter, (RDB_hashtable *) &tplp->var.tpl_tab);
+        RDB_init_hashtable_iter(&hiter, (RDB_hashtable *) &tplp->val.tpl_tab);
         for (;;) {
             /* Get next attribute */
             entryp = RDB_hashtable_next(&hiter);
@@ -86,15 +86,15 @@ append_quoted_string(RDB_object *objp, const RDB_object *strp,
     int ret;
     int i;
     size_t qlen;
-    char *qstr = RDB_alloc((strp->var.bin.len + 2) * 2, ecp);
+    char *qstr = RDB_alloc((strp->val.bin.len + 2) * 2, ecp);
 
     if (qstr == NULL)
         return RDB_ERROR;
 
     qstr[0] = '\'';
     qlen = 1;
-    for (i = 0; i < strp->var.bin.len - 1; i++) {
-        switch (((char *)strp->var.bin.datap)[i]) {
+    for (i = 0; i < strp->val.bin.len - 1; i++) {
+        switch (((char *)strp->val.bin.datap)[i]) {
             case '\"':
                 qstr[qlen++] = '\\';
                 qstr[qlen++] = '\"';
@@ -116,7 +116,7 @@ append_quoted_string(RDB_object *objp, const RDB_object *strp,
                 qstr[qlen++] = 't';
                 break;
             default:
-                qstr[qlen++] = ((char *)strp->var.bin.datap)[i];
+                qstr[qlen++] = ((char *)strp->val.bin.datap)[i];
         }
     }
     qstr[qlen++] = '\'';
@@ -134,7 +134,7 @@ append_utype_obj(RDB_object *objp, const RDB_object *srcp,
     int compc;
     int i;
     int ret;
-    RDB_possrep *possrep = &srcp->typ->var.scalar.repv[0]; /* Take 1st possrep */
+    RDB_possrep *possrep = &srcp->typ->def.scalar.repv[0]; /* Take 1st possrep */
 
     ret = RDB_append_string(objp, possrep->name, ecp);
     if (ret != RDB_OK)
@@ -244,7 +244,7 @@ append_obj(RDB_object *objp, const RDB_object *srcp, RDB_exec_context *ecp,
 
     if (typ != NULL) {
         if (RDB_type_is_scalar(typ)) {
-            if (srcp->typ->var.scalar.repc > 0) {
+            if (srcp->typ->def.scalar.repc > 0) {
                  /* Type with possreps - generate selector */
                  ret = append_utype_obj(objp, srcp, ecp, txp);
              } else if (srcp->typ == &RDB_STRING) {
@@ -260,7 +260,7 @@ append_obj(RDB_object *objp, const RDB_object *srcp, RDB_exec_context *ecp,
                      RDB_destroy_obj(&dst, ecp);
                      return ret;
                  }
-                 ret = RDB_append_string(objp, dst.var.bin.datap, ecp);
+                 ret = RDB_append_string(objp, dst.val.bin.datap, ecp);
                  RDB_destroy_obj(&dst, ecp);
              }
              return ret;
@@ -290,25 +290,25 @@ append_ex(RDB_object *objp, const RDB_expression *exp, RDB_exec_context *ecp,
 
     switch (exp->kind) {
         case RDB_EX_OBJ:
-            ret = append_obj(objp, &exp->var.obj, ecp, txp);
+            ret = append_obj(objp, &exp->def.obj, ecp, txp);
             if (ret != RDB_OK)
                  return ret;
             break;
         case RDB_EX_TBP:
-            ret = append_table_def(objp, exp->var.tbref.tbp, ecp, txp, options);
+            ret = append_table_def(objp, exp->def.tbref.tbp, ecp, txp, options);
             if (ret != RDB_OK)
                  return ret;
-            if (exp->var.tbref.indexp != NULL && (RDB_SHOW_INDEX & options)) {
+            if (exp->def.tbref.indexp != NULL && (RDB_SHOW_INDEX & options)) {
                 ret = RDB_append_string(objp, " INDEX ", ecp);
                 if (ret != RDB_OK)
                     return RDB_ERROR;
-                ret = RDB_append_string(objp, exp->var.tbref.indexp->name, ecp);
+                ret = RDB_append_string(objp, exp->def.tbref.indexp->name, ecp);
                 if (ret != RDB_OK)
                     return RDB_ERROR;
             }            
             break;            
         case RDB_EX_VAR:
-             ret = RDB_append_string(objp, exp->var.varname, ecp);
+             ret = RDB_append_string(objp, exp->def.varname, ecp);
              if (ret != RDB_OK)
                  return ret;
             break;
@@ -316,13 +316,13 @@ append_ex(RDB_object *objp, const RDB_expression *exp, RDB_exec_context *ecp,
             ret = RDB_append_string(objp, "(", ecp);
             if (ret != RDB_OK)
                 return ret;
-            ret = append_ex(objp, exp->var.op.args.firstp, ecp, txp, options);
+            ret = append_ex(objp, exp->def.op.args.firstp, ecp, txp, options);
             if (ret != RDB_OK)
                 return ret;
             ret = RDB_append_string(objp, ").", ecp);
             if (ret != RDB_OK)
                 return ret;
-            ret = RDB_append_string(objp, exp->var.op.name, ecp);
+            ret = RDB_append_string(objp, exp->def.op.name, ecp);
             if (ret != RDB_OK)
                 return ret;
             ret = RDB_append_string(objp, ")", ecp);
@@ -333,13 +333,13 @@ append_ex(RDB_object *objp, const RDB_expression *exp, RDB_exec_context *ecp,
             ret = RDB_append_string(objp, "THE_", ecp);
             if (ret != RDB_OK)
                 return ret;
-            ret = RDB_append_string(objp, exp->var.op.name, ecp);
+            ret = RDB_append_string(objp, exp->def.op.name, ecp);
             if (ret != RDB_OK)
                 return ret;
             ret = RDB_append_string(objp, "(", ecp);
             if (ret != RDB_OK)
                 return ret;
-            ret = append_ex(objp, exp->var.op.args.firstp, ecp, txp, options);
+            ret = append_ex(objp, exp->def.op.args.firstp, ecp, txp, options);
             if (ret != RDB_OK)
                 return ret;
             ret = RDB_append_string(objp, ")", ecp);
@@ -347,35 +347,35 @@ append_ex(RDB_object *objp, const RDB_expression *exp, RDB_exec_context *ecp,
                 return ret;
             break;
         case RDB_EX_RO_OP:
-            if (strcmp(exp->var.op.name, "=") == 0
-                    || strcmp(exp->var.op.name, "<>") == 0
-                    || strcmp(exp->var.op.name, "<") == 0
-                    || strcmp(exp->var.op.name, ">") == 0
-                    || strcmp(exp->var.op.name, "<=") == 0
-                    || strcmp(exp->var.op.name, ">=") == 0
-                    || strcmp(exp->var.op.name, "+") == 0
-                    || strcmp(exp->var.op.name, "-") == 0
-                    || strcmp(exp->var.op.name, "||") == 0
-                    || strcmp(exp->var.op.name, "MATCHES") == 0
-                    || strcmp(exp->var.op.name, "AND") == 0
-                    || strcmp(exp->var.op.name, "OR") == 0
-                    || strcmp(exp->var.op.name, "IN") == 0
-                    || strcmp(exp->var.op.name, "SUBSET_OF") == 0) {
+            if (strcmp(exp->def.op.name, "=") == 0
+                    || strcmp(exp->def.op.name, "<>") == 0
+                    || strcmp(exp->def.op.name, "<") == 0
+                    || strcmp(exp->def.op.name, ">") == 0
+                    || strcmp(exp->def.op.name, "<=") == 0
+                    || strcmp(exp->def.op.name, ">=") == 0
+                    || strcmp(exp->def.op.name, "+") == 0
+                    || strcmp(exp->def.op.name, "-") == 0
+                    || strcmp(exp->def.op.name, "||") == 0
+                    || strcmp(exp->def.op.name, "MATCHES") == 0
+                    || strcmp(exp->def.op.name, "AND") == 0
+                    || strcmp(exp->def.op.name, "OR") == 0
+                    || strcmp(exp->def.op.name, "IN") == 0
+                    || strcmp(exp->def.op.name, "SUBSET_OF") == 0) {
                 if (RDB_append_string(objp, "(", ecp) != RDB_OK)
                     return RDB_ERROR;
-                if (append_ex(objp, exp->var.op.args.firstp, ecp, txp,
+                if (append_ex(objp, exp->def.op.args.firstp, ecp, txp,
                         options) != RDB_OK)
                     return RDB_ERROR;
                 ret = RDB_append_string(objp, ") ", ecp);
                 if (ret != RDB_OK)
                     return ret;
-                ret = RDB_append_string(objp, exp->var.op.name, ecp);
+                ret = RDB_append_string(objp, exp->def.op.name, ecp);
                 if (ret != RDB_OK)
                     return ret;
                 ret = RDB_append_string(objp, " (", ecp);
                 if (ret != RDB_OK)
                     return ret;
-                ret = append_ex(objp, exp->var.op.args.firstp->nextp, ecp,
+                ret = append_ex(objp, exp->def.op.args.firstp->nextp, ecp,
                         txp, options);
                 if (ret != RDB_OK)
                     return ret;
@@ -385,11 +385,11 @@ append_ex(RDB_object *objp, const RDB_expression *exp, RDB_exec_context *ecp,
             } else {
                 RDB_expression *argp;
 
-                if (RDB_append_string(objp, exp->var.op.name, ecp) != RDB_OK)
+                if (RDB_append_string(objp, exp->def.op.name, ecp) != RDB_OK)
                     return RDB_ERROR;
                 if (RDB_append_string(objp, "(", ecp) != RDB_OK)
                     return RDB_ERROR;
-                argp = exp->var.op.args.firstp;
+                argp = exp->def.op.args.firstp;
                 while (argp != NULL) {
                     if (append_ex(objp, argp, ecp, txp, options) != RDB_OK)
                         return RDB_ERROR;
@@ -414,13 +414,13 @@ append_table_def(RDB_object *objp, const RDB_object *tbp, RDB_exec_context *ecp,
     if (RDB_table_name(tbp) != NULL) {
         return RDB_append_string(objp, RDB_table_name(tbp), ecp);
     }
-    if (tbp->var.tb.exp == NULL) {
+    if (tbp->val.tb.exp == NULL) {
         return append_table_val(objp, tbp, ecp, txp);
     }
     if (RDB_append_string(objp, "(", ecp) != RDB_OK)
         return RDB_ERROR;
 
-    if (append_ex(objp, tbp->var.tb.exp, ecp, txp, options) != RDB_OK)
+    if (append_ex(objp, tbp->val.tb.exp, ecp, txp, options) != RDB_OK)
         return RDB_ERROR;
     return RDB_append_string(objp, ")", ecp);
 }

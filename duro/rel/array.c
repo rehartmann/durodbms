@@ -1,7 +1,7 @@
 /*
  * $Id$
  *
- * Copyright (C) 2003-2008 Ren� Hartmann.
+ * Copyright (C) 2003-2012 Rene Hartmann.
  * See the file COPYING for redistribution information.
  */
 
@@ -15,14 +15,14 @@ static int
 enlarge_buf(RDB_object *arrp, RDB_int len, RDB_exec_context *ecp)
 {
     int i;
-    void *vp = RDB_realloc(arrp->var.arr.elemv, sizeof (RDB_object) * len, ecp);
+    void *vp = RDB_realloc(arrp->val.arr.elemv, sizeof (RDB_object) * len, ecp);
     if (vp == NULL)
         return RDB_ERROR;
 
-    arrp->var.arr.elemv = vp;
-    for (i = arrp->var.arr.elemc; i < len; i++)
-        RDB_init_obj(&arrp->var.arr.elemv[i]);
-    arrp->var.arr.elemc = len;
+    arrp->val.arr.elemv = vp;
+    for (i = arrp->val.arr.elemc; i < len; i++)
+        RDB_init_obj(&arrp->val.arr.elemv[i]);
+    arrp->val.arr.elemc = len;
     return RDB_OK;
 }
 
@@ -58,37 +58,37 @@ init_expr_array(RDB_object *arrp, RDB_expression *texp,
     }
 
     arrp->kind = RDB_OB_ARRAY;
-    arrp->var.arr.elemv = NULL;
-    arrp->var.arr.tplp = NULL;
+    arrp->val.arr.elemv = NULL;
+    arrp->val.arr.tplp = NULL;
     if (RDB_UNBUFFERED & flags) {
-        arrp->var.arr.pos = 0;
-        arrp->var.arr.texp = texp;
-        arrp->var.arr.txp = txp;
-        arrp->var.arr.length = -1;
-        arrp->var.arr.qrp = qrp;
+        arrp->val.arr.pos = 0;
+        arrp->val.arr.texp = texp;
+        arrp->val.arr.txp = txp;
+        arrp->val.arr.length = -1;
+        arrp->val.arr.qrp = qrp;
 
         return RDB_OK;
     }
 
-    arrp->var.arr.texp = NULL;
-    arrp->var.arr.length = 0;
-    arrp->var.arr.tplp = NULL;
-    arrp->var.arr.qrp = NULL;
-    arrp->var.arr.elemc = 0;
+    arrp->val.arr.texp = NULL;
+    arrp->val.arr.length = 0;
+    arrp->val.arr.tplp = NULL;
+    arrp->val.arr.qrp = NULL;
+    arrp->val.arr.elemc = 0;
 
     for(;;) {
         /* Extend elemv if necessary to make room for the next element */
-        if (arrp->var.arr.elemc <= arrp->var.arr.length) {
-            if (enlarge_buf(arrp, arrp->var.arr.elemc + 256, ecp) != RDB_OK) {
+        if (arrp->val.arr.elemc <= arrp->val.arr.length) {
+            if (enlarge_buf(arrp, arrp->val.arr.elemc + 256, ecp) != RDB_OK) {
                 goto error;
             }
         }
 
         /* Get next tuple */
-        if (_RDB_next_tuple(qrp, &arrp->var.arr.elemv[arrp->var.arr.length],
+        if (_RDB_next_tuple(qrp, &arrp->val.arr.elemv[arrp->val.arr.length],
                 ecp, txp) != RDB_OK)
             break;
-        arrp->var.arr.length++;
+        arrp->val.arr.length++;
     }
     if (RDB_obj_type(RDB_get_err(ecp)) != &RDB_NOT_FOUND_ERROR)
         goto error;
@@ -176,10 +176,10 @@ RDB_table_to_array(RDB_object *arrp, RDB_object *tbp,
 static int
 next_tuple(RDB_object *arrp, RDB_bool mustread, RDB_exec_context *ecp)
 {
-    RDB_object *tplp = mustread ? arrp->var.arr.tplp : NULL;
+    RDB_object *tplp = mustread ? arrp->val.arr.tplp : NULL;
 
-    return _RDB_next_tuple(arrp->var.arr.qrp, tplp,
-                ecp, arrp->var.arr.txp);
+    return _RDB_next_tuple(arrp->val.arr.qrp, tplp,
+                ecp, arrp->val.arr.txp);
 }
 
 /**
@@ -208,58 +208,58 @@ RDB_array_get(RDB_object *arrp, RDB_int idx, RDB_exec_context *ecp)
     RDB_object *tplp;
 
     if (arrp->kind == RDB_OB_INITIAL ||
-            (arrp->var.arr.length != -1 && idx >= arrp->var.arr.length)) {
+            (arrp->val.arr.length != -1 && idx >= arrp->val.arr.length)) {
         RDB_raise_not_found("array index out of bounds", ecp);
         return NULL;
     }
 
-    if (arrp->var.arr.texp == NULL) {
-        return &arrp->var.arr.elemv[idx];
+    if (arrp->val.arr.texp == NULL) {
+        return &arrp->val.arr.elemv[idx];
     }
 
     /* Reset qresult to start, if necessary */
-    if (arrp->var.arr.pos > idx) {
-        ret = _RDB_reset_qresult(arrp->var.arr.qrp, ecp, arrp->var.arr.txp);
-        arrp->var.arr.pos = 0;
+    if (arrp->val.arr.pos > idx) {
+        ret = _RDB_reset_qresult(arrp->val.arr.qrp, ecp, arrp->val.arr.txp);
+        arrp->val.arr.pos = 0;
         if (ret != RDB_OK)
             return NULL;
     }
 
-    if (arrp->var.arr.tplp == NULL) {
-        arrp->var.arr.tplp = RDB_alloc(sizeof (RDB_object), ecp);
-        if (arrp->var.arr.tplp == NULL) {
+    if (arrp->val.arr.tplp == NULL) {
+        arrp->val.arr.tplp = RDB_alloc(sizeof (RDB_object), ecp);
+        if (arrp->val.arr.tplp == NULL) {
             return NULL;
         }
-        RDB_init_obj(arrp->var.arr.tplp);
+        RDB_init_obj(arrp->val.arr.tplp);
     }
          
     /*
      * Move forward until the right position is reached
      */
-    while (arrp->var.arr.pos < idx) {
+    while (arrp->val.arr.pos < idx) {
         ret = next_tuple(arrp, RDB_FALSE, ecp);
         if (ret != RDB_OK) {
             return NULL;
         }
-        ++arrp->var.arr.pos;
+        ++arrp->val.arr.pos;
     }
 
     /* Read next element */
     ret = next_tuple(arrp, RDB_TRUE, ecp);
     if (ret != RDB_OK) {
         if (RDB_obj_type(RDB_get_err(ecp)) == &RDB_NOT_FOUND_ERROR) {
-            arrp->var.arr.length = arrp->var.arr.pos;
-            if (arrp->var.arr.texp->kind == RDB_EX_TBP
-                    && arrp->var.arr.texp->var.tbref.tbp->var.tb.stp != NULL) {
-                arrp->var.arr.texp->var.tbref.tbp->var.tb.stp->est_cardinality =
-                        arrp->var.arr.length;
+            arrp->val.arr.length = arrp->val.arr.pos;
+            if (arrp->val.arr.texp->kind == RDB_EX_TBP
+                    && arrp->val.arr.texp->def.tbref.tbp->val.tb.stp != NULL) {
+                arrp->val.arr.texp->def.tbref.tbp->val.tb.stp->est_cardinality =
+                        arrp->val.arr.length;
             }
         }
         return NULL;
     }
 
-    tplp = arrp->var.arr.tplp;
-    ++arrp->var.arr.pos;
+    tplp = arrp->val.arr.tplp;
+    ++arrp->val.arr.pos;
 
     return tplp;
 }
@@ -286,8 +286,8 @@ RDB_array_length(RDB_object *arrp, RDB_exec_context *ecp)
     if (arrp->kind == RDB_OB_INITIAL)
         return 0;
 
-    if (arrp->var.arr.length == -1) {
-        int i = arrp->var.arr.pos;
+    if (arrp->val.arr.length == -1) {
+        int i = arrp->val.arr.pos;
         RDB_type *errtyp;
 
         while (RDB_array_get(arrp, (RDB_int) i, ecp) != NULL)
@@ -297,7 +297,7 @@ RDB_array_length(RDB_object *arrp, RDB_exec_context *ecp)
             return (RDB_int) RDB_ERROR;
         RDB_clear_err(ecp);
     }
-    return arrp->var.arr.length;
+    return arrp->val.arr.length;
 }
 
 /**
@@ -325,47 +325,47 @@ RDB_set_array_length(RDB_object *arrp, RDB_int len, RDB_exec_context *ecp)
     if (arrp->kind == RDB_OB_INITIAL) {
         arrp->kind = RDB_OB_ARRAY;
 
-        arrp->var.arr.elemv = RDB_alloc(sizeof(RDB_object) * len, ecp);
-        if (arrp->var.arr.elemv == NULL) {
+        arrp->val.arr.elemv = RDB_alloc(sizeof(RDB_object) * len, ecp);
+        if (arrp->val.arr.elemv == NULL) {
             return RDB_ERROR;
         }
         for (i = 0; i < len; i++)
-            RDB_init_obj(&arrp->var.arr.elemv[i]);
+            RDB_init_obj(&arrp->val.arr.elemv[i]);
 
-        arrp->var.arr.texp = NULL;
-        arrp->var.arr.length = arrp->var.arr.elemc = len;
+        arrp->val.arr.texp = NULL;
+        arrp->val.arr.length = arrp->val.arr.elemc = len;
         
         return RDB_OK;
     }
-    if (arrp->var.arr.texp != NULL) {
+    if (arrp->val.arr.texp != NULL) {
         RDB_raise_not_supported(
                 "cannot set length of array created from table", ecp);
         return RDB_ERROR;
     }
 
-    if (len < arrp->var.arr.length) {
+    if (len < arrp->val.arr.length) {
         void *vp;
         /* Shrink array */
-        for (i = len; i < arrp->var.arr.length; i++) {
-            ret = RDB_destroy_obj(&arrp->var.arr.elemv[i], ecp);
+        for (i = len; i < arrp->val.arr.length; i++) {
+            ret = RDB_destroy_obj(&arrp->val.arr.elemv[i], ecp);
             if (ret != RDB_OK)
                 return ret;
         }
         if (len > 0) {
-            vp = RDB_realloc(arrp->var.arr.elemv, sizeof (RDB_object) * len, ecp);
+            vp = RDB_realloc(arrp->val.arr.elemv, sizeof (RDB_object) * len, ecp);
             if (vp == NULL)
                 return RDB_ERROR;
         } else {
-            RDB_free(arrp->var.arr.elemv);
+            RDB_free(arrp->val.arr.elemv);
             vp = NULL;
         }
-        arrp->var.arr.elemv = vp;
-    } else if (len < arrp->var.arr.length) {
+        arrp->val.arr.elemv = vp;
+    } else if (len < arrp->val.arr.length) {
         /* Enlarge array */
         if (enlarge_buf(arrp, len, ecp) != RDB_OK)
             return RDB_ERROR;
     }
-    arrp->var.arr.length = len;
+    arrp->val.arr.length = len;
         
     return RDB_OK;
 }
@@ -394,17 +394,17 @@ int
 RDB_array_set(RDB_object *arrp, RDB_int idx, const RDB_object *objp,
         RDB_exec_context *ecp)
 {
-    if (arrp->var.arr.texp != NULL) {
+    if (arrp->val.arr.texp != NULL) {
         RDB_raise_not_supported("setting array element is not permitted", ecp);
         return RDB_ERROR;
     }
 
-    if (idx >= arrp->var.arr.length) {
+    if (idx >= arrp->val.arr.length) {
         RDB_raise_not_found("index out of bounds", ecp);
         return RDB_ERROR;
     }
 
-    return RDB_copy_obj(&arrp->var.arr.elemv[idx], objp, ecp);
+    return RDB_copy_obj(&arrp->val.arr.elemv[idx], objp, ecp);
 }
 
 /*@}*/

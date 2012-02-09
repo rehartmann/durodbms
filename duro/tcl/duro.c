@@ -850,7 +850,7 @@ Duro_to_tcl(Tcl_Interp *interp, const RDB_object *objp,
 {
     RDB_type *typ = RDB_obj_type(objp);
 
-    if (typ != NULL && RDB_type_is_scalar(typ) && typ->var.scalar.repc > 0) {
+    if (typ != NULL && RDB_type_is_scalar(typ) && typ->def.scalar.repc > 0) {
         return uobj_to_tobj(interp, objp, ecp, txp);
     }
 

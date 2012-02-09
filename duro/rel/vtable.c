@@ -1,7 +1,7 @@
 /*
  * $Id$
  *
- * Copyright (C) 2004-2011 Rene Hartmann.
+ * Copyright (C) 2004-2012 Rene Hartmann.
  * See the file COPYING for redistribution information.
  *
  *
@@ -122,9 +122,9 @@ _RDB_check_project_keyloss(RDB_expression *exp,
     for (i = 0; i < keyc; i++) {
         for (j = 0; j < keyv[i].strc; j++) {
             /* Search for key attribute in projection attrs */
-            RDB_expression *argp = exp->var.op.args.firstp->nextp;
+            RDB_expression *argp = exp->def.op.args.firstp->nextp;
             while (argp != NULL
-                    && (strcmp(keyv[i].strv[j], RDB_obj_string(&argp->var.obj)) != 0))
+                    && (strcmp(keyv[i].strv[j], RDB_obj_string(&argp->def.obj)) != 0))
                 argp = argp->nextp;
             /* If not found, exit loop */
             if (argp == NULL)
@@ -157,7 +157,7 @@ all_key(RDB_expression *exp, RDB_exec_context *ecp)
         return NULL;
 
     attrc = keyv[0].strc =
-            tbtyp->var.basetyp->var.tuple.attrc;
+            tbtyp->def.basetyp->def.tuple.attrc;
     keyv[0].strv = RDB_alloc(sizeof(char *) * attrc, ecp);
     if (keyv[0].strv == NULL) {
         RDB_free(keyv);
@@ -167,7 +167,7 @@ all_key(RDB_expression *exp, RDB_exec_context *ecp)
         keyv[0].strv[i] = NULL;
     for (i = 0; i < attrc; i++) {
         keyv[0].strv[i] = RDB_dup_str(
-                tbtyp->var.basetyp->var.tuple.attrv[i].name);
+                tbtyp->def.basetyp->def.tuple.attrv[i].name);
         if (keyv[0].strv[i] == NULL) {
             goto error;
         }
@@ -191,10 +191,10 @@ infer_join_keys(RDB_expression *exp, RDB_exec_context *ecp,
     RDB_string_vec *newkeyv;
     RDB_bool free1, free2;
 
-    keyc1 = _RDB_infer_keys(exp->var.op.args.firstp, ecp, &keyv1, &free1);
+    keyc1 = _RDB_infer_keys(exp->def.op.args.firstp, ecp, &keyv1, &free1);
     if (keyc1 < 0)
         return keyc1;
-    keyc2 = _RDB_infer_keys(exp->var.op.args.firstp, ecp, &keyv2, &free2);
+    keyc2 = _RDB_infer_keys(exp->def.op.args.firstp, ecp, &keyv2, &free2);
     if (keyc2 < 0)
         return keyc2;
 
@@ -257,7 +257,7 @@ infer_project_keys(RDB_expression *exp, RDB_exec_context *ecp,
     RDB_bool *presv;
     RDB_bool freekeys;
 
-    keyc = _RDB_infer_keys(exp->var.op.args.firstp, ecp, &keyv, &freekeys);
+    keyc = _RDB_infer_keys(exp->def.op.args.firstp, ecp, &keyv, &freekeys);
     if (keyc < 0)
         return keyc;
 
@@ -328,18 +328,18 @@ infer_group_keys(RDB_expression *exp, RDB_exec_context *ecp,
     if (newkeyv == NULL) {
         return RDB_ERROR;
     }
-    newkeyv[0].strc = tbtyp->var.basetyp->var.tuple.attrc - 1;
+    newkeyv[0].strc = tbtyp->def.basetyp->def.tuple.attrc - 1;
     newkeyv[0].strv = RDB_alloc(sizeof (char *) * newkeyv[0].strc, ecp);
     if (newkeyv[0].strv == NULL) {
         return RDB_ERROR;
     }
 
     j = 0;
-    for (i = 0; i < tbtyp->var.basetyp->var.tuple.attrc; i++) {
-        if (strcmp(tbtyp->var.basetyp->var.tuple.attrv[i].name,
-                RDB_obj_string(&exp->var.op.args.lastp->var.obj)) != 0) {
+    for (i = 0; i < tbtyp->def.basetyp->def.tuple.attrc; i++) {
+        if (strcmp(tbtyp->def.basetyp->def.tuple.attrv[i].name,
+                RDB_obj_string(&exp->def.op.args.lastp->def.obj)) != 0) {
             newkeyv[0].strv[j] = RDB_dup_str(
-                    tbtyp->var.basetyp->var.tuple.attrv[i].name);
+                    tbtyp->def.basetyp->def.tuple.attrv[i].name);
             if (newkeyv[0].strv[j] == NULL) {
                 RDB_raise_no_memory(ecp);
                 return RDB_ERROR;
@@ -356,13 +356,13 @@ char *
 _RDB_rename_attr(const char *srcname, RDB_expression *exp)
 {
     /* Search for attribute in rename arguments */
-    RDB_expression *argp = exp->var.op.args.firstp->nextp;
-    while (argp != NULL  && strcmp(RDB_obj_string(&argp->var.obj), srcname) != 0) {
+    RDB_expression *argp = exp->def.op.args.firstp->nextp;
+    while (argp != NULL  && strcmp(RDB_obj_string(&argp->def.obj), srcname) != 0) {
         argp = argp->nextp->nextp;
     }
     if (argp != NULL) {
         /* Found - return new attribute name */
-        return RDB_obj_string(&argp->nextp->var.obj);
+        return RDB_obj_string(&argp->nextp->def.obj);
     }
     return NULL;   
 }
@@ -425,10 +425,10 @@ _RDB_infer_keys(RDB_expression *exp, RDB_exec_context *ecp,
     switch (exp->kind) {
         case RDB_EX_OBJ:
             *caller_must_freep = RDB_FALSE;
-            return RDB_table_keys(&exp->var.obj, ecp, keyvp);
+            return RDB_table_keys(&exp->def.obj, ecp, keyvp);
         case RDB_EX_TBP:
             *caller_must_freep = RDB_FALSE;
-            return RDB_table_keys(exp->var.tbref.tbp, ecp, keyvp);
+            return RDB_table_keys(exp->def.tbref.tbp, ecp, keyvp);
         case RDB_EX_RO_OP:
             break;
         case RDB_EX_VAR:
@@ -438,30 +438,30 @@ _RDB_infer_keys(RDB_expression *exp, RDB_exec_context *ecp,
             return RDB_ERROR;            
     }
 
-    if ((strcmp(exp->var.op.name, "WHERE") == 0)
-            || (strcmp(exp->var.op.name, "MINUS") == 0)
-            || (strcmp(exp->var.op.name, "SEMIMINUS") == 0)
-            || (strcmp(exp->var.op.name, "SEMIJOIN") == 0)
-            || (strcmp(exp->var.op.name, "INTERSECT") == 0)
-            || (strcmp(exp->var.op.name, "EXTEND") == 0)
-            || (strcmp(exp->var.op.name, "DIVIDE") == 0)) {
-        return _RDB_infer_keys(exp->var.op.args.firstp, ecp, keyvp,
+    if ((strcmp(exp->def.op.name, "WHERE") == 0)
+            || (strcmp(exp->def.op.name, "MINUS") == 0)
+            || (strcmp(exp->def.op.name, "SEMIMINUS") == 0)
+            || (strcmp(exp->def.op.name, "SEMIJOIN") == 0)
+            || (strcmp(exp->def.op.name, "INTERSECT") == 0)
+            || (strcmp(exp->def.op.name, "EXTEND") == 0)
+            || (strcmp(exp->def.op.name, "DIVIDE") == 0)) {
+        return _RDB_infer_keys(exp->def.op.args.firstp, ecp, keyvp,
                 caller_must_freep);
     }
-    if (strcmp(exp->var.op.name, "JOIN") == 0) {
+    if (strcmp(exp->def.op.name, "JOIN") == 0) {
         *caller_must_freep = RDB_TRUE;
     	return infer_join_keys(exp, ecp, keyvp);
     }
-    if (strcmp(exp->var.op.name, "PROJECT") == 0) {
+    if (strcmp(exp->def.op.name, "PROJECT") == 0) {
     	return infer_project_keys(exp, ecp, keyvp, caller_must_freep);
     }
-    if (strcmp(exp->var.op.name, "SUMMARIZE") == 0) {
-        return _RDB_infer_keys(exp->var.op.args.firstp->nextp, ecp, keyvp,
+    if (strcmp(exp->def.op.name, "SUMMARIZE") == 0) {
+        return _RDB_infer_keys(exp->def.op.args.firstp->nextp, ecp, keyvp,
                 caller_must_freep);
     }
-    if (strcmp(exp->var.op.name, "RENAME") == 0) {
+    if (strcmp(exp->def.op.name, "RENAME") == 0) {
         RDB_bool freekey;
-        int keyc = _RDB_infer_keys(exp->var.op.args.firstp, ecp, keyvp, &freekey);
+        int keyc = _RDB_infer_keys(exp->def.op.args.firstp, ecp, keyvp, &freekey);
         if (keyc == RDB_ERROR)
             return RDB_ERROR;
 
@@ -475,7 +475,7 @@ _RDB_infer_keys(RDB_expression *exp, RDB_exec_context *ecp,
         *caller_must_freep = RDB_TRUE;
         return keyc;
     }
-    if (strcmp(exp->var.op.name, "GROUP") == 0) {
+    if (strcmp(exp->def.op.name, "GROUP") == 0) {
         *caller_must_freep = RDB_TRUE;
         return infer_group_keys(exp, ecp, keyvp);
     }
@@ -497,9 +497,9 @@ _RDB_table_refers(const RDB_object *srctbp, const RDB_object *dsttbp)
 {
     if (srctbp == dsttbp)
         return RDB_TRUE;
-	if (srctbp->var.tb.exp == NULL)
+	if (srctbp->val.tb.exp == NULL)
 	    return RDB_FALSE;
-	return _RDB_expr_refers(srctbp->var.tb.exp, dsttbp);
+	return _RDB_expr_refers(srctbp->val.tb.exp, dsttbp);
 }
 
 RDB_object **
@@ -530,11 +530,11 @@ _RDB_index_objpv(_RDB_tbindex *indexp, RDB_expression *exp, RDB_type *tbtyp,
         }
         attrexp = nodep;
         if (attrexp->kind == RDB_EX_RO_OP
-                && strcmp (attrexp->var.op.name, "AND") == 0)
-            attrexp = attrexp->var.op.args.firstp->nextp;
-        attrexp->var.op.args.firstp->nextp->var.obj.store_typ =
+                && strcmp (attrexp->def.op.name, "AND") == 0)
+            attrexp = attrexp->def.op.args.firstp->nextp;
+        attrexp->def.op.args.firstp->nextp->def.obj.store_typ =
                     RDB_type_attr_type(tbtyp, indexp->attrv[i].attrname);
-        objpv[i] = &attrexp->var.op.args.firstp->nextp->var.obj;
+        objpv[i] = &attrexp->def.op.args.firstp->nextp->def.obj;
     }
     return objpv;
 }

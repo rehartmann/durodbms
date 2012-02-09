@@ -129,7 +129,7 @@ typedef struct RDB_object {
             /* Buffers elements beyond elemc */
             struct RDB_object *tplp;
         } arr;
-     } var;
+     } val;
 
      /* Used internally for conversion into the internal representation */
      struct RDB_type *store_typ;
@@ -190,7 +190,7 @@ struct RDB_type {
 
             RDB_expression *constraintp;
         } scalar;
-    } var;
+    } def;
 };
 
 typedef struct RDB_parameter {

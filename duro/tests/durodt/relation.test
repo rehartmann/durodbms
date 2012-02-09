@@ -392,7 +392,7 @@ test sdivide {small DIVIDE} -body {
         var p_c private init rel{tup{pizza# 1, cond 'salami'},
                 tup{pizza# 2, cond 'salami'}, tup{pizza# 2, cond 'mushrooms'}};
                 
-        -- Get pizzas with all condiments
+        -- Get # of pizza with all condiments
         println((tuple from (pizzas divideby condiments per (p_c))).pizza#);
     }
 } -result {error caught

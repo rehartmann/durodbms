@@ -190,7 +190,7 @@ RDB_create_ro_op(const char *name, int paramc, RDB_parameter paramv[], RDB_type 
     if (strcmp(name, "CMP") == 0 && paramc == 2
             && RDB_type_equals(paramv[0].typ, paramv[1].typ)
             && (paramv[0].typ->kind != RDB_TP_SCALAR /* !! */
-                    || !paramv[0].typ->var.scalar.builtin)) {
+                    || !paramv[0].typ->def.scalar.builtin)) {
         RDB_operator *cmpop;
         RDB_type *paramtv[2];
 
@@ -472,7 +472,7 @@ RDB_call_ro_op_by_name_e(const char *name, int argc, RDB_object *argv[],
             ret = _RDB_obj_equals(2, argv, NULL, ecp, txp, retvalp);
             if (ret != RDB_OK)
                 return ret;
-            retvalp->var.bool_val = (RDB_bool) !retvalp->var.bool_val;
+            retvalp->val.bool_val = (RDB_bool) !retvalp->val.bool_val;
             return RDB_OK;
         }
     }
@@ -492,7 +492,7 @@ RDB_call_ro_op_by_name_e(const char *name, int argc, RDB_object *argv[],
             RDB_raise_type_mismatch("IF argument must be BOOLEAN", ecp);
             return RDB_ERROR;
         }
-        if (argv[0]->var.bool_val) {
+        if (argv[0]->val.bool_val) {
             ret = RDB_copy_obj(retvalp, argv[1], ecp);
         } else {
             ret = RDB_copy_obj(retvalp, argv[2], ecp);
@@ -902,13 +902,13 @@ RDB_return_type(const RDB_operator *op)
 size_t
 RDB_operator_iarglen(const RDB_operator *op)
 {
-    return op->iarg.var.bin.len;
+    return op->iarg.val.bin.len;
 }
 
 void *
 RDB_operator_iargp(const RDB_operator *op)
 {
-    return op->iarg.var.bin.datap;
+    return op->iarg.val.bin.datap;
 }
 
 
@@ -941,7 +941,7 @@ _RDB_eq_bool(int argc, RDB_object *argv[], RDB_operator *op,
         RDB_exec_context *ecp, RDB_transaction *txp, RDB_object *retvalp)
 {
     RDB_bool_to_obj(retvalp,
-            (RDB_bool) (argv[0]->var.bool_val == argv[1]->var.bool_val));
+            (RDB_bool) (argv[0]->val.bool_val == argv[1]->val.bool_val));
     return RDB_OK;
 }
 
@@ -949,13 +949,13 @@ int
 _RDB_eq_binary(int argc, RDB_object *argv[], RDB_operator *op,
         RDB_exec_context *ecp, RDB_transaction *txp, RDB_object *retvalp)
 {
-    if (argv[0]->var.bin.len != argv[1]->var.bin.len)
+    if (argv[0]->val.bin.len != argv[1]->val.bin.len)
         RDB_bool_to_obj(retvalp, RDB_FALSE);
-    else if (argv[0]->var.bin.len == 0)
+    else if (argv[0]->val.bin.len == 0)
         RDB_bool_to_obj(retvalp, RDB_TRUE);
     else
-        RDB_bool_to_obj(retvalp, (RDB_bool) (memcmp(argv[0]->var.bin.datap,
-            argv[1]->var.bin.datap, argv[0]->var.bin.len) == 0));
+        RDB_bool_to_obj(retvalp, (RDB_bool) (memcmp(argv[0]->val.bin.datap,
+            argv[1]->val.bin.datap, argv[0]->val.bin.len) == 0));
     return RDB_OK;
 }
 
@@ -979,8 +979,8 @@ _RDB_obj_equals(int argc, RDB_object *argv[], RDB_operator *op,
     if (argv[0]->typ != NULL && RDB_type_is_scalar(argv[0]->typ)) {
         if (argv[0]->typ->compare_op != NULL) {
             arep = argv[0]->typ;
-        } else if (argv[0]->typ->var.scalar.arep != NULL) {
-            arep = argv[0]->typ->var.scalar.arep;
+        } else if (argv[0]->typ->def.scalar.arep != NULL) {
+            arep = argv[0]->typ->def.scalar.arep;
         }
     }
 
@@ -1043,7 +1043,7 @@ _RDB_obj_not_equals(int argc, RDB_object *argv[], RDB_operator *op,
     int ret = _RDB_obj_equals(2, argv, NULL, ecp, txp, retvalp);
     if (ret != RDB_OK)
         return ret;
-    retvalp->var.bool_val = (RDB_bool) !retvalp->var.bool_val;
+    retvalp->val.bool_val = (RDB_bool) !retvalp->val.bool_val;
     return RDB_OK;
 }
 
@@ -1181,7 +1181,7 @@ _RDB_check_type_constraint(RDB_object *valp, RDB_exec_context *ecp,
 {
     int ret;
 
-    if (valp->typ->var.scalar.constraintp != NULL) {
+    if (valp->typ->def.scalar.constraintp != NULL) {
         RDB_bool result;
         RDB_object tpl;
 
@@ -1193,7 +1193,7 @@ _RDB_check_type_constraint(RDB_object *valp, RDB_exec_context *ecp,
             RDB_destroy_obj(&tpl, ecp);
             return ret;
         }
-        ret = RDB_evaluate_bool(valp->typ->var.scalar.constraintp,
+        ret = RDB_evaluate_bool(valp->typ->def.scalar.constraintp,
                 &_RDB_tpl_get, &tpl, NULL, ecp, txp, &result);
         RDB_destroy_obj(&tpl, ecp);
         if (ret != RDB_OK) {
@@ -1212,7 +1212,7 @@ _RDB_add_selector(RDB_type *typ, RDB_exec_context *ecp)
 {
     int i;
     RDB_operator *datap;
-    int argc = typ->var.scalar.repv[0].compc;
+    int argc = typ->def.scalar.repv[0].compc;
     RDB_type **argtv = NULL;
 
     if (_RDB_init_builtin_ops(ecp) != RDB_OK)
@@ -1224,7 +1224,7 @@ _RDB_add_selector(RDB_type *typ, RDB_exec_context *ecp)
             return RDB_ERROR;
     }
     for (i = 0; i < argc; i++) {
-        argtv[i] = typ->var.scalar.repv[0].compv[i].typ;
+        argtv[i] = typ->def.scalar.repv[0].compv[i].typ;
     }
 
     /*

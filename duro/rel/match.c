@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2005-2011 Rene Hartmann.
+ * Copyright (C) 2005-2012 Rene Hartmann.
  * See the file COPYING for redistribution information.
  *
  *
@@ -54,9 +54,9 @@ project_matching(RDB_expression *texp, const RDB_object *tplp, RDB_exec_context 
      * Pick attributes which are attributes of the table
      */
     RDB_init_obj(&tpl);
-    argp = texp->var.op.args.firstp->nextp;
+    argp = texp->def.op.args.firstp->nextp;
     while (argp != NULL) {
-        char *attrname = RDB_obj_string(&argp->var.obj);
+        char *attrname = RDB_obj_string(&argp->def.obj);
         RDB_object *attrp = RDB_tuple_get(tplp, attrname);
         if (attrp != NULL) {
             if (RDB_tuple_set(&tpl, attrname, attrp, ecp) != RDB_OK) {
@@ -66,7 +66,7 @@ project_matching(RDB_expression *texp, const RDB_object *tplp, RDB_exec_context 
         }
         argp = argp->nextp;
     }
-    if (_RDB_expr_matching_tuple(texp->var.op.args.firstp, &tpl, ecp, txp,
+    if (_RDB_expr_matching_tuple(texp->def.op.args.firstp, &tpl, ecp, txp,
             resultp) != RDB_OK) {
         RDB_destroy_obj(&tpl, ecp);
         return RDB_ERROR;
@@ -87,12 +87,12 @@ _RDB_expr_matching_tuple(RDB_expression *exp, const RDB_object *tplp,
     RDB_expression *texp;
 
     if (exp->kind == RDB_EX_OBJ) {
-        return _RDB_matching_tuple(&exp->var.obj, tplp, ecp, txp, resultp);
+        return _RDB_matching_tuple(&exp->def.obj, tplp, ecp, txp, resultp);
     }
     if (exp->kind == RDB_EX_TBP) {
-        return _RDB_matching_tuple(exp->var.tbref.tbp, tplp, ecp, txp, resultp);
+        return _RDB_matching_tuple(exp->def.tbref.tbp, tplp, ecp, txp, resultp);
     }
-    if (exp->kind == RDB_EX_RO_OP && strcmp (exp->var.op.name, "PROJECT") == 0) {
+    if (exp->kind == RDB_EX_RO_OP && strcmp (exp->def.op.name, "PROJECT") == 0) {
         return project_matching(exp, tplp, ecp, txp, resultp);
     }
 
@@ -160,7 +160,7 @@ stored_matching(RDB_object *tbp, const RDB_object *tplp, RDB_exec_context *ecp,
     RDB_object tpl;
     RDB_object **objpv;
 
-    if (tbp->var.tb.stp == NULL) {
+    if (tbp->val.tb.stp == NULL) {
         /* Physical table representation has not been created, so table is empty */
         *resultp = RDB_FALSE;
         return RDB_OK;
@@ -170,14 +170,14 @@ stored_matching(RDB_object *tbp, const RDB_object *tplp, RDB_exec_context *ecp,
      * Search for a unique index that covers the tuple
      */
     for (i = 0;
-            i < tbp->var.tb.stp->indexc
-                    && !(tbp->var.tb.stp->indexv[i].unique
-                        && index_covers_tuple(&tbp->var.tb.stp->indexv[i], tplp));
+            i < tbp->val.tb.stp->indexc
+                    && !(tbp->val.tb.stp->indexv[i].unique
+                        && index_covers_tuple(&tbp->val.tb.stp->indexv[i], tplp));
             i++);
-    if (i >= tbp->var.tb.stp->indexc) {
+    if (i >= tbp->val.tb.stp->indexc) {
         return matching_ts(tbp, tplp, ecp, txp, resultp);
     }
-    indexp = &tbp->var.tb.stp->indexv[i];
+    indexp = &tbp->val.tb.stp->indexv[i];
     objpv = RDB_alloc(sizeof(RDB_object *) * indexp->attrc, ecp);
     if (objpv == NULL) {
         return RDB_ERROR;
@@ -187,7 +187,7 @@ stored_matching(RDB_object *tbp, const RDB_object *tplp, RDB_exec_context *ecp,
         objpv[i]->store_typ = objpv[i]->typ;
     }
     RDB_init_obj(&tpl);
-    ret = _RDB_get_by_uindex(tbp, objpv, indexp, tbp->typ->var.basetyp, ecp,
+    ret = _RDB_get_by_uindex(tbp, objpv, indexp, tbp->typ->def.basetyp, ecp,
             txp, &tpl);
     if (ret == RDB_ERROR) {
         if (RDB_obj_type(RDB_get_err(ecp)) == &RDB_NOT_FOUND_ERROR) {
@@ -200,7 +200,7 @@ stored_matching(RDB_object *tbp, const RDB_object *tplp, RDB_exec_context *ecp,
     if (ret != RDB_OK) {
         goto cleanup;
     }
-    if (indexp->attrc < tbp->typ->var.basetyp->var.tuple.attrc) {
+    if (indexp->attrc < tbp->typ->def.basetyp->def.tuple.attrc) {
         ret = _RDB_tuple_matches(tplp, &tpl, ecp, txp, resultp);
     } else {
         *resultp = RDB_TRUE;
@@ -217,8 +217,8 @@ _RDB_matching_tuple(RDB_object *tbp, const RDB_object *tplp, RDB_exec_context *e
         RDB_transaction *txp, RDB_bool *resultp)
 {
     assert(tbp->kind == RDB_OB_TABLE);
-	if (tbp->var.tb.exp == NULL) {
+	if (tbp->val.tb.exp == NULL) {
 		return stored_matching(tbp, tplp, ecp, txp, resultp);
 	}
-	return _RDB_expr_matching_tuple(tbp->var.tb.exp, tplp, ecp, txp, resultp);
+	return _RDB_expr_matching_tuple(tbp->val.tb.exp, tplp, ecp, txp, resultp);
 }

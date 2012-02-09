@@ -1,7 +1,7 @@
 /*
  * $Id$
  *
- * Copyright (C) 2003-2008 Ren� Hartmann.
+ * Copyright (C) 2003-2012 Rene Hartmann.
  * See the file COPYING for redistribution information.
  */
 
@@ -19,10 +19,10 @@ _RDB_insert_real(RDB_object *tbp, const RDB_object *tplp,
     int i;
     int ret;
     RDB_field *fvp;
-    RDB_type *tuptyp = tbp->typ->var.basetyp;
-    int attrcount = tuptyp->var.tuple.attrc;
+    RDB_type *tuptyp = tbp->typ->def.basetyp;
+    int attrcount = tuptyp->def.tuple.attrc;
 
-    if (tbp->var.tb.stp == NULL) {
+    if (tbp->val.tb.stp == NULL) {
         /* Create physical table */
         if (_RDB_create_stored_table(tbp, txp != NULL ? txp->envp : NULL,
                 NULL, ecp, txp) != RDB_OK) {
@@ -38,14 +38,14 @@ _RDB_insert_real(RDB_object *tbp, const RDB_object *tplp,
     for (i = 0; i < attrcount; i++) {
         int *fnop;
         RDB_object *valp;
-        RDB_type *attrtyp = tuptyp->var.tuple.attrv[i].typ;
+        RDB_type *attrtyp = tuptyp->def.tuple.attrv[i].typ;
         
-        fnop = _RDB_field_no(tbp->var.tb.stp, tuptyp->var.tuple.attrv[i].name);
-        valp = RDB_tuple_get(tplp, tuptyp->var.tuple.attrv[i].name);
+        fnop = _RDB_field_no(tbp->val.tb.stp, tuptyp->def.tuple.attrv[i].name);
+        valp = RDB_tuple_get(tplp, tuptyp->def.tuple.attrv[i].name);
 
         /* If there is no value, check if there is a default */
         if (valp == NULL) {
-            valp = tuptyp->var.tuple.attrv[i].defaultp;
+            valp = tuptyp->def.tuple.attrv[i].defaultp;
             if (valp == NULL) {
                 RDB_raise_invalid_argument("missing value", ecp);
                 ret = RDB_ERROR;
@@ -80,12 +80,12 @@ _RDB_insert_real(RDB_object *tbp, const RDB_object *tplp,
     }
 
     _RDB_cmp_ecp = ecp;
-    ret = RDB_insert_rec(tbp->var.tb.stp->recmapp, fvp,
-            tbp->var.tb.is_persistent ? txp->txid : NULL);
+    ret = RDB_insert_rec(tbp->val.tb.stp->recmapp, fvp,
+            tbp->val.tb.is_persistent ? txp->txid : NULL);
     if (ret == DB_KEYEXIST) {
         /* check if the tuple is an element of the table */
-        if (RDB_contains_rec(tbp->var.tb.stp->recmapp, fvp,
-                tbp->var.tb.is_persistent ? txp->txid : NULL) == RDB_OK) {
+        if (RDB_contains_rec(tbp->val.tb.stp->recmapp, fvp,
+                tbp->val.tb.is_persistent ? txp->txid : NULL) == RDB_OK) {
             RDB_raise_element_exists("tuple is already in table", ecp);
         } else {
             RDB_errcode_to_error(ret, ecp, txp);
@@ -96,7 +96,7 @@ _RDB_insert_real(RDB_object *tbp, const RDB_object *tplp,
         ret = RDB_ERROR;
     }
     if (ret == RDB_OK) {
-        tbp->var.tb.stp->est_cardinality++;
+        tbp->val.tb.stp->est_cardinality++;
     }
 
 cleanup:

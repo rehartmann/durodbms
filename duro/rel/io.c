@@ -28,12 +28,12 @@ _RDB_add_io(RDB_exec_context *ecp)
     RDB_IO_STREAM.kind = RDB_TP_SCALAR;
     RDB_IO_STREAM.ireplen = sizeof(RDB_int);
     RDB_IO_STREAM.name = "IO_STREAM";
-    RDB_IO_STREAM.var.scalar.builtin = RDB_TRUE;
-    RDB_IO_STREAM.var.scalar.repc = 1;
-    RDB_IO_STREAM.var.scalar.repv = &io_stream_rep;
-    RDB_IO_STREAM.var.scalar.arep = &RDB_INTEGER;
-    RDB_IO_STREAM.var.scalar.constraintp = NULL;
-    RDB_IO_STREAM.var.scalar.sysimpl = RDB_TRUE;
+    RDB_IO_STREAM.def.scalar.builtin = RDB_TRUE;
+    RDB_IO_STREAM.def.scalar.repc = 1;
+    RDB_IO_STREAM.def.scalar.repv = &io_stream_rep;
+    RDB_IO_STREAM.def.scalar.arep = &RDB_INTEGER;
+    RDB_IO_STREAM.def.scalar.constraintp = NULL;
+    RDB_IO_STREAM.def.scalar.sysimpl = RDB_TRUE;
     RDB_IO_STREAM.compare_op = NULL;
 
     return _RDB_add_type(&RDB_IO_STREAM, ecp);

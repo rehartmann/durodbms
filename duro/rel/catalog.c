@@ -249,7 +249,7 @@ insert_rtable(RDB_object *tbp, RDB_dbroot *dbrootp, RDB_exec_context *ecp,
         RDB_transaction *txp)
 {
     RDB_object tpl;
-    RDB_type *tuptyp = tbp->typ->var.basetyp;
+    RDB_type *tuptyp = tbp->typ->def.basetyp;
     int ret;
     int i;
 
@@ -260,7 +260,7 @@ insert_rtable(RDB_object *tbp, RDB_dbroot *dbrootp, RDB_exec_context *ecp,
         RDB_destroy_obj(&tpl, ecp);
         return RDB_ERROR;
     }
-    ret = RDB_tuple_set_bool(&tpl, "IS_USER", tbp->var.tb.is_user, ecp);
+    ret = RDB_tuple_set_bool(&tpl, "IS_USER", tbp->val.tb.is_user, ecp);
     if (ret != RDB_OK) {
         RDB_destroy_obj(&tpl, ecp);
         return RDB_ERROR;
@@ -279,12 +279,12 @@ insert_rtable(RDB_object *tbp, RDB_dbroot *dbrootp, RDB_exec_context *ecp,
         return RDB_ERROR;
     }
 
-    for (i = 0; i < tuptyp->var.tuple.attrc; i++) {
+    for (i = 0; i < tuptyp->def.tuple.attrc; i++) {
         RDB_object typedata;
-        char *attrname = tuptyp->var.tuple.attrv[i].name;
+        char *attrname = tuptyp->def.tuple.attrv[i].name;
 
         RDB_init_obj(&typedata);
-        ret = _RDB_type_to_binobj(&typedata, tuptyp->var.tuple.attrv[i].typ,
+        ret = _RDB_type_to_binobj(&typedata, tuptyp->def.tuple.attrv[i].typ,
                 ecp);
         if (ret != RDB_OK) {
             RDB_destroy_obj(&typedata, ecp);
@@ -324,15 +324,15 @@ insert_rtable(RDB_object *tbp, RDB_dbroot *dbrootp, RDB_exec_context *ecp,
         return RDB_ERROR;
     }
 
-    for (i = 0; i < tuptyp->var.tuple.attrc; i++) {
-        if (tuptyp->var.tuple.attrv[i].defaultp != NULL) {
-            char *attrname = tuptyp->var.tuple.attrv[i].name;
+    for (i = 0; i < tuptyp->def.tuple.attrc; i++) {
+        if (tuptyp->def.tuple.attrv[i].defaultp != NULL) {
+            char *attrname = tuptyp->def.tuple.attrv[i].name;
             RDB_object binval;
             void *datap;
             size_t len;
 
-            if (!RDB_type_equals(tuptyp->var.tuple.attrv[i].defaultp->typ,
-                    tuptyp->var.tuple.attrv[i].typ)) {
+            if (!RDB_type_equals(tuptyp->def.tuple.attrv[i].defaultp->typ,
+                    tuptyp->def.tuple.attrv[i].typ)) {
                 RDB_raise_type_mismatch(
                         "Type of default value does not match attribute type",
                         ecp);
@@ -346,7 +346,7 @@ insert_rtable(RDB_object *tbp, RDB_dbroot *dbrootp, RDB_exec_context *ecp,
             }
 
             RDB_init_obj(&binval);
-            datap = RDB_obj_irep(tuptyp->var.tuple.attrv[i].defaultp, &len);
+            datap = RDB_obj_irep(tuptyp->def.tuple.attrv[i].defaultp, &len);
             ret = RDB_binary_set(&binval, 0, datap, len, ecp);
             if (ret != RDB_OK) {
                 RDB_destroy_obj(&tpl, ecp);
@@ -373,8 +373,8 @@ insert_rtable(RDB_object *tbp, RDB_dbroot *dbrootp, RDB_exec_context *ecp,
     /*
      * Insert keys into SYS_KEYS
      */
-    for (i = 0; i < tbp->var.tb.keyc; i++) {
-        if (insert_key(&tbp->var.tb.keyv[i], i, RDB_table_name(tbp), dbrootp,
+    for (i = 0; i < tbp->val.tb.keyc; i++) {
+        if (insert_key(&tbp->val.tb.keyv[i], i, RDB_table_name(tbp), dbrootp,
                 ecp, txp) != RDB_OK)
             return RDB_ERROR;
     }
@@ -402,7 +402,7 @@ insert_vtable(RDB_object *tbp, RDB_dbroot *dbrootp, RDB_exec_context *ecp,
     if (ret != RDB_OK)
         goto cleanup;
 
-    ret = _RDB_expr_to_binobj(&defval, tbp->var.tb.exp, ecp);
+    ret = _RDB_expr_to_binobj(&defval, tbp->val.tb.exp, ecp);
     if (ret != RDB_OK)
         goto cleanup;
     ret = RDB_tuple_set(&tpl, "I_DEF", &defval, ecp);
@@ -411,7 +411,7 @@ insert_vtable(RDB_object *tbp, RDB_dbroot *dbrootp, RDB_exec_context *ecp,
 
     if (RDB_env_trace(dbrootp->envp) > 0) {
         fputs("Writing virtual table definition:\n", stderr);
-        _RDB_dump(defval.var.bin.datap, defval.var.bin.len, stderr);
+        _RDB_dump(defval.val.bin.datap, RDB_binary_length(&defval), stderr);
     }
 
     ret = RDB_insert(dbrootp->vtables_tbp, &tpl, ecp, txp);
@@ -589,7 +589,7 @@ _RDB_cat_insert(RDB_object *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
     /*
      * Create table in the catalog.
      */
-    if (tbp->var.tb.exp == NULL) {
+    if (tbp->val.tb.exp == NULL) {
         ret = insert_rtable(tbp, txp->dbp->dbrootp, ecp, txp);
         /* If the table already exists in the catalog, proceed */
         if (ret != RDB_OK) {
@@ -604,15 +604,15 @@ _RDB_cat_insert(RDB_object *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
          * For user tables, the indexes are inserted when the recmap is created.
          */
         if (ret == RDB_OK) {
-            if (!tbp->var.tb.is_user) {
+            if (!tbp->val.tb.is_user) {
                 int i;
 
-                for (i = 0; i < tbp->var.tb.stp->indexc; i++) {
-                    ret = _RDB_cat_insert_index(tbp->var.tb.stp->indexv[i].name,
-                            tbp->var.tb.stp->indexv[i].attrc,
-                            tbp->var.tb.stp->indexv[i].attrv,                            
-                            tbp->var.tb.stp->indexv[i].unique,
-                            tbp->var.tb.stp->indexv[i].ordered,
+                for (i = 0; i < tbp->val.tb.stp->indexc; i++) {
+                    ret = _RDB_cat_insert_index(tbp->val.tb.stp->indexv[i].name,
+                            tbp->val.tb.stp->indexv[i].attrc,
+                            tbp->val.tb.stp->indexv[i].attrv,
+                            tbp->val.tb.stp->indexv[i].unique,
+                            tbp->val.tb.stp->indexv[i].ordered,
                             RDB_table_name(tbp), ecp, txp);
                     if (ret != RDB_OK)
                         return ret;
@@ -704,7 +704,7 @@ cleanup:
 int
 _RDB_cat_delete(RDB_object *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
 {
-    if (tbp->var.tb.exp == NULL)
+    if (tbp->val.tb.exp == NULL)
         return delete_rtable(tbp, ecp, txp);
     else
         return delete_vtable(tbp, ecp, txp);
@@ -927,8 +927,8 @@ open_indexes(RDB_object *tbp, RDB_dbroot *dbrootp, RDB_exec_context *ecp,
     if (indexc < 0)
         return indexc;
 
-    tbp->var.tb.stp->indexc = indexc;
-    tbp->var.tb.stp->indexv = indexv;
+    tbp->val.tb.stp->indexc = indexc;
+    tbp->val.tb.stp->indexv = indexv;
 
     /* Open secondary indexes */
     for (i = 0; i < indexc; i++) {
@@ -1111,7 +1111,7 @@ _RDB_open_systables(RDB_dbroot *dbrootp, RDB_exec_context *ecp,
         return ret;
     }
 
-    if (!create && (dbrootp->rtables_tbp->var.tb.stp->indexc == -1)) {
+    if (!create && (dbrootp->rtables_tbp->val.tb.stp->indexc == -1)) {
         /*
          * Read indexes from the catalog 
          */
@@ -1638,7 +1638,7 @@ _RDB_cat_get_rtable(const char *name, RDB_exec_context *ecp,
         }
         RDB_init_obj(attrv[i].defaultp);
         ret = RDB_irep_to_obj(attrv[i].defaultp, attrv[i].typ,
-                binvalp->var.bin.datap, binvalp->var.bin.len, ecp);
+                binvalp->val.bin.datap, RDB_binary_length(binvalp), ecp);
         if (ret != RDB_OK)
             goto error;            
     }
@@ -1840,11 +1840,11 @@ _RDB_cat_get_vtable(const char *name, RDB_exec_context *ecp,
     if (ret != RDB_OK)
         goto error;
 
-    tbp->var.tb.is_persistent = RDB_TRUE;
-    tbp->var.tb.is_user = usr;
+    tbp->val.tb.is_persistent = RDB_TRUE;
+    tbp->val.tb.is_user = usr;
 
-    tbp->var.tb.name = RDB_dup_str(name);
-    if (tbp->var.tb.name == NULL) {
+    tbp->val.tb.name = RDB_dup_str(name);
+    if (tbp->val.tb.name == NULL) {
         RDB_raise_no_memory(ecp);
         return NULL;
     }
@@ -1885,7 +1885,7 @@ _RDB_cat_rename_table(RDB_object *tbp, const char *name, RDB_exec_context *ecp,
         goto cleanup;
     }
 
-    if (tbp->var.tb.exp == NULL) {
+    if (tbp->val.tb.exp == NULL) {
         ret = RDB_update(txp->dbp->dbrootp->rtables_tbp, condp, 1, &upd, ecp, txp);
         if (ret == RDB_ERROR)
             goto cleanup;
@@ -2161,11 +2161,11 @@ _RDB_cat_get_type(const char *name, RDB_exec_context *ecp,
 
     typedatap = RDB_tuple_get(&tpl, "I_AREP_TYPE");
     if (RDB_binary_length(typedatap) != 0) {   
-        typ->var.scalar.arep = _RDB_binobj_to_type(typedatap, ecp, txp);
-        if (typ->var.scalar.arep == NULL)
+        typ->def.scalar.arep = _RDB_binobj_to_type(typedatap, ecp, txp);
+        if (typ->def.scalar.arep == NULL)
             goto error;
     } else {
-        typ->var.scalar.arep = NULL;
+        typ->def.scalar.arep = NULL;
     }
 
     typ->name = RDB_dup_str(name);
@@ -2176,17 +2176,17 @@ _RDB_cat_get_type(const char *name, RDB_exec_context *ecp,
 
     cvalp = RDB_tuple_get(&tpl, "I_CONSTRAINT");
     if (RDB_binary_length(cvalp) > 0) {
-        typ->var.scalar.constraintp = _RDB_binobj_to_expr(cvalp, ecp, txp);
-        if (typ->var.scalar.constraintp == NULL)
+        typ->def.scalar.constraintp = _RDB_binobj_to_expr(cvalp, ecp, txp);
+        if (typ->def.scalar.constraintp == NULL)
             goto error;
     } else {
-        typ->var.scalar.constraintp = NULL;
+        typ->def.scalar.constraintp = NULL;
     }
 
     typ->ireplen = RDB_tuple_get_int(&tpl, "I_AREP_LEN");
-    typ->var.scalar.sysimpl = RDB_tuple_get_bool(&tpl, "I_SYSIMPL");
-    typ->var.scalar.repc = 0;
-    typ->var.scalar.builtin = RDB_FALSE;
+    typ->def.scalar.sysimpl = RDB_tuple_get_bool(&tpl, "I_SYSIMPL");
+    typ->def.scalar.repc = 0;
+    typ->def.scalar.builtin = RDB_FALSE;
 
     /*
      * Get possrep info from SYS_POSSREPS
@@ -2203,31 +2203,31 @@ _RDB_cat_get_type(const char *name, RDB_exec_context *ecp,
     if (ret < 0) {
         goto error;
     }
-    typ->var.scalar.repc = ret;
+    typ->def.scalar.repc = ret;
     if (ret > 0) {
-        typ->var.scalar.repv = RDB_alloc(ret * sizeof (RDB_possrep), ecp);
-        if (typ->var.scalar.repv == NULL) {
+        typ->def.scalar.repv = RDB_alloc(ret * sizeof (RDB_possrep), ecp);
+        if (typ->def.scalar.repv == NULL) {
             goto error;
         }
     }
-    for (i = 0; i < typ->var.scalar.repc; i++)
-        typ->var.scalar.repv[i].compv = NULL;
+    for (i = 0; i < typ->def.scalar.repc; i++)
+        typ->def.scalar.repv[i].compv = NULL;
 
     /*
-     * Read possrep data from array and store it in typ->var.scalar.repv
+     * Read possrep data from array and store it in typ->def.scalar.repv
      */
-    for (i = 0; i < typ->var.scalar.repc; i++) {
+    for (i = 0; i < typ->def.scalar.repc; i++) {
         tplp = RDB_array_get(&possreps, (RDB_int) i, ecp);
         if (tplp == NULL)
             goto error;
-        typ->var.scalar.repv[i].name = RDB_dup_str(
+        typ->def.scalar.repv[i].name = RDB_dup_str(
                 RDB_tuple_get_string(tplp, "POSSREPNAME"));
-        if (typ->var.scalar.repv[i].name == NULL) {
+        if (typ->def.scalar.repv[i].name == NULL) {
             RDB_raise_no_memory(ecp);
             goto error;
         }
 
-        ret = get_possrepcomps(name, &typ->var.scalar.repv[i], ecp, txp);
+        ret = get_possrepcomps(name, &typ->def.scalar.repv[i], ecp, txp);
         if (ret != RDB_OK)
             goto error;
     }
@@ -2270,10 +2270,10 @@ error:
     RDB_destroy_obj(&tpl, ecp);
     RDB_destroy_obj(&possreps, ecp);
     if (typ != NULL) {
-        if (typ->var.scalar.repc != 0) {
-            for (i = 0; i < typ->var.scalar.repc; i++)
-                RDB_free(typ->var.scalar.repv[i].compv);
-            RDB_free(typ->var.scalar.repv);
+        if (typ->def.scalar.repc != 0) {
+            for (i = 0; i < typ->def.scalar.repc; i++)
+                RDB_free(typ->def.scalar.repv[i].compv);
+            RDB_free(typ->def.scalar.repv);
         }
         RDB_free(typ->name);
         RDB_free(typ);

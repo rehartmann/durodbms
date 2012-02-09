@@ -589,7 +589,7 @@ Duro_invoke_update_op(int argc, RDB_object *argv[], RDB_operator *op,
             if (RDB_type_is_scalar(argtyp)) {
                 if (issetter && i == 0) {
                     /* It�s the argument of setter, so use internal rep */
-                    convtyp = argtyp->var.scalar.arep;
+                    convtyp = argtyp->def.scalar.arep;
                 } else {
                     convtyp = argtyp;
                 }
@@ -761,7 +761,7 @@ Duro_invoke_ro_op(int argc, RDB_object *argv[], RDB_operator *op,
     if (RDB_type_is_scalar(rtyp)) {
         if (RDB_is_selector(op)) {
             /* It's a selector, so use internal rep */
-            convtyp = rtyp->var.scalar.arep;
+            convtyp = rtyp->def.scalar.arep;
         } else {
             convtyp = rtyp;
         }

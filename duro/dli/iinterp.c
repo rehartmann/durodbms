@@ -579,12 +579,12 @@ init_obj(RDB_object *objp, RDB_type *typ, RDB_exec_context *ecp,
     } else if (typ == &RDB_BINARY) {
         return RDB_binary_set(objp, 0, NULL, (size_t) 0, ecp);
     } else if (RDB_type_is_tuple(typ)) {
-        for (i = 0; i < typ->var.tuple.attrc; i++) {
-            if (RDB_tuple_set(objp, typ->var.tuple.attrv[i].name,
+        for (i = 0; i < typ->def.tuple.attrc; i++) {
+            if (RDB_tuple_set(objp, typ->def.tuple.attrv[i].name,
                     NULL, ecp) != RDB_OK)
                 return RDB_ERROR;
-            if (init_obj(RDB_tuple_get(objp, typ->var.tuple.attrv[i].name),
-                    typ->var.tuple.attrv[i].typ, ecp, txp) != RDB_OK)
+            if (init_obj(RDB_tuple_get(objp, typ->def.tuple.attrv[i].name),
+                    typ->def.tuple.attrv[i].typ, ecp, txp) != RDB_OK)
                 return RDB_ERROR;
         }
         typ = RDB_dup_nonscalar_type(typ, ecp);
@@ -598,8 +598,8 @@ init_obj(RDB_object *objp, RDB_type *typ, RDB_exec_context *ecp,
         RDB_obj_set_typeinfo(objp, typ);
     } else {
         /* Invoke selector */
-        if (typ->var.scalar.repc > 0) {
-            return init_obj_by_selector(objp, &typ->var.scalar.repv[0],
+        if (typ->def.scalar.repc > 0) {
+            return init_obj_by_selector(objp, &typ->def.scalar.repv[0],
                     ecp, txp);
         }
     }
@@ -1268,7 +1268,7 @@ exec_call(const RDB_parse_node *nodep, RDB_exec_context *ecp,
             if (varname != NULL) {
                 argpv[i] = lookup_var(varname, ecp);
             } else if (exp->kind == RDB_EX_TBP) {
-                argpv[i] = exp->var.tbref.tbp;
+                argpv[i] = exp->def.tbref.tbp;
             }
 
             /*
@@ -1573,7 +1573,8 @@ exec_while(RDB_parse_node *nodep, RDB_parse_node *labelp, RDB_exec_context *ecp,
                  * exit loop with RDB_OK
                  */
                 if (labelp != NULL
-                        && strcmp(labelp->exp->var.varname, leave_targetname) == 0) {
+                        && strcmp(RDB_expr_var_name(labelp->exp),
+                                leave_targetname) == 0) {
                     ret = RDB_OK;
                 }
             }
@@ -1601,9 +1602,10 @@ exec_for(const RDB_parse_node *nodep, const RDB_parse_node *labelp,
     int ret;
     RDB_object endval;
     RDB_expression *fromexp, *toexp;
-    RDB_object *varp = lookup_transient_var(nodep->exp->var.varname, current_varmapp);
+    RDB_object *varp = lookup_transient_var(RDB_expr_var_name(nodep->exp),
+            current_varmapp);
     if (varp == NULL) {
-        RDB_raise_name(nodep->exp->var.varname, ecp);
+        RDB_raise_name(RDB_expr_var_name(nodep->exp), ecp);
         return RDB_ERROR;
     }
 
@@ -1632,7 +1634,7 @@ exec_for(const RDB_parse_node *nodep, const RDB_parse_node *labelp,
         goto error;
     }
 
-    while (varp->var.int_val <= endval.var.int_val) {
+    while (RDB_obj_int(varp) <= RDB_obj_int(&endval)) {
         if (add_varmap(ecp) != RDB_OK)
             goto error;
 
@@ -1646,7 +1648,8 @@ exec_for(const RDB_parse_node *nodep, const RDB_parse_node *labelp,
                  * exit loop with RDB_OK
                  */
                 if (labelp != NULL
-                        && strcmp(labelp->exp->var.varname, leave_targetname) == 0) {
+                        && strcmp(RDB_expr_var_name(labelp->exp),
+                                leave_targetname) == 0) {
                     ret = RDB_OK;
                 }
             }
@@ -1664,7 +1667,7 @@ exec_for(const RDB_parse_node *nodep, const RDB_parse_node *labelp,
             RDB_raise_system("interrupted", ecp);
             goto error;
         }
-        varp->var.int_val++;
+        varp->val.int_val++;
     }
     RDB_destroy_obj(&endval, ecp);
     return RDB_OK;
@@ -1682,14 +1685,14 @@ resolve_target(const RDB_expression *exp, RDB_exec_context *ecp)
 
     if (opname != NULL) {
         if (strcmp(opname, "[]") == 0
-                && exp->var.op.args.firstp != NULL
-                && exp->var.op.args.firstp->nextp != NULL
-                && exp->var.op.args.firstp->nextp->nextp == NULL) {
+                && exp->def.op.args.firstp != NULL
+                && exp->def.op.args.firstp->nextp != NULL
+                && exp->def.op.args.firstp->nextp->nextp == NULL) {
             /* Resolve array subscription */
             RDB_int idx;
 
             /* Get first argument, which must be an array */
-            RDB_object *arrp = resolve_target(exp->var.op.args.firstp, ecp);
+            RDB_object *arrp = resolve_target(exp->def.op.args.firstp, ecp);
             if (arrp == NULL)
                 return NULL;
             if (RDB_obj_type(arrp) == NULL
@@ -1701,7 +1704,7 @@ resolve_target(const RDB_expression *exp, RDB_exec_context *ecp)
             /* Get second argument, which must be INTEGER */
             RDB_object idxobj;
             RDB_init_obj(&idxobj);
-            if (evaluate_retry(exp->var.op.args.firstp->nextp, ecp,
+            if (evaluate_retry(exp->def.op.args.firstp->nextp, ecp,
                     &idxobj) != RDB_OK) {
                 RDB_destroy_obj(&idxobj, ecp);
                 return NULL;
@@ -1936,7 +1939,7 @@ length_assign(const RDB_parse_node *nodep, RDB_exec_context *ecp)
 	opname = RDB_expr_op_name(exp);
 	if (opname == NULL || strcmp(opname, "LENGTH") != 0)
 		return NULL;
-	exp = exp->var.op.args.firstp;
+	exp = exp->def.op.args.firstp;
 	if (exp == NULL && exp->nextp != NULL)
 		return NULL;
 	return exp;
@@ -3136,7 +3139,7 @@ error:
 static int
 exec_leave(RDB_parse_node *nodep, RDB_exec_context *ecp)
 {
-    leave_targetname = nodep->exp->var.varname;
+    leave_targetname = nodep->exp->def.varname;
     return DURO_LEAVE;
 }
 
