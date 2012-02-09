@@ -76,7 +76,7 @@ static RDB_environment *envp = NULL;
 
 static tx_node *txnp = NULL;
 
-static char *leave_targetname;
+static const char *leave_targetname;
 
 static int
 add_varmap(RDB_exec_context *ecp)
@@ -277,7 +277,27 @@ static int
 disconnect_op(int argc, RDB_object *argv[], RDB_operator *op,
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
-    int ret = RDB_close_env(envp);
+    RDB_object *dbnameobjp;
+    int ret;
+
+    if (envp == NULL) {
+        RDB_raise_resource_not_found("no database environment", ecp);
+        return RDB_ERROR;
+    }
+
+    /* If a transaction is active, abort it */
+    if (txnp != NULL) {
+        ret = RDB_rollback(ecp, &txnp->tx);
+        txnp = NULL;
+        if (ret != RDB_OK)
+            return ret;
+
+        if (_RDB_parse_interactive)
+            printf("Transaction rolled back.\n");
+    }
+
+    /* Close DB environment */
+    ret = RDB_close_env(envp);
     envp = NULL;
     if (ret != RDB_OK) {
         RDB_errcode_to_error(ret, ecp, txp);
@@ -285,9 +305,12 @@ disconnect_op(int argc, RDB_object *argv[], RDB_operator *op,
         return RDB_ERROR;
     }
 
-    /* What about CURRENT_DB !!? */
-
-    return RDB_OK;
+    /* If CURRENT_DB was set, set it to empty string */
+    dbnameobjp = RDB_hashmap_get(&sys_module.varmap, "CURRENT_DB");
+    if (dbnameobjp == NULL || *RDB_obj_string(dbnameobjp) == '\0') {
+        return RDB_OK;
+    }
+    return RDB_string_to_obj(dbnameobjp, "", ecp);
 }
 
 static int
@@ -492,6 +515,8 @@ Duro_init_exec(RDB_exec_context *ecp, const char *dbname)
     if (RDB_string_to_obj(objp, dbname, ecp) != RDB_OK) {
         goto error;
     }
+
+    /* Create CURRENT_DB in system module */
     if (RDB_hashmap_put(&sys_module.varmap, "CURRENT_DB", objp) != RDB_OK) {
         RDB_destroy_obj(objp, ecp);
         RDB_raise_no_memory(ecp);
@@ -2196,7 +2221,6 @@ exec_begin_tx(RDB_exec_context *ecp)
         return RDB_OK;
     }
 
-
     txnp = RDB_alloc(sizeof(tx_node), ecp);
     if (txnp == NULL) {
         return RDB_ERROR;
@@ -3139,7 +3163,7 @@ error:
 static int
 exec_leave(RDB_parse_node *nodep, RDB_exec_context *ecp)
 {
-    leave_targetname = nodep->exp->def.varname;
+    leave_targetname = RDB_expr_var_name(nodep->exp);
     return DURO_LEAVE;
 }
 
