@@ -62,12 +62,29 @@ test deftype {user-defined types} -setup $DBSETUP -body {
 
         drop var V;
         drop type T;
+
+        type string5 possrep {value string} constraint length(the_value(string5)) <= 5;
+        implement type string5;
+
+        begin tx;
+
+        var s string5;
+        
+        s := string5('OK');
+        
+        try
+        	s := string5('Too long');
+        catch err TYPE_CONSTRAINT_VIOLATION_ERROR;
+            println('caught TYPE_CONSTRAINT_VIOLATION');
+        end try;
+        commit;
     }
 } -result {0
 0
 1
 2
 caught IN_USE
+caught TYPE_CONSTRAINT_VIOLATION
 }
 
 test defroop {read-only user-defined operators} -setup $DBSETUP -body {
@@ -200,7 +217,7 @@ test defupdop {user-defined update operators} -setup $DBSETUP -body {
 } -result {a = xyz, b = 1
 }
 
-test tconstraint {db/table constraints} -setup $DBSETUP -body {
+test dbconstraint {db/table constraints} -setup $DBSETUP -body {
     exec $testdir/../../dli/durodt -e dbenv << {
         current_db := 'D';
         begin transaction;

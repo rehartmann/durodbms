@@ -719,6 +719,58 @@ evaluate_retry_bool(RDB_expression *exp, RDB_exec_context *ecp, RDB_bool *result
     return RDB_OK;
 }
 
+/*
+ * Convert parse node into type. If the type cannot be found and no
+ * transaction was active, start a transaction and try again.
+ */
+static RDB_type *
+parse_node_to_type_retry(RDB_parse_node *nodep, RDB_exec_context *ecp)
+{
+    RDB_database *dbp;
+    RDB_transaction tx;
+    RDB_type *typ = RDB_parse_node_to_type(nodep, &get_var_type,
+            current_varmapp, ecp, txnp != NULL ? &txnp->tx : NULL);
+    /*
+     * Success or error different from NAME_ERROR
+     * -> return
+     */
+    if (typ != NULL)
+        return typ;
+    if (RDB_obj_type(RDB_get_err(ecp)) != &RDB_NAME_ERROR)
+        return NULL;
+    /*
+     * If a transaction is already active or no environment is
+     * available, give up
+     */
+    if (txnp != NULL || envp == NULL)
+        return NULL;
+    /*
+     * Start transaction and retry.
+     */
+    dbp = get_db(ecp);
+    if (dbp == NULL) {
+        dbp = RDB_get_sys_db(envp, ecp);
+        if (dbp == NULL)
+            return NULL;
+    }
+
+    if (RDB_begin_tx(ecp, &tx, dbp, NULL) != RDB_OK)
+        return NULL;
+    typ = RDB_parse_node_to_type(nodep, &get_var_type,
+                current_varmapp, ecp, &tx);
+    if (typ == NULL) {
+        RDB_commit(ecp, &tx);
+        return NULL;
+    }
+    if (RDB_commit(ecp, &tx) != RDB_OK) {
+        if (!RDB_type_is_scalar(typ)) {
+            RDB_drop_type(typ, ecp, NULL);
+            return NULL;
+        }
+    }
+    return typ;
+}
+
 static int
 exec_vardef(RDB_parse_node *nodep, RDB_exec_context *ecp)
 {
@@ -735,8 +787,7 @@ exec_vardef(RDB_parse_node *nodep, RDB_exec_context *ecp)
         if (initexp == NULL)
             return RDB_ERROR;
     } else {
-        typ = RDB_parse_node_to_type(nodep->nextp, &get_var_type,
-                current_varmapp, ecp, txp);
+        typ = parse_node_to_type_retry(nodep->nextp, ecp);
         if (typ == NULL)
             return RDB_ERROR;
         if (RDB_type_is_relation(typ)) {
@@ -1078,8 +1129,7 @@ exec_vardef_private(RDB_parse_node *nodep, RDB_exec_context *ecp)
         if (tbtyp == NULL)
             goto error;
     } else {
-        tbtyp = RDB_parse_node_to_type(nodep->nextp->nextp, &get_var_type,
-                current_varmapp, ecp, txp);
+        tbtyp = parse_node_to_type_retry(nodep->nextp->nextp, ecp);
         if (tbtyp == NULL)
             return RDB_ERROR;
         tbtyp = RDB_dup_nonscalar_type(tbtyp, ecp);
@@ -2303,7 +2353,7 @@ parserep_to_rep(const RDB_parse_node *nodep, RDB_possrep *rep,
         rep->compv[i].name = (char *) RDB_expr_var_name(np->exp);
         np = np->nextp;
         rep->compv[i].typ = (RDB_type *) RDB_parse_node_to_type(np, &get_var_type,
-                current_varmapp, ecp, txnp != NULL ? &txnp->tx : NULL);
+                current_varmapp, ecp, txp);
         if (rep->compv[i].typ == NULL)
             return RDB_ERROR;
         np = np->nextp;
@@ -2352,7 +2402,7 @@ exec_typedef(const RDB_parse_node *stmtp, RDB_exec_context *ecp)
         nodep = nodep->nextp;
     }
 
-    if (stmtp->nextp->nextp->kind != RDB_NODE_TOK) {
+    if (stmtp->nextp->nextp->val.token == TOK_CONSTRAINT) {
         constraintp = RDB_parse_node_expr(stmtp->nextp->nextp->nextp, ecp,
                 txnp != NULL ? &txnp->tx : NULL);
         if (constraintp == NULL)
@@ -3052,10 +3102,8 @@ exec_try(const RDB_parse_node *nodep, RDB_exec_context *ecp, return_info *retinf
                 if (catchp->val.children.firstp->nextp->nextp->kind
                 		!= RDB_NODE_TOK) {
                     /* Catch clause with type */
-                    typ = RDB_parse_node_to_type(
-                    		catchp->val.children.firstp->nextp->nextp,
-                    		&get_var_type, current_varmapp, ecp,
-                    		txnp != NULL ? &txnp->tx : NULL);
+                    typ = parse_node_to_type_retry(
+                    		catchp->val.children.firstp->nextp->nextp, ecp);
                     if (typ == NULL)
                     	return RDB_ERROR;
                     if (RDB_type_equals(errtyp, typ)) {
