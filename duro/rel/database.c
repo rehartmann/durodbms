@@ -1633,6 +1633,56 @@ RDB_add_table(RDB_object *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
     return RDB_OK;
 }
 
+static int
+load_getter(RDB_type *typ, const char *compname, RDB_exec_context *ecp,
+        RDB_transaction *txp)
+{
+    RDB_object opnameobj;
+    RDB_int cnt;
+
+    RDB_init_obj(&opnameobj);
+    if (RDB_string_to_obj(&opnameobj, typ->name, ecp) != RDB_OK)
+        goto error;
+    if (RDB_append_string(&opnameobj, "_get_", ecp) != RDB_OK)
+        goto error;
+    if (RDB_append_string(&opnameobj, compname, ecp) != RDB_OK)
+        goto error;
+
+    cnt = _RDB_cat_load_ro_op(RDB_obj_string(&opnameobj), ecp, txp);
+    if (cnt == (RDB_int) RDB_ERROR)
+        goto error;
+    return RDB_destroy_obj(&opnameobj, ecp);
+
+error:
+    RDB_destroy_obj(&opnameobj, ecp);
+    return RDB_ERROR;
+}
+
+static int
+load_setter(RDB_type *typ, const char *compname, RDB_exec_context *ecp,
+        RDB_transaction *txp)
+{
+    RDB_object opnameobj;
+    RDB_int cnt;
+
+    RDB_init_obj(&opnameobj);
+    if (RDB_string_to_obj(&opnameobj, typ->name, ecp) != RDB_OK)
+        goto error;
+    if (RDB_append_string(&opnameobj, "_set_", ecp) != RDB_OK)
+        goto error;
+    if (RDB_append_string(&opnameobj, compname, ecp) != RDB_OK)
+        goto error;
+
+    cnt = _RDB_cat_load_upd_op(RDB_obj_string(&opnameobj), ecp, txp);
+    if (cnt == (RDB_int) RDB_ERROR)
+        goto error;
+    return RDB_destroy_obj(&opnameobj, ecp);
+
+error:
+    RDB_destroy_obj(&opnameobj, ecp);
+    return RDB_ERROR;
+}
+
 /**
  * RDB_remove_table removes the table specified by <var>tbp</var> from the
 database the transaction specified by <var>txp</var> interacts with.
@@ -1696,8 +1746,11 @@ in which case the transaction may be implicitly rolled back.
 RDB_type *
 RDB_get_type(const char *name, RDB_exec_context *ecp, RDB_transaction *txp)
 {
+    RDB_type *typv[2];
+    RDB_operator *cmpop;
     RDB_type *typ;
     int ret;
+    int i;
 
     /*
      * search type in built-in type map
@@ -1740,6 +1793,47 @@ RDB_get_type(const char *name, RDB_exec_context *ecp, RDB_transaction *txp)
         RDB_raise_no_memory(ecp);
         return NULL;
     }
+
+    /*
+     * If it's a user-defined type, load selector etc.
+     */
+    for (i = 0; i < typ->def.scalar.repc; i++) {
+        int j;
+
+        if (_RDB_cat_load_ro_op(typ->def.scalar.repv[i].name, ecp, txp)
+                == (RDB_int) RDB_ERROR)
+            return NULL;
+
+        /* Load getters and setters */
+        for (j = 0; j < typ->def.scalar.repv[i].compc; j++) {
+            if (load_getter(typ, typ->def.scalar.repv[i].compv[j].name, ecp, txp)
+                    != RDB_OK)
+                return NULL;
+            if (load_setter(typ, typ->def.scalar.repv[i].compv[j].name, ecp, txp)
+                    != RDB_OK)
+                return NULL;
+        }
+    }
+
+    /*
+     * Search for comparison function (after type was put into type map
+     * so the type is available)
+     */
+    typv[0] = typ;
+    typv[1] = typ;
+    cmpop = _RDB_get_ro_op("CMP", 2, typv, NULL, ecp, txp);
+    if (cmpop != NULL) {
+        typ->compare_op = cmpop;
+    } else {
+        RDB_object *errp = RDB_get_err(ecp);
+        if (errp != NULL
+                && RDB_obj_type(errp) != &RDB_OPERATOR_NOT_FOUND_ERROR
+                && RDB_obj_type(errp) != &RDB_TYPE_MISMATCH_ERROR) {
+            return NULL;
+        }
+        RDB_clear_err(ecp);
+    }
+
     return typ;
 }
 

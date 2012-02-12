@@ -51,6 +51,9 @@ test deftype {user-defined types} -setup $DBSETUP -body {
         println(the_a(V));
         println(the_b(V));
 
+        the_a(V) := 5;
+        println(the_a(V));
+
         commit;
 
         -- Dropping T must fail because V still exists
@@ -83,6 +86,7 @@ test deftype {user-defined types} -setup $DBSETUP -body {
 0
 1
 2
+5
 caught IN_USE
 caught TYPE_CONSTRAINT_VIOLATION
 }

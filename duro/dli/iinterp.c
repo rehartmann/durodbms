@@ -576,7 +576,8 @@ init_obj_by_selector(RDB_object *objp, RDB_possrep *rep,
     }
 
     /* Call selector */
-    ret = RDB_call_ro_op_by_name(rep->name, rep->compc, objpv, ecp, txp, objp);
+    ret = RDB_call_ro_op_by_name_e(rep->name, rep->compc, objpv, envp, ecp,
+            txp, objp);
 
 cleanup:
     for (i = 0; i < rep->compc; i++)
@@ -2001,8 +2002,12 @@ node_to_delete(RDB_ma_delete *delp, RDB_parse_node *nodep, RDB_exec_context *ecp
     return RDB_OK;
 }
 
+/*
+ * Check if the first child of nodep is an operator invocation with one argument
+ * and return it as an expression if it is.
+ */
 static const RDB_expression *
-length_assign(const RDB_parse_node *nodep, RDB_exec_context *ecp)
+op_assign(const RDB_parse_node *nodep, RDB_exec_context *ecp)
 {
 	RDB_expression *exp;
 	const char *opname;
@@ -2011,13 +2016,117 @@ length_assign(const RDB_parse_node *nodep, RDB_exec_context *ecp)
 		return NULL;
 
 	exp = RDB_parse_node_expr(tnodep, ecp, txnp != NULL ? &txnp->tx : NULL);
+	if (exp->kind == RDB_EX_GET_COMP)
+	    return exp;
 	opname = RDB_expr_op_name(exp);
-	if (opname == NULL || strcmp(opname, "LENGTH") != 0)
+	if (opname == NULL)
 		return NULL;
-	exp = exp->def.op.args.firstp;
-	if (exp == NULL && exp->nextp != NULL)
-		return NULL;
-	return exp;
+	return exp->def.op.args.firstp != NULL
+	        && exp->def.op.args.firstp->nextp == NULL ? exp : NULL;
+}
+
+static int
+exec_length_assign(const RDB_parse_node *nodep, const RDB_expression *argexp,
+        RDB_exec_context *ecp)
+{
+    RDB_type *arrtyp;
+    RDB_expression *srcexp;
+    RDB_object *arrp;
+    RDB_object lenobj;
+    RDB_int len;
+    RDB_int olen;
+
+    if (nodep->nextp != NULL) {
+        RDB_raise_syntax("only single assignment of array length permitted", ecp);
+        return RDB_ERROR;
+    }
+    arrp = resolve_target(argexp, ecp);
+    if (arrp == NULL)
+        return RDB_ERROR;
+
+    arrtyp = RDB_obj_type(arrp);
+    if (arrtyp == NULL || !RDB_type_is_array(arrtyp)) {
+        RDB_raise_syntax("unsupported assignment", ecp);
+        return RDB_ERROR;
+    }
+    olen = RDB_array_length(arrp, ecp);
+    if (olen < 0)
+        return RDB_ERROR;
+
+    RDB_init_obj(&lenobj);
+    srcexp = RDB_parse_node_expr(nodep->val.children.firstp->nextp->nextp, ecp,
+            txnp != NULL ? &txnp->tx : NULL);
+    if (srcexp == NULL)
+        return RDB_ERROR;
+    if (evaluate_retry(srcexp, ecp, &lenobj) != RDB_OK) {
+        RDB_destroy_obj(&lenobj, ecp);
+        return RDB_ERROR;
+    }
+    if (RDB_obj_type(&lenobj) != &RDB_INTEGER) {
+        RDB_raise_type_mismatch("array length must be INTEGER", ecp);
+        RDB_destroy_obj(&lenobj, ecp);
+        return RDB_ERROR;
+    }
+    len = RDB_obj_int(&lenobj);
+    RDB_destroy_obj(&lenobj, ecp);
+    if (RDB_set_array_length(arrp, len, ecp) != RDB_OK) {
+        return RDB_ERROR;
+    }
+
+    /* Initialize new elements */
+    if (len > olen) {
+        int i;
+        RDB_type *basetyp = RDB_base_type(arrtyp);
+        for (i = olen; i < len; i++) {
+            RDB_object *elemp = RDB_array_get(arrp, i, ecp);
+            if (elemp == NULL)
+                return RDB_ERROR;
+
+            if (init_obj(elemp, basetyp, ecp,
+                    txnp != NULL ? &txnp->tx : NULL) != RDB_OK)
+                return RDB_ERROR;
+        }
+    }
+
+    return RDB_OK;
+}
+
+/*
+ * Execute assignment to THE_XXX(...)
+ */
+static int
+exec_the_assign(const RDB_parse_node *nodep, const RDB_expression *opexp,
+        RDB_exec_context *ecp)
+{
+    int ret;
+    RDB_object *argp;
+    RDB_expression *srcexp;
+    RDB_object srcobj;
+    RDB_expression *argexp = opexp->def.op.args.firstp;
+
+    if (nodep->nextp != NULL) {
+        RDB_raise_syntax("only single assignment of THE_ operator permitted", ecp);
+        return RDB_ERROR;
+    }
+    argp = resolve_target(argexp, ecp);
+    if (argp == NULL)
+        return RDB_ERROR;
+
+    srcexp = RDB_parse_node_expr(nodep->val.children.firstp->nextp->nextp, ecp,
+            txnp != NULL ? &txnp->tx : NULL);
+    if (srcexp == NULL)
+        return RDB_ERROR;
+
+    RDB_init_obj(&srcobj);
+    if (evaluate_retry(srcexp, ecp, &srcobj) != RDB_OK) {
+        RDB_destroy_obj(&srcobj, ecp);
+        return RDB_ERROR;
+    }
+
+    ret = RDB_obj_set_comp(argp, opexp->def.op.name, &srcobj, envp, ecp,
+            txnp != NULL ? &txnp->tx : NULL);
+    RDB_destroy_obj(&srcobj, ecp);
+    return ret;
 }
 
 static int
@@ -2025,7 +2134,7 @@ exec_assign(const RDB_parse_node *nodep, RDB_exec_context *ecp)
 {
     int i;
     int cnt;
-    const RDB_expression *arrexp;
+    const RDB_expression *opexp;
     RDB_ma_copy copyv[DURO_MAX_LLEN];
     RDB_ma_insert insv[DURO_MAX_LLEN];
     RDB_ma_update updv[DURO_MAX_LLEN];
@@ -2040,65 +2149,18 @@ exec_assign(const RDB_parse_node *nodep, RDB_exec_context *ecp)
     int attrupdc = 0;
 
     /*
-     * Special handling for setting array length
+     * Special handling for setting array length and THE_ operator
      */
-    arrexp = length_assign(nodep, ecp);
-    if (arrexp != NULL) {
-    	if (nodep->nextp != NULL) {
-    		RDB_raise_syntax("only single assignment of array length permitted", ecp);
-    		return RDB_ERROR;
-    	}
-    	RDB_type *arrtyp;
-    	RDB_expression *srcexp;
-    	RDB_object *arrp = resolve_target(arrexp, ecp);
-    	if (arrp == NULL)
-    		return RDB_ERROR;
-
-        arrtyp = RDB_obj_type(arrp);
-        if (arrtyp != NULL && RDB_type_is_array(arrtyp)) {
-            RDB_object lenobj;
-            RDB_int len;
-            RDB_int olen = RDB_array_length(arrp, ecp);
-            if (olen < 0)
-                return RDB_ERROR;
-
-            RDB_init_obj(&lenobj);
-            srcexp = RDB_parse_node_expr(nodep->val.children.firstp->nextp->nextp, ecp,
-                    txnp != NULL ? &txnp->tx : NULL);
-            if (srcexp == NULL)
-            	return RDB_ERROR;
-            if (evaluate_retry(srcexp, ecp, &lenobj) != RDB_OK) {
-                RDB_destroy_obj(&lenobj, ecp);
-                return RDB_ERROR;
+    opexp = op_assign(nodep, ecp);
+    if (opexp != NULL) {
+        const char *opname = RDB_expr_op_name(opexp);
+        if (opname != NULL) {
+            if (strcmp(opname, "LENGTH") == 0) {
+                return exec_length_assign(nodep, opexp->def.op.args.firstp, ecp);
             }
-            if (RDB_obj_type(&lenobj) != &RDB_INTEGER) {
-                RDB_raise_type_mismatch("array length must be INTEGER", ecp);
-                RDB_destroy_obj(&lenobj, ecp);
-                return RDB_ERROR;
-            }
-            len = RDB_obj_int(&lenobj);
-            RDB_destroy_obj(&lenobj, ecp);
-            if (RDB_set_array_length(arrp, len, ecp) != RDB_OK) {
-                return RDB_ERROR;
-            }
-
-            /* Initialize new elements */
-            if (len > olen) {
-                int i;
-                RDB_type *basetyp = RDB_base_type(arrtyp);
-                for (i = olen + 1; i < len; i++) {
-                    RDB_object *elemp = RDB_array_get(arrp, i, ecp);
-                    if (elemp == NULL)
-                        return RDB_ERROR;
-
-                    if (init_obj(elemp, basetyp, ecp,
-                            txnp != NULL ? &txnp->tx : NULL) != RDB_OK)
-                        return RDB_ERROR;
-                }
-            }
-
-            return RDB_OK;
         }
+        if (opexp->kind == RDB_EX_GET_COMP)
+            return exec_the_assign(nodep, opexp, ecp);
     }
 
     /*
@@ -3435,7 +3497,7 @@ Duro_print_error(const RDB_object *errobjp)
 
     fputs(RDB_type_name(errtyp), stdout);
 
-    if (RDB_obj_comp(errobjp, "MSG", &msgobj, &ec, NULL) == RDB_OK) {
+    if (RDB_obj_comp(errobjp, "MSG", &msgobj, NULL, &ec, NULL) == RDB_OK) {
         printf(": %s", RDB_obj_string(&msgobj));
     }
 

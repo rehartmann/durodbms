@@ -717,12 +717,13 @@ RDB_append_string(RDB_object *, const char *, RDB_exec_context *);
 
 int
 RDB_obj_comp(const RDB_object *, const char *compname,
-                   RDB_object *comp, RDB_exec_context *, RDB_transaction *);
+                   RDB_object *comp, RDB_environment *,
+                   RDB_exec_context *, RDB_transaction *);
 
 int
 RDB_obj_set_comp(RDB_object *, const char *compname,
-                 const RDB_object *comp, RDB_exec_context *,
-                 RDB_transaction *);
+                 const RDB_object *comp, RDB_environment *,
+                 RDB_exec_context *, RDB_transaction *);
 
 RDB_bool
 RDB_obj_bool(const RDB_object *);

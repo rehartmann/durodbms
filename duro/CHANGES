@@ -5,7 +5,7 @@ Summary of Changes for Duro
 Changes for Duro 0.15
 
 - Explicit BEGIN TRANSACTION no longer required in Duro D/T for invoking
-  user-defined operators.
+  user-defined operators and using user-defined types.
 
 - Trace output can be enabled using RDB_env_trace() and TRACE().
 

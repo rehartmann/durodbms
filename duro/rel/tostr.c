@@ -154,7 +154,8 @@ append_utype_obj(RDB_object *objp, const RDB_object *srcp,
         }
 
         RDB_init_obj(&compobj);
-        ret = RDB_obj_comp(srcp, possrep->compv[i].name, &compobj, ecp, txp);
+        ret = RDB_obj_comp(srcp, possrep->compv[i].name, &compobj, NULL,
+                ecp, txp);
         if (ret != RDB_OK) {
             RDB_destroy_obj(&compobj, ecp);
             return ret;

@@ -458,7 +458,7 @@ RDB_evaluate(RDB_expression *exp, RDB_getobjfn *getfnp, void *getdata,
                  RDB_destroy_obj(&obj, ecp);
                  return RDB_ERROR;
             }
-            ret = RDB_obj_comp(&obj, exp->def.op.name, valp, ecp, txp);
+            ret = RDB_obj_comp(&obj, exp->def.op.name, valp, envp, ecp, txp);
             RDB_destroy_obj(&obj, ecp);
             return ret;
         }

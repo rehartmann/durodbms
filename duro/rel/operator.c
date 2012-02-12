@@ -671,15 +671,14 @@ RDB_get_update_op_e(const char *name, int argc, RDB_type *argtv[],
         return NULL;
 
     RDB_clear_err(ecp);
-    op = _RDB_cat_get_upd_op(name, argc, argtv, ecp, txp);
+    if (_RDB_cat_load_upd_op(name, ecp, txp) == (RDB_int) RDB_ERROR)
+        return NULL;
+
+    op = RDB_get_op(&dbrootp->upd_opmap, name, argc, argtv, ecp);
     if (op == NULL) {
         if (RDB_obj_type(RDB_get_err(ecp)) == &RDB_NOT_FOUND_ERROR) {
             RDB_raise_operator_not_found(name, ecp);
         }
-        return NULL;
-    }
-    if (RDB_put_op(&txp->dbp->dbrootp->upd_opmap, op, ecp) != RDB_OK) {
-        RDB_free_op_data(op, ecp);
         return NULL;
     }
     if (RDB_env_trace(txp->envp) > 0) {
@@ -1066,6 +1065,11 @@ _RDB_get_ro_op(const char *name, int argc, RDB_type *argtv[],
     if (op != NULL)
         return op;
 
+    /*
+     * If search in builtin type map failed due to a type mismatch,
+     * keep that info and use it later to raise TYPE_MISMATCH_ERROR
+     * instead of OPERATOR_NOT_FOUND_ERROR.
+     */
     errtyp = RDB_obj_type(RDB_get_err(ecp));
     if (errtyp != &RDB_OPERATOR_NOT_FOUND_ERROR
             && errtyp != &RDB_TYPE_MISMATCH_ERROR) {
@@ -1092,7 +1096,7 @@ _RDB_get_ro_op(const char *name, int argc, RDB_type *argtv[],
         }
         return NULL;
     }
-     
+
     /* Lookup operator in dbroot map */
     op = RDB_get_op(&dbrootp->ro_opmap, name, argc, argtv, ecp);
     if (op != NULL) {
@@ -1108,12 +1112,12 @@ _RDB_get_ro_op(const char *name, int argc, RDB_type *argtv[],
     if (errtyp == &RDB_TYPE_MISMATCH_ERROR) {
         typmismatch = RDB_TRUE;
     }
-    RDB_clear_err(ecp);
 
     /*
      * Provide "=" and "<>" for user-defined types
      */
-    if (argc == 2 && RDB_type_equals(argtv[0], argtv[1])) {
+    if (argc == 2 && RDB_type_is_scalar(argtv[0])
+            && !argtv[0]->def.scalar.builtin && RDB_type_equals(argtv[0], argtv[1])) {
         int ret;
 
         if (strcmp(name, "=") == 0) {
@@ -1148,28 +1152,17 @@ _RDB_get_ro_op(const char *name, int argc, RDB_type *argtv[],
 
     RDB_clear_err(ecp);
 
-    op = _RDB_cat_get_ro_op(name, argc, argtv, ecp, txp);
+    if (_RDB_cat_load_ro_op(name, ecp, txp) == (RDB_int) RDB_ERROR) {
+        return NULL;
+    }
+    op = RDB_get_op(&dbrootp->ro_opmap, name, argc, argtv, ecp);
     if (op == NULL) {
-        if (RDB_obj_type(RDB_get_err(ecp)) == &RDB_NOT_FOUND_ERROR) {
+        if (RDB_obj_type(RDB_get_err(ecp)) == &RDB_OPERATOR_NOT_FOUND_ERROR) {
             if (typmismatch) {
                 RDB_raise_type_mismatch(name, ecp);
-            } else {
-                RDB_raise_operator_not_found(name, ecp);
             }
         }
         return NULL;
-    }
-
-    /* Insert operator into dbroot map */
-    if (RDB_put_op(&dbrootp->ro_opmap, op, ecp) != RDB_OK) {
-        RDB_free_op_data(op, ecp);
-        return NULL;
-    }
-
-    if (RDB_env_trace(txp->envp) > 0) {
-        fputs("Read-only operator ", stderr);
-        fputs(name, stderr);
-        fputs(" loaded from catalog\n", stderr);
     }
 
     return op;

@@ -18,14 +18,11 @@ POINT(int argc, RDB_object *argv[], RDB_operator *op, RDB_exec_context *ecp,
         RDB_transaction *txp, RDB_object *valp)
 {
     i_point ipt;
-    RDB_type *typ = RDB_get_type("POINT", ecp, txp);
-    if (typ == NULL)
-        return RDB_ERROR;
 
     ipt.x = RDB_obj_float(argv[0]);
     ipt.y = RDB_obj_float(argv[1]);
 
-    return RDB_irep_to_obj(valp, typ, &ipt, sizeof ipt, ecp);
+    return RDB_irep_to_obj(valp, RDB_return_type(op), &ipt, sizeof ipt, ecp);
 }
 
 int
@@ -83,14 +80,11 @@ POLAR(int argc, RDB_object *argv[], RDB_operator *op, RDB_exec_context *ecp,
     i_point ipt;
     double th = (double) RDB_obj_float(argv[0]);
     double len = (double) RDB_obj_float(argv[1]);
-    RDB_type *typ = RDB_get_type("POINT", ecp, txp);
-    if (typ == NULL)
-        return RDB_ERROR;
 
     ipt.x = cos(th) * len;
     ipt.y = sin(th) * len;
 
-    return RDB_irep_to_obj(valp, typ, &ipt, sizeof ipt, ecp);
+    return RDB_irep_to_obj(valp, RDB_return_type(op), &ipt, sizeof ipt, ecp);
 }
 
 int

@@ -11,6 +11,7 @@
 #include "internal.h"
 #include "stable.h"
 #include "serialize.h"
+#include "qresult.h"
 
 #include <gen/strfns.h>
 #include <string.h>
@@ -2133,8 +2134,6 @@ _RDB_cat_get_type(const char *name, RDB_exec_context *ecp,
     RDB_object *typedatap;
     int ret, tret;
     int i;
-    RDB_type *typv[2];
-    RDB_operator *cmpop;
 
     RDB_init_obj(&tpl);
     RDB_init_obj(&possreps);
@@ -2232,22 +2231,6 @@ _RDB_cat_get_type(const char *name, RDB_exec_context *ecp,
             goto error;
     }
 
-    /* Search for comparison function */
-    typv[0] = typ;
-    typv[1] = typ;
-    cmpop = _RDB_get_ro_op("CMP", 2, typv, NULL, ecp, txp);
-    if (cmpop != NULL) {
-        typ->compare_op = cmpop;
-    } else {
-        RDB_object *errp = RDB_get_err(ecp);
-        if (errp != NULL
-                && RDB_obj_type(errp) != &RDB_OPERATOR_NOT_FOUND_ERROR
-                && RDB_obj_type(errp) != &RDB_TYPE_MISMATCH_ERROR) {
-            goto error;
-        }
-        RDB_clear_err(ecp);
-    }
-
     *typp = typ;
 
     ret = RDB_drop_table(tmptb1p, ecp, txp);
@@ -2281,117 +2264,47 @@ error:
     return RDB_ERROR;
 }
 
-int
-_RDB_make_typesobj(int argc, RDB_type *argtv[], RDB_exec_context *ecp,
-        RDB_object *objp)
-{
+/*
+ * Convert tuple to operator (without return type)
+ */
+static RDB_operator *
+tuple_to_operator(const char *name, const RDB_object *tplp,
+        RDB_exec_context *ecp, RDB_transaction *txp) {
     int i;
-    int ret;
-    RDB_object typeobj;
+    const char *libname;
+    RDB_object *typobjp;
+    RDB_operator *op;
+    RDB_int argc;
+    RDB_type **argtv = NULL;
+    RDB_object *typarrp = RDB_tuple_get(tplp, "ARGTYPES");
 
-    RDB_set_array_length(objp, argc, ecp);
-    RDB_init_obj(&typeobj);
-    for (i = 0; i < argc; i++) {
-        ret = _RDB_type_to_binobj(&typeobj, argtv[i], ecp);
-        if (ret != RDB_OK) {
-            RDB_destroy_obj(&typeobj, ecp);
-            return ret;
+    argc = RDB_array_length(typarrp, ecp);
+    if (argc == (RDB_int) RDB_ERROR)
+        return NULL;
+
+    /* Read types from tuple */
+    if (argc > 0) {
+        argtv = RDB_alloc(sizeof(RDB_type *) * argc, ecp);
+        if (argtv == NULL)
+            return NULL;
+        for (i = 0; i < argc; i++) {
+            typobjp = RDB_array_get(typarrp, i, ecp);
+            if (typobjp == NULL)
+                goto error;
+            argtv[i] = _RDB_binobj_to_type(typobjp, ecp, txp);
+            if (argtv[i] == NULL)
+                goto error;
         }
-        ret = RDB_array_set(objp, (RDB_int) i, &typeobj, ecp);
-        if (ret != RDB_OK) {
-            RDB_destroy_obj(&typeobj, ecp);
-            return ret;
-        }
     }
-    return RDB_destroy_obj(&typeobj, ecp);
-}
-
-/* Read read-only operator from database */
-RDB_operator *
-_RDB_cat_get_ro_op(const char *name, int argc, RDB_type *argtv[],
-        RDB_exec_context *ecp, RDB_transaction *txp)
-{
-    RDB_expression *exp, *wexp, *argp;
-    RDB_object *vtbp;
-    RDB_object tpl;
-    RDB_object typesobj;
-    int ret;
-    RDB_type *rtyp;
-    char *libname, *symname;
-    RDB_operator *op = NULL;
-
-    RDB_init_obj(&typesobj);
-    ret = _RDB_make_typesobj(argc, argtv, ecp, &typesobj);
-    if (ret != RDB_OK) {
-        RDB_destroy_obj(&typesobj, ecp);
-        return NULL;
-    }
-
-    exp = RDB_ro_op("AND", ecp);
-    if (exp == NULL) {
-        RDB_destroy_obj(&typesobj, ecp);
-        return NULL;
-    }
-    argp = RDB_eq(RDB_var_ref("NAME", ecp),
-            RDB_string_to_expr(name, ecp), ecp);
-    if (argp == NULL) {
-        RDB_drop_expr(exp, ecp);
-        RDB_destroy_obj(&typesobj, ecp);
-        return NULL;
-    }
-    RDB_add_arg(exp, argp);
-    RDB_obj_set_typeinfo(&typesobj, ro_ops_attrv[1].typ); /* Set array type */
-    argp = RDB_eq(RDB_var_ref("ARGTYPES", ecp),
-            RDB_obj_to_expr(&typesobj, ecp), ecp);
-    RDB_destroy_obj(&typesobj, ecp);
-    if (argp == NULL) {
-        RDB_drop_expr(exp, ecp);
-        return NULL;
-    }
-    RDB_add_arg(exp, argp);
-
-    wexp = RDB_ro_op("WHERE", ecp);
-    if (wexp == NULL) {
-        RDB_drop_expr(exp, ecp);
-        return NULL;
-    }
-    argp = RDB_table_ref(txp->dbp->dbrootp->ro_ops_tbp, ecp);
-    if (argp == NULL) {
-        RDB_drop_expr(wexp, ecp);
-        RDB_drop_expr(exp, ecp);
-        return NULL;
-    }
-    RDB_add_arg(wexp, argp);
-    RDB_add_arg(wexp, exp);
-
-    vtbp = RDB_expr_to_vtable(wexp, ecp, txp);
-    if (vtbp == NULL) {
-        RDB_drop_expr(wexp, ecp);
-        return NULL;
-    }
-    RDB_init_obj(&tpl);
-    ret = RDB_extract_tuple(vtbp, ecp, txp, &tpl);
-    RDB_drop_table(vtbp, ecp, txp);
-    if (ret != RDB_OK)
-        goto error;
-
-    rtyp = _RDB_binobj_to_type(RDB_tuple_get(&tpl, "RTYPE"), ecp, txp);
-    if (rtyp == NULL) {
-        goto error;
-    }
-
-    op = _RDB_new_operator(name, argc, argtv, rtyp, ecp);
+    op = _RDB_new_operator(name, argc, argtv, NULL, ecp);
     if (op == NULL)
         goto error;
-    op->opfn.ro_fp = NULL;
 
     RDB_init_obj(&op->iarg);
-
-    ret = RDB_copy_obj(&op->iarg, RDB_tuple_get(&tpl, "IARG"), ecp);
-    if (ret != RDB_OK)
+    if (RDB_copy_obj(&op->iarg, RDB_tuple_get(tplp, "IARG"), ecp) != RDB_OK)
         goto error;
 
-    libname = RDB_tuple_get_string(&tpl, "LIB");
+    libname = RDB_tuple_get_string(tplp, "LIB");
     if (libname[0] != '\0') {
         op->modhdl = lt_dlopenext(libname);
         if (op->modhdl == NULL) {
@@ -2401,156 +2314,228 @@ _RDB_cat_get_ro_op(const char *name, int argc, RDB_type *argtv[],
     } else {
         op->modhdl = NULL;
     }
-    symname = RDB_tuple_get_string(&tpl, "SYMBOL");
-    if (strcmp(symname, "_RDB_sys_select") == 0) {
-        op->opfn.ro_fp = &_RDB_sys_select;
-    } else {
-        op->opfn.ro_fp = (RDB_ro_op_func *) lt_dlsym(op->modhdl, symname);
-        if (op->opfn.ro_fp == NULL) {
-            RDB_raise_resource_not_found(symname, ecp);
-            goto error;
-        }
-    }
-
-    RDB_destroy_obj(&tpl, ecp);
-
     return op;
 
 error:
-    if (op != NULL) {
-        RDB_free_op_data(op, ecp);
+    if (argtv != NULL) {
+        for (i = 0; i < argc; i++) {
+            if (argtv[i] != NULL && !RDB_type_is_scalar(argtv[i]))
+                RDB_drop_type(argtv[i], ecp, NULL);
+        }
+        RDB_free(argtv);
     }
-
-    RDB_destroy_obj(&tpl, ecp);
     return NULL;
-}
+} /* tuple_to_operator */
 
-/* Read update operator from database */
-RDB_operator *
-_RDB_cat_get_upd_op(const char *name, int argc, RDB_type *argtv[],
-        RDB_exec_context *ecp, RDB_transaction *txp)
+/*
+ * Read all read-only operators with specified name from database.
+ * Return the number of operators loaded or RDB_ERROR if an error occured.
+ */
+RDB_int
+_RDB_cat_load_ro_op(const char *name, RDB_exec_context *ecp, RDB_transaction *txp)
 {
     RDB_expression *exp, *wexp, *argp;
+    RDB_qresult *qrp;
+    const char *symname;
     RDB_object *vtbp;
     RDB_object tpl;
     RDB_object typesobj;
-    int i;
     int ret;
-    char *libname, *symname;
-    RDB_operator *op = NULL;
-    RDB_object *updvobjp, *updobjp;
+    RDB_operator *op;
+    RDB_int opcount = 0;
 
-    RDB_init_obj(&typesobj);
-    ret = _RDB_make_typesobj(argc, argtv, ecp, &typesobj);
-    if (ret != RDB_OK) {
-        RDB_destroy_obj(&typesobj, ecp);
-        return NULL;
-    }
-        
-    exp = RDB_ro_op("AND", ecp);
-    if (exp == NULL) {
-        RDB_destroy_obj(&typesobj, ecp);
-        return NULL;
-    }
-    argp = RDB_eq(RDB_var_ref("NAME", ecp),
+    /*
+     * Create virtual table SYS_RO_OPS WHERE NAME=<name>
+     */
+    exp = RDB_eq(RDB_var_ref("NAME", ecp),
             RDB_string_to_expr(name, ecp), ecp);
-    if (argp == NULL) {
+    if (exp == NULL) {
         RDB_drop_expr(exp, ecp);
         RDB_destroy_obj(&typesobj, ecp);
-        return NULL;
+        return RDB_ERROR;
     }
-    RDB_add_arg(exp, argp);
-    RDB_obj_set_typeinfo(&typesobj, upd_ops_attrv[1].typ); /* Set array type */
-    argp = RDB_eq(RDB_var_ref("ARGTYPES", ecp),
-                   RDB_obj_to_expr(&typesobj, ecp), ecp);
-    RDB_destroy_obj(&typesobj, ecp);
-    if (argp == NULL) {
-        RDB_drop_expr(exp, ecp);
-        return NULL;
-    }
-    RDB_add_arg(exp, argp);
 
     wexp = RDB_ro_op("WHERE", ecp);
     if (wexp == NULL) {
         RDB_drop_expr(exp, ecp);
-        return NULL;
+        return RDB_ERROR;
     }
-    argp = RDB_table_ref(txp->dbp->dbrootp->upd_ops_tbp, ecp);
+    argp = RDB_table_ref(txp->dbp->dbrootp->ro_ops_tbp, ecp);
     if (argp == NULL) {
         RDB_drop_expr(wexp, ecp);
         RDB_drop_expr(exp, ecp);
-        return NULL;
+        return RDB_ERROR;
     }
     RDB_add_arg(wexp, argp);
     RDB_add_arg(wexp, exp);
 
     vtbp = RDB_expr_to_vtable(wexp, ecp, txp);
     if (vtbp == NULL) {
-        RDB_drop_expr(exp, ecp);
-        return NULL;
+        RDB_drop_expr(wexp, ecp);
+        return RDB_ERROR;
+    }
+    qrp = _RDB_table_qresult(vtbp, ecp, txp);
+    if (qrp == NULL) {
+        RDB_drop_table(vtbp, ecp, txp);
+        return RDB_ERROR;
     }
     RDB_init_obj(&tpl);
-    ret = RDB_extract_tuple(vtbp, ecp, txp, &tpl);
-    RDB_drop_table(vtbp, ecp, txp);
-    if (ret != RDB_OK)
-        goto error;
 
-    /* Allocate RDB_operator */
-    op = _RDB_new_operator(name, argc, argtv, NULL, ecp);
-    if (op == NULL) {
-        goto error;
-    }
-    op->opfn.ro_fp = NULL;
-
-    RDB_init_obj(&op->iarg);
-
-    ret = RDB_copy_obj(&op->iarg, RDB_tuple_get(&tpl, "IARG"), ecp);
-    if (ret != RDB_OK)
-        goto error;
-
-    updvobjp = RDB_tuple_get(&tpl, "UPDV");
-    for (i = 0; i < argc; i++) {
-        updobjp = RDB_array_get(updvobjp, (RDB_int) i, ecp);
-        if (updobjp == NULL)
+    /* Read tuples and convert them to operators */
+    while (_RDB_next_tuple(qrp, &tpl, ecp, txp) == RDB_OK) {
+        op = tuple_to_operator(name, &tpl, ecp, txp);
+        if (op == NULL)
             goto error;
-        op->paramv[i].update = RDB_obj_bool(updobjp);
-    }
-        
-    libname = RDB_tuple_get_string(&tpl, "LIB");
-    op->modhdl = lt_dlopenext(libname);
-    if (op->modhdl == NULL) {
-        RDB_raise_resource_not_found(libname, ecp);
-        goto error;
-    }
-    symname = RDB_tuple_get_string(&tpl, "SYMBOL");
-    op->opfn.upd_fp = (RDB_upd_op_func *) lt_dlsym(op->modhdl, symname);
-    if (op->opfn.upd_fp == NULL) {
-        RDB_raise_resource_not_found(libname, ecp);
-        goto error;
-    }
 
-    RDB_destroy_obj(&tpl, ecp);
-
-    return op;
-
-error:
-    if (op != NULL) {
-        if (op->name != NULL)
-            RDB_free(op->name);
-        RDB_destroy_obj(&op->iarg, ecp);
-        if (op->paramv != NULL) {
-            for (i = 0; i < op->paramc; i++) {
-                if (op->paramv[i].typ != NULL
-                       && !RDB_type_is_scalar(op->paramv[i].typ)) {
-                    RDB_drop_type(op->paramv[i].typ, ecp, NULL);
-                }
+        /* Return type */
+        op->rtyp = _RDB_binobj_to_type(RDB_tuple_get(&tpl, "RTYPE"), ecp, txp);
+        if (op->rtyp == NULL) {
+            RDB_free_op_data(op, ecp);
+            goto error;
+        }
+        symname = RDB_tuple_get_string(&tpl, "SYMBOL");
+        if (strcmp(symname, "_RDB_sys_select") == 0) {
+            op->opfn.ro_fp = &_RDB_sys_select;
+        } else {
+            op->opfn.ro_fp = (RDB_ro_op_func *) lt_dlsym(op->modhdl, symname);
+            if (op->opfn.ro_fp == NULL) {
+                RDB_raise_resource_not_found(symname, ecp);
+                RDB_free_op_data(op, ecp);
+                goto error;
             }
         }
-        RDB_free(op);
+
+        if (RDB_put_op(&txp->dbp->dbrootp->ro_opmap, op, ecp) != RDB_OK) {
+            RDB_free_op_data(op, ecp);
+            goto error;
+        }
+        if (RDB_env_trace(txp->envp) > 0) {
+            fputs("Read-only operator ", stderr);
+            fputs(name, stderr);
+            fputs(" loaded from catalog\n", stderr);
+        }
+        opcount++;
     }
+    if (RDB_obj_type(RDB_get_err(ecp)) != &RDB_NOT_FOUND_ERROR) {
+        return RDB_ERROR;
+    }
+    RDB_clear_err(ecp);
+    ret = RDB_drop_table(vtbp, ecp, txp);
+    if (ret != RDB_OK)
+        goto error;
 
     RDB_destroy_obj(&tpl, ecp);
-    return NULL;
+    return opcount;
+
+error:
+    RDB_drop_table(vtbp, ecp, txp);
+    RDB_destroy_obj(&tpl, ecp);
+    return RDB_ERROR;
+} /* RDB_cat_get_ro_op */
+
+/* Read all read-only operators with specified name from database */
+RDB_int
+_RDB_cat_load_upd_op(const char *name, RDB_exec_context *ecp,
+        RDB_transaction *txp)
+{
+    RDB_expression *exp, *wexp, *argp;
+    RDB_qresult *qrp;
+    const char *symname;
+    RDB_object *vtbp;
+    RDB_object tpl;
+    RDB_object typesobj;
+    RDB_object *updobjp, *updvobjp;
+    int ret;
+    int i;
+    RDB_operator *op;
+    RDB_int opcount = 0;
+
+    /*
+     * Create virtual table SYS_UPD_OPS WHERE NAME=<name>
+     */
+    exp = RDB_eq(RDB_var_ref("NAME", ecp),
+            RDB_string_to_expr(name, ecp), ecp);
+    if (exp == NULL) {
+        RDB_drop_expr(exp, ecp);
+        RDB_destroy_obj(&typesobj, ecp);
+        return RDB_ERROR;
+    }
+
+    wexp = RDB_ro_op("WHERE", ecp);
+    if (wexp == NULL) {
+        RDB_drop_expr(exp, ecp);
+        return RDB_ERROR;
+    }
+    argp = RDB_table_ref(txp->dbp->dbrootp->upd_ops_tbp, ecp);
+    if (argp == NULL) {
+        RDB_drop_expr(wexp, ecp);
+        RDB_drop_expr(exp, ecp);
+        return RDB_ERROR;
+    }
+    RDB_add_arg(wexp, argp);
+    RDB_add_arg(wexp, exp);
+
+    vtbp = RDB_expr_to_vtable(wexp, ecp, txp);
+    if (vtbp == NULL) {
+        RDB_drop_expr(wexp, ecp);
+        return RDB_ERROR;
+    }
+    qrp = _RDB_table_qresult(vtbp, ecp, txp);
+    if (qrp == NULL) {
+        RDB_drop_table(vtbp, ecp, txp);
+        return RDB_ERROR;
+    }
+    RDB_init_obj(&tpl);
+
+    /* Read tuples and convert them to operators */
+    while (_RDB_next_tuple(qrp, &tpl, ecp, txp) == RDB_OK) {
+        op = tuple_to_operator(name, &tpl, ecp, txp);
+        if (op == NULL)
+            goto error;
+
+        updvobjp = RDB_tuple_get(&tpl, "UPDV");
+        for (i = 0; i < op->paramc; i++) {
+            updobjp = RDB_array_get(updvobjp, (RDB_int) i, ecp);
+            if (updobjp == NULL)
+                goto error;
+            op->paramv[i].update = RDB_obj_bool(updobjp);
+        }
+
+        symname = RDB_tuple_get_string(&tpl, "SYMBOL");
+        op->opfn.upd_fp = (RDB_upd_op_func *) lt_dlsym(op->modhdl, symname);
+        if (op->opfn.upd_fp == NULL) {
+            RDB_raise_resource_not_found(symname, ecp);
+            RDB_free_op_data(op, ecp);
+            goto error;
+        }
+
+        if (RDB_put_op(&txp->dbp->dbrootp->upd_opmap, op, ecp) != RDB_OK) {
+            RDB_free_op_data(op, ecp);
+            goto error;
+        }
+
+        if (RDB_env_trace(txp->envp) > 0) {
+            fputs("Update operator ", stderr);
+            fputs(name, stderr);
+            fputs(" loaded from catalog\n", stderr);
+        }
+        opcount++;
+    }
+    if (RDB_obj_type(RDB_get_err(ecp)) != &RDB_NOT_FOUND_ERROR) {
+        return RDB_ERROR;
+    }
+    RDB_clear_err(ecp);
+    ret = RDB_drop_table(vtbp, ecp, txp);
+    if (ret != RDB_OK)
+        goto error;
+
+    RDB_destroy_obj(&tpl, ecp);
+    return opcount;
+
+error:
+    RDB_drop_table(vtbp, ecp, txp);
+    RDB_destroy_obj(&tpl, ecp);
+    return RDB_ERROR;
 }
 
 int

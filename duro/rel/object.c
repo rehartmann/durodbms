@@ -1019,9 +1019,13 @@ RDB_append_string(RDB_object *objp, const char *str, RDB_exec_context *ecp)
 }
 
 /**
- * RDB_obj_comp copies the value of component <var>compname</var>
+RDB_obj_comp copies the value of component <var>compname</var>
 of a possible representation of the variable pointed to by <var>valp</var>
 to the variable pointed to by <var>comp</var>.
+
+If <var>txp</var> is NULL and <var>envp</var> is not, <var>envp</var> is used
+to look up the getter operator from memory.
+If <var>txp</var> is not NULL, <var>envp</var> is ignored.
 
 If an error occurs, an error value is left in *<var>ecp</var>.
 
@@ -1046,7 +1050,7 @@ The call may also fail for a @ref system-errors "system error".
  */
 int
 RDB_obj_comp(const RDB_object *valp, const char *compname, RDB_object *compvalp,
-        RDB_exec_context *ecp, RDB_transaction *txp)
+        RDB_environment *envp, RDB_exec_context *ecp, RDB_transaction *txp)
 {
     int ret;
 
@@ -1092,11 +1096,6 @@ RDB_obj_comp(const RDB_object *valp, const char *compname, RDB_object *compvalp,
         char *opname;
         RDB_object *argv[1];
 
-        if (txp == NULL) {
-            RDB_raise_no_running_tx(ecp);
-            return RDB_ERROR;
-        }
-
         opname = RDB_alloc(strlen(valp->typ->name) + strlen(compname) + 6, ecp);
         if (opname == NULL) {
             return RDB_ERROR;
@@ -1107,7 +1106,7 @@ RDB_obj_comp(const RDB_object *valp, const char *compname, RDB_object *compvalp,
         strcat(opname, compname);
         argv[0] = (RDB_object *) valp;
 
-        ret = RDB_call_ro_op_by_name(opname, 1, argv, ecp, txp, compvalp);
+        ret = RDB_call_ro_op_by_name_e(opname, 1, argv, envp, ecp, txp, compvalp);
         RDB_free(opname);
     }
     return ret;
@@ -1121,6 +1120,10 @@ to the value of the variable pointed to by <var>comp</var>.
 The RDB_object must be of a type which has a component
 <var>compname</var>.
 
+If <var>txp</var> is NULL and <var>envp</var> is not, <var>envp</var> is used
+to look up the getter operator from memory.
+If <var>txp</var> is not NULL, <var>envp</var> is ignored.
+
 If an error occurs, an error value is left in *<var>ecp</var>.
 
 @returns
@@ -1129,8 +1132,8 @@ RDB_OK on success, RDB_ERROR if an error occurred.
  */
 int
 RDB_obj_set_comp(RDB_object *valp, const char *compname,
-        const RDB_object *compvalp, RDB_exec_context *ecp,
-        RDB_transaction *txp)
+        const RDB_object *compvalp, RDB_environment *envp,
+        RDB_exec_context *ecp, RDB_transaction *txp)
 {
     int ret;
 
@@ -1149,6 +1152,8 @@ RDB_obj_set_comp(RDB_object *valp, const char *compname,
         /* Setter is implemented by user */
         char *opname;
         RDB_object *argv[2];
+        RDB_type *argtv[2];
+        RDB_operator *op;
 
         opname = RDB_alloc(strlen(valp->typ->name) + strlen(compname) + 6, ecp);
         if (opname == NULL) {
@@ -1160,9 +1165,15 @@ RDB_obj_set_comp(RDB_object *valp, const char *compname,
         strcat(opname, compname);
         argv[0] = valp;
         argv[1] = (RDB_object *) compvalp;
+        argtv[0] = RDB_obj_type(argv[0]);
+        argtv[1] = RDB_obj_type(argv[1]);
         
-        ret = RDB_call_update_op_by_name(opname, 2, argv, ecp, txp);
-        RDB_free(opname);        
+        op = RDB_get_update_op_e(opname, 2, argtv, envp, ecp, txp);
+        RDB_free(opname);
+        if (op == NULL)
+            return RDB_ERROR;
+
+        ret = RDB_call_update_op(op, 2, argv, ecp, txp);
     }
 
     if (ret != RDB_OK)
