@@ -4,6 +4,9 @@ Summary of Changes for Duro
 
 Changes for Duro 0.15
 
+- Replaced iargp and iarglen parameters of RDB_create_ro_op() and RDB_create_update_op()
+  by explicit source code parameter.
+
 - Explicit BEGIN TRANSACTION no longer required in Duro D/T for invoking
   user-defined operators and using user-defined types.
 

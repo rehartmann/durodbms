@@ -108,7 +108,7 @@ static RDB_attr ro_ops_attrv[] = {
     { "ARGTYPES", NULL, NULL, 0 }, /* type is set to array of BINARY later */
     { "LIB", &RDB_STRING, NULL, 0 },
     { "SYMBOL", &RDB_STRING, NULL, 0 },
-    { "IARG", &RDB_BINARY, NULL, 0 },
+    { "SOURCE", &RDB_STRING, NULL, 0 },
     { "RTYPE", &RDB_BINARY, NULL, 0 }
 };
 
@@ -120,7 +120,7 @@ static RDB_attr upd_ops_attrv[] = {
     { "ARGTYPES", NULL, NULL, 0 }, /* type is set to array of BINARY later */
     { "LIB", &RDB_STRING, NULL, 0 },
     { "SYMBOL", &RDB_STRING, NULL, 0 },
-    { "IARG", &RDB_BINARY, NULL, 0 },
+    { "SOURCE", &RDB_STRING, NULL, 0 },
     { "UPDV", NULL, NULL, 0 } /* type is set to array of BOOLEAN later */
 };
 
@@ -2300,8 +2300,8 @@ tuple_to_operator(const char *name, const RDB_object *tplp,
     if (op == NULL)
         goto error;
 
-    RDB_init_obj(&op->iarg);
-    if (RDB_copy_obj(&op->iarg, RDB_tuple_get(tplp, "IARG"), ecp) != RDB_OK)
+    RDB_init_obj(&op->source);
+    if (RDB_copy_obj(&op->source, RDB_tuple_get(tplp, "SOURCE"), ecp) != RDB_OK)
         goto error;
 
     libname = RDB_tuple_get_string(tplp, "LIB");

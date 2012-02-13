@@ -2675,7 +2675,7 @@ Duro_dt_invoke_ro_op(int argc, RDB_object *argv[], RDB_operator *op,
         if (argnamev == NULL)
             return RDB_ERROR;
 
-        codestmtp = RDB_parse_stmt_string((char *) RDB_operator_iargp(op), ecp);
+        codestmtp = RDB_parse_stmt_string(RDB_operator_source(op), ecp);
         if (codestmtp == NULL) {
             RDB_free(argnamev);
             return RDB_ERROR;
@@ -2778,7 +2778,7 @@ Duro_dt_invoke_update_op(int argc, RDB_object *argv[], RDB_operator *op,
         /*
          * Not available - parse cod
          */
-        codestmtp = RDB_parse_stmt_string((char *) RDB_operator_iargp(op), ecp);
+        codestmtp = RDB_parse_stmt_string(RDB_operator_source(op), ecp);
         if (codestmtp == NULL) {
             RDB_free(argnamev);
             return RDB_ERROR;
@@ -2853,7 +2853,6 @@ exec_opdef(RDB_parse_node *parentp, RDB_exec_context *ecp)
     RDB_transaction tmp_tx;
     RDB_parameter *paramv = NULL;
     RDB_type *rtyp;
-    char *sercodep;
     int ret;
     int i;
     int argc;
@@ -2909,8 +2908,6 @@ exec_opdef(RDB_parse_node *parentp, RDB_exec_context *ecp)
         attrnodep = attrnodep->nextp->nextp;
     }
 
-    sercodep = RDB_obj_string(&code);
-
     ro = (RDB_bool) (stmtp->nextp->nextp->nextp->nextp->val.token == TOK_RETURNS);
 
     if (ro) {
@@ -2926,7 +2923,7 @@ exec_opdef(RDB_parse_node *parentp, RDB_exec_context *ecp)
                 "libduro",
 #endif
                 "Duro_dt_invoke_ro_op",
-                sercodep, strlen(sercodep) + 1, ecp,
+                RDB_obj_string(&code), ecp,
                 txnp != NULL ? &txnp->tx : &tmp_tx);
         if (ret != RDB_OK)
             goto error;
@@ -2951,7 +2948,8 @@ exec_opdef(RDB_parse_node *parentp, RDB_exec_context *ecp)
                 "libduro",
 #endif
                 "Duro_dt_invoke_update_op",
-                sercodep, strlen(sercodep) + 1, ecp, txnp != NULL ? &txnp->tx : &tmp_tx);
+                RDB_obj_string(&code), ecp,
+                txnp != NULL ? &txnp->tx : &tmp_tx);
         if (ret != RDB_OK)
             goto error;
     }

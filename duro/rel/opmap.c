@@ -176,7 +176,7 @@ _RDB_new_operator(const char *name, int argc, RDB_type *argtv[], RDB_type *rtyp,
         return NULL;
     }
 
-    RDB_init_obj(&op->iarg);
+    RDB_init_obj(&op->source);
     op->name = RDB_dup_str(name);
     if (op->name == NULL) {
         RDB_raise_no_memory(ecp);
@@ -211,7 +211,7 @@ _RDB_new_operator(const char *name, int argc, RDB_type *argtv[], RDB_type *rtyp,
     return op;
 
 error:
-    RDB_destroy_obj(&op->iarg, ecp);
+    RDB_destroy_obj(&op->source, ecp);
     if (op->name != NULL)
         RDB_free(op->name);
     if (op->paramv != NULL) {
@@ -241,13 +241,13 @@ RDB_put_upd_op(RDB_op_map *opmap, const char *name, int paramc, RDB_parameter *p
     op->paramc = paramc;
     op->paramv = paramv;
 
-    RDB_init_obj(&op->iarg);
+    RDB_init_obj(&op->source);
     op->modhdl = NULL;
     op->opfn.upd_fp = opfp;
     op->rtyp = NULL;
 
     if (RDB_put_op(opmap, op, ecp) != RDB_OK) {
-        RDB_destroy_obj(&op->iarg, ecp);
+        RDB_destroy_obj(&op->source, ecp);
         RDB_free(op);
         return RDB_ERROR;
     }
@@ -280,7 +280,7 @@ RDB_free_op_data(RDB_operator *op, RDB_exec_context *ecp)
     RDB_free(op->name);
     if (op->cleanup_fp != NULL)
         (*op->cleanup_fp) (op);
-    ret = RDB_destroy_obj(&op->iarg, ecp);
+    ret = RDB_destroy_obj(&op->source, ecp);
     RDB_free(op);
     return ret;
 }

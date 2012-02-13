@@ -31,11 +31,11 @@ test_defop(RDB_database *dbp, RDB_exec_context *ecp)
     assert(ret == RDB_OK);
 
     ret = RDB_create_ro_op("PLUS", 2, plusparamv, &RDB_INTEGER, SHLIB,
-            "RDBU_plus", NULL, 0, ecp, &tx);
+            "RDBU_plus", NULL, ecp, &tx);
     assert(ret == RDB_OK);
 
     ret = RDB_create_update_op("ADD", 2, addparamv, SHLIB, "RDBU_add",
-            NULL, 0, ecp, &tx);
+            NULL, ecp, &tx);
     assert(ret == RDB_OK);
 
     assert(RDB_commit(ecp, &tx) == RDB_OK);

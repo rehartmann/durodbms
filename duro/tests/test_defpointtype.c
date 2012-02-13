@@ -63,11 +63,11 @@ test_type(RDB_database *dbp, RDB_exec_context *ecp)
      * Create selectors
      */
     ret = RDB_create_ro_op("POINT", 2, paramv, typ, SHLIB, "POINT",
-            NULL, 0, ecp, &tx);
+            NULL, ecp, &tx);
     assert(ret == RDB_OK);
 
     ret = RDB_create_ro_op("POLAR", 2, paramv, typ, SHLIB, "POLAR",
-            NULL, 0, ecp, &tx);
+            NULL, ecp, &tx);
     assert(ret == RDB_OK);
 
     /*
@@ -79,19 +79,19 @@ test_type(RDB_database *dbp, RDB_exec_context *ecp)
     updparamv[1].update = RDB_FALSE;
      
     ret = RDB_create_update_op("POINT_set_X", 2, updparamv, SHLIB,
-            "POINT_set_X", NULL, 0, ecp, &tx);
+            "POINT_set_X", NULL, ecp, &tx);
     assert(ret == RDB_OK);
 
     ret = RDB_create_update_op("POINT_set_Y", 2, updparamv, SHLIB,
-            "POINT_set_Y", NULL, 0, ecp, &tx);
+            "POINT_set_Y", NULL, ecp, &tx);
     assert(ret == RDB_OK);
 
     ret = RDB_create_update_op("POINT_set_THETA", 2, updparamv, SHLIB,
-            "POINT_set_THETA", NULL, 0, ecp, &tx);
+            "POINT_set_THETA", NULL, ecp, &tx);
     assert(ret == RDB_OK);
 
     ret = RDB_create_update_op("POINT_set_LENGTH", 2, updparamv, SHLIB,
-            "POINT_set_LENGTH", NULL, 0, ecp, &tx);
+            "POINT_set_LENGTH", NULL, ecp, &tx);
     assert(ret == RDB_OK);
 
     /*
@@ -100,19 +100,19 @@ test_type(RDB_database *dbp, RDB_exec_context *ecp)
     getparamv[0].typ = typ;
 
     ret = RDB_create_ro_op("POINT_get_X", 1, getparamv, &RDB_FLOAT, SHLIB,
-            "POINT_get_X", NULL, 0, ecp, &tx);
+            "POINT_get_X", NULL, ecp, &tx);
     assert(ret == RDB_OK);
 
     ret = RDB_create_ro_op("POINT_get_Y", 1, getparamv, &RDB_FLOAT, SHLIB,
-            "POINT_get_Y", NULL, 0, ecp, &tx);
+            "POINT_get_Y", NULL, ecp, &tx);
     assert(ret == RDB_OK);
 
     ret = RDB_create_ro_op("POINT_get_THETA", 1, getparamv, &RDB_FLOAT, SHLIB,
-            "POINT_get_THETA", NULL, 0, ecp, &tx);
+            "POINT_get_THETA", NULL, ecp, &tx);
     assert(ret == RDB_OK);
 
     ret = RDB_create_ro_op("POINT_get_LENGTH", 1, getparamv, &RDB_FLOAT, SHLIB,
-            "POINT_get_LENGTH", NULL, 0, ecp, &tx);
+            "POINT_get_LENGTH", NULL, ecp, &tx);
     assert(ret == RDB_OK);
 
     assert(RDB_commit(ecp, &tx) == RDB_OK);

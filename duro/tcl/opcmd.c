@@ -157,7 +157,7 @@ operator_create_cmd(ClientData data, Tcl_Interp *interp, int objc,
                 "libdurotcl",
 #endif
                 "Duro_invoke_update_op",
-                txtp, (size_t) len, statep->current_ecp, txp);
+                txtp, statep->current_ecp, txp);
     } else {
         RDB_type *rtyp = Duro_get_type(objv[4], interp, statep->current_ecp,
                 txp);
@@ -172,7 +172,7 @@ operator_create_cmd(ClientData data, Tcl_Interp *interp, int objc,
 #else
                 "libdurotcl",
 #endif
-                 "Duro_invoke_ro_op", txtp, (size_t) len,
+                 "Duro_invoke_ro_op", txtp,
                 statep->current_ecp, txp);
     }    
     if (ret != RDB_OK) {
@@ -427,8 +427,8 @@ Duro_invoke_update_op(int argc, RDB_object *argv[], RDB_operator *op,
     nametop = Tcl_NewStringObj(RDB_operator_name(op), -1);
 
     /* Get operator data (arg names + body) */
-    opdatap = Tcl_NewStringObj((CONST char *) RDB_operator_iargp(op),
-            RDB_operator_iarglen(op));
+    opdatap = Tcl_NewStringObj((CONST char *) RDB_operator_source(op),
+            strlen(RDB_operator_source(op)));
 
     /* Get argument name list */
     ret = Tcl_ListObjIndex(interp, opdatap, 0, &namelistp);
@@ -650,7 +650,8 @@ Duro_invoke_ro_op(int argc, RDB_object *argv[], RDB_operator *op,
     nametop = Tcl_NewStringObj(RDB_operator_name(op), -1);
 
     /* Get operator data (arg names + body) */
-    opdatap = Tcl_NewStringObj((CONST char *) RDB_operator_iargp(op), RDB_operator_iarglen(op));
+    opdatap = Tcl_NewStringObj((CONST char *) RDB_operator_source(op),
+            strlen(RDB_operator_source(op)));
 
     /* Get argument name list */
     ret = Tcl_ListObjIndex(interp, opdatap, 0, &namelistp);

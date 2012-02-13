@@ -119,7 +119,7 @@ typedef struct RDB_dbroot {
 struct RDB_op_data {
     char *name;
     RDB_type *rtyp;
-    RDB_object iarg;
+    RDB_object source;
     lt_dlhandle modhdl;
     int paramc;
     struct RDB_parameter *paramv;

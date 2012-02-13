@@ -47,10 +47,10 @@ make_typesobj_from_params(int argc, RDB_parameter *paramv,
 
 /**
  * RDB_create_ro_op creates a read-only operator with name <var>name</var>.
-The argument types are specified by <var>argc</var> and <var>argtv</var>.
+The argument types are specified by <var>paramc</var> and <var>paramtv</var>.
 
 To execute the operator, Duro will execute the function specified by
-<var>sym</var> from the library specified by <var>libname</var>.
+<var>symname</var> from the library specified by <var>libname</var>.
 
 The name of the library must be passed without the file extension.
 
@@ -66,18 +66,15 @@ int
 When the function is executed, the operator is passed through <var>op</var>
 and the arguments are passed through <var>argc</var> and <var>argv</var>.
 
-The function specified by <var>sym</var> must store the result at the
+The function specified by <var>symname</var> must store the result at the
 location specified by <var>retvalp</var> and return RDB_OK.
 It can indicate an error condition by storing an error in *<var>ecp</var>
 (see RDB_raise_err()) and returning RDB_ERROR.
 
 The return type is passed through <var>rtyp</var>.
 
-!!
-If <var>iargp</var> is not NULL, it must point to a byte block
-of length <var>iarglen</var> which will be passed to the function
-specified by <var>sym</var>.
-This can be used to pass code to an interpreter function.
+<var>sourcep</var> may be NULL or a pointer to the source code implementing
+the operator.
 
 Overloading operators is possible.
 
@@ -98,11 +95,10 @@ in which case the transaction may be implicitly rolled back.
 int
 RDB_create_ro_op(const char *name, int paramc, RDB_parameter paramv[], RDB_type *rtyp,
                  const char *libname, const char *symname,
-                 const void *iargp, size_t iarglen, 
+                 const char *sourcep,
                  RDB_exec_context *ecp, RDB_transaction *txp)
 {
     RDB_object tpl;
-    RDB_object iarg;
     RDB_object rtypobj;
     RDB_object typesobj;
     RDB_type **paramtv;
@@ -148,17 +144,7 @@ RDB_create_ro_op(const char *name, int paramc, RDB_parameter paramv[], RDB_type 
     if (ret != RDB_OK)
         goto cleanup;
 
-    if (iargp == NULL)
-        iarglen = 0;
-
-    RDB_init_obj(&iarg);
-    ret = RDB_binary_set(&iarg, 0, iargp, iarglen, ecp);
-    if (ret != RDB_OK) {
-        RDB_destroy_obj(&iarg, ecp);
-        goto cleanup;
-    }
-    ret = RDB_tuple_set(&tpl, "IARG", &iarg, ecp);
-    RDB_destroy_obj(&iarg, ecp);
+    ret = RDB_tuple_set_string(&tpl, "SOURCE", sourcep != NULL ? sourcep : "", ecp);
     if (ret != RDB_OK)
         goto cleanup;
 
@@ -213,14 +199,10 @@ cleanup:
 
 /**
  * RDB_create_update_op creates an update operator with name <var>name</var>.
-The argument types are specified by <var>argc</var> and <var>argtv</var>.
-
-The argument <var>upd</var> specifies which of the arguments are updated.
-If upd[<em>i</em>] is RDB_TRUE, this indicates that the <em>i</em>th argument
-is updated by the operator.
+The argument types are specified by <var>paramc</var> and <var>paramtv</var>.
 
 To execute the operator, Duro will execute the function specified by
-<var>sym</var> from the library specified by <var>libname</var>.
+<var>symname</var> from the library specified by <var>libname</var>.
 
 The name of the library must be passed without the file extension.
 
@@ -235,16 +217,13 @@ int
 When the function is executed, the name of the operator is passed through <var>name</var>
 and the arguments are passed through <var>argc</var> and <var>argv</var>.
 
-On success, the function specified by <var>sym</var> must return RDB_OK.
+On success, the function specified by <var>symname</var> must return RDB_OK.
 It can indicate an error condition by leaving an error in *<var>ecp</var>
 (see RDB_raise_err() and related functions)
 and returning RDB_ERROR.
 
-!!
-If <var>iargp</var> is not NULL, it must point to a byte block
-of length <var>iarglen</var> which will be passed to the function
-specified by <var>sym</var>.
-This can be used to pass code to an interpreter function.
+<var>sourcep</var> may be NULL or a pointer to the source code implementing
+the operator.
 
 Overloading operators is possible.
 
@@ -265,11 +244,10 @@ in which case the transaction may be implicitly rolled back.
 int
 RDB_create_update_op(const char *name, int paramc, RDB_parameter paramv[],
                   const char *libname, const char *symname,
-                  const void *iargp, size_t iarglen,
+                  const char *sourcep,
                   RDB_exec_context *ecp, RDB_transaction *txp)
 {
     RDB_object tpl;
-    RDB_object iarg;
     RDB_object updvobj;
     RDB_object updobj;
     RDB_object typesobj;
@@ -308,17 +286,7 @@ RDB_create_update_op(const char *name, int paramc, RDB_parameter paramv[],
     if (ret != RDB_OK)
         goto cleanup;
 
-    if (iargp == NULL)
-        iarglen = 0;
-
-    RDB_init_obj(&iarg);
-    ret = RDB_binary_set(&iarg, 0, iargp, iarglen, ecp);
-    if (ret != RDB_OK) {
-        RDB_destroy_obj(&iarg, ecp);
-        goto cleanup;
-    }
-    ret = RDB_tuple_set(&tpl, "IARG", &iarg, ecp);
-    RDB_destroy_obj(&iarg, ecp);
+    ret = RDB_tuple_set_string(&tpl, "SOURCE", sourcep != NULL ? sourcep : "", ecp);
     if (ret != RDB_OK)
         goto cleanup;
 
@@ -898,16 +866,17 @@ RDB_return_type(const RDB_operator *op)
     return op->rtyp;
 }
 
-size_t
-RDB_operator_iarglen(const RDB_operator *op)
+/**
+ * Return the source code of operator *<var>op</var>.
+ *
+ * @returns a pointer to the source code, or NULL if no source code
+ * was specified when the operator was created.
+ */
+const char *
+RDB_operator_source(const RDB_operator *op)
 {
-    return op->iarg.val.bin.len;
-}
-
-void *
-RDB_operator_iargp(const RDB_operator *op)
-{
-    return op->iarg.val.bin.datap;
+    const char *srcp = RDB_obj_string(&op->source);
+    return *srcp == '\0' ? NULL : srcp;
 }
 
 

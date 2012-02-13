@@ -1392,7 +1392,7 @@ create_selector(RDB_type *typ, RDB_exec_context *ecp, RDB_transaction *txp)
     for (i = 0; i < compc; i++)
         paramv[i].typ = typ->def.scalar.repv[0].compv[i].typ;
     ret = RDB_create_ro_op(typ->def.scalar.repv[0].name, compc, paramv, typ,
-            "", "_RDB_sys_select", typ->name, strlen(typ->name) + 1,
+            "", "_RDB_sys_select", typ->name,
             ecp, txp);
     RDB_free(paramv);
     return ret;
