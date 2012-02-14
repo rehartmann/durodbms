@@ -183,11 +183,11 @@ transform_where(RDB_expression *exp, RDB_gettypefn *getfnp, void *arg,
             return _RDB_transform(chexp, getfnp, arg, ecp, txp);
         } else if (strcmp(chexp->def.op.name, "EXTEND") == 0) {
             if (exp->typ != NULL) {
-                RDB_drop_type(exp->typ, ecp, NULL);
+                RDB_del_nonscalar_type(exp->typ, ecp);
                 exp->typ = NULL;
             }
             if (chexp->typ != NULL) {
-                RDB_drop_type(chexp->typ, ecp, NULL);
+                RDB_del_nonscalar_type(chexp->typ, ecp);
                 chexp->typ = NULL;
             }
 
@@ -227,7 +227,7 @@ transform_where(RDB_expression *exp, RDB_gettypefn *getfnp, void *arg,
             }
 
             if (exp->typ != NULL) {
-                RDB_drop_type(exp->typ, ecp, NULL);
+                RDB_del_nonscalar_type(exp->typ, ecp);
                 exp->typ = NULL;
             }
 
@@ -236,7 +236,7 @@ transform_where(RDB_expression *exp, RDB_gettypefn *getfnp, void *arg,
                 return RDB_ERROR;
 
             if (chexp->typ != NULL) {
-                RDB_drop_type(chexp->typ, ecp, NULL);
+                RDB_del_nonscalar_type(chexp->typ, ecp);
                 chexp->typ = NULL;
             }
 
@@ -290,11 +290,11 @@ swap_project_union(RDB_expression *exp,
     }
 
     if (exp->typ != NULL) {
-        RDB_drop_type(exp->typ, ecp, NULL);
+        RDB_del_nonscalar_type(exp->typ, ecp);
         exp->typ = NULL;
     }
     if (chexp->typ != NULL) {
-        RDB_drop_type(chexp->typ, ecp, NULL);
+        RDB_del_nonscalar_type(chexp->typ, ecp);
         chexp->typ = NULL;
     }
 
@@ -395,11 +395,11 @@ swap_project_rename(RDB_expression *texp, RDB_gettypefn *getfnp, void *arg,
     }
 
     if (texp->typ != NULL) {
-        RDB_drop_type(texp->typ, ecp, NULL);
+        RDB_del_nonscalar_type(texp->typ, ecp);
         texp->typ = NULL;
     }
     if (chtexp->typ != NULL) {
-        RDB_drop_type(chtexp->typ, ecp, NULL);
+        RDB_del_nonscalar_type(chtexp->typ, ecp);
         chtexp->typ = NULL;
     }
 
@@ -470,7 +470,7 @@ transform_project_extend(RDB_expression *exp, RDB_gettypefn *getfnp, void *arg,
     for (i = 0; i < expc; i++)
         RDB_add_arg(chexp, expv[i]);
     if (chexp->typ != NULL) {
-        RDB_drop_type(chexp->typ, ecp, NULL);
+        RDB_del_nonscalar_type(chexp->typ, ecp);
         chexp->typ = NULL;
     }
 
@@ -546,10 +546,10 @@ swap_project_where(RDB_expression *exp, RDB_expression *chexp,
         RDB_expression *hexp;
 
         if (exp->typ != NULL) {
-            RDB_drop_type(exp->typ, ecp, NULL);
+            RDB_del_nonscalar_type(exp->typ, ecp);
             exp->typ = NULL;
         }
-        RDB_drop_type(chexp->typ, ecp, NULL);
+        RDB_del_nonscalar_type(chexp->typ, ecp);
         chexp->typ = NULL;
 
         /*

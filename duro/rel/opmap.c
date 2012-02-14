@@ -218,7 +218,7 @@ error:
         for (i = 0; i < op->paramc; i++) {
             if (op->paramv[i].typ != NULL
                    && !RDB_type_is_scalar(op->paramv[i].typ)) {
-                RDB_drop_type(op->paramv[i].typ, ecp, NULL);
+                RDB_del_nonscalar_type(op->paramv[i].typ, ecp);
             }
         }
     }
@@ -267,14 +267,14 @@ RDB_free_op_data(RDB_operator *op, RDB_exec_context *ecp)
     int ret;
 
     if (op->rtyp != NULL && !RDB_type_is_scalar(op->rtyp))
-        RDB_drop_type(op->rtyp, ecp, NULL);
+        RDB_del_nonscalar_type(op->rtyp, ecp);
     if (op->modhdl != NULL) {
         /* Operator loaded from module */
         lt_dlclose(op->modhdl);
     }
     for (i = 0; i < op->paramc; i++) {
         if (!RDB_type_is_scalar(op->paramv[i].typ))
-            RDB_drop_type(op->paramv[i].typ, ecp, NULL);
+            RDB_del_nonscalar_type(op->paramv[i].typ, ecp);
     }
     RDB_free(op->paramv);
     RDB_free(op->name);

@@ -294,7 +294,7 @@ RDB_init_table(RDB_object *tbp, const char *name,
 
     if (_RDB_init_table(tbp, name, RDB_FALSE, reltyp, keyc, keyv, RDB_TRUE,
             NULL, ecp) != RDB_OK) {
-        RDB_drop_type(reltyp, ecp, NULL);
+        RDB_del_nonscalar_type(reltyp, ecp);
         return RDB_ERROR;
     }
     return RDB_OK;   

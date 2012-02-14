@@ -196,7 +196,7 @@ extend_type(const RDB_expression *exp, RDB_gettypefn *getfnp, void *arg,
             RDB_free(attrv);
             for (j = 0; i < j; j++) {
                 if (!RDB_type_is_scalar(attrv[j].typ)) {
-                    RDB_drop_type(attrv[j].typ, ecp, NULL);
+                    RDB_del_nonscalar_type(attrv[j].typ, ecp);
                 }
             }
             return NULL;
@@ -459,7 +459,7 @@ array_type(const RDB_expression *exp, RDB_gettypefn *getfnp, void *arg,
     rtyp = RDB_create_array_type(basetyp, ecp);
     if (rtyp == NULL) {
         if (!RDB_type_is_scalar(basetyp))
-            RDB_drop_type(basetyp, ecp, NULL);
+            RDB_del_nonscalar_type(basetyp, ecp);
         return NULL;
     }
 
@@ -511,7 +511,7 @@ relation_type(const RDB_expression *exp, RDB_type **argtv,
         return NULL;
     rtyp = RDB_create_relation_type_from_base(basetyp, ecp);
     if (rtyp == NULL) {
-        RDB_drop_type(basetyp, ecp, NULL);
+        RDB_del_nonscalar_type(basetyp, ecp);
         return NULL;
     }
     return rtyp;

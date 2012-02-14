@@ -1,7 +1,7 @@
 /*
  * $Id$
  *
- * Copyright (C) 2004-2005 René Hartmann.
+ * Copyright (C) 2004-2005 Renï¿½ Hartmann.
  * See the file COPYING for redistribution information.
  */
 
@@ -164,7 +164,6 @@ type_drop_cmd(TclState *statep, Tcl_Interp *interp, int objc,
     char *txstr;
     Tcl_HashEntry *entryp;
     RDB_transaction *txp;
-    RDB_type *typ;
 
     if (objc != 4) {
         Tcl_WrongNumArgs(interp, 2, objv, "typename tx");
@@ -180,13 +179,7 @@ type_drop_cmd(TclState *statep, Tcl_Interp *interp, int objc,
     }
     txp = Tcl_GetHashValue(entryp);
 
-    typ = RDB_get_type(name, statep->current_ecp, txp);
-    if (typ == NULL) {
-        Duro_dberror(interp, RDB_get_err(statep->current_ecp), txp);
-        return TCL_ERROR;
-    }
-
-    ret = RDB_drop_type(typ, statep->current_ecp, txp);
+    ret = RDB_drop_type(name, statep->current_ecp, txp);
     if (ret != RDB_OK) {
         Duro_dberror(interp, RDB_get_err(statep->current_ecp), txp);
         return TCL_ERROR;
@@ -227,7 +220,7 @@ type_implement_cmd(TclState *statep, Tcl_Interp *interp, int objc,
     ret = RDB_implement_type(Tcl_GetString(objv[2]), irep, (size_t)-1,
             statep->current_ecp, txp);
     if (irep != NULL && !RDB_type_is_scalar(irep))
-        RDB_drop_type(irep, statep->current_ecp, txp);
+        RDB_del_nonscalar_type(irep, statep->current_ecp);
     if (ret != RDB_OK) {
         Duro_dberror(interp, RDB_get_err(statep->current_ecp), txp);
         return TCL_ERROR;

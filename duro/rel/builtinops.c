@@ -771,7 +771,7 @@ _RDB_op_type_relation(int argc, RDB_object *argv[], RDB_type *reltyp,
     int i;
 
     if (RDB_init_table_from_type(retvalp, NULL, reltyp, 0, NULL, ecp) != RDB_OK) {
-        RDB_drop_type(reltyp, ecp, NULL);
+        RDB_del_nonscalar_type(reltyp, ecp);
         return RDB_ERROR;
     }
 

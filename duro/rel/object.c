@@ -271,7 +271,7 @@ irep_to_table(RDB_object *tbp, RDB_type *typ, const void *datap, size_t len,
 
     tbtyp = RDB_dup_nonscalar_type(typ, ecp);
     if (tbtyp == NULL) {
-    	RDB_drop_type(tbtyp, ecp, NULL);
+    	RDB_del_nonscalar_type(tbtyp, ecp);
         return RDB_ERROR;
     }
     if (_RDB_init_table(tbp, NULL, RDB_FALSE,
@@ -837,7 +837,7 @@ RDB_destroy_obj(RDB_object *objp, RDB_exec_context *ecp)
 
             /* It could be a scalar type with a relation actual rep */ 
             if (objp->typ != NULL && !RDB_type_is_scalar(objp->typ))
-                RDB_drop_type(objp->typ, ecp, NULL);
+                RDB_del_nonscalar_type(objp->typ, ecp);
             
             RDB_free(objp->val.tb.name);
             

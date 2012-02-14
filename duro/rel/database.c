@@ -1203,7 +1203,7 @@ RDB_create_table(const char *name,
         return NULL;
     }
     if (_RDB_set_defvals(tbtyp, attrc, heading, ecp) != RDB_OK) {
-        RDB_drop_type(tbtyp, ecp, NULL);
+        RDB_del_nonscalar_type(tbtyp, ecp);
         return NULL;
     }
 

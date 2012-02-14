@@ -507,7 +507,7 @@ error:
     if (qrp->matp != NULL) {
         RDB_drop_table(qrp->matp, ecp, txp);
     } else if (reltyp != NULL) {
-        RDB_drop_type(reltyp, ecp, NULL);
+        RDB_del_nonscalar_type(reltyp, ecp);
     }
     return RDB_ERROR;
 } /* summarize_qresult */
@@ -635,7 +635,7 @@ do_group(RDB_qresult *qrp, RDB_exec_context *ecp, RDB_transaction *txp)
                 if (RDB_init_table_from_type(&gtb, NULL, reltyp, 0, NULL, ecp)
                         != RDB_OK) {
                     RDB_destroy_obj(&gtb, ecp);
-                    RDB_drop_type(reltyp, ecp, NULL);
+                    RDB_del_nonscalar_type(reltyp, ecp);
                     goto cleanup;
                 }
 
@@ -713,7 +713,7 @@ group_qresult(RDB_qresult *qrp, RDB_expression *exp, RDB_exec_context *ecp,
     if (freekeys)
         _RDB_free_keys(keyc, keyv);
     if (ret != RDB_OK) {
-        RDB_drop_type(reltyp, ecp, NULL);
+        RDB_del_nonscalar_type(reltyp, ecp);
         RDB_drop_table(qrp->matp, ecp, txp);
         return RDB_ERROR;
     }
@@ -1090,13 +1090,13 @@ _RDB_duprem(RDB_qresult *qrp, RDB_exec_context *ecp, RDB_transaction *txp)
         /* Create materialized (all-key) table */
         qrp->matp = _RDB_new_obj(ecp);
         if (qrp->matp == NULL) {
-            RDB_drop_type(reltyp, ecp, NULL);
+            RDB_del_nonscalar_type(reltyp, ecp);
             return RDB_ERROR;
         }            
         ret = _RDB_init_table(qrp->matp, NULL, RDB_FALSE, reltyp, 0, NULL,
                 RDB_TRUE, NULL, ecp);
         if (ret != RDB_OK) {
-            RDB_drop_type(reltyp, ecp, NULL);
+            RDB_del_nonscalar_type(reltyp, ecp);
             _RDB_free_obj(qrp->matp, ecp);
             return RDB_ERROR;
         }
@@ -1174,7 +1174,7 @@ _RDB_sorter(RDB_expression *texp, RDB_qresult **qrpp, RDB_exec_context *ecp,
     qrp->matp = _RDB_new_rtable(NULL, RDB_FALSE,
             typ, 1, &key, RDB_TRUE, ecp);
     if (qrp->matp == NULL) {
-        RDB_drop_type(typ, ecp, NULL);
+        RDB_del_nonscalar_type(typ, ecp);
         goto error;
     }
 

@@ -521,7 +521,10 @@ RDB_type *
 RDB_create_array_type(RDB_type *, RDB_exec_context *);
 
 int
-RDB_drop_type(RDB_type *, RDB_exec_context *, RDB_transaction *);
+RDB_del_nonscalar_type(RDB_type *, RDB_exec_context*);
+
+int
+RDB_drop_type(const char *name, RDB_exec_context *, RDB_transaction *);
 
 char *
 RDB_type_name(const RDB_type *);

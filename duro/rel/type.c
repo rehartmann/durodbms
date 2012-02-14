@@ -821,55 +821,33 @@ _RDB_init_builtin_types(RDB_exec_context *ecp)
     return RDB_OK;
 }
 
-static void
-free_type(RDB_type *typ, RDB_exec_context *ecp)
+static int
+del_type(RDB_type *typ, RDB_exec_context *ecp)
 {
-    int i;
+    int ret = RDB_OK;
 
-    RDB_free(typ->name);
-
-    switch (typ->kind) {
-        case RDB_TP_TUPLE:
-            for (i = 0; i < typ->def.tuple.attrc; i++) {
-                RDB_type *attrtyp = typ->def.tuple.attrv[i].typ;
+    if (RDB_type_is_scalar(typ)) {
+        RDB_free(typ->name);
+        if (typ->def.scalar.repc > 0) {
+            int i, j;
             
-                RDB_free(typ->def.tuple.attrv[i].name);
-                if (!RDB_type_is_scalar(attrtyp))
-                    RDB_drop_type(attrtyp, ecp, NULL);
-                if (typ->def.tuple.attrv[i].defaultp != NULL) {
-                    RDB_destroy_obj(typ->def.tuple.attrv[i].defaultp, ecp);
-                    RDB_free(typ->def.tuple.attrv[i].defaultp);
+            for (i = 0; i < typ->def.scalar.repc; i++) {
+                for (j = 0; j < typ->def.scalar.repv[i].compc; j++) {
+                    RDB_free(typ->def.scalar.repv[i].compv[j].name);
                 }
+                RDB_free(typ->def.scalar.repv[i].compv);
             }
-            if (typ->def.tuple.attrc > 0)
-                RDB_free(typ->def.tuple.attrv);
-            break;
-        case RDB_TP_RELATION:
-        case RDB_TP_ARRAY:
-            if (!RDB_type_is_scalar(typ->def.basetyp))
-                RDB_drop_type(typ->def.basetyp, ecp, NULL);
-            break;
-        case RDB_TP_SCALAR:
-            if (typ->def.scalar.repc > 0) {
-                int i, j;
-                
-                for (i = 0; i < typ->def.scalar.repc; i++) {
-                    for (j = 0; j < typ->def.scalar.repv[i].compc; j++) {
-                        RDB_free(typ->def.scalar.repv[i].compv[j].name);
-                    }
-                    RDB_free(typ->def.scalar.repv[i].compv);
-                }
-                RDB_free(typ->def.scalar.repv);
-            }
-            if (typ->def.scalar.arep != NULL
-                    && typ->def.scalar.arep->name == NULL)
-                RDB_drop_type(typ->def.scalar.arep, ecp, NULL);
-            break;
-        default:
-            abort();
+            RDB_free(typ->def.scalar.repv);
+        }
+        if (typ->def.scalar.arep != NULL
+                && !RDB_type_is_scalar(typ->def.scalar.arep)) {
+            ret = RDB_del_nonscalar_type(typ->def.scalar.arep, ecp);
+        }
+        RDB_free(typ);
+    } else {
+        ret = RDB_del_nonscalar_type(typ, ecp);
     }
-    typ->kind = (enum _RDB_tp_kind) -1;
-    RDB_free(typ);
+    return ret;
 }    
 
 static RDB_possrep *
@@ -1064,8 +1042,8 @@ error:
         if (attrp->name != NULL)
             RDB_free(attrp->name);
         if (attrp->typ != NULL) {
-            if (attrp->typ->name == NULL)
-                RDB_drop_type(attrp->typ, ecp, NULL);
+            if (!RDB_type_is_scalar(attrp->typ))
+                RDB_del_nonscalar_type(attrp->typ, ecp);
         }
     }
     RDB_free(tuptyp->def.tuple.attrv);
@@ -1611,12 +1589,46 @@ cleanup:
 /*@}*/
 
 /**
- * RDB_drop_type destroys the type specified by <var>typ</var>.
+ * Delete *typ from memory. The type must be non-scalar.
+ */
+int
+RDB_del_nonscalar_type(RDB_type *typ, RDB_exec_context *ecp)
+{
+    int i;
+    int ret = RDB_OK;
 
-If the type is a scalar user-defined type, it is deleted from the
-database.
+    switch (typ->kind) {
+        case RDB_TP_TUPLE:
+            for (i = 0; i < typ->def.tuple.attrc; i++) {
+                RDB_type *attrtyp = typ->def.tuple.attrv[i].typ;
 
-If the type is non-scalar, the argument <var>txp</var> is ignored.
+                RDB_free(typ->def.tuple.attrv[i].name);
+                if (!RDB_type_is_scalar(attrtyp))
+                    ret = RDB_del_nonscalar_type(attrtyp, ecp);
+                if (typ->def.tuple.attrv[i].defaultp != NULL) {
+                    ret = RDB_destroy_obj(typ->def.tuple.attrv[i].defaultp, ecp);
+                    RDB_free(typ->def.tuple.attrv[i].defaultp);
+                }
+            }
+            if (typ->def.tuple.attrc > 0)
+                RDB_free(typ->def.tuple.attrv);
+            break;
+        case RDB_TP_RELATION:
+        case RDB_TP_ARRAY:
+            if (!RDB_type_is_scalar(typ->def.basetyp))
+                ret = RDB_del_nonscalar_type(typ->def.basetyp, ecp);
+            break;
+        default:
+            RDB_raise_invalid_argument("type is scalar", ecp);
+            ret = RDB_ERROR;
+    }
+    typ->kind = (enum _RDB_tp_kind) -1; /* for error detection */
+    RDB_free(typ);
+    return ret;
+}
+
+/**
+ * Delete the user-defined type with name specified by <var>name</var>.
 
 It is not possible to destroy built-in types.
 
@@ -1628,81 +1640,103 @@ On success, RDB_OK is returned. Any other return value indicates an error.
 
 <dl>
 <dt>NO_RUNNING_TX_ERROR
-<dd>The type is scalar and *<var>txp</var> is not a running transaction.
+<dd>*<var>txp</var> is not a running transaction.
+<dt>NAME_ERROR
+<dd>A type with name <var>name</var> was not found.
 <dt>INVALID_ARGUMENT_ERROR
-<dd>The type is a builtin type.
+<dd>The type is not user-defined.
 </dl>
 
 The call may also fail for a @ref system-errors "system error",
 in which case the transaction may be implicitly rolled back.
  */
 int
-RDB_drop_type(RDB_type *typ, RDB_exec_context *ecp, RDB_transaction *txp)
+RDB_drop_type(const char *name, RDB_exec_context *ecp, RDB_transaction *txp)
 {
     int ret;
+    RDB_int cnt;
+    RDB_type *typ;
+    RDB_expression *wherep, *argp;
+    RDB_type *ntp = NULL;
 
-    if (typ->kind == RDB_TP_SCALAR && typ->def.scalar.builtin) {
-        RDB_raise_invalid_argument("attempt to drop built-in type", ecp);
+    if (!RDB_tx_is_running(txp)) {
+        RDB_raise_no_running_tx(ecp);
         return RDB_ERROR;
     }
 
-    if (RDB_type_is_scalar(typ)) {
-        RDB_expression *wherep, *argp;
-        RDB_type *ntp = NULL;
-
-        if (!RDB_tx_is_running(txp)) {
-            RDB_raise_no_running_tx(ecp);
-            return RDB_ERROR;
-        }
-
-        /* !! should check if the type is still used by a table */
-
-        /* Delete selector */
-        ret = RDB_drop_op(typ->name, ecp, txp);
-        if (ret != RDB_OK) {
-            if (RDB_obj_type(RDB_get_err(ecp)) != &RDB_OPERATOR_NOT_FOUND_ERROR) {
-                return RDB_ERROR;
-            }
-            RDB_clear_err(ecp);
-        }
-
-        /* Delete type from type table by puting a NULL pointer into it */
-        ret = RDB_hashmap_put(&txp->dbp->dbrootp->typemap, typ->name, ntp);
-        if (ret != RDB_OK) {
-            return RDB_ERROR;
-        }
-
-        /* Delete type from database */
-        wherep = RDB_ro_op("=", ecp);
-        if (wherep == NULL) {
-            return RDB_ERROR;
-        }
-        argp = RDB_var_ref("TYPENAME", ecp);
-        if (argp == NULL) {
-            RDB_drop_expr(wherep, ecp);
-            return RDB_ERROR;
-        }        
-        RDB_add_arg(wherep, argp);
-        argp = RDB_string_to_expr(typ->name, ecp);
-        if (argp == NULL) {
-            RDB_drop_expr(wherep, ecp);
-            return RDB_ERROR;
-        }        
-        RDB_add_arg(wherep, argp);
-
-        ret = RDB_delete(txp->dbp->dbrootp->types_tbp, wherep, ecp, txp);
-        if (ret == RDB_ERROR) {
-            RDB_drop_expr(wherep, ecp);
-            return RDB_ERROR;
-        }
-        ret = RDB_delete(txp->dbp->dbrootp->possrepcomps_tbp, wherep, ecp,
-                txp);
-        if (ret == RDB_ERROR) {
-            RDB_drop_expr(wherep, ecp);
-            return ret;
-        }
+    /*
+     * Check if the type is a built-in type
+     */
+    if (RDB_hashmap_get(&_RDB_builtin_type_map, name) != NULL) {
+        RDB_raise_invalid_argument("cannot drop a built-in type", ecp);
+        return RDB_ERROR;
     }
-    free_type(typ, ecp);
+
+    /* !! should check if the type is still used by a table */
+
+    /* Delete selector */
+    ret = RDB_drop_op(name, ecp, txp);
+    if (ret != RDB_OK) {
+        if (RDB_obj_type(RDB_get_err(ecp)) != &RDB_OPERATOR_NOT_FOUND_ERROR) {
+            return RDB_ERROR;
+        }
+        RDB_clear_err(ecp);
+    }
+
+
+    /* Delete type from database */
+    wherep = RDB_ro_op("=", ecp);
+    if (wherep == NULL) {
+        return RDB_ERROR;
+    }
+    argp = RDB_var_ref("TYPENAME", ecp);
+    if (argp == NULL) {
+        RDB_drop_expr(wherep, ecp);
+        return RDB_ERROR;
+    }
+    RDB_add_arg(wherep, argp);
+    argp = RDB_string_to_expr(name, ecp);
+    if (argp == NULL) {
+        RDB_drop_expr(wherep, ecp);
+        return RDB_ERROR;
+    }
+    RDB_add_arg(wherep, argp);
+
+    cnt = RDB_delete(txp->dbp->dbrootp->types_tbp, wherep, ecp, txp);
+    if (cnt == 0) {
+        RDB_raise_name("type not found", ecp);
+        return RDB_ERROR;
+    }
+    if (cnt == (RDB_int) RDB_ERROR) {
+        RDB_drop_expr(wherep, ecp);
+        return RDB_ERROR;
+    }
+    cnt = RDB_delete(txp->dbp->dbrootp->possrepcomps_tbp, wherep, ecp,
+            txp);
+    if (cnt == (RDB_int) RDB_ERROR) {
+        RDB_drop_expr(wherep, ecp);
+        return ret;
+    }
+
+    /*
+     * Delete type in memory, if it's in the type map
+     */
+    typ = RDB_hashmap_get(&txp->dbp->dbrootp->typemap, name);
+    if (typ != NULL) {
+        /* Delete type from type map by puting a NULL pointer into it */
+        ret = RDB_hashmap_put(&txp->dbp->dbrootp->typemap, name, ntp);
+        if (ret != RDB_OK) {
+            return RDB_ERROR;
+        }
+
+        /*
+         * Delete RDB_type structure last because name may be identical
+         * to typ->name
+         */
+        if (del_type(typ, ecp) != RDB_OK)
+            return RDB_ERROR;
+    }
+
     return RDB_OK;
 }
 
@@ -1865,7 +1899,7 @@ error:
         RDB_free(newtyp->def.tuple.attrv[i].name);
         if (newtyp->def.tuple.attrv[i].typ != NULL
                 && !RDB_type_is_scalar(newtyp->def.tuple.attrv[i].typ)) {
-            RDB_drop_type(newtyp->def.tuple.attrv[i].typ, ecp, NULL);
+            RDB_del_nonscalar_type(newtyp->def.tuple.attrv[i].typ, ecp);
         }
     }
     RDB_free(newtyp->def.tuple.attrv);
@@ -2459,8 +2493,8 @@ error:
         if (attrp->name != NULL)
             RDB_free(attrp->name);
         if (attrp->typ != NULL) {
-            if (attrp->typ == NULL)
-                RDB_drop_type(attrp->typ, ecp, NULL);
+            if (attrp->typ == NULL && !RDB_type_is_scalar(attrp->typ))
+                RDB_del_nonscalar_type(attrp->typ, ecp);
         }
     }
     RDB_free(newtyp->def.tuple.attrv);
@@ -2573,8 +2607,8 @@ error:
         if (attrp->name != NULL)
             free (attrp->name);
         if (attrp->typ != NULL) {
-            if (attrp->typ->name == NULL)
-                RDB_drop_type(attrp->typ, ecp, NULL);
+            if (!RDB_type_is_scalar(attrp->typ))
+                RDB_del_nonscalar_type(attrp->typ, ecp);
         }
     }
     RDB_free(newtyp->def.tuple.attrv);
@@ -2642,7 +2676,7 @@ RDB_group_type(RDB_type *typ, int attrc, char *attrv[], const char *gattr,
      */
     tuptyp = RDB_alloc(sizeof (RDB_type), ecp);
     if (tuptyp == NULL) {
-        RDB_drop_type(gattrtyp, ecp, NULL);
+        RDB_del_nonscalar_type(gattrtyp, ecp);
         return NULL;
     }
 
@@ -2652,7 +2686,7 @@ RDB_group_type(RDB_type *typ, int attrc, char *attrv[], const char *gattr,
     tuptyp->def.tuple.attrv = RDB_alloc(tuptyp->def.tuple.attrc * sizeof(RDB_attr), ecp);
     if (tuptyp->def.tuple.attrv == NULL) {
         RDB_free(tuptyp);
-        RDB_drop_type(gattrtyp, ecp, NULL);
+        RDB_del_nonscalar_type(gattrtyp, ecp);
         return NULL;
     }
 
@@ -2667,14 +2701,14 @@ RDB_group_type(RDB_type *typ, int attrc, char *attrv[], const char *gattr,
 
         if (_RDB_tuple_type_attr(gattrtyp->def.basetyp, attrname) == NULL) {
             if (strcmp(attrname, gattr) == 0) {
-                RDB_drop_type(gattrtyp, ecp, NULL);
+                RDB_del_nonscalar_type(gattrtyp, ecp);
                 RDB_raise_invalid_argument("invalid GROUP", ecp);
                 goto error;
             }
             ret = copy_attr(&tuptyp->def.tuple.attrv[j],
                     &typ->def.basetyp->def.tuple.attrv[i], ecp);
             if (ret != RDB_OK) {
-                RDB_drop_type(gattrtyp, ecp, NULL);
+                RDB_del_nonscalar_type(gattrtyp, ecp);
                 goto error;
             }
             tuptyp->def.tuple.attrv[j].defaultp = NULL;
@@ -2710,8 +2744,8 @@ error:
         if (attrp->name != NULL)
             RDB_free(attrp->name);
         if (attrp->typ != NULL) {
-            if (attrp->typ->name == NULL)
-                RDB_drop_type(attrp->typ, ecp, NULL);
+            if (!RDB_type_is_scalar(attrp->typ))
+                RDB_del_nonscalar_type(attrp->typ, ecp);
         }
     }
     RDB_free(tuptyp->def.tuple.attrv);
@@ -2812,8 +2846,8 @@ error:
         if (attrp->name != NULL)
             RDB_free(attrp->name);
         if (attrp->typ != NULL) {
-            if (attrp->typ->name == NULL)
-                RDB_drop_type(attrp->typ, ecp, NULL);
+            if (!RDB_type_is_scalar(attrp->typ))
+                RDB_del_nonscalar_type(attrp->typ, ecp);
         }
     }
     RDB_free(tuptyp->def.tuple.attrv);

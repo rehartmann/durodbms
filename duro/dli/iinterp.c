@@ -98,7 +98,7 @@ drop_local_var(RDB_object *objp, RDB_exec_context *ecp)
 
     /* Array and tuple types must be destroyed */
     if (!RDB_type_is_scalar(typ) && !RDB_type_is_relation(typ)) {
-        if (RDB_drop_type(typ, ecp, NULL) != RDB_OK)
+        if (RDB_del_nonscalar_type(typ, ecp) != RDB_OK)
             return RDB_ERROR;
     }
 
@@ -765,7 +765,7 @@ parse_node_to_type_retry(RDB_parse_node *nodep, RDB_exec_context *ecp)
     }
     if (RDB_commit(ecp, &tx) != RDB_OK) {
         if (!RDB_type_is_scalar(typ)) {
-            RDB_drop_type(typ, ecp, NULL);
+            RDB_del_nonscalar_type(typ, ecp);
             return NULL;
         }
     }
@@ -1044,7 +1044,7 @@ error:
         if (tbp != NULL) {
             RDB_drop_table(tbp, &ec, &txnp->tx);
         } else if (tbtyp != NULL && !RDB_type_is_scalar(tbtyp)) {
-            RDB_drop_type(tbtyp, &ec, NULL);
+            RDB_del_nonscalar_type(tbtyp, &ec);
         }
         if (initexp != NULL) {
             RDB_destroy_obj(&tb, &ec);
@@ -1214,7 +1214,7 @@ exec_vardef_private(RDB_parse_node *nodep, RDB_exec_context *ecp)
 
 error:
     if (tbtyp != NULL && !RDB_type_is_scalar(tbtyp))
-        RDB_drop_type(tbtyp, ecp, NULL);
+        RDB_del_nonscalar_type(tbtyp, ecp);
     if (initexp != NULL) {
         RDB_destroy_obj(&tb, ecp);
     }
@@ -2478,7 +2478,7 @@ exec_typedef(const RDB_parse_node *stmtp, RDB_exec_context *ecp)
     for (i = 0; i < repc; i++) {
         for (j = 0; j < repv[i].compc; j++) {
             if (!RDB_type_is_scalar(repv[i].compv[j].typ))
-                RDB_drop_type(repv[i].compv[j].typ, ecp, NULL);
+                RDB_del_nonscalar_type(repv[i].compv[j].typ, ecp);
         }
     }
     RDB_free(repv);
@@ -2497,7 +2497,7 @@ error:
     for (i = 0; i < repc; i++) {
         for (j = 0; j < repv[i].compc; j++) {
             if (!RDB_type_is_scalar(repv[i].compv[j].typ))
-                RDB_drop_type(repv[i].compv[j].typ, ecp, NULL);
+                RDB_del_nonscalar_type(repv[i].compv[j].typ, ecp);
         }
     }
     RDB_free(repv);
@@ -2577,14 +2577,14 @@ exec_typedrop(const RDB_parse_node *nodep, RDB_exec_context *ecp)
         goto error;
 
     /*
-     * Check if a transien variable of that type exists
+     * Check if a transient variable of that type exists
      */
     if (type_in_use(typ)) {
         RDB_raise_in_use("enable to drop type because a variable with that type exists", ecp);
         goto error;
     }
 
-    ret = RDB_drop_type(typ, ecp, txnp != NULL ? &txnp->tx : &tmp_tx);
+    ret = RDB_drop_type(RDB_type_name(typ), ecp, txnp != NULL ? &txnp->tx : &tmp_tx);
     if (ret != RDB_OK)
         goto error;
 

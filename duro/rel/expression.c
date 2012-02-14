@@ -781,7 +781,7 @@ _RDB_destroy_expr(RDB_expression *exp, RDB_exec_context *ecp)
             if (exp->def.obj.typ != NULL
                     && !RDB_type_is_scalar(exp->def.obj.typ)
                     && exp->def.obj.kind != RDB_OB_TABLE)
-                RDB_drop_type(exp->def.obj.typ, ecp, NULL);
+                RDB_del_nonscalar_type(exp->def.obj.typ, ecp);
             if (RDB_destroy_obj(&exp->def.obj, ecp) != RDB_OK)
                 return RDB_ERROR;
             break;
@@ -801,7 +801,7 @@ _RDB_destroy_expr(RDB_expression *exp, RDB_exec_context *ecp)
             break;
     }
     if (exp->typ != NULL && !RDB_type_is_scalar(exp->typ))
-        return RDB_drop_type(exp->typ, ecp, NULL);
+        return RDB_del_nonscalar_type(exp->typ, ecp);
     return RDB_OK;
 }
 

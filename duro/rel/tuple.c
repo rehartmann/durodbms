@@ -1112,7 +1112,7 @@ error:
             RDB_free(typ->def.tuple.attrv[i].name);
             if (typ->def.tuple.attrv[i].typ != NULL
                     && typ->def.tuple.attrv[i].typ->kind == RDB_TP_TUPLE)
-                RDB_drop_type(typ->def.tuple.attrv[i].typ, ecp, NULL);
+                RDB_del_nonscalar_type(typ->def.tuple.attrv[i].typ, ecp);
         }
         RDB_free(typ->def.tuple.attrv);
     }

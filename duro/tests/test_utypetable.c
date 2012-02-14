@@ -173,7 +173,7 @@ test_drop(RDB_database *dbp, RDB_exec_context *ecp)
         return ret;
     }
 
-    ret = RDB_drop_type(tinyintp, ecp, &tx);
+    ret = RDB_drop_type("TINYINT", ecp, &tx);
     if (ret != RDB_OK) {
         RDB_rollback(ecp, &tx);
         return ret;

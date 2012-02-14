@@ -374,7 +374,7 @@ cleanup:
                 Tcl_Free((char *) argv[i]);
             }
             if (!RDB_type_is_scalar(argtv[i])) {
-                ret = RDB_drop_type(argtv[i], statep->current_ecp, NULL);
+                ret = RDB_del_nonscalar_type(argtv[i], statep->current_ecp);
             }
         }
         Tcl_Free((char *) argv);

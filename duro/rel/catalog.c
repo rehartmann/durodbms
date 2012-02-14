@@ -841,7 +841,7 @@ provide_systable(const char *name, int attrc, RDB_attr heading[],
 
     *tbpp = _RDB_new_rtable(name, RDB_TRUE, tbtyp, keyc, keyv, RDB_FALSE, ecp);
     if (*tbpp == NULL) {
-        RDB_drop_type(tbtyp, ecp, NULL);
+        RDB_del_nonscalar_type(tbtyp, ecp);
         RDB_raise_no_memory(ecp);
         return RDB_ERROR;
     }
@@ -1690,18 +1690,18 @@ _RDB_cat_get_rtable(const char *name, RDB_exec_context *ecp,
 
     tbtyp = RDB_create_relation_type(attrc, attrv, ecp);
     if (tbtyp == NULL) {
-        RDB_drop_type(tbtyp, ecp, NULL);
+        RDB_del_nonscalar_type(tbtyp, ecp);
         goto error;
     }
     if (_RDB_set_defvals(tbtyp, attrc, attrv, ecp) != RDB_OK) {
-        RDB_drop_type(tbtyp, ecp, NULL);
+        RDB_del_nonscalar_type(tbtyp, ecp);
         return NULL;
     }
 
     tbp = _RDB_new_rtable(name, RDB_TRUE, tbtyp, keyc, keyv, usr, ecp);
     _RDB_free_keys(keyc, keyv);
     if (tbp == NULL) {
-        RDB_drop_type(tbtyp, ecp, NULL);
+        RDB_del_nonscalar_type(tbtyp, ecp);
         goto error;
     }
 
@@ -2320,7 +2320,7 @@ error:
     if (argtv != NULL) {
         for (i = 0; i < argc; i++) {
             if (argtv[i] != NULL && !RDB_type_is_scalar(argtv[i]))
-                RDB_drop_type(argtv[i], ecp, NULL);
+                RDB_del_nonscalar_type(argtv[i], ecp);
         }
         RDB_free(argtv);
     }

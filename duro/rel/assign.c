@@ -130,7 +130,7 @@ replace_targets_real_ins(RDB_object *tbp, const RDB_ma_insert *insp,
     }
     if (RDB_init_table_from_type(RDB_expr_obj(argp), NULL,
             tbtyp, 0, NULL, ecp) != RDB_OK) {
-        RDB_drop_type(tbtyp, ecp, NULL);
+        RDB_del_nonscalar_type(tbtyp, ecp);
         RDB_drop_expr(exp, ecp);
         return NULL;
     }
@@ -287,12 +287,12 @@ replace_targets_real(RDB_object *tbp,
 
                 exp = RDB_obj_to_expr(NULL, ecp);
                 if (exp == NULL) {
-                    RDB_drop_type(tbtyp, ecp, NULL);
+                    RDB_del_nonscalar_type(tbtyp, ecp);
                     return NULL;
                 }
                 if (RDB_init_table_from_type(RDB_expr_obj(exp), NULL, tbtyp,
                         0, NULL, ecp) != RDB_OK) {
-                    RDB_drop_type(tbtyp, ecp, NULL);
+                    RDB_del_nonscalar_type(tbtyp, ecp);
                     return NULL;
                 }
             }

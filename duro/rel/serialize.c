@@ -182,7 +182,7 @@ serialize_trobj(RDB_object *valp, int *posp, const RDB_object *argvalp,
     _RDB_obj_to_irep(((RDB_byte *) valp->val.bin.datap) + *posp, argvalp, len);
     *posp += len;
     if (crtpltyp) {
-        RDB_drop_type(typ, ecp, NULL);
+        RDB_del_nonscalar_type(typ, ecp);
         ((RDB_object *)argvalp)->typ = NULL;
     }
     return RDB_OK;
@@ -560,7 +560,7 @@ deserialize_trobj(RDB_object *valp, int *posp, RDB_exec_context *ecp,
     *posp += len;
 
     if (typ->kind == RDB_TP_TUPLE) {
-        RDB_drop_type(typ, ecp, NULL);
+        RDB_del_nonscalar_type(typ, ecp);
         argvalp->typ = NULL;
     }
     return ret;

@@ -789,7 +789,7 @@ parse_heading(RDB_parse_node *nodep, RDB_bool rel, RDB_exec_context *ecp,
 cleanup:
     for (i = 0; i < attrc; i++) {
         if (attrv[i].typ != NULL && !RDB_type_is_scalar(attrv[i].typ))
-            RDB_drop_type(attrv[i].typ, ecp, NULL);
+            RDB_del_nonscalar_type(attrv[i].typ, ecp);
     }
     RDB_free(attrv);
     return typ;
