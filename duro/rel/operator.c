@@ -16,8 +16,11 @@
 
 #include <assert.h>
 
+/*
+ * Convert paramv to an array of binary type representations
+ */
 static int
-make_typesobj_from_params(int argc, RDB_parameter *paramv,
+params_to_typesobj(int argc, RDB_parameter paramv[],
         RDB_exec_context *ecp, RDB_object *objp)
 {
     int i;
@@ -46,15 +49,14 @@ make_typesobj_from_params(int argc, RDB_parameter *paramv,
  */
 
 /**
- * RDB_create_ro_op creates a read-only operator with name <var>name</var>.
-The argument types are specified by <var>paramc</var> and <var>paramtv</var>.
+ * RDB_create_ro_op creates a read-only operator.
 
 To execute the operator, Duro will execute the function specified by
 <var>symname</var> from the library specified by <var>libname</var>.
 
 The name of the library must be passed without the file extension.
 
-This function must have the following signature:
+The function must have the following signature:
 
 @verbatim
 int
@@ -79,6 +81,18 @@ the operator.
 Overloading operators is possible.
 
 @returns RDB_OK on success, RDB_ERROR if an error occurred.
+
+@param name the name of the operator.
+@param paramc   the number of parameters.
+@param paramv   the parameters. paramv[i].typ will become the type of the i-th
+                parameter. The update field is ignored.
+@param rtyp the return type.
+@param libname  the name of a library containing the function which implements the
+                operator.
+@param symname  the name of the C function which implements the operator.
+@param sourcep  a pointer to the source code, if the operator is executed by an interpreter.
+@param ecp      a pointer to a RDB_exec_context used to return error information.
+@param txp      the transaction which is used to write to the catalog.
 
 @par Errors:
 
@@ -150,7 +164,7 @@ RDB_create_ro_op(const char *name, int paramc, RDB_parameter paramv[], RDB_type 
 
     /* Set ARGTYPES to array of serialized argument types */
     RDB_init_obj(&typesobj);
-    ret = make_typesobj_from_params(paramc, paramv, ecp, &typesobj);
+    ret = params_to_typesobj(paramc, paramv, ecp, &typesobj);
     if (ret != RDB_OK) {
         RDB_destroy_obj(&typesobj, ecp);
         goto cleanup;
@@ -198,8 +212,7 @@ cleanup:
 }
 
 /**
- * RDB_create_update_op creates an update operator with name <var>name</var>.
-The argument types are specified by <var>paramc</var> and <var>paramtv</var>.
+ * RDB_create_update_op creates an update operator.
 
 To execute the operator, Duro will execute the function specified by
 <var>symname</var> from the library specified by <var>libname</var>.
@@ -226,6 +239,17 @@ and returning RDB_ERROR.
 the operator.
 
 Overloading operators is possible.
+
+@param name the name of the operator.
+@param paramc   the number of parameters.
+@param paramv   the parameters. paramv[i].typ will become the type of the i-th
+                parameter. paramv[i].update specifies whether the argument is updated.
+@param libname  the name of a library containing the function which implements the
+                operator.
+@param symname  the name of the C function which implements the operator.
+@param sourcep  a pointer to the source code, if the operator is executed by an interpreter.
+@param ecp      a pointer to a RDB_exec_context used to return error information.
+@param txp      the transaction which is used to write to the catalog.
 
 @returns RDB_OK on success, RDB_ERROR if an error occurred.
 
@@ -310,7 +334,7 @@ RDB_create_update_op(const char *name, int paramc, RDB_parameter paramv[],
 
     /* Set ARGTYPES to array of serialized arg types */
     RDB_init_obj(&typesobj);
-    ret = make_typesobj_from_params(paramc, paramv, ecp, &typesobj);
+    ret = params_to_typesobj(paramc, paramv, ecp, &typesobj);
     if (ret != RDB_OK) {
         RDB_destroy_obj(&typesobj, ecp);
         goto cleanup;
