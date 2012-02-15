@@ -507,18 +507,18 @@ RDB_bool
 RDB_type_is_numeric(const RDB_type *);
 
 RDB_type *
-RDB_create_tuple_type(int attrc, const RDB_attr attrv[],
+RDB_new_tuple_type(int attrc, const RDB_attr attrv[],
         RDB_exec_context *);
 
 RDB_type *
-RDB_create_relation_type(int attrc, const RDB_attr attrv[],
+RDB_new_relation_type(int attrc, const RDB_attr attrv[],
         RDB_exec_context *);
 
 RDB_type *
-RDB_create_relation_type_from_base(RDB_type *, RDB_exec_context *);
+RDB_new_relation_type_from_base(RDB_type *, RDB_exec_context *);
 
 RDB_type *
-RDB_create_array_type(RDB_type *, RDB_exec_context *);
+RDB_new_array_type(RDB_type *, RDB_exec_context *);
 
 int
 RDB_del_nonscalar_type(RDB_type *, RDB_exec_context*);

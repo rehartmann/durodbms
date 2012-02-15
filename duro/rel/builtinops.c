@@ -808,7 +808,7 @@ _RDB_op_relation(int argc, RDB_object *argv[], RDB_operator *op,
     if (tuptyp == NULL) {
         return RDB_ERROR;
     }
-    rtyp = RDB_create_relation_type_from_base(tuptyp, ecp);
+    rtyp = RDB_new_relation_type_from_base(tuptyp, ecp);
     if (rtyp == NULL) {
         return RDB_ERROR;
     }

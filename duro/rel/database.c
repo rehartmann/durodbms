@@ -1198,7 +1198,7 @@ RDB_create_table(const char *name,
                 int keyc, const RDB_string_vec keyv[],
                 RDB_exec_context *ecp, RDB_transaction *txp)
 {
-    RDB_type *tbtyp = RDB_create_relation_type(attrc, heading, ecp);
+    RDB_type *tbtyp = RDB_new_relation_type(attrc, heading, ecp);
     if (tbtyp == NULL) {
         return NULL;
     }

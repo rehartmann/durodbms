@@ -429,7 +429,7 @@ tuple_type(const RDB_expression *exp, RDB_gettypefn *getfnp, void *arg,
         argp = argp->nextp;
     }
 
-    typ = RDB_create_tuple_type(attrc, attrv, ecp);
+    typ = RDB_new_tuple_type(attrc, attrv, ecp);
 
 cleanup:
     RDB_free(attrv);
@@ -456,7 +456,7 @@ array_type(const RDB_expression *exp, RDB_gettypefn *getfnp, void *arg,
     if (basetyp == NULL)
         return NULL;
 
-    rtyp = RDB_create_array_type(basetyp, ecp);
+    rtyp = RDB_new_array_type(basetyp, ecp);
     if (rtyp == NULL) {
         if (!RDB_type_is_scalar(basetyp))
             RDB_del_nonscalar_type(basetyp, ecp);
@@ -509,7 +509,7 @@ relation_type(const RDB_expression *exp, RDB_type **argtv,
     basetyp = RDB_dup_nonscalar_type(tpltyp, ecp);
     if (basetyp == NULL)
         return NULL;
-    rtyp = RDB_create_relation_type_from_base(basetyp, ecp);
+    rtyp = RDB_new_relation_type_from_base(basetyp, ecp);
     if (rtyp == NULL) {
         RDB_del_nonscalar_type(basetyp, ecp);
         return NULL;

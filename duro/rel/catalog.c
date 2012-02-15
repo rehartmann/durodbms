@@ -834,7 +834,7 @@ provide_systable(const char *name, int attrc, RDB_attr heading[],
            RDB_object **tbpp)
 {
     int ret;
-    RDB_type *tbtyp = RDB_create_relation_type(attrc, heading, ecp);
+    RDB_type *tbtyp = RDB_new_relation_type(attrc, heading, ecp);
     if (tbtyp == NULL) {
         return RDB_ERROR;
     }
@@ -1016,7 +1016,7 @@ _RDB_open_systables(RDB_dbroot *dbrootp, RDB_exec_context *ecp,
 
     keysattr.name = "KEY";
     keysattr.typ = &RDB_STRING;
-    keys_attrv[2].typ = RDB_create_relation_type(1, &keysattr, ecp);
+    keys_attrv[2].typ = RDB_new_relation_type(1, &keysattr, ecp);
     if (keys_attrv[2].typ == NULL) {
         RDB_raise_no_memory(ecp);
         return RDB_ERROR;
@@ -1041,7 +1041,7 @@ _RDB_open_systables(RDB_dbroot *dbrootp, RDB_exec_context *ecp,
         return ret;
     }
 
-    ro_ops_attrv[1].typ = RDB_create_array_type(&RDB_BINARY, ecp);
+    ro_ops_attrv[1].typ = RDB_new_array_type(&RDB_BINARY, ecp);
     if (ro_ops_attrv[1].typ == NULL) {
         return RDB_ERROR;
     }
@@ -1053,11 +1053,11 @@ _RDB_open_systables(RDB_dbroot *dbrootp, RDB_exec_context *ecp,
         return ret;
     }
 
-    upd_ops_attrv[1].typ = RDB_create_array_type(&RDB_BINARY, ecp);
+    upd_ops_attrv[1].typ = RDB_new_array_type(&RDB_BINARY, ecp);
     if (upd_ops_attrv[1].typ == NULL) {
         return RDB_ERROR;
     }
-    upd_ops_attrv[5].typ = RDB_create_array_type(&RDB_BOOLEAN, ecp);
+    upd_ops_attrv[5].typ = RDB_new_array_type(&RDB_BOOLEAN, ecp);
     if (upd_ops_attrv[5].typ == NULL) {
         return RDB_ERROR;
     }
@@ -1095,12 +1095,12 @@ _RDB_open_systables(RDB_dbroot *dbrootp, RDB_exec_context *ecp,
         return ret;
     }
 
-    typ = RDB_create_tuple_type(2, indexes_attrs_attrv, ecp);
+    typ = RDB_new_tuple_type(2, indexes_attrs_attrv, ecp);
     if (typ == NULL) {
         RDB_raise_no_memory(ecp);
         return RDB_ERROR;
     }
-    indexes_attrv[2].typ = RDB_create_array_type(typ, ecp);
+    indexes_attrv[2].typ = RDB_new_array_type(typ, ecp);
     if (indexes_attrv[2].typ == NULL) {
         return RDB_ERROR;
     }
@@ -1688,7 +1688,7 @@ _RDB_cat_get_rtable(const char *name, RDB_exec_context *ecp,
         }
     }
 
-    tbtyp = RDB_create_relation_type(attrc, attrv, ecp);
+    tbtyp = RDB_new_relation_type(attrc, attrv, ecp);
     if (tbtyp == NULL) {
         RDB_del_nonscalar_type(tbtyp, ecp);
         goto error;

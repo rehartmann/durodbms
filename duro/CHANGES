@@ -4,6 +4,8 @@ Summary of Changes for Duro
 
 Changes for Duro 0.15
 
+- Renamed RDB_create_XXX functions for non-scalar types to RDB_new_XXX.
+
 - Added RDB_del_nonscalar_type(). Changed RDB_drop_type to support only user-defined types.
 
 - Replaced iargp and iarglen parameters of RDB_create_ro_op() and RDB_create_update_op()

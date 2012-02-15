@@ -666,7 +666,7 @@ _RDB_copy_obj(RDB_object *dstvalp, const RDB_object *srcvalp,
 
                 /* Turn the RDB_object into a table */
                 if (srcvalp->typ->kind == RDB_TP_RELATION) {
-                    reltyp = RDB_create_relation_type(
+                    reltyp = RDB_new_relation_type(
                             srcvalp->typ->def.basetyp->def.tuple.attrc,
                             srcvalp->typ->def.basetyp->def.tuple.attrv, ecp);
                 } else {

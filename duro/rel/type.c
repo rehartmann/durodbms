@@ -438,7 +438,7 @@ _RDB_init_builtin_types(RDB_exec_context *ecp)
     RDB_NO_MEMORY_ERROR.def.scalar.builtin = RDB_TRUE;
     RDB_NO_MEMORY_ERROR.def.scalar.repc = 1;
     RDB_NO_MEMORY_ERROR.def.scalar.repv = &no_memory_rep;
-    RDB_NO_MEMORY_ERROR.def.scalar.arep = RDB_create_tuple_type(0, NULL, ecp);
+    RDB_NO_MEMORY_ERROR.def.scalar.arep = RDB_new_tuple_type(0, NULL, ecp);
     if (RDB_NO_MEMORY_ERROR.def.scalar.arep == NULL) {
         RDB_raise_no_memory(ecp);
         return RDB_ERROR;
@@ -453,7 +453,7 @@ _RDB_init_builtin_types(RDB_exec_context *ecp)
     RDB_NO_RUNNING_TX_ERROR.def.scalar.builtin = RDB_TRUE;
     RDB_NO_RUNNING_TX_ERROR.def.scalar.repc = 1;
     RDB_NO_RUNNING_TX_ERROR.def.scalar.repv = &no_running_tx_rep;
-    RDB_NO_RUNNING_TX_ERROR.def.scalar.arep = RDB_create_tuple_type(0, NULL, ecp);
+    RDB_NO_RUNNING_TX_ERROR.def.scalar.arep = RDB_new_tuple_type(0, NULL, ecp);
     if (RDB_NO_RUNNING_TX_ERROR.def.scalar.arep == NULL) {
         RDB_raise_no_memory(ecp);
         return RDB_ERROR;
@@ -625,7 +625,7 @@ _RDB_init_builtin_types(RDB_exec_context *ecp)
     RDB_LOCK_NOT_GRANTED_ERROR.def.scalar.repc = 1;
     RDB_LOCK_NOT_GRANTED_ERROR.def.scalar.repv = &lock_not_granted_rep;
     RDB_LOCK_NOT_GRANTED_ERROR.def.scalar.arep =
-            RDB_create_tuple_type(0, NULL, ecp);
+            RDB_new_tuple_type(0, NULL, ecp);
     if (RDB_LOCK_NOT_GRANTED_ERROR.def.scalar.arep == NULL) {
         RDB_raise_no_memory(ecp);
         return RDB_ERROR;
@@ -641,7 +641,7 @@ _RDB_init_builtin_types(RDB_exec_context *ecp)
     RDB_AGGREGATE_UNDEFINED_ERROR.def.scalar.repc = 1;
     RDB_AGGREGATE_UNDEFINED_ERROR.def.scalar.repv = &aggregate_undefined_rep;
     RDB_AGGREGATE_UNDEFINED_ERROR.def.scalar.arep =
-            RDB_create_tuple_type(0, NULL, ecp);
+            RDB_new_tuple_type(0, NULL, ecp);
     if (RDB_AGGREGATE_UNDEFINED_ERROR.def.scalar.arep == NULL) {
         RDB_raise_no_memory(ecp);
         return RDB_ERROR;
@@ -657,7 +657,7 @@ _RDB_init_builtin_types(RDB_exec_context *ecp)
     RDB_VERSION_MISMATCH_ERROR.def.scalar.repc = 1;
     RDB_VERSION_MISMATCH_ERROR.def.scalar.repv = &version_mismatch_rep;
     RDB_VERSION_MISMATCH_ERROR.def.scalar.arep =
-            RDB_create_tuple_type(0, NULL, ecp);
+            RDB_new_tuple_type(0, NULL, ecp);
     if (RDB_VERSION_MISMATCH_ERROR.def.scalar.arep == NULL) {
         RDB_raise_no_memory(ecp);
         return RDB_ERROR;
@@ -673,7 +673,7 @@ _RDB_init_builtin_types(RDB_exec_context *ecp)
     RDB_DEADLOCK_ERROR.def.scalar.repc = 1;
     RDB_DEADLOCK_ERROR.def.scalar.repv = &deadlock_rep;
     RDB_DEADLOCK_ERROR.def.scalar.arep =
-            RDB_create_tuple_type(0, NULL, ecp);
+            RDB_new_tuple_type(0, NULL, ecp);
     if (RDB_DEADLOCK_ERROR.def.scalar.arep == NULL) {
         RDB_raise_no_memory(ecp);
         return RDB_ERROR;
@@ -689,7 +689,7 @@ _RDB_init_builtin_types(RDB_exec_context *ecp)
     RDB_FATAL_ERROR.def.scalar.repc = 1;
     RDB_FATAL_ERROR.def.scalar.repv = &fatal_rep;
     RDB_FATAL_ERROR.def.scalar.arep =
-            RDB_create_tuple_type(0, NULL, ecp);
+            RDB_new_tuple_type(0, NULL, ecp);
     if (RDB_FATAL_ERROR.def.scalar.arep == NULL) {
         RDB_raise_no_memory(ecp);
         return RDB_ERROR;
@@ -957,7 +957,7 @@ RDB_dup_nonscalar_type(RDB_type *typ, RDB_exec_context *ecp)
             }
             return restyp;
         case RDB_TP_TUPLE:
-            return RDB_create_tuple_type(typ->def.tuple.attrc,
+            return RDB_new_tuple_type(typ->def.tuple.attrc,
                     typ->def.tuple.attrv, ecp);
         case RDB_TP_SCALAR:
             return typ;
@@ -966,14 +966,14 @@ RDB_dup_nonscalar_type(RDB_type *typ, RDB_exec_context *ecp)
 }
 
 /**
- * RDB_create_tuple_type creates a tuple type and stores
-a pointer to the type at the location pointed to by <var>typp</var>.
+ * Create a RDB_type struct for a tuple type
+ * and returns a pointer to it.
 The attributes are specified by <var>attrc</var> and <var>attrv</var>.
 The fields defaultp and options of RDB_attr are ignored.
 
 @returns
 
-A pointer to the tuple type, or NULL if an error occured.
+A pointer to the RDB_type struct, or NULL if an error occured.
 
 @par Errors:
 
@@ -985,7 +985,7 @@ A pointer to the tuple type, or NULL if an error occured.
 The call may also fail for a @ref system-errors "system error".
  */
 RDB_type *
-RDB_create_tuple_type(int attrc, const RDB_attr attrv[],
+RDB_new_tuple_type(int attrc, const RDB_attr attrv[],
         RDB_exec_context *ecp)
 {
     RDB_type *tuptyp;
@@ -1053,13 +1053,13 @@ error:
 }
 
 /**
- * Create a relation type and return a pointer to it.
+ * Create a RDB_type struct for a relation type and return a pointer to it.
 The attributes are specified by <var>attrc</var> and <var>attrv</var>.
 The fields defaultp and options of RDB_attr are ignored.
 
 @returns
 
-On success, a pointer to the type. On failure, NULL is returned.
+On success, a pointer to the RDB_type struct. On failure, NULL is returned.
 
 @par Errors:
 
@@ -1071,30 +1071,30 @@ On success, a pointer to the type. On failure, NULL is returned.
 The call may also fail for a @ref system-errors "system error".
  */
 RDB_type *
-RDB_create_relation_type(int attrc, const RDB_attr attrv[],
+RDB_new_relation_type(int attrc, const RDB_attr attrv[],
         RDB_exec_context *ecp)
 {
-    RDB_type *tpltyp = RDB_create_tuple_type(attrc, attrv, ecp);
+    RDB_type *tpltyp = RDB_new_tuple_type(attrc, attrv, ecp);
     if (tpltyp == NULL) {
         return NULL;
     }
 
-    return RDB_create_relation_type_from_base(tpltyp, ecp);
+    return RDB_new_relation_type_from_base(tpltyp, ecp);
 }
 
 /**
- * Create a relation type from a tuple type.
+ * Create a RDB_type struct for a relation type from a tuple type.
 
 @returns
 
-On success, a pointer to the type. On failure, NULL is returned.
+On success, a pointer to the RDB_type struct. On failure, NULL is returned.
 
 @par Errors:
 
 The call may fail for a @ref system-errors "system error".
  */
 RDB_type *
-RDB_create_relation_type_from_base(RDB_type *tpltyp, RDB_exec_context *ecp)
+RDB_new_relation_type_from_base(RDB_type *tpltyp, RDB_exec_context *ecp)
 {
     RDB_type *typ = RDB_alloc(sizeof (RDB_type), ecp);
     if (typ == NULL) {
@@ -1110,15 +1110,16 @@ RDB_create_relation_type_from_base(RDB_type *tpltyp, RDB_exec_context *ecp)
 }
 
 /**
- * RDB_create_array_type creates an array type.
+ * Creates a RDB_type struct for an array type.
 The base type is specified by <var>typ</var>.
 
 @returns
 
-The new array type, or NULL if the creation failed due to insufficient memory.
+A pointer to a RDB_type structure for the new array type,
+or NULL if the creation failed.
  */
 RDB_type *
-RDB_create_array_type(RDB_type *basetyp, RDB_exec_context *ecp)
+RDB_new_array_type(RDB_type *basetyp, RDB_exec_context *ecp)
 {
     RDB_type *typ = RDB_alloc(sizeof (RDB_type), ecp);
     if (typ == NULL) {
@@ -1201,14 +1202,14 @@ RDB_base_type(RDB_type *typ)
 
 /**
  * RDB_type_attrs returns a pointer to an array of
-RDB_attr structures
+RDB_attr structs
 describing the attributes of the tuple or relation type
 specified by *<var>typ</var> and stores the number of attributes in
 *<var>attrcp</var>.
 
 @returns
 
-A pointer to an array of RDB_attr structures or NULL if the type
+A pointer to an array of RDB_attr structs or NULL if the type
 is not a tuple or relation type.
  */
 RDB_attr *
@@ -1507,7 +1508,7 @@ RDB_implement_type(const char *name, RDB_type *arep, RDB_int areplen,
             arep = typ->def.scalar.repv[0].compv[0].typ;
         } else {
             /* More than one component, so internal rep is a tuple */
-            arep = RDB_create_tuple_type(typ->def.scalar.repv[0].compc,
+            arep = RDB_new_tuple_type(typ->def.scalar.repv[0].compc,
                     typ->def.scalar.repv[0].compv, ecp);
             if (arep == NULL)
                 return RDB_ERROR;
@@ -1730,7 +1731,7 @@ RDB_drop_type(const char *name, RDB_exec_context *ecp, RDB_transaction *txp)
         }
 
         /*
-         * Delete RDB_type structure last because name may be identical
+         * Delete RDB_type struct last because name may be identical
          * to typ->name
          */
         if (del_type(typ, ecp) != RDB_OK)
@@ -2666,7 +2667,7 @@ RDB_group_type(RDB_type *typ, int attrc, char *attrv[], const char *gattr,
         rtattrv[i].typ = attrp->typ;
         rtattrv[i].name = attrp->name;
     }
-    gattrtyp = RDB_create_relation_type(attrc, rtattrv, ecp);
+    gattrtyp = RDB_new_relation_type(attrc, rtattrv, ecp);
     RDB_free(rtattrv);
     if (gattrtyp == NULL)
         return NULL;

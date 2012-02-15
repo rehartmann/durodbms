@@ -29,7 +29,7 @@ test_relation(RDB_database *dbp, RDB_exec_context *ecp)
     /*
      * Must set type of RELATION expression if there is no argument
      */
-    reltyp = RDB_create_relation_type(0, NULL, ecp);
+    reltyp = RDB_new_relation_type(0, NULL, ecp);
     assert(reltyp != NULL);
     RDB_set_expr_type(exp, reltyp);
 

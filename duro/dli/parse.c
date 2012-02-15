@@ -445,7 +445,7 @@ wrap_node_expr(RDB_parse_node *argnodep,
                     (RDB_parse_nodelist_length(wnodep->val.children.firstp->nextp) + 1) / 2,
                     _RDB_parse_ecp) != RDB_OK)
                 return NULL;
-            arrtyp = RDB_create_array_type(&RDB_STRING, _RDB_parse_ecp);
+            arrtyp = RDB_new_array_type(&RDB_STRING, _RDB_parse_ecp);
             if (arrtyp == NULL)
                 return NULL;
             RDB_obj_set_typeinfo(arrp, arrtyp);
@@ -781,9 +781,9 @@ parse_heading(RDB_parse_node *nodep, RDB_bool rel, RDB_exec_context *ecp,
     }
 
     if (rel) {
-        typ = RDB_create_relation_type(attrc, attrv, ecp);
+        typ = RDB_new_relation_type(attrc, attrv, ecp);
     } else {
-        typ = RDB_create_tuple_type(attrc, attrv, ecp);
+        typ = RDB_new_tuple_type(attrc, attrv, ecp);
     }
 
 cleanup:
@@ -1015,7 +1015,7 @@ inner_node_expr(RDB_parse_node *nodep, RDB_exec_context *ecp, RDB_transaction *t
                         RDB_drop_expr(nodep->exp, ecp);
                         return nodep->exp = NULL;
                     }
-                    arrtyp = RDB_create_array_type(typ, ecp);
+                    arrtyp = RDB_new_array_type(typ, ecp);
                     if (arrtyp == NULL) {
                         RDB_drop_expr(nodep->exp, ecp);
                         return nodep->exp = NULL;
@@ -1196,7 +1196,7 @@ tup_rel_node_to_type(RDB_parse_node *nodep, RDB_gettypefn *getfnp, void *getarg,
             typ = RDB_dup_nonscalar_type(typ, ecp);
             if (typ == NULL)
                 return NULL;
-            return RDB_create_relation_type_from_base(typ, ecp);
+            return RDB_new_relation_type_from_base(typ, ecp);
         }
         if (RDB_type_is_relation(typ))
             return RDB_dup_nonscalar_type(typ, ecp);
@@ -1231,7 +1231,7 @@ RDB_parse_node_to_type(RDB_parse_node *nodep, RDB_gettypefn *getfnp, void *getar
                         nodep->val.children.firstp->nextp, getfnp, getarg, ecp, txp);
                 if (typ == NULL)
                     return NULL;
-                return RDB_create_array_type(typ, ecp);
+                return RDB_new_array_type(typ, ecp);
             }
             case TOK_SAME_TYPE_AS:
             {

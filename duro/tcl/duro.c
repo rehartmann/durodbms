@@ -703,9 +703,9 @@ Duro_get_type(Tcl_Obj *objp, Tcl_Interp *interp, RDB_exec_context *ecp,
             attrv[i].defaultp = NULL;
         }
         if (istuple) {
-            typ = RDB_create_tuple_type(attrc, attrv, ecp);
+            typ = RDB_new_tuple_type(attrc, attrv, ecp);
         } else {
-            typ = RDB_create_relation_type(attrc, attrv, ecp);
+            typ = RDB_new_relation_type(attrc, attrv, ecp);
         }
         Tcl_Free((char *) attrv);
         if (typ == NULL) {

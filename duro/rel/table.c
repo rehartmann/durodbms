@@ -288,7 +288,7 @@ RDB_init_table(RDB_object *tbp, const char *name,
         int keyc, const RDB_string_vec keyv[],
         RDB_exec_context *ecp)
 {
-    RDB_type *reltyp = RDB_create_relation_type(attrc, attrv, ecp);
+    RDB_type *reltyp = RDB_new_relation_type(attrc, attrv, ecp);
     if (reltyp == NULL)
         return RDB_ERROR;
 
