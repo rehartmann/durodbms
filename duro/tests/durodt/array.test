@@ -46,10 +46,10 @@ test arraysel {array selectors} -body {
 	    println(at1[0].i);
 
 	    -- array of tuple with type
-	    var at1 init array tup{s string} (tup{s 'A'}, tup{s 'Ilsebill'});
-	    println(length(at1));
-	    println(at1[0].s);
-	    println(at1[1].s);
+	    var at2 init array tup{s string} (tup{s 'A'}, tup{s 'Ilsebill'});
+	    println(length(at2));
+	    println(at2[0].s);
+	    println(at2[1].s);
 	    
 	    -- type mismatch
 	    try

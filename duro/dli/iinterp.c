@@ -807,7 +807,8 @@ exec_vardef(RDB_parse_node *nodep, RDB_exec_context *ecp)
     /*
      * Check if the variable already exists
      */
-    if (current_varmapp != NULL && RDB_hashmap_get(&current_varmapp->map, varname) != NULL) {
+    if (RDB_hashmap_get(current_varmapp != NULL ?
+            &current_varmapp->map : &root_module.varmap, varname) != NULL) {
         RDB_raise_element_exists(varname, ecp);
         return RDB_ERROR;
     }

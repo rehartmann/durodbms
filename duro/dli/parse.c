@@ -1216,6 +1216,14 @@ RDB_parse_node_to_type(RDB_parse_node *nodep, RDB_gettypefn *getfnp, void *getar
         const char *name = RDB_expr_var_name(nodep->exp);
         if (strcmp(name, "CHAR") == 0)
             return &RDB_STRING;
+        if (strcmp(name, "INT") == 0)
+            return &RDB_INTEGER;
+        if (strcmp(name, "RATIONAL") == 0)
+            return &RDB_FLOAT;
+        if (strcmp(name, "RAT") == 0)
+            return &RDB_FLOAT;
+        if (strcmp(name, "BOOL") == 0)
+            return &RDB_BOOLEAN;
         return RDB_get_type(name, ecp, txp);
     }
     if (nodep->kind == RDB_NODE_INNER

@@ -31,6 +31,7 @@ test scalar_builtin {built-in scalar definitions and operators} -body {
 3
 XX
 FALSE
+error caught
 }
 
 test deftype {user-defined types} -setup $DBSETUP -body {
