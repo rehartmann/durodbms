@@ -18,25 +18,25 @@ set ::DBSETUP {
     makeDirectory dbenv
     cd $::tcltest::temporaryDirectory
     exec $testdir/../../dli/durodt << {
-        create_env('dbenv');
-        create_db('D');
+        CREATE_ENV('dbenv');
+        CREATE_DB('D');
     }
 }
 
 test for {FOR} -setup $DBSETUP -body {
     exec $testdir/../../dli/durodt -e dbenv << {
-        var i integer;
+        var i INTEGER;
     
         for i := 1 to 3;
-            println(i);
+            PRINTLN(i);
         end for;
 
         for i := -1 to 1;
-            println(i);
+            PRINTLN(i);
         end for;
 
         for i := 0 to -1;
-            println('Must not appear');
+            PRINTLN('Must not appear');
             exit();
         end for;
     }
@@ -50,11 +50,11 @@ test for {FOR} -setup $DBSETUP -body {
 
 test leave {FOR, WHILE, LEAVE} -setup $DBSETUP -body {
     exec $testdir/../../dli/durodt -e dbenv << {
-        current_db := 'D';
+        CURRENT_DB := 'D';
         begin transaction;
 
-        var i integer;
-        var j integer;
+        var i INTEGER;
+        var j INTEGER;
 
         outer_loop: for i := 0 to 10;
             j := 0;
@@ -66,12 +66,12 @@ test leave {FOR, WHILE, LEAVE} -setup $DBSETUP -body {
             end while;
         end for;
 
-        println(i);
-        println(j);
+        PRINTLN(i);
+        PRINTLN(j);
 
-        operator lop() returns string;
-            var i integer;
-            var j integer;
+        operator lop() returns STRING;
+            var i INTEGER;
+            var j INTEGER;
 
             outer_loop: while i < 10;
                 for j := 0 to 10;
@@ -81,10 +81,10 @@ test leave {FOR, WHILE, LEAVE} -setup $DBSETUP -body {
                 end for;
                 i := i + 1;
             end while;
-            return cast_as_string(i) || ',' || cast_as_string(j);
+            return CAST_AS_STRING(i) || ',' || CAST_AS_STRING(j);
         end operator;
         
-        println(lop());
+        PRINTLN(lop());
 
         commit;
     }
@@ -95,36 +95,36 @@ test leave {FOR, WHILE, LEAVE} -setup $DBSETUP -body {
 
 test leave_op {Unmatched LEAVE in operator} -setup $DBSETUP -body {
     exec $testdir/../../dli/durodt -e dbenv << {
-        current_db := 'D';
+        CURRENT_DB := 'D';
         begin tx;
 
         operator leave_upd_op() updates {};
             leave l;
         end operator;
 
-        operator leave_ro_op() returns integer;
+        operator leave_ro_op() returns INTEGER;
             leave l;
         end operator;
 
         try
 		    -- Must fail
-		    var i integer;
+		    var i INTEGER;
 		    l: for i:= 0 to 9;
 		        leave_upd_op();
 		    end for;
-		catch err syntax_error;
-		    println("syntax error caught: " || the_msg(err));
+		catch err SYNTAX_ERROR;
+		    PRINTLN("syntax error caught: " || THE_MSG(err));
 		end try;
 
         try
 		    -- Must fail
-		    var i integer;
-		    var v integer;
+		    var i INTEGER;
+		    var v INTEGER;
 		    l: for i:= 0 to 9;
 		        v := leave_ro_op();
 		    end for;
-		catch err syntax_error;
-		    println("syntax error caught: " || the_msg(err));
+		catch err SYNTAX_ERROR;
+		    PRINTLN("syntax error caught: " || THE_MSG(err));
 		end try;
 
    }

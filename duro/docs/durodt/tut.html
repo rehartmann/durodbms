@@ -32,19 +32,18 @@ They must be declared before they can be used.
 <p>Example:
 
 <pre>
-no db> var i integer;
+no db> var i INTEGER;
 no db>
 </pre>
 
-<p>This creates a variable named I. Note that Duro D/T is case
-insensitive, so there is no diffence between "var i integer;"
-and "VAR I INTEGER;". This tutorial shows example code in lowercase,
-since this is more convenient to type.
+<p>In previous versions, Duro D/T was case insensitive with respect to
+both keywords and identifiers. As of version 0.15, only keywords are case
+insensitive.
 
 <p>When declaring a variable, an initial value can be specified:
 
 <pre>
-no db> var j integer init 2;
+no db> var j INTEGER init 2;
 no db>
 </pre>
 
@@ -107,22 +106,20 @@ no db>
 <p>Duro supports the following built-in scalar types:
 
 <ul>
-<li>BOOLEAN</li>
-<li>INTEGER</li>
-<li>FLOAT</li>
-<li>STRING</li>
+<li>BOOLEAN (synonym BOOL)</li>
+<li>INTEGER (synonym INT)</li>
+<li>FLOAT (synonyms RATIONAL, RAT)</li>
+<li>STRING (synonym CHAR)</li>
 <li>BINARY</li>
 </ul>
-
-<p>CHAR can be used as an alias for STRING.
 
 <p>Examples:
 
 <pre>
-no db> var b boolean init true;
-no db> var i integer init 1;
-no db> var f float init 1.0;
-no db> var s string init 'Foo';
+no db> var b BOOL init true;
+no db> var i INT init 1;
+no db> var f FLOAT init 1.0;
+no db> var s STRING init 'Foo';
 </pre>
 
 <p>For non-scalar types, see the chapters on tuples, tables, and arrays,
@@ -131,7 +128,7 @@ respectively.
 <p>Duro supports the usual arithmetical operators. Example:
 
 <pre>
-no db> println(2 + 3 * 4);
+no db> PRINTLN(2 + 3 * 4);
 14
 no db> 
 </pre>
@@ -159,15 +156,15 @@ comment.
 <h3>IF</h3>
 
 <pre>
-no db> var s string;
-no db> println('Please enter a number:'); readln(s);
+no db> var s STRING;
+no db> PRINTLN('Please enter a number:'); READLN(s);
 Please enter a number:
 2
-no db> var n init cast_as_integer(s);
+no db> var n init CAST_AS_INTEGER(s);
 no db> if n < 0 then
-no db>     println('Negative');
+no db>     PRINTLN('Negative');
 no db> else
-no db>     println('Positive');
+no db>     PRINTLN('Positive');
 no db> end if;
 Positive
 no db>
@@ -177,18 +174,18 @@ no db>
 But the following form, which more strictly adheres to TTM, is supported too:</P>
 
 <pre>
-no db> var s string;
-no db> println('Please enter a number:'); readln(s);
+no db> var s STRING;
+no db> PRINTLN('Please enter a number:'); READLN(s);
 Please enter a number:
 -2
-no db> var n init cast_as_integer(s);
+no db> var n init CAST_AS_INTEGER(s);
 no db> if n < 0 then
 no db>     begin;
-no db>         println('Negative');
+no db>         PRINTLN('Negative');
 no db>     end;
 no db> else
 no db>     begin;
-no db>         println('Positive');
+no db>         PRINTLN('Positive');
 no db>     end;
 no db> end if;
 Negative
@@ -200,9 +197,9 @@ no db>
 <p>Example:</p>
 
 <pre>
-var i integer;
+var i INTEGER;
 for i := 1 to 10;
-    println(i);
+    PRINTLN(i);
 end for;
 </pre>
 
@@ -213,14 +210,14 @@ end for;
 <p>Example:
 
 <pre>
-println('Please enter a positive number:');
-var s string;
-readln(s);
-var n init cast_as_integer(s);
+PRINTLN('Please enter a positive number:');
+var s STRING;
+READLN(s);
+var n init CAST_AS_INTEGER(s);
 while n < 0;
-    println('This number is not positive. Please enter again:');
-    readln(s);
-    n := cast_as_integer(s);
+    PRINTLN('This number is not positive. Please enter again:');
+    READLN(s);
+    n := CAST_AS_INTEGER(s);
 end while;
 </pre>
 
@@ -229,18 +226,18 @@ end while;
 <p>Example:
 
 <pre>
-no db> var s string;
-no db> println('Please enter a number:'); readln(s);
+no db> var s STRING;
+no db> PRINTLN('Please enter a number:'); READLN(s);
 Please enter a number:
 0
-no db> var n init cast_as_integer(s);
+no db> var n init CAST_AS_INTEGER(s);
 no db> case
 no db>     when n > 0 then
-no db>         println('Positive');
+no db>         PRINTLN('Positive');
 no db>     when n < 0 then
-no db>         println('Negative');
+no db>         PRINTLN('Negative');
 no db>     else
-no db>         println('Zero');
+no db>         PRINTLN('Zero');
 no db> end case;
 Zero
 no db>
@@ -251,7 +248,7 @@ no db>
 <p>Tuple variables can be declared as follows:</p>
 
 <pre>
-no db>var t tuple {i integer, s string};
+no db>var T tuple {I INTEGER, S STRING};
 no db>
 </pre>
 
@@ -260,14 +257,14 @@ Like scalar variables, tuple variables can be explicitly initialized
 when they are declared:</p>
 
 <pre>
-no db>var t tup {i integer, s string} init tup {i 1, s 'One'};
+no db>var T tup {I INTEGER, S STRING} init tup {I 1, S 'One'};
 no db>
 </pre>
 
 Or shorter:
 
 <pre>
-no db>var t init tup {i 1, s 'One'};
+no db>var T init tup {I 1, S 'One'};
 no db>
 </pre>
 
@@ -276,25 +273,25 @@ ordering in Duro D/T, so the statement above is perfectly equivalent
 to the following:
 
 <pre>
-no db>var t init tup {s 'One', i 1};
+no db>var T init tup {S 'One', I 1};
 no db>
 </pre>
 
 <p>Tuples variables can be assigned and updated:</p>
 
 <pre>
-no db>t := tup {i 2, s 'Two'};
+no db>T := tup {I 2, S 'Two'};
 1 element affected.
-no db> update t {i := 3};
+no db> update T {I := 3};
 1 element affected.
-no db> update t {i := 4, s := 'Four'};
+no db> update T {I := 4, S := 'Four'};
 2 elements affected.
 </pre>
 
 <p>Accessing tuple attributes:
 
 <pre>
-no db>println(t.s);
+no db>PRINTLN(T.S);
 Four
 no db>
 </pre>
@@ -302,7 +299,7 @@ no db>
 <p>Alternative form:
 
 <pre>
-no db>println(s from t);
+no db>PRINTLN(S from T);
 Four
 no db>
 </pre>
@@ -315,7 +312,7 @@ In Duro D/T, a database environment can be created using the built-in
 update operator CREATE_ENV():</p>
 
 <pre>
-no db>create_env('dbenv');
+no db>CREATE_ENV('dbenv');
 no db>
 </pre>
 
@@ -324,7 +321,7 @@ to an existing database environment. CONNECT takes one argument
 of type STRING which specifies the database environment:</p>
 
 <pre>
-no db>connect('dbenv');
+no db>CONNECT('dbenv');
 no db>
 </pre>
 
@@ -333,7 +330,7 @@ database can be created using the built-in
 update operator CREATE_DB().</p>
 
 <pre>
-no db>create_db('D');
+no db>CREATE_DB('D');
 no db>
 </pre>
 
@@ -341,7 +338,7 @@ no db>
 A database can be selected by assigning the variable:</p>
 
 <pre>
-no db>current_db := 'D';
+no db>CURRENT_DB := 'D';
 1 element affected.
 D>
 </pre>
@@ -378,7 +375,7 @@ D>
 <p>Creating a real persistent table:
 
 <pre>
-D> var r real rel{no integer, name string} key {no};
+D> var R real rel{NO INTEGER, NAME STRING} key {NO};
 Table R created.
 D>
 </pre>
@@ -388,7 +385,7 @@ D>
 <p>Creating a private (real transient) table:
 
 <pre>
-D> var p private rel{no integer, name string} key {no};
+D> var p private rel{NO INTEGER, NAME STRING} key {NO};
 Local table P created.
 D>
 </pre>
@@ -396,7 +393,7 @@ D>
 <p>Creating a virtual table:
 
 <pre>
-D> var v virtual r {no};
+D> var V virtual R {NO};
 Table V created.
 D>
 </pre>
@@ -404,7 +401,7 @@ D>
 <p>Inserting a single tuple:</p>
 
 <pre>
-D> insert r tup {no 1, name 'one'};
+D> insert r tup {NO 1, NAME 'one'};
 1 element affected.
 D>
 </pre>
@@ -412,7 +409,7 @@ D>
 <p>Inserting several tuples:</p>
 
 <pre>
-D> insert r rel {tup {no 2, name 'two'}, tup {no 3, name 'three'}};
+D> insert R rel {tup {NO 2, NAME 'two'}, tup {NO 3, NAME 'three'}};
 2 elements affected.
 D>
 </pre>
@@ -420,7 +417,7 @@ D>
 <p>Updating</p>
 
 <pre>
-D> update r where no = 3 { no := 4, name := 'four' };
+D> update R where NO = 3 { NO := 4, NAME := 'four' };
 1 element affected.
 D>
 </pre>
@@ -428,7 +425,7 @@ D>
 <p>Deleting tuples</p>
 
 <pre>
-D> delete r where no = 4;
+D> delete R where NO = 4;
 1 element affected.
 D>
 </pre>
@@ -440,15 +437,15 @@ D>
 <pre>
 D> begin tx;
 Transaction started.
-D> var r real rel {no integer, name string} key {no};
+D> var R real rel {NO INTEGER, NAME STRING} key {no};
 Table R created.
-D> constraint cr count(r) <= 1;
+D> constraint CR count(r) <= 1;
 Constraint CR created.
-D> insert r tup {no 1, name 'one'};
+D> insert R tup {NO 1, NAME 'one'};
 1 element affected.
-D> insert r tup {no 2, name 'two'};
+D> insert r tup {NO 2, NAME 'two'};
 PREDICATE_VIOLATION_ERROR: CR
-D> drop constraint cr;
+D> drop constraint CR;
 Constraint CR dropped.
 D>
 </pre>
@@ -458,11 +455,11 @@ D>
 <p>Example: Printing all tuples of table R in an unspecified order:
 
 <pre>
-D> var a array tup same_heading_as(r);
-D> load a from r order();
-D> var i integer;
-D> for i:= 0 to length(a)-1;
-D>   println(a[i]);
+D> var a array tup same_heading_as(R);
+D> load a from R order();
+D> var i INTEGER;
+D> for i:= 0 to LENGTH(a)-1;
+D>   PRINTLN(a[i]);
 D> end for;
 </pre>
 
@@ -479,13 +476,13 @@ followed by a newline. It is defined for all built-in scalar types
 except BINARY and also for tuple and relation arguments:
 
 <pre>
-no db> println(true);
+no db> PRINTLN(true);
 TRUE
-no db> println(2 * 4);
+no db> PRINTLN(2 * 4);
 8
-no db> println(tup {a 1, b 'bee'});
+no db> PRINTLN(tup {A 1, B 'bee'});
 TUPLE { A 1, B 'bee' }
-no db> println(rel {tup {i 1, c 'foo'}, tup {i 2, c 'bar'}});
+no db> PRINTLN(rel {tup {I 1, C 'foo'}, tup {I 2, C 'bar'}});
 RELATION { TUPLE { I 1, C 'foo' }, TUPLE { I 2, C 'bar' }}
 no db>
 </pre>
@@ -494,7 +491,7 @@ no db>
 is optional. The following is also valid:
 
 <pre>
-no db> call println(2 * 4);
+no db> call PRINTLN(2 * 4);
 8
 no db>
 </pre>
@@ -505,7 +502,7 @@ no db>
 followed by a newline:
 
 <pre>
-no db> print('2 + 2 = '); println(2 + 2);
+no db> PRINT('2 + 2 = '); PRINTLN(2 + 2);
 2 + 2 = 4
 no db>
 </pre>
@@ -524,7 +521,7 @@ without the trailing newline.</p>
 <p>Defining a read-only operator:
 
 <pre>
-D> operator incr(i integer) returns integer;
+D> operator INCR(i INTEGER) returns INTEGER;
 D> return i + 1;
 D> end operator;
 Operator INCR created.
@@ -534,7 +531,7 @@ D>
 <p>Defining an update operator:
 
 <pre>
-D> operator inc(i integer) updates {i};
+D> operator INC(i INTEGER) updates {i};
 D> i := i + 1;
 D> end operator;
 Operator INC created.
@@ -544,7 +541,7 @@ D>
 <p>Dropping an operator:
 
 <pre>
-D> drop operator incr;
+D> drop operator INCR;
 Operator INCR dropped.
 D>
 </pre>
@@ -554,8 +551,8 @@ D>
 <p>Example for defining a type:</p>
 
 <pre>
-no db> connect('dbenv');
-no db> type len possrep {n float} constraint the_n(len) >= 0.0;
+no db> CONNECT('dbenv');
+no db> type LEN possrep {N FLOAT} constraint THE_N(LEN) >= 0.0;
 Type LEN defined.
 </pre>
 
@@ -563,7 +560,7 @@ Type LEN defined.
 This can be done using IMPLEMENT TYPE:</p>
 
 <pre>
-no db> implement type len;
+no db> implement type LEN;
 Type LEN implemented.
 </pre>
 
@@ -576,16 +573,11 @@ or the Tcl interface
 <p>After a type has been defined, it can be used to declare and assign variables, like so:
 
 <pre>
-D> begin tx;
-Transaction started.
-D> var l len;
-D> l := len(1.0);
+D> var l LEN;
+D> l := LEN(1.0);
 1 element affected.
 D>
 </pre>
-
-<p>(A running transaction is required for accessing the catalog, where information
-about user-defined types is stored.)
 
 <h2>Exception handling</h2>
 
@@ -611,7 +603,7 @@ is printed to standard output. This is why we see "INTEGER" appear.
 <p>Raising a system-provided error:
 
 <pre>
-D> raise name_error('test');
+D> raise NAME_ERROR('test');
 NAME_ERROR: test
 D>
 </pre>
@@ -634,7 +626,7 @@ try
 
 ...
 
-catch err invalid_argument_error;
+catch err INVALID_ARGUMENT_ERROR;
 
   /* Handle INVALID_ARGUMENT_ERROR */
 

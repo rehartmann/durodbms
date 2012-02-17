@@ -18,8 +18,8 @@ set ::DBSETUP {
     makeDirectory dbenv
     cd $::tcltest::temporaryDirectory
     exec $testdir/../../dli/durodt << {
-        create_env('dbenv');
-        create_db('D');
+        CREATE_ENV('dbenv');
+        CREATE_DB('D');
     }
 }
 
@@ -27,40 +27,40 @@ test arraysel {array selectors} -body {
     exec $testdir/../../dli/durodt << {
 	    -- without type 
 	    var a1 init array(2, 4);
-	    println(length(a1));
-	    println(a1[0]);
-	    println(a1[1]);
+	    PRINTLN(LENGTH(a1));
+	    PRINTLN(a1[0]);
+	    PRINTLN(a1[1]);
 
 	    -- with type
-	    var a2 init array string ('relational');
-	    println(length(a2));
-	    println(a2[0]);
+	    var a2 init array STRING ('relational');
+	    PRINTLN(LENGTH(a2));
+	    PRINTLN(a2[0]);
 
 	    -- with type and without arguments
-	    a1 := array integer();
-	    -- println(length(a1));
+	    a1 := array INTEGER();
+	    PRINTLN(LENGTH(a1));
 	    
 	    -- array of tuple without type
 	    var at1 init array(tup{i 200});
-	    println(length(at1));
-	    println(at1[0].i);
+	    PRINTLN(LENGTH(at1));
+	    PRINTLN(at1[0].i);
 
 	    -- array of tuple with type
-	    var at2 init array tup{s string} (tup{s 'A'}, tup{s 'Ilsebill'});
-	    println(length(at2));
-	    println(at2[0].s);
-	    println(at2[1].s);
+	    var at2 init array tup{s STRING} (tup{s 'A'}, tup{s 'Ilsebill'});
+	    PRINTLN(LENGTH(at2));
+	    PRINTLN(at2[0].s);
+	    PRINTLN(at2[1].s);
 	    
 	    -- type mismatch
 	    try
-	        var ae init array integer ('S');
+	        var ae init array INTEGER ('S');
 	    catch type_mismatch_error;
-	        println('type mismatch 1');
+	        PRINTLN('type mismatch 1');
 	    end try;
 	    try
-	        var ae init array tup{i integer} (tup{i 1}, tup{i 1, j 2});
+	        var ae init array tup{i INTEGER} (tup{i 1}, tup{i 1, j 2});
 	    catch type_mismatch_error;
-	        println('type mismatch 2');
+	        PRINTLN('type mismatch 2');
 	    end try;
 	}
 } -result {2
@@ -68,6 +68,7 @@ test arraysel {array selectors} -body {
 4
 1
 relational
+0
 1
 200
 2
@@ -84,24 +85,24 @@ test ptarray {array from private table} -body {
         var a array tuple same_heading_as(r);
 
         load a from r where c = 'foo' order();
-        println(a[0].c);
+        PRINTLN(a[0].c);
 
         load a from r order(c asc, i desc);
-        println(a[0].i);
-        println(a[1].i);
-        println(a[2].i);
+        PRINTLN(a[0].i);
+        PRINTLN(a[1].i);
+        PRINTLN(a[2].i);
 
         load a from r order(c desc, i asc);
 
         drop var r;
 
-        println(a[0].i);
-        println(a[1].i);
-        println(a[2].i);
+        PRINTLN(a[0].i);
+        PRINTLN(a[1].i);
+        PRINTLN(a[2].i);
 
-        println(length(a));
+        PRINTLN(LENGTH(a));
         
-        var i same_type_as(length(a));
+        var i same_type_as(LENGTH(a));
         
         drop var a;
     }
@@ -117,33 +118,33 @@ test ptarray {array from private table} -body {
 
 test ops {operators with array arguments} -setup $DBSETUP -body {
     exec $testdir/../../dli/durodt << {
-        connect('dbenv');
-        current_db := 'D';
+        CONNECT('dbenv');
+        CURRENT_DB := 'D';
 
         begin transaction;
 
-        operator first(a array tuple{i integer}) returns tuple{i integer};
+        operator first(a array tuple{i INTEGER}) returns tuple{i INTEGER};
 	        return a[0];
         end operator;
 
-        operator acopy(dst array tuple{i integer}, src array tuple{i integer}) updates {dst};
+        operator acopy(dst array tuple{i INTEGER}, src array tuple{i INTEGER}) updates {dst};
 	        dst := src;
         end operator;
 
         var r private init relation { tuple {i 1}, tuple {i 2},
         		tuple {i 3} } key {i};
-        var a array tuple {i integer};
+        var a array tuple {i INTEGER};
 
         load a from r order (i asc);
-        var t tuple {i integer};
+        var t tuple {i INTEGER};
         t := first(a);
 
-        println(t.i);
+        PRINTLN(t.i);
 
-        var b array tuple {i integer};
+        var b array tuple {i INTEGER};
         acopy(b, a);
 
-        println(b[2].i);
+        PRINTLN(b[2].i);
 
         drop var a;
         drop var b;
@@ -156,29 +157,29 @@ test ops {operators with array arguments} -setup $DBSETUP -body {
 
 test retops {operator returning array} -setup $DBSETUP -body {
     exec $testdir/../../dli/durodt << {
-        connect('dbenv');
-        current_db := 'D';
+        CONNECT('dbenv');
+        CURRENT_DB := 'D';
 
         begin transaction;
 
-        operator rest(a array integer) returns array integer;
-            var result array integer;
-            length(result) := length(a) - 1;
+        operator rest(a array INTEGER) returns array INTEGER;
+            var result array INTEGER;
+            LENGTH(result) := LENGTH(a) - 1;
 
-            var i integer;
-            for i := 0 to length(result) - 1;
+            var i INTEGER;
+            for i := 0 to LENGTH(result) - 1;
                 result[i] := a[i + 1];
             end for;
 
             return result;
         end operator;
 
-        var a array integer init array(1, 3, 5);
-        var b array integer;
+        var a array INTEGER init array(1, 3, 5);
+        var b array INTEGER;
         b := rest(a);
-        var i integer;
-        for i := 0 to length(b) - 1;
-            println(b[i]);
+        var i INTEGER;
+        for i := 0 to LENGTH(b) - 1;
+            PRINTLN(b[i]);
         end for;
         
         commit;
@@ -189,12 +190,12 @@ test retops {operator returning array} -setup $DBSETUP -body {
 
 test array_utype {type with array-valued component} -setup $DBSETUP -body {
     exec $testdir/../../dli/durodt << {
-        connect('dbenv');
-        current_db := 'D';
+        CONNECT('dbenv');
+        CURRENT_DB := 'D';
 
         begin transaction;
         
-        type path possrep { components array string };
+        type path possrep { components array STRING };
         
         commit;
     }

@@ -114,8 +114,6 @@ Duro_init_tcl(Tcl_Interp *interp, TclState **statepp)
     setlocale(LC_COLLATE, "");
     setlocale(LC_CTYPE, "");
 
-    _RDB_parse_case_insensitive = 0;
-
     *statepp = (TclState *) Tcl_Alloc(sizeof (TclState));
     Tcl_InitHashTable(&(*statepp)->envs, TCL_STRING_KEYS);
     (*statepp)->env_uid = 0;

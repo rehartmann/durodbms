@@ -18,18 +18,18 @@ set ::SETUP {
     makeDirectory dbenv
     cd $::tcltest::temporaryDirectory
     exec $testdir/../../dli/durodt << {
-        create_env('dbenv');
-        create_db('D');
+        CREATE_ENV('dbenv');
+        CREATE_DB('D');
     }
 }
 
 test insert {creating table and inserting tuples} -setup $SETUP -body {
     exec $testdir/../../dli/durodt << {
-        connect('dbenv');
-        current_db := 'D';
+        CONNECT('dbenv');
+        CURRENT_DB := 'D';
 
         begin transaction;
-        var r real relation {i integer, d float, c string} key {i};
+        var r real relation {i INTEGER, d FLOAT, c STRING} key {i};
         insert r relation {} {};
 
         var a init 1;
@@ -40,9 +40,9 @@ test insert {creating table and inserting tuples} -setup $SETUP -body {
         var t init tuple {i 2 + 1, d 1.0, c 'Z'};
         insert r update t {i := i + 1};
 
-        println(cast_as_string(count(r)));
-        println(cast_as_string(count(s)));
-        println((tuple from r where i=2).c);
+        PRINTLN(CAST_AS_STRING(count(r)));
+        PRINTLN(CAST_AS_STRING(count(s)));
+        PRINTLN((tuple from r where i=2).c);
         commit;
     }
 } -result {3
@@ -52,23 +52,23 @@ Y
 
 test invalid_type {invalid (scalar) type for table} -setup $SETUP -match glob -body {
     exec $testdir/../../dli/durodt << {
-	    connect('dbenv');
-    	current_db := 'D';
+	    CONNECT('dbenv');
+    	CURRENT_DB := 'D';
 
 	    begin transaction;
-    	var ir real integer key {};
+    	var ir real INTEGER key {};
     }
 }  -returnCodes {1} -result {*TYPE_MISMATCH_ERROR*}
 
 test private {creating private table and inserting tuples} -setup $SETUP -body {
     exec $testdir/../../dli/durodt << {
-        connect('dbenv');
-        current_db := 'D';
+        CONNECT('dbenv');
+        CURRENT_DB := 'D';
 
-        var r private relation {i integer, d float, c string} key {i};
+        var r private relation {i INTEGER, d FLOAT, c STRING} key {i};
         insert r relation {} {};
 
-        var s private relation {i integer} init relation { tuple {i 1}, tuple {i 2} } key {i};
+        var s private relation {i INTEGER} init relation { tuple {i 1}, tuple {i 2} } key {i};
 
         var a init 1;
         insert r relation {tuple {i a, d 1.0, c 'X'}, tuple {i 2, d 1.1, c 'Y'}};
@@ -79,19 +79,19 @@ test private {creating private table and inserting tuples} -setup $SETUP -body {
 
         delete r where i<>2;
 
-        println(count(r));
-        println((tuple from r where i=2).c);
-        println(sum(s, i));
+        PRINTLN(count(r));
+        PRINTLN((tuple from r where i=2).c);
+        PRINTLN(sum(s, i));
         drop var r;
         
         -- test invalid relation selector
         try
-            var r init relation {a integer} {tuple {a 'x'}};
-        catch err type_mismatch_error;
-            println("type mismatch");
+            var r init relation {a INTEGER} {tuple {a 'x'}};
+        catch err TYPE_MISMATCH_ERROR;
+            PRINTLN("type mismatch");
         end try;
         
-        println((tuple from relation {a integer} {tuple {a 7}}).a);
+        PRINTLN((tuple from relation {a INTEGER} {tuple {a 7}}).a);
     }
 } -result {1
 Y
@@ -102,25 +102,25 @@ type mismatch
 
 test ra {relational algebra} -setup $SETUP -body {
     exec $testdir/../../dli/durodt << {
-        connect('dbenv');
-        current_db := 'D';
+        CONNECT('dbenv');
+        CURRENT_DB := 'D';
 
         begin transaction;
 
-        var t1 real relation {a integer, b string}
+        var t1 real relation {a INTEGER, b STRING}
         		init relation { tuple {a 1, b 'x'}, tuple {a 2, b 'y'} } key {a};
-        var t2 real relation {a integer} key {a};
+        var t2 real relation {a INTEGER} key {a};
 
         insert t2 relation { tuple {a 2}, tuple {a 3} };
 
-        println(with (is := p intersect t2, p := t1 {a}): (tuple from is).a);
+        PRINTLN(with (is := p intersect t2, p := t1 {a}): (tuple from is).a);
 
-		println((tuple from relation{tuple{i 1}} join table_dee).i);
+		PRINTLN((tuple from relation{tuple{i 1}} join table_dee).i);
 
-        var a array tuple{i integer};
+        var a array tuple{i INTEGER};
         load a from rel{tup{i 1}} union rel{tup{i 2}} order (i asc);
-        println(a[0].i);
-        println(a[1].i);
+        PRINTLN(a[0].i);
+        PRINTLN(a[1].i);
 
         commit;
     }
@@ -132,8 +132,8 @@ test ra {relational algebra} -setup $SETUP -body {
 
 test updop {user defined update operators} -setup $SETUP -body {
     exec $testdir/../../dli/durodt << {
-        connect('dbenv');
-        current_db := 'D';
+        CONNECT('dbenv');
+        CURRENT_DB := 'D';
 
         begin transaction;
 
@@ -148,13 +148,13 @@ test updop {user defined update operators} -setup $SETUP -body {
             commit;
         end operator;
 
-        operator insop(t relation {b string, a integer}) updates {t};
+        operator insop(t relation {b STRING, a INTEGER}) updates {t};
             insert t tuple {a 0, b "duro"};
         end operator;
 
         defop();
         insop(r);
-        println((tuple from v).bx);
+        PRINTLN((tuple from v).bx);
         commit;
     }
 } -result {durox
@@ -162,28 +162,28 @@ test updop {user defined update operators} -setup $SETUP -body {
 
 test deedum {TABLE_DEE and TABLE_DUM} -setup $SETUP -body {
     exec $testdir/../../dli/durodt << {
-        println(tup from TABLE_DEE);
-        println(tup from DEE);
+        PRINTLN(tup from TABLE_DEE);
+        PRINTLN(tup from DEE);
 
-        println(TABLE_DUM);
-        println(DUM);
+        PRINTLN(TABLE_DUM);
+        PRINTLN(DUM);
 
-        println(tuple from (rel{} {} union table_dee));
+        PRINTLN(tuple from (rel{} {} union table_dee));
         
-        connect('dbenv');
-        current_db := 'D';
+        CONNECT('dbenv');
+        CURRENT_DB := 'D';
 
         begin transaction;
-        var ev virtual relation {i integer} {};
+        var ev virtual relation {i INTEGER} {};
         commit;
 
-        disconnect();
+        DISCONNECT();
 
         -- Connect again and read virtual table
-        connect('dbenv');
-        current_db:='D';
+        CONNECT('dbenv');
+        CURRENT_DB:='D';
         begin tx;
-        println(ev);
+        PRINTLN(ev);
         commit;
     }
 } -result {TUPLE { }
@@ -196,12 +196,12 @@ RELATION { }
 
 test logic {Logic operators} -setup $SETUP -body {
     exec $testdir/../../dli/durodt << {
-        connect('dbenv');
-        current_db := 'D';
+        CONNECT('dbenv');
+        CURRENT_DB := 'D';
 
         begin transaction;
 
-        var t real relation {i integer, j integer} key {i, j};
+        var t real relation {i INTEGER, j INTEGER} key {i, j};
 
         insert t relation { tuple {i 1, j 1}, tuple {i 1, j 2},
                 tuple {i 2, j 1}, tuple {i 2, j 2} };
@@ -210,35 +210,35 @@ test logic {Logic operators} -setup $SETUP -body {
         var vo virtual t where i=1 and j=1;
         var vx virtual t where i=1 xor j=1;
         
-        var a array tuple {i integer, j integer};
+        var a array tuple {i INTEGER, j INTEGER};
 
         load a from va order(i asc, j asc);
         
-        var i integer;
-        for i:= 0 to length(a)-1;
-			print(a[i].i);
-			print(' ');
-			println(a[i].j);			
+        var i INTEGER;
+        for i:= 0 to LENGTH(a)-1;
+			PRINT(a[i].i);
+			PRINT(' ');
+			PRINTLN(a[i].j);			
 		end for;
 
-		println("");
+		PRINTLN("");
 
         load a from vo order(i asc, j asc);
         
-        for i:= 0 to length(a)-1;
-			print(a[i].i);
-			print(' ');
-			println(a[i].j);			
+        for i:= 0 to LENGTH(a)-1;
+			PRINT(a[i].i);
+			PRINT(' ');
+			PRINTLN(a[i].j);			
 		end for;
 
-		println("");
+		PRINTLN("");
 
         load a from vx order(i asc, j asc);
 
-        for i:= 0 to length(a)-1;
-			print(a[i].i);
-			print(' ');
-			println(a[i].j);			
+        for i:= 0 to LENGTH(a)-1;
+			PRINT(a[i].i);
+			PRINT(' ');
+			PRINTLN(a[i].j);			
 		end for;
 
         commit;
@@ -255,20 +255,20 @@ test logic {Logic operators} -setup $SETUP -body {
 
 test aggregate {Aggregate operators} -setup $SETUP -body {
     exec $testdir/../../dli/durodt << {
-        connect('dbenv');
-        current_db := 'D';
+        CONNECT('dbenv');
+        CURRENT_DB := 'D';
 
         begin transaction;
 
-        var t real relation {b boolean} key {b};
+        var t real relation {b BOOLEAN} key {b};
 
 		insert t tup {b true};
 		insert t tup {b false};
 
-		println(all(t, b));
-		println(and(t, b));
-		println(any(t, b));
-		println(or(t, b));
+		PRINTLN(all(t, b));
+		PRINTLN(and(t, b));
+		PRINTLN(any(t, b));
+		PRINTLN(or(t, b));
 
         commit;
     }
@@ -280,12 +280,12 @@ TRUE
 
 test summarize {SUMMARIZE} -setup $SETUP -body {
     exec $testdir/../../dli/durodt << {
-        connect('dbenv');
-        current_db := 'D';
+        CONNECT('dbenv');
+        CURRENT_DB := 'D';
 
         begin transaction;
 
-        var t real relation {i integer, j integer} key {i, j};
+        var t real relation {i INTEGER, j INTEGER} key {i, j};
 
 		insert t tup {i 1, j 0};
 		insert t tup {i 1, j 1};
@@ -303,17 +303,17 @@ test summarize {SUMMARIZE} -setup $SETUP -body {
 
         load arr from v order(i asc);
 
-        var i integer;
-        for i:= 0 to length(arr)-1;
-			print(arr[i].A_SUM);			
-			print(' ');
-			print(arr[i].A_ALL);			
-			print(' ');
-			print(arr[i].A_AND);
-			print(' ');
-			print(arr[i].A_ANY);
-			print(' ');
-			println(arr[i].A_OR);
+        var i INTEGER;
+        for i:= 0 to LENGTH(arr)-1;
+			PRINT(arr[i].A_SUM);			
+			PRINT(' ');
+			PRINT(arr[i].A_ALL);			
+			PRINT(' ');
+			PRINT(arr[i].A_AND);
+			PRINT(' ');
+			PRINT(arr[i].A_ANY);
+			PRINT(' ');
+			PRINTLN(arr[i].A_OR);
 		end for;
 
         commit;
@@ -324,19 +324,19 @@ test summarize {SUMMARIZE} -setup $SETUP -body {
 
 test relrel {table with relation attribute} -setup $SETUP -body {
     exec $testdir/../../dli/durodt << {
-        connect('dbenv');
-        current_db := 'D';
+        CONNECT('dbenv');
+        CURRENT_DB := 'D';
 
         begin transaction;
 
-        var t real relation {x integer, a string, r relation{s string, i integer}} key {x};
+        var t real relation {x INTEGER, a STRING, r relation{s STRING, i INTEGER}} key {x};
 
 		insert t tuple{x 1, a 'hm', r rel{tup{i 5, s 'yo'}}};
 
 		var tp init tuple from (tuple from t).r;
 
-        println(tp.i);
-        println(tp.s);
+        PRINTLN(tp.i);
+        PRINTLN(tp.s);
         commit;
     }
 } -result {5
@@ -346,7 +346,7 @@ yo
 test group {GROUP} -body {
     exec $testdir/../../dli/durodt << {
 		var gt init rel{tup{i 1, j 1}, tup{i 2, j 2}} group {i, j} as ij;
-		println((tuple from gt).ij = rel{tup{i 1, j 1}, tup{i 2, j 2}});
+		PRINTLN((tuple from gt).ij = rel{tup{i 1, j 1}, tup{i 2, j 2}});
     }
 } -result {TRUE
 }
@@ -356,15 +356,15 @@ test ungroup {UNGROUP} -body {
 		var ugt init rel{
 		        tup {st rel{tup{s 'a', t 'b'}, tup{s 'c', t 'd'}}},
 		        tup {st rel{tup{s 'e', t 'f'}}}} ungroup st;
-		var arr array tuple{s string, t string};
+		var arr array tuple{s STRING, t STRING};
 		load arr from ugt order(s asc);
-		println(length(arr));
-		println(arr[0].s);
-		println(arr[0].t);
-		println(arr[1].s);
-		println(arr[1].t);
-		println(arr[2].s);
-		println(arr[2].t);
+		PRINTLN(LENGTH(arr));
+		PRINTLN(arr[0].s);
+		PRINTLN(arr[0].t);
+		PRINTLN(arr[1].s);
+		PRINTLN(arr[1].t);
+		PRINTLN(arr[2].s);
+		PRINTLN(arr[2].t);
     }
 } -result {3
 a
@@ -384,14 +384,14 @@ test sdivide {small DIVIDE} -body {
             var p_c private init rel{tup{pizza# 1, cond 'salami'},
                     tup{pizza 2, cond 'salami'}, tup{pizza 2, cond 'mushrooms'}};
         catch err;
-            println('error caught');
+            PRINTLN('error caught');
         end try;
 
         var p_c private init rel{tup{pizza# 1, cond 'salami'},
                 tup{pizza# 2, cond 'salami'}, tup{pizza# 2, cond 'mushrooms'}};
                 
         -- Get # of pizza with all condiments
-        println((tuple from (pizzas divideby condiments per (p_c))).pizza#);
+        PRINTLN((tuple from (pizzas divideby condiments per (p_c))).pizza#);
     }
 } -result {error caught
 2

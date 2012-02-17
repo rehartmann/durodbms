@@ -2497,7 +2497,8 @@ error:
         RDB_rollback(ecp, &tmp_tx);
     for (i = 0; i < repc; i++) {
         for (j = 0; j < repv[i].compc; j++) {
-            if (!RDB_type_is_scalar(repv[i].compv[j].typ))
+            if (repv[i].compv[j].typ != NULL
+                    && !RDB_type_is_scalar(repv[i].compv[j].typ))
                 RDB_del_nonscalar_type(repv[i].compv[j].typ, ecp);
         }
     }

@@ -29,7 +29,6 @@ extern YY_BUFFER_STATE _RDB_parse_buffer;
 RDB_parse_node *_RDB_parse_resultp;
 RDB_exec_context *_RDB_parse_ecp;
 int _RDB_parse_interactive = 0;
-int _RDB_parse_case_insensitive = 1;
 
 void
 _RDB_parse_start_exp(void);
