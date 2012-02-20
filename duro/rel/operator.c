@@ -632,6 +632,7 @@ RDB_get_update_op_e(const char *name, int argc, RDB_type *argtv[],
                 RDB_environment *envp, RDB_exec_context *ecp, RDB_transaction *txp)
 {
     RDB_dbroot *dbrootp;
+    RDB_operator *op;
 
     if (txp != NULL) {
         dbrootp = RDB_tx_db(txp)->dbrootp;
@@ -651,7 +652,7 @@ RDB_get_update_op_e(const char *name, int argc, RDB_type *argtv[],
     /*
      * Try to get the operator from operator map
      */
-    RDB_operator *op = RDB_get_op(&dbrootp->upd_opmap, name, argc, argtv, ecp);
+    op = RDB_get_op(&dbrootp->upd_opmap, name, argc, argtv, ecp);
     if (op != NULL)
         return op;
 

@@ -1066,6 +1066,7 @@ exec_vardef_virtual(RDB_parse_node *nodep, RDB_exec_context *ecp)
 {
     RDB_object *tbp;
     RDB_expression *defexp;
+    RDB_expression *texp;
     const char *varname = RDB_expr_var_name(nodep->exp);
 
     if (txnp == NULL) {
@@ -1077,7 +1078,7 @@ exec_vardef_virtual(RDB_parse_node *nodep, RDB_exec_context *ecp)
     if (defexp == NULL)
         return RDB_ERROR;
 
-    RDB_expression *texp = RDB_dup_expr(defexp, ecp);
+    texp = RDB_dup_expr(defexp, ecp);
     if (texp == NULL)
         return RDB_ERROR;
 
@@ -1765,8 +1766,12 @@ resolve_target(const RDB_expression *exp, RDB_exec_context *ecp)
                 && exp->def.op.args.firstp != NULL
                 && exp->def.op.args.firstp->nextp != NULL
                 && exp->def.op.args.firstp->nextp->nextp == NULL) {
-            /* Resolve array subscription */
             RDB_int idx;
+            RDB_object idxobj;
+
+            /*
+             * Resolve array subscription
+             */
 
             /* Get first argument, which must be an array */
             RDB_object *arrp = resolve_target(exp->def.op.args.firstp, ecp);
@@ -1779,7 +1784,6 @@ resolve_target(const RDB_expression *exp, RDB_exec_context *ecp)
             }
 
             /* Get second argument, which must be INTEGER */
-            RDB_object idxobj;
             RDB_init_obj(&idxobj);
             if (evaluate_retry(exp->def.op.args.firstp->nextp, ecp,
                     &idxobj) != RDB_OK) {
@@ -2778,7 +2782,7 @@ Duro_dt_invoke_update_op(int argc, RDB_object *argv[], RDB_operator *op,
             return RDB_ERROR;
 
         /*
-         * Not available - parse cod
+         * Not available - parse code
          */
         codestmtp = RDB_parse_stmt_string(RDB_operator_source(op), ecp);
         if (codestmtp == NULL) {
@@ -3517,9 +3521,9 @@ int
 Duro_dt_execute(RDB_environment *dbenvp, char *dbname, char *infilename,
         RDB_exec_context *ecp)
 {
+    FILE *infile = NULL;
     envp = dbenvp;
     interrupted = 0;
-    FILE *infile = NULL;
 
     if (infilename != NULL) {
         infile = fopen(infilename, "r");

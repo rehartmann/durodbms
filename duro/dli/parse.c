@@ -248,12 +248,14 @@ summarize_node_expr(RDB_parse_node *argnodep,
     nodep = argnodep->nextp->nextp->nextp->nextp->nextp->val.children.firstp;
     if (nodep != NULL) {
         for (;;) {
+            RDB_expression *aggrexp;
             int aggrtok = nodep->val.children.firstp->val.token;
             if (aggrtok == TOK_AND)
                 aggrtok = TOK_ALL;
             if (aggrtok == TOK_OR)
                 aggrtok = TOK_ANY;
-            RDB_expression *aggrexp = RDB_ro_op(_RDB_token_name(aggrtok), ecp);
+
+            aggrexp = RDB_ro_op(_RDB_token_name(aggrtok), ecp);
             if (aggrexp == NULL)
                 return NULL;
 
@@ -758,12 +760,12 @@ parse_heading(RDB_parse_node *nodep, RDB_bool rel, RDB_exec_context *ecp,
     }
     if (attrc > 0) {
         RDB_expression *exp;
+        RDB_parse_node *np = nodep->val.children.firstp;
 
         attrv = RDB_alloc(sizeof (RDB_attr) * attrc, ecp);
         if (attrv == NULL)
             return NULL;
 
-        RDB_parse_node *np = nodep->val.children.firstp;
         for (i = 0; i < attrc; i++) {
             exp = RDB_parse_node_expr(np, ecp, txp);
             if (exp == NULL)

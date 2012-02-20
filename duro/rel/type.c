@@ -364,6 +364,21 @@ _RDB_init_builtin_types(RDB_exec_context *ecp)
         &syntax_comp
     };
 
+    static RDB_operator compare_string_op = {
+        "CMP",
+        &RDB_INTEGER
+    };
+
+    static RDB_operator compare_int_op = {
+        "CMP",
+        &RDB_INTEGER
+    };
+
+    static RDB_operator compare_float_op = {
+        "CMP",
+        &RDB_INTEGER
+    };
+
     if (initialized) {
         return RDB_OK;
     }
@@ -378,10 +393,6 @@ _RDB_init_builtin_types(RDB_exec_context *ecp)
     RDB_BOOLEAN.def.scalar.constraintp = NULL;
     RDB_BOOLEAN.compare_op = NULL;
 
-    static RDB_operator compare_string_op = {
-        "CMP",
-        &RDB_INTEGER
-    };
     compare_string_op.opfn.ro_fp = &compare_string;
 
     RDB_STRING.kind = RDB_TP_SCALAR;
@@ -393,10 +404,6 @@ _RDB_init_builtin_types(RDB_exec_context *ecp)
     RDB_STRING.def.scalar.constraintp = NULL;
     RDB_STRING.compare_op = &compare_string_op;
 
-    static RDB_operator compare_int_op = {
-        "CMP",
-        &RDB_INTEGER
-    };
     compare_int_op.opfn.ro_fp = &compare_int;
 
     RDB_INTEGER.kind = RDB_TP_SCALAR;
@@ -408,10 +415,6 @@ _RDB_init_builtin_types(RDB_exec_context *ecp)
     RDB_INTEGER.def.scalar.constraintp = NULL;
     RDB_INTEGER.compare_op = &compare_int_op;
 
-    static RDB_operator compare_float_op = {
-        "CMP",
-        &RDB_INTEGER
-    };
     compare_float_op.opfn.ro_fp = &compare_float;
 
     RDB_FLOAT.kind = RDB_TP_SCALAR;

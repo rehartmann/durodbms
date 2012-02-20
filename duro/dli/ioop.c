@@ -7,18 +7,28 @@
  * I/O operators.
  */
 
+#include "ioop.h"
 #include <rel/rdb.h>
 #include <rel/opmap.h>
 #include <rel/tostr.h>
 
 #include <errno.h>
 #include <string.h>
+#include <stdio.h>
+
+#if defined(_WIN32)
+#define STDIN_FILENO 0
+#define STDOUT_FILENO 1
+#define STDERR_FILENO 2
+#else
+#include <unistd.h>
+#endif
 
 enum {
     IOSTREAMS_MAX = 64
 };
 
-static FILE *iostreams[IOSTREAMS_MAX] = {}; /* Initalize with zeros */
+static FILE *iostreams[IOSTREAMS_MAX] = { NULL }; /* Initalize with zeros */
 
 RDB_object DURO_STDIN_OBJ;
 RDB_object DURO_STDOUT_OBJ;
