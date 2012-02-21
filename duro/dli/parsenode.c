@@ -83,9 +83,9 @@ RDB_parse_nodelist_length(const RDB_parse_node *pnodep)
 RDB_parse_node *
 RDB_parse_node_child(const RDB_parse_node *nodep, RDB_int idx)
 {
+    RDB_parse_node *chnodep = nodep->val.children.firstp;
     if (nodep->kind != RDB_NODE_INNER)
         return NULL;
-    RDB_parse_node *chnodep = nodep->val.children.firstp;
     while (idx-- > 0 && chnodep != NULL) {
         chnodep = chnodep->nextp;
     }
