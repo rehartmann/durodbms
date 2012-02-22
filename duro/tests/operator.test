@@ -80,6 +80,8 @@ test ro_operator {read-only operators} -setup $SETUP -body {
     }
     
     duro::commit $tx
+
+    duro::env close $dbenv
 }
 
 test upd_operator {update operators} -setup $SETUP -body {
@@ -201,6 +203,8 @@ test upd_operator {update operators} -setup $SETUP -body {
     duro::table drop t $tx
 
     duro::commit $tx
+
+    duro::env close $dbenv
 } -output {I 0
 }
 

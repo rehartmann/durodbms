@@ -58,6 +58,8 @@ test db2 {two databases} -setup $SETUP -body {
     
     duro::db drop $dbenv TEST1
     duro::db drop $dbenv TEST2
+    
+    duro::env close $dbenv
 }
 
 cleanupTests

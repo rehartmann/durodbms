@@ -135,6 +135,8 @@ test opt {optimizer} -setup $SETUP -body {
     duro::table drop T4 $tx
     
     duro::commit $tx
+
+    duro::env close $dbenv
 }
 
 cleanupTests

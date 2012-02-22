@@ -121,6 +121,8 @@ test ptables {projection tables} -setup $SETUP -body {
     duro::table drop R $tx
 
     duro::commit $tx
+
+    duro::env close $dbenv
 }
 
 cleanupTests

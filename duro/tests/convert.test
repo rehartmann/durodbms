@@ -57,6 +57,8 @@ test convert {type conversions} -setup $SETUP -body {
     }
     
     duro::commit $tx
+
+    duro::env close $dbenv
 }
 
 cleanupTests

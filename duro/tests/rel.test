@@ -227,6 +227,8 @@ test rel {relation-valued attributes} -setup $SETUP -body {
     }
     
     duro::commit $tx
+
+    duro::env close $dbenv
 }
 
 cleanupTests

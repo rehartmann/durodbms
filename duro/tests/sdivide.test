@@ -115,6 +115,8 @@ test sdivide {DIVIDE BY PER} -setup $SETUP -body {
     duro::table drop SP $tx
    
     duro::commit $tx
+
+    duro::env close $dbenv
 }
 
 cleanupTests
