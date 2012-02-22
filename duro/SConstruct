@@ -11,7 +11,7 @@ import os
 # Basic settings
 #
 
-bdbhome = ARGUMENTS.get('bdbhome', '/usr/local/BerkeleyDB.5.2')
+bdbhome = ARGUMENTS.get('bdbhome', '/usr/local/BerkeleyDB.5.3')
 with_durotcl = int(ARGUMENTS.get('with_durotcl', 1))
 
 release = '0.15'
@@ -32,8 +32,8 @@ env.Replace(LIBPATH = ['.', bdbhome + '/lib'])
 env.Replace(RPATH = [installdir + '/lib', bdbhome + '/lib'])
 
 if env['PLATFORM'] == 'win32':
-    env.Replace(LIBS = ['duro', 'libdb47', 'libltdl'])
-    durolibs = ['libdb47', 'libltdl', 'libregex']
+    env.Replace(LIBS = ['duro', 'libdb53', 'ltdl'])
+    durolibs = ['libdb53', 'ltdl', 'regex']
 else:
     env.Replace(LIBS = ['duro', 'db', 'ltdl', 'm'])
     durolibs = ['db', 'ltdl']
@@ -43,8 +43,6 @@ if (os.environ.has_key('CFLAGS')):
 
 if (os.environ.has_key('LDFLAGS')):
     env.Append(LINKFLAGS = os.environ['LDFLAGS'])
-
-env.Replace(TARFLAGS = '-c -z --exclude .sconsign')
 
 #
 # Duro core library
@@ -95,7 +93,7 @@ durotclsrc = ['tcl/duro.c', 'tcl/envcmd.c',
 libdurotcllibs = ['duro']
 
 if env['PLATFORM'] == 'win32':
-    libdurotcllibs += ['tcl84', 'libdb47']
+    libdurotcllibs += ['tcl85', 'libdb53']
     libdurotcl = env.SharedLibrary('durotcl', durotclsrc + ['durotcl.def'],
             LIBS = libdurotcllibs)
 else:
@@ -260,41 +258,41 @@ else:
 # Distribution tarfile
 #
 
+# create .tar.gz, prepend filenames with duro-<version>
+env.Replace(TARFLAGS = '-c -z --exclude .sconsign --transform \'s,^,duro-'
+        + release + '/,S\'')
+
 if env.has_key('TAR'):
-    distdir = 'duro-' + release
-
-    env.Install(distdir, Split('SConstruct README README.windows INSTALL '
-            'COPYING AUTHORS CHANGES Doxyfile'))
-    env.Install(distdir + '/gen', gensrc)
-    env.Install(distdir + '/rec', recsrc)
-    env.Install(distdir + '/rel', relsrc)
-    env.Install(distdir + '/dli', dlisrc)
-    env.Install(distdir + '/dli', 'dli/durodt.c')
-    env.Install(distdir + '/tcl', durotclsrc)
-    env.Install(distdir + '/docs', durodocs)
-    env.Install(distdir + '/docs/durodt', 'docs/durodt/tut.html')
-    env.Install(distdir + '/docs/tcl', durotcldocs)
-    env.Install(distdir + '/docs/api', 'docs/api/html')
-    env.Install(distdir, ['duro.def', 'durotcl.def'])
-    env.Install(distdir + '/tcl', durotcl_hdrs)
-    env.Install(distdir + '/tests', testsrc)
-    env.Install(distdir + '/tests', testlibsrc)
-    env.Install(distdir + '/util', 'util/lstables.c')
-    env.Install(distdir + '/gen', gen_hdrs)
-    env.Install(distdir + '/rec', rec_hdrs)
-    env.Install(distdir + '/rel', rel_hdrs)
-    env.Install(distdir + '/rel', rel_ihdrs)
-    env.Install(distdir + '/dli', dli_hdrs)
-    env.Install(distdir + '/dli', dli_ihdrs)
-    env.Install(distdir + '/tests', testlib_hdrs)
-    env.Install(distdir + '/tests', test_scripts)
-    env.Install(distdir + '/tests/durodt', durodt_test_scripts)
-    env.Install(distdir + '/tcl', tcltools)
-    env.Install(distdir + '/dli', ['dli/exparse.y', 'dli/exlex.l'])
-    env.Install(distdir + '/tcl', 'tcl/util.tcl')
-
     disttar = 'duro-' + release + '.tar.gz'
 
-    env.Tar(disttar, distdir)
+    env.Tar(disttar, Split('SConstruct README README.windows INSTALL '
+            'COPYING AUTHORS CHANGES Doxyfile'))
+    env.Tar(disttar, gensrc)
+    env.Tar(disttar, recsrc)
+    env.Tar(disttar, relsrc)
+    env.Tar(disttar, dlisrc)
+    env.Tar(disttar, 'dli/durodt.c')
+    env.Tar(disttar, durotclsrc)
+    env.Tar(disttar, durodocs)
+    env.Tar(disttar, 'docs/durodt/tut.html')
+    env.Tar(disttar, durotcldocs)
+    env.Tar(disttar, 'docs/api/html')
+    env.Tar(disttar, ['duro.def', 'durotcl.def'])
+    env.Tar(disttar, durotcl_hdrs)
+    env.Tar(disttar, testsrc)
+    env.Tar(disttar, testlibsrc)
+    env.Tar(disttar, 'util/lstables.c')
+    env.Tar(disttar, gen_hdrs)
+    env.Tar(disttar, rec_hdrs)
+    env.Tar(disttar, rel_hdrs)
+    env.Tar(disttar, rel_ihdrs)
+    env.Tar(disttar, dli_hdrs)
+    env.Tar(disttar, dli_ihdrs)
+    env.Tar(disttar, testlib_hdrs)
+    env.Tar(disttar, test_scripts)
+    env.Tar(disttar, durodt_test_scripts)
+    env.Tar(disttar, tcltools)
+    env.Tar(disttar, ['dli/exparse.y', 'dli/exlex.l'])
+    env.Tar(disttar, 'tcl/util.tcl')
 
     env.Alias('dist', disttar)
