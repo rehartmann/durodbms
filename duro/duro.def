@@ -12,22 +12,24 @@ EXPORTS
     RDB_INVALID_ARGUMENT_ERROR
     RDB_TYPE_MISMATCH_ERROR
     RDB_NOT_FOUND_ERROR
-    RDB_OPERATOR_NOT_FOUND_ERROR    
-    RDB_NAME_ERROR    
-    RDB_ELEMENT_EXISTS_ERROR    
-    RDB_TYPE_CONSTRAINT_VIOLATION_ERROR    
-    RDB_KEY_VIOLATION_ERROR    
-    RDB_PREDICATE_VIOLATION_ERROR    
-    RDB_AGGREGATE_UNDEFINED_ERROR    
-    RDB_VERSION_MISMATCH_ERROR    
-    RDB_NOT_SUPPORTED_ERROR    
-    RDB_NO_MEMORY_ERROR    
-    RDB_LOCK_NOT_GRANTED_ERROR    
-    RDB_DEADLOCK_ERROR    
-    RDB_RESOURCE_NOT_FOUND_ERROR    
-    RDB_INTERNAL_ERROR    
-    RDB_FATAL_ERROR    
-    RDB_SYSTEM_ERROR    
+    RDB_OPERATOR_NOT_FOUND_ERROR
+    RDB_NAME_ERROR
+    RDB_ELEMENT_EXISTS_ERROR
+    RDB_TYPE_CONSTRAINT_VIOLATION_ERROR
+    RDB_KEY_VIOLATION_ERROR
+    RDB_PREDICATE_VIOLATION_ERROR
+    RDB_AGGREGATE_UNDEFINED_ERROR
+    RDB_VERSION_MISMATCH_ERROR
+    RDB_NOT_SUPPORTED_ERROR
+    RDB_NO_MEMORY_ERROR
+    RDB_LOCK_NOT_GRANTED_ERROR
+    RDB_DEADLOCK_ERROR
+    RDB_RESOURCE_NOT_FOUND_ERROR
+    RDB_INTERNAL_ERROR
+    RDB_FATAL_ERROR 
+    RDB_SYSTEM_ERROR
+    RDB_IN_USE_ERROR
+
 RDB_db_env
 RDB_create_db_from_env
 RDB_get_db_from_env
@@ -162,6 +164,7 @@ RDB_raise_element_exists
 RDB_raise_not_supported
 RDB_raise_name
 RDB_raise_predicate_violation
+RDB_raise_in_use
 RDB_raise_system
 RDB_raise_resource_not_found
 RDB_raise_internal
@@ -224,3 +227,16 @@ RDB_operator_source
 RDB_operator_name
 RDB_is_selector
 RDB_return_type
+RDB_get_sys_db
+RDB_next_attr_sorted
+RDB_obj_set_typeinfo
+RDB_init_expr_list
+RDB_destroy_expr_list
+RDB_expr_list_length
+RDB_expr_list_append
+RDB_join_expr_lists
+RDB_expr_op_name
+RDB_expr_var_name
+RDB_op_u_data
+RDB_set_op_u_data
+RDB_set_op_cleanup_fn
