@@ -61,8 +61,8 @@ relsrc = ['rel/array.c', 'rel/database.c', 'rel/operator.c', 'rel/builtinops.c',
         'rel/expression.c', 'rel/evaluate.c', 'rel/exprtype.c', 'rel/qresult.c',
         'rel/serialize.c', 'rel/table.c', 'rel/stable.c', 'rel/vtable.c',
         'rel/update.c', 'rel/insert.c', 'rel/contains.c', 'rel/transaction.c',
-        'rel/delete.c', 'rel/tuple.c', 'rel/type.c', 'rel/object.c',
-        'rel/catalog.c', 'rel/optimize.c', 'rel/transform.c',
+        'rel/delete.c', 'rel/tuple.c', 'rel/type.c', 'rel/builtintypes.c',
+        'rel/object.c', 'rel/catalog.c', 'rel/optimize.c', 'rel/transform.c',
         'rel/constraint.c', 'rel/assign.c', 'rel/excontext.c',
         'rel/match.c', 'rel/opmap.c', 'rel/io.c', 'rel/tostr.c']
 
