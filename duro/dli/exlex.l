@@ -35,7 +35,8 @@ char *_RDB_parse_prompt;
 RDB_object *whitecommp = NULL;
 
 /*
- * Process backslash escapes
+ * Process backslash escapes on string.
+ * The string must not end with a backslash.
  */
 static void
 process_escapes(char *txt)
@@ -45,11 +46,6 @@ process_escapes(char *txt)
     for(;;) {
         if (yytext[i] == '\\') {
             switch (yytext[i + 1]) {
-                case '\\':
-                    yytext[j] = yytext[i + 1];
-                    i += 2;
-                    j++;
-                    continue;
                 case 'n':
                     yytext[j] = '\n';
                     i += 2;
@@ -65,7 +61,11 @@ process_escapes(char *txt)
                     i += 2;
                     j++;
                     continue;
-                default: ;
+                default:
+                    yytext[j] = yytext[i + 1];
+                    i += 2;
+                    j++;
+                    continue;
             }
         }
         yytext[j] = yytext[i];
@@ -681,11 +681,8 @@ IMPLEMENT {
 }
 
 \'([^']|\\\\|\\n|\\r|\\t)*\' {
-
-    process_escapes(yytext);
-
     /*
-     * Remove trailing 's
+     * Unescaped string - remove trailing 's
      */
     yytext[(strlen(yytext) - 1)] = '\0';
     yylval = RDB_new_parse_expr(RDB_string_to_expr(yytext + 1, _RDB_parse_ecp),
@@ -694,12 +691,16 @@ IMPLEMENT {
     return TOK_LIT_STRING;
 }
 
-\"([^"]|\\\\|\\n|\\r|\\t)*\" {
-
+\"([^"]|\\\\|\\n|\\r|\\t|\\\")*\" {
+    /*
+     * Handle escaped string.
+     * The trailing quote guarantees that there can be
+     * no trailing backslash.
+     */
     process_escapes(yytext);
 
     /*
-     * Remove trailing "s
+     * Remove trailing "
      */
     yytext[(strlen(yytext) - 1)] = '\0';
     yylval = RDB_new_parse_expr(RDB_string_to_expr(yytext + 1, _RDB_parse_ecp),

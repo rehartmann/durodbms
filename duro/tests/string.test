@@ -26,8 +26,15 @@ test string {string functions} -setup $SETUP -body {
         error "wrong string length: $len"
     }
 
+    # Single-quote string
     set str [duro::expr {'"\t"'} $tx]
-    if {$str != "\"\t\""} {
+    if {![string equal $str {"\t"}]} {
+        error "wrong string value: $str"
+    }
+
+    # Double-quote string
+    set str [duro::expr {"\"\t"} $tx]
+    if {![string equal $str "\"\t"]} {
         error "wrong string value: $str"
     }
 
