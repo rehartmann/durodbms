@@ -27,7 +27,7 @@ table_dum_expr(void)
     if (exp == NULL)
         return NULL; 
 
-    reltyp = RDB_create_relation_type(0, NULL, _RDB_parse_ecp);
+    reltyp = RDB_new_relation_type(0, NULL, _RDB_parse_ecp);
     if (reltyp == NULL) {
         RDB_drop_expr(exp, _RDB_parse_ecp);
         return NULL;
