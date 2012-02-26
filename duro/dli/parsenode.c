@@ -139,6 +139,9 @@ RDB_parse_node_var_name_idx(const RDB_parse_node *nodep, const char *namep)
     }
 }
 
+/*
+ * Store string representation of node in *dstp.
+ */
 int
 Duro_parse_node_to_obj_string(RDB_object *dstp, RDB_parse_node *nodep,
         RDB_exec_context *ecp, RDB_transaction *txp)

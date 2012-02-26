@@ -28,7 +28,7 @@ typedef struct RDB_parse_node {
 
     /*
      * Not in the union because a list of nodes can represent a read-only
-     * a operator invocation which can be converted to an expression
+     * operator invocation which can be converted to an expression
      */
     RDB_expression *exp;
 
