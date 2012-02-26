@@ -27,14 +27,14 @@ test string {string functions} -setup $SETUP -body {
     }
 
     # Single-quote string
-    set str [duro::expr {'"\t"'} $tx]
-    if {![string equal $str {"\t"}]} {
+    set str [duro::expr {'\"\t"\\'} $tx]
+    if {![string equal $str {\"\t"\\}]} {
         error "wrong string value: $str"
     }
 
     # Double-quote string
-    set str [duro::expr {"\"\t"} $tx]
-    if {![string equal $str "\"\t"]} {
+    set str [duro::expr {"\"\t\\"} $tx]
+    if {![string equal $str "\"\t\\"]} {
         error "wrong string value: $str"
     }
 
