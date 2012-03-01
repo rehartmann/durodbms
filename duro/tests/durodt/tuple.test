@@ -16,18 +16,18 @@ set testdir [::tcltest::configure -testdir]
 test tuplevar {tuple variables} -body {
     exec $testdir/../../dli/durodt << {
         var t1 init tuple {i 5, s 'foo'};
-        PRINTLN(CAST_AS_STRING(t1.i) || ' ' || t1.s);
-        PRINTLN(t1.i);
-        PRINTLN(s FROM t1);
+        put_line(CAST_AS_STRING(t1.i) || ' ' || t1.s);
+        put(t1.i); put_line('');
+        put(s FROM t1); put_line('');
 
 		var t2 init tuple{};
 		var t3 init tuple{i 555};
-		PRINTLN(t3.i);
+		put(t3.i); put_line('');
 
         var t4 same_type_as(t1);
         t4 := tup {i 2, s 'bar'};
-        PRINTLN(CAST_AS_STRING(t4.i) || ' ' || t4.s);
-        PRINTLN(t4 {s});
+        put_line(CAST_AS_STRING(t4.i) || ' ' || t4.s);
+        put(t4 {s}); put_line('');
     }
 } -result {5 foo
 5
@@ -40,8 +40,8 @@ TUPLE { s 'bar'}
 test tupleupdexpr {tuple update expression} -body {
     exec $testdir/../../dli/durodt << {
         var t1 init tuple {i 5, s 'bar'};
-        PRINTLN((update t1 {i := i + 2, s := s || 'r'}).i);
-        PRINTLN(s from (update t1 {i := i + 2, s := s || 'r'}));        
+        put((update t1 {i := i + 2, s := s || 'r'}).i); put_line('');
+        put(s from (update t1 {i := i + 2, s := s || 'r'})); put_line('');        
     }
 } -result {7
 barr
@@ -51,8 +51,8 @@ test tupleupdstmt {tuple update statement} -body {
     exec $testdir/../../dli/durodt << {
         var t1 init tuple {i 5, s 'bar'};
         update t1 {i := i + 2, s := s || 'r'};
-        PRINTLN(t1.i);
-        PRINTLN(s from t1);        
+        put(t1.i); put_line('');
+        put(s from t1); put_line('');        
     }
 } -result {7
 barr
@@ -61,11 +61,11 @@ barr
 test union {tuple UNION} -body {
     exec $testdir/../../dli/durodt << {
         var t1 init tuple {i 5, j 6} union tup {j 6, x 2};
-        PRINTLN(t1.i);
-        PRINTLN(t1.j);
-        PRINTLN(t1.x);
+        put(t1.i); put_line('');
+        put(t1.j); put_line('');
+        put(t1.x); put_line('');
 
-        PRINTLN((tuple{} union tuple {s 'yo'}).s);
+        put((tuple{} union tuple {s 'yo'}).s); put_line('');
     }
 } -result {5
 6

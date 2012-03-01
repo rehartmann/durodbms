@@ -38,67 +38,43 @@ RDB_object DURO_STDERR_OBJ;
 
 These operators are only available in Duro D/T.
 
-OPERATOR println(string) UPDATES {};
+OPERATOR put_line(string) UPDATES {};
 
-OPERATOR println(integer) UPDATES {};
+OPERATOR put(string) UPDATES {};
 
-OPERATOR println(float) UPDATES {};
+OPERATOR put(integer) UPDATES {};
 
-OPERATOR println(boolean) UPDATES {};
+OPERATOR put(float) UPDATES {};
 
-OPERATOR println(<em>TUPLE</em>) UPDATES {};
+OPERATOR put(boolean) UPDATES {};
 
-OPERATOR println(<em>RELATION</em>) UPDATES {};
+OPERATOR put(<em>TUPLE</em>) UPDATES {};
 
-OPERATOR println(io_stream, <em>ARRAY</em>) UPDATES {};
+OPERATOR put(<em>RELATION</em>) UPDATES {};
 
-OPERATOR PRINT(string) UPDATES {};
+OPERATOR put(<em>ARRAY</em>) UPDATES {};
 
-OPERATOR PRINT(integer) UPDATES {};
+OPERATOR put_line(io_stream, string) UPDATES {};
 
-OPERATOR PRINT(float) UPDATES {};
+OPERATOR put(io_stream, string) UPDATES {};
 
-OPERATOR PRINT(boolean) UPDATES {};
+OPERATOR put(io_stream, integer) UPDATES {};
 
-OPERATOR PRINT(<em>TUPLE</em>) UPDATES {};
+OPERATOR put(io_stream, float) UPDATES {};
 
-OPERATOR PRINT(<em>RELATION</em>) UPDATES {};
+OPERATOR put(io_stream, boolean) UPDATES {};
 
-OPERATOR PRINT(<em>ARRAY</em>) UPDATES {};
+OPERATOR put(io_stream, <em>TUPLE</em>) UPDATES {};
 
-OPERATOR println(io_stream, string) UPDATES {};
+OPERATOR put(io_stream, <em>RELATION</em>) UPDATES {};
 
-OPERATOR println(io_stream, integer) UPDATES {};
+OPERATOR put(io_stream, <em>ARRAY</em>) UPDATES {};
 
-OPERATOR println(io_stream, float) UPDATES {};
+OPERATOR get_line(line string) UPDATES {line};
 
-OPERATOR println(io_stream, boolean) UPDATES {};
+OPERATOR open(ios io_stream, string path, string mode) UPDATES {ios};
 
-OPERATOR println(io_stream, <em>TUPLE</em>) UPDATES {};
-
-OPERATOR println(io_stream, <em>RELATION</em>) UPDATES {};
-
-OPERATOR println(io_stream, <em>ARRAY</em>) UPDATES {};
-
-OPERATOR PRINT(io_stream, string) UPDATES {};
-
-OPERATOR PRINT(io_stream, integer) UPDATES {};
-
-OPERATOR PRINT(io_stream, float) UPDATES {};
-
-OPERATOR PRINT(io_stream, boolean) UPDATES {};
-
-OPERATOR PRINT(io_stream, <em>TUPLE</em>) UPDATES {};
-
-OPERATOR PRINT(io_stream, <em>RELATION</em>) UPDATES {};
-
-OPERATOR PRINT(io_stream, <em>ARRAY</em>) UPDATES {};
-
-OPERATOR READLN(LINE string) UPDATES {LINE};
-
-OPERATOR OPEN(IOS io_stream, string PATH, string MODE) UPDATES {IOS};
-
-OPERATOR CLOSE(IOS io_stream) UPDATES {};
+OPERATOR close(ios io_stream) UPDATES {};
 
 */
 
@@ -116,7 +92,7 @@ static int get_fileno(const RDB_object *objp, RDB_exec_context *ecp)
 }
 
 static int
-op_println_iostream_string(int argc, RDB_object *argv[],
+op_put_line_iostream_string(int argc, RDB_object *argv[],
         RDB_operator *op, RDB_exec_context *ecp, RDB_transaction *txp)
 {
     /* Get file number from arg #1 */
@@ -133,59 +109,7 @@ op_println_iostream_string(int argc, RDB_object *argv[],
 }
 
 static int
-op_println_iostream_int(int argc, RDB_object *argv[],
-        RDB_operator *op, RDB_exec_context *ecp, RDB_transaction *txp)
-{
-    /* Get file number from arg #1 */
-    int fno = get_fileno(argv[0], ecp);
-    if (fno == RDB_ERROR) {
-        return RDB_ERROR;
-    }
-
-    if (fprintf(iostreams[fno], "%d\n", (int) RDB_obj_int(argv[1])) < 0) {
-        RDB_errcode_to_error(errno, ecp, txp);
-        return RDB_ERROR;
-    }
-    return RDB_OK;
-}
-
-static int
-op_println_iostream_float(int argc, RDB_object *argv[],
-        RDB_operator *op, RDB_exec_context *ecp, RDB_transaction *txp)
-{
-    /* Get file number from arg #1 */
-    int fno = get_fileno(argv[0], ecp);
-    if (fno == RDB_ERROR) {
-        return RDB_ERROR;
-    }
-
-    if (fprintf(iostreams[fno], "%f\n", (double) RDB_obj_float(argv[1])) < 0) {
-        RDB_errcode_to_error(errno, ecp, txp);
-        return RDB_ERROR;
-    }
-    return RDB_OK;
-}
-
-static int
-op_println_iostream_bool(int argc, RDB_object *argv[],
-        RDB_operator *op, RDB_exec_context *ecp, RDB_transaction *txp)
-{
-    /* Get file number from arg #1 */
-    int fno = get_fileno(argv[0], ecp);
-    if (fno == RDB_ERROR) {
-        return RDB_ERROR;
-    }
-
-    if (fprintf(iostreams[fno], "%s\n",
-            RDB_obj_bool(argv[1]) ? "TRUE" : "FALSE") == EOF) {
-        RDB_errcode_to_error(errno, ecp, txp);
-        return RDB_ERROR;
-    }
-    return RDB_OK;
-}
-
-static int
-print_nonscalar(FILE *fp, const RDB_object *objp, 
+put_nonscalar(FILE *fp, const RDB_object *objp,
     RDB_exec_context *ecp, RDB_transaction *txp)
 {
     RDB_object strobj;
@@ -206,7 +130,7 @@ print_nonscalar(FILE *fp, const RDB_object *objp,
 }
 
 static int
-op_print_string(int argc, RDB_object *argv[], RDB_operator *op,
+op_put_string(int argc, RDB_object *argv[], RDB_operator *op,
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
     if (fputs(RDB_obj_string(argv[0]), stdout) == EOF) {
@@ -217,7 +141,7 @@ op_print_string(int argc, RDB_object *argv[], RDB_operator *op,
 }
 
 static int
-op_print_int(int argc, RDB_object *argv[], RDB_operator *op,
+op_put_int(int argc, RDB_object *argv[], RDB_operator *op,
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
     if (printf("%d", (int) RDB_obj_int(argv[0])) < 0) {
@@ -228,7 +152,7 @@ op_print_int(int argc, RDB_object *argv[], RDB_operator *op,
 }
 
 static int
-op_print_float(int argc, RDB_object *argv[], RDB_operator *op,
+op_put_float(int argc, RDB_object *argv[], RDB_operator *op,
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
     if (printf("%f", (double) RDB_obj_float(argv[0])) < 0) {
@@ -239,7 +163,7 @@ op_print_float(int argc, RDB_object *argv[], RDB_operator *op,
 }
 
 static int
-op_print_bool(int argc, RDB_object *argv[], RDB_operator *op,
+op_put_bool(int argc, RDB_object *argv[], RDB_operator *op,
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
     if (fputs(RDB_obj_bool(argv[0]) ? "TRUE" : "FALSE", stdout) == EOF) {
@@ -250,7 +174,7 @@ op_print_bool(int argc, RDB_object *argv[], RDB_operator *op,
 }
 
 static int
-op_print_nonscalar(int argc, RDB_object *argv[], RDB_operator *op,
+op_put_nonscalar(int argc, RDB_object *argv[], RDB_operator *op,
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
     RDB_object *dataobjp;
@@ -264,7 +188,7 @@ op_print_nonscalar(int argc, RDB_object *argv[], RDB_operator *op,
     dataobjp = argv[argc - 1];
     if (RDB_obj_type(dataobjp) != NULL
             && RDB_type_is_scalar(RDB_obj_type(dataobjp))) {
-        RDB_raise_type_mismatch("print", ecp);
+        RDB_raise_type_mismatch("put", ecp);
         return RDB_ERROR;
     }
 
@@ -275,12 +199,12 @@ op_print_nonscalar(int argc, RDB_object *argv[], RDB_operator *op,
             return RDB_ERROR;
     }        
 
-    return print_nonscalar(argc == 1 ? stdout : iostreams[fno], dataobjp,
+    return put_nonscalar(argc == 1 ? stdout : iostreams[fno], dataobjp,
             ecp, txp);
 }
 
 static int
-op_print_iostream_string(int argc, RDB_object *argv[], RDB_operator *op,
+op_put_iostream_string(int argc, RDB_object *argv[], RDB_operator *op,
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
     /* Get file number from arg #1 */
@@ -297,7 +221,7 @@ op_print_iostream_string(int argc, RDB_object *argv[], RDB_operator *op,
 }
 
 static int
-op_print_iostream_int(int argc, RDB_object *argv[], RDB_operator *op,
+op_put_iostream_int(int argc, RDB_object *argv[], RDB_operator *op,
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
     /* Get file number from arg #1 */
@@ -314,7 +238,7 @@ op_print_iostream_int(int argc, RDB_object *argv[], RDB_operator *op,
 }
 
 static int
-op_print_iostream_float(int argc, RDB_object *argv[], RDB_operator *op,
+op_put_iostream_float(int argc, RDB_object *argv[], RDB_operator *op,
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
     /* Get file number from arg #1 */
@@ -331,7 +255,7 @@ op_print_iostream_float(int argc, RDB_object *argv[], RDB_operator *op,
 }
 
 static int
-op_print_iostream_bool(int argc, RDB_object *argv[], RDB_operator *op,
+op_put_iostream_bool(int argc, RDB_object *argv[], RDB_operator *op,
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
     /* Get file number from arg #1 */
@@ -348,7 +272,7 @@ op_print_iostream_bool(int argc, RDB_object *argv[], RDB_operator *op,
 }
 
 static int
-op_println_string(int argc, RDB_object *argv[], RDB_operator *op,
+op_put_line_string(int argc, RDB_object *argv[], RDB_operator *op,
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
     RDB_object *callargv[3];
@@ -356,87 +280,11 @@ op_println_string(int argc, RDB_object *argv[], RDB_operator *op,
     callargv[0] = &DURO_STDOUT_OBJ;
     callargv[1] = argv[0];
     
-    return op_println_iostream_string(2, callargv, op, NULL, txp);
+    return op_put_line_iostream_string(2, callargv, op, NULL, txp);
 }
 
 static int
-op_println_int(int argc, RDB_object *argv[], RDB_operator *op,
-        RDB_exec_context *ecp, RDB_transaction *txp)
-{
-    if (printf("%d\n", (int) RDB_obj_int(argv[0])) < 0) {
-        RDB_errcode_to_error(errno, ecp, txp);
-        return RDB_ERROR;
-    }
-    return RDB_OK;
-}
-
-static int
-op_println_float(int argc, RDB_object *argv[], RDB_operator *op,
-        RDB_exec_context *ecp, RDB_transaction *txp)
-{
-    RDB_object *callargv[3];
-
-    callargv[0] = &DURO_STDOUT_OBJ;
-    callargv[1] = argv[0];
-    callargv[2] = argv[1];
-    
-    return op_println_iostream_float(3, callargv,
-            NULL, ecp, txp);
-}
-
-static int
-op_println_bool(int argc, RDB_object *argv[], RDB_operator *op,
-        RDB_exec_context *ecp, RDB_transaction *txp)
-{
-    RDB_object *callargv[3];
-
-    callargv[0] = &DURO_STDOUT_OBJ;
-    callargv[1] = argv[0];
-    callargv[2] = argv[1];
-    
-    return op_println_iostream_bool(3, callargv,
-            NULL, ecp, txp);
-}
-
-static int
-op_println_nonscalar(int argc, RDB_object *argv[], RDB_operator *op,
-        RDB_exec_context *ecp, RDB_transaction *txp)
-{
-    RDB_object *dataobjp;
-    int fno;
-
-    if (argc != 1 && argc != 2) {
-        RDB_raise_invalid_argument("invalid # of arguments", ecp);
-        return RDB_ERROR;
-    }
-
-    dataobjp = argv[argc - 1];
-    if (RDB_obj_type(dataobjp) != NULL
-            && RDB_type_is_scalar(RDB_obj_type(dataobjp))) {
-        RDB_raise_type_mismatch("println", ecp);
-        return RDB_ERROR;
-    }
-
-    if (argc == 2) {
-        /* Get file number from arg #1 */
-        fno = get_fileno(argv[0], ecp);
-        if (fno == RDB_ERROR)
-            return RDB_ERROR;
-    }        
-
-    if (print_nonscalar(argc == 1 ? stdout : iostreams[fno], dataobjp,
-            ecp, txp) != RDB_OK) {
-        return RDB_ERROR;
-    }
-    if (fprintf(argc == 1 ? stdout : iostreams[fno], "\n") < 0) {
-        RDB_errcode_to_error(errno, ecp, txp);
-        return RDB_ERROR;
-    }
-    return RDB_OK;
-}
-
-static int
-readln(FILE *fp, RDB_object *linep, RDB_exec_context *ecp,
+get_line(FILE *fp, RDB_object *linep, RDB_exec_context *ecp,
         RDB_transaction *txp)
 {
     char buf[128];
@@ -472,14 +320,14 @@ readln(FILE *fp, RDB_object *linep, RDB_exec_context *ecp,
 }
 
 static int
-op_readln(int argc, RDB_object *argv[], RDB_operator *op,
+op_get_line(int argc, RDB_object *argv[], RDB_operator *op,
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
-    return readln(stdin, argv[0], ecp, txp);
+    return get_line(stdin, argv[0], ecp, txp);
 }
 
 static int
-op_readln_iostream(int argc, RDB_object *argv[], RDB_operator *op,
+op_get_line_iostream(int argc, RDB_object *argv[], RDB_operator *op,
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
     /* Get file number from arg #1 */
@@ -488,7 +336,7 @@ op_readln_iostream(int argc, RDB_object *argv[], RDB_operator *op,
         return RDB_ERROR;
     }
 
-    return readln(iostreams[fno], argv[1], ecp, txp);
+    return get_line(iostreams[fno], argv[1], ecp, txp);
 }
 
 static int
@@ -559,53 +407,53 @@ op_open(int argc, RDB_object *argv[], RDB_operator *op,
 int
 _RDB_add_io_ops(RDB_op_map *opmapp, RDB_exec_context *ecp)
 {
-    static RDB_parameter print_string_params[1];
-    static RDB_parameter print_int_params[1];
-    static RDB_parameter print_float_params[1];
-    static RDB_parameter print_bool_params[1];
+    static RDB_parameter put_string_params[1];
+    static RDB_parameter put_int_params[1];
+    static RDB_parameter put_float_params[1];
+    static RDB_parameter put_bool_params[1];
 
-    static RDB_parameter print_iostream_string_params[2];
-    static RDB_parameter print_iostream_int_params[2];
-    static RDB_parameter print_iostream_float_params[2];
-    static RDB_parameter print_iostream_bool_params[2];
+    static RDB_parameter put_iostream_string_params[2];
+    static RDB_parameter put_iostream_int_params[2];
+    static RDB_parameter put_iostream_float_params[2];
+    static RDB_parameter put_iostream_bool_params[2];
 
-    static RDB_parameter readln_params[1];
-    static RDB_parameter readln_iostream_params[2];
+    static RDB_parameter get_line_params[1];
+    static RDB_parameter get_line_iostream_params[2];
     static RDB_parameter open_params[3];
     static RDB_parameter close_params[1];
 
-    print_string_params[0].typ = &RDB_STRING;
-    print_string_params[0].update = RDB_FALSE;
-    print_int_params[0].typ = &RDB_INTEGER;
-    print_int_params[0].update = RDB_FALSE;
-    print_float_params[0].typ = &RDB_FLOAT;
-    print_float_params[0].update = RDB_FALSE;
-    print_bool_params[0].typ = &RDB_BOOLEAN;
-    print_bool_params[0].update = RDB_FALSE;
+    put_string_params[0].typ = &RDB_STRING;
+    put_string_params[0].update = RDB_FALSE;
+    put_int_params[0].typ = &RDB_INTEGER;
+    put_int_params[0].update = RDB_FALSE;
+    put_float_params[0].typ = &RDB_FLOAT;
+    put_float_params[0].update = RDB_FALSE;
+    put_bool_params[0].typ = &RDB_BOOLEAN;
+    put_bool_params[0].update = RDB_FALSE;
 
-    print_iostream_string_params[0].typ = &RDB_IO_STREAM;
-    print_iostream_string_params[0].update = RDB_FALSE;
-    print_iostream_string_params[1].typ = &RDB_STRING;
-    print_iostream_string_params[1].update = RDB_FALSE;
-    print_iostream_int_params[0].typ = &RDB_IO_STREAM;
-    print_iostream_int_params[0].update = RDB_FALSE;
-    print_iostream_int_params[1].typ = &RDB_INTEGER;
-    print_iostream_int_params[1].update = RDB_FALSE;
-    print_iostream_float_params[0].typ = &RDB_IO_STREAM;
-    print_iostream_float_params[0].update = RDB_FALSE;
-    print_iostream_float_params[1].typ = &RDB_FLOAT;
-    print_iostream_float_params[1].update = RDB_FALSE;
-    print_iostream_bool_params[0].typ = &RDB_IO_STREAM;
-    print_iostream_bool_params[0].update = RDB_FALSE;
-    print_iostream_bool_params[1].typ = &RDB_BOOLEAN;
-    print_iostream_bool_params[1].update = RDB_FALSE;
+    put_iostream_string_params[0].typ = &RDB_IO_STREAM;
+    put_iostream_string_params[0].update = RDB_FALSE;
+    put_iostream_string_params[1].typ = &RDB_STRING;
+    put_iostream_string_params[1].update = RDB_FALSE;
+    put_iostream_int_params[0].typ = &RDB_IO_STREAM;
+    put_iostream_int_params[0].update = RDB_FALSE;
+    put_iostream_int_params[1].typ = &RDB_INTEGER;
+    put_iostream_int_params[1].update = RDB_FALSE;
+    put_iostream_float_params[0].typ = &RDB_IO_STREAM;
+    put_iostream_float_params[0].update = RDB_FALSE;
+    put_iostream_float_params[1].typ = &RDB_FLOAT;
+    put_iostream_float_params[1].update = RDB_FALSE;
+    put_iostream_bool_params[0].typ = &RDB_IO_STREAM;
+    put_iostream_bool_params[0].update = RDB_FALSE;
+    put_iostream_bool_params[1].typ = &RDB_BOOLEAN;
+    put_iostream_bool_params[1].update = RDB_FALSE;
 
-    readln_params[0].typ = &RDB_STRING;
-    readln_params[0].update = RDB_TRUE;
-    readln_iostream_params[0].typ = &RDB_IO_STREAM;
-    readln_iostream_params[0].update = RDB_FALSE;
-    readln_iostream_params[1].typ = &RDB_STRING;
-    readln_iostream_params[1].update = RDB_TRUE;
+    get_line_params[0].typ = &RDB_STRING;
+    get_line_params[0].update = RDB_TRUE;
+    get_line_iostream_params[0].typ = &RDB_IO_STREAM;
+    get_line_iostream_params[0].update = RDB_FALSE;
+    get_line_iostream_params[1].typ = &RDB_STRING;
+    get_line_iostream_params[1].update = RDB_TRUE;
 
     close_params[0].typ = &RDB_IO_STREAM;
     close_params[0].update = RDB_FALSE;
@@ -617,69 +465,48 @@ _RDB_add_io_ops(RDB_op_map *opmapp, RDB_exec_context *ecp)
     open_params[2].typ = &RDB_STRING;
     open_params[2].update = RDB_FALSE;
 
-    if (RDB_put_upd_op(opmapp, "println", 1, print_string_params, &op_println_string,
+    if (RDB_put_upd_op(opmapp, "put_line", 1, put_string_params, &op_put_line_string,
             ecp) != RDB_OK)
         return RDB_ERROR;
-    if (RDB_put_upd_op(opmapp, "println", 1, print_int_params, &op_println_int,
-            ecp) != RDB_OK)
+
+    if (RDB_put_upd_op(opmapp, "put_line", 2, put_iostream_string_params,
+            &op_put_line_iostream_string, ecp) != RDB_OK)
         return RDB_ERROR;
-    if (RDB_put_upd_op(opmapp, "println", 1, print_float_params, &op_println_float,
-            ecp) != RDB_OK)
+
+    if (RDB_put_upd_op(opmapp, "put", 1, put_string_params, &op_put_string, ecp)
+            != RDB_OK)
         return RDB_ERROR;
-    if (RDB_put_upd_op(opmapp, "println", 1, print_bool_params, &op_println_bool,
-            ecp) != RDB_OK)
+    if (RDB_put_upd_op(opmapp, "put", 1, put_int_params, &op_put_int, ecp)
+            != RDB_OK)
         return RDB_ERROR;
-    if (RDB_put_upd_op(opmapp, "println", -1, NULL, &op_println_nonscalar, ecp)
+    if (RDB_put_upd_op(opmapp, "put", 1, put_float_params, &op_put_float, ecp)
+            != RDB_OK)
+        return RDB_ERROR;
+    if (RDB_put_upd_op(opmapp, "put", 1, put_bool_params, &op_put_bool, ecp)
+            != RDB_OK)
+        return RDB_ERROR;
+    if (RDB_put_upd_op(opmapp, "put", -1, NULL, &op_put_nonscalar, ecp)
             != RDB_OK)
         return RDB_ERROR;
 
-    if (RDB_put_upd_op(opmapp, "println", 2, print_iostream_string_params,
-            &op_println_iostream_string, ecp) != RDB_OK)
+    if (RDB_put_upd_op(opmapp, "put", 2, put_iostream_string_params,
+            &op_put_iostream_string, ecp) != RDB_OK)
         return RDB_ERROR;
-    if (RDB_put_upd_op(opmapp, "println", 2, print_iostream_int_params,
-            &op_println_iostream_int, ecp) != RDB_OK)
+    if (RDB_put_upd_op(opmapp, "put", 2, put_iostream_int_params,
+            &op_put_iostream_int, ecp) != RDB_OK)
         return RDB_ERROR;
-    if (RDB_put_upd_op(opmapp, "println", 2, print_iostream_float_params,
-            &op_println_iostream_float, ecp) != RDB_OK)
+    if (RDB_put_upd_op(opmapp, "put", 2, put_iostream_float_params,
+            &op_put_iostream_float, ecp) != RDB_OK)
         return RDB_ERROR;
-    if (RDB_put_upd_op(opmapp, "println", 2, print_iostream_bool_params,
-            &op_println_iostream_bool, ecp) != RDB_OK)
-        return RDB_ERROR;
-
-    if (RDB_put_upd_op(opmapp, "print", 1, print_string_params, &op_print_string, ecp)
-            != RDB_OK)
-        return RDB_ERROR;
-    if (RDB_put_upd_op(opmapp, "print", 1, print_int_params, &op_print_int, ecp)
-            != RDB_OK)
-        return RDB_ERROR;
-    if (RDB_put_upd_op(opmapp, "print", 1, print_float_params, &op_print_float, ecp)
-            != RDB_OK)
-        return RDB_ERROR;
-    if (RDB_put_upd_op(opmapp, "print", 1, print_bool_params, &op_print_bool, ecp)
-            != RDB_OK)
-        return RDB_ERROR;
-    if (RDB_put_upd_op(opmapp, "print", -1, NULL, &op_print_nonscalar, ecp)
-            != RDB_OK)
+    if (RDB_put_upd_op(opmapp, "put", 2, put_iostream_bool_params,
+            &op_put_iostream_bool, ecp) != RDB_OK)
         return RDB_ERROR;
 
-    if (RDB_put_upd_op(opmapp, "print", 2, print_iostream_string_params,
-            &op_print_iostream_string, ecp) != RDB_OK)
-        return RDB_ERROR;
-    if (RDB_put_upd_op(opmapp, "print", 2, print_iostream_int_params,
-            &op_print_iostream_int, ecp) != RDB_OK)
-        return RDB_ERROR;
-    if (RDB_put_upd_op(opmapp, "print", 2, print_iostream_float_params,
-            &op_print_iostream_float, ecp) != RDB_OK)
-        return RDB_ERROR;
-    if (RDB_put_upd_op(opmapp, "print", 2, print_iostream_bool_params,
-            &op_print_iostream_bool, ecp) != RDB_OK)
-        return RDB_ERROR;
-
-    if (RDB_put_upd_op(opmapp, "readln", 1, readln_params, &op_readln, ecp)
+    if (RDB_put_upd_op(opmapp, "get_line", 1, get_line_params, &op_get_line, ecp)
             != RDB_OK)
         return RDB_ERROR;
-    if (RDB_put_upd_op(opmapp, "readln", 2, readln_iostream_params,
-            &op_readln_iostream, ecp) != RDB_OK)
+    if (RDB_put_upd_op(opmapp, "get_line", 2, get_line_iostream_params,
+            &op_get_line_iostream, ecp) != RDB_OK)
         return RDB_ERROR;
 
     if (RDB_put_upd_op(opmapp, "close", 1, close_params, &op_close, ecp)

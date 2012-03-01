@@ -40,9 +40,9 @@ test insert {creating table and inserting tuples} -setup $SETUP -body {
         var t init tuple {i 2 + 1, d 1.0, c 'Z'};
         insert r update t {i := i + 1};
 
-        PRINTLN(CAST_AS_STRING(count(r)));
-        PRINTLN(CAST_AS_STRING(count(s)));
-        PRINTLN((tuple from r where i=2).c);
+        put_line(CAST_AS_STRING(count(r)));
+        put_line(CAST_AS_STRING(count(s)));
+        put_line((tuple from r where i=2).c);
         commit;
     }
 } -result {3
@@ -79,19 +79,19 @@ test private {creating private table and inserting tuples} -setup $SETUP -body {
 
         delete r where i<>2;
 
-        PRINTLN(count(r));
-        PRINTLN((tuple from r where i=2).c);
-        PRINTLN(sum(s, i));
+        put(count(r)); put_line('');
+        put_line((tuple from r where i=2).c);
+        put(sum(s, i)); put_line('');
         drop var r;
         
         -- test invalid relation selector
         try
             var r init relation {a INTEGER} {tuple {a 'x'}};
         catch err TYPE_MISMATCH_ERROR;
-            PRINTLN("type mismatch");
+            put_line("type mismatch");
         end try;
         
-        PRINTLN((tuple from relation {a INTEGER} {tuple {a 7}}).a);
+        put((tuple from relation {a INTEGER} {tuple {a 7}}).a); put_line('');
     }
 } -result {1
 Y
@@ -113,14 +113,14 @@ test ra {relational algebra} -setup $SETUP -body {
 
         insert t2 relation { tuple {a 2}, tuple {a 3} };
 
-        PRINTLN(with (is := p intersect t2, p := t1 {a}): (tuple from is).a);
+        put(with (is := p intersect t2, p := t1 {a}): (tuple from is).a); put_line('');
 
-		PRINTLN((tuple from relation{tuple{i 1}} join table_dee).i);
+		put((tuple from relation{tuple{i 1}} join table_dee).i); put_line('');
 
         var a array tuple{i INTEGER};
         load a from rel{tup{i 1}} union rel{tup{i 2}} order (i asc);
-        PRINTLN(a[0].i);
-        PRINTLN(a[1].i);
+        put(a[0].i); put_line('');
+        put(a[1].i); put_line('');
 
         commit;
     }
@@ -154,7 +154,7 @@ test updop {user defined update operators} -setup $SETUP -body {
 
         defop();
         insop(r);
-        PRINTLN((tuple from v).bx);
+        put((tuple from v).bx); put_line('');
         commit;
     }
 } -result {durox
@@ -162,13 +162,13 @@ test updop {user defined update operators} -setup $SETUP -body {
 
 test deedum {TABLE_DEE and TABLE_DUM} -setup $SETUP -body {
     exec $testdir/../../dli/durodt << {
-        PRINTLN(tup from TABLE_DEE);
-        PRINTLN(tup from DEE);
+        put(tup from TABLE_DEE); put_line('');
+        put(tup from DEE); put_line('');
 
-        PRINTLN(TABLE_DUM);
-        PRINTLN(DUM);
+        put(TABLE_DUM); put_line('');
+        put(DUM); put_line('');
 
-        PRINTLN(tuple from (rel{} {} union table_dee));
+        put(tuple from (rel{} {} union table_dee)); put_line('');
         
         CONNECT('dbenv');
         CURRENT_DB := 'D';
@@ -183,7 +183,7 @@ test deedum {TABLE_DEE and TABLE_DUM} -setup $SETUP -body {
         CONNECT('dbenv');
         CURRENT_DB:='D';
         begin tx;
-        PRINTLN(ev);
+        put(ev); put_line('');
         commit;
     }
 } -result {TUPLE { }
@@ -216,29 +216,29 @@ test logic {Logic operators} -setup $SETUP -body {
         
         var i INTEGER;
         for i:= 0 to LENGTH(a)-1;
-			PRINT(a[i].i);
-			PRINT(' ');
-			PRINTLN(a[i].j);			
+			put(a[i].i);
+			put(' ');
+			put(a[i].j); put_line('');			
 		end for;
 
-		PRINTLN("");
+		put_line("");
 
         load a from vo order(i asc, j asc);
         
         for i:= 0 to LENGTH(a)-1;
-			PRINT(a[i].i);
-			PRINT(' ');
-			PRINTLN(a[i].j);			
+			put(a[i].i);
+			put(' ');
+			put(a[i].j); put_line('');			
 		end for;
 
-		PRINTLN("");
+		put_line("");
 
         load a from vx order(i asc, j asc);
 
         for i:= 0 to LENGTH(a)-1;
-			PRINT(a[i].i);
-			PRINT(' ');
-			PRINTLN(a[i].j);			
+			put(a[i].i);
+			put(' ');
+			put(a[i].j); put_line('');			
 		end for;
 
         commit;
@@ -265,10 +265,10 @@ test aggregate {Aggregate operators} -setup $SETUP -body {
 		insert t tup {b true};
 		insert t tup {b false};
 
-		PRINTLN(all(t, b));
-		PRINTLN(and(t, b));
-		PRINTLN(any(t, b));
-		PRINTLN(or(t, b));
+		put(all(t, b)); put_line('');
+		put(and(t, b)); put_line('');
+		put(any(t, b)); put_line('');
+		put(or(t, b)); put_line('');
 
         commit;
     }
@@ -305,15 +305,15 @@ test summarize {SUMMARIZE} -setup $SETUP -body {
 
         var i INTEGER;
         for i:= 0 to LENGTH(arr)-1;
-			PRINT(arr[i].A_SUM);			
-			PRINT(' ');
-			PRINT(arr[i].A_ALL);			
-			PRINT(' ');
-			PRINT(arr[i].A_AND);
-			PRINT(' ');
-			PRINT(arr[i].A_ANY);
-			PRINT(' ');
-			PRINTLN(arr[i].A_OR);
+			put(arr[i].A_SUM);			
+			put(' ');
+			put(arr[i].A_ALL);			
+			put(' ');
+			put(arr[i].A_AND);
+			put(' ');
+			put(arr[i].A_ANY);
+			put(' ');
+			put(arr[i].A_OR); put_line('');
 		end for;
 
         commit;
@@ -335,8 +335,8 @@ test relrel {table with relation attribute} -setup $SETUP -body {
 
 		var tp init tuple from (tuple from t).r;
 
-        PRINTLN(tp.i);
-        PRINTLN(tp.s);
+        put(tp.i); put_line('');
+        put_line(tp.s);
         commit;
     }
 } -result {5
@@ -346,7 +346,7 @@ yo
 test group {GROUP} -body {
     exec $testdir/../../dli/durodt << {
 		var gt init rel{tup{i 1, j 1}, tup{i 2, j 2}} group {i, j} as ij;
-		PRINTLN((tuple from gt).ij = rel{tup{i 1, j 1}, tup{i 2, j 2}});
+		put((tuple from gt).ij = rel{tup{i 1, j 1}, tup{i 2, j 2}}); put_line('');
     }
 } -result {TRUE
 }
@@ -358,13 +358,13 @@ test ungroup {UNGROUP} -body {
 		        tup {st rel{tup{s 'e', t 'f'}}}} ungroup st;
 		var arr array tuple{s STRING, t STRING};
 		load arr from ugt order(s asc);
-		PRINTLN(LENGTH(arr));
-		PRINTLN(arr[0].s);
-		PRINTLN(arr[0].t);
-		PRINTLN(arr[1].s);
-		PRINTLN(arr[1].t);
-		PRINTLN(arr[2].s);
-		PRINTLN(arr[2].t);
+		put(LENGTH(arr)); put_line('');
+		put_line(arr[0].s);
+		put_line(arr[0].t);
+		put_line(arr[1].s);
+		put_line(arr[1].t);
+		put_line(arr[2].s);
+		put_line(arr[2].t);
     }
 } -result {3
 a
@@ -384,14 +384,14 @@ test sdivide {small DIVIDE} -body {
             var p_c private init rel{tup{pizza# 1, cond 'salami'},
                     tup{pizza 2, cond 'salami'}, tup{pizza 2, cond 'mushrooms'}};
         catch err;
-            PRINTLN('error caught');
+            put_line('error caught');
         end try;
 
         var p_c private init rel{tup{pizza# 1, cond 'salami'},
                 tup{pizza# 2, cond 'salami'}, tup{pizza# 2, cond 'mushrooms'}};
                 
         -- Get # of pizza with all condiments
-        PRINTLN((tuple from (pizzas divideby condiments per (p_c))).pizza#);
+        put((tuple from (pizzas divideby condiments per (p_c))).pizza#); put_line('');
     }
 } -result {error caught
 2

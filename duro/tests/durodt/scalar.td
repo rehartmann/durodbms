@@ -1,13 +1,13 @@
 VAR I INTEGER INIT 1;
-PRINTLN(CAST_AS_STRING(I + 1));
+put_line(CAST_AS_STRING(I + 1));
 
 VAR J SAME_TYPE_AS(I);
 J:=2;
-PRINTLN(CAST_AS_STRING(I + J));
+put_line(CAST_AS_STRING(I + J));
 VAR C CHAR INIT 'XX';
-PRINTLN(C);
+put_line(C);
 VAR B BOOLEAN;
-PRINTLN(B);
+put(B); put_line('');
 
 -- Synonyms
 VAR B2 BOOL;
@@ -20,5 +20,5 @@ TRY
     VAR I INT;
     VAR I INT;
 CATCH ERR ELEMENT_EXISTS_ERROR;
-    PRINTLN('error caught');
+    put_line('error caught');
 END TRY;

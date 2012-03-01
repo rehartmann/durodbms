@@ -4,9 +4,9 @@ Summary of Changes for Duro
 
 Changes for Duro 0.15
 
-- Built-in types and operators are now lowercase, Duro D/T converts identifiers to lowercase.
+- Replaced PRINT/PRINTLN/READLN by put/put_line/get_line.
 
-- Duro D/T: Identifiers are no longer converted into uppercase.
+- Built-in types and operators are now lowercase, Duro D/T converts identifiers to lowercase.
 
 - Renamed RDB_create_XXX functions for non-scalar types to RDB_new_XXX.
 

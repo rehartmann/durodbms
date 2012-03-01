@@ -45,15 +45,15 @@ test deftype {user-defined types} -setup $DBSETUP -body {
         CURRENT_DB := 'D';
         begin transaction;
         var V T;
-        PRINTLN(THE_a(V));
-        PRINTLN(THE_b(V));
+        put(THE_a(V)); put_line('');
+        put(THE_b(V)); put_line('');
         
         V := T(1, 2);
-        PRINTLN(THE_a(V));
-        PRINTLN(THE_b(V));
+        put(THE_a(V)); put_line('');
+        put(THE_b(V)); put_line('');
 
         THE_a(V) := 5;
-        PRINTLN(THE_a(V));
+        put(THE_a(V)); put_line('');
 
         commit;
 
@@ -61,7 +61,7 @@ test deftype {user-defined types} -setup $DBSETUP -body {
         try
             drop type T;
 		catch ex IN_USE_ERROR;
-		    PRINTLN('caught IN_USE');
+		    put_line('caught IN_USE');
 		end try;
 
         drop var V;
@@ -79,7 +79,7 @@ test deftype {user-defined types} -setup $DBSETUP -body {
         try
         	s := STRING5('Too long');
         catch err TYPE_CONSTRAINT_VIOLATION_ERROR;
-            PRINTLN('caught TYPE_CONSTRAINT_VIOLATION');
+            put_line('caught TYPE_CONSTRAINT_VIOLATION');
         end try;
         commit;
     }
@@ -159,14 +159,14 @@ test defroop {read-only user-defined operators} -setup $DBSETUP -body {
         CURRENT_DB := 'D';
         begin tx;
 
-        PRINTLN(testop());
+        put_line(testop());
 
-        PRINTLN(reverse("Madam, I'm Adam."));
+        put_line(reverse("Madam, I'm Adam."));
 
-        PRINTLN(fib(6));
+        put(fib(6)); put_line('');
 
-        PRINTLN(sgn(5));
-        PRINTLN(sgn(0));
+        put(sgn(5)); put_line('');
+        put(sgn(0)); put_line('');
 
         commit;
 
@@ -211,7 +211,7 @@ test defupdop {user-defined update operators} -setup $DBSETUP -body {
         var a STRING init 'x';
         var b INTEGER init 1;
         op(a, b);
-        PRINTLN("a = " || a || ", b = " || CAST_AS_STRING(b));
+        put_line("a = " || a || ", b = " || CAST_AS_STRING(b));
 
         op(a, b);
 
@@ -244,7 +244,7 @@ test dbconstraint {db/table constraints} -setup $DBSETUP -body {
         try
             insert r tuple {no 2, name 'two'};
         catch err PREDICATE_VIOLATION_ERROR;
-            PRINTLN('caught predicate violation: ' || THE_MSG(err));
+            put_line('caught predicate violation: ' || THE_MSG(err));
         end try;
 
         drop_constraint();
@@ -264,9 +264,9 @@ test trycatch {TRY .. CATCH} -setup $DBSETUP -body {
             try
                 s := SUBSTRING('x', 1, 1);
             catch err NAME_ERROR;
-                PRINTLN('caught NAME_ERROR');
+                put_line('caught NAME_ERROR');
             catch err;
-                PRINTLN('caught');
+                put_line('caught');
             end try;
         end operator;
 
@@ -281,17 +281,17 @@ test getenv {GETENV operator} -setup $DBSETUP -body {
     set ::env(TEST) DUROTEST
 
     exec $testdir/../../dli/durodt -e dbenv << {
-        PRINTLN(GETENV('TEST'));
+        put_line(GETENV('TEST'));
     }
 } -result {DUROTEST
 }
 
 test with {WITH expression} -body {
     exec $testdir/../../dli/durodt -e dbenv << {
-        PRINTLN(WITH (C := 100): WITH (A := 7, B := C): A+B);
+        put(WITH (C := 100): WITH (A := 7, B := C): A+B); put_line('');
         
         -- empty WITH
-        PRINTLN(WITH (): 7);
+        put(WITH (): 7); put_line('');
     }
 } -result {107
 7

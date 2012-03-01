@@ -27,40 +27,40 @@ test arraysel {array selectors} -body {
     exec $testdir/../../dli/durodt << {
 	    -- without type 
 	    var a1 init array(2, 4);
-	    PRINTLN(LENGTH(a1));
-	    PRINTLN(a1[0]);
-	    PRINTLN(a1[1]);
+	    put(length(a1)); put_line('');
+	    put(a1[0]); put_line('');
+	    put(a1[1]); put_line('');
 
 	    -- with type
 	    var a2 init array STRING ('relational');
-	    PRINTLN(LENGTH(a2));
-	    PRINTLN(a2[0]);
+	    put(LENGTH(a2)); put_line('');
+	    put(a2[0]); put_line('');
 
 	    -- with type and without arguments
 	    a1 := array INTEGER();
-	    PRINTLN(LENGTH(a1));
+	    put(LENGTH(a1)); put_line('');
 	    
 	    -- array of tuple without type
 	    var at1 init array(tup{i 200});
-	    PRINTLN(LENGTH(at1));
-	    PRINTLN(at1[0].i);
+	    put(LENGTH(at1)); put_line('');
+	    put(at1[0].i); put_line('');
 
 	    -- array of tuple with type
 	    var at2 init array tup{s STRING} (tup{s 'A'}, tup{s 'Ilsebill'});
-	    PRINTLN(LENGTH(at2));
-	    PRINTLN(at2[0].s);
-	    PRINTLN(at2[1].s);
+	    put(LENGTH(at2)); put_line('');
+	    put(at2[0].s); put_line('');
+	    put(at2[1].s); put_line('');
 	    
 	    -- type mismatch
 	    try
 	        var ae init array INTEGER ('S');
 	    catch type_mismatch_error;
-	        PRINTLN('type mismatch 1');
+	        put_line('type mismatch 1');
 	    end try;
 	    try
 	        var ae init array tup{i INTEGER} (tup{i 1}, tup{i 1, j 2});
 	    catch type_mismatch_error;
-	        PRINTLN('type mismatch 2');
+	        put_line('type mismatch 2');
 	    end try;
 	}
 } -result {2
@@ -85,22 +85,22 @@ test ptarray {array from private table} -body {
         var a array tuple same_heading_as(r);
 
         load a from r where c = 'foo' order();
-        PRINTLN(a[0].c);
+        put_line(a[0].c);
 
         load a from r order(c asc, i desc);
-        PRINTLN(a[0].i);
-        PRINTLN(a[1].i);
-        PRINTLN(a[2].i);
+        put(a[0].i); put_line('');
+        put(a[1].i); put_line('');
+        put(a[2].i); put_line('');
 
         load a from r order(c desc, i asc);
 
         drop var r;
 
-        PRINTLN(a[0].i);
-        PRINTLN(a[1].i);
-        PRINTLN(a[2].i);
+        put(a[0].i); put_line('');
+        put(a[1].i); put_line('');
+        put(a[2].i); put_line('');
 
-        PRINTLN(LENGTH(a));
+        put(LENGTH(a)); put_line('');
         
         var i same_type_as(LENGTH(a));
         
@@ -139,12 +139,12 @@ test ops {operators with array arguments} -setup $DBSETUP -body {
         var t tuple {i INTEGER};
         t := first(a);
 
-        PRINTLN(t.i);
+        put(t.i); put_line('');
 
         var b array tuple {i INTEGER};
         acopy(b, a);
 
-        PRINTLN(b[2].i);
+        put(b[2].i); put_line('');
 
         drop var a;
         drop var b;
@@ -179,9 +179,9 @@ test retops {operator returning array} -setup $DBSETUP -body {
         b := rest(a);
         var i INTEGER;
         for i := 0 to LENGTH(b) - 1;
-            PRINTLN(b[i]);
+            put(b[i]); put_line('');
         end for;
-        
+
         commit;
     }
 } -result {3

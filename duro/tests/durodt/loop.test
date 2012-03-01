@@ -28,15 +28,15 @@ test for {FOR} -setup $DBSETUP -body {
         var i INTEGER;
     
         for i := 1 to 3;
-            PRINTLN(i);
+            put(i); put_line('');
         end for;
 
         for i := -1 to 1;
-            PRINTLN(i);
+            put(i); put_line('');
         end for;
 
         for i := 0 to -1;
-            PRINTLN('Must not appear');
+            put_line('Must not appear');
             exit();
         end for;
     }
@@ -66,8 +66,8 @@ test leave {FOR, WHILE, LEAVE} -setup $DBSETUP -body {
             end while;
         end for;
 
-        PRINTLN(i);
-        PRINTLN(j);
+        put(i); put_line('');
+        put(j); put_line('');
 
         operator lop() returns STRING;
             var i INTEGER;
@@ -84,7 +84,7 @@ test leave {FOR, WHILE, LEAVE} -setup $DBSETUP -body {
             return CAST_AS_STRING(i) || ',' || CAST_AS_STRING(j);
         end operator;
         
-        PRINTLN(lop());
+        put_line(lop());
 
         commit;
     }
@@ -113,7 +113,7 @@ test leave_op {Unmatched LEAVE in operator} -setup $DBSETUP -body {
 		        leave_upd_op();
 		    end for;
 		catch err SYNTAX_ERROR;
-		    PRINTLN("syntax error caught: " || THE_MSG(err));
+		    put_line("syntax error caught: " || THE_MSG(err));
 		end try;
 
         try
@@ -124,7 +124,7 @@ test leave_op {Unmatched LEAVE in operator} -setup $DBSETUP -body {
 		        v := leave_ro_op();
 		    end for;
 		catch err SYNTAX_ERROR;
-		    PRINTLN("syntax error caught: " || THE_MSG(err));
+		    put_line("syntax error caught: " || THE_MSG(err));
 		end try;
 
    }

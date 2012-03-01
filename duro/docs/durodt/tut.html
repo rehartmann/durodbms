@@ -128,12 +128,12 @@ respectively.
 <p>Duro supports the usual arithmetical operators. Example:
 
 <pre>
-no db> println(2 + 3 * 4);
+no db> put_line(cast_as_string(2 + 3 * 4));
 14
 no db> 
 </pre>
 
-<p>For details on the built-in operator <code>println()</code>, see the chapter on I/O.
+<p>For details on the built-in operator <code>put_line</code>, see the chapter on I/O.
 
 <h2>Comments</h2>
 
@@ -155,14 +155,14 @@ comment. */
 
 <pre>
 no db> var s string;
-no db> println('Please enter a number:'); READLN(s);
+no db> put_line('Please enter a number:'); get_line(s);
 Please enter a number:
 2
 no db> var n init CAST_AS_INTEGER(s);
 no db> if n < 0 then
-no db>     println('Negative');
+no db>     put_line('Negative');
 no db> else
-no db>     println('Positive');
+no db>     put_line('Positive');
 no db> end if;
 Positive
 no db>
@@ -173,17 +173,17 @@ But the following form, which more strictly adheres to TTM, is supported too:</P
 
 <pre>
 no db> var s string;
-no db> println('Please enter a number:'); READLN(s);
+no db> put_line('Please enter a number:'); READLN(s);
 Please enter a number:
 -2
 no db> var n init CAST_AS_INTEGER(s);
 no db> if n < 0 then
 no db>     begin;
-no db>         println('Negative');
+no db>         put_line('Negative');
 no db>     end;
 no db> else
 no db>     begin;
-no db>         println('Positive');
+no db>         put_line('Positive');
 no db>     end;
 no db> end if;
 Negative
@@ -197,7 +197,8 @@ no db>
 <pre>
 var i INTEGER;
 for i := 1 to 10;
-    println(i);
+    put(i);
+    put_line('');
 end for;
 </pre>
 
@@ -208,12 +209,12 @@ end for;
 <p>Example:
 
 <pre>
-println('Please enter a positive number:');
+put_line('Please enter a positive number:');
 var s string;
 READLN(s);
 var n init CAST_AS_INTEGER(s);
 while n < 0;
-    println('This number is not positive. Please enter again:');
+    put_line('This number is not positive. Please enter again:');
     READLN(s);
     n := CAST_AS_INTEGER(s);
 end while;
@@ -225,17 +226,17 @@ end while;
 
 <pre>
 no db> var s string;
-no db> println('Please enter a number:'); READLN(s);
+no db> put_line('Please enter a number:'); READLN(s);
 Please enter a number:
 0
 no db> var n init CAST_AS_INTEGER(s);
 no db> case
 no db>     when n > 0 then
-no db>         println('Positive');
+no db>         put_line('Positive');
 no db>     when n < 0 then
-no db>         println('Negative');
+no db>         put_line('Negative');
 no db>     else
-no db>         println('Zero');
+no db>         put_line('Zero');
 no db> end case;
 Zero
 no db>
@@ -289,7 +290,7 @@ no db> update t {i := 4, s := 'Four'};
 <p>Accessing tuple attributes:
 
 <pre>
-no db>println(t.s);
+no db>put_line(t.s);
 Four
 no db>
 </pre>
@@ -297,7 +298,7 @@ no db>
 <p>Alternative form:
 
 <pre>
-no db>println(s from t);
+no db>put_line(s from t);
 Four
 no db>
 </pre>
@@ -457,7 +458,7 @@ D> var a array tup same_heading_as(R);
 D> load a from R order();
 D> var i INTEGER;
 D> for i:= 0 to LENGTH(a)-1;
-D>   println(a[i]);
+D>   put(a[i]); put_line('');
 D> end for;
 </pre>
 
@@ -467,21 +468,14 @@ D> end for;
 
 <p>It provides the following update operators for I/O:
 
-<h3>println</h3>
+<h3>put_line</h3>
 
-<p><code>println()</code> takes one argument and prints it on standard output,
-followed by a newline. It is defined for all built-in scalar types
-except <code>binary</code> and also for tuple and relation arguments:
+<p><code>put_line</code> takes one argument of type <code>string</code>
+and prints it on standard output, followed by a newline.
 
 <pre>
-no db> println(true);
-TRUE
-no db> println(2 * 4);
-8
-no db> println(tup {a 1, b 'bee'});
-TUPLE { a 1, b 'bee' }
-no db> println(rel {tup {I 1, C 'foo'}, tup {I 2, C 'bar'}});
-RELATION { TUPLE { i 1, c 'foo' }, TUPLE { i 2, c 'bar' }}
+no db> call put_line('hello');
+hello
 no db>
 </pre>
 
@@ -489,37 +483,44 @@ no db>
 is optional. The following is also valid:
 
 <pre>
-no db> call println(2 * 4);
-8
+no db> call put_line('hello');
+hello
 no db>
 </pre>
 
-<h3>PRINT</h3>
+<h3>put</h3>
 
-<p>PRINT works like PRINTLN, except that its output is not
-followed by a newline:
+<p><code>put</code> works like <code>put_line</code>, except that its output is not
+followed by a newline.  It is defined for all built-in scalar types
+except <code>binary</code> and also for tuple and relation arguments:
 
 <pre>
-no db> PRINT('2 + 2 = '); PRINTLN(2 + 2);
+no db> put('2 + 2 = '); put(2 + 2); put_line('');
 2 + 2 = 4
+no db> put(true); put_line('');
+TRUE
+no db> put(tup {a 1, b 'bee'}); put_line('');
+TUPLE { a 1, b 'bee' }
+no db> put(rel {tup {I 1, C 'foo'}, tup {I 2, C 'bar'}}); put_line('');
+RELATION { TUPLE { i 1, c 'foo' }, TUPLE { i 2, c 'bar' }}
 no db>
 </pre>
 
-<h3>READLN</h3>
+<h3>get_line</h3>
 
-<p>READLN is defined as follows:</p>
+<p><code>get_line</code> is defined as follows:</p>
 
-<p>OPERATOR READLN(LINE STRING) UPDATES {LINE};</p>
+<p>OPERATOR get_line(line string) UPDATES {line};</p>
 
-<p>READLN reads one line from standard input and stores it in LINE,
-without the trailing newline.</p>
+<p><code>get_line</code> reads one line from standard input and stores
+it in <code>line</code>, without the trailing newline.</p>
 
 <h2>User-defined operators</h2>
 
 <p>Defining a read-only operator:
 
 <pre>
-D> operator INCR(i INTEGER) returns INTEGER;
+D> operator INCR(i integer) returns integer;
 D> return i + 1;
 D> end operator;
 Operator INCR created.
@@ -529,7 +530,7 @@ D>
 <p>Defining an update operator:
 
 <pre>
-D> operator INC(i INTEGER) updates {i};
+D> operator INC(i integer) updates {i};
 D> i := i + 1;
 D> end operator;
 Operator INC created.
@@ -549,8 +550,8 @@ D>
 <p>Example for defining a type:</p>
 
 <pre>
-no db> CONNECT('dbenv');
-no db> type LEN possrep {N FLOAT} constraint THE_N(LEN) >= 0.0;
+no db> connect('dbenv');
+no db> type len possrep {N FLOAT} constraint the_n(len) >= 0.0;
 Type LEN defined.
 </pre>
 
@@ -558,8 +559,8 @@ Type LEN defined.
 This can be done using IMPLEMENT TYPE:</p>
 
 <pre>
-no db> implement type LEN;
-Type LEN implemented.
+no db> implement type len;
+Type len implemented.
 </pre>
 
 <p>This currently works only for types with exactly one possible representation.

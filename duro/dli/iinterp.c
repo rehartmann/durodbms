@@ -3501,7 +3501,7 @@ Duro_print_error(const RDB_object *errobjp)
 
     fputs(RDB_type_name(errtyp), stdout);
 
-    if (RDB_obj_comp(errobjp, "MSG", &msgobj, NULL, &ec, NULL) == RDB_OK) {
+    if (RDB_obj_comp(errobjp, "msg", &msgobj, NULL, &ec, NULL) == RDB_OK) {
         printf(": %s", RDB_obj_string(&msgobj));
     }
 
