@@ -77,7 +77,7 @@ replace_updattrs(RDB_expression *exp, int updc, RDB_attr_update updv[],
     int i;
     RDB_expression *uexp, *hexp;
 
-    uexp = RDB_ro_op("UPDATE", ecp);
+    uexp = RDB_ro_op("update", ecp);
     if (uexp == NULL)
         return NULL;
     RDB_add_arg(uexp, exp);
@@ -107,7 +107,7 @@ replace_targets_real_ins(RDB_object *tbp, const RDB_ma_insert *insp,
 	RDB_expression *exp, *argp;
     RDB_type *tbtyp;
 
-    exp = RDB_ro_op("UNION", ecp);
+    exp = RDB_ro_op("union", ecp);
     if (exp == NULL) {
         return NULL;
     }
@@ -157,12 +157,12 @@ replace_targets_real_upd(RDB_object *tbp, const RDB_ma_update *updp,
                 updp->updc, updp->updv, ecp, txp);
     }
 
-    exp = RDB_ro_op("UNION", ecp);
+    exp = RDB_ro_op("union", ecp);
     if (exp == NULL) {
         return NULL;
     }
 
-    uexp = RDB_ro_op("WHERE", ecp);
+    uexp = RDB_ro_op("where", ecp);
     if (uexp == NULL) {
         goto error;
     }
@@ -185,7 +185,7 @@ replace_targets_real_upd(RDB_object *tbp, const RDB_ma_update *updp,
     uexp = NULL;
     RDB_add_arg(exp, wexp);
 
-    wexp = RDB_ro_op("WHERE", ecp);
+    wexp = RDB_ro_op("where", ecp);
     if (wexp == NULL) {
         goto error;
     }
@@ -201,7 +201,7 @@ replace_targets_real_upd(RDB_object *tbp, const RDB_ma_update *updp,
     }
     RDB_add_arg(wexp, refexp);
 
-    ncondp = RDB_ro_op("NOT", ecp);
+    ncondp = RDB_ro_op("not", ecp);
     if (ncondp == NULL) {
         goto error;
     }
@@ -249,7 +249,7 @@ replace_targets_real(RDB_object *tbp,
         if (delv[i].tbp == tbp) {
             if (delv[i].condp != NULL) {
                 RDB_expression *argp, *wexp;
-                exp = RDB_ro_op("MINUS", ecp);
+                exp = RDB_ro_op("minus", ecp);
                 if (exp == NULL)
                     return NULL;
                 argp = RDB_table_ref(tbp, ecp);
@@ -259,7 +259,7 @@ replace_targets_real(RDB_object *tbp,
                 }
                 RDB_add_arg(exp, argp);
 
-                wexp = RDB_ro_op("WHERE", ecp);
+                wexp = RDB_ro_op("where", ecp);
                 if (wexp == NULL) {
                     RDB_drop_expr(exp, ecp);
                     return NULL;
@@ -558,25 +558,25 @@ resolve_insert_expr(RDB_expression *exp, const RDB_object *tplp,
             return RDB_ERROR;
     }
 
-    if (strcmp(exp->def.op.name, "WHERE") == 0) {
+    if (strcmp(exp->def.op.name, "where") == 0) {
         ret = RDB_evaluate_bool(exp->def.op.args.firstp->nextp, &_RDB_tpl_get,
                 (void *) tplp, NULL, ecp, txp, &b);
         if (ret != RDB_OK)
             return RDB_ERROR;
         if (!b) {
-            RDB_raise_predicate_violation("WHERE predicate violation",
+            RDB_raise_predicate_violation("where predicate violation",
                     ecp);
             return RDB_ERROR;
         }
         return resolve_insert_expr(exp->def.op.args.firstp, tplp, insnpp,
                 ecp, txp);
     }
-    if (strcmp(exp->def.op.name, "PROJECT") == 0
-        || strcmp(exp->def.op.name, "REMOVE") == 0) {
+    if (strcmp(exp->def.op.name, "project") == 0
+        || strcmp(exp->def.op.name, "remove") == 0) {
         return resolve_insert_expr(exp->def.op.args.firstp, tplp, insnpp, ecp,
                 txp);
     }
-    if (strcmp(exp->def.op.name, "RENAME") == 0) {
+    if (strcmp(exp->def.op.name, "rename") == 0) {
         RDB_object tpl;
 
         RDB_init_obj(&tpl);
@@ -588,13 +588,13 @@ resolve_insert_expr(RDB_expression *exp, const RDB_object *tplp,
         RDB_destroy_obj(&tpl, ecp);
         return ret;
     }
-    if (strcmp(exp->def.op.name, "EXTEND") == 0) {
+    if (strcmp(exp->def.op.name, "extend") == 0) {
         ret = check_extend_tuple(tplp, exp, ecp, txp);
         if (ret != RDB_OK)
             return RDB_ERROR;
         return resolve_insert_expr(exp->def.op.args.firstp, tplp, insnpp, ecp, txp);
     }
-    if (strcmp(exp->def.op.name, "UNWRAP") == 0) {
+    if (strcmp(exp->def.op.name, "unwrap") == 0) {
         RDB_object tpl;
 
         RDB_init_obj(&tpl);
@@ -607,7 +607,7 @@ resolve_insert_expr(RDB_expression *exp, const RDB_object *tplp,
         RDB_destroy_obj(&tpl, ecp);
         return ret;
     }
-    if (strcmp(exp->def.op.name, "WRAP") == 0) {
+    if (strcmp(exp->def.op.name, "wrap") == 0) {
         RDB_object tpl;
 
         RDB_init_obj(&tpl);
@@ -682,8 +682,8 @@ resolve_update_expr(RDB_expression *texp, RDB_expression *condp,
         return RDB_ERROR;
     }
 
-    if (strcmp(texp->def.op.name, "PROJECT") == 0
-            || strcmp(texp->def.op.name, "REMOVE") == 0) {
+    if (strcmp(texp->def.op.name, "project") == 0
+            || strcmp(texp->def.op.name, "remove") == 0) {
         return resolve_update_expr(texp->def.op.args.firstp,
                 condp, updc, updv, updnpp, ecp, txp);
     }
@@ -751,8 +751,8 @@ resolve_delete_expr(RDB_expression *exp, RDB_expression *condp,
             return RDB_ERROR;
     }
 
-    if (strcmp(exp->def.op.name, "PROJECT") == 0
-            || strcmp(exp->def.op.name, "REMOVE") == 0) {
+    if (strcmp(exp->def.op.name, "project") == 0
+            || strcmp(exp->def.op.name, "remove") == 0) {
         return resolve_delete_expr(exp->def.op.args.firstp,
                 condp, delnpp, ecp, txp);
     }
@@ -760,7 +760,7 @@ resolve_delete_expr(RDB_expression *exp, RDB_expression *condp,
     /*
      * Add WHERE condition to all deletes
      */
-    if (strcmp(exp->def.op.name, "WHERE") == 0) {
+    if (strcmp(exp->def.op.name, "where") == 0) {
         if (resolve_delete_expr(exp->def.op.args.firstp, condp, &delnp,
                 ecp, txp) != RDB_OK)
             return RDB_ERROR;
@@ -782,7 +782,7 @@ resolve_delete_expr(RDB_expression *exp, RDB_expression *condp,
                     del_dellist(delnp, ecp);
                     return RDB_ERROR;
                 }
-                ncondp = RDB_ro_op("AND", ecp);
+                ncondp = RDB_ro_op("and", ecp);
                 if (ncondp == NULL) {
                     RDB_drop_expr(hcondp, ecp);
                     del_dellist(delnp, ecp);
@@ -797,7 +797,7 @@ resolve_delete_expr(RDB_expression *exp, RDB_expression *condp,
         return RDB_OK;
     }
 
-    if (strcmp(exp->def.op.name, "RENAME") == 0) {
+    if (strcmp(exp->def.op.name, "rename") == 0) {
         if (resolve_delete_expr(exp->def.op.args.firstp, condp, &delnp,
                 ecp, txp) != RDB_OK)
             return RDB_ERROR;
@@ -815,7 +815,7 @@ resolve_delete_expr(RDB_expression *exp, RDB_expression *condp,
         return RDB_OK;
     }
 
-    if (strcmp(exp->def.op.name, "EXTEND") == 0) {
+    if (strcmp(exp->def.op.name, "extend") == 0) {
         if (resolve_delete_expr(exp->def.op.args.firstp, condp, &delnp,
                 ecp, txp) != RDB_OK)
             return RDB_ERROR;
@@ -876,7 +876,7 @@ do_update(const RDB_ma_update *updp, RDB_exec_context *ecp,
     /*
      * Build WHERE expression
      */
-    exp = RDB_ro_op("WHERE", ecp);
+    exp = RDB_ro_op("where", ecp);
     if (exp == NULL)
         return RDB_ERROR;
     RDB_add_arg(exp, tbexp);
@@ -896,7 +896,7 @@ do_update(const RDB_ma_update *updp, RDB_exec_context *ecp,
         return ret;
     }
     if (nexp->kind == RDB_EX_RO_OP
-            && strcmp (nexp->def.op.name, "WHERE") == 0) {
+            && strcmp (nexp->def.op.name, "where") == 0) {
         if (nexp->def.op.optinfo.objpc > 0) {
             ret = _RDB_update_where_index(nexp, NULL, updp->updc, updp->updv,
                     ecp, txp);
@@ -905,7 +905,7 @@ do_update(const RDB_ma_update *updp, RDB_exec_context *ecp,
         }
 
         if (nexp->def.op.args.firstp->kind == RDB_EX_RO_OP
-                && strcmp(nexp->def.op.args.firstp->def.op.name, "WHERE") == 0
+                && strcmp(nexp->def.op.args.firstp->def.op.name, "where") == 0
                 && nexp->def.op.args.firstp->def.op.optinfo.objpc > 0) {
             ret = _RDB_update_where_index(nexp->def.op.args.firstp,
                     nexp->def.op.args.firstp->nextp, updp->updc, updp->updv,
@@ -945,7 +945,7 @@ do_delete(const RDB_ma_delete *delp, RDB_exec_context *ecp,
     if (tbexp == NULL)
         return RDB_ERROR;
 
-    exp = RDB_ro_op("WHERE", ecp);
+    exp = RDB_ro_op("where", ecp);
     if (exp == NULL)
         return RDB_ERROR;
     RDB_add_arg(exp, tbexp);
@@ -964,7 +964,7 @@ do_delete(const RDB_ma_delete *delp, RDB_exec_context *ecp,
         RDB_drop_expr(nexp, ecp);
         return ret;
     }
-    if (nexp->kind == RDB_EX_RO_OP && strcmp (nexp->def.op.name, "WHERE") == 0) {
+    if (nexp->kind == RDB_EX_RO_OP && strcmp (nexp->def.op.name, "where") == 0) {
         if (nexp->def.op.optinfo.objpc > 0) {
             ret = _RDB_delete_where_index(nexp, NULL, ecp, txp);
             RDB_drop_expr(nexp, ecp);
@@ -972,7 +972,7 @@ do_delete(const RDB_ma_delete *delp, RDB_exec_context *ecp,
         }
 
         if (nexp->def.op.args.firstp->kind == RDB_EX_RO_OP
-                && strcmp(nexp->def.op.args.firstp->def.op.name, "WHERE") == 0
+                && strcmp(nexp->def.op.args.firstp->def.op.name, "where") == 0
                 && nexp->def.op.args.firstp->def.op.optinfo.objpc > 0) {
             ret = _RDB_delete_where_index(nexp->def.op.args.firstp,
                     nexp->def.op.args.firstp->nextp, ecp, txp);

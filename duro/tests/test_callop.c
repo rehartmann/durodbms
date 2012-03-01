@@ -73,7 +73,7 @@ test_useop(RDB_database *dbp, RDB_exec_context *ecp)
     expv[0] = RDB_var_ref("DEPTNO", ecp);
     expv[1] = RDB_int_to_expr(100, ecp);
 
-    exp = RDB_ro_op("EXTEND", ecp);
+    exp = RDB_ro_op("extend", ecp);
     if (exp == NULL)
         goto error;
 

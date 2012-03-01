@@ -99,7 +99,7 @@ test_summarize(RDB_database *dbp, RDB_exec_context *ecp)
         return RDB_ERROR;
     }
 
-    exp = RDB_ro_op("UNION", ecp);
+    exp = RDB_ro_op("union", ecp);
     assert(exp != NULL);
 
     argp = RDB_table_ref(tbp, ecp);
@@ -127,12 +127,12 @@ test_summarize(RDB_database *dbp, RDB_exec_context *ecp)
      * SUM(SALARY) AS SUM_SALARY, AVG(SALARY) AS AVG_SALARY
      */
 
-    exp = RDB_ro_op("SUMMARIZE", ecp);
+    exp = RDB_ro_op("summarize", ecp);
     assert(exp != NULL);
 
     RDB_add_arg(exp, RDB_table_ref(untbp, ecp));
 
-    texp = RDB_ro_op("PROJECT", ecp);
+    texp = RDB_ro_op("project", ecp);
     assert(texp != NULL);
 
     argp = RDB_table_ref(untbp, ecp);
@@ -145,7 +145,7 @@ test_summarize(RDB_database *dbp, RDB_exec_context *ecp)
 
     RDB_add_arg(exp, texp);
 
-    argp = RDB_ro_op("COUNT", ecp);
+    argp = RDB_ro_op("count", ecp);
     assert(argp != NULL);
     RDB_add_arg(exp, argp);
     
@@ -153,7 +153,7 @@ test_summarize(RDB_database *dbp, RDB_exec_context *ecp)
     assert(argp != NULL);
     RDB_add_arg(exp, argp);
     
-    argp = RDB_ro_op("SUM", ecp);
+    argp = RDB_ro_op("sum", ecp);
     assert(argp != NULL);
     RDB_add_arg(exp, argp);
     
@@ -163,7 +163,7 @@ test_summarize(RDB_database *dbp, RDB_exec_context *ecp)
     assert(argp != NULL);
     RDB_add_arg(exp, argp);
 
-    argp = RDB_ro_op("AVG", ecp);
+    argp = RDB_ro_op("avg", ecp);
     assert(argp != NULL);
     RDB_add_arg(exp, argp);
     

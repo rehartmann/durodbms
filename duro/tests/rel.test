@@ -23,27 +23,27 @@ test rel {relation-valued attributes} -setup $SETUP -body {
     
     # Create table with relation attribute
     duro::table create T1 {
-        {SCATTR INTEGER}
+        {SCATTR integer}
         {RLATTR {relation
-            {A INTEGER}
-            {B STRING}
-            {C STRING}
-            {D INTEGER}
+            {A integer}
+            {B string}
+            {C string}
+            {D integer}
         }}
     } {{SCATTR}} $tx
     
     duro::table create T2 {
-        {SCATTR INTEGER}
+        {SCATTR integer}
         {RLATTR {relation
-            {SCATTR INTEGER}
-            {B STRING}
+            {SCATTR integer}
+            {B string}
         }}
     } {{SCATTR}} $tx
 
     duro::table create T3 {
-        {A STRING}
-        {B INTEGER}
-        {C STRING}
+        {A string}
+        {B integer}
+        {C string}
     } {{A B}} $tx
 
     duro::table expr -global U1 {T1 UNGROUP RLATTR} $tx
@@ -109,8 +109,8 @@ test rel {relation-valued attributes} -setup $SETUP -body {
     }
 
     duro::table expr X {EXTEND T1 : {RCNT := COUNT(RLATTR),
-            REMPTY := IS_EMPTY(RLATTR)}} $tx
-    
+            REMPTY := is_empty(RLATTR)}} $tx
+
     # Get tuple with empty RLATTR
     
     array set a [duro::expr {TUPLE FROM (X WHERE REMPTY)} $tx]

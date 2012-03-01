@@ -20,15 +20,15 @@ test tconstraint {tuple constraint} -setup $SETUP -body {
     duro::db create $dbenv TEST
 
     set tx [duro::begin $dbenv TEST]
-    
+
     duro::table create T1 {
-       {A INTEGER}
-       {B INTEGER}
-       {C INTEGER}
+       {A integer}
+       {B integer}
+       {C integer}
     } {{A}} $tx
 
     # Create 'tuple' constraint
-    duro::constraint create C1 {IS_EMPTY(T1 WHERE B>100)} $tx
+    duro::constraint create C1 {is_empty(T1 WHERE B>100)} $tx
 
     # Must succeed
     duro::insert T1 {A 1 B 1 C 1} $tx
@@ -41,7 +41,7 @@ test tconstraint {tuple constraint} -setup $SETUP -body {
     }
 
     set code [lindex $errorCode 1]
-    if {![string match "PREDICATE_VIOLATION_ERROR(*C1*)" $code]} {
+    if {![string match "predicate_violation_error(*C1*)" $code]} {
         error "wrong error code: $code"
     }
 
@@ -59,7 +59,7 @@ test tconstraint {tuple constraint} -setup $SETUP -body {
     }
 
     set code [lindex $errorCode 1]
-    if {![string match "PREDICATE_VIOLATION_ERROR(*C1*)" $code]} {
+    if {![string match "predicate_violation_error(*C1*)" $code]} {
         error "wrong error code: $code"
     }
 
@@ -77,17 +77,17 @@ test constraints {table and database constraints} -setup $SETUP -body {
     set tx [duro::begin $dbenv TEST]
     
     duro::table create T1 {
-       {A INTEGER}
-       {B INTEGER}
+       {A integer}
+       {B integer}
     } {{A}} $tx
 
     duro::table create T2 {
-       {B INTEGER}
-       {C INTEGER}
+       {B integer}
+       {C integer}
     } {{B}} $tx
 
     # Create foreign key constraint
-    duro::constraint create C2 {IS_EMPTY(T1 SEMIMINUS T2)} $tx
+    duro::constraint create C2 {is_empty(T1 SEMIMINUS T2)} $tx
     
     duro::commit $tx
 
@@ -113,7 +113,7 @@ test constraints {table and database constraints} -setup $SETUP -body {
     }
 
     set code [lindex $errorCode 1]
-    if {![string match "PREDICATE_VIOLATION_ERROR(*C2*)" $code]} {
+    if {![string match "predicate_violation_error(*C2*)" $code]} {
         error "wrong error code: $code"
     }
     
@@ -125,20 +125,20 @@ test constraints {table and database constraints} -setup $SETUP -body {
     }
 
     set code [lindex $errorCode 1]
-    if {![string match "PREDICATE_VIOLATION_ERROR(*C2*)" $code]} {
+    if {![string match "predicate_violation_error(*C2*)" $code]} {
         error "wrong error code: $code"
     }
     
     duro::table create T3 {
-       {A INTEGER}
-       {B INTEGER}
+       {A integer}
+       {B integer}
     } {{A}} $tx
     
     duro::insert T3 {A 1 B 1} $tx
     duro::insert T3 {A 2 B 1} $tx
     
     duro::constraint create C3 {SUM(T3, B) < 4} $tx
-    
+
     duro::update T3 {A = 1} B 2 $tx
     
     # Must fail
@@ -149,7 +149,7 @@ test constraints {table and database constraints} -setup $SETUP -body {
     }
     
     set code [lindex $errorCode 1]
-    if {![string match "PREDICATE_VIOLATION_ERROR(*C3*)" $code]} {
+    if {![string match "predicate_violation_error(*C3*)" $code]} {
         error "wrong error code: $code"
     }
     

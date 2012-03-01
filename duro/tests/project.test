@@ -23,9 +23,9 @@ test ptables {projection tables} -setup $SETUP -body {
     
     # Create real table
     duro::table create R {
-       {A INTEGER}
-       {B STRING yo}
-       {C STRING}
+       {A integer}
+       {B string yo}
+       {C string}
     } {{A}} $tx
 
     # Create project tables
@@ -111,7 +111,7 @@ test ptables {projection tables} -setup $SETUP -body {
         error "table creation should fail, but succeeded"
     }
 
-    if {![string match "NAME_ERROR(*)" [lindex $::errorCode 1]]} {
+    if {![string match "name_error(*)" [lindex $::errorCode 1]]} {
     	error "wrong errorCode: $::errorCode"
     }
 

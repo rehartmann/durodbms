@@ -1117,7 +1117,7 @@ RDB_table_is_empty(RDB_object *tbp, RDB_exec_context *ecp,
     /*
      * Project all attributes away, then optimize
      */
-    exp = RDB_ro_op("PROJECT", ecp);
+    exp = RDB_ro_op("project", ecp);
     if (exp == NULL)
     	return RDB_ERROR;
     argp = RDB_table_ref(tbp, ecp);
@@ -1415,19 +1415,19 @@ _RDB_expr_sortindex (RDB_expression *exp)
     }
     if (exp->kind != RDB_EX_RO_OP)
         return NULL;
-    if (strcmp(exp->def.op.name, "WHERE") == 0) {
+    if (strcmp(exp->def.op.name, "where") == 0) {
         return _RDB_expr_sortindex(exp->def.op.args.firstp);
     }
-    if (strcmp(exp->def.op.name, "PROJECT") == 0) {
+    if (strcmp(exp->def.op.name, "project") == 0) {
         return _RDB_expr_sortindex(exp->def.op.args.firstp);
     }
-    if (strcmp(exp->def.op.name, "SEMIMINUS") == 0
-            || strcmp(exp->def.op.name, "MINUS") == 0
-            || strcmp(exp->def.op.name, "SEMIJOIN") == 0
-            || strcmp(exp->def.op.name, "INTERSECT") == 0
-            || strcmp(exp->def.op.name, "JOIN") == 0
-            || strcmp(exp->def.op.name, "EXTEND") == 0
-            || strcmp(exp->def.op.name, "DIVIDE") == 0) {
+    if (strcmp(exp->def.op.name, "semiminus") == 0
+            || strcmp(exp->def.op.name, "minus") == 0
+            || strcmp(exp->def.op.name, "semijoin") == 0
+            || strcmp(exp->def.op.name, "intersect") == 0
+            || strcmp(exp->def.op.name, "join") == 0
+            || strcmp(exp->def.op.name, "extend") == 0
+            || strcmp(exp->def.op.name, "divide") == 0) {
         return _RDB_expr_sortindex(exp->def.op.args.firstp);
     }
     /* !! RENAME, SUMMARIZE, WRAP, UNWRAP, GROUP, UNGROUP */

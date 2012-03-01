@@ -27,33 +27,33 @@ test vtables {virtual tables} -setup $SETUP -body {
     }]} {
         error "table creation should fail, but succeeded"
     }
-    if {![string match TYPE_MISMATCH_ERROR* [lindex $::errorCode 1]]} {
+    if {![string match type_mismatch_error* [lindex $::errorCode 1]]} {
         error "unexpected errorCode: $::errorCode"
     }
 
     # Create real tables
     duro::table create T {
-        {K INTEGER}
-        {S1 STRING}
+        {K integer}
+        {S1 string}
     } {{K}} $tx
 
     duro::table rename T T1 $tx
     
     duro::table create T2 {
-       {K INTEGER}
-       {S1 STRING}
+       {K integer}
+       {S1 string}
     } {{K}} $tx
     
     duro::table create T3 {
-       {K INTEGER}
-       {S2 STRING}
+       {K integer}
+       {S2 string}
     } {{K}} $tx
     
     duro::table create T4 {
-       {A INTEGER}
-       {B INTEGER}
+       {A integer}
+       {B integer}
     } {{A B}} $tx
-    
+
     # Insert tuples
     duro::insert T1 {K 1 S1 Bla} $tx
     
@@ -96,7 +96,7 @@ test vtables {virtual tables} -setup $SETUP -body {
     }]} {
         error "invalid EXTEND should fail, but succeeded"
     }
-    if {![string match "TYPE_MISMATCH_ERROR(*)" [lindex $errorCode 1]]} {
+    if {![string match "type_mismatch_error(*)" [lindex $errorCode 1]]} {
         error "Wrong error: $errorCode"
     }
 
@@ -167,7 +167,7 @@ test vtables {virtual tables} -setup $SETUP -body {
         error "creating TS2 a second time should fail, but succeeded"
     }
     
-    if {![string match "ELEMENT_EXISTS_ERROR(*)" [lindex $errorCode 1]]} {
+    if {![string match "element_exists_error(*)" [lindex $errorCode 1]]} {
         error "Wrong error: $errorCode"
     }
 
@@ -180,7 +180,7 @@ test vtables {virtual tables} -setup $SETUP -body {
         error "creating ts2 a second time should fail, but succeeded"
     }
     set code [lindex $errorCode 1]
-    if {![string match "RDB_ELEMENT_EXISTS_ERROR(*)" $code]} {
+    if {![string match "element_exists_error(*)" $code]} {
         error "Wrong error: $errorCode"
     }
 
@@ -207,7 +207,7 @@ test vtables {virtual tables} -setup $SETUP -body {
     if {![catch {duro::table expr -global TX2 {EXTEND T1 : {K := K*10}} $tx}]} {
         error "invalid EXTEND should fail, but succeeded"
     }
-    if {![string match "INVALID_ARGUMENT_ERROR(*)" [lindex $errorCode 1]]} {
+    if {![string match "invalid_argument_error(*)" [lindex $errorCode 1]]} {
         error "Wrong error: $errorCode"
     }
     
@@ -221,19 +221,19 @@ test vtables {virtual tables} -setup $SETUP -body {
     }
     
     set err [lindex $errorCode 1]
-    if {![string match "NAME_ERROR(*)" $err]} {
+    if {![string match "name_error(*)" $err]} {
         error "wrong error code: $err"
     }
-    if {![string match "*K*" [duro::expr THE_MSG($err) $tx]]} {
+    if {![string match "*K*" [duro::expr the_msg($err) $tx]]} {
         error "error info should contain attribute type, but does not"
     }
-    
+
     if {![catch {duro::update TP2 {S1 = "Bla"} K 3 $tx}]} {
         error "duro::update should fail, but succeeded"
     }
     
     set code [lindex $errorCode 1]
-    if {![string match "NAME_ERROR(*)" $code]} {
+    if {![string match "name_error(*)" $code]} {
         error "wrong error code: $code"
     }
 
@@ -242,7 +242,7 @@ test vtables {virtual tables} -setup $SETUP -body {
     }
     
     set code [lindex $errorCode 1]
-    if {![string match "NAME_ERROR(*)" $code]} {
+    if {![string match "name_error(*)" $code]} {
         error "wrong error code: $code"
     }
     
@@ -251,7 +251,7 @@ test vtables {virtual tables} -setup $SETUP -body {
     }
     
     set code [lindex $errorCode 1]
-    if {![string match "NAME_ERROR(*)" $code]} {
+    if {![string match "name_error(*)" $code]} {
         error "wrong error code: $code"
     }
 
@@ -346,7 +346,7 @@ test vtables {virtual tables} -setup $SETUP -body {
     if {![catch {duro::insert TS {K 4 S1 B} $tx}]} {
         error "Insertion into TS should fail, but succeeded"
     }
-    if {![string match "PREDICATE_VIOLATION_ERROR(*)" [lindex $errorCode 1]]} {
+    if {![string match "predicate_violation_error(*)" [lindex $errorCode 1]]} {
         error "wrong errorCode: $errorCode"
     }
     
@@ -375,7 +375,7 @@ test vtables {virtual tables} -setup $SETUP -body {
     #
     
     duro::table create -local LT {
-        {A INTEGER}
+        {A integer}
     } {{A}} $tx
 
     if {![catch {duro::table expr -global TL {LT { A }} $tx}]} {
@@ -392,7 +392,7 @@ test vtables {virtual tables} -setup $SETUP -body {
     # Test delete over projection
     #    
     duro::delete TP2 $tx
-    if {![duro::expr {IS_EMPTY(T1)} $tx]} {
+    if {![duro::expr {is_empty(T1)} $tx]} {
         dberror "T1 should be empty, but is not"
     }
 
@@ -407,21 +407,21 @@ test vtables {virtual tables} -setup $SETUP -body {
     if {![catch {duro::table expr -global ES {T1 WHERE S1 = 2} $tx}]} {
         error "Table creation should fail, but succeded"
     }
-    if {![string match "TYPE_MISMATCH_ERROR(*)" [lindex $::errorCode 1]]} {
+    if {![string match "type_mismatch_error(*)" [lindex $::errorCode 1]]} {
         error "Wrong error: $::errorCode"
     }
     
     if {![catch {duro::table expr -global ES {T1 WHERE S1 > 2} $tx}]} {
         error "Table creation should fail, but succeded"
     }
-    if {![string match "TYPE_MISMATCH_ERROR(*)" [lindex $::errorCode 1]]} {
+    if {![string match "type_mismatch_error(*)" [lindex $::errorCode 1]]} {
         error "Wrong error: $::errorCode"
     }
 
     if {![catch {duro::table expr -global ES {T1 WHERE I > 2} $tx}]} {
         error "Table creation should fail, but succeded"
     }
-    if {![string match "NAME_ERROR(*)" [lindex $::errorCode 1]]} {
+    if {![string match "name_error(*)" [lindex $::errorCode 1]]} {
         error "Wrong error: $::errorCode"
     }
     

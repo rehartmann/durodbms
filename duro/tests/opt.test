@@ -27,30 +27,30 @@ test opt {optimizer} -setup $SETUP -body {
     set tx [duro::begin $dbenv TEST]
     
     duro::table create T1 {
-       {A INTEGER}
-       {B INTEGER}
+       {A integer}
+       {B integer}
     } {{A}} $tx
     
     duro::insert T1 {A 1 B 1} $tx
     
     duro::table create T2 {
-       {A INTEGER}
-       {B INTEGER}
-       {C INTEGER}
+       {A integer}
+       {B integer}
+       {C integer}
     } {{A B}} $tx
     
     duro::table create T3 {
-       {A INTEGER}
-       {B INTEGER}
-       {C INTEGER}
+       {A integer}
+       {B integer}
+       {C integer}
     } {{A B}} $tx
     
     duro::table create T4 {
-       {A INTEGER}
-       {B INTEGER}
-       {C INTEGER}
+       {A integer}
+       {B integer}
+       {C integer}
     } {{A B}} $tx
-    
+
     duro::insert T2 {A 1 B 2 C 3} $tx
     duro::insert T2 {A 2 B 2 C 3} $tx
     duro::insert T2 {A 1 B 3 C 3} $tx

@@ -63,19 +63,19 @@ static void
 summ_step(struct _RDB_summval *svalp, const RDB_object *addvalp,
         const char *opname, RDB_int count)
 {
-    if (strcmp(opname, "COUNT") == 0) {
+    if (strcmp(opname, "count") == 0) {
         svalp->val.val.int_val++;
-    } else if (strcmp(opname, "AVG") == 0) {
+    } else if (strcmp(opname, "avg") == 0) {
         svalp->val.val.float_val =
                 (svalp->val.val.float_val * count
                 + addvalp->val.float_val)
                 / (count + 1);
-    } else if (strcmp(opname, "SUM") == 0) {
+    } else if (strcmp(opname, "sum") == 0) {
             if (svalp->val.typ == &RDB_INTEGER)
                 svalp->val.val.int_val += addvalp->val.int_val;
             else
                 svalp->val.val.float_val += addvalp->val.float_val;
-    } else if (strcmp(opname, "MAX") == 0) {
+    } else if (strcmp(opname, "max") == 0) {
             if (svalp->val.typ == &RDB_INTEGER) {
                 if (addvalp->val.int_val > svalp->val.val.int_val)
                     svalp->val.val.int_val = addvalp->val.int_val;
@@ -83,7 +83,7 @@ summ_step(struct _RDB_summval *svalp, const RDB_object *addvalp,
                 if (addvalp->val.float_val > svalp->val.val.float_val)
                     svalp->val.val.float_val = addvalp->val.float_val;
             }
-    } else if (strcmp(opname, "MIN") == 0) {
+    } else if (strcmp(opname, "min") == 0) {
         if (svalp->val.typ == &RDB_INTEGER) {
             if (addvalp->val.int_val < svalp->val.val.int_val)
                 svalp->val.val.int_val = addvalp->val.int_val;
@@ -91,10 +91,10 @@ summ_step(struct _RDB_summval *svalp, const RDB_object *addvalp,
             if (addvalp->val.float_val < svalp->val.val.float_val)
                 svalp->val.val.float_val = addvalp->val.float_val;
         }
-    } else if (strcmp(opname, "ANY") == 0) {
+    } else if (strcmp(opname, "any") == 0) {
         if (addvalp->val.bool_val)
             svalp->val.val.bool_val = RDB_TRUE;
-    } else if (strcmp(opname, "ALL") == 0) {
+    } else if (strcmp(opname, "all") == 0) {
         if (!addvalp->val.bool_val)
             svalp->val.val.bool_val = RDB_FALSE;
     }
@@ -188,7 +188,7 @@ do_summarize(RDB_qresult *qrp, RDB_type *tb1typ, RDB_bool hasavg,
                     char *opname = argp->def.op.name;
 
                     RDB_init_obj(&addval);
-                    if (strcmp(opname, "COUNT") == 0) {
+                    if (strcmp(opname, "count") == 0) {
                         ret = RDB_irep_to_obj(&svalv[i].val, &RDB_INTEGER,
                                 nonkeyfv[i].datap, nonkeyfv[i].len, ecp);
                     } else {
@@ -335,11 +335,11 @@ init_summ_table(RDB_qresult *qrp, RDB_type *tb1typ, RDB_bool hasavg, RDB_exec_co
             char *opname = opexp->def.op.name;
             RDB_type *typ;
 
-            if (strcmp(opname, "COUNT") == 0) {
+            if (strcmp(opname, "count") == 0) {
                 ret = RDB_tuple_set_int(&tpl, name, 0, ecp);
-            } else if (strcmp(opname, "AVG") == 0) {
+            } else if (strcmp(opname, "avg") == 0) {
                 ret = RDB_tuple_set_float(&tpl, name, 0, ecp);
-            } else if (strcmp(opname, "SUM") == 0) {
+            } else if (strcmp(opname, "sum") == 0) {
                 typ = _RDB_expr_type(opexp->def.op.args.firstp,
                         tb1typ->def.basetyp, ecp, txp);
                 if (typ == NULL)
@@ -348,7 +348,7 @@ init_summ_table(RDB_qresult *qrp, RDB_type *tb1typ, RDB_bool hasavg, RDB_exec_co
                     ret = RDB_tuple_set_int(&tpl, name, 0, ecp);
                 else
                     ret = RDB_tuple_set_float(&tpl, name, 0.0, ecp);
-            } else if (strcmp(opname, "MAX") == 0) {
+            } else if (strcmp(opname, "max") == 0) {
                 typ = _RDB_expr_type(opexp->def.op.args.firstp,
                         tb1typ->def.basetyp,
                         ecp, txp);
@@ -360,7 +360,7 @@ init_summ_table(RDB_qresult *qrp, RDB_type *tb1typ, RDB_bool hasavg, RDB_exec_co
                     ret = RDB_tuple_set_float(&tpl, name,
                             RDB_FLOAT_MIN, ecp);
                 }
-            } else if (strcmp(opname, "MIN") == 0) {
+            } else if (strcmp(opname, "min") == 0) {
                 typ = _RDB_expr_type(opexp->def.op.args.firstp,
                         tb1typ->def.basetyp, ecp, txp);
                 if (typ == NULL)
@@ -371,9 +371,9 @@ init_summ_table(RDB_qresult *qrp, RDB_type *tb1typ, RDB_bool hasavg, RDB_exec_co
                     ret = RDB_tuple_set_float(&tpl, name,
                             RDB_FLOAT_MAX, ecp);
                 }
-            } else if (strcmp(opname, "ALL") == 0) {
+            } else if (strcmp(opname, "all") == 0) {
                 ret = RDB_tuple_set_bool(&tpl, name, RDB_TRUE, ecp);
-            } else if (strcmp(opname, "ANY") == 0) {
+            } else if (strcmp(opname, "any") == 0) {
                 ret = RDB_tuple_set_bool(&tpl, name, RDB_FALSE, ecp);
             }
             if (ret != RDB_OK)
@@ -442,7 +442,7 @@ summarize_qresult(RDB_qresult *qrp, RDB_expression *exp, RDB_exec_context *ecp,
     hasavg = RDB_FALSE;
     argp = exp->def.op.args.firstp->nextp->nextp;
     while (argp != NULL) {
-        if (strcmp(argp->def.op.name, "AVG") == 0) {
+        if (strcmp(argp->def.op.name, "avg") == 0) {
             hasavg = RDB_TRUE;
             break;
         }
@@ -856,21 +856,21 @@ init_expr_qresult(RDB_qresult *qrp, RDB_expression *exp, RDB_exec_context *ecp,
     qrp->endreached = RDB_FALSE;
     qrp->matp = NULL;
 
-    if (strcmp(exp->def.op.name, "WHERE") == 0
+    if (strcmp(exp->def.op.name, "where") == 0
             && exp->def.op.optinfo.objpc > 0) {
         /* Check for index */
         _RDB_tbindex *indexp;
         if (exp->def.op.args.firstp->kind == RDB_EX_TBP) {
             indexp = exp->def.op.args.firstp->def.tbref.indexp;
         } else if (exp->def.op.args.firstp->kind == RDB_EX_RO_OP
-                && strcmp (exp->def.op.args.firstp->def.op.name, "PROJECT") == 0
+                && strcmp (exp->def.op.args.firstp->def.op.name, "project") == 0
                 && exp->def.op.args.firstp->def.op.args.firstp->kind == RDB_EX_TBP) {
             indexp = exp->def.op.args.firstp->def.op.args.firstp->def.tbref.indexp;
         }
         return init_where_index_qresult(qrp, exp, indexp, ecp, txp);
     }
 
-    if (strcmp(exp->def.op.name, "PROJECT") == 0) {
+    if (strcmp(exp->def.op.name, "project") == 0) {
         RDB_expression *texp = exp->def.op.args.firstp;
         
         qrp->val.children.tpl_valid = RDB_FALSE;
@@ -891,17 +891,17 @@ init_expr_qresult(RDB_qresult *qrp, RDB_expression *exp, RDB_exec_context *ecp,
         }
         return RDB_OK;        
     }
-    if ((strcmp(exp->def.op.name, "WHERE") == 0)
-            || (strcmp(exp->def.op.name, "UNION") == 0)
-            || (strcmp(exp->def.op.name, "MINUS") == 0)
-            || (strcmp(exp->def.op.name, "SEMIMINUS") == 0)
-            || (strcmp(exp->def.op.name, "INTERSECT") == 0)
-            || (strcmp(exp->def.op.name, "SEMIJOIN") == 0)
-            || (strcmp(exp->def.op.name, "EXTEND") == 0)
-            || (strcmp(exp->def.op.name, "RENAME") == 0)
-            || (strcmp(exp->def.op.name, "WRAP") == 0)
-            || (strcmp(exp->def.op.name, "UNWRAP") == 0)
-            || (strcmp(exp->def.op.name, "UNGROUP") == 0)) {
+    if ((strcmp(exp->def.op.name, "where") == 0)
+            || (strcmp(exp->def.op.name, "union") == 0)
+            || (strcmp(exp->def.op.name, "minus") == 0)
+            || (strcmp(exp->def.op.name, "semiminus") == 0)
+            || (strcmp(exp->def.op.name, "intersect") == 0)
+            || (strcmp(exp->def.op.name, "semijoin") == 0)
+            || (strcmp(exp->def.op.name, "extend") == 0)
+            || (strcmp(exp->def.op.name, "rename") == 0)
+            || (strcmp(exp->def.op.name, "wrap") == 0)
+            || (strcmp(exp->def.op.name, "unwrap") == 0)
+            || (strcmp(exp->def.op.name, "ungroup") == 0)) {
         qrp->exp = exp;
         qrp->nested = RDB_TRUE;
         qrp->val.children.tpl_valid = RDB_FALSE;
@@ -911,19 +911,19 @@ init_expr_qresult(RDB_qresult *qrp, RDB_expression *exp, RDB_exec_context *ecp,
         qrp->val.children.qr2p = NULL;
         return RDB_OK;        
     }
-    if (strcmp(exp->def.op.name, "GROUP") == 0) {
+    if (strcmp(exp->def.op.name, "group") == 0) {
         return group_qresult(qrp, exp, ecp, txp);
     }
-    if (strcmp(exp->def.op.name, "JOIN") == 0) {
+    if (strcmp(exp->def.op.name, "join") == 0) {
         return join_qresult(qrp, exp, ecp, txp);
     }
-    if (strcmp(exp->def.op.name, "SUMMARIZE") == 0) {
+    if (strcmp(exp->def.op.name, "summarize") == 0) {
         return summarize_qresult(qrp, exp, ecp, txp);
     }    
-    if (strcmp(exp->def.op.name, "DIVIDE") == 0) {
+    if (strcmp(exp->def.op.name, "divide") == 0) {
         return sdivide_qresult(qrp, exp, ecp, txp);
     }
-    if (strcmp(exp->def.op.name, "RELATION") == 0) {
+    if (strcmp(exp->def.op.name, "relation") == 0) {
         qrp->nested = RDB_FALSE;
         qrp->exp = exp;
         qrp->val.stored.curp = NULL;
@@ -989,30 +989,30 @@ expr_dups(RDB_expression *exp, RDB_exec_context *ecp, RDB_bool *resp)
         }
     }
 
-    if (strcmp(exp->def.op.name, "RELATION") == 0) {
+    if (strcmp(exp->def.op.name, "relation") == 0) {
         /* A tuple may appear twice among the arguments */
         *resp = RDB_TRUE;
         return RDB_OK;
     }
 
-    if (strcmp(exp->def.op.name, "WHERE") == 0
-            || strcmp(exp->def.op.name, "MINUS") == 0
-            || strcmp(exp->def.op.name, "SEMIMINUS") == 0
-            || strcmp(exp->def.op.name, "INTERSECT") == 0
-            || strcmp(exp->def.op.name, "SEMIJOIN") == 0
-            || strcmp(exp->def.op.name, "EXTEND") == 0
-            || strcmp(exp->def.op.name, "RENAME") == 0
-            || strcmp(exp->def.op.name, "EXTEND") == 0
-            || strcmp(exp->def.op.name, "RENAME") == 0
-            || strcmp(exp->def.op.name, "WRAP") == 0
-            || strcmp(exp->def.op.name, "UNWRAP") == 0
-            || strcmp(exp->def.op.name, "UNGROUP") == 0
-            || strcmp(exp->def.op.name, "DIVIDE") == 0) {
+    if (strcmp(exp->def.op.name, "where") == 0
+            || strcmp(exp->def.op.name, "minus") == 0
+            || strcmp(exp->def.op.name, "semiminus") == 0
+            || strcmp(exp->def.op.name, "intersect") == 0
+            || strcmp(exp->def.op.name, "semijoin") == 0
+            || strcmp(exp->def.op.name, "extend") == 0
+            || strcmp(exp->def.op.name, "rename") == 0
+            || strcmp(exp->def.op.name, "extend") == 0
+            || strcmp(exp->def.op.name, "rename") == 0
+            || strcmp(exp->def.op.name, "wrap") == 0
+            || strcmp(exp->def.op.name, "unwrap") == 0
+            || strcmp(exp->def.op.name, "ungroup") == 0
+            || strcmp(exp->def.op.name, "divide") == 0) {
         return expr_dups(exp->def.op.args.firstp, ecp, resp);
-    } else if (strcmp(exp->def.op.name, "UNION") == 0) {
+    } else if (strcmp(exp->def.op.name, "union") == 0) {
         *resp = RDB_TRUE;
         return RDB_OK;
-    } else if (strcmp(exp->def.op.name, "JOIN") == 0) {
+    } else if (strcmp(exp->def.op.name, "join") == 0) {
         if (expr_dups(exp->def.op.args.firstp, ecp, resp) != RDB_OK)
             return RDB_ERROR;
         if (*resp)
@@ -1021,7 +1021,7 @@ expr_dups(RDB_expression *exp, RDB_exec_context *ecp, RDB_bool *resp)
             return RDB_ERROR;
         if (*resp)
             return RDB_OK;
-    } else if (strcmp(exp->def.op.name, "PROJECT") == 0) {
+    } else if (strcmp(exp->def.op.name, "project") == 0) {
         int keyc, newkeyc;
         RDB_string_vec *keyv;
         RDB_bool freekey;
@@ -2443,7 +2443,7 @@ _RDB_next_tuple(RDB_qresult *qrp, RDB_object *tplp, RDB_exec_context *ecp,
             return RDB_ERROR;
         }
 
-        if (strcmp(qrp->exp->def.op.name, "WHERE") == 0) {
+        if (strcmp(qrp->exp->def.op.name, "where") == 0) {
             if (qrp->nested) {
                 if (next_where_tuple(qrp, tplp, ecp, txp) != RDB_OK)
                     return RDB_ERROR;
@@ -2451,14 +2451,14 @@ _RDB_next_tuple(RDB_qresult *qrp, RDB_object *tplp, RDB_exec_context *ecp,
                 if (next_where_index(qrp, tplp, ecp, txp) != RDB_OK)
                     return RDB_ERROR;
             }                
-        } else if (strcmp(qrp->exp->def.op.name, "PROJECT") == 0) {
+        } else if (strcmp(qrp->exp->def.op.name, "project") == 0) {
             if (next_project_tuple(qrp, tplp, ecp, txp) != RDB_OK)
                 return RDB_ERROR;
-        } else if (strcmp(qrp->exp->def.op.name, "RENAME") == 0) {
+        } else if (strcmp(qrp->exp->def.op.name, "rename") == 0) {
             ret = next_rename_tuple(qrp, tplp, ecp, txp);
             if (ret != RDB_OK)
                 return RDB_ERROR;
-        } else if (strcmp(qrp->exp->def.op.name, "JOIN") == 0) {
+        } else if (strcmp(qrp->exp->def.op.name, "join") == 0) {
             if (qrp->exp->def.op.args.firstp->nextp->kind == RDB_EX_TBP
                     && qrp->exp->def.op.args.firstp->nextp->def.tbref.indexp != NULL) {
                 _RDB_tbindex *indexp = qrp->exp->def.op.args.firstp->nextp->def.tbref.indexp;
@@ -2472,39 +2472,39 @@ _RDB_next_tuple(RDB_qresult *qrp, RDB_object *tplp, RDB_exec_context *ecp,
             }
             if (ret != RDB_OK)
                 return RDB_ERROR;
-        } else if ((strcmp(qrp->exp->def.op.name, "MINUS") == 0)
-                || (strcmp(qrp->exp->def.op.name, "SEMIMINUS") == 0)) {
+        } else if ((strcmp(qrp->exp->def.op.name, "minus") == 0)
+                || (strcmp(qrp->exp->def.op.name, "semiminus") == 0)) {
             if (next_semiminus_tuple(qrp, tplp, ecp, txp) != RDB_OK)
                 return RDB_ERROR;
-        } else if (strcmp(qrp->exp->def.op.name, "UNION") == 0) {
+        } else if (strcmp(qrp->exp->def.op.name, "union") == 0) {
             ret = next_union_tuple(qrp, tplp, ecp, txp);
             if (ret != RDB_OK)
                 return RDB_ERROR;
-        } else if ((strcmp(qrp->exp->def.op.name, "INTERSECT") == 0)
-                || (strcmp(qrp->exp->def.op.name, "SEMIJOIN") == 0)) {
+        } else if ((strcmp(qrp->exp->def.op.name, "intersect") == 0)
+                || (strcmp(qrp->exp->def.op.name, "semijoin") == 0)) {
             ret = next_semijoin_tuple(qrp, tplp, ecp, txp);
             if (ret != RDB_OK)
                 return RDB_ERROR;
-        } else if (strcmp(qrp->exp->def.op.name, "EXTEND") == 0) {
+        } else if (strcmp(qrp->exp->def.op.name, "extend") == 0) {
             ret = next_extend_tuple(qrp, tplp, ecp, txp);
             if (ret != RDB_OK)
                 return RDB_ERROR;
-        } else if (strcmp(qrp->exp->def.op.name, "WRAP") == 0) {
+        } else if (strcmp(qrp->exp->def.op.name, "wrap") == 0) {
             ret = next_wrap_tuple(qrp, tplp, ecp, txp);
             if (ret != RDB_OK)
                 return RDB_ERROR;
-        } else if (strcmp(qrp->exp->def.op.name, "UNWRAP") == 0) {
+        } else if (strcmp(qrp->exp->def.op.name, "unwrap") == 0) {
             ret = next_unwrap_tuple(qrp, tplp, ecp, txp);
             if (ret != RDB_OK)
                 return RDB_ERROR;
-        } else if (strcmp(qrp->exp->def.op.name, "DIVIDE") == 0) {
+        } else if (strcmp(qrp->exp->def.op.name, "divide") == 0) {
             ret = next_sdivide_tuple(qrp, tplp, ecp, txp);
             if (ret != RDB_OK)
                 return RDB_ERROR;
-        } else if (strcmp(qrp->exp->def.op.name, "UNGROUP") == 0) {
+        } else if (strcmp(qrp->exp->def.op.name, "ungroup") == 0) {
             if (next_ungroup_tuple(qrp, tplp, ecp, txp) != RDB_OK)
                 return RDB_ERROR;
-        } else if (strcmp(qrp->exp->def.op.name, "RELATION") == 0) {
+        } else if (strcmp(qrp->exp->def.op.name, "relation") == 0) {
             if (next_relation_tuple(qrp, tplp, ecp, txp) != RDB_OK)
                 return RDB_ERROR;
         } else {
@@ -2538,7 +2538,7 @@ _RDB_reset_qresult(RDB_qresult *qrp, RDB_exec_context *ecp, RDB_transaction *txp
      * If it is a qresult over a RELATION expression, we don't have to do anything
      */
     if (qrp->exp != NULL && qrp->exp->kind == RDB_EX_RO_OP
-            && strcmp(qrp->exp->def.op.name, "RELATION") == 0) {
+            && strcmp(qrp->exp->def.op.name, "relation") == 0) {
         return RDB_OK;
     }
 

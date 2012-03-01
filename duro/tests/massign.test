@@ -23,26 +23,26 @@ test massign {multiple assignment} -setup $SETUP -body {
     
     # Create table
     duro::table create T1 {
-       {A INTEGER}
-       {B STRING}
+       {A integer}
+       {B string}
     } {{A}} $tx
     
     # Create table
     duro::table create T2 {
-       {A INTEGER}
-       {B STRING}
+       {A integer}
+       {B string}
     } {{A}} $tx
     
     # Create table
     duro::table create T3 {
-       {A INTEGER}
-       {B STRING}
+       {A integer}
+       {B string}
     } {{A}} $tx
     
     # Create table
     duro::table create T4 {
-       {A INTEGER}
-       {B STRING}
+       {A integer}
+       {B string}
     } {{A}} $tx
     
     duro::insert T1 {A 1 B Bla} $tx
@@ -57,7 +57,7 @@ test massign {multiple assignment} -setup $SETUP -body {
         error "multiple assignment should fail, but succeeded"
     }
     set errcode [lindex $errorCode 1]
-    if {![string match "NOT_SUPPORTED_ERROR(*)" $errcode]} {
+    if {![string match "not_supported_error(*)" $errcode]} {
         error "wrong error: $errcode"
     }
     
@@ -71,7 +71,7 @@ test massign {multiple assignment} -setup $SETUP -body {
         error "multiple assignment should fail, but succeeded"
     }
     set errcode [lindex $errorCode 1]
-    if {![string match "NOT_SUPPORTED_ERROR(*)" $errcode]} {
+    if {![string match "not_supported_error(*)" $errcode]} {
         error "wrong error: $errcode"
     }
     
@@ -102,19 +102,19 @@ test massign {multiple assignment} -setup $SETUP -body {
     }
     
     duro::table create -local TT1 {
-       {A INTEGER}
-       {B STRING}
+       {A integer}
+       {B string}
     } {{A}} $tx
     
     duro::massign {copy TT1 T1} $tx
     
     duro::table create -local TT2 {
-       {A INTEGER}
-       {B STRING}
+       {A integer}
+       {B string}
     } {{A}} $tx
     
     duro::massign {copy TT2 TT1} $tx
-    
+
     #
     # Test multiple assignments together with constraints
     #
@@ -123,7 +123,7 @@ test massign {multiple assignment} -setup $SETUP -body {
     
     duro::delete T2 $tx
     
-    duro::constraint create C1 {COUNT(T1) = COUNT(T2)} $tx
+    duro::constraint create C1 {count(T1) = count(T2)} $tx
     
     # Must fail
     
@@ -133,14 +133,14 @@ test massign {multiple assignment} -setup $SETUP -body {
         error "insert into T1 should fail, but succeeded"
     }
     set errcode [lindex $errorCode 1]
-    if {![string match "PREDICATE_VIOLATION*C1*" $errcode]} {
+    if {![string match "predicate_violation*C1*" $errcode]} {
         error "wrong error: $errcode"
     }
     
     # Must succeed
     duro::massign {insert T1 {A 1 B Blu}} {insert T2 {A 1 B Blu}} $tx
     
-    set count [duro::expr {COUNT(T1)} $tx]
+    set count [duro::expr {count(T1)} $tx]
     if {$count != 1} {
         error "cadiality of T1 should be 1, but is $count"
     }

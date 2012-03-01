@@ -23,8 +23,8 @@ test qqueries {quota queries} -setup $SETUP -body {
     
     # Create table
     duro::table create T1 {
-       {ID INTEGER}
-       {WEIGHT INTEGER}
+       {ID integer}
+       {WEIGHT integer}
     } {{ID}} $tx
 
     # Create virtual table with WEIGHT_RANK attribute

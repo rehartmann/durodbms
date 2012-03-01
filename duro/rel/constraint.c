@@ -17,7 +17,7 @@
 #include <string.h>
 
 /*
- * If the constraint is of the form IS_EMPTY(table), add table to
+ * If the constraint is of the form is_empty(table), add table to
  * hashtable of empty tables
  */
 static int
@@ -33,11 +33,11 @@ add_empty_tb(RDB_constraint *constrp, RDB_exec_context *ecp,
     if (constrp->exp->kind == RDB_EX_RO_OP
             && constrp->exp->def.op.args.firstp != NULL
             && constrp->exp->def.op.args.firstp->nextp == NULL
-            && strcmp(constrp->exp->def.op.name, "IS_EMPTY") == 0) {
+            && strcmp(constrp->exp->def.op.name, "is_empty") == 0) {
         RDB_expression *exp;
         RDB_expression *oexp = constrp->exp->def.op.args.firstp;
         if (oexp->kind == RDB_EX_RO_OP
-                && strcmp(oexp->def.op.name, "PROJECT") == 0) {
+                && strcmp(oexp->def.op.name, "project") == 0) {
             oexp = oexp->def.op.args.firstp;
         }
         exp = RDB_dup_expr(oexp, ecp);

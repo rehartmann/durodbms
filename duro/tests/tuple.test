@@ -27,12 +27,12 @@ test tuple {tuple-valued attributes} -setup $SETUP -body {
     
     # Create table with tuple attribute
     duro::table create T1 {
-        {SCATTR STRING}
+        {SCATTR string}
         {TPATTR {tuple
-            {A INTEGER}
-            {B STRING}
+            {A integer}
+            {B string}
             {T {tuple
-                {C STRING}
+                {C string}
             }}
         }}
     } {{SCATTR}} $tx
@@ -114,8 +114,8 @@ test tuple {tuple-valued attributes} -setup $SETUP -body {
     #
     
     duro::table create T2 {
-        {SATTR STRING}
-        {IATTR INTEGER}
+        {SATTR string}
+        {IATTR integer}
     } {{SATTR}} $tx
     
     duro::table expr -global WR {T2 WRAP ({SATTR, IATTR} AS A)} $tx

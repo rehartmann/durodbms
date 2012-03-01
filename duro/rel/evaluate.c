@@ -153,7 +153,7 @@ evaluate_ro_op(RDB_expression *exp, RDB_getobjfn *getfnp, void *getdata,
      * and calling an operator function, so they get special treatment
      */
 
-    if (strcmp(exp->def.op.name, "EXTEND") == 0) {
+    if (strcmp(exp->def.op.name, "extend") == 0) {
         RDB_type *typ = RDB_expr_type(exp->def.op.args.firstp, NULL, NULL,
                 ecp, txp);
         if (typ == NULL)
@@ -166,8 +166,8 @@ evaluate_ro_op(RDB_expression *exp, RDB_getobjfn *getfnp, void *getdata,
         }
     }
 
-    if (strcmp(exp->def.op.name, "WHERE") == 0
-            || strcmp(exp->def.op.name, "SUMMARIZE") == 0) {
+    if (strcmp(exp->def.op.name, "where") == 0
+            || strcmp(exp->def.op.name, "summarize") == 0) {
         return evaluate_vt(exp, getfnp, getdata, ecp, txp, valp);
     }
 
@@ -178,7 +178,7 @@ evaluate_ro_op(RDB_expression *exp, RDB_getobjfn *getfnp, void *getdata,
      * First check if there are 2 arguments and the second is a variable name
      */
     if (argc == 2 && exp->def.op.args.firstp->nextp->kind == RDB_EX_VAR) {
-        if (strcmp(exp->def.op.name, "SUM") == 0) {
+        if (strcmp(exp->def.op.name, "sum") == 0) {
             RDB_init_obj(&tb);
 
             if (RDB_evaluate(exp->def.op.args.firstp, getfnp, getdata, envp,
@@ -189,7 +189,7 @@ evaluate_ro_op(RDB_expression *exp, RDB_getobjfn *getfnp, void *getdata,
             RDB_destroy_obj(&tb, ecp);
             return ret;
         }
-        if (strcmp(exp->def.op.name, "AVG") ==  0) {
+        if (strcmp(exp->def.op.name, "avg") ==  0) {
             RDB_float res;
 
             RDB_init_obj(&tb);
@@ -202,7 +202,7 @@ evaluate_ro_op(RDB_expression *exp, RDB_getobjfn *getfnp, void *getdata,
             }
             return ret;
         }
-        if (strcmp(exp->def.op.name, "MIN") ==  0) {
+        if (strcmp(exp->def.op.name, "min") ==  0) {
             RDB_init_obj(&tb);
             if (RDB_evaluate(exp->def.op.args.firstp, getfnp, getdata, envp,
                     ecp, txp, &tb) != RDB_OK)
@@ -211,7 +211,7 @@ evaluate_ro_op(RDB_expression *exp, RDB_getobjfn *getfnp, void *getdata,
             RDB_destroy_obj(&tb, ecp);
             return ret;
         }
-        if (strcmp(exp->def.op.name, "MAX") ==  0) {
+        if (strcmp(exp->def.op.name, "max") ==  0) {
             RDB_init_obj(&tb);
             if (RDB_evaluate(exp->def.op.args.firstp, getfnp, getdata, envp, ecp,
                     txp, &tb) != RDB_OK)
@@ -220,7 +220,7 @@ evaluate_ro_op(RDB_expression *exp, RDB_getobjfn *getfnp, void *getdata,
             RDB_destroy_obj(&tb, ecp);
             return ret;
         }
-        if (strcmp(exp->def.op.name, "ALL") ==  0) {
+        if (strcmp(exp->def.op.name, "all") ==  0) {
             RDB_bool res;
 
             RDB_init_obj(&tb);
@@ -234,7 +234,7 @@ evaluate_ro_op(RDB_expression *exp, RDB_getobjfn *getfnp, void *getdata,
             }
             return ret;
         }
-        if (strcmp(exp->def.op.name, "ANY") ==  0) {
+        if (strcmp(exp->def.op.name, "any") ==  0) {
             RDB_bool res;
 
             RDB_init_obj(&tb);
@@ -250,7 +250,7 @@ evaluate_ro_op(RDB_expression *exp, RDB_getobjfn *getfnp, void *getdata,
         }
     }
 
-    if (argc == 3 && strcmp(exp->def.op.name, "IF") == 0) {
+    if (argc == 3 && strcmp(exp->def.op.name, "if") == 0) {
         return evaluate_if(exp, getfnp, getdata, envp, ecp, txp, valp);
     }
 
@@ -271,7 +271,7 @@ evaluate_ro_op(RDB_expression *exp, RDB_getobjfn *getfnp, void *getdata,
      * Get pointers to argument values, trying to avoid copying of values.
      */
 
-    if (strcmp(exp->def.op.name, "UNGROUP") == 0) {
+    if (strcmp(exp->def.op.name, "ungroup") == 0) {
         int i = 2;
         i = i*i;
     }
@@ -326,7 +326,7 @@ evaluate_ro_op(RDB_expression *exp, RDB_getobjfn *getfnp, void *getdata,
     /*
      * Check ARRAY arguments
      */
-    if (strcmp(exp->def.op.name, "ARRAY") == 0) {
+    if (strcmp(exp->def.op.name, "array") == 0) {
         RDB_type *typ;
 
         if (exp->typ != NULL) {
@@ -358,7 +358,7 @@ evaluate_ro_op(RDB_expression *exp, RDB_getobjfn *getfnp, void *getdata,
     }
 
     /* Handle RELATION with type */
-    if (strcmp(exp->def.op.name, "RELATION") == 0 && exp->typ != NULL) {
+    if (strcmp(exp->def.op.name, "relation") == 0 && exp->typ != NULL) {
         /* Relation type has been specified - use it for creating the table */
         RDB_type *typ = RDB_dup_nonscalar_type(exp->typ, ecp);
         if (typ == NULL) {

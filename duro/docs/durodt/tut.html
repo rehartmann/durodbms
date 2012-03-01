@@ -32,18 +32,18 @@ They must be declared before they can be used.
 <p>Example:
 
 <pre>
-no db> var i INTEGER;
+no db> var i integer;
 no db>
 </pre>
 
-<p>In previous versions, Duro D/T was case insensitive with respect to
-both keywords and identifiers. As of version 0.15, only keywords are case
-insensitive.
+<p>This creates a variable named I. Note that Duro D/T is case
+insensitive, so there is no diffence between "var i integer;"
+and "VAR I INTEGER;". This tutorial shows example code in lowercase.
 
 <p>When declaring a variable, an initial value can be specified:
 
 <pre>
-no db> var j INTEGER init 2;
+no db> var j integer init 2;
 no db>
 </pre>
 
@@ -106,20 +106,20 @@ no db>
 <p>Duro supports the following built-in scalar types:
 
 <ul>
-<li>BOOLEAN (synonym BOOL)</li>
-<li>INTEGER (synonym INT)</li>
-<li>FLOAT (synonyms RATIONAL, RAT)</li>
-<li>STRING (synonym CHAR)</li>
-<li>BINARY</li>
+<li><code>boolean</code> (synonym <code>bool</code>)</li>
+<li><code>integer</code> (synonym <code>int</code>)</li>
+<li><code>float</code> (synonyms <code>rational</code>, <code>rat</code>)</li>
+<li><code>string</code> (synonym <code>char</code>)</li>
+<li><code>binary</code></li>
 </ul>
 
 <p>Examples:
 
 <pre>
-no db> var b BOOL init true;
-no db> var i INT init 1;
-no db> var f FLOAT init 1.0;
-no db> var s STRING init 'Foo';
+no db> var b bool init true;
+no db> var i int init 1;
+no db> var f float init 1.0;
+no db> var s string init 'Foo';
 </pre>
 
 <p>For non-scalar types, see the chapters on tuples, tables, and arrays,
@@ -128,12 +128,12 @@ respectively.
 <p>Duro supports the usual arithmetical operators. Example:
 
 <pre>
-no db> PRINTLN(2 + 3 * 4);
+no db> println(2 + 3 * 4);
 14
 no db> 
 </pre>
 
-<p>For details on the built-in operator PRINTLN, see the chapter on I/O.
+<p>For details on the built-in operator <code>println()</code>, see the chapter on I/O.
 
 <h2>Comments</h2>
 
@@ -142,11 +142,9 @@ no db>
 <pre>
 -- This is a single-line comment.
 
-/*
-This is a
+/* This is a
 multi-line
-comment.
-*/
+comment. */
 </pre>
 
 <p>Lines starting with #! are ignored to allow for Unix interpreter files.</p>
@@ -156,15 +154,15 @@ comment.
 <h3>IF</h3>
 
 <pre>
-no db> var s STRING;
-no db> PRINTLN('Please enter a number:'); READLN(s);
+no db> var s string;
+no db> println('Please enter a number:'); READLN(s);
 Please enter a number:
 2
 no db> var n init CAST_AS_INTEGER(s);
 no db> if n < 0 then
-no db>     PRINTLN('Negative');
+no db>     println('Negative');
 no db> else
-no db>     PRINTLN('Positive');
+no db>     println('Positive');
 no db> end if;
 Positive
 no db>
@@ -174,18 +172,18 @@ no db>
 But the following form, which more strictly adheres to TTM, is supported too:</P>
 
 <pre>
-no db> var s STRING;
-no db> PRINTLN('Please enter a number:'); READLN(s);
+no db> var s string;
+no db> println('Please enter a number:'); READLN(s);
 Please enter a number:
 -2
 no db> var n init CAST_AS_INTEGER(s);
 no db> if n < 0 then
 no db>     begin;
-no db>         PRINTLN('Negative');
+no db>         println('Negative');
 no db>     end;
 no db> else
 no db>     begin;
-no db>         PRINTLN('Positive');
+no db>         println('Positive');
 no db>     end;
 no db> end if;
 Negative
@@ -199,7 +197,7 @@ no db>
 <pre>
 var i INTEGER;
 for i := 1 to 10;
-    PRINTLN(i);
+    println(i);
 end for;
 </pre>
 
@@ -210,12 +208,12 @@ end for;
 <p>Example:
 
 <pre>
-PRINTLN('Please enter a positive number:');
-var s STRING;
+println('Please enter a positive number:');
+var s string;
 READLN(s);
 var n init CAST_AS_INTEGER(s);
 while n < 0;
-    PRINTLN('This number is not positive. Please enter again:');
+    println('This number is not positive. Please enter again:');
     READLN(s);
     n := CAST_AS_INTEGER(s);
 end while;
@@ -226,18 +224,18 @@ end while;
 <p>Example:
 
 <pre>
-no db> var s STRING;
-no db> PRINTLN('Please enter a number:'); READLN(s);
+no db> var s string;
+no db> println('Please enter a number:'); READLN(s);
 Please enter a number:
 0
 no db> var n init CAST_AS_INTEGER(s);
 no db> case
 no db>     when n > 0 then
-no db>         PRINTLN('Positive');
+no db>         println('Positive');
 no db>     when n < 0 then
-no db>         PRINTLN('Negative');
+no db>         println('Negative');
 no db>     else
-no db>         PRINTLN('Zero');
+no db>         println('Zero');
 no db> end case;
 Zero
 no db>
@@ -248,7 +246,7 @@ no db>
 <p>Tuple variables can be declared as follows:</p>
 
 <pre>
-no db>var T tuple {I INTEGER, S STRING};
+no db>var t tuple {i integer, s string};
 no db>
 </pre>
 
@@ -257,14 +255,14 @@ Like scalar variables, tuple variables can be explicitly initialized
 when they are declared:</p>
 
 <pre>
-no db>var T tup {I INTEGER, S STRING} init tup {I 1, S 'One'};
+no db>var t tup {i integer, s string} init tup {i 1, s 'One'};
 no db>
 </pre>
 
 Or shorter:
 
 <pre>
-no db>var T init tup {I 1, S 'One'};
+no db>var t init tup {i 1, s 'One'};
 no db>
 </pre>
 
@@ -273,25 +271,25 @@ ordering in Duro D/T, so the statement above is perfectly equivalent
 to the following:
 
 <pre>
-no db>var T init tup {S 'One', I 1};
+no db>var t init tup {s 'One', i 1};
 no db>
 </pre>
 
 <p>Tuples variables can be assigned and updated:</p>
 
 <pre>
-no db>T := tup {I 2, S 'Two'};
+no db>t := tup {i 2, s 'Two'};
 1 element affected.
-no db> update T {I := 3};
+no db> update t {i := 3};
 1 element affected.
-no db> update T {I := 4, S := 'Four'};
+no db> update t {i := 4, s := 'Four'};
 2 elements affected.
 </pre>
 
 <p>Accessing tuple attributes:
 
 <pre>
-no db>PRINTLN(T.S);
+no db>println(t.s);
 Four
 no db>
 </pre>
@@ -299,7 +297,7 @@ no db>
 <p>Alternative form:
 
 <pre>
-no db>PRINTLN(S from T);
+no db>println(s from t);
 Four
 no db>
 </pre>
@@ -309,41 +307,41 @@ no db>
 <p>Database environments are the places where databases and tables are physically stored.
 Therefore a database environment must exist before a database can be created.
 In Duro D/T, a database environment can be created using the built-in
-update operator CREATE_ENV():</p>
+update operator create_env():</p>
 
 <pre>
-no db>CREATE_ENV('dbenv');
+no db>create_env('dbenv');
 no db>
 </pre>
 
-<p>The built-in update operator CONNECT can be used to connect
-to an existing database environment. CONNECT takes one argument
-of type STRING which specifies the database environment:</p>
+<p>The built-in update operator connect() can be used to connect
+to an existing database environment. connect() takes one argument
+of type <code>string</code> which specifies the database environment:</p>
 
 <pre>
-no db>CONNECT('dbenv');
+no db>connect('dbenv');
 no db>
 </pre>
 
 <p>After a database environment was created or connected to, a
 database can be created using the built-in
-update operator CREATE_DB().</p>
+update operator create_db().</p>
 
 <pre>
-no db>CREATE_DB('D');
+no db>create_db('D');
 no db>
 </pre>
 
-<p>The variable CURRENT_DB contains the database currently in use.
+<p>The variable <code>current_db</code> contains the database currently in use.
 A database can be selected by assigning the variable:</p>
 
 <pre>
-no db>CURRENT_DB := 'D';
+no db>current_db := 'D';
 1 element affected.
 D>
 </pre>
 
-<p>After CURRENT_DB has been set, the prompt shows the name
+<p>After <code>current_db</code> has been set, the prompt shows the name
 of the database selected and a transaction can be started
 using BEGIN TRANSACTION. Instead of BEGIN TRANSACTION, BEGIN TX
 can be used:</p>
@@ -459,7 +457,7 @@ D> var a array tup same_heading_as(R);
 D> load a from R order();
 D> var i INTEGER;
 D> for i:= 0 to LENGTH(a)-1;
-D>   PRINTLN(a[i]);
+D>   println(a[i]);
 D> end for;
 </pre>
 
@@ -469,21 +467,21 @@ D> end for;
 
 <p>It provides the following update operators for I/O:
 
-<h3>PRINTLN</h3>
+<h3>println</h3>
 
-<p>PRINTLN takes one argument and prints it on standard output,
+<p><code>println()</code> takes one argument and prints it on standard output,
 followed by a newline. It is defined for all built-in scalar types
-except BINARY and also for tuple and relation arguments:
+except <code>binary</code> and also for tuple and relation arguments:
 
 <pre>
-no db> PRINTLN(true);
+no db> println(true);
 TRUE
-no db> PRINTLN(2 * 4);
+no db> println(2 * 4);
 8
-no db> PRINTLN(tup {A 1, B 'bee'});
-TUPLE { A 1, B 'bee' }
-no db> PRINTLN(rel {tup {I 1, C 'foo'}, tup {I 2, C 'bar'}});
-RELATION { TUPLE { I 1, C 'foo' }, TUPLE { I 2, C 'bar' }}
+no db> println(tup {a 1, b 'bee'});
+TUPLE { a 1, b 'bee' }
+no db> println(rel {tup {I 1, C 'foo'}, tup {I 2, C 'bar'}});
+RELATION { TUPLE { i 1, c 'foo' }, TUPLE { i 2, c 'bar' }}
 no db>
 </pre>
 
@@ -491,7 +489,7 @@ no db>
 is optional. The following is also valid:
 
 <pre>
-no db> call PRINTLN(2 * 4);
+no db> call println(2 * 4);
 8
 no db>
 </pre>

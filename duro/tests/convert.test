@@ -23,18 +23,18 @@ test convert {type conversions} -setup $SETUP -body {
 
     # Create real table
     duro::table create T1 {
-       {A INTEGER}
-       {B FLOAT}
-       {C STRING}
+       {A integer}
+       {B float}
+       {C string}
     } {{A}} $tx
     
     # Insert tuple
     duro::insert T1 {A 1 B 2.0 C 03} $tx
     
-    duro::table expr -global X {EXTEND T1 : {
-            A_I := A, A_R := CAST_AS_FLOAT(A) * 2.0, A_S := "S" || CAST_AS_STRING(A),
-            B_I := CAST_AS_INTEGER(B), B_R := B * 2.0, B_S := "S" || CAST_AS_STRING(B),
-            C_I := CAST_AS_INTEGER(C), C_R := CAST_AS_FLOAT(C) * 2.0, C_S := "S" || C,
+    duro::table expr -global X {extend T1 : {
+            A_I := A, A_R := cast_as_float(A) * 2.0, A_S := "S" || cast_as_string(A),
+            B_I := cast_as_integer(B), B_R := B * 2.0, B_S := "S" || cast_as_string(B),
+            C_I := cast_as_integer(C), C_R := cast_as_float(C) * 2.0, C_S := "S" || C,
             B_F := B}
     } $tx
 

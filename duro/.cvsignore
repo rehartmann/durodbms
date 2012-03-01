@@ -3,3 +3,4 @@ dbenv
 .sconsign.dblite
 core
 .directory
+*.gz

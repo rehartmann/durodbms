@@ -205,7 +205,7 @@ list_to_copy(TclState *statep, Tcl_Interp *interp, Tcl_Obj *tobjp,
         return TCL_ERROR;
     }
     if (srcexp->kind == RDB_EX_RO_OP
-            && strcmp(srcexp->def.op.name, "RELATION") == 0) {
+            && strcmp(srcexp->def.op.name, "relation") == 0) {
         copyp->srcp = RDB_alloc(sizeof(RDB_object), statep->current_ecp);
         if (copyp->srcp == NULL) {
             return TCL_ERROR;

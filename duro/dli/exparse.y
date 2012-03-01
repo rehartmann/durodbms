@@ -23,7 +23,7 @@ static RDB_expression *
 table_dum_expr(void)
 {
     RDB_type *reltyp;
-    RDB_expression *exp = RDB_ro_op("RELATION", _RDB_parse_ecp);
+    RDB_expression *exp = RDB_ro_op("relation", _RDB_parse_ecp);
     if (exp == NULL)
         return NULL; 
 
@@ -1810,7 +1810,7 @@ expression: expression '{' id_commalist '}' {
          * Create expression which represents a newly initialized RDB_object.
          * In this context, it represents an empty tuple.
          */
-        argexp = RDB_ro_op("TUPLE", _RDB_parse_ecp);
+        argexp = RDB_ro_op("tuple", _RDB_parse_ecp);
         if (argexp == NULL) {
             RDB_drop_expr(exp, _RDB_parse_ecp);
             YYERROR;

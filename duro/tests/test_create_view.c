@@ -23,9 +23,9 @@ create_view1(RDB_database *dbp, RDB_exec_context *ecp)
     tbp2 = RDB_get_table("EMPS2", ecp, &tx);
     assert(tbp2 != NULL);
 
-    exp = RDB_ro_op("PROJECT", ecp);
+    exp = RDB_ro_op("project", ecp);
     assert(exp != NULL);
-    texp = RDB_ro_op("UNION", ecp);
+    texp = RDB_ro_op("union", ecp);
     assert(texp != NULL);
     RDB_add_arg(exp, texp);
     argp = RDB_table_ref(tbp, ecp);
@@ -63,7 +63,7 @@ create_view2(RDB_database *dbp, RDB_exec_context *ecp)
     tbp = RDB_get_table("EMPS1", ecp, &tx);
     assert(ret == RDB_OK);
 
-    exp = RDB_ro_op("WHERE", ecp);
+    exp = RDB_ro_op("where", ecp);
     assert(exp != NULL);
     argp = RDB_table_ref(tbp, ecp);
     assert(argp != NULL);
@@ -103,7 +103,7 @@ create_view3(RDB_database *dbp, RDB_exec_context *ecp)
     tbp = RDB_get_table("EMPS1", ecp, &tx);
     assert(tbp != NULL);
 
-    exp = RDB_ro_op("EXTEND", ecp);
+    exp = RDB_ro_op("extend", ecp);
     assert(exp != NULL);
 
     argp = RDB_table_ref(tbp, ecp);
@@ -148,10 +148,10 @@ create_view4(RDB_database *dbp, RDB_exec_context *ecp)
      * ADD MAX (SALARY) AS MAX_SALARY ) RENAME DEPTNO AS DEPARTMENT
      */
 
-    exp = RDB_ro_op("RENAME", ecp);
+    exp = RDB_ro_op("rename", ecp);
     assert(exp != NULL);
 
-    sexp = RDB_ro_op("SUMMARIZE", ecp);
+    sexp = RDB_ro_op("summarize", ecp);
     assert(sexp != NULL);
     RDB_add_arg(exp, sexp);
 
@@ -159,7 +159,7 @@ create_view4(RDB_database *dbp, RDB_exec_context *ecp)
     assert(argp != NULL);
     RDB_add_arg(sexp, argp);
 
-    texp = RDB_ro_op("PROJECT", ecp);
+    texp = RDB_ro_op("project", ecp);
     assert(texp != NULL);
     RDB_add_arg(sexp, texp);
 
@@ -171,7 +171,7 @@ create_view4(RDB_database *dbp, RDB_exec_context *ecp)
     assert(argp != NULL);
     RDB_add_arg(texp, argp);
 
-    texp = RDB_ro_op("MAX", ecp);
+    texp = RDB_ro_op("max", ecp);
     assert(texp != NULL);
     RDB_add_arg(sexp, texp);
 

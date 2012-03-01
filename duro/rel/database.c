@@ -733,7 +733,7 @@ user_tables_vt(RDB_database *dbp, RDB_exec_context *ecp, RDB_transaction *txp)
     if (ex2p == NULL) {
         goto error;
     }
-    ex3p = RDB_ro_op("WHERE", ecp);
+    ex3p = RDB_ro_op("where", ecp);
     if (ex3p == NULL) {
         goto error;
     }
@@ -757,13 +757,13 @@ user_tables_vt(RDB_database *dbp, RDB_exec_context *ecp, RDB_transaction *txp)
     ex1p = RDB_table_ref(dbp->dbrootp->dbtables_tbp, ecp);
     if (ex1p == NULL)
         goto error;
-    ex2p = RDB_ro_op("WHERE", ecp);
+    ex2p = RDB_ro_op("where", ecp);
     if (ex2p == NULL)
         goto error;
     RDB_add_arg(ex2p, ex1p);
     RDB_add_arg(ex2p, ex4p);
     ex4p = NULL;
-    ex1p = RDB_ro_op("JOIN", ecp);
+    ex1p = RDB_ro_op("join", ecp);
     if (ex1p == NULL)
         goto error;
     RDB_add_arg(ex1p, ex2p);
@@ -813,7 +813,7 @@ db_exists_vt(RDB_database *dbp, RDB_exec_context *ecp, RDB_transaction *txp)
     if (ex1p == NULL)
         goto error;
 
-    ex2p = RDB_ro_op("WHERE", ecp);
+    ex2p = RDB_ro_op("where", ecp);
     if (ex2p == NULL)
         goto error;
     RDB_add_arg(ex2p, ex1p);
@@ -943,7 +943,7 @@ db_names_tb(RDB_object *dbtables_tbp, RDB_exec_context *ecp, RDB_transaction *tx
     if (ex2p == NULL)
         return NULL;
 
-    ex3p = RDB_ro_op("PROJECT", ecp);
+    ex3p = RDB_ro_op("project", ecp);
     if (ex3p == NULL)
         goto error;
     RDB_add_arg(ex3p, ex1p);
@@ -1358,7 +1358,7 @@ table_dep_check(RDB_object *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
         return RDB_ERROR;
     }
 
-    ex1p = RDB_ro_op("WHERE", ecp);
+    ex1p = RDB_ro_op("where", ecp);
     if (ex1p == NULL) {
         RDB_drop_expr(wherep, ecp);
         return RDB_ERROR;

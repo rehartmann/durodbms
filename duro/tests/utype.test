@@ -29,15 +29,15 @@ test utype {user-defined types} -setup $SETUP -body {
     #
     # Define type NAME. Only rep is a string without leading or trailing blanks
     #
-    duro::type define NAME { {NAME { {NAME STRING} } } } \
-            {NOT ((THE_NAME(NAME) MATCHES "^ .*") \
-                    OR (THE_NAME(NAME) MATCHES ".* $"))} \
+    duro::type define NAME { {NAME { {NAME string} } } } \
+            {NOT ((the_NAME(NAME) MATCHES "^ .*") \
+                    OR (the_NAME(NAME) MATCHES ".* $"))} \
             $tx
     
     duro::type implement NAME $tx
     
     duro::table create T1 {
-       {NO INTEGER}
+       {NO integer}
        {NAME NAME}
     } {{NO}} $tx
     
@@ -50,7 +50,7 @@ test utype {user-defined types} -setup $SETUP -body {
         error "Insertion of tuple $tpl should fail, but succeeded"
     }
     set errcode [lindex $errorCode 1]
-    if {![string match "TYPE_CONSTRAINT_VIOLATION_ERROR(*)" $errcode]} {
+    if {![string match "type_constraint_violation_error(*)" $errcode]} {
         error "Wrong error: $errcode"
     }
     
@@ -59,7 +59,7 @@ test utype {user-defined types} -setup $SETUP -body {
     #
     
     duro::type define PNAME {
-        {PNAME {{FIRSTNAME STRING} {LASTNAME STRING}}}
+        {PNAME {{FIRSTNAME string} {LASTNAME string}}}
     } $tx
     
     duro::type implement PNAME $tx
@@ -67,7 +67,7 @@ test utype {user-defined types} -setup $SETUP -body {
     #
     # Comparison operator
     #
-    duro::operator create CMP -returns INTEGER {name1 PNAME name2 PNAME} {
+    duro::operator create CMP -returns integer {name1 PNAME name2 PNAME} {
         set ::compare_called 1
         array set a1 $name1
         array set a2 $name2
@@ -83,14 +83,14 @@ test utype {user-defined types} -setup $SETUP -body {
     #
     
     duro::type define INTSET {
-        {INTLIST {{INTLIST STRING}}}
+        {INTLIST {{INTLIST string}}}
     } $tx
     
     # Actual rep is relation
-    duro::type implement INTSET {relation {N INTEGER}} $tx
+    duro::type implement INTSET {relation {N integer}} $tx
     
     # Selector
-    duro::operator create INTLIST -returns INTSET {il STRING} {
+    duro::operator create INTLIST -returns INTSET {il string} {
         set r {}
         foreach i $il {
             lappend r [list N $i]
@@ -99,7 +99,7 @@ test utype {user-defined types} -setup $SETUP -body {
     } $tx
     
     # Getter
-    duro::operator create INTSET_get_INTLIST -returns STRING {is INTSET} {
+    duro::operator create INTSET_get_INTLIST -returns string {is INTSET} {
         set r {}
         foreach i $is {
             lappend r [lindex $i 1]
@@ -108,7 +108,7 @@ test utype {user-defined types} -setup $SETUP -body {
     } $tx
     
     # Setter
-    duro::operator create INTSET_set_INTLIST -updates {is} {is INTSET il STRING} {
+    duro::operator create INTSET_set_INTLIST -updates {is} {is INTSET il string} {
         upvar $is lis
     
         set lis {}
@@ -118,7 +118,7 @@ test utype {user-defined types} -setup $SETUP -body {
     } $tx
     
     duro::table create T2 {
-       {NO INTEGER}
+       {NO integer}
        {NAME PNAME}
     } {{NO}} $tx
     
@@ -131,7 +131,7 @@ test utype {user-defined types} -setup $SETUP -body {
         error "T2 should contain $tpl, but does not."
     }
     
-    array set a [duro::expr {TUPLE FROM (T2 WHERE THE_LASTNAME(NAME) = "Potter")} $tx]
+    array set a [duro::expr {TUPLE FROM (T2 WHERE the_LASTNAME(NAME) = "Potter")} $tx]
     
     if {($a(NO) != 1) || ($a(NAME) != {PNAME('Peter', 'Potter')})} {
         error "wrong value tuple value: $a(NAME)"
@@ -195,9 +195,9 @@ test utype {user-defined types} -setup $SETUP -body {
         error "TUPLE FROM T3 should be $stpl, but is $tpl"
     }
 
-    set il [duro::expr {THE_INTLIST((TUPLE FROM T3).IS)} $tx]
+    set il [duro::expr {the_INTLIST((TUPLE FROM T3).IS)} $tx]
     if {![string equal $il $sil]} {
-        error "THE_INTLIST should be $sil, but is $il"
+        error "the_INTLIST should be $sil, but is $il"
     }
     
     #
@@ -205,7 +205,7 @@ test utype {user-defined types} -setup $SETUP -body {
     #
 
     set is {INTLIST("1 3 4")}
-    duro::call INTSET_set_INTLIST is INTSET {1 2 3} STRING $tx
+    duro::call INTSET_set_INTLIST is INTSET {1 2 3} string $tx
     
     set sis {INTLIST('1 2 3')}
     if {![string equal $is $sis]} {

@@ -438,28 +438,28 @@ _RDB_infer_keys(RDB_expression *exp, RDB_exec_context *ecp,
             return RDB_ERROR;            
     }
 
-    if ((strcmp(exp->def.op.name, "WHERE") == 0)
-            || (strcmp(exp->def.op.name, "MINUS") == 0)
-            || (strcmp(exp->def.op.name, "SEMIMINUS") == 0)
-            || (strcmp(exp->def.op.name, "SEMIJOIN") == 0)
-            || (strcmp(exp->def.op.name, "INTERSECT") == 0)
-            || (strcmp(exp->def.op.name, "EXTEND") == 0)
-            || (strcmp(exp->def.op.name, "DIVIDE") == 0)) {
+    if ((strcmp(exp->def.op.name, "where") == 0)
+            || (strcmp(exp->def.op.name, "minus") == 0)
+            || (strcmp(exp->def.op.name, "semiminus") == 0)
+            || (strcmp(exp->def.op.name, "semijoin") == 0)
+            || (strcmp(exp->def.op.name, "intersect") == 0)
+            || (strcmp(exp->def.op.name, "extend") == 0)
+            || (strcmp(exp->def.op.name, "divide") == 0)) {
         return _RDB_infer_keys(exp->def.op.args.firstp, ecp, keyvp,
                 caller_must_freep);
     }
-    if (strcmp(exp->def.op.name, "JOIN") == 0) {
+    if (strcmp(exp->def.op.name, "join") == 0) {
         *caller_must_freep = RDB_TRUE;
     	return infer_join_keys(exp, ecp, keyvp);
     }
-    if (strcmp(exp->def.op.name, "PROJECT") == 0) {
+    if (strcmp(exp->def.op.name, "project") == 0) {
     	return infer_project_keys(exp, ecp, keyvp, caller_must_freep);
     }
-    if (strcmp(exp->def.op.name, "SUMMARIZE") == 0) {
+    if (strcmp(exp->def.op.name, "summarize") == 0) {
         return _RDB_infer_keys(exp->def.op.args.firstp->nextp, ecp, keyvp,
                 caller_must_freep);
     }
-    if (strcmp(exp->def.op.name, "RENAME") == 0) {
+    if (strcmp(exp->def.op.name, "rename") == 0) {
         RDB_bool freekey;
         int keyc = _RDB_infer_keys(exp->def.op.args.firstp, ecp, keyvp, &freekey);
         if (keyc == RDB_ERROR)
@@ -475,7 +475,7 @@ _RDB_infer_keys(RDB_expression *exp, RDB_exec_context *ecp,
         *caller_must_freep = RDB_TRUE;
         return keyc;
     }
-    if (strcmp(exp->def.op.name, "GROUP") == 0) {
+    if (strcmp(exp->def.op.name, "group") == 0) {
         *caller_must_freep = RDB_TRUE;
         return infer_group_keys(exp, ecp, keyvp);
     }
@@ -530,7 +530,7 @@ _RDB_index_objpv(_RDB_tbindex *indexp, RDB_expression *exp, RDB_type *tbtyp,
         }
         attrexp = nodep;
         if (attrexp->kind == RDB_EX_RO_OP
-                && strcmp (attrexp->def.op.name, "AND") == 0)
+                && strcmp (attrexp->def.op.name, "and") == 0)
             attrexp = attrexp->def.op.args.firstp->nextp;
         attrexp->def.op.args.firstp->nextp->def.obj.store_typ =
                     RDB_type_attr_type(tbtyp, indexp->attrv[i].attrname);

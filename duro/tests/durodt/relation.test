@@ -58,7 +58,7 @@ test invalid_type {invalid (scalar) type for table} -setup $SETUP -match glob -b
 	    begin transaction;
     	var ir real INTEGER key {};
     }
-}  -returnCodes {1} -result {*TYPE_MISMATCH_ERROR*}
+}  -returnCodes {1} -result {*type_mismatch_error*}
 
 test private {creating private table and inserting tuples} -setup $SETUP -body {
     exec $testdir/../../dli/durodt << {

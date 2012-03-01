@@ -23,10 +23,10 @@ test update_keyindex {update real tables using key} -setup $SETUP -body {
     
     # Create table
     duro::table create T {
-       {S1 STRING}
-       {I INTEGER}
-       {S2 STRING}
-       {S3 STRING}
+       {S1 string}
+       {I integer}
+       {S2 string}
+       {S3 string}
     } {{S1} {I S2}} $tx
 
     # Need several tuples, otherwise the optimizer
@@ -57,10 +57,10 @@ test update_oindex {update real tables using ordered index} -setup $SETUP -body 
     
     # Create table
     duro::table create T {
-       {S1 STRING}
-       {S2 STRING}
-       {S3 STRING}
-       {S4 STRING}
+       {S1 string}
+       {S2 string}
+       {S3 string}
+       {S4 string}
     } {{S1}} $tx
 
     duro::index create IX T {S2 asc} $tx

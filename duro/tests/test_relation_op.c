@@ -23,7 +23,7 @@ test_relation(RDB_database *dbp, RDB_exec_context *ecp)
 
     RDB_init_obj(&array);
 
-    exp = RDB_ro_op("RELATION", ecp);
+    exp = RDB_ro_op("relation", ecp);
     assert(exp != NULL);
 
     /*

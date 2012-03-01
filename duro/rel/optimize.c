@@ -43,7 +43,7 @@ enum {
 static RDB_bool is_and(const RDB_expression *exp)
 {
     return (RDB_bool) (exp->kind == RDB_EX_RO_OP
-            && strcmp (exp->def.op.name, "AND") == 0);
+            && strcmp (exp->def.op.name, "and") == 0);
 }
 
 static int
@@ -88,7 +88,7 @@ eliminate_not(RDB_expression *exp, RDB_exec_context *ecp, RDB_transaction *txp)
     if (exp->kind != RDB_EX_RO_OP)
         return RDB_OK;
 
-    if (strcmp(exp->def.op.name, "NOT") != 0) {
+    if (strcmp(exp->def.op.name, "not") != 0) {
         RDB_expression *argp = exp->def.op.args.firstp;
 
         while (argp != NULL) {
@@ -102,17 +102,17 @@ eliminate_not(RDB_expression *exp, RDB_exec_context *ecp, RDB_transaction *txp)
     if (exp->def.op.args.firstp->kind != RDB_EX_RO_OP)
         return RDB_OK;
 
-    if (strcmp(exp->def.op.args.firstp->def.op.name, "AND") == 0) {
-        hexp = RDB_ro_op("NOT", ecp);
+    if (strcmp(exp->def.op.args.firstp->def.op.name, "and") == 0) {
+        hexp = RDB_ro_op("not", ecp);
         if (hexp == NULL)
             return RDB_ERROR;
         RDB_add_arg(hexp, exp->def.op.args.firstp->def.op.args.firstp->nextp);
-        ret = alter_op(exp, "OR", ecp);
+        ret = alter_op(exp, "or", ecp);
         if (ret != RDB_OK)
             return ret;
         exp->def.op.args.firstp->nextp = hexp;
 
-        ret = alter_op(exp->def.op.args.firstp, "NOT", ecp);
+        ret = alter_op(exp->def.op.args.firstp, "not", ecp);
         if (ret != RDB_OK)
             return ret;
         exp->def.op.args.firstp->def.op.args.firstp->nextp = NULL;
@@ -122,18 +122,18 @@ eliminate_not(RDB_expression *exp, RDB_exec_context *ecp, RDB_transaction *txp)
             return ret;
         return eliminate_not(exp->def.op.args.firstp->nextp, ecp, txp);
     }
-    if (strcmp(exp->def.op.args.firstp->def.op.name, "OR") == 0) {
-        hexp = RDB_ro_op("NOT", ecp);
+    if (strcmp(exp->def.op.args.firstp->def.op.name, "or") == 0) {
+        hexp = RDB_ro_op("not", ecp);
         if (hexp == NULL)
             return RDB_ERROR;
         hexp->nextp = NULL;
         RDB_add_arg(hexp, exp->def.op.args.firstp->def.op.args.firstp->nextp);
-        ret = alter_op(exp, "AND", ecp);
+        ret = alter_op(exp, "and", ecp);
         if (ret != RDB_OK)
             return ret;
         exp->def.op.args.firstp->nextp = hexp;
 
-        ret = alter_op(exp->def.op.args.firstp, "NOT", ecp);
+        ret = alter_op(exp->def.op.args.firstp, "not", ecp);
         if (ret != RDB_OK)
             return ret;
         exp->def.op.args.firstp->def.op.args.firstp->nextp = NULL;
@@ -155,7 +155,7 @@ eliminate_not(RDB_expression *exp, RDB_exec_context *ecp, RDB_transaction *txp)
         return eliminate_child(exp, ">", ecp, txp);
     if (strcmp(exp->def.op.args.firstp->def.op.name, ">=") == 0)
         return eliminate_child(exp, "<", ecp, txp);
-    if (strcmp(exp->def.op.args.firstp->def.op.name, "NOT") == 0) {
+    if (strcmp(exp->def.op.args.firstp->def.op.name, "not") == 0) {
         hexp = exp->def.op.args.firstp;
         memcpy(exp, hexp->def.op.args.firstp, sizeof (RDB_expression));
         RDB_free(hexp->def.op.args.firstp->def.op.name);
@@ -277,7 +277,7 @@ move_node(RDB_expression *texp, RDB_expression **dstpp, RDB_expression *nodep,
         if (*dstpp == NULL)
             *dstpp = nodep;            
         else {
-            RDB_expression *exp = RDB_ro_op("AND", ecp);
+            RDB_expression *exp = RDB_ro_op("and", ecp);
             if (exp == NULL)
                 return RDB_ERROR;
             RDB_add_arg(exp, *dstpp);
@@ -297,7 +297,7 @@ move_node(RDB_expression *texp, RDB_expression **dstpp, RDB_expression *nodep,
         if (*dstpp == NULL)
             *dstpp = arg2p;
         else {
-            RDB_expression *exp = RDB_ro_op("AND", ecp);
+            RDB_expression *exp = RDB_ro_op("and", ecp);
             if (exp == NULL)
                 return RDB_ERROR;
             RDB_add_arg(exp, *dstpp);
@@ -420,7 +420,7 @@ split_by_index(RDB_expression *texp, _RDB_tbindex *indexp,
                 return RDB_ERROR;
         }
 
-        sitexp = RDB_ro_op("WHERE", ecp);
+        sitexp = RDB_ro_op("where", ecp);
         if (sitexp == NULL)
             return RDB_ERROR;
         arg2p = texp->def.op.args.firstp->nextp;
@@ -473,23 +473,23 @@ table_cost(RDB_expression *texp)
             ;
     }
 
-    if (strcmp(texp->def.op.name, "SEMIMINUS") == 0)
+    if (strcmp(texp->def.op.name, "semiminus") == 0)
         return table_cost(texp->def.op.args.firstp); /* !! */
 
-    if (strcmp(texp->def.op.name, "MINUS") == 0)
+    if (strcmp(texp->def.op.name, "minus") == 0)
         return table_cost(texp->def.op.args.firstp); /* !! */
 
-    if (strcmp(texp->def.op.name, "UNION") == 0)
+    if (strcmp(texp->def.op.name, "union") == 0)
         return table_cost(texp->def.op.args.firstp)
                 + table_cost(texp->def.op.args.firstp->nextp);
 
-    if (strcmp(texp->def.op.name, "SEMIJOIN") == 0)
+    if (strcmp(texp->def.op.name, "semijoin") == 0)
         return table_cost(texp->def.op.args.firstp); /* !! */
 
-    if (strcmp(texp->def.op.name, "INTERSECT") == 0)
+    if (strcmp(texp->def.op.name, "intersect") == 0)
         return table_cost(texp->def.op.args.firstp); /* !! */
 
-    if (strcmp(texp->def.op.name, "WHERE") == 0) {
+    if (strcmp(texp->def.op.name, "where") == 0) {
         if (texp->def.op.optinfo.objpc == 0)
             return table_cost(texp->def.op.args.firstp);
         if (texp->def.op.args.firstp->kind == RDB_EX_TBP) {
@@ -505,7 +505,7 @@ table_cost(RDB_expression *texp)
             return 3;
         return 4;
     }
-    if (strcmp(texp->def.op.name, "JOIN") == 0) {
+    if (strcmp(texp->def.op.name, "join") == 0) {
         if (texp->def.op.args.firstp->nextp->kind == RDB_EX_TBP
                 && texp->def.op.args.firstp->nextp->def.tbref.indexp != NULL) {
             indexp = texp->def.op.args.firstp->nextp->def.tbref.indexp;
@@ -520,17 +520,17 @@ table_cost(RDB_expression *texp)
         return table_cost(texp->def.op.args.firstp)
                 * table_cost(texp->def.op.args.firstp->nextp);
     }
-    if (strcmp(texp->def.op.name, "EXTEND") == 0
-             || strcmp(texp->def.op.name, "PROJECT") == 0
-             || strcmp(texp->def.op.name, "REMOVE") == 0
-             || strcmp(texp->def.op.name, "SUMMARIZE") == 0
-             || strcmp(texp->def.op.name, "RENAME") == 0
-             || strcmp(texp->def.op.name, "WRAP") == 0
-             || strcmp(texp->def.op.name, "UNWRAP") == 0
-             || strcmp(texp->def.op.name, "GROUP") == 0
-             || strcmp(texp->def.op.name, "UNGROUP") == 0)
+    if (strcmp(texp->def.op.name, "extend") == 0
+             || strcmp(texp->def.op.name, "project") == 0
+             || strcmp(texp->def.op.name, "remove") == 0
+             || strcmp(texp->def.op.name, "summarize") == 0
+             || strcmp(texp->def.op.name, "rename") == 0
+             || strcmp(texp->def.op.name, "wrap") == 0
+             || strcmp(texp->def.op.name, "unwrap") == 0
+             || strcmp(texp->def.op.name, "group") == 0
+             || strcmp(texp->def.op.name, "ungroup") == 0)
         return table_cost(texp->def.op.args.firstp);
-    if (strcmp(texp->def.op.name, "DIVIDE") == 0) {
+    if (strcmp(texp->def.op.name, "divide") == 0) {
         return table_cost(texp->def.op.args.firstp)
                 * table_cost(texp->def.op.args.firstp->nextp); /* !! */
     }
@@ -553,7 +553,7 @@ mutate_where(RDB_expression *texp, RDB_expression **tbpv, int cap,
 
     if (chexp->kind == RDB_EX_TBP
         || (chexp->kind == RDB_EX_RO_OP
-            && strcmp(chexp->def.op.name, "PROJECT") == 0
+            && strcmp(chexp->def.op.name, "project") == 0
             && chexp->def.op.args.firstp->kind == RDB_EX_TBP)) {
         if (eliminate_not(condp, ecp, txp) != RDB_OK)
             return RDB_ERROR;
@@ -572,7 +572,7 @@ mutate_where(RDB_expression *texp, RDB_expression **tbpv, int cap,
         if (exp == NULL)
             return RDB_ERROR;
 
-        nexp = RDB_ro_op("WHERE", ecp);
+        nexp = RDB_ro_op("where", ecp);
         if (nexp == NULL) {
             RDB_drop_expr(exp, ecp);
             return RDB_ERROR;
@@ -594,7 +594,7 @@ mutate_where(RDB_expression *texp, RDB_expression **tbpv, int cap,
                     return RDB_ERROR;
             }
         } else if (tbpv[i]->kind == RDB_EX_RO_OP
-                && strcmp(tbpv[i]->def.op.name, "PROJECT") == 0
+                && strcmp(tbpv[i]->def.op.name, "project") == 0
                 && tbpv[i]->def.op.args.firstp->kind == RDB_EX_TBP
                 && tbpv[i]->def.op.args.firstp->def.tbref.indexp != NULL) {
             _RDB_tbindex *indexp = tbpv[i]->def.op.args.firstp->def.tbref.indexp;
@@ -766,7 +766,7 @@ transform_semiminus_union(RDB_expression *texp, RDB_exec_context *ecp,
         return NULL;
     }
 
-    ex3p = RDB_ro_op("SEMIMINUS", ecp);
+    ex3p = RDB_ro_op("semiminus", ecp);
     if (ex3p == NULL) {
         RDB_drop_expr(ex1p, ecp);
         RDB_drop_expr(ex2p, ecp);
@@ -788,7 +788,7 @@ transform_semiminus_union(RDB_expression *texp, RDB_exec_context *ecp,
         return NULL;
     }
 
-    ex4p = RDB_ro_op("SEMIMINUS", ecp);
+    ex4p = RDB_ro_op("semiminus", ecp);
     if (ex4p == NULL) {
         RDB_drop_expr(ex1p, ecp);
         RDB_drop_expr(ex2p, ecp);
@@ -798,7 +798,7 @@ transform_semiminus_union(RDB_expression *texp, RDB_exec_context *ecp,
     RDB_add_arg(ex4p, ex1p);
     RDB_add_arg(ex4p, ex2p);
 
-    resexp = RDB_ro_op("UNION", ecp);
+    resexp = RDB_ro_op("union", ecp);
     if (resexp == NULL) {
         RDB_drop_expr(ex3p, ecp);
         RDB_drop_expr(ex4p, ecp);
@@ -824,7 +824,7 @@ mutate_semiminus(RDB_expression *texp, RDB_expression **tbpv, int cap,
         return RDB_ERROR;
 
     if (tbc < cap && texp->def.op.args.firstp->kind == RDB_EX_RO_OP
-            && strcmp(texp->def.op.args.firstp->def.op.name, "UNION") == 0) {
+            && strcmp(texp->def.op.args.firstp->def.op.name, "union") == 0) {
         tbpv[tbc] = transform_semiminus_union(texp, ecp, txp);
         if (tbpv[tbc] == NULL)
             return RDB_ERROR;
@@ -860,7 +860,7 @@ index_joins(RDB_expression *otexp, RDB_expression *itexp,
             }
 
             refargp->def.tbref.indexp = &tbp->val.tb.stp->indexv[i];
-            ntexp = RDB_ro_op("JOIN", ecp);
+            ntexp = RDB_ro_op("join", ecp);
             if (ntexp == NULL) {
                 return RDB_ERROR;
             }
@@ -946,37 +946,37 @@ mutate(RDB_expression *texp, RDB_expression **tbpv, int cap, RDB_exec_context *e
     if (texp->kind != RDB_EX_RO_OP)
         return 0;
 
-    if (strcmp(texp->def.op.name, "WHERE") == 0) {
+    if (strcmp(texp->def.op.name, "where") == 0) {
         return mutate_where(texp, tbpv, cap, ecp, txp);
     }
 
-    if (strcmp(texp->def.op.name, "JOIN") == 0) {
+    if (strcmp(texp->def.op.name, "join") == 0) {
         return mutate_join(texp, tbpv, cap, ecp, txp);
     }
 
-    if (strcmp(texp->def.op.name, "SEMIMINUS") == 0) {
+    if (strcmp(texp->def.op.name, "semiminus") == 0) {
         return mutate_semiminus(texp, tbpv, cap, ecp, txp);       
     }
 
-    if (strcmp(texp->def.op.name, "UNION") == 0
-            || strcmp(texp->def.op.name, "MINUS") == 0
-            || strcmp(texp->def.op.name, "INTERSECT") == 0
-            || strcmp(texp->def.op.name, "SEMIJOIN") == 0
-            || strcmp(texp->def.op.name, "JOIN") == 0) {
+    if (strcmp(texp->def.op.name, "union") == 0
+            || strcmp(texp->def.op.name, "minus") == 0
+            || strcmp(texp->def.op.name, "intersect") == 0
+            || strcmp(texp->def.op.name, "semijoin") == 0
+            || strcmp(texp->def.op.name, "join") == 0) {
         return mutate_full_vt(texp, tbpv, cap, ecp, txp);
     }
-    if (strcmp(texp->def.op.name, "EXTEND") == 0
-            || strcmp(texp->def.op.name, "PROJECT") == 0
-            || strcmp(texp->def.op.name, "REMOVE") == 0
-            || strcmp(texp->def.op.name, "RENAME") == 0
-            || strcmp(texp->def.op.name, "SUMMARIZE") == 0
-            || strcmp(texp->def.op.name, "WRAP") == 0
-            || strcmp(texp->def.op.name, "UNWRAP") == 0
-            || strcmp(texp->def.op.name, "GROUP") == 0
-            || strcmp(texp->def.op.name, "UNGROUP") == 0) {
+    if (strcmp(texp->def.op.name, "extend") == 0
+            || strcmp(texp->def.op.name, "project") == 0
+            || strcmp(texp->def.op.name, "remove") == 0
+            || strcmp(texp->def.op.name, "rename") == 0
+            || strcmp(texp->def.op.name, "summarize") == 0
+            || strcmp(texp->def.op.name, "wrap") == 0
+            || strcmp(texp->def.op.name, "unwrap") == 0
+            || strcmp(texp->def.op.name, "group") == 0
+            || strcmp(texp->def.op.name, "ungroup") == 0) {
         return mutate_vt(texp, 1, tbpv, cap, ecp, txp);
     }
-    if (strcmp(texp->def.op.name, "DIVIDE") == 0) {
+    if (strcmp(texp->def.op.name, "divide") == 0) {
         return mutate_vt(texp, 2, tbpv, cap, ecp, txp);
     }
     return 0;

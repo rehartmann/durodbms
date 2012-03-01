@@ -251,7 +251,7 @@ test dbconstraint {db/table constraints} -setup $DBSETUP -body {
 
         commit;
     }
-} -result {caught predicate violation: CR
+} -result {caught predicate violation: cr
 }
 
 test trycatch {TRY .. CATCH} -setup $DBSETUP -body {

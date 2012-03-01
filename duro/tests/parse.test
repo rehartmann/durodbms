@@ -20,11 +20,11 @@ test parse {parser} -setup $SETUP -body {
     duro::db create $dbenv TEST
     
     set tx [duro::begin $dbenv TEST]
-    
+
     # Create real tables
     duro::table create T {
-       {K INTEGER}
-       {S1 STRING}
+       {K integer}
+       {S1 string}
     } {{K}} $tx
     
     if {![catch {duro::table expr TU {T UNION T UNION } $tx} msg]} {
@@ -32,7 +32,7 @@ test parse {parser} -setup $SETUP -body {
     }
     
     set errcode [lindex $errorCode 1]
-    if {![string match "SYNTAX_ERROR(*)" $errcode]} {
+    if {![string match "syntax_error(*)" $errcode]} {
         error "wrong error: $errcode"
     }
     
@@ -41,7 +41,7 @@ test parse {parser} -setup $SETUP -body {
     }
 
     set errcode [lindex $errorCode 1]
-    if {![string match "SYNTAX_ERROR(*)" $errcode]} {
+    if {![string match "syntax_error(*)" $errcode]} {
         error "wrong error: $errcode"
     }
     
@@ -50,7 +50,7 @@ test parse {parser} -setup $SETUP -body {
     }
     
     set errcode [lindex $errorCode 1]
-    if {![string match "NAME_ERROR(*)" $errcode]} {
+    if {![string match "name_error(*)" $errcode]} {
         error "wrong error: $errcode"
     }
     

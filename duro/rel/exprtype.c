@@ -591,23 +591,23 @@ expr_op_type(RDB_expression *exp, RDB_gettypefn *getfnp, void *arg,
     /*
      * WHERE, EXTEND, etc. require special treatment
      */
-    if (strcmp(exp->def.op.name, "WHERE") == 0) {
+    if (strcmp(exp->def.op.name, "where") == 0) {
         return where_type(exp, getfnp, arg, ecp, txp);
     }
-    if (strcmp(exp->def.op.name, "EXTEND") == 0) {
+    if (strcmp(exp->def.op.name, "extend") == 0) {
         return extend_type(exp, getfnp, arg, ecp, txp);
     }
-    if (strcmp(exp->def.op.name, "SUMMARIZE") == 0) {
+    if (strcmp(exp->def.op.name, "summarize") == 0) {
         return RDB_summarize_type(&exp->def.op.args, 0, NULL, ecp, txp);
     }
-    if (strcmp(exp->def.op.name, "TUPLE") == 0) {
+    if (strcmp(exp->def.op.name, "tuple") == 0) {
         return tuple_type(exp, getfnp, arg, ecp, txp);
     }
-    if (strcmp(exp->def.op.name, "ARRAY") == 0) {
+    if (strcmp(exp->def.op.name, "array") == 0) {
         return array_type(exp, getfnp, arg, ecp, txp);
     }
 
-    if (strcmp(exp->def.op.name, "REMOVE") == 0) {
+    if (strcmp(exp->def.op.name, "remove") == 0) {
         if (_RDB_remove_to_project(exp, getfnp, arg, ecp, txp) != RDB_OK)
             goto error;
     }
@@ -615,7 +615,7 @@ expr_op_type(RDB_expression *exp, RDB_gettypefn *getfnp, void *arg,
     argc = RDB_expr_list_length(&exp->def.op.args);
 
     /* Aggregate operators with attribute argument */
-    if (strcmp(exp->def.op.name, "AVG") == 0) {
+    if (strcmp(exp->def.op.name, "avg") == 0) {
         RDB_type *argtyp;
         RDB_type *attrtyp;
 
@@ -644,9 +644,9 @@ expr_op_type(RDB_expression *exp, RDB_gettypefn *getfnp, void *arg,
             goto error;
         }
         return &RDB_FLOAT;
-    } else if (strcmp(exp->def.op.name, "SUM") == 0
-            || strcmp(exp->def.op.name, "MAX") == 0
-            || strcmp(exp->def.op.name, "MIN") == 0) {
+    } else if (strcmp(exp->def.op.name, "sum") == 0
+            || strcmp(exp->def.op.name, "max") == 0
+            || strcmp(exp->def.op.name, "min") == 0) {
         RDB_type *argtyp;
         RDB_type *attrtyp;
 
@@ -674,8 +674,8 @@ expr_op_type(RDB_expression *exp, RDB_gettypefn *getfnp, void *arg,
             goto error;
         }
         return attrtyp;
-    } else if (strcmp(exp->def.op.name, "ANY") == 0
-            || strcmp(exp->def.op.name, "ALL") == 0) {
+    } else if (strcmp(exp->def.op.name, "any") == 0
+            || strcmp(exp->def.op.name, "all") == 0) {
         RDB_type *argtyp;
         RDB_type *attrtyp;
 
@@ -721,20 +721,20 @@ expr_op_type(RDB_expression *exp, RDB_gettypefn *getfnp, void *arg,
         argp = argp->nextp;
     }
 
-    if (strcmp(exp->def.op.name, "COUNT") == 0
+    if (strcmp(exp->def.op.name, "count") == 0
             && argc == 1) {
         if (argc == 1 && argtv[0]->kind != RDB_TP_RELATION) {
-            RDB_raise_type_mismatch("COUNT requires relation argument", ecp);
+            RDB_raise_type_mismatch("count requires relation argument", ecp);
             goto error;
         }
         typ = &RDB_INTEGER;
-    } else if (strcmp(exp->def.op.name, "RELATION") == 0) {
+    } else if (strcmp(exp->def.op.name, "relation") == 0) {
         typ = relation_type(exp, argtv, ecp, txp);
-    } else if (strcmp(exp->def.op.name, "RENAME") == 0) {
+    } else if (strcmp(exp->def.op.name, "rename") == 0) {
         typ = rename_type(exp, argtv, ecp, txp);
-    } else if (strcmp(exp->def.op.name, "WRAP") == 0) {
+    } else if (strcmp(exp->def.op.name, "wrap") == 0) {
         typ = wrap_type(exp, argtv, ecp, txp);
-    } else if (strcmp(exp->def.op.name, "PROJECT") == 0) {
+    } else if (strcmp(exp->def.op.name, "project") == 0) {
         typ = project_type(exp, argtv, ecp, txp);
     } else if (argc == 2
             && (argtv[0] == NULL || !RDB_type_is_scalar(argtv[0]))
@@ -750,7 +750,7 @@ expr_op_type(RDB_expression *exp, RDB_gettypefn *getfnp, void *arg,
             goto error;
         }
         typ = &RDB_BOOLEAN;
-    } else if (strcmp(exp->def.op.name, "IF") == 0) {
+    } else if (strcmp(exp->def.op.name, "if") == 0) {
         /*
          * Handle IF-THEN-ELSE
          */
@@ -767,20 +767,20 @@ expr_op_type(RDB_expression *exp, RDB_gettypefn *getfnp, void *arg,
     /*
      * Handle built-in scalar operators with relational arguments
      */
-    } else if (strcmp(exp->def.op.name, "IS_EMPTY") == 0) {
+    } else if (strcmp(exp->def.op.name, "is_empty") == 0) {
         if (argc != 1) {
             RDB_raise_invalid_argument("invalid number of arguments", ecp);
             goto error;
         }
 
         if (argtv[0] == NULL || argtv[0]->kind != RDB_TP_RELATION) {
-            RDB_raise_invalid_argument("IS_EMPTY requires table argument", ecp);
+            RDB_raise_invalid_argument("is_empty requires table argument", ecp);
             goto error;
         }
 
         typ = &RDB_BOOLEAN;
-    } else if (strcmp(exp->def.op.name, "IN") == 0
-                    || strcmp(exp->def.op.name, "SUBSET_OF") == 0) {
+    } else if (strcmp(exp->def.op.name, "in") == 0
+                    || strcmp(exp->def.op.name, "subset_of") == 0) {
         if (argc != 2) {
             RDB_raise_invalid_argument("invalid number of arguments", ecp);
             goto error;
@@ -792,11 +792,11 @@ expr_op_type(RDB_expression *exp, RDB_gettypefn *getfnp, void *arg,
         }
 
         typ = &RDB_BOOLEAN;
-    } else if (strcmp(exp->def.op.name, "UNWRAP") == 0) {
+    } else if (strcmp(exp->def.op.name, "unwrap") == 0) {
         typ = unwrap_type(exp, argtv, ecp, txp);
-    } else if (strcmp(exp->def.op.name, "GROUP") == 0) {
+    } else if (strcmp(exp->def.op.name, "group") == 0) {
         typ = group_type(exp, argtv, ecp, txp);
-    } else if (strcmp(exp->def.op.name, "UNGROUP") == 0) {
+    } else if (strcmp(exp->def.op.name, "ungroup") == 0) {
         if (argc != 2 || argtv[0] == NULL) {
             RDB_raise_invalid_argument("invalid UNGROUP", ecp);
             goto error;
@@ -813,7 +813,7 @@ expr_op_type(RDB_expression *exp, RDB_gettypefn *getfnp, void *arg,
 
         typ = RDB_ungroup_type(argtv[0],
                 RDB_obj_string(&exp->def.op.args.firstp->nextp->def.obj), ecp);
-    } else if (strcmp(exp->def.op.name, "JOIN") == 0) {
+    } else if (strcmp(exp->def.op.name, "join") == 0) {
         if (argc != 2 || argtv[0] == NULL
                 || argtv[1] == NULL) {
             RDB_raise_invalid_argument("invalid JOIN", ecp);
@@ -826,7 +826,7 @@ expr_op_type(RDB_expression *exp, RDB_gettypefn *getfnp, void *arg,
             goto error;
         }
         typ = RDB_join_relation_types(argtv[0], argtv[1], ecp);
-    } else if (strcmp(exp->def.op.name, "UNION") == 0) {
+    } else if (strcmp(exp->def.op.name, "union") == 0) {
         if (argc != 2 || argtv[0] == NULL
                 || argtv[1] == NULL) {
             RDB_raise_invalid_argument("invalid relational operator invocation",
@@ -847,10 +847,10 @@ expr_op_type(RDB_expression *exp, RDB_gettypefn *getfnp, void *arg,
         if (argc > 0)
             RDB_free(argtv);
         return typ;
-    } else if (strcmp(exp->def.op.name, "MINUS") == 0
-                || strcmp(exp->def.op.name, "SEMIMINUS") == 0
-                || strcmp(exp->def.op.name, "INTERSECT") == 0
-                || strcmp(exp->def.op.name, "SEMIJOIN") == 0) {
+    } else if (strcmp(exp->def.op.name, "minus") == 0
+                || strcmp(exp->def.op.name, "semiminus") == 0
+                || strcmp(exp->def.op.name, "intersect") == 0
+                || strcmp(exp->def.op.name, "semijoin") == 0) {
         if (argc != 2 || argtv[0] == NULL
                 || argtv[1] == NULL) {
             RDB_raise_invalid_argument("invalid relational operator invocation",
@@ -869,7 +869,7 @@ expr_op_type(RDB_expression *exp, RDB_gettypefn *getfnp, void *arg,
             goto error;
         RDB_free(argtv);
         return typ;
-    } else if (strcmp(exp->def.op.name, "DIVIDE") == 0) {
+    } else if (strcmp(exp->def.op.name, "divide") == 0) {
         if (argc != 3 || argtv[0] == NULL
                 || argtv[1] == NULL || argtv[2] == NULL) {
             RDB_raise_invalid_argument("invalid DIVIDE",
@@ -889,9 +889,9 @@ expr_op_type(RDB_expression *exp, RDB_gettypefn *getfnp, void *arg,
             goto error;
         RDB_free(argtv);
         return typ;
-    } else if (strcmp(exp->def.op.name, "TO_TUPLE") == 0) {
+    } else if (strcmp(exp->def.op.name, "to_tuple") == 0) {
         if (argc != 1 || argtv[0] == NULL) {
-            RDB_raise_invalid_argument("invalid TO_TUPLE",
+            RDB_raise_invalid_argument("invalid to_tuple",
                     ecp);
             goto error;
         }
@@ -902,7 +902,7 @@ expr_op_type(RDB_expression *exp, RDB_gettypefn *getfnp, void *arg,
         }
 
         typ = RDB_dup_nonscalar_type(argtv[0]->def.basetyp, ecp);
-    } else if (strcmp(exp->def.op.name, "LENGTH") == 0
+    } else if (strcmp(exp->def.op.name, "length") == 0
             && argc == 1
             && (argtv[0] == NULL || argtv[0]->kind == RDB_TP_ARRAY)) {
         typ = &RDB_INTEGER;

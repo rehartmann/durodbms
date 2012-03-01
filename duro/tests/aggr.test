@@ -18,13 +18,13 @@ test aggregate {real tables} -setup $SETUP -body {
 	
     # Create Database
     duro::db create $dbenv TEST
-	
+
     set tx [duro::begin $dbenv TEST]
 	
     # Create table
     duro::table create T {
-       {A INTEGER}
-       {B BOOLEAN}
+       {A integer}
+       {B boolean}
     } {{A}} $tx
 
     duro::insert T {A 1 B FALSE} $tx
@@ -58,14 +58,14 @@ test aggregate {real tables} -setup $SETUP -body {
     if {![catch {duro::expr {OR(T, A)} $tx}]} {
         error "invalid ANY should fail, but succeeded"
     }
-    if {![string match "TYPE_MISMATCH_ERROR(*)" [lindex $errorCode 1]]} {
+    if {![string match "type_mismatch_error(*)" [lindex $errorCode 1]]} {
         error "Wrong error from OR: $errorCode"
     }
 
     if {![catch {duro::expr {AND(T, A)} $tx}]} {
         error "invalid AND should fail, but succeeded"
     }
-    if {![string match "TYPE_MISMATCH_ERROR(*)" [lindex $errorCode 1]]} {
+    if {![string match "type_mismatch_error(*)" [lindex $errorCode 1]]} {
         error "Wrong error from AND: $errorCode"
     }
 

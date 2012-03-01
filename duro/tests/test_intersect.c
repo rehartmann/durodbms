@@ -62,7 +62,7 @@ test_intersect(RDB_database *dbp, RDB_exec_context *ecp)
         return RDB_ERROR;
     }
 
-    exp = RDB_ro_op("INTERSECT", ecp);
+    exp = RDB_ro_op("intersect", ecp);
     if (exp == NULL) {
         RDB_rollback(ecp, &tx);
         return RDB_ERROR;

@@ -27,11 +27,11 @@ test transform {real tables} -setup $SETUP -body {
 
     # Create tables
     duro::table create T1 {
-       {A INTEGER}
+       {A integer}
     } {{A}} $tx
 
     duro::table create T2 {
-       {A INTEGER}
+       {A integer}
     } {{A}} $tx
 
     # Insert tuple

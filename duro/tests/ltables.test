@@ -27,8 +27,8 @@ test ltables {transient tables} -setup $SETUP -body {
     
     # Create table
     duro::table create -local L1 {
-       {B STRING}
-       {A INTEGER}
+       {B string}
+       {A integer}
     } {{A}} $tx
     
     # Insert tuple
@@ -51,8 +51,8 @@ test ltables {transient tables} -setup $SETUP -body {
     }
     
     duro::delete L1 $tx
-    
-    if {![duro::expr {IS_EMPTY(L1)} $tx]} {
+
+    if {![duro::expr {is_empty(L1)} $tx]} {
         error "L1 should be empty, but is not"
     }
     

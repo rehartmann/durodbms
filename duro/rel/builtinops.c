@@ -16,7 +16,7 @@ RDB_op_map _RDB_builtin_ro_op_map;
 /** @page builtin-ops Built-in operators
 @section scalar-ops Built-in scalar operators
 
-OPERATOR = (<em>ANY</em>, <em>ANY</em>) RETURNS BOOLEAN;
+OPERATOR = (<em>ANY</em>, <em>ANY</em>) RETURNS boolean;
 
 The equality operator. Defined for every type. The arguments must be of the same type.
 
@@ -24,7 +24,7 @@ The equality operator. Defined for every type. The arguments must be of the same
 
 TRUE if the two arguments are equal, FALSE otherwise.  
 
-OPERATOR <> (<em>ANY</em>, <em>ANY</em>) RETURNS BOOLEAN;
+OPERATOR <> (<em>ANY</em>, <em>ANY</em>) RETURNS boolean;
 
 <h4>Description</h4>
 
@@ -39,11 +39,11 @@ TRUE if the two arguments are not equal, FALSE otherwise.
 
 <h3 id="op_lt">OPERATOR &lt;</h3>
 
-OPERATOR &lt; (INTEGER, INTEGER) RETURNS BOOLEAN;
+OPERATOR &lt; (integer, integer) RETURNS boolean;
 
-OPERATOR &lt; (FLOAT, FLOAT) RETURNS BOOLEAN;
+OPERATOR &lt; (float, float) RETURNS boolean;
 
-OPERATOR &lt; (STRING, STRING) RETURNS BOOLEAN;
+OPERATOR &lt; (string, string) RETURNS boolean;
 
 <h4>Description</h4>
 
@@ -58,11 +58,11 @@ If the operands are strings, the strings will be compared using strcoll().
 
 <h3 id="op_lt">OPERATOR &lt;=</h3>
 
-OPERATOR &lt;= (INTEGER, INTEGER) RETURNS BOOLEAN;
+OPERATOR &lt;= (integer, integer) RETURNS boolean;
 
-OPERATOR &lt;= (FLOAT, FLOAT) RETURNS BOOLEAN;
+OPERATOR &lt;= (float, float) RETURNS boolean;
 
-OPERATOR &lt;= (STRING, STRING) RETURNS BOOLEAN;
+OPERATOR &lt;= (STRING, STRING) RETURNS boolean;
 
 <h4>Description</h4>
 
@@ -77,11 +77,11 @@ If the operands are strings, the strings will be compared using strcoll().
 
 <h3 id="op_gt">OPERATOR &gt;</h3>
 
-OPERATOR &gt; (INTEGER, INTEGER) RETURNS BOOLEAN;
+OPERATOR &gt; (integer, integer) RETURNS boolean;
 
-OPERATOR &gt; (FLOAT, FLOAT) RETURNS BOOLEAN;
+OPERATOR &gt; (float, float) RETURNS boolean;
 
-OPERATOR &gt; (STRING, STRING) RETURNS BOOLEAN;
+OPERATOR &gt; (STRING, STRING) RETURNS boolean;
 
 <h4>Description</h4>
 
@@ -96,11 +96,11 @@ If the operands are strings, the strings will be compared using strcoll().
 
 <h3 id="op_gte">OPERATOR &gt;=</h3>
 
-OPERATOR &gt;= (INTEGER, INTEGER) RETURNS BOOLEAN;
+OPERATOR &gt;= (integer, integer) RETURNS boolean;
 
-OPERATOR &gt;= (FLOAT, FLOAT) RETURNS BOOLEAN;
+OPERATOR &gt;= (float, float) RETURNS boolean;
 
-OPERATOR &gt;= (STRING, STRING) RETURNS BOOLEAN;
+OPERATOR &gt;= (string, string) RETURNS boolean;
 
 <h4>Description</h4>
 
@@ -115,9 +115,9 @@ If the operands are strings, the strings will be compared using strcoll().
 
 <h3 id="op_plus">OPERATOR +</h3>
 
-OPERATOR + (INTEGER, INTEGER) RETURNS INTEGER;
+OPERATOR + (integer, integer) RETURNS integer;
 
-OPERATOR + (FLOAT, FLOAT) RETURNS FLOAT;
+OPERATOR + (float, float) RETURNS float;
 
 <h4>Description</h4>
 
@@ -131,9 +131,9 @@ The sum of the two operands.
 
 <h3 id="op_uminus">OPERATOR - (unary)</h3>
 
-OPERATOR - (INTEGER) RETURNS INTEGER;
+OPERATOR - (integer) RETURNS integer;
 
-OPERATOR - (FLOAT) RETURNS FLOAT;
+OPERATOR - (float) RETURNS float;
 
 <h4>Description</h4>
 
@@ -147,9 +147,9 @@ The operand, sign inverted.
 
 <h3 id="op_bminus">OPERATOR - (binary)</h3>
 
-OPERATOR - (INTEGER, INTEGER) RETURNS INTEGER;
+OPERATOR - (integer, integer) RETURNS integer;
 
-OPERATOR - (FLOAT, FLOAT) RETURNS FLOAT;
+OPERATOR - (float, float) RETURNS float;
 
 <h4>Description</h4>
 
@@ -163,9 +163,9 @@ The difference of the two operands.
 
 <h3 id="op_times">OPERATOR *</h3>
 
-OPERATOR * (INTEGER, INTEGER) RETURNS INTEGER;;
+OPERATOR * (integer, integer) RETURNS integer;;
 
-OPERATOR * (FLOAT, FLOAT) RETURNS FLOAT;
+OPERATOR * (float, float) RETURNS float;
 
 <h4>Description</h4>
 
@@ -179,9 +179,9 @@ The product of the two operands.
 
 <h3 id="op_div">OPERATOR /</h3>
 
-OPERATOR / (INTEGER, INTEGER) RETURNS INTEGER;
+OPERATOR / (integer, integer) RETURNS integer;
 
-OPERATOR / (FLOAT, FLOAT) RETURNS FLOAT;
+OPERATOR / (float, float) RETURNS float;
 
 <h4>Description</h4>
 
@@ -200,9 +200,9 @@ The quotient of the operators.
 
 <hr>
 
-<h3 id="op_and">OPERATOR AND</h3>
+<h3 id="op_and">OPERATOR and</h3>
 
-OPERATOR AND (BOOLEAN, BOOLEAN) RETURNS BOOLEAN;
+OPERATOR and (boolean, boolean) RETURNS boolean;
 
 <h4>Description</h4>
 
@@ -212,7 +212,7 @@ The boolean AND operator.
 
 <h3 id="op_or">OPERATOR OR</h3>
 
-OPERATOR OR (BOOLEAN, BOOLEAN) RETURNS BOOLEAN;
+OPERATOR or (boolean, boolean) RETURNS boolean;
 
 <h4>Description</h4>
 
@@ -220,9 +220,9 @@ The boolean OR operator.
 
 <hr>
 
-<h3 id="op_xnd">OPERATOR XOR</h3>
+<h3 id="op_xor">OPERATOR xor</h3>
 
-OPERATOR XOR (BOOLEAN, BOOLEAN) RETURNS BOOLEAN;
+OPERATOR xor (boolean, boolean) RETURNS boolean;
 
 <h4>Description</h4>
 
@@ -230,9 +230,9 @@ The boolean XOR operator.
 
 <hr>
 
-<h3 id="op_not">OPERATOR NOT</h3>
+<h3 id="op_not">OPERATOR not</h3>
 
-OPERATOR NOT (BOOLEAN) RETURNS BOOLEAN;
+OPERATOR not (boolean) RETURNS boolean;
 
 <h4>Description</h4>
 
@@ -242,7 +242,7 @@ The boolean NOT operator.
 
 <h3 id="op_concat">OPERATOR ||</h3>
 
-OPERATOR || (STRING, STRING) RETURNS STRING;
+OPERATOR || (string, string) RETURNS string;
 
 <h4>Description</h4>
 
@@ -256,7 +256,7 @@ The result of the concatenation of the operands.
 
 <h3 id="op_length">OPERATOR LENGTH</h3>
 
-OPERATOR LENGTH (STRING) RETURNS INTEGER;
+OPERATOR length (STRING) RETURNS integer;
 
 <h4>Description</h4>
 
@@ -268,10 +268,10 @@ The length of the operand.
 
 <hr>
 
-<h3 id="op_substring">OPERATOR SUBSTRING</h3>
+<h3 id="op_substring">OPERATOR substring</h3>
 
-OPERATOR SUBSTRING(S STRING, START INTEGER, LENGTH INTEGER) RETURNS
-STRING;
+OPERATOR substring(s string, start integer, length integer) RETURNS
+string;
 
 <h4>Description</h4>
 
@@ -279,21 +279,21 @@ The substring operator.
 
 <h4>Return value</h4>
 
-The substring of S with length LENGTH starting at position
+The substring of S with length <var>length</var> starting at position
 START.
 
 <h4>Errors</h4>
 
 <dl>
-<dt>INVALID_ARGUMENT_ERROR
+<dt>invalid_argument_error
 <dd>START is negative, or START + LENGTH is greater than LENGTH(S).
 </dl>
 
 <hr>
 
-<h3 id="op_matches">OPERATOR MATCHES</h3>
+<h3 id="op_matches">OPERATOR matches</h3>
 
-OPERATOR MATCHES (S STRING, PATTERN STRING) RETURNS BOOLEAN;
+OPERATOR matches (s string, pattern string) RETURNS boolean;
 
 <h4>Description</h4>
 
@@ -305,43 +305,43 @@ RDB_TRUE if S matches PATTERN, RDB_FALSE otherwise.
 
 <hr>
 
-<h3 id="op_integer">OPERATOR CAST_AS_INTEGER</h3>
+<h3 id="op_integer">OPERATOR cast_as_integer</h3>
 
-OPERATOR CAST_AS_INTEGER (FLOAT) RETURNS INTEGER;
+OPERATOR cast_as_integer (float) RETURNS integer;
 
-OPERATOR CAST_AS_INTEGER (STRING) RETURNS INTEGER;
-
-<h4>Description</h4>
-
-Converts the operand to INTEGER.
-
-<h4>Return value</h4>
-
-The operand, converted to INTEGER.
-
-<hr>
-
-<h3 id="op_float">OPERATOR CAST_AS_FLOAT</h3>
-
-OPERATOR CAST_AS_FLOAT (INTEGER) RETURNS FLOAT;
-
-OPERATOR CAST_AS_FLOAT (STRING) RETURNS FLOAT;
+OPERATOR cast_as_integer (string) RETURNS integer;
 
 <h4>Description</h4>
 
-Converts the operand to FLOAT.
+Converts the operand to <code>integer</code>.
 
 <h4>Return value</h4>
 
-The operand, converted to FLOAT.
+The operand, converted to <code>integer</code>.
 
 <hr>
 
-<h3 id="op_string">OPERATOR CAST_AS_STRING</h3>
+<h3 id="op_float">OPERATOR cast_as_float</h3>
 
-OPERATOR CAST_AS_STRING (INTEGER) RETURNS STRING;
+OPERATOR cast_as_float (integer) RETURNS float;
 
-OPERATOR CAST_AS_STRING (FLOAT) RETURNS STRING;
+OPERATOR cast_as_float (string) RETURNS float;
+
+<h4>Description</h4>
+
+Converts the operand to <code>float</code>.
+
+<h4>Return value</h4>
+
+The operand, converted to <code>float</code>.
+
+<hr>
+
+<h3 id="op_string">OPERATOR cast_as_string</h3>
+
+OPERATOR cast_as_string (integer) RETURNS string;
+
+OPERATOR cast_as_string (float) RETURNS string;
 
 <h4>Description</h4>
 
@@ -353,23 +353,23 @@ The operand, converted to STRING.
 
 <hr>
 
-<h3 id="op_length">OPERATOR GETENV</h3>
+<h3 id="op_length">OPERATOR getenv</h3>
 
-OPERATOR GETENV (NAME STRING) RETURNS STRING;
+OPERATOR getenv (name string) RETURNS string;
 
 <h4>Description</h4>
 
-Reads the environment variable <var>NAME</var>.
+Reads the environment variable <var>name</var>.
 
 <h4>Return value</h4>
 
-The value of the environment variable <var>NAME</var>.
+The value of the environment variable <var>name</var>.
 
 <hr>
 
-<h3 id="op_is_empty">OPERATOR IS_EMPTY</h3>
+<h3 id="op_is_empty">OPERATOR is_empty</h3>
 
-OPERATOR IS_EMPTY (<em>RELATION</em>) RETURNS BOOLEAN;
+OPERATOR is_empty (<em>RELATION</em>) RETURNS boolean;
 
 <h4>Description</h4>
 
@@ -382,9 +382,9 @@ otherwise.
 
 <hr>
 
-<h3 id="op_count">OPERATOR COUNT</h3>
+<h3 id="op_count">OPERATOR count</h3>
 
-OPERATOR COUNT (<em>RELATION</em>) RETURNS INTEGER;
+OPERATOR count (<em>RELATION</em>) RETURNS integer;
 
 <h4>Description</h4>
 
@@ -396,9 +396,9 @@ The cardinality of the relation-valued operand.
 
 <hr>
 
-<h3 id="op_in">OPERATOR IN</h3>
+<h3 id="op_in">OPERATOR in</h3>
 
-OPERATOR IN (T <em>TUPLE</em>, R <em>RELATION</em>) RETURNS BOOLEAN;
+OPERATOR in (t <em>TUPLE</em>, r <em>RELATION</em>) RETURNS boolean;
 
 <h4>Description</h4>
 
@@ -406,13 +406,13 @@ Checks if a table contains a given tuple.
 
 <h4>Return value</h4>
 
-RDB_TRUE if <var>R</var> contains <var>T</var>, RDB_FALSE otherwise.
+RDB_TRUE if <var>r</var> contains <var>t</var>, RDB_FALSE otherwise.
 
 <hr>
 
-<h3 id="op_subset_of">OPERATOR SUBSET_OF</h3>
+<h3 id="op_subset_of">OPERATOR subset_of</h3>
 
-OPERATOR SUBSET_OF (R1 <em>RELATION</em>, R2 <em>RELATION</em>) RETURNS BOOLEAN;
+OPERATOR subset_of (R1 <em>RELATION</em>, R2 <em>RELATION</em>) RETURNS boolean;
 
 <h4>Description</h4>
 
@@ -424,72 +424,72 @@ RDB_TRUE if the <var>R1</var> is a subset of <var>R2</var>, RDB_FALSE otherwise.
 
 <hr>
 
-<h3 id="op_any">OPERATOR ANY</h3>
+<h3 id="op_any">OPERATOR any</h3>
 
-OPERATOR ANY(R <em>RELATION</em>, ATTR BOOLEAN) RETURNS BOOLEAN;
+OPERATOR any(R <em>RELATION</em>, ATTR boolean) RETURNS boolean;
 
 <h4>Description</h4>
 
-The ANY aggregate operator.
+The <code>any</code> aggregate operator.
 For the semantics, see RDB_any().
 
 <hr>
 
-<h3 id="op_all">OPERATOR ALL</h3>
+<h3 id="op_all">OPERATOR all</h3>
 
-OPERATOR ALL(R <em>RELATION</em>, ATTR BOOLEAN) RETURNS BOOLEAN;
+OPERATOR all(R <em>RELATION</em>, ATTR boolean) RETURNS boolean;
 
 <h4>Description</h4>
 
-The ALL aggregate operator.
+The <code>all<code> aggregate operator.
 For the semantics, see RDB_all().
 
 <hr>
 
 <h3 id="op_avg">OPERATOR AVG</h3>
 
-OPERATOR AVG(R <em>RELATION</em>, ATTR INTEGER) RETURNS FLOAT;
+OPERATOR avg(R <em>RELATION</em>, ATTR INTEGER) RETURNS float;
 
-OPERATOR AVG(R <em>RELATION</em>, ATTR FLOAT) RETURNS FLOAT;
+OPERATOR avg(R <em>RELATION</em>, ATTR float) RETURNS float;
 
 <h4>Description</h4>
 
-The AVG aggregate operator.
+The <code>avg</code> aggregate operator.
 For the semantics, see RDB_avg().
 
 <hr>
 
 <h3 id="op_max">OPERATOR MAX</h3>
 
-OPERATOR MAX(R <em>RELATION</em>, ATTR INTEGER) RETURNS INTEGER;
+OPERATOR max(R <em>RELATION</em>, attr integer) RETURNS integer;
 
-OPERATOR MAX(R <em>RELATION</em>, ATTR FLOAT) RETURNS FLOAT;
+OPERATOR max(R <em>RELATION</em>, attr float) RETURNS float;
 
 <h4>Description</h4>
 
-The MAX aggregate operator.
+The <code>max</code> aggregate operator.
 For the semantics, see RDB_max().
 
 <hr>
 
 <h3 id="op_min">OPERATOR MIN</h3>
 
-OPERATOR MIN(R <em>RELATION</em>, ATTR INTEGER) RETURNS INTEGER;
+OPERATOR min(R <em>RELATION</em>, attr integer) RETURNS INTEGER;
 
-OPERATOR MIN(R <em>RELATION</em>, ATTR FLOAT) RETURNS FLOAT;
+OPERATOR min(R <em>RELATION</em>, attr float) RETURNS float;
 
 <h4>Description</h4>
 
-The MIN aggregate operator.
+The <code>min</code> aggregate operator.
 For the semantics, see RDB_min().
 
 <hr>
 
 <h3 id="op_sum">OPERATOR SUM</h3>
 
-OPERATOR SUM(R <em>RELATION</em>, ATTR INTEGER) RETURNS INTEGER;
+OPERATOR SUM(R <em>RELATION</em>, attr integer) RETURNS integer;
 
-OPERATOR SUM(R <em>RELATION</em>, ATTR FLOAT) RETURNS FLOAT;
+OPERATOR SUM(R <em>RELATION</em>, attr float) RETURNS float;
 
 <h4>Description</h4>
 
@@ -498,9 +498,9 @@ For the semantics, see RDB_sum().
 
 <hr>
 
-<h3 id="op_if">OPERATOR IF</h3>
+<h3 id="op_if">OPERATOR if</h3>
 
-OPERATOR IF (B BOOLEAN, V1 <em>ANY</em>, V2 <em>ANY</em>) RETURNS <em>ANY</em>;
+OPERATOR IF (B boolean, V1 <em>ANY</em>, V2 <em>ANY</em>) RETURNS <em>ANY</em>;
 
 <h4>Description</h4>
 
@@ -534,9 +534,9 @@ The relation selector.
 
 <hr>
 
-<h3 id="op_array">OPERATOR ARRAY</h3>
+<h3 id="op_array">OPERATOR array</h3>
 
-OPERATOR ARRAY(<em>ANY</em>, ...) RETURNS <em>ARRAY</em>;
+OPERATOR array(<em>ANY</em>, ...) RETURNS <em>ARRAY</em>;
 
 <h4>Description</h4>
 
@@ -544,7 +544,7 @@ The array selector.
 
 <hr>
 
-<h3 id="op_to_tuple">OPERATOR TO_TUPLE</h3>
+<h3 id="op_to_tuple">OPERATOR to_tuple</h3>
 
 OPERATOR TO_TUPLE(R <em>RELATION</em>) RETURNS <em>TUPLE</em>;
 
@@ -554,9 +554,9 @@ Extracts a single tuple from a relation.
 
 <hr>
 
-<h3 id="op_divide">OPERATOR DIVIDE</h3>
+<h3 id="op_divide">OPERATOR divide</h3>
 
-OPERATOR DIVIDE(R1 <em>RELATION</em>, R2 <em>RELATION</em>, R2 <em>RELATION</em>) RETURNS <em>RELATION</em>;
+OPERATOR divide(R1 <em>RELATION</em>, R2 <em>RELATION</em>, R2 <em>RELATION</em>) RETURNS <em>RELATION</em>;
 
 <h4>Description</h4>
 
@@ -564,105 +564,105 @@ The relational three-argument (small) DIVIDE operator.
 
 <hr>
 
-<h3 id="op_extend">OPERATOR EXTEND</h3>
+<h3 id="op_extend">OPERATOR extend</h3>
 
-OPERATOR EXTEND(R <em>RELATION</em>, ATTREXP <em>ANY</em>, ATTRNAME STRING, ...) RETURNS <em>RELATION</em>;
-
-<hr>
-
-<h3 id="op_group">OPERATOR GROUP</h3>
-
-OPERATOR GROUP(R <em>RELATION</em>, ATTRNAME <em>STRING</em> ...) RETURNS <em>RELATION</em>;
+OPERATOR extend(R <em>RELATION</em>, ATTREXP <em>ANY</em>, attrname string, ...) RETURNS <em>RELATION</em>;
 
 <hr>
 
-<h3 id="op_intersect">OPERATOR INTERSECT</h3>
+<h3 id="op_group">OPERATOR group</h3>
 
-OPERATOR INTERSECT(R1 <em>RELATION</em>, R2 <em>RELATION</em>) RETURNS <em>RELATION</em>;
-
-<hr>
-
-<h3 id="op_join">OPERATOR JOIN</h3>
-
-OPERATOR JOIN(R1 <em>RELATION</em>, R2 <em>RELATION</em>) RETURNS <em>RELATION</em>;
+OPERATOR group(R <em>RELATION</em>, attrname string ...) RETURNS <em>RELATION</em>;
 
 <hr>
 
-<h3 id="op_minus">OPERATOR MINUS</h3>
+<h3 id="op_intersect">OPERATOR intersect</h3>
 
-OPERATOR MINUS(R1 <em>RELATION</em>, R2 <em>RELATION</em>) RETURNS <em>RELATION</em>;
-
-<hr>
-
-<h3 id="op_project">OPERATOR PROJECT</h3>
-
-OPERATOR PROJECT(R1 <em>RELATION</em>, ATTRNAME STRING ...) RETURNS <em>RELATION</em>;
+OPERATOR intersect(R1 <em>RELATION</em>, R2 <em>RELATION</em>) RETURNS <em>RELATION</em>;
 
 <hr>
 
-<h3 id="op_remove">OPERATOR REMOVE</h3>
+<h3 id="op_join">OPERATOR join</h3>
 
-OPERATOR REMOVE(R <em>RELATION</em>, ATTRNAME STRING ...) RETURNS <em>RELATION</em>;
-
-<hr>
-
-<h3 id="op_rename">OPERATOR RENAME</h3>
-
-OPERATOR RENAME(R <em>RELATION</em>, SRC_ATTRNAME STRING, DST_ATTRNAME STRING ...) RETURNS <em>RELATION</em>;
+OPERATOR join(R1 <em>RELATION</em>, R2 <em>RELATION</em>) RETURNS <em>RELATION</em>;
 
 <hr>
 
-<h3 id="op_ungroup">OPERATOR UNGROUP</h3>
+<h3 id="op_minus">OPERATOR minus</h3>
 
-OPERATOR UNGROUP(R <em>RELATION</em>, ATTRNAME STRING) RETURNS <em>RELATION</em>;
-
-<hr>
-
-<h3 id="op_union">OPERATOR UNION</h3>
-
-OPERATOR UNION(R1 <em>RELATION</em>, R2 <em>RELATION</em>) RETURNS <em>RELATION</em>;
+OPERATOR minus(R1 <em>RELATION</em>, R2 <em>RELATION</em>) RETURNS <em>RELATION</em>;
 
 <hr>
 
-<h3 id="op_update">OPERATOR UPDATE</h3>
+<h3 id="op_project">OPERATOR project</h3>
 
-OPERATOR UPDATE(R1 <em>RELATION</em>, DST_ATTRNAME <em>STRING</em>, SRC_EXPR <em>ANY</em>, ...) RETURNS <em>RELATION</em>;
-
-<hr>
-
-<h3 id="op_unwrap">OPERATOR UNWRAP</h3>
-
-OPERATOR UNWRAP(ATTRNAME STRING, ...) RETURNS <em>RELATION</em>;
+OPERATOR project(R1 <em>RELATION</em>, ATTRNAME STRING ...) RETURNS <em>RELATION</em>;
 
 <hr>
 
-<h3 id="op_semijoin">OPERATOR SEMIJOIN</h3>
+<h3 id="op_remove">OPERATOR remove</h3>
 
-OPERATOR SEMIJOIN(R1 <em>RELATION</em>, R2 <em>RELATION</em>) RETURNS <em>RELATION</em>;
-
-<hr>
-
-<h3 id="op_semiminus">OPERATOR SEMIMINUS</h3>
-
-OPERATOR SEMIMINUS(R1 <em>RELATION</em>, R2 <em>RELATION</em>) RETURNS <em>RELATION</em>;
+OPERATOR remove(R <em>RELATION</em>, ATTRNAME STRING ...) RETURNS <em>RELATION</em>;
 
 <hr>
 
-<h3 id="op_summarize">OPERATOR SUMMARIZE</h3>
+<h3 id="op_rename">OPERATOR rename</h3>
 
-OPERATOR SUMMARIZE(R1 <em>RELATION</em>, R2 <em>RELATION</em>, EXPR <em>ANY</em>, ATTRNAME STRING, ...) RETURNS <em>RELATION</em>;
-
-<hr>
-
-<h3 id="op_where">OPERATOR WHERE</h3>
-
-OPERATOR WHERE(R <em>RELATION</em>, B BOOLEAN) RETURNS <em>RELATION</em>;
+OPERATOR rename(R <em>RELATION</em>, SRC_ATTRNAME STRING, DST_ATTRNAME STRING ...) RETURNS <em>RELATION</em>;
 
 <hr>
 
-<h3 id="op_wrap">OPERATOR WRAP</h3>
+<h3 id="op_ungroup">OPERATOR ungroup</h3>
 
-OPERATOR WRAP(R <em>RELATION</em>, SRC_ATTRS ARRAY OF STRING, DST_ATTR STRING ...) RETURNS <em>RELATION</em>;
+OPERATOR ungroup(R <em>RELATION</em>, ATTRNAME STRING) RETURNS <em>RELATION</em>;
+
+<hr>
+
+<h3 id="op_union">OPERATOR union</h3>
+
+OPERATOR union(R1 <em>RELATION</em>, R2 <em>RELATION</em>) RETURNS <em>RELATION</em>;
+
+<hr>
+
+<h3 id="op_update">OPERATOR update</h3>
+
+OPERATOR update(R1 <em>RELATION</em>, DST_ATTRNAME <em>STRING</em>, SRC_EXPR <em>ANY</em>, ...) RETURNS <em>RELATION</em>;
+
+<hr>
+
+<h3 id="op_unwrap">OPERATOR unwrap</h3>
+
+OPERATOR unwrap(ATTRNAME STRING, ...) RETURNS <em>RELATION</em>;
+
+<hr>
+
+<h3 id="op_semijoin">OPERATOR semijoin</h3>
+
+OPERATOR semijoin(R1 <em>RELATION</em>, R2 <em>RELATION</em>) RETURNS <em>RELATION</em>;
+
+<hr>
+
+<h3 id="op_semiminus">OPERATOR semiminus</h3>
+
+OPERATOR semiminus(R1 <em>RELATION</em>, R2 <em>RELATION</em>) RETURNS <em>RELATION</em>;
+
+<hr>
+
+<h3 id="op_summarize">OPERATOR summarize</h3>
+
+OPERATOR summarize(R1 <em>RELATION</em>, R2 <em>RELATION</em>, EXPR <em>ANY</em>, ATTRNAME STRING, ...) RETURNS <em>RELATION</em>;
+
+<hr>
+
+<h3 id="op_where">OPERATOR where</h3>
+
+OPERATOR where(R <em>RELATION</em>, B boolean) RETURNS <em>RELATION</em>;
+
+<hr>
+
+<h3 id="op_wrap">OPERATOR wrap</h3>
+
+OPERATOR wrap(R <em>RELATION</em>, SRC_ATTRS ARRAY OF STRING, DST_ATTR STRING ...) RETURNS <em>RELATION</em>;
 */
 
 /*
@@ -1529,42 +1529,42 @@ _RDB_init_builtin_ops(RDB_exec_context *ecp)
     RDB_init_op_map(&_RDB_builtin_ro_op_map);
 
     argtv[0] = &RDB_FLOAT;
-    ret = put_builtin_ro_op("CAST_AS_INTEGER", 1, argtv, &RDB_INTEGER, &cast_as_integer_float,
+    ret = put_builtin_ro_op("cast_as_integer", 1, argtv, &RDB_INTEGER, &cast_as_integer_float,
             ecp);
     if (ret != RDB_OK)
         return RDB_ERROR;
 
     argtv[0] = &RDB_STRING;
-    ret = put_builtin_ro_op("CAST_AS_INTEGER", 1, argtv, &RDB_INTEGER, &cast_as_integer_string,
+    ret = put_builtin_ro_op("cast_as_integer", 1, argtv, &RDB_INTEGER, &cast_as_integer_string,
             ecp);
     if (ret != RDB_OK)
         return RDB_ERROR;
 
     argtv[0] = &RDB_INTEGER;
-    ret = put_builtin_ro_op("CAST_AS_FLOAT", 1, argtv, &RDB_FLOAT, &cast_as_float_int, ecp);
+    ret = put_builtin_ro_op("cast_as_float", 1, argtv, &RDB_FLOAT, &cast_as_float_int, ecp);
     if (ret != RDB_OK)
         return RDB_ERROR;
 
     argtv[0] = &RDB_STRING;
-    ret = put_builtin_ro_op("CAST_AS_FLOAT", 1, argtv, &RDB_FLOAT, &cast_as_float_string, ecp);
+    ret = put_builtin_ro_op("cast_as_float", 1, argtv, &RDB_FLOAT, &cast_as_float_string, ecp);
     if (ret != RDB_OK)
         return RDB_ERROR;
 
     argtv[0] = &RDB_INTEGER;
 
-    ret = put_builtin_ro_op("CAST_AS_STRING", 1, argtv, &RDB_STRING, &cast_as_string, ecp);
+    ret = put_builtin_ro_op("cast_as_string", 1, argtv, &RDB_STRING, &cast_as_string, ecp);
     if (ret != RDB_OK)
         return ret;
 
     argtv[0] = &RDB_FLOAT;
 
-    ret = put_builtin_ro_op("CAST_AS_STRING", 1, argtv, &RDB_STRING, &cast_as_string, ecp);
+    ret = put_builtin_ro_op("cast_as_string", 1, argtv, &RDB_STRING, &cast_as_string, ecp);
     if (ret != RDB_OK)
         return ret;
 
     argtv[0] = &RDB_STRING;
 
-    ret = put_builtin_ro_op("LENGTH", 1, argtv, &RDB_INTEGER, &length_string, ecp);
+    ret = put_builtin_ro_op("length", 1, argtv, &RDB_INTEGER, &length_string, ecp);
     if (ret != RDB_OK)
         return ret;
 
@@ -1572,7 +1572,7 @@ _RDB_init_builtin_ops(RDB_exec_context *ecp)
     argtv[1] = &RDB_INTEGER;
     argtv[2] = &RDB_INTEGER;
 
-    ret = put_builtin_ro_op("SUBSTRING", 3, argtv, &RDB_STRING, &substring, ecp);
+    ret = put_builtin_ro_op("substring", 3, argtv, &RDB_STRING, &substring, ecp);
     if (ret != RDB_OK)
         return ret;
 
@@ -1586,28 +1586,28 @@ _RDB_init_builtin_ops(RDB_exec_context *ecp)
     argtv[0] = &RDB_STRING;
     argtv[1] = &RDB_STRING;
 
-    ret = put_builtin_ro_op("MATCHES", 2, argtv, &RDB_BOOLEAN, &matches, ecp);
+    ret = put_builtin_ro_op("matches", 2, argtv, &RDB_BOOLEAN, &matches, ecp);
     if (ret != RDB_OK)
         return ret;
 
     argtv[0] = &RDB_BOOLEAN;
     argtv[1] = &RDB_BOOLEAN;
 
-    ret = put_builtin_ro_op("AND", 2, argtv, &RDB_BOOLEAN, &and, ecp);
+    ret = put_builtin_ro_op("and", 2, argtv, &RDB_BOOLEAN, &and, ecp);
     if (ret != RDB_OK)
         return ret;
 
-    ret = put_builtin_ro_op("OR", 2, argtv, &RDB_BOOLEAN, &or, ecp);
+    ret = put_builtin_ro_op("or", 2, argtv, &RDB_BOOLEAN, &or, ecp);
     if (ret != RDB_OK)
         return ret;
 
-    ret = put_builtin_ro_op("XOR", 2, argtv, &RDB_BOOLEAN, &xor, ecp);
+    ret = put_builtin_ro_op("xor", 2, argtv, &RDB_BOOLEAN, &xor, ecp);
     if (ret != RDB_OK)
         return ret;
 
     argtv[0] = &RDB_BOOLEAN;
 
-    ret = put_builtin_ro_op("NOT", 1, argtv, &RDB_BOOLEAN, &not, ecp);
+    ret = put_builtin_ro_op("not", 1, argtv, &RDB_BOOLEAN, &not, ecp);
     if (ret != RDB_OK)
         return ret;
 
@@ -1881,89 +1881,89 @@ _RDB_init_builtin_ops(RDB_exec_context *ecp)
     if (ret != RDB_OK)
         return ret;
 
-    if (put_builtin_ro_op("TUPLE", -1, NULL, NULL, &op_tuple, ecp) != RDB_OK)
+    if (put_builtin_ro_op("tuple", -1, NULL, NULL, &op_tuple, ecp) != RDB_OK)
         return RDB_ERROR;
 
-    if (put_builtin_ro_op("RELATION", -1, NULL, NULL, &_RDB_op_relation, ecp)
+    if (put_builtin_ro_op("relation", -1, NULL, NULL, &_RDB_op_relation, ecp)
             != RDB_OK)
         return RDB_ERROR;
 
-    if (put_builtin_ro_op("ARRAY", -1, NULL, NULL, &op_array, ecp) != RDB_OK)
+    if (put_builtin_ro_op("array", -1, NULL, NULL, &op_array, ecp) != RDB_OK)
         return RDB_ERROR;
 
-    if (put_builtin_ro_op("PROJECT", -1, NULL, NULL, &op_project, ecp)
+    if (put_builtin_ro_op("project", -1, NULL, NULL, &op_project, ecp)
             != RDB_OK)
         return RDB_ERROR;
 
-    ret = put_builtin_ro_op("REMOVE", -1, NULL, NULL, &op_remove, ecp);
+    ret = put_builtin_ro_op("remove", -1, NULL, NULL, &op_remove, ecp);
     if (ret != RDB_OK)
         return RDB_ERROR;
 
-    ret = put_builtin_ro_op("RENAME", -1, NULL, NULL, &op_rename, ecp);
+    ret = put_builtin_ro_op("rename", -1, NULL, NULL, &op_rename, ecp);
     if (ret != RDB_OK)
         return RDB_ERROR;
 
-    ret = put_builtin_ro_op("JOIN", -1, NULL, NULL, &op_rel_binop, ecp);
+    ret = put_builtin_ro_op("join", -1, NULL, NULL, &op_rel_binop, ecp);
     if (ret != RDB_OK)
         return ret;
 
-    ret = put_builtin_ro_op("MINUS", -1, NULL, NULL, &op_rel_binop, ecp);
+    ret = put_builtin_ro_op("minus", -1, NULL, NULL, &op_rel_binop, ecp);
     if (ret != RDB_OK)
         return ret;
 
-    ret = put_builtin_ro_op("SEMIMINUS", -1, NULL, NULL, &op_rel_binop, ecp);
+    ret = put_builtin_ro_op("semiminus", -1, NULL, NULL, &op_rel_binop, ecp);
     if (ret != RDB_OK)
         return ret;
 
-    ret = put_builtin_ro_op("INTERSECT", -1, NULL, NULL, &op_rel_binop, ecp);
+    ret = put_builtin_ro_op("intersect", -1, NULL, NULL, &op_rel_binop, ecp);
     if (ret != RDB_OK)
         return ret;
 
-    ret = put_builtin_ro_op("SEMIJOIN", -1, NULL, NULL, &op_rel_binop, ecp);
+    ret = put_builtin_ro_op("semijoin", -1, NULL, NULL, &op_rel_binop, ecp);
     if (ret != RDB_OK)
         return ret;
 
-    ret = put_builtin_ro_op("UNION", -1, NULL, NULL, &op_union, ecp);
+    ret = put_builtin_ro_op("union", -1, NULL, NULL, &op_union, ecp);
     if (ret != RDB_OK)
         return ret;
 
-    ret = put_builtin_ro_op("WRAP", -1, NULL, NULL, &op_wrap, ecp);
+    ret = put_builtin_ro_op("wrap", -1, NULL, NULL, &op_wrap, ecp);
     if (ret != RDB_OK)
         return ret;
 
-    ret = put_builtin_ro_op("UNWRAP", -1, NULL, NULL, &op_unwrap, ecp);
+    ret = put_builtin_ro_op("unwrap", -1, NULL, NULL, &op_unwrap, ecp);
     if (ret != RDB_OK)
         return ret;
 
-    ret = put_builtin_ro_op("UNION", -1, NULL, NULL, &op_vtable_wrapfn, ecp);
+    ret = put_builtin_ro_op("union", -1, NULL, NULL, &op_vtable_wrapfn, ecp);
     if (ret != RDB_OK)
         return ret;
 
-    ret = put_builtin_ro_op("MINUS", -1, NULL, NULL, &op_vtable_wrapfn, ecp);
+    ret = put_builtin_ro_op("minus", -1, NULL, NULL, &op_vtable_wrapfn, ecp);
     if (ret != RDB_OK)
         return ret;
 
-    ret = put_builtin_ro_op("SEMIMINUS", -1, NULL, NULL, &op_vtable_wrapfn, ecp);
+    ret = put_builtin_ro_op("semiminus", -1, NULL, NULL, &op_vtable_wrapfn, ecp);
     if (ret != RDB_OK)
         return RDB_ERROR;
 
-    ret = put_builtin_ro_op("INTERSECT", -1, NULL, NULL, &op_vtable_wrapfn, ecp);
+    ret = put_builtin_ro_op("intersect", -1, NULL, NULL, &op_vtable_wrapfn, ecp);
     if (ret != RDB_OK)
         return ret;
 
-    ret = put_builtin_ro_op("SEMIJOIN", -1, NULL, NULL, &op_vtable_wrapfn, ecp);
+    ret = put_builtin_ro_op("semijoin", -1, NULL, NULL, &op_vtable_wrapfn, ecp);
     if (ret != RDB_OK)
         return ret;
 
-    ret = put_builtin_ro_op("DIVIDE", -1, NULL, NULL, &op_vtable_wrapfn, ecp);
+    ret = put_builtin_ro_op("divide", -1, NULL, NULL, &op_vtable_wrapfn, ecp);
     if (ret != RDB_OK)
         return ret;
 
-    ret = put_builtin_ro_op("GROUP", -1, NULL, NULL, &op_vtable_wrapfn, ecp);
+    ret = put_builtin_ro_op("group", -1, NULL, NULL, &op_vtable_wrapfn, ecp);
     if (ret != RDB_OK)
         return ret;
 
-    ret = put_builtin_ro_op("UNGROUP", -1, NULL, NULL, &op_vtable_wrapfn, ecp);
+    ret = put_builtin_ro_op("ungroup", -1, NULL, NULL, &op_vtable_wrapfn, ecp);
     if (ret != RDB_OK)
         return ret;
 
@@ -1972,14 +1972,14 @@ _RDB_init_builtin_ops(RDB_exec_context *ecp)
         return RDB_ERROR;
     }
 
-    if (put_builtin_ro_op("LENGTH", -1, NULL, NULL, &length_array, ecp)
+    if (put_builtin_ro_op("length", -1, NULL, NULL, &length_array, ecp)
             != RDB_OK) {
         return RDB_ERROR;
     }
 
     argtv[0] = &RDB_STRING;
 
-    ret = put_builtin_ro_op("GETENV", 1, argtv, &RDB_STRING, &op_getenv, ecp);
+    ret = put_builtin_ro_op("getenv", 1, argtv, &RDB_STRING, &op_getenv, ecp);
     if (ret != RDB_OK)
         return ret;
 

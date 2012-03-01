@@ -3,7 +3,7 @@
 exec wish "$0" ${1+"$@"}
 
 # Duroadmin - GUI administration tool for Duro.
-# Copyright (C) 2004-2009 René Hartmann.
+# Copyright (C) 2004-2009 Renï¿½ Hartmann.
 # See the file COPYING for redistribution information.
 
 # $Id$
@@ -196,9 +196,9 @@ proc set_row {row tpl} {
         array set ta $tpl
         set attrname [lindex $::tableattrs $j]
         set s $ta($attrname)
-        if {$::tabletypes($attrname) == "BINARY"} {
+        if {$::tabletypes($attrname) == "binary"} {
             set s "(binary)"
-        } elseif {$::tabletypes($attrname) == "BOOLEAN"} {
+        } elseif {$::tabletypes($attrname) == "boolean"} {
             set s [expr {$s ?  "TRUE" : "FALSE"}]
         }
         .tableframe.table set $row,$j $s
@@ -435,7 +435,7 @@ proc rename_table {} {
 }
 
 proc get_types {tx} {
-    set types {STRING BOOLEAN INTEGER FLOAT BINARY}
+    set types {string boolean integer float binary}
 
     # Add user-defined types
     set tnames [duro::expr {SYS_TYPES {TYPENAME}} $tx]
@@ -458,7 +458,7 @@ proc set_attr_row {r} {
 
     .dialog.tabledef window configure [expr $r + 1],1 \
             -window .dialog.tabledef.type$r
-    set t$r STRING
+    set t$r string
 
     for {set i 0} {$i < $keycount} {incr i} {
         checkbutton .dialog.tabledef.key$r,$i -variable key($r,$i)
@@ -537,7 +537,7 @@ proc create_rtable {} {
 
     .dialog.tabledef width 0 [string length ::tabledef(0,0)]
 
-    # Change type in line #1 to BOOLEAN to set width
+    # Change type in line #1 to boolean to set width
     $::mw invoke 1
     .dialog.tabledef width 1 [expr {-[winfo reqwidth .dialog.tabledef.type0] - 2 *
             [.dialog.tabledef.type0 cget -pady]}]
@@ -890,7 +890,7 @@ proc update_row {} {
 }
 
 proc must_quote {type} {
-    return [expr {$type == "STRING" || $type == "BINARY"}]
+    return [expr {$type == "string" || $type == "binary"}]
 }
 
 proc del_row {} {
@@ -1036,7 +1036,7 @@ proc about {} {
 
     label .about.l1 -text "Duroadmin"
     text .about.t -width 40 -height 3
-    .about.t insert end "Duro $::duro_version, (C) 2003-2006 René Hartmann."
+    .about.t insert end "Duro $::duro_version, (C) 2003-2006 Renï¿½ Hartmann."
     .about.t insert end "\n\nDuro comes with ABSOLUTELY NO WARRANTY."
     .about.t configure -state disabled
 

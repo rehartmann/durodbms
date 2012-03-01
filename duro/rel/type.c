@@ -1488,21 +1488,21 @@ aggr_type(const RDB_expression *exp, const RDB_type *tpltyp,
         return NULL;
     }
 
-    if (strcmp(exp->def.op.name, "COUNT") == 0) {
+    if (strcmp(exp->def.op.name, "count") == 0) {
         return &RDB_INTEGER;
-    } else if (strcmp(exp->def.op.name, "AVG") == 0) {
+    } else if (strcmp(exp->def.op.name, "avg") == 0) {
         return &RDB_FLOAT;
-    } else if (strcmp(exp->def.op.name, "SUM") == 0
-            || strcmp(exp->def.op.name, "MAX") == 0
-            || strcmp(exp->def.op.name, "MIN") == 0) {
+    } else if (strcmp(exp->def.op.name, "sum") == 0
+            || strcmp(exp->def.op.name, "max") == 0
+            || strcmp(exp->def.op.name, "min") == 0) {
         if (exp->def.op.args.firstp == NULL
                 || exp->def.op.args.firstp->nextp != NULL) {
             RDB_raise_invalid_argument("invalid number of aggregate arguments", ecp);
             return NULL;
         }
         return _RDB_expr_type(exp->def.op.args.firstp, tpltyp, ecp, txp);
-    } else if (strcmp(exp->def.op.name, "ANY") == 0
-            || strcmp(exp->def.op.name, "ALL") == 0) {
+    } else if (strcmp(exp->def.op.name, "any") == 0
+            || strcmp(exp->def.op.name, "all") == 0) {
         return &RDB_BOOLEAN;
     }
     RDB_raise_operator_not_found(exp->def.op.name, ecp);

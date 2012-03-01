@@ -24,7 +24,8 @@
 
 extern RDB_exec_context *_RDB_parse_ecp;
 
-extern int _RDB_parse_interactive;
+int _RDB_parse_interactive = 0;
+int _RDB_parse_case_insensitive = 1;
 
 YY_BUFFER_STATE _RDB_parse_buffer;
 
@@ -674,6 +675,14 @@ IMPLEMENT {
 }
 
 [a-zA-Z][a-zA-Z0-9_#]* {
+    int i;
+
+    if (_RDB_parse_case_insensitive) {
+        for (i = 0; yytext[i] != '\0'; i++) {
+            yytext[i] = tolower(yytext[i]);
+        }
+    }
+
     yylval = RDB_new_parse_expr(RDB_var_ref(yytext, _RDB_parse_ecp),
     		whitecommp, _RDB_parse_ecp);
     whitecommp = NULL;

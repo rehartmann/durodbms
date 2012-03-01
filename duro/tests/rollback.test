@@ -23,10 +23,10 @@ test rollback {rollback} -setup $SETUP -body {
     
     # Create table
     duro::table create T {
-       {A STRING}
-       {B STRING}
+       {A string}
+       {B string}
     } {{A}} $tx
-    
+
     duro::index create TIX T {B asc} $tx
     
     duro::commit $tx
@@ -35,7 +35,7 @@ test rollback {rollback} -setup $SETUP -body {
 
     duro::insert T {A a B b} $tx
 
-    if {[duro::expr {IS_EMPTY(T)} $tx]} {
+    if {[duro::expr {is_empty(T)} $tx]} {
         dberror "T is empty"
     }
 
@@ -47,7 +47,7 @@ test rollback {rollback} -setup $SETUP -body {
     
     set tx [duro::begin $dbenv TEST]
     
-    if {[duro::expr {NOT IS_EMPTY(T)} $tx]} {
+    if {[duro::expr {NOT is_empty(T)} $tx]} {
         dberror "T is not empty"
     }
     
@@ -65,7 +65,7 @@ test droptables_rollback {drop table and rollback} -setup $SETUP -body {
     set tx [duro::begin $dbenv TEST]
 
     duro::table create T1 {
-       {NO INTEGER}
+       {NO integer}
     } {{NO}} $tx
 
     duro::commit $tx

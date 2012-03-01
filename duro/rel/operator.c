@@ -451,7 +451,7 @@ RDB_call_ro_op_by_name_e(const char *name, int argc, RDB_object *argv[],
      * bypassing getting types of all arguments
      */
 
-    if (strcmp(name, "RELATION") == 0)
+    if (strcmp(name, "relation") == 0)
     	return _RDB_op_relation(argc, argv, NULL, ecp, txp, retvalp);
 
     /*
@@ -479,7 +479,7 @@ RDB_call_ro_op_by_name_e(const char *name, int argc, RDB_object *argv[],
     /*
      * Handle IF-THEN-ELSE
      */
-    if (strcmp(name, "IF") == 0 && argc == 3) {
+    if (strcmp(name, "if") == 0 && argc == 3) {
         if (argv[0]->typ != &RDB_BOOLEAN) {
             RDB_raise_type_mismatch("IF argument must be BOOLEAN", ecp);
             return RDB_ERROR;
@@ -496,7 +496,7 @@ RDB_call_ro_op_by_name_e(const char *name, int argc, RDB_object *argv[],
      * Handle built-in operators with relational arguments
      */
     if (argc == 1 && obj_is_table(argv[0]))  {
-        if (strcmp(name, "IS_EMPTY") == 0) {
+        if (strcmp(name, "is_empty") == 0) {
             RDB_bool res;
 
             if (RDB_table_is_empty(argv[0], ecp, txp, &res) != RDB_OK)
@@ -505,7 +505,7 @@ RDB_call_ro_op_by_name_e(const char *name, int argc, RDB_object *argv[],
             RDB_bool_to_obj(retvalp, res);
             return RDB_OK;
         }
-        if (strcmp(name, "COUNT") == 0) {
+        if (strcmp(name, "count") == 0) {
             ret = RDB_cardinality(argv[0], ecp, txp);
             if (ret < 0)
                 return RDB_ERROR;
@@ -514,7 +514,7 @@ RDB_call_ro_op_by_name_e(const char *name, int argc, RDB_object *argv[],
             return RDB_OK;
         }
     } else if (argc == 2 && obj_is_table(argv[1])) {
-        if (strcmp(name, "IN") == 0) {
+        if (strcmp(name, "in") == 0) {
             RDB_bool b;
 
             ret = RDB_table_contains(argv[1], argv[0], ecp, txp, &b);
@@ -524,7 +524,7 @@ RDB_call_ro_op_by_name_e(const char *name, int argc, RDB_object *argv[],
             RDB_bool_to_obj(retvalp, b);
             return RDB_OK;
         }
-        if (strcmp(name, "SUBSET_OF") == 0) {
+        if (strcmp(name, "subset_of") == 0) {
             RDB_bool res;
 
             ret = RDB_subset(argv[0], argv[1], ecp, txp, &res);
@@ -534,7 +534,7 @@ RDB_call_ro_op_by_name_e(const char *name, int argc, RDB_object *argv[],
             return RDB_OK;
         }
     }
-    if (argc >= 1 && obj_is_table(argv[0]) && strcmp(name, "TO_TUPLE") == 0
+    if (argc >= 1 && obj_is_table(argv[0]) && strcmp(name, "to_tuple") == 0
             && argc == 1) {
         return RDB_extract_tuple(argv[0], ecp, txp, retvalp);
     }
@@ -784,7 +784,7 @@ RDB_drop_op(const char *name, RDB_exec_context *ecp, RDB_transaction *txp)
     /*
      * Check if it's a read-only operator
      */
-    exp = RDB_ro_op("WHERE", ecp);
+    exp = RDB_ro_op("where", ecp);
     if (exp == NULL)
         return RDB_ERROR;
     argp = RDB_table_ref(txp->dbp->dbrootp->ro_ops_tbp, ecp);

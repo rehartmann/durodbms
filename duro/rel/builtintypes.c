@@ -16,14 +16,14 @@
 
 <table border="1" summary="Built-in basic data types">
 <tr><th>Name<th>RDB_type variable<th>C type
-<tr><td>BOOLEAN<td>RDB_BOOLEAN<td>RDB_bool
-<tr><td>INTEGER<td>RDB_INTEGER<td>RDB_int
-<tr><td>FLOAT<td>RDB_FLOAT<td>RDB_float
-<tr><td>STRING<td>RDB_STRING<td>char *
-<tr><td>BINARY<td>RDB_BINARY<td>&nbsp;-
+<tr><td>boolean<td>RDB_BOOLEAN<td>RDB_bool
+<tr><td>integer<td>RDB_INTEGER<td>RDB_int
+<tr><td>float<td>RDB_FLOAT<td>RDB_float
+<tr><td>string<td>RDB_STRING<td>char *
+<tr><td>binary<td>RDB_BINARY<td>&nbsp;-
 </table>
 
-(Support for BINARY is incomplete.)
+(Support for <code>binary</code> is incomplete.)
 
 @section error-types Error types
 
@@ -31,77 +31,77 @@ Duro errors are scalar types.
 They are shown below in Tutorial D notation.
 
 <pre>
-TYPE NO_RUNNING_TRANSACTION_ERROR POSSREP { };
+TYPE no_running_transaction_error POSSREP { };
 
-TYPE INVALID_ARGUMENT_ERROR POSSREP { MSG STRING };
+TYPE invalid_argument_error POSSREP { msg string };
 
-TYPE TYPE_MISMATCH_ERROR POSSREP { MSG STRING };
+TYPE type_mismatch_error POSSREP { msg string };
 
-TYPE NOT_FOUND_ERROR POSSREP { MSG STRING };
+TYPE not_found_error POSSREP { msg string };
 
-TYPE OPERATOR_NOT_FOUND_ERROR POSSREP { MSG STRING };
+TYPE operator_not_found_error POSSREP { msg string };
 
-TYPE RDB_NAME_ERROR POSSREP { MSG STRING };
+TYPE rdb_name_error POSSREP { msg string };
 
-TYPE ELEMENT_EXISTS_ERROR POSSREP { MSG STRING };
+TYPE element_exists_error POSSREP { msg string };
 
-TYPE TYPE_CONSTRAINT_VIOLATION_ERROR POSSREP { MSG STRING };
+TYPE type_constraint_violation_error POSSREP { msg string };
 
-TYPE KEY_VIOLATION_ERROR POSSREP { MSG STRING };
+TYPE key_violation_error POSSREP { msg string };
 
-TYPE PREDICATE_VIOLATION_ERROR POSSREP { MSG STRING };
+TYPE predicate_violation_error POSSREP { msg string };
 
-TYPE AGGREGATE_UNDEFINED_ERROR POSSREP { };
+TYPE aggregate_undefined_error POSSREP { };
 
-TYPE VERSION_MISMATCH_ERROR POSSREP { };
+TYPE version_mismatch_error POSSREP { };
 
-TYPE NOT_SUPPORTED_ERROR POSSREP { MSG STRING };
+TYPE not_supported_error POSSREP { msg string };
 
-TYPE SYNTAX_ERROR POSSREP { MSG STRING };
+TYPE syntax_error possrep { msg string };
 
-TYPE IN_USE_ERROR POSSREP { MSG STRING };
+TYPE in_use_error possrep { msg string };
 </pre>
 
 @subsection system-errors System errors
 
 <pre>
-TYPE NO_MEMORY_ERROR POSSREP {  };
+TYPE no_memory_error POSSREP {  };
 </pre>
 
 Insufficient memory.
 
 <pre>
-TYPE SYSTEM_ERROR POSSREP { MSG STRING };
+TYPE system_error POSSREP { msg string };
 </pre>
 
 Unspecified system error.
 
 <pre>
-TYPE LOCK_NOT_GRANTED_ERROR POSSREP { };
+TYPE lock_not_granted_error POSSREP { };
 </pre>
 
 A lock was requested but could not be granted.
 
 <pre>
-TYPE DEADLOCK_ERROR POSSREP { };
+TYPE deadlock_error POSSREP { };
 </pre>
 
 A deadlock condition was detected.
 
 <pre>
-TYPE RESOURCE_NOT_FOUND_ERROR POSSREP { MSG STRING };
+TYPE resource_not_found_error POSSREP { msg string };
 </pre>
 
 A system resource, usually a file, could not be found.
 
 <pre>
-TYPE INTERNAL_ERROR POSSREP { MSG STRING };
+TYPE internal_error POSSREP { msg string };
 </pre>
 
 Internal error.
 
 <pre>
-TYPE FATAL_ERROR POSSREP { };
+TYPE fatal_error POSSREP { };
 </pre>
 
 Fatal error. This means that future calls to Duro functions
@@ -206,172 +206,172 @@ _RDB_init_builtin_types(RDB_exec_context *ecp)
      */
 
     static RDB_possrep no_memory_rep = {
-        "NO_MEMORY_ERROR",
+        "no_memory_error",
         0
     };
 
     static RDB_possrep no_running_tx_rep = {
-        "NO_RUNNING_TX_ERROR",
+        "no_running_tx_error",
         0
     };
 
-    static RDB_attr not_found_comp = { "MSG", &RDB_STRING };
+    static RDB_attr not_found_comp = { "msg", &RDB_STRING };
 
     static RDB_possrep not_found_rep = {
-        "NOT_FOUND_ERROR",
+        "not_found_error",
         1,
         &not_found_comp
     };
 
-    static RDB_attr type_mismatch_comp = { "MSG", &RDB_STRING };
+    static RDB_attr type_mismatch_comp = { "msg", &RDB_STRING };
 
     static RDB_possrep type_mismatch_rep = {
-        "TYPE_MISMATCH_ERROR",
+        "type_mismatch_error",
         1,
         &type_mismatch_comp
     };
 
-    static RDB_attr invalid_argument_comp = { "MSG", &RDB_STRING };
+    static RDB_attr invalid_argument_comp = { "msg", &RDB_STRING };
 
     static RDB_possrep invalid_argument_rep = {
-        "INVALID_ARGUMENT_ERROR",
+        "invalid_argument_error",
         1,
         &invalid_argument_comp
     };
 
-    static RDB_attr type_constraint_violation_comp = { "MSG", &RDB_STRING };
+    static RDB_attr type_constraint_violation_comp = { "msg", &RDB_STRING };
 
     static RDB_possrep type_constraint_violation_rep = {
-        "TYPE_CONSTRAINT_VIOLATION_ERROR",
+        "type_constraint_violation_error",
         1,
         &type_constraint_violation_comp
     };
 
-    static RDB_attr operator_not_found_comp = { "MSG", &RDB_STRING };
+    static RDB_attr operator_not_found_comp = { "msg", &RDB_STRING };
 
     static RDB_possrep operator_not_found_rep = {
-        "OPERATOR_NOT_FOUND_ERROR",
+        "operator_not_found_error",
         1,
         &operator_not_found_comp
     };
 
-    static RDB_attr element_exists_comp = { "MSG", &RDB_STRING };
+    static RDB_attr element_exists_comp = { "msg", &RDB_STRING };
 
     static RDB_possrep element_exists_rep = {
-        "ELEMENT_EXISTS_ERROR",
+        "element_exists_error",
         1,
         &element_exists_comp
     };
 
-    static RDB_attr key_violation_comp = { "MSG", &RDB_STRING };
+    static RDB_attr key_violation_comp = { "msg", &RDB_STRING };
 
     static RDB_possrep key_violation_rep = {
-        "KEY_VIOLATION_ERROR",
+        "key_violation_error",
         1,
         &key_violation_comp
     };
 
-    static RDB_attr not_supported_comp = { "MSG", &RDB_STRING };
+    static RDB_attr not_supported_comp = { "msg", &RDB_STRING };
 
     static RDB_possrep not_supported_rep = {
-        "NOT_SUPPORTED_ERROR",
+        "not_supported_error",
         1,
         &not_supported_comp
     };
 
-    static RDB_attr in_use_comp = { "MSG", &RDB_STRING };
+    static RDB_attr in_use_comp = { "msg", &RDB_STRING };
 
     static RDB_possrep in_use_rep = {
-        "IN_USE_ERROR",
+        "in_use_error",
         1,
         &in_use_comp
     };
 
-    static RDB_attr name_comp = { "MSG", &RDB_STRING };
+    static RDB_attr name_comp = { "msg", &RDB_STRING };
 
     static RDB_possrep name_rep = {
-        "NAME_ERROR",
+        "name_error",
         1,
         &name_comp
     };
 
-    static RDB_attr predicate_violation_comp = { "MSG", &RDB_STRING };
+    static RDB_attr predicate_violation_comp = { "msg", &RDB_STRING };
 
     static RDB_possrep predicate_violation_rep = {
-        "PREDICATE_VIOLATION_ERROR",
+        "predicate_violation_error",
         1,
         &predicate_violation_comp
     };
 
-    static RDB_attr system_comp = { "MSG", &RDB_STRING };
+    static RDB_attr system_comp = { "msg", &RDB_STRING };
 
     static RDB_possrep system_rep = {
-        "SYSTEM_ERROR",
+        "system_error",
         1,
         &system_comp
     };
 
-    static RDB_attr resource_not_found_comp = { "MSG", &RDB_STRING };
+    static RDB_attr resource_not_found_comp = { "msg", &RDB_STRING };
 
     static RDB_possrep resource_not_found_rep = {
-        "RESOURCE_NOT_FOUND_ERROR",
+        "resource_not_found_error",
         1,
         &resource_not_found_comp
     };
 
-    static RDB_attr internal_comp = { "MSG", &RDB_STRING };
+    static RDB_attr internal_comp = { "msg", &RDB_STRING };
 
     static RDB_possrep internal_rep = {
-        "INTERNAL_ERROR",
+        "internal_error",
         1,
         &internal_comp
     };
 
     static RDB_possrep lock_not_granted_rep = {
-        "LOCK_NOT_GRANTED_ERROR",
+        "lock_not_granted_error",
         0,
     };
 
     static RDB_possrep aggregate_undefined_rep = {
-        "AGGREGATE_UNDEFINED_ERROR",
+        "aggregate_undefined_error",
         0,
     };
 
     static RDB_possrep version_mismatch_rep = {
-        "VERSION_MISMATCH_ERROR",
+        "version_mismatch_error",
         0,
     };
 
     static RDB_possrep deadlock_rep = {
-        "DEADLOCK_ERROR",
+        "deadlock_error",
         0,
     };
 
     static RDB_possrep fatal_rep = {
-        "FATAL_ERROR",
+        "fatal_error",
         0,
     };
 
-    static RDB_attr syntax_comp = { "MSG", &RDB_STRING };
+    static RDB_attr syntax_comp = { "msg", &RDB_STRING };
 
     static RDB_possrep syntax_rep = {
-        "SYNTAX_ERROR",
+        "syntax_error",
         1,
         &syntax_comp
     };
 
     static RDB_operator compare_string_op = {
-        "CMP",
+        "cmp",
         &RDB_INTEGER
     };
 
     static RDB_operator compare_int_op = {
-        "CMP",
+        "cmp",
         &RDB_INTEGER
     };
 
     static RDB_operator compare_float_op = {
-        "CMP",
+        "cmp",
         &RDB_INTEGER
     };
 
@@ -382,7 +382,7 @@ _RDB_init_builtin_types(RDB_exec_context *ecp)
 
     RDB_BOOLEAN.kind = RDB_TP_SCALAR;
     RDB_BOOLEAN.ireplen = 1;
-    RDB_BOOLEAN.name = "BOOLEAN";
+    RDB_BOOLEAN.name = "boolean";
     RDB_BOOLEAN.def.scalar.builtin = RDB_TRUE;
     RDB_BOOLEAN.def.scalar.repc = 0;
     RDB_BOOLEAN.def.scalar.arep = NULL;
@@ -393,7 +393,7 @@ _RDB_init_builtin_types(RDB_exec_context *ecp)
 
     RDB_STRING.kind = RDB_TP_SCALAR;
     RDB_STRING.ireplen = RDB_VARIABLE_LEN;
-    RDB_STRING.name = "STRING";
+    RDB_STRING.name = "string";
     RDB_STRING.def.scalar.builtin = RDB_TRUE;
     RDB_STRING.def.scalar.repc = 0;
     RDB_STRING.def.scalar.arep = NULL;
@@ -404,7 +404,7 @@ _RDB_init_builtin_types(RDB_exec_context *ecp)
 
     RDB_INTEGER.kind = RDB_TP_SCALAR;
     RDB_INTEGER.ireplen = sizeof (RDB_int);
-    RDB_INTEGER.name = "INTEGER";
+    RDB_INTEGER.name = "integer";
     RDB_INTEGER.def.scalar.builtin = RDB_TRUE;
     RDB_INTEGER.def.scalar.repc = 0;
     RDB_INTEGER.def.scalar.arep = NULL;
@@ -415,7 +415,7 @@ _RDB_init_builtin_types(RDB_exec_context *ecp)
 
     RDB_FLOAT.kind = RDB_TP_SCALAR;
     RDB_FLOAT.ireplen = sizeof (RDB_float);
-    RDB_FLOAT.name = "FLOAT";
+    RDB_FLOAT.name = "float";
     RDB_FLOAT.def.scalar.builtin = RDB_TRUE;
     RDB_FLOAT.def.scalar.repc = 0;
     RDB_FLOAT.def.scalar.arep = NULL;
@@ -424,7 +424,7 @@ _RDB_init_builtin_types(RDB_exec_context *ecp)
 
     RDB_BINARY.kind = RDB_TP_SCALAR;
     RDB_BINARY.ireplen = RDB_VARIABLE_LEN;
-    RDB_BINARY.name = "BINARY";
+    RDB_BINARY.name = "binary";
     RDB_BINARY.def.scalar.repc = 0;
     RDB_BINARY.def.scalar.arep = NULL;
     RDB_BINARY.def.scalar.builtin = RDB_TRUE;
@@ -433,7 +433,7 @@ _RDB_init_builtin_types(RDB_exec_context *ecp)
 
     RDB_NO_MEMORY_ERROR.kind = RDB_TP_SCALAR;
     RDB_NO_MEMORY_ERROR.ireplen = RDB_VARIABLE_LEN;
-    RDB_NO_MEMORY_ERROR.name = "NO_MEMORY_ERROR";
+    RDB_NO_MEMORY_ERROR.name = "no_memory_error";
     RDB_NO_MEMORY_ERROR.def.scalar.builtin = RDB_TRUE;
     RDB_NO_MEMORY_ERROR.def.scalar.repc = 1;
     RDB_NO_MEMORY_ERROR.def.scalar.repv = &no_memory_rep;
@@ -448,7 +448,7 @@ _RDB_init_builtin_types(RDB_exec_context *ecp)
 
     RDB_NO_RUNNING_TX_ERROR.kind = RDB_TP_SCALAR;
     RDB_NO_RUNNING_TX_ERROR.ireplen = RDB_VARIABLE_LEN;
-    RDB_NO_RUNNING_TX_ERROR.name = "NO_RUNNING_TX_ERROR";
+    RDB_NO_RUNNING_TX_ERROR.name = "no_running_tx_error";
     RDB_NO_RUNNING_TX_ERROR.def.scalar.builtin = RDB_TRUE;
     RDB_NO_RUNNING_TX_ERROR.def.scalar.repc = 1;
     RDB_NO_RUNNING_TX_ERROR.def.scalar.repv = &no_running_tx_rep;
@@ -464,7 +464,7 @@ _RDB_init_builtin_types(RDB_exec_context *ecp)
 
     RDB_NOT_FOUND_ERROR.kind = RDB_TP_SCALAR;
     RDB_NOT_FOUND_ERROR.ireplen = RDB_VARIABLE_LEN;
-    RDB_NOT_FOUND_ERROR.name = "NOT_FOUND_ERROR";
+    RDB_NOT_FOUND_ERROR.name = "not_found_error";
     RDB_NOT_FOUND_ERROR.def.scalar.builtin = RDB_TRUE;
     RDB_NOT_FOUND_ERROR.def.scalar.repc = 1;
     RDB_NOT_FOUND_ERROR.def.scalar.repv = &not_found_rep;
@@ -475,7 +475,7 @@ _RDB_init_builtin_types(RDB_exec_context *ecp)
 
     RDB_INVALID_ARGUMENT_ERROR.kind = RDB_TP_SCALAR;
     RDB_INVALID_ARGUMENT_ERROR.ireplen = RDB_VARIABLE_LEN;
-    RDB_INVALID_ARGUMENT_ERROR.name = "INVALID_ARGUMENT_ERROR";
+    RDB_INVALID_ARGUMENT_ERROR.name = "invalid_argument_error";
     RDB_INVALID_ARGUMENT_ERROR.def.scalar.builtin = RDB_TRUE;
     RDB_INVALID_ARGUMENT_ERROR.def.scalar.repc = 1;
     RDB_INVALID_ARGUMENT_ERROR.def.scalar.repv = &invalid_argument_rep;
@@ -486,7 +486,7 @@ _RDB_init_builtin_types(RDB_exec_context *ecp)
 
     RDB_TYPE_MISMATCH_ERROR.kind = RDB_TP_SCALAR;
     RDB_TYPE_MISMATCH_ERROR.ireplen = RDB_VARIABLE_LEN;
-    RDB_TYPE_MISMATCH_ERROR.name = "TYPE_MISMATCH_ERROR";
+    RDB_TYPE_MISMATCH_ERROR.name = "type_mismatch_error";
     RDB_TYPE_MISMATCH_ERROR.def.scalar.builtin = RDB_TRUE;
     RDB_TYPE_MISMATCH_ERROR.def.scalar.repc = 1;
     RDB_TYPE_MISMATCH_ERROR.def.scalar.repv = &type_mismatch_rep;
@@ -497,7 +497,7 @@ _RDB_init_builtin_types(RDB_exec_context *ecp)
 
     RDB_TYPE_CONSTRAINT_VIOLATION_ERROR.kind = RDB_TP_SCALAR;
     RDB_TYPE_CONSTRAINT_VIOLATION_ERROR.ireplen = RDB_VARIABLE_LEN;
-    RDB_TYPE_CONSTRAINT_VIOLATION_ERROR.name = "TYPE_CONSTRAINT_VIOLATION_ERROR";
+    RDB_TYPE_CONSTRAINT_VIOLATION_ERROR.name = "type_constraint_violation_error";
     RDB_TYPE_CONSTRAINT_VIOLATION_ERROR.def.scalar.builtin = RDB_TRUE;
     RDB_TYPE_CONSTRAINT_VIOLATION_ERROR.def.scalar.repc = 1;
     RDB_TYPE_CONSTRAINT_VIOLATION_ERROR.def.scalar.repv =
@@ -509,7 +509,7 @@ _RDB_init_builtin_types(RDB_exec_context *ecp)
 
     RDB_OPERATOR_NOT_FOUND_ERROR.kind = RDB_TP_SCALAR;
     RDB_OPERATOR_NOT_FOUND_ERROR.ireplen = RDB_VARIABLE_LEN;
-    RDB_OPERATOR_NOT_FOUND_ERROR.name = "OPERATOR_NOT_FOUND_ERROR";
+    RDB_OPERATOR_NOT_FOUND_ERROR.name = "operator_not_found_error";
     RDB_OPERATOR_NOT_FOUND_ERROR.def.scalar.builtin = RDB_TRUE;
     RDB_OPERATOR_NOT_FOUND_ERROR.def.scalar.repc = 1;
     RDB_OPERATOR_NOT_FOUND_ERROR.def.scalar.repv = &operator_not_found_rep;
@@ -520,7 +520,7 @@ _RDB_init_builtin_types(RDB_exec_context *ecp)
 
     RDB_ELEMENT_EXISTS_ERROR.kind = RDB_TP_SCALAR;
     RDB_ELEMENT_EXISTS_ERROR.ireplen = RDB_VARIABLE_LEN;
-    RDB_ELEMENT_EXISTS_ERROR.name = "ELEMENT_EXISTS_ERROR";
+    RDB_ELEMENT_EXISTS_ERROR.name = "element_exists_error";
     RDB_ELEMENT_EXISTS_ERROR.def.scalar.builtin = RDB_TRUE;
     RDB_ELEMENT_EXISTS_ERROR.def.scalar.repc = 1;
     RDB_ELEMENT_EXISTS_ERROR.def.scalar.repv = &element_exists_rep;
@@ -531,7 +531,7 @@ _RDB_init_builtin_types(RDB_exec_context *ecp)
 
     RDB_KEY_VIOLATION_ERROR.kind = RDB_TP_SCALAR;
     RDB_KEY_VIOLATION_ERROR.ireplen = RDB_VARIABLE_LEN;
-    RDB_KEY_VIOLATION_ERROR.name = "KEY_VIOLATION_ERROR";
+    RDB_KEY_VIOLATION_ERROR.name = "key_violation_error";
     RDB_KEY_VIOLATION_ERROR.def.scalar.builtin = RDB_TRUE;
     RDB_KEY_VIOLATION_ERROR.def.scalar.repc = 1;
     RDB_KEY_VIOLATION_ERROR.def.scalar.repv = &key_violation_rep;
@@ -542,7 +542,7 @@ _RDB_init_builtin_types(RDB_exec_context *ecp)
 
     RDB_NOT_SUPPORTED_ERROR.kind = RDB_TP_SCALAR;
     RDB_NOT_SUPPORTED_ERROR.ireplen = RDB_VARIABLE_LEN;
-    RDB_NOT_SUPPORTED_ERROR.name = "NOT_SUPPORTED_ERROR";
+    RDB_NOT_SUPPORTED_ERROR.name = "not_supported_error";
     RDB_NOT_SUPPORTED_ERROR.def.scalar.builtin = RDB_TRUE;
     RDB_NOT_SUPPORTED_ERROR.def.scalar.repc = 1;
     RDB_NOT_SUPPORTED_ERROR.def.scalar.repv = &not_supported_rep;
@@ -553,7 +553,7 @@ _RDB_init_builtin_types(RDB_exec_context *ecp)
 
     RDB_NAME_ERROR.kind = RDB_TP_SCALAR;
     RDB_NAME_ERROR.ireplen = RDB_VARIABLE_LEN;
-    RDB_NAME_ERROR.name = "NAME_ERROR";
+    RDB_NAME_ERROR.name = "name_error";
     RDB_NAME_ERROR.def.scalar.builtin = RDB_TRUE;
     RDB_NAME_ERROR.def.scalar.repc = 1;
     RDB_NAME_ERROR.def.scalar.repv = &name_rep;
@@ -564,7 +564,7 @@ _RDB_init_builtin_types(RDB_exec_context *ecp)
 
     RDB_PREDICATE_VIOLATION_ERROR.kind = RDB_TP_SCALAR;
     RDB_PREDICATE_VIOLATION_ERROR.ireplen = RDB_VARIABLE_LEN;
-    RDB_PREDICATE_VIOLATION_ERROR.name = "PREDICATE_VIOLATION_ERROR";
+    RDB_PREDICATE_VIOLATION_ERROR.name = "predicate_violation_error";
     RDB_PREDICATE_VIOLATION_ERROR.def.scalar.builtin = RDB_TRUE;
     RDB_PREDICATE_VIOLATION_ERROR.def.scalar.repc = 1;
     RDB_PREDICATE_VIOLATION_ERROR.def.scalar.repv = &predicate_violation_rep;
@@ -575,7 +575,7 @@ _RDB_init_builtin_types(RDB_exec_context *ecp)
 
     RDB_IN_USE_ERROR.kind = RDB_TP_SCALAR;
     RDB_IN_USE_ERROR.ireplen = RDB_VARIABLE_LEN;
-    RDB_IN_USE_ERROR.name = "IN_USE_ERROR";
+    RDB_IN_USE_ERROR.name = "in_use_error";
     RDB_IN_USE_ERROR.def.scalar.builtin = RDB_TRUE;
     RDB_IN_USE_ERROR.def.scalar.repc = 1;
     RDB_IN_USE_ERROR.def.scalar.repv = &in_use_rep;
@@ -586,7 +586,7 @@ _RDB_init_builtin_types(RDB_exec_context *ecp)
 
     RDB_SYSTEM_ERROR.kind = RDB_TP_SCALAR;
     RDB_SYSTEM_ERROR.ireplen = RDB_VARIABLE_LEN;
-    RDB_SYSTEM_ERROR.name = "SYSTEM_ERROR";
+    RDB_SYSTEM_ERROR.name = "system_error";
     RDB_SYSTEM_ERROR.def.scalar.builtin = RDB_TRUE;
     RDB_SYSTEM_ERROR.def.scalar.repc = 1;
     RDB_SYSTEM_ERROR.def.scalar.repv = &system_rep;
@@ -598,7 +598,7 @@ _RDB_init_builtin_types(RDB_exec_context *ecp)
     RDB_RESOURCE_NOT_FOUND_ERROR.kind = RDB_TP_SCALAR;
     RDB_RESOURCE_NOT_FOUND_ERROR.def.scalar.builtin = RDB_TRUE;
     RDB_RESOURCE_NOT_FOUND_ERROR.ireplen = RDB_VARIABLE_LEN;
-    RDB_RESOURCE_NOT_FOUND_ERROR.name = "RESOURCE_NOT_FOUND_ERROR";
+    RDB_RESOURCE_NOT_FOUND_ERROR.name = "resource_not_found_error";
     RDB_RESOURCE_NOT_FOUND_ERROR.def.scalar.repc = 1;
     RDB_RESOURCE_NOT_FOUND_ERROR.def.scalar.repv = &resource_not_found_rep;
     RDB_RESOURCE_NOT_FOUND_ERROR.def.scalar.arep = &RDB_STRING;
@@ -609,7 +609,7 @@ _RDB_init_builtin_types(RDB_exec_context *ecp)
     RDB_INTERNAL_ERROR.kind = RDB_TP_SCALAR;
     RDB_INTERNAL_ERROR.def.scalar.builtin = RDB_TRUE;
     RDB_INTERNAL_ERROR.ireplen = RDB_VARIABLE_LEN;
-    RDB_INTERNAL_ERROR.name = "INTERNAL_ERROR";
+    RDB_INTERNAL_ERROR.name = "internal_error";
     RDB_INTERNAL_ERROR.def.scalar.repc = 1;
     RDB_INTERNAL_ERROR.def.scalar.repv = &internal_rep;
     RDB_INTERNAL_ERROR.def.scalar.arep = &RDB_STRING;
@@ -619,7 +619,7 @@ _RDB_init_builtin_types(RDB_exec_context *ecp)
 
     RDB_LOCK_NOT_GRANTED_ERROR.kind = RDB_TP_SCALAR;
     RDB_LOCK_NOT_GRANTED_ERROR.ireplen = RDB_VARIABLE_LEN;
-    RDB_LOCK_NOT_GRANTED_ERROR.name = "LOCK_NOT_GRANTED_ERROR";
+    RDB_LOCK_NOT_GRANTED_ERROR.name = "lock_not_granted_error";
     RDB_LOCK_NOT_GRANTED_ERROR.def.scalar.builtin = RDB_TRUE;
     RDB_LOCK_NOT_GRANTED_ERROR.def.scalar.repc = 1;
     RDB_LOCK_NOT_GRANTED_ERROR.def.scalar.repv = &lock_not_granted_rep;
@@ -635,7 +635,7 @@ _RDB_init_builtin_types(RDB_exec_context *ecp)
 
     RDB_AGGREGATE_UNDEFINED_ERROR.kind = RDB_TP_SCALAR;
     RDB_AGGREGATE_UNDEFINED_ERROR.ireplen = RDB_VARIABLE_LEN;
-    RDB_AGGREGATE_UNDEFINED_ERROR.name = "AGGREGATE_UNDEFINED_ERROR";
+    RDB_AGGREGATE_UNDEFINED_ERROR.name = "aggregate_undefined_error";
     RDB_AGGREGATE_UNDEFINED_ERROR.def.scalar.builtin = RDB_TRUE;
     RDB_AGGREGATE_UNDEFINED_ERROR.def.scalar.repc = 1;
     RDB_AGGREGATE_UNDEFINED_ERROR.def.scalar.repv = &aggregate_undefined_rep;
@@ -651,7 +651,7 @@ _RDB_init_builtin_types(RDB_exec_context *ecp)
 
     RDB_VERSION_MISMATCH_ERROR.kind = RDB_TP_SCALAR;
     RDB_VERSION_MISMATCH_ERROR.ireplen = RDB_VARIABLE_LEN;
-    RDB_VERSION_MISMATCH_ERROR.name = "VERSION_MISMATCH_ERROR";
+    RDB_VERSION_MISMATCH_ERROR.name = "version_mismatch_error";
     RDB_VERSION_MISMATCH_ERROR.def.scalar.builtin = RDB_TRUE;
     RDB_VERSION_MISMATCH_ERROR.def.scalar.repc = 1;
     RDB_VERSION_MISMATCH_ERROR.def.scalar.repv = &version_mismatch_rep;
@@ -667,7 +667,7 @@ _RDB_init_builtin_types(RDB_exec_context *ecp)
 
     RDB_DEADLOCK_ERROR.kind = RDB_TP_SCALAR;
     RDB_DEADLOCK_ERROR.ireplen = RDB_VARIABLE_LEN;
-    RDB_DEADLOCK_ERROR.name = "DEADLOCK_ERROR";
+    RDB_DEADLOCK_ERROR.name = "deadlock_error";
     RDB_DEADLOCK_ERROR.def.scalar.builtin = RDB_TRUE;
     RDB_DEADLOCK_ERROR.def.scalar.repc = 1;
     RDB_DEADLOCK_ERROR.def.scalar.repv = &deadlock_rep;
@@ -683,7 +683,7 @@ _RDB_init_builtin_types(RDB_exec_context *ecp)
 
     RDB_FATAL_ERROR.kind = RDB_TP_SCALAR;
     RDB_FATAL_ERROR.ireplen = RDB_VARIABLE_LEN;
-    RDB_FATAL_ERROR.name = "FATAL_ERROR";
+    RDB_FATAL_ERROR.name = "fatal_error";
     RDB_FATAL_ERROR.def.scalar.builtin = RDB_TRUE;
     RDB_FATAL_ERROR.def.scalar.repc = 1;
     RDB_FATAL_ERROR.def.scalar.repv = &fatal_rep;
@@ -699,7 +699,7 @@ _RDB_init_builtin_types(RDB_exec_context *ecp)
 
     RDB_SYNTAX_ERROR.kind = RDB_TP_SCALAR;
     RDB_SYNTAX_ERROR.ireplen = RDB_VARIABLE_LEN;
-    RDB_SYNTAX_ERROR.name = "SYNTAX_ERROR";
+    RDB_SYNTAX_ERROR.name = "syntax_error";
     RDB_SYNTAX_ERROR.def.scalar.builtin = RDB_TRUE;
     RDB_SYNTAX_ERROR.def.scalar.repc = 1;
     RDB_SYNTAX_ERROR.def.scalar.repv = &syntax_rep;
@@ -812,7 +812,7 @@ _RDB_init_builtin_types(RDB_exec_context *ecp)
         return RDB_ERROR;
     }
 
-    /* Add IO_STREAM */
+    /* Add io_stream */
     if (_RDB_add_io(ecp) != RDB_OK) {
         return RDB_ERROR;
     }

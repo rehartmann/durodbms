@@ -92,7 +92,7 @@ _RDB_expr_matching_tuple(RDB_expression *exp, const RDB_object *tplp,
     if (exp->kind == RDB_EX_TBP) {
         return _RDB_matching_tuple(exp->def.tbref.tbp, tplp, ecp, txp, resultp);
     }
-    if (exp->kind == RDB_EX_RO_OP && strcmp (exp->def.op.name, "PROJECT") == 0) {
+    if (exp->kind == RDB_EX_RO_OP && strcmp (exp->def.op.name, "project") == 0) {
         return project_matching(exp, tplp, ecp, txp, resultp);
     }
 

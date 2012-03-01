@@ -63,7 +63,7 @@ test_rename(RDB_database *dbp, RDB_exec_context *ecp)
 
     /* Creating EMPS1 RENAME (SALARY AS SAL, EMPNO AS EMP#) */
 
-    exp = RDB_ro_op("RENAME", ecp);
+    exp = RDB_ro_op("rename", ecp);
     if (exp == NULL) {
         RDB_rollback(ecp, &tx);
     	return RDB_ERROR;

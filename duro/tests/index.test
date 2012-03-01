@@ -22,18 +22,18 @@ test index {indexes} -setup $SETUP -body {
     set tx [duro::begin $dbenv TEST]
     
     duro::table create T1 {
-       {A INTEGER}
-       {B STRING}
-       {C STRING}
-       {D STRING x}
+       {A integer}
+       {B string}
+       {C string}
+       {D string x}
     } {{A}} $tx
     
     duro::table create T2 {
-       {B STRING}
-       {C STRING}
-       {E STRING}
+       {B string}
+       {C string}
+       {E string}
     } {{B C E}} $tx
-    
+
     duro::index create IX1 T1 {B -} $tx
     
     if {![catch {duro::index create IX1 T1 {C -} $tx}]} {
@@ -123,7 +123,7 @@ test index {indexes} -setup $SETUP -body {
         error "Tuple should be $stpl, but is $tpl"
     }
     
-    if {![duro::expr {IS_EMPTY (T1 WHERE B="Blubb" AND C="X")} $tx]} {
+    if {![duro::expr {is_empty (T1 WHERE B="Blubb" AND C="X")} $tx]} {
         error "Expression should be empty, but is not"
     }
     

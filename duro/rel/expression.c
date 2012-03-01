@@ -105,7 +105,7 @@ copy_expr_typeinfo_if_needed(RDB_expression *dstexp, const RDB_expression *srcex
 {
     if (srcexp->typ != NULL && dstexp->typ == NULL
             && srcexp->def.op.args.firstp == NULL
-            && strcmp(srcexp->def.op.name, "RELATION") == 0) {
+            && strcmp(srcexp->def.op.name, "relation") == 0) {
         RDB_type *typ = RDB_dup_nonscalar_type(srcexp->typ, ecp);
         if (typ == NULL)
             return RDB_ERROR;
@@ -1148,7 +1148,7 @@ RDB_expression *
 _RDB_attr_node(RDB_expression *exp, const char *attrname, char *opname)
 {
     while (exp->kind == RDB_EX_RO_OP
-            && strcmp (exp->def.op.name, "AND") == 0) {
+            && strcmp (exp->def.op.name, "and") == 0) {
         if (expr_var(exp->def.op.args.firstp->nextp, attrname, opname))
             return exp;
         exp = exp->def.op.args.firstp;

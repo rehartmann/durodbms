@@ -165,7 +165,7 @@ test_query(RDB_database *dbp, RDB_exec_context *ecp)
 
     /* Creating POINTTEST WHERE THE_X(POINT) = 1.0) */
 
-    exp = RDB_ro_op("WHERE", ecp);
+    exp = RDB_ro_op("where", ecp);
     assert(exp != NULL);
     
     argp = RDB_table_ref(tbp, ecp);
@@ -203,7 +203,7 @@ test_query(RDB_database *dbp, RDB_exec_context *ecp)
 
     /* Creating POINTTEST WHERE POINT=POINT(1.0, 2.0) */
 
-    exp = RDB_ro_op("WHERE", ecp);
+    exp = RDB_ro_op("where", ecp);
     assert(exp != NULL);
 
     argp = RDB_table_ref(tbp, ecp);

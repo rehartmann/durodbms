@@ -4,6 +4,8 @@ Summary of Changes for Duro
 
 Changes for Duro 0.15
 
+- Built-in types and operators are now lowercase, Duro D/T converts identifiers to lowercase.
+
 - Duro D/T: Identifiers are no longer converted into uppercase.
 
 - Renamed RDB_create_XXX functions for non-scalar types to RDB_new_XXX.

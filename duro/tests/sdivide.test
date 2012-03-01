@@ -26,16 +26,16 @@ test sdivide {DIVIDE BY PER} -setup $SETUP -body {
     # Create tables
     
     duro::table create S {
-        {SNO STRING}
+        {SNO string}
     } {{SNO}} $tx
     
     duro::table create P {
-       {PNO STRING}
+       {PNO string}
     } {{PNO}} $tx
    
     duro::table create SP {
-        {SNO STRING}
-        {PNO STRING}
+        {SNO string}
+        {PNO string}
     } {{SNO PNO}} $tx
    
     duro::table expr -global DIV {S DIVIDEBY P PER SP} $tx

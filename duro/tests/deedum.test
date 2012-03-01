@@ -17,7 +17,7 @@ test deedum {TABLE_DEE and TABLE_DUM} -setup $SETUP -body {
     duro::db create $dbenv TEST
 
     set tx [duro::begin $dbenv TEST]
-    
+
     duro::table expr tdee TABLE_DEE $tx
     
     if {[duro::expr {TUPLE FROM tdee} $tx] != ""} {
@@ -26,7 +26,7 @@ test deedum {TABLE_DEE and TABLE_DUM} -setup $SETUP -body {
     
     duro::table expr tdum TABLE_DUM $tx
     
-    if {[duro::expr COUNT(tdum) $tx] != 0} {
+    if {[duro::expr count(tdum) $tx] != 0} {
         error "TABLE_DUM is not empty"
     }
     

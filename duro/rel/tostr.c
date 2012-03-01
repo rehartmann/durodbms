@@ -331,7 +331,7 @@ append_ex(RDB_object *objp, const RDB_expression *exp, RDB_exec_context *ecp,
                 return ret;
             break;
         case RDB_EX_GET_COMP:
-            ret = RDB_append_string(objp, "THE_", ecp);
+            ret = RDB_append_string(objp, "the_", ecp);
             if (ret != RDB_OK)
                 return ret;
             ret = RDB_append_string(objp, exp->def.op.name, ecp);
@@ -357,11 +357,11 @@ append_ex(RDB_object *objp, const RDB_expression *exp, RDB_exec_context *ecp,
                     || strcmp(exp->def.op.name, "+") == 0
                     || strcmp(exp->def.op.name, "-") == 0
                     || strcmp(exp->def.op.name, "||") == 0
-                    || strcmp(exp->def.op.name, "MATCHES") == 0
-                    || strcmp(exp->def.op.name, "AND") == 0
-                    || strcmp(exp->def.op.name, "OR") == 0
-                    || strcmp(exp->def.op.name, "IN") == 0
-                    || strcmp(exp->def.op.name, "SUBSET_OF") == 0) {
+                    || strcmp(exp->def.op.name, "matches") == 0
+                    || strcmp(exp->def.op.name, "and") == 0
+                    || strcmp(exp->def.op.name, "or") == 0
+                    || strcmp(exp->def.op.name, "in") == 0
+                    || strcmp(exp->def.op.name, "subset_of") == 0) {
                 if (RDB_append_string(objp, "(", ecp) != RDB_OK)
                     return RDB_ERROR;
                 if (append_ex(objp, exp->def.op.args.firstp, ecp, txp,

@@ -23,26 +23,26 @@ test ro_operator {read-only operators} -setup $SETUP -body {
     set tx [duro::begin $dbenv TEST]
     
     # Create read-only operator
-    duro::operator create concat -returns STRING {a STRING b STRING} {
+    duro::operator create concat -returns string {a string b string} {
         return $a$b
     } $tx
 
     # Create read-only operator with relation argument and return value
-    duro::operator create relop1 -returns {relation {A STRING}} \
-            {r {relation {A STRING}}} {
+    duro::operator create relop1 -returns {relation {A string}} \
+            {r {relation {A string}}} {
         lappend r {A b}
         return $r
     } $tx
 
     # Create read-only operator with tuple argument
-    duro::operator create TSWAP -returns {tuple {A STRING} {B STRING}} \
-        {r {tuple {A STRING} {B STRING}}} {
+    duro::operator create TSWAP -returns {tuple {A string} {B string}} \
+        {r {tuple {A string} {B string}}} {
         array set a $r
         return [list A $a(B) B $a(A)]
     } $tx
     
     # Create read-only operator w/o arguments
-    duro::operator create zero -returns INTEGER {} {
+    duro::operator create zero -returns integer {} {
         return 0
     } $tx
 
@@ -95,13 +95,13 @@ test upd_operator {update operators} -setup $SETUP -body {
 
     # Create overloaded update operator
     
-    duro::operator create strmul -updates {a} {a STRING b STRING} {
+    duro::operator create strmul -updates {a} {a string b string} {
         upvar $a la
     
         append la $b
     } $tx
     
-    duro::operator create strmul -updates {a} {a STRING b INTEGER} {
+    duro::operator create strmul -updates {a} {a string b integer} {
         upvar $a la
     
         set h $la
@@ -112,14 +112,14 @@ test upd_operator {update operators} -setup $SETUP -body {
 
     # Create update operator with relation argument
 
-	duro::operator create TUP0 -updates {t} {t {tuple {I INTEGER}}} {
+	duro::operator create TUP0 -updates {t} {t {tuple {I integer}}} {
     	upvar $t tl
 	    set tl {I 0}
 	} $tx
 
     # Create update operator with relation argument
-    duro::operator create relop2 -updates {r1} {r1 {relation {A STRING}} \
-            r2 {relation {A STRING}}} {
+    duro::operator create relop2 -updates {r1} {r1 {relation {A string}} \
+            r2 {relation {A string}}} {
         foreach i $r2 {
             duro::insert $r1 $i $tx
         }
@@ -129,17 +129,17 @@ test upd_operator {update operators} -setup $SETUP -body {
 
     set t {I 1}
 
-    duro::call TUP0 t {tuple {I INTEGER}} $tx
+    duro::call TUP0 t {tuple {I integer}} $tx
 
     puts $t
     
     duro::table create -local t {
-       {A STRING}
+       {A string}
     } {{A}} $tx
     
     duro::insert t {A a} $tx
     
-    duro::call relop2 t {relation {A STRING}} {{A b}} {relation {A STRING}} $tx
+    duro::call relop2 t {relation {A string}} {{A b}} {relation {A string}} $tx
     
     set arr [duro::array create t {A asc} $tx]
     checkarray $arr {{A a} {A b}} $tx
@@ -157,7 +157,7 @@ test upd_operator {update operators} -setup $SETUP -body {
 
     # Invoke update operator
     set v foo
-    duro::call strmul v STRING bar STRING $tx
+    duro::call strmul v string bar string $tx
     
     if {![string equal $v foobar]} {
         error [format "result is %s, should be %s" $v foobar]
@@ -165,7 +165,7 @@ test upd_operator {update operators} -setup $SETUP -body {
     
     set i X
     set v foo
-    duro::call strmul v STRING 3 INTEGER $tx
+    duro::call strmul v string 3 integer $tx
     
     if {![string equal $v foofoofoo]} {
         error [format "result is %s, should be %s" $v foofoofoo]
@@ -180,20 +180,20 @@ test upd_operator {update operators} -setup $SETUP -body {
     # Try to invoke deleted operator
 
     if {![catch {
-        duro::call strmul v STRING bar STRING $tx
+        duro::call strmul v string bar string $tx
     } err]} {
         error "Operator invocation should fail, but succeded"
     }
     set errcode [lindex $::errorCode 1]
-    if {![string match "OPERATOR_NOT_FOUND_ERROR(*)" $errcode]} {
+    if {![string match "operator_not_found_error(*)" $errcode]} {
         error "Wrong error code: $errcode"
     }
 
     duro::table create -local t {
-       {A STRING}
+       {A string}
     } {{A}} $tx
 
-    duro::call relop2 t {relation {A STRING}} {{A b} {A c}} {relation {A STRING}} \
+    duro::call relop2 t {relation {A string}} {{A b} {A c}} {relation {A string}} \
             $tx
     
     set arr [duro::array create t {A asc} $tx]

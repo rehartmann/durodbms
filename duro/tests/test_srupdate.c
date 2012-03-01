@@ -100,7 +100,7 @@ test_update2(RDB_database *dbp, RDB_exec_context *ecp)
     tbp = RDB_get_table("SRTEST", ecp, &tx);
     assert(tbp != NULL);
 
-    exp = RDB_ro_op("SUM", ecp);
+    exp = RDB_ro_op("sum", ecp);
     assert(exp != NULL);
     argp = RDB_table_ref(tbp, ecp);
     assert(argp != NULL);

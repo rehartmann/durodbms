@@ -22,10 +22,10 @@ test oindex {ordered indexes} -setup $SETUP -body {
     set tx [duro::begin $dbenv TEST]
     
     duro::table create T1 {
-       {A INTEGER}
-       {B STRING}
-       {C STRING}
-       {D STRING x}
+       {A integer}
+       {B string}
+       {C string}
+       {D string x}
     } {{A}} $tx
     
     duro::index create IX1 T1 {B asc} $tx

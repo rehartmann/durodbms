@@ -77,7 +77,7 @@ test_type(RDB_database *dbp, RDB_exec_context *ecp)
     updparamv[0].update = RDB_TRUE;
     updparamv[1].typ = &RDB_FLOAT;
     updparamv[1].update = RDB_FALSE;
-     
+
     ret = RDB_create_update_op("POINT_set_X", 2, updparamv, SHLIB,
             "POINT_set_X", NULL, ecp, &tx);
     assert(ret == RDB_OK);

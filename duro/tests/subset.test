@@ -23,18 +23,18 @@ test subset {SUBSET_OF operator} -setup $SETUP -body {
     set tx [duro::begin $dbenv TEST]
     
     duro::table create T1 {
-       {INTATTR INTEGER}
-       {STRATTR STRING}
+       {INTATTR integer}
+       {STRATTR string}
     } {{INTATTR}} $tx
-    
+
     duro::table create T2 {
-       {INTATTR INTEGER}
-       {STRATTR STRING}
+       {INTATTR integer}
+       {STRATTR string}
     } {{INTATTR}} $tx
     
     duro::table create -local T3 {
-       {INTATTR INTEGER}
-       {STRATTR STRING}
+       {INTATTR integer}
+       {STRATTR string}
     } {{INTATTR}} $tx
     
     #

@@ -23,7 +23,7 @@ test_select(RDB_database *dbp, RDB_exec_context *ecp)
 
     RDB_init_obj(&array);
 
-    exp = RDB_ro_op("WHERE", ecp);
+    exp = RDB_ro_op("where", ecp);
     assert(exp != NULL);
 
     argp = RDB_table_ref(tbp, ecp);
@@ -55,7 +55,7 @@ test_select(RDB_database *dbp, RDB_exec_context *ecp)
 
     RDB_init_obj(&array);
 
-    exp = RDB_ro_op("WHERE", ecp);
+    exp = RDB_ro_op("where", ecp);
     assert(exp != NULL);
 
     argp = RDB_table_ref(tbp, ecp);

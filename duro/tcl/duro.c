@@ -114,6 +114,8 @@ Duro_init_tcl(Tcl_Interp *interp, TclState **statepp)
     setlocale(LC_COLLATE, "");
     setlocale(LC_CTYPE, "");
 
+    _RDB_parse_case_insensitive = 0;
+
     *statepp = (TclState *) Tcl_Alloc(sizeof (TclState));
     Tcl_InitHashTable(&(*statepp)->envs, TCL_STRING_KEYS);
     (*statepp)->env_uid = 0;
@@ -267,7 +269,7 @@ Duro_add_table(Tcl_Interp *interp, TclState *statep, RDB_object *tbp,
         Tcl_AppendResult(interp, "local table \"", name, "\" already exists",
                 (char *) NULL);
         Tcl_SetErrorCode(interp, "Duro",
-                "RDB_ELEMENT_EXISTS_ERROR(\"local table exists\")", (char *) NULL);
+                "element_exists_error(\"local table exists\")", (char *) NULL);
         return TCL_ERROR;
     }
 

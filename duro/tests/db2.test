@@ -23,8 +23,8 @@ test db2 {two databases} -setup $SETUP -body {
     # Create table
     set tx [duro::begin $dbenv TEST1]
     duro::table create T1 {
-       {INTATTR INTEGER}
-       {STRATTR STRING}
+       {INTATTR integer}
+       {STRATTR string}
     } {{INTATTR}} $tx
     
     duro::commit $tx

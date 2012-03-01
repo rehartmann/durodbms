@@ -27,12 +27,12 @@ test invtable {invalid table definitions} -setup $SETUP -body {
     
     if {![catch {
        duro::table create "T 1" {
-           {A INTEGER}
+           {A integer}
        } {{A}} $tx
     }]} {
         error "table creation should fail, but succeeded"
     }
-    if {![string match INVALID_ARGUMENT_ERROR* [lindex $::errorCode 1]]} {
+    if {![string match invalid_argument_error* [lindex $::errorCode 1]]} {
         error "unexpected errorCode: $::errorCode"
     }
 
@@ -44,20 +44,20 @@ test invtable {invalid table definitions} -setup $SETUP -body {
 
     if {![catch {
         duro::table create T1 {
-            {A INTEGER}
-            {{A B} INTEGER}
+            {A integer}
+            {{A B} integer}
         } {{A}} $tx
     }]} {
         error "table creation should fail, but succeeded"
     }
-    if {![string match {INVALID_ARGUMENT_ERROR*A B*} [lindex $::errorCode 1]]} {
+    if {![string match {invalid_argument_error*A B*} [lindex $::errorCode 1]]} {
         error "invalid errorCode: $::errorCode"
     }
     
     if {![catch {
         duro::table create T1 {
-            {A INTEGER}
-            {A STRING}
+            {A integer}
+            {A string}
         } {{A}} $tx
     }]} {
         error "creation of table T1 should fail, but succeeded"
@@ -71,8 +71,8 @@ test invtable {invalid table definitions} -setup $SETUP -body {
     
     if {![catch {
         duro::table create T2 {
-           {A1 STRING}
-           {A2 STRING}
+           {A1 string}
+           {A2 string}
         } {{A1 A1}} $tx
     }]} {
         error "creation of table T2 should fail, but succeeded"
@@ -86,8 +86,8 @@ test invtable {invalid table definitions} -setup $SETUP -body {
     
     if {![catch {
         duro::table create T3 {
-           {A1 STRING}
-           {A2 STRING}
+           {A1 string}
+           {A2 string}
         } {{A1} {A1 A2}} $tx
     }]} {
         error "creation of table T3 should fail, but succeeded"
@@ -99,8 +99,8 @@ test invtable {invalid table definitions} -setup $SETUP -body {
         error "table T3 should not exist, but does"
     }
     
-    duro::table create T {{A INTEGER}} {{A}} $tx
-    
+    duro::table create T {{A integer}} {{A}} $tx
+
     if {![catch {
         duro::table expr X {EXTEND T ADD (C AS B)} $tx
     }]} {

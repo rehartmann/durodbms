@@ -306,7 +306,7 @@ disconnect_op(int argc, RDB_object *argv[], RDB_operator *op,
     }
 
     /* If CURRENT_DB was set, set it to empty string */
-    dbnameobjp = RDB_hashmap_get(&sys_module.varmap, "CURRENT_DB");
+    dbnameobjp = RDB_hashmap_get(&sys_module.varmap, "current_db");
     if (dbnameobjp == NULL || *RDB_obj_string(dbnameobjp) == '\0') {
         return RDB_OK;
     }
@@ -477,34 +477,34 @@ Duro_init_exec(RDB_exec_context *ecp, const char *dbname)
 
     RDB_init_op_map(&sys_module.upd_op_map);
 
-    if (RDB_put_upd_op(&sys_module.upd_op_map, "EXIT", 0, NULL, &exit_op, ecp) != RDB_OK)
+    if (RDB_put_upd_op(&sys_module.upd_op_map, "exit", 0, NULL, &exit_op, ecp) != RDB_OK)
         goto error;
-    if (RDB_put_upd_op(&sys_module.upd_op_map, "EXIT", 1, exit_int_params, &exit_int_op,
+    if (RDB_put_upd_op(&sys_module.upd_op_map, "exit", 1, exit_int_params, &exit_int_op,
             ecp) != RDB_OK)
         goto error;
-    if (RDB_put_upd_op(&sys_module.upd_op_map, "CONNECT", 1, connect_params, &connect_op,
+    if (RDB_put_upd_op(&sys_module.upd_op_map, "connect", 1, connect_params, &connect_op,
             ecp) != RDB_OK)
         goto error;
-    if (RDB_put_upd_op(&sys_module.upd_op_map, "DISCONNECT", 0, NULL, &disconnect_op,
+    if (RDB_put_upd_op(&sys_module.upd_op_map, "disconnect", 0, NULL, &disconnect_op,
             ecp) != RDB_OK)
         goto error;
-    if (RDB_put_upd_op(&sys_module.upd_op_map, "CREATE_DB", 1, create_db_params,
+    if (RDB_put_upd_op(&sys_module.upd_op_map, "create_db", 1, create_db_params,
             &create_db_op, ecp) != RDB_OK)
         goto error;
-    if (RDB_put_upd_op(&sys_module.upd_op_map, "CREATE_ENV", 1, create_env_params,
+    if (RDB_put_upd_op(&sys_module.upd_op_map, "create_env", 1, create_env_params,
             &create_env_op, ecp) != RDB_OK)
         goto error;
-    if (RDB_put_upd_op(&sys_module.upd_op_map, "SYSTEM", 2, system_params, &system_op,
+    if (RDB_put_upd_op(&sys_module.upd_op_map, "system", 2, system_params, &system_op,
             ecp) != RDB_OK)
         goto error;
-    if (RDB_put_upd_op(&sys_module.upd_op_map, "TRACE", 1, trace_params,
+    if (RDB_put_upd_op(&sys_module.upd_op_map, "trace", 1, trace_params,
             &trace_op, ecp) != RDB_OK)
         goto error;
 
     if (_RDB_add_io_ops(&sys_module.upd_op_map, ecp) != RDB_OK)
         goto error;
 
-    if (RDB_put_upd_op(&sys_module.upd_op_map, "LOAD", -1, NULL, &load_op, ecp)
+    if (RDB_put_upd_op(&sys_module.upd_op_map, "load", -1, NULL, &load_op, ecp)
             != RDB_OK)
         goto error;
 
@@ -517,21 +517,21 @@ Duro_init_exec(RDB_exec_context *ecp, const char *dbname)
     }
 
     /* Create CURRENT_DB in system module */
-    if (RDB_hashmap_put(&sys_module.varmap, "CURRENT_DB", objp) != RDB_OK) {
+    if (RDB_hashmap_put(&sys_module.varmap, "current_db", objp) != RDB_OK) {
         RDB_destroy_obj(objp, ecp);
         RDB_raise_no_memory(ecp);
         goto error;
     }
 
-    if (RDB_hashmap_put(&sys_module.varmap, "STDIN", &DURO_STDIN_OBJ) != RDB_OK) {
+    if (RDB_hashmap_put(&sys_module.varmap, "stdin", &DURO_STDIN_OBJ) != RDB_OK) {
         RDB_raise_no_memory(ecp);
         goto error;
     }
-    if (RDB_hashmap_put(&sys_module.varmap, "STDOUT", &DURO_STDOUT_OBJ) != RDB_OK) {
+    if (RDB_hashmap_put(&sys_module.varmap, "stdout", &DURO_STDOUT_OBJ) != RDB_OK) {
         RDB_raise_no_memory(ecp);
         goto error;
     }
-    if (RDB_hashmap_put(&sys_module.varmap, "STDERR", &DURO_STDERR_OBJ) != RDB_OK) {
+    if (RDB_hashmap_put(&sys_module.varmap, "stderr", &DURO_STDERR_OBJ) != RDB_OK) {
         RDB_raise_no_memory(ecp);
         goto error;
     }
@@ -636,7 +636,7 @@ static RDB_database *
 get_db(RDB_exec_context *ecp)
 {
     char *dbname;
-    RDB_object *dbnameobjp = RDB_hashmap_get(&sys_module.varmap, "CURRENT_DB");
+    RDB_object *dbnameobjp = RDB_hashmap_get(&sys_module.varmap, "current_db");
     if (dbnameobjp == NULL) {
         RDB_raise_resource_not_found("no database", ecp);
         return NULL;
@@ -1863,7 +1863,7 @@ tuple_update_to_copy(RDB_ma_copy *copyp, RDB_parse_node *nodep,
      * Get source value by creating an UPDATE expression
      * and evaluating it
      */
-    srcexp = RDB_ro_op("UPDATE", ecp);
+    srcexp = RDB_ro_op("update", ecp);
     if (srcexp == NULL)
         return RDB_ERROR;
     srcvarexp = RDB_dup_expr(nodep->exp, ecp);
@@ -2160,7 +2160,7 @@ exec_assign(const RDB_parse_node *nodep, RDB_exec_context *ecp)
     if (opexp != NULL) {
         const char *opname = RDB_expr_op_name(opexp);
         if (opname != NULL) {
-            if (strcmp(opname, "LENGTH") == 0) {
+            if (strcmp(opname, "length") == 0) {
                 return exec_length_assign(nodep, opexp->def.op.args.firstp, ecp);
             }
         }
@@ -3445,7 +3445,7 @@ Duro_process_stmt(RDB_exec_context *ecp)
     int ret;
     RDB_parse_node *stmtp;
     RDB_object prompt;
-    RDB_object *dbnameobjp = RDB_hashmap_get(&sys_module.varmap, "CURRENT_DB");
+    RDB_object *dbnameobjp = RDB_hashmap_get(&sys_module.varmap, "current_db");
 
     RDB_init_obj(&prompt);
     if (dbnameobjp != NULL && *RDB_obj_string(dbnameobjp) != '\0') {
