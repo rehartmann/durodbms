@@ -3,12 +3,12 @@
 exec wish "$0" ${1+"$@"}
 
 # Duroadmin - GUI administration tool for Duro.
-# Copyright (C) 2004-2009 Ren� Hartmann.
+# Copyright (C) 2004-2012 Rene Hartmann.
 # See the file COPYING for redistribution information.
 
 # $Id$
 
-set duro_version 0.14
+set duro_version 0.15
 
 package require -exact duro $duro_version
 package require Tktable
@@ -213,7 +213,7 @@ proc add_tuples {arr tx rowcount} {
     for {set i 0} {$i < $rowcount} {incr i} {
         if {[catch {set tpl [duro::array index $arr $i $tx]} errmsg]} {
             if {[llength $::errorCode] != 2
-                    || ![string match "NOT_FOUND_ERROR(*)" \
+                    || ![string match "not_found_error(*)" \
                             [lindex $::errorCode 1]]} {
                 error $errmsg
             }

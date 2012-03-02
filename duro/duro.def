@@ -212,6 +212,7 @@ RDB_major_version
 RDB_minor_version
 RDB_parse_del_node
 _RDB_parse_interactive
+_RDB_parse_case_insensitive
 _RDB_parse_init_buf
 Duro_print_error
 Duro_dt_interrupt

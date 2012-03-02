@@ -6,6 +6,15 @@ Changes for Duro 0.15
 
 - Replaced PRINT/PRINTLN/READLN by put/put_line/get_line.
 
+- Changed WITH and EXTEND syntax according to Database Explorations.
+
+- Duro D/T now supports headings in relation selectors.
+
+- Duro D/T sets LC_CTYPE and LC_COLLATE locales according to the environment.
+
+- Explicit BEGIN TRANSACTION no longer required in Duro D/T for invoking
+  user-defined operators and using user-defined types.
+
 - Built-in types and operators are now lowercase, Duro D/T converts identifiers to lowercase.
 
 - Renamed RDB_create_XXX functions for non-scalar types to RDB_new_XXX.
@@ -15,18 +24,9 @@ Changes for Duro 0.15
 - Replaced iargp and iarglen parameters of RDB_create_ro_op() and RDB_create_update_op()
   by explicit source code parameter.
 
-- Explicit BEGIN TRANSACTION no longer required in Duro D/T for invoking
-  user-defined operators and using user-defined types.
-
-- Trace output can be enabled using RDB_env_trace() and TRACE().
+- Trace output can be enabled using RDB_env_trace() and trace().
 
 - Tuple JOIN is now tuple UNION.
-
-- Duro D/T: Changed WITH and EXTEND syntax according to Database Explorations.
-
-- Duro D/T now supports headings in relation selectors.
-
-- Duro D/T sets LC_CTYPE and LC_COLLATE locales according to the environment.
 
 - Added RDB_is_selector().
 
@@ -49,9 +49,9 @@ Added RDB_call_update_op with new semantics.
 
 - File I/O
 
-- Upgrade to Berkeley DB 5.2. (But older versions should work too)
+- Upgrade to Berkeley DB 5.3. (But older versions should work too)
 
-- Store user-defined operators as source code
+- Storing user-defined operators as source code
 
 - RDB_expr_type now always raises an error if the type could not be determined.
 

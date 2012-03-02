@@ -1,20 +1,20 @@
-	README for Duro 0.14
+	README for Duro 0.15
 
 $Id$
 
-This directory contains release 0.14 of Duro, a relational database
+This directory contains the source code of Duro, a relational database
 management system.
 
 The following software is required for compiling and running Duro:
 
-- Berkeley DB Transactional Data Store, release 4.6 or later
+- Berkeley DB Transactional Data Store (release 5.3 recommended)
 - POSIX.2 regular expressions
 - GNU Libtool
-- Tcl 8.1 or later
+- Tcl 8.1 or later (Tcl 8.5 recommended)
 - SCons 1.2.0 or later
 
-Duro 0.14 has been tested under Linux/x86 and Windows XP with Berkeley
-DB 4.7 and Tcl 8.4.
+Duro 0.15 has been tested under Linux/x86 and Windows XP with Berkeley
+DB 5.3 and Tcl 8.5.
 
 To learn about how to use Duro, see the documentation in the 'docs'
 subdirectory. Example code can be found in the 'tests' subdirectory
@@ -24,7 +24,7 @@ When Duro is installed, the Tcl interface is installed as a package in
 the 'lib' subdirectory. The simplest way to make it available to application
 scripts is to add this subdirectory to TCLLIBPATH, e.g.:
 
-    TCLLIBPATH=/usr/local/duro.0.14/lib
+    TCLLIBPATH=/usr/local/duro.0.15/lib
     export TCLLIBPATH
 
 To run Duroadmin, run duroadmin.tcl from the 'bin' subdirectory
@@ -38,7 +38,7 @@ rhartmann@users.sourceforge.net.
 -----
 
 This file is part of Duro, a relational management system.
-Copyright (C) 2003-2009 René Hartmann.
+Copyright (C) 2003-2012 Rene Hartmann.
 
 Duro is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
