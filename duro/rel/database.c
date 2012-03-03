@@ -472,16 +472,16 @@ get_db(const char *name, RDB_dbroot *dbrootp, RDB_exec_context *ecp)
 
     /*
      * Check if the database exists by checking if the DBTABLES contains
-     * SYS_RTABLES for this database.
+     * sys_rtables for this database.
      */
 
     RDB_init_obj(&tpl);
-    ret = RDB_tuple_set_string(&tpl, "TABLENAME", "SYS_RTABLES", ecp);
+    ret = RDB_tuple_set_string(&tpl, "tablename", "sys_rtables", ecp);
     if (ret != RDB_OK) {
         RDB_rollback(ecp, &tx);
         goto error;
     }
-    ret = RDB_tuple_set_string(&tpl, "DBNAME", name, ecp);
+    ret = RDB_tuple_set_string(&tpl, "dbname", name, ecp);
     if (ret != RDB_OK) {
         RDB_rollback(ecp, &tx);
         goto error;
@@ -586,7 +586,7 @@ returned.
 @par Errors:
 
 <dl>
-<dt>VERSION_MISMATCH_ERROR
+<dt>version_mismatch_error
 <dd>The version number stored in the catalog does not match
 the version of the library.
 </dl>
@@ -655,9 +655,9 @@ A pointer to the newly created database, or NULL if an error occurred.
 @par Errors:
 
 <dl>
-<dt>ELEMENT_EXIST_ERROR
+<dt>element_exists_error
 <dd>A database with the name <var>name</var> already exixts.
-<dt>VERSION_MISMATCH_ERROR
+<dt>version_mismatch_error
 <dd>The version number stored in the catalog does not match
 the version of the library.
 </dl>
@@ -696,9 +696,9 @@ returned.
 @par Errors:
 
 <dl>
-<dt>NOT_FOUND_ERROR
+<dt>not_found_error
 <dd>A database with the name <var>name</var> could not be found.
-<dt>VERSION_MISMATCH_ERROR
+<dt>version_mismatch_error
 <dd>The version number stored in the catalog does not match
 the version of the library.
 </dl>
@@ -729,7 +729,7 @@ user_tables_vt(RDB_database *dbp, RDB_exec_context *ecp, RDB_transaction *txp)
     ex1p = RDB_table_ref(dbp->dbrootp->rtables_tbp, ecp);
     if (ex1p == NULL)
         goto error;
-    ex2p = RDB_var_ref("IS_USER", ecp);
+    ex2p = RDB_var_ref("is_user", ecp);
     if (ex2p == NULL) {
         goto error;
     }
@@ -741,7 +741,7 @@ user_tables_vt(RDB_database *dbp, RDB_exec_context *ecp, RDB_transaction *txp)
     RDB_add_arg(ex3p, ex2p);
 
     ex2p = NULL;
-    ex1p = RDB_var_ref("DBNAME", ecp);
+    ex1p = RDB_var_ref("dbname", ecp);
     if (ex1p == NULL) {
         goto error;
     }
@@ -777,13 +777,13 @@ user_tables_vt(RDB_database *dbp, RDB_exec_context *ecp, RDB_transaction *txp)
     return vtbp;
 
 error:
-    if (ex1p == NULL)
+    if (ex1p != NULL)
         RDB_drop_expr(ex1p, ecp);
-    if (ex2p == NULL)
+    if (ex2p != NULL)
         RDB_drop_expr(ex2p, ecp);
-    if (ex3p == NULL)
+    if (ex3p != NULL)
         RDB_drop_expr(ex3p, ecp);
-    if (ex1p == NULL)
+    if (ex4p != NULL)
         RDB_drop_expr(ex4p, ecp);
     return NULL;
 }
@@ -796,7 +796,7 @@ db_exists_vt(RDB_database *dbp, RDB_exec_context *ecp, RDB_transaction *txp)
 	RDB_expression *ex2p = NULL;
 	RDB_expression *ex3p = NULL;
 	
-	ex1p = RDB_var_ref("DBNAME", ecp);
+	ex1p = RDB_var_ref("dbname", ecp);
 	if (ex1p == NULL)
 	    return NULL;
 
@@ -849,9 +849,9 @@ RDB_OK on success, RDB_ERROR if an error occurred.
 @par Errors:
 
 <dl>
-<dt>NOT_FOUND_ERROR
+<dt>not_found_error
 <dd>The database was not found.
-<dt>ELEMENT_EXISTS_ERROR
+<dt>element_exists_error
 <dd>The database is not empty.
 </dl>
 
@@ -906,7 +906,7 @@ RDB_drop_db(RDB_database *dbp, RDB_exec_context *ecp)
     /*
      * Disassociate all tables from database
      */
-    exp = RDB_eq(RDB_var_ref("DBNAME", ecp),
+    exp = RDB_eq(RDB_var_ref("dbname", ecp),
                   RDB_string_to_expr(dbp->name, ecp), ecp);
     if (exp == NULL) {
         goto error;
@@ -939,7 +939,7 @@ db_names_tb(RDB_object *dbtables_tbp, RDB_exec_context *ecp, RDB_transaction *tx
     ex1p = RDB_table_ref(dbtables_tbp, ecp);
     if (ex1p == NULL)
         return NULL;
-    ex2p = RDB_string_to_expr("DBNAME", ecp);
+    ex2p = RDB_string_to_expr("dbname", ecp);
     if (ex2p == NULL)
         return NULL;
 
@@ -979,7 +979,7 @@ RDB_OK on success, RDB_ERROR if an error occurred.
 @par Errors:
 
 <dl>
-<dt>TYPE_MISMATCH_ERROR
+<dt>type_mismatch_error
 <dd>*<var>arrp</var> already contains elements of a type different from
 RDB_STRING.
 </dl>
@@ -1038,7 +1038,7 @@ RDB_get_dbs(RDB_environment *envp, RDB_object *arrp, RDB_exec_context *ecp)
             goto cleanup;
         }
 
-        ret = RDB_array_set(arrp, (RDB_int) i, RDB_tuple_get(tplp, "DBNAME"),
+        ret = RDB_array_set(arrp, (RDB_int) i, RDB_tuple_get(tplp, "dbname"),
                 ecp);
         if (ret != RDB_OK)
             goto cleanup;
@@ -1179,12 +1179,12 @@ If an error occurred, NULL is returned.
 @par Errors:
 
 <dl>
-<dt>NO_RUNNING_TX_ERROR
+<dt>no_running_tx_error
 <dd><var>txp</var> does not point to a running transaction.
-<dt>TYPE_MISMATCH_ERROR
+<dt>type_mismatch_error
 <dd>The type of a default value does not match the type of the corresponding
 attribute.
-<dt>INVALID_ARGUMENT_ERROR
+<dt>invalid_argument_error
 <dd>One or more of the arguments are incorrect. For example, a key attribute
 does not appear in <var>attrv</var>, etc.
 </dl>
@@ -1290,9 +1290,9 @@ A pointer to the table, or NULL if an error occurred.
 @par Errors:
 
 <dl>
-<dt>NO_RUNNING_TX_ERROR
+<dt>no_running_tx_error
 <dd><var>txp</var> does not point to a running transaction.
-<dt>NOT_FOUND_ERROR
+<dt>not_found_error
 <dd>A table with the name <var>name</var> could not be found.
 </dl>
 
@@ -1341,7 +1341,7 @@ table_dep_check(RDB_object *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
     RDB_object *dtbp;
     RDB_expression *wherep;
     RDB_expression *ex2p;
-    RDB_expression *ex1p = RDB_var_ref("DBNAME", ecp);
+    RDB_expression *ex1p = RDB_var_ref("dbname", ecp);
     if (ex1p == NULL)
         return RDB_ERROR;
 
@@ -1402,7 +1402,7 @@ table_dep_check(RDB_object *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
             goto cleanup;
         }
 
-        dtbp = RDB_get_table(RDB_tuple_get_string(tplp, "TABLENAME"), ecp, txp);
+        dtbp = RDB_get_table(RDB_tuple_get_string(tplp, "tablename"), ecp, txp);
         if (dtbp == NULL) {
             ret = RDB_ERROR;
             goto cleanup;
@@ -1439,7 +1439,7 @@ On success, RDB_OK is returned. On failure, RDB_ERROR is returned.
 @par Errors:
 
 <dl>
-<dt>NO_RUNNING_TX_ERROR
+<dt>no_running_tx_error
 <dd>The table is global (persistent) and <var>txp</var>
 does not point to a running transaction.
 </dl>
@@ -1510,9 +1510,9 @@ On success, RDB_OK is returned. On failure, RDB_ERROR is returned.
 @par Errors:
 
 <dl>
-<dt>NO_RUNNING_TX_ERROR
+<dt>no_running_tx_error
 <dd><var>txp</var> does not point to a running transaction.
-<dt>INVALID_ARGUMENT_ERROR
+<dt>invalid_argument_error
 <dd><var>name</var> is not a valid table name.
 </dl>
 
@@ -1585,13 +1585,13 @@ RDB_OK on success, RDB_ERROR if an error occurred.
 @par Errors
 
 <dl>
-<dt>NO_RUNNING_TX_ERROR
+<dt>no_running_tx_error
 <dd><var>txp</var> does not point to a running transaction.
-<dt>INVALID_ARGUMENT_ERROR
+<dt>invalid_argument_error
 <dd>The table does not have a name.
-<dt>ELEMENT_EXIST_ERROR
+<dt>element_exist_error
 <dd>The table is already associated with the database.
-<dt>NOT_SUPPORTED_ERROR
+<dt>not_supported_error
 <dd>The table is a local real table.
 </dl>
 
@@ -1696,9 +1696,9 @@ If the table is a global table, it is made local.
 @par Errors:
 
 <dl>
-<dt>NO_RUNNING_TX_ERROR
+<dt>no_running_tx_error
 <dd><var>txp</var> does not point to a running transaction.
-<dt>INVALID_ARGUMENT_ERROR
+<dt>invalid_argument_error
 <dd>The table does not belong to the database the transaction interacts
 with.
 </dl>
@@ -1732,7 +1732,7 @@ The pointer to the type on success, or NULL if an error occured.
 @par Errors:
 
 <dl>
-<dt>NAME_ERROR</dt>
+<dt>name_error</dt>
 <dd>A type with the name <var>name</var> could not be found.
 </dd>
 <dt></dt>
@@ -1821,7 +1821,7 @@ RDB_get_type(const char *name, RDB_exec_context *ecp, RDB_transaction *txp)
      */
     typv[0] = typ;
     typv[1] = typ;
-    cmpop = _RDB_get_ro_op("CMP", 2, typv, NULL, ecp, txp);
+    cmpop = _RDB_get_ro_op("cmp", 2, typv, NULL, ecp, txp);
     if (cmpop != NULL) {
         typ->compare_op = cmpop;
     } else {

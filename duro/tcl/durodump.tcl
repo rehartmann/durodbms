@@ -6,11 +6,11 @@ exec tclsh "$0" ${1+"$@"}
 # $Id$
 #
 # Durodump - tool to dump a Duro database environment to a file.
-# Copyright (C) 2004, 2005 René Hartmann.
+# Copyright (C) 2004-2012 Rene Hartmann.
 # See the file COPYING for redistribution information.
 #
 
-set duro_version 0.14
+set duro_version 0.15
 
 package require -exact duro $duro_version
 
@@ -75,7 +75,7 @@ foreach db $dbs {
 
     puts $out "set tx \[duro::begin \$dbenv $db\]"
     if {!$types_ops_dumped} {
-        foreach t {SYS_TYPES SYS_POSSREPCOMPS SYS_RO_OPS SYS_UPD_OPS} {
+        foreach t {sys_types sys_possrepcomps sys_ro_ops sys_upd_ops} {
             dump_rtable $out $t $tx 0
         }
         set types_ops_dumped 1

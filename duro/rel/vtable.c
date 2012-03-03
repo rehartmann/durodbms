@@ -61,16 +61,16 @@ A pointer to the newly created table, or NULL if an error occurred.
 @par Errors:
 
 <dl>
-<dt>NO_RUNNING_TX_ERROR
+<dt>no_running_tx_error
 <dd><var>txp</var> does not point to a running transaction.
-<dt>INVALID_ARGUMENT_ERROR
+<dt>invalid_argument_error
 <dd>*<var>exp</var> does not define a valid virtual table.
-<dt>NAME_ERROR
+<dt>name_error
 <dd>*<var>exp</var> refers to an undefined attribute.
-<dt>TYPE_MISMATCH_ERROR
+<dt>type_mismatch_error
 <dd>*<var>exp</var> contains an operator invocation with an argument
 of a wrong type.
-<dt>OPERATOR_NOT_FOUND_ERROR
+<dt>operator_not_found_error
 <dd>*<var>exp</var> contains an invocation of a non-existing operator.
 </dl>
  */

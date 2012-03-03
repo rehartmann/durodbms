@@ -19,7 +19,7 @@ test db2 {two databases} -setup $SETUP -body {
     # Create Databases
     duro::db create $dbenv TEST1
     duro::db create $dbenv TEST2
-    
+
     # Create table
     set tx [duro::begin $dbenv TEST1]
     duro::table create T1 {
@@ -43,8 +43,8 @@ test db2 {two databases} -setup $SETUP -body {
     
     set tx [duro::begin $dbenv TEST1]
     
-    duro::table expr T {(SYS_DBTABLES WHERE TABLENAME="T1") {DBNAME}} $tx
-    if {![duro::table contains T {DBNAME TEST2} $tx]} {
+    duro::table expr T {(sys_dbtables where tablename="T1") {dbname}} $tx
+    if {![duro::table contains T {dbname TEST2} $tx]} {
         error "Table T1 should be in database TEST2, but is not"
     }
     duro::table drop T $tx

@@ -82,14 +82,14 @@ _RDB_read_constraints(RDB_exec_context *ecp, RDB_transaction *txp)
             goto cleanup;
         }
         constrp->name = RDB_dup_str(RDB_obj_string(RDB_tuple_get(tplp,
-                "CONSTRAINTNAME")));
+                "constraintname")));
         if (constrp->name == NULL) {
             RDB_free(constrp);
             RDB_raise_no_memory(ecp);
             ret = RDB_ERROR;
             goto cleanup;
         }
-        constrp->exp = _RDB_binobj_to_expr(RDB_tuple_get(tplp, "I_EXPR"), ecp,
+        constrp->exp = _RDB_binobj_to_expr(RDB_tuple_get(tplp, "i_expr"), ecp,
                 txp);
         if (constrp->exp == NULL) {
             RDB_free(constrp->name);
@@ -129,11 +129,11 @@ on the database the transaction specified by <var>txp</var> interacts with.
 
 @par Errors:
 <dl>
-<dt>NO_RUNNING_TX_ERROR
+<dt>no_running_tx_error
 <dd><var>txp</var> does not point to a running transaction.
-<dt>TYPE_MISMATCH_ERROR
+<dt>type_mismatch_error
 <dd>The expression specified by <var>constrp</var> is not of type BOOLEAN.
-<dt>PREDICATE_VIOLATION_ERROR
+<dt>predicate_violation_error
 <dd>The expression specified by <var>constrp</var> is not satisfied.
 </dl>
 
@@ -208,9 +208,9 @@ error:
 
 @par Errors:
 <dl>
-<dt>NO_RUNNING_TX_ERROR
+<dt>no_running_tx_error
 <dd><var>txp</var> does not point to a running transaction.
-<dt>NOT_FOUND_ERROR
+<dt>not_found_error
 <dd>A constraint with the name <var>name</var> could not be found.
 </dl>
 
@@ -264,7 +264,7 @@ RDB_drop_constraint(const char *name, RDB_exec_context *ecp,
     }
 
     /* Delete constraint from catalog */
-    condp = RDB_eq(RDB_var_ref("CONSTRAINTNAME", ecp),
+    condp = RDB_eq(RDB_var_ref("constraintname", ecp),
             RDB_string_to_expr(name, ecp), ecp);
     if (condp == NULL) {
         return RDB_ERROR;

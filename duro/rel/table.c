@@ -272,10 +272,10 @@ RDB_OK on success, RDB_ERROR if an error occurred.
 @par Errors:
 
 <dl>
-<dt>TYPE_MISMATCH_ERROR
+<dt>type_mismatch_error
 <dd>The type of a default value does not match the type of the corresponding
 attribute.
-<dt>INVALID_ARGUMENT_ERROR
+<dt>invalid_argument_error
 <dd>One or more of the arguments are incorrect. For example, a key attribute
 does not appear in *<var>attrv</var>, etc.
 </dl>
@@ -358,11 +358,11 @@ RDB_OK on success, RDB_ERROR if an error occurred.
 @par Errors:
 
 <dl>
-<dt>NO_RUNNING_TX_ERROR
+<dt>no_running_tx_error
 <dd><var>txp</var> does not point to a running transaction.
-<dt>TYPE_MISMATCH_ERROR
+<dt>type_mismatch_error
 <dd>The types of the two tables differ.
-<dt>OPERATOR_NOT_FOUND_ERROR
+<dt>operator_not_found_error
 <dd>The definition of the table specified by <var>srcp</var>
 refers to a non-existing operator.
 </dl>
@@ -401,13 +401,13 @@ RDB_OK on success, RDB_ERROR if an error occurred.
 @par Errors:
 
 <dl>
-<dt>NO_RUNNING_TX_ERROR
+<dt>no_running_tx_error
 <dd><var>txp</var> does not point to a running transaction.
-<dt>NAME_ERROR
+<dt>name_error
 <dd>The table does not have an attribute <var>attrname</var>.
-<dt>TYPE_MISMATCH_ERROR
+<dt>type_mismatch_error
 <dd>The type of the attribute is not BOOLEAN.
-<dt>INVALID_ARGUMENT_ERROR
+<dt>invalid_argument_error
 <dd><var>attrname</var> is NULL and the table has more than one
 attribute.
 </dl>
@@ -493,13 +493,13 @@ RDB_OK on success, RDB_ERROR if an error occurred.
 @par Errors:
 
 <dl>
-<dt>NO_RUNNING_TX_ERROR
+<dt>no_running_tx_error
 <dd><var>txp</var> does not point to a running transaction.
-<dt>NAME_ERROR
+<dt>name_error
 <dd>The table does not have an attribute <var>attrname</var>.
-<dt>TYPE_MISMATCH_ERROR
+<dt>type_mismatch_error
 <dd>The type of the attribute is not BOOLEAN.
-<dt>INVALID_ARGUMENT_ERROR
+<dt>invalid_argument_error
 <dd><var>attrname</var> is NULL and the table has more than one
 attribute.
 </dl>
@@ -584,13 +584,13 @@ RDB_OK on success, RDB_ERROR if an error occurred.
 @par Errors:
 
 <dl>
-<dt>NO_RUNNING_TX_ERROR
+<dt>no_running_tx_error
 <dd><var>txp</var> does not point to a running transaction.
-<dt>NAME_ERROR
+<dt>name_error
 <dd>The table does not have an attribute <var>attrname</var>.
-<dt>TYPE_MISMATCH_ERROR
+<dt>type_mismatch_error
 <dd>The type of the attribute is not numeric.
-<dt>INVALID_ARGUMENT_ERROR
+<dt>invalid_argument_error
 <dd><var>attrname</var> is NULL and the table has more than one
 attribute.
 </dl>
@@ -686,13 +686,13 @@ RDB_OK on success, RDB_ERROR if an error occurred.
 @par Errors:
 
 <dl>
-<dt>NO_RUNNING_TX_ERROR
+<dt>no_running_tx_error
 <dd><var>txp</var> does not point to a running transaction.
-<dt>NAME_ERROR
+<dt>name_error
 <dd>The table does not have an attribute <var>attrname</var>.
-<dt>TYPE_MISMATCH_ERROR
+<dt>type_mismatch_error
 <dd>The type of the attribute is not numeric.
-<dt>INVALID_ARGUMENT_ERROR
+<dt>invalid_argument_error
 <dd><var>attrname</var> is NULL and the table has more than one
 attribute.
 </dl>
@@ -790,13 +790,13 @@ RDB_OK on success, RDB_ERROR if an error occurred.
 @par Errors:
 
 <dl>
-<dt>NO_RUNNING_TX_ERROR
+<dt>no_running_tx_error
 <dd><var>txp</var> does not point to a running transaction.
-<dt>NAME_ERROR
+<dt>name_error
 <dd>The table does not have an attribute <var>attrname</var>.
-<dt>TYPE_MISMATCH_ERROR
+<dt>type_mismatch_error
 <dd>The type of the attribute is not numeric.
-<dt>INVALID_ARGUMENT_ERROR
+<dt>invalid_argument_error
 <dd><var>attrname</var> is NULL and the table has more than one
 attribute.
 </dl>
@@ -889,16 +889,16 @@ RDB_OK on success, RDB_ERROR if an error occurred.
 @par Errors:
 
 <dl>
-<dt>NO_RUNNING_TX_ERROR
+<dt>no_running_tx_error
 <dd><var>txp</var> does not point to a running transaction.
-<dt>NAME_ERROR
+<dt>name_error
 <dd>The table does not have an attribute <var>attrname</var>.
-<dt>TYPE_MISMATCH_ERROR
+<dt>type_mismatch_error
 <dd>The type of the attribute is not numeric.
-<dt>INVALID_ARGUMENT_ERROR
+<dt>invalid_argument_error
 <dd><var>attrname</var> is NULL and the table has more than one
 attribute.
-<dt>AGGREGATE_UNDEFINED_ERROR
+<dt>aggregate_undefined_error
 <dd>The table is empty.
 </dl>
 
@@ -987,13 +987,13 @@ RDB_OK on success, RDB_ERROR if an error occurred.
 @par Errors:
 
 <dl>
-<dt>NO_RUNNING_TX_ERROR
+<dt>no_running_tx_error
 <dd><var>txp</var> does not point to a running transaction.
-<dt>NOT_FOUND_ERROR
+<dt>not_found_error
 <dd>The table is empty.
-<dt>INVALID_ARGUMENT_ERROR
+<dt>invalid_argument_error
 <dd>The table contains more than one tuple.
-<dt>OPERATOR_NOT_FOUND_ERROR
+<dt>operator_not_found_error
 <dd>The definition of the table specified by <var>tbp</var>
 refers to a non-existing operator.
 </dl>
@@ -1183,9 +1183,9 @@ On failure, (RDB_int)RDB_ERROR is returned.
 @par Errors:
 
 <dl>
-<dt>NO_RUNNING_TX_ERROR
+<dt>no_running_tx_error
 <dd><var>txp</var> does not point to a running transaction.
-<dt>OPERATOR_NOT_FOUND_ERROR
+<dt>operator_not_found_error
 <dd>The definition of the table specified by <var>tbp</var>
 refers to a non-existing operator.
 </dl>
@@ -1270,11 +1270,11 @@ RDB_OK on success, RDB_ERROR if an error occurred.
 @par Errors:
 
 <dl>
-<dt>NO_RUNNING_TX_ERROR
+<dt>no_running_tx_error
 <dd><var>txp</var> does not point to a running transaction.
-<dt>TYPE_MISMATCH_ERROR
+<dt>type_mismatch_error
 <dd>The types of the two tables differ.
-<dt>OPERATOR_NOT_FOUND_ERROR
+<dt>operator_not_found_error
 <dd>The definition of one of the tables
 refers to a non-existing operator.
 </dl>
@@ -1485,11 +1485,11 @@ RDB_OK on success, RDB_ERROR if an error occurred.
 @par Errors:
 
 <dl>
-<dt>INVALID_ARGUMENT_ERROR
+<dt>invalid_argument_error
 <dd><var>name</var> is not a valid index name.
-<dt>ELEMENT_EXIST_ERROR
+<dt>element_exist_error
 <dd>An index with name <var>name</var> already exists.
-<dt>NAME_ERROR
+<dt>name_error
 <dd>An attribute specified by <var>idxcompv</var> does not appear in the
 table.
 </dl>
@@ -1584,7 +1584,7 @@ RDB_OK on success, RDB_ERROR if an error occurred.
 @par Errors:
 
 <dl>
-<dt>NOT_FOUND_ERROR
+<dt>not_found_error
 <dd>An index with name <var>name</var> does not exist.
 </dl>
 

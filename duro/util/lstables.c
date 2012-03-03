@@ -67,12 +67,12 @@ print_tables(RDB_exec_context *ecp, RDB_transaction *txp, RDB_bool all,
     RDB_expression *texp, *argp;
     RDB_int i;
 
-    rt_tbp = RDB_get_table(real ? "SYS_RTABLES" : "SYS_VTABLES", ecp, txp);
+    rt_tbp = RDB_get_table(real ? "sys_rtables" : "sys_vtables", ecp, txp);
     if (rt_tbp == NULL) {
         return RDB_ERROR;
     }
 
-    db_tbp = RDB_get_table("SYS_DBTABLES", ecp, txp);
+    db_tbp = RDB_get_table("sys_dbtables", ecp, txp);
     if (db_tbp == NULL) {
         return RDB_ERROR;
     } 
@@ -96,7 +96,7 @@ print_tables(RDB_exec_context *ecp, RDB_transaction *txp, RDB_bool all,
     if (all) {
         argp = RDB_bool_to_expr(RDB_TRUE, ecp);
     } else {
-        argp = RDB_var_ref("IS_USER", ecp);
+        argp = RDB_var_ref("is_user", ecp);
     }
     if (argp == NULL)
         goto error;
@@ -112,7 +112,7 @@ print_tables(RDB_exec_context *ecp, RDB_transaction *txp, RDB_bool all,
         goto error;
     RDB_add_arg(texp, argp);
 
-    argp = RDB_eq(RDB_var_ref("DBNAME", ecp),
+    argp = RDB_eq(RDB_var_ref("dbname", ecp),
                    RDB_string_to_expr(RDB_db_name(RDB_tx_db(txp)), ecp), ecp);
     RDB_add_arg(texp, argp);
 
@@ -127,7 +127,7 @@ print_tables(RDB_exec_context *ecp, RDB_transaction *txp, RDB_bool all,
     } 
     
     for (i = 0; (tplp = RDB_array_get(&array, i, ecp)) != NULL; i++) {
-        printf(real ? "%s\n" : "%s*\n", RDB_tuple_get_string(tplp, "TABLENAME"));
+        printf(real ? "%s\n" : "%s*\n", RDB_tuple_get_string(tplp, "tablename"));
     }
     if (RDB_obj_type(RDB_get_err(ecp)) != &RDB_NOT_FOUND_ERROR) {
         goto error;

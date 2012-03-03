@@ -172,7 +172,7 @@ A pointer to the RDB_type struct, or NULL if an error occured.
 @par Errors:
 
 <dl>
-<dt>INVALID_ARGUMENT_ERROR
+<dt>invalid_argument_error
 <dd><var>attrv</var> contains two attributes with the same name.
 </dl>
 
@@ -258,7 +258,7 @@ On success, a pointer to the RDB_type struct. On failure, NULL is returned.
 @par Errors:
 
 <dl>
-<dt>INVALID_ARGUMENT_ERROR
+<dt>invalid_argument_error
 <dd><var>attrv</var> contains two attributes with the same name.
 </dl>
 
@@ -437,9 +437,9 @@ RDB_OK on success, RDB_ERROR if an error occurred.
 @par Errors:
 
 <dl>
-<dt>NO_RUNNING_TX_ERROR
+<dt>no_running_tx_error
 <dd><var>txp</var> does not point to a running transaction.
-<dt>ELEMENT_EXISTS_ERROR
+<dt>element_exists_error
 <dd>There is already a type with name <var>name</var>.
 </dl>
 
@@ -469,30 +469,30 @@ RDB_define_type(const char *name, int repc, const RDB_possrep repv[],
         return RDB_ERROR;
 
     /*
-     * Insert tuple into SYS_TYPES
+     * Insert tuple into sys_types
      */
 
-    if (RDB_tuple_set_string(&tpl, "TYPENAME", name, ecp) != RDB_OK)
+    if (RDB_tuple_set_string(&tpl, "typename", name, ecp) != RDB_OK)
         goto error;
-    if (RDB_tuple_set(&tpl, "I_AREP_TYPE", &typedata, ecp) != RDB_OK)
+    if (RDB_tuple_set(&tpl, "i_arep_type", &typedata, ecp) != RDB_OK)
         goto error;
-    if (RDB_tuple_set_int(&tpl, "I_AREP_LEN", RDB_NOT_IMPLEMENTED, ecp)
+    if (RDB_tuple_set_int(&tpl, "i_arep_len", RDB_NOT_IMPLEMENTED, ecp)
             != RDB_OK)
         goto error;
-    if (RDB_tuple_set_bool(&tpl, "I_SYSIMPL", RDB_FALSE, ecp) != RDB_OK)
+    if (RDB_tuple_set_bool(&tpl, "i_sysimpl", RDB_FALSE, ecp) != RDB_OK)
         goto error;
 
     /* Store constraint in tuple */
     if (_RDB_expr_to_binobj(&conval, constraintp, ecp) != RDB_OK)
         goto error;
-    if (RDB_tuple_set(&tpl, "I_CONSTRAINT", &conval, ecp) != RDB_OK)
+    if (RDB_tuple_set(&tpl, "i_constraint", &conval, ecp) != RDB_OK)
         goto error;
 
     if (RDB_insert(txp->dbp->dbrootp->types_tbp, &tpl, ecp, txp) != RDB_OK)
         goto error;
 
     /*
-     * Insert tuple into SYS_POSSREPS
+     * Insert tuple into sys_possreps
      */   
 
     for (i = 0; i < repc; i++) {
@@ -507,7 +507,7 @@ RDB_define_type(const char *name, int repc, const RDB_possrep repv[],
             /* Make type name the possrep name */
             prname = (char *) name;
         }
-        if (RDB_tuple_set_string(&tpl, "POSSREPNAME", prname, ecp) != RDB_OK)
+        if (RDB_tuple_set_string(&tpl, "possrepname", prname, ecp) != RDB_OK)
             goto error;
 
         for (j = 0; j < repv[i].compc; j++) {
@@ -520,15 +520,15 @@ RDB_define_type(const char *name, int repc, const RDB_possrep repv[],
                 }
                 cname = prname;
             }
-            if (RDB_tuple_set_int(&tpl, "COMPNO", (RDB_int)j, ecp) != RDB_OK)
+            if (RDB_tuple_set_int(&tpl, "compno", (RDB_int)j, ecp) != RDB_OK)
                 goto error;
-            if (RDB_tuple_set_string(&tpl, "COMPNAME", cname, ecp) != RDB_OK)
+            if (RDB_tuple_set_string(&tpl, "compname", cname, ecp) != RDB_OK)
                 goto error;
 
             if (_RDB_type_to_binobj(&typedata, repv[i].compv[j].typ,
                     ecp) != RDB_OK)
                 goto error;
-            if (RDB_tuple_set(&tpl, "COMPTYPE", &typedata, ecp) != RDB_OK)
+            if (RDB_tuple_set(&tpl, "comptype", &typedata, ecp) != RDB_OK)
                 goto error;
 
             if (RDB_insert(txp->dbp->dbrootp->possrepcomps_tbp, &tpl, ecp, txp)
@@ -634,14 +634,15 @@ The second argument is read-only and must be of the type of
 the component.
 </dl>
 
-A user-defined comparison operator CMP returning an INTEGER may be supplied.
-CMP must have two arguments, both of the user-defined type
+A user-defined comparison operator <code>cmp</code returning an
+<code>integer</code> may be supplied.
+<code>cmp</code must have two arguments, both of the user-defined type
 for which the comparison is to be defined.
 
-CMP must return -1, 0, or 1 if the first argument is lower than,
+<code>cmp</code must return -1, 0, or 1 if the first argument is lower than,
 equal to, or greater than the second argument, respectively.
 
-If CMP has been defined, it will be called by the built-in comparison
+If <code>cmp</code has been defined, it will be called by the built-in comparison
 operators =, <>, <= etc. 
 
 @returns
@@ -651,11 +652,11 @@ On success, RDB_OK is returned. Any other return value indicates an error.
 @par Errors:
 
 <dl>
-<dt>NO_RUNNING_TX_ERROR
+<dt>no_running_tx_error
 <dd>*<var>txp</var> is not a running transaction.
-<dt>NOT_FOUND_ERROR
+<dt>not_found_error
 <dd>The type has not been previously defined.
-<dt>INVALID_ARGUMENT_ERROR
+<dt>invalid_argument_error
 <dd><var>arep</var> is NULL and <var>areplen</var> is -1,
 and the type was defined with more than one possible representation.
 </dl>
@@ -717,7 +718,7 @@ RDB_implement_type(const char *name, RDB_type *arep, RDB_int areplen,
             return RDB_ERROR;
     }
 
-    exp = RDB_var_ref("TYPENAME", ecp);
+    exp = RDB_var_ref("typename", ecp);
     if (exp == NULL) {
         return RDB_ERROR;
     }
@@ -736,13 +737,13 @@ RDB_implement_type(const char *name, RDB_type *arep, RDB_int areplen,
 
     upd[0].exp = upd[1].exp = upd[2].exp = NULL;
 
-    upd[0].name = "I_AREP_LEN";
+    upd[0].name = "i_arep_len";
     upd[0].exp = RDB_int_to_expr(arep == NULL ? areplen : arep->ireplen, ecp);
     if (upd[0].exp == NULL) {
         ret = RDB_ERROR;
         goto cleanup;
     }
-    upd[1].name = "I_SYSIMPL";
+    upd[1].name = "i_sysimpl";
     upd[1].exp = RDB_bool_to_expr(sysimpl, ecp);
     if (upd[1].exp == NULL) {
         ret = RDB_ERROR;
@@ -756,7 +757,7 @@ RDB_implement_type(const char *name, RDB_type *arep, RDB_int areplen,
             goto cleanup;
         }
 
-        upd[2].name = "I_AREP_TYPE";
+        upd[2].name = "i_arep_type";
         upd[2].exp = RDB_obj_to_expr(&typedata, ecp);
         RDB_destroy_obj(&typedata, ecp);
         if (upd[2].exp == NULL) {
@@ -834,11 +835,11 @@ On success, RDB_OK is returned. Any other return value indicates an error.
 @par Errors:
 
 <dl>
-<dt>NO_RUNNING_TX_ERROR
+<dt>no_running_tx_error
 <dd>*<var>txp</var> is not a running transaction.
-<dt>NAME_ERROR
+<dt>name_error
 <dd>A type with name <var>name</var> was not found.
-<dt>INVALID_ARGUMENT_ERROR
+<dt>invalid_argument_error
 <dd>The type is not user-defined.
 </dl>
 
@@ -884,7 +885,7 @@ RDB_drop_type(const char *name, RDB_exec_context *ecp, RDB_transaction *txp)
     if (wherep == NULL) {
         return RDB_ERROR;
     }
-    argp = RDB_var_ref("TYPENAME", ecp);
+    argp = RDB_var_ref("typename", ecp);
     if (argp == NULL) {
         RDB_drop_expr(wherep, ecp);
         return RDB_ERROR;

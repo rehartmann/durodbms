@@ -619,7 +619,7 @@ is_getter(const char *name, int argc) {
 
 static RDB_bool
 is_compare (const char *name, int argc) {
-    return (RDB_bool) (argc == 2 && strcmp(name, "CMP") == 0);
+    return (RDB_bool) (argc == 2 && strcmp(name, "cmp") == 0);
 }
 
 int
@@ -717,7 +717,7 @@ Duro_invoke_ro_op(int argc, RDB_object *argv[], RDB_operator *op,
     opargv[0] = nametop;
 
     for (i = 0; i < argc; i++) {
-        /* If the operator is a getter or CMP, pass actual rep */
+        /* If the operator is a getter or cmp, pass actual rep */
         opargv[i + 1] = (is_getter(RDB_operator_name(op), argc) && i == 0)
                 || is_compare(RDB_operator_name(op), argc) ?
                 Duro_irep_to_tcl(interp, argv[i], ecp, txp)

@@ -508,7 +508,7 @@ _RDB_create_stored_table(RDB_object *tbp, RDB_environment *envp,
         goto error;
 
     /*
-     * If the table is a persistent user table, insert recmap into SYS_TABLE_RECMAP
+     * If the table is a persistent user table, insert recmap into sys_table_recmap
      */
     if (tbp->val.tb.is_persistent && tbp->val.tb.is_user) {
         ret = _RDB_cat_insert_table_recmap(tbp, RDB_table_name(tbp), ecp, txp);

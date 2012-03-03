@@ -29,14 +29,14 @@ If an error occurred, RDB_ERROR is returned.
 @par Errors:
 
 <dl>
-<dt>RDB_NO_RUNNING_TX_ERROR
+<dt>no_running_tx_error
 <dd><var>txp</var> does not point to a running transaction.
-<dt>RDB_INVALID_ARGUMENT_ERROR
+<dt>invalid_argument_error
 <dd>A table attribute is missing in the tuple.
-<dt>RDB_TYPE_MISMATCH_ERROR
+<dt>type_mismatch_error
 <dd>The type of a tuple attribute does not match the type of the
 corresponding table attribute.
-<dt>RDB_OPERATOR_NOT_FOUND_ERROR
+<dt>operator_not_found_error
 <dd>The definition of the table specified by <var>tbp</var>
 refers to a non-existing operator.
 </dl>

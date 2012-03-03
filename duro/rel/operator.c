@@ -97,9 +97,9 @@ Overloading operators is possible.
 @par Errors:
 
 <dl>
-<dt>NO_RUNNING_TX_ERROR
+<dt>no_running_tx_error
 <dd>*<var>txp</var> is not a running transaction.
-<dt>ELEMENT_EXIST_ERROR
+<dt>element_exist_error
 <dd>A read-only operator with this name and signature does already exist.
 </dl>
 
@@ -147,18 +147,18 @@ RDB_create_ro_op(const char *name, int paramc, RDB_parameter paramv[], RDB_type 
     RDB_init_obj(&tpl);
     RDB_init_obj(&rtypobj);
 
-    ret = RDB_tuple_set_string(&tpl, "NAME", name, ecp);
+    ret = RDB_tuple_set_string(&tpl, "name", name, ecp);
     if (ret != RDB_OK)
         goto cleanup;
 
-    ret = RDB_tuple_set_string(&tpl, "LIB", libname, ecp);
+    ret = RDB_tuple_set_string(&tpl, "lib", libname, ecp);
     if (ret != RDB_OK)
         goto cleanup;
-    ret = RDB_tuple_set_string(&tpl, "SYMBOL", symname, ecp);
+    ret = RDB_tuple_set_string(&tpl, "symbol", symname, ecp);
     if (ret != RDB_OK)
         goto cleanup;
 
-    ret = RDB_tuple_set_string(&tpl, "SOURCE", sourcep != NULL ? sourcep : "", ecp);
+    ret = RDB_tuple_set_string(&tpl, "source", sourcep != NULL ? sourcep : "", ecp);
     if (ret != RDB_OK)
         goto cleanup;
 
@@ -170,7 +170,7 @@ RDB_create_ro_op(const char *name, int paramc, RDB_parameter paramv[], RDB_type 
         goto cleanup;
     }
 
-    ret = RDB_tuple_set(&tpl, "ARGTYPES", &typesobj, ecp);
+    ret = RDB_tuple_set(&tpl, "argtypes", &typesobj, ecp);
     RDB_destroy_obj(&typesobj, ecp);
     if (ret != RDB_OK)
         goto cleanup;
@@ -178,7 +178,7 @@ RDB_create_ro_op(const char *name, int paramc, RDB_parameter paramv[], RDB_type 
     ret = _RDB_type_to_binobj(&rtypobj, rtyp, ecp);
     if (ret != RDB_OK)
         goto cleanup;
-    ret = RDB_tuple_set(&tpl, "RTYPE", &rtypobj, ecp);
+    ret = RDB_tuple_set(&tpl, "rtype", &rtypobj, ecp);
     if (ret != RDB_OK)
         goto cleanup;
 
@@ -187,10 +187,10 @@ RDB_create_ro_op(const char *name, int paramc, RDB_parameter paramv[], RDB_type 
         goto cleanup;
 
     /* Check if it's a comparison operator */
-    if (strcmp(name, "CMP") == 0 && paramc == 2
+    if (strcmp(name, "cmp") == 0 && paramc == 2
             && RDB_type_equals(paramv[0].typ, paramv[1].typ)
-            && (paramv[0].typ->kind != RDB_TP_SCALAR /* !! */
-                    || !paramv[0].typ->def.scalar.builtin)) {
+            && (paramv[0].typ->kind == RDB_TP_SCALAR
+                    && !paramv[0].typ->def.scalar.builtin)) {
         RDB_operator *cmpop;
         RDB_type *paramtv[2];
 
@@ -256,9 +256,9 @@ Overloading operators is possible.
 @par Errors:
 
 <dl>
-<dt>NO_RUNNING_TX_ERROR
+<dt>no_running_tx_error
 <dd>*<var>txp</var> is not a running transaction.
-<dt>ELEMENT_EXIST_ERROR
+<dt>element_exist_error
 <dd>An update operator with this name and signature does already exist.
 </dl>
 
@@ -300,17 +300,17 @@ RDB_create_update_op(const char *name, int paramc, RDB_parameter paramv[],
      */
 
     RDB_init_obj(&tpl);
-    ret = RDB_tuple_set_string(&tpl, "NAME", name, ecp);
+    ret = RDB_tuple_set_string(&tpl, "name", name, ecp);
     if (ret != RDB_OK)
         goto cleanup;
-    ret = RDB_tuple_set_string(&tpl, "LIB", libname, ecp);
+    ret = RDB_tuple_set_string(&tpl, "lib", libname, ecp);
     if (ret != RDB_OK)
         goto cleanup;
-    ret = RDB_tuple_set_string(&tpl, "SYMBOL", symname, ecp);
+    ret = RDB_tuple_set_string(&tpl, "symbol", symname, ecp);
     if (ret != RDB_OK)
         goto cleanup;
 
-    ret = RDB_tuple_set_string(&tpl, "SOURCE", sourcep != NULL ? sourcep : "", ecp);
+    ret = RDB_tuple_set_string(&tpl, "source", sourcep != NULL ? sourcep : "", ecp);
     if (ret != RDB_OK)
         goto cleanup;
 
@@ -326,7 +326,7 @@ RDB_create_update_op(const char *name, int paramc, RDB_parameter paramv[],
             goto cleanup;
         }
     }
-    ret = RDB_tuple_set(&tpl, "UPDV", &updvobj, ecp);
+    ret = RDB_tuple_set(&tpl, "updv", &updvobj, ecp);
     RDB_destroy_obj(&updvobj, ecp);
     RDB_destroy_obj(&updobj, ecp);
     if (ret != RDB_OK)
@@ -340,7 +340,7 @@ RDB_create_update_op(const char *name, int paramc, RDB_parameter paramv[],
         goto cleanup;
     }
     
-    ret = RDB_tuple_set(&tpl, "ARGTYPES", &typesobj, ecp);
+    ret = RDB_tuple_set(&tpl, "argtypes", &typesobj, ecp);
     RDB_destroy_obj(&typesobj, ecp);
     if (ret != RDB_OK)
         goto cleanup;
@@ -404,12 +404,12 @@ The arguments must carry type information.
 @par Errors:
 
 <dl>
-<dt>NO_RUNNING_TX_ERROR
+<dt>no_running_tx_error
 <dd><var>txp</var> is not NULL and *<var>txp</var> is not a running transaction.
-<dt>OPERATOR_NOT_FOUND_ERROR
+<dt>operator_not_found_error
 <dd>A read-only operator that matches the name and argument types could not be
 found.
-<dt>TYPE_MISMATCH_ERROR
+<dt>type_mismatch_error
 <dd>A read-only operator that matches <var>name</var> could be found,
 but it does not match the argument types.
 </dl>
@@ -583,9 +583,9 @@ in which case *<var>ecp</var> carries the error information.
 @par Errors:
 
 <dl>
-<dt>NO_RUNNING_TX_ERROR
+<dt>no_running_tx_error
 <dd>*<var>txp</var> is not a running transaction.
-<dt>OPERATOR_NOT_FOUND_ERROR
+<dt>operator_not_found_error
 <dd>An update operator that matches the name and arguments could not be
 found.
 </dl>
@@ -617,9 +617,9 @@ in which case *<var>ecp</var> carries the error information.
 @par Errors:
 
 <dl>
-<dt>INVALID_ARGUMENT_ERROR
+<dt>invalid_argument_error
 <dd>Both <var>txp</var> and <var>envp</var> are NULL.
-<dt>OPERATOR_NOT_FOUND_ERROR
+<dt>operator_not_found_error
 <dd>An update operator that matches the name and arguments could not be
 found.
 </dl>
@@ -693,9 +693,9 @@ The arguments must carry type information.
 @par Errors:
 
 <dl>
-<dt>NO_RUNNING_TX_ERROR
+<dt>no_running_tx_error
 <dd>*<var>txp</var> is not a running transaction.
-<dt>OPERATOR_NOT_FOUND_ERROR
+<dt>operator_not_found_error
 <dd>An update operator that matches the name and arguments could not be
 found.
 </dl>
@@ -759,9 +759,9 @@ from the database. This affects all overloaded versions.
 @par Errors:
 
 <dl>
-<dt>NO_RUNNING_TX_ERROR
+<dt>no_running_tx_error
 <dd>*<var>txp</var> is not a running transaction.
-<dt>OPERATOR_NOT_FOUND_ERROR
+<dt>operator_not_found_error
 <dd>An operator with the specified name could not be found.
 </dl>
 
@@ -793,7 +793,7 @@ RDB_drop_op(const char *name, RDB_exec_context *ecp, RDB_transaction *txp)
         return RDB_ERROR;
     }
     RDB_add_arg(exp, argp);
-    argp = RDB_eq(RDB_var_ref("NAME", ecp), RDB_string_to_expr(name, ecp),
+    argp = RDB_eq(RDB_var_ref("name", ecp), RDB_string_to_expr(name, ecp),
             ecp);
     if (argp == NULL) {
         RDB_drop_expr(exp, ecp);
@@ -824,7 +824,7 @@ RDB_drop_op(const char *name, RDB_exec_context *ecp, RDB_transaction *txp)
             return RDB_ERROR;
 
         /* Delete all versions of update operator from the database */
-        exp = RDB_eq(RDB_var_ref("NAME", ecp), RDB_string_to_expr(name, ecp), ecp);
+        exp = RDB_eq(RDB_var_ref("name", ecp), RDB_string_to_expr(name, ecp), ecp);
         if (exp == NULL) {
             RDB_raise_no_memory(ecp);
             return RDB_ERROR;
@@ -846,7 +846,7 @@ RDB_drop_op(const char *name, RDB_exec_context *ecp, RDB_transaction *txp)
             return RDB_ERROR;
 
         /* Delete all versions of update operator from the database */
-        exp = RDB_eq(RDB_var_ref("NAME", ecp), RDB_string_to_expr(name, ecp),
+        exp = RDB_eq(RDB_var_ref("name", ecp), RDB_string_to_expr(name, ecp),
                ecp);
         if (exp == NULL) {
             return RDB_ERROR;
@@ -1061,8 +1061,8 @@ _RDB_get_ro_op(const char *name, int argc, RDB_type *argtv[],
 
     /*
      * If search in builtin type map failed due to a type mismatch,
-     * keep that info and use it later to raise TYPE_MISMATCH_ERROR
-     * instead of OPERATOR_NOT_FOUND_ERROR.
+     * keep that info and use it later to raise type_mismatch_error
+     * instead of operator_not_found_error.
      */
     errtyp = RDB_obj_type(RDB_get_err(ecp));
     if (errtyp != &RDB_OPERATOR_NOT_FOUND_ERROR

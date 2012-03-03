@@ -67,7 +67,7 @@ test utype {user-defined types} -setup $SETUP -body {
     #
     # Comparison operator
     #
-    duro::operator create CMP -returns integer {name1 PNAME name2 PNAME} {
+    duro::operator create cmp -returns integer {name1 PNAME name2 PNAME} {
         set ::compare_called 1
         array set a1 $name1
         array set a2 $name2

@@ -1830,7 +1830,7 @@ RDB_OK on success, RDB_ERROR if an error occurred.
 @par Errors:
 
 <dl>
-<dt>RDB_TYPE_MISMATCH_ERROR
+<dt>rdb_type_mismatch_error
 <dd>*<var>dstvalp</var> is not newly initialized
 and its type does not match the type of the RDB_object specified by
 <var>srcvalp</var>.
@@ -1868,27 +1868,27 @@ RDB_OK on success, RDB_ERROR if an error occurred.
 @par Errors:
 
 <dl>
-<dt>RDB_NO_RUNNING_TX_ERROR
+<dt>no_running_tx_error
 <dd>The table given by <var>tbp</var> is global and *<var>txp</var>
 is not a running transaction.
-<dt>RDB_INVALID_ARGUMENT_ERROR
+<dt>invalid_argument_error
 <dd>A table attribute is missing in the tuple and no default value
 was specified for that attribute.
-<dt>RDB_ELEMENT_EXIST_ERROR
+<dt>element_exist_error
 <dd>The tuple was already an element of the table.
-<dt>RDB_KEY_VIOLATION_ERROR
+<dt>key_violation_error
 <dd>Inserting the tuple would result in a table which contains
 a key value twice.
-<dt>RDB_PREDICATE_VIOLATION_ERROR
+<dt>predicate_violation_error
 <dd>Inserting the tuple would result in a table which violates its
 predicate.
-<dt>RDB_TYPE_MISMATCH_ERROR
+<dt>type_mismatch_error
 <dd>The type of a tuple attribute does not match the type of the
 corresponding table attribute.
-<dt>RDB_OPERATOR_NOT_FOUND_ERROR
+<dt>operator_not_found_error
 <dd>The definition of *<var>tbp</var>
 refers to a non-existing operator.
-<dt>RDB_NOT_SUPPORTED_ERROR
+<dt>not_supported_error
 <dd>RDB_insert is not supported for this type of table.
 </dl>
 
@@ -1933,31 +1933,31 @@ If an error occurred, (RDB_int)RDB_ERROR is returned.
 @par Errors:
 
 <dl>
-<dt>RDB_NO_RUNNING_TX_ERROR
+<dt>no_running_tx_error
 <dd><var>txp</var> does not point to a running transaction.
 
-<dt>RDB_NAME_ERROR
+<dt>name_error
 <dd>One of the attributes in <var>updv</var> does not exist in the table.
 <dd>One of the expressions specified in <var>updv</var> refers to an attribute
 which does not exist in the table.
 
-<dt>RDB_ELEMENT_EXIST_ERROR
+<dt>element_exist_error
 <dd>The update operation would update a tuple so that it would be equal
 to a tuple which is already an element of the table.
 
-<dt>RDB_KEY_VIOLATION_ERROR
+<dt>key_violation_error
 <dd>The update operation would result in a table which contains
 a key value twice.
 
-<dt>RDB_PREDICATE_VIOLATION_ERROR
+<dt>predicate_violation_error
 <dd>The update operation would result in a table which violates its
 predicate.
 
-<dt>RDB_TYPE_MISMATCH_ERROR
+<dt>type_mismatch_error
 <dd>The type of one of the expressions in <var>updv</var> is not the same
 as the type of the corresponding table attribute.
 
-<dt>RDB_OPERATOR_NOT_FOUND_ERROR
+<dt>operator_not_found_error
 <dd>The definition of the table specified by <var>tbp</var>
 refers to a non-existing operator.
 <dd>The expression specified by <var>exp</var>
@@ -1965,7 +1965,7 @@ refers to a non-existing operator.
 <dd>One of the expressions specified in <var>updv</var>
 refers to a non-existing operator.
 
-<dt>RDB_NOT_SUPPORTED_ERROR
+<dt>not_supported_error
 <dd>RDB_update is not supported for this type of table.
 </dl>
 
@@ -2006,18 +2006,18 @@ If an error occurred, (RDB_int)RDB_ERROR is returned.
 @par Errors:
 
 <dl>
-<dt>RDB_NO_RUNNING_TX_ERROR
+<dt>no_running_tx_error
 <dd><var>txp</var> does not point to a running transaction.
-<dt>RDB_INVALID_ARGUMENT_ERROR
+<dt>invalid_argument_error
 <dd><var>exp</var> refers to an attribute which does not exist in the table.
-<dt>RDB_PREDICATE_VIOLATION_ERROR
+<dt>predicate_violation_error
 <dd>Deleting the tuples would result in a table which violates its
 predicate.
-<dt>RDB_OPERATOR_NOT_FOUND_ERROR</dt>
+<dt>operator_not_found_error</dt>
 <dd>The definition of the table specified by <var>tbp</var>
 refers to a non-existing operator.</dd>
 <dd>The expression specified by <var>exp</var> refers to a non-existing operator.</dd>
-<dt>RDB_NOT_SUPPORTED_ERROR
+<dt>not_supported_error
 <dd>RDB_delete is not supported for this type of table.
 </dl>
 

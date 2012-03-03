@@ -438,7 +438,7 @@ proc get_types {tx} {
     set types {string boolean integer float binary}
 
     # Add user-defined types
-    set tnames [duro::expr {SYS_TYPES {TYPENAME}} $tx]
+    set tnames [duro::expr {sys_types {typename}} $tx]
     foreach i $tnames {
         lappend types [lindex $i 1]
     }
@@ -1036,7 +1036,7 @@ proc about {} {
 
     label .about.l1 -text "Duroadmin"
     text .about.t -width 40 -height 3
-    .about.t insert end "Duro $::duro_version, (C) 2003-2006 Ren� Hartmann."
+    .about.t insert end "Duro $::duro_version, (C) 2003-2012 Rene Hartmann."
     .about.t insert end "\n\nDuro comes with ABSOLUTELY NO WARRANTY."
     .about.t configure -state disabled
 

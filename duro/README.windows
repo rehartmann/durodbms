@@ -25,18 +25,19 @@ subdirectory. Example code can be found in the 'tests' subdirectory
 of the source release.
 
 The Tcl interface can be found in the 'lib' subdirectory.
-The simplest way to make it available to application
+The easiest way to make it available to application
 scripts is to add this subdirectory to TCLLIBPATH, e.g.:
 
     set TCLLIBPATH=C:/duro.0.15/lib
 
 To run Duroadmin, run duroadmin.tcl from the 'bin' subdirectory
 after setting TCLLIBPATH as described above. Duroadmin requires
-Tk 0.15 with the TkTable extension, which is part of ActiveTcl, available
+the TkTable extension, which is part of ActiveTcl, available
 from tcl.activestate.com.
 
 Duro is still under development. Report bugs to
-rhartmann@users.sourceforge.net.
+rhartmann@users.sourceforge.net or use a Sourceforge tracker
+at <http://sourceforge.net/tracker/?group_id=80719>. 
 
 -----
 
