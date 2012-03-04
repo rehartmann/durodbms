@@ -8,6 +8,7 @@
 #include "rdb.h"
 #include "typeimpl.h"
 #include "internal.h"
+#include "catalog.h"
 #include "serialize.h"
 #include "io.h"
 #include <gen/strfns.h>
@@ -102,7 +103,7 @@ _RDB_sys_select(int argc, RDB_object *argv[], RDB_operator *op, RDB_exec_context
     return RDB_OK;
 }
 
-/** @addtogroup type
+/** @addtogroup type Type functions
  * @{
  */
 
@@ -419,6 +420,185 @@ RDB_type_attrs(RDB_type *typ, int *attrcp)
     return typ->def.tuple.attrv;
 }
 
+static int
+load_getter(RDB_type *typ, const char *compname, RDB_exec_context *ecp,
+        RDB_transaction *txp)
+{
+    RDB_object opnameobj;
+    RDB_int cnt;
+
+    RDB_init_obj(&opnameobj);
+    if (RDB_string_to_obj(&opnameobj, typ->name, ecp) != RDB_OK)
+        goto error;
+    if (RDB_append_string(&opnameobj, "_get_", ecp) != RDB_OK)
+        goto error;
+    if (RDB_append_string(&opnameobj, compname, ecp) != RDB_OK)
+        goto error;
+
+    cnt = _RDB_cat_load_ro_op(RDB_obj_string(&opnameobj), ecp, txp);
+    if (cnt == (RDB_int) RDB_ERROR)
+        goto error;
+    return RDB_destroy_obj(&opnameobj, ecp);
+
+error:
+    RDB_destroy_obj(&opnameobj, ecp);
+    return RDB_ERROR;
+}
+
+static int
+load_setter(RDB_type *typ, const char *compname, RDB_exec_context *ecp,
+        RDB_transaction *txp)
+{
+    RDB_object opnameobj;
+    RDB_int cnt;
+
+    RDB_init_obj(&opnameobj);
+    if (RDB_string_to_obj(&opnameobj, typ->name, ecp) != RDB_OK)
+        goto error;
+    if (RDB_append_string(&opnameobj, "_set_", ecp) != RDB_OK)
+        goto error;
+    if (RDB_append_string(&opnameobj, compname, ecp) != RDB_OK)
+        goto error;
+
+    cnt = _RDB_cat_load_upd_op(RDB_obj_string(&opnameobj), ecp, txp);
+    if (cnt == (RDB_int) RDB_ERROR)
+        goto error;
+    return RDB_destroy_obj(&opnameobj, ecp);
+
+error:
+    RDB_destroy_obj(&opnameobj, ecp);
+    return RDB_ERROR;
+}
+
+/*
+ * Load selector, getters and setters of user-defined type
+ */
+static int
+load_type_ops(RDB_type *typ, RDB_exec_context *ecp, RDB_transaction *txp)
+{
+    int i;
+
+    for (i = 0; i < typ->def.scalar.repc; i++) {
+        int j;
+
+        if (_RDB_cat_load_ro_op(typ->def.scalar.repv[i].name, ecp, txp)
+                == (RDB_int) RDB_ERROR)
+            return RDB_ERROR;
+
+        /* Load getters and setters */
+        for (j = 0; j < typ->def.scalar.repv[i].compc; j++) {
+            if (load_getter(typ, typ->def.scalar.repv[i].compv[j].name, ecp, txp)
+                    != RDB_OK)
+                return RDB_ERROR;
+            if (load_setter(typ, typ->def.scalar.repv[i].compv[j].name, ecp, txp)
+                    != RDB_OK)
+                return RDB_ERROR;
+        }
+    }
+    return RDB_OK;
+}
+
+/** @struct RDB_possrep rdb.h <rel/rdb.h>
+ * Specifies a possible representation.
+ */
+
+/**
+Return a pointer to RDB_type structure which
+represents the type with the name <var>name</var>.
+
+@returns
+
+The pointer to the type on success, or NULL if an error occured.
+
+@par Errors:
+
+<dl>
+<dt>name_error</dt>
+<dd>A type with the name <var>name</var> could not be found.
+</dd>
+<dt></dt>
+<dd>The type <var>name</var> is not a built-in type and <var>txp</var> is NULL.
+</dd>
+</dl>
+
+The call may also fail for a @ref system-errors "system error",
+in which case the transaction may be implicitly rolled back.
+*/
+RDB_type *
+RDB_get_type(const char *name, RDB_exec_context *ecp, RDB_transaction *txp)
+{
+    RDB_type *typv[2];
+    RDB_operator *cmpop;
+    RDB_type *typ;
+    int ret;
+
+    /*
+     * search type in built-in type map
+     */
+    typ = RDB_hashmap_get(&_RDB_builtin_type_map, name);
+    if (typ != NULL) {
+        return typ;
+    }
+
+    if (txp == NULL) {
+        RDB_raise_name(name, ecp);
+        return NULL;
+    }
+
+    /*
+     * Search type in dbroot type map
+     */
+    typ = RDB_hashmap_get(&txp->dbp->dbrootp->typemap, name);
+    if (typ != NULL) {
+        return typ;
+    }
+
+    /*
+     * Search type in catalog
+     */
+    ret = _RDB_cat_get_type(name, ecp, txp, &typ);
+    if (ret != RDB_OK) {
+        RDB_type *errtyp = RDB_obj_type(RDB_get_err(ecp));
+        if (errtyp != NULL && errtyp == &RDB_NOT_FOUND_ERROR) {
+            RDB_raise_name(name, ecp);
+        }
+        return NULL;
+    }
+
+    /*
+     * Put type into type map
+     */
+    ret = RDB_hashmap_put(&txp->dbp->dbrootp->typemap, name, typ);
+    if (ret != RDB_OK) {
+        RDB_raise_no_memory(ecp);
+        return NULL;
+    }
+
+    if (load_type_ops(typ, ecp, txp) != RDB_OK)
+        return NULL;
+
+    /*
+     * Search for comparison function (after type was put into type map
+     * so the type is available)
+     */
+    typv[0] = typ;
+    typv[1] = typ;
+    cmpop = _RDB_get_ro_op("cmp", 2, typv, NULL, ecp, txp);
+    if (cmpop != NULL) {
+        typ->compare_op = cmpop;
+    } else {
+        RDB_object *errp = RDB_get_err(ecp);
+        if (errp != NULL
+                && RDB_obj_type(errp) != &RDB_OPERATOR_NOT_FOUND_ERROR
+                && RDB_obj_type(errp) != &RDB_TYPE_MISMATCH_ERROR) {
+            return NULL;
+        }
+        RDB_clear_err(ecp);
+    }
+
+    return typ;
+}
+
 /**
  *
 RDB_define_type defines a type with the name <var>name</var> and
@@ -673,6 +853,7 @@ RDB_implement_type(const char *name, RDB_type *arep, RDB_int areplen,
     RDB_object typedata;
     int ret;
     int i;
+    RDB_type *typ = NULL;
     RDB_bool sysimpl = (arep == NULL) && (areplen == -1);
 
     if (!RDB_tx_is_running(txp)) {
@@ -685,7 +866,6 @@ RDB_implement_type(const char *name, RDB_type *arep, RDB_int areplen,
          * No actual rep given, so selector and getters/setters must be provided
          * by the system
          */
-        RDB_type *typ;
         int compc;
 
         typ = RDB_get_type(name, ecp, txp);
@@ -717,6 +897,10 @@ RDB_implement_type(const char *name, RDB_type *arep, RDB_int areplen,
         if (ret != RDB_OK)
             return RDB_ERROR;
     }
+
+    /*
+     * Update catalog
+     */
 
     exp = RDB_var_ref("typename", ecp);
     if (exp == NULL) {
@@ -771,6 +955,15 @@ RDB_implement_type(const char *name, RDB_type *arep, RDB_int areplen,
             arep != NULL ? 3 : 2, upd, ecp, txp);
     if (ret != RDB_ERROR)
         ret = RDB_OK;
+
+    if (typ == NULL) {
+        typ = RDB_get_type(name, ecp, txp);
+        if (typ == NULL)
+            return RDB_ERROR;
+    }
+
+    /* Load selector etc. */
+    ret = load_type_ops(typ, ecp, txp);
 
 cleanup:    
     for (i = 0; i < 3; i++) {

@@ -7,10 +7,11 @@
 
 <h2>Invoking the interpreter</h2>
 
-<p>To invoke the interpreter, type:
+<p>To invoke the interpreter, type <samp>durodt</samp>:
 
 <pre>
 durodt
+Duro D/T library version 0.15
 no db>
 </pre>
 
@@ -133,7 +134,7 @@ no db> put_line(cast_as_string(2 + 3 * 4));
 no db> 
 </pre>
 
-<p>For details on the built-in operator <code>put_line</code>, see the chapter on I/O.
+<p>For details on the built-in operator <code>put_line</code>, see the chapter on I/O below.
 
 <h2>Comments</h2>
 
@@ -147,6 +148,8 @@ multi-line
 comment. */
 </pre>
 
+<p>Multi-line comments which actually span several lines are not supported in interactive mode.
+
 <p>Lines starting with #! are ignored to allow for Unix interpreter files.</p>
 
 <h2>Control statements</h2>
@@ -158,7 +161,7 @@ no db> var s string;
 no db> put_line('Please enter a number:'); get_line(s);
 Please enter a number:
 2
-no db> var n init CAST_AS_INTEGER(s);
+no db> var n init cast_as_integer(s);
 no db> if n < 0 then
 no db>     put_line('Negative');
 no db> else
@@ -169,14 +172,14 @@ no db>
 </pre>
 
 <p>In Duro D/T, BEGIN .. END is not required since there can be several statements after THEN.
-But the following form, which more strictly adheres to TTM, is supported too:</P>
+But the following form, which more strictly adheres to <cite>TTM</cite>, is supported too:</P>
 
 <pre>
 no db> var s string;
-no db> put_line('Please enter a number:'); READLN(s);
+no db> put_line('Please enter a number:'); get_line(s);
 Please enter a number:
 -2
-no db> var n init CAST_AS_INTEGER(s);
+no db> var n init cast_as_integer(s);
 no db> if n < 0 then
 no db>     begin;
 no db>         put_line('Negative');
@@ -195,11 +198,17 @@ no db>
 <p>Example:</p>
 
 <pre>
-var i INTEGER;
-for i := 1 to 10;
+var i integer;
+for i := 1 to 5;
     put(i);
     put_line('');
 end for;
+1
+2
+3
+4
+5
+no db>
 </pre>
 
 <p>DO may be used instead of FOR.
@@ -209,16 +218,20 @@ end for;
 <p>Example:
 
 <pre>
-put_line('Please enter a positive number:');
 var s string;
-READLN(s);
-var n init CAST_AS_INTEGER(s);
+var n integer;
+
+get_line(s);
+n := cast_as_integer(s);
 while n < 0;
     put_line('This number is not positive. Please enter again:');
-    READLN(s);
-    n := CAST_AS_INTEGER(s);
+    get_line(s);
+    n := cast_as_integer(s);
 end while;
 </pre>
+
+<p>This code reads one line of input until you enter a positive number.
+(Or a string which is not a number which will result in an <code>invalid_argument_error</code>)
 
 <h3>CASE</h3>
 
@@ -226,10 +239,11 @@ end while;
 
 <pre>
 no db> var s string;
-no db> put_line('Please enter a number:'); READLN(s);
+no db> var n integer;
+no db> put_line('Please enter a number:'); get_line(s);
 Please enter a number:
 0
-no db> var n init CAST_AS_INTEGER(s);
+no db> n := cast_as_integer(s);
 no db> case
 no db>     when n > 0 then
 no db>         put_line('Positive');
@@ -284,7 +298,7 @@ no db>t := tup {i 2, s 'Two'};
 no db> update t {i := 3};
 1 element affected.
 no db> update t {i := 4, s := 'Four'};
-2 elements affected.
+1 element affected.
 </pre>
 
 <p>Accessing tuple attributes:
@@ -364,6 +378,8 @@ D>
 <p>Transaction rollback:
 
 <pre>
+D> begin tx;
+Transaction started.
 D> rollback;
 Transaction rolled back.
 D>
@@ -374,8 +390,10 @@ D>
 <p>Creating a real persistent table:
 
 <pre>
-D> var R real rel{NO INTEGER, NAME STRING} key {NO};
-Table R created.
+D> begin tx;
+Transaction started.
+D> var r real rel{no int, name string} key {no};
+Table r created.
 D>
 </pre>
 
@@ -384,23 +402,25 @@ D>
 <p>Creating a private (real transient) table:
 
 <pre>
-D> var p private rel{NO INTEGER, NAME STRING} key {NO};
-Local table P created.
+D> var p private rel{no int, name string} key {no};
+Local table p created.
 D>
 </pre>
 
 <p>Creating a virtual table:
 
 <pre>
-D> var V virtual R {NO};
-Table V created.
+D> var v virtual r {no};
+Table v created.
 D>
 </pre>
+
+<p>This creates a projection over attribute <code>no</code>.
 
 <p>Inserting a single tuple:</p>
 
 <pre>
-D> insert r tup {NO 1, NAME 'one'};
+D> insert r tup {no 1, name 'one'};
 1 element affected.
 D>
 </pre>
@@ -408,42 +428,60 @@ D>
 <p>Inserting several tuples:</p>
 
 <pre>
-D> insert R rel {tup {NO 2, NAME 'two'}, tup {NO 3, NAME 'three'}};
+D> insert r rel {tup {no 2, name 'two'}, tup {no 3, name 'three'}};
 2 elements affected.
 D>
 </pre>
 
-<p>Updating</p>
+<p>Updating a table:</p>
 
 <pre>
-D> update R where NO = 3 { NO := 4, NAME := 'four' };
+D> update r where no = 3 { no := 4, name := 'four' };
 1 element affected.
 D>
 </pre>
 
-<p>Deleting tuples</p>
+<p>Deleting tuples from a table:</p>
 
 <pre>
-D> delete R where NO = 4;
+D> delete r where no = 4;
 1 element affected.
+D>
+</pre>
+
+<p>Tables can be destroyed just as other variables using DROP VAR:
+
+<pre>
+D> drop var v;
+Table v dropped.
+D> drop var r;
+Table r dropped.
+D> commit;
+Transaction committed.
 D>
 </pre>
 
 <h2>Table and database constraints</h2>
 
-<p>Example:</p>
+<p>The example below creates a constraint cr which prevents the
+table <var>r</var> from containing more than one tuple.</p>
 
 <pre>
 D> begin tx;
-Transaction started.
-D> var R real rel {NO INTEGER, NAME STRING} key {no};
-Table R created.
-D> constraint CR count(r) <= 1;
-Constraint CR created.
-D> insert R tup {NO 1, NAME 'one'};
+
+D> var r real rel {no int, name string} key {no};
+Table r created.
+D> constraint cr count(r) <= 1;
+Constraint cr created.
+D> insert r tup {no 1, name 'one'};
 1 element affected.
-D> insert r tup {NO 2, NAME 'two'};
-PREDICATE_VIOLATION_ERROR: CR
+D> insert r tup {no 2, name 'two'};
+predicate_violation_error: cr
+</pre>
+
+<p>Destroying a contraint:
+
+<pre>
 D> drop constraint CR;
 Constraint CR dropped.
 D>
@@ -454,10 +492,10 @@ D>
 <p>Example: Printing all tuples of table R in an unspecified order:
 
 <pre>
-D> var a array tup same_heading_as(R);
-D> load a from R order();
-D> var i INTEGER;
-D> for i:= 0 to LENGTH(a)-1;
+D> var a array tup same_heading_as(r);
+D> load a from r order();
+D> var i integer;
+D> for i:= 0 to length(a)-1;
 D>   put(a[i]); put_line('');
 D> end for;
 </pre>
@@ -474,7 +512,7 @@ D> end for;
 and prints it on standard output, followed by a newline.
 
 <pre>
-no db> call put_line('hello');
+no db> put_line('hello');
 hello
 no db>
 </pre>
@@ -520,28 +558,28 @@ it in <code>line</code>, without the trailing newline.</p>
 <p>Defining a read-only operator:
 
 <pre>
-D> operator INCR(i integer) returns integer;
+D> operator incr(i integer) returns integer;
 D> return i + 1;
 D> end operator;
-Operator INCR created.
+Read-only operator incr created.
 D>
 </pre>
 
 <p>Defining an update operator:
 
 <pre>
-D> operator INC(i integer) updates {i};
+D> operator inc(i integer) updates {i};
 D> i := i + 1;
 D> end operator;
-Operator INC created.
+Operator inc created.
 D>
 </pre>
 
 <p>Dropping an operator:
 
 <pre>
-D> drop operator INCR;
-Operator INCR dropped.
+D> drop operator incr;
+Operator incr dropped.
 D>
 </pre>
 
@@ -550,16 +588,15 @@ D>
 <p>Example for defining a type:</p>
 
 <pre>
-no db> connect('dbenv');
-no db> type len possrep {N FLOAT} constraint the_n(len) >= 0.0;
-Type LEN defined.
+D> type len possrep {n float} constraint the_n(len) >= 0.0;
+Type len defined.
 </pre>
 
 <p>Before the type can be used, it must first be implemented.
 This can be done using IMPLEMENT TYPE:</p>
 
 <pre>
-no db> implement type len;
+D> implement type len;
 Type len implemented.
 </pre>
 
@@ -572,8 +609,8 @@ or the Tcl interface
 <p>After a type has been defined, it can be used to declare and assign variables, like so:
 
 <pre>
-D> var l LEN;
-D> l := LEN(1.0);
+D> var l len;
+D> l := len(1.0);
 1 element affected.
 D>
 </pre>
@@ -592,18 +629,18 @@ value:
 
 <pre>
 D> raise 2;
-INTEGER
+integer
 D>
 </pre>
 
 <p>If an error is not handled, execution is stopped and the error type
-is printed to standard output. This is why we see "INTEGER" appear.
+is printed to standard output. This is why we see "integer" appear.
 
 <p>Raising a system-provided error:
 
 <pre>
-D> raise NAME_ERROR('test');
-NAME_ERROR: test
+D> raise name_error('test');
+name_error: test
 D>
 </pre>
 
@@ -625,9 +662,9 @@ try
 
 ...
 
-catch err INVALID_ARGUMENT_ERROR;
+catch err invalid_argument_error;
 
-  /* Handle INVALID_ARGUMENT_ERROR */
+  /* Handle invalid_argument_error */
 
 ...
 
