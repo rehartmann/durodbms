@@ -16,31 +16,31 @@ proc tables {flag tx} {
     set db [duro::txdb $tx]
     set tables ""
     if {$flag == "-user" || $flag == "-real" || $flag == "-virtual"} {
-        set cond "WHERE IS_USER"
+        set cond "where is_user"
     } else {
         set cond ""
     }
 
     if {$flag != "-virtual"} {
-        duro::table expr t "(SYS_RTABLES $cond) \
-                JOIN (SYS_DBTABLES WHERE DBNAME = \"$db\")" $tx
+        duro::table expr t "(sys_rtables $cond) \
+                Join (sys_dbtables where dbname = \"$db\")" $tx
         set arr [duro::array create t $tx]
         set i 0
         duro::array foreach tpl $arr {
             ::array set a $tpl
-            lappend tables $a(TABLENAME)
+            lappend tables $a(tablename)
         } $tx
         duro::array drop $arr
         duro::table drop t $tx
     }
 
     if {$flag != "-real"} {
-        duro::table expr t "(SYS_VTABLES $cond) \
-                JOIN (SYS_DBTABLES WHERE DBNAME = \"$db\")" $tx
+        duro::table expr t "(sys_vtables $cond) \
+                join (sys_dbtables where dbname = \"$db\")" $tx
         set arr [duro::array create t $tx]
         duro::array foreach tpl $arr {
             ::array set a $tpl
-            lappend tables $a(TABLENAME)
+            lappend tables $a(tablename)
         } $tx
         duro::array drop $arr
         duro::table drop t $tx
