@@ -23,7 +23,7 @@ proc tables {flag tx} {
 
     if {$flag != "-virtual"} {
         duro::table expr t "(sys_rtables $cond) \
-                Join (sys_dbtables where dbname = \"$db\")" $tx
+                join (sys_dbtables where dbname = \"$db\")" $tx
         set arr [duro::array create t $tx]
         set i 0
         duro::array foreach tpl $arr {

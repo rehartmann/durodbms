@@ -113,7 +113,9 @@ proc open_env_path {envpath} {
 
     # Add new entries
     foreach i $dbs {
-        add_db $i
+        if {$i != "SYS_DB"} {
+            add_db $i
+        }
     }
 
     # Activate first DB

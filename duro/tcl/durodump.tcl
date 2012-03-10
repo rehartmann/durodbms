@@ -69,31 +69,33 @@ set tables {}
 set types_ops_dumped 0
 
 foreach db $dbs {
-    puts $out "duro::db create \$dbenv $db"
-
-    set tx [duro::begin $dbenv $db]
-
-    puts $out "set tx \[duro::begin \$dbenv $db\]"
-    if {!$types_ops_dumped} {
-        foreach t {sys_types sys_possrepcomps sys_ro_ops sys_upd_ops} {
-            dump_rtable $out $t $tx 0
-        }
-        set types_ops_dumped 1
+    if {$db != {SYS_DB}} { 
+	    puts $out "duro::db create \$dbenv $db"
+	
+	    set tx [duro::begin $dbenv $db]
+	
+	    puts $out "set tx \[duro::begin \$dbenv $db\]"
+	    if {!$types_ops_dumped} {
+	        foreach t {sys_types sys_possrepcomps sys_ro_ops sys_upd_ops} {
+	            dump_rtable $out $t $tx 0
+	        }
+	        set types_ops_dumped 1
+	    }
+	    foreach t [duro::tables -real $tx] {
+	        if {[lsearch -exact $tables $t] == -1} {
+	            dump_rtable $out $t $tx 1
+	            lappend tables $t
+	        }
+	    }
+	    foreach t [duro::tables -virtual $tx] {
+	        if {[lsearch -exact $tables $t] == -1} {
+	            dump_vtable $out $t $tx
+	            lappend tables $t
+	        }
+	    }
+	    puts $out {duro::commit $tx}
+	    duro::commit $tx
     }
-    foreach t [duro::tables -real $tx] {
-        if {[lsearch -exact $tables $t] == -1} {
-            dump_rtable $out $t $tx 1
-            lappend tables $t
-        }
-    }
-    foreach t [duro::tables -virtual $tx] {
-        if {[lsearch -exact $tables $t] == -1} {
-            dump_vtable $out $t $tx
-            lappend tables $t
-        }
-    }
-    puts $out {duro::commit $tx}
-    duro::commit $tx
 }
 
 duro::env close $dbenv
