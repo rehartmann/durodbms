@@ -354,6 +354,12 @@ FOR {
     return TOK_FOR;
 }
 
+FOREACH {
+    yylval = RDB_new_parse_token(TOK_FOREACH, whitecommp, _RDB_parse_ecp);
+    whitecommp = NULL;
+    return TOK_FOREACH;
+}
+
 DO {
     yylval = RDB_new_parse_token(TOK_FOR, whitecommp, _RDB_parse_ecp);
     whitecommp = NULL;

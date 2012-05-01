@@ -127,6 +127,7 @@ yyerror(const char *);
 %token TOK_WHEN "WHEN"
 %token TOK_END "END"
 %token TOK_FOR "FOR"
+%token TOK_FOREACH "FOREACH"
 %token TOK_TO "TO"
 %token TOK_WHILE "WHILE"
 %token TOK_LEAVE "LEAVE"
@@ -593,6 +594,38 @@ statement: assignment ';' {
         RDB_parse_add_child($$, $8);
         RDB_parse_add_child($$, $9);
         RDB_parse_add_child($$, $10);
+    }
+    | TOK_FOREACH TOK_ID TOK_IN expression
+            TOK_ORDER '(' order_item_commalist ')' ';'
+            ne_statement_list TOK_END TOK_FOREACH {
+        $$ = new_parse_inner();
+        if ($$ == NULL) {
+            RDB_parse_del_node($1, _RDB_parse_ecp);
+            RDB_parse_del_node($2, _RDB_parse_ecp);
+            RDB_parse_del_node($3, _RDB_parse_ecp);
+            RDB_parse_del_node($4, _RDB_parse_ecp);
+            RDB_parse_del_node($5, _RDB_parse_ecp);
+            RDB_parse_del_node($6, _RDB_parse_ecp);
+            RDB_parse_del_node($7, _RDB_parse_ecp);
+            RDB_parse_del_node($8, _RDB_parse_ecp);
+            RDB_parse_del_node($9, _RDB_parse_ecp);
+            RDB_parse_del_node($10, _RDB_parse_ecp);
+            RDB_parse_del_node($11, _RDB_parse_ecp);
+            RDB_parse_del_node($12, _RDB_parse_ecp);
+            YYERROR;
+        }
+        RDB_parse_add_child($$, $1);
+        RDB_parse_add_child($$, $2);
+        RDB_parse_add_child($$, $3);
+        RDB_parse_add_child($$, $4);
+        RDB_parse_add_child($$, $5);
+        RDB_parse_add_child($$, $6);
+        RDB_parse_add_child($$, $7);
+        RDB_parse_add_child($$, $8);
+        RDB_parse_add_child($$, $9);
+        RDB_parse_add_child($$, $10);
+        RDB_parse_add_child($$, $11);
+        RDB_parse_add_child($$, $12);
     }
     | TOK_ID ':' TOK_FOR TOK_ID TOK_ASSIGN expression TOK_TO expression ';'
             ne_statement_list TOK_END TOK_FOR {

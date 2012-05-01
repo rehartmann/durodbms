@@ -16,6 +16,7 @@
 #include <rel/rdb.h>
 #include <rel/internal.h>
 #include <rel/typeimpl.h>
+#include <rel/qresult.h>
 
 #include <sys/stat.h>
 #include <errno.h>
@@ -380,59 +381,6 @@ trace_op(int argc, RDB_object *argv[], RDB_operator *op,
     return RDB_OK;
 }
 
-static int
-load_op(int argc, RDB_object *argv[], RDB_operator *op,
-        RDB_exec_context *ecp, RDB_transaction *txp)
-{
-    RDB_seq_item *seqitv = NULL;
-    int seqitc = 0;
-
-    if (argc < 2) {
-        RDB_raise_invalid_argument("too few arguments for LOAD", ecp);
-        return RDB_ERROR;
-    }
-
-    if (RDB_obj_type(argv[0]) == NULL
-            || !RDB_type_is_array(RDB_obj_type(argv[0]))) {
-        RDB_raise_type_mismatch("first argument must be array", ecp);
-        goto error;
-    }        
-
-    if (argc > 2) {
-        int i;
-        
-        if (argc % 2 != 0) {
-            RDB_raise_invalid_argument("load", ecp);
-            return RDB_ERROR;
-        }
-        seqitv = RDB_alloc(sizeof(RDB_seq_item) * (argc - 2), ecp);
-        if (seqitv == NULL)
-            return RDB_ERROR;
-        seqitc = (argc - 2) / 2;
-        for (i = 0; i < seqitc; i++) {
-            if (RDB_obj_type(argv[2 + i * 2]) != &RDB_STRING) {
-                RDB_raise_type_mismatch("invalid order", ecp);
-                goto error;
-            }
-            if (RDB_obj_type(argv[2 + i * 2 + 1]) != &RDB_STRING) {
-                RDB_raise_type_mismatch("invalid order", ecp);
-                goto error;
-            }
-            seqitv[i].attrname = RDB_obj_string(argv[2 + i * 2]);
-            seqitv[i].asc = (RDB_bool) (strcmp(RDB_obj_string(argv[2 + i * 2 + 1]), "ASC") == 0);
-        }
-    }
-
-    if (RDB_table_to_array(argv[0], argv[1], seqitc, seqitv, 0, ecp, txp) != RDB_OK)
-        goto error;
-    RDB_free(seqitv);
-    return RDB_OK;
-
-error:
-    RDB_free(seqitv);
-    return RDB_ERROR;
-}   
-
 static RDB_object *
 new_obj(RDB_exec_context *ecp)
 {
@@ -502,10 +450,6 @@ Duro_init_exec(RDB_exec_context *ecp, const char *dbname)
         goto error;
 
     if (_RDB_add_io_ops(&sys_module.upd_op_map, ecp) != RDB_OK)
-        goto error;
-
-    if (RDB_put_upd_op(&sys_module.upd_op_map, "load", -1, NULL, &load_op, ecp)
-            != RDB_OK)
         goto error;
 
     objp = new_obj(ecp);
@@ -1446,37 +1390,46 @@ exec_call_retry(const RDB_parse_node *nodep, RDB_exec_context *ecp) {
 }
 
 static int
+nodes_to_seqitv(RDB_seq_item *seqitv, RDB_parse_node *nodep, RDB_exec_context *ecp)
+{
+    RDB_expression *exp;
+    int i = 0;
+
+    while (nodep != NULL) {
+        /* Get attribute name */
+        exp = RDB_parse_node_expr(nodep->val.children.firstp, ecp,
+                txnp != NULL ? &txnp->tx : NULL);
+        if (exp == NULL) {
+            return RDB_ERROR;
+        }
+        seqitv[i].attrname = (char *) RDB_expr_var_name(exp);
+
+        /* Get ascending/descending info */
+        seqitv[i].asc = (RDB_bool) (nodep->val.children.firstp->nextp->val.token == TOK_ASC);
+
+        nodep = nodep->nextp;
+        i++;
+    }
+    return RDB_OK;
+}
+
+static int
 exec_load(RDB_parse_node *nodep, RDB_exec_context *ecp)
 {
     RDB_object srctb;
-    RDB_parse_node *itemp;
-    int i;
     int ret;
     RDB_expression *exp;
-    RDB_object **argpv = NULL;
-    RDB_object *itemv = NULL;
-    int itemc = RDB_parse_nodelist_length(nodep->nextp->nextp->nextp->nextp->nextp) * 2;
-
-    argpv = RDB_alloc((2 + itemc) * sizeof (RDB_object *), ecp);
-    if (argpv == NULL) {
-        ret = RDB_ERROR;
-        goto cleanup;
-    }
-    if (itemc > 0) {
-        itemv = RDB_alloc(itemc * sizeof (RDB_object), ecp);
-        if (itemv == NULL) {
-            ret = RDB_ERROR;
-            goto cleanup;
-        }
-    }
+    RDB_object *dstp;
+    int seqitc;
+    RDB_seq_item *seqitv = NULL;
 
     exp = RDB_parse_node_expr(nodep, ecp, txnp != NULL ? &txnp->tx : NULL);
     if (exp == NULL) {
         ret = RDB_ERROR;
         goto cleanup;
     }
-    argpv[0] = lookup_var(RDB_expr_var_name(exp), ecp);
-    if (argpv[0] == NULL) {
+    dstp = lookup_var(RDB_expr_var_name(exp), ecp);
+    if (dstp == NULL) {
         ret = RDB_ERROR;
         goto cleanup;
     }
@@ -1492,43 +1445,27 @@ exec_load(RDB_parse_node *nodep, RDB_exec_context *ecp)
         ret = RDB_ERROR;
         goto cleanup;
     }
-    argpv[1] = &srctb;
 
-    itemp = nodep->nextp->nextp->nextp->nextp->nextp->val.children.firstp;
-    i = 0;
-    while (itemp != NULL) {
-        RDB_init_obj(&itemv[i]);
-        exp = RDB_parse_node_expr(itemp->val.children.firstp, ecp,
-                txnp != NULL ? &txnp->tx : NULL);
-        if (exp == NULL) {
+    seqitc = RDB_parse_nodelist_length(nodep->nextp->nextp->nextp->nextp->nextp);
+    if (seqitc > 0) {
+        seqitv = RDB_alloc(sizeof(RDB_seq_item) * seqitc, ecp);
+        if (seqitv == NULL) {
             ret = RDB_ERROR;
             goto cleanup;
         }
-        ret = RDB_string_to_obj(&itemv[i], RDB_expr_var_name(exp), ecp);
-        if (ret != RDB_OK)
-            goto cleanup;
-        argpv[2 + i] = &itemv[i];
-
-        RDB_init_obj(&itemv[i + 1]);
-        ret = RDB_string_to_obj(&itemv[i + 1],
-                itemp->val.children.firstp->nextp->val.token == TOK_ASC ? "ASC" : "DESC", ecp);
-        if (ret != RDB_OK)
-            goto cleanup;
-        argpv[2 + i + 1] = &itemv[i + 1];
-        i += 2;
-        itemp = itemp->nextp;
+    }
+    ret = nodes_to_seqitv(seqitv,
+            nodep->nextp->nextp->nextp->nextp->nextp->val.children.firstp, ecp);
+    if (ret != RDB_OK) {
+        goto cleanup;
     }
 
-    ret = load_op(2 + itemc, argpv, NULL, ecp,
+    ret = RDB_table_to_array(dstp, &srctb, seqitc, seqitv, 0, ecp,
             txnp != NULL ? &txnp->tx : NULL);
 
 cleanup:
-    if (itemv != NULL) {
-        for (i = 0; i < itemc; i++)
-            RDB_destroy_obj(&itemv[i], ecp);
-        RDB_free(itemv);
-    }
-    RDB_free(argpv);
+    if (seqitv != NULL)
+        RDB_free(seqitv);
     return ret;
 }
 
@@ -1752,6 +1689,126 @@ exec_for(const RDB_parse_node *nodep, const RDB_parse_node *labelp,
 
 error:
     RDB_destroy_obj(&endval, ecp);
+    return RDB_ERROR;
+}
+
+static int
+exec_foreach(const RDB_parse_node *nodep, const RDB_parse_node *labelp,
+        RDB_exec_context *ecp, return_info *retinfop)
+{
+    int ret;
+    RDB_expression *tbexp;
+    RDB_object tb;
+    RDB_type *tbtyp;
+    int seqitc;
+    RDB_seq_item *seqitv = NULL;
+    RDB_qresult *itp = NULL;
+    RDB_transaction *txp = txnp != NULL ? &txnp->tx : NULL;
+    RDB_object *varp = lookup_transient_var(RDB_expr_var_name(nodep->exp),
+            current_varmapp);
+    if (varp == NULL) {
+        RDB_raise_name(RDB_expr_var_name(nodep->exp), ecp);
+        return RDB_ERROR;
+    }
+
+    tbexp = RDB_parse_node_expr(nodep->nextp->nextp, ecp, txp);
+    if (tbexp == NULL)
+        return RDB_ERROR;
+
+    tbtyp = RDB_expr_type(tbexp, &get_var_type, current_varmapp, ecp, txp);
+    if (tbtyp == NULL)
+        return RDB_ERROR;
+    if (!RDB_type_is_relation(tbtyp)) {
+        RDB_raise_type_mismatch("table required", ecp);
+        return RDB_ERROR;
+    }
+    if (!RDB_type_equals(RDB_obj_type(varp), RDB_base_type(tbtyp))) {
+        RDB_raise_type_mismatch("type of loop variable does not match table type",
+                ecp);
+        return RDB_ERROR;
+    }
+
+    RDB_init_obj(&tb);
+    /* !! Inefficient if tbexp is a table name - applies to LOAD too */
+    if (evaluate_retry(tbexp, ecp, &tb) != RDB_OK) {
+        goto error;
+    }
+
+    seqitc = RDB_parse_nodelist_length(nodep->nextp->nextp->nextp->nextp->nextp);
+    if (seqitc > 0) {
+        seqitv = RDB_alloc(sizeof(RDB_seq_item) * seqitc, ecp);
+        if (seqitv == NULL)
+            goto error;
+    }
+    if (nodes_to_seqitv(seqitv,
+            nodep->nextp->nextp->nextp->nextp->nextp->val.children.firstp, ecp)
+                    != RDB_OK) {
+        goto error;
+    }
+    itp = RDB_table_iterator(&tb, seqitc, seqitv, ecp, txp);
+    if (itp == NULL)
+        goto error;
+    /*
+     * !! the iterator may depend on a running transaction;
+     * in this case the loop body must not stop the transaction
+     */
+
+    while (_RDB_next_tuple(itp, varp, ecp, txp) == RDB_OK) {
+        if (add_varmap(ecp) != RDB_OK)
+            goto error;
+
+        /* Execute statements */
+        ret = exec_stmts(nodep->nextp->nextp->nextp->nextp->nextp->nextp->nextp->nextp->val.children.firstp,
+                ecp, retinfop);
+        if (ret != RDB_OK) {
+            if (ret == DURO_LEAVE) {
+                /*
+                 * If the statement name matches the LEAVE target,
+                 * exit loop with RDB_OK
+                 */
+                if (labelp != NULL
+                        && strcmp(RDB_expr_var_name(labelp->exp),
+                                leave_targetname) == 0) {
+                    ret = RDB_OK;
+                }
+            }
+            remove_varmap();
+            return ret;
+        }
+        remove_varmap();
+
+        /*
+         * Check for user interrupt
+         */
+        if (interrupted) {
+            interrupted = 0;
+            RDB_raise_system("interrupted", ecp);
+            goto error;
+        }
+    }
+
+    if (_RDB_drop_qresult(itp, ecp, txp) != RDB_OK) {
+        RDB_destroy_obj(&tb, ecp);
+        return RDB_ERROR;
+    }
+    if (seqitv != NULL)
+        RDB_free(seqitv);
+
+    RDB_destroy_obj(&tb, ecp);
+
+    /* Ignore not_found */
+    if (RDB_obj_type(RDB_get_err(ecp)) != &RDB_NOT_FOUND_ERROR)
+        return RDB_ERROR;
+    RDB_clear_err(ecp);
+    return RDB_OK;
+
+error:
+    if (itp != NULL) {
+        _RDB_drop_qresult(itp, ecp, txp);
+    }
+    if (seqitv != NULL)
+        RDB_free(seqitv);
+    RDB_destroy_obj(&tb, ecp);
     return RDB_ERROR;
 }
 
@@ -3303,6 +3360,9 @@ Duro_exec_stmt(RDB_parse_node *stmtp, RDB_exec_context *ecp,
                 break;
             case TOK_FOR:
                 ret = exec_for(firstchildp->nextp, NULL, ecp, retinfop);
+                break;
+            case TOK_FOREACH:
+                ret = exec_foreach(firstchildp->nextp, NULL, ecp, retinfop);
                 break;
             case TOK_WHILE:
                 ret = exec_while(firstchildp->nextp, NULL, ecp, retinfop);

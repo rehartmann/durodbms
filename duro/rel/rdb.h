@@ -152,6 +152,8 @@ typedef struct RDB_type RDB_type;
 
 typedef struct RDB_op_data RDB_operator;
 
+typedef struct RDB_qresult RDB_qresult;
+
 /* internal */
 enum _RDB_tp_kind {
     RDB_TP_SCALAR,
@@ -684,6 +686,10 @@ RDB_array_length(RDB_object *, RDB_exec_context *);
 
 int
 RDB_set_array_length(RDB_object *arrp, RDB_int len, RDB_exec_context *);
+
+RDB_qresult *
+RDB_table_iterator(RDB_object *, int, const RDB_seq_item[],
+                   RDB_exec_context *, RDB_transaction *);
 
 int
 RDB_obj_equals(const RDB_object *, const RDB_object *, RDB_exec_context *,

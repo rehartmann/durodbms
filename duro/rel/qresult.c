@@ -9,6 +9,7 @@
 #include "insert.h"
 #include "internal.h"
 #include "delete.h"
+#include "optimize.h"
 #include "stable.h"
 #include "typeimpl.h"
 #include <gen/hashtabit.h>
@@ -1116,6 +1117,35 @@ _RDB_table_qresult(RDB_object *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
     if (init_qresult(qrp, tbp, ecp, txp) != RDB_OK) {
         RDB_free(qrp);
         return NULL;
+    }
+    return qrp;
+}
+
+RDB_qresult *
+RDB_table_iterator(RDB_object *tbp,
+                   int seqitc, const RDB_seq_item seqitv[],
+                   RDB_exec_context *ecp, RDB_transaction *txp)
+{
+    RDB_qresult *qrp;
+    RDB_expression *texp = _RDB_optimize(tbp, seqitc, seqitv, ecp, txp);
+    if (texp == NULL)
+        return NULL;
+
+    if (seqitc > 0) {
+        _RDB_tbindex *indexp = _RDB_expr_sortindex(texp);
+        if (indexp == NULL || !_RDB_index_sorts(indexp, seqitc, seqitv)) {
+            /* Create sorter */
+            if (_RDB_sorter(texp, &qrp, ecp, txp, seqitc, seqitv) != RDB_OK)
+                return NULL;
+        }
+    } else {
+        qrp = _RDB_expr_qresult(texp, ecp, txp);
+        if (qrp == NULL) {
+            return NULL;
+        }
+        /* Add duplicate remover, if necessary */
+        if (_RDB_duprem(qrp, ecp, txp) != RDB_OK)
+            return NULL;
     }
     return qrp;
 }

@@ -398,7 +398,8 @@ cleanup:
 
 /**
  * Evaluate *exp and store the result in *valp.
- * If *exp defines a virtual table, *valp will become a transient virtual table.
+ * If *exp is the invocation of a relational operator,
+ * *valp will become a transient virtual table.
  */
 int
 RDB_evaluate(RDB_expression *exp, RDB_getobjfn *getfnp, void *getdata,
