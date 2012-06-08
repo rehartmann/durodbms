@@ -491,7 +491,7 @@ D>
 
 <h2>Arrays</h2>
 
-<p>Example: Printing all tuples of table R in an unspecified order:
+<p>Example: Printing all tuples of table r in an unspecified order:
 
 <pre>
 D> var a array tup same_heading_as(r);
@@ -500,6 +500,19 @@ D> var i integer;
 D> for i:= 0 to length(a)-1;
 D>   put(a[i]); put_line('');
 D> end for;
+</pre>
+
+<h2>FOREACH</h2>
+
+<p>Duro D/T supports a FOREACH statement.
+The example below prints all tuples of table r in an unspecified order
+using FOREACH instead of using LOAD: 
+
+<pre>
+D> var t tup same_heading_as(r);
+D> foreach t in r order();
+D>   put(t); put_line('');
+D> end foreach;
 </pre>
 
 <h2>I/O</h2>

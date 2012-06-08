@@ -814,15 +814,15 @@ The second argument is read-only and must be of the type of
 the component.
 </dl>
 
-A user-defined comparison operator <code>cmp</code returning an
+A user-defined comparison operator <code>cmp</code> returning an
 <code>integer</code> may be supplied.
-<code>cmp</code must have two arguments, both of the user-defined type
+<code>cmp</code> must have two arguments, both of the user-defined type
 for which the comparison is to be defined.
 
-<code>cmp</code must return -1, 0, or 1 if the first argument is lower than,
+<code>cmp</code> must return -1, 0, or 1 if the first argument is lower than,
 equal to, or greater than the second argument, respectively.
 
-If <code>cmp</code has been defined, it will be called by the built-in comparison
+If <code>cmp</code> has been defined, it will be called by the built-in comparison
 operators =, <>, <= etc. 
 
 @returns

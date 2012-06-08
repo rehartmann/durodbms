@@ -406,4 +406,34 @@ test sdivide {small DIVIDE} -body {
 2
 }
 
+test foreach {FOREACH} -body {
+    exec $testdir/../../dli/durodt << {
+        var pr private init relation{tup{i 1, j 1},tup{i 2, j 20}};
+
+        var t1 tuple{i integer, j integer};
+        foreach t1 in pr order(i asc);
+            put(t1.i); put_line('');
+        end foreach;
+        foreach t1 in pr order(i desc);
+            put(t1.i); put_line('');
+        end foreach;
+
+        var t2 tuple{i integer};
+        foreach t2 in pr {i} order(i asc);
+            put(t2.i); put_line('');
+        end foreach;
+        foreach t2 in pr {i} order(i desc);
+            put(t2.i); put_line('');
+        end foreach;
+    }
+} -result {1
+2
+2
+1
+1
+2
+2
+1
+}
+
 cleanupTests
