@@ -3468,6 +3468,7 @@ Duro_exec_stmt(RDB_parse_node *stmtp, RDB_exec_context *ecp,
             /* Operator invocation */
             ret = exec_call_retry(firstchildp, ecp);
         } else {
+            /* Loop with label */
             switch (firstchildp->nextp->nextp->val.token) {
                 case TOK_WHILE:
                     ret = exec_while(firstchildp->nextp->nextp->nextp,
@@ -3475,6 +3476,10 @@ Duro_exec_stmt(RDB_parse_node *stmtp, RDB_exec_context *ecp,
                     break;
                 case TOK_FOR:
                     ret = exec_for(firstchildp->nextp->nextp->nextp,
+                            firstchildp, ecp, retinfop);
+                    break;
+                case TOK_FOREACH:
+                    ret = exec_foreach(firstchildp->nextp->nextp->nextp,
                             firstchildp, ecp, retinfop);
                     break;
                 default:

@@ -425,6 +425,14 @@ test foreach {FOREACH} -body {
         foreach t2 in pr {i} order(i desc);
             put(t2.i); put_line('');
         end foreach;
+
+        -- LEAVE with label
+        l: foreach t2 in pr {i} order(i asc);
+            put(t2.i); put_line('');
+            if t2.i = 1 then
+                leave l;
+            end if;
+        end foreach;
     }
 } -result {1
 2
@@ -433,6 +441,7 @@ test foreach {FOREACH} -body {
 1
 2
 2
+1
 1
 }
 
