@@ -2,6 +2,10 @@ $Id$
 
 Summary of Changes for Duro
 
+Changes for Duro 0.16
+
+- FOREACH loop
+
 Changes for Duro 0.15
 
 - Replaced PRINT/PRINTLN/READLN by put/put_line/get_line.
@@ -36,14 +40,11 @@ Changes for Duro 0.15
 
 - Added XOR.
 
-- Added TUP, REL, DEE, and DUM as synonyms for TUPLE, RELATION, TABLE_DEE
-  and TABLE_DUM.
-
 - Changed interface and calling conventions for user-defined operators.
 
 - Added RDB_get_update_op to the public interface. Renamed RDB_call_ro_op
-and RDB_call_update_op as RDB_call_ro_op_by_name and RDB_call_update_op_by_name.
-Added RDB_call_update_op with new semantics.
+  and RDB_call_update_op as RDB_call_ro_op_by_name and RDB_call_update_op_by_name.
+  Added RDB_call_update_op with new semantics.
 
 - Conversion of expressions etc. to string is now part of the core.
 
@@ -61,6 +62,9 @@ Added RDB_call_update_op with new semantics.
   RDB_call_update_op(),
 
 Duro D/T:
+
+- Added TUP, REL, DEE, and DUM as synonyms for TUPLE, RELATION, TABLE_DEE
+  and TABLE_DUM.
 
 - LEAVE is now supported
 

@@ -38,43 +38,62 @@ RDB_object DURO_STDERR_OBJ;
 
 These operators are only available in Duro D/T.
 
-OPERATOR put_line(string) UPDATES {};
+OPERATOR put_line(line string) UPDATES {};
 
-OPERATOR put(string) UPDATES {};
+Write <var>line</var> to standard output, followed by a newline.
 
-OPERATOR put(integer) UPDATES {};
+OPERATOR put(data string) UPDATES {};
 
-OPERATOR put(float) UPDATES {};
+OPERATOR put(data integer) UPDATES {};
 
-OPERATOR put(boolean) UPDATES {};
+OPERATOR put(data float) UPDATES {};
 
-OPERATOR put(<em>TUPLE</em>) UPDATES {};
+OPERATOR put(data boolean) UPDATES {};
 
-OPERATOR put(<em>RELATION</em>) UPDATES {};
+OPERATOR put(data <em>TUPLE</em>) UPDATES {};
 
-OPERATOR put(<em>ARRAY</em>) UPDATES {};
+OPERATOR put(data <em>RELATION</em>) UPDATES {};
 
-OPERATOR put_line(io_stream, string) UPDATES {};
+OPERATOR put(data <em>ARRAY</em>) UPDATES {};
 
-OPERATOR put(io_stream, string) UPDATES {};
-
-OPERATOR put(io_stream, integer) UPDATES {};
-
-OPERATOR put(io_stream, float) UPDATES {};
-
-OPERATOR put(io_stream, boolean) UPDATES {};
-
-OPERATOR put(io_stream, <em>TUPLE</em>) UPDATES {};
-
-OPERATOR put(io_stream, <em>RELATION</em>) UPDATES {};
-
-OPERATOR put(io_stream, <em>ARRAY</em>) UPDATES {};
+Write <var>data</var> to standard output.
 
 OPERATOR get_line(line string) UPDATES {line};
 
+Read a line from standard input and store it in line, without the trailing newline.
+
+OPERATOR put_line(ios io_stream, line string) UPDATES {};
+
+Write <var>line</var> to the I/O stream <var>ios</var>, followed by a newline.
+
+OPERATOR put(io_stream ios, data string) UPDATES {};
+
+OPERATOR put(io_stream ios, data integer) UPDATES {};
+
+OPERATOR put(io_stream ios, data float) UPDATES {};
+
+OPERATOR put(io_stream ios, data boolean) UPDATES {};
+
+OPERATOR put(io_stream ios, data <em>TUPLE</em>) UPDATES {};
+
+OPERATOR put(io_stream ios, data <em>RELATION</em>) UPDATES {};
+
+OPERATOR put(io_stream ios, data <em>ARRAY</em>) UPDATES {};
+
+Write <var>data</var> to the I/O stream <var>ios</var>.
+
+OPERATOR get_line(io_stream ios, line string) UPDATES {line};
+
+Read a line from I/O stream <var>ios</var> and store it in line, without the trailing newline.
+
 OPERATOR open(ios io_stream, string path, string mode) UPDATES {ios};
 
+Open file <var>path</var> in mode <var>mode</var> and store the resulting I/O stream
+in <var>ios</var>.
+
 OPERATOR close(ios io_stream) UPDATES {};
+
+Close I/O stream <var>ios</var>.
 
 */
 
