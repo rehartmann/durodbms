@@ -7,6 +7,8 @@
 
 #include "rdb.h"
 #include "internal.h"
+#include "tostr.h"
+#include "optimize.h"
 #include <regex.h>
 #include <string.h>
 #include <stdlib.h>
@@ -1484,6 +1486,29 @@ length_array(int argc, RDB_object *argv[], RDB_operator *op,
 }
 
 static int
+plan(int argc, RDB_object *argv[], RDB_operator *op,
+        RDB_exec_context *ecp, RDB_transaction *txp, RDB_object *retvalp)
+{
+    int ret;
+    RDB_expression *texp;
+    if (argc != 1) {
+        RDB_raise_invalid_argument("invalid number of arguments", ecp);
+        return RDB_ERROR;
+    }
+
+    /* Optimize */
+    texp = _RDB_optimize(argv[0], 0, NULL, ecp, txp);
+    if (texp == NULL)
+        return RDB_ERROR;
+
+    /* Convert tree to STRING */
+    ret = _RDB_expr_to_str(retvalp, texp, ecp, txp, RDB_SHOW_INDEX);
+
+    RDB_drop_expr(texp, ecp);
+    return ret;
+}
+
+static int
 op_getenv(int argc, RDB_object *argv[], RDB_operator *op,
         RDB_exec_context *ecp, RDB_transaction *txp, RDB_object *retvalp)
 {
@@ -1973,6 +1998,11 @@ _RDB_init_builtin_ops(RDB_exec_context *ecp)
     }
 
     if (put_builtin_ro_op("length", -1, NULL, NULL, &length_array, ecp)
+            != RDB_OK) {
+        return RDB_ERROR;
+    }
+
+    if (put_builtin_ro_op("plan", -1, NULL, NULL, &plan, ecp)
             != RDB_OK) {
         return RDB_ERROR;
     }

@@ -153,6 +153,8 @@ yyerror(const char *);
 %token TOK_TRY "TRY"
 %token TOK_CATCH "CATCH"
 %token TOK_IMPLEMENT "IMPLEMENT"
+%token TOK_ORDERED "ORDERED"
+%token TOK_INDEX "INDEX"
 %token TOK_INVALID "invalid"
 
 %left ':'
@@ -461,6 +463,20 @@ statement: assignment ';' {
         RDB_parse_add_child($$, $4);
     }
     | TOK_DROP TOK_CONSTRAINT TOK_ID ';' {
+        $$ = new_parse_inner();
+        if ($$ == NULL) {
+            RDB_parse_del_node($1, _RDB_parse_ecp);
+            RDB_parse_del_node($2, _RDB_parse_ecp);
+            RDB_parse_del_node($3, _RDB_parse_ecp);
+            RDB_parse_del_node($4, _RDB_parse_ecp);
+            YYERROR;
+        }
+        RDB_parse_add_child($$, $1);
+        RDB_parse_add_child($$, $2);
+        RDB_parse_add_child($$, $3);
+        RDB_parse_add_child($$, $4);
+    }    
+    | TOK_DROP TOK_INDEX TOK_ID ';' {
         $$ = new_parse_inner();
         if ($$ == NULL) {
             RDB_parse_del_node($1, _RDB_parse_ecp);
@@ -948,6 +964,28 @@ statement: assignment ';' {
         RDB_parse_add_child($$, $3);
         RDB_parse_add_child($$, $4);
     }
+    | TOK_INDEX TOK_ID TOK_FOR TOK_ID '(' ne_id_commalist ')' ';' {
+        $$ = new_parse_inner();
+        if ($$ == NULL) {
+            RDB_parse_del_node($1, _RDB_parse_ecp);
+            RDB_parse_del_node($2, _RDB_parse_ecp);
+            RDB_parse_del_node($3, _RDB_parse_ecp);
+            RDB_parse_del_node($4, _RDB_parse_ecp);
+            RDB_parse_del_node($5, _RDB_parse_ecp);
+            RDB_parse_del_node($6, _RDB_parse_ecp);
+            RDB_parse_del_node($7, _RDB_parse_ecp);
+            RDB_parse_del_node($8, _RDB_parse_ecp);
+            YYERROR;
+        }
+        RDB_parse_add_child($$, $1);
+        RDB_parse_add_child($$, $2);
+        RDB_parse_add_child($$, $3);
+        RDB_parse_add_child($$, $4);
+        RDB_parse_add_child($$, $5);
+        RDB_parse_add_child($$, $6);
+        RDB_parse_add_child($$, $7);
+        RDB_parse_add_child($$, $8);
+    }
     | TOK_RAISE expression ';' {
         $$ = new_parse_inner();
         if ($$ == NULL) {
@@ -976,7 +1014,10 @@ statement: assignment ';' {
     }
     ;
 
-case_opt_semi: TOK_CASE ';'
+case_opt_semi: TOK_CASE ';' {
+        $$ = $1;
+        RDB_parse_del_node($2, _RDB_parse_ecp); /* Ignore ';' */
+    }
     | TOK_CASE
 
 when_def: TOK_WHEN expression TOK_THEN ne_statement_list {

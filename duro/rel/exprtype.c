@@ -114,6 +114,10 @@ where_type(const RDB_expression *exp, RDB_gettypefn *getfnp, void *arg,
     RDB_type *condtyp;
     RDB_type *reltyp;
 
+    /*
+     * Check argument types
+     */
+
     if (RDB_expr_list_length(&exp->def.op.args) != 2) {
         RDB_raise_invalid_argument("invalid number of arguments", ecp);
         return NULL;
@@ -147,6 +151,9 @@ where_type(const RDB_expression *exp, RDB_gettypefn *getfnp, void *arg,
         return NULL;
     }
 
+    /*
+     * Return copy of type
+     */
     return RDB_dup_nonscalar_type(reltyp, ecp);
 }
 
@@ -905,11 +912,18 @@ expr_op_type(RDB_expression *exp, RDB_gettypefn *getfnp, void *arg,
     } else if (strcmp(exp->def.op.name, "length") == 0
             && argc == 1
             && (argtv[0] == NULL || argtv[0]->kind == RDB_TP_ARRAY)) {
+        /* Array length operator */
         typ = &RDB_INTEGER;
     } else if (strcmp(exp->def.op.name, "[]") == 0
             && argc == 2
             && (argtv[0] == NULL || argtv[0]->kind == RDB_TP_ARRAY)) {
+        /* Array subscript operator */
         typ = RDB_dup_nonscalar_type(argtv[0]->def.basetyp, ecp);
+    } else if (strcmp(exp->def.op.name, "plan") == 0
+            && argc == 1
+            && (argtv[0] == NULL || argtv[0]->kind == RDB_TP_RELATION)) {
+        /* PLAN operator shows RA tree with query execution information */
+        typ = &RDB_STRING;
     } else {
         for (i = 0; i < argc; i++) {
             if (argtv[i] == NULL) {

@@ -101,6 +101,17 @@ RDB_expr_to_vtable(RDB_expression *exp, RDB_exec_context *ecp,
     return tbp;
 }
 
+/**
+ * If *tbp is a virtual table, return the the defining expression,
+ * otherwise NULL.
+ */
+RDB_expression *
+RDB_vtable_expr(const RDB_object *tbp) {
+    if (tbp->kind != RDB_OB_TABLE)
+        return NULL;
+    return tbp->val.tb.exp;
+}
+
 /*@}*/
 
 /**

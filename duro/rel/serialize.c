@@ -18,6 +18,10 @@
  * persistent virtual tables (aka views)
  */
 
+enum {
+    RDB_BUF_INITLEN = 256
+};
+
 static int
 reserve_space(RDB_object *valp, int pos, size_t n, RDB_exec_context *ecp)
 {

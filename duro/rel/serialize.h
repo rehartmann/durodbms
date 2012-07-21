@@ -3,15 +3,11 @@
 
 /* $Id$
  *
- * Copyright (C) 2003-2005 Ren� Hartmann.
+ * Copyright (C) 2003-2012 Rene Hartmann.
  * See the file COPYING for redistribution information.
  */
 
 #include "rdb.h"
-
-enum {
-    RDB_BUF_INITLEN = 256
-};
 
 int
 _RDB_expr_to_binobj(RDB_object *, RDB_expression *, RDB_exec_context *);

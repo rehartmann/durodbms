@@ -431,9 +431,7 @@ NULL is returned and an error is left in *<var>ecp</var>.
 RDB_expression *
 RDB_ro_op(const char *opname, RDB_exec_context *ecp)
 {
-    RDB_expression *exp;
-
-    exp = new_expr(ecp);
+    RDB_expression *exp = new_expr(ecp);
     if (exp == NULL) {
         return NULL;
     }

@@ -486,6 +486,9 @@ RDB_cardinality(RDB_object *tbp, RDB_exec_context *, RDB_transaction *);
 RDB_object *
 RDB_expr_to_vtable(RDB_expression *, RDB_exec_context *, RDB_transaction *);
 
+RDB_expression *
+RDB_vtable_expr(const RDB_object *tbp);
+
 int
 RDB_create_table_index(const char *name, RDB_object *tbp, int idxcompc,
         const RDB_seq_item idxcompv[], int flags, RDB_exec_context *,

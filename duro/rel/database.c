@@ -1408,7 +1408,7 @@ table_dep_check(RDB_object *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
             goto cleanup;
         }
         if (!RDB_table_is_real(dtbp)) {
-            if (_RDB_expr_refers(dtbp->val.tb.exp, tbp)) {
+            if (_RDB_expr_refers(RDB_vtable_expr(dtbp), tbp)) {
                 RDB_raise_in_use("a virtual table depends on this table", ecp);
                 ret = RDB_ERROR;
                 goto cleanup;
@@ -1609,7 +1609,7 @@ RDB_add_table(RDB_object *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
     }
 
     /* Turning a local real table into a persistent table is not supported */
-    if (!tbp->val.tb.is_persistent && tbp->val.tb.exp == NULL) {
+    if (!tbp->val.tb.is_persistent && RDB_vtable_expr(tbp) == NULL) {
         RDB_raise_not_supported(
                 "operation not supported for local real tables", ecp);
         return RDB_ERROR;

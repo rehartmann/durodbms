@@ -404,7 +404,7 @@ insert_vtable(RDB_object *tbp, RDB_dbroot *dbrootp, RDB_exec_context *ecp,
     if (ret != RDB_OK)
         goto cleanup;
 
-    ret = _RDB_expr_to_binobj(&defval, tbp->val.tb.exp, ecp);
+    ret = _RDB_expr_to_binobj(&defval, RDB_vtable_expr(tbp), ecp);
     if (ret != RDB_OK)
         goto cleanup;
     ret = RDB_tuple_set(&tpl, "i_def", &defval, ecp);

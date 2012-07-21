@@ -1514,7 +1514,7 @@ RDB_create_table_index(const char *name, RDB_object *tbp, int idxcompc,
     if (tbp->val.tb.is_persistent) {
         /* Insert index into catalog */
         ret = _RDB_cat_insert_index(name, idxcompc, idxcompv,
-                (RDB_bool) ((RDB_UNIQUE & flags) != 0),
+                RDB_FALSE,
                 (RDB_bool) ((RDB_ORDERED & flags) != 0), RDB_table_name(tbp),
                 ecp, txp);
         if (ret != RDB_OK)
@@ -1551,7 +1551,7 @@ RDB_create_table_index(const char *name, RDB_object *tbp, int idxcompc,
             }
             indexp->attrv[i].asc = idxcompv[i].asc;
         }
-        indexp->unique = (RDB_bool) (RDB_UNIQUE & flags);
+        indexp->unique = RDB_FALSE;
         indexp->ordered = (RDB_bool) (RDB_ORDERED & flags);
 
         /* Create index */

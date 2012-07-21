@@ -1193,6 +1193,7 @@ exec_vardrop(const RDB_parse_node *nodep, RDB_exec_context *ecp)
     /*
      * Delete persistent table
      */
+
     if (txnp == NULL) {
         RDB_raise_no_running_tx(ecp);
         return RDB_ERROR;
@@ -3294,6 +3295,53 @@ error:
 }
 
 static int
+exec_indexdef(RDB_parse_node *nodep, RDB_exec_context *ecp)
+{
+    int ret;
+    int i;
+    const char *indexname = RDB_expr_var_name(nodep->exp);
+    RDB_object *tbp;
+    int idxcompc = RDB_parse_nodelist_length(nodep->nextp->nextp->nextp->nextp);
+    RDB_seq_item *idxcompv;
+    RDB_parse_node *attrnodep;
+
+    if (txnp == NULL) {
+        RDB_raise_no_running_tx(ecp);
+        return RDB_ERROR;
+    }
+
+    tbp = RDB_get_table(RDB_expr_var_name(nodep->nextp->nextp->exp),
+            ecp, &txnp->tx);
+    if (tbp == NULL) {
+        return RDB_ERROR;
+    }
+
+    idxcompv = RDB_alloc(sizeof(RDB_seq_item) * idxcompc, ecp);
+    if (idxcompv == NULL)
+        return RDB_ERROR;
+
+    attrnodep = nodep->nextp->nextp->nextp->nextp->val.children.firstp;
+    i = 0;
+    for(;;) {
+        idxcompv[i].attrname = (char *) RDB_expr_var_name(attrnodep->exp);
+        idxcompv[i].asc = RDB_TRUE;
+        attrnodep = attrnodep->nextp;
+        if (attrnodep == NULL)
+            break;
+        /* Skip comma */
+        attrnodep = attrnodep->nextp;
+        i++;
+    }
+
+    ret = RDB_create_table_index(indexname, tbp, idxcompc,
+            idxcompv, RDB_ORDERED, ecp, &txnp->tx);
+    if (_RDB_parse_interactive)
+        printf("Index %s created.\n", indexname);
+    RDB_free(idxcompv);
+    return ret;
+}
+
+static int
 exec_constrdrop(RDB_parse_node *nodep, RDB_exec_context *ecp)
 {
     int ret;
@@ -3323,6 +3371,32 @@ exec_constrdrop(RDB_parse_node *nodep, RDB_exec_context *ecp)
     }
     if ((ret == RDB_OK) && _RDB_parse_interactive)
         printf("Constraint %s dropped.\n", constrname);
+    return ret;
+
+error:
+    if (txnp == NULL)
+        RDB_rollback(ecp, &tmp_tx);
+    return RDB_ERROR;
+}
+
+static int
+exec_indexdrop(RDB_parse_node *nodep, RDB_exec_context *ecp)
+{
+    int ret;
+    RDB_transaction tmp_tx;
+    const char *indexname = RDB_expr_var_name(nodep->exp);
+
+    if (txnp == NULL) {
+        RDB_raise_no_running_tx(ecp);
+        return RDB_ERROR;
+    }
+
+    ret = RDB_drop_table_index(indexname, ecp, &txnp->tx);
+    if (ret != RDB_OK)
+        goto error;
+
+    if (_RDB_parse_interactive)
+        printf("Index %s dropped.\n", indexname);
     return ret;
 
 error:
@@ -3416,6 +3490,9 @@ Duro_exec_stmt(RDB_parse_node *stmtp, RDB_exec_context *ecp,
                     case TOK_OPERATOR:
                         ret = exec_opdrop(firstchildp->nextp->nextp, ecp);
                         break;
+                    case TOK_INDEX:
+                        ret = exec_indexdrop(firstchildp->nextp->nextp, ecp);
+                        break;
                 }
                 break;
             case TOK_BEGIN:
@@ -3445,6 +3522,9 @@ Duro_exec_stmt(RDB_parse_node *stmtp, RDB_exec_context *ecp,
                 break;
             case TOK_CONSTRAINT:
                 ret = exec_constrdef(firstchildp->nextp, ecp);
+                break;
+            case TOK_INDEX:
+                ret = exec_indexdef(firstchildp->nextp, ecp);
                 break;
             case TOK_RAISE:
                 ret = exec_raise(firstchildp->nextp, ecp);

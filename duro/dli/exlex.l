@@ -674,6 +674,18 @@ IMPLEMENT {
     return TOK_IMPLEMENT;
 }
 
+INDEX {
+    yylval = RDB_new_parse_token(TOK_INDEX, whitecommp, _RDB_parse_ecp);
+    whitecommp = NULL;
+    return TOK_INDEX;
+}
+
+ORDERED {
+    yylval = RDB_new_parse_token(TOK_ORDERED, whitecommp, _RDB_parse_ecp);
+    whitecommp = NULL;
+    return TOK_ORDERED;
+}
+
 \|\| {
     yylval = RDB_new_parse_token(TOK_CONCAT, whitecommp, _RDB_parse_ecp);
     whitecommp = NULL;

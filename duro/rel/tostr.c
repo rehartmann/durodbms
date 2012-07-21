@@ -412,16 +412,19 @@ static int
 append_table_def(RDB_object *objp, const RDB_object *tbp, RDB_exec_context *ecp,
         RDB_transaction *txp, int options)
 {
+    RDB_expression *exp;
     if (RDB_table_name(tbp) != NULL) {
         return RDB_append_string(objp, RDB_table_name(tbp), ecp);
     }
-    if (tbp->val.tb.exp == NULL) {
+
+    exp = RDB_vtable_expr(tbp);
+    if (exp == NULL) {
         return append_table_val(objp, tbp, ecp, txp);
     }
     if (RDB_append_string(objp, "(", ecp) != RDB_OK)
         return RDB_ERROR;
 
-    if (append_ex(objp, tbp->val.tb.exp, ecp, txp, options) != RDB_OK)
+    if (append_ex(objp, exp, ecp, txp, options) != RDB_OK)
         return RDB_ERROR;
     return RDB_append_string(objp, ")", ecp);
 }
