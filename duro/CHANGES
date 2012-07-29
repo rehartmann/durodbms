@@ -6,6 +6,10 @@ Changes for Duro 0.16
 
 - FOREACH loop
 
+- INDEX, DROP INDEX
+
+- EXPLAIN
+
 Changes for Duro 0.15
 
 - Replaced PRINT/PRINTLN/READLN by put/put_line/get_line.

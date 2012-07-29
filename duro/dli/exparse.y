@@ -155,6 +155,7 @@ yyerror(const char *);
 %token TOK_IMPLEMENT "IMPLEMENT"
 %token TOK_ORDERED "ORDERED"
 %token TOK_INDEX "INDEX"
+%token TOK_EXPLAIN "EXPLAIN"
 %token TOK_INVALID "invalid"
 
 %left ':'
@@ -986,6 +987,26 @@ statement: assignment ';' {
         RDB_parse_add_child($$, $7);
         RDB_parse_add_child($$, $8);
     }
+    | TOK_EXPLAIN expression TOK_ORDER '(' order_item_commalist ')' ';' {
+        $$ = new_parse_inner();
+        if ($$ == NULL) {
+            RDB_parse_del_node($1, _RDB_parse_ecp);
+            RDB_parse_del_node($2, _RDB_parse_ecp);
+            RDB_parse_del_node($3, _RDB_parse_ecp);
+            RDB_parse_del_node($4, _RDB_parse_ecp);
+            RDB_parse_del_node($5, _RDB_parse_ecp);
+            RDB_parse_del_node($6, _RDB_parse_ecp);
+            RDB_parse_del_node($7, _RDB_parse_ecp);
+            YYERROR;
+        }
+        RDB_parse_add_child($$, $1);
+        RDB_parse_add_child($$, $2);
+        RDB_parse_add_child($$, $3);
+        RDB_parse_add_child($$, $4);
+        RDB_parse_add_child($$, $5);
+        RDB_parse_add_child($$, $6);
+        RDB_parse_add_child($$, $7);
+    }    
     | TOK_RAISE expression ';' {
         $$ = new_parse_inner();
         if ($$ == NULL) {

@@ -17,6 +17,7 @@
 #include <rel/internal.h>
 #include <rel/typeimpl.h>
 #include <rel/qresult.h>
+#include <rel/optimize.h>
 
 #include <sys/stat.h>
 #include <errno.h>
@@ -1467,6 +1468,73 @@ exec_load(RDB_parse_node *nodep, RDB_exec_context *ecp)
 cleanup:
     if (seqitv != NULL)
         RDB_free(seqitv);
+    return ret;
+}
+
+static int
+exec_explain(RDB_parse_node *nodep, RDB_exec_context *ecp)
+{
+    int ret;
+    RDB_expression *exp;
+    RDB_object strobj;
+    int seqitc;
+    RDB_seq_item *seqitv = NULL;
+    RDB_expression *optexp = NULL;
+
+    if (txnp == NULL) {
+        RDB_raise_no_running_tx(ecp);
+        return RDB_ERROR;
+    }
+
+    RDB_init_obj(&strobj);
+
+    exp = RDB_parse_node_expr(nodep, ecp, &txnp->tx);
+    if (exp == NULL) {
+        ret = RDB_ERROR;
+        goto cleanup;
+    }
+
+    seqitc = RDB_parse_nodelist_length(nodep->nextp->nextp->nextp);
+    if (seqitc > 0) {
+        seqitv = RDB_alloc(sizeof(RDB_seq_item) * seqitc, ecp);
+        if (seqitv == NULL) {
+            ret = RDB_ERROR;
+            goto cleanup;
+        }
+    }
+    ret = nodes_to_seqitv(seqitv,
+            nodep->nextp->nextp->nextp->val.children.firstp, ecp);
+    if (ret != RDB_OK) {
+        goto cleanup;
+    }
+
+    /* Optimize */
+    optexp = _RDB_optimize_expr(exp, seqitc, seqitv, ecp, &txnp->tx);
+    if (optexp == NULL) {
+        ret = RDB_ERROR;
+        goto cleanup;
+    }
+
+    /* Convert tree to STRING */
+    ret = _RDB_expr_to_str(&strobj, optexp, ecp, &txnp->tx, RDB_SHOW_INDEX);
+    if (ret != RDB_OK) {
+        goto cleanup;
+    }
+
+    ret = puts(RDB_obj_string(&strobj));
+    if (ret == EOF) {
+        RDB_errcode_to_error(errno, ecp, &txnp->tx);
+    } else {
+        ret = RDB_OK;
+    }
+
+cleanup:
+    if (seqitv != NULL)
+        RDB_free(seqitv);
+    if (optexp != NULL) {
+        RDB_drop_expr(optexp, ecp);
+    }
+    RDB_destroy_obj(&strobj, ecp);
     return ret;
 }
 
@@ -3526,6 +3594,9 @@ Duro_exec_stmt(RDB_parse_node *stmtp, RDB_exec_context *ecp,
             case TOK_INDEX:
                 ret = exec_indexdef(firstchildp->nextp, ecp);
                 break;
+            case TOK_EXPLAIN:
+                ret = exec_explain(firstchildp->nextp, ecp);
+                break;
             case TOK_RAISE:
                 ret = exec_raise(firstchildp->nextp, ecp);
                 break;
@@ -3592,6 +3663,7 @@ Duro_process_stmt(RDB_exec_context *ecp)
     RDB_object prompt;
     RDB_object *dbnameobjp = RDB_hashmap_get(&sys_module.varmap, "current_db");
 
+    /* Build prompt string */
     RDB_init_obj(&prompt);
     if (dbnameobjp != NULL && *RDB_obj_string(dbnameobjp) != '\0') {
         RDB_string_to_obj(&prompt, RDB_obj_string(dbnameobjp), ecp);
@@ -3600,6 +3672,7 @@ Duro_process_stmt(RDB_exec_context *ecp)
     }
     RDB_append_string(&prompt, "> ", ecp);
 
+    /* Set prompt */
     _RDB_parse_prompt = RDB_obj_string(&prompt);
 
     stmtp = RDB_parse_stmt(ecp);

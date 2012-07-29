@@ -686,6 +686,12 @@ ORDERED {
     return TOK_ORDERED;
 }
 
+EXPLAIN {
+    yylval = RDB_new_parse_token(TOK_EXPLAIN, whitecommp, _RDB_parse_ecp);
+    whitecommp = NULL;
+    return TOK_EXPLAIN;
+} 
+
 \|\| {
     yylval = RDB_new_parse_token(TOK_CONCAT, whitecommp, _RDB_parse_ecp);
     whitecommp = NULL;
