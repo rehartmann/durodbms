@@ -1502,6 +1502,13 @@ exec_explain(RDB_parse_node *nodep, RDB_exec_context *ecp)
             goto cleanup;
         }
     }
+
+    /* Perform type checking */
+    if (RDB_expr_type(exp, NULL, NULL, ecp, &txnp->tx) == NULL) {
+        ret = RDB_ERROR;
+        goto cleanup;
+    }
+
     ret = nodes_to_seqitv(seqitv,
             nodep->nextp->nextp->nextp->val.children.firstp, ecp);
     if (ret != RDB_OK) {

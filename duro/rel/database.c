@@ -1292,7 +1292,7 @@ A pointer to the table, or NULL if an error occurred.
 <dl>
 <dt>no_running_tx_error
 <dd><var>txp</var> does not point to a running transaction.
-<dt>not_found_error
+<dt>name_error
 <dd>A table with the name <var>name</var> could not be found.
 </dl>
 
@@ -1327,7 +1327,13 @@ RDB_get_table(const char *name, RDB_exec_context *ecp, RDB_transaction *txp)
         RDB_clear_err(ecp);
     }
 
-    return _RDB_cat_get_vtable(name, ecp, txp);
+    tbp = _RDB_cat_get_vtable(name, ecp, txp);
+
+    if (tbp == NULL && RDB_obj_type(RDB_get_err(ecp)) == &RDB_NOT_FOUND_ERROR) {
+        /* Replace not_found_error with name_error */
+        RDB_raise_name(name, ecp);
+    }
+    return tbp;
 }
 
 static int

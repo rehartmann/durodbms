@@ -40,7 +40,7 @@ no db>
 <p>This creates a variable named i. Note that Duro D/T is case
 insensitive, so there is no diffence between "var i integer;"
 and "VAR I INTEGER;". More accurately, keywords are case insensitive
-while identifiers are converted to lowercase.
+whereas identifiers are automatically converted to lowercase.
 This tutorial shows example code in lowercase.
 
 <p>When declaring a variable, an initial value can be specified:
@@ -71,7 +71,7 @@ no db> var k same_type_as(i);
 no db>
 </pre>
 
-<p>Variables can be explicity destroyed. This is usally not necessary for transient variables,
+<p>Variables can be explicity destroyed. This is usually not necessary for transient variables,
 but is supported for all user-declared variables:
 
 <pre>
@@ -157,6 +157,8 @@ comment. */
 <h2>Control statements</h2>
 
 <h3>IF</h3>
+
+<p>Example:
 
 <pre>
 no db> var s string;
@@ -484,8 +486,8 @@ predicate_violation_error: cr
 <p>Destroying a contraint:
 
 <pre>
-D> drop constraint CR;
-Constraint CR dropped.
+D> drop constraint cr;
+Constraint cr dropped.
 D>
 </pre>
 
@@ -621,7 +623,8 @@ Full type implementation functionality is available through the
 or the Tcl interface
 (<a href="../tcl/type.html">duro::type</a>).
 
-<p>After a type has been defined, it can be used to declare and assign variables, like so:
+<p>After a type has been defined and implemented,
+it can be used to declare and assign variables, like so:
 
 <pre>
 D> var l len;
@@ -693,5 +696,78 @@ end try;
 </pre>
 
 <hr>
+
+<h3>Performance</h3>
+
+<p>Duro D/T features an EXPLAIN statement which shows how a relational expression is executed.
+
+<p>Example:
+
+<pre>
+D> begin tx;
+Transaction started.
+D> var r real relation{n int, s string} key {n};
+Table r created.
+D> var i int;
+D> for i := 1 to 10; insert r tup{n i, s cast_as_string(i)}; end for;
+1 element affected.
+1 element affected.
+1 element affected.
+1 element affected.
+1 element affected.
+1 element affected.
+1 element affected.
+1 element affected.
+1 element affected.
+1 element affected.
+D> explain r where n=1 order();
+where(r INDEX r$0, (n) = (1))
+D> 
+</pre>
+
+<p>The output of EXPLAIN shows that Duro D/T uses the index r$0 to evaluate the expression.
+This is the index which was created to ensure that n is a key of r.
+
+Now let's try other WHERE expressions:
+
+<pre>
+D> explain r where n>1 order();
+where(r, (n) > (1))
+D> explain r where s='one' order();
+where(r, (s) = ('one'))
+</pre>
+
+<p>For neither of these an index can be used. Not for the first,
+because the index on n is a hash index which supports only equality,
+and not for the second because there is no index on attribute s.
+This means that Duro will scan the entire table to evaluate the expression
+which is quite inefficient for large tables.
+
+<p>We can create an index on s using the INDEX statement:  
+
+<pre>
+D> index r_s for r (s);
+Index r_s created.
+</pre>
+
+Now we can use the index:
+
+<pre>
+D> explain r where s='one' order();
+where(r INDEX r_s, (s) = ('one'))
+</pre>
+
+As we can see in the output of the EXPLAIN statement,
+Duro now uses the index r_s to evaluate the expression.
+
+An index can be destroyed using DROP INDEX:
+
+<pre>
+D> drop index r_s;
+Index r_s dropped.
+</pre>
+
+<p>Note that INDEX and DROP INDEX are low-level operators;
+access to them may be restricted in future versions of Duro.
 
 </html>

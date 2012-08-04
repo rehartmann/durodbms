@@ -9,6 +9,7 @@
 #include "transform.h"
 #include "internal.h"
 #include "stable.h"
+#include "tostr.h"
 
 #include <gen/strfns.h>
 #include <string.h>
@@ -935,6 +936,9 @@ mutate_tbref(RDB_expression *texp, RDB_expression **tbpv, int cap,
     }
 }
 
+/*
+ * Create equivalents of *texp and store them in *tbpv.
+ */
 static int
 mutate(RDB_expression *texp, RDB_expression **tbpv, int cap, RDB_exec_context *ecp,
         RDB_transaction *txp)
@@ -992,7 +996,7 @@ sorted_table_cost(RDB_expression *texp, int seqitc,
 {
     int cost = table_cost(texp);
 
-    /* Check if the index must be sorted */
+    /* Check if the result must be sorted */
     if (seqitc > 0) {
         _RDB_tbindex *indexp = _RDB_expr_sortindex(texp);
         if (indexp == NULL || !_RDB_index_sorts(indexp, seqitc, seqitv))
@@ -1045,6 +1049,26 @@ _RDB_optimize(RDB_object *tbp, int seqitc, const RDB_seq_item seqitv[],
     return _RDB_optimize_enabled ?
             _RDB_optimize_expr(tbp->val.tb.exp, seqitc, seqitv, ecp, txp)
             : dup_expr_vt(tbp->val.tb.exp, ecp);
+}
+
+static void
+trace_plan(RDB_expression *exp, int cost, RDB_exec_context *ecp, RDB_transaction *txp)
+{
+    if (RDB_env_trace(RDB_db_env(RDB_tx_db(txp))) > 0) {
+        /*
+         * Write expression (with index info) and cost to stderr
+         */
+        RDB_object strobj;
+
+        RDB_init_obj(&strobj);
+        if (_RDB_expr_to_str(&strobj, exp, ecp, txp, RDB_SHOW_INDEX) != RDB_OK) {
+            RDB_destroy_obj(&strobj, ecp);
+            return;
+        }
+
+        fprintf(stderr, "Possible plan: %s, cost: %d\n", RDB_obj_string(&strobj), cost);
+        RDB_destroy_obj(&strobj, ecp);
+    }
 }
 
 RDB_expression *
@@ -1103,6 +1127,9 @@ _RDB_optimize_expr(RDB_expression *texp, int seqitc, const RDB_seq_item seqitv[]
      */
 
     bestcost = sorted_table_cost(nexp, seqitc, seqitv);
+
+    trace_plan(nexp, bestcost, ecp, txp);
+
     do {
         obestcost = bestcost;
 
@@ -1114,6 +1141,8 @@ _RDB_optimize_expr(RDB_expression *texp, int seqitc, const RDB_seq_item seqitv[]
 
         for (i = 0; i < tbc; i++) {
             int cost = sorted_table_cost(texpv[i], seqitc, seqitv);
+
+            trace_plan(texpv[i], bestcost, ecp, txp);
 
             if (cost < bestcost) {
                 bestcost = cost;
