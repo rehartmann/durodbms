@@ -722,7 +722,8 @@ D> for i := 1 to 10; insert r tup{n i, s cast_as_string(i)}; end for;
 1 element affected.
 D> explain r where n=1 order();
 where(r INDEX r$0, (n) = (1))
-D> 
+D> commit;
+Transaction committed.
 </pre>
 
 <p>The output of EXPLAIN shows that Duro D/T uses the index r$0 to evaluate the expression.
@@ -731,6 +732,8 @@ This is the index which was created to ensure that n is a key of r.
 Now let's try other WHERE expressions:
 
 <pre>
+D> begin tx;
+Transaction started.
 D> explain r where n>1 order();
 where(r, (n) > (1))
 D> explain r where s='one' order();
