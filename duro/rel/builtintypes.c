@@ -139,7 +139,7 @@ RDB_type RDB_SYSTEM_ERROR;
 
 RDB_type RDB_SYNTAX_ERROR;
 
-RDB_hashmap _RDB_builtin_type_map;
+RDB_hashmap RDB_builtin_type_map;
 
 static int
 compare_int(int argc, RDB_object *argv[], RDB_operator *op,
@@ -176,9 +176,9 @@ compare_string(int argc, RDB_object *argv[], RDB_operator *op,
 }
 
 int
-_RDB_add_type(RDB_type *typ, RDB_exec_context *ecp)
+RDB_add_type(RDB_type *typ, RDB_exec_context *ecp)
 {
-    int ret = RDB_hashmap_put(&_RDB_builtin_type_map, RDB_type_name(typ), typ);
+    int ret = RDB_hashmap_put(&RDB_builtin_type_map, RDB_type_name(typ), typ);
     if (ret != RDB_OK) {
         RDB_errcode_to_error(ret, ecp, NULL);
         return RDB_ERROR;
@@ -188,7 +188,7 @@ _RDB_add_type(RDB_type *typ, RDB_exec_context *ecp)
      * Add selector if the type has a possrep (applies to error types)
      */
     if (typ->def.scalar.repc == 1) {
-        if (_RDB_add_selector(typ, ecp) != RDB_OK) {
+        if (RDB_add_selector(typ, ecp) != RDB_OK) {
             return RDB_ERROR;
         }
     }
@@ -197,7 +197,7 @@ _RDB_add_type(RDB_type *typ, RDB_exec_context *ecp)
 }
 
 int
-_RDB_init_builtin_types(RDB_exec_context *ecp)
+RDB_init_builtin_types(RDB_exec_context *ecp)
 {
     static RDB_bool initialized = RDB_FALSE;
 
@@ -708,112 +708,112 @@ _RDB_init_builtin_types(RDB_exec_context *ecp)
     RDB_SYNTAX_ERROR.def.scalar.sysimpl = RDB_TRUE;
     RDB_SYNTAX_ERROR.compare_op = NULL;
 
-    RDB_init_hashmap(&_RDB_builtin_type_map, 32);
+    RDB_init_hashmap(&RDB_builtin_type_map, 32);
 
     /*
      * Put built-in types into type map
      */
-    if (_RDB_add_type(&RDB_BOOLEAN, ecp) != RDB_OK) {
+    if (RDB_add_type(&RDB_BOOLEAN, ecp) != RDB_OK) {
         return RDB_ERROR;
     }
-    if (_RDB_add_type(&RDB_INTEGER, ecp) != RDB_OK) {
+    if (RDB_add_type(&RDB_INTEGER, ecp) != RDB_OK) {
         return RDB_ERROR;
     }
-    if (_RDB_add_type(&RDB_FLOAT, ecp) != RDB_OK) {
+    if (RDB_add_type(&RDB_FLOAT, ecp) != RDB_OK) {
         return RDB_ERROR;
     }
-    if (_RDB_add_type(&RDB_STRING, ecp) != RDB_OK) {
+    if (RDB_add_type(&RDB_STRING, ecp) != RDB_OK) {
         return RDB_ERROR;
     }
-    if (_RDB_add_type(&RDB_BINARY, ecp) != RDB_OK) {
+    if (RDB_add_type(&RDB_BINARY, ecp) != RDB_OK) {
         return RDB_ERROR;
     }
-    if (_RDB_add_type(&RDB_NO_MEMORY_ERROR, ecp) != RDB_OK) {
+    if (RDB_add_type(&RDB_NO_MEMORY_ERROR, ecp) != RDB_OK) {
         return RDB_ERROR;
     }
-    if (_RDB_add_type(&RDB_NOT_FOUND_ERROR, ecp) != RDB_OK) {
+    if (RDB_add_type(&RDB_NOT_FOUND_ERROR, ecp) != RDB_OK) {
         return RDB_ERROR;
     }
-    if (_RDB_add_type(&RDB_NO_RUNNING_TX_ERROR,
+    if (RDB_add_type(&RDB_NO_RUNNING_TX_ERROR,
             ecp) != RDB_OK) {
         return RDB_ERROR;
     }
-    if (_RDB_add_type(&RDB_INVALID_ARGUMENT_ERROR,
+    if (RDB_add_type(&RDB_INVALID_ARGUMENT_ERROR,
             ecp) != RDB_OK) {
         return RDB_ERROR;
     }
-    if (_RDB_add_type(&RDB_TYPE_MISMATCH_ERROR, ecp) != RDB_OK) {
+    if (RDB_add_type(&RDB_TYPE_MISMATCH_ERROR, ecp) != RDB_OK) {
         return RDB_ERROR;
     }
-    if (_RDB_add_type(&RDB_TYPE_CONSTRAINT_VIOLATION_ERROR,
+    if (RDB_add_type(&RDB_TYPE_CONSTRAINT_VIOLATION_ERROR,
             ecp) != RDB_OK) {
         return RDB_ERROR;
     }
-    if (_RDB_add_type(&RDB_OPERATOR_NOT_FOUND_ERROR,
+    if (RDB_add_type(&RDB_OPERATOR_NOT_FOUND_ERROR,
             ecp) != RDB_OK) {
         return RDB_ERROR;
     }
-    if (_RDB_add_type(&RDB_ELEMENT_EXISTS_ERROR,
+    if (RDB_add_type(&RDB_ELEMENT_EXISTS_ERROR,
             ecp) != RDB_OK) {
         return RDB_ERROR;
     }
-    if (_RDB_add_type(&RDB_KEY_VIOLATION_ERROR,
+    if (RDB_add_type(&RDB_KEY_VIOLATION_ERROR,
             ecp) != RDB_OK) {
         return RDB_ERROR;
     }
-    if (_RDB_add_type(&RDB_NOT_SUPPORTED_ERROR,
+    if (RDB_add_type(&RDB_NOT_SUPPORTED_ERROR,
             ecp) != RDB_OK) {
         return RDB_ERROR;
     }
-    if (_RDB_add_type(&RDB_NAME_ERROR,
+    if (RDB_add_type(&RDB_NAME_ERROR,
             ecp) != RDB_OK) {
         return RDB_ERROR;
     }
-    if (_RDB_add_type(&RDB_PREDICATE_VIOLATION_ERROR,
+    if (RDB_add_type(&RDB_PREDICATE_VIOLATION_ERROR,
             ecp) != RDB_OK) {
         return RDB_ERROR;
     }
-    if (_RDB_add_type(&RDB_IN_USE_ERROR,
+    if (RDB_add_type(&RDB_IN_USE_ERROR,
             ecp) != RDB_OK) {
         return RDB_ERROR;
     }
-    if (_RDB_add_type(&RDB_SYSTEM_ERROR,
+    if (RDB_add_type(&RDB_SYSTEM_ERROR,
             ecp) != RDB_OK) {
         return RDB_ERROR;
     }
-    if (_RDB_add_type(&RDB_RESOURCE_NOT_FOUND_ERROR,
+    if (RDB_add_type(&RDB_RESOURCE_NOT_FOUND_ERROR,
             ecp) != RDB_OK) {
         return RDB_ERROR;
     }
-    if (_RDB_add_type(&RDB_INTERNAL_ERROR,
+    if (RDB_add_type(&RDB_INTERNAL_ERROR,
             ecp) != RDB_OK) {
         return RDB_ERROR;
     }
-    if (_RDB_add_type(&RDB_LOCK_NOT_GRANTED_ERROR,
+    if (RDB_add_type(&RDB_LOCK_NOT_GRANTED_ERROR,
             ecp) != RDB_OK) {
         return RDB_ERROR;
     }
-    if (_RDB_add_type(&RDB_AGGREGATE_UNDEFINED_ERROR,
+    if (RDB_add_type(&RDB_AGGREGATE_UNDEFINED_ERROR,
             ecp) != RDB_OK) {
         return RDB_ERROR;
     }
-    if (_RDB_add_type(&RDB_VERSION_MISMATCH_ERROR,
+    if (RDB_add_type(&RDB_VERSION_MISMATCH_ERROR,
             ecp) != RDB_OK) {
         return RDB_ERROR;
     }
-    if (_RDB_add_type(&RDB_DEADLOCK_ERROR,
+    if (RDB_add_type(&RDB_DEADLOCK_ERROR,
             ecp) != RDB_OK) {
         return RDB_ERROR;
     }
-    if (_RDB_add_type(&RDB_FATAL_ERROR, ecp) != RDB_OK) {
+    if (RDB_add_type(&RDB_FATAL_ERROR, ecp) != RDB_OK) {
         return RDB_ERROR;
     }
-    if (_RDB_add_type(&RDB_SYNTAX_ERROR, ecp) != RDB_OK) {
+    if (RDB_add_type(&RDB_SYNTAX_ERROR, ecp) != RDB_OK) {
         return RDB_ERROR;
     }
 
     /* Add io_stream */
-    if (_RDB_add_io(ecp) != RDB_OK) {
+    if (RDB_add_io(ecp) != RDB_OK) {
         return RDB_ERROR;
     }
 

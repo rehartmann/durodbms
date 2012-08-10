@@ -13,7 +13,7 @@
 #include "rdb.h"
 #include <rec/cursor.h>
 
-struct _RDB_tbindex;
+struct RDB_tbindex;
 
 typedef struct RDB_qresult {
     /* May be NULL */
@@ -53,43 +53,43 @@ typedef struct RDB_qresult {
  * Using it from an application is possible, but violates RM proscription 7.
  */
 RDB_qresult *
-_RDB_table_qresult(RDB_object *, RDB_exec_context *, RDB_transaction *);
+RDB_table_qresult(RDB_object *, RDB_exec_context *, RDB_transaction *);
 
 RDB_qresult *
-_RDB_expr_qresult(RDB_expression *, RDB_exec_context *, RDB_transaction *);
+RDB_expr_qresult(RDB_expression *, RDB_exec_context *, RDB_transaction *);
 
 int
-_RDB_index_qresult(RDB_object *, struct _RDB_tbindex *, RDB_transaction *,
+RDB_index_qresult(RDB_object *, struct RDB_tbindex *, RDB_transaction *,
         RDB_qresult **);
 
 int
-_RDB_sorter(RDB_expression *, RDB_qresult **qrespp, RDB_exec_context *,
+RDB_sorter(RDB_expression *, RDB_qresult **qrespp, RDB_exec_context *,
         RDB_transaction *, int seqitc, const RDB_seq_item seqitv[]);
 
 int
-_RDB_next_tuple(RDB_qresult *, RDB_object *, RDB_exec_context *,
+RDB_next_tuple(RDB_qresult *, RDB_object *, RDB_exec_context *,
         RDB_transaction *);
 
 int
-_RDB_duprem(RDB_qresult *, RDB_exec_context *, RDB_transaction *);
+RDB_duprem(RDB_qresult *, RDB_exec_context *, RDB_transaction *);
 
 int
-_RDB_get_by_cursor(RDB_object *, RDB_cursor *, RDB_type *, RDB_object *,
+RDB_get_by_cursor(RDB_object *, RDB_cursor *, RDB_type *, RDB_object *,
         RDB_exec_context *, RDB_transaction *);
 
 int
-_RDB_get_by_uindex(RDB_object *tbp, RDB_object *objpv[],
-        struct _RDB_tbindex *indexp, RDB_type *, RDB_exec_context *,
+RDB_get_by_uindex(RDB_object *tbp, RDB_object *objpv[],
+        struct RDB_tbindex *indexp, RDB_type *, RDB_exec_context *,
         RDB_transaction *, RDB_object *tplp);
 
 int
-_RDB_drop_qresult(RDB_qresult *, RDB_exec_context *, RDB_transaction *);
+RDB_drop_qresult(RDB_qresult *, RDB_exec_context *, RDB_transaction *);
 
 int
-_RDB_reset_qresult(RDB_qresult *, RDB_exec_context *, RDB_transaction *);
+RDB_reset_qresult(RDB_qresult *, RDB_exec_context *, RDB_transaction *);
 
 int
-_RDB_sdivide_preserves(RDB_expression *, const RDB_object *tplp, RDB_qresult *qr3p,
+RDB_sdivide_preserves(RDB_expression *, const RDB_object *tplp, RDB_qresult *qr3p,
         RDB_exec_context *, RDB_transaction *, RDB_bool *);
 
 #endif /*QRESULT_H*/

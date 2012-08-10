@@ -20,7 +20,7 @@
 #define RDB_DATAFILE "rdata"
 
 void
-_RDB_free_tbindex(_RDB_tbindex *idxp)
+RDB_free_tbindex(RDB_tbindex *idxp)
 {
     int i;
 
@@ -35,7 +35,7 @@ free_stored_table(RDB_stored_table *stp)
 {
     int i;
     RDB_hashtable_iter hiter;
-    _RDB_attrmap_entry *entryp;
+    RDB_attrmap_entry *entryp;
 
     RDB_init_hashtable_iter(&hiter, &stp->attrmap);
     while ((entryp = RDB_hashtable_next(&hiter)) != NULL) {
@@ -48,7 +48,7 @@ free_stored_table(RDB_stored_table *stp)
 
     if (stp->indexc > 0) {
         for (i = 0; i < stp->indexc; i++) {
-            _RDB_free_tbindex(&stp->indexv[i]);
+            RDB_free_tbindex(&stp->indexv[i]);
         }
         RDB_free(stp->indexv);
     }
@@ -56,7 +56,7 @@ free_stored_table(RDB_stored_table *stp)
 }
 
 int
-_RDB_close_stored_table(RDB_stored_table *stp, RDB_exec_context *ecp)
+RDB_close_stored_table(RDB_stored_table *stp, RDB_exec_context *ecp)
 {
     int i;
     int ret;
@@ -80,10 +80,10 @@ _RDB_close_stored_table(RDB_stored_table *stp, RDB_exec_context *ecp)
 }
 
 RDB_int *
-_RDB_field_no(RDB_stored_table *stp, const char *attrname)
+RDB_field_no(RDB_stored_table *stp, const char *attrname)
 {
-    _RDB_attrmap_entry entry;
-    _RDB_attrmap_entry *entryp;
+    RDB_attrmap_entry entry;
+    RDB_attrmap_entry *entryp;
 
     entry.key = (char *) attrname;
     entryp = RDB_hashtable_get(&stp->attrmap, &entry,
@@ -96,7 +96,7 @@ _RDB_put_field_no(RDB_stored_table *stp, const char *attrname,
         RDB_int fno, RDB_exec_context *ecp)
 {
     int ret;
-    _RDB_attrmap_entry *entryp = RDB_alloc(sizeof(_RDB_attrmap_entry), ecp);
+    RDB_attrmap_entry *entryp = RDB_alloc(sizeof(RDB_attrmap_entry), ecp);
     if (entryp == NULL) {
         return RDB_ERROR;
     }
@@ -117,7 +117,7 @@ _RDB_put_field_no(RDB_stored_table *stp, const char *attrname,
     return ret;
 }
 
-RDB_exec_context *_RDB_cmp_ecp;
+RDB_exec_context *RDB_cmp_ecp;
 
 static int
 compare_field(const void *data1p, size_t len1, const void *data2p, size_t len2,
@@ -133,26 +133,26 @@ compare_field(const void *data1p, size_t len1, const void *data2p, size_t len2,
     RDB_init_obj(&val2);
     RDB_init_obj(&retval);
 
-    RDB_irep_to_obj(&val1, typ, data1p, len1, _RDB_cmp_ecp);
-    RDB_irep_to_obj(&val2, typ, data2p, len2, _RDB_cmp_ecp);
+    RDB_irep_to_obj(&val1, typ, data1p, len1, RDB_cmp_ecp);
+    RDB_irep_to_obj(&val2, typ, data2p, len2, RDB_cmp_ecp);
 
     valv[0] = &val1;
     valv[1] = &val2;
     tx.txid = NULL;
     tx.envp = envp;
-    (*typ->compare_op->opfn.ro_fp) (2, valv, typ->compare_op, _RDB_cmp_ecp, &tx, &retval);
+    (*typ->compare_op->opfn.ro_fp) (2, valv, typ->compare_op, RDB_cmp_ecp, &tx, &retval);
     ret = RDB_obj_int(&retval);
 
-    RDB_destroy_obj(&val1, _RDB_cmp_ecp);
-    RDB_destroy_obj(&val2, _RDB_cmp_ecp);
-    RDB_destroy_obj(&retval, _RDB_cmp_ecp);
+    RDB_destroy_obj(&val1, RDB_cmp_ecp);
+    RDB_destroy_obj(&val2, RDB_cmp_ecp);
+    RDB_destroy_obj(&retval, RDB_cmp_ecp);
 
     return ret;
 }
 
 int
-_RDB_create_tbindex(RDB_object *tbp, RDB_environment *envp, RDB_exec_context *ecp,
-        RDB_transaction *txp, _RDB_tbindex *indexp, int flags)
+RDB_create_tbindex(RDB_object *tbp, RDB_environment *envp, RDB_exec_context *ecp,
+        RDB_transaction *txp, RDB_tbindex *indexp, int flags)
 {
     int ret;
     int i;
@@ -186,7 +186,7 @@ _RDB_create_tbindex(RDB_object *tbp, RDB_environment *envp, RDB_exec_context *ec
 
     /* Get index numbers */
     for (i = 0; i < indexp->attrc; i++) {
-        RDB_int *np = _RDB_field_no(tbp->val.tb.stp, indexp->attrv[i].attrname);
+        RDB_int *np = RDB_field_no(tbp->val.tb.stp, indexp->attrv[i].attrname);
         if (np == NULL) {
             RDB_raise_name(indexp->attrv[i].attrname, ecp);
             return RDB_ERROR;
@@ -228,7 +228,7 @@ keys_to_indexes(RDB_object *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
 
     tbp->val.tb.stp->indexc += tbp->val.tb.keyc;
     tbp->val.tb.stp->indexv = RDB_realloc(tbp->val.tb.stp->indexv,
-            sizeof (_RDB_tbindex) * tbp->val.tb.stp->indexc, ecp);
+            sizeof (RDB_tbindex) * tbp->val.tb.stp->indexc, ecp);
     if (tbp->val.tb.stp->indexv == NULL) {
         return RDB_ERROR;
     }
@@ -260,7 +260,7 @@ keys_to_indexes(RDB_object *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
             sprintf(tbp->val.tb.stp->indexv[oindexc + i].name, "%s$%d", RDB_table_name(tbp), i);
 
             if (tbp->val.tb.is_user) {
-                ret = _RDB_cat_insert_index(tbp->val.tb.stp->indexv[oindexc + i].name,
+                ret = RDB_cat_insert_index(tbp->val.tb.stp->indexv[oindexc + i].name,
                         tbp->val.tb.stp->indexv[oindexc + i].attrc,
                         tbp->val.tb.stp->indexv[oindexc + i].attrv,
                         RDB_TRUE, RDB_FALSE, RDB_table_name(tbp), ecp, txp);
@@ -303,7 +303,7 @@ create_indexes(RDB_object *tbp, RDB_environment *envp, RDB_exec_context *ecp,
             if (tbp->val.tb.stp->indexv[i].ordered)
                 flags |= RDB_ORDERED;
 
-            if (_RDB_create_tbindex(tbp, envp, ecp, txp,
+            if (RDB_create_tbindex(tbp, envp, ecp, txp,
                     &tbp->val.tb.stp->indexv[i], flags) != RDB_OK)
                 return RDB_ERROR;
         }
@@ -347,7 +347,7 @@ key_fnos(RDB_object *tbp, int **flenvp, const RDB_bool ascv[],
 {
     int ret;
     int i, j, di;
-    _RDB_tbindex *pindexp;
+    RDB_tbindex *pindexp;
     int attrc = tbp->typ->def.basetyp->def.tuple.attrc;
     RDB_attr *heading = tbp->typ->def.basetyp->def.tuple.attrv;
     int piattrc = tbp->val.tb.keyv[0].strc;
@@ -428,14 +428,14 @@ key_fnos(RDB_object *tbp, int **flenvp, const RDB_bool ascv[],
 static unsigned
 hash_str(const void *entryp, void *arg)
 {
-    return RDB_hash_str(((_RDB_attrmap_entry *) entryp)->key);
+    return RDB_hash_str(((RDB_attrmap_entry *) entryp)->key);
 }
 
 static RDB_bool
 str_equals(const void *e1p, const void *e2p, void *arg)
 {
-    return (RDB_bool) strcmp(((_RDB_attrmap_entry *) e1p)->key,
-            ((_RDB_attrmap_entry *) e2p)->key) == 0;
+    return (RDB_bool) strcmp(((RDB_attrmap_entry *) e1p)->key,
+            ((RDB_attrmap_entry *) e2p)->key) == 0;
 }
 
 /*
@@ -449,13 +449,13 @@ str_equals(const void *e1p, const void *e2p, void *arg)
  * ascv       the sorting order if it's a sorter, or NULL
  */
 int
-_RDB_create_stored_table(RDB_object *tbp, RDB_environment *envp,
+RDB_create_stored_table(RDB_object *tbp, RDB_environment *envp,
         const RDB_bool ascv[], RDB_exec_context *ecp, RDB_transaction *txp)
 {
     int ret;
     int flags;
     RDB_hashtable_iter hiter;
-    _RDB_attrmap_entry *entryp;
+    RDB_attrmap_entry *entryp;
     int *flenv = NULL;
     char *rmname = NULL;
     RDB_compare_field *cmpv = NULL;
@@ -490,7 +490,7 @@ _RDB_create_stored_table(RDB_object *tbp, RDB_environment *envp,
 
     if (tbp->val.tb.is_persistent && tbp->val.tb.is_user) {
         /* Get indexes from catalog */
-        tbp->val.tb.stp->indexc = _RDB_cat_get_indexes(RDB_table_name(tbp), txp->dbp->dbrootp,
+        tbp->val.tb.stp->indexc = RDB_cat_get_indexes(RDB_table_name(tbp), txp->dbp->dbrootp,
                 ecp, txp, &tbp->val.tb.stp->indexv);
         if (tbp->val.tb.stp->indexc < 0) {
             goto error;
@@ -511,7 +511,7 @@ _RDB_create_stored_table(RDB_object *tbp, RDB_environment *envp,
      * If the table is a persistent user table, insert recmap into sys_table_recmap
      */
     if (tbp->val.tb.is_persistent && tbp->val.tb.is_user) {
-        ret = _RDB_cat_insert_table_recmap(tbp, RDB_table_name(tbp), ecp, txp);
+        ret = RDB_cat_insert_table_recmap(tbp, RDB_table_name(tbp), ecp, txp);
         if (ret == RDB_ERROR
                 && RDB_obj_type(RDB_get_err(ecp)) == &RDB_KEY_VIOLATION_ERROR) {
             int n = 0;
@@ -525,7 +525,7 @@ _RDB_create_stored_table(RDB_object *tbp, RDB_environment *envp,
             do {
                 sprintf(rmname, "%s%d", RDB_table_name(tbp), ++n);
                 RDB_clear_err(ecp);
-                ret = _RDB_cat_insert_table_recmap(tbp, rmname, ecp, txp);
+                ret = RDB_cat_insert_table_recmap(tbp, rmname, ecp, txp);
             } while (ret != RDB_OK
                     && RDB_obj_type(RDB_get_err(ecp)) == &RDB_KEY_VIOLATION_ERROR
                     && n <= 999);
@@ -613,15 +613,15 @@ error:
  * txp        the transaction under which the operation is performed
  */
 int
-_RDB_open_stored_table(RDB_object *tbp, RDB_environment *envp,
-        const char *rmname, int indexc, _RDB_tbindex *indexv,
+RDB_open_stored_table(RDB_object *tbp, RDB_environment *envp,
+        const char *rmname, int indexc, RDB_tbindex *indexv,
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
     int ret;
     int i;
     int *flenv;
     RDB_hashtable_iter hiter;
-    _RDB_attrmap_entry *entryp;
+    RDB_attrmap_entry *entryp;
     RDB_compare_field *cmpv = NULL;
     int attrc = tbp->typ->def.basetyp->def.tuple.attrc;
     int piattrc = tbp->val.tb.keyv[0].strc;
@@ -666,7 +666,7 @@ _RDB_open_stored_table(RDB_object *tbp, RDB_environment *envp,
     for (i = 0; i < indexc; i++) {
         char *p = strchr(indexv[i].name, '$');
         if (p == NULL || strcmp (p, "$0") != 0) {
-            ret = _RDB_open_table_index(tbp, &indexv[i], envp, ecp, txp);
+            ret = RDB_open_table_index(tbp, &indexv[i], envp, ecp, txp);
             if (ret != RDB_OK)
                 goto error;
         } else {
@@ -698,7 +698,7 @@ error:
 }
 
 int
-_RDB_open_table_index(RDB_object *tbp, _RDB_tbindex *indexp,
+RDB_open_table_index(RDB_object *tbp, RDB_tbindex *indexp,
         RDB_environment *envp, RDB_exec_context *ecp, RDB_transaction *txp)
 {
     int ret;
@@ -712,7 +712,7 @@ _RDB_open_table_index(RDB_object *tbp, _RDB_tbindex *indexp,
 
     /* get index numbers */
     for (i = 0; i < indexp->attrc; i++) {
-        fieldv[i] = *_RDB_field_no(tbp->val.tb.stp, indexp->attrv[i].attrname);
+        fieldv[i] = *RDB_field_no(tbp->val.tb.stp, indexp->attrv[i].attrname);
     }
 
     /* open index */
@@ -728,7 +728,7 @@ cleanup:
 }
 
 int
-_RDB_delete_stored_table(RDB_stored_table *stp, RDB_exec_context *ecp,
+RDB_delete_stored_table(RDB_stored_table *stp, RDB_exec_context *ecp,
         RDB_transaction *txp)
 {
     int i;
@@ -737,7 +737,7 @@ _RDB_delete_stored_table(RDB_stored_table *stp, RDB_exec_context *ecp,
     /* Schedule secondary indexes for deletion */
     for (i = 0; i < stp->indexc; i++) {
         if (stp->indexv[i].idxp != NULL) {
-            ret = _RDB_del_index(txp, stp->indexv[i].idxp, ecp);
+            ret = RDB_add_del_index(txp, stp->indexv[i].idxp, ecp);
             if (ret != RDB_OK)
                 return ret;
         }
@@ -750,7 +750,7 @@ _RDB_delete_stored_table(RDB_stored_table *stp, RDB_exec_context *ecp,
          * this means closing the DB handle, which must not be closed
          * before transaction commit.
          */
-        ret = _RDB_del_recmap(txp, stp->recmapp, ecp);
+        ret = RDB_add_del_recmap(txp, stp->recmapp, ecp);
     } else {
         ret = RDB_delete_recmap(stp->recmapp, NULL);
         if (ret != RDB_OK) {

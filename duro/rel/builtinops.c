@@ -13,7 +13,7 @@
 #include <string.h>
 #include <stdlib.h>
 
-RDB_op_map _RDB_builtin_ro_op_map;
+RDB_op_map RDB_builtin_ro_op_map;
 
 /** @page builtin-ops Built-in operators
 @section scalar-ops Built-in scalar operators
@@ -730,7 +730,7 @@ op_vtable(int argc, RDB_object *argv[], RDB_operator *op,
     /*
      * Create virtual table
      */
-    if (_RDB_vtexp_to_obj(exp, ecp, txp, retvalp) != RDB_OK) {
+    if (RDB_vtexp_to_obj(exp, ecp, txp, retvalp) != RDB_OK) {
         RDB_drop_expr(exp, ecp);
         return RDB_ERROR;
     }
@@ -767,7 +767,7 @@ op_tuple(int argc, RDB_object *argv[], RDB_operator *op,
  * *reltyp is consumed even if RDB_ERROR is returned.
  */
 int
-_RDB_op_type_relation(int argc, RDB_object *argv[], RDB_type *reltyp,
+RDB_op_type_relation(int argc, RDB_object *argv[], RDB_type *reltyp,
         RDB_exec_context *ecp, RDB_transaction *txp, RDB_object *retvalp)
 {
     int i;
@@ -787,7 +787,7 @@ _RDB_op_type_relation(int argc, RDB_object *argv[], RDB_type *reltyp,
 }
 
 int
-_RDB_op_relation(int argc, RDB_object *argv[], RDB_operator *op,
+RDB_op_relation(int argc, RDB_object *argv[], RDB_operator *op,
         RDB_exec_context *ecp, RDB_transaction *txp, RDB_object *retvalp)
 {
     RDB_type *rtyp;
@@ -806,7 +806,7 @@ _RDB_op_relation(int argc, RDB_object *argv[], RDB_operator *op,
     /*
      * Create relation type using the first argument
      */
-    tuptyp = _RDB_tuple_type(argv[0], ecp);
+    tuptyp = RDB_tuple_type(argv[0], ecp);
     if (tuptyp == NULL) {
         return RDB_ERROR;
     }
@@ -815,7 +815,7 @@ _RDB_op_relation(int argc, RDB_object *argv[], RDB_operator *op,
         return RDB_ERROR;
     }
 
-    return _RDB_op_type_relation(argc, argv, rtyp, ecp, txp, retvalp);
+    return RDB_op_type_relation(argc, argv, rtyp, ecp, txp, retvalp);
 }
 
 static int
@@ -1215,7 +1215,7 @@ concat(int argc, RDB_object *argv[], RDB_operator *op,
 
     if (retvalp->kind == RDB_OB_INITIAL) {
         /* Turn *retvalp into a string */
-        _RDB_set_obj_type(retvalp, &RDB_STRING);
+        RDB_set_obj_type(retvalp, &RDB_STRING);
         retvalp->val.bin.datap = RDB_alloc(dstsize, ecp);
         if (retvalp->val.bin.datap == NULL) {
             return RDB_ERROR;
@@ -1504,12 +1504,12 @@ put_builtin_ro_op(const char *name, int argc, RDB_type **argtv, RDB_type *rtyp,
         RDB_ro_op_func *fp, RDB_exec_context *ecp)
 {
     int ret;
-    RDB_operator *datap = _RDB_new_operator(name, argc, argtv, rtyp, ecp);
+    RDB_operator *datap = RDB_new_operator(name, argc, argtv, rtyp, ecp);
     if (datap == NULL)
         return RDB_ERROR;
     datap->opfn.ro_fp = fp;
 
-    ret =  RDB_put_op(&_RDB_builtin_ro_op_map, datap, ecp);
+    ret =  RDB_put_op(&RDB_builtin_ro_op_map, datap, ecp);
     if (ret != RDB_OK) {
         RDB_free_op_data(datap, ecp);
         return RDB_ERROR;
@@ -1518,7 +1518,7 @@ put_builtin_ro_op(const char *name, int argc, RDB_type **argtv, RDB_type *rtyp,
 }
 
 int
-_RDB_init_builtin_ops(RDB_exec_context *ecp)
+RDB_init_builtin_ops(RDB_exec_context *ecp)
 {
     static RDB_bool initialized = RDB_FALSE;
     RDB_type *argtv[3];
@@ -1528,7 +1528,7 @@ _RDB_init_builtin_ops(RDB_exec_context *ecp)
         return RDB_OK;
     initialized = RDB_TRUE;
 
-    RDB_init_op_map(&_RDB_builtin_ro_op_map);
+    RDB_init_op_map(&RDB_builtin_ro_op_map);
 
     argtv[0] = &RDB_FLOAT;
     ret = put_builtin_ro_op("cast_as_integer", 1, argtv, &RDB_INTEGER, &cast_as_integer_float,
@@ -1728,7 +1728,7 @@ _RDB_init_builtin_ops(RDB_exec_context *ecp)
     argtv[0] = &RDB_BOOLEAN;
     argtv[1] = &RDB_BOOLEAN;
 
-    ret = put_builtin_ro_op("=", 2, argtv, &RDB_BOOLEAN, &_RDB_eq_bool, ecp);
+    ret = put_builtin_ro_op("=", 2, argtv, &RDB_BOOLEAN, &RDB_eq_bool, ecp);
     if (ret != RDB_OK) {
         return RDB_ERROR;
     }
@@ -1736,35 +1736,35 @@ _RDB_init_builtin_ops(RDB_exec_context *ecp)
     argtv[0] = &RDB_INTEGER;
     argtv[1] = &RDB_INTEGER;
 
-    ret = put_builtin_ro_op("=", 2, argtv, &RDB_BOOLEAN, _RDB_obj_equals, ecp);
+    ret = put_builtin_ro_op("=", 2, argtv, &RDB_BOOLEAN, RDB_dfl_obj_equals, ecp);
     if (ret != RDB_OK)
         return ret;
 
     argtv[0] = &RDB_FLOAT;
     argtv[1] = &RDB_FLOAT;
 
-    ret = put_builtin_ro_op("=", 2, argtv, &RDB_BOOLEAN, _RDB_obj_equals, ecp);
+    ret = put_builtin_ro_op("=", 2, argtv, &RDB_BOOLEAN, RDB_dfl_obj_equals, ecp);
     if (ret != RDB_OK)
         return ret;
 
     argtv[0] = &RDB_FLOAT;
     argtv[1] = &RDB_FLOAT;
 
-    ret = put_builtin_ro_op("=", 2, argtv, &RDB_BOOLEAN, _RDB_obj_equals, ecp);
+    ret = put_builtin_ro_op("=", 2, argtv, &RDB_BOOLEAN, RDB_dfl_obj_equals, ecp);
     if (ret != RDB_OK)
         return ret;
 
     argtv[0] = &RDB_STRING;
     argtv[1] = &RDB_STRING;
 
-    ret = put_builtin_ro_op("=", 2, argtv, &RDB_BOOLEAN, _RDB_obj_equals, ecp);
+    ret = put_builtin_ro_op("=", 2, argtv, &RDB_BOOLEAN, RDB_dfl_obj_equals, ecp);
     if (ret != RDB_OK)
         return ret;
 
     argtv[0] = &RDB_BINARY;
     argtv[1] = &RDB_BINARY;
 
-    ret = put_builtin_ro_op("=", 2, argtv, &RDB_BOOLEAN, &_RDB_eq_binary, ecp);
+    ret = put_builtin_ro_op("=", 2, argtv, &RDB_BOOLEAN, &RDB_eq_binary, ecp);
     if (ret != RDB_OK)
         return ret;
 
@@ -1779,7 +1779,7 @@ _RDB_init_builtin_ops(RDB_exec_context *ecp)
     argtv[1] = &RDB_INTEGER;
 
     ret = put_builtin_ro_op("<>", 2, argtv, &RDB_BOOLEAN,
-            &_RDB_obj_not_equals, ecp);
+            &RDB_obj_not_equals, ecp);
     if (ret != RDB_OK)
         return ret;
 
@@ -1787,7 +1787,7 @@ _RDB_init_builtin_ops(RDB_exec_context *ecp)
     argtv[1] = &RDB_FLOAT;
 
     ret = put_builtin_ro_op("<>", 2, argtv, &RDB_BOOLEAN,
-            &_RDB_obj_not_equals, ecp);
+            &RDB_obj_not_equals, ecp);
     if (ret != RDB_OK)
         return ret;
 
@@ -1795,7 +1795,7 @@ _RDB_init_builtin_ops(RDB_exec_context *ecp)
     argtv[1] = &RDB_FLOAT;
 
     ret = put_builtin_ro_op("<>", 2, argtv, &RDB_BOOLEAN,
-            &_RDB_obj_not_equals, ecp);
+            &RDB_obj_not_equals, ecp);
     if (ret != RDB_OK)
         return ret;
 
@@ -1803,7 +1803,7 @@ _RDB_init_builtin_ops(RDB_exec_context *ecp)
     argtv[1] = &RDB_STRING;
 
     ret = put_builtin_ro_op("<>", 2, argtv, &RDB_BOOLEAN,
-            &_RDB_obj_not_equals, ecp);
+            &RDB_obj_not_equals, ecp);
     if (ret != RDB_OK)
         return ret;
 
@@ -1886,7 +1886,7 @@ _RDB_init_builtin_ops(RDB_exec_context *ecp)
     if (put_builtin_ro_op("tuple", -1, NULL, NULL, &op_tuple, ecp) != RDB_OK)
         return RDB_ERROR;
 
-    if (put_builtin_ro_op("relation", -1, NULL, NULL, &_RDB_op_relation, ecp)
+    if (put_builtin_ro_op("relation", -1, NULL, NULL, &RDB_op_relation, ecp)
             != RDB_OK)
         return RDB_ERROR;
 

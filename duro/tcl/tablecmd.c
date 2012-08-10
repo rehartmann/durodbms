@@ -316,7 +316,7 @@ table_drop_cmd(TclState *statep, Tcl_Interp *interp, int objc,
     while (entryp != NULL) {
         table_entry *iep = (table_entry *) Tcl_GetHashValue(entryp);
 
-        if (iep->tablep != tbp && _RDB_table_refers(iep->tablep, tbp)) {
+        if (iep->tablep != tbp && RDB_table_refers(iep->tablep, tbp)) {
             Tcl_AppendResult(interp, "Cannot drop table ", RDB_table_name(tbp),
                     ": ", RDB_table_name(iep->tablep), " depends on it", NULL);
             return TCL_ERROR;
@@ -709,7 +709,7 @@ table_def_cmd(TclState *statep, Tcl_Interp *interp, int objc,
     }
 
     RDB_init_obj(&defobj);
-    ret = _RDB_table_def_to_str(&defobj, tbp, statep->current_ecp, txp, 0);
+    ret = RDB_table_def_to_str(&defobj, tbp, statep->current_ecp, txp, 0);
     if (ret != RDB_OK) {
         RDB_destroy_obj(&defobj, statep->current_ecp);
         Duro_dberror(interp, RDB_get_err(statep->current_ecp), txp);
@@ -757,13 +757,13 @@ table_getplan_cmd(TclState *statep, Tcl_Interp *interp, int objc,
         return TCL_ERROR;
     }
 
-    texp = _RDB_optimize(tbp, 0, NULL, statep->current_ecp, txp);
+    texp = RDB_optimize(tbp, 0, NULL, statep->current_ecp, txp);
     if (texp == NULL) {
         Duro_dberror(interp, RDB_get_err(statep->current_ecp), txp);
         return TCL_ERROR;
     }
     RDB_init_obj(&defobj);
-    ret = _RDB_expr_to_str(&defobj, texp, statep->current_ecp, txp,
+    ret = RDB_expr_to_str(&defobj, texp, statep->current_ecp, txp,
             RDB_SHOW_INDEX);
     RDB_drop_expr(texp, statep->current_ecp);
     if (ret != RDB_OK) {
@@ -887,7 +887,7 @@ table_rename_cmd(TclState *statep, Tcl_Interp *interp, int objc,
         while (entryp != NULL) {
             table_entry *iep = (table_entry *) Tcl_GetHashValue(entryp);
 
-            if (iep->tablep != tbp && _RDB_table_refers(iep->tablep, tbp)) {
+            if (iep->tablep != tbp && RDB_table_refers(iep->tablep, tbp)) {
                 Tcl_AppendResult(interp, "Cannot rename table ", RDB_table_name(tbp),
                         ": ", RDB_table_name(iep->tablep), " depends on it", NULL);
                 return TCL_ERROR;

@@ -20,7 +20,7 @@
  * Turn *tbp into a virtual table defined by exp.
  */
 int
-_RDB_vtexp_to_obj(RDB_expression *exp, RDB_exec_context *ecp,
+RDB_vtexp_to_obj(RDB_expression *exp, RDB_exec_context *ecp,
         RDB_transaction *txp, RDB_object *tbp)
 {
     /* Create type */
@@ -38,7 +38,7 @@ _RDB_vtexp_to_obj(RDB_expression *exp, RDB_exec_context *ecp,
     if (tbtyp == NULL)
         return RDB_ERROR;
 
-    if (_RDB_init_table(tbp, NULL, RDB_FALSE, 
+    if (RDB_init_table_i(tbp, NULL, RDB_FALSE, 
             tbtyp, 0, NULL, RDB_TRUE, exp, ecp) != RDB_OK) {
         return RDB_ERROR;
     }
@@ -87,14 +87,14 @@ RDB_expr_to_vtable(RDB_expression *exp, RDB_exec_context *ecp,
     }
 */
 
-    tbp = _RDB_new_obj(ecp);
+    tbp = RDB_new_obj(ecp);
     if (tbp == NULL) {
         RDB_raise_no_memory(ecp);
         return NULL;
     }
 
-    if (_RDB_vtexp_to_obj(exp, ecp, txp, tbp) != RDB_OK) {
-        _RDB_free_obj(tbp, ecp);
+    if (RDB_vtexp_to_obj(exp, ecp, txp, tbp) != RDB_OK) {
+        RDB_free_obj(tbp, ecp);
         return NULL;
     }
 
@@ -122,7 +122,7 @@ RDB_vtable_expr(const RDB_object *tbp) {
  *          May be NULL.
  */
 int
-_RDB_check_project_keyloss(RDB_expression *exp,
+RDB_check_project_keyloss(RDB_expression *exp,
         int keyc, RDB_string_vec *keyv, RDB_bool presv[],
         RDB_exec_context *ecp)
 {
@@ -159,7 +159,7 @@ all_key(RDB_expression *exp, RDB_exec_context *ecp)
     int attrc;
     int i;
     RDB_string_vec *keyv;
-    RDB_type *tbtyp = _RDB_expr_type(exp, NULL, ecp, NULL);
+    RDB_type *tbtyp = RDB_expr_type_tpltyp(exp, NULL, ecp, NULL);
     if (tbtyp == NULL)
         return NULL;
 
@@ -202,10 +202,10 @@ infer_join_keys(RDB_expression *exp, RDB_exec_context *ecp,
     RDB_string_vec *newkeyv;
     RDB_bool free1, free2;
 
-    keyc1 = _RDB_infer_keys(exp->def.op.args.firstp, ecp, &keyv1, &free1);
+    keyc1 = RDB_infer_keys(exp->def.op.args.firstp, ecp, &keyv1, &free1);
     if (keyc1 < 0)
         return keyc1;
-    keyc2 = _RDB_infer_keys(exp->def.op.args.firstp, ecp, &keyv2, &free2);
+    keyc2 = RDB_infer_keys(exp->def.op.args.firstp, ecp, &keyv2, &free2);
     if (keyc2 < 0)
         return keyc2;
 
@@ -238,9 +238,9 @@ infer_join_keys(RDB_expression *exp, RDB_exec_context *ecp,
     }
     *keyvp = newkeyv;
     if (free1)
-        _RDB_free_keys(keyc1, keyv1);
+        RDB_free_keys(keyc1, keyv1);
     if (free2)
-        _RDB_free_keys(keyc2, keyv2);
+        RDB_free_keys(keyc2, keyv2);
     return newkeyc;
 
 error:
@@ -251,9 +251,9 @@ error:
         }
     }
     if (free1)
-        _RDB_free_keys(keyc1, keyv1);
+        RDB_free_keys(keyc1, keyv1);
     if (free2)
-        _RDB_free_keys(keyc2, keyv2);
+        RDB_free_keys(keyc2, keyv2);
     return RDB_ERROR;
 }
 
@@ -268,7 +268,7 @@ infer_project_keys(RDB_expression *exp, RDB_exec_context *ecp,
     RDB_bool *presv;
     RDB_bool freekeys;
 
-    keyc = _RDB_infer_keys(exp->def.op.args.firstp, ecp, &keyv, &freekeys);
+    keyc = RDB_infer_keys(exp->def.op.args.firstp, ecp, &keyv, &freekeys);
     if (keyc < 0)
         return keyc;
 
@@ -276,7 +276,7 @@ infer_project_keys(RDB_expression *exp, RDB_exec_context *ecp,
     if (presv == NULL) {
         return RDB_ERROR;
     }
-    newkeyc = _RDB_check_project_keyloss(exp, keyc, keyv, presv, ecp);
+    newkeyc = RDB_check_project_keyloss(exp, keyc, keyv, presv, ecp);
     if (newkeyc == 0) {
         /* Table is all-key */
         newkeyc = 1;
@@ -318,7 +318,7 @@ infer_project_keys(RDB_expression *exp, RDB_exec_context *ecp,
     }
     RDB_free(presv);
     if (freekeys)
-        _RDB_free_keys(keyc, keyv);
+        RDB_free_keys(keyc, keyv);
     *keyvp = newkeyv;
     *caller_must_freep = RDB_TRUE;
     return keyc;
@@ -330,7 +330,7 @@ infer_group_keys(RDB_expression *exp, RDB_exec_context *ecp,
 {
     int i, j;
     RDB_string_vec *newkeyv;
-    RDB_type *tbtyp = _RDB_expr_type(exp, NULL, ecp, NULL);
+    RDB_type *tbtyp = RDB_expr_type_tpltyp(exp, NULL, ecp, NULL);
 
     /*
      * Key consists of all attributes which are not grouped
@@ -364,7 +364,7 @@ infer_group_keys(RDB_expression *exp, RDB_exec_context *ecp,
 }
 
 char *
-_RDB_rename_attr(const char *srcname, RDB_expression *exp)
+RDB_rename_attr(const char *srcname, RDB_expression *exp)
 {
     /* Search for attribute in rename arguments */
     RDB_expression *argp = exp->def.op.args.firstp->nextp;
@@ -379,7 +379,7 @@ _RDB_rename_attr(const char *srcname, RDB_expression *exp)
 }
 
 RDB_string_vec *
-_RDB_dup_rename_keys(int keyc, const RDB_string_vec keyv[], RDB_expression *texp,
+RDB_dup_rename_keys(int keyc, const RDB_string_vec keyv[], RDB_expression *texp,
         RDB_exec_context *ecp)
 {
     int i, j;
@@ -403,7 +403,7 @@ _RDB_dup_rename_keys(int keyc, const RDB_string_vec keyv[], RDB_expression *texp
             
             if (texp != NULL) {
                 /* If exp is not NULL, rename attributes */
-                nattrname = _RDB_rename_attr(keyv[i].strv[j], texp);
+                nattrname = RDB_rename_attr(keyv[i].strv[j], texp);
             }
 
             if (nattrname != NULL) {
@@ -430,7 +430,7 @@ error:
 }
 
 int
-_RDB_infer_keys(RDB_expression *exp, RDB_exec_context *ecp,
+RDB_infer_keys(RDB_expression *exp, RDB_exec_context *ecp,
        RDB_string_vec **keyvp, RDB_bool *caller_must_freep)
 {
     switch (exp->kind) {
@@ -456,7 +456,7 @@ _RDB_infer_keys(RDB_expression *exp, RDB_exec_context *ecp,
             || (strcmp(exp->def.op.name, "intersect") == 0)
             || (strcmp(exp->def.op.name, "extend") == 0)
             || (strcmp(exp->def.op.name, "divide") == 0)) {
-        return _RDB_infer_keys(exp->def.op.args.firstp, ecp, keyvp,
+        return RDB_infer_keys(exp->def.op.args.firstp, ecp, keyvp,
                 caller_must_freep);
     }
     if (strcmp(exp->def.op.name, "join") == 0) {
@@ -467,21 +467,21 @@ _RDB_infer_keys(RDB_expression *exp, RDB_exec_context *ecp,
     	return infer_project_keys(exp, ecp, keyvp, caller_must_freep);
     }
     if (strcmp(exp->def.op.name, "summarize") == 0) {
-        return _RDB_infer_keys(exp->def.op.args.firstp->nextp, ecp, keyvp,
+        return RDB_infer_keys(exp->def.op.args.firstp->nextp, ecp, keyvp,
                 caller_must_freep);
     }
     if (strcmp(exp->def.op.name, "rename") == 0) {
         RDB_bool freekey;
-        int keyc = _RDB_infer_keys(exp->def.op.args.firstp, ecp, keyvp, &freekey);
+        int keyc = RDB_infer_keys(exp->def.op.args.firstp, ecp, keyvp, &freekey);
         if (keyc == RDB_ERROR)
             return RDB_ERROR;
 
-        *keyvp = _RDB_dup_rename_keys(keyc, *keyvp, exp, ecp);
+        *keyvp = RDB_dup_rename_keys(keyc, *keyvp, exp, ecp);
         if (*keyvp == NULL) {
             return RDB_ERROR;
         }
         if (freekey) {
-            _RDB_free_keys(keyc, *keyvp);
+            RDB_free_keys(keyc, *keyvp);
         }
         *caller_must_freep = RDB_TRUE;
         return keyc;
@@ -504,17 +504,17 @@ _RDB_infer_keys(RDB_expression *exp, RDB_exec_context *ecp,
 }
 
 RDB_bool
-_RDB_table_refers(const RDB_object *srctbp, const RDB_object *dsttbp)
+RDB_table_refers(const RDB_object *srctbp, const RDB_object *dsttbp)
 {
     if (srctbp == dsttbp)
         return RDB_TRUE;
 	if (srctbp->val.tb.exp == NULL)
 	    return RDB_FALSE;
-	return _RDB_expr_refers(srctbp->val.tb.exp, dsttbp);
+	return RDB_expr_refers(srctbp->val.tb.exp, dsttbp);
 }
 
 RDB_object **
-_RDB_index_objpv(_RDB_tbindex *indexp, RDB_expression *exp, RDB_type *tbtyp,
+RDB_index_objpv(RDB_tbindex *indexp, RDB_expression *exp, RDB_type *tbtyp,
         int objpc, RDB_bool all_eq, RDB_bool asc, RDB_exec_context *ecp)
 {
     int i;
@@ -525,18 +525,18 @@ _RDB_index_objpv(_RDB_tbindex *indexp, RDB_expression *exp, RDB_type *tbtyp,
     if (objpv == NULL)
         return NULL;
     for (i = 0; i < objpc; i++) {
-        nodep = _RDB_attr_node(exp, indexp->attrv[i].attrname, "=");
+        nodep = RDB_attr_node(exp, indexp->attrv[i].attrname, "=");
         if (nodep == NULL && !all_eq) {
             if (asc) {
-                nodep = _RDB_attr_node(exp,
+                nodep = RDB_attr_node(exp,
                         indexp->attrv[i].attrname, ">=");
                 if (nodep == NULL)
-                    nodep = _RDB_attr_node(exp, indexp->attrv[i].attrname, ">");
+                    nodep = RDB_attr_node(exp, indexp->attrv[i].attrname, ">");
             } else {
-                nodep = _RDB_attr_node(exp,
+                nodep = RDB_attr_node(exp,
                         indexp->attrv[i].attrname, "<=");
                 if (nodep == NULL)
-                    nodep = _RDB_attr_node(exp, indexp->attrv[i].attrname, "<");
+                    nodep = RDB_attr_node(exp, indexp->attrv[i].attrname, "<");
             }
         }
         attrexp = nodep;

@@ -119,7 +119,7 @@ main(int argc, char *argv[])
 
     RDB_init_exec_context(&ec);
 
-    if (_RDB_init_builtin_types(&ec) != RDB_OK) {
+    if (RDB_init_builtin_types(&ec) != RDB_OK) {
         Duro_print_error(RDB_get_err(&ec));
         goto error;
     }

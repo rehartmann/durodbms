@@ -4,13 +4,13 @@
 /*
  * $Id$
  *
- * Copyright (C) 2009 René Hartmann.
+ * Copyright (C) 2009-2012 Rene Hartmann.
  * See the file COPYING for redistribution information.
  */
 
 #include "rdb.h"
 
 int
-_RDB_add_io(RDB_exec_context *);
+RDB_add_io(RDB_exec_context *);
 
 #endif /*IO_H_*/

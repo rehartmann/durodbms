@@ -4,7 +4,7 @@
 /*
  * $Id$
  *
- * Copyright (C) 2003-2005 René Hartmann.
+ * Copyright (C) 2003-2012 Rene Hartmann.
  * See the file COPYING for redistribution information.
  */
 
@@ -149,26 +149,26 @@ RDB_contains_rec(RDB_recmap *, RDB_field valv[], DB_TXN *);
  */
 
 size_t
-_RDB_get_vflen(RDB_byte *databp, size_t len, int vfcnt, int vpos);
+RDB_get_vflen(RDB_byte *databp, size_t len, int vfcnt, int vpos);
 
 int
-_RDB_get_field(RDB_recmap *rfp, int fno, void *datap, size_t len,
+RDB_get_field(RDB_recmap *rfp, int fno, void *datap, size_t len,
         size_t *fieldlenp, int *vposp);
 
 int
-_RDB_set_field(RDB_recmap *recmapp, DBT *recpartp, const RDB_field *fieldp,
+RDB_set_field(RDB_recmap *recmapp, DBT *recpartp, const RDB_field *fieldp,
                int varfieldc);
 
 int
-_RDB_get_fields(RDB_recmap *rmp, const DBT *keyp, const DBT *datap, int fieldc,
+RDB_get_DBT_fields(RDB_recmap *rmp, const DBT *keyp, const DBT *datap, int fieldc,
            RDB_field resfieldv[]);
 
 int
-_RDB_fields_to_DBT(RDB_recmap *rmp, int fldc, const RDB_field fldv[],
+RDB_fields_to_DBT(RDB_recmap *rmp, int fldc, const RDB_field fldv[],
                    DBT *dbtp);
 
 int
-_RDB_update_rec(RDB_recmap *recmapp, DBT *keyp, DBT *datap,
+RDB_update_DBT_rec(RDB_recmap *recmapp, DBT *keyp, DBT *datap,
         int fieldc, const RDB_field fieldv[], DB_TXN *txid);
 
 #endif

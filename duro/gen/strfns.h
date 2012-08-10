@@ -41,6 +41,6 @@ unsigned
 RDB_hash_str(const char *str);
 
 void
-_RDB_dump(void *datap, size_t size, FILE *fp);
+RDB_dump(void *datap, size_t size, FILE *fp);
 
 #endif

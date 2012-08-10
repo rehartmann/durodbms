@@ -114,7 +114,7 @@ Duro_init_tcl(Tcl_Interp *interp, TclState **statepp)
     setlocale(LC_COLLATE, "");
     setlocale(LC_CTYPE, "");
 
-    _RDB_parse_case_insensitive = 0;
+    RDB_parse_set_case_insensitive(RDB_FALSE);
 
     *statepp = (TclState *) Tcl_Alloc(sizeof (TclState));
     Tcl_InitHashTable(&(*statepp)->envs, TCL_STRING_KEYS);
@@ -833,7 +833,7 @@ uobj_to_tobj(Tcl_Interp *interp, const RDB_object *objp, RDB_exec_context *ecp,
     Tcl_Obj *tobjp;
 
     RDB_init_obj(&strobj);
-    ret = _RDB_obj_to_str(&strobj, objp, ecp, txp);
+    ret = RDB_obj_to_str(&strobj, objp, ecp, txp);
     if (ret != RDB_OK) {
         Duro_dberror(interp, RDB_get_err(ecp), txp);
         RDB_destroy_obj(&strobj, ecp);

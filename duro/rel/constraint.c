@@ -25,7 +25,7 @@ add_empty_tb(RDB_constraint *constrp, RDB_exec_context *ecp,
         RDB_transaction *txp)
 {
     int ret;
-    struct _RDB_tx_and_ec te;
+    struct RDB_tx_and_ec te;
 
     te.txp = txp;
     te.ecp = ecp;
@@ -59,7 +59,7 @@ add_empty_tb(RDB_constraint *constrp, RDB_exec_context *ecp,
  * Read constraints from catalog
  */
 int
-_RDB_read_constraints(RDB_exec_context *ecp, RDB_transaction *txp)
+RDB_read_constraints(RDB_exec_context *ecp, RDB_transaction *txp)
 {
     int ret;
     int i;
@@ -89,7 +89,7 @@ _RDB_read_constraints(RDB_exec_context *ecp, RDB_transaction *txp)
             ret = RDB_ERROR;
             goto cleanup;
         }
-        constrp->exp = _RDB_binobj_to_expr(RDB_tuple_get(tplp, "i_expr"), ecp,
+        constrp->exp = RDB_binobj_to_expr(RDB_tuple_get(tplp, "i_expr"), ecp,
                 txp);
         if (constrp->exp == NULL) {
             RDB_free(constrp->name);
@@ -159,7 +159,7 @@ RDB_create_constraint(const char *name, RDB_expression *exp,
     }
 
     if (!RDB_tx_db(txp)->dbrootp->constraints_read) {
-        if (_RDB_read_constraints(ecp, txp) != RDB_OK)
+        if (RDB_read_constraints(ecp, txp) != RDB_OK)
             return RDB_ERROR;
         RDB_tx_db(txp)->dbrootp->constraints_read = RDB_TRUE;
     }
@@ -169,7 +169,7 @@ RDB_create_constraint(const char *name, RDB_expression *exp,
         return RDB_ERROR;
     }
 
-    if (_RDB_transform(exp, NULL, NULL, ecp, txp) != RDB_OK) {
+    if (RDB_transform(exp, NULL, NULL, ecp, txp) != RDB_OK) {
         return RDB_ERROR;
     }
 
@@ -183,7 +183,7 @@ RDB_create_constraint(const char *name, RDB_expression *exp,
     }
 
     /* Create constraint in catalog */
-    ret = _RDB_cat_create_constraint(name, exp, ecp, txp);
+    ret = RDB_cat_create_constraint(name, exp, ecp, txp);
     if (ret != RDB_OK)
         goto error;
 
@@ -227,7 +227,7 @@ RDB_drop_constraint(const char *name, RDB_exec_context *ecp,
     RDB_dbroot *dbrootp = RDB_tx_db(txp)->dbrootp;
 
     if (!RDB_tx_db(txp)->dbrootp->constraints_read) {
-        if (_RDB_read_constraints(ecp, txp) != RDB_OK)
+        if (RDB_read_constraints(ecp, txp) != RDB_OK)
             return RDB_ERROR;
         RDB_tx_db(txp)->dbrootp->constraints_read = RDB_TRUE;
     }
@@ -278,7 +278,7 @@ RDB_drop_constraint(const char *name, RDB_exec_context *ecp,
 /*@}*/
 
 int
-_RDB_check_constraints(const RDB_constraint *constrp, RDB_exec_context *ecp,
+RDB_check_constraints(const RDB_constraint *constrp, RDB_exec_context *ecp,
         RDB_transaction *txp)
 {
     RDB_bool b;

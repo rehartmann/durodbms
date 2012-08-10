@@ -15,7 +15,7 @@ RDB_type RDB_IO_STREAM;
  * Add type IO_STREAM for basic I/O support from the duro library.
  */
 int
-_RDB_add_io(RDB_exec_context *ecp)
+RDB_add_io(RDB_exec_context *ecp)
 {
     static RDB_attr io_stream_comp = { "fileno", &RDB_INTEGER };
 
@@ -36,5 +36,5 @@ _RDB_add_io(RDB_exec_context *ecp)
     RDB_IO_STREAM.def.scalar.sysimpl = RDB_TRUE;
     RDB_IO_STREAM.compare_op = NULL;
 
-    return _RDB_add_type(&RDB_IO_STREAM, ecp);
+    return RDB_add_type(&RDB_IO_STREAM, ecp);
 }

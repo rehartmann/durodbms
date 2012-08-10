@@ -1,7 +1,7 @@
 /*
  * $Id$
  *
- * Copyright (C) 2003-2009 Ren� Hartmann.
+ * Copyright (C) 2003-2012 Rene Hartmann.
  * See the file COPYING for redistribution information.
  */
 
@@ -20,7 +20,7 @@ typedef struct RDB_ixlink {
 } RDB_ixlink;
 
 int
-_RDB_begin_tx(RDB_exec_context *ecp, RDB_transaction *txp, RDB_environment *envp,
+RDB_begin_tx_env(RDB_exec_context *ecp, RDB_transaction *txp, RDB_environment *envp,
         RDB_transaction *parentp)
 {
     DB_TXN *partxid = parentp != NULL ? parentp->txid : NULL;
@@ -138,7 +138,7 @@ RDB_begin_tx(RDB_exec_context *ecp, RDB_transaction *txp, RDB_database *dbp,
         RDB_transaction *parentp)
 {
     txp->dbp = dbp;
-    return _RDB_begin_tx(ecp, txp, dbp->dbrootp->envp, parentp);
+    return RDB_begin_tx_env(ecp, txp, dbp->dbrootp->envp, parentp);
 }
 
 /**
@@ -261,7 +261,7 @@ RDB_tx_is_running(RDB_transaction *txp)
 /*@}*/
 
 int
-_RDB_del_recmap(RDB_transaction *txp, RDB_recmap *rmp, RDB_exec_context *ecp)
+RDB_add_del_recmap(RDB_transaction *txp, RDB_recmap *rmp, RDB_exec_context *ecp)
 {
     RDB_rmlink *linkp = RDB_alloc(sizeof (RDB_rmlink), ecp);
 
@@ -276,7 +276,7 @@ _RDB_del_recmap(RDB_transaction *txp, RDB_recmap *rmp, RDB_exec_context *ecp)
 }
 
 int
-_RDB_del_index(RDB_transaction *txp, RDB_index *ixp, RDB_exec_context *ecp)
+RDB_add_del_index(RDB_transaction *txp, RDB_index *ixp, RDB_exec_context *ecp)
 {
     RDB_ixlink *linkp = RDB_alloc(sizeof (RDB_ixlink), ecp);
 

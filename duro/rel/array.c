@@ -32,7 +32,7 @@ init_expr_array(RDB_object *arrp, RDB_expression *texp,
                    RDB_exec_context *ecp, RDB_transaction *txp)
 {
     RDB_qresult *qrp = NULL;
-    _RDB_tbindex *indexp = NULL;
+    RDB_tbindex *indexp = NULL;
 
     if (arrp->kind == RDB_OB_ARRAY) {
         if (RDB_destroy_obj(arrp, ecp) != RDB_OK)
@@ -40,20 +40,20 @@ init_expr_array(RDB_object *arrp, RDB_expression *texp,
     }
 
     if (seqitc > 0) {
-        indexp = _RDB_expr_sortindex(texp);
-        if (indexp == NULL || !_RDB_index_sorts(indexp, seqitc, seqitv)) {
+        indexp = RDB_expr_sortindex(texp);
+        if (indexp == NULL || !RDB_index_sorts(indexp, seqitc, seqitv)) {
             /* Create sorter */
-            if (_RDB_sorter(texp, &qrp, ecp, txp, seqitc, seqitv) != RDB_OK)
+            if (RDB_sorter(texp, &qrp, ecp, txp, seqitc, seqitv) != RDB_OK)
                 goto error;
         }
     }
     if (qrp == NULL) {
-        qrp = _RDB_expr_qresult(texp, ecp, txp);
+        qrp = RDB_expr_qresult(texp, ecp, txp);
         if (qrp == NULL) {
             goto error;
         }
         /* Add duplicate remover, if necessary */
-        if (_RDB_duprem(qrp, ecp, txp) != RDB_OK)
+        if (RDB_duprem(qrp, ecp, txp) != RDB_OK)
             goto error;
     }
 
@@ -85,7 +85,7 @@ init_expr_array(RDB_object *arrp, RDB_expression *texp,
         }
 
         /* Get next tuple */
-        if (_RDB_next_tuple(qrp, &arrp->val.arr.elemv[arrp->val.arr.length],
+        if (RDB_next_tuple(qrp, &arrp->val.arr.elemv[arrp->val.arr.length],
                 ecp, txp) != RDB_OK)
             break;
         arrp->val.arr.length++;
@@ -94,7 +94,7 @@ init_expr_array(RDB_object *arrp, RDB_expression *texp,
         goto error;
     RDB_clear_err(ecp);
 
-    if (_RDB_drop_qresult(qrp, ecp, txp) != RDB_OK) {
+    if (RDB_drop_qresult(qrp, ecp, txp) != RDB_OK) {
         qrp = NULL;
         goto error;
     }
@@ -103,7 +103,7 @@ init_expr_array(RDB_object *arrp, RDB_expression *texp,
 
 error:
     if (qrp != NULL)
-        _RDB_drop_qresult(qrp, ecp, txp);
+        RDB_drop_qresult(qrp, ecp, txp);
     RDB_drop_expr(texp, ecp);
     return RDB_ERROR;
 }
@@ -163,7 +163,7 @@ RDB_table_to_array(RDB_object *arrp, RDB_object *tbp,
         return RDB_ERROR;
     }
 
-    texp = _RDB_optimize(tbp, seqitc, seqitv, ecp, txp);
+    texp = RDB_optimize(tbp, seqitc, seqitv, ecp, txp);
     if (texp == NULL)
         return RDB_ERROR;
 
@@ -178,7 +178,7 @@ next_tuple(RDB_object *arrp, RDB_bool mustread, RDB_exec_context *ecp)
 {
     RDB_object *tplp = mustread ? arrp->val.arr.tplp : NULL;
 
-    return _RDB_next_tuple(arrp->val.arr.qrp, tplp,
+    return RDB_next_tuple(arrp->val.arr.qrp, tplp,
                 ecp, arrp->val.arr.txp);
 }
 
@@ -219,7 +219,7 @@ RDB_array_get(RDB_object *arrp, RDB_int idx, RDB_exec_context *ecp)
 
     /* Reset qresult to start, if necessary */
     if (arrp->val.arr.pos > idx) {
-        ret = _RDB_reset_qresult(arrp->val.arr.qrp, ecp, arrp->val.arr.txp);
+        ret = RDB_reset_qresult(arrp->val.arr.qrp, ecp, arrp->val.arr.txp);
         arrp->val.arr.pos = 0;
         if (ret != RDB_OK)
             return NULL;
@@ -410,7 +410,7 @@ RDB_array_set(RDB_object *arrp, RDB_int idx, const RDB_object *objp,
 /*@}*/
 
 int
-_RDB_copy_array(RDB_object *dstp, const RDB_object *srcp,
+RDB_copy_array(RDB_object *dstp, const RDB_object *srcp,
         RDB_exec_context *ecp)
 {
     int i;
@@ -437,7 +437,7 @@ _RDB_copy_array(RDB_object *dstp, const RDB_object *srcp,
 }
 
 int
-_RDB_array_equals(RDB_object *arr1p, RDB_object *arr2p, RDB_exec_context *ecp,
+RDB_array_equals(RDB_object *arr1p, RDB_object *arr2p, RDB_exec_context *ecp,
         RDB_transaction *txp, RDB_bool *resp)
 {
     int ret;

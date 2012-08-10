@@ -23,7 +23,7 @@ struct chained_type_map {
 static RDB_type *
 get_tuple_attr_type(const char *attrname, void *arg)
 {
-    RDB_attr *attrp = _RDB_tuple_type_attr(arg, attrname);
+    RDB_attr *attrp = RDB_tuple_type_attr(arg, attrname);
     return attrp != NULL ? attrp->typ : NULL;
 }
 
@@ -196,7 +196,7 @@ extend_type(const RDB_expression *exp, RDB_gettypefn *getfnp, void *arg,
     }
     argp = exp->def.op.args.firstp->nextp;
     for (i = 0; i < attrc; i++) {
-        attrv[i].typ = _RDB_expr_type(argp, tpltyp, ecp, txp);
+        attrv[i].typ = RDB_expr_type_tpltyp(argp, tpltyp, ecp, txp);
         if (attrv[i].typ == NULL) {
             int j;
 
@@ -255,7 +255,7 @@ project_type(const RDB_expression *exp, RDB_type *argtv[],
 
     argp = exp->def.op.args.firstp->nextp;
     while (argp != NULL) {
-        if (!_RDB_expr_is_string(argp)) {
+        if (!RDB_expr_is_string(argp)) {
             RDB_raise_type_mismatch("PROJECT requires STRING arguments",
                     ecp);
             return NULL;
@@ -310,7 +310,7 @@ unwrap_type(const RDB_expression *exp, RDB_type *argtv[],
 
     argp = exp->def.op.args.firstp->nextp;
     while (argp != NULL) {
-        if (!_RDB_expr_is_string(argp)) {
+        if (!RDB_expr_is_string(argp)) {
             RDB_raise_type_mismatch(
                     "UNWRAP argument must be STRING", ecp);
             return NULL;
@@ -325,7 +325,7 @@ unwrap_type(const RDB_expression *exp, RDB_type *argtv[],
     argp = exp->def.op.args.firstp->nextp;
     i = 0;
     while (argp != NULL) {
-        assert(_RDB_expr_is_string(argp));
+        assert(RDB_expr_is_string(argp));
         attrv[i++] = RDB_obj_string(&argp->def.obj);
         argp = argp->nextp;
     }
@@ -365,7 +365,7 @@ group_type(const RDB_expression *exp, RDB_type *argtv[],
 
     argp = exp->def.op.args.firstp->nextp;
     while (argp != NULL) {
-        if (!_RDB_expr_is_string(argp)) {
+        if (!RDB_expr_is_string(argp)) {
             RDB_raise_type_mismatch("STRING attribute required", ecp);
             return NULL;
         }
@@ -592,7 +592,7 @@ expr_op_type(RDB_expression *exp, RDB_gettypefn *getfnp, void *arg,
     int argc;
     RDB_type **argtv = NULL;
 
-    if (_RDB_transform(exp, getfnp, arg, ecp, txp) != RDB_OK)
+    if (RDB_transform(exp, getfnp, arg, ecp, txp) != RDB_OK)
         return NULL;
 
     /*
@@ -615,7 +615,7 @@ expr_op_type(RDB_expression *exp, RDB_gettypefn *getfnp, void *arg,
     }
 
     if (strcmp(exp->def.op.name, "remove") == 0) {
-        if (_RDB_remove_to_project(exp, getfnp, arg, ecp, txp) != RDB_OK)
+        if (RDB_remove_to_project(exp, getfnp, arg, ecp, txp) != RDB_OK)
             goto error;
     }
 
@@ -932,7 +932,7 @@ expr_op_type(RDB_expression *exp, RDB_gettypefn *getfnp, void *arg,
             }
         }
 
-        op = _RDB_get_ro_op(exp->def.op.name, argc, argtv, NULL, ecp, txp);
+        op = RDB_get_ro_op(exp->def.op.name, argc, argtv, NULL, ecp, txp);
         if (op == NULL)
             goto error;
         if (op->rtyp == NULL) {
@@ -1016,7 +1016,7 @@ RDB_expr_type(RDB_expression *exp, RDB_gettypefn *getfnp, void *getarg,
 
             /* No type available - generate type from tuple */
             if (exp->def.obj.kind == RDB_OB_TUPLE) {
-                exp->typ = _RDB_tuple_type(&exp->def.obj, ecp);
+                exp->typ = RDB_tuple_type(&exp->def.obj, ecp);
                 if (exp->typ == NULL)
                     return NULL;
             }
@@ -1043,7 +1043,7 @@ RDB_expr_type(RDB_expression *exp, RDB_gettypefn *getfnp, void *getarg,
             typ = RDB_expr_type(exp->def.op.args.firstp, getfnp, getarg, ecp, txp);
             if (typ == NULL)
                 return typ;
-            attrp = _RDB_get_icomp(typ, exp->def.op.name);
+            attrp = RDB_get_icomp(typ, exp->def.op.name);
             if (attrp == NULL) {
                 RDB_raise_invalid_argument("component not found", ecp);
                 return NULL;
@@ -1063,7 +1063,7 @@ RDB_expr_type(RDB_expression *exp, RDB_gettypefn *getfnp, void *getarg,
  * If the type is non-scalar, it is managed by the expression.
  */
 RDB_type *
-_RDB_expr_type(RDB_expression *exp, const RDB_type *tpltyp,
+RDB_expr_type_tpltyp(RDB_expression *exp, const RDB_type *tpltyp,
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
     return RDB_expr_type(exp, &get_tuple_attr_type, (RDB_type *) tpltyp,

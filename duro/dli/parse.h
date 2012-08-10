@@ -12,17 +12,8 @@
 #include <rel/rdb.h>
 #include "parsenode.h"
 
-#if defined (_WIN32) && !defined (NO_DLL_IMPORT)
-#define _RDB_EXTERN_VAR __declspec(dllimport)
-#else
-#define _RDB_EXTERN_VAR extern
-#endif
-
-_RDB_EXTERN_VAR int _RDB_parse_interactive;
-_RDB_EXTERN_VAR int _RDB_parse_case_insensitive;
-
 void
-_RDB_parse_init_buf(FILE *);
+RDB_parse_init_buf(FILE *);
 
 RDB_expression *
 RDB_parse_node_expr(RDB_parse_node *, RDB_exec_context *, RDB_transaction *);
@@ -42,5 +33,14 @@ RDB_parse_stmt_string(const char *, RDB_exec_context *);
 
 void
 RDB_parse_set_readline_fn(RDB_readline_fn *fnp);
+
+RDB_bool
+RDB_parse_get_interactive(void);
+
+void
+RDB_parse_set_interactive(RDB_bool ia);
+
+void
+RDB_parse_set_case_insensitive(RDB_bool is);
 
 #endif

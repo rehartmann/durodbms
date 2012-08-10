@@ -64,7 +64,7 @@ _RDB_get_possrep(const RDB_type *typ, const char *repname)
  * Implements a system-generated selector
  */
 int
-_RDB_sys_select(int argc, RDB_object *argv[], RDB_operator *op, RDB_exec_context *ecp,
+RDB_sys_select(int argc, RDB_object *argv[], RDB_operator *op, RDB_exec_context *ecp,
         RDB_transaction *txp, RDB_object *retvalp)
 {
     RDB_possrep *prp;
@@ -86,7 +86,7 @@ _RDB_sys_select(int argc, RDB_object *argv[], RDB_operator *op, RDB_exec_context
 
     if (argc == 1) {
         /* Copy value */
-        if (_RDB_copy_obj(retvalp, argv[0], ecp, NULL) != RDB_OK)
+        if (RDB_copy_obj_data(retvalp, argv[0], ecp, NULL) != RDB_OK)
             return RDB_ERROR;
     } else {
         /* Copy tuple attributes */
@@ -435,7 +435,7 @@ load_getter(RDB_type *typ, const char *compname, RDB_exec_context *ecp,
     if (RDB_append_string(&opnameobj, compname, ecp) != RDB_OK)
         goto error;
 
-    cnt = _RDB_cat_load_ro_op(RDB_obj_string(&opnameobj), ecp, txp);
+    cnt = RDB_cat_load_ro_op(RDB_obj_string(&opnameobj), ecp, txp);
     if (cnt == (RDB_int) RDB_ERROR)
         goto error;
     return RDB_destroy_obj(&opnameobj, ecp);
@@ -460,7 +460,7 @@ load_setter(RDB_type *typ, const char *compname, RDB_exec_context *ecp,
     if (RDB_append_string(&opnameobj, compname, ecp) != RDB_OK)
         goto error;
 
-    cnt = _RDB_cat_load_upd_op(RDB_obj_string(&opnameobj), ecp, txp);
+    cnt = RDB_cat_load_upd_op(RDB_obj_string(&opnameobj), ecp, txp);
     if (cnt == (RDB_int) RDB_ERROR)
         goto error;
     return RDB_destroy_obj(&opnameobj, ecp);
@@ -481,7 +481,7 @@ load_type_ops(RDB_type *typ, RDB_exec_context *ecp, RDB_transaction *txp)
     for (i = 0; i < typ->def.scalar.repc; i++) {
         int j;
 
-        if (_RDB_cat_load_ro_op(typ->def.scalar.repv[i].name, ecp, txp)
+        if (RDB_cat_load_ro_op(typ->def.scalar.repv[i].name, ecp, txp)
                 == (RDB_int) RDB_ERROR)
             return RDB_ERROR;
 
@@ -535,7 +535,7 @@ RDB_get_type(const char *name, RDB_exec_context *ecp, RDB_transaction *txp)
     /*
      * search type in built-in type map
      */
-    typ = RDB_hashmap_get(&_RDB_builtin_type_map, name);
+    typ = RDB_hashmap_get(&RDB_builtin_type_map, name);
     if (typ != NULL) {
         return typ;
     }
@@ -556,7 +556,7 @@ RDB_get_type(const char *name, RDB_exec_context *ecp, RDB_transaction *txp)
     /*
      * Search type in catalog
      */
-    ret = _RDB_cat_get_type(name, ecp, txp, &typ);
+    ret = RDB_cat_get_type(name, ecp, txp, &typ);
     if (ret != RDB_OK) {
         RDB_type *errtyp = RDB_obj_type(RDB_get_err(ecp));
         if (errtyp != NULL && errtyp == &RDB_NOT_FOUND_ERROR) {
@@ -583,7 +583,7 @@ RDB_get_type(const char *name, RDB_exec_context *ecp, RDB_transaction *txp)
      */
     typv[0] = typ;
     typv[1] = typ;
-    cmpop = _RDB_get_ro_op("cmp", 2, typv, NULL, ecp, txp);
+    cmpop = RDB_get_ro_op("cmp", 2, typv, NULL, ecp, txp);
     if (cmpop != NULL) {
         typ->compare_op = cmpop;
     } else {
@@ -663,7 +663,7 @@ RDB_define_type(const char *name, int repc, const RDB_possrep repv[],
         goto error;
 
     /* Store constraint in tuple */
-    if (_RDB_expr_to_binobj(&conval, constraintp, ecp) != RDB_OK)
+    if (RDB_expr_to_binobj(&conval, constraintp, ecp) != RDB_OK)
         goto error;
     if (RDB_tuple_set(&tpl, "i_constraint", &conval, ecp) != RDB_OK)
         goto error;
@@ -705,7 +705,7 @@ RDB_define_type(const char *name, int repc, const RDB_possrep repv[],
             if (RDB_tuple_set_string(&tpl, "compname", cname, ecp) != RDB_OK)
                 goto error;
 
-            if (_RDB_type_to_binobj(&typedata, repv[i].compv[j].typ,
+            if (RDB_type_to_binobj(&typedata, repv[i].compv[j].typ,
                     ecp) != RDB_OK)
                 goto error;
             if (RDB_tuple_set(&tpl, "comptype", &typedata, ecp) != RDB_OK)
@@ -935,7 +935,7 @@ RDB_implement_type(const char *name, RDB_type *arep, RDB_int areplen,
     }
     if (arep != NULL) {
         RDB_init_obj(&typedata);
-        ret = _RDB_type_to_binobj(&typedata, arep, ecp);
+        ret = RDB_type_to_binobj(&typedata, arep, ecp);
         if (ret != RDB_OK) {
             RDB_destroy_obj(&typedata, ecp);
             goto cleanup;
@@ -1011,7 +1011,7 @@ RDB_del_nonscalar_type(RDB_type *typ, RDB_exec_context *ecp)
             RDB_raise_invalid_argument("type is scalar", ecp);
             ret = RDB_ERROR;
     }
-    typ->kind = (enum _RDB_tp_kind) -1; /* for error detection */
+    typ->kind = (enum RDB_tp_kind) -1; /* for error detection */
     RDB_free(typ);
     return ret;
 }
@@ -1056,7 +1056,7 @@ RDB_drop_type(const char *name, RDB_exec_context *ecp, RDB_transaction *txp)
     /*
      * Check if the type is a built-in type
      */
-    if (RDB_hashmap_get(&_RDB_builtin_type_map, name) != NULL) {
+    if (RDB_hashmap_get(&RDB_builtin_type_map, name) != NULL) {
         RDB_raise_invalid_argument("cannot drop a built-in type", ecp);
         return RDB_ERROR;
     }
@@ -1207,10 +1207,10 @@ RDB_type_attr_type(const RDB_type *typ, const char *name)
 
     switch (typ->kind) {
         case RDB_TP_RELATION:
-            attrp = _RDB_tuple_type_attr(typ->def.basetyp, name);
+            attrp = RDB_tuple_type_attr(typ->def.basetyp, name);
             break;
         case RDB_TP_TUPLE:
-            attrp = _RDB_tuple_type_attr(typ, name);
+            attrp = RDB_tuple_type_attr(typ, name);
             break;
         case RDB_TP_ARRAY:
         case RDB_TP_SCALAR:
@@ -1262,7 +1262,7 @@ RDB_extend_tuple_type(const RDB_type *typ, int attrc, RDB_attr attrv[],
         /*
          * Check if the attribute is already present in the original tuple type
          */
-        if (_RDB_tuple_type_attr(typ, attrv[i].name) != NULL) {
+        if (RDB_tuple_type_attr(typ, attrv[i].name) != NULL) {
             RDB_raise_invalid_argument("attribute exists", ecp);
             goto error;
         }
@@ -1435,7 +1435,7 @@ RDB_join_relation_types(const RDB_type *typ1, const RDB_type *typ2,
 /* Return a pointer to the RDB_attr strcuture of the attribute with name attrname in the tuple
    type *tpltyp. */
 RDB_attr *
-_RDB_tuple_type_attr(const RDB_type *tpltyp, const char *attrname)
+RDB_tuple_type_attr(const RDB_type *tpltyp, const char *attrname)
 {
     int i;
     
@@ -1479,7 +1479,7 @@ RDB_project_tuple_type(const RDB_type *typ, int attrc, char *attrv[],
 
         tuptyp->def.tuple.attrv[i].name = attrname;
 
-        attrp = _RDB_tuple_type_attr(typ, attrname);
+        attrp = RDB_tuple_type_attr(typ, attrname);
         if (attrp == NULL) {
             RDB_raise_name(attrname, ecp);
             goto error;
@@ -1524,7 +1524,7 @@ RDB_project_relation_type(const RDB_type *typ, int attrc, char *attrv[],
 }
 
 int
-_RDB_find_rename_from(int renc, const RDB_renaming renv[], const char *name)
+RDB_find_rename_from(int renc, const RDB_renaming renv[], const char *name)
 {
     int i;
 
@@ -1547,13 +1547,13 @@ RDB_rename_tuple_type(const RDB_type *typ, int renc, const RDB_renaming renv[],
      */
     for (i = 0; i < renc; i++) {
         /* Check if source attribute exists */
-        if (_RDB_tuple_type_attr(typ, renv[i].from) == NULL) {
+        if (RDB_tuple_type_attr(typ, renv[i].from) == NULL) {
             RDB_raise_name(renv[i].from, ecp);
             return NULL;
         }
 
         /* Check if the dest attribute does not exist */
-        if (_RDB_tuple_type_attr(typ, renv[i].to) != NULL) {
+        if (RDB_tuple_type_attr(typ, renv[i].to) != NULL) {
             RDB_raise_name(renv[i].to, ecp);
             return NULL;
         }
@@ -1584,7 +1584,7 @@ RDB_rename_tuple_type(const RDB_type *typ, int renc, const RDB_renaming renv[],
         newtyp->def.tuple.attrv[i].name = NULL;
     for (i = 0; i < typ->def.tuple.attrc; i++) {
         char *attrname = typ->def.tuple.attrv[i].name;
-        int ai = _RDB_find_rename_from(renc, renv, attrname);
+        int ai = RDB_find_rename_from(renc, renv, attrname);
 
         /* check if the attribute has been renamed */
         newtyp->def.tuple.attrv[i].typ = RDB_dup_nonscalar_type(
@@ -1642,7 +1642,7 @@ RDB_rename_relation_type(const RDB_type *typ, int renc, const RDB_renaming renv[
 }
 
 RDB_attr *
-_RDB_get_icomp(RDB_type *typ, const char *compname)
+RDB_get_icomp(RDB_type *typ, const char *compname)
 {
     int i, j;
 
@@ -1694,7 +1694,7 @@ aggr_type(const RDB_expression *exp, const RDB_type *tpltyp,
             RDB_raise_invalid_argument("invalid number of aggregate arguments", ecp);
             return NULL;
         }
-        return _RDB_expr_type(exp->def.op.args.firstp, tpltyp, ecp, txp);
+        return RDB_expr_type_tpltyp(exp->def.op.args.firstp, tpltyp, ecp, txp);
     } else if (strcmp(exp->def.op.name, "any") == 0
             || strcmp(exp->def.op.name, "all") == 0) {
         return &RDB_BOOLEAN;
@@ -1830,7 +1830,7 @@ RDB_wrap_tuple_type(const RDB_type *typ, int wrapc, const RDB_wrapping wrapv[],
         }
 
         for (j = 0; j < wrapv[i].attrc; j++) {
-            attrp = _RDB_tuple_type_attr(typ, wrapv[i].attrv[j]);
+            attrp = RDB_tuple_type_attr(typ, wrapv[i].attrv[j]);
             if (attrp == NULL) {
                 RDB_raise_name(wrapv[i].attrv[j], ecp);
                 RDB_free(tuptyp->def.tuple.attrv);
@@ -2046,7 +2046,7 @@ RDB_group_type(RDB_type *typ, int attrc, char *attrv[], const char *gattr,
         return NULL;
     }
     for (i = 0; i < attrc; i++) {
-        attrp = _RDB_tuple_type_attr(typ->def.basetyp, attrv[i]);
+        attrp = RDB_tuple_type_attr(typ->def.basetyp, attrv[i]);
         if (attrp == NULL) {
             RDB_free(rtattrv);
             RDB_raise_name(attrv[i], ecp);
@@ -2088,7 +2088,7 @@ RDB_group_type(RDB_type *typ, int attrc, char *attrv[], const char *gattr,
     for (i = 0; i < typ->def.basetyp->def.tuple.attrc; i++) {
         char *attrname = typ->def.basetyp->def.tuple.attrv[i].name;
 
-        if (_RDB_tuple_type_attr(gattrtyp->def.basetyp, attrname) == NULL) {
+        if (RDB_tuple_type_attr(gattrtyp->def.basetyp, attrname) == NULL) {
             if (strcmp(attrname, gattr) == 0) {
                 RDB_del_nonscalar_type(gattrtyp, ecp);
                 RDB_raise_invalid_argument("invalid GROUP", ecp);
@@ -2150,7 +2150,7 @@ RDB_ungroup_type(RDB_type *typ, const char *attr, RDB_exec_context *ecp)
     int ret;
     RDB_type *tuptyp;
     RDB_type *newtyp;
-    RDB_attr *relattrp = _RDB_tuple_type_attr(typ->def.basetyp, attr);
+    RDB_attr *relattrp = RDB_tuple_type_attr(typ->def.basetyp, attr);
 
     if (relattrp == NULL) {
         RDB_raise_name(attr, ecp);
@@ -2204,7 +2204,7 @@ RDB_ungroup_type(RDB_type *typ, const char *attr, RDB_exec_context *ecp)
 
         /* Check for attribute name clash */
         if (strcmp(attrname, attr) != 0
-                && _RDB_tuple_type_attr(typ->def.basetyp, attrname)
+                && RDB_tuple_type_attr(typ->def.basetyp, attrname)
                 != NULL) {
             RDB_raise_invalid_argument("invalid UNGROUP", ecp);
             goto error;

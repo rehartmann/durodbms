@@ -567,7 +567,7 @@ RDB_extend_tuple(RDB_object *tplp, int attrc, const RDB_virtual_attr attrv[],
 
     for (i = 0; i < attrc; i++) {
         RDB_init_obj(&obj);
-        if (RDB_evaluate(attrv[i].exp, &_RDB_tpl_get, tplp, NULL, ecp, txp, &obj)
+        if (RDB_evaluate(attrv[i].exp, &RDB_tpl_get, tplp, NULL, ecp, txp, &obj)
                 != RDB_OK) {
             RDB_destroy_obj(&obj, ecp);
             return RDB_ERROR;
@@ -611,7 +611,7 @@ RDB_rename_tuple(const RDB_object *tplp, int renc, const RDB_renaming renv[],
     RDB_init_hashtable_iter(&it, (RDB_hashtable *)&tplp->val.tpl_tab);
     while ((entryp = RDB_hashtable_next(&it)) != NULL) {
         int ret;
-        int ai = _RDB_find_rename_from(renc, renv, entryp->key);
+        int ai = RDB_find_rename_from(renc, renv, entryp->key);
 
         if (ai >= 0) {
             ret = RDB_tuple_set(restup, renv[ai].to, &entryp->obj, ecp);
@@ -762,7 +762,7 @@ RDB_unwrap_tuple(const RDB_object *tplp, int attrc, char *attrv[],
             return RDB_ERROR;
         }
 
-        ret = _RDB_copy_tuple(restplp, wtplp, ecp);
+        ret = RDB_copy_tuple(restplp, wtplp, ecp);
         if (ret != RDB_OK)
             return ret;
     }
@@ -787,7 +787,7 @@ RDB_unwrap_tuple(const RDB_object *tplp, int attrc, char *attrv[],
 /*@}*/
 
 int
-_RDB_invrename_tuple(const RDB_object *tup, const RDB_expression *exp,
+RDB_invrename_tuple(const RDB_object *tup, const RDB_expression *exp,
                  RDB_exec_context *ecp, RDB_object *restup)
 {
     RDB_hashtable_iter it;
@@ -825,7 +825,7 @@ _RDB_invrename_tuple(const RDB_object *tup, const RDB_expression *exp,
  * Invert wrap operation on tuple
  */
 int
-_RDB_invwrap_tuple(const RDB_object *tplp, RDB_expression *exp,
+RDB_invwrap_tuple(const RDB_object *tplp, RDB_expression *exp,
         RDB_exec_context *ecp, RDB_object *restplp)
 {
     int i;
@@ -853,7 +853,7 @@ _RDB_invwrap_tuple(const RDB_object *tplp, RDB_expression *exp,
 }
 
 int
-_RDB_invunwrap_tuple(const RDB_object *tplp, RDB_expression *exp,
+RDB_invunwrap_tuple(const RDB_object *tplp, RDB_expression *exp,
         RDB_exec_context *ecp, RDB_transaction *txp,
         RDB_object *restplp)
 {
@@ -875,7 +875,7 @@ _RDB_invunwrap_tuple(const RDB_object *tplp, RDB_expression *exp,
 
     argp = exp->def.op.args.firstp->nextp;
     for (i = 0; i < attrc; i++) {
-        RDB_type *tuptyp = _RDB_tuple_type_attr(srctuptyp,
+        RDB_type *tuptyp = RDB_tuple_type_attr(srctuptyp,
                 RDB_obj_string(&argp->def.obj))->typ;
 
         wrapv[i].attrc = tuptyp->def.tuple.attrc;
@@ -900,7 +900,7 @@ _RDB_invunwrap_tuple(const RDB_object *tplp, RDB_expression *exp,
 
 /* Copy all attributes from one tuple to another. */
 int
-_RDB_copy_tuple(RDB_object *dstp, const RDB_object *srcp, RDB_exec_context *ecp)
+RDB_copy_tuple(RDB_object *dstp, const RDB_object *srcp, RDB_exec_context *ecp)
 {
     RDB_hashtable_iter it;
     tuple_entry *entryp;
@@ -943,7 +943,7 @@ set_tuple_attr_type(RDB_object *objp, RDB_type *tpltyp, const char *attrname,
 }
 
 int
-_RDB_tuple_equals(const RDB_object *tpl1p, const RDB_object *tpl2p,
+RDB_tuple_equals(const RDB_object *tpl1p, const RDB_object *tpl2p,
         RDB_exec_context *ecp, RDB_transaction *txp, RDB_bool *resp)
 {
     RDB_hashtable_iter hiter;
@@ -999,7 +999,7 @@ _RDB_tuple_equals(const RDB_object *tpl1p, const RDB_object *tpl2p,
  * Only *tpl1p must carry type information.
  */
 int
-_RDB_tuple_matches(const RDB_object *tpl1p, const RDB_object *tpl2p,
+RDB_tuple_matches(const RDB_object *tpl1p, const RDB_object *tpl2p,
         RDB_exec_context *ecp, RDB_transaction *txp, RDB_bool *resp)
 {
     int ret;
@@ -1061,7 +1061,7 @@ _RDB_tuple_matches(const RDB_object *tpl1p, const RDB_object *tpl2p,
  * Generate type from tuple
  */
 RDB_type *
-_RDB_tuple_type(const RDB_object *tplp, RDB_exec_context *ecp)
+RDB_tuple_type(const RDB_object *tplp, RDB_exec_context *ecp)
 {
     int i;
     tuple_entry *entryp;
@@ -1089,7 +1089,7 @@ _RDB_tuple_type(const RDB_object *tplp, RDB_exec_context *ecp)
                 typ->def.tuple.attrv[i].typ = RDB_dup_nonscalar_type(
                         RDB_obj_type(&entryp->obj), ecp);
             } else {
-                typ->def.tuple.attrv[i].typ = _RDB_tuple_type(&entryp->obj,
+                typ->def.tuple.attrv[i].typ = RDB_tuple_type(&entryp->obj,
                         ecp);
             }
             if (typ->def.tuple.attrv[i].typ == NULL)

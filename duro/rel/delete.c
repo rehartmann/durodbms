@@ -14,7 +14,7 @@
 #include <string.h>
 
 static RDB_int
-delete_by_uindex(RDB_object *tbp, RDB_object *objpv[], _RDB_tbindex *indexp,
+delete_by_uindex(RDB_object *tbp, RDB_object *objpv[], RDB_tbindex *indexp,
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
     RDB_int rcount;
@@ -31,14 +31,14 @@ delete_by_uindex(RDB_object *tbp, RDB_object *objpv[], _RDB_tbindex *indexp,
     }
     
     for (i = 0; i < keylen; i++) {
-        ret = _RDB_obj_to_field(&fv[i], objpv[i], ecp);
+        ret = RDB_obj_to_field(&fv[i], objpv[i], ecp);
         if (ret != RDB_OK) {
             rcount = RDB_ERROR;
             goto cleanup;
         }
     }
 
-    _RDB_cmp_ecp = ecp;
+    RDB_cmp_ecp = ecp;
     if (indexp->idxp == NULL) {
         ret = RDB_delete_rec(tbp->val.tb.stp->recmapp, fv,
                 tbp->val.tb.is_persistent ? txp->txid : NULL);
@@ -64,7 +64,7 @@ cleanup:
 }
 
 RDB_int
-_RDB_delete_real(RDB_object *tbp, RDB_expression *condp, RDB_exec_context *ecp,
+RDB_delete_real(RDB_object *tbp, RDB_expression *condp, RDB_exec_context *ecp,
         RDB_transaction *txp)
 {
     RDB_int rcount;
@@ -90,7 +90,7 @@ _RDB_delete_real(RDB_object *tbp, RDB_expression *condp, RDB_exec_context *ecp,
     }
     ret = RDB_cursor_first(curp);
     
-    _RDB_cmp_ecp = ecp;
+    RDB_cmp_ecp = ecp;
     rcount = 0;
     while (ret == RDB_OK) {
         RDB_init_obj(&tpl);
@@ -99,7 +99,7 @@ _RDB_delete_real(RDB_object *tbp, RDB_expression *condp, RDB_exec_context *ecp,
                 RDB_object val;
 
                 ret = RDB_cursor_get(curp,
-                        *_RDB_field_no(tbp->val.tb.stp, tpltyp->def.tuple.attrv[i].name),
+                        *RDB_field_no(tbp->val.tb.stp, tpltyp->def.tuple.attrv[i].name),
                         &datap, &len);
                 if (ret != RDB_OK) {
                    RDB_destroy_obj(&tpl, ecp);
@@ -123,7 +123,7 @@ _RDB_delete_real(RDB_object *tbp, RDB_expression *condp, RDB_exec_context *ecp,
                 }
             }
 
-            if (RDB_evaluate_bool(condp, &_RDB_tpl_get, &tpl, NULL, ecp, txp, &b)
+            if (RDB_evaluate_bool(condp, &RDB_tpl_get, &tpl, NULL, ecp, txp, &b)
                     != RDB_OK)
                  goto error;
         } else {
@@ -183,7 +183,7 @@ delete_where_uindex(RDB_expression *texp, RDB_expression *condp,
         /*
          * Read tuple and check condition
          */
-        if (_RDB_get_by_uindex(refexp->def.tbref.tbp,
+        if (RDB_get_by_uindex(refexp->def.tbref.tbp,
                 texp->def.op.optinfo.objpv, refexp->def.tbref.indexp,
                 refexp->def.tbref.tbp->typ->def.basetyp, ecp, txp, &tpl)
                     != RDB_OK) {
@@ -191,7 +191,7 @@ delete_where_uindex(RDB_expression *texp, RDB_expression *condp,
             rcount = RDB_ERROR;
             goto cleanup;
         }
-        ret = RDB_evaluate_bool(condp, &_RDB_tpl_get, &tpl, NULL, ecp, txp, &b);
+        ret = RDB_evaluate_bool(condp, &RDB_tpl_get, &tpl, NULL, ecp, txp, &b);
         RDB_destroy_obj(&tpl, ecp);
         if (ret != RDB_OK) {
             rcount = RDB_ERROR;
@@ -221,7 +221,7 @@ delete_where_nuindex(RDB_expression *texp, RDB_expression *condp,
     RDB_cursor *curp = NULL;
     RDB_field *fv = NULL;
     RDB_expression *refexp;
-    _RDB_tbindex *indexp;
+    RDB_tbindex *indexp;
     int keylen;
 
     if (texp->def.op.args.firstp->kind == RDB_EX_TBP) {
@@ -250,7 +250,7 @@ delete_where_nuindex(RDB_expression *texp, RDB_expression *condp,
     }
 
     for (i = 0; i < keylen; i++) {
-        if (_RDB_obj_to_field(&fv[i], texp->def.op.optinfo.objpv[i], ecp)
+        if (RDB_obj_to_field(&fv[i], texp->def.op.optinfo.objpv[i], ecp)
                 != RDB_OK) {
             rcount = RDB_ERROR;
             goto cleanup;
@@ -269,7 +269,7 @@ delete_where_nuindex(RDB_expression *texp, RDB_expression *condp,
         goto cleanup;
     }
 
-    _RDB_cmp_ecp = ecp;
+    RDB_cmp_ecp = ecp;
     rcount = 0;
     do {
         RDB_bool del = RDB_TRUE;
@@ -282,7 +282,7 @@ delete_where_nuindex(RDB_expression *texp, RDB_expression *condp,
         /*
          * Read tuple and check condition
          */
-        ret = _RDB_get_by_cursor(refexp->def.tbref.tbp,
+        ret = RDB_get_by_cursor(refexp->def.tbref.tbp,
                 curp, refexp->def.tbref.tbp->typ->def.basetyp, &tpl, ecp, txp);
         if (ret != RDB_OK) {
             RDB_destroy_obj(&tpl, ecp);
@@ -291,7 +291,7 @@ delete_where_nuindex(RDB_expression *texp, RDB_expression *condp,
         }
         if (texp->def.op.optinfo.stopexp != NULL) {
             ret = RDB_evaluate_bool(texp->def.op.optinfo.stopexp,
-                    &_RDB_tpl_get, &tpl, NULL, ecp, txp, &b);
+                    &RDB_tpl_get, &tpl, NULL, ecp, txp, &b);
             if (ret != RDB_OK) {
                 RDB_destroy_obj(&tpl, ecp);
                 rcount = RDB_ERROR;
@@ -303,7 +303,7 @@ delete_where_nuindex(RDB_expression *texp, RDB_expression *condp,
             }
         }
         if (condp != NULL) {
-            ret = RDB_evaluate_bool(condp, &_RDB_tpl_get, &tpl, NULL, ecp, txp,
+            ret = RDB_evaluate_bool(condp, &RDB_tpl_get, &tpl, NULL, ecp, txp,
                     &del);
             if (ret != RDB_OK) {
                 RDB_destroy_obj(&tpl, ecp);
@@ -311,7 +311,7 @@ delete_where_nuindex(RDB_expression *texp, RDB_expression *condp,
                 goto cleanup;
             }
         }
-        ret = RDB_evaluate_bool(texp->def.op.args.firstp->nextp, &_RDB_tpl_get,
+        ret = RDB_evaluate_bool(texp->def.op.args.firstp->nextp, &RDB_tpl_get,
                 &tpl, NULL, ecp, txp, &b);
         RDB_destroy_obj(&tpl, ecp);
         if (ret != RDB_OK) {
@@ -356,7 +356,7 @@ cleanup:
 }
 
 RDB_int
-_RDB_delete_where_index(RDB_expression *texp, RDB_expression *condp,
+RDB_delete_where_index(RDB_expression *texp, RDB_expression *condp,
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
     RDB_expression *refexp;

@@ -1,7 +1,7 @@
 /*
  * $Id$
  * 
- * Copyright (C) 2003-2009 René Hartmann.
+ * Copyright (C) 2003-2009 Renï¿½ Hartmann.
  * See the file COPYING for redistribution information.
  */
 
@@ -109,10 +109,10 @@ compare_key(DB *dbp, const DBT *dbt1p, const DBT *dbt2p)
         void *data1p, *data2p;
         int res;
 
-        offs1 = _RDB_get_field(rmp, i, dbt1p->data, dbt1p->size, &len1, NULL);
+        offs1 = RDB_get_field(rmp, i, dbt1p->data, dbt1p->size, &len1, NULL);
         if (offs1 < 0)
             return offs1;
-        offs2 = _RDB_get_field(rmp, i, dbt2p->data, dbt2p->size, &len2, NULL);
+        offs2 = RDB_get_field(rmp, i, dbt2p->data, dbt2p->size, &len2, NULL);
         if (offs2 < 0)
             return offs2;
         data1p = ((RDB_byte *) dbt1p->data) + offs1;
@@ -278,7 +278,7 @@ get_len(const RDB_byte *databp)
 }
 
 size_t
-_RDB_get_vflen(RDB_byte *databp, size_t len, int vfcnt, int vpos)
+RDB_get_vflen(RDB_byte *databp, size_t len, int vfcnt, int vpos)
 {
     return get_len(&databp[len - vfcnt * RECLEN_SIZE + vpos * RECLEN_SIZE]);
 }
@@ -290,7 +290,7 @@ _RDB_get_vflen(RDB_byte *databp, size_t len, int vfcnt, int vpos)
  *              var-len field table
  */
 int
-_RDB_get_field(RDB_recmap *rmp, int fno, void *datap, size_t len, size_t *lenp,
+RDB_get_field(RDB_recmap *rmp, int fno, void *datap, size_t len, size_t *lenp,
               int *vposp)
 {
     int i, vpos;
@@ -332,10 +332,10 @@ _RDB_get_field(RDB_recmap *rmp, int fno, void *datap, size_t len, size_t *lenp,
 
             /* add previous variable-length fields */
             for (i = 0; i < vpos; i++) {
-                offs += _RDB_get_vflen(databp, len, rmp->varkeyfieldcount, i);
+                offs += RDB_get_vflen(databp, len, rmp->varkeyfieldcount, i);
             }
             
-            *lenp = _RDB_get_vflen(databp, len, rmp->varkeyfieldcount, vpos);
+            *lenp = RDB_get_vflen(databp, len, rmp->varkeyfieldcount, vpos);
         }
     } else {
         /*
@@ -372,10 +372,10 @@ _RDB_get_field(RDB_recmap *rmp, int fno, void *datap, size_t len, size_t *lenp,
 
             /* add previous variable-length fields */
             for (i = 0; i < vpos; i++) {
-                offs += _RDB_get_vflen(databp, len, rmp->vardatafieldcount, i);
+                offs += RDB_get_vflen(databp, len, rmp->vardatafieldcount, i);
             }
             
-            *lenp = _RDB_get_vflen(databp, len, rmp->vardatafieldcount, vpos);
+            *lenp = RDB_get_vflen(databp, len, rmp->vardatafieldcount, vpos);
         }
     }
     /* Integrity check */
@@ -396,7 +396,7 @@ set_len(RDB_byte *databp, size_t len)
 }
 
 int
-_RDB_fields_to_DBT(RDB_recmap *rmp, int fldc, const RDB_field fldv[],
+RDB_fields_to_DBT(RDB_recmap *rmp, int fldc, const RDB_field fldv[],
                    DBT *dbtp)
 {
     RDB_byte *databp;
@@ -507,7 +507,7 @@ key_to_DBT(RDB_recmap *rmp, RDB_field fldv[], DBT *keyp)
         fldv[i].no = i;
     }
 
-    return _RDB_fields_to_DBT(rmp, rmp->keyfieldcount, fldv, keyp);
+    return RDB_fields_to_DBT(rmp, rmp->keyfieldcount, fldv, keyp);
 }
 
 /*
@@ -522,7 +522,7 @@ data_to_DBT(RDB_recmap *rmp, RDB_field fldv[], DBT *datap)
         fldv[i].no = i;
     }
 
-    return _RDB_fields_to_DBT(rmp, rmp->fieldcount - rmp->keyfieldcount,
+    return RDB_fields_to_DBT(rmp, rmp->fieldcount - rmp->keyfieldcount,
                              fldv + rmp->keyfieldcount, datap);
 }
 
@@ -552,13 +552,13 @@ RDB_insert_rec(RDB_recmap *rmp, RDB_field flds[], DB_TXN *txid)
 }
 
 int
-_RDB_set_field(RDB_recmap *recmapp, DBT *recpartp, const RDB_field *fieldp, 
+RDB_set_field(RDB_recmap *recmapp, DBT *recpartp, const RDB_field *fieldp, 
                int varfieldc)
 {
     size_t oldlen;
     int vpos;
     RDB_byte *databp = (RDB_byte *) recpartp->data;
-    int offs = _RDB_get_field(recmapp, fieldp->no,
+    int offs = RDB_get_field(recmapp, fieldp->no,
                     recpartp->data, recpartp->size, &oldlen, &vpos);
     if (offs < 0)
         return offs;
@@ -594,7 +594,7 @@ _RDB_set_field(RDB_recmap *recmapp, DBT *recpartp, const RDB_field *fieldp,
 }
 
 int
-_RDB_update_rec(RDB_recmap *rmp, DBT *keyp, DBT *datap,
+RDB_update_DBT_rec(RDB_recmap *rmp, DBT *keyp, DBT *datap,
         int fieldc, const RDB_field fieldv[], DB_TXN *txid)
 {
     int i;
@@ -616,10 +616,10 @@ _RDB_update_rec(RDB_recmap *rmp, DBT *keyp, DBT *datap,
 
     for (i = 0; i < fieldc; i++) {
         if (fieldv[i].no < rmp->keyfieldcount) {
-            ret = _RDB_set_field(rmp, keyp, &fieldv[i],
+            ret = RDB_set_field(rmp, keyp, &fieldv[i],
                            rmp->varkeyfieldcount);
         } else {
-            ret = _RDB_set_field(rmp, datap, &fieldv[i],
+            ret = RDB_set_field(rmp, datap, &fieldv[i],
                            rmp->vardatafieldcount);
         }
         if (ret != RDB_OK)
@@ -661,7 +661,7 @@ RDB_update_rec(RDB_recmap *rmp, RDB_field keyv[],
     if (ret != 0)
         goto cleanup;
 
-    ret = _RDB_update_rec(rmp, &key, &data, fieldc, fieldv, txid);
+    ret = RDB_update_DBT_rec(rmp, &key, &data, fieldc, fieldv, txid);
 
 cleanup:
     free(key.data);
@@ -686,7 +686,7 @@ RDB_delete_rec(RDB_recmap *rmp, RDB_field keyv[], DB_TXN *txid)
 }
 
 int
-_RDB_get_fields(RDB_recmap *rmp, const DBT *keyp, const DBT *datap, int fieldc,
+RDB_get_DBT_fields(RDB_recmap *rmp, const DBT *keyp, const DBT *datap, int fieldc,
            RDB_field retfieldv[])
 {
     int i;
@@ -695,13 +695,13 @@ _RDB_get_fields(RDB_recmap *rmp, const DBT *keyp, const DBT *datap, int fieldc,
         int offs;
 
         if (retfieldv[i].no < rmp->keyfieldcount) {
-            offs = _RDB_get_field(rmp, retfieldv[i].no,
+            offs = RDB_get_field(rmp, retfieldv[i].no,
                     keyp->data, keyp->size, &retfieldv[i].len, NULL);
             if (offs < 0)
                 return offs;
             retfieldv[i].datap = ((RDB_byte *)keyp->data) + offs;
         } else {
-            offs = _RDB_get_field(rmp, retfieldv[i].no,
+            offs = RDB_get_field(rmp, retfieldv[i].no,
                     datap->data, datap->size, &retfieldv[i].len, NULL);
             if (offs < 0)
                 return offs;
@@ -731,7 +731,7 @@ RDB_get_fields(RDB_recmap *rmp, RDB_field keyv[], int fieldc, DB_TXN *txid,
         return ret;
     }
 
-    ret = _RDB_get_fields(rmp, &key, &data, fieldc, retfieldv);
+    ret = RDB_get_DBT_fields(rmp, &key, &data, fieldc, retfieldv);
     free(key.data);
     return ret;
 }

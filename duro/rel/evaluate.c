@@ -26,7 +26,7 @@ evaluate_vt(RDB_expression *exp, RDB_getobjfn *getfnp, void *getdata,
     if (nexp == NULL)
         return RDB_ERROR;
 
-    if (_RDB_vtexp_to_obj(nexp, ecp, txp, retvalp) != RDB_OK) {
+    if (RDB_vtexp_to_obj(nexp, ecp, txp, retvalp) != RDB_OK) {
         RDB_drop_expr(nexp, ecp);
         return RDB_ERROR;
     }
@@ -105,7 +105,7 @@ evaluate_tuple_extend(RDB_expression *exp, RDB_getobjfn *getfnp, void *getdata,
     for (i = 0; i < attrc; i++) {
         attrv[i].exp = argp;
 
-        if (!_RDB_expr_is_string(argp->nextp)) {
+        if (!RDB_expr_is_string(argp->nextp)) {
             RDB_raise_type_mismatch("attribute argument must be string",
                     ecp);
             return RDB_ERROR;
@@ -144,7 +144,7 @@ evaluate_ro_op(RDB_expression *exp, RDB_getobjfn *getfnp, void *getdata,
         gtinfo.getfnp = getfnp;
     }
 
-    if (_RDB_transform(exp, getfnp != NULL ? get_type : NULL,
+    if (RDB_transform(exp, getfnp != NULL ? get_type : NULL,
             getfnp != NULL ? &gtinfo : NULL, ecp, txp) != RDB_OK)
         return RDB_ERROR;
 
@@ -365,7 +365,7 @@ evaluate_ro_op(RDB_expression *exp, RDB_getobjfn *getfnp, void *getdata,
             ret = RDB_ERROR;
             goto cleanup;
         }
-        ret = _RDB_op_type_relation(argc, valpv, typ, ecp, txp, valp);
+        ret = RDB_op_type_relation(argc, valpv, typ, ecp, txp, valp);
         goto cleanup;
     }
 
@@ -410,7 +410,7 @@ RDB_evaluate(RDB_expression *exp, RDB_getobjfn *getfnp, void *getdata,
         envp = txp->envp;
     if (envp != NULL && RDB_env_trace(envp) > 0) {
         fputs("Evaluating ", stderr);
-        if (_RDB_print_expr(exp, stderr, ecp) == RDB_ERROR)
+        if (RDB_print_expr(exp, stderr, ecp) == RDB_ERROR)
             return RDB_ERROR;
         fputs("\n", stderr);
     }
@@ -478,14 +478,14 @@ RDB_evaluate(RDB_expression *exp, RDB_getobjfn *getfnp, void *getdata,
                 RDB_object *srcp = RDB_get_table(exp->def.varname, ecp, txp);
 
                 if (srcp != NULL)
-                    return _RDB_copy_obj(valp, srcp, ecp, txp);
+                    return RDB_copy_obj_data(valp, srcp, ecp, txp);
             }
             RDB_raise_name(exp->def.varname, ecp);
             return RDB_ERROR;
         case RDB_EX_OBJ:
             return RDB_copy_obj(valp, &exp->def.obj, ecp);
         case RDB_EX_TBP:
-            return _RDB_copy_obj(valp, exp->def.tbref.tbp, ecp, txp);
+            return RDB_copy_obj_data(valp, exp->def.tbref.tbp, ecp, txp);
     }
     /* Should never be reached */
     abort();

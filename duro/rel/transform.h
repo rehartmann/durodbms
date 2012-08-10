@@ -11,9 +11,11 @@
 #include "rdb.h"
 
 int
-_RDB_transform(RDB_expression *, RDB_gettypefn *, void *, RDB_exec_context *, RDB_transaction *);
+RDB_transform(RDB_expression *, RDB_gettypefn *, void *,
+        RDB_exec_context *, RDB_transaction *);
 
 int
-_RDB_remove_to_project(RDB_expression *, RDB_gettypefn *, void *, RDB_exec_context *, RDB_transaction *);
+RDB_remove_to_project(RDB_expression *, RDB_gettypefn *, void *,
+        RDB_exec_context *, RDB_transaction *);
 
 #endif /*TRANSFORM_H*/

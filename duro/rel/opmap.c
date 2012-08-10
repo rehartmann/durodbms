@@ -167,7 +167,7 @@ RDB_del_ops(RDB_op_map *opmap, const char *name, RDB_exec_context *ecp)
 }
 
 RDB_operator *
-_RDB_new_operator(const char *name, int argc, RDB_type *argtv[], RDB_type *rtyp,
+RDB_new_operator(const char *name, int argc, RDB_type *argtv[], RDB_type *rtyp,
         RDB_exec_context *ecp)
 {
     int i;

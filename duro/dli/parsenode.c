@@ -163,7 +163,7 @@ Duro_parse_node_to_obj_string(RDB_object *dstp, RDB_parse_node *nodep,
 
     switch(nodep->kind) {
         case RDB_NODE_TOK:
-            return RDB_append_string(dstp, _RDB_token_name(nodep->val.token), ecp);
+            return RDB_append_string(dstp, RDB_token_name(nodep->val.token), ecp);
         case RDB_NODE_INNER:
             RDB_init_obj(&strobj);
             np = nodep->val.children.firstp;
@@ -186,7 +186,7 @@ Duro_parse_node_to_obj_string(RDB_object *dstp, RDB_parse_node *nodep,
             return RDB_destroy_obj(&strobj, ecp);
         case RDB_NODE_EXPR:
             RDB_init_obj(&strobj);
-            ret = _RDB_expr_to_str(&strobj, nodep->exp, ecp, txp, 0);
+            ret = RDB_expr_to_str(&strobj, nodep->exp, ecp, txp, 0);
             if (ret != RDB_OK) {
                 RDB_destroy_obj(&strobj, ecp);
                 return ret;
@@ -214,7 +214,7 @@ RDB_print_parse_node(FILE *fp, RDB_parse_node *nodep,
 }
 
 const char *
-_RDB_token_name(int tok)
+RDB_token_name(int tok)
 {
     static char chtok[2];
 

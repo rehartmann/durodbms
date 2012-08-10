@@ -25,10 +25,9 @@
 
 extern RDB_exec_context *_RDB_parse_ecp;
 
-int _RDB_parse_interactive = 0;
-int _RDB_parse_case_insensitive = 1;
-RDB_readline_fn *RDB_parse_readline_fnp;
-char *RDB_parse_promptp;
+static int RDB_parse_interactive = 0;
+static int RDB_parse_case_insensitive = 1;
+static RDB_readline_fn *RDB_parse_readline_fnp;
 
 YY_BUFFER_STATE _RDB_parse_buffer;
 
@@ -84,7 +83,7 @@ process_escapes(char *txt)
 void
 _RDB_parse_init_buf(FILE *f)
 {
-    if (_RDB_parse_interactive)
+    if (RDB_parse_interactive)
 	    _RDB_parse_buffer = yy_scan_string("");
 	else {
 		_RDB_parse_buffer = yy_create_buffer(f, YY_BUF_SIZE);
@@ -702,7 +701,7 @@ EXPLAIN {
 [a-zA-Z][a-zA-Z0-9_#]* {
     int i;
 
-    if (_RDB_parse_case_insensitive) {
+    if (RDB_parse_case_insensitive) {
         for (i = 0; yytext[i] != '\0'; i++) {
             yytext[i] = tolower(yytext[i]);
         }
@@ -746,7 +745,7 @@ EXPLAIN {
 \' {
     char buf[40];
 
-    if (_RDB_parse_interactive)
+    if (RDB_parse_interactive)
 	    sprintf(buf, "unbalanced '");
 	else
 	    sprintf(buf, "unbalanced ' at line %d", yylineno);
@@ -757,7 +756,7 @@ EXPLAIN {
 \" {
     char buf[40];
 
-    if (_RDB_parse_interactive)
+    if (RDB_parse_interactive)
 	    sprintf(buf, "unbalanced \"");
 	else 
 	    sprintf(buf, "unbalanced \" at line %d", yylineno);
@@ -905,7 +904,7 @@ EXPLAIN {
         if (c == EOF)
         {
             char buf[40];
-            if (_RDB_parse_interactive)
+            if (RDB_parse_interactive)
                 sprintf(buf, "unterminated comment");
             else
                 sprintf(buf, "unterminated comment at line %d", yylineno);
@@ -926,7 +925,7 @@ EXPLAIN {
 . {
     char buf[40];
 
-    if (_RDB_parse_interactive)
+    if (RDB_parse_interactive)
     	sprintf(buf, "invalid character %c", yytext[0]);
     else
 	    sprintf(buf, "invalid character %c at line %d", yytext[0], yylineno);
@@ -940,7 +939,7 @@ EXPLAIN {
      */
     char *line;
 
-    if (!_RDB_parse_interactive)
+    if (!RDB_parse_interactive)
         yyterminate();
 
     line = (*RDB_parse_readline_fnp) ();
@@ -958,4 +957,19 @@ EXPLAIN {
 void
 RDB_parse_set_readline_fn(RDB_readline_fn *fnp) {
     RDB_parse_readline_fnp = fnp;
+}
+
+RDB_bool
+RDB_parse_get_interactive(void) {
+    return (RDB_bool) (RDB_parse_interactive != 0);
+}
+
+void
+RDB_parse_set_interactive(RDB_bool ia) {
+    RDB_parse_interactive = (int) ia;
+}
+
+void
+RDB_parse_set_case_insensitive(RDB_bool is) {
+    RDB_parse_case_insensitive = (int) is;
 }

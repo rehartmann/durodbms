@@ -234,7 +234,7 @@ Duro_exit_interp(void)
 
     destroy_varmap(&root_module.varmap);
 
-    if (_RDB_parse_interactive) {
+    if (RDB_parse_get_interactive()) {
         RDB_destroy_obj(&prompt, &ec);
     }
 
@@ -244,7 +244,7 @@ Duro_exit_interp(void)
     if (txnp != NULL) {
         RDB_rollback(&ec, &txnp->tx);
 
-        if (_RDB_parse_interactive)
+        if (RDB_parse_get_interactive())
             printf("Transaction rolled back.\n");
     }
     if (envp != NULL)
@@ -300,7 +300,7 @@ disconnect_op(int argc, RDB_object *argv[], RDB_operator *op,
         if (ret != RDB_OK)
             return ret;
 
-        if (_RDB_parse_interactive)
+        if (RDB_parse_get_interactive())
             printf("Transaction rolled back.\n");
     }
 
@@ -456,7 +456,7 @@ Duro_init_exec(RDB_exec_context *ecp, const char *dbname)
             &trace_op, ecp) != RDB_OK)
         goto error;
 
-    if (_RDB_add_io_ops(&sys_module.upd_op_map, ecp) != RDB_OK)
+    if (RDB_add_io_ops(&sys_module.upd_op_map, ecp) != RDB_OK)
         goto error;
 
     objp = new_obj(ecp);
@@ -958,7 +958,7 @@ exec_vardef_real(RDB_parse_node *nodep, RDB_exec_context *ecp)
             goto error;
     } else {
         /* Get keys from expression */
-        keyc = _RDB_infer_keys(initexp, ecp, &keyv, &freekey);
+        keyc = RDB_infer_keys(initexp, ecp, &keyv, &freekey);
         if (keyc == RDB_ERROR)
             return RDB_ERROR;
     }
@@ -973,7 +973,7 @@ exec_vardef_real(RDB_parse_node *nodep, RDB_exec_context *ecp)
             goto error;
     }
 
-    if (_RDB_parse_interactive)
+    if (RDB_parse_get_interactive())
         printf("Table %s created.\n", varname);
 
     if (initexp != NULL) {
@@ -1043,7 +1043,7 @@ exec_vardef_virtual(RDB_parse_node *nodep, RDB_exec_context *ecp)
     if (RDB_add_table(tbp, ecp, &txnp->tx) != RDB_OK)
         return RDB_ERROR;
 
-    if (_RDB_parse_interactive)
+    if (RDB_parse_get_interactive())
         printf("Table %s created.\n", varname);
     return RDB_OK;
 }
@@ -1117,7 +1117,7 @@ exec_vardef_private(RDB_parse_node *nodep, RDB_exec_context *ecp)
             goto error;
     } else {
         /* Get keys from expression */
-        keyc = _RDB_infer_keys(initexp, ecp, &keyv, &freekey);
+        keyc = RDB_infer_keys(initexp, ecp, &keyv, &freekey);
         if (keyc == RDB_ERROR) {
             keyv = NULL;
             goto error;
@@ -1157,7 +1157,7 @@ exec_vardef_private(RDB_parse_node *nodep, RDB_exec_context *ecp)
         }
     }
 
-    if (_RDB_parse_interactive)
+    if (RDB_parse_get_interactive())
         printf("Local table %s created.\n", varname);
 
     if (initexp != NULL) {
@@ -1213,7 +1213,7 @@ exec_vardrop(const RDB_parse_node *nodep, RDB_exec_context *ecp)
     if (RDB_drop_table(objp, ecp, &txnp->tx) != RDB_OK)
         return RDB_ERROR;
 
-    if (_RDB_parse_interactive)
+    if (RDB_parse_get_interactive())
         printf("Table %s dropped.\n", varname);
     return RDB_OK;
 }
@@ -1522,14 +1522,14 @@ exec_explain(RDB_parse_node *nodep, RDB_exec_context *ecp)
     }
 
     /* Optimize */
-    optexp = _RDB_optimize_expr(exp, seqitc, seqitv, ecp, &txnp->tx);
+    optexp = RDB_optimize_expr(exp, seqitc, seqitv, ecp, &txnp->tx);
     if (optexp == NULL) {
         ret = RDB_ERROR;
         goto cleanup;
     }
 
     /* Convert tree to STRING */
-    ret = _RDB_expr_to_str(&strobj, optexp, ecp, &txnp->tx, RDB_SHOW_INDEX);
+    ret = RDB_expr_to_str(&strobj, optexp, ecp, &txnp->tx, RDB_SHOW_INDEX);
     if (ret != RDB_OK) {
         goto cleanup;
     }
@@ -1835,7 +1835,7 @@ exec_foreach(const RDB_parse_node *nodep, const RDB_parse_node *labelp,
      * in this case the loop body must not stop the transaction
      */
 
-    while (_RDB_next_tuple(itp, varp, ecp, txp) == RDB_OK) {
+    while (RDB_next_tuple(itp, varp, ecp, txp) == RDB_OK) {
         if (add_varmap(ecp) != RDB_OK)
             goto error;
 
@@ -1869,7 +1869,7 @@ exec_foreach(const RDB_parse_node *nodep, const RDB_parse_node *labelp,
         }
     }
 
-    if (_RDB_drop_qresult(itp, ecp, txp) != RDB_OK) {
+    if (RDB_drop_qresult(itp, ecp, txp) != RDB_OK) {
         RDB_destroy_obj(&tb, ecp);
         return RDB_ERROR;
     }
@@ -1886,7 +1886,7 @@ exec_foreach(const RDB_parse_node *nodep, const RDB_parse_node *labelp,
 
 error:
     if (itp != NULL) {
-        _RDB_drop_qresult(itp, ecp, txp);
+        RDB_drop_qresult(itp, ecp, txp);
     }
     if (seqitv != NULL)
         RDB_free(seqitv);
@@ -2433,7 +2433,7 @@ exec_assign(const RDB_parse_node *nodep, RDB_exec_context *ecp)
     if (cnt == (RDB_int) RDB_ERROR)
         goto error;
 
-    if (_RDB_parse_interactive) {
+    if (RDB_parse_get_interactive()) {
         if (cnt == 1) {
             printf("1 element affected.\n");
         } else {
@@ -2472,7 +2472,7 @@ exec_begin_tx(RDB_exec_context *ecp)
         ntxnp->parentp = txnp;
         txnp = ntxnp;
 
-        if (_RDB_parse_interactive)
+        if (RDB_parse_get_interactive())
             printf("Subtransaction started.\n");
         return RDB_OK;
     }
@@ -2489,7 +2489,7 @@ exec_begin_tx(RDB_exec_context *ecp)
     }
     txnp->parentp = NULL;
 
-    if (_RDB_parse_interactive)
+    if (RDB_parse_get_interactive())
         printf("Transaction started.\n");
     return RDB_OK;
 }
@@ -2511,7 +2511,7 @@ exec_commit(RDB_exec_context *ecp)
     RDB_free(txnp);
     txnp = ptxnp;
 
-    if (_RDB_parse_interactive)
+    if (RDB_parse_get_interactive())
         printf("Transaction committed.\n");
     return RDB_OK;
 }
@@ -2530,7 +2530,7 @@ exec_rollback(RDB_exec_context *ecp)
     RDB_free(txnp);
     txnp = NULL;
 
-    if (_RDB_parse_interactive)
+    if (RDB_parse_get_interactive())
         printf("Transaction rolled back.\n");
     return RDB_OK;
 }
@@ -2631,7 +2631,7 @@ exec_typedef(const RDB_parse_node *stmtp, RDB_exec_context *ecp)
     } else {
         ret = RDB_OK;
     }
-    if ((ret == RDB_OK) && _RDB_parse_interactive)
+    if ((ret == RDB_OK) && RDB_parse_get_interactive())
         printf("Type %s defined.\n", RDB_expr_var_name(stmtp->exp));
     return ret;
 
@@ -2738,7 +2738,7 @@ exec_typedrop(const RDB_parse_node *nodep, RDB_exec_context *ecp)
     } else {
         ret = RDB_OK;
     }
-    if ((ret == RDB_OK) && _RDB_parse_interactive)
+    if ((ret == RDB_OK) && RDB_parse_get_interactive())
         printf("Type %s dropped.\n", RDB_expr_var_name(nodep->exp));
     return ret;
 
@@ -2781,7 +2781,7 @@ exec_typeimpl(RDB_parse_node *nodep, RDB_exec_context *ecp)
     } else {
         ret = RDB_OK;
     }
-    if ((ret == RDB_OK) && _RDB_parse_interactive)
+    if ((ret == RDB_OK) && RDB_parse_get_interactive())
         printf("Type %s implemented.\n", RDB_expr_var_name(nodep->exp));
     return ret;
 
@@ -3106,7 +3106,7 @@ exec_opdef(RDB_parse_node *parentp, RDB_exec_context *ecp)
     } else {
         ret = RDB_OK;
     }
-    if ((ret == RDB_OK) && _RDB_parse_interactive)
+    if ((ret == RDB_OK) && RDB_parse_get_interactive())
         printf(ro ? "Read-only operator %s created.\n" : "Update operator %s created.\n", opname);
     return ret;
 
@@ -3159,7 +3159,7 @@ exec_opdrop(const RDB_parse_node *nodep, RDB_exec_context *ecp)
     } else {
         ret = RDB_OK;
     }
-    if ((ret == RDB_OK) && _RDB_parse_interactive)
+    if ((ret == RDB_OK) && RDB_parse_get_interactive())
         printf("Operator %s dropped.\n", RDB_expr_var_name(nodep->exp));
     return ret;
 }
@@ -3363,7 +3363,7 @@ exec_constrdef(RDB_parse_node *nodep, RDB_exec_context *ecp)
     } else {
         ret = RDB_OK;
     }
-    if ((ret == RDB_OK) && _RDB_parse_interactive)
+    if ((ret == RDB_OK) && RDB_parse_get_interactive())
         printf("Constraint %s created.\n", constrname);
     return ret;
 
@@ -3416,7 +3416,7 @@ exec_indexdef(RDB_parse_node *nodep, RDB_exec_context *ecp)
 
     ret = RDB_create_table_index(indexname, tbp, idxcompc,
             idxcompv, RDB_ORDERED, ecp, &txnp->tx);
-    if ((ret == RDB_OK) && _RDB_parse_interactive)
+    if ((ret == RDB_OK) && RDB_parse_get_interactive())
         printf("Index %s created.\n", indexname);
     RDB_free(idxcompv);
     return ret;
@@ -3450,7 +3450,7 @@ exec_constrdrop(RDB_parse_node *nodep, RDB_exec_context *ecp)
     } else {
         ret = RDB_OK;
     }
-    if ((ret == RDB_OK) && _RDB_parse_interactive)
+    if ((ret == RDB_OK) && RDB_parse_get_interactive())
         printf("Constraint %s dropped.\n", constrname);
     return ret;
 
@@ -3476,7 +3476,7 @@ exec_indexdrop(RDB_parse_node *nodep, RDB_exec_context *ecp)
     if (ret != RDB_OK)
         goto error;
 
-    if (_RDB_parse_interactive)
+    if (RDB_parse_get_interactive())
         printf("Index %s dropped.\n", indexname);
     return ret;
 
@@ -3675,7 +3675,7 @@ Duro_process_stmt(RDB_exec_context *ecp)
     RDB_parse_node *stmtp;
     RDB_object *dbnameobjp = RDB_hashmap_get(&sys_module.varmap, "current_db");
 
-    if (_RDB_parse_interactive) {
+    if (RDB_parse_get_interactive()) {
         /* Build prompt */
         if (dbnameobjp != NULL && *RDB_obj_string(dbnameobjp) != '\0') {
             ret = RDB_string_to_obj(&prompt, RDB_obj_string(dbnameobjp), ecp);
@@ -3774,27 +3774,26 @@ Duro_dt_execute(RDB_environment *dbenvp, char *dbname, char *infilename,
 
     err_line = -1;
 
-    _RDB_parse_interactive = (RDB_bool) isatty(fileno(infile != NULL ? infile : stdin));
-    if (_RDB_parse_interactive) {
+    RDB_parse_set_interactive (
+            (RDB_bool) isatty(fileno(infile != NULL ? infile : stdin)));
+    if (RDB_parse_get_interactive()) {
         /* Prompt is only needed in interactive mode */
         RDB_init_obj(&prompt);
 
         printf("Duro D/T library version %d.%d\n", RDB_major_version(),
                 RDB_minor_version());
     }
-    _RDB_parse_init_buf(infile != NULL ? infile : stdin);
+    RDB_parse_init_buf(infile != NULL ? infile : stdin);
 
     for(;;) {
         if (Duro_process_stmt(ecp) != RDB_OK) {
             RDB_object *errobjp = RDB_get_err(ecp);
             if (errobjp != NULL) {
-                if (!_RDB_parse_interactive) {
-                    printf("error in statement at or near line %d: ", err_line);
-                }
-                if (_RDB_parse_interactive) {
+                if (RDB_parse_get_interactive()) {
                     Duro_print_error(errobjp);
-                    _RDB_parse_init_buf(NULL);
+                    RDB_parse_init_buf(NULL);
                 } else {
+                    printf("error in statement at or near line %d: ", err_line);
                     Duro_exit_interp();
                     goto error;
                 }

@@ -134,7 +134,7 @@ put_nonscalar(FILE *fp, const RDB_object *objp,
     RDB_object strobj;
     
     RDB_init_obj(&strobj);
-    if (_RDB_obj_to_str(&strobj, objp, ecp, txp) != RDB_OK) {
+    if (RDB_obj_to_str(&strobj, objp, ecp, txp) != RDB_OK) {
         RDB_destroy_obj(&strobj, ecp);
         return RDB_ERROR;
     }
@@ -424,7 +424,7 @@ op_open(int argc, RDB_object *argv[], RDB_operator *op,
 }
 
 int
-_RDB_add_io_ops(RDB_op_map *opmapp, RDB_exec_context *ecp)
+RDB_add_io_ops(RDB_op_map *opmapp, RDB_exec_context *ecp)
 {
     static RDB_parameter put_string_params[1];
     static RDB_parameter put_int_params[1];

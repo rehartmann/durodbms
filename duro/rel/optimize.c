@@ -20,7 +20,7 @@
 static RDB_bool _RDB_optimize_enabled = RDB_TRUE;
 
 RDB_bool
-_RDB_index_sorts(struct _RDB_tbindex *indexp, int seqitc,
+RDB_index_sorts(struct RDB_tbindex *indexp, int seqitc,
         const RDB_seq_item seqitv[])
 {
     int i;
@@ -76,7 +76,7 @@ eliminate_child (RDB_expression *exp, const char *name, RDB_exec_context *ecp,
     exp->def.op.args.firstp = hexp->def.op.args.firstp;
     RDB_free(hexp->def.op.name);
     RDB_free(hexp);
-    return _RDB_transform(exp->def.op.args.firstp, NULL, NULL, ecp, txp);
+    return RDB_transform(exp->def.op.args.firstp, NULL, NULL, ecp, txp);
 }
 
 /* Try to eliminate NOT operator */
@@ -210,12 +210,12 @@ unbalance_and(RDB_expression *exp)
  * Check if the expression covers all index attributes.
  */
 static int
-expr_covers_index(RDB_expression *exp, _RDB_tbindex *indexp)
+expr_covers_index(RDB_expression *exp, RDB_tbindex *indexp)
 {
     int i;
 
     for (i = 0; i < indexp->attrc
-            && _RDB_attr_node(exp, indexp->attrv[i].attrname, "=") != NULL;
+            && RDB_attr_node(exp, indexp->attrv[i].attrname, "=") != NULL;
             i++);
     return i;
 }
@@ -224,13 +224,13 @@ expr_covers_index(RDB_expression *exp, _RDB_tbindex *indexp)
  * Check if attrv covers all index attributes.
  */
 static int
-table_covers_index(RDB_type *reltyp, _RDB_tbindex *indexp)
+table_covers_index(RDB_type *reltyp, RDB_tbindex *indexp)
 {
     int i;
 
     /* Check if all index attributes appear in attrv */
     for (i = 0; i < indexp->attrc; i++) {
-        if (_RDB_tuple_type_attr(reltyp->def.basetyp,
+        if (RDB_tuple_type_attr(reltyp->def.basetyp,
                 indexp->attrv[i].attrname) == NULL)
             return RDB_FALSE;
     }
@@ -319,7 +319,7 @@ move_node(RDB_expression *texp, RDB_expression **dstpp, RDB_expression *nodep,
  * the selection into a selection which uses the index.
  */
 static int
-split_by_index(RDB_expression *texp, _RDB_tbindex *indexp,
+split_by_index(RDB_expression *texp, RDB_tbindex *indexp,
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
     int i;
@@ -335,19 +335,19 @@ split_by_index(RDB_expression *texp, _RDB_tbindex *indexp,
         RDB_expression *attrexp;
 
         if (indexp->idxp != NULL && RDB_index_is_ordered(indexp->idxp)) {
-            nodep = _RDB_attr_node(texp->def.op.args.firstp->nextp,
+            nodep = RDB_attr_node(texp->def.op.args.firstp->nextp,
                     indexp->attrv[i].attrname, "=");
             if (nodep == NULL) {
-                nodep = _RDB_attr_node(texp->def.op.args.firstp->nextp,
+                nodep = RDB_attr_node(texp->def.op.args.firstp->nextp,
                         indexp->attrv[i].attrname, ">=");
                 if (nodep == NULL) {
-                    nodep = _RDB_attr_node(texp->def.op.args.firstp->nextp,
+                    nodep = RDB_attr_node(texp->def.op.args.firstp->nextp,
                             indexp->attrv[i].attrname, ">");
                     if (nodep == NULL) {
-                        nodep = _RDB_attr_node(texp->def.op.args.firstp->nextp,
+                        nodep = RDB_attr_node(texp->def.op.args.firstp->nextp,
                                 indexp->attrv[i].attrname, "<=");
                         if (nodep == NULL) {
-                            nodep = _RDB_attr_node(texp->def.op.args.firstp->nextp,
+                            nodep = RDB_attr_node(texp->def.op.args.firstp->nextp,
                                     indexp->attrv[i].attrname, "<");
                             if (nodep == NULL)
                                 break;
@@ -356,10 +356,10 @@ split_by_index(RDB_expression *texp, _RDB_tbindex *indexp,
                 }
                 if (strcmp(nodep->def.op.name, ">=") == 0
                         || strcmp(nodep->def.op.name, ">") == 0) {
-                    stopexp = _RDB_attr_node(texp->def.op.args.firstp->nextp,
+                    stopexp = RDB_attr_node(texp->def.op.args.firstp->nextp,
                             indexp->attrv[i].attrname, "<=");
                     if (stopexp == NULL) {
-                        stopexp = _RDB_attr_node(texp->def.op.args.firstp->nextp,
+                        stopexp = RDB_attr_node(texp->def.op.args.firstp->nextp,
                                 indexp->attrv[i].attrname, "<");
                     }
                     if (stopexp != NULL) {
@@ -374,7 +374,7 @@ split_by_index(RDB_expression *texp, _RDB_tbindex *indexp,
                 all_eq = RDB_FALSE;
             }
         } else {
-            nodep = _RDB_attr_node(texp->def.op.args.firstp->nextp,
+            nodep = RDB_attr_node(texp->def.op.args.firstp->nextp,
                     indexp->attrv[i].attrname, "=");
         }
         attrexp = nodep;
@@ -396,10 +396,10 @@ split_by_index(RDB_expression *texp, _RDB_tbindex *indexp,
     }
     if (objpc > 0) {
         if (texp->def.op.args.firstp->kind == RDB_EX_TBP) {
-            objpv = _RDB_index_objpv(indexp, ixexp, texp->def.op.args.firstp->def.tbref.tbp->typ,
+            objpv = RDB_index_objpv(indexp, ixexp, texp->def.op.args.firstp->def.tbref.tbp->typ,
                     objpc, all_eq, asc, ecp);
         } else {
-            objpv = _RDB_index_objpv(indexp, ixexp,
+            objpv = RDB_index_objpv(indexp, ixexp,
                     texp->def.op.args.firstp->def.op.args.firstp->def.tbref.tbp->typ,
                     objpc, all_eq, asc, ecp);
         }
@@ -457,7 +457,7 @@ split_by_index(RDB_expression *texp, _RDB_tbindex *indexp,
 static unsigned
 table_cost(RDB_expression *texp)
 {
-    _RDB_tbindex *indexp;
+    RDB_tbindex *indexp;
 
     switch(texp->kind) {
         case RDB_EX_TBP:
@@ -588,7 +588,7 @@ mutate_where(RDB_expression *texp, RDB_expression **tbpv, int cap,
         if (tbpv[i]->kind == RDB_EX_TBP
                 && tbpv[i]->def.tbref.indexp != NULL)
         {
-            _RDB_tbindex *indexp = tbpv[i]->def.tbref.indexp;
+            RDB_tbindex *indexp = tbpv[i]->def.tbref.indexp;
             if ((indexp->idxp != NULL && RDB_index_is_ordered(indexp->idxp))
                     || expr_covers_index(exp, indexp) == indexp->attrc) {
                 if (split_by_index(nexp, indexp, ecp, txp) != RDB_OK)
@@ -598,7 +598,7 @@ mutate_where(RDB_expression *texp, RDB_expression **tbpv, int cap,
                 && strcmp(tbpv[i]->def.op.name, "project") == 0
                 && tbpv[i]->def.op.args.firstp->kind == RDB_EX_TBP
                 && tbpv[i]->def.op.args.firstp->def.tbref.indexp != NULL) {
-            _RDB_tbindex *indexp = tbpv[i]->def.op.args.firstp->def.tbref.indexp;
+            RDB_tbindex *indexp = tbpv[i]->def.op.args.firstp->def.tbref.indexp;
             if ((indexp->idxp != NULL && RDB_index_is_ordered(indexp->idxp))
                     || expr_covers_index(exp, indexp)
                             == indexp->attrc) {
@@ -726,7 +726,7 @@ mutate_full_vt(RDB_expression *texp, RDB_expression **tbpv, int cap,
 static int
 replace_empty(RDB_expression *exp, RDB_exec_context *ecp, RDB_transaction *txp)
 {
-    struct _RDB_tx_and_ec te;
+    struct RDB_tx_and_ec te;
 
     te.txp = txp;
     te.ecp = ecp;
@@ -735,7 +735,7 @@ replace_empty(RDB_expression *exp, RDB_exec_context *ecp, RDB_transaction *txp)
     if (txp->dbp != NULL
             && RDB_hashtable_get(&txp->dbp->dbrootp->empty_tbtab,
                     exp, &te) != NULL) {
-        return _RDB_expr_to_empty_table(exp, ecp, txp);
+        return RDB_expr_to_empty_table(exp, ecp, txp);
     } else if (exp->kind == RDB_EX_RO_OP) {
         RDB_expression *argp = exp->def.op.args.firstp;
 
@@ -922,7 +922,7 @@ mutate_tbref(RDB_expression *texp, RDB_expression **tbpv, int cap,
             tbc = cap;
 
         for (i = 0; i < tbc; i++) {
-            _RDB_tbindex *indexp = &texp->def.tbref.tbp->val.tb.stp->indexv[i];
+            RDB_tbindex *indexp = &texp->def.tbref.tbp->val.tb.stp->indexv[i];
             RDB_expression *tiexp = RDB_table_ref(
                     texp->def.tbref.tbp, ecp);
             if (tiexp == NULL)
@@ -998,8 +998,8 @@ sorted_table_cost(RDB_expression *texp, int seqitc,
 
     /* Check if the result must be sorted */
     if (seqitc > 0) {
-        _RDB_tbindex *indexp = _RDB_expr_sortindex(texp);
-        if (indexp == NULL || !_RDB_index_sorts(indexp, seqitc, seqitv))
+        RDB_tbindex *indexp = RDB_expr_sortindex(texp);
+        if (indexp == NULL || !RDB_index_sorts(indexp, seqitc, seqitv))
         {
             int scost = (((double) cost) /* !! * log10(cost) */ / 7);
 
@@ -1013,7 +1013,7 @@ sorted_table_cost(RDB_expression *texp, int seqitc,
 }
 
 RDB_expression *
-_RDB_optimize(RDB_object *tbp, int seqitc, const RDB_seq_item seqitv[],
+RDB_optimize(RDB_object *tbp, int seqitc, const RDB_seq_item seqitv[],
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
     int i;
@@ -1032,7 +1032,7 @@ _RDB_optimize(RDB_object *tbp, int seqitc, const RDB_seq_item seqitv[],
              */
 
             for (i = 0; i < tbp->val.tb.stp->indexc
-                    && !_RDB_index_sorts(&tbp->val.tb.stp->indexv[i],
+                    && !RDB_index_sorts(&tbp->val.tb.stp->indexv[i],
                             seqitc, seqitv);
                     i++);
             /* If yes, create reference */
@@ -1047,7 +1047,7 @@ _RDB_optimize(RDB_object *tbp, int seqitc, const RDB_seq_item seqitv[],
         return RDB_table_ref(tbp, ecp);
     }
     return _RDB_optimize_enabled ?
-            _RDB_optimize_expr(tbp->val.tb.exp, seqitc, seqitv, ecp, txp)
+            RDB_optimize_expr(tbp->val.tb.exp, seqitc, seqitv, ecp, txp)
             : dup_expr_vt(tbp->val.tb.exp, ecp);
 }
 
@@ -1061,7 +1061,7 @@ trace_plan(RDB_expression *exp, int cost, RDB_exec_context *ecp, RDB_transaction
         RDB_object strobj;
 
         RDB_init_obj(&strobj);
-        if (_RDB_expr_to_str(&strobj, exp, ecp, txp, RDB_SHOW_INDEX) != RDB_OK) {
+        if (RDB_expr_to_str(&strobj, exp, ecp, txp, RDB_SHOW_INDEX) != RDB_OK) {
             RDB_destroy_obj(&strobj, ecp);
             return;
         }
@@ -1072,7 +1072,7 @@ trace_plan(RDB_expression *exp, int cost, RDB_exec_context *ecp, RDB_transaction
 }
 
 RDB_expression *
-_RDB_optimize_expr(RDB_expression *texp, int seqitc, const RDB_seq_item seqitv[],
+RDB_optimize_expr(RDB_expression *texp, int seqitc, const RDB_seq_item seqitv[],
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
     int i;
@@ -1104,7 +1104,7 @@ _RDB_optimize_expr(RDB_expression *texp, int seqitc, const RDB_seq_item seqitv[]
     /*
      * Algebraic optimization
      */
-    if (_RDB_transform(nexp, NULL, NULL, ecp, txp) != RDB_OK)
+    if (RDB_transform(nexp, NULL, NULL, ecp, txp) != RDB_OK)
         return NULL;
 
     /*

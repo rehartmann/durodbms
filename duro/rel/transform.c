@@ -21,7 +21,7 @@ exprs_compl(const RDB_expression *ex1p, const RDB_expression *ex2p,
     *resp = RDB_FALSE;
 
     if (strcmp(ex2p->def.op.name, "not") == 0) {
-        if (_RDB_expr_equals(ex1p, ex2p->def.op.args.firstp, ecp, txp, resp)
+        if (RDB_expr_equals(ex1p, ex2p->def.op.args.firstp, ecp, txp, resp)
                 != RDB_OK)
             return RDB_ERROR;
         if (*resp)
@@ -29,7 +29,7 @@ exprs_compl(const RDB_expression *ex1p, const RDB_expression *ex2p,
     }
 
     if (strcmp(ex1p->def.op.name, "not") == 0) {
-        if (_RDB_expr_equals(ex1p->def.op.args.firstp, ex2p, ecp, txp, resp)
+        if (RDB_expr_equals(ex1p->def.op.args.firstp, ex2p, ecp, txp, resp)
                 != RDB_OK)
             return RDB_ERROR;
     }
@@ -56,7 +56,7 @@ transform_union(RDB_expression *exp, RDB_gettypefn *getfnp, void *arg,
                 && strcmp(wex1p->def.op.name, "where") == 0
                 && wex2p->kind == RDB_EX_RO_OP
                 && strcmp(wex2p->def.op.name, "where") == 0) {
-            if (_RDB_expr_equals(wex1p->def.op.args.firstp,
+            if (RDB_expr_equals(wex1p->def.op.args.firstp,
                     wex2p->def.op.args.firstp,
                     ecp, txp, &teq) != RDB_OK)
                 return RDB_ERROR;
@@ -102,7 +102,7 @@ transform_where(RDB_expression *exp, RDB_gettypefn *getfnp, void *arg,
     char *hname;
     RDB_expression *hexp;
 
-    if (_RDB_transform(exp->def.op.args.firstp, getfnp, arg, ecp, txp) != RDB_OK)
+    if (RDB_transform(exp->def.op.args.firstp, getfnp, arg, ecp, txp) != RDB_OK)
         return RDB_ERROR;
 
     for(;;) {
@@ -125,7 +125,7 @@ transform_where(RDB_expression *exp, RDB_gettypefn *getfnp, void *arg,
             exp->def.op.args.firstp = chexp->def.op.args.firstp;
             exp->def.op.args.lastp = condp;
 
-            if (_RDB_destroy_expr(chexp, ecp) != RDB_OK)
+            if (RDB_destroy_expr(chexp, ecp) != RDB_OK)
                 return RDB_ERROR;
             RDB_free(chexp);
         } else if (strcmp(chexp->def.op.name, "minus") == 0
@@ -136,7 +136,7 @@ transform_where(RDB_expression *exp, RDB_gettypefn *getfnp, void *arg,
              * Same for MINUS, SEMIJOIN
              */
 
-            if (_RDB_transform(chexp->def.op.args.firstp->nextp, getfnp, arg, ecp, txp)
+            if (RDB_transform(chexp->def.op.args.firstp->nextp, getfnp, arg, ecp, txp)
                     != RDB_OK)
                 return RDB_ERROR;
 
@@ -180,7 +180,7 @@ transform_where(RDB_expression *exp, RDB_gettypefn *getfnp, void *arg,
             chexp->def.op.args.lastp = chexp->def.op.args.firstp->nextp;
             exp->def.op.args.lastp = wexp;
 
-            return _RDB_transform(chexp, getfnp, arg, ecp, txp);
+            return RDB_transform(chexp, getfnp, arg, ecp, txp);
         } else if (strcmp(chexp->def.op.name, "extend") == 0) {
             if (exp->typ != NULL) {
                 RDB_del_nonscalar_type(exp->typ, ecp);
@@ -194,7 +194,7 @@ transform_where(RDB_expression *exp, RDB_gettypefn *getfnp, void *arg,
             /*
              * WHERE(EXTEND( -> EXTEND(WHERE(
              */
-            if (_RDB_resolve_exprnames(&exp->def.op.args.firstp->nextp,
+            if (RDB_resolve_exprnames(&exp->def.op.args.firstp->nextp,
                     chexp->def.op.args.firstp->nextp, ecp) != RDB_OK)
                 return RDB_ERROR;
 
@@ -205,8 +205,8 @@ transform_where(RDB_expression *exp, RDB_gettypefn *getfnp, void *arg,
             hexp = exp->def.op.args.firstp->nextp;
             exp->def.op.args.firstp->nextp = chexp->def.op.args.firstp->nextp;
             chexp->def.op.args.firstp->nextp = hexp;
-            _RDB_expr_list_set_lastp(&exp->def.op.args);
-            _RDB_expr_list_set_lastp(&chexp->def.op.args);
+            RDB_expr_list_set_lastp(&exp->def.op.args);
+            RDB_expr_list_set_lastp(&chexp->def.op.args);
             
             exp = chexp;
         } else if (strcmp(chexp->def.op.name, "rename") == 0) {
@@ -220,7 +220,7 @@ transform_where(RDB_expression *exp, RDB_gettypefn *getfnp, void *arg,
 
             argp = chexp->def.op.args.firstp->nextp;
             while (argp != NULL) {
-                if (_RDB_expr_refers_var(exp->def.op.args.firstp->nextp,
+                if (RDB_expr_refers_var(exp->def.op.args.firstp->nextp,
                         RDB_obj_string(RDB_expr_obj(argp))))
                     return RDB_OK;
                 argp = argp->nextp->nextp;
@@ -231,7 +231,7 @@ transform_where(RDB_expression *exp, RDB_gettypefn *getfnp, void *arg,
                 exp->typ = NULL;
             }
 
-            if (_RDB_invrename_expr(chexp->nextp, chexp, ecp)
+            if (RDB_invrename_expr(chexp->nextp, chexp, ecp)
                     != RDB_OK)
                 return RDB_ERROR;
 
@@ -247,12 +247,12 @@ transform_where(RDB_expression *exp, RDB_gettypefn *getfnp, void *arg,
             hexp = exp->def.op.args.firstp->nextp;
             exp->def.op.args.firstp->nextp = chexp->def.op.args.firstp->nextp;
             chexp->def.op.args.firstp->nextp = hexp;
-            _RDB_expr_list_set_lastp(&exp->def.op.args);
-            _RDB_expr_list_set_lastp(&chexp->def.op.args);
+            RDB_expr_list_set_lastp(&exp->def.op.args);
+            RDB_expr_list_set_lastp(&chexp->def.op.args);
 
             exp = chexp;
         } else {
-            return _RDB_transform(chexp, getfnp, arg, ecp, txp);
+            return RDB_transform(chexp, getfnp, arg, ecp, txp);
         }
     }
 }
@@ -365,7 +365,7 @@ swap_project_rename(RDB_expression *texp, RDB_gettypefn *getfnp, void *arg,
         chtexp->def.op.args.firstp->nextp = texp->def.op.args.firstp->nextp;
         chtexp->def.op.args.lastp = texp->def.op.args.lastp;
         texp->def.op.args.firstp = chtexp->def.op.args.firstp;
-        if (_RDB_destroy_expr(chtexp, ecp) != RDB_OK)
+        if (RDB_destroy_expr(chtexp, ecp) != RDB_OK)
             return RDB_ERROR;
         RDB_free(chtexp);
 
@@ -410,8 +410,8 @@ swap_project_rename(RDB_expression *texp, RDB_gettypefn *getfnp, void *arg,
     hexp = texp->def.op.args.firstp->nextp;
     texp->def.op.args.firstp->nextp = chtexp->def.op.args.firstp->nextp;
     chtexp->def.op.args.firstp->nextp = hexp;
-    _RDB_expr_list_set_lastp(&texp->def.op.args);
-    _RDB_expr_list_set_lastp(&chtexp->def.op.args);
+    RDB_expr_list_set_lastp(&texp->def.op.args);
+    RDB_expr_list_set_lastp(&chtexp->def.op.args);
 
     return RDB_OK;
 }
@@ -461,7 +461,7 @@ transform_project_extend(RDB_expression *exp, RDB_gettypefn *getfnp, void *arg,
         expv[0]->nextp = exp->def.op.args.firstp->nextp;
         exp->def.op.args.firstp = expv[0];
         RDB_free(expv);
-        if (_RDB_destroy_expr(chexp, ecp) != RDB_OK)
+        if (RDB_destroy_expr(chexp, ecp) != RDB_OK)
             return RDB_ERROR;
         RDB_free(chexp);
         return transform_project(exp, getfnp, arg, ecp, txp);
@@ -474,7 +474,7 @@ transform_project_extend(RDB_expression *exp, RDB_gettypefn *getfnp, void *arg,
         chexp->typ = NULL;
     }
 
-    return _RDB_transform(chexp, getfnp, arg, ecp, txp);
+    return RDB_transform(chexp, getfnp, arg, ecp, txp);
 }
 
 /**
@@ -515,7 +515,7 @@ swap_project_where(RDB_expression *exp, RDB_expression *chexp,
         char *attrname = chtyp->def.basetyp->def.tuple.attrv[i].name;
 
         if (proj_attr(exp, attrname) == NULL
-                && _RDB_expr_refers_var(chexp, attrname)) {
+                && RDB_expr_refers_var(chexp, attrname)) {
             attrv[attrc++] = attrname;
         }
     }
@@ -563,8 +563,8 @@ swap_project_where(RDB_expression *exp, RDB_expression *chexp,
         exp->def.op.args.firstp->nextp = chexp->def.op.args.firstp->nextp;
         chexp->def.op.args.firstp->nextp = hexp;
 
-        _RDB_expr_list_set_lastp(&exp->def.op.args);
-        _RDB_expr_list_set_lastp(&chexp->def.op.args);
+        RDB_expr_list_set_lastp(&exp->def.op.args);
+        RDB_expr_list_set_lastp(&chexp->def.op.args);
     }
     RDB_free(attrv);
 
@@ -595,7 +595,7 @@ transform_project(RDB_expression *exp, RDB_gettypefn *getfnp, void *arg,
             }
             exp->def.op.args.firstp = chexp->def.op.args.firstp;
             exp->def.op.args.firstp->nextp = chexp->nextp;
-            if (_RDB_destroy_expr(chexp, ecp) != RDB_OK)
+            if (RDB_destroy_expr(chexp, ecp) != RDB_OK)
                 return RDB_ERROR;
             RDB_free(chexp);
         } else if (strcmp(chexp->def.op.name, "union") == 0) {
@@ -620,7 +620,7 @@ transform_project(RDB_expression *exp, RDB_gettypefn *getfnp, void *arg,
         } else if (strcmp(chexp->def.op.name, "extend") == 0) {
             return transform_project_extend(exp, getfnp, arg, ecp, txp);
         } else {
-            return _RDB_transform(chexp, getfnp, arg, ecp, txp);
+            return RDB_transform(chexp, getfnp, arg, ecp, txp);
         }
     } while (exp->kind == RDB_EX_RO_OP
             && strcmp(exp->def.op.name, "project") == 0);
@@ -628,7 +628,7 @@ transform_project(RDB_expression *exp, RDB_gettypefn *getfnp, void *arg,
     if (exp->kind == RDB_EX_RO_OP) {
         argp = exp->def.op.args.firstp;
         while (argp != NULL) {
-            if (_RDB_transform(argp, getfnp, arg, ecp, txp) != RDB_OK)
+            if (RDB_transform(argp, getfnp, arg, ecp, txp) != RDB_OK)
                 return RDB_ERROR;
             argp = argp->nextp;
         }
@@ -640,7 +640,7 @@ transform_project(RDB_expression *exp, RDB_gettypefn *getfnp, void *arg,
  * Convert REMOVE into PROJECT
  */
 int
-_RDB_remove_to_project(RDB_expression *exp, RDB_gettypefn *getfnp, void *arg,
+RDB_remove_to_project(RDB_expression *exp, RDB_gettypefn *getfnp, void *arg,
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
     RDB_expression **argv = NULL;
@@ -750,7 +750,7 @@ static int
 transform_remove(RDB_expression *exp, RDB_gettypefn *getfnp, void *arg,
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
-    if (_RDB_remove_to_project(exp, getfnp, arg, ecp, txp) != RDB_OK)
+    if (RDB_remove_to_project(exp, getfnp, arg, ecp, txp) != RDB_OK)
         return RDB_ERROR;
     return transform_project(exp, getfnp, arg, ecp, txp);
 }
@@ -838,7 +838,7 @@ transform_is_empty(RDB_expression *exp, RDB_gettypefn *getfnp, void *arg,
 {
     RDB_expression *chexp = exp->def.op.args.firstp;
 
-    if (_RDB_transform(chexp, getfnp, arg, ecp, txp) != RDB_OK)
+    if (RDB_transform(chexp, getfnp, arg, ecp, txp) != RDB_OK)
        return RDB_ERROR;
 
     /* Add projection, if not already present */
@@ -865,7 +865,7 @@ transform_children(RDB_expression *exp, RDB_gettypefn *getfnp, void *arg,
 {
     RDB_expression *argp = exp->def.op.args.firstp;
     while (argp != NULL) {
-        if (_RDB_transform(argp, getfnp, arg, ecp, txp) != RDB_OK)
+        if (RDB_transform(argp, getfnp, arg, ecp, txp) != RDB_OK)
             return RDB_ERROR;
         argp = argp->nextp;
     }
@@ -878,7 +878,7 @@ transform_children(RDB_expression *exp, RDB_gettypefn *getfnp, void *arg,
  * because it conflicts with optimizing certain UNIONs.
  */
 int
-_RDB_transform(RDB_expression *exp, RDB_gettypefn *getfnp, void *arg,
+RDB_transform(RDB_expression *exp, RDB_gettypefn *getfnp, void *arg,
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
     if (exp->transformed)
@@ -932,4 +932,4 @@ _RDB_transform(RDB_expression *exp, RDB_gettypefn *getfnp, void *arg,
         return RDB_OK;
     }
     return RDB_OK;
-} /* _RDB_transform */
+} /* RDB_transform */

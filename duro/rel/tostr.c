@@ -430,7 +430,7 @@ append_table_def(RDB_object *objp, const RDB_object *tbp, RDB_exec_context *ecp,
 }
 
 int
-_RDB_obj_to_str(RDB_object *dstp, const RDB_object *srcp,
+RDB_obj_to_str(RDB_object *dstp, const RDB_object *srcp,
         RDB_exec_context *ecp, RDB_transaction *txp)
 {
     if (RDB_string_to_obj(dstp, "", ecp) != RDB_OK)
@@ -440,7 +440,7 @@ _RDB_obj_to_str(RDB_object *dstp, const RDB_object *srcp,
 }
 
 int
-_RDB_table_def_to_str(RDB_object *dstp, const RDB_object *srcp,
+RDB_table_def_to_str(RDB_object *dstp, const RDB_object *srcp,
         RDB_exec_context *ecp, RDB_transaction *txp, int options)
 {
     if (RDB_string_to_obj(dstp, "", ecp) != RDB_OK)
@@ -453,7 +453,7 @@ _RDB_table_def_to_str(RDB_object *dstp, const RDB_object *srcp,
  * Convert the expresssion *exp to its string representation and store it in *dstp.
  */
 int
-_RDB_expr_to_str(RDB_object *dstp, const RDB_expression *exp,
+RDB_expr_to_str(RDB_object *dstp, const RDB_expression *exp,
         RDB_exec_context *ecp, RDB_transaction *txp, int options)
 {
     if (RDB_string_to_obj(dstp, "", ecp) != RDB_OK)
@@ -463,13 +463,13 @@ _RDB_expr_to_str(RDB_object *dstp, const RDB_expression *exp,
 }
 
 int
-_RDB_print_expr(const RDB_expression *exp, FILE *fp, RDB_exec_context *ecp)
+RDB_print_expr(const RDB_expression *exp, FILE *fp, RDB_exec_context *ecp)
 {
 	RDB_object dst;
 	int ret;
 
 	RDB_init_obj(&dst);
-    if (_RDB_expr_to_str(&dst, exp, ecp, NULL, 0) != RDB_OK) {
+    if (RDB_expr_to_str(&dst, exp, ecp, NULL, 0) != RDB_OK) {
         RDB_destroy_obj(&dst, ecp);
         return RDB_ERROR;
     }

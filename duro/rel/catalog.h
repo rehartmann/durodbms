@@ -4,7 +4,7 @@
 /*
  * $Id$
  *
- * Copyright (C) 2003-2005 Ren� Hartmann.
+ * Copyright (C) 2003-2012 Rene Hartmann.
  * See the file COPYING for redistribution information.
  */
 
@@ -12,67 +12,67 @@
 #include "internal.h"
 
 int
-_RDB_cat_insert(RDB_object *, RDB_exec_context *, RDB_transaction *);
+RDB_cat_insert(RDB_object *, RDB_exec_context *, RDB_transaction *);
 
 int
-_RDB_cat_delete(RDB_object *, RDB_exec_context *, RDB_transaction *);
+RDB_cat_delete(RDB_object *, RDB_exec_context *, RDB_transaction *);
 
 int
-_RDB_open_systables(RDB_dbroot *, RDB_exec_context *, RDB_transaction *);
+RDB_open_systables(RDB_dbroot *, RDB_exec_context *, RDB_transaction *);
 
 int
-_RDB_cat_create_db(RDB_exec_context *, RDB_transaction *);
+RDB_cat_create_db(RDB_exec_context *, RDB_transaction *);
 
 int
-_RDB_possreps_query(const char *name, RDB_exec_context *, RDB_transaction *,
+RDB_possreps_query(const char *name, RDB_exec_context *, RDB_transaction *,
         RDB_object **tbpp);
 
 int
-_RDB_possrepcomps_query(const char *name, const char *possrepname,
+RDB_possrepcomps_query(const char *name, const char *possrepname,
         RDB_exec_context *, RDB_transaction *txp, RDB_object **tbpp);
 
 RDB_object *
-_RDB_cat_get_rtable(const char *, RDB_exec_context *, RDB_transaction *);
+RDB_cat_get_rtable(const char *, RDB_exec_context *, RDB_transaction *);
 
 RDB_object *
-_RDB_cat_get_vtable(const char *, RDB_exec_context *, RDB_transaction *);
+RDB_cat_get_vtable(const char *, RDB_exec_context *, RDB_transaction *);
 
 int
-_RDB_cat_rename_table(RDB_object *, const char *, RDB_exec_context *,
+RDB_cat_rename_table(RDB_object *, const char *, RDB_exec_context *,
         RDB_transaction *);
 
 int
-_RDB_cat_get_type(const char *name, RDB_exec_context *, RDB_transaction *,
+RDB_cat_get_type(const char *name, RDB_exec_context *, RDB_transaction *,
         RDB_type **typp);
 
 int
-_RDB_cat_load_ro_op(const char *, RDB_exec_context *, RDB_transaction *);
+RDB_cat_load_ro_op(const char *, RDB_exec_context *, RDB_transaction *);
 
 int
-_RDB_cat_load_upd_op(const char *, RDB_exec_context *, RDB_transaction *);
+RDB_cat_load_upd_op(const char *, RDB_exec_context *, RDB_transaction *);
 
 int
-_RDB_cat_insert_table_recmap(RDB_object *tbp, const char *rmname,
+RDB_cat_insert_table_recmap(RDB_object *tbp, const char *rmname,
         RDB_exec_context *, RDB_transaction *txp);
 
 int
-_RDB_cat_insert_index(const char *name, int attrc, const RDB_seq_item attrv[],
+RDB_cat_insert_index(const char *name, int attrc, const RDB_seq_item attrv[],
         RDB_bool unique, RDB_bool ordered, const char *tbname,
         RDB_exec_context *, RDB_transaction *);
 
 int
-_RDB_cat_index_tablename(const char *, char **tbnamep, RDB_exec_context *,
+RDB_cat_index_tablename(const char *, char **tbnamep, RDB_exec_context *,
         RDB_transaction *);
 
 int
-_RDB_cat_delete_index(const char *, RDB_exec_context *, RDB_transaction *);
+RDB_cat_delete_index(const char *, RDB_exec_context *, RDB_transaction *);
 
 int
-_RDB_cat_get_indexes(const char *tablename, RDB_dbroot *dbrootp,
-        RDB_exec_context *, RDB_transaction *, struct _RDB_tbindex **);
+RDB_cat_get_indexes(const char *tablename, RDB_dbroot *dbrootp,
+        RDB_exec_context *, RDB_transaction *, struct RDB_tbindex **);
 
 int
-_RDB_cat_create_constraint(const char *name, RDB_expression *exp,
+RDB_cat_create_constraint(const char *name, RDB_expression *exp,
                       RDB_exec_context *, RDB_transaction *);
 
 #endif

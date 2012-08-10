@@ -1,7 +1,7 @@
 /*
  * $Id$ 
  *
- * Copyright (C) 2003-2006 René Hartmann.
+ * Copyright (C) 2003-2006 Renï¿½ Hartmann.
  * See the file COPYING for redistribution information.
  */
 
@@ -92,11 +92,11 @@ RDB_cursor_get(RDB_cursor *curp, int fno, void **datapp, size_t *lenp)
 
     if (fno < curp->recmapp->keyfieldcount) {
         databp = ((RDB_byte *)curp->current_key.data);
-        offs = _RDB_get_field(curp->recmapp, fno,
+        offs = RDB_get_field(curp->recmapp, fno,
                 curp->current_key.data, curp->current_key.size, lenp, NULL);
     } else {
         databp = ((RDB_byte *)curp->current_data.data);
-        offs = _RDB_get_field(curp->recmapp, fno,
+        offs = RDB_get_field(curp->recmapp, fno,
                 curp->current_data.data, curp->current_data.size, lenp, NULL);
     }
     if (offs < 0)
@@ -114,13 +114,13 @@ RDB_cursor_set(RDB_cursor *curp, int fieldc, RDB_field fields[])
 
     for (i = 0; i < fieldc; i++) {
         if (fields[i].no < curp->recmapp->keyfieldcount) {
-            ret = _RDB_set_field(curp->recmapp, &curp->current_key, &fields[i],
+            ret = RDB_set_field(curp->recmapp, &curp->current_key, &fields[i],
                       curp->recmapp->varkeyfieldcount);
             if (ret != RDB_OK)
                 return ret;
             keymodfd = RDB_TRUE;
         } else {
-            ret = _RDB_set_field(curp->recmapp, &curp->current_data, &fields[i],
+            ret = RDB_set_field(curp->recmapp, &curp->current_data, &fields[i],
                       curp->recmapp->vardatafieldcount);
             if (ret != RDB_OK)
                 return ret;
@@ -161,7 +161,7 @@ RDB_cursor_update(RDB_cursor *curp, int fieldc, const RDB_field fieldv[])
         goto cleanup;
     }
 
-    ret = _RDB_update_rec(curp->recmapp, &pkey, &data, fieldc, fieldv,
+    ret = RDB_update_DBT_rec(curp->recmapp, &pkey, &data, fieldc, fieldv,
             curp->txid);
 
 cleanup:
@@ -232,10 +232,10 @@ RDB_cursor_seek(RDB_cursor *curp, int fieldc, RDB_field keyv[], int flags)
     }
 
     if (curp->idxp == NULL) {
-        ret = _RDB_fields_to_DBT(curp->recmapp, curp->recmapp->keyfieldcount,
+        ret = RDB_fields_to_DBT(curp->recmapp, curp->recmapp->keyfieldcount,
                 keyv, &curp->current_key);
     } else {
-        ret = _RDB_fields_to_DBT(curp->recmapp, fieldc, keyv, &key);
+        ret = RDB_fields_to_DBT(curp->recmapp, fieldc, keyv, &key);
         key.flags = DB_DBT_REALLOC;
     }
     if (ret != RDB_OK)

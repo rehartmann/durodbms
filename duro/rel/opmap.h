@@ -43,7 +43,7 @@ int
 RDB_del_ops(RDB_op_map *, const char *name, RDB_exec_context *);
 
 RDB_operator *
-_RDB_new_operator(const char *, int, RDB_type *argtv[], RDB_type *,
+RDB_new_operator(const char *, int, RDB_type *argtv[], RDB_type *,
         RDB_exec_context *);
 
 int

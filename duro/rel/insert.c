@@ -13,7 +13,7 @@
 #include <string.h>
 
 int
-_RDB_insert_real(RDB_object *tbp, const RDB_object *tplp,
+RDB_insert_real(RDB_object *tbp, const RDB_object *tplp,
                  RDB_exec_context *ecp, RDB_transaction *txp)
 {
     int i;
@@ -24,7 +24,7 @@ _RDB_insert_real(RDB_object *tbp, const RDB_object *tplp,
 
     if (tbp->val.tb.stp == NULL) {
         /* Create physical table */
-        if (_RDB_create_stored_table(tbp, txp != NULL ? txp->envp : NULL,
+        if (RDB_create_stored_table(tbp, txp != NULL ? txp->envp : NULL,
                 NULL, ecp, txp) != RDB_OK) {
             return RDB_ERROR;
         }
@@ -40,7 +40,7 @@ _RDB_insert_real(RDB_object *tbp, const RDB_object *tplp,
         RDB_object *valp;
         RDB_type *attrtyp = tuptyp->def.tuple.attrv[i].typ;
         
-        fnop = _RDB_field_no(tbp->val.tb.stp, tuptyp->def.tuple.attrv[i].name);
+        fnop = RDB_field_no(tbp->val.tb.stp, tuptyp->def.tuple.attrv[i].name);
         valp = RDB_tuple_get(tplp, tuptyp->def.tuple.attrv[i].name);
 
         /* If there is no value, check if there is a default */
@@ -73,13 +73,13 @@ _RDB_insert_real(RDB_object *tbp, const RDB_object *tplp,
         /* Set type information for storage */
         valp->store_typ = attrtyp;
 
-        ret = _RDB_obj_to_field(&fvp[*fnop], valp, ecp);
+        ret = RDB_obj_to_field(&fvp[*fnop], valp, ecp);
         if (ret != RDB_OK) {
             goto cleanup;
         }
     }
 
-    _RDB_cmp_ecp = ecp;
+    RDB_cmp_ecp = ecp;
     ret = RDB_insert_rec(tbp->val.tb.stp->recmapp, fvp,
             tbp->val.tb.is_persistent ? txp->txid : NULL);
     if (ret == DB_KEYEXIST) {

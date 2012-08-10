@@ -1,7 +1,7 @@
 /*
  * $Id$
  *
- * Copyright (C) 2004-2006 René Hartmann.
+ * Copyright (C) 2004-2006 Renï¿½ Hartmann.
  * See the file COPYING for redistribution information.
  */
 
@@ -84,13 +84,13 @@ make_skey(DB *dbp, const DBT *pkeyp, const DBT *pdatap, DBT *skeyp)
         fieldv[i].no = ixp->fieldv[i];
         fieldv[i].copyfp = &memcpy;
     }
-    ret = _RDB_get_fields(ixp->rmp, pkeyp, pdatap, ixp->fieldc, fieldv);
+    ret = RDB_get_DBT_fields(ixp->rmp, pkeyp, pdatap, ixp->fieldc, fieldv);
     if (ret != RDB_OK) {
         free(fieldv);
         return ret;
     }
 
-    ret = _RDB_fields_to_DBT(ixp->rmp, ixp->fieldc, fieldv, skeyp);
+    ret = RDB_fields_to_DBT(ixp->rmp, ixp->fieldc, fieldv, skeyp);
     skeyp->flags = DB_DBT_APPMALLOC;
     free(fieldv);
     return ret;
@@ -136,10 +136,10 @@ get_field(RDB_index *ixp, int fi, void *datap, size_t len, size_t *lenp,
             if (ixp->rmp->fieldlens[ixp->fieldv[i]] != RDB_VARIABLE_LEN) {
                 offs += ixp->rmp->fieldlens[i];
             } else {
-                offs += _RDB_get_vflen(databp, len, vfcnt, vpos++);
+                offs += RDB_get_vflen(databp, len, vfcnt, vpos++);
             }
         }
-        *lenp = _RDB_get_vflen(databp, len, vfcnt, vpos);
+        *lenp = RDB_get_vflen(databp, len, vfcnt, vpos);
     }
     if (vposp != NULL)
         *vposp = vpos;
@@ -336,7 +336,7 @@ RDB_index_get_fields(RDB_index *ixp, RDB_field keyv[], int fieldc, DB_TXN *txid,
     }
 
     /* Fill key DBT */
-    ret = _RDB_fields_to_DBT(ixp->rmp, ixp->fieldc, keyv, &key);
+    ret = RDB_fields_to_DBT(ixp->rmp, ixp->fieldc, keyv, &key);
     if (ret != RDB_OK)
         return ret;
 
@@ -355,13 +355,13 @@ RDB_index_get_fields(RDB_index *ixp, RDB_field keyv[], int fieldc, DB_TXN *txid,
         int fno = retfieldv[i].no;
 
         if (fno < ixp->rmp->keyfieldcount) {
-            offs = _RDB_get_field(ixp->rmp, fno, pkey.data, pkey.size,
+            offs = RDB_get_field(ixp->rmp, fno, pkey.data, pkey.size,
                     &retfieldv[i].len, NULL);
             if (offs < 0)
                 return offs;
             retfieldv[i].datap = ((RDB_byte *)pkey.data) + offs;
         } else {
-            offs = _RDB_get_field(ixp->rmp, fno,
+            offs = RDB_get_field(ixp->rmp, fno,
                     data.data, data.size, &retfieldv[i].len, NULL);
             if (offs < 0)
                 return offs;
@@ -384,7 +384,7 @@ RDB_index_delete_rec(RDB_index *ixp, RDB_field keyv[], DB_TXN *txid)
     }
 
     /* Fill key DBT */
-    ret = _RDB_fields_to_DBT(ixp->rmp, ixp->fieldc, keyv, &key);
+    ret = RDB_fields_to_DBT(ixp->rmp, ixp->fieldc, keyv, &key);
     if (ret != RDB_OK)
         return ret;
 

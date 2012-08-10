@@ -10,14 +10,14 @@
  * See the file COPYING for redistribution information.
  */
 
-enum _RDB_node_kind {
+enum RDB_node_kind {
     RDB_NODE_TOK, /* Token */
     RDB_NODE_EXPR, /* Expression */
     RDB_NODE_INNER /* List of nodes */
 };
 
 typedef struct RDB_parse_node {
-    enum _RDB_node_kind kind;
+    enum RDB_node_kind kind;
     union {
         int token;
         struct {
@@ -81,6 +81,6 @@ RDB_print_parse_node(FILE *, RDB_parse_node *,
         RDB_exec_context *);
 
 const char *
-_RDB_token_name(int);
+RDB_token_name(int);
 
 #endif
