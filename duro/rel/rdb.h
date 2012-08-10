@@ -154,6 +154,9 @@ typedef struct RDB_op_data RDB_operator;
 
 typedef struct RDB_qresult RDB_qresult;
 
+/* Function definition for reading lines of input */
+typedef char *RDB_readline_fn(void);
+
 /* internal */
 enum _RDB_tp_kind {
     RDB_TP_SCALAR,

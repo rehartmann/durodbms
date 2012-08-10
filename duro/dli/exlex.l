@@ -19,6 +19,7 @@
 #include <string.h>
 #include <math.h>
 #include <ctype.h>
+#include <stdio.h>
 
 #define COMMENT_BUF_SIZE 10
 
@@ -26,12 +27,12 @@ extern RDB_exec_context *_RDB_parse_ecp;
 
 int _RDB_parse_interactive = 0;
 int _RDB_parse_case_insensitive = 1;
+RDB_readline_fn *RDB_parse_readline_fnp;
+char *RDB_parse_promptp;
 
 YY_BUFFER_STATE _RDB_parse_buffer;
 
 int _RDB_parse_start_token;
-
-char *_RDB_parse_prompt;
 
 RDB_object *whitecommp = NULL;
 
@@ -937,18 +938,24 @@ EXPLAIN {
     /*
      * If in interactive mode, read next line from input
      */
-    char strbuf[256];
+    char *line;
 
     if (!_RDB_parse_interactive)
         yyterminate();
 
-    fputs(_RDB_parse_prompt, stdout);
-    if (fgets(strbuf, sizeof(strbuf), stdin) == NULL) {
+    line = (*RDB_parse_readline_fnp) ();
+    if (line == NULL) {
         yy_delete_buffer(YY_CURRENT_BUFFER);
         yyterminate();
     }
 
-    _RDB_parse_buffer = yy_scan_string(strbuf);
+    _RDB_parse_buffer = yy_scan_string(line); 
+    free(line);
 }
 
 %%
+
+void
+RDB_parse_set_readline_fn(RDB_readline_fn *fnp) {
+    RDB_parse_readline_fnp = fnp;
+}

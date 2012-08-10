@@ -66,6 +66,8 @@ int err_line;
 
 typedef struct yy_buffer_state *YY_BUFFER_STATE;
 
+static RDB_object prompt;
+
 static sig_atomic_t interrupted;
 
 /*
@@ -232,7 +234,11 @@ Duro_exit_interp(void)
 
     destroy_varmap(&root_module.varmap);
 
-    /* Destroy only the varmap, not the variables since they are global */
+    if (_RDB_parse_interactive) {
+        RDB_destroy_obj(&prompt, &ec);
+    }
+
+    /* Destroy only the varmap, not the variables as they are global */
     RDB_destroy_hashmap(&sys_module.varmap);
 
     if (txnp != NULL) {
@@ -2732,7 +2738,7 @@ exec_typedrop(const RDB_parse_node *nodep, RDB_exec_context *ecp)
     } else {
         ret = RDB_OK;
     }
-    if (ret == RDB_OK && _RDB_parse_interactive)
+    if ((ret == RDB_OK) && _RDB_parse_interactive)
         printf("Type %s dropped.\n", RDB_expr_var_name(nodep->exp));
     return ret;
 
@@ -2775,7 +2781,7 @@ exec_typeimpl(RDB_parse_node *nodep, RDB_exec_context *ecp)
     } else {
         ret = RDB_OK;
     }
-    if (ret == RDB_OK && _RDB_parse_interactive)
+    if ((ret == RDB_OK) && _RDB_parse_interactive)
         printf("Type %s implemented.\n", RDB_expr_var_name(nodep->exp));
     return ret;
 
@@ -3153,7 +3159,7 @@ exec_opdrop(const RDB_parse_node *nodep, RDB_exec_context *ecp)
     } else {
         ret = RDB_OK;
     }
-    if (ret == RDB_OK && _RDB_parse_interactive)
+    if ((ret == RDB_OK) && _RDB_parse_interactive)
         printf("Operator %s dropped.\n", RDB_expr_var_name(nodep->exp));
     return ret;
 }
@@ -3410,7 +3416,7 @@ exec_indexdef(RDB_parse_node *nodep, RDB_exec_context *ecp)
 
     ret = RDB_create_table_index(indexname, tbp, idxcompc,
             idxcompv, RDB_ORDERED, ecp, &txnp->tx);
-    if (_RDB_parse_interactive)
+    if ((ret == RDB_OK) && _RDB_parse_interactive)
         printf("Index %s created.\n", indexname);
     RDB_free(idxcompv);
     return ret;
@@ -3667,24 +3673,22 @@ Duro_process_stmt(RDB_exec_context *ecp)
 {
     int ret;
     RDB_parse_node *stmtp;
-    RDB_object prompt;
     RDB_object *dbnameobjp = RDB_hashmap_get(&sys_module.varmap, "current_db");
 
-    /* Build prompt string */
-    RDB_init_obj(&prompt);
-    if (dbnameobjp != NULL && *RDB_obj_string(dbnameobjp) != '\0') {
-        RDB_string_to_obj(&prompt, RDB_obj_string(dbnameobjp), ecp);
-    } else {
-        RDB_string_to_obj(&prompt, "no db", ecp);
+    if (_RDB_parse_interactive) {
+        /* Build prompt */
+        if (dbnameobjp != NULL && *RDB_obj_string(dbnameobjp) != '\0') {
+            ret = RDB_string_to_obj(&prompt, RDB_obj_string(dbnameobjp), ecp);
+        } else {
+            ret = RDB_string_to_obj(&prompt, "no db", ecp);
+        }
+        if (ret != RDB_OK)
+            return ret;
+        RDB_append_string(&prompt, "> ", ecp);
     }
-    RDB_append_string(&prompt, "> ", ecp);
-
-    /* Set prompt */
-    _RDB_parse_prompt = RDB_obj_string(&prompt);
 
     stmtp = RDB_parse_stmt(ecp);
 
-    RDB_destroy_obj(&prompt, ecp);
     if (stmtp == NULL) {
         err_line = yylineno;
         return RDB_ERROR;
@@ -3742,6 +3746,12 @@ Duro_dt_interrupt(void)
     interrupted = 1;
 }
 
+/**
+ * Read statements from file infilename and execute them.
+ * If infilename is NULL, read from standard input.
+ * If the input is a terminal, a function for reading lines must be
+ * provided using RDB_parse_set_readline_fn().
+ */
 int
 Duro_dt_execute(RDB_environment *dbenvp, char *dbname, char *infilename,
         RDB_exec_context *ecp)
@@ -3765,8 +3775,10 @@ Duro_dt_execute(RDB_environment *dbenvp, char *dbname, char *infilename,
     err_line = -1;
 
     _RDB_parse_interactive = (RDB_bool) isatty(fileno(infile != NULL ? infile : stdin));
-
     if (_RDB_parse_interactive) {
+        /* Prompt is only needed in interactive mode */
+        RDB_init_obj(&prompt);
+
         printf("Duro D/T library version %d.%d\n", RDB_major_version(),
                 RDB_minor_version());
     }
@@ -3805,4 +3817,10 @@ error:
         fclose(infile);
     }
     return RDB_ERROR;
+}
+
+const char*
+Duro_dt_prompt(void)
+{
+    return RDB_obj_string(&prompt);
 }

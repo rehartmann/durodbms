@@ -104,7 +104,7 @@ else:
 # Interpreter
 #
 
-dli = env.Program('dli/durodt.c')
+dli = env.Program('dli/durodt.c', LIBS = env['LIBS'] + ['readline'])
 
 #
 # Docs

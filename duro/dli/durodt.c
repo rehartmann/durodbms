@@ -18,6 +18,9 @@
 #include <signal.h>
 #include <locale.h>
 
+#include <readline/readline.h>
+#include <readline/history.h>
+
 static void
 usage_error(void)
 {
@@ -28,6 +31,22 @@ usage_error(void)
 static void
 handle_sigint(int sig) {
     Duro_dt_interrupt();
+}
+
+/*
+ * Read a line of input in interactive mode
+ */
+static char *
+read_line_interactive(void)
+{
+    /* Read a line using GNU readline */
+    char *line = readline(Duro_dt_prompt());
+
+    /* Store line in history if it is not empty */
+    if (line != NULL && line[0] != '\0')
+        add_history(line);
+
+    return line;
 }
 
 int
@@ -95,6 +114,8 @@ main(int argc, char *argv[])
     } else {
         envp = NULL;
     }
+
+    RDB_parse_set_readline_fn(&read_line_interactive);
 
     RDB_init_exec_context(&ec);
 

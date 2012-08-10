@@ -20,7 +20,6 @@
 
 _RDB_EXTERN_VAR int _RDB_parse_interactive;
 _RDB_EXTERN_VAR int _RDB_parse_case_insensitive;
-_RDB_EXTERN_VAR char *_RDB_parse_prompt;
 
 void
 _RDB_parse_init_buf(FILE *);
@@ -40,5 +39,8 @@ RDB_parse_stmt(RDB_exec_context *);
 
 RDB_parse_node *
 RDB_parse_stmt_string(const char *, RDB_exec_context *);
+
+void
+RDB_parse_set_readline_fn(RDB_readline_fn *fnp);
 
 #endif

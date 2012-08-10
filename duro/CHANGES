@@ -12,6 +12,8 @@ Changes for Duro 0.16
 
 - RDB_get_table() now raises a name_error if the table is not found.
 
+- Duro D/T now uses GNU readline.
+
 Changes for Duro 0.15
 
 - Replaced PRINT/PRINTLN/READLN by put/put_line/get_line.
