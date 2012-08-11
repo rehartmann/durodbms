@@ -594,7 +594,7 @@ get_db(RDB_exec_context *ecp)
     }
     dbname = RDB_obj_string(dbnameobjp);
     if (*dbname == '\0') {
-        RDB_raise_resource_not_found("no database", ecp);
+        RDB_raise_not_found("no database", ecp);
         return NULL;
     }
     if (envp == NULL) {
@@ -639,9 +639,7 @@ evaluate_retry(RDB_expression *exp, RDB_exec_context *ecp, RDB_object *resultp)
      */
     dbp = get_db(ecp);
     if (dbp == NULL) {
-        dbp = RDB_get_sys_db(envp, ecp);
-        if (dbp == NULL)
-            return RDB_ERROR;
+        return RDB_ERROR;
     }
 
     if (RDB_begin_tx(ecp, &tx, dbp, NULL) != RDB_OK)
@@ -701,9 +699,7 @@ parse_node_to_type_retry(RDB_parse_node *nodep, RDB_exec_context *ecp)
      */
     dbp = get_db(ecp);
     if (dbp == NULL) {
-        dbp = RDB_get_sys_db(envp, ecp);
-        if (dbp == NULL)
-            return NULL;
+        return NULL;
     }
 
     if (RDB_begin_tx(ecp, &tx, dbp, NULL) != RDB_OK)
@@ -1382,9 +1378,7 @@ exec_call_retry(const RDB_parse_node *nodep, RDB_exec_context *ecp) {
      */
     dbp = get_db(ecp);
     if (dbp == NULL) {
-        dbp = RDB_get_sys_db(envp, ecp);
-        if (dbp == NULL)
-            return RDB_ERROR;
+        return RDB_ERROR;
     }
 
     if (RDB_begin_tx(ecp, &tx, dbp, NULL) != RDB_OK)
@@ -2581,18 +2575,18 @@ exec_typedef(const RDB_parse_node *stmtp, RDB_exec_context *ecp)
     RDB_expression *constraintp = NULL;
 
     if (txnp == NULL) {
-        RDB_database *sysdbp;
+        RDB_database *dbp;
 
         if (envp == NULL) {
             RDB_raise_resource_not_found("no connection", ecp);
             return RDB_ERROR;
         }
 
-        sysdbp = RDB_get_sys_db(envp, ecp);
-        if (sysdbp == NULL)
+        dbp = get_db(ecp);
+        if (dbp == NULL)
             return RDB_ERROR;
 
-        if (RDB_begin_tx(ecp, &tmp_tx, sysdbp, NULL) != RDB_OK) {
+        if (RDB_begin_tx(ecp, &tmp_tx, dbp, NULL) != RDB_OK) {
             return RDB_ERROR;
         }
     }
@@ -2700,18 +2694,18 @@ exec_typedrop(const RDB_parse_node *nodep, RDB_exec_context *ecp)
     RDB_type *typ;
 
     if (txnp == NULL) {
-        RDB_database *sysdbp;
+        RDB_database *dbp;
 
         if (envp == NULL) {
             RDB_raise_resource_not_found("no connection", ecp);
             return RDB_ERROR;
         }
 
-        sysdbp = RDB_get_sys_db(envp, ecp);
-        if (sysdbp == NULL)
+        dbp = get_db(ecp);
+        if (dbp == NULL)
             return RDB_ERROR;
 
-        if (RDB_begin_tx(ecp, &tmp_tx, sysdbp, NULL) != RDB_OK) {
+        if (RDB_begin_tx(ecp, &tmp_tx, dbp, NULL) != RDB_OK) {
             return RDB_ERROR;
         }
     }
@@ -2755,18 +2749,18 @@ exec_typeimpl(RDB_parse_node *nodep, RDB_exec_context *ecp)
     RDB_transaction tmp_tx;
 
     if (txnp == NULL) {
-        RDB_database *sysdbp;
+        RDB_database *dbp;
 
         if (envp == NULL) {
             RDB_raise_resource_not_found("no connection", ecp);
             return RDB_ERROR;
         }
 
-        sysdbp = RDB_get_sys_db(envp, ecp);
-        if (sysdbp == NULL)
+        dbp = get_db(ecp);
+        if (dbp == NULL)
             return RDB_ERROR;
 
-        if (RDB_begin_tx(ecp, &tmp_tx, sysdbp, NULL) != RDB_OK) {
+        if (RDB_begin_tx(ecp, &tmp_tx, dbp, NULL) != RDB_OK) {
             return RDB_ERROR;
         }
     }
@@ -3011,18 +3005,18 @@ exec_opdef(RDB_parse_node *parentp, RDB_exec_context *ecp)
      * Create temporary transaction, if no transaction is active
      */
     if (txnp == NULL) {
-        RDB_database *sysdbp;
+        RDB_database *dbp;
 
         if (envp == NULL) {
             RDB_raise_resource_not_found("no connection", ecp);
             return RDB_ERROR;
         }
 
-        sysdbp = RDB_get_sys_db(envp, ecp);
-        if (sysdbp == NULL)
+        dbp = get_db(ecp);
+        if (dbp == NULL)
             return RDB_ERROR;
 
-        if (RDB_begin_tx(ecp, &tmp_tx, sysdbp, NULL) != RDB_OK) {
+        if (RDB_begin_tx(ecp, &tmp_tx, dbp, NULL) != RDB_OK) {
             return RDB_ERROR;
         }
     }
@@ -3131,18 +3125,18 @@ exec_opdrop(const RDB_parse_node *nodep, RDB_exec_context *ecp)
      * is available
      */
     if (txnp == NULL) {
-        RDB_database *sysdbp;
+        RDB_database *dbp;
 
         if (envp == NULL) {
             RDB_raise_resource_not_found("no connection", ecp);
             return RDB_ERROR;
         }
 
-        sysdbp = RDB_get_sys_db(envp, ecp);
-        if (sysdbp == NULL)
+        dbp = get_db(ecp);
+        if (dbp == NULL)
             return RDB_ERROR;
 
-        if (RDB_begin_tx(ecp, &tmp_tx, sysdbp, NULL) != RDB_OK) {
+        if (RDB_begin_tx(ecp, &tmp_tx, dbp, NULL) != RDB_OK) {
             return RDB_ERROR;
         }
     }

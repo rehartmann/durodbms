@@ -306,9 +306,6 @@ RDB_environment *
 RDB_db_env(RDB_database *);
 
 RDB_database *
-RDB_get_sys_db(RDB_environment *, RDB_exec_context *);
-
-RDB_database *
 RDB_create_db_from_env(const char *name, RDB_environment *envp,
         RDB_exec_context *);
 

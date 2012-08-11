@@ -20,8 +20,8 @@ set ::DBSETUP {
     makeDirectory dbenv
     cd $::tcltest::temporaryDirectory
     exec $testdir/../../dli/durodt << {
-        CREATE_ENV('dbenv');
-        CREATE_DB('D');
+        create_env('dbenv');
+        create_db('D');
     }
 }
 
@@ -36,7 +36,8 @@ error caught
 
 test deftype {user-defined types} -setup $DBSETUP -body {
     exec $testdir/../../dli/durodt << {
-        CONNECT('dbenv');
+        connect('dbenv');
+        current_db := 'D';
         type T
             possrep { a INTEGER, b INTEGER };
 
@@ -93,7 +94,7 @@ caught TYPE_CONSTRAINT_VIOLATION
 }
 
 test defroop {read-only user-defined operators} -setup $DBSETUP -body {
-    exec $testdir/../../dli/durodt -e dbenv << {
+    exec $testdir/../../dli/durodt -e dbenv -d D << {
         operator testop() returns STRING;
             var a INTEGER;
             var b INTEGER init 1;
