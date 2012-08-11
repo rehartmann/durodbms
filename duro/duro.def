@@ -1,35 +1,34 @@
 LIBRARY duro
 EXPORTS
-    RDB_open_env
-    RDB_close_env
-    RDB_bdb_env
-    RDB_BOOLEAN
-    RDB_INTEGER
-    RDB_FLOAT
-    RDB_STRING
-    RDB_BINARY
-    RDB_NO_RUNNING_TX_ERROR    
-    RDB_INVALID_ARGUMENT_ERROR
-    RDB_TYPE_MISMATCH_ERROR
-    RDB_NOT_FOUND_ERROR
-    RDB_OPERATOR_NOT_FOUND_ERROR
-    RDB_NAME_ERROR
-    RDB_ELEMENT_EXISTS_ERROR
-    RDB_TYPE_CONSTRAINT_VIOLATION_ERROR
-    RDB_KEY_VIOLATION_ERROR
-    RDB_PREDICATE_VIOLATION_ERROR
-    RDB_AGGREGATE_UNDEFINED_ERROR
-    RDB_VERSION_MISMATCH_ERROR
-    RDB_NOT_SUPPORTED_ERROR
-    RDB_NO_MEMORY_ERROR
-    RDB_LOCK_NOT_GRANTED_ERROR
-    RDB_DEADLOCK_ERROR
-    RDB_RESOURCE_NOT_FOUND_ERROR
-    RDB_INTERNAL_ERROR
-    RDB_FATAL_ERROR 
-    RDB_SYSTEM_ERROR
-    RDB_IN_USE_ERROR
-
+RDB_open_env
+RDB_close_env
+RDB_bdb_env
+RDB_BOOLEAN
+RDB_INTEGER
+RDB_FLOAT
+RDB_STRING
+RDB_BINARY
+RDB_NO_RUNNING_TX_ERROR
+RDB_INVALID_ARGUMENT_ERROR
+RDB_TYPE_MISMATCH_ERROR
+RDB_NOT_FOUND_ERROR
+RDB_OPERATOR_NOT_FOUND_ERROR
+RDB_NAME_ERROR
+RDB_ELEMENT_EXISTS_ERROR
+RDB_TYPE_CONSTRAINT_VIOLATION_ERROR
+RDB_KEY_VIOLATION_ERROR
+RDB_PREDICATE_VIOLATION_ERROR
+RDB_AGGREGATE_UNDEFINED_ERROR
+RDB_VERSION_MISMATCH_ERROR
+RDB_NOT_SUPPORTED_ERROR
+RDB_NO_MEMORY_ERROR
+RDB_LOCK_NOT_GRANTED_ERROR
+RDB_DEADLOCK_ERROR
+RDB_RESOURCE_NOT_FOUND_ERROR
+RDB_INTERNAL_ERROR
+RDB_FATAL_ERROR 
+RDB_SYSTEM_ERROR
+RDB_IN_USE_ERROR
 RDB_db_env
 RDB_create_db_from_env
 RDB_get_db_from_env
@@ -120,7 +119,7 @@ RDB_obj_string
 RDB_binary_set
 RDB_binary_get
 RDB_binary_length
-_RDB_set_obj_type
+RDB_set_obj_type
 RDB_expr_is_const
 RDB_bool_to_expr
 RDB_int_to_expr
@@ -176,11 +175,11 @@ RDB_ec_set_property
 RDB_ec_get_property
 RDB_evaluate
 RDB_parse_expr
-_RDB_obj_to_str
-_RDB_table_def_to_str
+RDB_obj_to_str
+RDB_table_def_to_str
 RDB_dup_str
-_RDB_table_refers
-_RDB_optimize
+RDB_table_refers
+RDB_optimize
 RDB_get_update_op
 RDB_get_update_op_e
 RDB_implement_type
@@ -197,10 +196,10 @@ RDB_init_hashmap
 RDB_destroy_hashmap
 RDB_hashmap_get
 RDB_hashmap_put
-_RDB_expr_to_str
+RDB_expr_to_str
 RDB_table_ref
 RDB_add_arg
-_RDB_init_builtin_types
+RDB_init_builtin_types
 RDB_obj_irep
 RDB_irep_to_obj
 RDB_put_op
@@ -211,14 +210,13 @@ RDB_evaluate_bool
 RDB_major_version
 RDB_minor_version
 RDB_parse_del_node
-_RDB_parse_interactive
-_RDB_parse_case_insensitive
-_RDB_parse_init_buf
+RDB_parse_init_buf
 Duro_print_error
 Duro_dt_interrupt
 Duro_dt_execute
 Duro_dt_invoke_ro_op
 Duro_dt_invoke_update_op
+Duro_dt_prompt
 RDB_type_is_array
 RDB_parse_node_expr
 RDB_base_type
@@ -228,7 +226,6 @@ RDB_operator_source
 RDB_operator_name
 RDB_is_selector
 RDB_return_type
-RDB_get_sys_db
 RDB_next_attr_sorted
 RDB_obj_set_typeinfo
 RDB_init_expr_list
@@ -241,3 +238,5 @@ RDB_expr_var_name
 RDB_op_u_data
 RDB_set_op_u_data
 RDB_set_op_cleanup_fn
+RDB_parse_set_readline_fn
+RDB_parse_set_case_insensitive
