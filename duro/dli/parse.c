@@ -24,27 +24,27 @@ YY_BUFFER_STATE yy_scan_string(const char *txt);
 void yy_delete_buffer(YY_BUFFER_STATE);
 void yy_switch_to_buffer(YY_BUFFER_STATE);
 
-extern YY_BUFFER_STATE _RDB_parse_buffer;
+extern YY_BUFFER_STATE RDB_parse_buffer;
 
-RDB_parse_node *_RDB_parse_resultp;
-RDB_exec_context *_RDB_parse_ecp;
-
-void
-_RDB_parse_start_exp(void);
+RDB_parse_node *RDB_parse_resultp;
+RDB_exec_context *RDB_parse_ecp;
 
 void
-_RDB_parse_start_stmt(void);
+RDB_parse_start_exp(void);
+
+void
+RDB_parse_start_stmt(void);
 
 void
 yyerror(char *errtxt)
 {
-    if (RDB_get_err(_RDB_parse_ecp) == NULL) {
-        char *bufp = RDB_alloc(strlen(errtxt) + 32, _RDB_parse_ecp);
+    if (RDB_get_err(RDB_parse_ecp) == NULL) {
+        char *bufp = RDB_alloc(strlen(errtxt) + 32, RDB_parse_ecp);
         if (bufp == NULL) {
             return;
         }
         sprintf(bufp, "%s", errtxt);
-        RDB_raise_syntax(bufp, _RDB_parse_ecp);
+        RDB_raise_syntax(bufp, RDB_parse_ecp);
         RDB_free(bufp);
     }
 }
@@ -437,15 +437,15 @@ wrap_node_expr(RDB_parse_node *argnodep,
             int i;
 
             /* Create array arg */
-            argp = RDB_obj_to_expr(NULL, _RDB_parse_ecp);
+            argp = RDB_obj_to_expr(NULL, RDB_parse_ecp);
             if (argp == NULL)
                 return NULL;
             arrp = RDB_expr_obj(argp);
             if (RDB_set_array_length(arrp,
                     (RDB_parse_nodelist_length(wnodep->val.children.firstp->nextp) + 1) / 2,
-                    _RDB_parse_ecp) != RDB_OK)
+                    RDB_parse_ecp) != RDB_OK)
                 return NULL;
-            arrtyp = RDB_new_array_type(&RDB_STRING, _RDB_parse_ecp);
+            arrtyp = RDB_new_array_type(&RDB_STRING, RDB_parse_ecp);
             if (arrtyp == NULL)
                 return NULL;
             RDB_obj_set_typeinfo(arrp, arrtyp);
@@ -463,8 +463,8 @@ wrap_node_expr(RDB_parse_node *argnodep,
                         RDB_raise_invalid_argument("missing attribute name", ecp);
                         return NULL;
                     }
-                    if (RDB_string_to_obj(RDB_array_get(arrp, i++, _RDB_parse_ecp),
-                            attrname, _RDB_parse_ecp) != RDB_OK)
+                    if (RDB_string_to_obj(RDB_array_get(arrp, i++, RDB_parse_ecp),
+                            attrname, RDB_parse_ecp) != RDB_OK)
                         return NULL;
                     if (nodep->nextp == NULL)
                         break;
@@ -1287,10 +1287,10 @@ RDB_parse_expr(const char *txt, RDB_exec_context *ecp)
     int pret;
     YY_BUFFER_STATE buf;
 
-    _RDB_parse_ecp = ecp;
+    RDB_parse_ecp = ecp;
 
     buf = yy_scan_string(txt);
-    _RDB_parse_start_exp();
+    RDB_parse_start_exp();
     pret = yyparse();
     yy_delete_buffer(buf);
     if (pret != 0) {
@@ -1300,7 +1300,7 @@ RDB_parse_expr(const char *txt, RDB_exec_context *ecp)
         return NULL;
     }
 
-    return _RDB_parse_resultp;
+    return RDB_parse_resultp;
 }
 
 /*@}*/
@@ -1310,9 +1310,9 @@ RDB_parse_stmt(RDB_exec_context *ecp)
 {
     int pret;
 
-    _RDB_parse_ecp = ecp;
+    RDB_parse_ecp = ecp;
 
-    _RDB_parse_start_stmt();
+    RDB_parse_start_stmt();
     pret = yyparse();
     if (pret != 0) {
         if (RDB_get_err(ecp) == NULL) {
@@ -1320,27 +1320,27 @@ RDB_parse_stmt(RDB_exec_context *ecp)
         }
         return NULL;
     }
-    return _RDB_parse_resultp;
+    return RDB_parse_resultp;
 }
 
 RDB_parse_node *
 RDB_parse_stmt_string(const char *txt, RDB_exec_context *ecp)
 {
     int pret;
-    YY_BUFFER_STATE oldbuf = _RDB_parse_buffer;
+    YY_BUFFER_STATE oldbuf = RDB_parse_buffer;
 
-    _RDB_parse_ecp = ecp;
+    RDB_parse_ecp = ecp;
 
-    _RDB_parse_buffer = yy_scan_string(txt);
+    RDB_parse_buffer = yy_scan_string(txt);
 
-    _RDB_parse_start_stmt();
+    RDB_parse_start_stmt();
     pret = yyparse();
-    yy_delete_buffer(_RDB_parse_buffer);
+    yy_delete_buffer(RDB_parse_buffer);
     if (RDB_parse_get_interactive()) {
-        _RDB_parse_buffer = yy_scan_string("");
+        RDB_parse_buffer = yy_scan_string("");
     } else {
         yy_switch_to_buffer(oldbuf);
-        _RDB_parse_buffer = oldbuf;
+        RDB_parse_buffer = oldbuf;
     }
 
     if (pret != 0) {
@@ -1350,5 +1350,5 @@ RDB_parse_stmt_string(const char *txt, RDB_exec_context *ecp)
         return NULL;
     }
 
-    return _RDB_parse_resultp;
+    return RDB_parse_resultp;
 }

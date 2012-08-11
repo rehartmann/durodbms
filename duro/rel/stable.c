@@ -92,7 +92,7 @@ RDB_field_no(RDB_stored_table *stp, const char *attrname)
 }
 
 static int
-_RDB_put_field_no(RDB_stored_table *stp, const char *attrname,
+RDB_put_field_no(RDB_stored_table *stp, const char *attrname,
         RDB_int fno, RDB_exec_context *ecp)
 {
     int ret;
@@ -413,7 +413,7 @@ key_fnos(RDB_object *tbp, int **flenvp, const RDB_bool ascv[],
         }
 
         /* Put the field number into the attrmap */
-        ret = _RDB_put_field_no(tbp->val.tb.stp,
+        ret = RDB_put_field_no(tbp->val.tb.stp,
                 tbp->typ->def.basetyp->def.tuple.attrv[i].name, fno, ecp);
         if (ret != RDB_OK) {
             RDB_free(*flenvp);

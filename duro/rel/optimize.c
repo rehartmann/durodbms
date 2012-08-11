@@ -17,7 +17,7 @@
 #include <math.h>
 #include <assert.h>
 
-static RDB_bool _RDB_optimize_enabled = RDB_TRUE;
+static RDB_bool RDB_optimize_enabled = RDB_TRUE;
 
 RDB_bool
 RDB_index_sorts(struct RDB_tbindex *indexp, int seqitc,
@@ -1046,7 +1046,7 @@ RDB_optimize(RDB_object *tbp, int seqitc, const RDB_seq_item seqitv[],
         }
         return RDB_table_ref(tbp, ecp);
     }
-    return _RDB_optimize_enabled ?
+    return RDB_optimize_enabled ?
             RDB_optimize_expr(tbp->val.tb.exp, seqitc, seqitv, ecp, txp)
             : dup_expr_vt(tbp->val.tb.exp, ecp);
 }

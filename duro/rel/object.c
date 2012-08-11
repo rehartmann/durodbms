@@ -570,7 +570,7 @@ RDB_obj_to_irep(void *dstp, const RDB_object *objp, size_t len)
             /*
              * Write attributes in alphabetical order of their names,
              * so the order corresponds with serializes tuple types.
-             * See _RDB_serialize_type().
+             * See RDB_serialize_type().
              */
             for (i = 0; i < tpltyp->def.tuple.attrc; i++) {
                 RDB_object *attrp;

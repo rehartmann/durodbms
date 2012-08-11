@@ -46,7 +46,7 @@ del_type(RDB_type *typ, RDB_exec_context *ecp)
 }    
 
 static RDB_possrep *
-_RDB_get_possrep(const RDB_type *typ, const char *repname)
+RDB_get_possrep(const RDB_type *typ, const char *repname)
 {
     int i;
 
@@ -70,7 +70,7 @@ RDB_sys_select(int argc, RDB_object *argv[], RDB_operator *op, RDB_exec_context 
     RDB_possrep *prp;
 
     /* Find possrep */
-    prp = _RDB_get_possrep(op->rtyp, op->name);
+    prp = RDB_get_possrep(op->rtyp, op->name);
     if (prp == NULL) {
         RDB_raise_invalid_argument("component name is NULL", ecp);
         return RDB_ERROR;
@@ -745,7 +745,7 @@ create_selector(RDB_type *typ, RDB_exec_context *ecp, RDB_transaction *txp)
     for (i = 0; i < compc; i++)
         paramv[i].typ = typ->def.scalar.repv[0].compv[i].typ;
     ret = RDB_create_ro_op(typ->def.scalar.repv[0].name, compc, paramv, typ,
-            "", "_RDB_sys_select", typ->name,
+            "", "RDB_sys_select", typ->name,
             ecp, txp);
     RDB_free(paramv);
     return ret;
@@ -761,7 +761,7 @@ RDB_is_selector(const RDB_operator *op)
         return RDB_FALSE; /* Not a read-only operator */
 
     /* Check if there is a possrep with the same name as the operator */
-    return (RDB_bool) (_RDB_get_possrep(op->rtyp, RDB_operator_name(op)) != NULL);
+    return (RDB_bool) (RDB_get_possrep(op->rtyp, RDB_operator_name(op)) != NULL);
 }
 
 /** @defgroup typeimpl Type implementation functions

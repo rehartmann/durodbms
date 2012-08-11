@@ -294,7 +294,7 @@ serialize_table(RDB_object *valp, int *posp, RDB_object *tbp,
 }
 
 int
-_RDB_vtable_to_binobj(RDB_object *valp, RDB_object *tbp, RDB_exec_context *ecp)
+RDB_vtable_to_binobj(RDB_object *valp, RDB_object *tbp, RDB_exec_context *ecp)
 {
     int pos;
     int ret;

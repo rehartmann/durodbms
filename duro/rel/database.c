@@ -186,7 +186,7 @@ find_del_table(RDB_database *dbp)
  * Close all user tables
  */
 static int
-_RDB_close_user_tables(RDB_database *dbp, RDB_exec_context *ecp)
+RDB_close_user_tables(RDB_database *dbp, RDB_exec_context *ecp)
 {
     RDB_object *tbp;
     
@@ -202,7 +202,7 @@ release_db(RDB_database *dbp, RDB_exec_context *ecp)
 {
     int ret;
 
-    ret = _RDB_close_user_tables(dbp, ecp);
+    ret = RDB_close_user_tables(dbp, ecp);
     if (ret != RDB_OK)
         return RDB_ERROR;
 

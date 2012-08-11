@@ -887,7 +887,7 @@ RDB_transform(RDB_expression *exp, RDB_gettypefn *getfnp, void *arg,
 
     /*
      * Convert variable expressions referring to tables
-     * to table references if possible (_RDB_optimize() cannot handle the former)
+     * to table references if possible (RDB_optimize() cannot handle the former)
      */
     if (exp->kind == RDB_EX_VAR && txp != NULL
             && (exp->typ == NULL || RDB_type_is_relation(exp->typ))) {
