@@ -574,30 +574,11 @@ error:
     return NULL;
 }
 
-/**
- * Return a pointer to the system database SYS_DB.
- * Create the database if it does not exist.
-
-@returns
-
-On success, a pointer to the database is returned. If an error occurred, NULL is
-returned.
-
-@par Errors:
-
-<dl>
-<dt>version_mismatch_error
-<dd>The version number stored in the catalog does not match
-the version of the library.
-</dl>
-
-The call may also fail for a @ref system-errors "system error".
- */
-RDB_database *
-RDB_get_sys_db(RDB_environment *envp, RDB_exec_context *ecp)
+static RDB_dbroot *
+get_dbroot(RDB_environment *envp, RDB_exec_context *ecp)
 {
-    RDB_database *dbp;
     RDB_dbroot *dbrootp = (RDB_dbroot *) RDB_env_xdata(envp);
+
     RDB_bool crdbroot = RDB_FALSE;
 
     if (dbrootp == NULL) {
@@ -619,19 +600,7 @@ RDB_get_sys_db(RDB_environment *envp, RDB_exec_context *ecp)
         }
         crdbroot = RDB_TRUE;
     }
-    dbp = get_db("SYS_DB", dbrootp, ecp);
-    if (dbp == NULL) {
-        /* If the error is different from RDB_NOT_FOUND, stop */
-        if (RDB_obj_type(RDB_get_err(ecp)) != &RDB_NOT_FOUND_ERROR)
-            goto error;
-
-        /* Create DB */
-        RDB_clear_err(ecp);
-        dbp = create_db("SYS_DB", dbrootp, ecp);
-        if (dbp == NULL)
-            goto error;
-    }
-    return dbp;
+    return dbrootp;
 
 error:
     if (crdbroot) {
@@ -668,7 +637,7 @@ RDB_database *
 RDB_create_db_from_env(const char *name, RDB_environment *envp,
                        RDB_exec_context *ecp)
 {
-    RDB_database *sysdbp;
+    RDB_dbroot *dbrootp;
 
     if (!RDB_legal_name(name)) {
         RDB_raise_invalid_argument("invalid database name", ecp);
@@ -676,11 +645,11 @@ RDB_create_db_from_env(const char *name, RDB_environment *envp,
     }
 
     /* Get dbroot from sys DB */
-    sysdbp = RDB_get_sys_db(envp, ecp);
-    if (sysdbp == NULL)
+    dbrootp = get_dbroot(envp, ecp);
+    if (dbrootp == NULL)
         return NULL;
 
-    return create_db(name, sysdbp->dbrootp, ecp);
+    return create_db(name, dbrootp, ecp);
 }
 
 /**
@@ -709,12 +678,12 @@ RDB_database *
 RDB_get_db_from_env(const char *name, RDB_environment *envp,
                     RDB_exec_context *ecp)
 {
-    /* Get dbroot from system DB */
-    RDB_database *sysdbp = RDB_get_sys_db(envp, ecp);
-    if (sysdbp == NULL)
+    /* Get dbroot from env */
+    RDB_dbroot *dbrootp = get_dbroot(envp, ecp);
+    if (dbrootp == NULL)
         return NULL;
 
-    return get_db(name, sysdbp->dbrootp, ecp);
+    return get_db(name, dbrootp, ecp);
 }
 
 static RDB_object *
@@ -995,18 +964,18 @@ RDB_get_dbs(RDB_environment *envp, RDB_object *arrp, RDB_exec_context *ecp)
     RDB_object *vtbp;
     RDB_object resarr;
     RDB_transaction tx;
-    RDB_database *sysdbp = RDB_get_sys_db(envp, ecp); /* Get SYS_DB */
-    if (sysdbp == NULL) {
+    RDB_dbroot *dbrootp = get_dbroot(envp, ecp); /* Get dbroot */
+    if (dbrootp == NULL) {
         return RDB_ERROR;
     }
 
-    ret = RDB_begin_tx(ecp, &tx, sysdbp, NULL);
+    ret = RDB_begin_tx_env(ecp, &tx, envp, NULL);
     if (ret != RDB_OK) {
         return ret;
     }
     tx.dbp = NULL;
 
-    vtbp = db_names_tb(sysdbp->dbrootp->dbtables_tbp, ecp, &tx);
+    vtbp = db_names_tb(dbrootp->dbtables_tbp, ecp, &tx);
     if (vtbp == NULL) {
         RDB_rollback(ecp, &tx);
         RDB_raise_no_memory(ecp);
@@ -1232,15 +1201,6 @@ RDB_create_table_from_type(const char *name, RDB_type *reltyp,
 
     if (reltyp->kind != RDB_TP_RELATION) {
         RDB_raise_type_mismatch("relation type required", ecp);
-        return NULL;
-    }
-
-    /*
-     * Creating user tables in SYS_DB is not permitted
-     * because SYS_DB is only for catalog tables
-     */
-    if (strcmp(RDB_db_name(RDB_tx_db(txp)), "SYS_DB") == 0) {
-        RDB_raise_invalid_argument("SYS_DB must not contain user tables", ecp);
         return NULL;
     }
 

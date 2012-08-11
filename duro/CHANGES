@@ -14,6 +14,8 @@ Changes for Duro 0.16
 
 - Duro D/T now uses GNU readline.
 
+- Dropped database SYS_DB.
+
 Changes for Duro 0.15
 
 - Replaced PRINT/PRINTLN/READLN by put/put_line/get_line.

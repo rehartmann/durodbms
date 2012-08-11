@@ -1054,7 +1054,9 @@ RDB_optimize(RDB_object *tbp, int seqitc, const RDB_seq_item seqitv[],
 static void
 trace_plan(RDB_expression *exp, int cost, RDB_exec_context *ecp, RDB_transaction *txp)
 {
-    if (RDB_env_trace(RDB_db_env(RDB_tx_db(txp))) > 0) {
+    RDB_database *dbp = RDB_tx_db(txp);
+    /* dbp could be NULL, e.g. when RDB_get_dbs() is executed */
+    if (dbp != NULL && RDB_env_trace(RDB_db_env(dbp)) > 0) {
         /*
          * Write expression (with index info) and cost to stderr
          */
