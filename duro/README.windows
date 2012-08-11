@@ -9,10 +9,11 @@ Complete source code is available from http://sourceforge.net/projects/duro.
 
 The following software is required for running this version of Duro:
 
-- Berkeley DB Transactional Data Store, release 5.3
+- Berkeley DB Transactional Data Store (release 5.3 recommended)
 - POSIX.2 regular expressions (e.g., GNU Regex)
 - GNU Libtool
 - Tcl 8.1 or later
+- GNU Readline
 
 Add the directories where the respective DLLs are located to PATH,
 together with the 'bin' subdirectory of the Duro root directory.
