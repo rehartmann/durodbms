@@ -1521,6 +1521,10 @@ RDB_create_table_index(const char *name, RDB_object *tbp, int idxcompc,
             goto error;
     }
 
+    /*
+     * If the stored table has not been created, don't create the physical index -
+     * it will be created later from the catalog when the stored table is created
+     */
     if (tbp->val.tb.stp != NULL) {
         tbp->val.tb.stp->indexv = RDB_realloc(tbp->val.tb.stp->indexv,
                 (tbp->val.tb.stp->indexc + 1) * sizeof (RDB_tbindex), ecp);
@@ -1616,56 +1620,61 @@ RDB_drop_table_index(const char *name, RDB_exec_context *ecp,
     if (tbp == NULL)
         return RDB_ERROR;
 
-    for (i = 0; i < tbp->val.tb.stp->indexc
-            && strcmp(tbp->val.tb.stp->indexv[i].name, name) != 0;
-            i++);
-    if (i >= tbp->val.tb.stp->indexc) {
-        /* Index not found, so reread indexes */
-        for (i = 0; i < tbp->val.tb.stp->indexc; i++)
-            RDB_free_tbindex(&tbp->val.tb.stp->indexv[i]);
-        RDB_free(tbp->val.tb.stp->indexv);
-        ret = RDB_cat_get_indexes(tbp->val.tb.name, txp->dbp->dbrootp, ecp, txp,
-                &tbp->val.tb.stp->indexv);
-        if (ret != RDB_OK)
-            return RDB_ERROR;
-
-        /* Search again */
-        for (i = 0; i < tbp->val.tb.stp->indexc
-                && strcmp(tbp->val.tb.stp->indexv[i].name, name) != 0;
-                i++);
-        if (i >= tbp->val.tb.stp->indexc) {
-            RDB_raise_internal("invalid index", ecp);
-            return RDB_ERROR;
-        }
-    }        
-    xi = i;
-
-    /* Destroy index */
-    ret = RDB_add_del_index(txp, tbp->val.tb.stp->indexv[i].idxp, ecp);
-    if (ret != RDB_OK)
-        return ret;
-
     /* Delete index from catalog */
     ret = RDB_cat_delete_index(name, ecp, txp);
     if (ret != RDB_OK)
         return ret;
 
-    /*
-     * Delete index entry
-     */
+    if (tbp->val.tb.stp != NULL) {
+        /*
+         * Delete index from the stored table
+         */
+        for (i = 0; i < tbp->val.tb.stp->indexc
+                && strcmp(tbp->val.tb.stp->indexv[i].name, name) != 0;
+                i++);
+        if (i >= tbp->val.tb.stp->indexc) {
+            /* Index not found, so reread indexes */
+            for (i = 0; i < tbp->val.tb.stp->indexc; i++)
+                RDB_free_tbindex(&tbp->val.tb.stp->indexv[i]);
+            RDB_free(tbp->val.tb.stp->indexv);
+            ret = RDB_cat_get_indexes(tbp->val.tb.name, txp->dbp->dbrootp, ecp, txp,
+                    &tbp->val.tb.stp->indexv);
+            if (ret != RDB_OK)
+                return RDB_ERROR;
 
-    RDB_free_tbindex(&tbp->val.tb.stp->indexv[xi]);
+            /* Search again */
+            for (i = 0; i < tbp->val.tb.stp->indexc
+                    && strcmp(tbp->val.tb.stp->indexv[i].name, name) != 0;
+                    i++);
+            if (i >= tbp->val.tb.stp->indexc) {
+                RDB_raise_internal("invalid index", ecp);
+                return RDB_ERROR;
+            }
+        }
+        xi = i;
 
-    tbp->val.tb.stp->indexc--;
-    for (i = xi; i < tbp->val.tb.stp->indexc; i++) {
-        tbp->val.tb.stp->indexv[i] = tbp->val.tb.stp->indexv[i + 1];
+        /* Destroy index */
+        ret = RDB_add_del_index(txp, tbp->val.tb.stp->indexv[i].idxp, ecp);
+        if (ret != RDB_OK)
+            return ret;
+
+        /*
+         * Delete index entry
+         */
+
+        RDB_free_tbindex(&tbp->val.tb.stp->indexv[xi]);
+
+        tbp->val.tb.stp->indexc--;
+        for (i = xi; i < tbp->val.tb.stp->indexc; i++) {
+            tbp->val.tb.stp->indexv[i] = tbp->val.tb.stp->indexv[i + 1];
+        }
+
+        p = RDB_realloc(tbp->val.tb.stp->indexv,
+                sizeof(RDB_tbindex) * tbp->val.tb.stp->indexc, ecp);
+        if (p == NULL)
+            return RDB_ERROR;
+        tbp->val.tb.stp->indexv = p;
     }
-
-    p = RDB_realloc(tbp->val.tb.stp->indexv,
-            sizeof(RDB_tbindex) * tbp->val.tb.stp->indexc, ecp);
-    if (p == NULL)
-        return RDB_ERROR;
-    tbp->val.tb.stp->indexv = p;
 
     return RDB_OK;
 }

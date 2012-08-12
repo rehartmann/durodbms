@@ -25,8 +25,8 @@ set ::SETUP {
 
 test insert {creating table and inserting tuples} -setup $SETUP -body {
     exec $testdir/../../dli/durodt << {
-        CONNECT('dbenv');
-        CURRENT_DB := 'D';
+        connect('dbenv');
+        current_db := 'D';
 
         begin transaction;
         var r real relation {i INTEGER, d FLOAT, c STRING} key {i};
@@ -52,8 +52,8 @@ Y
 
 test invalid_type {invalid (scalar) type for table} -setup $SETUP -match glob -body {
     exec $testdir/../../dli/durodt << {
-	    CONNECT('dbenv');
-    	CURRENT_DB := 'D';
+	    connect('dbenv');
+    	current_db := 'D';
 
 	    begin transaction;
     	var ir real INTEGER key {};
@@ -62,8 +62,8 @@ test invalid_type {invalid (scalar) type for table} -setup $SETUP -match glob -b
 
 test private {creating private table and inserting tuples} -setup $SETUP -body {
     exec $testdir/../../dli/durodt << {
-        CONNECT('dbenv');
-        CURRENT_DB := 'D';
+        connect('dbenv');
+        current_db := 'D';
 
         var r private relation {i INTEGER, d FLOAT, c STRING} key {i};
         insert r relation {} {};
@@ -102,8 +102,8 @@ type mismatch
 
 test ra {relational algebra} -setup $SETUP -body {
     exec $testdir/../../dli/durodt << {
-        CONNECT('dbenv');
-        CURRENT_DB := 'D';
+        connect('dbenv');
+        current_db := 'D';
 
         begin transaction;
 
@@ -141,8 +141,8 @@ test ra {relational algebra} -setup $SETUP -body {
 
 test updop {user defined update operators} -setup $SETUP -body {
     exec $testdir/../../dli/durodt << {
-        CONNECT('dbenv');
-        CURRENT_DB := 'D';
+        connect('dbenv');
+        current_db := 'D';
 
         begin transaction;
 
@@ -179,18 +179,18 @@ test deedum {TABLE_DEE and TABLE_DUM} -setup $SETUP -body {
 
         put(tuple from (rel{} {} union table_dee)); put_line('');
         
-        CONNECT('dbenv');
-        CURRENT_DB := 'D';
+        connect('dbenv');
+        current_db := 'D';
 
         begin transaction;
         var ev virtual relation {i INTEGER} {};
         commit;
 
-        DISCONNECT();
+        DISconnect();
 
         -- Connect again and read virtual table
-        CONNECT('dbenv');
-        CURRENT_DB:='D';
+        connect('dbenv');
+        current_db:='D';
         begin tx;
         put(ev); put_line('');
         commit;
@@ -205,8 +205,8 @@ RELATION { }
 
 test logic {Logic operators} -setup $SETUP -body {
     exec $testdir/../../dli/durodt << {
-        CONNECT('dbenv');
-        CURRENT_DB := 'D';
+        connect('dbenv');
+        current_db := 'D';
 
         begin transaction;
 
@@ -264,8 +264,8 @@ test logic {Logic operators} -setup $SETUP -body {
 
 test aggregate {Aggregate operators} -setup $SETUP -body {
     exec $testdir/../../dli/durodt << {
-        CONNECT('dbenv');
-        CURRENT_DB := 'D';
+        connect('dbenv');
+        current_db := 'D';
 
         begin transaction;
 
@@ -289,8 +289,8 @@ TRUE
 
 test summarize {SUMMARIZE} -setup $SETUP -body {
     exec $testdir/../../dli/durodt << {
-        CONNECT('dbenv');
-        CURRENT_DB := 'D';
+        connect('dbenv');
+        current_db := 'D';
 
         begin transaction;
 
@@ -333,8 +333,8 @@ test summarize {SUMMARIZE} -setup $SETUP -body {
 
 test relrel {table with relation attribute} -setup $SETUP -body {
     exec $testdir/../../dli/durodt << {
-        CONNECT('dbenv');
-        CURRENT_DB := 'D';
+        connect('dbenv');
+        current_db := 'D';
 
         begin transaction;
 
@@ -443,6 +443,28 @@ test foreach {FOREACH} -body {
 2
 1
 1
+}
+
+test index {creating index} -setup $SETUP -body {
+    exec $testdir/../../dli/durodt << {
+        connect('dbenv');
+        current_db := 'D';
+
+        begin tx;
+        var r real relation {i INTEGER, d FLOAT, c STRING} key {i};
+        index r_c for r (c);
+        commit;
+    }
+    # Dropping the index in the same process after creating the table and index
+    # does not work - dbremove() hangs 
+    exec $testdir/../../dli/durodt << {
+        connect('dbenv');
+        current_db := 'D';
+
+        begin tx;
+        drop index r_c;
+        commit;
+    }
 }
 
 cleanupTests
