@@ -299,7 +299,7 @@ op_put_line_string(int argc, RDB_object *argv[], RDB_operator *op,
     callargv[0] = &DURO_STDOUT_OBJ;
     callargv[1] = argv[0];
     
-    return op_put_line_iostream_string(2, callargv, op, NULL, txp);
+    return op_put_line_iostream_string(2, callargv, op, ecp, txp);
 }
 
 static int
