@@ -695,8 +695,6 @@ catch err;
 end try;
 </pre>
 
-<hr>
-
 <h3>Performance</h3>
 
 <p>Duro D/T features an EXPLAIN statement which shows how a relational expression is executed.
@@ -727,7 +725,7 @@ Transaction committed.
 </pre>
 
 <p>The output of EXPLAIN shows that Duro D/T uses the index r$0 to evaluate the expression.
-This is the index which was created to ensure that n is a key of r.
+This is the index which was created to ensure that n is a key attribute of r.
 
 Now let's try other WHERE expressions:
 
@@ -741,7 +739,7 @@ where(r, (s) = ('one'))
 </pre>
 
 <p>For neither of these an index can be used. Not for the first,
-because the index on n is a hash index which supports only equality,
+because the system-generated index on n is a hash index which supports only equality,
 and not for the second because there is no index on attribute s.
 This means that Duro will scan the entire table to evaluate the expression
 which is quite inefficient for large tables.

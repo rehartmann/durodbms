@@ -452,14 +452,11 @@ test index {creating index} -setup $SETUP -body {
 
         begin tx;
         var r real relation {i INTEGER, d FLOAT, c STRING} key {i};
+        commit;
+
+        begin tx;
         index r_c for r (c);
         commit;
-    }
-    # Dropping the index in the same process after creating the table and index
-    # does not work - dbremove() hangs 
-    exec $testdir/../../dli/durodt << {
-        connect('dbenv');
-        current_db := 'D';
 
         begin tx;
         drop index r_c;
