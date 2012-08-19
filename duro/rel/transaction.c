@@ -84,6 +84,10 @@ del_storage(RDB_transaction *txp)
     for (rmlinkp = txp->delrmp;
          (rmlinkp != NULL) && (ret == RDB_OK);
          rmlinkp = rmlinkp->nextp) {
+        /*
+         * Cannot pass txp->txid because it has been closed by the caller -
+         * BDB transaction handles must be closed before DB handles are closed
+         */
         ret = RDB_delete_recmap(rmlinkp->rmp, NULL);
     }
 
@@ -222,7 +226,8 @@ RDB_rollback(RDB_exec_context *ecp, RDB_transaction *txp)
     }
 
     /*
-     * Close recmaps and indexes in order to close DB handles
+     * Close recmaps and indexes scheduled for deletion
+     * in order to close DB handles
      */
     ret = close_storage(txp);
     if (ret != RDB_OK) {

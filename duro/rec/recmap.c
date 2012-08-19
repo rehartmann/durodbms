@@ -244,11 +244,12 @@ RDB_close_recmap(RDB_recmap *rmp)
 int
 RDB_delete_recmap(RDB_recmap *rmp, DB_TXN *txid)
 {
-    int ret;
-    ret = rmp->dbp->close(rmp->dbp, DB_NOSYNC);
+    /* The DB handle must be closed before calling DB_ENV->dbremove() */
+    int ret = rmp->dbp->close(rmp->dbp, DB_NOSYNC);
     if (ret != 0)
         goto cleanup;
 
+    /* Call DB_ENV->dbremove() only if the recmap is persistent */
     if (rmp->envp != NULL && rmp->namp != NULL) {
         ret = rmp->envp->envp->dbremove(rmp->envp->envp, txid, rmp->filenamp,
                 rmp->namp, 0);
