@@ -4,7 +4,7 @@
  * Copyright (C) 2012 Rene Hartmann.
  * See the file COPYING for redistribution information.
  *
- * Interpreter for Duro D/T.
+ * Main program of Duro D/T, an interpreter for Duro's variant of Tutorial D.
  */
 
 #include <rel/rdb.h>
