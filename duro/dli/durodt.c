@@ -18,6 +18,9 @@
 #include <signal.h>
 #include <locale.h>
 
+#ifdef _WIN32
+#define USE_READLINE_STATIC /* Makes it compile under Windows */
+#endif
 #include <readline/readline.h>
 #include <readline/history.h>
 
