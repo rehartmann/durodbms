@@ -33,6 +33,10 @@ RDB_begin_tx_env(RDB_exec_context *ecp, RDB_transaction *txp, RDB_environment *e
         RDB_raise_system("too many transactions", ecp);
         return RDB_ERROR;
     }
+    if (envp->trace > 0) {
+        fprintf(stderr, "Transaction started, ID=%x\n",
+                (unsigned) txp->txid->id(txp->txid));
+    }
     txp->delrmp = NULL;
     txp->delixp = NULL;
     return RDB_OK;
@@ -117,8 +121,8 @@ close_storage(RDB_transaction *txp)
  */
 
 /**
- * RDB_begin_tx starts a transaction which interacts with the
-database specified by <var>dbp</var>.
+ * Start a transaction which interacts with the
+database *<var>dbp</var>.
 
 If <var>parentp</var> is not NULL, the new transaction is
 a subtransaction of the transaction specified by <var>parentp</var>.

@@ -225,7 +225,7 @@ insert_key(RDB_string_vec *keyp, int i, const char *tablename,
             goto error;
         }
 
-        ret = RDB_insert(keystbp, &ktpl, ecp, txp);
+        ret = RDB_insert(keystbp, &ktpl, ecp, NULL);
         RDB_destroy_obj(&ktpl, ecp);
         if (ret != RDB_OK) {
             goto error;
@@ -703,6 +703,9 @@ cleanup:
     return ret == RDB_ERROR ? RDB_ERROR : RDB_OK;
 }
 
+/**
+ * Delete table *tbp from the catalog.
+ */
 int
 RDB_cat_delete(RDB_object *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
 {
@@ -828,6 +831,9 @@ cleanup:
     return ret;
 }
 
+/*
+ * Create or open a system table depending on the create argument
+ */
 static int
 provide_systable(const char *name, int attrc, RDB_attr heading[],
            int keyc, RDB_string_vec keyv[], RDB_bool create,
@@ -848,11 +854,11 @@ provide_systable(const char *name, int attrc, RDB_attr heading[],
     }
 
     if (create) {
-        ret = RDB_create_stored_table(*tbpp, txp != NULL ? txp->envp : NULL,
+        ret = RDB_create_stored_table(*tbpp, txp->envp,
                 NULL, ecp, txp);
     } else {
-        ret = RDB_open_stored_table(*tbpp, txp != NULL ? txp->envp : NULL,
-                name, -1, NULL, ecp, txp);
+        ret = RDB_open_stored_table(*tbpp, txp->envp, name, -1, NULL,
+                ecp, txp);
     }
     if (ret != RDB_OK) {
         RDB_free_obj(*tbpp, ecp);
@@ -1236,6 +1242,11 @@ RDB_cat_create_db(RDB_exec_context *ecp, RDB_transaction *txp)
         }
         return ret;
     }
+
+    /*
+     * Inserting sys_tableattrs into the catalog was successful,
+     * this indicates that the other system tables must be inserted there too
+     */
 
     ret = RDB_cat_insert(txp->dbp->dbrootp->table_attr_defvals_tbp, ecp, txp);
     if (ret != RDB_OK) {

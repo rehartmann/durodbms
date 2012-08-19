@@ -1,7 +1,7 @@
 /*
  * $Id$
  * 
- * Copyright (C) 2003-2009 Ren� Hartmann.
+ * Copyright (C) 2003-2012 Rene Hartmann.
  * See the file COPYING for redistribution information.
  */
 
@@ -184,7 +184,7 @@ RDB_create_recmap(const char *name, const char *filename,
         }
     }
 
-    /* Create BDB database under transaction control */
+    /* Create BDB database */
     ret = (*rmpp)->dbp->open((*rmpp)->dbp, txid, filename, name,
             RDB_ORDERED & flags ? DB_BTREE : DB_HASH,
             DB_CREATE, 0664);

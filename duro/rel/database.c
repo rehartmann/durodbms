@@ -331,6 +331,9 @@ new_dbroot(RDB_environment *envp, RDB_exec_context *ecp)
     return dbrootp;
 }
 
+/*
+ * Allocate and initialize the RDB_database structure
+ */
 static RDB_database *
 new_db(const char *name, RDB_exec_context *ecp)
 {
@@ -644,7 +647,7 @@ RDB_create_db_from_env(const char *name, RDB_environment *envp,
         return NULL;
     }
 
-    /* Get dbroot from sys DB */
+    /* Get dbroot, create it if it does not exist */
     dbrootp = get_dbroot(envp, ecp);
     if (dbrootp == NULL)
         return NULL;

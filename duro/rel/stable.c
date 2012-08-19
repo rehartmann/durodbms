@@ -462,6 +462,7 @@ RDB_create_stored_table(RDB_object *tbp, RDB_environment *envp,
     int attrc = tbp->typ->def.basetyp->def.tuple.attrc;
     int piattrc = tbp->val.tb.keyv[0].strc;
 
+    /* Do not use a transaction if the table is transient */
     if (!tbp->val.tb.is_persistent)
        txp = NULL;
 
@@ -544,11 +545,14 @@ RDB_create_stored_table(RDB_object *tbp, RDB_environment *envp,
     if (ascv == NULL)
         flags |= RDB_UNIQUE;
 
+    if (tbp->val.tb.is_persistent && envp->trace) {
+        fprintf(stderr, "Creating physical storage for table %s\n",
+                RDB_table_name(tbp));
+    }
     ret = RDB_create_recmap(tbp->val.tb.is_persistent ?
             (rmname == NULL ? RDB_table_name(tbp) : rmname) : NULL,
             tbp->val.tb.is_persistent ? RDB_DATAFILE : NULL,
-            envp,
-            attrc, flenv, piattrc, cmpv, flags,
+            envp, attrc, flenv, piattrc, cmpv, flags,
             txp != NULL ? txp->txid : NULL,
             &tbp->val.tb.stp->recmapp);
     if (ret != RDB_OK) {
