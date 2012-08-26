@@ -2443,7 +2443,7 @@ error:
     RDB_drop_table(vtbp, ecp, txp);
     RDB_destroy_obj(&tpl, ecp);
     return RDB_ERROR;
-} /* RDB_cat_get_ro_op */
+} /* RDB_cat_load_ro_op */
 
 /* Read all read-only operators with specified name from database */
 RDB_int

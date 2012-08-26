@@ -464,4 +464,82 @@ test index {creating index} -setup $SETUP -body {
     }
 }
 
+test real_default {public real table with default values} -setup $SETUP -body {
+    exec $testdir/../../dli/durodt << {
+        connect('dbenv');
+        current_db := 'D';
+
+        begin tx;
+        var r1 real relation {i INTEGER, r FLOAT, c STRING} key {i}
+                default {r 1.2, c 'xyz'};
+        insert r1 tup {i 5};
+        var t1 init tuple from r1;
+
+        var r2 real relation {i INTEGER, r FLOAT, c STRING}
+                init rel {tup {i 0, r 1.0, c 'Zz'}}
+                key {i} key {c}
+                default {r 1.2, c 'xyz'};
+        insert r2 tup {i 5};
+        var t2 init tuple from (r2 where i=5);
+
+        var r3 real relation {i INTEGER, r FLOAT, c STRING}
+                init r2 default {r 1.2, c 'xyz'};
+        insert r3 tup {i 6};
+        var t3 init tuple from (r3 where i=6);
+
+        commit;
+
+        put(t1.i); put(' ');
+        put(cast_as_integer(t1.r * 100.0)); put(' ');
+        put(t1.c); put_line('');
+
+        put(t2.i); put(' ');
+        put(cast_as_integer(t2.r * 100.0)); put(' ');
+        put(t2.c); put_line('');
+
+        put(t3.i); put(' ');
+        put(cast_as_integer(t3.r * 100.0)); put(' ');
+        put(t3.c); put_line('');
+    }
+} -result {5 120 xyz
+5 120 xyz
+6 120 xyz
+}
+
+test private_default {private table with default values} -setup $SETUP -body {
+    exec $testdir/../../dli/durodt << {
+        var r1 private relation {i INTEGER, r FLOAT, c STRING} key {i}
+                default {r 1.2, c 'xyz'};
+        insert r1 tup {i 5};
+        var t1 init tuple from r1;
+
+        var r2 private relation {i INTEGER, r FLOAT, c STRING}
+                init rel {tup {i 0, r 1.0, c 'Zz'}}
+                key {i} key {c}
+                default {r 1.2, c 'xyz'};
+        insert r2 tup {i 5};
+        var t2 init tuple from (r2 where i=5);
+
+        var r3 private relation {i INTEGER, r FLOAT, c STRING}
+                init r2 default {r 1.2, c 'xyz'};
+        insert r3 tup {i 6};
+        var t3 init tuple from (r3 where i=6);
+
+        put(t1.i); put(' ');
+        put(cast_as_integer(t1.r * 100.0)); put(' ');
+        put(t1.c); put_line('');
+
+        put(t2.i); put(' ');
+        put(cast_as_integer(t2.r * 100.0)); put(' ');
+        put(t2.c); put_line('');
+
+        put(t3.i); put(' ');
+        put(cast_as_integer(t3.r * 100.0)); put(' ');
+        put(t3.c); put_line('');
+    }
+} -result {5 120 xyz
+5 120 xyz
+6 120 xyz
+}
+
 cleanupTests

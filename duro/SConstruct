@@ -67,7 +67,7 @@ relsrc = ['rel/array.c', 'rel/database.c', 'rel/operator.c', 'rel/builtinops.c',
         'rel/match.c', 'rel/opmap.c', 'rel/io.c', 'rel/tostr.c']
 
 dlisrc = ['dli/exparse.c', 'dli/exlex.c', 'dli/parse.c', 'dli/parsenode.c',
-        'dli/iinterp.c', 'dli/ioop.c']
+        'dli/iinterp.c', 'dli/ioop.c', 'dli/interp_core.c']
 
 durosrc = gensrc + recsrc + relsrc + dlisrc
 
@@ -202,7 +202,7 @@ rel_ihdrs = Split('rel/catalog.h rel/delete.h rel/serialize.h '
         'rel/optimize.h rel/update.h rel/qresult.h rel/opmap.h rel/io.h '
         'rel/tostr.h')
 dli_hdrs = ['dli/parse.h', 'dli/parsenode.h']
-dli_ihdrs = ['dli/exparse.h', 'dli/iinterp.h', 'dli/ioop.h']
+dli_ihdrs = ['dli/exparse.h', 'dli/iinterp.h', 'dli/interp_core.h', 'dli/ioop.h']
 durotcl_hdrs = ['tcl/duro.h']
 testlib_hdrs = ['tests/point.h']
 

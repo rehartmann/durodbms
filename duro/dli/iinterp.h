@@ -3,10 +3,6 @@
 
 #include <rel/rdb.h>
 #include "parse.h"
-#include <signal.h>
-
-#define DURO_RETURN (-1000)
-#define DURO_LEAVE (-1001)
 
 void
 Duro_print_error(const RDB_object *);

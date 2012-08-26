@@ -518,6 +518,12 @@ KEY {
     return TOK_KEY;
 }
 
+DEFAULT {
+    yylval = RDB_new_parse_token(TOK_DEFAULT, whitecommp, RDB_parse_ecp);
+    whitecommp = NULL;
+    return TOK_DEFAULT;
+}
+
 INIT {
     yylval = RDB_new_parse_token(TOK_INIT, whitecommp, RDB_parse_ecp);
     whitecommp = NULL;

@@ -402,6 +402,9 @@ describing the attributes of the tuple or relation type
 specified by *<var>typ</var> and stores the number of attributes in
 *<var>attrcp</var>.
 
+The pointer returned must no longer be used if the RDB_type structure
+has been destroyed.
+
 @returns
 
 A pointer to an array of RDB_attr structs or NULL if the type

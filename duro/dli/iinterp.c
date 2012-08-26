@@ -8,57 +8,23 @@
  */
 
 #include "iinterp.h"
+#include "interp_core.h"
 #include "exparse.h"
 #include "ioop.h"
 #include <gen/hashmap.h>
 #include <gen/hashmapit.h>
 #include <rel/tostr.h>
 #include <rel/rdb.h>
-#include <rel/internal.h>
 #include <rel/typeimpl.h>
 #include <rel/qresult.h>
 #include <rel/optimize.h>
+#include <rel/internal.h>
 
 #include <sys/stat.h>
 #include <errno.h>
 #include <string.h>
 #include <stdlib.h>
 #include <assert.h>
-
-enum {
-    DURO_MAX_LLEN = 64,
-    DEFAULT_VARMAP_SIZE = 128
-};
-
-typedef struct tx_node {
-    RDB_transaction tx;
-    struct tx_node *parentp;
-} tx_node;
-
-typedef struct return_info {
-    RDB_type *typ;  /* Return type */
-    RDB_object *objp;   /* Return value */
-} return_info;
-
-/* Contains operators and global transient variables */
-typedef struct module {
-    /* Global transient variables */
-    RDB_hashmap varmap;
-
-    /* System-defined update operators (not stored), only used in sys_module */
-    RDB_op_map upd_op_map;
-} module;
-
-typedef struct varmap_node {
-    RDB_hashmap map;
-    struct varmap_node *parentp;
-} varmap_node;
-
-/* Top-level module */
-static module root_module;
-
-/* System module, contains STDIN, STDOUT etc. */
-static module sys_module;
 
 extern int yylineno;
 
@@ -68,162 +34,7 @@ typedef struct yy_buffer_state *YY_BUFFER_STATE;
 
 static RDB_object prompt;
 
-static sig_atomic_t interrupted;
-
-/*
- * Points to the local variables in the current scope.
- * Linked list from inner to outer scope.
- */
-static varmap_node *current_varmapp;
-
-static RDB_environment *envp = NULL;
-
-static tx_node *txnp = NULL;
-
 static const char *leave_targetname;
-
-static int
-add_varmap(RDB_exec_context *ecp)
-{
-    varmap_node *nodep = RDB_alloc(sizeof(varmap_node), ecp);
-    if (nodep == NULL) {
-        return RDB_ERROR;
-    }
-    RDB_init_hashmap(&nodep->map, DEFAULT_VARMAP_SIZE);
-    nodep->parentp = current_varmapp;
-    current_varmapp = nodep;
-    return RDB_OK;
-}
-
-static int
-drop_local_var(RDB_object *objp, RDB_exec_context *ecp)
-{
-    RDB_type *typ = RDB_obj_type(objp);
-
-    /* Array and tuple types must be destroyed */
-    if (!RDB_type_is_scalar(typ) && !RDB_type_is_relation(typ)) {
-        if (RDB_del_nonscalar_type(typ, ecp) != RDB_OK)
-            return RDB_ERROR;
-    }
-
-    if (RDB_destroy_obj(objp, ecp) != RDB_OK)
-        return RDB_ERROR;
-    
-    RDB_free(objp);
-    return RDB_OK;
-}
-
-static void
-destroy_varmap(RDB_hashmap *map)
-{
-    RDB_hashmap_iter it;
-    char *name;
-    RDB_object *objp;
-    RDB_exec_context ec;
-
-    RDB_init_exec_context(&ec);
-    RDB_init_hashmap_iter(&it, map);
-    for(;;) {
-        objp = RDB_hashmap_next(&it, &name);
-        if (name == NULL)
-            break;
-        if (objp != NULL) {
-            drop_local_var(objp, &ec);
-        }
-    }
-
-    RDB_destroy_hashmap(map);
-    RDB_destroy_exec_context(&ec);
-}
-
-static void
-remove_varmap(void) {
-    varmap_node *parentp = current_varmapp->parentp;
-    destroy_varmap(&current_varmapp->map);
-    RDB_free(current_varmapp);
-    current_varmapp = parentp;
-}
-
-static RDB_object *
-lookup_transient_var(const char *name, varmap_node *varmapp)
-{
-    RDB_object *objp;
-    varmap_node *nodep = varmapp;
-
-    /* Search in local vars */
-    while (nodep != NULL) {
-        objp = RDB_hashmap_get(&nodep->map, name);
-        if (objp != NULL)
-            return objp;
-        nodep = nodep->parentp;
-    }
-
-    /* Search in global transient vars */
-    objp = RDB_hashmap_get(&root_module.varmap, name);
-    if (objp != NULL)
-        return objp;
-
-    /* Search in system module */
-    return RDB_hashmap_get(&sys_module.varmap, name);
-}
-
-static RDB_object *
-lookup_var(const char *name, RDB_exec_context *ecp)
-{
-    RDB_object *objp = lookup_transient_var(name, current_varmapp);
-    if (objp != NULL)
-        return objp;
-
-    if (txnp != NULL) {
-        /* Try to get table from DB */
-        objp = RDB_get_table(name, ecp, &txnp->tx);
-    }
-    if (objp == NULL)
-        RDB_raise_name(name, ecp);
-    return objp;
-}
-
-static RDB_object *
-get_var(const char *name, void *maparg)
-{
-    return lookup_transient_var(name, (varmap_node *) maparg);
-}
-
-static RDB_type *
-get_var_type(const char *name, void *maparg)
-{
-    RDB_object *objp = lookup_transient_var(name, (varmap_node *) maparg);
-    return objp != NULL ? RDB_obj_type(objp) : NULL;
-}
-
-struct op_data {
-    RDB_parse_node *stmtlistp;
-    int argnamec;
-    char **argnamev;
-};
-
-static void
-free_opdata(RDB_operator *op)
-{
-    int i;
-    RDB_exec_context ec;
-    struct op_data *opdatap = RDB_op_u_data(op);
-
-    /* Initialize temporary execution context */
-    RDB_init_exec_context(&ec);
-
-    /* Delete code */
-    RDB_parse_del_nodelist(opdatap->stmtlistp, &ec);
-
-    RDB_destroy_exec_context(&ec);
-
-    /* Delete arguments */
-
-    for (i = 0; i < opdatap->argnamec; i++) {
-        RDB_free(opdatap->argnamev[i]);
-    }
-    RDB_free(opdatap->argnamev);
-}
 
 void
 Duro_exit_interp(void)
@@ -232,14 +43,11 @@ Duro_exit_interp(void)
 
     RDB_init_exec_context(&ec);
 
-    destroy_varmap(&root_module.varmap);
+    Duro_destroy_vars();
 
     if (RDB_parse_get_interactive()) {
         RDB_destroy_obj(&prompt, &ec);
     }
-
-    /* Destroy only the varmap, not the variables as they are global */
-    RDB_destroy_hashmap(&sys_module.varmap);
 
     if (txnp != NULL) {
         RDB_rollback(&ec, &txnp->tx);
@@ -426,9 +234,7 @@ Duro_init_exec(RDB_exec_context *ecp, const char *dbname)
     trace_params[0].typ = &RDB_INTEGER;
     trace_params[0].update = RDB_FALSE;
 
-    RDB_init_hashmap(&root_module.varmap, DEFAULT_VARMAP_SIZE);
-    RDB_init_hashmap(&sys_module.varmap, DEFAULT_VARMAP_SIZE);
-    current_varmapp = NULL;
+    Duro_init_vars();
 
     RDB_init_op_map(&sys_module.upd_op_map);
 
@@ -495,171 +301,13 @@ error:
 }
 
 static int
-init_obj(RDB_object *, RDB_type *, RDB_exec_context *, RDB_transaction *);
-
-static int
-init_obj_by_selector(RDB_object *objp, RDB_possrep *rep,
-        RDB_exec_context *ecp, RDB_transaction *txp)
-{
-    int ret;
-    int i;
-    RDB_object *objv;
-    RDB_object **objpv;
-
-    objv = RDB_alloc(sizeof(RDB_object) * rep->compc, ecp);
-    if (objv == NULL) {
-        return RDB_ERROR;
-    }
-    for (i = 0; i < rep->compc; i++)
-        RDB_init_obj(&objv[i]);
-    objpv = RDB_alloc(sizeof(RDB_object *) * rep->compc, ecp);
-    if (objpv == NULL) {
-        ret = RDB_ERROR;
-        goto cleanup;
-    }
-
-    /* Get selector arguments */
-    for (i = 0; i < rep->compc; i++) {
-        ret = init_obj(&objv[i], rep->compv[i].typ, ecp, txp);
-        if (ret != RDB_OK)
-            goto cleanup;
-        objpv[i] = &objv[i];
-    }
-
-    /* Call selector */
-    ret = RDB_call_ro_op_by_name_e(rep->name, rep->compc, objpv, envp, ecp,
-            txp, objp);
-
-cleanup:
-    for (i = 0; i < rep->compc; i++)
-        RDB_destroy_obj(&objv[i], ecp);
-    RDB_free(objv);
-    RDB_free(objpv);
-
-    return ret;
-}
-
-static int
-init_obj(RDB_object *objp, RDB_type *typ, RDB_exec_context *ecp,
-        RDB_transaction *txp)
-{
-    int i;
-
-    if (typ == &RDB_BOOLEAN) {
-        RDB_bool_to_obj(objp, RDB_FALSE);
-    } else if (typ == &RDB_INTEGER) {
-        RDB_int_to_obj(objp, 0);
-    } else if (typ == &RDB_FLOAT) {
-        RDB_float_to_obj(objp, 0.0);
-    } else if (typ == &RDB_STRING) {
-        return RDB_string_to_obj(objp, "", ecp);
-    } else if (typ == &RDB_BINARY) {
-        return RDB_binary_set(objp, 0, NULL, (size_t) 0, ecp);
-    } else if (RDB_type_is_tuple(typ)) {
-        for (i = 0; i < typ->def.tuple.attrc; i++) {
-            if (RDB_tuple_set(objp, typ->def.tuple.attrv[i].name,
-                    NULL, ecp) != RDB_OK)
-                return RDB_ERROR;
-            if (init_obj(RDB_tuple_get(objp, typ->def.tuple.attrv[i].name),
-                    typ->def.tuple.attrv[i].typ, ecp, txp) != RDB_OK)
-                return RDB_ERROR;
-        }
-        typ = RDB_dup_nonscalar_type(typ, ecp);
-        if (typ == NULL)
-            return RDB_ERROR;
-        RDB_obj_set_typeinfo(objp, typ);
-    } else if (RDB_type_is_array(typ)) {
-        typ = RDB_dup_nonscalar_type(typ, ecp);
-        if (typ == NULL)
-            return RDB_ERROR;
-        RDB_obj_set_typeinfo(objp, typ);
-    } else {
-        /* Invoke selector */
-        if (typ->def.scalar.repc > 0) {
-            return init_obj_by_selector(objp, &typ->def.scalar.repv[0],
-                    ecp, txp);
-        }
-    }
-    return RDB_OK;
-}
-
-static RDB_database *
-get_db(RDB_exec_context *ecp)
-{
-    char *dbname;
-    RDB_object *dbnameobjp = RDB_hashmap_get(&sys_module.varmap, "current_db");
-    if (dbnameobjp == NULL) {
-        RDB_raise_resource_not_found("no database", ecp);
-        return NULL;
-    }
-    dbname = RDB_obj_string(dbnameobjp);
-    if (*dbname == '\0') {
-        RDB_raise_not_found("no database", ecp);
-        return NULL;
-    }
-    if (envp == NULL) {
-        RDB_raise_resource_not_found("no connection", ecp);
-        return NULL;
-    }
-
-    return RDB_get_db_from_env(dbname, envp, ecp);
-}
-
-/*
- * Evaluate expression.
- * If evaluation fails with OPERATOR_NOT_FOUND_ERROR ad no transaction is running
- * but a environment is available, start a transaction and try again.
- */
-static int
-evaluate_retry(RDB_expression *exp, RDB_exec_context *ecp, RDB_object *resultp)
-{
-    RDB_transaction tx;
-    RDB_database *dbp;
-    int ret;
-
-    ret = RDB_evaluate(exp, &get_var, current_varmapp, envp, ecp,
-            txnp != NULL ? &txnp->tx : NULL, resultp);
-    /*
-     * Success or error different from OPERATOR_NOT_FOUND_ERROR
-     * -> return
-     */
-    if (ret == RDB_OK
-            || RDB_obj_type(RDB_get_err(ecp)) != &RDB_OPERATOR_NOT_FOUND_ERROR)
-        return ret;
-    /*
-     * If a transaction is already active or no environment is
-     * available, give up
-     */
-    if (txnp != NULL || envp == NULL)
-        return ret;
-    /*
-     * Start transaction and retry.
-     * If this succeeds, the operator will be in memory next time
-     * so no transaction will be needed.
-     */
-    dbp = get_db(ecp);
-    if (dbp == NULL) {
-        return RDB_ERROR;
-    }
-
-    if (RDB_begin_tx(ecp, &tx, dbp, NULL) != RDB_OK)
-        return RDB_ERROR;
-    ret = RDB_evaluate(exp, &get_var, current_varmapp, envp, ecp, &tx, resultp);
-    if (ret != RDB_OK) {
-        RDB_commit(ecp, &tx);
-        return ret;
-    }
-    return RDB_commit(ecp, &tx);
-}
-
-static int
 evaluate_retry_bool(RDB_expression *exp, RDB_exec_context *ecp, RDB_bool *resultp)
 {
     int ret;
     RDB_object result;
 
     RDB_init_obj(&result);
-    ret = evaluate_retry(exp, ecp, &result);
+    ret = Duro_evaluate_retry(exp, ecp, &result);
     if (ret != RDB_OK) {
         RDB_destroy_obj(&result, ecp);
         return ret;
@@ -667,345 +315,6 @@ evaluate_retry_bool(RDB_expression *exp, RDB_exec_context *ecp, RDB_bool *result
     *resultp = RDB_obj_bool(&result);
     RDB_destroy_obj(&result, ecp);
     return RDB_OK;
-}
-
-/*
- * Convert parse node into type. If the type cannot be found and no
- * transaction was active, start a transaction and try again.
- */
-static RDB_type *
-parse_node_to_type_retry(RDB_parse_node *nodep, RDB_exec_context *ecp)
-{
-    RDB_database *dbp;
-    RDB_transaction tx;
-    RDB_type *typ = RDB_parse_node_to_type(nodep, &get_var_type,
-            current_varmapp, ecp, txnp != NULL ? &txnp->tx : NULL);
-    /*
-     * Success or error different from NAME_ERROR
-     * -> return
-     */
-    if (typ != NULL)
-        return typ;
-    if (RDB_obj_type(RDB_get_err(ecp)) != &RDB_NAME_ERROR)
-        return NULL;
-    /*
-     * If a transaction is already active or no environment is
-     * available, give up
-     */
-    if (txnp != NULL || envp == NULL)
-        return NULL;
-    /*
-     * Start transaction and retry.
-     */
-    dbp = get_db(ecp);
-    if (dbp == NULL) {
-        return NULL;
-    }
-
-    if (RDB_begin_tx(ecp, &tx, dbp, NULL) != RDB_OK)
-        return NULL;
-    typ = RDB_parse_node_to_type(nodep, &get_var_type,
-                current_varmapp, ecp, &tx);
-    if (typ == NULL) {
-        RDB_commit(ecp, &tx);
-        return NULL;
-    }
-    if (RDB_commit(ecp, &tx) != RDB_OK) {
-        if (!RDB_type_is_scalar(typ)) {
-            RDB_del_nonscalar_type(typ, ecp);
-            return NULL;
-        }
-    }
-    return typ;
-}
-
-static int
-exec_vardef(RDB_parse_node *nodep, RDB_exec_context *ecp)
-{
-    RDB_object *objp;
-    RDB_type *typ = NULL;
-    RDB_expression *initexp = NULL;
-    const char *varname = RDB_expr_var_name(nodep->exp);
-    RDB_transaction *txp = txnp != NULL ? &txnp->tx : NULL;
-
-    /* Init value without type? */
-    if (nodep->nextp->kind == RDB_NODE_TOK && nodep->nextp->val.token == TOK_INIT) {
-        /* No type - get INIT value */
-        initexp = RDB_parse_node_expr(nodep->nextp->nextp, ecp, txp);
-        if (initexp == NULL)
-            return RDB_ERROR;
-    } else {
-        typ = parse_node_to_type_retry(nodep->nextp, ecp);
-        if (typ == NULL)
-            return RDB_ERROR;
-        if (RDB_type_is_relation(typ)) {
-            RDB_raise_syntax("relation type not permitted", ecp);
-            return RDB_ERROR;
-        }
-        if (nodep->nextp->nextp->kind == RDB_NODE_TOK
-                && nodep->nextp->nextp->val.token == TOK_INIT) {
-            /* Get INIT value */
-            initexp = RDB_parse_node_expr(nodep->nextp->nextp->nextp, ecp, txp);
-            if (initexp == NULL)
-                return RDB_ERROR;
-        }
-    }
-
-    /*
-     * Check if the variable already exists
-     */
-    if (RDB_hashmap_get(current_varmapp != NULL ?
-            &current_varmapp->map : &root_module.varmap, varname) != NULL) {
-        RDB_raise_element_exists(varname, ecp);
-        return RDB_ERROR;
-    }
-
-    objp = RDB_alloc(sizeof (RDB_object), ecp);
-    if (objp == NULL) {
-        return RDB_ERROR;
-    }
-    RDB_init_obj(objp);
-
-    if (initexp == NULL) {
-        if (init_obj(objp, typ, ecp, txp) != RDB_OK) {
-            goto error;
-        }
-    } else {
-        if (evaluate_retry(initexp, ecp, objp) != RDB_OK) {
-            goto error;
-        }
-        if (RDB_obj_type(objp) != NULL) {
-            /* Check type if type was given */
-            if (typ != NULL &&
-                    !RDB_type_equals(typ, RDB_obj_type(objp))) {
-                RDB_raise_type_mismatch("", ecp);
-                goto error;
-            }
-        } else {
-            /* No type available (tuple or array) - set type */
-            typ = RDB_expr_type(initexp, get_var_type,
-                    current_varmapp, ecp, txnp != NULL ? &txnp->tx : NULL);
-            if (typ == NULL)
-                goto error;
-            typ = RDB_dup_nonscalar_type(typ, ecp);
-            if (typ == NULL)
-                goto error;
-            RDB_obj_set_typeinfo(objp, typ);
-        }
-    }
-
-    if (current_varmapp != NULL) {
-        /* We're in local scope */
-        if (RDB_hashmap_put(&current_varmapp->map, varname, objp) != RDB_OK) {
-            RDB_raise_no_memory(ecp);
-            goto error;
-        }
-    } else {
-        /* Global scope */
-        if (RDB_hashmap_put(&root_module.varmap, varname, objp) != RDB_OK) {
-            RDB_raise_no_memory(ecp);
-            goto error;
-        }
-    }
-    return RDB_OK;
-
-error:
-    RDB_destroy_obj(objp, ecp);
-    RDB_free(objp);
-    return RDB_ERROR;
-}
-
-static int
-node_to_key(RDB_parse_node *nodep, RDB_exec_context *ecp, RDB_string_vec *vp)
-{
-    RDB_parse_node *np;
-
-    vp->strc = (RDB_parse_nodelist_length(nodep) + 1) / 2;
-    vp->strv = RDB_alloc(sizeof (char *) * vp->strc, ecp);
-    if (vp->strv == NULL)
-        return RDB_ERROR;
-
-    np = nodep->val.children.firstp;
-    if (np != NULL) {
-        int i = 0;
-        for(;;) {
-            vp->strv[i++] = (char *) RDB_parse_node_ID(np);
-            np = np->nextp;
-            if (np == NULL)
-                break;
-            np = np->nextp;
-        }
-    }
-    return RDB_OK;
-}
-
-static RDB_string_vec *
-keylist_to_keyv(RDB_parse_node *nodep, int *keycp, RDB_exec_context *ecp)
-{
-    RDB_string_vec *keyv;
-    RDB_parse_node *np;
-    int i;
-
-    /* if (np->val.children.firstp == NULL) ... */
-
-    *keycp = 1;
-
-    np = nodep;
-    while (np->val.children.firstp->kind == RDB_NODE_INNER) {
-        np = nodep->val.children.firstp;
-        (*keycp)++;
-    }
-
-    keyv = RDB_alloc(sizeof(RDB_string_vec) * (*keycp), ecp);
-    if (keyv == NULL) {
-        return NULL;
-    }
-
-    for (i = 0; i < *keycp; i++) {
-        keyv[i].strv = NULL;
-    }
-
-    i = *keycp - 1;
-    np = nodep;
-    while (np->val.children.firstp->kind == RDB_NODE_INNER) {
-        if (node_to_key(np->val.children.firstp->nextp->nextp->nextp, ecp, &keyv[i]) != RDB_OK)
-            goto error;
-        np = np->val.children.firstp;
-        i--;
-    }
-    if (node_to_key(np->val.children.firstp->nextp->nextp, ecp, &keyv[0]) != RDB_OK)
-        goto error;
-
-    return keyv;
-
-error:
-    for (i = 0; i < *keycp; i++) {
-        RDB_free(keyv[i].strv);
-    }
-    RDB_free(keyv);
-    return NULL;
-}
-
-static int
-exec_vardef_real(RDB_parse_node *nodep, RDB_exec_context *ecp)
-{
-    RDB_string_vec *keyv;
-    RDB_bool freekey;
-    const char *varname;
-    RDB_object tb;
-    int keyc;
-    int i;
-    RDB_parse_node *keylistnodep;
-    RDB_type *tbtyp = NULL;
-    RDB_object *tbp = NULL;
-    RDB_expression *initexp = NULL;
-
-    if (txnp == NULL) {
-        RDB_raise_no_running_tx(ecp);
-        return RDB_ERROR;
-    }
-
-    varname = RDB_expr_var_name(nodep->exp);
-
-    /* Init value without type? */
-    if (nodep->nextp->nextp->kind == RDB_NODE_TOK && nodep->nextp->nextp->val.token == TOK_INIT) {
-        /* No type - get INIT value */
-        initexp = RDB_parse_node_expr(nodep->nextp->nextp->nextp, ecp, &txnp->tx);
-        if (initexp == NULL)
-            return RDB_ERROR;
-        keylistnodep = nodep->nextp->nextp->nextp->nextp;
-    } else {
-        tbtyp = RDB_parse_node_to_type(nodep->nextp->nextp, &get_var_type,
-                current_varmapp, ecp, &txnp->tx);
-        if (tbtyp == NULL)
-            return RDB_ERROR;
-        if (nodep->nextp->nextp->nextp->kind == RDB_NODE_TOK
-                && nodep->nextp->nextp->nextp->val.token == TOK_INIT) {
-            /* Get INIT value */
-            initexp = RDB_parse_node_expr(nodep->nextp->nextp->nextp->nextp, ecp, &txnp->tx);
-            if (initexp == NULL)
-                return RDB_ERROR;
-            keylistnodep = nodep->nextp->nextp->nextp->nextp->nextp;
-        } else {
-            keylistnodep = nodep->nextp->nextp->nextp;
-        }
-    }
-
-    if (initexp != NULL) {
-        RDB_init_obj(&tb);
-        if (evaluate_retry(initexp, ecp, &tb) != RDB_OK) {
-            goto error;
-        }
-        if (RDB_obj_type(&tb) == NULL) {
-            RDB_raise_type_mismatch("relation type required", ecp);
-            goto error;
-        }
-    }
-
-    if (tbtyp == NULL) {
-        tbtyp = RDB_dup_nonscalar_type(RDB_obj_type(&tb), ecp);
-    }
-    if (tbtyp == NULL)
-        goto error;
-
-    if (keylistnodep->kind == RDB_NODE_INNER) {
-        keyv = keylist_to_keyv(keylistnodep, &keyc, ecp);
-        if (keyv == NULL)
-            goto error;
-    } else {
-        /* Get keys from expression */
-        keyc = RDB_infer_keys(initexp, ecp, &keyv, &freekey);
-        if (keyc == RDB_ERROR)
-            return RDB_ERROR;
-    }
-
-    tbp = RDB_create_table_from_type(varname, tbtyp, keyc, keyv, ecp, &txnp->tx);
-    if (tbp == NULL) {
-        goto error;
-    }
-
-    if (initexp != NULL) {
-        if (RDB_move_tuples(tbp, &tb, ecp, &txnp->tx) == (RDB_int) RDB_ERROR)
-            goto error;
-    }
-
-    if (RDB_parse_get_interactive())
-        printf("Table %s created.\n", varname);
-
-    if (initexp != NULL) {
-        RDB_destroy_obj(&tb, ecp);
-    }
-
-    if (freekey) {
-        for (i = 0; i < keyc; i++) {
-            RDB_free(keyv[i].strv);
-        }
-        RDB_free(keyv);
-    }
-    return RDB_OK;
-
-error:
-    {
-        RDB_exec_context ec;
-
-        RDB_init_exec_context(&ec);
-        if (tbp != NULL) {
-            RDB_drop_table(tbp, &ec, &txnp->tx);
-        } else if (tbtyp != NULL && !RDB_type_is_scalar(tbtyp)) {
-            RDB_del_nonscalar_type(tbtyp, &ec);
-        }
-        if (initexp != NULL) {
-            RDB_destroy_obj(&tb, &ec);
-        }
-        RDB_destroy_exec_context(&ec);
-    }
-    if (freekey) {
-        for (i = 0; i < keyc; i++) {
-            RDB_free(keyv[i].strv);
-        }
-        RDB_free(keyv);
-    }
-    return RDB_ERROR;
 }
 
 static int
@@ -1044,176 +353,6 @@ exec_vardef_virtual(RDB_parse_node *nodep, RDB_exec_context *ecp)
     return RDB_OK;
 }
 
-static int
-exec_vardef_private(RDB_parse_node *nodep, RDB_exec_context *ecp)
-{
-    RDB_object *tbp;
-    RDB_string_vec *keyv;
-    RDB_object tb;
-    RDB_parse_node *keylistnodep;
-    int keyc = 0;
-    RDB_bool freekey = RDB_TRUE;
-    RDB_expression *initexp = NULL;
-    RDB_transaction *txp = txnp != NULL ? &txnp->tx : NULL;
-    RDB_type *tbtyp = NULL;
-    const char *varname = RDB_expr_var_name(nodep->exp);
-
-    /* Init value without type? */
-    if (nodep->nextp->nextp->kind == RDB_NODE_TOK
-    		&& nodep->nextp->nextp->val.token == TOK_INIT) {
-        /* No type - get INIT value */
-        initexp = RDB_parse_node_expr(nodep->nextp->nextp->nextp, ecp, txp);
-        if (initexp == NULL)
-            return RDB_ERROR;
-        keylistnodep = nodep->nextp->nextp->nextp->nextp;
-        RDB_init_obj(&tb);
-        if (evaluate_retry(initexp, ecp, &tb) != RDB_OK) {
-            goto error;
-        }
-        if (RDB_obj_type(&tb) == NULL) {
-            RDB_raise_type_mismatch("relation type required", ecp);
-            goto error;
-        }
-        tbtyp = RDB_obj_type(&tb);
-        tbtyp = RDB_dup_nonscalar_type(tbtyp, ecp);
-        if (tbtyp == NULL)
-            goto error;
-    } else {
-        tbtyp = parse_node_to_type_retry(nodep->nextp->nextp, ecp);
-        if (tbtyp == NULL)
-            return RDB_ERROR;
-        tbtyp = RDB_dup_nonscalar_type(tbtyp, ecp);
-        if (tbtyp == NULL)
-            goto error;
-        if (nodep->nextp->nextp->nextp->kind == RDB_NODE_TOK
-                && nodep->nextp->nextp->nextp->val.token == TOK_INIT) {
-            /* Get INIT value */
-            initexp = RDB_parse_node_expr(nodep->nextp->nextp->nextp->nextp, ecp, txp);
-            if (initexp == NULL)
-                return RDB_ERROR;
-            keylistnodep = nodep->nextp->nextp->nextp->nextp->nextp;
-        } else {
-            keylistnodep = nodep->nextp->nextp->nextp;
-        }
-    }
-
-    if (!RDB_type_is_relation(tbtyp)) {
-        RDB_raise_syntax("relation type required", ecp);
-        goto error;
-    }
-
-    tbp = RDB_alloc(sizeof(RDB_object), ecp);
-    if (tbp == NULL) {
-        goto error;
-    }
-
-    if (keylistnodep->kind == RDB_NODE_INNER) {
-        keyv = keylist_to_keyv(keylistnodep, &keyc, ecp);
-        if (keyv == NULL)
-            goto error;
-    } else {
-        /* Get keys from expression */
-        keyc = RDB_infer_keys(initexp, ecp, &keyv, &freekey);
-        if (keyc == RDB_ERROR) {
-            keyv = NULL;
-            goto error;
-        }
-    }
-
-    RDB_init_obj(tbp);
-    if (RDB_init_table_from_type(tbp, varname, tbtyp, keyc, keyv, ecp)
-            != RDB_OK) {
-        RDB_destroy_obj(tbp, ecp);
-        RDB_free(tbp);
-        goto error;
-    }
-
-    if (initexp != NULL) {
-        if (evaluate_retry(initexp, ecp, &tb) != RDB_OK) {
-            goto error;
-        }
-        if (RDB_copy_obj(tbp, &tb, ecp) != RDB_OK) {
-            goto error;
-        }
-    }
-
-    if (current_varmapp != NULL) {
-        if (RDB_hashmap_put(&current_varmapp->map, varname, tbp) != RDB_OK) {
-            RDB_destroy_obj(tbp, ecp);
-            RDB_free(tbp);
-            RDB_raise_no_memory(ecp);
-            goto error;
-        }
-    } else {
-        if (RDB_hashmap_put(&root_module.varmap, varname, tbp) != RDB_OK) {
-            RDB_destroy_obj(tbp, ecp);
-            RDB_free(tbp);
-            RDB_raise_no_memory(ecp);
-            goto error;
-        }
-    }
-
-    if (RDB_parse_get_interactive())
-        printf("Local table %s created.\n", varname);
-
-    if (initexp != NULL) {
-        RDB_destroy_obj(&tb, ecp);
-    }
-    return RDB_OK;
-
-error:
-    if (tbtyp != NULL && !RDB_type_is_scalar(tbtyp))
-        RDB_del_nonscalar_type(tbtyp, ecp);
-    if (initexp != NULL) {
-        RDB_destroy_obj(&tb, ecp);
-    }
-    return RDB_ERROR;
-}
-
-static int
-exec_vardrop(const RDB_parse_node *nodep, RDB_exec_context *ecp)
-{
-    const char *varname = RDB_expr_var_name(nodep->exp);
-    RDB_object *objp = NULL;
-
-    /* Try to look up local variable */
-    if (current_varmapp != NULL)
-        objp = RDB_hashmap_get(&current_varmapp->map, varname);
-    if (objp == NULL)
-        objp = RDB_hashmap_get(&root_module.varmap, varname);
-    if (objp != NULL) {
-        /* If transient variable found */
-        if (current_varmapp != NULL) {
-            if (RDB_hashmap_put(&current_varmapp->map, varname, NULL) != RDB_OK)
-                return RDB_ERROR;
-        } else {
-            if (RDB_hashmap_put(&root_module.varmap, varname, NULL) != RDB_OK)
-                return RDB_ERROR;
-        }
-        return drop_local_var(objp, ecp);
-    }
-
-    /*
-     * Delete persistent table
-     */
-
-    if (txnp == NULL) {
-        RDB_raise_no_running_tx(ecp);
-        return RDB_ERROR;
-    }
-
-    objp = RDB_get_table(varname, ecp, &txnp->tx);
-    if (objp == NULL)
-        return RDB_ERROR;
-
-    if (RDB_drop_table(objp, ecp, &txnp->tx) != RDB_OK)
-        return RDB_ERROR;
-
-    if (RDB_parse_get_interactive())
-        printf("Table %s dropped.\n", varname);
-    return RDB_OK;
-}
-
 /*
  * Call update operator. nodep points to the operator name token.
  */
@@ -1242,8 +381,8 @@ exec_call(const RDB_parse_node *nodep, RDB_exec_context *ecp,
         exp = RDB_parse_node_expr(argp, ecp, txp);
         if (exp == NULL)
             return RDB_ERROR;
-        argtv[argc] = RDB_expr_type(exp, &get_var_type, current_varmapp, ecp,
-                txp);
+        argtv[argc] = RDB_expr_type(exp, &Duro_get_var_type, NULL,
+                ecp, txp);
         if (argtv[argc] == NULL)
             return RDB_ERROR;
 
@@ -1292,7 +431,7 @@ exec_call(const RDB_parse_node *nodep, RDB_exec_context *ecp,
         if (paramp != NULL && paramp->update) {
             const char *varname = RDB_expr_var_name(exp);
             if (varname != NULL) {
-                argpv[i] = lookup_var(varname, ecp);
+                argpv[i] = Duro_lookup_var(varname, ecp);
             } else if (exp->kind == RDB_EX_TBP) {
                 argpv[i] = exp->def.tbref.tbp;
             }
@@ -1312,14 +451,14 @@ exec_call(const RDB_parse_node *nodep, RDB_exec_context *ecp,
         /* If the expression has not been resolved as a variable, evaluate it */
         if (argpv[i] == NULL) {
             RDB_init_obj(&argv[i]);
-            if (evaluate_retry(exp, ecp, &argv[i]) != RDB_OK) {
+            if (Duro_evaluate_retry(exp, ecp, &argv[i]) != RDB_OK) {
                 ret = RDB_ERROR;
                 goto cleanup;
             }
             /* Set type if missing */
             if (RDB_obj_type(&argv[i]) == NULL) {
-                RDB_type *typ = RDB_expr_type(exp, &get_var_type,
-                        current_varmapp, ecp, txp);
+                RDB_type *typ = RDB_expr_type(exp, &Duro_get_var_type,
+                        NULL, ecp, txp);
                 if (typ == NULL) {
                     ret = RDB_ERROR;
                     goto cleanup;
@@ -1376,7 +515,7 @@ exec_call_retry(const RDB_parse_node *nodep, RDB_exec_context *ecp) {
      * If this succeeds, the operator will be in memory next time
      * so no transaction will be needed.
      */
-    dbp = get_db(ecp);
+    dbp = Duro_get_db(ecp);
     if (dbp == NULL) {
         return RDB_ERROR;
     }
@@ -1430,7 +569,7 @@ exec_load(RDB_parse_node *nodep, RDB_exec_context *ecp)
         ret = RDB_ERROR;
         goto cleanup;
     }
-    dstp = lookup_var(RDB_expr_var_name(exp), ecp);
+    dstp = Duro_lookup_var(RDB_expr_var_name(exp), ecp);
     if (dstp == NULL) {
         ret = RDB_ERROR;
         goto cleanup;
@@ -1443,7 +582,7 @@ exec_load(RDB_parse_node *nodep, RDB_exec_context *ecp)
     }
 
     RDB_init_obj(&srctb);
-    if (evaluate_retry(exp, ecp, &srctb) != RDB_OK) {
+    if (Duro_evaluate_retry(exp, ecp, &srctb) != RDB_OK) {
         ret = RDB_ERROR;
         goto cleanup;
     }
@@ -1577,7 +716,7 @@ exec_if(RDB_parse_node *nodep, RDB_exec_context *ecp,
             != RDB_OK) {
         return RDB_ERROR;
     }
-    if (add_varmap(ecp) != RDB_OK)
+    if (Duro_add_varmap(ecp) != RDB_OK)
         return RDB_ERROR;
     if (b) {
         ret = exec_stmts(nodep->nextp->nextp->val.children.firstp,
@@ -1589,7 +728,7 @@ exec_if(RDB_parse_node *nodep, RDB_exec_context *ecp,
         ret = RDB_OK;
     }
 
-    remove_varmap();
+    Duro_remove_varmap();
     return ret;
 }
 
@@ -1618,22 +757,22 @@ exec_case(RDB_parse_node *nodep, RDB_exec_context *ecp,
             return RDB_ERROR;
         }
         if (b) {
-            if (add_varmap(ecp) != RDB_OK)
+            if (Duro_add_varmap(ecp) != RDB_OK)
                 return RDB_ERROR;
             ret = exec_stmts(whenp->val.children.firstp->nextp->nextp->nextp->val.children.firstp,
                     ecp, retinfop);
-            remove_varmap();
+            Duro_remove_varmap();
             return ret;
         }
         whenp = whenp->nextp;
     }
     if (nodep->nextp->nextp->kind == RDB_NODE_INNER) {
         /* ELSE branch */
-        if (add_varmap(ecp) != RDB_OK)
+        if (Duro_add_varmap(ecp) != RDB_OK)
             return RDB_ERROR;
         ret = exec_stmts(nodep->nextp->nextp->val.children.firstp,
                 ecp, retinfop);
-        remove_varmap();
+        Duro_remove_varmap();
         return ret;
     }
     return RDB_OK;
@@ -1654,7 +793,7 @@ exec_while(RDB_parse_node *nodep, RDB_parse_node *labelp, RDB_exec_context *ecp,
             return RDB_ERROR;
         if (!b)
             return RDB_OK;
-        if (add_varmap(ecp) != RDB_OK)
+        if (Duro_add_varmap(ecp) != RDB_OK)
             return RDB_ERROR;
         ret = exec_stmts(nodep->nextp->nextp->val.children.firstp, ecp, retinfop);
         if (ret != RDB_OK) {
@@ -1669,10 +808,10 @@ exec_while(RDB_parse_node *nodep, RDB_parse_node *labelp, RDB_exec_context *ecp,
                     ret = RDB_OK;
                 }
             }
-            remove_varmap();
+            Duro_remove_varmap();
             return ret;
         }
-        remove_varmap();
+        Duro_remove_varmap();
 
         /*
          * Check interrupt flag - this allows the user to break out of loops,
@@ -1693,8 +832,7 @@ exec_for(const RDB_parse_node *nodep, const RDB_parse_node *labelp,
     int ret;
     RDB_object endval;
     RDB_expression *fromexp, *toexp;
-    RDB_object *varp = lookup_transient_var(RDB_expr_var_name(nodep->exp),
-            current_varmapp);
+    RDB_object *varp = Duro_lookup_transient_var(RDB_expr_var_name(nodep->exp));
     if (varp == NULL) {
         RDB_raise_name(RDB_expr_var_name(nodep->exp), ecp);
         return RDB_ERROR;
@@ -1709,7 +847,7 @@ exec_for(const RDB_parse_node *nodep, const RDB_parse_node *labelp,
             txnp != NULL ? &txnp->tx : NULL);
     if (fromexp == NULL)
         return RDB_ERROR;
-    if (evaluate_retry(fromexp, ecp, varp) != RDB_OK) {
+    if (Duro_evaluate_retry(fromexp, ecp, varp) != RDB_OK) {
         return RDB_ERROR;
     }
     toexp = RDB_parse_node_expr(nodep->nextp->nextp->nextp->nextp, ecp,
@@ -1717,7 +855,7 @@ exec_for(const RDB_parse_node *nodep, const RDB_parse_node *labelp,
     if (toexp == NULL)
         return RDB_ERROR;
     RDB_init_obj(&endval);
-    if (evaluate_retry(toexp, ecp, &endval) != RDB_OK) {
+    if (Duro_evaluate_retry(toexp, ecp, &endval) != RDB_OK) {
         goto error;
     }
     if (RDB_obj_type(&endval) != &RDB_INTEGER) {
@@ -1726,7 +864,7 @@ exec_for(const RDB_parse_node *nodep, const RDB_parse_node *labelp,
     }
 
     while (RDB_obj_int(varp) <= RDB_obj_int(&endval)) {
-        if (add_varmap(ecp) != RDB_OK)
+        if (Duro_add_varmap(ecp) != RDB_OK)
             goto error;
 
         /* Execute statements */
@@ -1744,11 +882,11 @@ exec_for(const RDB_parse_node *nodep, const RDB_parse_node *labelp,
                     ret = RDB_OK;
                 }
             }
-            remove_varmap();
+            Duro_remove_varmap();
             RDB_destroy_obj(&endval, ecp);
             return ret;
         }
-        remove_varmap();
+        Duro_remove_varmap();
 
         /*
          * Check for user interrupt
@@ -1780,8 +918,7 @@ exec_foreach(const RDB_parse_node *nodep, const RDB_parse_node *labelp,
     RDB_seq_item *seqitv = NULL;
     RDB_qresult *itp = NULL;
     RDB_transaction *txp = txnp != NULL ? &txnp->tx : NULL;
-    RDB_object *varp = lookup_transient_var(RDB_expr_var_name(nodep->exp),
-            current_varmapp);
+    RDB_object *varp = Duro_lookup_transient_var(RDB_expr_var_name(nodep->exp));
     if (varp == NULL) {
         RDB_raise_name(RDB_expr_var_name(nodep->exp), ecp);
         return RDB_ERROR;
@@ -1791,7 +928,7 @@ exec_foreach(const RDB_parse_node *nodep, const RDB_parse_node *labelp,
     if (tbexp == NULL)
         return RDB_ERROR;
 
-    tbtyp = RDB_expr_type(tbexp, &get_var_type, current_varmapp, ecp, txp);
+    tbtyp = RDB_expr_type(tbexp, &Duro_get_var_type, NULL, ecp, txp);
     if (tbtyp == NULL)
         return RDB_ERROR;
     if (!RDB_type_is_relation(tbtyp)) {
@@ -1806,7 +943,7 @@ exec_foreach(const RDB_parse_node *nodep, const RDB_parse_node *labelp,
 
     RDB_init_obj(&tb);
     /* !! Inefficient if tbexp is a table name - applies to LOAD too */
-    if (evaluate_retry(tbexp, ecp, &tb) != RDB_OK) {
+    if (Duro_evaluate_retry(tbexp, ecp, &tb) != RDB_OK) {
         goto error;
     }
 
@@ -1830,7 +967,7 @@ exec_foreach(const RDB_parse_node *nodep, const RDB_parse_node *labelp,
      */
 
     while (RDB_next_tuple(itp, varp, ecp, txp) == RDB_OK) {
-        if (add_varmap(ecp) != RDB_OK)
+        if (Duro_add_varmap(ecp) != RDB_OK)
             goto error;
 
         /* Execute statements */
@@ -1848,10 +985,10 @@ exec_foreach(const RDB_parse_node *nodep, const RDB_parse_node *labelp,
                     ret = RDB_OK;
                 }
             }
-            remove_varmap();
+            Duro_remove_varmap();
             return ret;
         }
-        remove_varmap();
+        Duro_remove_varmap();
 
         /*
          * Check for user interrupt
@@ -1918,7 +1055,7 @@ resolve_target(const RDB_expression *exp, RDB_exec_context *ecp)
 
             /* Get second argument, which must be INTEGER */
             RDB_init_obj(&idxobj);
-            if (evaluate_retry(exp->def.op.args.firstp->nextp, ecp,
+            if (Duro_evaluate_retry(exp->def.op.args.firstp->nextp, ecp,
                     &idxobj) != RDB_OK) {
                 RDB_destroy_obj(&idxobj, ecp);
                 return NULL;
@@ -1939,7 +1076,7 @@ resolve_target(const RDB_expression *exp, RDB_exec_context *ecp)
     /* Resolve variable name */
     varname = RDB_expr_var_name(exp);
     if (varname != NULL) {
-        return lookup_var(varname, ecp);
+        return Duro_lookup_var(varname, ecp);
     }
     RDB_raise_syntax("invalid assignment target", ecp);
     return NULL;
@@ -1964,7 +1101,7 @@ node_to_copy(RDB_ma_copy *copyp, RDB_parse_node *nodep, RDB_exec_context *ecp)
         return RDB_ERROR;
     }
 
-    if (evaluate_retry(srcexp, ecp, copyp->srcp) != RDB_OK) {
+    if (Duro_evaluate_retry(srcexp, ecp, copyp->srcp) != RDB_OK) {
         return RDB_ERROR;
     }
 
@@ -2031,7 +1168,7 @@ tuple_update_to_copy(RDB_ma_copy *copyp, RDB_parse_node *nodep,
         ap = ap->nextp;
     }
 
-    if (evaluate_retry(srcexp, ecp, copyp->srcp) != RDB_OK) {
+    if (Duro_evaluate_retry(srcexp, ecp, copyp->srcp) != RDB_OK) {
         return RDB_ERROR;
     }
 
@@ -2067,7 +1204,7 @@ node_to_insert(RDB_ma_insert *insp, RDB_parse_node *nodep, RDB_exec_context *ecp
         return RDB_ERROR;
     }
 
-    if (evaluate_retry(srcexp, ecp, insp->objp) != RDB_OK) {
+    if (Duro_evaluate_retry(srcexp, ecp, insp->objp) != RDB_OK) {
         return RDB_ERROR;
     }
 
@@ -2196,7 +1333,7 @@ exec_length_assign(const RDB_parse_node *nodep, const RDB_expression *argexp,
             txnp != NULL ? &txnp->tx : NULL);
     if (srcexp == NULL)
         return RDB_ERROR;
-    if (evaluate_retry(srcexp, ecp, &lenobj) != RDB_OK) {
+    if (Duro_evaluate_retry(srcexp, ecp, &lenobj) != RDB_OK) {
         RDB_destroy_obj(&lenobj, ecp);
         return RDB_ERROR;
     }
@@ -2220,7 +1357,7 @@ exec_length_assign(const RDB_parse_node *nodep, const RDB_expression *argexp,
             if (elemp == NULL)
                 return RDB_ERROR;
 
-            if (init_obj(elemp, basetyp, ecp,
+            if (Duro_init_obj(elemp, basetyp, ecp,
                     txnp != NULL ? &txnp->tx : NULL) != RDB_OK)
                 return RDB_ERROR;
         }
@@ -2256,7 +1393,7 @@ exec_the_assign(const RDB_parse_node *nodep, const RDB_expression *opexp,
         return RDB_ERROR;
 
     RDB_init_obj(&srcobj);
-    if (evaluate_retry(srcexp, ecp, &srcobj) != RDB_OK) {
+    if (Duro_evaluate_retry(srcexp, ecp, &srcobj) != RDB_OK) {
         RDB_destroy_obj(&srcobj, ecp);
         return RDB_ERROR;
     }
@@ -2449,7 +1586,7 @@ error:
 static int
 exec_begin_tx(RDB_exec_context *ecp)
 {
-    RDB_database *dbp = get_db(ecp);
+    RDB_database *dbp = Duro_get_db(ecp);
     if (dbp == NULL)
         return RDB_ERROR;
 
@@ -2552,8 +1689,8 @@ parserep_to_rep(const RDB_parse_node *nodep, RDB_possrep *rep,
     for (i = 0; i < rep->compc; i++) {
         rep->compv[i].name = (char *) RDB_expr_var_name(np->exp);
         np = np->nextp;
-        rep->compv[i].typ = (RDB_type *) RDB_parse_node_to_type(np, &get_var_type,
-                current_varmapp, ecp, txp);
+        rep->compv[i].typ = (RDB_type *) RDB_parse_node_to_type(np,
+                &Duro_get_var_type, NULL, ecp, txp);
         if (rep->compv[i].typ == NULL)
             return RDB_ERROR;
         np = np->nextp;
@@ -2582,7 +1719,7 @@ exec_typedef(const RDB_parse_node *stmtp, RDB_exec_context *ecp)
             return RDB_ERROR;
         }
 
-        dbp = get_db(ecp);
+        dbp = Duro_get_db(ecp);
         if (dbp == NULL)
             return RDB_ERROR;
 
@@ -2643,49 +1780,6 @@ error:
     return RDB_ERROR;
 }
 
-static const char *
-var_of_type(RDB_hashmap *mapp, RDB_type *typ)
-{
-    RDB_hashmap_iter it;
-    char *namp;
-    RDB_object *objp;
-
-    RDB_init_hashmap_iter(&it, mapp);
-    for(;;) {
-        objp = RDB_hashmap_next(&it, &namp);
-        if (namp == NULL)
-            break;
-        if (objp != NULL) {
-            RDB_type *vtyp = RDB_obj_type(objp);
-
-            /* If the types are equal, return variable name */
-            if (vtyp != NULL && RDB_type_equals(vtyp, typ))
-                return namp;
-        }
-    }
-    return NULL;
-}
-
-/*
- * Checks if *typ is in use by a transient variable.
- * If it is, returns the name of the variable, otherwise NULL.
- */
-static const char *
-type_in_use(RDB_type *typ)
-{
-    const char *typenamp;
-    if (current_varmapp != NULL) {
-        varmap_node *varnodep = current_varmapp;
-        do {
-            typenamp = var_of_type(&varnodep->map, typ);
-            if (typenamp != NULL)
-                return typenamp;
-            varnodep = varnodep->parentp;
-        } while (varnodep != NULL);
-    }
-    return var_of_type(&root_module.varmap, typ);
-}
-
 static int
 exec_typedrop(const RDB_parse_node *nodep, RDB_exec_context *ecp)
 {
@@ -2701,7 +1795,7 @@ exec_typedrop(const RDB_parse_node *nodep, RDB_exec_context *ecp)
             return RDB_ERROR;
         }
 
-        dbp = get_db(ecp);
+        dbp = Duro_get_db(ecp);
         if (dbp == NULL)
             return RDB_ERROR;
 
@@ -2718,7 +1812,7 @@ exec_typedrop(const RDB_parse_node *nodep, RDB_exec_context *ecp)
     /*
      * Check if a transient variable of that type exists
      */
-    if (type_in_use(typ)) {
+    if (Duro_type_in_use(typ)) {
         RDB_raise_in_use("enable to drop type because a variable with that type exists", ecp);
         goto error;
     }
@@ -2756,7 +1850,7 @@ exec_typeimpl(RDB_parse_node *nodep, RDB_exec_context *ecp)
             return RDB_ERROR;
         }
 
-        dbp = get_db(ecp);
+        dbp = Duro_get_db(ecp);
         if (dbp == NULL)
             return RDB_ERROR;
 
@@ -2785,6 +1879,29 @@ error:
     return RDB_ERROR;
 }
 
+static void
+free_opdata(RDB_operator *op)
+{
+    int i;
+    RDB_exec_context ec;
+    struct Duro_op_data *opdatap = RDB_op_u_data(op);
+
+    /* Initialize temporary execution context */
+    RDB_init_exec_context(&ec);
+
+    /* Delete code */
+    RDB_parse_del_nodelist(opdatap->stmtlistp, &ec);
+
+    RDB_destroy_exec_context(&ec);
+
+    /* Delete arguments */
+
+    for (i = 0; i < opdatap->argnamec; i++) {
+        RDB_free(opdatap->argnamev[i]);
+    }
+    RDB_free(opdatap->argnamev);
+}
+
 int
 Duro_dt_invoke_ro_op(int argc, RDB_object *argv[], RDB_operator *op,
         RDB_exec_context *ecp, RDB_transaction *txp,
@@ -2794,9 +1911,9 @@ Duro_dt_invoke_ro_op(int argc, RDB_object *argv[], RDB_operator *op,
     int ret;
     varmap_node vars;
     RDB_parse_node *codestmtp, *attrnodep;
-    struct op_data *opdatap;
+    struct Duro_op_data *opdatap;
     return_info retinfo;
-    varmap_node *ovarmapp = current_varmapp;
+    varmap_node *ovarmapp;
 
     if (interrupted) {
         interrupted = 0;
@@ -2830,7 +1947,7 @@ Duro_dt_invoke_ro_op(int argc, RDB_object *argv[], RDB_operator *op,
             attrnodep = attrnodep->nextp->nextp;
         }
 
-        opdatap = RDB_alloc(sizeof(struct op_data), ecp);
+        opdatap = RDB_alloc(sizeof(struct Duro_op_data), ecp);
         if (opdatap == NULL) {
             RDB_free(argnamev);
             return RDB_ERROR;
@@ -2846,10 +1963,10 @@ Duro_dt_invoke_ro_op(int argc, RDB_object *argv[], RDB_operator *op,
 
     RDB_init_hashmap(&vars.map, 256);
     vars.parentp = NULL;
-    current_varmapp = &vars;
+    ovarmapp = Duro_set_current_varmap(&vars);
 
     for (i = 0; i < argc; i++) {
-        if (RDB_hashmap_put(&current_varmapp->map, opdatap->argnamev[i], argv[i])
+        if (RDB_hashmap_put(&vars.map, opdatap->argnamev[i], argv[i])
                 != RDB_OK) {
             RDB_raise_no_memory(ecp);
             return RDB_ERROR;
@@ -2864,14 +1981,14 @@ Duro_dt_invoke_ro_op(int argc, RDB_object *argv[], RDB_operator *op,
      * Keep arguments from being destroyed
      */
     for (i = 0; i < argc; i++) {
-        if (RDB_hashmap_put(&current_varmapp->map, opdatap->argnamev[i], NULL) != RDB_OK) {
+        if (RDB_hashmap_put(&vars.map, opdatap->argnamev[i], NULL) != RDB_OK) {
             RDB_raise_no_memory(ecp);
             return RDB_ERROR;
         }
     }
 
-    current_varmapp = ovarmapp;
-    destroy_varmap(&vars.map);
+    Duro_set_current_varmap(ovarmapp);
+    Duro_destroy_varmap(&vars.map);
 
     switch (ret) {
         case RDB_OK:
@@ -2898,8 +2015,8 @@ Duro_dt_invoke_update_op(int argc, RDB_object *argv[], RDB_operator *op,
     varmap_node vars;
     RDB_parse_node *codestmtp;
     RDB_parse_node *attrnodep;
-    varmap_node *ovarmapp = current_varmapp;
-    struct op_data *opdatap;
+    varmap_node *ovarmapp;
+    struct Duro_op_data *opdatap;
 
     if (interrupted) {
         interrupted = 0;
@@ -2933,7 +2050,7 @@ Duro_dt_invoke_update_op(int argc, RDB_object *argv[], RDB_operator *op,
             attrnodep = attrnodep->nextp->nextp;
         }
 
-        opdatap = RDB_alloc(sizeof(struct op_data), ecp);
+        opdatap = RDB_alloc(sizeof(struct Duro_op_data), ecp);
         if (opdatap == NULL) {
             RDB_free(argnamev);
             return RDB_ERROR;
@@ -2949,10 +2066,10 @@ Duro_dt_invoke_update_op(int argc, RDB_object *argv[], RDB_operator *op,
 
     RDB_init_hashmap(&vars.map, 256);
     vars.parentp = NULL;
-    current_varmapp = &vars;
+    ovarmapp = Duro_set_current_varmap(&vars);
 
     for (i = 0; i < argc; i++) {
-        if (RDB_hashmap_put(&current_varmapp->map, opdatap->argnamev[i],
+        if (RDB_hashmap_put(&vars.map, opdatap->argnamev[i],
                 argv[i]) != RDB_OK) {
             RDB_raise_no_memory(ecp);
             return RDB_ERROR;
@@ -2965,15 +2082,15 @@ Duro_dt_invoke_update_op(int argc, RDB_object *argv[], RDB_operator *op,
      * Keep arguments from being destroyed
      */
     for (i = 0; i < argc; i++) {
-        if (RDB_hashmap_put(&current_varmapp->map, opdatap->argnamev[i], NULL)
+        if (RDB_hashmap_put(&vars.map, opdatap->argnamev[i], NULL)
                 != RDB_OK) {
             RDB_raise_no_memory(ecp);
             return RDB_ERROR;
         }
     }
 
-    current_varmapp = ovarmapp;
-    destroy_varmap(&vars.map);
+    Duro_set_current_varmap(ovarmapp);
+    Duro_destroy_varmap(&vars.map);
 
     /* Catch LEAVE */
     if (ret == DURO_LEAVE) {
@@ -3012,7 +2129,7 @@ exec_opdef(RDB_parse_node *parentp, RDB_exec_context *ecp)
             return RDB_ERROR;
         }
 
-        dbp = get_db(ecp);
+        dbp = Duro_get_db(ecp);
         if (dbp == NULL)
             return RDB_ERROR;
 
@@ -3040,7 +2157,7 @@ exec_opdef(RDB_parse_node *parentp, RDB_exec_context *ecp)
             attrnodep = attrnodep->nextp;
 
         paramv[i].typ = RDB_parse_node_to_type(attrnodep->nextp,
-                &get_var_type, current_varmapp, ecp,
+                &Duro_get_var_type, NULL, ecp,
                 txnp != NULL ? &txnp->tx : &tmp_tx);
         if (paramv[i].typ == NULL)
             goto error;
@@ -3051,7 +2168,7 @@ exec_opdef(RDB_parse_node *parentp, RDB_exec_context *ecp)
 
     if (ro) {
         rtyp = RDB_parse_node_to_type(stmtp->nextp->nextp->nextp->nextp->nextp,
-                &get_var_type, current_varmapp, ecp,
+                &Duro_get_var_type, NULL, ecp,
                 txnp != NULL ? &txnp->tx : &tmp_tx);
         if (rtyp == NULL)
             goto error;
@@ -3132,7 +2249,7 @@ exec_opdrop(const RDB_parse_node *nodep, RDB_exec_context *ecp)
             return RDB_ERROR;
         }
 
-        dbp = get_db(ecp);
+        dbp = Duro_get_db(ecp);
         if (dbp == NULL)
             return RDB_ERROR;
 
@@ -3178,7 +2295,7 @@ exec_return(RDB_parse_node *stmtp, RDB_exec_context *ecp,
         /*
          * Typecheck
          */
-        rtyp = RDB_expr_type(retexp, get_var_type, current_varmapp, ecp,
+        rtyp = RDB_expr_type(retexp, Duro_get_var_type, NULL, ecp,
                 txnp != NULL ? &txnp->tx : NULL);
         if (rtyp == NULL)
             return RDB_ERROR;
@@ -3190,7 +2307,7 @@ exec_return(RDB_parse_node *stmtp, RDB_exec_context *ecp,
         /*
          * Evaluate expression
          */
-        if (evaluate_retry(retexp, ecp, retinfop->objp) != RDB_OK)
+        if (Duro_evaluate_retry(retexp, ecp, retinfop->objp) != RDB_OK)
             return RDB_ERROR;
     } else {
         if (retinfop != NULL) {
@@ -3212,7 +2329,7 @@ exec_raise(RDB_parse_node *nodep, RDB_exec_context *ecp)
     if (exp == NULL)
         return RDB_ERROR;
 
-    evaluate_retry(exp, ecp, errp);
+    Duro_evaluate_retry(exp, ecp, errp);
     return RDB_ERROR;
 }
 
@@ -3223,7 +2340,7 @@ exec_catch(const RDB_parse_node *catchp, const RDB_type *errtyp,
     int ret;
     RDB_object *objp;
 
-    if (add_varmap(ecp) != RDB_OK)
+    if (Duro_add_varmap(ecp) != RDB_OK)
         return RDB_ERROR;
 
     objp = RDB_alloc(sizeof (RDB_object), ecp);
@@ -3231,13 +2348,11 @@ exec_catch(const RDB_parse_node *catchp, const RDB_type *errtyp,
         goto error;
     }
     RDB_init_obj(objp);
-    
+
     /*
      * Create and initialize local variable
      */
-    if (RDB_hashmap_put(&current_varmapp->map, RDB_expr_var_name(catchp->exp), objp)
-            != RDB_OK) {
-        RDB_raise_no_memory(ecp);
+    if (Duro_put_var(RDB_expr_var_name(catchp->exp), objp, ecp) != RDB_OK) {
         goto error;
     }
     if (RDB_copy_obj(objp, RDB_get_err(ecp), ecp) != RDB_OK) {
@@ -3250,11 +2365,11 @@ exec_catch(const RDB_parse_node *catchp, const RDB_type *errtyp,
     		catchp->nextp->nextp->nextp->val.children.firstp :
 			catchp->nextp->nextp->val.children.firstp,
 			ecp, retinfop);
-    remove_varmap();
+    Duro_remove_varmap();
     return ret;
 
 error:
-    remove_varmap();
+    Duro_remove_varmap();
     return RDB_ERROR;    
 }
 
@@ -3280,10 +2395,10 @@ exec_try(const RDB_parse_node *nodep, RDB_exec_context *ecp, return_info *retinf
     /*
      * Execute try body
      */
-    if (add_varmap(ecp) != RDB_OK)
+    if (Duro_add_varmap(ecp) != RDB_OK)
         return RDB_ERROR;
     ret = exec_stmts(nodep->val.children.firstp, ecp, retinfop);
-    remove_varmap();
+    Duro_remove_varmap();
 
     if (ret == RDB_ERROR) {
         /*
@@ -3301,7 +2416,7 @@ exec_try(const RDB_parse_node *nodep, RDB_exec_context *ecp, return_info *retinf
                 if (catchp->val.children.firstp->nextp->nextp->kind
                 		!= RDB_NODE_TOK) {
                     /* Catch clause with type */
-                    typ = parse_node_to_type_retry(
+                    typ = Duro_parse_node_to_type_retry(
                     		catchp->val.children.firstp->nextp->nextp, ecp);
                     if (typ == NULL)
                     	return RDB_ERROR;
@@ -3333,7 +2448,7 @@ exec_constrdef(RDB_parse_node *nodep, RDB_exec_context *ecp)
      * Create temporary transaction, if no transaction is active
      */
     if (txnp == NULL) {
-        RDB_database *dbp = get_db(ecp);
+        RDB_database *dbp = Duro_get_db(ecp);
         if (dbp == NULL)
             return RDB_ERROR;
         if (RDB_begin_tx(ecp, &tmp_tx, dbp, NULL) != RDB_OK) {
@@ -3427,7 +2542,7 @@ exec_constrdrop(RDB_parse_node *nodep, RDB_exec_context *ecp)
      * Create temporary transaction, if no transaction is active
      */
     if (txnp == NULL) {
-        RDB_database *dbp = get_db(ecp);
+        RDB_database *dbp = Duro_get_db(ecp);
         if (dbp == NULL)
             return RDB_ERROR;
         if (RDB_begin_tx(ecp, &tmp_tx, dbp, NULL) != RDB_OK) {
@@ -3536,25 +2651,25 @@ Duro_exec_stmt(RDB_parse_node *stmtp, RDB_exec_context *ecp,
                 if (firstchildp->nextp->nextp->kind == RDB_NODE_TOK) {
                     switch (firstchildp->nextp->nextp->val.token) {
                         case TOK_REAL:
-                            ret = exec_vardef_real(firstchildp->nextp, ecp);
+                            ret = Duro_exec_vardef_real(firstchildp->nextp, ecp);
                             break;
                         case TOK_VIRTUAL:
                             ret = exec_vardef_virtual(firstchildp->nextp, ecp);
                             break;
                         case TOK_PRIVATE:
-                            ret = exec_vardef_private(firstchildp->nextp, ecp);
+                            ret = Duro_exec_vardef_private(firstchildp->nextp, ecp);
                             break;
                         default:
-                            ret = exec_vardef(firstchildp->nextp, ecp);
+                            ret = Duro_exec_vardef(firstchildp->nextp, ecp);
                     }
                 } else {
-                    ret = exec_vardef(firstchildp->nextp, ecp);
+                    ret = Duro_exec_vardef(firstchildp->nextp, ecp);
                 }
                 break;
             case TOK_DROP:
                 switch (firstchildp->nextp->val.token) {
                     case TOK_VAR:
-                        ret = exec_vardrop(firstchildp->nextp->nextp, ecp);
+                        ret = Duro_exec_vardrop(firstchildp->nextp->nextp, ecp);
                         break;
                     case TOK_CONSTRAINT:
                         ret = exec_constrdrop(firstchildp->nextp->nextp, ecp);

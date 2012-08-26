@@ -98,6 +98,7 @@ yyerror(const char *);
 %token TOK_VIRTUAL "VIRTUAL"
 %token TOK_PRIVATE "PRIVATE"
 %token TOK_KEY "KEY"
+%token TOK_DEFAULT "DEFAULT"
 %token TOK_COMMIT "COMMIT"
 %token TOK_ROLLBACK "ROLLBACK"
 %token TOK_MATCHES "MATCHES"
@@ -277,7 +278,7 @@ statement: assignment ';' {
         RDB_parse_add_child($$, $4);
         RDB_parse_add_child($$, $5);
     }
-    | TOK_VAR TOK_ID TOK_REAL type ne_key_list ';' {
+    | TOK_VAR TOK_ID TOK_REAL type ne_key_list opt_default ';' {
         $$ = new_parse_inner();
         if ($$ == NULL) {
             RDB_parse_del_node($1, RDB_parse_ecp);
@@ -285,7 +286,9 @@ statement: assignment ';' {
             RDB_parse_del_node($3, RDB_parse_ecp);
             RDB_parse_del_node($4, RDB_parse_ecp);
             RDB_parse_del_node($5, RDB_parse_ecp);
-            RDB_parse_del_node($6, RDB_parse_ecp);
+            if ($6 != NULL)
+            	RDB_parse_del_node($6, RDB_parse_ecp);
+            RDB_parse_del_node($7, RDB_parse_ecp);
             YYERROR;
         }
         RDB_parse_add_child($$, $1);
@@ -293,9 +296,11 @@ statement: assignment ';' {
         RDB_parse_add_child($$, $3);
         RDB_parse_add_child($$, $4);
         RDB_parse_add_child($$, $5);
-        RDB_parse_add_child($$, $6);
+        if ($6 != NULL)
+	        RDB_parse_add_child($$, $6);
+        RDB_parse_add_child($$, $7);
     }
-    | TOK_VAR TOK_ID TOK_REAL type TOK_INIT expression key_list ';' {
+    | TOK_VAR TOK_ID TOK_REAL type TOK_INIT expression key_list opt_default ';' {
         $$ = new_parse_inner();
         if ($$ == NULL) {
             RDB_parse_del_node($1, RDB_parse_ecp);
@@ -306,7 +311,9 @@ statement: assignment ';' {
             RDB_parse_del_node($6, RDB_parse_ecp);
 	        if ($7 != NULL)
                 RDB_parse_del_node($7, RDB_parse_ecp);
-            RDB_parse_del_node($8, RDB_parse_ecp);
+	        if ($8 != NULL)
+                RDB_parse_del_node($8, RDB_parse_ecp);
+            RDB_parse_del_node($9, RDB_parse_ecp);
             YYERROR;
         }
         RDB_parse_add_child($$, $1);
@@ -317,9 +324,37 @@ statement: assignment ';' {
         RDB_parse_add_child($$, $6);
         if ($7 != NULL)
 	        RDB_parse_add_child($$, $7);
+        if ($8 != NULL)
+	        RDB_parse_add_child($$, $8);
+        RDB_parse_add_child($$, $9);
+    }
+    | TOK_VAR TOK_ID TOK_REAL TOK_INIT expression key_list opt_default ';' {
+        $$ = new_parse_inner();
+        if ($$ == NULL) {
+            RDB_parse_del_node($1, RDB_parse_ecp);
+            RDB_parse_del_node($2, RDB_parse_ecp);
+            RDB_parse_del_node($3, RDB_parse_ecp);
+            RDB_parse_del_node($4, RDB_parse_ecp);
+            RDB_parse_del_node($5, RDB_parse_ecp);
+            if ($6 != NULL)
+               RDB_parse_del_node($6, RDB_parse_ecp);
+            if ($7 != NULL)
+               RDB_parse_del_node($7, RDB_parse_ecp);
+            RDB_parse_del_node($8, RDB_parse_ecp);
+            YYERROR;
+        }
+        RDB_parse_add_child($$, $1);
+        RDB_parse_add_child($$, $2);
+        RDB_parse_add_child($$, $3);
+        RDB_parse_add_child($$, $4);
+        RDB_parse_add_child($$, $5);
+        if ($6 != NULL)
+            RDB_parse_add_child($$, $6);
+        if ($7 != NULL)
+            RDB_parse_add_child($$, $7);
         RDB_parse_add_child($$, $8);
     }
-    | TOK_VAR TOK_ID TOK_REAL TOK_INIT expression key_list ';' {
+    | TOK_VAR TOK_ID TOK_PRIVATE type ne_key_list opt_default ';' {
         $$ = new_parse_inner();
         if ($$ == NULL) {
             RDB_parse_del_node($1, RDB_parse_ecp);
@@ -341,25 +376,7 @@ statement: assignment ';' {
             RDB_parse_add_child($$, $6);
         RDB_parse_add_child($$, $7);
     }
-    | TOK_VAR TOK_ID TOK_PRIVATE type ne_key_list ';' {
-        $$ = new_parse_inner();
-        if ($$ == NULL) {
-            RDB_parse_del_node($1, RDB_parse_ecp);
-            RDB_parse_del_node($2, RDB_parse_ecp);
-            RDB_parse_del_node($3, RDB_parse_ecp);
-            RDB_parse_del_node($4, RDB_parse_ecp);
-            RDB_parse_del_node($5, RDB_parse_ecp);
-            RDB_parse_del_node($6, RDB_parse_ecp);
-            YYERROR;
-        }
-        RDB_parse_add_child($$, $1);
-        RDB_parse_add_child($$, $2);
-        RDB_parse_add_child($$, $3);
-        RDB_parse_add_child($$, $4);
-        RDB_parse_add_child($$, $5);
-        RDB_parse_add_child($$, $6);
-    }
-    | TOK_VAR TOK_ID TOK_PRIVATE type TOK_INIT expression key_list ';' {
+    | TOK_VAR TOK_ID TOK_PRIVATE type TOK_INIT expression key_list opt_default ';' {
         $$ = new_parse_inner();
         if ($$ == NULL) {
             RDB_parse_del_node($1, RDB_parse_ecp);
@@ -370,7 +387,9 @@ statement: assignment ';' {
             RDB_parse_del_node($6, RDB_parse_ecp);
 	        if ($7 != NULL)
 		        RDB_parse_del_node($7, RDB_parse_ecp);
-            RDB_parse_del_node($8, RDB_parse_ecp);
+	        if ($8 != NULL)
+		        RDB_parse_del_node($8, RDB_parse_ecp);
+            RDB_parse_del_node($9, RDB_parse_ecp);
             YYERROR;
         }
         RDB_parse_add_child($$, $1);
@@ -381,9 +400,11 @@ statement: assignment ';' {
         RDB_parse_add_child($$, $6);
         if ($7 != NULL)
 	        RDB_parse_add_child($$, $7);
-        RDB_parse_add_child($$, $8);
+        if ($8 != NULL)
+	        RDB_parse_add_child($$, $8);
+        RDB_parse_add_child($$, $9);
     }
-    | TOK_VAR TOK_ID TOK_PRIVATE TOK_INIT expression key_list ';' {
+    | TOK_VAR TOK_ID TOK_PRIVATE TOK_INIT expression key_list opt_default ';' {
         $$ = new_parse_inner();
         if ($$ == NULL) {
             RDB_parse_del_node($1, RDB_parse_ecp);
@@ -393,7 +414,9 @@ statement: assignment ';' {
             RDB_parse_del_node($5, RDB_parse_ecp);
 	        if ($6 != NULL)
 		        RDB_parse_del_node($6, RDB_parse_ecp);
-            RDB_parse_del_node($7, RDB_parse_ecp);
+	        if ($7 != NULL)
+		        RDB_parse_del_node($7, RDB_parse_ecp);
+            RDB_parse_del_node($8, RDB_parse_ecp);
             YYERROR;
         }
         RDB_parse_add_child($$, $1);
@@ -403,7 +426,9 @@ statement: assignment ';' {
         RDB_parse_add_child($$, $5);
         if ($6 != NULL)
 	        RDB_parse_add_child($$, $6);
-        RDB_parse_add_child($$, $7);
+        if ($7 != NULL)
+	        RDB_parse_add_child($$, $7);
+        RDB_parse_add_child($$, $8);
     }
     | TOK_VAR TOK_ID TOK_VIRTUAL expression ';' {
         $$ = new_parse_inner();
@@ -1212,16 +1237,7 @@ ne_key_list: TOK_KEY '{' id_commalist '}' {
         RDB_parse_add_child($$, $4);
     }
     | ne_key_list TOK_KEY '{' id_commalist '}' {
-        $$ = new_parse_inner();
-        if ($$ == NULL) {
-            RDB_parse_del_node($1, RDB_parse_ecp);
-            RDB_parse_del_node($2, RDB_parse_ecp);
-            RDB_parse_del_node($3, RDB_parse_ecp);
-            RDB_parse_del_node($4, RDB_parse_ecp);
-            RDB_parse_del_node($5, RDB_parse_ecp);
-            YYERROR;
-        }
-        RDB_parse_add_child($$, $1);
+        $$ = $1;
         RDB_parse_add_child($$, $2);
         RDB_parse_add_child($$, $3);
         RDB_parse_add_child($$, $4);
@@ -1234,6 +1250,24 @@ key_list: /* empty */ {
     | ne_key_list {
         $$ = $1;
     }
+
+opt_default: /* empty */ {
+        $$ = NULL;
+    }
+    | TOK_DEFAULT '{' tuple_item_commalist '}' {
+        $$ = new_parse_inner();
+        if ($$ == NULL) {
+            RDB_parse_del_node($1, RDB_parse_ecp);
+            RDB_parse_del_node($2, RDB_parse_ecp);
+            RDB_parse_del_node($3, RDB_parse_ecp);
+            RDB_parse_del_node($4, RDB_parse_ecp);
+            YYERROR;
+        }
+        RDB_parse_add_child($$, $1);
+        RDB_parse_add_child($$, $2);
+        RDB_parse_add_child($$, $3);
+        RDB_parse_add_child($$, $4);
+    } 
 
 assignment: assign {
         $$ = new_parse_inner();

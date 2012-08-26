@@ -284,13 +284,18 @@ The call may also fail for a @ref system-errors "system error".
  */
 int
 RDB_init_table(RDB_object *tbp, const char *name,
-        int attrc, const RDB_attr attrv[],
+        int attrc, const RDB_attr heading[],
         int keyc, const RDB_string_vec keyv[],
         RDB_exec_context *ecp)
 {
-    RDB_type *reltyp = RDB_new_relation_type(attrc, attrv, ecp);
+    RDB_type *reltyp = RDB_new_relation_type(attrc, heading, ecp);
     if (reltyp == NULL)
         return RDB_ERROR;
+
+    if (RDB_set_defvals(reltyp, attrc, heading, ecp) != RDB_OK) {
+        RDB_del_nonscalar_type(reltyp, ecp);
+        return RDB_ERROR;
+    }
 
     if (RDB_init_table_i(tbp, name, RDB_FALSE, reltyp, keyc, keyv, RDB_TRUE,
             NULL, ecp) != RDB_OK) {
@@ -304,6 +309,11 @@ int
 RDB_table_keys(RDB_object *tbp, RDB_exec_context *ecp, RDB_string_vec **keyvp)
 {
     RDB_bool freekey;
+
+    if (tbp->kind != RDB_OB_TABLE) {
+        RDB_raise_invalid_argument("no table", ecp);
+        return RDB_ERROR;
+    }
 
     if (tbp->val.tb.keyv == NULL) {
         int keyc;
