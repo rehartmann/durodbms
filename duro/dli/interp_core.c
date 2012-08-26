@@ -355,7 +355,7 @@ keylist_to_keyv(RDB_parse_node *nodep, int *keycp, RDB_exec_context *ecp)
     RDB_parse_node *np;
     int i;
 
-    *keycp = 1; /* RDB_parse_nodelist_length(nodep) / 4; */
+    *keycp = RDB_parse_nodelist_length(nodep) / 4;
 
     keyv = RDB_alloc(sizeof(RDB_string_vec) * (*keycp), ecp);
     if (keyv == NULL) {
@@ -449,7 +449,7 @@ int
 Duro_exec_vardef_private(RDB_parse_node *nodep, RDB_exec_context *ecp)
 {
     RDB_string_vec *keyv;
-    RDB_object tb;
+    RDB_object tb;  /* Only used if initexp != NULL */
     RDB_parse_node *keylistnodep;
     RDB_parse_node *defaultnodep;
     int i;
@@ -530,17 +530,11 @@ Duro_exec_vardef_private(RDB_parse_node *nodep, RDB_exec_context *ecp)
             goto error;
 
         /*
-         * Make defaultnodep point to the node after the last KEY node
+         * Make defaultnodep point to the node after the keylist
          */
         defaultnodep = keylistnodep->nextp;
-        /*
-        while (defaultnodep->kind == RDB_NODE_INNER
-                && defaultnodep->val.children.firstp->kind == RDB_NODE_TOK
-                && defaultnodep->val.children.firstp->val.token == TOK_KEY)
-            defaultnodep = defaultnodep->nextp;
-        */
     } else {
-        /* Get keys from expression */
+        /* Get keys from the table created from the INIT expression */
         keyc = RDB_table_keys(&tb, ecp, &keyv);
         if (keyc == RDB_ERROR) {
             keyv = NULL;
@@ -548,7 +542,7 @@ Duro_exec_vardef_private(RDB_parse_node *nodep, RDB_exec_context *ecp)
         }
 
         /*
-         * No KEY node, keylistnodep points either to the DEFAULT node
+         * No KEY node, so keylistnodep points either to the DEFAULT node
          * or to the trailing semicolon
          */
         defaultnodep = keylistnodep;

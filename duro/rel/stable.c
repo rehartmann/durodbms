@@ -221,7 +221,7 @@ keys_to_indexes(RDB_object *tbp, RDB_exec_context *ecp, RDB_transaction *txp)
     int i, j;
     int oindexc;
     int ret;
-    
+
     oindexc = tbp->val.tb.stp->indexc;
     if (oindexc == 0)
         tbp->val.tb.stp->indexv = NULL;
@@ -295,7 +295,8 @@ create_indexes(RDB_object *tbp, RDB_environment *envp, RDB_exec_context *ecp,
 
     for (i = 0; i < tbp->val.tb.stp->indexc; i++) {
         /* Create a BDB secondary index if it's not the primary index */
-        if (!index_is_primary(tbp->val.tb.stp->indexv[i].name)) {
+        if ((!tbp->val.tb.is_persistent && i > 0)
+                || (tbp->val.tb.is_persistent && !index_is_primary(tbp->val.tb.stp->indexv[i].name))) {
             int flags = 0;
 
             if (tbp->val.tb.stp->indexv[i].unique)
@@ -741,9 +742,13 @@ RDB_delete_stored_table(RDB_stored_table *stp, RDB_exec_context *ecp,
     /* Schedule secondary indexes for deletion */
     for (i = 0; i < stp->indexc; i++) {
         if (stp->indexv[i].idxp != NULL) {
-            ret = RDB_add_del_index(txp, stp->indexv[i].idxp, ecp);
-            if (ret != RDB_OK)
-                return ret;
+            if (txp != NULL) {
+                ret = RDB_add_del_index(txp, stp->indexv[i].idxp, ecp);
+                if (ret != RDB_OK)
+                    return ret;
+            } else {
+                ret = RDB_delete_index(stp->indexv[i].idxp, NULL, NULL);
+            }
         }
     }
 

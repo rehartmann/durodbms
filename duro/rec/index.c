@@ -1,7 +1,7 @@
 /*
  * $Id$
  *
- * Copyright (C) 2004-2006 Ren� Hartmann.
+ * Copyright (C) 2004-2012 Rene Hartmann.
  * See the file COPYING for redistribution information.
  */
 
@@ -51,7 +51,7 @@ new_index(RDB_recmap *rmp, const char *name, const char *filename,
         ixp->fieldv[i] = fieldv[i];
     ixp->cmpv = 0;
 
-    ret = db_create(&ixp->dbp, envp->envp, 0);
+    ret = db_create(&ixp->dbp, envp != NULL ? envp->envp : NULL, 0);
     if (ret != 0) {
         goto error;
     }
