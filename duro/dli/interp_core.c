@@ -7,7 +7,6 @@
 
 #include "interp_core.h"
 #include <gen/hashmapit.h>
-#include <rel/internal.h>
 #include "exparse.h"
 
 #include <stddef.h>
@@ -508,8 +507,13 @@ Duro_exec_vardef_private(RDB_parse_node *nodep, RDB_exec_context *ecp)
     }
 
     /*
-     * !! Check if the variable already exists ...
+     * Check if the variable already exists
      */
+    if (RDB_hashmap_get(current_varmapp != NULL ?
+            &current_varmapp->map : &root_module.varmap, varname) != NULL) {
+        RDB_raise_element_exists(varname, ecp);
+        return RDB_ERROR;
+    }
 
     if (!RDB_type_is_relation(tbtyp)) {
         RDB_raise_syntax("relation type required", ecp);

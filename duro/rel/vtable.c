@@ -61,8 +61,6 @@ A pointer to the newly created table, or NULL if an error occurred.
 @par Errors:
 
 <dl>
-<dt>no_running_tx_error
-<dd><var>txp</var> does not point to a running transaction.
 <dt>invalid_argument_error
 <dd>*<var>exp</var> does not define a valid virtual table.
 <dt>name_error
@@ -79,13 +77,6 @@ RDB_expr_to_vtable(RDB_expression *exp, RDB_exec_context *ecp,
         RDB_transaction *txp)
 {
     RDB_object *tbp;
-
-/* !!
-    if (!RDB_tx_is_running(txp)) {
-        RDB_raise_no_running_tx(ecp);
-        return NULL;
-    }
-*/
 
     tbp = RDB_new_obj(ecp);
     if (tbp == NULL) {

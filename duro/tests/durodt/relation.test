@@ -68,6 +68,13 @@ test private {creating private table and inserting tuples} -setup $SETUP -body {
         var r private relation {i INTEGER, d FLOAT, c STRING} key {i};
         insert r relation {} {};
 
+        try
+            var ir private relation {i INTEGER} key {i};
+            var ir private relation {i INTEGER} key {i};
+        catch err element_exists_error;
+            put_line("double creation caught");
+        end try;
+
         var s private relation {i INTEGER} init relation { tuple {i 1}, tuple {i 2} } key {i};
 
         var a init 1;
@@ -87,13 +94,14 @@ test private {creating private table and inserting tuples} -setup $SETUP -body {
         -- test invalid relation selector
         try
             var r init relation {a INTEGER} {tuple {a 'x'}};
-        catch err TYPE_MISMATCH_ERROR;
+        catch err type_mismatch_error;
             put_line("type mismatch");
         end try;
         
         put((tuple from relation {a INTEGER} {tuple {a 7}}).a); put_line('');
     }
-} -result {1
+} -result {double creation caught
+1
 Y
 3
 type mismatch
