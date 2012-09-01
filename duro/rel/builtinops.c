@@ -772,6 +772,10 @@ RDB_op_type_relation(int argc, RDB_object *argv[], RDB_type *reltyp,
 {
     int i;
 
+    /*
+     * If *retvalp has no type, turn it into a table of type *reltyp,
+     * otherwise only clear it
+     */
     if (RDB_obj_type(retvalp) == NULL) {
         if (RDB_init_table_from_type(retvalp, NULL, reltyp, 0, NULL,
                 0, NULL, ecp) != RDB_OK) {
@@ -780,6 +784,8 @@ RDB_op_type_relation(int argc, RDB_object *argv[], RDB_type *reltyp,
         }
     } else {
         RDB_del_nonscalar_type(reltyp, ecp);
+        if (RDB_delete(retvalp, NULL, ecp, txp) == RDB_ERROR)
+            return RDB_ERROR;
     }
 
     for (i = 0; i < argc; i++) {
