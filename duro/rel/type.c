@@ -224,8 +224,6 @@ RDB_new_tuple_type(int attrc, const RDB_attr attrv[],
             RDB_raise_no_memory(ecp);
             goto error;
         }
-        tuptyp->def.tuple.attrv[i].defaultp = NULL;
-        tuptyp->def.tuple.attrv[i].options = 0;
     }
     tuptyp->def.tuple.attrc = attrc;
 
@@ -1254,8 +1252,6 @@ RDB_extend_tuple_type(const RDB_type *typ, int attrc, RDB_attr attrv[],
         if (newtyp->def.tuple.attrv[i].typ == NULL) {
             goto error;
         }
-        newtyp->def.tuple.attrv[i].defaultp = NULL;
-        newtyp->def.tuple.attrv[i].options = 0;
     }
     for (i = 0; i < attrc; i++) {
         /*
@@ -1277,8 +1273,6 @@ RDB_extend_tuple_type(const RDB_type *typ, int attrc, RDB_attr attrv[],
         if (newtyp->def.tuple.attrv[typ->def.tuple.attrc + i].typ == NULL) {
             goto error;
         }
-        newtyp->def.tuple.attrv[typ->def.tuple.attrc + i].defaultp = NULL;
-        newtyp->def.tuple.attrv[typ->def.tuple.attrc + i].options = 0;
     }
     return newtyp;
 
@@ -1354,8 +1348,6 @@ RDB_union_tuple_types(const RDB_type *typ1, const RDB_type *typ2,
                 RDB_dup_nonscalar_type(typ1->def.tuple.attrv[i].typ, ecp);
         if (newtyp->def.tuple.attrv[i].typ == NULL)
             goto error;
-        newtyp->def.tuple.attrv[i].defaultp = NULL;
-        newtyp->def.tuple.attrv[i].options = 0;
     }
     attrc = typ1->def.tuple.attrc;
 
@@ -1383,8 +1375,6 @@ RDB_union_tuple_types(const RDB_type *typ1, const RDB_type *typ2,
                     RDB_dup_nonscalar_type(typ2->def.tuple.attrv[i].typ, ecp);
             if (newtyp->def.tuple.attrv[attrc].typ == NULL)
                 goto error;
-            newtyp->def.tuple.attrv[attrc].defaultp = NULL;
-            newtyp->def.tuple.attrv[attrc].options = 0;
             attrc++;
         }
     }
@@ -1486,9 +1476,6 @@ RDB_project_tuple_type(const RDB_type *typ, int attrc, char *attrv[],
         tuptyp->def.tuple.attrv[i].typ = RDB_dup_nonscalar_type(attrp->typ, ecp);
         if (tuptyp->def.tuple.attrv[i].typ == NULL)
             goto error;
-
-        tuptyp->def.tuple.attrv[i].defaultp = NULL;
-        tuptyp->def.tuple.attrv[i].options = 0;
     }
 
     return tuptyp;
@@ -1599,8 +1586,6 @@ RDB_rename_tuple_type(const RDB_type *typ, int renc, const RDB_renaming renv[],
             RDB_raise_no_memory(ecp);
             goto error;
         }
-        newtyp->def.tuple.attrv[i].defaultp = NULL;
-        newtyp->def.tuple.attrv[i].options = 0;
      }
      return newtyp;
 
@@ -1667,8 +1652,6 @@ copy_attr(RDB_attr *dstp, const RDB_attr *srcp, RDB_exec_context *ecp)
         RDB_raise_no_memory(ecp);
         return RDB_ERROR;
     }
-    dstp->defaultp = NULL;
-    dstp->options = 0;
     return RDB_OK;
 }
 
@@ -1807,8 +1790,6 @@ RDB_wrap_tuple_type(const RDB_type *typ, int wrapc, const RDB_wrapping wrapv[],
     for (i = 0; i < attrc; i++) {
         newtyp->def.tuple.attrv[i].name = NULL;
         newtyp->def.tuple.attrv[i].typ = NULL;
-        newtyp->def.tuple.attrv[i].defaultp = NULL;
-        newtyp->def.tuple.attrv[i].options = 0;
     }
 
     /*
@@ -2099,8 +2080,6 @@ RDB_group_type(RDB_type *typ, int attrc, char *attrv[], const char *gattr,
                 RDB_del_nonscalar_type(gattrtyp, ecp);
                 goto error;
             }
-            tuptyp->def.tuple.attrv[j].defaultp = NULL;
-            tuptyp->def.tuple.attrv[j].options = 0;
             j++;
         }
     }
@@ -2110,8 +2089,6 @@ RDB_group_type(RDB_type *typ, int attrc, char *attrv[], const char *gattr,
         RDB_raise_no_memory(ecp);
         goto error;
     }
-    tuptyp->def.tuple.attrv[j].defaultp = NULL;
-    tuptyp->def.tuple.attrv[j].options = 0;
 
     /*
      * Create relation type
