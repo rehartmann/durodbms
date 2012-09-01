@@ -772,13 +772,18 @@ RDB_op_type_relation(int argc, RDB_object *argv[], RDB_type *reltyp,
 {
     int i;
 
-    if (RDB_init_table_from_type(retvalp, NULL, reltyp, 0, NULL, ecp) != RDB_OK) {
+    if (RDB_obj_type(retvalp) == NULL) {
+        if (RDB_init_table_from_type(retvalp, NULL, reltyp, 0, NULL,
+                0, NULL, ecp) != RDB_OK) {
+            RDB_del_nonscalar_type(reltyp, ecp);
+            return RDB_ERROR;
+        }
+    } else {
         RDB_del_nonscalar_type(reltyp, ecp);
-        return RDB_ERROR;
     }
 
     for (i = 0; i < argc; i++) {
-        if (RDB_insert(retvalp, argv[i], ecp, NULL) != RDB_OK) {
+        if (RDB_insert(retvalp, argv[i], ecp, txp) != RDB_OK) {
             return RDB_ERROR;
         }
     }

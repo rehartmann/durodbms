@@ -26,7 +26,7 @@ typedef struct RDB_stored_table {
     /* Table indexes */
     int indexc;
     struct RDB_tbindex *indexv;
-    int est_cardinality; /* estimated cardinality (from statistics) */
+    unsigned est_cardinality; /* estimated cardinality (from statistics) */
 } RDB_stored_table;
 
 void

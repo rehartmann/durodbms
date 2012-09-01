@@ -180,13 +180,15 @@ RDB_new_obj(RDB_exec_context *ecp);
 RDB_object *
 RDB_new_rtable(const char *name, RDB_bool persistent,
                 RDB_type *,
-                int keyc, const RDB_string_vec keyv[], RDB_bool usr,
-                RDB_exec_context *);
+                int, const RDB_string_vec[],
+                int, const RDB_attr[],
+                RDB_bool, RDB_exec_context *);
 
 int
 RDB_init_table_i(RDB_object *, const char *, RDB_bool,
-        RDB_type *, int keyc, const RDB_string_vec keyv[], RDB_bool,
-        RDB_expression *, RDB_exec_context *);
+        RDB_type *, int keyc, const RDB_string_vec keyv[],
+        int, const RDB_attr[],
+        RDB_bool, RDB_expression *, RDB_exec_context *);
 
 int
 RDB_free_obj(RDB_object *tbp, RDB_exec_context *);
@@ -320,7 +322,7 @@ RDB_bool
 RDB_legal_name(const char *name);
 
 int
-RDB_set_defvals(RDB_type *tbtyp, int attrc, const RDB_attr attrv[],
+RDB_set_defvals(RDB_object *tbp, int attrc, const RDB_attr attrv[],
         RDB_exec_context *);
 
 RDB_object *
@@ -459,8 +461,9 @@ RDB_copy_obj_data(RDB_object *dstvalp, const RDB_object *srcvalp,
         RDB_exec_context *, RDB_transaction *);
 
 int
-RDB_infer_keys(RDB_expression *exp, RDB_exec_context *, RDB_string_vec **,
-        RDB_bool *caller_must_freep);
+RDB_infer_keys(RDB_expression *, RDB_getobjfn *, void *,
+        RDB_exec_context *, RDB_transaction *,
+        RDB_string_vec **, RDB_bool *);
 
 void
 RDB_free_keys(int keyc, RDB_string_vec *keyv);

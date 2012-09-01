@@ -36,9 +36,9 @@ typedef struct {
     void *(*copyfp)(void *, const void *, size_t);
 } RDB_field;
 
-typedef int RDB_field_compare_func(const void *data1p, size_t len1,
-                const void *data2p, size_t len2, RDB_environment *envp,
-                void *arg);
+typedef int RDB_field_compare_func(const void *, size_t,
+                const void *, size_t, RDB_environment *,
+                void *);
 
 typedef struct {
     RDB_field_compare_func *comparep;
@@ -105,21 +105,21 @@ RDB_delete_recmap(RDB_recmap *, DB_TXN *);
  * valv[..].no is ignored.
  */
 int
-RDB_insert_rec(RDB_recmap *, RDB_field valv[], DB_TXN *);
+RDB_insert_rec(RDB_recmap *, RDB_field[], DB_TXN *);
 
 /* Update the record whose key values are given by keyv.
  * The new values are given by fieldv.
  * keyv[..].no is ignored. 
  */
 int
-RDB_update_rec(RDB_recmap *, RDB_field keyv[],
-               int fieldc, const RDB_field fieldv[], DB_TXN *);
+RDB_update_rec(RDB_recmap *, RDB_field[],
+               int, const RDB_field[], DB_TXN *);
 
 /* Delete from a recmap the record whose key values are given by keyv.
  * keyv[..].no is ignored.
  */
 int
-RDB_delete_rec(RDB_recmap *, RDB_field keyv[], DB_TXN *);
+RDB_delete_rec(RDB_recmap *, RDB_field[], DB_TXN *);
 
 /* Read field values of the record from a recmap using the primary index.
  * Arguments:
@@ -133,42 +133,44 @@ RDB_delete_rec(RDB_recmap *, RDB_field keyv[], DB_TXN *);
  *              Must not contain key fields.
  */
 int
-RDB_get_fields(RDB_recmap *rmp, RDB_field keyv[],
-           int fieldc, DB_TXN *txid,
-           RDB_field resfieldv[]);
+RDB_get_fields(RDB_recmap *, RDB_field[],
+           int, DB_TXN *, RDB_field[]);
 
 /* Check if the recmap contains the record whose values are given by valv.
  * Return RDB_OK if yes, RDB_NOT_FOUND if no.
  * valv[..].no is ignored.
  */
 int
-RDB_contains_rec(RDB_recmap *, RDB_field valv[], DB_TXN *);
+RDB_contains_rec(RDB_recmap *, RDB_field[], DB_TXN *);
 
 /*
  * Internal functions
  */
 
 size_t
-RDB_get_vflen(RDB_byte *databp, size_t len, int vfcnt, int vpos);
+RDB_get_vflen(RDB_byte *, size_t, int, int);
 
 int
-RDB_get_field(RDB_recmap *rfp, int fno, void *datap, size_t len,
-        size_t *fieldlenp, int *vposp);
+RDB_get_field(RDB_recmap *, int, void *, size_t,
+        size_t *, int *);
 
 int
-RDB_set_field(RDB_recmap *recmapp, DBT *recpartp, const RDB_field *fieldp,
-               int varfieldc);
+RDB_set_field(RDB_recmap *, DBT *, const RDB_field *,
+               int);
 
 int
-RDB_get_DBT_fields(RDB_recmap *rmp, const DBT *keyp, const DBT *datap, int fieldc,
-           RDB_field resfieldv[]);
+RDB_get_DBT_fields(RDB_recmap *, const DBT *, const DBT *, int,
+           RDB_field[]);
 
 int
-RDB_fields_to_DBT(RDB_recmap *rmp, int fldc, const RDB_field fldv[],
-                   DBT *dbtp);
+RDB_fields_to_DBT(RDB_recmap *, int, const RDB_field[],
+                   DBT *);
 
 int
-RDB_update_DBT_rec(RDB_recmap *recmapp, DBT *keyp, DBT *datap,
-        int fieldc, const RDB_field fieldv[], DB_TXN *txid);
+RDB_update_DBT_rec(RDB_recmap *, DBT *, DBT *,
+        int, const RDB_field[], DB_TXN *);
+
+int
+RDB_recmap_est_size(RDB_recmap *, DB_TXN *, unsigned *);
 
 #endif

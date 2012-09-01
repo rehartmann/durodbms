@@ -8,6 +8,7 @@
 #include "interp_core.h"
 #include <gen/hashmapit.h>
 #include "exparse.h"
+#include <rel/internal.h>
 
 #include <stddef.h>
 #include <string.h>
@@ -385,62 +386,60 @@ error:
 }
 
 static int
-parse_default(int attrc, RDB_attr *attrv, RDB_parse_node *defaultattrnodep,
+parse_default(RDB_parse_node *defaultattrnodep,
+        RDB_attr **attrvp,
         RDB_exec_context *ecp)
 {
+    int attrc;
     int i;
-    const char *attrname;
     RDB_expression *exp;
-    RDB_parse_node *nodep = defaultattrnodep->val.children.firstp;
+    RDB_parse_node *nodep;
 
-    /* Initialize defaultp */
-    for (i = 0; i < attrc; i++) {
-        attrv[i].defaultp = NULL;
+    attrc = (RDB_parse_nodelist_length(defaultattrnodep) + 1) / 2;
+    if (attrc == 0)
+        return 0;
+
+    *attrvp = RDB_alloc (sizeof (RDB_attr) * attrc, ecp);
+    if (*attrvp == NULL)
+        return RDB_ERROR;
+
+    for (i = 0; i < attrc; i++)
+        (*attrvp)[i].defaultp = NULL;
+
+    nodep = defaultattrnodep->val.children.firstp;
+    i = 0;
+    for (;;) {
+        (*attrvp)[i].name = (char *) RDB_expr_var_name(RDB_parse_node_expr(
+                nodep, ecp, NULL));
+
+        (*attrvp)[i].defaultp = RDB_alloc(sizeof (RDB_object), ecp);
+        if ((*attrvp)[i].defaultp == NULL)
+            goto error;
+        RDB_init_obj((*attrvp)[i].defaultp);
+        exp = RDB_parse_node_expr(nodep->nextp, ecp, NULL);
+        if (exp == NULL)
+            goto error;
+        if (Duro_evaluate_retry(exp, ecp, (*attrvp)[i].defaultp) != RDB_OK)
+            goto error;
+
+        nodep = nodep->nextp->nextp;
+        if (nodep == NULL)
+            break;
+
+        /* Skip comma */
+        nodep = nodep->nextp;
+
+        i++;
     }
-
-    if (nodep != NULL) {
-        for (;;) {
-            attrname = RDB_expr_var_name(RDB_parse_node_expr(
-                    nodep, ecp, NULL));
-
-            /* Search attribute in attrv */
-            for (i = 0;
-                    i < attrc && strcmp(attrname, attrv[i].name) != 0;
-                    i++);
-            if (i < attrc) {
-                /* Found */
-                attrv[i].defaultp = RDB_alloc(sizeof (RDB_object), ecp);
-                if (attrv[i].defaultp == NULL)
-                    goto error;
-                RDB_init_obj(attrv[i].defaultp);
-                exp = RDB_parse_node_expr(nodep->nextp, ecp, NULL);
-                if (exp == NULL)
-                    goto error;
-                if (Duro_evaluate_retry(exp, ecp, attrv[i].defaultp) != RDB_OK)
-                    goto error;
-            } else {
-                RDB_raise_invalid_argument("invalid default attribute name", ecp);
-                goto error;
-            }
-
-            nodep = nodep->nextp->nextp;
-            if (nodep == NULL)
-                break;
-
-            /* Skip comma */
-            nodep = nodep->nextp;
-        }
-    }
-    return RDB_OK;
+    return attrc;
 
 error:
     for (i = 0; i < attrc; i++) {
-        if (attrv[i].defaultp != NULL) {
-            RDB_destroy_obj(attrv[i].defaultp, ecp);
-            RDB_free(attrv[i].defaultp);
-            attrv[i].defaultp = NULL;
+        if ((*attrvp)[i].defaultp != NULL) {
+            RDB_destroy_obj((*attrvp)[i].defaultp, ecp);
         }
     }
+    RDB_free(*attrvp);
     return RDB_ERROR;
 }
 
@@ -448,12 +447,11 @@ int
 Duro_exec_vardef_private(RDB_parse_node *nodep, RDB_exec_context *ecp)
 {
     RDB_string_vec *keyv;
-    RDB_object tb;  /* Only used if initexp != NULL */
+    RDB_bool freekeys;
     RDB_parse_node *keylistnodep;
     RDB_parse_node *defaultnodep;
-    int i;
-    int attrc;
-    RDB_attr *attrv;
+    RDB_attr *default_attrv;
+    int default_attrc = 0;
     int keyc = 0;
     RDB_object *tbp = NULL;
     RDB_expression *initexp = NULL;
@@ -469,18 +467,15 @@ Duro_exec_vardef_private(RDB_parse_node *nodep, RDB_exec_context *ecp)
         if (initexp == NULL)
             return RDB_ERROR;
         keylistnodep = nodep->nextp->nextp->nextp->nextp;
-        RDB_init_obj(&tb);
-        if (Duro_evaluate_retry(initexp, ecp, &tb) != RDB_OK) {
-            goto error;
-        }
-        tbtyp = RDB_obj_type(&tb);
+        tbtyp = RDB_expr_type(initexp, Duro_get_var_type,
+                NULL, ecp, txnp != NULL ? &txnp->tx : NULL);
         if (tbtyp == NULL) {
-            RDB_raise_type_mismatch("relation type required", ecp);
-            goto error;
+            return RDB_ERROR;
         }
+
         tbtyp = RDB_dup_nonscalar_type(tbtyp, ecp);
         if (tbtyp == NULL)
-            goto error;
+            return RDB_ERROR;
     } else {
         tbtyp = Duro_parse_node_to_type_retry(nodep->nextp->nextp, ecp);
         if (tbtyp == NULL)
@@ -495,11 +490,6 @@ Duro_exec_vardef_private(RDB_parse_node *nodep, RDB_exec_context *ecp)
             if (initexp == NULL)
                 return RDB_ERROR;
 
-            /* Evaluate INIT expression into tb */
-            RDB_init_obj(&tb);
-            if (Duro_evaluate_retry(initexp, ecp, &tb) != RDB_OK) {
-                goto error;
-            }
             keylistnodep = nodep->nextp->nextp->nextp->nextp->nextp;
         } else {
             keylistnodep = nodep->nextp->nextp->nextp;
@@ -538,8 +528,9 @@ Duro_exec_vardef_private(RDB_parse_node *nodep, RDB_exec_context *ecp)
          */
         defaultnodep = keylistnodep->nextp;
     } else {
-        /* Get keys from the table created from the INIT expression */
-        keyc = RDB_table_keys(&tb, ecp, &keyv);
+        /* Get keys from the INIT expression */
+        keyc = RDB_infer_keys(initexp, &get_var, current_varmapp,
+                ecp, txnp != NULL ? &txnp->tx : NULL, &keyv, &freekeys);
         if (keyc == RDB_ERROR) {
             keyv = NULL;
             goto error;
@@ -552,27 +543,21 @@ Duro_exec_vardef_private(RDB_parse_node *nodep, RDB_exec_context *ecp)
         defaultnodep = keylistnodep;
     }
 
-    /* Get attribute information */
-    attrv = RDB_type_attrs(tbtyp, &attrc);
-
-    /* Initialize options */
-    for (i = 0; i < attrc; i++) {
-        attrv[i].options = 0;
-    }
-
     if (defaultnodep->kind == RDB_NODE_INNER) {
-        if (parse_default(attrc, attrv,
-                defaultnodep->val.children.firstp->nextp->nextp, ecp) != RDB_OK)
+        default_attrc = parse_default(
+                defaultnodep->val.children.firstp->nextp->nextp,
+                &default_attrv, ecp);
+        if (default_attrc == RDB_ERROR)
             goto error;
     }
 
-    if (RDB_init_table(tbp, varname, attrc, attrv, keyc, keyv, ecp)
-            != RDB_OK) {
+    if (RDB_init_table_from_type(tbp, varname, tbtyp,
+            keyc, keyv, default_attrc, default_attrv, ecp) != RDB_OK) {
         goto error;
     }
 
     if (initexp != NULL) {
-        if (RDB_copy_obj(tbp, &tb, ecp) != RDB_OK) {
+        if (Duro_evaluate_retry(initexp, ecp, tbp) != RDB_OK) {
             goto error;
         }
     }
@@ -592,35 +577,31 @@ Duro_exec_vardef_private(RDB_parse_node *nodep, RDB_exec_context *ecp)
     if (RDB_parse_get_interactive())
         printf("Local table %s created.\n", varname);
 
-    if (initexp != NULL) {
-        RDB_destroy_obj(&tb, ecp);
+    if (freekeys) {
+        /* !! Destroy keyv */
     }
+
     return RDB_OK;
 
 error:
-    if (tbtyp != NULL && !RDB_type_is_scalar(tbtyp))
-        RDB_del_nonscalar_type(tbtyp, ecp);
     if (tbp != NULL) {
-        RDB_destroy_obj(tbp, ecp);
-        RDB_free(tbp);
+        RDB_free_obj(tbp, ecp);
+    } else if (tbtyp != NULL && !RDB_type_is_scalar(tbtyp)) {
+        RDB_del_nonscalar_type(tbtyp, ecp);
     }
-    if (initexp != NULL) {
-        RDB_destroy_obj(&tb, ecp);
-    }
-    /* !! Destroy keyv? */
+    /* !! Destroy keyv */
     return RDB_ERROR;
 }
 
 int
 Duro_exec_vardef_real(RDB_parse_node *nodep, RDB_exec_context *ecp)
 {
+    int keyc;
     RDB_string_vec *keyv;
     const char *varname;
-    RDB_object tb;
-    int keyc;
-    int i;
-    int attrc;
-    RDB_attr *attrv;
+    RDB_bool freekeys;
+    RDB_attr *default_attrv;
+    int default_attrc = 0;
     RDB_parse_node *keylistnodep;
     RDB_parse_node *defaultnodep;
     RDB_type *tbtyp = NULL;
@@ -641,6 +622,15 @@ Duro_exec_vardef_real(RDB_parse_node *nodep, RDB_exec_context *ecp)
         if (initexp == NULL)
             return RDB_ERROR;
         keylistnodep = nodep->nextp->nextp->nextp->nextp;
+        tbtyp = RDB_expr_type(initexp, Duro_get_var_type,
+                NULL, ecp, &txnp->tx);
+        if (tbtyp == NULL) {
+            return RDB_ERROR;
+        }
+
+        tbtyp = RDB_dup_nonscalar_type(tbtyp, ecp);
+        if (tbtyp == NULL)
+            return RDB_ERROR;
     } else {
         tbtyp = RDB_parse_node_to_type(nodep->nextp->nextp, &Duro_get_var_type,
                 NULL, ecp, &txnp->tx);
@@ -658,23 +648,6 @@ Duro_exec_vardef_real(RDB_parse_node *nodep, RDB_exec_context *ecp)
         }
     }
 
-    if (initexp != NULL) {
-        RDB_init_obj(&tb);
-        if (Duro_evaluate_retry(initexp, ecp, &tb) != RDB_OK) {
-            goto error;
-        }
-        if (RDB_obj_type(&tb) == NULL) {
-            RDB_raise_type_mismatch("relation type required", ecp);
-            goto error;
-        }
-    }
-
-    if (tbtyp == NULL) {
-        tbtyp = RDB_dup_nonscalar_type(RDB_obj_type(&tb), ecp);
-    }
-    if (tbtyp == NULL)
-        goto error;
-
     if (keylistnodep->kind == RDB_NODE_INNER
             && keylistnodep->val.children.firstp->kind == RDB_NODE_TOK
             && keylistnodep->val.children.firstp->val.token == TOK_KEY) {
@@ -691,10 +664,13 @@ Duro_exec_vardef_real(RDB_parse_node *nodep, RDB_exec_context *ecp)
                 && defaultnodep->val.children.firstp->val.token == TOK_KEY)
             defaultnodep = defaultnodep->nextp->nextp->nextp->nextp;
     } else {
-        /* Get keys from expression */
-        keyc = RDB_table_keys(&tb, ecp, &keyv);
-        if (keyc == RDB_ERROR)
-            return RDB_ERROR;
+        /* Get keys from the INIT expression */
+        keyc = RDB_infer_keys(initexp, &get_var, current_varmapp,
+                ecp, &txnp->tx, &keyv, &freekeys);
+        if (keyc == RDB_ERROR) {
+            keyv = NULL;
+            goto error;
+        }
 
         /*
          * No KEY node, keylistnodep points either to the DEFAULT node
@@ -708,38 +684,29 @@ Duro_exec_vardef_real(RDB_parse_node *nodep, RDB_exec_context *ecp)
         goto error;
     }
 
-    /* Get attribute information */
-    attrv = RDB_type_attrs(tbtyp, &attrc);
-
-    /* Initialize options */
-    for (i = 0; i < attrc; i++) {
-        attrv[i].options = 0;
-    }
-
     if (defaultnodep->kind == RDB_NODE_INNER) {
-        if (parse_default(attrc, attrv,
-                defaultnodep->val.children.firstp->nextp->nextp, ecp) != RDB_OK)
+        default_attrc = parse_default(
+                defaultnodep->val.children.firstp->nextp->nextp,
+                &default_attrv, ecp);
+        if (default_attrc == RDB_ERROR)
             goto error;
     }
 
-    tbp = RDB_create_table(varname, attrc, attrv, keyc, keyv, ecp, &txnp->tx);
+    tbp = RDB_create_table_from_type(varname, tbtyp, keyc, keyv,
+            default_attrc, default_attrv, ecp, &txnp->tx);
     if (tbp == NULL) {
         goto error;
     }
 
     if (initexp != NULL) {
-        if (RDB_move_tuples(tbp, &tb, ecp, &txnp->tx) == (RDB_int) RDB_ERROR)
+        if (RDB_evaluate(initexp, &get_var, current_varmapp, envp,
+                ecp, &txnp->tx, tbp) != RDB_OK) {
             goto error;
+        }
     }
 
     if (RDB_parse_get_interactive())
         printf("Table %s created.\n", varname);
-
-    if (initexp != NULL) {
-        RDB_destroy_obj(&tb, ecp);
-    }
-
-    RDB_del_nonscalar_type(tbtyp, ecp);
 
     return RDB_OK;
 
@@ -752,9 +719,6 @@ error:
             RDB_drop_table(tbp, &ec, &txnp->tx);
         } else if (tbtyp != NULL && !RDB_type_is_scalar(tbtyp)) {
             RDB_del_nonscalar_type(tbtyp, &ec);
-        }
-        if (initexp != NULL) {
-            RDB_destroy_obj(&tb, &ec);
         }
         RDB_destroy_exec_context(&ec);
     }

@@ -45,7 +45,13 @@ RDB_insert_real(RDB_object *tbp, const RDB_object *tplp,
 
         /* If there is no value, check if there is a default */
         if (valp == NULL) {
-            valp = tuptyp->def.tuple.attrv[i].defaultp;
+            if (tbp->val.tb.default_tplp == NULL) {
+                RDB_raise_invalid_argument("missing value", ecp);
+                ret = RDB_ERROR;
+                goto cleanup;
+            }
+            valp = RDB_tuple_get(tbp->val.tb.default_tplp,
+                    tuptyp->def.tuple.attrv[i].name);
             if (valp == NULL) {
                 RDB_raise_invalid_argument("missing value", ecp);
                 ret = RDB_ERROR;

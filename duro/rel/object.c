@@ -276,7 +276,7 @@ irep_to_table(RDB_object *tbp, RDB_type *typ, const void *datap, size_t len,
         return RDB_ERROR;
     }
     if (RDB_init_table_i(tbp, NULL, RDB_FALSE,
-            tbtyp, 0, NULL, RDB_FALSE, NULL, ecp) != RDB_OK) {
+            tbtyp, 0, NULL, 0, NULL, RDB_FALSE, NULL, ecp) != RDB_OK) {
         return RDB_ERROR;
     }
 
@@ -679,7 +679,7 @@ RDB_copy_obj_data(RDB_object *dstvalp, const RDB_object *srcvalp,
                     return RDB_ERROR;
 
                 ret = RDB_init_table_i(dstvalp, NULL, RDB_FALSE,
-                        reltyp, 1, srcvalp->val.tb.keyv, RDB_FALSE,
+                        reltyp, 1, srcvalp->val.tb.keyv, 0, NULL, RDB_FALSE,
                         NULL, ecp);
                 if (ret != RDB_OK)
                     return RDB_ERROR;

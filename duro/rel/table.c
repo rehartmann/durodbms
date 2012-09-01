@@ -44,15 +44,16 @@ strvec_is_subset(const RDB_string_vec *v1p, const RDB_string_vec *v2p)
 RDB_object *
 RDB_new_rtable(const char *name, RDB_bool persistent,
            RDB_type *reltyp,
-           int keyc, const RDB_string_vec keyv[], RDB_bool usr,
-           RDB_exec_context *ecp)
+           int keyc, const RDB_string_vec keyv[],
+           int default_attrc, const RDB_attr *default_attrv,
+           RDB_bool usr, RDB_exec_context *ecp)
 {
     RDB_object *tbp = RDB_new_obj(ecp);
     if (tbp == NULL)
         return NULL;
 
     if (RDB_init_table_i(tbp, name, persistent, reltyp, keyc, keyv,
-            usr, NULL, ecp) != RDB_OK) {
+            default_attrc, default_attrv, usr, NULL, ecp) != RDB_OK) {
         RDB_free(tbp);
         return NULL;
     }
@@ -61,8 +62,9 @@ RDB_new_rtable(const char *name, RDB_bool persistent,
 
 int
 RDB_init_table_i(RDB_object *tbp, const char *name, RDB_bool persistent,
-        RDB_type *reltyp, int keyc, const RDB_string_vec keyv[], RDB_bool usr,
-        RDB_expression *exp, RDB_exec_context *ecp)
+        RDB_type *reltyp, int keyc, const RDB_string_vec keyv[],
+        int default_attrc, const RDB_attr *default_attrv,
+        RDB_bool usr, RDB_expression *exp, RDB_exec_context *ecp)
 {
     int i;
     RDB_string_vec allkey; /* Used if keyv is NULL */
@@ -130,6 +132,7 @@ RDB_init_table_i(RDB_object *tbp, const char *name, RDB_bool persistent,
     tbp->val.tb.is_user = usr;
     tbp->val.tb.is_persistent = persistent;
     tbp->val.tb.keyv = NULL;
+    tbp->val.tb.default_tplp = NULL;
     tbp->val.tb.stp = NULL;
 
     if (name != NULL) {
@@ -170,6 +173,9 @@ RDB_init_table_i(RDB_object *tbp, const char *name, RDB_bool persistent,
     tbp->val.tb.exp = exp;
 
     tbp->typ = reltyp;
+
+    if (RDB_set_defvals(tbp, default_attrc, default_attrv, ecp) != RDB_OK)
+        goto error;
 
     RDB_free(allkey.strv);
 
@@ -250,10 +256,13 @@ cleanup:
  */
 int
 RDB_init_table_from_type(RDB_object *tbp, const char *name, RDB_type *reltyp,
-        int keyc, const RDB_string_vec keyv[], RDB_exec_context *ecp)
+        int keyc, const RDB_string_vec keyv[],
+        int default_attrc, const RDB_attr *default_attrv,
+        RDB_exec_context *ecp)
 {
     return RDB_init_table_i(tbp, name, RDB_FALSE, reltyp,
-            keyc, keyv, RDB_TRUE, NULL, ecp);
+            keyc, keyv, default_attrc, default_attrv,
+            RDB_TRUE, NULL, ecp);
 }
 
 /** Turn *<var>tbp</var> into a transient table.
@@ -284,21 +293,16 @@ The call may also fail for a @ref system-errors "system error".
  */
 int
 RDB_init_table(RDB_object *tbp, const char *name,
-        int attrc, const RDB_attr heading[],
+        int attrc, const RDB_attr attrv[],
         int keyc, const RDB_string_vec keyv[],
         RDB_exec_context *ecp)
 {
-    RDB_type *reltyp = RDB_new_relation_type(attrc, heading, ecp);
+    RDB_type *reltyp = RDB_new_relation_type(attrc, attrv, ecp);
     if (reltyp == NULL)
         return RDB_ERROR;
 
-    if (RDB_set_defvals(reltyp, attrc, heading, ecp) != RDB_OK) {
-        RDB_del_nonscalar_type(reltyp, ecp);
-        return RDB_ERROR;
-    }
-
-    if (RDB_init_table_i(tbp, name, RDB_FALSE, reltyp, keyc, keyv, RDB_TRUE,
-            NULL, ecp) != RDB_OK) {
+    if (RDB_init_table_from_type(tbp, name, reltyp, keyc, keyv,
+            attrc, attrv, ecp) != RDB_OK) {
         RDB_del_nonscalar_type(reltyp, ecp);
         return RDB_ERROR;
     }
@@ -319,7 +323,8 @@ RDB_table_keys(RDB_object *tbp, RDB_exec_context *ecp, RDB_string_vec **keyvp)
         int keyc;
         RDB_string_vec *keyv;
 
-        keyc = RDB_infer_keys(tbp->val.tb.exp, ecp, &keyv, &freekey);
+        keyc = RDB_infer_keys(tbp->val.tb.exp, NULL, NULL, ecp, NULL,
+                &keyv, &freekey);
         if (keyc == RDB_ERROR)
             return RDB_ERROR;
         if (freekey) {
@@ -1446,27 +1451,40 @@ RDB_expr_sortindex (RDB_expression *exp)
 }
 
 int
-RDB_set_defvals(RDB_type *tbtyp, int attrc, const RDB_attr attrv[],
+RDB_set_defvals(RDB_object *tbp, int attrc, const RDB_attr attrv[],
         RDB_exec_context *ecp)
 {
+    RDB_bool defvals = RDB_FALSE;
+    RDB_object *tplp;
     int i;
+
+    /* Check if there are actually any default values */
+    for (i = 0; i < attrc; i++) {
+        if (attrv[i].defaultp != NULL) {
+            defvals = RDB_TRUE;
+        }
+    }
+
+    if (!defvals)
+        return RDB_OK;
+
+    tplp = RDB_new_obj(ecp);
+    if (tplp == NULL)
+        return RDB_ERROR;
 
     for (i = 0; i < attrc; i++) {
         if (attrv[i].defaultp != NULL) {
-            RDB_type *tpltyp = tbtyp->def.basetyp;
-
-            tpltyp->def.tuple.attrv[i].defaultp = RDB_alloc(sizeof (RDB_object), ecp);
-            if (tpltyp->def.tuple.attrv[i].defaultp == NULL) {
-                return RDB_ERROR;
-            }
-            RDB_init_obj(tpltyp->def.tuple.attrv[i].defaultp);
-            if (RDB_copy_obj(tpltyp->def.tuple.attrv[i].defaultp,
-                    attrv[i].defaultp, ecp) != RDB_OK) {
-                return RDB_ERROR;
-            }
+            if (RDB_tuple_set(tplp, attrv[i].name,
+                    attrv[i].defaultp, ecp) != RDB_OK)
+                goto error;
         }
     }
+    tbp->val.tb.default_tplp = tplp;
     return RDB_OK;
+
+error:
+    RDB_free_obj(tplp, ecp);
+    return RDB_ERROR;;
 }
 
 /**

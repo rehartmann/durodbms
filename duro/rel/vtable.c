@@ -39,7 +39,7 @@ RDB_vtexp_to_obj(RDB_expression *exp, RDB_exec_context *ecp,
         return RDB_ERROR;
 
     if (RDB_init_table_i(tbp, NULL, RDB_FALSE, 
-            tbtyp, 0, NULL, RDB_TRUE, exp, ecp) != RDB_OK) {
+            tbtyp, 0, NULL, 0, NULL, RDB_TRUE, exp, ecp) != RDB_OK) {
         return RDB_ERROR;
     }
     return RDB_OK;
@@ -193,10 +193,12 @@ infer_join_keys(RDB_expression *exp, RDB_exec_context *ecp,
     RDB_string_vec *newkeyv;
     RDB_bool free1, free2;
 
-    keyc1 = RDB_infer_keys(exp->def.op.args.firstp, ecp, &keyv1, &free1);
+    keyc1 = RDB_infer_keys(exp->def.op.args.firstp, NULL, NULL, ecp, NULL,
+            &keyv1, &free1);
     if (keyc1 < 0)
         return keyc1;
-    keyc2 = RDB_infer_keys(exp->def.op.args.firstp, ecp, &keyv2, &free2);
+    keyc2 = RDB_infer_keys(exp->def.op.args.firstp, NULL, NULL, ecp, NULL,
+            &keyv2, &free2);
     if (keyc2 < 0)
         return keyc2;
 
@@ -259,7 +261,8 @@ infer_project_keys(RDB_expression *exp, RDB_exec_context *ecp,
     RDB_bool *presv;
     RDB_bool freekeys;
 
-    keyc = RDB_infer_keys(exp->def.op.args.firstp, ecp, &keyv, &freekeys);
+    keyc = RDB_infer_keys(exp->def.op.args.firstp, NULL, NULL, ecp, NULL,
+            &keyv, &freekeys);
     if (keyc < 0)
         return keyc;
 
@@ -420,9 +423,15 @@ error:
     return NULL;
 }
 
+/*
+ * Infers keys from a relational expression.
+ * Support for expressions with variable names is limited:
+ * Only transient variables are supported, and only at the top level.
+ */
 int
-RDB_infer_keys(RDB_expression *exp, RDB_exec_context *ecp,
-       RDB_string_vec **keyvp, RDB_bool *caller_must_freep)
+RDB_infer_keys(RDB_expression *exp, RDB_getobjfn *getfnp, void *getdata,
+       RDB_exec_context *ecp, RDB_transaction *txp, RDB_string_vec **keyvp,
+       RDB_bool *caller_must_freep)
 {
     switch (exp->kind) {
         case RDB_EX_OBJ:
@@ -434,6 +443,27 @@ RDB_infer_keys(RDB_expression *exp, RDB_exec_context *ecp,
         case RDB_EX_RO_OP:
             break;
         case RDB_EX_VAR:
+            /* Try to resolve variable via getfnp */
+            if (getfnp != NULL) {
+                RDB_object *srcp = (*getfnp)(exp->def.varname, getdata);
+                if (srcp != NULL) {
+                    *caller_must_freep = RDB_FALSE;
+                    return RDB_table_keys(srcp, ecp, keyvp);
+                }
+            }
+
+            /* Try to get table */
+            if (txp != NULL) {
+                RDB_object *srcp = RDB_get_table(exp->def.varname, ecp, txp);
+                if (srcp != NULL) {
+                    *caller_must_freep = RDB_FALSE;
+                    return RDB_table_keys(srcp, ecp, keyvp);
+                }
+            }
+
+            /* Not found */
+            RDB_raise_name(exp->def.varname, ecp);
+            return RDB_ERROR;
         case RDB_EX_TUPLE_ATTR:
         case RDB_EX_GET_COMP:
             RDB_raise_invalid_argument("Expression is not a table", ecp);
@@ -447,8 +477,8 @@ RDB_infer_keys(RDB_expression *exp, RDB_exec_context *ecp,
             || (strcmp(exp->def.op.name, "intersect") == 0)
             || (strcmp(exp->def.op.name, "extend") == 0)
             || (strcmp(exp->def.op.name, "divide") == 0)) {
-        return RDB_infer_keys(exp->def.op.args.firstp, ecp, keyvp,
-                caller_must_freep);
+        return RDB_infer_keys(exp->def.op.args.firstp, NULL, NULL,
+                ecp, NULL, keyvp, caller_must_freep);
     }
     if (strcmp(exp->def.op.name, "join") == 0) {
         *caller_must_freep = RDB_TRUE;
@@ -458,12 +488,13 @@ RDB_infer_keys(RDB_expression *exp, RDB_exec_context *ecp,
     	return infer_project_keys(exp, ecp, keyvp, caller_must_freep);
     }
     if (strcmp(exp->def.op.name, "summarize") == 0) {
-        return RDB_infer_keys(exp->def.op.args.firstp->nextp, ecp, keyvp,
-                caller_must_freep);
+        return RDB_infer_keys(exp->def.op.args.firstp->nextp, NULL, NULL,
+                ecp, NULL, keyvp, caller_must_freep);
     }
     if (strcmp(exp->def.op.name, "rename") == 0) {
         RDB_bool freekey;
-        int keyc = RDB_infer_keys(exp->def.op.args.firstp, ecp, keyvp, &freekey);
+        int keyc = RDB_infer_keys(exp->def.op.args.firstp, NULL, NULL,
+                ecp, NULL, keyvp, &freekey);
         if (keyc == RDB_ERROR)
             return RDB_ERROR;
 

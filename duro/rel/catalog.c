@@ -245,6 +245,72 @@ error:
     return RDB_ERROR;
 }
 
+/* Insert entries into table sys_tableattr_defvals */
+static int
+insert_defvals(RDB_object *tbp, RDB_dbroot *dbrootp,
+        RDB_exec_context *ecp, RDB_transaction *txp)
+{
+    int ret;
+    int i;
+    RDB_object tpl;
+    RDB_type *tuptyp = tbp->typ->def.basetyp;
+
+    RDB_init_obj(&tpl);
+    ret = RDB_tuple_set_string(&tpl, "tablename", RDB_table_name(tbp), ecp);
+    if (ret != RDB_OK) {
+        goto error;
+    }
+
+    for (i = 0; i < tuptyp->def.tuple.attrc; i++) {
+        char *attrname = tuptyp->def.tuple.attrv[i].name;
+        RDB_object *defaultp = RDB_tuple_get(tbp->val.tb.default_tplp,
+                attrname);
+        if (defaultp != NULL) {
+            RDB_object binval;
+            void *datap;
+            size_t len;
+
+            if (!RDB_type_equals(defaultp->typ,
+                    tuptyp->def.tuple.attrv[i].typ)) {
+                RDB_raise_type_mismatch(
+                        "Type of default value does not match attribute type",
+                        ecp);
+                goto error;
+            }
+
+            ret = RDB_tuple_set_string(&tpl, "attrname", attrname, ecp);
+            if (ret != RDB_OK) {
+                goto error;
+            }
+
+            RDB_init_obj(&binval);
+            datap = RDB_obj_irep(defaultp, &len);
+            ret = RDB_binary_set(&binval, 0, datap, len, ecp);
+            if (ret != RDB_OK) {
+                RDB_destroy_obj(&binval, ecp);
+                goto error;
+            }
+
+            ret = RDB_tuple_set(&tpl, "default_value", &binval, ecp);
+            RDB_destroy_obj(&binval, ecp);
+            if (ret != RDB_OK) {
+                goto error;
+            }
+
+            ret = RDB_insert(dbrootp->table_attr_defvals_tbp, &tpl, ecp, txp);
+            if (ret != RDB_OK) {
+                goto error;
+            }
+        }
+    }
+    RDB_destroy_obj(&tpl, ecp);
+    return RDB_OK;
+
+error:
+    RDB_destroy_obj(&tpl, ecp);
+    return RDB_ERROR;
+}
+
 /* Insert the table pointed to by tbp into the catalog. */
 static int
 insert_rtable(RDB_object *tbp, RDB_dbroot *dbrootp, RDB_exec_context *ecp,
@@ -318,59 +384,10 @@ insert_rtable(RDB_object *tbp, RDB_dbroot *dbrootp, RDB_exec_context *ecp,
     }
     RDB_destroy_obj(&tpl, ecp);
 
-    /* insert entries into table sys_tableattr_defvals */
-    RDB_init_obj(&tpl);
-    ret = RDB_tuple_set_string(&tpl, "tablename", RDB_table_name(tbp), ecp);
-    if (ret != RDB_OK) {
-        RDB_destroy_obj(&tpl, ecp);
-        return RDB_ERROR;
+    if (tbp->val.tb.default_tplp != NULL) {
+        if (insert_defvals(tbp, dbrootp, ecp, txp) != RDB_OK)
+            return RDB_ERROR;
     }
-
-    for (i = 0; i < tuptyp->def.tuple.attrc; i++) {
-        if (tuptyp->def.tuple.attrv[i].defaultp != NULL) {
-            char *attrname = tuptyp->def.tuple.attrv[i].name;
-            RDB_object binval;
-            void *datap;
-            size_t len;
-
-            if (!RDB_type_equals(tuptyp->def.tuple.attrv[i].defaultp->typ,
-                    tuptyp->def.tuple.attrv[i].typ)) {
-                RDB_raise_type_mismatch(
-                        "Type of default value does not match attribute type",
-                        ecp);
-                return RDB_ERROR;
-            }
-            
-            ret = RDB_tuple_set_string(&tpl, "attrname", attrname, ecp);
-            if (ret != RDB_OK) {
-                RDB_destroy_obj(&tpl, ecp);
-                return RDB_ERROR;
-            }
-
-            RDB_init_obj(&binval);
-            datap = RDB_obj_irep(tuptyp->def.tuple.attrv[i].defaultp, &len);
-            ret = RDB_binary_set(&binval, 0, datap, len, ecp);
-            if (ret != RDB_OK) {
-                RDB_destroy_obj(&tpl, ecp);
-                RDB_destroy_obj(&binval, ecp);
-                return RDB_ERROR;
-            }
-
-            ret = RDB_tuple_set(&tpl, "default_value", &binval, ecp);
-            RDB_destroy_obj(&binval, ecp);
-            if (ret != RDB_OK) {
-                RDB_destroy_obj(&tpl, ecp);
-                return RDB_ERROR;
-            }
-
-            ret = RDB_insert(dbrootp->table_attr_defvals_tbp, &tpl, ecp, txp);
-            if (ret != RDB_OK) {
-                RDB_destroy_obj(&tpl, ecp);
-                return RDB_ERROR;
-            }
-        }
-    }
-    RDB_destroy_obj(&tpl, ecp);
 
     /*
      * Insert keys into sys_keys
@@ -846,7 +863,8 @@ provide_systable(const char *name, int attrc, RDB_attr heading[],
         return RDB_ERROR;
     }
 
-    *tbpp = RDB_new_rtable(name, RDB_TRUE, tbtyp, keyc, keyv, RDB_FALSE, ecp);
+    *tbpp = RDB_new_rtable(name, RDB_TRUE, tbtyp, keyc, keyv, 0, NULL,
+            RDB_FALSE, ecp);
     if (*tbpp == NULL) {
         RDB_del_nonscalar_type(tbtyp, ecp);
         RDB_raise_no_memory(ecp);
@@ -1705,15 +1723,15 @@ RDB_cat_get_rtable(const char *name, RDB_exec_context *ecp,
         RDB_del_nonscalar_type(tbtyp, ecp);
         goto error;
     }
-    if (RDB_set_defvals(tbtyp, attrc, attrv, ecp) != RDB_OK) {
-        RDB_del_nonscalar_type(tbtyp, ecp);
-        return NULL;
-    }
 
-    tbp = RDB_new_rtable(name, RDB_TRUE, tbtyp, keyc, keyv, usr, ecp);
+    tbp = RDB_new_rtable(name, RDB_TRUE, tbtyp, keyc, keyv, 0, NULL, usr, ecp);
     RDB_free_keys(keyc, keyv);
     if (tbp == NULL) {
         RDB_del_nonscalar_type(tbtyp, ecp);
+        goto error;
+    }
+
+    if (RDB_set_defvals(tbp, attrc, attrv, ecp) != RDB_OK) {
         goto error;
     }
 

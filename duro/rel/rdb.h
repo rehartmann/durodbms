@@ -109,6 +109,8 @@ typedef struct RDB_object {
             /* NULL if it's a real table */
             RDB_expression *exp;
 
+            struct RDB_object *default_tplp; /* Default values */
+
             struct RDB_stored_table *stp;
         } tb;
         RDB_hashtable tpl_tab;
@@ -347,19 +349,22 @@ RDB_create_table(const char *name,
 
 RDB_object *
 RDB_create_table_from_type(const char *name,
-                RDB_type *reltyp,
-                int keyc, const RDB_string_vec keyv[],
+                RDB_type *,
+                int keyc, const RDB_string_vec[],
+                int, const RDB_attr[],
                 RDB_exec_context *, RDB_transaction *);
 
 int
-RDB_init_table(RDB_object *tbp, const char *name,
-        int attrc, const RDB_attr attrv[],
-        int keyc, const RDB_string_vec keyv[],
-        RDB_exec_context *ecp);
+RDB_init_table(RDB_object *, const char *,
+        int, const RDB_attr[],
+        int, const RDB_string_vec[],
+        RDB_exec_context *);
 
 int
-RDB_init_table_from_type(RDB_object *tbp, const char *name, RDB_type *reltyp,
-        int keyc, const RDB_string_vec keyv[], RDB_exec_context *);
+RDB_init_table_from_type(RDB_object *, const char *, RDB_type *,
+        int, const RDB_string_vec keyv[],
+        int, const RDB_attr[],
+        RDB_exec_context *);
 
 RDB_object *
 RDB_get_table(const char *name, RDB_exec_context *, RDB_transaction *);

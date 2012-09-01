@@ -401,7 +401,8 @@ list_to_table(Tcl_Interp *interp, Tcl_Obj *tobjp, RDB_type *typ,
         return TCL_ERROR;
     }
        
-    if (RDB_init_table_from_type(tbp, NULL, typ, 0, NULL, ecp) != RDB_OK) {
+    if (RDB_init_table_from_type(tbp, NULL, typ, 0, NULL, 0, NULL, ecp)
+            != RDB_OK) {
         Duro_dberror(interp, RDB_get_err(ecp), txp);
         RDB_del_nonscalar_type(typ, ecp);
         return TCL_ERROR;

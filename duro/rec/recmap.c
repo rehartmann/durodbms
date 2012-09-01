@@ -759,3 +759,39 @@ RDB_contains_rec(RDB_recmap *rmp, RDB_field flds[], DB_TXN *txid)
     free(data.data);
     return ret;
 }
+
+/*
+ * Get the number of records in the recmap and store it in *sz,
+ * using the 'fast' method (not traversing the BDB database),
+ * so the result may not be accurate.
+ */
+int
+RDB_recmap_est_size(RDB_recmap *rmp, DB_TXN *txid, unsigned *sz)
+{
+    DBTYPE dbtype;
+    int ret = rmp->dbp->get_type(rmp->dbp, &dbtype);
+    if (ret != 0)
+        return ret;
+
+    if (dbtype == DB_BTREE) {
+        DB_BTREE_STAT *btstatp;
+
+        ret = rmp->dbp->stat(rmp->dbp, txid, &btstatp, DB_FAST_STAT);
+        if (ret != 0)
+            return ret;
+
+        *sz = (unsigned) btstatp->bt_ndata;
+        free(btstatp);
+    } else {
+        /* Hashtable */
+        DB_HASH_STAT *hstatp;
+
+        ret = rmp->dbp->stat(rmp->dbp, txid, &hstatp, DB_FAST_STAT);
+        if (ret != 0)
+            return ret;
+
+        *sz = (unsigned) hstatp->hash_ndata;
+        free(hstatp);
+    }
+    return 0;
+}

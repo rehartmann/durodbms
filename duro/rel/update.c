@@ -90,7 +90,8 @@ update_stored_complex(RDB_object *tbp, RDB_expression *condp,
         goto cleanup;
     }        
 
-    ret = RDB_init_table_from_type(&tmptb, NULL, tmptbtyp, 1, tbp->val.tb.keyv, ecp);
+    ret = RDB_init_table_from_type(&tmptb, NULL, tmptbtyp,
+            1, tbp->val.tb.keyv, 0, NULL, ecp);
     if (ret != RDB_OK) {
         RDB_del_nonscalar_type(tmptbtyp, ecp);
         rcount = RDB_ERROR;
@@ -837,7 +838,7 @@ update_where_index_complex(RDB_expression *texp, RDB_expression *condp,
         goto cleanup;
     }
     ret = RDB_init_table_from_type(&tmptb, NULL, tmptbtyp, 1,
-            refexp->def.tbref.tbp->val.tb.keyv, ecp);
+            refexp->def.tbref.tbp->val.tb.keyv, 0, NULL, ecp);
     if (ret != RDB_OK) {
         RDB_del_nonscalar_type(tmptbtyp, ecp);
         rcount = RDB_ERROR;

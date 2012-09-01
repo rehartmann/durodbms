@@ -646,7 +646,6 @@ RDB_open_stored_table(RDB_object *tbp, RDB_environment *envp,
 
     RDB_init_hashtable(&tbp->val.tb.stp->attrmap, RDB_DFL_MAP_CAPACITY, &hash_str,
             &str_equals);
-    tbp->val.tb.stp->est_cardinality = 1000;
 
     tbp->val.tb.stp->indexc = indexc;
     tbp->val.tb.stp->indexv = indexv;
@@ -665,6 +664,24 @@ RDB_open_stored_table(RDB_object *tbp, RDB_environment *envp,
             RDB_errcode_to_error(ret, ecp, txp);
         }
         goto error;
+    }
+
+    /*
+     * Get estimated number of records
+     */
+    ret = RDB_recmap_est_size(tbp->val.tb.stp->recmapp,
+            txp != NULL ? txp->txid : NULL,
+            &tbp->val.tb.stp->est_cardinality);
+    if (ret != 0) {
+        RDB_errcode_to_error(ret, ecp, txp);
+        goto error;
+    }
+    if (tbp->val.tb.stp->est_cardinality == 0) {
+        /*
+         * Assume that the size has never been calculated
+         * and set it to a default
+         */
+        tbp->val.tb.stp->est_cardinality = 100;
     }
 
     /* Open secondary indexes */

@@ -1181,5 +1181,6 @@ RDB_expr_to_empty_table(RDB_expression *exp, RDB_exec_context *ecp,
 
     exp->kind = RDB_EX_OBJ;
     RDB_init_obj(&exp->def.obj);
-    return RDB_init_table_from_type(&exp->def.obj, NULL, typ, 0, NULL, ecp);
+    return RDB_init_table_from_type(&exp->def.obj, NULL, typ, 0, NULL,
+            0, NULL, ecp);
 }

@@ -997,10 +997,6 @@ RDB_del_nonscalar_type(RDB_type *typ, RDB_exec_context *ecp)
                 RDB_free(typ->def.tuple.attrv[i].name);
                 if (!RDB_type_is_scalar(attrtyp))
                     ret = RDB_del_nonscalar_type(attrtyp, ecp);
-                if (typ->def.tuple.attrv[i].defaultp != NULL) {
-                    ret = RDB_destroy_obj(typ->def.tuple.attrv[i].defaultp, ecp);
-                    RDB_free(typ->def.tuple.attrv[i].defaultp);
-                }
             }
             if (typ->def.tuple.attrc > 0)
                 RDB_free(typ->def.tuple.attrv);

@@ -1065,20 +1065,21 @@ RDB_legal_name(const char *name)
 static RDB_object *
 create_table(const char *name, RDB_type *reltyp,
                 int keyc, const RDB_string_vec keyv[],
+                int default_attrc, const RDB_attr *default_attrv,
                 RDB_exec_context *ecp, RDB_transaction *txp)
 {
     RDB_object *tbp;
     RDB_transaction tx;
 
-    /* Create subtransaction */
-    if (RDB_begin_tx(ecp, &tx, txp->dbp, txp) != RDB_OK)
-        return NULL;
-
-    tbp = RDB_new_rtable(name, RDB_TRUE, reltyp,
-                keyc, keyv, RDB_TRUE, ecp);
+    tbp = RDB_new_rtable(name, RDB_TRUE, reltyp, keyc, keyv,
+            default_attrc, default_attrv, RDB_TRUE, ecp);
     if (tbp == NULL) {
         return NULL;
     }
+
+    /* Create subtransaction */
+    if (RDB_begin_tx(ecp, &tx, txp->dbp, txp) != RDB_OK)
+        return NULL;
 
     /* Insert table into catalog */
     if (RDB_cat_insert(tbp, ecp, &tx) != RDB_OK) {
@@ -1166,21 +1167,17 @@ in which case the transaction may be implicitly rolled back.
 */
 RDB_object *
 RDB_create_table(const char *name,
-                int attrc, const RDB_attr heading[],
+                int attrc, const RDB_attr attrv[],
                 int keyc, const RDB_string_vec keyv[],
                 RDB_exec_context *ecp, RDB_transaction *txp)
 {
-    RDB_type *tbtyp = RDB_new_relation_type(attrc, heading, ecp);
+    RDB_type *tbtyp = RDB_new_relation_type(attrc, attrv, ecp);
     if (tbtyp == NULL) {
-        return NULL;
-    }
-    if (RDB_set_defvals(tbtyp, attrc, heading, ecp) != RDB_OK) {
-        RDB_del_nonscalar_type(tbtyp, ecp);
         return NULL;
     }
 
     return RDB_create_table_from_type(name, tbtyp, keyc, keyv,
-            ecp, txp);
+            attrc, attrv, ecp, txp);
 }
 
 /**
@@ -1192,8 +1189,9 @@ by the table created.
 */
 RDB_object *
 RDB_create_table_from_type(const char *name, RDB_type *reltyp,
-                int keyc, const RDB_string_vec keyv[],
-                RDB_exec_context *ecp, RDB_transaction *txp)
+        int keyc, const RDB_string_vec keyv[],
+        int default_attrc, const RDB_attr default_attrv[],
+        RDB_exec_context *ecp, RDB_transaction *txp)
 {
     int i;
 
@@ -1236,7 +1234,8 @@ RDB_create_table_from_type(const char *name, RDB_type *reltyp,
         return NULL;
     }
 
-    return create_table(name, reltyp, keyc, keyv, ecp, txp);
+    return create_table(name, reltyp, keyc, keyv, default_attrc, default_attrv,
+            ecp, txp);
 }
 
 /**

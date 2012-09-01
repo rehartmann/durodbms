@@ -492,7 +492,7 @@ test real_default {public real table with default values} -setup $SETUP -body {
 
         var r3 real relation {i INTEGER, r FLOAT, c STRING}
                 init r2 default {r 1.2, c 'xyz'};
-        insert r3 tup {i 6};
+        insert r3 tup {i 6, c 'xyy'};
         var t3 init tuple from (r3 where i=6);
 
         commit;
@@ -511,7 +511,7 @@ test real_default {public real table with default values} -setup $SETUP -body {
     }
 } -result {5 120 xyz
 5 120 xyz
-6 120 xyz
+6 120 xyy
 }
 
 test private_default {private table with default values} -setup $SETUP -body {
@@ -530,7 +530,7 @@ test private_default {private table with default values} -setup $SETUP -body {
 
         var r3 private relation {i INTEGER, r FLOAT, c STRING}
                 init r2 default {r 1.2, c 'xyz'};
-        insert r3 tup {i 6};
+        insert r3 tup {i 6, c 'xyy'};
         var t3 init tuple from (r3 where i=6);
 
         put(t1.i); put(' ');
@@ -547,7 +547,7 @@ test private_default {private table with default values} -setup $SETUP -body {
     }
 } -result {5 120 xyz
 5 120 xyz
-6 120 xyz
+6 120 xyy
 }
 
 cleanupTests

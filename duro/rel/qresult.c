@@ -483,8 +483,8 @@ summarize_qresult(RDB_qresult *qrp, RDB_expression *exp, RDB_exec_context *ecp,
     if (qrp->matp == NULL)
         goto error;
 
-    if (RDB_init_table_i(qrp->matp, NULL, RDB_FALSE, reltyp, 1, &key, RDB_TRUE,
-            NULL, ecp) != RDB_OK)
+    if (RDB_init_table_i(qrp->matp, NULL, RDB_FALSE, reltyp, 1, &key,
+            0, NULL, RDB_TRUE, NULL, ecp) != RDB_OK)
         goto error;
 
     if (init_summ_table(qrp, tb1typ, hasavg, ecp, txp) != RDB_OK) {
@@ -633,8 +633,8 @@ do_group(RDB_qresult *qrp, RDB_exec_context *ecp, RDB_transaction *txp)
                 if (reltyp == NULL)
                     goto cleanup;
                 RDB_init_obj(&gtb);
-                if (RDB_init_table_from_type(&gtb, NULL, reltyp, 0, NULL, ecp)
-                        != RDB_OK) {
+                if (RDB_init_table_from_type(&gtb, NULL, reltyp, 0, NULL,
+                        0, NULL, ecp) != RDB_OK) {
                     RDB_destroy_obj(&gtb, ecp);
                     RDB_del_nonscalar_type(reltyp, ecp);
                     goto cleanup;
@@ -691,7 +691,7 @@ group_qresult(RDB_qresult *qrp, RDB_expression *exp, RDB_exec_context *ecp,
     qrp->nested = RDB_FALSE;
 
     /* Need keys */
-    keyc = RDB_infer_keys(exp, ecp, &keyv, &freekeys);
+    keyc = RDB_infer_keys(exp, NULL, NULL, ecp, NULL, &keyv, &freekeys);
     if (keyc == RDB_ERROR) {
         return RDB_ERROR;
     }
@@ -710,7 +710,7 @@ group_qresult(RDB_qresult *qrp, RDB_expression *exp, RDB_exec_context *ecp,
     }
 
     ret = RDB_init_table_i(qrp->matp, NULL, RDB_FALSE, reltyp,
-            keyc, keyv, RDB_TRUE, NULL, ecp);
+            keyc, keyv, 0, NULL, RDB_TRUE, NULL, ecp);
     if (freekeys)
         RDB_free_keys(keyc, keyv);
     if (ret != RDB_OK) {
@@ -1032,7 +1032,8 @@ expr_dups(RDB_expression *exp, RDB_exec_context *ecp, RDB_bool *resp)
         if (*resp)
             return RDB_OK;
 
-        keyc = RDB_infer_keys(exp->def.op.args.firstp, ecp, &keyv, &freekey);
+        keyc = RDB_infer_keys(exp->def.op.args.firstp, NULL, NULL, ecp, NULL,
+                &keyv, &freekey);
         if (keyc == RDB_ERROR)
             return RDB_ERROR;
 
@@ -1095,7 +1096,7 @@ RDB_duprem(RDB_qresult *qrp, RDB_exec_context *ecp, RDB_transaction *txp)
             return RDB_ERROR;
         }            
         ret = RDB_init_table_i(qrp->matp, NULL, RDB_FALSE, reltyp, 0, NULL,
-                RDB_TRUE, NULL, ecp);
+                0, NULL, RDB_TRUE, NULL, ecp);
         if (ret != RDB_OK) {
             RDB_del_nonscalar_type(reltyp, ecp);
             RDB_free_obj(qrp->matp, ecp);
@@ -1202,7 +1203,7 @@ RDB_sorter(RDB_expression *texp, RDB_qresult **qrpp, RDB_exec_context *ecp,
         goto error;
 
     qrp->matp = RDB_new_rtable(NULL, RDB_FALSE,
-            typ, 1, &key, RDB_TRUE, ecp);
+            typ, 1, &key, 0, NULL, RDB_TRUE, ecp);
     if (qrp->matp == NULL) {
         RDB_del_nonscalar_type(typ, ecp);
         goto error;
