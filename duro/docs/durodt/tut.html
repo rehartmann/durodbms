@@ -470,32 +470,54 @@ D> drop var r;
 Table r dropped.
 D> commit;
 Transaction committed.
-D>
+D> 
 </pre>
 
-<h2>Table and database constraints</h2>
+<h2>Database constraints</h2>
 
-<p>The example below creates a constraint cr which prevents the
-table <var>r</var> from containing more than one tuple.</p>
+<p>Imagine there is one table for customers and one for orders:</p>
 
 <pre>
 D> begin tx;
-
-D> var r real rel {no int, name string} key {no};
-Table r created.
-D> constraint cr count(r) <= 1;
-Constraint cr created.
-D> insert r tup {no 1, name 'one'};
-1 element affected.
-D> insert r tup {no 2, name 'two'};
-predicate_violation_error: cr
+Transaction started.
+D> var customers real rel{customer_id int, name string} key {customer_id};
+Table customers created.
+D> var orders real rel{order_id int, customer_id int} key {order_id};
+Table orders created.
+D> 
 </pre>
 
-<p>Destroying a contraint:
+<p>If we only want to allow orders with a corresponding customer, this can
+be achieved using a database constraint as follows:
 
 <pre>
-D> drop constraint cr;
-Constraint cr dropped.
+D> constraint orders_customers is_empty (orders {customer_id} minus customers {customer_id});
+Constraint orders_customers created.
+D> commit;
+Transaction committed.
+D> 
+</pre>
+
+<p>If we now want to insert an order, Duro will check if there is a corresponding
+entry in the customer table: 
+
+<pre>
+D> begin tx;
+Transaction started.
+D> insert orders tup{order_id 1, customer_id 1};
+predicate_violation_error: orders_customers
+D> insert customers tup{customer_id 1, name 'John Smith'};
+1 element affected.
+D> insert orders tup{order_id 1, customer_id 1};
+1 element affected.
+D> 
+</pre>
+
+<p>A constraint can be deleted using DROP CONSTRAINT:
+
+<pre>
+D> drop constraint orders_customers;
+Constraint orders_customers dropped.
 D>
 </pre>
 
