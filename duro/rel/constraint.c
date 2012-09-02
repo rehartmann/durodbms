@@ -224,43 +224,24 @@ RDB_drop_constraint(const char *name, RDB_exec_context *ecp,
     int ret;
     RDB_expression *condp;
     RDB_constraint *constrp;
+    RDB_constraint *prevconstrp = NULL;
     RDB_dbroot *dbrootp = RDB_tx_db(txp)->dbrootp;
-
-    if (!RDB_tx_db(txp)->dbrootp->constraints_read) {
-        if (RDB_read_constraints(ecp, txp) != RDB_OK)
-            return RDB_ERROR;
-        RDB_tx_db(txp)->dbrootp->constraints_read = RDB_TRUE;
-    }
 
     /* Delete constraint from list */
     constrp = dbrootp->first_constrp;
-    if (constrp == NULL) {
-        RDB_raise_not_found(name, ecp);
-        return RDB_ERROR;
+    while (constrp != NULL && strcmp(constrp->name, name) != 0) {
+        prevconstrp = constrp;
+        constrp = constrp->nextp;
     }
-
-    if (strcmp(constrp->name, name) == 0) {
-        dbrootp->first_constrp = constrp->nextp;
+    if (constrp != NULL) {
+        if (prevconstrp == NULL) {
+            dbrootp->first_constrp = constrp->nextp;
+        } else {
+            prevconstrp->nextp = constrp->nextp;
+        }
         RDB_del_expr(constrp->exp, ecp);
         RDB_free(constrp->name);
         RDB_free(constrp);
-    } else {
-        RDB_constraint *hconstrp;
-
-        while (constrp->nextp != NULL
-                && strcmp(constrp->nextp->name, name) !=0) {
-            constrp = constrp->nextp;
-        }
-        if (constrp->nextp == NULL) {
-             RDB_raise_not_found(name, ecp);
-             return RDB_ERROR;
-         }
-
-        hconstrp = constrp->nextp;
-        constrp->nextp = constrp->nextp->nextp;
-        RDB_del_expr(hconstrp->exp, ecp);
-        RDB_free(hconstrp->name);
-        RDB_free(hconstrp);
     }
 
     /* Delete constraint from catalog */
@@ -276,24 +257,3 @@ RDB_drop_constraint(const char *name, RDB_exec_context *ecp,
 }
 
 /*@}*/
-
-int
-RDB_check_constraints(const RDB_constraint *constrp, RDB_exec_context *ecp,
-        RDB_transaction *txp)
-{
-    RDB_bool b;
-    int ret;
-
-    while (constrp != NULL) {
-        ret = RDB_evaluate_bool(constrp->exp, NULL, NULL, NULL, ecp, txp, &b);
-        if (ret != RDB_OK) {
-            return ret;
-        }
-        if (!b) {
-            RDB_raise_predicate_violation(constrp->name, ecp);
-            return RDB_ERROR;
-        }
-        constrp = constrp->nextp;
-    }
-    return RDB_OK;
-}
