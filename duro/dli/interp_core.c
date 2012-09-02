@@ -403,8 +403,10 @@ parse_default(RDB_parse_node *defaultattrnodep,
     if (*attrvp == NULL)
         return RDB_ERROR;
 
-    for (i = 0; i < attrc; i++)
+    for (i = 0; i < attrc; i++) {
         (*attrvp)[i].defaultp = NULL;
+        (*attrvp)[i].options = 0;
+    }
 
     nodep = defaultattrnodep->val.children.firstp;
     i = 0;
